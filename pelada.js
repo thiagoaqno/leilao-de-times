@@ -202,7 +202,7 @@ module.exports = function attachPelada(io) {
       const id = rid(6), a = teamOf(room, "A").length, b = teamOf(room, "B").length, size = room.config.size;
       const team = room.phase !== "lobby" ? null : a <= b && a < size ? "A" : b < size ? "B" : null; // sobrou? banco
       const cars = Object.keys(C.CARS);
-      room.players[id] = { id, n: room.seq++, name, team, num: 10, gk: false, car: cars[room.order.length % cars.length], goals: 0, assists: 0, shots: 0, saves: 0,
+      room.players[id] = { id, token: rid(12), n: room.seq++, name, team, num: 10, gk: false, car: cars[room.order.length % cars.length], goals: 0, assists: 0, shots: 0, saves: 0,
         lastKick: 0, rtt: null, downUntil: 0, holdSince: 0, noCatch: 0,
         pos: { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, f: 0 }, spawn: null, sockets: new Set() };
       room.order.push(id);
