@@ -335,6 +335,19 @@
     b.sp = how === "cabeca" ? 0 : curve * (kind === "passe" ? 14 : 24); // positivo: curva para a direita de quem chuta
     return how;
   }
+  // chute assistido (só no futebol a pé): se o chute vai mais ou menos para o gol, puxa um pouquinho a mira para o
+  // canto mais perto de onde a pessoa mirou (logo dentro da trave) ou para o meio. Correção pequena, no máximo ~7°.
+  function assistShot(p, yaw, team, F = MODES.pes) {
+    const gx = (team === "B" ? -1 : 1) * F.L, dx = gx - p.x, dist = Math.abs(dx);
+    if (dist > 24 || dist < 1.5 || Math.sign(dx) !== Math.sign(-Math.sin(yaw))) return yaw;
+    let best = null, bd = Infinity;
+    for (const z of [-(F.goalW - 0.32), 0, F.goalW - 0.32]) {
+      const ty = Math.atan2(-dx, -(z - p.z)); let d = ty - yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+      if (Math.abs(d) < bd) { bd = Math.abs(d); best = d; }
+    }
+    if (bd > 0.35) return yaw; // mirou longe do gol: não mexe
+    return yaw + Math.max(-0.12, Math.min(0.12, best * 0.6));
+  }
   // passe assistido (como no FIFA): se tiver um companheiro perto da direção mirada, a bola vai nele
   function assistPass(p, yaw, mates, power) {
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
@@ -352,7 +365,7 @@
   }
 
   const api = { MODES, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, kitOf, kitColor, kitColor2, spawns, inArea,
-    movePlayer, moveCar, newBall, stepBall, simulate, landing, goalOf, canKick, kick, assistPass };
+    movePlayer, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;
 })(typeof window !== "undefined" ? window : globalThis);

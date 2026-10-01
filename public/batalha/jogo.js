@@ -619,12 +619,18 @@ function useItem() {
   if (G.practice) R.useItem(G.m, G.me, back, Date.now(), pev);
   else socket.emit("use", { back });
 }
+// botões na tela (celular): joystick acelera/freia/vira; item (com o joystick para baixo, joga para trás), derrapagem e olhar para trás
+const TOUCH = window.Toque && Toque.setup({
+  buttons: [{ icon: "💨", label: "derrapar", code: "ShiftLeft" }, { icon: "👀", label: "trás", code: "KeyC" }, { icon: "🎁", label: "item", code: "Space", big: true }],
+  top: [{ icon: "⏸", code: "Escape" }],
+  topStyle: "left:50%;right:auto;top:auto;bottom:16px;transform:translateX(-50%);flex-direction:row",
+});
 function togglePause(force) {
   const p = $("pause"), open = force ?? p.classList.contains("hidden");
   p.classList.toggle("hidden", !open);
   if (open) { $("vol").value = Sound.vol; $("volV").textContent = Math.round(Sound.vol * 100) + "%"; $("pauseSb").innerHTML = scoreTable(); $("pauseHint").textContent = G.practice ? "Treino contra robôs" : `Sala ${ME ? ME.code : ""}`; }
 }
-$("btnResume").onclick = () => togglePause(false);
+$("btnResume").onclick = () => { togglePause(false); if (TOUCH) Toque.fullscreen(); };
 $("vol").oninput = (e) => { Sound.setVol(+e.target.value); $("volV").textContent = Math.round(+e.target.value * 100) + "%"; };
 $("btnLeave").onclick = () => {
   if (G.practice) { stopGame(); return; }
@@ -665,6 +671,7 @@ function frame() {
   requestAnimationFrame(frame);
   const tNow = performance.now(), dt = Math.min(0.05, (tNow - lastT) / 1000); lastT = tNow;
   if (!G.active) return;
+  if (TOUCH) { const want = !!G.me && $("pause").classList.contains("hidden") && $("over").classList.contains("hidden"); if (Toque.on !== want) Toque.show(want); }
   const now = nowG(), started = now >= matchStart(), over = G.practice ? G.m.over : S && S.phase === "over";
   // ---- meu kart ----
   const me = G.me;

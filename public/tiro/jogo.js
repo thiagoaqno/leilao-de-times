@@ -457,7 +457,10 @@ function newMe(spawn, prim) {
     ammo: W.mag, reserve: W.reserve, reloadUntil: 0, nextShot: 0, scope: 0, scopeAt: 0, rec: { n: 0, px: 0, py: 0, last: 0 }, punch: 0, kick: 0, deployAt: performance.now() / 1000, stepT: 0, wasGround: true };
 }
 const now = () => performance.now() / 1000;
-const locked = () => document.pointerLockElement === canvas;
+// no celular não tem "prender o mouse": jogando = depois de tocar em "Voltar pro jogo"
+const TOUCH = window.Toque && Toque.isTouch();
+let touchPlay = false;
+const locked = () => document.pointerLockElement === canvas || (TOUCH && touchPlay && G.active);
 
 function startGame(mode) {
   if (G.active && G.mode === mode) return;
@@ -469,7 +472,7 @@ function startGame(mode) {
   if (mode === "treino") spawnBots();
   else syncFromState(null, S);
   setVM(G.me.w);
-  $("pause").classList.remove("hidden");
+  $("pause").classList.remove("hidden"); touchPlay = false;
   requestAnimationFrame(loop);
 }
 function stopGame() {
@@ -478,6 +481,7 @@ function stopGame() {
   for (const r of G.remotes.values()) scene.remove(r.model);
   G.remotes.clear(); G.bots = [];
   if (document.pointerLockElement) document.exitPointerLock();
+  touchPlay = false; if (TOUCH) Toque.show(false);
   $("over").classList.add("hidden"); $("pause").classList.add("hidden"); $("tab").classList.add("hidden");
 }
 function leaveGame() {
@@ -634,7 +638,27 @@ function botHit(b, part, point, fixed) {
 // Controles
 // ======================================================================
 canvas.addEventListener("click", () => { if (G.active && !locked() && $("over").classList.contains("hidden")) canvas.requestPointerLock?.(); });
-$("btnResume").onclick = () => { Sound.unlock(); canvas.requestPointerLock?.(); };
+$("btnResume").onclick = () => { Sound.unlock(); if (TOUCH) { touchPlay = true; $("pause").classList.add("hidden"); Toque.fullscreen(); } else canvas.requestPointerLock?.(); };
+// botões na tela (celular)
+if (TOUCH) Toque.setup({
+  look: (dx, dy) => {
+    const me = G.me; if (!locked() || !me || !me.alive) return;
+    const zoomK = me.scope ? Math.tan((ZOOM_FOV[me.scope] * Math.PI) / 360) / Math.tan((BASE_FOV * Math.PI) / 360) : 1, k = 0.0028 * sens * zoomK;
+    me.yaw -= dx * k; me.pitch = clamp(me.pitch - dy * k, -1.55, 1.55);
+  },
+  buttons: [
+    { icon: "🔁", label: "arma", down: () => { const me = G.me; if (!me) return; const order = [me.prim, "deagle", "faca"], next = order[(order.indexOf(me.w) + 1) % 3]; const code = next === "deagle" ? "Digit2" : next === "faca" ? "Digit3" : "Digit1"; Toque.press(code); Toque.release(code); } },
+    { icon: "↻", label: "recarregar", code: "KeyR" },
+    { icon: "🎯", label: "mira", down: () => { if (!locked() || !G.me) return; if (WP[G.me.w].melee) { if (canFire()) tryFire(true); } else toggleScope(); } },
+    { icon: "🚶", label: "devagar", code: "ShiftLeft" },
+    { icon: "⬆", label: "pular", code: "Space" },
+    { icon: "🔫", label: "atirar", big: true, down: () => { if (!locked() || !G.me) return; mouseDown = true; if (!G.me.alive) G.specIdx++; }, up: () => { mouseDown = false; triggerUp = true; } },
+  ],
+  top: [
+    { icon: "⏸", down: () => { touchPlay = false; keys.clear(); mouseDown = false; $("pause").classList.remove("hidden"); renderPauseSb(); } },
+    { icon: "📋", code: "Tab" },
+  ],
+});
 $("btnLeave").onclick = leaveGame;
 document.addEventListener("pointerlockchange", () => {
   const on = locked();
@@ -784,6 +808,7 @@ let lastT = now();
 function loop() {
   if (!G.active) return;
   requestAnimationFrame(loop);
+  if (TOUCH) { const want = touchPlay && $("over").classList.contains("hidden"); if (Toque.on !== want) Toque.show(want); }
   const t = now(), dt = Math.min(0.05, t - lastT); lastT = t;
   try { frame(dt, t); } catch (e) { console.error(e); }
 }

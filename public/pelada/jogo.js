@@ -568,7 +568,10 @@ const ctrlYaw = () => (G.view === "tv" ? 0 : G.camYaw);
 const keys = new Set();
 let sens = store.get("pelada:sens") ?? 1.6, jumpQueued = false, charge = null, wheelQueued = false;
 const now = () => performance.now() / 1000;
-const locked = () => document.pointerLockElement === canvas;
+// no celular não tem "prender o mouse": jogando = depois de tocar em "Voltar pro jogo"
+const TOUCH = window.Toque && Toque.isTouch();
+let touchPlay = false;
+const locked = () => document.pointerLockElement === canvas || (TOUCH && touchPlay && G.active);
 const ballS = { snap: null, view: C.newBall(), off: { x: 0, y: 0, z: 0 }, ignoreUntil: 0 };
 const local = { ball: null };
 const isCar = () => G.game === "carros";
@@ -598,7 +601,7 @@ function startGame(mode, game, falta = false) {
     G.falta = falta ? { n: 0, goals: 0, state: "mirar", t0: 0, wall: [] } : null;
     if (falta) setupFalta();
   } else syncFromState(null, S);
-  $("pause").classList.remove("hidden");
+  $("pause").classList.remove("hidden"); touchPlay = false;
   requestAnimationFrame(loop);
 }
 function stopGame() {
@@ -611,6 +614,7 @@ function stopGame() {
   if (G.meModel) { scene.remove(G.meModel); G.meModel = null; }
   local.ball = null; charge = null; Sound.engine(0, false);
   if (document.pointerLockElement) document.exitPointerLock();
+  touchPlay = false; if (TOUCH) Toque.show(false);
   $("over").classList.add("hidden"); $("pause").classList.add("hidden"); $("tab").classList.add("hidden");
 }
 function rebuildMyModel() {
@@ -750,7 +754,24 @@ function pushFeed(html) { G.feed.push({ at: now(), html }); if (G.feed.length > 
 // Controles
 // ======================================================================
 canvas.addEventListener("click", () => { if (G.active && !locked() && $("over").classList.contains("hidden")) canvas.requestPointerLock?.(); });
-$("btnResume").onclick = () => { Sound.unlock(); canvas.requestPointerLock?.(); };
+$("btnResume").onclick = () => { Sound.unlock(); if (TOUCH) { setupTouch(); touchPlay = true; $("pause").classList.add("hidden"); Toque.fullscreen(); } else canvas.requestPointerLock?.(); };
+// botões na tela (celular): a pé, chute/passe/cavadinha (segure para carregar a força), pique, carrinho e pulo;
+// de carro, turbo, pulo (duas vezes: mortal) e derrapagem. O joystick anda (ou acelera e vira).
+function setupTouch() {
+  const pause = { icon: "⏸", down: () => { touchPlay = false; keys.clear(); charge = null; $("pause").classList.remove("hidden"); renderPauseSb(); } };
+  if (isCar()) Toque.setup({
+    buttons: [{ icon: "💨", label: "derrapar", code: "KeyQ" }, { icon: "⬆", label: "pular", code: "Space" }, { icon: "🔥", label: "turbo", code: "ShiftLeft", big: true }],
+    top: [pause, { icon: "🎥", code: "KeyC" }, { icon: "📺", code: "KeyV" }, { icon: "📋", code: "Tab" }],
+  });
+  else Toque.setup({
+    look: (dx, dy) => { if (!locked() || G.view === "tv") return; const k = 0.0028 * sens; G.camYaw -= dx * k; G.camPitch = clamp(G.camPitch - dy * k, ...pitchRange()); },
+    buttons: [
+      { icon: "🌙", label: "cavadinha", code: "KeyL" }, { icon: "🎯", label: "passe", code: "KeyJ" }, { icon: "🦵", label: "carrinho", down: () => { if (locked() && G.meModel) wheelQueued = true; } },
+      { icon: "🏃", label: "pique", code: "ShiftLeft" }, { icon: "⬆", label: "pular", code: "Space" }, { icon: "⚽", label: "chute", code: "KeyK", big: true },
+    ],
+    top: [pause, { icon: "🎥", code: "KeyC" }, { icon: "📋", code: "Tab" }],
+  });
+}
 $("btnLeave").onclick = leaveGame;
 document.addEventListener("pointerlockchange", () => {
   const on = locked();
@@ -764,7 +785,7 @@ $("vol").oninput = (e) => { Sound.setVol(+e.target.value); $("volV").textContent
 document.addEventListener("mousemove", (e) => {
   if (!locked() || isCar() || G.view === "tv") return;
   const k = sens * 0.022 * (Math.PI / 180);
-  G.camYaw -= e.movementX * k; G.camPitch = clamp(G.camPitch - e.movementY * k, -0.45, 0.7);
+  G.camYaw -= e.movementX * k; G.camPitch = clamp(G.camPitch - e.movementY * k, ...pitchRange());
 });
 const KICK_BTN = { 0: "chute", 2: "passe", 1: "cavadinha" }, KICK_KEY = { KeyK: "chute", KeyJ: "passe", KeyL: "cavadinha" };
 document.addEventListener("mousedown", (e) => { if (!locked() || !G.meModel || isCar()) return; if (KICK_BTN[e.button] && !charge) { e.preventDefault(); charge = { kind: KICK_BTN[e.button], t0: now(), src: "m" + e.button }; } });
@@ -781,7 +802,7 @@ document.addEventListener("keydown", (e) => {
   if (e.code === "Space" && !e.repeat) jumpQueued = true;
   if (e.code === "KeyC" && !e.repeat) {
     if (isCar()) G.ballCam = !G.ballCam;
-    else { G.view = VIEWS[(VIEWS.indexOf(G.view) + 1) % VIEWS.length]; store.set("pelada:view", G.view); flashMsg("", VIEW_NAMES[G.view], 1200); }
+    else { G.view = VIEWS[(VIEWS.indexOf(G.view) + 1) % VIEWS.length]; store.set("pelada:view", G.view); G.camPitch = clamp(G.camPitch, ...pitchRange()); flashMsg("", VIEW_NAMES[G.view], 1200); }
   }
   if (e.code === "KeyV" && !e.repeat && isCar()) G.tv = !G.tv;
   if (KICK_KEY[e.code] && !e.repeat && !charge && !isCar()) charge = { kind: KICK_KEY[e.code], t0: now(), src: e.code };
@@ -796,6 +817,8 @@ window.addEventListener("blur", () => { keys.clear(); charge = null; });
 
 function canPlay() { if (G.mode === "treino") return true; const m = S && S.match; return S && S.phase === "play" && m && m.phase === "live"; }
 // direção da bola: as setas (em relação à câmera); sem seta, para onde o jogador está virado
+// quanto dá para olhar para baixo e para cima: em primeira pessoa dá para olhar o chão (e a bola no pé)
+const pitchRange = () => (G.view === "primeira" ? [-1.35, 0.9] : [-0.45, 0.7]);
 function aimYaw() {
   const f = (keys.has("ArrowUp") ? 1 : 0) - (keys.has("ArrowDown") ? 1 : 0), s = (keys.has("ArrowRight") ? 1 : 0) - (keys.has("ArrowLeft") ? 1 : 0);
   if (!f && !s) return G.me.facing;
@@ -819,6 +842,7 @@ function doKick(kind, power) {
   if (!how) return;
   let yaw = aimYaw();
   if (kind === "passe" && how !== "mao") ({ yaw, power } = C.assistPass(me, yaw, mates(), power));
+  if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F); // ajudinha para os cantos
   me.facing = yaw;
   Sound.kick(power);
   const curve = curveNow();
@@ -839,6 +863,7 @@ let lastT = now();
 function loop() {
   if (!G.active) return;
   requestAnimationFrame(loop);
+  if (TOUCH) { const want = touchPlay && $("over").classList.contains("hidden"); if (Toque.on !== want) Toque.show(want); }
   const t = now(), dt = Math.min(0.05, t - lastT); lastT = t;
   try { frame(dt, t); } catch (e) { console.error(e); }
 }
@@ -1153,7 +1178,8 @@ function updateCamera(dt) {
   showAim(me);
 }
 function showAim(me) {
-  const ay = aimYaw(); aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
+  let ay = aimYaw();
+  if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F); // a seta já mostra a ajudinha aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
   aim.material.opacity = charge ? 0.9 : 0.4;
 }
 
