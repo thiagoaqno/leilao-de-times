@@ -213,7 +213,8 @@ module.exports = function attachCorrida(io) {
       me.lastPos = now;
       const x = num(d.x), y = num(d.y), a = num(d.a), v = num(d.v), prog = num(d.prog);
       if (![x, y, a].every(Number.isFinite)) return;
-      socket.to(room.code).volatile.emit("ghost", { id: me.id, x, y, a, v: Number.isFinite(v) ? v : 0, prog: Number.isFinite(prog) ? prog : 0, laps: me.laps, t: now });
+      const z = num(d.z);
+      socket.to(room.code).volatile.emit("ghost", { id: me.id, x, y, z: Number.isFinite(z) ? Math.max(-50, Math.min(400, z)) : 0, a, v: Number.isFinite(v) ? v : 0, prog: Number.isFinite(prog) ? prog : 0, laps: me.laps, t: now });
     });
 
     socket.on("disconnect", () => {

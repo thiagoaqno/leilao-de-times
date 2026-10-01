@@ -10,7 +10,9 @@ const WORLD = 1600;
 const PISTAS = {
   monaco: {
     name: "Mônaco", sub: "Estreita e travada: Sainte Dévote, o grampo do Grand Hotel, a chicane do porto e a piscina",
-    width: 72, minLap: 10, walls: true,
+    width: 72, minLap: 10, walls: true, wall: 9, flat: 12, fall: 70,
+    // relevo [fração da volta, altura]: sobe a Beau Rivage até o Cassino e desce até o túnel, à beira do mar
+    hills: [[0, 10], [0.1, 10], [0.16, 30], [0.21, 55], [0.25, 62], [0.29, 52], [0.34, 38], [0.41, 22], [0.46, 12], [0.56, 8], [0.6, 6], [0.72, 4], [0.8, 5], [0.92, 8], [1, 10]],
     points: [
       [700, 700, 0],                         // reta dos boxes (para a direita), com o porto embaixo
       [1200, 700, 55],                       // Sainte Dévote
@@ -31,7 +33,9 @@ const PISTAS = {
   },
   interlagos: {
     name: "Interlagos", sub: "Reta dos boxes longa, S do Senna fechado, Reta Oposta e o Bico de Pato",
-    width: 86, minLap: 9, walls: false,
+    width: 86, minLap: 9, walls: false, flat: 40, fall: 220,
+    // morro da reta dos boxes, descida até o Lago, lombada na Reta Oposta (dá para voar!), o Mergulho e a subida dos boxes
+    hills: [[0, 70], [0.08, 66], [0.14, 42], [0.2, 30], [0.27, 25], [0.325, 14], [0.34, 30], [0.349, 10], [0.39, 0], [0.45, 0], [0.5, 5], [0.57, 25], [0.62, 35], [0.68, 35], [0.715, 30], [0.735, 30], [0.765, 4], [0.8, 0], [0.84, 6], [0.9, 40], [0.95, 63], [1, 70]],
     points: [
       [820, 1285, 0],                        // reta dos boxes (para a esquerda)
       [380, 1270, 55], [330, 1080, 45],      // S do Senna
@@ -50,7 +54,9 @@ const PISTAS = {
   },
   tokyo: {
     name: "Tóquio", sub: "Quarteirões de neon com esquinas de 90°: freia, vira, acelera",
-    width: 80, minLap: 10, walls: true,
+    width: 80, minLap: 10, walls: true, wall: 23, flat: 25, fall: 50,
+    // via expressa elevada (sobe na avenida, passa lá em cima e desce), uma rampa de pulo e outro viaduto
+    hills: [[0, 0], [0.03, 0], [0.12, 60], [0.135, 62], [0.27, 62], [0.33, 30], [0.38, 0], [0.5, 0], [0.52, 0], [0.535, 22], [0.543, 0], [0.62, 0], [0.7, 0], [0.745, 36], [0.79, 36], [0.86, 0], [1, 0]],
     points: [
       [700, 1320, 0],                        // avenida principal (para a direita)
       [1340, 1320, 60],
@@ -125,9 +131,21 @@ function sample(points, step = 6) {
   return out;
 }
 
+// altura de cada ponto da pista: entre dois pontos do relevo, sobe ou desce em curva suave (cosseno)
+function elevate(pts, hills, step = 6) {
+  const L = pts.length * step;
+  for (const p of pts) {
+    const f = p.d / L; let k = 0;
+    while (k < hills.length - 2 && hills[k + 1][0] <= f) k++;
+    const [f0, h0] = hills[k], [f1, h1] = hills[k + 1], t = Math.max(0, Math.min(1, (f - f0) / (f1 - f0 || 1)));
+    p.h = h0 + (h1 - h0) * (1 - Math.cos(Math.PI * t)) / 2;
+  }
+  return pts;
+}
+
 const SECTORS = 4; // a volta só conta passando pelos 4 setores na ordem (contra atalho e contramão)
 
-const api = { WORLD, PISTAS, CARROS, sample, SECTORS };
+const api = { WORLD, PISTAS, CARROS, sample, elevate, SECTORS };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pistas = api;
 })(typeof window !== "undefined" ? window : globalThis);
