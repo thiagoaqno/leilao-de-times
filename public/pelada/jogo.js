@@ -3,6 +3,7 @@
 // com a bola e todo mundo; os outros aparecem 100 ms "no passado", interpolados. A bola é PREVISTA a partir do último
 // pacote (rodando a mesma física de campo.js) e a diferença é corrigida aos poucos.
 import * as THREE from "three";
+import { Ragdoll } from "/ragdoll.js";
 
 const C = window.Campo, KITS = C.KITS;
 const $ = (id) => document.getElementById(id);
@@ -433,26 +434,32 @@ function makePlayer(kitId, num, name, opts = {}) {
   const skin = M(SKINS[(name.length * 7 + num) % SKINS.length]), shorts = M(new THREE.Color(K.shorts).getHex()), sock = M(new THREE.Color(opts.gk ? "#26282b" : C.kitColor(kitId)).getHex()), boot = M(0x161616);
   const shirtC = M(new THREE.Color(K.c[0]).getHex());
   const part = (gg, w, hh, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); m.position.set(x, y, z); gg.add(m); return m; };
-  const legs = [];
+  // pernas e braços com joelho e cotovelo (dobram na corrida, para o boneco não ficar duro)
+  const legs = [], knees = [];
   for (const sx of [-0.11, 0.11]) {
     const l = new THREE.Group(); l.position.set(sx, 0.85, 0);
-    part(l, 0.18, 0.3, 0.2, shorts, 0, -0.12, 0); part(l, 0.14, 0.3, 0.15, skin, 0, -0.4, 0); part(l, 0.15, 0.22, 0.16, sock, 0, -0.66, 0); part(l, 0.16, 0.1, 0.27, boot, 0, -0.8, -0.04);
-    body.add(l); legs.push(l);
+    part(l, 0.18, 0.3, 0.2, shorts, 0, -0.12, 0); part(l, 0.14, 0.12, 0.15, skin, 0, -0.29, 0);
+    const kn = new THREE.Group(); kn.position.y = -0.3; l.add(kn);
+    part(kn, 0.14, 0.2, 0.15, skin, 0, -0.08, 0); part(kn, 0.15, 0.22, 0.16, sock, 0, -0.36, 0); part(kn, 0.16, 0.1, 0.27, boot, 0, -0.5, -0.04);
+    body.add(l); legs.push(l); knees.push(kn);
   }
   const front = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, false), roughness: 0.7 }), backM = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, true), roughness: 0.7 });
   const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.6, 0.26), [shirtC, shirtC, shirtC, shirtC, backM, front]); torso.position.y = 1.16; body.add(torso);
-  const arms = [];
+  const arms = [], elbows = [], fore = opts.gk ? shirtC : skin;
   for (const sx of [-0.3, 0.3]) {
     const a = new THREE.Group(); a.position.set(sx, 1.42, 0);
-    part(a, 0.13, 0.26, 0.14, shirtC, 0, -0.12, 0); part(a, 0.11, 0.3, 0.12, opts.gk ? shirtC : skin, 0, -0.4, 0);
-    if (opts.gk) part(a, 0.15, 0.13, 0.15, M(0xf5f5f5), 0, -0.6, 0);
-    body.add(a); arms.push(a);
+    part(a, 0.13, 0.26, 0.14, shirtC, 0, -0.12, 0);
+    const el = new THREE.Group(); el.position.y = -0.25; a.add(el);
+    part(el, 0.11, 0.3, 0.12, fore, 0, -0.15, 0);
+    if (opts.gk) part(el, 0.15, 0.13, 0.15, M(0xf5f5f5), 0, -0.35, 0);
+    body.add(a); arms.push(a); elbows.push(el);
   }
   const head = new THREE.Group(); head.position.y = 1.46; body.add(head);
-  part(head, 0.26, 0.28, 0.26, skin, 0, 0.15, 0); part(head, 0.28, 0.08, 0.28, M(0x2a1b10), 0, 0.31, 0); part(head, 0.18, 0.04, 0.01, M(0x111111), 0, 0.18, -0.131);
+  const hair = M(0x2a1b10);
+  part(head, 0.26, 0.28, 0.26, skin, 0, 0.15, 0); part(head, 0.28, 0.08, 0.28, hair, 0, 0.31, 0); part(head, 0.18, 0.04, 0.01, M(0x111111), 0, 0.18, -0.131);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   let tag = null; if (name) { tag = nameSprite((opts.gk ? "🧤 " : "") + name, tagColor(kitId)); tag.position.y = 2.15; g.add(tag); }
-  g.userData = { legs, arms, head, tag, body };
+  g.userData = { legs, knees, arms, elbows, head, tag, body, mats: { head: skin, hair, torso: [shirtC, shirtC, shirtC, shirtC, backM, front], upperArm: shirtC, forearm: fore, thigh: shorts, shin: sock, boot } };
   return g;
 }
 // poses: correr, chutar, carrinho (deitado de costas), mergulho do goleiro (de lado), caído (de bruços), segurando a bola
@@ -467,10 +474,20 @@ function animate(model, speed, dt, st, f = 0) {
   const armTo = st.holding ? -1.4 : (f & FL.dive) ? -2.8 : null;
   u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, armTo ?? -sw * 0.8, 0.35);
   u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, armTo ?? sw * 0.8, 0.35);
-  const b = u.body;
-  const tx = (f & FL.slide) ? 1.25 : (f & FL.down) ? -1.45 : 0, tz = (f & FL.dive) ? (st.diveSide || 1) * -1.35 : 0;
-  b.rotation.x = lerp(b.rotation.x, tx, 0.3); b.rotation.z = lerp(b.rotation.z, tz, 0.3);
-  b.position.y = lerp(b.position.y, (f & FL.slide) ? 0.25 : (f & FL.down) ? 0.18 : (f & FL.dive) ? 0.5 : 0, 0.3);
+  // joelho dobra quando a perna vai para trás; cotovelo dobrado correndo; tronco inclina para a frente e balança
+  const run = lying ? 0 : Math.min(1, speed / 7);
+  if (u.knees) {
+    u.knees[0].rotation.x = lerp(u.knees[0].rotation.x, (f & FL.slide) ? 0.2 : Math.max(0, -Math.sin(st.anim)) * 1.3 * run + 0.1 * run, 0.35);
+    u.knees[1].rotation.x = lerp(u.knees[1].rotation.x, kick > 0.01 ? 0.9 * (1 - kick) : (f & FL.slide) ? 0.1 : Math.max(0, Math.sin(st.anim)) * 1.3 * run + 0.1 * run, 0.35);
+    const elb = st.holding ? -0.6 : (f & FL.dive) ? 0 : -0.25 - 0.9 * run;
+    u.elbows[0].rotation.x = lerp(u.elbows[0].rotation.x, elb, 0.3); u.elbows[1].rotation.x = lerp(u.elbows[1].rotation.x, elb, 0.3);
+  }
+  const b = u.body, turn = clamp(((st.lastYaw ?? model.rotation.y) - model.rotation.y) / Math.max(dt, 1e-3), -6, 6); st.lastYaw = model.rotation.y;
+  const tx = (f & FL.slide) ? 1.25 : (f & FL.down) ? -1.45 : -0.22 * run, tz = (f & FL.dive) ? (st.diveSide || 1) * -1.35 : lying ? 0 : turn * 0.03 * run;
+  b.rotation.x = lerp(b.rotation.x, tx, 0.3); b.rotation.z = lerp(b.rotation.z, tz, 0.15);
+  const bob = lying ? 0 : Math.abs(Math.sin(st.anim)) * 0.06 * run;
+  b.position.y = lerp(b.position.y, (f & FL.slide) ? 0.25 : (f & FL.down) ? 0.18 : (f & FL.dive) ? 0.5 : bob, 0.3);
+  u.head.rotation.x = lerp(u.head.rotation.x, lying ? 0 : 0.18 * run, 0.2); // a cabeça compensa a inclinação
 }
 
 // ---------- carros pixelados (caixinhas + texturas de pixel) ----------
@@ -608,7 +625,7 @@ function stopGame() {
   if (!G.active) return;
   G.active = false;
   for (const r of G.remotes.values()) scene.remove(r.model);
-  G.remotes.clear();
+  G.remotes.clear(); clearRags();
   if (G.keeper) { scene.remove(G.keeper.model); G.keeper = null; }
   if (G.falta) { for (const w of G.falta.wall) scene.remove(w.model); G.falta = null; }
   if (G.meModel) { scene.remove(G.meModel); G.meModel = null; }
@@ -706,6 +723,13 @@ socket.on("pegou", () => { if (G.active) Sound.catch(); });
 socket.on("caiu", (d) => {
   if (!G.active || G.mode !== "online") return;
   Sound.fall();
+  // o derrubado vira boneco de pano por um instante (empurrado na direção do carrinho) e depois levanta
+  const vic = ME && d.id === ME.id ? { model: G.meModel, x: G.me.x, y: G.me.y, z: G.me.z, yaw: G.me.facing, vx: G.me.vx, vz: G.me.vz } : G.remotes.get(d.id);
+  const tk = ME && d.by === ME.id ? G.me : G.remotes.get(d.by); // quem deu o carrinho
+  if (vic && vic.model && !isCar() && !(vic.model === G.meModel && G.view === "primeira")) {
+    const dx = tk ? vic.x - tk.x : 0, dz = tk ? vic.z - tk.z : 1, l = Math.hypot(dx, dz) || 1;
+    addRag(vic.model, vic.x, vic.y || 0, vic.z, vic.yaw ?? vic.model.rotation.y, { x: vic.vx || 0, y: 0, z: vic.vz || 0 }, { x: (dx / l) * 3.5, y: 2.2, z: (dz / l) * 3.5 }, 1.15);
+  }
   if (ME && d.id === ME.id) { G.me.downT = 1.4; charge = null; }
   const by = P(d.by), to = P(d.id);
   if (by && to) pushFeed(`🦵 ${h(by.name)} derrubou ${h(to.name)}`);
@@ -884,6 +908,7 @@ function frame(dt, t) {
   }
   if (G.mode === "treino") practiceStep(dt, t);
   updateRemotes(dt);
+  updateRags(dt);
   updateBall(dt);
   updateCamera(dt);
   hud(t);
@@ -992,6 +1017,20 @@ function stepCar(dt, t, frozen) {
   Sound.engine(sp, true);
 }
 
+// ---------- boneco de pano (derrubado no carrinho) ----------
+const rags = [];
+function addRag(model, x, y, z, yaw, vel, push, life) {
+  const F = G.F, solid = (p, r) => { p.x = clamp(p.x, -F.L - F.goalD + r, F.L + F.goalD - r); p.z = clamp(p.z, -F.W + r, F.W - r); };
+  // a perna que leva o carrinho sai do chão primeiro: empurra os pés mais que o corpo
+  const rg = new Ragdoll({ scene, x, y, z, yaw, vel, mats: model.userData.mats, life, solid, push });
+  rg.model = model; rags.push(rg); model.visible = false;
+  for (const i of [13, 14]) rg.q[i].addScaledVector(new THREE.Vector3(push.x, 0, push.z), -1 / 60); // pés: rasteira
+  if (rags.length > 8) { const o = rags.shift(); o.model.visible = true; o.dispose(); }
+}
+function updateRags(dt) {
+  for (let i = rags.length - 1; i >= 0; i--) { const r = rags[i]; r.model.visible = false; if (!r.step(dt)) { r.model.visible = true; r.dispose(); rags.splice(i, 1); } }
+}
+function clearRags() { while (rags.length) { const r = rags.pop(); r.model.visible = true; r.dispose(); } }
 function updateRemotes(dt) {
   const rt = sNow() - INTERP;
   for (const rm of G.remotes.values()) {
@@ -1137,7 +1176,7 @@ function keepInside(F, tgt, m = 0.3) {
 }
 function updateCamera(dt) {
   const me = G.me, b = ballMesh.position, F = G.F, tvOn = isCar() ? G.tv : G.view === "tv";
-  if (G.meModel) G.meModel.visible = isCar() || G.view !== "primeira";
+  if (G.meModel) G.meModel.visible = (isCar() || G.view !== "primeira") && !rags.some((r) => r.model === G.meModel); // caído: quem aparece é o boneco de pano
   if (!G.meModel || tvOn) { // câmera de TV: do alto da lateral, seguindo o MEU jogador (com um pouco da bola)
     const fx0 = G.meModel ? lerp(me.x, b.x, 0.25) : b.x, fz0 = G.meModel ? lerp(me.z, b.z, 0.25) : b.z;
     const tx = clamp(fx0, -F.L + 4, F.L - 4), hgt = isCar() ? 22 : 10;
@@ -1239,4 +1278,4 @@ function showOver() {
   if ($("btnToLobby")) $("btnToLobby").onclick = () => act("lobby");
   $("btnOut").onclick = leaveGame;
 }
-if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys }; // para testes
+if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, addRag, rags }; // para testes
