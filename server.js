@@ -37,6 +37,8 @@ app.get("/botao", (req, res) => res.redirect("/botao/"));
 app.get("/corrida", (req, res) => res.redirect("/corrida/"));
 app.get("/tiro", (req, res) => res.redirect("/tiro/"));
 app.get("/pelada", (req, res) => res.redirect("/pelada/"));
+// Rocket da Galera: a mesma página da Pelada, no modo carros (o Express trata "/rocket" e "/rocket/" como iguais)
+app.get("/rocket", (req, res) => { const [p, q] = req.originalUrl.split("?"); return p.endsWith("/") ? res.sendFile(path.join(__dirname, "public", "pelada", "index.html")) : res.redirect("/rocket/" + (q ? "?" + q : "")); });
 app.get("/vendor/marked.js", (req, res) => res.sendFile(require.resolve("marked/marked.min.js")));
 app.use("/vendor/three", express.static(path.dirname(require.resolve("three"))));
 app.get("/vendor/purify.js", (req, res) => res.sendFile(require.resolve("dompurify/dist/purify.min.js")));

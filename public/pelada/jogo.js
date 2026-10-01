@@ -18,6 +18,16 @@ const angLerp = (a, b, k) => { let d = b - a; d = Math.atan2(Math.sin(d), Math.c
 const SIDES = { A: "Mandante", B: "Visitante" };
 const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64 };
 const INTERP = 100; // ms que os outros ficam "no passado" (pacotes a cada 50 ms)
+// a mesma página serve duas casas: /pelada/ (futebol a pé) e /rocket/ (futebol de carro, estilo Rocket League)
+const FIXO = location.pathname.startsWith("/rocket") ? "carros" : "pes", BASE = FIXO === "carros" ? "/rocket/" : "/pelada/";
+if (FIXO === "carros") {
+  document.title = "Rocket da Galera";
+  document.getElementById("brandTitle").innerHTML = "🚀 Rocket da <span>Galera</span>";
+  document.getElementById("heroTitle").innerHTML = "Futebol de<br><em>carro</em>";
+  document.getElementById("heroLead").innerHTML = "Estilo Rocket League: arena fechada, bola gigante, turbo, pulo duplo e mortal. Do 1x1 ao 5x5 com carros pixelados inspirados no GT-R R34, no 911, na F40 e na M3.";
+  document.getElementById("heroFeats").innerHTML = "<span>🚀 turbo</span><span>🤸 mortal</span><span>🏎️ 4 carros</span><span>👥 1x1 a 5x5</span><span>🎥 câmera da bola</span>";
+}
+for (const id of FIXO === "carros" ? ["btnPractice", "btnFalta"] : ["btnPracticeCar"]) document.getElementById(id).classList.add("hidden");
 function toast(msg, ms = 3200) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
 const kitOf = C.kitOf;
 function kitCss(k) {
@@ -54,10 +64,10 @@ function enter(r) {
   if (!r.ok) { $("hErr").textContent = r.error; return; }
   ME = { code: r.code, id: r.id, token: r.token };
   if (r.id) store.set("pelada:" + r.code, ME);
-  history.replaceState(null, "", "/pelada/?sala=" + r.code);
+  history.replaceState(null, "", BASE + "?sala=" + r.code);
   $("roomTag").classList.remove("hidden"); $("rCode").textContent = r.code;
 }
-$("btnCreate").onclick = () => { const name = $("hName").value.trim(); store.set("galera:name", name); socket.emit("create", { name, config: store.get("pelada:cfg") || {} }, enter); };
+$("btnCreate").onclick = () => { const name = $("hName").value.trim(); store.set("galera:name", name); socket.emit("create", { name, config: { ...(store.get("pelada:cfg") || {}), mode: FIXO } }, enter); };
 $("btnJoin").onclick = () => {
   const name = $("hName").value.trim(), code = $("hCode").value.trim().toUpperCase(); store.set("galera:name", name);
   if (code.length !== 5) return ($("hErr").textContent = "O código tem 5 letras.");
@@ -66,7 +76,7 @@ $("btnJoin").onclick = () => {
 };
 $("btnWatch").onclick = () => { const code = $("hCode").value.trim().toUpperCase(); if (code.length !== 5) return ($("hErr").textContent = "Coloque o código da sala."); socket.emit("join", { code, watch: true }, enter); };
 $("hCode").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnJoin").click(); });
-$("btnInvite").onclick = async () => { const link = location.origin + "/pelada/?sala=" + ME.code; try { await navigator.clipboard.writeText(link); toast("Convite copiado! Manda no grupo."); } catch { prompt("Copie o convite:", link); } };
+$("btnInvite").onclick = async () => { const link = location.origin + BASE + "?sala=" + ME.code; try { await navigator.clipboard.writeText(link); toast("Convite copiado! Manda no grupo."); } catch { prompt("Copie o convite:", link); } };
 function autoJoin() {
   syncClock();
   const code = urlCode ? urlCode.toUpperCase() : null, saved = code && store.get("pelada:" + code);
@@ -76,7 +86,7 @@ function autoJoin() {
 }
 socket.on("connect", autoJoin);
 setInterval(() => socket.connected && syncClock(2), 15000);
-socket.on("removido", () => { toast("O organizador tirou você da sala."); urlCode = null; ME = null; S = null; history.replaceState(null, "", "/pelada/"); $("roomTag").classList.add("hidden"); stopGame(); show("home"); });
+socket.on("removido", () => { toast("O organizador tirou você da sala."); urlCode = null; ME = null; S = null; history.replaceState(null, "", BASE); $("roomTag").classList.add("hidden"); stopGame(); show("home"); });
 function show(id) {
   for (const s of ["home", "lobby"]) $(s).classList.toggle("hidden", s !== id);
   $("game").classList.toggle("hidden", id !== "game");
@@ -158,14 +168,14 @@ function keysHelp(mode) {
 $("joinA").onclick = () => act("team", { team: "A" });
 $("joinB").onclick = () => act("team", { team: "B" });
 $("joinBench").onclick = () => act("team", { team: null });
-function setCfg(k, v) { const c = { ...S.config, [k]: v }; store.set("pelada:cfg", c); act("config", { config: c }); }
+function setCfg(k, v) { const c = { ...S.config, [k]: v, mode: FIXO }; store.set("pelada:cfg", c); act("config", { config: c }); }
 document.querySelectorAll("#cfgMode button").forEach((b) => (b.onclick = () => setCfg("mode", b.dataset.v)));
 document.querySelectorAll("#cfgSize button").forEach((b) => (b.onclick = () => setCfg("size", +b.dataset.v)));
 document.querySelectorAll("#cfgMin button").forEach((b) => (b.onclick = () => setCfg("minutes", +b.dataset.v)));
 $("btnPractice").onclick = () => startGame("treino", "pes");
 $("btnFalta").onclick = () => startGame("treino", "pes", true);
 $("btnPracticeCar").onclick = () => startGame("treino", "carros");
-$("btnPractice2").onclick = () => startGame("treino", S ? S.config.mode : "pes");
+$("btnPractice2").onclick = () => startGame("treino", FIXO);
 
 // ======================================================================
 // Sons (sintetizados)
@@ -591,11 +601,13 @@ function rebuildMyModel() {
 }
 function leaveGame() {
   if (G.mode === "treino") { stopGame(); if (S) { if (S.phase !== "lobby") startGame("online", S.config.mode); else { show("lobby"); renderLobby(); } } else show("home"); return; }
-  if (confirm("Sair da quadra? O jogo continua sem você.")) { socket.disconnect(); urlCode = null; ME = null; S = null; stopGame(); history.replaceState(null, "", "/pelada/"); $("roomTag").classList.add("hidden"); show("home"); socket.connect(); }
+  if (confirm("Sair da quadra? O jogo continua sem você.")) { socket.disconnect(); urlCode = null; ME = null; S = null; stopGame(); history.replaceState(null, "", BASE); $("roomTag").classList.add("hidden"); show("home"); socket.connect(); }
 }
 
 // ---------- estado vindo do servidor ----------
 socket.on("state", (st) => {
+  // entrou pelo código numa sala da outra casa (pelada x rocket): vai para a página certa
+  if (st.config.mode !== FIXO) { location.replace((st.config.mode === "carros" ? "/rocket/" : "/pelada/") + "?sala=" + st.code); return; }
   const old = S; S = st;
   if (st.phase === "lobby") {
     if (G.active && G.mode === "online") stopGame();

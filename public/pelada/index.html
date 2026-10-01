@@ -125,7 +125,7 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
 <header class="bar" id="bar">
   <div class="bar-in">
     <a class="tovila" href="/" title="Voltar para a vila">← Vila</a>
-    <div class="brand"><h1>⚽ Pelada da <span>Galera</span></h1></div>
+    <div class="brand"><h1 id="brandTitle">⚽ Pelada da <span>Galera</span></h1></div>
     <div class="roomtag hidden" id="roomTag"><span class="muted">Sala</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
   </div>
 </header>
@@ -135,9 +135,9 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
   <section id="home" class="hidden">
     <div class="hero">
       <div>
-        <h2>Pelada<br>de <em>quadra</em></h2>
-        <p class="lead">Futsal em 3D do 1x1 ao 5x5, com goleiro de verdade (alguém do time) e carrinho. Ou o modo <b>de carro</b>, estilo Rocket League: bola gigante, turbo, pulo duplo e mortal. A bola nunca sai, então o jogo não para.</p>
-        <div class="feats"><span>⚽ 1x1 a 5x5</span><span>🧤 goleiro</span><span>🦵 carrinho</span><span>🏎️ modo carros</span><span>👕 camisas do botão</span></div>
+        <h2 id="heroTitle">Pelada<br>de <em>quadra</em></h2>
+        <p class="lead" id="heroLead">Futsal em 3D do 1x1 ao 5x5, com goleiro de verdade (alguém do time), carrinho e chute com efeito. A bola nunca sai, então o jogo não para. Dá para treinar sozinho e bater faltas.</p>
+        <div class="feats" id="heroFeats"><span>⚽ 1x1 a 5x5</span><span>🧤 goleiro</span><span>🦵 carrinho</span><span>🌀 efeito</span><span>🎯 bater falta</span><span>👕 camisas do botão</span></div>
       </div>
       <div class="panel"><div class="lines"></div><div class="in">
         <div class="warn hidden" id="mobileWarn">Esse jogo precisa de computador com teclado e mouse.</div>
@@ -166,8 +166,8 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
       </div></div>
       <div class="panel"><div class="in">
         <h2 style="font-size:24px;margin-bottom:12px">Jogo</h2>
-        <label>Modo</label>
-        <div class="seg" id="cfgMode"><button data-v="pes">⚽ A pé</button><button data-v="carros">🏎️ De carro</button></div>
+        <label class="hidden">Modo</label>
+        <div class="seg hidden" id="cfgMode"><button data-v="pes">⚽ A pé</button><button data-v="carros">🏎️ De carro</button></div>
         <label style="margin-top:14px">Jogadores por time</label>
         <div class="seg" id="cfgSize"><button data-v="1">1x1</button><button data-v="2">2x2</button><button data-v="3">3x3</button><button data-v="4">4x4</button><button data-v="5">5x5</button></div>
         <label style="margin-top:14px">Duração</label>
