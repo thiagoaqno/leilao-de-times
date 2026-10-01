@@ -342,6 +342,7 @@ const STADIUMS = {
   neoquimica: { name: "Neo Química Arena", home: "Corinthians", c: ["#151515", "#f4f4f4"] },
   nubank: { name: "Nubank Parque", home: "Palmeiras", c: ["#0b6b34", "#f4f4f4"] },
   baixada: { name: "Arena da Baixada", home: "Athletico", c: ["#c8102e", "#151515"] },
+  vilabelmiro: { name: "Vila Belmiro", home: "Santos", c: ["#f4f4f4", "#151515"] },
 };
 const socket = io("/botao");
 const $ = (id) => document.getElementById(id);
@@ -499,7 +500,7 @@ function renderLobby() {
     <div class="field"><label>Mesa</label>${seg("mesa", [["fechada", "🧱 Fechada"], ["aberta", "🚩 Com lateral"]])}
     <p class="hint">${c.mesa === "aberta" ? "A bola sai: lateral, escanteio e tiro de meta para o outro time." : "As linhas são bordas: a bola bate e volta, sem lateral."}</p></div>
     <div class="field"><label>Goleiro</label>${seg("goleiro", [["true", "🧤 Com goleiro"], ["false", "Sem goleiro"]])}
-    <p class="hint">${c.goleiro ? "Um bloquinho na frente de cada gol. O time arruma o seu goleiro na própria vez, antes de passar a bola; na vez do adversário ele fica travado." : "A tampinha 1 é o goleiro, como no futsal."}</p></div>
+    <p class="hint">${c.goleiro ? "Um bloquinho na frente de cada gol. Cada time mexe o seu a qualquer hora, inclusive enquanto o adversário mira; só fica parado com as peças andando." : "A tampinha 1 é o goleiro, como no futsal."}</p></div>
     <div class="field"><label>Bola parada (falta, lateral, escanteio, tiro de meta)</label>${seg("cobranca", [["true", "✋ Arrumar a tampinha"], ["false", "Bate de onde está"]])}
     <p class="hint">${c.cobranca ? "Quem cobra pode arrastar a sua tampinha para perto da bola antes de bater. O outro time fica parado." : "Ninguém mexe nas tampinhas antes da cobrança."}</p></div>
     <div class="field"><label>Super palhetada</label>${seg("superTiro", [["false", "Desligada"], ["true", "⚡ Ligada"]])}
@@ -634,9 +635,10 @@ function drawTable(pw, ph) {
     c.save(); c.translate(L / 2, y); c.rotate(view.flip ? Math.PI : 0); // corre ao longo da moldura
     c.font = "16px 'Alfa Slab One', Georgia, serif"; c.textAlign = "center"; c.textBaseline = "middle";
     const tw = c.measureText(plate).width;
-    if (std.c) { c.fillStyle = std.c[0] === "#151515" ? "#f4f4f4" : std.c[0]; c.fillRect(-tw / 2 - 10, -11, tw + 20, 22); }
+    const bg = std.c ? (std.c[0] === "#151515" ? "#f4f4f4" : std.c[0]) : null; // placa clara (branca) leva letra preta
+    if (bg) { c.fillStyle = bg; c.fillRect(-tw / 2 - 10, -11, tw + 20, 22); }
     c.fillStyle = "#00000066"; c.fillText(plate, 0.8, 1.2);
-    c.fillStyle = std.c ? (std.c[0] === "#151515" ? "#151515" : "#ffffff") : "#f2c14ebb"; c.fillText(plate, 0, 0);
+    c.fillStyle = bg ? (bg === "#f4f4f4" ? "#151515" : "#ffffff") : "#f2c14ebb"; c.fillText(plate, 0, 0);
     c.restore();
   }
   return oc;
@@ -722,7 +724,7 @@ function drawBall(c, x, y) {
   c.fillStyle = "#1b1b1b";
   for (const [dx, dy, r] of [[0, 0, 3.4], [6.3, -3.4, 2.2], [-6.3, -3.4, 2.2], [0, 7, 2.2], [5.5, 5.5, 1.6], [-5.5, 5.5, 1.6]]) { c.beginPath(); c.arc(x + dx, y + dy, r, 0, 7); c.fill(); }
 }
-// goleiro: bloquinho de madeira pintado nas cores do time. Na vez do seu time, uma trilha mostra até onde ele vai.
+// goleiro: bloquinho de madeira pintado nas cores do time. Quando dá para mexer, uma trilha mostra até onde ele vai.
 function drawKeeper(c, t, y, kit, opt = {}) {
   const s = B.keeperSeg(t, y), sv = screenVec(2.5, 4), R = B.KR;
   if (opt.mine) { c.strokeStyle = opt.drag ? "#f2c14e" : "#f2c14e88"; c.lineWidth = px(1.5); c.setLineDash([px(4), px(4)]); c.beginPath(); c.moveTo(s.ax, B.KY_MIN - B.KH); c.lineTo(s.ax, B.KY_MAX + B.KH); c.stroke(); c.setLineDash([]); }
@@ -807,9 +809,9 @@ function sendAim(force) {
 }
 socket.on("aim", (d) => { remote = d; });
 socket.on("keeper", ({ side, y }) => { if (keeperDrag && keeperDrag.side === side) return; for (const st of [S, pre]) if (st && st.g && st.g.keepers) st.g.keepers[side] = y; });
-// Goleiro: qualquer um do time arruma o seu, mas só na vez do próprio time. Na vez do adversário ele fica travado.
+// Goleiro: qualquer um do time mexe o seu sempre que as peças estão paradas (também enquanto o adversário mira).
 let keeperDrag = null, keeperSent = 0, keeperTimer = null;
-const canMoveKeeper = () => { const st = shown(); return !!(st && st.g && st.g.keepers && st.phase === "playing" && !anim && mySide() === st.g.turn && sNow() >= st.g.busyUntil - 50); };
+const canMoveKeeper = () => { const st = shown(); return !!(st && st.g && st.g.keepers && st.phase === "playing" && !anim && mySide() >= 0 && sNow() >= st.g.busyUntil - 50); };
 function keeperHit(w) {
   if (!canMoveKeeper()) return false;
   const side = mySide(), ks = B.keeperSeg(side, shown().g.keepers[side]);
@@ -841,7 +843,7 @@ cv.addEventListener("pointerdown", (e) => {
 cv.addEventListener("pointermove", (e) => {
   const w = toWorld(e);
   if (keeperDrag && keeperDrag.id === e.pointerId) {
-    if (!canMoveKeeper()) { keeperDrag = null; return; } // a vez passou: o goleiro trava
+    if (!canMoveKeeper()) { keeperDrag = null; return; } // as peças começaram a andar: o goleiro trava
     keeperDrag.y = B.clampKeeper(w.y - keeperDrag.dy);
     for (const st of [S, pre]) if (st && st.g && st.g.keepers) st.g.keepers[keeperDrag.side] = keeperDrag.y;
     sendKeeper();
@@ -985,7 +987,7 @@ function renderHud() {
 }
 function renderStatus() {
   const st = shown(), el = $("status"); if (!st.g) return;
-  const g = st.g, mine = canAct(), max = st.config.toques, left = max - g.toques;
+  const g = st.g, mine = canAct(), max = g.max || st.config.toques, left = max - g.toques;
   el.className = "status";
   let txt = "";
   const what = g.restart ? `${g.restart}! ` : "";
@@ -994,9 +996,9 @@ function renderStatus() {
   else if (mine) {
     el.classList.add("mine");
     const nx = g.next && g.next !== ME.id && left > 1 ? P(g.next) : null;
-    txt = `${what}${g.toques ? `Toque ${g.toques + 1} de ${max}` : "Sua vez"}: toque numa tampinha sua, puxe para trás e solte.${nx ? ` Depois, ${h(nx.name)} toca.` : left === 1 ? " É o último toque do time." : ""}${g.setPiece ? " Dá para arrumar a tampinha perto da bola." : ""}${g.keepers && left === 1 ? " Arrume o seu goleiro antes do último toque: na vez do outro ele trava." : ""}`;
+    txt = `${what}${g.toques ? `Toque ${g.toques + 1} de ${max}` : "Sua vez"}: toque numa tampinha sua, puxe para trás e solte.${nx ? ` Depois, ${h(nx.name)} toca.` : left === 1 ? " É o último toque do time." : ""}${max === 1 && max < st.config.toques ? " Começo de jogo: só 1 toque por time." : ""}${g.setPiece ? " Dá para arrumar a tampinha perto da bola." : ""}`;
   } else {
-    txt = `${g.restart ? g.restart + " · " : ""}Vez de ${P(g.shooter)?.pawn || ""} ${h(P(g.shooter)?.name)}${canMoveKeeper() ? " · arrume o goleiro do seu time" : ""}`;
+    txt = `${g.restart ? g.restart + " · " : ""}Vez de ${P(g.shooter)?.pawn || ""} ${h(P(g.shooter)?.name)}${canMoveKeeper() ? " · mexa o goleiro do seu time" : ""}${max === 1 && max < st.config.toques ? " · saída: só 1 toque" : ""}`;
   }
   el.innerHTML = txt;
   $("toques").innerHTML = st.phase === "playing" ? `Toques ${Array.from({ length: max }, (_, k) => `<i class="${k < g.toques ? "used" : ""}"></i>`).join("")}` : "";
@@ -1129,11 +1131,12 @@ $("btnRules").onclick = () => {
   <li><b>Teclado:</b> Tab troca de tampinha, ← → miram, ↑ ↓ mudam a força e Espaço chuta.</li></ul>
   <h3>A vez${S ? " (nesta mesa)" : ""}</h3><ul>
   <li>Cada time tem <b>5 tampinhas</b> e cada vez tem <b>${c.toques} toques</b>. Todo peteleco conta, mesmo sem encostar na bola: dá para usar um toque só para se posicionar.</li>
+  <li><b>Saída:</b> no começo do jogo e depois de cada gol, a primeira vez de cada time vale <b>só 1 toque</b> (nada de sair driblando até o gol). Depois, volta aos ${c.toques} toques.</li>
   <li>Num time com mais de um jogador, <b>cada toque é de um</b>: um passa, o outro recebe, e quem começa vai revezando. Sozinho, você faz todos.</li>
   <li>Bater primeiro numa tampinha adversária é <b>falta</b>: passa a vez na hora, e o outro time cobra de onde a bola está.</li>
   <li>${c.mesa === "aberta" ? "A bola sai: <b>lateral</b> para quem não tocou por último; pela linha de fundo, <b>escanteio</b> (se o defensor tocou por último) ou <b>tiro de meta</b>." : "A mesa é <b>fechada</b>: não tem lateral, a bola bate na borda e continua em jogo."}</li>
   ${c.cobranca ? `<li><b>Bola parada</b> (falta${c.mesa === "aberta" ? ", lateral, escanteio" : ""}, tiro de meta): quem cobra aperta <b>✋ Arrumar tampinha</b> e arrasta a sua tampinha para perto da bola antes de bater. O outro time fica parado.</li>` : ""}
-   ${c.goleiro ? `<li><b>Goleiro:</b> o bloquinho na frente do gol. Qualquer um do time arrasta o seu para cima e para baixo, mas <b>só na vez do seu time</b>: arrume antes de passar a bola, porque na vez do adversário ele fica travado.</li>` : ""}
+   ${c.goleiro ? `<li><b>Goleiro:</b> o bloquinho na frente do gol. Qualquer um do time arrasta o seu para cima e para baixo <b>a qualquer hora</b>, inclusive enquanto o adversário mira. Quando as peças começam a andar, ele fica parado onde estava.</li>` : ""}
    ${c.superTiro ? `<li><b>⚡ Super palhetada:</b> cada passe certo (uma tampinha toca e outra do time recebe) enche a barra. Com ${BAR_MAX}, aparece o botão: o próximo peteleco sai ${Math.round((B.SUPER - 1) * 100)}% mais forte.</li>` : ""}
   </ul>
   <h3>Gol</h3><ul>
