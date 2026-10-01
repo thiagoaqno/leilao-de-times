@@ -1,0 +1,18 @@
+{
+  "name": "leilao-de-times",
+  "version": "1.0.0",
+  "description": "Leilão de times multiplayer com roleta, lances secretos e controle de moedas",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.16",
+    "express": "^5.2.1",
+    "marked": "^12.0.2",
+    "socket.io": "^4.8.4"
+  }
+}

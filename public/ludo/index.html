@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ludo da Galera</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='50' height='50' fill='%23e23b3b'/%3E%3Crect x='50' width='50' height='50' fill='%232fa84f'/%3E%3Crect y='50' width='50' height='50' fill='%232f6fd6'/%3E%3Crect x='50' y='50' width='50' height='50' fill='%23f6c21b'/%3E%3Ccircle cx='50' cy='50' r='16' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* mesa de família: toalha xadrez, tabuleiro de papelão impresso e o copinho de couro do dado */
+  --toalha:#3a1418;--toalha2:#4a1c21;--text:#fff6ea;--muted:#e2c7b8;
+  --couro:#6e4024;--couro2:#5a321b;--costura:#e8c79a;--ink:#1f1712;
+  --red:#e23b3b;--green:#2fa84f;--yellow:#f6c21b;--blue:#2f6fd6;--board:#fffaf0;--line:#cdbfa7;
+  --display:Fredoka,"Arial Rounded MT Bold",system-ui,sans-serif;--body:Figtree,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;color:var(--text);font:15.5px/1.5 var(--body)}
+body{min-height:100vh;background:repeating-linear-gradient(0deg,#ffffff0d 0 22px,transparent 22px 44px),repeating-linear-gradient(90deg,#ffffff0d 0 22px,transparent 22px 44px),var(--toalha)}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.05;margin:0}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+button{font:inherit;font-weight:700;cursor:pointer;border-radius:12px;padding:10px 16px;background:var(--couro2);color:var(--text);border:0;box-shadow:0 3px 0 #2b170c;transition:transform .07s,box-shadow .07s,filter .15s}
+button:hover:not(:disabled){filter:brightness(1.12)}
+button:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #2b170c}
+button:disabled{opacity:.45;cursor:not-allowed}
+/* botão principal: a cor de um peão vermelho */
+button.primary{background:var(--red);color:#fff;box-shadow:0 4px 0 #8f1f1f;font-family:var(--display);font-weight:600;letter-spacing:.01em}
+button.ghost{background:transparent;box-shadow:none;color:var(--muted)}
+button.ghost:hover:not(:disabled){color:var(--text)}
+button.small{padding:6px 11px;font-size:14px;border-radius:9px}
+input,select{font:inherit;color:var(--ink);background:#fff7ec;border:2px solid #d8b994;border-radius:10px;padding:10px 12px;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--yellow)}
+label{display:block;font-size:14px;font-weight:700;margin:0 0 6px;color:var(--costura)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+
+/* cabeçalho */
+.bar{position:sticky;top:0;z-index:20;background:#2a0e11ee;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid #ffffff1f}
+.bar-in{max-width:1180px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;gap:12px}
+.tovila{flex:none;color:var(--muted);text-decoration:none;font-weight:700;font-size:14px;padding:6px 10px 6px 4px;border-radius:10px;white-space:nowrap}
+.tovila:hover{color:var(--text)}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.brand h1{font-size:23px;white-space:nowrap}
+.logo{width:28px;height:28px;border-radius:6px;background:conic-gradient(var(--green) 0 90deg,var(--yellow) 90deg 180deg,var(--blue) 180deg 270deg,var(--red) 270deg);box-shadow:inset 0 0 0 9px transparent;position:relative;flex:none}
+.logo::after{content:"";position:absolute;inset:9px;border-radius:50%;background:#fff}
+.roomtag{display:flex;align-items:center;gap:8px}
+.roomtag .lbl{font-size:13px;color:var(--muted);font-weight:600}
+.roomtag .code{font-family:var(--display);font-weight:700;font-size:21px;letter-spacing:.12em;color:var(--yellow)}
+@media (max-width:600px){.brand h1{font-size:18px}.inroom .brand h1{display:none}.roomtag .lbl{display:none}}
+
+/* copinho de dado de couro: as caixas da entrada e da sala de espera */
+.copo{position:relative;background:radial-gradient(260px 160px at 25% 10%,#ffffff14,transparent 70%),linear-gradient(170deg,var(--couro),var(--couro2));border-radius:22px;padding:24px;box-shadow:inset 0 2px 0 #ffffff1f,0 18px 36px #000a;outline:2px dashed var(--costura);outline-offset:-10px}
+.copo h2{font-size:28px;margin-bottom:12px;color:#fff3e0}
+.err{color:#ffd3c7;font-weight:700;margin-top:10px;min-height:1.2em}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:18px 0}
+.or::before,.or::after{content:"";flex:1;height:1px;background:#ffffff2e}
+
+/* entrada */
+.home{display:grid;grid-template-columns:1.05fr 1fr;gap:34px;align-items:center;min-height:calc(100vh - 150px)}
+.hero h2{font-size:clamp(36px,5.2vw,58px);max-width:15ch}
+.hero p{color:var(--muted);font-size:17px;max-width:46ch;margin:14px 0 0}
+.hero .mini{width:min(320px,70vw);margin:0 0 22px;transform:rotate(-6deg);box-shadow:0 20px 40px #000a}
+.codein{text-transform:uppercase;letter-spacing:.3em;font-family:var(--display);font-weight:700;font-size:26px;text-align:center}
+@media (max-width:860px){.home{grid-template-columns:1fr;min-height:0}}
+
+/* sala de espera */
+.lobby{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media (max-width:860px){.lobby{grid-template-columns:1fr}}
+.plist{display:grid;gap:8px}
+.pl{display:flex;align-items:center;gap:10px;background:#00000026;border-radius:12px;padding:8px 10px;border-left:6px solid var(--pc,#888)}
+.pl .av{font-size:26px;width:34px;text-align:center}
+.pl b{display:block;line-height:1.15}
+.pl small{color:var(--muted);font-size:13px}
+.pl .grow{flex:1;min-width:0}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5fe39a;margin-right:5px}
+.dot.off{background:#9aa0a6}
+.picker{display:flex;flex-wrap:wrap;gap:6px}
+.picker button{font-size:22px;padding:4px 6px;background:#00000033;box-shadow:none;border:2px solid transparent}
+.picker button.on{border-color:var(--yellow)}
+.colors{display:flex;gap:12px}
+.colors button{width:46px;height:46px;border-radius:50%;padding:0;background:var(--c);box-shadow:inset 0 -4px 0 #0003,0 3px 0 #2b170c;border:3px solid transparent}
+.colors button.on{border-color:#fff;box-shadow:0 0 0 3px var(--c),inset 0 -4px 0 #0003}
+.toggle{display:flex;gap:10px;align-items:flex-start;margin:10px 0;cursor:pointer}
+.toggle input{width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:var(--yellow)}
+.toggle small{display:block;color:var(--muted);font-size:13px}
+.fields2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* tabuleiro: papelão impresso 15x15 */
+.board{position:relative;aspect-ratio:1;background:var(--board);border-radius:14px;padding:2.2%;box-shadow:0 0 0 6px #fff,0 0 0 9px #d8c7a6,0 24px 50px #000b;transition:transform .5s}
+.grid{position:absolute;inset:2.2%;display:grid;grid-template:repeat(15,1fr)/repeat(15,1fr)}
+.cell{border:1px solid var(--line);background:#fff;display:grid;place-items:center;font-size:clamp(9px,1.8vw,16px);color:#0006;line-height:1}
+.cell.c-red{background:var(--red)}.cell.c-green{background:var(--green)}.cell.c-yellow{background:var(--yellow)}.cell.c-blue{background:var(--blue)}
+.cell.start{color:#fff;font-size:clamp(10px,2vw,18px)}
+.base{border-radius:10px;padding:13%;background:var(--bc)}
+.base .in{width:100%;height:100%;background:#fff;border-radius:8px;box-shadow:inset 0 2px 6px #0002}
+.center{background:conic-gradient(from -45deg,var(--green) 0 90deg,var(--yellow) 90deg 180deg,var(--blue) 180deg 270deg,var(--red) 270deg 360deg);border:1px solid var(--line)}
+/* lugares dos peões na base */
+.spot{position:absolute;width:8%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);background:var(--sc);opacity:.28}
+/* peões */
+.tokens{position:absolute;inset:2.2%}
+.tok{position:absolute;width:5.6%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);padding:0;border:0;cursor:default;
+  background:radial-gradient(circle at 35% 30%,#ffffffb0 0 12%,transparent 30%),radial-gradient(circle at 50% 50%,var(--tc) 0 52%,#0000 54%),radial-gradient(circle at 50% 55%,#00000055 0 64%,transparent 66%),#fff;
+  box-shadow:0 2px 3px #0007;transition:left .12s ease-out,top .12s ease-out;z-index:2}
+.tok.can{cursor:pointer;z-index:4;animation:hop .7s ease-in-out infinite;box-shadow:0 0 0 3px #fff,0 0 0 6px var(--tc),0 4px 8px #000a}
+.tok.home{transition:left .45s,top .45s}
+@keyframes hop{50%{transform:translate(-50%,-62%)}}
+@media (prefers-reduced-motion:reduce){.tok.can{animation:none}.board{transition:none}}
+
+/* área do jogo */
+.game{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
+@media (max-width:900px){.game{grid-template-columns:1fr}}
+.boardwrap{width:min(100%,calc(100vh - 120px));margin:0 auto}
+.side{display:grid;gap:14px}
+.panel{background:#00000038;border-radius:16px;padding:16px}
+.panel h3{font-size:20px;margin-bottom:10px}
+.turn{display:flex;align-items:center;gap:14px}
+.turn .who{flex:1;min-width:0}
+.turn .who b{display:block;font-family:var(--display);font-size:21px;font-weight:600}
+.turn .who small{color:var(--muted)}
+.timer{height:8px;background:#ffffff1a;border-radius:6px;overflow:hidden;margin-top:12px}
+.timer i{display:block;height:100%;background:var(--yellow);transition:width .25s linear}
+/* o dado */
+.die{all:unset;width:78px;height:78px;border-radius:16px;background:linear-gradient(145deg,#fff,#efe6d6);box-shadow:inset 0 -5px 0 #d8c9ad,0 6px 14px #0008;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:12px;box-sizing:border-box;flex:none}
+.die i{width:13px;height:13px;border-radius:50%;place-self:center;background:transparent}
+.die i.on{background:var(--ink);box-shadow:inset 0 2px 2px #0008}
+.die.six i.on{background:var(--red)}
+.die.can{cursor:pointer;animation:ask 1s ease-in-out infinite}
+.die.can:focus-visible{outline:3px solid var(--yellow);outline-offset:4px}
+.die.rolling{animation:roll .5s linear}
+@keyframes ask{50%{transform:scale(1.07) rotate(-4deg)}}
+@keyframes roll{25%{transform:rotate(90deg) scale(.9)}50%{transform:rotate(180deg)}75%{transform:rotate(270deg) scale(.9)}100%{transform:rotate(360deg)}}
+.prompt{margin-top:12px;font-weight:700;min-height:1.4em}
+.ps{display:grid;gap:8px}
+.ps .pl.turnon{background:#ffffff21;box-shadow:0 0 0 2px var(--pc)}
+.homes{font-weight:800;font-size:14px;white-space:nowrap}
+.log{max-height:200px;overflow:auto;font-size:14px;color:var(--muted)}
+.log div{padding:2px 0}
+
+/* fim de jogo */
+.over{position:fixed;inset:0;z-index:30;background:#000b;display:grid;place-items:center;padding:16px}
+.over .copo{width:min(460px,100%);text-align:center}
+.rank{display:grid;gap:8px;margin:14px 0;text-align:left}
+
+.modal{position:fixed;inset:0;z-index:40;background:#000b;display:grid;place-items:center;padding:16px}
+.modal .box{background:#fff7ec;color:var(--ink);border-radius:16px;width:min(560px,100%);max-height:90vh;overflow:auto;padding:20px 22px}
+.modal h2{font-size:26px;margin-bottom:8px}
+.modal h3{font-size:18px;margin:16px 0 4px}
+.modal p,.modal li{color:#3d3128}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--text);padding:10px 16px;border-radius:10px;font-weight:700;z-index:50;box-shadow:0 8px 20px #0008;max-width:calc(100% - 32px)}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <a class="tovila" href="/" title="Voltar para a vila">← Vila</a>
+    <div class="brand"><span class="logo" aria-hidden="true"></span><h1>Ludo da Galera</h1></div>
+    <div class="roomtag hidden" id="roomTag"><span class="lbl">Mesa</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
+    <button class="ghost small" id="btnSound" title="Som">🔊</button>
+    <button class="ghost small" id="btnRules">Regras</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- ENTRADA -->
+  <section id="home" class="hidden">
+    <div class="home">
+      <div class="hero">
+        <div class="board mini" id="heroBoard" aria-hidden="true"></div>
+        <h2>Tirou 6, sai da base. Comeu, joga de novo.</h2>
+        <p>Ludo de 2 a 4 jogadores, cada um no seu celular. O dado é rolado no servidor, então ninguém escolhe o número.</p>
+      </div>
+      <div class="copo">
+        <h2>Sentar à mesa</h2>
+        <label for="hName">Seu nome</label>
+        <input id="hName" maxlength="8" placeholder="Ex.: Kizzy" autocomplete="off">
+        <label for="hCode" style="margin-top:14px">Código da mesa</label>
+        <input id="hCode" class="codein" maxlength="5" placeholder="ABCDE" autocomplete="off">
+        <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
+        <div class="or">ou</div>
+        <button id="btnCreate" style="width:100%">Criar mesa nova</button>
+        <div class="err" id="hErr"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SALA DE ESPERA -->
+  <section id="lobby" class="hidden">
+    <div class="lobby">
+      <div class="copo">
+        <h2>Quem vai jogar</h2>
+        <p class="muted" style="margin:-6px 0 12px">De 2 a 4 jogadores. Mande o convite para a galera entrar.</p>
+        <div class="plist" id="players"></div>
+        <div id="myPick" class="hidden" style="margin-top:16px">
+          <label>Sua cor</label><div class="colors" id="colorPick"></div>
+          <label style="margin-top:14px">Seu avatar</label><div class="picker" id="pawnPick"></div>
+        </div>
+      </div>
+      <div class="copo">
+        <h2>Regras da mesa</h2>
+        <div id="cfg"></div>
+        <div id="startBox" style="margin-top:18px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- JOGO -->
+  <section id="game" class="hidden">
+    <div class="game">
+      <div class="boardwrap"><div class="board" id="board"><div class="grid" id="grid"></div><div class="tokens" id="tokens"></div></div></div>
+      <div class="side">
+        <div class="panel">
+          <div class="turn"><button class="die" id="die" aria-label="Rolar o dado"></button><div class="who" id="turnWho"></div></div>
+          <div class="timer" id="tbar"><i></i></div>
+          <div class="prompt" id="prompt"></div>
+        </div>
+        <div class="panel"><h3>Jogadores</h3><div class="ps" id="ps"></div></div>
+        <div class="panel"><h3>Acontecendo</h3><div class="log" id="log"></div></div>
+      </div>
+    </div>
+    <div id="overBox"></div>
+  </section>
+</main>
+
+<div class="modal hidden" id="modal"><div class="box" id="modalBox"></div></div>
+<div class="toast hidden" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/ludo/regras.js"></script>
+<script>
+"use strict";
+const L = window.LudoRegras;
+const socket = io("/ludo");
+const $ = (id) => document.getElementById(id);
+const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let S = null, ME = null, offset = 0;
+const sNow = () => Date.now() + offset;
+const me = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : null);
+const byColor = (c) => S && S.players.find((p) => p.color === c);
+const isHost = () => !!(S && ME && ME.id && S.host === ME.id);
+function toast(msg, ms = 3000) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
+function act(type, data = {}) { return new Promise((res) => socket.emit("act", { type, ...data }, (r) => { if (!r || !r.ok) toast(r ? r.error : "Sem conexão."); res(r && r.ok); })); }
+function show(id) { for (const s of ["home", "lobby", "game"]) $(s).classList.toggle("hidden", s !== id); }
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---------- sons ----------
+const Sound = (() => {
+  let ac = null, on = store.get("ludo:sound") !== false;
+  function ctx() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; }
+  function tone(f, dur, { type = "sine", vol = 0.15, at = 0, slide = 0 } = {}) {
+    const c = ctx(); if (!c) return; const t = c.currentTime + at;
+    const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, { vol = 0.2, at = 0, freq = 1800 } = {}) {
+    const c = ctx(); if (!c) return; const t = c.currentTime + at;
+    const len = Math.max(1, Math.floor(c.sampleRate * dur)), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = buf; f.type = "bandpass"; f.frequency.value = freq; g.gain.value = vol;
+    s.connect(f).connect(g).connect(c.destination); s.start(t);
+  }
+  const fx = {
+    dice() { for (let i = 0; i < 6; i++) noise(0.04, { vol: 0.3, at: i * 0.07, freq: 1500 + Math.random() * 1500 }); },
+    step() { tone(700, 0.05, { vol: 0.07, type: "triangle" }); },
+    eat() { tone(300, 0.25, { type: "square", vol: 0.1, slide: -200 }); },
+    home() { [523, 659, 784].forEach((f, i) => tone(f, 0.16, { at: i * 0.08, type: "triangle" })); },
+    turn() { tone(660, 0.1, { vol: 0.1 }); tone(990, 0.16, { vol: 0.1, at: 0.09 }); },
+    win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, { vol: 0.13, at: i * 0.1, type: "triangle" })); },
+  };
+  return { play(k) { if (on && fx[k]) try { fx[k](); } catch {} }, toggle() { on = !on; store.set("ludo:sound", on); }, get on() { return on; } };
+})();
+function renderSoundBtn() { $("btnSound").textContent = Sound.on ? "🔊" : "🔇"; }
+$("btnSound").onclick = () => { Sound.toggle(); renderSoundBtn(); Sound.play("step"); };
+renderSoundBtn();
+
+// ---------- tabuleiro ----------
+const BASE_AT = { red: [1, 1], green: [1, 10], yellow: [10, 10], blue: [10, 1] }; // canto da base (linha, coluna) começando em 1
+function boardHTML() {
+  const cells = [];
+  const at = (r, c, cls, inner = "", span = "") => cells.push(`<div class="${cls}" style="grid-row:${r + 1}${span ? " / span " + span : ""};grid-column:${c + 1}${span ? " / span " + span : ""}">${inner}</div>`);
+  for (const [color, [r, c]] of Object.entries(BASE_AT)) cells.push(`<div class="base" style="--bc:var(--${color});grid-row:${r} / span 6;grid-column:${c} / span 6"><div class="in"></div></div>`);
+  cells.push(`<div class="center" style="grid-row:7 / span 3;grid-column:7 / span 3"></div>`);
+  const startOf = {}; for (const c of L.COLORS) startOf[L.START[c]] = c;
+  L.TRACK.forEach(([r, c], i) => {
+    const sc = startOf[i];
+    at(r, c, `cell ${sc ? "c-" + sc + " start" : ""}`, sc ? "★" : L.SAFE.has(i) ? "☆" : "");
+  });
+  for (const color of L.COLORS) L.HOME[color].forEach(([r, c]) => at(r, c, `cell c-${color}`));
+  // lugares dos peões na base
+  const spots = [];
+  for (const color of L.COLORS) for (const [r, c] of L.BASE[color]) spots.push(`<span class="spot" style="--sc:var(--${color});left:${(c / 15) * 100}%;top:${(r / 15) * 100}%"></span>`);
+  return { cells: cells.join(""), spots: spots.join("") };
+}
+const B = boardHTML();
+$("grid").innerHTML = B.cells + B.spots;
+$("heroBoard").innerHTML = `<div class="grid">${B.cells}</div><div class="tokens">${B.spots}${L.COLORS.map((c) => L.BASE[c].map(([r, cc]) => `<span class="tok" style="--tc:var(--${c});left:${(cc / 15) * 100}%;top:${(r / 15) * 100}%"></span>`).join("")).join("")}</div>`;
+
+// gira o tabuleiro para a minha base ficar embaixo, à esquerda (como no Ludo King)
+const ROT = { blue: 0, red: -90, green: 180, yellow: 90 };
+
+// ---------- entrar / criar ----------
+const urlCode = new URLSearchParams(location.search).get("mesa");
+$("hName").value = store.get("galera:name") || "";
+if (urlCode) $("hCode").value = urlCode.toUpperCase();
+function enter(r) {
+  if (!r.ok) { $("hErr").textContent = r.error; return; }
+  ME = { code: r.code, id: r.id, token: r.token };
+  if (r.id) store.set("ludo:" + r.code, ME);
+  history.replaceState(null, "", "/ludo/?mesa=" + r.code);
+  $("roomTag").classList.remove("hidden"); $("rCode").textContent = r.code; document.body.classList.add("inroom");
+}
+$("btnCreate").onclick = () => { const name = $("hName").value.trim(); store.set("galera:name", name); socket.emit("create", { name }, enter); };
+$("btnJoin").onclick = () => {
+  const name = $("hName").value.trim(), code = $("hCode").value.trim().toUpperCase(); store.set("galera:name", name);
+  if (code.length !== 5) return ($("hErr").textContent = "O código tem 5 letras.");
+  const saved = store.get("ludo:" + code) || {};
+  socket.emit("join", { code, name, id: saved.id, token: saved.token }, enter);
+};
+$("btnWatch").onclick = () => { const code = $("hCode").value.trim().toUpperCase(); if (code.length !== 5) return ($("hErr").textContent = "Coloque o código da mesa."); socket.emit("join", { code, watch: true }, enter); };
+$("hCode").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnJoin").click(); });
+$("btnInvite").onclick = async () => { const link = location.origin + "/ludo/?mesa=" + ME.code; try { await navigator.clipboard.writeText(link); toast("Convite copiado! Manda no grupo."); } catch { prompt("Copie o convite:", link); } };
+function autoJoin() {
+  const code = urlCode ? urlCode.toUpperCase() : null, saved = code && store.get("ludo:" + code);
+  if (ME) socket.emit("join", { code: ME.code, watch: !ME.id, id: ME.id, token: ME.token }, () => {});
+  else if (saved && saved.id) socket.emit("join", { code, id: saved.id, token: saved.token }, (r) => { if (r.ok) enter(r); else { show("home"); $("hErr").textContent = r.error; } });
+  else show("home");
+}
+socket.on("connect", autoJoin);
+socket.on("kicked", () => { toast("O organizador tirou você da mesa."); ME = null; S = null; history.replaceState(null, "", "/ludo/"); document.body.classList.remove("inroom"); $("roomTag").classList.add("hidden"); show("home"); });
+
+// ---------- estado e animação ----------
+// "shown" é o que está desenhado agora; as jogadas que chegam são animadas casa por casa
+let shown = null, Q = [], playing = false, lastRoll = null, lastMove = null;
+socket.on("state", (st) => {
+  offset = st.now - Date.now();
+  Q.push(st);
+  if (!playing) drain();
+});
+async function drain() {
+  playing = true;
+  while (Q.length) {
+    const st = Q.shift(), old = S;
+    S = st;
+    const g = S.game;
+    if (S.phase === "lobby" || !g) { shown = null; lastRoll = null; lastMove = null; render(); continue; }
+    if (!shown || !old || !old.game) { shown = JSON.parse(JSON.stringify(g.pawns)); lastRoll = g.rollSeq; lastMove = g.moveSeq; render(); continue; }
+    if (g.rollSeq !== lastRoll) { lastRoll = g.rollSeq; await rollDie(g.dice); }
+    if (g.moveSeq !== lastMove && g.last) { lastMove = g.moveSeq; render(); await animateMove(g.last); }
+    shown = JSON.parse(JSON.stringify(g.pawns));
+    render();
+    if (old.game && old.game.turn !== g.turn && me() && g.turn === me().color) Sound.play("turn");
+    if (S.phase === "ended" && old.phase !== "ended") Sound.play("win");
+  }
+  playing = false;
+}
+async function rollDie(n) {
+  const d = $("die");
+  Sound.play("dice");
+  d.classList.remove("rolling"); void d.offsetWidth; d.classList.add("rolling");
+  for (let k = 0; k < 6; k++) { drawDie(1 + Math.floor(Math.random() * 6)); await sleep(70); }
+  drawDie(n);
+  await sleep(120);
+}
+async function animateMove(m) {
+  const path = [];
+  if (m.from < 0) path.push(0); else for (let p = m.from + 1; p <= m.to; p++) path.push(p);
+  for (const p of path) { shown[m.color][m.i] = p; renderTokens(); Sound.play("step"); await sleep(130); }
+  if (m.caught && m.caught.length) {
+    Sound.play("eat");
+    for (const v of m.caught) shown[v.color][v.i] = -1;
+    renderTokens(true); await sleep(480);
+  }
+  if (m.to === L.FINISH) Sound.play("home");
+}
+
+// ---------- telas ----------
+function render() {
+  if (!S) return;
+  if (S.phase === "lobby") { show("lobby"); renderLobby(); return; }
+  show("game"); renderGame();
+}
+function renderLobby() {
+  const m = me();
+  $("players").innerHTML = S.players.map((p) => `<div class="pl" style="--pc:var(--${p.color})"><span class="av">${p.pawn}</span><div class="grow"><b>${h(p.name)}${m && p.id === m.id ? " (você)" : ""}</b><small><span class="dot ${p.online ? "" : "off"}"></span>${L.NAMES[p.color]}${p.id === S.host ? " · organizador" : ""}</small></div>${isHost() && p.id !== S.host ? `<button class="small ghost" data-kick="${p.id}" title="Tirar da mesa">✕</button>` : ""}</div>`).join("")
+    + Array.from({ length: 4 - S.players.length }, () => `<div class="pl" style="--pc:#ffffff33;opacity:.6"><span class="av">·</span><div class="grow"><small>lugar vago</small></div></div>`).join("");
+  $("players").querySelectorAll("[data-kick]").forEach((b) => (b.onclick = () => act("kick", { id: b.dataset.kick })));
+  $("myPick").classList.toggle("hidden", !m);
+  if (m) {
+    const taken = new Set(S.players.filter((p) => p.id !== m.id).map((p) => p.color));
+    $("colorPick").innerHTML = L.COLORS.map((c) => `<button class="${c === m.color ? "on" : ""}" style="--c:var(--${c})" data-color="${c}" ${taken.has(c) ? "disabled" : ""} aria-label="${L.NAMES[c]}" title="${L.NAMES[c]}"></button>`).join("");
+    $("colorPick").querySelectorAll("[data-color]").forEach((b) => (b.onclick = () => act("color", { color: b.dataset.color })));
+    const used = new Set(S.players.filter((p) => p.id !== m.id).map((p) => p.pawn));
+    const PAWNS = ["😎", "🤠", "👽", "🤖", "🐸", "🦊", "🐼", "🐯", "🦄", "🐙", "👻", "🤡", "🦁", "🐵", "🐧", "🍻"];
+    $("pawnPick").innerHTML = PAWNS.map((x) => `<button class="${x === m.pawn ? "on" : ""}" data-pawn="${x}" ${used.has(x) ? "disabled" : ""}>${x}</button>`).join("");
+    $("pawnPick").querySelectorAll("[data-pawn]").forEach((b) => (b.onclick = () => act("pawn", { pawn: b.dataset.pawn })));
+  }
+  const c = S.config;
+  if (isHost()) {
+    $("cfg").innerHTML = `<div class="fields2">
+        <div><label for="cPawns">Peões por jogador</label><select id="cPawns"><option value="4" ${c.pawns === 4 ? "selected" : ""}>4 peões (normal)</option><option value="2" ${c.pawns === 2 ? "selected" : ""}>2 peões (rápido)</option></select></div>
+        <div><label for="cTimer">Tempo por vez</label><select id="cTimer">${[20, 30, 45].map((n) => `<option value="${n}" ${n === c.timer ? "selected" : ""}>${n} segundos</option>`).join("")}</select></div></div>
+      <label class="toggle"><input type="checkbox" id="cExit" ${c.exit16 ? "checked" : ""}><span>Sai da base com 1 ou 6<small>Normal é sair só com 6.</small></span></label>
+      <label class="toggle"><input type="checkbox" id="cBar" ${c.barrier ? "checked" : ""}><span>Barreira<small>Dois peões da mesma cor juntos bloqueiam a passagem dos outros.</small></span></label>`;
+    const save = () => act("config", { config: { pawns: +$("cPawns").value, timer: +$("cTimer").value, exit16: $("cExit").checked, barrier: $("cBar").checked } });
+    ["cPawns", "cTimer", "cExit", "cBar"].forEach((id) => ($(id).onchange = save));
+  } else {
+    $("cfg").innerHTML = `<p style="margin:0;line-height:1.7"><b>${c.pawns} peões</b> por jogador, <b>${c.timer} segundos</b> por vez.<br>Sai da base com ${c.exit16 ? "1 ou 6" : "6"}.${c.barrier ? " Com barreira." : ""}</p>`;
+  }
+  const n = S.players.length;
+  $("startBox").innerHTML = isHost()
+    ? `<button class="primary" id="btnStart" style="width:100%;font-size:18px" ${n < 2 ? "disabled" : ""}>Começar a partida</button><p class="muted" style="margin:8px 0 0;font-size:14px">${n < 2 ? "Espere pelo menos mais uma pessoa entrar." : "Quem começa é sorteado."}</p>`
+    : `<p class="muted" style="margin:0">Esperando o organizador começar.</p>`;
+  if ($("btnStart")) $("btnStart").onclick = () => act("start");
+}
+
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+function drawDie(n) {
+  const on = new Set(PIPS[n] || []);
+  $("die").innerHTML = Array.from({ length: 9 }, (_, i) => `<i class="${on.has(i) ? "on" : ""}"></i>`).join("");
+  $("die").classList.toggle("six", n === 6);
+}
+const myTurn = () => { const m = me(); return !!(m && S.game && S.phase === "playing" && S.game.turn === m.color); };
+
+function renderTokens(back) {
+  const g = S.game, legal = myTurn() && g.stage === "move" && !playingMove() ? new Set(g.legal.map((x) => x.i)) : new Set();
+  // peões na mesma casa ficam lado a lado
+  const groups = {};
+  const items = [];
+  for (const color of g.colors) shown[color].forEach((pos, i) => {
+    const [r, c] = L.where(color, pos, i);
+    const key = pos < 0 || pos >= L.FINISH ? `${color}${i}${pos}` : `${r},${c}`;
+    (groups[key] = groups[key] || []).push(items.length);
+    items.push({ color, i, pos, r, c, key });
+  });
+  const mine = me() ? me().color : null;
+  $("tokens").innerHTML = items.map((t) => {
+    const grp = groups[t.key], k = grp.indexOf(items.indexOf(t)), n = grp.length;
+    const dx = n > 1 ? (k - (n - 1) / 2) * 0.32 : 0;
+    const can = t.color === mine && legal.has(t.i);
+    return `<button class="tok ${can ? "can" : ""} ${back ? "home" : ""}" style="--tc:var(--${t.color});left:${((t.c + dx) / 15) * 100}%;top:${(t.r / 15) * 100}%" ${can ? `data-i="${t.i}" aria-label="Mover este peão"` : `tabindex="-1" aria-hidden="true"`}></button>`;
+  }).join("");
+  $("tokens").querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => act("move", { i: +b.dataset.i })));
+}
+const playingMove = () => playing && Q.length > 0;
+function renderGame() {
+  const g = S.game, m = me(), turnP = byColor(g.turn);
+  $("board").style.transform = `rotate(${m ? ROT[m.color] : 0}deg)`;
+  renderTokens();
+  if (g.dice) drawDie(g.dice); else if (!$("die").innerHTML) drawDie(6);
+  const can = myTurn() && g.stage === "roll";
+  $("die").classList.toggle("can", can);
+  $("die").disabled = !can;
+  $("turnWho").innerHTML = S.phase === "ended" ? `<b>Fim de jogo</b>` : `<b style="color:var(--${g.turn})">${myTurn() ? "Sua vez" : `Vez de ${h(turnP ? turnP.name : L.NAMES[g.turn])}`}</b><small>${L.NAMES[g.turn]}${g.sixes ? ` · ${g.sixes} seis seguido${g.sixes > 1 ? "s" : ""}` : ""}</small>`;
+  let msg = "";
+  if (S.phase === "playing") {
+    if (myTurn()) msg = g.stage === "roll" ? "Toque no dado para rolar." : g.stage === "move" ? "Escolha qual peão anda (os que estão pulando)." : g.stage === "pass" ? (g.sixes === 3 ? "Três 6 seguidos: perdeu a vez." : "Nenhum peão pode andar. Passou a vez.") : "";
+    else msg = g.stage === "pass" ? "Nenhum peão pode andar com esse número." : "";
+  }
+  $("prompt").textContent = msg;
+  $("ps").innerHTML = g.colors.map((c) => { const p = byColor(c), homeN = g.pawns[c].filter((x) => x >= L.FINISH).length, place = g.ranking.indexOf(c);
+    return `<div class="pl ${c === g.turn && S.phase === "playing" ? "turnon" : ""}" style="--pc:var(--${c})"><span class="av">${p ? p.pawn : "·"}</span><div class="grow"><b>${h(p ? p.name : L.NAMES[c])}${m && p && p.id === m.id ? " (você)" : ""}</b><small><span class="dot ${p && p.online ? "" : "off"}"></span>${L.NAMES[c]}${place >= 0 ? ` · ${place + 1}º lugar` : ""}</small></div><span class="homes">🏠 ${homeN}/${g.pawns[c].length}</span></div>`; }).join("");
+  $("log").innerHTML = S.log.slice().reverse().map((l) => `<div>${h(l.text)}</div>`).join("");
+  if (S.phase === "ended") {
+    const w = byColor(S.winner);
+    $("overBox").innerHTML = `<div class="over"><div class="copo"><h2 style="font-size:32px">${m && m.color === S.winner ? "Você venceu!" : `${h(w ? w.name : L.NAMES[S.winner])} venceu!`}</h2>
+      <div class="rank">${g.ranking.map((c, i) => { const p = byColor(c); return `<div class="pl" style="--pc:var(--${c})"><span class="av">${p ? p.pawn : "·"}</span><div class="grow"><b>${i + 1}º ${h(p ? p.name : L.NAMES[c])}</b><small>${L.NAMES[c]} · 🏠 ${g.pawns[c].filter((x) => x >= L.FINISH).length}/${g.pawns[c].length}</small></div></div>`; }).join("")}</div>
+      <div class="row" style="justify-content:center">${isHost() ? `<button class="primary" id="btnAgain">Jogar de novo</button>` : ""}<button onclick="location.href='/'">🏠 Voltar ao lobby</button></div></div></div>`;
+    if ($("btnAgain")) $("btnAgain").onclick = () => act("restart");
+  } else $("overBox").innerHTML = "";
+}
+$("die").onclick = () => { if (myTurn() && S.game.stage === "roll") act("roll"); };
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest("input,select,textarea")) return;
+  if ((e.code === "Space" || e.key === "Enter") && myTurn() && S.game.stage === "roll" && e.target === document.body) { e.preventDefault(); act("roll"); }
+});
+
+// relógio da vez
+setInterval(() => {
+  const bar = $("tbar"); if (!bar) return;
+  const d = S && S.deadline;
+  bar.style.visibility = d ? "visible" : "hidden";
+  if (!d) return;
+  const left = Math.max(0, d.at - sNow());
+  bar.firstElementChild.style.width = Math.min(100, (left / d.total) * 100) + "%";
+}, 250);
+
+// ---------- regras ----------
+$("btnRules").onclick = () => {
+  $("modalBox").innerHTML = `<h2>Como joga</h2>
+    <p>Cada um tem 4 peões (ou 2, no modo rápido) na base. Ganha quem levar todos para o centro primeiro, dando a volta no tabuleiro e entrando pela reta da sua cor.</p>
+    <h3>O dado</h3>
+    <ul><li>Para sair da base precisa tirar 6 (ou 1 ou 6, se o organizador ligar essa opção).</li><li>Tirou 6, joga de novo. Três 6 seguidos perdem a vez.</li><li>Para entrar em casa precisa do número exato.</li></ul>
+    <h3>Comer</h3>
+    <ul><li>Parou em cima de um peão sozinho de outra cor, ele volta para a base e você joga de novo.</li><li>Nas casas com estrela (as saídas e as estrelas vazadas) ninguém come ninguém.</li><li>Dois peões da mesma cor juntos formam uma torre: ninguém come e ninguém para em cima. Com a barreira ligada, ninguém passa também.</li><li>Chegou um peão em casa, joga de novo.</li></ul>
+    <h3>Tempo</h3>
+    <p>Se o tempo da vez acabar, o dado rola sozinho e o jogo faz a melhor jogada por você.</p>
+    <button class="primary" data-close>Entendi</button>`;
+  $("modal").classList.remove("hidden");
+};
+$("modal").addEventListener("click", (e) => { if (e.target.id === "modal" || e.target.closest("[data-close]")) $("modal").classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("modal").classList.add("hidden"); });
+</script>
+</body>
+</html>

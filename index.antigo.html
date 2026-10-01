@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leilão da Galera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0f14;--panel:#141922;--panel2:#1b2230;--line:#262f40;--text:#e9edf4;--muted:#8b96aa;
+  --accent:#ffb020;--accent2:#ff6a3d;--good:#2fd180;--bad:#ff5d6c;--info:#4aa8ff;
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,sans-serif}
+body{min-height:100vh;background:radial-gradient(900px 500px at 80% -10%,#2a1c0a55,transparent),radial-gradient(700px 400px at 0% 0%,#0a2a4a44,transparent),var(--bg)}
+h1,h2,h3,.cond{font-family:"Barlow Condensed",Inter,sans-serif;letter-spacing:.02em;margin:0}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 16px;font-weight:600;background:var(--panel2);color:var(--text);border:1px solid var(--line);transition:transform .08s,filter .15s}
+button:hover:not(:disabled){filter:brightness(1.15)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a1000;border:0}
+button.ghost{background:transparent}
+button.danger{color:var(--bad)}
+input,textarea{font:inherit;color:var(--text);background:#0e131b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight:600}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.muted{color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.hidden{display:none!important}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.brand .logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-weight:800;color:#1a1000;font-family:"Barlow Condensed"}
+.brand h1{font-size:28px;text-transform:uppercase}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tabs button.on{background:var(--text);color:var(--bg)}
+.fields{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:12px 0;align-items:end}
+.hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+.err{color:var(--bad);font-size:14px;min-height:20px;margin-top:10px}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--text);margin:10px 0}
+.check input{width:auto}
+
+/* room */
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.code{font-family:"Barlow Condensed";font-size:30px;letter-spacing:.18em;color:var(--accent)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:4px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+.main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px;align-items:start}
+.stage{display:flex;flex-direction:column;align-items:center;gap:14px}
+.wheelbox{position:relative;width:min(420px,100%);aspect-ratio:1}
+.wheelbox canvas{width:100%;height:100%;display:block}
+.pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:28px solid var(--text);filter:drop-shadow(0 3px 4px #0008);z-index:2}
+.hub{position:absolute;inset:0;margin:auto;width:22%;height:22%;border-radius:50%;background:var(--bg);border:3px solid var(--line);display:grid;place-items:center;font-family:"Barlow Condensed";font-weight:800;color:var(--accent);font-size:clamp(14px,3.4vw,22px);text-align:center;line-height:1}
+.drawn{text-align:center;min-height:74px}
+.drawn .lbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.drawn .name{font-family:"Barlow Condensed";font-weight:800;font-size:44px;line-height:1.05;text-transform:uppercase}
+.bidpanel{width:100%}
+.bidrow{display:flex;gap:8px}
+.bidrow input{font-size:22px;font-weight:700;text-align:center;max-width:140px}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.quick button{padding:6px 10px;font-size:13px}
+.status{font-size:14px;padding:10px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line)}
+.status.good{border-color:#2fd18055;color:var(--good)}
+.result{width:100%;border-radius:var(--radius);padding:16px;background:linear-gradient(135deg,#ffb02022,#ff6a3d18);border:1px solid #ffb02055;text-align:center}
+.result .big{font-family:"Barlow Condensed";font-size:30px;font-weight:800}
+.bidlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:12px;text-align:left}
+.bidlist div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13.5px}
+.bidlist div.win{border-color:var(--accent);background:#ffb02014}
+.bidlist b{display:block;font-size:18px}
+.hostbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.team{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;position:relative}
+.team.me{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.team h3{font-size:22px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--good)}
+.stats{display:flex;gap:12px;font-size:13px;color:var(--muted);margin:6px 0 10px}
+.stats b{color:var(--text);font-size:16px}
+.coinbar{height:5px;background:var(--panel2);border-radius:9px;overflow:hidden;margin-bottom:10px}
+.coinbar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.team ol{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+.team li{display:flex;justify-content:space-between;font-size:14px;padding:5px 8px;background:var(--panel2);border-radius:7px}
+.team li.empty{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+.team li span:last-child{color:var(--accent);font-weight:700}
+.bidstate{position:absolute;top:12px;right:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.side h2{font-size:20px;text-transform:uppercase;margin-bottom:10px}
+.logbox{max-height:220px;overflow:auto;font-size:13px;display:flex;flex-direction:column-reverse;gap:4px}
+.logbox div{padding:4px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+.poolchips{display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow:auto}
+.poolchips span{font-size:12.5px;padding:3px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
+details summary{cursor:pointer;color:var(--muted);font-size:14px;margin:8px 0}
+pre.export{white-space:pre-wrap;background:#0e131b;border:1px solid var(--line);border-radius:10px;padding:14px;max-height:360px;overflow:auto;font-size:14px}
+.timer{font-family:"Barlow Condensed";font-size:22px;color:var(--accent2)}
+.simcard{margin-top:16px;padding:22px}
+.simhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.simhead h2{font-size:26px;text-transform:uppercase}
+.md{font-size:15.5px;line-height:1.6;max-width:880px}
+.md h1,.md h2,.md h3,.md h4{font-family:"Barlow Condensed",Inter,sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:22px 0 8px;line-height:1.15}
+.md h1{font-size:30px;color:var(--accent)} .md h2{font-size:26px;color:var(--accent)} .md h3{font-size:21px} .md h4{font-size:18px;color:var(--muted)}
+.md p{margin:8px 0} .md ul,.md ol{margin:6px 0;padding-left:22px} .md li{margin:3px 0}
+.md hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+.md strong{color:#fff}
+.md table{border-collapse:collapse;margin:10px 0;font-size:14px;display:block;overflow-x:auto;max-width:100%}
+.md th,.md td{border:1px solid var(--line);padding:6px 10px;text-align:left;white-space:nowrap}
+.md th{background:var(--panel2)}
+.md blockquote{margin:10px 0;padding:6px 14px;border-left:3px solid var(--accent);color:var(--muted)}
+.md code{background:var(--panel2);padding:1px 5px;border-radius:5px}
+.cursor{display:inline-block;width:9px;height:1.1em;background:var(--accent);vertical-align:text-bottom;animation:pulse .6s infinite alternate;margin-left:2px}
+.simempty{color:var(--muted);padding:20px 0;text-align:center}
+.revsec{border-top:1px solid var(--line);padding-top:6px;margin-top:6px;animation:revIn .6s ease}
+.revsec:first-child{border-top:0;margin-top:0}
+@keyframes revIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.revsec{animation:none}}
+.revbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.revwait{text-align:center;color:var(--muted);margin-top:18px;padding:16px;border:1px dashed var(--line);border-radius:12px}
+.revwait b{color:var(--accent)}
+.stats{flex-wrap:wrap}
+.danger-zone{border-color:#ff5d6c44;margin-top:28px}
+.sub{font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 4px;margin-left:3px;white-space:nowrap}
+.ovr{font-size:11px;font-weight:800;color:#12100a;background:var(--accent);border-radius:5px;padding:0 5px;margin-left:4px}
+.ovr.est{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:4px 0 12px}
+.theme{text-align:left;padding:9px 11px;border-radius:11px;background:#0e131b;border:1px solid var(--line);font-size:14px;display:flex;gap:8px;align-items:center}
+.theme .ic{font-size:20px;line-height:1}
+.theme.on{border-color:var(--accent);background:#ffb02012;box-shadow:0 0 0 1px var(--accent) inset}
+.comp{font-size:13px;color:var(--muted);background:#0e131b;border:1px dashed var(--line);border-radius:10px;padding:8px 11px;margin:6px 0 0}
+.comp b{color:var(--text)}
+.warn{color:var(--accent2)}
+.fields3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 6px}
+.mode{text-align:left;padding:12px 14px;border-radius:12px;background:#0e131b;border:1px solid var(--line)}
+.mode b{display:block;font-family:"Barlow Condensed";font-size:20px;text-transform:uppercase;letter-spacing:.03em}
+.mode span{font-size:12.5px;color:var(--muted);font-weight:500}
+.mode.on{border-color:var(--accent);background:#ffb02012;box-shadow:0 0 0 1px var(--accent) inset}
+.openinfo{width:100%;display:grid;gap:10px}
+.highbox{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.highbox .amt{font-family:"Barlow Condensed";font-size:40px;font-weight:800;line-height:1;color:var(--accent)}
+.highbox.mine{border-color:var(--good);background:#2fd18014}
+.highbox.mine .amt{color:var(--good)}
+.feed{display:flex;flex-direction:column-reverse;gap:4px;max-height:132px;overflow:auto;font-size:13.5px}
+.feed div{display:flex;justify-content:space-between;padding:5px 10px;border-radius:8px;background:var(--panel)}
+.feed div:last-child{background:#ffb02018;font-weight:700}
+.timer.hot{color:var(--bad);animation:pulse .6s infinite alternate}
+@keyframes pulse{to{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.timer.hot{animation:none}}
+.brand{justify-content:space-between}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:0;max-width:720px;width:calc(100% - 32px);max-height:86vh}
+dialog::backdrop{background:#000a}
+.dlg-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
+.dlg-head h2{font-size:24px;text-transform:uppercase}
+.dlg-body{padding:6px 20px 20px;overflow:auto}
+.dlg-body h3{font-size:20px;text-transform:uppercase;margin:18px 0 6px;color:var(--accent)}
+.dlg-body ul{margin:0;padding-left:20px;display:grid;gap:5px;font-size:14.5px}
+.final{border-color:#ff6a3d66;background:#ff6a3d14;color:var(--text)}
+.promptbox{display:grid;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.selects{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+select{font:inherit;color:var(--text);background:#0e131b;border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%}
+@media (max-width:860px){.selects{grid-template-columns:1fr}}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:10;box-shadow:0 8px 30px #0008}
+@media (max-width:860px){.main{grid-template-columns:1fr}.fields{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.drawn .name{font-size:36px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="row" style="gap:10px"><div class="logo">LG</div><h1>Leilão da Galera</h1></div><button id="btnRules">📖 Regras</button></div>
+
+  <!-- HOME -->
+  <section id="home">
+    <div class="grid2">
+      <div class="card">
+        <h2 style="font-size:24px;margin-bottom:4px">Criar sala</h2>
+        <p class="muted" style="margin:0 0 12px">Você é o organizador: controla a roleta e as rodadas.</p>
+        <label>Tema</label>
+        <div class="themes" id="themes"></div>
+        <div class="fields3">
+          <div><label>Participantes</label><input id="cParts" type="number" min="2" max="12" value="4"></div>
+          <div><label id="cExtraLbl">Sobras na roleta</label><input id="cExtra" type="number" min="0" value="4"></div>
+          <div style="display:flex;align-items:end"><button type="button" id="btnGen" style="width:100%">🎲 Sortear lista</button></div>
+        </div>
+        <div class="comp" id="cComp"></div>
+        <div id="compWrap" style="margin-top:10px">
+          <label id="cCompLbl">Composição de cada time</label>
+          <select id="cCompMode">
+            <option value="min">Mínimo obrigatório (recomendado)</option>
+            <option value="exact">Exata (igual ao tema)</option>
+            <option value="free">Livre (qualquer combinação)</option>
+          </select>
+          <p class="hint" id="cCompHint"></p>
+        </div>
+        <details id="namesBox" style="margin:6px 0 10px"><summary>Nomes usados neste tema</summary>
+          <div class="fields3" style="grid-template-columns:repeat(2,1fr)">
+            <div><label>Item (singular)</label><input id="tItem" maxlength="30"></div>
+            <div><label>Itens (plural)</label><input id="tItems" maxlength="30"></div>
+            <div><label>Grupo (singular)</label><input id="tTeam" maxlength="30"></div>
+            <div><label>Grupos (plural)</label><input id="tTeams" maxlength="30"></div>
+            <div style="grid-column:1/-1"><label>Título no resultado (antes do nome)</label><input id="tPrefix" maxlength="30"></div>
+          </div>
+          <p class="hint">Ex.: item "ingrediente", grupo "pizza", título "Pizza de" → "Pizza de Ana".</p>
+        </details>
+        <div id="lockWrap" class="hidden" style="margin-bottom:10px">
+          <label for="cFormLock">Formação dos times</label>
+          <select id="cFormLock">
+            <option value="fluid">Fluida: cada um pode mudar até a simulação</option>
+            <option value="locked">Travada: escolhe antes do leilão começar e não muda mais</option>
+          </select>
+        </div>
+        <label>Modo de leilão</label>
+        <div class="modes">
+          <button type="button" class="mode on" data-mode="secret"><b>🔒 Lance secreto</b><span>Todo mundo dá um lance escondido. Maior lance leva.</span></button>
+          <button type="button" class="mode" data-mode="open"><b>🔨 Lance aberto</b><span>Um cobre a oferta do outro até alguém levar.</span></button>
+        </div>
+        <div class="fields">
+          <div><label id="cPerLbl">Jogadores por time</label><input id="cPer" type="number" min="1" max="11" value="5"></div>
+          <div><label>Moedas</label><input id="cCoins" type="number" min="1" value="50"></div>
+          <div id="cSkipsWrap"><label>Pulos</label><input id="cSkips" type="number" min="0" value="1"></div>
+          <div><label>Lance mínimo</label><input id="cMin" type="number" min="0" value="1"></div>
+          <div><label id="cTimerLbl">Tempo (s)</label><input id="cTimer" type="number" min="0" value="0"></div>
+        </div>
+        <p class="hint" id="cTimerHint" style="margin-top:-4px">Tempo 0 = sem limite. Quando acaba o tempo, quem não deu lance usa o pulo (se tiver) ou dá o lance mínimo.</p>
+        <div class="row" style="justify-content:space-between;margin-top:12px"><label id="cListLbl" style="margin:0">Jogadores (um por linha)</label>
+          <span class="row" style="gap:6px"><button type="button" class="ghost" id="btnSaveTheme" style="padding:4px 10px;font-size:12.5px">⭐ Salvar como meu tema</button><button type="button" class="ghost danger hidden" id="btnDelTheme" style="padding:4px 10px;font-size:12.5px">Excluir tema</button></span></div>
+        <textarea id="cPlayers" rows="11" style="margin-top:6px" placeholder="Pelé&#10;Maradona&#10;Zidane&#10;..."></textarea>
+        <div class="hint" id="cCount">0 jogadores</div>
+        <label class="check"><input type="checkbox" id="cPlays" checked> Eu também vou participar</label>
+        <div id="cNameWrap"><label>Seu nome</label><input id="cName" maxlength="24" placeholder="Ex.: Tabba"></div>
+        <div class="row" style="margin-top:14px"><button class="primary" id="btnCreate">Criar sala</button></div>
+        <div class="err" id="cErr"></div>
+      </div>
+      <div class="card">
+        <h2 style="font-size:24px;margin-bottom:4px">Entrar numa sala</h2>
+        <p class="muted" style="margin:0 0 12px">Use o código que o organizador mandou.</p>
+        <label>Código da sala</label>
+        <input id="jCode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase;letter-spacing:.2em;font-weight:700">
+        <label style="margin-top:12px">Seu nome</label>
+        <input id="jName" maxlength="24" placeholder="Ex.: Kizzy">
+        <div class="row" style="margin-top:14px">
+          <button class="primary" id="btnJoin">Entrar</button>
+          <button class="ghost" id="btnWatch">Só assistir</button>
+        </div>
+        <div class="err" id="jErr"></div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+        <h3 style="font-size:18px;margin-bottom:6px">Como funciona</h3>
+        <ol class="muted" style="margin:0;padding-left:18px;font-size:14px">
+          <li>O organizador escolhe um tema (futebol, CS, hambúrguer, drink…), e o site monta a lista equilibrada.</li>
+          <li>Cada um entra com o código ou o link e o seu nome.</li>
+          <li>A roleta sorteia um item por vez.</li>
+          <li><b>Lance secreto:</b> cada um dá um lance escondido (ou pula). O maior leva; empate vai para o sorteio.</li>
+          <li><b>Lance aberto:</b> um vai cobrindo a oferta do outro. Cada lance novo reinicia o cronômetro; quando ele zera ou todos saem, quem está na frente leva.</li>
+          <li>No fim, é só copiar o resultado e o prompt para a IA julgar.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROOM -->
+  <section id="room" class="hidden">
+    <div class="topbar">
+      <div class="row">
+        <div><div class="muted" style="font-size:12px">SALA</div><div class="code" id="rCode">-----</div></div>
+        <button id="btnCopyLink">Copiar link de convite</button>
+        <span class="pill" id="rRole"></span>
+      </div>
+      <div class="row">
+        <span class="pill" id="rRules"></span>
+        <span class="pill" id="rPool"></span>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="card stage">
+        <div class="wheelbox"><div class="pointer"></div><canvas id="wheel" width="840" height="840"></canvas><div class="hub" id="hub">?</div></div>
+        <div class="drawn"><div class="lbl" id="drawnLbl">Aguardando</div><div class="name" id="drawnName">—</div><div class="timer" id="timer"></div></div>
+        <div id="lobbyMsg" class="status hidden" style="width:100%"></div>
+        <div id="finalMsg" class="status final hidden" style="width:100%">🏁 <b>Reta final:</b> não sobram mais itens extras. Se ninguém der lance, este vai <b>por sorteio</b>, pelo lance mínimo, para quem ainda tem vaga.</div>
+        <div id="openInfo" class="openinfo hidden">
+          <div class="highbox" id="highBox"></div>
+          <div class="feed" id="feed"></div>
+        </div>
+        <div id="bidPanel" class="bidpanel hidden">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <label style="margin:0" id="bidLabel">Seu lance (secreto)</label>
+            <span class="muted" style="font-size:13px" id="bidLimits"></span>
+          </div>
+          <div class="bidrow">
+            <input id="bidAmt" type="number" inputmode="numeric">
+            <button class="primary" id="btnBid" style="flex:1">Dar lance</button>
+            <button id="btnSkip">Pular</button>
+          </div>
+          <div class="quick" id="quick"></div>
+        </div>
+        <div id="myStatus" class="status hidden" style="width:100%"></div>
+        <div id="formBox" class="hidden" style="width:100%;display:grid;gap:6px">
+          <label for="myFormation" style="margin:0">Sua formação</label>
+          <select id="myFormation"></select>
+          <p class="hint" id="formHint" style="margin:0"></p>
+        </div>
+        <div id="resultBox" class="result hidden"></div>
+        <div id="hostBar" class="hostbar hidden">
+          <button class="primary" id="hStart">Começar leilão</button>
+          <button class="primary" id="hSpin">Girar roleta</button>
+          <button id="hReveal">Revelar agora</button>
+          <button id="hUndo">Desfazer última</button>
+          <button id="hUnsold">Devolver sem dono à roleta</button>
+          <button class="danger" id="hFinish">Encerrar</button>
+        </div>
+      </div>
+
+      <div class="side" style="display:grid;gap:16px">
+        <div>
+          <h2 id="teamsTitle">Times</h2>
+          <div class="teams" id="teams"></div>
+        </div>
+        <div class="card hidden" id="exportCard">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Resultado</h2><button class="primary" id="btnCopyExport">Copiar</button></div>
+          <pre class="export" id="exportText"></pre>
+          <div class="promptbox">
+            <div id="fcBox" class="hidden" style="display:grid;gap:8px;margin-bottom:6px">
+              <h3 style="font-size:20px;text-transform:uppercase">⚽ Simular campeonato (notas FC 27)</h3>
+              <p class="muted" style="margin:0;font-size:13.5px">O site simula os jogos pelas notas do FC 27, com placar, gols e a resenha da galera. O resultado é revelado parte por parte para todo mundo.</p>
+              <div class="selects">
+                <div><label>Modalidade</label><select id="fcSport"><option value="futsal">Futsal</option><option value="futebol">Futebol 11x11</option></select></div>
+                <div><label>Formato</label><select id="fcFormat">
+                  <option value="league">Pontos corridos + final/semis</option>
+                  <option value="knockout">Mata-mata direto</option></select></div>
+              </div>
+              <button class="primary" id="btnFc">⚽ Simular campeonato</button>
+              <p class="hint" style="margin:0">Com 2 times, vira uma série melhor de 3.</p>
+            </div>
+            <h3 style="font-size:20px;text-transform:uppercase" id="aiTitle">Prompt para Claude / ChatGPT</h3>
+            <p class="muted" style="margin:0;font-size:13.5px" id="aiHint">Copie o prompt, cole no Claude ou no ChatGPT e depois cole a resposta abaixo para revelar aos poucos para todo mundo.</p>
+            <div class="selects">
+              <div><label>Modalidade</label><select id="pSport">
+                <option value="futsal">Futsal</option><option value="futebol">Futebol 11x11</option>
+                <option value="cs">Counter-Strike</option><option value="valorant">Valorant</option>
+                <option value="food">Comida / drink (julgamento)</option><option value="generic">Outro tema (genérico)</option></select></div>
+              <div id="pFormatWrap"><label>Formato</label><select id="pFormat">
+                <option value="auto">Escolha da IA (pelo nº de times)</option>
+                <option value="double">Double elimination</option>
+                <option value="swiss">Suíço + playoffs</option>
+                <option value="league">Pontos corridos + mata-mata</option>
+                <option value="groups">Grupos + mata-mata</option>
+                <option value="series">Só um confronto (2 times)</option></select></div>
+              <div id="pEraWrap"><label>Época dos jogadores</label><select id="pEra">
+                <option value="peak">No auge da carreira</option><option value="current">Fase atual</option></select></div>
+            </div>
+            <button id="btnCopyPrompt">Copiar prompt</button>
+            <details><summary>Ver prompt</summary><pre class="export" id="promptText"></pre></details>
+            <div id="pubBox" class="hidden" style="display:grid;gap:8px">
+              <label style="margin:6px 0 0">🎬 Resposta da IA (modo suspense)</label>
+              <textarea id="pubText" rows="5" placeholder="Cole aqui a resposta do ChatGPT (use o botão de copiar dele)…"></textarea>
+              <button class="primary" id="btnPublish">🎬 Publicar com suspense</button>
+              <p class="hint" style="margin:0">O site esconde tudo e divide a resposta em partes. Você revela uma de cada vez, e todo mundo vê junto.</p>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <details open><summary>Na roleta (<span id="poolN">0</span>)</summary><div class="poolchips" id="poolChips"></div></details>
+          <details id="unsoldWrap" class="hidden"><summary>Sem dono (<span id="unsoldN">0</span>)</summary><div class="poolchips" id="unsoldChips"></div></details>
+          <details open><summary>Histórico</summary><div class="logbox" id="log"></div></details>
+        </div>
+        <div class="card danger-zone hidden" id="resetBox">
+          <h3 style="font-size:16px;text-transform:uppercase;letter-spacing:.06em;color:var(--bad)">Zona de perigo</h3>
+          <p class="hint" style="margin:6px 0 10px">Recomeça o leilão do zero com os mesmos participantes, a mesma lista e as mesmas regras. Moedas, pulos e times voltam ao início, e o resultado publicado é apagado.</p>
+          <button class="danger" id="hReset">🔄 Reiniciar leilão</button>
+        </div>
+      </div>
+    </div>
+    <div class="card simcard hidden" id="revCard">
+      <div class="simhead">
+        <h2 id="revTitle">🎬 Resultado</h2>
+        <span class="pill" id="revCount"></span>
+      </div>
+      <div class="md" id="revOut"></div>
+      <div id="revFoot"></div>
+    </div>
+  </section>
+</div>
+<dialog id="rulesDlg">
+  <div class="dlg-head"><h2>Regras do leilão</h2><button id="btnCloseRules">Fechar</button></div>
+  <div class="dlg-body">
+    <h3>Como funciona</h3>
+    <ul>
+      <li>O organizador cria a sala, escolhe o tema e o modo. O site monta a lista de itens (jogadores, ingredientes…) equilibrada por categoria, e ela pode ser editada.</li>
+      <li>Cada participante entra com o código ou o link e o seu nome.</li>
+      <li>A roleta sorteia um item por vez, e os participantes disputam esse item com moedas.</li>
+      <li>O leilão acaba quando todo mundo completa as vagas (ou quando acabam os itens).</li>
+    </ul>
+    <h3>🔒 Lance secreto</h3>
+    <ul>
+      <li>Cada participante dá <b>um lance escondido</b> ou usa um <b>pulo</b>.</li>
+      <li>Quando todos respondem, os lances aparecem. O <b>maior lance leva</b>.</li>
+      <li>Empate no maior lance: sorteio entre os empatados.</li>
+      <li>Cada participante tem um número limitado de pulos. Sem pulo, é obrigatório dar pelo menos o lance mínimo.</li>
+      <li>Com tempo ligado: quem não responder a tempo usa um pulo (se tiver) ou dá o lance mínimo automaticamente.</li>
+    </ul>
+    <h3>🔨 Lance aberto</h3>
+    <ul>
+      <li>Os lances são públicos. Para cobrir, é preciso oferecer <b>pelo menos 1 moeda a mais</b> que o maior lance.</li>
+      <li>Cada lance novo <b>reinicia o cronômetro</b>. Quando ele zera, quem está na frente leva.</li>
+      <li>Quem não quer mais aquele item clica em <b>Sair</b> (não gasta nada, mas não pode voltar para essa disputa).</li>
+      <li>Se todos os outros saírem ou não tiverem moedas para cobrir, o item é vendido na hora.</li>
+      <li>O organizador pode <b>bater o martelo</b> antes do tempo.</li>
+    </ul>
+    <h3>🏁 Reta final</h3>
+    <ul>
+      <li>Enquanto a roleta tem itens de sobra, dá para recusar: se ninguém der lance, o item fica <b>sem dono</b>.</li>
+      <li>Quando o número de itens na roleta fica igual (ou menor) ao número de vagas abertas, começa a <b>reta final</b>.</li>
+      <li>Na reta final, se ninguém der lance, o item vai <b>por sorteio</b>, pelo lance mínimo, para alguém que ainda tem vaga. Assim todo mundo termina completo.</li>
+    </ul>
+    <h3>Moedas e vagas</h3>
+    <ul>
+      <li>Todos começam com o mesmo número de moedas.</li>
+      <li><b>Lance máximo:</b> você sempre precisa guardar o lance mínimo para cada vaga que ainda falta. Por isso nunca fica sem moedas para completar as vagas.</li>
+      <li>Quem já completou as vagas não participa mais das disputas.</li>
+    </ul>
+    <h3>Organizador</h3>
+    <ul>
+      <li><b>Desfazer última:</b> cancela a última compra, devolve as moedas (e o pulo, se foi usado) e o item volta para a roleta.</li>
+      <li><b>Devolver sem dono:</b> coloca os itens que ninguém quis de volta na roleta.</li>
+      <li>Se alguém fechar a aba ou cair a internet, é só abrir o link de novo para voltar ao mesmo lugar.</li>
+    </ul>
+    <h3>Composição</h3>
+    <ul>
+      <li><b>Livre:</b> cada um monta como quiser.</li>
+      <li><b>Mínimo obrigatório:</b> todo mundo precisa ter as categorias obrigatórias do tema (ex.: 1 goleiro no futebol; 1 IGL e 1 AWPer no CS; 1 pão e 1 carne no hambúrguer). Quando as vagas que sobram são só as do obrigatório, você só pode dar lance nele. E quem já tem o obrigatório não pode "estocar": se os que sobraram são só o suficiente para quem ainda precisa, só esses podem dar lance.</li>
+      <li><b>Exata:</b> cada um termina exatamente com a composição do tema (ex.: 1 goleiro, 1 defensor, 1 meio e 2 atacantes no futsal). Quem já tem o suficiente de uma categoria não entra na disputa de outro item dela.</li>
+      <li>A roleta só sorteia itens que alguém ainda pode pegar, e a reta final também vale por categoria: se só sobram os goleiros necessários, ninguém pode recusá-los.</li>
+    </ul>
+    <h3>⚽ Simulação pelas notas do FC 27</h3>
+    <ul>
+      <li>Nos temas de futebol e futsal, cada jogador tem a nota do EA FC 27 (as lendas usam a versão Icon). Notas com borda tracejada são estimativas, para quem não tem nota oficial.</li>
+      <li>Cada participante escolhe a formação do seu time (futsal: 2-2, 3-1, 1-2-1 ou 1-1-2; campo: 4-3-3, 4-4-2, 3-5-2, 4-2-3-1, 3-4-3 ou 5-3-2). Na automática, o site usa a que deixa o time mais forte.</li>
+      <li>O organizador define se a formação é <b>fluida</b> (cada um pode mudar até a simulação) ou <b>travada</b> (escolhe na sala de espera e, quando o leilão começa, não muda mais).</li>
+      <li>O site escala cada jogador na vaga em que ele rende mais. Fora de posição, o rendimento cai: atacante no meio 90%, na defesa 80%; defensor no meio 90%, no ataque 80%; qualquer jogador de linha no gol 50%, e goleiro na linha 50%. Exemplo: Mbappé (91) no meio rende 82.</li>
+      <li>Os meias têm dois tipos: <b>volante</b> (rende 95% na defesa e 85% no ataque) e <b>meia-atacante</b> (95% no ataque e 85% na defesa). O tipo aparece ao lado do nome. Meia sem tipo definido rende 90% nos dois. Numa lista própria, dá para escrever a categoria como "Volante" ou "Meia-atacante".</li>
+      <li>A força do time vem das notas já com esse desconto: ataque (atacantes e meias) contra defesa (goleiro, defensores e meias).</li>
+      <li>O site sorteia os placares e os autores dos gols com base nessa força. O favorito ganha mais vezes, mas zebra acontece.</li>
+      <li>Com 2 times é uma série melhor de 3. Com mais times: pontos corridos e final (ou semifinais, com 6 ou mais), ou mata-mata direto.</li>
+    </ul>
+    <h3>🔄 Reiniciar</h3>
+    <ul>
+      <li>No fim da página, o organizador tem o botão <b>Reiniciar leilão</b>: todo mundo volta com as moedas e os pulos cheios, os times são esvaziados, todos os itens voltam para a roleta e a sala volta para a sala de espera. Participantes, lista e regras continuam iguais.</li>
+    </ul>
+    <h3>Temas</h3>
+    <ul>
+      <li>Cada tema já sabe quantos itens de cada categoria vão em cada grupo (ex.: 1 goleiro, 1 defensor, 1 meio e 2 atacantes no futsal; 1 pão, 1 carne, 1 queijo… no hambúrguer).</li>
+      <li>A lista é sorteada respeitando essas categorias: para cada participante entra um conjunto completo, mais as <b>sobras</b> (por padrão, uma por participante, para dar espaço a pulos e recusas).</li>
+      <li>A categoria aparece entre parênteses (ex.: "Neuer (Goleiro)"). É ela que a regra de composição usa, então não apague os parênteses se a regra estiver ligada.</li>
+      <li>Dá para editar a lista e os nomes, e salvar como <b>meu tema</b> para usar de novo (fica salvo no seu navegador).</li>
+    </ul>
+  </div>
+</dialog>
+<div class="toast hidden" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/presets.js"></script>
+<script src="/prompts.js"></script>
+<script src="/ratings.js"></script>
+<script src="/card.js"></script>
+<script src="/vendor/marked.js"></script>
+<script src="/vendor/purify.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const socket = io();
+let S = null;            // last state
+let me = { capId: null, host: false, code: null };
+let lastSpinId = null, spinning = false, wheelAngle = 0;
+const COLORS = ["#ffb020","#ff6a3d","#4aa8ff","#2fd180","#b57cff","#ff5d9e","#23c4c4","#e3e36a"];
+
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k){ try { localStorage.removeItem(k); } catch {} }
+};
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add("hidden"),2600); }
+function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+// ---------- HOME ----------
+const params = new URLSearchParams(location.search);
+if (params.get("sala")) $("jCode").value = params.get("sala").toUpperCase();
+$("cPlayers").addEventListener("input", countPlayers);
+function countPlayers(){ const n=[...new Set($("cPlayers").value.split(/\n/).map(s=>s.trim()).filter(Boolean))].length; const t=formTerms(); $("cCount").textContent = n + " " + (n===1?t.item:t.items); }
+$("cPlays").addEventListener("change", () => $("cNameWrap").classList.toggle("hidden", !$("cPlays").checked));
+let mode = "secret";
+function setMode(m){
+  mode = m;
+  document.querySelectorAll(".mode").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+  $("cSkipsWrap").classList.toggle("hidden", m === "open");
+  if (m === "open") {
+    $("cTimerLbl").textContent = "Tempo por lance (s)";
+    if (+$("cTimer").value < 5) $("cTimer").value = 15;
+    $("cTimerHint").textContent = "Cada lance novo reinicia o cronômetro. Quando ele zera (ou todos saem da disputa), quem está na frente leva. Mínimo 5 s.";
+  } else {
+    $("cTimerLbl").textContent = "Tempo (s)";
+    $("cTimerHint").textContent = "Tempo 0 = sem limite. Quando acaba o tempo, quem não deu lance usa o pulo (se tiver) ou dá o lance mínimo.";
+  }
+}
+document.querySelectorAll(".mode").forEach(b => b.onclick = () => setMode(b.dataset.mode));
+// ---------- THEMES ----------
+const cap = (w) => w ? w[0].toUpperCase() + w.slice(1) : w;
+let themeId = "futsal-lendas", listDirty = false, extraTouched = false;
+function myThemes(){ return store.get("lt_mythemes") || []; }
+function allThemes(){ return [...PRESETS, ...myThemes()]; }
+function curTheme(){ return allThemes().find(t => t.id === themeId) || PRESETS[0]; }
+function formTerms(){
+  return { item:$("tItem").value.trim()||"item", items:$("tItems").value.trim()||"itens", team:$("tTeam").value.trim()||"time",
+           teams:$("tTeams").value.trim()||"times", prefix:$("tPrefix").value.trim()||"Time" };
+}
+function applyFormTerms(){
+  const t = formTerms();
+  $("cPerLbl").textContent = `${cap(t.items)} por ${t.team}`;
+  $("cListLbl").textContent = `${cap(t.items)} (um por linha)`;
+  countPlayers();
+}
+["tItem","tItems","tTeam","tTeams","tPrefix"].forEach(id => $(id).addEventListener("input", applyFormTerms));
+function slotsOf(th){ return th.mine ? null : (th.slots || null); }
+function itemsOf(th){ return th.items || (th.pool && FOOTBALL[th.pool]) || null; }
+function renderThemes(){
+  $("themes").innerHTML = allThemes().map(t => `<button type="button" class="theme ${t.id===themeId?"on":""}" data-id="${esc(t.id)}"><span class="ic">${esc(t.icon||"⭐")}</span><span>${esc(t.label)}</span></button>`).join("");
+  document.querySelectorAll(".theme").forEach(b => b.onclick = () => selectTheme(b.dataset.id, true));
+}
+function selectTheme(id, user){
+  if (user && listDirty && id !== themeId && $("cPlayers").value.trim() && !confirm("Trocar de tema substitui a lista que você editou. Continuar?")) return;
+  themeId = id;
+  const th = curTheme();
+  $("tItem").value = th.terms.item; $("tItems").value = th.terms.items; $("tTeam").value = th.terms.team; $("tTeams").value = th.terms.teams; $("tPrefix").value = th.terms.prefix;
+  $("btnDelTheme").classList.toggle("hidden", !th.mine);
+  renderThemes();
+  if (th.mine) { $("cPer").value = th.perTeam; $("cPlayers").value = th.list || ""; listDirty = false; }
+  else if (slotsOf(th)) { $("cPer").value = Object.values(th.slots).reduce((a,b)=>a+b,0); if (user || !$("cPlayers").value.trim()) generate(); }
+  else if (user) { $("cPlayers").value = ""; listDirty = false; }
+  updateComp(); applyFormTerms();
+}
+function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function counts(th){
+  const slots = slotsOf(th); if (!slots) return null;
+  const n = Math.max(1, +$("cParts").value || 1), extra = Math.max(0, +$("cExtra").value || 0);
+  const c = {}; Object.entries(slots).forEach(([k,v]) => c[k] = v*n);
+  // spread extras by weight: categories with more slots get more extras
+  const order = []; const maxW = Math.max(...Object.values(slots));
+  for (let r=0;r<maxW;r++) Object.entries(slots).sort((a,b)=>b[1]-a[1]).forEach(([k,v]) => { if (v>r) order.push(k); });
+  for (let i=0;i<extra;i++) c[order[i % order.length]]++;
+  return c;
+}
+const fmtCats = (o) => Object.entries(o || {}).map(([k,v]) => `${v} ${k}`).join(", ");
+function updateCompRule(){
+  const th = curTheme(), t = formTerms(), wrap = $("compWrap");
+  const has = !!(th.slots && th.req);
+  wrap.classList.toggle("hidden", !has);
+  if (!has) return;
+  $("cCompLbl").textContent = `Composição de cada ${t.team}`;
+  const m = $("cCompMode").value;
+  if (m === "exact") $("cPer").value = Object.values(th.slots).reduce((a,b)=>a+b,0);
+  $("cCompHint").innerHTML = m === "min" ? `Todo mundo precisa ter pelo menos: <b>${esc(fmtCats(th.req))}</b>. O site guarda a vaga: quando só sobra espaço para o obrigatório, só dá para dar lance nele.`
+    : m === "exact" ? `Cada ${esc(t.team)} fica exatamente com: <b>${esc(fmtCats(th.slots))}</b>. Quem já tem o suficiente de uma categoria não pode dar lance em outro dela.`
+    : "Cada um monta como quiser, sem obrigação de categoria.";
+}
+$("cCompMode").addEventListener("change", updateCompRule);
+function updateComp(){
+  updateCompRule();
+  $("lockWrap").classList.toggle("hidden", !["futsal","futebol"].includes(curTheme().prompt));
+  const th = curTheme(), slots = slotsOf(th), t = formTerms();
+  $("btnGen").disabled = !slots;
+  $("cExtra").disabled = !slots; $("cParts").disabled = !slots;
+  if (!slots) { $("cComp").innerHTML = th.mine ? `Tema salvo: <b>${esc(th.label)}</b>. A lista é a que você salvou; edite à vontade.` : `Cole a sua lista abaixo e ajuste os nomes em "Nomes usados neste tema".`; return; }
+  const c = counts(th), items = itemsOf(th);
+  const short = Object.keys(c).filter(k => c[k] > items[k].length);
+  $("cComp").innerHTML = `Cada ${esc(t.team)}: ` + Object.entries(slots).map(([k,v]) => `<b>${v} ${esc(k)}</b>`).join(", ") +
+    `<br>Lista: ${Object.values(c).reduce((a,b)=>a+b,0)} ${esc(t.items)} (${Object.entries(c).map(([k,v])=>`${v} ${esc(k)}`).join(", ")})` +
+    (short.length ? `<br><span class="warn">O tema não tem ${short.map(k=>esc(k)).join(", ")} suficientes para tanta gente; entram todos os disponíveis. Complete a lista à mão se quiser.</span>` : "");
+}
+function generate(){
+  const th = curTheme(), c = counts(th), items = itemsOf(th);
+  if (!c) return;
+  const lines = [];
+  Object.entries(c).forEach(([k,v]) => shuffle(items[k].slice()).slice(0, v).forEach(name => lines.push(`${name} (${k})`)));
+  $("cPlayers").value = lines.join("\n");
+  listDirty = false; countPlayers(); updateComp();
+}
+$("btnGen").onclick = () => { if (listDirty && !confirm("Sortear de novo substitui a lista que você editou. Continuar?")) return; generate(); };
+$("cPlayers").addEventListener("input", () => listDirty = true);
+$("cParts").addEventListener("change", () => { if (!extraTouched) $("cExtra").value = $("cParts").value; if (!listDirty || confirm("Atualizar a lista para o novo número de participantes? (substitui a lista editada)")) generate(); else updateComp(); });
+$("cExtra").addEventListener("change", () => { extraTouched = true; if (!listDirty || confirm("Atualizar a lista com as novas sobras? (substitui a lista editada)")) generate(); else updateComp(); });
+$("btnSaveTheme").onclick = () => {
+  const th = curTheme();
+  const name = prompt("Nome do seu tema:", th.mine ? th.label : th.label + " (meu)");
+  if (!name || !name.trim()) return;
+  const list = myThemes().filter(t => !(th.mine && t.id === th.id));
+  const t = formTerms();
+  const saved = { id: th.mine ? th.id : "my-" + Date.now(), mine: true, icon: "⭐", label: name.trim().slice(0,40), terms: t,
+    prompt: th.prompt || "generic", perTeam: +$("cPer").value || 5, list: $("cPlayers").value,
+    slots: th.slots || null, req: th.req || null };
+  list.push(saved); store.set("lt_mythemes", list);
+  themeId = saved.id; listDirty = false; renderThemes(); selectTheme(saved.id, false); toast("Tema salvo neste navegador!");
+};
+$("btnDelTheme").onclick = () => {
+  const th = curTheme(); if (!th.mine || !confirm(`Excluir o tema "${th.label}"?`)) return;
+  store.set("lt_mythemes", myThemes().filter(t => t.id !== th.id));
+  selectTheme(PRESETS[0].id, false); generate();
+};
+
+const savedCfg = store.get("lt_cfg");
+if (savedCfg) {
+  ["cPer","cCoins","cSkips","cMin","cTimer","cParts","cExtra"].forEach(k=>{ if(savedCfg[k]!=null) $(k).value=savedCfg[k]; });
+  extraTouched = !!savedCfg.extraTouched;
+  if (savedCfg.compMode) $("cCompMode").value = savedCfg.compMode;
+  if (savedCfg.formLock) $("cFormLock").value = savedCfg.formLock;
+  if (savedCfg.mode) setMode(savedCfg.mode);
+  if (savedCfg.theme && allThemes().some(t => t.id === savedCfg.theme)) themeId = savedCfg.theme;
+  selectTheme(themeId, false);
+  if (savedCfg.players) { $("cPlayers").value = savedCfg.players; listDirty = !!savedCfg.listDirty; }
+  if (savedCfg.terms) { $("tItem").value=savedCfg.terms.item; $("tItems").value=savedCfg.terms.items; $("tTeam").value=savedCfg.terms.team; $("tTeams").value=savedCfg.terms.teams; $("tPrefix").value=savedCfg.terms.prefix; }
+  applyFormTerms(); updateComp();
+} else selectTheme(themeId, false);
+
+$("btnCreate").onclick = () => {
+  $("cErr").textContent = "";
+  const th = curTheme();
+  const terms = { ...formTerms(), icon: th.icon, label: th.label, prompt: th.prompt || "generic" };
+  const comp = th.slots && th.req ? { mode: $("cCompMode").value, slots: th.slots, req: th.req } : { mode: "free" };
+  if (comp.mode === "exact" && +$("cPer").value !== Object.values(th.slots).reduce((a,b)=>a+b,0)) return $("cErr").textContent = `Na composição exata, cada ${formTerms().team} precisa ter ${Object.values(th.slots).reduce((a,b)=>a+b,0)} ${formTerms().items}.`;
+  const data = { formLock: $("cFormLock").value, comp, terms, mode, perTeam:$("cPer").value, coins:$("cCoins").value, skips:$("cSkips").value, minBid:$("cMin").value, timer:$("cTimer").value,
+    players:$("cPlayers").value, hostPlays:$("cPlays").checked, hostName:$("cName").value };
+  if (data.hostPlays && !data.hostName.trim()) return $("cErr").textContent = "Digite seu nome (ou desmarque a opção).";
+  store.set("lt_cfg", { formLock: $("cFormLock").value, compMode: $("cCompMode").value, theme: themeId, terms: formTerms(), cParts:$("cParts").value, cExtra:$("cExtra").value, extraTouched, listDirty, mode, cPer:data.perTeam, cCoins:data.coins, cSkips:data.skips, cMin:data.minBid, cTimer:data.timer, players:data.players });
+  socket.emit("create", data, (r) => {
+    if (!r.ok) return $("cErr").textContent = r.error;
+    store.set("lt_sess_"+r.code, { hostToken:r.hostToken, capToken:r.capToken });
+    store.set("lt_last", r.code);
+    enter(r.code, r.capId, true);
+  });
+};
+$("btnJoin").onclick = () => join(false);
+$("btnWatch").onclick = () => join(true);
+function join(watch){
+  $("jErr").textContent = "";
+  const code = $("jCode").value.toUpperCase().trim();
+  if (!code) return $("jErr").textContent = "Digite o código da sala.";
+  const sess = store.get("lt_sess_"+code) || {};
+  socket.emit("join", { code, name:$("jName").value, watch, hostToken:sess.hostToken, capToken:sess.capToken }, (r) => {
+    if (!r.ok) return $("jErr").textContent = r.error;
+    if (r.capToken) store.set("lt_sess_"+code, { ...sess, capToken:r.capToken });
+    store.set("lt_last", code);
+    enter(r.code, r.capId, r.host);
+  });
+}
+function enter(code, capId, host){
+  me = { code, capId, host };
+  history.replaceState(null, "", "?sala="+code);
+  $("home").classList.add("hidden"); $("room").classList.remove("hidden");
+}
+// auto-rejoin (refresh / reconnect)
+function tryRejoin(){
+  const code = me.code || params.get("sala") || null;
+  if (!code) return;
+  const sess = store.get("lt_sess_"+code);
+  if (!sess) return;
+  socket.emit("join", { code, hostToken:sess.hostToken, capToken:sess.capToken, watch: !sess.capToken }, (r) => { if (r.ok) enter(r.code, r.capId, r.host); });
+}
+socket.on("connect", tryRejoin);
+socket.on("kicked", () => { toast("Você foi removido da sala."); store.del("lt_sess_"+me.code); setTimeout(()=>location.href=location.pathname,1500); });
+
+// ---------- ROOM ----------
+$("btnCopyLink").onclick = () => { const url = location.origin + location.pathname + "?sala=" + me.code; navigator.clipboard?.writeText(url).then(()=>toast("Link copiado!"), ()=>prompt("Copie o link:", url)); };
+const host = (action, extra={}) => socket.emit("host", { action, ...extra }, (r) => { if (r && !r.ok) toast(r.error); });
+$("hStart").onclick = () => host("start");
+$("hSpin").onclick = () => host("spin");
+$("hReveal").onclick = () => { const open = S && S.config.mode === "open";
+  if (confirm(open ? "Bater o martelo agora? Quem está na frente leva." : "Revelar agora? Quem não deu lance usa o pulo (se tiver) ou dá o lance mínimo.")) host("reveal"); };
+$("hUndo").onclick = () => { if (confirm("Desfazer a última compra? O item volta para a roleta e as moedas são devolvidas.")) host("undo"); };
+$("hUnsold").onclick = () => host("returnUnsold");
+$("hReset").onclick = () => {
+  if (!confirm("Reiniciar o leilão? Todo mundo volta com as moedas cheias e sem nenhum item.")) return;
+  const typed = prompt('Para confirmar, digite REINICIAR');
+  if ((typed || "").trim().toUpperCase() !== "REINICIAR") return toast("Reinício cancelado.");
+  host("reset");
+};
+$("hFinish").onclick = () => { if (confirm("Encerrar o leilão agora?")) host("finish"); };
+$("btnBid").onclick = () => sendBid({ amount: $("bidAmt").value });
+$("bidAmt").addEventListener("keydown", e => { if (e.key === "Enter") $("btnBid").click(); });
+$("btnSkip").onclick = () => {
+  const open = S && S.config.mode === "open";
+  if (confirm(open ? "Sair desta disputa? Você não poderá voltar a dar lance neste item." : "Usar um pulo neste item?")) sendBid({ skip:true });
+};
+function sendBid(d){
+  const open = S && S.config.mode === "open";
+  socket.emit("bid", d, (r) => { if (!r.ok) toast(r.error); else toast(d.skip ? (open ? "Você saiu da disputa." : "Você pulou.") : "Lance enviado!"); });
+}
+$("btnCopyExport").onclick = () => navigator.clipboard?.writeText($("exportText").textContent).then(()=>toast("Resultado copiado!"), ()=>toast("Selecione e copie manualmente."));
+
+let clockSkew = 0;
+$("btnRules").onclick = () => $("rulesDlg").showModal();
+$("btnCloseRules").onclick = () => $("rulesDlg").close();
+$("rulesDlg").addEventListener("click", e => { if (e.target === $("rulesDlg")) $("rulesDlg").close(); });
+["pSport","pFormat","pEra"].forEach(id => $(id).addEventListener("change", () => { store.set("lt_prompt", { sport:$("pSport").value, format:$("pFormat").value, era:$("pEra").value }); if (S) $("promptText").textContent = buildPrompt(); }));
+(() => { const sp = store.get("lt_prompt"); if (sp) { $("pSport").value = sp.sport || "futsal"; $("pFormat").value = sp.format || "auto"; $("pEra").value = sp.era || "peak"; } })();
+$("btnCopyPrompt").onclick = () => { const t = buildPrompt(); $("promptText").textContent = t; navigator.clipboard?.writeText(t).then(()=>toast("Prompt copiado!"), ()=>toast("Abra 'Ver prompt' e copie manualmente.")); };
+
+let promptRoom = null;
+$("btnPublish").onclick = () => {
+  const text = $("pubText").value.trim();
+  if (text.length < 20) return toast("Cole a resposta da IA primeiro.");
+  if (S.reveal && S.reveal.total && !confirm("Substituir o resultado já publicado?")) return;
+  socket.emit("host", { action: "publish", text }, (r) => {
+    if (r && !r.ok) return toast(r.error);
+    $("pubText").value = ""; toast("Publicado! Agora revele parte por parte.");
+    $("revCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+};
+let lastShown = -1, lastRevTotal = -1;
+async function downloadCard(){
+  const sum = S && S.reveal && S.reveal.summary; if (!sum) return;
+  try { const r = await ChampionCard.download(sum); if (r === "downloaded") toast("Card baixado!"); }
+  catch (e) { console.error(e); toast("Não consegui gerar o card."); }
+}
+function renderReveal(){
+  const r = S.reveal || { total: 0, shown: 0, sections: [] }, card = $("revCard"), t = T();
+  card.classList.toggle("hidden", !r.total);
+  $("pubBox").classList.toggle("hidden", !me.host);
+  if (!r.total) { lastShown = -1; lastRevTotal = -1; return; }
+  $("revTitle").textContent = t.prompt === "food" || t.prompt === "generic" ? "🎬 Julgamento" : "🎬 Campeonato";
+  $("revCount").textContent = r.shown >= r.total ? `✓ Tudo revelado (${r.total} partes)` : `${r.shown} de ${r.total} partes`;
+  $("revCount").style.color = r.shown >= r.total ? "var(--good)" : "var(--accent)";
+  // redesenha só se mudou (para a animação aparecer só na parte nova)
+  if (r.shown !== lastShown || r.total !== lastRevTotal) {
+    const out = $("revOut");
+    if (r.total !== lastRevTotal || r.shown < out.children.length) out.innerHTML = "";
+    for (let i = out.children.length; i < r.shown; i++) {
+      const d = document.createElement("div"); d.className = "revsec"; d.innerHTML = mdToHtml(r.sections[i]); out.appendChild(d);
+    }
+    if (r.shown > lastShown && lastShown >= 0 && out.lastElementChild) out.lastElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
+    lastShown = r.shown; lastRevTotal = r.total;
+  }
+  const left = r.total - r.shown;
+  const cardBtn = r.summary ? `<div class="revbar" style="border-top:0;margin-top:6px;padding-top:0"><button class="primary" onclick="downloadCard()">🖼️ Baixar card do campeão</button></div>` : "";
+  $("revFoot").innerHTML = me.host
+    ? `<div class="revbar">
+        <button class="primary" ${left ? "" : "disabled"} onclick="host('revealNext')">▶ Revelar próxima${left ? ` (faltam ${left})` : ""}</button>
+        <button ${left ? "" : "disabled"} onclick="if(confirm('Revelar tudo de uma vez?')) host('revealAll')">Revelar tudo</button>
+        <button ${r.shown ? "" : "disabled"} onclick="host('revealPrev')">↩ Esconder última</button>
+        <button class="danger" onclick="if(confirm('Apagar o resultado publicado?')) host('revealClear')">Apagar</button>
+      </div>` + cardBtn
+    : (left ? `<div class="revwait">${r.shown ? "" : "O resultado está pronto! "}Aguardando o organizador revelar a próxima parte… <b>faltam ${left}</b></div>` : cardBtn);
+}
+
+$("btnFc").onclick = () => {
+  if (!S) return;
+  const pending = S.reveal && S.reveal.total && S.reveal.shown < S.reveal.total;
+  if (!confirm(pending ? "Ainda tem resultado sendo revelado. Simular um campeonato novo mesmo assim?" : S.reveal && S.reveal.total ? "Simular de novo? O resultado atual será substituído." : "Simular o campeonato agora? O resultado fica escondido e você revela parte por parte.")) return;
+  socket.emit("host", { action: "simFootball", sport: $("fcSport").value, format: $("fcFormat").value, force: true }, (r) => {
+    if (r && !r.ok) return toast(r.error);
+    toast("Campeonato simulado! Revele parte por parte.");
+    setTimeout(() => $("revCard").scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+  });
+};
+function mdToHtml(text){
+  try { if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: false })); } catch {}
+  return `<pre style="white-space:pre-wrap;font:inherit">${esc(text)}</pre>`;
+}
+const FORMS = {
+  futsal: [["auto","Automática (a melhor para o seu time)"],["2-2","2-2 (2 defensores, 2 atacantes)"],["3-1","3-1 (3 defensores, 1 pivô)"],["1-2-1","1-2-1 losango (1 defensor, 2 meias, 1 atacante)"],["1-1-2","1-1-2 (1 defensor, 1 meia, 2 atacantes)"]],
+  futebol: [["auto","Automática (a melhor para o seu time)"],["4-3-3","4-3-3"],["4-4-2","4-4-2"],["3-5-2","3-5-2"],["4-2-3-1","4-2-3-1"],["3-4-3","3-4-3"],["5-3-2","5-3-2"]],
+};
+function formKind(){ return T().prompt === "futebol" ? "futebol" : "futsal"; }
+let formKindShown = null;
+function renderFormation(){
+  const mine = me.capId && capById(me.capId);
+  const show = !!mine && isFootball();
+  $("formBox").classList.toggle("hidden", !show);
+  if (!show) return;
+  const kind = formKind(), sel = $("myFormation");
+  if (formKindShown !== kind) { sel.innerHTML = FORMS[kind].map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join(""); formKindShown = kind; }
+  if (document.activeElement !== sel) sel.value = FORMS[kind].some(([v]) => v === mine.formation) ? mine.formation : "auto";
+  const locked = S.config.formLock === "locked", frozen = locked && S.phase !== "lobby";
+  sel.disabled = frozen;
+  $("formHint").textContent = (frozen ? "🔒 Formação travada: o leilão já começou. "
+    : locked ? "🔒 Atenção: a formação trava quando o leilão começar. Escolha agora! "
+    : "Formação fluida: dá para mudar até a simulação. ") +
+    "Fora de posição rende menos: atacante no meio 90% e na defesa 80%; volante na defesa 95% e no ataque 85%; meia-atacante no ataque 95% e na defesa 85%; defensor no meio 90% e no ataque 80%; linha no gol 50%.";
+}
+$("myFormation").addEventListener("change", () => socket.emit("formation", { formation: $("myFormation").value }, (r) => { if (r && !r.ok) toast(r.error); else toast("Formação salva!"); }));
+function isFootball(){ const k = T().prompt; return k === "futsal" || k === "futebol"; }
+function subTag(item){ const t = Ratings.meiaType(item); return t ? ` <span class="sub">${t === "VOL" ? "volante" : "meia-atacante"}</span>` : ""; }
+function teamOvr(c){ if (!c.team.length) return null; return Math.round(c.team.reduce((a, x) => a + Ratings.ratingOf(x.player).ovr, 0) / c.team.length); }
+function renderFc(){
+  const show = me.host && isFootball() && S.captains.some(c => c.team.length);
+  $("fcBox").classList.toggle("hidden", !show);
+}
+
+socket.on("state", (st) => {
+  if (st.now) clockSkew = st.now - Date.now();
+  S = st;
+  if (promptRoom !== st.code) { promptRoom = st.code; const k = st.config.terms && st.config.terms.prompt; if (k) $("pSport").value = k; if (k === "futebol" || k === "futsal") $("fcSport").value = k; syncPromptUI(); }
+  render();
+});
+function syncPromptUI(){
+  const k = $("pSport").value, game = !["food","generic"].includes(k);
+  $("pFormatWrap").classList.toggle("hidden", !game);
+  $("pEraWrap").classList.toggle("hidden", !game);
+}
+$("pSport").addEventListener("change", syncPromptUI);
+
+function T(){ return (S && S.config.terms) || { item:"jogador", items:"jogadores", team:"time", teams:"times", prefix:"Time", prompt:"generic" }; }
+const catOf = (item) => { const m = /\(([^)]+)\)\s*$/.exec(item || ""); return m ? m[1].trim() : null; };
+function compReq(){ const c = S.config.comp || { mode:"free" }; return c.mode === "exact" ? c.slots : c.mode === "min" ? c.req : {}; }
+function countCat(c, cat){ return c.team.filter(x => catOf(x.player) === cat).length; }
+function needsOf(c){ const r = compReq(), out = []; for (const [k,v] of Object.entries(r)) { const n = v - countCat(c,k); if (n > 0) out.push(n > 1 ? `${n} ${k}` : k); } return out; }
+function blockReason(c, item){
+  const comp = S.config.comp || { mode:"free" }, cat = catOf(item);
+  if (c.team.length >= S.config.perTeam) return "Você já completou todas as vagas. Só acompanhe.";
+  if (comp.mode === "exact" && cat && comp.slots[cat] != null && countCat(c,cat) >= comp.slots[cat]) return `Você já tem ${countCat(c,cat)} ${cat}, que é o máximo da composição. Só acompanhe esta.`;
+  const r = compReq(), n = needsOf(c);
+  if (cat && r[cat] != null && countCat(c, cat) >= r[cat]) return `Você já tem ${cat}. Os que sobraram estão guardados para quem ainda precisa. Só acompanhe esta.`;
+  return n.length ? `Você precisa guardar sua${S.config.perTeam - c.team.length > 1 ? "s vagas" : " vaga"} para: ${n.join(", ")}. Só acompanhe esta.` : "Você não pode pegar este item. Só acompanhe.";
+}
+function capById(id){ return S.captains.find(c => c.id === id); }
+function maxBidFor(c){ return c.coins - (S.config.perTeam - c.team.length - 1) * S.config.minBid; }
+
+function render(){
+  const st = S, cfg = st.config;
+  $("rCode").textContent = st.code;
+  const mine = me.capId && capById(me.capId);
+  $("rRole").textContent = (me.host ? "Organizador" : "") + (me.host && mine ? " · " : "") + (mine ? "Você: " + mine.name : (me.host ? "" : "Espectador"));
+  const OPEN = cfg.mode === "open";
+  const t = T();
+  $("teamsTitle").textContent = cap(t.teams);
+  $("rRules").textContent = (t.icon ? t.icon + " " + t.label + " · " : "") + (OPEN ? "🔨 Lance aberto · " : "🔒 Lance secreto · ") + `${cfg.perTeam} por ${t.team} · ${cfg.coins} moedas${OPEN ? "" : ` · ${cfg.skips} pulo${cfg.skips===1?"":"s"}`} · mín. ${cfg.minBid}${cfg.timer?` · ${cfg.timer}s${OPEN?" por lance":""}`:""}`;
+  $("rPool").textContent = `${st.poolCount} na roleta`;
+  const comp = cfg.comp || { mode:"free" };
+  if (["futsal","futebol"].includes(t.prompt)) $("rRules").textContent += cfg.formLock === "locked" ? " · formação travada" : " · formação fluida";
+  if (comp.mode !== "free") $("rRules").textContent += comp.mode === "exact" ? ` · composição: ${fmtCats(comp.slots)}` : ` · obrigatório: ${fmtCats(comp.req)}`;
+
+  // teams
+  const cur = st.current;
+  $("teams").innerHTML = st.captains.map(c => {
+    const FB = isFootball();
+    const slots = Array.from({length: cfg.perTeam}, (_, i) => c.team[i]
+      ? `<li><span>${esc(c.team[i].player)}${FB ? subTag(c.team[i].player) : ""}${FB ? ` <b class="ovr${Ratings.ratingOf(c.team[i].player).est ? " est" : ""}">${Ratings.ratingOf(c.team[i].player).ovr}</b>` : ""}</span><span>${c.team[i].price}</span></li>`
+      : `<li class="empty"><span>vaga</span><span></span></li>`).join("");
+    let bs = "";
+    if (cur && st.phase === "bidding") {
+      if (!cur.eligible.includes(c.id)) bs = `<span class="bidstate muted">${c.team.length >= cfg.perTeam ? "completo" : "não pode"}</span>`;
+      else if (OPEN) {
+        if (cur.high && cur.high.id === c.id) bs = `<span class="bidstate" style="color:var(--good)">▲ na frente</span>`;
+        else if (cur.passed[c.id]) bs = `<span class="bidstate muted">saiu</span>`;
+        else if (maxBidFor(c) < (cur.high ? cur.high.amount + 1 : cfg.minBid)) bs = `<span class="bidstate muted">sem moedas</span>`;
+        else bs = `<span class="bidstate" style="color:var(--accent)">na disputa</span>`;
+      }
+      else if (cur.bids[c.id]) bs = `<span class="bidstate" style="color:var(--good)">✓ pronto</span>`;
+      else bs = `<span class="bidstate" style="color:var(--accent)">pensando…</span>`;
+    }
+    const kick = me.host && st.phase === "lobby" && !c.isHost ? `<button class="ghost danger" style="padding:2px 8px;font-size:12px" onclick="host('kick',{id:'${c.id}'})">remover</button>` : "";
+    return `<div class="team ${c.id===me.capId?"me":""}">${bs}
+      <h3><span class="row" style="gap:8px"><i class="dot ${c.connected?"on":""}"></i>${esc(c.name)}</span>${kick}</h3>
+      <div class="stats"><span><b>${c.coins}</b> moedas</span>${OPEN ? "" : `<span><b>${c.skipsLeft}</b> pulo${c.skipsLeft===1?"":"s"}</span>`}<span><b>${c.team.length}</b>/${cfg.perTeam}</span>${FB && c.team.length ? `<span>OVR <b>${teamOvr(c)}</b></span>` : ""}${FB ? `<span>⚽ <b>${c.formation && c.formation !== "auto" ? esc(c.formation) : "auto"}</b></span>` : ""}</div>
+      <div class="coinbar"><i style="width:${Math.max(0,100*c.coins/cfg.coins)}%"></i></div>
+      ${needsOf(c).length && c.team.length < cfg.perTeam ? `<div style="font-size:12.5px;color:var(--accent2);margin:-4px 0 8px">Falta: ${esc(needsOf(c).join(", "))}</div>` : ""}
+      <ol>${slots}</ol></div>`;
+  }).join("") || `<p class="muted">Ninguém entrou ainda.</p>`;
+
+  // pool / unsold / log
+  $("poolN").textContent = st.poolCount;
+  $("poolChips").innerHTML = st.pool.map(p => `<span>${esc(p)}${isFootball() ? ` <b class="ovr${Ratings.ratingOf(p).est ? " est" : ""}">${Ratings.ratingOf(p).ovr}</b>` : ""}</span>`).join("");
+  $("unsoldWrap").classList.toggle("hidden", !st.unsold.length);
+  $("unsoldN").textContent = st.unsold.length;
+  $("unsoldChips").innerHTML = st.unsold.map(p => `<span>${esc(p)}</span>`).join("");
+  $("log").innerHTML = st.log.map(l => `<div>${esc(l.msg)}</div>`).join("");
+
+  // wheel
+  if (st.spin && st.spin.id !== lastSpinId) {
+    lastSpinId = st.spin.id;
+    // usa o relógio do servidor (clockSkew) e limita a duração: celular com relógio errado não trava a roleta
+    const age = Math.max(0, Date.now() + clockSkew - st.spin.at);
+    if (age < 3000 && st.phase === "bidding") spinTo(st.spin.names, st.spin.index, Math.min(4000, Math.max(800, 4000 - age)));
+    else { const n = st.spin.names.length, seg = 2*Math.PI/n; wheelAngle = -(st.spin.index+.5)*seg; drawWheel(st.spin.names, wheelAngle); }
+  } else if (!spinning) {
+    const keep = st.spin && ["bidding","reveal"].includes(st.phase);
+    drawWheel(keep ? st.spin.names : (st.pool.length ? st.pool : ["—"]), wheelAngle);
+  }
+
+  // stage
+  const showName = cur && !spinning;
+  $("drawnLbl").textContent = st.phase === "lobby" ? "Sala de espera" : st.phase === "done" ? "Leilão encerrado" : cur ? (spinning ? "Girando…" : "Em leilão") : "Próximo sorteio";
+  const mt = isFootball() && showName ? Ratings.meiaType(cur.player) : null;
+  $("drawnName").textContent = showName ? cur.player + (mt ? (mt === "VOL" ? " · volante" : " · meia-atacante") : "") + (isFootball() ? ` · ${Ratings.ratingOf(cur.player).ovr}` : "") : (st.phase === "done" ? "🏆" : "—");
+  $("hub").textContent = showName ? "!" : "?";
+
+  // lobby message
+  const lm = $("lobbyMsg");
+  if (st.phase === "lobby") {
+    lm.classList.remove("hidden");
+    const need = st.captains.length * cfg.perTeam;
+    lm.innerHTML = `Mande o código <b style="color:var(--accent)">${st.code}</b> para a galera. ${st.captains.length} participante(s) na sala.` +
+      (st.captains.length ? ` <br><span class="muted">São necessários ${need} ${esc(t.items)} e a roleta tem ${st.poolCount}${st.poolCount < need ? ` — <b style='color:var(--bad)'>faltam ${esc(t.items)}!</b>` : ""}.</span>` : "") +
+      (me.host ? "" : "<br><span class='muted'>Aguardando o organizador começar.</span>");
+  } else lm.classList.add("hidden");
+
+  $("finalMsg").classList.toggle("hidden", !(cur && cur.finalStretch && st.phase === "bidding" && !spinning));
+
+  // open-mode info (current high + feed)
+  const showOpen = OPEN && cur && !spinning && ["bidding","reveal"].includes(st.phase);
+  $("openInfo").classList.toggle("hidden", !showOpen || st.phase === "reveal");
+  if (showOpen) {
+    const hb = $("highBox"), h = cur.high;
+    hb.className = "highbox" + (h && h.id === me.capId ? " mine" : "");
+    hb.innerHTML = h
+      ? `<div><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em">Maior lance</div><div style="font-weight:700;font-size:18px">${esc(capById(h.id).name)}${h.id===me.capId?" (você)":""}</div></div><div class="amt">${h.amount}</div>`
+      : `<div><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em">Ninguém deu lance ainda</div><div style="font-weight:700;font-size:18px">Abre com ${cfg.minBid}</div></div><div class="amt">–</div>`;
+    $("feed").innerHTML = cur.feed.map(f => `<div><span>${esc(capById(f.id).name)}</span><span>${f.amount}</span></div>`).join("");
+  }
+
+  // bid panel
+  const need = OPEN && cur ? (cur.high ? cur.high.amount + 1 : cfg.minBid) : cfg.minBid;
+  const canBid = mine && st.phase === "bidding" && cur.eligible.includes(me.capId) && !spinning && (OPEN
+    ? !cur.passed[me.capId] && !(cur.high && cur.high.id === me.capId) && maxBidFor(mine) >= need
+    : !cur.bids[me.capId]);
+  $("bidPanel").classList.toggle("hidden", !canBid);
+  if (canBid && OPEN) {
+    const mx = maxBidFor(mine);
+    $("bidLabel").textContent = cur.high ? "Cobrir o lance" : "Abrir o lance";
+    $("bidAmt").min = need; $("bidAmt").max = mx;
+    if (!$("bidAmt").value || +$("bidAmt").value < need || +$("bidAmt").value > mx) $("bidAmt").value = need;
+    $("bidLimits").textContent = `mín. ${need} · máx. ${mx}`;
+    $("btnSkip").disabled = false;
+    $("btnSkip").textContent = "Sair";
+    $("btnBid").textContent = cur.high ? "Cobrir" : "Dar lance";
+    const qs = [...new Set([need, need+1, need+2, need+5, mx].filter(v => v >= need && v <= mx))].sort((a,b)=>a-b);
+    $("quick").innerHTML = qs.map(v => `<button onclick="document.getElementById('bidAmt').value=${v}">${v===mx?"All-in "+v:(v===need?v+" (mínimo)":v)}</button>`).join("");
+  } else if (canBid) {
+    $("bidLabel").textContent = "Seu lance (secreto)";
+    $("btnBid").textContent = "Dar lance";
+    const mx = maxBidFor(mine);
+    $("bidAmt").min = cfg.minBid; $("bidAmt").max = mx;
+    if (!$("bidAmt").value || +$("bidAmt").value > mx) $("bidAmt").value = cfg.minBid;
+    $("bidLimits").textContent = `mín. ${cfg.minBid} · máx. ${mx}`;
+    $("btnSkip").disabled = mine.skipsLeft <= 0;
+    $("btnSkip").textContent = `Pular (${mine.skipsLeft})`;
+    const qs = [...new Set([cfg.minBid, 2, 3, 5, 8, 10, 15, 20, mx].filter(v => v >= cfg.minBid && v <= mx))].sort((a,b)=>a-b);
+    $("quick").innerHTML = qs.map(v => `<button onclick="document.getElementById('bidAmt').value=${v}">${v===mx?"All-in "+v:v}</button>`).join("");
+  }
+  const ms = $("myStatus");
+  if (mine && st.phase === "bidding" && !spinning && OPEN) {
+    if (!cur.eligible.includes(me.capId)) { ms.className = "status"; ms.textContent = blockReason(mine, cur.player); }
+    else if (cur.high && cur.high.id === me.capId) { ms.className = "status good"; ms.textContent = `Você está na frente com ${cur.high.amount}! Se ninguém cobrir até o tempo acabar, ele é seu.`; }
+    else if (cur.passed[me.capId]) { ms.className = "status"; ms.textContent = "Você saiu desta disputa."; }
+    else if (maxBidFor(mine) < need) { ms.className = "status"; ms.textContent = "Você não tem moedas para cobrir este lance."; }
+    else ms.className = "status hidden";
+  } else if (mine && st.phase === "bidding" && !spinning) {
+    const b = cur.bids[me.capId];
+    if (!cur.eligible.includes(me.capId)) { ms.className = "status"; ms.textContent = blockReason(mine, cur.player); }
+    else if (b) { ms.className = "status good"; ms.textContent = b.skip ? "Você pulou. Aguardando os outros…" : `Seu lance: ${b.amount}. Aguardando os outros…`; }
+    else ms.className = "status hidden";
+  } else ms.className = "status hidden";
+
+  // result
+  const rb = $("resultBox");
+  if (st.phase === "reveal" && cur && cur.result) {
+    const r = cur.result, w = r.winner && capById(r.winner);
+    rb.classList.remove("hidden");
+    rb.innerHTML = (w ? `<div class="muted">${esc(cur.player)} vai para</div><div class="big">${esc(w.name)} · ${r.amount} moeda${r.amount===1?"":"s"}</div>${r.lottery?`<div class="muted" style="font-size:13px">Ninguém deu lance na reta final — decidido no sorteio</div>`:""}${r.tie?`<div class="muted" style="font-size:13px">Empate entre ${r.tiedIds.map(i=>esc(capById(i).name)).join(", ")} — decidido no sorteio</div>`:""}`
+      : `<div class="big">Ninguém deu lance</div><div class="muted">${esc(cur.player)} ficou sem dono.</div>`) +
+      (OPEN ? (cur.feed.length ? `<div class="muted" style="font-size:13px;margin-top:8px">${cur.feed.length} lance${cur.feed.length===1?"":"s"}: ${cur.feed.map(f=>`${esc(capById(f.id).name)} ${f.amount}`).join(" → ")}</div>` : "") :
+      `<div class="bidlist">${cur.eligible.map(id => { const b = cur.bids[id], c = capById(id);
+        return `<div class="${id===r.winner?"win":""}">${esc(c.name)}<b>${b.skip?"pulou":b.amount}</b>${b.auto?`<span class="muted" style="font-size:11px">automático</span>`:""}</div>`; }).join("")}</div>`);
+  } else rb.classList.add("hidden");
+
+  // host bar
+  $("hostBar").classList.toggle("hidden", !me.host);
+  $("resetBox").classList.toggle("hidden", !me.host || st.phase === "lobby");
+  if (me.host) {
+    $("hStart").classList.toggle("hidden", st.phase !== "lobby");
+    $("hSpin").classList.toggle("hidden", !["idle","reveal"].includes(st.phase));
+    $("hSpin").textContent = st.phase === "reveal" ? `Próximo ${t.item}` : "Girar roleta";
+    $("hReveal").classList.toggle("hidden", st.phase !== "bidding");
+    $("hReveal").textContent = OPEN ? "Bater o martelo" : "Revelar agora";
+    $("hUndo").classList.toggle("hidden", !["idle","reveal"].includes(st.phase));
+    $("hUnsold").classList.toggle("hidden", !st.unsold.length || st.phase === "bidding");
+    $("hFinish").classList.toggle("hidden", st.phase === "lobby" || st.phase === "done");
+  }
+
+  // export
+  const showExport = st.phase === "done" || st.captains.some(c => c.team.length);
+  $("exportCard").classList.toggle("hidden", !showExport);
+  $("promptText").textContent = buildPrompt();
+  $("exportText").textContent = st.captains.map(c => [`${t.prefix} ${c.name}`, ...c.team.map(x => x.player.replace(/\s*\([^)]*\)\s*$/, ""))].join("\n")).join("\n\n");
+
+  renderFc();
+  renderFormation();
+  renderReveal();
+
+  // timer
+  tickTimer();
+}
+
+let timerH = null;
+function tickTimer(){
+  clearInterval(timerH);
+  const el = $("timer");
+  const d = S && S.phase === "bidding" && S.current && S.current.deadline;
+  if (!d) { el.textContent = ""; el.classList.remove("hot"); return; }
+  const upd = () => { const s = Math.max(0, Math.ceil((d - (Date.now() + clockSkew))/1000)); el.textContent = spinning ? "" : `⏱ ${s}s`; el.classList.toggle("hot", !spinning && s <= 5); };
+  upd(); timerH = setInterval(upd, 250);
+}
+
+
+function promptOpts(){ return { sport:$("pSport").value, format:$("pFormat").value, era:$("pEra").value }; }
+function buildPrompt(){ return Prompts.buildPrompt(S, promptOpts()); }
+
+// ---------- WHEEL ----------
+const cv = $("wheel"), ctx = cv.getContext("2d");
+function drawWheel(names, angle){
+  const W = cv.width, R = W/2 - 8, n = names.length, seg = 2*Math.PI/n;
+  ctx.clearRect(0,0,W,W);
+  ctx.save(); ctx.translate(W/2, W/2); ctx.rotate(angle);
+  for (let i = 0; i < n; i++) {
+    const a0 = -Math.PI/2 + i*seg; // segment i starts at top when angle=0
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,R,a0,a0+seg); ctx.closePath();
+    const base = COLORS[i % COLORS.length];
+    ctx.fillStyle = (n % COLORS.length === 1 && i === n-1) ? COLORS[3] : base;
+    ctx.globalAlpha = i % 2 ? .78 : 1; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#0c0f14"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.save(); ctx.rotate(a0 + seg/2);
+    ctx.fillStyle = "#12100a";
+    const fs = Math.max(11, Math.min(30, 560 / n + 6));
+    ctx.font = `700 ${fs}px "Barlow Condensed", Inter, sans-serif`;
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    let t = names[i]; const maxW = R*0.68;
+    while (ctx.measureText(t).width > maxW && t.length > 3) t = t.slice(0,-2) + "…";
+    ctx.fillText(t, R - 16, 0);
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(W/2,W/2,R,0,2*Math.PI); ctx.strokeStyle="#262f40"; ctx.lineWidth=8; ctx.stroke();
+}
+function spinTo(names, index, dur){
+  spinning = true; render();
+  const n = names.length, seg = 2*Math.PI/n;
+  // pointer is at top (-PI/2). segment i center at -PI/2 + (i+.5)seg + angle => want angle = -(i+.5)seg (mod 2PI)
+  const jitter = (Math.random() - .5) * seg * .6;
+  const target = -(index + .5) * seg + jitter;
+  const start = wheelAngle % (2*Math.PI);
+  let end = target - 2*Math.PI*6; while (end > start - 2*Math.PI*5) end -= 2*Math.PI;
+  const t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 4);
+  (function frame(now){
+    const t = Math.min(1, (now - t0) / Math.min(4500, Math.max(800, dur)));
+    wheelAngle = start + (end - start) * ease(t);
+    drawWheel(names, wheelAngle);
+    if (t < 1) requestAnimationFrame(frame);
+    else { spinning = false; wheelAngle = end; render(); if (S.phase === "bidding") $("bidAmt").focus?.(); }
+  })(t0);
+}
+drawWheel(["—"], 0);
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72">
+  <defs>
+    <linearGradient id="prata" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#c9d4f0"/><stop offset="1" stop-color="#8e9cc4"/></linearGradient>
+  </defs>
+  <path d="M32 2 60 10v25c0 18.5-12.5 30.5-28 35C16.5 65.5 4 53.5 4 35V10z" fill="url(#prata)" stroke="#7f8fbd" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M32 8.5 54 15v20c0 14.6-9.6 24.4-22 28.4C19.6 59.4 10 49.6 10 35V15z" fill="#050d33"/>
+  <path d="M19.00 16.00L19.73 17.99L21.85 18.07L20.19 19.39L20.76 21.43L19.00 20.25L17.24 21.43L17.81 19.39L16.15 18.07L18.27 17.99ZM45.00 16.00L45.73 17.99L47.85 18.07L46.19 19.39L46.76 21.43L45.00 20.25L43.24 21.43L43.81 19.39L42.15 18.07L44.27 17.99Z" fill="#dfe7fb"/>
+  <circle cx="32" cy="37" r="16" fill="#030822" stroke="#2fd3ff" stroke-width="1.6"/>
+  <g stroke="#050d33" stroke-width="1" stroke-linejoin="round">
+    <path d="M32 37L32.00 23.00A14 14 0 0 1 44.12 30.00Z" fill="#dfe7fb"/><path d="M32 37L44.12 30.00A14 14 0 0 1 44.12 44.00Z" fill="#2fd3ff"/><path d="M32 37L44.12 44.00A14 14 0 0 1 32.00 51.00Z" fill="#ff5aa0"/><path d="M32 37L32.00 51.00A14 14 0 0 1 19.88 44.00Z" fill="#5fe39a"/><path d="M32 37L19.88 44.00A14 14 0 0 1 19.88 30.00Z" fill="#9a8cff"/><path d="M32 37L19.88 30.00A14 14 0 0 1 32.00 23.00Z" fill="#7fb2ff"/>
+  </g>
+  <circle cx="32" cy="37" r="4" fill="#ffffff" stroke="#050d33" stroke-width="1.2"/>
+  <path d="M27 16h10l-5 8z" fill="#ffffff" stroke="#050d33" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>
