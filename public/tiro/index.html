@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tiro da Galera</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* arena no deserto: chapa de metal escura, faixa de alerta e as cores dos dois times */
+  --bg:#0f1114;--panel:#181b20;--panel2:#20242b;--line:#2d323b;
+  --text:#f1f2f4;--muted:#99a0ab;--accent:#ffb020;--good:#35d07f;--bad:#ff4d4d;
+  --blue:#3d8bff;--orange:#ff8a2a;
+  --display:"Russo One",Impact,system-ui,sans-serif;
+  --body:Figtree,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--body)}
+body{min-height:100vh;background:radial-gradient(1200px 500px at 50% -10%,#ffb02014,transparent),repeating-linear-gradient(90deg,#ffffff04 0 1px,transparent 1px 40px),var(--bg)}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:1.1;margin:0;letter-spacing:.02em}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;font-weight:700;cursor:pointer;border-radius:8px;padding:10px 16px;background:#262b33;color:var(--text);border:1px solid #3a404b;box-shadow:0 3px 0 #000;transition:transform .08s,box-shadow .08s,filter .15s}
+button:hover:not(:disabled){filter:brightness(1.15)}
+button:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #000}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.ghost{background:transparent;box-shadow:none;border-color:transparent;color:var(--muted)}
+button.small{padding:6px 11px;font-size:13px}
+button.primary{background:linear-gradient(#ffc444,#f39c12);color:#2a1800;border-color:#a86a00;font-family:var(--display);font-weight:400;letter-spacing:.04em}
+button.on{outline:2px solid var(--accent);background:#3a3220}
+input{font:inherit;color:var(--text);background:#0b0d10;border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
+input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+input[type=range]{padding:0;accent-color:var(--accent)}
+label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.err{color:var(--bad);font-size:14px;min-height:20px;margin-top:10px;font-weight:700}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 16px 60px}
+.stripe{height:8px;background:repeating-linear-gradient(-45deg,var(--accent) 0 12px,#111 12px 24px)}
+
+.bar{position:sticky;top:0;z-index:20;background:#0f1114ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1100px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;gap:10px}
+.brand{margin-right:auto;min-width:0}
+.brand h1{font-size:20px;white-space:nowrap}
+.brand h1 span{color:var(--accent)}
+.tovila{color:var(--muted);text-decoration:none;font-weight:700;font-size:14px;padding:6px 10px 6px 4px;white-space:nowrap}
+.tovila:hover{color:var(--text)}
+.roomtag{display:flex;align-items:center;gap:8px}
+.roomtag .code{font:20px var(--display);letter-spacing:.12em;color:var(--accent)}
+
+.panel{background:linear-gradient(180deg,#1b1f25,#14171b);border:1px solid #2f3540;border-radius:12px;box-shadow:0 20px 40px #0008;overflow:hidden}
+.panel .in{padding:20px}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;align-items:center;margin-top:24px}
+.hero h2{font-size:clamp(38px,6vw,64px)}
+.hero h2 em{font-style:normal;color:var(--accent)}
+.lead{font-size:17px;color:#c9ced6;max-width:520px}
+.feats{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.feats span{background:#20252c;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13.5px;font-weight:700}
+.or{text-align:center;color:var(--muted);margin:12px 0;font-size:13px}
+.warn{background:#3a2a10;border:1px solid #7a5418;color:#ffd58a;border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:14px}
+@media (max-width:760px){.hero{grid-template-columns:1fr}}
+
+.lobby{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;margin-top:18px}
+@media (max-width:860px){.lobby{grid-template-columns:1fr}}
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.team{border-radius:10px;padding:12px;min-height:150px;border:2px solid}
+.team.A{border-color:#2c5ca8;background:#16233a}
+.team.B{border-color:#a8581c;background:#3a2214}
+.team h3{font-size:18px;margin-bottom:8px}
+.team.A h3{color:var(--blue)}.team.B h3{color:var(--orange)}
+.pl{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;background:#0005;margin-bottom:6px;font-weight:700}
+.pl .dot{width:8px;height:8px;border-radius:50%;background:#555}.pl .dot.on{background:var(--good)}
+.pl .w{margin-left:auto;font-size:12px;color:var(--muted);font-weight:600}
+.pl.me{outline:2px solid var(--accent)}
+.bench{margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:10px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:70px}
+.wpick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wcard{text-align:left;padding:12px;border-radius:10px}
+.wcard b{display:block;font:20px var(--display)}
+.wcard span{font-size:12.5px;color:var(--muted);font-weight:500}
+.keys{font-size:13.5px;color:#c9ced6;columns:2;column-gap:20px;margin:8px 0 0;padding-left:18px}
+kbd{display:inline-block;background:#2a2f37;border:1px solid #444b57;border-bottom-width:3px;border-radius:5px;padding:0 6px;font:700 12px var(--body);color:#fff;min-width:20px;text-align:center}
+
+/* ---------- jogo ---------- */
+#game{position:fixed;inset:0;background:#000;z-index:30}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;pointer-events:none;font-family:var(--display);text-shadow:0 2px 0 #000a,0 0 8px #0008;color:#fff}
+#hTop{top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px}
+#hTop .sc{font-size:30px;min-width:46px;text-align:center;padding:2px 10px;border-radius:6px}
+#hTop .sc.A{background:#2f6fdecc}#hTop .sc.B{background:#e0742acc}
+#hTop .clock{font-size:24px;background:#000a;padding:4px 12px;border-radius:6px;min-width:84px;text-align:center}
+#hTop .clock.hot{color:var(--bad)}
+.alive{display:flex;gap:3px}.alive i{width:10px;height:22px;border-radius:3px;background:#fff;display:block}.alive i.dead{background:#fff3}
+#hHp{left:18px;bottom:16px;font-size:34px;display:flex;align-items:center;gap:10px}
+#hHp .bar{width:150px;height:8px;background:#0008;border-radius:4px;overflow:hidden}#hHp .bar i{display:block;height:100%;background:#fff}
+#hHp.low{color:var(--bad)}#hHp.low .bar i{background:var(--bad)}
+#hAmmo{right:18px;bottom:16px;text-align:right}
+#hAmmo .n{font-size:38px}#hAmmo .n small{font-size:20px;opacity:.75}
+#hAmmo .wn{font-size:15px;opacity:.85}
+#hPing{left:12px;top:10px;font:700 13px var(--body);opacity:.85}
+#hFeed{right:12px;top:10px;display:grid;gap:4px;justify-items:end;font:700 14px var(--body)}
+#hFeed div{background:#000a;border-radius:5px;padding:3px 10px}
+#hFeed div.mine{outline:2px solid #ff3b3b;background:#3a0b0bcc}
+#hFeed .A{color:#8dbbff}#hFeed .B{color:#ffb27a}#hFeed .wx{color:#ddd;font-weight:600;margin:0 6px}
+#hMsg{top:22%;left:50%;transform:translateX(-50%);text-align:center;font-size:30px;white-space:nowrap}
+#hMsg small{display:block;font:700 16px var(--body);opacity:.9}
+#hSpec{bottom:70px;left:50%;transform:translateX(-50%);font:700 15px var(--body);background:#000a;padding:6px 14px;border-radius:6px}
+#cross{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none}
+#cross i{position:absolute;background:#5dff6a;box-shadow:0 0 0 1px #000a}
+#cross .dot{width:2px;height:2px;left:-1px;top:-1px}
+#hitm{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;pointer-events:none;opacity:0}
+#hitm:before,#hitm:after{content:"";position:absolute;left:12px;top:-2px;width:2px;height:30px;background:#fff;transform:rotate(45deg);box-shadow:0 0 2px #000}
+#hitm:after{transform:rotate(-45deg)}
+#hitm.kill:before,#hitm.kill:after{background:#ff3b3b}
+#scope{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 50%,transparent 0 calc(min(46vh,46vw) - 2px),#000 min(46vh,46vw))}
+#scope:before,#scope:after{content:"";position:absolute;background:#000}
+#scope:before{left:0;right:0;top:50%;height:1px}
+#scope:after{top:0;bottom:0;left:50%;width:1px}
+#dmg{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 160px 40px #d00;opacity:0;transition:opacity .35s}
+#pick{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);display:flex;gap:12px;pointer-events:auto}
+#pick button{min-width:170px;text-align:left;background:#000b;border:2px solid #fff3;font-family:var(--body)}
+#pick button b{display:block;font:22px var(--display)}
+#pick button.on{border-color:var(--accent);background:#3a2a08d0}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#000a;padding:16px;z-index:5}
+.overlay .box{background:#14171bf2;border:1px solid #3a404b;border-radius:12px;padding:20px;width:min(560px,100%);max-height:100%;overflow:auto}
+.overlay h2{font-size:28px;margin-bottom:6px}
+.sb{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+.sb th{text-align:left;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;padding:4px 6px}
+.sb td{padding:5px 6px;border-top:1px solid #2a2f37;font-weight:700}
+.sb td.n{text-align:right;font-variant-numeric:tabular-nums}
+.sb tr.A td:first-child{border-left:4px solid var(--blue)}.sb tr.B td:first-child{border-left:4px solid var(--orange)}
+.sb tr.dead td{opacity:.5}
+.sb tr.me td{background:#ffb0201a}
+#tab{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(620px,94vw);background:#0e1013e8;border:1px solid #3a404b;border-radius:10px;padding:14px 18px;pointer-events:none}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222831;border:1px solid #3a404b;border-radius:10px;padding:10px 16px;font-weight:700;z-index:60;box-shadow:0 10px 30px #000a}
+</style>
+</head>
+<body>
+<header class="bar" id="bar">
+  <div class="bar-in">
+    <a class="tovila" href="/" title="Voltar para a vila">← Vila</a>
+    <div class="brand"><h1>🎯 Tiro da <span>Galera</span></h1></div>
+    <div class="roomtag hidden" id="roomTag"><span class="muted">Sala</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
+  </div>
+</header>
+<div class="stripe"></div>
+
+<div class="wrap">
+  <section id="home" class="hidden">
+    <div class="hero">
+      <div>
+        <h2>Arena de<br><em>tiro</em> da galera</h2>
+        <p class="lead">Mata-mata em rodadas, no estilo CS: x1 ou x2 numa arena no deserto. Escolha AK-47 ou AWP no começo de cada rodada. Quem eliminar o outro time leva a rodada.</p>
+        <div class="feats"><span>🔫 AK-47</span><span>🔭 AWP com mira</span><span>👤 x1</span><span>👥 x2</span><span>🎯 Treino com alvos</span></div>
+      </div>
+      <div class="panel"><div class="stripe"></div><div class="in">
+        <div class="warn hidden" id="mobileWarn">Esse jogo precisa de computador com teclado e mouse.</div>
+        <label for="hName">Seu nome</label>
+        <input id="hName" maxlength="8" placeholder="Ex.: Fallen" autocomplete="off">
+        <label for="hCode" style="margin-top:14px">Código da sala</label>
+        <input id="hCode" maxlength="5" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em">
+        <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
+        <div class="or">ou</div>
+        <div class="row"><button id="btnCreate" style="flex:1">Abrir sala nova</button><button id="btnPractice" style="flex:1">🎯 Treinar sozinho</button></div>
+        <div class="err" id="hErr"></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section id="lobby" class="hidden">
+    <div class="lobby">
+      <div class="panel"><div class="in">
+        <h2 style="font-size:24px;margin-bottom:12px">Times</h2>
+        <div class="teams">
+          <div class="team A"><h3>Azul</h3><div id="tA"></div><button class="small" id="joinA">Entrar no Azul</button></div>
+          <div class="team B"><h3>Laranja</h3><div id="tB"></div><button class="small" id="joinB">Entrar no Laranja</button></div>
+        </div>
+        <div class="bench"><div class="row" style="justify-content:space-between"><b>Banco</b><button class="small ghost" id="joinBench">Ir pro banco</button></div><div id="tN" class="muted" style="margin-top:6px"></div></div>
+        <div id="myW" style="margin-top:16px">
+          <label>Sua arma (dá pra trocar no começo de cada rodada)</label>
+          <div class="wpick">
+            <button class="wcard" data-w="ak"><b>AK-47</b><span>Automática, 30 balas. Um tiro na cabeça mata.</span></button>
+            <button class="wcard" data-w="awp"><b>AWP</b><span>Sniper com mira. Um tiro no peito mata.</span></button>
+          </div>
+        </div>
+      </div></div>
+      <div class="panel"><div class="in">
+        <h2 style="font-size:24px;margin-bottom:12px">Partida</h2>
+        <label>Modo</label>
+        <div class="seg" id="cfgSize"><button data-v="1">x1</button><button data-v="2">x2</button></div>
+        <label style="margin-top:14px">Rodadas para vencer</label>
+        <div class="seg" id="cfgRounds"><button data-v="3">3</button><button data-v="5">5</button><button data-v="8">8</button></div>
+        <div id="startBox" style="margin-top:18px"></div>
+        <button id="btnPractice2" style="width:100%;margin-top:10px">🎯 Treinar enquanto espera</button>
+        <label style="margin-top:18px">Controles</label>
+        <ul class="keys">
+          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> andar</li>
+          <li><kbd>Shift</kbd> andar devagar</li>
+          <li><kbd>Espaço</kbd> pular</li>
+          <li>Botão esquerdo: atirar</li>
+          <li>Botão direito: mira da AWP</li>
+          <li><kbd>R</kbd> recarregar</li>
+          <li><kbd>1</kbd> AK · <kbd>2</kbd> AWP</li>
+          <li><kbd>Tab</kbd> placar</li>
+        </ul>
+        <p class="muted" style="font-size:13.5px;margin:10px 0 0">Dica: atire parado. Andando, a bala espalha. Na AK, segure o mouse um pouco para baixo enquanto atira em rajada.</p>
+      </div></div>
+    </div>
+  </section>
+</div>
+
+<section id="game" class="hidden">
+  <canvas id="cv"></canvas>
+  <div id="scope" class="hidden"></div>
+  <div id="dmg"></div>
+  <div id="cross"></div>
+  <div id="hitm"></div>
+  <div class="hud" id="hPing"></div>
+  <div class="hud" id="hTop"></div>
+  <div class="hud" id="hFeed"></div>
+  <div class="hud" id="hMsg"></div>
+  <div class="hud hidden" id="hSpec"></div>
+  <div class="hud" id="hHp"></div>
+  <div class="hud" id="hAmmo"></div>
+  <div id="pick" class="hidden">
+    <button data-w="ak"><b>AK-47</b><kbd>1</kbd> automática</button>
+    <button data-w="awp"><b>AWP</b><kbd>2</kbd> sniper</button>
+  </div>
+  <div id="tab" class="hidden"></div>
+  <div class="overlay hidden" id="pause"><div class="box">
+    <h2>Pausado</h2>
+    <p class="muted" style="margin:0 0 14px">Clique em "Voltar pro jogo" para prender o mouse na tela. <kbd>Esc</kbd> solta o mouse.</p>
+    <button class="primary" id="btnResume" style="width:100%">Voltar pro jogo</button>
+    <label style="margin-top:18px">Sensibilidade do mouse: <span id="sensV"></span></label>
+    <input type="range" id="sens" min="0.3" max="6" step="0.05">
+    <label style="margin-top:14px">Volume: <span id="volV"></span></label>
+    <input type="range" id="vol" min="0" max="1" step="0.05">
+    <div id="pauseSb"></div>
+    <div class="row" style="margin-top:14px;justify-content:space-between">
+      <button class="ghost" id="btnLeave">Sair da arena</button>
+      <span class="muted" id="pauseHint" style="font-size:13px"></span>
+    </div>
+  </div></div>
+  <div class="overlay hidden" id="over"><div class="box" id="overBox"></div></div>
+</section>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/tiro/arena.js"></script>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<script type="module" src="/tiro/jogo.js"></script>
+</body>
+</html>

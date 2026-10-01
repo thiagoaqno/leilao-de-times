@@ -13,6 +13,7 @@
     "dompurify": "^3.4.16",
     "express": "^5.2.1",
     "marked": "^12.0.2",
-    "socket.io": "^4.8.4"
+    "socket.io": "^4.8.4",
+    "three": "^0.186.1"
   }
 }
