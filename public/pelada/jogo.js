@@ -473,17 +473,19 @@ function animate(model, speed, dt, st, f = 0) {
   const sw = speed > 0.4 && !lying ? Math.sin(st.anim) * Math.min(0.9, speed / 7) : 0;
   const kick = st.kickT ? Math.sin(clamp((t - st.kickT) / 0.28, 0, 1) * Math.PI) : 0;
   u.legs[0].rotation.x = lerp(u.legs[0].rotation.x, sw, 0.35);
-  u.legs[1].rotation.x = kick > 0.01 ? -kick * 1.3 : lerp(u.legs[1].rotation.x, (f & FL.slide) ? -1.2 : -sw, 0.35);
-  const armTo = st.holding ? -1.4 : (f & FL.dive) ? -2.8 : null;
+  // o boneco olha para -z: rotation.x positivo leva perna/braço para a frente
+  u.legs[1].rotation.x = kick > 0.01 ? kick * 1.3 : lerp(u.legs[1].rotation.x, (f & FL.slide) ? 0.5 : -sw, 0.35);
+  const armTo = st.holding ? 1.4 : (f & FL.dive) ? 2.8 : null;
   const mola = springs(model, dt, st, lying, speed), jp = mola.jpitch.x - mola.pitch.x, jr = mola.jroll.x - mola.roll.x;
-  u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, (armTo ?? -sw * 0.8) - jp * 1.6, 0.35);
-  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, (armTo ?? sw * 0.8) - jp * 1.6, 0.35);
+  u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, (armTo ?? -sw * 0.8) + jp * 1.6, 0.35);
+  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, (armTo ?? sw * 0.8) + jp * 1.6, 0.35);
   // joelho dobra quando a perna vai para trás; cotovelo dobrado correndo; tronco inclina para a frente e balança
   const run = lying ? 0 : Math.min(1, speed / 7);
   if (u.knees) {
-    u.knees[0].rotation.x = lerp(u.knees[0].rotation.x, (f & FL.slide) ? 0.2 : Math.max(0, -Math.sin(st.anim)) * 1.3 * run + 0.1 * run, 0.35);
-    u.knees[1].rotation.x = lerp(u.knees[1].rotation.x, kick > 0.01 ? 0.9 * (1 - kick) : (f & FL.slide) ? 0.1 : Math.max(0, Math.sin(st.anim)) * 1.3 * run + 0.1 * run, 0.35);
-    const elb = st.holding ? -0.6 : (f & FL.dive) ? 0 : -0.25 - 0.9 * run;
+    // joelho dobra para trás (negativo) e cotovelo para a frente (positivo)
+    u.knees[0].rotation.x = lerp(u.knees[0].rotation.x, (f & FL.slide) ? -1.1 : -(Math.max(0, -Math.sin(st.anim)) * 1.3 * run + 0.1 * run), 0.35);
+    u.knees[1].rotation.x = lerp(u.knees[1].rotation.x, kick > 0.01 ? -0.9 * (1 - kick) : (f & FL.slide) ? -0.1 : -(Math.max(0, Math.sin(st.anim)) * 1.3 * run + 0.1 * run), 0.35);
+    const elb = st.holding ? 0.6 : (f & FL.dive) ? 0 : 0.25 + 0.9 * run;
     u.elbows[0].rotation.x = lerp(u.elbows[0].rotation.x, elb, 0.3); u.elbows[1].rotation.x = lerp(u.elbows[1].rotation.x, elb, 0.3);
   }
   // o corpo inteiro só gira nas poses deitadas (carrinho, caído, mergulho); correndo, quem inclina é a coluna (mola)
@@ -494,9 +496,9 @@ function animate(model, speed, dt, st, f = 0) {
   b.position.y = lerp(b.position.y, (f & FL.slide) ? 0.25 : (f & FL.down) ? 0.18 : (f & FL.dive) ? 0.5 : bob, 0.3);
   u.spine.rotation.x = mola.pitch.x; u.spine.rotation.z = mola.roll.x;
   // gelatina: cabeça e braços seguem a coluna com atraso (mola mais fraca), então balançam soltos e passam do ponto
-  u.head.rotation.x = -mola.pitch.x * 0.6 - jp * 1.1; // a cabeça compensa a inclinação (olha para a frente)
-  u.head.rotation.z = -mola.roll.x * 0.4 - jr * 1.1;
-  u.arms[0].rotation.z = -0.1 * run - jr * 1.5; u.arms[1].rotation.z = 0.1 * run - jr * 1.5;
+  u.head.rotation.x = -mola.pitch.x * 0.6 + jp * 1.1; // a cabeça compensa a inclinação (olha para a frente)
+  u.head.rotation.z = -mola.roll.x * 0.4 + jr * 1.1;
+  u.arms[0].rotation.z = -0.1 * run + jr * 1.5; u.arms[1].rotation.z = 0.1 * run + jr * 1.5;
 }
 
 // ---------- física de mola (o boneco "molinho") ----------
@@ -958,7 +960,7 @@ function frame(dt, t) {
   updateRemotes(dt);
   updateRags(dt);
   updateBall(dt);
-  updateCamera(dt);
+  updateCamera(dt); if (camHook) camHook(cam);
   hud(t);
   updateGoalSigns();
   renderer.render(scene, cam);
@@ -1326,4 +1328,5 @@ function showOver() {
   if ($("btnToLobby")) $("btnToLobby").onclick = () => act("lobby");
   $("btnOut").onclick = leaveGame;
 }
-if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, addRag, rags }; // para testes
+let camHook = null; // só para testes (#debug): reposiciona a câmera depois do jogo
+if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, addRag, rags, makePlayer, animate, setCamHook: (f) => (camHook = f) }; // para testes
