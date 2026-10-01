@@ -3,6 +3,7 @@
 // Os outros aparecem 100 ms "no passado", interpolados entre as posições recebidas (fica liso mesmo com ping).
 // O servidor confere os tiros voltando no tempo esses mesmos 100 ms + meio ping, então o que você vê é o que vale.
 import * as THREE from "three";
+import { Ragdoll } from "/ragdoll.js";
 
 const AR = window.Arena, WP = AR.WEAPONS;
 const $ = (id) => document.getElementById(id);
@@ -374,7 +375,7 @@ function makePlayer(team, name, mate) {
   const guns = { ak: makeAK(), awp: makeAWP(), deagle: makeDeagle(), faca: makeKnife() }; gun.add(guns.ak, guns.awp, guns.deagle, guns.faca);
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
   let tag = null; if (mate) { tag = nameSprite(name, "#9be27a"); tag.position.y = 2.05; g.add(tag); }
-  g.userData = { legs, head, upper, guns, gunGroup: gun, tag };
+  g.userData = { legs, head, upper, guns, gunGroup: gun, tag, mats: { head: skin, hair: dark, torso: shirt, upperArm: shirt, forearm: shirt, thigh: pants, shin: pants, boot } };
   return g;
 }
 
@@ -430,6 +431,26 @@ function impact(p, n, dust = 0xcdb38a) {
   particles(p, dust, 5, 2.2, 0.16, 0.45);
 }
 function blood(p) { particles(p, 0xa01010, 8, 2.5, 0.14, 0.5); }
+// ---------- corpo caindo (ragdoll) quando alguém morre ----------
+const rags = [];
+function solidRag(p, r) { // empurra o ponto para fora das caixas e paredes do mapa
+  const hx = AR.HALF_X - r, hz = AR.HALF_Z - r; p.x = clamp(p.x, -hx, hx); p.z = clamp(p.z, -hz, hz);
+  for (const b of AR.BOXES) {
+    if (p.x < b[0] - r || p.x > b[3] + r || p.y < b[1] - r || p.y > b[4] + r || p.z < b[2] - r || p.z > b[5] + r) continue;
+    const d = [p.x - (b[0] - r), b[3] + r - p.x, p.y - (b[1] - r), b[4] + r - p.y, p.z - (b[2] - r), b[5] + r - p.z];
+    let k = 0; for (let i = 1; i < 6; i++) if (d[i] < d[k]) k = i;
+    if (k === 0) p.x = b[0] - r; else if (k === 1) p.x = b[3] + r; else if (k === 2) p.y = b[1] - r; else if (k === 3) p.y = b[4] + r; else if (k === 4) p.z = b[2] - r; else p.z = b[5] + r;
+  }
+}
+// dir: para onde o tiro empurra (do atirador para a vítima); head: tiro na cabeça joga a cabeça para trás
+function addRag(model, x, y, z, yaw, vel, dir, head) {
+  const d = dir || { x: -Math.sin(yaw) * -1, z: -Math.cos(yaw) * -1 }, k = head ? 3 : 4.5;
+  rags.push(new Ragdoll({ scene, x, y, z, yaw, vel, mats: model.userData.mats, life: 7, sink: true, solid: solidRag,
+    push: { x: d.x * k, y: 1.2, z: d.z * k }, headPush: head ? { x: d.x * 8, y: 2, z: d.z * 8 } : null }));
+  if (rags.length > 10) rags.shift().dispose();
+}
+function updateRags(dt) { for (let i = rags.length - 1; i >= 0; i--) if (!rags[i].step(dt)) { rags[i].dispose(); rags.splice(i, 1); } }
+function clearRags() { while (rags.length) rags.pop().dispose(); }
 function updateFx(dt) {
   for (let i = fx.length - 1; i >= 0; i--) {
     const f = fx[i]; f.life -= dt;
@@ -479,7 +500,7 @@ function stopGame() {
   if (!G.active) return;
   G.active = false;
   for (const r of G.remotes.values()) scene.remove(r.model);
-  G.remotes.clear(); G.bots = [];
+  G.remotes.clear(); G.bots = []; clearRags();
   if (document.pointerLockElement) document.exitPointerLock();
   touchPlay = false; if (TOUCH) Toque.show(false);
   $("over").classList.add("hidden"); $("pause").classList.add("hidden"); $("tab").classList.add("hidden");
@@ -584,6 +605,8 @@ socket.on("shot", (d) => {
 socket.on("hit", (d) => {
   if (!G.active || G.mode !== "online") return;
   blood(d.p);
+  const vic = G.remotes.get(d.to), sh = ME && d.by === ME.id ? G.me : G.remotes.get(d.by);
+  if (vic && sh) { const dx = vic.x - sh.x, dz = vic.z - sh.z, l = Math.hypot(dx, dz) || 1; vic.lastHit = { dir: { x: dx / l, z: dz / l }, head: d.part === "head", t: now() }; }
   if (ME && d.by === ME.id) { hitMarker(d.hp <= 0); Sound.hit(d.part === "head"); if (d.hp <= 0) setTimeout(() => Sound.kill(), 90); }
   if (ME && d.to === ME.id) { G.me.hp = d.hp; hurt(); }
 });
@@ -629,6 +652,7 @@ function botHit(b, part, point, fixed) {
   const kill = b.hp <= 0; hitMarker(kill); Sound.hit(part === "head");
   if (kill) {
     b.alive = false; b.model.visible = false; b.respawnAt = now() + 1.5; G.kills++; if (part === "head") G.hs++;
+    const dl = Math.hypot(b.x - G.me.x, b.z - G.me.z) || 1; b.lastHit = { dir: { x: (b.x - G.me.x) / dl, z: (b.z - G.me.z) / dl }, head: part === "head", t: now() }; // o corpo cai em updateRemotes
     setTimeout(() => Sound.kill(), 90);
     pushFeed({ byName: store.get("galera:name") || "Você", toName: b.name, w: G.me.w, head: part === "head" });
   }
@@ -848,6 +872,7 @@ function frame(dt, t) {
   }
   if (G.mode === "treino") updateBots(dt, t);
   updateRemotes(dt, t);
+  updateRags(dt);
   updateCamera(dt, t);
   updateFx(dt);
   // clarão
@@ -868,13 +893,16 @@ function updateRemotes(dt, t) {
         let i = b.length - 1; while (i > 0 && b[i - 1].t > rt) i--;
         const B = b[i], A = b[Math.max(0, i - 1)], k = B.t === A.t ? 1 : clamp((rt - A.t) / (B.t - A.t), 0, 1);
         const nx = lerp(A.x, B.x, k), nz = lerp(A.z, B.z, k);
-        rm.speed = Math.hypot(nx - rm.x, nz - rm.z) / Math.max(dt, 1e-3);
+        rm.speed = Math.hypot(nx - rm.x, nz - rm.z) / Math.max(dt, 1e-3); rm.vx = (nx - rm.x) / Math.max(dt, 1e-3); rm.vz = (nz - rm.z) / Math.max(dt, 1e-3);
         rm.x = nx; rm.y = lerp(A.y, B.y, k); rm.z = nz;
         let dy = B.yaw - A.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); rm.yaw = A.yaw + dy * k; rm.pitch = lerp(A.pitch, B.pitch, k);
         while (b.length > 2 && b[1].t < rt - 200) b.shift();
       }
     }
     const m = rm.model, u = m.userData;
+    // acabou de morrer: o corpo cai de verdade, empurrado na direção do tiro
+    if (rm.wasAlive && !rm.alive) { const h = rm.lastHit && now() - rm.lastHit.t < 1.5 ? rm.lastHit : null; addRag(m, rm.x, rm.y, rm.z, rm.yaw, { x: clamp(rm.vx || 0, -8, 8), y: 0, z: clamp(rm.vz || 0, -8, 8) }, h && h.dir, h && h.head); }
+    rm.wasAlive = rm.alive;
     m.visible = !!rm.alive && !(G.spec === rm);
     m.position.set(rm.x, rm.y, rm.z); m.rotation.y = rm.yaw;
     u.head.rotation.x = rm.pitch * 0.6; u.upper.rotation.x = rm.pitch;
@@ -991,4 +1019,4 @@ function showOver() {
   if ($("btnToLobby")) $("btnToLobby").onclick = () => act("lobby");
   $("btnOut").onclick = leaveGame;
 }
-if (location.hash === "#debug") window.__tiro = { scene, G, cam }; // para testes
+if (location.hash === "#debug") window.__tiro = { scene, G, cam, botHit, rags }; // para testes

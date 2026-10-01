@@ -3,6 +3,7 @@
 // com a bola e todo mundo; os outros aparecem 100 ms "no passado", interpolados. A bola é PREVISTA a partir do último
 // pacote (rodando a mesma física de campo.js) e a diferença é corrigida aos poucos.
 import * as THREE from "three";
+import { Ragdoll } from "/ragdoll.js";
 
 const C = window.Campo, KITS = C.KITS;
 const $ = (id) => document.getElementById(id);
@@ -427,32 +428,41 @@ function nameSprite(text, color, scale = 1) {
 }
 const tagColor = (kit) => (C.kitColor(kit) === "#f4f4f4" ? "#ffffff" : C.kitColor(kit));
 const SKINS = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xd9a77c];
+const SPINE_Y = 0.85; // altura da cintura (pivô da coluna)
 function makePlayer(kitId, num, name, opts = {}) {
   const K = opts.gk ? { ...GK_KIT, num: C.kitColor(kitId) } : kitOf(kitId);
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   const skin = M(SKINS[(name.length * 7 + num) % SKINS.length]), shorts = M(new THREE.Color(K.shorts).getHex()), sock = M(new THREE.Color(opts.gk ? "#26282b" : C.kitColor(kitId)).getHex()), boot = M(0x161616);
   const shirtC = M(new THREE.Color(K.c[0]).getHex());
   const part = (gg, w, hh, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); m.position.set(x, y, z); gg.add(m); return m; };
-  const legs = [];
+  // pernas e braços com joelho e cotovelo (dobram na corrida, para o boneco não ficar duro)
+  const legs = [], knees = [];
   for (const sx of [-0.11, 0.11]) {
     const l = new THREE.Group(); l.position.set(sx, 0.85, 0);
-    part(l, 0.18, 0.3, 0.2, shorts, 0, -0.12, 0); part(l, 0.14, 0.3, 0.15, skin, 0, -0.4, 0); part(l, 0.15, 0.22, 0.16, sock, 0, -0.66, 0); part(l, 0.16, 0.1, 0.27, boot, 0, -0.8, -0.04);
-    body.add(l); legs.push(l);
+    part(l, 0.18, 0.3, 0.2, shorts, 0, -0.12, 0); part(l, 0.14, 0.12, 0.15, skin, 0, -0.29, 0);
+    const kn = new THREE.Group(); kn.position.y = -0.3; l.add(kn);
+    part(kn, 0.14, 0.2, 0.15, skin, 0, -0.08, 0); part(kn, 0.15, 0.22, 0.16, sock, 0, -0.36, 0); part(kn, 0.16, 0.1, 0.27, boot, 0, -0.5, -0.04);
+    body.add(l); legs.push(l); knees.push(kn);
   }
+  // coluna ("spine"): tronco, braços e cabeça ficam num pivô na cintura, assim o tronco balança por cima das pernas
+  const spine = new THREE.Group(); spine.position.y = SPINE_Y; body.add(spine);
   const front = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, false), roughness: 0.7 }), backM = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, true), roughness: 0.7 });
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.6, 0.26), [shirtC, shirtC, shirtC, shirtC, backM, front]); torso.position.y = 1.16; body.add(torso);
-  const arms = [];
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.6, 0.26), [shirtC, shirtC, shirtC, shirtC, backM, front]); torso.position.y = 1.16 - SPINE_Y; spine.add(torso);
+  const arms = [], elbows = [], fore = opts.gk ? shirtC : skin;
   for (const sx of [-0.3, 0.3]) {
-    const a = new THREE.Group(); a.position.set(sx, 1.42, 0);
-    part(a, 0.13, 0.26, 0.14, shirtC, 0, -0.12, 0); part(a, 0.11, 0.3, 0.12, opts.gk ? shirtC : skin, 0, -0.4, 0);
-    if (opts.gk) part(a, 0.15, 0.13, 0.15, M(0xf5f5f5), 0, -0.6, 0);
-    body.add(a); arms.push(a);
+    const a = new THREE.Group(); a.position.set(sx, 1.42 - SPINE_Y, 0);
+    part(a, 0.13, 0.26, 0.14, shirtC, 0, -0.12, 0);
+    const el = new THREE.Group(); el.position.y = -0.25; a.add(el);
+    part(el, 0.11, 0.3, 0.12, fore, 0, -0.15, 0);
+    if (opts.gk) part(el, 0.15, 0.13, 0.15, M(0xf5f5f5), 0, -0.35, 0);
+    spine.add(a); arms.push(a); elbows.push(el);
   }
-  const head = new THREE.Group(); head.position.y = 1.46; body.add(head);
-  part(head, 0.26, 0.28, 0.26, skin, 0, 0.15, 0); part(head, 0.28, 0.08, 0.28, M(0x2a1b10), 0, 0.31, 0); part(head, 0.18, 0.04, 0.01, M(0x111111), 0, 0.18, -0.131);
+  const head = new THREE.Group(); head.position.y = 1.46 - SPINE_Y; spine.add(head);
+  const hair = M(0x2a1b10);
+  part(head, 0.26, 0.28, 0.26, skin, 0, 0.15, 0); part(head, 0.28, 0.08, 0.28, hair, 0, 0.31, 0); part(head, 0.18, 0.04, 0.01, M(0x111111), 0, 0.18, -0.131);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   let tag = null; if (name) { tag = nameSprite((opts.gk ? "🧤 " : "") + name, tagColor(kitId)); tag.position.y = 2.15; g.add(tag); }
-  g.userData = { legs, arms, head, tag, body };
+  g.userData = { legs, knees, arms, elbows, head, tag, body, spine, mats: { head: skin, hair, torso: [shirtC, shirtC, shirtC, shirtC, backM, front], upperArm: shirtC, forearm: fore, thigh: shorts, shin: sock, boot } };
   return g;
 }
 // poses: correr, chutar, carrinho (deitado de costas), mergulho do goleiro (de lado), caído (de bruços), segurando a bola
@@ -465,12 +475,67 @@ function animate(model, speed, dt, st, f = 0) {
   u.legs[0].rotation.x = lerp(u.legs[0].rotation.x, sw, 0.35);
   u.legs[1].rotation.x = kick > 0.01 ? -kick * 1.3 : lerp(u.legs[1].rotation.x, (f & FL.slide) ? -1.2 : -sw, 0.35);
   const armTo = st.holding ? -1.4 : (f & FL.dive) ? -2.8 : null;
-  u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, armTo ?? -sw * 0.8, 0.35);
-  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, armTo ?? sw * 0.8, 0.35);
+  const mola = springs(model, dt, st, lying, speed), jp = mola.jpitch.x - mola.pitch.x, jr = mola.jroll.x - mola.roll.x;
+  u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, (armTo ?? -sw * 0.8) - jp * 1.6, 0.35);
+  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, (armTo ?? sw * 0.8) - jp * 1.6, 0.35);
+  // joelho dobra quando a perna vai para trás; cotovelo dobrado correndo; tronco inclina para a frente e balança
+  const run = lying ? 0 : Math.min(1, speed / 7);
+  if (u.knees) {
+    u.knees[0].rotation.x = lerp(u.knees[0].rotation.x, (f & FL.slide) ? 0.2 : Math.max(0, -Math.sin(st.anim)) * 1.3 * run + 0.1 * run, 0.35);
+    u.knees[1].rotation.x = lerp(u.knees[1].rotation.x, kick > 0.01 ? 0.9 * (1 - kick) : (f & FL.slide) ? 0.1 : Math.max(0, Math.sin(st.anim)) * 1.3 * run + 0.1 * run, 0.35);
+    const elb = st.holding ? -0.6 : (f & FL.dive) ? 0 : -0.25 - 0.9 * run;
+    u.elbows[0].rotation.x = lerp(u.elbows[0].rotation.x, elb, 0.3); u.elbows[1].rotation.x = lerp(u.elbows[1].rotation.x, elb, 0.3);
+  }
+  // o corpo inteiro só gira nas poses deitadas (carrinho, caído, mergulho); correndo, quem inclina é a coluna (mola)
   const b = u.body;
   const tx = (f & FL.slide) ? 1.25 : (f & FL.down) ? -1.45 : 0, tz = (f & FL.dive) ? (st.diveSide || 1) * -1.35 : 0;
-  b.rotation.x = lerp(b.rotation.x, tx, 0.3); b.rotation.z = lerp(b.rotation.z, tz, 0.3);
-  b.position.y = lerp(b.position.y, (f & FL.slide) ? 0.25 : (f & FL.down) ? 0.18 : (f & FL.dive) ? 0.5 : 0, 0.3);
+  b.rotation.x = lerp(b.rotation.x, tx, 0.3); b.rotation.z = lerp(b.rotation.z, tz, 0.15);
+  const bob = lying ? 0 : Math.abs(Math.sin(st.anim)) * 0.06 * run;
+  b.position.y = lerp(b.position.y, (f & FL.slide) ? 0.25 : (f & FL.down) ? 0.18 : (f & FL.dive) ? 0.5 : bob, 0.3);
+  u.spine.rotation.x = mola.pitch.x; u.spine.rotation.z = mola.roll.x;
+  // gelatina: cabeça e braços seguem a coluna com atraso (mola mais fraca), então balançam soltos e passam do ponto
+  u.head.rotation.x = -mola.pitch.x * 0.6 - jp * 1.1; // a cabeça compensa a inclinação (olha para a frente)
+  u.head.rotation.z = -mola.roll.x * 0.4 - jr * 1.1;
+  u.arms[0].rotation.z = -0.1 * run - jr * 1.5; u.arms[1].rotation.z = 0.1 * run - jr * 1.5;
+}
+
+// ---------- física de mola (o boneco "molinho") ----------
+// Cada jogador tem molas para a inclinação da coluna: pitch (frente/trás, rotation.x) e roll (lados, rotation.z).
+// Força = (alvo - atual) * rigidez - velocidade * amortecimento; a velocidade vira rotação. Como a mola é pouco
+// amortecida, o tronco passa um pouquinho do ponto e volta, como gelatina. A cabeça e os braços têm outra mola,
+// mais mole, que persegue a coluna (o "jiggle").
+const MOLA = { k: 15, c: 4 }, GELATINA = { k: 7, c: 2.2 };
+const newSpring = () => ({ x: 0, v: 0, alvo: 0 });
+function stepSpring(sp, alvo, k, c, dt) {
+  sp.alvo = alvo;
+  const forca = (alvo - sp.x) * k - sp.v * c;
+  sp.v += forca * dt; sp.x += sp.v * dt;
+  return sp.x;
+}
+function springs(model, dt, st, lying, speed) {
+  const m = (st.mola ||= { k: MOLA.k, c: MOLA.c, pitch: newSpring(), roll: newSpring(), jpitch: newSpring(), jroll: newSpring(), vx: 0, vz: 0, fwd: 0, acc: 0, yawRate: 0 });
+  const p = model.position, yaw = model.rotation.y, h = Math.max(dt, 1e-3);
+  // velocidade pela diferença de posição entre os quadros (serve para mim, para os outros e para o goleiro robô)
+  if (m.px == null) { m.px = p.x; m.pz = p.z; m.yaw = yaw; }
+  let dx = p.x - m.px, dz = p.z - m.pz; if (dx * dx + dz * dz > 9) dx = dz = 0; // teletransporte (saída de bola): ignora
+  m.px = p.x; m.pz = p.z;
+  const sm = Math.min(1, dt * 10); m.vx = lerp(m.vx, dx / h, sm); m.vz = lerp(m.vz, dz / h, sm);
+  // velocidade para a frente (o boneco olha para -z) e aceleração
+  const fwd = m.vx * -Math.sin(yaw) + m.vz * -Math.cos(yaw);
+  m.acc = lerp(m.acc, (fwd - m.fwd) / h, Math.min(1, dt * 6)); m.fwd = fwd;
+  let dy = yaw - m.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); m.yaw = yaw;
+  m.yawRate = lerp(m.yawRate, dy / h, Math.min(1, dt * 8));
+  // alvos: acelerou para a frente -> tomba para a frente; freou -> joga para trás; curva -> tomba para dentro da curva
+  const run = Math.min(1, speed / 7), step = Math.sin(st.anim * 2) * 0.05 * run; // cada passada dá um tranquinho
+  const pitchAlvo = lying ? 0 : -clamp(fwd * 0.028 + m.acc * 0.03, -0.3, 0.55) + step;
+  const rollAlvo = lying ? 0 : clamp(m.yawRate * Math.hypot(m.vx, m.vz) * 0.025, -0.38, 0.38);
+  // passos pequenos para a mola não explodir num quadro lento
+  const n = Math.ceil(dt / (1 / 120)), sdt = dt / n;
+  for (let i = 0; i < n; i++) {
+    stepSpring(m.pitch, pitchAlvo, m.k, m.c, sdt); stepSpring(m.roll, rollAlvo, m.k, m.c, sdt);
+    stepSpring(m.jpitch, m.pitch.x, GELATINA.k, GELATINA.c, sdt); stepSpring(m.jroll, m.roll.x, GELATINA.k, GELATINA.c, sdt);
+  }
+  return m;
 }
 
 // ---------- carros pixelados (caixinhas + texturas de pixel) ----------
@@ -608,7 +673,7 @@ function stopGame() {
   if (!G.active) return;
   G.active = false;
   for (const r of G.remotes.values()) scene.remove(r.model);
-  G.remotes.clear();
+  G.remotes.clear(); clearRags();
   if (G.keeper) { scene.remove(G.keeper.model); G.keeper = null; }
   if (G.falta) { for (const w of G.falta.wall) scene.remove(w.model); G.falta = null; }
   if (G.meModel) { scene.remove(G.meModel); G.meModel = null; }
@@ -706,6 +771,13 @@ socket.on("pegou", () => { if (G.active) Sound.catch(); });
 socket.on("caiu", (d) => {
   if (!G.active || G.mode !== "online") return;
   Sound.fall();
+  // o derrubado vira boneco de pano por um instante (empurrado na direção do carrinho) e depois levanta
+  const vic = ME && d.id === ME.id ? { model: G.meModel, x: G.me.x, y: G.me.y, z: G.me.z, yaw: G.me.facing, vx: G.me.vx, vz: G.me.vz } : G.remotes.get(d.id);
+  const tk = ME && d.by === ME.id ? G.me : G.remotes.get(d.by); // quem deu o carrinho
+  if (vic && vic.model && !isCar() && !(vic.model === G.meModel && G.view === "primeira")) {
+    const dx = tk ? vic.x - tk.x : 0, dz = tk ? vic.z - tk.z : 1, l = Math.hypot(dx, dz) || 1;
+    addRag(vic.model, vic.x, vic.y || 0, vic.z, vic.yaw ?? vic.model.rotation.y, { x: vic.vx || 0, y: 0, z: vic.vz || 0 }, { x: (dx / l) * 3.5, y: 2.2, z: (dz / l) * 3.5 }, 1.15);
+  }
   if (ME && d.id === ME.id) { G.me.downT = 1.4; charge = null; }
   const by = P(d.by), to = P(d.id);
   if (by && to) pushFeed(`🦵 ${h(by.name)} derrubou ${h(to.name)}`);
@@ -884,6 +956,7 @@ function frame(dt, t) {
   }
   if (G.mode === "treino") practiceStep(dt, t);
   updateRemotes(dt);
+  updateRags(dt);
   updateBall(dt);
   updateCamera(dt);
   hud(t);
@@ -992,6 +1065,20 @@ function stepCar(dt, t, frozen) {
   Sound.engine(sp, true);
 }
 
+// ---------- boneco de pano (derrubado no carrinho) ----------
+const rags = [];
+function addRag(model, x, y, z, yaw, vel, push, life) {
+  const F = G.F, solid = (p, r) => { p.x = clamp(p.x, -F.L - F.goalD + r, F.L + F.goalD - r); p.z = clamp(p.z, -F.W + r, F.W - r); };
+  // a perna que leva o carrinho sai do chão primeiro: empurra os pés mais que o corpo
+  const rg = new Ragdoll({ scene, x, y, z, yaw, vel, mats: model.userData.mats, life, solid, push });
+  rg.model = model; rags.push(rg); model.visible = false;
+  for (const i of [13, 14]) rg.q[i].addScaledVector(new THREE.Vector3(push.x, 0, push.z), -1 / 60); // pés: rasteira
+  if (rags.length > 8) { const o = rags.shift(); o.model.visible = true; o.dispose(); }
+}
+function updateRags(dt) {
+  for (let i = rags.length - 1; i >= 0; i--) { const r = rags[i]; r.model.visible = false; if (!r.step(dt)) { r.model.visible = true; r.dispose(); rags.splice(i, 1); } }
+}
+function clearRags() { while (rags.length) { const r = rags.pop(); r.model.visible = true; r.dispose(); } }
 function updateRemotes(dt) {
   const rt = sNow() - INTERP;
   for (const rm of G.remotes.values()) {
@@ -1137,7 +1224,7 @@ function keepInside(F, tgt, m = 0.3) {
 }
 function updateCamera(dt) {
   const me = G.me, b = ballMesh.position, F = G.F, tvOn = isCar() ? G.tv : G.view === "tv";
-  if (G.meModel) G.meModel.visible = isCar() || G.view !== "primeira";
+  if (G.meModel) G.meModel.visible = (isCar() || G.view !== "primeira") && !rags.some((r) => r.model === G.meModel); // caído: quem aparece é o boneco de pano
   if (!G.meModel || tvOn) { // câmera de TV: do alto da lateral, seguindo o MEU jogador (com um pouco da bola)
     const fx0 = G.meModel ? lerp(me.x, b.x, 0.25) : b.x, fz0 = G.meModel ? lerp(me.z, b.z, 0.25) : b.z;
     const tx = clamp(fx0, -F.L + 4, F.L - 4), hgt = isCar() ? 22 : 10;
@@ -1179,7 +1266,8 @@ function updateCamera(dt) {
 }
 function showAim(me) {
   let ay = aimYaw();
-  if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F); // a seta já mostra a ajudinha aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
+  if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F); // a seta já mostra a ajudinha
+  aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
   aim.material.opacity = charge ? 0.9 : 0.4;
 }
 
@@ -1238,4 +1326,4 @@ function showOver() {
   if ($("btnToLobby")) $("btnToLobby").onclick = () => act("lobby");
   $("btnOut").onclick = leaveGame;
 }
-if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys }; // para testes
+if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, addRag, rags }; // para testes

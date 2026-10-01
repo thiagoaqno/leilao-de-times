@@ -133,6 +133,12 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 .hud.br{right:12px;bottom:12px;font-size:22px}
 .hud.bc{left:50%;top:38%;transform:translate(-50%,-50%);text-align:center;font-size:clamp(40px,10vw,110px);white-space:nowrap}
 .hud.msg{left:50%;top:20%;transform:translateX(-50%);font-size:clamp(20px,4.5vw,40px);white-space:nowrap;color:var(--yellow)}
+#hDelta{font-size:14px;margin-top:2px}#hDelta.ahead{color:#2ecc71}#hDelta.behind{color:#ff6b6b}
+#hDraft{left:50%;bottom:26px;transform:translateX(-50%);font-size:22px;text-align:center;opacity:0;transition:opacity .2s;min-width:150px}
+#hDraft i{display:block;height:6px;margin-top:4px;background:linear-gradient(90deg,#7fe3ff,#fff);border-radius:3px;box-shadow:0 0 8px #7fe3ff}
+#wind{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:repeating-conic-gradient(from 0deg at 50% 58%,#ffffff00 0deg 2.6deg,#ffffff70 2.6deg 3deg);-webkit-mask-image:radial-gradient(circle at 50% 58%,transparent 34%,#000 80%);mask-image:radial-gradient(circle at 50% 58%,transparent 34%,#000 80%);animation:windspin 0.35s linear infinite}
+@keyframes windspin{from{transform:rotate(0)}to{transform:rotate(3deg)}}
+.track .rec{color:var(--yellow);font-weight:800}
 .hud .board{font-family:var(--body);font-size:13px;font-weight:800;margin-top:6px;text-shadow:1px 1px 0 #000}
 .hud .board div{display:flex;gap:6px;align-items:center}
 .hud .board i{width:10px;height:10px;border-radius:2px;display:inline-block}
@@ -176,7 +182,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
     <div class="hero">
       <div>
         <h2>Racha na<br><em>Galera</em></h2>
-        <p class="lead">Carros esportivos em 3D em Mônaco, Interlagos e Tóquio, com subidas, descidas e lombadas para voar. Sem casca de banana: só pé no fundo. Os amigos correm junto como fantasmas, então ninguém bate em ninguém e a internet lenta não atrapalha.</p>
+        <p class="lead">Carros esportivos em 3D em Mônaco, Interlagos, Tóquio, Los Angeles e Rio de Janeiro, com subidas, descidas e lombadas para voar. Sem casca de banana: só pé no fundo. Os amigos correm junto como fantasmas, então ninguém bate em ninguém e a internet lenta não atrapalha.</p>
         <div class="art"><canvas id="heroArt" width="320" height="180"></canvas></div>
       </div>
       <div class="placa"><div class="chk"></div><div class="in">
@@ -216,10 +222,12 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 
 <section id="race" class="hidden">
   <canvas id="screen"></canvas>
-  <div class="hud tl"><div class="pos" id="hPos"></div><div class="lap" id="hLap"></div><div class="time num" id="hTime"></div><div class="board" id="hBoard"></div></div>
+  <div class="hud tl"><div class="pos" id="hPos"></div><div class="lap" id="hLap"></div><div class="time num" id="hTime"></div><div class="time num" id="hDelta"></div><div class="board" id="hBoard"></div></div>
   <div class="hud tr"><canvas id="mini" width="240" height="240"></canvas></div>
   <div class="hud br num" id="hSpeed"></div>
   <div class="hud bc" id="hBig"></div>
+  <div class="hud" id="hDraft"></div>
+  <div id="wind"></div>
   <div class="hud msg" id="hMsg"></div>
   <div class="topbtns"><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>
   <div class="pad l hidden" id="padL"><button data-k="left" aria-label="Esquerda">◀</button><button data-k="right" aria-label="Direita">▶</button></div>
