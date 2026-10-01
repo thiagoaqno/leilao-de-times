@@ -285,6 +285,8 @@ const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), new THREE.M
 ballMesh.castShadow = true; scene.add(ballMesh);
 const blob = new THREE.Mesh(new THREE.CircleGeometry(0.16, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false }));
 blob.rotation.x = -Math.PI / 2; blob.position.y = 0.02; scene.add(blob);
+const landMark = new THREE.Mesh(new THREE.RingGeometry(0.55, 1, 32), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.6, depthWrite: false }));
+landMark.rotation.x = -Math.PI / 2; landMark.visible = false; scene.add(landMark);
 
 let goalSigns = [];
 let arena = null, arenaMode = null, arenaKits = null, pads = [];
@@ -680,12 +682,12 @@ socket.on("snap", (d) => {
     rm.buf.push({ t: d.t, x: e[1], y: e[2], z: e[3], vx: e[4], vy: e[5], vz: e[6], yaw: e[7], pitch: e[8], f: e[9] });
     if (rm.buf.length > 30) rm.buf.shift();
   }
-  const [x, y, z, vx, vy, vz, hit, hn, sp] = d.b;
+  const [x, y, z, vx, vy, vz, hit, hn, sp, wx = 0, wy = 0, wz = 0] = d.b;
   if (hit > 2) { const [k, pan] = hearing([x, y, z]); Sound.bounce(hit, k, pan, isCar()); }
   const holder = hn >= 0 && PN(hn) ? PN(hn).id : null;
   if (performance.now() < ballS.ignoreUntil && !holder) return; // acabei de chutar: espero o chute voltar do servidor
   const before = { ...ballS.view };
-  ballS.snap = { t: d.t, x, y, z, vx, vy, vz, sp: sp || 0, holder };
+  ballS.snap = { t: d.t, x, y, z, vx, vy, vz, sp: sp || 0, wx, wy, wz, holder };
   const pred = predictBall();
   if (pred && !holder) { ballS.off = { x: before.x - pred.x, y: before.y - pred.y, z: before.z - pred.z }; if (Math.hypot(ballS.off.x, ballS.off.y, ballS.off.z) > 4) ballS.off = { x: 0, y: 0, z: 0 }; }
   else ballS.off = { x: 0, y: 0, z: 0 };
@@ -719,7 +721,7 @@ function holderPos(id) {
 function predictBall() {
   const s = ballS.snap; if (!s) return null;
   if (s.holder) { const hp = holderPos(s.holder); if (hp) return { x: hp.x - Math.sin(hp.yaw) * 0.45, y: hp.y + 1.15, z: hp.z - Math.cos(hp.yaw) * 0.45, vx: 0, vy: 0, vz: 0, holder: s.holder }; }
-  const b = { x: s.x, y: s.y, z: s.z, vx: s.vx, vy: s.vy, vz: s.vz, sp: s.sp || 0, holder: null };
+  const b = { x: s.x, y: s.y, z: s.z, vx: s.vx, vy: s.vy, vz: s.vz, sp: s.sp || 0, wx: s.wx || 0, wy: s.wy || 0, wz: s.wz || 0, holder: null };
   const live = S && S.match && S.match.phase !== "ready";
   const dt = live ? clamp((sNow() - s.t) / 1000, 0, 0.25) : 0;
   const me = myBody();
@@ -824,7 +826,7 @@ function doKick(kind, power) {
   socket.emit("kick", { kind, power, yaw, curve });
   // previsão: a bola já sai do meu pé aqui; o servidor confirma em seguida
   const b = { ...ballS.view }; C.kick(b, body, kind, power, yaw, 0.2, curve);
-  ballS.snap = { t: sNow(), x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, sp: b.sp, holder: null }; ballS.off = { x: 0, y: 0, z: 0 };
+  ballS.snap = { t: sNow(), x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, sp: b.sp, wx: b.wx || 0, wy: b.wy || 0, wz: b.wz || 0, holder: null }; ballS.off = { x: 0, y: 0, z: 0 };
   ballS.ignoreUntil = performance.now() + rtt + 60;
 }
 
@@ -991,14 +993,20 @@ function updateBall(dt) {
   else {
     const pred = predictBall() || C.newBall(G.F);
     const k = Math.exp(-dt * 12); ballS.off.x *= k; ballS.off.y *= k; ballS.off.z *= k;
-    b = ballS.view; b.x = pred.x + ballS.off.x; b.y = Math.max(G.F.ballR, pred.y + ballS.off.y); b.z = pred.z + ballS.off.z; b.vx = pred.vx; b.vy = pred.vy; b.vz = pred.vz; b.holder = pred.holder || null;
+    b = ballS.view; b.x = pred.x + ballS.off.x; b.y = Math.max(G.F.ballR, pred.y + ballS.off.y); b.z = pred.z + ballS.off.z; b.vx = pred.vx; b.vy = pred.vy; b.vz = pred.vz; b.wx = pred.wx || 0; b.wy = pred.wy || 0; b.wz = pred.wz || 0; b.holder = pred.holder || null;
   }
   if (!b) return;
   const R = G.F.ballR, prev = ballMesh.userData.prev || { x: b.x, z: b.z }, mx = b.x - prev.x, mz = b.z - prev.z, dist = Math.hypot(mx, mz);
-  if (dist > 1e-5 && dist < 4) ballMesh.rotateOnWorldAxis(new THREE.Vector3(mz / dist, 0, -mx / dist), dist / R);
+  const w = Math.hypot(b.wx || 0, b.wy || 0, b.wz || 0);
+  if (G.F.rl && w > 1e-3) ballMesh.rotateOnWorldAxis(new THREE.Vector3(b.wx / w, b.wy / w, b.wz / w), w * dt); // giro de verdade (Rocket)
+  else if (dist > 1e-5 && dist < 4) ballMesh.rotateOnWorldAxis(new THREE.Vector3(mz / dist, 0, -mx / dist), dist / R);
   ballMesh.userData.prev = { x: b.x, z: b.z };
   ballMesh.position.set(b.x, b.y, b.z);
   blob.position.set(b.x, 0.02, b.z); blob.material.opacity = clamp(0.3 - (b.y - R) * 0.03, 0.05, 0.3);
+  // Rocket: marca no chão de onde a bola vai cair (quando ela está no alto)
+  const air = G.F.rl && b.y > R + 2 && !b.holder, L = air ? C.landing(G.F, b) : null;
+  landMark.visible = !!L;
+  if (L) { landMark.position.set(L.x, 0.04, L.z); landMark.scale.setScalar(R * (0.8 + Math.min(1, L.t) * 0.6)); landMark.material.opacity = 0.35 + 0.35 * Math.abs(Math.sin(now() * 6)); }
 }
 
 // goleiro robô (treino e faltas): fica na linha entre a bola e o gol; com a bola vindo, vai para onde ela vai
