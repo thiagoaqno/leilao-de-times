@@ -4,6 +4,9 @@
 // pacote (rodando a mesma física de campo.js) e a diferença é corrigida aos poucos.
 import * as THREE from "three";
 import { Ragdoll } from "/ragdoll.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
 
 const C = window.Campo, KITS = C.KITS;
 const $ = (id) => document.getElementById(id);
@@ -68,12 +71,12 @@ function enter(r) {
   history.replaceState(null, "", BASE + "?sala=" + r.code);
   $("roomTag").classList.remove("hidden"); $("rCode").textContent = r.code;
 }
-$("btnCreate").onclick = () => { const name = $("hName").value.trim(); store.set("galera:name", name); socket.emit("create", { name, config: { ...(store.get("pelada:cfg") || {}), mode: FIXO } }, enter); };
+$("btnCreate").onclick = () => { const name = $("hName").value.trim(); store.set("galera:name", name); socket.emit("create", { name, skin: store.get("pelada:skin"), config: { ...(store.get("pelada:cfg") || {}), mode: FIXO } }, enter); };
 $("btnJoin").onclick = () => {
   const name = $("hName").value.trim(), code = $("hCode").value.trim().toUpperCase(); store.set("galera:name", name);
   if (code.length !== 5) return ($("hErr").textContent = "O código tem 5 letras.");
   const saved = store.get("pelada:" + code) || {};
-  socket.emit("join", { code, name, id: saved.id, token: saved.token }, enter);
+  socket.emit("join", { code, name, skin: store.get("pelada:skin"), id: saved.id, token: saved.token }, enter);
 };
 $("btnWatch").onclick = () => { const code = $("hCode").value.trim().toUpperCase(); if (code.length !== 5) return ($("hErr").textContent = "Coloque o código da sala."); socket.emit("join", { code, watch: true }, enter); };
 $("hCode").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnJoin").click(); });
@@ -114,7 +117,7 @@ function carPreview(model, color) {
 // ---------- sala de espera ----------
 function renderLobby() {
   const mine = myP(), isHost = ME && S.host === ME.id, size = S.config.size, cars = S.config.mode === "carros";
-  const row = (p) => `<div class="pl ${p.id === (ME && ME.id) ? "me" : ""}"><i class="dot ${p.online ? "on" : ""}"></i>${p.id === S.host ? "👑 " : ""}${h(p.name)}${p.gk && !cars ? ` <span title="Goleiro">🧤</span>` : ""}${cars ? ` <span class="muted" style="font-weight:500;font-size:12px">${h(C.CARS[p.car].name)}</span>` : ""}${isHost && p.id !== ME.id ? `<button class="small ghost" data-kick="${p.id}" title="Tirar da sala" style="margin-left:auto">✕</button>` : ""}</div>`;
+  const row = (p) => `<div class="pl ${p.id === (ME && ME.id) ? "me" : ""}"><i class="dot ${p.online ? "on" : ""}"></i>${p.id === S.host ? "👑 " : ""}${h(p.name)}${p.gk && !cars ? ` <span title="Goleiro">🧤</span>` : ""}${!cars && C.SKINS[p.skin] && p.skin !== "padrao" ? ` <span title="${h(C.SKINS[p.skin].name)}">${C.SKINS[p.skin].emoji}</span>` : ""}${cars ? ` <span class="muted" style="font-weight:500;font-size:12px">${h(C.CARS[p.car].name)}</span>` : ""}${isHost && p.id !== ME.id ? `<button class="small ghost" data-kick="${p.id}" title="Tirar da sala" style="margin-left:auto">✕</button>` : ""}</div>`;
   for (const t of ["A", "B"]) {
     const list = S.players.filter((p) => p.team === t), kit = S.kits[t];
     $("t" + t).innerHTML = list.map(row).join("") + Array.from({ length: Math.max(0, size - list.length) }, () => `<div class="pl muted" style="font-weight:500">vaga livre</div>`).join("");
@@ -136,6 +139,8 @@ function renderLobby() {
     const col = mine.team ? C.kitColor(S.kits[mine.team]) : "#9aa0a6";
     $("myRole").innerHTML = `<label>Seu carro</label><div class="cars">${Object.entries(C.CARS).map(([k, c]) => `<button data-car="${k}" class="${mine.car === k ? "on" : ""}" title="${h(c.inspo)}"><img src="${carPreview(k, col)}" width="72" height="36" alt="" style="image-rendering:pixelated;display:block;margin:0 auto 4px"><b>${h(c.name)}</b><small>${h(c.inspo)}</small></button>`).join("")}</div>`;
   } else $("myRole").innerHTML = "";
+  if (mine && !cars) $("myRole").innerHTML += `<label style="margin-top:14px">Sua skin</label><div class="skins">${skinButtons(mine.skin)}</div>`;
+  $("cfgArena").innerHTML = Object.entries(C.ARENAS).map(([k, a]) => `<button data-arena="${k}" class="${(S.config.arena || "society") === k ? "on" : ""}" title="${h(a.desc)}" ${isHost ? "" : "disabled"}>${a.emoji} ${h(a.name)}</button>`).join("");
   document.querySelectorAll("#cfgMode button").forEach((b) => { b.classList.toggle("on", b.dataset.v === S.config.mode); b.disabled = !isHost; });
   document.querySelectorAll("#cfgSize button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === size); b.disabled = !isHost; });
   document.querySelectorAll("#cfgMin button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === S.config.minutes); b.disabled = !isHost; });
@@ -173,6 +178,28 @@ function setCfg(k, v) { const c = { ...S.config, [k]: v, mode: FIXO }; store.set
 document.querySelectorAll("#cfgMode button").forEach((b) => (b.onclick = () => setCfg("mode", b.dataset.v)));
 document.querySelectorAll("#cfgSize button").forEach((b) => (b.onclick = () => setCfg("size", +b.dataset.v)));
 document.querySelectorAll("#cfgMin button").forEach((b) => (b.onclick = () => setCfg("minutes", +b.dataset.v)));
+// skins e quadras: os botões são desenhados de novo a cada mudança, então o clique é tratado aqui, num lugar só
+const skinButtons = (atual) => Object.entries(C.SKINS).map(([k, sk]) => `<button data-skin="${k}" class="${k === (atual || "padrao") ? "on" : ""}"><i>${sk.emoji}</i>${h(sk.name)}</button>`).join("");
+function renderHomePicks() {
+  $("hSkins").innerHTML = skinButtons(store.get("pelada:skin"));
+  const a = store.get("pelada:arena") || "society";
+  $("hArena").innerHTML = Object.entries(C.ARENAS).map(([k, ar]) => `<button data-arena-treino="${k}" class="${a === k ? "on" : ""}" title="${h(ar.desc)}">${ar.emoji} ${h(ar.name)}</button>`).join("");
+}
+function escolherSkin(id) {
+  if (!C.SKINS[id]) return;
+  store.set("pelada:skin", id);
+  if (ME && ME.id && S) act("skin", { skin: id }); // na sala: o servidor avisa todo mundo e cada um troca o boneco
+  if (G.active && G.mode === "treino" && G.meModel && !isCar()) mudarSkinJogador(G.meModel, id); // no treino troca na hora
+  renderHomePicks(); if (G.active) renderPauseSb();
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.skin) escolherSkin(b.dataset.skin);
+  else if (b.dataset.arenaTreino) { store.set("pelada:arena", b.dataset.arenaTreino); renderHomePicks(); }
+  else if (b.dataset.arena && S) setCfg("arena", b.dataset.arena);
+});
+if (FIXO === "carros") document.querySelectorAll(".soPe").forEach((e) => e.classList.add("hidden"));
+else renderHomePicks();
 $("btnPractice").onclick = () => startGame("treino", "pes");
 $("btnFalta").onclick = () => startGame("treino", "pes", true);
 $("btnPracticeCar").onclick = () => startGame("treino", "carros");
@@ -258,17 +285,22 @@ function canvasTex(w, hh, draw, repeat = false, pixel = false) {
   return t;
 }
 function M(color, o = {}) { return new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...o }); }
-{ // céu de fim de tarde
-  const g = new THREE.SphereGeometry(600, 32, 16), col = [], pos = g.attributes.position;
-  const top = new THREE.Color(0x3a6fb8), mid = new THREE.Color(0x9fc6ea), low = new THREE.Color(0xf4d6a8);
+// céu: uma esfera com degradê (as cores mudam com a quadra; no ginásio fica escondida)
+const skyGeo = new THREE.SphereGeometry(600, 32, 16);
+const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+scene.add(sky);
+function pintarCeu([topC, midC, lowC]) {
+  const pos = skyGeo.attributes.position, col = [], top = new THREE.Color(topC), mid = new THREE.Color(midC), low = new THREE.Color(lowC);
   for (let i = 0; i < pos.count; i++) { const y = pos.getY(i) / 600, c = y > 0.08 ? mid.clone().lerp(top, Math.min(1, (y - 0.08) / 0.6)) : low.clone().lerp(mid, clamp((y + 0.05) / 0.13, 0, 1)); col.push(c.r, c.g, c.b); }
-  g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-  scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+  skyGeo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
 }
-scene.add(new THREE.HemisphereLight(0xd8e8ff, 0x4a6a3a, 1.4));
+const hemiL = new THREE.HemisphereLight(0xd8e8ff, 0x4a6a3a, 1.4); scene.add(hemiL);
 const sunL = new THREE.DirectionalLight(0xfff0d8, 2.4);
 sunL.castShadow = true; sunL.shadow.mapSize.set(2048, 2048); sunL.shadow.bias = -0.0004; sunL.shadow.normalBias = 0.03;
 scene.add(sunL, sunL.target);
+// reflexo do piso de madeira do ginásio: um "ambiente" de sala gerado uma vez só
+let envSala = null;
+const ambienteReflexo = () => (envSala ||= new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture);
 
 // ---------- bola ----------
 const ballTex = canvasTex(512, 256, (x, w, hh) => {
@@ -289,96 +321,247 @@ blob.rotation.x = -Math.PI / 2; blob.position.y = 0.02; scene.add(blob);
 const landMark = new THREE.Mesh(new THREE.RingGeometry(0.55, 1, 32), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.6, depthWrite: false }));
 landMark.rotation.x = -Math.PI / 2; landMark.visible = false; scene.add(landMark);
 
+// ======================================================================
+// Quadras (arenas): o tamanho e a física são os mesmos; muda o visual. O organizador escolhe na sala (config.arena)
+// e todo mundo monta a mesma; no treino vale a escolha da tela inicial. O Rocket usa sempre a "society".
+// Texturas: cada piso é desenhado num canvas; se a foto existir (ex.: public/pelada/texturas/madeira.jpg), ela é
+// usada como base do desenho (as linhas continuam por cima).
+// ======================================================================
+const ARENAS_CONFIG = {
+  society: { // a quadra de sempre: grama sintética no fim de tarde, alambrado e torcida de um lado
+    piso: { textura: "/pelada/texturas/grama.jpg", metrosFoto: 2, tipo: "grama", roughness: 0.95, metalness: 0, linhas: "#f4f4f0" },
+    ambiente: { ceu: 0xd8e8ff, chao: 0x4a6a3a, intensidade: 1.4 },
+    luz: { tipo: "sol", cor: 0xfff0d8, intensidade: 2.4, pos: [-18, 34, 22] },
+    fundo: { tipo: "ceu", cores: [0x3a6fb8, 0x9fc6ea, 0xf4d6a8], neblina: 0xcfdde8, longe: 260 },
+    paredes: "alambrado", muretas: "propaganda", refletores: "torres", arquibancada: "torcida",
+  },
+  rio: { // quadra de rua: cimento pintado, mureta de tijolo grafitada, sol forte e o morro cheio de casinhas
+    piso: { textura: "/pelada/texturas/cimento.jpg", metrosFoto: 3, tipo: "cimento", roughness: 0.82, metalness: 0, linhas: "#fff6c2" },
+    ambiente: { ceu: 0xcfe8ff, chao: 0xb08a5a, intensidade: 1.2 },
+    luz: { tipo: "sol", cor: 0xfff2d6, intensidade: 3.6, pos: [-10, 40, 14] },
+    fundo: { tipo: "ceu", cores: [0x1f7fe0, 0x8fd3ff, 0xffe6b8], neblina: 0xbfe2ff, longe: 420 },
+    paredes: "alambrado", muretas: "tijolo", refletores: "nenhum", arquibancada: "morro",
+  },
+  ginasio: { // liga profissional: taco de madeira que reflete, refletores no teto, paredes fechadas e arquibancada escura
+    piso: { textura: "/pelada/texturas/madeira.jpg", metrosFoto: 1.5, tipo: "madeira", roughness: 0.3, metalness: 0.05, linhas: "#ffffff", reflexo: true },
+    ambiente: { ceu: 0x9aa3b5, chao: 0x3a2a1a, intensidade: 0.5 },
+    luz: { tipo: "refletores", cor: 0xfff6e8, intensidade: 0.9, pos: [0, 40, 1], spot: 5.5 },
+    fundo: { tipo: "cor", cor: 0x0c0e13, neblina: 0x0c0e13, longe: 200 },
+    paredes: "fechadas", muretas: "acolchoadas", refletores: "teto", arquibancada: "escura",
+  },
+};
+// solta da memória tudo o que um pedaço da cena criou (geometrias, materiais e texturas)
+function liberar(obj) {
+  obj.traverse((o) => {
+    o.geometry?.dispose?.();
+    for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+      for (const k of ["map", "normalMap", "roughnessMap", "metalnessMap", "emissiveMap", "alphaMap", "aoMap"]) m[k]?.dispose?.();
+      m.dispose();
+    }
+    if (o.isLight && o.shadow?.map) o.shadow.map.dispose();
+  });
+}
+// foto de textura (só baixa uma vez; se não existir, a promessa falha e fica o desenho)
+const fotos = {};
+const foto = (url) => (fotos[url] ||= new Promise((ok, erro) => { const img = new Image(); img.onload = () => ok(img); img.onerror = erro; img.src = url; }));
+
 let goalSigns = [];
-let arena = null, arenaMode = null, arenaKits = null, pads = [];
+let arena = null, arenaMode = null, arenaKits = null, arenaId = null, pads = [];
+function arenaEscolhida(mode) {
+  if (mode === "carros") return "society";
+  const id = G.mode === "treino" ? store.get("pelada:arena") : S && S.config.arena;
+  return ARENAS_CONFIG[id] ? id : "society";
+}
 function ensureArena(mode) {
-  const kits = S ? `${S.kits.A}|${S.kits.B}` : "";
-  if (arenaMode === mode && (mode !== "carros" || arenaKits === kits)) return;
-  if (arena) { scene.remove(arena); arena.traverse((o) => { o.geometry?.dispose?.(); }); }
-  arenaMode = mode; arenaKits = kits; arena = buildArena(C.MODES[mode]); scene.add(arena);
-  const F = C.MODES[mode], s = F.L / 20;
-  sunL.position.set(-18 * s, 34 * s, 22 * s); sunL.target.position.set(0, 0, 0);
+  const kits = S ? `${S.kits.A}|${S.kits.B}` : "", id = arenaEscolhida(mode);
+  if (arenaMode === mode && arenaId === id && (mode !== "carros" || arenaKits === kits)) return;
+  arenaMode = mode; arenaKits = kits; carregarArena(id, mode);
+}
+// monta a quadra pedida: tira a anterior (e libera a memória), troca luzes, céu e neblina, e monta a nova
+function carregarArena(id, mode = arenaMode || "pes") {
+  id = ARENAS_CONFIG[id] ? id : "society";
+  const cfg = ARENAS_CONFIG[id], F = C.MODES[mode], s = F.L / 20;
+  if (arena) { scene.remove(arena); liberar(arena); arena = null; }
+  arenaId = id;
+  // luz ambiente e luz principal (sol ou a luz geral do teto, que faz as sombras)
+  hemiL.color.setHex(cfg.ambiente.ceu); hemiL.groundColor.setHex(cfg.ambiente.chao); hemiL.intensity = cfg.ambiente.intensidade;
+  const [lx, ly, lz] = cfg.luz.pos;
+  sunL.color.setHex(cfg.luz.cor); sunL.intensity = cfg.luz.intensidade;
+  sunL.position.set(lx * s, ly * s, lz * s); sunL.target.position.set(0, 0, 0);
   Object.assign(sunL.shadow.camera, { left: -F.L - 10, right: F.L + 10, top: F.W + 10, bottom: -F.W - 10, near: 1, far: 140 * s }); sunL.shadow.camera.updateProjectionMatrix();
-  scene.fog.near = 80 * s; scene.fog.far = 260 * s;
+  // fundo: céu aberto (degradê) ou cor fechada (ginásio)
+  if (cfg.fundo.tipo === "ceu") { pintarCeu(cfg.fundo.cores); sky.visible = true; scene.background = null; }
+  else { sky.visible = false; scene.background = new THREE.Color(cfg.fundo.cor); }
+  scene.fog.color.setHex(cfg.fundo.neblina); scene.fog.near = 80 * s; scene.fog.far = cfg.fundo.longe * s;
+  // piso que reflete: liga o "ambiente" de sala (fraquinho, para não clarear demais os jogadores)
+  scene.environment = cfg.piso.reflexo ? ambienteReflexo() : null; scene.environmentIntensity = 0.35;
+  arena = buildArena(F, cfg); scene.add(arena);
   ballMesh.scale.setScalar(F.ballR); blob.scale.setScalar(F.ballR / 0.15);
   ballMesh.material.map = mode === "carros" ? beachTex : ballTex; ballMesh.material.roughness = mode === "carros" ? 0.3 : 0.45; ballMesh.material.needsUpdate = true;
 }
-function buildArena(F) {
-  const grp = new THREE.Group(), L = F.L, W = F.W, cars = F.id === "carros", PX = cars ? 25 : 50;
+const tons = (r, lista) => lista[Math.floor(r() * lista.length)];
+function buildArena(F, cfg) {
+  const grp = new THREE.Group(), L = F.L, W = F.W, cars = F.id === "carros", PX = cars ? 25 : 50, P = cfg.piso;
   const add = (o) => (grp.add(o), o);
-  // chão em volta (cimento)
-  const out = add(new THREE.Mesh(new THREE.PlaneGeometry(L * 7, W * 9), new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (x, w, hh, r) => { x.fillStyle = "#8d8f8a"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 3000; i++) { x.fillStyle = r() < 0.5 ? "#0000000c" : "#ffffff0c"; x.fillRect(r() * w, r() * hh, 2, 2); } }, true), roughness: 1 })));
+  // chão em volta da quadra (cimento, asfalto da rua ou o piso escuro do ginásio)
+  const outCol = { grama: "#8d8f8a", cimento: "#6f675d", madeira: "#26282d" }[P.tipo];
+  const out = add(new THREE.Mesh(new THREE.PlaneGeometry(L * 7, W * 9), new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (x, w, hh, r) => { x.fillStyle = outCol; x.fillRect(0, 0, w, hh); for (let i = 0; i < 3000; i++) { x.fillStyle = r() < 0.5 ? "#0000000c" : "#ffffff0c"; x.fillRect(r() * w, r() * hh, 2, 2); } }, true), roughness: 1 })));
   out.material.map.repeat.set(L, W); out.rotation.x = -Math.PI / 2; out.position.y = -0.05; out.receiveShadow = true;
-  // gramado com as linhas (no modo carros, cada metade com um toque da cor do time)
-  const grass = canvasTex((2 * L + 2) * PX, (2 * W + 2) * PX, (x, w, hh, r) => {
-    const X = (v) => (v + L + 1) * PX, Z = (v) => (v + W + 1) * PX, step = cars ? 4 : 2;
-    for (let i = 0; i < 2 * L + 2; i += step) { x.fillStyle = (i / step) % 2 ? "#2f8f48" : "#2a8141"; x.fillRect(i * PX, 0, step * PX, hh); }
-    if (cars && S) for (const [t, x0] of [["A", 0], ["B", X(0)]]) { x.globalAlpha = 0.14; x.fillStyle = C.kitColor(S.kits[t]); x.fillRect(x0, 0, w / 2, hh); x.globalAlpha = 1; }
-    for (let i = 0; i < w * hh / 120; i++) { x.fillStyle = r() < 0.5 ? "#00000012" : "#ffffff10"; x.fillRect(r() * w, r() * hh, 2, 3); }
-    x.strokeStyle = "#f4f4f0"; x.lineWidth = (cars ? 0.25 : 0.08) * PX; x.fillStyle = "#f4f4f0";
+  // a quadra: base (grama, cimento pintado ou taco) e as linhas por cima
+  const X = (v) => (v + L + 1) * PX, Z = (v) => (v + W + 1) * PX;
+  const base = (x, w, hh, r) => {
+    if (P.tipo === "grama") {
+      const step = cars ? 4 : 2;
+      for (let i = 0; i < 2 * L + 2; i += step) { x.fillStyle = (i / step) % 2 ? "#2f8f48" : "#2a8141"; x.fillRect(i * PX, 0, step * PX, hh); }
+      if (cars && S) for (const [t, x0] of [["A", 0], ["B", X(0)]]) { x.globalAlpha = 0.14; x.fillStyle = C.kitColor(S.kits[t]); x.fillRect(x0, 0, w / 2, hh); x.globalAlpha = 1; }
+      for (let i = 0; i < w * hh / 120; i++) { x.fillStyle = r() < 0.5 ? "#00000012" : "#ffffff10"; x.fillRect(r() * w, r() * hh, 2, 3); }
+    } else if (P.tipo === "cimento") {
+      x.fillStyle = "#cf5a3a"; x.fillRect(0, 0, w, hh); // faixa de fora: vermelho-terra
+      x.fillStyle = "#2b6cb0"; x.fillRect(X(-L), Z(-W), 2 * L * PX, 2 * W * PX); // quadra azul
+      x.fillStyle = "#3d8f4a"; for (const sg of [-1, 1]) { x.beginPath(); x.arc(X(sg * L), Z(0), F.areaR * PX, 0, 7); x.fill(); } // áreas verdes
+      for (let i = 0; i < w * hh / 90; i++) { x.fillStyle = r() < 0.5 ? "#00000016" : "#ffffff14"; x.fillRect(r() * w, r() * hh, 2, 2); }
+      for (let i = 0; i < 25; i++) { x.globalAlpha = 0.025 + r() * 0.035; x.fillStyle = "#ffffff"; x.beginPath(); x.arc(r() * w, r() * hh, (0.5 + r() * 2) * PX, 0, 7); x.fill(); } // tinta gasta
+      x.globalAlpha = 1; x.strokeStyle = "#0000003a"; x.lineWidth = 2;
+      for (let i = 0; i < 45; i++) { let px = r() * w, py = r() * hh; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (r() - 0.5) * PX * 1.6; py += (r() - 0.5) * PX * 1.6; x.lineTo(px, py); } x.stroke(); } // rachaduras
+    } else { // taco de madeira: réguas em fileiras, cada uma de um tom
+      const ph = Math.max(4, Math.round(0.14 * PX));
+      for (let y = 0, row = 0; y < hh; y += ph, row++) {
+        let x0 = -r() * PX;
+        while (x0 < w) {
+          const len = (0.8 + r() * 1.2) * PX, k = r();
+          x.fillStyle = `rgb(${Math.round(190 + k * 30)},${Math.round(130 + k * 30)},${Math.round(78 + k * 20)})`; x.fillRect(x0, y, len, ph);
+          x.fillStyle = "#00000014"; for (let g = 0; g < 3; g++) x.fillRect(x0 + r() * len, y + r() * ph, len * 0.3, 1);
+          x.fillStyle = "#3b220f55"; x.fillRect(x0, y, 1, ph); x0 += len;
+        }
+        x.fillStyle = "#3b220f40"; x.fillRect(0, y, w, 1);
+      }
+      x.fillStyle = "#7a1f1fd0"; // faixa de fora vinho, como nas ligas
+      x.fillRect(0, 0, w, Z(-W)); x.fillRect(0, Z(W), w, hh - Z(W)); x.fillRect(0, 0, X(-L), hh); x.fillRect(X(L), 0, w - X(L), hh);
+      x.fillStyle = "#1d4f91b0"; for (const sg of [-1, 1]) { x.beginPath(); if (sg < 0) x.arc(X(-L), Z(0), F.areaR * PX, -Math.PI / 2, Math.PI / 2); else x.arc(X(L), Z(0), F.areaR * PX, Math.PI / 2, 1.5 * Math.PI); x.fill(); }
+      x.fillStyle = "#b3262670"; x.beginPath(); x.arc(X(0), Z(0), F.circle * PX, 0, 7); x.fill();
+    }
+  };
+  const lines = (x) => {
+    x.strokeStyle = P.linhas; x.lineWidth = (cars ? 0.25 : 0.08) * PX; x.fillStyle = P.linhas;
     x.strokeRect(X(-L), Z(-W), 2 * L * PX, 2 * W * PX);
     x.beginPath(); x.moveTo(X(0), Z(-W)); x.lineTo(X(0), Z(W)); x.stroke();
     x.beginPath(); x.arc(X(0), Z(0), F.circle * PX, 0, 7); x.stroke();
     x.beginPath(); x.arc(X(0), Z(0), (cars ? 0.6 : 0.15) * PX, 0, 7); x.fill();
-    for (const s of [-1, 1]) {
-      const gx = X(s * L), r6 = F.areaR * PX;
+    for (const sg of [-1, 1]) {
+      const gx = X(sg * L), r6 = F.areaR * PX;
       x.beginPath(); // área: semicírculo em volta do gol (é onde o goleiro pega com a mão)
-      if (s < 0) x.arc(gx, Z(0), r6, -Math.PI / 2, Math.PI / 2); else x.arc(gx, Z(0), r6, Math.PI / 2, 1.5 * Math.PI);
+      if (sg < 0) x.arc(gx, Z(0), r6, -Math.PI / 2, Math.PI / 2); else x.arc(gx, Z(0), r6, Math.PI / 2, 1.5 * Math.PI);
       x.stroke();
-      if (!cars) { x.beginPath(); x.arc(X(s * (L - 6)), Z(0), 0.12 * PX, 0, 7); x.fill(); x.beginPath(); x.arc(X(s * (L - 10)), Z(0), 0.12 * PX, 0, 7); x.fill(); }
+      if (!cars) { x.beginPath(); x.arc(X(sg * (L - 6)), Z(0), 0.12 * PX, 0, 7); x.fill(); x.beginPath(); x.arc(X(sg * (L - 10)), Z(0), 0.12 * PX, 0, 7); x.fill(); }
     }
-  });
-  const field = add(new THREE.Mesh(new THREE.PlaneGeometry(2 * L + 2, 2 * W + 2), new THREE.MeshStandardMaterial({ map: grass, roughness: 0.95 })));
+  };
+  const pisoTex = canvasTex((2 * L + 2) * PX, (2 * W + 2) * PX, (x, w, hh, r) => { base(x, w, hh, r); lines(x); });
+  const field = add(new THREE.Mesh(new THREE.PlaneGeometry(2 * L + 2, 2 * W + 2), new THREE.MeshStandardMaterial({ map: pisoTex, roughness: P.roughness, metalness: P.metalness })));
   field.rotation.x = -Math.PI / 2; field.receiveShadow = true;
-  // placas de propaganda
-  const ads = ["PELADA DA GALERA", "⚽ VILA DA GALERA", "LEILÃO DA GALERA", "BAR DA SINUCA", "CORRIDA DA GALERA", "TIRO DA GALERA"];
-  const adCols = [["#0d47a1", "#ffd84a"], ["#b71c1c", "#ffffff"], ["#1b5e20", "#ffffff"], ["#212121", "#ffd84a"], ["#e65100", "#ffffff"], ["#4a148c", "#ffffff"]];
-  const adTex = canvasTex(2048, 64, (x, w, hh) => { const seg = w / 6; ads.forEach((t, i) => { const [bg, fg] = adCols[i]; x.fillStyle = bg; x.fillRect(i * seg, 0, seg, hh); x.fillStyle = fg; x.font = "bold 34px Figtree, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(t, i * seg + seg / 2, hh / 2 + 2); }); }, true);
+  if (P.textura && !cars) foto(P.textura).then((img) => { // tem a foto: ela vira a base, e as linhas vão por cima
+    const cv = pisoTex.image, x = cv.getContext("2d"), pat = x.createPattern(img, "repeat");
+    pat.setTransform(new DOMMatrix().scale((P.metrosFoto * PX) / img.width));
+    x.fillStyle = pat; x.fillRect(0, 0, cv.width, cv.height); lines(x); pisoTex.needsUpdate = true;
+  }).catch(() => {});
+  // muretas em volta (placas de propaganda, tijolo grafitado ou parede acolchoada)
   const BH = cars ? 2.2 : 1.0, BT = 0.15;
+  let muretaTex, lado = 0x333333, topo = 0x222222;
+  if (cfg.muretas === "tijolo") {
+    lado = 0x8f8a82; topo = 0x9c968c;
+    muretaTex = canvasTex(1024, 64, (x, w, hh, r) => {
+      x.fillStyle = "#d8ccb6"; x.fillRect(0, 0, w, hh);
+      for (let row = 0; row < 4; row++) for (let i = -1; i < w / 40 + 1; i++) { x.fillStyle = tons(r, ["#a4553a", "#b8643f", "#8f4a33", "#9d5a3c"]); x.fillRect(i * 40 + (row % 2) * 20 + 2, row * 16 + 2, 36, 12); }
+      x.fillStyle = "#c9c2b5"; x.fillRect(560, 0, 180, hh); // pedaço rebocado
+      const graf = [["VILA DA GALERA", "#ff3d7f"], ["PELADA ⚽", "#2ee6a6"], ["RJ", "#ffd84a"], ["GALERA", "#3ab0ff"]];
+      graf.forEach(([t, c], i) => { x.save(); x.translate(110 + i * 250, 34); x.rotate((r() - 0.5) * 0.15); x.font = "900 30px Figtree, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 6; x.strokeStyle = "#111"; x.strokeText(t, 0, 0); x.fillStyle = c; x.fillText(t, 0, 0); x.restore(); for (let d = 0; d < 4; d++) { x.fillStyle = c; x.fillRect(80 + i * 250 + r() * 60, 44, 2, 6 + r() * 12); } });
+    }, true);
+  } else if (cfg.muretas === "acolchoadas") {
+    lado = 0x0f2550; topo = 0x0b1a38;
+    muretaTex = canvasTex(1024, 64, (x, w, hh) => {
+      x.fillStyle = "#163a7a"; x.fillRect(0, 0, w, hh); x.fillStyle = "#0e2a5e"; for (let i = 0; i < w; i += 64) x.fillRect(i, 0, 3, hh);
+      x.fillStyle = "#ffd84a"; x.fillRect(0, hh - 6, w, 6);
+      x.font = "bold 30px Figtree, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = "#ffffff";
+      for (let i = 0; i < 2; i++) x.fillText("GINÁSIO DA GALERA ⚽", w / 4 + i * w / 2, hh / 2 - 2);
+    }, true);
+  } else {
+    const ads = ["PELADA DA GALERA", "⚽ VILA DA GALERA", "LEILÃO DA GALERA", "BAR DA SINUCA", "CORRIDA DA GALERA", "TIRO DA GALERA"];
+    const adCols = [["#0d47a1", "#ffd84a"], ["#b71c1c", "#ffffff"], ["#1b5e20", "#ffffff"], ["#212121", "#ffd84a"], ["#e65100", "#ffffff"], ["#4a148c", "#ffffff"]];
+    muretaTex = canvasTex(2048, 64, (x, w, hh) => { const seg = w / 6; ads.forEach((t, i) => { const [bg, fg] = adCols[i]; x.fillStyle = bg; x.fillRect(i * seg, 0, seg, hh); x.fillStyle = fg; x.font = "bold 34px Figtree, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(t, i * seg + seg / 2, hh / 2 + 2); }); }, true);
+  }
+  const texLen = cfg.muretas === "propaganda" ? 24 : 16;
   const board = (len, x0, z0, rotY) => {
-    const t = adTex.clone(); t.repeat.set(len / (24 * BH), 1); t.needsUpdate = true;
-    const m = add(new THREE.Mesh(new THREE.BoxGeometry(len, BH, BT), [M(0x333333), M(0x333333), M(0x222222), M(0x222222), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }), M(0x333333)]));
+    const t = muretaTex.clone(); t.repeat.set(len / (texLen * BH), 1); t.needsUpdate = true;
+    const m = add(new THREE.Mesh(new THREE.BoxGeometry(len, BH, BT), [M(lado), M(lado), M(topo), M(topo), new THREE.MeshStandardMaterial({ map: t, roughness: cfg.muretas === "acolchoadas" ? 0.45 : 0.8 }), M(lado)]));
     m.position.set(x0, BH / 2, z0); m.rotation.y = rotY; m.castShadow = m.receiveShadow = true;
   };
   board(2 * L + 2 * BT, 0, -W - BT / 2, 0); board(2 * L + 2 * BT, 0, W + BT / 2, Math.PI);
-  for (const s of [-1, 1]) for (const zs of [-1, 1]) { const len = W - F.goalW - 0.1; board(len, s * (L + BT / 2), zs * (F.goalW + 0.1 + len / 2), s < 0 ? Math.PI / 2 : -Math.PI / 2); }
-  // alambrado (tela em losango) e postes
-  const fenceTex = canvasTex(64, 64, (x, w) => { x.strokeStyle = "#d8dde0"; x.lineWidth = 3; x.beginPath(); x.moveTo(0, w / 2); x.lineTo(w / 2, 0); x.lineTo(w, w / 2); x.lineTo(w / 2, w); x.closePath(); x.stroke(); }, true);
+  for (const sg of [-1, 1]) for (const zs of [-1, 1]) { const len = W - F.goalW - 0.1; board(len, sg * (L + BT / 2), zs * (F.goalW + 0.1 + len / 2), sg < 0 ? Math.PI / 2 : -Math.PI / 2); }
+  muretaTex.dispose(); // os clones têm a própria cópia
+  // em cima da mureta: alambrado aberto (tela em losango) ou, no ginásio, vidro (quadra fechada)
+  const FH = F.wallH, glass = cfg.paredes === "fechadas";
+  const fenceTex = glass ? null : canvasTex(64, 64, (x, w) => { x.strokeStyle = "#d8dde0"; x.lineWidth = 3; x.beginPath(); x.moveTo(0, w / 2); x.lineTo(w / 2, 0); x.lineTo(w, w / 2); x.lineTo(w / 2, w); x.closePath(); x.stroke(); }, true);
   const cell = cars ? 1 : 0.5;
-  const fence = (lw, lh, x0, y0, z0, rotY) => { const t = fenceTex.clone(); t.repeat.set(lw / cell, lh / cell); t.needsUpdate = true; const m = add(new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.4 }))); m.position.set(x0, y0 + lh / 2, z0); m.rotation.y = rotY; };
-  const FH = F.wallH;
+  const fence = (lw, lh, x0, y0, z0, rotY) => {
+    let mat;
+    if (glass) mat = new THREE.MeshStandardMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.1, roughness: 0.05, metalness: 0.2, side: THREE.DoubleSide, depthWrite: false });
+    else { const t = fenceTex.clone(); t.repeat.set(lw / cell, lh / cell); t.needsUpdate = true; mat = new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.4 }); }
+    const m = add(new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), mat)); m.position.set(x0, y0 + lh / 2, z0); m.rotation.y = rotY;
+  };
   fence(2 * L, FH - BH, 0, BH, -W - 0.05, 0); fence(2 * L, FH - BH, 0, BH, W + 0.05, 0);
-  for (const s of [-1, 1]) { fence(2 * W, FH - F.goalH - 0.4, s * (L + F.goalD + 0.05), F.goalH + 0.4, 0, Math.PI / 2); for (const zs of [-1, 1]) { const lw = W - F.goalW; fence(lw, FH - BH, s * (L + 0.05), BH, zs * (F.goalW + lw / 2), Math.PI / 2); } }
-  const pole = M(0x4a4f55, { metalness: 0.6, roughness: 0.4 }), gap = cars ? 8 : 5, pr = cars ? 0.12 : 0.06;
+  for (const sg of [-1, 1]) { fence(2 * W, FH - F.goalH - 0.4, sg * (L + F.goalD + 0.05), F.goalH + 0.4, 0, Math.PI / 2); for (const zs of [-1, 1]) { const lw = W - F.goalW; fence(lw, FH - BH, sg * (L + 0.05), BH, zs * (F.goalW + lw / 2), Math.PI / 2); } }
+  fenceTex?.dispose();
+  const pole = M(glass ? 0xb8bcc2 : 0x4a4f55, { metalness: 0.6, roughness: 0.4 }), gap = cars ? 8 : 5, pr = cars ? 0.12 : glass ? 0.04 : 0.06;
   for (let x0 = -L; x0 <= L + 0.01; x0 += gap) for (const zs of [-1, 1]) { const m = add(new THREE.Mesh(new THREE.CylinderGeometry(pr, pr, FH, 8), pole)); m.position.set(x0, FH / 2, zs * (W + 0.1)); m.castShadow = true; }
-  // refletores nos cantos
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+  // refletores
+  if (cfg.refletores === "torres") for (const sx of [-1, 1]) for (const sz of [-1, 1]) { // torres nos cantos
     const g = add(new THREE.Group()); g.position.set(sx * (L + 4), 0, sz * (W + 4));
     const hp = cars ? 26 : 16;
     const m = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, hp, 8), pole); m.position.y = hp / 2; m.castShadow = true; g.add(m);
     const box = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.4), M(0x2b2f33)); box.position.y = hp + 0.4; box.lookAt(-sx * 40, 0, -sz * 40); g.add(box);
     for (let i = 0; i < 6; i++) { const l = new THREE.Mesh(new THREE.CircleGeometry(0.22, 12), new THREE.MeshBasicMaterial({ color: 0xfff6d8 })); l.position.set((i % 3 - 1) * 0.7, (i < 3 ? 0.3 : -0.3), 0.21); box.add(l); }
   }
-  // arquibancada de um lado, com a torcida
-  const crowdTex = canvasTex(512, 64, (x, w, hh, r) => { x.fillStyle = "#6d6f72"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 260; i++) { const cx = r() * w, cy = 18 + r() * 34; x.fillStyle = ["#c62828", "#1565c0", "#f9a825", "#2e7d32", "#fafafa", "#212121", "#ef6c00"][Math.floor(r() * 7)]; x.fillRect(cx - 4, cy, 8, 14); x.fillStyle = ["#f1c27d", "#c68642", "#8d5524", "#e0ac69"][Math.floor(r() * 4)]; x.beginPath(); x.arc(cx, cy - 3, 4, 0, 7); x.fill(); } }, true);
-  const sc = cars ? 2 : 1;
-  for (let i = 0; i < 6; i++) {
-    const t = crowdTex.clone(); t.repeat.set(6 * L / 20, 1); t.offset.x = i * 0.37; t.needsUpdate = true;
-    const step = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 6, 0.5 * sc, 1 * sc), [M(0x777a7e), M(0x777a7e), M(0x8a8d90), M(0x777a7e), new THREE.MeshStandardMaterial({ map: t }), M(0x777a7e)]));
-    step.position.set(0, (0.25 + i * 0.5 + 0.3) * sc, -(W + 3 * sc + i * sc)); step.castShadow = step.receiveShadow = true;
+  if (cfg.refletores === "teto") { // ginásio: treliças no teto e refletores (SpotLight) focados na quadra
+    const HT = 15, metal = M(0x2a2d33, { metalness: 0.7, roughness: 0.5 });
+    for (let x0 = -L - 6; x0 <= L + 6; x0 += 8) { const t = add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 2 * W + 24), metal)); t.position.set(x0, HT + 1.5, 0); }
+    for (const sx of [-0.62, 0, 0.62]) for (const sz of [-1, 1]) {
+      const px = sx * L, pz = sz * (W * 0.55);
+      const spot = new THREE.SpotLight(cfg.luz.cor, cfg.luz.spot, 0, 0.62, 0.55, 0); spot.position.set(px, HT, pz); spot.target.position.set(px * 0.8, 0, pz * 0.35);
+      add(spot); add(spot.target);
+      const lamp = add(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 1.0), M(0x1c1e22))); lamp.position.set(px, HT + 0.3, pz);
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), new THREE.MeshBasicMaterial({ color: 0xfff8e6 })); face.rotation.x = Math.PI / 2; face.position.y = -0.26; lamp.add(face);
+    }
+    // o prédio: paredes e teto escuros em volta de tudo
+    const hall = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 50, HT + 6, 2 * W + 40), new THREE.MeshStandardMaterial({ color: 0x15171d, roughness: 0.95, side: THREE.BackSide })));
+    hall.position.y = (HT + 6) / 2 - 0.06;
   }
+  // arquibancadas e o que fica em volta
+  const crowdTex = (escura) => canvasTex(512, 64, (x, w, hh, r) => { x.fillStyle = "#6d6f72"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 260; i++) { const cx = r() * w, cy = 18 + r() * 34; x.fillStyle = tons(r, ["#c62828", "#1565c0", "#f9a825", "#2e7d32", "#fafafa", "#212121", "#ef6c00"]); x.fillRect(cx - 4, cy, 8, 14); x.fillStyle = tons(r, ["#f1c27d", "#c68642", "#8d5524", "#e0ac69"]); x.beginPath(); x.arc(cx, cy - 3, 4, 0, 7); x.fill(); } if (escura) { x.fillStyle = "#000000a8"; x.fillRect(0, 0, w, hh); } }, true);
+  const stands = (zSide, rows, escura) => {
+    const tex = crowdTex(escura), sc = cars ? 2 : 1, cor = escura ? 0x2a2c31 : 0x777a7e, cor2 = escura ? 0x34363c : 0x8a8d90;
+    for (let i = 0; i < rows; i++) {
+      const t = tex.clone(); t.repeat.set(6 * L / 20, 1); t.offset.x = i * 0.37; t.needsUpdate = true;
+      const front = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
+      const step = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 6, 0.5 * sc, 1 * sc), [M(cor), M(cor), M(cor2), M(cor), zSide < 0 ? front : M(cor), zSide < 0 ? M(cor) : front]));
+      step.position.set(0, (0.25 + i * 0.5 + 0.3) * sc, zSide * (W + 3 * sc + i * sc)); step.castShadow = step.receiveShadow = true;
+    }
+    tex.dispose();
+  };
+  if (cfg.arquibancada === "torcida") stands(-1, 6, false);
+  if (cfg.arquibancada === "escura") { stands(-1, 8, true); stands(1, 8, true); }
+  if (cfg.arquibancada === "morro") morro(add, L, W);
   // gols: traves e rede
   const white = M(0xf4f4f4, { roughness: 0.3 }), netTex = canvasTex(32, 32, (x, w) => { x.strokeStyle = "#f4f4f4"; x.lineWidth = 2; x.strokeRect(0, 0, w, w); }, true);
   const net = (lw, lh) => { const t = netTex.clone(); t.repeat.set(lw / (cars ? 0.5 : 0.12), lh / (cars ? 0.5 : 0.12)); t.needsUpdate = true; return new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 1 }); };
   const R = F.postR, GW = F.goalW, GH = F.goalH, GD = F.goalD;
-  for (const s of [-1, 1]) {
-    const g = add(new THREE.Group()); g.position.x = s * L;
+  for (const sg of [-1, 1]) {
+    const g = add(new THREE.Group()); g.position.x = sg * L;
     for (const z of [-GW, GW]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(R, R, GH + R, 12), white); p.position.set(0, (GH + R) / 2, z); p.castShadow = true; g.add(p); }
     const bar = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 2 * GW + 2 * R, 12), white); bar.rotation.x = Math.PI / 2; bar.position.y = GH; bar.castShadow = true; g.add(bar);
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(2 * GW, GH), net(2 * GW, GH)); back.position.set(s * GD, GH / 2, 0); back.rotation.y = Math.PI / 2; g.add(back);
-    const top = new THREE.Mesh(new THREE.PlaneGeometry(GD, 2 * GW), net(GD, 2 * GW)); top.rotation.x = -Math.PI / 2; top.position.set(s * GD / 2, GH, 0); g.add(top);
-    for (const z of [-GW, GW]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(GD, GH), net(GD, GH)); side.position.set(s * GD / 2, GH / 2, z); g.add(side); }
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(2 * GW, GH), net(2 * GW, GH)); back.position.set(sg * GD, GH / 2, 0); back.rotation.y = Math.PI / 2; g.add(back);
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(GD, 2 * GW), net(GD, 2 * GW)); top.rotation.x = -Math.PI / 2; top.position.set(sg * GD / 2, GH, 0); g.add(top);
+    for (const z of [-GW, GW]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(GD, GH), net(GD, GH)); side.position.set(sg * GD / 2, GH / 2, z); g.add(side); }
   }
+  netTex.dispose();
   // placas em cima de cada gol: dizem de quem é o gol e quem ataca (atualizadas em updateGoalSigns)
   goalSigns = [];
   for (const s of [-1, 1]) {
@@ -406,6 +589,42 @@ function buildArena(F) {
   return grp;
 }
 
+// Rio: morros cheios de casinhas coloridas atrás da quadra, palmeiras nos cantos e o Cristo lá longe
+function morro(add, L, W) {
+  const r = rng(77), cores = [0xe5533d, 0xf2b134, 0x4aa3df, 0x7bc96f, 0xf4f1e8, 0xe98fb7, 0xc8a27a, 0x9b6fd1, 0xffffff, 0xb5633f];
+  const morros = [ // centro (x, z), raio em x, altura, raio em z e para onde a frente olha (a quadra)
+    { x: 0, z: -(W + 80), sx: L * 3.6, h: 42, sz: 48, fx: 0, fz: 1 },
+    { x: L + 90, z: 0, sx: 48, h: 30, sz: W * 4, fx: -1, fz: 0 },
+    { x: -(L + 95), z: 6, sx: 50, h: 34, sz: W * 4, fx: 1, fz: 0 },
+  ];
+  const verde = M(0x527d3c, { roughness: 1 }), casas = [];
+  for (const m of morros) {
+    const hill = add(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), verde));
+    hill.scale.set(m.sx, m.h, m.sz); hill.position.set(m.x, -2, m.z);
+    for (let i = 0; i < 320; i++) { // casinhas só na encosta virada para a quadra
+      const a = r() * 2 - 1, b = r() * 2 - 1, q = a * a + b * b;
+      if (q > 0.85 || a * m.fx + b * m.fz < 0.05) continue;
+      const w = 1.6 + r() * 1.8, hh = 1.6 + r() * 1.6, d = 1.6 + r() * 1.6, y = -2 + m.h * Math.sqrt(1 - q);
+      casas.push({ x: m.x + a * m.sx, y: y + (hh - 3) / 2, z: m.z + b * m.sz, w, hh: hh + 3, d, ry: (r() - 0.5) * 0.3, cor: tons(r, cores) }); // a base fica enterrada no morro
+    }
+  }
+  const box = new THREE.BoxGeometry(1, 1, 1), inst = add(new THREE.InstancedMesh(box, M(0xffffff, { roughness: 0.9 }), casas.length));
+  const mt = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), col = new THREE.Color();
+  casas.forEach((c, i) => { mt.compose(new THREE.Vector3(c.x, c.y, c.z), q.setFromEuler(e.set(0, c.ry, 0)), new THREE.Vector3(c.w, c.hh, c.d)); inst.setMatrixAt(i, mt); inst.setColorAt(i, col.setHex(c.cor)); });
+  inst.castShadow = false; inst.receiveShadow = true;
+  // palmeiras nos cantos, do lado de fora do alambrado
+  const tronco = M(0x7a5a3a, { roughness: 1 }), folha = M(0x2f8a3a, { roughness: 0.8 });
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const g = add(new THREE.Group()); g.position.set(sx * (L + 3.5), 0, sz * (W + 3.5));
+    for (let k = 0; k < 6; k++) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 1.4, 7), tronco); t.position.set(sx * k * 0.06, 0.7 + k * 1.35, 0); t.rotation.z = -sx * 0.05; t.castShadow = true; g.add(t); }
+    for (let k = 0; k < 7; k++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 2.6), folha); const a = (k / 7) * Math.PI * 2; f.position.set(sx * 0.36 + Math.sin(a) * 1.1, 8.3, Math.cos(a) * 1.1); f.rotation.set(0.35 * Math.cos(a), a, -0.35 * Math.sin(a)); f.castShadow = true; g.add(f); }
+  }
+  // o Corcovado lá longe, com o Cristo em cima
+  const pico = add(new THREE.Mesh(new THREE.ConeGeometry(34, 90, 10), verde)); pico.position.set(-L * 1.4, 43, -(W + 150));
+  const pedra = M(0xf1efe8, { roughness: 0.7 }), cristo = add(new THREE.Group()); cristo.position.set(-L * 1.4, 88, -(W + 150)); cristo.scale.setScalar(1.6);
+  for (const [w, hh, d, y] of [[2.4, 2, 2.4, 1], [1.6, 7, 1.2, 5.5], [10, 1.1, 1, 8.3], [1, 1.1, 1, 9.6]]) { const p = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), pedra); p.position.y = y; cristo.add(p); }
+}
+
 // ---------- jogadores a pé (caixinhas com a camisa do time) ----------
 const GK_KIT = { kind: "plain", c: ["#26282b"], num: "#ffffff", shorts: "#26282b" };
 function shirtTex(K, num, back) {
@@ -427,76 +646,244 @@ function nameSprite(text, color, scale = 1) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); s.scale.set(1.3 * scale, 0.33 * scale, 1); s.renderOrder = 10; return s;
 }
 const tagColor = (kit) => (C.kitColor(kit) === "#f4f4f4" ? "#ffffff" : C.kitColor(kit));
-const SKINS = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xd9a77c];
+const SKIN_TONES = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xd9a77c];
 const SPINE_Y = 0.85; // altura da cintura (pivô da coluna)
+
+// ======================================================================
+// Skins zoeiras. Cada skin tem um boneco de caixinhas feito aqui ("look": sempre funciona, com joelho, cotovelo,
+// coluna e as molas) e, se o arquivo existir em public/pelada/modelos/, o modelo 3D de verdade (.glb/.gltf) é
+// carregado com o GLTFLoader e entra no lugar. Ajustes do arquivo: scale (tamanho), yOffset (sobe/desce em relação
+// ao chão) e rotationOffset (gira o modelo; a frente do jogador é -z, e a maioria dos modelos vem olhando para +z).
+// A camisa continua com a cor do time, para dar para saber quem é de quem.
+// ======================================================================
+const SKINS_CONFIG = {
+  padrao: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0, look: {} },
+  cr7: { arquivo: "/pelada/modelos/cr7.glb", scale: 1, yOffset: 0, rotationOffset: Math.PI,
+    look: { tom: 0xd9a77c, cabelo: 0x17110c, estilo: "topete", larg: 1.1, altura: 1.04, num: 7 } },
+  neymar: { arquivo: "/pelada/modelos/neymar.glb", scale: 1, yOffset: 0, rotationOffset: Math.PI,
+    look: { tom: 0xc68642, cabelo: 0xf3d36c, estilo: "moicano", larg: 0.92, num: 10 },
+    queda: { push: 2 } }, // o cai-cai: no carrinho, rola o dobro (só o visual: levanta na mesma hora que os outros)
+  lula: { arquivo: "/pelada/modelos/lula.glb", scale: 1, yOffset: 0, rotationOffset: Math.PI,
+    look: { tom: 0xe8b98a, cabelo: 0xdcdcdc, estilo: "calvo", barba: 0xd2d2d2, larg: 1.14, barriga: 1.2, altura: 0.95 } },
+  bob_esponja: { arquivo: "/pelada/modelos/bob_esponja.glb", scale: 1, yOffset: 0, rotationOffset: Math.PI,
+    look: { esponja: true, altura: 0.92 } },
+  levi: { arquivo: "/pelada/modelos/levi.glb", scale: 1, yOffset: 0, rotationOffset: Math.PI,
+    look: { tom: 0xf3d3b0, cabelo: 0x111111, estilo: "franja", altura: 0.88, gravata: 0xf4f4f4, capa: 0x2f5233 } },
+};
+const hex = (c) => new THREE.Color(c).getHex();
+
+// cria o jogador: um container (é ele que anda e gira) com o nome em cima; o visual (a skin) fica dentro
 function makePlayer(kitId, num, name, opts = {}) {
-  const K = opts.gk ? { ...GK_KIT, num: C.kitColor(kitId) } : kitOf(kitId);
-  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-  const skin = M(SKINS[(name.length * 7 + num) % SKINS.length]), shorts = M(new THREE.Color(K.shorts).getHex()), sock = M(new THREE.Color(opts.gk ? "#26282b" : C.kitColor(kitId)).getHex()), boot = M(0x161616);
-  const shirtC = M(new THREE.Color(K.c[0]).getHex());
+  const g = new THREE.Group();
+  g.userData = { kitId, num, gk: !!opts.gk, nameLen: name.length, skin: null, pedido: 0, tag: null };
+  if (name) { const tag = nameSprite((opts.gk ? "🧤 " : "") + name, tagColor(kitId)); tag.position.y = 2.15; g.add(tag); g.userData.tag = tag; }
+  mudarSkinJogador(g, opts.skin);
+  return g;
+}
+
+// troca a skin na hora: tira o visual antigo (liberando a memória), monta o boneco de caixinhas da skin nova e,
+// se ela tiver arquivo 3D, carrega o modelo e troca quando terminar. Aceita o modelo ou o objeto que tem .model.
+function mudarSkinJogador(jogador, novoSkinId) {
+  const g = jogador && jogador.isObject3D ? jogador : jogador && jogador.model;
+  if (!g) return null;
+  const u = g.userData, id = SKINS_CONFIG[novoSkinId] ? novoSkinId : "padrao";
+  if (u.skin === id && u.body) return g;
+  tirarVisual(g);
+  u.skin = id; const pedido = ++u.pedido;
+  montarVoxel(g, id);
+  const cfg = SKINS_CONFIG[id];
+  if (cfg.arquivo) pegarGLTF(cfg.arquivo).then((gltf) => {
+    if (u.pedido !== pedido) { soltarGLTF(cfg.arquivo); return; } // mudou de ideia enquanto baixava
+    tirarVisual(g); montarGLTF(g, id, gltf);
+  }, () => {}); // sem o arquivo: fica o boneco de caixinhas (é o reserva)
+  return g;
+}
+// tira o visual da skin do container e libera a memória (o modelo 3D é compartilhado: só devolve a "ficha")
+function tirarVisual(g) {
+  const u = g.userData;
+  if (!u.body) return;
+  g.remove(u.body);
+  if (u.gltfUrl) {
+    if (u.mixer) { u.mixer.stopAllAction(); u.mixer.uncacheRoot(u.inner); }
+    for (const m of u.matsExtra || []) m.dispose();
+    soltarGLTF(u.gltfUrl);
+  } else liberar(u.body);
+  for (const k of ["body", "spine", "head", "legs", "knees", "arms", "elbows", "capa", "lean", "inner", "mixer", "acRun", "acIdle", "gltfUrl", "matsExtra", "rest", "mats"]) u[k] = null;
+}
+// o jogador saiu de vez da cena: tira a skin e o nome
+function descartarJogador(g) {
+  if (!g) return;
+  g.parent?.remove(g);
+  if (g.userData.skin == null) return; // carro: as texturas de pixel são compartilhadas, só tira da cena
+  g.userData.pedido++; tirarVisual(g);
+  if (g.userData.tag) { g.userData.tag.material.map.dispose(); g.userData.tag.material.dispose(); }
+}
+
+// ---------- modelos 3D (GLTFLoader), com cache: cada arquivo baixa uma vez e é clonado para cada jogador ----------
+const gltfLoader = new GLTFLoader(), gltfCache = {};
+function pegarGLTF(url) {
+  const e = (gltfCache[url] ||= { users: 0, gltf: null, promise: gltfLoader.loadAsync(url).then((gl) => (e.gltf = gl)) });
+  e.users++;
+  return e.promise;
+}
+function soltarGLTF(url) {
+  const e = gltfCache[url]; if (!e) return;
+  if (--e.users <= 0 && e.gltf) { liberar(e.gltf.scene); delete gltfCache[url]; } // ninguém mais usa: libera
+}
+function montarGLTF(g, id, gltf) {
+  const cfg = SKINS_CONFIG[id], u = g.userData;
+  const body = new THREE.Group(), lean = new THREE.Group(), inner = cloneSkinned(gltf.scene);
+  inner.scale.setScalar(cfg.scale); inner.position.y = cfg.yOffset; inner.rotation.y = cfg.rotationOffset;
+  inner.traverse((o) => { if (o.isMesh) { o.castShadow = true; if (o.isSkinnedMesh) o.frustumCulled = false; } });
+  lean.add(inner); body.add(lean); g.add(body);
+  const osso = (re) => { let b = null; inner.traverse((o) => { if (!b && o.isBone && re.test(o.name)) b = o; }); return b; };
+  Object.assign(u, { body, lean, inner, gltfUrl: cfg.arquivo, spine: osso(/spine/i), head: osso(/head/i) });
+  u.rest = { spine: u.spine && u.spine.rotation.clone(), head: u.head && u.head.rotation.clone() };
+  // cores do time para o boneco de pano (o ragdoll do carrinho é de caixinhas)
+  const K = u.gk ? GK_KIT : kitOf(u.kitId), pele = M(SKIN_TONES[(u.nameLen * 7 + u.num) % SKIN_TONES.length]), camisa = M(hex(K.c[0])), calcao = M(hex(K.shorts)), bota = M(0x161616);
+  u.mats = { head: pele, torso: camisa, upperArm: camisa, forearm: pele, thigh: calcao, shin: calcao, boot: bota }; u.matsExtra = [pele, camisa, calcao, bota];
+  // animações que vierem no arquivo (correr / parado)
+  if (gltf.animations.length) {
+    u.mixer = new THREE.AnimationMixer(inner);
+    const clip = (re) => gltf.animations.find((a) => re.test(a.name));
+    const run = clip(/run|corr|jog/i) || clip(/walk|anda/i), idle = clip(/idle|parad|stand/i);
+    if (run) { u.acRun = u.mixer.clipAction(run); u.acRun.play(); }
+    if (idle) { u.acIdle = u.mixer.clipAction(idle); u.acIdle.play(); }
+    if (!run && !idle) u.mixer.clipAction(gltf.animations[0]).play();
+  }
+}
+
+// ---------- o boneco de caixinhas de cada skin ----------
+function montarVoxel(g, id) {
+  const u = g.userData, L = SKINS_CONFIG[id].look || {}, bob = !!L.esponja;
+  const K = u.gk ? { ...GK_KIT, num: C.kitColor(u.kitId) } : kitOf(u.kitId), num = L.num ?? u.num;
+  const body = new THREE.Group(); body.scale.setScalar(L.altura || 1); g.add(body);
+  const tom = bob ? 0xf5e04a : L.tom ?? SKIN_TONES[(u.nameLen * 7 + u.num) % SKIN_TONES.length];
+  const skin = M(tom), shorts = M(bob ? 0x8a5a2b : hex(K.shorts)), sock = M(bob ? 0xf4f4f4 : hex(u.gk ? "#26282b" : C.kitColor(u.kitId))), boot = M(0x161616);
+  const shirtC = M(bob ? 0xffffff : hex(K.c[0])), hair = M(L.cabelo ?? 0x2a1b10);
   const part = (gg, w, hh, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); m.position.set(x, y, z); gg.add(m); return m; };
+  const lw = L.larg || 1, perna = bob ? 0.6 : 1; // o Bob tem perninha fina
   // pernas e braços com joelho e cotovelo (dobram na corrida, para o boneco não ficar duro)
   const legs = [], knees = [];
-  for (const sx of [-0.11, 0.11]) {
+  for (const sx of [-0.11 * lw, 0.11 * lw]) {
     const l = new THREE.Group(); l.position.set(sx, 0.85, 0);
-    part(l, 0.18, 0.3, 0.2, shorts, 0, -0.12, 0); part(l, 0.14, 0.12, 0.15, skin, 0, -0.29, 0);
+    part(l, 0.18 * lw, 0.3, 0.2, shorts, 0, -0.12, 0); part(l, 0.14 * perna, 0.12, 0.15 * perna, skin, 0, -0.29, 0);
     const kn = new THREE.Group(); kn.position.y = -0.3; l.add(kn);
-    part(kn, 0.14, 0.2, 0.15, skin, 0, -0.08, 0); part(kn, 0.15, 0.22, 0.16, sock, 0, -0.36, 0); part(kn, 0.16, 0.1, 0.27, boot, 0, -0.5, -0.04);
+    part(kn, 0.14 * perna, 0.2, 0.15 * perna, skin, 0, -0.08, 0); part(kn, 0.15 * (bob ? 0.8 : 1), 0.22, 0.16 * (bob ? 0.8 : 1), sock, 0, -0.36, 0); part(kn, 0.16, 0.1, 0.27, boot, 0, -0.5, -0.04);
+    if (L.capa) part(l, 0.19, 0.03, 0.21, M(0x5a3a1e), 0, -0.2, 0); // cinto do equipamento de manobra (Levi)
+    if (bob) part(kn, 0.13, 0.04, 0.14, M(hex(K.c[0])), 0, -0.3, 0); // faixa da meia com a cor do time
     body.add(l); legs.push(l); knees.push(kn);
   }
   // coluna ("spine"): tronco, braços e cabeça ficam num pivô na cintura, assim o tronco balança por cima das pernas
   const spine = new THREE.Group(); spine.position.y = SPINE_Y; body.add(spine);
-  const front = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, false), roughness: 0.7 }), backM = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, true), roughness: 0.7 });
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.6, 0.26), [shirtC, shirtC, shirtC, shirtC, backM, front]); torso.position.y = 1.16 - SPINE_Y; spine.add(torso);
-  const arms = [], elbows = [], fore = opts.gk ? shirtC : skin;
-  for (const sx of [-0.3, 0.3]) {
-    const a = new THREE.Group(); a.position.set(sx, 1.42 - SPINE_Y, 0);
-    part(a, 0.13, 0.26, 0.14, shirtC, 0, -0.12, 0);
+  let front, backM, torsoMats;
+  if (bob) { // a esponja: um tronco quadradão amarelo com furinhos, camisa branca e gravata da cor do time
+    const pores = canvasTex(64, 64, (x, w, hh, r) => { x.fillStyle = "#f5e04a"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 14; i++) { x.fillStyle = r() < 0.5 ? "#c9b52e" : "#d8c43a"; x.beginPath(); x.ellipse(r() * w, r() * hh, 2 + r() * 4, 2 + r() * 3, 0, 0, 7); x.fill(); } });
+    front = new THREE.MeshStandardMaterial({ map: pores, roughness: 0.8 }); backM = front;
+    torsoMats = [front, front, front, front, front, front];
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.62, 0.3), front); torso.position.y = 1.2 - SPINE_Y; spine.add(torso);
+    part(spine, 0.63, 0.1, 0.31, shirtC, 0, 0.9 - SPINE_Y, 0); // camisa
+    part(spine, 0.07, 0.16, 0.02, M(hex(K.c[0])), 0, 0.88 - SPINE_Y, -0.16); // gravata
+  } else {
+    front = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, false), roughness: 0.7 }); backM = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, true), roughness: 0.7 });
+    torsoMats = [shirtC, shirtC, shirtC, shirtC, backM, front];
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46 * lw, 0.6, 0.26 * (L.barriga || 1)), torsoMats); torso.position.y = 1.16 - SPINE_Y; spine.add(torso);
+    if (L.gravata) part(spine, 0.14, 0.12, 0.05, M(L.gravata), 0, 1.38 - SPINE_Y, -0.14 * (L.barriga || 1)); // a gravata (cravat) do Levi
+  }
+  const arms = [], elbows = [], fore = u.gk ? shirtC : skin, ombro = bob ? 0.36 : 0.3 * lw;
+  for (const sx of [-ombro, ombro]) {
+    const a = new THREE.Group(); a.position.set(sx, (bob ? 1.36 : 1.42) - SPINE_Y, 0);
+    part(a, 0.13 * (bob ? 0.9 : 1), 0.26, 0.14, shirtC, 0, -0.12, 0);
     const el = new THREE.Group(); el.position.y = -0.25; a.add(el);
-    part(el, 0.11, 0.3, 0.12, fore, 0, -0.15, 0);
-    if (opts.gk) part(el, 0.15, 0.13, 0.15, M(0xf5f5f5), 0, -0.35, 0);
+    part(el, 0.11 * perna, 0.3, 0.12 * perna, fore, 0, -0.15, 0);
+    if (u.gk) part(el, 0.15, 0.13, 0.15, M(0xf5f5f5), 0, -0.35, 0);
     spine.add(a); arms.push(a); elbows.push(el);
   }
-  const head = new THREE.Group(); head.position.y = 1.46 - SPINE_Y; spine.add(head);
-  const hair = M(0x2a1b10);
-  part(head, 0.26, 0.28, 0.26, skin, 0, 0.15, 0); part(head, 0.28, 0.08, 0.28, hair, 0, 0.31, 0); part(head, 0.18, 0.04, 0.01, M(0x111111), 0, 0.18, -0.131);
-  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  let tag = null; if (name) { tag = nameSprite((opts.gk ? "🧤 " : "") + name, tagColor(kitId)); tag.position.y = 2.15; g.add(tag); }
-  g.userData = { legs, knees, arms, elbows, head, tag, body, spine, mats: { head: skin, hair, torso: [shirtC, shirtC, shirtC, shirtC, backM, front], upperArm: shirtC, forearm: fore, thigh: shorts, shin: sock, boot } };
-  return g;
+  const head = new THREE.Group(); spine.add(head);
+  if (bob) { // o rosto fica na frente do tronco: olhões, nariz e o sorrisão com dois dentes
+    head.position.y = 1.2 - SPINE_Y;
+    const white = M(0xffffff), azul = M(0x3a8de0), preto = M(0x111111);
+    for (const sx of [-0.12, 0.12]) { part(head, 0.17, 0.17, 0.06, white, sx, 0.1, -0.18); part(head, 0.08, 0.08, 0.02, azul, sx, 0.1, -0.215); part(head, 0.04, 0.04, 0.02, preto, sx, 0.1, -0.226); }
+    part(head, 0.06, 0.06, 0.12, skin, 0, 0.01, -0.21);
+    part(head, 0.3, 0.05, 0.02, M(0x8c1d1d), 0, -0.09, -0.155);
+    for (const sx of [-0.04, 0.04]) part(head, 0.05, 0.06, 0.02, white, sx, -0.12, -0.16);
+  } else {
+    head.position.y = 1.46 - SPINE_Y;
+    part(head, 0.26, 0.28, 0.26, skin, 0, 0.15, 0);
+    part(head, 0.18, 0.04, 0.01, M(0x111111), 0, 0.18, -0.131); // sobrancelhas
+    const e = L.estilo;
+    if (e === "topete") { part(head, 0.28, 0.07, 0.28, hair, 0, 0.31, 0.01); const q = part(head, 0.22, 0.09, 0.12, hair, 0, 0.37, -0.08); q.rotation.x = -0.35; }
+    else if (e === "moicano") { part(head, 0.28, 0.04, 0.28, M(0x2a1b10), 0, 0.3, 0); part(head, 0.08, 0.13, 0.27, hair, 0, 0.36, 0); }
+    else if (e === "calvo") { // careca em cima, cabelo branco dos lados e atrás, e a barba
+      for (const sx of [-0.14, 0.14]) part(head, 0.02, 0.12, 0.2, hair, sx, 0.2, 0.02); part(head, 0.28, 0.12, 0.02, hair, 0, 0.2, 0.135);
+      const b = M(L.barba); part(head, 0.27, 0.11, 0.05, b, 0, 0.04, -0.12); for (const sx of [-0.135, 0.135]) part(head, 0.02, 0.16, 0.18, b, sx, 0.07, -0.03); part(head, 0.15, 0.03, 0.02, b, 0, 0.1, -0.135);
+    } else if (e === "franja") { part(head, 0.28, 0.07, 0.28, hair, 0, 0.31, 0.01); for (const sx of [-0.08, 0.08]) part(head, 0.09, 0.06, 0.03, hair, sx, 0.27, -0.135); } // franja repartida no meio
+    else part(head, 0.28, 0.08, 0.28, hair, 0, 0.31, 0);
+  }
+  let capa = null;
+  if (L.capa) { capa = new THREE.Group(); capa.position.set(0, 1.44 - SPINE_Y, 0.15); part(capa, 0.5, 0.75, 0.03, M(L.capa), 0, -0.37, 0); spine.add(capa); }
+  body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  Object.assign(u, { body, spine, head, legs, knees, arms, elbows, capa, gltfUrl: null,
+    mats: { head: skin, hair: bob ? skin : hair, torso: torsoMats, upperArm: shirtC, forearm: fore, thigh: shorts, shin: sock, boot } });
 }
 // poses: correr, chutar, carrinho (deitado de costas), mergulho do goleiro (de lado), caído (de bruços), segurando a bola
 function animate(model, speed, dt, st, f = 0) {
   const u = model.userData, t = performance.now() / 1000;
+  if (!u.legs) return animarGLTF(model, speed, dt, st, f);
   st.anim = (st.anim || 0) + dt * speed * 1.7;
   const lying = f & (FL.slide | FL.dive | FL.down);
   const sw = speed > 0.4 && !lying ? Math.sin(st.anim) * Math.min(0.9, speed / 7) : 0;
   const kick = st.kickT ? Math.sin(clamp((t - st.kickT) / 0.28, 0, 1) * Math.PI) : 0;
   u.legs[0].rotation.x = lerp(u.legs[0].rotation.x, sw, 0.35);
-  u.legs[1].rotation.x = kick > 0.01 ? -kick * 1.3 : lerp(u.legs[1].rotation.x, (f & FL.slide) ? -1.2 : -sw, 0.35);
-  const armTo = st.holding ? -1.4 : (f & FL.dive) ? -2.8 : null;
+  // o boneco olha para -z: rotation.x positivo leva perna/braço para a frente
+  u.legs[1].rotation.x = kick > 0.01 ? kick * 1.3 : lerp(u.legs[1].rotation.x, (f & FL.slide) ? 0.5 : -sw, 0.35);
+  const armTo = st.holding ? 1.4 : (f & FL.dive) ? 2.8 : null;
   const mola = springs(model, dt, st, lying, speed), jp = mola.jpitch.x - mola.pitch.x, jr = mola.jroll.x - mola.roll.x;
-  u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, (armTo ?? -sw * 0.8) - jp * 1.6, 0.35);
-  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, (armTo ?? sw * 0.8) - jp * 1.6, 0.35);
+  u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, (armTo ?? -sw * 0.8) + jp * 1.6, 0.35);
+  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, (armTo ?? sw * 0.8) + jp * 1.6, 0.35);
   // joelho dobra quando a perna vai para trás; cotovelo dobrado correndo; tronco inclina para a frente e balança
   const run = lying ? 0 : Math.min(1, speed / 7);
-  if (u.knees) {
-    u.knees[0].rotation.x = lerp(u.knees[0].rotation.x, (f & FL.slide) ? 0.2 : Math.max(0, -Math.sin(st.anim)) * 1.3 * run + 0.1 * run, 0.35);
-    u.knees[1].rotation.x = lerp(u.knees[1].rotation.x, kick > 0.01 ? 0.9 * (1 - kick) : (f & FL.slide) ? 0.1 : Math.max(0, Math.sin(st.anim)) * 1.3 * run + 0.1 * run, 0.35);
-    const elb = st.holding ? -0.6 : (f & FL.dive) ? 0 : -0.25 - 0.9 * run;
-    u.elbows[0].rotation.x = lerp(u.elbows[0].rotation.x, elb, 0.3); u.elbows[1].rotation.x = lerp(u.elbows[1].rotation.x, elb, 0.3);
-  }
-  // o corpo inteiro só gira nas poses deitadas (carrinho, caído, mergulho); correndo, quem inclina é a coluna (mola)
-  const b = u.body;
+  // joelho dobra para trás (negativo) e cotovelo para a frente (positivo)
+  u.knees[0].rotation.x = lerp(u.knees[0].rotation.x, (f & FL.slide) ? -1.1 : -(Math.max(0, -Math.sin(st.anim)) * 1.3 * run + 0.1 * run), 0.35);
+  u.knees[1].rotation.x = lerp(u.knees[1].rotation.x, kick > 0.01 ? -0.9 * (1 - kick) : (f & FL.slide) ? -0.1 : -(Math.max(0, Math.sin(st.anim)) * 1.3 * run + 0.1 * run), 0.35);
+  const elb = st.holding ? 0.6 : (f & FL.dive) ? 0 : 0.25 + 0.9 * run;
+  u.elbows[0].rotation.x = lerp(u.elbows[0].rotation.x, elb, 0.3); u.elbows[1].rotation.x = lerp(u.elbows[1].rotation.x, elb, 0.3);
+  poseCorpo(u.body, f, st, run);
+  u.spine.rotation.x = mola.pitch.x; u.spine.rotation.z = mola.roll.x;
+  // gelatina: cabeça e braços seguem a coluna com atraso (mola mais fraca), então balançam soltos e passam do ponto
+  const rosto = u.skin === "bob_esponja"; // no Bob o rosto é o próprio tronco: só balança, não compensa a inclinação
+  u.head.rotation.x = (rosto ? 0 : -mola.pitch.x * 0.6) + jp * (rosto ? 0.5 : 1.1); // a cabeça compensa a inclinação (olha para a frente)
+  u.head.rotation.z = (rosto ? 0 : -mola.roll.x * 0.4) + jr * (rosto ? 0.5 : 1.1);
+  u.arms[0].rotation.z = -0.1 * run + jr * 1.5; u.arms[1].rotation.z = 0.1 * run + jr * 1.5;
+  if (u.capa) { u.capa.rotation.x = -(0.08 + 0.75 * run) + jp * 1.4; u.capa.rotation.z = jr * 1.2; } // a capa voa para trás
+}
+// o corpo inteiro só gira nas poses deitadas (carrinho, caído, mergulho); correndo, quem inclina é a coluna (mola)
+function poseCorpo(b, f, st, run) {
+  const lying = f & (FL.slide | FL.dive | FL.down);
   const tx = (f & FL.slide) ? 1.25 : (f & FL.down) ? -1.45 : 0, tz = (f & FL.dive) ? (st.diveSide || 1) * -1.35 : 0;
   b.rotation.x = lerp(b.rotation.x, tx, 0.3); b.rotation.z = lerp(b.rotation.z, tz, 0.15);
   const bob = lying ? 0 : Math.abs(Math.sin(st.anim)) * 0.06 * run;
   b.position.y = lerp(b.position.y, (f & FL.slide) ? 0.25 : (f & FL.down) ? 0.18 : (f & FL.dive) ? 0.5 : bob, 0.3);
-  u.spine.rotation.x = mola.pitch.x; u.spine.rotation.z = mola.roll.x;
-  // gelatina: cabeça e braços seguem a coluna com atraso (mola mais fraca), então balançam soltos e passam do ponto
-  u.head.rotation.x = -mola.pitch.x * 0.6 - jp * 1.1; // a cabeça compensa a inclinação (olha para a frente)
-  u.head.rotation.z = -mola.roll.x * 0.4 - jr * 1.1;
-  u.arms[0].rotation.z = -0.1 * run - jr * 1.5; u.arms[1].rotation.z = 0.1 * run - jr * 1.5;
+}
+// skin com modelo 3D: as mesmas molas inclinam o osso da coluna (se o modelo tiver esqueleto) ou o modelo inteiro,
+// a cabeça balança atrasada, e o corpo estica e achata como gelatina a cada passada
+function animarGLTF(model, speed, dt, st, f) {
+  const u = model.userData, lying = f & (FL.slide | FL.dive | FL.down), run = lying ? 0 : Math.min(1, speed / 7);
+  st.anim = (st.anim || 0) + dt * speed * 1.7;
+  const mola = springs(model, dt, st, lying, speed), jp = mola.jpitch.x - mola.pitch.x, jr = mola.jroll.x - mola.roll.x;
+  poseCorpo(u.body, f, st, run);
+  if (u.spine) { u.spine.rotation.x = u.rest.spine.x + mola.pitch.x; u.spine.rotation.z = u.rest.spine.z + mola.roll.x; u.lean.rotation.set(0, 0, 0); }
+  else { u.lean.rotation.x = mola.pitch.x * 0.6; u.lean.rotation.z = mola.roll.x * 0.6; } // sem esqueleto: tomba o modelo todo (pivô no pé)
+  if (u.head) { u.head.rotation.x = u.rest.head.x + jp * 1.1; u.head.rotation.z = u.rest.head.z + jr * 1.1; }
+  const k = SKINS_CONFIG[u.skin].scale, passo = Math.abs(Math.sin(st.anim)) * run;
+  const estica = clamp(1 + 0.07 * passo - 0.3 * Math.abs(jp) - 0.04 * run, 0.8, 1.15); // estica no passo, achata no tranco
+  u.inner.scale.set(k / Math.sqrt(estica), k * estica, k / Math.sqrt(estica)); // mantém o "volume"
+  if (u.mixer) {
+    const w = clamp(speed / 3, 0, 1);
+    if (u.acRun) { u.acRun.setEffectiveWeight(u.acIdle ? w : 1); u.acRun.timeScale = u.acIdle ? Math.max(0.6, speed / 6) : speed > 0.3 ? Math.max(0.6, speed / 6) : 0; }
+    if (u.acIdle) u.acIdle.setEffectiveWeight(u.acRun ? 1 - w : 1);
+    u.mixer.update(dt);
+  }
 }
 
 // ---------- física de mola (o boneco "molinho") ----------
@@ -666,27 +1053,29 @@ function startGame(mode, game, falta = false) {
     G.falta = falta ? { n: 0, goals: 0, state: "mirar", t0: 0, wall: [] } : null;
     if (falta) setupFalta();
   } else syncFromState(null, S);
-  $("pause").classList.remove("hidden"); touchPlay = false;
+  $("pause").classList.remove("hidden"); renderPauseSb(); touchPlay = false;
   requestAnimationFrame(loop);
 }
 function stopGame() {
   if (!G.active) return;
   G.active = false;
-  for (const r of G.remotes.values()) scene.remove(r.model);
-  G.remotes.clear(); clearRags();
-  if (G.keeper) { scene.remove(G.keeper.model); G.keeper = null; }
-  if (G.falta) { for (const w of G.falta.wall) scene.remove(w.model); G.falta = null; }
-  if (G.meModel) { scene.remove(G.meModel); G.meModel = null; }
+  clearRags();
+  for (const r of G.remotes.values()) descartarJogador(r.model);
+  G.remotes.clear();
+  if (G.keeper) { descartarJogador(G.keeper.model); G.keeper = null; }
+  if (G.falta) { for (const w of G.falta.wall) descartarJogador(w.model); G.falta = null; }
+  if (G.meModel) { descartarJogador(G.meModel); G.meModel = null; }
   local.ball = null; charge = null; Sound.engine(0, false);
   if (document.pointerLockElement) document.exitPointerLock();
   touchPlay = false; if (TOUCH) Toque.show(false);
   $("over").classList.add("hidden"); $("pause").classList.add("hidden"); $("tab").classList.add("hidden");
 }
+function mySkin() { const m = myP(); return (G.mode === "online" && m && m.skin) || store.get("pelada:skin") || "padrao"; }
 function rebuildMyModel() {
-  if (G.meModel) scene.remove(G.meModel);
+  if (G.meModel) descartarJogador(G.meModel);
   const m = myP(), playing = G.mode === "treino" || (m && m.team);
   const car = (m && m.car) || store.get("pelada:car") || "godzilla";
-  G.meModel = !playing ? null : isCar() ? makeCar(car, myKit(), "") : makePlayer(myKit(), m ? m.num || 10 : 10, "", { gk: !!(m && m.gk) });
+  G.meModel = !playing ? null : isCar() ? makeCar(car, myKit(), "") : makePlayer(myKit(), m ? m.num || 10 : 10, "", { gk: !!(m && m.gk), skin: mySkin() });
   G.meKey = `${G.game}|${myKit()}|${m && m.gk}|${car}|${m && m.num}`;
   if (G.meModel) scene.add(G.meModel);
 }
@@ -719,17 +1108,19 @@ function syncFromState(old, st) {
     let rm = G.remotes.get(p.id);
     const key = `${G.game}|${p.team}|${st.kits[p.team]}|${p.num}|${p.gk}|${p.car}`;
     if (!rm || rm.key !== key) {
-      if (rm) scene.remove(rm.model);
-      const model = isCar() ? makeCar(p.car, st.kits[p.team], p.name) : makePlayer(st.kits[p.team], p.num, p.name, { gk: p.gk });
+      if (rm) descartarJogador(rm.model);
+      const model = isCar() ? makeCar(p.car, st.kits[p.team], p.name) : makePlayer(st.kits[p.team], p.num, p.name, { gk: p.gk, skin: p.skin });
       rm = { id: p.id, n: p.n, key, team: p.team, name: p.name, model, buf: [], x: 0, y: 0, z: 0, yaw: 0, pitch: 0, f: 0, speed: 0, st: {} };
       scene.add(rm.model); G.remotes.set(p.id, rm);
     }
     rm.n = p.n;
+    if (!isCar() && rm.model.userData.skin !== (C.SKINS[p.skin] ? p.skin : "padrao")) mudarSkinJogador(rm, p.skin); // trocou a skin: troca na hora
     if (p.spawn && m && (!old || !old.match || old.match.kickoff !== m.kickoff)) rm.buf = [{ t: sNow() - 500, x: p.spawn[0], y: 0, z: p.spawn[2], yaw: p.spawn[3], pitch: 0, f: 0, vx: 0, vz: 0 }];
   }
-  for (const [id, rm] of G.remotes) if (!ids.has(id)) { scene.remove(rm.model); G.remotes.delete(id); }
+  for (const [id, rm] of G.remotes) if (!ids.has(id)) { descartarJogador(rm.model); G.remotes.delete(id); }
   const car = (mine && mine.car) || "godzilla";
   if (G.meKey !== `${G.game}|${myKit()}|${mine && mine.gk}|${car}|${mine && mine.num}` || (!!G.meModel !== !!(mine && mine.team))) rebuildMyModel();
+  else if (G.meModel && !isCar() && G.meModel.userData.skin !== mySkin()) mudarSkinJogador(G.meModel, mySkin());
   if (m && `${m.kickoff}` !== G.kickoffKey) {
     G.kickoffKey = `${m.kickoff}`;
     if (mine && mine.team && mine.spawn) { const boost = G.me.boost; Object.assign(G.me, newMe(mine.spawn)); G.me.boost = Math.max(34, boost); G.camYaw = mine.spawn[3]; G.camPitch = 0.05; G.camCarYaw = mine.spawn[3]; }
@@ -775,8 +1166,8 @@ socket.on("caiu", (d) => {
   const vic = ME && d.id === ME.id ? { model: G.meModel, x: G.me.x, y: G.me.y, z: G.me.z, yaw: G.me.facing, vx: G.me.vx, vz: G.me.vz } : G.remotes.get(d.id);
   const tk = ME && d.by === ME.id ? G.me : G.remotes.get(d.by); // quem deu o carrinho
   if (vic && vic.model && !isCar() && !(vic.model === G.meModel && G.view === "primeira")) {
-    const dx = tk ? vic.x - tk.x : 0, dz = tk ? vic.z - tk.z : 1, l = Math.hypot(dx, dz) || 1;
-    addRag(vic.model, vic.x, vic.y || 0, vic.z, vic.yaw ?? vic.model.rotation.y, { x: vic.vx || 0, y: 0, z: vic.vz || 0 }, { x: (dx / l) * 3.5, y: 2.2, z: (dz / l) * 3.5 }, 1.15);
+    const dx = tk ? vic.x - tk.x : 0, dz = tk ? vic.z - tk.z : 1, l = Math.hypot(dx, dz) || 1, k = SKINS_CONFIG[vic.model.userData.skin]?.queda?.push || 1;
+    addRag(vic.model, vic.x, vic.y || 0, vic.z, vic.yaw ?? vic.model.rotation.y, { x: vic.vx || 0, y: 0, z: vic.vz || 0 }, { x: (dx / l) * 3.5 * k, y: 2.2 * k, z: (dz / l) * 3.5 * k }, 1.15);
   }
   if (ME && d.id === ME.id) { G.me.downT = 1.4; charge = null; }
   const by = P(d.by), to = P(d.id);
@@ -914,10 +1305,10 @@ function doKick(kind, power) {
   if (!how) return;
   let yaw = aimYaw();
   if (kind === "passe" && how !== "mao") ({ yaw, power } = C.assistPass(me, yaw, mates(), power));
-  if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F); // ajudinha para os cantos
+  const curve = curveNow();
+  if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F, curve, ball); // assistência estilo FIFA (último terço)
   me.facing = yaw;
   Sound.kick(power);
-  const curve = curveNow();
   if (G.mode === "treino") { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve); G.tKicks++; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
   socket.emit("kick", { kind, power, yaw, curve });
   // previsão: a bola já sai do meu pé aqui; o servidor confirma em seguida
@@ -958,7 +1349,7 @@ function frame(dt, t) {
   updateRemotes(dt);
   updateRags(dt);
   updateBall(dt);
-  updateCamera(dt);
+  updateCamera(dt); if (camHook) camHook(cam);
   hud(t);
   updateGoalSigns();
   renderer.render(scene, cam);
@@ -1154,7 +1545,7 @@ function setupFalta() {
   const dx = F.L - x, dz = -z, d = Math.hypot(dx, dz), ux = dx / d, uz = dz / d, yaw = Math.atan2(-ux, -uz);
   Object.assign(me, { x: x - ux * 1.6, z: z - uz * 1.6, vx: 0, vy: 0, vz: 0, y: 0, onGround: true, facing: yaw });
   G.camYaw = yaw; G.camPitch = 0.05;
-  for (const w of fz.wall) scene.remove(w.model);
+  for (const w of fz.wall) descartarJogador(w.model);
   fz.wall = [-0.75, 0, 0.75].map((o, i) => {
     const w = { id: "barreira" + i, x: x + ux * 5 - uz * (o + 0.35), y: 0, z: z + uz * 5 + ux * (o + 0.35), vx: 0, vy: 0, vz: 0, onGround: true, st: {}, model: makePlayer("laranja", 4 + i, "") };
     w.model.rotation.y = yaw + Math.PI; scene.add(w.model); return w;
@@ -1266,7 +1657,7 @@ function updateCamera(dt) {
 }
 function showAim(me) {
   let ay = aimYaw();
-  if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F); // a seta já mostra a ajudinha
+  if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F, curveNow(), G.mode === "treino" ? local.ball : ballS.view); // a seta já mostra a ajudinha
   aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
   aim.material.opacity = charge ? 0.9 : 0.4;
 }
@@ -1312,7 +1703,7 @@ function scoreTable() {
   return `<div class="row" style="justify-content:space-between;font-family:var(--display);font-size:20px"><span>${h(kitOf(S.kits.A).name)} ${m.score.A}</span><span>${m.score.B} ${h(kitOf(S.kits.B).name)}</span></div>
     <table class="sb"><tr><th>Jogador</th><th class="n">Gols</th><th class="n">Assist.</th><th class="n">Chutes/defesas</th><th class="n">Ping</th></tr>${rows}</table>`;
 }
-function renderPauseSb() { $("pauseSb").innerHTML = G.active ? `<div style="margin-top:16px">${scoreTable()}</div><div style="margin-top:12px">${keysHelp(G.game)}</div>` : ""; $("pauseHint").textContent = G.mode === "treino" ? "Treino: só você vê." : ""; }
+function renderPauseSb() { if (FIXO !== "carros") setH("pSkins", skinButtons(G.mode === "online" ? (myP() || {}).skin : store.get("pelada:skin"))); $("pauseSb").innerHTML = G.active ? `<div style="margin-top:16px">${scoreTable()}</div><div style="margin-top:12px">${keysHelp(G.game)}</div>` : ""; $("pauseHint").textContent = G.mode === "treino" ? "Treino: só você vê." : ""; }
 function showOver() {
   if (document.pointerLockElement) document.exitPointerLock();
   $("pause").classList.add("hidden");
@@ -1326,4 +1717,5 @@ function showOver() {
   if ($("btnToLobby")) $("btnToLobby").onclick = () => act("lobby");
   $("btnOut").onclick = leaveGame;
 }
-if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, addRag, rags }; // para testes
+let camHook = null; // só para testes (#debug): reposiciona a câmera depois do jogo
+if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, addRag, rags, makePlayer, animate, mudarSkinJogador, setCamHook: (f) => (camHook = f) }; // para testes

@@ -43,6 +43,7 @@ app.get("/batalha", (req, res) => res.redirect("/batalha/"));
 app.get("/rocket", (req, res) => { const [p, q] = req.originalUrl.split("?"); return p.endsWith("/") ? res.sendFile(path.join(__dirname, "public", "pelada", "index.html")) : res.redirect("/rocket/" + (q ? "?" + q : "")); });
 app.get("/vendor/marked.js", (req, res) => res.sendFile(require.resolve("marked/marked.min.js")));
 app.use("/vendor/three", express.static(path.dirname(require.resolve("three"))));
+app.use("/vendor/three-addons", express.static(path.join(path.dirname(require.resolve("three")), "../examples/jsm"))); // GLTFLoader etc.
 app.get("/vendor/purify.js", (req, res) => res.sendFile(require.resolve("dompurify/dist/purify.min.js")));
 
 const rooms = new Map(); // code -> room

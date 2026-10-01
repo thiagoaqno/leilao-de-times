@@ -32,6 +32,7 @@ module.exports = function attachPelada(io) {
     mode: c.mode === "carros" ? "carros" : "pes",
     size: clamp(int(c.size, 2), 1, MAX_TEAM),
     minutes: [3, 5, 8].includes(int(c.minutes, 5)) ? int(c.minutes, 5) : 5,
+    arena: C.ARENAS[c.arena] ? c.arena : "society", // quadra escolhida pelo organizador (todo mundo vê a mesma)
   });
   const F = (room) => C.MODES[room.config.mode];
   const teamOf = (room, t) => room.order.map((id) => room.players[id]).filter((p) => p.team === t);
@@ -44,7 +45,7 @@ module.exports = function attachPelada(io) {
       match: m ? { phase: m.phase, until: m.until, left: Math.max(0, Math.round(m.left)), score: m.score, kickoff: m.kickoff, goals: m.goals.slice(-20) } : null,
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, n: p.n, name: p.name, team: p.team, num: p.num, gk: !!p.gk, car: p.car, goals: p.goals, assists: p.assists, shots: p.shots, saves: p.saves,
+        return { id, n: p.n, name: p.name, team: p.team, num: p.num, gk: !!p.gk, car: p.car, skin: p.skin, goals: p.goals, assists: p.assists, shots: p.shots, saves: p.saves,
           ping: p.rtt == null ? null : Math.round(p.rtt), online: p.sockets.size > 0, spawn: p.spawn };
       }),
       feed: room.feed.slice(-12), now: Date.now(),
@@ -198,11 +199,12 @@ module.exports = function attachPelada(io) {
       socket.join(room.code);
       if (pid) room.players[pid].sockets.add(socket.id);
     }
-    function addPlayer(room, name) {
+    const cleanSkin = (s) => (C.SKINS[s] ? s : "padrao");
+    function addPlayer(room, name, skin) {
       const id = rid(6), a = teamOf(room, "A").length, b = teamOf(room, "B").length, size = room.config.size;
       const team = room.phase !== "lobby" ? null : a <= b && a < size ? "A" : b < size ? "B" : null; // sobrou? banco
       const cars = Object.keys(C.CARS);
-      room.players[id] = { id, token: rid(12), n: room.seq++, name, team, num: 10, gk: false, car: cars[room.order.length % cars.length], goals: 0, assists: 0, shots: 0, saves: 0,
+      room.players[id] = { id, token: rid(12), n: room.seq++, name, team, num: 10, gk: false, car: cars[room.order.length % cars.length], skin: cleanSkin(skin), goals: 0, assists: 0, shots: 0, saves: 0,
         lastKick: 0, rtt: null, downUntil: 0, holdSince: 0, noCatch: 0,
         pos: { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, f: 0 }, spawn: null, sockets: new Set() };
       room.order.push(id);
@@ -216,7 +218,7 @@ module.exports = function attachPelada(io) {
       const room = { code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), kits: { A: "corinthians", B: "palmeiras" },
         players: {}, order: [], seq: 0, match: null, ball: C.newBall(), feed: [], t: Date.now() };
       rooms.set(room.code, room);
-      const p = addPlayer(room, name);
+      const p = addPlayer(room, name, data.skin);
       room.host = p.id;
       bind(room, p.id);
       log(room, `Quadra aberta por ${name}.`);
@@ -234,7 +236,7 @@ module.exports = function attachPelada(io) {
       if (!name) return fail(cb, "Coloque o seu nome.");
       if (room.order.length >= 14) return fail(cb, "A sala está cheia. Você pode entrar para assistir.");
       if (Object.values(room.players).some((p) => p.name.toLowerCase() === name.toLowerCase())) return fail(cb, "Já tem alguém com esse nome na sala.");
-      const p = addPlayer(room, name);
+      const p = addPlayer(room, name, data.skin);
       bind(room, p.id);
       log(room, `${name} chegou na quadra.`);
       ok(cb, { code: room.code, id: p.id, token: p.token });
@@ -259,6 +261,10 @@ module.exports = function attachPelada(io) {
           if (room.config.mode !== "pes") return "No modo carros não tem goleiro.";
           if (data.on && teamOf(room, me.team).some((p) => p !== me && p.gk)) return "Seu time já tem goleiro.";
           me.gk = !!data.on; return;
+        }
+        if (type === "skin") { // dá para trocar a qualquer hora, até no meio do jogo
+          if (!me || !C.SKINS[data.skin]) return "Skin inválida.";
+          me.skin = data.skin; return;
         }
         if (type === "car") {
           if (!me || playing || !C.CARS[data.car]) return "Carro inválido.";

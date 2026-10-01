@@ -78,6 +78,9 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 .bench{margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:10px}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{flex:1;min-width:60px}
+.skins{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.skins button{padding:7px 4px;font-size:13px;line-height:1.2;text-align:center}
+.skins button i{display:block;font-style:normal;font-size:20px}
 .cars{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .cars button{padding:8px 6px;text-align:center;font-size:13px;line-height:1.25}
 .cars button small{display:block;color:var(--muted);font-weight:500;font-size:11px}
@@ -152,6 +155,10 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
         <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
         <div class="or">ou</div>
         <div class="row"><button id="btnCreate" style="flex:1">Abrir sala nova</button><button id="btnPractice" style="flex:1">🧤 Treinar a pé</button><button id="btnFalta" style="flex:1">🎯 Bater falta</button><button id="btnPracticeCar" style="flex:1">🏎️ Treinar de carro</button></div>
+        <label style="margin-top:14px" class="soPe">Sua skin</label>
+        <div class="skins soPe" id="hSkins"></div>
+        <label style="margin-top:12px" class="soPe">Quadra do treino</label>
+        <div class="seg soPe" id="hArena"></div>
         <div class="err" id="hErr"></div>
       </div></div>
     </div>
@@ -176,6 +183,8 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
         <div class="seg" id="cfgSize"><button data-v="1">1x1</button><button data-v="2">2x2</button><button data-v="3">3x3</button><button data-v="4">4x4</button><button data-v="5">5x5</button></div>
         <label style="margin-top:14px">Duração</label>
         <div class="seg" id="cfgMin"><button data-v="3">3 min</button><button data-v="5">5 min</button><button data-v="8">8 min</button></div>
+        <label style="margin-top:14px" class="soPe">Quadra</label>
+        <div class="seg soPe" id="cfgArena"></div>
         <div id="startBox" style="margin-top:18px"></div>
         <button id="btnPractice2" style="width:100%;margin-top:10px">🧤 Treinar enquanto espera</button>
         <label style="margin-top:18px">Controles</label>
@@ -206,6 +215,8 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
     <input type="range" id="sens" min="0.3" max="6" step="0.05">
     <label style="margin-top:14px">Volume: <span id="volV"></span></label>
     <input type="range" id="vol" min="0" max="1" step="0.05">
+    <label style="margin-top:14px" class="soPe">Skin (troca na hora)</label>
+    <div class="skins soPe" id="pSkins"></div>
     <div id="pauseSb"></div>
     <div class="row" style="margin-top:14px;justify-content:space-between">
       <button class="ghost" id="btnLeave">Sair da quadra</button>
@@ -219,7 +230,7 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/pelada/campo.js"></script>
-<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
 <script src="/toque.js"></script>
 <script type="module" src="/pelada/jogo.js"></script>
 </body>
