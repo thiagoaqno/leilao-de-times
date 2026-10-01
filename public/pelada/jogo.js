@@ -1179,7 +1179,8 @@ function updateCamera(dt) {
 }
 function showAim(me) {
   let ay = aimYaw();
-  if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F); // a seta já mostra a ajudinha aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
+  if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F); // a seta já mostra a ajudinha
+  aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
   aim.material.opacity = charge ? 0.9 : 0.4;
 }
 
