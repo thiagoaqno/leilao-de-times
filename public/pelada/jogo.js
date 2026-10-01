@@ -1066,7 +1066,7 @@ function stopGame() {
   if (G.keeper) { descartarJogador(G.keeper.model); G.keeper = null; }
   if (G.falta) { for (const w of G.falta.wall) descartarJogador(w.model); G.falta = null; }
   if (G.meModel) { descartarJogador(G.meModel); G.meModel = null; }
-  local.ball = null; charge = null; Sound.engine(0, false);
+  local.ball = null; ballS.mine = null; charge = null; Sound.engine(0, false);
   if (document.pointerLockElement) document.exitPointerLock();
   touchPlay = false; if (TOUCH) Toque.show(false);
   $("over").classList.add("hidden"); $("pause").classList.add("hidden"); $("tab").classList.add("hidden");
@@ -1125,7 +1125,7 @@ function syncFromState(old, st) {
   if (m && `${m.kickoff}` !== G.kickoffKey) {
     G.kickoffKey = `${m.kickoff}`;
     if (mine && mine.team && mine.spawn) { const boost = G.me.boost; Object.assign(G.me, newMe(mine.spawn)); G.me.boost = Math.max(34, boost); G.camYaw = mine.spawn[3]; G.camPitch = 0.05; G.camCarYaw = mine.spawn[3]; }
-    ballS.snap = null; Object.assign(ballS.view, C.newBall(G.F)); ballS.off = { x: 0, y: 0, z: 0 };
+    ballS.snap = null; ballS.mine = null; Object.assign(ballS.view, C.newBall(G.F)); ballS.off = { x: 0, y: 0, z: 0 };
     for (const pd of pads) pd.until = 0;
     if (m.kickoff > 1) flashMsg("Saída de bola", "", 2000);
   }
@@ -1150,7 +1150,18 @@ socket.on("snap", (d) => {
   const before = { ...ballS.view };
   const donoId = dn >= 0 && PN(dn) ? PN(dn).id : null; // quem está conduzindo (eu viro "eu", como no myBody)
   ballS.snap = { t: d.t, x, y, z, vx, vy, vz, sp: sp || 0, wx, wy, wz, holder, dono: ME && donoId === ME.id ? "eu" : donoId };
+  (ballS.buf ||= []).push({ t: d.t, x, y, z, vx, vz }); if (ballS.buf.length > 30) ballS.buf.shift(); // para desenhar no relógio de quem conduz
+  // bola no meu pé: o servidor diz que sou eu quem conduz, então a bola passa a ser simulada aqui (como o meu jogador)
+  // e vai junto nos meus pacotes. Se o servidor disser duas vezes seguidas que não sou mais eu (roubo, carrinho), ele manda.
+  if (ballS.mine) {
+    if (ME && donoId === ME.id && !holder) { ballS.naoDono = 0; return; }
+    if (++ballS.naoDono < 2 || performance.now() - ballS.mineT < 300) return;
+    ballS.mine = null; // devolve para o servidor (a diferença é corrigida aos poucos, logo abaixo)
+  } else if (ME && donoId === ME.id && !holder && !isCar() && G.meModel && G.me.downT <= 0) {
+    ballS.mine = { ...ballS.view, sp: 0, wx: 0, wy: 0, wz: 0, holder: null, dono: "eu" }; ballS.mineT = performance.now(); ballS.naoDono = 0; return;
+  }
   const pred = predictBall();
+  if (ballS.modo === "outro" && donoId && !holder) return; // outro conduzindo: a bola é interpolada (updateBall), sem correção aqui
   if (pred && !holder) { ballS.off = { x: before.x - pred.x, y: before.y - pred.y, z: before.z - pred.z }; if (Math.hypot(ballS.off.x, ballS.off.y, ballS.off.z) > 4) ballS.off = { x: 0, y: 0, z: 0 }; }
   else ballS.off = { x: 0, y: 0, z: 0 };
 });
@@ -1196,6 +1207,28 @@ function predictBall() {
   const me = myBody();
   if (dt > 0) C.simulate(G.F, b, me ? [me] : [], dt);
   return b;
+}
+// a bola no pé vira junto com o corpo: gira a posição (e a velocidade) da bola em volta do jogador pelo mesmo ângulo que o
+// corpo virou neste quadro. Sem isso o corpo virava primeiro e a bola chegava depois (a "mola" da condução demora).
+function viraComABola(b, me) {
+  const a = me && me.dFacing; if (!a || b.dono !== "eu" || b.holder || b.y > G.F.ballR + 0.12) return;
+  const c = Math.cos(a), s = Math.sin(a), rx = b.x - me.x, rz = b.z - me.z, vx = b.vx - me.vx, vz = b.vz - me.vz;
+  b.x = me.x + rx * c + rz * s; b.z = me.z + rz * c - rx * s;
+  b.vx = me.vx + vx * c + vz * s; b.vz = me.vz + vz * c - vx * s;
+}
+// os outros jogadores, onde estão agora, para a bola no meu pé bater neles (e eles poderem tomar) aqui também
+function corposRemotos() {
+  const out = [];
+  for (const rm of G.remotes.values()) out.push({ id: rm.id, kind: "pe", x: rm.px ?? rm.x, y: rm.y, z: rm.pz ?? rm.z, vx: rm.pvx || 0, vy: 0, vz: rm.pvz || 0, yaw: rm.yaw,
+    sprint: rm.f & FL.sprint, slide: rm.f & (FL.slide | FL.down), dive: rm.f & FL.dive, conduz: true });
+  return out;
+}
+// a bola no instante t (relógio do servidor), entre dois pacotes, como os bonecos dos outros
+function interpBola(t) {
+  const q = ballS.buf; if (!q || q.length < 2) return null;
+  let i = q.length - 1; while (i > 0 && q[i - 1].t > t) i--;
+  const B = q[i], A = q[Math.max(0, i - 1)], k = B.t === A.t ? 1 : clamp((t - A.t) / (B.t - A.t), 0, 1);
+  return { x: lerp(A.x, B.x, k), y: lerp(A.y, B.y, k), z: lerp(A.z, B.z, k) };
 }
 function myBody() {
   if (!G.meModel || !G.me) return null;
@@ -1301,7 +1334,7 @@ const curveNow = () => (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
 function doKick(kind, power) {
   const me = G.me, t = now();
   if (!canPlay() || t - me.lastKick < C.KICK_CD || me.downT > 0) return;
-  const ball = G.mode === "treino" ? local.ball : ballS.view;
+  const ball = G.mode === "treino" ? local.ball : ballS.mine || ballS.view;
   const body = { ...me, id: ME ? ME.id : "eu" };
   const how = C.canKick(body, ball, G.mode === "treino" ? 0 : 0.2);
   me.kickT = t; me.lastKick = t; me.st.kickT = t; // a perna balança mesmo se errar
@@ -1313,9 +1346,10 @@ function doKick(kind, power) {
   me.facing = yaw;
   Sound.kick(power);
   if (G.mode === "treino") { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve); G.tKicks++; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
-  socket.emit("kick", { kind, power, yaw, curve });
+  const mine = ballS.mine; ballS.mine = null;
+  socket.emit("kick", { kind, power, yaw, curve, ...(mine ? { bola: [mine.x, mine.y, mine.z] } : {}) }); // conduzindo: chuta a bola que eu vejo
   // previsão: a bola já sai do meu pé aqui; o servidor confirma em seguida
-  const b = { ...ballS.view }; C.kick(b, body, kind, power, yaw, 0.2, curve);
+  const b = { ...(mine || ballS.view) }; C.kick(b, body, kind, power, yaw, 0.2, curve);
   ballS.snap = { t: sNow(), x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, sp: b.sp, wx: b.wx || 0, wy: b.wy || 0, wz: b.wz || 0, holder: null }; ballS.off = { x: 0, y: 0, z: 0 };
   ballS.ignoreUntil = performance.now() + rtt + 60;
 }
@@ -1346,7 +1380,8 @@ function frame(dt, t) {
   // envia minha posição
   if (G.meModel && online && t - G.lastSend > 1 / 30) {
     const me = G.me; G.lastSend = t; const q = (v) => Math.round(v * 100) / 100;
-    socket.volatile.emit("st", { x: q(me.x), y: q(me.y), z: q(me.z), vx: q(me.vx), vy: q(me.vy), vz: q(me.vz), yaw: q(isCar() ? me.yaw : me.facing), p: q(me.pitch || 0), f: myFlags() });
+    socket.volatile.emit("st", { x: q(me.x), y: q(me.y), z: q(me.z), vx: q(me.vx), vy: q(me.vy), vz: q(me.vz), yaw: q(isCar() ? me.yaw : me.facing), p: q(me.pitch || 0), f: myFlags(),
+      ...(ballS.mine ? { bola: [q(ballS.mine.x), q(ballS.mine.y), q(ballS.mine.z), q(ballS.mine.vx), q(ballS.mine.vy), q(ballS.mine.vz)] } : {}) }); // conduzindo: a bola vai junto
   }
   if (G.mode === "treino") practiceStep(dt, t);
   updateRemotes(dt);
@@ -1442,7 +1477,9 @@ function stepFoot(dt, t, frozen) {
   C.corpoACorpo(me, outros, busy);
   // o corpo vira para onde está correndo; carregando o chute, vira para a mira
   const hsp = Math.hypot(me.vx, me.vz);
+  const f0 = me.facing;
   if (!busy) { const target = charge ? aimYaw() : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing; me.facing = angLerp(me.facing, target, Math.min(1, dt * 12)); }
+  me.dFacing = Math.atan2(Math.sin(me.facing - f0), Math.cos(me.facing - f0)); // a bola no pé vira junto (viraComABola)
   me.st.holding = holding; me.st.segura = !!me.segurando;
   G.meModel.position.set(me.x, me.y, me.z); G.meModel.rotation.y = me.facing;
   animate(G.meModel, hsp, dt, me.st, myFlags() | (me.downT > 0 ? FL.down : 0));
@@ -1536,10 +1573,26 @@ function updateRemotes(dt) {
 function updateBall(dt) {
   let b;
   if (G.mode === "treino") b = local.ball;
-  else {
-    const pred = predictBall() || C.newBall(G.F);
+  else if (ballS.mine) { // bola no meu pé: física aqui mesmo, a cada quadro (sem esperar o servidor)
+    const m = ballS.mine, eu = myBody();
+    viraComABola(m, G.me);
+    C.simulate(G.F, m, eu ? [eu, ...corposRemotos()] : [], dt);
+    if (m.dono !== "eu") { // escapou do pé aqui (ou alguém tomou): volta a seguir o servidor a partir daqui
+      ballS.snap = { t: sNow(), x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, sp: m.sp || 0, wx: 0, wy: 0, wz: 0, holder: null, dono: m.dono };
+      ballS.off = { x: 0, y: 0, z: 0 }; ballS.ignoreUntil = performance.now() + rtt + 60; ballS.mine = null;
+    }
+    b = ballS.view; Object.assign(b, { x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, wx: 0, wy: 0, wz: 0, holder: null });
+  } else {
+    // outro jogador conduzindo: a bola é desenhada no mesmo relógio que ele (interpolada 100 ms no passado, como os
+    // bonecos dos outros), senão ela aparece adiantada e balançando em relação ao pé dele. Perto de mim, o boneco dele
+    // é desenhado no presente (rm.k), e a bola acompanha. Sem dono (ou eu), a bola é prevista no presente.
+    const pred = predictBall() || C.newBall(G.F), s = ballS.snap;
+    const rmD = s && !s.holder && s.dono && s.dono !== "eu" ? G.remotes.get(s.dono) : null, it = rmD ? interpBola(sNow() - INTERP) : null;
+    const alvo = it ? { ...pred, x: lerp(it.x, pred.x, rmD.k || 0), y: lerp(it.y, pred.y, rmD.k || 0), z: lerp(it.z, pred.z, rmD.k || 0) } : pred;
+    const modo = it ? "outro" : "prev"; b = ballS.view;
+    if (modo !== ballS.modo) { ballS.off = { x: b.x - alvo.x, y: b.y - alvo.y, z: b.z - alvo.z }; if (Math.hypot(ballS.off.x, ballS.off.z) > 4) ballS.off = { x: 0, y: 0, z: 0 }; ballS.modo = modo; } // troca sem pulo
     const k = Math.exp(-dt * 12); ballS.off.x *= k; ballS.off.y *= k; ballS.off.z *= k;
-    b = ballS.view; b.x = pred.x + ballS.off.x; b.y = Math.max(G.F.ballR, pred.y + ballS.off.y); b.z = pred.z + ballS.off.z; b.vx = pred.vx; b.vy = pred.vy; b.vz = pred.vz; b.wx = pred.wx || 0; b.wy = pred.wy || 0; b.wz = pred.wz || 0; b.holder = pred.holder || null;
+    b.x = alvo.x + ballS.off.x; b.y = Math.max(G.F.ballR, alvo.y + ballS.off.y); b.z = alvo.z + ballS.off.z; b.vx = pred.vx; b.vy = pred.vy; b.vz = pred.vz; b.wx = pred.wx || 0; b.wy = pred.wy || 0; b.wz = pred.wz || 0; b.holder = pred.holder || null;
   }
   if (!b) return;
   const R = G.F.ballR, prev = ballMesh.userData.prev || { x: b.x, z: b.z }, mx = b.x - prev.x, mz = b.z - prev.z, dist = Math.hypot(mx, mz);
@@ -1633,6 +1686,7 @@ function practiceStep(dt, t) {
     else C.simulate(F, b, [], dt);
     return;
   }
+  viraComABola(b, me);
   const r = C.simulate(F, b, bodies, dt);
   if (r.hit > 2) { const [kk, pan] = hearing([b.x, b.y, b.z]); Sound.bounce(r.hit, kk, pan, isCar()); }
   const side = C.goalOf(F, b);
