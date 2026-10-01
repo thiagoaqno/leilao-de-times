@@ -428,6 +428,7 @@ function nameSprite(text, color, scale = 1) {
 }
 const tagColor = (kit) => (C.kitColor(kit) === "#f4f4f4" ? "#ffffff" : C.kitColor(kit));
 const SKINS = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xd9a77c];
+const SPINE_Y = 0.85; // altura da cintura (pivô da coluna)
 function makePlayer(kitId, num, name, opts = {}) {
   const K = opts.gk ? { ...GK_KIT, num: C.kitColor(kitId) } : kitOf(kitId);
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
@@ -443,23 +444,25 @@ function makePlayer(kitId, num, name, opts = {}) {
     part(kn, 0.14, 0.2, 0.15, skin, 0, -0.08, 0); part(kn, 0.15, 0.22, 0.16, sock, 0, -0.36, 0); part(kn, 0.16, 0.1, 0.27, boot, 0, -0.5, -0.04);
     body.add(l); legs.push(l); knees.push(kn);
   }
+  // coluna ("spine"): tronco, braços e cabeça ficam num pivô na cintura, assim o tronco balança por cima das pernas
+  const spine = new THREE.Group(); spine.position.y = SPINE_Y; body.add(spine);
   const front = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, false), roughness: 0.7 }), backM = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, true), roughness: 0.7 });
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.6, 0.26), [shirtC, shirtC, shirtC, shirtC, backM, front]); torso.position.y = 1.16; body.add(torso);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.6, 0.26), [shirtC, shirtC, shirtC, shirtC, backM, front]); torso.position.y = 1.16 - SPINE_Y; spine.add(torso);
   const arms = [], elbows = [], fore = opts.gk ? shirtC : skin;
   for (const sx of [-0.3, 0.3]) {
-    const a = new THREE.Group(); a.position.set(sx, 1.42, 0);
+    const a = new THREE.Group(); a.position.set(sx, 1.42 - SPINE_Y, 0);
     part(a, 0.13, 0.26, 0.14, shirtC, 0, -0.12, 0);
     const el = new THREE.Group(); el.position.y = -0.25; a.add(el);
     part(el, 0.11, 0.3, 0.12, fore, 0, -0.15, 0);
     if (opts.gk) part(el, 0.15, 0.13, 0.15, M(0xf5f5f5), 0, -0.35, 0);
-    body.add(a); arms.push(a); elbows.push(el);
+    spine.add(a); arms.push(a); elbows.push(el);
   }
-  const head = new THREE.Group(); head.position.y = 1.46; body.add(head);
+  const head = new THREE.Group(); head.position.y = 1.46 - SPINE_Y; spine.add(head);
   const hair = M(0x2a1b10);
   part(head, 0.26, 0.28, 0.26, skin, 0, 0.15, 0); part(head, 0.28, 0.08, 0.28, hair, 0, 0.31, 0); part(head, 0.18, 0.04, 0.01, M(0x111111), 0, 0.18, -0.131);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   let tag = null; if (name) { tag = nameSprite((opts.gk ? "🧤 " : "") + name, tagColor(kitId)); tag.position.y = 2.15; g.add(tag); }
-  g.userData = { legs, knees, arms, elbows, head, tag, body, mats: { head: skin, hair, torso: [shirtC, shirtC, shirtC, shirtC, backM, front], upperArm: shirtC, forearm: fore, thigh: shorts, shin: sock, boot } };
+  g.userData = { legs, knees, arms, elbows, head, tag, body, spine, mats: { head: skin, hair, torso: [shirtC, shirtC, shirtC, shirtC, backM, front], upperArm: shirtC, forearm: fore, thigh: shorts, shin: sock, boot } };
   return g;
 }
 // poses: correr, chutar, carrinho (deitado de costas), mergulho do goleiro (de lado), caído (de bruços), segurando a bola
@@ -472,8 +475,9 @@ function animate(model, speed, dt, st, f = 0) {
   u.legs[0].rotation.x = lerp(u.legs[0].rotation.x, sw, 0.35);
   u.legs[1].rotation.x = kick > 0.01 ? -kick * 1.3 : lerp(u.legs[1].rotation.x, (f & FL.slide) ? -1.2 : -sw, 0.35);
   const armTo = st.holding ? -1.4 : (f & FL.dive) ? -2.8 : null;
-  u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, armTo ?? -sw * 0.8, 0.35);
-  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, armTo ?? sw * 0.8, 0.35);
+  const mola = springs(model, dt, st, lying, speed), jp = mola.jpitch.x - mola.pitch.x, jr = mola.jroll.x - mola.roll.x;
+  u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, (armTo ?? -sw * 0.8) - jp * 1.6, 0.35);
+  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, (armTo ?? sw * 0.8) - jp * 1.6, 0.35);
   // joelho dobra quando a perna vai para trás; cotovelo dobrado correndo; tronco inclina para a frente e balança
   const run = lying ? 0 : Math.min(1, speed / 7);
   if (u.knees) {
@@ -482,12 +486,56 @@ function animate(model, speed, dt, st, f = 0) {
     const elb = st.holding ? -0.6 : (f & FL.dive) ? 0 : -0.25 - 0.9 * run;
     u.elbows[0].rotation.x = lerp(u.elbows[0].rotation.x, elb, 0.3); u.elbows[1].rotation.x = lerp(u.elbows[1].rotation.x, elb, 0.3);
   }
-  const b = u.body, turn = clamp(((st.lastYaw ?? model.rotation.y) - model.rotation.y) / Math.max(dt, 1e-3), -6, 6); st.lastYaw = model.rotation.y;
-  const tx = (f & FL.slide) ? 1.25 : (f & FL.down) ? -1.45 : -0.22 * run, tz = (f & FL.dive) ? (st.diveSide || 1) * -1.35 : lying ? 0 : turn * 0.03 * run;
+  // o corpo inteiro só gira nas poses deitadas (carrinho, caído, mergulho); correndo, quem inclina é a coluna (mola)
+  const b = u.body;
+  const tx = (f & FL.slide) ? 1.25 : (f & FL.down) ? -1.45 : 0, tz = (f & FL.dive) ? (st.diveSide || 1) * -1.35 : 0;
   b.rotation.x = lerp(b.rotation.x, tx, 0.3); b.rotation.z = lerp(b.rotation.z, tz, 0.15);
   const bob = lying ? 0 : Math.abs(Math.sin(st.anim)) * 0.06 * run;
   b.position.y = lerp(b.position.y, (f & FL.slide) ? 0.25 : (f & FL.down) ? 0.18 : (f & FL.dive) ? 0.5 : bob, 0.3);
-  u.head.rotation.x = lerp(u.head.rotation.x, lying ? 0 : 0.18 * run, 0.2); // a cabeça compensa a inclinação
+  u.spine.rotation.x = mola.pitch.x; u.spine.rotation.z = mola.roll.x;
+  // gelatina: cabeça e braços seguem a coluna com atraso (mola mais fraca), então balançam soltos e passam do ponto
+  u.head.rotation.x = -mola.pitch.x * 0.6 - jp * 1.1; // a cabeça compensa a inclinação (olha para a frente)
+  u.head.rotation.z = -mola.roll.x * 0.4 - jr * 1.1;
+  u.arms[0].rotation.z = -0.1 * run - jr * 1.5; u.arms[1].rotation.z = 0.1 * run - jr * 1.5;
+}
+
+// ---------- física de mola (o boneco "molinho") ----------
+// Cada jogador tem molas para a inclinação da coluna: pitch (frente/trás, rotation.x) e roll (lados, rotation.z).
+// Força = (alvo - atual) * rigidez - velocidade * amortecimento; a velocidade vira rotação. Como a mola é pouco
+// amortecida, o tronco passa um pouquinho do ponto e volta, como gelatina. A cabeça e os braços têm outra mola,
+// mais mole, que persegue a coluna (o "jiggle").
+const MOLA = { k: 15, c: 4 }, GELATINA = { k: 7, c: 2.2 };
+const newSpring = () => ({ x: 0, v: 0, alvo: 0 });
+function stepSpring(sp, alvo, k, c, dt) {
+  sp.alvo = alvo;
+  const forca = (alvo - sp.x) * k - sp.v * c;
+  sp.v += forca * dt; sp.x += sp.v * dt;
+  return sp.x;
+}
+function springs(model, dt, st, lying, speed) {
+  const m = (st.mola ||= { k: MOLA.k, c: MOLA.c, pitch: newSpring(), roll: newSpring(), jpitch: newSpring(), jroll: newSpring(), vx: 0, vz: 0, fwd: 0, acc: 0, yawRate: 0 });
+  const p = model.position, yaw = model.rotation.y, h = Math.max(dt, 1e-3);
+  // velocidade pela diferença de posição entre os quadros (serve para mim, para os outros e para o goleiro robô)
+  if (m.px == null) { m.px = p.x; m.pz = p.z; m.yaw = yaw; }
+  let dx = p.x - m.px, dz = p.z - m.pz; if (dx * dx + dz * dz > 9) dx = dz = 0; // teletransporte (saída de bola): ignora
+  m.px = p.x; m.pz = p.z;
+  const sm = Math.min(1, dt * 10); m.vx = lerp(m.vx, dx / h, sm); m.vz = lerp(m.vz, dz / h, sm);
+  // velocidade para a frente (o boneco olha para -z) e aceleração
+  const fwd = m.vx * -Math.sin(yaw) + m.vz * -Math.cos(yaw);
+  m.acc = lerp(m.acc, (fwd - m.fwd) / h, Math.min(1, dt * 6)); m.fwd = fwd;
+  let dy = yaw - m.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); m.yaw = yaw;
+  m.yawRate = lerp(m.yawRate, dy / h, Math.min(1, dt * 8));
+  // alvos: acelerou para a frente -> tomba para a frente; freou -> joga para trás; curva -> tomba para dentro da curva
+  const run = Math.min(1, speed / 7), step = Math.sin(st.anim * 2) * 0.05 * run; // cada passada dá um tranquinho
+  const pitchAlvo = lying ? 0 : -clamp(fwd * 0.028 + m.acc * 0.03, -0.3, 0.55) + step;
+  const rollAlvo = lying ? 0 : clamp(m.yawRate * Math.hypot(m.vx, m.vz) * 0.025, -0.38, 0.38);
+  // passos pequenos para a mola não explodir num quadro lento
+  const n = Math.ceil(dt / (1 / 120)), sdt = dt / n;
+  for (let i = 0; i < n; i++) {
+    stepSpring(m.pitch, pitchAlvo, m.k, m.c, sdt); stepSpring(m.roll, rollAlvo, m.k, m.c, sdt);
+    stepSpring(m.jpitch, m.pitch.x, GELATINA.k, GELATINA.c, sdt); stepSpring(m.jroll, m.roll.x, GELATINA.k, GELATINA.c, sdt);
+  }
+  return m;
 }
 
 // ---------- carros pixelados (caixinhas + texturas de pixel) ----------
