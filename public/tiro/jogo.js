@@ -532,10 +532,16 @@ let msgT = 0;
 function flashMsg(big, small = "", ms = 2500, color = "#fff") { setH("hMsg", `<span style="color:${color}">${h(big)}</span>${small ? `<small>${h(small)}</small>` : ""}`); msgT = now() + ms / 1000; }
 
 // ---------- tiros, acertos e recargas dos outros ----------
-socket.on("st", (d) => {
-  const rm = G.remotes.get(d.id); if (!rm) return;
-  rm.buf.push(d); if (rm.buf.length > 40) rm.buf.shift();
-  rm.w = d.w; rm.sc = d.sc; rm.g = d.g; rm.wk = d.wk;
+// pacote do servidor (20x por segundo) com todo mundo: [n, x, y, z, yaw, pitch, arma, mira, chão + 2*andando devagar]
+socket.on("snap", (d) => {
+  if (!S) return;
+  for (const e of d.p) {
+    const p = S.players.find((x) => x.n === e[0]); if (!p) continue;
+    const rm = G.remotes.get(p.id); if (!rm) continue;
+    const s = { t: d.t, x: e[1], y: e[2], z: e[3], yaw: e[4], pitch: e[5], w: e[6] ? "awp" : "ak", sc: e[7], g: e[8] & 1, wk: (e[8] >> 1) & 1 };
+    rm.buf.push(s); if (rm.buf.length > 40) rm.buf.shift();
+    rm.w = s.w; rm.sc = s.sc; rm.g = s.g; rm.wk = s.wk;
+  }
 });
 socket.on("shot", (d) => {
   if (!G.active || G.mode !== "online") return;

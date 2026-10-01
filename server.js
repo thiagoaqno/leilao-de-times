@@ -12,7 +12,8 @@ const ALL_FORMATIONS = new Set(["auto", ...Object.keys(FORMATIONS.futsal), ...Ob
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+// compressão das mensagens do WebSocket: os pacotes dos jogos em tempo real se repetem muito e encolhem bastante
+const io = new Server(server, { perMessageDeflate: { threshold: 128 } });
 require("./banco.js")(io); // Banco da Galera: jogo de tabuleiro, canal /banco
 require("./uno.js")(io); // Uno da Galera: jogo de cartas, canal /uno
 require("./sinuca.js")(io); // Sinuca da Galera: bola 8, canal /sinuca

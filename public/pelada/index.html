@@ -78,6 +78,10 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 .bench{margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:10px}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{flex:1;min-width:60px}
+.cars{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cars button{padding:8px 6px;text-align:center;font-size:13px;line-height:1.25}
+.cars button small{display:block;color:var(--muted);font-weight:500;font-size:11px}
+.cars canvas{display:block;margin:0 auto 4px;image-rendering:pixelated}
 .keys{font-size:13.5px;color:#c9d8ce;columns:2;column-gap:20px;margin:8px 0 0;padding-left:18px}
 kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bottom-width:3px;border-radius:5px;padding:0 6px;font:700 12px var(--body);color:#fff;min-width:20px;text-align:center}
 
@@ -132,8 +136,8 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
     <div class="hero">
       <div>
         <h2>Pelada<br>de <em>quadra</em></h2>
-        <p class="lead">Futsal em 3D, do 1x1 ao 3x3, numa quadra com alambrado: a bola nunca sai, então o jogo não para. Conduza encostando na bola, segure o clique para carregar o chute e mire para cima para levantar.</p>
-        <div class="feats"><span>⚽ 1x1 a 3x3</span><span>🥅 chute, passe e cabeçada</span><span>👕 camisas do botão</span><span>🧤 treino com goleiro</span></div>
+        <p class="lead">Futsal em 3D do 1x1 ao 5x5, com goleiro de verdade (alguém do time) e carrinho. Ou o modo <b>de carro</b>, estilo Rocket League: bola gigante, turbo, pulo duplo e mortal. A bola nunca sai, então o jogo não para.</p>
+        <div class="feats"><span>⚽ 1x1 a 5x5</span><span>🧤 goleiro</span><span>🦵 carrinho</span><span>🏎️ modo carros</span><span>👕 camisas do botão</span></div>
       </div>
       <div class="panel"><div class="lines"></div><div class="in">
         <div class="warn hidden" id="mobileWarn">Esse jogo precisa de computador com teclado e mouse.</div>
@@ -143,7 +147,7 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
         <input id="hCode" maxlength="5" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em">
         <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
         <div class="or">ou</div>
-        <div class="row"><button id="btnCreate" style="flex:1">Abrir sala nova</button><button id="btnPractice" style="flex:1">🧤 Treinar sozinho</button></div>
+        <div class="row"><button id="btnCreate" style="flex:1">Abrir sala nova</button><button id="btnPractice" style="flex:1">🧤 Treinar a pé</button><button id="btnPracticeCar" style="flex:1">🏎️ Treinar de carro</button></div>
         <div class="err" id="hErr"></div>
       </div></div>
     </div>
@@ -158,26 +162,20 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
           <div class="team" id="boxB"><h3>Visitante</h3><div class="kn" id="knB"></div><div class="kits" id="kitsB"></div><div id="tB"></div><button class="small" id="joinB">Jogar aqui</button></div>
         </div>
         <div class="bench"><div class="row" style="justify-content:space-between"><b>Banco</b><button class="small ghost" id="joinBench">Ir pro banco</button></div><div id="tN" class="muted" style="margin-top:6px"></div></div>
+        <div id="myRole" style="margin-top:16px"></div>
       </div></div>
       <div class="panel"><div class="in">
         <h2 style="font-size:24px;margin-bottom:12px">Jogo</h2>
-        <label>Jogadores por time</label>
-        <div class="seg" id="cfgSize"><button data-v="1">1x1</button><button data-v="2">2x2</button><button data-v="3">3x3</button></div>
+        <label>Modo</label>
+        <div class="seg" id="cfgMode"><button data-v="pes">⚽ A pé</button><button data-v="carros">🏎️ De carro</button></div>
+        <label style="margin-top:14px">Jogadores por time</label>
+        <div class="seg" id="cfgSize"><button data-v="1">1x1</button><button data-v="2">2x2</button><button data-v="3">3x3</button><button data-v="4">4x4</button><button data-v="5">5x5</button></div>
         <label style="margin-top:14px">Duração</label>
         <div class="seg" id="cfgMin"><button data-v="3">3 min</button><button data-v="5">5 min</button><button data-v="8">8 min</button></div>
         <div id="startBox" style="margin-top:18px"></div>
         <button id="btnPractice2" style="width:100%;margin-top:10px">🧤 Treinar enquanto espera</button>
         <label style="margin-top:18px">Controles</label>
-        <ul class="keys">
-          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> correr</li>
-          <li>Mouse: virar e mirar</li>
-          <li><kbd>Shift</kbd> pique (gasta fôlego)</li>
-          <li><kbd>Espaço</kbd> pular / cabecear</li>
-          <li>Segurar e soltar o botão esquerdo: chute</li>
-          <li>Segurar e soltar o botão direito: passe rasteiro</li>
-          <li><kbd>Tab</kbd> placar</li>
-        </ul>
-        <p class="muted" style="font-size:13.5px;margin:10px 0 0">Dica: para conduzir, é só correr encostado na bola. Mire mais para cima para levantar o chute (cavadinha ou por cima do goleiro).</p>
+        <div id="keysBox"></div>
       </div></div>
     </div>
   </section>
@@ -192,7 +190,7 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
   <div class="hud" id="hMsg"></div>
   <div class="hud hidden" id="hPowL"></div>
   <div class="hud hidden" id="hPow"><i></i></div>
-  <div class="hud" id="hSta"><div class="lb">Fôlego</div><div class="bar"><i></i></div></div>
+  <div class="hud" id="hSta"><div class="lb" id="hStaL">Fôlego</div><div class="bar"><i></i></div></div>
   <div class="hud" id="hHint"></div>
   <div id="tab" class="hidden"></div>
   <div class="overlay hidden" id="pause"><div class="box">
