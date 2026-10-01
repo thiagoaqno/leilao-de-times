@@ -423,7 +423,7 @@ function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, ta
   const L = spec.L, W = spec.W, at = (u) => u - L / 2; // u -> x local do holder (vira -z no carro)
   const add = (mesh, shadow = true) => { mesh.castShadow = shadow && !ghost; holder.add(mesh); return mesh; };
   const bodyG = profileGeo(spec.body, W, 0.06); bodyG.translate(-L / 2, 0, 0); add(new THREE.Mesh(bodyG, paint));
-  const cabG = profileGeo(spec.cabin, W * 0.84, 0.05); cabG.translate(-L / 2, 0, 0); add(new THREE.Mesh(cabG, glass));
+  const cabG = profileGeo(spec.cabin, W * 0.84, 0.05); cabG.translate(-L / 2, 0, 0); const cabin = add(new THREE.Mesh(cabG, glass));
   // teto pintado em cima do vidro
   const [c1, c2] = [spec.cabin[1], spec.cabin[2]], roofL = Math.hypot(c2[0] - c1[0], c2[1] - c1[1]);
   const roof = add(new THREE.Mesh(new THREE.BoxGeometry(roofL, 0.04, W * 0.8), paint)); roof.position.set(at((c1[0] + c2[0]) / 2), (c1[1] + c2[1]) / 2 + 0.065, 0); // a extrusão tem chanfro de ~6 cm em volta roof.rotation.z = Math.atan2(c2[1] - c1[1], c2[0] - c1[0]);
@@ -480,7 +480,7 @@ function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, ta
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: ghost ? 0.15 : 0.32, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.scale.set((W / 2 + 0.25) * KS, (L / 2 + 0.25) * KS, 1); g.add(shadow);
   target.add(g);
-  return { g, body, wheels, steer, shadow, mats, steerV: 0, target };
+  return { g, body, wheels, steer, shadow, mats, steerV: 0, target, roof, cabin };
 }
 function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 0) {
   k.g.position.set(x, z, y); k.g.rotation.set(0, -a - Math.PI / 2, 0);
@@ -549,7 +549,11 @@ window.addEventListener("resize", () => race && resize());
 
 // teclado e botões na tela
 const KEYMAP = { ArrowUp: "gas", w: "gas", W: "gas", ArrowDown: "brake", s: "brake", S: "brake", ArrowLeft: "left", a: "left", A: "left", ArrowRight: "right", d: "right", D: "right" };
-document.addEventListener("keydown", (e) => { if (!race || e.target.tagName === "INPUT") return; const k = KEYMAP[e.key]; if (k) { keys[k] = true; e.preventDefault(); } if (e.key === "r" || e.key === "R") respawn(); });
+document.addEventListener("keydown", (e) => { if (!race || e.target.tagName === "INPUT") return; const k = KEYMAP[e.key]; if (k) { keys[k] = true; e.preventDefault(); } if (e.key === "r" || e.key === "R") respawn(); if ((e.key === "c" || e.key === "C") && !e.repeat) nextCam(); });
+// câmeras: perto do carro (padrão), primeira pessoa e longe. C (ou o botão 🎥) troca, e o jogo lembra a escolha.
+const CAMS = { perto: "🎥 Câmera perto", cockpit: "🎥 Primeira pessoa", longe: "🎥 Câmera longe" };
+let camMode = CAMS[store.get("corrida:cam")] ? store.get("corrida:cam") : "perto";
+function nextCam() { const ks = Object.keys(CAMS); camMode = ks[(ks.indexOf(camMode) + 1) % ks.length]; store.set("corrida:cam", camMode); if (race) race.cam.pos = null; toast(CAMS[camMode], 1400); }
 document.addEventListener("keyup", (e) => { const k = KEYMAP[e.key]; if (k) keys[k] = false; });
 document.querySelectorAll(".pad button").forEach((b) => {
   const k = b.dataset.k, set = (v) => { keys[k] = v; b.classList.toggle("on", v); };
@@ -557,6 +561,7 @@ document.querySelectorAll(".pad button").forEach((b) => {
   b.addEventListener("pointerup", () => set(false)); b.addEventListener("pointercancel", () => set(false)); b.addEventListener("lostpointercapture", () => set(false));
 });
 $("bRespawn").onclick = () => respawn();
+$("bCam").onclick = () => nextCam();
 $("bExit").onclick = () => { if (confirm("Sair da corrida e voltar para a vila?")) location.href = "/"; };
 
 // ponto da pista mais perto (procura perto do último, ou na pista toda)
@@ -692,17 +697,34 @@ function draw(dt) {
   stepPuffs(dt);
   let src = c;
   if (!me()) { const lead = standings()[0]; const gh = lead && race.ghosts.get(lead.id); if (gh) src = gh; }
-  const C = race.cam, k = 1 - Math.exp(-dt * 6);
-  let da = src.a - C.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; C.a += da * (1 - Math.exp(-dt * 5));
-  const fx = Math.cos(C.a), fy = Math.sin(C.a), speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
-  const want = V3(src.x - fx * (88 + speedK * 16), (src.z || 0) + 30 + speedK * 4, src.y - fy * (88 + speedK * 16));
-  want.y = Math.max(want.y, groundH(tr, want.x, want.z, nearest(tr, want.x, want.z, race.idx)) + 8);
-  if (!C.pos) C.pos = want.clone(); else C.pos.lerp(want, k);
-  cam.position.copy(C.pos);
-  if (race.shake > 0) { race.shake -= dt; cam.position.x += (Math.random() - 0.5) * 3; cam.position.y += (Math.random() - 0.5) * 3; }
-  if (race.offroad) cam.position.y += (Math.random() - 0.5) * 1.2;
-  cam.lookAt(src.x + fx * 45, (src.z || 0) + 12, src.y + fy * 45);
-  cam.fov += ((68 + speedK * 10) - cam.fov) * 0.08; cam.updateProjectionMatrix();
+  const C = race.cam, k = 1 - Math.exp(-dt * 6), mode = src === c && race.kart ? camMode : "longe";
+  let da = src.a - C.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; C.a += da * (1 - Math.exp(-dt * (mode === "perto" ? 7 : 5)));
+  const speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
+  if (race.kart) race.kart.roof.visible = race.kart.cabin.visible = mode !== "cockpit"; // de dentro, a cabine e o teto tapariam a vista
+  if (mode === "cockpit") {
+    // primeira pessoa: no lugar do piloto, olhando pelo para-brisa (o capô aparece embaixo)
+    const spec = CARS3[me().car] || CARS3.equilibrado, eyeU = spec.cabin[1][0] + 0.1, eyeH = spec.cabin[1][1] + 0.02;
+    const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = (eyeU - spec.L / 2) * KS, eh = eyeH * KS;
+    const ahead = c.air ? c.z : groundH(tr, c.x + fx * 70, c.y + fy * 70, nearest(tr, c.x + fx * 70, c.y + fy * 70, race.idx));
+    C.lookY = C.lookY == null ? ahead : C.lookY + (ahead - C.lookY) * (1 - Math.exp(-dt * 6));
+    cam.position.set(c.x + fx * fo, c.z + eh, c.y + fy * fo); C.pos = null;
+    cam.lookAt(c.x + fx * (fo + 70), C.lookY + eh + 1, c.y + fy * (fo + 70));
+    if (race.shake > 0) { race.shake -= dt; cam.position.y += (Math.random() - 0.5) * 1.2; }
+    if (race.offroad) cam.position.y += (Math.random() - 0.5) * 0.6;
+    cam.fov += ((74 + speedK * 12) - cam.fov) * 0.08; cam.updateProjectionMatrix();
+  } else {
+    // atrás do carro: perto (padrão) ou longe
+    const near = mode === "perto", back = near ? 50 + speedK * 8 : 88 + speedK * 16, up = near ? 17 + speedK * 2 : 30 + speedK * 4;
+    const fx = Math.cos(C.a), fy = Math.sin(C.a);
+    const want = V3(src.x - fx * back, (src.z || 0) + up, src.y - fy * back);
+    want.y = Math.max(want.y, groundH(tr, want.x, want.z, nearest(tr, want.x, want.z, race.idx)) + 6);
+    if (!C.pos) C.pos = want.clone(); else C.pos.lerp(want, near ? 1 - Math.exp(-dt * 9) : k);
+    cam.position.copy(C.pos);
+    if (race.shake > 0) { race.shake -= dt; cam.position.x += (Math.random() - 0.5) * 3; cam.position.y += (Math.random() - 0.5) * 3; }
+    if (race.offroad) cam.position.y += (Math.random() - 0.5) * 1.2;
+    cam.lookAt(src.x + fx * (near ? 35 : 45), (src.z || 0) + (near ? 9 : 12), src.y + fy * (near ? 35 : 45));
+    cam.fov += ((near ? 70 : 68) + speedK * 10 - cam.fov) * 0.08; cam.updateProjectionMatrix();
+  }
   // sol e sombras acompanham o carro
   sun.position.set(src.x - 300, (src.z || 0) + 700, src.y + 260); sun.target.position.set(src.x, src.z || 0, src.y);
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
@@ -775,7 +797,7 @@ function renderResults() {
 $("btnRules").onclick = () => {
   $("modalBox").innerHTML = `<h2>Como jogar</h2>
   <h3>Controles</h3><ul>
-  <li><b>Teclado:</b> ↑ ou W acelera, ↓ ou S freia (e dá ré), ← → ou A D viram. R volta para a pista.</li>
+  <li><b>Teclado:</b> ↑ ou W acelera, ↓ ou S freia (e dá ré), ← → ou A D viram. R volta para a pista. C troca a câmera (perto, primeira pessoa ou longe).</li>
   <li><b>Celular:</b> ◀ ▶ à esquerda viram; ▲ acelera e ▼ freia à direita.</li>
   <li><b>↺ Pista:</b> se rodar, ficar preso ou entrar na contramão, volta para o meio da pista.</li></ul>
   <h3>A corrida</h3><ul>
