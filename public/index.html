@@ -263,6 +263,9 @@ const GAMES = [
   // bunker no canto de baixo, à direita do autódromo: paredes de saco de areia e um alvo pintado no telhado
   { id: "tiro", url: "/tiro/", icon: "🎯", sign: "TIRO", name: "Arena de Tiro", desc: "FPS em rodadas no estilo CS, x1 ou x2, com AK-47 e AWP numa arena no deserto. Precisa de teclado e mouse.", meta: "Tiro da Galera · x1 ou x2",
     x: 24, y: 24, w: 7, h: 4, doors: [27], roof: "#5b6440", roof2: "#4a5234", wall: "#b8a77a", wall2: "#9a8a60", tiro: true },
+  // quadra de society no canto de baixo, à esquerda do autódromo: o telhado é o gramado com as linhas e os dois gols
+  { id: "pelada", url: "/pelada/", icon: "⚽", sign: "PELADA", name: "Quadra da Pelada", desc: "Futsal em 3D do 1x1 ao 3x3, numa quadra com alambrado. Chute, passe, cabeçada e as camisas do botão. Precisa de teclado e mouse.", meta: "Pelada da Galera · 1x1 a 3x3",
+    x: 3, y: 24, w: 7, h: 4, doors: [6], roof: "#2f8f48", roof2: "#2a8141", wall: "#d9dde0", wall2: "#b9bfc4", pelada: true },
 ];
 GAMES.forEach((g) => { g.doorY = g.y + g.h - 1; g.mats = g.doors.map((x) => [x, g.doorY + 1]); });
 
@@ -270,7 +273,7 @@ const FOUNTAIN = { x: 15, y: 10, w: 4, h: 3 };
 const LAMPS = [[10, 8], [23, 8], [2, 8], [31, 8], [10, 14], [23, 14], [2, 20], [31, 20]];
 const BENCHES = [[14, 14], [19, 14]];
 const TREES = [[11, 3], [11, 5], [22, 3], [22, 5], [10, 16], [12, 18], [21, 16], [23, 18], [2, 23], [31, 23], [16, 23], [7, 23], [26, 23],
-  [4, 26], [7, 28], [3, 30], [9, 25], [30, 30], [25, 30]];
+  [3, 30], [8, 30], [30, 30], [25, 30]];
 
 // tipos de chão: g grama, r rua de pedra, f flores, t árvore
 const ground = Array.from({ length: MH }, () => Array(MW).fill("g"));
@@ -283,6 +286,7 @@ for (let y = 13; y <= 21; y++) { set(11, y, "r"); set(22, y, "r"); } // ligaçõ
 for (let y = 23; y <= 30; y++) { set(11, y, "r"); set(22, y, "r"); } // caminhos até o autódromo
 for (let x = 11; x <= 22; x++) set(x, 30, "r");
 for (let x = 23; x <= 26; x++) set(x, 28, "r"); // caminho até a arena de tiro
+for (let x = 7; x <= 10; x++) set(x, 28, "r"); // caminho até a quadra da pelada
 for (const g of GAMES) {
   for (let y = g.y; y < g.y + g.h; y++) for (let x = g.x; x < g.x + g.w; x++) solid[y][x] = true;
   for (const [mx, my] of g.mats) set(mx, my, "m");
@@ -389,6 +393,15 @@ function drawBuilding(c, g) {
     c.beginPath(); c.arc(fx + fw / 2 + 0.5, fy + fh / 2, 3, 0, 7); c.stroke();
     px(c, "#f4f1e6", fx - 1, fy + fh / 2 - 3, 1, 6); px(c, "#f4f1e6", fx + fw, fy + fh / 2 - 3, 1, 6);
     px(c, "#c8102e", fx + fw / 2 - 9, fy + fh / 2 - 2, 4, 4); px(c, "#1e5bc6", fx + fw / 2 + 6, fy + fh / 2 - 1, 4, 4); px(c, "#ffffff", fx + fw / 2 - 4, fy + fh / 2, 2, 2);
+  }
+  if (g.pelada) { // telhado de gramado: listras, linhas brancas e os dois gols
+    const fx = rx + 2, fy = Y + 2, fw = rw - 4, fh = roofH - 5;
+    for (let k = 0; k < fw; k += 6) px(c, (k / 6) % 2 ? g.roof2 : g.roof, fx + k, fy, Math.min(6, fw - k), fh);
+    c.strokeStyle = "#f4f4f0"; c.lineWidth = 1; c.strokeRect(fx + 0.5, fy + 0.5, fw - 1, fh - 1);
+    px(c, "#f4f4f0", fx + fw / 2, fy, 1, fh);
+    c.beginPath(); c.arc(fx + fw / 2 + 0.5, fy + fh / 2, 4, 0, 7); c.stroke();
+    px(c, "#f4f4f0", fx - 2, fy + fh / 2 - 4, 2, 8); px(c, "#f4f4f0", fx + fw, fy + fh / 2 - 4, 2, 8);
+    px(c, "#ffffff", fx + fw / 2 + 6, fy + fh / 2 + 2, 2, 2);
   }
   if (g.tiro) { // telhado com um alvo pintado e sacos de areia na frente
     const cx = rx + rw / 2, cy = Y + roofH / 2;
