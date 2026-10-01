@@ -145,6 +145,11 @@ const Sound = (() => {
     // k: 0..1 volume pela distância; muffle: abafa o som de longe
     shot(w, k = 1, pan = 0) {
       if (k < 0.02) return;
+      if (w === "faca") { burst({ dur: 0.14, f0: 2500, f1: 6000, gain: 0.18 * k, pan, type: "bandpass", q: 1.5 }); return; }
+      if (w === "deagle") {
+        burst({ dur: 0.25, f0: 4800, f1: 500, gain: 0.75 * k, pan }); tone({ f0: 130, f1: 38, dur: 0.18, gain: 0.7 * k, pan });
+        burst({ dur: 0.45, f0: 1000, f1: 180, gain: 0.18 * k, pan, at: 0.05 }); return;
+      }
       if (w === "awp") {
         burst({ dur: 0.7, f0: 4200, f1: 260, gain: 0.9 * k, pan }); tone({ f0: 110, f1: 32, dur: 0.35, gain: 0.8 * k, pan });
         burst({ dur: 0.9, f0: 900, f1: 120, gain: 0.25 * k, pan, at: 0.09 });
@@ -159,6 +164,7 @@ const Sound = (() => {
     hurt() { burst({ dur: 0.12, f0: 700, f1: 200, gain: 0.5 }); tone({ f0: 180, f1: 90, dur: 0.15, gain: 0.25 }); },
     kill() { tone({ f0: 880, dur: 0.12, gain: 0.18, type: "triangle" }); tone({ f0: 1320, dur: 0.18, gain: 0.18, type: "triangle", at: 0.09 }); },
     dry() { tone({ f0: 1800, f1: 1200, dur: 0.03, gain: 0.15, type: "square" }); },
+    stab() { burst({ dur: 0.08, f0: 900, f1: 300, gain: 0.45 }); tone({ f0: 160, f1: 90, dur: 0.09, gain: 0.3 }); },
     reload(w) { const T = WP[w].reload; [0.25, T * 0.45, T * 0.8].forEach((at, i) => { burst({ dur: 0.05, f0: 3000, f1: 1500, gain: 0.25, type: "bandpass", q: 3, at }); tone({ f0: i === 2 ? 500 : 900, dur: 0.04, gain: 0.1, type: "square", at }); }); },
     zoom() { tone({ f0: 1500, f1: 1100, dur: 0.04, gain: 0.08, type: "square" }); },
     round() { tone({ f0: 660, dur: 0.12, gain: 0.15, type: "triangle" }); tone({ f0: 990, dur: 0.2, gain: 0.15, type: "triangle", at: 0.13 }); },
@@ -323,6 +329,25 @@ function makeAWP() {
   g.userData.muzzle = new THREE.Vector3(0, 0.03, -1.18);
   return g;
 }
+function makeDeagle() { // pistola grande: ferrolho prateado, cabo preto
+  const g = new THREE.Group(), steel = M(0xb9bec4, { metalness: 0.8, roughness: 0.3 });
+  part(g, BG(0.042, 0.05, 0.27), steel, 0, 0.045, -0.11);
+  part(g, BG(0.036, 0.03, 0.22), GM.metal, 0, 0.005, -0.1);
+  part(g, BG(0.036, 0.11, 0.055), GM.black, 0, -0.06, 0.02, 0.22);
+  part(g, BG(0.012, 0.03, 0.04), GM.metal, 0, -0.02, -0.04);
+  part(g, BG(0.01, 0.012, 0.012), GM.metal, 0, 0.076, -0.22);
+  g.userData.muzzle = new THREE.Vector3(0, 0.045, -0.26);
+  return g;
+}
+function makeKnife() { // faca: cabo preto, guarda e lâmina prateada
+  const g = new THREE.Group(), blade = M(0xd7dbe0, { metalness: 0.9, roughness: 0.2 });
+  part(g, BG(0.03, 0.032, 0.11), GM.black, 0, 0, 0.02);
+  part(g, BG(0.055, 0.014, 0.014), GM.metal, 0, 0, -0.04);
+  part(g, BG(0.008, 0.036, 0.19), blade, 0, 0.006, -0.14);
+  part(g, BG(0.008, 0.02, 0.04), blade, 0, 0.014, -0.25, 0.5);
+  g.userData.muzzle = new THREE.Vector3(0, 0, -0.27);
+  return g;
+}
 const TEAMCOL = { A: 0x2f6fde, B: 0xe0742a }, TEAMDARK = { A: 0x1d3f7a, B: 0x8a3f12 };
 function nameSprite(text, color) {
   const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
@@ -346,7 +371,7 @@ function makePlayer(team, name, mate) {
   part(upper, BG(0.12, 0.12, 0.42), shirt, 0.21, -0.08, -0.17, 0, 0.05);
   part(upper, BG(0.12, 0.12, 0.42), shirt, -0.12, -0.08, -0.28, 0, -0.45);
   const gun = new THREE.Group(); gun.position.set(0.1, -0.08, -0.35); upper.add(gun);
-  const guns = { ak: makeAK(), awp: makeAWP() }; gun.add(guns.ak, guns.awp);
+  const guns = { ak: makeAK(), awp: makeAWP(), deagle: makeDeagle(), faca: makeKnife() }; gun.add(guns.ak, guns.awp, guns.deagle, guns.faca);
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
   let tag = null; if (mate) { tag = nameSprite(name, "#9be27a"); tag.position.y = 2.05; g.add(tag); }
   g.userData = { legs, head, upper, guns, gunGroup: gun, tag };
@@ -358,16 +383,15 @@ const vScene = new THREE.Scene(), vCam = new THREE.PerspectiveCamera(54, 1, 0.01
 vScene.add(new THREE.HemisphereLight(0xdfeaff, 0x806040, 1.6));
 const vSun = new THREE.DirectionalLight(0xfff0d6, 2.2); vSun.position.set(0.5, 1, 0.3); vScene.add(vSun);
 const vm = new THREE.Group(); vScene.add(vm);
-const VM = { ak: makeAK(), awp: makeAWP() };
+const VM = { ak: makeAK(), awp: makeAWP(), deagle: makeDeagle(), faca: makeKnife() };
 const glove = M(0x3a3a3a, { roughness: 0.8 }), sleeve = M(0x6b7f5a, { roughness: 0.9 });
 for (const [k, gun] of Object.entries(VM)) {
   // luvas e antebraços curtos, saindo pela parte de baixo da tela
   const wrap = new THREE.Group(); wrap.add(gun);
-  const gz = k === "awp" ? 0.1 : 0.03;
-  part(wrap, BG(0.06, 0.08, 0.09), glove, 0.005, -0.08, gz);
-  part(wrap, BG(0.07, 0.07, 0.26), sleeve, 0.02, -0.17, gz + 0.14, 0.75, 0.08);
-  part(wrap, BG(0.07, 0.06, 0.1), glove, 0, -0.03, -0.42);
-  part(wrap, BG(0.07, 0.07, 0.3), sleeve, -0.07, -0.13, -0.27, 0.6, -0.5);
+  const gz = k === "awp" ? 0.1 : 0.03, oneHand = k === "deagle" || k === "faca";
+  part(wrap, BG(0.06, 0.08, 0.09), glove, 0.005, k === "faca" ? -0.01 : -0.08, gz);
+  part(wrap, BG(0.07, 0.07, 0.26), sleeve, 0.02, k === "faca" ? -0.1 : -0.17, gz + 0.14, 0.75, 0.08);
+  if (!oneHand) { part(wrap, BG(0.07, 0.06, 0.1), glove, 0, -0.03, -0.42); part(wrap, BG(0.07, 0.07, 0.3), sleeve, -0.07, -0.13, -0.27, 0.6, -0.5); }
   wrap.scale.setScalar(0.85);
   wrap.visible = false; vm.add(wrap); VM[k] = wrap; wrap.userData.muzzle = gun.userData.muzzle;
 }
@@ -425,9 +449,11 @@ const G = {
 };
 const keys = new Set();
 let mouseDown = false, triggerUp = true, jumpQueued = false, sens = store.get("tiro:sens") ?? 1.6;
-function newMe(spawn, w) {
-  const W = WP[w];
-  return { x: spawn[0], y: spawn[1], z: spawn[2], vx: 0, vy: 0, vz: 0, onGround: true, yaw: spawn[3], pitch: 0, alive: true, hp: 100, w,
+// me.w = arma na mão; me.prim = principal (AK ou AWP); me.inv guarda a munição das outras
+function newMe(spawn, prim) {
+  const W = WP[prim];
+  return { x: spawn[0], y: spawn[1], z: spawn[2], vx: 0, vy: 0, vz: 0, onGround: true, yaw: spawn[3], pitch: 0, alive: true, hp: 100, w: prim, prim, last: "deagle",
+    inv: { deagle: { ammo: WP.deagle.mag, reserve: WP.deagle.reserve } }, swingT: 0, heavy: false,
     ammo: W.mag, reserve: W.reserve, reloadUntil: 0, nextShot: 0, scope: 0, scopeAt: 0, rec: { n: 0, px: 0, py: 0, last: 0 }, punch: 0, kick: 0, deployAt: performance.now() / 1000, stepT: 0, wasGround: true };
 }
 const now = () => performance.now() / 1000;
@@ -495,13 +521,13 @@ function syncFromState(old, st) {
     G.roundKey = key;
     if (mine && mine.team && mine.spawn) { G.me = newMe(mine.spawn, mine.w); G.me.alive = mine.alive; setVM(mine.w); }
     else if (G.me) G.me.alive = false;
-    flashMsg(`Rodada ${r.n}`, mine && mine.team ? "Escolha a arma: 1 = AK-47, 2 = AWP" : "Assistindo", 2500);
+    flashMsg(`Rodada ${r.n}`, mine && mine.team ? "Principal: AK-47 ou AWP (1 troca) · 2 Deagle · 3 faca" : "Assistindo", 2500);
     Sound.round();
   }
   if (mine && G.me) {
     if (G.me.alive && !mine.alive) die();
     G.me.hp = mine.hp;
-    if (mine.w !== G.me.w && r && r.phase === "freeze") { const W = WP[mine.w]; Object.assign(G.me, { w: mine.w, ammo: W.mag, reserve: W.reserve, reloadUntil: 0, scope: 0 }); setVM(mine.w); }
+    if (mine.w !== G.me.prim && r && r.phase === "freeze") setPrimary(mine.w, false);
   }
   if (r && r.phase === "end" && (!old || !old.round || old.round.phase !== "end" || old.round.n !== r.n)) {
     const good = mine && mine.team && r.winner === mine.team;
@@ -538,7 +564,7 @@ socket.on("snap", (d) => {
   for (const e of d.p) {
     const p = S.players.find((x) => x.n === e[0]); if (!p) continue;
     const rm = G.remotes.get(p.id); if (!rm) continue;
-    const s = { t: d.t, x: e[1], y: e[2], z: e[3], yaw: e[4], pitch: e[5], w: e[6] ? "awp" : "ak", sc: e[7], g: e[8] & 1, wk: (e[8] >> 1) & 1 };
+    const s = { t: d.t, x: e[1], y: e[2], z: e[3], yaw: e[4], pitch: e[5], w: ["ak", "awp", "deagle", "faca"][e[6]] || "ak", sc: e[7], g: e[8] & 1, wk: (e[8] >> 1) & 1 };
     rm.buf.push(s); if (rm.buf.length > 40) rm.buf.shift();
     rm.w = s.w; rm.sc = s.sc; rm.g = s.g; rm.wk = s.wk;
   }
@@ -547,8 +573,7 @@ socket.on("shot", (d) => {
   if (!G.active || G.mode !== "online") return;
   const rm = G.remotes.get(d.id);
   const from = rm ? muzzleOfRemote(rm) : d.o;
-  tracer(from, d.e, d.w);
-  if (!d.hit) impact(d.e, d.n);
+  if (d.w !== "faca") { tracer(from, d.e, d.w); if (!d.hit) impact(d.e, d.n); }
   if (rm) { rm.flash = now() + 0.05; rm.kick = 1; }
   const [k, pan] = hearing(d.o); Sound.shot(d.w, k, pan);
 });
@@ -595,8 +620,8 @@ function updateBots(dt, t) {
     b.yaw = Math.atan2(-(G.me.x - b.x), -(G.me.z - b.z)); // olha para você
   }
 }
-function botHit(b, part, point) {
-  const dmg = AR.damage(G.me.w, part); b.hp -= dmg; blood(point);
+function botHit(b, part, point, fixed) {
+  const dmg = fixed ?? AR.damage(G.me.w, part); b.hp -= dmg; blood(point);
   const kill = b.hp <= 0; hitMarker(kill); Sound.hit(part === "head");
   if (kill) {
     b.alive = false; b.model.visible = false; b.respawnAt = now() + 1.5; G.kills++; if (part === "head") G.hs++;
@@ -629,7 +654,7 @@ document.addEventListener("mousemove", (e) => {
 document.addEventListener("mousedown", (e) => {
   if (!locked() || !G.me) return;
   if (e.button === 0) { mouseDown = true; if (!G.me.alive) G.specIdx++; }
-  if (e.button === 2) toggleScope();
+  if (e.button === 2) { if (WP[G.me.w].melee) { if (canFire()) tryFire(true); } else toggleScope(); }
 });
 document.addEventListener("mouseup", (e) => { if (e.button === 0) { mouseDown = false; triggerUp = true; } });
 document.addEventListener("contextmenu", (e) => { if (G.active) e.preventDefault(); });
@@ -639,30 +664,44 @@ document.addEventListener("keydown", (e) => {
   if (!locked()) return;
   if (e.code === "Space" && !e.repeat) jumpQueued = true;
   if (e.code === "KeyR") reload();
-  if (e.code === "Digit1") pickWeapon("ak");
-  if (e.code === "Digit2") pickWeapon("awp");
-  if (e.code === "KeyQ") pickWeapon(G.me.w === "ak" ? "awp" : "ak");
+  // 1 principal (no começo da rodada, apertar de novo troca AK <-> AWP), 2 Deagle, 3 faca, Q a anterior
+  if (e.code === "Digit1") { if (G.me.w === G.me.prim && canSwitch()) setPrimary(G.me.prim === "ak" ? "awp" : "ak"); else switchTo(G.me.prim); }
+  if (e.code === "Digit2") switchTo("deagle");
+  if (e.code === "Digit3") switchTo("faca");
+  if (e.code === "KeyQ") switchTo(G.me.last);
   keys.add(e.code);
 });
 document.addEventListener("keyup", (e) => { keys.delete(e.code); if (e.code === "Tab") $("tab").classList.add("hidden"); });
 window.addEventListener("blur", () => { keys.clear(); mouseDown = false; });
-document.querySelectorAll("#pick button").forEach((b) => b.addEventListener("click", () => pickWeapon(b.dataset.w)));
+document.querySelectorAll("#pick button").forEach((b) => b.addEventListener("click", () => setPrimary(b.dataset.w)));
 
 function canSwitch() { return G.mode === "treino" || (S && S.round && S.round.phase === "freeze"); }
-function pickWeapon(w) {
-  const me = G.me; if (!me || !me.alive || me.w === w) return;
-  if (!canSwitch()) return toast("Só dá para trocar de arma no começo da rodada.", 1800);
-  const W = WP[w]; Object.assign(me, { w, ammo: W.mag, reserve: W.reserve, reloadUntil: 0, scope: 0, deployAt: now() });
-  store.set("tiro:w", w); setVM(w);
-  if (G.mode === "online") act("weapon", { w });
+// troca a arma na mão (a munição de cada uma fica guardada)
+function switchTo(w) {
+  const me = G.me; if (!me || !me.alive || !w || me.w === w || ![me.prim, "deagle", "faca"].includes(w)) return;
+  if (me.w && !WP[me.w].melee) me.inv[me.w] = { ammo: me.ammo, reserve: me.reserve };
+  const a = me.inv[w] || { ammo: 0, reserve: 0 };
+  Object.assign(me, { last: me.w || me.last, w, ammo: a.ammo, reserve: a.reserve, reloadUntil: 0, scope: 0, deployAt: now(), nextShot: 0 });
+  me.rec.n = 0; me.rec.px = 0; me.rec.py = 0;
+  setVM(w);
+  if (G.mode === "online") socket.emit("cur", { w });
 }
-function setVM(w) { VM.ak.visible = w === "ak"; VM.awp.visible = w === "awp"; }
+// arma principal (AK ou AWP): só no começo da rodada (ou no treino)
+function setPrimary(w, tell = true) {
+  const me = G.me; if (!me || !me.alive || !["ak", "awp"].includes(w)) return;
+  if (tell && !canSwitch()) return toast("Só dá para trocar a arma principal no começo da rodada.", 1800);
+  delete me.inv[me.prim]; me.prim = w; me.inv[w] = { ammo: WP[w].mag, reserve: WP[w].reserve };
+  if (me.w === "ak" || me.w === "awp") { me.w = null; switchTo(w); } else switchTo(w);
+  store.set("tiro:w", w);
+  if (tell && G.mode === "online") act("weapon", { w });
+}
+function setVM(w) { for (const k of Object.keys(VM)) VM[k].visible = k === w; }
 function toggleScope() {
   const me = G.me; if (!me || !me.alive || me.w !== "awp" || me.reloadUntil) return;
   me.scope = (me.scope + 1) % 3; me.scopeAt = now(); Sound.zoom();
 }
 function reload() {
-  const me = G.me, W = WP[me.w]; if (!me.alive || me.reloadUntil || me.ammo >= W.mag || me.reserve <= 0) return;
+  const me = G.me, W = WP[me.w]; if (W.melee || !me.alive || me.reloadUntil || me.ammo >= W.mag || me.reserve <= 0) return;
   me.reloadUntil = now() + W.reload; me.scope = 0; Sound.reload(me.w);
   if (G.mode === "online") socket.emit("reload");
 }
@@ -674,14 +713,20 @@ function spreadOf(me) {
     const scoped = me.scope ? clamp((now() - me.scopeAt) / 0.25, 0, 1) : 0; // a mira leva um instante para "assentar"
     return lerp(0.085, 0.0004, scoped) + mv * 0.12 + air * 0.35;
   }
-  return 0.0035 + mv * 0.09 + air * 0.2 + Math.min(me.rec.n * 0.0045, 0.05);
+  if (me.w === "faca") return 0;
+  if (me.w === "deagle") return 0.002 + mv * 0.07 + air * 0.18 + Math.min(me.rec.n * 0.011, 0.05); // atirar rápido demais espalha
+  // AK: o 1º tiro é certeiro; numa rajada, a bala abre aos poucos
+  return 0.003 + mv * 0.09 + air * 0.2 + Math.min(Math.max(0, me.rec.n - 1) * 0.0025, 0.03);
 }
+// recuo da AK (quanto a mira sobe a cada tiro, em radianos): sobe suave nos primeiros e depois só "dança" um pouco
+const AK_UP = [0, 0.004, 0.0055, 0.0065, 0.007, 0.007, 0.0065, 0.006, 0.005, 0.004];
 function canFire() {
   if (G.mode === "treino") return true;
   return S && S.phase === "play" && S.round && S.round.phase === "live";
 }
-function tryFire() {
+function tryFire(heavy = false) {
   const me = G.me, W = WP[me.w], t = now();
+  if (W.melee) return knifeAttack(heavy, t);
   if (me.reloadUntil || t < me.nextShot || t - me.deployAt < 0.35) return;
   if (!W.auto && !triggerUp) return;
   if (me.ammo <= 0) { if (triggerUp) { Sound.dry(); reload(); } triggerUp = false; return; }
@@ -689,9 +734,11 @@ function tryFire() {
   // recuo da AK: sobe nos primeiros tiros e depois puxa para os lados
   const rec = me.rec;
   if (me.w === "ak") {
-    rec.py += rec.n < 9 ? 0.0115 : 0.003; rec.px += rec.n >= 6 ? (Math.floor(rec.n / 6) % 2 ? 1 : -1) * 0.0055 + (Math.random() - 0.5) * 0.003 : (Math.random() - 0.5) * 0.002;
-    rec.n++; rec.last = t; me.kick = 1;
-  } else { me.punch = 0.05; me.kick = 1.6; }
+    rec.py += rec.n < AK_UP.length ? AK_UP[rec.n] : 0.0012;
+    rec.px += rec.n >= 8 ? Math.sin(rec.n * 0.55) * 0.0035 : (Math.random() - 0.5) * 0.0012;
+    rec.n++; rec.last = t; me.kick = 0.7;
+  } else if (me.w === "deagle") { rec.py += 0.022; rec.px += (Math.random() - 0.5) * 0.006; rec.n++; rec.last = t; me.punch = 0.035; me.kick = 1.4; }
+  else { me.punch = 0.05; me.kick = 1.6; }
   const s = spreadOf(me), a = Math.random() * Math.PI * 2, r = s * Math.sqrt(Math.random());
   const yaw = me.yaw + rec.px + Math.cos(a) * r, pitch = me.pitch + rec.py + Math.sin(a) * r;
   const d = AR.dirOf(yaw, pitch), eye = [me.x, me.y + AR.EYE, me.z];
@@ -708,6 +755,19 @@ function tryFire() {
   if (G.mode === "treino") { if (hit.id) botHit(G.bots.find((b) => b.id === hit.id), hit.part, hit.point); }
   else socket.emit("fire", { o: eye, d });
   if (me.ammo === 0 && me.reserve > 0) setTimeout(() => G.me === me && reload(), W.auto ? 250 : 900);
+}
+// faca: golpe rápido (esquerdo) ou forte (direito), alcance curto. Pelas costas o dano é bem maior.
+function knifeAttack(heavy, t) {
+  const me = G.me, W = WP.faca;
+  if (t < me.nextShot || t - me.deployAt < 0.3) return;
+  me.nextShot = t + (heavy ? W.heavyInterval : W.interval); me.swingT = t; me.heavy = heavy;
+  const d = AR.dirOf(me.yaw, me.pitch), eye = [me.x, me.y + AR.EYE, me.z];
+  const targets = [...G.remotes.values()].filter((o) => o.alive && o.team && (!myP() || o.team !== myP().team || G.mode === "treino")).map((o) => ({ id: o.id, x: o.x, y: o.y, z: o.z }));
+  const hit = AR.hitScan(eye, d, targets, W.reach);
+  Sound.shot("faca");
+  if (hit.id) Sound.stab(); else if (hit.t < W.reach) impact(hit.point, hit.normal);
+  if (G.mode === "treino") { if (hit.id) { const b = G.bots.find((x) => x.id === hit.id); const back = Math.cos(b.yaw - me.yaw) > 0.4; botHit(b, hit.part, hit.point, back ? (heavy ? 180 : 90) : AR.damage("faca", hit.part, heavy)); } }
+  else socket.emit("fire", { o: eye, d, heavy });
 }
 let flashUntil = 0;
 function muzzleFlash() { flashUntil = now() + 0.045; vFlash.material.rotation = Math.random() * Math.PI; }
@@ -753,7 +813,7 @@ function frame(dt, t) {
   }
   // o recuo volta ao normal quando você para de atirar
   const rec = me.rec;
-  if (t - rec.last > WP[me.w].interval * 1.6) { const k = Math.exp(-dt * 9); rec.px *= k; rec.py *= k; rec.n = Math.max(0, rec.n - dt * 18); }
+  if (t - rec.last > WP[me.w].interval * 1.3) { const k = Math.exp(-dt * 13); rec.px *= k; rec.py *= k; rec.n = Math.max(0, rec.n - dt * 22); }
   me.punch *= Math.exp(-dt * 10); me.kick *= Math.exp(-dt * 14);
   // envia minha posição
   if (online && me.alive && mine && mine.team && t - G.lastSend > 1 / 30) {
@@ -793,7 +853,7 @@ function updateRemotes(dt, t) {
     m.visible = !!rm.alive && !(G.spec === rm);
     m.position.set(rm.x, rm.y, rm.z); m.rotation.y = rm.yaw;
     u.head.rotation.x = rm.pitch * 0.6; u.upper.rotation.x = rm.pitch;
-    u.guns.ak.visible = rm.w !== "awp"; u.guns.awp.visible = rm.w === "awp";
+    for (const k of Object.keys(u.guns)) u.guns[k].visible = k === (rm.w || "ak");
     const moving = rm.speed > 0.6 && rm.g !== 0;
     rm.anim = (rm.anim || 0) + dt * (moving ? rm.speed * 1.9 : 0);
     const sw = moving ? Math.sin(rm.anim) * 0.6 : 0;
@@ -834,9 +894,10 @@ function updateCamera(dt, t) {
   G.bobT = (G.bobT || 0) + dt * sp * 1.5;
   const rl = me.reloadUntil ? 1 - (me.reloadUntil - t) / WP[me.w].reload : 0, rdip = me.reloadUntil ? Math.sin(Math.PI * clamp(rl, 0, 1)) : 0;
   const dep = clamp((t - me.deployAt) / 0.35, 0, 1), depOff = (1 - dep) * (1 - dep);
-  const base = w === "awp" ? [0.2, -0.26, -0.6] : [0.2, -0.25, -0.58];
-  vm.position.set(base[0] + Math.sin(G.bobT) * 0.012 * bob, base[1] + Math.abs(Math.cos(G.bobT)) * 0.012 * bob - rdip * 0.12 - depOff * 0.3, base[2] + me.kick * 0.045);
-  vm.rotation.set(me.kick * 0.06 - rdip * 0.6 + depOff * -0.6, 0.03, rdip * 0.3);
+  const base = { awp: [0.2, -0.26, -0.6], deagle: [0.16, -0.2, -0.42], faca: [0.2, -0.22, -0.4] }[w] || [0.2, -0.25, -0.58];
+  const sw = w === "faca" && me.swingT ? clamp((t - me.swingT) / (me.heavy ? 0.45 : 0.25), 0, 1) : 1, slash = Math.sin(sw * Math.PI);
+  vm.position.set(base[0] + Math.sin(G.bobT) * 0.012 * bob - slash * 0.12, base[1] + Math.abs(Math.cos(G.bobT)) * 0.012 * bob - rdip * 0.12 - depOff * 0.3 + slash * 0.04, base[2] + me.kick * 0.045 - slash * 0.12);
+  vm.rotation.set(me.kick * 0.06 - rdip * 0.6 + depOff * -0.6 - slash * (me.heavy ? 0.9 : 0.3), 0.03 + slash * 0.9, rdip * 0.3 + slash * (me.heavy ? -0.4 : 0.6));
   // clarão na ponta da arma
   const vis = VM[w];
   vFlash.visible = t < flashUntil && me.alive;
@@ -853,7 +914,8 @@ function hud(t) {
   const hp = Math.max(0, me.hp);
   setH("hHp", me.alive ? `<span>✚ ${hp}</span><div class="bar"><i style="width:${hp}%"></i></div>` : "");
   $("hHp").classList.toggle("low", hp <= 25);
-  setH("hAmmo", me.alive ? `<div class="n num">${me.reloadUntil ? "…" : me.ammo}<small> / ${me.reserve}</small></div><div class="wn">${me.reloadUntil ? "Recarregando" : W.name}</div>` : "");
+  setH("hAmmo", !me.alive ? "" : W.melee ? `<div class="n">🔪</div><div class="wn">${W.name} · esquerdo rápido, direito forte</div>`
+    : `<div class="n num">${me.reloadUntil ? "…" : me.ammo}<small> / ${me.reserve}</small></div><div class="wn">${me.reloadUntil ? "Recarregando" : W.name}</div>`);
   // placar e relógio
   if (online && r && S.phase !== "lobby") {
     const alive = (tm) => S.players.filter((p) => p.team === tm).map((p) => `<i class="${p.alive ? "" : "dead"}"></i>`).join("");
@@ -862,12 +924,12 @@ function hud(t) {
     const mp = myP(); $("hPing").textContent = mp && mp.ping != null ? `ping ${mp.ping} ms` : "";
   } else {
     setH("hTop", `<div class="clock" style="font-size:18px">🎯 TREINO · ${G.kills} abate${G.kills === 1 ? "" : "s"}${G.kills ? ` · ${Math.round((100 * G.hs) / G.kills)}% na cabeça` : ""}</div>`);
-    $("hPing").textContent = "1 = AK · 2 = AWP · Esc = menu";
+    $("hPing").textContent = "1 principal (de novo: AK/AWP) · 2 Deagle · 3 faca · Esc = menu";
   }
   // escolher arma no começo da rodada
   const showPick = online && me.alive && r && r.phase === "freeze";
   $("pick").classList.toggle("hidden", !showPick);
-  if (showPick) document.querySelectorAll("#pick button").forEach((b) => b.classList.toggle("on", b.dataset.w === me.w));
+  if (showPick) document.querySelectorAll("#pick button").forEach((b) => b.classList.toggle("on", b.dataset.w === me.prim));
   // mensagens
   if (t > msgT) setH("hMsg", online && r && r.phase === "freeze" && me.alive ? `<small>A rodada começa em ${Math.ceil((r.freezeUntil - sNow()) / 1000)}…</small>` : "");
   // abates
@@ -878,7 +940,7 @@ function hud(t) {
   if (showCross) {
     const s = spreadOf(me), px = Math.min(70, s * (innerHeight / 2) / Math.tan((cam.fov * Math.PI) / 360));
     const gap = Math.round(3 + px), L = 7;
-    setH("cross", me.w === "awp" ? `<i class="dot"></i>` : `<i style="left:${gap}px;top:-1px;width:${L}px;height:2px"></i><i style="left:${-gap - L}px;top:-1px;width:${L}px;height:2px"></i><i style="top:${gap}px;left:-1px;height:${L}px;width:2px"></i><i style="top:${-gap - L}px;left:-1px;height:${L}px;width:2px"></i>`);
+    setH("cross", me.w === "awp" || me.w === "faca" ? `<i class="dot"></i>` : `<i style="left:${gap}px;top:-1px;width:${L}px;height:2px"></i><i style="left:${-gap - L}px;top:-1px;width:${L}px;height:2px"></i><i style="top:${gap}px;left:-1px;height:${L}px;width:2px"></i><i style="top:${-gap - L}px;left:-1px;height:${L}px;width:2px"></i>`);
   } else setH("cross", "");
   if (t > hitT) $("hitm").style.opacity = 0;
 }
