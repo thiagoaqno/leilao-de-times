@@ -280,18 +280,26 @@
   // para um ponto na frente do jogador e acompanha a velocidade e as viradas dele. Andando, fica pertinho (0,6 m);
   // correndo, um pouco mais longe; no pique, os toques ficam longos e mais soltos (a bola escapa se você virar demais).
   // Não pega: bola alta, bola chegando forte (aí é o domínio), logo depois do chute, carrinho, mergulho, caído.
-  // O mais perto é o dono: se um marcador chega mais perto, ele toma a bola (o carrinho continua tirando de vez).
-  const CONDUZ_R = 1.15;
+  // A posse tem inércia (b.dono): quem está com a bola só perde para quem chegar BEM mais perto (25 cm) e com a bola
+  // na frente dele; ombro a ombro, a bola continua com quem tinha. O carrinho continua tirando a bola de vez.
+  const CONDUZ_R = 1.15, TOMA = 0.25;
   function conduz(F, b, bodies, dt) {
-    if (F.rl || !bodies || b.holder || b.y > F.ballR + 0.12 || b.vy > 1.5) return null;
-    let p = null, best = CONDUZ_R;
+    if (F.rl || !bodies || b.holder || b.y > F.ballR + 0.12 || b.vy > 1.5) { b.dono = null; return null; }
+    let p = null, best = CONDUZ_R, atual = null, dAtual = 0;
     for (const q of bodies) {
       if (q.kind !== "pe" || !q.conduz || q.slide || q.dive || q.chutou || q.yaw == null || q.y > 0.3) continue;
-      const d = Math.hypot(b.x - q.x, b.z - q.z); if (d < best) { best = d; p = q; }
+      const d = Math.hypot(b.x - q.x, b.z - q.z);
+      if (q.id === b.dono && d < CONDUZ_R) { atual = q; dAtual = d; }
+      if (d < best) { best = d; p = q; }
     }
-    if (!p) return null;
+    if (atual && p !== atual) {
+      const frente = ((b.x - p.x) * -Math.sin(p.yaw) + (b.z - p.z) * -Math.cos(p.yaw)) / (best || 1) > 0.2;
+      if (!(best < dAtual - TOMA && frente)) { p = atual; best = dAtual; } // não tomou: continua com quem tinha
+    }
+    if (!p) { b.dono = null; return null; }
     const pvx = p.vx || 0, pvz = p.vz || 0;
-    if (Math.hypot(b.vx - pvx, b.vz - pvz) > 6) return null; // chegando forte: primeiro amortece (domínio)
+    if (Math.hypot(b.vx - pvx, b.vz - pvz) > 6) { b.dono = null; return null; } // chegando forte: primeiro amortece (domínio)
+    b.dono = p.id;
     const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), sp = Math.hypot(pvx, pvz);
     const atras = ((b.x - p.x) * fx + (b.z - p.z) * fz) / (best || 1) < 0; // bola atrás: puxa mais devagar (contorna o corpo)
     const dist = Math.min(1.15, 0.6 + 0.05 * sp + (p.sprint ? 0.25 : 0));
@@ -388,6 +396,7 @@
     const h = Math.cos(elev) * speed, sobe = Math.sqrt(MODES.pes.gBola / 9.81); // mesma altura que antes, subindo mais rápido
     b.vx = fx * h + (p.vx || 0) * 0.3; b.vz = fz * h + (p.vz || 0) * 0.3; b.vy = Math.sin(elev) * speed * sobe;
     if (how === "pe" && b.y < MODES.pes.ballR + 0.05) b.y = MODES.pes.ballR + 0.02;
+    b.dono = null; // a bola saiu do pé
     curve = Math.max(-1, Math.min(1, curve || 0));
     b.sp = how === "cabeca" ? 0 : curve * (kind === "passe" ? 14 : 24); // positivo: curva para a direita de quem chuta
     return how;

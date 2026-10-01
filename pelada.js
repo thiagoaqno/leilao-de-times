@@ -179,7 +179,7 @@ module.exports = function attachPelada(io) {
       const b = room.ball, holder = b.holder && room.players[b.holder] ? room.players[b.holder].n : -1;
       const p = room.order.map((id) => room.players[id]).filter((x) => x.team && x.sockets.size)
         .map((x) => [x.n, q2(x.pos.x), q2(x.pos.y), q2(x.pos.z), q2(x.pos.vx), q2(x.pos.vy), q2(x.pos.vz), q2(x.pos.yaw), q2(x.pos.pitch || 0), (x.pos.f | 0) | (x.downUntil > now ? FL.down : 0)]);
-      nsp.to(room.code).volatile.emit("snap", { t: now, b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), room.bump ? Math.round(room.bump) : 0, holder, q2(b.sp || 0), q2(b.wx || 0), q2(b.wy || 0), q2(b.wz || 0)], p }); // por último: o giro (bola do Rocket)
+      nsp.to(room.code).volatile.emit("snap", { t: now, b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), room.bump ? Math.round(room.bump) : 0, holder, q2(b.sp || 0), q2(b.wx || 0), q2(b.wy || 0), q2(b.wz || 0), b.dono && room.players[b.dono] ? room.players[b.dono].n : -1], p }); // depois do giro (bola do Rocket): quem conduz a bola
       room.bump = 0;
     }
   }

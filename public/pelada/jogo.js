@@ -1142,12 +1142,13 @@ socket.on("snap", (d) => {
     rm.buf.push({ t: d.t, x: e[1], y: e[2], z: e[3], vx: e[4], vy: e[5], vz: e[6], yaw: e[7], pitch: e[8], f: e[9] });
     if (rm.buf.length > 30) rm.buf.shift();
   }
-  const [x, y, z, vx, vy, vz, hit, hn, sp, wx = 0, wy = 0, wz = 0] = d.b;
+  const [x, y, z, vx, vy, vz, hit, hn, sp, wx = 0, wy = 0, wz = 0, dn = -1] = d.b;
   if (hit > 2) { const [k, pan] = hearing([x, y, z]); Sound.bounce(hit, k, pan, isCar()); }
   const holder = hn >= 0 && PN(hn) ? PN(hn).id : null;
   if (performance.now() < ballS.ignoreUntil && !holder) return; // acabei de chutar: espero o chute voltar do servidor
   const before = { ...ballS.view };
-  ballS.snap = { t: d.t, x, y, z, vx, vy, vz, sp: sp || 0, wx, wy, wz, holder };
+  const donoId = dn >= 0 && PN(dn) ? PN(dn).id : null; // quem está conduzindo (eu viro "eu", como no myBody)
+  ballS.snap = { t: d.t, x, y, z, vx, vy, vz, sp: sp || 0, wx, wy, wz, holder, dono: ME && donoId === ME.id ? "eu" : donoId };
   const pred = predictBall();
   if (pred && !holder) { ballS.off = { x: before.x - pred.x, y: before.y - pred.y, z: before.z - pred.z }; if (Math.hypot(ballS.off.x, ballS.off.y, ballS.off.z) > 4) ballS.off = { x: 0, y: 0, z: 0 }; }
   else ballS.off = { x: 0, y: 0, z: 0 };
@@ -1188,7 +1189,7 @@ function holderPos(id) {
 function predictBall() {
   const s = ballS.snap; if (!s) return null;
   if (s.holder) { const hp = holderPos(s.holder); if (hp) return { x: hp.x - Math.sin(hp.yaw) * 0.45, y: hp.y + 1.15, z: hp.z - Math.cos(hp.yaw) * 0.45, vx: 0, vy: 0, vz: 0, holder: s.holder }; }
-  const b = { x: s.x, y: s.y, z: s.z, vx: s.vx, vy: s.vy, vz: s.vz, sp: s.sp || 0, wx: s.wx || 0, wy: s.wy || 0, wz: s.wz || 0, holder: null };
+  const b = { x: s.x, y: s.y, z: s.z, vx: s.vx, vy: s.vy, vz: s.vz, sp: s.sp || 0, wx: s.wx || 0, wy: s.wy || 0, wz: s.wz || 0, holder: null, dono: s.dono };
   const live = S && S.match && S.match.phase !== "ready";
   const dt = live ? clamp((sNow() - s.t) / 1000, 0, 0.25) : 0;
   const me = myBody();
