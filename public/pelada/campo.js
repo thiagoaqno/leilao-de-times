@@ -125,7 +125,7 @@
   }
 
   // ---------- bola ----------
-  const newBall = (F = MODES.pes) => ({ x: 0, y: F.ballR, z: 0, vx: 0, vy: 0, vz: 0, holder: null });
+  const newBall = (F = MODES.pes) => ({ x: 0, y: F.ballR, z: 0, vx: 0, vy: 0, vz: 0, sp: 0, holder: null });
   function bounceOff(b, nx, ny, nz, pen, e, vx = 0, vy = 0, vz = 0) {
     b.x += nx * pen; b.y += ny * pen; b.z += nz * pen;
     const rv = (b.vx - vx) * nx + (b.vy - vy) * ny + (b.vz - vz) * nz;
@@ -168,6 +168,11 @@
     let hit = 0, touch = null;
     const R = F.ballR;
     b.vy -= F.g * dt;
+    // efeito (chute com curva): a bola girando faz curva para o lado (efeito Magnus) e o giro vai acabando
+    if (b.sp) {
+      b.vx += -b.vz * b.sp * 0.022 * dt; b.vz += b.vx * b.sp * 0.022 * dt;
+      b.sp *= Math.exp(-dt * (b.y <= R + 0.01 ? 3 : 0.5)); if (Math.abs(b.sp) < 0.3) b.sp = 0;
+    }
     const sp = Math.hypot(b.vx, b.vy, b.vz), drag = Math.max(0, 1 - F.drag * sp * dt);
     b.vx *= drag; b.vy *= drag; b.vz *= drag;
     b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
@@ -203,7 +208,7 @@
     }
     for (const p of bodies || []) {
       const f = hitBody(b, p, R);
-      if (f > 0.05) { touch = p.id; hit = Math.max(hit, f * 0.45); }
+      if (f > 0.05) { touch = p.id; hit = Math.max(hit, f * 0.45); b.sp = (b.sp || 0) * 0.3; }
     }
     return { hit, touch };
   }
@@ -234,7 +239,8 @@
     if (rel < 2.3) return d < 0.9 + slack ? "cabeca" : null;
     return null;
   }
-  function kick(b, p, kind, power, yaw, slack = 0) {
+  // curva: -1 (para a esquerda) a 1 (para a direita)
+  function kick(b, p, kind, power, yaw, slack = 0, curve = 0) {
     const how = canKick(p, b, slack); if (!how) return null;
     power = Math.max(0, Math.min(1, power));
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
@@ -247,6 +253,8 @@
     const h = Math.cos(elev) * speed;
     b.vx = fx * h + (p.vx || 0) * 0.3; b.vz = fz * h + (p.vz || 0) * 0.3; b.vy = Math.sin(elev) * speed;
     if (how === "pe" && b.y < MODES.pes.ballR + 0.05) b.y = MODES.pes.ballR + 0.02;
+    curve = Math.max(-1, Math.min(1, curve || 0));
+    b.sp = how === "cabeca" ? 0 : curve * (kind === "passe" ? 14 : 24); // positivo: curva para a direita de quem chuta
     return how;
   }
   // passe assistido (como no FIFA): se tiver um companheiro perto da direção mirada, a bola vai nele
