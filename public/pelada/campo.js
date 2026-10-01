@@ -5,7 +5,7 @@
 (function (root) {
   const MODES = {
     pes: { id: "pes", L: 20, W: 12, goalW: 1.6, goalH: 2.1, goalD: 1.2, ballR: 0.15, wallH: 7, ceil: 14, g: 9.81, bounce: 0.55, roll: 2.6, drag: 0.012, wallE: 0.6, postR: 0.05, areaR: 6, circle: 3 },
-    carros: { id: "carros", L: 40, W: 27, goalW: 7, goalH: 5.5, goalD: 4, ballR: 1.1, wallH: 18, ceil: 18, g: 12, bounce: 0.62, roll: 0.7, drag: 0.02, wallE: 0.65, postR: 0.3, areaR: 14, circle: 9 },
+    carros: { id: "carros", L: 40, W: 27, goalW: 7, goalH: 5.5, goalD: 4, ballR: 1.25, wallH: 18, ceil: 18, g: 5.2, bounce: 0.8, roll: 1.4, drag: 0.05, wallE: 0.82, postR: 0.3, areaR: 14, circle: 9, carE: 0.75, kick: 1.7 }, // bola de praia: leve, flutua e quica muito
   };
   const P_R = 0.35, P_H = 1.8;
 
@@ -133,7 +133,7 @@
     return rv < 0 ? -rv : 0;
   }
   // corpos: {id, kind: "pe"|"car", x,y,z,vx,vy,vz, yaw, sprint, slide, dive, flip}
-  function hitBody(b, p, R) {
+  function hitBody(b, p, R, F = MODES.pes) {
     if (p.kind === "car") {
       const cy = p.y + CAR.lift, dx = b.x - p.x, dy = b.y - cy, dz = b.z - p.z;
       const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
@@ -144,9 +144,9 @@
       if (d >= R) return 0;
       if (d < 1e-6) { ex = 0; ey = 1; ez = 0; d = 1e-6; }
       const nx = ex / d, ny = ey / d, nz = ez / d;
-      const f = bounceOff(b, nx, ny, nz, R - d, 0.35, p.vx, p.vy || 0, p.vz);
+      const f = bounceOff(b, nx, ny, nz, R - d, F.carE || 0.35, p.vx, p.vy || 0, p.vz);
       if (f > 0.3) { // tranco extra (o carro "chuta" a bola), mais forte no mortal
-        const sp = Math.hypot(p.vx, p.vy || 0, p.vz), k = Math.min(9, sp * 0.3 + 1.5) * (p.flip ? 1.6 : 1);
+        const sp = Math.hypot(p.vx, p.vy || 0, p.vz), k = Math.min(9, sp * 0.3 + 1.5) * (p.flip ? 1.6 : 1) * (F.kick || 1);
         b.vx += nx * k; b.vy += ny * k + (p.flip ? 2 : 0); b.vz += nz * k;
       }
       return f;
@@ -207,7 +207,7 @@
       }
     }
     for (const p of bodies || []) {
-      const f = hitBody(b, p, R);
+      const f = hitBody(b, p, R, F);
       if (f > 0.05) { touch = p.id; hit = Math.max(hit, f * 0.45); b.sp = (b.sp || 0) * 0.3; }
     }
     return { hit, touch };

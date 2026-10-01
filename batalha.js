@@ -217,7 +217,9 @@ module.exports = function attachBatalha(io) {
       const dx = x - k.x, dz = z - k.z, dist = Math.hypot(dx, dz);
       const s = dist > step ? step / dist : 1;
       k.x += dx * s; k.z += dz * s; R.collideCircle(k, R.KR * 0.8);
-      k.yaw = yaw; k.v = clamp(v, -8, R.MAX * 1.8); k.drifting = !!(int(d.f, 0) & R.FL.drift); k.lastSt = now;
+      const g = R.groundAt(k.x, k.z), f = int(d.f, 0); // altura: do chão até um pulo bem alto
+      k.y = fin(d.y) ? clamp(d.y, g - 0.5, g + 8) : g; k.air = !!(f & R.FL.air);
+      k.yaw = yaw; k.v = clamp(v, -8, R.MAX * 1.8); k.drifting = !!(f & R.FL.drift); k.lastSt = now;
     });
 
     // usar o item (para trás segurando S)
