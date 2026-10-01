@@ -110,6 +110,7 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
 #hSta{left:18px;bottom:18px;width:170px}
 #hSta .lb{font:700 12px var(--body);text-transform:uppercase;letter-spacing:.08em;opacity:.85}
 #hSta .bar{height:8px;background:#0008;border-radius:4px;overflow:hidden;margin-top:4px}#hSta .bar i{display:block;height:100%;background:#7fe3ff}
+@media (pointer:coarse){#hHint{display:none!important}#hSta{left:14px;bottom:auto;top:40px}#hPow{bottom:120px}#hPowL{bottom:138px}}
 #hHint{right:16px;bottom:16px;font:600 13px var(--body);text-align:right;opacity:.85;line-height:1.6}
 #cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #000a;pointer-events:none;opacity:.8}
 .overlay{position:absolute;inset:0;display:grid;place-items:center;background:#000a;padding:16px;z-index:5}
@@ -143,7 +144,7 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
         <div class="feats" id="heroFeats"><span>⚽ 1x1 a 5x5</span><span>🧤 goleiro</span><span>🦵 carrinho</span><span>🌀 efeito</span><span>🎯 bater falta</span><span>👕 camisas do botão</span></div>
       </div>
       <div class="panel"><div class="lines"></div><div class="in">
-        <div class="warn hidden" id="mobileWarn">Esse jogo precisa de computador com teclado e mouse.</div>
+        <div class="warn hidden" id="mobileWarn">No celular aparecem botões na tela: deite o celular. No computador, teclado e mouse.</div>
         <label for="hName">Seu nome</label>
         <input id="hName" maxlength="8" placeholder="Ex.: Falcão" autocomplete="off">
         <label for="hCode" style="margin-top:14px">Código da sala</label>
@@ -219,6 +220,7 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
 <script src="/socket.io/socket.io.js"></script>
 <script src="/pelada/campo.js"></script>
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<script src="/toque.js"></script>
 <script type="module" src="/pelada/jogo.js"></script>
 </body>
 </html>

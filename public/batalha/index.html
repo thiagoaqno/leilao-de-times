@@ -119,6 +119,7 @@ kbd{display:inline-block;background:#2a1c45;border:1px solid #5a4680;border-bott
 .sb td.n{text-align:right;font-variant-numeric:tabular-nums}
 .sb tr.me td{background:#ffd84a1a}
 .sb .sw{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+@media (pointer:coarse){#hHint,#hSpeed{display:none}#hMini{left:110px;right:auto;top:76px;bottom:auto;width:110px;height:110px}#hFeed{bottom:auto;top:96px;right:50%;transform:translateX(50%)}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#22163a;border:1px solid #4a3670;border-radius:10px;padding:10px 16px;font-weight:700;z-index:60;box-shadow:0 10px 30px #000a}
 </style>
 </head>
@@ -141,7 +142,7 @@ kbd{display:inline-block;background:#2a1c45;border:1px solid #5a4680;border-bott
         <div class="feats"><span>🎈 3 balões</span><span>❓ caixas de item</span><span>🐢 cascos</span><span>🍌 banana</span><span>💣 bomba</span><span>⭐ estrela</span><span>👻 fantasma</span><span>🤖 robôs</span></div>
       </div>
       <div class="panel"><div class="lines"></div><div class="in">
-        <div class="warn hidden" id="mobileWarn">Esse jogo precisa de computador com teclado.</div>
+        <div class="warn hidden" id="mobileWarn">No celular aparecem botões na tela: deite o celular.</div>
         <label for="hName">Seu nome</label>
         <input id="hName" maxlength="8" placeholder="Ex.: Yoshi" autocomplete="off">
         <label for="hCode" style="margin-top:14px">Código da sala</label>
@@ -225,6 +226,7 @@ kbd{display:inline-block;background:#2a1c45;border:1px solid #5a4680;border-bott
 <script src="/socket.io/socket.io.js"></script>
 <script src="/batalha/regras.js"></script>
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<script src="/toque.js"></script>
 <script type="module" src="/batalha/jogo.js"></script>
 </body>
 </html>
