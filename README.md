@@ -2,6 +2,8 @@
 
 Site multiplayer para montar times (ou hambúrgueres, pizzas, drinks…) por leilão: a roleta sorteia o item, cada participante dá lance, o maior leva e as moedas são controladas sozinhas.
 
+**Hospedagem:** para colocar no ar no Fly.io (servidor em São Paulo), siga o [DEPLOY-FLY.md](DEPLOY-FLY.md).
+
 **Ludo da Galera:** ludo de 2 a 4 jogadores (4 peões, ou 2 no modo rápido), em `/ludo/`. Sai da base com 6 (opção: 1 ou 6), tirou 6 joga de novo, três 6 seguidos perdem a vez, comer ou chegar em casa dá outra jogada, estrelas são casas seguras e dois peões juntos formam uma torre (opção de barreira). O dado é rolado no servidor.
 
 **Vila da Galera (lobby):** a página inicial (http://localhost:3000) é um mapinha 2D. Ande com as setas/WASD (ou o direcional no celular), chegue na porta de uma casinha e aperte Espaço (ou A) para entrar no jogo. Também dá para clicar/tocar numa casinha que o boneco anda sozinho. Quem estiver no lobby ao mesmo tempo aparece andando com o nick em cima da cabeça (canal `/vila`, em `vila.js`). O leilão fica em `/leilao/`. Nicks têm no máximo 8 caracteres.

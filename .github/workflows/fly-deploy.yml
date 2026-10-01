@@ -1,0 +1,33 @@
+# Publica no Fly.io automaticamente a cada push na branch main.
+# Só funciona depois de cadastrar o segredo FLY_API_TOKEN no GitHub (veja DEPLOY-FLY.md).
+name: Deploy no Fly.io
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency: deploy-fly
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verifica token
+        id: token
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "FLY_API_TOKEN não configurado — pulando deploy."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: steps.token.outputs.ok == 'true'
+      - run: flyctl deploy --remote-only --ha=false
+        if: steps.token.outputs.ok == 'true'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

@@ -1,0 +1,8 @@
+node_modules
+.git
+.github
+*.md
+index.antigo.html
+fly.toml
+Dockerfile
+.dockerignore
