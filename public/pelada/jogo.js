@@ -20,7 +20,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const angLerp = (a, b, k) => { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * k; };
 const SIDES = { A: "Mandante", B: "Visitante" };
-const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64 };
+const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128 }; // grab: segurando alguém
 const INTERP = 100; // ms que os outros ficam "no passado" (pacotes a cada 50 ms)
 // a mesma página serve duas casas: /pelada/ (futebol a pé) e /rocket/ (futebol de carro, estilo Rocket League)
 const FIXO = location.pathname.startsWith("/rocket") ? "carros" : "pes", BASE = FIXO === "carros" ? "/rocket/" : "/pelada/";
@@ -167,7 +167,7 @@ function keysHelp(mode) {
     <li><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> direção do chute/passe</li><li><kbd>K</kbd> ou clique: chute (segure)</li>
     <li><kbd>J</kbd> ou botão direito: passe</li><li><kbd>L</kbd> ou botão do meio: cavadinha</li>
     <li><kbd>Q</kbd>/<kbd>E</kbd> segurados no chute: efeito (curva)</li>
-    <li>Rodinha do mouse: carrinho</li><li><kbd>Espaço</kbd> pular / cabecear</li>
+    <li>Rodinha do mouse: carrinho</li><li><kbd>F</kbd> segurar quem está perto (ele corre devagar)</li><li><kbd>Espaço</kbd> pular / cabecear</li>
     <li>Goleiro: <kbd>Espaço</kbd> + <kbd>A</kbd>/<kbd>D</kbd> se joga</li><li><kbd>C</kbd> câmera: atrás, TV ou 1ª pessoa</li></ul>
     <p class="muted" style="font-size:13.5px;margin:10px 0 0">Sem seta apertada, a bola vai para onde o jogador está virado. O passe procura o companheiro mais perto da direção (como no FIFA). Carrinho derruba quem estiver na frente.</p>`;
 }
@@ -259,6 +259,7 @@ const Sound = (() => {
     },
     whistle, start() { whistle(1, 0.7); }, end() { whistle(3, 0.45); },
     cheer() { burst({ dur: 3.2, f0: 1400, f1: 700, gain: 0.5, type: "bandpass", q: 0.6, attack: 0.25 }); burst({ dur: 2.6, f0: 600, f1: 300, gain: 0.35, attack: 0.3 }); [523, 659, 784].forEach((f, i) => tone({ f0: f, dur: 0.25, gain: 0.08, type: "square", at: 0.2 + i * 0.12 })); },
+    puxao() { burst({ dur: 0.16, f0: 1600, f1: 500, gain: 0.22, type: "bandpass", q: 1.4 }); }, // camisa sendo puxada
     ooh() { burst({ dur: 1.2, f0: 500, f1: 350, gain: 0.25, type: "bandpass", q: 1, attack: 0.15 }); },
   };
 })();
@@ -840,7 +841,7 @@ function animate(model, speed, dt, st, f = 0) {
   const armTo = st.holding ? 1.4 : (f & FL.dive) ? 2.8 : null;
   const mola = springs(model, dt, st, lying, speed), jp = mola.jpitch.x - mola.pitch.x, jr = mola.jroll.x - mola.roll.x;
   u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, (armTo ?? -sw * 0.8) + jp * 1.6, 0.35);
-  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, (armTo ?? sw * 0.8) + jp * 1.6, 0.35);
+  u.arms[1].rotation.x = lerp(u.arms[1].rotation.x, (st.segura ? 1.35 : armTo ?? sw * 0.8) + jp * 1.6, 0.35); // segurando: braço esticado na camisa do outro
   // joelho dobra quando a perna vai para trás; cotovelo dobrado correndo; tronco inclina para a frente e balança
   const run = lying ? 0 : Math.min(1, speed / 7);
   // joelho dobra para trás (negativo) e cotovelo para a frente (positivo)
@@ -1232,7 +1233,7 @@ function setupTouch() {
     look: (dx, dy) => { if (!locked() || G.view === "tv") return; const k = 0.0028 * sens; G.camYaw -= dx * k; G.camPitch = clamp(G.camPitch - dy * k, ...pitchRange()); },
     buttons: [
       { icon: "🌙", label: "cavadinha", code: "KeyL" }, { icon: "🎯", label: "passe", code: "KeyJ" }, { icon: "🦵", label: "carrinho", down: () => { if (locked() && G.meModel) wheelQueued = true; } },
-      { icon: "🏃", label: "pique", code: "ShiftLeft" }, { icon: "⬆", label: "pular", code: "Space" }, { icon: "⚽", label: "chute", code: "KeyK", big: true },
+      { icon: "✋", label: "segurar", code: "KeyF" }, { icon: "🏃", label: "pique", code: "ShiftLeft" }, { icon: "⬆", label: "pular", code: "Space" }, { icon: "⚽", label: "chute", code: "KeyK", big: true },
     ],
     top: [pause, { icon: "🎥", code: "KeyC" }, { icon: "📋", code: "Tab" }],
   });
@@ -1335,7 +1336,7 @@ function loop() {
 function myFlags() {
   const me = G.me; let f = 0;
   if (me.sprint) f |= FL.sprint; if (charge) f |= FL.charge; if (me.slideT > 0) f |= FL.slide; if (me.diveT > 0) f |= FL.dive;
-  if (me.flipT > 0) f |= FL.flip; if (me.boosting) f |= FL.boost;
+  if (me.flipT > 0) f |= FL.flip; if (me.boosting) f |= FL.boost; if (me.segurando) f |= FL.grab;
   return f;
 }
 function frame(dt, t) {
@@ -1406,10 +1407,22 @@ function stepFoot(dt, t, frozen) {
     const ry = me.facing, rx = Math.cos(ry), rz = -Math.sin(ry);
     me.vx = rx * side * 7.5; me.vz = rz * side * 7.5; me.vy = 3.2; me.onGround = false; me.diveT = 0.75; me.st.diveSide = side; jumpQueued = false; Sound.jump();
   }
-  const wantSprint = (keys.has("ShiftLeft") || keys.has("ShiftRight")) && len > 0 && !charge && !busy;
+  // segurar (F, com ou sem bola): perto de um adversário, puxa a camisa dele e ele corre bem mais devagar (55%).
+  // Quem segura também fica mais lento (85%) e sem pique. Cada puxão dura no máximo 1,5 s; depois, 2 s de espera.
+  me.segCd = Math.max(0, (me.segCd || 0) - dt);
+  const alvo = keys.has("KeyF") && !busy && !frozen && !charge && me.segCd <= 0 ? alvoSegurar(me) : null;
+  if (alvo) { me.segT = (me.segT || 0) + dt; if (me.segT > SEGURA_MAX) { me.segCd = 2; me.segT = 0; } }
+  else if (me.segT > 0) { me.segCd = Math.max(me.segCd, 0.5); me.segT = 0; }
+  const antes = !!me.segurando, antesV = !!me.seguradoPor;
+  me.segurando = alvo && me.segT > 0 ? alvo : null;
+  me.seguradoPor = busy ? null : quemMeSegura(me); // algum adversário colado com a mão em mim
+  if (me.segurando && !antes) { flashMsg("", `✋ Segurando ${h(me.segurando.name)}`, 900); Sound.puxao(); }
+  if (me.seguradoPor && !antesV) { flashMsg("", `✋ ${h(me.seguradoPor.name)} está te segurando!`, 1200, "#ffb4a8"); Sound.puxao(); }
+  const wantSprint = (keys.has("ShiftLeft") || keys.has("ShiftRight")) && len > 0 && !charge && !busy && !me.segurando;
   me.sprint = wantSprint && me.stamina > 0.02;
   me.stamina = clamp(me.stamina + (me.sprint ? -0.24 : 0.14) * dt, 0, 1);
   let speed = charge ? C.CHARGING : me.sprint ? C.SPRINT : C.RUN;
+  if (me.seguradoPor) speed *= SEGURADO_VEL; if (me.segurando) speed *= 0.85;
   if (frozen || !len) speed = 0;
   if (frozen) { me.vx = 0; me.vz = 0; }
   if (busy) { const k = Math.exp(-dt * (me.downT > 0 ? 6 : 1.6)); me.vx *= k; me.vz *= k; }
@@ -1430,9 +1443,25 @@ function stepFoot(dt, t, frozen) {
   // o corpo vira para onde está correndo; carregando o chute, vira para a mira
   const hsp = Math.hypot(me.vx, me.vz);
   if (!busy) { const target = charge ? aimYaw() : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing; me.facing = angLerp(me.facing, target, Math.min(1, dt * 12)); }
-  me.st.holding = holding;
+  me.st.holding = holding; me.st.segura = !!me.segurando;
   G.meModel.position.set(me.x, me.y, me.z); G.meModel.rotation.y = me.facing;
   animate(G.meModel, hsp, dt, me.st, myFlags() | (me.downT > 0 ? FL.down : 0));
+}
+// segurar: o adversário mais perto (até 1,3 m, em pé). Quem está segurando eu: adversário com a mão (FL.grab)
+// a até 1,6 m de mim (um pouco mais de folga por causa do atraso da internet). Posições "de agora" (rm.px/pz).
+const SEGURA_R = 1.3, SEGURA_MAX = 1.5, SEGURADO_VEL = 0.55;
+function adversarios() {
+  const eu = myP(); if (G.mode !== "online" || !eu || !eu.team) return [];
+  return [...G.remotes.values()].filter((rm) => rm.team && rm.team !== eu.team && !(rm.f & (FL.slide | FL.dive | FL.down)));
+}
+function alvoSegurar(me) {
+  let best = null, bd = SEGURA_R;
+  for (const rm of adversarios()) { const d = Math.hypot((rm.px ?? rm.x) - me.x, (rm.pz ?? rm.z) - me.z); if (d < bd) { bd = d; best = rm; } }
+  return best;
+}
+function quemMeSegura(me) {
+  for (const rm of adversarios()) if ((rm.f & FL.grab) && Math.hypot((rm.px ?? rm.x) - me.x, (rm.pz ?? rm.z) - me.z) < SEGURA_R + 0.3) return rm;
+  return null;
 }
 // ---------- de carro ----------
 function stepCar(dt, t, frozen) {
@@ -1500,7 +1529,7 @@ function updateRemotes(dt) {
     rm.k = lerp(rm.k || 0, perto, Math.min(1, dt * 6));
     rm.model.position.set(lerp(rm.x, rm.px ?? rm.x, rm.k), rm.y, lerp(rm.z, rm.pz ?? rm.z, rm.k)); rm.model.rotation.y = rm.yaw;
     if (isCar()) animateCar(rm.model, rm.st, dt, rm.speed, rm.f, rm.pitch);
-    else { rm.st.holding = ballS.snap && ballS.snap.holder === rm.id; animate(rm.model, rm.speed, dt, rm.st, rm.f); }
+    else { rm.st.holding = ballS.snap && ballS.snap.holder === rm.id; rm.st.segura = !!(rm.f & FL.grab); animate(rm.model, rm.speed, dt, rm.st, rm.f); }
   }
 }
 
@@ -1703,7 +1732,7 @@ function hud(t) {
     const bar = $("hSta").querySelector("i"); bar.style.width = Math.round((isCar() ? me.boost / 100 : me.stamina) * 100) + "%"; bar.style.background = isCar() ? "#ffb300" : "#7fe3ff";
   }
   setH("hHint", !G.meModel ? "Assistindo · Tab: placar" : isCar() ? "W/S acelerar · A/D virar · Shift turbo<br>Espaço pular (2x: mortal) · Q derrapar · C câmera da bola"
-    : "Setas: mirar · K/clique chute · J/direito passe · L cavadinha<br>Rodinha: carrinho · Shift pique · Espaço pular · C troca a câmera");
+    : "Setas: mirar · K/clique chute · J/direito passe · L cavadinha<br>Rodinha: carrinho · F segurar · Shift pique · Espaço pular · C câmera");
   G.feed = G.feed.filter((f) => t - f.at < 8);
   setH("hFeed", G.feed.map((f) => `<div>${f.html}</div>`).join(""));
   $("cross").classList.add("hidden");

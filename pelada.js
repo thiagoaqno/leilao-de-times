@@ -11,7 +11,7 @@ const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM =
 const HOLD_MS = 6000, DOWN_MS = 1400;
 const SIDES = { A: "Mandante", B: "Visitante" };
 // bits do "f" (o que o jogador está fazendo), iguais aos do navegador
-const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64 };
+const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128 }; // grab: segurando alguém
 const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
@@ -317,7 +317,8 @@ module.exports = function attachPelada(io) {
       else Object.assign(me.pos, { x: clamp(x, -Fm.L - Fm.goalD, Fm.L + Fm.goalD), y: clamp(y, 0, Fm.ceil), z: clamp(z, -Fm.W, Fm.W),
         vx: clamp(vx, -lim, lim), vy: clamp(vy, -lim, lim), vz: clamp(vz, -lim, lim) });
       me.pos.yaw = yaw; me.pos.pitch = fin(d.p) ? clamp(d.p, -3.2, 3.2) : 0;
-      me.pos.f = int(d.f, 0) & (FL.sprint | FL.charge | FL.slide | FL.dive | FL.flip | FL.boost);
+      me.pos.f = int(d.f, 0) & (FL.sprint | FL.charge | FL.slide | FL.dive | FL.flip | FL.boost | FL.grab);
+      if (room.config.mode !== "pes") me.pos.f &= ~FL.grab; // segurar é só a pé
       if (!me.gk) me.pos.f &= ~FL.dive;
     });
 
