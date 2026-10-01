@@ -11,7 +11,7 @@ const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM =
 const HOLD_MS = 6000, DOWN_MS = 1400;
 const SIDES = { A: "Mandante", B: "Visitante" };
 // bits do "f" (o que o jogador está fazendo), iguais aos do navegador
-const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64 };
+const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128 }; // grab: segurando alguém
 const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
@@ -109,7 +109,8 @@ module.exports = function attachPelada(io) {
   const bodyOf = (room, p, now) => {
     const f = p.pos.f | 0, down = p.downUntil > now;
     return { id: p.id, kind: room.config.mode === "carros" ? "car" : "pe", x: p.pos.x, y: p.pos.y, z: p.pos.z, vx: p.pos.vx, vy: p.pos.vy, vz: p.pos.vz, yaw: p.pos.yaw,
-      sprint: f & FL.sprint, slide: (f & FL.slide) || down, dive: f & FL.dive, flip: f & FL.flip };
+      sprint: f & FL.sprint, slide: (f & FL.slide) || down, dive: f & FL.dive, flip: f & FL.flip,
+      conduz: true, chutou: now - p.lastKick < 350 }; // conduz: a bola fica no pé (campo.js); logo depois do chute, solta
   };
   // goleiro: pega a bola que chega perto dentro da área (se não vier forte demais), segura até 6 s e solta com chute ou passe
   function keepers(room, now) {
@@ -178,7 +179,7 @@ module.exports = function attachPelada(io) {
       const b = room.ball, holder = b.holder && room.players[b.holder] ? room.players[b.holder].n : -1;
       const p = room.order.map((id) => room.players[id]).filter((x) => x.team && x.sockets.size)
         .map((x) => [x.n, q2(x.pos.x), q2(x.pos.y), q2(x.pos.z), q2(x.pos.vx), q2(x.pos.vy), q2(x.pos.vz), q2(x.pos.yaw), q2(x.pos.pitch || 0), (x.pos.f | 0) | (x.downUntil > now ? FL.down : 0)]);
-      nsp.to(room.code).volatile.emit("snap", { t: now, b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), room.bump ? Math.round(room.bump) : 0, holder, q2(b.sp || 0), q2(b.wx || 0), q2(b.wy || 0), q2(b.wz || 0)], p }); // por último: o giro (bola do Rocket)
+      nsp.to(room.code).volatile.emit("snap", { t: now, b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), room.bump ? Math.round(room.bump) : 0, holder, q2(b.sp || 0), q2(b.wx || 0), q2(b.wy || 0), q2(b.wz || 0), b.dono && room.players[b.dono] ? room.players[b.dono].n : -1], p }); // depois do giro (bola do Rocket): quem conduz a bola
       room.bump = 0;
     }
   }
@@ -316,7 +317,8 @@ module.exports = function attachPelada(io) {
       else Object.assign(me.pos, { x: clamp(x, -Fm.L - Fm.goalD, Fm.L + Fm.goalD), y: clamp(y, 0, Fm.ceil), z: clamp(z, -Fm.W, Fm.W),
         vx: clamp(vx, -lim, lim), vy: clamp(vy, -lim, lim), vz: clamp(vz, -lim, lim) });
       me.pos.yaw = yaw; me.pos.pitch = fin(d.p) ? clamp(d.p, -3.2, 3.2) : 0;
-      me.pos.f = int(d.f, 0) & (FL.sprint | FL.charge | FL.slide | FL.dive | FL.flip | FL.boost);
+      me.pos.f = int(d.f, 0) & (FL.sprint | FL.charge | FL.slide | FL.dive | FL.flip | FL.boost | FL.grab);
+      if (room.config.mode !== "pes") me.pos.f &= ~FL.grab; // segurar é só a pé
       if (!me.gk) me.pos.f &= ~FL.dive;
     });
 
