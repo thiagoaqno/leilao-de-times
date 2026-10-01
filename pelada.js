@@ -106,9 +106,11 @@ module.exports = function attachPelada(io) {
     if (!id || m.last[0] === id) return;
     m.last.unshift(id); m.last.length = Math.min(m.last.length, 3);
   }
+  // corpo de cada jogador para a física da bola. Entre um pacote e outro (chegam ~30 por segundo), o jogador continua
+  // andando com a última velocidade (até 100 ms), senão ele fica "parado" no servidor e a bola no pé escapa.
   const bodyOf = (room, p, now) => {
-    const f = p.pos.f | 0, down = p.downUntil > now;
-    return { id: p.id, kind: room.config.mode === "carros" ? "car" : "pe", x: p.pos.x, y: p.pos.y, z: p.pos.z, vx: p.pos.vx, vy: p.pos.vy, vz: p.pos.vz, yaw: p.pos.yaw,
+    const f = p.pos.f | 0, down = p.downUntil > now, ag = clamp((now - (p.pos.at || now)) / 1000, 0, 0.1);
+    return { id: p.id, kind: room.config.mode === "carros" ? "car" : "pe", x: p.pos.x + p.pos.vx * ag, y: p.pos.y, z: p.pos.z + p.pos.vz * ag, vx: p.pos.vx, vy: p.pos.vy, vz: p.pos.vz, yaw: p.pos.yaw,
       sprint: f & FL.sprint, slide: (f & FL.slide) || down, dive: f & FL.dive, flip: f & FL.flip,
       conduz: true, chutou: now - p.lastKick < 350 }; // conduz: a bola fica no pé (campo.js); logo depois do chute, solta
   };
@@ -316,7 +318,15 @@ module.exports = function attachPelada(io) {
       if (m.phase === "ready" && me.spawn) Object.assign(me.pos, { x: me.spawn[0], y: 0, z: me.spawn[2], vx: 0, vy: 0, vz: 0 }); // parado na saída
       else Object.assign(me.pos, { x: clamp(x, -Fm.L - Fm.goalD, Fm.L + Fm.goalD), y: clamp(y, 0, Fm.ceil), z: clamp(z, -Fm.W, Fm.W),
         vx: clamp(vx, -lim, lim), vy: clamp(vy, -lim, lim), vz: clamp(vz, -lim, lim) });
-      me.pos.yaw = yaw; me.pos.pitch = fin(d.p) ? clamp(d.p, -3.2, 3.2) : 0;
+      me.pos.yaw = yaw; me.pos.pitch = fin(d.p) ? clamp(d.p, -3.2, 3.2) : 0; me.pos.at = Date.now();
+      // conduzindo, a bola vem do navegador de quem está com ela (como a posição do jogador): o servidor só confere se é
+      // plausível (a bola rasteira, perto dele, sem teletransporte) e se ninguém mais é o dono (roubo e carrinho são daqui)
+      const bola = d.bola, b = room.ball;
+      if (Array.isArray(bola) && bola.length === 6 && bola.every(fin) && room.config.mode === "pes" && m.phase === "live" && !b.holder && (!b.dono || b.dono === me.id)) {
+        const [bx, by, bz, bvx, bvy, bvz] = bola;
+        if (by < 0.6 && Math.hypot(bx - me.pos.x, bz - me.pos.z) < 1.6 && Math.hypot(bx - b.x, bz - b.z) < 2.5)
+          Object.assign(b, { x: clamp(bx, -Fm.L - Fm.goalD, Fm.L + Fm.goalD), y: clamp(by, Fm.ballR, 0.6), z: clamp(bz, -Fm.W, Fm.W), vx: clamp(bvx, -14, 14), vy: clamp(bvy, -8, 8), vz: clamp(bvz, -14, 14), sp: 0, dono: me.id });
+      }
       me.pos.f = int(d.f, 0) & (FL.sprint | FL.charge | FL.slide | FL.dive | FL.flip | FL.boost | FL.grab);
       if (room.config.mode !== "pes") me.pos.f &= ~FL.grab; // segurar é só a pé
       if (!me.gk) me.pos.f &= ~FL.dive;
@@ -331,6 +341,11 @@ module.exports = function attachPelada(io) {
       const kind = ["passe", "cavadinha"].includes(d.kind) ? d.kind : "chute";
       if (![d.power, d.yaw].every(fin)) return;
       const slack = clamp(0.25 + (me.rtt || 0) / 1000 * 6, 0.25, 0.8); // a bola anda enquanto o chute viaja
+      // quem estava conduzindo chuta a bola que está vendo no pé (a mesma que o navegador dele vinha mandando)
+      if (Array.isArray(d.bola) && d.bola.length === 3 && d.bola.every(fin) && room.ball.dono === me.id && !room.ball.holder) {
+        const [bx, by, bz] = d.bola;
+        if (by < 0.6 && Math.hypot(bx - room.ball.x, bz - room.ball.z) < 2.5 && Math.hypot(bx - me.pos.x, bz - me.pos.z) < 1.6) Object.assign(room.ball, { x: bx, y: Math.max(F(room).ballR, by), z: bz });
+      }
       const how = C.kick(room.ball, { ...me.pos, id: me.id }, kind, d.power, d.yaw, slack, fin(d.curve) ? d.curve : 0);
       if (!how) return;
       me.lastKick = now;
