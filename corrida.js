@@ -35,7 +35,7 @@ module.exports = function attachCorrida(io) {
       code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null,
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, name: p.name, pawn: p.pawn, color: p.color, car: p.car, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last };
+        return { id, name: p.name, pawn: p.pawn, color: p.color, car: p.car, mods: p.mods, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last };
       }),
       finishOrder: room.finishOrder, log: room.log.slice(-20), now: Date.now(),
     };
@@ -107,7 +107,7 @@ module.exports = function attachCorrida(io) {
     function addPlayer(room, name) {
       const usedP = new Set(Object.values(room.players).map((p) => p.pawn)), usedC = new Set(Object.values(room.players).map((p) => p.color));
       const id = rid(6);
-      room.players[id] = { id, name, token: rid(), pawn: PAWNS.find((x) => !usedP.has(x)), color: COLORS.find((c) => !usedC.has(c)), car: "equilibrado", grid: room.order.length, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set() };
+      room.players[id] = { id, name, token: rid(), pawn: PAWNS.find((x) => !usedP.has(x)), color: COLORS.find((c) => !usedC.has(c)), car: "equilibrado", mods: { ...T.MODS_PADRAO }, grid: room.order.length, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set() };
       room.order.push(id);
       return room.players[id];
     }
@@ -161,6 +161,14 @@ module.exports = function attachCorrida(io) {
           if (!me || room.phase === "race") return "Só dá para trocar de carro fora da corrida.";
           if (!T.CARROS[data.car]) return "Carro inválido.";
           me.car = data.car; return;
+        }
+        if (type === "mods") { // rodas, aerofólio e faixas
+          if (!me || room.phase === "race") return "Só dá para mexer no carro fora da corrida.";
+          const d = data.mods || {}, n = { ...me.mods };
+          if (T.MODS.rodas[d.rodas]) n.rodas = d.rodas;
+          if (T.MODS.aero[d.aero]) n.aero = d.aero;
+          if (T.MODS.faixa[d.faixa]) n.faixa = d.faixa;
+          me.mods = n; return;
         }
         if (type === "pawn") {
           if (!me || room.phase === "race") return "Só dá para trocar fora da corrida.";

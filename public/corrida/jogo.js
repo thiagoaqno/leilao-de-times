@@ -110,9 +110,13 @@ function renderLobby() {
   if (m) {
     $("colorPick").innerHTML = COLORS.map((col) => { const taken = S.players.some((p) => p.color === col && p.id !== m.id); return `<button class="${col === m.color ? "on" : ""} ${taken ? "taken" : ""}" data-c="${col}" ${taken ? "disabled" : ""} style="background:${col}" aria-label="Cor ${col}"></button>`; }).join("");
     $("colorPick").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => act("color", { color: b.dataset.c })));
-    $("carPick").innerHTML = Object.entries(CARROS).map(([id, k]) => `<button class="car ${m.car === id ? "on" : ""}" data-car="${id}" aria-pressed="${m.car === id}"><canvas data-carprev="${id}" width="64" height="36"></canvas><b>${h(k.name)}</b><p>${h(k.desc)}</p>
+    $("carPick").innerHTML = Object.entries(CARROS).map(([id, k]) => `<button class="car ${m.car === id ? "on" : ""}" data-car="${id}" aria-pressed="${m.car === id}"><canvas data-carprev="${id}" width="240" height="135"></canvas><b>${h(k.name)}</b><small class="inspo">${h(k.inspo || "")}</small><p>${h(k.desc)}</p>
       <div class="spec">${specRows(k).map(([lbl, n]) => `<span>${lbl}</span>${leds(n)}`).join("")}</div></button>`).join("");
-    $("carPick").querySelectorAll("[data-carprev]").forEach((c) => carPreview(c, m.color, c.dataset.carprev));
+    $("carPick").querySelectorAll("[data-carprev]").forEach((c) => carPreview(c, m.color, c.dataset.carprev, m.mods));
+    // personalização: rodas, aerofólio e faixas
+    const mods = { ...MODS_PADRAO, ...(m.mods || {}) }, seg = (key, opts) => `<div class="modrow"><span>${{ rodas: "Rodas", aero: "Aerofólio", faixa: "Faixas" }[key]}</span><div class="seg">${Object.entries(opts).map(([v, o]) => `<button data-mod="${key}" data-v="${v}" class="${mods[key] === v ? "on" : ""}">${key === "rodas" ? `<i class="rim" style="background:${o.c}"></i>` : ""}${h(typeof o === "string" ? o : o.name)}</button>`).join("")}</div></div>`;
+    $("modPick").innerHTML = seg("rodas", MODS3.rodas) + seg("aero", MODS3.aero) + seg("faixa", MODS3.faixa);
+    $("modPick").querySelectorAll("[data-mod]").forEach((b) => (b.onclick = () => act("mods", { mods: { [b.dataset.mod]: b.dataset.v } })));
     $("carPick").querySelectorAll("[data-car]").forEach((b) => (b.onclick = () => act("car", { car: b.dataset.car })));
     $("pawnPick").innerHTML = PAWNS.map((pw) => { const taken = S.players.some((p) => p.pawn === pw && p.id !== m.id); return `<button class="${pw === m.pawn ? "on" : ""} ${taken ? "taken" : ""}" data-p="${pw}" ${taken ? "disabled" : ""}>${pw}</button>`; }).join("");
     $("pawnPick").querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => act("pawn", { pawn: b.dataset.p })));
@@ -127,14 +131,6 @@ function renderLobby() {
     ? `<button class="primary" id="btnStart" style="width:100%;font-size:19px">🏁 Largar</button><p class="hint">A largada é igual para todo mundo: 3, 2, 1… vai!</p>`
     : `<p class="muted" style="margin:0">Esperando o organizador dar a largada…</p>`;
   if ($("btnStart")) $("btnStart").onclick = () => act("start");
-}
-// prévia do carro na garagem: de lado, em cima de um pedaço de asfalto com a faixa do box
-function carPreview(cv, color, model) {
-  const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
-  c.fillStyle = "#22252d"; c.fillRect(0, 0, 64, 36);
-  c.fillStyle = "#3a3d46"; c.fillRect(0, 28, 64, 8);
-  c.fillStyle = "#ffd23f"; for (let x = 2; x < 64; x += 10) c.fillRect(x, 33, 5, 1);
-  c.drawImage(kartImg(color, "side", model), 12, 0);
 }
 // ficha do carro (de 1 a 10 LEDs): velocidade final, aceleração, aderência na curva e resistência (muro e grama)
 const lerp10 = (v, a, b) => Math.max(1, Math.min(10, Math.round(1 + ((v - a) / (b - a)) * 9)));
@@ -161,49 +157,8 @@ const THEMES = {
 
 // posição de largada g: atrás da linha, em duas filas
 function gridSpot(pts, g, W) {
-  const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * 8 + n) % n, p = pts[idx], nx = -p.ty, ny = p.tx, side = g % 2 ? 1 : -1, lat = side * W * 0.22;
+  const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * 13 + n) % n, p = pts[idx], nx = -p.ty, ny = p.tx, side = g % 2 ? 1 : -1, lat = side * W * 0.22;
   return { x: p.x + nx * lat, y: p.y + ny * lat, tx: p.tx, ty: p.ty, nx, ny, a: Math.atan2(p.ty, p.tx), idx };
-}
-
-function mk(w, hh, fn) { const cv = document.createElement("canvas"); cv.width = w; cv.height = hh; fn(cv.getContext("2d"), w, hh); return cv; }
-
-// ---------- kart (desenho): cada carro tem o seu formato ----------
-// bw: largura da carroceria · bh: altura · wheel: tamanho das rodas · wing: aerofólio · roll: santo antônio ·
-// helmet: tamanho do capacete · nose: bico comprido (de lado)
-const SHAPES = {
-  equilibrado: { bw: 1, bh: 1, wheel: 1, wing: false, roll: false, helmet: 1, nose: 1 },
-  foguete: { bw: 0.95, bh: 0.8, wheel: 0.9, wing: true, roll: false, helmet: 0.9, nose: 1.35 },
-  formiga: { bw: 0.8, bh: 1.05, wheel: 0.75, wing: false, roll: false, helmet: 1.3, nose: 0.75 },
-  drifteiro: { bw: 1.15, bh: 0.85, wheel: 1.1, wing: true, roll: false, helmet: 0.95, nose: 1 },
-  tanque: { bw: 1.15, bh: 1.35, wheel: 1.3, wing: false, roll: true, helmet: 1, nose: 0.9 },
-};
-const KART = {};
-function kartImg(color, view, model = "equilibrado") {
-  const key = color + view + model; if (KART[key]) return KART[key];
-  const sh = SHAPES[model] || SHAPES.equilibrado;
-  return (KART[key] = mk(40, 30, (c) => {
-    const dark = "#151515", wh = 10 * sh.wheel;
-    if (view === "side") {
-      const len = 30 * sh.nose, x0 = 20 - len / 2;
-      c.fillStyle = dark; c.fillRect(x0 + 2, 30 - wh, wh, wh); c.fillRect(x0 + len - wh - 1, 30 - wh, wh, wh);
-      c.fillStyle = "#8a8f99"; for (const wx of [x0 + 2, x0 + len - wh - 1]) c.fillRect(wx + wh * 0.3, 30 - wh * 0.7, wh * 0.4, wh * 0.4);
-      const top = 22 - 7 * sh.bh;
-      c.fillStyle = color; c.beginPath(); c.moveTo(x0, 22); c.lineTo(x0 + len, 22); c.lineTo(x0 + len + 3, top + 2); c.lineTo(x0 + 8, top); c.lineTo(x0, top + 2); c.fill();
-      if (sh.roll) { c.fillStyle = "#888"; c.fillRect(x0 + 8, top - 9, 2, 9); c.fillRect(x0 + 8, top - 9, 9, 2); }
-      const hr = 6 * sh.helmet; c.fillStyle = "#fff"; c.beginPath(); c.arc(x0 + 14, top - hr + 3, hr, 0, 7); c.fill(); c.fillStyle = "#1c2a44"; c.fillRect(x0 + 15, top - hr + 1, hr * 0.8, 3);
-      if (sh.wing) { c.fillStyle = "#222"; c.fillRect(x0 - 3, top - 6, 7, 3); c.fillRect(x0, top - 3, 2, 5); }
-    } else {
-      const front = view === "front", bw = 28 * sh.bw, x0 = 20 - bw / 2, top = 26 - 12 * sh.bh, ww = 9 * sh.wheel;
-      c.fillStyle = dark; c.fillRect(x0 - ww * 0.55, 30 - wh * 1.15, ww, wh * 1.15); c.fillRect(x0 + bw - ww * 0.45, 30 - wh * 1.15, ww, wh * 1.15);
-      c.fillStyle = color; c.beginPath(); c.moveTo(x0, 26); c.lineTo(x0 + bw, 26); c.lineTo(x0 + bw - 3, top); c.lineTo(x0 + 3, top); c.fill();
-      if (sh.roll) { c.fillStyle = "#888"; c.fillRect(x0 + 4, top - 8, 2, 8); c.fillRect(x0 + bw - 6, top - 8, 2, 8); c.fillRect(x0 + 4, top - 8, bw - 8, 2); }
-      const hr = 7 * sh.helmet; c.fillStyle = "#fff"; c.beginPath(); c.arc(20, top - hr + 4, hr, 0, 7); c.fill();
-      c.fillStyle = front ? "#1c2a44" : color; c.fillRect(20 - hr * 0.7, front ? top - hr + 2 : top - 2, hr * 1.4, front ? 4 : 3);
-      if (sh.wing && !front) { c.fillStyle = "#222"; c.fillRect(x0 - 2, top - 3, bw + 4, 3); c.fillRect(x0 + 3, top, 2, 3); c.fillRect(x0 + bw - 5, top, 2, 3); }
-      if (!front) { c.fillStyle = "#222"; c.fillRect(x0 + 1, top + 1, bw - 2, 2); c.fillStyle = "#888"; c.fillRect(17, 24, 6, 3); }
-      else { c.fillStyle = "#ddd"; c.fillRect(20 - bw * 0.25, 24, bw * 0.5, 3); }
-    }
-  }));
 }
 
 // ---------- corrida em 3D (Three.js): pista com relevo, câmera atrás do kart ----------
@@ -409,61 +364,154 @@ function useTrack(tr) {
   sun.color.set(L.sun[0]); sun.intensity = L.sun[1];
 }
 
-// ---------- kart 3D (cada carro tem o seu formato) ----------
-// bw: largura · bh: altura · wheel: rodas · wing: aerofólio · roll: santo antônio · helmet: capacete · nose: bico
-const SHAPES3 = {
-  equilibrado: { bw: 1, bh: 1, wheel: 1, wing: false, roll: false, helmet: 1, nose: 1 },
-  foguete: { bw: 0.95, bh: 0.8, wheel: 0.9, wing: true, roll: false, helmet: 0.9, nose: 1.35 },
-  formiga: { bw: 0.8, bh: 1.05, wheel: 0.75, wing: false, roll: false, helmet: 1.3, nose: 0.75 },
-  drifteiro: { bw: 1.15, bh: 0.85, wheel: 1.1, wing: true, roll: false, helmet: 0.95, nose: 1 },
-  tanque: { bw: 1.15, bh: 1.35, wheel: 1.3, wing: false, roll: true, helmet: 1, nose: 0.9 },
+// ---------- carros esportivos 3D ----------
+// Cada modelo é um perfil de lado (comprimento u, altura v, em metros) extrudado na largura: a carroceria e a cabine
+// (vidro escuro com o teto pintado). Rodas, faróis, lanternas e os extras de cada um por cima. Personalização:
+// cor da pintura, cor das rodas, aerofólio (sem/baixo/alto) e faixas (sem/dupla no capô e teto/lateral).
+const CARS3 = {
+  equilibrado: { // cupê japonês tipo R34: quadradão, lanternas redondas
+    L: 4.6, W: 1.82, r: 0.34, axles: [0.95, 3.75],
+    body: [[0, 0.3], [0, 0.82], [0.25, 0.95], [1.1, 0.98], [3.3, 0.9], [4.45, 0.78], [4.6, 0.58], [4.6, 0.3]],
+    cabin: [[1.1, 0.97], [1.55, 1.36], [2.85, 1.38], [3.35, 0.9]],
+  },
+  foguete: { // superesportivo em cunha (V12 italiano)
+    L: 4.7, W: 2.0, r: 0.35, axles: [1.0, 3.85],
+    body: [[0, 0.32], [0, 0.82], [0.5, 0.9], [1.4, 0.92], [4.35, 0.62], [4.7, 0.46], [4.7, 0.3]],
+    cabin: [[1.25, 0.9], [2.05, 1.17], [2.75, 1.15], [3.95, 0.68]],
+  },
+  formiga: { // hatch esportivo: curtinho e alto, traseira reta
+    L: 3.95, W: 1.78, r: 0.32, axles: [0.65, 3.2],
+    body: [[0, 0.32], [0, 0.98], [0.12, 1.02], [3.0, 0.97], [3.8, 0.82], [3.95, 0.62], [3.95, 0.32]],
+    cabin: [[0.12, 1.01], [0.3, 1.52], [2.35, 1.54], [3.0, 0.98]],
+  },
+  drifteiro: { // cupê leve dos anos 80 (AE86)
+    L: 4.25, W: 1.66, r: 0.31, axles: [0.85, 3.25],
+    body: [[0, 0.3], [0, 0.84], [0.55, 0.9], [3.25, 0.84], [4.15, 0.72], [4.25, 0.55], [4.25, 0.3]],
+    cabin: [[0.55, 0.89], [1.3, 1.3], [2.55, 1.32], [3.3, 0.86]],
+  },
+  tanque: { // muscle car: capô comprido, largão
+    L: 4.85, W: 1.98, r: 0.36, axles: [1.0, 3.95],
+    body: [[0, 0.32], [0, 0.9], [0.95, 0.96], [3.55, 1.0], [4.75, 0.94], [4.85, 0.7], [4.85, 0.32]],
+    cabin: [[0.95, 0.95], [1.75, 1.34], [2.65, 1.34], [3.3, 0.99]],
+  },
 };
-const KS = 9; // metros do modelo -> unidades da pista
-function makeKart(color, model, ghost = false, name = "") {
-  const sh = SHAPES3[model] || SHAPES3.equilibrado, g = new THREE.Group(), body = new THREE.Group(); g.add(body); body.scale.setScalar(KS);
-  const mats = [], mm = (c, o) => { const m = M(c, { roughness: 0.45, ...o }); if (ghost) { m.transparent = true; m.opacity = 0.5; m.depthWrite = false; } mats.push(m); return m; };
-  const paint = mm(color, { metalness: 0.25, roughness: 0.35 }), dark = mm(0x26232e), metal = mm(0xb7bcc6, { metalness: 0.6, roughness: 0.3 }), skin = mm(0xf1c27d), white = mm(0xffffff);
-  const box = (w, hh, d, x, y, z, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); m.position.set(x, y, z); m.castShadow = !ghost; body.add(m); return m; };
-  const bw = 1.5 * sh.bw, nl = sh.nose;
-  box(bw, 0.3 * sh.bh, 2.3, 0, 0.38, 0, paint);
-  box(bw * 0.8, 0.28 * sh.bh, 0.7 * nl, 0, 0.42, -1.15 - 0.35 * nl, paint);
-  box(bw + 0.3, 0.2, 0.32, 0, 0.32, -1.5 - 0.7 * (nl - 1) - 0.1, dark);
-  box(bw + 0.2, 0.26, 0.3, 0, 0.45, 1.3, dark);
-  box(0.75, 0.6, 0.16, 0, 0.82, 0.62, dark);
-  box(0.8, 0.36, 0.5, 0, 0.7, 1.0, metal);
-  box(0.6, 0.55 * sh.bh, 0.42, 0, 0.95, 0.3, paint);
-  const hs = sh.helmet;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.31 * hs, 14, 10), white); head.position.set(0, 1.45 + 0.2 * (hs - 1), 0.24); body.add(head);
-  box(0.36 * hs, 0.1, 0.06, 0, 1.47 + 0.2 * (hs - 1), -0.07 * hs, dark);
-  box(0.62 * hs, 0.06, 0.08, 0, 1.68 + 0.25 * (hs - 1), 0.24, paint);
-  if (sh.wing) { box(bw + 0.4, 0.08, 0.5, 0, 1.25, 1.45, dark); for (const x of [-0.5, 0.5]) box(0.08, 0.6, 0.1, x, 0.95, 1.45, dark); }
-  if (sh.roll) { box(0.08, 0.9, 0.08, -0.45, 1.25, 0.75, metal); box(0.08, 0.9, 0.08, 0.45, 1.25, 0.75, metal); box(1.0, 0.08, 0.08, 0, 1.7, 0.75, metal); }
-  const wheels = [], steer = [];
-  const wr = 0.32 * sh.wheel, rr = 0.37 * sh.wheel;
-  for (const [x, y, z, r, w, front] of [[-bw / 2 - 0.1, wr, -0.85, wr, 0.3, 1], [bw / 2 + 0.1, wr, -0.85, wr, 0.3, 1], [-bw / 2 - 0.13, rr, 0.85, rr, 0.42, 0], [bw / 2 + 0.13, rr, 0.85, rr, 0.42, 0]]) {
-    const piv = new THREE.Group(); piv.position.set(x, y, z); body.add(piv);
-    const wm = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 14), dark); wm.rotation.z = Math.PI / 2; wm.castShadow = !ghost; piv.add(wm);
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.45, r * 0.45, w + 0.02, 8), metal); hub.rotation.z = Math.PI / 2; piv.add(hub);
-    wheels.push({ wm, hub, r: r * KS }); if (front) steer.push(piv);
+const KS = 10; // metros do modelo -> unidades da pista
+// altura do teto do carro numa posição u (para as faixas e o aerofólio)
+function topAt(spec, u) {
+  const lerpChain = (pts) => { for (let i = 0; i < pts.length - 1; i++) { const [a, b] = [pts[i], pts[i + 1]]; if (u >= Math.min(a[0], b[0]) && u <= Math.max(a[0], b[0]) && a[0] !== b[0]) return a[1] + (b[1] - a[1]) * (u - a[0]) / (b[0] - a[0]); } return -Infinity; };
+  return Math.max(lerpChain(spec.body.slice(1, -1)), lerpChain(spec.cabin));
+}
+function profileGeo(pts, depth, bevel) {
+  const sh = new THREE.Shape(); pts.forEach(([u, v], i) => (i ? sh.lineTo(u, v) : sh.moveTo(u, v))); sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth: depth - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 4 });
+  g.translate(0, 0, -(depth - bevel * 2) / 2);
+  return g;
+}
+const MODS3 = window.Pistas.MODS, MODS_PADRAO = window.Pistas.MODS_PADRAO;
+const luma = (hex) => { const c = new THREE.Color(hex); return 0.3 * c.r + 0.59 * c.g + 0.11 * c.b; };
+function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene) {
+  const spec = CARS3[model] || CARS3.equilibrado, md = { ...MODS_PADRAO, ...(mods || {}) };
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const car = new THREE.Group(); body.add(car); car.scale.setScalar(KS);
+  const mats = [], mm = (c, o = {}) => { const m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, ...o }); if (ghost) { m.transparent = true; m.opacity = 0.5; m.depthWrite = false; } mats.push(m); return m; };
+  const paint = mm(color, { metalness: 0.45, roughness: 0.28 }), glass = mm(0x12161f, { metalness: 0.6, roughness: 0.15 }), black = mm(0x18181c, { roughness: 0.7 });
+  const rim = mm(MODS3.rodas[md.rodas]?.c || "#c3c7cf", { metalness: 0.8, roughness: 0.3 });
+  const head = mm(0xfff6d8, { emissive: 0xfff2c0, emissiveIntensity: 0.9 }), tail = mm(0xff2a2a, { emissive: 0xff1a1a, emissiveIntensity: 0.8 });
+  const stripeM = mm(luma(color) > 0.55 ? 0x16161a : 0xf4f4f4, { roughness: 0.4 });
+  // no carro, u vai de trás (0) para a frente (L); depois de girar, a frente aponta para -z
+  const holder = new THREE.Group(); holder.rotation.y = Math.PI / 2; holder.position.x = 0; car.add(holder);
+  const L = spec.L, W = spec.W, at = (u) => u - L / 2; // u -> x local do holder (vira -z no carro)
+  const add = (mesh, shadow = true) => { mesh.castShadow = shadow && !ghost; holder.add(mesh); return mesh; };
+  const bodyG = profileGeo(spec.body, W, 0.06); bodyG.translate(-L / 2, 0, 0); add(new THREE.Mesh(bodyG, paint));
+  const cabG = profileGeo(spec.cabin, W * 0.84, 0.05); cabG.translate(-L / 2, 0, 0); add(new THREE.Mesh(cabG, glass));
+  // teto pintado em cima do vidro
+  const [c1, c2] = [spec.cabin[1], spec.cabin[2]], roofL = Math.hypot(c2[0] - c1[0], c2[1] - c1[1]);
+  const roof = add(new THREE.Mesh(new THREE.BoxGeometry(roofL, 0.04, W * 0.8), paint)); roof.position.set(at((c1[0] + c2[0]) / 2), (c1[1] + c2[1]) / 2 + 0.065, 0); // a extrusão tem chanfro de ~6 cm em volta roof.rotation.z = Math.atan2(c2[1] - c1[1], c2[0] - c1[0]);
+  // faróis, grade e lanternas
+  const B = 0.065, fu = L + B, fh = topAt(spec, L - 0.15) - 0.12, rh = spec.body[1][1] - 0.14;
+  for (const s of [-1, 1]) {
+    const hl = add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.36), head), false); hl.position.set(at(fu), fh, s * (W / 2 - 0.3));
+    if (model === "equilibrado") for (const k of [0.25, 0.6]) { const tl = add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12), tail), false); tl.rotation.z = Math.PI / 2; tl.position.set(at(0) - B, rh, s * (W / 2 - k)); }
+    else { const tl = add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, model === "tanque" ? 0.7 : 0.45), tail), false); tl.position.set(at(0) - B, rh, s * (W / 2 - (model === "tanque" ? 0.45 : 0.32))); }
+  }
+  const grill = add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.16, W * 0.5), black), false); grill.position.set(at(L) + B, 0.45, 0);
+  const bump = add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, W * 0.96), black)); bump.position.set(at(L) + B, 0.33, 0);
+  const bumpR = add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, W * 0.96), black)); bumpR.position.set(at(0) - B, 0.33, 0);
+  // extras de cada modelo
+  if (model === "tanque") { const sc = add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 0.5), black)); sc.position.set(at(3.9), topAt(spec, 3.9) + 0.1, 0); }
+  if (model === "foguete") for (const s of [-1, 1]) { const ai = add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.18, 0.04), black), false); ai.position.set(at(1.1), 0.62, s * (W / 2 + 0.07)); }
+  if (model === "formiga") { const rs = add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, W * 0.8), paint)); rs.position.set(at(0.25), 1.55, 0); rs.rotation.z = -0.2; }
+  // aerofólio
+  if (md.aero === "baixo") { const lip = add(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, W * 0.9), black)); lip.position.set(at(0.12), topAt(spec, 0.15) + 0.1, 0); lip.rotation.z = 0.25; }
+  if (md.aero === "alto") {
+    const u = 0.28, h0 = topAt(spec, u), wingY = Math.max(h0 + 0.38, spec.cabin[2][1] - 0.02);
+    const wing = add(new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.05, W * 0.98), black)); wing.position.set(at(u), wingY, 0); wing.rotation.z = 0.12;
+    for (const s of [-1, 1]) {
+      const st = add(new THREE.Mesh(new THREE.BoxGeometry(0.06, wingY - h0, 0.05), black)); st.position.set(at(u), (wingY + h0) / 2, s * W * 0.3);
+      const ep = add(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.03), paint)); ep.position.set(at(u), wingY + 0.02, s * W * 0.49);
+    }
+  }
+  // faixas
+  if (md.faixa === "dupla") {
+    const skip = (u) => (u > spec.cabin[0][0] && u < spec.cabin[1][0]) || (u > spec.cabin[2][0] && u < spec.cabin[3][0]); // pula o para-brisa e o vidro de trás
+    for (let u = 0.08; u < L - 0.1; u += 0.16) {
+      const u1 = Math.min(L - 0.08, u + 0.16), um = (u + u1) / 2; if (skip(um)) continue;
+      const y0 = topAt(spec, u), y1 = topAt(spec, u1), len = Math.hypot(u1 - u, y1 - y0) + 0.01;
+      for (const s of [-1, 1]) { const st = add(new THREE.Mesh(new THREE.BoxGeometry(len, 0.012, 0.16), stripeM), false); st.position.set(at(um), (y0 + y1) / 2 + 0.072, s * 0.15); st.rotation.z = Math.atan2(y1 - y0, u1 - u); }
+    }
+  }
+  if (md.faixa === "lateral") for (const s of [-1, 1]) { const st = add(new THREE.Mesh(new THREE.BoxGeometry(L * 0.78, 0.1, 0.012), stripeM), false); st.position.set(at(L * 0.48), 0.62, s * (W / 2 + 0.07)); }
+  // rodas (pneu + aro na cor escolhida + raios para ver girando)
+  const wheels = [], steer = [], tireG = new THREE.CylinderGeometry(spec.r, spec.r, 0.26, 18), rimG = new THREE.CylinderGeometry(spec.r * 0.66, spec.r * 0.66, 0.27, 14), spokeG = new THREE.BoxGeometry(spec.r * 1.25, 0.275, 0.07);
+  for (const [k, u] of spec.axles.entries()) for (const s of [-1, 1]) {
+    const piv = new THREE.Group(); piv.position.set(at(u), spec.r, s * (W / 2 - 0.1)); holder.add(piv);
+    const spin = new THREE.Group(); spin.rotation.x = Math.PI / 2; piv.add(spin); // eixo da roda = largura do carro
+    const tire = new THREE.Mesh(tireG, black); tire.castShadow = !ghost; spin.add(tire);
+    spin.add(new THREE.Mesh(rimG, rim));
+    for (const a of [0, Math.PI / 3, -Math.PI / 3]) { const sp = new THREE.Mesh(spokeG, black); sp.rotation.y = a; spin.add(sp); }
+    wheels.push({ wm: spin, r: spec.r * KS, axisY: true }); if (k === 1) steer.push(piv);
   }
   if (name) {
     const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
     x.font = "bold 34px Figtree, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 7; x.strokeStyle = "#000c"; x.strokeText(name, 128, 32); x.fillStyle = color; x.fillText(name, 128, 32);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, opacity: ghost ? 0.8 : 1 })); sp.scale.set(30, 7.5, 1); sp.position.y = 30; sp.renderOrder = 5; g.add(sp);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, opacity: ghost ? 0.8 : 1 })); sp.scale.set(30, 7.5, 1); sp.position.y = 26; sp.renderOrder = 5; g.add(sp);
   }
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(12, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: ghost ? 0.15 : 0.3, depthWrite: false })); shadow.rotation.x = -Math.PI / 2; g.add(shadow);
-  scene.add(g);
-  return { g, body, wheels, steer, shadow, mats, steerV: 0 };
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: ghost ? 0.15 : 0.32, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.scale.set((W / 2 + 0.25) * KS, (L / 2 + 0.25) * KS, 1); g.add(shadow);
+  target.add(g);
+  return { g, body, wheels, steer, shadow, mats, steerV: 0, target };
 }
 function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 0) {
   k.g.position.set(x, z, y); k.g.rotation.set(0, -a - Math.PI / 2, 0);
   k.body.rotation.set(pitch, 0, lean);
-  for (const w of k.wheels) { w.wm.rotation.x += (v * dt) / w.r; w.hub.rotation.x = w.wm.rotation.x; }
-  k.steerV += (steer - k.steerV) * 0.3; for (const s of k.steer) s.rotation.y = -k.steerV * 0.45;
+  // a roda gira em volta do eixo dela (o y do cilindro, que aponta para a lateral)
+  for (const w of k.wheels) w.wm.rotation.y -= (v * dt) / w.r;
+  k.steerV += (steer - k.steerV) * 0.3; for (const s of k.steer) s.rotation.y = -k.steerV * 0.4;
   k.shadow.position.y = ground - z + 0.7;
 }
-function dropKart(k) { if (!k) return; scene.remove(k.g); k.g.traverse((o) => o.geometry && o.geometry.dispose()); }
+function dropKart(k) { if (!k) return; (k.target || scene).remove(k.g); k.g.traverse((o) => o.geometry && o.geometry.dispose()); }
+
+// prévia 3D do carro na garagem (um renderizador pequeno, só para as fotos)
+const prevR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+prevR.setSize(240, 135, false); prevR.toneMapping = THREE.ACESFilmicToneMapping;
+const prevScene = new THREE.Scene(), prevCam = new THREE.PerspectiveCamera(30, 240 / 135, 1, 500);
+prevScene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6));
+{ const d = new THREE.DirectionalLight(0xffffff, 2.2); d.position.set(-40, 60, -30); prevScene.add(d); }
+{ const fl = new THREE.Mesh(new THREE.CircleGeometry(40, 32), new THREE.MeshStandardMaterial({ color: 0x2a2d36, roughness: 0.9 })); fl.rotation.x = -Math.PI / 2; prevScene.add(fl); }
+const PREV = new Map();
+function carPreview(cv, color, model, mods) {
+  const key = [color, model, JSON.stringify(mods || {})].join("|");
+  let url = PREV.get(key);
+  if (!url) {
+    const k = makeKart(color, model, false, "", mods, prevScene);
+    k.g.rotation.y = Math.PI * 0.78; // de três quartos, mostrando a frente
+    prevCam.position.set(-58, 26, -52); prevCam.lookAt(0, 6, 0);
+    prevR.render(prevScene, prevCam); url = prevR.domElement.toDataURL(); PREV.set(key, url);
+    dropKart(k);
+  }
+  const img = new Image(); img.onload = () => { const c = cv.getContext("2d"); c.clearRect(0, 0, cv.width, cv.height); c.drawImage(img, 0, 0, cv.width, cv.height); }; img.src = url;
+}
 
 // fumaça dos pneus e poeira da grama
 const puffs = [], puffGeo = new THREE.SphereGeometry(1, 8, 6), puffMats = {};
@@ -484,7 +532,7 @@ function startRace(st) {
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W);
   if (race) clearRace();
   race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
-    kart: mine ? makeKart(mine.color, mine.car) : null, cam: { pos: null, a: spot.a } };
+    kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a } };
   $("results").classList.add("hidden");
   resize();
   if (!raf) raf = requestAnimationFrame(loop);
@@ -632,13 +680,13 @@ function draw(dt) {
   if (race.kart) {
     const slide = Math.max(-1, Math.min(1, (c.slip || 0) / 160)) * Math.sign(c.steer || 1), fr = groundH(tr, c.x, c.y, race.idx);
     poseKart(race.kart, c.x, c.y, c.z, c.a + slide * 0.25, c.v, c.steer, fr, dt, -c.steer * 0.04, c.air ? -0.12 : 0);
-    if (c.slip > 45 && Math.random() < 0.7) for (const s of [-1, 1]) puff(c.x - Math.cos(c.a) * 10 + -Math.sin(c.a) * s * 8, c.z + 2, c.y - Math.sin(c.a) * 10 + Math.cos(c.a) * s * 8, "#e6e6e6", 3);
-    if (race.offroad && Math.random() < 0.5) puff(c.x - Math.cos(c.a) * 10, c.z + 2, c.y - Math.sin(c.a) * 10, tr.id === "interlagos" ? "#b39c66" : "#9a9a9a", 2.5);
+    if (c.slip > 45 && Math.random() < 0.7) for (const s of [-1, 1]) puff(c.x - Math.cos(c.a) * 15 + -Math.sin(c.a) * s * 8, c.z + 2, c.y - Math.sin(c.a) * 15 + Math.cos(c.a) * s * 8, "#e6e6e6", 3.5);
+    if (race.offroad && Math.random() < 0.5) puff(c.x - Math.cos(c.a) * 18, c.z + 2, c.y - Math.sin(c.a) * 18, tr.id === "interlagos" ? "#b39c66" : "#9a9a9a", 2.5);
   }
   // fantasmas
   for (const [id, gh] of race.ghosts) {
     const pl = P(id); if (!pl) continue;
-    if (!gh.kart || gh.kartKey !== pl.color + pl.car) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, true, pl.name); gh.kartKey = pl.color + pl.car; }
+    const key = pl.color + pl.car + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, true, pl.name, pl.mods); gh.kartKey = key; }
     poseKart(gh.kart, gh.x, gh.y, gh.z, gh.a, gh.v || 0, 0, groundH(tr, gh.x, gh.y, gh.idx || 0), dt);
   }
   stepPuffs(dt);
@@ -647,13 +695,13 @@ function draw(dt) {
   const C = race.cam, k = 1 - Math.exp(-dt * 6);
   let da = src.a - C.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; C.a += da * (1 - Math.exp(-dt * 5));
   const fx = Math.cos(C.a), fy = Math.sin(C.a), speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
-  const want = V3(src.x - fx * (64 + speedK * 14), (src.z || 0) + 24 + speedK * 4, src.y - fy * (64 + speedK * 14));
+  const want = V3(src.x - fx * (88 + speedK * 16), (src.z || 0) + 30 + speedK * 4, src.y - fy * (88 + speedK * 16));
   want.y = Math.max(want.y, groundH(tr, want.x, want.z, nearest(tr, want.x, want.z, race.idx)) + 8);
   if (!C.pos) C.pos = want.clone(); else C.pos.lerp(want, k);
   cam.position.copy(C.pos);
   if (race.shake > 0) { race.shake -= dt; cam.position.x += (Math.random() - 0.5) * 3; cam.position.y += (Math.random() - 0.5) * 3; }
   if (race.offroad) cam.position.y += (Math.random() - 0.5) * 1.2;
-  cam.lookAt(src.x + fx * 40, (src.z || 0) + 10, src.y + fy * 40);
+  cam.lookAt(src.x + fx * 45, (src.z || 0) + 12, src.y + fy * 45);
   cam.fov += ((68 + speedK * 10) - cam.fov) * 0.08; cam.updateProjectionMatrix();
   // sol e sombras acompanham o carro
   sun.position.set(src.x - 300, (src.z || 0) + 700, src.y + 260); sun.target.position.set(src.x, src.z || 0, src.y);
@@ -732,9 +780,9 @@ $("btnRules").onclick = () => {
   <li><b>↺ Pista:</b> se rodar, ficar preso ou entrar na contramão, volta para o meio da pista.</li></ul>
   <h3>A corrida</h3><ul>
   <li>Largada igual para todo mundo: 3, 2, 1… vai! Ganha quem completar as voltas primeiro.</li>
-  <li>Os outros karts são <b>fantasmas</b>: dá para passar por dentro deles. Ninguém bate em ninguém, e internet lenta não atrapalha a sua corrida.</li>
-  <li><b>Relevo:</b> subida freia, descida embala, e numa lombada rápida o kart voa. No ar ele não acelera nem vira direito, então chegue alinhado.</li>
-  <li><b>Freie antes da curva.</b> O pneu só segura até certo ponto: entrou rápido demais, o kart escorrega para fora (sai fumaça e o pneu canta) e perde velocidade. Fora do asfalto ele fica lento; em Mônaco e em Tóquio tem muro.</li>
+  <li>Os outros carros são <b>fantasmas</b>: dá para passar por dentro deles. Ninguém bate em ninguém, e internet lenta não atrapalha a sua corrida.</li>
+  <li><b>Relevo:</b> subida freia, descida embala, e numa lombada rápida o carro voa. No ar ele não acelera nem vira direito, então chegue alinhado.</li>
+  <li><b>Freie antes da curva.</b> O pneu só segura até certo ponto: entrou rápido demais, o carro escorrega para fora (sai fumaça e o pneu canta) e perde velocidade. Fora do asfalto ele fica lento; em Mônaco e em Tóquio tem muro.</li>
   <li>A volta só conta passando pela pista inteira, na ordem. Atalho e contramão não valem.</li>
   <li>Quando o primeiro cruza a chegada, os outros têm 45 segundos para terminar.</li></ul>
   <h3>Carros</h3><ul>${Object.values(CARROS).map((k) => `<li><b>${h(k.name)}:</b> ${h(k.desc)}</li>`).join("")}</ul>
@@ -753,7 +801,7 @@ $("modal").addEventListener("click", (e) => { if (e.target.id === "modal") $("mo
   const paint = () => {
     const tr = buildTrack("interlagos"); useTrack(tr);
     const at = (g) => gridSpot(tr.pts, g, tr.W), ks = [];
-    [[4, COLORS[0], "equilibrado"], [0, COLORS[1], "foguete"], [1, COLORS[2], "drifteiro"], [2, COLORS[3], "formiga"], [3, COLORS[4], "tanque"]].forEach(([g, col, model]) => { const s = at(g), k = makeKart(col, model); poseKart(k, s.x, s.y, tr.pts[s.idx].h, s.a, 0, 0, tr.pts[s.idx].h, 0); ks.push(k); });
+    [[4, COLORS[0], "equilibrado", { aero: "alto", rodas: "preta" }], [0, COLORS[1], "foguete", { faixa: "lateral" }], [1, COLORS[2], "drifteiro", { aero: "baixo", rodas: "ouro" }], [2, COLORS[3], "formiga", { faixa: "dupla" }], [3, COLORS[4], "tanque", { faixa: "dupla", rodas: "preta" }]].forEach(([g, col, model, mods]) => { const s = at(g), k = makeKart(col, model, false, "", mods); poseKart(k, s.x, s.y, tr.pts[s.idx].h, s.a, 0, 0, tr.pts[s.idx].h, 0); ks.push(k); });
     const s = at(4), fx = Math.cos(s.a), fy = Math.sin(s.a), h = tr.pts[s.idx].h;
     renderer.setSize(640, 360, false); cam.aspect = 16 / 9; cam.fov = 64; cam.updateProjectionMatrix();
     cam.position.set(s.x - fx * 60, h + 22, s.y - fy * 60); cam.lookAt(s.x + fx * 60, h + 8, s.y + fy * 60);

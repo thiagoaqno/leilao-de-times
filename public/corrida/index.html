@@ -86,7 +86,12 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 /* garagem: cada carro com a ficha em fileiras de LED, como as luzes de troca de marcha do painel */
 .cars{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .car{display:grid;grid-template-columns:1fr;gap:4px;text-align:left;padding:10px;border-radius:10px;background:#101116;border:2px solid var(--line);box-shadow:none;font-weight:500}
-.car canvas{width:100%;height:auto;image-rendering:pixelated;display:block}
+.car canvas{width:100%;height:auto;display:block;border-radius:6px}
+.car .inspo{font-size:11.5px;color:var(--muted);line-height:1.2}
+.modrow{display:grid;grid-template-columns:84px 1fr;gap:8px;align-items:center;margin-bottom:8px}
+.modrow>span{font-size:13px;font-weight:800;color:var(--muted)}
+.modrow .seg button{display:inline-flex;align-items:center;gap:6px}
+.rim{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #0008}
 .car b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--text);line-height:1.1}
 .car p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.35;min-height:3.9em}
 .car.on{border-color:var(--yellow);background:#1a1810}
@@ -170,8 +175,8 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
   <section id="home" class="hidden">
     <div class="hero">
       <div>
-        <h2>Kart na<br><em>Galera</em></h2>
-        <p class="lead">Mônaco, Interlagos e Tóquio em 3D, com subidas, descidas e lombadas para voar. Sem casca de banana: só pé no fundo. Os amigos correm junto como fantasmas, então ninguém bate em ninguém e a internet lenta não atrapalha.</p>
+        <h2>Racha na<br><em>Galera</em></h2>
+        <p class="lead">Carros esportivos em 3D em Mônaco, Interlagos e Tóquio, com subidas, descidas e lombadas para voar. Sem casca de banana: só pé no fundo. Os amigos correm junto como fantasmas, então ninguém bate em ninguém e a internet lenta não atrapalha.</p>
         <div class="art"><canvas id="heroArt" width="320" height="180"></canvas></div>
       </div>
       <div class="placa"><div class="chk"></div><div class="in">
@@ -194,8 +199,9 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
         <h2>Pilotos</h2>
         <div id="pilots"></div>
         <div id="myPick" class="hidden" style="margin-top:16px">
-          <label>Cor do kart</label><div class="colors" id="colorPick"></div>
+          <label>Cor do carro</label><div class="colors" id="colorPick"></div>
           <label style="margin-top:14px">Seu carro</label><div class="cars" id="carPick"></div>
+          <label style="margin-top:14px">Personalizar</label><div id="modPick"></div>
           <label style="margin-top:14px">Seu avatar</label><div class="picker" id="pawnPick"></div>
         </div>
       </div></div>

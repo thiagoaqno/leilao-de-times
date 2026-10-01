@@ -5,7 +5,10 @@
 (function (root) {
   const MODES = {
     pes: { id: "pes", L: 20, W: 12, goalW: 1.6, goalH: 2.1, goalD: 1.2, ballR: 0.15, wallH: 7, ceil: 14, g: 9.81, bounce: 0.55, roll: 2.6, drag: 0.012, wallE: 0.6, postR: 0.05, areaR: 6, circle: 3 },
-    carros: { id: "carros", L: 40, W: 27, goalW: 7, goalH: 5.5, goalD: 4, ballR: 1.25, wallH: 18, ceil: 18, g: 5.2, bounce: 0.8, roll: 1.4, drag: 0.05, wallE: 0.82, postR: 0.3, areaR: 14, circle: 9, carE: 0.75, kick: 1.7 }, // bola de praia: leve, flutua e quica muito
+    // carros: física da bola do Rocket League (parâmetros da Psyonix convertidos de uu para metros: 1 uu = 1 cm):
+    // gravidade 650 uu/s², quique 0,6, atrito 0,35 com giro, arrasto linear 0,0305/s, até 6000 uu/s e 6 rad/s
+    carros: { id: "carros", L: 40, W: 27, goalW: 7, goalH: 5.5, goalD: 4, ballR: 1.25, wallH: 18, ceil: 18, g: 6.5, bounce: 0.6, roll: 0, drag: 0.0305, wallE: 0.6, postR: 0.3, areaR: 14, circle: 9,
+      rl: true, mu: 0.35, vmax: 60, wmax: 6, carE: 0.1 },
   };
   const P_R = 0.35, P_H = 1.8;
 
@@ -125,7 +128,26 @@
   }
 
   // ---------- bola ----------
-  const newBall = (F = MODES.pes) => ({ x: 0, y: F.ballR, z: 0, vx: 0, vy: 0, vz: 0, sp: 0, holder: null });
+  const newBall = (F = MODES.pes) => ({ x: 0, y: F.ballR, z: 0, vx: 0, vy: 0, vz: 0, sp: 0, wx: 0, wy: 0, wz: 0, holder: null });
+  // Rocket League: batida da bola numa superfície (chão, parede, teto) com atrito de Coulomb e giro.
+  // O ponto de contato desliza com v + w × r; o atrito tira até mu·Jn desse deslize (ou tudo, e a bola passa a rolar)
+  // e vira giro. Devolve a força da batida.
+  function rlContact(F, b, nx, ny, nz, pen) {
+    const R = F.ballR;
+    b.x += nx * pen; b.y += ny * pen; b.z += nz * pen;
+    const rx = -nx * R, ry = -ny * R, rz = -nz * R; // do centro até o ponto de contato
+    const cx = b.vx + (b.wy * rz - b.wz * ry), cy = b.vy + (b.wz * rx - b.wx * rz), cz = b.vz + (b.wx * ry - b.wy * rx);
+    const vn = cx * nx + cy * ny + cz * nz;
+    if (vn >= 0) return 0;
+    const e = vn > -0.3 ? 0 : F.bounce, jn = -(1 + e) * vn; // impulso por unidade de massa
+    const tx = cx - nx * vn, ty = cy - ny * vn, tz = cz - nz * vn, tl = Math.hypot(tx, ty, tz);
+    let jx = 0, jy = 0, jz = 0;
+    if (tl > 1e-4) { const jt = Math.min((2 / 7) * tl, F.mu * jn); jx = -tx / tl * jt; jy = -ty / tl * jt; jz = -tz / tl * jt; }
+    b.vx += nx * jn + jx; b.vy += ny * jn + jy; b.vz += nz * jn + jz;
+    const k = 1 / (0.4 * R * R); // giro: (r × J) / I, com I = 2/5·m·R²
+    b.wx += (ry * jz - rz * jy) * k; b.wy += (rz * jx - rx * jz) * k; b.wz += (rx * jy - ry * jx) * k;
+    return -vn;
+  }
   function bounceOff(b, nx, ny, nz, pen, e, vx = 0, vy = 0, vz = 0) {
     b.x += nx * pen; b.y += ny * pen; b.z += nz * pen;
     const rv = (b.vx - vx) * nx + (b.vy - vy) * ny + (b.vz - vz) * nz;
@@ -144,8 +166,17 @@
       if (d >= R) return 0;
       if (d < 1e-6) { ex = 0; ey = 1; ez = 0; d = 1e-6; }
       const nx = ex / d, ny = ey / d, nz = ez / d;
+      const rel = Math.hypot(b.vx - p.vx, b.vy - (p.vy || 0), b.vz - p.vz);
       const f = bounceOff(b, nx, ny, nz, R - d, F.carE || 0.35, p.vx, p.vy || 0, p.vz);
-      if (f > 0.3) { // tranco extra (o carro "chuta" a bola), mais forte no mortal
+      if (F.rl && f > 0.3) { // Rocket League: impulso extra da Psyonix (é o que faz a bola sair forte do carro)
+        // direção: do carro para a bola, com a altura achatada (0,35) e só 65% da componente para a frente do carro
+        let hx = b.x - p.x, hy = (b.y - cy) * 0.35, hz = b.z - p.z, hl = Math.hypot(hx, hy, hz) || 1; hx /= hl; hy /= hl; hz /= hl;
+        const fd = (hx * fx + hz * fz) * (1 - 0.65); hx -= fx * fd; hz -= fz * fd; hl = Math.hypot(hx, hy, hz) || 1;
+        const sp = Math.min(46, rel), u = sp * 100; // velocidade relativa em uu/s
+        const fac = u <= 500 ? 0.65 : u <= 2300 ? 0.65 - 0.1 * (u - 500) / 1800 : 0.55 - 0.25 * (u - 2300) / 2300;
+        const add = sp * fac * (p.flip ? 1.25 : 1);
+        b.vx += hx / hl * add; b.vy += hy / hl * add; b.vz += hz / hl * add;
+      } else if (f > 0.3) { // tranco extra (o carro "chuta" a bola), mais forte no mortal
         const sp = Math.hypot(p.vx, p.vy || 0, p.vz), k = Math.min(9, sp * 0.3 + 1.5) * (p.flip ? 1.6 : 1) * (F.kick || 1);
         b.vx += nx * k; b.vy += ny * k + (p.flip ? 2 : 0); b.vz += nz * k;
       }
@@ -165,6 +196,7 @@
   }
   // devolve a força da batida mais forte (para o som) e o id de quem encostou por último
   function stepBall(F, b, bodies, dt) {
+    if (F.rl) return stepBallRL(F, b, bodies, dt);
     let hit = 0, touch = null;
     const R = F.ballR;
     b.vy -= F.g * dt;
@@ -211,6 +243,52 @@
       if (f > 0.05) { touch = p.id; hit = Math.max(hit, f * 0.45); b.sp = (b.sp || 0) * 0.3; }
     }
     return { hit, touch };
+  }
+  // bola do Rocket League: gravidade, arrasto linear, limites de velocidade e giro, e batidas com atrito e giro
+  function stepBallRL(F, b, bodies, dt) {
+    let hit = 0, touch = null;
+    const R = F.ballR;
+    b.wx = b.wx || 0; b.wy = b.wy || 0; b.wz = b.wz || 0;
+    b.vy -= F.g * dt;
+    const ld = Math.max(0, 1 - F.drag * dt), ad = Math.max(0, 1 - 0.015 * dt);
+    b.vx *= ld; b.vy *= ld; b.vz *= ld; b.wx *= ad; b.wy *= ad; b.wz *= ad;
+    const v = Math.hypot(b.vx, b.vy, b.vz); if (v > F.vmax) { const k = F.vmax / v; b.vx *= k; b.vy *= k; b.vz *= k; }
+    const w = Math.hypot(b.wx, b.wy, b.wz); if (w > F.wmax) { const k = F.wmax / w; b.wx *= k; b.wy *= k; b.wz *= k; }
+    b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+    if (b.y < R) hit = Math.max(hit, rlContact(F, b, 0, 1, 0, R - b.y));
+    if (b.y > F.ceil - R) hit = Math.max(hit, rlContact(F, b, 0, -1, 0, b.y - (F.ceil - R)));
+    if (b.z > F.W - R) hit = Math.max(hit, rlContact(F, b, 0, 0, -1, b.z - (F.W - R)));
+    if (b.z < -F.W + R) hit = Math.max(hit, rlContact(F, b, 0, 0, 1, -F.W + R - b.z));
+    const inMouth = Math.abs(b.z) < F.goalW - R && b.y < F.goalH - R;
+    for (const s of [1, -1]) {
+      const line = s * F.L, sx = s * b.x, inGoal = sx > F.L && Math.abs(b.z) < F.goalW;
+      if (sx > F.L - R && !inMouth && !inGoal && sx < F.L + F.goalD) hit = Math.max(hit, rlContact(F, b, -s, 0, 0, sx - (F.L - R)));
+      if (sx > F.L) { // dentro do gol: rede (amortece bastante)
+        const back = F.L + F.goalD - R;
+        if (sx > back) { b.x = s * back; if (s * b.vx > 0) b.vx = -b.vx * 0.12; b.vz *= 0.6; b.vy *= 0.6; }
+        if (Math.abs(b.z) > F.goalW - R) { b.z = Math.sign(b.z) * (F.goalW - R); b.vz = -b.vz * 0.15; b.vx *= 0.7; }
+        if (b.y > F.goalH - R) { b.y = F.goalH - R; b.vy = -Math.abs(b.vy) * 0.15; }
+      }
+      for (const pz of [F.goalW, -F.goalW]) { // traves
+        const dx = b.x - line, dz = b.z - pz, d = Math.hypot(dx, dz);
+        if (d < F.postR + R && b.y < F.goalH + F.postR && d > 1e-6) hit = Math.max(hit, rlContact(F, b, dx / d, 0, dz / d, F.postR + R - d));
+      }
+      if (Math.abs(b.z) < F.goalW) { // travessão
+        const dx = b.x - line, dy = b.y - F.goalH, d = Math.hypot(dx, dy);
+        if (d < F.postR + R && d > 1e-6) hit = Math.max(hit, rlContact(F, b, dx / d, dy / d, 0, F.postR + R - d));
+      }
+    }
+    for (const p of bodies || []) {
+      const f = hitBody(b, p, R, F);
+      if (f > 0.05) { touch = p.id; hit = Math.max(hit, f * 0.45); }
+    }
+    return { hit, touch };
+  }
+  // onde a bola vai cair (para a marca no chão): simula até ela descer até o chão, no máximo `secs`
+  function landing(F, b0, secs = 3) {
+    const b = { ...b0 }; let t = 0;
+    while (t < secs) { const vy = b.vy; stepBall(F, b, [], 1 / 60); t += 1 / 60; if (b.y <= F.ballR + 0.05 || (vy < 0 && b.vy > 0 && b.y < F.ballR + 0.5)) return { x: b.x, z: b.z, t }; }
+    return null;
   }
   // passos fixos de 1/120 s (servidor e navegador fazem a mesma conta)
   function simulate(F, b, bodies, dt) {
@@ -274,7 +352,7 @@
   }
 
   const api = { MODES, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, kitOf, kitColor, kitColor2, spawns, inArea,
-    movePlayer, moveCar, newBall, stepBall, simulate, goalOf, canKick, kick, assistPass };
+    movePlayer, moveCar, newBall, stepBall, simulate, landing, goalOf, canKick, kick, assistPass };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;
 })(typeof window !== "undefined" ? window : globalThis);
