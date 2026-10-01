@@ -1113,7 +1113,7 @@ function syncFromState(old, st) {
       rm = { id: p.id, n: p.n, key, team: p.team, name: p.name, model, buf: [], x: 0, y: 0, z: 0, yaw: 0, pitch: 0, f: 0, speed: 0, st: {} };
       scene.add(rm.model); G.remotes.set(p.id, rm);
     }
-    rm.n = p.n;
+    rm.n = p.n; rm.ping = p.ping ?? 80; // o ping dele: quanto atrasada chega a posição (para o corpo a corpo)
     if (!isCar() && rm.model.userData.skin !== (C.SKINS[p.skin] ? p.skin : "padrao")) mudarSkinJogador(rm, p.skin); // trocou a skin: troca na hora
     if (p.spawn && m && (!old || !old.match || old.match.kickoff !== m.kickoff)) rm.buf = [{ t: sNow() - 500, x: p.spawn[0], y: 0, z: p.spawn[2], yaw: p.spawn[3], pitch: 0, f: 0, vx: 0, vz: 0 }];
   }
@@ -1419,9 +1419,14 @@ function stepFoot(dt, t, frozen) {
   jumpQueued = false;
   // goleiro com a bola: não sai da área
   if (isGK && holding && !C.inArea("pes", mine.team, me.x, me.z)) { const gx = mine.team === "A" ? -F.L : F.L, d = Math.hypot(me.x - gx, me.z) || 1; me.x = gx + (me.x - gx) / d * (F.areaR - 0.05); me.z = me.z / d * (F.areaR - 0.05); }
-  // empurrão leve: não dá para atravessar os outros
-  const others = [...G.remotes.values(), ...(G.keeper ? [G.keeper] : [])];
-  for (const o of others) { const dx = me.x - o.x, dz = me.z - o.z, d = Math.hypot(dx, dz), min = 2 * C.P_R; if (d < min && d > 1e-4) { me.x += (dx / d) * (min - d); me.z += (dz / d) * (min - d); } }
+  // corpo a corpo: ninguém atravessa ninguém (os outros jogadores, o goleiro robô e a barreira da falta).
+  // Os outros chegam atrasados (100 ms de interpolação + metade do ping deles): a conta usa onde cada um está AGORA
+  // (rm.px/pz, calculado em updateRemotes), senão dois jogadores cruzando rápido passam um pelo outro.
+  const outros = [];
+  for (const rm of G.remotes.values()) outros.push({ x: rm.px ?? rm.x, z: rm.pz ?? rm.z, y: rm.y, vx: rm.pvx || 0, vz: rm.pvz || 0, sprint: rm.f & FL.sprint, caido: rm.f & (FL.slide | FL.dive | FL.down) });
+  if (G.keeper) { G.keeper.local = true; G.keeper.caido = !!G.keeper.diveT; outros.push(G.keeper); }
+  if (G.falta) for (const w of G.falta.wall) outros.push({ x: w.x, z: w.z, y: w.y, fixo: true });
+  C.corpoACorpo(me, outros, busy);
   // o corpo vira para onde está correndo; carregando o chute, vira para a mira
   const hsp = Math.hypot(me.vx, me.vz);
   if (!busy) { const target = charge ? aimYaw() : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing; me.facing = angLerp(me.facing, target, Math.min(1, dt * 12)); }
@@ -1485,8 +1490,15 @@ function updateRemotes(dt) {
       const ny = angLerp(A.yaw, B.yaw, k); rm.st.steer = clamp(angLerp(0, ny - rm.yaw, 1) / Math.max(dt, 1e-3) / -2, -1, 1); rm.yaw = ny;
       rm.pitch = lerp(A.pitch || 0, B.pitch || 0, k); rm.f = B.f | 0;
       while (b.length > 2 && b[1].t < rt - 200) b.shift();
+      // onde ele está AGORA: o último pacote andado para a frente (o tempo desde o pacote + metade do ping dele,
+      // que é o quanto a posição demorou para chegar no servidor). É contra essa posição que eu colido.
+      const U = b[b.length - 1], ahead = clamp((sNow() - U.t + (rm.ping || 80) / 2) / 1000, 0, 0.3);
+      rm.px = U.x + (U.vx || 0) * ahead; rm.pz = U.z + (U.vz || 0) * ahead; rm.pvx = U.vx || 0; rm.pvz = U.vz || 0;
     }
-    rm.model.position.set(rm.x, rm.y, rm.z); rm.model.rotation.y = rm.yaw;
+    // perto de mim, o boneco é desenhado na posição de agora (o que eu vejo é o que colide); longe, a interpolada (lisa)
+    const perto = G.me && rm.px != null && !isCar() ? clamp((3 - Math.hypot(rm.x - G.me.x, rm.z - G.me.z)) / 1.5, 0, 1) : 0;
+    rm.k = lerp(rm.k || 0, perto, Math.min(1, dt * 6));
+    rm.model.position.set(lerp(rm.x, rm.px ?? rm.x, rm.k), rm.y, lerp(rm.z, rm.pz ?? rm.z, rm.k)); rm.model.rotation.y = rm.yaw;
     if (isCar()) animateCar(rm.model, rm.st, dt, rm.speed, rm.f, rm.pitch);
     else { rm.st.holding = ballS.snap && ballS.snap.holder === rm.id; animate(rm.model, rm.speed, dt, rm.st, rm.f); }
   }
