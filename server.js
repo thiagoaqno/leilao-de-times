@@ -23,6 +23,7 @@ require("./botao.js")(io); // Futebol de Botão da Galera: x1, duplas ou rei do 
 require("./corrida.js")(io); // Corrida da Galera: kart com fantasmas em Mônaco, Interlagos e Tóquio, canal /corrida
 require("./vila.js")(io); // Vila da Galera: o lobby em mapinha, canal /vila
 require("./tiro.js")(io); // Tiro da Galera: FPS de arena x1 ou x2 com AK-47 e AWP, canal /tiro
+require("./pelada.js")(io); // Pelada da Galera: futsal 3D do 1x1 ao 3x3, canal /pelada
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
@@ -34,6 +35,7 @@ app.get("/ludo", (req, res) => res.redirect("/ludo/"));
 app.get("/botao", (req, res) => res.redirect("/botao/"));
 app.get("/corrida", (req, res) => res.redirect("/corrida/"));
 app.get("/tiro", (req, res) => res.redirect("/tiro/"));
+app.get("/pelada", (req, res) => res.redirect("/pelada/"));
 app.get("/vendor/marked.js", (req, res) => res.sendFile(require.resolve("marked/marked.min.js")));
 app.use("/vendor/three", express.static(path.dirname(require.resolve("three"))));
 app.get("/vendor/purify.js", (req, res) => res.sendFile(require.resolve("dompurify/dist/purify.min.js")));
