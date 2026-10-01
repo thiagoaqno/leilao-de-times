@@ -836,7 +836,16 @@ cv.addEventListener("pointerdown", (e) => {
   const g = st.g, grab = e.pointerType === "touch" ? RB + 14 : RB + 4, pcs = piecesWithPlaces(g.pieces);
   const hit = pcs.findIndex((p) => p.k === "btn" && p.t === g.turn && Math.hypot(p.x - w.x, p.y - w.y) < grab);
   if (hit >= 0 && hit !== aim.i) { aim.i = hit; aim.place = null; Sound.play("pop"); }
-  if (placing && g.setPiece) { if (hit >= 0) ptr = { id: e.pointerId, mode: "place", dx: pcs[hit].x - w.x, dy: pcs[hit].y - w.y }; return; }
+  if (g.setPiece) {
+    // bola parada: arrastar a tampinha para perto da bola. Vale com o "✋ Arrumar" ligado, ou direto numa tampinha
+    // que ainda está longe da bola (essa não daria para bater dali mesmo).
+    const far = hit >= 0 && Math.hypot(pcs[hit].x - pcs[0].x, pcs[hit].y - pcs[0].y) > B.PLACE_R;
+    if (placing || far) {
+      if (hit >= 0) { ptr = { id: e.pointerId, mode: "place", dx: far ? 0 : pcs[hit].x - w.x, dy: far ? 0 : pcs[hit].y - w.y }; dragPlace(w); }
+      else if (placing && aim.i > 0 && pcs[aim.i] && pcs[aim.i].t === g.turn) { ptr = { id: e.pointerId, mode: "place", dx: 0, dy: 0 }; dragPlace(w); } // toque no campo: a escolhida vai para lá
+      return;
+    }
+  }
   ptr = { id: e.pointerId, mode: "aim", x: w.x, y: w.y };
   aim.p = 0; sendAim();
 });
@@ -856,16 +865,25 @@ cv.addEventListener("pointermove", (e) => {
     }
     return;
   }
-  if (ptr.mode === "place") {
-    const x = w.x + ptr.dx, y = w.y + ptr.dy;
-    if (B.placeOk(S.g.pieces, aim.i, x, y)) { aim.place = { x, y }; sendAim(); }
-    return;
-  }
+  if (ptr.mode === "place") { dragPlace(w); return; }
   const dx = ptr.x - w.x, dy = ptr.y - w.y, d = Math.hypot(dx, dy);
   if (d > 4) { aim.a = Math.atan2(dy, dx); }
   aim.p = Math.max(0, Math.min(1, (d - 6) / PULL));
   sendAim();
 });
+// leva a tampinha escolhida até o dedo/mouse: se passar do limite, fica na beirada do círculo em volta da bola;
+// se cair em cima de outra peça, tenta um pouco mais perto ou mais longe da bola (senão fica onde estava)
+function dragPlace(w) {
+  const pcs = S.g.pieces, b = pcs[0];
+  let x = w.x + ptr.dx, y = w.y + ptr.dy;
+  const dx = x - b.x, dy = y - b.y, d = Math.hypot(dx, dy), max = B.PLACE_R - 1;
+  if (d > max) { x = b.x + (dx / d) * max; y = b.y + (dy / d) * max; }
+  x = Math.max(RB, Math.min(L - RB, x)); y = Math.max(RB, Math.min(W - RB, y));
+  for (const k of [1, 0.9, 1.1, 0.8, 1.2, 0.7]) {
+    const tx = b.x + (x - b.x) * k, ty = b.y + (y - b.y) * k;
+    if (B.placeOk(pcs, aim.i, tx, ty)) { aim.place = { x: tx, y: ty }; sendAim(); return; }
+  }
+}
 const endPtr = (e) => {
   if (keeperDrag && keeperDrag.id === e.pointerId) { const k = keeperDrag; keeperDrag = null; cv.style.cursor = "crosshair"; setTimeout(() => socket.emit("keeper", { y: k.y }), 70); return; }
   if (!ptr || ptr.id !== e.pointerId) return;
@@ -1008,7 +1026,7 @@ function renderStatus() {
   const g = st.g, mine = canAct(), max = g.max || st.config.toques, left = max - g.toques;
   el.className = "status";
   let txt = "";
-  const what = g.restart ? `${g.restart}! ` : "";
+  const what = g.restart ? `${g.restart}! ${g.setPiece && canAct() ? "Arraste uma tampinha sua até perto da bola. " : ""}` : "";
   if (st.phase !== "playing") txt = st.phase === "ended" ? "Fim de papo!" : "Fim de jogo.";
   else if (anim) txt = "…";
   else if (mine) {
