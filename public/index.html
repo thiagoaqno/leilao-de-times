@@ -260,6 +260,9 @@ const GAMES = [
   // autódromo no fim da vila, depois da rua de baixo: concreto e telhado de bandeira quadriculada
   { id: "corrida", url: "/corrida/", icon: "🏁", sign: "CORRIDA", name: "Autódromo", desc: "Kart com câmera atrás do carro em Mônaco, Interlagos e Tóquio. Os amigos correm como fantasmas!", meta: "Corrida da Galera · 1 a 8 pilotos",
     x: 12, y: 25, w: 10, h: 5, doors: [16, 17], roof: "#f4f4f4", roof2: "#151515", wall: "#9aa0a8", wall2: "#7d838c", race: true },
+  // bunker no canto de baixo, à direita do autódromo: paredes de saco de areia e um alvo pintado no telhado
+  { id: "tiro", url: "/tiro/", icon: "🎯", sign: "TIRO", name: "Arena de Tiro", desc: "FPS em rodadas no estilo CS, x1 ou x2, com AK-47 e AWP numa arena no deserto. Precisa de teclado e mouse.", meta: "Tiro da Galera · x1 ou x2",
+    x: 24, y: 24, w: 7, h: 4, doors: [27], roof: "#5b6440", roof2: "#4a5234", wall: "#b8a77a", wall2: "#9a8a60", tiro: true },
 ];
 GAMES.forEach((g) => { g.doorY = g.y + g.h - 1; g.mats = g.doors.map((x) => [x, g.doorY + 1]); });
 
@@ -267,7 +270,7 @@ const FOUNTAIN = { x: 15, y: 10, w: 4, h: 3 };
 const LAMPS = [[10, 8], [23, 8], [2, 8], [31, 8], [10, 14], [23, 14], [2, 20], [31, 20]];
 const BENCHES = [[14, 14], [19, 14]];
 const TREES = [[11, 3], [11, 5], [22, 3], [22, 5], [10, 16], [12, 18], [21, 16], [23, 18], [2, 23], [31, 23], [16, 23], [7, 23], [26, 23],
-  [4, 26], [7, 28], [3, 30], [9, 25], [26, 25], [29, 27], [30, 30], [25, 29]];
+  [4, 26], [7, 28], [3, 30], [9, 25], [30, 30], [25, 30]];
 
 // tipos de chão: g grama, r rua de pedra, f flores, t árvore
 const ground = Array.from({ length: MH }, () => Array(MW).fill("g"));
@@ -279,6 +282,7 @@ for (let y = 21; y <= 22; y++) for (let x = 2; x < MW - 2; x++) set(x, y, "r"); 
 for (let y = 13; y <= 21; y++) { set(11, y, "r"); set(22, y, "r"); } // ligações
 for (let y = 23; y <= 30; y++) { set(11, y, "r"); set(22, y, "r"); } // caminhos até o autódromo
 for (let x = 11; x <= 22; x++) set(x, 30, "r");
+for (let x = 23; x <= 26; x++) set(x, 28, "r"); // caminho até a arena de tiro
 for (const g of GAMES) {
   for (let y = g.y; y < g.y + g.h; y++) for (let x = g.x; x < g.x + g.w; x++) solid[y][x] = true;
   for (const [mx, my] of g.mats) set(mx, my, "m");
@@ -385,6 +389,11 @@ function drawBuilding(c, g) {
     c.beginPath(); c.arc(fx + fw / 2 + 0.5, fy + fh / 2, 3, 0, 7); c.stroke();
     px(c, "#f4f1e6", fx - 1, fy + fh / 2 - 3, 1, 6); px(c, "#f4f1e6", fx + fw, fy + fh / 2 - 3, 1, 6);
     px(c, "#c8102e", fx + fw / 2 - 9, fy + fh / 2 - 2, 4, 4); px(c, "#1e5bc6", fx + fw / 2 + 6, fy + fh / 2 - 1, 4, 4); px(c, "#ffffff", fx + fw / 2 - 4, fy + fh / 2, 2, 2);
+  }
+  if (g.tiro) { // telhado com um alvo pintado e sacos de areia na frente
+    const cx = rx + rw / 2, cy = Y + roofH / 2;
+    ["#f4f1e6", "#c8102e", "#f4f1e6", "#c8102e"].forEach((col, i) => { c.fillStyle = col; c.beginPath(); c.arc(cx, cy, 12 - i * 3, 0, 7); c.fill(); });
+    for (let xx = X; xx < X + W; xx += 6) { px(c, "#cbb98a", xx, Y + H - 6, 5, 3); px(c, "#cbb98a", xx + 3, Y + H - 9, 5, 3); }
   }
   if (g.domino) { // telhado de pedra de dominó
     px(c, "#f6f3ea", X + W / 2 - 1, Y + 3, 2, roofH - 7);

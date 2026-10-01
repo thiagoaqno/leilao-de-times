@@ -22,6 +22,7 @@ require("./ludo.js")(io); // Ludo da Galera: ludo de 2 a 4 jogadores, canal /lud
 require("./botao.js")(io); // Futebol de Botão da Galera: x1, duplas ou rei do campo, canal /botao
 require("./corrida.js")(io); // Corrida da Galera: kart com fantasmas em Mônaco, Interlagos e Tóquio, canal /corrida
 require("./vila.js")(io); // Vila da Galera: o lobby em mapinha, canal /vila
+require("./tiro.js")(io); // Tiro da Galera: FPS de arena x1 ou x2 com AK-47 e AWP, canal /tiro
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
@@ -32,7 +33,9 @@ app.get("/domino", (req, res) => res.redirect("/domino/"));
 app.get("/ludo", (req, res) => res.redirect("/ludo/"));
 app.get("/botao", (req, res) => res.redirect("/botao/"));
 app.get("/corrida", (req, res) => res.redirect("/corrida/"));
+app.get("/tiro", (req, res) => res.redirect("/tiro/"));
 app.get("/vendor/marked.js", (req, res) => res.sendFile(require.resolve("marked/marked.min.js")));
+app.use("/vendor/three", express.static(path.dirname(require.resolve("three"))));
 app.get("/vendor/purify.js", (req, res) => res.sendFile(require.resolve("dompurify/dist/purify.min.js")));
 
 const rooms = new Map(); // code -> room
@@ -151,14 +154,18 @@ function view(room, forId) {
     current = { player: cur.player, bids, result: revealed ? cur.result : null, deadline: cur.deadline, eligible: cur.eligible,
       high: cur.high || null, feed: cur.feed || [], passed: cur.passed || {}, finalStretch: !!cur.finalStretch };
   }
+  // roleta oculta: até o fim, ninguém recebe os nomes que ainda estão na roleta (só o sorteado)
+  const hide = room.config.hidePool && room.phase !== "done";
+  const spin = hide && room.spin ? { ...room.spin, names: room.spin.names.map((n, i) => (i === room.spin.index ? n : "?")) } : room.spin;
   return {
     code: room.code,
     phase: room.phase,
     config: room.config,
     poolCount: room.pool.length,
-    pool: room.pool,
+    pool: hide ? room.pool.map(() => "?") : room.pool,
+    poolHidden: hide,
     unsold: room.unsold,
-    spin: room.spin,
+    spin,
     captains: room.order.map((id) => {
       const c = room.captains[id];
       return { id, name: c.name, formation: c.formation || "auto", pins: c.pins || {}, coins: c.coins, skipsLeft: c.skipsLeft, team: c.team, connected: c.sockets.size > 0, isHost: id === room.hostCap };
@@ -319,7 +326,7 @@ io.on("connection", (socket) => {
       const hostToken = rid();
       const room = {
         code, hostToken, hostSockets: new Set([socket.id]), watchers: new Set(), hostCap: null,
-        config: { terms, formLock: data.formLock === "locked" ? "locked" : "fluid", comp: cleanComp(data.comp, perTeam), mode, perTeam, coins, skips: mode === "open" ? 0 : skips, minBid, timer },
+        config: { terms, formLock: data.formLock === "locked" ? "locked" : "fluid", comp: cleanComp(data.comp, perTeam), mode, perTeam, coins, skips: mode === "open" ? 0 : skips, minBid, timer, hidePool: !!data.hidePool },
         pool: players, original: players.slice(), unsold: [], captains: {}, order: [], phase: "lobby",
         current: null, spin: null, log: [], history: [],
         reveal: { sections: [], shown: 0 },
