@@ -302,7 +302,8 @@
     b.dono = p.id;
     const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), sp = Math.hypot(pvx, pvz);
     const atras = ((b.x - p.x) * fx + (b.z - p.z) * fz) / (best || 1) < 0; // bola atrás: puxa mais devagar (contorna o corpo)
-    const dist = Math.min(1.15, 0.6 + 0.05 * sp + (p.sprint ? 0.25 : 0));
+    // virando forte (meia-volta), a bola vem para perto do pé, como uma puxada de sola
+    const dist = p.girando ? 0.45 : Math.min(1.15, 0.6 + 0.05 * sp + (p.sprint ? 0.25 : 0));
     const tx = p.x + fx * dist, tz = p.z + fz * dist;
     const forca = p.sprint ? 6 : atras ? 5 : 12, k = 1 - Math.exp(-forca * dt);
     b.vx += (pvx + (tx - b.x) * 7 - b.vx) * k; b.vz += (pvz + (tz - b.z) * 7 - b.vz) * k;

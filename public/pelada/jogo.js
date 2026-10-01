@@ -4,7 +4,6 @@
 // pacote (rodando a mesma física de campo.js) e a diferença é corrigida aos poucos.
 import * as THREE from "three";
 import { Ragdoll } from "/ragdoll.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
 
@@ -299,9 +298,6 @@ const hemiL = new THREE.HemisphereLight(0xd8e8ff, 0x4a6a3a, 1.4); scene.add(hemi
 const sunL = new THREE.DirectionalLight(0xfff0d8, 2.4);
 sunL.castShadow = true; sunL.shadow.mapSize.set(2048, 2048); sunL.shadow.bias = -0.0004; sunL.shadow.normalBias = 0.03;
 scene.add(sunL, sunL.target);
-// reflexo do piso de madeira do ginásio: um "ambiente" de sala gerado uma vez só
-let envSala = null;
-const ambienteReflexo = () => (envSala ||= new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture);
 
 // ---------- bola ----------
 const ballTex = canvasTex(512, 256, (x, w, hh) => {
@@ -344,9 +340,9 @@ const ARENAS_CONFIG = {
     paredes: "alambrado", muretas: "tijolo", refletores: "nenhum", arquibancada: "morro",
   },
   ginasio: { // liga profissional: taco de madeira que reflete, refletores no teto, paredes fechadas e arquibancada escura
-    piso: { textura: "/pelada/texturas/madeira.jpg", metrosFoto: 1.5, tipo: "madeira", roughness: 0.3, metalness: 0.05, linhas: "#ffffff", reflexo: true },
-    ambiente: { ceu: 0x9aa3b5, chao: 0x3a2a1a, intensidade: 0.5 },
-    luz: { tipo: "refletores", cor: 0xfff6e8, intensidade: 0.9, pos: [0, 40, 1], spot: 5.5 },
+    piso: { textura: "/pelada/texturas/madeira.jpg", metrosFoto: 1.5, tipo: "madeira", roughness: 0.22, metalness: 0, linhas: "#ffffff" }, // liso: brilha com a luz do teto
+    ambiente: { ceu: 0x9aa3b5, chao: 0x3a2a1a, intensidade: 0.85 },
+    luz: { tipo: "refletores", cor: 0xfff6e8, intensidade: 2.1, pos: [0, 40, 1] },
     fundo: { tipo: "cor", cor: 0x0c0e13, neblina: 0x0c0e13, longe: 200 },
     paredes: "fechadas", muretas: "acolchoadas", refletores: "teto", arquibancada: "escura",
   },
@@ -394,8 +390,6 @@ function carregarArena(id, mode = arenaMode || "pes") {
   if (cfg.fundo.tipo === "ceu") { pintarCeu(cfg.fundo.cores); sky.visible = true; scene.background = null; }
   else { sky.visible = false; scene.background = new THREE.Color(cfg.fundo.cor); }
   scene.fog.color.setHex(cfg.fundo.neblina); scene.fog.near = 80 * s; scene.fog.far = cfg.fundo.longe * s;
-  // piso que reflete: liga o "ambiente" de sala (fraquinho, para não clarear demais os jogadores)
-  scene.environment = cfg.piso.reflexo ? ambienteReflexo() : null; scene.environmentIntensity = 0.35;
   arena = buildArena(F, cfg); scene.add(arena);
   ballMesh.scale.setScalar(F.ballR); blob.scale.setScalar(F.ballR / 0.15);
   ballMesh.material.map = mode === "carros" ? beachTex : ballTex; ballMesh.material.roughness = mode === "carros" ? 0.3 : 0.45; ballMesh.material.needsUpdate = true;
@@ -440,6 +434,13 @@ function buildArena(F, cfg) {
       x.fillRect(0, 0, w, Z(-W)); x.fillRect(0, Z(W), w, hh - Z(W)); x.fillRect(0, 0, X(-L), hh); x.fillRect(X(L), 0, w - X(L), hh);
       x.fillStyle = "#1d4f91b0"; for (const sg of [-1, 1]) { x.beginPath(); if (sg < 0) x.arc(X(-L), Z(0), F.areaR * PX, -Math.PI / 2, Math.PI / 2); else x.arc(X(L), Z(0), F.areaR * PX, Math.PI / 2, 1.5 * Math.PI); x.fill(); }
       x.fillStyle = "#b3262670"; x.beginPath(); x.arc(X(0), Z(0), F.circle * PX, 0, 7); x.fill();
+      // as "poças" de luz dos refletores do teto, pintadas no próprio piso (luz de verdade pesava demais)
+      x.globalCompositeOperation = "lighter";
+      for (const sx of [-0.62, 0, 0.62]) for (const sz of [-1, 1]) {
+        const cx = X(sx * L * 0.8), cz = Z(sz * W * 0.55 * 0.35), rr = 6.5 * PX, g = x.createRadialGradient(cx, cz, 0, cx, cz, rr);
+        g.addColorStop(0, "rgba(120,105,80,0.75)"); g.addColorStop(0.6, "rgba(80,70,52,0.35)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(cx - rr, cz - rr, 2 * rr, 2 * rr);
+      }
+      x.globalCompositeOperation = "source-over";
     }
   };
   const lines = (x) => {
@@ -504,14 +505,14 @@ function buildArena(F, cfg) {
   const cell = cars ? 1 : 0.5;
   const fence = (lw, lh, x0, y0, z0, rotY) => {
     let mat;
-    if (glass) mat = new THREE.MeshStandardMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.1, roughness: 0.05, metalness: 0.2, side: THREE.DoubleSide, depthWrite: false });
+    if (glass) mat = new THREE.MeshBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false }); // vidro simples (sem calcular luz)
     else { const t = fenceTex.clone(); t.repeat.set(lw / cell, lh / cell); t.needsUpdate = true; mat = new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.4 }); }
     const m = add(new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), mat)); m.position.set(x0, y0 + lh / 2, z0); m.rotation.y = rotY;
   };
   fence(2 * L, FH - BH, 0, BH, -W - 0.05, 0); fence(2 * L, FH - BH, 0, BH, W + 0.05, 0);
   for (const sg of [-1, 1]) { fence(2 * W, FH - F.goalH - 0.4, sg * (L + F.goalD + 0.05), F.goalH + 0.4, 0, Math.PI / 2); for (const zs of [-1, 1]) { const lw = W - F.goalW; fence(lw, FH - BH, sg * (L + 0.05), BH, zs * (F.goalW + lw / 2), Math.PI / 2); } }
   fenceTex?.dispose();
-  const pole = M(glass ? 0xb8bcc2 : 0x4a4f55, { metalness: 0.6, roughness: 0.4 }), gap = cars ? 8 : 5, pr = cars ? 0.12 : glass ? 0.04 : 0.06;
+  const pole = M(glass ? 0xc9cdd2 : 0x4a4f55, { metalness: glass ? 0.15 : 0.6, roughness: 0.4 }), gap = cars ? 8 : 5, pr = cars ? 0.12 : glass ? 0.04 : 0.06;
   for (let x0 = -L; x0 <= L + 0.01; x0 += gap) for (const zs of [-1, 1]) { const m = add(new THREE.Mesh(new THREE.CylinderGeometry(pr, pr, FH, 8), pole)); m.position.set(x0, FH / 2, zs * (W + 0.1)); m.castShadow = true; }
   // refletores
   if (cfg.refletores === "torres") for (const sx of [-1, 1]) for (const sz of [-1, 1]) { // torres nos cantos
@@ -521,18 +522,18 @@ function buildArena(F, cfg) {
     const box = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.4), M(0x2b2f33)); box.position.y = hp + 0.4; box.lookAt(-sx * 40, 0, -sz * 40); g.add(box);
     for (let i = 0; i < 6; i++) { const l = new THREE.Mesh(new THREE.CircleGeometry(0.22, 12), new THREE.MeshBasicMaterial({ color: 0xfff6d8 })); l.position.set((i % 3 - 1) * 0.7, (i < 3 ? 0.3 : -0.3), 0.21); box.add(l); }
   }
-  if (cfg.refletores === "teto") { // ginásio: treliças no teto e refletores (SpotLight) focados na quadra
+  if (cfg.refletores === "teto") { // ginásio: treliças no teto e refletores focados na quadra
+    // Os refletores são só a peça acesa: a luz deles está pintada no piso. Luz de verdade (SpotLight) encarecia o desenho
+    // de TUDO na cena: com 6 delas o ginásio rodava a 1/3 da velocidade das outras quadras.
     const HT = 15, metal = M(0x2a2d33, { metalness: 0.7, roughness: 0.5 });
     for (let x0 = -L - 6; x0 <= L + 6; x0 += 8) { const t = add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 2 * W + 24), metal)); t.position.set(x0, HT + 1.5, 0); }
     for (const sx of [-0.62, 0, 0.62]) for (const sz of [-1, 1]) {
       const px = sx * L, pz = sz * (W * 0.55);
-      const spot = new THREE.SpotLight(cfg.luz.cor, cfg.luz.spot, 0, 0.62, 0.55, 0); spot.position.set(px, HT, pz); spot.target.position.set(px * 0.8, 0, pz * 0.35);
-      add(spot); add(spot.target);
       const lamp = add(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 1.0), M(0x1c1e22))); lamp.position.set(px, HT + 0.3, pz);
       const face = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), new THREE.MeshBasicMaterial({ color: 0xfff8e6 })); face.rotation.x = Math.PI / 2; face.position.y = -0.26; lamp.add(face);
     }
     // o prédio: paredes e teto escuros em volta de tudo
-    const hall = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 50, HT + 6, 2 * W + 40), new THREE.MeshStandardMaterial({ color: 0x15171d, roughness: 0.95, side: THREE.BackSide })));
+    const hall = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 50, HT + 6, 2 * W + 40), new THREE.MeshBasicMaterial({ color: 0x15171d, side: THREE.BackSide }))); // escuro: não precisa calcular luz
     hall.position.y = (HT + 6) / 2 - 0.06;
   }
   // arquibancadas e o que fica em volta
@@ -1234,7 +1235,7 @@ function myBody() {
   if (!G.meModel || !G.me) return null;
   const me = G.me;
   return isCar() ? { id: "eu", kind: "car", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.yaw, flip: me.flipT > 0 }
-    : { id: "eu", kind: "pe", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.facing, sprint: me.sprint, slide: me.slideT > 0 || me.downT > 0, dive: me.diveT > 0,
+    : { id: "eu", kind: "pe", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.facing, sprint: me.sprint, slide: me.slideT > 0 || me.downT > 0, dive: me.diveT > 0, girando: !!me.girando,
       conduz: !G.falta, chutou: now() - me.lastKick < 0.35 }; // conduz: a bola fica no pé (na falta, não)
 }
 function hearing(p) {
@@ -1477,8 +1478,17 @@ function stepFoot(dt, t, frozen) {
   C.corpoACorpo(me, outros, busy);
   // o corpo vira para onde está correndo; carregando o chute, vira para a mira
   const hsp = Math.hypot(me.vx, me.vz);
+  // o corpo vira para onde você está mandando (não para onde a velocidade aponta: na meia-volta a velocidade inverte de
+  // uma vez e o corpo girava 180° num piscar). O giro tem velocidade máxima: devagar vira rápido; correndo, uma
+  // meia-volta leva ~0,4 s (no pique, mais), e a bola acompanha (viraComABola).
   const f0 = me.facing;
-  if (!busy) { const target = charge ? aimYaw() : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing; me.facing = angLerp(me.facing, target, Math.min(1, dt * 12)); }
+  if (!busy) {
+    const target = charge ? aimYaw() : len > 0 ? Math.atan2(-wx, -wz) : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing;
+    const d = Math.atan2(Math.sin(target - me.facing), Math.cos(target - me.facing));
+    const maxRate = charge ? 16 : hsp < 1.5 ? 11 : me.sprint ? 6 : 7.5; // rad/s: parado, meia-volta em ~0,3 s
+    me.facing += clamp(d * Math.min(1, dt * 14), -maxRate * dt, maxRate * dt);
+    me.girando = Math.abs(d) > 1.2; // virada grande: a bola vem para perto do pé
+  } else me.girando = false;
   me.dFacing = Math.atan2(Math.sin(me.facing - f0), Math.cos(me.facing - f0)); // a bola no pé vira junto (viraComABola)
   me.st.holding = holding; me.st.segura = !!me.segurando;
   G.meModel.position.set(me.x, me.y, me.z); G.meModel.rotation.y = me.facing;
