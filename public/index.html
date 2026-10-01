@@ -237,7 +237,7 @@ const store = {
 };
 
 // ---------- o mapa ----------
-const TS = 16, MW = 34, MH = 33; // tamanho do tile e do mapa (em tiles)
+const TS = 16, MW = 34, MH = 40; // tamanho do tile e do mapa (em tiles)
 const GAMES = [
   { id: "leilao", url: "/leilao/", icon: "🔨", sign: "LEILÃO", name: "Casa de Leilão", desc: "Roleta, lances e moedas: monte o seu time (ou hambúrguer, pizza, drink…) e vença no fim.", meta: "Leilão da Galera",
     x: 3, y: 3, w: 7, h: 5, doors: [6], roof: "#27408f", roof2: "#1a2d6b", wall: "#efe6cf", wall2: "#d6c8a4" },
@@ -266,6 +266,12 @@ const GAMES = [
   // quadra de society no canto de baixo, à esquerda do autódromo: o telhado é o gramado com as linhas e os dois gols
   { id: "pelada", url: "/pelada/", icon: "⚽", sign: "PELADA", name: "Quadra da Pelada", desc: "Futsal em 3D do 1x1 ao 3x3, numa quadra com alambrado. Chute, passe, cabeçada e as camisas do botão. Precisa de teclado e mouse.", meta: "Pelada da Galera · 1x1 a 3x3",
     x: 3, y: 24, w: 7, h: 4, doors: [6], roof: "#2f8f48", roof2: "#2a8141", wall: "#d9dde0", wall2: "#b9bfc4", pelada: true },
+  // rua nova lá embaixo: a garagem do Rocket (futebol de carro), com o telhado nas cores dos dois times e a bola gigante
+  { id: "rocket", url: "/rocket/", icon: "🚀", sign: "ROCKET", name: "Garagem do Rocket", desc: "Futebol de carro estilo Rocket League: bola gigante, turbo, pulo duplo e mortal. Carros pixelados inspirados no R34, 911, F40 e M3.", meta: "Rocket da Galera · 1x1 a 5x5",
+    x: 4, y: 32, w: 8, h: 4, doors: [7, 8], roof: "#1d2a5c", roof2: "#141d42", wall: "#3a3f4a", wall2: "#2b2f37", rocket: true },
+  // do outro lado da rua nova: a arena da Batalha de kart, com telhado roxo, balões coloridos e uma caixa de item
+  { id: "batalha", url: "/batalha/", icon: "🎈", sign: "BATALHA", name: "Arena da Batalha", desc: "Batalha de balões de kart estilo Mario Kart: 3 balões, caixas de item, cascos, bananas e bombas. Perdeu tudo? Vira fantasma!", meta: "Batalha da Galera · 2 a 8 pilotos",
+    x: 22, y: 32, w: 8, h: 4, doors: [25, 26], roof: "#4a2f80", roof2: "#3a2466", wall: "#e9dcc4", wall2: "#cbb994", batalha: true },
 ];
 GAMES.forEach((g) => { g.doorY = g.y + g.h - 1; g.mats = g.doors.map((x) => [x, g.doorY + 1]); });
 
@@ -287,6 +293,8 @@ for (let y = 23; y <= 30; y++) { set(11, y, "r"); set(22, y, "r"); } // caminhos
 for (let x = 11; x <= 22; x++) set(x, 30, "r");
 for (let x = 23; x <= 26; x++) set(x, 28, "r"); // caminho até a arena de tiro
 for (let x = 7; x <= 10; x++) set(x, 28, "r"); // caminho até a quadra da pelada
+for (let y = 31; y <= 37; y++) set(17, y, "r"); // descida para a rua nova
+for (let x = 3; x < MW - 3; x++) set(x, 37, "r"); // rua nova (Rocket e Batalha)
 for (const g of GAMES) {
   for (let y = g.y; y < g.y + g.h; y++) for (let x = g.x; x < g.x + g.w; x++) solid[y][x] = true;
   for (const [mx, my] of g.mats) set(mx, my, "m");
@@ -402,6 +410,21 @@ function drawBuilding(c, g) {
     c.beginPath(); c.arc(fx + fw / 2 + 0.5, fy + fh / 2, 4, 0, 7); c.stroke();
     px(c, "#f4f4f0", fx - 2, fy + fh / 2 - 4, 2, 8); px(c, "#f4f4f0", fx + fw, fy + fh / 2 - 4, 2, 8);
     px(c, "#ffffff", fx + fw / 2 + 6, fy + fh / 2 + 2, 2, 2);
+  }
+  if (g.rocket) { // telhado metade azul, metade laranja, com a bola gigante no meio
+    px(c, "#2f6fde", rx, Y, rw / 2, roofH - 3); px(c, "#e0742a", rx + rw / 2, Y, rw / 2, roofH - 3);
+    const cx = rx + rw * 0.8, cy = Y + roofH / 2 - 1; // ao lado da placa
+    c.fillStyle = "#f4f4f4"; c.beginPath(); c.arc(cx, cy, 9, 0, 7); c.fill();
+    c.fillStyle = "#151515"; for (const [dx, dy] of [[0, 0], [-5, -4], [5, -4], [-4, 5], [4, 5]]) { c.beginPath(); c.arc(cx + dx, cy + dy, 2, 0, 7); c.fill(); }
+  }
+  if (g.batalha) { // telhado roxo com balões e uma caixa de item "?"
+    const bx = rx + rw * 0.8, by = Y + roofH / 2 - 2;
+    px(c, "#ffd84a", bx - 7, by - 6, 14, 14); px(c, "#c45fff", bx - 5, by - 4, 10, 10);
+    c.fillStyle = "#ffffff"; c.font = "bold 11px monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("?", bx, by + 1);
+    [["#e53935", -14, -3], ["#1e88e5", -20, 2], ["#43a047", -9, 4]].forEach(([col, dx, dy]) => {
+      px(c, "#f4f4f4", bx + dx, by + dy + 5, 1, 6);
+      c.fillStyle = col; c.beginPath(); c.ellipse(bx + dx + 0.5, by + dy, 3.5, 4.5, 0, 0, 7); c.fill();
+    });
   }
   if (g.tiro) { // telhado com um alvo pintado e sacos de areia na frente
     const cx = rx + rw / 2, cy = Y + roofH / 2;

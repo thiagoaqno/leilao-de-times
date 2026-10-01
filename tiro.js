@@ -1,5 +1,6 @@
 // Tiro da Galera — FPS de arena x1 ou x2 com AK-47 e AWP, em rodadas como no CS. Canal "/tiro" do Socket.io.
-// Cada navegador roda o movimento do próprio boneco e manda a posição (~30 vezes por segundo); o servidor repassa.
+// Cada navegador roda o movimento do próprio boneco e manda a posição (~30 vezes por segundo); o servidor junta todo
+// mundo num pacote só e manda 20 vezes por segundo (poucos pacotes pequenos: gasta bem menos internet).
 // Os tiros são conferidos AQUI: o servidor guarda o último segundo de posições de cada um e "volta no tempo"
 // (compensação de lag) para ver onde o alvo estava na tela de quem atirou, testando paredes, cabeça, corpo e pernas.
 // Quem decide dano, morte, rodada e placar é o servidor.
@@ -8,6 +9,13 @@ const A = require("./public/tiro/arena.js");
 
 const FREEZE_MS = 4000, ROUND_MS = 100000, END_MS = 4500, INTERP_MS = 100, MAX_REWIND_MS = 300, HIST_MS = 1000;
 const NAMES = { A: "Azul", B: "Laranja" };
+const WIDX = ["ak", "awp", "deagle", "faca"]; // número da arma no pacote
+// munição de cada arma do jogador (principal e Deagle; a faca não gasta) e volta para a principal
+function refill(p) {
+  p.ammo = {};
+  for (const w of [p.w, "deagle"]) p.ammo[w] = { mag: A.WEAPONS[w].mag, res: A.WEAPONS[w].reserve };
+  p.cur = p.w; p.reloadUntil = 0;
+}
 const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
@@ -38,7 +46,7 @@ module.exports = function attachTiro(io) {
       winner: room.winner || null,
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, name: p.name, team: p.team, hp: p.hp, alive: p.alive, w: p.w, kills: p.kills, deaths: p.deaths, hs: p.hs, dmg: p.dmgDone,
+        return { id, n: p.n, name: p.name, team: p.team, hp: p.hp, alive: p.alive, w: p.w, cur: p.cur, kills: p.kills, deaths: p.deaths, hs: p.hs, dmg: p.dmgDone,
           ping: p.rtt == null ? null : Math.round(p.rtt), online: p.sockets.size > 0, spawn: p.spawn };
       }),
       kills: room.kills.slice(-6), feed: room.feed.slice(-12), now: Date.now(),
@@ -52,6 +60,8 @@ module.exports = function attachTiro(io) {
     for (const id of room.order) Object.assign(room.players[id], { kills: 0, deaths: 0, hs: 0, dmgDone: 0 });
     log(room, `🔫 Partida começou: primeiro a ${room.config.rounds} rodadas vence.`);
     startRound(room, 1);
+    clearInterval(room.net);
+    room.net = setInterval(() => sendSnap(room), 50);
   }
   function startRound(room, n) {
     clearTimeout(room.timer);
@@ -59,9 +69,8 @@ module.exports = function attachTiro(io) {
     room.round = { n, phase: "freeze", freezeUntil: now + FREEZE_MS, endsAt: now + FREEZE_MS + ROUND_MS, nextAt: null, winner: null, reason: null };
     for (const t of ["A", "B"]) teamOf(room, t).forEach((p, i) => {
       const s = A.SPAWNS[t][i % A.SPAWNS[t].length];
-      const W = A.WEAPONS[p.w];
-      Object.assign(p, { hp: 100, alive: p.sockets.size > 0, spawn: s, pos: { x: s[0], y: s[1], z: s[2], yaw: s[3], pitch: 0 }, hist: [],
-        ammo: W.mag, reserve: W.reserve, reloadUntil: 0, lastShot: 0 });
+      Object.assign(p, { hp: 100, alive: p.sockets.size > 0, spawn: s, pos: { x: s[0], y: s[1], z: s[2], yaw: s[3], pitch: 0 }, hist: [], lastShot: 0 });
+      refill(p);
     });
     room.timer = setTimeout(() => { room.round.phase = "live"; checkRound(room); if (room.round.phase !== "live") return; broadcast(room); room.timer = setTimeout(() => endRound(room, null, "tempo"), ROUND_MS); }, FREEZE_MS);
   }
@@ -89,6 +98,15 @@ module.exports = function attachTiro(io) {
     if (room.phase !== "play" || !r || r.phase === "end") return;
     const a = teamOf(room, "A").some((p) => p.alive), b = teamOf(room, "B").some((p) => p.alive);
     if (!a || !b) endRound(room, a ? "A" : b ? "B" : null, "eliminação");
+  }
+
+  // pacote com todo mundo vivo: [n, x, y, z, yaw, pitch, arma, mira, chão + 2*andando devagar] (números com 2 casas)
+  function sendSnap(room) {
+    if (room.phase !== "play") { clearInterval(room.net); room.net = null; return; }
+    const q = (v) => Math.round(v * 100) / 100;
+    const p = room.order.map((id) => room.players[id]).filter((x) => x.alive && x.team && x.sockets.size && x.net)
+      .map((x) => [x.n, q(x.pos.x), q(x.pos.y), q(x.pos.z), q(x.pos.yaw), q(x.pos.pitch), Math.max(0, WIDX.indexOf(x.cur)), x.net.sc, x.net.g | (x.net.wk << 1)]);
+    if (p.length) nsp.to(room.code).volatile.emit("snap", { t: Date.now(), p });
   }
 
   // onde o alvo estava `t` ms atrás (interpolando o histórico)
@@ -122,8 +140,9 @@ module.exports = function attachTiro(io) {
     function addPlayer(room, name) {
       const id = rid(6), a = teamOf(room, "A").length, b = teamOf(room, "B").length, size = room.config.size;
       const team = a <= b && a < size ? "A" : b < size ? "B" : null; // sobrou? fica no banco esperando vaga
-      room.players[id] = { id, name, token: rid(), team, w: "ak", hp: 100, alive: false, kills: 0, deaths: 0, hs: 0, dmgDone: 0,
-        pos: { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 }, hist: [], ammo: 30, reserve: 90, reloadUntil: 0, lastShot: 0, rtt: null, sockets: new Set() };
+      room.players[id] = { id, n: room.seq++, name, token: rid(), team, w: "ak", hp: 100, alive: false, kills: 0, deaths: 0, hs: 0, dmgDone: 0,
+        pos: { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 }, hist: [], cur: "ak", ammo: {}, reloadUntil: 0, lastShot: 0, rtt: null, sockets: new Set() };
+      refill(room.players[id]);
       room.order.push(id);
       return room.players[id];
     }
@@ -132,7 +151,7 @@ module.exports = function attachTiro(io) {
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], score: { A: 0, B: 0 }, round: null, kills: [], feed: [], t: Date.now() };
+      const room = { code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], seq: 0, score: { A: 0, B: 0 }, round: null, kills: [], feed: [], t: Date.now() };
       rooms.set(room.code, room);
       const p = addPlayer(room, name);
       room.host = p.id;
@@ -194,14 +213,13 @@ module.exports = function attachTiro(io) {
         }
         if (type === "lobby") {
           if (!isHost) return "Só o organizador.";
-          clearTimeout(room.timer); room.phase = "lobby"; room.round = null; return;
+          clearTimeout(room.timer); clearInterval(room.net); room.net = null; room.phase = "lobby"; room.round = null; return;
         }
         if (!me) return "Você está só assistindo.";
-        if (type === "weapon") { // troca de arma: só no começo da rodada (no "tempo de compra")
-          if (!A.WEAPONS[data.w]) return "Arma inválida.";
+        if (type === "weapon") { // arma principal (AK ou AWP): só no começo da rodada (no "tempo de compra")
+          if (!["ak", "awp"].includes(data.w)) return "Arma inválida.";
           if (playing && room.round && room.round.phase !== "freeze") return "Só dá para trocar de arma no começo da rodada.";
-          me.w = data.w;
-          const W = A.WEAPONS[me.w]; me.ammo = W.mag; me.reserve = W.reserve; me.reloadUntil = 0;
+          me.w = data.w; refill(me);
           return;
         }
         return "Ação desconhecida.";
@@ -225,15 +243,21 @@ module.exports = function attachTiro(io) {
       Object.assign(me.pos, pos, { yaw, pitch: clamp(pitch, -1.6, 1.6) });
       me.hist.push({ t: now, ...pos });
       while (me.hist.length && me.hist[0].t < now - HIST_MS) me.hist.shift();
-      socket.to(room.code).volatile.emit("st", { id: me.id, t: now, x: me.pos.x, y: me.pos.y, z: me.pos.z, yaw, pitch: me.pos.pitch,
-        w: me.w, sc: int(d.sc, 0), g: d.g ? 1 : 0, wk: d.wk ? 1 : 0 });
+      me.net = { sc: clamp(int(d.sc, 0), 0, 2), g: d.g ? 1 : 0, wk: d.wk ? 1 : 0 }; // vai no próximo pacote
+    });
+
+    // troca de arma na mão (1 principal, 2 Deagle, 3 faca): a qualquer hora
+    socket.on("cur", (d = {}) => {
+      const { room, me } = ctx();
+      if (!room || !me || ![me.w, "deagle", "faca"].includes(d.w)) return;
+      me.cur = d.w; me.reloadUntil = 0;
     });
 
     socket.on("reload", () => {
       const { room, me } = ctx();
       if (!room || !me || !me.alive) return;
-      const W = A.WEAPONS[me.w], now = Date.now();
-      if (me.reloadUntil > now || me.ammo >= W.mag || me.reserve <= 0) return;
+      const W = A.WEAPONS[me.cur], a = me.ammo[me.cur], now = Date.now();
+      if (W.melee || !a || me.reloadUntil > now || a.mag >= W.mag || a.res <= 0) return;
       me.reloadUntil = now + W.reload * 1000 - 150; // um pouco de folga para a internet
       socket.to(room.code).emit("reload", { id: me.id });
     });
@@ -242,11 +266,11 @@ module.exports = function attachTiro(io) {
       const { room, me } = ctx();
       const r = room && room.round;
       if (!room || !me || !me.alive || !me.team || room.phase !== "play" || !r || r.phase !== "live") return;
-      const W = A.WEAPONS[me.w], now = Date.now();
+      const w = me.cur, W = A.WEAPONS[w], a = me.ammo[w], now = Date.now(), heavy = !!(W.melee && d.heavy);
       // terminou de recarregar?
-      if (me.reloadUntil && me.reloadUntil <= now) { const n = Math.min(W.mag - me.ammo, me.reserve); me.ammo += n; me.reserve -= n; me.reloadUntil = 0; }
-      if (me.reloadUntil > now || me.ammo <= 0) return;
-      if (now - me.lastShot < W.interval * 1000 * 0.75) return; // cadência (com folga para a internet)
+      if (a && me.reloadUntil && me.reloadUntil <= now) { const n = Math.min(W.mag - a.mag, a.res); a.mag += n; a.res -= n; me.reloadUntil = 0; }
+      if (!W.melee && (me.reloadUntil > now || !a || a.mag <= 0)) return;
+      if (now - me.lastShot < (heavy ? W.heavyInterval : W.interval) * 1000 * 0.75) return; // cadência (com folga para a internet)
       const o = Array.isArray(d.o) ? d.o.map(Number) : null, dir = Array.isArray(d.d) ? d.d.map(Number) : null;
       if (!o || !dir || o.length !== 3 || dir.length !== 3 || ![...o, ...dir].every(fin)) return;
       const len = Math.hypot(...dir); if (len < 0.5) return;
@@ -254,22 +278,27 @@ module.exports = function attachTiro(io) {
       // a origem tem que estar perto do olho do atirador (senão usa a posição que o servidor conhece)
       const eye = [me.pos.x, me.pos.y + A.EYE, me.pos.z];
       const org = Math.hypot(o[0] - eye[0], o[1] - eye[1], o[2] - eye[2]) < 1.5 ? o : eye;
-      me.lastShot = now; me.ammo--;
+      me.lastShot = now; if (a) a.mag--;
       // volta no tempo: o atirador via os outros com atraso de (meio ping + interpolação)
       const back = clamp((me.rtt || 0) / 2 + INTERP_MS, 0, MAX_REWIND_MS);
       const targets = room.order.map((id) => room.players[id]).filter((p) => p.alive && p.team && p.team !== me.team)
         .map((p) => ({ id: p.id, ...posAt(p, now - back) }));
-      const hit = A.hitScan(org, dn, targets);
-      socket.to(room.code).emit("shot", { id: me.id, w: me.w, o: org, e: hit.point, n: hit.normal || null, hit: !!hit.id });
+      const hit = A.hitScan(org, dn, targets, W.melee ? W.reach + 0.3 : 200);
+      socket.to(room.code).emit("shot", { id: me.id, w, o: org, e: hit.point, n: hit.normal || null, hit: !!hit.id, heavy });
       if (!hit.id) return;
       const v = room.players[hit.id];
-      const dmg = Math.min(v.hp, A.damage(me.w, hit.part));
+      let full = A.damage(w, hit.part, heavy);
+      if (W.melee) { // facada pelas costas: a vítima estava de costas para quem atacou
+        const vx = -Math.sin(v.pos.yaw), vz = -Math.cos(v.pos.yaw), hl = Math.hypot(dn[0], dn[2]) || 1;
+        if ((vx * dn[0] + vz * dn[2]) / hl > 0.4) full = heavy ? 180 : 90;
+      }
+      const dmg = Math.min(v.hp, full);
       v.hp -= dmg; me.dmgDone += dmg;
       const head = hit.part === "head";
       nsp.to(room.code).emit("hit", { by: me.id, to: v.id, dmg, part: hit.part, p: hit.point, hp: v.hp });
       if (v.hp <= 0) {
         v.alive = false; v.deaths++; me.kills++; if (head) me.hs++;
-        room.kills.push({ t: now, by: me.id, to: v.id, w: me.w, head });
+        room.kills.push({ t: now, by: me.id, to: v.id, w, head });
         if (room.kills.length > 20) room.kills.shift();
         checkRound(room);
       }

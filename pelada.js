@@ -1,16 +1,22 @@
-// Pelada da Galera — futsal 3D do 1x1 ao 3x3, numa quadra com alambrado (a bola nunca sai). Canal "/pelada".
-// Cada navegador mexe o próprio jogador e manda a posição ~30 vezes por segundo (como no Tiro da Galera).
+// Pelada da Galera — futebol 3D do 1x1 ao 5x5, a pé (futsal, com goleiro opcional) ou de carro (estilo Rocket League).
+// Canal "/pelada" do Socket.io.
+// Cada navegador mexe o próprio jogador/carro e manda a posição ~30 vezes por segundo.
 // A BOLA é do servidor: ele roda a física (public/pelada/campo.js) 60 vezes por segundo com as posições de todo mundo,
-// confere os chutes, conta os gols e manda a bola para todos ~30 vezes por segundo.
+// confere chutes, defesas do goleiro e carrinhos, conta os gols e manda UM pacote por jogador, 20 vezes por segundo,
+// com a bola e todo mundo dentro (pacotes pequenos e poucos: gasta bem menos internet).
 const crypto = require("crypto");
 const C = require("./public/pelada/campo.js");
 
-const TICK = 1 / 60, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM = 3;
+const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM = 5;
+const HOLD_MS = 6000, DOWN_MS = 1400;
 const SIDES = { A: "Mandante", B: "Visitante" };
+// bits do "f" (o que o jogador está fazendo), iguais aos do navegador
+const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64 };
 const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const q2 = (v) => Math.round(v * 100) / 100;
 
 module.exports = function attachPelada(io) {
   const nsp = io.of("/pelada");
@@ -23,10 +29,11 @@ module.exports = function attachPelada(io) {
     return c;
   }
   const cleanConfig = (c = {}) => ({
+    mode: c.mode === "carros" ? "carros" : "pes",
     size: clamp(int(c.size, 2), 1, MAX_TEAM),
     minutes: [3, 5, 8].includes(int(c.minutes, 5)) ? int(c.minutes, 5) : 5,
   });
-  const cleanKit = (k, d) => (C.KITS[k] ? k : d);
+  const F = (room) => C.MODES[room.config.mode];
   const teamOf = (room, t) => room.order.map((id) => room.players[id]).filter((p) => p.team === t);
   function log(room, text) { room.feed.push({ t: Date.now(), text }); if (room.feed.length > 30) room.feed.splice(0, room.feed.length - 30); }
 
@@ -37,7 +44,8 @@ module.exports = function attachPelada(io) {
       match: m ? { phase: m.phase, until: m.until, left: Math.max(0, Math.round(m.left)), score: m.score, kickoff: m.kickoff, goals: m.goals.slice(-20) } : null,
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, name: p.name, team: p.team, num: p.num, goals: p.goals, assists: p.assists, shots: p.shots, ping: p.rtt == null ? null : Math.round(p.rtt), online: p.sockets.size > 0, spawn: p.spawn };
+        return { id, n: p.n, name: p.name, team: p.team, num: p.num, gk: !!p.gk, car: p.car, goals: p.goals, assists: p.assists, shots: p.shots, saves: p.saves,
+          ping: p.rtt == null ? null : Math.round(p.rtt), online: p.sockets.size > 0, spawn: p.spawn };
       }),
       feed: room.feed.slice(-12), now: Date.now(),
     };
@@ -48,10 +56,11 @@ module.exports = function attachPelada(io) {
   function startMatch(room) {
     room.phase = "play";
     room.match = { phase: "ready", until: 0, left: room.config.minutes * 60000, score: { A: 0, B: 0 }, kickoff: 0, goals: [], last: [] };
-    for (const id of room.order) Object.assign(room.players[id], { goals: 0, assists: 0, shots: 0 });
-    // números das camisas: na ordem em que entraram no time
-    for (const t of ["A", "B"]) teamOf(room, t).forEach((p, i) => { p.num = [10, 7, 9][i] || 11 + i; });
-    log(room, `⚽ Bola rolando: ${room.config.minutes} minutos.`);
+    for (const id of room.order) Object.assign(room.players[id], { goals: 0, assists: 0, shots: 0, saves: 0 });
+    if (room.config.mode === "carros") for (const id of room.order) room.players[id].gk = false;
+    // números das camisas: goleiro é o 1; os outros na ordem em que entraram
+    for (const t of ["A", "B"]) { let k = 0; teamOf(room, t).forEach((p) => { p.num = p.gk ? 1 : [10, 7, 9, 8, 11][k++] || 12 + k; }); }
+    log(room, `⚽ Bola rolando${room.config.mode === "carros" ? " (de carro!)" : ""}: ${room.config.minutes} minutos.`);
     kickoff(room, Math.random() < 0.5 ? "A" : "B");
     clearInterval(room.loop);
     room.loop = setInterval(() => tick(room), TICK * 1000);
@@ -60,10 +69,10 @@ module.exports = function attachPelada(io) {
   function kickoff(room, kicking) {
     const m = room.match;
     m.phase = "ready"; m.until = Date.now() + READY_MS; m.kickoff++; m.last = [];
-    room.ball = C.newBall();
+    room.ball = C.newBall(F(room));
     for (const t of ["A", "B"]) {
-      const list = teamOf(room, t), sp = C.spawns(t, list.length, t === kicking);
-      list.forEach((p, i) => { p.spawn = sp[i]; p.pos = { x: sp[i][0], y: 0, z: sp[i][2], vx: 0, vy: 0, vz: 0, yaw: sp[i][3], sprint: 0 }; });
+      const list = teamOf(room, t), sp = C.spawns(room.config.mode, t, list, t === kicking);
+      list.forEach((p, i) => { p.spawn = sp[i]; p.pos = { x: sp[i][0], y: 0, z: sp[i][2], vx: 0, vy: 0, vz: 0, yaw: sp[i][3], pitch: 0, f: 0 }; p.downUntil = 0; });
     }
     broadcast(room);
   }
@@ -96,28 +105,79 @@ module.exports = function attachPelada(io) {
     if (!id || m.last[0] === id) return;
     m.last.unshift(id); m.last.length = Math.min(m.last.length, 3);
   }
+  const bodyOf = (room, p, now) => {
+    const f = p.pos.f | 0, down = p.downUntil > now;
+    return { id: p.id, kind: room.config.mode === "carros" ? "car" : "pe", x: p.pos.x, y: p.pos.y, z: p.pos.z, vx: p.pos.vx, vy: p.pos.vy, vz: p.pos.vz, yaw: p.pos.yaw,
+      sprint: f & FL.sprint, slide: (f & FL.slide) || down, dive: f & FL.dive, flip: f & FL.flip };
+  };
+  // goleiro: pega a bola que chega perto dentro da área (se não vier forte demais), segura até 6 s e solta com chute ou passe
+  function keepers(room, now) {
+    const b = room.ball, mode = room.config.mode;
+    if (mode !== "pes") return;
+    if (b.holder) {
+      const k = room.players[b.holder];
+      const keep = k && k.sockets.size && k.downUntil <= now && C.inArea(mode, k.team, k.pos.x, k.pos.z) && now - k.holdSince < HOLD_MS;
+      if (!keep) { b.holder = null; if (k) { k.noCatch = now + 1000; b.vx = -Math.sin(k.pos.yaw) * 2; b.vz = -Math.cos(k.pos.yaw) * 2; } return; }
+      b.x = k.pos.x - Math.sin(k.pos.yaw) * 0.45; b.z = k.pos.z - Math.cos(k.pos.yaw) * 0.45; b.y = k.pos.y + 1.15; b.vx = b.vy = b.vz = 0;
+      return;
+    }
+    for (const id of room.order) {
+      const p = room.players[id];
+      if (!p.gk || !p.team || !p.sockets.size || p.downUntil > now || (p.noCatch || 0) > now) continue;
+      if (!C.inArea(mode, p.team, p.pos.x, p.pos.z) || !C.inArea(mode, p.team, b.x, b.z)) continue;
+      const dive = (p.pos.f | 0) & FL.dive, reach = dive ? 1.7 : 1.0, top = p.pos.y + (dive ? 2.0 : 2.4);
+      const d = Math.hypot(b.x - p.pos.x, b.z - p.pos.z);
+      if (d > reach || b.y > top) continue;
+      const rel = Math.hypot(b.vx - p.pos.vx, b.vy, b.vz - p.pos.vz);
+      if (rel > 27) continue; // bomba: espalma (a física do corpo rebate)
+      b.holder = p.id; p.holdSince = now; p.saves++;
+      touched(room, p.id);
+      nsp.to(room.code).emit("pegou", { id: p.id });
+      return;
+    }
+  }
+  // carrinho: quem estiver na frente de quem desliza cai (fica 1,4 s no chão)
+  function tackles(room, now) {
+    if (room.config.mode !== "pes") return;
+    for (const sid of room.order) {
+      const s = room.players[sid];
+      if (!s.team || !((s.pos.f | 0) & FL.slide) || s.downUntil > now) continue;
+      const fx = -Math.sin(s.pos.yaw), fz = -Math.cos(s.pos.yaw), hx = s.pos.x + fx * 0.6, hz = s.pos.z + fz * 0.6;
+      for (const oid of room.order) {
+        const o = room.players[oid];
+        if (o === s || !o.team || o.team === s.team || o.downUntil > now || room.ball.holder === o.id) continue;
+        if (Math.hypot(o.pos.x - hx, o.pos.z - hz) < 0.85 && o.pos.y < 0.6) {
+          o.downUntil = now + DOWN_MS;
+          nsp.to(room.code).emit("caiu", { id: o.id, by: s.id });
+        }
+      }
+    }
+  }
   function tick(room) {
-    const m = room.match, now = Date.now();
+    const m = room.match, now = Date.now(), Fm = F(room);
     if (!m || room.phase !== "play") return;
     if (m.phase === "ready") { if (now >= m.until) { m.phase = "live"; broadcast(room); } }
     else if (m.phase === "goal") { if (now >= m.until) { if (m.left <= 0) return endMatch(room); kickoff(room, m.goals[m.goals.length - 1].side === "A" ? "B" : "A"); } }
-    if (m.phase === "goal") C.simulate(room.ball, [], TICK); // a bola acaba de rolar na rede
+    if (m.phase === "goal") C.simulate(Fm, room.ball, [], TICK); // a bola acaba de rolar na rede
     if (m.phase === "live") {
       m.left -= TICK * 1000;
-      const players = room.order.map((id) => room.players[id]).filter((p) => p.team && p.sockets.size)
-        .map((p) => ({ id: p.id, x: p.pos.x, y: p.pos.y, z: p.pos.z, vx: p.pos.vx, vy: p.pos.vy, vz: p.pos.vz, sprint: p.pos.sprint }));
-      const r = C.simulate(room.ball, players, TICK);
+      keepers(room, now);
+      tackles(room, now);
+      const bodies = room.order.map((id) => room.players[id]).filter((p) => p.team && p.sockets.size).map((p) => bodyOf(room, p, now));
+      const r = C.simulate(Fm, room.ball, bodies, TICK);
       if (r.touch) touched(room, r.touch);
       if (r.hit > 2) room.bump = Math.max(room.bump || 0, r.hit);
-      const side = C.goalOf(room.ball);
+      const side = C.goalOf(Fm, room.ball);
       if (side) goal(room, side);
       else if (m.left <= 0) { m.left = 0; return endMatch(room); }
     }
-    // bola para todo mundo, 30 vezes por segundo
+    // um pacote para todo mundo, 20 vezes por segundo: a bola e cada jogador (números com 2 casas, em listas)
     room.frame = (room.frame || 0) + 1;
-    if (room.frame % 2 === 0) {
-      const b = room.ball, q = (v) => Math.round(v * 1000) / 1000;
-      nsp.to(room.code).volatile.emit("ball", { t: now, x: q(b.x), y: q(b.y), z: q(b.z), vx: q(b.vx), vy: q(b.vy), vz: q(b.vz), hit: room.bump ? Math.round(room.bump * 10) / 10 : 0 });
+    if (room.frame % SNAP_EVERY === 0) {
+      const b = room.ball, holder = b.holder && room.players[b.holder] ? room.players[b.holder].n : -1;
+      const p = room.order.map((id) => room.players[id]).filter((x) => x.team && x.sockets.size)
+        .map((x) => [x.n, q2(x.pos.x), q2(x.pos.y), q2(x.pos.z), q2(x.pos.vx), q2(x.pos.vy), q2(x.pos.vz), q2(x.pos.yaw), q2(x.pos.pitch || 0), (x.pos.f | 0) | (x.downUntil > now ? FL.down : 0)]);
+      nsp.to(room.code).volatile.emit("snap", { t: now, b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), room.bump ? Math.round(room.bump) : 0, holder, q2(b.sp || 0)], p });
       room.bump = 0;
     }
   }
@@ -141,8 +201,10 @@ module.exports = function attachPelada(io) {
     function addPlayer(room, name) {
       const id = rid(6), a = teamOf(room, "A").length, b = teamOf(room, "B").length, size = room.config.size;
       const team = room.phase !== "lobby" ? null : a <= b && a < size ? "A" : b < size ? "B" : null; // sobrou? banco
-      room.players[id] = { id, name, token: rid(), team, num: 10, goals: 0, assists: 0, shots: 0, lastKick: 0, rtt: null,
-        pos: { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, sprint: 0 }, spawn: null, sockets: new Set() };
+      const cars = Object.keys(C.CARS);
+      room.players[id] = { id, token: rid(12), n: room.seq++, name, team, num: 10, gk: false, car: cars[room.order.length % cars.length], goals: 0, assists: 0, shots: 0, saves: 0,
+        lastKick: 0, rtt: null, downUntil: 0, holdSince: 0, noCatch: 0,
+        pos: { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, f: 0 }, spawn: null, sockets: new Set() };
       room.order.push(id);
       return room.players[id];
     }
@@ -152,7 +214,7 @@ module.exports = function attachPelada(io) {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
       const room = { code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), kits: { A: "corinthians", B: "palmeiras" },
-        players: {}, order: [], match: null, ball: C.newBall(), feed: [], t: Date.now() };
+        players: {}, order: [], seq: 0, match: null, ball: C.newBall(), feed: [], t: Date.now() };
       rooms.set(room.code, room);
       const p = addPlayer(room, name);
       room.host = p.id;
@@ -170,7 +232,7 @@ module.exports = function attachPelada(io) {
       if (data.watch) { bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room); }
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      if (room.order.length >= 12) return fail(cb, "A sala está cheia. Você pode entrar para assistir.");
+      if (room.order.length >= 14) return fail(cb, "A sala está cheia. Você pode entrar para assistir.");
       if (Object.values(room.players).some((p) => p.name.toLowerCase() === name.toLowerCase())) return fail(cb, "Já tem alguém com esse nome na sala.");
       const p = addPlayer(room, name);
       bind(room, p.id);
@@ -190,18 +252,28 @@ module.exports = function attachPelada(io) {
           if (!me || playing) return "Só dá para trocar de time fora do jogo.";
           const t = data.team === "A" || data.team === "B" ? data.team : null;
           if (t && t !== me.team && teamOf(room, t).length >= room.config.size) return `O ${SIDES[t]} está cheio.`;
-          me.team = t; return;
+          me.team = t; me.gk = false; return;
+        }
+        if (type === "gk") { // ser (ou deixar de ser) o goleiro do time
+          if (!me || playing || !me.team) return "Entre num time primeiro.";
+          if (room.config.mode !== "pes") return "No modo carros não tem goleiro.";
+          if (data.on && teamOf(room, me.team).some((p) => p !== me && p.gk)) return "Seu time já tem goleiro.";
+          me.gk = !!data.on; return;
+        }
+        if (type === "car") {
+          if (!me || playing || !C.CARS[data.car]) return "Carro inválido.";
+          me.car = data.car; return;
         }
         if (type === "kit") { // qualquer um do time (ou o organizador) escolhe a camisa
           const t = data.team === "A" || data.team === "B" ? data.team : null;
           if (!t || playing) return "Só dá para trocar a camisa fora do jogo.";
           if (!isHost && (!me || me.team !== t)) return "Só quem é do time (ou o organizador) troca a camisa.";
-          room.kits[t] = cleanKit(data.kit, room.kits[t]); return;
+          if (C.KITS[data.kit]) room.kits[t] = data.kit; return;
         }
         if (type === "config") {
           if (!isHost || playing) return "Só o organizador muda, fora do jogo.";
           room.config = cleanConfig(data.config);
-          for (const t of ["A", "B"]) teamOf(room, t).slice(room.config.size).forEach((p) => { p.team = null; });
+          for (const t of ["A", "B"]) teamOf(room, t).slice(room.config.size).forEach((p) => { p.team = null; p.gk = false; });
           return;
         }
         if (type === "kick") {
@@ -227,34 +299,35 @@ module.exports = function attachPelada(io) {
       broadcast(room);
     });
 
-    // minha posição (~30 por segundo): o servidor usa na física da bola e repassa para os outros
+    // minha posição (~30 por segundo): o servidor usa na física da bola e manda para os outros no pacote
     socket.on("st", (d = {}) => {
       const { room, me } = ctx();
       if (!room || !me || !me.team || room.phase !== "play" || !room.match) return;
       const { x, y, z, vx, vy, vz, yaw } = d;
       if (![x, y, z, vx, vy, vz, yaw].every(fin)) return;
-      const m = room.match;
+      const Fm = F(room), m = room.match, lim = room.config.mode === "carros" ? 40 : 14;
       if (m.phase === "ready" && me.spawn) Object.assign(me.pos, { x: me.spawn[0], y: 0, z: me.spawn[2], vx: 0, vy: 0, vz: 0 }); // parado na saída
-      else Object.assign(me.pos, { x: clamp(x, -C.HALF_L, C.HALF_L), y: clamp(y, 0, 3), z: clamp(z, -C.HALF_W, C.HALF_W),
-        vx: clamp(vx, -12, 12), vy: clamp(vy, -12, 12), vz: clamp(vz, -12, 12) });
-      me.pos.yaw = yaw; me.pos.sprint = d.sp ? 1 : 0;
-      socket.to(room.code).volatile.emit("st", { id: me.id, t: Date.now(), x: me.pos.x, y: me.pos.y, z: me.pos.z, vx: me.pos.vx, vz: me.pos.vz, yaw, ch: d.ch ? 1 : 0 });
+      else Object.assign(me.pos, { x: clamp(x, -Fm.L - Fm.goalD, Fm.L + Fm.goalD), y: clamp(y, 0, Fm.ceil), z: clamp(z, -Fm.W, Fm.W),
+        vx: clamp(vx, -lim, lim), vy: clamp(vy, -lim, lim), vz: clamp(vz, -lim, lim) });
+      me.pos.yaw = yaw; me.pos.pitch = fin(d.p) ? clamp(d.p, -3.2, 3.2) : 0;
+      me.pos.f = int(d.f, 0) & (FL.sprint | FL.charge | FL.slide | FL.dive | FL.flip | FL.boost);
+      if (!me.gk) me.pos.f &= ~FL.dive;
     });
 
     // chute: o servidor confere a distância até a bola (com uma folga pela internet) e aplica
     socket.on("kick", (d = {}) => {
       const { room, me } = ctx();
-      const m = room && room.match;
-      if (!room || !me || !me.team || room.phase !== "play" || !m || m.phase !== "live") return;
-      const now = Date.now();
-      if (now - me.lastKick < C.KICK_CD * 800) return;
-      const kind = d.kind === "passe" ? "passe" : "chute";
-      if (![d.power, d.yaw, d.pitch].every(fin)) return;
+      const m = room && room.match, now = Date.now();
+      if (!room || !me || !me.team || room.phase !== "play" || !m || m.phase !== "live" || room.config.mode !== "pes") return;
+      if (now - me.lastKick < C.KICK_CD * 800 || me.downUntil > now) return;
+      const kind = ["passe", "cavadinha"].includes(d.kind) ? d.kind : "chute";
+      if (![d.power, d.yaw].every(fin)) return;
       const slack = clamp(0.25 + (me.rtt || 0) / 1000 * 6, 0.25, 0.8); // a bola anda enquanto o chute viaja
-      const how = C.kick(room.ball, me.pos, kind, d.power, d.yaw, clamp(d.pitch, -1, 1), slack);
+      const how = C.kick(room.ball, { ...me.pos, id: me.id }, kind, d.power, d.yaw, slack, fin(d.curve) ? d.curve : 0);
       if (!how) return;
       me.lastKick = now;
-      if (kind === "chute") me.shots++;
+      if (how === "mao") me.noCatch = now + 800;
+      if (kind === "chute" && how !== "mao") me.shots++;
       touched(room, me.id);
       nsp.to(room.code).emit("kicked", { id: me.id, kind, how, power: d.power });
     });

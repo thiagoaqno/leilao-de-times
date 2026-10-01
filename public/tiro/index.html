@@ -156,7 +156,7 @@ kbd{display:inline-block;background:#2a2f37;border:1px solid #444b57;border-bott
       <div>
         <h2>Arena de<br><em>tiro</em> da galera</h2>
         <p class="lead">Mata-mata em rodadas, no estilo CS: x1 ou x2 numa arena no deserto. Escolha AK-47 ou AWP no começo de cada rodada. Quem eliminar o outro time leva a rodada.</p>
-        <div class="feats"><span>🔫 AK-47</span><span>🔭 AWP com mira</span><span>👤 x1</span><span>👥 x2</span><span>🎯 Treino com alvos</span></div>
+        <div class="feats"><span>🔫 AK-47</span><span>🔭 AWP com mira</span><span>🦅 Deagle</span><span>🔪 faca</span><span>🏗️ plataformas</span><span>👤 x1</span><span>👥 x2</span><span>🎯 Treino com alvos</span></div>
       </div>
       <div class="panel"><div class="stripe"></div><div class="in">
         <div class="warn hidden" id="mobileWarn">Esse jogo precisa de computador com teclado e mouse.</div>
@@ -182,7 +182,7 @@ kbd{display:inline-block;background:#2a2f37;border:1px solid #444b57;border-bott
         </div>
         <div class="bench"><div class="row" style="justify-content:space-between"><b>Banco</b><button class="small ghost" id="joinBench">Ir pro banco</button></div><div id="tN" class="muted" style="margin-top:6px"></div></div>
         <div id="myW" style="margin-top:16px">
-          <label>Sua arma (dá pra trocar no começo de cada rodada)</label>
+          <label>Sua arma principal (dá pra trocar no começo de cada rodada; todo mundo também tem Deagle e faca)</label>
           <div class="wpick">
             <button class="wcard" data-w="ak"><b>AK-47</b><span>Automática, 30 balas. Um tiro na cabeça mata.</span></button>
             <button class="wcard" data-w="awp"><b>AWP</b><span>Sniper com mira. Um tiro no peito mata.</span></button>
@@ -205,7 +205,7 @@ kbd{display:inline-block;background:#2a2f37;border:1px solid #444b57;border-bott
           <li>Botão esquerdo: atirar</li>
           <li>Botão direito: mira da AWP</li>
           <li><kbd>R</kbd> recarregar</li>
-          <li><kbd>1</kbd> AK · <kbd>2</kbd> AWP</li>
+          <li><kbd>1</kbd> principal · <kbd>2</kbd> Deagle · <kbd>3</kbd> faca</li>
           <li><kbd>Tab</kbd> placar</li>
         </ul>
         <p class="muted" style="font-size:13.5px;margin:10px 0 0">Dica: atire parado. Andando, a bala espalha. Na AK, segure o mouse um pouco para baixo enquanto atira em rajada.</p>
@@ -228,8 +228,8 @@ kbd{display:inline-block;background:#2a2f37;border:1px solid #444b57;border-bott
   <div class="hud" id="hHp"></div>
   <div class="hud" id="hAmmo"></div>
   <div id="pick" class="hidden">
-    <button data-w="ak"><b>AK-47</b><kbd>1</kbd> automática</button>
-    <button data-w="awp"><b>AWP</b><kbd>2</kbd> sniper</button>
+    <button data-w="ak"><b>AK-47</b>automática · <kbd>1</kbd> troca</button>
+    <button data-w="awp"><b>AWP</b>sniper · <kbd>1</kbd> troca</button>
   </div>
   <div id="tab" class="hidden"></div>
   <div class="overlay hidden" id="pause"><div class="box">

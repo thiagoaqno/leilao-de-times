@@ -7,10 +7,10 @@
 // a pessoa tem RECONNECT_MS para voltar com o mesmo token e a batalha continua de onde parou.
 const crypto = require("crypto");
 const G = require("./galeramon.js");
-const MW = 34, MH = 33, LOOKS = 6, MAX = 80;
+const MW = 34, MH = 40, LOOKS = 6, MAX = 80;
 const INVITE_MS = 20000, CHOICE_MS = 45000, RECONNECT_MS = +process.env.VILA_RECONNECT_MS || 45000;
 const POKEMON_ON = process.env.POKEMON !== "0"; // modo Pokémon (sprites do PokeAPI). POKEMON=0 desliga.
-const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "ludo", "botao", "corrida", "tiro", "pelada"];
+const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "ludo", "botao", "corrida", "tiro", "pelada", "rocket", "batalha"];
 const DIRS = ["up", "down", "left", "right"];
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

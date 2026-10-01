@@ -19,7 +19,26 @@
     [-12, 0, -14, -10.8, 1.2, -12.8, "caixa"], [-7, 0, -17, -4.6, 1.2, -15.8, "caixa"], [-17, 0, -11, -16, 1.5, -9, "concreto"],
     // base: muretas para se esconder logo no começo
     [-24, 0, -4, -23, 1.3, -1, "concreto"], [-24, 0, 1, -23, 1.3, 4, "concreto"], [-27, 0, 8, -25.8, 1.2, 9.2, "caixa"],
+    // ---- elevações ----
+    // escada até o topo da torre do meio (3,2 m): quem sobe vê tudo, mas fica exposto
+    ...stairs(-2, -1, 0.4, 1.8, 7, "x"),
+    // ninho de sniper perto da base (2,4 m), com mureta e escada
+    [-27, 0, 12, -23, 2.4, 16, "muro"], [-23.2, 2.4, 13.6, -23, 3.3, 16, "concreto"], [-27, 2.4, 15.8, -23.2, 3.3, 16, "concreto"],
+    ...stairs(-23, 1, 12, 13.4, 5, "x"),
+    // passarela na rota de baixo (1,6 m), colada no muro de fora, com degraus nas duas pontas
+    [-14, 0, -19.5, -8, 1.6, -17.5, "concreto"],
+    ...stairs(-14, -1, -19.5, -17.5, 3, "x", 0.4), ...stairs(-8, 1, -19.5, -17.5, 3, "x", 0.4),
   ];
+  // degraus (blocos maciços de 0,4 m de altura cada): começam em `start` e descem no sentido `dir` (+1/-1) do eixo,
+  // ocupando de a0 a a1 no outro eixo. O degrau mais alto fica encostado em `start`.
+  function stairs(start, dir, a0, a1, n, axis, run = 0.6) {
+    const out = [];
+    for (let i = 1; i <= n; i++) {
+      const near = start + dir * run * (n - i), far = start + dir * run * (n - i + 1), lo = Math.min(near, far), hi = Math.max(near, far);
+      out.push(axis === "x" ? [lo, 0, a0, hi, 0.4 * i, a1, "concreto"] : [a0, 0, lo, a1, 0.4 * i, hi, "concreto"]);
+    }
+    return out;
+  }
   const mirror = (b) => [-b[3], b[1], -b[5], -b[0], b[4], -b[2], b[6]];
   const T = 1, WH = 7; // espessura e altura do muro de fora
   const BOXES = [
@@ -39,7 +58,11 @@
   const WEAPONS = {
     ak: { id: "ak", name: "AK-47", dmg: 36, head: 4, legs: 0.75, interval: 0.1, mag: 30, reserve: 90, reload: 2.5, speed: 5.46, auto: true },
     awp: { id: "awp", name: "AWP", dmg: 115, head: 4, legs: 0.75, interval: 1.46, mag: 5, reserve: 30, reload: 3.7, speed: 5.08, scopedSpeed: 2.54, auto: false },
+    deagle: { id: "deagle", name: "Desert Eagle", dmg: 53, head: 4, legs: 0.75, interval: 0.27, mag: 7, reserve: 35, reload: 2.2, speed: 5.84, auto: false },
+    // faca: corpo a corpo (alcance 1,9 m). Botão esquerdo rápido, direito forte; pelas costas o dano é bem maior. Corre mais.
+    faca: { id: "faca", name: "Faca", dmg: 40, heavy: 65, head: 1, legs: 1, interval: 0.5, heavyInterval: 1.0, mag: 0, reserve: 0, reload: 0, speed: 6.35, auto: true, melee: true, reach: 1.9 },
   };
+  const SLOTS = ["principal", "deagle", "faca"]; // teclas 1, 2 e 3
 
   // ---------- física (estilo Quake/Source: atrito, aceleração e pouco controle no ar) ----------
   const G = 20.3, JUMP = 7.65, FRICTION = 5.2, STOP = 2.03, ACCEL = 5.5, AIR_ACCEL = 12, AIR_CAP = 0.76;
@@ -47,6 +70,12 @@
     return x + R > b[0] && x - R < b[3] && y + H > b[1] && y < b[4] && z + R > b[2] && z - R < b[5];
   }
   function hitBox(x, y, z) { for (const b of BOXES) if (overlaps(x, y, z, b)) return b; return null; }
+  // degrau: no chão, encostou numa caixa de até 0,45 m acima dos pés e tem espaço em cima? sobe
+  function tryStep(p, b) {
+    const rise = b[4] - p.y;
+    if (!p.onGround || rise <= 0 || rise > 0.45 || hitBox(p.x, b[4] + 1e-3, p.z)) return false;
+    p.y = b[4] + 1e-4; return true;
+  }
   function accelerate(p, wx, wz, wishSpeed, accel, dt) {
     const cap = p.onGround ? wishSpeed : Math.min(wishSpeed, AIR_CAP);
     const cur = p.vx * wx + p.vz * wz, add = cap - cur;
@@ -66,10 +95,10 @@
     // um eixo de cada vez: bateu, encosta na parede e zera a velocidade naquele eixo
     p.x += p.vx * dt;
     let b = hitBox(p.x, p.y, p.z);
-    if (b) { p.x = p.vx > 0 ? b[0] - R - 1e-4 : b[3] + R + 1e-4; p.vx = 0; }
+    if (b && !tryStep(p, b)) { p.x = p.vx > 0 ? b[0] - R - 1e-4 : b[3] + R + 1e-4; p.vx = 0; }
     p.z += p.vz * dt;
     b = hitBox(p.x, p.y, p.z);
-    if (b) { p.z = p.vz > 0 ? b[2] - R - 1e-4 : b[5] + R + 1e-4; p.vz = 0; }
+    if (b && !tryStep(p, b)) { p.z = p.vz > 0 ? b[2] - R - 1e-4 : b[5] + R + 1e-4; p.vz = 0; }
     p.y += p.vy * dt;
     p.onGround = false;
     if (p.y <= 0) { p.y = 0; p.vy = 0; p.onGround = true; }
@@ -136,12 +165,12 @@
     const point = [o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t];
     return best ? { ...best, point } : { id: null, t, point, normal: wall.n };
   }
-  function damage(w, part) {
+  function damage(w, part, heavy = false) {
     const W = WEAPONS[w];
-    return Math.round(W.dmg * (part === "head" ? W.head : part === "legs" ? W.legs : 1));
+    return Math.round((heavy && W.heavy ? W.heavy : W.dmg) * (part === "head" ? W.head : part === "legs" ? W.legs : 1));
   }
 
-  const api = { HALF_X, HALF_Z, R, H, EYE, BOXES, SPAWNS, WEAPONS, move, dirOf, rayMap, hitScan, damage };
+  const api = { HALF_X, HALF_Z, R, H, EYE, BOXES, SPAWNS, WEAPONS, SLOTS, move, dirOf, rayMap, hitScan, damage };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Arena = api;
 })(typeof window !== "undefined" ? window : globalThis);

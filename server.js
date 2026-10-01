@@ -12,7 +12,8 @@ const ALL_FORMATIONS = new Set(["auto", ...Object.keys(FORMATIONS.futsal), ...Ob
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+// compressão das mensagens do WebSocket: os pacotes dos jogos em tempo real se repetem muito e encolhem bastante
+const io = new Server(server, { perMessageDeflate: { threshold: 128 } });
 require("./banco.js")(io); // Banco da Galera: jogo de tabuleiro, canal /banco
 require("./uno.js")(io); // Uno da Galera: jogo de cartas, canal /uno
 require("./sinuca.js")(io); // Sinuca da Galera: bola 8, canal /sinuca
@@ -23,7 +24,8 @@ require("./botao.js")(io); // Futebol de Botão da Galera: x1, duplas ou rei do 
 require("./corrida.js")(io); // Corrida da Galera: kart com fantasmas em Mônaco, Interlagos e Tóquio, canal /corrida
 require("./vila.js")(io); // Vila da Galera: o lobby em mapinha, canal /vila
 require("./tiro.js")(io); // Tiro da Galera: FPS de arena x1 ou x2 com AK-47 e AWP, canal /tiro
-require("./pelada.js")(io); // Pelada da Galera: futsal 3D do 1x1 ao 3x3, canal /pelada
+require("./pelada.js")(io); // Pelada da Galera: futsal 3D do 1x1 ao 5x5, canal /pelada (e o Rocket, de carro)
+require("./batalha.js")(io); // Batalha da Galera: batalha de balões de kart estilo Mario Kart, canal /batalha
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
@@ -36,6 +38,9 @@ app.get("/botao", (req, res) => res.redirect("/botao/"));
 app.get("/corrida", (req, res) => res.redirect("/corrida/"));
 app.get("/tiro", (req, res) => res.redirect("/tiro/"));
 app.get("/pelada", (req, res) => res.redirect("/pelada/"));
+app.get("/batalha", (req, res) => res.redirect("/batalha/"));
+// Rocket da Galera: a mesma página da Pelada, no modo carros (o Express trata "/rocket" e "/rocket/" como iguais)
+app.get("/rocket", (req, res) => { const [p, q] = req.originalUrl.split("?"); return p.endsWith("/") ? res.sendFile(path.join(__dirname, "public", "pelada", "index.html")) : res.redirect("/rocket/" + (q ? "?" + q : "")); });
 app.get("/vendor/marked.js", (req, res) => res.sendFile(require.resolve("marked/marked.min.js")));
 app.use("/vendor/three", express.static(path.dirname(require.resolve("three"))));
 app.get("/vendor/purify.js", (req, res) => res.sendFile(require.resolve("dompurify/dist/purify.min.js")));
