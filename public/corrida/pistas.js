@@ -75,17 +75,17 @@ const PISTAS = {
   },
 };
 
-// Os cinco carros. vmax: velocidade final no asfalto · acc: aceleração na arrancada (ela cai perto da velocidade
+// Os cinco carros esportivos (os ids continuam os antigos, para as salas e o servidor). vmax: velocidade final no asfalto · acc: aceleração na arrancada (ela cai perto da velocidade
 // final: a = acc·(1 − 0,8·(v/vmax)^1,6), então leva de 4 a 8 segundos para chegar no topo) · brake: freio · grip: quanto o pneu segura
 // de lado (acima disso o carro escorrega para fora da curva) · turn: quanto o volante gira · scrub: quanto perde de
 // velocidade escorregando · kin: quanto do grip sobra depois que começa a escorregar (pneu saturado) · offMax: velocidade máxima fora do asfalto · wall: quanto da velocidade sobra numa batida.
 // Em todos, o "limite de curva" (grip ÷ turn) fica abaixo da velocidade final: em curva fechada, tem que frear.
 const CARROS = {
-  equilibrado: { name: "Pé no Chão", desc: "Faz tudo direitinho. Bom para começar.", vmax: 295, acc: 82, brake: 470, grip: 470, kin: 0.7, turn: 2.4, scrub: 0.9, offMax: 95, wall: 0.55 },
-  foguete: { name: "Foguete", desc: "O mais rápido na reta, mas chega embalado demais nas curvas.", vmax: 360, acc: 74, brake: 430, grip: 420, kin: 0.65, turn: 2.2, scrub: 1.1, offMax: 85, wall: 0.45 },
-  formiga: { name: "Formiguinha", desc: "Arranca forte e vira em qualquer canto. Na reta, fica para trás.", vmax: 236, acc: 110, brake: 520, grip: 490, kin: 0.68, turn: 2.75, scrub: 0.8, offMax: 100, wall: 0.6 },
-  drifteiro: { name: "Drifteiro", desc: "Escorrega fácil, mas quase não perde velocidade de lado. Para quem gosta de derrapar.", vmax: 305, acc: 85, brake: 450, grip: 380, kin: 0.88, turn: 3.0, scrub: 0.35, offMax: 90, wall: 0.5 },
-  tanque: { name: "Tanque", desc: "Pesado: demora a embalar, mas bate no muro e passa pela grama sem sofrer tanto.", vmax: 315, acc: 58, brake: 400, grip: 500, kin: 0.7, turn: 2.0, scrub: 0.9, offMax: 140, wall: 0.8 },
+  equilibrado: { name: "Samurai GT", inspo: "inspirado no Skyline GT-R R34", desc: "Cupê japonês de tração integral: faz tudo direitinho. Bom para começar.", vmax: 295, acc: 82, brake: 470, grip: 470, kin: 0.7, turn: 2.4, scrub: 0.9, offMax: 95, wall: 0.55 },
+  foguete: { name: "Raio V12", inspo: "superesportivo italiano em cunha", desc: "O mais rápido na reta, mas chega embalado demais nas curvas.", vmax: 360, acc: 74, brake: 430, grip: 420, kin: 0.65, turn: 2.2, scrub: 1.1, offMax: 85, wall: 0.45 },
+  formiga: { name: "Pimentinha", inspo: "hatch esportivo tipo Golf GTI e Mini", desc: "Arranca forte e vira em qualquer canto. Na reta, fica para trás.", vmax: 236, acc: 110, brake: 520, grip: 490, kin: 0.68, turn: 2.75, scrub: 0.8, offMax: 100, wall: 0.6 },
+  drifteiro: { name: "Oito-Seis", inspo: "o AE86 dos filmes de drift", desc: "Escorrega fácil, mas quase não perde velocidade de lado. Para quem gosta de derrapar.", vmax: 305, acc: 85, brake: 450, grip: 380, kin: 0.88, turn: 3.0, scrub: 0.35, offMax: 90, wall: 0.5 },
+  tanque: { name: "Muscle 69", inspo: "muscle car americano tipo Mustang e Charger", desc: "Pesado: demora a embalar, mas bate no muro e passa pela grama sem sofrer tanto.", vmax: 315, acc: 58, brake: 400, grip: 500, kin: 0.7, turn: 2.0, scrub: 0.9, offMax: 140, wall: 0.8 },
 };
 
 // Pista a partir dos vértices: retas + curvas de raio fixo, amostrada a cada `step` unidades.
@@ -143,9 +143,17 @@ function elevate(pts, hills, step = 6) {
   return pts;
 }
 
+// personalização leve: cor das rodas, aerofólio e faixas
+const MODS = {
+  rodas: { prata: { name: "Prata", c: "#c3c7cf" }, preta: { name: "Pretas", c: "#1f2026" }, ouro: { name: "Douradas", c: "#d4a017" }, bronze: { name: "Bronze", c: "#9a5a2a" } },
+  aero: { nenhum: "Sem", baixo: "Baixo", alto: "Alto" },
+  faixa: { nenhuma: "Sem", dupla: "Dupla", lateral: "Lateral" },
+};
+const MODS_PADRAO = { rodas: "prata", aero: "nenhum", faixa: "nenhuma" };
+
 const SECTORS = 4; // a volta só conta passando pelos 4 setores na ordem (contra atalho e contramão)
 
-const api = { WORLD, PISTAS, CARROS, sample, elevate, SECTORS };
+const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, SECTORS };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pistas = api;
 })(typeof window !== "undefined" ? window : globalThis);
