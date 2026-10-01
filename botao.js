@@ -16,7 +16,7 @@ const PAWNS = ["😎", "🤠", "👽", "🤖", "🐸", "🦊", "🐼", "🐯", "
 const KITS = ["corinthians", "saopaulo", "santos", "palmeiras", "rubronegro", "celeste", "canarinho", "laranja"];
 const REACTIONS = ["👏", "😂", "😱", "🔥", "😡", "🙏", "🍀", "💀"];
 const FORMS = Object.keys(F.FORMATIONS);
-const STADIUMS = ["mesa", "morumbis", "neoquimica", "nubank", "baixada"]; // mesa de madeira ou o estádio (nas cores do time da casa)
+const STADIUMS = ["mesa", "morumbis", "neoquimica", "nubank", "baixada", "vilabelmiro"]; // mesa de madeira ou o estádio (nas cores do time da casa)
 const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
@@ -74,7 +74,7 @@ module.exports = function attachBotao(io) {
       match: m ? { sides: m.sides, score: m.score, gameNo: m.gameNo, label: m.label, kits: m.kits, forms: m.forms } : null,
       tour: room.tour, champion: room.champion || null, result: room.result || null,
       g: g ? {
-        pieces: g.pieces, goals: g.goals, turn: g.turn, toques: g.toques, restart: g.restart, setPiece: playing && isSetPiece(room),
+        pieces: g.pieces, goals: g.goals, turn: g.turn, toques: g.toques, max: g.maxToques, restart: g.restart, setPiece: playing && isSetPiece(room),
         shooter: playing ? shooterOf(room) : null,
         next: playing ? m.sides[g.turn][(g.cursor[g.turn] + 1) % m.sides[g.turn].length] : null, // quem faz o toque seguinte
         bar: g.bar, keepers: room.config.goleiro ? g.keepers : null,
@@ -108,7 +108,8 @@ module.exports = function attachBotao(io) {
     m.gameNo++;
     const k = m.kickFirst, mins = room.config.minutes;
     room.g = {
-      pieces: F.lineup(k, m.forms), goals: [0, 0], turn: k, cursor: [0, 0], starter: [0, 0], toques: 0, restart: "Saída",
+      // saída: a primeira vez de cada time vale só 1 toque (ninguém sai driblando até o gol); depois, os toques combinados
+      pieces: F.lineup(k, m.forms), goals: [0, 0], turn: k, cursor: [0, 0], starter: [0, 0], toques: 0, maxToques: 1, opening: 1, restart: "Saída",
       bar: [0, 0], lastCap: null, keepers: [F.MID_Y, F.MID_Y],
       shot: null, note: null, shotSeq: room.g ? room.g.shotSeq : 0, busyUntil: 0, step: 0,
       endsAt: mins ? Date.now() + mins * 60000 : null, golden: false, lastGoal: null,
@@ -123,6 +124,7 @@ module.exports = function attachBotao(io) {
     const g = room.g, n = room.match.sides[to].length;
     g.turn = to;
     g.toques = 0;
+    if (g.opening > 0) { g.maxToques = 1; g.opening--; } else g.maxToques = room.config.toques;
     g.lastCap = null;
     g.starter[to] = (g.starter[to] + 1) % n;
     g.cursor[to] = g.starter[to];
@@ -263,9 +265,9 @@ module.exports = function attachBotao(io) {
         log(room, `⚽ ${why} ${g.goals[0]} x ${g.goals[1]}`);
         g.note = { id: g.step, msgs, foul: null, banner: own ? "GOL CONTRA!" : "GOOOL!", goal: scorer, at: g.busyUntil };
         if (g.goals[scorer] >= cfg.goals || g.golden) { endGame(room, scorer, g.golden ? `gol de ouro${own ? " (contra)" : ` de ${names}`}!` : `${g.goals[scorer]} a ${g.goals[1 - scorer]}.`); return; }
-        const k = 1 - scorer; // saída para quem levou o gol
+        const k = 1 - scorer; // saída para quem levou o gol (de novo, 1 toque para cada time na primeira vez)
         g.pieces = F.lineup(k, room.match.forms); g.keepers = [F.MID_Y, F.MID_Y];
-        giveBall(room, k); g.restart = "Saída";
+        g.opening = 2; giveBall(room, k); g.restart = "Saída";
         armClock(room);
         return;
       }
@@ -297,12 +299,13 @@ module.exports = function attachBotao(io) {
       giveBall(room, other); g.restart = "Falta";
       msgs.push(`Falta de ${names}: ${foul}. Bola para ${turnName(room)}.`);
       log(room, `🚫 Falta de ${names}.`);
-    } else if (g.toques >= cfg.toques) {
+    } else if (g.toques >= g.maxToques) {
+      const max = g.maxToques;
       giveBall(room, other);
-      msgs.push(`Acabaram os ${cfg.toques} toques. Vez de ${turnName(room)}.`);
+      msgs.push(max === 1 ? `Saída: só 1 toque. Vez de ${turnName(room)}.` : `Acabaram os ${max} toques. Vez de ${turnName(room)}.`);
     } else {
       const next = nameOf(room, shooterOf(room));
-      msgs.push(next === names ? `${names} continua (${g.toques} de ${cfg.toques} toques).` : `${names} tocou para ${next} (${g.toques} de ${cfg.toques}).`);
+      msgs.push(next === names ? `${names} continua (${g.toques} de ${g.maxToques} toques).` : `${names} tocou para ${next} (${g.toques} de ${g.maxToques}).`);
     }
     g.note = { id: g.step, msgs, foul, banner, at: g.busyUntil };
     armClock(room);
@@ -512,13 +515,14 @@ module.exports = function attachBotao(io) {
       const a = num(d.a), p = num(d.p), place = d.place && Number.isFinite(num(d.place.x)) && Number.isFinite(num(d.place.y)) ? { x: num(d.place.x), y: num(d.place.y) } : null;
       socket.to(room.code).emit("aim", { who: me.id, i: clamp(int(d.i, -1), -1, 10), a: Number.isFinite(a) ? a : 0, p: Number.isFinite(p) ? clamp(p, 0, 1) : 0, place });
     });
-    // Goleiro: qualquer um do time arruma o seu, mas só na vez do próprio time (e com as peças paradas).
-    // Na vez do adversário ele fica travado: não dá para defender "no reflexo" e o atraso da internet não importa.
+    // Goleiro: qualquer um do time mexe o seu a qualquer hora em que as peças estão paradas, inclusive enquanto o
+    // adversário mira. No peteleco ele fica onde estava: a jogada é calculada na hora, então não dá para defender
+    // "no reflexo" com a bola andando, e o atraso da internet não importa.
     socket.on("keeper", (d = {}) => {
       const { room, me } = ctx();
       if (!room || !me || room.phase !== "playing" || !room.g || !room.config.goleiro) return;
       const g = room.g, side = sideOf(room, me.id), y = num(d.y);
-      if (side !== g.turn || Date.now() < g.busyUntil || !Number.isFinite(y)) return;
+      if (side < 0 || Date.now() < g.busyUntil || !Number.isFinite(y)) return;
       const now = Date.now();
       if (now - (me.lastKeeper || 0) < 40) return;
       me.lastKeeper = now;
