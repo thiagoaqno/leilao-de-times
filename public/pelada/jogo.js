@@ -1199,7 +1199,8 @@ function myBody() {
   if (!G.meModel || !G.me) return null;
   const me = G.me;
   return isCar() ? { id: "eu", kind: "car", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.yaw, flip: me.flipT > 0 }
-    : { id: "eu", kind: "pe", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, sprint: me.sprint, slide: me.slideT > 0 || me.downT > 0, dive: me.diveT > 0 };
+    : { id: "eu", kind: "pe", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.facing, sprint: me.sprint, slide: me.slideT > 0 || me.downT > 0, dive: me.diveT > 0,
+      conduz: !G.falta, chutou: now() - me.lastKick < 0.35 }; // conduz: a bola fica no pé (na falta, não)
 }
 function hearing(p) {
   const ex = cam.position, dx = p[0] - ex.x, dz = p[2] - ex.z, dist = Math.hypot(dx, dz, p[1] - ex.y);

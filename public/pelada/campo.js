@@ -273,7 +273,33 @@
       const f = hitBody(b, p, R, F);
       if (f > 0.05) { touch = p.id; hit = Math.max(hit, f * 0.45); b.sp = (b.sp || 0) * 0.3; }
     }
+    const dono = conduz(F, b, bodies, dt); if (dono) touch = dono;
     return { hit, touch };
+  }
+  // condução estilo FIFA: quem está mais perto da bola (rasteira, até ~1,15 m) fica com ela "no pé". A bola é puxada
+  // para um ponto na frente do jogador e acompanha a velocidade e as viradas dele. Andando, fica pertinho (0,6 m);
+  // correndo, um pouco mais longe; no pique, os toques ficam longos e mais soltos (a bola escapa se você virar demais).
+  // Não pega: bola alta, bola chegando forte (aí é o domínio), logo depois do chute, carrinho, mergulho, caído.
+  // O mais perto é o dono: se um marcador chega mais perto, ele toma a bola (o carrinho continua tirando de vez).
+  const CONDUZ_R = 1.15;
+  function conduz(F, b, bodies, dt) {
+    if (F.rl || !bodies || b.holder || b.y > F.ballR + 0.12 || b.vy > 1.5) return null;
+    let p = null, best = CONDUZ_R;
+    for (const q of bodies) {
+      if (q.kind !== "pe" || !q.conduz || q.slide || q.dive || q.chutou || q.yaw == null || q.y > 0.3) continue;
+      const d = Math.hypot(b.x - q.x, b.z - q.z); if (d < best) { best = d; p = q; }
+    }
+    if (!p) return null;
+    const pvx = p.vx || 0, pvz = p.vz || 0;
+    if (Math.hypot(b.vx - pvx, b.vz - pvz) > 6) return null; // chegando forte: primeiro amortece (domínio)
+    const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), sp = Math.hypot(pvx, pvz);
+    const atras = ((b.x - p.x) * fx + (b.z - p.z) * fz) / (best || 1) < 0; // bola atrás: puxa mais devagar (contorna o corpo)
+    const dist = Math.min(1.15, 0.6 + 0.05 * sp + (p.sprint ? 0.25 : 0));
+    const tx = p.x + fx * dist, tz = p.z + fz * dist;
+    const forca = p.sprint ? 6 : atras ? 5 : 12, k = 1 - Math.exp(-forca * dt);
+    b.vx += (pvx + (tx - b.x) * 7 - b.vx) * k; b.vz += (pvz + (tz - b.z) * 7 - b.vz) * k;
+    if (b.vy > 0) b.vy *= 1 - k; b.sp = (b.sp || 0) * (1 - k);
+    return p.id;
   }
   // bola do Rocket League: gravidade, arrasto linear, limites de velocidade e giro, e batidas com atrito e giro
   function stepBallRL(F, b, bodies, dt) {

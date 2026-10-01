@@ -109,7 +109,8 @@ module.exports = function attachPelada(io) {
   const bodyOf = (room, p, now) => {
     const f = p.pos.f | 0, down = p.downUntil > now;
     return { id: p.id, kind: room.config.mode === "carros" ? "car" : "pe", x: p.pos.x, y: p.pos.y, z: p.pos.z, vx: p.pos.vx, vy: p.pos.vy, vz: p.pos.vz, yaw: p.pos.yaw,
-      sprint: f & FL.sprint, slide: (f & FL.slide) || down, dive: f & FL.dive, flip: f & FL.flip };
+      sprint: f & FL.sprint, slide: (f & FL.slide) || down, dive: f & FL.dive, flip: f & FL.flip,
+      conduz: true, chutou: now - p.lastKick < 350 }; // conduz: a bola fica no pé (campo.js); logo depois do chute, solta
   };
   // goleiro: pega a bola que chega perto dentro da área (se não vier forte demais), segura até 6 s e solta com chute ou passe
   function keepers(room, now) {
