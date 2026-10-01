@@ -36,6 +36,22 @@
     bimmer: { name: "Bimmer", inspo: "inspirado no BMW M3 E30" },
   };
 
+  // skins zoeiras dos jogadores a pé (o visual de cada uma fica em jogo.js, em SKINS_CONFIG)
+  const SKINS = {
+    padrao: { name: "Padrão", emoji: "🙂" },
+    cr7: { name: "CR7", emoji: "🐐" },
+    neymar: { name: "Neymar", emoji: "🤸" },
+    lula: { name: "Lula", emoji: "🧔" },
+    bob_esponja: { name: "Bob Esponja", emoji: "🧽" },
+    levi: { name: "Levi", emoji: "⚔️" },
+  };
+  // quadras (só o visual muda: o tamanho e a física são os mesmos; detalhes em ARENAS_CONFIG no jogo.js)
+  const ARENAS = {
+    society: { name: "Society", emoji: "🌇", desc: "grama sintética no fim de tarde" },
+    rio: { name: "Rio", emoji: "☀️", desc: "quadra de rua com cimento colorido" },
+    ginasio: { name: "Ginásio", emoji: "🏟️", desc: "taco de madeira e refletores" },
+  };
+
   // ---------- posições na saída ----------
   // pés: quem dá a saída fica no meio; goleiro (se tiver) no gol. Carros: em leque, como no Rocket League.
   function spawns(mode, team, list, kicking) {
@@ -364,7 +380,7 @@
     return { yaw: best.yaw, power: Math.max(Math.min(1, need), Math.min(power, need + 0.25)) };
   }
 
-  const api = { MODES, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, kitOf, kitColor, kitColor2, spawns, inArea,
+  const api = { MODES, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
     movePlayer, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;
