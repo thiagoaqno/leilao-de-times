@@ -94,6 +94,9 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
 #hTop .t i{width:14px;height:14px;border-radius:3px;display:block;border:1px solid #0008}
 #hTop .s{font-size:26px;padding:2px 12px;background:#000d;color:var(--accent);min-width:44px;text-align:center}
 #hTop .clock{font-size:18px;padding:6px 12px;background:#1b2a22e8;min-width:70px;text-align:center;display:flex;align-items:center}
+#hDir{top:58px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:#000a;border-radius:999px;padding:2px 12px 2px 8px;font:700 13px var(--body)}
+#hDir i{width:12px;height:12px;border-radius:3px;display:block;border:1px solid #0008}
+#hDir b{display:inline-block;font-size:22px;line-height:1;color:var(--accent);transition:transform .1s linear}
 #hPing{left:12px;top:10px;font:700 13px var(--body);opacity:.85}
 #hFeed{right:12px;top:10px;display:grid;gap:4px;justify-items:end;font:700 14px var(--body)}
 #hFeed div{background:#000a;border-radius:6px;padding:3px 10px}
@@ -186,6 +189,7 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
   <div id="cross"></div>
   <div class="hud" id="hPing"></div>
   <div class="hud" id="hTop"></div>
+  <div class="hud hidden" id="hDir" title="Para onde você ataca"><i></i><b>⬆</b><span>ataque</span></div>
   <div class="hud" id="hFeed"></div>
   <div class="hud" id="hMsg"></div>
   <div class="hud hidden" id="hPowL"></div>

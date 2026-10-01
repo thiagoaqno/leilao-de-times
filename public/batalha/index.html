@@ -98,7 +98,8 @@ kbd{display:inline-block;background:#2a1c45;border:1px solid #5a4680;border-bott
 #hRank i{width:10px;height:10px;border-radius:50%;display:block;flex:none}
 #hRank b{margin-left:auto;font-variant-numeric:tabular-nums}
 #hRank span.bl{font-size:11px;letter-spacing:-2px}
-#hFeed{right:12px;bottom:14px;display:grid;gap:4px;justify-items:end;font:700 14px var(--body)}
+#hMini{right:12px;bottom:12px;width:150px;height:150px;border-radius:12px;background:#0008;border:2px solid #fff4}
+#hFeed{right:12px;bottom:172px;display:grid;gap:4px;justify-items:end;font:700 14px var(--body)}
 #hFeed div{background:#000a;border-radius:6px;padding:3px 10px}
 #hMsg{top:22%;left:50%;transform:translateX(-50%);text-align:center;font:52px var(--display);white-space:nowrap}
 #hMsg small{display:block;font:700 18px var(--body);opacity:.95}
@@ -200,6 +201,7 @@ kbd{display:inline-block;background:#2a1c45;border:1px solid #5a4680;border-bott
   <div class="hud" id="hItemL"></div>
   <div class="hud" id="hRank"></div>
   <div class="hud" id="hFeed"></div>
+  <canvas class="hud" id="hMini" width="150" height="150"></canvas>
   <div class="hud" id="hMsg"></div>
   <div class="hud" id="hHint"></div>
   <div class="hud" id="hSpeed"><i></i></div>

@@ -909,6 +909,7 @@ function frame() {
   const pieces = anim ? currentPieces() : piecesWithPlaces(currentPieces());
   // goleiros (parados durante a jogada, na posição que cada time deixou)
   const keepers = anim ? anim.shot.keepers : g.keepers;
+  drawGoalTags(c, kits);
   if (keepers) for (const t of [0, 1]) drawKeeper(c, t, keepers[t], kits[t], { mine: t === mySide() && canMoveKeeper(), drag: keeperDrag && keeperDrag.side === t });
   // bola parada: até onde dá para arrumar a tampinha
   if (idle && g.setPiece && mine && placing) { c.strokeStyle = "#f2c14eaa"; c.lineWidth = px(2); c.setLineDash([px(6), px(6)]); c.beginPath(); c.arc(pieces[0].x, pieces[0].y, B.PLACE_R, 0, 7); c.stroke(); c.setLineDash([]); }
@@ -935,6 +936,23 @@ function frame() {
 }
 requestAnimationFrame(frame);
 
+// de quem é cada gol: a rede ganha a cor do time que defende e uma plaquinha ("SEU GOL" / "ATAQUE"; quem assiste vê o nome)
+function drawGoalTags(c, kits) {
+  const me = mySide();
+  for (const t of [0, 1]) {
+    const kit = kits[t]; if (!kit) continue;
+    const gx = t ? L : -B.GD;
+    c.save(); c.globalAlpha = 0.45; c.fillStyle = kit.face.c[0]; c.fillRect(gx, B.G0, B.GD, B.GW);
+    c.globalAlpha = 0.9; c.strokeStyle = kit.rim; c.lineWidth = px(3); c.strokeRect(gx + px(2), B.G0 + px(2), B.GD - px(4), B.GW - px(4)); c.restore();
+    const label = me < 0 ? kit.name.toUpperCase() : me === t ? "🧤 SEU GOL" : "⚽ ATAQUE";
+    c.save(); c.translate(gx + B.GD / 2, B.MID_Y);
+    const rot = (view.rot ? Math.PI / 2 : t ? Math.PI / 2 : -Math.PI / 2) + (view.flip ? Math.PI : 0); // ao longo do gol (no celular em pé, deitado e legível)
+    c.rotate(rot);
+    c.font = `800 ${Math.min(17, px(12))}px Figtree, system-ui, sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
+    c.lineWidth = px(4); c.strokeStyle = "#000c"; c.strokeText(label, 0, 0); c.fillStyle = me >= 0 && me !== t ? "#f2c14e" : "#ffffff"; c.fillText(label, 0, 0);
+    c.restore();
+  }
+}
 function drawGuide(c, pieces, A) {
   const p = pieces[A.i], dx = Math.cos(A.a), dy = Math.sin(A.a);
   const tr = B.trace(pieces, A.i, dx, dy, view.open);

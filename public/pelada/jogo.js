@@ -275,11 +275,18 @@ const ballTex = canvasTex(512, 256, (x, w, hh) => {
   const spots = [[0.1, 0.5], [0.3, 0.5], [0.5, 0.5], [0.7, 0.5], [0.9, 0.5], [0.2, 0.18], [0.6, 0.18], [0.4, 0.82], [0.8, 0.82], [0, 0.04], [0.5, 0.96]];
   for (const [u, v] of spots) { x.beginPath(); for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 - Math.PI / 2; const px = u * w + Math.cos(a) * 30 / Math.max(0.35, Math.sin(v * Math.PI)), py = v * hh + Math.sin(a) * 30; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.closePath(); x.fill(); }
 });
+// bola de praia do Rocket: gomos coloridos com as tampinhas brancas
+const beachTex = canvasTex(512, 256, (x, w, hh) => {
+  const cols = ["#e53935", "#fdd835", "#1e88e5", "#ffffff", "#43a047", "#fb8c00"];
+  cols.forEach((c, i) => { x.fillStyle = c; x.fillRect((i * w) / 6, 0, w / 6 + 1, hh); });
+  x.fillStyle = "#ffffff"; x.fillRect(0, 0, w, hh * 0.1); x.fillRect(0, hh * 0.9, w, hh * 0.1);
+});
 const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45 }));
 ballMesh.castShadow = true; scene.add(ballMesh);
 const blob = new THREE.Mesh(new THREE.CircleGeometry(0.16, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false }));
 blob.rotation.x = -Math.PI / 2; blob.position.y = 0.02; scene.add(blob);
 
+let goalSigns = [];
 let arena = null, arenaMode = null, arenaKits = null, pads = [];
 function ensureArena(mode) {
   const kits = S ? `${S.kits.A}|${S.kits.B}` : "";
@@ -291,6 +298,7 @@ function ensureArena(mode) {
   Object.assign(sunL.shadow.camera, { left: -F.L - 10, right: F.L + 10, top: F.W + 10, bottom: -F.W - 10, near: 1, far: 140 * s }); sunL.shadow.camera.updateProjectionMatrix();
   scene.fog.near = 80 * s; scene.fog.far = 260 * s;
   ballMesh.scale.setScalar(F.ballR); blob.scale.setScalar(F.ballR / 0.15);
+  ballMesh.material.map = mode === "carros" ? beachTex : ballTex; ballMesh.material.roughness = mode === "carros" ? 0.3 : 0.45; ballMesh.material.needsUpdate = true;
 }
 function buildArena(F) {
   const grp = new THREE.Group(), L = F.L, W = F.W, cars = F.id === "carros", PX = cars ? 25 : 50;
@@ -367,6 +375,18 @@ function buildArena(F) {
     const back = new THREE.Mesh(new THREE.PlaneGeometry(2 * GW, GH), net(2 * GW, GH)); back.position.set(s * GD, GH / 2, 0); back.rotation.y = Math.PI / 2; g.add(back);
     const top = new THREE.Mesh(new THREE.PlaneGeometry(GD, 2 * GW), net(GD, 2 * GW)); top.rotation.x = -Math.PI / 2; top.position.set(s * GD / 2, GH, 0); g.add(top);
     for (const z of [-GW, GW]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(GD, GH), net(GD, GH)); side.position.set(s * GD / 2, GH / 2, z); g.add(side); }
+  }
+  // placas em cima de cada gol: dizem de quem é o gol e quem ataca (atualizadas em updateGoalSigns)
+  goalSigns = [];
+  for (const s of [-1, 1]) {
+    const c = document.createElement("canvas"); c.width = 512; c.height = 128;
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    const w = cars ? 16 : 4.6; spr.scale.set(w, w / 4, 1); spr.position.set(s * (L + GD * 0.5), GH + (cars ? 3.4 : 1.1), 0);
+    add(spr); goalSigns.push({ s, c, tex, spr, key: "" });
+    // faixa no chão, na boca do gol, com a cor de quem defende
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(cars ? 2 : 0.5, 2 * GW), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 }));
+    strip.rotation.x = -Math.PI / 2; strip.position.set(s * (L - (cars ? 1.2 : 0.3)), 0.025, 0); add(strip); goalSigns[goalSigns.length - 1].strip = strip;
   }
   // modo carros: almofadas de turbo (amarelas). Cada um pega a sua: some por alguns segundos só para quem pegou.
   pads = [];
@@ -840,7 +860,37 @@ function frame(dt, t) {
   updateBall(dt);
   updateCamera(dt);
   hud(t);
+  updateGoalSigns();
   renderer.render(scene, cam);
+}
+// de quem é cada gol: o gol da direita (+x) é defendido pelo Visitante (B) e é onde o Mandante (A) faz gol.
+// Cada um vê "ATAQUE" no gol onde precisa marcar e "DEFESA" no seu; quem assiste vê o nome de quem defende.
+function myAttackTeam() { if (G.mode === "treino") return "A"; const m = myP(); return m && m.team ? m.team : null; }
+function updateGoalSigns() {
+  const team = myAttackTeam(), kits = S && S.kits ? S.kits : { A: myKit(), B: "palmeiras" };
+  for (const g of goalSigns) {
+    const def = g.s > 0 ? "B" : "A", col = C.kitColor(kits[def]);
+    const text = team ? (team === def ? "🧤 SEU GOL" : "⚽ ATAQUE AQUI") : `Gol do ${SIDES[def]}`;
+    const sub = G.mode === "treino" ? "" : kitOf(kits[def]).name;
+    const key = text + col + sub;
+    if (g.key !== key) {
+      g.key = key; const x = g.c.getContext("2d"); x.clearRect(0, 0, 512, 128);
+      x.fillStyle = col; x.globalAlpha = 0.9; x.beginPath(); x.roundRect(6, 6, 500, 116, 26); x.fill(); x.globalAlpha = 1;
+      x.lineWidth = 8; x.strokeStyle = team && team !== def ? "#ffd84a" : "#ffffff"; x.stroke();
+      x.textAlign = "center"; x.textBaseline = "middle"; x.font = "bold 54px Figtree, sans-serif"; x.lineWidth = 10; x.strokeStyle = "#000b";
+      x.strokeText(text, 256, sub ? 52 : 66); x.fillStyle = "#fff"; x.fillText(text, 256, sub ? 52 : 66);
+      if (sub) { x.font = "bold 28px Figtree, sans-serif"; x.lineWidth = 6; x.strokeText(sub, 256, 100); x.fillText(sub, 256, 100); }
+      g.tex.needsUpdate = true; g.strip.material.color.set(col);
+    }
+  }
+  // seta na tela apontando para o gol onde eu ataco
+  const el = $("hDir");
+  if (!team || !G.F) { el.classList.add("hidden"); return; }
+  const gx = (team === "A" ? 1 : -1) * G.F.L, f = new THREE.Vector3(); cam.getWorldDirection(f);
+  const dx = gx - cam.position.x, dz = -cam.position.z, fl = Math.hypot(f.x, f.z) || 1, fx = f.x / fl, fz = f.z / fl;
+  const ang = Math.atan2(dx * -fz + dz * fx, dx * fx + dz * fz);
+  el.classList.remove("hidden"); el.querySelector("b").style.transform = `rotate(${ang}rad)`;
+  el.querySelector("i").style.background = C.kitColor(kits[team]);
 }
 // ---------- a pé ----------
 function stepFoot(dt, t, frozen) {
