@@ -492,6 +492,7 @@ function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, ta
   const holder = new THREE.Group(); holder.rotation.y = Math.PI / 2; holder.position.x = 0; car.add(holder);
   const L = spec.L, W = spec.W, at = (u) => u - L / 2; // u -> x local do holder (vira -z no carro)
   const add = (mesh, shadow = true) => { mesh.castShadow = shadow && !ghost; holder.add(mesh); return mesh; };
+  const roofBits = []; // o que fica em cima da cabine (faixa no teto, aerofólio de teto): some na primeira pessoa
   const bodyG = profileGeo(spec.body, W, 0.06); bodyG.translate(-L / 2, 0, 0); add(new THREE.Mesh(bodyG, paint));
   const cabG = profileGeo(spec.cabin, W * 0.84, 0.05); cabG.translate(-L / 2, 0, 0); const cabin = add(new THREE.Mesh(cabG, glass));
   // teto pintado em cima do vidro
@@ -510,7 +511,7 @@ function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, ta
   // extras de cada modelo
   if (model === "tanque") { const sc = add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 0.5), black)); sc.position.set(at(3.9), topAt(spec, 3.9) + 0.1, 0); }
   if (model === "foguete") for (const s of [-1, 1]) { const ai = add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.18, 0.04), black), false); ai.position.set(at(1.1), 0.62, s * (W / 2 + 0.07)); }
-  if (model === "formiga") { const rs = add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, W * 0.8), paint)); rs.position.set(at(0.25), 1.55, 0); rs.rotation.z = -0.2; }
+  if (model === "formiga") { const rs = add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, W * 0.8), paint)); rs.position.set(at(0.25), 1.55, 0); rs.rotation.z = -0.2; roofBits.push(rs); }
   // aerofólio
   if (md.aero === "baixo") { const lip = add(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, W * 0.9), black)); lip.position.set(at(0.12), topAt(spec, 0.15) + 0.1, 0); lip.rotation.z = 0.25; }
   if (md.aero === "alto") {
@@ -527,7 +528,7 @@ function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, ta
     for (let u = 0.08; u < L - 0.1; u += 0.16) {
       const u1 = Math.min(L - 0.08, u + 0.16), um = (u + u1) / 2; if (skip(um)) continue;
       const y0 = topAt(spec, u), y1 = topAt(spec, u1), len = Math.hypot(u1 - u, y1 - y0) + 0.01;
-      for (const s of [-1, 1]) { const st = add(new THREE.Mesh(new THREE.BoxGeometry(len, 0.012, 0.16), stripeM), false); st.position.set(at(um), (y0 + y1) / 2 + 0.072, s * 0.15); st.rotation.z = Math.atan2(y1 - y0, u1 - u); }
+      for (const s of [-1, 1]) { const st = add(new THREE.Mesh(new THREE.BoxGeometry(len, 0.012, 0.16), stripeM), false); st.position.set(at(um), (y0 + y1) / 2 + 0.072, s * 0.15); st.rotation.z = Math.atan2(y1 - y0, u1 - u); if (um > spec.cabin[0][0] && um < spec.cabin[3][0]) roofBits.push(st); }
     }
   }
   if (md.faixa === "lateral") for (const s of [-1, 1]) { const st = add(new THREE.Mesh(new THREE.BoxGeometry(L * 0.78, 0.1, 0.012), stripeM), false); st.position.set(at(L * 0.48), 0.62, s * (W / 2 + 0.07)); }
@@ -550,7 +551,7 @@ function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, ta
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: ghost ? 0.15 : 0.32, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.scale.set((W / 2 + 0.25) * KS, (L / 2 + 0.25) * KS, 1); g.add(shadow);
   target.add(g);
-  return { g, body, wheels, steer, shadow, mats, steerV: 0, target, roof, cabin };
+  return { g, body, wheels, steer, shadow, mats, steerV: 0, target, roof, cabin, roofBits };
 }
 function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 0) {
   k.g.position.set(x, z, y); k.g.rotation.set(0, -a - Math.PI / 2, 0);
@@ -831,7 +832,7 @@ function draw(dt) {
   const C = race.cam, k = 1 - Math.exp(-dt * 6), mode = src === c && race.kart ? camMode : "longe";
   let da = src.a - C.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; C.a += da * (1 - Math.exp(-dt * (mode === "perto" ? 7 : 5)));
   const speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
-  if (race.kart) race.kart.roof.visible = race.kart.cabin.visible = mode !== "cockpit"; // de dentro, a cabine e o teto tapariam a vista
+  if (race.kart) { const out = mode !== "cockpit"; race.kart.roof.visible = race.kart.cabin.visible = out; for (const b of race.kart.roofBits) b.visible = out; } // de dentro, cabine, teto e faixa do teto tapariam a vista
   if (mode === "cockpit") {
     // primeira pessoa: no lugar do piloto, olhando pelo para-brisa (o capô aparece embaixo)
     const spec = CARS3[me().car] || CARS3.equilibrado, eyeU = spec.cabin[1][0] + 0.1, eyeH = spec.cabin[1][1] + 0.02;
