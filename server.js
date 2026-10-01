@@ -151,14 +151,18 @@ function view(room, forId) {
     current = { player: cur.player, bids, result: revealed ? cur.result : null, deadline: cur.deadline, eligible: cur.eligible,
       high: cur.high || null, feed: cur.feed || [], passed: cur.passed || {}, finalStretch: !!cur.finalStretch };
   }
+  // roleta oculta: até o fim, ninguém recebe os nomes que ainda estão na roleta (só o sorteado)
+  const hide = room.config.hidePool && room.phase !== "done";
+  const spin = hide && room.spin ? { ...room.spin, names: room.spin.names.map((n, i) => (i === room.spin.index ? n : "?")) } : room.spin;
   return {
     code: room.code,
     phase: room.phase,
     config: room.config,
     poolCount: room.pool.length,
-    pool: room.pool,
+    pool: hide ? room.pool.map(() => "?") : room.pool,
+    poolHidden: hide,
     unsold: room.unsold,
-    spin: room.spin,
+    spin,
     captains: room.order.map((id) => {
       const c = room.captains[id];
       return { id, name: c.name, formation: c.formation || "auto", pins: c.pins || {}, coins: c.coins, skipsLeft: c.skipsLeft, team: c.team, connected: c.sockets.size > 0, isHost: id === room.hostCap };
@@ -319,7 +323,7 @@ io.on("connection", (socket) => {
       const hostToken = rid();
       const room = {
         code, hostToken, hostSockets: new Set([socket.id]), watchers: new Set(), hostCap: null,
-        config: { terms, formLock: data.formLock === "locked" ? "locked" : "fluid", comp: cleanComp(data.comp, perTeam), mode, perTeam, coins, skips: mode === "open" ? 0 : skips, minBid, timer },
+        config: { terms, formLock: data.formLock === "locked" ? "locked" : "fluid", comp: cleanComp(data.comp, perTeam), mode, perTeam, coins, skips: mode === "open" ? 0 : skips, minBid, timer, hidePool: !!data.hidePool },
         pool: players, original: players.slice(), unsold: [], captains: {}, order: [], phase: "lobby",
         current: null, spin: null, log: [], history: [],
         reveal: { sections: [], shown: 0 },

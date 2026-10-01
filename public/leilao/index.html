@@ -433,6 +433,8 @@ body.skin-cozinha{
           <span class="row" style="gap:6px"><button type="button" class="ghost" id="btnSaveTheme" style="padding:4px 10px;font-size:12.5px">⭐ Salvar como meu tema</button><button type="button" class="ghost danger hidden" id="btnDelTheme" style="padding:4px 10px;font-size:12.5px">Excluir tema</button></span></div>
         <textarea id="cPlayers" rows="11" style="margin-top:6px" placeholder="Pelé&#10;Maradona&#10;Zidane&#10;..."></textarea>
         <div class="hint" id="cCount">0 jogadores</div>
+        <label class="check"><input type="checkbox" id="cHidePool"> 🙈 Roleta oculta: ninguém vê o que ainda falta sair</label>
+        <p class="hint" style="margin-top:-4px">Cada item só aparece quando a roleta para nele. Ninguém sabe se ainda vem um craque, então não dá pra ficar guardando moeda esperando por ele. A lista completa aparece no fim.</p>
         <label class="check"><input type="checkbox" id="cPlays" checked> Eu também vou participar</label>
         <div id="cNameWrap"><label>Seu nome</label><input id="cName" maxlength="8" placeholder="Ex.: Tabba"></div>
         <div class="row" style="margin-top:14px"><button class="primary" id="btnCreate">Criar sala</button></div>
@@ -820,6 +822,7 @@ if (savedCfg) {
   extraTouched = !!savedCfg.extraTouched;
   if (savedCfg.compMode) $("cCompMode").value = savedCfg.compMode;
   if (savedCfg.formLock) $("cFormLock").value = savedCfg.formLock;
+  $("cHidePool").checked = !!savedCfg.hidePool;
   if (savedCfg.mode) setMode(savedCfg.mode);
   if (savedCfg.theme && allThemes().some(t => t.id === savedCfg.theme)) themeId = savedCfg.theme;
   selectTheme(themeId, false);
@@ -834,10 +837,10 @@ $("btnCreate").onclick = () => {
   const terms = { ...formTerms(), icon: th.icon, label: th.label, prompt: th.prompt || "generic", skin: skinOfTheme(th) };
   const comp = th.slots && th.req ? { mode: $("cCompMode").value, slots: th.slots, req: th.req } : { mode: "free" };
   if (comp.mode === "exact" && +$("cPer").value !== Object.values(th.slots).reduce((a,b)=>a+b,0)) return $("cErr").textContent = `Na composição exata, cada ${formTerms().team} precisa ter ${Object.values(th.slots).reduce((a,b)=>a+b,0)} ${formTerms().items}.`;
-  const data = { formLock: $("cFormLock").value, comp, terms, mode, perTeam:$("cPer").value, coins:$("cCoins").value, skips:$("cSkips").value, minBid:$("cMin").value, timer:$("cTimer").value,
+  const data = { formLock: $("cFormLock").value, comp, terms, mode, perTeam:$("cPer").value, coins:$("cCoins").value, skips:$("cSkips").value, minBid:$("cMin").value, timer:$("cTimer").value, hidePool:$("cHidePool").checked,
     players:$("cPlayers").value, hostPlays:$("cPlays").checked, hostName:$("cName").value };
   if (data.hostPlays && !data.hostName.trim()) return $("cErr").textContent = "Digite seu nome (ou desmarque a opção).";
-  store.set("lt_cfg", { formLock: $("cFormLock").value, compMode: $("cCompMode").value, theme: themeId, terms: formTerms(), cParts:$("cParts").value, cExtra:$("cExtra").value, extraTouched, listDirty, mode, cPer:data.perTeam, cCoins:data.coins, cSkips:data.skips, cMin:data.minBid, cTimer:data.timer, players:data.players });
+  store.set("lt_cfg", { formLock: $("cFormLock").value, hidePool: $("cHidePool").checked, compMode: $("cCompMode").value, theme: themeId, terms: formTerms(), cParts:$("cParts").value, cExtra:$("cExtra").value, extraTouched, listDirty, mode, cPer:data.perTeam, cCoins:data.coins, cSkips:data.skips, cMin:data.minBid, cTimer:data.timer, players:data.players });
   socket.emit("create", data, (r) => {
     if (!r.ok) return $("cErr").textContent = r.error;
     store.set("lt_sess_"+r.code, { hostToken:r.hostToken, capToken:r.capToken });
@@ -1245,6 +1248,7 @@ function render(){
   $("rPool").textContent = `${st.poolCount} na roleta`;
   const comp = cfg.comp || { mode:"free" };
   if (["futsal","futebol"].includes(t.prompt)) $("rRules").textContent += cfg.formLock === "locked" ? " · formação travada" : " · formação fluida";
+  if (st.poolHidden) $("rRules").textContent += " · 🙈 roleta oculta";
   if (comp.mode !== "free") $("rRules").textContent += comp.mode === "exact" ? ` · composição: ${fmtCats(comp.slots)}` : ` · obrigatório: ${fmtCats(comp.req)}`;
 
   // teams
@@ -1278,7 +1282,7 @@ function render(){
 
   // pool / unsold / log
   $("poolN").textContent = st.poolCount;
-  $("poolChips").innerHTML = st.pool.map(p => `<span>${esc(p)}${isFootball() ? ` <b class="ovr${Ratings.ratingOf(p).est ? " est" : ""}">${Ratings.ratingOf(p).ovr}</b>` : ""}</span>`).join("");
+  $("poolChips").innerHTML = st.poolHidden ? `<span class="muted">🙈 Roleta oculta: cada ${esc(t.item)} só aparece quando for sorteado.</span>` : st.pool.map(p => `<span>${esc(p)}${isFootball() ? ` <b class="ovr${Ratings.ratingOf(p).est ? " est" : ""}">${Ratings.ratingOf(p).ovr}</b>` : ""}</span>`).join("");
   $("unsoldWrap").classList.toggle("hidden", !st.unsold.length);
   $("unsoldN").textContent = st.unsold.length;
   $("unsoldChips").innerHTML = st.unsold.map(p => `<span>${esc(p)}</span>`).join("");
