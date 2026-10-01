@@ -1305,10 +1305,10 @@ function doKick(kind, power) {
   if (!how) return;
   let yaw = aimYaw();
   if (kind === "passe" && how !== "mao") ({ yaw, power } = C.assistPass(me, yaw, mates(), power));
-  if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F); // ajudinha para os cantos
+  const curve = curveNow();
+  if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F, curve, ball); // assistência estilo FIFA (último terço)
   me.facing = yaw;
   Sound.kick(power);
-  const curve = curveNow();
   if (G.mode === "treino") { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve); G.tKicks++; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
   socket.emit("kick", { kind, power, yaw, curve });
   // previsão: a bola já sai do meu pé aqui; o servidor confirma em seguida
@@ -1657,7 +1657,7 @@ function updateCamera(dt) {
 }
 function showAim(me) {
   let ay = aimYaw();
-  if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F); // a seta já mostra a ajudinha
+  if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F, curveNow(), G.mode === "treino" ? local.ball : ballS.view); // a seta já mostra a ajudinha
   aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
   aim.material.opacity = charge ? 0.9 : 0.4;
 }

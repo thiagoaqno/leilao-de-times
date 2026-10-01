@@ -4,7 +4,10 @@
 // Tudo em metros e segundos. O time A ataca para +x (defende o gol da esquerda); o B ataca para -x.
 (function (root) {
   const MODES = {
-    pes: { id: "pes", L: 20, W: 12, goalW: 1.6, goalH: 2.1, goalD: 1.2, ballR: 0.15, wallH: 7, ceil: 14, g: 9.81, bounce: 0.55, roll: 2.6, drag: 0.012, wallE: 0.6, postR: 0.05, areaR: 6, circle: 3 },
+    pes: { id: "pes", L: 20, W: 12, goalW: 1.6, goalH: 2.1, goalD: 1.2, ballR: 0.15, wallH: 7, ceil: 14, g: 9.81, wallE: 0.6, postR: 0.05, areaR: 6, circle: 3,
+      // bola de futsal: gravidade "de jogo" (sobe e cai rápido, nada de bola de lua), arrasto do ar, quique baixo e
+      // atrito forte rolando (o passe morre se ninguém dominar). curva = fator do efeito Magnus (Q/E)
+      gBola: 25, drag: 0.5, bounce: 0.45, roll: 1.2, curva: 0.03 },
     // carros: física da bola do Rocket League (parâmetros da Psyonix convertidos de uu para metros: 1 uu = 1 cm):
     // gravidade 650 uu/s², quique 0,6, atrito 0,35 com giro, arrasto linear 0,0305/s, até 6000 uu/s e 6 rad/s
     carros: { id: "carros", L: 40, W: 27, goalW: 7, goalH: 5.5, goalD: 4, ballR: 1.25, wallH: 18, ceil: 18, g: 6.5, bounce: 0.6, roll: 0, drag: 0.0305, wallE: 0.6, postR: 0.3, areaR: 14, circle: 9,
@@ -202,8 +205,15 @@
     const pr = p.slide ? 0.6 : p.dive ? 0.95 : P_R, top = p.slide ? 0.5 : p.dive ? 1.4 : P_H, base = p.dive ? p.y + 0.3 : p.y;
     const dx = b.x - p.x, dz = b.z - p.z, d = Math.hypot(dx, dz);
     if (b.y - R < base + top - (p.slide || p.dive ? 0 : 0.25) && b.y + R > base && d < pr + R && d > 1e-6) {
-      const e = p.slide ? 0.6 : p.sprint ? 0.5 : 0.25; // correndo, a bola espirra mais longe
-      return bounceOff(b, dx / d, 0, dz / d, pr + R - d, e, p.vx || 0, 0, p.vz || 0);
+      const nx = dx / d, nz = dz / d, pv = Math.hypot(p.vx || 0, p.vz || 0);
+      // domínio: parado ou indo ao encontro da bola (sem pique/carrinho), o peito/pé amortece e a bola fica colada
+      const domina = !p.slide && !p.dive && !p.sprint && (pv < 1 || ((p.vx || 0) * nx + (p.vz || 0) * nz) / pv > 0.3);
+      const e = p.slide ? 0.6 : p.sprint ? 0.5 : domina ? 0.12 : 0.25; // correndo, a bola espirra mais longe
+      const f = bounceOff(b, nx, 0, nz, pr + R - d, e, p.vx || 0, 0, p.vz || 0);
+      if (domina && f > 0) { // tira metade da velocidade relativa que sobrou (de lado e para cima)
+        b.vx = (p.vx || 0) + (b.vx - (p.vx || 0)) * 0.5; b.vz = (p.vz || 0) + (b.vz - (p.vz || 0)) * 0.5; if (b.vy > 0) b.vy *= 0.5;
+      }
+      return f;
     }
     if (p.slide || p.dive) return 0;
     const hy = p.y + P_H - 0.12, ex = b.x - p.x, ey = b.y - hy, ez = b.z - p.z, dd = Math.hypot(ex, ey, ez);
@@ -214,22 +224,27 @@
   function stepBall(F, b, bodies, dt) {
     if (F.rl) return stepBallRL(F, b, bodies, dt);
     let hit = 0, touch = null;
-    const R = F.ballR;
-    b.vy -= F.g * dt;
-    // efeito (chute com curva): a bola girando faz curva para o lado (efeito Magnus) e o giro vai acabando
+    const R = F.ballR, noAr = b.y > R + 0.01;
+    b.vy -= F.gBola * dt; // gravidade da bola (o pulo do jogador usa F.g)
+    // efeito Magnus (chute com curva no Q/E): giro em volta do eixo vertical, spin = (0, sp, 0).
+    // força = velocidade × spin × fator: (vx, vy, vz) × (0, sp, 0) = (-vz·sp, 0, vx·sp), perpendicular ao movimento.
+    // No ar curva de verdade; rolando, sobra uma curvinha (25%) e o giro acaba rápido no atrito com o chão.
     if (b.sp) {
-      b.vx += -b.vz * b.sp * 0.022 * dt; b.vz += b.vx * b.sp * 0.022 * dt;
-      b.sp *= Math.exp(-dt * (b.y <= R + 0.01 ? 3 : 0.5)); if (Math.abs(b.sp) < 0.3) b.sp = 0;
+      const k = b.sp * F.curva * (noAr ? 1 : 0.25) * dt, vx = b.vx;
+      b.vx += -b.vz * k; b.vz += vx * k;
+      b.sp *= Math.exp(-dt * (noAr ? 0.5 : 3)); if (Math.abs(b.sp) < 0.3) b.sp = 0;
     }
-    const sp = Math.hypot(b.vx, b.vy, b.vz), drag = Math.max(0, 1 - F.drag * sp * dt);
-    b.vx *= drag; b.vy *= drag; b.vz *= drag;
+    if (noAr) { const k = Math.max(0, 1 - F.drag * dt); b.vx *= k; b.vy *= k; b.vz *= k; } // arrasto do ar
     b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
     if (b.y < R) {
       b.y = R;
-      if (b.vy < -0.8) { hit = Math.max(hit, -b.vy); b.vy = -b.vy * F.bounce; b.vx *= 0.94; b.vz *= 0.94; }
+      if (b.vy < -1.2) { hit = Math.max(hit, -b.vy); b.vy = -b.vy * F.bounce; b.vx *= 0.94; b.vz *= 0.94; } // quique baixo: perde altura rápido
       else b.vy = 0;
     }
-    if (b.y <= R + 1e-3) { const h = Math.hypot(b.vx, b.vz); if (h > 0) { const k = Math.max(0, h - F.roll * dt) / h; b.vx *= k; b.vz *= k; } }
+    if (b.y <= R + 1e-3) { // rolando: atrito forte (velocidade *= 1 - 1,2·dt) e para de vez quando fica bem lenta
+      const k = Math.max(0, 1 - F.roll * dt); b.vx *= k; b.vz *= k;
+      if (Math.hypot(b.vx, b.vz) < 0.15) { b.vx = 0; b.vz = 0; }
+    }
     if (b.y > F.ceil - R) { b.y = F.ceil - R; b.vy = -Math.abs(b.vy) * 0.5; }
     const wz = F.W - R;
     if (b.z > wz) { b.z = wz; if (b.vz > 0) { hit = Math.max(hit, b.vz); b.vz = -b.vz * F.wallE; } }
@@ -341,28 +356,33 @@
     let speed, elev;
     if (how === "mao") { b.holder = null; b.x = p.x + fx * 0.6; b.z = p.z + fz * 0.6; b.y = 1.1; speed = kind === "passe" ? 6 + 10 * power : 14 + 12 * power; elev = kind === "passe" ? 0.05 : 0.45; }
     else if (how === "cabeca") { speed = 7 + 9 * power; elev = 0.12; }
-    else if (kind === "passe") { speed = 4 + 10 * power; elev = 0.02; }
+    else if (kind === "passe") { speed = 4 + 22 * power; elev = 0.02; } // passe forte: o atrito do futsal segura
     else if (kind === "cavadinha") { speed = 7 + 13 * power; elev = 0.85; }
     else { speed = 9 + 20 * power; elev = 0.07 + power * 0.1; }
-    const h = Math.cos(elev) * speed;
-    b.vx = fx * h + (p.vx || 0) * 0.3; b.vz = fz * h + (p.vz || 0) * 0.3; b.vy = Math.sin(elev) * speed;
+    const h = Math.cos(elev) * speed, sobe = Math.sqrt(MODES.pes.gBola / 9.81); // mesma altura que antes, subindo mais rápido
+    b.vx = fx * h + (p.vx || 0) * 0.3; b.vz = fz * h + (p.vz || 0) * 0.3; b.vy = Math.sin(elev) * speed * sobe;
     if (how === "pe" && b.y < MODES.pes.ballR + 0.05) b.y = MODES.pes.ballR + 0.02;
     curve = Math.max(-1, Math.min(1, curve || 0));
     b.sp = how === "cabeca" ? 0 : curve * (kind === "passe" ? 14 : 24); // positivo: curva para a direita de quem chuta
     return how;
   }
-  // chute assistido (só no futebol a pé): se o chute vai mais ou menos para o gol, puxa um pouquinho a mira para o
-  // canto mais perto de onde a pessoa mirou (logo dentro da trave) ou para o meio. Correção pequena, no máximo ~7°.
-  function assistShot(p, yaw, team, F = MODES.pes) {
-    const gx = (team === "B" ? -1 : 1) * F.L, dx = gx - p.x, dist = Math.abs(dx);
-    if (dist > 24 || dist < 1.5 || Math.sign(dx) !== Math.sign(-Math.sin(yaw))) return yaw;
-    let best = null, bd = Infinity;
-    for (const z of [-(F.goalW - 0.32), 0, F.goalW - 0.32]) {
-      const ty = Math.atan2(-dx, -(z - p.z)); let d = ty - yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
-      if (Math.abs(d) < bd) { bd = Math.abs(d); best = d; }
-    }
-    if (bd > 0.35) return yaw; // mirou longe do gol: não mexe
-    return yaw + Math.max(-0.12, Math.min(0.12, best * 0.6));
+  // chute assistido estilo FIFA (só no futebol a pé e só no último terço do campo, perto do gol que você ataca):
+  // se a mira está a menos de 35° do gol (do meio ou de uma das traves; um cone de 70°) e o chute é sem efeito, a direção é puxada para
+  // dentro do gol: mirou entre as traves, fica como está (a escolha do canto é sua); mirou para fora, mas dentro do
+  // cone, vai no canto mais perto (logo dentro da trave). Fora do cone vale a mira pura: dá para mandar para fora.
+  const ASSIST_CONE = 35 * Math.PI / 180;
+  // origem: de onde a bola sai (a bola pode estar até ~1,3 m para o lado do jogador)
+  function assistShot(p, yaw, team, F = MODES.pes, curve = 0, origem = p) {
+    if (F.rl || curve) return yaw; // chute com efeito (Q/E) é chute de habilidade: mira pura
+    const o = origem, s = team === "B" ? -1 : 1, gx = s * F.L, dx = gx - o.x;
+    if (s * dx <= 0.5 || s * dx > (2 * F.L) / 3) return yaw; // fora do último terço (ou atrás da linha do gol): mira pura
+    const ang = (z) => Math.atan2(-dx, -(z - o.z)), dif = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+    const inner = F.goalW - 0.3, aL = ang(-inner), aR = ang(inner), aC = ang(0);
+    if (Math.min(Math.abs(dif(yaw, aC)), Math.abs(dif(yaw, ang(-F.goalW))), Math.abs(dif(yaw, ang(F.goalW)))) > ASSIST_CONE) return yaw;
+    const lo = dif(aL, aC) < dif(aR, aC) ? aL : aR, hi = lo === aL ? aR : aL; // os dois cantos, em ordem de ângulo
+    const d = dif(yaw, aC);
+    if (d >= dif(lo, aC) && d <= dif(hi, aC)) return yaw; // já vai no gol
+    return Math.abs(dif(yaw, lo)) < Math.abs(dif(yaw, hi)) ? lo : hi; // puxa para o canto mais perto
   }
   // passe assistido (como no FIFA): se tiver um companheiro perto da direção mirada, a bola vai nele
   function assistPass(p, yaw, mates, power) {
@@ -376,7 +396,7 @@
       if (score < bestScore) { bestScore = score; best = { yaw: Math.atan2(-dx, -dz), d }; }
     }
     if (!best) return { yaw, power };
-    const need = (Math.sqrt(2 * MODES.pes.roll * best.d) + 1.2 - 4) / 10; // força para a bola chegar rolando
+    const need = (MODES.pes.roll * best.d + 2.5 - 4) / 22; // rolando, a velocidade cai 1,2 por metro: chega com ~2,5 m/s
     return { yaw: best.yaw, power: Math.max(Math.min(1, need), Math.min(power, need + 0.25)) };
   }
 
