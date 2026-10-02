@@ -393,6 +393,7 @@
     else if (how === "cabeca") { speed = 7 + 9 * power; elev = 0.12; }
     else if (kind === "passe") { speed = 4 + 22 * power; elev = 0.02; } // passe forte: o atrito do futsal segura
     else if (kind === "cavadinha") { speed = 7 + 13 * power; elev = 0.85; }
+    else if (kind === "lancamento") { speed = 10 + 16 * power; elev = 0.38; } // passe longo pelo alto (assistência de passe)
     else { speed = 9 + 20 * power; elev = 0.07 + power * 0.1; }
     const h = Math.cos(elev) * speed, sobe = Math.sqrt(MODES.pes.gBola / 9.81); // mesma altura que antes, subindo mais rápido
     b.vx = fx * h + (p.vx || 0) * 0.3; b.vz = fz * h + (p.vz || 0) * 0.3; b.vy = Math.sin(elev) * speed * sobe;
@@ -444,20 +445,54 @@
       }
     }
   }
-  // passe assistido (como no FIFA): se tiver um companheiro perto da direção mirada, a bola vai nele
+  // passe assistido (como no FIFA): procura o companheiro num cone de 45° para cada lado da mira (um pouco mais aberto
+  // que o do chute, 35°). A força escolhe quem: passe fraquinho vai no mais perto, e quanto mais você carrega, mais
+  // longe ele procura (barra cheia ~28 m). Entre dois na mesma distância, vai no mais alinhado com a mira. A bola sai
+  // na medida para chegar nele (~2,5 m/s), mirando onde ele vai estar se estiver correndo. Longe (mais de 18 m) rolando
+  // não chega (o atrito do futsal segura): vira lançamento pelo alto, que cai perto dele.
+  const PASSE_CONE = 45 * Math.PI / 180, LANCA_D = 18;
+  // quanto a bola leva até d (a bola sai ~0,6 m na frente do jogador): rolando, pela conta do atrito; pelo alto, da tabela
+  const tempoRolando = (d) => Math.log((MODES.pes.roll * Math.max(0, d - 0.6) + 2.5) / 2.5) / MODES.pes.roll;
+  const tempoLanc = (d) => lancamento(d).t;
   function assistPass(p, yaw, mates, power) {
-    const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    const fx = -Math.sin(yaw), fz = -Math.cos(yaw), alvoD = 3 + power * 25;
     let best = null, bestScore = Infinity;
     for (const m of mates) {
-      const lx = m.x + (m.vx || 0) * 0.45, lz = m.z + (m.vz || 0) * 0.45, dx = lx - p.x, dz = lz - p.z, d = Math.hypot(dx, dz);
-      if (d < 2 || d > 28) continue;
-      const cos = (dx * fx + dz * fz) / d; if (cos < Math.cos(0.7)) continue;
-      const score = d * (2 - cos);
-      if (score < bestScore) { bestScore = score; best = { yaw: Math.atan2(-dx, -dz), d }; }
+      const d0 = Math.hypot(m.x - p.x, m.z - p.z);
+      if (d0 < 1.5 || d0 > 34) continue;
+      let lx = m.x, lz = m.z, d = d0;
+      for (let k = 0; k < 4; k++) { // onde ele vai estar quando a bola chegar (algumas voltas: a distância muda o tempo)
+        const t = Math.min(2.6, d > LANCA_D ? tempoLanc(d) : tempoRolando(d));
+        lx = m.x + (m.vx || 0) * t; lz = m.z + (m.vz || 0) * t; d = Math.hypot(lx - p.x, lz - p.z);
+      }
+      const dx = lx - p.x, dz = lz - p.z;
+      const ang = Math.acos(Math.max(-1, Math.min(1, (dx * fx + dz * fz) / (d || 1))));
+      if (ang > PASSE_CONE) continue;
+      const score = ang / PASSE_CONE + Math.abs(d - alvoD) / 10; // alinhado com a mira + perto da distância que a força pede
+      if (score < bestScore) { bestScore = score; best = { yaw: Math.atan2(-dx, -dz), d, id: m.id, x: lx, z: lz }; }
     }
     if (!best) return { yaw, power };
-    const need = (MODES.pes.roll * best.d + 2.5 - 4) / 22; // rolando, a velocidade cai 1,2 por metro: chega com ~2,5 m/s
-    return { yaw: best.yaw, power: Math.max(Math.min(1, need), Math.min(power, need + 0.25)) };
+    if (best.d > LANCA_D) return { yaw: best.yaw, power: lancamento(best.d).power, alvo: best, kind: "lancamento" };
+    const need = (MODES.pes.roll * Math.max(0, best.d - 0.6) + 2.5 - 4) / 22; // rolando, a velocidade cai 1,2 por metro: chega com ~2,5 m/s
+    return { yaw: best.yaw, power: Math.max(0, Math.min(1, Math.max(need, Math.min(power, need + 0.08)))), alvo: best };
+  }
+  // lançamento: procura (simulando a bola) a força que faz ela chegar no companheiro já devagar, e quanto tempo leva.
+  // Guarda numa tabela de metro em metro (calcula uma vez só por distância).
+  const tabelaLanc = {};
+  function lancamento(d) {
+    const k = Math.max(LANCA_D, Math.min(34, Math.round(d)));
+    if (tabelaLanc[k]) return tabelaLanc[k];
+    let lo = 0, hi = 1, tempo = 1;
+    for (let i = 0; i < 12; i++) {
+      // simula ao longo do comprimento do campo (40 m), saindo de perto de uma linha de fundo
+      const pw = (lo + hi) / 2, F = MODES.pes, x0 = -F.L + 1, b = newBall(F); b.x = x0; b.y = F.ballR;
+      kick(b, { x: x0 - 0.6, y: 0, z: 0, id: "_" }, "lancamento", pw, -Math.PI / 2);
+      let t = 0, passou = false;
+      while (t < 4) { stepBall(F, b, [], 1 / 60); t += 1 / 60; if (b.x - x0 >= k) { passou = Math.hypot(b.vx, b.vz) > 1.5 || b.y > 0.5; break; } if (b.vx === 0 && b.vz === 0) break; }
+      if (passou) hi = pw; else lo = pw; // passou dele ainda rápido: menos força
+      if (b.x - x0 >= k) tempo = t;
+    }
+    return (tabelaLanc[k] = { power: (lo + hi) / 2, t: tempo });
   }
 
   const api = { MODES, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,

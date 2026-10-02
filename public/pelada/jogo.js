@@ -160,6 +160,7 @@ function keysHelp(mode) {
     <li><kbd>Shift</kbd> turbo</li><li><kbd>Espaço</kbd> pular (2x = pulo duplo)</li>
     <li>No ar: <kbd>Espaço</kbd> + direção = mortal</li><li>No ar: <kbd>W</kbd><kbd>S</kbd> inclinam o carro</li>
     <li><kbd>Q</kbd> freio de mão (derrapar)</li><li><kbd>C</kbd> câmera da bola</li></ul>
+    <p class="muted" style="font-size:13.5px;margin:10px 0 0">🎮 <b>Controle:</b> RT acelera, LT ré, analógico vira (e inclina no ar), A pula, B turbo, X derrapa, Y câmera da bola, Start pausa.</p>
     <p class="muted" style="font-size:13.5px;margin:10px 0 0">Dica: pule e use o turbo no ar para pegar a bola alta. O mortal bate na bola com mais força. Passe pelas almofadas amarelas para encher o turbo.</p>`;
   return `<ul class="keys">
     <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> correr · mouse vira a câmera</li><li><kbd>Shift</kbd> pique</li>
@@ -168,6 +169,7 @@ function keysHelp(mode) {
     <li><kbd>Q</kbd>/<kbd>E</kbd> segurados no chute: efeito (curva)</li>
     <li>Rodinha do mouse: carrinho</li><li><kbd>F</kbd> segurar quem está perto (ele corre devagar)</li><li><kbd>Espaço</kbd> pular / cabecear</li>
     <li>Goleiro: <kbd>Espaço</kbd> + <kbd>A</kbd>/<kbd>D</kbd> se joga</li><li><kbd>C</kbd> câmera: atrás, TV ou 1ª pessoa</li></ul>
+    <p class="muted" style="font-size:13.5px;margin:10px 0 0">🎮 <b>Controle (estilo FIFA):</b> analógico esquerdo corre e mira, o direito mexe a câmera · A passe · B chute · Y cavadinha · X carrinho · RT pique · LT segurar · LB pular/cabecear (goleiro: LB + lado se joga) · RB segurado no chute: chute colocado (com curva para o gol) · Select câmera · Start pausa.</p>
     <p class="muted" style="font-size:13.5px;margin:10px 0 0">Sem seta apertada, a bola vai para onde o jogador está virado. O passe procura o companheiro mais perto da direção (como no FIFA). Carrinho derruba quem estiver na frente.</p>`;
 }
 $("joinA").onclick = () => act("team", { team: "A" });
@@ -1009,6 +1011,9 @@ function animateCar(model, st, dt, speed, f, pitch) {
 // mira no chão (a pé): setinha na frente do jogador mostrando para onde vai a bola
 const aim = new THREE.Mesh(new THREE.RingGeometry(0.0, 0.2, 3), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
 aim.rotation.x = -Math.PI / 2; scene.add(aim);
+// anel embaixo do companheiro que vai receber o passe (assistência de passe)
+const passMark = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.85, 32), new THREE.MeshBasicMaterial({ color: 0x7cf29a, transparent: true, opacity: 0.8, depthWrite: false }));
+passMark.rotation.x = -Math.PI / 2; passMark.visible = false; scene.add(passMark);
 
 // ======================================================================
 // Estado do jogo no navegador
@@ -1025,7 +1030,7 @@ const now = () => performance.now() / 1000;
 // no celular não tem "prender o mouse": jogando = depois de tocar em "Voltar pro jogo"
 const TOUCH = window.Toque && Toque.isTouch();
 let touchPlay = false;
-const locked = () => document.pointerLockElement === canvas || (TOUCH && touchPlay && G.active);
+const locked = () => document.pointerLockElement === canvas || (TOUCH && touchPlay && G.active) || (PAD.play && G.active);
 const ballS = { snap: null, view: C.newBall(), off: { x: 0, y: 0, z: 0 }, ignoreUntil: 0 };
 const local = { ball: null };
 const isCar = () => G.game === "carros";
@@ -1069,7 +1074,7 @@ function stopGame() {
   if (G.meModel) { descartarJogador(G.meModel); G.meModel = null; }
   local.ball = null; ballS.mine = null; charge = null; Sound.engine(0, false);
   if (document.pointerLockElement) document.exitPointerLock();
-  touchPlay = false; if (TOUCH) Toque.show(false);
+  touchPlay = false; if (TOUCH) Toque.show(false); soltarPad(); PAD.play = false;
   $("over").classList.add("hidden"); $("pause").classList.add("hidden"); $("tab").classList.add("hidden");
 }
 function mySkin() { const m = myP(); return (G.mode === "online" && m && m.skin) || store.get("pelada:skin") || "padrao"; }
@@ -1292,6 +1297,60 @@ document.addEventListener("mousedown", (e) => { if (!locked() || !G.meModel || i
 document.addEventListener("mouseup", (e) => { if (charge && charge.src === "m" + e.button) releaseKick(); });
 document.addEventListener("wheel", (e) => { if (locked() && G.meModel && !isCar()) { e.preventDefault(); wheelQueued = true; } }, { passive: false });
 function releaseKick() { const c = charge; charge = null; if (c) doKick(c.kind, powerOf(c)); }
+
+// ======================================================================
+// Controle (Xbox, PlayStation e parecidos, pela Gamepad API do navegador), no estilo FIFA. Os botões apertam as
+// mesmas teclas do teclado (o jogo nem percebe a diferença); o analógico esquerdo também dá a direção exata (em vez
+// das 8 direções do WASD) e a velocidade (empurrou pouco, anda devagar). Start pausa e volta.
+// ======================================================================
+const PAD = { on: false, play: false, prev: [], lx: 0, ly: 0, rx: 0, ry: 0, colocado: false, fontes: new Map() };
+// botões no layout padrão: 0 A/✕, 1 B/○, 2 X/□, 3 Y/△, 4 LB, 5 RB, 6 LT, 7 RT, 8 Select, 9 Start, 12-15 direcional
+const PAD_PE = { 0: "KeyJ", 1: "KeyK", 3: "KeyL", 2: "carrinho", 7: "ShiftLeft", 6: "KeyF", 4: "Space", 5: "colocado", 8: "KeyC", 13: "Tab", 9: "start" };
+const PAD_CARRO = { 0: "Space", 1: "ShiftLeft", 2: "KeyQ", 3: "KeyC", 7: "KeyW", 6: "KeyS", 8: "KeyV", 13: "Tab", 9: "start" };
+// a mesma tecla pode vir de duas fontes (RT e o analógico apertam W no carro): só solta quando as duas soltarem
+function padTecla(code, fonte, down) {
+  const set = PAD.fontes.get(code) || new Set(), antes = set.size > 0;
+  if (down) set.add(fonte); else set.delete(fonte);
+  PAD.fontes.set(code, set);
+  if (antes !== set.size > 0) document.dispatchEvent(new KeyboardEvent(down ? "keydown" : "keyup", { code, bubbles: true }));
+}
+function soltarPad() { for (const [code, set] of PAD.fontes) if (set.size) { set.clear(); document.dispatchEvent(new KeyboardEvent("keyup", { code, bubbles: true })); } PAD.colocado = false; }
+function padPausa(jogar) {
+  if (!G.active) return;
+  if (jogar) { PAD.play = true; Sound.unlock(); $("pause").classList.add("hidden"); if (document.pointerLockElement) document.exitPointerLock(); }
+  else { PAD.play = false; soltarPad(); keys.clear(); charge = null; $("pause").classList.remove("hidden"); renderPauseSb(); }
+}
+function lerPad(dt) {
+  const gp = [...(navigator.getGamepads?.() || [])].find((g) => g && g.connected);
+  if (!gp) { if (PAD.on) { soltarPad(); if (PAD.play) padPausa(false); } PAD.on = false; return; }
+  if (!PAD.on) { PAD.on = true; toast("🎮 Controle conectado! Aperte Start (ou A na pausa) para jogar."); }
+  const dz = (v) => (Math.abs(v || 0) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82); // zona morta (o analógico nunca fica no zero exato)
+  PAD.lx = dz(gp.axes[0]); PAD.ly = dz(gp.axes[1]); PAD.rx = dz(gp.axes[2]); PAD.ry = dz(gp.axes[3]);
+  const map = isCar() ? PAD_CARRO : PAD_PE;
+  gp.buttons.forEach((b, i) => {
+    const v = b.pressed || b.value > 0.4, era = !!PAD.prev[i]; PAD.prev[i] = v;
+    if (v === era) return;
+    const m = map[i]; if (!m) return;
+    if (m === "start") { if (v) padPausa(!PAD.play); return; }
+    if (!PAD.play) { if (v && i === 0 && G.active && $("over").classList.contains("hidden")) padPausa(true); return; } // pausado: A volta
+    if (m === "carrinho") { if (v && G.meModel) wheelQueued = true; return; }
+    if (m === "colocado") { PAD.colocado = v; return; }
+    padTecla(m, "b" + i, v);
+  });
+  if (!PAD.play || !G.active) return;
+  // analógico esquerdo também aperta W/A/S/D (o carro, o mergulho do goleiro e quem mais lê as teclas)
+  const t = 0.45;
+  padTecla("KeyW", "ax", PAD.ly < -t); padTecla("KeyS", "ax", PAD.ly > t); padTecla("KeyA", "ax", PAD.lx < -t); padTecla("KeyD", "ax", PAD.lx > t);
+  // analógico direito: câmera (a pé)
+  if (!isCar() && G.view !== "tv" && (PAD.rx || PAD.ry)) { G.camYaw -= PAD.rx * 2.6 * dt * (sens / 1.6); G.camPitch = clamp(G.camPitch - PAD.ry * 1.8 * dt, ...pitchRange()); }
+}
+// RB segurado no chute: efeito automático, a bola faz a curva de volta para o meio do gol (o "chute colocado" do FIFA)
+function curvaColocada() {
+  const me = G.me, team = myAttackTeam() || "A", gx = (team === "B" ? -1 : 1) * G.F.L;
+  const b = G.mode === "treino" ? local.ball : ballS.mine || ballS.view, a = aimYaw();
+  const meio = Math.atan2(-(gx - b.x), -(0 - b.z)), d = Math.atan2(Math.sin(a - meio), Math.cos(a - meio));
+  return Math.sign(d || 1) * Math.max(0.55, Math.min(1, Math.abs(d) * 4)); // mirou à esquerda do meio: curva para a direita
+}
 const powerOf = (c) => clamp((now() - c.t0) / (c.kind === "passe" ? 0.8 : 0.9), 0, 1);
 document.addEventListener("contextmenu", (e) => { if (G.active) e.preventDefault(); });
 document.addEventListener("keydown", (e) => {
@@ -1320,7 +1379,8 @@ function canPlay() { if (G.mode === "treino") return true; const m = S && S.matc
 // quanto dá para olhar para baixo e para cima: em primeira pessoa dá para olhar o chão (e a bola no pé)
 const pitchRange = () => (G.view === "primeira" ? [-1.35, 0.9] : [-0.45, 0.7]);
 function aimYaw() {
-  const f = (keys.has("ArrowUp") ? 1 : 0) - (keys.has("ArrowDown") ? 1 : 0), s = (keys.has("ArrowRight") ? 1 : 0) - (keys.has("ArrowLeft") ? 1 : 0);
+  let f = (keys.has("ArrowUp") ? 1 : 0) - (keys.has("ArrowDown") ? 1 : 0), s = (keys.has("ArrowRight") ? 1 : 0) - (keys.has("ArrowLeft") ? 1 : 0);
+  if (!f && !s && PAD.play && Math.hypot(PAD.lx, PAD.ly) > 0.3) { f = -PAD.ly; s = PAD.lx; } // controle: mira com o analógico esquerdo (como no FIFA)
   if (!f && !s) return G.me.facing;
   const yaw = ctrlYaw(), wx = -Math.sin(yaw) * f + Math.cos(yaw) * s, wz = -Math.cos(yaw) * f - Math.sin(yaw) * s;
   return Math.atan2(-wx, -wz);
@@ -1328,10 +1388,10 @@ function aimYaw() {
 function mates() {
   if (G.mode !== "online") return [];
   const mine = myP(); if (!mine) return [];
-  return [...G.remotes.values()].filter((r) => r.team === mine.team).map((r) => ({ x: r.x, z: r.z, vx: r.vx || 0, vz: r.vz || 0 }));
+  return [...G.remotes.values()].filter((r) => r.team === mine.team && !(r.f & (FL.slide | FL.down))).map((r) => ({ id: r.id, x: r.px ?? r.x, z: r.pz ?? r.z, vx: r.pvx ?? r.vx ?? 0, vz: r.pvz ?? r.vz ?? 0 })); // onde estão agora
 }
 // efeito: segurar Q (curva para a esquerda) ou E (para a direita) na hora do chute
-const curveNow = () => (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
+const curveNow = () => (PAD.play && PAD.colocado && !isCar() && G.me ? curvaColocada() : (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0));
 function doKick(kind, power) {
   const me = G.me, t = now();
   if (!canPlay() || t - me.lastKick < C.KICK_CD || me.downT > 0) return;
@@ -1341,7 +1401,7 @@ function doKick(kind, power) {
   me.kickT = t; me.lastKick = t; me.st.kickT = t; // a perna balança mesmo se errar
   if (!how) return;
   let yaw = aimYaw();
-  if (kind === "passe" && how !== "mao") ({ yaw, power } = C.assistPass(me, yaw, mates(), power));
+  if (kind === "passe" && how !== "mao") { const r = C.assistPass(me, yaw, mates(), power); yaw = r.yaw; power = r.power; if (r.kind) kind = r.kind; } // longe: lançamento pelo alto
   const curve = curveNow();
   if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F, curve, ball); // assistência estilo FIFA (último terço)
   me.facing = yaw;
@@ -1366,7 +1426,7 @@ function loop() {
   requestAnimationFrame(loop);
   if (TOUCH) { const want = touchPlay && $("over").classList.contains("hidden"); if (Toque.on !== want) Toque.show(want); }
   const t = now(), dt = Math.min(0.05, t - lastT); lastT = t;
-  try { frame(dt, t); } catch (e) { console.error(e); }
+  try { lerPad(dt); frame(dt, t); } catch (e) { console.error(e); }
 }
 function myFlags() {
   const me = G.me; let f = 0;
@@ -1427,7 +1487,12 @@ function stepFoot(dt, t, frozen) {
   const me = G.me, F = G.F, yaw = ctrlYaw(), mine = myP(), isGK = G.mode === "online" && mine && mine.gk;
   const f = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0), s = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
   let wx = -Math.sin(yaw) * f + Math.cos(yaw) * s, wz = -Math.cos(yaw) * f - Math.sin(yaw) * s;
-  const len = Math.hypot(wx, wz); if (len > 0) { wx /= len; wz /= len; }
+  let len = Math.hypot(wx, wz); if (len > 0) { wx /= len; wz /= len; }
+  const padMag = PAD.play ? Math.min(1, Math.hypot(PAD.lx, PAD.ly)) : 0;
+  if (padMag > 0.15) { // controle: a direção exata do analógico (não só as 8 do WASD)
+    wx = -Math.sin(yaw) * -PAD.ly + Math.cos(yaw) * PAD.lx; wz = -Math.cos(yaw) * -PAD.ly - Math.sin(yaw) * PAD.lx;
+    const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l; len = 1;
+  }
   me.slideT = Math.max(0, me.slideT - dt); me.diveT = Math.max(0, me.diveT - dt); me.downT = Math.max(0, me.downT - dt); me.slideCd = Math.max(0, me.slideCd - dt);
   const busy = me.slideT > 0 || me.diveT > 0 || me.downT > 0;
   const holding = ballS.snap && ME && ballS.snap.holder === ME.id;
@@ -1459,6 +1524,7 @@ function stepFoot(dt, t, frozen) {
   me.stamina = clamp(me.stamina + (me.sprint ? -0.24 : 0.14) * dt, 0, 1);
   let speed = charge ? C.CHARGING : me.sprint ? C.SPRINT : C.RUN;
   if (me.seguradoPor) speed *= SEGURADO_VEL; if (me.segurando) speed *= 0.85;
+  if (padMag > 0.15 && !me.sprint) speed *= clamp(padMag * 1.5, 0.35, 1); // empurrou pouco o analógico: anda devagar
   if (frozen || !len) speed = 0;
   if (frozen) { me.vx = 0; me.vz = 0; }
   if (busy) { const k = Math.exp(-dt * (me.downT > 0 ? 6 : 1.6)); me.vx *= k; me.vz *= k; }
@@ -1729,7 +1795,7 @@ function updateCamera(dt) {
     cam.position.lerp(new THREE.Vector3(tx, hgt, F.W - 0.6), Math.min(1, dt * 4));
     cam.lookAt(tx, 0, fz0 - (isCar() ? 6 : 2.5));
     if (cam.fov !== 58) { cam.fov = 58; cam.updateProjectionMatrix(); }
-    if (G.meModel && !isCar()) showAim(me); else aim.visible = false;
+    if (G.meModel && !isCar()) showAim(me); else { aim.visible = false; passMark.visible = false; }
     return;
   }
   if (isCar()) { // atrás do carro; com a câmera da bola, a bola fica sempre na tela
@@ -1743,7 +1809,7 @@ function updateCamera(dt) {
     keepInside(F, me, 1);
     if (G.ballCam) cam.lookAt(lerp(me.x, b.x, 0.5), lerp(me.y + 1, b.y, 0.4), lerp(me.z, b.z, 0.5));
     else cam.lookAt(me.x + fx * 6, me.y + 1.2, me.z + fz * 6);
-    aim.visible = false; return;
+    aim.visible = false; passMark.visible = false; return;
   }
   const yaw = G.camYaw, pitch = G.camPitch, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
   if (G.view === "primeira") { // primeira pessoa: os olhos do jogador
@@ -1765,6 +1831,11 @@ function updateCamera(dt) {
 function showAim(me) {
   let ay = aimYaw();
   if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F, curveNow(), G.mode === "treino" ? local.ball : ballS.view); // a seta já mostra a ajudinha
+  // carregando o passe: anel embaixo de quem vai receber (muda do mais perto para o mais longe conforme a força)
+  let alvo = null;
+  if (charge && charge.kind === "passe" && !isCar()) { const r = C.assistPass(me, ay, mates(), powerOf(charge)); if (r.alvo) { alvo = r.alvo; ay = r.yaw; } }
+  passMark.visible = !!alvo;
+  if (alvo) { passMark.position.set(alvo.x, 0.04, alvo.z); passMark.material.opacity = 0.55 + 0.35 * Math.abs(Math.sin(now() * 8)); }
   aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
   aim.material.opacity = charge ? 0.9 : 0.4;
 }
@@ -1810,7 +1881,7 @@ function scoreTable() {
   return `<div class="row" style="justify-content:space-between;font-family:var(--display);font-size:20px"><span>${h(kitOf(S.kits.A).name)} ${m.score.A}</span><span>${m.score.B} ${h(kitOf(S.kits.B).name)}</span></div>
     <table class="sb"><tr><th>Jogador</th><th class="n">Gols</th><th class="n">Assist.</th><th class="n">Chutes/defesas</th><th class="n">Ping</th></tr>${rows}</table>`;
 }
-function renderPauseSb() { if (FIXO !== "carros") setH("pSkins", skinButtons(G.mode === "online" ? (myP() || {}).skin : store.get("pelada:skin"))); $("pauseSb").innerHTML = G.active ? `<div style="margin-top:16px">${scoreTable()}</div><div style="margin-top:12px">${keysHelp(G.game)}</div>` : ""; $("pauseHint").textContent = G.mode === "treino" ? "Treino: só você vê." : ""; }
+function renderPauseSb() { if (FIXO !== "carros") setH("pSkins", skinButtons(G.mode === "online" ? (myP() || {}).skin : store.get("pelada:skin"))); $("pauseSb").innerHTML = G.active ? `<div style="margin-top:16px">${scoreTable()}</div><div style="margin-top:12px">${keysHelp(G.game)}</div>` : ""; $("pauseHint").textContent = (G.mode === "treino" ? "Treino: só você vê." : "") + (PAD.on ? " 🎮 Start ou A: voltar" : ""); }
 function showOver() {
   if (document.pointerLockElement) document.exitPointerLock();
   $("pause").classList.add("hidden");
