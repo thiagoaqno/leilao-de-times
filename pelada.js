@@ -145,7 +145,7 @@ module.exports = function attachPelada(io) {
     if (room.config.mode !== "pes") return;
     for (const sid of room.order) {
       const s = room.players[sid];
-      if (!s.team || !((s.pos.f | 0) & FL.slide) || s.downUntil > now) continue;
+      if (!s.team || !((s.pos.f | 0) & FL.slide) || s.downUntil > now || room.ball.dono === s.id) continue; // carrinho só de quem está sem a bola
       const fx = -Math.sin(s.pos.yaw), fz = -Math.cos(s.pos.yaw), hx = s.pos.x + fx * 0.6, hz = s.pos.z + fz * 0.6;
       for (const oid of room.order) {
         const o = room.players[oid];
@@ -338,7 +338,7 @@ module.exports = function attachPelada(io) {
       const m = room && room.match, now = Date.now();
       if (!room || !me || !me.team || room.phase !== "play" || !m || m.phase !== "live" || room.config.mode !== "pes") return;
       if (now - me.lastKick < C.KICK_CD * 800 || me.downUntil > now) return;
-      const kind = ["passe", "cavadinha", "lancamento"].includes(d.kind) ? d.kind : "chute";
+      const kind = ["passe", "cavadinha", "lancamento", "cruzamento"].includes(d.kind) ? d.kind : "chute";
       if (![d.power, d.yaw].every(fin)) return;
       const slack = clamp(0.25 + (me.rtt || 0) / 1000 * 6, 0.25, 0.8); // a bola anda enquanto o chute viaja
       // quem estava conduzindo chuta a bola que está vendo no pé (a mesma que o navegador dele vinha mandando)

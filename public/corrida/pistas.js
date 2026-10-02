@@ -10,7 +10,7 @@ const WORLD = 1600;
 const PISTAS = {
   monaco: {
     name: "Mônaco", sub: "Estreita e travada: Sainte Dévote, o grampo do Grand Hotel, a chicane do porto e a piscina",
-    width: 72, minLap: 10, walls: true, wall: 9, flat: 12, fall: 70,
+    scale: 1.5, width: 104, minLap: 14, walls: true, wall: 9, flat: 12, fall: 70,
     // relevo [fração da volta, altura]: sobe a Beau Rivage até o Cassino e desce até o túnel, à beira do mar
     hills: [[0, 10], [0.1, 10], [0.16, 30], [0.21, 55], [0.25, 62], [0.29, 52], [0.34, 38], [0.41, 22], [0.46, 12], [0.56, 8], [0.6, 6], [0.72, 4], [0.8, 5], [0.92, 8], [1, 10]],
     points: [
@@ -33,9 +33,10 @@ const PISTAS = {
   },
   interlagos: {
     name: "Interlagos", sub: "Reta dos boxes longa, S do Senna fechado, Reta Oposta e o Bico de Pato",
-    width: 86, minLap: 9, walls: false, flat: 40, fall: 220,
+    scale: 1.5, width: 124, minLap: 13, walls: false, flat: 40, fall: 220,
     // morro da reta dos boxes, descida até o Lago, lombada na Reta Oposta (dá para voar!), o Mergulho e a subida dos boxes
-    hills: [[0, 70], [0.08, 66], [0.14, 42], [0.2, 30], [0.27, 25], [0.325, 14], [0.34, 30], [0.349, 10], [0.39, 0], [0.45, 0], [0.5, 5], [0.57, 25], [0.62, 35], [0.68, 35], [0.715, 30], [0.735, 30], [0.765, 4], [0.8, 0], [0.84, 6], [0.9, 40], [0.95, 63], [1, 70]],
+    // (a lombada e a rampa de Tóquio ocupam uma fração menor da volta desde que a pista cresceu 1,5×, para o pulo continuar igual)
+    hills: [[0, 70], [0.08, 66], [0.14, 42], [0.2, 30], [0.27, 25], [0.33, 14], [0.34, 30], [0.346, 10], [0.39, 0], [0.45, 0], [0.5, 5], [0.57, 25], [0.62, 35], [0.68, 35], [0.715, 30], [0.735, 30], [0.765, 4], [0.8, 0], [0.84, 6], [0.9, 40], [0.95, 63], [1, 70]],
     points: [
       [820, 1285, 0],                        // reta dos boxes (para a esquerda)
       [380, 1270, 55], [330, 1080, 45],      // S do Senna
@@ -54,9 +55,9 @@ const PISTAS = {
   },
   tokyo: {
     name: "Tóquio", sub: "Quarteirões de neon com esquinas de 90°: freia, vira, acelera",
-    width: 80, minLap: 10, walls: true, wall: 23, flat: 25, fall: 50,
+    scale: 1.5, width: 112, minLap: 14, walls: true, wall: 23, flat: 25, fall: 50,
     // via expressa elevada (sobe na avenida, passa lá em cima e desce), uma rampa de pulo e outro viaduto
-    hills: [[0, 0], [0.03, 0], [0.12, 60], [0.135, 62], [0.27, 62], [0.33, 30], [0.38, 0], [0.5, 0], [0.52, 0], [0.535, 22], [0.543, 0], [0.62, 0], [0.7, 0], [0.745, 36], [0.79, 36], [0.86, 0], [1, 0]],
+    hills: [[0, 0], [0.03, 0], [0.12, 60], [0.135, 62], [0.27, 62], [0.33, 30], [0.38, 0], [0.5, 0], [0.525, 0], [0.535, 22], [0.5403, 0], [0.62, 0], [0.7, 0], [0.745, 36], [0.79, 36], [0.86, 0], [1, 0]],
     points: [
       [700, 1320, 0],                        // avenida principal (para a direita)
       [1340, 1320, 60],
@@ -118,6 +119,14 @@ const PISTAS = {
     ],
   },
 };
+
+// Pistas ampliadas: os vértices (e os raios) foram desenhados no quadrado de 1600 e são multiplicados por `scale`,
+// e o mundo dessa pista cresce junto (t.world). Los Angeles e Rio continuam do tamanho original.
+for (const t of Object.values(PISTAS)) {
+  const s = t.scale || 1;
+  t.scale = s; t.world = WORLD * s;
+  if (s !== 1) t.points = t.points.map(([x, y, r]) => [x * s, y * s, (r || 0) * s]);
+}
 
 // Os cinco carros esportivos (os ids continuam os antigos, para as salas e o servidor). vmax: velocidade final no asfalto · acc: aceleração na arrancada (ela cai perto da velocidade
 // final: a = acc·(1 − 0,8·(v/vmax)^1,6), então leva de 4 a 8 segundos para chegar no topo) · brake: freio · grip: quanto o pneu segura

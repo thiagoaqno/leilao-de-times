@@ -139,7 +139,7 @@ const specRows = (k) => [["Velocidade", lerp10(k.vmax, 245, 355)], ["Aceleraçã
 const leds = (n) => `<span class="leds" role="img" aria-label="${n} de 10">${Array.from({ length: 10 }, (_, i) => `<i class="${i < n ? (i < 6 ? "g" : i < 8 ? "y" : "r") : ""}"></i>`).join("")}</span>`;
 // traçado em miniatura (cartões da sala e minimapa)
 function drawPreview(cv, id) {
-  const t = PISTAS[id], c = cv.getContext("2d"), s = cv.width / WORLD, th = THEMES[id];
+  const t = PISTAS[id], c = cv.getContext("2d"), s = cv.width / t.world, th = THEMES[id];
   c.fillStyle = th.preview; c.fillRect(0, 0, cv.width, cv.height);
   const pts = sample(t.points, 12);
   c.lineJoin = c.lineCap = "round";
@@ -207,7 +207,7 @@ function buildTrack(id) {
   const mini = document.createElement("canvas"); mini.width = mini.height = 240; drawPreview(mini, id);
   const tr = { id, t, pts, n, W, look: LOOK[id], theme: THEMES[id], mini, wallLat: t.walls ? W / 2 + t.wall : Infinity, grp: new THREE.Group() };
   // grade de distância até a pista (para o relevo e para espalhar enfeites sem cair na pista)
-  const G = 64, cell = WORLD / G, gd = new Float32Array((G + 1) * (G + 1)), gh = new Float32Array((G + 1) * (G + 1));
+  const G = 64, cell = t.world / G, gd = new Float32Array((G + 1) * (G + 1)), gh = new Float32Array((G + 1) * (G + 1));
   for (let j = 0; j <= G; j++) for (let i = 0; i <= G; i++) {
     const x = i * cell, y = j * cell; let bd = 1e12, bh = 0;
     for (let k = 0; k < n; k += 2) { const p = pts[k], d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; bh = p.h; } }
@@ -233,14 +233,15 @@ const rioShore = (y) => 347 + (y - 530) * 0.4163 - 150;
 const rioSea = (x, y) => x < rioShore(y) && y < 1700;
 function buildWorld(tr) {
   const { pts, n, W, look, id, grp } = tr, t = tr.t, add = (o) => (grp.add(o), o), r = rng(id.length * 977);
+  const WORLD = t.world, K = t.scale; // pistas ampliadas: o mundo cresce junto e as coordenadas fixas (mar, porto) vão × K
   // ---- chão em volta (malha com relevo) ----
-  const S = 140, pad = 1400, size = WORLD + pad * 2, geo = new THREE.PlaneGeometry(size, size, S, S); geo.rotateX(-Math.PI / 2);
+  const S = Math.round(140 * K), pad = 1400, size = WORLD + pad * 2, geo = new THREE.PlaneGeometry(size, size, S, S); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i) + WORLD / 2, y = pos.getZ(i) + WORLD / 2;
     let bi = 0, bd = 1e12; for (let k = 0; k < n; k += 3) { const p = pts[k], d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; bi = k; } }
     let h = groundH(tr, x, y, bi) - 1.5;
-    if (id === "monaco" && y > 1250 + Math.sin(x / 170) * 20) h = Math.min(h, -14); // o mar
+    if (id === "monaco" && y > 1250 * K + Math.sin(x / 170) * 20) h = Math.min(h, -14); // o mar
     if (id === "rio" && rioSea(x, y)) h = Math.min(h, -14); // o mar de Copacabana
     pos.setY(i, h);
   }
@@ -250,10 +251,10 @@ function buildWorld(tr) {
   const ground = add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: gtex, roughness: 1 })));
   ground.position.set(WORLD / 2, 0, WORLD / 2); ground.receiveShadow = true;
   if (id === "monaco") { // mar e o porto
-    const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(size, 1600), new THREE.MeshStandardMaterial({ color: 0x1f6fae, roughness: 0.2, metalness: 0.2 })));
-    sea.rotation.x = -Math.PI / 2; sea.position.set(WORLD / 2, -6, 1250 + 800);
+    const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(size, 1600 * K), new THREE.MeshStandardMaterial({ color: 0x1f6fae, roughness: 0.2, metalness: 0.2 })));
+    sea.rotation.x = -Math.PI / 2; sea.position.set(WORLD / 2, -6, (1250 + 800) * K);
     const port = add(new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshStandardMaterial({ color: 0x2a80bf, roughness: 0.2 })));
-    port.rotation.x = -Math.PI / 2; port.scale.set(270, 58, 1); port.position.set(800, groundH(tr, 800, 1020, nearest(tr, 800, 1020, 0)) - 0.5, 1020);
+    port.rotation.x = -Math.PI / 2; port.scale.set(270 * K, 58 * K, 1); port.position.set(800 * K, groundH(tr, 800 * K, 1020 * K, nearest(tr, 800 * K, 1020 * K, 0)) - 0.5, 1020 * K);
   }
   // ---- fitas ao longo da pista (asfalto, zebras, calçada): cada ponto com a sua altura ----
   function ribbon(l0, l1, y0, mat, vLen, y1 = y0, uSpan = 1, i0 = 0, i1 = n) { // de i0 a i1: só um trecho da volta
@@ -333,16 +334,16 @@ function buildWorld(tr) {
     }
   }
   // longe da pista: mais prédios, árvores, morros
-  for (let k = 0; k < 220; k++) {
+  for (let k = 0; k < Math.round(220 * K * K); k++) {
     const x = -pad + 100 + r() * (WORLD + 2 * pad - 200), y = -pad + 100 + r() * (WORLD + 2 * pad - 200);
     if (!free(x, y, 160)) continue;
-    if (id === "monaco") { if (y > 1260) continue; blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 60, sy: 80 + r() * 140, sz: 60 + r() * 60, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f"][(r() * 4) | 0] }); }
+    if (id === "monaco") { if (y > 1260 * K) continue; blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 60, sy: 80 + r() * 140, sz: 60 + r() * 60, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f"][(r() * 4) | 0] }); }
     else if (id === "interlagos") trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 });
     else if (id === "losangeles") { if (r() < 0.5) glass.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 120 + r() * 420, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); else palms.push({ x, y, h: hAt(x, y), s: 1.8, r: r() * 6 }); }
     else if (id === "rio") { if (rioSea(x, y)) continue; if (hAt(x, y) > 15 || r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.3 + r() * 1.2 }); else blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 50, sy: 70 + r() * 120, sz: 60 + r() * 50, dy: 0.5, r: r() * 3, c: ["#f4f1e6", "#e8e0cf", "#d9e6ef"][(r() * 3) | 0] }); }
     else towers.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 150 + r() * 500, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#1d2033", "#242842", "#191b2b", "#2a2340"][(r() * 4) | 0] });
   }
-  if (id === "monaco") { for (let k = 0; k < 26; k++) { const a = r() * 6.28, rr2 = Math.sqrt(r()); yachts.push({ x: 800 + Math.cos(a) * 230 * rr2, y: 1020 + Math.sin(a) * 40 * rr2, h: hAt(800, 1020) + 1, s: 1, r: r() * 0.4 }); } for (let k = 0; k < 20; k++) yachts.push({ x: r() * WORLD, y: 1320 + r() * 500, h: -6, s: 1.3, r: r() * 6 }); }
+  if (id === "monaco") { for (let k = 0; k < 26; k++) { const a = r() * 6.28, rr2 = Math.sqrt(r()); yachts.push({ x: (800 + Math.cos(a) * 230 * rr2) * K, y: (1020 + Math.sin(a) * 40 * rr2) * K, h: hAt(800 * K, 1020 * K) + 1, s: 1, r: r() * 0.4 }); } for (let k = 0; k < 20; k++) yachts.push({ x: r() * WORLD, y: (1320 + r() * 500) * K, h: -6, s: 1.3, r: r() * 6 }); }
   if (id === "interlagos") for (let k = 0; k < 7; k++) { const p = pts[Math.floor(n * (0.015 + k * 0.025))], L = W / 2 + 70; stands.push({ x: p.x - p.nx * L, y: p.y - p.ny * L, h: p.h, s: 1, r: -Math.atan2(p.ny, p.nx) }); }
   // modelos
   const leaf = new THREE.ConeGeometry(30, 70, 7); leaf.translate(0, 55, 0);
@@ -631,6 +632,23 @@ document.querySelectorAll(".pad button").forEach((b) => {
   b.addEventListener("pointerdown", (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); set(true); });
   b.addEventListener("pointerup", () => set(false)); b.addEventListener("pointercancel", () => set(false)); b.addEventListener("lostpointercapture", () => set(false));
 });
+// controle (Xbox/PlayStation): analógico esquerdo vira (com a força exata), RT acelera, LT freia/ré,
+// A também acelera e B/X também freiam (para quem prefere botão), Y troca a câmera, Back/Select (ou LB) volta para a pista.
+const pad = { steer: 0, on: false, prev: [] };
+function pollPad() {
+  const gp = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find((g) => g && g.connected);
+  if (!gp) { if (pad.on) { pad.on = false; keys.gas = keys.brake = false; } return; }
+  const b = (i) => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.3)), hit = (i) => b(i) && !pad.prev[i];
+  let x = gp.axes[0] || 0; if (b(14)) x = -1; if (b(15)) x = 1;
+  const dz = 0.15; x = Math.abs(x) < dz ? 0 : Math.sign(x) * ((Math.abs(x) - dz) / (1 - dz)) ** 1.4;
+  const gas = b(7) || b(0) || b(12), brake = b(6) || b(1) || b(2) || b(13);
+  if (gas || brake || x || pad.on) { pad.on = true; pad.steer = x; keys.gas = gas; keys.brake = brake && !gas; }
+  if (hit(3)) nextCam();
+  if (hit(8) || hit(4)) respawn();
+  pad.prev = gp.buttons.map((_, i) => b(i));
+}
+window.addEventListener("gamepaddisconnected", () => { pad.on = false; pad.steer = 0; keys.gas = keys.brake = false; });
+window.addEventListener("gamepadconnected", () => toast("🎮 Controle conectado: RT acelera, LT freia, analógico vira", 2600));
 $("bRespawn").onclick = () => respawn();
 $("bCam").onclick = () => nextCam();
 $("bExit").onclick = () => { if (confirm("Sair da corrida e voltar para a vila?")) location.href = "/"; };
@@ -684,7 +702,7 @@ function physics(dt, spec = carOf(me())) {
   }
   vf = Math.max(-70, vf);
   // volante: gira o bico (só andando); a velocidade fica no mundo e é medida de novo no eixo novo do carro
-  const steer = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  const steer = pad.on && pad.steer ? pad.steer : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
   c.steer += (steer - c.steer) * Math.min(1, dt * 10);
   const wx = fx * vf - fy * vl, wy = fy * vf + fx * vl;
   c.a += c.steer * spec.turn * Math.min(1, Math.abs(vf) / 90) * Math.sign(vf || 1) * dt * (air ? 0.35 : 1);
@@ -701,10 +719,10 @@ function physics(dt, spec = carOf(me())) {
   let nx = c.x + c.vx * dt, ny = c.y + c.vy * dt;
   race.idx = nearest(tr, nx, ny, race.idx);
   const fr = trackFrame(tr, nx, ny, race.idx), lim = tr.wallLat - 8;
-  if (Math.abs(fr.lat) > lim || nx < 2 || ny < 2 || nx > WORLD - 2 || ny > WORLD - 2) {
+  if (Math.abs(fr.lat) > lim || nx < 2 || ny < 2 || nx > tr.t.world - 2 || ny > tr.t.world - 2) {
     const p = tr.pts[race.idx], s = Math.sign(fr.lat) || 1, over = Math.abs(fr.lat) - lim;
     if (over > 0) { nx -= p.nx * s * over; ny -= p.ny * s * over; }
-    nx = Math.max(2, Math.min(WORLD - 2, nx)); ny = Math.max(2, Math.min(WORLD - 2, ny));
+    nx = Math.max(2, Math.min(tr.t.world - 2, nx)); ny = Math.max(2, Math.min(tr.t.world - 2, ny));
     const vn = c.vx * p.nx * s + c.vy * p.ny * s, hit = Math.abs(vn);
     if (vn > 0) { c.vx -= p.nx * s * vn * 1.25; c.vy -= p.ny * s * vn * 1.25; }
     c.vx *= spec.wall + (1 - spec.wall) * 0.6; c.vy *= spec.wall + (1 - spec.wall) * 0.6;
@@ -748,7 +766,7 @@ function updateGhosts(dt) {
 // A volta mais rápida que você já fez em cada pista fica salva neste navegador (posição a cada 0,1 s). Nas próximas
 // corridas, um carro dourado transparente refaz essa volta junto com você, e o placar mostra quanto você está
 // na frente (verde) ou atrás (vermelho) dele naquele ponto da pista.
-const REC_KEY = (id) => "corrida:recorde:" + id;
+const REC_KEY = (id) => "corrida:recorde:" + id + (PISTAS[id] && PISTAS[id].scale !== 1 ? ":x" + PISTAS[id].scale : ""); // pista ampliada: recorde novo
 function loadBest(id) { const b = store.get(REC_KEY(id)); return b && Array.isArray(b.s) && b.s.length > 20 && b.t > 0 ? b : null; }
 const progOf = (idx, tl) => (idx > race.tr.n * 0.75 && tl < 8000 ? idx - race.tr.n : idx); // antes de cruzar a linha conta negativo
 function recordLap() {
@@ -799,6 +817,7 @@ function loop(t) {
   raf = requestAnimationFrame(loop);
   if (!race) { raf && cancelAnimationFrame(raf); raf = 0; return; }
   const dt = Math.min(1 / 30, (t - (lastT || t)) / 1000); lastT = t;
+  pollPad();
   if (S && S.phase === "race") { const steps = dt > 1 / 50 ? 2 : 1; for (let i = 0; i < steps; i++) physics(dt / steps); }
   updateGhosts(dt);
   recordLap();
@@ -909,7 +928,7 @@ function hud() {
   const hd = $("hDraft"); hd.style.opacity = dr > 0.15 ? 1 : 0;
   hd.innerHTML = race.sling > 0 ? "🚀 ESTILINGUE!" : `💨 VÁCUO<i style="width:${Math.round(race.draft * 100)}%"></i>`;
   // minimapa
-  const mc = $("mini").getContext("2d"), k = 240 / WORLD;
+  const mc = $("mini").getContext("2d"), k = 240 / race.tr.t.world;
   mc.drawImage(tr.mini, 0, 0);
   for (const r of st) {
     const gh = ME && r.id === ME.id ? race.car : race.ghosts.get(r.id); if (!gh) continue;
@@ -939,6 +958,7 @@ $("btnRules").onclick = () => {
   $("modalBox").innerHTML = `<h2>Como jogar</h2>
   <h3>Controles</h3><ul>
   <li><b>Teclado:</b> ↑ ou W acelera, ↓ ou S freia (e dá ré), ← → ou A D viram. R volta para a pista. C troca a câmera (perto, primeira pessoa ou longe).</li>
+  <li><b>Controle (Xbox/PlayStation):</b> RT (ou A) acelera, LT (ou B) freia e dá ré, o analógico esquerdo vira com a força exata, Y troca a câmera e Select (ou LB) volta para a pista.</li>
   <li><b>Celular:</b> ◀ ▶ à esquerda viram; ▲ acelera e ▼ freia à direita.</li>
   <li><b>↺ Pista:</b> se rodar, ficar preso ou entrar na contramão, volta para o meio da pista.</li></ul>
   <h3>A corrida</h3><ul>

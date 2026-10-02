@@ -11,9 +11,34 @@
     // carros: física da bola do Rocket League (parâmetros da Psyonix convertidos de uu para metros: 1 uu = 1 cm):
     // gravidade 650 uu/s², quique 0,6, atrito 0,35 com giro, arrasto linear 0,0305/s, até 6000 uu/s e 6 rad/s
     carros: { id: "carros", L: 40, W: 27, goalW: 7, goalH: 5.5, goalD: 4, ballR: 1.25, wallH: 18, ceil: 18, g: 6.5, bounce: 0.6, roll: 0, drag: 0.0305, wallE: 0.6, postR: 0.3, areaR: 14, circle: 9,
-      rl: true, mu: 0.35, vmax: 60, wmax: 6, carE: 0.1 },
+      rl: true, mu: 0.35, vmax: 60, wmax: 6, carE: 0.1, rc: 7 }, // rc: raio das quinas arredondadas (chão-parede, parede-parede e parede-teto)
   };
   const P_R = 0.35, P_H = 1.8;
+
+  // ---------- arena arredondada (Rocket) ----------
+  // Como no Rocket League, a arena não tem quina viva: o chão vira parede numa curva de raio rc (a bola sobe por ela),
+  // a parede vira teto do mesmo jeito e os cantos (parede com parede) também são curvos. É um "caixote arredondado":
+  // a distância até a superfície sai da conta do caixote com as quinas de raio rc (negativa = dentro da arena).
+  // Devolve { d, nx, ny, nz } com a normal apontando para FORA.
+  function arenaSDF(F, x, y, z) {
+    const Rc = F.rc, hy = F.ceil / 2, sx = Math.sign(x) || 1, sy = Math.sign(y - hy) || 1, sz = Math.sign(z) || 1;
+    const qx = Math.abs(x) - (F.L - Rc), qy = Math.abs(y - hy) - (hy - Rc), qz = Math.abs(z) - (F.W - Rc);
+    const mx = Math.max(qx, 0), my = Math.max(qy, 0), mz = Math.max(qz, 0), out = Math.hypot(mx, my, mz);
+    if (out > 0) return { d: out - Rc, nx: sx * mx / out, ny: sy * my / out, nz: sz * mz / out };
+    if (qx >= qy && qx >= qz) return { d: qx - Rc, nx: sx, ny: 0, nz: 0 }; // no miolo: a parede reta mais perto
+    if (qy >= qz) return { d: qy - Rc, nx: 0, ny: sy, nz: 0 };
+    return { d: qz - Rc, nx: 0, ny: 0, nz: sz };
+  }
+  // a rampa do chão (para o carro andar nela): quanto o ponto (x, z) já entrou na curva (e), a altura do chão ali (h)
+  // e a normal da superfície (para dentro/para cima). Na boca do gol o chão é reto (a curva da parede do fundo some).
+  function rampa(F, x, z, baixo = true) {
+    const Rc = F.rc; if (!Rc) return { e: 0, h: 0, nx: 0, ny: 1, nz: 0 };
+    const corredor = baixo && Math.abs(z) < F.goalW - 1.2;
+    const qx = corredor ? 0 : Math.max(0, Math.abs(x) - (F.L - Rc)), qz = Math.max(0, Math.abs(z) - (F.W - Rc)), e = Math.hypot(qx, qz);
+    if (e <= 1e-6) return { e: 0, h: 0, nx: 0, ny: 1, nz: 0, dx: 0, dz: 0 };
+    const ee = Math.min(e, Rc), h = Rc - Math.sqrt(Rc * Rc - ee * ee), dx = (Math.sign(x) || 1) * qx / e, dz = (Math.sign(z) || 1) * qz / e;
+    return { e, h, nx: -dx * ee / Rc, ny: (Rc - h) / Rc, nz: -dz * ee / Rc, dx, dz };
+  }
 
   // camisas (as mesmas do futebol de botão): cor da camisa, desenho e cor do número/calção
   const KITS = {
@@ -136,8 +161,32 @@
       }
       const sp = Math.hypot(c.vx, c.vz); if (sp > 30) { c.vx *= 30 / sp; c.vz *= 30 / sp; }
     }
+    const ox = c.x, oz = c.z, oy = c.y;
     c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt;
-    if (c.y <= 0) { c.y = 0; if (!c.onGround) { c.onGround = true; c.jumps = 0; c.flipT = 0; } c.vy = 0; }
+    if (F.rc) { // arena arredondada: o carro sobe pela rampa (chão que vira parede) e, rápido no alto dela, decola
+      let r = rampa(F, c.x, c.z, oy < F.goalH - 1.3);
+      const corr = (z) => Math.abs(z) < F.goalW - 1.2;
+      if (c.onGround && corr(oz) !== corr(c.z) && r.h > oy + 0.3) { c.x = ox; c.z = oz; c.vx *= -0.2; c.vz *= -0.2; r = rampa(F, c.x, c.z, true); } // degrau (do lado da boca do gol): bate
+      const EMAX = Math.min(F.rc * 0.78, F.rc - 1.8); // antes da parede reta (r = 1,6)
+      if (r.e > EMAX && c.y <= r.h + 0.6) { // passou do ponto: a rampa fica em pé demais; com embalo, a velocidade vira pulo
+        const back = r.e - EMAX; c.x -= r.dx * back; c.z -= r.dz * back;
+        const vo = c.vx * r.dx + c.vz * r.dz;
+        let voou = false;
+        if (vo > 0) { c.vx -= r.dx * vo; c.vz -= r.dz * vo; if (vo > 6 && c.onGround) { c.vy = vo * 0.6; c.onGround = false; voou = true; } }
+        r = rampa(F, c.x, c.z, oy < F.goalH - 1.3);
+        if (voou) c.y = r.h + 0.7; // sai do chão subindo junto da parede
+      }
+      if (c.onGround && c.vy <= 0 && c.y - r.h < 0.6) c.y = r.h; // grudado no chão (acompanha a curva)
+      if (c.y <= r.h) { c.y = r.h; if (!c.onGround) { c.onGround = true; c.jumps = 0; c.flipT = 0; } c.vy = 0; }
+      else if (c.onGround && c.y > r.h + 0.6) c.onGround = false;
+      if (c.onGround && r.e > 0) { const k = F.g * 1.1 * (r.e / F.rc) * r.ny * dt; c.vx -= r.dx * k * 1.4; c.vz -= r.dz * k * 1.4; } // a gravidade puxa rampa abaixo
+      if (!c.onGround) { // no ar: paredes curvas e teto (o carro conta como uma bola de 1,2 m)
+        const s = arenaSDF(F, c.x, c.y + 0.7, c.z), lim = -1.2;
+        const gol = Math.abs(c.x) > F.L - 1.5 && Math.abs(c.z) < F.goalW && c.y < F.goalH; // entrando no gol
+        if (!gol && s.d > lim) { const pen = s.d - lim; c.x -= s.nx * pen; c.y -= s.ny * pen; c.z -= s.nz * pen; const vn = c.vx * s.nx + c.vy * s.ny + c.vz * s.nz; if (vn > 0) { c.vx -= s.nx * vn * 1.3; c.vy -= s.ny * vn * 1.3; c.vz -= s.nz * vn * 1.3; } }
+      }
+      c.ramp = r.e > 0 && c.onGround ? [r.nx, r.ny, r.nz] : null;
+    } else if (c.y <= 0) { c.y = 0; if (!c.onGround) { c.onGround = true; c.jumps = 0; c.flipT = 0; } c.vy = 0; }
     if (c.y > F.ceil - 1.4) { c.y = F.ceil - 1.4; c.vy = -Math.abs(c.vy) * 0.3; }
     // paredes (dá para entrar no gol)
     const r = 1.6, inGoal = Math.abs(c.z) < F.goalW - 1.2 && c.y < F.goalH - 1.3;
@@ -321,14 +370,13 @@
     const v = Math.hypot(b.vx, b.vy, b.vz); if (v > F.vmax) { const k = F.vmax / v; b.vx *= k; b.vy *= k; b.vz *= k; }
     const w = Math.hypot(b.wx, b.wy, b.wz); if (w > F.wmax) { const k = F.wmax / w; b.wx *= k; b.wy *= k; b.wz *= k; }
     b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
-    if (b.y < R) hit = Math.max(hit, rlContact(F, b, 0, 1, 0, R - b.y));
-    if (b.y > F.ceil - R) hit = Math.max(hit, rlContact(F, b, 0, -1, 0, b.y - (F.ceil - R)));
-    if (b.z > F.W - R) hit = Math.max(hit, rlContact(F, b, 0, 0, -1, b.z - (F.W - R)));
-    if (b.z < -F.W + R) hit = Math.max(hit, rlContact(F, b, 0, 0, 1, -F.W + R - b.z));
-    const inMouth = Math.abs(b.z) < F.goalW - R && b.y < F.goalH - R;
+    // arena arredondada: dentro do gol e no corredor da boca do gol (perto da linha) o chão é reto e não tem parede do
+    // fundo (a rede e as traves cuidam); no resto, a superfície curva do "caixote arredondado"
+    const inMouth = Math.abs(b.z) < F.goalW - R && b.y < F.goalH - R, ax = Math.abs(b.x);
+    if ((ax > F.L && Math.abs(b.z) < F.goalW) || (inMouth && ax > F.L - F.rc)) { if (b.y < R) hit = Math.max(hit, rlContact(F, b, 0, 1, 0, R - b.y)); }
+    else { const s = arenaSDF(F, b.x, b.y, b.z); if (s.d > -R) hit = Math.max(hit, rlContact(F, b, -s.nx, -s.ny, -s.nz, s.d + R)); }
     for (const s of [1, -1]) {
-      const line = s * F.L, sx = s * b.x, inGoal = sx > F.L && Math.abs(b.z) < F.goalW;
-      if (sx > F.L - R && !inMouth && !inGoal && sx < F.L + F.goalD) hit = Math.max(hit, rlContact(F, b, -s, 0, 0, sx - (F.L - R)));
+      const line = s * F.L, sx = s * b.x;
       if (sx > F.L) { // dentro do gol: rede (amortece bastante)
         const back = F.L + F.goalD - R;
         if (sx > back) { b.x = s * back; if (s * b.vx > 0) b.vx = -b.vx * 0.12; b.vz *= 0.6; b.vy *= 0.6; }
@@ -394,6 +442,7 @@
     else if (kind === "passe") { speed = 4 + 22 * power; elev = 0.02; } // passe forte: o atrito do futsal segura
     else if (kind === "cavadinha") { speed = 7 + 13 * power; elev = 0.85; }
     else if (kind === "lancamento") { speed = 10 + 16 * power; elev = 0.38; } // passe longo pelo alto (assistência de passe)
+    else if (kind === "cruzamento") { speed = 9 + 21 * power; elev = 0.6; } // cruzamento alto: sobe bem e cai na área
     else { speed = 9 + 20 * power; elev = 0.07 + power * 0.1; }
     const h = Math.cos(elev) * speed, sobe = Math.sqrt(MODES.pes.gBola / 9.81); // mesma altura que antes, subindo mais rápido
     b.vx = fx * h + (p.vx || 0) * 0.3; b.vz = fz * h + (p.vz || 0) * 0.3; b.vy = Math.sin(elev) * speed * sobe;
@@ -454,7 +503,9 @@
   // quanto a bola leva até d (a bola sai ~0,6 m na frente do jogador): rolando, pela conta do atrito; pelo alto, da tabela
   const tempoRolando = (d) => Math.log((MODES.pes.roll * Math.max(0, d - 0.6) + 2.5) / 2.5) / MODES.pes.roll;
   const tempoLanc = (d) => lancamento(d).t;
-  function assistPass(p, yaw, mates, power) {
+  // colocado (com o modificador, LB): vai no companheiro mais alinhado com a mira (a distância quase não importa) e
+  // sai tenso, chegando nele ainda forte (~6 m/s) em vez de morrer no pé.
+  function assistPass(p, yaw, mates, power, colocado = false) {
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw), alvoD = 3 + power * 25;
     let best = null, bestScore = Infinity;
     for (const m of mates) {
@@ -468,13 +519,47 @@
       const dx = lx - p.x, dz = lz - p.z;
       const ang = Math.acos(Math.max(-1, Math.min(1, (dx * fx + dz * fz) / (d || 1))));
       if (ang > PASSE_CONE) continue;
-      const score = ang / PASSE_CONE + Math.abs(d - alvoD) / 10; // alinhado com a mira + perto da distância que a força pede
+      const score = ang / PASSE_CONE + (colocado ? d / 200 : Math.abs(d - alvoD) / 10); // alinhado com a mira + perto da distância que a força pede
       if (score < bestScore) { bestScore = score; best = { yaw: Math.atan2(-dx, -dz), d, id: m.id, x: lx, z: lz }; }
     }
     if (!best) return { yaw, power };
     if (best.d > LANCA_D) return { yaw: best.yaw, power: lancamento(best.d).power, alvo: best, kind: "lancamento" };
-    const need = (MODES.pes.roll * Math.max(0, best.d - 0.6) + 2.5 - 4) / 22; // rolando, a velocidade cai 1,2 por metro: chega com ~2,5 m/s
+    const chega = colocado ? 6 : 2.5, need = (MODES.pes.roll * Math.max(0, best.d - 0.6) + chega - 4) / 22; // rolando, a velocidade cai 1,2 por metro
+    if (colocado) return { yaw: best.yaw, power: Math.max(0, Math.min(1, need)), alvo: best };
     return { yaw: best.yaw, power: Math.max(0, Math.min(1, Math.max(need, Math.min(power, need + 0.08)))), alvo: best };
+  }
+  // cruzamento alto (X no controle, U no teclado): a bola sobe e cai na área. Procura um companheiro adiantado num cone
+  // de 70° para cada lado da mira (o mais perto do gol); sem ninguém, cai perto da marca do pênalti. A força é a que faz
+  // a bola chegar nele ainda no alto (na altura da cabeça), mirando onde ele vai estar.
+  function assistCross(p, yaw, team, mates, F = MODES.pes) {
+    const s = team === "B" ? -1 : 1, gx = s * F.L, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    let alvo = null, bs = Infinity;
+    for (const m of mates) {
+      const dx = m.x - p.x, dz = m.z - p.z, d = Math.hypot(dx, dz);
+      if (d < 5 || d > 32) continue;
+      if (Math.acos(Math.max(-1, Math.min(1, (dx * fx + dz * fz) / d))) > 70 * Math.PI / 180) continue;
+      const sc = Math.hypot(gx - m.x, m.z) + (s * (m.x - p.x) < -2 ? 8 : 0); // perto do gol e não muito para trás
+      if (sc < bs) { bs = sc; alvo = m; }
+    }
+    let tx, tz;
+    if (alvo) { const t = 1.1; tx = alvo.x + (alvo.vx || 0) * t; tz = alvo.z + (alvo.vz || 0) * t; }
+    else { tx = gx - s * 4.5; tz = 0; }
+    const d = Math.max(6, Math.min(32, Math.hypot(tx - p.x, tz - p.z)));
+    return { yaw: Math.atan2(-(tx - p.x), -(tz - p.z)), power: cruzamento(d + 1.5).power, alvo: { x: tx, z: tz, id: alvo ? alvo.id : null } };
+  }
+  const tabelaCruz = {};
+  function cruzamento(d) { // força que faz o cruzamento quicar pela primeira vez a d metros (calcula uma vez por metro)
+    const k = Math.max(4, Math.min(34, Math.round(d)));
+    if (tabelaCruz[k]) return tabelaCruz[k];
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 12; i++) {
+      const pw = (lo + hi) / 2, F = MODES.pes, x0 = -F.L + 1, b = newBall(F); b.x = x0; b.y = F.ballR;
+      kick(b, { x: x0 - 0.6, y: 0, z: 0, id: "_" }, "cruzamento", pw, -Math.PI / 2);
+      let t = 0, subiu = false;
+      while (t < 4) { stepBall(F, b, [], 1 / 60); t += 1 / 60; if (b.y > 1) subiu = true; if (subiu && b.y <= F.ballR + 0.01) break; }
+      if (b.x - x0 > k) hi = pw; else lo = pw;
+    }
+    return (tabelaCruz[k] = { power: (lo + hi) / 2 });
   }
   // lançamento: procura (simulando a bola) a força que faz ela chegar no companheiro já devagar, e quanto tempo leva.
   // Guarda numa tabela de metro em metro (calcula uma vez só por distância).
@@ -496,7 +581,7 @@
   }
 
   const api = { MODES, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
-    movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass };
+    movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass, assistCross, arenaSDF, rampa };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;
 })(typeof window !== "undefined" ? window : globalThis);
