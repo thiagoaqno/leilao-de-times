@@ -61,11 +61,21 @@ const FORMATIONS = {
   "1-2-1": [[180, 320], [300, 180], [300, 460], [410, 320]],
   "1-1-2": [[180, 320], [290, 320], [400, 220], [400, 420]],
 };
+// Com outra quantidade de tampinhas (configuração da sala: 2 a 7 por time), a arrumação é fixa, por quantidade de
+// tampinhas de linha (a 1 continua guardando o gol). Só com 5 (4 de linha) vale a formação escolhida.
+const AUTO = {
+  1: [[390, 320]],
+  2: [[230, 320], [390, 320]],
+  3: [[210, 200], [210, 440], [390, 320]],
+  5: [[190, 150], [190, 490], [290, 320], [400, 210], [400, 430]],
+  6: [[180, 130], [180, 320], [180, 510], [300, 225], [300, 415], [390, 320]],
+};
 const GUARD = [60, MID_Y];
-function lineup(kickoff, forms = []) {
-  const pieces = [{ k: "ball", t: -1, x: L / 2, y: MID_Y }];
+const TAMPINHAS = [2, 3, 4, 5, 6, 7];
+function lineup(kickoff, forms = [], n = 5) {
+  const pieces = [{ k: "ball", t: -1, x: L / 2, y: MID_Y }], k = Math.max(1, Math.min(6, (n | 0) - 1));
   for (const t of [0, 1]) {
-    const spots = [GUARD, ...(FORMATIONS[forms[t]] || FORMATIONS["2-2"])].map(([x, y]) => [x, y]);
+    const spots = [GUARD, ...(k === 4 ? FORMATIONS[forms[t]] || FORMATIONS["2-2"] : AUTO[k])].map(([x, y]) => [x, y]);
     if (kickoff === t) { let f = 1; spots.forEach(([x], i) => { if (x > spots[f][0]) f = i; }); spots[f] = [L / 2 - RB - RBALL - 2, MID_Y]; }
     spots.forEach(([x, y], i) => pieces.push({ k: "btn", t, n: i + 1, x: t ? L - x : x, y }));
   }
@@ -229,7 +239,7 @@ function placeOk(pieces, i, x, y) {
   return pieces.every((p, j) => { if (j === i) return true; const rr = RB + (p.k === "ball" ? RBALL : RB) + 1; return (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) >= rr * rr; });
 }
 
-const api = { L, W, MID_Y, RB, RBALL, GW, GD, MARGIN, CIRCLE, AREA_W, AREA_H, G0, G1, KX, KH, KR, KY_MIN, KY_MAX, PLACE_R, DT, FRAME_EVERY, VMAX, SUPER, FORMATIONS,
+const api = { L, W, MID_Y, RB, RBALL, GW, GD, MARGIN, CIRCLE, AREA_W, AREA_H, G0, G1, KX, KH, KR, KY_MIN, KY_MAX, PLACE_R, DT, FRAME_EVERY, VMAX, SUPER, FORMATIONS, TAMPINHAS,
   speedOf, keeperSeg, clampKeeper, lineup, simulate, trace, placeBall, placeOk };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Botao = api;

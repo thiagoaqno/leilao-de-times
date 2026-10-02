@@ -1,10 +1,15 @@
-// Dominó da Galera — dominó de dupla (4 jogadores, 7 peças cada), por pontos de batida.
+// Dominó da Galera — dominó por pontos de batida, em três jeitos de jogar:
+//   dupla      4 jogadores, 2 duplas (parceiro de frente), 7 peças cada, sem monte
+//   individual 2, 3 ou 4 jogadores, cada um por si, 7 peças cada. Com 2 ou 3 sobra monte, e a compra é opcional
+//   burrinho   2 a 6 jogadores, cada um por si, 3 peças cada, e quem não tem peça que sirva compra do monte
 // Roda no mesmo servidor do leilão, num canal separado do Socket.io ("/domino").
 // Cada jogador recebe só as próprias peças; dos outros, só quantas têm (no fim da mão, todo mundo vê).
 const crypto = require("crypto");
 const R = require("./public/domino/regras.js");
 
 const PASS_MS = +process.env.DOMINO_PASS_MS || 1300, HAND_PAUSE = 6000, OFFLINE_MS = 8000;
+const MAX = { dupla: 4, individual: 4, burrinho: 6 }, MIN = { dupla: 4, individual: 2, burrinho: 2 };
+const PECAS = { dupla: 7, individual: 7, burrinho: 3 };
 const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -22,27 +27,38 @@ module.exports = function attachDomino(io) {
   }
   function cleanConfig(c = {}) {
     return {
+      mode: MAX[c.mode] ? c.mode : "dupla",
+      compra: c.compra !== false, // individual com 2 ou 3: quem não tem peça que sirva compra do monte (no burrinho, sempre)
       target: [4, 6, 10].includes(int(c.target, 6)) ? int(c.target, 6) : 6,
       timer: [20, 30, 45].includes(int(c.timer, 30)) ? int(c.timer, 30) : 30,
     };
   }
 
   // ---------- estado ----------
+  // "lado" é quem marca ponto: na dupla, a dupla (0 ou 1); cada um por si, o próprio jogador (a posição na mesa)
   const nameOf = (room, id) => (room.players[id] ? room.players[id].name : "?");
-  const teamOf = (room, id) => room.players[id].team;
-  const teamName = (room, t) => room.order.filter((id) => teamOf(room, id) === t).map((id) => nameOf(room, id)).join(" e ");
+  const dupla = (room) => room.config.mode === "dupla";
+  const sideOf = (room, id) => (dupla(room) ? room.players[id].team : room.order.indexOf(id));
+  const nSides = (room) => (dupla(room) ? 2 : room.order.length);
+  const sideName = (room, s) => room.order.filter((id) => sideOf(room, id) === s).map((id) => nameOf(room, id)).join(" e ");
+  const plural = (room, s) => (dupla(room) ? "marcaram" : "marcou");
+  // pode comprar do monte? (no burrinho sempre; no individual com 2 ou 3, se a compra estiver ligada)
+  const compraLigada = (room) => room.config.mode === "burrinho" || (room.config.mode === "individual" && room.config.compra && room.order.length <= 3);
+  const podeComprar = (room) => compraLigada(room) && room.h && room.h.dorme.length > 0;
   function log(room, text) { room.log.push({ t: Date.now(), text }); if (room.log.length > 150) room.log.splice(0, room.log.length - 150); }
   const fx = (room, o) => { room.fxSeq = (room.fxSeq || 0) + 1; room.fx.push({ id: room.fxSeq, at: Date.now(), ...o }); if (room.fx.length > 30) room.fx.splice(0, room.fx.length - 30); };
 
   function publicState(room) {
     const h = room.h, done = room.phase !== "playing";
+    const open = h && h.mustOpen != null ? Object.values(h.hands).flat().find((t) => t.id === h.mustOpen) : null;
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config,
-      players: room.order.map((id) => { const p = room.players[id]; return { id, name: p.name, pawn: p.pawn, team: p.team, online: p.sockets.size > 0, count: h ? h.hands[id].length : 0 }; }),
+      players: room.order.map((id) => { const p = room.players[id]; return { id, name: p.name, pawn: p.pawn, team: p.team, side: room.phase === "lobby" ? null : sideOf(room, id), online: p.sockets.size > 0, count: h ? h.hands[id].length : 0 }; }),
       score: room.score, games: room.games, winner: room.winner ?? null,
       hand: h ? {
         no: h.no, chain: h.chain, ends: R.ends(h.chain), turn: room.phase === "playing" ? room.order[h.turn] : null,
-        starter: room.order[h.starter], mustOpen: h.mustOpen, passes: h.passes, result: h.result || null, lastPlay: h.lastPlay || null,
+        starter: room.order[h.starter], mustOpen: h.mustOpen, open: open ? { a: open.a, b: open.b } : null, passes: h.passes, result: h.result || null, lastPlay: h.lastPlay || null,
+        dorme: h.dorme.length, compra: compraLigada(room),
         reveal: done ? h.hands : null, // no fim da mão, todo mundo vê as peças que sobraram
       } : null,
       deadline: room.deadline ? { who: room.deadline.who, at: room.deadline.at, total: room.deadline.total } : null,
@@ -61,32 +77,46 @@ module.exports = function attachDomino(io) {
   }
 
   // ---------- mão ----------
+  const ordena = (hand) => hand.sort((x, y) => x.a - y.a || x.b - y.b);
   function startHand(room, starterIdx) {
-    const set = shuffle(R.newSet()), hands = {};
-    room.order.forEach((id, i) => (hands[id] = set.slice(i * 7, i * 7 + 7).sort((x, y) => x.a - y.a || x.b - y.b)));
+    const set = shuffle(R.newSet()), hands = {}, n = room.order.length, k = PECAS[room.config.mode];
+    room.order.forEach((id, i) => (hands[id] = ordena(set.slice(i * k, i * k + k))));
+    const dorme = set.slice(n * k); // o monte (sobra com menos de 4 jogadores ou no burrinho)
     const no = (room.h ? room.h.no : 0) + 1;
     let starter = starterIdx, mustOpen = null;
-    if (starter == null) { // primeira mão: começa quem tem a carroça de sena, jogando ela
-      starter = room.order.findIndex((id) => hands[id].some((t) => t.a === 6 && t.b === 6));
-      mustOpen = hands[room.order[starter]].find((t) => t.a === 6 && t.b === 6).id;
+    if (starter == null) {
+      // primeira mão: abre quem tem a carroça mais alta (a de sena, se ela não estiver no monte), jogando ela;
+      // ninguém com carroça: a pedra mais pesada
+      let best = null;
+      room.order.forEach((id, i) => hands[id].forEach((t) => {
+        const v = (R.isDouble(t) ? 100 : 0) + R.pips(t) * 2 + Math.max(t.a, t.b) / 10;
+        if (!best || v > best.v) best = { v, i, t };
+      }));
+      starter = best.i; mustOpen = best.t.id;
     }
-    room.h = { no, hands, chain: null, turn: starter, starter, mustOpen, passes: 0, step: 0 };
+    room.h = { no, hands, dorme, chain: null, turn: starter, starter, mustOpen, passes: 0, step: 0 };
     room.phase = "playing"; room.nextAt = null;
     fx(room, { kind: "deal" });
-    log(room, `🎲 Mão ${no}: ${nameOf(room, room.order[starter])} começa${mustOpen != null ? " com a carroça de sena (6|6)" : ""}.`);
+    const abre = mustOpen != null ? hands[room.order[starter]].find((t) => t.id === mustOpen) : null;
+    log(room, `🎲 Mão ${no}: ${nameOf(room, room.order[starter])} começa${abre ? ` com ${abre.a === 6 && abre.b === 6 ? "a carroça de sena (6|6)" : tn(abre)}` : ""}.${dorme.length ? ` Monte com ${dorme.length} pedras.` : ""}`);
     autoPass(room);
   }
-  function endHand(room, team, pts, why, kind) {
+  function endHand(room, side, pts, why, kind) {
     const h = room.h;
-    if (team >= 0) room.score[team] = Math.min(room.config.target, room.score[team] + pts);
-    h.result = { team, pts, why, kind };
-    fx(room, { kind: "hand", team, pts, name: kind });
-    log(room, team >= 0 ? `🏁 ${teamName(room, team)} marcaram ${pts} ${pts > 1 ? "pontos" : "ponto"} (${why}). Placar: ${room.score[0]} × ${room.score[1]}.` : `🤝 ${why}: ninguém marcou.`);
+    if (side >= 0) room.score[side] = Math.min(room.config.target, room.score[side] + pts);
+    h.result = { team: side, pts, why, kind };
+    fx(room, { kind: "hand", team: side, pts, name: kind });
+    const placar = room.score.map((v, s) => (dupla(room) ? v : `${sideName(room, s)} ${v}`)).join(dupla(room) ? " × " : " · ");
+    log(room, side >= 0 ? `🏁 ${sideName(room, side)} ${plural(room, side)} ${pts} ${pts > 1 ? "pontos" : "ponto"} (${why}). Placar: ${placar}.` : `🤝 ${why}: ninguém marcou.`);
+    if (room.config.mode === "burrinho" && side >= 0) { // quem ficou com mais pontos na mão é o burrinho da rodada 🫏
+      const soma = (id) => h.hands[id].reduce((s, t) => s + R.pips(t), 0), burro = room.order.filter((id) => h.hands[id].length).sort((x, y) => soma(y) - soma(x))[0];
+      if (burro) log(room, `🫏 Burrinho da mão: ${nameOf(room, burro)} (${soma(burro)} pontos na mão).`);
+    }
     room.phase = "handEnd";
-    if (team >= 0 && room.score[team] >= room.config.target) {
-      room.phase = "ended"; room.winner = team; room.games[team]++; room.nextAt = null;
-      fx(room, { kind: "game", team });
-      log(room, `👑 ${teamName(room, team)} ganharam o jogo!`);
+    if (side >= 0 && room.score[side] >= room.config.target) {
+      room.phase = "ended"; room.winner = side; room.games[side] = (room.games[side] || 0) + 1; room.nextAt = null;
+      fx(room, { kind: "game", team: side });
+      log(room, `👑 ${sideName(room, side)} ${dupla(room) ? "ganharam" : "ganhou"} o jogo!`);
       return;
     }
     room.nextAt = Date.now() + HAND_PAUSE;
@@ -99,10 +129,10 @@ module.exports = function attachDomino(io) {
     startHand(room, room.h.nextStarter);
     broadcast(room);
   }
-  const anyoneCan = (room) => room.order.some((id) => R.canPlay(room.h.hands[id], R.ends(room.h.chain)));
+  const anyoneCan = (room) => podeComprar(room) || room.order.some((id) => R.canPlay(room.h.hands[id], R.ends(room.h.chain)));
 
   function place(room, pid, tile, side) {
-    const h = room.h, e = R.ends(h.chain);
+    const h = room.h, e = R.ends(h.chain), n = room.order.length;
     const hand = h.hands[pid];
     hand.splice(hand.indexOf(tile), 1);
     let placed;
@@ -120,28 +150,37 @@ module.exports = function attachDomino(io) {
       const b = R.batida(tile, e);
       h.nextStarter = room.order.indexOf(pid);
       log(room, `💥 ${who} bateu com ${tn(tile)}${b.pts > 1 ? ` — ${b.name.toUpperCase()}!` : "!"}`);
-      return endHand(room, teamOf(room, pid), b.pts, b.pts > 1 ? `${who} bateu de ${b.name.toLowerCase()}` : `${who} bateu`, b.name);
+      return endHand(room, sideOf(room, pid), b.pts, b.pts > 1 ? `${who} bateu de ${b.name.toLowerCase()}` : `${who} bateu`, b.name);
     }
-    if (!anyoneCan(room)) { // fechou: menos pontos na mão ganha
-      const sum = [0, 0], each = {};
-      for (const id of room.order) { each[id] = h.hands[id].reduce((s, t) => s + R.pips(t), 0); sum[teamOf(room, id)] += each[id]; }
-      log(room, `🔒 Jogo fechado! Pontos na mão: ${teamName(room, 0)} ${sum[0]} × ${sum[1]} ${teamName(room, 1)}.`);
-      const win = sum[0] === sum[1] ? -1 : sum[0] < sum[1] ? 0 : 1;
-      // começa a próxima quem tem menos pontos no time vencedor (empate: o próximo de quem começou)
-      if (win >= 0) h.nextStarter = room.order.indexOf(room.order.filter((id) => teamOf(room, id) === win).sort((x, y) => each[x] - each[y])[0]);
-      else h.nextStarter = (h.starter + 1) % 4;
-      return endHand(room, win, 1, win >= 0 ? `jogo fechado, ${sum[win]} contra ${sum[1 - win]} pontos na mão` : "Jogo fechado empatado", "Fechado");
+    if (!anyoneCan(room)) { // fechou: menos pontos na mão ganha (na dupla, somando os dois)
+      const sum = Array(nSides(room)).fill(0), each = {};
+      for (const id of room.order) { each[id] = h.hands[id].reduce((s, t) => s + R.pips(t), 0); sum[sideOf(room, id)] += each[id]; }
+      const min = Math.min(...sum), quem = sum.map((v, s) => (v === min ? s : -1)).filter((s) => s >= 0), win = quem.length === 1 ? quem[0] : -1;
+      log(room, `🔒 Jogo fechado! Pontos na mão: ${sum.map((v, s) => `${sideName(room, s)} ${v}`).join(" · ")}.`);
+      // começa a próxima quem tem menos pontos no lado vencedor (empate: o próximo de quem começou)
+      if (win >= 0) h.nextStarter = room.order.indexOf(room.order.filter((id) => sideOf(room, id) === win).sort((x, y) => each[x] - each[y])[0]);
+      else h.nextStarter = (h.starter + 1) % n;
+      const outros = sum.filter((_, s) => s !== win);
+      return endHand(room, win, 1, win >= 0 ? `jogo fechado, ${sum[win]} contra ${Math.min(...outros)} pontos na mão` : "Jogo fechado empatado", "Fechado");
     }
-    h.turn = (h.turn + 1) % 4;
+    h.turn = (h.turn + 1) % n;
     autoPass(room);
   }
-  // Quem não tem peça que sirva passa sozinho, com um tempinho para todo mundo ver.
+  // compra uma pedra do monte (quem não tem pedra que sirva)
+  function compra(room, pid) {
+    const h = room.h, t = h.dorme.pop();
+    h.hands[pid].push(t); ordena(h.hands[pid]); h.step++;
+    fx(room, { kind: "buy", pid });
+    log(room, `🀫 ${nameOf(room, pid)} comprou do monte (${h.dorme.length} ${h.dorme.length === 1 ? "sobrou" : "sobraram"}).`);
+    return t;
+  }
+  // Quem não tem peça que sirva (e não pode comprar) passa sozinho, com um tempinho para todo mundo ver.
   function autoPass(room) {
     const h = room.h;
     clearTimeout(room.passTimer);
     if (room.phase !== "playing" || !h.chain) return;
     const pid = room.order[h.turn];
-    if (R.canPlay(h.hands[pid], R.ends(h.chain))) return;
+    if (R.canPlay(h.hands[pid], R.ends(h.chain)) || podeComprar(room)) return;
     h.passing = true;
     const step = h.step;
     room.passTimer = setTimeout(() => {
@@ -149,7 +188,7 @@ module.exports = function attachDomino(io) {
       h.passing = false; h.passes++; h.step++;
       fx(room, { kind: "pass", pid });
       log(room, `✊ ${nameOf(room, pid)} passou.`);
-      h.turn = (h.turn + 1) % 4;
+      h.turn = (h.turn + 1) % room.order.length;
       autoPass(room);
       broadcast(room);
     }, PASS_MS);
@@ -166,10 +205,12 @@ module.exports = function attachDomino(io) {
     room.deadline = { key, who, at: Date.now() + ms, total: ms };
     room.turnTimer = setTimeout(() => {
       if (room.phase !== "playing" || !room.deadline || room.deadline.key !== key) return;
-      const hand = h.hands[who], e = R.ends(h.chain);
-      // joga a peça mais pesada que servir
+      const hand = h.hands[who];
+      // demorou: compra até ter pedra que sirva (se puder) e joga a mais pesada
+      if (h.chain) while (!R.canPlay(hand, R.ends(h.chain)) && podeComprar(room)) compra(room, who);
+      const e = R.ends(h.chain);
       const opts = hand.filter((t) => (h.mustOpen != null ? t.id === h.mustOpen : R.sides(t, e).length)).sort((x, y) => R.pips(y) - R.pips(x));
-      if (!opts.length) return;
+      if (!opts.length) { autoPass(room); broadcast(room); return; }
       log(room, `⏱️ ${nameOf(room, who)} demorou e jogou ${tn(opts[0])}.`);
       place(room, who, opts[0], R.sides(opts[0], e)[0]);
       broadcast(room);
@@ -226,7 +267,7 @@ module.exports = function attachDomino(io) {
       }
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      if (room.order.length >= 4) return fail(cb, "A mesa já tem 4 jogadores. Você pode entrar para assistir.");
+      if (room.order.length >= 6) return fail(cb, "A mesa já tem 6 jogadores. Você pode entrar para assistir.");
       if (Object.values(room.players).some((p) => p.name.toLowerCase() === name.toLowerCase())) return fail(cb, "Já tem alguém com esse nome na mesa.");
       const p = addPlayer(room, name);
       bind(room, p.id);
@@ -276,12 +317,19 @@ module.exports = function attachDomino(io) {
       }
       if (type === "start") {
         if (!isHost || room.phase !== "lobby") return "Só o organizador começa o jogo.";
-        const a = room.order.filter((id) => room.players[id].team === 0), b = room.order.filter((id) => room.players[id].team === 1);
-        if (room.order.length !== 4 || a.length !== 2 || b.length !== 2) return "O dominó de dupla é com 4 jogadores, 2 em cada dupla.";
-        shuffle(a); shuffle(b);
-        room.order = [a[0], b[0], a[1], b[1]]; // parceiros de frente
-        room.score = [0, 0]; room.winner = null; room.h = null; room.fx = [];
-        log(room, `🎉 Começou! ${teamName(room, 0)} contra ${teamName(room, 1)}.`);
+        const mode = room.config.mode, n = room.order.length;
+        if (mode === "dupla") {
+          const a = room.order.filter((id) => room.players[id].team === 0), b = room.order.filter((id) => room.players[id].team === 1);
+          if (n !== 4 || a.length !== 2 || b.length !== 2) return "O dominó de dupla é com 4 jogadores, 2 em cada dupla.";
+          shuffle(a); shuffle(b);
+          room.order = [a[0], b[0], a[1], b[1]]; // parceiros de frente
+          log(room, `🎉 Começou! ${a.map((id) => nameOf(room, id)).join(" e ")} contra ${b.map((id) => nameOf(room, id)).join(" e ")}.`);
+        } else {
+          if (n < MIN[mode] || n > MAX[mode]) return mode === "burrinho" ? "O burrinho é de 2 a 6 jogadores." : "Cada um por si é de 2 a 4 jogadores.";
+          shuffle(room.order);
+          log(room, `🎉 Começou ${mode === "burrinho" ? "o burrinho" : "o cada um por si"}, com ${n}!${compraLigada(room) ? " Quem não tiver pedra que sirva compra do monte." : ""}`);
+        }
+        room.score = Array(nSides(room)).fill(0); room.games = Array(nSides(room)).fill(0); room.winner = null; room.h = null; room.fx = [];
         startHand(room, null); return;
       }
       if (type === "next") {
@@ -300,11 +348,20 @@ module.exports = function attachDomino(io) {
         if (room.order[h.turn] !== me.id) return "Não é a sua vez.";
         const tile = h.hands[me.id].find((t) => t.id === int(data.id, -1));
         if (!tile) return "Essa peça não está na sua mão.";
-        if (h.mustOpen != null && tile.id !== h.mustOpen) return "A primeira mão começa com a carroça de sena (6|6).";
+        if (h.mustOpen != null && tile.id !== h.mustOpen) return "A primeira mão começa com a pedra marcada.";
         const ok = R.sides(tile, R.ends(h.chain));
         if (!ok.length) return "Essa peça não encaixa em nenhuma ponta.";
         const side = ok.includes(data.side) ? data.side : ok[0];
         place(room, me.id, tile, side);
+        return;
+      }
+      if (type === "buy") {
+        if (room.phase !== "playing" || !h.chain) return "Não dá para comprar agora.";
+        if (room.order[h.turn] !== me.id) return "Não é a sua vez.";
+        if (R.canPlay(h.hands[me.id], R.ends(h.chain))) return "Você tem pedra que serve: jogue ela.";
+        if (!podeComprar(room)) return compraLigada(room) ? "O monte acabou." : "Nesta mesa não tem compra.";
+        compra(room, me.id);
+        autoPass(room); // comprou e ainda não serve, com o monte vazio: passa
         return;
       }
       return "Ação desconhecida.";
