@@ -6,6 +6,7 @@
 // com a bola e todo mundo dentro (pacotes pequenos e poucos: gasta bem menos internet).
 const crypto = require("crypto");
 const C = require("./public/pelada/campo.js");
+const Bots = require("./peladaBots.js"); // amistoso com bots (a IA roda aqui)
 
 const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM = 5;
 const HOLD_MS = 6000, DOWN_MS = 1400;
@@ -34,6 +35,7 @@ module.exports = function attachPelada(io) {
     minutes: [3, 5, 8].includes(int(c.minutes, 5)) ? int(c.minutes, 5) : 5,
     arena: C.ARENAS[c.arena] ? c.arena : "society", // quadra escolhida pelo organizador (todo mundo vê a mesma)
     estilo: c.estilo === "strikers" ? "strikers" : "futsal", // a pé: futsal ou Strikers (arcade, com itens e Super Chute)
+    bots: c.mode !== "carros" && !!c.bots, // amistoso: 4 na linha + goleiro por time, os lugares vagos são de bots
   });
   const F = (room) => C.campoDe(room.config.mode, room.config.estilo);
   const teamOf = (room, t) => room.order.map((id) => room.players[id]).filter((p) => p.team === t);
@@ -46,8 +48,8 @@ module.exports = function attachPelada(io) {
       match: m ? { phase: m.phase, until: m.until, left: Math.max(0, Math.round(m.left)), score: m.score, kickoff: m.kickoff, goals: m.goals.slice(-20) } : null,
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, n: p.n, name: p.name, team: p.team, num: p.num, gk: !!p.gk, car: p.car, skin: p.skin, itens: p.itens || [], goals: p.goals, assists: p.assists, shots: p.shots, saves: p.saves,
-          ping: p.rtt == null ? null : Math.round(p.rtt), online: p.sockets.size > 0, spawn: p.spawn };
+        return { id, n: p.n, name: p.name, team: p.team, bot: !!p.bot, num: p.num, gk: !!p.gk, car: p.car, skin: p.skin, itens: p.itens || [], goals: p.goals, assists: p.assists, shots: p.shots, saves: p.saves,
+          ping: p.rtt == null ? null : Math.round(p.rtt), online: !!p.bot || p.sockets.size > 0, spawn: p.spawn, tq: p.trocaSeq || 0 };
       }),
       feed: room.feed.slice(-12), now: Date.now(),
     };
@@ -58,6 +60,7 @@ module.exports = function attachPelada(io) {
   function startMatch(room) {
     room.phase = "play";
     room.match = { phase: "ready", until: 0, left: room.config.minutes * 60000, score: { A: 0, B: 0 }, kickoff: 0, goals: [], last: [] };
+    if (room.config.bots) Bots.montarBots(room, () => rid(6)); else Bots.tirarBots(room);
     for (const id of room.order) Object.assign(room.players[id], { goals: 0, assists: 0, shots: 0, saves: 0 });
     if (room.config.mode === "carros") for (const id of room.order) room.players[id].gk = false;
     // números das camisas: goleiro é o 1; os outros na ordem em que entraram
@@ -122,14 +125,14 @@ module.exports = function attachPelada(io) {
     if (room.config.mode !== "pes") return;
     if (b.holder) {
       const k = room.players[b.holder];
-      const keep = k && k.sockets.size && k.downUntil <= now && C.inArea(mode, k.team, k.pos.x, k.pos.z) && now - k.holdSince < HOLD_MS;
+      const keep = k && Bots.vivo(k) && k.downUntil <= now && C.inArea(mode, k.team, k.pos.x, k.pos.z) && now - k.holdSince < HOLD_MS;
       if (!keep) { b.holder = null; if (k) { k.noCatch = now + 1000; b.vx = -Math.sin(k.pos.yaw) * 2; b.vz = -Math.cos(k.pos.yaw) * 2; } return; }
       b.x = k.pos.x - Math.sin(k.pos.yaw) * 0.45; b.z = k.pos.z - Math.cos(k.pos.yaw) * 0.45; b.y = k.pos.y + 1.15; b.vx = b.vy = b.vz = 0;
       return;
     }
     for (const id of room.order) {
       const p = room.players[id];
-      if (!p.gk || !p.team || !p.sockets.size || p.downUntil > now || (p.noCatch || 0) > now) continue;
+      if (!p.gk || !Bots.vivo(p) || p.downUntil > now || (p.noCatch || 0) > now) continue;
       if (!C.inArea(mode, p.team, p.pos.x, p.pos.z) || !C.inArea(mode, p.team, b.x, b.z)) continue;
       const dive = (p.pos.f | 0) & FL.dive, reach = dive ? 1.7 : 1.0, top = p.pos.y + (dive ? 2.0 : 2.4);
       const d = Math.hypot(b.x - p.pos.x, b.z - p.pos.z);
@@ -145,7 +148,7 @@ module.exports = function attachPelada(io) {
   // ---------- Strikers: itens ----------
   // ganhou item (até 2 na mão): avisa todo mundo (o estado leva o inventário)
   function darItem(room, p, motivo) {
-    if (room.config.estilo !== "strikers" || !p) return;
+    if (room.config.estilo !== "strikers" || !p || p.bot) return; // bot não usa item
     p.itens ||= []; if (p.itens.length >= 2) return;
     const k = C.sortearItem(); p.itens.push(k);
     nsp.to(room.code).emit("ganhou", { id: p.id, tipo: k, motivo }); broadcast(room);
@@ -158,7 +161,7 @@ module.exports = function attachPelada(io) {
   // a cada passo: os itens andam (e derrubam quem acertam), a estrela derruba quem encosta e 3 passes seguidos do
   // mesmo time dão item para quem recebeu
   function strikers(room, now, Fm) {
-    const b = room.ball, vivos = room.order.map((id) => room.players[id]).filter((p) => p.team && p.sockets.size);
+    const b = room.ball, vivos = room.order.map((id) => room.players[id]).filter(Bots.vivo);
     room.itens ||= [];
     const corpos = vivos.map((p) => ({ id: p.id, team: p.team, x: p.pos.x, z: p.pos.z, imune: p.downUntil > now || (p.estrelaAte || 0) > now, bola: b.dono === p.id || b.holder === p.id }));
     const r = C.stepItens(Fm, room.itens, corpos, TICK);
@@ -207,7 +210,8 @@ module.exports = function attachPelada(io) {
       m.left -= TICK * 1000;
       keepers(room, now);
       tackles(room, now);
-      const bodies = room.order.map((id) => room.players[id]).filter((p) => p.team && p.sockets.size).map((p) => bodyOf(room, p, now));
+      if (room.config.bots) Bots.passo(room, Fm, now, TICK, botFx(room));
+      const bodies = room.order.map((id) => room.players[id]).filter(Bots.vivo).map((p) => bodyOf(room, p, now));
       const r = C.simulate(Fm, room.ball, bodies, TICK);
       if (r.touch) touched(room, r.touch);
       if (room.config.estilo === "strikers" && room.config.mode === "pes") strikers(room, now, Fm);
@@ -220,13 +224,27 @@ module.exports = function attachPelada(io) {
     room.frame = (room.frame || 0) + 1;
     if (room.frame % SNAP_EVERY === 0) {
       const b = room.ball, holder = b.holder && room.players[b.holder] ? room.players[b.holder].n : -1;
-      const p = room.order.map((id) => room.players[id]).filter((x) => x.team && x.sockets.size)
+      const p = room.order.map((id) => room.players[id]).filter(Bots.vivo)
         .map((x) => [x.n, q2(x.pos.x), q2(x.pos.y), q2(x.pos.z), q2(x.pos.vx), q2(x.pos.vy), q2(x.pos.vz), q2(x.pos.yaw), q2(x.pos.pitch || 0),
           (x.pos.f | 0) | (x.downUntil > now ? FL.down : 0) | ((x.estrelaAte || 0) > now ? FL.estrela : 0) | ((x.cogumeloAte || 0) > now ? FL.cogumelo : 0)]);
       const it = room.itens && room.itens.length ? room.itens.map((i) => [i.id, C.ITEM_LISTA.indexOf(i.tipo), q2(i.x), q2(i.z), q2(i.vx), q2(i.vz), q2(i.t)]) : undefined; // itens andando (Strikers)
       nsp.to(room.code).volatile.emit("snap", { t: now, b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), room.bump ? Math.round(room.bump) : 0, holder, q2(b.sp || 0), q2(b.wx || 0), q2(b.wy || 0), q2(b.wz || 0), b.dono && room.players[b.dono] ? room.players[b.dono].n : -1], p, it }); // depois do giro (bola do Rocket): quem conduz a bola
       room.bump = 0;
     }
+  }
+
+  // o que a IA dos bots pode fazer na bola: chutar/passar (a mesma conta do chute de um humano)
+  function botFx(room) {
+    return {
+      kick(p, kind, power, yaw, opt = null) {
+        const now = Date.now(), how = C.kick(room.ball, { ...p.pos, id: p.id }, kind, power, yaw, 0, 0, F(room), opt);
+        if (!how) return false;
+        p.lastKick = now; if (kind === "chute") p.shots++;
+        touched(room, p.id);
+        nsp.to(room.code).emit("kicked", { id: p.id, kind, how, power });
+        return true;
+      },
+    };
   }
 
   // ---------- conexões ----------
@@ -337,12 +355,13 @@ module.exports = function attachPelada(io) {
         }
         if (type === "start") {
           if (!isHost || playing) return "Só o organizador começa o jogo.";
-          if (!teamOf(room, "A").length || !teamOf(room, "B").length) return "Precisa de pelo menos 1 jogador em cada time.";
+          if (room.config.bots ? !teamOf(room, "A").length && !teamOf(room, "B").length : !teamOf(room, "A").length || !teamOf(room, "B").length)
+            return room.config.bots ? "Entre num time para jogar (os bots completam o resto)." : "Precisa de pelo menos 1 jogador em cada time.";
           startMatch(room); return;
         }
         if (type === "lobby") {
           if (!isHost) return "Só o organizador.";
-          clearInterval(room.loop); room.loop = null; room.phase = "lobby"; room.match = null; return;
+          clearInterval(room.loop); room.loop = null; room.phase = "lobby"; room.match = null; Bots.tirarBots(room); return;
         }
         return "Ação desconhecida.";
       })();
@@ -357,6 +376,7 @@ module.exports = function attachPelada(io) {
       if (!room || !me || !me.team || room.phase !== "play" || !room.match) return;
       const { x, y, z, vx, vy, vz, yaw } = d;
       if (![x, y, z, vx, vy, vz, yaw].every(fin)) return;
+      if (int(d.tq, 0) !== (me.trocaSeq || 0)) return; // trocou de corpo com um bot: posição velha ainda chegando
       const Fm = F(room), m = room.match, lim = room.config.mode === "carros" ? 40 : 14;
       if (m.phase === "ready" && me.spawn) Object.assign(me.pos, { x: me.spawn[0], y: 0, z: me.spawn[2], vx: 0, vy: 0, vz: 0 }); // parado na saída
       else Object.assign(me.pos, { x: clamp(x, -Fm.L - Fm.goalD, Fm.L + Fm.goalD), y: clamp(y, 0, Fm.ceil), z: clamp(z, -Fm.W, Fm.W),
@@ -433,6 +453,14 @@ module.exports = function attachPelada(io) {
       if (kind === "chute" && how !== "mao") me.shots++;
       touched(room, me.id);
       nsp.to(room.code).emit("kicked", { id: me.id, kind, how, power: d.power });
+      if (typeof d.rec === "string" && Bots.trocaNoPasse(room, me, d.rec, nsp)) broadcast(room); // amistoso: passe para um bot, o controle vai junto
+    });
+
+    // amistoso: LB/T troca de corpo com um bot do time
+    socket.on("trocar", () => {
+      const { room, me } = ctx();
+      if (!room || !me || !me.team || room.phase !== "play" || !room.match || room.match.phase !== "live") return;
+      if (Bots.trocarPedido(room, me, nsp)) broadcast(room);
     });
 
     socket.on("disconnect", () => {

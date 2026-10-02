@@ -125,7 +125,8 @@ function renderLobby() {
   const row = (p) => `<div class="pl ${p.id === (ME && ME.id) ? "me" : ""}"><i class="dot ${p.online ? "on" : ""}"></i>${p.id === S.host ? "👑 " : ""}${h(p.name)}${p.gk && !cars ? ` <span title="Goleiro">🧤</span>` : ""}${!cars && C.SKINS[p.skin] && p.skin !== "padrao" ? ` <span title="${h(C.SKINS[p.skin].name)}">${C.SKINS[p.skin].emoji}</span>` : ""}${cars ? ` <span class="muted" style="font-weight:500;font-size:12px">${h(C.CARS[p.car].name)}</span>` : ""}${isHost && p.id !== ME.id ? `<button class="small ghost" data-kick="${p.id}" title="Tirar da sala" style="margin-left:auto">✕</button>` : ""}</div>`;
   for (const t of ["A", "B"]) {
     const list = S.players.filter((p) => p.team === t), kit = S.kits[t];
-    $("t" + t).innerHTML = list.map(row).join("") + Array.from({ length: Math.max(0, size - list.length) }, () => `<div class="pl muted" style="font-weight:500">vaga livre</div>`).join("");
+    const vagas = S.config.bots && !cars ? Math.max(0, 4 - list.filter((p) => !p.gk).length) + (list.some((p) => p.gk) ? 0 : 1) : Math.max(0, size - list.length); // amistoso: os bots completam 4 na linha + goleiro
+    $("t" + t).innerHTML = list.map(row).join("") + Array.from({ length: vagas }, (_, i) => `<div class="pl muted" style="font-weight:500">${S.config.bots && !cars ? (i === vagas - 1 && !list.some((p) => p.gk) ? "🤖 goleiro bot" : "🤖 bot (vaga livre)") : "vaga livre"}</div>`).join("");
     $("join" + t).classList.toggle("hidden", !mine || mine.team === t || list.length >= size);
     $("kn" + t).textContent = (cars ? "Pintura: " : "Camisa: ") + kitOf(kit).name;
     $("box" + t).style.borderColor = C.kitColor(kit);
@@ -148,14 +149,16 @@ function renderLobby() {
   const est = S.config.estilo === "strikers" ? "strikers" : "futsal";
   $("cfgEstilo").innerHTML = estiloButtons(est, "data-estilo", isHost ? "" : "disabled");
   $("cfgEstiloInfo").textContent = ESTILOS[est].info;
+  $("cfgBots").innerHTML = `<button data-amistoso="0" class="${S.config.bots ? "" : "on"}" ${isHost ? "" : "disabled"}>👥 Só humanos</button><button data-amistoso="1" class="${S.config.bots ? "on" : ""}" ${isHost ? "" : "disabled"}>🤖 Completar com bots (4x4 + goleiro)</button>`;
+  $("cfgBotsInfo").textContent = S.config.bots ? "Cada time joga com 4 na linha e 1 goleiro; quem entrou joga e o resto é bot (1x1, 2x1, 3x4…). LB/T troca de jogador, e no passe para um bot o controle vai junto com a bola." : "";
   $("cfgArena").innerHTML = Object.entries(C.ARENAS).map(([k, a]) => `<button data-arena="${k}" class="${(S.config.arena || "society") === k ? "on" : ""}" title="${h(a.desc)}" ${isHost ? "" : "disabled"}>${a.emoji} ${h(a.name)}</button>`).join("");
   document.querySelectorAll("#cfgMode button").forEach((b) => { b.classList.toggle("on", b.dataset.v === S.config.mode); b.disabled = !isHost; });
   document.querySelectorAll("#cfgSize button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === size); b.disabled = !isHost; });
   document.querySelectorAll("#cfgMin button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === S.config.minutes); b.disabled = !isHost; });
   setH("keysBox", keysHelp(S.config.mode));
-  const a = S.players.filter((p) => p.team === "A").length, b = S.players.filter((p) => p.team === "B").length;
+  const a = S.players.filter((p) => p.team === "A").length, b = S.players.filter((p) => p.team === "B").length, pode = S.config.bots && !cars ? a || b : a && b;
   $("startBox").innerHTML = isHost
-    ? `<button class="primary" id="btnStart" style="width:100%" ${a && b ? "" : "disabled"}>Apitar o começo</button>${a && b ? (a !== b ? `<p class="muted" style="font-size:13px;margin:8px 0 0">Times desiguais (${a} x ${b}). Dá pra jogar assim mesmo.</p>` : "") : `<p class="muted" style="font-size:13px;margin:8px 0 0">Precisa de pelo menos 1 jogador em cada time. Mande o convite!</p>`}`
+    ? `<button class="primary" id="btnStart" style="width:100%" ${pode ? "" : "disabled"}>Apitar o começo</button>${pode ? (a !== b && !S.config.bots ? `<p class="muted" style="font-size:13px;margin:8px 0 0">Times desiguais (${a} x ${b}). Dá pra jogar assim mesmo.</p>` : "") : `<p class="muted" style="font-size:13px;margin:8px 0 0">Precisa de pelo menos 1 jogador em cada time. Mande o convite!</p>`}`
     : `<p class="muted">Esperando o organizador apitar…</p>`;
   if ($("btnStart")) $("btnStart").onclick = () => act("start");
   document.querySelectorAll("[data-kick]").forEach((x) => (x.onclick = () => act("kick", { id: x.dataset.kick })));
@@ -193,7 +196,7 @@ document.querySelectorAll("#cfgSize button").forEach((b) => (b.onclick = () => s
 document.querySelectorAll("#cfgMin button").forEach((b) => (b.onclick = () => setCfg("minutes", +b.dataset.v)));
 // skins e quadras: os botões são desenhados de novo a cada mudança, então o clique é tratado aqui, num lugar só
 const skinButtons = (atual) => Object.entries(C.SKINS).map(([k, sk]) => `<button data-skin="${k}" class="${k === (atual || "padrao") ? "on" : ""}"><i>${sk.emoji}</i>${h(sk.name)}</button>`).join("");
-const ESTILOS = { futsal: { nome: "⚽ Futsal", info: "" }, strikers: { nome: "⚡ Strikers", info: "Arcade: campo maior com cerca elétrica (dá choque), posse firme (só o carrinho tira), sem fôlego, drible com giro (Espaço com a bola), itens e o Super Chute. Sempre no Estádio Elétrico." } };
+const ESTILOS = { futsal: { nome: "⚽ Futsal", info: "" }, strikers: { nome: "⚡ Strikers", info: "Arcade: campo maior com cerca elétrica (dá choque), posse firme (só o carrinho tira), drible com giro (Espaço com a bola), passe semi-assistido (curto, longo e em profundidade) e itens. Sempre no Estádio Elétrico." } };
 const estiloButtons = (atual, attr, dis = "") => Object.entries(ESTILOS).map(([k, e]) => `<button ${attr}="${k}" class="${atual === k ? "on" : ""}" ${dis}>${e.nome}</button>`).join("");
 function renderHomePicks() {
   $("hSkins").innerHTML = skinButtons(store.get("pelada:skin"));
@@ -221,6 +224,7 @@ document.addEventListener("click", (e) => {
   else if (b.dataset.botsize) { store.set("pelada:botSize", +b.dataset.botsize); renderHomePicks(); }
   else if (b.dataset.botdif) { store.set("pelada:botDif", b.dataset.botdif); renderHomePicks(); }
   else if (b.dataset.arena && S) setCfg("arena", b.dataset.arena);
+  else if (b.dataset.amistoso && S) setCfg("bots", b.dataset.amistoso === "1");
 });
 if (FIXO === "carros") document.querySelectorAll(".soPe").forEach((e) => e.classList.add("hidden"));
 else renderHomePicks();
@@ -1344,6 +1348,7 @@ function syncFromState(old, st) {
   if (!st || !G.active || G.mode !== "online") return;
   ensureArena(G.game);
   const mine = myP(), m = st.match;
+  if (mine && (mine.tq || 0) !== (G.trocaSeq || 0) && !(mine.tq < (G.trocaSeq || 0))) G.trocaSeq = mine.tq; // voltei para a sala (recarreguei): pego a contagem de trocas
   const ids = new Set();
   for (const p of st.players) {
     if (!p.team || (ME && p.id === ME.id)) continue;
@@ -1385,6 +1390,14 @@ socket.on("ganhou", (d) => {
   if (!G.active || G.mode !== "online") return;
   if (ME && d.id === ME.id) { flashMsg("", `${C.ITENS[d.tipo].emoji} ${C.ITENS[d.tipo].nome}! (${d.motivo}) · ${PAD.on ? "↑" : "G"} para usar`, 1600, "#ffe14a"); Sound.item(); }
   else { const p = P(d.id); if (p) pushFeed(`🎁 ${h(p.name)} ganhou ${C.ITENS[d.tipo].emoji}`); }
+});
+// amistoso com bots: troquei de corpo com um bot (LB/T ou passe para ele). Vou para onde ele estava.
+socket.on("trocou", (d) => {
+  if (!G.active || G.mode !== "online" || !G.me) return;
+  G.trocaSeq = d.tq;
+  Object.assign(G.me, { x: d.x, y: d.y, z: d.z, vx: d.vx, vz: d.vz, facing: d.yaw, yaw: d.yaw });
+  if (ballS.mine) { ballS.snap = { ...ballS.mine, t: sNow(), dono: d.bot }; ballS.mine = null; } // a bola que eu conduzia fica com o bot
+  charge = null; flashMsg("", "🔁 Trocou de jogador", 700);
 });
 socket.on("boom", (d) => { if (G.active && G.mode === "online") boomFx(d.x, d.z); });
 // ---------- pacote do servidor (20x por segundo): bola e todo mundo ----------
@@ -1643,6 +1656,7 @@ document.addEventListener("keydown", (e) => {
     if (G.F.strikers) charge = { kind: "cruzamento", t0: now(), src: e.code }; else doKick("cruzamento", 0);
   }
   if (e.code === "KeyT" && !e.repeat && !isCar() && G.mode === "bots" && !souDono()) trocarJogador(); // T/LB: troca de jogador
+  if (e.code === "KeyT" && !e.repeat && !isCar() && G.mode === "online" && S && S.config.bots && !souDono()) socket.emit("trocar"); // amistoso: o servidor troca
   keys.add(e.code);
 });
 document.addEventListener("keyup", (e) => {
@@ -1689,24 +1703,24 @@ function doKick(kind, power, o = {}) {
   const how = C.canKick(body, ball, offline() ? 0 : 0.2);
   me.kickT = t; me.lastKick = t; me.st.kickT = t; // a perna balança mesmo se errar
   if (!how) return;
-  let yaw = aimYaw(), opt = null;
+  let yaw = aimYaw(), opt = null, receptor = null; // receptor: o companheiro que o passe procurou (para a troca automática)
   // Strikers: J curto, U longo (cavado), L profundidade; o plano dá direção, velocidade, altura e quem recebe
   const tipoS = G.F.strikers && how !== "mao" && PASSE_TIPO[kind];
   if (tipoS) {
     const pl = C.planejarPasse(G.F, me, yaw, mates(), tipoS, o.colocado ? 1 : power, rivalColado(me), myAttackTeam() === "B" ? -1 : 1);
-    yaw = pl.yaw; kind = tipoS; opt = { vel: pl.vel, elev: pl.elev, alvo: pl.alvo };
+    yaw = pl.yaw; kind = tipoS; opt = { vel: pl.vel, elev: pl.elev, alvo: pl.alvo }; receptor = pl.alvo;
     G.passeVoo = pl.alvo ? { alvo: pl.alvo, ate: t + 3 } : null;
   }
-  if (kind === "passe" && how !== "mao") { const r = C.assistPass(me, yaw, mates(), power, !!o.colocado, G.F); yaw = r.yaw; power = r.power; if (r.kind) kind = r.kind; } // longe: lançamento pelo alto
+  if (kind === "passe" && how !== "mao") { const r = C.assistPass(me, yaw, mates(), power, !!o.colocado, G.F); yaw = r.yaw; power = r.power; if (r.kind) kind = r.kind; receptor = r.alvo ? r.alvo.id : null; } // longe: lançamento pelo alto
   if (kind === "cruzamento" && how === "pe") { const r = C.assistCross(me, yaw, myAttackTeam() || "A", mates(), G.F); yaw = r.yaw; power = r.power; }
   else if (kind === "cruzamento") { kind = "cavadinha"; power = 0.7; } // de cabeça ou com a mão: vai alto
   const curve = opt ? 0 : o.colocado && kind === "chute" && how === "pe" ? curvaColocada() : curveNow();
   if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F, curve, ball); // assistência estilo FIFA (último terço)
   me.facing = yaw;
   Sound.kick(power);
-  if (offline()) { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve, G.F, opt); G.tKicks = (G.tKicks || 0) + 1; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
+  if (offline()) { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve, G.F, opt); trocaNoPasse(receptor); G.tKicks = (G.tKicks || 0) + 1; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
   const mine = ballS.mine; ballS.mine = null;
-  socket.emit("kick", { kind, power, yaw, curve, ...(opt || {}), ...(mine ? { bola: [mine.x, mine.y, mine.z] } : {}) }); // conduzindo: chuta a bola que eu vejo
+  socket.emit("kick", { kind, power, yaw, curve, ...(opt || {}), ...(receptor ? { rec: receptor } : {}), ...(mine ? { bola: [mine.x, mine.y, mine.z] } : {}) }); // conduzindo: chuta a bola que eu vejo
   // previsão: a bola já sai do meu pé aqui; o servidor confirma em seguida
   const b = { ...(mine || ballS.view) }; C.kick(b, body, kind, power, yaw, 0.2, curve, G.F, opt);
   ballS.snap = { t: sNow(), x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, sp: b.sp, wx: b.wx || 0, wy: b.wy || 0, wz: b.wz || 0, holder: null }; ballS.off = { x: 0, y: 0, z: 0 };
@@ -1742,7 +1756,7 @@ function frame(dt, t) {
   // envia minha posição
   if (G.meModel && online && t - G.lastSend > 1 / 30) {
     const me = G.me; G.lastSend = t; const q = (v) => Math.round(v * 100) / 100;
-    socket.volatile.emit("st", { x: q(me.x), y: q(me.y), z: q(me.z), vx: q(me.vx), vy: q(me.vy), vz: q(me.vz), yaw: q(isCar() ? me.yaw : me.facing), p: q(me.pitch || 0), f: myFlags(), ...(isCar() && carO(me) ? { o: carO(me).map(q) } : {}),
+    socket.volatile.emit("st", { x: q(me.x), y: q(me.y), z: q(me.z), vx: q(me.vx), vy: q(me.vy), vz: q(me.vz), yaw: q(isCar() ? me.yaw : me.facing), p: q(me.pitch || 0), f: myFlags(), tq: G.trocaSeq || 0, ...(isCar() && carO(me) ? { o: carO(me).map(q) } : {}),
       ...(ballS.mine ? { bola: [q(ballS.mine.x), q(ballS.mine.y), q(ballS.mine.z), q(ballS.mine.vx), q(ballS.mine.vy), q(ballS.mine.vz)] } : {}) }); // conduzindo: a bola vai junto
   }
   if (G.mode === "treino") practiceStep(dt, t);
@@ -2588,6 +2602,15 @@ function derrubar(o, a) {
   const nome = (x) => (x.eu ? "Você" : `${x.team === "A" ? "Seu" : "Bot"} ${x.e.name}`);
   pushFeed(`🦵 ${h(nome(a))} derrubou ${h(nome(o))}`);
 }
+// passe para um bot do meu time: o controle vai junto com a bola, na hora (como no FIFA). Quem passou vira bot.
+// (online, quem decide é o servidor: se o receptor é de outro humano, ninguém troca)
+function trocaNoPasse(id) {
+  if (G.mode !== "bots" || !id) return;
+  const bot = G.bots.find((x) => x.id === id && x.team === "A"); if (!bot) return;
+  trocarCom(bot, false);
+  const b = local.ball; if (b.alvoPasse === bot.id) b.alvoPasse = "eu"; // a trava do passe segue quem recebe (agora, eu)
+  if (G.passeVoo && G.passeVoo.alvo === bot.id) G.passeVoo.alvo = "eu";
+}
 // troca o controle para o bot: os dois trocam de corpo (posição, velocidade, modelo...), e a bola vai junto
 function trocarCom(bot, aviso = true) {
   const me = G.me, b = local.ball;
@@ -2756,7 +2779,7 @@ function hud(t) {
     const left = m.phase === "live" ? m.left - (sNow() - S.now) : m.left;
     const sw = (tm) => `<i style="background:${kitCss(S.kits[tm])}"></i>`;
     setH("hTop", `<div class="t">${sw("A")}${h(kitOf(S.kits.A).name)}</div><div class="s">${m.score.A}</div><div class="clock num">${fmtT(left)}</div><div class="s">${m.score.B}</div><div class="t">${h(kitOf(S.kits.B).name)}${sw("B")}</div>`);
-    const mp = myP(); setH("hPing", mp && mp.ping != null ? `ping ${mp.ping} ms` : "");
+    const mp = myP(); setH("hPing", (mp && mp.ping != null ? `ping ${mp.ping} ms` : "") + (S.config.bots && !isCar() ? ` · ${PAD.on ? "LB" : "T"}: troca de jogador` : ""));
     if (m.phase === "ready" && t > msgT) setH("hMsg", `<small>Começa em ${Math.max(1, Math.ceil((m.until - sNow()) / 1000))}…</small>`);
     else if (t > msgT) setH("hMsg", "");
   } else if (G.mode === "treino") {
@@ -2811,4 +2834,4 @@ function showOver() {
   $("btnOut").onclick = leaveGame;
 }
 let camHook = null; // só para testes (#debug): reposiciona a câmera depois do jogo
-if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, now, addRag, rags, makePlayer, animate, mudarSkinJogador, jogar: () => padPausa(true), avancar: (seg) => { for (let i = 0; i < seg * 60; i++) { adiantado += 1 / 60; frame(1 / 60, now()); } }, setCamHook: (f) => (camHook = f) }; // para testes
+if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, now, addRag, rags, makePlayer, animate, mudarSkinJogador, jogar: () => padPausa(true), avancar: (seg) => { for (let i = 0; i < seg * 60; i++) { adiantado += 1 / 60; frame(1 / 60, now()); } }, setCamHook: (f) => (camHook = f), get S() { return S; }, get socket() { return socket; } }; // para testes
