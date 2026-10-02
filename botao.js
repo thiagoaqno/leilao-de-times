@@ -48,6 +48,7 @@ module.exports = function attachBotao(io) {
       superTiro: !!c.superTiro,                          // passes enchem a barra da super palhetada
       goleiro: c.goleiro !== false,                      // bloquinho na frente do gol: o time arruma na própria vez, fica parado na do outro
       estadio: pick(c.estadio, STADIUMS, "mesa"),
+      tampinhas: pick(int(c.tampinhas, 5), F.TAMPINHAS, 5),  // tampinhas por time (a 1 guarda o gol)
     };
   }
 
@@ -109,7 +110,7 @@ module.exports = function attachBotao(io) {
     const k = m.kickFirst, mins = room.config.minutes;
     room.g = {
       // saída: a primeira vez de cada time vale só 1 toque (ninguém sai driblando até o gol); depois, os toques combinados
-      pieces: F.lineup(k, m.forms), goals: [0, 0], turn: k, cursor: [0, 0], starter: [0, 0], toques: 0, maxToques: 1, opening: 1, restart: "Saída",
+      pieces: F.lineup(k, m.forms, room.config.tampinhas), goals: [0, 0], turn: k, cursor: [0, 0], starter: [0, 0], toques: 0, maxToques: 1, opening: 1, restart: "Saída",
       bar: [0, 0], lastCap: null, keepers: [F.MID_Y, F.MID_Y],
       shot: null, note: null, shotSeq: room.g ? room.g.shotSeq : 0, busyUntil: 0, step: 0,
       endsAt: mins ? Date.now() + mins * 60000 : null, golden: false, lastGoal: null,
@@ -255,9 +256,8 @@ module.exports = function attachBotao(io) {
 
     if (res.goal) {
       const scorer = res.goal.side === 0 ? 1 : 0, own = scorer !== side;
-      // vale se quem tocou por último foi do time que atacou, com a bola inteira no campo de ataque; gol contra vale sempre
-      const last = res.last, attackHalf = last && last.t === side && (side === 0 ? last.x > F.L / 2 + F.RBALL : last.x < F.L / 2 - F.RBALL);
-      if (own || (!res.foul && (attackHalf || (last && last.t === other)))) {
+      // vale de qualquer lugar do campo (até de trás do meio), desde que sem falta; gol contra vale sempre
+      if (own || !res.foul) {
         g.goals[scorer]++;
         g.lastGoal = { by: own ? null : byIds, side: scorer, own, at: g.busyUntil };
         const why = own ? `Gol contra (${names})!` : `GOOOL de ${names}!`;
@@ -266,17 +266,17 @@ module.exports = function attachBotao(io) {
         g.note = { id: g.step, msgs, foul: null, banner: own ? "GOL CONTRA!" : "GOOOL!", goal: scorer, at: g.busyUntil };
         if (g.goals[scorer] >= cfg.goals || g.golden) { endGame(room, scorer, g.golden ? `gol de ouro${own ? " (contra)" : ` de ${names}`}!` : `${g.goals[scorer]} a ${g.goals[1 - scorer]}.`); return; }
         const k = 1 - scorer; // saída para quem levou o gol (de novo, 1 toque para cada time na primeira vez)
-        g.pieces = F.lineup(k, room.match.forms); g.keepers = [F.MID_Y, F.MID_Y];
+        g.pieces = F.lineup(k, room.match.forms, room.config.tampinhas); g.keepers = [F.MID_Y, F.MID_Y];
         g.opening = 2; giveBall(room, k); g.restart = "Saída";
         armClock(room);
         return;
       }
-      // gol que não vale: falta (se teve) ou tiro de meta para quem defende aquele gol
+      // gol que não vale: teve falta antes; o time que defende aquele gol cobra
       const def = res.goal.side;
-      msgs.push(res.foul ? "A bola entrou, mas teve falta antes. Não vale!" : `${names} chutou do próprio campo: o gol não vale!`);
+      msgs.push("A bola entrou, mas teve falta antes. Não vale!");
       banner = "NÃO VALEU!";
       restartAt(g, def ? F.L - 70 : 70, F.MID_Y);
-      giveBall(room, def); g.restart = res.foul ? "Falta" : "Tiro de meta";
+      giveBall(room, def); g.restart = "Falta";
       msgs.push(`${g.restart} para ${turnName(room)}.`);
     } else if (res.out) {
       const o = res.out;
@@ -513,7 +513,7 @@ module.exports = function attachBotao(io) {
       if (now - (me.lastAim || 0) < 40) return;
       me.lastAim = now;
       const a = num(d.a), p = num(d.p), place = d.place && Number.isFinite(num(d.place.x)) && Number.isFinite(num(d.place.y)) ? { x: num(d.place.x), y: num(d.place.y) } : null;
-      socket.to(room.code).emit("aim", { who: me.id, i: clamp(int(d.i, -1), -1, 10), a: Number.isFinite(a) ? a : 0, p: Number.isFinite(p) ? clamp(p, 0, 1) : 0, place });
+      socket.to(room.code).emit("aim", { who: me.id, i: clamp(int(d.i, -1), -1, 2 * 7), a: Number.isFinite(a) ? a : 0, p: Number.isFinite(p) ? clamp(p, 0, 1) : 0, place });
     });
     // Goleiro: qualquer um do time mexe o seu a qualquer hora em que as peças estão paradas, inclusive enquanto o
     // adversário mira. No peteleco ele fica onde estava: a jogada é calculada na hora, então não dá para defender
