@@ -11,7 +11,7 @@ const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM =
 const HOLD_MS = 6000, DOWN_MS = 1400;
 const SIDES = { A: "Mandante", B: "Visitante" };
 // bits do "f" (o que o jogador está fazendo), iguais aos do navegador
-const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, deke: 256 }; // deke: drible com giro (Strikers) // grab: segurando alguém
+const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, deke: 256, estrela: 512, cogumelo: 1024 }; // estrela/cogumelo: só o servidor liga (itens do Strikers) // deke: drible com giro (Strikers) // grab: segurando alguém
 const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
@@ -46,7 +46,7 @@ module.exports = function attachPelada(io) {
       match: m ? { phase: m.phase, until: m.until, left: Math.max(0, Math.round(m.left)), score: m.score, kickoff: m.kickoff, goals: m.goals.slice(-20) } : null,
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, n: p.n, name: p.name, team: p.team, num: p.num, gk: !!p.gk, car: p.car, skin: p.skin, goals: p.goals, assists: p.assists, shots: p.shots, saves: p.saves,
+        return { id, n: p.n, name: p.name, team: p.team, num: p.num, gk: !!p.gk, car: p.car, skin: p.skin, itens: p.itens || [], goals: p.goals, assists: p.assists, shots: p.shots, saves: p.saves,
           ping: p.rtt == null ? null : Math.round(p.rtt), online: p.sockets.size > 0, spawn: p.spawn };
       }),
       feed: room.feed.slice(-12), now: Date.now(),
@@ -72,6 +72,7 @@ module.exports = function attachPelada(io) {
     const m = room.match;
     m.phase = "ready"; m.until = Date.now() + READY_MS; m.kickoff++; m.last = [];
     room.ball = C.newBall(F(room));
+    room.itens = []; room.passes = { A: 0, B: 0 }; room.ultDono = null; // Strikers: campo limpo (os itens na mão continuam)
     for (const t of ["A", "B"]) {
       const list = teamOf(room, t), sp = C.spawns(F(room).id, t, list, t === kicking);
       list.forEach((p, i) => { p.spawn = sp[i]; p.pos = { x: sp[i][0], y: 0, z: sp[i][2], vx: 0, vy: 0, vz: 0, yaw: sp[i][3], pitch: 0, f: 0 }; p.downUntil = 0; });
@@ -141,6 +142,37 @@ module.exports = function attachPelada(io) {
       return;
     }
   }
+  // ---------- Strikers: itens ----------
+  // ganhou item (até 2 na mão): avisa todo mundo (o estado leva o inventário)
+  function darItem(room, p, motivo) {
+    if (room.config.estilo !== "strikers" || !p) return;
+    p.itens ||= []; if (p.itens.length >= 2) return;
+    const k = C.sortearItem(); p.itens.push(k);
+    nsp.to(room.code).emit("ganhou", { id: p.id, tipo: k, motivo }); broadcast(room);
+  }
+  function derruba(room, o, by, now) {
+    if (!o || o.downUntil > now) return;
+    o.downUntil = now + DOWN_MS; if (room.ball.dono === o.id) room.ball.dono = null;
+    nsp.to(room.code).emit("caiu", { id: o.id, by });
+  }
+  // a cada passo: os itens andam (e derrubam quem acertam), a estrela derruba quem encosta e 3 passes seguidos do
+  // mesmo time dão item para quem recebeu
+  function strikers(room, now, Fm) {
+    const b = room.ball, vivos = room.order.map((id) => room.players[id]).filter((p) => p.team && p.sockets.size);
+    room.itens ||= [];
+    const corpos = vivos.map((p) => ({ id: p.id, team: p.team, x: p.pos.x, z: p.pos.z, imune: p.downUntil > now || (p.estrelaAte || 0) > now, bola: b.dono === p.id || b.holder === p.id }));
+    const r = C.stepItens(Fm, room.itens, corpos, TICK);
+    for (const e of r.explosoes) nsp.to(room.code).emit("boom", { x: q2(e.x), z: q2(e.z) });
+    for (const a of r.acertos) derruba(room, room.players[a.id], a.por, now);
+    for (const s of vivos) if ((s.estrelaAte || 0) > now) for (const o of vivos)
+      if (o.team !== s.team && o.downUntil <= now && !((o.estrelaAte || 0) > now) && Math.hypot(o.pos.x - s.pos.x, o.pos.z - s.pos.z) < 1.0) derruba(room, o, s.id, now);
+    if (b.dono && b.dono !== room.ultDono) {
+      const a = room.players[room.ultDono], c = room.players[b.dono];
+      if (a && c && a.team === c.team) { room.passes[c.team] = (room.passes[c.team] || 0) + 1; if (room.passes[c.team] % 3 === 0) darItem(room, c, "3 passes"); }
+      else room.passes = { A: 0, B: 0 };
+      room.ultDono = b.dono;
+    }
+  }
   // carrinho: quem estiver na frente de quem desliza cai (fica 1,4 s no chão)
   function tackles(room, now) {
     if (room.config.mode !== "pes") return;
@@ -150,10 +182,12 @@ module.exports = function attachPelada(io) {
       const fx = -Math.sin(s.pos.yaw), fz = -Math.cos(s.pos.yaw), hx = s.pos.x + fx * 0.6, hz = s.pos.z + fz * 0.6;
       for (const oid of room.order) {
         const o = room.players[oid];
-        if (o === s || !o.team || o.team === s.team || o.downUntil > now || room.ball.holder === o.id || ((o.pos.f | 0) & FL.deke)) continue; // no giro do drible, não pega
+        if (o === s || !o.team || o.team === s.team || o.downUntil > now || room.ball.holder === o.id || ((o.pos.f | 0) & FL.deke) || (o.estrelaAte || 0) > now) continue; // no giro do drible (e com estrela), não pega
         if (Math.hypot(o.pos.x - hx, o.pos.z - hz) < 0.85 && o.pos.y < 0.6) {
+          const tinhaBola = room.ball.dono === o.id;
           o.downUntil = now + DOWN_MS;
           nsp.to(room.code).emit("caiu", { id: o.id, by: s.id });
+          if (!tinhaBola) darItem(room, o, "derrubado sem a bola"); // Strikers: falta em quem está sem a bola dá item
         }
       }
     }
@@ -171,6 +205,7 @@ module.exports = function attachPelada(io) {
       const bodies = room.order.map((id) => room.players[id]).filter((p) => p.team && p.sockets.size).map((p) => bodyOf(room, p, now));
       const r = C.simulate(Fm, room.ball, bodies, TICK);
       if (r.touch) touched(room, r.touch);
+      if (room.config.estilo === "strikers" && room.config.mode === "pes") strikers(room, now, Fm);
       if (r.hit > 2) room.bump = Math.max(room.bump || 0, r.hit);
       const side = C.goalOf(Fm, room.ball);
       if (side) goal(room, side);
@@ -181,8 +216,10 @@ module.exports = function attachPelada(io) {
     if (room.frame % SNAP_EVERY === 0) {
       const b = room.ball, holder = b.holder && room.players[b.holder] ? room.players[b.holder].n : -1;
       const p = room.order.map((id) => room.players[id]).filter((x) => x.team && x.sockets.size)
-        .map((x) => [x.n, q2(x.pos.x), q2(x.pos.y), q2(x.pos.z), q2(x.pos.vx), q2(x.pos.vy), q2(x.pos.vz), q2(x.pos.yaw), q2(x.pos.pitch || 0), (x.pos.f | 0) | (x.downUntil > now ? FL.down : 0)]);
-      nsp.to(room.code).volatile.emit("snap", { t: now, b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), room.bump ? Math.round(room.bump) : 0, holder, q2(b.sp || 0), q2(b.wx || 0), q2(b.wy || 0), q2(b.wz || 0), b.dono && room.players[b.dono] ? room.players[b.dono].n : -1], p }); // depois do giro (bola do Rocket): quem conduz a bola
+        .map((x) => [x.n, q2(x.pos.x), q2(x.pos.y), q2(x.pos.z), q2(x.pos.vx), q2(x.pos.vy), q2(x.pos.vz), q2(x.pos.yaw), q2(x.pos.pitch || 0),
+          (x.pos.f | 0) | (x.downUntil > now ? FL.down : 0) | ((x.estrelaAte || 0) > now ? FL.estrela : 0) | ((x.cogumeloAte || 0) > now ? FL.cogumelo : 0)]);
+      const it = room.itens && room.itens.length ? room.itens.map((i) => [i.id, C.ITEM_LISTA.indexOf(i.tipo), q2(i.x), q2(i.z), q2(i.vx), q2(i.vz), q2(i.t)]) : undefined; // itens andando (Strikers)
+      nsp.to(room.code).volatile.emit("snap", { t: now, b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), room.bump ? Math.round(room.bump) : 0, holder, q2(b.sp || 0), q2(b.wx || 0), q2(b.wy || 0), q2(b.wz || 0), b.dono && room.players[b.dono] ? room.players[b.dono].n : -1], p, it }); // depois do giro (bola do Rocket): quem conduz a bola
       room.bump = 0;
     }
   }
@@ -209,7 +246,7 @@ module.exports = function attachPelada(io) {
       const team = room.phase !== "lobby" ? null : a <= b && a < size ? "A" : b < size ? "B" : null; // sobrou? banco
       const cars = Object.keys(C.CARS);
       room.players[id] = { id, token: rid(12), n: room.seq++, name, team, num: 10, gk: false, car: cars[room.order.length % cars.length], skin: cleanSkin(skin), goals: 0, assists: 0, shots: 0, saves: 0,
-        lastKick: 0, rtt: null, downUntil: 0, holdSince: 0, noCatch: 0,
+        lastKick: 0, rtt: null, downUntil: 0, holdSince: 0, noCatch: 0, itens: [], cogumeloAte: 0, estrelaAte: 0,
         pos: { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, f: 0 }, spawn: null, sockets: new Set() };
       room.order.push(id);
       return room.players[id];
@@ -332,6 +369,17 @@ module.exports = function attachPelada(io) {
       if (room.config.estilo !== "strikers") me.pos.f &= ~FL.deke;
       if (room.config.mode !== "pes") me.pos.f &= ~FL.grab; // segurar é só a pé
       if (!me.gk) me.pos.f &= ~FL.dive;
+    });
+
+    // Strikers: usar o primeiro item da mão (efeito em quem usa, ou um item que sai andando)
+    socket.on("item", () => {
+      const { room, me } = ctx(); const m = room && room.match, now = Date.now();
+      if (!room || !me || !me.team || room.phase !== "play" || !m || m.phase !== "live" || room.config.estilo !== "strikers" || room.config.mode !== "pes") return;
+      if (me.downUntil > now || !me.itens || !me.itens.length) return;
+      const k = me.itens.shift(), I = C.ITENS[k];
+      if (I.eu) { me[k + "Ate"] = now + I.dura * 1000; nsp.to(room.code).emit("efeito", { id: me.id, tipo: k, ms: I.dura * 1000 }); }
+      else { const it = C.lancarItem(k, { x: me.pos.x, z: me.pos.z, facing: me.pos.yaw }, me.team, me.id); if (it) (room.itens ||= []).push(it); }
+      broadcast(room);
     });
 
     // chute: o servidor confere a distância até a bola (com uma folga pela internet) e aplica

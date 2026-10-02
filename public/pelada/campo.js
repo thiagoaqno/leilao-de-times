@@ -622,7 +622,74 @@
     return (tabelaLanc[chave] = { power: (lo + hi) / 2, t: tempo });
   }
 
-  const api = { MODES, campoDe, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
+  // ---------- itens do Strikers (a mesma conta no servidor e no navegador) ----------
+  // peso = chance relativa no sorteio. alvo: "eu" (efeito em quem usa) ou um objeto que anda no campo.
+  const ITENS = {
+    cogumelo: { nome: "Cogumelo", emoji: "🍄", peso: 3, eu: true, dura: 2.5 },       // corre bem mais rápido
+    casco: { nome: "Casco", emoji: "🟢", peso: 3 },                                    // vai reto, quica na cerca, derruba
+    teleguiado: { nome: "Casco teleguiado", emoji: "🔴", peso: 2 },                    // persegue um adversário
+    banana: { nome: "Banana", emoji: "🍌", peso: 3 },                                  // fica no chão: quem pisa cai
+    estrela: { nome: "Estrela", emoji: "⭐", peso: 1, eu: true, dura: 5 },             // rápido, imune e derruba quem encosta
+    bomba: { nome: "Bomba", emoji: "💣", peso: 2 },                                    // explode e derruba quem estiver perto
+  };
+  const ITEM_LISTA = Object.keys(ITENS);
+  function sortearItem(rnd = Math.random) {
+    const total = ITEM_LISTA.reduce((s, k) => s + ITENS[k].peso, 0); let r = rnd() * total;
+    for (const k of ITEM_LISTA) { r -= ITENS[k].peso; if (r <= 0) return k; }
+    return "casco";
+  }
+  // lança um item que anda no campo, saindo de quem usou (p: {x, z, facing|yaw}). Devolve o objeto (ou null).
+  let itemSeq = 0;
+  function lancarItem(tipo, p, team, dono) {
+    const yaw = p.facing ?? p.yaw ?? 0, fx = -Math.sin(yaw), fz = -Math.cos(yaw), base = { id: ++itemSeq, tipo, dono, team, t: 0, quiques: 0 };
+    if (tipo === "casco") return { ...base, x: p.x + fx * 0.9, z: p.z + fz * 0.9, vx: fx * 17, vz: fz * 17 };
+    if (tipo === "teleguiado") return { ...base, x: p.x + fx * 0.9, z: p.z + fz * 0.9, vx: fx * 13, vz: fz * 13 };
+    if (tipo === "banana") return { ...base, x: p.x - fx * 1.0, z: p.z - fz * 1.0, vx: 0, vz: 0 };
+    if (tipo === "bomba") return { ...base, x: p.x + fx * 0.9, z: p.z + fz * 0.9, vx: fx * 11, vz: fz * 11 };
+    return null;
+  }
+  // anda os itens. corpos: [{id, team, x, z, imune, bola}] (bola: está com a bola). Devolve { acertos: [{id, por, x, z}],
+  // explosoes: [{x, z}] } e tira da lista os que acabaram.
+  const BOMBA_R = 3, BOMBA_T = 1.4;
+  function stepItens(F, itens, corpos, dt) {
+    const acertos = [], explosoes = [];
+    for (let i = itens.length - 1; i >= 0; i--) {
+      const it = itens[i]; it.t += dt; let fim = false;
+      if (it.tipo === "teleguiado") { // vira na direção do alvo: o adversário com a bola, ou o mais perto
+        const rivais = corpos.filter((c) => c.team !== it.team && !c.imune);
+        const alvo = rivais.find((c) => c.bola) || rivais.sort((a, b) => Math.hypot(a.x - it.x, a.z - it.z) - Math.hypot(b.x - it.x, b.z - it.z))[0];
+        if (alvo && it.t > 0.15) {
+          const v = Math.hypot(it.vx, it.vz), a0 = Math.atan2(it.vz, it.vx), a1 = Math.atan2(alvo.z - it.z, alvo.x - it.x);
+          let d = Math.atan2(Math.sin(a1 - a0), Math.cos(a1 - a0)); d = Math.max(-5.5 * dt, Math.min(5.5 * dt, d)); // vira até 5,5 rad/s (raio de curva ~2,4 m)
+          it.vx = Math.cos(a0 + d) * v; it.vz = Math.sin(a0 + d) * v;
+        }
+      }
+      if (it.tipo === "bomba") { const k = Math.exp(-dt * 2.2); it.vx *= k; it.vz *= k; }
+      it.x += it.vx * dt; it.z += it.vz * dt;
+      const lx = F.L - 0.3, lz = F.W - 0.3; // cerca: o casco quica (até 3 vezes), o resto para
+      if (Math.abs(it.x) > lx) { it.x = Math.sign(it.x) * lx; it.vx = -it.vx; it.quiques++; }
+      if (Math.abs(it.z) > lz) { it.z = Math.sign(it.z) * lz; it.vz = -it.vz; it.quiques++; }
+      if (it.tipo === "bomba") {
+        if (it.t >= BOMBA_T) { fim = true; explosoes.push({ x: it.x, z: it.z, por: it.dono });
+          for (const c of corpos) if (!c.imune && c.id !== it.dono && Math.hypot(c.x - it.x, c.z - it.z) < BOMBA_R) acertos.push({ id: c.id, por: it.dono, x: it.x, z: it.z }); }
+      } else {
+        const r = it.tipo === "banana" ? 0.55 : 0.65;
+        for (const c of corpos) {
+          if (c.imune || (c.id === it.dono && it.t < 1.2)) continue; // quem jogou não tropeça no próprio item logo em seguida
+          if (it.tipo !== "banana" && c.team === it.team) continue; // casco não pega companheiro
+          if (Math.hypot(c.x - it.x, c.z - it.z) < r) { acertos.push({ id: c.id, por: it.dono, x: it.x, z: it.z }); fim = true; break; }
+        }
+        if (it.tipo === "casco" && it.quiques > 3) fim = true;
+        if (it.tipo === "teleguiado" && it.t > 4) fim = true;
+        if (it.tipo === "banana" && it.t > 20) fim = true;
+        if (it.tipo === "casco" && it.t > 4) fim = true;
+      }
+      if (fim) itens.splice(i, 1);
+    }
+    return { acertos, explosoes };
+  }
+
+  const api = { MODES, campoDe, ITENS, ITEM_LISTA, sortearItem, lancarItem, stepItens, BOMBA_R, BOMBA_T, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
     movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass, assistCross, arenaSDF, rampa };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;

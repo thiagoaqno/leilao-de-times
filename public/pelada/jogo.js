@@ -19,7 +19,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const angLerp = (a, b, k) => { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * k; };
 const SIDES = { A: "Mandante", B: "Visitante" };
-const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, deke: 256 }; // deke: drible com giro (Strikers) // grab: segurando alguém
+const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, deke: 256, estrela: 512, cogumelo: 1024 }; // deke: drible com giro (Strikers) // grab: segurando alguém
 // contra bots: velocidade (fração da sua), tempo de reação (s), erro na mira (rad) e vontade de dar carrinho
 const BOT_DIF = {
   facil: { nome: "Fácil", vel: 0.8, reac: 0.5, erro: 0.18, carrinho: 0.2 },
@@ -284,6 +284,9 @@ const Sound = (() => {
     },
     whistle, start() { whistle(1, 0.7); }, end() { whistle(3, 0.45); },
     cheer() { burst({ dur: 3.2, f0: 1400, f1: 700, gain: 0.5, type: "bandpass", q: 0.6, attack: 0.25 }); burst({ dur: 2.6, f0: 600, f1: 300, gain: 0.35, attack: 0.3 }); [523, 659, 784].forEach((f, i) => tone({ f0: f, dur: 0.25, gain: 0.08, type: "square", at: 0.2 + i * 0.12 })); },
+    item() { [660, 880, 1320].forEach((f, i) => tone({ f0: f, dur: 0.09, gain: 0.08, type: "square", at: i * 0.06 })); },
+    lanca() { burst({ dur: 0.2, f0: 600, f1: 2400, gain: 0.18, type: "bandpass", q: 1.2 }); },
+    boom() { tone({ f0: 90, f1: 35, dur: 0.6, gain: 0.5 }); burst({ dur: 0.7, f0: 1800, f1: 120, gain: 0.55 }); },
     choque() { tone({ f0: 140, f1: 70, dur: 0.35, gain: 0.22, type: "sawtooth" }); tone({ f0: 290, f1: 150, dur: 0.3, gain: 0.1, type: "square" }); burst({ dur: 0.32, f0: 5000, f1: 1600, gain: 0.28, type: "highpass" }); },
     deke() { burst({ dur: 0.25, f0: 900, f1: 3000, gain: 0.16, type: "bandpass", q: 1.5 }); },
     puxao() { burst({ dur: 0.16, f0: 1600, f1: 500, gain: 0.22, type: "bandpass", q: 1.4 }); }, // camisa sendo puxada
@@ -1296,7 +1299,7 @@ function startGame(mode, game, falta = false) {
 function stopGame() {
   if (!G.active) return;
   G.active = false;
-  clearRags();
+  clearRags(); limparItens();
   for (const r of G.remotes.values()) descartarJogador(r.model);
   G.remotes.clear();
   if (G.keeper) { descartarJogador(G.keeper.model); G.keeper = null; }
@@ -1373,6 +1376,17 @@ function syncFromState(old, st) {
   if (st.phase === "over") showOver(); else $("over").classList.add("hidden");
 }
 
+// ---------- Strikers online: efeitos de item, item ganho e explosão ----------
+socket.on("efeito", (d) => {
+  if (!G.active || G.mode !== "online") return;
+  if (ME && d.id === ME.id) { G.me[d.tipo + "T"] = d.ms / 1000; flashMsg("", `${C.ITENS[d.tipo].emoji} ${C.ITENS[d.tipo].nome}!`, 800, "#ffe14a"); Sound.item(); }
+});
+socket.on("ganhou", (d) => {
+  if (!G.active || G.mode !== "online") return;
+  if (ME && d.id === ME.id) { flashMsg("", `${C.ITENS[d.tipo].emoji} ${C.ITENS[d.tipo].nome}! (${d.motivo}) · ${PAD.on ? "↑" : "G"} para usar`, 1600, "#ffe14a"); Sound.item(); }
+  else { const p = P(d.id); if (p) pushFeed(`🎁 ${h(p.name)} ganhou ${C.ITENS[d.tipo].emoji}`); }
+});
+socket.on("boom", (d) => { if (G.active && G.mode === "online") boomFx(d.x, d.z); });
 // ---------- pacote do servidor (20x por segundo): bola e todo mundo ----------
 socket.on("snap", (d) => {
   if (!G.active || G.mode !== "online") return;
@@ -1382,6 +1396,8 @@ socket.on("snap", (d) => {
     rm.buf.push({ t: d.t, x: e[1], y: e[2], z: e[3], vx: e[4], vy: e[5], vz: e[6], yaw: e[7], pitch: e[8], f: e[9], o: Array.isArray(e[10]) ? e[10] : null });
     if (rm.buf.length > 30) rm.buf.shift();
   }
+  // itens andando (Strikers): guarda com a hora, e o desenho anda com eles até o próximo pacote
+  G.itensRede = (d.it || []).map(([id, k, x, z, vx, vz, t]) => ({ id, tipo: C.ITEM_LISTA[k], x, z, vx, vz, t, at: performance.now() }));
   const [x, y, z, vx, vy, vz, hit, hn, sp, wx = 0, wy = 0, wz = 0, dn = -1] = d.b;
   if (hit > 2) { const [k, pan] = hearing([x, y, z]); Sound.bounce(hit, k, pan, isCar()); }
   const holder = hn >= 0 && PN(hn) ? PN(hn).id : null;
@@ -1504,7 +1520,7 @@ function setupTouch() {
   else Toque.setup({
     look: (dx, dy) => { if (!locked() || G.view === "tv") return; const k = 0.0028 * sens; G.camYaw -= dx * k; G.camPitch = clamp(G.camPitch - dy * k, ...pitchRange()); },
     buttons: [
-      { icon: "🌙", label: "cavadinha", code: "KeyL" }, { icon: "🎯", label: "passe", code: "KeyJ" }, { icon: "🦵", label: "carrinho", down: () => { if (locked() && G.meModel && !souDono()) wheelQueued = true; } },
+      ...(G.F.strikers ? [{ icon: "🎁", label: "item", code: "KeyG" }] : []), { icon: "🌙", label: "cavadinha", code: "KeyL" }, { icon: "🎯", label: "passe", code: "KeyJ" }, { icon: "🦵", label: "carrinho", down: () => { if (locked() && G.meModel && !souDono()) wheelQueued = true; } },
       { icon: "↗", label: "cruzar", code: "KeyU" }, ...(G.mode === "bots" ? [{ icon: "🔁", label: "trocar", code: "KeyT" }] : []),
       { icon: "✋", label: "segurar", code: "KeyF" }, { icon: "🏃", label: "pique", code: "ShiftLeft" }, { icon: "⬆", label: "pular", code: "Space" }, { icon: "⚽", label: "chute", code: "KeyK", big: true },
     ],
@@ -1542,7 +1558,7 @@ const PAD = { on: false, play: false, prev: [], lx: 0, ly: 0, rx: 0, ry: 0, font
 // a pé, no layout clássico do FIFA (Xbox): A passe, B chute, X cruzamento alto (sem a bola: carrinho), Y cavadinha,
 // RB colocado (RB + B chute colocado, RB + A passe colocado), LB troca de jogador, RT pique, LT segurar,
 // R3 (apertar o analógico direito) pula/cabeceia (goleiro: R3 + lado se joga), View câmera, Menu pausa
-const PAD_PE = { 0: "KeyJ", 1: "KeyK", 2: "acaoX", 3: "KeyL", 4: "KeyT", 5: "KeyR", 6: "KeyF", 7: "ShiftLeft", 11: "Space", 8: "KeyC", 13: "Tab", 9: "start" };
+const PAD_PE = { 0: "KeyJ", 1: "KeyK", 2: "acaoX", 3: "KeyL", 4: "KeyT", 5: "KeyR", 6: "KeyF", 7: "ShiftLeft", 11: "Space", 8: "KeyC", 12: "KeyG", 13: "Tab", 9: "start" }; // ↑ (12): item do Strikers
 const PAD_CARRO = { 0: "Space", 1: "ShiftLeft", 2: "KeyQ", 3: "KeyC", 7: "KeyW", 6: "KeyS", 8: "KeyV", 13: "Tab", 9: "start" };
 // a mesma tecla pode vir de duas fontes (RT e o analógico apertam W no carro): só solta quando as duas soltarem
 function padTecla(code, fonte, down) {
@@ -1611,6 +1627,7 @@ document.addEventListener("keydown", (e) => {
     else { G.view = VIEWS[(VIEWS.indexOf(G.view) + 1) % VIEWS.length]; store.set("pelada:view", G.view); G.camPitch = clamp(G.camPitch, ...pitchRange()); flashMsg("", VIEW_NAMES[G.view], 1200); }
   }
   if (e.code === "KeyV" && !e.repeat && isCar()) G.tv = !G.tv;
+  if (e.code === "KeyG" && !e.repeat && !isCar()) itemQueued = true; // Strikers: usa o item
   if (KICK_KEY[e.code] && !e.repeat && !charge && !isCar()) {
     if (modificador() && KICK_KEY[e.code] !== "cavadinha") chuteColocado(KICK_KEY[e.code]); // R/LB + chute/passe: colocado, na hora
     else charge = { kind: KICK_KEY[e.code], t0: now(), src: e.code };
@@ -1710,7 +1727,8 @@ function frame(dt, t) {
   updateRemotes(dt);
   updateRags(dt);
   updateBall(dt);
-  updateFaiscas(dt); animarArena(t);
+  updateFaiscas(dt); animarArena(t); updateBooms(dt); hudItens();
+  if (G.mode === "online" && G.F.strikers) { const agora = performance.now(); desenharItens((G.itensRede || []).map((i) => { const s = Math.min(0.15, (agora - i.at) / 1000); return { ...i, x: i.x + i.vx * s, z: i.z + i.vz * s, t: i.t + s }; }), dt); }
   updateCamera(dt); if (camHook) camHook(cam);
   hud(t);
   updateGoalSigns();
@@ -1758,9 +1776,9 @@ function tentarDeke(p) {
   if (!G.F.strikers || p.dekeCd > 0 || p.downT > 0 || p.slideT > 0) return false;
   p.dekeT = DEKE_T; p.dekeCd = DEKE_CD; Sound.deke(); return true;
 }
-function tempoStrikers(p, dt) { p.dekeT = Math.max(0, (p.dekeT || 0) - dt); p.dekeCd = Math.max(0, (p.dekeCd || 0) - dt); }
-// multiplicador de velocidade do Strikers (campo maior, jogo mais rápido; giro dá um tranco)
-const velStrikers = (p) => (G.F.vel || 1) * ((p.dekeT || 0) > 0 ? 1.3 : 1);
+function tempoStrikers(p, dt) { for (const k of ["dekeT", "dekeCd", "cogumeloT", "estrelaT"]) p[k] = Math.max(0, (p[k] || 0) - dt); }
+// multiplicador de velocidade do Strikers (campo maior, jogo mais rápido; giro dá um tranco; cogumelo e estrela também)
+const velStrikers = (p) => (G.F.vel || 1) * ((p.dekeT || 0) > 0 ? 1.3 : 1) * ((p.cogumeloT || 0) > 0 ? 1.45 : 1) * ((p.estrelaT || 0) > 0 ? 1.2 : 1);
 // cerca elétrica: quem bate forte nela (correndo ou empurrado) leva choque: cai um instante, é jogado de volta para
 // dentro, solta a bola e sai faísca. O vão do gol não tem cerca. Devolve true se deu choque.
 function cercaEletrica(p, nome) {
@@ -1789,6 +1807,140 @@ function updateFaiscas(dt) {
     f.m.scale.setScalar(Math.max(0.05, f.t * 2.5)); f.m.material.opacity = Math.min(1, f.t * 3); if (f.t <= 0) f.m.visible = false;
   }
 }
+// ---------- itens do Strikers (no navegador) ----------
+// Inventário: até 2 por jogador (p.itens). Contra bots e no treino tudo roda aqui; online, o servidor manda (evento
+// "item" para usar; os itens que andam no campo chegam nos pacotes). Efeitos em quem usa: p.cogumeloT e p.estrelaT.
+let itemQueued = false;
+const ITEM_MAX = 2;
+// visual de cada item no campo (caixinhas e formas simples, no estilo do jogo)
+function itemMesh(tipo) {
+  const g = new THREE.Group();
+  if (tipo === "casco" || tipo === "teleguiado") {
+    const cor = tipo === "casco" ? 0x2fbf4a : 0xe53935;
+    const casco = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), M(cor, { roughness: 0.35 })); g.add(casco);
+    const aro = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 16), M(0xf4f4f4)); aro.rotation.x = Math.PI / 2; g.add(aro);
+    for (let i = 0; i < 5; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.12), M(0xf4f4f4)); const a = (i / 5) * Math.PI * 2; p.position.set(Math.cos(a) * 0.18, 0.22, Math.sin(a) * 0.18); g.add(p); }
+    g.position.y = 0.06;
+  } else if (tipo === "banana") {
+    const b = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.07, 6, 10, Math.PI * 0.9), M(0xffd83a, { roughness: 0.5 })); b.rotation.x = Math.PI / 2 - 0.3; b.position.y = 0.1; g.add(b);
+    const ponta = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.08), M(0x5a3d1a)); ponta.position.set(0.22, 0.12, 0); g.add(ponta);
+  } else if (tipo === "bomba") {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 10), M(0x1b1b22, { roughness: 0.4, metalness: 0.3 })); s.position.y = 0.3; g.add(s);
+    const pavio = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.18, 6), M(0xc9a36a)); pavio.position.y = 0.66; g.add(pavio);
+    const fogo = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffa31a, toneMapped: false })); fogo.position.y = 0.78; g.add(fogo); g.userData.fogo = fogo;
+  }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+const itemMeshes = new Map(); // id -> { g, tipo }
+// desenha a lista de itens no campo: [{id, tipo, x, z, t}] (cria e tira os bonecos que entraram/saíram)
+function desenharItens(lista, dt) {
+  const vivos = new Set();
+  for (const it of lista) {
+    vivos.add(it.id);
+    let m = itemMeshes.get(it.id);
+    if (!m) { m = { g: itemMesh(it.tipo), tipo: it.tipo }; scene.add(m.g); itemMeshes.set(it.id, m); }
+    m.g.position.x = it.x; m.g.position.z = it.z;
+    if (it.tipo === "casco" || it.tipo === "teleguiado") m.g.rotation.y += dt * 14; // gira deslizando
+    if (it.tipo === "bomba") { const k = 1 + Math.max(0, (it.t || 0) - 0.8) * 0.5 * (1 + Math.sin(now() * 30)); m.g.scale.setScalar(k); if (m.g.userData.fogo) m.g.userData.fogo.visible = Math.sin(now() * 40) > 0; }
+  }
+  for (const [id, m] of itemMeshes) if (!vivos.has(id)) { scene.remove(m.g); liberar(m.g); itemMeshes.delete(id); }
+}
+function limparItens() { for (const m of itemMeshes.values()) { scene.remove(m.g); liberar(m.g); } itemMeshes.clear(); if (G.itens) G.itens.length = 0; }
+// explosão da bomba: faíscas laranja e uma bola de luz que cresce e some
+const boomGeo = new THREE.SphereGeometry(1, 16, 12);
+const BOOMS = [];
+function boomFx(x, z) {
+  faiscas(x, 0.6, z, 40, 0xff8a1a);
+  const m = new THREE.Mesh(boomGeo, new THREE.MeshBasicMaterial({ color: 0xffb04a, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+  m.position.set(x, 0.6, z); scene.add(m); BOOMS.push({ m, t: 0 }); Sound.boom();
+}
+function updateBooms(dt) {
+  for (let i = BOOMS.length - 1; i >= 0; i--) { const b = BOOMS[i]; b.t += dt; b.m.scale.setScalar(0.3 + b.t * 11); b.m.material.opacity = Math.max(0, 0.8 - b.t * 3); if (b.t > 0.3) { scene.remove(b.m); b.m.material.dispose(); BOOMS.splice(i, 1); } }
+}
+// ganhou um item (derrubado sem a bola, ou 3 passes seguidos do time)
+function darItem(p, motivo) {
+  if (!G.F.strikers || !p) return null;
+  p.itens ||= []; if (p.itens.length >= ITEM_MAX) return null;
+  const k = C.sortearItem(); p.itens.push(k);
+  if (p === G.me) { flashMsg("", `${C.ITENS[k].emoji} ${C.ITENS[k].nome}! ${motivo ? `(${motivo})` : ""} · G para usar`, 1600, "#ffe14a"); Sound.item(); }
+  return k;
+}
+// usa o primeiro item (sem servidor): efeito em quem usa ou um objeto que sai andando
+function usarItemLocal(p, id, team) {
+  const k = p.itens && p.itens.shift(); if (!k) return null;
+  const I = C.ITENS[k];
+  if (I.eu) { p[k + "T"] = I.dura; Sound.item(); }
+  else { const it = C.lancarItem(k, p, team, id); if (it) { G.itens.push(it); Sound.lanca(); } }
+  if (p === G.me) flashMsg("", `${I.emoji} ${I.nome}!`, 800, "#ffe14a");
+  return k;
+}
+// quem está em campo (sem servidor), para os itens: eu, os bots
+function entsLocais() {
+  return [{ e: G.me, id: "eu", team: "A", eu: true, name: "Você" }, ...(G.bots || []).map((x) => ({ e: x, id: x.id, team: x.team, name: `${x.team === "A" ? "Seu" : "Bot"} ${x.name}` }))];
+}
+// sem servidor: anda os itens, derruba quem eles acertam, a estrela derruba quem encosta
+function itensLocais(dt) {
+  if (!G.F.strikers) return;
+  G.itens ||= [];
+  const ents = entsLocais(), b = local.ball;
+  const corpos = ents.map((o) => ({ id: o.id, team: o.team, x: o.e.x, z: o.e.z, imune: o.e.downT > 0 || (o.e.estrelaT || 0) > 0, bola: b && b.dono === o.id }));
+  const r = C.stepItens(G.F, G.itens, corpos, dt);
+  for (const e of r.explosoes) boomFx(e.x, e.z);
+  for (const a of r.acertos) { const o = ents.find((q) => q.id === a.id); if (o) derrubarPor(o, a.x, a.z, ents.find((q) => q.id === a.por)); }
+  for (const s of ents) if ((s.e.estrelaT || 0) > 0) for (const o of ents) // estrela: quem encostar cai
+    if (o.team !== s.team && !(o.e.downT > 0) && !((o.e.estrelaT || 0) > 0) && Math.hypot(o.e.x - s.e.x, o.e.z - s.e.z) < 1.0) derrubarPor(o, s.e.x, s.e.z, s);
+  desenharItens(G.itens, dt);
+}
+// derrubado por um item ou pela estrela (sem servidor)
+function derrubarPor(o, hx, hz, quem) {
+  const e = o.e; e.downT = 1.4; e.slideT = 0; Sound.fall();
+  if (local.ball && local.ball.dono === o.id) local.ball.dono = null;
+  const model = o.eu ? G.meModel : e.model;
+  if (model && !(o.eu && G.view === "primeira")) { const dx = e.x - hx, dz = e.z - hz, l = Math.hypot(dx, dz) || 1; addRag(model, e.x, e.y || 0, e.z, e.facing, { x: e.vx || 0, y: 0, z: e.vz || 0 }, { x: (dx / l) * 4, y: 3, z: (dz / l) * 4 }, 1.15); }
+  if (o.eu) charge = null;
+  pushFeed(`💥 ${h(quem ? quem.name : "Item")} derrubou ${h(o.name)}`);
+}
+// efeitos de quem usou cogumelo/estrela: rastro e brilho
+function auraItens(p, dt) {
+  if ((p.cogumeloT || 0) > 0 && Math.random() < dt * 30) faiscas(p.x, 0.25, p.z, 1, 0xff5a5a);
+  if ((p.estrelaT || 0) > 0 && Math.random() < dt * 45) faiscas(p.x + (Math.random() - 0.5) * 0.6, 0.4 + Math.random() * 1.4, p.z + (Math.random() - 0.5) * 0.6, 1, [0xffe14a, 0x7ff7ff, 0xff7ad9][Math.floor(Math.random() * 3)]);
+}
+// os bots usam os itens quando faz sentido: casco/bomba em quem está na frente, teleguiado em quem tem a bola,
+// banana em quem vem atrás, cogumelo/estrela quando estão com a bola
+function botUsaItem(bot, t, d) {
+  const k = bot.itens && bot.itens[0]; if (!k || t < (bot.itemT || 0)) return;
+  bot.itemT = t + 0.4 + Math.random() * d.reac * 3;
+  const b = local.ball, tem = b.dono === bot.id, rivais = entsLocais().filter((o) => o.team !== bot.team && !(o.e.downT > 0));
+  const fx = -Math.sin(bot.facing), fz = -Math.cos(bot.facing);
+  const naFrente = rivais.filter((o) => { const dx = o.e.x - bot.x, dz = o.e.z - bot.z, dd = Math.hypot(dx, dz); return dd < 14 && (dx * fx + dz * fz) / (dd || 1) > 0.9; });
+  const atras = rivais.some((o) => { const dx = o.e.x - bot.x, dz = o.e.z - bot.z, dd = Math.hypot(dx, dz); return dd < 4 && (dx * fx + dz * fz) / (dd || 1) < -0.5; });
+  const comBola = rivais.find((o) => b.dono === o.id);
+  let usa = false;
+  if (C.ITENS[k].eu) usa = tem;
+  else if (k === "banana") usa = atras;
+  else if (k === "teleguiado") usa = !!comBola && Math.hypot(comBola.e.x - bot.x, comBola.e.z - bot.z) < 18;
+  else usa = naFrente.length > 0;
+  if (usa) usarItemLocal(bot, bot.id, bot.team);
+}
+// usar o meu item: sem servidor, aqui; online, o servidor decide (e manda de volta o efeito ou o item andando)
+function usarMeuItem() {
+  if (G.mode === "online") { const inv = (myP() || {}).itens || []; if (inv.length) { socket.emit("item"); Sound.lanca(); } return; }
+  usarItemLocal(G.me, "eu", "A");
+}
+// treino no Strikers: ganha um item a cada 6 s para treinar
+function itensTreino(t) { if (!G.F.strikers || G.falta) return; G.me.itens ||= []; if (G.me.itens.length < ITEM_MAX && t > (G.itemTreinoT || 0)) { G.itemTreinoT = t + 6; darItem(G.me, "treino"); } }
+// barrinha com os itens (canto de baixo, à esquerda)
+function hudItens() {
+  let el = $("hItens");
+  if (!el) { el = document.createElement("div"); el.id = "hItens"; el.className = "hud"; el.style.cssText = "left:18px;bottom:22px;display:flex;gap:8px;align-items:center;font:700 13px Figtree,system-ui,sans-serif;color:#fff;text-shadow:0 2px 4px #000"; document.getElementById("game").appendChild(el); }
+  const ativo = G.active && !isCar() && G.F.strikers && G.meModel;
+  el.classList.toggle("hidden", !ativo); if (!ativo) return;
+  const inv = G.mode === "online" ? (myP() || {}).itens || [] : G.me.itens || [];
+  const slot = (k, i) => `<div style="width:${i ? 40 : 54}px;height:${i ? 40 : 54}px;border-radius:12px;background:#0b0f26cc;border:2px solid ${i ? "#7ff7ff55" : "#ffe14a"};display:grid;place-items:center;font-size:${i ? 22 : 30}px">${k ? C.ITENS[k].emoji : ""}</div>`;
+  const ef = (G.me.estrelaT > 0 ? "⭐ " : "") + (G.me.cogumeloT > 0 ? "🍄 " : "");
+  setH("hItens", `${slot(inv[0], 0)}${slot(inv[1], 1)}<span style="margin-left:4px">${inv.length ? (PAD.on ? "↑ usa" : "G usa") : "sem item"} ${ef}</span>`);
+}
 // ---------- a pé ----------
 function stepFoot(dt, t, frozen) {
   const me = G.me, F = G.F, yaw = ctrlYaw(), mine = myP(), isGK = G.mode === "online" && mine && mine.gk;
@@ -1803,6 +1955,8 @@ function stepFoot(dt, t, frozen) {
   me.slideT = Math.max(0, me.slideT - dt); me.diveT = Math.max(0, me.diveT - dt); me.downT = Math.max(0, me.downT - dt); me.slideCd = Math.max(0, me.slideCd - dt);
   tempoStrikers(me, dt);
   if (G.F.strikers && jumpQueued && !frozen && souDono() && tentarDeke(me)) jumpQueued = false; // Strikers: Espaço com a bola = drible com giro
+  if (itemQueued) { itemQueued = false; if (G.F.strikers && !frozen && !(me.downT > 0)) usarMeuItem(); }
+  if (G.F.strikers) auraItens(me, dt);
   const busy = me.slideT > 0 || me.diveT > 0 || me.downT > 0;
   const holding = ballS.snap && ME && ballS.snap.holder === ME.id;
   // carrinho (rodinha do mouse): desliza para onde está virado e derruba quem estiver na frente
@@ -1966,6 +2120,7 @@ function updateRemotes(dt) {
     // perto de mim, o boneco é desenhado na posição de agora (o que eu vejo é o que colide); longe, a interpolada (lisa)
     const perto = G.me && rm.px != null && !isCar() ? clamp((3 - Math.hypot(rm.x - G.me.x, rm.z - G.me.z)) / 1.5, 0, 1) : 0;
     rm.k = lerp(rm.k || 0, perto, Math.min(1, dt * 6));
+    if (G.F.strikers) auraItens({ x: rm.x, z: rm.z, estrelaT: rm.f & FL.estrela ? 1 : 0, cogumeloT: rm.f & FL.cogumelo ? 1 : 0 }, dt); // brilho de quem está com estrela/cogumelo
     rm.giro = rm.f & FL.deke ? Math.min(Math.PI * 2, (rm.giro || 0) + (dt / DEKE_T) * Math.PI * 2) : 0; // o giro do drible dele
     rm.model.position.set(lerp(rm.x, rm.px ?? rm.x, rm.k), rm.y, lerp(rm.z, rm.pz ?? rm.z, rm.k)); rm.model.rotation.y = rm.yaw + rm.giro;
     if (isCar()) poseCar(rm.model, rm.model.position.x, rm.y, rm.model.position.z, rm.yaw, rm.o);
@@ -2074,6 +2229,7 @@ function faltaResult(msg, color, sound) {
 // treino: a bola (e o goleiro robô, a pé) rodam só aqui
 function practiceStep(dt, t) {
   const b = local.ball, me = G.me, k = G.keeper, F = G.F, fz = G.falta;
+  if (F.strikers) { itensTreino(t); itensLocais(dt); }
   const bodies = [myBody()];
   if (k) bodies.push(keeperBot(k, b, dt, t));
   if (fz) {
@@ -2124,7 +2280,7 @@ const BOT_MIN = 4;
 function setupBots() {
   const n = clamp(store.get("pelada:botSize") || 3, 1, 5), dif = BOT_DIF[store.get("pelada:botDif")] ? store.get("pelada:botDif") : "medio";
   const a = myKit(), kits = { A: a, B: a === "palmeiras" ? "rubronegro" : "palmeiras" };
-  G.bm = { n, dif, kits, score: { A: 0, B: 0 }, left: BOT_MIN * 60000, phase: "ready", until: 0, kicking: "A", trocaT: 0, trocaN: 0 };
+  G.bm = { n, dif, kits, passes: { A: 0, B: 0 }, ultDono: null, score: { A: 0, B: 0 }, left: BOT_MIN * 60000, phase: "ready", until: 0, kicking: "A", trocaT: 0, trocaN: 0 };
   G.bots = []; G.keepers = [];
   const nums = [10, 7, 5, 9, 11];
   for (const team of ["A", "B"]) for (let i = team === "A" ? 1 : 0; i < n; i++) {
@@ -2141,6 +2297,7 @@ function setupBots() {
 }
 function botsKickoff(kicking) {
   const F = G.F, bm = G.bm;
+  limparItens(); bm.passes = { A: 0, B: 0 }; bm.ultDono = null; // saída de bola: o campo fica limpo (os itens na mão continuam)
   Object.assign(local.ball, C.newBall(F));
   for (const team of ["A", "B"]) {
     const list = [...(team === "A" ? [G.me] : []), ...G.bots.filter((x) => x.team === team)];
@@ -2237,6 +2394,7 @@ function stepBot(bot, dt, t, live) {
     }
   }
   bot.sprint = sprint && speed > 0;
+  if (F.strikers) { if (live && !busy) botUsaItem(bot, t, d); auraItens(bot, dt); }
   if (busy) { const k = Math.exp(-dt * (bot.downT > 0 ? 6 : 1.6)); bot.vx *= k; bot.vz *= k; }
   C.movePlayer(bot, { x: wx, z: wz, speed, jump: false, free: busy }, dt, F);
   cercaEletrica(bot, `${bot.team === "A" ? "Seu" : "Bot"} ${bot.name}`);
@@ -2259,7 +2417,10 @@ function carrinhosLocais() {
   for (const a of ents) {
     if (!(a.e.slideT > 0) || a.e.downT > 0) continue;
     const hx = a.e.x - Math.sin(a.e.facing) * 0.6, hz = a.e.z - Math.cos(a.e.facing) * 0.6;
-    for (const o of ents) if (o.team !== a.team && !(o.e.downT > 0) && !(o.e.dekeT > 0) && o.e.y < 0.6 && Math.hypot(o.e.x - hx, o.e.z - hz) < 0.85) derrubar(o, a); // no giro do drible, não pega
+    for (const o of ents) if (o.team !== a.team && !(o.e.downT > 0) && !(o.e.dekeT > 0) && !(o.e.estrelaT > 0) && o.e.y < 0.6 && Math.hypot(o.e.x - hx, o.e.z - hz) < 0.85) { // no giro do drible (e com estrela), não pega
+      const tinhaBola = local.ball.dono === o.id; derrubar(o, a);
+      if (!tinhaBola) darItem(o.e, "derrubado sem a bola"); // Strikers: falta em quem está sem a bola dá item para quem caiu
+    }
   }
 }
 function derrubar(o, a) {
@@ -2278,7 +2439,8 @@ function derrubar(o, a) {
 // troca o controle para o bot: os dois trocam de corpo (posição, velocidade, modelo...), e a bola vai junto
 function trocarCom(bot, aviso = true) {
   const me = G.me, b = local.ball;
-  for (const k of ["x", "y", "z", "vx", "vy", "vz", "onGround", "facing", "slideT", "slideCd", "downT", "lastKick", "kickT", "st", "slot"]) { const v = me[k]; me[k] = bot[k]; bot[k] = v; }
+  for (const k of ["x", "y", "z", "vx", "vy", "vz", "onGround", "facing", "slideT", "slideCd", "downT", "lastKick", "kickT", "st", "slot", "dekeT", "dekeCd", "cogumeloT", "estrelaT"]) { const v = me[k]; me[k] = bot[k]; bot[k] = v; }
+  if (G.bm.ultDono === bot.id) G.bm.ultDono = "eu"; else if (G.bm.ultDono === "eu") G.bm.ultDono = bot.id; // a sequência de passes não conta a troca
   const m = G.meModel; G.meModel = bot.model; bot.model = m;
   me.yaw = me.facing; bot.yaw = bot.facing; bot.sprint = false; bot.think = 0; me.segurando = null;
   if (b.dono === bot.id) b.dono = "eu"; else if (b.dono === "eu") b.dono = bot.id;
@@ -2321,6 +2483,15 @@ function botsStep(dt, t) {
   viraComABola(b, G.me);
   const antes = b.dono, r = C.simulate(F, b, bodies, dt);
   if (r.hit > 2) { const [kk, pan] = hearing([b.x, b.y, b.z]); Sound.bounce(r.hit, kk, pan); }
+  if (F.strikers) { // itens: andam, derrubam; 3 passes seguidos do time dão item para quem recebeu
+    itensLocais(dt);
+    if (b.dono && b.dono !== bm.ultDono) {
+      const t1 = bm.ultDono ? timeDe(bm.ultDono) : null, t2 = timeDe(b.dono);
+      if (t1 && t1 === t2) { bm.passes[t2] = (bm.passes[t2] || 0) + 1; if (bm.passes[t2] % 3 === 0) { const o = entsLocais().find((q) => q.id === b.dono); if (o) darItem(o.e, "3 passes"); } }
+      else bm.passes = { A: 0, B: 0 };
+      bm.ultDono = b.dono;
+    }
+  }
   // um companheiro dominou a bola: o controle passa para ele (como no FIFA)
   if (b.dono && b.dono !== "eu" && b.dono !== antes) { const bot = G.bots.find((x) => x.id === b.dono); if (bot && bot.team === "A") trocarCom(bot, false); }
   const side = C.goalOf(F, b);
