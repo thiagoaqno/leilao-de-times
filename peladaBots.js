@@ -132,7 +132,7 @@ function passo(room, F, now, dt, fx) {
     const dx = tx - pos.x, dz = tz - pos.z, dist = Math.hypot(dx, dz);
     if (!caido && !deslizando && dist > 0.4) { wx = dx / dist; wz = dz / dist; speed = (sprint ? C.SPRINT : C.RUN) * (F.vel || 1) * clamp(dist / 2, 0.35, 1) * (p.gk ? 0.9 : 0.95); }
     if (caido || deslizando) { const k = Math.exp(-dt * (caido ? 6 : 1.6)); pos.vx *= k; pos.vz *= k; }
-    C.movePlayer(pos, { x: wx, z: wz, speed, free: caido || deslizando }, dt, F);
+    C.movePlayer(pos, { x: wx, z: wz, speed, free: caido || deslizando, molinho: room.config.molinho }, dt, F);
     const outros = todos.filter((q) => q !== p).map((q) => ({ x: q.pos.x, z: q.pos.z, y: q.pos.y, vx: q.pos.vx, vz: q.pos.vz, caido: q.downUntil > now || (q.slideAte || 0) > now }));
     C.corpoACorpo(pos, outros, caido || deslizando);
     if (!caido && !deslizando) {

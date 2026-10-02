@@ -35,7 +35,8 @@ module.exports = function attachPelada(io) {
     minutes: [3, 5, 8].includes(int(c.minutes, 5)) ? int(c.minutes, 5) : 5,
     arena: C.ARENAS[c.arena] ? c.arena : "society", // quadra escolhida pelo organizador (todo mundo vê a mesma)
     estilo: c.estilo === "strikers" ? "strikers" : "futsal", // a pé: futsal ou Strikers (arcade, com itens e Super Chute)
-    bots: c.mode !== "carros" && !!c.bots, // amistoso: 4 na linha + goleiro por time, os lugares vagos são de bots
+    bots: c.mode !== "carros" && !!c.bots,
+    molinho: c.molinho !== false, // corpo molinho: a mola do tronco atrapalha a aderência nas viradas bruscas (campo.js, GINGA) // amistoso: 4 na linha + goleiro por time, os lugares vagos são de bots
   });
   const F = (room) => C.campoDe(room.config.mode, room.config.estilo);
   const teamOf = (room, t) => room.order.map((id) => room.players[id]).filter((p) => p.team === t);

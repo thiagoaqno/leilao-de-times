@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<script src="/semzoom.js"></script>
 <title>Pelada da Galera</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -163,6 +164,8 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
         <div class="skins soPe" id="hSkins"></div>
         <label style="margin-top:12px" class="soPe">Estilo (treino e contra bots)</label>
         <div class="seg soPe" id="hEstilo"></div>
+        <label style="margin-top:12px" class="soPe">Corpo (treino e contra bots)</label>
+        <div class="seg soPe" id="hMolinho"></div>
         <label style="margin-top:12px" class="soPe">Quadra do treino</label>
         <div class="seg soPe" id="hArena"></div>
         <div class="err" id="hErr"></div>
@@ -192,6 +195,8 @@ kbd{display:inline-block;background:#1f3328;border:1px solid #3a5a48;border-bott
         <label style="margin-top:14px" class="soPe">Estilo de jogo</label>
         <div class="seg soPe" id="cfgEstilo"></div>
         <p class="muted soPe" id="cfgEstiloInfo" style="font-size:13px;margin:6px 0 0"></p>
+        <label style="margin-top:14px" class="soPe">Corpo</label>
+        <div class="seg soPe" id="cfgMolinho"></div>
         <label style="margin-top:14px" class="soPe">Amistoso com bots</label>
         <div class="seg soPe" id="cfgBots"></div>
         <p class="muted soPe" id="cfgBotsInfo" style="font-size:13px;margin:6px 0 0"></p>

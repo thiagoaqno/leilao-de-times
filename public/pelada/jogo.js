@@ -149,6 +149,7 @@ function renderLobby() {
   const est = S.config.estilo === "strikers" ? "strikers" : "futsal";
   $("cfgEstilo").innerHTML = estiloButtons(est, "data-estilo", isHost ? "" : "disabled");
   $("cfgEstiloInfo").textContent = ESTILOS[est].info;
+  $("cfgMolinho").innerHTML = molinhoBotoes(S.config.molinho !== false, "data-molinho", isHost ? "" : "disabled");
   $("cfgBots").innerHTML = `<button data-amistoso="0" class="${S.config.bots ? "" : "on"}" ${isHost ? "" : "disabled"}>👥 Só humanos</button><button data-amistoso="1" class="${S.config.bots ? "on" : ""}" ${isHost ? "" : "disabled"}>🤖 Completar com bots (4x4 + goleiro)</button>`;
   $("cfgBotsInfo").textContent = S.config.bots ? "Cada time joga com 4 na linha e 1 goleiro; quem entrou joga e o resto é bot (1x1, 2x1, 3x4…). LB/T troca de jogador, e no passe para um bot o controle vai junto com a bola." : "";
   $("cfgArena").innerHTML = Object.entries(C.ARENAS).map(([k, a]) => `<button data-arena="${k}" class="${(S.config.arena || "society") === k ? "on" : ""}" title="${h(a.desc)}" ${isHost ? "" : "disabled"}>${a.emoji} ${h(a.name)}</button>`).join("");
@@ -198,7 +199,12 @@ document.querySelectorAll("#cfgMin button").forEach((b) => (b.onclick = () => se
 const skinButtons = (atual) => Object.entries(C.SKINS).map(([k, sk]) => `<button data-skin="${k}" class="${k === (atual || "padrao") ? "on" : ""}"><i>${sk.emoji}</i>${h(sk.name)}</button>`).join("");
 const ESTILOS = { futsal: { nome: "⚽ Futsal", info: "" }, strikers: { nome: "⚡ Strikers", info: "Arcade: campo maior com cerca elétrica (dá choque), posse firme (só o carrinho tira), drible com giro (Espaço com a bola), passe semi-assistido (curto, longo e em profundidade) e itens. Sempre no Estádio Elétrico." } };
 const estiloButtons = (atual, attr, dis = "") => Object.entries(ESTILOS).map(([k, e]) => `<button ${attr}="${k}" class="${atual === k ? "on" : ""}" ${dis}>${e.nome}</button>`).join("");
+// corpo molinho (a mola do tronco atrapalha a aderência nas viradas bruscas): online, a sala decide; no treino e
+// contra bots, a escolha da tela inicial (ligado por padrão)
+const molinhoLigado = () => (G.mode === "online" ? !!(S && S.config.molinho) : store.get("pelada:molinho") !== false);
+const molinhoBotoes = (on, attr, dis = "") => `<button ${attr}="1" class="${on ? "on" : ""}" ${dis}>🍮 Molinho (afeta a corrida)</button><button ${attr}="0" class="${on ? "" : "on"}" ${dis}>🧱 Só no visual</button>`;
 function renderHomePicks() {
+  $("hMolinho").innerHTML = molinhoBotoes(store.get("pelada:molinho") !== false, "data-molinho-treino");
   $("hSkins").innerHTML = skinButtons(store.get("pelada:skin"));
   const a = store.get("pelada:arena") || "society";
   const est = store.get("pelada:estilo") === "strikers" ? "strikers" : "futsal";
@@ -225,6 +231,8 @@ document.addEventListener("click", (e) => {
   else if (b.dataset.botdif) { store.set("pelada:botDif", b.dataset.botdif); renderHomePicks(); }
   else if (b.dataset.arena && S) setCfg("arena", b.dataset.arena);
   else if (b.dataset.amistoso && S) setCfg("bots", b.dataset.amistoso === "1");
+  else if (b.dataset.molinhoTreino) { store.set("pelada:molinho", b.dataset.molinhoTreino === "1"); renderHomePicks(); }
+  else if (b.dataset.molinho && S) setCfg("molinho", b.dataset.molinho === "1");
 });
 if (FIXO === "carros") document.querySelectorAll(".soPe").forEach((e) => e.classList.add("hidden"));
 else renderHomePicks();
@@ -2136,7 +2144,7 @@ function stepFoot(dt, t, frozen) {
   if (frozen) { me.vx = 0; me.vz = 0; }
   if (busy) { const k = Math.exp(-dt * (me.downT > 0 ? 6 : 1.6)); me.vx *= k; me.vz *= k; }
   const jumping = jumpQueued && !frozen && !busy && me.onGround;
-  C.movePlayer(me, { x: wx, z: wz, speed, jump: jumping, free: busy }, dt, F);
+  C.movePlayer(me, { x: wx, z: wz, speed, jump: jumping, free: busy, molinho: molinhoLigado() }, dt, F);
   if (cercaEletrica(me, "Você")) { charge = null; flashMsg("", "⚡ Choque na cerca!", 900, "#9ff8ff"); }
   if (jumping) Sound.jump();
   jumpQueued = false;
@@ -2562,7 +2570,7 @@ function stepBot(bot, dt, t, live) {
   bot.sprint = sprint && speed > 0;
   if (F.strikers) { if (live && !busy) botUsaItem(bot, t, d); auraItens(bot, dt); }
   if (busy) { const k = Math.exp(-dt * (bot.downT > 0 ? 6 : 1.6)); bot.vx *= k; bot.vz *= k; }
-  C.movePlayer(bot, { x: wx, z: wz, speed, jump: false, free: busy }, dt, F);
+  C.movePlayer(bot, { x: wx, z: wz, speed, jump: false, free: busy, molinho: molinhoLigado() }, dt, F);
   cercaEletrica(bot, `${bot.team === "A" ? "Seu" : "Bot"} ${bot.name}`);
   const outros = [{ x: G.me.x, z: G.me.z, y: G.me.y, vx: G.me.vx, vz: G.me.vz, sprint: G.me.sprint, caido: G.me.slideT > 0 || G.me.downT > 0 }];
   for (const o of G.bots) if (o !== bot) outros.push({ x: o.x, z: o.z, y: o.y, vx: o.vx, vz: o.vz, sprint: o.sprint, caido: o.slideT > 0 || o.downT > 0 });

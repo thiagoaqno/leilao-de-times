@@ -782,7 +782,10 @@ function tryFire(heavy = false) {
   // recuo da AK: sobe nos primeiros tiros e depois puxa para os lados
   const rec = me.rec;
   if (me.w === "ak") {
-    rec.py += rec.n < AK_UP.length ? AK_UP[rec.n] : 0.0012;
+    // rec.n volta aos poucos (fracionado) quando você para de atirar: o índice da tabela tem que ser inteiro,
+    // senão AK_UP[2.4] = undefined deixava a mira NaN e a tela ficava toda preta até trocar de arma
+    const i = Math.floor(rec.n);
+    rec.py += i < AK_UP.length ? AK_UP[i] : 0.0012;
     rec.px += rec.n >= 8 ? Math.sin(rec.n * 0.55) * 0.0035 : (Math.random() - 0.5) * 0.0012;
     rec.n++; rec.last = t; me.kick = 0.7;
   } else if (me.w === "deagle") { rec.py += 0.022; rec.px += (Math.random() - 0.5) * 0.006; rec.n++; rec.last = t; me.punch = 0.035; me.kick = 1.4; }
@@ -921,6 +924,8 @@ function updateCamera(dt, t) {
   const me = G.me;
   G.spec = null;
   let x, y, z, yaw, pitch, w = me.w, showVM = true;
+  if (!Number.isFinite(me.rec.px) || !Number.isFinite(me.rec.py)) { me.rec.px = 0; me.rec.py = 0; me.rec.n = 0; } // proteção: mira nunca NaN
+  if (!Number.isFinite(me.punch)) me.punch = 0;
   if (me.alive) {
     x = me.x; y = me.y + AR.EYE; z = me.z; yaw = me.yaw + me.rec.px * 0.5; pitch = me.pitch + me.rec.py * 0.5 + me.punch;
   } else {
