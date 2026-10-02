@@ -4,7 +4,6 @@
 // pacote (rodando a mesma física de campo.js) e a diferença é corrigida aos poucos.
 import * as THREE from "three";
 import { Ragdoll } from "/ragdoll.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
 
@@ -161,6 +160,7 @@ function keysHelp(mode) {
     <li><kbd>Shift</kbd> turbo</li><li><kbd>Espaço</kbd> pular (2x = pulo duplo)</li>
     <li>No ar: <kbd>Espaço</kbd> + direção = mortal</li><li>No ar: <kbd>W</kbd><kbd>S</kbd> inclinam o carro</li>
     <li><kbd>Q</kbd> freio de mão (derrapar)</li><li><kbd>C</kbd> câmera da bola</li></ul>
+    <p class="muted" style="font-size:13.5px;margin:10px 0 0">🎮 <b>Controle:</b> RT acelera, LT ré, analógico vira (e inclina no ar), A pula, B turbo, X derrapa, Y câmera da bola, Start pausa.</p>
     <p class="muted" style="font-size:13.5px;margin:10px 0 0">Dica: pule e use o turbo no ar para pegar a bola alta. O mortal bate na bola com mais força. Passe pelas almofadas amarelas para encher o turbo.</p>`;
   return `<ul class="keys">
     <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> correr · mouse vira a câmera</li><li><kbd>Shift</kbd> pique</li>
@@ -169,6 +169,7 @@ function keysHelp(mode) {
     <li><kbd>Q</kbd>/<kbd>E</kbd> segurados no chute: efeito (curva)</li>
     <li>Rodinha do mouse: carrinho</li><li><kbd>F</kbd> segurar quem está perto (ele corre devagar)</li><li><kbd>Espaço</kbd> pular / cabecear</li>
     <li>Goleiro: <kbd>Espaço</kbd> + <kbd>A</kbd>/<kbd>D</kbd> se joga</li><li><kbd>C</kbd> câmera: atrás, TV ou 1ª pessoa</li></ul>
+    <p class="muted" style="font-size:13.5px;margin:10px 0 0">🎮 <b>Controle (estilo FIFA):</b> analógico esquerdo corre e mira, o direito mexe a câmera · A passe · B chute · Y cavadinha · X carrinho · RT pique · LT segurar · LB pular/cabecear (goleiro: LB + lado se joga) · RB segurado no chute: chute colocado (com curva para o gol) · Select câmera · Start pausa.</p>
     <p class="muted" style="font-size:13.5px;margin:10px 0 0">Sem seta apertada, a bola vai para onde o jogador está virado. O passe procura o companheiro mais perto da direção (como no FIFA). Carrinho derruba quem estiver na frente.</p>`;
 }
 $("joinA").onclick = () => act("team", { team: "A" });
@@ -299,9 +300,6 @@ const hemiL = new THREE.HemisphereLight(0xd8e8ff, 0x4a6a3a, 1.4); scene.add(hemi
 const sunL = new THREE.DirectionalLight(0xfff0d8, 2.4);
 sunL.castShadow = true; sunL.shadow.mapSize.set(2048, 2048); sunL.shadow.bias = -0.0004; sunL.shadow.normalBias = 0.03;
 scene.add(sunL, sunL.target);
-// reflexo do piso de madeira do ginásio: um "ambiente" de sala gerado uma vez só
-let envSala = null;
-const ambienteReflexo = () => (envSala ||= new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture);
 
 // ---------- bola ----------
 const ballTex = canvasTex(512, 256, (x, w, hh) => {
@@ -344,9 +342,9 @@ const ARENAS_CONFIG = {
     paredes: "alambrado", muretas: "tijolo", refletores: "nenhum", arquibancada: "morro",
   },
   ginasio: { // liga profissional: taco de madeira que reflete, refletores no teto, paredes fechadas e arquibancada escura
-    piso: { textura: "/pelada/texturas/madeira.jpg", metrosFoto: 1.5, tipo: "madeira", roughness: 0.3, metalness: 0.05, linhas: "#ffffff", reflexo: true },
-    ambiente: { ceu: 0x9aa3b5, chao: 0x3a2a1a, intensidade: 0.5 },
-    luz: { tipo: "refletores", cor: 0xfff6e8, intensidade: 0.9, pos: [0, 40, 1], spot: 5.5 },
+    piso: { textura: "/pelada/texturas/madeira.jpg", metrosFoto: 1.5, tipo: "madeira", roughness: 0.22, metalness: 0, linhas: "#ffffff" }, // liso: brilha com a luz do teto
+    ambiente: { ceu: 0x9aa3b5, chao: 0x3a2a1a, intensidade: 0.85 },
+    luz: { tipo: "refletores", cor: 0xfff6e8, intensidade: 2.1, pos: [0, 40, 1] },
     fundo: { tipo: "cor", cor: 0x0c0e13, neblina: 0x0c0e13, longe: 200 },
     paredes: "fechadas", muretas: "acolchoadas", refletores: "teto", arquibancada: "escura",
   },
@@ -394,8 +392,6 @@ function carregarArena(id, mode = arenaMode || "pes") {
   if (cfg.fundo.tipo === "ceu") { pintarCeu(cfg.fundo.cores); sky.visible = true; scene.background = null; }
   else { sky.visible = false; scene.background = new THREE.Color(cfg.fundo.cor); }
   scene.fog.color.setHex(cfg.fundo.neblina); scene.fog.near = 80 * s; scene.fog.far = cfg.fundo.longe * s;
-  // piso que reflete: liga o "ambiente" de sala (fraquinho, para não clarear demais os jogadores)
-  scene.environment = cfg.piso.reflexo ? ambienteReflexo() : null; scene.environmentIntensity = 0.35;
   arena = buildArena(F, cfg); scene.add(arena);
   ballMesh.scale.setScalar(F.ballR); blob.scale.setScalar(F.ballR / 0.15);
   ballMesh.material.map = mode === "carros" ? beachTex : ballTex; ballMesh.material.roughness = mode === "carros" ? 0.3 : 0.45; ballMesh.material.needsUpdate = true;
@@ -440,6 +436,13 @@ function buildArena(F, cfg) {
       x.fillRect(0, 0, w, Z(-W)); x.fillRect(0, Z(W), w, hh - Z(W)); x.fillRect(0, 0, X(-L), hh); x.fillRect(X(L), 0, w - X(L), hh);
       x.fillStyle = "#1d4f91b0"; for (const sg of [-1, 1]) { x.beginPath(); if (sg < 0) x.arc(X(-L), Z(0), F.areaR * PX, -Math.PI / 2, Math.PI / 2); else x.arc(X(L), Z(0), F.areaR * PX, Math.PI / 2, 1.5 * Math.PI); x.fill(); }
       x.fillStyle = "#b3262670"; x.beginPath(); x.arc(X(0), Z(0), F.circle * PX, 0, 7); x.fill();
+      // as "poças" de luz dos refletores do teto, pintadas no próprio piso (luz de verdade pesava demais)
+      x.globalCompositeOperation = "lighter";
+      for (const sx of [-0.62, 0, 0.62]) for (const sz of [-1, 1]) {
+        const cx = X(sx * L * 0.8), cz = Z(sz * W * 0.55 * 0.35), rr = 6.5 * PX, g = x.createRadialGradient(cx, cz, 0, cx, cz, rr);
+        g.addColorStop(0, "rgba(120,105,80,0.75)"); g.addColorStop(0.6, "rgba(80,70,52,0.35)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(cx - rr, cz - rr, 2 * rr, 2 * rr);
+      }
+      x.globalCompositeOperation = "source-over";
     }
   };
   const lines = (x) => {
@@ -504,14 +507,14 @@ function buildArena(F, cfg) {
   const cell = cars ? 1 : 0.5;
   const fence = (lw, lh, x0, y0, z0, rotY) => {
     let mat;
-    if (glass) mat = new THREE.MeshStandardMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.1, roughness: 0.05, metalness: 0.2, side: THREE.DoubleSide, depthWrite: false });
+    if (glass) mat = new THREE.MeshBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false }); // vidro simples (sem calcular luz)
     else { const t = fenceTex.clone(); t.repeat.set(lw / cell, lh / cell); t.needsUpdate = true; mat = new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.4 }); }
     const m = add(new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), mat)); m.position.set(x0, y0 + lh / 2, z0); m.rotation.y = rotY;
   };
   fence(2 * L, FH - BH, 0, BH, -W - 0.05, 0); fence(2 * L, FH - BH, 0, BH, W + 0.05, 0);
   for (const sg of [-1, 1]) { fence(2 * W, FH - F.goalH - 0.4, sg * (L + F.goalD + 0.05), F.goalH + 0.4, 0, Math.PI / 2); for (const zs of [-1, 1]) { const lw = W - F.goalW; fence(lw, FH - BH, sg * (L + 0.05), BH, zs * (F.goalW + lw / 2), Math.PI / 2); } }
   fenceTex?.dispose();
-  const pole = M(glass ? 0xb8bcc2 : 0x4a4f55, { metalness: 0.6, roughness: 0.4 }), gap = cars ? 8 : 5, pr = cars ? 0.12 : glass ? 0.04 : 0.06;
+  const pole = M(glass ? 0xc9cdd2 : 0x4a4f55, { metalness: glass ? 0.15 : 0.6, roughness: 0.4 }), gap = cars ? 8 : 5, pr = cars ? 0.12 : glass ? 0.04 : 0.06;
   for (let x0 = -L; x0 <= L + 0.01; x0 += gap) for (const zs of [-1, 1]) { const m = add(new THREE.Mesh(new THREE.CylinderGeometry(pr, pr, FH, 8), pole)); m.position.set(x0, FH / 2, zs * (W + 0.1)); m.castShadow = true; }
   // refletores
   if (cfg.refletores === "torres") for (const sx of [-1, 1]) for (const sz of [-1, 1]) { // torres nos cantos
@@ -521,18 +524,18 @@ function buildArena(F, cfg) {
     const box = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.4), M(0x2b2f33)); box.position.y = hp + 0.4; box.lookAt(-sx * 40, 0, -sz * 40); g.add(box);
     for (let i = 0; i < 6; i++) { const l = new THREE.Mesh(new THREE.CircleGeometry(0.22, 12), new THREE.MeshBasicMaterial({ color: 0xfff6d8 })); l.position.set((i % 3 - 1) * 0.7, (i < 3 ? 0.3 : -0.3), 0.21); box.add(l); }
   }
-  if (cfg.refletores === "teto") { // ginásio: treliças no teto e refletores (SpotLight) focados na quadra
+  if (cfg.refletores === "teto") { // ginásio: treliças no teto e refletores focados na quadra
+    // Os refletores são só a peça acesa: a luz deles está pintada no piso. Luz de verdade (SpotLight) encarecia o desenho
+    // de TUDO na cena: com 6 delas o ginásio rodava a 1/3 da velocidade das outras quadras.
     const HT = 15, metal = M(0x2a2d33, { metalness: 0.7, roughness: 0.5 });
     for (let x0 = -L - 6; x0 <= L + 6; x0 += 8) { const t = add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 2 * W + 24), metal)); t.position.set(x0, HT + 1.5, 0); }
     for (const sx of [-0.62, 0, 0.62]) for (const sz of [-1, 1]) {
       const px = sx * L, pz = sz * (W * 0.55);
-      const spot = new THREE.SpotLight(cfg.luz.cor, cfg.luz.spot, 0, 0.62, 0.55, 0); spot.position.set(px, HT, pz); spot.target.position.set(px * 0.8, 0, pz * 0.35);
-      add(spot); add(spot.target);
       const lamp = add(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 1.0), M(0x1c1e22))); lamp.position.set(px, HT + 0.3, pz);
       const face = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), new THREE.MeshBasicMaterial({ color: 0xfff8e6 })); face.rotation.x = Math.PI / 2; face.position.y = -0.26; lamp.add(face);
     }
     // o prédio: paredes e teto escuros em volta de tudo
-    const hall = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 50, HT + 6, 2 * W + 40), new THREE.MeshStandardMaterial({ color: 0x15171d, roughness: 0.95, side: THREE.BackSide })));
+    const hall = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 50, HT + 6, 2 * W + 40), new THREE.MeshBasicMaterial({ color: 0x15171d, side: THREE.BackSide }))); // escuro: não precisa calcular luz
     hall.position.y = (HT + 6) / 2 - 0.06;
   }
   // arquibancadas e o que fica em volta
@@ -1008,6 +1011,9 @@ function animateCar(model, st, dt, speed, f, pitch) {
 // mira no chão (a pé): setinha na frente do jogador mostrando para onde vai a bola
 const aim = new THREE.Mesh(new THREE.RingGeometry(0.0, 0.2, 3), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
 aim.rotation.x = -Math.PI / 2; scene.add(aim);
+// anel embaixo do companheiro que vai receber o passe (assistência de passe)
+const passMark = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.85, 32), new THREE.MeshBasicMaterial({ color: 0x7cf29a, transparent: true, opacity: 0.8, depthWrite: false }));
+passMark.rotation.x = -Math.PI / 2; passMark.visible = false; scene.add(passMark);
 
 // ======================================================================
 // Estado do jogo no navegador
@@ -1024,7 +1030,7 @@ const now = () => performance.now() / 1000;
 // no celular não tem "prender o mouse": jogando = depois de tocar em "Voltar pro jogo"
 const TOUCH = window.Toque && Toque.isTouch();
 let touchPlay = false;
-const locked = () => document.pointerLockElement === canvas || (TOUCH && touchPlay && G.active);
+const locked = () => document.pointerLockElement === canvas || (TOUCH && touchPlay && G.active) || (PAD.play && G.active);
 const ballS = { snap: null, view: C.newBall(), off: { x: 0, y: 0, z: 0 }, ignoreUntil: 0 };
 const local = { ball: null };
 const isCar = () => G.game === "carros";
@@ -1068,7 +1074,7 @@ function stopGame() {
   if (G.meModel) { descartarJogador(G.meModel); G.meModel = null; }
   local.ball = null; ballS.mine = null; charge = null; Sound.engine(0, false);
   if (document.pointerLockElement) document.exitPointerLock();
-  touchPlay = false; if (TOUCH) Toque.show(false);
+  touchPlay = false; if (TOUCH) Toque.show(false); soltarPad(); PAD.play = false;
   $("over").classList.add("hidden"); $("pause").classList.add("hidden"); $("tab").classList.add("hidden");
 }
 function mySkin() { const m = myP(); return (G.mode === "online" && m && m.skin) || store.get("pelada:skin") || "padrao"; }
@@ -1234,7 +1240,7 @@ function myBody() {
   if (!G.meModel || !G.me) return null;
   const me = G.me;
   return isCar() ? { id: "eu", kind: "car", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.yaw, flip: me.flipT > 0 }
-    : { id: "eu", kind: "pe", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.facing, sprint: me.sprint, slide: me.slideT > 0 || me.downT > 0, dive: me.diveT > 0,
+    : { id: "eu", kind: "pe", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.facing, sprint: me.sprint, slide: me.slideT > 0 || me.downT > 0, dive: me.diveT > 0, girando: !!me.girando,
       conduz: !G.falta, chutou: now() - me.lastKick < 0.35 }; // conduz: a bola fica no pé (na falta, não)
 }
 function hearing(p) {
@@ -1291,6 +1297,60 @@ document.addEventListener("mousedown", (e) => { if (!locked() || !G.meModel || i
 document.addEventListener("mouseup", (e) => { if (charge && charge.src === "m" + e.button) releaseKick(); });
 document.addEventListener("wheel", (e) => { if (locked() && G.meModel && !isCar()) { e.preventDefault(); wheelQueued = true; } }, { passive: false });
 function releaseKick() { const c = charge; charge = null; if (c) doKick(c.kind, powerOf(c)); }
+
+// ======================================================================
+// Controle (Xbox, PlayStation e parecidos, pela Gamepad API do navegador), no estilo FIFA. Os botões apertam as
+// mesmas teclas do teclado (o jogo nem percebe a diferença); o analógico esquerdo também dá a direção exata (em vez
+// das 8 direções do WASD) e a velocidade (empurrou pouco, anda devagar). Start pausa e volta.
+// ======================================================================
+const PAD = { on: false, play: false, prev: [], lx: 0, ly: 0, rx: 0, ry: 0, colocado: false, fontes: new Map() };
+// botões no layout padrão: 0 A/✕, 1 B/○, 2 X/□, 3 Y/△, 4 LB, 5 RB, 6 LT, 7 RT, 8 Select, 9 Start, 12-15 direcional
+const PAD_PE = { 0: "KeyJ", 1: "KeyK", 3: "KeyL", 2: "carrinho", 7: "ShiftLeft", 6: "KeyF", 4: "Space", 5: "colocado", 8: "KeyC", 13: "Tab", 9: "start" };
+const PAD_CARRO = { 0: "Space", 1: "ShiftLeft", 2: "KeyQ", 3: "KeyC", 7: "KeyW", 6: "KeyS", 8: "KeyV", 13: "Tab", 9: "start" };
+// a mesma tecla pode vir de duas fontes (RT e o analógico apertam W no carro): só solta quando as duas soltarem
+function padTecla(code, fonte, down) {
+  const set = PAD.fontes.get(code) || new Set(), antes = set.size > 0;
+  if (down) set.add(fonte); else set.delete(fonte);
+  PAD.fontes.set(code, set);
+  if (antes !== set.size > 0) document.dispatchEvent(new KeyboardEvent(down ? "keydown" : "keyup", { code, bubbles: true }));
+}
+function soltarPad() { for (const [code, set] of PAD.fontes) if (set.size) { set.clear(); document.dispatchEvent(new KeyboardEvent("keyup", { code, bubbles: true })); } PAD.colocado = false; }
+function padPausa(jogar) {
+  if (!G.active) return;
+  if (jogar) { PAD.play = true; Sound.unlock(); $("pause").classList.add("hidden"); if (document.pointerLockElement) document.exitPointerLock(); }
+  else { PAD.play = false; soltarPad(); keys.clear(); charge = null; $("pause").classList.remove("hidden"); renderPauseSb(); }
+}
+function lerPad(dt) {
+  const gp = [...(navigator.getGamepads?.() || [])].find((g) => g && g.connected);
+  if (!gp) { if (PAD.on) { soltarPad(); if (PAD.play) padPausa(false); } PAD.on = false; return; }
+  if (!PAD.on) { PAD.on = true; toast("🎮 Controle conectado! Aperte Start (ou A na pausa) para jogar."); }
+  const dz = (v) => (Math.abs(v || 0) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82); // zona morta (o analógico nunca fica no zero exato)
+  PAD.lx = dz(gp.axes[0]); PAD.ly = dz(gp.axes[1]); PAD.rx = dz(gp.axes[2]); PAD.ry = dz(gp.axes[3]);
+  const map = isCar() ? PAD_CARRO : PAD_PE;
+  gp.buttons.forEach((b, i) => {
+    const v = b.pressed || b.value > 0.4, era = !!PAD.prev[i]; PAD.prev[i] = v;
+    if (v === era) return;
+    const m = map[i]; if (!m) return;
+    if (m === "start") { if (v) padPausa(!PAD.play); return; }
+    if (!PAD.play) { if (v && i === 0 && G.active && $("over").classList.contains("hidden")) padPausa(true); return; } // pausado: A volta
+    if (m === "carrinho") { if (v && G.meModel) wheelQueued = true; return; }
+    if (m === "colocado") { PAD.colocado = v; return; }
+    padTecla(m, "b" + i, v);
+  });
+  if (!PAD.play || !G.active) return;
+  // analógico esquerdo também aperta W/A/S/D (o carro, o mergulho do goleiro e quem mais lê as teclas)
+  const t = 0.45;
+  padTecla("KeyW", "ax", PAD.ly < -t); padTecla("KeyS", "ax", PAD.ly > t); padTecla("KeyA", "ax", PAD.lx < -t); padTecla("KeyD", "ax", PAD.lx > t);
+  // analógico direito: câmera (a pé)
+  if (!isCar() && G.view !== "tv" && (PAD.rx || PAD.ry)) { G.camYaw -= PAD.rx * 2.6 * dt * (sens / 1.6); G.camPitch = clamp(G.camPitch - PAD.ry * 1.8 * dt, ...pitchRange()); }
+}
+// RB segurado no chute: efeito automático, a bola faz a curva de volta para o meio do gol (o "chute colocado" do FIFA)
+function curvaColocada() {
+  const me = G.me, team = myAttackTeam() || "A", gx = (team === "B" ? -1 : 1) * G.F.L;
+  const b = G.mode === "treino" ? local.ball : ballS.mine || ballS.view, a = aimYaw();
+  const meio = Math.atan2(-(gx - b.x), -(0 - b.z)), d = Math.atan2(Math.sin(a - meio), Math.cos(a - meio));
+  return Math.sign(d || 1) * Math.max(0.55, Math.min(1, Math.abs(d) * 4)); // mirou à esquerda do meio: curva para a direita
+}
 const powerOf = (c) => clamp((now() - c.t0) / (c.kind === "passe" ? 0.8 : 0.9), 0, 1);
 document.addEventListener("contextmenu", (e) => { if (G.active) e.preventDefault(); });
 document.addEventListener("keydown", (e) => {
@@ -1319,7 +1379,8 @@ function canPlay() { if (G.mode === "treino") return true; const m = S && S.matc
 // quanto dá para olhar para baixo e para cima: em primeira pessoa dá para olhar o chão (e a bola no pé)
 const pitchRange = () => (G.view === "primeira" ? [-1.35, 0.9] : [-0.45, 0.7]);
 function aimYaw() {
-  const f = (keys.has("ArrowUp") ? 1 : 0) - (keys.has("ArrowDown") ? 1 : 0), s = (keys.has("ArrowRight") ? 1 : 0) - (keys.has("ArrowLeft") ? 1 : 0);
+  let f = (keys.has("ArrowUp") ? 1 : 0) - (keys.has("ArrowDown") ? 1 : 0), s = (keys.has("ArrowRight") ? 1 : 0) - (keys.has("ArrowLeft") ? 1 : 0);
+  if (!f && !s && PAD.play && Math.hypot(PAD.lx, PAD.ly) > 0.3) { f = -PAD.ly; s = PAD.lx; } // controle: mira com o analógico esquerdo (como no FIFA)
   if (!f && !s) return G.me.facing;
   const yaw = ctrlYaw(), wx = -Math.sin(yaw) * f + Math.cos(yaw) * s, wz = -Math.cos(yaw) * f - Math.sin(yaw) * s;
   return Math.atan2(-wx, -wz);
@@ -1327,10 +1388,10 @@ function aimYaw() {
 function mates() {
   if (G.mode !== "online") return [];
   const mine = myP(); if (!mine) return [];
-  return [...G.remotes.values()].filter((r) => r.team === mine.team).map((r) => ({ x: r.x, z: r.z, vx: r.vx || 0, vz: r.vz || 0 }));
+  return [...G.remotes.values()].filter((r) => r.team === mine.team && !(r.f & (FL.slide | FL.down))).map((r) => ({ id: r.id, x: r.px ?? r.x, z: r.pz ?? r.z, vx: r.pvx ?? r.vx ?? 0, vz: r.pvz ?? r.vz ?? 0 })); // onde estão agora
 }
 // efeito: segurar Q (curva para a esquerda) ou E (para a direita) na hora do chute
-const curveNow = () => (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
+const curveNow = () => (PAD.play && PAD.colocado && !isCar() && G.me ? curvaColocada() : (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0));
 function doKick(kind, power) {
   const me = G.me, t = now();
   if (!canPlay() || t - me.lastKick < C.KICK_CD || me.downT > 0) return;
@@ -1340,7 +1401,7 @@ function doKick(kind, power) {
   me.kickT = t; me.lastKick = t; me.st.kickT = t; // a perna balança mesmo se errar
   if (!how) return;
   let yaw = aimYaw();
-  if (kind === "passe" && how !== "mao") ({ yaw, power } = C.assistPass(me, yaw, mates(), power));
+  if (kind === "passe" && how !== "mao") { const r = C.assistPass(me, yaw, mates(), power); yaw = r.yaw; power = r.power; if (r.kind) kind = r.kind; } // longe: lançamento pelo alto
   const curve = curveNow();
   if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F, curve, ball); // assistência estilo FIFA (último terço)
   me.facing = yaw;
@@ -1365,7 +1426,7 @@ function loop() {
   requestAnimationFrame(loop);
   if (TOUCH) { const want = touchPlay && $("over").classList.contains("hidden"); if (Toque.on !== want) Toque.show(want); }
   const t = now(), dt = Math.min(0.05, t - lastT); lastT = t;
-  try { frame(dt, t); } catch (e) { console.error(e); }
+  try { lerPad(dt); frame(dt, t); } catch (e) { console.error(e); }
 }
 function myFlags() {
   const me = G.me; let f = 0;
@@ -1426,7 +1487,12 @@ function stepFoot(dt, t, frozen) {
   const me = G.me, F = G.F, yaw = ctrlYaw(), mine = myP(), isGK = G.mode === "online" && mine && mine.gk;
   const f = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0), s = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
   let wx = -Math.sin(yaw) * f + Math.cos(yaw) * s, wz = -Math.cos(yaw) * f - Math.sin(yaw) * s;
-  const len = Math.hypot(wx, wz); if (len > 0) { wx /= len; wz /= len; }
+  let len = Math.hypot(wx, wz); if (len > 0) { wx /= len; wz /= len; }
+  const padMag = PAD.play ? Math.min(1, Math.hypot(PAD.lx, PAD.ly)) : 0;
+  if (padMag > 0.15) { // controle: a direção exata do analógico (não só as 8 do WASD)
+    wx = -Math.sin(yaw) * -PAD.ly + Math.cos(yaw) * PAD.lx; wz = -Math.cos(yaw) * -PAD.ly - Math.sin(yaw) * PAD.lx;
+    const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l; len = 1;
+  }
   me.slideT = Math.max(0, me.slideT - dt); me.diveT = Math.max(0, me.diveT - dt); me.downT = Math.max(0, me.downT - dt); me.slideCd = Math.max(0, me.slideCd - dt);
   const busy = me.slideT > 0 || me.diveT > 0 || me.downT > 0;
   const holding = ballS.snap && ME && ballS.snap.holder === ME.id;
@@ -1458,6 +1524,7 @@ function stepFoot(dt, t, frozen) {
   me.stamina = clamp(me.stamina + (me.sprint ? -0.24 : 0.14) * dt, 0, 1);
   let speed = charge ? C.CHARGING : me.sprint ? C.SPRINT : C.RUN;
   if (me.seguradoPor) speed *= SEGURADO_VEL; if (me.segurando) speed *= 0.85;
+  if (padMag > 0.15 && !me.sprint) speed *= clamp(padMag * 1.5, 0.35, 1); // empurrou pouco o analógico: anda devagar
   if (frozen || !len) speed = 0;
   if (frozen) { me.vx = 0; me.vz = 0; }
   if (busy) { const k = Math.exp(-dt * (me.downT > 0 ? 6 : 1.6)); me.vx *= k; me.vz *= k; }
@@ -1477,8 +1544,17 @@ function stepFoot(dt, t, frozen) {
   C.corpoACorpo(me, outros, busy);
   // o corpo vira para onde está correndo; carregando o chute, vira para a mira
   const hsp = Math.hypot(me.vx, me.vz);
+  // o corpo vira para onde você está mandando (não para onde a velocidade aponta: na meia-volta a velocidade inverte de
+  // uma vez e o corpo girava 180° num piscar). O giro tem velocidade máxima: devagar vira rápido; correndo, uma
+  // meia-volta leva ~0,4 s (no pique, mais), e a bola acompanha (viraComABola).
   const f0 = me.facing;
-  if (!busy) { const target = charge ? aimYaw() : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing; me.facing = angLerp(me.facing, target, Math.min(1, dt * 12)); }
+  if (!busy) {
+    const target = charge ? aimYaw() : len > 0 ? Math.atan2(-wx, -wz) : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing;
+    const d = Math.atan2(Math.sin(target - me.facing), Math.cos(target - me.facing));
+    const maxRate = charge ? 16 : hsp < 1.5 ? 11 : me.sprint ? 6 : 7.5; // rad/s: parado, meia-volta em ~0,3 s
+    me.facing += clamp(d * Math.min(1, dt * 14), -maxRate * dt, maxRate * dt);
+    me.girando = Math.abs(d) > 1.2; // virada grande: a bola vem para perto do pé
+  } else me.girando = false;
   me.dFacing = Math.atan2(Math.sin(me.facing - f0), Math.cos(me.facing - f0)); // a bola no pé vira junto (viraComABola)
   me.st.holding = holding; me.st.segura = !!me.segurando;
   G.meModel.position.set(me.x, me.y, me.z); G.meModel.rotation.y = me.facing;
@@ -1719,7 +1795,7 @@ function updateCamera(dt) {
     cam.position.lerp(new THREE.Vector3(tx, hgt, F.W - 0.6), Math.min(1, dt * 4));
     cam.lookAt(tx, 0, fz0 - (isCar() ? 6 : 2.5));
     if (cam.fov !== 58) { cam.fov = 58; cam.updateProjectionMatrix(); }
-    if (G.meModel && !isCar()) showAim(me); else aim.visible = false;
+    if (G.meModel && !isCar()) showAim(me); else { aim.visible = false; passMark.visible = false; }
     return;
   }
   if (isCar()) { // atrás do carro; com a câmera da bola, a bola fica sempre na tela
@@ -1733,7 +1809,7 @@ function updateCamera(dt) {
     keepInside(F, me, 1);
     if (G.ballCam) cam.lookAt(lerp(me.x, b.x, 0.5), lerp(me.y + 1, b.y, 0.4), lerp(me.z, b.z, 0.5));
     else cam.lookAt(me.x + fx * 6, me.y + 1.2, me.z + fz * 6);
-    aim.visible = false; return;
+    aim.visible = false; passMark.visible = false; return;
   }
   const yaw = G.camYaw, pitch = G.camPitch, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
   if (G.view === "primeira") { // primeira pessoa: os olhos do jogador
@@ -1755,6 +1831,11 @@ function updateCamera(dt) {
 function showAim(me) {
   let ay = aimYaw();
   if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F, curveNow(), G.mode === "treino" ? local.ball : ballS.view); // a seta já mostra a ajudinha
+  // carregando o passe: anel embaixo de quem vai receber (muda do mais perto para o mais longe conforme a força)
+  let alvo = null;
+  if (charge && charge.kind === "passe" && !isCar()) { const r = C.assistPass(me, ay, mates(), powerOf(charge)); if (r.alvo) { alvo = r.alvo; ay = r.yaw; } }
+  passMark.visible = !!alvo;
+  if (alvo) { passMark.position.set(alvo.x, 0.04, alvo.z); passMark.material.opacity = 0.55 + 0.35 * Math.abs(Math.sin(now() * 8)); }
   aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
   aim.material.opacity = charge ? 0.9 : 0.4;
 }
@@ -1800,7 +1881,7 @@ function scoreTable() {
   return `<div class="row" style="justify-content:space-between;font-family:var(--display);font-size:20px"><span>${h(kitOf(S.kits.A).name)} ${m.score.A}</span><span>${m.score.B} ${h(kitOf(S.kits.B).name)}</span></div>
     <table class="sb"><tr><th>Jogador</th><th class="n">Gols</th><th class="n">Assist.</th><th class="n">Chutes/defesas</th><th class="n">Ping</th></tr>${rows}</table>`;
 }
-function renderPauseSb() { if (FIXO !== "carros") setH("pSkins", skinButtons(G.mode === "online" ? (myP() || {}).skin : store.get("pelada:skin"))); $("pauseSb").innerHTML = G.active ? `<div style="margin-top:16px">${scoreTable()}</div><div style="margin-top:12px">${keysHelp(G.game)}</div>` : ""; $("pauseHint").textContent = G.mode === "treino" ? "Treino: só você vê." : ""; }
+function renderPauseSb() { if (FIXO !== "carros") setH("pSkins", skinButtons(G.mode === "online" ? (myP() || {}).skin : store.get("pelada:skin"))); $("pauseSb").innerHTML = G.active ? `<div style="margin-top:16px">${scoreTable()}</div><div style="margin-top:12px">${keysHelp(G.game)}</div>` : ""; $("pauseHint").textContent = (G.mode === "treino" ? "Treino: só você vê." : "") + (PAD.on ? " 🎮 Start ou A: voltar" : ""); }
 function showOver() {
   if (document.pointerLockElement) document.exitPointerLock();
   $("pause").classList.add("hidden");

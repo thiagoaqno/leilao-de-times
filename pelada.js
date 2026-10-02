@@ -338,7 +338,7 @@ module.exports = function attachPelada(io) {
       const m = room && room.match, now = Date.now();
       if (!room || !me || !me.team || room.phase !== "play" || !m || m.phase !== "live" || room.config.mode !== "pes") return;
       if (now - me.lastKick < C.KICK_CD * 800 || me.downUntil > now) return;
-      const kind = ["passe", "cavadinha"].includes(d.kind) ? d.kind : "chute";
+      const kind = ["passe", "cavadinha", "lancamento"].includes(d.kind) ? d.kind : "chute";
       if (![d.power, d.yaw].every(fin)) return;
       const slack = clamp(0.25 + (me.rtt || 0) / 1000 * 6, 0.25, 0.8); // a bola anda enquanto o chute viaja
       // quem estava conduzindo chuta a bola que está vendo no pé (a mesma que o navegador dele vinha mandando)
