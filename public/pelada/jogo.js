@@ -1441,9 +1441,15 @@ socket.on("caiu", (d) => {
   const by = P(d.by), to = P(d.id);
   if (by && to) pushFeed(`🦵 ${h(by.name)} derrubou ${h(to.name)}`);
 });
+socket.on("super", (d) => { // Super Chute de alguém: todo mundo vê a mesma animação (o servidor soma os gols no fim)
+  if (!G.active || G.mode !== "online") return;
+  if (ME && d.by === ME.id) { ballS.mine = null; G.superBarra = null; }
+  comecarSuper(d, null);
+});
 socket.on("goal", (d) => {
   if (!G.active || G.mode !== "online") return;
   const by = P(d.by), as = P(d.assist), kit = S.kits[d.side];
+  if (d.sup) { pushFeed(`⚡ ${by ? h(by.name) : SIDES[d.side]}: Super Chute, +${d.qtd}`); return; } // a animação já comemorou
   Sound.net(); Sound.cheer();
   flashMsg("GOOOL!", by ? (d.own ? `Gol contra de ${by.name}` : `${by.name}${as ? ` (passe de ${as.name})` : ""} · ${SIDES[d.side]}`) : SIDES[d.side], 3800, C.kitColor(kit), true);
   pushFeed(`⚽ ${by ? h(by.name) + (d.own ? " (contra)" : "") : SIDES[d.side]}${as ? ` <span style="opacity:.75">· ${h(as.name)}</span>` : ""}`);
@@ -1546,7 +1552,7 @@ const KICK_BTN = { 0: "chute", 2: "passe", 1: "cavadinha" }, KICK_KEY = { KeyK: 
 document.addEventListener("mousedown", (e) => { if (!locked() || !G.meModel || isCar()) return; if (KICK_BTN[e.button] && !charge) { e.preventDefault(); if (modificador() && KICK_BTN[e.button] !== "cavadinha") return chuteColocado(KICK_BTN[e.button]); charge = { kind: KICK_BTN[e.button], t0: now(), src: "m" + e.button }; } });
 document.addEventListener("mouseup", (e) => { if (charge && charge.src === "m" + e.button) releaseKick(); });
 document.addEventListener("wheel", (e) => { if (locked() && G.meModel && !isCar()) { e.preventDefault(); if (!souDono()) wheelQueued = true; } }, { passive: false });
-function releaseKick() { const c = charge; charge = null; if (c) doKick(c.kind, powerOf(c)); }
+function releaseKick() { const armado = superArmado(), c = charge; charge = null; if (!c) return; if (armado) iniciarBarra(); else doKick(c.kind, powerOf(c)); } // Strikers: chute armado vira o Super Chute
 
 // ======================================================================
 // Controle (Xbox, PlayStation e parecidos, pela Gamepad API do navegador), no estilo FIFA. Os botões apertam as
@@ -1628,6 +1634,7 @@ document.addEventListener("keydown", (e) => {
   }
   if (e.code === "KeyV" && !e.repeat && isCar()) G.tv = !G.tv;
   if (e.code === "KeyG" && !e.repeat && !isCar()) itemQueued = true; // Strikers: usa o item
+  if (G.superBarra && KICK_KEY[e.code] === "chute" && !e.repeat) { pararBarra(); keys.add(e.code); return; } // Super Chute: para o ponteiro
   if (KICK_KEY[e.code] && !e.repeat && !charge && !isCar()) {
     if (modificador() && KICK_KEY[e.code] !== "cavadinha") chuteColocado(KICK_KEY[e.code]); // R/LB + chute/passe: colocado, na hora
     else charge = { kind: KICK_KEY[e.code], t0: now(), src: e.code };
@@ -1712,7 +1719,7 @@ function myFlags() {
 }
 function frame(dt, t) {
   const online = G.mode === "online", m = S && S.match;
-  const frozen = (online && (!m || m.phase === "ready" || S.phase !== "play")) || (G.mode === "bots" && (!G.bm || G.bm.phase !== "live" || !locked()));
+  const frozen = (online && (!m || m.phase === "ready" || m.phase === "super" || S.phase !== "play")) || (G.mode === "bots" && (!G.bm || G.bm.phase !== "live" || !locked()));
   if (G.meModel) (isCar() ? stepCar : stepFoot)(dt, t, frozen);
   // envia minha posição
   if (G.meModel && online && t - G.lastSend > 1 / 30) {
@@ -1727,7 +1734,8 @@ function frame(dt, t) {
   updateRemotes(dt);
   updateRags(dt);
   updateBall(dt);
-  updateFaiscas(dt); animarArena(t); updateBooms(dt); hudItens();
+  updateFaiscas(dt); animarArena(t); updateBooms(dt); hudItens(); hudSuper();
+  if (G.superAnim) animarSuper(dt, offline() ? fimSuperLocal : null);
   if (G.mode === "online" && G.F.strikers) { const agora = performance.now(); desenharItens((G.itensRede || []).map((i) => { const s = Math.min(0.15, (agora - i.at) / 1000); return { ...i, x: i.x + i.vx * s, z: i.z + i.vz * s, t: i.t + s }; }), dt); }
   updateCamera(dt); if (camHook) camHook(cam);
   hud(t);
@@ -1941,6 +1949,104 @@ function hudItens() {
   const ef = (G.me.estrelaT > 0 ? "⭐ " : "") + (G.me.cogumeloT > 0 ? "🍄 " : "");
   setH("hItens", `${slot(inv[0], 0)}${slot(inv[1], 1)}<span style="margin-left:4px">${inv.length ? (PAD.on ? "↑ usa" : "G usa") : "sem item"} ${ef}</span>`);
 }
+// ---------- Super Chute (Strikers) ----------
+// Com a bola no campo de ataque, segure o chute: com ~1,4 s o jogador brilha (fica parado e dá para levar carrinho).
+// Solte e aparece a barra: o ponteiro vai e volta, e você aperta o chute de novo no verde. Quanto mais perto do verde,
+// mais bolas (2 a 5). Cada bola que o goleiro não pega vale um gol. Sem servidor, a conta é aqui; online, o servidor
+// sorteia as defesas e todo mundo vê a mesma animação.
+const SUPER_CARGA = 1.4, SUPER_ZONA = 0.82, SUPER_LARG = 0.3, SUPER_BARRA = 0.9, SUPER_ANIM = 0.55;
+const superPonteiro = (t0) => (1 - Math.cos((2 * Math.PI * (now() - t0)) / SUPER_BARRA)) / 2;
+const superBolas = (q) => 2 + Math.round(clamp(q, 0, 1) * 3);
+function podeSuper() { if (!G.F.strikers || isCar() || !G.me) return false; const s = myAttackTeam() === "B" ? -1 : 1; return temBola() && s * G.me.x > 0; }
+// o chute segurado chegou no ponto do super?
+const superArmado = () => !!charge && charge.kind === "chute" && G.F.strikers && now() - charge.t0 >= SUPER_CARGA && podeSuper();
+// soltou o chute armado: começa a barra
+function iniciarBarra() { G.superBarra = { t0: now() }; Sound.deke(); }
+// apertou o chute de novo na barra: quantas bolas
+function pararBarra() {
+  const sb = G.superBarra; if (!sb) return; G.superBarra = null;
+  const p = superPonteiro(sb.t0), q = 1 - Math.abs(p - SUPER_ZONA) / SUPER_LARG, n = superBolas(q);
+  G.ultimoSuper = { p, q, n }; // (para conferir nos testes)
+  flashMsg(q > 0.85 ? "PERFEITO!" : q > 0.4 ? "BOA!" : "", `⚡ Super Chute: ${n} bolas`, 1100, "#ffe14a", q > 0.85);
+  if (G.mode === "online") socket.emit("super", { n });
+  else executarSuperLocal("eu", "A", G.me, n);
+}
+// sem servidor: sorteia as defesas e começa a animação
+function executarSuperLocal(id, team, p, n) {
+  const F = G.F, s = team === "A" ? 1 : -1;
+  const k = G.mode === "bots" ? (G.keepers || []).find((q) => q.team !== team) : team === "A" ? G.keeper : null;
+  const chance = k && !(k.diveT > 0) ? 0.42 : 0.3; // (igual ao servidor: sem goleiro, ainda se perde algumas)
+  const alvos = [], salvas = [];
+  for (let i = 0; i < n; i++) { alvos.push([(Math.random() * 2 - 1) * F.goalW * 0.8, 0.3 + Math.random() * (F.goalH - 0.7)]); salvas.push(Math.random() < chance); }
+  const gols = salvas.filter((x) => !x).length;
+  comecarSuper({ by: id, team, x: p.x, z: p.z, alvos, salvas, gols }, k);
+  if (G.mode === "bots" && G.bm) G.bm.phase = "super";
+  return gols;
+}
+// animação (online também, com o que o servidor mandou): n bolas saem do pé até o gol, as defendidas voltam
+function comecarSuper(d, k) {
+  const F = G.F, s = d.team === "A" ? 1 : -1, gx = s * F.L;
+  const bolas = d.alvos.map(([z, y], i) => { const m = ballMesh.clone(); m.material = ballMesh.material; scene.add(m); return { m, z, y, salva: d.salvas[i], atraso: i * 0.13 }; });
+  G.superAnim = { ...d, t0: now(), gx, s, k, bolas, fim: now() + (d.alvos.length - 1) * 0.13 + SUPER_ANIM + 1.1 };
+  ballMesh.visible = false; Sound.kick(1); Sound.boom();
+  faiscas(d.x, 0.6, d.z, 30, 0xffe14a);
+  pushFeed(`⚡ ${h(d.by === "eu" ? "Você" : (P(d.by) || (G.bots || []).find((x) => x.id === d.by) || { name: "Bot" }).name)}: Super Chute (${d.alvos.length} bolas)`);
+}
+// anda a animação; no fim, chama fim(gols)
+function animarSuper(dt, fim) {
+  const a = G.superAnim; if (!a) return;
+  const t = now() - a.t0;
+  for (const b of a.bolas) {
+    const u = clamp((t - b.atraso) / SUPER_ANIM, 0, 1), ux = a.x + (a.gx + a.s * (b.salva ? -0.9 : 0.7) - a.x) * u;
+    if (u < 1 || !b.salva) { b.m.position.set(ux, b.y * u + 0.17 + Math.sin(Math.PI * u) * 1.2, a.z + (b.z - a.z) * u); if (u > 0 && u < 1 && Math.random() < 0.6) faiscas(b.m.position.x, b.m.position.y, b.m.position.z, 1, 0xffb84a); }
+    else { // defendida: volta para o campo caindo
+      const v = t - b.atraso - SUPER_ANIM; b.m.position.set(a.gx - a.s * (0.9 + v * 7), Math.max(0.17, b.y + 3 * v - 9 * v * v), b.z + v * 2 * Math.sign(b.z || 1));
+      if (!b.batida) { b.batida = true; Sound.catch(); if (a.k) { a.k.diveT = 0.6; a.k.st.diveSide = Math.sign(b.z - a.k.z) || 1; } }
+    }
+    if (u >= 1 && !b.salva && !b.rede) { b.rede = true; Sound.net(); faiscas(b.m.position.x, b.m.position.y, b.m.position.z, 10, 0xffe14a); }
+    b.m.rotation.x += dt * 20;
+  }
+  if (now() >= a.fim) {
+    for (const b of a.bolas) scene.remove(b.m);
+    G.superAnim = null; ballMesh.visible = true;
+    flashMsg(a.gols ? `+${a.gols} GOL${a.gols > 1 ? "S" : ""}!` : "DEFENDEU TUDO!", a.gols ? "⚡ SUPER CHUTE" : "o goleiro pegou as bolas", 2200, a.gols ? "#ffe14a" : "#ffffff", true);
+    if (a.gols) Sound.cheer(); else Sound.ooh();
+    if (fim) fim(a);
+  }
+}
+// sem servidor, depois da animação: soma os gols (ou a bola fica com o goleiro)
+function fimSuperLocal(a) {
+  const F = G.F, b = local.ball;
+  if (G.mode === "bots" && G.bm) {
+    const bm = G.bm;
+    if (a.gols) { bm.score[a.team] += a.gols; bm.phase = "goal"; bm.until = now() + 1.4; bm.kicking = a.team === "A" ? "B" : "A"; }
+    else { bm.phase = "live"; Object.assign(b, C.newBall(F), { x: a.gx - a.s * 2, z: 0 }); }
+  } else if (G.mode === "treino") {
+    if (a.gols) { G.tGoals += a.gols; Object.assign(b, C.newBall(F), { x: 3 }); G.me.x = -2; G.me.z = 0; }
+    else Object.assign(b, C.newBall(F), { x: a.gx - a.s * 2, z: 0 });
+  }
+}
+// barra do Super Chute na tela (e o aviso de que está armado)
+function hudSuper() {
+  let el = $("hSuper");
+  if (!el) { el = document.createElement("div"); el.id = "hSuper"; el.className = "hud"; el.style.cssText = "left:50%;bottom:120px;transform:translateX(-50%);text-align:center;font:800 15px Figtree,system-ui,sans-serif;color:#ffe14a;text-shadow:0 2px 6px #000"; document.getElementById("game").appendChild(el); }
+  const sb = G.superBarra;
+  if (sb) {
+    const p = superPonteiro(sb.t0), z0 = (SUPER_ZONA - 0.1) * 100, z1 = (SUPER_ZONA + 0.1) * 100;
+    setH("hSuper", `<div>⚡ APERTE ${PAD.on ? "B" : "K"} NO VERDE!</div><div style="position:relative;width:320px;height:22px;margin:6px auto 0;border-radius:11px;background:#0b0f26dd;border:2px solid #ffe14a;overflow:hidden">
+      <i style="position:absolute;left:${z0}%;width:${z1 - z0}%;top:0;bottom:0;background:#3ee07a"></i><i style="position:absolute;left:${(SUPER_ZONA - 0.3) * 100}%;width:60%;top:0;bottom:0;background:#3ee07a33"></i>
+      <b style="position:absolute;left:calc(${p * 100}% - 3px);width:6px;top:-2px;bottom:-2px;background:#fff;box-shadow:0 0 8px #fff"></b></div>`);
+    el.classList.remove("hidden");
+  } else if (superArmado()) { setH("hSuper", `⚡ SUPER CHUTE ARMADO — solte ${PAD.on ? "B" : "K"}!`); el.classList.remove("hidden"); }
+  else el.classList.add("hidden");
+}
+// os bots também dão Super Chute: no ataque, perto do gol e sem marcação, param e carregam
+function botSuper(bot, t, d, s) {
+  const F = G.F; if (!F.strikers || bot.superT || s * bot.x < 2) return false;
+  const dGol = Math.hypot(s * F.L - bot.x, bot.z), livre = !entsLocais().some((o) => o.team !== bot.team && Math.hypot(o.e.x - bot.x, o.e.z - bot.z) < 4.5);
+  if (dGol > 17 || !livre || Math.random() > 0.35) return false;
+  bot.superT = t; return true;
+}
 // ---------- a pé ----------
 function stepFoot(dt, t, frozen) {
   const me = G.me, F = G.F, yaw = ctrlYaw(), mine = myP(), isGK = G.mode === "online" && mine && mine.gk;
@@ -1987,6 +2093,10 @@ function stepFoot(dt, t, frozen) {
   me.stamina = F.semFolego ? 1 : clamp(me.stamina + (me.sprint ? -0.24 : 0.14) * dt, 0, 1); // Strikers: sem fôlego
   let speed = (charge ? C.CHARGING : me.sprint ? C.SPRINT : C.RUN) * velStrikers(me);
   if (me.seguradoPor) speed *= SEGURADO_VEL; if (me.segurando) speed *= 0.85;
+  if (superArmado() || G.superBarra || G.superAnim) speed = 0; // Super Chute: parado carregando (dá para levar carrinho)
+  if (G.superBarra && (busy || !temBola())) { G.superBarra = null; flashMsg("", "Super Chute perdido!", 900, "#ff8a8a"); }
+  if (G.superBarra && now() - G.superBarra.t0 > 2.2) pararBarra(); // demorou: sai com o que tiver
+  if (superArmado() && Math.random() < dt * 40) faiscas(me.x + (Math.random() - 0.5) * 0.8, 0.2 + Math.random() * 1.6, me.z + (Math.random() - 0.5) * 0.8, 1, 0xffe14a);
   if (padMag > 0.15 && !me.sprint) speed *= clamp(padMag * 1.5, 0.35, 1); // empurrou pouco o analógico: anda devagar
   if (frozen || !len) speed = 0;
   if (frozen) { me.vx = 0; me.vz = 0; }
@@ -2229,6 +2339,7 @@ function faltaResult(msg, color, sound) {
 // treino: a bola (e o goleiro robô, a pé) rodam só aqui
 function practiceStep(dt, t) {
   const b = local.ball, me = G.me, k = G.keeper, F = G.F, fz = G.falta;
+  if (G.superAnim) { if (k) keeperBot(k, b, dt, t, false); return; } // animação do Super Chute
   if (F.strikers) { itensTreino(t); itensLocais(dt); }
   const bodies = [myBody()];
   if (k) bodies.push(keeperBot(k, b, dt, t));
@@ -2353,13 +2464,17 @@ function botDecide(bot, t, d, s) {
 function stepBot(bot, dt, t, live) {
   const F = G.F, b = local.ball, d = BOT_DIF[G.bm.dif], s = bot.team === "A" ? 1 : -1;
   bot.slideT = Math.max(0, bot.slideT - dt); bot.downT = Math.max(0, bot.downT - dt); bot.slideCd = Math.max(0, bot.slideCd - dt); tempoStrikers(bot, dt);
+  if (bot.superT && (local.ball.dono !== bot.id || bot.downT > 0)) bot.superT = 0; // perdeu a bola (ou caiu) carregando: perdeu o Super Chute
   const busy = bot.slideT > 0 || bot.downT > 0;
   let wx = 0, wz = 0, speed = 0, sprint = false, olha = null;
   if (live && !busy) {
     const tem = b.dono === bot.id, donoT = b.dono ? timeDe(b.dono) : null, dB = Math.hypot(b.x - bot.x, b.z - bot.z);
     let tx, tz;
     if (tem) {
-      if (t >= bot.think) { bot.think = t + d.reac * (0.6 + Math.random() * 0.8); botDecide(bot, t, d, s); }
+      if (bot.superT) { // carregando o Super Chute: parado; depois de 1,4 s, solta (a "mira" depende da dificuldade)
+        if (t - bot.superT >= SUPER_CARGA) { bot.superT = 0; executarSuperLocal(bot.id, bot.team, bot, superBolas(Math.random() * (1 - d.erro * 3))); }
+        if (Math.random() < dt * 40) faiscas(bot.x + (Math.random() - 0.5) * 0.8, 0.2 + Math.random() * 1.6, bot.z + (Math.random() - 0.5) * 0.8, 1, 0xffe14a);
+      } else if (t >= bot.think) { bot.think = t + d.reac * (0.6 + Math.random() * 0.8); if (!botSuper(bot, t, d, s)) botDecide(bot, t, d, s); }
       if (b.dono === bot.id) { // ainda com ela: conduz para o gol, desviando de quem está na frente
         const gx = s * F.L; let dx = gx - bot.x, dz = (bot.alvoZ ?? 0) - bot.z; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
         let livre = true;
@@ -2367,7 +2482,7 @@ function stepBot(bot, dt, t, live) {
           const ox = o.x - bot.x, oz = o.z - bot.z, od = Math.hypot(ox, oz), fr = (ox * dx + oz * dz) / (od || 1);
           if (od < 4 && fr > 0.2) { livre = false; const lado = Math.sign(ox * -dz + oz * dx) || 1, k = (4 - od) * 0.35, px = -dz * lado, pz = dx * lado; dx -= px * k; dz -= pz * k; }
         }
-        tx = bot.x + dx * 3; tz = bot.z + dz * 3; sprint = livre && Math.random() < 0.97;
+        tx = bot.superT ? bot.x : bot.x + dx * 3; tz = bot.superT ? bot.z : bot.z + dz * 3; sprint = !bot.superT && livre && Math.random() < 0.97;
         if (!livre && G.F.strikers && Math.random() < dt * 2.5 * (1 - d.reac)) tentarDeke(bot); // Strikers: gira para fugir do marcador
       } else { tx = bot.x; tz = bot.z; }
     } else if (donoT !== bot.team && bot === G.bm.cacador[bot.team]) {
@@ -2465,6 +2580,7 @@ function botsStep(dt, t) {
   const bm = G.bm, F = G.F, b = local.ball; if (!bm) return;
   if (bm.phase === "over") { animarBots(dt); for (const k of G.keepers) keeperBot(k, b, dt, t, false); return; }
   if (bm.phase === "ready" && locked() && t >= bm.until) { bm.phase = "live"; Sound.start(); }
+  if (bm.phase === "super") { animarBots(dt); for (const k of G.keepers) keeperBot(k, b, dt, t, false); return; } // animação do Super Chute
   if (bm.phase === "goal") {
     C.simulate(F, b, [], dt);
     for (const x of G.bots) C.movePlayer(x, { x: 0, z: 0, speed: 0 }, dt, F);
@@ -2650,4 +2766,4 @@ function showOver() {
   $("btnOut").onclick = leaveGame;
 }
 let camHook = null; // só para testes (#debug): reposiciona a câmera depois do jogo
-if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, addRag, rags, makePlayer, animate, mudarSkinJogador, jogar: () => padPausa(true), avancar: (seg) => { for (let i = 0; i < seg * 60; i++) { adiantado += 1 / 60; frame(1 / 60, now()); } }, setCamHook: (f) => (camHook = f) }; // para testes
+if (location.hash === "#debug") window.__pelada = { scene, G, cam, ballS, local, keys, now, addRag, rags, makePlayer, animate, mudarSkinJogador, jogar: () => padPausa(true), avancar: (seg) => { for (let i = 0; i < seg * 60; i++) { adiantado += 1 / 60; frame(1 / 60, now()); } }, setCamHook: (f) => (camHook = f) }; // para testes

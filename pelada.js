@@ -87,20 +87,20 @@ module.exports = function attachPelada(io) {
     log(room, A === B ? `Fim de jogo: empate em ${A} a ${B}.` : `Fim de jogo: ${SIDES[A > B ? "A" : "B"]} venceu por ${Math.max(A, B)} a ${Math.min(A, B)}.`);
     broadcast(room);
   }
-  function goal(room, side) {
+  function goal(room, side, qtd = 1, sup = false) { // qtd: o Super Chute (Strikers) vale vários gols de uma vez
     const m = room.match, now = Date.now();
-    m.score[side]++;
+    m.score[side] += qtd;
     // quem fez: o último a encostar. Se foi do outro time, é gol contra. Assistência: o toque anterior, do mesmo time.
     const [lastId, prevId] = m.last;
     const scorer = room.players[lastId], prev = room.players[prevId];
     const own = scorer && scorer.team !== side;
-    if (scorer && !own) scorer.goals++;
+    if (scorer && !own) scorer.goals += qtd;
     const assist = !own && prev && prev !== scorer && prev.team === side ? prev : null;
     if (assist) assist.assists++;
-    m.goals.push({ t: now, side, by: scorer ? scorer.id : null, own: !!own, assist: assist ? assist.id : null, at: Math.round((room.config.minutes * 60000 - m.left) / 1000) });
-    log(room, `⚽ GOL do ${SIDES[side]}${scorer ? (own ? ` (contra, ${scorer.name})` : ` — ${scorer.name}`) : ""}${assist ? `, passe de ${assist.name}` : ""}.`);
+    m.goals.push({ t: now, side, qtd, by: scorer ? scorer.id : null, own: !!own, assist: assist ? assist.id : null, at: Math.round((room.config.minutes * 60000 - m.left) / 1000) });
+    log(room, `⚽ ${qtd > 1 ? `${qtd} GOLS (Super Chute)` : "GOL"} do ${SIDES[side]}${scorer ? (own ? ` (contra, ${scorer.name})` : ` — ${scorer.name}`) : ""}${assist ? `, passe de ${assist.name}` : ""}.`);
     m.phase = "goal"; m.until = now + GOAL_MS;
-    nsp.to(room.code).emit("goal", { side, by: scorer ? scorer.id : null, own: !!own, assist: assist ? assist.id : null });
+    nsp.to(room.code).emit("goal", { side, qtd, sup, by: scorer ? scorer.id : null, own: !!own, assist: assist ? assist.id : null });
     broadcast(room);
   }
   function touched(room, id) {
@@ -198,6 +198,11 @@ module.exports = function attachPelada(io) {
     if (m.phase === "ready") { if (now >= m.until) { m.phase = "live"; broadcast(room); } }
     else if (m.phase === "goal") { if (now >= m.until) { if (m.left <= 0) return endMatch(room); kickoff(room, m.goals[m.goals.length - 1].side === "A" ? "B" : "A"); } }
     if (m.phase === "goal") C.simulate(Fm, room.ball, [], TICK); // a bola acaba de rolar na rede
+    if (m.phase === "super" && now >= m.until) { // fim da animação do Super Chute: soma os gols (ou a bola fica com a defesa)
+      const r = room.superRes; room.superRes = null;
+      if (r && r.gols) goal(room, r.side, r.gols, true);
+      else { room.ball = C.newBall(Fm); if (r) room.ball.x = r.s * (Fm.L - 2); m.phase = "live"; broadcast(room); }
+    }
     if (m.phase === "live") {
       m.left -= TICK * 1000;
       keepers(room, now);
@@ -369,6 +374,26 @@ module.exports = function attachPelada(io) {
       if (room.config.estilo !== "strikers") me.pos.f &= ~FL.deke;
       if (room.config.mode !== "pes") me.pos.f &= ~FL.grab; // segurar é só a pé
       if (!me.gk) me.pos.f &= ~FL.dive;
+    });
+
+    // Strikers: Super Chute. Quem está com a bola no campo de ataque pede com n bolas (2 a 5, pela barra). O servidor
+    // confere, sorteia as defesas (goleiro de verdade na área pega mais), avisa todo mundo para animar e congela o jogo
+    // até a animação acabar; aí soma os gols (tick).
+    socket.on("super", (d = {}) => {
+      const { room, me } = ctx(); const m = room && room.match, now = Date.now();
+      if (!room || !me || !me.team || room.phase !== "play" || !m || m.phase !== "live" || room.config.estilo !== "strikers" || room.config.mode !== "pes") return;
+      if (me.downUntil > now || now - (me.superAt || 0) < 3000) return;
+      const Fm = F(room), b = room.ball, s = me.team === "A" ? 1 : -1;
+      if (b.holder || !(b.dono === me.id || Math.hypot(b.x - me.pos.x, b.z - me.pos.z) < 1.8) || s * me.pos.x < 0) return;
+      me.superAt = now; me.shots++; m.last = [me.id];
+      const n = clamp(int(d.n, 2), 2, 5), rival = me.team === "A" ? "B" : "A";
+      const def = teamOf(room, rival).find((p) => p.gk && p.sockets.size && p.downUntil <= now && C.inArea(Fm.id, p.team, p.pos.x, p.pos.z));
+      const chance = def ? 0.45 : 0.3, alvos = [], salvas = []; // sem goleiro no gol, a trave e o "goleiro linha" ainda pegam algumas
+      for (let i = 0; i < n; i++) { alvos.push([q2((Math.random() * 2 - 1) * Fm.goalW * 0.8), q2(0.3 + Math.random() * (Fm.goalH - 0.7))]); salvas.push(Math.random() < chance); }
+      const gols = salvas.filter((x) => !x).length;
+      m.phase = "super"; m.until = now + Math.round(((n - 1) * 0.13 + 0.55 + 1.1) * 1000); room.superRes = { side: me.team, gols, by: me.id, s };
+      nsp.to(room.code).emit("super", { by: me.id, team: me.team, x: q2(me.pos.x), z: q2(me.pos.z), alvos, salvas, gols });
+      broadcast(room);
     });
 
     // Strikers: usar o primeiro item da mão (efeito em quem usa, ou um item que sai andando)
