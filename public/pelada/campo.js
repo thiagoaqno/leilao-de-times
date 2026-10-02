@@ -11,7 +11,7 @@
     // estilo Strikers (a pé, arcade): campo maior com cerca elétrica em volta, gols maiores, bola mais solta (rola mais e
     // flutua um pouco nos lançamentos), jogadores mais rápidos e sem fôlego, e posse firme (só o carrinho tira a bola)
     strikers: { id: "strikers", pe: true, strikers: true, L: 24, W: 15, goalW: 2.6, goalH: 2.3, goalD: 1.4, ballR: 0.17, wallH: 3.2, ceil: 14, g: 9.81, wallE: 0.78,
-      postR: 0.07, areaR: 7, circle: 4, gBola: 17, drag: 0.35, bounce: 0.5, roll: 0.75, curva: 0.035, vel: 1.15, semFolego: true, posseFirme: true, cerca: true },
+      postR: 0.07, areaR: 7, circle: 4, gBola: 17, drag: 0.35, bounce: 0.5, roll: 0.75, curva: 0.035, vel: 1.15, posseFirme: true, cerca: true },
     // carros: física da bola do Rocket League (parâmetros da Psyonix convertidos de uu para metros: 1 uu = 1 cm):
     // gravidade 650 uu/s², quique 0,6, atrito 0,35 com giro, arrasto linear 0,0305/s, até 6000 uu/s e 6 rad/s
     carros: { id: "carros", L: 40, W: 27, goalW: 7, goalH: 5.5, goalD: 4, ballR: 1.25, wallH: 18, ceil: 18, g: 6.5, bounce: 0.6, roll: 0, drag: 0.0305, wallE: 0.6, postR: 0.3, areaR: 14, circle: 9,
@@ -364,6 +364,7 @@
       const f = hitBody(b, p, R, F);
       if (f > 0.05) { touch = p.id; hit = Math.max(hit, f * 0.45); b.sp = (b.sp || 0) * 0.3; }
     }
+    if (F.strikers) travaPasse(b, bodies, dt); // passe do Strikers: a bola se ajeita para o pé de quem recebe
     const dono = conduz(F, b, bodies, dt); if (dono) touch = dono;
     return { hit, touch };
   }
@@ -474,7 +475,8 @@
     return null;
   }
   // curva: -1 (para a esquerda) a 1 (para a direita)
-  function kick(b, p, kind, power, yaw, slack = 0, curve = 0, F = MODES.pes) {
+  // opt (passe do Strikers): { vel, elev, alvo } = velocidade e ângulo de saída exatos e quem vai receber (trava)
+  function kick(b, p, kind, power, yaw, slack = 0, curve = 0, F = MODES.pes, opt = null) {
     const how = canKick(p, b, slack); if (!how) return null;
     power = Math.max(0, Math.min(1, power));
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
@@ -486,10 +488,13 @@
     else if (kind === "lancamento") { speed = 10 + 16 * power; elev = 0.38; } // passe longo pelo alto (assistência de passe)
     else if (kind === "cruzamento") { speed = 9 + 21 * power; elev = 0.6; } // cruzamento alto: sobe bem e cai na área
     else { speed = 9 + 20 * power; elev = 0.07 + power * 0.1; }
+    if (opt && opt.vel && how !== "mao") { speed = Math.max(3, Math.min(34, opt.vel)); elev = Math.max(0, Math.min(1.1, opt.elev ?? 0.02)); }
     const h = Math.cos(elev) * speed, sobe = Math.sqrt((F.gBola || 25) / 9.81); // mesma altura que antes, subindo mais rápido
-    b.vx = fx * h + (p.vx || 0) * 0.3; b.vz = fz * h + (p.vz || 0) * 0.3; b.vy = Math.sin(elev) * speed * sobe;
+    const herda = opt && opt.vel ? 0 : 0.3; // passe planejado: a velocidade já é a da bola (não soma a de quem passa)
+    b.vx = fx * h + (p.vx || 0) * herda; b.vz = fz * h + (p.vz || 0) * herda; b.vy = Math.sin(elev) * speed * sobe;
     if (how === "pe" && b.y < F.ballR + 0.05) b.y = F.ballR + 0.02;
     b.dono = null; // a bola saiu do pé
+    b.alvoPasse = opt && opt.alvo ? opt.alvo : null; b.alvoT = 0; // passe do Strikers: quem recebe (trava perto dele)
     curve = Math.max(-1, Math.min(1, curve || 0));
     b.sp = how === "cabeca" ? 0 : curve * (kind === "passe" ? 14 : 24); // positivo: curva para a direita de quem chuta
     return how;
@@ -622,6 +627,151 @@
     return (tabelaLanc[chave] = { power: (lo + hi) / 2, t: tempo });
   }
 
+  // ======================================================================
+  // Passe do Strikers: semi-assistido (como no FIFA), em três tipos
+  //   curto (A / J): rasteiro e rápido, para tabelas
+  //   longo (X / U): cavado, passa por cima de quem está no meio e cai perto do receptor
+  //   profundidade (Y / L): mira à frente de quem corre, para ele apostar corrida
+  // Um toque no botão já garante força para a bola chegar; segurar só deixa a bola mais rápida.
+  // ======================================================================
+  const PASSE_S = {
+    cone: (60 / 2) * Math.PI / 180, // cone de 60° (30° para cada lado da direção mandada)
+    alcance: 34,                    // ninguém mais longe que isso entra na conta
+    vChega: 3,                      // um toque: a bola chega no pé com ~3 m/s (fácil de dominar)
+    extra: 13,                      // força cheia: +13 m/s na saída
+    vMax: 32,                       // teto da velocidade de saída
+    folga: 2.5,                     // profundidade: quantos metros à frente de quem corre
+    vMorre: 1.5,                    // profundidade: a bola chega quase parando no ponto (ele alcança na corrida)
+    elevLongo: 0.62,                // ângulo de saída do passe longo (rad): sobe bem acima da cabeça (1,8 m)
+  };
+  // ---- a bola rolando (a física do campo): a cada instante ela perde a mesma fração da velocidade ----
+  //   dv/dt = −k·v  →  v(t) = v0·e^(−k·t)                         (k = F.roll)
+  //   x(t) = ∫ v dt = (v0/k)·(1 − e^(−k·t))
+  //   juntando as duas: v(x) = v0 − k·x     (a velocidade cai em linha reta com a distância!)
+  //   por isso: para chegar a d metros com velocidade vf, precisa sair com v0 = k·d + vf
+  //   e o tempo até lá é t(d) = −ln(1 − k·d/v0) / k   (se v0 ≤ k·d, a bola para antes: tempo infinito)
+  // A bola sai ~0,6 m na frente do pé, então a conta usa d − 0,6.
+  const v0Rolando = (F, d, vf) => F.roll * Math.max(0, d - 0.6) + vf;
+  function tRolando(F, d, v0) { const r = 1 - (F.roll * Math.max(0, d - 0.6)) / v0; return r <= 0.02 ? Infinity : -Math.log(r) / F.roll; }
+  // ---- escolher quem recebe: o companheiro mais viável dentro do cone ----
+  //   para cada um: ângulo entre a direção mandada (u) e a direção até ele, e a distância.
+  //   nota = ângulo/cone (0 no meio do cone, 1 na borda) + distância/30 (o mais perto ganha no empate).
+  //   Fora do cone (ou longe demais), não conta. Ninguém no cone: passe no espaço.
+  function escolherReceptor(p, yaw, mates, cone = PASSE_S.cone) {
+    const ux = -Math.sin(yaw), uz = -Math.cos(yaw);
+    let best = null, nota = Infinity;
+    for (const m of mates) {
+      const dx = m.x - p.x, dz = m.z - p.z, d = Math.hypot(dx, dz);
+      if (d < 1.5 || d > PASSE_S.alcance) continue;
+      const ang = Math.acos(Math.max(-1, Math.min(1, (dx * ux + dz * uz) / d)));
+      if (ang > cone) continue;
+      const n = ang / cone + d / 30;
+      if (n < nota) { nota = n; best = m; }
+    }
+    return best;
+  }
+  // ---- vetor de interceptação (passe em profundidade e passe para quem está correndo) ----
+  //   O receptor está em R0 e corre com velocidade V (constante). A bola sai de B0 com v0 e anda d em t(d).
+  //   Queremos o ponto P onde os dois chegam JUNTOS:
+  //       P = R0 + V·t + L·û        (L = folga à frente na direção da corrida û; 0 no passe curto)
+  //       t = t(|P − B0|, v0)      (o tempo da bola até P, pela fórmula do rolamento acima)
+  //   A incógnita aparece dos dois lados, então resolvemos por iteração de ponto fixo:
+  //       t₀ = 0 → P₀ → d₀ = |P₀ − B0| → t₁ = t(d₀) → P₁ → ...
+  //   Converge em poucas voltas porque a bola é bem mais rápida que o jogador (a cada volta o erro em t é
+  //   multiplicado por mais ou menos |V|/v_bola < 1). Se v0 não alcança, devolve null (aí aumentamos v0).
+  function interceptar(F, B0, R0, V, v0, folga) {
+    const sp = Math.hypot(V.x, V.z), ux = sp > 0.5 ? V.x / sp : 0, uz = sp > 0.5 ? V.z / sp : 0;
+    let t = 0, P = null;
+    for (let i = 0; i < 8; i++) {
+      P = { x: R0.x + V.x * t + ux * folga, z: R0.z + V.z * t + uz * folga };
+      const d = Math.hypot(P.x - B0.x, P.z - B0.z), t2 = tRolando(F, d, v0);
+      if (!isFinite(t2)) return null;
+      if (Math.abs(t2 - t) < 0.005) { t = t2; break; }
+      t = t2;
+    }
+    return { x: P.x, z: P.z, t, d: Math.hypot(P.x - B0.x, P.z - B0.z) };
+  }
+  // ---- passe longo: a velocidade (no ângulo fixo) para a bola QUICAR a d metros ----
+  // A bola no ar tem gravidade, arrasto e o "sobe" do chute: em vez de fórmula fechada, simulamos uma vez por metro
+  // (busca binária na velocidade) e guardamos numa tabela por campo, como o lançamento do futsal.
+  const tabelaLongo = {};
+  function velLongo(F, d) {
+    const k = Math.max(5, Math.min(36, Math.round(d))), chave = F.id + k;
+    if (tabelaLongo[chave]) return tabelaLongo[chave];
+    let lo = 4, hi = 34, tempo = 1;
+    for (let i = 0; i < 14; i++) {
+      const v = (lo + hi) / 2, x0 = -F.L + 1, b = newBall(F); b.x = x0; b.y = F.ballR;
+      kick(b, { x: x0 - 0.6, y: 0, z: 0, id: "_" }, "longo", 1, -Math.PI / 2, 0, 0, F, { vel: v, elev: PASSE_S.elevLongo });
+      let t = 0, subiu = false;
+      while (t < 5) { stepBall(F, b, [], 1 / 60); t += 1 / 60; if (b.y > 1) subiu = true; if (subiu && b.y <= F.ballR + 0.01) break; }
+      if (b.x - x0 > k) hi = v; else lo = v;
+      tempo = t;
+    }
+    return (tabelaLongo[chave] = { v: (lo + hi) / 2, t: tempo });
+  }
+  // ---- erro do passe: cresce com a distância e com marcador colado no passador ----
+  //   desvio padrão do ângulo σ = 0,01 + 0,002·d (+0,05 se tiver adversário a menos de 1,6 m)
+  //   o sorteio é aproximadamente normal (soma de 3 uniformes), e a velocidade varia ±metade disso.
+  function erroPasse(d, pressao, rnd = Math.random) {
+    const sig = 0.01 + 0.002 * d + (pressao ? 0.05 : 0), g = () => (rnd() + rnd() + rnd() - 1.5) / 0.5; // ~N(0,1)
+    return { dYaw: g() * sig, kVel: 1 + g() * sig * 0.5 };
+  }
+  // ---- planeja o passe: devolve { kind, yaw, vel, elev, alvo, ponto } (o chute de verdade é kick(...opts)) ----
+  //   p: quem passa {x, z}; yaw: direção mandada; mates: [{id, x, z, vx, vz}]; tipo: curto|longo|profundidade;
+  //   forca: 0..1 (tempo segurando o botão); pressao: tem adversário colado?; ataque: +1/−1 (para onde é o gol)
+  function planejarPasse(F, p, yaw, mates, tipo, forca, pressao = false, ataque = 1, rnd = Math.random) {
+    const B0 = { x: p.x, z: p.z }, alvo = escolherReceptor(p, yaw, mates);
+    let ponto, vel, elev = tipo === "longo" ? PASSE_S.elevLongo : 0.02;
+    if (!alvo) { // ninguém no cone: passe no espaço, na direção exata, com a força da barra
+      const d = tipo === "longo" ? 12 + forca * 14 : 8 + forca * 16;
+      ponto = { x: p.x - Math.sin(yaw) * d, z: p.z - Math.cos(yaw) * d };
+      vel = tipo === "longo" ? velLongo(F, d).v : v0Rolando(F, d, PASSE_S.vChega + forca * 4);
+    } else {
+      const R0 = { x: alvo.x, z: alvo.z }, V = { x: alvo.vx || 0, z: alvo.vz || 0 };
+      // profundidade: se ele está parado, a folga vai na direção do gol que atacamos
+      const folga = tipo === "profundidade" ? PASSE_S.folga : 0;
+      const Vf = tipo === "profundidade" && Math.hypot(V.x, V.z) < 0.5 ? { x: ataque * 0.6, z: 0 } : V;
+      if (tipo === "longo") { // pelo alto: o tempo de voo vem da tabela; mira onde ele vai estar quando ela cair
+        let P = R0;
+        for (let i = 0; i < 4; i++) { const d = Math.hypot(P.x - B0.x, P.z - B0.z), lg = velLongo(F, d); P = { x: R0.x + V.x * lg.t, z: R0.z + V.z * lg.t }; }
+        const d = Math.max(5, Math.hypot(P.x - B0.x, P.z - B0.z) - 1); // quica ~1 m antes e chega rolando
+        ponto = P; vel = velLongo(F, d).v * (1 + forca * 0.06);
+      } else {
+        // rasteiro: a menor velocidade que chega (v0 = k·d + vf) mais o que a força acrescenta; refaz a
+        // interceptação com essa velocidade (bola mais rápida = encontra ele mais cedo, ponto mais atrás)
+        const vf = tipo === "profundidade" ? PASSE_S.vMorre : PASSE_S.vChega;
+        let d = Math.hypot(R0.x - B0.x, R0.z - B0.z), I = null;
+        // (na profundidade a força pesa metade: bola forte demais passa de quem corre)
+        vel = Math.min(PASSE_S.vMax, v0Rolando(F, d, vf) + forca * PASSE_S.extra * (tipo === "profundidade" ? 0.5 : 1));
+        for (let i = 0; i < 4; i++) {
+          I = interceptar(F, B0, R0, Vf, vel, folga);
+          if (I) break;
+          vel = Math.min(PASSE_S.vMax, vel + 3); // não alcança: mais forte
+        }
+        if (I) { d = I.d; vel = Math.max(vel, v0Rolando(F, d, vf)); ponto = I; }
+        else ponto = R0;
+      }
+    }
+    const dist = Math.hypot(ponto.x - B0.x, ponto.z - B0.z), er = erroPasse(dist, pressao, rnd);
+    return { kind: tipo, yaw: Math.atan2(-(ponto.x - B0.x), -(ponto.z - B0.z)) + er.dYaw, vel: Math.min(PASSE_S.vMax, vel * er.kVel), elev, alvo: alvo ? alvo.id : null, ponto };
+  }
+  // ---- "trava" do passe (lock-on sutil): perto do receptor, a bola vai se ajeitando para o pé dele ----
+  //   Quando a bola está a menos de 2,6 m do receptor e indo na direção dele, giramos a velocidade (sem mudar o
+  //   tamanho) um pouco por quadro para o ponto logo na frente do pé (0,45 m na frente do corpo), e a menos de
+  //   1,4 m seguramos a velocidade relativa em 5,5 m/s (o domínio e a condução fazem o resto, ou ele chuta de primeira).
+  function travaPasse(b, bodies, dt) {
+    if (!b.alvoPasse) return;
+    b.alvoT = (b.alvoT || 0) + dt;
+    const r = bodies && bodies.find((q) => q.id === b.alvoPasse);
+    if (!r || b.alvoT > 4 || b.dono) { b.alvoPasse = null; return; }
+    const fx = r.x - Math.sin(r.yaw || 0) * 0.45, fz = r.z - Math.cos(r.yaw || 0) * 0.45, dx = fx - b.x, dz = fz - b.z, d = Math.hypot(dx, dz);
+    const sp = Math.hypot(b.vx, b.vz);
+    if (d > 2.6 || d < 0.05 || sp < 0.5 || (b.vx * dx + b.vz * dz) <= 0 || b.y > 1.6) return;
+    const k = Math.min(1, dt * 7), nx = b.vx / sp + (dx / d - b.vx / sp) * k, nz = b.vz / sp + (dz / d - b.vz / sp) * k, nl = Math.hypot(nx, nz) || 1;
+    b.vx = (nx / nl) * sp; b.vz = (nz / nl) * sp;
+    if (d < 1.4) { const rvx = b.vx - (r.vx || 0), rvz = b.vz - (r.vz || 0), rs = Math.hypot(rvx, rvz); if (rs > 5.5) { b.vx = (r.vx || 0) + rvx / rs * 5.5; b.vz = (r.vz || 0) + rvz / rs * 5.5; } }
+  }
+
   // ---------- itens do Strikers (a mesma conta no servidor e no navegador) ----------
   // peso = chance relativa no sorteio. alvo: "eu" (efeito em quem usa) ou um objeto que anda no campo.
   const ITENS = {
@@ -689,7 +839,7 @@
     return { acertos, explosoes };
   }
 
-  const api = { MODES, campoDe, ITENS, ITEM_LISTA, sortearItem, lancarItem, stepItens, BOMBA_R, BOMBA_T, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
+  const api = { MODES, campoDe, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, ITENS, ITEM_LISTA, sortearItem, lancarItem, stepItens, BOMBA_R, BOMBA_T, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
     movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass, assistCross, arenaSDF, rampa };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;

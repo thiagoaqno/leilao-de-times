@@ -380,6 +380,7 @@ module.exports = function attachPelada(io) {
     // confere, sorteia as defesas (goleiro de verdade na área pega mais), avisa todo mundo para animar e congela o jogo
     // até a animação acabar; aí soma os gols (tick).
     socket.on("super", (d = {}) => {
+      return; // Super Chute desligado por enquanto (duplicava a bola)
       const { room, me } = ctx(); const m = room && room.match, now = Date.now();
       if (!room || !me || !me.team || room.phase !== "play" || !m || m.phase !== "live" || room.config.estilo !== "strikers" || room.config.mode !== "pes") return;
       if (me.downUntil > now || now - (me.superAt || 0) < 3000) return;
@@ -413,7 +414,8 @@ module.exports = function attachPelada(io) {
       const m = room && room.match, now = Date.now();
       if (!room || !me || !me.team || room.phase !== "play" || !m || m.phase !== "live" || room.config.mode !== "pes") return;
       if (now - me.lastKick < C.KICK_CD * 800 || me.downUntil > now) return;
-      const kind = ["passe", "cavadinha", "lancamento", "cruzamento"].includes(d.kind) ? d.kind : "chute";
+      const strk = room.config.estilo === "strikers", passeS = strk && ["curto", "longo", "profundidade"].includes(d.kind);
+      const kind = passeS || ["passe", "cavadinha", "lancamento", "cruzamento"].includes(d.kind) ? d.kind : "chute";
       if (![d.power, d.yaw].every(fin)) return;
       const slack = clamp(0.25 + (me.rtt || 0) / 1000 * 6, 0.25, 0.8); // a bola anda enquanto o chute viaja
       // quem estava conduzindo chuta a bola que está vendo no pé (a mesma que o navegador dele vinha mandando)
@@ -421,7 +423,10 @@ module.exports = function attachPelada(io) {
         const [bx, by, bz] = d.bola;
         if (by < 0.6 && Math.hypot(bx - room.ball.x, bz - room.ball.z) < 2.5 && Math.hypot(bx - me.pos.x, bz - me.pos.z) < 1.6) Object.assign(room.ball, { x: bx, y: Math.max(F(room).ballR, by), z: bz });
       }
-      const how = C.kick(room.ball, { ...me.pos, id: me.id }, kind, d.power, d.yaw, slack, fin(d.curve) ? d.curve : 0, F(room));
+      // passe do Strikers: o navegador planejou (velocidade, altura e quem recebe); aqui só confere os limites e o receptor
+      const rec = passeS && typeof d.alvo === "string" && room.players[d.alvo], opt = passeS && fin(d.vel) ? { vel: clamp(d.vel, 3, 34), elev: fin(d.elev) ? clamp(d.elev, 0, 1.1) : 0.02,
+        alvo: rec && rec.id !== me.id && rec.team === me.team ? rec.id : null } : null;
+      const how = C.kick(room.ball, { ...me.pos, id: me.id }, kind, d.power, d.yaw, slack, opt ? 0 : fin(d.curve) ? d.curve : 0, F(room), opt);
       if (!how) return;
       me.lastKick = now;
       if (how === "mao") me.noCatch = now + 800;

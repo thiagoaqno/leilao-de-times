@@ -1526,8 +1526,8 @@ function setupTouch() {
   else Toque.setup({
     look: (dx, dy) => { if (!locked() || G.view === "tv") return; const k = 0.0028 * sens; G.camYaw -= dx * k; G.camPitch = clamp(G.camPitch - dy * k, ...pitchRange()); },
     buttons: [
-      ...(G.F.strikers ? [{ icon: "🎁", label: "item", code: "KeyG" }] : []), { icon: "🌙", label: "cavadinha", code: "KeyL" }, { icon: "🎯", label: "passe", code: "KeyJ" }, { icon: "🦵", label: "carrinho", down: () => { if (locked() && G.meModel && !souDono()) wheelQueued = true; } },
-      { icon: "↗", label: "cruzar", code: "KeyU" }, ...(G.mode === "bots" ? [{ icon: "🔁", label: "trocar", code: "KeyT" }] : []),
+      ...(G.F.strikers ? [{ icon: "🎁", label: "item", code: "KeyG" }] : []), { icon: "🌙", label: G.F.strikers ? "profundo" : "cavadinha", code: "KeyL" }, { icon: "🎯", label: G.F.strikers ? "curto" : "passe", code: "KeyJ" }, { icon: "🦵", label: "carrinho", down: () => { if (locked() && G.meModel && !souDono()) wheelQueued = true; } },
+      { icon: "↗", label: G.F.strikers ? "longo" : "cruzar", code: "KeyU" }, ...(G.mode === "bots" ? [{ icon: "🔁", label: "trocar", code: "KeyT" }] : []),
       { icon: "✋", label: "segurar", code: "KeyF" }, { icon: "🏃", label: "pique", code: "ShiftLeft" }, { icon: "⬆", label: "pular", code: "Space" }, { icon: "⚽", label: "chute", code: "KeyK", big: true },
     ],
     top: [pause, { icon: "🎥", code: "KeyC" }, { icon: "📋", code: "Tab" }],
@@ -1613,7 +1613,7 @@ function curvaColocada() {
   const meio = Math.atan2(-(gx - b.x), -(0 - b.z)), d = Math.atan2(Math.sin(a - meio), Math.cos(a - meio));
   return Math.sign(d || 1) * Math.max(0.55, Math.min(1, Math.abs(d) * 4)); // mirou à esquerda do meio: curva para a direita
 }
-const powerOf = (c) => clamp((now() - c.t0) / (c.kind === "passe" ? 0.8 : 0.9), 0, 1);
+const powerOf = (c) => clamp((now() - c.t0) / (c.kind === "passe" || (G.F.strikers && c.kind !== "chute") ? 0.8 : 0.9), 0, 1);
 // a bola como eu vejo agora (offline, a bola local; online, a do meu pé ou a prevista)
 const bolaAqui = () => (offline() ? local.ball : ballS.mine || ballS.view);
 // "estou com a bola": conduzindo (dono) ou com ela no alcance do pé/cabeça. Sem a bola: B dá carrinho e LB troca de jogador.
@@ -1639,7 +1639,9 @@ document.addEventListener("keydown", (e) => {
     if (modificador() && KICK_KEY[e.code] !== "cavadinha") chuteColocado(KICK_KEY[e.code]); // R/LB + chute/passe: colocado, na hora
     else charge = { kind: KICK_KEY[e.code], t0: now(), src: e.code };
   }
-  if (e.code === "KeyU" && !e.repeat && !charge && !isCar() && G.meModel) doKick("cruzamento", 0); // cruzamento alto
+  if (e.code === "KeyU" && !e.repeat && !charge && !isCar() && G.meModel) { // cruzamento alto (Strikers: passe longo, com barra de força)
+    if (G.F.strikers) charge = { kind: "cruzamento", t0: now(), src: e.code }; else doKick("cruzamento", 0);
+  }
   if (e.code === "KeyT" && !e.repeat && !isCar() && G.mode === "bots" && !souDono()) trocarJogador(); // T/LB: troca de jogador
   keys.add(e.code);
 });
@@ -1667,6 +1669,15 @@ function mates() {
   const mine = myP(); if (!mine) return [];
   return [...G.remotes.values()].filter((r) => r.team === mine.team && !(r.f & (FL.slide | FL.down))).map((r) => ({ id: r.id, x: r.px ?? r.x, z: r.pz ?? r.z, vx: r.pvx ?? r.vx ?? 0, vz: r.pvz ?? r.vz ?? 0 })); // onde estão agora
 }
+// Strikers: qual tecla vira qual passe (J/A curto, U/X longo, L/Y profundidade)
+const PASSE_TIPO = { passe: "curto", cruzamento: "longo", cavadinha: "profundidade" };
+// tem adversário colado (a menos de 1,6 m)? O passe sai com mais erro
+function rivalColado(p) {
+  if (G.mode === "bots") return G.bots.some((x) => x.team === "B" && x.downT <= 0 && Math.hypot(x.x - p.x, x.z - p.z) < 1.6);
+  if (G.mode !== "online") return false;
+  const mine = myP(); if (!mine) return false;
+  return [...G.remotes.values()].some((r) => r.team && r.team !== mine.team && Math.hypot((r.px ?? r.x) - p.x, (r.pz ?? r.z) - p.z) < 1.6);
+}
 // efeito: segurar Q (curva para a esquerda) ou E (para a direita) na hora do chute
 const curveNow = () => (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
 // o = { colocado }: chute colocado (força máxima + curva para o gol) ou passe colocado (tenso, no mais alinhado)
@@ -1678,19 +1689,26 @@ function doKick(kind, power, o = {}) {
   const how = C.canKick(body, ball, offline() ? 0 : 0.2);
   me.kickT = t; me.lastKick = t; me.st.kickT = t; // a perna balança mesmo se errar
   if (!how) return;
-  let yaw = aimYaw();
+  let yaw = aimYaw(), opt = null;
+  // Strikers: J curto, U longo (cavado), L profundidade; o plano dá direção, velocidade, altura e quem recebe
+  const tipoS = G.F.strikers && how !== "mao" && PASSE_TIPO[kind];
+  if (tipoS) {
+    const pl = C.planejarPasse(G.F, me, yaw, mates(), tipoS, o.colocado ? 1 : power, rivalColado(me), myAttackTeam() === "B" ? -1 : 1);
+    yaw = pl.yaw; kind = tipoS; opt = { vel: pl.vel, elev: pl.elev, alvo: pl.alvo };
+    G.passeVoo = pl.alvo ? { alvo: pl.alvo, ate: t + 3 } : null;
+  }
   if (kind === "passe" && how !== "mao") { const r = C.assistPass(me, yaw, mates(), power, !!o.colocado, G.F); yaw = r.yaw; power = r.power; if (r.kind) kind = r.kind; } // longe: lançamento pelo alto
   if (kind === "cruzamento" && how === "pe") { const r = C.assistCross(me, yaw, myAttackTeam() || "A", mates(), G.F); yaw = r.yaw; power = r.power; }
   else if (kind === "cruzamento") { kind = "cavadinha"; power = 0.7; } // de cabeça ou com a mão: vai alto
-  const curve = o.colocado && kind === "chute" && how === "pe" ? curvaColocada() : curveNow();
+  const curve = opt ? 0 : o.colocado && kind === "chute" && how === "pe" ? curvaColocada() : curveNow();
   if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F, curve, ball); // assistência estilo FIFA (último terço)
   me.facing = yaw;
   Sound.kick(power);
-  if (offline()) { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve, G.F); G.tKicks = (G.tKicks || 0) + 1; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
+  if (offline()) { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve, G.F, opt); G.tKicks = (G.tKicks || 0) + 1; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
   const mine = ballS.mine; ballS.mine = null;
-  socket.emit("kick", { kind, power, yaw, curve, ...(mine ? { bola: [mine.x, mine.y, mine.z] } : {}) }); // conduzindo: chuta a bola que eu vejo
+  socket.emit("kick", { kind, power, yaw, curve, ...(opt || {}), ...(mine ? { bola: [mine.x, mine.y, mine.z] } : {}) }); // conduzindo: chuta a bola que eu vejo
   // previsão: a bola já sai do meu pé aqui; o servidor confirma em seguida
-  const b = { ...(mine || ballS.view) }; C.kick(b, body, kind, power, yaw, 0.2, curve, G.F);
+  const b = { ...(mine || ballS.view) }; C.kick(b, body, kind, power, yaw, 0.2, curve, G.F, opt);
   ballS.snap = { t: sNow(), x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, sp: b.sp, wx: b.wx || 0, wy: b.wy || 0, wz: b.wz || 0, holder: null }; ballS.off = { x: 0, y: 0, z: 0 };
   ballS.ignoreUntil = performance.now() + rtt + 60;
 }
@@ -1959,7 +1977,8 @@ const superPonteiro = (t0) => (1 - Math.cos((2 * Math.PI * (now() - t0)) / SUPER
 const superBolas = (q) => 2 + Math.round(clamp(q, 0, 1) * 3);
 function podeSuper() { if (!G.F.strikers || isCar() || !G.me) return false; const s = myAttackTeam() === "B" ? -1 : 1; return temBola() && s * G.me.x > 0; }
 // o chute segurado chegou no ponto do super?
-const superArmado = () => !!charge && charge.kind === "chute" && G.F.strikers && now() - charge.t0 >= SUPER_CARGA && podeSuper();
+const SUPER_ATIVO = false; // Super Chute desligado por enquanto (duplicava a bola)
+const superArmado = () => SUPER_ATIVO && !!charge && charge.kind === "chute" && G.F.strikers && now() - charge.t0 >= SUPER_CARGA && podeSuper();
 // soltou o chute armado: começa a barra
 function iniciarBarra() { G.superBarra = { t0: now() }; Sound.deke(); }
 // apertou o chute de novo na barra: quantas bolas
@@ -2041,8 +2060,9 @@ function hudSuper() {
   else el.classList.add("hidden");
 }
 // os bots também dão Super Chute: no ataque, perto do gol e sem marcação, param e carregam
+const CARRINHO_CD = 4; // segundos entre um carrinho e outro (você e os bots)
 function botSuper(bot, t, d, s) {
-  const F = G.F; if (!F.strikers || bot.superT || s * bot.x < 2) return false;
+  const F = G.F; if (!SUPER_ATIVO || !F.strikers || bot.superT || s * bot.x < 2) return false;
   const dGol = Math.hypot(s * F.L - bot.x, bot.z), livre = !entsLocais().some((o) => o.team !== bot.team && Math.hypot(o.e.x - bot.x, o.e.z - bot.z) < 4.5);
   if (dGol > 17 || !livre || Math.random() > 0.35) return false;
   bot.superT = t; return true;
@@ -2068,7 +2088,7 @@ function stepFoot(dt, t, frozen) {
   // carrinho (rodinha do mouse): desliza para onde está virado e derruba quem estiver na frente
   if (wheelQueued && !frozen && !busy && me.onGround && me.slideCd <= 0 && !holding && !souDono()) { // carrinho só sem a bola
     const sp = Math.max(Math.hypot(me.vx, me.vz), 7.5); me.vx = -Math.sin(me.facing) * sp; me.vz = -Math.cos(me.facing) * sp;
-    me.slideT = 0.6; me.slideCd = 1.3; charge = null; Sound.slide();
+    me.slideT = 0.6; me.slideCd = CARRINHO_CD; charge = null; Sound.slide();
   }
   wheelQueued = false;
   // mergulho do goleiro: Espaço com A/D (ou ←/→) apertado
@@ -2439,9 +2459,26 @@ function botChute(bot, t, d, s, power) {
   bot.lastKick = t; bot.st.kickT = t; const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(power, k, pan); return true;
 }
 function botPasse(bot, t, alvo) {
+  if (G.F.strikers) return botPasseStrikers(bot, t, alvo);
   const b = local.ball, yaw = Math.atan2(-(alvo.x - bot.x), -(alvo.z - bot.z)), r = C.assistPass(botBody(bot), yaw, [alvo], 0.45, false, G.F);
   if (!C.kick(b, botBody(bot), r.kind || "passe", r.power, r.yaw, 0, 0, G.F)) return false;
   bot.lastKick = t; bot.st.kickT = t; const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(r.power, k, pan); return true;
+}
+// bot no Strikers: escolhe o tipo como um jogador faria. Companheiro correndo para o ataque: profundidade (ele aposta
+// corrida); rival na linha do passe (a menos de 1,2 m do segmento) ou longe: longo, por cima; senão, curto.
+function botPasseStrikers(bot, t, alvo) {
+  const b = local.ball, s = bot.team === "A" ? 1 : -1, rivais = doTime(bot.team === "A" ? "B" : "A");
+  const dx = alvo.x - bot.x, dz = alvo.z - bot.z, d = Math.hypot(dx, dz);
+  const naLinha = rivais.some((o) => { // distância do rival ao segmento bot→alvo (projeção limitada a [0, 1])
+    const u = clamp(((o.x - bot.x) * dx + (o.z - bot.z) * dz) / (d * d), 0, 1);
+    return u > 0.1 && u < 0.9 && Math.hypot(bot.x + dx * u - o.x, bot.z + dz * u - o.z) < 1.2;
+  });
+  const tipo = s * (alvo.vx || 0) > 2.5 && Math.random() < 0.7 ? "profundidade" : naLinha || d > 17 ? "longo" : "curto";
+  const colado = rivais.some((o) => Math.hypot(o.x - bot.x, o.z - bot.z) < 1.6), forca = Math.random() * 0.6;
+  const pl = C.planejarPasse(G.F, bot, Math.atan2(-dx, -dz), [alvo], tipo, forca, colado, s);
+  if (!C.kick(b, botBody(bot), pl.kind, forca, pl.yaw, 0, 0, G.F, { vel: pl.vel, elev: pl.elev, alvo: pl.alvo })) return false;
+  bot.facing = pl.yaw; bot.lastKick = t; bot.st.kickT = t; G.passeVoo = pl.alvo && bot.team === "A" ? { alvo: pl.alvo, ate: t + 3 } : null; // o anel só no meu time
+  const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(0.3 + forca, k, pan); return true;
 }
 // com a bola: chuta de perto, passa quando apertado (ou de vez em quando, para a frente), senão conduz
 function botDecide(bot, t, d, s) {
@@ -2489,7 +2526,7 @@ function stepBot(bot, dt, t, live) {
       const lead = Math.min(0.6, dB / 10); tx = b.x + b.vx * lead; tz = b.z + b.vz * lead; sprint = dB > 3;
       if (donoT && dB < 1.9 && bot.slideCd <= 0 && bot.onGround && Math.random() < d.carrinho * dt * 2.5) { // carrinho em quem conduz
         const fy = Math.atan2(-(b.x - bot.x), -(b.z - bot.z)); bot.facing = fy;
-        const sp = Math.max(Math.hypot(bot.vx, bot.vz), 7.5); bot.vx = -Math.sin(fy) * sp; bot.vz = -Math.cos(fy) * sp; bot.slideT = 0.6; bot.slideCd = 2.5; Sound.slide();
+        const sp = Math.max(Math.hypot(bot.vx, bot.vz), 7.5); bot.vx = -Math.sin(fy) * sp; bot.vz = -Math.cos(fy) * sp; bot.slideT = 0.6; bot.slideCd = CARRINHO_CD; Sound.slide();
       }
       if (!b.dono && t - bot.lastKick > 0.5) { // bola solta: alta cabeceia; no pé e perto do gol, chuta de primeira
         const how = C.canKick(botBody(bot), b, 0);
@@ -2695,7 +2732,14 @@ function showAim(me) {
   if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F, curveNow(), bolaAqui()); // a seta já mostra a ajudinha
   // carregando o passe: anel embaixo de quem vai receber (muda do mais perto para o mais longe conforme a força)
   let alvo = null;
-  if (charge && charge.kind === "passe" && !isCar()) { const r = C.assistPass(me, ay, mates(), powerOf(charge), false, G.F); if (r.alvo) { alvo = r.alvo; ay = r.yaw; } }
+  if (charge && G.F.strikers && PASSE_TIPO[charge.kind] && !isCar()) { // Strikers: o anel vai no ponto onde a bola encontra quem recebe
+    const pl = C.planejarPasse(G.F, me, ay, mates(), PASSE_TIPO[charge.kind], powerOf(charge), false, myAttackTeam() === "B" ? -1 : 1, () => 0.5);
+    alvo = pl.ponto; ay = pl.yaw;
+  } else if (charge && charge.kind === "passe" && !isCar()) { const r = C.assistPass(me, ay, mates(), powerOf(charge), false, G.F); if (r.alvo) { alvo = r.alvo; ay = r.yaw; } }
+  else if (G.passeVoo && now() < G.passeVoo.ate && !(bolaAqui() || {}).dono) { // a bola a caminho: o anel fica embaixo de quem recebe
+    const r = G.passeVoo.alvo === "eu" ? G.me : G.mode === "bots" ? G.bots.find((x) => x.id === G.passeVoo.alvo) : G.remotes.get(G.passeVoo.alvo);
+    if (r) alvo = { x: r.px ?? r.x, z: r.pz ?? r.z };
+  } else G.passeVoo = null;
   passMark.visible = !!alvo;
   if (alvo) { passMark.position.set(alvo.x, 0.04, alvo.z); passMark.material.opacity = 0.55 + 0.35 * Math.abs(Math.sin(now() * 8)); }
   aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
@@ -2728,14 +2772,15 @@ function hud(t) {
     else if (t > msgT) setH("hMsg", "");
   }
   $("hPow").classList.toggle("hidden", !charge); $("hPowL").classList.toggle("hidden", !charge);
-  if (charge) { $("hPow").firstElementChild.style.width = Math.round(powerOf(charge) * 100) + "%"; setH("hPowL", { chute: "Chute", passe: "Passe", cavadinha: "Cavadinha" }[charge.kind]); }
+  if (charge) { $("hPow").firstElementChild.style.width = Math.round(powerOf(charge) * 100) + "%"; setH("hPowL", (G.F.strikers ? { chute: "Chute", passe: "Passe curto", cavadinha: "Profundidade", cruzamento: "Passe longo" } : { chute: "Chute", passe: "Passe", cavadinha: "Cavadinha" })[charge.kind]); }
   $("hSta").classList.toggle("hidden", !G.meModel || (!isCar() && !!G.F.semFolego)); // Strikers: sem fôlego
   if (G.meModel) {
     setH("hStaL", isCar() ? `Turbo · ${Math.round(Math.hypot(me.vx, me.vz) * 3.6)} km/h` : "Fôlego");
     const bar = $("hSta").querySelector("i"); bar.style.width = Math.round((isCar() ? me.boost / 100 : me.stamina) * 100) + "%"; bar.style.background = isCar() ? "#ffb300" : "#7fe3ff";
   }
   setH("hHint", !G.meModel ? "Assistindo · Tab: placar" : isCar() ? "W/S acelerar · A/D virar · Shift turbo<br>Espaço pular (2x: mortal) · Q derrapar · C câmera da bola"
-    : G.F.strikers ? "⚡ STRIKERS · K chute (segure no ataque: Super Chute) · J passe · L cavadinha<br>Espaço com a bola: giro · Rodinha: carrinho · G: item · Shift corre · C câmera"
+    : G.F.strikers ? (PAD.on ? "⚡ STRIKERS · B chute · A passe curto · X passe longo (sem a bola: carrinho) · Y profundidade<br>Segure para mais força · R3 com a bola: giro · ↑ item · RT corre · View câmera"
+      : "⚡ STRIKERS · K chute · J passe curto · U longo · L profundidade (segure para mais força)<br>Espaço com a bola: giro · Rodinha: carrinho · G: item · Shift corre · C câmera")
     : "Setas: mirar · K/clique chute · J/direito passe · L cavadinha · U cruzar<br>R + K/J: colocado · T: trocar · Rodinha: carrinho · F segurar · Shift pique · Espaço pular · C câmera");
   G.feed = G.feed.filter((f) => t - f.at < 8);
   setH("hFeed", G.feed.map((f) => `<div>${f.html}</div>`).join(""));
