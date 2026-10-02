@@ -19,7 +19,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const angLerp = (a, b, k) => { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * k; };
 const SIDES = { A: "Mandante", B: "Visitante" };
-const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128 }; // grab: segurando alguém
+const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, deke: 256 }; // deke: drible com giro (Strikers) // grab: segurando alguém
 // contra bots: velocidade (fração da sua), tempo de reação (s), erro na mira (rad) e vontade de dar carrinho
 const BOT_DIF = {
   facil: { nome: "Fácil", vel: 0.8, reac: 0.5, erro: 0.18, carrinho: 0.2 },
@@ -145,6 +145,9 @@ function renderLobby() {
     $("myRole").innerHTML = `<label>Seu carro</label><div class="cars">${Object.entries(C.CARS).map(([k, c]) => `<button data-car="${k}" class="${mine.car === k ? "on" : ""}" title="${h(c.inspo)}"><img src="${carPreview(k, col)}" width="72" height="36" alt="" style="image-rendering:pixelated;display:block;margin:0 auto 4px"><b>${h(c.name)}</b><small>${h(c.inspo)}</small></button>`).join("")}</div>`;
   } else $("myRole").innerHTML = "";
   if (mine && !cars) $("myRole").innerHTML += `<label style="margin-top:14px">Sua skin</label><div class="skins">${skinButtons(mine.skin)}</div>`;
+  const est = S.config.estilo === "strikers" ? "strikers" : "futsal";
+  $("cfgEstilo").innerHTML = estiloButtons(est, "data-estilo", isHost ? "" : "disabled");
+  $("cfgEstiloInfo").textContent = ESTILOS[est].info;
   $("cfgArena").innerHTML = Object.entries(C.ARENAS).map(([k, a]) => `<button data-arena="${k}" class="${(S.config.arena || "society") === k ? "on" : ""}" title="${h(a.desc)}" ${isHost ? "" : "disabled"}>${a.emoji} ${h(a.name)}</button>`).join("");
   document.querySelectorAll("#cfgMode button").forEach((b) => { b.classList.toggle("on", b.dataset.v === S.config.mode); b.disabled = !isHost; });
   document.querySelectorAll("#cfgSize button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === size); b.disabled = !isHost; });
@@ -190,9 +193,13 @@ document.querySelectorAll("#cfgSize button").forEach((b) => (b.onclick = () => s
 document.querySelectorAll("#cfgMin button").forEach((b) => (b.onclick = () => setCfg("minutes", +b.dataset.v)));
 // skins e quadras: os botões são desenhados de novo a cada mudança, então o clique é tratado aqui, num lugar só
 const skinButtons = (atual) => Object.entries(C.SKINS).map(([k, sk]) => `<button data-skin="${k}" class="${k === (atual || "padrao") ? "on" : ""}"><i>${sk.emoji}</i>${h(sk.name)}</button>`).join("");
+const ESTILOS = { futsal: { nome: "⚽ Futsal", info: "" }, strikers: { nome: "⚡ Strikers", info: "Arcade: campo maior com cerca elétrica (dá choque), posse firme (só o carrinho tira), sem fôlego, drible com giro (Espaço com a bola), itens e o Super Chute. Sempre no Estádio Elétrico." } };
+const estiloButtons = (atual, attr, dis = "") => Object.entries(ESTILOS).map(([k, e]) => `<button ${attr}="${k}" class="${atual === k ? "on" : ""}" ${dis}>${e.nome}</button>`).join("");
 function renderHomePicks() {
   $("hSkins").innerHTML = skinButtons(store.get("pelada:skin"));
   const a = store.get("pelada:arena") || "society";
+  const est = store.get("pelada:estilo") === "strikers" ? "strikers" : "futsal";
+  $("hEstilo").innerHTML = estiloButtons(est, "data-estilo-treino");
   $("hArena").innerHTML = Object.entries(C.ARENAS).map(([k, ar]) => `<button data-arena-treino="${k}" class="${a === k ? "on" : ""}" title="${h(ar.desc)}">${ar.emoji} ${h(ar.name)}</button>`).join("");
   const n = store.get("pelada:botSize") || 3, d = BOT_DIF[store.get("pelada:botDif")] ? store.get("pelada:botDif") : "medio";
   $("hBotSize").innerHTML = [1, 2, 3, 4, 5].map((k) => `<button data-botsize="${k}" class="${n === k ? "on" : ""}">${k}x${k}</button>`).join("");
@@ -209,6 +216,8 @@ document.addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
   if (b.dataset.skin) escolherSkin(b.dataset.skin);
   else if (b.dataset.arenaTreino) { store.set("pelada:arena", b.dataset.arenaTreino); renderHomePicks(); }
+  else if (b.dataset.estiloTreino) { store.set("pelada:estilo", b.dataset.estiloTreino); renderHomePicks(); }
+  else if (b.dataset.estilo && S) setCfg("estilo", b.dataset.estilo);
   else if (b.dataset.botsize) { store.set("pelada:botSize", +b.dataset.botsize); renderHomePicks(); }
   else if (b.dataset.botdif) { store.set("pelada:botDif", b.dataset.botdif); renderHomePicks(); }
   else if (b.dataset.arena && S) setCfg("arena", b.dataset.arena);
@@ -275,6 +284,8 @@ const Sound = (() => {
     },
     whistle, start() { whistle(1, 0.7); }, end() { whistle(3, 0.45); },
     cheer() { burst({ dur: 3.2, f0: 1400, f1: 700, gain: 0.5, type: "bandpass", q: 0.6, attack: 0.25 }); burst({ dur: 2.6, f0: 600, f1: 300, gain: 0.35, attack: 0.3 }); [523, 659, 784].forEach((f, i) => tone({ f0: f, dur: 0.25, gain: 0.08, type: "square", at: 0.2 + i * 0.12 })); },
+    choque() { tone({ f0: 140, f1: 70, dur: 0.35, gain: 0.22, type: "sawtooth" }); tone({ f0: 290, f1: 150, dur: 0.3, gain: 0.1, type: "square" }); burst({ dur: 0.32, f0: 5000, f1: 1600, gain: 0.28, type: "highpass" }); },
+    deke() { burst({ dur: 0.25, f0: 900, f1: 3000, gain: 0.16, type: "bandpass", q: 1.5 }); },
     puxao() { burst({ dur: 0.16, f0: 1600, f1: 500, gain: 0.22, type: "bandpass", q: 1.4 }); }, // camisa sendo puxada
     ooh() { burst({ dur: 1.2, f0: 500, f1: 350, gain: 0.25, type: "bandpass", q: 1, attack: 0.15 }); },
   };
@@ -363,6 +374,13 @@ const ARENAS_CONFIG = {
     fundo: { tipo: "cor", cor: 0x0c0e13, neblina: 0x0c0e13, longe: 200 },
     paredes: "fechadas", muretas: "acolchoadas", refletores: "teto", arquibancada: "escura",
   },
+  eletrico: { // Strikers: estádio noturno, gramado escuro com linhas neon e a cerca elétrica em volta (dá choque)
+    piso: { tipo: "neon", roughness: 0.9, metalness: 0, linhas: "#7ff7ff", brilho: true },
+    ambiente: { ceu: 0x8a7cff, chao: 0x0d2a24, intensidade: 1.05 },
+    luz: { tipo: "refletores", cor: 0xe8f0ff, intensidade: 2.3, pos: [-12, 40, 16] },
+    fundo: { tipo: "ceu", cores: [0x05061a, 0x241046, 0x5a2266], neblina: 0x120a2a, longe: 240 },
+    paredes: "eletrica", muretas: "neon", refletores: "torres", arquibancada: "escura",
+  },
 };
 // solta da memória tudo o que um pedaço da cena criou (geometrias, materiais e texturas)
 function liberar(obj) {
@@ -383,8 +401,14 @@ let goalSigns = [];
 let arena = null, arenaMode = null, arenaKits = null, arenaId = null, pads = [];
 function arenaEscolhida(mode) {
   if (mode === "carros") return "ginasio"; // o Rocket é sempre no ginásio (com a arena arredondada, buildArenaRocket)
+  if (G.F && G.F.strikers) return "eletrico"; // o Strikers é sempre no estádio elétrico
   const id = offline() ? store.get("pelada:arena") : S && S.config.arena;
   return ARENAS_CONFIG[id] ? id : "society";
+}
+// a cerca elétrica treme: a cada quadro os raios pulam para outro lugar e piscam
+function animarArena(t) {
+  const raios = arena && arena.userData.raios; if (!raios || !raios.length) return;
+  for (const m of raios) { m.map.offset.x = Math.random(); m.map.offset.y = (Math.random() - 0.5) * 0.08; m.opacity = 0.55 + Math.random() * 0.45; }
 }
 function ensureArena(mode) {
   const kits = S ? `${S.kits.A}|${S.kits.B}` : "", id = arenaEscolhida(mode);
@@ -394,7 +418,7 @@ function ensureArena(mode) {
 // monta a quadra pedida: tira a anterior (e libera a memória), troca luzes, céu e neblina, e monta a nova
 function carregarArena(id, mode = arenaMode || "pes") {
   id = ARENAS_CONFIG[id] ? id : "society";
-  const cfg = ARENAS_CONFIG[id], F = C.MODES[mode], s = F.L / 20;
+  const cfg = ARENAS_CONFIG[id], F = mode === "carros" ? C.MODES.carros : G.F, s = F.L / 20;
   if (arena) { scene.remove(arena); liberar(arena); arena = null; }
   arenaId = id;
   // luz ambiente e luz principal (sol ou a luz geral do teto, que faz as sombras)
@@ -428,6 +452,14 @@ function buildArena(F, cfg) {
       for (let i = 0; i < 2 * L + 2; i += step) { x.fillStyle = (i / step) % 2 ? "#2f8f48" : "#2a8141"; x.fillRect(i * PX, 0, step * PX, hh); }
       if (cars && S) for (const [t, x0] of [["A", 0], ["B", X(0)]]) { x.globalAlpha = 0.14; x.fillStyle = C.kitColor(S.kits[t]); x.fillRect(x0, 0, w / 2, hh); x.globalAlpha = 1; }
       for (let i = 0; i < w * hh / 120; i++) { x.fillStyle = r() < 0.5 ? "#00000012" : "#ffffff10"; x.fillRect(r() * w, r() * hh, 2, 3); }
+    } else if (P.tipo === "neon") { // gramado escuro em faixas, com um desenho de hexágonos bem de leve
+      for (let i = 0; i < 2 * L + 2; i += 3) { x.fillStyle = (i / 3) % 2 ? "#0f3b2f" : "#0c3328"; x.fillRect(i * PX, 0, 3 * PX, hh); }
+      x.strokeStyle = "#7ff7ff10"; x.lineWidth = 2; const hx = 1.2 * PX;
+      for (let row = 0; row * hx * 0.87 < hh; row++) for (let col = 0; col * hx * 1.5 < w + hx; col++) {
+        const cx = col * hx * 1.5, cy = row * hx * 1.74 + (col % 2) * hx * 0.87; x.beginPath();
+        for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; x.lineTo(cx + Math.cos(a) * hx, cy + Math.sin(a) * hx); } x.closePath(); x.stroke();
+      }
+      for (const sg of [-1, 1]) { const g = x.createRadialGradient(X(sg * L), Z(0), 0, X(sg * L), Z(0), F.areaR * PX); g.addColorStop(0, "#7ff7ff22"); g.addColorStop(1, "#7ff7ff00"); x.fillStyle = g; x.beginPath(); x.arc(X(sg * L), Z(0), F.areaR * PX, 0, 7); x.fill(); }
     } else if (P.tipo === "cimento") {
       x.fillStyle = "#cf5a3a"; x.fillRect(0, 0, w, hh); // faixa de fora: vermelho-terra
       x.fillStyle = "#2b6cb0"; x.fillRect(X(-L), Z(-W), 2 * L * PX, 2 * W * PX); // quadra azul
@@ -463,6 +495,7 @@ function buildArena(F, cfg) {
   };
   const lines = (x) => {
     x.strokeStyle = P.linhas; x.lineWidth = (cars ? 0.25 : 0.08) * PX; x.fillStyle = P.linhas;
+    if (P.brilho) { x.shadowColor = P.linhas; x.shadowBlur = 0.25 * PX; x.lineWidth = 0.1 * PX; } // linhas neon (brilham)
     x.strokeRect(X(-L), Z(-W), 2 * L * PX, 2 * W * PX);
     x.beginPath(); x.moveTo(X(0), Z(-W)); x.lineTo(X(0), Z(W)); x.stroke();
     x.beginPath(); x.arc(X(0), Z(0), F.circle * PX, 0, 7); x.stroke();
@@ -495,6 +528,13 @@ function buildArena(F, cfg) {
       const graf = [["VILA DA GALERA", "#ff3d7f"], ["PELADA ⚽", "#2ee6a6"], ["RJ", "#ffd84a"], ["GALERA", "#3ab0ff"]];
       graf.forEach(([t, c], i) => { x.save(); x.translate(110 + i * 250, 34); x.rotate((r() - 0.5) * 0.15); x.font = "900 30px Figtree, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 6; x.strokeStyle = "#111"; x.strokeText(t, 0, 0); x.fillStyle = c; x.fillText(t, 0, 0); x.restore(); for (let d = 0; d < 4; d++) { x.fillStyle = c; x.fillRect(80 + i * 250 + r() * 60, 44, 2, 6 + r() * 12); } });
     }, true);
+  } else if (cfg.muretas === "neon") {
+    lado = 0x0a0d1f; topo = 0x10163a;
+    muretaTex = canvasTex(1024, 64, (x, w, hh) => {
+      x.fillStyle = "#0b0f26"; x.fillRect(0, 0, w, hh); x.fillStyle = "#7ff7ff"; x.shadowColor = "#7ff7ff"; x.shadowBlur = 8; x.fillRect(0, 4, w, 3); x.fillRect(0, hh - 7, w, 3);
+      x.font = "900 26px Figtree, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = "#ffe14a"; x.shadowColor = "#ffb000";
+      for (let i = 0; i < 2; i++) x.fillText("⚡ STRIKERS DA GALERA ⚡", w / 4 + i * w / 2, hh / 2 + 1);
+    }, true);
   } else if (cfg.muretas === "acolchoadas") {
     lado = 0x0f2550; topo = 0x0b1a38;
     muretaTex = canvasTex(1024, 64, (x, w, hh) => {
@@ -518,19 +558,29 @@ function buildArena(F, cfg) {
   for (const sg of [-1, 1]) for (const zs of [-1, 1]) { const len = W - F.goalW - 0.1; board(len, sg * (L + BT / 2), zs * (F.goalW + 0.1 + len / 2), sg < 0 ? Math.PI / 2 : -Math.PI / 2); }
   muretaTex.dispose(); // os clones têm a própria cópia
   // em cima da mureta: alambrado aberto (tela em losango) ou, no ginásio, vidro (quadra fechada)
-  const FH = F.wallH, glass = cfg.paredes === "fechadas";
-  const fenceTex = glass ? null : canvasTex(64, 64, (x, w) => { x.strokeStyle = "#d8dde0"; x.lineWidth = 3; x.beginPath(); x.moveTo(0, w / 2); x.lineTo(w / 2, 0); x.lineTo(w, w / 2); x.lineTo(w / 2, w); x.closePath(); x.stroke(); }, true);
+  const FH = F.wallH, glass = cfg.paredes === "fechadas", eletrica = cfg.paredes === "eletrica";
+  // cerca elétrica: raios desenhados num canvas (somados por cima, brilhando); a textura "pula" a cada quadro (animarArena)
+  const raioTex = eletrica ? canvasTex(256, 64, (x, w, hh, r) => {
+    for (const [cor, lw] of [["#2fd8ff", 5], ["#e8ffff", 1.6]]) for (let k = 0; k < 4; k++) {
+      x.strokeStyle = cor; x.lineWidth = lw; x.globalAlpha = lw > 2 ? 0.35 : 0.9; x.beginPath(); let y = hh * (0.15 + k * 0.23); x.moveTo(0, y);
+      for (let px = 0; px <= w; px += 8) { y = clamp(y + (r() - 0.5) * 14, 4, hh - 4); x.lineTo(px, y); } x.stroke();
+    }
+    x.globalAlpha = 1;
+  }, true) : null;
+  grp.userData.raios = [];
+  const fenceTex = glass || eletrica ? null : canvasTex(64, 64, (x, w) => { x.strokeStyle = "#d8dde0"; x.lineWidth = 3; x.beginPath(); x.moveTo(0, w / 2); x.lineTo(w / 2, 0); x.lineTo(w, w / 2); x.lineTo(w / 2, w); x.closePath(); x.stroke(); }, true);
   const cell = cars ? 1 : 0.5;
   const fence = (lw, lh, x0, y0, z0, rotY) => {
     let mat;
     if (glass) mat = new THREE.MeshBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false }); // vidro simples (sem calcular luz)
+    else if (eletrica) { const t = raioTex.clone(); t.repeat.set(lw / 6, 1); t.needsUpdate = true; mat = new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }); grp.userData.raios.push(mat); }
     else { const t = fenceTex.clone(); t.repeat.set(lw / cell, lh / cell); t.needsUpdate = true; mat = new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.4 }); }
     const m = add(new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), mat)); m.position.set(x0, y0 + lh / 2, z0); m.rotation.y = rotY;
   };
   fence(2 * L, FH - BH, 0, BH, -W - 0.05, 0); fence(2 * L, FH - BH, 0, BH, W + 0.05, 0);
   for (const sg of [-1, 1]) { fence(2 * W, FH - F.goalH - 0.4, sg * (L + F.goalD + 0.05), F.goalH + 0.4, 0, Math.PI / 2); for (const zs of [-1, 1]) { const lw = W - F.goalW; fence(lw, FH - BH, sg * (L + 0.05), BH, zs * (F.goalW + lw / 2), Math.PI / 2); } }
-  fenceTex?.dispose();
-  const pole = M(glass ? 0xc9cdd2 : 0x4a4f55, { metalness: glass ? 0.15 : 0.6, roughness: 0.4 }), gap = cars ? 8 : 5, pr = cars ? 0.12 : glass ? 0.04 : 0.06;
+  fenceTex?.dispose(); raioTex?.dispose();
+  const pole = eletrica ? new THREE.MeshBasicMaterial({ color: 0x7ff7ff, toneMapped: false }) : M(glass ? 0xc9cdd2 : 0x4a4f55, { metalness: glass ? 0.15 : 0.6, roughness: 0.4 }), gap = cars ? 8 : 5, pr = cars ? 0.12 : glass ? 0.04 : 0.06;
   for (let x0 = -L; x0 <= L + 0.01; x0 += gap) for (const zs of [-1, 1]) { const m = add(new THREE.Mesh(new THREE.CylinderGeometry(pr, pr, FH, 8), pole)); m.position.set(x0, FH / 2, zs * (W + 0.1)); m.castShadow = true; }
   // refletores
   if (cfg.refletores === "torres") for (const sx of [-1, 1]) for (const sz of [-1, 1]) { // torres nos cantos
@@ -1222,10 +1272,10 @@ function myKit() { if (offline()) return store.get("pelada:kit") || "corinthians
 function startGame(mode, game, falta = false) {
   if (G.active && G.mode === mode && G.game === game && !!G.falta === falta) return;
   stopGame();
-  G.active = true; G.mode = mode; G.game = game; G.F = C.MODES[game]; G.kickoffKey = null; G.feed = [];
+  G.active = true; G.mode = mode; G.game = game; G.F = C.campoDe(game, falta ? "futsal" : estiloDe(mode)); // a falta é treino de futsal G.kickoffKey = null; G.feed = [];
   ensureArena(game);
   show("game"); resize();
-  const sp = C.spawns(game, "A", [{}], false)[0];
+  const sp = C.spawns(G.F.id, "A", [{}], false)[0];
   G.me = newMe(sp); G.camYaw = sp[3]; G.camPitch = 0.05; G.camCarYaw = sp[3];
   rebuildMyModel();
   if (mode === "treino") {
@@ -1605,18 +1655,18 @@ function doKick(kind, power, o = {}) {
   me.kickT = t; me.lastKick = t; me.st.kickT = t; // a perna balança mesmo se errar
   if (!how) return;
   let yaw = aimYaw();
-  if (kind === "passe" && how !== "mao") { const r = C.assistPass(me, yaw, mates(), power, !!o.colocado); yaw = r.yaw; power = r.power; if (r.kind) kind = r.kind; } // longe: lançamento pelo alto
+  if (kind === "passe" && how !== "mao") { const r = C.assistPass(me, yaw, mates(), power, !!o.colocado, G.F); yaw = r.yaw; power = r.power; if (r.kind) kind = r.kind; } // longe: lançamento pelo alto
   if (kind === "cruzamento" && how === "pe") { const r = C.assistCross(me, yaw, myAttackTeam() || "A", mates(), G.F); yaw = r.yaw; power = r.power; }
   else if (kind === "cruzamento") { kind = "cavadinha"; power = 0.7; } // de cabeça ou com a mão: vai alto
   const curve = o.colocado && kind === "chute" && how === "pe" ? curvaColocada() : curveNow();
   if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F, curve, ball); // assistência estilo FIFA (último terço)
   me.facing = yaw;
   Sound.kick(power);
-  if (offline()) { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve); G.tKicks = (G.tKicks || 0) + 1; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
+  if (offline()) { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve, G.F); G.tKicks = (G.tKicks || 0) + 1; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
   const mine = ballS.mine; ballS.mine = null;
   socket.emit("kick", { kind, power, yaw, curve, ...(mine ? { bola: [mine.x, mine.y, mine.z] } : {}) }); // conduzindo: chuta a bola que eu vejo
   // previsão: a bola já sai do meu pé aqui; o servidor confirma em seguida
-  const b = { ...(mine || ballS.view) }; C.kick(b, body, kind, power, yaw, 0.2, curve);
+  const b = { ...(mine || ballS.view) }; C.kick(b, body, kind, power, yaw, 0.2, curve, G.F);
   ballS.snap = { t: sNow(), x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, sp: b.sp, wx: b.wx || 0, wy: b.wy || 0, wz: b.wz || 0, holder: null }; ballS.off = { x: 0, y: 0, z: 0 };
   ballS.ignoreUntil = performance.now() + rtt + 60;
 }
@@ -1634,10 +1684,13 @@ function loop() {
   const t = now(), dt = Math.min(0.05, t - lastT); lastT = t;
   try { lerPad(dt); frame(dt, t); } catch (e) { console.error(e); }
 }
+// o giro do drible: uma volta inteira enquanto dura
+const giroDeke = (t) => (t > 0 ? (1 - t / DEKE_T) * Math.PI * 2 : 0);
 function myFlags() {
   const me = G.me; let f = 0;
   if (me.sprint) f |= FL.sprint; if (charge) f |= FL.charge; if (me.slideT > 0) f |= FL.slide; if (me.diveT > 0) f |= FL.dive;
   if (me.flipT > 0) f |= FL.flip; if (me.boosting) f |= FL.boost; if (me.segurando) f |= FL.grab;
+  if (me.dekeT > 0) f |= FL.deke; if (me.downT > 0) f |= FL.down; // os outros veem o giro e o choque
   return f;
 }
 function frame(dt, t) {
@@ -1657,6 +1710,7 @@ function frame(dt, t) {
   updateRemotes(dt);
   updateRags(dt);
   updateBall(dt);
+  updateFaiscas(dt); animarArena(t);
   updateCamera(dt); if (camHook) camHook(cam);
   hud(t);
   updateGoalSigns();
@@ -1691,6 +1745,50 @@ function updateGoalSigns() {
   el.classList.remove("hidden"); el.querySelector("b").style.transform = `rotate(${ang}rad)`;
   el.querySelector("i").style.background = C.kitColor(kits[team]);
 }
+// ======================================================================
+// Strikers (estilo arcade, inspirado no Mario Strikers): campo maior com cerca elétrica, posse firme, sem fôlego,
+// drible com giro, itens e o Super Chute. A física fica em campo.js (MODES.strikers); aqui, o que é do jogador.
+// ======================================================================
+// estilo da partida: na sala, o organizador escolhe; no treino e contra bots, vale o da tela inicial
+function estiloDe(mode) { const e = mode === "online" ? S && S.config.estilo : store.get("pelada:estilo"); return e === "strikers" ? "strikers" : "futsal"; }
+const DEKE_T = 0.42, DEKE_CD = 1.1;
+// drible com giro (Espaço com a bola, no Strikers): o jogador gira 360° com a bola colada, ganha um tranco de
+// velocidade e, durante o giro, o carrinho não pega nele
+function tentarDeke(p) {
+  if (!G.F.strikers || p.dekeCd > 0 || p.downT > 0 || p.slideT > 0) return false;
+  p.dekeT = DEKE_T; p.dekeCd = DEKE_CD; Sound.deke(); return true;
+}
+function tempoStrikers(p, dt) { p.dekeT = Math.max(0, (p.dekeT || 0) - dt); p.dekeCd = Math.max(0, (p.dekeCd || 0) - dt); }
+// multiplicador de velocidade do Strikers (campo maior, jogo mais rápido; giro dá um tranco)
+const velStrikers = (p) => (G.F.vel || 1) * ((p.dekeT || 0) > 0 ? 1.3 : 1);
+// cerca elétrica: quem bate forte nela (correndo ou empurrado) leva choque: cai um instante, é jogado de volta para
+// dentro, solta a bola e sai faísca. O vão do gol não tem cerca. Devolve true se deu choque.
+function cercaEletrica(p, nome) {
+  const F = G.F, bt = p.bateu; if (!F.cerca || !bt || bt.v < 4 || p.downT > 0 || (p.estrelaT || 0) > 0) return false;
+  if (bt.nx && !bt.nz && Math.abs(p.z) < F.goalW + 0.2) return false; // boca do gol
+  p.downT = 0.9; p.slideT = 0; p.vx = -bt.nx * 6; p.vz = -bt.nz * 6;
+  faiscas(p.x + bt.nx * 0.35, 1.0, p.z + bt.nz * 0.35, 18); Sound.choque();
+  if (nome) pushFeed(`⚡ ${h(nome)} levou choque na cerca`);
+  return true;
+}
+// faíscas (choque, itens): caixinhas brilhando que voam e somem
+const FAISCAS = [];
+const faiscaGeo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
+function faiscas(x, y, z, n = 14, cor = 0x9ff8ff) {
+  for (let i = 0; i < n; i++) {
+    let f = FAISCAS.find((q) => q.t <= 0);
+    if (!f) { if (FAISCAS.length > 120) break; f = { m: new THREE.Mesh(faiscaGeo, new THREE.MeshBasicMaterial({ color: cor, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })), t: 0 }; scene.add(f.m); FAISCAS.push(f); }
+    const a = Math.random() * Math.PI * 2, v = 2 + Math.random() * 5;
+    f.m.material.color.setHex(cor); f.m.position.set(x, y, z); f.v = [Math.cos(a) * v, 1 + Math.random() * 4, Math.sin(a) * v]; f.t = 0.35 + Math.random() * 0.3; f.m.visible = true;
+  }
+}
+function updateFaiscas(dt) {
+  for (const f of FAISCAS) {
+    if (f.t <= 0) continue; f.t -= dt;
+    f.v[1] -= 12 * dt; f.m.position.x += f.v[0] * dt; f.m.position.y += f.v[1] * dt; f.m.position.z += f.v[2] * dt;
+    f.m.scale.setScalar(Math.max(0.05, f.t * 2.5)); f.m.material.opacity = Math.min(1, f.t * 3); if (f.t <= 0) f.m.visible = false;
+  }
+}
 // ---------- a pé ----------
 function stepFoot(dt, t, frozen) {
   const me = G.me, F = G.F, yaw = ctrlYaw(), mine = myP(), isGK = G.mode === "online" && mine && mine.gk;
@@ -1703,6 +1801,8 @@ function stepFoot(dt, t, frozen) {
     const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l; len = 1;
   }
   me.slideT = Math.max(0, me.slideT - dt); me.diveT = Math.max(0, me.diveT - dt); me.downT = Math.max(0, me.downT - dt); me.slideCd = Math.max(0, me.slideCd - dt);
+  tempoStrikers(me, dt);
+  if (G.F.strikers && jumpQueued && !frozen && souDono() && tentarDeke(me)) jumpQueued = false; // Strikers: Espaço com a bola = drible com giro
   const busy = me.slideT > 0 || me.diveT > 0 || me.downT > 0;
   const holding = ballS.snap && ME && ballS.snap.holder === ME.id;
   // carrinho (rodinha do mouse): desliza para onde está virado e derruba quem estiver na frente
@@ -1730,8 +1830,8 @@ function stepFoot(dt, t, frozen) {
   if (me.seguradoPor && !antesV) { flashMsg("", `✋ ${h(me.seguradoPor.name)} está te segurando!`, 1200, "#ffb4a8"); Sound.puxao(); }
   const wantSprint = (keys.has("ShiftLeft") || keys.has("ShiftRight")) && len > 0 && !charge && !busy && !me.segurando;
   me.sprint = wantSprint && me.stamina > 0.02;
-  me.stamina = clamp(me.stamina + (me.sprint ? -0.24 : 0.14) * dt, 0, 1);
-  let speed = charge ? C.CHARGING : me.sprint ? C.SPRINT : C.RUN;
+  me.stamina = F.semFolego ? 1 : clamp(me.stamina + (me.sprint ? -0.24 : 0.14) * dt, 0, 1); // Strikers: sem fôlego
+  let speed = (charge ? C.CHARGING : me.sprint ? C.SPRINT : C.RUN) * velStrikers(me);
   if (me.seguradoPor) speed *= SEGURADO_VEL; if (me.segurando) speed *= 0.85;
   if (padMag > 0.15 && !me.sprint) speed *= clamp(padMag * 1.5, 0.35, 1); // empurrou pouco o analógico: anda devagar
   if (frozen || !len) speed = 0;
@@ -1739,10 +1839,11 @@ function stepFoot(dt, t, frozen) {
   if (busy) { const k = Math.exp(-dt * (me.downT > 0 ? 6 : 1.6)); me.vx *= k; me.vz *= k; }
   const jumping = jumpQueued && !frozen && !busy && me.onGround;
   C.movePlayer(me, { x: wx, z: wz, speed, jump: jumping, free: busy }, dt, F);
+  if (cercaEletrica(me, "Você")) { charge = null; flashMsg("", "⚡ Choque na cerca!", 900, "#9ff8ff"); }
   if (jumping) Sound.jump();
   jumpQueued = false;
   // goleiro com a bola: não sai da área
-  if (isGK && holding && !C.inArea("pes", mine.team, me.x, me.z)) { const gx = mine.team === "A" ? -F.L : F.L, d = Math.hypot(me.x - gx, me.z) || 1; me.x = gx + (me.x - gx) / d * (F.areaR - 0.05); me.z = me.z / d * (F.areaR - 0.05); }
+  if (isGK && holding && !C.inArea(G.F.id, mine.team, me.x, me.z)) { const gx = mine.team === "A" ? -F.L : F.L, d = Math.hypot(me.x - gx, me.z) || 1; me.x = gx + (me.x - gx) / d * (F.areaR - 0.05); me.z = me.z / d * (F.areaR - 0.05); }
   // corpo a corpo: ninguém atravessa ninguém (os outros jogadores, o goleiro robô e a barreira da falta).
   // Os outros chegam atrasados (100 ms de interpolação + metade do ping deles): a conta usa onde cada um está AGORA
   // (rm.px/pz, calculado em updateRemotes), senão dois jogadores cruzando rápido passam um pelo outro.
@@ -1768,7 +1869,7 @@ function stepFoot(dt, t, frozen) {
   } else me.girando = false;
   me.dFacing = Math.atan2(Math.sin(me.facing - f0), Math.cos(me.facing - f0)); // a bola no pé vira junto (viraComABola)
   me.st.holding = holding; me.st.segura = !!me.segurando;
-  G.meModel.position.set(me.x, me.y, me.z); G.meModel.rotation.y = me.facing;
+  G.meModel.position.set(me.x, me.y, me.z); G.meModel.rotation.y = me.facing + giroDeke(me.dekeT);
   animate(G.meModel, hsp, dt, me.st, myFlags() | (me.downT > 0 ? FL.down : 0));
 }
 // segurar: o adversário mais perto (até 1,3 m, em pé). Quem está segurando eu: adversário com a mão (FL.grab)
@@ -1865,7 +1966,8 @@ function updateRemotes(dt) {
     // perto de mim, o boneco é desenhado na posição de agora (o que eu vejo é o que colide); longe, a interpolada (lisa)
     const perto = G.me && rm.px != null && !isCar() ? clamp((3 - Math.hypot(rm.x - G.me.x, rm.z - G.me.z)) / 1.5, 0, 1) : 0;
     rm.k = lerp(rm.k || 0, perto, Math.min(1, dt * 6));
-    rm.model.position.set(lerp(rm.x, rm.px ?? rm.x, rm.k), rm.y, lerp(rm.z, rm.pz ?? rm.z, rm.k)); rm.model.rotation.y = rm.yaw;
+    rm.giro = rm.f & FL.deke ? Math.min(Math.PI * 2, (rm.giro || 0) + (dt / DEKE_T) * Math.PI * 2) : 0; // o giro do drible dele
+    rm.model.position.set(lerp(rm.x, rm.px ?? rm.x, rm.k), rm.y, lerp(rm.z, rm.pz ?? rm.z, rm.k)); rm.model.rotation.y = rm.yaw + rm.giro;
     if (isCar()) poseCar(rm.model, rm.model.position.x, rm.y, rm.model.position.z, rm.yaw, rm.o);
     if (isCar()) animateCar(rm.model, rm.st, dt, rm.speed, rm.f, rm.o ? 0 : rm.pitch);
     else { rm.st.holding = ballS.snap && ballS.snap.holder === rm.id; rm.st.segura = !!(rm.f & FL.grab); animate(rm.model, rm.speed, dt, rm.st, rm.f); }
@@ -1941,10 +2043,10 @@ function reposicao(k, b) {
   const s = k.s || 1, base = s > 0 ? Math.PI / 2 : -Math.PI / 2;
   if (G.mode === "bots" && k.team) {
     const mates = [...(k.team === "A" ? [{ id: "eu", x: G.me.x, z: G.me.z, vx: G.me.vx, vz: G.me.vz }] : []), ...G.bots.filter((x) => x.team === k.team && x.downT <= 0).map((x) => ({ id: x.id, x: x.x, z: x.z, vx: x.vx, vz: x.vz }))];
-    const r = C.assistPass(k, base + (Math.random() - 0.5) * 1.2, mates, 0.3 + Math.random() * 0.5);
-    C.kick(b, k, r.kind || "passe", r.alvo ? r.power : 0.7, r.yaw); return;
+    const r = C.assistPass(k, base + (Math.random() - 0.5) * 1.2, mates, 0.3 + Math.random() * 0.5, false, G.F);
+    C.kick(b, k, r.kind || "passe", r.alvo ? r.power : 0.7, r.yaw, 0, 0, G.F); return;
   }
-  C.kick(b, k, "passe", 0.6 + Math.random() * 0.3, base + (Math.random() - 0.5) * 0.8);
+  C.kick(b, k, "passe", 0.6 + Math.random() * 0.3, base + (Math.random() - 0.5) * 0.8, 0, 0, G.F);
 }
 // faltas: bola parada num ponto entre 8 e 14 m do gol, barreira de 3 e o goleiro
 function setupFalta() {
@@ -2042,7 +2144,7 @@ function botsKickoff(kicking) {
   Object.assign(local.ball, C.newBall(F));
   for (const team of ["A", "B"]) {
     const list = [...(team === "A" ? [G.me] : []), ...G.bots.filter((x) => x.team === team)];
-    const sp = C.spawns("pes", team, list.map(() => ({})), kicking === team);
+    const sp = C.spawns(G.F.id, team, list.map(() => ({})), kicking === team);
     list.forEach((p, i) => Object.assign(p, { x: sp[i][0], y: 0, z: sp[i][2], vx: 0, vy: 0, vz: 0, onGround: true, facing: sp[i][3], yaw: sp[i][3], slideT: 0, downT: 0, sprint: false }));
   }
   for (const k of G.keepers) Object.assign(k, { z: 0, vx: 0, vy: 0, vz: 0, y: 0, onGround: true, diveT: 0, holdT: 0 });
@@ -2065,12 +2167,12 @@ const doTime = (team, menos) => [...(team === "A" ? [{ id: "eu", x: G.me.x, z: G
 function botChute(bot, t, d, s, power) {
   const F = G.F, b = local.ball, alvoZ = (Math.random() * 2 - 1) * (F.goalW - 0.45);
   const yaw = Math.atan2(-(s * F.L - b.x), -(alvoZ - b.z)) + (Math.random() * 2 - 1) * d.erro;
-  if (!C.kick(b, botBody(bot), "chute", power, yaw, 0, 0)) return false;
+  if (!C.kick(b, botBody(bot), "chute", power, yaw, 0, 0, G.F)) return false;
   bot.lastKick = t; bot.st.kickT = t; const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(power, k, pan); return true;
 }
 function botPasse(bot, t, alvo) {
-  const b = local.ball, yaw = Math.atan2(-(alvo.x - bot.x), -(alvo.z - bot.z)), r = C.assistPass(botBody(bot), yaw, [alvo], 0.45);
-  if (!C.kick(b, botBody(bot), r.kind || "passe", r.power, r.yaw, 0, 0)) return false;
+  const b = local.ball, yaw = Math.atan2(-(alvo.x - bot.x), -(alvo.z - bot.z)), r = C.assistPass(botBody(bot), yaw, [alvo], 0.45, false, G.F);
+  if (!C.kick(b, botBody(bot), r.kind || "passe", r.power, r.yaw, 0, 0, G.F)) return false;
   bot.lastKick = t; bot.st.kickT = t; const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(r.power, k, pan); return true;
 }
 // com a bola: chuta de perto, passa quando apertado (ou de vez em quando, para a frente), senão conduz
@@ -2093,7 +2195,7 @@ function botDecide(bot, t, d, s) {
 }
 function stepBot(bot, dt, t, live) {
   const F = G.F, b = local.ball, d = BOT_DIF[G.bm.dif], s = bot.team === "A" ? 1 : -1;
-  bot.slideT = Math.max(0, bot.slideT - dt); bot.downT = Math.max(0, bot.downT - dt); bot.slideCd = Math.max(0, bot.slideCd - dt);
+  bot.slideT = Math.max(0, bot.slideT - dt); bot.downT = Math.max(0, bot.downT - dt); bot.slideCd = Math.max(0, bot.slideCd - dt); tempoStrikers(bot, dt);
   const busy = bot.slideT > 0 || bot.downT > 0;
   let wx = 0, wz = 0, speed = 0, sprint = false, olha = null;
   if (live && !busy) {
@@ -2109,6 +2211,7 @@ function stepBot(bot, dt, t, live) {
           if (od < 4 && fr > 0.2) { livre = false; const lado = Math.sign(ox * -dz + oz * dx) || 1, k = (4 - od) * 0.35, px = -dz * lado, pz = dx * lado; dx -= px * k; dz -= pz * k; }
         }
         tx = bot.x + dx * 3; tz = bot.z + dz * 3; sprint = livre && Math.random() < 0.97;
+        if (!livre && G.F.strikers && Math.random() < dt * 2.5 * (1 - d.reac)) tentarDeke(bot); // Strikers: gira para fugir do marcador
       } else { tx = bot.x; tz = bot.z; }
     } else if (donoT !== bot.team && bot === G.bm.cacador[bot.team]) {
       const lead = Math.min(0.6, dB / 10); tx = b.x + b.vx * lead; tz = b.z + b.vz * lead; sprint = dB > 3;
@@ -2129,13 +2232,14 @@ function stepBot(bot, dt, t, live) {
     }
     if (bot.slideT <= 0) {
       const dx = tx - bot.x, dz = tz - bot.z, dist = Math.hypot(dx, dz);
-      if (dist > 0.4) { wx = dx / dist; wz = dz / dist; speed = (sprint ? C.SPRINT : C.RUN) * d.vel * clamp(dist / 2, 0.35, 1); }
+      if (dist > 0.4) { wx = dx / dist; wz = dz / dist; speed = (sprint ? C.SPRINT : C.RUN) * d.vel * clamp(dist / 2, 0.35, 1) * velStrikers(bot); }
       if (G.me.segurando === bot) speed *= SEGURADO_VEL;
     }
   }
   bot.sprint = sprint && speed > 0;
   if (busy) { const k = Math.exp(-dt * (bot.downT > 0 ? 6 : 1.6)); bot.vx *= k; bot.vz *= k; }
   C.movePlayer(bot, { x: wx, z: wz, speed, jump: false, free: busy }, dt, F);
+  cercaEletrica(bot, `${bot.team === "A" ? "Seu" : "Bot"} ${bot.name}`);
   const outros = [{ x: G.me.x, z: G.me.z, y: G.me.y, vx: G.me.vx, vz: G.me.vz, sprint: G.me.sprint, caido: G.me.slideT > 0 || G.me.downT > 0 }];
   for (const o of G.bots) if (o !== bot) outros.push({ x: o.x, z: o.z, y: o.y, vx: o.vx, vz: o.vz, sprint: o.sprint, caido: o.slideT > 0 || o.downT > 0 });
   for (const k of G.keepers) outros.push({ x: k.x, z: k.z, y: k.y, vx: k.vx, vz: k.vz, caido: !!k.diveT });
@@ -2155,7 +2259,7 @@ function carrinhosLocais() {
   for (const a of ents) {
     if (!(a.e.slideT > 0) || a.e.downT > 0) continue;
     const hx = a.e.x - Math.sin(a.e.facing) * 0.6, hz = a.e.z - Math.cos(a.e.facing) * 0.6;
-    for (const o of ents) if (o.team !== a.team && !(o.e.downT > 0) && o.e.y < 0.6 && Math.hypot(o.e.x - hx, o.e.z - hz) < 0.85) derrubar(o, a);
+    for (const o of ents) if (o.team !== a.team && !(o.e.downT > 0) && !(o.e.dekeT > 0) && o.e.y < 0.6 && Math.hypot(o.e.x - hx, o.e.z - hz) < 0.85) derrubar(o, a); // no giro do drible, não pega
   }
 }
 function derrubar(o, a) {
@@ -2191,7 +2295,7 @@ function trocarJogador() {
 }
 function animarBots(dt) {
   for (const x of G.bots) {
-    x.model.position.set(x.x, x.y, x.z); x.model.rotation.y = x.facing;
+    x.model.position.set(x.x, x.y, x.z); x.model.rotation.y = x.facing + giroDeke(x.dekeT);
     animate(x.model, Math.hypot(x.vx, x.vz), dt, x.st, (x.sprint ? FL.sprint : 0) | (x.slideT > 0 ? FL.slide : 0) | (x.downT > 0 ? FL.down : 0));
   }
 }
@@ -2304,7 +2408,7 @@ function showAim(me) {
   if (charge && charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F, curveNow(), bolaAqui()); // a seta já mostra a ajudinha
   // carregando o passe: anel embaixo de quem vai receber (muda do mais perto para o mais longe conforme a força)
   let alvo = null;
-  if (charge && charge.kind === "passe" && !isCar()) { const r = C.assistPass(me, ay, mates(), powerOf(charge)); if (r.alvo) { alvo = r.alvo; ay = r.yaw; } }
+  if (charge && charge.kind === "passe" && !isCar()) { const r = C.assistPass(me, ay, mates(), powerOf(charge), false, G.F); if (r.alvo) { alvo = r.alvo; ay = r.yaw; } }
   passMark.visible = !!alvo;
   if (alvo) { passMark.position.set(alvo.x, 0.04, alvo.z); passMark.material.opacity = 0.55 + 0.35 * Math.abs(Math.sin(now() * 8)); }
   aim.visible = true; aim.position.set(me.x - Math.sin(ay) * 1.1, 0.03, me.z - Math.cos(ay) * 1.1); aim.rotation.z = ay + Math.PI / 2;
@@ -2338,12 +2442,13 @@ function hud(t) {
   }
   $("hPow").classList.toggle("hidden", !charge); $("hPowL").classList.toggle("hidden", !charge);
   if (charge) { $("hPow").firstElementChild.style.width = Math.round(powerOf(charge) * 100) + "%"; setH("hPowL", { chute: "Chute", passe: "Passe", cavadinha: "Cavadinha" }[charge.kind]); }
-  $("hSta").classList.toggle("hidden", !G.meModel);
+  $("hSta").classList.toggle("hidden", !G.meModel || (!isCar() && !!G.F.semFolego)); // Strikers: sem fôlego
   if (G.meModel) {
     setH("hStaL", isCar() ? `Turbo · ${Math.round(Math.hypot(me.vx, me.vz) * 3.6)} km/h` : "Fôlego");
     const bar = $("hSta").querySelector("i"); bar.style.width = Math.round((isCar() ? me.boost / 100 : me.stamina) * 100) + "%"; bar.style.background = isCar() ? "#ffb300" : "#7fe3ff";
   }
   setH("hHint", !G.meModel ? "Assistindo · Tab: placar" : isCar() ? "W/S acelerar · A/D virar · Shift turbo<br>Espaço pular (2x: mortal) · Q derrapar · C câmera da bola"
+    : G.F.strikers ? "⚡ STRIKERS · K chute (segure no ataque: Super Chute) · J passe · L cavadinha<br>Espaço com a bola: giro · Rodinha: carrinho · G: item · Shift corre · C câmera"
     : "Setas: mirar · K/clique chute · J/direito passe · L cavadinha · U cruzar<br>R + K/J: colocado · T: trocar · Rodinha: carrinho · F segurar · Shift pique · Espaço pular · C câmera");
   G.feed = G.feed.filter((f) => t - f.at < 8);
   setH("hFeed", G.feed.map((f) => `<div>${f.html}</div>`).join(""));

@@ -11,7 +11,7 @@ const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM =
 const HOLD_MS = 6000, DOWN_MS = 1400;
 const SIDES = { A: "Mandante", B: "Visitante" };
 // bits do "f" (o que o jogador está fazendo), iguais aos do navegador
-const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128 }; // grab: segurando alguém
+const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, deke: 256 }; // deke: drible com giro (Strikers) // grab: segurando alguém
 const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
@@ -33,8 +33,9 @@ module.exports = function attachPelada(io) {
     size: clamp(int(c.size, 2), 1, MAX_TEAM),
     minutes: [3, 5, 8].includes(int(c.minutes, 5)) ? int(c.minutes, 5) : 5,
     arena: C.ARENAS[c.arena] ? c.arena : "society", // quadra escolhida pelo organizador (todo mundo vê a mesma)
+    estilo: c.estilo === "strikers" ? "strikers" : "futsal", // a pé: futsal ou Strikers (arcade, com itens e Super Chute)
   });
-  const F = (room) => C.MODES[room.config.mode];
+  const F = (room) => C.campoDe(room.config.mode, room.config.estilo);
   const teamOf = (room, t) => room.order.map((id) => room.players[id]).filter((p) => p.team === t);
   function log(room, text) { room.feed.push({ t: Date.now(), text }); if (room.feed.length > 30) room.feed.splice(0, room.feed.length - 30); }
 
@@ -72,7 +73,7 @@ module.exports = function attachPelada(io) {
     m.phase = "ready"; m.until = Date.now() + READY_MS; m.kickoff++; m.last = [];
     room.ball = C.newBall(F(room));
     for (const t of ["A", "B"]) {
-      const list = teamOf(room, t), sp = C.spawns(room.config.mode, t, list, t === kicking);
+      const list = teamOf(room, t), sp = C.spawns(F(room).id, t, list, t === kicking);
       list.forEach((p, i) => { p.spawn = sp[i]; p.pos = { x: sp[i][0], y: 0, z: sp[i][2], vx: 0, vy: 0, vz: 0, yaw: sp[i][3], pitch: 0, f: 0 }; p.downUntil = 0; });
     }
     broadcast(room);
@@ -111,13 +112,13 @@ module.exports = function attachPelada(io) {
   const bodyOf = (room, p, now) => {
     const f = p.pos.f | 0, down = p.downUntil > now, ag = clamp((now - (p.pos.at || now)) / 1000, 0, 0.1);
     return { id: p.id, kind: room.config.mode === "carros" ? "car" : "pe", x: p.pos.x + p.pos.vx * ag, y: p.pos.y, z: p.pos.z + p.pos.vz * ag, vx: p.pos.vx, vy: p.pos.vy, vz: p.pos.vz, yaw: p.pos.yaw,
-      sprint: f & FL.sprint, slide: (f & FL.slide) || down, dive: f & FL.dive, flip: f & FL.flip,
+      sprint: f & FL.sprint, slide: (f & FL.slide) || (f & FL.down) || down, dive: f & FL.dive, flip: f & FL.flip,
       conduz: true, chutou: now - p.lastKick < 350 }; // conduz: a bola fica no pé (campo.js); logo depois do chute, solta
   };
   // goleiro: pega a bola que chega perto dentro da área (se não vier forte demais), segura até 6 s e solta com chute ou passe
   function keepers(room, now) {
-    const b = room.ball, mode = room.config.mode;
-    if (mode !== "pes") return;
+    const b = room.ball, mode = F(room).id;
+    if (room.config.mode !== "pes") return;
     if (b.holder) {
       const k = room.players[b.holder];
       const keep = k && k.sockets.size && k.downUntil <= now && C.inArea(mode, k.team, k.pos.x, k.pos.z) && now - k.holdSince < HOLD_MS;
@@ -149,7 +150,7 @@ module.exports = function attachPelada(io) {
       const fx = -Math.sin(s.pos.yaw), fz = -Math.cos(s.pos.yaw), hx = s.pos.x + fx * 0.6, hz = s.pos.z + fz * 0.6;
       for (const oid of room.order) {
         const o = room.players[oid];
-        if (o === s || !o.team || o.team === s.team || o.downUntil > now || room.ball.holder === o.id) continue;
+        if (o === s || !o.team || o.team === s.team || o.downUntil > now || room.ball.holder === o.id || ((o.pos.f | 0) & FL.deke)) continue; // no giro do drible, não pega
         if (Math.hypot(o.pos.x - hx, o.pos.z - hz) < 0.85 && o.pos.y < 0.6) {
           o.downUntil = now + DOWN_MS;
           nsp.to(room.code).emit("caiu", { id: o.id, by: s.id });
@@ -327,7 +328,8 @@ module.exports = function attachPelada(io) {
         if (by < 0.6 && Math.hypot(bx - me.pos.x, bz - me.pos.z) < 1.6 && Math.hypot(bx - b.x, bz - b.z) < 2.5)
           Object.assign(b, { x: clamp(bx, -Fm.L - Fm.goalD, Fm.L + Fm.goalD), y: clamp(by, Fm.ballR, 0.6), z: clamp(bz, -Fm.W, Fm.W), vx: clamp(bvx, -14, 14), vy: clamp(bvy, -8, 8), vz: clamp(bvz, -14, 14), sp: 0, dono: me.id });
       }
-      me.pos.f = int(d.f, 0) & (FL.sprint | FL.charge | FL.slide | FL.dive | FL.flip | FL.boost | FL.grab);
+      me.pos.f = int(d.f, 0) & (FL.sprint | FL.charge | FL.slide | FL.dive | FL.flip | FL.boost | FL.grab | FL.down | FL.deke); // down: choque na cerca (Strikers)
+      if (room.config.estilo !== "strikers") me.pos.f &= ~FL.deke;
       if (room.config.mode !== "pes") me.pos.f &= ~FL.grab; // segurar é só a pé
       if (!me.gk) me.pos.f &= ~FL.dive;
     });
@@ -346,7 +348,7 @@ module.exports = function attachPelada(io) {
         const [bx, by, bz] = d.bola;
         if (by < 0.6 && Math.hypot(bx - room.ball.x, bz - room.ball.z) < 2.5 && Math.hypot(bx - me.pos.x, bz - me.pos.z) < 1.6) Object.assign(room.ball, { x: bx, y: Math.max(F(room).ballR, by), z: bz });
       }
-      const how = C.kick(room.ball, { ...me.pos, id: me.id }, kind, d.power, d.yaw, slack, fin(d.curve) ? d.curve : 0);
+      const how = C.kick(room.ball, { ...me.pos, id: me.id }, kind, d.power, d.yaw, slack, fin(d.curve) ? d.curve : 0, F(room));
       if (!how) return;
       me.lastKick = now;
       if (how === "mao") me.noCatch = now + 800;
