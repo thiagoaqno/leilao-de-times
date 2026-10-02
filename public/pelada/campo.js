@@ -11,7 +11,7 @@
     // estilo Strikers (a pé, arcade): campo maior com cerca elétrica em volta, gols maiores, bola mais solta (rola mais e
     // flutua um pouco nos lançamentos), jogadores mais rápidos e sem fôlego, e posse firme (só o carrinho tira a bola)
     strikers: { id: "strikers", pe: true, strikers: true, L: 24, W: 15, goalW: 2.6, goalH: 2.3, goalD: 1.4, ballR: 0.17, wallH: 3.2, ceil: 14, g: 9.81, wallE: 0.78,
-      postR: 0.07, areaR: 7, circle: 4, gBola: 17, drag: 0.35, bounce: 0.5, roll: 0.75, curva: 0.035, vel: 1.15, posseFirme: true, cerca: true },
+      postR: 0.07, areaR: 7, circle: 4, gBola: 17, drag: 0.35, bounce: 0.5, roll: 0.75, curva: 0.035, vel: 1.15, molinho: true, posseFirme: true, cerca: true },
     // carros: física da bola do Rocket League (parâmetros da Psyonix convertidos de uu para metros: 1 uu = 1 cm):
     // gravidade 650 uu/s², quique 0,6, atrito 0,35 com giro, arrasto linear 0,0305/s, até 6000 uu/s e 6 rad/s
     carros: { id: "carros", L: 40, W: 27, goalW: 7, goalH: 5.5, goalD: 4, ballR: 1.25, wallH: 18, ceil: 18, g: 6.5, bounce: 0.6, roll: 0, drag: 0.0305, wallE: 0.6, postR: 0.3, areaR: 14, circle: 9,
@@ -111,8 +111,25 @@
   // ---------- jogador a pé ----------
   const RUN = 6.4, SPRINT = 8.4, CHARGING = 4.2, ACC = 34, AIR_ACC = 8, JUMP = 4.6;
   // p: {x,y,z,vx,vy,vz,onGround}; wish: {x, z} (direção no mundo, comprimento 0..1), speed, jump
+  // Strikers "molinho": o tronco é uma mola presa no quadril. A aceleração do corpo empurra o tronco para o lado
+  // contrário (inércia): x'' = -k·x - c·x' - a. Em aceleração constante ele fica parado num ponto (x = -a/k); o que
+  // atrapalha é o BALANÇO, a distância até esse ponto de equilíbrio, que aparece quando a aceleração muda de repente
+  // (virada brusca, freada, meia-volta). Enquanto o tronco balança, o pé tem menos aderência: acelera até 40% menos (só a
+  // aceleração; a velocidade máxima não muda), e isso some em ~0,3 s quando o tronco assenta.
+  const GINGA = { k: 40, c: 9, max: 1.1, acc: 0.4 };
+  function balancoTronco(p) { return Math.min(1, Math.hypot((p.gx || 0) + (p.gax || 0) / GINGA.k, (p.gz || 0) + (p.gaz || 0) / GINGA.k) / GINGA.max); }
+  function passoTronco(p, ax, az, dt) {
+    p.gax = ax; p.gaz = az;
+    const n = Math.max(1, Math.ceil(dt / (1 / 120))), h = dt / n;
+    for (let i = 0; i < n; i++) {
+      p.gvx = (p.gvx || 0) + (-GINGA.k * (p.gx || 0) - GINGA.c * (p.gvx || 0) - ax) * h; p.gx = (p.gx || 0) + p.gvx * h;
+      p.gvz = (p.gvz || 0) + (-GINGA.k * (p.gz || 0) - GINGA.c * (p.gvz || 0) - az) * h; p.gz = (p.gz || 0) + p.gvz * h;
+    }
+    p.balanco = (p.balanco || 0) + (balancoTronco(p) - (p.balanco || 0)) * Math.min(1, dt * 12); // suavizado
+  }
   function movePlayer(p, wish, dt, F = MODES.pes) {
-    const acc = p.onGround ? ACC : AIR_ACC;
+    const bal = F.molinho ? p.balanco || 0 : 0, v0x = p.vx, v0z = p.vz;
+    const acc = (p.onGround ? ACC : AIR_ACC) * (1 - GINGA.acc * bal);
     const tx = wish.x * wish.speed, tz = wish.z * wish.speed;
     const dx = tx - p.vx, dz = tz - p.vz, d = Math.hypot(dx, dz), m = acc * dt;
     if (!wish.free) { if (d <= m) { p.vx = tx; p.vz = tz; } else { p.vx += (dx / d) * m; p.vz += (dz / d) * m; } }
@@ -126,6 +143,7 @@
     if (p.x < -lx) { bx = -1; bv = Math.max(bv, -p.vx); p.x = -lx; p.vx = 0; } if (p.x > lx) { bx = 1; bv = Math.max(bv, p.vx); p.x = lx; p.vx = 0; }
     if (p.z < -lz) { bz = -1; bv = Math.max(bv, -p.vz); p.z = -lz; p.vz = 0; } if (p.z > lz) { bz = 1; bv = Math.max(bv, p.vz); p.z = lz; p.vz = 0; }
     p.bateu = bv > 0 ? { nx: bx, nz: bz, v: bv } : null;
+    if (F.molinho && dt > 0) passoTronco(p, wish.free ? 0 : (p.vx - v0x) / dt, wish.free ? 0 : (p.vz - v0z) / dt, dt);
   }
 
   // ---------- carro (estilo Rocket League) ----------
