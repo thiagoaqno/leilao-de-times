@@ -218,6 +218,28 @@ button.primary:active:not(:disabled){box-shadow:inset 0 1px 0 #ffffff26,0 1px 0 
   .hand{gap:7px}
 }
 
+/* placar com vários jogadores (cada um por si) */
+.hud.multi{display:flex;flex-wrap:wrap;justify-content:center}
+.hud.multi .tscore{flex:1 1 130px;max-width:220px}
+.hud.multi .tscore.me{box-shadow:0 0 0 2px var(--tc)}
+/* monte (pedras para comprar) */
+.monte{position:absolute;z-index:5;display:flex;align-items:center;gap:6px;pointer-events:none}
+.monte .pilha{position:relative;width:24px;height:40px}
+.monte .pilha .tile{--u:12px;position:absolute;left:0}
+.monte b{font-size:12px;background:#000b;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.voa{position:fixed;z-index:40;pointer-events:none}
+/* passou: o punho bate duas vezes na mesa (toc, toc), com ondinhas, e o avatar treme */
+.knock{position:absolute;z-index:9;font-size:30px;pointer-events:none;transform:translate(-50%,-50%);animation:knock .62s ease-in-out;filter:drop-shadow(0 4px 4px #0009)}
+@keyframes knock{0%{transform:translate(-50%,-110%) scale(.8);opacity:0}12%{opacity:1}22%{transform:translate(-50%,-50%) scale(1)}36%{transform:translate(-50%,-105%) scale(1.05)}50%{transform:translate(-50%,-50%) scale(1)}80%{transform:translate(-50%,-75%);opacity:1}100%{transform:translate(-50%,-90%);opacity:0}}
+.ripple{position:absolute;z-index:8;width:16px;height:16px;border-radius:50%;border:3px solid #fff8;transform:translate(-50%,-50%);pointer-events:none;animation:ripple .55s ease-out forwards}
+@keyframes ripple{from{width:12px;height:12px;opacity:1}to{width:84px;height:84px;opacity:0}}
+.seat .av.shake{animation:shake .5s}
+@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-4px) rotate(-6deg)}40%{transform:translateX(4px) rotate(6deg)}60%{transform:translateX(-3px) rotate(-4deg)}80%{transform:translateX(2px)}}
+.seat .backs .mais{font-size:11px;font-weight:800;background:#000b;padding:0 6px;border-radius:999px;align-self:center}
+.modes{display:grid;gap:8px}
+.modes button{text-align:left;display:block;width:100%}
+.modes button.on{background:var(--pip)!important;color:var(--ivory)!important;border-color:var(--pip)!important}
+.modes button small{display:block;font-weight:500;font-size:12.5px;opacity:.8;margin-top:2px}
 .modal{position:fixed;inset:0;background:#000a;display:grid;place-items:center;z-index:50;padding:16px}
 .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;max-width:620px;width:100%;max-height:88vh;overflow:auto}
 .modal h2{font-size:26px;margin-bottom:8px}
@@ -247,7 +269,7 @@ button.primary:active:not(:disabled){box-shadow:inset 0 1px 0 #ffffff26,0 1px 0 
     <div class="hero">
       <div>
         <h2>Bateu,<br>lá-e-lô!</h2>
-        <p class="lead">Dominó de dupla, do jeito da praça: 4 jogadores, 7 peças para cada, parceiro de frente. Batida, carroça, lá-e-lô e cruzada valem pontos diferentes. Quem fizer 6 primeiro leva.</p>
+        <p class="lead">Dominó do jeito da praça: de dupla (parceiro de frente), cada um por si (2 a 4, com compra do monte) ou burrinho (3 pedras, até 6 jogadores). Batida, carroça, lá-e-lô e cruzada valem pontos diferentes. Quem fizer 6 primeiro leva.</p>
         <div class="heroart" id="heroart"></div>
       </div>
       <div class="card-ui pedra">
@@ -272,7 +294,7 @@ button.primary:active:not(:disabled){box-shadow:inset 0 1px 0 #ffffff26,0 1px 0 
   <section id="lobby" class="hidden">
     <div class="lobby">
       <div class="card-ui pedra">
-        <h2>Duplas</h2>
+        <h2 id="seatsTitle">Duplas</h2>
         <div id="seats"></div>
         <div id="myPick" class="hidden" style="margin-top:18px"><label>Seu avatar</label><div class="picker" id="pawnPick"></div></div>
       </div>
@@ -304,7 +326,7 @@ button.primary:active:not(:disabled){box-shadow:inset 0 1px 0 #ffffff26,0 1px 0 
         <b>2</b><span><b style="font-size:14px;color:var(--text);font-family:var(--body);font-weight:800">Carroça</b>: bateu com uma peça dobrada (5|5, 2|2…).</span>
         <b>3</b><span><b style="font-size:14px;color:var(--text);font-family:var(--body);font-weight:800">Lá-e-lô</b>: a última peça serve nas duas pontas (pontas 3 e 5, bateu com 3|5).</span>
         <b>4</b><span><b style="font-size:14px;color:var(--text);font-family:var(--body);font-weight:800">Cruzada</b>: bateu de carroça servindo nas duas pontas (pontas 4 e 4, bateu com 4|4).</span>
-        <b>1</b><span><b style="font-size:14px;color:var(--text);font-family:var(--body);font-weight:800">Fechou</b>: ninguém consegue jogar. A dupla com menos pontos nas mãos marca 1.</span></div></div>
+        <b>1</b><span><b style="font-size:14px;color:var(--text);font-family:var(--body);font-weight:800">Fechou</b>: ninguém consegue jogar (nem comprar). Quem tiver menos pontos nas mãos (a dupla, ou o jogador) marca 1.</span></div></div>
       <div class="card-ui"><h3>Acontecendo</h3><div class="log" id="log"></div></div>
     </div>
   </section>
@@ -333,6 +355,19 @@ function act(type, data = {}) { return new Promise((res) => socket.emit("act", {
 function show(id) { for (const s of ["home", "lobby", "game"]) $(s).classList.toggle("hidden", s !== id); }
 const myTeam = () => (me() ? me().team : 0);
 const teamLabel = (t) => (me() ? (t === myTeam() ? "Nós" : "Eles") : `Dupla ${t + 1}`);
+// "lado" = quem marca ponto: na dupla, a dupla; cada um por si (individual e burrinho), o próprio jogador
+const isDupla = () => !S || S.config.mode === "dupla";
+const mySide = () => (me() ? me().side : isDupla() ? 0 : -1);
+const SIDE_COLS = ["#ff8a3d", "#4fb0ff", "#6ee7a0", "#e879f9", "#facc15", "#f87171"];
+const sideColor = (s) => (isDupla() ? `var(--t${s})` : SIDE_COLS[s % SIDE_COLS.length]);
+const sidePlayer = (s) => S.players.find((p) => p.side === s);
+const sideLabel = (s) => (isDupla() ? teamLabel(s) : me() && s === mySide() ? "Você" : h(sidePlayer(s)?.name || "?"));
+const MODOS = {
+  dupla: { nome: "👥 Dupla", info: "4 jogadores, 2 contra 2, parceiro de frente. 7 pedras para cada, sem monte.", min: 4, max: 4 },
+  individual: { nome: "🙋 Cada um por si", info: "2 a 4 jogadores, 7 pedras para cada. Com 2 ou 3 sobra monte: com a compra ligada, quem não tem pedra que sirva compra até poder jogar.", min: 2, max: 4 },
+  burrinho: { nome: "🫏 Burrinho", info: "2 a 6 jogadores, só 3 pedras para cada! Quem não tem pedra que sirva compra do monte. Quem fica com mais pontos na mão quando alguém bate é o burrinho.", min: 2, max: 6 },
+};
+const abreTxt = (o) => (o ? (o.a === 6 && o.b === 6 ? "a carroça de sena (6|6)" : `${o.a}|${o.b}${o.a === o.b ? " (a maior carroça)" : ""}`) : "");
 
 // ---------- sons ----------
 const Sound = (() => {
@@ -430,13 +465,15 @@ function render() {
 
 // ---------- sala de espera ----------
 function renderLobby() {
-  const m = me(), isHost = m && S.host === m.id, c = S.config, n = S.players.length;
+  const m = me(), isHost = m && S.host === m.id, c = S.config, n = S.players.length, modo = MODOS[c.mode] || MODOS.dupla, dup = c.mode === "dupla";
   const t = [0, 1].map((k) => S.players.filter((p) => p.team === k));
   const seat = (p) => `<div class="lseat"><div class="av">${p.pawn}</div><div class="grow"><b>${h(p.name)}</b><small><span class="dot ${p.online ? "" : "off"}"></span>${p.id === S.host ? "organizador" : p.online ? "pronto" : "desconectado"}${m && p.id === m.id ? " · você" : ""}</small></div>
-    ${m && (p.id === m.id || isHost) ? `<button class="small" data-team="${p.id}" title="Trocar de dupla">⇄</button>` : ""}
+    ${dup && m && (p.id === m.id || isHost) ? `<button class="small" data-team="${p.id}" title="Trocar de dupla">⇄</button>` : ""}
     ${isHost && p.id !== m.id ? `<button class="small ghost" data-kick="${p.id}" title="Tirar da mesa">✕</button>` : ""}</div>`;
-  $("seats").innerHTML = `<div class="teams">${[0, 1].map((k) => `<div class="team t${k}"><h3><i></i>Dupla ${k + 1}</h3>${t[k].map(seat).join("")}${Array.from({ length: Math.max(0, 2 - t[k].length) }, () => `<div class="lseat empty">lugar vago</div>`).join("")}</div>`).join("")}</div>
-    ${isHost ? `<div class="row" style="margin-top:10px"><button class="small" id="btnShuffle">🎲 Sortear duplas</button><span class="hint" style="margin:0">Cada um pode trocar de dupla no ⇄. Na mesa, o parceiro senta de frente.</span></div>` : ""}`;
+  $("seatsTitle").textContent = dup ? "Duplas" : "Jogadores";
+  $("seats").innerHTML = dup ? `<div class="teams">${[0, 1].map((k) => `<div class="team t${k}"><h3><i></i>Dupla ${k + 1}</h3>${t[k].map(seat).join("")}${Array.from({ length: Math.max(0, 2 - t[k].length) }, () => `<div class="lseat empty">lugar vago</div>`).join("")}</div>`).join("")}</div>
+    ${isHost ? `<div class="row" style="margin-top:10px"><button class="small" id="btnShuffle">🎲 Sortear duplas</button><span class="hint" style="margin:0">Cada um pode trocar de dupla no ⇄. Na mesa, o parceiro senta de frente.</span></div>` : ""}`
+    : `${S.players.map(seat).join("")}${Array.from({ length: Math.max(0, modo.max - n) }, () => `<div class="lseat empty">lugar vago</div>`).join("")}<p class="hint">A ordem na mesa é sorteada no começo.</p>`;
   $("seats").querySelectorAll("[data-kick]").forEach((b) => (b.onclick = () => act("kick", { id: b.dataset.kick })));
   $("seats").querySelectorAll("[data-team]").forEach((b) => (b.onclick = () => act("team", { id: b.dataset.team })));
   if ($("btnShuffle")) $("btnShuffle").onclick = () => act("shuffleTeams");
@@ -447,30 +484,45 @@ function renderLobby() {
   }
   const dis = isHost ? "" : "disabled";
   $("cfg").innerHTML = `
-    <label>Jogo até</label>
-    <select id="cTarget" ${dis}>${[[4, "4 pontos (rapidinho)"], [6, "6 pontos (padrão)"], [10, "10 pontos"]].map(([v, l]) => `<option value="${v}" ${v === c.target ? "selected" : ""}>${l}</option>`).join("")}</select>
+    <label>Jeito de jogar</label>
+    <div class="modes">${Object.entries(MODOS).map(([k, x]) => `<button data-mode="${k}" class="${c.mode === k ? "on" : ""}" ${dis}>${x.nome}<small>${x.info}</small></button>`).join("")}</div>
+    ${c.mode === "individual" ? `<div class="field"><label>Compra do monte (com 2 ou 3 jogadores)</label>
+    <select id="cCompra" ${dis}><option value="1" ${c.compra ? "selected" : ""}>Com compra: quem não tem pedra que sirva compra</option><option value="0" ${c.compra ? "" : "selected"}>Sem compra: não serviu, passa</option></select></div>` : ""}
+    <div class="field"><label>Jogo até</label>
+    <select id="cTarget" ${dis}>${[[4, "4 pontos (rapidinho)"], [6, "6 pontos (padrão)"], [10, "10 pontos"]].map(([v, l]) => `<option value="${v}" ${v === c.target ? "selected" : ""}>${l}</option>`).join("")}</select></div>
     <div class="field"><label>Tempo por jogada</label>
     <select id="cTimer" ${dis}>${[20, 30, 45].map((v) => `<option value="${v}" ${v === c.timer ? "selected" : ""}>${v} segundos</option>`).join("")}</select></div>
-    <p class="hint">Quem não tem peça que sirva passa sozinho (toc, toc). A primeira mão começa com a carroça de sena (6|6); as outras, com quem bateu.</p>`;
+    <p class="hint">Quem não tem peça que sirva${c.mode === "burrinho" || (c.mode === "individual" && c.compra) ? " compra do monte (enquanto tiver) ou" : ""} passa sozinho (toc, toc). A primeira mão começa com a maior carroça (a de sena, 6|6, se não estiver no monte); as outras, com quem bateu.</p>`;
   const send = (patch) => act("config", { config: { ...S.config, ...patch } });
+  $("cfg").querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => send({ mode: b.dataset.mode })));
+  if ($("cCompra")) $("cCompra").onchange = (e) => send({ compra: e.target.value === "1" });
   $("cTarget").onchange = (e) => send({ target: +e.target.value });
   $("cTimer").onchange = (e) => send({ timer: +e.target.value });
   let why = "";
-  if (n < 4) why = `Faltam ${4 - n} para fechar a mesa.`;
-  else if (t[0].length !== 2) why = "Deixe 2 jogadores em cada dupla.";
+  if (dup) { if (n < 4) why = `Faltam ${4 - n} para fechar a mesa.`; else if (n > 4) why = "A dupla é com 4 jogadores: tire alguém ou mude o jeito de jogar."; else if (t[0].length !== 2) why = "Deixe 2 jogadores em cada dupla."; }
+  else if (n < modo.min) why = "Espere pelo menos mais uma pessoa.";
+  else if (n > modo.max) why = `${modo.nome.replace(/^\S+ /, "")} é até ${modo.max} jogadores.`;
   $("startBox").innerHTML = isHost
-    ? `<button class="primary" id="btnStart" style="width:100%;font-size:19px;padding:14px" ${why ? "disabled" : ""}>Embaralhar as pedras</button><p class="hint">${why || "Tudo pronto: 2 contra 2, parceiro de frente."}</p>`
+    ? `<button class="primary" id="btnStart" style="width:100%;font-size:19px;padding:14px" ${why ? "disabled" : ""}>Embaralhar as pedras</button><p class="hint">${why || (dup ? "Tudo pronto: 2 contra 2, parceiro de frente." : `Tudo pronto: ${n} jogadores, cada um por si.`)}</p>`
     : `<p class="muted" style="margin:0">Esperando o organizador começar…</p>`;
   if ($("btnStart")) $("btnStart").onclick = () => act("start");
 }
 
 // ---------- placar ----------
 function renderHud() {
+  const hd = S.hand, monte = hd && hd.compra ? ` · 🀫 monte ${hd.dorme}` : "";
+  if (!isDupla()) { // cada um por si: um placar para cada jogador
+    $("hud").className = "hud multi";
+    $("hud").innerHTML = S.players.slice().sort((a, b) => a.side - b.side).map((p) => `<div class="tscore ${me() && p.id === me().id ? "me" : ""}" style="--tc:${sideColor(p.side)}"><div class="pt num">${S.score[p.side] ?? 0}</div><div class="who"><b>${p.pawn} ${h(p.name)}</b><small>${me() && p.id === me().id ? "você" : `${p.count} na mão`}</small></div></div>`).join("")
+      + `<div class="hmid"><b>até ${S.config.target}</b><small>${hd ? `Mão ${hd.no}` : ""}${monte}</small></div>`;
+    return;
+  }
+  $("hud").className = "hud";
   const box = (t, right) => {
     const ps = S.players.filter((p) => p.team === t);
     return `<div class="tscore ${right ? "right" : ""}" style="--tc:var(--t${t})"><div class="pt num">${S.score[t]}</div><div class="who"><b>${teamLabel(t)}</b><small>${ps.map((p) => `${p.pawn} ${h(p.name)}`).join(" · ")}</small></div></div>`;
   };
-  $("hud").innerHTML = `${box(myTeam(), false)}<div class="hmid"><b>até ${S.config.target}</b><small>${S.hand ? `Mão ${S.hand.no}` : ""}</small></div>${box(1 - myTeam(), true)}`;
+  $("hud").innerHTML = `${box(myTeam(), false)}<div class="hmid"><b>até ${S.config.target}</b><small>${hd ? `Mão ${hd.no}` : ""}${monte}</small></div>${box(1 - myTeam(), true)}`;
 }
 
 // ---------- corrente de peças ----------
@@ -513,7 +565,7 @@ function layoutChain(chain, extra) {
 function renderBoard() {
   const hd = S.hand, el = $("board");
   if (!hd) { el.innerHTML = ""; return; }
-  if (!hd.chain) { const st = P(hd.starter); el.innerHTML = `<div class="empty">${hd.mustOpen != null ? `${st ? h(st.name) : ""} abre com a carroça de sena (6|6)` : `${st ? h(st.name) : ""} começa com qualquer pedra`}</div>`; return; }
+  if (!hd.chain) { const st = P(hd.starter); el.innerHTML = `<div class="empty">${hd.mustOpen != null ? `${st ? h(st.name) : ""} abre com ${abreTxt(hd.open)}` : `${st ? h(st.name) : ""} começa com qualquer pedra`}</div>`; return; }
   const W = el.clientWidth, H = el.clientHeight, ratio = W / Math.max(1, H);
   LIM = ratio < 0.8 ? 4 : ratio < 1.25 ? 6 : 8;
   // peça escolhida que serve nas duas pontas: mostra onde ela ficaria em cada lado
@@ -541,13 +593,26 @@ let placedSeen = null;
 window.addEventListener("resize", () => { if (S && S.hand) renderBoard(); });
 
 // ---------- lugares ----------
+// Lugares em volta da mesa: eu embaixo e a vez passa para a direita. Com n jogadores, cada um num ângulo (360/n) e
+// projetado na beira retangular da mesa; a beira (k0 embaixo, k1 direita, k2 em cima, k3 esquerda) decide para que
+// lado ficam as pedras.
+function seatPos(k, n) {
+  const a = (k * 2 * Math.PI) / n, sx = Math.sin(a), sy = Math.cos(a), m = Math.max(Math.abs(sx), Math.abs(sy));
+  const edge = Math.abs(sy) >= Math.abs(sx) - 1e-6 ? (sy > 0 ? 0 : 2) : sx > 0 ? 1 : 3;
+  return { x: 50 + (50 * sx) / m, y: 50 + (50 * sy) / m, edge };
+}
+// o monte vai no canto da mesa mais longe de todos os lugares
+function monteCanto(n) {
+  const seats = Array.from({ length: n }, (_, k) => seatPos(k, n));
+  const cantos = [[3, 3, "left:16px;top:14px"], [97, 3, "right:16px;top:14px"], [3, 97, "left:16px;bottom:14px"], [97, 97, "right:16px;bottom:14px"]];
+  return cantos.map(([x, y, css]) => ({ css, d: Math.min(...seats.map((s) => Math.hypot(s.x - x, s.y - y))) })).sort((a, b) => b.d - a.d)[0].css;
+}
 function renderSeats() {
   const hd = S.hand; if (!hd) return;
-  const m = me(), mi = m ? S.players.findIndex((p) => p.id === m.id) : 0;
-  const POS = [[50, 100], [100, 50], [50, 0], [0, 50]]; // eu embaixo, a vez passa para a direita
+  const n = S.players.length, m = me(), mi = m ? S.players.findIndex((p) => p.id === m.id) : 0;
   const dl = S.deadline, done = S.phase !== "playing";
   $("seatsLayer").innerHTML = S.players.map((p, i) => {
-    const k = (i - mi + 4) % 4, [x, y] = POS[k], turn = hd.turn === p.id;
+    const { x, y, edge: k } = seatPos((i - mi + n) % n, n), turn = hd.turn === p.id;
     const ring = dl && dl.who === p.id && !done ? `<svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16.5" fill="none" stroke="#f5b93c" stroke-width="2.5" stroke-linecap="round" pathLength="100" stroke-dasharray="100" class="tring"/></svg>` : "";
     // as pedras ficam paralelas à beira da mesa, do lado de dentro: em pé em cima/embaixo, deitadas nas laterais
     const side = k === 1 || k === 3, o = side ? "h" : "v";
@@ -555,25 +620,26 @@ function renderSeats() {
     if (done && hd.reveal && hd.reveal[p.id]) {
       const ts = hd.reveal[p.id], sum = ts.reduce((s, t) => s + t.a + t.b, 0);
       extra = `<div class="stack"><div class="reveal">${ts.map((t) => tileHTML(t.a, t.b, o)).join("")}</div>${ts.length ? `<div class="sum">${sum} ${sum === 1 ? "ponto" : "pontos"}</div>` : `<div class="sum">bateu!</div>`}</div>`;
-    } else if (k !== 0 || !m) extra = `<div class="backs">${Array.from({ length: p.count }, () => backHTML(o)).join("")}</div>`;
-    return `<div class="seat k${k} ${turn && !done ? "turn" : ""} ${p.online ? "" : "off"}" id="seat-${p.id}" style="left:${x}%;top:${y}%;--tc:var(--t${p.team})">
+    } else if (p.id !== (m && m.id)) { const MAXV = 10; extra = `<div class="backs">${Array.from({ length: Math.min(MAXV, p.count) }, () => backHTML(o)).join("")}${p.count > MAXV ? `<span class="mais">+${p.count - MAXV}</span>` : ""}</div>`; }
+    return `<div class="seat k${k} ${turn && !done ? "turn" : ""} ${p.online ? "" : "off"}" id="seat-${p.id}" style="left:${x}%;top:${y}%;--tc:${sideColor(isDupla() ? p.team : p.side)}">
       <div class="who"><div class="av">${p.pawn}${ring}</div><div class="nm">${h(p.name)}</div></div>${extra}</div>`;
-  }).join("");
+  }).join("") + (hd.compra && !done ? `<div class="monte" id="monte" style="${monteCanto(n)}"><div class="pilha">${Array.from({ length: Math.min(5, hd.dorme) }, (_, i) => backHTML("v").replace('class="tile v back"', `class="tile v back" style="top:${-i * 2}px;left:${i}px"`)).join("")}</div><b>🀫 ${hd.dorme} no monte</b></div>` : "");
 }
 function renderOver() {
   const el = $("overBox"), hd = S.hand;
   if (S.phase === "ended") {
-    const t = S.winner, mine = me() && me().team === t, r = hd && hd.result;
-    el.innerHTML = `<div class="over"><div><div class="t">${me() ? (mine ? "GANHAMOS!" : "PERDEMOS…") : `DUPLA ${t + 1} VENCEU`}</div>
-      <p style="font-size:18px;font-weight:800;margin:10px 0">${S.players.filter((p) => p.team === t).map((p) => `${p.pawn} ${h(p.name)}`).join(" & ")}</p>
-      <p class="muted">${S.score[0]} × ${S.score[1]}${r ? ` · ${h(r.why)}` : ""}</p>
+    const t = S.winner, mine = me() && mySide() === t, r = hd && hd.result, dup = isDupla();
+    const titulo = dup ? (me() ? (mine ? "GANHAMOS!" : "PERDEMOS…") : `DUPLA ${t + 1} VENCEU`) : mine ? "VOCÊ GANHOU!" : `${h(sidePlayer(t)?.name || "?").toUpperCase()} VENCEU`;
+    el.innerHTML = `<div class="over"><div><div class="t">${titulo}</div>
+      <p style="font-size:18px;font-weight:800;margin:10px 0">${S.players.filter((p) => (dup ? p.team : p.side) === t).map((p) => `${p.pawn} ${h(p.name)}`).join(" & ")}</p>
+      <p class="muted">${dup ? `${S.score[0]} × ${S.score[1]}` : S.players.slice().sort((a, b) => S.score[b.side] - S.score[a.side]).map((p) => `${h(p.name)} ${S.score[p.side]}`).join(" · ")}${r ? ` · ${h(r.why)}` : ""}</p>
       ${me() && S.host === me().id ? `<button class="primary" id="bAgain">Jogar de novo</button>` : `<p class="muted">Esperando o organizador…</p>`}<div style="margin-top:10px"><button onclick="location.href='/'">🏠 Voltar ao lobby</button></div></div></div>`;
     if ($("bAgain")) $("bAgain").onclick = () => act("restart");
     return;
   }
   if (S.phase === "handEnd" && hd && hd.result) {
     const r = hd.result, big = { "Lá-e-lô": "LÁ-E-LÔ!", Cruzada: "CRUZADA!", "Carroça": "DE CARROÇA!", Batida: "BATEU!", Fechado: "FECHOU!" }[r.kind] || "";
-    el.innerHTML = `<div class="banner"><div class="t" style="color:${r.team < 0 ? "#eee" : `var(--t${r.team})`}">${big}</div><p>${r.team >= 0 ? `${teamLabel(r.team)} +${r.pts} · ` : ""}${h(r.why)}</p>${me() && S.host === me().id ? `<div style="margin-top:10px;pointer-events:auto"><button class="small" id="bNext">Próxima mão ➜</button></div>` : ""}</div>`;
+    el.innerHTML = `<div class="banner"><div class="t" style="color:${r.team < 0 ? "#eee" : sideColor(r.team)}">${big}</div><p>${r.team >= 0 ? `${sideLabel(r.team)} +${r.pts} · ` : ""}${h(r.why)}</p>${me() && S.host === me().id ? `<div style="margin-top:10px;pointer-events:auto"><button class="small" id="bNext">Próxima mão ➜</button></div>` : ""}</div>`;
     if ($("bNext")) $("bNext").onclick = () => act("next");
     return;
   }
@@ -597,8 +663,9 @@ function renderDock() {
   if (S.phase !== "playing") txt = S.phase === "ended" ? "Fim de jogo!" : "Fim da mão.";
   else if (mine) {
     cls = "mine";
-    if (!any) txt = "Nenhuma pedra serve… passando (toc, toc).";
-    else if (hd.mustOpen != null) txt = "Você abre o jogo: jogue a carroça de sena (6|6).";
+    if (!any && hd.compra && hd.dorme > 0) { txt = `Nenhuma pedra serve: compre do monte (${hd.dorme} ${hd.dorme === 1 ? "pedra" : "pedras"}).`; acts = `<button class="primary" id="aBuy">🀫 Comprar pedra</button>`; }
+    else if (!any) txt = "Nenhuma pedra serve… passando (toc, toc).";
+    else if (hd.mustOpen != null) txt = `Você abre o jogo: jogue ${abreTxt(hd.open)}.`;
     else if (!hd.chain) txt = "Você começa: jogue qualquer pedra.";
     else if (sel != null) {
       const t = cards.find((x) => x.id === sel);
@@ -612,6 +679,7 @@ function renderDock() {
   }
   pr.className = "prompt " + cls;
   pr.innerHTML = `<div>${txt}</div>${acts ? `<div class="acts">${acts}</div>` : ""}`;
+  if ($("aBuy")) $("aBuy").onclick = () => act("buy");
   if ($("aL")) { $("aL").onclick = () => playSel("L"); $("aR").onclick = () => playSel("R"); $("aC").onclick = () => { sel = null; renderBoard(); renderDock(); }; }
 
   hand.className = "hand " + (mine ? "turn" : "");
@@ -639,16 +707,39 @@ function bubble(pid, text) {
   const b = document.createElement("div"); b.className = "bubble"; b.textContent = text;
   seat.appendChild(b); setTimeout(() => b.remove(), 2100);
 }
+// passou: o punho bate duas vezes na mesa, entre o lugar dele e o meio (com ondinhas a cada toc), e o avatar treme
+function knockFx(pid) {
+  const seat = $("seat-" + pid), table = $("table"); if (!seat || !table) return;
+  const tr = table.getBoundingClientRect(), av = seat.querySelector(".av").getBoundingClientRect();
+  const sx = av.left + av.width / 2 - tr.left, sy = av.top + av.height / 2 - tr.top, cx = tr.width / 2, cy = tr.height / 2;
+  const x = sx + (cx - sx) * 0.3, y = sy + (cy - sy) * 0.3;
+  const k = document.createElement("div"); k.className = "knock"; k.textContent = "✊"; k.style.left = x + "px"; k.style.top = y + "px";
+  table.appendChild(k); setTimeout(() => k.remove(), 700);
+  for (const at of [130, 300]) setTimeout(() => { const r = document.createElement("div"); r.className = "ripple"; r.style.left = x + "px"; r.style.top = y + 10 + "px"; table.appendChild(r); setTimeout(() => r.remove(), 600); }, at);
+  const a = seat.querySelector(".av"); a.classList.remove("shake"); void a.offsetWidth; a.classList.add("shake");
+}
+// comprou: uma pedra (virada) voa do monte até quem comprou
+function buyFx(pid) {
+  const seat = $("seat-" + pid), monte = $("monte"); if (!seat) return;
+  const to = seat.querySelector(".av").getBoundingClientRect(), from = (monte || $("table")).getBoundingClientRect();
+  const t = document.createElement("div"); t.className = "voa"; t.innerHTML = backHTML("v"); t.firstChild.style.setProperty("--u", "16px");
+  t.style.left = from.left + 8 + "px"; t.style.top = from.top + 4 + "px"; document.body.appendChild(t);
+  const dx = to.left + to.width / 2 - (from.left + 16), dy = to.top + to.height / 2 - (from.top + 20);
+  t.animate([{ transform: "translate(0,0) rotate(0) scale(1)" }, { transform: `translate(${dx / 2}px,${dy / 2 - 40}px) rotate(200deg) scale(1.3)` }, { transform: `translate(${dx}px,${dy}px) rotate(360deg) scale(.7)`, opacity: 0.2 }], { duration: 650, easing: "ease-in-out" });
+  setTimeout(() => t.remove(), 640);
+  bubble(pid, "🀫 Comprou!");
+}
 function runFx() {
   if (!S.fx) return;
   const fresh = S.fx.filter((f) => lastFx !== null && f.id > lastFx && sNow() - f.at < 6000);
   lastFx = S.fx.length ? Math.max(lastFx ?? 0, ...S.fx.map((f) => f.id)) : lastFx ?? 0;
   for (const f of fresh) {
     if (f.kind === "play") Sound.play("clack");
-    else if (f.kind === "pass") { Sound.play("knock"); bubble(f.pid, "✊ Passo!"); }
+    else if (f.kind === "pass") { Sound.play("knock"); bubble(f.pid, "✊ Passo!"); knockFx(f.pid); }
+    else if (f.kind === "buy") { Sound.play("clack"); buyFx(f.pid); }
     else if (f.kind === "deal") Sound.play("shuffle");
-    else if (f.kind === "hand") { if (f.pts >= 3 && f.name !== "Fechado") Sound.play("big"); else if (me() && f.team >= 0) Sound.play(f.team === myTeam() ? "win" : "lose"); }
-    else if (f.kind === "game") { if (!me() || f.team === myTeam()) confetti(); }
+    else if (f.kind === "hand") { if (f.pts >= 3 && f.name !== "Fechado") Sound.play("big"); else if (me() && f.team >= 0) Sound.play(f.team === mySide() ? "win" : "lose"); }
+    else if (f.kind === "game") { if (!me() || f.team === mySide()) confetti(); }
   }
 }
 socket.on("react", ({ player, emoji }) => {
@@ -669,16 +760,19 @@ setInterval(() => {
 
 // ---------- regras ----------
 $("btnRules").onclick = () => {
-  $("modalBox").innerHTML = `<h2>Dominó de dupla</h2>
+  $("modalBox").innerHTML = `<h2>Como jogar</h2>
+  <h3>Jeitos de jogar</h3><ul>
+  <li><b>👥 Dupla:</b> 4 jogadores em 2 duplas; o parceiro senta de frente. São 28 pedras (do 0|0 ao 6|6), 7 para cada, sem monte.</li>
+  <li><b>🙋 Cada um por si:</b> 2, 3 ou 4 jogadores, 7 pedras para cada. Com 2 ou 3 sobra monte: com a <b>compra</b> ligada (o organizador escolhe), quem não tem pedra que sirva compra do monte até poder jogar; sem compra, passa.</li>
+  <li><b>🫏 Burrinho:</b> 2 a 6 jogadores, só <b>3 pedras</b> para cada; o resto é monte. Não serviu, compra (enquanto tiver monte). Quando alguém bate, quem ficou com mais pontos na mão é o burrinho da mão.</li></ul>
   <h3>Mesa</h3><ul>
-  <li>4 jogadores em 2 duplas; o parceiro senta de frente. São 28 pedras (do 0|0 ao 6|6), 7 para cada, sem monte.</li>
-  <li>A primeira mão começa com quem tem a <b>carroça de sena</b> (6|6), jogando ela. Nas outras, começa quem bateu, com qualquer pedra.</li>
-  <li>A vez passa para a direita. Você encaixa uma pedra numa das duas pontas. Não tem pedra que sirva? Passa (o jogo passa sozinho: toc, toc).</li></ul>
+  <li>A primeira mão começa com quem tem a <b>maior carroça</b> (a de sena, 6|6, quando ela não está no monte), jogando ela. Nas outras, começa quem bateu, com qualquer pedra.</li>
+  <li>A vez passa para a direita. Você encaixa uma pedra numa das duas pontas. Não tem pedra que sirva (nem monte para comprar)? Passa sozinho: toc, toc.</li></ul>
   <h3>Batida</h3><ul>
-  <li>Quem jogar a última pedra <b>bate</b> e a dupla marca: <b>1</b> na batida comum, <b>2</b> de carroça (pedra dobrada), <b>3</b> no lá-e-lô (a pedra serve nas duas pontas, como 3|5 com pontas 3 e 5) e <b>4</b> na cruzada (carroça que serve nas duas pontas, como 4|4 com pontas 4 e 4).</li></ul>
+  <li>Quem jogar a última pedra <b>bate</b> e marca (na dupla, a dupla marca): <b>1</b> na batida comum, <b>2</b> de carroça (pedra dobrada), <b>3</b> no lá-e-lô (a pedra serve nas duas pontas, como 3|5 com pontas 3 e 5) e <b>4</b> na cruzada (carroça que serve nas duas pontas, como 4|4 com pontas 4 e 4).</li></ul>
   <h3>Jogo fechado</h3><ul>
-  <li>Quando ninguém mais consegue jogar, o jogo <b>fecha</b>: cada dupla soma os pontos das pedras que sobraram, e a que tiver menos marca 1. Empatou, ninguém marca.</li></ul>
-  <h3>Fim</h3><ul><li>Ganha a dupla que chegar primeiro aos pontos combinados (6, por padrão).</li></ul>
+  <li>Quando ninguém mais consegue jogar nem comprar, o jogo <b>fecha</b>: soma os pontos das pedras que sobraram, e quem tiver menos (a dupla ou o jogador) marca 1. Empatou, ninguém marca.</li></ul>
+  <h3>Fim</h3><ul><li>Ganha quem chegar primeiro aos pontos combinados (6, por padrão).</li></ul>
   <div class="row" style="margin-top:16px"><button class="primary" id="rulesOk">Bora!</button></div>`;
   $("modal").classList.remove("hidden");
   $("rulesOk").onclick = () => $("modal").classList.add("hidden");
