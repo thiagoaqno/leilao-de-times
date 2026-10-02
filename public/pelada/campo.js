@@ -121,15 +121,38 @@
 
   // ---------- carro (estilo Rocket League) ----------
   const CAR = { hx: 0.95, hy: 0.6, hz: 1.9, lift: 0.65, max: 14, boostMax: 23, jump: 6.2 };
-  // c: {x,y,z,vx,vy,vz,yaw,pitch,onGround,jumps,jumpT,flipT,boost}; inp: {thr, steer, boost, jump (apertou agora), drift}
+  // vetores 3D (arrays [x, y, z])
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+  const noPlano = (v, n) => { const d = dot(v, n); return [v[0] - n[0] * d, v[1] - n[1] * d, v[2] - n[2] * d]; };
+  const gira = (v, k, a) => { const c = Math.cos(a), s = Math.sin(a), kv = cross(k, v), d = dot(k, v) * (1 - c); return [v[0] * c + kv[0] * s + k[0] * d, v[1] * c + kv[1] * s + k[1] * d, v[2] * c + kv[2] * s + k[2] * d]; };
+  // a superfície mais perto de um ponto: distância (negativa = dentro da arena) e a normal para DENTRO.
+  // Na boca do gol (e dentro dele) é o chão reto; no resto, o "caixote arredondado".
+  function superficie(F, x, y, z) {
+    if (Math.abs(z) < F.goalW - 1.2 && y < F.goalH - 1.3 && Math.abs(x) > F.L - F.rc) return { d: -y, n: [0, 1, 0] };
+    const s = arenaSDF(F, x, y, z); return { d: s.d, n: [-s.nx, -s.ny, -s.nz] };
+  }
+  // c: {x,y,z,vx,vy,vz,yaw,pitch,onGround,jumps,jumpT,flipT,boost, fw, up}; inp: {thr, steer, boost, jump (apertou agora), drift}
+  // Como no Rocket League: no chão o carro GRUDA na superfície em que está (chão, rampa, parede e até o teto): (x, y, z)
+  // é o ponto de contato das rodas, up é a normal da superfície e fw a frente do carro, sempre deitada nela. Acelerar,
+  // virar e derrapar valem igual em qualquer superfície; a gravidade só puxa ao longo dela (subindo a parede o carro
+  // perde velocidade; devagar demais na parede ou no teto, ele solta e cai). Pulando, sai na direção do "up" do carro e,
+  // no ar, vale a gravidade normal do jogo; W/S giram o bico, A/D giram em volta do eixo de cima, e o carro pousa em
+  // qualquer superfície que encostar com as rodas (no chão sempre pousa).
   function moveCar(c, inp, dt, F = MODES.carros) {
-    const fx = -Math.sin(c.yaw), fz = -Math.cos(c.yaw), rx = Math.cos(c.yaw), rz = -Math.sin(c.yaw);
-    const boosting = inp.boost && c.boost > 0;
+    const Gr = F.g * 1.1, boosting = inp.boost && c.boost > 0;
     if (boosting) c.boost = Math.max(0, c.boost - 34 * dt); else c.boost = Math.min(100, c.boost + 5 * dt);
     c.jumpT += dt;
     if (c.flipT > 0) c.flipT = Math.max(0, c.flipT - dt);
+    let up = c.up || [0, 1, 0], f = c.fw || [-Math.sin(c.yaw), 0, -Math.cos(c.yaw)], v = [c.vx, c.vy, c.vz], px = c.x, py = c.y, pz = c.z;
+    const ajeita = () => { let g = noPlano(f, up); if (Math.hypot(g[0], g[1], g[2]) < 1e-3) g = noPlano([0, -1, 0], up); if (Math.hypot(g[0], g[1], g[2]) < 1e-3) g = noPlano([1, 0, 0], up); f = norm(g); };
+    let noAr = !c.onGround;
     if (c.onGround) {
-      let fv = c.vx * fx + c.vz * fz, lat = c.vx * rx + c.vz * rz;
+      up = superficie(F, px, py, pz).n; ajeita();
+      let r = cross(f, up);
+      v[1] -= Gr * dt; v = noPlano(v, up); // gravidade: só a parte ao longo da superfície
+      let fv = dot(v, f), lat = dot(v, r);
       const t = inp.thr;
       if (t > 0) fv += (fv < 0 ? 32 : 15) * t * dt;
       else if (t < 0) fv += (fv > 0 ? -32 : -12) * -t * dt;
@@ -140,59 +163,67 @@
       if (fv < -9) fv = -9;
       lat *= Math.exp(-dt * (inp.drift ? 1.6 : 11)); // aderência (no freio de mão, derrapa)
       const turn = (2.7 / (1 + Math.abs(fv) / 16)) * Math.min(1, Math.abs(fv) / 2.5) * (inp.drift ? 1.5 : 1);
-      c.yaw -= inp.steer * turn * Math.sign(fv || 1) * dt;
-      const nfx = -Math.sin(c.yaw), nfz = -Math.cos(c.yaw), nrx = Math.cos(c.yaw), nrz = -Math.sin(c.yaw);
-      c.vx = nfx * fv + nrx * lat; c.vz = nfz * fv + nrz * lat;
-      c.pitch *= Math.exp(-dt * 12);
-      if (inp.jump) { c.vy = CAR.jump; c.onGround = false; c.jumps = 1; c.jumpT = 0; }
-    } else {
-      c.vy -= F.g * 1.1 * dt;
-      // no ar: W abaixa o bico, S levanta (como no Rocket League); A/D giram
-      c.pitch = Math.max(-1.3, Math.min(1.3, c.pitch - inp.thr * 3.2 * dt));
-      c.yaw -= inp.steer * 2.4 * dt;
-      if (boosting) { const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch); c.vx += fx * cp * 24 * dt; c.vz += fz * cp * 24 * dt; c.vy += sp * 24 * dt; }
+      f = norm(gira(f, up, -inp.steer * turn * Math.sign(fv || 1) * dt)); r = cross(f, up);
+      v = [f[0] * fv + r[0] * lat, f[1] * fv + r[1] * lat, f[2] * fv + r[2] * lat];
+      const sp = Math.hypot(v[0], v[1], v[2]);
+      if (inp.jump) { // pulo: sai na direção de cima do carro (da parede, sai para dentro da arena)
+        v = [v[0] + up[0] * CAR.jump, v[1] + up[1] * CAR.jump, v[2] + up[2] * CAR.jump];
+        px += up[0] * 0.05; py += up[1] * 0.05; pz += up[2] * 0.05;
+        c.onGround = false; c.jumps = 1; c.jumpT = 0;
+      } else if (up[1] < 0.3 && sp < 2.5) { c.onGround = false; noAr = true; c.solto = 0.5; } // devagar demais na parede/teto: solta
+      else {
+        const nx = px + v[0] * dt, ny = py + v[1] * dt, nz = pz + v[2] * dt, s1 = superficie(F, nx, ny, nz);
+        if (s1.d < -0.6) { px = nx; py = ny; pz = nz; c.onGround = false; } // o chão acabou (da rampa para a boca do gol): cai
+        else if (s1.d > 0.6) { v = [-v[0] * 0.2, -v[1] * 0.2, -v[2] * 0.2]; } // degrau (o lado da boca do gol): bate
+        else { // anda e gruda de novo (a rampa vira parede, a parede vira teto), mantendo a velocidade
+          px = nx + s1.n[0] * s1.d; py = ny + s1.n[1] * s1.d; pz = nz + s1.n[2] * s1.d; up = s1.n;
+          const vt = noPlano(v, up), l = Math.hypot(vt[0], vt[1], vt[2]); v = l > 1e-6 ? [vt[0] / l * sp, vt[1] / l * sp, vt[2] / l * sp] : vt; ajeita();
+        }
+      }
+    }
+    c.solto = Math.max(0, (c.solto || 0) - dt);
+    if (noAr) {
+      v[1] -= Gr * dt; // no ar, a gravidade normal do jogo
+      let r = cross(f, up);
+      if (inp.thr) { const a = -inp.thr * 3.2 * dt; f = gira(f, r, a); up = gira(up, r, a); } // W abaixa o bico, S levanta
+      if (inp.steer) f = gira(f, up, -inp.steer * 2.4 * dt);
+      f = norm(f); up = norm(noPlano(up, f)); r = cross(f, up);
+      if (boosting) for (let k = 0; k < 3; k++) v[k] += f[k] * 24 * dt;
       if (inp.jump && c.jumps === 1 && c.jumpT < 1.4) {
         c.jumps = 2;
         if (inp.thr || inp.steer) { // mortal: um tranco na direção apertada
           const d = Math.hypot(inp.thr, inp.steer), kf = inp.thr / d, ks = inp.steer / d;
-          c.vx += (fx * kf + rx * ks) * 9; c.vz += (fz * kf + rz * ks) * 9; c.vy = Math.max(c.vy, 1.5);
-          c.flipT = 0.65; c.flipDir = [kf, ks];
-        } else c.vy += 5.2;
+          for (let k = 0; k < 3; k++) v[k] += (f[k] * kf + r[k] * ks) * 9;
+          v[1] = Math.max(v[1], 1.5); c.flipT = 0.65; c.flipDir = [kf, ks];
+        } else for (let k = 0; k < 3; k++) v[k] += up[k] * 5.2; // pulo duplo
       }
-      const sp = Math.hypot(c.vx, c.vz); if (sp > 30) { c.vx *= 30 / sp; c.vz *= 30 / sp; }
+      const sp = Math.hypot(v[0], v[1], v[2]); if (sp > 32) v = v.map((x) => x * 32 / sp);
+      px += v[0] * dt; py += v[1] * dt; pz += v[2] * dt;
+      const s = superficie(F, px, py, pz);
+      if (s.d > -0.02) { // encostou: pousa se estiver com as rodas para a superfície (no chão, sempre); senão, bate
+        const vn = dot(v, s.n);
+        if ((s.n[1] > 0.7 || (dot(up, s.n) > 0.4 && c.solto <= 0)) && vn < 1) {
+          px += s.n[0] * s.d; py += s.n[1] * s.d; pz += s.n[2] * s.d; up = s.n; ajeita(); v = noPlano(v, up);
+          c.onGround = true; c.jumps = 0; c.flipT = 0;
+        } else { px += s.n[0] * (s.d + 0.05); py += s.n[1] * (s.d + 0.05); pz += s.n[2] * (s.d + 0.05); if (vn < 0) for (let k = 0; k < 3; k++) v[k] -= s.n[k] * vn * 1.3; }
+      }
+      if (!c.onGround) { // o corpo (teto do carro) também não atravessa a parede
+        const cx = px + up[0] * 0.7, cy = py + up[1] * 0.7, cz = pz + up[2] * 0.7, sc = superficie(F, cx, cy, cz);
+        if (sc.d > -0.7 && sc.n[1] > 0.7) { // caiu de lado/de ponta-cabeça no chão: desvira e pousa (como no Rocket League)
+          const s2 = superficie(F, px, py, pz); px += s2.n[0] * s2.d; py += s2.n[1] * s2.d; pz += s2.n[2] * s2.d; up = s2.n; ajeita(); v = noPlano(v, up);
+          c.onGround = true; c.jumps = 0; c.flipT = 0;
+        } else if (sc.d > -0.7) { const k = sc.d + 0.7, vn = dot(v, sc.n); px += sc.n[0] * k; py += sc.n[1] * k; pz += sc.n[2] * k; if (vn < 0) for (let q = 0; q < 3; q++) v[q] -= sc.n[q] * vn * 1.2; }
+      }
     }
-    const ox = c.x, oz = c.z, oy = c.y;
-    c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt;
-    if (F.rc) { // arena arredondada: o carro sobe pela rampa (chão que vira parede) e, rápido no alto dela, decola
-      let r = rampa(F, c.x, c.z, oy < F.goalH - 1.3);
-      const corr = (z) => Math.abs(z) < F.goalW - 1.2;
-      if (c.onGround && corr(oz) !== corr(c.z) && r.h > oy + 0.3) { c.x = ox; c.z = oz; c.vx *= -0.2; c.vz *= -0.2; r = rampa(F, c.x, c.z, true); } // degrau (do lado da boca do gol): bate
-      const EMAX = Math.min(F.rc * 0.78, F.rc - 1.8); // antes da parede reta (r = 1,6)
-      if (r.e > EMAX && c.y <= r.h + 0.6) { // passou do ponto: a rampa fica em pé demais; com embalo, a velocidade vira pulo
-        const back = r.e - EMAX; c.x -= r.dx * back; c.z -= r.dz * back;
-        const vo = c.vx * r.dx + c.vz * r.dz;
-        let voou = false;
-        if (vo > 0) { c.vx -= r.dx * vo; c.vz -= r.dz * vo; if (vo > 6 && c.onGround) { c.vy = vo * 0.6; c.onGround = false; voou = true; } }
-        r = rampa(F, c.x, c.z, oy < F.goalH - 1.3);
-        if (voou) c.y = r.h + 0.7; // sai do chão subindo junto da parede
-      }
-      if (c.onGround && c.vy <= 0 && c.y - r.h < 0.6) c.y = r.h; // grudado no chão (acompanha a curva)
-      if (c.y <= r.h) { c.y = r.h; if (!c.onGround) { c.onGround = true; c.jumps = 0; c.flipT = 0; } c.vy = 0; }
-      else if (c.onGround && c.y > r.h + 0.6) c.onGround = false;
-      if (c.onGround && r.e > 0) { const k = F.g * 1.1 * (r.e / F.rc) * r.ny * dt; c.vx -= r.dx * k * 1.4; c.vz -= r.dz * k * 1.4; } // a gravidade puxa rampa abaixo
-      if (!c.onGround) { // no ar: paredes curvas e teto (o carro conta como uma bola de 1,2 m)
-        const s = arenaSDF(F, c.x, c.y + 0.7, c.z), lim = -1.2;
-        const gol = Math.abs(c.x) > F.L - 1.5 && Math.abs(c.z) < F.goalW && c.y < F.goalH; // entrando no gol
-        if (!gol && s.d > lim) { const pen = s.d - lim; c.x -= s.nx * pen; c.y -= s.ny * pen; c.z -= s.nz * pen; const vn = c.vx * s.nx + c.vy * s.ny + c.vz * s.nz; if (vn > 0) { c.vx -= s.nx * vn * 1.3; c.vy -= s.ny * vn * 1.3; c.vz -= s.nz * vn * 1.3; } }
-      }
-      c.ramp = r.e > 0 && c.onGround ? [r.nx, r.ny, r.nz] : null;
-    } else if (c.y <= 0) { c.y = 0; if (!c.onGround) { c.onGround = true; c.jumps = 0; c.flipT = 0; } c.vy = 0; }
-    if (c.y > F.ceil - 1.4) { c.y = F.ceil - 1.4; c.vy = -Math.abs(c.vy) * 0.3; }
-    // paredes (dá para entrar no gol)
-    const r = 1.6, inGoal = Math.abs(c.z) < F.goalW - 1.2 && c.y < F.goalH - 1.3;
-    const lx = inGoal ? F.L + F.goalD - r : F.L - r, lz = (Math.abs(c.x) > F.L - 0.2 ? F.goalW - 1.2 : F.W - r);
-    if (c.x > lx) { c.x = lx; c.vx = -Math.abs(c.vx) * 0.3; } if (c.x < -lx) { c.x = -lx; c.vx = Math.abs(c.vx) * 0.3; }
-    if (c.z > lz) { c.z = lz; c.vz = -Math.abs(c.vz) * 0.3; } if (c.z < -lz) { c.z = -lz; c.vz = Math.abs(c.vz) * 0.3; }
+    if (Math.abs(px) > F.L - 0.5 && Math.abs(pz) < F.goalW) { // dentro do gol: as paredes da caixa do gol
+      const lz = F.goalW - 1.2, ly = F.goalH - 1.3, lx = F.L + F.goalD - 1.6;
+      if (Math.abs(px) > F.L && Math.abs(pz) > lz) { pz = Math.sign(pz) * lz; v[2] *= -0.3; }
+      if (Math.abs(px) > F.L && py > ly) { py = ly; if (v[1] > 0) v[1] = 0; }
+      if (Math.abs(px) > lx) { px = Math.sign(px) * lx; v[0] *= -0.3; }
+    }
+    c.x = px; c.y = py; c.z = pz; c.vx = v[0]; c.vy = v[1]; c.vz = v[2]; c.up = up; c.fw = f;
+    if (Math.hypot(f[0], f[2]) > 0.15) c.yaw = Math.atan2(-f[0], -f[2]);
+    c.pitch = Math.asin(Math.max(-1, Math.min(1, f[1])));
   }
 
   // ---------- bola ----------
@@ -225,11 +256,13 @@
   // corpos: {id, kind: "pe"|"car", x,y,z,vx,vy,vz, yaw, sprint, slide, dive, flip}
   function hitBody(b, p, R, F = MODES.pes) {
     if (p.kind === "car") {
-      const cy = p.y + CAR.lift, dx = b.x - p.x, dy = b.y - cy, dz = b.z - p.z;
-      const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
-      const lx = dx * rx + dz * rz, lf = dx * fx + dz * fz;
-      const qx = Math.max(-CAR.hx, Math.min(CAR.hx, lx)), qy = Math.max(-CAR.hy, Math.min(CAR.hy, dy)), qf = Math.max(-CAR.hz, Math.min(CAR.hz, lf));
-      const px = p.x + rx * qx + fx * qf, py = cy + qy, pz = p.z + rz * qx + fz * qf;
+      // orientação do carro: frente (f) e cima (u); na parede ou no teto vem em p.o = [fx, fy, fz, ux, uy, uz]
+      const o = Array.isArray(p.o) && p.o.length === 6 ? p.o : null;
+      const f3 = o ? [o[0], o[1], o[2]] : [-Math.sin(p.yaw), 0, -Math.cos(p.yaw)], u3 = o ? [o[3], o[4], o[5]] : [0, 1, 0], r3 = cross(f3, u3);
+      const ccx = p.x + u3[0] * CAR.lift, cy = p.y + u3[1] * CAR.lift, ccz = p.z + u3[2] * CAR.lift, dl = [b.x - ccx, b.y - cy, b.z - ccz];
+      const fx = f3[0], fz = f3[2];
+      const qx = Math.max(-CAR.hx, Math.min(CAR.hx, dot(dl, r3))), qy = Math.max(-CAR.hy, Math.min(CAR.hy, dot(dl, u3))), qf = Math.max(-CAR.hz, Math.min(CAR.hz, dot(dl, f3)));
+      const px = ccx + r3[0] * qx + u3[0] * qy + f3[0] * qf, py = cy + r3[1] * qx + u3[1] * qy + f3[1] * qf, pz = ccz + r3[2] * qx + u3[2] * qy + f3[2] * qf;
       let ex = b.x - px, ey = b.y - py, ez = b.z - pz, d = Math.hypot(ex, ey, ez);
       if (d >= R) return 0;
       if (d < 1e-6) { ex = 0; ey = 1; ez = 0; d = 1e-6; }
@@ -238,8 +271,8 @@
       const f = bounceOff(b, nx, ny, nz, R - d, F.carE || 0.35, p.vx, p.vy || 0, p.vz);
       if (F.rl && f > 0.3) { // Rocket League: impulso extra da Psyonix (é o que faz a bola sair forte do carro)
         // direção: do carro para a bola, com a altura achatada (0,35) e só 65% da componente para a frente do carro
-        let hx = b.x - p.x, hy = (b.y - cy) * 0.35, hz = b.z - p.z, hl = Math.hypot(hx, hy, hz) || 1; hx /= hl; hy /= hl; hz /= hl;
-        const fd = (hx * fx + hz * fz) * (1 - 0.65); hx -= fx * fd; hz -= fz * fd; hl = Math.hypot(hx, hy, hz) || 1;
+        let hx = b.x - ccx, hy = (b.y - cy) * 0.35, hz = b.z - ccz, hl = Math.hypot(hx, hy, hz) || 1; hx /= hl; hy /= hl; hz /= hl;
+        const fd = (hx * fx + hy * f3[1] + hz * fz) * (1 - 0.65); hx -= fx * fd; hy -= f3[1] * fd; hz -= fz * fd; hl = Math.hypot(hx, hy, hz) || 1;
         const sp = Math.min(46, rel), u = sp * 100; // velocidade relativa em uu/s
         const fac = u <= 500 ? 0.65 : u <= 2300 ? 0.65 - 0.1 * (u - 500) / 1800 : 0.55 - 0.25 * (u - 2300) / 2300;
         const add = sp * fac * (p.flip ? 1.25 : 1);

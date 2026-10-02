@@ -685,7 +685,14 @@ function buildArenaRocket(F) {
   { const linhas = (alturas, cor, op) => { const g = new THREE.BufferGeometry(), v = [];
       for (const y of alturas) {
         const e = y < Rc ? Math.sqrt(Rc * Rc - (Rc - y) * (Rc - y)) : Rc, pts = rrPontos(L - Rc + e - 0.03, W - Rc + e - 0.03, Math.max(0.05, e - 0.03), y, 240);
-        for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; if (Math.abs(a.z) < GW && Math.abs(a.x) > L - Rc && y < GH) continue; v.push(a.x, a.y, a.z, b.x, b.y, b.z); }
+        for (let i = 0; i < pts.length; i++) { // em pedacinhos de ~0,5 m: os que passam na boca do gol (onde a rampa foi cortada) ficam de fora
+          const a = pts[i], b = pts[(i + 1) % pts.length], n = Math.max(1, Math.ceil(a.distanceTo(b) / 0.5));
+          for (let k = 0; k < n; k++) {
+            const x0 = a.x + (b.x - a.x) * k / n, z0 = a.z + (b.z - a.z) * k / n, x1 = a.x + (b.x - a.x) * (k + 1) / n, z1 = a.z + (b.z - a.z) * (k + 1) / n;
+            if (y < GH + 0.5 && Math.abs((x0 + x1) / 2) > L - Rc - 0.5 && Math.abs((z0 + z1) / 2) < GW + 0.6) continue;
+            v.push(x0, y, z0, x1, y, z1);
+          }
+        }
       }
       g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3)); add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: cor, transparent: true, opacity: op }))); };
     linhas([0.35, 1.2, 2.6, 4.4], 0xffffff, 0.35); linhas([9, H - Rc], 0x9fb8d8, 0.25); }
@@ -1209,7 +1216,7 @@ meMark.rotation.x = Math.PI; meMark.visible = false; scene.add(meMark);
 
 function newMe(spawn) {
   return { x: spawn[0], y: 0, z: spawn[2], vx: 0, vy: 0, vz: 0, onGround: true, facing: spawn[3], yaw: spawn[3], pitch: 0, stamina: 1, sprint: false,
-    kickT: 0, lastKick: 0, slideT: 0, slideCd: 0, diveT: 0, downT: 0, jumps: 0, jumpT: 9, flipT: 0, boost: 34, boosting: false, st: {} };
+    kickT: 0, lastKick: 0, slideT: 0, slideCd: 0, diveT: 0, downT: 0, jumps: 0, jumpT: 9, flipT: 0, boost: 34, boosting: false, st: {}, up: null, fw: null }; // up/fw: orientação do carro (parede, teto)
 }
 function myKit() { if (offline()) return store.get("pelada:kit") || "corinthians"; const m = myP(); return m && m.team ? S.kits[m.team] : "corinthians"; }
 function startGame(mode, game, falta = false) {
@@ -1322,7 +1329,7 @@ socket.on("snap", (d) => {
   for (const e of d.p) {
     const p = PN(e[0]); if (!p) continue;
     const rm = G.remotes.get(p.id); if (!rm) continue;
-    rm.buf.push({ t: d.t, x: e[1], y: e[2], z: e[3], vx: e[4], vy: e[5], vz: e[6], yaw: e[7], pitch: e[8], f: e[9] });
+    rm.buf.push({ t: d.t, x: e[1], y: e[2], z: e[3], vx: e[4], vy: e[5], vz: e[6], yaw: e[7], pitch: e[8], f: e[9], o: Array.isArray(e[10]) ? e[10] : null });
     if (rm.buf.length > 30) rm.buf.shift();
   }
   const [x, y, z, vx, vy, vz, hit, hn, sp, wx = 0, wy = 0, wz = 0, dn = -1] = d.b;
@@ -1415,7 +1422,7 @@ function interpBola(t) {
 function myBody() {
   if (!G.meModel || !G.me) return null;
   const me = G.me;
-  return isCar() ? { id: "eu", kind: "car", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.yaw, flip: me.flipT > 0 }
+  return isCar() ? { id: "eu", kind: "car", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.yaw, flip: me.flipT > 0, o: carO(me) }
     : { id: "eu", kind: "pe", x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, yaw: me.facing, sprint: me.sprint, slide: me.slideT > 0 || me.downT > 0, dive: me.diveT > 0, girando: !!me.girando,
       conduz: !G.falta, chutou: now() - me.lastKick < 0.35 }; // conduz: a bola fica no pé (na falta, não)
 }
@@ -1640,7 +1647,7 @@ function frame(dt, t) {
   // envia minha posição
   if (G.meModel && online && t - G.lastSend > 1 / 30) {
     const me = G.me; G.lastSend = t; const q = (v) => Math.round(v * 100) / 100;
-    socket.volatile.emit("st", { x: q(me.x), y: q(me.y), z: q(me.z), vx: q(me.vx), vy: q(me.vy), vz: q(me.vz), yaw: q(isCar() ? me.yaw : me.facing), p: q(me.pitch || 0), f: myFlags(),
+    socket.volatile.emit("st", { x: q(me.x), y: q(me.y), z: q(me.z), vx: q(me.vx), vy: q(me.vy), vz: q(me.vz), yaw: q(isCar() ? me.yaw : me.facing), p: q(me.pitch || 0), f: myFlags(), ...(isCar() && carO(me) ? { o: carO(me).map(q) } : {}),
       ...(ballS.mine ? { bola: [q(ballS.mine.x), q(ballS.mine.y), q(ballS.mine.z), q(ballS.mine.vx), q(ballS.mine.vy), q(ballS.mine.vz)] } : {}) }); // conduzindo: a bola vai junto
   }
   if (G.mode === "treino") practiceStep(dt, t);
@@ -1782,13 +1789,17 @@ function quemMeSegura(me) {
   return null;
 }
 // ---------- de carro ----------
-// na rampa (a curva entre o chão e a parede) o carro deita junto com a superfície
-const _qY = new THREE.Quaternion(), _qT = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0), _nr = new THREE.Vector3();
-function poseCar(model, x, y, z, yaw) {
-  model.position.set(x, y, z); _qY.setFromAxisAngle(_up, yaw);
-  const r = G.F.rc ? C.rampa(G.F, x, z, y < G.F.goalH - 1.3) : null;
-  if (r && r.e > 0 && y < r.h + 0.35) { _qT.setFromUnitVectors(_up, _nr.set(r.nx, r.ny, r.nz)); model.quaternion.copy(_qT).multiply(_qY); }
-  else model.quaternion.copy(_qY);
+// orientação do carro: frente (fw) e cima (up) — na parede e no teto o carro fica deitado na superfície e, no ar, gira
+// livre. Vai na rede como o = [fx, fy, fz, ux, uy, uz] (para os outros verem e para a bola bater certo no servidor).
+const carO = (c) => (c.fw && c.up ? [c.fw[0], c.fw[1], c.fw[2], c.up[0], c.up[1], c.up[2]] : null);
+const _qY = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0), _bx = new THREE.Vector3(), _by = new THREE.Vector3(), _bz = new THREE.Vector3(), _mb = new THREE.Matrix4();
+function poseCar(model, x, y, z, yaw, o) {
+  model.position.set(x, y, z);
+  if (!o) { model.quaternion.copy(_qY.setFromAxisAngle(_up, yaw)); return; }
+  _bz.set(-o[0], -o[1], -o[2]).normalize(); // o carro olha para -z
+  _by.set(o[3], o[4], o[5]); _by.addScaledVector(_bz, -_by.dot(_bz)).normalize();
+  _bx.crossVectors(_by, _bz); // direita = cima × trás
+  model.quaternion.setFromRotationMatrix(_mb.makeBasis(_bx, _by, _bz));
 }
 function stepCar(dt, t, frozen) {
   const me = G.me, F = G.F;
@@ -1813,8 +1824,8 @@ function stepCar(dt, t, frozen) {
   const sp = Math.hypot(me.vx, me.vz);
   me.st.steer = steer;
   if (me.flipT > 0) me.st.flipDir = me.flipDir; else me.st.flipDir = null;
-  poseCar(G.meModel, me.x, me.y, me.z, me.yaw);
-  animateCar(G.meModel, me.st, dt, (me.vx * -Math.sin(me.yaw) + me.vz * -Math.cos(me.yaw)), myFlags(), me.pitch);
+  poseCar(G.meModel, me.x, me.y, me.z, me.yaw, carO(me));
+  animateCar(G.meModel, me.st, dt, me.fw ? me.vx * me.fw[0] + me.vy * me.fw[1] + me.vz * me.fw[2] : (me.vx * -Math.sin(me.yaw) + me.vz * -Math.cos(me.yaw)), myFlags(), me.fw ? 0 : me.pitch);
   Sound.engine(sp, true);
 }
 
@@ -1844,6 +1855,7 @@ function updateRemotes(dt) {
       rm.x = nx; rm.y = lerp(A.y, B.y, k); rm.z = nz; rm.vx = B.vx; rm.vz = B.vz;
       const ny = angLerp(A.yaw, B.yaw, k); rm.st.steer = clamp(angLerp(0, ny - rm.yaw, 1) / Math.max(dt, 1e-3) / -2, -1, 1); rm.yaw = ny;
       rm.pitch = lerp(A.pitch || 0, B.pitch || 0, k); rm.f = B.f | 0;
+      rm.o = A.o && B.o ? A.o.map((v, j) => lerp(v, B.o[j], k)) : B.o || null; // orientação (parede/teto), misturada e normalizada no poseCar
       while (b.length > 2 && b[1].t < rt - 200) b.shift();
       // onde ele está AGORA: o último pacote andado para a frente (o tempo desde o pacote + metade do ping dele,
       // que é o quanto a posição demorou para chegar no servidor). É contra essa posição que eu colido.
@@ -1854,8 +1866,8 @@ function updateRemotes(dt) {
     const perto = G.me && rm.px != null && !isCar() ? clamp((3 - Math.hypot(rm.x - G.me.x, rm.z - G.me.z)) / 1.5, 0, 1) : 0;
     rm.k = lerp(rm.k || 0, perto, Math.min(1, dt * 6));
     rm.model.position.set(lerp(rm.x, rm.px ?? rm.x, rm.k), rm.y, lerp(rm.z, rm.pz ?? rm.z, rm.k)); rm.model.rotation.y = rm.yaw;
-    if (isCar()) poseCar(rm.model, rm.x, rm.y, rm.z, rm.yaw);
-    if (isCar()) animateCar(rm.model, rm.st, dt, rm.speed, rm.f, rm.pitch);
+    if (isCar()) poseCar(rm.model, rm.model.position.x, rm.y, rm.model.position.z, rm.yaw, rm.o);
+    if (isCar()) animateCar(rm.model, rm.st, dt, rm.speed, rm.f, rm.o ? 0 : rm.pitch);
     else { rm.st.holding = ballS.snap && ballS.snap.holder === rm.id; rm.st.segura = !!(rm.f & FL.grab); animate(rm.model, rm.speed, dt, rm.st, rm.f); }
   }
 }
