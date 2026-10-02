@@ -574,27 +574,23 @@ function buildArena(F, cfg) {
   muretaTex.dispose(); // os clones têm a própria cópia
   // em cima da mureta: alambrado aberto (tela em losango) ou, no ginásio, vidro (quadra fechada)
   const FH = F.wallH, glass = cfg.paredes === "fechadas", eletrica = cfg.paredes === "eletrica";
-  // cerca elétrica: raios desenhados num canvas (somados por cima, brilhando); a textura "pula" a cada quadro (animarArena)
-  const raioTex = eletrica ? canvasTex(256, 64, (x, w, hh, r) => {
-    for (const [cor, lw] of [["#2fd8ff", 5], ["#e8ffff", 1.6]]) for (let k = 0; k < 4; k++) {
-      x.strokeStyle = cor; x.lineWidth = lw; x.globalAlpha = lw > 2 ? 0.35 : 0.9; x.beginPath(); let y = hh * (0.15 + k * 0.23); x.moveTo(0, y);
-      for (let px = 0; px <= w; px += 8) { y = clamp(y + (r() - 0.5) * 14, 4, hh - 4); x.lineTo(px, y); } x.stroke();
-    }
-    x.globalAlpha = 1;
-  }, true) : null;
+  // cerca elétrica: antes eram raios animados (planos que somavam luz por cima da tela toda, a cada quadro) e pesavam
+  // demais. Agora é um vidro azul bem leve, sem textura nem animação, com fios de neon em cima (o choque continua igual)
   grp.userData.raios = [];
   const fenceTex = glass || eletrica ? null : canvasTex(64, 64, (x, w) => { x.strokeStyle = "#d8dde0"; x.lineWidth = 3; x.beginPath(); x.moveTo(0, w / 2); x.lineTo(w / 2, 0); x.lineTo(w, w / 2); x.lineTo(w / 2, w); x.closePath(); x.stroke(); }, true);
   const cell = cars ? 1 : 0.5;
   const fence = (lw, lh, x0, y0, z0, rotY) => {
     let mat;
     if (glass) mat = new THREE.MeshBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false }); // vidro simples (sem calcular luz)
-    else if (eletrica) { const t = raioTex.clone(); t.repeat.set(lw / 6, 1); t.needsUpdate = true; mat = new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }); grp.userData.raios.push(mat); }
+    else if (eletrica) mat = cercaMat || (cercaMat = new THREE.MeshBasicMaterial({ color: 0x2fd8ff, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }));
     else { const t = fenceTex.clone(); t.repeat.set(lw / cell, lh / cell); t.needsUpdate = true; mat = new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.4 }); }
     const m = add(new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), mat)); m.position.set(x0, y0 + lh / 2, z0); m.rotation.y = rotY;
+    if (eletrica) for (const fy of [0.45, 1]) { const fio = add(new THREE.Mesh(new THREE.BoxGeometry(lw, 0.035, 0.035), fioMat || (fioMat = new THREE.MeshBasicMaterial({ color: 0x9ff8ff, toneMapped: false })))); fio.position.set(x0, y0 + lh * fy, z0); fio.rotation.y = rotY; } // os fios
   };
+  let cercaMat = null, fioMat = null;
   fence(2 * L, FH - BH, 0, BH, -W - 0.05, 0); fence(2 * L, FH - BH, 0, BH, W + 0.05, 0);
   for (const sg of [-1, 1]) { fence(2 * W, FH - F.goalH - 0.4, sg * (L + F.goalD + 0.05), F.goalH + 0.4, 0, Math.PI / 2); for (const zs of [-1, 1]) { const lw = W - F.goalW; fence(lw, FH - BH, sg * (L + 0.05), BH, zs * (F.goalW + lw / 2), Math.PI / 2); } }
-  fenceTex?.dispose(); raioTex?.dispose();
+  fenceTex?.dispose();
   const pole = eletrica ? new THREE.MeshBasicMaterial({ color: 0x7ff7ff, toneMapped: false }) : M(glass ? 0xc9cdd2 : 0x4a4f55, { metalness: glass ? 0.15 : 0.6, roughness: 0.4 }), gap = cars ? 8 : 5, pr = cars ? 0.12 : glass ? 0.04 : 0.06;
   for (let x0 = -L; x0 <= L + 0.01; x0 += gap) for (const zs of [-1, 1]) { const m = add(new THREE.Mesh(new THREE.CylinderGeometry(pr, pr, FH, 8), pole)); m.position.set(x0, FH / 2, zs * (W + 0.1)); m.castShadow = true; }
   // refletores
@@ -1403,6 +1399,7 @@ socket.on("ganhou", (d) => {
 socket.on("trocou", (d) => {
   if (!G.active || G.mode !== "online" || !G.me) return;
   G.trocaSeq = d.tq;
+  camTroca(focoCam(G.me));
   Object.assign(G.me, { x: d.x, y: d.y, z: d.z, vx: d.vx, vz: d.vz, facing: d.yaw, yaw: d.yaw });
   if (ballS.mine) { ballS.snap = { ...ballS.mine, t: sNow(), dono: d.bot }; ballS.mine = null; } // a bola que eu conduzia fica com o bot
   charge = null; flashMsg("", "🔁 Trocou de jogador", 700);
@@ -2622,6 +2619,7 @@ function trocaNoPasse(id) {
 // troca o controle para o bot: os dois trocam de corpo (posição, velocidade, modelo...), e a bola vai junto
 function trocarCom(bot, aviso = true) {
   const me = G.me, b = local.ball;
+  camTroca(focoCam(me)); // a câmera desliza do jogador antigo (ou de onde ela já estava indo) até o novo
   for (const k of ["x", "y", "z", "vx", "vy", "vz", "onGround", "facing", "slideT", "slideCd", "downT", "lastKick", "kickT", "st", "slot", "dekeT", "dekeCd", "cogumeloT", "estrelaT"]) { const v = me[k]; me[k] = bot[k]; bot[k] = v; }
   if (G.bm.ultDono === bot.id) G.bm.ultDono = "eu"; else if (G.bm.ultDono === "eu") G.bm.ultDono = bot.id; // a sequência de passes não conta a troca
   const m = G.meModel; G.meModel = bot.model; bot.model = m;
@@ -2716,16 +2714,27 @@ function keepInside(F, tgt, m = 0.3) {
   if (F.rc) { const sd = C.arenaSDF(F, p.x, p.y, p.z), lim = -0.8; if (sd.d > lim && !(Math.abs(p.x) > F.L - 1 && Math.abs(p.z) < F.goalW && p.y < F.goalH)) { const k = sd.d - lim; p.x -= sd.nx * k; p.y -= sd.ny * k; p.z -= sd.nz * k; } } // arena arredondada: não sai pela curva
   return over;
 }
+// trocou de jogador: em vez de a câmera pular para o outro corpo (parecia que o jogo tinha travado), ela desliza do
+// jogador antigo até o novo em ~0,45 s (com aceleração e freada suaves)
+const CAM_TROCA = 0.45;
+function camTroca(de) { G.camDe = { x: de.x, y: de.y || 0, z: de.z, t0: now() }; }
+function focoCam(me) {
+  const d = G.camDe; if (!d) return me;
+  const u = clamp((now() - d.t0) / CAM_TROCA, 0, 1), k = u * u * (3 - 2 * u); // smoothstep
+  if (u >= 1) { G.camDe = null; return me; }
+  return { x: lerp(d.x, me.x, k), y: lerp(d.y, me.y, k), z: lerp(d.z, me.z, k) };
+}
 function updateCamera(dt) {
-  const me = G.me, b = ballMesh.position, F = G.F, tvOn = isCar() ? G.tv : G.view === "tv";
-  if (G.meModel) G.meModel.visible = (isCar() || G.view !== "primeira") && !rags.some((r) => r.model === G.meModel); // caído: quem aparece é o boneco de pano
+  const me0 = G.me, b = ballMesh.position, F = G.F, tvOn = isCar() ? G.tv : G.view === "tv";
+  const me = isCar() ? me0 : { ...me0, ...focoCam(me0) }; // a pé: a câmera segue o foco (que desliza na troca)
+  if (G.meModel) G.meModel.visible = (isCar() || G.view !== "primeira" || !!G.camDe) && !rags.some((r) => r.model === G.meModel); // caído: quem aparece é o boneco de pano
   if (!G.meModel || tvOn) { // câmera de TV: do alto da lateral, seguindo o MEU jogador (com um pouco da bola)
     const fx0 = G.meModel ? lerp(me.x, b.x, 0.25) : b.x, fz0 = G.meModel ? lerp(me.z, b.z, 0.25) : b.z;
     const tx = clamp(fx0, -F.L + 4, F.L - 4), hgt = isCar() ? 22 : 10;
     cam.position.lerp(new THREE.Vector3(tx, hgt, F.W - 0.6), Math.min(1, dt * 4));
     cam.lookAt(tx, 0, fz0 - (isCar() ? 6 : 2.5));
     if (cam.fov !== 58) { cam.fov = 58; cam.updateProjectionMatrix(); }
-    if (G.meModel && !isCar()) showAim(me); else { aim.visible = false; passMark.visible = false; }
+    if (G.meModel && !isCar()) showAim(me0); else { aim.visible = false; passMark.visible = false; }
     return;
   }
   if (isCar()) { // atrás do carro; com a câmera da bola, a bola fica sempre na tela
@@ -2747,7 +2756,7 @@ function updateCamera(dt) {
     const low = me.slideT > 0 || me.downT > 0 || me.diveT > 0;
     cam.position.set(me.x + fx * 0.15, me.y + (low ? 0.45 : 1.62), me.z + fz * 0.15);
     cam.lookAt(cam.position.x + fx * Math.cos(pitch), cam.position.y + Math.sin(pitch) - 0.08, cam.position.z + fz * Math.cos(pitch));
-    showAim(me); return;
+    showAim(me0); return;
   }
   if (cam.fov !== 70) { cam.fov = 70; cam.updateProjectionMatrix(); }
   const elev = clamp(0.32 - pitch * 0.8, -0.05, 1.1), dist = 4.6;
@@ -2756,7 +2765,7 @@ function updateCamera(dt) {
   // encostado na parede (goleiro, escanteio): a câmera chega perto e olha mais para o jogador, para ele não sumir da tela
   const over = keepInside(F, tgt), w = clamp(over / 4.6, 0, 0.8);
   cam.lookAt(lerp(tgt.x + fx * 6, me.x, w), lerp(tgt.y + pitch * 6 - 0.3, me.y + 0.6, w), lerp(tgt.z + fz * 6, me.z, w));
-  showAim(me);
+  showAim(me0);
 }
 function showAim(me) {
   let ay = aimYaw();
