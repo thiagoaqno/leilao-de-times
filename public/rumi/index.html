@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<script src="/semzoom.js"></script>
+<title>Rumi da Galera</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🀄</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* mesa de feltro verde-escuro, peças de acrílico creme com números coloridos e o suporte de madeira */
+  --bg:#123227;--felt:#1a4a3a;--felt2:#15402f;--line:#2c6450;
+  --text:#f4f1e8;--muted:#a9c4b8;--accent:#f2c14e;--good:#5fd48a;--bad:#ff6b5a;
+  --peca:#f8f1df;--peca2:#e9dfc6;--madeira:#9a6233;--madeira2:#7a4a22;
+  --v:#d63031;--a:#1f6fd1;--m:#e09a00;--p:#1d1d22;
+  --display:Fredoka,system-ui,sans-serif;--body:Figtree,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--body)}
+body{min-height:100vh;background:radial-gradient(1000px 500px at 50% -10%,#2c7a5a55,transparent),repeating-linear-gradient(45deg,#ffffff03 0 2px,transparent 2px 6px),var(--bg)}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.1;margin:0}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;padding:10px 16px;background:#24614a;color:var(--text);border:1px solid #347a5f;box-shadow:0 3px 0 #0008;transition:transform .08s,box-shadow .08s,filter .15s}
+button:hover:not(:disabled){filter:brightness(1.12)}
+button:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #0008}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.ghost{background:transparent;box-shadow:none;border-color:transparent;color:var(--muted)}
+button.small{padding:6px 11px;font-size:13px}
+button.primary{background:linear-gradient(#ffd977,#f2b632);color:#3a2700;border-color:#b98314;font-family:var(--display)}
+button.on{outline:2px solid var(--accent)}
+input{font:inherit;color:var(--text);background:#0c2219;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.err{color:var(--bad);font-size:14px;min-height:20px;margin-top:10px;font-weight:700}
+.wrap{max-width:1180px;margin:0 auto;padding:14px 16px 40px}
+.bar{position:sticky;top:0;z-index:20;background:#123227ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1180px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;gap:10px}
+.brand{margin-right:auto}.brand h1{font-size:21px;white-space:nowrap}.brand h1 span{color:var(--accent)}
+.tovila{color:var(--muted);text-decoration:none;font-weight:700;font-size:14px;padding:6px 10px 6px 4px}
+.roomtag{display:flex;align-items:center;gap:8px}.roomtag .code{font:700 22px var(--display);letter-spacing:.12em;color:var(--accent)}
+.panel{background:linear-gradient(180deg,#1d5040,#163f31);border:1px solid #2f6a54;border-radius:14px;box-shadow:0 20px 40px #0007}
+.panel .in{padding:20px}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;align-items:center;margin-top:24px}
+.hero h2{font-size:clamp(40px,7vw,72px)}.hero h2 em{font-style:normal;color:var(--accent)}
+.lead{font-size:17px;color:#d6e6dd;max-width:520px}
+@media (max-width:760px){.hero{grid-template-columns:1fr}}
+.seg{display:flex;gap:6px;flex-wrap:wrap}.seg button{flex:1;min-width:60px}
+.or{text-align:center;color:var(--muted);margin:12px 0;font-size:13px}
+.pl{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:#0005;margin-bottom:6px;font-weight:700}
+.pl .dot{width:8px;height:8px;border-radius:50%;background:#555}.pl .dot.on{background:var(--good)}
+.pl.me{outline:2px solid var(--accent)}
+.lobby{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+@media (max-width:820px){.lobby{grid-template-columns:1fr}}
+.vitrine{display:flex;gap:4px;margin-top:16px}
+/* ---------- peça ---------- */
+.peca{--w:42px;width:var(--w);height:calc(var(--w)*1.36);border-radius:7px;background:linear-gradient(180deg,var(--peca),var(--peca2));box-shadow:0 2px 0 #b9ad8f,0 3px 6px #0006,inset 0 1px 0 #fff;display:grid;place-items:center;position:relative;cursor:pointer;user-select:none;flex:none;transition:transform .08s}
+.peca b{font:700 calc(var(--w)*.62)/1 var(--display);margin-top:-6px}
+.peca i{position:absolute;bottom:calc(var(--w)*.14);width:calc(var(--w)*.2);height:calc(var(--w)*.2);border-radius:50%;background:currentColor;opacity:.25}
+.peca.v{color:var(--v)}.peca.a{color:var(--a)}.peca.m{color:var(--m)}.peca.p{color:var(--p)}.peca.j{color:var(--v)}
+.peca.j b{font-size:calc(var(--w)*.7)}
+.peca.sel{transform:translateY(-6px);box-shadow:0 0 0 3px var(--accent),0 8px 12px #0007}
+.peca.nova{box-shadow:0 0 0 2px #5fd48a99,0 2px 0 #b9ad8f,0 3px 6px #0006}
+/* ---------- jogo ---------- */
+#game{display:grid;grid-template-rows:auto 1fr auto;gap:10px;height:calc(100vh - 66px);height:calc(100dvh - 66px)}
+.topo{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.jog{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:#0005;border:2px solid transparent;font-weight:700;position:relative;overflow:hidden}
+.jog.vez{border-color:var(--accent);background:#3a3a1a88}
+.jog .av{font-size:22px}.jog small{display:block;color:var(--muted);font-weight:600;font-size:12px}
+.jog .barra{position:absolute;left:0;bottom:0;height:3px;background:var(--accent)}
+.monte{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:700}
+.mesa{background:radial-gradient(circle at 50% 40%,var(--felt),var(--felt2));border:8px solid #6b4423;border-radius:16px;box-shadow:inset 0 0 40px #0008;padding:12px;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:14px 18px;min-height:160px}
+.grupo{display:flex;gap:3px;padding:5px;border-radius:10px;border:2px dashed transparent;cursor:pointer}
+.grupo.ok{border-color:#5fd48a55}.grupo.ruim{border-color:var(--bad);background:#ff6b5a1a}
+.grupo.alvo:hover{background:#ffffff14}
+.novo{display:grid;place-items:center;min-width:120px;height:66px;border:2px dashed #ffffff44;border-radius:10px;color:var(--muted);font-weight:700;cursor:pointer;padding:0 10px}
+.novo:hover{background:#ffffff10;color:var(--text)}
+.quem{width:100%;color:var(--muted);font-weight:700;font-size:13px}
+.base{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+.suporte{background:linear-gradient(180deg,var(--madeira),var(--madeira2));border-radius:12px 12px 6px 6px;padding:10px 10px 14px;box-shadow:0 8px 20px #0008,inset 0 2px 0 #ffffff33;display:flex;flex-wrap:wrap;gap:5px;min-height:90px;align-content:flex-start;cursor:pointer}
+.acoes{display:grid;gap:8px;min-width:180px}
+.aviso{font-weight:700;font-size:14px;min-height:20px}
+.aviso.ruim{color:var(--bad)}.aviso.bom{color:var(--good)}
+@media (max-width:700px){.peca{--w:32px}.base{grid-template-columns:1fr}.acoes{grid-template-columns:repeat(3,1fr);min-width:0}#game{height:auto}}
+.overlay{position:fixed;inset:0;display:grid;place-items:center;background:#000a;padding:16px;z-index:40}
+.overlay .box{background:#18463a;border:1px solid #2f6a54;border-radius:14px;padding:20px;width:min(640px,100%);max-height:100%;overflow:auto}
+.overlay h2{font-size:30px;margin-bottom:6px}
+.res{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #ffffff14;flex-wrap:wrap}
+.res .pts{margin-left:auto;font:700 18px var(--display)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1d5040;border:1px solid #2f6a54;border-radius:10px;padding:10px 16px;font-weight:700;z-index:60;box-shadow:0 10px 30px #000a}
+.confetti{position:fixed;top:-12px;width:9px;height:14px;z-index:70;animation:fall linear forwards;pointer-events:none}
+@keyframes fall{to{transform:translateY(105vh) rotate(720deg)}}
+</style>
+</head>
+<body>
+<header class="bar" id="bar">
+  <div class="bar-in">
+    <a class="tovila" href="/" title="Voltar para a vila">← Vila</a>
+    <div class="brand"><h1>🀄 Rumi da <span>Galera</span></h1></div>
+    <div class="roomtag hidden" id="roomTag"><span class="muted">Sala</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section id="home" class="hidden">
+    <div class="hero">
+      <div>
+        <h2>Monte, mexa<br>e <em>bata</em></h2>
+        <p class="lead">O jogo de peças numeradas: sequências da mesma cor, grupos do mesmo número e a mesa inteira para reorganizar. De 2 a 4, com robôs se faltar gente.</p>
+        <div class="vitrine" id="vitrine"></div>
+      </div>
+      <div class="panel"><div class="in">
+        <label for="hName">Seu nome</label>
+        <input id="hName" maxlength="8" placeholder="Ex.: Dona Cida" autocomplete="off">
+        <label for="hCode" style="margin-top:14px">Código da sala</label>
+        <input id="hCode" maxlength="5" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em">
+        <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
+        <div class="or">ou</div>
+        <button id="btnCreate" style="width:100%">Abrir mesa nova</button>
+        <div class="err" id="hErr"></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section id="lobby" class="hidden">
+    <div class="lobby">
+      <div class="panel"><div class="in">
+        <h2 style="font-size:24px;margin-bottom:12px">Na mesa <span class="muted" id="count" style="font:600 15px var(--body)"></span></h2>
+        <div id="plist"></div>
+      </div></div>
+      <div class="panel"><div class="in">
+        <h2 style="font-size:24px;margin-bottom:12px">Partida</h2>
+        <label>Tempo por vez</label><div class="seg" id="cTempo"></div>
+        <label style="margin-top:14px">Rodadas</label><div class="seg" id="cRodadas"></div>
+        <label style="margin-top:14px">Robôs</label><div class="seg" id="cRobos"></div>
+        <div id="startBox" style="margin-top:18px"></div>
+        <label style="margin-top:18px">Como joga</label>
+        <ul class="muted" style="margin:0;padding-left:18px;font-size:14px">
+          <li><b>Sequência:</b> 3 ou mais números seguidos da mesma cor (sem dar a volta do 13 para o 1).</li>
+          <li><b>Grupo:</b> 3 ou 4 peças do mesmo número, cada uma de uma cor.</li>
+          <li>O ☺ é coringa: vale pela peça que substitui (na mão, no fim, vale 30).</li>
+          <li><b>Primeira descida:</b> só com peças da sua mão, somando 30 pontos. Depois dela, pode mexer na mesa toda.</li>
+          <li>Toque nas peças para escolher e depois numa combinação (ou em "nova combinação") para pôr lá. Toque no suporte para devolver o que veio da sua mão.</li>
+          <li>No fim da vez, tudo na mesa tem que valer. Sem jogada? Compre uma peça.</li>
+          <li>Quem baixa tudo bate e ganha os pontos que ficaram na mão dos outros.</li>
+        </ul>
+      </div></div>
+    </div>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="topo" id="topo"></div>
+    <div class="mesa" id="mesa"></div>
+    <div class="base">
+      <div>
+        <div class="aviso" id="aviso"></div>
+        <div class="suporte" id="suporte" title="Toque aqui para devolver as peças escolhidas (as que vieram da sua mão)"></div>
+      </div>
+      <div class="acoes">
+        <button class="primary" id="btnOk">✅ Confirmar</button>
+        <button id="btnDesfaz">↩️ Desfazer tudo</button>
+        <button id="btnCompra">🂠 Comprar e passar</button>
+        <div class="row" style="gap:6px"><button class="small" id="btnOrdNum" title="Juntar por número" style="flex:1">777</button><button class="small" id="btnOrdCor" title="Juntar por cor" style="flex:1">789</button></div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="overlay hidden" id="over"><div class="box" id="overBox"></div></div>
+<div class="toast hidden" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/comum.js"></script>
+<script src="/rumi/regras.js"></script>
+<script src="/rumi/jogo.js"></script>
+</body>
+</html>
