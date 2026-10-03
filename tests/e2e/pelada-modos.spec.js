@@ -1,5 +1,5 @@
 // Pelada e Rocket em todos os modos (o "teste de 5 minutos" depois de mexer no jogo): treino a pé, faltas, contra
-// bots no futsal e no Strikers (com itens), treino de carro e o Rocket online. Cada modo roda alguns segundos de
+// bots, treino de carro e o Rocket online. Cada modo roda alguns segundos de
 // jogo (__pelada.avancar) apertando teclas, e qualquer erro de JavaScript derruba o teste. O laço do jogo engole
 // erros com console.error, então o console também é conferido.
 const { test, expect } = require("@playwright/test");
@@ -51,8 +51,8 @@ test("faltas: bate a falta e a próxima aparece", async ({ page }) => {
   expect(erros).toEqual([]);
 });
 
-for (const estilo of ["futsal", "strikers"]) {
-  test(`contra bots no ${estilo}: os bots jogam, dá para trocar de jogador, dar carrinho e (no Strikers) usar item`, async ({ page }) => {
+for (const estilo of ["futsal"]) {
+  test(`contra bots no ${estilo}: os bots jogam, pedem a bola e dão carrinho`, async ({ page }) => {
     const erros = vigiar(page);
     await abrir(page, "/pelada/#debug", { "pelada:estilo": estilo, "pelada:botSize": 3, "pelada:botDif": "dificil" });
     await page.click("#btnBots");
@@ -60,9 +60,8 @@ for (const estilo of ["futsal", "strikers"]) {
     expect(await page.evaluate(() => __pelada.G.bm.phase)).toBe("live");
     const bola0 = await page.evaluate(() => ({ x: __pelada.local.ball.x, z: __pelada.local.ball.z }));
     for (let i = 0; i < 6; i++) await page.evaluate(() => __pelada.avancar(1));
-    await tecla(page, "t", 0.1); // troca de jogador
+    await tecla(page, "j", 0.1); // sem a bola: pede a bola
     await page.mouse.wheel(0, 100); // carrinho (sem a bola)
-    if (estilo === "strikers") { await page.evaluate(() => { __pelada.G.me.itens = ["casco", "cogumelo"]; }); await tecla(page, "g", 0.2); await tecla(page, "g", 0.2); }
     for (let i = 0; i < 6; i++) await page.evaluate(() => __pelada.avancar(1));
     const fim = await page.evaluate(() => ({ x: __pelada.local.ball.x, z: __pelada.local.ball.z, left: __pelada.G.bm.left }));
     expect(Math.hypot(fim.x - bola0.x, fim.z - bola0.z) + Math.abs(fim.x)).toBeGreaterThan(0.5); // a bola andou

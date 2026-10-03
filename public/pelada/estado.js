@@ -10,7 +10,7 @@ export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, k) => a + (b - a) * k;
 export const angLerp = (a, b, k) => { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * k; };
 export const SIDES = { A: "Mandante", B: "Visitante" };
-export const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, deke: 256, estrela: 512, cogumelo: 1024 }; // deke: drible com giro (Strikers) // grab: segurando alguém
+export const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, pede: 2048 }; // grab: segurando alguém · pede: pedindo a bola (🙋)
 // contra bots: velocidade (fração da sua), tempo de reação (s), erro na mira (rad) e vontade de dar carrinho
 export const BOT_DIF = {
   facil: { nome: "Fácil", vel: 0.8, reac: 0.5, erro: 0.18, carrinho: 0.2 },
@@ -59,8 +59,9 @@ export function myKit() { if (offline()) return store.get("pelada:kit") || "cori
 export function mySkin() { const m = myP(); return (G.mode === "online" && m && m.skin) || store.get("pelada:skin") || "padrao"; }
 export const PAD = { on: false, play: false, prev: [], lx: 0, ly: 0, rx: 0, ry: 0, fontes: new Map() };
 export function myAttackTeam() { if (offline()) return "A"; const m = myP(); return m && m.team ? m.team : null; }
-// estilo da partida: na sala, o organizador escolhe; no treino e contra bots, vale o da tela inicial
-export function estiloDe(mode) { const e = mode === "online" ? E.S && E.S.config.estilo : store.get("pelada:estilo"); return e === "strikers" ? "strikers" : "futsal"; }
+// troca de jogador (estilo FIFA) é opcional e começa desligada: o padrão é o jogador fixo, como no Pro Clubs. Contra
+// bots, vale a escolha da tela inicial; online, a do organizador (só no amistoso com bots).
+export function trocaLigada() { return G.mode === "bots" ? store.get("pelada:troca") === true : G.mode === "online" && !!(E.S && E.S.config.bots && E.S.config.troca); }
 export const CARRINHO_CD = 4; // segundos entre um carrinho e outro (você e os bots)
 // o que é reatribuído em mais de um módulo fica aqui dentro (um import não pode ser reatribuído)
 export const E = {
@@ -73,5 +74,4 @@ export const E = {
   wheelQueued: false,
   adiantado: 0, // só para testes (#debug): tempo simulado de uma vez
   touchPlay: false,
-  itemQueued: false,
 };

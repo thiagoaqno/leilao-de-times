@@ -1,15 +1,14 @@
-// Pelada da Galera — sem servidor: o goleiro robô, o treino, as faltas e o jogo contra bots (IA, troca de jogador
-// e carrinhos).
-import { E, C, $, h, store, clamp, FL, BOT_DIF, molinhoLigado, G, keys, now, locked, local, isCar, myKit, PAD, CARRINHO_CD } from "./estado.js";
+// Pelada da Galera — sem servidor: o goleiro robô, o treino, as faltas e o jogo contra bots (IA, carrinhos, pedir a
+// bola e a troca de jogador opcional).
+import { E, C, $, h, store, clamp, FL, BOT_DIF, molinhoLigado, G, keys, now, locked, local, isCar, myKit, PAD, CARRINHO_CD, trocaLigada } from "./estado.js";
 import { show } from "./menus.js";
 import { SKINS_CONFIG, makePlayer, descartarJogador, animate, addRag } from "./bonecos.js";
 import { Sound, hearing } from "./sons.js";
 import { scene } from "./cena.js";
-import { startGame, stopGame, giroDeke, SEGURADO_VEL, camTroca, focoCam } from "./jogo.js";
+import { startGame, stopGame, SEGURADO_VEL, camTroca, focoCam } from "./jogo.js";
 import { viraComABola, myBody } from "./bola.js";
 import { flashMsg, pushFeed, scoreTable } from "./hud.js";
 import { soltarPad } from "./controles.js";
-import { tentarDeke, tempoStrikers, velStrikers, cercaEletrica, faiscas, limparItens, darItem, entsLocais, itensLocais, auraItens, botUsaItem, itensTreino, SUPER_CARGA, superBolas, executarSuperLocal, botSuper } from "./strikers.js";
 
 // goleiro robô (treino e faltas): fica na linha entre a bola e o gol; com a bola vindo, vai para onde ela vai
 // cruzar a linha e se joga se não der tempo de chegar andando. Segura a bola que para perto e devolve.
@@ -73,8 +72,6 @@ function faltaResult(msg, color, sound) {
 // treino: a bola (e o goleiro robô, a pé) rodam só aqui
 export function practiceStep(dt, t) {
   const b = local.ball, me = G.me, k = G.keeper, F = G.F, fz = G.falta;
-  if (G.superAnim) { if (k) keeperBot(k, b, dt, t, false); return; } // animação do Super Chute
-  if (F.strikers) { itensTreino(t); itensLocais(dt); }
   const bodies = [myBody()];
   if (k) bodies.push(keeperBot(k, b, dt, t));
   if (fz) {
@@ -104,7 +101,9 @@ export function practiceStep(dt, t) {
     return;
   }
   viraComABola(b, me);
+  const toques = b.toques;
   const r = C.simulate(F, b, bodies, dt);
+  if (b.toques !== toques && b.toqueDe === "eu") toqueMeu();
   if (r.hit > 2) { const [kk, pan] = hearing([b.x, b.y, b.z]); Sound.bounce(r.hit, kk, pan, isCar()); }
   const side = C.goalOf(F, b);
   if (side === "A" || (side && isCar())) { G.tGoals++; G.practiceGoalAt = t; Sound.net(); Sound.cheer(); flashMsg("GOOOL!", `${G.tGoals} gol${G.tGoals === 1 ? "" : "s"} no treino`, 2500, "#ffd84a", true); }
@@ -113,11 +112,14 @@ export function practiceStep(dt, t) {
 
 // ======================================================================
 // Contra bots (sozinho, sem servidor): o seu time (A) com bots companheiros contra um time só de bots, cada time com
-// um goleiro robô. A bola e os bots rodam só aqui, como no treino. LB (ou T) troca para o companheiro mais
-// perto da bola (apertando de novo, o próximo); quando um companheiro domina a bola, o controle passa para ele.
+// um goleiro robô. A bola e os bots rodam só aqui, como no treino. Por padrão o seu jogador é FIXO (como no Pro
+// Clubs): passe sem a bola pede a bola, e o bot do seu time que estiver com ela toca para você. A troca de jogador
+// do FIFA é opcional (tela inicial): com ela ligada, T troca para o companheiro mais perto da bola e o controle vai
+// junto no passe.
 // Os bots: o mais perto da bola de cada time vai nela (no seu time, só se você estiver longe), os outros guardam
-// posição acompanhando a bola; com a bola, conduzem para o gol desviando de quem vem, passam quando apertados e
-// chutam de perto. Dão carrinho em quem conduz e cabeceiam bola alta.
+// posição acompanhando a bola; quem vai receber um passe vai ao encontro da bola; com a bola, conduzem (com toques)
+// para o gol desviando de quem vem, passam quando apertados e chutam de perto. Dão carrinho em quem conduz e
+// cabeceiam bola alta.
 // ======================================================================
 // posições de cada um (x para o ataque, z para o lado) com a bola no meio, por tamanho de time (o goleiro é à parte)
 const BOT_SLOTS = { 1: [[0, 0]], 2: [[-6, 0], [6, 0]], 3: [[-8, 0], [4, -6], [4, 6]], 4: [[-9, -5], [-9, 5], [5, -5], [5, 5]], 5: [[0, 0], [-10, -6], [-10, 6], [9, -6], [9, 6]] };
@@ -125,7 +127,7 @@ const BOT_MIN = 4;
 export function setupBots() {
   const n = clamp(store.get("pelada:botSize") || 3, 1, 5), dif = BOT_DIF[store.get("pelada:botDif")] ? store.get("pelada:botDif") : "medio";
   const a = myKit(), kits = { A: a, B: a === "palmeiras" ? "rubronegro" : "palmeiras" };
-  G.bm = { n, dif, kits, passes: { A: 0, B: 0 }, ultDono: null, score: { A: 0, B: 0 }, left: BOT_MIN * 60000, phase: "ready", until: 0, kicking: "A", trocaT: 0, trocaN: 0 };
+  G.bm = { n, dif, kits, pedido: -9, score: { A: 0, B: 0 }, left: BOT_MIN * 60000, phase: "ready", until: 0, kicking: "A", trocaT: 0, trocaN: 0 };
   G.bots = []; G.keepers = [];
   const nums = [10, 7, 5, 9, 11];
   for (const team of ["A", "B"]) for (let i = team === "A" ? 1 : 0; i < n; i++) {
@@ -142,7 +144,7 @@ export function setupBots() {
 }
 function botsKickoff(kicking) {
   const F = G.F, bm = G.bm;
-  limparItens(); bm.passes = { A: 0, B: 0 }; bm.ultDono = null; // saída de bola: o campo fica limpo (os itens na mão continuam)
+  bm.pedido = -9;
   Object.assign(local.ball, C.newBall(F));
   for (const team of ["A", "B"]) {
     const list = [...(team === "A" ? [G.me] : []), ...G.bots.filter((x) => x.team === team)];
@@ -172,33 +174,38 @@ function botChute(bot, t, d, s, power) {
   if (!C.kick(b, botBody(bot), "chute", power, yaw, 0, 0, G.F)) return false;
   bot.lastKick = t; bot.st.kickT = t; const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(power, k, pan); return true;
 }
-function botPasse(bot, t, alvo) {
-  if (G.F.strikers) return botPasseStrikers(bot, t, alvo);
-  const b = local.ball, yaw = Math.atan2(-(alvo.x - bot.x), -(alvo.z - bot.z)), r = C.assistPass(botBody(bot), yaw, [alvo], 0.45, false, G.F);
-  if (!C.kick(b, botBody(bot), r.kind || "passe", r.power, r.yaw, 0, 0, G.F)) return false;
-  bot.lastKick = t; bot.st.kickT = t; const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(r.power, k, pan); return true;
-}
-// bot no Strikers: escolhe o tipo como um jogador faria. Companheiro correndo para o ataque: profundidade (ele aposta
+// passe do bot: escolhe o tipo como um jogador faria. Companheiro correndo para o ataque: bola enfiada (ele aposta
 // corrida); rival na linha do passe (a menos de 1,2 m do segmento) ou longe: longo, por cima; senão, curto.
-function botPasseStrikers(bot, t, alvo) {
+function botPasse(bot, t, alvo) {
   const b = local.ball, s = bot.team === "A" ? 1 : -1, rivais = doTime(bot.team === "A" ? "B" : "A");
   const dx = alvo.x - bot.x, dz = alvo.z - bot.z, d = Math.hypot(dx, dz);
   const naLinha = rivais.some((o) => { // distância do rival ao segmento bot→alvo (projeção limitada a [0, 1])
     const u = clamp(((o.x - bot.x) * dx + (o.z - bot.z) * dz) / (d * d), 0, 1);
     return u > 0.1 && u < 0.9 && Math.hypot(bot.x + dx * u - o.x, bot.z + dz * u - o.z) < 1.2;
   });
-  const tipo = s * (alvo.vx || 0) > 2.5 && Math.random() < 0.7 ? "profundidade" : naLinha || d > 17 ? "longo" : "curto";
-  const colado = rivais.some((o) => Math.hypot(o.x - bot.x, o.z - bot.z) < 1.6), forca = Math.random() * 0.6;
-  const pl = C.planejarPasse(G.F, bot, Math.atan2(-dx, -dz), [alvo], tipo, forca, colado, s);
-  if (!C.kick(b, botBody(bot), pl.kind, forca, pl.yaw, 0, 0, G.F, { vel: pl.vel, elev: pl.elev, alvo: pl.alvo })) return false;
+  const tipo = s * (alvo.vx || 0) > 2.5 && Math.random() < 0.6 ? "profundidade" : naLinha || d > 17 ? "longo" : "curto";
+  const colado = rivais.some((o) => Math.hypot(o.x - bot.x, o.z - bot.z) < 1.6), forca = tipo === "profundidade" ? Math.random() * 0.4 : 0;
+  const pl = C.planejarPasse(G.F, bot, Math.atan2(-dx, -dz), [alvo], tipo, forca, colado, s, Math.random, { assist: tipo !== "longo" });
+  if (!C.kick(b, botBody(bot), pl.kind, 1, pl.yaw, 0, 0, G.F, { vel: pl.vel, elev: pl.elev, alvo: pl.alvo })) return false;
   bot.facing = pl.yaw; bot.lastKick = t; bot.st.kickT = t; G.passeVoo = pl.alvo && bot.team === "A" ? { alvo: pl.alvo, ate: t + 3 } : null; // o anel só no meu time
-  const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(0.3 + forca, k, pan); return true;
+  const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(0.35, k, pan); return true;
+}
+// pedi a bola: o bot do meu time que está com ela pensa logo (e toca para mim, se der)
+export function pedidoBots(t) {
+  if (!G.bm) return; G.bm.pedido = t;
+  const bot = G.bots.find((x) => x.team === "A" && local.ball.dono === x.id);
+  if (bot) bot.think = Math.min(bot.think, t + BOT_DIF[G.bm.dif].reac * 0.4);
 }
 // com a bola: chuta de perto, passa quando apertado (ou de vez em quando, para a frente), senão conduz
 function botDecide(bot, t, d, s) {
   const F = G.F, gx = s * F.L, dGol = Math.hypot(gx - bot.x, bot.z);
   const rivais = doTime(bot.team === "A" ? "B" : "A");
   const perto = (p, r) => rivais.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < r);
+  // eu pedi a bola (até 2,5 s atrás): toca para mim, a não ser que esteja na cara do gol ou eu esteja longe/caído
+  if (bot.team === "A" && t - G.bm.pedido < 2.5 && !(G.me.downT > 0)) {
+    const dm = Math.hypot(G.me.x - bot.x, G.me.z - bot.z);
+    if (dm > 2.5 && dm < 32 && !(dGol < 7 && !perto(bot, 2.4)) && botPasse(bot, t, { id: "eu", x: G.me.x, z: G.me.z, vx: G.me.vx, vz: G.me.vz })) { G.bm.pedido = -9; return; }
+  }
   if (dGol < 12.5 && s * (gx - bot.x) > 1.5 && Math.random() < 0.85) { if (botChute(bot, t, d, s, 0.72 + Math.random() * 0.28)) return; }
   const apertado = perto(bot, 2.4);
   if (apertado || Math.random() < 0.18) {
@@ -214,18 +221,14 @@ function botDecide(bot, t, d, s) {
 }
 function stepBot(bot, dt, t, live) {
   const F = G.F, b = local.ball, d = BOT_DIF[G.bm.dif], s = bot.team === "A" ? 1 : -1;
-  bot.slideT = Math.max(0, bot.slideT - dt); bot.downT = Math.max(0, bot.downT - dt); bot.slideCd = Math.max(0, bot.slideCd - dt); tempoStrikers(bot, dt);
-  if (bot.superT && (local.ball.dono !== bot.id || bot.downT > 0)) bot.superT = 0; // perdeu a bola (ou caiu) carregando: perdeu o Super Chute
+  bot.slideT = Math.max(0, bot.slideT - dt); bot.downT = Math.max(0, bot.downT - dt); bot.slideCd = Math.max(0, bot.slideCd - dt);
   const busy = bot.slideT > 0 || bot.downT > 0;
   let wx = 0, wz = 0, speed = 0, sprint = false, olha = null;
   if (live && !busy) {
     const tem = b.dono === bot.id, donoT = b.dono ? timeDe(b.dono) : null, dB = Math.hypot(b.x - bot.x, b.z - bot.z);
     let tx, tz;
     if (tem) {
-      if (bot.superT) { // carregando o Super Chute: parado; depois de 1,4 s, solta (a "mira" depende da dificuldade)
-        if (t - bot.superT >= SUPER_CARGA) { bot.superT = 0; executarSuperLocal(bot.id, bot.team, bot, superBolas(Math.random() * (1 - d.erro * 3))); }
-        if (Math.random() < dt * 40) faiscas(bot.x + (Math.random() - 0.5) * 0.8, 0.2 + Math.random() * 1.6, bot.z + (Math.random() - 0.5) * 0.8, 1, 0xffe14a);
-      } else if (t >= bot.think) { bot.think = t + d.reac * (0.6 + Math.random() * 0.8); if (!botSuper(bot, t, d, s)) botDecide(bot, t, d, s); }
+      if (t >= bot.think) { bot.think = t + d.reac * (0.6 + Math.random() * 0.8); botDecide(bot, t, d, s); }
       if (b.dono === bot.id) { // ainda com ela: conduz para o gol, desviando de quem está na frente
         const gx = s * F.L; let dx = gx - bot.x, dz = (bot.alvoZ ?? 0) - bot.z; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
         let livre = true;
@@ -233,9 +236,12 @@ function stepBot(bot, dt, t, live) {
           const ox = o.x - bot.x, oz = o.z - bot.z, od = Math.hypot(ox, oz), fr = (ox * dx + oz * dz) / (od || 1);
           if (od < 4 && fr > 0.2) { livre = false; const lado = Math.sign(ox * -dz + oz * dx) || 1, k = (4 - od) * 0.35, px = -dz * lado, pz = dx * lado; dx -= px * k; dz -= pz * k; }
         }
-        tx = bot.superT ? bot.x : bot.x + dx * 3; tz = bot.superT ? bot.z : bot.z + dz * 3; sprint = !bot.superT && livre && Math.random() < 0.97;
-        if (!livre && G.F.strikers && Math.random() < dt * 2.5 * (1 - d.reac)) tentarDeke(bot); // Strikers: gira para fugir do marcador
+        tx = bot.x + dx * 3; tz = bot.z + dz * 3; sprint = livre && Math.random() < 0.97;
       } else { tx = bot.x; tz = bot.z; }
+    } else if (b.alvoPasse === bot.id && !b.dono) { // vai receber um passe: vai ao encontro da bola (na linha dela)
+      const sp = Math.hypot(b.vx, b.vz), ux = sp > 0.5 ? b.vx / sp : 0, uz = sp > 0.5 ? b.vz / sp : 0;
+      const u = Math.max(0, (bot.x - b.x) * ux + (bot.z - b.z) * uz); // onde a bola passa mais perto dele
+      tx = b.x + ux * u * 0.85; tz = b.z + uz * u * 0.85; olha = b;
     } else if (donoT !== bot.team && bot === G.bm.cacador[bot.team]) {
       const lead = Math.min(0.6, dB / 10); tx = b.x + b.vx * lead; tz = b.z + b.vz * lead; sprint = dB > 3;
       if (donoT && dB < 1.9 && bot.slideCd <= 0 && bot.onGround && Math.random() < d.carrinho * dt * 2.5) { // carrinho em quem conduz
@@ -255,15 +261,13 @@ function stepBot(bot, dt, t, live) {
     }
     if (bot.slideT <= 0) {
       const dx = tx - bot.x, dz = tz - bot.z, dist = Math.hypot(dx, dz);
-      if (dist > 0.4) { wx = dx / dist; wz = dz / dist; speed = (sprint ? C.SPRINT : C.RUN) * d.vel * clamp(dist / 2, 0.35, 1) * velStrikers(bot); }
+      if (dist > 0.4) { wx = dx / dist; wz = dz / dist; speed = (sprint ? C.SPRINT : C.RUN) * d.vel * clamp(dist / 2, 0.35, 1); }
       if (G.me.segurando === bot) speed *= SEGURADO_VEL;
     }
   }
   bot.sprint = sprint && speed > 0;
-  if (F.strikers) { if (live && !busy) botUsaItem(bot, t, d); auraItens(bot, dt); }
   if (busy) { const k = Math.exp(-dt * (bot.downT > 0 ? 6 : 1.6)); bot.vx *= k; bot.vz *= k; }
-  C.movePlayer(bot, { x: wx, z: wz, speed, jump: false, free: busy, molinho: molinhoLigado() }, dt, F);
-  cercaEletrica(bot, `${bot.team === "A" ? "Seu" : "Bot"} ${bot.name}`);
+  C.movePlayer(bot, { x: wx, z: wz, speed, jump: false, free: busy, molinho: molinhoLigado(), suave: true }, dt, F);
   const outros = [{ x: G.me.x, z: G.me.z, y: G.me.y, vx: G.me.vx, vz: G.me.vz, sprint: G.me.sprint, caido: G.me.slideT > 0 || G.me.downT > 0 }];
   for (const o of G.bots) if (o !== bot) outros.push({ x: o.x, z: o.z, y: o.y, vx: o.vx, vz: o.vz, sprint: o.sprint, caido: o.slideT > 0 || o.downT > 0 });
   for (const k of G.keepers) outros.push({ x: k.x, z: k.z, y: k.y, vx: k.vx, vz: k.vz, caido: !!k.diveT });
@@ -283,10 +287,7 @@ function carrinhosLocais() {
   for (const a of ents) {
     if (!(a.e.slideT > 0) || a.e.downT > 0) continue;
     const hx = a.e.x - Math.sin(a.e.facing) * 0.6, hz = a.e.z - Math.cos(a.e.facing) * 0.6;
-    for (const o of ents) if (o.team !== a.team && !(o.e.downT > 0) && !(o.e.dekeT > 0) && !(o.e.estrelaT > 0) && o.e.y < 0.6 && Math.hypot(o.e.x - hx, o.e.z - hz) < 0.85) { // no giro do drible (e com estrela), não pega
-      const tinhaBola = local.ball.dono === o.id; derrubar(o, a);
-      if (!tinhaBola) darItem(o.e, "derrubado sem a bola"); // Strikers: falta em quem está sem a bola dá item para quem caiu
-    }
+    for (const o of ents) if (o.team !== a.team && !(o.e.downT > 0) && o.e.y < 0.6 && Math.hypot(o.e.x - hx, o.e.z - hz) < 0.85) derrubar(o, a);
   }
 }
 function derrubar(o, a) {
@@ -302,10 +303,10 @@ function derrubar(o, a) {
   const nome = (x) => (x.eu ? "Você" : `${x.team === "A" ? "Seu" : "Bot"} ${x.e.name}`);
   pushFeed(`🦵 ${h(nome(a))} derrubou ${h(nome(o))}`);
 }
-// passe para um bot do meu time: o controle vai junto com a bola, na hora (como no FIFA). Quem passou vira bot.
-// (online, quem decide é o servidor: se o receptor é de outro humano, ninguém troca)
+// troca de jogador (opcional, desligada por padrão): passe para um bot do meu time, o controle vai junto com a bola,
+// na hora (como no FIFA). Quem passou vira bot. (online, quem decide é o servidor)
 export function trocaNoPasse(id) {
-  if (G.mode !== "bots" || !id) return;
+  if (G.mode !== "bots" || !id || !trocaLigada()) return;
   const bot = G.bots.find((x) => x.id === id && x.team === "A"); if (!bot) return;
   trocarCom(bot, false);
   const b = local.ball; if (b.alvoPasse === bot.id) b.alvoPasse = "eu"; // a trava do passe segue quem recebe (agora, eu)
@@ -315,25 +316,28 @@ export function trocaNoPasse(id) {
 function trocarCom(bot, aviso = true) {
   const me = G.me, b = local.ball;
   camTroca(focoCam(me)); // a câmera desliza do jogador antigo (ou de onde ela já estava indo) até o novo
-  for (const k of ["x", "y", "z", "vx", "vy", "vz", "onGround", "facing", "slideT", "slideCd", "downT", "lastKick", "kickT", "st", "slot", "dekeT", "dekeCd", "cogumeloT", "estrelaT"]) { const v = me[k]; me[k] = bot[k]; bot[k] = v; }
-  if (G.bm.ultDono === bot.id) G.bm.ultDono = "eu"; else if (G.bm.ultDono === "eu") G.bm.ultDono = bot.id; // a sequência de passes não conta a troca
+  for (const k of ["x", "y", "z", "vx", "vy", "vz", "onGround", "facing", "slideT", "slideCd", "downT", "lastKick", "kickT", "st", "slot"]) { const v = me[k]; me[k] = bot[k]; bot[k] = v; }
   const m = G.meModel; G.meModel = bot.model; bot.model = m;
   me.yaw = me.facing; bot.yaw = bot.facing; bot.sprint = false; bot.think = 0; me.segurando = null;
   if (b.dono === bot.id) b.dono = "eu"; else if (b.dono === "eu") b.dono = bot.id;
+  if (b.toqueDe === bot.id) b.toqueDe = "eu"; else if (b.toqueDe === "eu") b.toqueDe = bot.id;
   const num = bot.num; bot.num = me.num || 10; me.num = num; bot.name = `#${bot.num}`;
   E.charge = null; G.bm.trocaT = now();
   if (aviso) flashMsg("", "🔁 Trocou de jogador", 700);
 }
 export function trocarJogador() {
-  if (!G.bm || G.bm.phase === "over") return;
+  if (!G.bm || G.bm.phase === "over" || !trocaLigada()) return;
   const b = local.ball, t = now(), lista = G.bots.filter((x) => x.team === "A").sort((p, q) => Math.hypot(b.x - p.x, b.z - p.z) - Math.hypot(b.x - q.x, b.z - q.z));
   if (!lista.length) return;
   G.bm.trocaN = t - G.bm.trocaT < 1.2 ? G.bm.trocaN + 1 : 0; // apertou de novo logo em seguida: o próximo mais perto
   trocarCom(lista[G.bm.trocaN % lista.length]);
 }
+// toque na bola conduzindo: a perna dá uma batidinha (e, no meu, um somzinho baixo)
+function toqueAnim(id) { if (id === "eu") return toqueMeu(); const x = G.bots.find((q) => q.id === id); if (x) x.st.toqueT = now(); }
+function toqueMeu() { G.me.st.toqueT = now(); Sound.toque?.(); }
 function animarBots(dt) {
   for (const x of G.bots) {
-    x.model.position.set(x.x, x.y, x.z); x.model.rotation.y = x.facing + giroDeke(x.dekeT);
+    x.model.position.set(x.x, x.y, x.z); x.model.rotation.y = x.facing;
     animate(x.model, Math.hypot(x.vx, x.vz), dt, x.st, (x.sprint ? FL.sprint : 0) | (x.slideT > 0 ? FL.slide : 0) | (x.downT > 0 ? FL.down : 0));
   }
 }
@@ -341,10 +345,9 @@ export function botsStep(dt, t) {
   const bm = G.bm, F = G.F, b = local.ball; if (!bm) return;
   if (bm.phase === "over") { animarBots(dt); for (const k of G.keepers) keeperBot(k, b, dt, t, false); return; }
   if (bm.phase === "ready" && locked() && t >= bm.until) { bm.phase = "live"; Sound.start(); }
-  if (bm.phase === "super") { animarBots(dt); for (const k of G.keepers) keeperBot(k, b, dt, t, false); return; } // animação do Super Chute
   if (bm.phase === "goal") {
     C.simulate(F, b, [], dt);
-    for (const x of G.bots) C.movePlayer(x, { x: 0, z: 0, speed: 0 }, dt, F);
+    for (const x of G.bots) C.movePlayer(x, { x: 0, z: 0, speed: 0, suave: true }, dt, F);
     animarBots(dt); for (const k of G.keepers) keeperBot(k, b, dt, t, false);
     if (t >= bm.until) { if (bm.left <= 0) return botsFim(); botsKickoff(bm.kicking); }
     return;
@@ -358,19 +361,11 @@ export function botsStep(dt, t) {
   bm.left -= dt * 1000;
   carrinhosLocais();
   viraComABola(b, G.me);
-  const antes = b.dono, r = C.simulate(F, b, bodies, dt);
+  const antes = b.dono, toques = b.toques, r = C.simulate(F, b, bodies, dt);
+  if (b.toques !== toques) toqueAnim(b.toqueDe);
   if (r.hit > 2) { const [kk, pan] = hearing([b.x, b.y, b.z]); Sound.bounce(r.hit, kk, pan); }
-  if (F.strikers) { // itens: andam, derrubam; 3 passes seguidos do time dão item para quem recebeu
-    itensLocais(dt);
-    if (b.dono && b.dono !== bm.ultDono) {
-      const t1 = bm.ultDono ? timeDe(bm.ultDono) : null, t2 = timeDe(b.dono);
-      if (t1 && t1 === t2) { bm.passes[t2] = (bm.passes[t2] || 0) + 1; if (bm.passes[t2] % 3 === 0) { const o = entsLocais().find((q) => q.id === b.dono); if (o) darItem(o.e, "3 passes"); } }
-      else bm.passes = { A: 0, B: 0 };
-      bm.ultDono = b.dono;
-    }
-  }
-  // um companheiro dominou a bola: o controle passa para ele (como no FIFA)
-  if (b.dono && b.dono !== "eu" && b.dono !== antes) { const bot = G.bots.find((x) => x.id === b.dono); if (bot && bot.team === "A") trocarCom(bot, false); }
+  // troca ligada: um companheiro dominou a bola e o controle passa para ele (como no FIFA)
+  if (trocaLigada() && b.dono && b.dono !== "eu" && b.dono !== antes) { const bot = G.bots.find((x) => x.id === b.dono); if (bot && bot.team === "A") trocarCom(bot, false); }
   const side = C.goalOf(F, b);
   if (side) {
     bm.score[side]++; bm.phase = "goal"; bm.until = t + 2.6; bm.kicking = side === "A" ? "B" : "A";

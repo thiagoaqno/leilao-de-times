@@ -67,7 +67,97 @@ export const SKINS_CONFIG = {
     look: { esponja: true, altura: 0.92 } },
   levi: { arquivo: "/pelada/modelos/levi.glb", scale: 1, yOffset: 0, rotationOffset: Math.PI,
     look: { tom: 0xf3d3b0, cabelo: 0x111111, estilo: "franja", altura: 0.88, gravata: 0xf4f4f4, capa: 0x2f5233 } },
+  // Personagens com roupa própria (sem a camisa do time): o time aparece no marcador colorido (anel no chão,
+  // losango em cima da cabeça e braçadeira). look.roupa: cor de cada pedaço; tronco/rosto: desenho em canvas
+  // (frente e costas); enfeites(): peças a mais (cabelo, chapéu, casco, rabo...). Tudo de caixinhas, no estilo do jogo.
+  aranha: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x1f3a93, canela: 0x1f3a93, meia: 0xc8102e, bota: 0xc8102e, ombro: 0xc8102e, antebraco: 0xc8102e, cabeca: 0xc8102e, mao: 0xc8102e },
+      tronco: (x, w, hh, costas) => { x.fillStyle = "#c8102e"; x.fillRect(0, 0, w, hh); x.fillStyle = "#1f3a93"; x.fillRect(0, hh * 0.72, w, hh * 0.28); x.fillRect(0, 0, w * 0.1, hh); x.fillRect(w * 0.9, 0, w * 0.1, hh); teia(x, w, hh * 0.72, w / 2, costas ? hh * 0.2 : hh * 0.08); aranhaPeito(x, w / 2, hh * 0.38, costas ? 1.3 : 1); },
+      rosto: (x, w, hh) => { x.fillStyle = "#c8102e"; x.fillRect(0, 0, w, hh); teia(x, w, hh, w / 2, hh * 0.55); for (const s of [-1, 1]) { x.save(); x.translate(w / 2 + s * w * 0.2, hh * 0.45); x.rotate(s * 0.35); x.fillStyle = "#111"; x.beginPath(); x.ellipse(0, 0, w * 0.17, hh * 0.13, 0, 0, 7); x.fill(); x.fillStyle = "#f4f4f4"; x.beginPath(); x.ellipse(0, 0, w * 0.13, hh * 0.09, 0, 0, 7); x.fill(); x.restore(); } },
+      cabelo: "nenhum" } },
+  naruto: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0xf57c00, canela: 0xf57c00, meia: 0xf57c00, bota: 0x1c2a6b, ombro: 0x151515, antebraco: 0xf57c00, pele: 0xf3c9a0 }, altura: 0.94,
+      tronco: (x, w, hh, costas) => { x.fillStyle = "#f57c00"; x.fillRect(0, 0, w, hh); x.fillStyle = "#151515"; x.fillRect(0, 0, w, hh * 0.24); x.fillStyle = "#f4f4f4"; if (!costas) { x.fillRect(w * 0.42, hh * 0.05, w * 0.16, hh * 0.18); x.fillStyle = "#151515"; x.fillRect(w * 0.48, hh * 0.24, w * 0.04, hh * 0.6); } else { x.strokeStyle = "#c8102e"; x.lineWidth = w * 0.05; x.beginPath(); x.arc(w / 2, hh * 0.55, w * 0.18, 0, 7); x.stroke(); x.beginPath(); x.arc(w / 2, hh * 0.55, w * 0.07, 0, 7); x.stroke(); } },
+      rosto: (x, w, hh) => { x.fillStyle = "#f3c9a0"; x.fillRect(0, 0, w, hh); olhos(x, w, hh, "#2a6bd1"); x.strokeStyle = "#5a3a22"; x.lineWidth = 2; for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { x.beginPath(); x.moveTo(w / 2 + s * w * 0.28, hh * (0.6 + i * 0.07)); x.lineTo(w / 2 + s * w * 0.45, hh * (0.58 + i * 0.08)); x.stroke(); } boca(x, w, hh, "#7a2e1f"); },
+      enfeites: (head, part, M) => { const loiro = M(0xf5c518); part(head, 0.28, 0.07, 0.28, loiro, 0, 0.31, 0.01); // cabelo espetado
+        for (const [sx, sz, r] of [[-0.1, -0.08, 0.5], [0.1, -0.08, -0.5], [0, -0.1, 0], [-0.12, 0.06, 0.6], [0.12, 0.06, -0.6], [0, 0.1, 0], [-0.06, 0.02, 0.25], [0.06, 0.02, -0.25]]) { const q = part(head, 0.07, 0.15, 0.07, loiro, sx, 0.38, sz); q.rotation.z = r; q.rotation.x = sz * 3; }
+        part(head, 0.29, 0.06, 0.29, M(0x1c2a6b), 0, 0.24, 0); part(head, 0.13, 0.06, 0.02, M(0xb7bec7, { metalness: 0.6, roughness: 0.3 }), 0, 0.24, -0.15); } } }, // bandana com a placa
+  tartaruga: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x4f9a3a, canela: 0x4f9a3a, meia: 0x4f9a3a, bota: 0x4f9a3a, ombro: 0x4f9a3a, antebraco: 0x4f9a3a, pele: 0x4f9a3a }, larg: 1.12, barriga: 1.15,
+      tronco: (x, w, hh, costas) => { if (costas) { x.fillStyle = "#7a4e22"; x.fillRect(0, 0, w, hh); x.strokeStyle = "#4e3014"; x.lineWidth = 4; for (const [cx, cy] of [[0.5, 0.3], [0.3, 0.62], [0.7, 0.62]]) { x.beginPath(); for (let k = 0; k < 6; k++) { const a = k / 6 * 7; x.lineTo(w * cx + Math.cos(a) * w * 0.17, hh * cy + Math.sin(a) * hh * 0.17); } x.closePath(); x.stroke(); } } else { x.fillStyle = "#4f9a3a"; x.fillRect(0, 0, w, hh); x.fillStyle = "#e3c35a"; x.fillRect(w * 0.15, hh * 0.08, w * 0.7, hh * 0.88); x.strokeStyle = "#b8963a"; x.lineWidth = 3; for (let i = 1; i < 4; i++) { x.beginPath(); x.moveTo(w * 0.15, hh * i / 4); x.lineTo(w * 0.85, hh * i / 4); x.stroke(); } x.fillStyle = "#7a4e22"; x.fillRect(0, hh * 0.86, w, hh * 0.1); } },
+      rosto: (x, w, hh) => { x.fillStyle = "#4f9a3a"; x.fillRect(0, 0, w, hh); x.fillStyle = "#1e5bc6"; x.fillRect(0, hh * 0.32, w, hh * 0.22); olhos(x, w, hh, "#ffffff", 0.43); boca(x, w, hh, "#1f3d17"); },
+      enfeites: (head, part, M, spine) => { const azul = M(0x1e5bc6); for (const s of [-1, 1]) { const f = part(head, 0.04, 0.03, 0.2, azul, s * 0.05, 0.13, 0.22); f.rotation.x = 0.5; } // as pontas da faixa
+        part(spine, 0.5, 0.56, 0.1, M(0x7a4e22, { roughness: 0.5 }), 0, 1.16 - SPINE_Y, 0.18); } } }, // o casco nas costas
+  ghostface: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x111114, canela: 0x111114, meia: 0x111114, bota: 0x0b0b0d, ombro: 0x111114, antebraco: 0x111114, mao: 0x0b0b0d, cabeca: 0x111114 },
+      tronco: (x, w, hh) => { x.fillStyle = "#141418"; x.fillRect(0, 0, w, hh); x.fillStyle = "#24242b"; for (let i = 0; i < 5; i++) x.fillRect(w * (0.1 + i * 0.2), 0, 2, hh); },
+      rosto: (x, w, hh) => { x.fillStyle = "#111114"; x.fillRect(0, 0, w, hh); x.fillStyle = "#f2f2ee"; x.beginPath(); x.ellipse(w / 2, hh * 0.56, w * 0.36, hh * 0.46, 0, 0, 7); x.fill();
+        x.fillStyle = "#111"; for (const s of [-1, 1]) { x.beginPath(); x.ellipse(w / 2 + s * w * 0.14, hh * 0.42, w * 0.08, hh * 0.15, s * -0.35, 0, 7); x.fill(); } x.beginPath(); x.ellipse(w / 2, hh * 0.78, w * 0.07, hh * 0.15, 0, 0, 7); x.fill(); },
+      cabelo: "nenhum",
+      enfeites: (head, part, M, spine) => { const preto = M(0x111114); part(head, 0.3, 0.32, 0.06, preto, 0, 0.16, 0.12); for (const s of [-1, 1]) part(head, 0.03, 0.32, 0.27, preto, s * 0.145, 0.16, 0.01); part(head, 0.3, 0.06, 0.3, preto, 0, 0.32, 0); // o capuz
+        const capa = part(spine, 0.56, 0.5, 0.34, preto, 0, 0.62 - SPINE_Y, 0.02); capa.scale.set(1, 1, 1); } } }, // a túnica até o joelho
+  gojo: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x1c2333, canela: 0x1c2333, meia: 0x1c2333, bota: 0x0d0d10, ombro: 0x1c2333, antebraco: 0x1c2333, pele: 0xf6dcc8 }, altura: 1.06,
+      tronco: (x, w, hh) => { x.fillStyle = "#1c2333"; x.fillRect(0, 0, w, hh); x.fillStyle = "#121722"; x.fillRect(w * 0.2, 0, w * 0.6, hh * 0.18); x.fillStyle = "#2b3550"; x.fillRect(w * 0.48, hh * 0.18, w * 0.04, hh * 0.8); x.fillStyle = "#c9a94a"; x.beginPath(); x.arc(w * 0.5, hh * 0.3, w * 0.035, 0, 7); x.fill(); },
+      rosto: (x, w, hh) => { x.fillStyle = "#f6dcc8"; x.fillRect(0, 0, w, hh); x.fillStyle = "#121212"; x.fillRect(0, hh * 0.3, w, hh * 0.2); boca(x, w, hh, "#a0574a"); },
+      enfeites: (head, part, M, spine) => { const branco = M(0xf4f4f6); part(head, 0.29, 0.08, 0.29, branco, 0, 0.32, 0.01);
+        for (const [sx, sz, r] of [[-0.1, -0.09, 0.4], [0.1, -0.09, -0.4], [0, -0.11, 0], [-0.11, 0.05, 0.5], [0.11, 0.05, -0.5], [0, 0.1, -0.2], [0.04, -0.02, 0.1], [-0.05, 0.02, -0.15]]) { const q = part(head, 0.07, 0.19, 0.07, branco, sx, 0.42, sz); q.rotation.z = r; q.rotation.x = -sz * 2; }
+        part(spine, 0.2, 0.1, 0.22, M(0x121722), 0, 1.42 - SPINE_Y, 0); } } }, // gola alta
+  woody: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x2f5fa8, canela: 0x2f5fa8, meia: 0x2f5fa8, bota: 0x6b3f1d, ombro: 0xf2c230, antebraco: 0xf2c230, pele: 0xf1c79a }, altura: 1.05, larg: 0.95,
+      tronco: (x, w, hh) => { x.fillStyle = "#f2c230"; x.fillRect(0, 0, w, hh); x.strokeStyle = "#c0392b"; x.lineWidth = 2; for (let i = 0; i < w; i += 12) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, hh); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(w, i); x.stroke(); }
+        for (const s of [0, 1]) { const x0 = s ? w * 0.66 : 0; x.fillStyle = "#f8f6f0"; x.fillRect(x0, 0, w * 0.34, hh * 0.85); x.fillStyle = "#151515"; for (const [a, b, r] of [[0.1, 0.2, 7], [0.22, 0.55, 9], [0.08, 0.7, 6], [0.25, 0.32, 5]]) { x.beginPath(); x.ellipse(x0 + w * a, hh * b, r, r * 0.7, 0.4, 0, 7); x.fill(); } }
+        x.fillStyle = "#e3b53a"; star(x, w * 0.83, hh * 0.32, 9); x.fillStyle = "#5a3416"; x.fillRect(0, hh * 0.85, w, hh * 0.1); x.fillStyle = "#d4a017"; x.fillRect(w * 0.42, hh * 0.85, w * 0.16, hh * 0.1); },
+      rosto: (x, w, hh) => { x.fillStyle = "#f1c79a"; x.fillRect(0, 0, w, hh); olhos(x, w, hh, "#6b4a2b"); boca(x, w, hh, "#8a3a2a"); },
+      enfeites: (head, part, M, spine) => { const marrom = M(0x8b5a2b); part(head, 0.5, 0.03, 0.5, marrom, 0, 0.31, 0); part(head, 0.27, 0.14, 0.27, marrom, 0, 0.39, 0); part(head, 0.28, 0.03, 0.28, M(0x4a2d14), 0, 0.33, 0); // o chapéu
+        part(head, 0.28, 0.06, 0.28, M(0x5a3416), 0, 0.27, 0.02); part(spine, 0.2, 0.07, 0.2, M(0xc0392b), 0, 1.44 - SPINE_Y, -0.03); } } }, // cabelo e o lenço vermelho
+  pikachu: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0xf7d21e, canela: 0xf7d21e, meia: 0xf7d21e, bota: 0xf7d21e, ombro: 0xf7d21e, antebraco: 0xf7d21e, pele: 0xf7d21e }, altura: 0.82, larg: 1.18, barriga: 1.35, cabecaGrande: 1.35,
+      tronco: (x, w, hh, costas) => { x.fillStyle = "#f7d21e"; x.fillRect(0, 0, w, hh); if (costas) { x.fillStyle = "#7a4e22"; x.fillRect(w * 0.2, hh * 0.25, w * 0.6, hh * 0.1); x.fillRect(w * 0.25, hh * 0.45, w * 0.5, hh * 0.1); } },
+      rosto: (x, w, hh) => { x.fillStyle = "#f7d21e"; x.fillRect(0, 0, w, hh); x.fillStyle = "#111"; for (const s of [-1, 1]) { x.beginPath(); x.arc(w / 2 + s * w * 0.2, hh * 0.45, w * 0.08, 0, 7); x.fill(); x.fillStyle = "#fff"; x.beginPath(); x.arc(w / 2 + s * w * 0.2 - 2, hh * 0.42, w * 0.03, 0, 7); x.fill(); x.fillStyle = "#e0312b"; x.beginPath(); x.arc(w / 2 + s * w * 0.36, hh * 0.68, w * 0.1, 0, 7); x.fill(); x.fillStyle = "#111"; }
+        x.beginPath(); x.arc(w / 2, hh * 0.58, 2.5, 0, 7); x.fill(); x.strokeStyle = "#111"; x.lineWidth = 2; x.beginPath(); x.arc(w / 2 - 6, hh * 0.66, 6, 0.2, 2.9); x.stroke(); x.beginPath(); x.arc(w / 2 + 6, hh * 0.66, 6, 0.2, 2.9); x.stroke(); },
+      cabelo: "nenhum",
+      enfeites: (head, part, M, spine) => { const am = M(0xf7d21e), preto = M(0x151515); for (const s of [-1, 1]) { const o = new THREE.Group(); o.position.set(s * 0.1, 0.28, 0); o.rotation.z = -s * 0.35; head.add(o); part(o, 0.07, 0.26, 0.05, am, 0, 0.13, 0); part(o, 0.072, 0.09, 0.052, preto, 0, 0.27, 0); } // as orelhas
+        const rabo = new THREE.Group(); rabo.position.set(0, 0.95 - SPINE_Y, 0.2); spine.add(rabo); // o rabo em raio
+        part(rabo, 0.08, 0.14, 0.06, M(0x7a4e22), 0, 0.05, 0.04); for (const [y, z, w] of [[0.18, 0.12, 0.12], [0.32, 0.06, 0.2], [0.46, 0.16, 0.26]]) part(rabo, 0.05, 0.14, w, am, 0, y, z); } } },
+  ben10: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x3b7d3b, canela: 0x3b7d3b, meia: 0x3b7d3b, bota: 0x1b1b1b, ombro: 0xf4f4f4, pele: 0xf1c79a }, altura: 0.9,
+      tronco: (x, w, hh, costas) => { x.fillStyle = "#f4f4f4"; x.fillRect(0, 0, w, hh); x.fillStyle = "#151515"; x.fillRect(w * 0.4, 0, w * 0.2, hh); if (!costas) { x.fillStyle = "#f4f4f4"; x.font = `bold ${hh * 0.2}px Figtree, Arial`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("10", w / 2, hh * 0.3); } },
+      rosto: (x, w, hh) => { x.fillStyle = "#f1c79a"; x.fillRect(0, 0, w, hh); olhos(x, w, hh, "#2e8b3a"); boca(x, w, hh, "#8a3a2a"); },
+      enfeites: (head, part, M, spine, u) => { const cab = M(0x5a3a1e); part(head, 0.28, 0.08, 0.28, cab, 0, 0.31, 0.01); const f = part(head, 0.26, 0.07, 0.06, cab, 0.02, 0.28, -0.13); f.rotation.z = -0.2; // cabelo com franja de lado
+        const relogio = part(u.elbows[0], 0.13, 0.08, 0.13, M(0x151515), 0, -0.24, 0); part(u.elbows[0], 0.06, 0.03, 0.06, M(0x3ee03e, { emissive: 0x22aa22, emissiveIntensity: 0.6 }), 0, -0.24, -0.07); } } }, // o Omnitrix
+  shrek: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x6b4a2b, canela: 0x6b4a2b, meia: 0x6b4a2b, bota: 0x3a2412, ombro: 0xe8dcb5, antebraco: 0xe8dcb5, pele: 0x8db33a, mao: 0x8db33a }, altura: 1.04, larg: 1.3, barriga: 1.35,
+      tronco: (x, w, hh) => { x.fillStyle = "#e8dcb5"; x.fillRect(0, 0, w, hh); x.fillStyle = "#4a3018"; x.fillRect(0, 0, w * 0.3, hh * 0.88); x.fillRect(w * 0.7, 0, w * 0.3, hh * 0.88); x.fillStyle = "#2a1a0c"; x.fillRect(0, hh * 0.82, w, hh * 0.1); },
+      rosto: (x, w, hh) => { x.fillStyle = "#8db33a"; x.fillRect(0, 0, w, hh); olhos(x, w, hh, "#6b4a2b"); x.fillStyle = "#6b8a26"; x.fillRect(w * 0.42, hh * 0.5, w * 0.16, hh * 0.14); boca(x, w, hh, "#3e4f12", 0.4); },
+      cabelo: "nenhum",
+      enfeites: (head, part, M) => { const verde = M(0x8db33a); for (const s of [-1, 1]) { const o = part(head, 0.07, 0.06, 0.06, verde, s * 0.16, 0.22, 0); const t = part(head, 0.05, 0.05, 0.05, verde, s * 0.2, 0.25, 0); t.rotation.z = s * 0.4; } } } }, // as orelhas de corneta
+  cj: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x2c4a7a, canela: 0x2c4a7a, meia: 0x2c4a7a, bota: 0xeeeeee, ombro: 0x5a3a22, antebraco: 0x5a3a22, pele: 0x5a3a22 }, larg: 1.06,
+      tronco: (x, w, hh) => { x.fillStyle = "#5a3a22"; x.fillRect(0, 0, w, hh); x.fillStyle = "#f4f4f4"; x.fillRect(w * 0.14, hh * 0.12, w * 0.72, hh * 0.88); x.fillStyle = "#5a3a22"; x.beginPath(); x.ellipse(w / 2, hh * 0.1, w * 0.18, hh * 0.12, 0, 0, 7); x.fill(); },
+      rosto: (x, w, hh) => { x.fillStyle = "#5a3a22"; x.fillRect(0, 0, w, hh); olhos(x, w, hh, "#2a1a0c"); x.fillStyle = "#151515"; x.fillRect(w * 0.36, hh * 0.68, w * 0.28, hh * 0.05); x.fillRect(w * 0.44, hh * 0.78, w * 0.12, hh * 0.12); },
+      enfeites: (head, part, M) => { part(head, 0.27, 0.03, 0.27, M(0x151515), 0, 0.29, 0.005); } } }, // cabelo raspado
+  steve: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x3b3bb3, canela: 0x3b3bb3, meia: 0x3b3bb3, bota: 0x6b6b6b, ombro: 0x22a6a6, antebraco: 0xc99a6c, pele: 0xc99a6c }, cabecaGrande: 1.15, pixel: true,
+      tronco: (x, w, hh) => { x.fillStyle = "#22a6a6"; x.fillRect(0, 0, w, hh); x.fillStyle = "#1b8c8c"; x.fillRect(0, hh * 0.82, w, hh * 0.18); x.fillStyle = "#c99a6c"; x.fillRect(w * 0.375, 0, w * 0.25, hh * 0.125); },
+      rosto: (x, w, hh) => { const p = w / 8; x.fillStyle = "#c99a6c"; x.fillRect(0, 0, w, hh); x.fillStyle = "#4a2f1a"; x.fillRect(0, 0, w, p * 2); x.fillRect(0, p * 2, p, p); x.fillRect(w - p, p * 2, p, p);
+        for (const s of [1, 5]) { x.fillStyle = "#fff"; x.fillRect(s * p, p * 4, p, p); x.fillStyle = "#4a3cbf"; x.fillRect((s + 1) * p, p * 4, p, p); } x.fillStyle = "#8a5a3a"; x.fillRect(p * 3, p * 5, p * 2, p); x.fillStyle = "#6b3f24"; x.fillRect(p * 2, p * 6, p * 4, p); x.fillRect(p * 2, p * 7, p, p); x.fillRect(p * 5, p * 7, p, p); },
+      cabelo: "nenhum",
+      enfeites: (head, part, M) => { const cab = M(0x4a2f1a); part(head, 0.29, 0.06, 0.29, cab, 0, 0.3, 0.005); part(head, 0.29, 0.22, 0.03, cab, 0, 0.18, 0.135); } } },
 };
+// desenhinhos que as skins usam no canvas (rosto e tronco)
+function teia(x, w, hh, cx, cy) {
+  x.strokeStyle = "#151515"; x.lineWidth = Math.max(1, w / 90);
+  for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(a) * w, cy + Math.sin(a) * w); x.stroke(); }
+  for (let r = w * 0.12; r < w * 1.2; r += w * 0.14) { x.beginPath(); for (let k = 0; k <= 10; k++) { const a = (k / 10) * Math.PI * 2; x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } x.stroke(); }
+}
+function aranhaPeito(x, cx, cy, k) {
+  x.fillStyle = "#151515"; x.beginPath(); x.ellipse(cx, cy, 6 * k, 9 * k, 0, 0, 7); x.fill(); x.lineWidth = 2.5 * k; x.strokeStyle = "#151515";
+  for (const s of [-1, 1]) for (let i = 0; i < 4; i++) { x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + s * 16 * k, cy - 14 * k + i * 9 * k); x.lineTo(cx + s * 22 * k, cy - 6 * k + i * 11 * k); x.stroke(); }
+}
+function olhos(x, w, hh, cor, y = 0.45) { for (const s of [-1, 1]) { x.fillStyle = "#fff"; x.fillRect(w / 2 + s * w * 0.2 - w * 0.07, hh * y - hh * 0.05, w * 0.14, hh * 0.1); x.fillStyle = cor; x.fillRect(w / 2 + s * w * 0.2 - w * 0.03, hh * y - hh * 0.05, w * 0.07, hh * 0.1); } x.fillStyle = "#2a1a10"; for (const s of [-1, 1]) x.fillRect(w / 2 + s * w * 0.2 - w * 0.09, hh * y - hh * 0.12, w * 0.18, hh * 0.035); }
+function boca(x, w, hh, cor, larg = 0.24) { x.fillStyle = cor; x.fillRect(w / 2 - w * larg / 2, hh * 0.76, w * larg, hh * 0.05); }
+function star(x, cx, cy, r) { x.beginPath(); for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2 - Math.PI / 2, rr = k % 2 ? r * 0.45 : r; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.closePath(); x.fill(); }
 const hex = (c) => new THREE.Color(c).getHex();
 
 // cria o jogador: um container (é ele que anda e gira) com o nome em cima; o visual (a skin) fica dentro
@@ -75,6 +165,7 @@ export function makePlayer(kitId, num, name, opts = {}) {
   const g = new THREE.Group();
   g.userData = { kitId, num, gk: !!opts.gk, nameLen: name.length, skin: null, pedido: 0, tag: null };
   if (name) { const tag = nameSprite((opts.gk ? "🧤 " : "") + name, tagColor(kitId)); tag.position.y = 2.15; g.add(tag); g.userData.tag = tag; }
+  marcador(g, kitId, name ? 2.45 : 2.15);
   mudarSkinJogador(g, opts.skin);
   return g;
 }
@@ -152,22 +243,25 @@ function montarGLTF(g, id, gltf) {
 }
 
 // ---------- o boneco de caixinhas de cada skin ----------
+// skins de time (padrão, CR7...): camisa, calção e meião do time. Personagens (look.roupa): a roupa deles, o rosto
+// desenhado (look.rosto), as peças a mais (look.enfeites) e uma braçadeira com a cor do time no braço esquerdo.
 function montarVoxel(g, id) {
-  const u = g.userData, L = SKINS_CONFIG[id].look || {}, bob = !!L.esponja;
+  const u = g.userData, L = SKINS_CONFIG[id].look || {}, bob = !!L.esponja, R = L.roupa;
   const K = u.gk ? { ...GK_KIT, num: C.kitColor(u.kitId) } : kitOf(u.kitId), num = L.num ?? u.num;
   const body = new THREE.Group(); body.scale.setScalar(L.altura || 1); g.add(body);
-  const tom = bob ? 0xf5e04a : L.tom ?? SKIN_TONES[(u.nameLen * 7 + u.num) % SKIN_TONES.length];
-  const skin = M(tom), shorts = M(bob ? 0x8a5a2b : hex(K.shorts)), sock = M(bob ? 0xf4f4f4 : hex(u.gk ? "#26282b" : C.kitColor(u.kitId))), boot = M(0x161616);
-  const shirtC = M(bob ? 0xffffff : hex(K.c[0])), hair = M(L.cabelo ?? 0x2a1b10);
+  const tom = bob ? 0xf5e04a : (R && R.pele) ?? L.tom ?? SKIN_TONES[(u.nameLen * 7 + u.num) % SKIN_TONES.length];
+  const skin = M(tom), shorts = M(R ? R.coxa : bob ? 0x8a5a2b : hex(K.shorts)), sock = M(R ? R.meia : bob ? 0xf4f4f4 : hex(u.gk ? "#26282b" : C.kitColor(u.kitId))), boot = M(R ? R.bota : 0x161616);
+  const shirtC = M(R ? R.ombro : bob ? 0xffffff : hex(K.c[0])), hair = M(typeof L.cabelo === "number" ? L.cabelo : 0x2a1b10);
+  const canela = R ? M(R.canela ?? tom) : skin, rw = R ? lwOf(L) : 1;
   const part = (gg, w, hh, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); m.position.set(x, y, z); gg.add(m); return m; };
   const lw = L.larg || 1, perna = bob ? 0.6 : 1; // o Bob tem perninha fina
   // pernas e braços com joelho e cotovelo (dobram na corrida, para o boneco não ficar duro)
   const legs = [], knees = [];
   for (const sx of [-0.11 * lw, 0.11 * lw]) {
     const l = new THREE.Group(); l.position.set(sx, 0.85, 0);
-    part(l, 0.18 * lw, 0.3, 0.2, shorts, 0, -0.12, 0); part(l, 0.14 * perna, 0.12, 0.15 * perna, skin, 0, -0.29, 0);
+    part(l, 0.18 * lw, 0.3, 0.2, shorts, 0, -0.12, 0); part(l, 0.14 * perna * rw, 0.12, 0.15 * perna, canela, 0, -0.29, 0);
     const kn = new THREE.Group(); kn.position.y = -0.3; l.add(kn);
-    part(kn, 0.14 * perna, 0.2, 0.15 * perna, skin, 0, -0.08, 0); part(kn, 0.15 * (bob ? 0.8 : 1), 0.22, 0.16 * (bob ? 0.8 : 1), sock, 0, -0.36, 0); part(kn, 0.16, 0.1, 0.27, boot, 0, -0.5, -0.04);
+    part(kn, 0.14 * perna * rw, 0.2, 0.15 * perna, canela, 0, -0.08, 0); part(kn, 0.15 * (bob ? 0.8 : 1) * rw, 0.22, 0.16 * (bob ? 0.8 : 1), sock, 0, -0.36, 0); part(kn, 0.16 * rw, 0.1, 0.27, boot, 0, -0.5, -0.04);
     if (L.capa) part(l, 0.19, 0.03, 0.21, M(0x5a3a1e), 0, -0.2, 0); // cinto do equipamento de manobra (Levi)
     if (bob) part(kn, 0.13, 0.04, 0.14, M(hex(K.c[0])), 0, -0.3, 0); // faixa da meia com a cor do time
     body.add(l); legs.push(l); knees.push(kn);
@@ -183,18 +277,22 @@ function montarVoxel(g, id) {
     part(spine, 0.63, 0.1, 0.31, shirtC, 0, 0.9 - SPINE_Y, 0); // camisa
     part(spine, 0.07, 0.16, 0.02, M(hex(K.c[0])), 0, 0.88 - SPINE_Y, -0.16); // gravata
   } else {
-    front = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, false), roughness: 0.7 }); backM = new THREE.MeshStandardMaterial({ map: shirtTex(K, num, true), roughness: 0.7 });
-    torsoMats = [shirtC, shirtC, shirtC, shirtC, backM, front];
+    const desenho = (costas) => (L.tronco ? canvasTex(128, 128, (x, w, hh) => L.tronco(x, w, hh, costas), false, !!L.pixel) : shirtTex(K, num, costas));
+    front = new THREE.MeshStandardMaterial({ map: desenho(false), roughness: 0.7 }); backM = new THREE.MeshStandardMaterial({ map: desenho(true), roughness: 0.7 });
+    const lado = R ? M(R.ombro) : shirtC;
+    torsoMats = [lado, lado, lado, lado, backM, front];
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46 * lw, 0.6, 0.26 * (L.barriga || 1)), torsoMats); torso.position.y = 1.16 - SPINE_Y; spine.add(torso);
     if (L.gravata) part(spine, 0.14, 0.12, 0.05, M(L.gravata), 0, 1.38 - SPINE_Y, -0.14 * (L.barriga || 1)); // a gravata (cravat) do Levi
   }
-  const arms = [], elbows = [], fore = u.gk ? shirtC : skin, ombro = bob ? 0.36 : 0.3 * lw;
+  const arms = [], elbows = [], fore = u.gk ? shirtC : R ? M(R.antebraco ?? tom) : skin, ombro = bob ? 0.36 : 0.3 * lw;
   for (const sx of [-ombro, ombro]) {
     const a = new THREE.Group(); a.position.set(sx, (bob ? 1.36 : 1.42) - SPINE_Y, 0);
     part(a, 0.13 * (bob ? 0.9 : 1), 0.26, 0.14, shirtC, 0, -0.12, 0);
+    if (R && sx < 0) part(a, 0.145, 0.08, 0.155, M(hex(C.kitColor(u.kitId))), 0, -0.1, 0); // braçadeira com a cor do time
     const el = new THREE.Group(); el.position.y = -0.25; a.add(el);
     part(el, 0.11 * perna, 0.3, 0.12 * perna, fore, 0, -0.15, 0);
     if (u.gk) part(el, 0.15, 0.13, 0.15, M(0xf5f5f5), 0, -0.35, 0);
+    else if (R && R.mao) part(el, 0.12, 0.08, 0.13, M(R.mao), 0, -0.3, 0);
     spine.add(a); arms.push(a); elbows.push(el);
   }
   const head = new THREE.Group(); spine.add(head);
@@ -205,6 +303,10 @@ function montarVoxel(g, id) {
     part(head, 0.06, 0.06, 0.12, skin, 0, 0.01, -0.21);
     part(head, 0.3, 0.05, 0.02, M(0x8c1d1d), 0, -0.09, -0.155);
     for (const sx of [-0.04, 0.04]) part(head, 0.05, 0.06, 0.02, white, sx, -0.12, -0.16);
+  } else if (R) { // personagem: cabeça com o rosto desenhado na frente (a frente do boneco é −z)
+    head.position.y = 1.46 - SPINE_Y; head.scale.setScalar(L.cabecaGrande || 1);
+    const cab = M(R.cabeca ?? tom), rosto = L.rosto ? new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, L.rosto, false, !!L.pixel), roughness: 0.7 }) : cab;
+    const cabeca = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.28, 0.26), [cab, cab, cab, cab, cab, rosto]); cabeca.position.y = 0.15; head.add(cabeca);
   } else {
     head.position.y = 1.46 - SPINE_Y;
     part(head, 0.26, 0.28, 0.26, skin, 0, 0.15, 0);
@@ -220,9 +322,33 @@ function montarVoxel(g, id) {
   }
   let capa = null;
   if (L.capa) { capa = new THREE.Group(); capa.position.set(0, 1.44 - SPINE_Y, 0.15); part(capa, 0.5, 0.75, 0.03, M(L.capa), 0, -0.37, 0); spine.add(capa); }
+  if (L.enfeites) L.enfeites(head, part, M, spine, { elbows, arms, legs, knees });
   body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   Object.assign(u, { body, spine, head, legs, knees, arms, elbows, capa, gltfUrl: null,
-    mats: { head: skin, hair: bob ? skin : hair, torso: torsoMats, upperArm: shirtC, forearm: fore, thigh: shorts, shin: sock, boot } });
+    mats: { head: R ? M(R.cabeca ?? tom) : skin, hair: bob || R ? skin : hair, torso: torsoMats, upperArm: shirtC, forearm: fore, thigh: shorts, shin: sock, boot } });
+}
+const lwOf = (L) => L.larg || 1; // personagens largos (Shrek, Pikachu): as pernas engrossam junto
+// ---------- marcador do time: anel no chão e losango em cima da cabeça, na cor do time ----------
+// Com tanto personagem diferente em campo, é ele que diz de que time cada um é (todo mundo tem, até o goleiro).
+const MARCA = { anel: new THREE.RingGeometry(0.42, 0.56, 28), losango: new THREE.OctahedronGeometry(0.1, 0), mats: new Map() };
+const marcaMat = (cor) => { let m = MARCA.mats.get(cor); if (!m) { m = new THREE.MeshBasicMaterial({ color: cor, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false }); MARCA.mats.set(cor, m); } return m; };
+function marcador(g, kitId, alto) {
+  const cor = C.kitColor(kitId), m = marcaMat(cor);
+  const anel = new THREE.Mesh(MARCA.anel, m); anel.rotation.x = -Math.PI / 2; anel.position.y = 0.03; anel.renderOrder = 2; g.add(anel);
+  const los = new THREE.Mesh(MARCA.losango, m); los.scale.set(1, 1.5, 1); los.position.y = alto; g.add(los);
+  g.userData.marca = [anel, los];
+}
+// mãozinha em cima de quem está pedindo a bola (🙋)
+let pedeMat = null;
+export function balaoPede(model, on) {
+  if (!model) return;
+  let s = model.userData.balao;
+  if (!s) {
+    if (!on) return;
+    if (!pedeMat) { const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d"); x.font = "48px serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("🙋", 32, 36); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; pedeMat = new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }); }
+    s = new THREE.Sprite(pedeMat); s.scale.set(0.55, 0.55, 1); s.position.y = 2.75; s.renderOrder = 11; model.add(s); model.userData.balao = s;
+  }
+  s.visible = on;
 }
 // poses: correr, chutar, carrinho (deitado de costas), mergulho do goleiro (de lado), caído (de bruços), segurando a bola
 export function animate(model, speed, dt, st, f = 0) {
@@ -232,9 +358,10 @@ export function animate(model, speed, dt, st, f = 0) {
   const lying = f & (FL.slide | FL.dive | FL.down);
   const sw = speed > 0.4 && !lying ? Math.sin(st.anim) * Math.min(0.9, speed / 7) : 0;
   const kick = st.kickT ? Math.sin(clamp((t - st.kickT) / 0.28, 0, 1) * Math.PI) : 0;
+  const toque = st.toqueT ? Math.sin(clamp((t - st.toqueT) / 0.2, 0, 1) * Math.PI) * 0.55 : 0; // condução: batidinha na bola
   u.legs[0].rotation.x = lerp(u.legs[0].rotation.x, sw, 0.35);
   // o boneco olha para -z: rotation.x positivo leva perna/braço para a frente
-  u.legs[1].rotation.x = kick > 0.01 ? kick * 1.3 : lerp(u.legs[1].rotation.x, (f & FL.slide) ? 0.5 : -sw, 0.35);
+  u.legs[1].rotation.x = kick > 0.01 ? kick * 1.3 : toque > 0.01 ? Math.max(-sw, toque) : lerp(u.legs[1].rotation.x, (f & FL.slide) ? 0.5 : -sw, 0.35);
   const armTo = st.holding ? 1.4 : (f & FL.dive) ? 2.8 : null;
   const mola = springs(model, dt, st, lying, speed), jp = mola.jpitch.x - mola.pitch.x, jr = mola.jroll.x - mola.roll.x;
   u.arms[0].rotation.x = lerp(u.arms[0].rotation.x, (armTo ?? -sw * 0.8) + jp * 1.6, 0.35);

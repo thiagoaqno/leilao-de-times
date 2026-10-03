@@ -3,20 +3,19 @@
 // com a bola e todo mundo; os outros aparecem 100 ms "no passado", interpolados. A bola é PREVISTA a partir do último
 // pacote (rodando a mesma física de campo.js) e a diferença é corrigida aos poucos.
 // Este é o módulo de entrada: começa e termina o jogo, roda o laço principal (frame), mexe o meu jogador e a câmera.
-// O resto fica nos outros módulos desta pasta (estado, rede, menus, cena, arenas, bonecos, bola, controles, bots,
-// strikers, hud e sons).
+// O resto fica nos outros módulos desta pasta (estado, rede, menus, cena, arenas, bonecos, bola, controles, teclas,
+// bots, hud e sons).
 import * as THREE from "three";
-import { E, C, $, h, store, clamp, lerp, angLerp, FL, BASE, socket, myP, molinhoLigado, G, ctrlYaw, keys, now, TOUCH, locked, ballS, local, isCar, offline, myKit, mySkin, PAD, myAttackTeam, estiloDe, CARRINHO_CD } from "./estado.js";
+import { E, C, $, h, store, clamp, lerp, angLerp, FL, BASE, socket, myP, molinhoLigado, G, ctrlYaw, keys, now, TOUCH, locked, ballS, local, isCar, offline, myKit, mySkin, PAD, myAttackTeam, CARRINHO_CD } from "./estado.js";
 import { show, renderLobby } from "./menus.js";
 import { syncFromState, updateRemotes } from "./rede.js";
-import { makePlayer, mudarSkinJogador, descartarJogador, animate, makeCar, animateCar, carO, poseCar, rags, addRag, updateRags, clearRags } from "./bonecos.js";
+import { makePlayer, mudarSkinJogador, descartarJogador, balaoPede, animate, makeCar, animateCar, carO, poseCar, rags, addRag, updateRags, clearRags } from "./bonecos.js";
 import { Sound } from "./sons.js";
 import { renderer, scene, cam, ballMesh, aim, passMark, meMark, resize } from "./cena.js";
-import { pads, animarArena, ensureArena, updateGoalSigns } from "./arenas.js";
+import { pads, ensureArena, updateGoalSigns } from "./arenas.js";
 import { updateBall } from "./bola.js";
 import { flashMsg, hud, renderPauseSb } from "./hud.js";
-import { soltarPad, padPausa, lerPad, powerOf, bolaAqui, souDono, temBola, aimYaw, mates, PASSE_TIPO, curveNow } from "./controles.js";
-import { DEKE_T, tentarDeke, tempoStrikers, velStrikers, cercaEletrica, faiscas, updateFaiscas, desenharItens, limparItens, updateBooms, auraItens, usarMeuItem, hudItens, superArmado, pararBarra, animarSuper, fimSuperLocal, hudSuper } from "./strikers.js";
+import { soltarPad, padPausa, lerPad, powerOf, bolaAqui, souDono, temBola, aimYaw, curveNow, tipoPasse, planoPasse, tentarFila } from "./controles.js";
 import { setupFalta, practiceStep, setupBots, botsStep } from "./bots.js";
 
 export function newMe(spawn) {
@@ -26,7 +25,7 @@ export function newMe(spawn) {
 export function startGame(mode, game, falta = false) {
   if (G.active && G.mode === mode && G.game === game && !!G.falta === falta) return;
   stopGame();
-  G.active = true; G.mode = mode; G.game = game; G.F = C.campoDe(game, falta ? "futsal" : estiloDe(mode)); // a falta é treino de futsal G.kickoffKey = null; G.feed = [];
+  G.active = true; G.mode = mode; G.game = game; G.F = C.campoDe(game); G.kickoffKey = null; G.feed = [];
   ensureArena(game);
   show("game"); resize();
   const sp = C.spawns(G.F.id, "A", [{}], false)[0];
@@ -50,7 +49,7 @@ export function startGame(mode, game, falta = false) {
 export function stopGame() {
   if (!G.active) return;
   G.active = false;
-  clearRags(); limparItens();
+  clearRags();
   for (const r of G.remotes.values()) descartarJogador(r.model);
   G.remotes.clear();
   if (G.keeper) { descartarJogador(G.keeper.model); G.keeper = null; }
@@ -88,18 +87,16 @@ function loop() {
   const t = now(), dt = Math.min(0.05, t - lastT); lastT = t;
   try { lerPad(dt); frame(dt, t); } catch (e) { console.error(e); }
 }
-// o giro do drible: uma volta inteira enquanto dura
-export const giroDeke = (t) => (t > 0 ? (1 - t / DEKE_T) * Math.PI * 2 : 0);
 function myFlags() {
   const me = G.me; let f = 0;
   if (me.sprint) f |= FL.sprint; if (E.charge) f |= FL.charge; if (me.slideT > 0) f |= FL.slide; if (me.diveT > 0) f |= FL.dive;
   if (me.flipT > 0) f |= FL.flip; if (me.boosting) f |= FL.boost; if (me.segurando) f |= FL.grab;
-  if (me.dekeT > 0) f |= FL.deke; if (me.downT > 0) f |= FL.down; // os outros veem o giro e o choque
+  if (me.downT > 0) f |= FL.down; if (me.pedeT > 0) f |= FL.pede; // os outros veem a mãozinha de quem pediu a bola
   return f;
 }
 function frame(dt, t) {
   const online = G.mode === "online", m = E.S && E.S.match;
-  const frozen = (online && (!m || m.phase === "ready" || m.phase === "super" || E.S.phase !== "play")) || (G.mode === "bots" && (!G.bm || G.bm.phase !== "live" || !locked()));
+  const frozen = (online && (!m || m.phase === "ready" || E.S.phase !== "play")) || (G.mode === "bots" && (!G.bm || G.bm.phase !== "live" || !locked()));
   if (G.meModel) (isCar() ? stepCar : stepFoot)(dt, t, frozen);
   // envia minha posição
   if (G.meModel && online && t - G.lastSend > 1 / 30) {
@@ -110,13 +107,10 @@ function frame(dt, t) {
   if (G.mode === "treino") practiceStep(dt, t);
   if (G.mode === "bots") botsStep(dt, t);
   meMark.visible = G.mode === "bots" && !!G.meModel && G.view !== "primeira";
-  if (meMark.visible) meMark.position.set(G.me.x, G.me.y + 2.25 + Math.sin(t * 5) * 0.06, G.me.z);
+  if (meMark.visible) meMark.position.set(G.me.x, G.me.y + 2.55 + Math.sin(t * 5) * 0.06, G.me.z);
   updateRemotes(dt);
   updateRags(dt);
   updateBall(dt);
-  updateFaiscas(dt); animarArena(t); updateBooms(dt); hudItens(); hudSuper();
-  if (G.superAnim) animarSuper(dt, offline() ? fimSuperLocal : null);
-  if (G.mode === "online" && G.F.strikers) { const agora = performance.now(); desenharItens((G.itensRede || []).map((i) => { const s = Math.min(0.15, (agora - i.at) / 1000); return { ...i, x: i.x + i.vx * s, z: i.z + i.vz * s, t: i.t + s }; }), dt); }
   updateCamera(dt); if (camHook) camHook(cam);
   hud(t);
   updateGoalSigns();
@@ -134,10 +128,8 @@ function stepFoot(dt, t, frozen) {
     const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l; len = 1;
   }
   me.slideT = Math.max(0, me.slideT - dt); me.diveT = Math.max(0, me.diveT - dt); me.downT = Math.max(0, me.downT - dt); me.slideCd = Math.max(0, me.slideCd - dt);
-  tempoStrikers(me, dt);
-  if (G.F.strikers && E.jumpQueued && !frozen && souDono() && tentarDeke(me)) E.jumpQueued = false; // Strikers: Espaço com a bola = drible com giro
-  if (E.itemQueued) { E.itemQueued = false; if (G.F.strikers && !frozen && !(me.downT > 0)) usarMeuItem(); }
-  if (G.F.strikers) auraItens(me, dt);
+  me.pedeT = Math.max(0, (me.pedeT || 0) - dt);
+  if (!frozen) tentarFila(); // chute que esperava a bola (conduzindo com toques)
   const busy = me.slideT > 0 || me.diveT > 0 || me.downT > 0;
   const holding = ballS.snap && E.ME && ballS.snap.holder === E.ME.id;
   // carrinho (rodinha do mouse): desliza para onde está virado e derruba quem estiver na frente
@@ -163,22 +155,18 @@ function stepFoot(dt, t, frozen) {
   me.seguradoPor = busy ? null : quemMeSegura(me); // algum adversário colado com a mão em mim
   if (me.segurando && !antes) { flashMsg("", `✋ Segurando ${h(me.segurando.name)}`, 900); Sound.puxao(); }
   if (me.seguradoPor && !antesV) { flashMsg("", `✋ ${h(me.seguradoPor.name)} está te segurando!`, 1200, "#ffb4a8"); Sound.puxao(); }
-  const wantSprint = (keys.has("ShiftLeft") || keys.has("ShiftRight")) && len > 0 && !E.charge && !busy && !me.segurando;
+  const carregaChute = E.charge && (E.charge.kind === "chute" || E.charge.kind === "cavadinha"); // carregando o chute, anda devagar (o passe não freia)
+  const wantSprint = keys.has("ShiftLeft") && len > 0 && !carregaChute && !busy && !me.segurando;
   me.sprint = wantSprint && me.stamina > 0.02;
-  me.stamina = F.semFolego ? 1 : clamp(me.stamina + (me.sprint ? -0.24 : 0.14) * dt, 0, 1); // Strikers: sem fôlego
-  let speed = (E.charge ? C.CHARGING : me.sprint ? C.SPRINT : C.RUN) * velStrikers(me);
+  me.stamina = clamp(me.stamina + (me.sprint ? -0.24 : 0.14) * dt, 0, 1);
+  let speed = carregaChute ? C.CHARGING : me.sprint ? C.SPRINT : C.RUN;
   if (me.seguradoPor) speed *= SEGURADO_VEL; if (me.segurando) speed *= 0.85;
-  if (superArmado() || G.superBarra || G.superAnim) speed = 0; // Super Chute: parado carregando (dá para levar carrinho)
-  if (G.superBarra && (busy || !temBola())) { G.superBarra = null; flashMsg("", "Super Chute perdido!", 900, "#ff8a8a"); }
-  if (G.superBarra && now() - G.superBarra.t0 > 2.2) pararBarra(); // demorou: sai com o que tiver
-  if (superArmado() && Math.random() < dt * 40) faiscas(me.x + (Math.random() - 0.5) * 0.8, 0.2 + Math.random() * 1.6, me.z + (Math.random() - 0.5) * 0.8, 1, 0xffe14a);
   if (padMag > 0.15 && !me.sprint) speed *= clamp(padMag * 1.5, 0.35, 1); // empurrou pouco o analógico: anda devagar
   if (frozen || !len) speed = 0;
   if (frozen) { me.vx = 0; me.vz = 0; }
   if (busy) { const k = Math.exp(-dt * (me.downT > 0 ? 6 : 1.6)); me.vx *= k; me.vz *= k; }
   const jumping = E.jumpQueued && !frozen && !busy && me.onGround;
-  C.movePlayer(me, { x: wx, z: wz, speed, jump: jumping, free: busy, molinho: molinhoLigado() }, dt, F);
-  if (cercaEletrica(me, "Você")) { E.charge = null; flashMsg("", "⚡ Choque na cerca!", 900, "#9ff8ff"); }
+  C.movePlayer(me, { x: wx, z: wz, speed, jump: jumping, free: busy, molinho: molinhoLigado(), suave: true }, dt, F);
   if (jumping) Sound.jump();
   E.jumpQueued = false;
   // goleiro com a bola: não sai da área
@@ -200,15 +188,16 @@ function stepFoot(dt, t, frozen) {
   // meia-volta leva ~0,4 s (no pique, mais), e a bola acompanha (viraComABola).
   const f0 = me.facing;
   if (!busy) {
-    const target = E.charge ? aimYaw() : len > 0 ? Math.atan2(-wx, -wz) : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing;
+    const target = carregaChute ? aimYaw() : len > 0 ? Math.atan2(-wx, -wz) : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing;
     const d = Math.atan2(Math.sin(target - me.facing), Math.cos(target - me.facing));
-    const maxRate = E.charge ? 16 : hsp < 1.5 ? 11 : me.sprint ? 6 : 7.5; // rad/s: parado, meia-volta em ~0,3 s
+    const maxRate = carregaChute ? 16 : hsp < 1.5 ? 11 : me.sprint ? 6 : 7.5; // rad/s: parado, meia-volta em ~0,3 s
     me.facing += clamp(d * Math.min(1, dt * 14), -maxRate * dt, maxRate * dt);
     me.girando = Math.abs(d) > 1.2; // virada grande: a bola vem para perto do pé
   } else me.girando = false;
   me.dFacing = Math.atan2(Math.sin(me.facing - f0), Math.cos(me.facing - f0)); // a bola no pé vira junto (viraComABola)
   me.st.holding = holding; me.st.segura = !!me.segurando;
-  G.meModel.position.set(me.x, me.y, me.z); G.meModel.rotation.y = me.facing + giroDeke(me.dekeT);
+  G.meModel.position.set(me.x, me.y, me.z); G.meModel.rotation.y = me.facing;
+  balaoPede(G.meModel, me.pedeT > 0 && G.view !== "primeira");
   animate(G.meModel, hsp, dt, me.st, myFlags() | (me.downT > 0 ? FL.down : 0));
 }
 // segurar: o adversário mais perto (até 1,3 m, em pé). Quem está segurando eu: adversário com a mão (FL.grab)
@@ -330,12 +319,10 @@ function updateCamera(dt) {
 function showAim(me) {
   let ay = aimYaw();
   if (E.charge && E.charge.kind === "chute" && !isCar()) ay = C.assistShot(me, ay, myAttackTeam() || "A", G.F, curveNow(), bolaAqui()); // a seta já mostra a ajudinha
-  // carregando o passe: anel embaixo de quem vai receber (muda do mais perto para o mais longe conforme a força)
+  // carregando o passe: anel no ponto onde a bola vai encontrar quem recebe (toque: curto; 1 s: longo; enfiada)
   let alvo = null;
-  if (E.charge && G.F.strikers && PASSE_TIPO[E.charge.kind] && !isCar()) { // Strikers: o anel vai no ponto onde a bola encontra quem recebe
-    const pl = C.planejarPasse(G.F, me, ay, mates(), PASSE_TIPO[E.charge.kind], powerOf(E.charge), false, myAttackTeam() === "B" ? -1 : 1, () => 0.5);
-    alvo = pl.ponto; ay = pl.yaw;
-  } else if (E.charge && E.charge.kind === "passe" && !isCar()) { const r = C.assistPass(me, ay, mates(), powerOf(E.charge), false, G.F); if (r.alvo) { alvo = r.alvo; ay = r.yaw; } }
+  const tp = E.charge && !isCar() && tipoPasse(E.charge.kind, powerOf(E.charge));
+  if (tp) { const pl = planoPasse(me, ay, tp, powerOf(E.charge), false, () => 0.5); alvo = pl.ponto; ay = pl.yaw; } // o anel vai onde a bola encontra quem recebe
   else if (G.passeVoo && now() < G.passeVoo.ate && !(bolaAqui() || {}).dono) { // a bola a caminho: o anel fica embaixo de quem recebe
     const r = G.passeVoo.alvo === "eu" ? G.me : G.mode === "bots" ? G.bots.find((x) => x.id === G.passeVoo.alvo) : G.remotes.get(G.passeVoo.alvo);
     if (r) alvo = { x: r.px ?? r.x, z: r.pz ?? r.z };

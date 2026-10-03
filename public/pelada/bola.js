@@ -22,8 +22,10 @@ export function predictBall() {
 }
 // a bola no pé vira junto com o corpo: gira a posição (e a velocidade) da bola em volta do jogador pelo mesmo ângulo que o
 // corpo virou neste quadro. Sem isso o corpo virava primeiro e a bola chegava depois (a "mola" da condução demora).
+// Só vale para a bola perto do pé: a bola que foi tocada para a frente (condução com toques) vira só um pouco.
 export function viraComABola(b, me) {
-  const a = me && me.dFacing; if (!a || b.dono !== "eu" || b.holder || b.y > G.F.ballR + 0.12) return;
+  let a = me && me.dFacing; if (!a || b.dono !== "eu" || b.holder || b.y > G.F.ballR + 0.12) return;
+  a *= clamp((1.7 - Math.hypot(b.x - me.x, b.z - me.z)) / 0.8, 0, 1); if (!a) return;
   const c = Math.cos(a), s = Math.sin(a), rx = b.x - me.x, rz = b.z - me.z, vx = b.vx - me.vx, vz = b.vz - me.vz;
   b.x = me.x + rx * c + rz * s; b.z = me.z + rz * c - rx * s;
   b.vx = me.vx + vx * c + vz * s; b.vz = me.vz + vz * c - vx * s;
@@ -55,7 +57,9 @@ export function updateBall(dt) {
   else if (ballS.mine) { // bola no meu pé: física aqui mesmo, a cada quadro (sem esperar o servidor)
     const m = ballS.mine, eu = myBody();
     viraComABola(m, G.me);
+    const toques = m.toques;
     C.simulate(G.F, m, eu ? [eu, ...corposRemotos()] : [], dt);
+    if (m.toques !== toques && m.toqueDe === "eu") G.me.st.toqueT = now(); // toque conduzindo: a perna bate na bola
     if (m.dono !== "eu") { // escapou do pé aqui (ou alguém tomou): volta a seguir o servidor a partir daqui
       ballS.snap = { t: sNow(), x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, sp: m.sp || 0, wx: 0, wy: 0, wz: 0, holder: null, dono: m.dono };
       ballS.off = { x: 0, y: 0, z: 0 }; ballS.ignoreUntil = performance.now() + relogio.rtt + 60; ballS.mine = null;

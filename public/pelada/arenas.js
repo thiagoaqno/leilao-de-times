@@ -48,8 +48,7 @@ let goalSigns = [];
 export let arena = null, arenaMode = null, arenaKits = null, arenaId = null, pads = [];
 function arenaEscolhida(mode) {
   if (mode === "carros") return "ginasio"; // o Rocket é sempre no ginásio (com a arena arredondada, buildArenaRocket)
-  if (G.F && G.F.strikers) return "eletrico"; // o Strikers é sempre no estádio elétrico
-  const id = offline() ? store.get("pelada:arena") : E.S && E.S.config.arena;
+    const id = offline() ? store.get("pelada:arena") : E.S && E.S.config.arena;
   return ARENAS_CONFIG[id] ? id : "society";
 }
 // a cerca elétrica treme: a cada quadro os raios pulam para outro lugar e piscam
@@ -502,25 +501,17 @@ export function updateGoalSigns() {
   const team = myAttackTeam(), kits = G.mode === "bots" && G.bm ? G.bm.kits : E.S && E.S.kits ? E.S.kits : { A: myKit(), B: "palmeiras" };
   for (const g of goalSigns) {
     const def = g.s > 0 ? "B" : "A", col = C.kitColor(kits[def]);
-    const text = team ? (team === def ? "🧤 SEU GOL" : "⚽ ATAQUE AQUI") : `Gol do ${SIDES[def]}`;
-    const sub = G.mode === "treino" ? "" : kitOf(kits[def]).name;
-    const key = text + col + sub;
+    const key = kits[def]; // só a cor (e o desenho) da camisa de quem defende: nada de "seu gol"/"ataque aqui"
     if (g.key !== key) {
       g.key = key; const x = g.c.getContext("2d"); x.clearRect(0, 0, 512, 128);
-      x.fillStyle = col; x.globalAlpha = 0.9; x.beginPath(); x.roundRect(6, 6, 500, 116, 26); x.fill(); x.globalAlpha = 1;
-      x.lineWidth = 8; x.strokeStyle = team && team !== def ? "#ffd84a" : "#ffffff"; x.stroke();
-      x.textAlign = "center"; x.textBaseline = "middle"; x.font = "bold 54px Figtree, sans-serif"; x.lineWidth = 10; x.strokeStyle = "#000b";
-      x.strokeText(text, 256, sub ? 52 : 66); x.fillStyle = "#fff"; x.fillText(text, 256, sub ? 52 : 66);
-      if (sub) { x.font = "bold 28px Figtree, sans-serif"; x.lineWidth = 6; x.strokeText(sub, 256, 100); x.fillText(sub, 256, 100); }
+      const K = kitOf(kits[def]), c = K.c; x.save(); x.beginPath(); x.roundRect(6, 6, 500, 116, 26); x.clip();
+      if (K.kind === "vstripes") for (let i = 0; i < 16; i++) { x.fillStyle = c[i % 2]; x.fillRect(i * 32, 0, 32, 128); }
+      else if (K.kind === "hstripes") for (let i = 0; i < 4; i++) { x.fillStyle = c[i % 2]; x.fillRect(0, i * 32, 512, 32); }
+      else if (K.kind === "band") { x.fillStyle = c[0]; x.fillRect(0, 0, 512, 128); x.fillStyle = c[1]; x.fillRect(0, 44, 512, 22); x.fillStyle = c[2]; x.fillRect(0, 66, 512, 14); }
+      else { x.fillStyle = c[0]; x.fillRect(0, 0, 512, 128); }
+      x.restore(); x.lineWidth = 8; x.strokeStyle = "#000a"; x.beginPath(); x.roundRect(6, 6, 500, 116, 26); x.stroke();
       g.tex.needsUpdate = true; g.strip.material.color.set(col);
     }
   }
-  // seta na tela apontando para o gol onde eu ataco
-  const el = $("hDir");
-  if (!team || !G.F) { el.classList.add("hidden"); return; }
-  const gx = (team === "A" ? 1 : -1) * G.F.L, f = new THREE.Vector3(); cam.getWorldDirection(f);
-  const dx = gx - cam.position.x, dz = -cam.position.z, fl = Math.hypot(f.x, f.z) || 1, fx = f.x / fl, fz = f.z / fl;
-  const ang = Math.atan2(dx * -fz + dz * fx, dx * fx + dz * fz);
-  el.classList.remove("hidden"); el.querySelector("b").style.transform = `rotate(${ang}rad)`;
-  el.querySelector("i").style.background = C.kitColor(kits[team]);
+  $("hDir").classList.add("hidden"); // (a seta de "ataque" saiu: só as cores dos times)
 }

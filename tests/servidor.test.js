@@ -105,7 +105,7 @@ test("botão: 7 tampinhas por time geram 15 peças", async () => {
 
 // ---------- Pelada ----------
 test("pelada: com bots e 1 humano, começa 5x5 e os bots mexem a bola", async () => {
-  const m = await mesa("/pelada", 1, { bots: true, size: 5, estilo: "futsal" });
+  const m = await mesa("/pelada", 1, { bots: true, size: 5, troca: false });
   try {
     const s = m.host;
     await pedir(s, "act", { type: "team", team: "A" });

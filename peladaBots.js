@@ -1,7 +1,8 @@
-// Pelada da Galera — amistoso online com bots (só a pé, futsal ou Strikers).
+// Pelada da Galera — amistoso online com bots (só a pé).
 // Cada time tem 4 na linha e 1 goleiro. Quem entrou na sala joga; os lugares que sobram são de bots, que rodam aqui
 // no servidor (a mesma física de campo.js). É como um amistoso do FIFA com poucos humanos e o resto do time na IA:
-// com LB/T o humano troca de corpo com um bot do time, e no passe para um bot o controle vai junto com a bola.
+// cada humano é um jogador fixo (como no Pro Clubs) e pode pedir a bola; com a troca ligada (config.troca), T troca
+// de corpo com um bot do time e no passe para um bot o controle vai junto com a bola.
 const C = require("./public/pelada/campo.js");
 
 const LINHA = 4; // jogadores de linha por time (mais o goleiro)
@@ -23,7 +24,7 @@ function montarBots(room, novoId) {
     faltam.forEach((gk, i) => {
       const id = novoId();
       room.players[id] = { id, bot: true, token: "", n: room.seq++, name: gk ? "Goleiro" : NOMES[k++ % NOMES.length], team: t, num: 10, gk, car: "godzilla", skin: "padrao",
-        goals: 0, assists: 0, shots: 0, saves: 0, lastKick: 0, rtt: 0, downUntil: 0, holdSince: 0, noCatch: 0, itens: [], cogumeloAte: 0, estrelaAte: 0,
+        goals: 0, assists: 0, shots: 0, saves: 0, lastKick: 0, rtt: 0, downUntil: 0, holdSince: 0, noCatch: 0,
         pos: { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, f: 0, onGround: true }, spawn: null, sockets: new Set(),
         slot: i, pensa: 0, slideAte: 0, slideCd: 0 };
       room.order.push(id);
@@ -51,7 +52,7 @@ function trocar(room, h, bot, nsp) {
 }
 // LB/T: o humano pega o bot do time mais perto da bola (apertando de novo logo em seguida, o próximo)
 function trocarPedido(room, h, nsp) {
-  if (!room.config.bots || h.gk) return false;
+  if (!room.config.bots || !room.config.troca || h.gk) return false;
   const b = room.ball, now = Date.now();
   if (b.dono === h.id || b.holder === h.id) return false; // com a bola, não troca
   const lista = room.order.map((id) => room.players[id]).filter((p) => p.bot && !p.gk && p.team === h.team)
@@ -65,7 +66,7 @@ function trocarPedido(room, h, nsp) {
 // mais perto do receptor; senão, quem passou. Passe para um humano: ninguém troca.
 function trocaNoPasse(room, passador, recId, nsp) {
   const r = room.players[recId];
-  if (!room.config.bots || !r || !r.bot || r.gk || r.team !== passador.team) return false;
+  if (!room.config.bots || !room.config.troca || !r || !r.bot || r.gk || r.team !== passador.team) return false;
   const outros = room.order.map((id) => room.players[id]).filter((p) => !p.bot && p !== passador && p.team === passador.team && !p.gk && p.sockets.size)
     .sort((p, q) => Math.hypot(p.pos.x - r.pos.x, p.pos.z - r.pos.z) - Math.hypot(q.pos.x - r.pos.x, q.pos.z - r.pos.z));
   trocar(room, outros[0] || passador, r, nsp);
@@ -132,7 +133,7 @@ function passo(room, F, now, dt, fx) {
     const dx = tx - pos.x, dz = tz - pos.z, dist = Math.hypot(dx, dz);
     if (!caido && !deslizando && dist > 0.4) { wx = dx / dist; wz = dz / dist; speed = (sprint ? C.SPRINT : C.RUN) * (F.vel || 1) * clamp(dist / 2, 0.35, 1) * (p.gk ? 0.9 : 0.95); }
     if (caido || deslizando) { const k = Math.exp(-dt * (caido ? 6 : 1.6)); pos.vx *= k; pos.vz *= k; }
-    C.movePlayer(pos, { x: wx, z: wz, speed, free: caido || deslizando, molinho: room.config.molinho }, dt, F);
+    C.movePlayer(pos, { x: wx, z: wz, speed, free: caido || deslizando, molinho: room.config.molinho, suave: !p.gk }, dt, F);
     const outros = todos.filter((q) => q !== p).map((q) => ({ x: q.pos.x, z: q.pos.z, y: q.pos.y, vx: q.pos.vx, vz: q.pos.vz, caido: q.downUntil > now || (q.slideAte || 0) > now }));
     C.corpoACorpo(pos, outros, caido || deslizando);
     if (!caido && !deslizando) {
@@ -149,6 +150,9 @@ function decide(p, F, b, todos, rivais, s, now, fx) {
   const pos = p.pos, gx = s * F.L, dGol = Math.hypot(gx - pos.x, pos.z);
   if (dGol < F.L * 0.55 && s * (gx - pos.x) > 1.5 && Math.random() < 0.8) return chuta(p, F, b, s, fx);
   const perto = (q, r) => rivais.some((o) => Math.hypot(o.pos.x - q.pos.x, o.pos.z - q.pos.z) < r);
+  // um humano do time pediu a bola: toca para ele (a não ser na cara do gol)
+  const pediu = todos.find((m) => !m.bot && m.team === p.team && (m.pedidoAte || 0) > now && m.downUntil <= now && Math.hypot(m.pos.x - pos.x, m.pos.z - pos.z) > 2.5);
+  if (pediu && !(dGol < F.L * 0.3 && !perto(p, 2.4))) { pediu.pedidoAte = 0; return passa(p, F, pediu, rivais, s, fx); }
   const apertado = perto(p, 2.4);
   if (apertado || Math.random() < 0.2) {
     let best = null, bs = -Infinity;
@@ -167,19 +171,17 @@ function chuta(p, F, b, s, fx) {
   const alvoZ = (Math.random() * 2 - 1) * (F.goalW - 0.4), yaw = Math.atan2(-(s * F.L - b.x), -(alvoZ - b.z)) + (Math.random() * 2 - 1) * 0.06;
   return fx.kick(p, "chute", 0.75 + Math.random() * 0.25, yaw);
 }
-// passe: no Strikers, o passe planejado (curto, longo ou em profundidade, como o humano); no futsal, o assistido
+// passe planejado (curto, longo ou bola enfiada, como o humano)
 function passa(p, F, alvo, rivais, s, fx) {
   const pos = p.pos, m = { id: alvo.id, x: alvo.pos.x, z: alvo.pos.z, vx: alvo.pos.vx, vz: alvo.pos.vz };
   const dx = m.x - pos.x, dz = m.z - pos.z, d = Math.hypot(dx, dz), yaw = Math.atan2(-dx, -dz);
-  if (F.strikers) {
+  {
     const naLinha = rivais.some((o) => { const u = clamp(((o.pos.x - pos.x) * dx + (o.pos.z - pos.z) * dz) / (d * d), 0, 1); return u > 0.1 && u < 0.9 && Math.hypot(pos.x + dx * u - o.pos.x, pos.z + dz * u - o.pos.z) < 1.2; });
-    const tipo = s * (m.vx || 0) > 2.5 && Math.random() < 0.7 ? "profundidade" : naLinha || d > 17 ? "longo" : "curto";
-    const colado = rivais.some((o) => Math.hypot(o.pos.x - pos.x, o.pos.z - pos.z) < 1.6), forca = Math.random() * 0.6;
-    const pl = C.planejarPasse(F, pos, yaw, [m], tipo, forca, colado, s);
+    const tipo = s * (m.vx || 0) > 2.5 && Math.random() < 0.6 ? "profundidade" : naLinha || d > 17 ? "longo" : "curto";
+    const colado = rivais.some((o) => Math.hypot(o.pos.x - pos.x, o.pos.z - pos.z) < 1.6), forca = tipo === "profundidade" ? Math.random() * 0.4 : 0;
+    const pl = C.planejarPasse(F, pos, yaw, [m], tipo, forca, colado, s, Math.random, { assist: tipo !== "longo" });
     return fx.kick(p, pl.kind, forca, pl.yaw, { vel: pl.vel, elev: pl.elev, alvo: pl.alvo });
   }
-  const r = C.assistPass(pos, yaw, [m], 0.45, false, F);
-  return fx.kick(p, r.kind || "passe", r.power, r.yaw);
 }
 
 module.exports = { montarBots, tirarBots, passo, trocarPedido, trocaNoPasse, vivo, LINHA };

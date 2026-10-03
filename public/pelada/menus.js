@@ -45,12 +45,11 @@ export function renderLobby() {
     $("myRole").innerHTML = `<label>Seu carro</label><div class="cars">${Object.entries(C.CARS).map(([k, c]) => `<button data-car="${k}" class="${mine.car === k ? "on" : ""}" title="${h(c.inspo)}"><img src="${carPreview(k, col)}" width="72" height="36" alt="" style="image-rendering:pixelated;display:block;margin:0 auto 4px"><b>${h(c.name)}</b><small>${h(c.inspo)}</small></button>`).join("")}</div>`;
   } else $("myRole").innerHTML = "";
   if (mine && !cars) $("myRole").innerHTML += `<label style="margin-top:14px">Sua skin</label><div class="skins">${skinButtons(mine.skin)}</div>`;
-  const est = E.S.config.estilo === "strikers" ? "strikers" : "futsal";
-  $("cfgEstilo").innerHTML = estiloButtons(est, "data-estilo", isHost ? "" : "disabled");
-  $("cfgEstiloInfo").textContent = ESTILOS[est].info;
+  $("cfgEstilo").innerHTML = `<button data-troca="0" class="${E.S.config.troca ? "" : "on"}" ${isHost ? "" : "disabled"}>🔒 Jogador fixo (Pro Clubs)</button><button data-troca="1" class="${E.S.config.troca ? "on" : ""}" ${isHost ? "" : "disabled"}>🔁 Troca de jogador (FIFA)</button>`;
+  $("cfgEstiloInfo").textContent = "Só no amistoso com bots. Fixo: passe sem a bola pede a bola para o bot.";
   $("cfgMolinho").innerHTML = molinhoBotoes(E.S.config.molinho !== false, "data-molinho", isHost ? "" : "disabled");
   $("cfgBots").innerHTML = `<button data-amistoso="0" class="${E.S.config.bots ? "" : "on"}" ${isHost ? "" : "disabled"}>👥 Só humanos</button><button data-amistoso="1" class="${E.S.config.bots ? "on" : ""}" ${isHost ? "" : "disabled"}>🤖 Completar com bots (4x4 + goleiro)</button>`;
-  $("cfgBotsInfo").textContent = E.S.config.bots ? "Cada time joga com 4 na linha e 1 goleiro; quem entrou joga e o resto é bot (1x1, 2x1, 3x4…). LB/T troca de jogador, e no passe para um bot o controle vai junto com a bola." : "";
+  $("cfgBotsInfo").textContent = E.S.config.bots ? "Cada time joga com 4 na linha e 1 goleiro; quem entrou joga e o resto é bot (1x1, 2x1, 3x4…). Passe sem a bola pede a bola para o bot; a troca de jogador é opcional." : "";
   $("cfgArena").innerHTML = Object.entries(C.ARENAS).map(([k, a]) => `<button data-arena="${k}" class="${(E.S.config.arena || "society") === k ? "on" : ""}" title="${h(a.desc)}" ${isHost ? "" : "disabled"}>${a.emoji} ${h(a.name)}</button>`).join("");
   document.querySelectorAll("#cfgMode button").forEach((b) => { b.classList.toggle("on", b.dataset.v === E.S.config.mode); b.disabled = !isHost; });
   document.querySelectorAll("#cfgSize button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === size); b.disabled = !isHost; });
@@ -96,8 +95,6 @@ document.querySelectorAll("#cfgSize button").forEach((b) => (b.onclick = () => s
 document.querySelectorAll("#cfgMin button").forEach((b) => (b.onclick = () => setCfg("minutes", +b.dataset.v)));
 // skins e quadras: os botões são desenhados de novo a cada mudança, então o clique é tratado aqui, num lugar só
 export const skinButtons = (atual) => Object.entries(C.SKINS).map(([k, sk]) => `<button data-skin="${k}" class="${k === (atual || "padrao") ? "on" : ""}"><i>${sk.emoji}</i>${h(sk.name)}</button>`).join("");
-const ESTILOS = { futsal: { nome: "⚽ Futsal", info: "" }, strikers: { nome: "⚡ Strikers", info: "Arcade: campo maior com cerca elétrica (dá choque), posse firme (só o carrinho tira), drible com giro (Espaço com a bola), passe semi-assistido (curto, longo e em profundidade) e itens. Sempre no Estádio Elétrico." } };
-const estiloButtons = (atual, attr, dis = "") => Object.entries(ESTILOS).map(([k, e]) => `<button ${attr}="${k}" class="${atual === k ? "on" : ""}" ${dis}>${e.nome}</button>`).join("");
 // corpo molinho (a mola do tronco atrapalha a aderência nas viradas bruscas): online, a sala decide; no treino e
 // contra bots, a escolha da tela inicial (ligado por padrão)
 const molinhoBotoes = (on, attr, dis = "") => `<button ${attr}="1" class="${on ? "on" : ""}" ${dis}>🍮 Molinho (afeta a corrida)</button><button ${attr}="0" class="${on ? "" : "on"}" ${dis}>🧱 Só no visual</button>`;
@@ -105,8 +102,8 @@ function renderHomePicks() {
   $("hMolinho").innerHTML = molinhoBotoes(store.get("pelada:molinho") !== false, "data-molinho-treino");
   $("hSkins").innerHTML = skinButtons(store.get("pelada:skin"));
   const a = store.get("pelada:arena") || "society";
-  const est = store.get("pelada:estilo") === "strikers" ? "strikers" : "futsal";
-  $("hEstilo").innerHTML = estiloButtons(est, "data-estilo-treino");
+  const tr = store.get("pelada:troca") === true;
+  $("hEstilo").innerHTML = `<button data-troca-treino="0" class="${tr ? "" : "on"}">🔒 Jogador fixo (Pro Clubs)</button><button data-troca-treino="1" class="${tr ? "on" : ""}">🔁 Troca de jogador (FIFA)</button>`;
   $("hArena").innerHTML = Object.entries(C.ARENAS).map(([k, ar]) => `<button data-arena-treino="${k}" class="${a === k ? "on" : ""}" title="${h(ar.desc)}">${ar.emoji} ${h(ar.name)}</button>`).join("");
   const n = store.get("pelada:botSize") || 3, d = BOT_DIF[store.get("pelada:botDif")] ? store.get("pelada:botDif") : "medio";
   $("hBotSize").innerHTML = [1, 2, 3, 4, 5].map((k) => `<button data-botsize="${k}" class="${n === k ? "on" : ""}">${k}x${k}</button>`).join("");
@@ -123,8 +120,8 @@ document.addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
   if (b.dataset.skin) escolherSkin(b.dataset.skin);
   else if (b.dataset.arenaTreino) { store.set("pelada:arena", b.dataset.arenaTreino); renderHomePicks(); }
-  else if (b.dataset.estiloTreino) { store.set("pelada:estilo", b.dataset.estiloTreino); renderHomePicks(); }
-  else if (b.dataset.estilo && E.S) setCfg("estilo", b.dataset.estilo);
+  else if (b.dataset.trocaTreino) { store.set("pelada:troca", b.dataset.trocaTreino === "1"); renderHomePicks(); }
+  else if (b.dataset.troca && E.S) setCfg("troca", b.dataset.troca === "1");
   else if (b.dataset.botsize) { store.set("pelada:botSize", +b.dataset.botsize); renderHomePicks(); }
   else if (b.dataset.botdif) { store.set("pelada:botDif", b.dataset.botdif); renderHomePicks(); }
   else if (b.dataset.arena && E.S) setCfg("arena", b.dataset.arena);
