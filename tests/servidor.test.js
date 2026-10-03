@@ -158,3 +158,26 @@ test("leilão: cria sala, código errado, entra pelo código em minúscula e rec
   assert.strictEqual((await pedir(c2, "join", { code: sala.code, capToken: cap.capToken })).capId, cap.capId);
   [host, c, c2].forEach((s) => s.close());
 });
+
+// ---------- Tênis ----------
+test("tênis: duplas com 1 humano e 3 robôs; o humano arma golpes e os pontos acontecem", async () => {
+  const m = await mesa("/tenis", 1, { duplas: true, games: 2, dif: "facil", bots: true });
+  try {
+    const s = m.host;
+    await pedir(s, "act", { type: "team", team: "A" });
+    await pedir(s, "act", { type: "start" });
+    const st = await esperarEstado(s, (st) => st.phase === "play");
+    assert.strictEqual(st.match.jogadores.length, 4);
+    assert.strictEqual(st.match.jogadores.filter((j) => j.bot).length, 3);
+    // o humano fica no lugar dele e aperta o golpe de vez em quando (também saca quando é a vez)
+    let eu = null;
+    s.on("snap", (sn) => { const j = sn.j.find((x) => x[0] === st.match.jogadores.find((y) => !y.bot).id); if (j) eu = j; });
+    const loop = setInterval(() => { if (eu) s.emit("st", { x: eu[1], z: eu[2], vx: 0, vz: 0, mx: 0, mz: 0 }); s.emit("golpe", { tipo: "top", mx: 0, mz: 0 }); }, 300);
+    const pontos = await new Promise((ok) => {
+      let n = 0; const t = setTimeout(() => ok(n), 40000);
+      s.on("ev", (lista) => { n += lista.filter((e) => e.tipo === "ponto").length; if (n >= 2) { clearTimeout(t); ok(n); } });
+    });
+    clearInterval(loop);
+    assert.ok(pontos >= 2, `pontos: ${pontos}`);
+  } finally { m.fechar(); }
+});

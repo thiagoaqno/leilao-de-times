@@ -40,7 +40,7 @@ test("contra bots: o passe de toque (J) chega no companheiro (jogador fixo, sem 
   let chegou = false;
   for (let i = 0; i < 40 && !chegou; i++) chegou = await page.evaluate((id) => { __pelada.avancar(0.1); const { G, local } = __pelada, bot = G.bots.find((x) => x.id === id); return local.ball.dono === id && Math.hypot(local.ball.x - bot.x, local.ball.z - bot.z) < 1.6; }, antes.mate);
   expect(chegou).toBe(true);
-  expect(await page.evaluate(() => Math.hypot(__pelada.G.me.x + 12, __pelada.G.me.z))).toBeLessThan(1.5);
+  expect(await page.evaluate(() => Math.hypot(__pelada.G.me.x + 2, __pelada.G.me.z))).toBeGreaterThan(5); // não trocou de corpo (não foi parar onde estava o companheiro; os robôs podem esbarrar e empurrar um pouco)
   expect(erros).toEqual([]);
 });
 
@@ -64,10 +64,13 @@ test("online com 2 navegadores: o passe chega e o colega conduz", async ({ brows
   const rival = io(baseURL + "/pelada", { transports: ["websocket"], forceNew: true });
   await new Promise((ok) => rival.emit("join", { code, name: "Caio" }, ok));
   await new Promise((ok) => rival.emit("act", { type: "team", team: "B" }, ok));
+  let longe = null;
   try {
     await a.waitForFunction(() => __pelada.S.players.filter((x) => x.team).length === 3);
     await a.click("#btnStart");
     for (const p of [a, b]) await p.waitForFunction(() => __pelada.S.match && __pelada.S.match.phase === "live", null, { timeout: 20000 });
+    // o adversário fica longe do lance (na saída dele, ele ficaria colado na bola e às vezes ficava com ela)
+    longe = setInterval(() => rival.emit("st", { x: 18, y: 0, z: 10, vx: 0, vy: 0, vz: 0, yaw: 0, p: 0, f: 0 }), 50);
     // Ana colada na bola (no meio), virada para trás; Bia 9 m atrás, de frente para ela
     await a.evaluate(() => { __pelada.jogar(); Object.assign(__pelada.G.me, { x: 0.75, z: 0, vx: 0, vz: 0, facing: Math.PI / 2 }); });
     await b.evaluate(() => Object.assign(__pelada.G.me, { x: -9, z: 0, vx: 0, vz: 0, facing: -Math.PI / 2 }));
@@ -83,5 +86,5 @@ test("online com 2 navegadores: o passe chega e o colega conduz", async ({ brows
     }
     expect(conduz).toBe(true);
     expect(erros).toEqual([]);
-  } finally { rival.close(); }
+  } finally { clearInterval(longe); rival.close(); }
 });

@@ -12,6 +12,8 @@ import { syncFromState, updateRemotes } from "./rede.js";
 import { makePlayer, mudarSkinJogador, descartarJogador, balaoPede, animate, makeCar, animateCar, carO, poseCar, rags, addRag, updateRags, clearRags } from "./bonecos.js";
 import { Sound } from "./sons.js";
 import { renderer, scene, cam, ballMesh, aim, passMark, meMark, resize } from "./cena.js";
+import { configurarBonecos } from "./bonecos.js";
+configurarBonecos({ scene, limites: () => G.F });
 import { pads, ensureArena, updateGoalSigns } from "./arenas.js";
 import { updateBall } from "./bola.js";
 import { flashMsg, hud, renderPauseSb } from "./hud.js";

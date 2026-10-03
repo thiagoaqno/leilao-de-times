@@ -4,8 +4,15 @@ import * as THREE from "three";
 import { Ragdoll } from "/ragdoll.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
-import { C, clamp, lerp, FL, kitOf, G } from "./estado.js";
-import { scene, canvasTex, M, liberar } from "./cena.js";
+import { canvasTex, M, liberar } from "./tex.js";
+// Este arquivo não depende do resto da Pelada (o Tênis também usa os bonecos e as skins): só da física/listas de
+// campo.js (window.Campo) e da cena, que quem usa passa em configurarBonecos.
+const C = window.Campo, kitOf = C.kitOf;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + (b - a) * k;
+const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128 }; // os mesmos bits de estado.js
+let scene = null, limitesRag = () => null;
+// scene: onde o boneco de pano aparece; limites(): o campo de agora ({ L, W, goalD }), para ele não sair da quadra
+export function configurarBonecos(o) { if (o.scene) scene = o.scene; if (o.limites) limitesRag = o.limites; }
 
 // ---------- desenhinho do carro (de lado, em pixel) para a escolha na sala ----------
 const CAR_SIDES = { // perfis em "pixels" de 4 px: [x, y, w, h] (corpo) e janelas; rodas e faróis por cima
@@ -544,7 +551,7 @@ export function poseCar(model, x, y, z, yaw, o) {
 // ---------- boneco de pano (derrubado no carrinho) ----------
 export const rags = [];
 export function addRag(model, x, y, z, yaw, vel, push, life) {
-  const F = G.F, solid = (p, r) => { p.x = clamp(p.x, -F.L - F.goalD + r, F.L + F.goalD - r); p.z = clamp(p.z, -F.W + r, F.W - r); };
+  const F = limitesRag() || { L: 50, W: 50, goalD: 0 }, solid = (p, r) => { p.x = clamp(p.x, -F.L - (F.goalD || 0) + r, F.L + (F.goalD || 0) - r); p.z = clamp(p.z, -F.W + r, F.W - r); };
   // a perna que leva o carrinho sai do chão primeiro: empurra os pés mais que o corpo
   const rg = new Ragdoll({ scene, x, y, z, yaw, vel, mats: model.userData.mats, life, solid, push });
   rg.model = model; rags.push(rg); model.visible = false;
