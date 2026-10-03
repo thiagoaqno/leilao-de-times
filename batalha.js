@@ -18,6 +18,7 @@ module.exports = function attachBatalha(io) {
   const cleanConfig = (c = {}) => ({
     minutes: [2, 3, 5].includes(int(c.minutes, 3)) ? int(c.minutes, 3) : 3,
     bots: clamp(int(c.bots, 0), 0, MAX_KARTS - 1),
+    arena: R.ARENAS[c.arena] ? c.arena : "praca", // a arena (as regras usam a da sala: R.usarArena antes de mexer nela)
   });
   function log(room, text) { room.feed.push({ t: Date.now(), text }); if (room.feed.length > 30) room.feed.splice(0, room.feed.length - 30); }
   const freeColor = (room) => R.COLORS.findIndex((_, i) => !room.order.some((id) => room.players[id].color === i));
@@ -39,6 +40,7 @@ module.exports = function attachBatalha(io) {
 
   // ---------- partida ----------
   function startMatch(room) {
+    R.usarArena(room.config.arena);
     const list = [];
     room.order.forEach((id) => { const p = room.players[id]; list.push(R.newPlayer(id, p.n, p.name, p.color, list.length)); });
     const used = new Set(list.map((k) => k.color));
@@ -78,6 +80,7 @@ module.exports = function attachBatalha(io) {
   function tick(room) {
     const m = room.match, now = Date.now();
     if (!m || room.phase !== "play") return;
+    R.usarArena(room.config.arena);
     const ev = evFor(room);
     if (now >= m.start) {
       for (const k of m.players) {
@@ -192,13 +195,15 @@ module.exports = function attachBatalha(io) {
       const { x, z, yaw, v } = d, now = Date.now();
       if (![x, z, yaw, v].every(fin)) return;
       if (now < room.match.start) return; // parado na largada
+      R.usarArena(room.config.arena);
+      if ((k.voltaAte || 0) > now && Math.hypot(x - k.x, z - k.z) > 6) return; // caiu e voltou na largada: ignora os pacotes velhos
       // não deixa "teleportar": no máximo o que um kart com turbo anda desde o último pacote (com folga)
       const dt = Math.min(0.5, (now - (k.lastSt || now - 33)) / 1000) + 0.05, step = R.MAX * 1.8 * dt;
       const dx = x - k.x, dz = z - k.z, dist = Math.hypot(dx, dz);
       const s = dist > step ? step / dist : 1;
       k.x += dx * s; k.z += dz * s; R.collideCircle(k, R.KR * 0.8);
-      const g = R.groundAt(k.x, k.z), f = int(d.f, 0); // altura: do chão até um pulo bem alto
-      k.y = fin(d.y) ? clamp(d.y, g - 0.5, g + 8) : g; k.air = !!(f & R.FL.air);
+      const g = R.groundAt(k.x, k.z), f = int(d.f, 0); // altura: do chão até um pulo bem alto (em cima de buraco: caindo)
+      k.y = fin(d.y) ? (g <= R.VAZIO + 1 ? clamp(d.y, R.VAZIO, 10) : clamp(d.y, g - 0.5, g + 8)) : g; k.air = !!(f & R.FL.air);
       k.yaw = yaw; k.v = clamp(v, -8, R.MAX * 1.8); k.drifting = !!(f & R.FL.drift); k.lastSt = now;
     });
 
@@ -207,6 +212,7 @@ module.exports = function attachBatalha(io) {
       const { room, me } = ctx();
       const k = kartOf(room, me), now = Date.now();
       if (!k || room.phase !== "play" || now < room.match.start || R.ghost(k, now)) return;
+      R.usarArena(room.config.arena);
       R.useItem(room.match, k, !!d.back, now, evFor(room));
     });
 

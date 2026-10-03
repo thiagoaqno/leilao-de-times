@@ -3,12 +3,17 @@
 // Cada um começa com 3 balões. Estourar um balão de alguém vale 1 ponto. Quem perde os 3 vira fantasma por 8 s, perde
 // metade dos pontos e volta com 3 balões. Ganha quem tiver mais pontos quando o tempo acabar. Tudo em metros e segundos.
 (function (root) {
-  const HALF = 60; // arena de 120 x 120 m, cercada
-
-  // ---------- relevo ----------
-  // O chão é feito de peças [x0, z0, x1, z1, h0, h1, eixo]: plana (eixo null, altura h0) ou rampa (a altura vai de h0
-  // em x0/z0 até h1 em x1/z1, ao longo do eixo "x" ou "z"). A altura num ponto é a da peça mais alta ali (fora: 0).
-  const SHAPES = [];
+  // ---------- arenas ----------
+  // Várias arenas, todas de 120 x 120 m (HALF = 60). O chão é feito de peças [x0, z0, x1, z1, h0, h1, eixo]: plana
+  // (eixo null, altura h0) ou rampa (a altura vai de h0 em x0/z0 até h1 em x1/z1, ao longo do eixo "x" ou "z"). A
+  // altura num ponto é a da peça mais alta ali; fora delas é o piso (0). Arenas com buraco (vazio(x, z)): ali não tem
+  // chão (VAZIO) e quem cai perde um balão e volta numa largada. Arenas sem cerca (cerca: false): a beirada é queda.
+  // A arena da sala vale para todo mundo; o servidor chama usarArena(id) antes de mexer em cada sala (tudo síncrono).
+  // As quatro novas são inspiradas nos traçados das arenas de batalha do Mario Kart 64, refeitas com as peças daqui.
+  const HALF = 60, VAZIO = -30, QUEDA = -5;
+  const SHAPES = [], BLOCKS = [], BOXES = [], SPAWNS = [];
+  const QUADS = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
+  const PLAT = 4, CORNER = 3.5, KICK = 2.2;
   // espelha uma peça do canto (+x, +z) para os outros lados da arena
   function mirror(s, sx, sz) {
     let [x0, z0, x1, z1, h0, h1, ax] = s;
@@ -16,39 +21,123 @@
     if (sz < 0) { [z0, z1] = [-z1, -z0]; if (ax === "z") [h0, h1] = [h1, h0]; }
     return [x0, z0, x1, z1, h0, h1, ax];
   }
-  const QUADS = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
-  const PLAT = 4, CORNER = 3.5, KICK = 2.2;
-  // planalto do meio com a fonte, e uma rampa em cada lado
-  SHAPES.push([-10, -10, 10, 10, PLAT, PLAT, null]);
-  for (const s of [[-3, 10, 3, 24, PLAT, 0, "z"], [10, -3, 24, 3, PLAT, 0, "x"]]) { SHAPES.push(s); SHAPES.push(mirror(s, s[6] === "x" ? -1 : 1, s[6] === "z" ? -1 : 1)); }
-  for (const [sx, sz] of QUADS) {
-    SHAPES.push(mirror([38, 38, 60, 60, CORNER, CORNER, null], sx, sz));     // mirante no canto, colado no muro
-    SHAPES.push(mirror([24, 42, 38, 50, 0, CORNER, "x"], sx, sz));           // e duas rampas para subir nele
-    SHAPES.push(mirror([42, 24, 50, 38, 0, CORNER, "z"], sx, sz));
+  // gira uma peça 90° (x, z) -> (-z, x), para montar arenas com simetria de rotação
+  function gira(s, n) {
+    let [x0, z0, x1, z1, h0, h1, ax] = s;
+    for (let k = 0; k < n; k++) { // (x, z) -> (−z, x)
+      const nx0 = -z1, nx1 = -z0, nz0 = x0, nz1 = x1;
+      if (ax === "z") { [h0, h1] = [h1, h0]; ax = "x"; } else if (ax === "x") ax = "z";
+      [x0, x1, z0, z1] = [nx0, nx1, nz0, nz1];
+    }
+    return [x0, z0, x1, z1, h0, h1, ax];
   }
-  // rampas de pulo no meio de cada lado: sobe e voa
-  for (const s of [[-4, 34, 4, 40, 0, KICK, "z"], [34, -4, 40, 4, 0, KICK, "x"]]) { SHAPES.push(s); SHAPES.push(mirror(s, s[6] === "x" ? -1 : 1, s[6] === "z" ? -1 : 1)); }
+  const bloco = (b, n) => { const g = gira([b[0], b[1], b[2], b[3], 0, 0, null], n); return [g[0], g[1], g[2], g[3], b[4], b[5], b[6] || 0]; };
+  const giraP = ([x, z], n) => { for (let k = 0; k < n; k++) [x, z] = [-z, x]; return [x, z]; };
+  // largada em volta (r) olhando para o meio
+  const roda = (r, desl = Math.PI / 8) => Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2 + desl; const x = Math.sin(a) * r, z = Math.cos(a) * r; return [x, z, Math.atan2(x, z)]; });
+  const largadaLados = (r, d) => [[r, d], [r, -d], [-r, d], [-r, -d], [d, r], [-d, r], [d, -r], [-d, -r]].map(([x, z]) => [x, z, Math.atan2(x, z)]);
 
+  const ARENAS = {
+    praca: { nome: "Praça da Fonte", emoji: "⛲", cerca: true, tema: "praca", montar(A) {
+      // planalto do meio com a fonte, e uma rampa em cada lado
+      A.shapes.push([-10, -10, 10, 10, PLAT, PLAT, null]);
+      for (const s of [[-3, 10, 3, 24, PLAT, 0, "z"], [10, -3, 24, 3, PLAT, 0, "x"]]) { A.shapes.push(s); A.shapes.push(mirror(s, s[6] === "x" ? -1 : 1, s[6] === "z" ? -1 : 1)); }
+      for (const [sx, sz] of QUADS) {
+        A.shapes.push(mirror([38, 38, 60, 60, CORNER, CORNER, null], sx, sz));     // mirante no canto, colado no muro
+        A.shapes.push(mirror([24, 42, 38, 50, 0, CORNER, "x"], sx, sz));           // e duas rampas para subir nele
+        A.shapes.push(mirror([42, 24, 50, 38, 0, CORNER, "z"], sx, sz));
+      }
+      // rampas de pulo no meio de cada lado: sobe e voa
+      for (const s of [[-4, 34, 4, 40, 0, KICK, "z"], [34, -4, 40, 4, 0, KICK, "x"]]) { A.shapes.push(s); A.shapes.push(mirror(s, s[6] === "x" ? -1 : 1, s[6] === "z" ? -1 : 1)); }
+      // obstáculos sólidos [x0, z0, x1, z1, topo, tipo, base]: só batem em quem está abaixo do topo
+      A.blocks.push([-3, -3, 3, 3, PLAT + 1.6, "fonte", PLAT]);
+      for (const [sx, sz] of QUADS) for (const b of [[20, 20, 24, 24, 7, "pilar"], [28, 10, 29.5, 18, 1.2, "mureta"], [10, 28, 18, 29.5, 1.2, "mureta"]]) {
+        const m = mirror([b[0], b[1], b[2], b[3], 0, 0, null], sx, sz); A.blocks.push([m[0], m[1], m[2], m[3], b[4], b[5], 0]);
+      }
+      for (const [sx, sz] of QUADS) A.boxes.push([6 * sx, 6 * sz], [15 * sx, 15 * sz], [50 * sx, 50 * sz]);
+      for (const [x, z] of [[0, 50], [0, -50], [50, 0], [-50, 0], [0, 30], [0, -30], [30, 0], [-30, 0]]) A.boxes.push([x, z]);
+      A.spawns.push(...roda(46));
+    } },
+    // Rosquinha (Big Donut): um anel de pista em volta de um poço de lava; quatro buracos no anel e a borda de fora
+    // sobe como uma rampa até o muro
+    rosquinha: { nome: "Rosquinha", emoji: "🍩", cerca: true, tema: "lava",
+      vazio: (x, z) => { const r = Math.hypot(x, z); if (r < 16) return true; if (r < 37 || r > 46) return false; const a = Math.atan2(z, x), d = Math.abs(Math.atan2(Math.sin(4 * a - Math.PI), Math.cos(4 * a - Math.PI))) / 4; return d < 0.2; },
+      relevo: (x, z) => { const r = Math.hypot(x, z); return r > 58 ? 9 : r > 50 ? (r - 50) * 0.35 : 0; },
+      montar(A) {
+        for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; A.boxes.push([Math.cos(a) * 27, Math.sin(a) * 27]); }
+        for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2; A.boxes.push([Math.cos(a) * 42, Math.sin(a) * 42]); }
+        for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + Math.PI / 8; const x = Math.cos(a) * 33, z = Math.sin(a) * 33; A.blocks.push([x - 1.5, z - 1.5, x + 1.5, z + 1.5, 3, "pilar", 0]); }
+        A.spawns.push(...roda(32, 0));
+      } },
+    // Forte de Blocos (Block Fort): quatro fortes (base a 3 m, torre a 6 m) ligados por pontes lá em cima, corredores
+    // no chão entre eles, rampas por fora para subir na base e rampas por dentro para subir na torre
+    forte: { nome: "Forte de Blocos", emoji: "🧱", cerca: true, tema: "blocos", montar(A) {
+      for (const [sx, sz] of QUADS) {
+        A.shapes.push(mirror([7, 7, 50, 50, 3, 3, null], sx, sz));     // a base do forte
+        A.shapes.push(mirror([18, 18, 39, 39, 6, 6, null], sx, sz));   // a torre
+        A.shapes.push(mirror([50, 42, 60, 48, 3, 0, "x"], sx, sz));    // rampas de fora (chão -> base)
+        A.shapes.push(mirror([42, 50, 48, 60, 3, 0, "z"], sx, sz));
+        A.shapes.push(mirror([39, 20, 47, 25, 6, 3, "x"], sx, sz));    // rampa de dentro (base -> torre)
+        A.boxes.push([28.5 * sx, 28.5 * sz], [12 * sx, 28 * sz]);
+      }
+      for (const s of [[-18, 33, 18, 37, 6, 6, null], [-18, -37, 18, -33, 6, 6, null], [33, -18, 37, 18, 6, 6, null], [-37, -18, -33, 18, 6, 6, null]]) A.shapes.push(s); // as pontes
+      A.blocks.push([-1.5, -1.5, 1.5, 1.5, 5, "pilar", 0]);
+      for (const [x, z] of [[0, 12], [12, 0], [0, -12], [-12, 0], [55, 0], [-55, 0], [0, 55], [0, -55]]) A.boxes.push([x, z]);
+      A.spawns.push(...largadaLados(55, 20));
+    } },
+    // Dois Andares (Double Deck): o andar de cima é um quadrado com um vão no meio; em volta dele, o térreo com
+    // muros e as rampas para subir (duas por lado). Dentro do vão, duas rampas para voltar para cima.
+    andares: { nome: "Dois Andares", emoji: "🏢", cerca: true, tema: "andares", montar(A) {
+      for (const s of [[-30, -30, 30, -15, 4, 4, null], [-30, 15, 30, 30, 4, 4, null], [-30, -15, -15, 15, 4, 4, null], [15, -15, 30, 15, 4, 4, null]]) A.shapes.push(s); // o andar de cima
+      A.shapes.push([-15, -4, -7, 4, 4, 0, "x"], [7, -4, 15, 4, 0, 4, "x"]); // do vão para cima
+      for (let n = 0; n < 4; n++) {
+        A.shapes.push(gira([-21, -45, -12, -30, 0, 4, "z"], n), gira([3, -45, 12, -30, 0, 4, "z"], n)); // rampas do térreo
+        for (const b of [[-45, -45, -21, -30, 4.6, "muro"], [-12, -45, 3, -30, 4.6, "muro"], [12, -45, 30, -30, 4.6, "muro"]]) A.blocks.push(bloco(b, n)); // muros entre as rampas
+        A.boxes.push(giraP([22.5, 22.5], n), giraP([52, 0], n), giraP([52, 52], n));
+      }
+      A.boxes.push([0, 0]);
+      A.spawns.push(...largadaLados(52, 18));
+    } },
+    // Arranha-céu (Skyscraper): o telhado de um prédio, sem muro nenhum. Um anel octogonal por fora, uma praça
+    // octogonal no meio e quatro pontes entre os dois. Cair do prédio custa um balão.
+    predio: { nome: "Arranha-céu", emoji: "🌆", cerca: false, tema: "predio",
+      vazio: (x, z) => {
+        const ax = Math.abs(x), az = Math.abs(z), oct = (m, d) => ax <= m && az <= m && ax + az <= d;
+        if (!oct(52, 74)) return true;           // fora do prédio
+        if (!oct(37, 53)) return false;          // o anel de fora
+        if (oct(31, 44)) return false;           // a praça do meio
+        return !(ax <= 4 || az <= 4);            // o vão, menos as pontes
+      },
+      montar(A) {
+        A.blocks.push([-1.5, -1.5, 1.5, 1.5, 4, "pilar", 0]);
+        for (let n = 0; n < 4; n++) A.boxes.push(giraP([15, 0], n), giraP([44, 0], n), giraP([31, 31], n));
+        A.spawns.push(...largadaLados(44, 15));
+      } },
+  };
+  let arena = null;
+  const atual = () => arena;
+  function usarArena(id) {
+    const a = ARENAS[id] ? ARENAS[id] : ARENAS.praca;
+    if (arena === a) return a;
+    arena = a;
+    for (const l of [SHAPES, BLOCKS, BOXES, SPAWNS]) l.length = 0;
+    a.montar({ shapes: SHAPES, blocks: BLOCKS, boxes: BOXES, spawns: SPAWNS });
+    montarRampas();
+    return a;
+  }
+  // ---------- relevo ----------
   function heightOf(s, x, z) {
     if (x < s[0] || x > s[2] || z < s[1] || z > s[3]) return -Infinity;
     if (!s[6]) return s[4];
     const t = s[6] === "x" ? (x - s[0]) / (s[2] - s[0]) : (z - s[1]) / (s[3] - s[1]);
     return s[4] + (s[5] - s[4]) * t;
   }
-  function groundAt(x, z) { let h = 0; for (const s of SHAPES) { const v = heightOf(s, x, z); if (v > h) h = v; } return h; }
-
-  // obstáculos sólidos [x0, z0, x1, z1, topo, tipo, base]: só batem em quem está abaixo do topo
-  const BLOCKS = [[-3, -3, 3, 3, PLAT + 1.6, "fonte", PLAT]];
-  for (const [sx, sz] of QUADS) for (const b of [[20, 20, 24, 24, 7, "pilar"], [28, 10, 29.5, 18, 1.2, "mureta"], [10, 28, 18, 29.5, 1.2, "mureta"]]) {
-    const m = mirror([b[0], b[1], b[2], b[3], 0, 0, null], sx, sz);
-    BLOCKS.push([m[0], m[1], m[2], m[3], b[4], b[5], 0]);
+  function groundAt(x, z) {
+    let h = arena.relevo ? arena.relevo(x, z) : 0;
+    for (const s of SHAPES) { const v = heightOf(s, x, z); if (v > h) h = v; }
+    if (h <= 0 && arena.vazio && arena.vazio(x, z)) return VAZIO;
+    return h;
   }
-  // caixas de item [x, z]: no planalto, em volta dele, nos mirantes, nos lados e no meio do caminho
-  const BOXES = [];
-  for (const [sx, sz] of QUADS) BOXES.push([6 * sx, 6 * sz], [15 * sx, 15 * sz], [50 * sx, 50 * sz]);
-  for (const [x, z] of [[0, 50], [0, -50], [50, 0], [-50, 0], [0, 30], [0, -30], [30, 0], [-30, 0]]) BOXES.push([x, z]);
-  // largada: em volta da arena, olhando para o meio
-  const SPAWNS = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2 + Math.PI / 8; const x = Math.sin(a) * 46, z = Math.cos(a) * 46; return [x, z, Math.atan2(x, z)]; });
   const COLORS = ["#e53935", "#1e88e5", "#43a047", "#fdd835", "#8e24aa", "#fb8c00", "#00acc1", "#f06292"];
 
   // ---------- kart ----------
@@ -100,7 +189,7 @@
   // empurra um círculo para fora das paredes e obstáculos (de acordo com a altura dele); devolve true se bateu
   function collideCircle(o, r) {
     let hit = false;
-    const lim = HALF - r, y = o.y || 0;
+    const lim = HALF - r + (arena.cerca ? 0 : 12), y = o.y || 0; // sem cerca, a borda é queda (o limite fica bem longe)
     if (o.x > lim) { o.x = lim; hit = true; } if (o.x < -lim) { o.x = -lim; hit = true; }
     if (o.z > lim) { o.z = lim; hit = true; } if (o.z < -lim) { o.z = -lim; hit = true; }
     for (const b of BLOCKS) {
@@ -218,6 +307,15 @@
   function tick(m, now, dt, ev) {
     if (m.over) return;
     for (const p of m.players) if (p.ghostUntil && p.ghostUntil <= now) { p.ghostUntil = 0; p.balloons = 3; p.safeUntil = now + SAFE_MS; ev("voltou", { id: p.id }); }
+    // caiu no buraco (ou do prédio): perde um balão e volta na largada mais perto
+    for (const p of m.players) {
+      if ((p.y || 0) > QUEDA || groundAt(p.x, p.z) > VAZIO + 1 || (p.voltaAte || 0) > now) continue;
+      if (!ghost(p, now) && p.safeUntil <= now && p.starT <= 0) popBalloon(m, p, null, "queda", now, ev);
+      let best = SPAWNS[0], bd = 1e9; for (const s of SPAWNS) { const d = Math.hypot(s[0] - p.x, s[1] - p.z); if (d < bd) { bd = d; best = s; } }
+      Object.assign(p, { x: best[0], z: best[1], y: groundAt(best[0], best[1]), yaw: best[2], v: 0, vy: 0, air: false, voltaAte: now + 1500 });
+      p.safeUntil = Math.max(p.safeUntil, now + SAFE_MS);
+      ev("caiu", { id: p.id, x: p.x, y: p.y, z: p.z, yaw: p.yaw });
+    }
     const keep = [];
     for (const pr of m.proj) {
       const age = (now - pr.t0) / 1000;
@@ -283,12 +381,15 @@
 
   // ---------- robôs ----------
   // caminho até um lugar alto: primeiro o pé da rampa que leva até lá, depois o topo dela
-  const RAMPS = SHAPES.filter((s) => s[6]).map((s) => {
+  let RAMPS = [];
+  function montarRampas() {
+    RAMPS = SHAPES.filter((s) => s[6]).map((s) => {
     const cx = (s[0] + s[2]) / 2, cz = (s[1] + s[3]) / 2, up = s[5] > s[4];
     const lo = s[6] === "x" ? [up ? s[0] - 2 : s[2] + 2, cz] : [cx, up ? s[1] - 2 : s[3] + 2];
     const hi = s[6] === "x" ? [up ? s[2] + 2 : s[0] - 2, cz] : [cx, up ? s[3] + 2 : s[1] - 2];
     return { lo, hi, h: Math.max(s[4], s[5]) };
   }).filter((r) => r.h > KICK);
+  }
   function route(p, tx, tz) {
     const th = groundAt(tx, tz), y = p.y || 0;
     if (th <= y + STEP) return [tx, tz];
@@ -321,20 +422,34 @@
     // desvia de obstáculo no caminho: olha 4 m à frente e, se tiver parede, tenta um pouco para cada lado
     const y = p.y || 0, free = (a, d) => {
       const x = p.x - Math.sin(a) * d, z = p.z - Math.cos(a) * d;
-      if (Math.abs(x) > HALF - 1.5 || Math.abs(z) > HALF - 1.5 || groundAt(x, z) > y + STEP + 0.4 * d) return false; // rampa (subida suave) pode
+      const g = groundAt(x, z);
+      if (Math.abs(x) > HALF - 1.5 || Math.abs(z) > HALF - 1.5 || g > y + STEP + 0.4 * d || g <= VAZIO + 1) return false; // rampa (subida suave) pode; buraco, não
       return !BLOCKS.some((b) => y < b[4] - 0.3 && y > b[6] - 1 && x > b[0] - 1.4 && x < b[2] + 1.4 && z > b[1] - 1.4 && z < b[3] + 1.4);
     };
     const look = Math.min(4, Math.hypot(tx - p.x, tz - p.z));
     if (look > 1.5 && !free(want, look)) for (const off of [0.5, -0.5, 1, -1, 1.5, -1.5]) if (free(want + off, look) && free(want + off, look / 2)) { want += off; break; }
+    // arena com buraco: olha o chão à frente do kart (no rumo de agora); se tiver buraco perto, freia e vira para o
+    // lado que tem chão
+    let beira = false, atras = false;
+    if (arena.vazio) {
+      const furo = (a, dmax) => { for (let d = 1.5; d <= dmax; d += 1.5) if (groundAt(p.x - Math.sin(a) * d, p.z - Math.cos(a) * d) <= VAZIO + 1) return true; return false; };
+      const alcance = 3 + Math.max(0, p.v) * 0.45;
+      if (furo(want, Math.min(alcance, Math.hypot(tx - p.x, tz - p.z) + 1.5))) for (const off of [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.7, -1.7, 2.4, -2.4, Math.PI]) if (!furo(want + off, alcance)) { want += off; break; }
+      beira = furo(p.yaw, alcance);
+      if (beira || p.revUntil > now) atras = furo(p.yaw + Math.PI, 3.5);
+    }
     let dy = want - p.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
     // preso (parado batendo em algo): dá ré virando por quase 1 segundo
     if (Math.abs(p.v) < 1.5 && !(p.revUntil > now)) p.stuckT = (p.stuckT || 0) + 1 / 30; else if (Math.abs(p.v) > 3) p.stuckT = 0;
     if (p.stuckT > 1.2) { p.revUntil = now + 900; p.stuckT = 0; }
     const stuck = p.revUntil > now;
-    return { thr: stuck ? -1 : Math.abs(dy) > 1.6 ? 0.4 : 1, steer: Math.max(-1, Math.min(1, -dy * 2.5)) * (stuck ? -1 : 1), drift: false, fire, back };
+    // na beira: freia e dá ré virando (se atrás também for buraco, só vira devagar)
+    const thr = beira ? (p.v > 2 ? -1 : atras ? 0.15 : -0.7) : stuck ? (atras ? 0.3 : -1) : Math.abs(dy) > 1.6 ? 0.4 : 1;
+    return { thr, steer: Math.max(-1, Math.min(1, -dy * 2.5)) * (thr < 0 && p.v < 1 ? -1 : 1), drift: false, fire, back };
   }
 
-  const api = { HALF, SHAPES, BLOCKS, BOXES, SPAWNS, COLORS, KR, MAX, STEP, ITEMS, ITEM_NAMES, FL, GHOST_MS, BLAST,
+  usarArena("praca");
+  const api = { HALF, VAZIO, QUEDA, ARENAS, usarArena, atual, SHAPES, BLOCKS, BOXES, SPAWNS, COLORS, KR, MAX, STEP, ITEMS, ITEM_NAMES, FL, GHOST_MS, BLAST,
     groundAt, heightOf, boxY, moveKart, collideCircle, rollItem, newPlayer, newMatch, popBalloon, pickBox, useItem, tick, snap, botInput, ghost };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Regras = api;
