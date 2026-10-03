@@ -1,9 +1,10 @@
 # Pelada: condução definida pelo dono da sala · Tênis: golpe armado desarma em 1,9 s
 
 ## Pelada
-- **Padrões novos da condução:**
-  - tempo entre toques: **0,2 s** correndo, no pique e protegendo;
-  - bola na frente: **0,4 m** andando e correndo, **0,5 m** no pique.
+- **Padrões novos da condução (o "meta"):**
+  - tempo entre toques: **0,25 s** correndo, **0,18 s** no pique e 0,2 s protegendo;
+  - bola na frente: **0,3 m** andando e correndo, **0,4 m** no pique;
+  - pé alternado **0 m** e ímã desligado (raio **0** e força **0**): a bola só obedece ao toque.
 - **Só o organizador muda, e vale para todos:** na sala de espera tem "⚙️ Condução e dribles (vale para todos)". O
   organizador mexe e cada valor vai para a configuração da sala (`config.cond`). O servidor e o navegador de cada um
   passam a usar os mesmos números, inclusive os robôs do amistoso. Os outros só veem. O que o organizador escolhe

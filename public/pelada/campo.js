@@ -431,17 +431,17 @@
   // Online, valem os da sala (o organizador escolhe na sala de espera: config.cond); no treino e contra bots, os do
   // painel do menu de pausa.
   const COND = {
-    intervalo: 0.2,       // s entre toques correndo
-    intervaloPique: 0.2,  // s entre toques no pique
+    intervalo: 0.25,      // s entre toques correndo
+    intervaloPique: 0.18, // s entre toques no pique
     intervaloProtege: 0.2,
-    leadAndando: 0.4,     // m da bola até o centro do jogador no próximo toque
-    leadCorrendo: 0.4,
-    leadPique: 0.5,
+    leadAndando: 0.3,     // m da bola até o centro do jogador no próximo toque
+    leadCorrendo: 0.3,
+    leadPique: 0.4,
     leadProtege: 0.4,
     alcance: 1.25,        // m: até onde o pé alcança para tocar
-    ladoPe: 0.09,         // m: deslocamento de lado de cada pé
-    dominio: 0.6,         // m: raio do ímã
-    ima: 3,               // força do ímã (1/s)
+    ladoPe: 0,            // m: deslocamento de lado de cada pé (0: os toques saem retos)
+    dominio: 0,           // m: raio do ímã (0: sem ímã, a bola só obedece ao toque)
+    ima: 0,               // força do ímã (1/s)
   };
   const COND_PADRAO = { ...COND };
   // até onde cada número pode ir (o painel usa e o servidor confere o que vem da sala). Os dois últimos são dos dribles.
