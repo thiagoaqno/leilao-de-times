@@ -6,3 +6,7 @@ index.antigo.html
 fly.toml
 Dockerfile
 .dockerignore
+tests
+playwright.config.js
+test-results
+playwright-report

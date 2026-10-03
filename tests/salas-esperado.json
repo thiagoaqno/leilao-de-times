@@ -1,0 +1,958 @@
+{
+  "/domino": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa mesa."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na mesa."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "Ação desconhecida."
+    },
+    "camposDoEstado": [
+      "code",
+      "config",
+      "deadline",
+      "fx",
+      "games",
+      "hand",
+      "host",
+      "log",
+      "nextAt",
+      "now",
+      "phase",
+      "players",
+      "score",
+      "winner"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/ludo": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa mesa."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na mesa."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "O jogo não está em andamento."
+    },
+    "camposDoEstado": [
+      "code",
+      "config",
+      "deadline",
+      "game",
+      "host",
+      "log",
+      "now",
+      "phase",
+      "players",
+      "winner"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/uno": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa mesa."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na mesa."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "A rodada não está em andamento."
+    },
+    "camposDoEstado": [
+      "challenge",
+      "code",
+      "color",
+      "config",
+      "deadline",
+      "dir",
+      "discardCount",
+      "drawCount",
+      "drew",
+      "fx",
+      "host",
+      "log",
+      "nextAt",
+      "now",
+      "phase",
+      "players",
+      "result",
+      "round",
+      "seq",
+      "stack",
+      "stackType",
+      "top",
+      "turn",
+      "under",
+      "unoPending",
+      "winner"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/truco": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa mesa."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na mesa."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "A mão não está em andamento."
+    },
+    "camposDoEstado": [
+      "code",
+      "config",
+      "deadline",
+      "fx",
+      "games",
+      "hand",
+      "host",
+      "log",
+      "nextAt",
+      "now",
+      "phase",
+      "players",
+      "score",
+      "winner"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/sinuca": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa mesa."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na mesa."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "Ação desconhecida."
+    },
+    "camposDoEstado": [
+      "champion",
+      "code",
+      "config",
+      "deadline",
+      "g",
+      "host",
+      "log",
+      "match",
+      "nextAt",
+      "now",
+      "phase",
+      "players",
+      "result",
+      "tour"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/botao": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa mesa."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na mesa."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "Ação desconhecida."
+    },
+    "camposDoEstado": [
+      "champion",
+      "code",
+      "config",
+      "deadline",
+      "g",
+      "host",
+      "log",
+      "match",
+      "nextAt",
+      "now",
+      "phase",
+      "players",
+      "result",
+      "tour"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/batalha": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa sala."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na sala."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "Ação desconhecida."
+    },
+    "camposDoEstado": [
+      "code",
+      "config",
+      "feed",
+      "host",
+      "karts",
+      "match",
+      "now",
+      "phase",
+      "players",
+      "results"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/corrida": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa sala."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na sala."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "Ação desconhecida."
+    },
+    "camposDoEstado": [
+      "code",
+      "config",
+      "endAt",
+      "finishOrder",
+      "host",
+      "log",
+      "now",
+      "phase",
+      "players",
+      "startAt"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/tiro": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa sala."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na sala."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "Ação desconhecida."
+    },
+    "camposDoEstado": [
+      "code",
+      "config",
+      "feed",
+      "host",
+      "kills",
+      "now",
+      "phase",
+      "players",
+      "round",
+      "score",
+      "winner"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/pelada": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa sala."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na sala."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "Ação desconhecida."
+    },
+    "camposDoEstado": [
+      "code",
+      "config",
+      "feed",
+      "host",
+      "kits",
+      "match",
+      "now",
+      "phase",
+      "players"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
+  "/banco": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa mesa."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na mesa."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "O jogo não está em andamento."
+    },
+    "camposDoEstado": [
+      "auction",
+      "buyOffer",
+      "card",
+      "choice",
+      "code",
+      "config",
+      "deadline",
+      "debts",
+      "deckCount",
+      "dice",
+      "doubles",
+      "endsAt",
+      "event",
+      "fx",
+      "host",
+      "hotels",
+      "houses",
+      "jackpot",
+      "log",
+      "move",
+      "now",
+      "phase",
+      "players",
+      "props",
+      "round",
+      "seq",
+      "stage",
+      "teamTotals",
+      "trades",
+      "turn",
+      "winner",
+      "winnerTeam"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  }
+}
