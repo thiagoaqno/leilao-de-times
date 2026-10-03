@@ -62,6 +62,8 @@ export function myAttackTeam() { if (offline()) return "A"; const m = myP(); ret
 // troca de jogador (estilo FIFA) é opcional e começa desligada: o padrão é o jogador fixo, como no Pro Clubs. Contra
 // bots, vale a escolha da tela inicial; online, a do organizador (só no amistoso com bots).
 export function trocaLigada() { return G.mode === "bots" ? store.get("pelada:troca") === true : G.mode === "online" && !!(E.S && E.S.config.bots && E.S.config.troca); }
+// dribles com a bola (jogo.js): tranco da arrastada e velocidade de saída do corte seco (ajustáveis no painel)
+export const DRIBLE = { arrastada: 5.5, corteVel: 2.2 };
 export const CARRINHO_CD = 4; // segundos entre um carrinho e outro (você e os bots)
 // o que é reatribuído em mais de um módulo fica aqui dentro (um import não pode ser reatribuído)
 export const E = {

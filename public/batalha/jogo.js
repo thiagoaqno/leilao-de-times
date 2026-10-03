@@ -74,6 +74,7 @@ function renderLobby() {
   const taken = new Set(S.players.filter((p) => p !== mine).map((p) => p.color));
   $("colors").innerHTML = mine ? R.COLORS.map((c, i) => `<button data-color="${i}" class="${mine.color === i ? "on" : ""}" style="background:${c}" ${taken.has(i) ? "disabled" : ""} title="${taken.has(i) ? "Já tem dono" : "Escolher"}"></button>`).join("") : `<span class="muted">Você está assistindo.</span>`;
   document.querySelectorAll("#cfgMin button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === S.config.minutes); b.disabled = !isHost; });
+  $("cfgArena").innerHTML = arenaBotoes(S.config.arena || "praca", isHost ? "" : "disabled");
   const maxBots = Math.max(0, 8 - S.players.length);
   $("cfgBots").innerHTML = Array.from({ length: Math.min(7, maxBots) + 1 }, (_, i) => `<button data-v="${i}" class="${S.config.bots === i ? "on" : ""}" ${isHost ? "" : "disabled"}>${i}</button>`).join("");
   const n = S.players.length + S.config.bots;
@@ -86,6 +87,12 @@ $("plist").addEventListener("click", (e) => { const b = e.target.closest("[data-
 $("colors").addEventListener("click", (e) => { const b = e.target.closest("[data-color]"); if (b) act("color", { color: +b.dataset.color }); });
 $("cfgMin").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setCfg({ minutes: +b.dataset.v }); });
 $("cfgBots").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setCfg({ bots: +b.dataset.v }); });
+// arenas: na sala, o organizador escolhe; no treino, a escolha da tela inicial
+const arenaBotoes = (atual, dis = "") => Object.entries(R.ARENAS).map(([k, a]) => `<button data-arena="${k}" class="${atual === k ? "on" : ""}" ${dis}>${a.emoji} ${h(a.nome)}</button>`).join("");
+$("cfgArena").addEventListener("click", (e) => { const b = e.target.closest("[data-arena]"); if (b && !b.disabled) setCfg({ arena: b.dataset.arena }); });
+function renderArenaTreino() { $("hArena").innerHTML = arenaBotoes(store.get("batalha:arena") || "praca"); }
+$("hArena").addEventListener("click", (e) => { const b = e.target.closest("[data-arena]"); if (b) { store.set("batalha:arena", b.dataset.arena); renderArenaTreino(); } });
+renderArenaTreino();
 function setCfg(c) { const cfg = { ...S.config, ...c }; store.set("batalha:cfg", cfg); act("config", { config: cfg }); }
 $("btnPractice").onclick = () => startPractice();
 $("btnPractice2").onclick = () => startPractice();
@@ -194,12 +201,19 @@ Object.assign(sunL.shadow.camera, { left: -66, right: 66, top: 66, bottom: -66, 
 scene.add(sunL, sunL.target);
 
 const boxMeshes = [];
-(function buildArena() {
-  const H = R.HALF, add = (o) => (scene.add(o), o);
+// a arena é montada de novo quando muda (cada sala escolhe a sua): tudo fica num grupo que é jogado fora inteiro
+let arenaGrp = null, arenaId = null, miniBase = null;
+function construirArena(id) {
+  const A = R.usarArena(id);
+  if (arenaGrp && arenaId === id) return;
+  if (arenaGrp) { scene.remove(arenaGrp); arenaGrp.traverse((o) => { o.geometry?.dispose(); for (const m of [].concat(o.material || [])) { m.map?.dispose(); m.dispose(); } }); }
+  arenaGrp = new THREE.Group(); scene.add(arenaGrp); arenaId = id; boxMeshes.length = 0; miniBase = null;
+  const H = R.HALF, add = (o) => (arenaGrp.add(o), o), furo = A.vazio || (() => false);
   const box = (w, hh, d, x, y, z, mat, shadow = true) => { const m = add(new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat)); m.position.set(x, y, z); m.castShadow = shadow; m.receiveShadow = true; return m; };
   // grama em volta
   const grass = add(new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (x, w, hh, r) => { x.fillStyle = "#2f5a2c"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 4000; i++) { x.fillStyle = r() < 0.5 ? "#00000014" : "#ffffff0e"; x.fillRect(r() * w, r() * hh, 2, 3); } }, true), roughness: 1 })));
-  grass.material.map.repeat.set(80, 80); grass.rotation.x = -Math.PI / 2; grass.position.y = -0.06; grass.receiveShadow = true;
+  grass.material.map.repeat.set(80, 80); grass.rotation.x = -Math.PI / 2; grass.position.y = A.vazio ? R.VAZIO - 0.5 : -0.06; grass.receiveShadow = true;
+  if (A.tema === "predio") grass.visible = false;
   // piso da arena: ladrilhos roxos com marcas coloridas
   const floorTex = canvasTex(2048, 2048, (x, w, hh, r) => {
     const n = 30, s = w / n;
@@ -210,17 +224,49 @@ const boxMeshes = [];
     x.setLineDash([]); x.lineWidth = 14; x.strokeStyle = "#ffd84a99"; x.beginPath(); x.arc(c, c, 42 * k, 0, Math.PI * 2); x.stroke();
     x.lineWidth = 12; x.strokeStyle = "#ff5fa299"; x.strokeRect(5 * k, 5 * k, w - 10 * k, hh - 10 * k);
     R.SPAWNS.forEach(([sx, sz], i) => { x.fillStyle = R.COLORS[i] + "aa"; x.beginPath(); x.arc(c + sx * k, c + sz * k, 2.2 * k, 0, Math.PI * 2); x.fill(); });
+    if (A.vazio) { // buracos: o piso some (transparente), com uma faixa de aviso amarela e preta na beirada
+      const st = 4, img = x.getImageData(0, 0, w, hh), d = img.data;
+      for (let py = 0; py < hh; py += st) for (let px = 0; px < w; px += st) {
+        const wx = px / k - H, wz = py / k - H; if (!furo(wx, wz)) continue;
+        for (let yy = py; yy < py + st; yy++) for (let xx = px; xx < px + st; xx++) d[(yy * w + xx) * 4 + 3] = 0;
+      }
+      for (let py = 0; py < hh; py += st) for (let px = 0; px < w; px += st) { // beirada
+        const wx = px / k - H, wz = py / k - H; if (furo(wx, wz)) continue;
+        if (furo(wx + 1.2, wz) || furo(wx - 1.2, wz) || furo(wx, wz + 1.2) || furo(wx, wz - 1.2)) { const on = ((px + py) / (st * 3)) % 2 < 1; for (let yy = py; yy < py + st; yy++) for (let xx = px; xx < px + st; xx++) { const q = (yy * w + xx) * 4; d[q] = on ? 255 : 30; d[q + 1] = on ? 210 : 30; d[q + 2] = on ? 60 : 30; } }
+      }
+      x.putImageData(img, 0, 0);
+    }
   });
-  const floor = add(new THREE.Mesh(new THREE.PlaneGeometry(H * 2, H * 2), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.7 })));
+  const floor = add(new THREE.Mesh(new THREE.PlaneGeometry(H * 2, H * 2), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.7, alphaTest: 0.5, side: THREE.DoubleSide })));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+  if (A.vazio) { // a "espessura" do piso (uma segunda camada um pouco abaixo) e o que tem lá embaixo
+    const sob = add(new THREE.Mesh(floor.geometry, new THREE.MeshStandardMaterial({ color: 0x2a2140, map: floorTex, alphaTest: 0.5, side: THREE.DoubleSide })));
+    sob.rotation.x = -Math.PI / 2; sob.position.y = -0.8;
+    if (A.tema === "lava") { // o poço de lava (embaixo do buraco do meio e dos furos do anel)
+      const lava = add(new THREE.Mesh(new THREE.PlaneGeometry(H * 2, H * 2), new THREE.MeshStandardMaterial({ color: 0xff5a1a, emissive: 0xff3a00, emissiveIntensity: 1.2, roughness: 0.6 })));
+      lava.rotation.x = -Math.PI / 2; lava.position.y = -6;
+    } else { // a cidade lá embaixo: telhados com janelinhas acesas
+      const jan = canvasTex(256, 256, (x, w, hh, r) => { x.fillStyle = "#14102a"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 900; i++) { x.fillStyle = r() < 0.3 ? "#ffd27a" : "#2d2650"; x.fillRect(r() * w, r() * hh, 3, 3); } }, true);
+      jan.repeat.set(30, 30);
+      const cid = add(new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ map: jan, emissive: 0x332244, emissiveMap: jan, roughness: 0.9 })));
+      cid.rotation.x = -Math.PI / 2; cid.position.y = R.VAZIO - 1;
+      const torre = add(new THREE.Mesh(new THREE.CylinderGeometry(50, 50, 28, 8), M(0x3a3352, { roughness: 0.8 }))); torre.position.y = R.VAZIO + 13; torre.rotation.y = Math.PI / 8; // o prédio por baixo da praça
+    }
+  }
+  if (A.relevo) { // Rosquinha: a borda de fora sobe como uma rampa até o muro redondo
+    const bank = add(new THREE.Mesh(new THREE.CylinderGeometry(58, 50, 2.8, 64, 1, true), new THREE.MeshStandardMaterial({ color: 0x7a5aa8, roughness: 0.7, side: THREE.DoubleSide })));
+    bank.position.y = 1.4; bank.receiveShadow = true;
+    const muro = add(new THREE.Mesh(new THREE.CylinderGeometry(60, 60, 9, 64, 1, true), new THREE.MeshStandardMaterial({ color: 0xd8c27a, roughness: 0.6, side: THREE.DoubleSide })));
+    muro.position.y = 4.5;
+  }
   // muro em volta: zebrado vermelho e branco
   const red = M(0xe53935, { roughness: 0.5 }), white = M(0xf5f5f5, { roughness: 0.5 });
-  for (let i = -H; i < H; i += 4) for (const [sx, sz, rot] of [[0, -1, 0], [0, 1, 0], [-1, 0, 1], [1, 0, 1]]) {
+  if (A.cerca && !A.relevo) for (let i = -H; i < H; i += 4) for (const [sx, sz, rot] of [[0, -1, 0], [0, 1, 0], [-1, 0, 1], [1, 0, 1]]) {
     const mat = ((i + H) / 4) % 2 ? red : white;
     const g = rot ? R.groundAt(sx * (H - 1), i + 2) : R.groundAt(i + 2, sz * (H - 1)), wh = 1.3 + g; // muro mais alto em volta dos mirantes
     if (rot) box(1, wh, 4, sx * (H + 0.5), wh / 2, i + 2, mat, false); else box(4, wh, 1, i + 2, wh / 2, sz * (H + 0.5), mat, false);
   }
-  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(1, 4.8, 1, x * (H + 0.5), 2.4, z * (H + 0.5), white, false);
+  if (A.cerca && !A.relevo) for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(1, 4.8, 1, x * (H + 0.5), 2.4, z * (H + 0.5), white, false);
   // relevo: planalto, mirantes e rampas (as rampas de pulo são amarelas com setas)
   const stripe = (a, b) => canvasTex(64, 64, (x, w) => { x.fillStyle = a; x.fillRect(0, 0, w, w); x.fillStyle = b; for (let i = -w; i < w * 2; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 16, 0); x.lineTo(i + 16 - w, w); x.lineTo(i - w, w); x.fill(); } }, true);
   const tileTex = (a, b) => canvasTex(128, 128, (x, w) => { x.fillStyle = a; x.fillRect(0, 0, w, w); x.fillStyle = b; x.fillRect(0, 0, w / 2, w / 2); x.fillRect(w / 2, w / 2, w / 2, w / 2); x.strokeStyle = "#ffffff22"; x.lineWidth = 3; x.strokeRect(0, 0, w, w); }, true);
@@ -279,24 +325,26 @@ const boxMeshes = [];
       box(w, hh, d, cx, hh / 2, cz, M(0xffffff, { map: t }));
       const b = add(new THREE.Mesh(new THREE.SphereGeometry(1.3, 16, 12), M(R.COLORS[Math.abs(Math.round(cx + cz * 3)) % 8], { roughness: 0.25 })));
       b.scale.y = 1.2; b.position.set(cx, hh + 1.5, cz); b.castShadow = true;
+    } else if (kind === "muro") {
+      const sm = sideMat(Math.max(w, d), hh); box(w, hh, d, cx, hh / 2, cz, sm);
     } else {
       const t = stripe("#e53935", "#f5f5f5"); t.repeat.set(Math.max(w, d) / 2, 1);
       box(w, hh, d, cx, hh / 2, cz, M(0xffffff, { map: t }));
     }
   }
   // enfeites fora da arena: cachos de balões em postes e árvores
-  const r = rng(7);
+  const r = rng(7), yb = A.tema === "predio" ? R.VAZIO : 0; // no prédio, os enfeites ficam lá embaixo, na rua
   for (let i = 0; i < 30; i++) {
     const a = (i / 30) * Math.PI * 2, rad = 70 + r() * 22, x = Math.cos(a) * rad, z = Math.sin(a) * rad;
-    const pole = add(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8), M(0x888888))); pole.position.set(x, 4, z);
+    const pole = add(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8), M(0x888888))); pole.position.set(x, 4 + yb, z);
     for (let j = 0; j < 5; j++) {
       const b = add(new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 10), M(R.COLORS[(i + j) % 8], { roughness: 0.3 })));
-      b.scale.y = 1.2; b.position.set(x + (r() - 0.5) * 3, 9 + r() * 2.2, z + (r() - 0.5) * 3);
+      b.scale.y = 1.2; b.position.set(x + (r() - 0.5) * 3, 9 + r() * 2.2 + yb, z + (r() - 0.5) * 3);
     }
   }
   for (let i = 0; i < 60; i++) { // árvores
     const a = r() * Math.PI * 2, rad = 100 + r() * 90, x = Math.cos(a) * rad, z = Math.sin(a) * rad, s = 1 + r() * 1.4;
-    const tr = add(new THREE.Mesh(new THREE.ConeGeometry(3 * s, 8 * s, 8), M(0x1f4a2a))); tr.position.set(x, 4 * s, z);
+    const tr = add(new THREE.Mesh(new THREE.ConeGeometry(3 * s, 8 * s, 8), M(0x1f4a2a))); tr.position.set(x, 4 * s + yb, z);
   }
   // caixas de item: cubo colorido com "?", girando
   const qTex = canvasTex(128, 128, (x, w) => {
@@ -306,7 +354,8 @@ const boxMeshes = [];
   });
   const qMat = new THREE.MeshStandardMaterial({ map: qTex, transparent: true, opacity: 0.88, emissive: 0x332244, roughness: 0.2 });
   R.BOXES.forEach(([x, z], i) => { const m = add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), qMat)); m.position.set(x, R.boxY(i) + 1.3, z); m.castShadow = true; m.userData.y = R.boxY(i) + 1.3; boxMeshes.push(m); });
-})();
+}
+construirArena("praca");
 
 // ---------- partículas (confete, faíscas, fumaça) ----------
 const parts = [];
@@ -484,6 +533,7 @@ function resetGame() {
   setH("hMsg", ""); $("over").classList.add("hidden"); $("pause").classList.add("hidden");
 }
 function beginGame() {
+  construirArena(G.practice ? store.get("batalha:arena") || "praca" : S.config.arena);
   show("game"); resize(); G.active = true; Sound.engine(true);
   for (const id of ["hItem", "hItemL", "hSpeed"]) $(id).style.display = G.myN != null ? "" : "none";
   const myIdx = Math.max(0, kartsInfo().findIndex((k) => k.n === G.myN));
@@ -500,10 +550,11 @@ function startOnline() {
 }
 function startPractice() {
   if (G.active && !G.practice) return;
-  resetGame(); G.practice = true;
+  resetGame(); G.practice = true; R.usarArena(store.get("batalha:arena") || "praca");
   const name = $("hName").value.trim() || (myP() && myP().name) || "Você", color = myP() ? myP().color : store.get("batalha:color") ?? 0;
   const list = [R.newPlayer("me", 0, name, color, 0)];
   let c = 0; for (let i = 0; i < 5; i++) { if (c === color) c++; list.push(R.newPlayer("bot" + i, 100 + i, "🤖 " + BOT_NAMES[i], c++, list.length, true)); }
+  R.usarArena(store.get("batalha:arena") || "praca");
   G.m = R.newMatch(list, Date.now() + 3500, 3 * 60000);
   G.me = G.m.players[0]; G.myN = 0;
   beginGame();
@@ -573,11 +624,18 @@ function onEv(e) {
       if (e.left > 0) msg(`💥 Perdeu um balão!<small>${e.by ? nm(e.by) + " acertou você" : "Cuidado!"} · sobraram ${e.left}</small>`);
     }
     if (mine(e.by)) { msg(`+1 🎈<small>você estourou o balão de ${nm(e.to)}</small>`, 1300); Sound.score(); }
-    const how = { banana: "🍌", verde: "🟢", vermelho: "🔴", bomba: "💣", estrela: "⭐", cogumelo: "🍄" }[e.cause] || "💥";
+    const how = { banana: "🍌", verde: "🟢", vermelho: "🔴", bomba: "💣", estrela: "⭐", cogumelo: "🍄", queda: "😵" }[e.cause] || "💥";
     feed(e.by ? `${nm(e.by)} ${how} ${nm(e.to)}` : `${how} ${nm(e.to)}`);
   } else if (e.type === "fantasma") {
     if (mine(e.id)) { G.ghostUntil = performance.now() + R.GHOST_MS; G.item = null; Sound.ghost(); msg(`👻 Virou fantasma!<small>perdeu ${e.lost} ponto${e.lost === 1 ? "" : "s"} · volta em 8 segundos</small>`, 2600); }
     feed(`👻 ${nm(e.id)} virou fantasma`);
+  } else if (e.type === "caiu") { // caiu no buraco: volta na largada mais perto
+    if (mine(e.id)) {
+      if (!G.practice && G.me) Object.assign(G.me, { x: e.x, y: e.y, z: e.z, yaw: e.yaw, v: 0, vy: 0, air: false });
+      if (G.me) { G.camYaw = e.yaw; G.camPos.set(e.x + Math.sin(e.yaw) * 7, (e.y || 0) + 3.5, e.z + Math.cos(e.yaw) * 7); }
+      msg("😵 Caiu!<small>perdeu um balão</small>", 1400); Sound.ghost?.();
+    }
+    feed(`😵 ${nm(e.id)} caiu`);
   } else if (e.type === "voltou") {
     if (mine(e.id)) { G.ghostUntil = 0; Sound.back(); msg("🎈🎈🎈<small>De volta com 3 balões!</small>", 1400); }
   } else if (e.type === "bum") {
@@ -753,16 +811,16 @@ const shownBalloons = (k, s, tNow) => ((k.ovUntil || 0) > tNow ? Math.min(s.ball
 function myGhost() { if (G.practice) return G.me && R.ghost(G.me, Date.now()); const s = G.last && G.last.p.get(G.myN); return performance.now() < G.ghostUntil || !!(s && (s.f & R.FL.ghost)); }
 
 // minimapa: relevo (mais alto = mais claro), caixas e karts
-const miniBase = (() => {
+function fazerMini() {
   const c = document.createElement("canvas"); c.width = c.height = 150; const x = c.getContext("2d"), k = 150 / (R.HALF * 2);
   x.fillStyle = "#2a1f45"; x.fillRect(0, 0, 150, 150);
-  for (let i = 0; i < 75; i++) for (let j = 0; j < 75; j++) { const h = R.groundAt((i * 2 + 1) / k / 1 - R.HALF, (j * 2 + 1) / k - R.HALF); if (h > 0.05) { x.fillStyle = `hsl(265,40%,${32 + h * 9}%)`; x.fillRect(i * 2, j * 2, 2, 2); } }
+  for (let i = 0; i < 75; i++) for (let j = 0; j < 75; j++) { const h = R.groundAt((i * 2 + 1) / k / 1 - R.HALF, (j * 2 + 1) / k - R.HALF); if (h <= R.VAZIO + 1) { x.fillStyle = "#0a0614"; x.fillRect(i * 2, j * 2, 2, 2); } else if (h > 0.05) { x.fillStyle = `hsl(265,40%,${Math.min(80, 32 + h * 9)}%)`; x.fillRect(i * 2, j * 2, 2, 2); } }
   x.fillStyle = "#cfc6e6"; for (const b of R.BLOCKS) x.fillRect((b[0] + R.HALF) * k, (b[1] + R.HALF) * k, (b[2] - b[0]) * k, (b[3] - b[1]) * k);
   return c;
-})();
+}
 function drawMini(L) {
   const x = $("hMini").getContext("2d"), k = 150 / (R.HALF * 2), P = (v) => (v + R.HALF) * k;
-  x.drawImage(miniBase, 0, 0);
+  x.drawImage(miniBase ||= fazerMini(), 0, 0);
   if (!L) return;
   x.fillStyle = "#ffd84a"; R.BOXES.forEach(([bx, bz], i) => { if (L.bx[i] === "1") x.fillRect(P(bx) - 1.5, P(bz) - 1.5, 3, 3); });
   for (const [n, s] of L.p) {

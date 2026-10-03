@@ -76,7 +76,7 @@ function releaseKick() { const c = E.charge; E.charge = null; if (!c) return; do
 // X cruzamento alto (sem a bola: carrinho), Y bola enfiada, LB cavadinha, RB colocado (RB + B chute colocado, RB + A
 // passe colocado), RT pique, LT segurar, R3 (apertar o analógico direito) pula/cabeceia (goleiro: R3 + lado se joga),
 // ↑ troca de jogador (se a troca estiver ligada), View câmera, Menu pausa
-const PAD_PE = { 0: "KeyJ", 1: "KeyK", 2: "acaoX", 3: "KeyL", 4: "KeyZ", 5: "KeyR", 6: "KeyF", 7: "ShiftLeft", 11: "Space", 8: "KeyC", 12: "KeyT", 13: "Tab", 9: "start" };
+const PAD_PE = { 0: "KeyJ", 1: "KeyK", 2: "acaoX", 3: "KeyL", 4: "KeyZ", 5: "KeyR", 6: "KeyF", 7: "ShiftLeft", 11: "Space", 8: "KeyC", 12: "KeyT", 13: "Tab", 14: "KeyQ", 15: "KeyE", 10: "KeyV", 9: "start" };
 const PAD_CARRO = { 0: "Space", 1: "ShiftLeft", 2: "KeyQ", 3: "KeyC", 7: "KeyW", 6: "KeyS", 8: "KeyV", 13: "Tab", 9: "start" };
 // a mesma tecla pode vir de duas fontes (RT e o analógico apertam W no carro): só solta quando as duas soltarem
 function padTecla(code, fonte, down) {
@@ -165,6 +165,8 @@ function apertar(code, repeat) {
     else E.charge = { kind, t0: now(), src: code };
   }
   if (code === "KeyU" && !repeat && !E.charge && !isCar() && G.meModel) doKick("cruzamento", 0); // cruzamento alto
+  if ((code === "KeyQ" || code === "KeyE") && !repeat && !E.charge && !isCar() && souDono()) E.drible = code === "KeyQ" ? "esq" : "dir"; // arrastada (no chute, Q/E é efeito)
+  if (code === "KeyV" && !repeat && !isCar() && souDono()) E.drible = "corte"; // corte seco
   if (code === "KeyT" && !repeat && !isCar() && trocaLigada() && !souDono()) { // troca de jogador (só se estiver ligada)
     if (G.mode === "bots") trocarJogador(); else if (G.mode === "online") socket.emit("trocar");
   }

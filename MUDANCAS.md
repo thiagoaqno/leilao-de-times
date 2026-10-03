@@ -1,63 +1,44 @@
-# Mudanças — Pelada: controles, passe, skins e condução (parte 1)
+# Mudanças — Pelada: condução com toques curtos e dribles (parte 3)
 
-## Feito neste PR (Pelada)
+Em cima do PR #24.
 
-- **Remapear controles (teclado e mouse):** novo `public/pelada/teclas.js`. No menu de pausa e na sala tem
-  "⌨️ Remapear teclado e mouse": clique na ação e aperte a tecla, clique do mouse ou gire a rodinha. Cada ação aceita
-  até 2 teclas, `Backspace` apaga, `Esc` cancela, "Voltar ao padrão" restaura. Fica salvo no navegador
-  (`pelada:teclas`). As dicas na tela mostram as teclas escolhidas. Controle (gamepad) e toque não mudam.
-- **Modo Strikers removido** (`strikers.js` apagado; itens, cerca elétrica, drible com giro e Super Chute saíram do
-  navegador e do servidor). Dele ficou o **passe planejado**: a **bola enfiada** (Y no controle, `L`/botão do meio no
-  teclado) agora é da Pelada.
-- **Troca de jogador agora é opcional e vem desligada:** jogador fixo, como no Pro Clubs. Liga em "Contra bots: seu
-  jogador" (tela inicial) ou em "Troca de jogador" na sala (amistoso com bots). Desligada, não tem mais o
-  "teletransporte" da skin.
-- **Pedir a bola:** apertar o passe **sem a bola** pede a bola. O bot do seu time que está com ela toca para você
-  (offline e no amistoso online). Aparece um 🙋 em cima de quem pediu (os outros jogadores também veem).
-- **Passe mais fácil (estilo FIFA):** um **toque** no passe faz um passe rasteiro assistido (cone de 45° para cada
-  lado, procura até 75°, metade do erro, e a bola "trava" no pé de quem recebe). **Segurar 1 segundo** faz o **passe
-  longo** pelo alto (a barra mostra quando virou longo). Segurar o passe não deixa mais o jogador lento.
-- **Placas dos gols:** saíram "SEU GOL" / "ATAQUE AQUI" e a seta de ataque; a placa e a faixa do gol mostram só a cor
-  (e o desenho) da camisa do time.
-- **11 skins novas:** Homem-Aranha, Naruto, Tartaruga Ninja, Ghostface, Satoru Gojo, Woody, Pikachu, Ben 10, Shrek,
-  CJ e Steve (bonecos de caixinhas, com rosto desenhado e acessórios).
-- **Marcador de time em todo mundo:** anel colorido no chão + losango em cima da cabeça na cor do time; os
-  personagens também têm uma braçadeira com a cor do time.
-- **Condução com toques:** correndo, o jogador empurra a bola um pouco para a frente a cada toque (~1 m correndo,
-  ~1,6 m no pique), com uma batidinha da perna, e continua com o controle (a bola acompanha as curvas). Parado ou
-  andando, a bola fica colada. O chute apertado com a bola um pouco à frente espera até meio segundo e sai quando o
-  jogador alcança a bola.
-- **Aceleração e freada suaves** para o jogador e os bots (`movePlayer` com `suave: true`).
+## Placa do gol
+- Saiu a placa (faixa) em cima de cada gol. Fica só a faixa no chão, na boca do gol, com a cor do time.
 
-### Novos controles (padrão)
-| Ação | Teclado/mouse | Controle |
+## Condução refeita (ideias do modo Volta)
+- A bola **não fica presa** no jogador: ela rola, e o jogador dá **toques curtos e frequentes**: ~4,5 por
+  segundo correndo (a cada 0,22 s), um pouco menos no pique (0,27 s) e mais protegendo (0,17 s).
+- **A bola só muda de rumo quando é tocada.** Entre um toque e outro ela só rola (com o atrito do chão). Virou o
+  corpo? A bola segue por um instante e o próximo toque puxa ela para o lado novo: curva suave, sem teletransporte.
+  Saiu o "girar a bola junto com o corpo" que existia antes.
+- **Ritmo ligado à velocidade:** andando, a bola fica a ~0,55 m do jogador; correndo, ~0,8 m; no pique, ~1,15 m
+  (mais longe e mais fácil de perder).
+- **Pé alternado:** cada toque sai um pouco para a esquerda ou para a direita.
+- **Ímã de domínio:** bem perto do pé (0,6 m) e sem toque naquele instante, uma força fraca segura a bola na frente
+  dele (só para a frente e para trás, nunca de lado). Parado, a bola descansa na frente do pé.
+- Cada toque balança a perna e faz um "toc" baixo, com o som mudando conforme a força. A câmera abre um pouco no pique.
+
+## Dribles (com a bola)
+| Drible | Teclado | Controle |
 |---|---|---|
-| Chute | K / clique | B |
-| Passe (toque) · longo (segure 1 s) · pedir a bola (sem a bola) | J / botão direito | A |
-| Bola enfiada | L / botão do meio | Y |
-| Cavadinha | Z | LB |
-| Cruzamento | U | X (sem a bola: carrinho) |
-| Carrinho | rodinha / X | X sem a bola |
-| Troca de jogador (se ligada) | T | ↑ |
+| Proteger a bola (anda devagar, toques bem curtos) | F (sem a bola continua segurando a camisa) | LT |
+| Arrastada para o lado (tranco curto com a bola) | Q / E (carregando o chute, continua sendo efeito) | ← / → no direcional |
+| Corte seco (para, vira para onde você manda ou para trás, e puxa a bola) | V | L3 |
+- Tudo remapeável em "⌨️ Remapear teclado e mouse".
 
-### Arquivos
-- `public/pelada/campo.js` — sem Strikers/itens; `acelSuave`; condução com toques (`conduz`); passe assistido
-  (`planejarPasse(..., { assist })`); 11 skins na lista.
-- `public/pelada/teclas.js` (novo), `controles.js`, `jogo.js`, `bots.js`, `bola.js`, `rede.js`, `hud.js`, `menus.js`,
-  `arenas.js`, `bonecos.js`, `estado.js`, `index.html`; `public/pelada/strikers.js` (apagado).
-- Servidor: `pelada.js` (sem Strikers, `config.troca`, evento `pedir`, passes curto/longo/enfiada para todos, folga
-  maior para a bola conduzida com toques) e `peladaBots.js` (bot toca para quem pediu, troca só se ligada, passe
-  planejado, aceleração suave).
-- Testes: `tests/campo.test.js`, `tests/servidor.test.js`, `tests/e2e/pelada.spec.js`, `tests/e2e/pelada-modos.spec.js`.
+## Painel "⚙️ Ajustar condução (teste)"
+- No menu de pausa: controles deslizantes para o tempo entre toques (correndo, no pique e protegendo), a distância
+  da bola em cada situação, o alcance do pé, o pé alternado, o raio e a força do ímã, o tranco da arrastada e a
+  saída do corte seco. A mudança vale na hora, fica salva no navegador e tem "Voltar ao padrão".
 
-### Testes
-- `npm test`: 27 passaram.
-- `npx playwright test tests/e2e/pelada.spec.js tests/e2e/pelada-modos.spec.js tests/e2e/paginas.spec.js`: 25 passaram.
+## Ficou de fora (dá para fazer depois)
+- Elástico, finta de corpo e lençol; poeira nos pés, rastro da bola e tremida da câmera no chute.
 
-## Fica para o próximo PR
-- **Batalha/Corrida:** novas arenas e pistas inspiradas nos traçados do Mario Kart 64 (Big Donut, Block Fort,
-  Double Deck, Skyscraper; Luigi Raceway, Rainbow Road, Sherbet Land). Já extraí a planta de cima de cada modelo como
-  referência. Recomendação: recriar os traçados no estilo do jogo, **sem** colocar os modelos/texturas da Nintendo no
-  repositório (o site é público e são arquivos com direitos autorais).
-- **Modo CS:** mais barreiras de cobertura no mapa.
-- Atualizar README/PROJETO.md (ainda citam o Strikers).
+## Arquivos
+- `public/pelada/campo.js` (`conduz` e `COND`), `bola.js`, `bots.js`, `jogo.js` (dribles e zoom), `controles.js`,
+  `teclas.js`, `menus.js` (painel), `estado.js` (`DRIBLE`), `sons.js` (som do toque), `arenas.js` (placa), `index.html`.
+- Teste novo em `tests/campo.test.js`: toques por segundo, a bola não muda de rumo sem toque, vai mais longe no pique
+  e não escapa numa curva de 90°.
+
+## Testes
+- `npm test`: 28 passaram. Testes no navegador da Pelada (`pelada.spec.js` e `pelada-modos.spec.js`): 7 passaram.
