@@ -403,6 +403,7 @@
       }
     }
     for (const p of bodies || []) {
+      if (p.id === b.dono && b.toqueDe === p.id && b.y < R + 0.12) continue; // conduzindo: quem mexe na bola é o toque, não o corpo (senão o corpo muda o rumo dela)
       const f = hitBody(b, p, R, F);
       if (f > 0.05) { touch = p.id; hit = Math.max(hit, f * 0.45); b.sp = (b.sp || 0) * 0.3; }
     }
@@ -427,19 +428,29 @@
   // A posse tem inércia (b.dono): quem está com a bola só perde para quem chegar BEM mais perto (25 cm) e com a bola
   // na frente dele; ombro a ombro, a bola continua com quem tinha. O carrinho continua tirando a bola de vez.
   // Os valores ficam em COND (dá para mexer no painel "Ajustar condução" do menu de pausa).
+  // Online, valem os da sala (o organizador escolhe na sala de espera: config.cond); no treino e contra bots, os do
+  // painel do menu de pausa.
   const COND = {
-    intervalo: 0.22,      // s entre toques correndo
-    intervaloPique: 0.27, // s entre toques no pique
-    intervaloProtege: 0.17,
-    leadAndando: 0.55,    // m da bola até o centro do jogador no próximo toque
-    leadCorrendo: 0.8,
-    leadPique: 1.15,
+    intervalo: 0.25,      // s entre toques correndo
+    intervaloPique: 0.18, // s entre toques no pique
+    intervaloProtege: 0.2,
+    leadAndando: 0.3,     // m da bola até o centro do jogador no próximo toque
+    leadCorrendo: 0.3,
+    leadPique: 0.4,
     leadProtege: 0.4,
     alcance: 1.25,        // m: até onde o pé alcança para tocar
-    ladoPe: 0.09,         // m: deslocamento de lado de cada pé
-    dominio: 0.6,         // m: raio do ímã
-    ima: 3,               // força do ímã (1/s)
+    ladoPe: 0,            // m: deslocamento de lado de cada pé (0: os toques saem retos)
+    dominio: 0,           // m: raio do ímã (0: sem ímã, a bola só obedece ao toque)
+    ima: 0,               // força do ímã (1/s)
   };
+  const COND_PADRAO = { ...COND };
+  // até onde cada número pode ir (o painel usa e o servidor confere o que vem da sala). Os dois últimos são dos dribles.
+  const COND_FAIXA = { intervalo: [0.1, 0.5], intervaloPique: [0.1, 0.6], intervaloProtege: [0.08, 0.4], leadAndando: [0.3, 1.2], leadCorrendo: [0.3, 1.6],
+    leadPique: [0.3, 2.5], leadProtege: [0.3, 1], alcance: [0.8, 2], ladoPe: [0, 0.3], dominio: [0, 1.2], ima: [0, 10], arrastada: [2, 9], corteVel: [0, 5] };
+  // os valores de uma sala: só os que existem e dentro da faixa (o resto fica no padrão)
+  function limparCond(c) { const out = {}; if (c && typeof c === "object") for (const [k, [a, b]] of Object.entries(COND_FAIXA)) if (typeof c[k] === "number" && Number.isFinite(c[k])) out[k] = Math.max(a, Math.min(b, c[k])); return out; }
+  // usa os valores de uma sala (ou volta ao padrão): mexe no COND que a física lê
+  function usarCond(c) { for (const k of Object.keys(COND_PADRAO)) COND[k] = c && typeof c[k] === "number" ? c[k] : COND_PADRAO[k]; }
   const CONDUZ_R = 1.15, TOMA = 0.25, POSSE_R = 1.9, PARADO = 0.8;
   function conduz(F, b, bodies, dt) {
     if (F.rl || !bodies || b.holder || b.y > F.ballR + 0.12 || b.vy > 1.5) { b.dono = null; b.toqueDe = null; return null; }
@@ -866,7 +877,7 @@
     if (d < 1.4) { const rvx = b.vx - (r.vx || 0), rvz = b.vz - (r.vz || 0), rs = Math.hypot(rvx, rvz); if (rs > 5.5) { b.vx = (r.vx || 0) + rvx / rs * 5.5; b.vz = (r.vz || 0) + rvz / rs * 5.5; } }
   }
 
-  const api = { MODES, campoDe, COND, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
+  const api = { MODES, campoDe, COND, COND_PADRAO, COND_FAIXA, limparCond, usarCond, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
     movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass, assistCross, arenaSDF, rampa };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;

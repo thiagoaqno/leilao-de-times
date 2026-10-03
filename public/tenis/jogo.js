@@ -392,7 +392,7 @@ function frame() {
       if (me.pronto && !G.pausa && G.fase === "jogo") { me.mira = mira; T.mover(me, dir, dt); }
       else if (me.pronto && !G.pausa && G.fase === "saque") { me.mira = mira; T.mover(me, dir, dt, true, fake); } // no saque: só para os lados
       else if (eu) { me.x = eu.x; me.z = eu.z; me.vx = me.vz = 0; me.pronto = G.fase === "saque" || G.fase === "jogo"; if (me.pronto) me.sacX = eu.x; }
-      if (me.armado && relogio.agora() - me.armado.t0 > 2600) me.armado = null;
+      if (me.armado && relogio.agora() - me.armado.t0 > T.ARMADO_MAX * 1000) me.armado = null; // não bateu a tempo: volta a andar
       if (tp - G.lastSend > 33) { G.lastSend = tp; socket.volatile.emit("st", { x: me.x, z: me.z, vx: me.vx, vz: me.vz, mx: mira.x, mz: mira.z }); }
     }
   }

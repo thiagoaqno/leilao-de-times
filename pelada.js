@@ -29,6 +29,7 @@ module.exports = function attachPelada(io) {
     arena: C.ARENAS[c.arena] ? c.arena : "society", // quadra escolhida pelo organizador (todo mundo vê a mesma)
     bots: c.mode !== "carros" && !!c.bots,
     troca: c.mode !== "carros" && !!c.bots && !!c.troca, // troca de jogador (FIFA) no amistoso com bots: opcional, desligada (jogador fixo)
+    cond: C.limparCond(c.cond), // condução e dribles escolhidos pelo organizador (valem para todo mundo na sala)
     molinho: c.molinho !== false, // corpo molinho: a mola do tronco atrapalha a aderência nas viradas bruscas (campo.js, GINGA) // amistoso: 4 na linha + goleiro por time, os lugares vagos são de bots
   });
   const F = (room) => C.campoDe(room.config.mode);
@@ -165,6 +166,7 @@ module.exports = function attachPelada(io) {
       m.left -= TICK * 1000;
       keepers(room, now);
       tackles(room, now);
+      C.usarCond(room.config.cond); // a condução da sala (a física é a mesma para todas as salas: troca antes de cada uma)
       if (room.config.bots) Bots.passo(room, Fm, now, TICK, botFx(room));
       const bodies = room.order.map((id) => room.players[id]).filter(Bots.vivo).map((p) => bodyOf(room, p, now));
       const r = C.simulate(Fm, room.ball, bodies, TICK);

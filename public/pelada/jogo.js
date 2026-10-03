@@ -7,7 +7,7 @@
 // bots, hud e sons).
 import * as THREE from "three";
 import { E, C, $, h, store, clamp, lerp, angLerp, FL, BASE, socket, myP, molinhoLigado, G, ctrlYaw, keys, now, TOUCH, locked, ballS, local, isCar, offline, myKit, mySkin, PAD, myAttackTeam, CARRINHO_CD, DRIBLE } from "./estado.js";
-import { show, renderLobby } from "./menus.js";
+import { show, renderLobby, aplicarCond, redesenharCond } from "./menus.js";
 import { syncFromState, updateRemotes } from "./rede.js";
 import { makePlayer, mudarSkinJogador, descartarJogador, balaoPede, animate, makeCar, animateCar, carO, poseCar, rags, addRag, updateRags, clearRags } from "./bonecos.js";
 import { Sound } from "./sons.js";
@@ -27,7 +27,8 @@ export function newMe(spawn) {
 export function startGame(mode, game, falta = false) {
   if (G.active && G.mode === mode && G.game === game && !!G.falta === falta) return;
   stopGame();
-  G.active = true; G.mode = mode; G.game = game; G.F = C.campoDe(game); G.kickoffKey = null; G.feed = [];
+  G.active = true; G.mode = mode; G.game = game; G.F = C.campoDe(game);
+  aplicarCond(); redesenharCond(); // condução: a da sala (online) ou a deste navegador (treino e contra bots) G.kickoffKey = null; G.feed = [];
   ensureArena(game);
   show("game"); resize();
   const sp = C.spawns(G.F.id, "A", [{}], false)[0];
