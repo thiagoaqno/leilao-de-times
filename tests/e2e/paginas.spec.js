@@ -1,7 +1,7 @@
 // Cada página abre sem erro de JavaScript, e no celular o toque duplo não dá zoom.
 const { test, expect, devices } = require("@playwright/test");
 
-const PAGINAS = ["/", "/leilao/", "/banco/", "/uno/", "/sinuca/", "/truco/", "/domino/", "/ludo/", "/botao/", "/corrida/", "/tiro/", "/pelada/", "/rocket/", "/batalha/", "/tenis/", "/rumi/"];
+const PAGINAS = ["/", "/leilao/", "/banco/", "/uno/", "/sinuca/", "/truco/", "/domino/", "/ludo/", "/botao/", "/corrida/", "/tiro/", "/pelada/", "/rocket/", "/batalha/", "/tenis/", "/rumi/", "/proibida/"];
 
 for (const url of PAGINAS) {
   test(`a página ${url} abre sem erro`, async ({ page }) => {
