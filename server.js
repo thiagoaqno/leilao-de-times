@@ -26,6 +26,7 @@ require("./vila.js")(io); // Vila da Galera: o lobby em mapinha, canal /vila
 require("./tiro.js")(io); // Tiro da Galera: FPS de arena x1 ou x2 com AK-47 e AWP, canal /tiro
 require("./pelada.js")(io); // Pelada da Galera: futsal 3D do 1x1 ao 5x5, canal /pelada (e o Rocket, de carro)
 require("./batalha.js")(io); // Batalha da Galera: batalha de balões de kart estilo Mario Kart, canal /batalha
+require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
@@ -39,6 +40,7 @@ app.get("/corrida", (req, res) => res.redirect("/corrida/"));
 app.get("/tiro", (req, res) => res.redirect("/tiro/"));
 app.get("/pelada", (req, res) => res.redirect("/pelada/"));
 app.get("/batalha", (req, res) => res.redirect("/batalha/"));
+app.get("/tenis", (req, res) => res.redirect("/tenis/"));
 // Rocket da Galera: a mesma página da Pelada, no modo carros (o Express trata "/rocket" e "/rocket/" como iguais)
 app.get("/rocket", (req, res) => { const [p, q] = req.originalUrl.split("?"); return p.endsWith("/") ? res.sendFile(path.join(__dirname, "public", "pelada", "index.html")) : res.redirect("/rocket/" + (q ? "?" + q : "")); });
 app.get("/vendor/marked.js", (req, res) => res.sendFile(require.resolve("marked/marked.min.js")));
