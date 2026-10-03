@@ -2,14 +2,13 @@
 // 20x por segundo, chute, gol, carrinho...). Os outros jogadores aparecem 100 ms "no passado", interpolados.
 import { E, C, $, h, store, clamp, lerp, angLerp, SIDES, FL, INTERP, FIXO, BASE, toast, socket, relogio, sNow, myP, P, PN, G, now, ballS, isCar, myKit, mySkin, PAD } from "./estado.js";
 import { show, renderLobby } from "./menus.js";
-import { SKINS_CONFIG, makePlayer, mudarSkinJogador, descartarJogador, animate, makeCar, animateCar, poseCar, addRag } from "./bonecos.js";
+import { SKINS_CONFIG, makePlayer, mudarSkinJogador, descartarJogador, balaoPede, animate, makeCar, animateCar, poseCar, addRag } from "./bonecos.js";
 import { Sound, hearing } from "./sons.js";
 import { scene } from "./cena.js";
 import { pads, ensureArena } from "./arenas.js";
 import { newMe, startGame, stopGame, rebuildMyModel, camTroca, focoCam } from "./jogo.js";
 import { predictBall } from "./bola.js";
 import { flashMsg, pushFeed, showOver } from "./hud.js";
-import { DEKE_T, boomFx, auraItens, comecarSuper } from "./strikers.js";
 
 // ======================================================================
 // Rede
@@ -97,17 +96,7 @@ export function syncFromState(old, st) {
   if (st.phase === "over") showOver(); else $("over").classList.add("hidden");
 }
 
-// ---------- Strikers online: efeitos de item, item ganho e explosão ----------
-socket.on("efeito", (d) => {
-  if (!G.active || G.mode !== "online") return;
-  if (E.ME && d.id === E.ME.id) { G.me[d.tipo + "T"] = d.ms / 1000; flashMsg("", `${C.ITENS[d.tipo].emoji} ${C.ITENS[d.tipo].nome}!`, 800, "#ffe14a"); Sound.item(); }
-});
-socket.on("ganhou", (d) => {
-  if (!G.active || G.mode !== "online") return;
-  if (E.ME && d.id === E.ME.id) { flashMsg("", `${C.ITENS[d.tipo].emoji} ${C.ITENS[d.tipo].nome}! (${d.motivo}) · ${PAD.on ? "↑" : "G"} para usar`, 1600, "#ffe14a"); Sound.item(); }
-  else { const p = P(d.id); if (p) pushFeed(`🎁 ${h(p.name)} ganhou ${C.ITENS[d.tipo].emoji}`); }
-});
-// amistoso com bots: troquei de corpo com um bot (LB/T ou passe para ele). Vou para onde ele estava.
+// amistoso com bots e a troca de jogador ligada: troquei de corpo com um bot (T ou passe para ele). Vou para onde ele estava.
 socket.on("trocou", (d) => {
   if (!G.active || G.mode !== "online" || !G.me) return;
   G.trocaSeq = d.tq;
@@ -116,7 +105,6 @@ socket.on("trocou", (d) => {
   if (ballS.mine) { ballS.snap = { ...ballS.mine, t: sNow(), dono: d.bot }; ballS.mine = null; } // a bola que eu conduzia fica com o bot
   E.charge = null; flashMsg("", "🔁 Trocou de jogador", 700);
 });
-socket.on("boom", (d) => { if (G.active && G.mode === "online") boomFx(d.x, d.z); });
 // ---------- pacote do servidor (20x por segundo): bola e todo mundo ----------
 socket.on("snap", (d) => {
   if (!G.active || G.mode !== "online") return;
@@ -126,8 +114,6 @@ socket.on("snap", (d) => {
     rm.buf.push({ t: d.t, x: e[1], y: e[2], z: e[3], vx: e[4], vy: e[5], vz: e[6], yaw: e[7], pitch: e[8], f: e[9], o: Array.isArray(e[10]) ? e[10] : null });
     if (rm.buf.length > 30) rm.buf.shift();
   }
-  // itens andando (Strikers): guarda com a hora, e o desenho anda com eles até o próximo pacote
-  G.itensRede = (d.it || []).map(([id, k, x, z, vx, vz, t]) => ({ id, tipo: C.ITEM_LISTA[k], x, z, vx, vz, t, at: performance.now() }));
   const [x, y, z, vx, vy, vz, hit, hn, sp, wx = 0, wy = 0, wz = 0, dn = -1] = d.b;
   if (hit > 2) { const [k, pan] = hearing([x, y, z]); Sound.bounce(hit, k, pan, isCar()); }
   const holder = hn >= 0 && PN(hn) ? PN(hn).id : null;
@@ -171,15 +157,9 @@ socket.on("caiu", (d) => {
   const by = P(d.by), to = P(d.id);
   if (by && to) pushFeed(`🦵 ${h(by.name)} derrubou ${h(to.name)}`);
 });
-socket.on("super", (d) => { // Super Chute de alguém: todo mundo vê a mesma animação (o servidor soma os gols no fim)
-  if (!G.active || G.mode !== "online") return;
-  if (E.ME && d.by === E.ME.id) { ballS.mine = null; G.superBarra = null; }
-  comecarSuper(d, null);
-});
 socket.on("goal", (d) => {
   if (!G.active || G.mode !== "online") return;
   const by = P(d.by), as = P(d.assist), kit = E.S.kits[d.side];
-  if (d.sup) { pushFeed(`⚡ ${by ? h(by.name) : SIDES[d.side]}: Super Chute, +${d.qtd}`); return; } // a animação já comemorou
   Sound.net(); Sound.cheer();
   flashMsg("GOOOL!", by ? (d.own ? `Gol contra de ${by.name}` : `${by.name}${as ? ` (passe de ${as.name})` : ""} · ${SIDES[d.side]}`) : SIDES[d.side], 3800, C.kitColor(kit), true);
   pushFeed(`⚽ ${by ? h(by.name) + (d.own ? " (contra)" : "") : SIDES[d.side]}${as ? ` <span style="opacity:.75">· ${h(as.name)}</span>` : ""}`);
@@ -206,9 +186,8 @@ export function updateRemotes(dt) {
     // perto de mim, o boneco é desenhado na posição de agora (o que eu vejo é o que colide); longe, a interpolada (lisa)
     const perto = G.me && rm.px != null && !isCar() ? clamp((3 - Math.hypot(rm.x - G.me.x, rm.z - G.me.z)) / 1.5, 0, 1) : 0;
     rm.k = lerp(rm.k || 0, perto, Math.min(1, dt * 6));
-    if (G.F.strikers) auraItens({ x: rm.x, z: rm.z, estrelaT: rm.f & FL.estrela ? 1 : 0, cogumeloT: rm.f & FL.cogumelo ? 1 : 0 }, dt); // brilho de quem está com estrela/cogumelo
-    rm.giro = rm.f & FL.deke ? Math.min(Math.PI * 2, (rm.giro || 0) + (dt / DEKE_T) * Math.PI * 2) : 0; // o giro do drible dele
-    rm.model.position.set(lerp(rm.x, rm.px ?? rm.x, rm.k), rm.y, lerp(rm.z, rm.pz ?? rm.z, rm.k)); rm.model.rotation.y = rm.yaw + rm.giro;
+    rm.model.position.set(lerp(rm.x, rm.px ?? rm.x, rm.k), rm.y, lerp(rm.z, rm.pz ?? rm.z, rm.k)); rm.model.rotation.y = rm.yaw;
+    if (!isCar()) balaoPede(rm.model, !!(rm.f & FL.pede)); // ele está pedindo a bola
     if (isCar()) poseCar(rm.model, rm.model.position.x, rm.y, rm.model.position.z, rm.yaw, rm.o);
     if (isCar()) animateCar(rm.model, rm.st, dt, rm.speed, rm.f, rm.o ? 0 : rm.pitch);
     else { rm.st.holding = ballS.snap && ballS.snap.holder === rm.id; rm.st.segura = !!(rm.f & FL.grab); animate(rm.model, rm.speed, dt, rm.st, rm.f); }

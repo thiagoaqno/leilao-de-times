@@ -1,8 +1,9 @@
 // Pelada da Galera — o que fica por cima do jogo: placar, mensagens, dicas, tabela e a tela de fim de jogo.
-import { E, C, $, h, store, setH, BOT_DIF, FIXO, kitOf, kitCss, sNow, myP, act, G, now, isCar, PAD } from "./estado.js";
+import { E, C, $, h, store, setH, BOT_DIF, FIXO, kitOf, kitCss, sNow, myP, act, G, now, isCar, PAD, trocaLigada } from "./estado.js";
 import { keysHelp, skinButtons } from "./menus.js";
 import { leaveGame } from "./jogo.js";
-import { powerOf } from "./controles.js";
+import { powerOf, tipoPasse } from "./controles.js";
+import { nomeAcao, painelTeclas } from "./teclas.js";
 
 let msgT = 0;
 export function flashMsg(big, small = "", ms = 2500, color = "#fff", pop = false) {
@@ -21,7 +22,7 @@ export function hud(t) {
     const left = m.phase === "live" ? m.left - (sNow() - E.S.now) : m.left;
     const sw = (tm) => `<i style="background:${kitCss(E.S.kits[tm])}"></i>`;
     setH("hTop", `<div class="t">${sw("A")}${h(kitOf(E.S.kits.A).name)}</div><div class="s">${m.score.A}</div><div class="clock num">${fmtT(left)}</div><div class="s">${m.score.B}</div><div class="t">${h(kitOf(E.S.kits.B).name)}${sw("B")}</div>`);
-    const mp = myP(); setH("hPing", (mp && mp.ping != null ? `ping ${mp.ping} ms` : "") + (E.S.config.bots && !isCar() ? ` · ${PAD.on ? "LB" : "T"}: troca de jogador` : ""));
+    const mp = myP(); setH("hPing", (mp && mp.ping != null ? `ping ${mp.ping} ms` : "") + (trocaLigada() && !isCar() ? ` · ${PAD.on ? "↑" : nomeAcao("trocar")}: troca de jogador` : ""));
     if (m.phase === "ready" && t > msgT) setH("hMsg", `<small>Começa em ${Math.max(1, Math.ceil((m.until - sNow()) / 1000))}…</small>`);
     else if (t > msgT) setH("hMsg", "");
   } else if (G.mode === "treino") {
@@ -32,21 +33,25 @@ export function hud(t) {
   } else if (G.mode === "bots" && G.bm) {
     const bm = G.bm, sw = (tm) => `<i style="background:${kitCss(bm.kits[tm])}"></i>`;
     setH("hTop", `<div class="t">${sw("A")}Você</div><div class="s">${bm.score.A}</div><div class="clock num">${fmtT(bm.left)}</div><div class="s">${bm.score.B}</div><div class="t">Bots · ${BOT_DIF[bm.dif].nome}${sw("B")}</div>`);
-    setH("hPing", PAD.on ? "LB: troca de jogador · Menu = pausa" : "T: troca de jogador · Esc = menu");
+    setH("hPing", (trocaLigada() ? `${PAD.on ? "↑" : nomeAcao("trocar")}: troca de jogador · ` : "") + (PAD.on ? "Menu = pausa" : "Esc = menu"));
     if (bm.phase === "ready" && t > msgT) setH("hMsg", "<small>Saída de bola…</small>");
     else if (t > msgT) setH("hMsg", "");
   }
   $("hPow").classList.toggle("hidden", !E.charge); $("hPowL").classList.toggle("hidden", !E.charge);
-  if (E.charge) { $("hPow").firstElementChild.style.width = Math.round(powerOf(E.charge) * 100) + "%"; setH("hPowL", (G.F.strikers ? { chute: "Chute", passe: "Passe curto", cavadinha: "Profundidade", cruzamento: "Passe longo" } : { chute: "Chute", passe: "Passe", cavadinha: "Cavadinha" })[E.charge.kind]); }
-  $("hSta").classList.toggle("hidden", !G.meModel || (!isCar() && !!G.F.semFolego)); // Strikers: sem fôlego
+  if (E.charge) { // passe: a barra enche em 1 s; cheia, sai o passe longo
+    const pw = powerOf(E.charge), tp = tipoPasse(E.charge.kind, pw);
+    $("hPow").firstElementChild.style.width = Math.round(pw * 100) + "%";
+    setH("hPowL", tp === "longo" ? "Passe LONGO (pode soltar)" : tp === "curto" ? "Passe · segure para o longo" : { chute: "Chute", enfiada: "Bola enfiada", cavadinha: "Cavadinha" }[E.charge.kind] || "");
+  }
+  $("hSta").classList.toggle("hidden", !G.meModel);
   if (G.meModel) {
     setH("hStaL", isCar() ? `Turbo · ${Math.round(Math.hypot(me.vx, me.vz) * 3.6)} km/h` : "Fôlego");
     const bar = $("hSta").querySelector("i"); bar.style.width = Math.round((isCar() ? me.boost / 100 : me.stamina) * 100) + "%"; bar.style.background = isCar() ? "#ffb300" : "#7fe3ff";
   }
+  const n = nomeAcao;
   setH("hHint", !G.meModel ? "Assistindo · Tab: placar" : isCar() ? "W/S acelerar · A/D virar · Shift turbo<br>Espaço pular (2x: mortal) · Q derrapar · C câmera da bola"
-    : G.F.strikers ? (PAD.on ? "⚡ STRIKERS · B chute · A passe curto · X passe longo (sem a bola: carrinho) · Y profundidade<br>Segure para mais força · R3 com a bola: giro · ↑ item · RT corre · View câmera"
-      : "⚡ STRIKERS · K chute · J passe curto · U longo · L profundidade (segure para mais força)<br>Espaço com a bola: giro · Rodinha: carrinho · G: item · Shift corre · C câmera")
-    : "Setas: mirar · K/clique chute · J/direito passe · L cavadinha · U cruzar<br>R + K/J: colocado · T: trocar · Rodinha: carrinho · F segurar · Shift pique · Espaço pular · C câmera");
+    : PAD.on ? "B chute · A passe (segure 1 s: longo; sem a bola: pede) · Y enfiada · LB cavadinha<br>X cruzar (sem a bola: carrinho) · RB colocado · RT pique · LT segurar · View câmera"
+    : `${n("chute")} chute · ${n("passe")} passe (segure 1 s: longo; sem a bola: pede) · ${n("enfiada")} enfiada · ${n("cavadinha")} cavadinha · ${n("cruzar")} cruzar<br>${n("colocado")} + chute/passe: colocado · ${n("carrinho")}: carrinho · ${n("segurar")} segurar · ${n("pique")} pique · ${n("camera")} câmera · Esc: menu (remapear teclas)`);
   G.feed = G.feed.filter((f) => t - f.at < 8);
   setH("hFeed", G.feed.map((f) => `<div>${f.html}</div>`).join(""));
   $("cross").classList.add("hidden");
@@ -61,7 +66,8 @@ export function scoreTable() {
   return `<div class="row" style="justify-content:space-between;font-family:var(--display);font-size:20px"><span>${h(kitOf(E.S.kits.A).name)} ${m.score.A}</span><span>${m.score.B} ${h(kitOf(E.S.kits.B).name)}</span></div>
     <table class="sb"><tr><th>Jogador</th><th class="n">Gols</th><th class="n">Assist.</th><th class="n">Chutes/defesas</th><th class="n">Ping</th></tr>${rows}</table>`;
 }
-export function renderPauseSb() { if (FIXO !== "carros") setH("pSkins", skinButtons(G.mode === "online" ? (myP() || {}).skin : store.get("pelada:skin"))); $("pauseSb").innerHTML = G.active ? `<div style="margin-top:16px">${scoreTable()}</div><div style="margin-top:12px">${keysHelp(G.game)}</div>` : ""; $("pauseHint").textContent = (G.mode === "treino" ? "Treino: só você vê." : G.mode === "bots" ? "Contra bots: o jogo fica parado enquanto o menu está aberto." : "") + (PAD.on ? " 🎮 Start ou A: voltar" : ""); }
+export function renderPauseSb() { if (FIXO !== "carros") setH("pSkins", skinButtons(G.mode === "online" ? (myP() || {}).skin : store.get("pelada:skin"))); $("pauseSb").innerHTML = G.active ? `<div style="margin-top:16px">${scoreTable()}</div><div style="margin-top:12px">${keysHelp(G.game)}</div>` : "";
+  if (FIXO !== "carros") document.querySelectorAll("[data-teclas]").forEach((e) => { if (!e.innerHTML) e.innerHTML = painelTeclas(); }); $("pauseHint").textContent = (G.mode === "treino" ? "Treino: só você vê." : G.mode === "bots" ? "Contra bots: o jogo fica parado enquanto o menu está aberto." : "") + (PAD.on ? " 🎮 Start ou A: voltar" : ""); }
 export function showOver() {
   if (document.pointerLockElement) document.exitPointerLock();
   $("pause").classList.add("hidden");

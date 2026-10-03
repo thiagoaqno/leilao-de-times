@@ -4,23 +4,19 @@
 // Tudo em metros e segundos. O time A ataca para +x (defende o gol da esquerda); o B ataca para -x.
 (function (root) {
   const MODES = {
-    // quadra e gols com o tamanho e as proporções do Strikers (48 x 30 m, gols de 5,2 x 2,3 m); a bola continua de futsal
+    // quadra de 48 x 30 m e gols de 5,2 x 2,3 m; a bola é de futsal
     pes: { id: "pes", pe: true, L: 24, W: 15, goalW: 2.6, goalH: 2.3, goalD: 1.4, ballR: 0.15, wallH: 7, ceil: 14, g: 9.81, wallE: 0.6, postR: 0.05, areaR: 7, circle: 4,
       // bola de futsal: gravidade "de jogo" (sobe e cai rápido, nada de bola de lua), arrasto do ar, quique baixo e
       // atrito forte rolando (o passe morre se ninguém dominar). curva = fator do efeito Magnus (Q/E)
       gBola: 25, drag: 0.5, bounce: 0.45, roll: 1.2, curva: 0.03 },
-    // estilo Strikers (a pé, arcade): campo maior com cerca elétrica em volta, gols maiores, bola mais solta (rola mais e
-    // flutua um pouco nos lançamentos), jogadores mais rápidos e sem fôlego, e posse firme (só o carrinho tira a bola)
-    strikers: { id: "strikers", pe: true, strikers: true, L: 24, W: 15, goalW: 2.6, goalH: 2.3, goalD: 1.4, ballR: 0.17, wallH: 3.2, ceil: 14, g: 9.81, wallE: 0.78,
-      postR: 0.07, areaR: 7, circle: 4, gBola: 17, drag: 0.35, bounce: 0.5, roll: 0.75, curva: 0.035, vel: 1.15, posseFirme: true, cerca: true },
     // carros: física da bola do Rocket League (parâmetros da Psyonix convertidos de uu para metros: 1 uu = 1 cm):
     // gravidade 650 uu/s², quique 0,6, atrito 0,35 com giro, arrasto linear 0,0305/s, até 6000 uu/s e 6 rad/s
     carros: { id: "carros", L: 40, W: 27, goalW: 7, goalH: 5.5, goalD: 4, ballR: 1.25, wallH: 18, ceil: 18, g: 6.5, bounce: 0.6, roll: 0, drag: 0.0305, wallE: 0.6, postR: 0.3, areaR: 14, circle: 9,
       rl: true, mu: 0.35, vmax: 60, wmax: 6, carE: 0.1, rc: 7 }, // rc: raio das quinas arredondadas (chão-parede, parede-parede e parede-teto)
   };
   const P_R = 0.35, P_H = 1.8;
-  // o campo de uma partida: carros = Rocket; a pé, o estilo escolhe entre futsal e Strikers
-  const campoDe = (mode, estilo) => (mode === "carros" ? MODES.carros : estilo === "strikers" ? MODES.strikers : MODES.pes);
+  // o campo de uma partida: carros = Rocket; a pé, futsal
+  const campoDe = (mode) => (mode === "carros" ? MODES.carros : MODES.pes);
 
   // ---------- arena arredondada (Rocket) ----------
   // Como no Rocket League, a arena não tem quina viva: o chão vira parede numa curva de raio rc (a bola sobe por ela),
@@ -71,7 +67,7 @@
     bimmer: { name: "Bimmer", inspo: "inspirado no BMW M3 E30" },
   };
 
-  // skins zoeiras dos jogadores a pé (o visual de cada uma fica em jogo.js, em SKINS_CONFIG)
+  // skins zoeiras dos jogadores a pé (o visual de cada uma fica em bonecos.js, em SKINS_CONFIG)
   const SKINS = {
     padrao: { name: "Padrão", emoji: "🙂" },
     cr7: { name: "CR7", emoji: "🐐" },
@@ -79,6 +75,17 @@
     lula: { name: "Lula", emoji: "🧔" },
     bob_esponja: { name: "Bob Esponja", emoji: "🧽" },
     levi: { name: "Levi", emoji: "⚔️" },
+    aranha: { name: "Homem-Aranha", emoji: "🕷️" },
+    naruto: { name: "Naruto", emoji: "🍥" },
+    tartaruga: { name: "Tartaruga Ninja", emoji: "🐢" },
+    ghostface: { name: "Ghostface", emoji: "👻" },
+    gojo: { name: "Satoru Gojo", emoji: "🕶️" },
+    woody: { name: "Woody", emoji: "🤠" },
+    pikachu: { name: "Pikachu", emoji: "⚡" },
+    ben10: { name: "Ben 10", emoji: "⌚" },
+    shrek: { name: "Shrek", emoji: "🧅" },
+    cj: { name: "CJ", emoji: "🚲" },
+    steve: { name: "Steve", emoji: "⛏️" },
   };
   // quadras (só o visual muda: o tamanho e a física são os mesmos; detalhes em ARENAS_CONFIG no jogo.js)
   const ARENAS = {
@@ -128,18 +135,34 @@
     }
     p.balanco = (p.balanco || 0) + (balancoTronco(p) - (p.balanco || 0)) * Math.min(1, dt * 12); // suavizado
   }
+  // Arranque e freada suaves (wish.suave, para quem joga e para os bots): em vez de chegar na velocidade pedida em
+  // ~0,2 s, a mudança é separada em duas partes. Na direção em que o jogador já corre: acelera forte saindo do zero e
+  // cada vez menos perto do pique (arranque gradual), e freia com força média (para em ~0,4 s). De lado (mudar de
+  // direção): mais forte, para a curva continuar firme. O goleiro robô e a barreira continuam com a conta antiga.
+  const SUAVE = { acel: 16, perdeAcel: 0.55, freio: 14, vira: 28 };
+  function acelSuave(p, tx, tz, k, dt) {
+    const sp = Math.hypot(p.vx, p.vz), ts = Math.hypot(tx, tz);
+    let ux = sp > 0.05 ? p.vx / sp : ts > 0 ? tx / ts : 0, uz = sp > 0.05 ? p.vz / sp : ts > 0 ? tz / ts : 0;
+    const dx = tx - p.vx, dz = tz - p.vz, par = dx * ux + dz * uz, px = dx - ux * par, pz = dz - uz * par, perp = Math.hypot(px, pz);
+    const subir = SUAVE.acel * (1 - SUAVE.perdeAcel * Math.min(1, sp / SPRINT)) * k * dt, frear = SUAVE.freio * k * dt, virar = SUAVE.vira * k * dt;
+    const dPar = Math.max(-frear, Math.min(subir, par)), dPerp = Math.min(perp, virar);
+    p.vx += ux * dPar + (perp > 1e-6 ? (px / perp) * dPerp : 0); p.vz += uz * dPar + (perp > 1e-6 ? (pz / perp) * dPerp : 0);
+  }
   function movePlayer(p, wish, dt, F = MODES.pes) {
     const mol = !!wish.molinho, bal = mol ? p.balanco || 0 : 0, v0x = p.vx, v0z = p.vz;
     const acc = (p.onGround ? ACC : AIR_ACC) * (1 - GINGA.acc * bal);
     const tx = wish.x * wish.speed, tz = wish.z * wish.speed;
     const dx = tx - p.vx, dz = tz - p.vz, d = Math.hypot(dx, dz), m = acc * dt;
-    if (!wish.free) { if (d <= m) { p.vx = tx; p.vz = tz; } else { p.vx += (dx / d) * m; p.vz += (dz / d) * m; } }
+    if (!wish.free) {
+      if (wish.suave && p.onGround) acelSuave(p, tx, tz, 1 - GINGA.acc * bal, dt);
+      else if (d <= m) { p.vx = tx; p.vz = tz; } else { p.vx += (dx / d) * m; p.vz += (dz / d) * m; }
+    }
     if (wish.jump && p.onGround) { p.vy = JUMP; p.onGround = false; }
     p.vy -= F.g * 1.4 * dt;
     p.x += p.vx * dt; p.z += p.vz * dt; p.y += p.vy * dt;
     if (p.y <= 0) { p.y = 0; p.vy = 0; p.onGround = true; }
     const lx = F.L - P_R, lz = F.W - P_R;
-    // bateu na parede: guarda para que lado e com que força (a cerca elétrica do Strikers dá choque em quem bate forte)
+    // bateu na parede: guarda para que lado e com que força
     let bx = 0, bz = 0, bv = 0;
     if (p.x < -lx) { bx = -1; bv = Math.max(bv, -p.vx); p.x = -lx; p.vx = 0; } if (p.x > lx) { bx = 1; bv = Math.max(bv, p.vx); p.x = lx; p.vx = 0; }
     if (p.z < -lz) { bz = -1; bv = Math.max(bv, -p.vz); p.z = -lz; p.vz = 0; } if (p.z > lz) { bz = 1; bv = Math.max(bv, p.vz); p.z = lz; p.vz = 0; }
@@ -383,42 +406,69 @@
       const f = hitBody(b, p, R, F);
       if (f > 0.05) { touch = p.id; hit = Math.max(hit, f * 0.45); b.sp = (b.sp || 0) * 0.3; }
     }
-    if (F.strikers) travaPasse(b, bodies, dt); // passe do Strikers: a bola se ajeita para o pé de quem recebe
+    if (F.pe) travaPasse(b, bodies, dt); // passe assistido: perto de quem recebe, a bola se ajeita para o pé dele
     const dono = conduz(F, b, bodies, dt); if (dono) touch = dono;
     return { hit, touch };
   }
-  // condução estilo FIFA: quem está mais perto da bola (rasteira, até ~1,15 m) fica com ela "no pé". A bola é puxada
-  // para um ponto na frente do jogador e acompanha a velocidade e as viradas dele. Andando, fica pertinho (0,6 m);
-  // correndo, um pouco mais longe; no pique, os toques ficam longos e mais soltos (a bola escapa se você virar demais).
+  // Condução com TOQUES (como no FIFA): quem está mais perto da bola (rasteira, até ~1,15 m) fica com ela "no pé".
+  //  - Parado, andando devagar ou virando forte: a bola fica colada num ponto na frente do pé (na meia-volta, uma
+  //    puxada de sola para pertinho do pé).
+  //  - Correndo: o jogador dá toques. Quando a bola volta para perto do pé, ele empurra ela para a frente; ela rola
+  //    na frente dele perdendo velocidade e ele alcança para o próximo toque. Correndo, a bola abre ~1,3 m; no pique,
+  //    ~1,9 m (mais rápido, mas mais exposto). Entre um toque e outro a bola continua dele (até TOQUE_R) e acompanha
+  //    as curvas aos poucos (ainda dá para controlar); quem chegar bem antes dela, toma.
+  //  b.toqueDe: quem deu o último toque; b.toques: contador (o navegador mexe a perna a cada toque).
+  // Quanto a bola abre: rolando, v(t) = v0·e^(−k·t) (k = F.roll). Saindo com a velocidade do jogador (sp) mais um extra
+  // e, a distância máxima entre os dois (quando a bola fica tão lenta quanto ele) é ~ e²/(2·k·sp). Então, para abrir
+  // `avanco` metros, e = √(2·k·sp·avanco) (com uma folga de 10%).
   // Não pega: bola alta, bola chegando forte (aí é o domínio), logo depois do chute, carrinho, mergulho, caído.
   // A posse tem inércia (b.dono): quem está com a bola só perde para quem chegar BEM mais perto (25 cm) e com a bola
   // na frente dele; ombro a ombro, a bola continua com quem tinha. O carrinho continua tirando a bola de vez.
-  const CONDUZ_R = 1.15, TOMA = 0.25;
+  const CONDUZ_R = 1.15, TOMA = 0.25, TOQUE_R = 2.8, CORRENDO = 2.4;
   function conduz(F, b, bodies, dt) {
-    if (F.rl || !bodies || b.holder || b.y > F.ballR + 0.12 || b.vy > 1.5) { b.dono = null; return null; }
+    if (F.rl || !bodies || b.holder || b.y > F.ballR + 0.12 || b.vy > 1.5) { b.dono = null; b.toqueDe = null; return null; }
     let p = null, best = CONDUZ_R, atual = null, dAtual = 0;
     for (const q of bodies) {
       if (q.kind !== "pe" || !q.conduz || q.slide || q.dive || q.chutou || q.yaw == null || q.y > 0.3) continue;
-      const d = Math.hypot(b.x - q.x, b.z - q.z);
-      if (q.id === b.dono && d < CONDUZ_R) { atual = q; dAtual = d; }
+      const d = Math.hypot(b.x - q.x, b.z - q.z), alcance = b.toqueDe === q.id ? TOQUE_R : CONDUZ_R; // a bola que ele mesmo tocou para a frente continua dele
+      if (q.id === b.dono && d < alcance) { atual = q; dAtual = d; }
       if (d < best) { best = d; p = q; }
     }
-    if (atual && p !== atual) {
+    if (atual && !p) { p = atual; best = dAtual; }
+    else if (atual && p !== atual) {
       const frente = ((b.x - p.x) * -Math.sin(p.yaw) + (b.z - p.z) * -Math.cos(p.yaw)) / (best || 1) > 0.2;
-      if (F.posseFirme || !(best < dAtual - TOMA && frente)) { p = atual; best = dAtual; } // não tomou: continua com quem tinha (no Strikers, só o carrinho tira)
+      if (!(best < dAtual - TOMA && frente)) { p = atual; best = dAtual; } // não tomou: continua com quem tinha
     }
-    if (!p) { b.dono = null; return null; }
+    if (!p) { b.dono = null; b.toqueDe = null; return null; }
     const pvx = p.vx || 0, pvz = p.vz || 0;
-    if (Math.hypot(b.vx - pvx, b.vz - pvz) > 6) { b.dono = null; return null; } // chegando forte: primeiro amortece (domínio)
+    if (b.toqueDe !== p.id && Math.hypot(b.vx - pvx, b.vz - pvz) > 6) { b.dono = null; return null; } // chegando forte: primeiro amortece (domínio)
+    if (b.dono !== p.id) b.toqueDe = null;
     b.dono = p.id;
     const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), sp = Math.hypot(pvx, pvz);
-    const atras = ((b.x - p.x) * fx + (b.z - p.z) * fz) / (best || 1) < 0; // bola atrás: puxa mais devagar (contorna o corpo)
-    // virando forte (meia-volta), a bola vem para perto do pé, como uma puxada de sola
-    const dist = p.girando ? 0.45 : Math.min(1.15, 0.6 + 0.05 * sp + (p.sprint ? 0.25 : 0));
-    const tx = p.x + fx * dist, tz = p.z + fz * dist;
-    const forca = p.sprint ? 6 : atras ? 5 : 12, k = 1 - Math.exp(-forca * dt);
-    b.vx += (pvx + (tx - b.x) * 7 - b.vx) * k; b.vz += (pvz + (tz - b.z) * 7 - b.vz) * k;
-    if (b.vy > 0) b.vy *= 1 - k; b.sp = (b.sp || 0) * (1 - k);
+    const rx = b.x - p.x, rz = b.z - p.z, along = rx * fx + rz * fz, lat = rx * -fz + rz * fx; // na frente / de lado (eixo (−fz, fx))
+    if (sp < CORRENDO || p.girando || along < -0.2) { // colada no pé
+      const atras = along / (best || 1) < 0; // bola atrás: puxa mais devagar (contorna o corpo)
+      const dist = p.girando ? 0.45 : Math.min(1.15, 0.6 + 0.05 * sp);
+      const tx = p.x + fx * dist, tz = p.z + fz * dist;
+      const forca = along > 1.3 ? 3 : atras ? 5 : 12, k = 1 - Math.exp(-forca * dt); // ficou longe (parou de correr): vem devagar
+      b.vx += (pvx + (tx - b.x) * 7 - b.vx) * k; b.vz += (pvz + (tz - b.z) * 7 - b.vz) * k;
+      if (b.vy > 0) b.vy *= 1 - k; b.sp = (b.sp || 0) * (1 - k);
+      if (along < 0.9) b.toqueDe = null;
+      return p.id;
+    }
+    // correndo: a bola voltou para perto do pé (ou ainda não teve o primeiro toque)? Toque para a frente
+    const vRel = (b.vx - pvx) * fx + (b.vz - pvz) * fz;
+    if (b.toqueDe !== p.id || (along < 0.55 + 0.04 * sp && vRel < 0.6)) {
+      const avanco = p.sprint ? 1.6 : 0.9 + 0.06 * sp, extra = Math.sqrt(2 * F.roll * sp * avanco) * 1.1;
+      const v = sp + extra, ld = -lat * 3; // e ajeita para a linha do corpo
+      b.vx = fx * v - fz * ld; b.vz = fz * v + fx * ld; b.sp = 0; if (b.vy > 0) b.vy = 0;
+      if (along < 0.5) { b.x = p.x + fx * 0.5 + -fz * lat; b.z = p.z + fz * 0.5 + fx * lat; } // não deixa a bola entrar no corpo
+      b.toqueDe = p.id; b.toques = (b.toques || 0) + 1;
+      return p.id;
+    }
+    // entre os toques: a bola rola sozinha, mas o lado dela vai acompanhando a direção do jogador (curva suave)
+    const k = 1 - Math.exp(-8 * dt), vl = (b.vx - pvx) * -fz + (b.vz - pvz) * fx, alvoL = -lat * 4, dl = (alvoL - vl) * k;
+    b.vx += -fz * dl; b.vz += fx * dl;
     return p.id;
   }
   // bola do Rocket League: gravidade, arrasto linear, limites de velocidade e giro, e batidas com atrito e giro
@@ -494,7 +544,7 @@
     return null;
   }
   // curva: -1 (para a esquerda) a 1 (para a direita)
-  // opt (passe do Strikers): { vel, elev, alvo } = velocidade e ângulo de saída exatos e quem vai receber (trava)
+  // opt (passe planejado: curto, longo, enfiada): { vel, elev, alvo } = velocidade e ângulo de saída exatos e quem vai receber (trava)
   function kick(b, p, kind, power, yaw, slack = 0, curve = 0, F = MODES.pes, opt = null) {
     const how = canKick(p, b, slack); if (!how) return null;
     power = Math.max(0, Math.min(1, power));
@@ -512,8 +562,8 @@
     const herda = opt && opt.vel ? 0 : 0.3; // passe planejado: a velocidade já é a da bola (não soma a de quem passa)
     b.vx = fx * h + (p.vx || 0) * herda; b.vz = fz * h + (p.vz || 0) * herda; b.vy = Math.sin(elev) * speed * sobe;
     if (how === "pe" && b.y < F.ballR + 0.05) b.y = F.ballR + 0.02;
-    b.dono = null; // a bola saiu do pé
-    b.alvoPasse = opt && opt.alvo ? opt.alvo : null; b.alvoT = 0; // passe do Strikers: quem recebe (trava perto dele)
+    b.dono = null; b.toqueDe = null; // a bola saiu do pé
+    b.alvoPasse = opt && opt.alvo ? opt.alvo : null; b.alvoT = 0; // passe planejado: quem recebe (trava perto dele)
     curve = Math.max(-1, Math.min(1, curve || 0));
     b.sp = how === "cabeca" ? 0 : curve * (kind === "passe" ? 14 : 24); // positivo: curva para a direita de quem chuta
     return how;
@@ -647,14 +697,17 @@
   }
 
   // ======================================================================
-  // Passe do Strikers: semi-assistido (como no FIFA), em três tipos
-  //   curto (A / J): rasteiro e rápido, para tabelas
-  //   longo (X / U): cavado, passa por cima de quem está no meio e cai perto do receptor
-  //   profundidade (Y / L): mira à frente de quem corre, para ele apostar corrida
-  // Um toque no botão já garante força para a bola chegar; segurar só deixa a bola mais rápida.
+  // Passe assistido (como no FIFA), em três tipos
+  //   curto (toque no A / J): rasteiro, na medida para chegar no pé de quem recebe
+  //   longo (A / J segurado por 1 s): cavado, passa por cima de quem está no meio e cai perto do receptor
+  //   profundidade, a "bola enfiada" (Y / L): mira à frente de quem corre, para ele apostar corrida
+  // Um toque no botão já garante força para a bola chegar. O passe curto procura num cone largo (45° para cada lado)
+  // e, sem ninguém nele, ainda olha até 75° antes de virar passe no espaço; o erro dele é a metade do normal.
   // ======================================================================
   const PASSE_S = {
     cone: (60 / 2) * Math.PI / 180, // cone de 60° (30° para cada lado da direção mandada)
+    coneAssist: 45 * Math.PI / 180, // passe curto (toque): 45° para cada lado
+    coneLargo: 75 * Math.PI / 180,  // ...e, se não achar ninguém, até 75°
     alcance: 34,                    // ninguém mais longe que isso entra na conta
     vChega: 3,                      // um toque: a bola chega no pé com ~3 m/s (fácil de dominar)
     extra: 13,                      // força cheia: +13 m/s na saída
@@ -738,8 +791,10 @@
   // ---- planeja o passe: devolve { kind, yaw, vel, elev, alvo, ponto } (o chute de verdade é kick(...opts)) ----
   //   p: quem passa {x, z}; yaw: direção mandada; mates: [{id, x, z, vx, vz}]; tipo: curto|longo|profundidade;
   //   forca: 0..1 (tempo segurando o botão); pressao: tem adversário colado?; ataque: +1/−1 (para onde é o gol)
-  function planejarPasse(F, p, yaw, mates, tipo, forca, pressao = false, ataque = 1, rnd = Math.random) {
-    const B0 = { x: p.x, z: p.z }, alvo = escolherReceptor(p, yaw, mates);
+  //   o.assist: passe de toque (cone largo, procura até 75° e metade do erro)
+  function planejarPasse(F, p, yaw, mates, tipo, forca, pressao = false, ataque = 1, rnd = Math.random, o = {}) {
+    const B0 = { x: p.x, z: p.z };
+    const alvo = o.assist ? escolherReceptor(p, yaw, mates, PASSE_S.coneAssist) || escolherReceptor(p, yaw, mates, PASSE_S.coneLargo) : escolherReceptor(p, yaw, mates);
     let ponto, vel, elev = tipo === "longo" ? PASSE_S.elevLongo : 0.02;
     if (!alvo) { // ninguém no cone: passe no espaço, na direção exata, com a força da barra
       const d = tipo === "longo" ? 12 + forca * 14 : 8 + forca * 16;
@@ -772,6 +827,7 @@
       }
     }
     const dist = Math.hypot(ponto.x - B0.x, ponto.z - B0.z), er = erroPasse(dist, pressao, rnd);
+    if (o.assist) { er.dYaw *= 0.5; er.kVel = 1 + (er.kVel - 1) * 0.5; }
     return { kind: tipo, yaw: Math.atan2(-(ponto.x - B0.x), -(ponto.z - B0.z)) + er.dYaw, vel: Math.min(PASSE_S.vMax, vel * er.kVel), elev, alvo: alvo ? alvo.id : null, ponto };
   }
   // ---- "trava" do passe (lock-on sutil): perto do receptor, a bola vai se ajeitando para o pé dele ----
@@ -791,74 +847,7 @@
     if (d < 1.4) { const rvx = b.vx - (r.vx || 0), rvz = b.vz - (r.vz || 0), rs = Math.hypot(rvx, rvz); if (rs > 5.5) { b.vx = (r.vx || 0) + rvx / rs * 5.5; b.vz = (r.vz || 0) + rvz / rs * 5.5; } }
   }
 
-  // ---------- itens do Strikers (a mesma conta no servidor e no navegador) ----------
-  // peso = chance relativa no sorteio. alvo: "eu" (efeito em quem usa) ou um objeto que anda no campo.
-  const ITENS = {
-    cogumelo: { nome: "Cogumelo", emoji: "🍄", peso: 3, eu: true, dura: 2.5 },       // corre bem mais rápido
-    casco: { nome: "Casco", emoji: "🟢", peso: 3 },                                    // vai reto, quica na cerca, derruba
-    teleguiado: { nome: "Casco teleguiado", emoji: "🔴", peso: 2 },                    // persegue um adversário
-    banana: { nome: "Banana", emoji: "🍌", peso: 3 },                                  // fica no chão: quem pisa cai
-    estrela: { nome: "Estrela", emoji: "⭐", peso: 1, eu: true, dura: 5 },             // rápido, imune e derruba quem encosta
-    bomba: { nome: "Bomba", emoji: "💣", peso: 2 },                                    // explode e derruba quem estiver perto
-  };
-  const ITEM_LISTA = Object.keys(ITENS);
-  function sortearItem(rnd = Math.random) {
-    const total = ITEM_LISTA.reduce((s, k) => s + ITENS[k].peso, 0); let r = rnd() * total;
-    for (const k of ITEM_LISTA) { r -= ITENS[k].peso; if (r <= 0) return k; }
-    return "casco";
-  }
-  // lança um item que anda no campo, saindo de quem usou (p: {x, z, facing|yaw}). Devolve o objeto (ou null).
-  let itemSeq = 0;
-  function lancarItem(tipo, p, team, dono) {
-    const yaw = p.facing ?? p.yaw ?? 0, fx = -Math.sin(yaw), fz = -Math.cos(yaw), base = { id: ++itemSeq, tipo, dono, team, t: 0, quiques: 0 };
-    if (tipo === "casco") return { ...base, x: p.x + fx * 0.9, z: p.z + fz * 0.9, vx: fx * 17, vz: fz * 17 };
-    if (tipo === "teleguiado") return { ...base, x: p.x + fx * 0.9, z: p.z + fz * 0.9, vx: fx * 13, vz: fz * 13 };
-    if (tipo === "banana") return { ...base, x: p.x - fx * 1.0, z: p.z - fz * 1.0, vx: 0, vz: 0 };
-    if (tipo === "bomba") return { ...base, x: p.x + fx * 0.9, z: p.z + fz * 0.9, vx: fx * 11, vz: fz * 11 };
-    return null;
-  }
-  // anda os itens. corpos: [{id, team, x, z, imune, bola}] (bola: está com a bola). Devolve { acertos: [{id, por, x, z}],
-  // explosoes: [{x, z}] } e tira da lista os que acabaram.
-  const BOMBA_R = 3, BOMBA_T = 1.4;
-  function stepItens(F, itens, corpos, dt) {
-    const acertos = [], explosoes = [];
-    for (let i = itens.length - 1; i >= 0; i--) {
-      const it = itens[i]; it.t += dt; let fim = false;
-      if (it.tipo === "teleguiado") { // vira na direção do alvo: o adversário com a bola, ou o mais perto
-        const rivais = corpos.filter((c) => c.team !== it.team && !c.imune);
-        const alvo = rivais.find((c) => c.bola) || rivais.sort((a, b) => Math.hypot(a.x - it.x, a.z - it.z) - Math.hypot(b.x - it.x, b.z - it.z))[0];
-        if (alvo && it.t > 0.15) {
-          const v = Math.hypot(it.vx, it.vz), a0 = Math.atan2(it.vz, it.vx), a1 = Math.atan2(alvo.z - it.z, alvo.x - it.x);
-          let d = Math.atan2(Math.sin(a1 - a0), Math.cos(a1 - a0)); d = Math.max(-5.5 * dt, Math.min(5.5 * dt, d)); // vira até 5,5 rad/s (raio de curva ~2,4 m)
-          it.vx = Math.cos(a0 + d) * v; it.vz = Math.sin(a0 + d) * v;
-        }
-      }
-      if (it.tipo === "bomba") { const k = Math.exp(-dt * 2.2); it.vx *= k; it.vz *= k; }
-      it.x += it.vx * dt; it.z += it.vz * dt;
-      const lx = F.L - 0.3, lz = F.W - 0.3; // cerca: o casco quica (até 3 vezes), o resto para
-      if (Math.abs(it.x) > lx) { it.x = Math.sign(it.x) * lx; it.vx = -it.vx; it.quiques++; }
-      if (Math.abs(it.z) > lz) { it.z = Math.sign(it.z) * lz; it.vz = -it.vz; it.quiques++; }
-      if (it.tipo === "bomba") {
-        if (it.t >= BOMBA_T) { fim = true; explosoes.push({ x: it.x, z: it.z, por: it.dono });
-          for (const c of corpos) if (!c.imune && c.id !== it.dono && Math.hypot(c.x - it.x, c.z - it.z) < BOMBA_R) acertos.push({ id: c.id, por: it.dono, x: it.x, z: it.z }); }
-      } else {
-        const r = it.tipo === "banana" ? 0.55 : 0.65;
-        for (const c of corpos) {
-          if (c.imune || (c.id === it.dono && it.t < 1.2)) continue; // quem jogou não tropeça no próprio item logo em seguida
-          if (it.tipo !== "banana" && c.team === it.team) continue; // casco não pega companheiro
-          if (Math.hypot(c.x - it.x, c.z - it.z) < r) { acertos.push({ id: c.id, por: it.dono, x: it.x, z: it.z }); fim = true; break; }
-        }
-        if (it.tipo === "casco" && it.quiques > 3) fim = true;
-        if (it.tipo === "teleguiado" && it.t > 4) fim = true;
-        if (it.tipo === "banana" && it.t > 20) fim = true;
-        if (it.tipo === "casco" && it.t > 4) fim = true;
-      }
-      if (fim) itens.splice(i, 1);
-    }
-    return { acertos, explosoes };
-  }
-
-  const api = { MODES, campoDe, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, ITENS, ITEM_LISTA, sortearItem, lancarItem, stepItens, BOMBA_R, BOMBA_T, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
+  const api = { MODES, campoDe, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
     movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass, assistCross, arenaSDF, rampa };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;

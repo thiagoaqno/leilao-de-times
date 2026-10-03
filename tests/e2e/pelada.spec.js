@@ -7,11 +7,10 @@ const { io } = require("socket.io-client");
 test.use({ viewport: { width: 480, height: 270 } });
 test.setTimeout(240000);
 
-test("contra bots no Strikers: o passe curto (J) chega e o controle vai para quem recebe", async ({ page }) => {
+test("contra bots: o passe de toque (J) chega no companheiro (jogador fixo, sem troca)", async ({ page }) => {
   const erros = [];
   page.on("pageerror", (e) => erros.push(String(e)));
   await page.addInitScript(() => {
-    localStorage.setItem("pelada:estilo", JSON.stringify("strikers"));
     localStorage.setItem("pelada:botSize", "2");
     localStorage.setItem("pelada:botDif", JSON.stringify("facil"));
   });
@@ -37,14 +36,11 @@ test("contra bots no Strikers: o passe curto (J) chega e o controle vai para que
   await page.keyboard.down("j");
   await page.evaluate(() => __pelada.avancar(0.05));
   await page.keyboard.up("j");
-  // passou para um bot do meu time: troquei de corpo com ele na hora
-  const troca = await page.evaluate((a) => { const { G } = __pelada, bot = G.bots.find((x) => x.id === a.mate); return { me: [G.me.x, G.me.z], bot: [bot.x, bot.z] }; }, antes);
-  expect(Math.hypot(troca.me[0] - antes.alvo[0], troca.me[1] - antes.alvo[1])).toBeLessThan(1.5);
-  expect(Math.hypot(troca.bot[0] - antes.me[0], troca.bot[1] - antes.me[1])).toBeLessThan(1.5);
-  // a bola chega e fica no meu pé
+  // jogador fixo: eu continuo onde estava, e a bola chega no pé do companheiro
   let chegou = false;
-  for (let i = 0; i < 40 && !chegou; i++) chegou = await page.evaluate(() => { __pelada.avancar(0.1); const { G, local } = __pelada; return local.ball.dono === "eu" && Math.hypot(local.ball.x - G.me.x, local.ball.z - G.me.z) < 1.5; });
+  for (let i = 0; i < 40 && !chegou; i++) chegou = await page.evaluate((id) => { __pelada.avancar(0.1); const { G, local } = __pelada, bot = G.bots.find((x) => x.id === id); return local.ball.dono === id && Math.hypot(local.ball.x - bot.x, local.ball.z - bot.z) < 1.6; }, antes.mate);
   expect(chegou).toBe(true);
+  expect(await page.evaluate(() => Math.hypot(__pelada.G.me.x + 12, __pelada.G.me.z))).toBeLessThan(1.5);
   expect(erros).toEqual([]);
 });
 

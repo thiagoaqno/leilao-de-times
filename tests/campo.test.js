@@ -34,7 +34,7 @@ const RECEPTORES = {
   "correndo de lado": { id: "m", x: 0, z: 0, vx: 0, vz: 6 },
 };
 
-for (const Fid of ["pes", "strikers"]) {
+for (const Fid of ["pes"]) {
   test(`planejarPasse (${Fid}): curto e longo chegam no companheiro parado, correndo de frente e de lado`, () => {
     for (const tipo of ["curto", "longo"]) for (const [nome, m] of Object.entries(RECEPTORES)) {
       const { plano, how, minR } = passa(Fid, tipo, m);
