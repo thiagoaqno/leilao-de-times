@@ -729,6 +729,23 @@ function currentBalls() {
 // ---------- mira (quem joga) ----------
 const aim = { a: 0, p: 0, sx: 0, sy: 0, cx: null, cy: null, pk: -1, pkManual: false, dragCue: false, aiming: false, cueOk: true, key: null };
 const myTurn = () => { const st = shown(); return !!(st && st.phase === "playing" && st.g && ME && st.g.shooter === ME.id && !anim && sNow() >= st.g.busyUntil - 50); };
+// a próxima tacada é minha, mesmo que as bolas ainda estejam terminando de parar: dá para já começar a puxar o taco
+// (antes, um toque um instante antes de a vez liberar era ignorado e era preciso soltar e tocar de novo)
+const vezChegando = () => !!(S && S.phase === "playing" && S.g && ME && S.g.shooter === ME.id);
+let tacadaPendente = null, puxando = false;
+// soltou o taco antes de a vez liberar de fato: a tacada sai assim que as bolas pararem (até 15 s). O relógio do
+// servidor pode estar um pouquinho atrás do daqui: se ele responder "espere as bolas pararem", tenta de novo em seguida.
+function shootQuandoPuder() {
+  const t0 = Date.now(), p = aim.p; clearTimeout(tacadaPendente);
+  const tenta = async () => {
+    if (Date.now() - t0 > 15000 || !vezChegando()) { tacadaPendente = null; aim.p = 0; renderPower(); return; }
+    if (!myTurn()) { tacadaPendente = setTimeout(tenta, 40); return; }
+    aim.p = p; tacadaPendente = setTimeout(() => {}, 0); // marca como pendente enquanto a tacada vai
+    const r = await shoot(true);
+    if (r === "cedo") tacadaPendente = setTimeout(tenta, 150); else tacadaPendente = null;
+  };
+  tenta();
+}
 function cuePos() {
   const g = shown().g;
   if (myTurn() && g.ballInHand && aim.cx != null) return { x: aim.cx, y: aim.cy };
@@ -765,7 +782,9 @@ function syncTurn() {
       const legal = legalFor(g, g.turn); let bd = Infinity;
       for (const b of g.balls) if (b.n && legal(b.n)) { const d = Math.hypot(b.x - cp.x, b.y - cp.y); if (d < bd) { bd = d; tx = b.x; ty = b.y; } }
     }
-    aim.a = Math.atan2(ty - cp.y, tx - cp.x); aim.p = 0; aim.sx = aim.sy = 0; aim.pk = -1; aim.pkManual = false; aim.cueOk = true;
+    // já estava puxando o taco (começou antes de a vez liberar): mantém a mira e a força de quem está jogando
+    if (!puxando && !tacadaPendente) { aim.a = Math.atan2(ty - cp.y, tx - cp.x); aim.p = 0; }
+    aim.sx = aim.sy = 0; aim.pk = -1; aim.pkManual = false; aim.cueOk = true;
     renderSpin(); renderPower();
     Sound.play("turn");
     bannerShow("SUA VEZ!", "gold");
@@ -855,14 +874,14 @@ function renderSpin() { const d = $("spinDot"); d.style.left = 50 + aim.sx * 40 
 (() => {
   const el = $("power"); let st = null;
   const len = () => (view.rot ? el.clientWidth : el.clientHeight) - 12;
-  el.addEventListener("pointerdown", (e) => { if (!myTurn()) return; el.setPointerCapture(e.pointerId); st = { x: e.clientX, y: e.clientY }; aim.p = 0; });
+  el.addEventListener("pointerdown", (e) => { if (!myTurn() && !vezChegando()) return; el.setPointerCapture(e.pointerId); st = { x: e.clientX, y: e.clientY }; aim.p = 0; puxando = true; });
   el.addEventListener("pointermove", (e) => {
     if (!st) return;
     const d = view.rot ? st.x - e.clientX : e.clientY - st.y;
     aim.p = Math.max(0, Math.min(1, d / len())); renderPower(); sendAim();
   });
-  const end = (e) => { if (!st) return; st = null; if (aim.p >= 0.02 && myTurn()) shoot(); else { aim.p = 0; renderPower(); sendAim(true); } };
-  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", () => { st = null; aim.p = 0; renderPower(); });
+  const end = (e) => { if (!st) return; st = null; puxando = false; if (aim.p >= 0.02 && vezChegando()) shootQuandoPuder(); else { aim.p = 0; renderPower(); sendAim(true); } };
+  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", () => { st = null; puxando = false; aim.p = 0; renderPower(); });
 })();
 function renderPower() {
   const p = aim.p, rot = view.rot;
@@ -881,7 +900,7 @@ document.addEventListener("keydown", (e) => {
 let stroke = null;
 const STROKE_MS = (p) => 170 - 90 * p; // mais força, golpe mais rápido
 const ease = (k) => k * k * k;
-async function shoot() {
+async function shoot(pendente = false) {
   const g = shown().g;
   if (g.onEight[g.turn] && aim.pk < 0) { toast("Escolha a caçapa da 8: toque numa caçapa."); aim.p = 0; renderPower(); return; }
   if (g.ballInHand && !aim.cueOk) { toast("A branca não pode ficar aí."); return; }
@@ -889,6 +908,13 @@ async function shoot() {
   const data = { a: aim.a, p: aim.p, sx: aim.sx, sy: aim.sy, pk: aim.pk, cx: cue.x, cy: cue.y };
   stroke = { p: data.p, t0: sNow(), a: data.a, cx: cue.x, cy: cue.y, sx: data.sx, sy: data.sy };
   aim.p = 0; renderPower();
+  if (pendente) { // tacada que estava esperando a vez: se o servidor ainda acha cedo, volta a esperar (sem aviso na tela)
+    const r = await new Promise((res) => socket.emit("act", { type: "shoot", ...data }, res));
+    if (r && r.ok) return "ok";
+    stroke = null;
+    if (r && /parar/i.test(r.error || "")) { aim.p = data.p; renderPower(); return "cedo"; }
+    toast(r ? r.error : "Sem conexão."); return "erro";
+  }
   if (!(await act("shoot", data))) stroke = null;
 }
 

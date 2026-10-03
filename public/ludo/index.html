@@ -108,7 +108,9 @@ label{display:block;font-size:14px;font-weight:700;margin:0 0 6px;color:var(--co
   box-shadow:0 2px 3px #0007;transition:left .12s ease-out,top .12s ease-out;z-index:2}
 .tok.can{cursor:pointer;z-index:4;animation:hop .7s ease-in-out infinite;box-shadow:0 0 0 3px #fff,0 0 0 6px var(--tc),0 4px 8px #000a}
 .tok.home{transition:left .45s,top .45s}
-@keyframes hop{50%{transform:translate(-50%,-62%)}}
+/* o peão que pode andar "pulsa" no lugar (antes ele pulava para cima e saía de baixo do dedo: o toque caía no tabuleiro) */
+@keyframes hop{50%{transform:translate(-50%,-50%) scale(1.18)}}
+.tok.can::after{content:"";position:absolute;inset:-35%;border-radius:50%} /* área de toque maior que o peão */
 @media (prefers-reduced-motion:reduce){.tok.can{animation:none}.board{transition:none}}
 
 /* área do jogo */

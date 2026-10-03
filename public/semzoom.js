@@ -15,8 +15,9 @@
   document.addEventListener("touchend", (e) => {
     const t = Date.now(), c = e.changedTouches[0], x = c ? c.clientX : 0, y = c ? c.clientY : 0;
     // toque duplo no mesmo lugar: o navegador daria zoom. Cancela só esse caso (toques rápidos em lugares
-    // diferentes, como duas cartas seguidas, continuam normais), e campos de texto ficam de fora
-    if (t - ultimo.t < 320 && Math.hypot(x - ultimo.x, y - ultimo.y) < 40 && e.touches.length === 0 && !(e.target.closest && e.target.closest("input,textarea,select,[contenteditable]"))) e.preventDefault();
+    // diferentes, como duas cartas seguidas, continuam normais). Campos de texto e botões ficam de fora: neles
+    // o touch-action já impede o zoom, e cancelar o toque engolia o segundo clique rápido (ex.: o mesmo peão no Ludo)
+    if (t - ultimo.t < 320 && Math.hypot(x - ultimo.x, y - ultimo.y) < 40 && e.touches.length === 0 && !(e.target.closest && e.target.closest("input,textarea,select,[contenteditable],button,a,label,[role=button],[data-i]"))) e.preventDefault();
     ultimo = { t, x, y };
   }, { passive: false });
 })();
