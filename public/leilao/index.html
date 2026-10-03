@@ -657,6 +657,7 @@ body.skin-cozinha{
 <div class="toast hidden" id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/comum.js"></script>
 <script src="/presets.js"></script>
 <script src="/prompts.js"></script>
 <script src="/ratings.js"></script>
@@ -667,7 +668,7 @@ body.skin-cozinha{
 <script src="/vendor/marked.js"></script>
 <script src="/vendor/purify.js"></script>
 <script>
-const $ = (id) => document.getElementById(id);
+const { $, store } = Comum;
 const socket = io();
 let S = null;            // last state
 let me = { capId: null, host: false, code: null };
@@ -683,12 +684,7 @@ function wheelPal(){ return skinNow ? WHEEL.cozinha : WHEEL.estadio; }
 function setSkin(s){ skinNow = FOOD_SKINS.includes(s) ? s : null; document.body.classList.toggle("skin-cozinha", !!skinNow); }
 const skinOfTheme = (th) => th.skin || (FOOD_SKINS.includes(th.id) ? th.id : null);
 
-const store = {
-  get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-  del(k){ try { localStorage.removeItem(k); } catch {} }
-};
-function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add("hidden"),2600); }
+const toast = Comum.criarToast(2600);
 function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 const escA = (s) => esc(s).replace(/"/g, "&quot;");
 

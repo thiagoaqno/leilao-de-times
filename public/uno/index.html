@@ -322,21 +322,18 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 <div class="toast hidden" id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/comum.js"></script>
 <script src="/uno/regras.js"></script>
 <script>
 const R = window.Regras;
 const socket = io("/uno");
-const $ = (id) => document.getElementById(id);
-const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-let S = null, ME = null, offset = 0;
+const { $, h, store } = Comum;
+let S = null, ME = null;
+const relogio = Comum.relogio(); // relógio do servidor
 const P = (id) => S && S.players.find((p) => p.id === id);
 const me = () => (ME && ME.id ? P(ME.id) : null);
-function toast(msg, ms = 3000) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
-function act(type, data = {}) { return new Promise((res) => socket.emit("act", { type, ...data }, (r) => { if (!r || !r.ok) toast(r ? r.error : "Sem conexão."); res(r && r.ok); })); }
+const toast = Comum.criarToast(3000);
+const act = Comum.criarAct(socket, toast);
 function show(id) { for (const s of ["home", "lobby", "game"]) $(s).classList.toggle("hidden", s !== id); }
 
 // ---------- cartas ----------
@@ -419,7 +416,7 @@ function autoJoin() {
 }
 socket.on("connect", autoJoin);
 socket.on("kicked", () => { toast("O organizador tirou você da mesa."); ME = null; S = null; history.replaceState(null, "", "/uno/"); show("home"); });
-socket.on("state", (st) => { snapshotHand(); S = st; offset = st.now - Date.now(); render(); });
+socket.on("state", (st) => { snapshotHand(); S = st; relogio.doEstado(st.now); render(); });
 
 function render() {
   if (!S) return;
@@ -644,7 +641,7 @@ function renderResult() {
 // ---------- relógio ----------
 function tick() {
   if (!S) return;
-  const now = Date.now() + offset, dl = S.deadline;
+  const now = relogio.agora(), dl = S.deadline;
   for (const p of S.players) {
     const el = $("seat-" + p.id); if (!el) continue;
     const t = dl && dl.who === p.id ? Math.max(0, (dl.at - now) / dl.total) : 1;
@@ -673,15 +670,7 @@ function flyCard(html, a, b, { delay = 0, dur = 480, spin = 0, scaleFrom = 1, sc
 function stampAt(pt, text, cls = "") { const el = document.createElement("div"); el.className = "stamp " + cls; el.textContent = text; el.style.left = pt.x + "px"; el.style.top = pt.y + "px"; $("fly").appendChild(el); setTimeout(() => el.remove(), 1400); }
 function bubbleAt(pt, text) { const el = document.createElement("div"); el.className = "bubble"; el.textContent = text; el.style.left = pt.x + "px"; el.style.top = pt.y - 30 + "px"; $("fly").appendChild(el); setTimeout(() => el.remove(), 1700); }
 function shakeSeat(pid) { const el = $("seat-" + pid); if (!el) return; el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
-function confetti() {
-  const cols = Object.values(R.COLOR_HEX).slice(0, 4);
-  for (let k = 0; k < 90; k++) {
-    const c = document.createElement("div"); c.className = "confetti";
-    c.style.left = Math.random() * 100 + "vw"; c.style.background = cols[k % 4];
-    c.style.animationDuration = 1.8 + Math.random() * 1.8 + "s"; c.style.animationDelay = Math.random() * 0.6 + "s";
-    $("fly").appendChild(c); setTimeout(() => c.remove(), 4200);
-  }
-}
+const confetti = () => Comum.confetti(Object.values(R.COLOR_HEX).slice(0, 4), { onde: $("fly"), dur: [1.8, 1.8], fica: 4200 });
 function playFx(e) {
   const deck = center($("drawPile")), pile = center($("discard"));
   switch (e.kind) {
@@ -751,9 +740,8 @@ function renderReacts() {
 }
 socket.on("react", ({ player, emoji }) => {
   if (!S || !R.REACTIONS.includes(emoji)) return;
-  const pt = seatPt(player), el = document.createElement("div");
-  el.className = "rx"; el.textContent = emoji; el.style.left = pt.x + (Math.random() * 16 - 8) + "px"; el.style.top = pt.y - 20 + "px";
-  $("fly").appendChild(el); setTimeout(() => el.remove(), 2300); Sound.play("pop");
+  const pt = seatPt(player);
+  Comum.flutuar(emoji, pt.x + (Math.random() * 16 - 8), pt.y - 20, { classe: "rx", onde: $("fly"), fica: 2300 }); Sound.play("pop");
 });
 
 // ---------- regras ----------

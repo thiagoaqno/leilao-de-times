@@ -238,24 +238,20 @@ label{display:block;font-size:14px;font-weight:700;margin:0 0 6px;color:var(--co
 <div class="toast hidden" id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/comum.js"></script>
 <script src="/ludo/regras.js"></script>
 <script>
 "use strict";
 const L = window.LudoRegras;
 const socket = io("/ludo");
-const $ = (id) => document.getElementById(id);
-const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-let S = null, ME = null, offset = 0;
-const sNow = () => Date.now() + offset;
+const { $, h, store } = Comum;
+let S = null, ME = null;
+const relogio = Comum.relogio(), sNow = relogio.agora;
 const me = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : null);
 const byColor = (c) => S && S.players.find((p) => p.color === c);
 const isHost = () => !!(S && ME && ME.id && S.host === ME.id);
-function toast(msg, ms = 3000) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
-function act(type, data = {}) { return new Promise((res) => socket.emit("act", { type, ...data }, (r) => { if (!r || !r.ok) toast(r ? r.error : "Sem conexão."); res(r && r.ok); })); }
+const toast = Comum.criarToast(3000);
+const act = Comum.criarAct(socket, toast);
 function show(id) { for (const s of ["home", "lobby", "game"]) $(s).classList.toggle("hidden", s !== id); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -288,7 +284,7 @@ const Sound = (() => {
   };
   return { play(k) { if (on && fx[k]) try { fx[k](); } catch {} }, toggle() { on = !on; store.set("ludo:sound", on); }, get on() { return on; } };
 })();
-function renderSoundBtn() { $("btnSound").textContent = Sound.on ? "🔊" : "🔇"; }
+function renderSoundBtn() { Comum.iconeSom(Sound.on); }
 $("btnSound").onclick = () => { Sound.toggle(); renderSoundBtn(); Sound.play("step"); };
 renderSoundBtn();
 
@@ -351,7 +347,7 @@ socket.on("kicked", () => { toast("O organizador tirou você da mesa."); ME = nu
 // "shown" é o que está desenhado agora; as jogadas que chegam são animadas casa por casa
 let shown = null, Q = [], playing = false, lastRoll = null, lastMove = null;
 socket.on("state", (st) => {
-  offset = st.now - Date.now();
+  relogio.doEstado(st.now);
   Q.push(st);
   if (!playing) drain();
 });

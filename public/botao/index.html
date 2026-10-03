@@ -305,6 +305,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 <div class="toast hidden" id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/comum.js"></script>
 <script src="/botao/fisica.js"></script>
 <script>
 const B = window.Botao;
@@ -346,19 +347,14 @@ const STADIUMS = {
   vilabelmiro: { name: "Vila Belmiro", home: "Santos", c: ["#f4f4f4", "#151515"] },
 };
 const socket = io("/botao");
-const $ = (id) => document.getElementById(id);
-const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-let S = null, ME = null, offset = 0;
-const sNow = () => Date.now() + offset;
+const { $, h, store } = Comum;
+let S = null, ME = null;
+const relogio = Comum.relogio(), sNow = relogio.agora;
 const me = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : null);
 const P = (id) => S && S.players.find((p) => p.id === id);
 const cfg = () => (S ? S.config : {});
-function toast(msg, ms = 3200) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
-function act(type, data = {}) { return new Promise((res) => socket.emit("act", { type, ...data }, (r) => { if (!r || !r.ok) toast(r ? r.error : "Sem conexão."); res(r && r.ok); })); }
+const toast = Comum.criarToast(3200);
+const act = Comum.criarAct(socket, toast);
 function show(id) { for (const s of ["home", "lobby", "game"]) $(s).classList.toggle("hidden", s !== id); if (id === "game") requestAnimationFrame(layout); }
 
 // ---------- sons (gerados pelo navegador) ----------
@@ -398,7 +394,7 @@ const Sound = (() => {
   };
   return { play(k, v) { if (on && fx[k]) try { fx[k](v); } catch {} }, toggle() { on = !on; store.set("botao:sound", on); }, get on() { return on; }, unlock() { if (on) ctx(); } };
 })();
-function renderSoundBtn() { $("btnSound").textContent = Sound.on ? "🔊" : "🔇"; }
+function renderSoundBtn() { Comum.iconeSom(Sound.on); }
 $("btnSound").onclick = () => { Sound.toggle(); renderSoundBtn(); Sound.play("pop"); };
 renderSoundBtn();
 document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
@@ -437,7 +433,7 @@ socket.on("kicked", () => { toast("O organizador tirou você da mesa."); ME = nu
 let anim = null, pre = null, lastNote = null, seenShot = null;
 let remote = null; // mira ao vivo de quem está jogando
 socket.on("state", (st) => {
-  offset = st.now - Date.now();
+  relogio.doEstado(st.now);
   const old = S;
   S = st;
   const sh = st.g && st.g.shot;
@@ -1106,10 +1102,7 @@ function renderOverlay() {
   }
   overlayKey = key;
 }
-function confetti() {
-  const cols = ["#f2c14e", "#c8102e", "#0b6b34", "#1e5bc6", "#f4f1e6", "#f07c1c"];
-  for (let i = 0; i < 90; i++) { const d = document.createElement("div"); d.className = "confetti"; d.style.left = Math.random() * 100 + "vw"; d.style.background = cols[i % cols.length]; d.style.animationDuration = 2 + Math.random() * 2.5 + "s"; d.style.animationDelay = Math.random() * 0.6 + "s"; document.body.appendChild(d); setTimeout(() => d.remove(), 5500); }
-}
+const confetti = () => Comum.confetti(["#f2c14e", "#c8102e", "#0b6b34", "#1e5bc6", "#f4f1e6", "#f07c1c"]);
 function bannerShow(text, cls = "") {
   const b = document.createElement("div"); b.className = "banner " + cls; b.textContent = text;
   $("bannerBox").innerHTML = ""; $("bannerBox").appendChild(b); setTimeout(() => b.remove(), 2000);
@@ -1161,8 +1154,7 @@ socket.on("react", ({ player, emoji }) => {
   const av = $("av-" + player); let x, y;
   if (av) { const r = av.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
   else { const r = cv.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
-  const f = document.createElement("div"); f.className = "floaty"; f.textContent = emoji; f.style.left = x + "px"; f.style.top = y + "px";
-  document.body.appendChild(f); setTimeout(() => f.remove(), 1700);
+  Comum.flutuar(emoji, x, y);
 });
 
 // ---------- regras (as desta mesa, se você estiver numa) ----------

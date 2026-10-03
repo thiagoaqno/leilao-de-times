@@ -6,35 +6,25 @@ import * as THREE from "three";
 import { Ragdoll } from "/ragdoll.js";
 
 const AR = window.Arena, WP = AR.WEAPONS;
-const $ = (id) => document.getElementById(id);
-const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
+const { $, h, store } = Comum;
 const setH = (id, html) => { const e = $(id); if (e._h !== html) { e._h = html; e.innerHTML = html; } }; // só mexe no HTML quando muda
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const TEAM = { A: "Azul", B: "Laranja" };
 const INTERP = 100; // ms que os outros ficam "no passado"
-function toast(msg, ms = 3200) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
+const toast = Comum.criarToast(3200);
 
 // ======================================================================
 // Rede
 // ======================================================================
 const socket = io("/tiro");
-let S = null, ME = null, offset = 0, bestRtt = Infinity;
-const sNow = () => Date.now() + offset;
+let S = null, ME = null;
+const relogio = Comum.relogio(), sNow = relogio.agora;
 const myP = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : null);
 const P = (id) => S && S.players.find((p) => p.id === id);
-function act(type, data = {}) { return new Promise((res) => socket.emit("act", { type, ...data }, (r) => { if (!r || !r.ok) toast(r ? r.error : "Sem conexão."); res(r && r.ok); })); }
+const act = Comum.criarAct(socket, toast);
 // acerta o relógio com o do servidor (fica com a medida de menor ping, que é a mais precisa)
-function syncClock(n = 5) {
-  for (let i = 0; i < n; i++) setTimeout(() => {
-    const t0 = Date.now();
-    socket.emit("clock", (ts) => { const rtt = Date.now() - t0; if (rtt <= bestRtt + 5) { bestRtt = Math.min(bestRtt, rtt); offset = ts - (t0 + rtt / 2); } });
-  }, i * 250);
-}
+const syncClock = (n) => relogio.sincronizar(socket, n);
 socket.on("png", (ack) => typeof ack === "function" && ack());
 
 // ---------- entrar / criar ----------

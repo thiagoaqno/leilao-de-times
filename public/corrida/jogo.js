@@ -5,18 +5,13 @@ const carOf = (p) => (p && CARROS[p.car]) || CARROS.equilibrado;
 const COLORS = ["#e63946", "#1e88e5", "#43a047", "#fdd835", "#8e24aa", "#fb8c00", "#00acc1", "#f06292"];
 const PAWNS = ["😎", "🤠", "👽", "🤖", "🐸", "🦊", "🐼", "🐯", "🦄", "🐙", "👻", "🤡", "🦁", "🐵", "🐧", "🏎️"];
 const socket = io("/corrida");
-const $ = (id) => document.getElementById(id);
-const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-let S = null, ME = null, offset = 0;
-const sNow = () => Date.now() + offset;
+const { $, h, store } = Comum;
+let S = null, ME = null;
+const relogio = Comum.relogio(), sNow = relogio.agora;
 const me = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : null);
 const P = (id) => S && S.players.find((p) => p.id === id);
-function toast(msg, ms = 3200) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
-function act(type, data = {}) { return new Promise((res) => socket.emit("act", { type, ...data }, (r) => { if (!r || !r.ok) toast(r ? r.error : "Sem conexão."); res(r && r.ok); })); }
+const toast = Comum.criarToast(3200);
+const act = Comum.criarAct(socket, toast);
 const fmt = (s) => s == null ? "—" : `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 const rng = (seed) => { let x = seed; return () => ((x = (x * 16807) % 2147483647) / 2147483647); };
 
@@ -49,7 +44,7 @@ const Sound = (() => {
     engine, toggle() { on = !on; store.set("corrida:sound", on); if (!on) engine(0, false); }, get on() { return on; }, unlock() { ctx(); },
   };
 })();
-function renderSoundBtn() { $("btnSound").textContent = Sound.on ? "🔊" : "🔇"; }
+function renderSoundBtn() { Comum.iconeSom(Sound.on); }
 $("btnSound").onclick = () => { Sound.toggle(); renderSoundBtn(); };
 renderSoundBtn();
 document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
@@ -91,7 +86,7 @@ function show(id) {
 
 // ---------- estado vindo do servidor ----------
 socket.on("state", (st) => {
-  offset = st.now - Date.now();
+  relogio.doEstado(st.now);
   const old = S; S = st;
   if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); return; }
   show("race");

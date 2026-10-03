@@ -8,13 +8,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
 
 const C = window.Campo, KITS = C.KITS;
-const $ = (id) => document.getElementById(id);
-const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const { $, h, store } = Comum;
 const setH = (id, html) => { const e = $(id); if (e._h !== html) { e._h = html; e.innerHTML = html; } }; // só mexe no HTML quando muda
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const angLerp = (a, b, k) => { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * k; };
@@ -37,7 +32,7 @@ if (FIXO === "carros") {
   document.getElementById("heroFeats").innerHTML = "<span>🚀 turbo</span><span>🤸 mortal</span><span>🏎️ 4 carros</span><span>👥 1x1 a 5x5</span><span>🎥 câmera da bola</span>";
 }
 for (const id of FIXO === "carros" ? ["btnPractice", "btnFalta", "btnBots"] : ["btnPracticeCar"]) document.getElementById(id).classList.add("hidden");
-function toast(msg, ms = 3200) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
+const toast = Comum.criarToast(3200);
 const kitOf = C.kitOf;
 function kitCss(k) {
   const K = kitOf(k), c = K.c;
@@ -51,18 +46,13 @@ function kitCss(k) {
 // Rede
 // ======================================================================
 const socket = io("/pelada");
-let S = null, ME = null, offset = 0, bestRtt = Infinity, rtt = 60;
-const sNow = () => Date.now() + offset;
+let S = null, ME = null;
+const relogio = Comum.relogio(), sNow = relogio.agora;
 const myP = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : null);
 const P = (id) => S && S.players.find((p) => p.id === id);
 const PN = (n) => S && S.players.find((p) => p.n === n);
-function act(type, data = {}) { return new Promise((res) => socket.emit("act", { type, ...data }, (r) => { if (!r || !r.ok) toast(r ? r.error : "Sem conexão."); res(r && r.ok); })); }
-function syncClock(n = 5) {
-  for (let i = 0; i < n; i++) setTimeout(() => {
-    const t0 = Date.now();
-    socket.emit("clock", (ts) => { const r = Date.now() - t0; rtt = rtt * 0.7 + r * 0.3; if (r <= bestRtt + 5) { bestRtt = Math.min(bestRtt, r); offset = ts - (t0 + r / 2); } });
-  }, i * 250);
-}
+const act = Comum.criarAct(socket, toast);
+const syncClock = (n) => relogio.sincronizar(socket, n);
 socket.on("png", (ack) => typeof ack === "function" && ack());
 
 let urlCode = new URLSearchParams(location.search).get("sala");
@@ -1729,7 +1719,7 @@ function doKick(kind, power, o = {}) {
   // previsão: a bola já sai do meu pé aqui; o servidor confirma em seguida
   const b = { ...(mine || ballS.view) }; C.kick(b, body, kind, power, yaw, 0.2, curve, G.F, opt);
   ballS.snap = { t: sNow(), x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, sp: b.sp, wx: b.wx || 0, wy: b.wy || 0, wz: b.wz || 0, holder: null }; ballS.off = { x: 0, y: 0, z: 0 };
-  ballS.ignoreUntil = performance.now() + rtt + 60;
+  ballS.ignoreUntil = performance.now() + relogio.rtt + 60;
 }
 
 // ======================================================================
@@ -2287,7 +2277,7 @@ function updateBall(dt) {
     C.simulate(G.F, m, eu ? [eu, ...corposRemotos()] : [], dt);
     if (m.dono !== "eu") { // escapou do pé aqui (ou alguém tomou): volta a seguir o servidor a partir daqui
       ballS.snap = { t: sNow(), x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, sp: m.sp || 0, wx: 0, wy: 0, wz: 0, holder: null, dono: m.dono };
-      ballS.off = { x: 0, y: 0, z: 0 }; ballS.ignoreUntil = performance.now() + rtt + 60; ballS.mine = null;
+      ballS.off = { x: 0, y: 0, z: 0 }; ballS.ignoreUntil = performance.now() + relogio.rtt + 60; ballS.mine = null;
     }
     b = ballS.view; Object.assign(b, { x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, wx: 0, wy: 0, wz: 0, holder: null });
   } else {

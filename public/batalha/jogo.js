@@ -6,35 +6,25 @@
 import * as THREE from "three";
 
 const R = window.Regras;
-const $ = (id) => document.getElementById(id);
-const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const { $, h, store } = Comum;
 const setH = (id, html) => { const e = $(id); if (e._h !== html) { e._h = html; e.innerHTML = html; } };
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const angLerp = (a, b, k) => { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * k; };
 const INTERP = 100;
 const ICON = { banana: "🍌", verde: "🟢", vermelho: "🔴", cogumelo: "🍄", estrela: "⭐", bomba: "💣" };
 const BOT_NAMES = ["Robozão", "Tchuco", "Ferrugem", "Parafuso", "Bip-Bop", "Turbinho", "Lataria"];
-function toast(msg, ms = 3200) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
+const toast = Comum.criarToast(3200);
 
 // ======================================================================
 // Rede
 // ======================================================================
 const socket = io("/batalha");
-let S = null, ME = null, offset = 0, bestRtt = Infinity, rtt = 60;
-const sNow = () => Date.now() + offset;
+let S = null, ME = null;
+const relogio = Comum.relogio(), sNow = relogio.agora;
 const myP = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : null);
-function act(type, data = {}) { return new Promise((res) => socket.emit("act", { type, ...data }, (r) => { if (!r || !r.ok) toast(r ? r.error : "Sem conexão."); res(r && r.ok); })); }
-function syncClock(n = 5) {
-  for (let i = 0; i < n; i++) setTimeout(() => {
-    const t0 = Date.now();
-    socket.emit("clock", (ts) => { const r = Date.now() - t0; rtt = rtt * 0.7 + r * 0.3; if (r <= bestRtt + 5) { bestRtt = Math.min(bestRtt, r); offset = ts - (t0 + r / 2); } });
-  }, i * 250);
-}
+const act = Comum.criarAct(socket, toast);
+const syncClock = (n) => relogio.sincronizar(socket, n);
 socket.on("png", (ack) => typeof ack === "function" && ack());
 
 let urlCode = new URLSearchParams(location.search).get("sala");
@@ -792,7 +782,7 @@ function hud(now, started, over, tNow) {
   if (!started) { const c = Math.ceil((matchStart() - now) / 1000); if (c !== G.counted && c <= 3) { G.counted = c; msg(c > 0 ? String(c) : "", 900); Sound.beep(false); } }
   else if (G.counted > 0) { G.counted = 0; msg("VAI! 🎈", 900); Sound.beep(true); }
   if (tNow > G.msgUntil && $("hMsg").innerHTML) setH("hMsg", "");
-  setH("hPing", G.practice ? "TREINO" : `${Math.round(rtt)} ms`);
+  setH("hPing", G.practice ? "TREINO" : `${Math.round(relogio.rtt)} ms`);
   const L = G.last, mine = L && L.p.get(G.myN);
   if (G.me && mine) {
     const ghost = myGhost(), k = G.karts.get(G.myN), b = ghost ? 0 : k ? shownBalloons(k, mine, tNow) : mine.balloons;
