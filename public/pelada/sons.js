@@ -38,6 +38,7 @@ export const Sound = (() => {
   return {
     unlock() { ctx(); },
     setVol(v) { vol = v; store.set("pelada:vol", v); if (master) master.gain.value = v; }, get vol() { return vol; },
+    toque(forca = 0.5) { tone({ f0: 220 + forca * 120, f1: 110, dur: 0.05, gain: 0.07 + forca * 0.06 }); }, // condução: toquinho baixo
     kick(power = 0.5, k = 1, pan = 0) { tone({ f0: 160 + power * 60, f1: 60, dur: 0.12, gain: (0.35 + power * 0.4) * k, pan }); burst({ dur: 0.06, f0: 2500, f1: 600, gain: 0.25 * k, pan, type: "bandpass", q: 1.2 }); },
     bounce(force, k = 1, pan = 0, big = false) { const v = clamp(force / 15, 0.05, 1) * k; if (v < 0.03) return; tone({ f0: big ? 70 : 120, f1: big ? 40 : 70, dur: big ? 0.18 : 0.08, gain: 0.4 * v, pan }); burst({ dur: 0.05, f0: 1200, f1: 300, gain: 0.2 * v, pan }); },
     net() { burst({ dur: 0.45, f0: 5000, f1: 1500, gain: 0.25, type: "highpass" }); },

@@ -6,7 +6,7 @@ import { SKINS_CONFIG, makePlayer, descartarJogador, animate, addRag } from "./b
 import { Sound, hearing } from "./sons.js";
 import { scene } from "./cena.js";
 import { startGame, stopGame, SEGURADO_VEL, camTroca, focoCam } from "./jogo.js";
-import { viraComABola, myBody } from "./bola.js";
+import { myBody, toqueMeu } from "./bola.js";
 import { flashMsg, pushFeed, scoreTable } from "./hud.js";
 import { soltarPad } from "./controles.js";
 
@@ -100,7 +100,6 @@ export function practiceStep(dt, t) {
     else C.simulate(F, b, [], dt);
     return;
   }
-  viraComABola(b, me);
   const toques = b.toques;
   const r = C.simulate(F, b, bodies, dt);
   if (b.toques !== toques && b.toqueDe === "eu") toqueMeu();
@@ -334,7 +333,6 @@ export function trocarJogador() {
 }
 // toque na bola conduzindo: a perna dá uma batidinha (e, no meu, um somzinho baixo)
 function toqueAnim(id) { if (id === "eu") return toqueMeu(); const x = G.bots.find((q) => q.id === id); if (x) x.st.toqueT = now(); }
-function toqueMeu() { G.me.st.toqueT = now(); Sound.toque?.(); }
 function animarBots(dt) {
   for (const x of G.bots) {
     x.model.position.set(x.x, x.y, x.z); x.model.rotation.y = x.facing;
@@ -360,7 +358,6 @@ export function botsStep(dt, t) {
   if (!live) return;
   bm.left -= dt * 1000;
   carrinhosLocais();
-  viraComABola(b, G.me);
   const antes = b.dono, toques = b.toques, r = C.simulate(F, b, bodies, dt);
   if (b.toques !== toques) toqueAnim(b.toqueDe);
   if (r.hit > 2) { const [kk, pan] = hearing([b.x, b.y, b.z]); Sound.bounce(r.hit, kk, pan); }

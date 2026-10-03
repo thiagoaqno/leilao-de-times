@@ -1,41 +1,44 @@
-# Mudanças — Batalha, Corrida e CS (parte 2)
+# Mudanças — Pelada: condução com toques curtos e dribles (parte 3)
 
-Continua o PR da Pelada (#23). Este PR foi aberto em cima daquela branch.
+Em cima do PR #24.
 
-## Batalha: 4 arenas novas
-- Na sala (organizador) e no treino (tela inicial) dá para escolher a arena: **Praça da Fonte** (a de antes),
-  **Rosquinha**, **Forte de Blocos**, **Dois Andares** e **Arranha-céu**.
-- As quatro novas são inspiradas nas arenas de batalha do Mario Kart 64. Tirei a planta (vista de cima) dos
-  modelos que você mandou e refiz cada uma com as peças do jogo: chão, rampas, blocos e muros.
-  **Nenhum arquivo da Nintendo entra no repositório.**
-  - **Rosquinha:** anel de pista em volta de um poço de lava, com 4 buracos no anel e uma borda que sobe até o muro redondo.
-  - **Forte de Blocos:** quatro fortes (base a 3 m e torre a 6 m), pontes entre as torres, corredores no chão e rampas por fora e por dentro.
-  - **Dois Andares:** andar de cima com um vão no meio, térreo com muros e 8 rampas, e duas rampas para sair do vão.
-  - **Arranha-céu:** telhado sem muro, com anel por fora, praça no meio e 4 pontes. Lá embaixo fica a cidade.
-- **Cair** (buraco, lava, borda do prédio): perde um balão e volta na largada mais perto (ninguém ganha ponto).
-  Funciona no treino e online: o servidor detecta a queda e manda a nova posição.
-- Os robôs olham o chão à frente: freiam e viram antes de um buraco.
-- Arquivos: `public/batalha/regras.js` (arenas, `usarArena`, `VAZIO`, queda e robôs), `public/batalha/jogo.js`
-  (arena montada por arena: piso com buracos, lava, prédio, minimapa e escolha na sala e no treino),
-  `public/batalha/index.html` e `batalha.js` (servidor: `config.arena` e queda online).
+## Placa do gol
+- Saiu a placa (faixa) em cima de cada gol. Fica só a faixa no chão, na boca do gol, com a cor do time.
 
-## Corrida: 3 pistas novas
-- **Circuito do Luigi** e **Terra do Sorvete**: traçado desenhado por cima da planta dos modelos.
-- **Estrada Arco-íris**: o traçado e a altura de cada ponto foram tirados do modelo, seguindo o meio da pista. Tem o
-  laço e 4 cruzamentos (viadutos em alturas diferentes). Fica no espaço, com estrelas, asfalto arco-íris e sem chão em volta.
-- Temas novos: neve e pinheiros no Sorvete, grama e zebra amarela/roxa no Luigi.
-- Arquivos: `public/corrida/pistas.js`, `public/corrida/pista.js`, `public/corrida/cena.js`.
+## Condução refeita (ideias do modo Volta)
+- A bola **não fica presa** no jogador: ela rola, e o jogador dá **toques curtos e frequentes**: ~4,5 por
+  segundo correndo (a cada 0,22 s), um pouco menos no pique (0,27 s) e mais protegendo (0,17 s).
+- **A bola só muda de rumo quando é tocada.** Entre um toque e outro ela só rola (com o atrito do chão). Virou o
+  corpo? A bola segue por um instante e o próximo toque puxa ela para o lado novo: curva suave, sem teletransporte.
+  Saiu o "girar a bola junto com o corpo" que existia antes.
+- **Ritmo ligado à velocidade:** andando, a bola fica a ~0,55 m do jogador; correndo, ~0,8 m; no pique, ~1,15 m
+  (mais longe e mais fácil de perder).
+- **Pé alternado:** cada toque sai um pouco para a esquerda ou para a direita.
+- **Ímã de domínio:** bem perto do pé (0,6 m) e sem toque naquele instante, uma força fraca segura a bola na frente
+  dele (só para a frente e para trás, nunca de lado). Parado, a bola descansa na frente do pé.
+- Cada toque balança a perna e faz um "toc" baixo, com o som mudando conforme a força. A câmera abre um pouco no pique.
 
-## CS (Tiro)
-- 14 coberturas novas de cada lado (espelhadas, 28 no total) nas três rotas e na saída da base: caixas, caixas
-  empilhadas e muretas de concreto. Nenhuma bloqueia largada nem alvo do treino.
-- Arquivo: `public/tiro/arena.js`.
+## Dribles (com a bola)
+| Drible | Teclado | Controle |
+|---|---|---|
+| Proteger a bola (anda devagar, toques bem curtos) | F (sem a bola continua segurando a camisa) | LT |
+| Arrastada para o lado (tranco curto com a bola) | Q / E (carregando o chute, continua sendo efeito) | ← / → no direcional |
+| Corte seco (para, vira para onde você manda ou para trás, e puxa a bola) | V | L3 |
+- Tudo remapeável em "⌨️ Remapear teclado e mouse".
 
-## Também
-- README atualizado (sem Strikers; controles novos da Pelada, arenas e pistas novas).
+## Painel "⚙️ Ajustar condução (teste)"
+- No menu de pausa: controles deslizantes para o tempo entre toques (correndo, no pique e protegendo), a distância
+  da bola em cada situação, o alcance do pé, o pé alternado, o raio e a força do ímã, o tranco da arrastada e a
+  saída do corte seco. A mudança vale na hora, fica salva no navegador e tem "Voltar ao padrão".
+
+## Ficou de fora (dá para fazer depois)
+- Elástico, finta de corpo e lençol; poeira nos pés, rastro da bola e tremida da câmera no chute.
+
+## Arquivos
+- `public/pelada/campo.js` (`conduz` e `COND`), `bola.js`, `bots.js`, `jogo.js` (dribles e zoom), `controles.js`,
+  `teclas.js`, `menus.js` (painel), `estado.js` (`DRIBLE`), `sons.js` (som do toque), `arenas.js` (placa), `index.html`.
+- Teste novo em `tests/campo.test.js`: toques por segundo, a bola não muda de rumo sem toque, vai mais longe no pique
+  e não escapa numa curva de 90°.
 
 ## Testes
-- `npm test`: 27 passaram.
-- Simulação com 8 robôs por 1 minuto em cada arena: todos pegam caixas e estouram balões. No Arranha-céu ainda
-  caem às vezes, como no original.
-- Conferido no navegador: as 5 arenas da Batalha e as 3 pistas novas da Corrida abrem e são desenhadas.
+- `npm test`: 28 passaram. Testes no navegador da Pelada (`pelada.spec.js` e `pelada-modos.spec.js`): 7 passaram.

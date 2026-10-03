@@ -149,3 +149,31 @@ test("assistPass: mira no companheiro do cone, lança quem está longe e deixa a
   // colocado: sai mais forte que o normal
   assert.ok(C.assistPass(p, yaw, [perto], 0, true, F).power > C.assistPass(p, yaw, [perto], 0, false, F).power);
 });
+
+test("condução com toques: toques curtos e frequentes, a bola só muda de rumo no toque e não escapa na curva", () => {
+  const F = C.MODES.pes, dt = 1 / 60;
+  const corre = (speed, sprint, virar = 0) => {
+    const p = { x: -15, y: 0, z: 0, vx: 0, vy: 0, vz: 0, onGround: true, facing: -Math.PI / 2 }, b = C.newBall(F); b.x = -14.5;
+    let toques = 0, perdeu = 0, maxFrente = 0, mudouSemToque = 0;
+    for (let i = 0; i < 180; i++) {
+      const t = i * dt, dir = -Math.PI / 2 + (t > 1 ? Math.min(virar, (t - 1) * 2.5) : 0);
+      C.movePlayer(p, { x: -Math.sin(dir), z: -Math.cos(dir), speed, suave: true }, dt, F);
+      const d = Math.atan2(Math.sin(dir - p.facing), Math.cos(dir - p.facing)); p.facing += Math.max(-7.5 * dt, Math.min(7.5 * dt, d));
+      const a0 = Math.atan2(b.vz, b.vx), t0 = b.toques || 0, sp0 = Math.hypot(b.vx, b.vz);
+      C.simulate(F, b, [{ id: "eu", kind: "pe", x: p.x, y: 0, z: p.z, vx: p.vx, vy: 0, vz: p.vz, yaw: p.facing, sprint, conduz: true }], dt);
+      if ((b.toques || 0) > t0) toques++;
+      else if (t > 0.6 && sp0 > 3 && Math.abs(Math.atan2(Math.sin(Math.atan2(b.vz, b.vx) - a0), Math.cos(Math.atan2(b.vz, b.vx) - a0))) > 0.05) mudouSemToque++;
+      if (b.dono !== "eu") perdeu++;
+      if (t > 0.6) maxFrente = Math.max(maxFrente, (b.x - p.x) * -Math.sin(p.facing) + (b.z - p.z) * -Math.cos(p.facing));
+    }
+    return { porSeg: toques / 3, perdeu, maxFrente, mudouSemToque };
+  };
+  const r = corre(C.RUN, 0);
+  assert.ok(r.porSeg > 3.5 && r.porSeg < 6.5, `toques por segundo: ${r.porSeg}`);
+  assert.ok(r.maxFrente < 1.1, `bola até ${r.maxFrente.toFixed(2)} m na frente`);
+  assert.strictEqual(r.perdeu, 0);
+  assert.strictEqual(r.mudouSemToque, 0, "a bola mudou de rumo sem toque");
+  const pique = corre(C.SPRINT, 1);
+  assert.ok(pique.maxFrente > r.maxFrente, "no pique a bola vai mais longe");
+  assert.strictEqual(corre(C.RUN, 0, Math.PI / 2).perdeu, 0, "curva de 90°");
+});
