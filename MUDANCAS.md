@@ -1,63 +1,41 @@
-# Mudanças — Pelada: controles, passe, skins e condução (parte 1)
+# Mudanças — Batalha, Corrida e CS (parte 2)
 
-## Feito neste PR (Pelada)
+Continua o PR da Pelada (#23). Este PR foi aberto em cima daquela branch.
 
-- **Remapear controles (teclado e mouse):** novo `public/pelada/teclas.js`. No menu de pausa e na sala tem
-  "⌨️ Remapear teclado e mouse": clique na ação e aperte a tecla, clique do mouse ou gire a rodinha. Cada ação aceita
-  até 2 teclas, `Backspace` apaga, `Esc` cancela, "Voltar ao padrão" restaura. Fica salvo no navegador
-  (`pelada:teclas`). As dicas na tela mostram as teclas escolhidas. Controle (gamepad) e toque não mudam.
-- **Modo Strikers removido** (`strikers.js` apagado; itens, cerca elétrica, drible com giro e Super Chute saíram do
-  navegador e do servidor). Dele ficou o **passe planejado**: a **bola enfiada** (Y no controle, `L`/botão do meio no
-  teclado) agora é da Pelada.
-- **Troca de jogador agora é opcional e vem desligada:** jogador fixo, como no Pro Clubs. Liga em "Contra bots: seu
-  jogador" (tela inicial) ou em "Troca de jogador" na sala (amistoso com bots). Desligada, não tem mais o
-  "teletransporte" da skin.
-- **Pedir a bola:** apertar o passe **sem a bola** pede a bola. O bot do seu time que está com ela toca para você
-  (offline e no amistoso online). Aparece um 🙋 em cima de quem pediu (os outros jogadores também veem).
-- **Passe mais fácil (estilo FIFA):** um **toque** no passe faz um passe rasteiro assistido (cone de 45° para cada
-  lado, procura até 75°, metade do erro, e a bola "trava" no pé de quem recebe). **Segurar 1 segundo** faz o **passe
-  longo** pelo alto (a barra mostra quando virou longo). Segurar o passe não deixa mais o jogador lento.
-- **Placas dos gols:** saíram "SEU GOL" / "ATAQUE AQUI" e a seta de ataque; a placa e a faixa do gol mostram só a cor
-  (e o desenho) da camisa do time.
-- **11 skins novas:** Homem-Aranha, Naruto, Tartaruga Ninja, Ghostface, Satoru Gojo, Woody, Pikachu, Ben 10, Shrek,
-  CJ e Steve (bonecos de caixinhas, com rosto desenhado e acessórios).
-- **Marcador de time em todo mundo:** anel colorido no chão + losango em cima da cabeça na cor do time; os
-  personagens também têm uma braçadeira com a cor do time.
-- **Condução com toques:** correndo, o jogador empurra a bola um pouco para a frente a cada toque (~1 m correndo,
-  ~1,6 m no pique), com uma batidinha da perna, e continua com o controle (a bola acompanha as curvas). Parado ou
-  andando, a bola fica colada. O chute apertado com a bola um pouco à frente espera até meio segundo e sai quando o
-  jogador alcança a bola.
-- **Aceleração e freada suaves** para o jogador e os bots (`movePlayer` com `suave: true`).
+## Batalha: 4 arenas novas
+- Na sala (organizador) e no treino (tela inicial) dá para escolher a arena: **Praça da Fonte** (a de antes),
+  **Rosquinha**, **Forte de Blocos**, **Dois Andares** e **Arranha-céu**.
+- As quatro novas são inspiradas nas arenas de batalha do Mario Kart 64. Tirei a planta (vista de cima) dos
+  modelos que você mandou e refiz cada uma com as peças do jogo: chão, rampas, blocos e muros.
+  **Nenhum arquivo da Nintendo entra no repositório.**
+  - **Rosquinha:** anel de pista em volta de um poço de lava, com 4 buracos no anel e uma borda que sobe até o muro redondo.
+  - **Forte de Blocos:** quatro fortes (base a 3 m e torre a 6 m), pontes entre as torres, corredores no chão e rampas por fora e por dentro.
+  - **Dois Andares:** andar de cima com um vão no meio, térreo com muros e 8 rampas, e duas rampas para sair do vão.
+  - **Arranha-céu:** telhado sem muro, com anel por fora, praça no meio e 4 pontes. Lá embaixo fica a cidade.
+- **Cair** (buraco, lava, borda do prédio): perde um balão e volta na largada mais perto (ninguém ganha ponto).
+  Funciona no treino e online: o servidor detecta a queda e manda a nova posição.
+- Os robôs olham o chão à frente: freiam e viram antes de um buraco.
+- Arquivos: `public/batalha/regras.js` (arenas, `usarArena`, `VAZIO`, queda e robôs), `public/batalha/jogo.js`
+  (arena montada por arena: piso com buracos, lava, prédio, minimapa e escolha na sala e no treino),
+  `public/batalha/index.html` e `batalha.js` (servidor: `config.arena` e queda online).
 
-### Novos controles (padrão)
-| Ação | Teclado/mouse | Controle |
-|---|---|---|
-| Chute | K / clique | B |
-| Passe (toque) · longo (segure 1 s) · pedir a bola (sem a bola) | J / botão direito | A |
-| Bola enfiada | L / botão do meio | Y |
-| Cavadinha | Z | LB |
-| Cruzamento | U | X (sem a bola: carrinho) |
-| Carrinho | rodinha / X | X sem a bola |
-| Troca de jogador (se ligada) | T | ↑ |
+## Corrida: 3 pistas novas
+- **Circuito do Luigi** e **Terra do Sorvete**: traçado desenhado por cima da planta dos modelos.
+- **Estrada Arco-íris**: o traçado e a altura de cada ponto foram tirados do modelo, seguindo o meio da pista. Tem o
+  laço e 4 cruzamentos (viadutos em alturas diferentes). Fica no espaço, com estrelas, asfalto arco-íris e sem chão em volta.
+- Temas novos: neve e pinheiros no Sorvete, grama e zebra amarela/roxa no Luigi.
+- Arquivos: `public/corrida/pistas.js`, `public/corrida/pista.js`, `public/corrida/cena.js`.
 
-### Arquivos
-- `public/pelada/campo.js` — sem Strikers/itens; `acelSuave`; condução com toques (`conduz`); passe assistido
-  (`planejarPasse(..., { assist })`); 11 skins na lista.
-- `public/pelada/teclas.js` (novo), `controles.js`, `jogo.js`, `bots.js`, `bola.js`, `rede.js`, `hud.js`, `menus.js`,
-  `arenas.js`, `bonecos.js`, `estado.js`, `index.html`; `public/pelada/strikers.js` (apagado).
-- Servidor: `pelada.js` (sem Strikers, `config.troca`, evento `pedir`, passes curto/longo/enfiada para todos, folga
-  maior para a bola conduzida com toques) e `peladaBots.js` (bot toca para quem pediu, troca só se ligada, passe
-  planejado, aceleração suave).
-- Testes: `tests/campo.test.js`, `tests/servidor.test.js`, `tests/e2e/pelada.spec.js`, `tests/e2e/pelada-modos.spec.js`.
+## CS (Tiro)
+- 14 coberturas novas de cada lado (espelhadas, 28 no total) nas três rotas e na saída da base: caixas, caixas
+  empilhadas e muretas de concreto. Nenhuma bloqueia largada nem alvo do treino.
+- Arquivo: `public/tiro/arena.js`.
 
-### Testes
+## Também
+- README atualizado (sem Strikers; controles novos da Pelada, arenas e pistas novas).
+
+## Testes
 - `npm test`: 27 passaram.
-- `npx playwright test tests/e2e/pelada.spec.js tests/e2e/pelada-modos.spec.js tests/e2e/paginas.spec.js`: 25 passaram.
-
-## Fica para o próximo PR
-- **Batalha/Corrida:** novas arenas e pistas inspiradas nos traçados do Mario Kart 64 (Big Donut, Block Fort,
-  Double Deck, Skyscraper; Luigi Raceway, Rainbow Road, Sherbet Land). Já extraí a planta de cima de cada modelo como
-  referência. Recomendação: recriar os traçados no estilo do jogo, **sem** colocar os modelos/texturas da Nintendo no
-  repositório (o site é público e são arquivos com direitos autorais).
-- **Modo CS:** mais barreiras de cobertura no mapa.
-- Atualizar README/PROJETO.md (ainda citam o Strikers).
+- Simulação com 8 robôs por 1 minuto em cada arena: todos pegam caixas e estouram balões. No Arranha-céu ainda
+  caem às vezes, como no original.
+- Conferido no navegador: as 5 arenas da Batalha e as 3 pistas novas da Corrida abrem e são desenhadas.
