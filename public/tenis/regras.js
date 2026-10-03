@@ -23,7 +23,7 @@
     saque: { nome: "Saque", g: 1.2, e: 0.8, kh: 0.95, prof: [4.6, 6.1], T: [1.05, 0.8] },
   };
   // jogador
-  const VEL = 6.3, VEL_ARMADO = 0.7, ACEL = 30, ALCANCE = 1.5, ALTURA_MAX = 2.45, ALTURA_SMASH = 2.15, ARMADO_MAX = 2.6, CARGA_T = 1.0;
+  const VEL = 6.3, VEL_ARMADO = 0.7, ACEL = 30, ALCANCE = 1.5, ALTURA_MAX = 2.45, ALTURA_SMASH = 2.15, ARMADO_MAX = 1.9, CARGA_T = 1.0; // ARMADO_MAX: armou e não bateu em 1,9 s? desarma (volta a andar normal)
   // robôs
   const DIF = {
     facil: { nome: "Fácil", vel: 0.72, reac: 0.45, erro: 1.6, arma: 0.55 },
@@ -222,6 +222,7 @@
   function passo(m, dt, agora, rnd = Math.random) {
     m.t = agora; DIF_ATUAL = DIF[m.cfg.dif];
     if (m.fim) return;
+    for (const j of m.jogadores) if (j.armado && agora - j.armado.t0 > ARMADO_MAX * 1000) j.armado = null; // não alcançou a bola: desarma
     if (m.fase === "ponto") { passoBola(m.bola, dt); if (agora >= m.ate) { m.sacador = escolherSacador(m); posicionar(m); m.fase = "saque"; m.ate = agora + 700; } robos(m, dt, agora, rnd); return; }
     robos(m, dt, agora, rnd);
     const b = m.bola;
@@ -332,7 +333,7 @@
     return { placar: m.placar, games: m.games, tie: m.tie, texto: textoPlacar(m), sacador: m.sacador, sacaTime: m.sacaTime, fase: m.fase, ate: m.ate, faltas: m.faltas, fim: m.fim, vencedor: m.vencedor, cfg: m.cfg };
   }
 
-  const api = { alvoGolpe, Q, G, GOLPES, DIF, VEL, ALCANCE, CARGA_T, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, prever, alturaRede, armar, sacar, passo, alcanca, textoPlacar, pacote, estado, posicionar };
+  const api = { alvoGolpe, ARMADO_MAX, Q, G, GOLPES, DIF, VEL, ALCANCE, CARGA_T, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, prever, alturaRede, armar, sacar, passo, alcanca, textoPlacar, pacote, estado, posicionar };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Tenis = api;
 })(typeof window !== "undefined" ? window : globalThis);
