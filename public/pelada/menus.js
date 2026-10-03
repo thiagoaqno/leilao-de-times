@@ -55,6 +55,7 @@ export function renderLobby() {
   document.querySelectorAll("#cfgSize button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === size); b.disabled = !isHost; });
   document.querySelectorAll("#cfgMin button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === E.S.config.minutes); b.disabled = !isHost; });
   setH("keysBox", keysHelp(E.S.config.mode));
+  redesenharCond(); aplicarCond();
   const a = E.S.players.filter((p) => p.team === "A").length, b = E.S.players.filter((p) => p.team === "B").length, pode = E.S.config.bots && !cars ? a || b : a && b;
   $("startBox").innerHTML = isHost
     ? `<button class="primary" id="btnStart" style="width:100%" ${pode ? "" : "disabled"}>Apitar o começo</button>${pode ? (a !== b && !E.S.config.bots ? `<p class="muted" style="font-size:13px;margin:8px 0 0">Times desiguais (${a} x ${b}). Dá pra jogar assim mesmo.</p>` : "") : `<p class="muted" style="font-size:13px;margin:8px 0 0">Precisa de pelo menos 1 jogador em cada time. Mande o convite!</p>`}`
@@ -137,33 +138,49 @@ $("btnFalta").onclick = () => startGame("treino", "pes", true);
 $("btnPracticeCar").onclick = () => startGame("treino", "carros");
 $("btnPractice2").onclick = () => startGame("treino", FIXO);
 
-// ---------- painel "Ajustar condução" (menu de pausa): mexe nos números da condução com toques e dos dribles na
-// hora, para sentir a diferença. Fica salvo neste navegador (pelada:cond). Online, vale para a bola no SEU pé.
+// ---------- painel "Ajustar condução": os números da condução com toques e dos dribles ----------
+// Online, valem os da SALA: só o organizador mexe, na sala de espera (config.cond), e vale para todo mundo (a física
+// do servidor e de cada navegador usa os mesmos). No jogo online o painel do menu de pausa só mostra. No treino e
+// contra bots, valem os deste navegador (pelada:cond), que dá para mexer no menu de pausa.
 const COND_UI = [
-  ["intervalo", "Tempo entre toques (correndo)", 0.1, 0.5, 0.01, "s"], ["intervaloPique", "Tempo entre toques (pique)", 0.1, 0.6, 0.01, "s"],
-  ["intervaloProtege", "Tempo entre toques (protegendo)", 0.08, 0.4, 0.01, "s"],
-  ["leadAndando", "Bola na frente (andando)", 0.4, 1.2, 0.05, "m"], ["leadCorrendo", "Bola na frente (correndo)", 0.4, 1.6, 0.05, "m"],
-  ["leadPique", "Bola na frente (pique)", 0.5, 2.5, 0.05, "m"], ["leadProtege", "Bola na frente (protegendo)", 0.3, 1, 0.05, "m"],
-  ["alcance", "Alcance do pé", 0.8, 2, 0.05, "m"], ["ladoPe", "Pé alternado (de lado)", 0, 0.3, 0.01, "m"],
-  ["dominio", "Raio do ímã", 0, 1.2, 0.05, "m"], ["ima", "Força do ímã", 0, 10, 0.5, ""],
+  ["intervalo", "Tempo entre toques (correndo)", 0.01, "s"], ["intervaloPique", "Tempo entre toques (pique)", 0.01, "s"], ["intervaloProtege", "Tempo entre toques (protegendo)", 0.01, "s"],
+  ["leadAndando", "Bola na frente (andando)", 0.05, "m"], ["leadCorrendo", "Bola na frente (correndo)", 0.05, "m"], ["leadPique", "Bola na frente (pique)", 0.05, "m"], ["leadProtege", "Bola na frente (protegendo)", 0.05, "m"],
+  ["alcance", "Alcance do pé", 0.05, "m"], ["ladoPe", "Pé alternado (de lado)", 0.01, "m"], ["dominio", "Raio do ímã", 0.05, "m"], ["ima", "Força do ímã", 0.5, ""],
+  ["arrastada", "Arrastada (tranco de lado)", 0.5, "m/s"], ["corteVel", "Corte seco (saída)", 0.2, "m/s"],
 ];
-const DRIBLE_UI = [["arrastada", "Arrastada (tranco de lado)", 2, 9, 0.5, "m/s"], ["corteVel", "Corte seco (saída)", 0, 5, 0.2, "m/s"]];
-const condPadrao = { ...C.COND }, driblePadrao = { ...DRIBLE };
-(function carregarCond() { const s = store.get("pelada:cond") || {}; for (const [k] of COND_UI) if (typeof s[k] === "number") C.COND[k] = s[k]; for (const [k] of DRIBLE_UI) if (typeof s["d_" + k] === "number") DRIBLE[k] = s["d_" + k]; })();
-function salvarCond() { const s = {}; for (const [k] of COND_UI) s[k] = C.COND[k]; for (const [k] of DRIBLE_UI) s["d_" + k] = DRIBLE[k]; store.set("pelada:cond", s); }
-const linhaCond = (obj, pre) => ([k, nome, a, b, st, un]) => `<label style="display:grid;grid-template-columns:1fr 110px 54px;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:600;margin:4px 0">${h(nome)}<input type="range" min="${a}" max="${b}" step="${st}" value="${obj[k]}" data-cond="${pre}${k}"><span>${obj[k]}${un}</span></label>`;
-export function painelCond() {
-  return COND_UI.map(linhaCond(C.COND, "")).join("") + DRIBLE_UI.map(linhaCond(DRIBLE, "d_")).join("") + `<button class="small ghost" data-cond-reset="1" style="margin-top:6px">Voltar ao padrão</button>`;
+const PADRAO = { ...C.COND_PADRAO, ...DRIBLE };
+// os valores deste navegador (o jeito antigo guardava os dos dribles com "d_" na frente)
+function condLocal() { const s = store.get("pelada:cond") || {}; for (const k of ["arrastada", "corteVel"]) if (s["d_" + k] != null && s[k] == null) s[k] = s["d_" + k]; return C.limparCond(s); }
+const condSala = () => (E.S && E.S.config && E.S.config.cond) || {};
+const online = () => G.mode === "online" || (!G.active && !!E.S);
+// usa os valores certos (os da sala, online; os deste navegador, no treino): chamado ao começar o jogo e a cada estado
+export function aplicarCond() {
+  const c = online() ? condSala() : condLocal();
+  C.usarCond(c); for (const k of ["arrastada", "corteVel"]) DRIBLE[k] = typeof c[k] === "number" ? c[k] : PADRAO[k];
 }
+const valor = (onde, k) => { const c = onde === "sala" || (onde === "jogo" && online()) ? condSala() : condLocal(); return typeof c[k] === "number" ? c[k] : PADRAO[k]; };
+// onde: "sala" (sala de espera) ou "jogo" (menu de pausa)
+export function painelCond(onde) {
+  const isHost = E.ME && E.S && E.S.host === E.ME.id, pode = onde === "sala" ? isHost : !online();
+  const aviso = onde === "sala" ? (isHost ? "Vale para todo mundo da sala." : "Só o organizador muda. Vale para todo mundo da sala.") : online() ? "Online valem os da sala (o organizador escolhe na sala de espera)." : "Vale para o treino e o jogo contra bots, neste navegador.";
+  return `<p class="muted" style="font-size:12.5px;margin:4px 0">${aviso}</p>` + COND_UI.map(([k, nome, st, un]) => { const [a, b] = C.COND_FAIXA[k], v = valor(onde, k);
+    return `<label style="display:grid;grid-template-columns:1fr 110px 58px;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:600;margin:4px 0">${h(nome)}<input type="range" min="${a}" max="${b}" step="${st}" value="${v}" data-cond="${k}" data-onde="${onde}" data-un="${un}" ${pode ? "" : "disabled"}><span>${v}${un}</span></label>`; }).join("")
+    + (pode ? `<button class="small ghost" data-cond-reset="${onde}" style="margin-top:6px">Voltar ao padrão</button>` : "");
+}
+export function redesenharCond() {
+  document.querySelectorAll("[data-cond-painel]").forEach((el) => { if (!el.contains(document.activeElement)) el.innerHTML = painelCond(el.dataset.onde || "jogo"); });
+}
+let envio = null;
 document.addEventListener("input", (e) => {
   const k = e.target.dataset && e.target.dataset.cond; if (!k) return;
-  const v = +e.target.value; if (k.startsWith("d_")) DRIBLE[k.slice(2)] = v; else C.COND[k] = v;
-  e.target.nextElementSibling.textContent = v + (e.target.parentElement.lastElementChild.textContent.replace(/[-\d.]/g, ""));
-  salvarCond();
+  const v = +e.target.value, onde = e.target.dataset.onde; e.target.nextElementSibling.textContent = v + e.target.dataset.un;
+  if (onde === "sala") { // organizador: manda para a sala (com uma esperinha, para não mandar a cada pixel do arraste)
+    clearTimeout(envio); const c = { ...condSala(), [k]: v }; envio = setTimeout(() => setCfg("cond", c), 250);
+  } else { const c = { ...condLocal(), [k]: v }; store.set("pelada:cond", c); aplicarCond(); }
 });
 document.addEventListener("click", (e) => {
-  if (!e.target.closest("[data-cond-reset]")) return;
-  Object.assign(C.COND, condPadrao); Object.assign(DRIBLE, driblePadrao); salvarCond();
-  document.querySelectorAll("[data-cond-painel]").forEach((el) => (el.innerHTML = painelCond()));
+  const b = e.target.closest("[data-cond-reset]"); if (!b) return;
+  if (b.dataset.condReset === "sala") setCfg("cond", {}); else { store.set("pelada:cond", {}); aplicarCond(); }
+  setTimeout(() => { document.activeElement?.blur?.(); redesenharCond(); }, 300);
 });
-if (FIXO !== "carros") document.querySelectorAll("[data-cond-painel]").forEach((el) => (el.innerHTML = painelCond()));
+if (FIXO !== "carros") redesenharCond();

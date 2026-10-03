@@ -1,50 +1,27 @@
-# Tênis da Galera (novo jogo)
+# Pelada: condução definida pelo dono da sala · Tênis: golpe armado desarma em 1,9 s
 
-Este PR já inclui o #26, que leva os PRs #24 e #25 para a `main`. Faça o merge do #26 primeiro: depois disso, este
-PR mostra só o tênis.
+## Pelada
+- **Padrões novos da condução:**
+  - tempo entre toques: **0,2 s** correndo, no pique e protegendo;
+  - bola na frente: **0,4 m** andando e correndo, **0,5 m** no pique.
+- **Só o organizador muda, e vale para todos:** na sala de espera tem "⚙️ Condução e dribles (vale para todos)". O
+  organizador mexe e cada valor vai para a configuração da sala (`config.cond`). O servidor e o navegador de cada um
+  passam a usar os mesmos números, inclusive os robôs do amistoso. Os outros só veem. O que o organizador escolhe
+  fica guardado e serve de ponto de partida quando ele abre a próxima sala.
+- No jogo online, o painel do menu de pausa só mostra os valores da sala. No treino e contra bots ele continua
+  editável, e os valores ficam guardados no navegador.
+- **Correção junto:** com a bola mais perto (0,4 m do centro), ela encostava no corpo do jogador e o corpo mudava o
+  rumo dela sem toque. Agora, enquanto o jogador conduz, só o toque mexe na bola, como pedido antes.
+- O servidor confere os números que vêm da sala (cada um dentro de uma faixa, em `COND_FAIXA`).
+- Arquivos: `public/pelada/campo.js` (`COND`, `COND_FAIXA`, `limparCond`, `usarCond`), `pelada.js`, `public/pelada/menus.js`,
+  `jogo.js`, `rede.js` e `index.html`.
 
-## O jogo
-- Tênis arcade em 3D, inspirado no Mario Tennis, em `/tenis/`. Na vila é o **Clube de Tênis**, na rua nova, entre a
-  garagem do Rocket e a arena da Batalha, com o telhado pintado como uma quadra.
-- **Simples (1x1) ou duplas (2x2)**, online com a galera. Os **robôs completam as vagas** (dá para desligar) e têm 3
-  dificuldades. Também tem **treino contra robôs** sem internet, em simples ou duplas.
-- **Golpe armado:** você aperta o golpe antes da bola chegar e o jogador bate sozinho quando ela entra no alcance.
-  Quanto antes apertar, mais forte (a barra mostra a força). É o que deixa o online jogável mesmo com atraso.
-  - J / clique: **top spin** · K / botão direito: **cortada** · L: **balão** · U: **curtinha**
-  - Controle: A top spin, B cortada, Y balão, X curtinha, Start pausa · no celular, botões na tela.
-  - Bola alta antes de quicar: **smash** sozinho.
-- **Armado, o jogador só desacelera devagar** e o direcional passa a ser quase só a **mira**: para o lado, e para a
-  frente (funda) ou para trás (curta). Uma marca branca no chão do outro lado mostra para onde a bola vai.
-- **Saque:** aperte uma vez para jogar a bola para cima e de novo lá no alto (mais alto, mais forte). Antes de jogar a
-  bola, dá para andar para os lados (quem saca fica na sua metade da linha de fundo). Tem falta, segundo saque e
-  dupla falta, e o saque tem que cair na caixa da diagonal.
-- **Placar oficial:** 15-30-40, iguais e vantagem. O set é de 2, 3, 4 ou 6 games, ganhando por 2, e com tie-break
-  (a 7) no empate. O saque troca a cada game; em duplas, os dois do time se revezam.
-- **Bola arcade:** mais lenta e quicando mais alto que no tênis de verdade, para dar tempo de chegar. Cada golpe tem
-  o seu efeito: o top spin cai forte e quica alto, a cortada flutua e quica baixo, a curtinha morre perto da rede.
-- Marca amarela no chão onde a bola que vem para o seu lado vai quicar.
-- Os bonecos e as **skins são os da Pelada**, com uma raquete na mão, e os times são Azul e Laranja.
-
-## Como funciona por dentro
-- `public/tenis/regras.js`: quadra (medidas oficiais), física da bola (efeito, rede e quique), golpes (o alvo resolve
-  a velocidade de saída e sobe a bola se ela não passasse da rede), pontuação, saque e os robôs. Os robôs simulam a
-  bola para achar onde ela vai estar numa boa altura, correm para lá e armam o golpe na hora certa. As mesmas regras
-  rodam no servidor e no treino.
-- `tenis.js` (servidor, canal `/tenis`): a sala, os times, as configurações e a partida. O servidor manda na bola e
-  no placar; cada navegador mexe o próprio jogador e manda a posição e a mira. O golpe armado vai com o tempo de
-  quando foi apertado (descontando metade do ping).
-- `public/tenis/index.html` e `public/tenis/jogo.js`: telas, quadra 3D, câmera de transmissão atrás do seu time,
-  controles, sons sintetizados e HUD com o placar.
-- Os bonecos da Pelada agora são independentes: `public/pelada/tex.js` (novo) tem os ajudantes de textura sem efeito
-  colateral, e `bonecos.js` recebe a cena por `configurarBonecos`. A Pelada continua igual.
-
-## Também
-- Teste online da Pelada estabilizado: o adversário do teste ficava colado na bola quando a saída era dele.
-- Teste do passe da Pelada estabilizado: os robôs podiam empurrar o jogador e o teste reprovava.
+## Tênis
+- Apertou o golpe e não bateu na bola em **1,9 s**? O golpe desarma e o jogador volta a andar normalmente (antes
+  eram 2,6 s). Vale para todos, inclusive os robôs, no treino e online.
+- Arquivos: `public/tenis/regras.js` (`ARMADO_MAX`) e `public/tenis/jogo.js`.
 
 ## Testes
-- `npm test`: 29 passaram. Entre eles, um teste novo do servidor do tênis: duplas com 1 humano e 3 robôs, com pontos
-  acontecendo de verdade. O teste das salas também passou a cobrir o canal `/tenis`.
-- Testes no navegador: `tenis.spec.js` (treino jogado até o placar andar; online com robôs, a bola andando),
-  `paginas.spec.js` (agora com `/tenis/`) e os da Pelada passaram.
-- Simulação de robô contra robô: partidas completas em simples e duplas, com 3 a 5 batidas por ponto em média.
+- `npm test`: 29 passaram. No navegador (Pelada, Tênis e páginas): 28 passaram.
+- Conferido no navegador com duas pessoas na mesma sala: o organizador mexe e o valor vale na hora; quem entrou depois
+  vê o mesmo valor, sem poder mexer.

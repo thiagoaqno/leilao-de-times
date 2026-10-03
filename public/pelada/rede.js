@@ -1,7 +1,7 @@
 // Pelada da Galera — rede: entrar/criar sala, o estado que vem do servidor e os eventos do jogo (pacote "snap"
 // 20x por segundo, chute, gol, carrinho...). Os outros jogadores aparecem 100 ms "no passado", interpolados.
 import { E, C, $, h, store, clamp, lerp, angLerp, SIDES, FL, INTERP, FIXO, BASE, toast, socket, relogio, sNow, myP, P, PN, G, now, ballS, isCar, myKit, mySkin, PAD } from "./estado.js";
-import { show, renderLobby } from "./menus.js";
+import { show, renderLobby, aplicarCond } from "./menus.js";
 import { SKINS_CONFIG, makePlayer, mudarSkinJogador, descartarJogador, balaoPede, animate, makeCar, animateCar, poseCar, addRag } from "./bonecos.js";
 import { Sound, hearing } from "./sons.js";
 import { scene } from "./cena.js";
@@ -51,6 +51,7 @@ socket.on("state", (st) => {
   // entrou pelo código numa sala da outra casa (pelada x rocket): vai para a página certa
   if (st.config.mode !== FIXO) { location.replace((st.config.mode === "carros" ? "/rocket/" : "/pelada/") + "?sala=" + st.code); return; }
   const old = E.S; E.S = st;
+  if (G.mode === "online" || !G.active) aplicarCond(); // a condução que o organizador escolheu
   if (st.phase === "lobby") {
     if (G.active && G.mode === "online") stopGame();
     if (!G.active) { show("lobby"); renderLobby(); }
