@@ -4,13 +4,12 @@
 //   burrinho   2 a 6 jogadores, cada um por si, 3 peças cada, e quem não tem peça que sirva compra do monte
 // Roda no mesmo servidor do leilão, num canal separado do Socket.io ("/domino").
 // Cada jogador recebe só as próprias peças; dos outros, só quantas têm (no fim da mão, todo mundo vê).
-const crypto = require("crypto");
 const R = require("./public/domino/regras.js");
+const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 
 const PASS_MS = +process.env.DOMINO_PASS_MS || 1300, HAND_PAUSE = 6000, OFFLINE_MS = 8000;
 const MAX = { dupla: 4, individual: 4, burrinho: 6 }, MIN = { dupla: 4, individual: 2, burrinho: 2 };
 const PECAS = { dupla: 7, individual: 7, burrinho: 3 };
-const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const tn = (t) => `${t.a}|${t.b}`;
@@ -19,12 +18,6 @@ module.exports = function attachDomino(io) {
   const nsp = io.of("/domino");
   const rooms = new Map();
 
-  function newCode() {
-    const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let c;
-    do { c = Array.from({ length: 5 }, () => A[Math.floor(Math.random() * A.length)]).join(""); } while (rooms.has(c));
-    return c;
-  }
   function cleanConfig(c = {}) {
     return {
       mode: MAX[c.mode] ? c.mode : "dupla",
@@ -219,20 +212,8 @@ module.exports = function attachDomino(io) {
 
   // ---------- conexões ----------
   nsp.on("connection", (socket) => {
-    const ok = (cb, extra = {}) => cb && cb({ ok: true, ...extra });
-    const fail = (cb, error) => cb && cb({ ok: false, error });
-    const ctx = () => {
-      const room = socket.data.code && rooms.get(socket.data.code);
-      return { room, me: room && socket.data.pid ? room.players[socket.data.pid] : null };
-    };
-    function bind(room, pid) {
-      const old = ctx();
-      if (old.me) old.me.sockets.delete(socket.id);
-      if (old.room) socket.leave(old.room.code);
-      socket.data.code = room.code; socket.data.pid = pid;
-      socket.join(room.code);
-      if (pid) room.players[pid].sockets.add(socket.id);
-    }
+    const ctx = () => contexto(socket, rooms);
+    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
     function addPlayer(room, name) {
       const used = new Set(Object.values(room.players).map((p) => p.pawn));
       const id = rid(6);
@@ -241,12 +222,11 @@ module.exports = function attachDomino(io) {
       room.order.push(id);
       return room.players[id];
     }
-    const cleanName = (s) => Array.from(String(s || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
 
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], h: null, score: [0, 0], games: [0, 0], fx: [], log: [], t: Date.now() };
+      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], h: null, score: [0, 0], games: [0, 0], fx: [], log: [], t: Date.now() };
       rooms.set(room.code, room);
       const p = addPlayer(room, name);
       room.host = p.id;
@@ -257,9 +237,9 @@ module.exports = function attachDomino(io) {
     });
 
     socket.on("join", (data = {}, cb) => {
-      const room = rooms.get(String(data.code || "").toUpperCase().trim());
+      const room = buscarSala(rooms, data.code);
       if (!room) return fail(cb, "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu).");
-      const back = data.id && room.players[data.id] && room.players[data.id].token === data.token ? room.players[data.id] : null;
+      const back = quemVolta(room, data);
       if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
       if (data.watch || room.phase !== "lobby") {
         if (!data.watch) return fail(cb, "O jogo já começou. Você pode entrar para assistir.");
@@ -268,7 +248,7 @@ module.exports = function attachDomino(io) {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
       if (room.order.length >= 6) return fail(cb, "A mesa já tem 6 jogadores. Você pode entrar para assistir.");
-      if (Object.values(room.players).some((p) => p.name.toLowerCase() === name.toLowerCase())) return fail(cb, "Já tem alguém com esse nome na mesa.");
+      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na mesa.");
       const p = addPlayer(room, name);
       bind(room, p.id);
       log(room, `${name} sentou à mesa.`);
@@ -383,8 +363,5 @@ module.exports = function attachDomino(io) {
     });
   });
 
-  setInterval(() => {
-    const now = Date.now();
-    for (const [code, r] of rooms) if (now - r.t > 12 * 3600e3) { clearTimeout(r.turnTimer); clearTimeout(r.nextTimer); clearTimeout(r.passTimer); rooms.delete(code); }
-  }, 3600e3).unref?.();
+  limparSalasParadas(rooms, { aoApagar: (r) => { clearTimeout(r.turnTimer); clearTimeout(r.nextTimer); clearTimeout(r.passTimer); } });
 };

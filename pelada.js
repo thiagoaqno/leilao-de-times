@@ -4,8 +4,8 @@
 // A BOLA é do servidor: ele roda a física (public/pelada/campo.js) 60 vezes por segundo com as posições de todo mundo,
 // confere chutes, defesas do goleiro e carrinhos, conta os gols e manda UM pacote por jogador, 20 vezes por segundo,
 // com a bola e todo mundo dentro (pacotes pequenos e poucos: gasta bem menos internet).
-const crypto = require("crypto");
 const C = require("./public/pelada/campo.js");
+const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js"); // as peças de sala que todo jogo repete
 const Bots = require("./peladaBots.js"); // amistoso com bots (a IA roda aqui)
 
 const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM = 5;
@@ -13,7 +13,6 @@ const HOLD_MS = 6000, DOWN_MS = 1400;
 const SIDES = { A: "Mandante", B: "Visitante" };
 // bits do "f" (o que o jogador está fazendo), iguais aos do navegador
 const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, deke: 256, estrela: 512, cogumelo: 1024 }; // estrela/cogumelo: só o servidor liga (itens do Strikers) // deke: drible com giro (Strikers) // grab: segurando alguém
-const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -23,12 +22,6 @@ module.exports = function attachPelada(io) {
   const nsp = io.of("/pelada");
   const rooms = new Map();
 
-  function newCode() {
-    const L = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let c;
-    do { c = Array.from({ length: 5 }, () => L[Math.floor(Math.random() * L.length)]).join(""); } while (rooms.has(c));
-    return c;
-  }
   const cleanConfig = (c = {}) => ({
     mode: c.mode === "carros" ? "carros" : "pes",
     size: clamp(int(c.size, 2), 1, MAX_TEAM),
@@ -250,20 +243,8 @@ module.exports = function attachPelada(io) {
 
   // ---------- conexões ----------
   nsp.on("connection", (socket) => {
-    const ok = (cb, extra = {}) => cb && cb({ ok: true, ...extra });
-    const fail = (cb, error) => cb && cb({ ok: false, error });
-    const ctx = () => {
-      const room = socket.data.code && rooms.get(socket.data.code);
-      return { room, me: room && socket.data.pid ? room.players[socket.data.pid] : null };
-    };
-    function bind(room, pid) {
-      const old = ctx();
-      if (old.me) old.me.sockets.delete(socket.id);
-      if (old.room) socket.leave(old.room.code);
-      socket.data.code = room.code; socket.data.pid = pid;
-      socket.join(room.code);
-      if (pid) room.players[pid].sockets.add(socket.id);
-    }
+    const ctx = () => contexto(socket, rooms);
+    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
     const cleanSkin = (s) => (C.SKINS[s] ? s : "padrao");
     function addPlayer(room, name, skin) {
       const id = rid(6), a = teamOf(room, "A").length, b = teamOf(room, "B").length, size = room.config.size;
@@ -275,12 +256,11 @@ module.exports = function attachPelada(io) {
       room.order.push(id);
       return room.players[id];
     }
-    const cleanName = (s) => Array.from(String(s || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
 
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), kits: { A: "corinthians", B: "palmeiras" },
+      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), kits: { A: "corinthians", B: "palmeiras" },
         players: {}, order: [], seq: 0, match: null, ball: C.newBall(), feed: [], t: Date.now() };
       rooms.set(room.code, room);
       const p = addPlayer(room, name, data.skin);
@@ -292,15 +272,15 @@ module.exports = function attachPelada(io) {
     });
 
     socket.on("join", (data = {}, cb) => {
-      const room = rooms.get(String(data.code || "").toUpperCase().trim());
+      const room = buscarSala(rooms, data.code);
       if (!room) return fail(cb, "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu).");
-      const back = data.id && room.players[data.id] && room.players[data.id].token === data.token ? room.players[data.id] : null;
+      const back = quemVolta(room, data);
       if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
       if (data.watch) { bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room); }
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
       if (room.order.length >= 14) return fail(cb, "A sala está cheia. Você pode entrar para assistir.");
-      if (Object.values(room.players).some((p) => p.name.toLowerCase() === name.toLowerCase())) return fail(cb, "Já tem alguém com esse nome na sala.");
+      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na sala.");
       const p = addPlayer(room, name, data.skin);
       bind(room, p.id);
       log(room, `${name} chegou na quadra.`);
@@ -473,24 +453,12 @@ module.exports = function attachPelada(io) {
   });
 
   // ping de cada jogador (para a folga do chute e o placar)
-  setInterval(() => {
-    for (const room of rooms.values()) for (const id of room.order) {
-      const p = room.players[id];
-      for (const sid of p.sockets) {
-        const s = nsp.sockets.get(sid); if (!s) continue;
-        const t0 = Date.now();
-        s.timeout(2000).emit("png", (err) => { if (!err) { const rtt = Date.now() - t0; p.rtt = p.rtt == null ? rtt : p.rtt * 0.6 + rtt * 0.4; } });
-      }
-    }
-  }, 2000).unref?.();
+  medirPing(nsp, rooms);
 
   // salas paradas há mais de 6 horas somem; jogo sem ninguém conectado para
-  setInterval(() => {
-    const now = Date.now();
-    for (const [code, r] of rooms) {
-      const anyone = r.order.some((id) => r.players[id].sockets.size);
-      if (r.loop && !anyone) { clearInterval(r.loop); r.loop = null; r.phase = "lobby"; r.match = null; }
-      if (now - r.t > 6 * 3600e3) { clearInterval(r.loop); rooms.delete(code); }
-    }
-  }, 60000).unref?.();
+  limparSalasParadas(rooms, {
+    horas: 6, intervalo: 60000,
+    cadaVolta: (r) => { const anyone = r.order.some((id) => r.players[id].sockets.size); if (r.loop && !anyone) { clearInterval(r.loop); r.loop = null; r.phase = "lobby"; r.match = null; } },
+    aoApagar: (r) => clearInterval(r.loop),
+  });
 };

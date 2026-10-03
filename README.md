@@ -53,6 +53,19 @@ npx cloudflared tunnel --url http://localhost:3000
 ```
 Ele mostra um link https://....trycloudflare.com. É só mandar esse link para a galera.
 
+## Testes
+- `npm test`: testes rápidos em Node, sem navegador. Física e regras que o servidor e o navegador dividem (passe do Strikers, `movePlayer`, assistências, Botão, Dominó), o servidor de verdade jogando com clientes do Socket.io (uma mão de dominó em cada modo, 7 tampinhas no Botão, pelada com bots) e as respostas de criar/entrar/assistir/reconectar de todos os jogos, comparadas com `tests/salas-esperado.json`.
+- `npm run test:e2e`: testes no navegador (Playwright). Todas as páginas abrem sem erro, dois navegadores entram e começam cada jogo, a Pelada e o Rocket em todos os modos, o passe chegando online, uma mão de dominó com 3 navegadores e o celular sem zoom no toque duplo. Usa o Chromium do Playwright (`npx playwright install chromium`) ou, se ele não estiver instalado, o Chrome (ou o Edge) do computador.
+- A Pelada e o Tiro têm um gancho para os testes: abra a página com `#debug` no fim do endereço e use `window.__pelada` (ou `window.__tiro`) no console. `__pelada.avancar(seg)` anda o jogo na hora (o navegador de teste roda a poucos quadros por segundo).
+
+## Como o código está organizado
+- `server.js` sobe o Express e o leilão; cada jogo é um módulo com o seu canal do Socket.io (`banco.js`, `uno.js`, `sinuca.js`, `truco.js`, `domino.js`, `ludo.js`, `botao.js`, `corrida.js`, `vila.js`, `tiro.js`, `pelada.js`, `batalha.js`).
+- `salas.js`: as peças de sala que todo jogo usa (código de 5 letras, nome, entrar no canal, reconexão com id + token, respostas `{ok, error}`, a faxina das salas paradas e o ping). O que muda de um jogo para outro (limite de jogadores, times, mensagens) fica no módulo do jogo.
+- `public/comum.js` (`window.Comum`): os utilitários das páginas (`$`, `h`, `store`, aviso, `act`, relógio do servidor, confete, emoji flutuante e o botão de som).
+- Física e regras que rodam iguais no servidor e no navegador: `public/pelada/campo.js`, `public/botao/fisica.js`, `public/domino/regras.js`, `public/sinuca/fisica.js`, `public/tiro/arena.js`, `public/batalha/regras.js`.
+- Pelada, Tiro e Corrida: o `jogo.js` de cada pasta é o módulo de entrada (começa o jogo, laço principal e câmera) e importa os outros módulos da pasta: `estado.js` (o que todos dividem; o que é reatribuído por mais de um módulo fica no objeto `E`, ex.: `E.charge`), `rede.js`, `menus.js`, `cena.js`, `sons.js`, `hud.js`, `controles.js` e os de cada jogo (na Pelada: `arenas.js`, `bonecos.js`, `bola.js`, `bots.js`, `strikers.js`).
+- Banco, Leilão, Sinuca e Botão: o script da página fica em arquivos ao lado do `index.html`, por assunto (ex.: `banco/sala.js`, `mesa.js`, `painel.js`), carregados em ordem e dividindo as mesmas variáveis globais.
+
 ## Deixar online de graça (Render)
 A Vercel não mantém conexões em tempo real abertas, então use o Render:
 1. Suba esta pasta para um repositório no GitHub.

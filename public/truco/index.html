@@ -353,22 +353,18 @@ button.primary:active:not(:disabled){box-shadow:0 1px 0 #3d0c12}
 <div class="toast hidden" id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/comum.js"></script>
 <script src="/truco/regras.js"></script>
 <script>
 const T = window.TrucoRegras;
 const socket = io("/truco");
-const $ = (id) => document.getElementById(id);
-const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-let S = null, ME = null, offset = 0;
-const sNow = () => Date.now() + offset;
+const { $, h, store } = Comum;
+let S = null, ME = null;
+const relogio = Comum.relogio(), sNow = relogio.agora;
 const me = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : null);
 const P = (id) => S && S.players.find((p) => p.id === id);
-function toast(msg, ms = 3000) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add("hidden"), ms); }
-function act(type, data = {}) { return new Promise((res) => socket.emit("act", { type, ...data }, (r) => { if (!r || !r.ok) toast(r ? r.error : "Sem conexão."); res(r && r.ok); })); }
+const toast = Comum.criarToast(3000);
+const act = Comum.criarAct(socket, toast);
 function show(id) { for (const s of ["home", "lobby", "game"]) $(s).classList.toggle("hidden", s !== id); }
 const myTeam = () => (me() ? me().team : 0);
 const teamLabel = (t) => (me() ? (t === myTeam() ? "Nós" : "Eles") : `Time ${t + 1}`);
@@ -408,7 +404,7 @@ const Sound = (() => {
   };
   return { play(k) { if (on && fx[k]) try { fx[k](); } catch {} }, toggle() { on = !on; store.set("truco:sound", on); }, get on() { return on; } };
 })();
-function renderSoundBtn() { $("btnSound").textContent = Sound.on ? "🔊" : "🔇"; }
+function renderSoundBtn() { Comum.iconeSom(Sound.on); }
 $("btnSound").onclick = () => { Sound.toggle(); renderSoundBtn(); Sound.play("round"); };
 renderSoundBtn();
 
@@ -455,7 +451,7 @@ socket.on("kicked", () => { toast("O organizador tirou você da mesa."); ME = nu
 
 let lastFx = null, coberta = false, seen = new Set(), lastTurnKey = null, lastValue = 1;
 socket.on("state", (st) => {
-  offset = st.now - Date.now();
+  relogio.doEstado(st.now);
   S = st;
   render();
   runFx();
@@ -702,13 +698,9 @@ socket.on("signal", ({ from, k }) => {
 socket.on("react", ({ player, emoji }) => {
   const av = $("seat-" + player); let x, y;
   if (av) { const r = av.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + 20; } else { x = innerWidth / 2; y = innerHeight / 2; }
-  const f = document.createElement("div"); f.className = "floaty"; f.textContent = emoji; f.style.left = x + "px"; f.style.top = y + "px";
-  document.body.appendChild(f); setTimeout(() => f.remove(), 1700);
+  Comum.flutuar(emoji, x, y);
 });
-function confetti() {
-  const cols = ["#f2b134", "#c62828", "#fbf5e8", "#ff8a3d", "#4fb0ff"];
-  for (let i = 0; i < 90; i++) { const d = document.createElement("div"); d.className = "confetti"; d.style.left = Math.random() * 100 + "vw"; d.style.background = cols[i % cols.length]; d.style.animationDuration = 2 + Math.random() * 2.5 + "s"; d.style.animationDelay = Math.random() * 0.6 + "s"; document.body.appendChild(d); setTimeout(() => d.remove(), 5500); }
-}
+const confetti = () => Comum.confetti(["#f2b134", "#c62828", "#fbf5e8", "#ff8a3d", "#4fb0ff"]);
 
 // relógio: anel de tempo e a pausa entre rodadas
 let wasPaused = false;

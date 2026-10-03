@@ -228,14 +228,11 @@ button{font:inherit;cursor:pointer}
 <script src="/galeramon/dados.js"></script>
 <script src="/galeramon/sprites.js"></script>
 <script src="/galeramon/pokemon.js"></script>
+<script src="/comum.js"></script>
 
 <script>
 "use strict";
-const $ = (id) => document.getElementById(id);
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
+const { $, store } = Comum;
 
 // ---------- o mapa ----------
 const TS = 16, MW = 34, MH = 40; // tamanho do tile e do mapa (em tiles)
