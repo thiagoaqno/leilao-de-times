@@ -1,0 +1,249 @@
+// Leilão da Galera — a sala, o campinho e a troca de posições (parte 2 de 4 do script da página; os arquivos rodam em ordem, pelo
+// index.html, e dividem as mesmas variáveis globais, como quando era um <script> só).
+// ---------- ROOM ----------
+$("btnCopyLink").onclick = () => { const url = location.origin + location.pathname + "?sala=" + me.code; navigator.clipboard?.writeText(url).then(()=>toast("Link copiado!"), ()=>prompt("Copie o link:", url)); };
+const host = (action, extra={}) => socket.emit("host", { action, ...extra }, (r) => { if (r && !r.ok) toast(r.error); });
+$("hStart").onclick = () => host("start");
+$("hSpin").onclick = () => host("spin");
+$("hReveal").onclick = () => { const open = S && S.config.mode === "open";
+  if (confirm(open ? "Bater o martelo agora? Quem está na frente leva." : "Revelar agora? Quem não deu lance usa o pulo (se tiver) ou dá o lance mínimo.")) host("reveal"); };
+$("hUndo").onclick = () => { if (confirm("Desfazer a última compra? O item volta para a roleta e as moedas são devolvidas.")) host("undo"); };
+$("hUnsold").onclick = () => host("returnUnsold");
+$("hReset").onclick = () => {
+  if (!confirm("Reiniciar o leilão? Todo mundo volta com as moedas cheias e sem nenhum item.")) return;
+  const typed = prompt('Para confirmar, digite REINICIAR');
+  if ((typed || "").trim().toUpperCase() !== "REINICIAR") return toast("Reinício cancelado.");
+  host("reset");
+};
+$("hFinish").onclick = () => { if (confirm("Encerrar o leilão agora?")) host("finish"); };
+$("btnBid").onclick = () => sendBid({ amount: $("bidAmt").value });
+$("bidAmt").addEventListener("keydown", e => { if (e.key === "Enter") $("btnBid").click(); });
+$("btnSkip").onclick = () => {
+  const open = S && S.config.mode === "open";
+  if (confirm(open ? "Sair desta disputa? Você não poderá voltar a dar lance neste item." : "Usar um pulo neste item?")) sendBid({ skip:true });
+};
+function sendBid(d){
+  const open = S && S.config.mode === "open";
+  socket.emit("bid", d, (r) => { if (!r.ok) toast(r.error); else toast(d.skip ? (open ? "Você saiu da disputa." : "Você pulou.") : "Lance enviado!"); });
+}
+$("btnCopyExport").onclick = () => navigator.clipboard?.writeText($("exportText").textContent).then(()=>toast("Resultado copiado!"), ()=>toast("Selecione e copie manualmente."));
+
+let clockSkew = 0;
+$("btnRules").onclick = () => $("rulesDlg").showModal();
+$("btnCloseRules").onclick = () => $("rulesDlg").close();
+$("rulesDlg").addEventListener("click", e => { if (e.target === $("rulesDlg")) $("rulesDlg").close(); });
+["pSport","pFormat","pEra"].forEach(id => $(id).addEventListener("change", () => { store.set("lt_prompt", { sport:$("pSport").value, format:$("pFormat").value, era:$("pEra").value }); if (S) $("promptText").textContent = buildPrompt(); }));
+(() => { const sp = store.get("lt_prompt"); if (sp) { $("pSport").value = sp.sport || "futsal"; $("pFormat").value = sp.format || "auto"; $("pEra").value = sp.era || "peak"; } })();
+$("btnCopyPrompt").onclick = () => { const t = buildPrompt(); $("promptText").textContent = t; navigator.clipboard?.writeText(t).then(()=>toast("Prompt copiado!"), ()=>toast("Abra 'Ver prompt' e copie manualmente.")); };
+
+let promptRoom = null;
+$("btnPublish").onclick = () => {
+  const text = $("pubText").value.trim();
+  if (text.length < 20) return toast("Cole a resposta da IA primeiro.");
+  if (S.reveal && S.reveal.total && !confirm("Substituir o resultado já publicado?")) return;
+  socket.emit("host", { action: "publish", text }, (r) => {
+    if (r && !r.ok) return toast(r.error);
+    $("pubText").value = ""; toast("Publicado! Agora revele parte por parte.");
+    $("revCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+};
+let lastShown = -1, lastRevTotal = -1;
+async function downloadCard(){
+  const sum = S && S.reveal && S.reveal.summary; if (!sum) return;
+  try { const r = await ChampionCard.download(sum); if (r === "downloaded") toast("Card baixado!"); }
+  catch (e) { console.error(e); toast("Não consegui gerar o card."); }
+}
+function renderReveal(){
+  const r = S.reveal || { total: 0, shown: 0, sections: [] }, card = $("revCard"), t = T();
+  card.classList.toggle("hidden", !r.total);
+  $("pubBox").classList.toggle("hidden", !me.host);
+  if (!r.total) { lastShown = -1; lastRevTotal = -1; return; }
+  $("revTitle").textContent = t.prompt === "food" || t.prompt === "generic" ? "🎬 Julgamento" : "🎬 Campeonato";
+  $("revCount").textContent = r.shown >= r.total ? `✓ Tudo revelado (${r.total} partes)` : `${r.shown} de ${r.total} partes`;
+  $("revCount").style.color = r.shown >= r.total ? "var(--good)" : "var(--accent)";
+  // redesenha só se mudou (para a animação aparecer só na parte nova)
+  if (r.shown !== lastShown || r.total !== lastRevTotal) {
+    const out = $("revOut");
+    if (r.total !== lastRevTotal || r.shown < out.children.length) out.innerHTML = "";
+    for (let i = out.children.length; i < r.shown; i++) {
+      const d = document.createElement("div"); d.className = "revsec"; d.innerHTML = mdToHtml(r.sections[i]); out.appendChild(d);
+    }
+    if (r.shown > lastShown && lastShown >= 0 && out.lastElementChild) out.lastElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
+    lastShown = r.shown; lastRevTotal = r.total;
+  }
+  const left = r.total - r.shown;
+  const cardBtn = r.summary ? `<div class="revbar" style="border-top:0;margin-top:6px;padding-top:0"><button class="primary" onclick="downloadCard()">🖼️ Baixar card do campeão</button></div>` : "";
+  $("revFoot").innerHTML = me.host
+    ? `<div class="revbar">
+        <button class="primary" ${left ? "" : "disabled"} onclick="host('revealNext')">▶ Revelar próxima${left ? ` (faltam ${left})` : ""}</button>
+        <button ${left ? "" : "disabled"} onclick="if(confirm('Revelar tudo de uma vez?')) host('revealAll')">Revelar tudo</button>
+        <button ${r.shown ? "" : "disabled"} onclick="host('revealPrev')">↩ Esconder última</button>
+        <button class="danger" onclick="if(confirm('Apagar o resultado publicado?')) host('revealClear')">Apagar</button>
+      </div>` + cardBtn
+    : (left ? `<div class="revwait">${r.shown ? "" : "O resultado está pronto! "}Aguardando o organizador revelar a próxima parte… <b>faltam ${left}</b></div>` : cardBtn);
+}
+
+$("btnFc").onclick = () => {
+  if (!S) return;
+  const pending = S.reveal && S.reveal.total && S.reveal.shown < S.reveal.total;
+  if (!confirm(pending ? "Ainda tem resultado sendo revelado. Simular um campeonato novo mesmo assim?" : S.reveal && S.reveal.total ? "Simular de novo? O resultado atual será substituído." : "Simular o campeonato agora? O resultado fica escondido e você revela parte por parte.")) return;
+  socket.emit("host", { action: "simFootball", sport: $("fcSport").value, format: $("fcFormat").value, force: true }, (r) => {
+    if (r && !r.ok) return toast(r.error);
+    toast("Campeonato simulado! Revele parte por parte.");
+    setTimeout(() => $("revCard").scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+  });
+};
+function mdToHtml(text){
+  try { if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: false })); } catch {}
+  return `<pre style="white-space:pre-wrap;font:inherit">${esc(text)}</pre>`;
+}
+const FORMS = {
+  futsal: [["auto","Automática (a melhor para o seu time)"],["2-2","2-2 (2 defensores, 2 atacantes)"],["3-1","3-1 (3 defensores, 1 pivô)"],["1-2-1","1-2-1 losango (1 defensor, 2 meias, 1 atacante)"],["1-1-2","1-1-2 (1 defensor, 1 meia, 2 atacantes)"]],
+  futebol: [["auto","Automática (a melhor para o seu time)"],["4-3-3","4-3-3"],["4-4-2","4-4-2"],["3-5-2","3-5-2"],["4-2-3-1","4-2-3-1"],["3-4-3","3-4-3"],["5-3-2","5-3-2"]],
+};
+function formKind(){ return T().prompt === "futebol" ? "futebol" : "futsal"; }
+let formKindShown = null;
+function renderFormation(){
+  const mine = me.capId && capById(me.capId);
+  const show = !!mine && isFootball();
+  $("formBox").classList.toggle("hidden", !show);
+  if (!show) return;
+  const kind = formKind(), sel = $("myFormation");
+  if (formKindShown !== kind) { sel.innerHTML = FORMS[kind].map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join(""); formKindShown = kind; }
+  if (document.activeElement !== sel) sel.value = FORMS[kind].some(([v]) => v === mine.formation) ? mine.formation : "auto";
+  const locked = S.config.formLock === "locked", frozen = locked && S.phase !== "lobby";
+  sel.disabled = frozen;
+  $("formHint").textContent = (frozen ? "🔒 Formação travada: o leilão já começou. "
+    : locked ? "🔒 Atenção: a formação trava quando o leilão começar. Escolha agora! "
+    : "Formação fluida: dá para mudar até a simulação. ") + "Toque nos jogadores do seu campinho para mudar as posições. Quanto cada um rende fora de posição está em Regras.";
+}
+$("myFormation").addEventListener("change", () => socket.emit("formation", { formation: $("myFormation").value }, (r) => { if (r && !r.ok) toast(r.error); else toast("Formação salva!"); }));
+function isFootball(){ const k = T().prompt; return k === "futsal" || k === "futebol"; }
+function subTag(item){ const t = Ratings.meiaType(item); return t ? ` <span class="sub">${t === "VOL" ? "volante" : "meia-atacante"}</span>` : ""; }
+// ---------- CAMPINHO ----------
+// A escalação vem de escalacao.js, a mesma que o simulador usa.
+const FIELD_SVG = {
+  futebol: `<svg viewBox="0 0 68 100" aria-hidden="true"><rect width="68" height="100" fill="#155c38"/>${Array.from({length:10},(_,i)=>i%2?`<rect y="${i*10}" width="68" height="10" fill="#196a41"/>`:"").join("")}
+    <g fill="none" stroke="#ffffffa6" stroke-width=".5"><rect x="2" y="2" width="64" height="96"/><path d="M2 50H66"/><circle cx="34" cy="50" r="8.4"/>
+    <rect x="13.85" y="2" width="40.3" height="15"/><rect x="24.85" y="2" width="18.3" height="5"/><path d="M27.25 17A8.4 8.4 0 0 0 40.75 17"/>
+    <rect x="13.85" y="83" width="40.3" height="15"/><rect x="24.85" y="93" width="18.3" height="5"/><path d="M27.25 83A8.4 8.4 0 0 1 40.75 83"/></g>
+    <g fill="#ffffffa6"><circle cx="34" cy="50" r=".8"/><circle cx="34" cy="12" r=".6"/><circle cx="34" cy="88" r=".6"/></g></svg>`,
+  futsal: `<svg viewBox="0 0 64 100" aria-hidden="true"><rect width="64" height="100" fill="#c96f36"/><rect x="2" y="2" width="60" height="96" fill="#2c6fb2"/>
+    <g fill="none" stroke="#ffffffb3" stroke-width=".55"><rect x="2" y="2" width="60" height="96"/><path d="M2 50H62"/><circle cx="32" cy="50" r="7"/>
+    <path d="M9.5 2A18 18 0 0 0 27.5 20L36.5 20A18 18 0 0 0 54.5 2"/><path d="M9.5 98A18 18 0 0 1 27.5 80L36.5 80A18 18 0 0 1 54.5 98"/></g>
+    <g fill="#ffffffb3"><circle cx="32" cy="50" r=".8"/><circle cx="32" cy="16" r=".6"/><circle cx="32" cy="84" r=".6"/><circle cx="32" cy="26" r=".5"/><circle cx="32" cy="74" r=".5"/></g></svg>`,
+};
+const POS_ABBR = { GK: "GOL", DEF: "DEF", MID: "MEI", ATT: "ATA" };
+const SLOT_EM = { GK: "no gol", DEF: "na defesa", MID: "no meio", ATT: "no ataque" };
+const CHEM_TXT = { alta: "química alta", media: "química média", baixa: "química baixa" };
+const CHEM_CLS = (c) => (c >= 65 ? "alta" : c >= 35 ? "media" : "baixa");
+const COMMON_NAME = /^(carlos|silva|santos|junior|júnior|jr\.?|alves|costa|souza|pereira|lima|gomes|martins|fernandes|fernández|martínez|díaz|diaz|garcía|rodríguez)$/i;
+const shortName = (n) => { const p = String(n).split(" "); if (p.length === 1) return n; const last = p.slice(-1)[0]; return last.length <= 4 || COMMON_NAME.test(last) ? p[0][0] + ". " + last : last; };
+const lineupCache = new Map();
+function lineupOf(c, extra){
+  const kind = formKind(), items = c.team.map(x => x.player).concat(extra ? [extra] : []);
+  const key = kind + "|" + (c.formation || "auto") + "|" + JSON.stringify(c.pins || {}) + "|" + items.join("\n"), id = c.id + (extra ? "+" : "");
+  let e = lineupCache.get(id);
+  if (!e || e.key !== key) { e = { key, v: Escalacao.escalar(items, kind, c.formation, c.pins) }; lineupCache.set(id, e); }
+  return e.v;
+}
+// jogador em leilão que eu posso pegar: aparece como sombra no meu campinho, na vaga em que entraria
+function previewFor(c){
+  const cur = S.current;
+  return c.id === me.capId && S.phase === "bidding" && cur && !spinning && cur.eligible.includes(c.id) ? cur.player : null;
+}
+
+// ---------- MUDAR POSIÇÕES ----------
+// Toque num jogador (ou vaga) do seu campinho e depois em outro: os dois trocam de lugar e ficam fixados ali.
+let pinPick = null;   // { name, pos } escolhido no primeiro toque
+let myShown = null;   // a escalação que está na tela no meu campinho (para saber quem está onde)
+const posKey = (p) => p.g === "BENCH" ? "BENCH" : p.g + p.k;
+function targetOf(el){
+  if (el.dataset.tobench != null) return { name: null, pos: { g: "BENCH" } };
+  if (el.dataset.bench != null) return { name: el.dataset.bench, pos: { g: "BENCH" } };
+  const pos = { g: el.dataset.g, k: +el.dataset.k };
+  const x = myShown.E.xi.find(x => x.slot === pos.g && x.k === pos.k);
+  return { name: x && x.p && x.p.name !== myShown.ghost ? x.p.name : null, pos };
+}
+function whereIs(name){
+  const x = myShown.E.xi.find(x => x.p && x.p.name === name);
+  return x ? { g: x.slot, k: x.k } : { g: "BENCH" };
+}
+function sendPins(pins, msg){ socket.emit("pins", { pins }, (r) => { if (r && !r.ok) toast(r.error); else if (msg) toast(msg); }); }
+function pitchTap(el){
+  const mine = capById(me.capId); if (!mine || !myShown) return;
+  if (el.dataset.cancel != null) { pinPick = null; return render(); }
+  if (el.dataset.auto != null) { pinPick = null; return sendPins({}, "Escalação automática de volta."); }
+  const t = targetOf(el);
+  if (!pinPick) { if (!t.name && t.pos.g === "BENCH") return; pinPick = t; return render(); }
+  const a = { ...pinPick, pos: pinPick.name ? whereIs(pinPick.name) : pinPick.pos };
+  pinPick = null;
+  if (posKey(a.pos) === posKey(t.pos) && a.name === t.name) return render();
+  if (!a.name && !t.name) { pinPick = t; return render(); }
+  const pins = { ...(mine.pins || {}) };
+  if (a.name) pins[a.name] = t.pos;
+  if (t.name) pins[t.name] = a.pos;
+  render(); sendPins(pins);
+}
+$("teams").addEventListener("click", (e) => { const el = e.target.closest("[data-tap]"); if (el) pitchTap(el); });
+
+// quando um jogador chega no campinho, ele "cai" na vaga; o atraso negativo mantém a animação contínua entre re-renderizações
+const arrivedAt = new Map(); let pitchSeeded = false;
+function pitchHTML(c){
+  const kind = formKind(), extra = previewFor(c), base = lineupOf(c), E = extra ? lineupOf(c, extra) : base, now = performance.now();
+  const ghostName = extra ? Ratings.parseItem(extra).name : null, mineCard = c.id === me.capId;
+  if (mineCard) myShown = { E, ghost: ghostName };
+  const pickKey = mineCard && pinPick ? (pinPick.name ? "n:" + pinPick.name : "s:" + posKey(pinPick.pos)) : null;
+  const spots = E.spots.map((sp, i) => ({ ...sp, s: E.xi[i] }));
+  // linhas de química entre os vizinhos (verde alta, amarela média, vermelha baixa)
+  const chemLines = `<svg class="chem" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${E.links.map(l => {
+    const a = E.spots[l.a], b = E.spots[l.b];
+    return `<line class="${l.nivel}${l.semDados ? " nd" : ""}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+  }).join("")}</svg>`;
+  const chemTip = (s) => {
+    const mine = E.links.filter(l => E.xi[l.a] === s || E.xi[l.b] === s);
+    if (!mine.length) return "";
+    const why = mine.map(l => { const o = E.xi[l.a] === s ? E.xi[l.b] : E.xi[l.a]; return `${shortName(o.p.name)}: ${CHEM_TXT[l.nivel]}${l.semDados ? " (sem dados)" : l.clubes.length ? ` (${l.clubes[0]})` : l.pais ? " (mesmo país)" : ""}`; });
+    const info = Quimica.infoOf(s.p.name);
+    return `. ${info ? info.pais + ". " : ""}Química ${Math.round(s.chem * 100)} → ${why.join("; ")}`;
+  };
+  const price = (name) => { const t = c.team.find(x => Ratings.parseItem(x.player).name === name); return t ? t.price : null; };
+  // no meu campinho as vagas viram botões
+  const tag = (cls, style, tip, body, s) => mineCard
+    ? `<button type="button" class="${cls} tap" style="${style}" title="${escA(tip)}" data-tap data-g="${s.slot}" data-k="${s.k}">${body}</button>`
+    : `<div class="${cls}" style="${style}" title="${escA(tip)}">${body}</div>`;
+  const marks = spots.map(({ x, y, s }) => {
+    const at = `left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
+    if (!s.p) return tag(`pl empty${pickKey === "s:" + s.slot + s.k ? " sel" : ""}`, at, `Vaga ${SLOT_EM[s.slot]}`, `<i>${POS_ABBR[s.slot]}</i>`, s);
+    const off = Escalacao.HOME_SLOT(s.p.pos) !== s.slot, eff = Math.round(s.eff);
+    if (s.p.name === ghostName) return tag(`pl ghost${off ? " off" : ""}`, at, `Se você levar ${s.p.name}, ele entra aqui${off ? ` fora de posição, rendendo ${eff}` : ""}`, `<i>${off ? eff : s.p.ovr}</i><span>${esc(shortName(s.p.name))}</span>`, s);
+    const pr = price(s.p.name), key = c.id + "|" + s.p.name;
+    if (!arrivedAt.has(key)) arrivedAt.set(key, pitchSeeded ? now : -1e9);
+    const age = now - arrivedAt.get(key), anim = age < 600 ? `;animation-delay:-${Math.round(age)}ms` : "";
+    const tip = `${s.p.name}: nota ${s.p.ovr}${s.p.est ? " (estimada)" : ""}${off ? `, fora de posição ${SLOT_EM[s.slot]}, rende ${eff}` : ""}${pr != null ? `. Custou ${pr}` : ""}${s.pinned ? ". Posição fixada" : ""}${chemTip(s)}`;
+    const cls = `pl${off ? " off" : ""}${age < 600 ? " new" : ""}${s.pinned ? " pinned" : ""}${pickKey === "n:" + s.p.name ? " sel" : ""}`;
+    return tag(cls, at + anim, tip, `<i>${off ? eff : s.p.ovr}</i><span>${esc(shortName(s.p.name))}</span>`, s);
+  }).join("");
+  const benchList = E.bench.filter(p => p.name !== ghostName);
+  let bench = "";
+  if (mineCard) {
+    const chips = benchList.map(p => `<button type="button" class="chip${pickKey === "n:" + p.name ? " sel" : ""}" data-tap data-bench="${escA(p.name)}" title="${escA(p.name)}: nota ${p.ovr}">${esc(shortName(p.name))} <b>${p.ovr}</b></button>`).join("");
+    const toBench = pinPick && pinPick.name && whereIs(pinPick.name).g !== "BENCH" ? `<button type="button" class="chip drop" data-tap data-tobench>Mandar para a reserva</button>` : "";
+    if (chips || toBench) bench = `<div class="bench">Reserva: ${chips}${toBench}</div>`;
+    const hasPins = Object.keys(c.pins || {}).length > 0;
+    bench += `<div class="pinbar">${pinPick
+      ? `<span>Agora toque na vaga ou no jogador para onde ${pinPick.name ? `<b>${esc(shortName(pinPick.name))}</b> vai` : "quer mandar alguém"}.</span><button type="button" class="ghost" data-tap data-cancel>Cancelar</button>`
+      : c.team.length ? `<span>Toque num jogador para mudar a posição dele.</span>${hasPins ? `<button type="button" class="ghost" data-tap data-auto>Voltar ao automático</button>` : ""}` : ""}</div>`;
+  } else if (benchList.length) bench = `<div class="bench">Reserva: ${benchList.map(p => `${esc(shortName(p.name))} <b>${p.ovr}</b>`).join(", ")}</div>`;
+  let note = "";
+  if (extra) {
+    const spot = E.xi.find(x => x.p && x.p.name === ghostName);
+    const wasBench = new Set(base.bench.map(p => p.name)), out = benchList.filter(p => !wasBench.has(p.name)).map(p => esc(p.name));
+    const delta = (a, b) => Math.round(a) === Math.round(b) ? `${Math.round(a)}` : `${Math.round(a)} → ${Math.round(b)}`;
+    note = `<div class="ghostnote">Se você levar <b>${esc(ghostName)}</b>: ` + (!spot ? "ele ficaria na reserva." :
+      `entra ${SLOT_EM[spot.slot]}` + (Escalacao.HOME_SLOT(spot.p.pos) !== spot.slot ? `, fora de posição, rendendo <b>${Math.round(spot.eff)}</b>` : `, rendendo <b>${spot.p.ovr}</b>`) +
+      (out.length ? `. ${out.join(" e ")} ${out.length > 1 ? "iriam" : "iria"} para a reserva` : "") +
+      (E.formation !== base.formation ? `. O time passaria para o ${E.formation}` : "") + `. Ataque ${delta(base.att, E.att)}, defesa ${delta(base.def, E.def)}.`) + `</div>`;
+  }
+  return `${note}<div class="pitch ${kind}${mineCard && pinPick ? " picking" : ""}">${FIELD_SVG[kind]}${chemLines}<span class="ftag">${E.formation}${E.auto ? " · auto" : ""}</span>${c.team.length > 1 ? `<span class="ctag ${CHEM_CLS(E.chem)}" title="Química do time: linhas verdes (mesmo país e mesmo clube), amarelas (mesmo país ou mesmo clube) e vermelhas (nada em comum)">🔗 ${E.chem}</span>` : ""}${marks}</div>${bench}`;
+}
