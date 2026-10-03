@@ -13,16 +13,9 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure
 export const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xcfdde8, 80, 260);
 export const cam = new THREE.PerspectiveCamera(70, 1, 0.1, 800);
-const maxAniso = renderer.capabilities.getMaxAnisotropy();
-export const rng = (seed) => { let x = seed; return () => ((x = (x * 16807) % 2147483647) / 2147483647); };
-export function canvasTex(w, hh, draw, repeat = false, pixel = false) {
-  const c = document.createElement("canvas"); c.width = w; c.height = hh; draw(c.getContext("2d"), w, hh, rng(w * 31 + hh));
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso;
-  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  if (pixel) { t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; }
-  return t;
-}
-export function M(color, o = {}) { return new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...o }); }
+import { rng, canvasTex, M, liberar, definirAniso } from "./tex.js";
+export { rng, canvasTex, M, liberar };
+definirAniso(renderer.capabilities.getMaxAnisotropy());
 // céu: uma esfera com degradê (as cores mudam com a quadra; no ginásio fica escondida)
 const skyGeo = new THREE.SphereGeometry(600, 32, 16);
 export const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
@@ -56,17 +49,6 @@ blob.rotation.x = -Math.PI / 2; blob.position.y = 0.02; scene.add(blob);
 export const landMark = new THREE.Mesh(new THREE.RingGeometry(0.55, 1, 32), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.6, depthWrite: false }));
 landMark.rotation.x = -Math.PI / 2; landMark.visible = false; scene.add(landMark);
 
-// solta da memória tudo o que um pedaço da cena criou (geometrias, materiais e texturas)
-export function liberar(obj) {
-  obj.traverse((o) => {
-    o.geometry?.dispose?.();
-    for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
-      for (const k of ["map", "normalMap", "roughnessMap", "metalnessMap", "emissiveMap", "alphaMap", "aoMap"]) m[k]?.dispose?.();
-      m.dispose();
-    }
-    if (o.isLight && o.shadow?.map) o.shadow.map.dispose();
-  });
-}
 // mira no chão (a pé): setinha na frente do jogador mostrando para onde vai a bola
 export const aim = new THREE.Mesh(new THREE.RingGeometry(0.0, 0.2, 3), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
 aim.rotation.x = -Math.PI / 2; scene.add(aim);

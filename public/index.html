@@ -270,6 +270,9 @@ const GAMES = [
   // do outro lado da rua nova: a arena da Batalha de kart, com telhado roxo, balões coloridos e uma caixa de item
   { id: "batalha", url: "/batalha/", icon: "🎈", sign: "BATALHA", name: "Arena da Batalha", desc: "Batalha de balões de kart estilo Mario Kart: 3 balões, caixas de item, cascos, bananas e bombas. Perdeu tudo? Vira fantasma!", meta: "Batalha da Galera · 2 a 8 pilotos",
     x: 22, y: 32, w: 8, h: 4, doors: [25, 26], roof: "#4a2f80", roof2: "#3a2466", wall: "#e9dcc4", wall2: "#cbb994", batalha: true },
+  // no meio da rua nova, entre a garagem e a arena: o clube de tênis, com o telhado pintado como uma quadra azul
+  { id: "tenis", url: "/tenis/", icon: "🎾", sign: "TÊNIS", name: "Clube de Tênis", desc: "Tênis arcade em 3D, simples ou duplas, contra a galera ou contra robôs: top spin, cortada, balão, curtinha e smash.", meta: "Tênis da Galera · 1x1 ou 2x2",
+    x: 14, y: 32, w: 7, h: 4, doors: [17], roof: "#2f6aa8", roof2: "#24578c", wall: "#f2f4f0", wall2: "#d4dad0", tenis: true },
 ];
 GAMES.forEach((g) => { g.doorY = g.y + g.h - 1; g.mats = g.doors.map((x) => [x, g.doorY + 1]); });
 
@@ -291,7 +294,7 @@ for (let y = 23; y <= 30; y++) { set(11, y, "r"); set(22, y, "r"); } // caminhos
 for (let x = 11; x <= 22; x++) set(x, 30, "r");
 for (let x = 23; x <= 26; x++) set(x, 28, "r"); // caminho até a arena de tiro
 for (let x = 7; x <= 10; x++) set(x, 28, "r"); // caminho até a quadra da pelada
-for (let y = 31; y <= 37; y++) set(17, y, "r"); // descida para a rua nova
+for (let y = 31; y <= 37; y++) set(12, y, "r"); // descida para a rua nova (do lado do clube de tênis)
 for (let x = 3; x < MW - 3; x++) set(x, 37, "r"); // rua nova (Rocket e Batalha)
 for (const g of GAMES) {
   for (let y = g.y; y < g.y + g.h; y++) for (let x = g.x; x < g.x + g.w; x++) solid[y][x] = true;
@@ -423,6 +426,12 @@ function drawBuilding(c, g) {
       px(c, "#f4f4f4", bx + dx, by + dy + 5, 1, 6);
       c.fillStyle = col; c.beginPath(); c.ellipse(bx + dx + 0.5, by + dy, 3.5, 4.5, 0, 0, 7); c.fill();
     });
+  }
+  if (g.tenis) { // telhado: uma quadra azul com as linhas brancas, a rede e uma bolinha amarela
+    const qx = rx + 4, qy = Y + 3, qw = rw - 8, qh = roofH - 6;
+    c.strokeStyle = "#f4f7fa"; c.lineWidth = 1; c.strokeRect(qx + 0.5, qy + 0.5, qw - 1, qh - 1); c.strokeRect(qx + qw * 0.12 + 0.5, qy + 0.5, qw * 0.76 - 1, qh - 1);
+    px(c, "#f4f7fa", qx + qw / 2, qy, 1, qh); px(c, "#1b1b1b", qx, qy + qh / 2 - 1, qw, 2);
+    c.fillStyle = "#d7f23c"; c.beginPath(); c.arc(qx + qw * 0.7, qy + qh * 0.3, 2.5, 0, 7); c.fill();
   }
   if (g.tiro) { // telhado com um alvo pintado e sacos de areia na frente
     const cx = rx + rw / 2, cy = Y + roofH / 2;

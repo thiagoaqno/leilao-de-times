@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<script src="/semzoom.js"></script>
+<title>Tênis da Galera</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* quadra dura: azul da quadra, verde de fora, linhas de giz e a bola amarelo-limão */
+  --bg:#0c1d2e;--panel:#12304a;--panel2:#173a58;--line:#285072;
+  --text:#f2f7fb;--muted:#9db6c9;--accent:#d7f23c;--good:#3ddc84;--bad:#ff6b5a;
+  --azul:#2f80ed;--laranja:#f07c1c;
+  --display:Anton,Impact,system-ui,sans-serif;
+  --body:Figtree,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--body)}
+body{min-height:100vh;background:linear-gradient(90deg,transparent 0 calc(50% - 1px),#ffffff10 calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px)),radial-gradient(900px 420px at 50% -8%,#2f80ed33,transparent),var(--bg)}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:1.05;margin:0;letter-spacing:.02em;text-transform:uppercase}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;padding:10px 16px;background:#1d4466;color:var(--text);border:1px solid #2e5a80;box-shadow:0 3px 0 #000;transition:transform .08s,box-shadow .08s,filter .15s}
+button:hover:not(:disabled){filter:brightness(1.15)}
+button:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #000}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.ghost{background:transparent;box-shadow:none;border-color:transparent;color:var(--muted)}
+button.small{padding:6px 11px;font-size:13px}
+button.primary{background:linear-gradient(#e6ff6a,#c2dc1e);color:#20280a;border-color:#8ea00f;font-family:var(--display);font-weight:400;letter-spacing:.05em;text-transform:uppercase}
+button.on{outline:2px solid var(--accent);background:#2c4f20}
+input{font:inherit;color:var(--text);background:#08131e;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+input[type=range]{padding:0;accent-color:var(--accent)}
+label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.err{color:var(--bad);font-size:14px;min-height:20px;margin-top:10px;font-weight:700}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 16px 60px}
+.lines{height:6px;background:var(--azul);border-top:2px solid #fff;border-bottom:2px solid #fff}
+.bar{position:sticky;top:0;z-index:20;background:#0c1d2eee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1100px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;gap:10px}
+.brand{margin-right:auto;min-width:0}
+.brand h1{font-size:22px;white-space:nowrap}
+.brand h1 span{color:var(--accent)}
+.tovila{color:var(--muted);text-decoration:none;font-weight:700;font-size:14px;padding:6px 10px 6px 4px;white-space:nowrap}
+.tovila:hover{color:var(--text)}
+.roomtag{display:flex;align-items:center;gap:8px}
+.roomtag .code{font:22px var(--display);letter-spacing:.14em;color:var(--accent)}
+.panel{background:linear-gradient(180deg,#153752,#0f283e);border:1px solid #2a5274;border-radius:14px;box-shadow:0 20px 40px #0008;overflow:hidden}
+.panel .in{padding:20px}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;align-items:center;margin-top:24px}
+.hero h2{font-size:clamp(42px,7vw,76px)}
+.hero h2 em{font-style:normal;color:var(--accent)}
+.lead{font-size:17px;color:#cfdeea;max-width:520px}
+.feats{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.feats span{background:#163650;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13.5px;font-weight:700}
+.or{text-align:center;color:var(--muted);margin:12px 0;font-size:13px}
+@media (max-width:760px){.hero{grid-template-columns:1fr}}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:60px}
+.skins{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.skins button{padding:7px 4px;font-size:12.5px;line-height:1.2;text-align:center}
+.skins button i{display:block;font-style:normal;font-size:20px}
+.lobby{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;margin-top:18px}
+@media (max-width:860px){.lobby{grid-template-columns:1fr}}
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.team{border-radius:12px;padding:12px;min-height:140px;border:2px solid var(--line);background:#0b1b2a}
+.team.A{border-color:var(--azul)}.team.B{border-color:var(--laranja)}
+.team h3{font-size:20px;margin-bottom:8px}
+.pl{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:#0006;margin-bottom:6px;font-weight:700}
+.pl .dot{width:8px;height:8px;border-radius:50%;background:#555}.pl .dot.on{background:var(--good)}
+.pl.me{outline:2px solid var(--accent)}
+.bench{margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:10px}
+.keys{font-size:13.5px;color:#cfdeea;margin:8px 0 0;padding-left:18px}
+kbd{display:inline-block;background:#1d4466;border:1px solid #3a6a90;border-bottom-width:3px;border-radius:5px;padding:0 6px;font:700 12px var(--body);color:#fff;min-width:20px;text-align:center}
+/* ---------- jogo ---------- */
+#game{position:fixed;inset:0;background:#000;z-index:30}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;pointer-events:none;color:#fff;text-shadow:0 2px 0 #000a,0 0 8px #0008}
+#hTop{top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;border-radius:8px;overflow:hidden;box-shadow:0 6px 20px #0008}
+#hTop .t{display:flex;align-items:center;gap:8px;padding:4px 12px;background:#0b1622dd;font:700 15px var(--body)}
+#hTop .t i{width:12px;height:12px;border-radius:3px;display:block}
+#hTop .g{font:26px var(--display);padding:2px 12px;background:#000d;color:var(--accent);min-width:40px;text-align:center}
+#hTop .p{font:20px var(--display);padding:6px 14px;background:#1d4466e8;min-width:120px;text-align:center;letter-spacing:.04em}
+#hMsg{top:22%;left:50%;transform:translateX(-50%);text-align:center;font:48px var(--display);white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+#hMsg small{display:block;font:700 18px var(--body);opacity:.95;text-transform:none;letter-spacing:0}
+#hMsg.pop{animation:pop .45s ease-out}
+@keyframes pop{0%{transform:translateX(-50%) scale(.4);opacity:0}70%{transform:translateX(-50%) scale(1.12)}100%{transform:translateX(-50%) scale(1)}}
+#hPow{left:50%;bottom:64px;transform:translateX(-50%);width:220px;height:12px;background:#000a;border:2px solid #fff8;border-radius:8px;overflow:hidden}
+#hPow i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3ddc84,var(--accent) 60%,#ff6b5a)}
+#hPowL{left:50%;bottom:80px;transform:translateX(-50%);font:700 13px var(--body)}
+#hHint{right:16px;bottom:16px;font:600 13px var(--body);text-align:right;opacity:.85;line-height:1.6}
+#hInfo{left:12px;top:10px;font:700 13px var(--body);opacity:.85}
+@media (pointer:coarse){#hHint{display:none!important}#hPow{bottom:130px}#hPowL{bottom:146px}}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#000a;padding:16px;z-index:5}
+.overlay .box{background:#0f283ef2;border:1px solid #2e5a80;border-radius:14px;padding:20px;width:min(560px,100%);max-height:100%;overflow:auto}
+.overlay h2{font-size:30px;margin-bottom:6px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#173a58;border:1px solid #2e5a80;border-radius:10px;padding:10px 16px;font-weight:700;z-index:60;box-shadow:0 10px 30px #000a}
+.confetti{position:fixed;top:-12px;width:9px;height:14px;z-index:70;animation:fall linear forwards;pointer-events:none}
+@keyframes fall{to{transform:translateY(105vh) rotate(720deg)}}
+</style>
+</head>
+<body>
+<header class="bar" id="bar">
+  <div class="bar-in">
+    <a class="tovila" href="/" title="Voltar para a vila">← Vila</a>
+    <div class="brand"><h1>🎾 Tênis da <span>Galera</span></h1></div>
+    <div class="roomtag hidden" id="roomTag"><span class="muted">Sala</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
+  </div>
+</header>
+<div class="lines"></div>
+
+<div class="wrap">
+  <section id="home" class="hidden">
+    <div class="hero">
+      <div>
+        <h2>Tênis<br>de <em>quadra</em></h2>
+        <p class="lead">Tênis arcade em 3D: aperte o golpe antes da bola chegar e o seu jogador bate sozinho. Quanto antes apertar, mais forte. Simples ou duplas, contra a galera ou contra robôs.</p>
+        <div class="feats"><span>🎾 1x1 ou 2x2</span><span>🤖 robôs</span><span>🌀 top spin, cortada, balão e curtinha</span><span>💥 smash</span><span>🦸 as skins da Pelada</span></div>
+      </div>
+      <div class="panel"><div class="lines"></div><div class="in">
+        <div class="err hidden" id="mobileWarn" style="color:var(--accent)">No celular aparecem botões na tela: deite o celular.</div>
+        <label for="hName">Seu nome</label>
+        <input id="hName" maxlength="8" placeholder="Ex.: Guga" autocomplete="off">
+        <label for="hCode" style="margin-top:14px">Código da sala</label>
+        <input id="hCode" maxlength="5" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em">
+        <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
+        <div class="or">ou</div>
+        <button id="btnCreate" style="width:100%">Abrir sala nova</button>
+        <label style="margin-top:16px">Treino contra robôs</label>
+        <div class="seg" id="hModo"></div>
+        <div class="seg" id="hDif" style="margin-top:6px"></div>
+        <div class="seg" id="hGames" style="margin-top:6px"></div>
+        <button class="primary" id="btnPractice" style="width:100%;margin-top:10px">🤖 Jogar contra robôs</button>
+        <label style="margin-top:14px">Sua skin</label>
+        <div class="skins" id="hSkins"></div>
+        <div class="err" id="hErr"></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section id="lobby" class="hidden">
+    <div class="lobby">
+      <div class="panel"><div class="in">
+        <h2 style="font-size:26px;margin-bottom:12px">Times</h2>
+        <div class="teams">
+          <div class="team A"><h3 style="color:var(--azul)">Azul</h3><div id="tA"></div><button class="small" id="joinA">Jogar aqui</button></div>
+          <div class="team B"><h3 style="color:var(--laranja)">Laranja</h3><div id="tB"></div><button class="small" id="joinB">Jogar aqui</button></div>
+        </div>
+        <div class="bench"><div class="row" style="justify-content:space-between"><b>De fora</b><button class="small ghost" id="joinBench">Sair do time</button></div><div id="tN" class="muted" style="margin-top:6px"></div></div>
+        <label style="margin-top:16px">Sua skin</label>
+        <div class="skins" id="lSkins"></div>
+      </div></div>
+      <div class="panel"><div class="in">
+        <h2 style="font-size:26px;margin-bottom:12px">Partida</h2>
+        <label>Modo</label><div class="seg" id="cModo"></div>
+        <label style="margin-top:14px">Set até</label><div class="seg" id="cGames"></div>
+        <label style="margin-top:14px">Robôs</label><div class="seg" id="cBots"></div>
+        <label style="margin-top:14px">Dificuldade dos robôs</label><div class="seg" id="cDif"></div>
+        <div id="startBox" style="margin-top:18px"></div>
+        <button id="btnPractice2" style="width:100%;margin-top:10px">🤖 Treinar enquanto espera</button>
+        <label style="margin-top:18px">Controles</label>
+        <div id="keysBox"></div>
+      </div></div>
+    </div>
+  </section>
+</div>
+
+<section id="game" class="hidden">
+  <canvas id="cv"></canvas>
+  <div class="hud" id="hTop"></div>
+  <div class="hud" id="hInfo"></div>
+  <div class="hud" id="hMsg"></div>
+  <div class="hud hidden" id="hPowL"></div>
+  <div class="hud hidden" id="hPow"><i></i></div>
+  <div class="hud" id="hHint"></div>
+  <div class="overlay hidden" id="pause"><div class="box">
+    <h2>Pausado</h2>
+    <button class="primary" id="btnResume" style="width:100%;margin-top:8px">Voltar pro jogo</button>
+    <label style="margin-top:16px">Volume: <span id="volV"></span></label>
+    <input type="range" id="vol" min="0" max="1" step="0.05">
+    <div id="pauseKeys" style="margin-top:14px"></div>
+    <div class="row" style="margin-top:14px;justify-content:space-between"><button class="ghost" id="btnLeave">Sair da quadra</button><span class="muted" id="pauseHint" style="font-size:13px"></span></div>
+  </div></div>
+  <div class="overlay hidden" id="over"><div class="box" id="overBox"></div></div>
+</section>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/comum.js"></script>
+<script src="/pelada/campo.js"></script>
+<script src="/tenis/regras.js"></script>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
+<script src="/toque.js"></script>
+<script type="module" src="/tenis/jogo.js"></script>
+</body>
+</html>
