@@ -19,6 +19,16 @@
     [-12, 0, -14, -10.8, 1.2, -12.8, "caixa"], [-7, 0, -17, -4.6, 1.2, -15.8, "caixa"], [-17, 0, -11, -16, 1.5, -9, "concreto"],
     // base: muretas para se esconder logo no começo
     [-24, 0, -4, -23, 1.3, -1, "concreto"], [-24, 0, 1, -23, 1.3, 4, "concreto"], [-27, 0, 8, -25.8, 1.2, 9.2, "caixa"],
+    // ---- mais coberturas (para dar para avançar de uma proteção para outra em todas as rotas) ----
+    // meio: caixas e mureta entre a base e a torre
+    [-14.5, 0, 2.2, -13.3, 1.2, 3.4, "caixa"], [-18, 0, -3.2, -17, 1.4, -1.2, "concreto"], [-6.5, 0, -4.2, -5.3, 1.2, -3, "caixa"],
+    [-21, 0, 5, -19.8, 1.2, 6.2, "caixa"], [-21, 0, -6.2, -19.8, 1.2, -5, "caixa"],
+    // rota de cima
+    [-15, 0, 10, -13.8, 1.2, 11.2, "caixa"], [-7.5, 0, 9.5, -6.5, 1.5, 11.5, "concreto"], [-3, 0, 11, -1.8, 1.2, 12.2, "caixa"],
+    [-24.5, 0, 17.6, -23.3, 1.2, 18.8, "caixa"],
+    // rota de baixo
+    [-20, 0, -14, -18.8, 1.2, -12.8, "caixa"], [-20, 1.2, -14, -18.8, 2.4, -12.8, "caixa"], [-3, 0, -11, -1.8, 1.2, -9.8, "caixa"],
+    [-25, 0, -15, -24, 1.4, -12, "concreto"], [-11, 0, -10.5, -10, 1.4, -9.5, "concreto"],
     // ---- elevações ----
     // escada até o topo da torre do meio (3,2 m): quem sobe vê tudo, mas fica exposto
     ...stairs(-2, -1, 0.4, 1.8, 7, "x"),

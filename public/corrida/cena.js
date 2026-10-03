@@ -34,4 +34,7 @@ export const LOOK = {
   losangeles: { sky: [0x3b2a6b, 0xff9a5a], fog: 0xe8a07a, fogN: 900, fogF: 4000, hemi: [0xffd2b0, 0x5a4a5a, 1.25], sun: [0xffb070, 2.4], ground: ["#9c8a6a", "#8f7d5e", "#a89677"], road: "#3f3f46", kerb: ["#e53935", "#f4f4f4"] },
   rio: { sky: [0x3f97e0, 0xd6f1ff], fog: 0xcfeaf2, fogN: 1000, fogF: 4200, hemi: [0xeaf6ff, 0x3f6a3a, 1.35], sun: [0xfff3df, 2.4], ground: ["#3f8a3a", "#4a9a42", "#367a31"], road: "#4a4a50", kerb: ["#ffd23f", "#1f8a3a"] },
   tokyo: { sky: [0x05061a, 0x3a1d5c], fog: 0x2a1a44, fogN: 700, fogF: 3400, hemi: [0xa89cff, 0x3a2f55, 1.9], sun: [0xc9d2ff, 1.3], ground: ["#2a2b38", "#30313f", "#252633"], road: "#3c3d48", kerb: ["#4fe3ff", "#1b1c26"] },
+  luigi: { sky: [0x3f97e0, 0xeaf4ff], fog: 0xdfeee0, fogN: 1000, fogF: 4200, hemi: [0xe4efff, 0x4a6a3a, 1.3], sun: [0xfff1dc, 2.3], ground: ["#4aa43f", "#53b047", "#3f9236"], road: "#55555c", kerb: ["#f2c230", "#8e3fc6"] },
+  sorvete: { sky: [0x8fc6f2, 0xf2f8ff], fog: 0xe8f2fa, fogN: 900, fogF: 3800, hemi: [0xf2f8ff, 0x9fb6c8, 1.5], sun: [0xffffff, 2.2], ground: ["#f2f6fa", "#e4edf5", "#d8e6f2"], road: "#9fc3dd", kerb: ["#2f7fd1", "#f4f4f4"] },
+  arcoiris: { sky: [0x02020a, 0x1a0b3a], fog: 0x0a0618, fogN: 2500, fogF: 9000, hemi: [0xc8b8ff, 0x302050, 1.9], sun: [0xe8e0ff, 1.6], ground: ["#05040c", "#0b0a1a", "#ffffff"], road: "#ffffff", kerb: ["#ff4fd8", "#4fd8ff"] },
 };
