@@ -1,5 +1,7 @@
 // Ludo da Galera — servidor. Canal "/ludo" do Socket.io.
-// 2 a 4 jogadores, cada um com uma cor. O dado é rolado aqui no servidor (ninguém escolhe o número).
+// 2 a 4 jogadores, cada um com uma cor. Os dados são rolados aqui no servidor (ninguém escolhe o número).
+// Com 2 dados (o padrão), cada dado é uma jogada: usa um num peão e o outro no mesmo ou em outro peão. Dobradinha
+// (os dois iguais) joga de novo; três dobradinhas seguidas perdem a vez. Com 1 dado, é o ludo de sempre (6 joga de novo).
 const crypto = require("crypto");
 const R = require("./public/ludo/regras.js");
 
@@ -16,6 +18,7 @@ function cleanConfig(c = {}) {
     exit16: !!c.exit16, // sai da base com 1 ou 6 (normal: só com 6)
     barrier: !!c.barrier, // torre bloqueia a passagem
     timer: [20, 30, 45].includes(int(c.timer, 30)) ? int(c.timer, 30) : 30,
+    dados: int(c.dados, 2) === 1 ? 1 : 2,
   };
 }
 
@@ -38,7 +41,7 @@ module.exports = function attachLudo(io) {
     const colors = R.COLORS.filter((c) => byColor(room, c));
     const pawns = {};
     for (const c of colors) pawns[c] = Array(room.config.pawns).fill(-1);
-    room.g = { colors, pawns, turn: Math.floor(Math.random() * colors.length), dice: null, sixes: 0, stage: "roll", legal: [], rollSeq: 0, moveSeq: 0, last: null, ranking: [] };
+    room.g = { colors, pawns, turn: Math.floor(Math.random() * colors.length), dice: null, restam: [], bonus: false, dobrou: false, sixes: 0, stage: "roll", legal: [], rollSeq: 0, moveSeq: 0, last: null, ranking: [] };
     room.phase = "playing"; room.winner = null;
     log(room, `🎲 Começou! ${nameOf(room, colors[room.g.turn])} joga primeiro.`);
     arm(room);
@@ -54,23 +57,47 @@ module.exports = function attachLudo(io) {
     }
     g.stage = "roll"; g.legal = []; g.dice = g.dice; // o último dado continua aparecendo até a próxima rolada
   }
+  // rola os dados (1 ou 2). g.dice: os números tirados; g.restam: os que ainda não foram usados nesta rolada
   function roll(room) {
-    const g = room.g, color = turnColor(g);
-    const d = 1 + Math.floor(Math.random() * 6);
-    g.dice = d; g.rollSeq++;
-    if (d === 6) g.sixes++;
-    if (g.sixes === 3) { // três 6 seguidos: perde a vez
-      log(room, `😬 ${nameOf(room, color)} tirou três 6 seguidos e perdeu a vez.`);
-      g.stage = "pass"; g.legal = [];
+    const g = room.g, color = turnColor(g), n = room.config.dados;
+    g.dice = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * 6)); g.rollSeq++;
+    g.restam = [...g.dice]; g.bonus = false;
+    g.dobrou = n === 1 ? g.dice[0] === 6 : g.dice[0] === g.dice[1]; // joga de novo: 6 (com 1 dado) ou dobradinha (com 2)
+    if (g.dobrou) g.sixes++;
+    if (g.sixes === 3) { // três seguidos: perde a vez
+      log(room, `😬 ${nameOf(room, color)} tirou ${n === 1 ? "três 6" : "três dobradinhas"} seguidos e perdeu a vez.`);
+      g.stage = "pass"; g.legal = []; g.restam = [];
       return;
     }
-    g.legal = R.legalMoves(g.pawns, color, d, room.config);
-    if (!g.legal.length) g.stage = "pass";
-    else if (g.legal.length === 1 || g.legal.every((m) => m.from === g.legal[0].from)) g.stage = "auto"; // só uma jogada (ou peões iguais): anda sozinho
-    else g.stage = "move";
+    proximaJogada(room, true);
+  }
+  // jogadas possíveis com os dados que restam (cada uma diz qual dado usa: k). Dados iguais contam uma vez só.
+  function jogadas(room) {
+    const g = room.g, color = turnColor(g), out = [], vistos = new Set();
+    g.restam.forEach((d, k) => { if (vistos.has(d)) return; vistos.add(d); for (const m of R.legalMoves(g.pawns, color, d, room.config)) out.push({ ...m, k, d }); });
+    return out;
+  }
+  // depois de rolar ou de andar: escolhe o próximo passo (escolher peão, andar sozinho, passar ou acabar a vez)
+  function proximaJogada(room, rolou) {
+    const g = room.g;
+    g.legal = g.restam.length ? jogadas(room) : [];
+    if (!g.legal.length) {
+      g.restam = [];
+      if (rolou) { g.stage = "pass"; return; } // não deu para usar nenhum dado
+      return fimDaVez(room);
+    }
+    // só tem um jeito de jogar (ou os peões que podem andar estão juntos na base): anda sozinho
+    g.stage = g.legal.every((m) => m.from === g.legal[0].from && m.to === g.legal[0].to) ? "auto" : "move";
+  }
+  // acabaram os dados: joga de novo (6/dobradinha, comeu ou chegou em casa) ou passa a vez
+  function fimDaVez(room) {
+    const g = room.g, color = turnColor(g);
+    if ((g.dobrou || g.bonus) && !done(g, color)) { g.stage = "roll"; g.legal = []; if (!g.dobrou) g.sixes = 0; }
+    else nextTurn(room);
   }
   function move(room, m) {
     const g = room.g, color = turnColor(g);
+    g.restam.splice(m.k, 1); // esse dado já foi
     const caught = R.victims(g.pawns, color, m.to);
     g.pawns[color][m.i] = m.to;
     for (const v of caught) g.pawns[v.color][v.i] = -1;
@@ -89,9 +116,10 @@ module.exports = function attachLudo(io) {
       room.phase = "ended"; room.winner = g.ranking[0]; g.stage = "over"; g.legal = [];
       return;
     }
-    // joga de novo: tirou 6, comeu alguém ou chegou em casa (se ainda tiver peão para jogar)
-    if ((g.dice === 6 || caught.length || home) && !done(g, color)) { g.stage = "roll"; g.legal = []; if (g.dice !== 6) g.sixes = 0; }
-    else nextTurn(room);
+    // comeu alguém ou chegou em casa: ganha mais uma rolada (depois de usar os dados que sobraram)
+    if (caught.length || home) g.bonus = true;
+    if (done(g, color)) { g.restam = []; return nextTurn(room); }
+    proximaJogada(room, false);
   }
   // jogada automática: come > chega em casa > sai da base > o peão mais adiantado
   function bestMove(room) {
@@ -126,7 +154,7 @@ module.exports = function attachLudo(io) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config, winner: room.winner || null,
       players: room.order.map((id) => { const p = room.players[id]; return { id, name: p.name, pawn: p.pawn, color: p.color, online: p.sockets.size > 0 }; }),
-      game: g ? { colors: g.colors, pawns: g.pawns, turn: turnColor(g), dice: g.dice, sixes: g.sixes, stage: g.stage, legal: g.stage === "move" ? g.legal : [], rollSeq: g.rollSeq, moveSeq: g.moveSeq, last: g.last, ranking: g.ranking } : null,
+      game: g ? { colors: g.colors, pawns: g.pawns, turn: turnColor(g), dice: g.dice, restam: g.restam, sixes: g.sixes, stage: g.stage, legal: g.stage === "move" ? g.legal : [], rollSeq: g.rollSeq, moveSeq: g.moveSeq, last: g.last, ranking: g.ranking } : null,
       deadline: room.deadline, log: room.log.slice(-30), now: Date.now(),
     };
   }
@@ -251,7 +279,8 @@ module.exports = function attachLudo(io) {
       }
       if (type === "move") {
         if (g.stage !== "move") return "Role o dado primeiro.";
-        const m = g.legal.find((x) => x.i === int(data.i, -1));
+        const i = int(data.i, -1), k = int(data.k, -1);
+        const m = g.legal.find((x) => x.i === i && (k < 0 || x.k === k || g.restam[x.k] === g.restam[k])) || g.legal.find((x) => x.i === i);
         if (!m) return "Esse peão não pode andar com esse número.";
         move(room, m); return;
       }

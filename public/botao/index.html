@@ -497,6 +497,8 @@ function renderLobby() {
     <p class="hint">${rei ? "Quem ganha fica na mesa, quem perde vai para o fim da fila. Vale para qualquer número de jogadores." : "Semifinais e final (com 8: quartas também). Precisa de 4 ou 8 jogadores."}</p></div>`}
     <div class="field"><label>Tampinhas por time</label>${sel("tampinhas", B.TAMPINHAS.map((v) => [v, `${v} tampinhas${v === 5 ? " (padrão)" : ""}`]))}
     <p class="hint">A tampinha 1 guarda o gol. A formação escolhida vale com 5; com outra quantidade, a arrumação é fixa.</p></div>
+    <div class="field"><label>Mira</label>${seg("trajetoria", [["false", "🎯 Só a força"], ["true", "📐 Com trajetória"]])}
+    <p class="hint">${c.trajetoria ? "Aparece a linha até a peça em que a tampinha vai bater e, se for a bola, para onde ela vai." : "Só a seta com a força: onde a tampinha bate e para onde a bola vai é no olho."}</p></div>
     <div class="field"><label>Toques por vez</label>${sel("toques", [[2, "2 toques"], [3, "3 toques"], [4, "4 toques"]])}
     <p class="hint">Todo peteleco conta, mesmo sem encostar na bola (dá para usar um toque para se posicionar). Falta passa a vez na hora. Num time com mais gente, cada toque é de um: um passa, o outro recebe.</p></div>
     <div class="field"><label>Estádio</label>${sel("estadio", Object.entries(STADIUMS).map(([id, x]) => [id, x.home ? `${x.name} (casa do ${x.home})` : x.name]))}</div>
@@ -975,10 +977,22 @@ function drawGoalTags(c, kits) {
   }
 }
 function drawGuide(c, pieces, A) {
-  // só a seta de força: sem linha de trajetória (nem onde bate, nem para onde a bola vai), a mira é no olho
+  // padrão: só a seta de força (a mira é no olho). Com a "mira com trajetória" ligada na mesa, também a linha
+  // tracejada até a primeira peça e, se for a bola, a linha amarela para onde ela vai
   const p = pieces[A.i], dx = Math.cos(A.a), dy = Math.sin(A.a);
   const pw = A.p || 0;
   c.save(); c.lineCap = "round";
+  if (S && S.config && S.config.trajetoria) {
+    const tr = B.trace(pieces, A.i, dx, dy, view.open);
+    c.strokeStyle = A.mine ? "#ffffffc0" : "#ffffff80"; c.lineWidth = px(1.8); c.setLineDash([px(6), px(6)]);
+    c.beginPath(); c.moveTo(p.x + dx * RB, p.y + dy * RB); c.lineTo(tr.x, tr.y); c.stroke(); c.setLineDash([]);
+    if (tr.hit) {
+      const isBall = tr.hit.k === "ball", foe = tr.hit.k === "btn" && tr.hit.t !== p.t;
+      c.strokeStyle = foe ? "#ff6b6b" : "#ffffffc0"; c.lineWidth = px(1.8);
+      c.beginPath(); c.arc(tr.x, tr.y, RB, 0, 7); c.stroke();
+      if (isBall) { const ol = 18 + 60 * Math.max(0.15, tr.obj.k); c.strokeStyle = "#f2c14e"; c.lineWidth = px(3); c.beginPath(); c.moveTo(tr.hit.x, tr.hit.y); c.lineTo(tr.hit.x + tr.obj.dx * ol, tr.hit.y + tr.obj.dy * ol); c.stroke(); }
+    }
+  }
   // seta de força saindo da tampinha
   if (pw > 0) {
     const len = RB + px(8) + pw * Math.max(120, px(70)), ex = p.x + dx * len, ey = p.y + dy * len;
@@ -1157,7 +1171,7 @@ $("btnRules").onclick = () => {
   $("modalBox").innerHTML = `<h2>Como jogar</h2>
   <h3>Controles</h3><ul>
   <li><b>Chutar:</b> toque numa tampinha sua (a escolhida fica com o anel dourado), puxe para trás e solte, como um estilingue. A seta mostra a direção e a força. Para usar a mesma tampinha, dá para puxar de qualquer lugar do campo.</li>
-  <li><b>Mira:</b> a seta mostra só a direção e a força do peteleco. Onde a tampinha vai bater e para onde a bola vai, é no olho.</li>
+  <li><b>Mira:</b> a seta mostra a direção e a força do peteleco.${c.trajetoria ? " Nesta mesa a mira tem trajetória: a linha tracejada mostra em que peça a tampinha vai bater e, se for a bola, a linha amarela mostra para onde ela vai." : " Onde a tampinha vai bater e para onde a bola vai, é no olho (o organizador pode ligar a mira com trajetória)."}</li>
   <li><b>Teclado:</b> Tab troca de tampinha, ← → miram, ↑ ↓ mudam a força e Espaço chuta.</li></ul>
   <h3>A vez${S ? " (nesta mesa)" : ""}</h3><ul>
   <li>Cada time tem <b>${c.tampinhas || 5} tampinhas</b> e cada vez tem <b>${c.toques} toques</b>. Todo peteleco conta, mesmo sem encostar na bola: dá para usar um toque só para se posicionar.</li>

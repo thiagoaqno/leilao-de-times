@@ -132,6 +132,12 @@ label{display:block;font-size:14px;font-weight:700;margin:0 0 6px;color:var(--co
 .die.can{cursor:pointer;animation:ask 1s ease-in-out infinite}
 .die.can:focus-visible{outline:3px solid var(--yellow);outline-offset:4px}
 .die.rolling{animation:roll .5s linear}
+.dados{display:flex;gap:8px;flex:none}
+.dados .die{width:64px;height:64px;padding:10px}
+.dados .die i{width:11px;height:11px}
+.die.usado{opacity:.3;filter:grayscale(1)}
+.die.sel{box-shadow:inset 0 -5px 0 #d8c9ad,0 0 0 4px var(--yellow),0 6px 14px #0008}
+.die.pega{cursor:pointer}
 @keyframes ask{50%{transform:scale(1.07) rotate(-4deg)}}
 @keyframes roll{25%{transform:rotate(90deg) scale(.9)}50%{transform:rotate(180deg)}75%{transform:rotate(270deg) scale(.9)}100%{transform:rotate(360deg)}}
 .prompt{margin-top:12px;font-weight:700;min-height:1.4em}
@@ -214,7 +220,7 @@ label{display:block;font-size:14px;font-weight:700;margin:0 0 6px;color:var(--co
       <div class="boardwrap"><div class="board" id="board"><div class="grid" id="grid"></div><div class="tokens" id="tokens"></div></div></div>
       <div class="side">
         <div class="panel">
-          <div class="turn"><button class="die" id="die" aria-label="Rolar o dado"></button><div class="who" id="turnWho"></div></div>
+          <div class="turn"><div class="dados"><button class="die" id="die" aria-label="Rolar os dados"></button><button class="die" id="die2" aria-label="Segundo dado"></button></div><div class="who" id="turnWho"></div></div>
           <div class="timer" id="tbar"><i></i></div>
           <div class="prompt" id="prompt"></div>
         </div>
@@ -355,7 +361,7 @@ async function drain() {
     const g = S.game;
     if (S.phase === "lobby" || !g) { shown = null; lastRoll = null; lastMove = null; render(); continue; }
     if (!shown || !old || !old.game) { shown = JSON.parse(JSON.stringify(g.pawns)); lastRoll = g.rollSeq; lastMove = g.moveSeq; render(); continue; }
-    if (g.rollSeq !== lastRoll) { lastRoll = g.rollSeq; await rollDie(g.dice); }
+    if (g.rollSeq !== lastRoll) { lastRoll = g.rollSeq; dadoSel = null; await rollDie(g.dice); }
     if (g.moveSeq !== lastMove && g.last) { lastMove = g.moveSeq; render(); await animateMove(g.last); }
     shown = JSON.parse(JSON.stringify(g.pawns));
     render();
@@ -364,14 +370,18 @@ async function drain() {
   }
   playing = false;
 }
-async function rollDie(n) {
-  const d = $("die");
+async function rollDie(ns) {
+  const els = dadosEls();
   Sound.play("dice");
-  d.classList.remove("rolling"); void d.offsetWidth; d.classList.add("rolling");
-  for (let k = 0; k < 6; k++) { drawDie(1 + Math.floor(Math.random() * 6)); await sleep(70); }
-  drawDie(n);
+  for (const d of els) { d.classList.remove("rolling", "usado", "sel"); void d.offsetWidth; d.classList.add("rolling"); }
+  for (let k = 0; k < 6; k++) { els.forEach((d) => drawDie(1 + Math.floor(Math.random() * 6), d)); await sleep(70); }
+  els.forEach((d, j) => drawDie(ns[j], d));
   await sleep(120);
 }
+// 1 ou 2 dados (configuração da mesa)
+const nDados = () => (S && S.config.dados === 1 ? 1 : 2);
+const dadosEls = () => [$("die"), $("die2")].slice(0, nDados());
+let dadoSel = null; // com 2 dados: qual dado (posição em g.restam) o próximo peão vai usar
 async function animateMove(m) {
   const path = [];
   if (m.from < 0) path.push(0); else for (let p = m.from + 1; p <= m.to; p++) path.push(p);
@@ -409,13 +419,14 @@ function renderLobby() {
   if (isHost()) {
     $("cfg").innerHTML = `<div class="fields2">
         <div><label for="cPawns">Peões por jogador</label><select id="cPawns"><option value="4" ${c.pawns === 4 ? "selected" : ""}>4 peões (normal)</option><option value="2" ${c.pawns === 2 ? "selected" : ""}>2 peões (rápido)</option></select></div>
-        <div><label for="cTimer">Tempo por vez</label><select id="cTimer">${[20, 30, 45].map((n) => `<option value="${n}" ${n === c.timer ? "selected" : ""}>${n} segundos</option>`).join("")}</select></div></div>
+        <div><label for="cTimer">Tempo por vez</label><select id="cTimer">${[20, 30, 45].map((n) => `<option value="${n}" ${n === c.timer ? "selected" : ""}>${n} segundos</option>`).join("")}</select></div>
+        <div><label for="cDados">Dados</label><select id="cDados"><option value="2" ${c.dados !== 1 ? "selected" : ""}>2 dados (dobradinha joga de novo)</option><option value="1" ${c.dados === 1 ? "selected" : ""}>1 dado (6 joga de novo)</option></select></div></div>
       <label class="toggle"><input type="checkbox" id="cExit" ${c.exit16 ? "checked" : ""}><span>Sai da base com 1 ou 6<small>Normal é sair só com 6.</small></span></label>
       <label class="toggle"><input type="checkbox" id="cBar" ${c.barrier ? "checked" : ""}><span>Barreira<small>Dois peões da mesma cor juntos bloqueiam a passagem dos outros.</small></span></label>`;
-    const save = () => act("config", { config: { pawns: +$("cPawns").value, timer: +$("cTimer").value, exit16: $("cExit").checked, barrier: $("cBar").checked } });
-    ["cPawns", "cTimer", "cExit", "cBar"].forEach((id) => ($(id).onchange = save));
+    const save = () => act("config", { config: { pawns: +$("cPawns").value, timer: +$("cTimer").value, dados: +$("cDados").value, exit16: $("cExit").checked, barrier: $("cBar").checked } });
+    ["cPawns", "cTimer", "cDados", "cExit", "cBar"].forEach((id) => ($(id).onchange = save));
   } else {
-    $("cfg").innerHTML = `<p style="margin:0;line-height:1.7"><b>${c.pawns} peões</b> por jogador, <b>${c.timer} segundos</b> por vez.<br>Sai da base com ${c.exit16 ? "1 ou 6" : "6"}.${c.barrier ? " Com barreira." : ""}</p>`;
+    $("cfg").innerHTML = `<p style="margin:0;line-height:1.7"><b>${c.pawns} peões</b> por jogador, <b>${c.timer} segundos</b> por vez, com <b>${c.dados === 1 ? "1 dado" : "2 dados"}</b>.<br>Sai da base com ${c.exit16 ? "1 ou 6" : "6"}.${c.barrier ? " Com barreira." : ""}</p>`;
   }
   const n = S.players.length;
   $("startBox").innerHTML = isHost()
@@ -425,15 +436,22 @@ function renderLobby() {
 }
 
 const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-function drawDie(n) {
+function drawDie(n, el = $("die")) {
   const on = new Set(PIPS[n] || []);
-  $("die").innerHTML = Array.from({ length: 9 }, (_, i) => `<i class="${on.has(i) ? "on" : ""}"></i>`).join("");
-  $("die").classList.toggle("six", n === 6);
+  el.innerHTML = Array.from({ length: 9 }, (_, i) => `<i class="${on.has(i) ? "on" : ""}"></i>`).join("");
+  el.classList.toggle("six", n === 6);
+}
+// o dado escolhido para andar: o que o jogador tocou, ou o primeiro que tem jogada
+function dadoAtual(g) {
+  const tem = (k) => g.legal.some((m) => g.restam[m.k] === g.restam[k]);
+  if (dadoSel != null && dadoSel < g.restam.length && tem(dadoSel)) return dadoSel;
+  return g.restam.findIndex((_, k) => tem(k));
 }
 const myTurn = () => { const m = me(); return !!(m && S.game && S.phase === "playing" && S.game.turn === m.color); };
 
 function renderTokens(back) {
-  const g = S.game, legal = myTurn() && g.stage === "move" && !playingMove() ? new Set(g.legal.map((x) => x.i)) : new Set();
+  const g = S.game, k = g.stage === "move" ? dadoAtual(g) : -1;
+  const legal = myTurn() && g.stage === "move" && !playingMove() ? new Set(g.legal.filter((x) => g.restam[x.k] === g.restam[k]).map((x) => x.i)) : new Set();
   // peões na mesma casa ficam lado a lado
   const groups = {};
   const items = [];
@@ -450,21 +468,31 @@ function renderTokens(back) {
     const can = t.color === mine && legal.has(t.i);
     return `<button class="tok ${can ? "can" : ""} ${back ? "home" : ""}" style="--tc:var(--${t.color});left:${((t.c + dx) / 15) * 100}%;top:${(t.r / 15) * 100}%" ${can ? `data-i="${t.i}" aria-label="Mover este peão"` : `tabindex="-1" aria-hidden="true"`}></button>`;
   }).join("");
-  $("tokens").querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => act("move", { i: +b.dataset.i })));
+  $("tokens").querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => act("move", { i: +b.dataset.i, k })));
 }
 const playingMove = () => playing && Q.length > 0;
 function renderGame() {
   const g = S.game, m = me(), turnP = byColor(g.turn);
   $("board").style.transform = `rotate(${m ? ROT[m.color] : 0}deg)`;
   renderTokens();
-  if (g.dice) drawDie(g.dice); else if (!$("die").innerHTML) drawDie(6);
-  const can = myTurn() && g.stage === "roll";
-  $("die").classList.toggle("can", can);
-  $("die").disabled = !can;
-  $("turnWho").innerHTML = S.phase === "ended" ? `<b>Fim de jogo</b>` : `<b style="color:var(--${g.turn})">${myTurn() ? "Sua vez" : `Vez de ${h(turnP ? turnP.name : L.NAMES[g.turn])}`}</b><small>${L.NAMES[g.turn]}${g.sixes ? ` · ${g.sixes} seis seguido${g.sixes > 1 ? "s" : ""}` : ""}</small>`;
+  // dados: os já usados ficam apagados; na hora de andar (com 2 dados), toca num dado para escolher qual usar
+  const els = dadosEls(), dice = Array.isArray(g.dice) ? g.dice : g.dice ? [g.dice] : null;
+  $("die2").classList.toggle("hidden", nDados() < 2);
+  els.forEach((d, j) => { if (dice && dice[j]) drawDie(dice[j], d); else if (!d.innerHTML) drawDie(6, d); });
+  const can = myTurn() && g.stage === "roll", escolhe = myTurn() && g.stage === "move" && nDados() === 2;
+  const restam = [...(g.restam || [])], usados = dice && g.stage !== "roll" ? dice.map((v) => { const i = restam.indexOf(v); if (i >= 0) { restam.splice(i, 1); return false; } return true; }) : [];
+  const ka = g.stage === "move" ? dadoAtual(g) : -1, valSel = ka >= 0 ? g.restam[ka] : null;
+  let marcou = false;
+  els.forEach((d, j) => {
+    d.classList.toggle("can", can); d.disabled = !(can || escolhe);
+    d.classList.toggle("usado", !!usados[j] && S.phase === "playing");
+    const sel = escolhe && !usados[j] && dice && dice[j] === valSel && !marcou; if (sel) marcou = true;
+    d.classList.toggle("sel", !!sel); d.classList.toggle("pega", escolhe && !usados[j]);
+  });
+  $("turnWho").innerHTML = S.phase === "ended" ? `<b>Fim de jogo</b>` : `<b style="color:var(--${g.turn})">${myTurn() ? "Sua vez" : `Vez de ${h(turnP ? turnP.name : L.NAMES[g.turn])}`}</b><small>${L.NAMES[g.turn]}${g.sixes ? ` · ${g.sixes} ${nDados() === 2 ? "dobradinha" : "seis"}${g.sixes > 1 ? "s" : ""} seguid${nDados() === 2 ? "a" : "o"}${g.sixes > 1 ? "s" : ""}` : ""}</small>`;
   let msg = "";
   if (S.phase === "playing") {
-    if (myTurn()) msg = g.stage === "roll" ? "Toque no dado para rolar." : g.stage === "move" ? "Escolha qual peão anda (os que estão pulando)." : g.stage === "pass" ? (g.sixes === 3 ? "Três 6 seguidos: perdeu a vez." : "Nenhum peão pode andar. Passou a vez.") : "";
+    if (myTurn()) msg = g.stage === "roll" ? `Toque ${nDados() === 2 ? "nos dados" : "no dado"} para rolar.` : g.stage === "move" ? (nDados() === 2 && (g.restam || []).length > 1 ? `Usando o ${valSel} (toque no outro dado para trocar): escolha o peão que pula.` : "Escolha qual peão anda (os que estão pulando).") : g.stage === "pass" ? (g.sixes === 3 ? (nDados() === 2 ? "Três dobradinhas seguidas: perdeu a vez." : "Três 6 seguidos: perdeu a vez.") : "Nenhum peão pode andar. Passou a vez.") : "";
     else msg = g.stage === "pass" ? "Nenhum peão pode andar com esse número." : "";
   }
   $("prompt").textContent = msg;
@@ -479,7 +507,12 @@ function renderGame() {
     if ($("btnAgain")) $("btnAgain").onclick = () => act("restart");
   } else $("overBox").innerHTML = "";
 }
-$("die").onclick = () => { if (myTurn() && S.game.stage === "roll") act("roll"); };
+// toca num dado: na hora de rolar, rola; na hora de andar (2 dados), escolhe qual dado usar
+for (const [j, id] of [[0, "die"], [1, "die2"]]) $(id).onclick = () => {
+  const g = S && S.game; if (!myTurn() || !g) return;
+  if (g.stage === "roll") return act("roll");
+  if (g.stage === "move" && nDados() === 2 && Array.isArray(g.dice)) { const k = (g.restam || []).indexOf(g.dice[j]); if (k >= 0 && g.legal.some((m) => g.restam[m.k] === g.restam[k])) { dadoSel = k; renderGame(); } else toast("Esse dado não tem jogada.", 1500); }
+};
 document.addEventListener("keydown", (e) => {
   if (e.target.closest("input,select,textarea")) return;
   if ((e.code === "Space" || e.key === "Enter") && myTurn() && S.game.stage === "roll" && e.target === document.body) { e.preventDefault(); act("roll"); }
@@ -499,8 +532,8 @@ setInterval(() => {
 $("btnRules").onclick = () => {
   $("modalBox").innerHTML = `<h2>Como joga</h2>
     <p>Cada um tem 4 peões (ou 2, no modo rápido) na base. Ganha quem levar todos para o centro primeiro, dando a volta no tabuleiro e entrando pela reta da sua cor.</p>
-    <h3>O dado</h3>
-    <ul><li>Para sair da base precisa tirar 6 (ou 1 ou 6, se o organizador ligar essa opção).</li><li>Tirou 6, joga de novo. Três 6 seguidos perdem a vez.</li><li>Para entrar em casa precisa do número exato.</li></ul>
+    <h3>Os dados</h3>
+    <ul><li><b>Com 2 dados</b> (o padrão): cada dado é uma jogada. Usa um num peão e o outro no mesmo peão ou em outro (toque no dado para escolher qual usar). <b>Dobradinha</b> (os dois iguais) joga de novo; três dobradinhas seguidas perdem a vez.</li><li><b>Com 1 dado:</b> tirou 6, joga de novo; três 6 seguidos perdem a vez.</li><li>Para sair da base precisa de um 6 num dos dados (ou 1 ou 6, se o organizador ligar essa opção).</li><li>Para entrar em casa precisa do número exato.</li></ul>
     <h3>Comer</h3>
     <ul><li>Parou em cima de um peão sozinho de outra cor, ele volta para a base e você joga de novo.</li><li>Nas casas com estrela (as saídas e as estrelas vazadas) ninguém come ninguém.</li><li>Dois peões da mesma cor juntos formam uma torre: ninguém come e ninguém para em cima. Com a barreira ligada, ninguém passa também.</li><li>Chegou um peão em casa, joga de novo.</li></ul>
     <h3>Tempo</h3>

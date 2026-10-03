@@ -49,6 +49,7 @@ module.exports = function attachBotao(io) {
       goleiro: c.goleiro !== false,                      // bloquinho na frente do gol: o time arruma na própria vez, fica parado na do outro
       estadio: pick(c.estadio, STADIUMS, "mesa"),
       tampinhas: pick(int(c.tampinhas, 5), F.TAMPINHAS, 5),  // tampinhas por time (a 1 guarda o gol)
+      trajetoria: !!c.trajetoria,                        // mira com a linha de trajetória (onde bate e para onde a bola vai); padrão: só a força
     };
   }
 
