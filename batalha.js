@@ -2,11 +2,10 @@
 // Cada navegador dirige o próprio kart e manda a posição ~30 vezes por segundo.
 // O servidor manda nos ITENS: caixas, cascos, bananas, bombas, balões e pontos (regras em public/batalha/regras.js).
 // Ele roda 60 vezes por segundo (robôs, itens, batidas) e manda UM pacote por jogador 20 vezes por segundo.
-const crypto = require("crypto");
 const R = require("./public/batalha/regras.js");
+const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js"); // as peças de sala que todo jogo repete
 
 const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3500, MAX_KARTS = 8;
-const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -16,12 +15,6 @@ module.exports = function attachBatalha(io) {
   const nsp = io.of("/batalha");
   const rooms = new Map();
 
-  function newCode() {
-    const L = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let c;
-    do { c = Array.from({ length: 5 }, () => L[Math.floor(Math.random() * L.length)]).join(""); } while (rooms.has(c));
-    return c;
-  }
   const cleanConfig = (c = {}) => ({
     minutes: [2, 3, 5].includes(int(c.minutes, 3)) ? int(c.minutes, 3) : 3,
     bots: clamp(int(c.bots, 0), 0, MAX_KARTS - 1),
@@ -107,33 +100,20 @@ module.exports = function attachBatalha(io) {
 
   // ---------- conexões ----------
   nsp.on("connection", (socket) => {
-    const ok = (cb, extra = {}) => cb && cb({ ok: true, ...extra });
-    const fail = (cb, error) => cb && cb({ ok: false, error });
-    const ctx = () => {
-      const room = socket.data.code && rooms.get(socket.data.code);
-      return { room, me: room && socket.data.pid ? room.players[socket.data.pid] : null };
-    };
+    const ctx = () => contexto(socket, rooms);
     const kartOf = (room, me) => room && me && room.match && room.match.players.find((k) => k.id === me.id);
-    function bind(room, pid) {
-      const old = ctx();
-      if (old.me) old.me.sockets.delete(socket.id);
-      if (old.room) socket.leave(old.room.code);
-      socket.data.code = room.code; socket.data.pid = pid;
-      socket.join(room.code);
-      if (pid) room.players[pid].sockets.add(socket.id);
-    }
+    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
     function addPlayer(room, name) {
       const id = rid(6);
       room.players[id] = { id, token: rid(12), n: room.seq++, name, color: Math.max(0, freeColor(room)), rtt: null, sockets: new Set() };
       room.order.push(id);
       return room.players[id];
     }
-    const cleanName = (s) => Array.from(String(s || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
 
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], seq: 0, match: null, results: null, feed: [], t: Date.now() };
+      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], seq: 0, match: null, results: null, feed: [], t: Date.now() };
       rooms.set(room.code, room);
       const p = addPlayer(room, name);
       room.host = p.id;
@@ -144,16 +124,16 @@ module.exports = function attachBatalha(io) {
     });
 
     socket.on("join", (data = {}, cb) => {
-      const room = rooms.get(String(data.code || "").toUpperCase().trim());
+      const room = buscarSala(rooms, data.code);
       if (!room) return fail(cb, "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu).");
-      const back = data.id && room.players[data.id] && room.players[data.id].token === data.token ? room.players[data.id] : null;
+      const back = quemVolta(room, data);
       if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
       if (data.watch) { bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room); }
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
       if (room.phase === "play") return fail(cb, "A batalha já começou. Entre para assistir e jogue a próxima.");
       if (room.order.length >= MAX_KARTS) return fail(cb, "A arena está cheia (8 karts). Você pode entrar para assistir.");
-      if (Object.values(room.players).some((p) => p.name.toLowerCase() === name.toLowerCase())) return fail(cb, "Já tem alguém com esse nome na sala.");
+      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na sala.");
       const p = addPlayer(room, name);
       room.config.bots = Math.min(room.config.bots, MAX_KARTS - room.order.length);
       bind(room, p.id);
@@ -239,24 +219,12 @@ module.exports = function attachBatalha(io) {
   });
 
   // ping de cada jogador
-  setInterval(() => {
-    for (const room of rooms.values()) for (const id of room.order) {
-      const p = room.players[id];
-      for (const sid of p.sockets) {
-        const s = nsp.sockets.get(sid); if (!s) continue;
-        const t0 = Date.now();
-        s.timeout(2000).emit("png", (err) => { if (!err) { const rtt = Date.now() - t0; p.rtt = p.rtt == null ? rtt : p.rtt * 0.6 + rtt * 0.4; } });
-      }
-    }
-  }, 2000).unref?.();
+  medirPing(nsp, rooms);
 
   // salas paradas há mais de 6 horas somem; jogo sem ninguém conectado para
-  setInterval(() => {
-    const now = Date.now();
-    for (const [code, r] of rooms) {
-      const anyone = r.order.some((id) => r.players[id].sockets.size);
-      if (r.loop && !anyone) { clearInterval(r.loop); r.loop = null; r.phase = "lobby"; r.match = null; }
-      if (now - r.t > 6 * 3600e3) { clearInterval(r.loop); rooms.delete(code); }
-    }
-  }, 60000).unref?.();
+  limparSalasParadas(rooms, {
+    horas: 6, intervalo: 60000,
+    cadaVolta: (r) => { const anyone = r.order.some((id) => r.players[id].sockets.size); if (r.loop && !anyone) { clearInterval(r.loop); r.loop = null; r.phase = "lobby"; r.match = null; } },
+    aoApagar: (r) => clearInterval(r.loop),
+  });
 };

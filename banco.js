@@ -1,9 +1,9 @@
 // Banco da Galera — jogo de tabuleiro de compra e venda de imóveis, até 6 jogadores.
 // Roda no mesmo servidor do leilão, num canal separado do Socket.io ("/banco").
 // Todas as regras ficam aqui; o navegador só mostra o estado e manda as ações.
-const crypto = require("crypto");
 // TB = módulo do tabuleiro (makeBoard e o que não depende do tamanho). Cada mesa guarda o seu tabuleiro em room.T.
 const TB = require("./public/banco/tabuleiro.js");
+const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 
 const MAX_PLAYERS = 8; // o tabuleiro normal aceita até 6; o grande, até 8
 const TURN_MS = +process.env.BANCO_TURN_MS || 40000, TURN_MS_OFFLINE = Math.min(TURN_MS, 15000); // tempo de cada jogada (quem caiu da internet tem menos)
@@ -12,7 +12,6 @@ const ANIM = process.env.BANCO_ANIM != null ? +process.env.BANCO_ANIM : 1;
 const DICE_MS = 850, STEP_MS = 190, FAST_MS = 110, CARD_MS = 2600, BEAT_MS = 700, JAIL_MS = 1000;
 const AUCTION_FIRST = 15000, AUCTION_BID = 8000; // ms: tempo inicial do leilão e tempo depois de cada lance
 const AUCTION_COMMISSION = 0.1; // quem mandou a leilão fica com 10% do lance vencedor (pago pelo banco)
-const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -22,12 +21,6 @@ module.exports = function attachBanco(io) {
   const nsp = io.of("/banco");
   const rooms = new Map();
 
-  function newCode() {
-    const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let c;
-    do { c = Array.from({ length: 5 }, () => A[Math.floor(Math.random() * A.length)]).join(""); } while (rooms.has(c));
-    return c;
-  }
   function cleanConfig(c = {}) {
     return {
       startCash: clamp(int(c.startCash, 1500), 500, 5000),
@@ -636,20 +629,8 @@ module.exports = function attachBanco(io) {
 
   // ---------- conexões ----------
   nsp.on("connection", (socket) => {
-    let bound = null; // { code, pid }
-    const ok = (cb, extra = {}) => cb && cb({ ok: true, ...extra });
-    const fail = (cb, error) => cb && cb({ ok: false, error });
-    const ctx = () => {
-      if (!bound) return {};
-      const room = rooms.get(bound.code);
-      return { room, me: room && bound.pid ? room.players[bound.pid] : null };
-    };
-    function bind(room, pid) {
-      if (bound) { const r = rooms.get(bound.code); if (r && bound.pid && r.players[bound.pid]) r.players[bound.pid].sockets.delete(socket.id); socket.leave(bound.code); }
-      bound = { code: room.code, pid };
-      socket.join(room.code);
-      if (pid) room.players[pid].sockets.add(socket.id);
-    }
+    const ctx = () => contexto(socket, rooms);
+    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
     function addPlayer(room, name) {
       const used = new Set(Object.values(room.players).map((p) => p.pawn));
       const usedC = new Set(Object.values(room.players).map((p) => p.color));
@@ -659,13 +640,12 @@ module.exports = function attachBanco(io) {
       balanceTeams(room); // no modo equipes, entra na equipe com menos gente
       return room.players[id];
     }
-    const cleanName = (n) => Array.from(String(n || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
 
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
       const room = {
-        code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], turn: 0, round: 1,
+        code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], turn: 0, round: 1,
         stage: null, dice: null, doublesCount: 0, stepNo: 0, gen: 0, fx: [], fxSeq: 0, hasRolled: false, choice: null, choiceResolve: null, event: null, eventSeq: 0, lastEvent: null, deadline: null, turnTimer: null, gameTimer: null, endsAt: null, forceArm: false, rollAgain: false, props: {}, jackpot: 0, debts: [], buyOffer: null,
         auction: null, trades: {}, deck: [], heldCards: [], card: null, move: null, log: [], seq: 0, t: Date.now(), winner: null,
       };
@@ -680,10 +660,10 @@ module.exports = function attachBanco(io) {
     });
 
     socket.on("join", (data = {}, cb) => {
-      const room = rooms.get(String(data.code || "").toUpperCase().trim());
+      const room = buscarSala(rooms, data.code);
       if (!room) return fail(cb, "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu).");
       // volta de quem caiu
-      const back = data.id && room.players[data.id] && room.players[data.id].token === data.token ? room.players[data.id] : null;
+      const back = quemVolta(room, data);
       if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
       if (data.watch || room.phase !== "lobby") {
         if (!data.watch && room.phase !== "lobby") return fail(cb, "O jogo já começou. Você pode entrar para assistir.");
@@ -692,7 +672,7 @@ module.exports = function attachBanco(io) {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
       if (room.order.length >= MAX_PLAYERS) return fail(cb, `A mesa já tem ${MAX_PLAYERS} jogadores. Você pode entrar para assistir.`);
-      if (Object.values(room.players).some((p) => p.name.toLowerCase() === name.toLowerCase())) return fail(cb, "Já tem alguém com esse nome na mesa.");
+      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na mesa.");
       const p = addPlayer(room, name);
       bind(room, p.id);
       log(room, `${name} sentou à mesa.`);
@@ -980,8 +960,5 @@ module.exports = function attachBanco(io) {
   });
 
   // mesas paradas há mais de 12 horas somem
-  setInterval(() => {
-    const now = Date.now();
-    for (const [code, r] of rooms) if (now - r.t > 12 * 3600e3) { clearAuction(r); stopClocks(r); rooms.delete(code); }
-  }, 3600e3).unref?.();
+  limparSalasParadas(rooms, { aoApagar: (r) => { clearAuction(r); stopClocks(r); } });
 };

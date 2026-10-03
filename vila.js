@@ -5,8 +5,8 @@
 // Cada pessoa tem um id público (o que os outros veem) e um "token" secreto guardado na aba.
 // Se a conexão cair no meio de uma batalha (celular bloqueou, trocou de rede, a aba recarregou…),
 // a pessoa tem RECONNECT_MS para voltar com o mesmo token e a batalha continua de onde parou.
-const crypto = require("crypto");
 const G = require("./galeramon.js");
+const { rid, limparNome: cleanName } = require("./salas.js");
 const MW = 34, MH = 40, LOOKS = 6, MAX = 80;
 const INVITE_MS = 20000, CHOICE_MS = 45000, RECONNECT_MS = +process.env.VILA_RECONNECT_MS || 45000;
 const POKEMON_ON = process.env.POKEMON !== "0"; // modo Pokémon (sprites do PokeAPI). POKEMON=0 desliga.
@@ -14,7 +14,6 @@ const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "ludo", "b
 const DIRS = ["up", "down", "left", "right"];
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const cleanName = (s) => Array.from(String(s || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
 const cleanToken = (t) => (typeof t === "string" && /^[a-f0-9]{16,64}$/.test(t) ? t : null);
 
 module.exports = function attachVila(io) {
@@ -100,7 +99,7 @@ module.exports = function attachVila(io) {
     socket.on("hello", (d = {}) => {
       const name = cleanName(d.name);
       if (!name) return;
-      const token = cleanToken(d.token) || crypto.randomBytes(16).toString("hex");
+      const token = cleanToken(d.token) || rid();
       const look = clamp(int(d.look, 0), 0, LOOKS - 1);
       const back = byToken.get(token);
       if (back && back !== me) { // voltou depois de cair: assume o mesmo jogador (e a batalha, se tiver)
@@ -122,7 +121,7 @@ module.exports = function attachVila(io) {
       if (!me && players.size >= MAX) return socket.emit("full");
       const fresh = !me;
       if (fresh) {
-        me = { id: crypto.randomBytes(6).toString("hex"), token, sock: socket.id, battle: null, offline: false };
+        me = { id: rid(6), token, sock: socket.id, battle: null, offline: false };
         players.set(me.id, me); byToken.set(token, me);
       }
       Object.assign(me, { name, look, x: clamp(int(d.x, 16), 0, MW - 1), y: clamp(int(d.y, 13), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down" });

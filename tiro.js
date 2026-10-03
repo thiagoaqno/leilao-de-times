@@ -4,8 +4,8 @@
 // Os tiros são conferidos AQUI: o servidor guarda o último segundo de posições de cada um e "volta no tempo"
 // (compensação de lag) para ver onde o alvo estava na tela de quem atirou, testando paredes, cabeça, corpo e pernas.
 // Quem decide dano, morte, rodada e placar é o servidor.
-const crypto = require("crypto");
 const A = require("./public/tiro/arena.js");
+const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js"); // as peças de sala que todo jogo repete
 
 const FREEZE_MS = 4000, ROUND_MS = 100000, END_MS = 4500, INTERP_MS = 100, MAX_REWIND_MS = 300, HIST_MS = 1000;
 const NAMES = { A: "Azul", B: "Laranja" };
@@ -16,7 +16,6 @@ function refill(p) {
   for (const w of [p.w, "deagle"]) p.ammo[w] = { mag: A.WEAPONS[w].mag, res: A.WEAPONS[w].reserve };
   p.cur = p.w; p.reloadUntil = 0;
 }
-const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -25,12 +24,6 @@ module.exports = function attachTiro(io) {
   const nsp = io.of("/tiro");
   const rooms = new Map();
 
-  function newCode() {
-    const L = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let c;
-    do { c = Array.from({ length: 5 }, () => L[Math.floor(Math.random() * L.length)]).join(""); } while (rooms.has(c));
-    return c;
-  }
   const cleanConfig = (c = {}) => ({
     size: int(c.size, 1) === 2 ? 2 : 1,
     rounds: [3, 5, 8].includes(int(c.rounds, 5)) ? int(c.rounds, 5) : 5,
@@ -123,20 +116,8 @@ module.exports = function attachTiro(io) {
 
   // ---------- conexões ----------
   nsp.on("connection", (socket) => {
-    const ok = (cb, extra = {}) => cb && cb({ ok: true, ...extra });
-    const fail = (cb, error) => cb && cb({ ok: false, error });
-    const ctx = () => {
-      const room = socket.data.code && rooms.get(socket.data.code);
-      return { room, me: room && socket.data.pid ? room.players[socket.data.pid] : null };
-    };
-    function bind(room, pid) {
-      const old = ctx();
-      if (old.me) old.me.sockets.delete(socket.id);
-      if (old.room) socket.leave(old.room.code);
-      socket.data.code = room.code; socket.data.pid = pid;
-      socket.join(room.code);
-      if (pid) room.players[pid].sockets.add(socket.id);
-    }
+    const ctx = () => contexto(socket, rooms);
+    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
     function addPlayer(room, name) {
       const id = rid(6), a = teamOf(room, "A").length, b = teamOf(room, "B").length, size = room.config.size;
       const team = a <= b && a < size ? "A" : b < size ? "B" : null; // sobrou? fica no banco esperando vaga
@@ -146,12 +127,11 @@ module.exports = function attachTiro(io) {
       room.order.push(id);
       return room.players[id];
     }
-    const cleanName = (s) => Array.from(String(s || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
 
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], seq: 0, score: { A: 0, B: 0 }, round: null, kills: [], feed: [], t: Date.now() };
+      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], seq: 0, score: { A: 0, B: 0 }, round: null, kills: [], feed: [], t: Date.now() };
       rooms.set(room.code, room);
       const p = addPlayer(room, name);
       room.host = p.id;
@@ -162,15 +142,15 @@ module.exports = function attachTiro(io) {
     });
 
     socket.on("join", (data = {}, cb) => {
-      const room = rooms.get(String(data.code || "").toUpperCase().trim());
+      const room = buscarSala(rooms, data.code);
       if (!room) return fail(cb, "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu).");
-      const back = data.id && room.players[data.id] && room.players[data.id].token === data.token ? room.players[data.id] : null;
+      const back = quemVolta(room, data);
       if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
       if (data.watch) { bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room); }
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
       if (room.order.length >= 10) return fail(cb, "A sala está cheia. Você pode entrar para assistir.");
-      if (Object.values(room.players).some((p) => p.name.toLowerCase() === name.toLowerCase())) return fail(cb, "Já tem alguém com esse nome na sala.");
+      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na sala.");
       const p = addPlayer(room, name);
       if (room.phase !== "lobby") p.team = null; // partida rolando: entra no banco
       bind(room, p.id);
@@ -317,23 +297,8 @@ module.exports = function attachTiro(io) {
   });
 
   // ping de cada jogador (usado na compensação de lag e mostrado no placar)
-  setInterval(() => {
-    for (const room of rooms.values()) {
-      if (room.phase === "lobby" && !room.order.length) continue;
-      for (const id of room.order) {
-        const p = room.players[id];
-        for (const sid of p.sockets) {
-          const s = nsp.sockets.get(sid); if (!s) continue;
-          const t0 = Date.now();
-          s.timeout(2000).emit("png", (err) => { if (!err) { const rtt = Date.now() - t0; p.rtt = p.rtt == null ? rtt : p.rtt * 0.6 + rtt * 0.4; } });
-        }
-      }
-    }
-  }, 2000).unref?.();
+  medirPing(nsp, rooms, (room) => room.phase === "lobby" && !room.order.length);
 
   // salas paradas há mais de 6 horas somem
-  setInterval(() => {
-    const now = Date.now();
-    for (const [code, r] of rooms) if (now - r.t > 6 * 3600e3) { clearTimeout(r.timer); rooms.delete(code); }
-  }, 3600e3).unref?.();
+  limparSalasParadas(rooms, { horas: 6, aoApagar: (r) => { clearTimeout(r.timer); } });
 };

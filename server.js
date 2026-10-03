@@ -2,12 +2,12 @@
 const express = require("express");
 const http = require("http");
 const path = require("path");
-const crypto = require("crypto");
 const { Server } = require("socket.io");
 const { simulate, FORMATIONS } = require("./simulador.js");
 const { cleanPins } = require("./public/escalacao.js");
 const Juri = require("./juri.js");
 const Ratings = require("./public/ratings.js");
+const { rid, novoCodigo, buscarSala } = require("./salas.js");
 const ALL_FORMATIONS = new Set(["auto", ...Object.keys(FORMATIONS.futsal), ...Object.keys(FORMATIONS.futebol)]);
 
 const app = express();
@@ -101,13 +101,6 @@ function cleanComp(c, perTeam) {
   return { mode, slots, req };
 }
 const num = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
-const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
-function newCode() {
-  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let c;
-  do { c = Array.from({ length: 5 }, () => A[Math.floor(Math.random() * A.length)]).join(""); } while (rooms.has(c));
-  return c;
-}
 
 function slotsLeft(room, cap) { return room.config.perTeam - cap.team.length; }
 function maxBid(room, cap) {
@@ -330,7 +323,7 @@ io.on("connection", (socket) => {
       const terms = cleanTerms(data.terms);
       if (players.length < 2) return fail(cb, `Coloque pelo menos 2 ${terms.items} na lista.`);
       if (coins < perTeam * minBid) return fail(cb, `Com lance mínimo ${minBid}, cada participante precisa de pelo menos ${perTeam * minBid} moedas.`);
-      const code = newCode();
+      const code = novoCodigo(rooms);
       const hostToken = rid();
       const room = {
         code, hostToken, hostSockets: new Set([socket.id]), watchers: new Set(), hostCap: null,
@@ -356,7 +349,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join", (data, cb) => {
-    const room = rooms.get(String(data.code || "").toUpperCase().trim());
+    const room = buscarSala(rooms, data.code);
     if (!room) return fail(cb, "Sala não encontrada. Confira o código.");
     socket.join(room.code);
     // host reconnect

@@ -2,14 +2,13 @@
 // 2 a 4 jogadores, cada um com uma cor. Os dados são rolados aqui no servidor (ninguém escolhe o número).
 // Com 2 dados (o padrão), cada dado é uma jogada: usa um num peão e o outro no mesmo ou em outro peão. Dobradinha
 // (os dois iguais) joga de novo; três dobradinhas seguidas perdem a vez. Com 1 dado, é o ludo de sempre (6 joga de novo).
-const crypto = require("crypto");
 const R = require("./public/ludo/regras.js");
+const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 
 const OFFLINE_MS = 8000; // quem caiu não segura a vez dos outros
 const AUTO_MS = +process.env.LUDO_AUTO_MS || 650; // só tinha uma jogada: anda sozinho depois de mostrar o dado
 const PASS_MS = +process.env.LUDO_PASS_MS || 1300; // não tinha jogada: mostra o dado e passa a vez
 const PAWNS = ["😎", "🤠", "👽", "🤖", "🐸", "🦊", "🐼", "🐯", "🦄", "🐙", "👻", "🤡", "🦁", "🐵", "🐧", "🍻"];
-const rid = (n = 16) => crypto.randomBytes(n).toString("hex");
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 
 function cleanConfig(c = {}) {
@@ -26,12 +25,6 @@ module.exports = function attachLudo(io) {
   const nsp = io.of("/ludo");
   const rooms = new Map();
 
-  function newCode() {
-    const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let c;
-    do { c = Array.from({ length: 5 }, () => A[Math.floor(Math.random() * A.length)]).join(""); } while (rooms.has(c));
-    return c;
-  }
   const byColor = (room, color) => Object.values(room.players).find((p) => p.color === color);
   const nameOf = (room, color) => { const p = byColor(room, color); return p ? p.name : R.NAMES[color]; };
   function log(room, text) { room.log.push({ t: Date.now(), text }); if (room.log.length > 120) room.log.splice(0, room.log.length - 120); }
@@ -166,20 +159,8 @@ module.exports = function attachLudo(io) {
 
   // ---------- conexões ----------
   nsp.on("connection", (socket) => {
-    const ok = (cb, extra = {}) => cb && cb({ ok: true, ...extra });
-    const fail = (cb, error) => cb && cb({ ok: false, error });
-    const ctx = () => {
-      const room = socket.data.code && rooms.get(socket.data.code);
-      return { room, me: room && socket.data.pid ? room.players[socket.data.pid] : null };
-    };
-    function bind(room, pid) {
-      const old = ctx();
-      if (old.me) old.me.sockets.delete(socket.id);
-      if (old.room) socket.leave(old.room.code);
-      socket.data.code = room.code; socket.data.pid = pid;
-      socket.join(room.code);
-      if (pid) room.players[pid].sockets.add(socket.id);
-    }
+    const ctx = () => contexto(socket, rooms);
+    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
     function addPlayer(room, name) {
       const usedPawn = new Set(Object.values(room.players).map((p) => p.pawn));
       const usedColor = new Set(Object.values(room.players).map((p) => p.color));
@@ -190,12 +171,11 @@ module.exports = function attachLudo(io) {
       room.order.push(id);
       return room.players[id];
     }
-    const cleanName = (s) => Array.from(String(s || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
 
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: newCode(), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], g: null, timer: null, deadline: null, log: [], t: Date.now() };
+      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], g: null, timer: null, deadline: null, log: [], t: Date.now() };
       rooms.set(room.code, room);
       const p = addPlayer(room, name);
       room.host = p.id;
@@ -206,9 +186,9 @@ module.exports = function attachLudo(io) {
     });
 
     socket.on("join", (data = {}, cb) => {
-      const room = rooms.get(String(data.code || "").toUpperCase().trim());
+      const room = buscarSala(rooms, data.code);
       if (!room) return fail(cb, "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu).");
-      const back = data.id && room.players[data.id] && room.players[data.id].token === data.token ? room.players[data.id] : null;
+      const back = quemVolta(room, data);
       if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
       if (data.watch || room.phase !== "lobby") {
         if (!data.watch) return fail(cb, "O jogo já começou. Você pode entrar para assistir.");
@@ -217,7 +197,7 @@ module.exports = function attachLudo(io) {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
       if (room.order.length >= 4) return fail(cb, "A mesa já tem 4 jogadores. Você pode entrar para assistir.");
-      if (Object.values(room.players).some((p) => p.name.toLowerCase() === name.toLowerCase())) return fail(cb, "Já tem alguém com esse nome na mesa.");
+      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na mesa.");
       const p = addPlayer(room, name);
       bind(room, p.id);
       log(room, `${name} sentou à mesa.`);
@@ -296,8 +276,5 @@ module.exports = function attachLudo(io) {
   });
 
   // mesas paradas há mais de 12 horas são apagadas
-  setInterval(() => {
-    const now = Date.now();
-    for (const [code, r] of rooms) if (now - r.t > 12 * 3600e3) { clearTimeout(r.timer); rooms.delete(code); }
-  }, 3600e3).unref?.();
+  limparSalasParadas(rooms, { aoApagar: (r) => { clearTimeout(r.timer); } });
 };
