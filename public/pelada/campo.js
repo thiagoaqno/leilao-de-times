@@ -410,27 +410,43 @@
     const dono = conduz(F, b, bodies, dt); if (dono) touch = dono;
     return { hit, touch };
   }
-  // Condução com TOQUES (como no FIFA): quem está mais perto da bola (rasteira, até ~1,15 m) fica com ela "no pé".
-  //  - Parado, andando devagar ou virando forte: a bola fica colada num ponto na frente do pé (na meia-volta, uma
-  //    puxada de sola para pertinho do pé).
-  //  - Correndo: o jogador dá toques. Quando a bola volta para perto do pé, ele empurra ela para a frente; ela rola
-  //    na frente dele perdendo velocidade e ele alcança para o próximo toque. Correndo, a bola abre ~1,3 m; no pique,
-  //    ~1,9 m (mais rápido, mas mais exposto). Entre um toque e outro a bola continua dele (até TOQUE_R) e acompanha
-  //    as curvas aos poucos (ainda dá para controlar); quem chegar bem antes dela, toma.
-  //  b.toqueDe: quem deu o último toque; b.toques: contador (o navegador mexe a perna a cada toque).
-  // Quanto a bola abre: rolando, v(t) = v0·e^(−k·t) (k = F.roll). Saindo com a velocidade do jogador (sp) mais um extra
-  // e, a distância máxima entre os dois (quando a bola fica tão lenta quanto ele) é ~ e²/(2·k·sp). Então, para abrir
-  // `avanco` metros, e = √(2·k·sp·avanco) (com uma folga de 10%).
+  // Condução com TOQUES (estilo FIFA Volta): quem está mais perto da bola rasteira (até ~1,15 m) fica com ela "no pé".
+  // A bola nunca fica presa no jogador: é um corpo que rola, e o jogador dá toques curtos e frequentes nela.
+  //  - A cada COND.intervalo segundos (mais rápido protegendo, um pouco mais lento no pique), se a bola está ao
+  //    alcance do pé, ele toca: a bola sai na velocidade certa para estar, no próximo toque, LEAD metros na frente de
+  //    onde ele vai estar (a posição dele daqui a um intervalo, pela velocidade de agora). Andando a bola fica junto do
+  //    pé; correndo, um pouco mais longe; no pique, ainda mais longe (mais fácil de perder).
+  //  - Entre um toque e outro a bola só rola (com o atrito do chão): a direção dela SÓ muda num toque. Virou o corpo?
+  //    A bola segue por um instante e o próximo toque puxa ela para o lado novo (curva suave, sem teletransporte).
+  //  - Pé alternado: cada toque sai um pouco para a esquerda ou para a direita (COND.ladoPe).
+  //  - Ímã de domínio: com a bola bem perto (COND.dominio) e sem toque neste instante, uma força fraca segura ela
+  //    na frente do pé, para não fugir sem motivo. Parado, a bola fica descansando na frente do pé.
+  //  - p.forcaToque (drible): o próximo toque sai agora, sem esperar o intervalo.
+  //  b.toqueDe: quem deu o último toque; b.toqueT: tempo desde ele; b.toques: contador (o navegador mexe a perna).
   // Não pega: bola alta, bola chegando forte (aí é o domínio), logo depois do chute, carrinho, mergulho, caído.
   // A posse tem inércia (b.dono): quem está com a bola só perde para quem chegar BEM mais perto (25 cm) e com a bola
   // na frente dele; ombro a ombro, a bola continua com quem tinha. O carrinho continua tirando a bola de vez.
-  const CONDUZ_R = 1.15, TOMA = 0.25, TOQUE_R = 2.8, CORRENDO = 2.4;
+  // Os valores ficam em COND (dá para mexer no painel "Ajustar condução" do menu de pausa).
+  const COND = {
+    intervalo: 0.22,      // s entre toques correndo
+    intervaloPique: 0.27, // s entre toques no pique
+    intervaloProtege: 0.17,
+    leadAndando: 0.55,    // m da bola até o centro do jogador no próximo toque
+    leadCorrendo: 0.8,
+    leadPique: 1.15,
+    leadProtege: 0.4,
+    alcance: 1.25,        // m: até onde o pé alcança para tocar
+    ladoPe: 0.09,         // m: deslocamento de lado de cada pé
+    dominio: 0.6,         // m: raio do ímã
+    ima: 3,               // força do ímã (1/s)
+  };
+  const CONDUZ_R = 1.15, TOMA = 0.25, POSSE_R = 1.9, PARADO = 0.8;
   function conduz(F, b, bodies, dt) {
     if (F.rl || !bodies || b.holder || b.y > F.ballR + 0.12 || b.vy > 1.5) { b.dono = null; b.toqueDe = null; return null; }
     let p = null, best = CONDUZ_R, atual = null, dAtual = 0;
     for (const q of bodies) {
       if (q.kind !== "pe" || !q.conduz || q.slide || q.dive || q.chutou || q.yaw == null || q.y > 0.3) continue;
-      const d = Math.hypot(b.x - q.x, b.z - q.z), alcance = b.toqueDe === q.id ? TOQUE_R : CONDUZ_R; // a bola que ele mesmo tocou para a frente continua dele
+      const d = Math.hypot(b.x - q.x, b.z - q.z), alcance = b.toqueDe === q.id ? POSSE_R : CONDUZ_R; // a bola que ele mesmo tocou continua dele
       if (q.id === b.dono && d < alcance) { atual = q; dAtual = d; }
       if (d < best) { best = d; p = q; }
     }
@@ -442,33 +458,36 @@
     if (!p) { b.dono = null; b.toqueDe = null; return null; }
     const pvx = p.vx || 0, pvz = p.vz || 0;
     if (b.toqueDe !== p.id && Math.hypot(b.vx - pvx, b.vz - pvz) > 6) { b.dono = null; return null; } // chegando forte: primeiro amortece (domínio)
-    if (b.dono !== p.id) b.toqueDe = null;
+    if (b.dono !== p.id) { b.toqueDe = null; b.toqueT = 99; }
     b.dono = p.id;
+    b.toqueT = (b.toqueT ?? 99) + dt;
     const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), sp = Math.hypot(pvx, pvz);
-    const rx = b.x - p.x, rz = b.z - p.z, along = rx * fx + rz * fz, lat = rx * -fz + rz * fx; // na frente / de lado (eixo (−fz, fx))
-    if (sp < CORRENDO || p.girando || along < -0.2) { // colada no pé
-      const atras = along / (best || 1) < 0; // bola atrás: puxa mais devagar (contorna o corpo)
-      const dist = p.girando ? 0.45 : Math.min(1.15, 0.6 + 0.05 * sp);
-      const tx = p.x + fx * dist, tz = p.z + fz * dist;
-      const forca = along > 1.3 ? 3 : atras ? 5 : 12, k = 1 - Math.exp(-forca * dt); // ficou longe (parou de correr): vem devagar
-      b.vx += (pvx + (tx - b.x) * 7 - b.vx) * k; b.vz += (pvz + (tz - b.z) * 7 - b.vz) * k;
+    const rx = b.x - p.x, rz = b.z - p.z, dist = Math.hypot(rx, rz), along = rx * fx + rz * fz;
+    if (sp < PARADO && !p.forcaToque) { // parado: a bola descansa na frente do pé
+      const tx = p.x + fx * 0.5, tz = p.z + fz * 0.5, k = 1 - Math.exp(-(along < 0 ? 5 : 10) * dt);
+      b.vx += (pvx + (tx - b.x) * 6 - b.vx) * k; b.vz += (pvz + (tz - b.z) * 6 - b.vz) * k;
       if (b.vy > 0) b.vy *= 1 - k; b.sp = (b.sp || 0) * (1 - k);
-      if (along < 0.9) b.toqueDe = null;
+      b.toqueDe = p.id;
       return p.id;
     }
-    // correndo: a bola voltou para perto do pé (ou ainda não teve o primeiro toque)? Toque para a frente
-    const vRel = (b.vx - pvx) * fx + (b.vz - pvz) * fz;
-    if (b.toqueDe !== p.id || (along < 0.55 + 0.04 * sp && vRel < 0.6)) {
-      const avanco = p.sprint ? 1.6 : 0.9 + 0.06 * sp, extra = Math.sqrt(2 * F.roll * sp * avanco) * 1.1;
-      const v = sp + extra, ld = -lat * 3; // e ajeita para a linha do corpo
-      b.vx = fx * v - fz * ld; b.vz = fz * v + fx * ld; b.sp = 0; if (b.vy > 0) b.vy = 0;
-      if (along < 0.5) { b.x = p.x + fx * 0.5 + -fz * lat; b.z = p.z + fz * 0.5 + fx * lat; } // não deixa a bola entrar no corpo
-      b.toqueDe = p.id; b.toques = (b.toques || 0) + 1;
+    const intervalo = p.protege ? COND.intervaloProtege : p.sprint ? COND.intervaloPique : COND.intervalo;
+    if (dist < COND.alcance && (b.toqueT >= intervalo || b.toqueDe !== p.id || p.forcaToque)) {
+      // toque: onde a bola precisa estar no próximo toque (na frente de onde ele vai estar), com o pé alternado
+      const lead = p.protege ? COND.leadProtege : p.sprint ? COND.leadPique : sp < 3.5 ? COND.leadAndando : COND.leadCorrendo;
+      b.pe = -(b.pe || 1);
+      const T = intervalo, px = p.x + pvx * T, pz = p.z + pvz * T, lado = b.pe * COND.ladoPe;
+      const tx = px + fx * lead - fz * lado, tz = pz + fz * lead + fx * lado;
+      const atr = 1 + F.roll * T * 0.55; // compensa o atrito do chão no caminho
+      b.vx = ((tx - b.x) / T) * atr; b.vz = ((tz - b.z) / T) * atr; b.sp = 0; if (b.vy > 0) b.vy = 0;
+      if (along < 0.35 && dist < 0.5) { b.x = p.x + fx * 0.35; b.z = p.z + fz * 0.35; } // não deixa a bola entrar no corpo
+      b.toqueDe = p.id; b.toqueT = 0; b.toques = (b.toques || 0) + 1; p.forcaToque = false;
       return p.id;
     }
-    // entre os toques: a bola rola sozinha, mas o lado dela vai acompanhando a direção do jogador (curva suave)
-    const k = 1 - Math.exp(-8 * dt), vl = (b.vx - pvx) * -fz + (b.vz - pvz) * fx, alvoL = -lat * 4, dl = (alvoL - vl) * k;
-    b.vx += -fz * dl; b.vz += fx * dl;
+    // entre os toques: a bola só rola. Bem perto do pé, o ímã fraco segura ela (sem mudar o rumo dela de lado)
+    if (dist < COND.dominio) {
+      const k = 1 - Math.exp(-COND.ima * dt), vrel = (b.vx - pvx) * fx + (b.vz - pvz) * fz, want = (0.45 - along) * 3;
+      const dv = (want - vrel) * k; b.vx += fx * dv; b.vz += fz * dv;
+    }
     return p.id;
   }
   // bola do Rocket League: gravidade, arrasto linear, limites de velocidade e giro, e batidas com atrito e giro
@@ -847,7 +866,7 @@
     if (d < 1.4) { const rvx = b.vx - (r.vx || 0), rvz = b.vz - (r.vz || 0), rs = Math.hypot(rvx, rvz); if (rs > 5.5) { b.vx = (r.vx || 0) + rvx / rs * 5.5; b.vz = (r.vz || 0) + rvz / rs * 5.5; } }
   }
 
-  const api = { MODES, campoDe, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
+  const api = { MODES, campoDe, COND, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
     movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass, assistCross, arenaSDF, rampa };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;

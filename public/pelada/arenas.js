@@ -281,7 +281,7 @@ function buildArena(F, cfg) {
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
     const w = cars ? 16 : 4.6; spr.scale.set(w, w / 4, 1); spr.position.set(s * (L + GD * 0.5), GH + (cars ? 3.4 : 1.1), 0);
-    add(spr); goalSigns.push({ s, c, tex, spr, key: "" });
+    spr.visible = false; add(spr); goalSigns.push({ s, c, tex, spr, key: "" }); // a placa em cima do gol saiu (fica só a faixa no chão)
     // faixa no chão, na boca do gol, com a cor de quem defende
     const strip = new THREE.Mesh(new THREE.PlaneGeometry(cars ? 2 : 0.5, 2 * GW), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 }));
     strip.rotation.x = -Math.PI / 2; strip.position.set(s * (L - (cars ? 1.2 : 0.3)), 0.025, 0); add(strip); goalSigns[goalSigns.length - 1].strip = strip;
@@ -440,7 +440,7 @@ function buildArenaRocket(F) {
     const c = document.createElement("canvas"); c.width = 512; c.height = 128;
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-    spr.scale.set(16, 4, 1); spr.position.set(sgn * (L - 3), GH + 6.5, 0); add(spr);
+    spr.scale.set(16, 4, 1); spr.position.set(sgn * (L - 3), GH + 6.5, 0); spr.visible = false; add(spr);
     const strip = new THREE.Mesh(new THREE.PlaneGeometry(2, 2 * GW), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 }));
     strip.rotation.x = -Math.PI / 2; strip.position.set(sgn * (L - 1.2), 0.025, 0); add(strip);
     goalSigns.push({ s: sgn, c, tex, spr, key: "", strip });
