@@ -1,5 +1,5 @@
 // Pelada da Galera — telas fora do jogo: a inicial (treino, contra bots, skins, quadra) e a sala de espera.
-import { E, C, KITS, $, h, store, setH, BOT_DIF, FIXO, kitOf, kitCss, myP, act, G, isCar, offline } from "./estado.js";
+import { E, C, KITS, $, h, store, setH, BOT_DIF, FIXO, kitOf, kitCss, myP, act, G, isCar, offline, DRIBLE } from "./estado.js";
 import { carPreview, mudarSkinJogador } from "./bonecos.js";
 import { startGame } from "./jogo.js";
 import { renderPauseSb } from "./hud.js";
@@ -136,3 +136,34 @@ $("btnBots").onclick = () => startGame("bots", "pes");
 $("btnFalta").onclick = () => startGame("treino", "pes", true);
 $("btnPracticeCar").onclick = () => startGame("treino", "carros");
 $("btnPractice2").onclick = () => startGame("treino", FIXO);
+
+// ---------- painel "Ajustar condução" (menu de pausa): mexe nos números da condução com toques e dos dribles na
+// hora, para sentir a diferença. Fica salvo neste navegador (pelada:cond). Online, vale para a bola no SEU pé.
+const COND_UI = [
+  ["intervalo", "Tempo entre toques (correndo)", 0.1, 0.5, 0.01, "s"], ["intervaloPique", "Tempo entre toques (pique)", 0.1, 0.6, 0.01, "s"],
+  ["intervaloProtege", "Tempo entre toques (protegendo)", 0.08, 0.4, 0.01, "s"],
+  ["leadAndando", "Bola na frente (andando)", 0.4, 1.2, 0.05, "m"], ["leadCorrendo", "Bola na frente (correndo)", 0.4, 1.6, 0.05, "m"],
+  ["leadPique", "Bola na frente (pique)", 0.5, 2.5, 0.05, "m"], ["leadProtege", "Bola na frente (protegendo)", 0.3, 1, 0.05, "m"],
+  ["alcance", "Alcance do pé", 0.8, 2, 0.05, "m"], ["ladoPe", "Pé alternado (de lado)", 0, 0.3, 0.01, "m"],
+  ["dominio", "Raio do ímã", 0, 1.2, 0.05, "m"], ["ima", "Força do ímã", 0, 10, 0.5, ""],
+];
+const DRIBLE_UI = [["arrastada", "Arrastada (tranco de lado)", 2, 9, 0.5, "m/s"], ["corteVel", "Corte seco (saída)", 0, 5, 0.2, "m/s"]];
+const condPadrao = { ...C.COND }, driblePadrao = { ...DRIBLE };
+(function carregarCond() { const s = store.get("pelada:cond") || {}; for (const [k] of COND_UI) if (typeof s[k] === "number") C.COND[k] = s[k]; for (const [k] of DRIBLE_UI) if (typeof s["d_" + k] === "number") DRIBLE[k] = s["d_" + k]; })();
+function salvarCond() { const s = {}; for (const [k] of COND_UI) s[k] = C.COND[k]; for (const [k] of DRIBLE_UI) s["d_" + k] = DRIBLE[k]; store.set("pelada:cond", s); }
+const linhaCond = (obj, pre) => ([k, nome, a, b, st, un]) => `<label style="display:grid;grid-template-columns:1fr 110px 54px;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:600;margin:4px 0">${h(nome)}<input type="range" min="${a}" max="${b}" step="${st}" value="${obj[k]}" data-cond="${pre}${k}"><span>${obj[k]}${un}</span></label>`;
+export function painelCond() {
+  return COND_UI.map(linhaCond(C.COND, "")).join("") + DRIBLE_UI.map(linhaCond(DRIBLE, "d_")).join("") + `<button class="small ghost" data-cond-reset="1" style="margin-top:6px">Voltar ao padrão</button>`;
+}
+document.addEventListener("input", (e) => {
+  const k = e.target.dataset && e.target.dataset.cond; if (!k) return;
+  const v = +e.target.value; if (k.startsWith("d_")) DRIBLE[k.slice(2)] = v; else C.COND[k] = v;
+  e.target.nextElementSibling.textContent = v + (e.target.parentElement.lastElementChild.textContent.replace(/[-\d.]/g, ""));
+  salvarCond();
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-cond-reset]")) return;
+  Object.assign(C.COND, condPadrao); Object.assign(DRIBLE, driblePadrao); salvarCond();
+  document.querySelectorAll("[data-cond-painel]").forEach((el) => (el.innerHTML = painelCond()));
+});
+if (FIXO !== "carros") document.querySelectorAll("[data-cond-painel]").forEach((el) => (el.innerHTML = painelCond()));

@@ -6,7 +6,7 @@
 // O resto fica nos outros módulos desta pasta (estado, rede, menus, cena, arenas, bonecos, bola, controles, teclas,
 // bots, hud e sons).
 import * as THREE from "three";
-import { E, C, $, h, store, clamp, lerp, angLerp, FL, BASE, socket, myP, molinhoLigado, G, ctrlYaw, keys, now, TOUCH, locked, ballS, local, isCar, offline, myKit, mySkin, PAD, myAttackTeam, CARRINHO_CD } from "./estado.js";
+import { E, C, $, h, store, clamp, lerp, angLerp, FL, BASE, socket, myP, molinhoLigado, G, ctrlYaw, keys, now, TOUCH, locked, ballS, local, isCar, offline, myKit, mySkin, PAD, myAttackTeam, CARRINHO_CD, DRIBLE } from "./estado.js";
 import { show, renderLobby } from "./menus.js";
 import { syncFromState, updateRemotes } from "./rede.js";
 import { makePlayer, mudarSkinJogador, descartarJogador, balaoPede, animate, makeCar, animateCar, carO, poseCar, rags, addRag, updateRags, clearRags } from "./bonecos.js";
@@ -147,7 +147,9 @@ function stepFoot(dt, t, frozen) {
   // segurar (F, com ou sem bola): perto de um adversário, puxa a camisa dele e ele corre bem mais devagar (55%).
   // Quem segura também fica mais lento (85%) e sem pique. Cada puxão dura no máximo 1,5 s; depois, 2 s de espera.
   me.segCd = Math.max(0, (me.segCd || 0) - dt);
-  const alvo = keys.has("KeyF") && !busy && !frozen && !E.charge && me.segCd <= 0 ? alvoSegurar(me) : null;
+  // F (LT) com a bola: protege (corpo entre a bola e o marcador, anda devagar e toca bem curto); sem a bola, segura
+  me.protege = keys.has("KeyF") && souDono() && !busy && !frozen;
+  const alvo = keys.has("KeyF") && !me.protege && !busy && !frozen && !E.charge && me.segCd <= 0 ? alvoSegurar(me) : null;
   if (alvo) { me.segT = (me.segT || 0) + dt; if (me.segT > SEGURA_MAX) { me.segCd = 2; me.segT = 0; } }
   else if (me.segT > 0) { me.segCd = Math.max(me.segCd, 0.5); me.segT = 0; }
   const antes = !!me.segurando, antesV = !!me.seguradoPor;
@@ -160,7 +162,8 @@ function stepFoot(dt, t, frozen) {
   me.sprint = wantSprint && me.stamina > 0.02;
   me.stamina = clamp(me.stamina + (me.sprint ? -0.24 : 0.14) * dt, 0, 1);
   let speed = carregaChute ? C.CHARGING : me.sprint ? C.SPRINT : C.RUN;
-  if (me.seguradoPor) speed *= SEGURADO_VEL; if (me.segurando) speed *= 0.85;
+  if (me.seguradoPor) speed *= SEGURADO_VEL; if (me.segurando) speed *= 0.85; if (me.protege) speed *= 0.55;
+  driblar(me, wx, wz, len, frozen || busy);
   if (padMag > 0.15 && !me.sprint) speed *= clamp(padMag * 1.5, 0.35, 1); // empurrou pouco o analógico: anda devagar
   if (frozen || !len) speed = 0;
   if (frozen) { me.vx = 0; me.vz = 0; }
@@ -185,8 +188,7 @@ function stepFoot(dt, t, frozen) {
   const hsp = Math.hypot(me.vx, me.vz);
   // o corpo vira para onde você está mandando (não para onde a velocidade aponta: na meia-volta a velocidade inverte de
   // uma vez e o corpo girava 180° num piscar). O giro tem velocidade máxima: devagar vira rápido; correndo, uma
-  // meia-volta leva ~0,4 s (no pique, mais), e a bola acompanha (viraComABola).
-  const f0 = me.facing;
+  // meia-volta leva ~0,4 s (no pique, mais). A bola não vira junto: o próximo toque é que puxa ela para o lado novo.
   if (!busy) {
     const target = carregaChute ? aimYaw() : len > 0 ? Math.atan2(-wx, -wz) : hsp > 0.5 ? Math.atan2(-me.vx, -me.vz) : me.facing;
     const d = Math.atan2(Math.sin(target - me.facing), Math.cos(target - me.facing));
@@ -194,11 +196,26 @@ function stepFoot(dt, t, frozen) {
     me.facing += clamp(d * Math.min(1, dt * 14), -maxRate * dt, maxRate * dt);
     me.girando = Math.abs(d) > 1.2; // virada grande: a bola vem para perto do pé
   } else me.girando = false;
-  me.dFacing = Math.atan2(Math.sin(me.facing - f0), Math.cos(me.facing - f0)); // a bola no pé vira junto (viraComABola)
   me.st.holding = holding; me.st.segura = !!me.segurando;
   G.meModel.position.set(me.x, me.y, me.z); G.meModel.rotation.y = me.facing;
   balaoPede(G.meModel, me.pedeT > 0 && G.view !== "primeira");
   animate(G.meModel, hsp, dt, me.st, myFlags() | (me.downT > 0 ? FL.down : 0));
+}
+// ---------- dribles (com a bola no pé) ----------
+// arrastada (Q/E, ←/→ no direcional): um tranco curto de lado e a bola vai junto (toque na hora);
+// corte seco (V, L3): para, vira para onde você está mandando (ou para trás) e puxa a bola para o lado novo.
+function driblar(me, wx, wz, len, parado) {
+  const d = E.drible; E.drible = null;
+  if (!d || parado || !souDono()) return;
+  const fx = -Math.sin(me.facing), fz = -Math.cos(me.facing);
+  if (d === "esq" || d === "dir") { // lado direito do corpo: (−fz, fx)
+    const s = d === "dir" ? 1 : -1; me.vx += -fz * s * DRIBLE.arrastada; me.vz += fx * s * DRIBLE.arrastada;
+  } else if (d === "corte") {
+    let nx = -fx, nz = -fz; // sem direção mandada: para trás
+    if (len > 0 && wx * fx + wz * fz < 0.5) { nx = wx; nz = wz; }
+    me.facing = Math.atan2(-nx, -nz); me.vx = nx * DRIBLE.corteVel; me.vz = nz * DRIBLE.corteVel; me.st.kickT = now();
+  }
+  me.forcaAte = now() + 0.05; // o próximo toque sai agora, já para o lado novo
 }
 // segurar: o adversário mais perto (até 1,3 m, em pé). Quem está segurando eu: adversário com a mão (FL.grab)
 // a até 1,6 m de mim (um pouco mais de folga por causa do atraso da internet). Posições "de agora" (rm.px/pz).
@@ -307,7 +324,7 @@ function updateCamera(dt) {
     cam.lookAt(cam.position.x + fx * Math.cos(pitch), cam.position.y + Math.sin(pitch) - 0.08, cam.position.z + fz * Math.cos(pitch));
     showAim(me0); return;
   }
-  if (cam.fov !== 70) { cam.fov = 70; cam.updateProjectionMatrix(); }
+  const fovQuer = 70 + (G.me.sprint ? 4 : 0); if (Math.abs(cam.fov - fovQuer) > 0.05) { cam.fov += (fovQuer - cam.fov) * Math.min(1, dt * 4); cam.updateProjectionMatrix(); } // zoom leve no pique
   const elev = clamp(0.32 - pitch * 0.8, -0.05, 1.1), dist = 4.6;
   const tgt = new THREE.Vector3(me.x, me.y + 1.5, me.z);
   cam.position.set(tgt.x - fx * dist * Math.cos(elev), Math.max(0.35, tgt.y + dist * Math.sin(elev)), tgt.z - fz * dist * Math.cos(elev));
