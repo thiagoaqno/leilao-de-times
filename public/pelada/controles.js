@@ -219,9 +219,18 @@ function rivalColado(p) {
   return [...G.remotes.values()].some((r) => r.team && r.team !== mine.team && Math.hypot((r.px ?? r.x) - p.x, (r.pz ?? r.z) - p.z) < 1.6);
 }
 // o passe planejado (curto, longo ou enfiada) para a mira e a força de agora (também desenha o anel na mira)
+// todo passe sai com força máxima, e quem recebe é escolhido só pela direção (o companheiro mais alinhado com ela)
 export function planoPasse(me, yaw, tipo, power, colocado = false, rnd = Math.random) {
-  const forca = colocado ? 1 : tipo === "profundidade" ? power * 0.6 : 0; // o curto e o longo saem na medida; a enfiada fica mais forte segurando
-  return C.planejarPasse(G.F, me, yaw, mates(), tipo, forca, rivalColado(me), myAttackTeam() === "B" ? -1 : 1, rnd, { assist: tipo !== "longo" });
+  return C.planejarPasse(G.F, me, yaw, mates(), tipo, 1, rivalColado(me), myAttackTeam() === "B" ? -1 : 1, rnd, { assist: true, direcao: true });
+}
+// a direção do passe: as setas (se apertadas); senão, o direcional de andar (WASD / analógico); senão, para onde ele olha
+export function dirPasse() {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].some((k) => keys.has(k))) return aimYaw();
+  let f = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0), s = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
+  if (PAD.play && Math.hypot(PAD.lx, PAD.ly) > 0.3) { f = -PAD.ly; s = PAD.lx; }
+  if (!f && !s) return G.me.facing;
+  const yaw = ctrlYaw(), wx = -Math.sin(yaw) * f + Math.cos(yaw) * s, wz = -Math.cos(yaw) * f - Math.sin(yaw) * s;
+  return Math.atan2(-wx, -wz);
 }
 // efeito: segurar Q (curva para a esquerda) ou E (para a direita) na hora do chute
 export const curveNow = () => (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
@@ -243,7 +252,7 @@ export function doKick(kind, power, o = {}) {
   // direção, a velocidade, a altura e quem recebe (a bola "trava" perto dele).
   const tipo = how !== "mao" && (o.colocado && kind === "passe" ? "curto" : tipoPasse(kind, power)); // passe colocado: curto e tenso
   if (tipo) {
-    const pl = planoPasse(me, yaw, tipo, power, !!o.colocado);
+    const pl = planoPasse(me, dirPasse(), tipo, power, !!o.colocado);
     yaw = pl.yaw; kind = tipo; opt = { vel: pl.vel * (o.colocado ? 1.08 : 1), elev: pl.elev, alvo: pl.alvo }; receptor = pl.alvo;
     G.passeVoo = pl.alvo ? { alvo: pl.alvo, ate: t + 3 } : null;
   } else if (how === "mao" && kind === "enfiada") kind = "passe"; // goleiro: arremesso
