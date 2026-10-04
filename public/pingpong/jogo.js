@@ -60,8 +60,14 @@ addEventListener("resize", resize);
 })();
 
 const BOLA_R = 0.028; // um pouco maior que a de verdade (2 cm), para dar para ver
-const bola = new THREE.Mesh(new THREE.SphereGeometry(BOLA_R, 16, 12), new THREE.MeshStandardMaterial({ color: 0xff8a1f, roughness: 0.4, emissive: 0x3a1500 }));
+// a bola tem uma faixa branca, para dar para ver ela girando com o efeito
+const bolaTex = canvasTex(64, 32, (x, w, hh) => { x.fillStyle = "#ff8a1f"; x.fillRect(0, 0, w, hh); x.fillStyle = "#fff3e0"; x.fillRect(0, hh * 0.42, w, hh * 0.16); x.fillRect(w * 0.47, 0, w * 0.06, hh); });
+const bola = new THREE.Mesh(new THREE.SphereGeometry(BOLA_R, 16, 12), new THREE.MeshStandardMaterial({ map: bolaTex, roughness: 0.4, emissive: 0x3a1500 }));
 bola.castShadow = true; scene.add(bola);
+// rastro da bola com efeito: vermelho no top spin, azul na cortada, roxo no lateral (mais forte, mais visível)
+const RASTRO = 14, rastroGeo = new THREE.BufferGeometry(); rastroGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(RASTRO * 3), 3));
+const rastro = new THREE.Line(rastroGeo, new THREE.LineBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0, depthWrite: false })); rastro.frustumCulled = false; scene.add(rastro);
+const pontosRastro = [];
 const sombra = new THREE.Mesh(new THREE.CircleGeometry(0.03, 14), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.4, depthWrite: false }));
 sombra.rotation.x = -Math.PI / 2; scene.add(sombra);
 // raquete: lâmina de madeira com borracha vermelha de um lado e preta do outro, e o cabo
@@ -221,15 +227,17 @@ const estado = () => G.est || {};
 const sacador = () => (estado().placar ? estado().placar.sacador : 0);
 const podeSacar = (lado) => estado().phase === "jogo" && !G.rally && sacador() === lado && agora() >= (estado().prontoEm || 0);
 function novaBatida(b, quem, saque) {
-  G.bola = b; G.rally = { quem, saque, quiques: [] }; G.julgou = false; Som.raquete();
+  G.bola = b; G.rally = { quem, saque, quiques: [] }; G.julgou = false; Som.raquete(); pontosRastro.length = 0;
+  const nome = P.nomeEfeito(b.w); // o nome do efeito aparece embaixo, rapidinho
+  if (nome) { const e = $("hEfeito"); e.textContent = "🌀 " + nome; e.classList.remove("pop"); void e.offsetWidth; e.classList.add("pop"); G.efeitoAte = performance.now() + 900; }
 }
 // eu bato (ou saco): calcula aqui e manda para o outro
 function euBato(b, saque) {
   novaBatida(b, G.eu, saque); if (!saque) G.batidas++;
-  if (!G.offline) socket.emit("bola", { p: b.p, v: b.v, saque, t: agora(), giro: b.giro || 0 });
+  if (!G.offline) socket.emit("bola", { p: b.p, v: b.v, saque, t: agora(), w: b.w || null });
 }
 function receberBola(d) {
-  const b = { p: d.p.slice(), v: d.v.slice(), viva: true, giro: d.giro || 0 };
+  const b = { p: d.p.slice(), v: d.v.slice(), viva: true, w: d.w ? d.w.slice() : null };
   novaBatida(b, d.quem, d.saque);
   voarJulgando(Math.max(0, Math.min(0.5, (agora() - d.t) / 1000))); // a bola já andou o tempo que o pacote levou
 }
@@ -359,6 +367,16 @@ function desenhar(dt) {
   const est = estado(), b = G.bola;
   // bola: voando, ou parada na mão de quem vai sacar
   if (b && (b.viva || G.rally)) bola.position.set(b.p[0], b.p[1], b.p[2]);
+  // o efeito: a bola gira (top spin para a frente, cortada para trás, lateral de lado) e deixa o rastro colorido
+  const w = b && b.viva && b.w, sz = b ? Math.sign(b.v[2]) || 1 : 1;
+  if (w) { bola.rotation.x -= sz * w[1] * dt * 45; bola.rotation.y += w[0] * dt * 45; }
+  if (b && b.viva) { pontosRastro.unshift(bola.position.clone()); if (pontosRastro.length > RASTRO) pontosRastro.pop(); }
+  const forca = w ? Math.max(Math.abs(w[0]), Math.abs(w[1])) : 0, pos = rastroGeo.attributes.position;
+  for (let i = 0; i < RASTRO; i++) { const q = pontosRastro[Math.min(i, pontosRastro.length - 1)] || bola.position; pos.setXYZ(i, q.x, q.y, q.z); }
+  pos.needsUpdate = true;
+  rastro.material.opacity = forca > 0.3 ? Math.min(0.8, forca) : 0;
+  if (w) rastro.material.color.set(w[1] > 0.3 ? 0xff3a2a : w[1] < -0.3 ? 0x3aa0ff : 0xb05aff);
+  if (performance.now() > (G.efeitoAte || 0)) $("hEfeito").textContent = "";
   else if (est.phase === "jogo" && !G.rally) { const l = sacador(), r = G.raq[l]; bola.position.set(clamp(r.x, -0.6, 0.6) * 0.7, MESA.H + 0.25 + Math.abs(Math.sin(performance.now() / 300)) * 0.08, P.S(l) * (MESA.L / 2 + 0.15)); }
   const naMesa = Math.abs(bola.position.x) <= MESA.W / 2 && Math.abs(bola.position.z) <= MESA.L / 2;
   sombra.position.set(bola.position.x, naMesa ? MESA.H + 0.002 : 0.004, bola.position.z);

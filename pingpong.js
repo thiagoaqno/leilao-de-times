@@ -1,6 +1,6 @@
 // Pingue-Pongue da Galera — tênis de mesa 1x1 pela internet. Canal "/pingpong" do Socket.io.
-// "Quem rebate manda": quem bate na bola manda a batida (posição, velocidade e a hora no relógio do servidor) e o
-// servidor repassa. Como a bola só tem gravidade e quique, os dois navegadores calculam o mesmo voo. Quem decide o
+// "Quem rebate manda": quem bate na bola manda a batida (posição, velocidade, efeito e a hora no relógio do servidor) e o
+// servidor repassa. Como a bola só tem gravidade, efeito e quique (tudo conta fechada), os dois navegadores calculam o mesmo voo. Quem decide o
 // ponto é quem está recebendo a bola (é na tela dele que ela chega ou não na raquete). As raquetes vão e voltam
 // ~30x por segundo só para aparecer na tela do outro.
 const P = require("./public/pingpong/regras.js");
@@ -9,6 +9,7 @@ const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligar
 
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
+const efeito = (w) => (Array.isArray(w) && w.length === 2 && w.every(fin) ? w.map((v) => Math.max(-1.2, Math.min(1.2, v))) : null);
 const vec = (a) => Array.isArray(a) && a.length === 3 && a.every(fin) && Math.abs(a[0]) < 8 && a[1] > -1 && a[1] < 8 && Math.abs(a[2]) < 10;
 const PAUSA_MS = 1300, SEM_RESPOSTA_MS = 9000;
 
@@ -98,7 +99,7 @@ module.exports = function attachPingPong(io) {
       else if (!room.rally || room.rally.quem === lado) return;
       const t = fin(d.t) ? Math.max(now - 400, Math.min(now, d.t)) : now;
       room.rally = { quem: lado, saque: !!d.saque, t };
-      socket.to(room.code).emit("bola", { p: d.p, v: d.v, quem: lado, saque: !!d.saque, t, giro: fin(d.giro) ? d.giro : 0 });
+      socket.to(room.code).emit("bola", { p: d.p, v: d.v, quem: lado, saque: !!d.saque, t, w: efeito(d.w) });
       clearTimeout(room.timer); room.timer = setTimeout(() => room.rally && room.rally.t === t && ponto(room, lado, "sem resposta"), SEM_RESPOSTA_MS);
     });
     // o ponto: quem decide é quem está recebendo a bola
