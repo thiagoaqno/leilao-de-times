@@ -181,3 +181,28 @@ test("tênis: duplas com 1 humano e 3 robôs; o humano arma golpes e os pontos a
     assert.ok(pontos >= 2, `pontos: ${pontos}`);
   } finally { m.fechar(); }
 });
+
+// ---------- Pingue-pongue ----------
+// Quem bate manda a batida e o servidor repassa; o ponto só vale se vier de quem está recebendo.
+test("pingpong: dois na mesa, o saque chega no outro e só quem recebe marca o ponto", async () => {
+  const P = require("../public/pingpong/regras.js");
+  const m = await mesa("/pingpong", 2, { pontos: 11, games: 1 });
+  try {
+    const [a, b] = m.todos;
+    let st = await esperarEstado(a, (s) => s.lados[0] === a.pid && s.lados[1] === b.pid);
+    await pedir(a, "act", { type: "start" });
+    st = await esperarEstado(a, (s) => s.phase === "jogo");
+    const lados = [a, b], sac = lados[st.placar.sacador], rec = lados[1 - st.placar.sacador];
+    await new Promise((ok) => setTimeout(ok, Math.max(0, st.prontoEm - st.now) + 50));
+    const chegou = new Promise((ok) => rec.once("bola", ok));
+    const bola = P.sacar(st.placar.sacador, 0, 0);
+    sac.emit("bola", { p: bola.p, v: bola.v, saque: true, t: Date.now() });
+    const d = await chegou;
+    assert.strictEqual(d.quem, st.placar.sacador); assert.strictEqual(d.saque, true);
+    sac.emit("ponto", { vence: st.placar.sacador, motivo: "trapaça" }); // quem sacou não decide
+    rec.emit("ponto", { vence: st.placar.sacador, motivo: "não devolveu" });
+    const depois = await esperarEstado(a, (s) => s.ultimo && s.ultimo.motivo === "não devolveu");
+    assert.deepStrictEqual(depois.placar.pts[st.placar.sacador], 1);
+    assert.strictEqual(depois.placar.pts[0] + depois.placar.pts[1], 1);
+  } finally { m.fechar(); }
+});

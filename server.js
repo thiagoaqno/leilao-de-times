@@ -27,6 +27,7 @@ require("./tiro.js")(io); // Tiro da Galera: FPS de arena x1 ou x2 com AK-47 e A
 require("./pelada.js")(io); // Pelada da Galera: futsal 3D do 1x1 ao 5x5, canal /pelada (e o Rocket, de carro)
 require("./batalha.js")(io); // Batalha da Galera: batalha de balões de kart estilo Mario Kart, canal /batalha
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
+require("./pingpong.js")(io); // Pingue-Pongue da Galera: tênis de mesa 1x1 no mouse, canal /pingpong
 require("./proibida.js")(io); // Palavra Proibida da Galera: explicar palavras em dois times, canal /proibida
 require("./rumi.js")(io); // Rumi da Galera: o jogo de peças numeradas clássico, 2 a 4 com robôs, canal /rumi
 app.use(express.static(path.join(__dirname, "public")));
@@ -43,6 +44,7 @@ app.get("/tiro", (req, res) => res.redirect("/tiro/"));
 app.get("/pelada", (req, res) => res.redirect("/pelada/"));
 app.get("/batalha", (req, res) => res.redirect("/batalha/"));
 app.get("/tenis", (req, res) => res.redirect("/tenis/"));
+app.get("/pingpong", (req, res) => res.redirect("/pingpong/"));
 app.get("/rumi", (req, res) => res.redirect("/rumi/"));
 app.get("/proibida", (req, res) => res.redirect("/proibida/"));
 // Rocket da Galera: a mesma página da Pelada, no modo carros (o Express trata "/rocket" e "/rocket/" como iguais)
