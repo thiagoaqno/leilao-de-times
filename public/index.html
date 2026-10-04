@@ -276,6 +276,9 @@ const GAMES = [
   // ruazinha que desce da rua nova, entre o tênis e a batalha: o Clube do Rumi, com telhado de feltro e peças
   { id: "rumi", url: "/rumi/", icon: "🀄", sign: "RUMI", name: "Clube do Rumi", desc: "O jogo de peças numeradas: sequências, grupos, coringa e a mesa inteira para mexer. De 2 a 4, com robôs.", meta: "Rumi da Galera · 2 a 4 jogadores",
     x: 23, y: 38, w: 7, h: 4, doors: [26], roof: "#1f5a44", roof2: "#174535", wall: "#f3ead6", wall2: "#dccfae", rumi: true },
+  // do outro lado da ruazinha: a casa da Palavra Proibida, com telhado roxo
+  { id: "proibida", url: "/proibida/", icon: "🤐", sign: "PROIBIDA", name: "Casa da Palavra Proibida", desc: "Explique a palavra sem falar as 5 proibidas! Dois times, e o time adversário fiscaliza.", meta: "Palavra Proibida da Galera · 2 times",
+    x: 13, y: 38, w: 7, h: 4, doors: [16], roof: "#5a2a8a", roof2: "#45206b", wall: "#f3ead6", wall2: "#dccfae" },
 ];
 GAMES.forEach((g) => { g.doorY = g.y + g.h - 1; g.mats = g.doors.map((x) => [x, g.doorY + 1]); });
 
@@ -300,7 +303,7 @@ for (let x = 7; x <= 10; x++) set(x, 28, "r"); // caminho até a quadra da pelad
 for (let y = 31; y <= 37; y++) set(12, y, "r"); // descida para a rua nova (do lado do clube de tênis)
 for (let x = 3; x < MW - 3; x++) set(x, 37, "r"); // rua nova (Rocket e Batalha)
 for (let y = 38; y <= 42; y++) set(21, y, "r"); // ruazinha do Rumi: desce da rua nova...
-for (let x = 21; x <= 30; x++) set(x, 42, "r"); // ...e vira na frente do clube
+for (let x = 14; x <= 30; x++) set(x, 42, "r"); // ...e vira na frente do clube do Rumi e da casa da Palavra Proibida
 for (const g of GAMES) {
   for (let y = g.y; y < g.y + g.h; y++) for (let x = g.x; x < g.x + g.w; x++) solid[y][x] = true;
   for (const [mx, my] of g.mats) set(mx, my, "m");
