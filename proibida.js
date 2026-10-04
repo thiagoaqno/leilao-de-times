@@ -1,7 +1,9 @@
 // Palavra Proibida da Galera — jogo de explicar palavras em dois times. Canal "/proibida" do Socket.io.
 // Na vez de um time, quem explica vê a carta (a palavra e as 5 proibidas); o time adversário também vê, para
 // fiscalizar. O time de quem explica não vê. Acertou: ponto e puxa outra carta. Não conseguiu (ou falou uma
-// proibida, ou o tempo acabou): a vez passa para o outro time. Ganha quem chegar primeiro aos pontos da partida.
+// proibida, ou o tempo acabou): a vez acaba. Entre uma vez e outra tem o intervalo: todo mundo vê as cartas da vez
+// (com as palavras), o organizador ou o time que fiscalizou pode dizer que um ponto "não valeu", e a próxima vez só
+// começa quando quem vai explicar (ou o organizador) aperta para começar. Ganha quem chegar primeiro aos pontos.
 const { CARTAS } = require("./public/proibida/cartas.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js");
 
@@ -23,7 +25,7 @@ module.exports = function attachProibida(io) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config, placar: room.placar, vencedor: room.vencedor || null,
       players: room.order.map((id) => { const p = room.players[id]; return { id, name: p.name, team: p.team, online: p.sockets.size > 0 }; }),
-      vez: v ? { time: v.time, quem: v.quem, ate: v.ate, acertos: v.acertos } : null,
+      vez: v ? { time: v.time, quem: v.quem, ate: v.ate, acertos: v.acertos } : null, intervalo: room.intervalo || null,
       log: room.log.slice(-15), now: Date.now(),
     };
   }
@@ -37,21 +39,28 @@ module.exports = function attachProibida(io) {
     }
   }
   function puxar(room) { if (!room.monte.length) room.monte = embaralhar(CARTAS.map((_, i) => i)); room.vez.carta = CARTAS[room.monte.pop()]; }
-  function novaVez(room, t) {
-    const lista = time(room, t);
-    room.prox[t] = (room.prox[t] + 1) % lista.length;
-    room.vez = { time: t, quem: lista[room.prox[t]], ate: Date.now() + room.config.tempo * 1000, acertos: 0, carta: null };
+  // quem explica na próxima vez do time t (em rodízio)
+  function proximoDe(room, t) { const lista = time(room, t); room.prox[t] = (room.prox[t] + 1) % lista.length; return lista[room.prox[t]]; }
+  function novaVez(room, t, quem = proximoDe(room, t)) {
+    room.intervalo = null;
+    room.vez = { time: t, quem, ate: Date.now() + room.config.tempo * 1000, acertos: 0, carta: null, cartas: [] };
     puxar(room);
     clearTimeout(room.timer);
     room.timer = setTimeout(() => passar(room, "tempo"), room.config.tempo * 1000);
   }
-  function passar(room, porque) {
-    if (room.phase !== "jogando") return;
+  function passar(room, porque, quemFiscalizou) {
+    if (room.phase !== "jogando" || !room.vez) return;
+    clearTimeout(room.timer);
     const v = room.vez, nomeQ = room.players[v.quem] ? room.players[v.quem].name : "?";
-    log(room, porque === "tempo" ? `⏱️ Acabou o tempo de ${nomeQ} (${v.acertos} acerto${v.acertos === 1 ? "" : "s"}).` : porque === "proibida" ? `🚫 ${nomeQ} falou uma palavra proibida! A carta era "${v.carta[0]}".` : `🙈 ${nomeQ} passou a vez. A carta era "${v.carta[0]}".`);
-    novaVez(room, v.time === "A" ? "B" : "A");
+    if (porque !== "meta") v.cartas.push({ carta: v.carta, res: porque, por: quemFiscalizou || null });
+    log(room, porque === "tempo" ? `⏱️ Acabou o tempo de ${nomeQ} (${v.acertos} acerto${v.acertos === 1 ? "" : "s"}).` : porque === "proibida" ? `🚫 ${nomeQ} falou uma palavra proibida! A carta era "${v.carta[0]}".` : porque === "meta" ? `🎯 O time ${v.time === "A" ? "Azul" : "Laranja"} chegou aos ${room.config.meta} pontos!` : `🙈 ${nomeQ} passou a vez. A carta era "${v.carta[0]}".`);
+    const prox = v.time === "A" ? "B" : "A";
+    room.intervalo = { time: v.time, quem: v.quem, porque, cartas: v.cartas, prox, proxQuem: proximoDe(room, prox) };
+    room.vez = null;
     broadcast(room);
   }
+  // alguém chegou na meta (depois de conferir os pontos do intervalo)?
+  const venceu = (room) => (room.placar.A >= room.config.meta || room.placar.B >= room.config.meta ? (room.placar.A >= room.placar.B ? "A" : "B") : null);
 
   nsp.on("connection", (socket) => {
     const ctx = () => contexto(socket, rooms);
@@ -89,20 +98,36 @@ module.exports = function attachProibida(io) {
         if (type === "start") {
           if (!isHost) return "Só o organizador começa.";
           if (time(room, "A").length < 2 || time(room, "B").length < 2) return "Cada time precisa de pelo menos 2 pessoas.";
-          Object.assign(room, { phase: "jogando", placar: { A: 0, B: 0 }, vencedor: null, monte: [] });
+          Object.assign(room, { phase: "jogando", placar: { A: 0, B: 0 }, vencedor: null, monte: [], intervalo: null });
           log(room, "🗣️ Valendo!"); novaVez(room, Math.random() < 0.5 ? "A" : "B"); return;
         }
-        if (type === "lobby") { if (!isHost) return "Só o organizador."; clearTimeout(room.timer); room.phase = "lobby"; room.vez = null; return; }
+        if (type === "lobby") { if (!isHost) return "Só o organizador."; clearTimeout(room.timer); room.phase = "lobby"; room.vez = null; room.intervalo = null; return; }
+        // no intervalo: conferir os pontos e começar a próxima vez
+        const iv = room.intervalo;
+        if (type === "naoValeu") { // o organizador, ou o time que fiscalizou, diz que um ponto não valeu (ou volta atrás)
+          if (!jogando || !iv || !me) return "Agora não.";
+          if (!isHost && me.team === iv.time) return "Quem confere é o outro time (ou o organizador).";
+          const c = iv.cartas[int(data.i, -1)]; if (!c || (c.res !== "acertou" && c.res !== "proibida")) return "Essa carta não deu ponto.";
+          const quemGanhou = c.res === "acertou" ? iv.time : c.por; c.anulada = !c.anulada; room.placar[quemGanhou] += c.anulada ? -1 : 1;
+          log(room, c.anulada ? `❌ ${me.name}: "${c.carta[0]}" não valeu.` : `↩️ ${me.name}: "${c.carta[0]}" valeu sim.`); return;
+        }
+        if (type === "comecar") {
+          if (!jogando || !iv || !me) return "Agora não.";
+          if (me.id !== iv.proxQuem && !isHost) return "Quem começa é quem vai explicar (ou o organizador).";
+          const w = venceu(room);
+          if (w) { room.phase = "fim"; room.vencedor = w; room.intervalo = null; log(room, `🏆 Time ${w === "A" ? "Azul" : "Laranja"} venceu!`); return; }
+          novaVez(room, iv.prox, room.players[iv.proxQuem] && room.players[iv.proxQuem].team === iv.prox ? iv.proxQuem : undefined); return;
+        }
         if (!jogando || !v || !me) return "Agora não.";
         if (type === "acertou") { // só quem explica marca o acerto
           if (me.id !== v.quem) return "Só quem está explicando marca o acerto.";
-          room.placar[v.time]++; v.acertos++; log(room, `✅ ${me.name} fez o time acertar "${v.carta[0]}".`);
-          if (room.placar[v.time] >= room.config.meta) { clearTimeout(room.timer); room.phase = "fim"; room.vencedor = v.time; room.vez = null; log(room, `🏆 Time ${v.time === "A" ? "Azul" : "Laranja"} venceu!`); return; }
+          room.placar[v.time]++; v.acertos++; v.cartas.push({ carta: v.carta, res: "acertou" }); log(room, `✅ ${me.name} fez o time acertar "${v.carta[0]}".`);
+          if (room.placar[v.time] >= room.config.meta) { passar(room, "meta"); return "_"; }
           puxar(room); return;
         }
         if (type === "passar") { if (me.id !== v.quem) return "Só quem está explicando passa a vez."; passar(room, "passou"); return "_"; }
         if (type === "proibida") { // o time adversário fiscaliza
-          if (me.team === v.time) return "Quem fiscaliza é o outro time."; room.placar[me.team]++; passar(room, "proibida"); return "_";
+          if (me.team === v.time) return "Quem fiscaliza é o outro time."; room.placar[me.team]++; passar(room, "proibida", me.team); return "_";
         }
         return "Ação desconhecida.";
       })();

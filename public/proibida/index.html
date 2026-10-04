@@ -42,13 +42,22 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:14px 0 6px;font-w
 .err{color:var(--bad);font-weight:800;min-height:22px;margin-top:8px}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#4a2a75;border:1px solid #6a4a95;border-radius:10px;padding:10px 16px;font-weight:800;z-index:9}
 .log div{font-size:14px;color:var(--muted)}
+/* intervalo: as cartas da vez espalhadas na mesa, cada uma com o carimbo do que aconteceu */
+.mesa{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:14px 0}
+.mini{position:relative;background:#fff8e7;color:#2a1446;border-radius:12px;padding:10px 10px 8px;box-shadow:0 5px 0 #0004;transform:rotate(var(--r,0deg))}
+.mini b{display:block;font:22px var(--display);color:#7a2bd6;line-height:1.1;margin-bottom:4px}
+.mini small{display:block;font-size:12.5px;color:#a0405a;line-height:1.35}
+.mini .selo{position:absolute;top:-8px;right:-6px;font:800 12px var(--body);padding:3px 8px;border-radius:999px;transform:rotate(6deg);box-shadow:0 2px 0 #0005}
+.selo.acertou{background:var(--good);color:#06301a}.selo.proibida{background:var(--bad);color:#fff}.selo.tempo,.selo.passou{background:#c7b5e0;color:#2a1446}
+.mini.anulada{opacity:.55}.mini.anulada b{text-decoration:line-through}
+.mini button{margin-top:8px;width:100%;padding:6px;font-size:13px;background:#efe3ff;color:#4a2a75;border-color:#d8c4f5;box-shadow:none}
 </style>
 </head>
 <body>
 <div class="bar"><a href="/">← Vila</a><h1>🤐 Palavra <span>Proibida</span></h1><span class="hidden" id="roomTag">Sala <span class="code" id="rCode"></span> <button id="btnInvite">Convidar</button></span></div>
 <div class="wrap">
   <section id="home" class="panel hidden">
-    <p>Dois times. Quem explica vê a palavra e as <b>5 palavras proibidas</b> — o time adversário também vê e fica de olho. Acertou, ponto e puxa outra. Não conseguiu, falou uma proibida ou o tempo acabou: a vez passa.</p>
+    <p>Dois times. Quem explica vê a palavra e as <b>5 palavras proibidas</b> — o time adversário também vê e fica de olho. Acertou, ponto e puxa outra. Não conseguiu, falou uma proibida ou o tempo acabou: a vez acaba. No intervalo, todo mundo vê as cartas que saíram, confere os pontos e quem vai explicar começa quando estiver pronto.</p>
     <label for="hName">Seu nome</label><input id="hName" maxlength="10" autocomplete="off">
     <label for="hCode">Código da sala</label><input id="hCode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase;letter-spacing:.2em">
     <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button id="btnCreate">Abrir sala nova</button></div>
@@ -114,6 +123,7 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:14px 0 6px;font-w
     const me = myP(), v = S.vez, isHost = ME && S.host === ME.id;
     if (S.phase === "fim") { $("vezBox").innerHTML = `<h2 style="text-align:center;font-size:38px;color:${COR[S.vencedor]}">🏆 Time ${NOME[S.vencedor]} venceu!</h2>${isHost ? `<div class="row" style="justify-content:center;margin-top:12px"><button class="primary" id="btnAgain">Jogar de novo</button><button id="btnLobby">Voltar pra sala</button></div>` : ""}`;
       if ($("btnAgain")) $("btnAgain").onclick = () => act("start"); if ($("btnLobby")) $("btnLobby").onclick = () => act("lobby"); return; }
+    if (S.intervalo) return intervalo(me, isHost);
     const explico = me && v.quem === me.id, fiscalizo = me && me.team !== v.time;
     let html = `<p style="text-align:center;margin:0">Vez do time <b style="color:${COR[v.time]}">${NOME[v.time]}</b> · quem explica: <b>${h(nome(v.quem))}</b>${v.acertos ? ` · ${v.acertos} acerto${v.acertos > 1 ? "s" : ""}` : ""}</p><div class="relogio" id="rel"></div>`;
     if (st.carta) html += `<div class="carta"><h2>${h(st.carta[0])}</h2><ul>${st.carta.slice(1).map((w) => `<li>🚫 ${h(w)}</li>`).join("")}</ul></div>`;
@@ -125,6 +135,22 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:14px 0 6px;font-w
     if ($("btnPassa")) $("btnPassa").onclick = () => act("passar");
     if ($("btnProib")) $("btnProib").onclick = () => { if (confirm("Ele falou mesmo uma palavra proibida? A vez passa e o seu time ganha 1 ponto.")) act("proibida"); };
   });
+  // o intervalo entre as vezes: as cartas que saíram (com as palavras, para todo mundo rir), o "não valeu" e o começar
+  const SELO = { acertou: "✅ acertou", proibida: "🚫 proibida", tempo: "⏱️ acabou o tempo", passou: "🙈 passou" };
+  const POR = { tempo: "acabou o tempo", proibida: "falou uma palavra proibida", passou: "passou a vez", meta: "chegou na meta" };
+  function intervalo(me, isHost) {
+    const iv = S.intervalo, pontos = iv.cartas.filter((c) => c.res === "acertou" && !c.anulada).length;
+    const confere = me && (isHost || me.team !== iv.time), comeca = me && (me.id === iv.proxQuem || isHost), fim = S.placar.A >= S.config.meta || S.placar.B >= S.config.meta;
+    let html = `<h2 style="text-align:center;font-size:30px">Fim da vez do time <span style="color:${COR[iv.time]}">${NOME[iv.time]}</span></h2>
+      <p style="text-align:center;margin:4px 0 0">${h(nome(iv.quem))} ${POR[iv.porque] || "terminou"} · ${pontos} acerto${pontos === 1 ? "" : "s"}</p>`;
+    html += iv.cartas.length ? `<div class="mesa">${iv.cartas.map((c, i) => `<div class="mini ${c.anulada ? "anulada" : ""}" style="--r:${((i * 37) % 7) - 3}deg"><span class="selo ${c.res}">${c.anulada ? "❌ não valeu" : SELO[c.res]}</span><b>${h(c.carta[0])}</b><small>${c.carta.slice(1).map(h).join(" · ")}</small>${confere && (c.res === "acertou" || c.res === "proibida") ? `<button data-anula="${i}">${c.anulada ? "Valeu sim" : "Não valeu"}</button>` : ""}</div>`).join("")}</div>` : `<p class="muted" style="text-align:center">Nenhuma carta nessa vez.</p>`;
+    if (confere) html += `<p class="muted" style="text-align:center;font-size:14px;margin:0 0 12px">Alguém falou meia palavra proibida e passou batido? Marque "não valeu" e o ponto sai.</p>`;
+    const botao = fim ? "🏆 Ver quem venceu" : `▶️ ${me && me.id === iv.proxQuem ? "Começar a minha vez" : `Começar a vez de ${h(nome(iv.proxQuem))}`}`;
+    html += comeca ? `<div class="row" style="justify-content:center"><button class="primary grande" id="btnComecar">${botao}</button></div>` : `<p style="text-align:center;font-weight:800">${fim ? "Esperando para ver quem venceu…" : `Agora é o time <span style="color:${COR[iv.prox]}">${NOME[iv.prox]}</span>: ${h(nome(iv.proxQuem))} explica. Esperando começar…`}</p>`;
+    $("vezBox").innerHTML = html;
+    if ($("btnComecar")) $("btnComecar").onclick = () => act("comecar");
+    $("vezBox").querySelectorAll("[data-anula]").forEach((b) => (b.onclick = () => act("naoValeu", { i: +b.dataset.anula })));
+  }
   setInterval(() => { const el = $("rel"); if (el && S && S.vez) { const s = Math.max(0, Math.ceil((S.vez.ate - relogio.agora()) / 1000)); el.textContent = s + "s"; el.style.color = s <= 10 ? "var(--bad)" : ""; } }, 250);
   if (!urlCode) show("home");
 })();

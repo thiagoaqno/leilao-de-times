@@ -1,46 +1,29 @@
-# Vila em bairros, +2026 cartas na Palavra Proibida, Rumi ao vivo e bola alcançável no Pingue-Pongue
+# Palavra Proibida: intervalo entre as vezes
 
-## Vila reorganizada em bairros
-- Os prédios agora ficam juntos por tema, em ruas retas, com uma avenida no meio ligando tudo:
-  - **Rua das Cartas** (em cima): Leilão, Cassino, Uno, Truco, Sinuca, Dominó, Rumi e Palavra Proibida, em duas
-    ruas de paralelepípedo;
-  - **Praça da Galera** (no meio): a fonte, os quiosques do Ludo e do Botão e o lugar onde todo mundo chega;
-  - **Vila Esportiva** (embaixo, à esquerda): Pelada, Tênis e Pingue-Pongue;
-  - **Autódromo** (embaixo, à direita): Corrida, Tiro, Rocket e Batalha.
-- **O chão de cada bairro é do material do tema:**
-  - Rua das Cartas: paralelepípedo;
-  - Praça: pedra portuguesa em ondas pretas e brancas, como o calçadão de Copacabana;
-  - Vila Esportiva: pista de atletismo cor de tijolo com as raias;
-  - Autódromo: asfalto com a faixa amarela tracejada.
-- **Placas de rua:** na entrada de cada bairro tem uma placa azul esmaltada (como as de esquina) com o nome do bairro.
-- **Menu "Jogos":** separado pelos mesmos bairros, com a mesma placa azul.
-- **Tamanho do mapa:** passou de 34x45 para 40x44 quadradinhos (o servidor da vila acompanha). Quem entra chega na
-  praça, embaixo da fonte.
+Antes, quando a vez de um time acabava, a próxima já começava com o relógio correndo. Agora tem um **intervalo**, para
+a galera conferir os pontos e dar risada:
 
-## Palavra Proibida: mais 2026 cartas
-- O baralho foi de 200 para **2226 cartas**, em português, de vários temas:
-  - comida, bichos, casa, profissões e lugares;
-  - esporte e festas, tecnologia e internet, corpo e natureza;
-  - transporte e roupa, escola e cultura (filmes, desenhos, música, história);
-  - o dia a dia do Brasil.
-- Sem palavra repetida (nem com as que já existiam) e sempre 5 proibidas diferentes por carta.
-- Ficam em `public/proibida/cartas-mais.js`, uma por linha ("palavra|5 proibidas"); `cartas.js` junta com as primeiras.
+- **As cartas da vez na mesa:** todo mundo vê as cartas que saíram, com a palavra e as 5 proibidas. Inclusive o time
+  que estava adivinhando, que até então não via a carta.
+- **Carimbo em cada carta:** ✅ acertou, 🚫 proibida, 🙈 passou ou ⏱️ acabou o tempo.
+- **"Não valeu":** o organizador ou o time que fiscalizou pode marcar que um ponto não valeu (alguém falou meia palavra
+  proibida e passou batido), e o ponto sai. Dá para voltar atrás ("Valeu sim"). Quem jogou a vez não confere os
+  próprios pontos.
+- **A próxima vez só começa quando quem vai explicar aperta "Começar a minha vez".** O organizador também pode
+  começar por ele, se a pessoa sumir. Sem relógio no intervalo: dá para rir à vontade.
+- **Meta:** chegar na meta também passa pelo intervalo, para conferir. Se depois de conferir algum time ainda estiver
+  na meta, o botão vira "Ver quem venceu".
 
-## Rumi: ver a jogada dos outros antes de confirmar
-- O servidor já mandava o rascunho de quem está na vez, mas na tela dos outros quase não dava para perceber. Agora:
-  - as peças que vieram da mão aparecem **em verde**;
-  - as peças da mesa que ele está pegando aparecem **levantadas**;
-  - em cima aparece "fulano está mexendo na mesa · já pôs N peças da mão · só vale quando confirmar".
-- Quem entra (ou volta) no meio da vez já vê o rascunho.
-
-## Pingue-Pongue: a bola não sobe mais fora do alcance
-- Uma batida simples (raquete parada, bloqueio) mandava a bola num arco de 1,1 a 1,4 m acima da mesa, e ela quicava
-  alto demais para pegar.
-- Agora o voo não passa de ~0,45 m acima da mesa: a bola sai mais reta e rápida, sem deixar bater na rede.
-- A raquete também alcança um pouco mais alto (até ~1 m acima da mesa).
-- No pior caso, a bola chega em quem recebe a uns 0,47 m acima da mesa (antes chegava a 1 m).
+## Arquivos
+- `proibida.js`: estado `intervalo` (cartas da vez, quem explica na próxima) e as ações `naoValeu` e `comecar`.
+- `public/proibida/index.html`: a tela do intervalo (as cartas espalhadas com o carimbo) e o texto de como jogar.
 
 ## Testes
-- `tests/servidor.test.js`: o rascunho do Rumi chega ao vivo para os outros (com as peças pegas da mesa).
-- `tests/pingpong.test.js`: de qualquer altura e com qualquer batida, a bola chega no alcance de quem recebe.
-- `npm test` (42) e os testes no navegador das páginas, das salas e do Pingue-Pongue passando.
+- `tests/servidor.test.js`: com 4 pessoas, a vez acaba e entra o intervalo com as cartas.
+  - O time que jogou não consegue anular o próprio ponto; o outro time anula e o placar desce.
+  - A vez não começa sozinha, nem por quem não vai explicar; quando quem vai explicar aperta, começa a vez do outro
+    time.
+- Teste das salas regravado: só entrou o campo `intervalo`.
+- `npm test` e o teste de abrir as páginas passando.
+- Testado no navegador com 3 jogadores de mentira: o "não valeu" tirou o ponto e a vez seguinte voltou para o
+  intervalo.

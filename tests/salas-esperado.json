@@ -1176,6 +1176,7 @@
       "code",
       "config",
       "host",
+      "intervalo",
       "log",
       "now",
       "phase",

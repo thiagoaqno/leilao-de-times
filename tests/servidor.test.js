@@ -228,3 +228,36 @@ test("rumi: quem está na vez mexe e os outros recebem o rascunho ao vivo (com a
     await new Promise((ok) => setTimeout(ok, 200));
   } finally { m.fechar(); }
 });
+
+// ---------- Palavra Proibida ----------
+// Entre uma vez e outra: intervalo com as cartas da vez, o "não valeu" e a próxima só começa quando quem explica quer.
+test("proibida: intervalo entre as vezes — mostra as cartas, o outro time anula um ponto e quem explica começa a vez", async () => {
+  const m = await mesa("/proibida", 4, { tempo: 60, meta: 30 });
+  try {
+    const t = m.todos;
+    await pedir(t[0], "act", { type: "team", team: "A" }); await pedir(t[1], "act", { type: "team", team: "A" });
+    await pedir(t[2], "act", { type: "team", team: "B" }); await pedir(t[3], "act", { type: "team", team: "B" });
+    await pedir(t[0], "act", { type: "start" });
+    const st = await esperarEstado(t[0], (s) => s.phase === "jogando" && s.vez);
+    const quem = t.find((s) => s.pid === st.vez.quem), fiscal = t.find((s) => s.pid !== st.vez.quem && s !== quem && (st.players.find((p) => p.id === s.pid).team !== st.vez.time));
+    const parceiro = t.find((s) => s !== quem && st.players.find((p) => p.id === s.pid).team === st.vez.time);
+    await pedir(quem, "act", { type: "acertou" }); await pedir(quem, "act", { type: "acertou" });
+    await pedir(quem, "act", { type: "passar" });
+    const iv = (await esperarEstado(t[0], (s) => s.intervalo)).intervalo;
+    assert.strictEqual(iv.time, st.vez.time); assert.strictEqual(iv.cartas.length, 3);
+    assert.deepStrictEqual(iv.cartas.map((c) => c.res), ["acertou", "acertou", "passou"]);
+    assert.ok(iv.cartas.every((c) => c.carta.length === 6), "todo mundo vê as palavras das cartas da vez");
+    await assert.rejects(pedir(parceiro, "act", { type: "naoValeu", i: 0 })); // quem jogou não confere os próprios pontos
+    await pedir(fiscal, "act", { type: "naoValeu", i: 0 });
+    const depois = await esperarEstado(t[0], (s) => s.intervalo && s.intervalo.cartas[0].anulada);
+    assert.strictEqual(depois.placar[st.vez.time], 1);
+    // a próxima vez não começa sozinha: só quando quem vai explicar aperta
+    const prox = t.find((s) => s.pid === iv.proxQuem), outro = t.find((s) => s.pid !== iv.proxQuem && s !== t[0]);
+    await new Promise((ok) => setTimeout(ok, 300));
+    assert.ok((await esperarEstado(t[0], (s) => true)).intervalo, "ainda no intervalo");
+    await assert.rejects(pedir(outro, "act", { type: "comecar" }));
+    await pedir(prox, "act", { type: "comecar" });
+    const nova = await esperarEstado(t[0], (s) => s.vez && !s.intervalo);
+    assert.strictEqual(nova.vez.quem, iv.proxQuem); assert.notStrictEqual(nova.vez.time, st.vez.time);
+  } finally { m.fechar(); }
+});
