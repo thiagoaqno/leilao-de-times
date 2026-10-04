@@ -26,9 +26,11 @@
   const VEL = 6.3, VEL_ARMADO = 0.7, ACEL = 30, ALCANCE = 1.5, ALTURA_MAX = 2.45, ALTURA_SMASH = 2.15, ARMADO_MAX = 0.5, CARGA_T = 1.0, PULO = 4.4; // ARMADO_MAX: armou e não bateu em 0,5 s? desarma (volta a andar normal) · PULO: velocidade do pulo (m/s)
   // robôs
   const DIF = {
-    facil: { nome: "Fácil", vel: 0.72, reac: 0.45, erro: 1.6, arma: 0.55 },
-    medio: { nome: "Médio", vel: 0.88, reac: 0.28, erro: 1.0, arma: 0.7 },
-    dificil: { nome: "Difícil", vel: 1.0, reac: 0.14, erro: 0.6, arma: 0.85 },
+    // vel: velocidade de corrida · reac: quanto demora para reagir à batida do outro · erro: espalha o alvo
+    // forca: faixa de força dos golpes · cabeca: chance de jogar pensando (lado vazio, curtinha, balão) em vez de chutar
+    facil: { nome: "Fácil", vel: 0.72, reac: 0.62, erro: 2.6, forca: [0.3, 0.6], cabeca: 0.25 },
+    medio: { nome: "Médio", vel: 0.85, reac: 0.45, erro: 1.8, forca: [0.45, 0.85], cabeca: 0.6 },
+    dificil: { nome: "Difícil", vel: 0.95, reac: 0.3, erro: 1.25, forca: [0.6, 1], cabeca: 0.9 },
   };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const ladoDe = (z) => (z >= 0 ? "A" : "B"); // de que lado da rede está
@@ -153,7 +155,7 @@
     let tx = alvo.x, tz = alvo.z;
     // erro: cresce com a força, com a mira na linha e com a bola mal pega (atrás do corpo)
     const atras = (b.z - j.z) * s > 0.4 ? 1 : 0, extremo = Math.abs(ax) > 0.8 ? 1 : 0;
-    const sig = (0.22 + 0.45 * forca * (0.4 + extremo) + 0.5 * atras) * (j.bot ? DIF_ATUAL.erro : 1);
+    const sig = (0.22 + 0.45 * forca * (0.4 + extremo) + 0.5 * atras) * (j.bot ? (tipo === "saque" ? Math.min(1, DIF_ATUAL.erro) : DIF_ATUAL.erro) : 1); // o saque do robô erra como o de gente
     tx += gauss(rnd) * sig; tz += gauss(rnd) * sig * 0.8;
     const T = Gp.T[0] + (Gp.T[1] - Gp.T[0]) * forca, g = G * Gp.g;
     const v = lancar(b, { x: tx, z: tz }, T, g);
@@ -174,6 +176,8 @@
   }
   // pular (só do chão)
   function pular(j) { if (!(j.y > 0)) { j.vy = PULO; j.y = 0.001; } }
+  // até quando o golpe armado espera a bola (o robô arma sabendo quando ela chega: tem prazo próprio)
+  const prazoArmado = (j) => j.armado.ate ?? j.armado.t0 + ARMADO_MAX * 1000;
   // armar o golpe (apertou o botão)
   function armar(m, j, tipo, agora) { if (m.fase !== "jogo" || !GOLPES[tipo] || tipo === "saque" || tipo === "smash") return; j.armado = { tipo, t0: agora }; }
   // saque: primeiro toque joga a bola para cima; o segundo bate (mais forte perto do alto)
@@ -225,7 +229,7 @@
   function passo(m, dt, agora, rnd = Math.random) {
     m.t = agora; DIF_ATUAL = DIF[m.cfg.dif];
     if (m.fim) return;
-    for (const j of m.jogadores) if (j.armado && agora - j.armado.t0 > ARMADO_MAX * 1000) j.armado = null; // não alcançou a bola: desarma
+    for (const j of m.jogadores) if (j.armado && agora > prazoArmado(j)) j.armado = null; // não alcançou a bola: desarma
     if (m.fase === "ponto") { passoBola(m.bola, dt); if (agora >= m.ate) { m.sacador = escolherSacador(m); posicionar(m); m.fase = "saque"; m.ate = agora + 700; } robos(m, dt, agora, rnd); return; }
     robos(m, dt, agora, rnd);
     const b = m.bola;
@@ -245,9 +249,9 @@
       // golpes armados: quem estiver no alcance bate
       for (const j of m.jogadores) {
         if (!j.armado) continue;
-        if (agora - j.armado.t0 > ARMADO_MAX * 1000) { j.armado = null; continue; }
+        if (agora > prazoArmado(j)) { j.armado = null; continue; }
         const a = alcanca(m, j, j.bot ? 0 : 0.25); if (!a) continue;
-        const forca = clamp((agora - j.armado.t0) / (CARGA_T * 1000), 0.15, 1);
+        const forca = j.armado.forca ?? clamp((agora - j.armado.t0) / (CARGA_T * 1000), 0.15, 1);
         bater(m, j, a === "smash" ? "smash" : j.armado.tipo, forca, j.mira, rnd);
         break;
       }
@@ -283,17 +287,23 @@
       let alvo = null;
       const vindo = m.fase === "jogo" && b.viva && b.ultimo !== j.team;
       const parceiro = m.jogadores.find((o) => o !== j && o.team === j.team);
+      // reação: depois da batida do outro, ele demora um pouco para sair correndo (quanto mais fácil, mais)
+      if (vindo && j.viuBatida !== b.por + m.rally) { j.viuBatida = b.por + m.rally; j.pensa = agora + d.reac * 1000; j.alvo = null; }
       if (vindo && agora >= j.pensa) {
-        j.pensa = agora + d.reac * 1000 * (0.5 + rnd() * 0.5);
+        j.pensa = agora + 150;
         // simula a bola e procura o melhor ponto do meu lado (o parceiro mais perto da bola vai nela)
-        const c = { ...b }; let best = null;
+        // o primeiro ponto (depois do quique, numa altura boa, dentro do muro) aonde ele chega a tempo; se não chega
+        // em nenhum, o que fica menos atrasado (o voleio só se não der para esperar o quique)
+        const c = { ...b }, vmax = VEL * d.vel; let best = null, atraso = Infinity, voleio = null;
         for (let t = 0; t < 3; t += 1 / 60) {
           passoBola(c, 1 / 60);
-          if (ladoDe(c.z) !== j.team) continue;
-          const pode = (c.quiques >= 1 || (!b.saque && c.y > 0.6)) && c.y > 0.25 && c.y < ALTURA_MAX;
           if (c.y <= Q.R + 0.01 && c.vy > 0) c.quiques = (c.quiques || 0) + 1; // contou o quique
-          if (pode) { best = { x: c.x, z: c.z, t }; if (c.quiques >= 1 && c.vy < 0) break; }
+          if (ladoDe(c.z) !== j.team || Math.abs(c.z) > Q.FZ - 0.4 || Math.abs(c.x) > Q.FX - 0.3 || c.y < 0.25 || c.y > ALTURA_MAX) continue;
+          const px = c.x + (c.x > j.x ? -0.55 : 0.55), pz = c.z + s * 0.35, chega = Math.hypot(px - j.x, pz - j.z) / vmax + 0.12;
+          if (c.quiques >= 1) { if (chega <= t) { best = { x: c.x, z: c.z, t }; atraso = 0; break; } if (chega - t < atraso) { atraso = chega - t; best = { x: c.x, z: c.z, t }; } }
+          else if (!b.saque && c.y > 0.6 && !voleio && chega <= t) voleio = { x: c.x, z: c.z, t };
         }
+        if (atraso > 0 && voleio) best = voleio;
         if (best) {
           const meuD = Math.hypot(best.x - j.x, best.z - j.z), dele = parceiro ? Math.hypot(best.x - parceiro.x, best.z - parceiro.z) : 99;
           if (!parceiro || meuD <= dele) j.alvo = { x: best.x + (best.x > j.x ? -0.55 : 0.55), z: best.z + s * 0.35, t: agora + best.t * 1000 };
@@ -305,13 +315,12 @@
         const falta = (j.alvo.t - agora) / 1000;
         const perto = Math.hypot(j.alvo.x - j.x, j.alvo.z - j.z);
         const bolaPerto = ladoDe(b.z) === j.team && Math.hypot(b.x - j.x, b.z - j.z) < 3.2;
-        if (!j.armado && (falta < 0.3 || bolaPerto || (falta < 0.7 && perto < 0.9))) { // arma o golpe quando já está chegando
-          const rival = m.jogadores.filter((o) => o.team !== j.team).sort((p, q) => Math.abs(p.z) - Math.abs(q.z))[0];
-          const r = rnd(); let tipo = r < 0.5 ? "top" : r < 0.78 ? "slice" : "lob";
-          if (rival && Math.abs(rival.z) < 5 && rnd() < 0.5) tipo = "lob";
-          else if (rival && Math.abs(rival.z) > Q.L - 1 && rnd() < 0.18) tipo = "curta";
-          j.armado = { tipo, t0: agora - (1 - d.arma) * 800 * rnd() - d.arma * 700 };
-          j.mira = { x: (rnd() * 2 - 1) * 0.9, z: rnd() * 2 - 1 };
+        // arma no último instante: quando a bola vai estar no alcance do braço daqui a 0,2 s (armado, ele anda devagar)
+        const fut = prever(b, 0.2), chegando = ladoDe(fut.z) === j.team && (b.quiques >= 1 || !b.saque) && Math.hypot(fut.x - j.x, fut.z - j.z) < ALCANCE + 0.3;
+        if (!j.armado && (chegando || falta < 0.08)) {
+          const jog = jogada(m, j, d, rnd);
+          j.armado = { tipo: jog.tipo, t0: agora, ate: agora + 1300, forca: jog.forca };
+          j.mira = jog.mira;
         }
       } else if (!vindo || !j.alvo) {
         j.alvo = null;
@@ -324,6 +333,22 @@
       if (alvo) { const dx = alvo.x - j.x, dz = alvo.z - j.z, dd = Math.hypot(dx, dz); if (dd > 0.15) dir = { x: dx / dd * Math.min(1, dd / 0.8), z: dz / dd * Math.min(1, dd / 0.8) }; }
       mover(j, dir, dt);
     }
+  }
+
+  // A jogada do robô. Pensando (chance "cabeca" da dificuldade): manda no lado vazio da quadra, longe de quem vai
+  // receber; com o rival na rede, balão por cima ou bola rápida na paralela; com o rival lá no fundo, às vezes a
+  // curtinha; bola alta e fácil perto da rede, pancada. Sem pensar: um golpe e uma mira quaisquer.
+  function jogada(m, j, d, rnd) {
+    const rivais = m.jogadores.filter((o) => o.team !== j.team), forca = d.forca[0] + rnd() * (d.forca[1] - d.forca[0]);
+    if (rnd() > d.cabeca || !rivais.length) { const r = rnd(); return { tipo: r < 0.5 ? "top" : r < 0.8 ? "slice" : "lob", forca, mira: { x: (rnd() * 2 - 1) * 0.9, z: rnd() * 2 - 1 } }; }
+    // o buraco: o x da quadra mais longe dos rivais (testa 9 posições)
+    const larg = m.cfg.duplas ? Q.WD : Q.WS; let melhor = 0, dist = -1;
+    for (let k = -4; k <= 4; k++) { const x = (k / 4) * larg * 0.82, dd = Math.min(...rivais.map((o) => Math.abs(o.x - x))); if (dd > dist) { dist = dd; melhor = k / 4; } }
+    const ax = clamp(melhor * (0.75 + rnd() * 0.15), -0.85, 0.85);
+    const naRede = rivais.some((o) => Math.abs(o.z) < 5), noFundo = rivais.every((o) => Math.abs(o.z) > Q.L - 0.5);
+    if (naRede) return rnd() < 0.45 ? { tipo: "lob", forca: 0.6, mira: { x: ax * 0.6, z: 0.6 } } : { tipo: "top", forca: Math.max(forca, 0.75), mira: { x: Math.sign(ax || 1) * 0.85, z: -0.2 } };
+    if (noFundo && rnd() < 0.22) return { tipo: "curta", forca: 0.5, mira: { x: ax, z: -1 } };
+    return { tipo: rnd() < 0.7 ? "top" : "slice", forca, mira: { x: ax, z: 0.2 + rnd() * 0.8 } };
   }
 
   // ---------- pacote compacto (online) ----------

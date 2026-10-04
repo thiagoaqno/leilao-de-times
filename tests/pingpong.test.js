@@ -64,3 +64,16 @@ test("pingpong: robô contra robô joga uma partida inteira, com trocas de bola"
   assert.notStrictEqual(pl.vencedor, null, "a partida terminou");
   assert.ok(batidas > pontos * 2, `teve troca de bola (${batidas} batidas em ${pontos} pontos)`);
 });
+
+test("pingpong: efeito — a bola cai no alvo mesmo com curva, o top spin acelera no quique e a cortada freia", () => {
+  const bater = (vx, vz) => { const b = { p: [0, 0.95, 1.55], v: [0, 0, 0], viva: true }; P.rebater(b, { x: 0, z: 1.55, vx, vz }, 0); return b; };
+  const quique = (b) => { for (let i = 0; i < 600 && b.viva; i++) for (const e of P.voar(b, 1 / 240)) if (e.tipo === "quique") return { p: b.p.slice(), vz: b.v[2] }; return null; };
+  const top = bater(0, -3.5), corte = bater(0, 1.5), curva = bater(2, -2.5);
+  assert.ok(top.w[1] > 0.5 && P.nomeEfeito(top.w).startsWith("Top spin"));
+  assert.ok(corte.w[1] < -0.3 && P.nomeEfeito(corte.w) === "Cortada");
+  assert.ok(curva.w[0] > 0.5);
+  const vzTop = top.v[2], vzCorte = corte.v[2], qt = quique(top), qc = quique(corte), qv = quique(curva);
+  for (const q of [qt, qc, qv]) assert.ok(q && q.p[2] < 0 && Math.abs(q.p[0]) < P.MESA.W / 2, "caiu na mesa do outro lado");
+  assert.ok(Math.abs(qt.vz) > Math.abs(vzTop) * 0.98, "top spin acelerou no quique");
+  assert.ok(Math.abs(qc.vz) < Math.abs(vzCorte) * 0.9, "cortada freou no quique");
+});

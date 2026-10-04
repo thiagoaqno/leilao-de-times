@@ -63,3 +63,23 @@ test("dominó: batida de 1, 2, 3 e 4 pontos", () => {
   assert.deepStrictEqual(D.batida(t(4, 4), { l: 4, r: 4 }), { pts: 4, name: "Cruzada" });
   assert.deepStrictEqual(D.batida(t(4, 2), { l: 4, r: 4 }), { pts: 1, name: "Batida" }); // serve nas duas, mas pontas iguais
 });
+
+// Tênis: robô contra robô, em cada dificuldade, devolve bola (pega o bug de o golpe armado vencer antes da bola chegar)
+test("tênis: os robôs devolvem a bola em todas as dificuldades, e o difícil troca mais bolas que o fácil", () => {
+  const T = require("../public/tenis/regras.js"), media = {};
+  for (const dif of ["facil", "medio", "dificil"]) {
+    let pontos = 0, batidas = 0;
+    for (let jogo = 0; jogo < 4; jogo++) {
+      const m = T.novaPartida([{ id: "a", team: "A", slot: 0, bot: true }, { id: "b", team: "B", slot: 0, bot: true }], { duplas: false, games: 6, dif }, 0);
+      let t = 0, n = 0;
+      for (let i = 0; i < 60 * 60 * 10 && !m.fim && n < 30; i++) {
+        t += 1000 / 60; T.passo(m, 1 / 60, t);
+        for (const e of m.ev) { if (e.tipo === "batida" && e.golpe !== "saque") batidas++; if (e.tipo === "ponto") { pontos++; n++; } }
+        m.ev.length = 0;
+      }
+    }
+    media[dif] = batidas / pontos;
+    assert.ok(media[dif] > 2, `${dif}: ${media[dif].toFixed(2)} devoluções por ponto`);
+  }
+  assert.ok(media.dificil > media.facil, JSON.stringify(media));
+});
