@@ -68,11 +68,18 @@
     const w = [clamp((raq.vx || 0) / 2.5, -1, 1) * 0.9, frente > 0 ? f : clamp(frente / 2, -0.8, 0)];
     return lancar(b, tx, tz, T, w);
   }
-  // velocidade para sair de b.p e cair em (tx, tz) em T segundos, com a aceleração do efeito w
+  // velocidade para sair de b.p e cair em (tx, tz) em T segundos, com a aceleração do efeito w. A bola não sobe mais
+  // que ARCO acima da mesa (senão ela quica alto demais e sai do alcance de quem recebe): encurta o voo (bola mais
+  // rápida e reta) até caber, sem deixar ela bater na rede.
+  const ARCO = 0.45;
   function lancar(b, tx, tz, T, w = null) {
-    const [x, y, z] = b.p, [ax, ay] = acel(w);
-    b.v = [(tx - x) / T - 0.5 * ax * T, (MESA.H + R - y) / T - 0.5 * (ay - G) * T, (tz - z) / T];
-    b.w = w; b.viva = true;
+    const [x, y, z] = b.p, [ax, ay] = acel(w), g = G - ay;
+    const vel = (t) => [(tx - x) / t - 0.5 * ax * t, (MESA.H + R - y) / t + 0.5 * g * t, (tz - z) / t];
+    const apice = (v) => (v[1] > 0 ? y + (v[1] * v[1]) / (2 * g) : y) - MESA.H;
+    const passaRede = (v) => { const tn = -z / v[2]; return !(tn > 0) || y + v[1] * tn - 0.5 * g * tn * tn > MESA.H + MESA.REDE + 0.04; };
+    let v = vel(T);
+    for (let k = 0; k < 20 && apice(v) > ARCO && T > 0.3; k++) { const n = vel(T * 0.93); if (!passaRede(n)) break; T *= 0.93; v = n; }
+    b.v = v; b.w = w; b.viva = true;
     return b;
   }
   // o nome do efeito (para mostrar na tela)

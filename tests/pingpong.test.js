@@ -77,3 +77,16 @@ test("pingpong: efeito — a bola cai no alvo mesmo com curva, o top spin aceler
   assert.ok(Math.abs(qt.vz) > Math.abs(vzTop) * 0.98, "top spin acelerou no quique");
   assert.ok(Math.abs(qc.vz) < Math.abs(vzCorte) * 0.9, "cortada freou no quique");
 });
+
+test("pingpong: a bola nunca sobe fora do alcance de quem recebe (nem bloqueando, nem de bola alta)", () => {
+  const H = P.MESA.H;
+  for (const y0 of [0.8, 0.95, 1.2, 1.45]) for (const vz of [-6, -3, 0, 1, 2]) for (const vx of [-3, 0, 3]) {
+    const b = { p: [0, y0, 1.6], v: [0, 0, 0], viva: true }; P.rebater(b, { x: 0, z: 1.6, vx, vz }, 0);
+    let quicou = false, alturaNaRaquete = null;
+    for (let i = 0; i < 1200 && b.viva && alturaNaRaquete == null; i++) {
+      for (const e of P.voar(b, 1 / 240)) if (e.tipo === "quique" && b.p[2] < 0) quicou = true;
+      if (quicou && b.p[2] < -(P.MESA.L / 2 + 0.3)) alturaNaRaquete = b.p[1];
+    }
+    if (alturaNaRaquete != null) assert.ok(alturaNaRaquete - H < 0.8, `de ${y0} m com vz ${vz}: chegou a ${(alturaNaRaquete - H).toFixed(2)} m acima da mesa`);
+  }
+});

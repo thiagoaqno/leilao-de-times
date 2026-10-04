@@ -103,6 +103,9 @@
     ["Dinheiro", "nota", "moeda", "real", "comprar", "carteira"], ["Chave", "porta", "abrir", "fechadura", "trancar", "chaveiro"],
     ["Presente", "aniversário", "embrulho", "ganhar", "dar", "laço"], ["Balão", "festa", "encher", "ar", "estourar", "bexiga"],
   ];
+  // mais de 2000 cartas em cartas-mais.js (o servidor junta; o navegador não precisa do baralho)
+  if (typeof module === "object" && module.exports) CARTAS.push(...require("./cartas-mais.js"));
+  else if (root.ProibidaMais) CARTAS.push(...root.ProibidaMais);
   const api = { CARTAS };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Proibida = api;

@@ -7,7 +7,7 @@
 // a pessoa tem RECONNECT_MS para voltar com o mesmo token e a batalha continua de onde parou.
 const G = require("./galeramon.js");
 const { rid, limparNome: cleanName } = require("./salas.js");
-const MW = 34, MH = 45, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
+const MW = 40, MH = 44, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
 const INVITE_MS = 20000, CHOICE_MS = 45000, RECONNECT_MS = +process.env.VILA_RECONNECT_MS || 45000;
 const POKEMON_ON = process.env.POKEMON !== "0"; // modo Pokémon (sprites do PokeAPI). POKEMON=0 desliga.
 const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "ludo", "botao", "corrida", "tiro", "pelada", "rocket", "batalha", "tenis", "rumi", "proibida", "pingpong"];
@@ -124,7 +124,7 @@ module.exports = function attachVila(io) {
         me = { id: rid(6), token, sock: socket.id, battle: null, offline: false };
         players.set(me.id, me); byToken.set(token, me);
       }
-      Object.assign(me, { name, look, x: clamp(int(d.x, 16), 0, MW - 1), y: clamp(int(d.y, 13), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down" });
+      Object.assign(me, { name, look, x: clamp(int(d.x, 19), 0, MW - 1), y: clamp(int(d.y, 23), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down" });
       socket.emit("me", { id: me.id, token });
       socket.emit("all", [...players.values()].filter((p) => p !== me && !p.offline).map(pub));
       tellOthers(me, fresh ? "join" : "update");

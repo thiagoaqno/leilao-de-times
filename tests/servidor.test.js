@@ -206,3 +206,25 @@ test("pingpong: dois na mesa, o saque chega no outro e só quem recebe marca o p
     assert.strictEqual(depois.placar.pts[0] + depois.placar.pts[1], 1);
   } finally { m.fechar(); }
 });
+
+// ---------- Rumi ----------
+// Na vez de alguém, os outros veem a mesa mexendo ao vivo (o rascunho), antes de confirmar.
+test("rumi: quem está na vez mexe e os outros recebem o rascunho ao vivo (com as peças da mesa que ele pegou)", async () => {
+  const m = await mesa("/rumi", 2, { robos: 0 });
+  try {
+    const [a, b] = m.todos;
+    await pedir(a, "act", { type: "start" });
+    const st = await esperarEstado(a, (s) => s.phase === "jogando");
+    const vez = st.rodada.vez === a.pid ? a : b, outro = vez === a ? b : a;
+    const meu = await esperarEstado(vez, (s) => s.minhaMao && s.rodada);
+    const ids = meu.minhaMao.slice(0, 3).map((t) => t.id);
+    const chegou = new Promise((ok) => outro.once("rascunho", ok));
+    vez.emit("rascunho", { mesa: [ids], pegando: [ids[0], 99999] });
+    const d = await chegou;
+    assert.strictEqual(d.quem, vez.pid);
+    assert.deepStrictEqual(d.mesa[0].map((t) => t.id), ids);
+    assert.deepStrictEqual(d.pegando, [ids[0]]); // só o que está na mesa do rascunho
+    outro.emit("rascunho", { mesa: [] }); // quem não está na vez não mexe
+    await new Promise((ok) => setTimeout(ok, 200));
+  } finally { m.fechar(); }
+});

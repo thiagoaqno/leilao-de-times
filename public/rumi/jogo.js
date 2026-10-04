@@ -9,7 +9,7 @@
   let S = null, ME = null, urlCode = new URLSearchParams(location.search).get("sala");
   const P = {}; // id -> peça (vai sendo conhecida pelo que chega do servidor)
   // o rascunho da minha vez: mesa e mão do jeito que estou mexendo; sel: peças escolhidas; ordem: a do meu suporte
-  let RAS = null, sel = new Set(), ordemMao = [], vezChave = null, rascunhoAlheio = null;
+  let RAS = null, sel = new Set(), ordemMao = [], vezChave = null, rascunhoAlheio = null, pegandoAlheio = new Set();
 
   // ---------- peça ----------
   const peca = (t, extra = "") => `<div class="peca ${t.c} ${extra}" data-id="${t.id}"><b>${t.n ? t.n : "☺"}</b><i></i></div>`;
@@ -81,13 +81,14 @@
     if (minha && chave !== vezChave) { RAS = { mesa: r.mesa.map((g) => g.map((t) => t.id)), mao: [...ids] }; sel.clear(); }
     if (!minha) { RAS = null; sel.clear(); }
     vezChave = chave;
-    if (!r.rascunho || minha) rascunhoAlheio = null;
+    if (!r.rascunho || minha) { rascunhoAlheio = null; pegandoAlheio = new Set(); }
+    else rascunhoAlheio = r.rascunho.map((g) => g.map((t) => t.id));
     if (antes && antes.rodada && r.ultima && JSON.stringify(r.ultima) !== JSON.stringify(antes.rodada.ultima) && r.ultima.tipo === "jogou" && r.ultima.primeira) toast(`🎉 ${nomeDe(r.ultima.quem)} abriu o jogo!`);
     if (minha && (!antes || !antes.rodada || antes.rodada.vez !== ME.id)) toast("Sua vez!");
     desenhar();
     if (st.phase === "intervalo" || st.phase === "fim") mostrarFim(); else $("over").classList.add("hidden");
   });
-  socket.on("rascunho", (d) => { if (!ME || d.quem !== ME.id) { conhecer(d.mesa.flat()); rascunhoAlheio = d.mesa.map((g) => g.map((t) => t.id)); desenhar(); } });
+  socket.on("rascunho", (d) => { if (!ME || d.quem !== ME.id) { conhecer(d.mesa.flat()); rascunhoAlheio = d.mesa.map((g) => g.map((t) => t.id)); pegandoAlheio = new Set(d.pegando || []); desenhar(); } });
   const nomeDe = (id) => { const p = S && S.players.find((x) => x.id === id); return p ? p.name : "?"; };
 
   // ---------- desenho ----------
@@ -107,12 +108,14 @@
     }).join("") + `<div class="monte">🂠 ${r.monte} no monte · rodada ${r.no}/${S.config.rodadas}</div>`;
     // a mesa: a minha cópia (se é a minha vez), o rascunho de quem está jogando, ou a mesa de verdade
     const grupos = minha ? RAS.mesa : rascunhoAlheio || r.mesa.map((g) => g.map((t) => t.id));
-    const daMao = new Set(minha ? S.minhaMao.map((t) => t.id) : []);
-    let html = rascunhoAlheio && !minha ? `<div class="quem">✋ ${h(nomeDe(r.vez))} está mexendo na mesa…</div>` : "";
+    const naMesa = new Set(r.mesa.flat().map((t) => t.id));
+    const daMao = new Set(minha ? S.minhaMao.map((t) => t.id) : rascunhoAlheio ? rascunhoAlheio.flat().filter((id) => !naMesa.has(id)) : []);
+    let html = "";
+    if (rascunhoAlheio && !minha) { const n = daMao.size; html = `<div class="quem ao-vivo">✋ <b>${h(nomeDe(r.vez))}</b> está mexendo na mesa ${n ? `· já pôs ${n} peça${n === 1 ? "" : "s"} da mão (em verde)` : "· ainda sem peça nova"} · só vale quando confirmar</div>`; }
     html += grupos.map((g, gi) => {
       const av = R.avaliar(g.map(P_)), ordem = minha ? g.map(P_) : av.ok ? av.ordem : g.map(P_);
       const mais = minha && sel.size ? `<div class="poe" data-poe="${gi}" title="Pôr as peças escolhidas aqui">＋</div>` : "";
-      return `<div class="grupo ${minha ? "alvo" : ""} ${av.ok ? "ok" : "ruim"}" data-g="${gi}">${ordem.map((t) => peca(t, `${sel.has(t.id) ? "sel" : ""} ${daMao.has(t.id) ? "nova" : ""}`)).join("")}${mais}</div>`;
+      return `<div class="grupo ${minha ? "alvo" : ""} ${av.ok ? "ok" : "ruim"}" data-g="${gi}">${ordem.map((t) => peca(t, `${sel.has(t.id) || (!minha && pegandoAlheio.has(t.id)) ? "sel" : ""} ${daMao.has(t.id) ? "nova" : ""}`)).join("")}${mais}</div>`;
     }).join("");
     if (minha) html += `<div class="novo" data-novo="1">＋ nova combinação</div>`;
     if (!grupos.length && !minha) html += `<div class="quem">A mesa está vazia. A primeira descida precisa de 30 pontos.</div>`;
@@ -141,13 +144,14 @@
     return RAS.mesa.findIndex((g) => g.includes(id));
   }
   let envio = null;
-  function mudou() { sel.clear(); desenhar(); clearTimeout(envio); envio = setTimeout(() => socket.emit("rascunho", { mesa: RAS.mesa }), 120); }
+  function enviar() { clearTimeout(envio); envio = setTimeout(() => RAS && socket.emit("rascunho", { mesa: RAS.mesa, pegando: [...sel].filter((id) => onde(id) >= 0) }), 120); }
+  function mudou() { sel.clear(); desenhar(); enviar(); }
   function tirarSelecionadas() { const ids = [...sel]; RAS.mesa = RAS.mesa.map((g) => g.filter((id) => !sel.has(id))).filter((g) => g.length); RAS.mao = RAS.mao.filter((id) => !sel.has(id)); return ids; }
   $("mesa").addEventListener("click", (e) => {
     if (!RAS) return;
     // tocar numa peça só escolhe (ou desescolhe); o "＋" no fim de uma combinação (ou o fundo dela) põe as escolhidas lá
     const t = e.target.closest(".peca"), poe = e.target.closest("[data-poe]"), g = e.target.closest(".grupo"), novo = e.target.closest("[data-novo]");
-    if (t) { const id = +t.dataset.id; if (sel.has(id)) sel.delete(id); else sel.add(id); desenhar(); return; }
+    if (t) { const id = +t.dataset.id; if (sel.has(id)) sel.delete(id); else sel.add(id); desenhar(); enviar(); return; }
     const destino = poe ? +poe.dataset.poe : g ? +g.dataset.g : null;
     if (destino != null && sel.size) { const alvo = RAS.mesa[destino], ids = tirarSelecionadas(); const gi = RAS.mesa.indexOf(alvo); if (gi >= 0) RAS.mesa[gi].push(...ids); else RAS.mesa.push(ids); mudou(); return; }
     if (novo && sel.size) { const ids = tirarSelecionadas(); RAS.mesa.push(ids); mudou(); return; }

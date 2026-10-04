@@ -231,8 +231,9 @@ module.exports = function attachRumi(io) {
       if (!mesa) return;
       const permitidas = new Set([...r.mesa.flat(), ...r.maos[me.id]]);
       r.rascunho = mesa.map((g) => g.filter((id) => permitidas.has(id))).filter((g) => g.length);
+      const naMesa = new Set(r.rascunho.flat()), pegando = Array.isArray(d.pegando) ? d.pegando.map((x) => int(x, -1)).filter((id) => naMesa.has(id)).slice(0, 40) : []; // peças da mesa que ele escolheu (as da mão não: segredo)
       const pub = publicState(room);
-      nsp.to(room.code).emit("rascunho", { quem: me.id, mesa: pub.rodada.rascunho });
+      nsp.to(room.code).emit("rascunho", { quem: me.id, mesa: pub.rodada.rascunho, pegando });
     });
 
     socket.on("disconnect", () => {
