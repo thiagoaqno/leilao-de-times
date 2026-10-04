@@ -311,7 +311,7 @@ function moverMinhaRaq(dt) {
   ray.setFromCamera(ndc, cam);
   if (ray.ray.intersectPlane(plano, ponto)) { r.x = clamp(ponto.x, -1.4, 1.4); r.z = s * clamp(s * ponto.z, MESA.L / 2 - 0.1, MESA.L / 2 + 1.1); }
   const b = G.bola, vem = b && b.viva && G.rally && G.rally.quem !== G.eu && Math.abs(b.p[2] - r.z) < 1.2;
-  r.y = lerp(r.y, vem ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.7) : MESA.H + 0.18, 1 - Math.exp(-dt * 14));
+  r.y = lerp(r.y, vem ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.95) : MESA.H + 0.18, 1 - Math.exp(-dt * 14));
   // velocidade: média dos últimos ~80 ms
   const t = G.tj * 1000; G.hist.push({ t, x: r.x, z: r.z }); while (G.hist.length > 2 && t - G.hist[0].t > 80) G.hist.shift();
   const h0 = G.hist[0], d = Math.max(0.016, (t - h0.t) / 1000); r.vx = (r.x - h0.x) / d; r.vz = (r.z - h0.z) / d;
@@ -321,7 +321,7 @@ function tentarRebater(lado, raq, bAntes, rAntesZ, batida) {
   const b = G.bola, s = P.S(lado);
   if (!b || !b.viva || !P.podeRebater(G.rally, lado)) return false;
   const antes = (bAntes - rAntesZ) * s, depois = (b.p[2] - raq.z) * s;
-  if (!(antes < 0.02 && depois >= -0.02) || Math.abs(b.p[0] - raq.x) > 0.3 || b.p[1] > MESA.H + 0.8) return false;
+  if (!(antes < 0.02 && depois >= -0.02) || Math.abs(b.p[0] - raq.x) > 0.3 || b.p[1] > MESA.H + 1.05) return false; // alcança até ~1 m acima da mesa (o braço esticado)
   b.p[2] = raq.z - s * 0.01;
   P.rebater(b, batida || raq, lado);
   return true;
@@ -348,7 +348,7 @@ function passo(dt) {
   if (G.bot) {
     P.robo(G.bot, b, G.rally, dt, G.dif);
     Object.assign(G.raq[1], { x: G.bot.x, z: G.bot.z, vx: G.bot.vx });
-    G.raq[1].y = lerp(G.raq[1].y, b && G.rally && G.rally.quem === 0 ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.7) : MESA.H + 0.18, 1 - Math.exp(-dt * 10));
+    G.raq[1].y = lerp(G.raq[1].y, b && G.rally && G.rally.quem === 0 ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.95) : MESA.H + 0.18, 1 - Math.exp(-dt * 10));
     if (podeSacar(1) && agora() > estado().prontoEm + 700) novaBatida(P.sacar(1, G.bot.x, (Math.random() - 0.5) * 1.6), 1, true);
   }
   // a raquete do outro (online): vai até onde ele mandou

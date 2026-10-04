@@ -64,7 +64,7 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 .peca.v{color:var(--v)}.peca.a{color:var(--a)}.peca.m{color:var(--m)}.peca.p{color:var(--p)}.peca.j{color:var(--v)}
 .peca.j b{font-size:calc(var(--w)*.7)}
 .peca.sel{transform:translateY(-6px);box-shadow:0 0 0 3px var(--accent),0 8px 12px #0007}
-.peca.nova{box-shadow:0 0 0 2px #5fd48a99,0 2px 0 #b9ad8f,0 3px 6px #0006}
+.peca.nova{box-shadow:0 0 0 3px #5fd48a,0 2px 0 #b9ad8f,0 3px 6px #0006}
 /* ---------- jogo ---------- */
 #game{display:grid;grid-template-rows:auto 1fr auto;gap:10px;height:calc(100vh - 66px);height:calc(100dvh - 66px)}
 .topo{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
@@ -82,6 +82,8 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 .poe{display:grid;place-items:center;width:34px;border-radius:7px;border:2px dashed var(--accent);color:var(--accent);font:700 22px var(--display);cursor:pointer;background:#f2c14e1a}
 .poe:hover{background:#f2c14e33}
 .quem{width:100%;color:var(--muted);font-weight:700;font-size:13px}
+.quem.ao-vivo{color:#e8f5ec;background:#1f5a3c;border:1px solid #5fd48a88;border-radius:8px;padding:6px 10px}
+.quem.ao-vivo b{color:#fff}
 .base{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
 .suporte{background:linear-gradient(180deg,var(--madeira),var(--madeira2));border-radius:12px 12px 6px 6px;padding:10px 10px 14px;box-shadow:0 8px 20px #0008,inset 0 2px 0 #ffffff33;display:flex;flex-wrap:wrap;gap:5px;min-height:90px;align-content:flex-start;cursor:pointer}
 .acoes{display:grid;gap:8px;min-width:180px}
