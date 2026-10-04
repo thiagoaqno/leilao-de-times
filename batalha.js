@@ -3,6 +3,7 @@
 // O servidor manda nos ITENS: caixas, cascos, bananas, bombas, balões e pontos (regras em public/batalha/regras.js).
 // Ele roda 60 vezes por segundo (robôs, itens, batidas) e manda UM pacote por jogador 20 vezes por segundo.
 const R = require("./public/batalha/regras.js");
+const { SKINS } = require("./public/pelada/campo.js"); // o piloto do kart usa as skins da Pelada
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js"); // as peças de sala que todo jogo repete
 
 const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3500, MAX_KARTS = 8;
@@ -10,6 +11,7 @@ const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const BOT_NAMES = ["Robozão", "Tchuco", "Ferrugem", "Parafuso", "Bip-Bop", "Turbinho", "Lataria"];
+const BOT_SKINS = ["steve", "pikachu", "shrek", "naruto", "woody", "aranha", "cj"];
 
 module.exports = function attachBatalha(io) {
   const nsp = io.of("/batalha");
@@ -30,9 +32,9 @@ module.exports = function attachBatalha(io) {
       match: m ? { start: m.start, end: m.end, over: m.over } : null,
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, n: p.n, name: p.name, color: p.color, ping: p.rtt == null ? null : Math.round(p.rtt), online: p.sockets.size > 0 };
+        return { id, n: p.n, name: p.name, color: p.color, skin: p.skin, ping: p.rtt == null ? null : Math.round(p.rtt), online: p.sockets.size > 0 };
       }),
-      karts: m ? m.players.map((k) => ({ id: k.id, n: k.n, name: k.name, color: k.color, bot: k.bot, points: k.points, pops: k.pops, hits: k.hits })) : [],
+      karts: m ? m.players.map((k) => ({ id: k.id, n: k.n, name: k.name, color: k.color, skin: k.skin, bot: k.bot, points: k.points, pops: k.pops, hits: k.hits })) : [],
       results: room.results, feed: room.feed.slice(-12), now: Date.now(),
     };
   }
@@ -42,11 +44,11 @@ module.exports = function attachBatalha(io) {
   function startMatch(room) {
     R.usarArena(room.config.arena);
     const list = [];
-    room.order.forEach((id) => { const p = room.players[id]; list.push(R.newPlayer(id, p.n, p.name, p.color, list.length)); });
+    room.order.forEach((id) => { const p = room.players[id]; list.push(Object.assign(R.newPlayer(id, p.n, p.name, p.color, list.length), { skin: p.skin })); });
     const used = new Set(list.map((k) => k.color));
     for (let i = 0; i < room.config.bots && list.length < MAX_KARTS; i++) {
       const color = R.COLORS.findIndex((_, c) => !used.has(c)); used.add(color);
-      list.push(R.newPlayer("bot" + i, 100 + i, "🤖 " + BOT_NAMES[i], color, list.length, true));
+      list.push(Object.assign(R.newPlayer("bot" + i, 100 + i, "🤖 " + BOT_NAMES[i], color, list.length, true), { skin: BOT_SKINS[i % BOT_SKINS.length] }));
     }
     const now = Date.now();
     room.match = R.newMatch(list, now + READY_MS, room.config.minutes * 60000);
@@ -106,9 +108,9 @@ module.exports = function attachBatalha(io) {
     const ctx = () => contexto(socket, rooms);
     const kartOf = (room, me) => room && me && room.match && room.match.players.find((k) => k.id === me.id);
     const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
-    function addPlayer(room, name) {
+    function addPlayer(room, name, skin) {
       const id = rid(6);
-      room.players[id] = { id, token: rid(12), n: room.seq++, name, color: Math.max(0, freeColor(room)), rtt: null, sockets: new Set() };
+      room.players[id] = { id, token: rid(12), n: room.seq++, name, color: Math.max(0, freeColor(room)), skin: SKINS[skin] ? skin : "padrao", rtt: null, sockets: new Set() };
       room.order.push(id);
       return room.players[id];
     }
@@ -118,7 +120,7 @@ module.exports = function attachBatalha(io) {
       if (!name) return fail(cb, "Coloque o seu nome.");
       const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], seq: 0, match: null, results: null, feed: [], t: Date.now() };
       rooms.set(room.code, room);
-      const p = addPlayer(room, name);
+      const p = addPlayer(room, name, data.skin);
       room.host = p.id;
       bind(room, p.id);
       log(room, `Arena aberta por ${name}.`);
@@ -137,7 +139,7 @@ module.exports = function attachBatalha(io) {
       if (room.phase === "play") return fail(cb, "A batalha já começou. Entre para assistir e jogue a próxima.");
       if (room.order.length >= MAX_KARTS) return fail(cb, "A arena está cheia (8 karts). Você pode entrar para assistir.");
       if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na sala.");
-      const p = addPlayer(room, name);
+      const p = addPlayer(room, name, data.skin);
       room.config.bots = Math.min(room.config.bots, MAX_KARTS - room.order.length);
       bind(room, p.id);
       log(room, `${name} chegou na arena.`);
@@ -158,6 +160,7 @@ module.exports = function attachBatalha(io) {
           if (room.order.some((id) => id !== me.id && room.players[id].color === c)) return "Alguém já está com essa cor.";
           me.color = c; return;
         }
+        if (type === "skin") { if (!me || playing || !SKINS[data.skin]) return "Skin inválida."; me.skin = data.skin; return; }
         if (type === "config") {
           if (!isHost || playing) return "Só o organizador muda, fora do jogo.";
           room.config = cleanConfig(data.config);

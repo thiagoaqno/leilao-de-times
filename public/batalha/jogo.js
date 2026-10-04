@@ -4,6 +4,7 @@
 // Para disfarçar o atraso da internet: a caixa quebra na hora em que eu passo, a roleta gira enquanto o servidor confirma,
 // e quem leva um item roda, solta confete e perde o balão com animação.
 import * as THREE from "three";
+import { montarKart, animarKart, soltarKart } from "../kart3d.js";
 
 const R = window.Regras;
 const { $, h, store } = Comum;
@@ -14,6 +15,7 @@ const angLerp = (a, b, k) => { let d = b - a; d = Math.atan2(Math.sin(d), Math.c
 const INTERP = 100;
 const ICON = { banana: "🍌", verde: "🟢", vermelho: "🔴", cogumelo: "🍄", estrela: "⭐", bomba: "💣" };
 const BOT_NAMES = ["Robozão", "Tchuco", "Ferrugem", "Parafuso", "Bip-Bop", "Turbinho", "Lataria"];
+const BOT_SKINS = ["steve", "pikachu", "shrek", "naruto", "woody", "aranha", "cj"];
 const toast = Comum.criarToast(3200);
 
 // ======================================================================
@@ -38,12 +40,12 @@ function enter(r) {
   history.replaceState(null, "", "/batalha/?sala=" + r.code);
   $("roomTag").classList.remove("hidden"); $("rCode").textContent = r.code;
 }
-$("btnCreate").onclick = () => { const name = $("hName").value.trim(); store.set("galera:name", name); socket.emit("create", { name, config: store.get("batalha:cfg") || {} }, enter); };
+$("btnCreate").onclick = () => { const name = $("hName").value.trim(); store.set("galera:name", name); socket.emit("create", { name, skin: store.get("galera:skin"), config: store.get("batalha:cfg") || {} }, enter); };
 $("btnJoin").onclick = () => {
   const name = $("hName").value.trim(), code = $("hCode").value.trim().toUpperCase(); store.set("galera:name", name);
   if (code.length !== 5) return ($("hErr").textContent = "O código tem 5 letras.");
   const saved = store.get("batalha:" + code) || {};
-  socket.emit("join", { code, name, id: saved.id, token: saved.token }, enter);
+  socket.emit("join", { code, name, skin: store.get("galera:skin"), id: saved.id, token: saved.token }, enter);
 };
 $("btnWatch").onclick = () => { const code = $("hCode").value.trim().toUpperCase(); if (code.length !== 5) return ($("hErr").textContent = "Coloque o código da sala."); socket.emit("join", { code, watch: true }, enter); };
 $("hCode").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnJoin").click(); });
@@ -72,6 +74,7 @@ function renderLobby() {
   $("plist").innerHTML = S.players.map((p) => `<div class="pl ${p.id === (ME && ME.id) ? "me" : ""}"><i class="sw" style="background:${R.COLORS[p.color]}"></i><i class="dot ${p.online ? "on" : ""}"></i>${p.id === S.host ? "👑 " : ""}${h(p.name)}${p.ping != null ? `<span class="muted" style="font-weight:500;font-size:12px">${p.ping} ms</span>` : ""}${isHost && p.id !== ME.id ? `<button class="small ghost" data-kick="${p.id}" title="Tirar da sala" style="margin-left:auto">✕</button>` : ""}</div>`).join("")
     + Array.from({ length: S.config.bots }, (_, i) => `<div class="pl muted"><i class="sw" style="background:#666"></i>🤖 ${BOT_NAMES[i]}</div>`).join("");
   const taken = new Set(S.players.filter((p) => p !== mine).map((p) => p.color));
+  $("lSkins").innerHTML = mine ? skinBotoes(mine.skin) : "";
   $("colors").innerHTML = mine ? R.COLORS.map((c, i) => `<button data-color="${i}" class="${mine.color === i ? "on" : ""}" style="background:${c}" ${taken.has(i) ? "disabled" : ""} title="${taken.has(i) ? "Já tem dono" : "Escolher"}"></button>`).join("") : `<span class="muted">Você está assistindo.</span>`;
   document.querySelectorAll("#cfgMin button").forEach((b) => { b.classList.toggle("on", +b.dataset.v === S.config.minutes); b.disabled = !isHost; });
   $("cfgArena").innerHTML = arenaBotoes(S.config.arena || "praca", isHost ? "" : "disabled");
@@ -84,6 +87,11 @@ function renderLobby() {
   if ($("btnStart")) $("btnStart").onclick = () => act("start");
 }
 $("plist").addEventListener("click", (e) => { const b = e.target.closest("[data-kick]"); if (b) act("kick", { id: b.dataset.kick }); });
+// o piloto: as skins da Pelada (o jogo lembra a última escolhida, a mesma da Corrida)
+const skinBotoes = (atual) => Object.entries(window.Campo.SKINS).map(([k, s]) => `<button data-skin="${k}" class="${k === (atual || "padrao") ? "on" : ""}"><i>${s.emoji}</i>${h(s.name)}</button>`).join("");
+function telaSkins() { $("hSkins").innerHTML = skinBotoes(store.get("galera:skin")); }
+telaSkins();
+for (const id of ["hSkins", "lSkins"]) $(id).addEventListener("click", (e) => { const b = e.target.closest("[data-skin]"); if (!b) return; store.set("galera:skin", b.dataset.skin); telaSkins(); if (ME && ME.id && S) act("skin", { skin: b.dataset.skin }); });
 $("colors").addEventListener("click", (e) => { const b = e.target.closest("[data-color]"); if (b) act("color", { color: +b.dataset.color }); });
 $("cfgMin").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setCfg({ minutes: +b.dataset.v }); });
 $("cfgBots").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setCfg({ bots: +b.dataset.v }); });
@@ -399,33 +407,14 @@ function nameTag(text, color) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); s.scale.set(3.2, 0.8, 1); s.renderOrder = 5; return s;
 }
-const balloonGeo = new THREE.SphereGeometry(0.42, 16, 12), BALLOON_POS = [[-0.5, 2.55, 1.05], [0, 2.85, 1.25], [0.5, 2.55, 1.05]];
-function makeKart(colorIdx, name, isMe) {
+const balloonGeo = new THREE.SphereGeometry(0.42, 16, 12), BALLOON_POS = [[-0.5, 2.6, 2.0], [0, 2.9, 2.2], [0.5, 2.6, 2.0]];
+// o kart com o piloto sentado (a skin escolhida) vem de /kart3d.js, em metros: aqui fica um pouco maior
+const KART_S = 1.45;
+function makeKart(colorIdx, name, isMe, skin) {
   const color = R.COLORS[colorIdx] || "#999";
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-  const mats = [], mm = (c, o) => { const m = M(c, o); mats.push(m); return m; };
-  const paint = mm(color, { roughness: 0.35, metalness: 0.25 }), dark = mm(0x26232e), metal = mm(0xb7bcc6, { metalness: 0.6, roughness: 0.3 }), skin = mm(0xf1c27d), white = mm(0xffffff);
-  const box = (w, hh, d, x, y, z, mat, parent = body) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; };
-  box(1.5, 0.3, 2.3, 0, 0.38, 0, paint);
-  box(1.2, 0.28, 0.6, 0, 0.42, -1.3, paint);
-  box(1.8, 0.2, 0.32, 0, 0.32, -1.62, dark);
-  box(1.7, 0.26, 0.3, 0, 0.45, 1.3, dark);
-  box(0.75, 0.6, 0.16, 0, 0.82, 0.62, dark);
-  box(0.8, 0.36, 0.5, 0, 0.7, 1.0, metal);
-  for (const sx of [-0.25, 0.25]) { const ex = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.4, 8), metal); ex.rotation.x = Math.PI / 2; ex.position.set(sx, 0.72, 1.45); body.add(ex); }
-  box(0.6, 0.55, 0.42, 0, 1.0, 0.3, paint); // piloto
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 10), skin); head.position.set(0, 1.5, 0.22); body.add(head);
-  const helm = new THREE.Mesh(new THREE.SphereGeometry(0.31, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), paint); helm.position.set(0, 1.53, 0.24); body.add(helm);
-  box(0.4, 0.1, 0.06, 0, 1.52, -0.05, dark);
-  box(0.62, 0.06, 0.08, 0, 1.73, 0.24, white);
-  const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 6, 14), dark); wheel.position.set(0, 1.0, -0.25); wheel.rotation.x = -0.9; body.add(wheel);
-  const wheels = [], steerers = [];
-  for (const [x, y, z, r, w, front] of [[-0.85, 0.32, -0.85, 0.32, 0.3, 1], [0.85, 0.32, -0.85, 0.32, 0.3, 1], [-0.88, 0.37, 0.85, 0.37, 0.42, 0], [0.88, 0.37, 0.85, 0.37, 0.42, 0]]) {
-    const piv = new THREE.Group(); piv.position.set(x, y, z); body.add(piv);
-    const wm = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 14), dark); wm.rotation.z = Math.PI / 2; wm.castShadow = true; piv.add(wm);
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.45, r * 0.45, w + 0.02, 8), metal); hub.rotation.z = Math.PI / 2; piv.add(hub);
-    wheels.push({ wm, hub, r }); if (front) steerers.push(piv);
-  }
+  const kt = montarKart({ cor: color, skin: skin || "padrao", num: colorIdx + 1 }); kt.g.scale.setScalar(KART_S); body.add(kt.g);
+  const mats = [...kt.mats], mm = (c, o) => { const m = M(c, o); mats.push(m); return m; };
   // balões: 3 na traseira, presos por barbantes
   const balloons = [], bMat = mm(color, { roughness: 0.22, emissive: new THREE.Color(color).multiplyScalar(0.15) });
   const strMat = new THREE.LineBasicMaterial({ color: 0xeeeeee, transparent: true });
@@ -438,14 +427,14 @@ function makeKart(colorIdx, name, isMe) {
   }
   mats.push(strMat);
   const flame = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 8), new THREE.MeshBasicMaterial({ color: 0xff9a20, transparent: true, opacity: 0.85 }));
-  flame.rotation.x = -Math.PI / 2; flame.position.set(0, 0.72, 1.95); flame.visible = false; body.add(flame);
-  let tag = null; if (!isMe) { tag = nameTag(name, color); tag.position.y = 3.7; g.add(tag); }
+  flame.rotation.x = -Math.PI / 2; flame.position.set(-0.3, 0.55, 1.85); flame.visible = false; body.add(flame);
+  let tag = null; if (!isMe) { tag = nameTag(name, color); tag.position.y = 4.1; g.add(tag); }
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.3, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.3, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.02; g.add(shadow);
   scene.add(g);
-  return { g, body, mats, paint, wheels, steerers, balloons, flame, tag, shadow, color, shown: 3, spinA: 0, ghostK: 0, steer: 0, lastYaw: null, sparkT: 0 };
+  return { g, body, mats, paint: kt.pintura, kt, balloons, flame, tag, shadow, color, shown: 3, spinA: 0, ghostK: 0, steer: 0, lastYaw: null, sparkT: 0 };
 }
-function disposeKart(k) { scene.remove(k.g); k.g.traverse((o) => { if (o.geometry && o.geometry !== balloonGeo && o.geometry !== partGeo) o.geometry.dispose(); }); }
+function disposeKart(k) { scene.remove(k.g); soltarKart(k.kt); k.g.traverse((o) => { if (o.geometry && o.geometry !== balloonGeo && o.geometry !== partGeo) o.geometry.dispose(); }); }
 const _c = new THREE.Color();
 // desenha o kart: posição, giro quando leva item, derrapagem, estrela, fantasma, balões
 function poseKart(k, s, dt, now) {
@@ -461,8 +450,7 @@ function poseKart(k, s, dt, now) {
   k.g.rotation.y = yaw + k.spinA + (drift ? -k.steer * 0.45 : 0);
   k.body.rotation.z = lerp(k.body.rotation.z, (drift ? -0.12 : -0.05) * k.steer * clamp(v / 8, 0, 1), 0.2);
   k.body.position.y = spin ? Math.abs(Math.sin(now / 90)) * 0.35 : 0;
-  for (const w of k.wheels) { w.wm.rotation.x += (v * dt) / w.r; w.hub.rotation.x = w.wm.rotation.x; }
-  for (const s2 of k.steerers) s2.rotation.y = -k.steer * 0.45;
+  animarKart(k.kt, (v * dt) / KART_S, k.steer);
   // fantasma: meio transparente e flutuando
   const ghost = !!(f & R.FL.ghost); k.ghostK = lerp(k.ghostK, ghost ? 1 : 0, 0.15);
   const op = 1 - k.ghostK * 0.7;
@@ -552,8 +540,8 @@ function startPractice() {
   if (G.active && !G.practice) return;
   resetGame(); G.practice = true; R.usarArena(store.get("batalha:arena") || "praca");
   const name = $("hName").value.trim() || (myP() && myP().name) || "Você", color = myP() ? myP().color : store.get("batalha:color") ?? 0;
-  const list = [R.newPlayer("me", 0, name, color, 0)];
-  let c = 0; for (let i = 0; i < 5; i++) { if (c === color) c++; list.push(R.newPlayer("bot" + i, 100 + i, "🤖 " + BOT_NAMES[i], c++, list.length, true)); }
+  const list = [Object.assign(R.newPlayer("me", 0, name, color, 0), { skin: store.get("galera:skin") || "padrao" })];
+  let c = 0; for (let i = 0; i < 5; i++) { if (c === color) c++; list.push(Object.assign(R.newPlayer("bot" + i, 100 + i, "🤖 " + BOT_NAMES[i], c++, list.length, true), { skin: BOT_SKINS[i] })); }
   R.usarArena(store.get("batalha:arena") || "praca");
   G.m = R.newMatch(list, Date.now() + 3500, 3 * 60000);
   G.me = G.m.players[0]; G.myN = 0;
@@ -768,7 +756,7 @@ function frame() {
     for (const [n, s] of smp.p) {
       seen.add(n);
       let k = G.karts.get(n);
-      if (!k) { const inf = infoByN(n); k = makeKart(inf ? inf.color : 0, inf ? inf.name : "?", n === G.myN); G.karts.set(n, k); }
+      if (!k) { const inf = infoByN(n); k = makeKart(inf ? inf.color : 0, inf ? inf.name : "?", n === G.myN, inf && inf.skin); G.karts.set(n, k); }
       const nb = shownBalloons(k, s, tNow);
       if (n === G.myN && me) poseKart(k, { x: me.x, y: me.y || 0, z: me.z, yaw: me.yaw, v: me.v, f: (me.air ? R.FL.air : 0) | (me.drifting ? R.FL.drift : 0) | (me.spinT > 0 ? R.FL.spin : 0) | (myGhost() ? R.FL.ghost : 0) | (me.starT > 0 ? R.FL.star : 0) | (me.boostT > 0 ? R.FL.boost : 0), balloons: nb, driftT: me.driftT }, dt, tNow);
       else poseKart(k, { ...s, balloons: nb, driftT: 0.5 }, dt, tNow);
@@ -794,14 +782,14 @@ function frame() {
   if (tgt) {
     G.camYaw = angLerp(G.camYaw, tgt.yaw + (G.lookBack ? Math.PI : 0), G.lookBack ? 1 : 1 - Math.exp(-dt * 5));
     const fx = -Math.sin(G.camYaw), fz = -Math.cos(G.camYaw), speedK = clamp(Math.abs(tgt.v || 0) / R.MAX, 0, 1.5);
-    const ty = tgt.y || 0, dist = 6.6 + speedK * 1.2, want = new THREE.Vector3(tgt.x - fx * dist, ty + 3.3 + speedK * 0.3, tgt.z - fz * dist);
+    const ty = tgt.y || 0, dist = 6.6 + speedK * 1.2, want = new THREE.Vector3(tgt.x - fx * dist, ty + 5.2 + speedK * 0.3, tgt.z - fz * dist); // alta, olhando para baixo: dá para ver o que vem na frente
     want.y = Math.max(want.y, R.groundAt(want.x, want.z) + 1.6); // a câmera não entra no planalto
     // não deixa a câmera atravessar o muro
     want.x = clamp(want.x, -R.HALF - 3, R.HALF + 3); want.z = clamp(want.z, -R.HALF - 3, R.HALF + 3);
     G.camPos.lerp(want, G.lookBack ? 1 : 1 - Math.exp(-dt * 8));
     cam.position.copy(G.camPos);
     if (G.shake > 0) { G.shake = Math.max(0, G.shake - dt); cam.position.x += (Math.random() - 0.5) * G.shake; cam.position.y += (Math.random() - 0.5) * G.shake; }
-    cam.lookAt(tgt.x + fx * 4, ty + 1.1, tgt.z + fz * 4);
+    cam.lookAt(tgt.x + fx * 7, ty + 0.6, tgt.z + fz * 7);
     cam.fov = lerp(cam.fov, 72 + (me && me.boostT > 0 ? 10 : 0) + speedK * 4, 0.1); cam.updateProjectionMatrix();
   } else { cam.position.set(0, 40, 50); cam.lookAt(0, 0, 0); }
   renderer.render(scene, cam);

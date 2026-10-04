@@ -1,27 +1,24 @@
-# Palavra Proibida da Galera (novo jogo, estilo Tabu)
+# Karts com as skins da Pelada + Tênis com pulo
 
-Em `/proibida/`. Dois times (Azul e Laranja), com pelo menos 2 pessoas em cada.
+## Corrida e Batalha: o piloto é a sua skin, sentado num kart
+- Novo `public/kart3d.js`: um kart de caixinhas pintado na cor do jogador, com o **boneco da Pelada sentado** (pernas
+  para a frente, mãos no volante). O piloto vira o volante e inclina nas curvas, as rodas giram e as da frente esterçam.
+- **Escolha da skin** (as mesmas da Pelada e do Tênis): na sala da Corrida ("Seu piloto"), na sala da Batalha e na tela
+  inicial da Batalha (para o treino). A escolha fica salva e vale para os dois jogos. Os robôs têm skins próprias.
+- **Corrida:** os 5 "carros" continuam (cada um com a sua física) e viraram variações do kart: bico mais comprido e asa
+  no Raio V12, laterais largas e rodas maiores no Muscle 69 etc. Cor das rodas, aerofólio e faixas continuam valendo.
+  Na primeira pessoa, o piloto some e a câmera fica no lugar dos olhos dele.
+- **Batalha:** os balões ficam atrás do piloto; a estrela pisca a pintura do kart.
+- Servidores (`corrida.js` e `batalha.js`) guardam a skin de cada um (`act("skin")`) e mandam junto com os jogadores.
 
-- Na vez de um time, quem explica vê a carta: a palavra e as **5 palavras proibidas**. O **time adversário também vê**,
-  para fiscalizar. O time de quem explica não vê.
-- **Acertaram:** quem explica aperta "Acertaram!", o time ganha 1 ponto e sai outra carta do monte.
-- **Não conseguiu:** "Não consegui" passa a vez para o outro time.
-- **Falou uma proibida:** o time adversário aperta "Falou palavra proibida!" e confirma. O time dele ganha 1 ponto e a
-  vez passa.
-- **Tempo:** quando acaba o tempo da vez (45 s, 1 min ou 1,5 min), a vez passa. Quem explica vai mudando dentro de cada
-  time, em rodízio.
-- **Vitória:** ganha quem chegar primeiro a 10, 15, 20 ou 30 pontos (o organizador escolhe).
-- **Baralho:** 100 cartas próprias, em português, de coisas do dia a dia e do Brasil, em `public/proibida/cartas.js`.
+## Câmera mais alta
+- Corrida (perto, longe e primeira pessoa) e Batalha: a câmera de trás subiu e olha um pouco para baixo, para dar
+  para ver a pista na frente do kart.
 
-## Arquivos
-- `proibida.js` (servidor, canal `/proibida`): só quem explica e o time adversário recebem a carta.
-- `public/proibida/index.html` (a página), `public/proibida/cartas.js` (as cartas) e `server.js`.
-- `/proibida` entrou no teste das salas e no de abrir as páginas.
-
-## Ficou para depois
-- Um lugar na vila (por enquanto, entra por `/proibida/`) e mais cartas.
+## Tênis
+- O golpe armado espera no máximo **0,5 s** (antes, 1,9 s) para liberar o movimento.
+- **Pulo:** Espaço (ou RB no controle, ou o botão "pular" no celular). Pula ~1 m e alcança bolas mais altas.
 
 ## Testes
-- Teste das salas regravado: só entrou o bloco de `/proibida`.
-- Testado com 4 pessoas no servidor: quem vê a carta, o acerto dando ponto, e o "falou proibida" dando ponto ao outro
-  time e passando a vez.
+- `npm test` (34) e os testes no navegador de páginas e do Tênis passando. Corrida e Batalha testadas na mão: sala,
+  garagem com a skin, largada, treino com robôs.
