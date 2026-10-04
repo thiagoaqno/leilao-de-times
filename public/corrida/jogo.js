@@ -21,7 +21,7 @@ export function startRace(st) {
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W);
   if (race) clearRace();
   race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
-    kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0 };
+    kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods, undefined, mine.skin) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0 };
   $("results").classList.add("hidden");
   resize();
   if (!raf) raf = requestAnimationFrame(loop);
@@ -78,7 +78,7 @@ function draw(dt) {
   // fantasmas
   for (const [id, gh] of race.ghosts) {
     const pl = P(id); if (!pl) continue;
-    const key = pl.color + pl.car + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, true, pl.name, pl.mods); gh.kartKey = key; }
+    const key = pl.color + pl.car + pl.skin + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, true, pl.name, pl.mods, undefined, pl.skin); gh.kartKey = key; }
     poseKart(gh.kart, gh.x, gh.y, gh.z, gh.a, gh.v || 0, 0, groundH(tr, gh.x, gh.y, gh.idx || 0), dt);
   }
   drawBest(dt);
@@ -90,19 +90,19 @@ function draw(dt) {
   const speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
   if (race.kart) { const out = mode !== "cockpit"; race.kart.roof.visible = race.kart.cabin.visible = out; for (const b of race.kart.roofBits) b.visible = out; } // de dentro, cabine, teto e faixa do teto tapariam a vista
   if (mode === "cockpit") {
-    // primeira pessoa: no lugar do piloto, olhando pelo para-brisa (o capô aparece embaixo)
-    const spec = CARS3[me().car] || CARS3.equilibrado, eyeU = spec.cabin[1][0] + 0.1, eyeH = spec.cabin[1][1] + 0.02;
+    // primeira pessoa: no lugar do piloto, olhando por cima do volante (o bico do kart aparece embaixo)
+    const spec = CARS3[me().car] || CARS3.equilibrado, eyeU = race.kart.eye.u, eyeH = race.kart.eye.h;
     const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = (eyeU - spec.L / 2) * KS, eh = eyeH * KS;
     const ahead = c.air ? c.z : groundH(tr, c.x + fx * 70, c.y + fy * 70, nearest(tr, c.x + fx * 70, c.y + fy * 70, race.idx));
     C.lookY = C.lookY == null ? ahead : C.lookY + (ahead - C.lookY) * (1 - Math.exp(-dt * 6));
-    cam.position.set(c.x + fx * fo, c.z + eh, c.y + fy * fo); C.pos = null;
-    cam.lookAt(c.x + fx * (fo + 70), C.lookY + eh + 1, c.y + fy * (fo + 70));
+    cam.position.set(c.x + fx * fo, c.z + eh + 3, c.y + fy * fo); C.pos = null; // um pouco acima dos olhos, olhando para baixo
+    cam.lookAt(c.x + fx * (fo + 70), C.lookY + eh * 0.5, c.y + fy * (fo + 70));
     if (race.shake > 0) { race.shake -= dt; cam.position.y += (Math.random() - 0.5) * 1.2; }
     if (race.offroad) cam.position.y += (Math.random() - 0.5) * 0.6;
     cam.fov += ((74 + speedK * 12) - cam.fov) * 0.08; cam.updateProjectionMatrix();
   } else {
-    // atrás do carro: perto (padrão) ou longe
-    const near = mode === "perto", back = near ? 50 + speedK * 8 : 88 + speedK * 16, up = near ? 17 + speedK * 2 : 30 + speedK * 4;
+    // atrás do carro: perto (padrão) ou longe; alta e olhando um pouco para baixo, para ver o que vem na frente do kart
+    const near = mode === "perto", back = near ? 50 + speedK * 8 : 88 + speedK * 16, up = near ? 34 + speedK * 2 : 52 + speedK * 4;
     const fx = Math.cos(C.a), fy = Math.sin(C.a);
     const want = V3(src.x - fx * back, (src.z || 0) + up, src.y - fy * back);
     want.y = Math.max(want.y, groundH(tr, want.x, want.z, nearest(tr, want.x, want.z, race.idx)) + 6);
@@ -110,7 +110,7 @@ function draw(dt) {
     cam.position.copy(C.pos);
     if (race.shake > 0) { race.shake -= dt; cam.position.x += (Math.random() - 0.5) * 3; cam.position.y += (Math.random() - 0.5) * 3; }
     if (race.offroad) cam.position.y += (Math.random() - 0.5) * 1.2;
-    cam.lookAt(src.x + fx * (near ? 35 : 45), (src.z || 0) + (near ? 9 : 12), src.y + fy * (near ? 35 : 45));
+    cam.lookAt(src.x + fx * (near ? 55 : 70), (src.z || 0) + 4, src.y + fy * (near ? 55 : 70));
     cam.fov += ((near ? 70 : 68) + speedK * 10 - cam.fov) * 0.08; cam.updateProjectionMatrix();
   }
   // sol e sombras acompanham o carro
@@ -123,10 +123,10 @@ function draw(dt) {
   const paint = () => {
     const tr = buildTrack("interlagos"); useTrack(tr);
     const at = (g) => gridSpot(tr.pts, g, tr.W), ks = [];
-    [[4, COLORS[0], "equilibrado", { aero: "alto", rodas: "preta" }], [0, COLORS[1], "foguete", { faixa: "lateral" }], [1, COLORS[2], "drifteiro", { aero: "baixo", rodas: "ouro" }], [2, COLORS[3], "formiga", { faixa: "dupla" }], [3, COLORS[4], "tanque", { faixa: "dupla", rodas: "preta" }]].forEach(([g, col, model, mods]) => { const s = at(g), k = makeKart(col, model, false, "", mods); poseKart(k, s.x, s.y, tr.pts[s.idx].h, s.a, 0, 0, tr.pts[s.idx].h, 0); ks.push(k); });
+    [[4, COLORS[0], "equilibrado", { aero: "alto", rodas: "preta" }], [0, COLORS[1], "foguete", { faixa: "lateral" }], [1, COLORS[2], "drifteiro", { aero: "baixo", rodas: "ouro" }], [2, COLORS[3], "formiga", { faixa: "dupla" }], [3, COLORS[4], "tanque", { faixa: "dupla", rodas: "preta" }]].forEach(([g, col, model, mods], i) => { const s = at(g), k = makeKart(col, model, false, "", mods, undefined, ["padrao", "pikachu", "naruto", "shrek", "steve"][i]); poseKart(k, s.x, s.y, tr.pts[s.idx].h, s.a, 0, 0, tr.pts[s.idx].h, 0); ks.push(k); });
     const s = at(4), fx = Math.cos(s.a), fy = Math.sin(s.a), h = tr.pts[s.idx].h;
     renderer.setSize(640, 360, false); cam.aspect = 16 / 9; cam.fov = 64; cam.updateProjectionMatrix();
-    cam.position.set(s.x - fx * 60, h + 22, s.y - fy * 60); cam.lookAt(s.x + fx * 60, h + 8, s.y + fy * 60);
+    cam.position.set(s.x - fx * 60, h + 34, s.y - fy * 60); cam.lookAt(s.x + fx * 60, h + 4, s.y + fy * 60);
     sun.position.set(s.x - 300, h + 700, s.y + 260); sun.target.position.set(s.x, h, s.y); if (tr.sky) tr.sky.position.set(s.x, 0, s.y);
     renderer.render(scene, cam);
     const hc = $("heroArt"); hc.width = 640; hc.height = 360; hc.getContext("2d").drawImage(renderer.domElement, 0, 0);

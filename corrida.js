@@ -4,6 +4,7 @@
 // O servidor cuida da largada sincronizada, repassa as posições e conta as voltas pelos setores da pista,
 // na ordem (contra atalho e contramão), com um tempo mínimo de volta. Canal "/corrida" do Socket.io.
 const T = require("./public/corrida/pistas.js");
+const { SKINS } = require("./public/pelada/campo.js"); // o piloto do kart usa as skins da Pelada
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 
 const MAX_PLAYERS = 8, COUNTDOWN_MS = 4500, AFTER_FIRST_MS = 45000, MAX_RACE_MS = 15 * 60000;
@@ -28,7 +29,7 @@ module.exports = function attachCorrida(io) {
       code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null,
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, name: p.name, pawn: p.pawn, color: p.color, car: p.car, mods: p.mods, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last };
+        return { id, name: p.name, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last };
       }),
       finishOrder: room.finishOrder, log: room.log.slice(-20), now: Date.now(),
     };
@@ -85,10 +86,10 @@ module.exports = function attachCorrida(io) {
   nsp.on("connection", (socket) => {
     const ctx = () => contexto(socket, rooms);
     const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
-    function addPlayer(room, name) {
+    function addPlayer(room, name, skin) {
       const usedP = new Set(Object.values(room.players).map((p) => p.pawn)), usedC = new Set(Object.values(room.players).map((p) => p.color));
       const id = rid(6);
-      room.players[id] = { id, name, token: rid(), pawn: PAWNS.find((x) => !usedP.has(x)), color: COLORS.find((c) => !usedC.has(c)), car: "equilibrado", mods: { ...T.MODS_PADRAO }, grid: room.order.length, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set() };
+      room.players[id] = { id, name, token: rid(), pawn: PAWNS.find((x) => !usedP.has(x)), color: COLORS.find((c) => !usedC.has(c)), skin: SKINS[skin] ? skin : "padrao", car: "equilibrado", mods: { ...T.MODS_PADRAO }, grid: room.order.length, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set() };
       room.order.push(id);
       return room.players[id];
     }
@@ -98,7 +99,7 @@ module.exports = function attachCorrida(io) {
       if (!name) return fail(cb, "Coloque o seu nome.");
       const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], finishOrder: [], log: [], t: Date.now() };
       rooms.set(room.code, room);
-      const p = addPlayer(room, name);
+      const p = addPlayer(room, name, data.skin);
       room.host = p.id;
       bind(room, p.id);
       log(room, `Box aberto por ${name}.`);
@@ -119,7 +120,7 @@ module.exports = function attachCorrida(io) {
       if (!name) return fail(cb, "Coloque o seu nome.");
       if (room.order.length >= MAX_PLAYERS) return fail(cb, `A sala já tem ${MAX_PLAYERS} pilotos. Você pode entrar para assistir.`);
       if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na sala.");
-      const p = addPlayer(room, name);
+      const p = addPlayer(room, name, data.skin);
       bind(room, p.id);
       log(room, `${name} chegou ao box.`);
       ok(cb, { code: room.code, id: p.id, token: p.token });
@@ -137,6 +138,7 @@ module.exports = function attachCorrida(io) {
           if (Object.values(room.players).some((p) => p !== me && p.color === data.color)) return "Essa cor já é de outro piloto.";
           me.color = data.color; return;
         }
+        if (type === "skin") { if (!me || room.phase === "race") return "Só dá para trocar fora da corrida."; if (!SKINS[data.skin]) return "Skin inválida."; me.skin = data.skin; return; }
         if (type === "car") {
           if (!me || room.phase === "race") return "Só dá para trocar de carro fora da corrida.";
           if (!T.CARROS[data.car]) return "Carro inválido.";

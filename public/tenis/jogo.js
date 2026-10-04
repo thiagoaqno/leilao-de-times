@@ -154,8 +154,8 @@ function teclasAjuda() {
     <li>Aperte <b>antes</b> da bola chegar: o jogador bate sozinho. Quanto antes, mais forte (e mais devagar ele anda)</li>
     <li>Bola alta perto de você: vira <b>smash</b> sozinho</li>
     <li>Saque: aperte uma vez para jogar a bola para cima e de novo lá no alto (mais alto, mais forte)</li>
-    <li><kbd>Esc</kbd> menu</li></ul>
-    <p class="muted" style="font-size:13px;margin:8px 0 0">🎮 Controle: analógico corre e mira · A top spin · B cortada · Y balão · X curtinha · Start pausa.</p>`;
+    <li><kbd>Espaço</kbd> pula (alcança bola mais alta) · <kbd>Esc</kbd> menu</li></ul>
+    <p class="muted" style="font-size:13px;margin:8px 0 0">🎮 Controle: analógico corre e mira · A top spin · B cortada · Y balão · X curtinha · RB pula · Start pausa.</p>`;
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
@@ -261,9 +261,9 @@ function comecarOnline() {
 }
 function iniciar() {
   show("game"); resize(); G.active = true; G.pausa = false; $("pause").classList.add("hidden"); $("over").classList.add("hidden");
-  $("hHint").innerHTML = G.me ? "WASD corre · J top · K cortada · L balão · U curtinha<br>Aperte antes da bola chegar · saque: aperte 2x · Esc menu" : "Assistindo";
+  $("hHint").innerHTML = G.me ? "WASD corre · Espaço pula · J top · K cortada · L balão · U curtinha<br>Aperte antes da bola chegar · saque: aperte 2x · Esc menu" : "Assistindo";
   if (window.Toque && Toque.isTouch()) Toque.setup({
-    buttons: [{ icon: "🪶", label: "curtinha", code: "KeyU" }, { icon: "🌙", label: "balão", code: "KeyL" }, { icon: "🔪", label: "cortada", code: "KeyK" }, { icon: "🌀", label: "top", code: "KeyJ", big: true }],
+    buttons: [{ icon: "⬆", label: "pular", code: "Space" }, { icon: "🪶", label: "curtinha", code: "KeyU" }, { icon: "🌙", label: "balão", code: "KeyL" }, { icon: "🔪", label: "cortada", code: "KeyK" }, { icon: "🌀", label: "top", code: "KeyJ", big: true }],
     top: [{ icon: "⏸", down: () => pausar(true) }],
   });
   if (window.Toque) Toque.show(!!G.me);
@@ -287,12 +287,15 @@ $("btnResume").onclick = () => { Som.unlock(); pausar(false); if (window.Toque &
 // Controles: teclado, mouse, controle e toque (os botões da tela apertam as mesmas teclas)
 // ======================================================================
 const keys = new Set();
-const GOLPE_TECLA = { KeyJ: "top", KeyK: "slice", KeyL: "lob", KeyU: "curta", Space: "top" };
+const GOLPE_TECLA = { KeyJ: "top", KeyK: "slice", KeyL: "lob", KeyU: "curta" };
+// pular: Espaço (no controle, RB). Pulando, o jogador alcança bola mais alta
+function pulo() { if (G.me && !G.pausa) T.pular(G.me); }
 addEventListener("keydown", (e) => {
   if (!G.active) return;
   if (e.code === "Escape") { pausar(!G.pausa); return; }
   if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault();
   if (!e.repeat && GOLPE_TECLA[e.code] && !G.pausa) golpe(GOLPE_TECLA[e.code]);
+  if (!e.repeat && e.code === "Space") pulo();
   keys.add(e.code);
 });
 addEventListener("keyup", (e) => keys.delete(e.code));
@@ -304,7 +307,7 @@ function lerPad() {
   const gp = [...(navigator.getGamepads?.() || [])].find((g) => g && g.connected); if (!gp) { PAD.lx = PAD.ly = 0; return; }
   const dz = (v) => (Math.abs(v || 0) < 0.18 ? 0 : v); PAD.lx = dz(gp.axes[0]); PAD.ly = dz(gp.axes[1]);
   const mapa = { 0: "top", 1: "slice", 3: "lob", 2: "curta" };
-  gp.buttons.forEach((b, i) => { const v = b.pressed, era = !!PAD.prev[i]; PAD.prev[i] = v; if (!v || era) return; if (i === 9) pausar(!G.pausa); else if (mapa[i] && !G.pausa) golpe(mapa[i]); });
+  gp.buttons.forEach((b, i) => { const v = b.pressed, era = !!PAD.prev[i]; PAD.prev[i] = v; if (!v || era) return; if (i === 9) pausar(!G.pausa); else if (i === 5) pulo(); else if (mapa[i] && !G.pausa) golpe(mapa[i]); });
 }
 // direção da tela -> mundo: a câmera fica atrás do meu time (time A olha para −z)
 function entrada() {
@@ -393,7 +396,7 @@ function frame() {
       else if (me.pronto && !G.pausa && G.fase === "saque") { me.mira = mira; T.mover(me, dir, dt, true, fake); } // no saque: só para os lados
       else if (eu) { me.x = eu.x; me.z = eu.z; me.vx = me.vz = 0; me.pronto = G.fase === "saque" || G.fase === "jogo"; if (me.pronto) me.sacX = eu.x; }
       if (me.armado && relogio.agora() - me.armado.t0 > T.ARMADO_MAX * 1000) me.armado = null; // não bateu a tempo: volta a andar
-      if (tp - G.lastSend > 33) { G.lastSend = tp; socket.volatile.emit("st", { x: me.x, z: me.z, vx: me.vx, vz: me.vz, mx: mira.x, mz: mira.z }); }
+      if (tp - G.lastSend > 33) { G.lastSend = tp; socket.volatile.emit("st", { x: me.x, z: me.z, vx: me.vx, vz: me.vz, mx: mira.x, mz: mira.z, y: me.y || 0 }); }
     }
   }
   // bola, sombra e a marca de onde ela vai quicar (quando vem para o meu lado)
@@ -412,7 +415,7 @@ function frame() {
     const c = G.corpos.get(j.id); if (!c) continue;
     const local = me && j.id === me.id && !G.offline ? me : j;
     const vel = Math.hypot(local.vx || 0, local.vz || 0);
-    c.model.position.set(local.x, 0, local.z);
+    c.model.position.set(local.x, local.y || 0, local.z);
     // vira para a bola (do lado dele) ou para a rede
     const s = T.sinal(c.team), bx = bolaV.x - local.x, bz = bolaV.z - local.z, alvo = T.ladoDe(bolaV.z) === c.team && Math.abs(bz) < 8 ? Math.atan2(-bx, -bz) : s > 0 ? 0 : Math.PI;
     c.yaw += Math.atan2(Math.sin(alvo - c.yaw), Math.cos(alvo - c.yaw)) * Math.min(1, dt * 8);
@@ -436,7 +439,7 @@ function interpolar(t) {
   let i = q.length - 1; while (i > 0 && q[i - 1].t > t) i--;
   const B = q[i], A = q[Math.max(0, i - 1)], k = B.t === A.t ? 1 : Math.max(0, Math.min(1, (t - A.t) / (B.t - A.t)));
   const L = (a, b) => a + (b - a) * k;
-  const j = B.j.map((e) => { const a = A.j.find((x) => x[0] === e[0]) || e; return { id: e[0], x: L(a[1], e[1]), z: L(a[2], e[2]), vx: e[3], vz: e[4], armado: !!e[5] }; });
+  const j = B.j.map((e) => { const a = A.j.find((x) => x[0] === e[0]) || e; return { id: e[0], x: L(a[1], e[1]), z: L(a[2], e[2]), vx: e[3], vz: e[4], armado: !!e[5], y: L(a[6] || 0, e[6] || 0) }; });
   const b = { x: L(A.b[0], B.b[0]), y: L(A.b[1], B.b[1]), z: L(A.b[2], B.b[2]), vx: B.b[3], vy: B.b[4], vz: B.b[5], g: B.b[6], e: 0.7, kh: 0.9 };
   return { j, b };
 }

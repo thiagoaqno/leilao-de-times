@@ -1,5 +1,5 @@
 // Corrida da Galera — telas fora da corrida: sala de espera, garagem e "como jogar".
-import { E, PISTAS, CARROS, sample, carOf, COLORS, PAWNS, $, h, me, act, fmt } from "./estado.js";
+import { E, PISTAS, CARROS, sample, carOf, COLORS, PAWNS, $, h, me, act, fmt, store } from "./estado.js";
 import { THEMES } from "./pista.js";
 import { MODS3, MODS_PADRAO, carPreview } from "./carros.js";
 import { loadBest } from "./fantasma.js";
@@ -22,7 +22,10 @@ export function renderLobby() {
     $("colorPick").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => act("color", { color: b.dataset.c })));
     $("carPick").innerHTML = Object.entries(CARROS).map(([id, k]) => `<button class="car ${m.car === id ? "on" : ""}" data-car="${id}" aria-pressed="${m.car === id}"><canvas data-carprev="${id}" width="240" height="135"></canvas><b>${h(k.name)}</b><small class="inspo">${h(k.inspo || "")}</small><p>${h(k.desc)}</p>
       <div class="spec">${specRows(k).map(([lbl, n]) => `<span>${lbl}</span>${leds(n)}`).join("")}</div></button>`).join("");
-    $("carPick").querySelectorAll("[data-carprev]").forEach((c) => carPreview(c, m.color, c.dataset.carprev, m.mods));
+    $("carPick").querySelectorAll("[data-carprev]").forEach((c) => carPreview(c, m.color, c.dataset.carprev, m.mods, m.skin));
+    // o piloto: as skins da Pelada (o jogo lembra a última escolhida)
+    $("skinPick").innerHTML = Object.entries(window.Campo.SKINS).map(([id, s]) => `<button class="${id === (m.skin || "padrao") ? "on" : ""}" data-skin="${id}"><i>${s.emoji}</i>${h(s.name)}</button>`).join("");
+    $("skinPick").querySelectorAll("[data-skin]").forEach((b) => (b.onclick = () => { store.set("galera:skin", b.dataset.skin); act("skin", { skin: b.dataset.skin }); }));
     // personalização: rodas, aerofólio e faixas
     const mods = { ...MODS_PADRAO, ...(m.mods || {}) }, seg = (key, opts) => `<div class="modrow"><span>${{ rodas: "Rodas", aero: "Aerofólio", faixa: "Faixas" }[key]}</span><div class="seg">${Object.entries(opts).map(([v, o]) => `<button data-mod="${key}" data-v="${v}" class="${mods[key] === v ? "on" : ""}">${key === "rodas" ? `<i class="rim" style="background:${o.c}"></i>` : ""}${h(typeof o === "string" ? o : o.name)}</button>`).join("")}</div></div>`;
     $("modPick").innerHTML = seg("rodas", MODS3.rodas) + seg("aero", MODS3.aero) + seg("faixa", MODS3.faixa);
