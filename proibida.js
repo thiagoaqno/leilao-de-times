@@ -38,7 +38,10 @@ module.exports = function attachProibida(io) {
       s.emit("state", ve ? { ...pub, carta: v.carta } : pub);
     }
   }
-  function puxar(room) { if (!room.monte.length) room.monte = embaralhar(CARTAS.map((_, i) => i)); room.vez.carta = CARTAS[room.monte.pop()]; }
+  // um monte só para o servidor inteiro: a carta só volta depois que as mais de 2000 saíram (em qualquer sala e em
+  // qualquer partida). Antes cada partida embaralhava tudo de novo e as cartas de uma partida voltavam na seguinte.
+  let monte = [];
+  function puxar(room) { if (!monte.length) monte = embaralhar(CARTAS.map((_, i) => i)); room.vez.carta = CARTAS[monte.pop()]; }
   // quem explica na próxima vez do time t (em rodízio)
   function proximoDe(room, t) { const lista = time(room, t); room.prox[t] = (room.prox[t] + 1) % lista.length; return lista[room.prox[t]]; }
   function novaVez(room, t, quem = proximoDe(room, t)) {
@@ -72,7 +75,7 @@ module.exports = function attachProibida(io) {
     }
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name); if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], placar: { A: 0, B: 0 }, prox: { A: -1, B: -1 }, monte: [], vez: null, log: [], t: Date.now() };
+      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], placar: { A: 0, B: 0 }, prox: { A: -1, B: -1 }, vez: null, log: [], t: Date.now() };
       rooms.set(room.code, room);
       const p = addPlayer(room, name); room.host = p.id; bind(room, p.id);
       ok(cb, { code: room.code, id: p.id, token: p.token }); broadcast(room);
@@ -98,7 +101,7 @@ module.exports = function attachProibida(io) {
         if (type === "start") {
           if (!isHost) return "Só o organizador começa.";
           if (time(room, "A").length < 2 || time(room, "B").length < 2) return "Cada time precisa de pelo menos 2 pessoas.";
-          Object.assign(room, { phase: "jogando", placar: { A: 0, B: 0 }, vencedor: null, monte: [], intervalo: null });
+          Object.assign(room, { phase: "jogando", placar: { A: 0, B: 0 }, vencedor: null, intervalo: null });
           log(room, "🗣️ Valendo!"); novaVez(room, Math.random() < 0.5 ? "A" : "B"); return;
         }
         if (type === "lobby") { if (!isHost) return "Só o organizador."; clearTimeout(room.timer); room.phase = "lobby"; room.vez = null; room.intervalo = null; return; }
