@@ -276,10 +276,10 @@ function construirArena(id) {
   const sideMat = (len, hh) => { const t = wallTex.clone(); t.repeat.set(len / 4, Math.max(1, hh / 2)); t.needsUpdate = true; return new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }); };
   for (const s of R.SHAPES) {
     const [x0, z0, x1, z1, h0, h1, ax] = s, w = x1 - x0, d = z1 - z0, hm = Math.max(h0, h1);
-    if (!ax) { // bloco plano: em cima, ladrilho; dos lados, pedra
+    if (!ax) { // bloco plano: em cima, ladrilho; dos lados, pedra. Ponte (s[7]): só uma laje lá em cima
       const top = topMat(hm); top.map.repeat.set(w / 4, d / 4);
-      const sm = sideMat(Math.max(w, d), hm);
-      const m = box(w, hm, d, (x0 + x1) / 2, hm / 2, (z0 + z1) / 2, [sm, sm, top, sm, sm, sm]);
+      const esp = s[7] ? 0.6 : hm, sm = sideMat(Math.max(w, d), esp);
+      box(w, esp, d, (x0 + x1) / 2, hm - esp / 2, (z0 + z1) / 2, [sm, sm, top, sm, sm, sm]);
       continue;
     }
     // rampa: cunha com a parte de cima inclinada
