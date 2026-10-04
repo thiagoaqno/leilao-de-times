@@ -261,3 +261,28 @@ test("proibida: intervalo entre as vezes — mostra as cartas, o outro time anul
     assert.strictEqual(nova.vez.quem, iv.proxQuem); assert.notStrictEqual(nova.vez.time, st.vez.time);
   } finally { m.fechar(); }
 });
+
+test("proibida: as cartas não se repetem de uma partida para a outra (o monte continua)", async () => {
+  // 2 partidas de 120 cartas cada (passando a vez rapidinho): embaralhando tudo de novo a cada partida, quase certo
+  // que alguma voltaria
+  const m = await mesa("/proibida", 4, { tempo: 60, meta: 30 });
+  try {
+    const t = m.todos, vistas = [];
+    await pedir(t[0], "act", { type: "team", team: "A" }); await pedir(t[1], "act", { type: "team", team: "A" });
+    await pedir(t[2], "act", { type: "team", team: "B" }); await pedir(t[3], "act", { type: "team", team: "B" });
+    for (let partida = 0; partida < 2; partida++) {
+      await pedir(t[0], "act", { type: "start" });
+      for (let i = 0; i < 120; i++) {
+        const st = await esperarEstado(t[0], (s) => s.phase === "jogando" && s.vez && !s.intervalo);
+        await pedir(t.find((s) => s.pid === st.vez.quem), "act", { type: "passar" });
+        const iv = (await esperarEstado(t[0], (s) => s.intervalo)).intervalo;
+        vistas.push(iv.cartas[0].carta[0]);
+        await pedir(t[0], "act", { type: "comecar" });
+      }
+      await pedir(t[0], "act", { type: "lobby" });
+      await esperarEstado(t[0], (s) => s.phase === "lobby");
+    }
+    assert.strictEqual(vistas.length, 240);
+    assert.strictEqual(new Set(vistas).size, vistas.length, "nenhuma carta repetida nas duas partidas");
+  } finally { m.fechar(); }
+});
