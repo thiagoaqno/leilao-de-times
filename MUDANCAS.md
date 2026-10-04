@@ -1,24 +1,33 @@
-# Karts com as skins da Pelada + Tênis com pulo
+# Pingue-Pongue da Galera (novo jogo: tênis de mesa no mouse)
 
-## Corrida e Batalha: o piloto é a sua skin, sentado num kart
-- Novo `public/kart3d.js`: um kart de caixinhas pintado na cor do jogador, com o **boneco da Pelada sentado** (pernas
-  para a frente, mãos no volante). O piloto vira o volante e inclina nas curvas, as rodas giram e as da frente esterçam.
-- **Escolha da skin** (as mesmas da Pelada e do Tênis): na sala da Corrida ("Seu piloto"), na sala da Batalha e na tela
-  inicial da Batalha (para o treino). A escolha fica salva e vale para os dois jogos. Os robôs têm skins próprias.
-- **Corrida:** os 5 "carros" continuam (cada um com a sua física) e viraram variações do kart: bico mais comprido e asa
-  no Raio V12, laterais largas e rodas maiores no Muscle 69 etc. Cor das rodas, aerofólio e faixas continuam valendo.
-  Na primeira pessoa, o piloto some e a câmera fica no lugar dos olhos dele.
-- **Batalha:** os balões ficam atrás do piloto; a estrela pisca a pintura do kart.
-- Servidores (`corrida.js` e `batalha.js`) guardam a skin de cada um (`act("skin")`) e mandam junto com os jogadores.
+Em `/pingpong/`, e com um salão na vila (embaixo, à esquerda, com a ruazinha descendo da rua nova).
 
-## Câmera mais alta
-- Corrida (perto, longe e primeira pessoa) e Batalha: a câmera de trás subiu e olha um pouco para baixo, para dar
-  para ver a pista na frente do kart.
+## Como joga
+- **A raquete segue o mouse** (no celular, o dedo): ela fica onde o mouse aponta, do seu lado da mesa, e sobe e desce
+  sozinha acompanhando a altura da bola.
+- **Rebater:** quando a bola já quicou do seu lado e passa pela raquete, você rebate. O movimento do mouse na hora
+  decide a batida: **empurrar para a frente** = mais forte e mais funda; **puxar para trás** = balão devagar;
+  **para o lado** (ou pegar a bola com a ponta da raquete) = manda para o canto (e pode sair).
+- **Saque:** clique. A bola quica do seu lado e depois do outro; mexer o mouse para o lado na hora mira o saque.
+- **Regras de verdade:** quicar uma vez do lado de quem recebe, rede, fora e dois quiques. Game até 11 (ou 21), com 2 de
+  vantagem; o saque troca a cada 2 pontos (no 10 a 10, a cada ponto). Melhor de 1 ou de 3 games.
+- **Treino contra o robô** em 3 níveis (fácil, médio, difícil): ele erra mais ou menos e bate mais fraco ou mais forte.
+- **Skins da Pelada:** o adversário aparece com a skin dele atrás da raquete (a sua escolha vale também na Corrida e na
+  Batalha).
 
-## Tênis
-- O golpe armado espera no máximo **0,5 s** (antes, 1,9 s) para liberar o movimento.
-- **Pulo:** Espaço (ou RB no controle, ou o botão "pular" no celular). Pula ~1 m e alcança bolas mais altas.
+## Online (1x1)
+- "Quem rebate manda": quem bate na bola manda a batida (posição, velocidade e a hora) e o servidor repassa. Como a bola
+  só tem gravidade e quique, os dois calculam o mesmo voo. Quem decide o ponto é quem está recebendo (é na tela dele
+  que a bola chega ou não na raquete). Se ninguém responder em 9 s, o ponto vai para quem bateu.
+- Sala com dois lados (azul e vermelho) e torcida (quem sobra assiste).
+
+## Arquivos
+- `public/pingpong/regras.js` (física, juiz, raquetada, placar e o robô, iguais no servidor e no navegador),
+  `public/pingpong/index.html` e `public/pingpong/jogo.js` (a página e o jogo em 3D), `pingpong.js` (servidor, canal
+  `/pingpong`), `server.js`, a vila (`public/index.html`, `vila.js`).
 
 ## Testes
-- `npm test` (34) e os testes no navegador de páginas e do Tênis passando. Corrida e Batalha testadas na mão: sala,
-  garagem com a skin, largada, treino com robôs.
+- `tests/pingpong.test.js`: saque em todas as miras, juiz, placar e uma partida inteira de robô contra robô.
+- `tests/servidor.test.js`: online com dois jogadores (o saque chega no outro e só quem recebe marca o ponto).
+- `tests/e2e/pingpong.spec.js`: treino no navegador, sacando com clique e rebatendo com o mouse.
+- `/pingpong` no teste das salas (regravado: só entrou o bloco novo) e no de abrir as páginas.
