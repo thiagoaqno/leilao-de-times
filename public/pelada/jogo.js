@@ -17,7 +17,7 @@ configurarBonecos({ scene, limites: () => G.F });
 import { pads, ensureArena, updateGoalSigns } from "./arenas.js";
 import { updateBall } from "./bola.js";
 import { flashMsg, hud, renderPauseSb } from "./hud.js";
-import { soltarPad, padPausa, lerPad, powerOf, bolaAqui, souDono, temBola, aimYaw, curveNow, tipoPasse, planoPasse, tentarFila } from "./controles.js";
+import { soltarPad, padPausa, lerPad, powerOf, bolaAqui, souDono, temBola, aimYaw, curveNow, tipoPasse, planoPasse, dirPasse, tentarFila } from "./controles.js";
 import { setupFalta, practiceStep, setupBots, botsStep } from "./bots.js";
 
 export function newMe(spawn) {
@@ -342,7 +342,7 @@ function showAim(me) {
   // carregando o passe: anel no ponto onde a bola vai encontrar quem recebe (toque: curto; 1 s: longo; enfiada)
   let alvo = null;
   const tp = E.charge && !isCar() && tipoPasse(E.charge.kind, powerOf(E.charge));
-  if (tp) { const pl = planoPasse(me, ay, tp, powerOf(E.charge), false, () => 0.5); alvo = pl.ponto; ay = pl.yaw; } // o anel vai onde a bola encontra quem recebe
+  if (tp) { const pl = planoPasse(me, dirPasse(), tp, powerOf(E.charge), false, () => 0.5); alvo = pl.ponto; ay = pl.yaw; } // o anel vai onde a bola encontra quem recebe
   else if (G.passeVoo && now() < G.passeVoo.ate && !(bolaAqui() || {}).dono) { // a bola a caminho: o anel fica embaixo de quem recebe
     const r = G.passeVoo.alvo === "eu" ? G.me : G.mode === "bots" ? G.bots.find((x) => x.id === G.passeVoo.alvo) : G.remotes.get(G.passeVoo.alvo);
     if (r) alvo = { x: r.px ?? r.x, z: r.pz ?? r.z };

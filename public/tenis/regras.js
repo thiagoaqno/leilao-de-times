@@ -23,7 +23,7 @@
     saque: { nome: "Saque", g: 1.2, e: 0.8, kh: 0.95, prof: [4.6, 6.1], T: [1.05, 0.8] },
   };
   // jogador
-  const VEL = 6.3, VEL_ARMADO = 0.7, ACEL = 30, ALCANCE = 1.5, ALTURA_MAX = 2.45, ALTURA_SMASH = 2.15, ARMADO_MAX = 1.9, CARGA_T = 1.0; // ARMADO_MAX: armou e não bateu em 1,9 s? desarma (volta a andar normal)
+  const VEL = 6.3, VEL_ARMADO = 0.7, ACEL = 30, ALCANCE = 1.5, ALTURA_MAX = 2.45, ALTURA_SMASH = 2.15, ARMADO_MAX = 0.5, CARGA_T = 1.0, PULO = 4.4; // ARMADO_MAX: armou e não bateu em 0,5 s? desarma (volta a andar normal) · PULO: velocidade do pulo (m/s)
   // robôs
   const DIF = {
     facil: { nome: "Fácil", vel: 0.72, reac: 0.45, erro: 1.6, arma: 0.55 },
@@ -39,7 +39,7 @@
   // jogadores: [{ id, team, slot (0 ou 1), bot, nome }]; cfg: { duplas, games, dif }
   function novaPartida(jogadores, cfg, agora) {
     const m = { cfg: { duplas: !!cfg.duplas, games: cfg.games || 4, dif: DIF[cfg.dif] ? cfg.dif : "medio" },
-      jogadores: jogadores.map((j) => ({ ...j, x: 0, z: sinal(j.team) * (Q.L + 1), vx: 0, vz: 0, mira: { x: 0, z: 0 }, armado: null, giroT: -9, alvo: null, pensa: 0 })),
+      jogadores: jogadores.map((j) => ({ ...j, y: 0, vy: 0, x: 0, z: sinal(j.team) * (Q.L + 1), vx: 0, vz: 0, mira: { x: 0, z: 0 }, armado: null, giroT: -9, alvo: null, pensa: 0 })),
       bola: novaBola(), placar: { A: 0, B: 0 }, games: { A: 0, B: 0 }, tie: false, sacaTime: "A", ordemSaque: { A: 0, B: 0 }, sacador: null,
       fase: "saque", ate: agora + 1200, faltas: 0, pontoNoGame: 0, fim: false, vencedor: null, ev: [], seq: 0, rally: 0 };
     m.sacador = escolherSacador(m);
@@ -88,6 +88,7 @@
     if (d <= a) { j.vx = tx; j.vz = tz; } else { j.vx += (dx / d) * a; j.vz += (dz / d) * a; }
     if (soLado) j.vz = 0;
     j.x += j.vx * dt; j.z += j.vz * dt;
+    if (j.y > 0 || j.vy > 0) { j.vy -= G * dt; j.y = Math.max(0, j.y + j.vy * dt); if (j.y === 0) j.vy = 0; } // pulo
     limitar(j, m);
   }
   function limitar(j, m) {
@@ -166,11 +167,13 @@
     const b = m.bola; if (!b.viva || b.ultimo === j.team) return null;
     if (ladoDe(b.z) !== j.team) return null;
     if (b.saque && b.quiques < 1) return null; // saque: tem que quicar antes
-    const d = Math.hypot(b.x - j.x, b.z - j.z);
-    if (d > ALCANCE + folga || b.y > ALTURA_MAX + 0.6 + folga) return null;
-    if (b.y > ALTURA_SMASH && b.quiques === 0) return "smash"; // bola alta antes de quicar (balão, bola alta na rede): smash
-    return b.y > ALTURA_MAX + 0.25 ? null : "normal";
+    const d = Math.hypot(b.x - j.x, b.z - j.z), by = b.y - (j.y || 0); // pulando, alcança mais alto
+    if (d > ALCANCE + folga || by > ALTURA_MAX + 0.6 + folga) return null;
+    if (by > ALTURA_SMASH && b.quiques === 0) return "smash"; // bola alta antes de quicar (balão, bola alta na rede): smash
+    return by > ALTURA_MAX + 0.25 ? null : "normal";
   }
+  // pular (só do chão)
+  function pular(j) { if (!(j.y > 0)) { j.vy = PULO; j.y = 0.001; } }
   // armar o golpe (apertou o botão)
   function armar(m, j, tipo, agora) { if (m.fase !== "jogo" || !GOLPES[tipo] || tipo === "saque" || tipo === "smash") return; j.armado = { tipo, t0: agora }; }
   // saque: primeiro toque joga a bola para cima; o segundo bate (mais forte perto do alto)
@@ -327,13 +330,13 @@
   const q2 = (v) => Math.round(v * 100) / 100;
   function pacote(m) {
     const b = m.bola;
-    return { j: m.jogadores.map((j) => [j.id, q2(j.x), q2(j.z), q2(j.vx), q2(j.vz), j.armado ? 1 : 0]), b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), q2(b.g)] };
+    return { j: m.jogadores.map((j) => [j.id, q2(j.x), q2(j.z), q2(j.vx), q2(j.vz), j.armado ? 1 : 0, q2(j.y || 0)]), b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), q2(b.g)] };
   }
   function estado(m) {
     return { placar: m.placar, games: m.games, tie: m.tie, texto: textoPlacar(m), sacador: m.sacador, sacaTime: m.sacaTime, fase: m.fase, ate: m.ate, faltas: m.faltas, fim: m.fim, vencedor: m.vencedor, cfg: m.cfg };
   }
 
-  const api = { alvoGolpe, ARMADO_MAX, Q, G, GOLPES, DIF, VEL, ALCANCE, CARGA_T, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, prever, alturaRede, armar, sacar, passo, alcanca, textoPlacar, pacote, estado, posicionar };
+  const api = { alvoGolpe, pular, ARMADO_MAX, Q, G, GOLPES, DIF, VEL, ALCANCE, CARGA_T, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, prever, alturaRede, armar, sacar, passo, alcanca, textoPlacar, pacote, estado, posicionar };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Tenis = api;
 })(typeof window !== "undefined" ? window : globalThis);

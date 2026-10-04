@@ -80,7 +80,7 @@
         A.shapes.push(mirror([39, 20, 47, 25, 6, 3, "x"], sx, sz));    // rampa de dentro (base -> torre)
         A.boxes.push([28.5 * sx, 28.5 * sz], [12 * sx, 28 * sz]);
       }
-      for (const s of [[-18, 33, 18, 37, 6, 6, null], [-18, -37, 18, -33, 6, 6, null], [33, -18, 37, 18, 6, 6, null], [-37, -18, -33, 18, 6, 6, null]]) A.shapes.push(s); // as pontes
+      for (const s of [[-18, 33, 18, 37, 6, 6, null], [-18, -37, 18, -33, 6, 6, null], [33, -18, 37, 18, 6, 6, null], [-37, -18, -33, 18, 6, 6, null]]) A.shapes.push([...s, true]); // as pontes (lajes: dá para passar por baixo)
       A.blocks.push([-1.5, -1.5, 1.5, 1.5, 5, "pilar", 0]);
       for (const [x, z] of [[0, 12], [12, 0], [0, -12], [-12, 0], [55, 0], [-55, 0], [0, 55], [0, -55]]) A.boxes.push([x, z]);
       A.spawns.push(...largadaLados(55, 20));
@@ -132,9 +132,11 @@
     const t = s[6] === "x" ? (x - s[0]) / (s[2] - s[0]) : (z - s[1]) / (s[3] - s[1]);
     return s[4] + (s[5] - s[4]) * t;
   }
-  function groundAt(x, z) {
+  // y: a altura de quem pergunta. Ponte (peça com s[7] = true) é uma laje: só conta para quem está em cima dela; quem
+  // está embaixo passa por baixo (sem y, conta sempre: é o "topo" do lugar)
+  function groundAt(x, z, y = Infinity) {
     let h = arena.relevo ? arena.relevo(x, z) : 0;
-    for (const s of SHAPES) { const v = heightOf(s, x, z); if (v > h) h = v; }
+    for (const s of SHAPES) { if (s[7] && y < Math.max(s[4], s[5]) - 1.2) continue; const v = heightOf(s, x, z); if (v > h) h = v; }
     if (h <= 0 && arena.vazio && arena.vazio(x, z)) return VAZIO;
     return h;
   }
@@ -145,7 +147,7 @@
   // dá para ir até (x, z)? Não sobe degrau mais alto que STEP (lateral de rampa e beira de mirante viram parede)
   function canGo(k, x, z) {
     const dx = x - k.x, dz = z - k.z, d = Math.hypot(dx, dz) || 1, top = (k.y || 0) + STEP;
-    return groundAt(x, z) <= top && groundAt(x + (dx / d) * KR * 0.8, z + (dz / d) * KR * 0.8) <= top;
+    return groundAt(x, z, k.y) <= top && groundAt(x + (dx / d) * KR * 0.8, z + (dz / d) * KR * 0.8, k.y) <= top;
   }
   // k: {x, y, z, yaw, v, vy, air, spinT, boostT, starT, driftT, drifting}; inp: {thr, steer, drift}
   function moveKart(k, inp, dt) {
@@ -170,7 +172,7 @@
     }
     const fx = -Math.sin(k.yaw), fz = -Math.cos(k.yaw);
     // subida freia, descida embala
-    if (!k.air) { const g0 = groundAt(k.x, k.z), g1 = groundAt(k.x + fx * 0.6, k.z + fz * 0.6); if (Math.abs(g1 - g0) < STEP) k.v -= ((g1 - g0) / 0.6) * GRAV * 0.3 * dt; }
+    if (!k.air) { const g0 = groundAt(k.x, k.z, k.y), g1 = groundAt(k.x + fx * 0.6, k.z + fz * 0.6, k.y); if (Math.abs(g1 - g0) < STEP) k.v -= ((g1 - g0) / 0.6) * GRAV * 0.3 * dt; }
     let nx = k.x + fx * k.v * dt, nz = k.z + fz * k.v * dt;
     if (!canGo(k, nx, nz)) { // degrau alto: escorrega junto da parede, se der
       if (canGo(k, nx, k.z)) nz = k.z; else if (canGo(k, k.x, nz)) nx = k.x; else { nx = k.x; nz = k.z; }
@@ -179,7 +181,7 @@
     k.x = nx; k.z = nz;
     if (collideCircle(k, KR)) { k.v *= 0.45; k.bump = true; }
     // altura: no chão acompanha o relevo; saindo de uma rampa ou da beira, voa (e cai)
-    const g = groundAt(k.x, k.z);
+    const g = groundAt(k.x, k.z, k.y);
     if (k.air) {
       k.vy -= GRAV * dt; k.y += k.vy * dt;
       if (k.y <= g) { k.landed = -k.vy; k.y = g; k.vy = 0; k.air = false; }
@@ -220,12 +222,12 @@
   function stepShell(pr, dt) {
     let hit = false;
     const nx = pr.x + pr.vx * dt, nz = pr.z + pr.vz * dt, top = pr.y - 0.5 + STEP;
-    if (groundAt(nx, nz) > top) {
-      if (groundAt(nx, pr.z) > top) pr.vx = -pr.vx;
-      if (groundAt(pr.x, nz) > top) pr.vz = -pr.vz;
+    if (groundAt(nx, nz, pr.y) > top) {
+      if (groundAt(nx, pr.z, pr.y) > top) pr.vx = -pr.vx;
+      if (groundAt(pr.x, nz, pr.y) > top) pr.vz = -pr.vz;
       hit = true;
     } else { pr.x = nx; pr.z = nz; }
-    const floor = groundAt(pr.x, pr.z) + 0.5;
+    const floor = groundAt(pr.x, pr.z, pr.y) + 0.5;
     if (pr.y > floor + 0.05) { pr.vy = (pr.vy || 0) - GRAV * dt; pr.y = Math.max(floor, pr.y + pr.vy * dt); if (pr.y === floor) pr.vy = 0; }
     else { pr.y = floor; pr.vy = 0; }
     return bounce(pr, 0.5) || hit;

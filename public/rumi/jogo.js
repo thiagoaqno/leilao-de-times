@@ -111,7 +111,8 @@
     let html = rascunhoAlheio && !minha ? `<div class="quem">✋ ${h(nomeDe(r.vez))} está mexendo na mesa…</div>` : "";
     html += grupos.map((g, gi) => {
       const av = R.avaliar(g.map(P_)), ordem = minha ? g.map(P_) : av.ok ? av.ordem : g.map(P_);
-      return `<div class="grupo ${minha ? "alvo" : ""} ${av.ok ? "ok" : "ruim"}" data-g="${gi}">${ordem.map((t) => peca(t, `${sel.has(t.id) ? "sel" : ""} ${daMao.has(t.id) ? "nova" : ""}`)).join("")}</div>`;
+      const mais = minha && sel.size ? `<div class="poe" data-poe="${gi}" title="Pôr as peças escolhidas aqui">＋</div>` : "";
+      return `<div class="grupo ${minha ? "alvo" : ""} ${av.ok ? "ok" : "ruim"}" data-g="${gi}">${ordem.map((t) => peca(t, `${sel.has(t.id) ? "sel" : ""} ${daMao.has(t.id) ? "nova" : ""}`)).join("")}${mais}</div>`;
     }).join("");
     if (minha) html += `<div class="novo" data-novo="1">＋ nova combinação</div>`;
     if (!grupos.length && !minha) html += `<div class="quem">A mesa está vazia. A primeira descida precisa de 30 pontos.</div>`;
@@ -144,15 +145,14 @@
   function tirarSelecionadas() { const ids = [...sel]; RAS.mesa = RAS.mesa.map((g) => g.filter((id) => !sel.has(id))).filter((g) => g.length); RAS.mao = RAS.mao.filter((id) => !sel.has(id)); return ids; }
   $("mesa").addEventListener("click", (e) => {
     if (!RAS) return;
-    const t = e.target.closest(".peca"), g = e.target.closest(".grupo"), novo = e.target.closest("[data-novo]");
-    if (t && !sel.size) { sel.add(+t.dataset.id); desenhar(); return; } // nada escolhido: toque numa peça da mesa escolhe ela
-    if (t && sel.has(+t.dataset.id)) { sel.delete(+t.dataset.id); desenhar(); return; }
-    if (t && e.shiftKey) { sel.add(+t.dataset.id); desenhar(); return; }
-    if (g && sel.size) { const alvo = RAS.mesa[+g.dataset.g], ids = tirarSelecionadas(); const gi = RAS.mesa.indexOf(alvo); if (gi >= 0) RAS.mesa[gi].push(...ids); else RAS.mesa.push(ids); mudou(); return; }
+    // tocar numa peça só escolhe (ou desescolhe); o "＋" no fim de uma combinação (ou o fundo dela) põe as escolhidas lá
+    const t = e.target.closest(".peca"), poe = e.target.closest("[data-poe]"), g = e.target.closest(".grupo"), novo = e.target.closest("[data-novo]");
+    if (t) { const id = +t.dataset.id; if (sel.has(id)) sel.delete(id); else sel.add(id); desenhar(); return; }
+    const destino = poe ? +poe.dataset.poe : g ? +g.dataset.g : null;
+    if (destino != null && sel.size) { const alvo = RAS.mesa[destino], ids = tirarSelecionadas(); const gi = RAS.mesa.indexOf(alvo); if (gi >= 0) RAS.mesa[gi].push(...ids); else RAS.mesa.push(ids); mudou(); return; }
     if (novo && sel.size) { const ids = tirarSelecionadas(); RAS.mesa.push(ids); mudou(); return; }
-    if (t) { sel.add(+t.dataset.id); desenhar(); }
   });
-  // segurar o Ctrl/Shift ou tocar várias peças: escolher várias. No celular, cada toque soma à escolha.
+  // no suporte: cada toque soma (ou tira) uma peça da escolha; tocar no fundo do suporte devolve as escolhidas
   $("suporte").addEventListener("click", (e) => {
     if (!RAS) { const t = e.target.closest(".peca"); if (t) { /* fora da vez: só arruma o suporte, arrastando pelos botões */ } return; }
     const t = e.target.closest(".peca");

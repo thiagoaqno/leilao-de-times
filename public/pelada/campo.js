@@ -451,7 +451,7 @@
   function limparCond(c) { const out = {}; if (c && typeof c === "object") for (const [k, [a, b]] of Object.entries(COND_FAIXA)) if (typeof c[k] === "number" && Number.isFinite(c[k])) out[k] = Math.max(a, Math.min(b, c[k])); return out; }
   // usa os valores de uma sala (ou volta ao padrão): mexe no COND que a física lê
   function usarCond(c) { for (const k of Object.keys(COND_PADRAO)) COND[k] = c && typeof c[k] === "number" ? c[k] : COND_PADRAO[k]; }
-  const CONDUZ_R = 1.15, TOMA = 0.25, POSSE_R = 1.9, PARADO = 0.8;
+  const CONDUZ_R = 1.15, TOMA = 0.25, POSSE_R = 1.9, PARADO = 0.8, DOMINA_V = 16; // DOMINA_V: até que velocidade (relativa) dá para dominar de primeira
   function conduz(F, b, bodies, dt) {
     if (F.rl || !bodies || b.holder || b.y > F.ballR + 0.12 || b.vy > 1.5) { b.dono = null; b.toqueDe = null; return null; }
     let p = null, best = CONDUZ_R, atual = null, dAtual = 0;
@@ -468,8 +468,8 @@
     }
     if (!p) { b.dono = null; b.toqueDe = null; return null; }
     const pvx = p.vx || 0, pvz = p.vz || 0;
-    if (b.toqueDe !== p.id && Math.hypot(b.vx - pvx, b.vz - pvz) > 6) { b.dono = null; return null; } // chegando forte: primeiro amortece (domínio)
-    if (b.dono !== p.id) { b.toqueDe = null; b.toqueT = 99; }
+    if (b.toqueDe !== p.id && Math.hypot(b.vx - pvx, b.vz - pvz) > DOMINA_V) { b.dono = null; return null; } // chegando forte demais: primeiro amortece (domínio)
+    if (b.dono !== p.id) { b.toqueDe = null; b.toqueT = 99; b.dominio = 2; } // acabou de dominar: os 2 primeiros toques são curtinhos (mais fácil de controlar)
     b.dono = p.id;
     b.toqueT = (b.toqueT ?? 99) + dt;
     const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), sp = Math.hypot(pvx, pvz);
@@ -484,7 +484,8 @@
     const intervalo = p.protege ? COND.intervaloProtege : p.sprint ? COND.intervaloPique : COND.intervalo;
     if (dist < COND.alcance && (b.toqueT >= intervalo || b.toqueDe !== p.id || p.forcaToque)) {
       // toque: onde a bola precisa estar no próximo toque (na frente de onde ele vai estar), com o pé alternado
-      const lead = p.protege ? COND.leadProtege : p.sprint ? COND.leadPique : sp < 3.5 ? COND.leadAndando : COND.leadCorrendo;
+      let lead = p.protege ? COND.leadProtege : p.sprint ? COND.leadPique : sp < 3.5 ? COND.leadAndando : COND.leadCorrendo;
+      if (b.dominio > 0) { lead = Math.min(lead, COND.leadAndando); b.dominio--; } // domínio: a bola fica bem perto
       b.pe = -(b.pe || 1);
       const T = intervalo, px = p.x + pvx * T, pz = p.z + pvz * T, lado = b.pe * COND.ladoPe;
       const tx = px + fx * lead - fz * lado, tz = pz + fz * lead + fx * lado;
@@ -759,7 +760,8 @@
   //   para cada um: ângulo entre a direção mandada (u) e a direção até ele, e a distância.
   //   nota = ângulo/cone (0 no meio do cone, 1 na borda) + distância/30 (o mais perto ganha no empate).
   //   Fora do cone (ou longe demais), não conta. Ninguém no cone: passe no espaço.
-  function escolherReceptor(p, yaw, mates, cone = PASSE_S.cone) {
+  // soDirecao: quem está mais alinhado com a direção ganha (a distância não conta)
+  function escolherReceptor(p, yaw, mates, cone = PASSE_S.cone, soDirecao = false) {
     const ux = -Math.sin(yaw), uz = -Math.cos(yaw);
     let best = null, nota = Infinity;
     for (const m of mates) {
@@ -767,7 +769,7 @@
       if (d < 1.5 || d > PASSE_S.alcance) continue;
       const ang = Math.acos(Math.max(-1, Math.min(1, (dx * ux + dz * uz) / d)));
       if (ang > cone) continue;
-      const n = ang / cone + d / 30;
+      const n = soDirecao ? ang : ang / cone + d / 30;
       if (n < nota) { nota = n; best = m; }
     }
     return best;
@@ -824,7 +826,7 @@
   //   o.assist: passe de toque (cone largo, procura até 75° e metade do erro)
   function planejarPasse(F, p, yaw, mates, tipo, forca, pressao = false, ataque = 1, rnd = Math.random, o = {}) {
     const B0 = { x: p.x, z: p.z };
-    const alvo = o.assist ? escolherReceptor(p, yaw, mates, PASSE_S.coneAssist) || escolherReceptor(p, yaw, mates, PASSE_S.coneLargo) : escolherReceptor(p, yaw, mates);
+    const alvo = o.direcao ? escolherReceptor(p, yaw, mates, 80 * Math.PI / 180, true) : o.assist ? escolherReceptor(p, yaw, mates, PASSE_S.coneAssist) || escolherReceptor(p, yaw, mates, PASSE_S.coneLargo) : escolherReceptor(p, yaw, mates);
     let ponto, vel, elev = tipo === "longo" ? PASSE_S.elevLongo : 0.02;
     if (!alvo) { // ninguém no cone: passe no espaço, na direção exata, com a força da barra
       const d = tipo === "longo" ? 12 + forca * 14 : 8 + forca * 16;

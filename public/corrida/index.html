@@ -37,6 +37,8 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .muted{color:var(--muted)}
 .hidden{display:none!important}
+.skins{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px}.skins button{padding:7px 4px;font-size:12px;line-height:1.2;text-align:center}.skins button i{display:block;font-style:normal;font-size:20px}.skins button.on{outline:2px solid #ffd23f}
+
 .err{color:var(--red);font-size:14px;min-height:20px;margin-top:10px;font-weight:700}
 .wrap{max-width:1200px;margin:0 auto;padding:14px 16px 60px}
 .chk{height:10px;background:repeating-conic-gradient(#f2f3f5 0 25%,#111 0 50%) 0 0/10px 10px}
@@ -206,8 +208,9 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
         <h2>Pilotos</h2>
         <div id="pilots"></div>
         <div id="myPick" class="hidden" style="margin-top:16px">
-          <label>Cor do carro</label><div class="colors" id="colorPick"></div>
-          <label style="margin-top:14px">Seu carro</label><div class="cars" id="carPick"></div>
+          <label>Cor do kart</label><div class="colors" id="colorPick"></div>
+          <label style="margin-top:14px">Seu piloto</label><div class="skins" id="skinPick"></div>
+          <label style="margin-top:14px">Seu kart</label><div class="cars" id="carPick"></div>
           <label style="margin-top:14px">Personalizar</label><div id="modPick"></div>
           <label style="margin-top:14px">Seu avatar</label><div class="picker" id="pawnPick"></div>
         </div>
@@ -242,7 +245,8 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 <script src="/socket.io/socket.io.js"></script>
 <script src="/comum.js"></script>
 <script src="/corrida/pistas.js"></script>
-<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<script src="/pelada/campo.js"></script>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
 <script type="module" src="/corrida/jogo.js"></script>
 </body>
 </html>

@@ -172,6 +172,7 @@ module.exports = function attachTenis(io) {
       else if (fase === "saque" && dd < 3) j.x += dx * k; // no saque, todo mundo pode andar para os lados
       j.vx = clamp(vx, -9, 9); j.vz = fase === "jogo" ? clamp(vz, -9, 9) : 0; T.limitar(j, room.match); j.ultSt = now;
       if (fin(d.mx) && fin(d.mz)) j.mira = { x: clamp(d.mx, -1, 1), z: clamp(d.mz, -1, 1) };
+      j.y = fin(d.y) ? clamp(d.y, 0, 1.2) : 0; // pulando
     });
     // apertou um golpe: arma (o tempo é o de quando apertou, descontando metade do ping)
     socket.on("golpe", (d = {}) => {
