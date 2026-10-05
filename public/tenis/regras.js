@@ -23,7 +23,7 @@
     saque: { nome: "Saque", g: 1.2, e: 0.8, kh: 0.95, prof: [4.6, 6.1], T: [1.05, 0.8] },
   };
   // jogador
-  const VEL = 6.3, VEL_ARMADO = 0.7, ACEL = 30, ALCANCE = 1.5, ALTURA_MAX = 2.45, ALTURA_SMASH = 2.15, ARMADO_MAX = 0.5, CARGA_T = 1.0, PULO = 4.4; // ARMADO_MAX: armou e não bateu em 0,5 s? desarma (volta a andar normal) · PULO: velocidade do pulo (m/s)
+  const VEL = 6.3, VEL_ARMADO = 0.7, ACEL = 30, ALCANCE = 1.5, ALTURA_MAX = 2.45, ALTURA_SMASH = 2.15, ARMADO_MAX = 1.0, CARGA_T = 1.0, PULO = 4.4; // ARMADO_MAX: armou e não bateu em 1 s? desarma (volta a andar normal) · PULO: velocidade do pulo (m/s)
   // robôs
   const DIF = {
     // vel: velocidade de corrida · reac: quanto demora para reagir à batida do outro · erro: espalha o alvo
