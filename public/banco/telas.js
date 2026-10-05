@@ -19,7 +19,7 @@ function primaryAction() {
   if (S.turn !== m.id) return null;
   if (S.stage === "roll") return { label: m.inJail ? "🎲 Tentar dupla" : "🎲 Jogar os dados", run: () => act("roll"), hot: true };
   if (S.stage === "buy") { const pr = T.priceOf(S.buyOffer, S.event?.id); return { label: `Comprar ${short(pr)}`, run: () => act("buy"), disabled: m.cash < pr, hot: true }; }
-  if (S.stage === "done") return { label: "Passar a vez ➜", run: () => act("endTurn") };
+  if (S.stage === "done") return { label: "Passando a vez…", disabled: true };
   if (S.stage === "moving") return { label: "🎲 Lá vai…", disabled: true };
   return null;
 }
@@ -315,12 +315,12 @@ function rulesModal() {
     <h3>Aeroportos e companhias</h3><ul><li>Aeroportos: R$ 25, 50, 100 ou 200 mil, conforme quantos o dono tem.</li><li>Companhias: 4x os dados com uma, 10x com as duas.</li></ul>
     <h3>Prisão</h3><ul><li>Vai preso quem cai em "Vá para a prisão", tira a carta, ou tira 3 duplas seguidas.</li><li>Para sair: tire uma dupla, pague R$ 50 mil ou use o habeas corpus. Na 3ª tentativa sem dupla, paga e sai.</li><li>Preso continua recebendo aluguel.</li></ul>
     <h3>Dinheiro apertado</h3><ul><li>Hipoteque imóveis (recebe metade do preço; o aluguel para). Para resgatar, paga a hipoteca + 10%.</li><li>Ou venda o imóvel de volta ao banco: recebe metade do preço (nada, se já estava hipotecado) e ele volta a ficar à venda para todo mundo.</li><li>Se não der para pagar uma conta, venda, hipoteque ou negocie. Se nada resolver, declare falência: tudo vai para quem você deve.</li></ul>
-    <h3>Trocas</h3><p>A qualquer hora, proponha trocas de imóveis, dinheiro e habeas corpus. Imóvel com casas no grupo não pode ser trocado; venda as casas antes. Hipotecados passam hipotecados.</p>
+    <h3>Trocas</h3><p>A qualquer hora, proponha trocas de imóveis, dinheiro e habeas corpus. Imóvel com casas e hotel também pode ser trocado: as construções vão junto. Hipotecados passam hipotecados.</p><h3>A vez</h3><p>Não tem botão de passar a vez: quando você termina a jogada (comprou, mandou a leilão, pagou o que devia), a vez passa sozinha para o próximo.</p>
     <h3>Eventos e cartas especiais</h3><ul><li>Em quase toda rodada sai um evento que vale até a próxima: Black Friday (casas pela metade), aluguel em dobro, greve nos aeroportos, apagão, feriadão, liquidação, IPTU ou bolsa em alta.</li><li>No Sorte ou Revés há cartas de poder: <b>Demolição</b> (derruba uma casa ou hotel de alguém), <b>Usucapião</b> (toma um imóvel sem casas), <b>Doação</b> (dá um imóvel seu) e <b>Escritura blindada</b> (🛡️ protege um imóvel seu de demolição e usucapião para sempre).</li><li>Dá para desligar tudo isso na sala de espera.</li></ul>
     <h3>Tabuleiro grande</h3><p>Para mesas de 6 a 8 pessoas: 52 casas (13 por lado), com mais bairros (Bom Retiro, Jardim Anália Franco, Higienópolis, Perdizes, Barra Funda, Brooklin, Morumbi, Jardim Europa), cores com 4 cidades, a Companhia de Gás (3 companhias: 20x os dados) e mais Sorte ou Revés.</p>
-    <h3>Modo rápido</h3><p>Dá para pôr de 1 a 4 casas em qualquer imóvel seu, sem ter a cor toda e sem precisar construir por igual. O hotel continua só com a cor completa. Uma casa só impede de hipotecar ou trocar aquele imóvel.</p>
+    <h3>Modo rápido</h3><p>Dá para pôr de 1 a 4 casas em qualquer imóvel seu, sem ter a cor toda e sem precisar construir por igual. O hotel continua só com a cor completa. Uma casa só impede de hipotecar aquele imóvel.</p>
     <h3>Modo equipes</h3><ul><li>2, 3 ou 4 equipes, cada jogador com o seu dinheiro. Dá para mandar dinheiro para um colega a qualquer hora.</li><li>Aluguel entre colegas é grátis. A cor completa, os aeroportos e as companhias contam o que a equipe inteira tem (aluguel dobrado e direito de construir).</li><li>Demolição e usucapião só miram adversários.</li><li>Ganha a última equipe de pé ou, quando o tempo acaba, a de maior patrimônio somado.</li></ul>
-    <h3>Tempo</h3><ul><li>Cada jogada tem 40 segundos (15 para quem caiu da internet). Se passar: o dado roda sozinho, a cidade vai a leilão, ou a vez passa.</li><li>Quem tem conta para pagar e deixa o tempo acabar: o banco vende casas e hipoteca imóveis por ele. Se nem assim der, é falência.</li></ul><h3>Quem ganha</h3><p>O último que não faliu. Se a mesa tiver tempo de partida (30 minutos, por padrão), quando o tempo acaba vence o maior patrimônio.</p>
+    <h3>Tempo</h3><ul><li>Cada jogada tem 40 segundos (15 para quem caiu da internet). Se passar: o dado roda sozinho ou a cidade vai a leilão.</li><li>Quem tem conta para pagar e deixa o tempo acabar: o banco vende casas e hipoteca imóveis por ele. Se nem assim der, é falência.</li></ul><h3>Quem ganha</h3><p>O último que não faliu. Se a mesa tiver tempo de partida (30 minutos, por padrão), quando o tempo acaba vence o maior patrimônio.</p>
     <div class="row" style="margin-top:14px"><button data-close class="primary">Entendi</button></div></div>`;
 }
 $("btnRules").onclick = () => openModal({ kind: "rules" });
@@ -331,18 +331,17 @@ function tradeModal() {
   const m = me(), others = S.players.filter((p) => !p.bankrupt && p.id !== m.id);
   if (!tradeTo || !others.some((p) => p.id === tradeTo)) tradeTo = others[0]?.id;
   const o = P(tradeTo);
-  const hasBuild = (i) => S.config.quick ? !!S.props[i].houses : BOARD[i].group && GROUP_SQUARES[BOARD[i].group].some((j) => S.props[j] && S.props[j].houses);
   const list = (pid, name) => {
     const l = propsOf(pid);
-    return l.length ? l.map((i) => `<label class="${hasBuild(i) ? "dis" : ""}"><input type="checkbox" name="${name}" value="${i}" ${hasBuild(i) ? "disabled" : ""}><i style="--g:${gcolor(i)}"></i>${h(BOARD[i].name)}${S.props[i].mortgaged ? " <small class='muted'>(hipotecada)</small>" : ""}${hasBuild(i) ? " <small class='muted'>(tem casas)</small>" : ""}</label>`).join("") : `<span class="muted">Nenhum imóvel.</span>`;
+    return l.length ? l.map((i) => `<label><input type="checkbox" name="${name}" value="${i}"><i style="--g:${gcolor(i)}"></i>${h(BOARD[i].name)}${casinhas(i)}${S.props[i].mortgaged ? " <small class='muted'>(hipotecada)</small>" : ""}</label>`).join("") : `<span class="muted">Nenhum imóvel.</span>`;
   };
   return `<div class="in"><h2 style="font-size:24px;margin-bottom:12px">Propor troca</h2>
     <label for="tTo">Com quem</label><select id="tTo">${others.map((p) => `<option value="${p.id}" ${p.id === tradeTo ? "selected" : ""}>${p.pawn} ${h(p.name)} (${money(p.cash)})</option>`).join("")}</select>
     <div class="tgrid" style="margin-top:14px">
-      <div><b>Você dá</b><div class="tlist">${list(m.id, "give")}</div>
+      <div class="tlado sai"><b>➖ Sai de você</b><div class="tlist">${list(m.id, "give")}</div>
         <label for="tGiveCash">Dinheiro, em mil (você tem ${money(m.cash)})</label><input id="tGiveCash" type="number" min="0" max="${m.cash}" value="0" inputmode="numeric">
         ${m.jailCards.length ? `<label class="check" style="color:var(--ink)"><input type="checkbox" id="tGiveCard"> Habeas corpus</label>` : ""}</div>
-      <div><b>Você recebe</b><div class="tlist">${o ? list(o.id, "get") : ""}</div>
+      <div class="tlado vem"><b>➕ Vem para você</b><div class="tlist">${o ? list(o.id, "get") : ""}</div>
         <label for="tGetCash">Dinheiro, em mil (${h(o?.name)} tem ${money(o?.cash || 0)})</label><input id="tGetCash" type="number" min="0" max="${o?.cash || 0}" value="0" inputmode="numeric">
         ${o && o.jailCards.length ? `<label class="check" style="color:var(--ink)"><input type="checkbox" id="tGetCard"> Habeas corpus</label>` : ""}</div>
     </div>
