@@ -1,6 +1,7 @@
 // Pelada da Galera — as quadras: Society, Rio, Ginásio, Estádio Elétrico (Strikers) e a arena arredondada do Rocket,
 // com cerca, gols e as placas de quem defende cada gol.
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { E, C, $, store, clamp, SIDES, kitOf, G, offline, myKit, myAttackTeam } from "./estado.js";
 import { scene, cam, rng, canvasTex, M, sky, pintarCeu, hemiL, sunL, ballTex, beachTex, ballMesh, blob, liberar } from "./cena.js";
 
@@ -77,9 +78,46 @@ function carregarArena(id, mode = arenaMode || "pes") {
   if (cfg.fundo.tipo === "ceu") { pintarCeu(cfg.fundo.cores); sky.visible = true; scene.background = null; }
   else { sky.visible = false; scene.background = new THREE.Color(cfg.fundo.cor); }
   scene.fog.color.setHex(cfg.fundo.neblina); scene.fog.near = 80 * s; scene.fog.far = cfg.fundo.longe * s;
-  arena = buildArena(F, cfg); scene.add(arena);
+  arena = buildArena(F, cfg); fundirEstaticas(arena); scene.add(arena);
   ballMesh.scale.setScalar(F.ballR); blob.scale.setScalar(F.ballR / 0.15);
   ballMesh.material.map = mode === "carros" ? beachTex : ballTex; ballMesh.material.roughness = mode === "carros" ? 0.3 : 0.45; ballMesh.material.needsUpdate = true;
+}
+// junta as peças fixas de cor lisa da quadra (traves, postes, arquibancada, alambrado...) em poucas peças, uma por
+// acabamento, com a cor de cada uma nos vértices: a quadra fica igual e passa de ~90 para ~20 peças desenhadas.
+// Fica de fora o que o jogo mexe depois (a faixa colorida do gol, as bolinhas de turbo, a cerca elétrica) e o que
+// tem desenho, transparência ou brilho.
+function fundirEstaticas(grp) {
+  const fora = new Set();
+  for (const p of pads) if (p.orb) p.orb.traverse((o) => fora.add(o));
+  for (const g of goalSigns) { if (g.strip) fora.add(g.strip); if (g.spr) fora.add(g.spr); }
+  grp.updateMatrixWorld(true);
+  const lotes = new Map();
+  grp.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || fora.has(o) || o.children.length || Array.isArray(o.material)) return;
+    const m = o.material, tipo = m.isMeshStandardMaterial ? "s" : m.isMeshBasicMaterial ? "b" : null;
+    if (!tipo || m.map || m.transparent || m.alphaTest || (m.emissive && m.emissive.getHex() !== 0) || m.vertexColors || !o.geometry.attributes.position) return;
+    const k = [tipo, tipo === "s" ? m.roughness.toFixed(2) + "|" + m.metalness.toFixed(2) : "", m.side, o.castShadow ? 1 : 0, o.receiveShadow ? 1 : 0, m.fog ? 1 : 0].join("|");
+    if (!lotes.has(k)) lotes.set(k, []);
+    lotes.get(k).push(o);
+  });
+  for (const lista of lotes.values()) {
+    if (lista.length < 2) continue;
+    const geos = lista.map((o) => {
+      const ge = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrixWorld);
+      for (const nome of Object.keys(ge.attributes)) if (nome !== "position" && nome !== "normal") ge.deleteAttribute(nome);
+      if (!ge.attributes.normal) ge.computeVertexNormals();
+      const n = ge.attributes.position.count, c = new Float32Array(n * 3), col = o.material.color;
+      for (let i = 0; i < n; i++) { c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b; }
+      ge.setAttribute("color", new THREE.BufferAttribute(c, 3));
+      return ge;
+    });
+    const geo = mergeGeometries(geos); geos.forEach((g) => g.dispose()); if (!geo) continue;
+    const m0 = lista[0].material;
+    const mat = m0.isMeshStandardMaterial ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: m0.roughness, metalness: m0.metalness, side: m0.side }) : new THREE.MeshBasicMaterial({ vertexColors: true, side: m0.side, fog: m0.fog });
+    const peca = new THREE.Mesh(geo, mat); peca.castShadow = lista[0].castShadow; peca.receiveShadow = lista[0].receiveShadow;
+    for (const o of lista) { o.parent.remove(o); o.geometry.dispose(); o.material.dispose(); }
+    grp.add(peca);
+  }
 }
 const tons = (r, lista) => lista[Math.floor(r() * lista.length)];
 function buildArena(F, cfg) {

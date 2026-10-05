@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { Ragdoll } from "/ragdoll.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { canvasTex, M, liberar } from "./tex.js";
 // Este arquivo não depende do resto da Pelada (o Tênis também usa os bonecos e as skins): só da física/listas de
 // campo.js (window.Campo) e da cena, que quem usa passa em configurarBonecos.
@@ -330,9 +331,48 @@ function montarVoxel(g, id) {
   let capa = null;
   if (L.capa) { capa = new THREE.Group(); capa.position.set(0, 1.44 - SPINE_Y, 0.15); part(capa, 0.5, 0.75, 0.03, M(L.capa), 0, -0.37, 0); spine.add(capa); }
   if (L.enfeites) L.enfeites(head, part, M, spine, { elbows, arms, legs, knees });
-  body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  fundirPecas(body); sombraSoGrande(body);
   Object.assign(u, { body, spine, head, legs, knees, arms, elbows, capa, gltfUrl: null,
     mats: { head: R ? M(R.cabeca ?? tom) : skin, hair: bob || R ? skin : hair, torso: torsoMats, upperArm: shirtC, forearm: fore, thigh: shorts, shin: sock, boot } });
+}
+// junta as caixinhas de cor lisa que se mexem juntas (cada articulação: a coxa com o calção, a canela com a meia e a
+// chuteira, o cabelo em cima da cabeça...) numa peça só, com a cor de cada uma guardada nos vértices. O boneco fica
+// igualzinho e anima igual (as articulações continuam sendo grupos), mas cai de ~20 para ~8 peças desenhadas.
+// As peças com desenho (camisa, rosto), transparentes ou que brilham ficam como estão.
+function fundirPecas(raiz) {
+  const grupos = []; raiz.traverse((o) => { if (!o.isMesh) grupos.push(o); });
+  for (const g of grupos) {
+    const lisas = g.children.filter((o) => o.isMesh && !o.children.length && !Array.isArray(o.material) && o.material.isMeshStandardMaterial && !o.material.map && !o.material.transparent && o.material.emissive.getHex() === 0);
+    const porAcabamento = new Map(); // a mesma rugosidade/metal vira uma peça só
+    for (const o of lisas) { const k = o.material.roughness.toFixed(2) + "|" + o.material.metalness.toFixed(2); if (!porAcabamento.has(k)) porAcabamento.set(k, []); porAcabamento.get(k).push(o); }
+    for (const lista of porAcabamento.values()) {
+      if (lista.length < 2) continue;
+      const geos = lista.map((o) => {
+        o.updateMatrix();
+        const ge = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrix);
+        ge.deleteAttribute("uv");
+        const n = ge.attributes.position.count, c = new Float32Array(n * 3), col = o.material.color;
+        for (let i = 0; i < n; i++) { c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b; }
+        ge.setAttribute("color", new THREE.BufferAttribute(c, 3));
+        return ge;
+      });
+      const geo = mergeGeometries(geos); if (!geo) continue;
+      const m0 = lista[0].material, peca = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: m0.roughness, metalness: m0.metalness }));
+      g.add(peca);
+      for (const o of lista) { g.remove(o); o.geometry.dispose(); }
+      geos.forEach((x) => x.dispose());
+    }
+  }
+}
+// sombra só nas peças grandes (tronco, cabeça, coxas, a carroceria...): cada peça com sombra é desenhada de novo no
+// mapa de sombra, e as miudezas (mão, bota, cabelo, enfeite) quase não aparecem nele. Corta uns 2/3 desse desenho.
+export function sombraSoGrande(obj, minimo = 0.009) {
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    const p = o.geometry.parameters || {}, s = o.getWorldScale ? o.scale : { x: 1, y: 1, z: 1 };
+    const vol = p.width != null ? p.width * p.height * p.depth * s.x * s.y * s.z : p.radiusTop != null ? Math.PI * p.radiusTop * p.radiusTop * p.height : 1;
+    o.castShadow = vol >= minimo;
+  });
 }
 const lwOf = (L) => L.larg || 1; // personagens largos (Shrek, Pikachu): as pernas engrossam junto
 // ---------- marcador do time: anel no chão e losango em cima da cabeça, na cor do time ----------
@@ -520,6 +560,7 @@ export function makeCar(model, kitId, name) {
   const flame = new THREE.Mesh(new THREE.ConeGeometry(0.22, 1.1, 8), new THREE.MeshBasicMaterial({ color: 0xffa21a, transparent: true, opacity: 0.85 }));
   flame.rotation.x = Math.PI / 2; flame.position.set(0, 0.5, 2.5); flame.visible = false; body.add(flame);
   let tag = null; if (name) { tag = nameSprite(name, tagColor(kitId), 1.6); tag.position.y = 2.4; g.add(tag); }
+  sombraSoGrande(body, 0.1); // no carro, só a carroceria e as rodas fazem sombra
   g.userData = { body, wheels, flame, tag, roll: 0 };
   return g;
 }

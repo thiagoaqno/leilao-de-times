@@ -11,7 +11,7 @@ import { show, renderLobby, aplicarCond, redesenharCond } from "./menus.js";
 import { syncFromState, updateRemotes } from "./rede.js";
 import { makePlayer, mudarSkinJogador, descartarJogador, balaoPede, animate, makeCar, animateCar, carO, poseCar, rags, addRag, updateRags, clearRags } from "./bonecos.js";
 import { Sound } from "./sons.js";
-import { renderer, scene, cam, ballMesh, aim, passMark, meMark, resize } from "./cena.js";
+import { renderer, scene, cam, ballMesh, aim, passMark, meMark, resize, medirQuadro } from "./cena.js";
 import { configurarBonecos } from "./bonecos.js";
 configurarBonecos({ scene, limites: () => G.F });
 import { pads, ensureArena, updateGoalSigns } from "./arenas.js";
@@ -87,7 +87,8 @@ function loop() {
   if (!G.active) return;
   requestAnimationFrame(loop);
   if (TOUCH) { const want = E.touchPlay && $("over").classList.contains("hidden"); if (Toque.on !== want) Toque.show(want); }
-  const t = now(), dt = Math.min(0.05, t - lastT); lastT = t;
+  const t = now(), dtReal = t - lastT, dt = Math.min(0.05, dtReal); lastT = t;
+  medirQuadro(dtReal, t); // gráficos automáticos: se estiver lento, baixa a resolução e a sombra
   try { lerPad(dt); frame(dt, t); } catch (e) { console.error(e); }
 }
 function myFlags() {
