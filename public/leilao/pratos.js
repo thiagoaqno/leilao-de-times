@@ -3,11 +3,12 @@
 // ---------- PRATO MONTADO (temas de comida) ----------
 function dishHTML(c){
   const now = performance.now(), extra = previewFor(c);
+  // o ingrediente que acabou de chegar só entra no prato quando o voo termina (elenco.js)
   const parts = c.team.map(x => {
     const { name, cat } = Ratings.parseItem(x.player), key = c.id + "|" + x.player;
-    if (!arrivedAt.has(key)) arrivedAt.set(key, pitchSeeded ? now : -1e9);
-    return { name, cat, age: now - arrivedAt.get(key), price: x.price };
-  });
+    viuItem(c, x.player, key);
+    return { name, cat, age: now - arrivedAt.get(key) - VOO_MS, price: x.price };
+  }).filter(p => p.age >= 0);
   if (extra) { const g = Ratings.parseItem(extra); parts.push({ name: g.name, cat: g.cat, ghost: true }); }
   // categorias do tema que ainda estão vazias aparecem tracejadas
   const preset = PRESETS.find(p => p.id === skinNow), have = {};
@@ -18,7 +19,7 @@ function dishHTML(c){
     .sort((x, y) => (req[y] ? 1 : 0) - (req[x] ? 1 : 0)).slice(0, free);
   const list = c.team.length ? `<ul class="dishlist">${parts.filter(p => !p.ghost).map(p => `<li><span>${esc(p.name)}</span><b>${p.price}</b></li>`).join("")}</ul>` : "";
   const note = extra ? `<div class="ghostnote">Se você levar <b>${esc(Ratings.parseItem(extra).name)}</b>, seu ${esc(T().team)} fica assim (a parte piscando).</div>` : "";
-  return `${note}<div class="dish">${Cozinha.draw(skinNow, parts, missing, c.id)}</div>${list}`;
+  return `${note}<div class="dish">${Cozinha.draw(skinNow, parts, missing, c.id)}${balao(c.id + "|*", "prato")}</div>${list}`;
 }
 function teamPower(c){ const E = lineupOf(c); return `<span>Ataque <b>${Math.round(E.att)}</b></span><span>Defesa <b>${Math.round(E.def)}</b></span>`; }
 // ---------- BATALHA DOS PRATOS (júri do site + voto da galera) ----------
@@ -112,6 +113,8 @@ function capById(id){ return S.captains.find(c => c.id === id); }
 function maxBidFor(c){ return c.coins - (S.config.perTeam - c.team.length - 1) * S.config.minBid; }
 
 function render(){
+  // o estado pode chegar antes das últimas partes do script (aovivo.js, elenco.js) carregarem: elas desenham quando chegam
+  if (typeof renderTrocas !== "function") return;
   const st = S, cfg = st.config;
   $("rCode").textContent = st.code;
   const mine = me.capId && capById(me.capId);
@@ -128,11 +131,12 @@ function render(){
 
   // teams
   const cur = st.current;
+  antesDeDesenhar(); // onde cada um estava, para os voos e para deslizar quem mudou de lugar (elenco.js)
   $("teams").innerHTML = st.captains.map(c => {
     const FB = isFootball();
-    const slots = Array.from({length: cfg.perTeam}, (_, i) => c.team[i]
-      ? `<li><span>${esc(c.team[i].player)}${FB ? subTag(c.team[i].player) : ""}${FB ? ` <b class="ovr${Ratings.ratingOf(c.team[i].player).est ? " est" : ""}">${Ratings.ratingOf(c.team[i].player).ovr}</b>` : ""}</span><span>${c.team[i].price}</span></li>`
-      : `<li class="empty"><span>vaga</span><span></span></li>`).join("");
+    const slots = Array.from({length: cfg.perTeam}, (_, i) => { if (!c.team[i]) return `<li class="empty"><span>vaga</span><span></span></li>`;
+      const it = c.team[i].player, key = c.id + "|" + it; viuItem(c, it, key); const ch = chegada(key);
+      return `<li class="${ch.cls}" style="${ch.style}" data-item="${escA(Ratings.parseItem(it).name)}"><span>${esc(c.team[i].player)}${FB ? subTag(c.team[i].player) : ""}${FB ? ` <b class="ovr${Ratings.ratingOf(c.team[i].player).est ? " est" : ""}">${Ratings.ratingOf(c.team[i].player).ovr}</b>` : ""}</span><span>${c.team[i].price}</span>${balao(key)}</li>`; }).join("");
     let bs = "";
     if (cur && st.phase === "bidding") {
       if (!cur.eligible.includes(c.id)) bs = `<span class="bidstate muted">${c.team.length >= cfg.perTeam ? "completo" : "não pode"}</span>`;
@@ -146,14 +150,15 @@ function render(){
       else bs = `<span class="bidstate" style="color:var(--accent)">pensando…</span>`;
     }
     const kick = me.host && st.phase === "lobby" && !c.isHost ? `<button class="ghost danger" style="padding:2px 8px;font-size:12px" onclick="host('kick',{id:'${c.id}'})">remover</button>` : "";
-    return `<div class="team ${c.id===me.capId?"me":""}">${bs}
-      <h3><span class="row" style="gap:8px"><i class="dot ${c.connected?"on":""}"></i>${esc(c.name)}</span>${kick}</h3>
+    return `<div class="team ${c.id===me.capId?"me":""}" data-team="${c.id}">${bs}
+      <h3><span class="row" style="gap:8px"><i class="dot ${c.connected?"on":""}"></i>${c.teamName ? `<span class="tnome">${esc(c.teamName)}<small>${esc(c.name)}</small></span>` : esc(c.name)}</span>${kick}</h3>
       <div class="stats"><span><b>${c.coins}</b> moedas</span>${OPEN ? "" : `<span><b>${c.skipsLeft}</b> pulo${c.skipsLeft===1?"":"s"}</span>`}<span><b>${c.team.length}</b>/${cfg.perTeam}</span>${FB && c.team.length ? teamPower(c) : ""}</div>
       <div class="coinbar"><i style="width:${Math.max(0,100*c.coins/cfg.coins)}%"></i></div>
       ${needsOf(c).length && c.team.length < cfg.perTeam ? `<div style="font-size:12.5px;color:var(--accent2);margin:-4px 0 8px">Falta: ${esc(needsOf(c).join(", "))}</div>` : ""}
       ${FB ? pitchHTML(c) : skinNow ? dishHTML(c) : `<ol>${slots}</ol>`}</div>`;
   }).join("") || `<p class="muted">Ninguém entrou ainda.</p>`;
   $("teams").classList.toggle("fb", isFootball()); $("teams").classList.toggle("food", !!skinNow); pitchSeeded = true;
+  depoisDeDesenhar(); renderNome(); renderTrocas();
 
   // pool / unsold / log
   $("poolN").textContent = st.poolCount;
@@ -280,7 +285,7 @@ function render(){
   const showExport = me.host && (st.phase === "done" || st.captains.some(c => c.team.length));
   $("exportCard").classList.toggle("hidden", !showExport);
   $("promptText").textContent = buildPrompt();
-  $("exportText").textContent = st.captains.map(c => [`${t.prefix} ${c.name}`, ...c.team.map(x => x.player.replace(/\s*\([^)]*\)\s*$/, ""))].join("\n")).join("\n\n");
+  $("exportText").textContent = st.captains.map(c => [c.teamName || `${t.prefix} ${c.name}`, ...c.team.map(x => x.player.replace(/\s*\([^)]*\)\s*$/, ""))].join("\n")).join("\n\n");
 
   renderFc();
   renderJudge();

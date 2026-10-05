@@ -187,6 +187,7 @@ function pitchTap(el){
   const pins = { ...(mine.pins || {}) };
   if (a.name) pins[a.name] = t.pos;
   if (t.name) pins[t.name] = a.pos;
+  falasDaTroca(mine, [a.name, t.name], pins); // quem mudou de lugar fala (elenco.js)
   render(); sendPins(pins);
 }
 $("teams").addEventListener("click", (e) => { const el = e.target.closest("[data-tap]"); if (el) pitchTap(el); });
@@ -211,22 +212,23 @@ function pitchHTML(c){
     const info = Quimica.infoOf(s.p.name);
     return `. ${info ? info.pais + ". " : ""}Química ${Math.round(s.chem * 100)} → ${why.join("; ")}`;
   };
-  const price = (name) => { const t = c.team.find(x => Ratings.parseItem(x.player).name === name); return t ? t.price : null; };
+  const doTime = (name) => c.team.find(x => Ratings.parseItem(x.player).name === name);
+  const price = (name) => { const t = doTime(name); return t ? t.price : null; };
   // no meu campinho as vagas viram botões
-  const tag = (cls, style, tip, body, s) => mineCard
-    ? `<button type="button" class="${cls} tap" style="${style}" title="${escA(tip)}" data-tap data-g="${s.slot}" data-k="${s.k}">${body}</button>`
-    : `<div class="${cls}" style="${style}" title="${escA(tip)}">${body}</div>`;
+  const tag = (cls, style, tip, body, s, attr = "") => mineCard
+    ? `<button type="button" class="${cls} tap" style="${style}" title="${escA(tip)}" data-tap data-g="${s.slot}" data-k="${s.k}"${attr}>${body}</button>`
+    : `<div class="${cls}" style="${style}" title="${escA(tip)}"${attr}>${body}</div>`;
   const marks = spots.map(({ x, y, s }) => {
+    const lado = y < 30 ? "baixo" : "", canto = x < 30 ? " esq" : x > 70 ? " dir" : ""; // o balão não sai do campinho
     const at = `left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
     if (!s.p) return tag(`pl empty${pickKey === "s:" + s.slot + s.k ? " sel" : ""}`, at, `Vaga ${SLOT_EM[s.slot]}`, `<i>${POS_ABBR[s.slot]}</i>`, s);
     const off = Escalacao.HOME_SLOT(s.p.pos) !== s.slot, eff = Math.round(s.eff);
     if (s.p.name === ghostName) return tag(`pl ghost${off ? " off" : ""}`, at, `Se você levar ${s.p.name}, ele entra aqui${off ? ` fora de posição, rendendo ${eff}` : ""}`, `<i>${off ? eff : s.p.ovr}</i><span>${esc(shortName(s.p.name))}</span>`, s);
     const pr = price(s.p.name), key = c.id + "|" + s.p.name;
-    if (!arrivedAt.has(key)) arrivedAt.set(key, pitchSeeded ? now : -1e9);
-    const age = now - arrivedAt.get(key), anim = age < 600 ? `;animation-delay:-${Math.round(age)}ms` : "";
+    viuItem(c, doTime(s.p.name).player, key); const ch = chegada(key); // chegou agora: voa até a vaga (elenco.js)
     const tip = `${s.p.name}: nota ${s.p.ovr}${s.p.est ? " (estimada)" : ""}${off ? `, fora de posição ${SLOT_EM[s.slot]}, rende ${eff}` : ""}${pr != null ? `. Custou ${pr}` : ""}${s.pinned ? ". Posição fixada" : ""}${chemTip(s)}`;
-    const cls = `pl${off ? " off" : ""}${age < 600 ? " new" : ""}${s.pinned ? " pinned" : ""}${pickKey === "n:" + s.p.name ? " sel" : ""}`;
-    return tag(cls, at + anim, tip, `<i>${off ? eff : s.p.ovr}</i><span>${esc(shortName(s.p.name))}</span>`, s);
+    const cls = `pl${off ? " off" : ""}${ch.cls}${s.pinned ? " pinned" : ""}${pickKey === "n:" + s.p.name ? " sel" : ""}`;
+    return tag(cls, at + ch.style, tip, `<i>${off ? eff : s.p.ovr}</i><span>${esc(shortName(s.p.name))}</span>${balao(key, lado + canto)}`, s, ` data-item="${escA(s.p.name)}"`);
   }).join("");
   const benchList = E.bench.filter(p => p.name !== ghostName);
   let bench = "";
