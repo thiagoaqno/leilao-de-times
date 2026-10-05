@@ -114,7 +114,13 @@
     const naMesa = new Set(r.mesa.flat().map((t) => t.id));
     const daMao = new Set(minha ? S.minhaMao.map((t) => t.id) : rascunhoAlheio ? rascunhoAlheio.flat().filter((id) => !naMesa.has(id)) : []);
     let html = "";
-    if (rascunhoAlheio && !minha) { const n = daMao.size; html = `<div class="quem ao-vivo">✋ <b>${h(nomeDe(r.vez))}</b> está mexendo na mesa ${n ? `· já pôs ${n} peça${n === 1 ? "" : "s"} da mão (em verde)` : "· ainda sem peça nova"} · só vale quando confirmar</div>`; }
+    // na vez dos outros, a linha de cima está sempre lá (só muda o texto): quando quem joga começa a mexer, a linha não
+    // aparece do nada empurrando a mesa inteira para baixo
+    if (!minha && S.phase === "jogando") {
+      const n = daMao.size;
+      html = rascunhoAlheio ? `<div class="quem ao-vivo">✋ <b>${h(nomeDe(r.vez))}</b> está mexendo na mesa ${n ? `· já pôs ${n} peça${n === 1 ? "" : "s"} da mão (em verde)` : "· ainda sem peça nova"} · só vale quando confirmar</div>`
+        : `<div class="quem ao-vivo espera">⏳ Vez de <b>${h(nomeDe(r.vez))}</b> · a mesa só muda quando confirmar</div>`;
+    }
     html += grupos.map((g, gi) => {
       const av = R.avaliar(g.map(P_)), ordem = minha ? g.map(P_) : av.ok ? av.ordem : g.map(P_);
       const mais = minha && sel.size ? `<div class="poe" data-poe="${gi}" title="Pôr as peças escolhidas aqui">＋</div>` : "";
@@ -158,7 +164,12 @@
   }
   let envio = null;
   function enviar() { clearTimeout(envio); envio = setTimeout(() => RAS && socket.emit("rascunho", { mesa: RAS.mesa, pegando: [...sel].filter((id) => onde(id) >= 0) }), 120); }
-  function mudou() { sel.clear(); desenhar(); enviar(); }
+  // mudou a estrutura do rascunho (peça foi para outra combinação, combinação nova…). A combinação que ficou válida já
+  // passa para a ordem em que o servidor vai guardar (3-4-5-6, não 3-4-5-2… nada pula de lugar na hora de confirmar).
+  function mudou() {
+    RAS.mesa = RAS.mesa.map((g) => { const a = R.avaliar(g.map(P_)); return a.ok ? a.ordem.map((t) => t.id) : g; });
+    sel.clear(); desenhar(); enviar();
+  }
   function tirarSelecionadas() { const ids = [...sel]; RAS.mesa = RAS.mesa.map((g) => g.filter((id) => !sel.has(id))).filter((g) => g.length); RAS.mao = RAS.mao.filter((id) => !sel.has(id)); return ids; }
   $("mesa").addEventListener("click", (e) => {
     if (!RAS) return;
@@ -166,7 +177,15 @@
     const t = e.target.closest(".peca"), poe = e.target.closest("[data-poe]"), g = e.target.closest(".grupo"), novo = e.target.closest("[data-novo]");
     if (t) { const id = +t.dataset.id; if (sel.has(id)) sel.delete(id); else sel.add(id); desenhar(); enviar(); return; }
     const destino = poe ? +poe.dataset.poe : g ? +g.dataset.g : null;
-    if (destino != null && sel.size) { const alvo = RAS.mesa[destino], ids = tirarSelecionadas(); const gi = RAS.mesa.indexOf(alvo); if (gi >= 0) RAS.mesa[gi].push(...ids); else RAS.mesa.push(ids); mudou(); return; }
+    if (destino != null && sel.size) {
+      // só as escolhidas que estão FORA desta combinação vão para ela; as que já estão nela ficam onde estão
+      // (antes, escolher a combinação inteira e tocar nela esvaziava e recriava a combinação no fim da mesa)
+      const alvo = RAS.mesa[destino], vem = [...sel].filter((id) => !alvo.includes(id));
+      if (!vem.length) { sel.clear(); desenhar(); enviar(); return; }
+      RAS.mesa = RAS.mesa.map((g) => (g === alvo ? g : g.filter((id) => !vem.includes(id)))).filter((g) => g.length);
+      RAS.mao = RAS.mao.filter((id) => !vem.includes(id));
+      alvo.push(...vem); mudou(); return;
+    }
     if (novo && sel.size) { const ids = tirarSelecionadas(); RAS.mesa.push(ids); mudou(); return; }
   });
   // no suporte: cada toque soma (ou tira) uma peça da escolha; tocar no fundo do suporte devolve as escolhidas
