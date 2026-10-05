@@ -145,6 +145,21 @@ button.primary:active:not(:disabled){box-shadow:0 1px 0 #3d0c12}
 .card.back::after{content:"♣";position:absolute;inset:0;display:grid;place-items:center;color:#f3e7cf;font-size:calc(var(--cw)*.4);opacity:.9}
 .card.win{box-shadow:0 0 0 3px var(--gold),0 0 26px var(--gold),0 6px 14px #0007;z-index:3}
 .card.lose{filter:brightness(.6) saturate(.7)}
+/* animações: as cartas voando na distribuição, a vira desvirando, a carta que ganhou a rodada e o recolher.
+   O tempo de cada uma vem de um relógio só (delay negativo): redesenhar a mesa no meio não faz a animação recomeçar. */
+#voo{position:fixed;inset:0;pointer-events:none;z-index:70;overflow:hidden}
+.voa{position:fixed;left:0;top:0;--cw:44px;will-change:transform}
+@media (prefers-reduced-motion:no-preference){
+  .seat .backs .card.chega{animation:chegaCosta .25s ease-out both}
+  .hand .card.dada{animation:desvira .45s cubic-bezier(.2,1.2,.4,1) both}
+  .viraBox .stack .card.face.desvira{animation:viraVira .6s cubic-bezier(.3,1.3,.5,1) both}
+  .play .card.win{animation:ganhou .55s cubic-bezier(.2,1.4,.4,1)}
+  .play.recolhe{transition:transform .4s cubic-bezier(.5,0,.8,.4),opacity .4s;transform:translate(calc(-50% + var(--sx)),calc(-50% + var(--sy))) rotate(var(--rot,0deg)) scale(.45)!important;opacity:0}
+}
+@keyframes chegaCosta{from{opacity:0;transform:translateY(-10px) scale(1.4)}}
+@keyframes desvira{0%{transform:translateY(-26px) rotateY(90deg);filter:brightness(.5)}60%{transform:translateY(-6px) rotateY(0)}100%{transform:none}}
+@keyframes viraVira{0%{transform:rotate(8deg) rotateY(90deg)}100%{transform:rotate(8deg) rotateY(0)}}
+@keyframes ganhou{0%{transform:scale(1)}40%{transform:scale(1.22) rotate(-3deg)}100%{transform:scale(1)}}
 
 /* jogo */
 .hud{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch;margin-bottom:10px}
@@ -351,6 +366,7 @@ button.primary:active:not(:disabled){box-shadow:0 1px 0 #3d0c12}
 
 <div class="modal hidden" id="modal"><div class="box" id="modalBox"></div></div>
 <div class="toast hidden" id="toast"></div>
+<div id="voo"></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/noite.js"></script>
@@ -451,6 +467,15 @@ socket.on("connect", autoJoin);
 socket.on("kicked", () => { toast("O organizador tirou você da mesa."); ME = null; S = null; history.replaceState(null, "", "/truco/"); document.body.classList.remove("inroom"); $("roomTag").classList.add("hidden"); show("home"); });
 
 let lastFx = null, coberta = false, seen = new Set(), lastTurnKey = null, lastValue = 1;
+// a distribuição em andamento: { no (a mão), t0 } — o tempo de cada carta sai daí (ver dealt())
+let dist = null;
+const VOO = 70, VOO_DUR = 340, MOVIMENTO = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+// em que milissegundo da distribuição a carta j (0 a 2) do jogador na posição k (a partir de quem dá) chega
+const chegada = (k, j) => (j * S.players.length + k) * VOO + VOO_DUR;
+const ordemDist = (i) => { const n = S.players.length, d = S.players.findIndex((p) => p.id === S.hand.dealer); return (i - d - 1 + n * 2) % n; };
+// atraso (negativo depois que começou) para a animação de algo que deve acontecer "ms" depois do começo da distribuição
+const atraso = (ms) => `animation-delay:${Math.round(ms - (performance.now() - dist.t0))}ms`;
+const distribuindo = () => dist && S.hand && dist.no === S.hand.no && performance.now() - dist.t0 < chegada(S.players.length - 1, 2) + 1400;
 socket.on("state", (st) => {
   relogio.doEstado(st.now);
   S = st;
@@ -540,7 +565,8 @@ function renderTable() {
     const g = seatGeo(i), turn = hd.turn === p.id || (dl && dl.team === p.team && !dl.who && S.phase === "playing");
     const ring = S.phase === "playing" && dl && (dl.who === p.id || (!dl.who && dl.team === p.team)) ? `<svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16.5" fill="none" stroke="#f2b134" stroke-width="2.5" stroke-linecap="round" pathLength="100" stroke-dasharray="100" class="tring"/></svg>` : "";
     const mates = S.mates && S.mates[p.id] ? `<div class="mates">${S.mates[p.id].map((c) => cardHTML(c, { mr: hd.manilha, tag: false })).join("")}</div>` : "";
-    const backs = g.k === 0 && me() ? "" : `<div class="backs">${Array.from({ length: p.count }, () => `<div class="card back"></div>`).join("")}</div>`;
+    const dd = distribuindo(), ord = ordemDist(i);
+    const backs = g.k === 0 && me() ? "" : `<div class="backs">${Array.from({ length: p.count }, (_, j) => `<div class="card back ${dd ? "chega" : ""}" style="${dd ? atraso(chegada(ord, j)) : ""}"></div>`).join("")}</div>`;
     const x = 50 + (g.x - 50) * 0.98, y = 50 + (g.y - 50) * 0.97;
     return `<div class="seat ${turn ? "turn" : ""} ${p.online ? "" : "off"}" id="seat-${p.id}" style="left:${x}%;top:${y}%;--tc:var(--t${p.team})">
       <div class="av">${p.pawn}${ring}${hd.dealer === p.id ? `<span class="dealer" title="Deu as cartas">🂠</span>` : ""}</div><div class="nm">${h(p.name)}</div>${g.th > 0.2 && g.k !== 0 ? "" : ""}${backs}${mates}</div>`;
@@ -548,7 +574,8 @@ function renderTable() {
   // vira e rodadas
   // vira e rodadas ficam no vão entre os lugares: laterais com 6 (e 2), diagonais com 4
   const side = n !== 4, vp = side ? [15, 50] : [23, 26], rp = side ? [86, 50] : [77, 26];
-  $("viraBox").innerHTML = `<div class="viraBox" style="left:${vp[0]}%;top:${vp[1]}%"><div class="stack"><div class="card back"></div>${cardHTML(hd.vira, { cls: "face" })}</div><small>manilha: ${hd.manilha}</small></div>`;
+  const dv = distribuindo(), viraEm = chegada(S.players.length - 1, 2) + 150;
+  $("viraBox").innerHTML = `<div class="viraBox" style="left:${vp[0]}%;top:${vp[1]}%"><div class="stack"><div class="card back"></div>${cardHTML(hd.vira, { cls: "face" + (dv ? " desvira" : ""), style: dv ? atraso(viraEm) : "" })}</div><small>manilha: ${hd.manilha}</small></div>`;
   $("roundsBox").innerHTML = `<div class="rounds" style="left:${rp[0]}%;top:${rp[1]}%"><small>RODADAS</small>${[0, 1, 2].map((i) => { const r = hd.rounds[i]; const w = r ? r.winner : null; return `<i class="${w === -1 ? "tie" : w === 0 ? "t0" : w === 1 ? "t1" : ""}" title="${w === -1 ? "cangou" : w != null ? teamLabel(w) : ""}"></i>`; }).join("")}</div>`;
   renderPlays();
   renderOver();
@@ -626,7 +653,8 @@ function renderDock() {
   const cards = S.myHand || [];
   const can = mine && !r && hd.stage === "play";
   hand.className = "hand " + (can ? "can" : "") + (m && !can ? " dim" : "");
-  hand.innerHTML = cards.map((c) => cardHTML(c, { mr: hd.manilha, cls: can && coberta ? "coberta" : "" })).join("");
+  const dm = distribuindo(), meuK = m ? ordemDist(S.players.findIndex((p) => p.id === m.id)) : 0;
+  hand.innerHTML = cards.map((c, j) => cardHTML(c, { mr: hd.manilha, cls: (can && coberta ? "coberta " : "") + (dm ? "dada" : ""), style: dm ? atraso(chegada(meuK, j) + 80) : "" })).join("");
   hand.querySelectorAll(".card").forEach((el, i) => (el.onclick = () => {
     if (!can) return;
     const c = cards[i];
@@ -681,15 +709,45 @@ function runFx() {
   if (lastFx === null) lastFx = 0;
   for (const f of fresh) {
     if (f.kind === "play") Sound.play("card");
-    else if (f.kind === "deal") { Sound.play("deal"); seen = new Set(); coberta = false; }
+    else if (f.kind === "deal") { Sound.play("deal"); seen = new Set(); coberta = false; if (MOVIMENTO && S.hand) { dist = { no: S.hand.no, t0: performance.now() }; voarDistribuicao(); renderTable(); renderDock(); } }
     else if (f.kind === "raise") { Sound.play("shout"); bubble(f.pid, T.RAISE_NAME[f.to].toUpperCase() + "!", "shout"); const tb = $("table"); tb.classList.remove("shake"); void tb.offsetWidth; tb.classList.add("shake"); }
     else if (f.kind === "accept") { Sound.play("accept"); if (f.pid) bubble(f.pid, ["Cai dentro!", "Desce!", "Manda!", "Tá aceito!"][f.value % 4]); }
     else if (f.kind === "run") { Sound.play("run"); bubble(f.pid, "Corri 🏃"); }
     else if (f.kind === "onze") { Sound.play("accept"); bubble(f.pid, "Vamos jogar!"); }
-    else if (f.kind === "round") Sound.play(f.winner === -1 ? "tie" : "round");
+    else if (f.kind === "round") { Sound.play(f.winner === -1 ? "tie" : "round"); if (MOVIMENTO) recolherDepois(); }
     else if (f.kind === "hand") { if (me() && f.team >= 0) Sound.play(f.team === myTeam() ? "win" : "lose"); }
     else if (f.kind === "game") { if (!me() || f.team === myTeam()) confetti(); }
   }
+}
+// as costas das cartas voando do meio da mesa para cada lugar (e para a minha mão), uma volta de cada vez
+function voarDistribuicao() {
+  const mesa = $("table").getBoundingClientRect(), de = { x: mesa.left + mesa.width / 2, y: mesa.top + mesa.height / 2 }, n = S.players.length;
+  S.players.forEach((p, i) => {
+    const eu = me() && p.id === me().id, alvo = eu ? $("hand") : $("seat-" + p.id) && $("seat-" + p.id).querySelector(".av"); if (!alvo) return;
+    const r = alvo.getBoundingClientRect(), para = { x: r.left + r.width / 2, y: r.top + r.height / 2 }, ord = ordemDist(i);
+    for (let j = 0; j < 3; j++) {
+      const el = document.createElement("div"); el.className = "voa"; el.innerHTML = `<div class="card back"></div>`; $("voo").appendChild(el);
+      const giro = (((i * 3 + j) * 47) % 40) - 20, fim = eu ? 1.5 : 0.55;
+      const a = el.animate([{ transform: `translate(${de.x - 22}px,${de.y - 32}px) rotate(0deg) scale(.9)`, opacity: 0 }, { opacity: 1, offset: 0.15 }, { transform: `translate(${para.x - 22}px,${para.y - 32}px) rotate(${giro + 360}deg) scale(${fim})`, opacity: eu ? 0 : 0.2 }],
+        { duration: VOO_DUR, delay: (j * n + ord) * VOO, easing: "cubic-bezier(.3,.7,.4,1)", fill: "both" });
+      a.onfinish = () => el.remove();
+    }
+  });
+}
+// fechou a rodada: a carta que ganhou pula (CSS .win) e, um pouco antes da próxima, as cartas deslizam até quem ganhou
+function recolherDepois() {
+  const hd = S.hand; if (!hd) return;
+  const espera = Math.max(250, hd.pauseUntil - sNow() - 430);
+  setTimeout(() => {
+    const plays = [...$("playsLayer").querySelectorAll(".play")]; if (!plays.length) return;
+    const ganhou = $("playsLayer").querySelector(".card.win"), quem = ganhou ? ganhou.closest(".play") : null;
+    let alvo = null;
+    if (quem) { const i = [...$("playsLayer").children].indexOf(quem), cr = curRound(), pl = cr && cr.rd.plays[i]; const seat = pl && $("seat-" + pl.pid); if (seat) { const r = seat.getBoundingClientRect(); alvo = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; } }
+    for (const el of plays) {
+      const r = el.getBoundingClientRect(), c = { x: r.left + r.width / 2, y: r.top + r.height / 2 }, t = alvo || c;
+      el.style.setProperty("--sx", `${t.x - c.x}px`); el.style.setProperty("--sy", `${t.y - c.y}px`); el.classList.add("recolhe");
+    }
+  }, espera);
 }
 socket.on("signal", ({ from, k }) => {
   const s = T.SIGNALS.find((x) => x.k === k); if (!s) return;

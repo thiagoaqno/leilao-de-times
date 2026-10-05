@@ -9,6 +9,9 @@
   let S = null, ME = null, urlCode = new URLSearchParams(location.search).get("sala");
   const P = {}; // id -> peça (vai sendo conhecida pelo que chega do servidor)
   // o rascunho da minha vez: mesa e mão do jeito que estou mexendo; sel: peças escolhidas; ordem: a do meu suporte
+  // animação das peças: as que acabaram de chegar na mesa (ou na mão) entram com um quique. "vistas" guarda o que já
+  // estava na tela (da rodada atual); no primeiro desenho de uma rodada, as peças da mão chegam uma a uma.
+  const vistas = { rodada: null, mesa: new Set(), mao: new Set() };
   let RAS = null, sel = new Set(), ordemMao = [], vezChave = null, rascunhoAlheio = null, pegandoAlheio = new Set();
 
   // ---------- peça ----------
@@ -120,9 +123,19 @@
     if (minha) html += `<div class="novo" data-novo="1">＋ nova combinação</div>`;
     if (!grupos.length && !minha) html += `<div class="quem">A mesa está vazia. A primeira descida precisa de 30 pontos.</div>`;
     $("mesa").innerHTML = html;
+    // peças que não estavam na mesa no desenho anterior: entram com um quique (uma depois da outra)
+    const novaRodada = vistas.rodada !== r.no; if (novaRodada) { vistas.rodada = r.no; vistas.mesa = new Set(); vistas.mao = null; }
+    let k = 0;
+    $("mesa").querySelectorAll(".peca").forEach((el) => { const id = +el.dataset.id; if (!vistas.mesa.has(id) && !novaRodada) { el.classList.add("chega"); el.style.animationDelay = `${(k++ % 14) * 55}ms`; } });
+    vistas.mesa = new Set(grupos.flat());
     // o suporte
     const mao = minha ? ordemMao.filter((id) => RAS.mao.includes(id)) : ordemMao;
-    $("suporte").innerHTML = mao.map((id) => P[id] ? peca(P[id], sel.has(id) ? "sel" : "") : "").join("") || `<span class="muted">${ME && ME.id ? "" : "Você está assistindo."}</span>`;
+    // na mão: a peça que acabou de chegar (comprada do monte) desliza para o suporte; no começo da rodada, chegam todas,
+    // uma depois da outra. Conta a mão de verdade (ordemMao): peça que sai para a mesa e volta não anima de novo.
+    const primeira = vistas.mao === null, chegaram = new Set(ordemMao.filter((id) => primeira || !vistas.mao.has(id)));
+    vistas.mao = new Set(ordemMao);
+    let kk = 0;
+    $("suporte").innerHTML = mao.map((id) => P[id] ? peca(P[id], (sel.has(id) ? "sel " : "") + (chegaram.has(id) && ME && ME.id ? "comprou" : "")).replace('class="peca', chegaram.has(id) ? `style="animation-delay:${(kk++) * (primeira ? 45 : 0)}ms" class="peca` : 'class="peca') : "").join("") || `<span class="muted">${ME && ME.id ? "" : "Você está assistindo."}</span>`;
     // botões e o aviso
     const c = minha ? conferirRascunho() : null, me = myP();
     $("btnOk").disabled = !minha || !c || !c.ok; $("btnDesfaz").disabled = !minha; $("btnCompra").disabled = !minha;

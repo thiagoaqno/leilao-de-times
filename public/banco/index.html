@@ -128,6 +128,9 @@ body.flat .plane .edge{display:none}
 .board{position:relative;width:100%;aspect-ratio:1;display:grid;grid-template-columns:1.55fr repeat(9,1fr) 1.55fr;grid-template-rows:1.55fr repeat(9,1fr) 1.55fr;gap:0;background:var(--paper);border:3px solid var(--ink);border-radius:10px;overflow:hidden;box-shadow:0 0 0 6px #d8c89a;container-type:inline-size;color:var(--ink)}
 .sq{position:relative;border:.5px solid #2a241955;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;overflow:hidden;cursor:pointer;background:var(--paper);padding:0}
 .sq:hover{background:#fff8e3}
+/* aeroportos num azul-céu e companhias num verde-água, bem clarinhos: dá para achar no tabuleiro sem brigar com as cores das cidades */
+.sq.t-air{background:#dfeaf6}.sq.t-air:hover{background:#eaf2fb}
+.sq.t-util{background:#ddf0e4}.sq.t-util:hover{background:#e9f6ee}
 .sq .band{flex:none;width:100%;height:24%;background:var(--g)}
 .sq.s-left{flex-direction:row-reverse}.sq.s-left .band{width:24%;height:100%}
 .sq.s-right{flex-direction:row}.sq.s-right .band{width:24%;height:100%}
