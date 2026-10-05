@@ -1,4 +1,20 @@
-# Banco: cartão da casa onde você caiu e mais animações
+# Banco: visual novo, cartão da casa onde você caiu e mais animações
+
+## Visual novo
+O Banco agora tem a cara do jogo de verdade, em cima da mesa da sala, em vez do feltro verde (que já é o da Sinuca e
+do Truco):
+- **A mesa:** madeira, com tábuas, veios e a luz do lustre em cima do tabuleiro.
+- **Os painéis:** viram folhas de papel apoiadas na mesa (sua vez, trocas, imóveis, a mesa de cada jogador).
+- **A sua carteira:** virou uma cédula do Banco da Galera, na cor do seu peão, com moldura gravada e o peão num
+  medalhão. No celular, é a barra de baixo.
+- **As placas de dinheiro:** viraram notinhas com a faixa da cor de cada jogador. As notas que voam ganharam moldura
+  de cédula.
+- **As letras:** Bitter (serifa grossa, de papel-moeda) para títulos e valores, e Commissioner para o resto.
+- O leilão ganhou o cabeçalho de madeira. Os rótulos que estavam em caixa-alta agora são escritos normal.
+
+## Vila
+- O prédio do Banco Imobiliário agora se chama **Banco** (antes "Cassino"), com o ícone 🏦.
+
 
 ## Cartão da casa
 Quando o seu peão para numa casa, aparece um cartão saindo da própria casa, virando no ar:
@@ -32,5 +48,6 @@ Serve para achar as coisas rápido nas próximas mudanças. O Claude Code lê es
 
 ## Conferido
 No navegador, numa partida de verdade com um segundo jogador:
+- o visual novo no celular e no computador (entrada, sala de espera, tabuleiro, carteira, painéis e escritura);
 - o cartão em casas de imóvel (à venda, minhas e de outro) e em casas especiais;
 - os dados, o quique, a onda e o carimbo.
