@@ -65,7 +65,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 
 | Jogo | Servidor | Arquivos do navegador (`public/<jogo>/`) |
 | --- | --- | --- |
-| Leilão (o primeiro jogo, montar times) | dentro de `server.js` (+ `simulador.js`, `juri.js`) | `index.html`, `inicio.js`, `sala.js`, `roleta.js`, `pratos.js` (+ `public/presets.js`, `prompts.js`, `ratings.js`, `escalacao.js`, `quimica.js`, `card.js`, `cozinha.js`, `bordoes.js`) |
+| Leilão (o primeiro jogo, montar times) | dentro de `server.js` (+ `simulador.js`, `juri.js`) | `index.html`, `inicio.js`, `sala.js`, `roleta.js`, `pratos.js`, `aovivo.js` (o campeonato ao vivo: placar, carta do gol, tabela mexendo, palpites e bolão), `ritmo.js` (os tempos do ao vivo, usado também pelo servidor) (+ `public/presets.js`, `prompts.js`, `ratings.js`, `escalacao.js`, `quimica.js`, `card.js`, `cozinha.js`, `bordoes.js`) |
 | Banco (Banco Imobiliário) | `banco.js` | `tabuleiro.js` (as casas e regras), e 5 scripts que rodam em ordem e **dividem as variáveis globais**. Ver a lista logo abaixo. |
 | Uno | `uno.js` | `index.html` (tudo inline), `regras.js` |
 | Truco | `truco.js` | `index.html` (tudo inline), `regras.js` |

@@ -66,16 +66,20 @@ function renderReveal(){
     const out = $("revOut");
     if (r.total !== lastRevTotal || r.shown < out.children.length) out.innerHTML = "";
     for (let i = out.children.length; i < r.shown; i++) {
-      const d = document.createElement("div"); d.className = "revsec"; d.innerHTML = mdToHtml(r.sections[i]); out.appendChild(d);
+      const d = document.createElement("div"); d.className = "revsec"; out.appendChild(d);
+      const live = r.lives && r.lives[i];
+      if (live) { d.classList.add("comVivo"); montarAoVivo(d, live, r.quando[i], mdToHtml(r.sections[i])); } // jogo ao vivo (aovivo.js)
+      else d.innerHTML = mdToHtml(r.sections[i]);
     }
     if (r.shown > lastShown && lastShown >= 0 && out.lastElementChild) out.lastElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
     lastShown = r.shown; lastRevTotal = r.total;
   }
-  const left = r.total - r.shown;
+  const left = r.total - r.shown, rolando = vivoAte > agoraServidor(); // jogo ao vivo na tela: a próxima parte espera
+  renderPalpites();
   const cardBtn = r.summary ? `<div class="revbar" style="border-top:0;margin-top:6px;padding-top:0"><button class="primary" onclick="downloadCard()">🖼️ Baixar card do campeão</button></div>` : "";
   $("revFoot").innerHTML = me.host
     ? `<div class="revbar">
-        <button class="primary" ${left ? "" : "disabled"} onclick="host('revealNext')">▶ Revelar próxima${left ? ` (faltam ${left})` : ""}</button>
+        <button class="primary" ${left && !rolando ? "" : "disabled"} onclick="host('revealNext')">${rolando ? "⏱️ Jogo rolando…" : `▶ Revelar próxima${left ? ` (faltam ${left})` : ""}`}</button>
         <button ${left ? "" : "disabled"} onclick="if(confirm('Revelar tudo de uma vez?')) host('revealAll')">Revelar tudo</button>
         <button ${r.shown ? "" : "disabled"} onclick="host('revealPrev')">↩ Esconder última</button>
         <button class="danger" onclick="if(confirm('Apagar o resultado publicado?')) host('revealClear')">Apagar</button>

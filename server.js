@@ -26,7 +26,8 @@ require("./vila.js")(io); // Vila da Galera: o lobby em mapinha, canal /vila
 require("./tiro.js")(io); // Tiro da Galera: FPS de arena x1 ou x2 com AK-47 e AWP, canal /tiro
 require("./pelada.js")(io); // Pelada da Galera: futsal 3D do 1x1 ao 5x5, canal /pelada (e o Rocket, de carro)
 require("./batalha.js")(io); // Batalha da Galera: batalha de balões de kart estilo Mario Kart, canal /batalha
-require("./noite.js").attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
+const Ritmo = require("./public/leilao/ritmo.js"); // quanto dura cada parte do campeonato ao vivo
+const noite = require("./noite.js"); noite.attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
 require("./pingpong.js")(io); // Pingue-Pongue da Galera: tênis de mesa 1x1 no mouse, canal /pingpong
 require("./proibida.js")(io); // Palavra Proibida da Galera: explicar palavras em dois times, canal /proibida
@@ -85,7 +86,34 @@ function splitSections(text) {
 function revealPublic(room) {
   const r = room.reveal;
   // o resumo (para o card do campeão) só vai para os participantes depois que tudo foi revelado
-  return { total: r.sections.length, shown: r.shown, sections: r.sections.slice(0, r.shown), summary: r.summary && r.shown >= r.sections.length ? r.summary : null };
+  const out = { total: r.sections.length, shown: r.shown, sections: r.sections.slice(0, r.shown), summary: r.summary && r.shown >= r.sections.length ? r.summary : null };
+  if (r.lives) {
+    // campeonato simulado: os jogos das partes já reveladas (para o placar ao vivo), quando cada parte saiu,
+    // os confrontos da próxima parte (sem resultado, para os palpites) e os palpites. O bolão é contado no
+    // navegador, só com os jogos que já terminaram na tela (senão os pontos entregariam o resultado).
+    out.lives = r.lives.slice(0, r.shown);
+    out.quando = r.quando.slice(0, r.shown);
+    out.proximos = proximos(r).map((j) => ({ id: j.id, titulo: j.titulo, mataMata: j.mataMata, A: j.A, B: j.B }));
+    out.palpites = r.palpites;
+  }
+  return out;
+}
+// os jogos da próxima parte a ser revelada (é neles que dá para palpitar). Só abrem depois que os jogos da parte
+// de agora terminam na tela: antes disso, os confrontos da próxima entregariam quem ganhou.
+const rolandoAte = (r) => { const i = r.shown - 1, l = r.lives && r.lives[i]; return l && r.quando[i] ? r.quando[i] + Ritmo.duracaoParte(l) : 0; };
+const proximos = (r) => (r.lives && r.shown < r.lives.length && r.lives[r.shown] && Date.now() >= rolandoAte(r) ? r.lives[r.shown].jogos : []);
+// revelou as partes de..até: marca a hora (para o placar ao vivo) e, no fim do campeonato, avisa a Noite
+function revelou(room, de, ate, aoVivo) {
+  const r = room.reveal; if (!r.lives) return;
+  for (let i = de; i < ate; i++) r.quando[i] = aoVivo ? Date.now() : 0;
+  // quando os jogos de agora terminarem, manda o estado de novo (abre os palpites da próxima parte)
+  const fim = rolandoAte(r);
+  if (fim) setTimeout(() => { if (room.reveal === r) broadcast(room); }, fim - Date.now() + 100);
+  if (r.shown >= r.sections.length && r.campeao && !r.noiteFeita && room.captains[r.campeao]) {
+    r.noiteFeita = true;
+    const nome = (id) => room.captains[id].name;
+    noite.vitoria("leilao", room.code, [nome(r.campeao)], room.order.filter((id) => id !== r.campeao && room.captains[id].team.length).map(nome));
+  }
 }
 
 
@@ -481,8 +509,8 @@ io.on("connection", (socket) => {
       if (!room.order.some((id) => room.captains[id].team.length)) return fail(cb, "Ainda não tem time para simular.");
       if (room.reveal.sections.length && room.reveal.shown < room.reveal.sections.length && !data.force) return fail(cb, "Ainda tem resultado sendo revelado.");
       try {
-        const { sections, summary } = simulate(room, { sport: data.sport, format: data.format });
-        room.reveal = { sections, shown: 0, summary };
+        const { sections, lives, campeao, summary } = simulate(room, { sport: data.sport, format: data.format });
+        room.reveal = { sections, shown: 0, summary, lives, campeao, quando: [], palpites: {} };
         log(room, `Campeonato simulado com as notas do FC 27 (${sections.length} partes). Prepare-se!`);
       } catch (e) { return fail(cb, e.message || "Erro na simulação."); }
     } else if (a === "publish") {
@@ -494,7 +522,9 @@ io.on("connection", (socket) => {
     } else if (a === "revealNext" || a === "revealAll" || a === "revealPrev") {
       const r = room.reveal;
       if (!r.sections.length) return fail(cb, "Nenhum resultado publicado.");
+      const antes = r.shown;
       r.shown = a === "revealAll" ? r.sections.length : a === "revealPrev" ? Math.max(0, r.shown - 1) : Math.min(r.sections.length, r.shown + 1);
+      if (r.shown > antes) revelou(room, antes, r.shown, a === "revealNext"); // "revelar tudo" mostra os jogos já terminados
     } else if (a === "revealClear") {
       room.reveal = { sections: [], shown: 0 };
     } else if (a === "reset") {
@@ -577,6 +607,19 @@ io.on("connection", (socket) => {
     if (!room || !bound.capId) return fail(cb, "Você não é um participante nesta sala.");
     const c = room.captains[bound.capId];
     c.pins = cleanPins(data && data.pins, c.team.map((t) => Ratings.parseItem(t.player).name));
+    cb && cb({ ok: true });
+    broadcast(room);
+  });
+
+  // palpite num jogo da próxima parte do campeonato: A, E (empate) ou B. Fecha quando a parte é revelada.
+  socket.on("palpite", (data, cb) => {
+    const room = bound && rooms.get(bound.code);
+    if (!room || !bound.capId || !room.captains[bound.capId]) return fail(cb, "Só participantes dão palpite.");
+    const r = room.reveal, j = proximos(r).find((x) => x.id === String(data && data.jogo));
+    if (!j) return fail(cb, "Os palpites desse jogo não estão abertos.");
+    const e = String(data && data.escolha);
+    if (!["A", "B", "E"].includes(e) || (e === "E" && j.mataMata)) return fail(cb, "Palpite inválido.");
+    (r.palpites[j.id] = r.palpites[j.id] || {})[bound.capId] = e;
     cb && cb({ ok: true });
     broadcast(room);
   });
