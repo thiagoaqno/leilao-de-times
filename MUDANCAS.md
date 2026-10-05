@@ -10,6 +10,13 @@ do Truco):
 - **As placas de dinheiro:** viraram notinhas com a faixa da cor de cada jogador. As notas que voam ganharam moldura
   de cédula.
 - **As letras:** Bitter (serifa grossa, de papel-moeda) para títulos e valores, e Commissioner para o resto.
+- **Sem as faixinhas coloridas de lado** (em "Seus imóveis", na mesa, nas placas, na sala de espera e no painel da
+  vez). A cor aparece como no jogo de verdade:
+  - cada imóvel em "Seus imóveis" é um título de posse pequeno, com o nome na faixa da cor do bairro;
+  - nas trocas e na compra, a escritura vira um titulozinho de papel com a faixa da cor em cima, e os imóveis a
+    escolher viram plaquinhas na cor do bairro, como no tabuleiro;
+  - os jogadores são reconhecidos pelo peão colorido;
+  - na escritura, o aluguel que vale agora fica marcado a marca-texto.
 - O leilão ganhou o cabeçalho de madeira. Os rótulos que estavam em caixa-alta agora são escritos normal.
 
 ## Vila
