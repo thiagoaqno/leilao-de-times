@@ -6,6 +6,8 @@
 const P = require("./public/pingpong/regras.js");
 const { SKINS } = require("./public/pelada/campo.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js");
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
@@ -31,7 +33,7 @@ module.exports = function attachPingPong(io) {
     clearTimeout(room.timer); room.rally = null;
     const r = P.marcar(room.placar, lado), nome = room.players[room.lados[lado]]?.name || "?";
     room.ultimo = { lado, motivo, nome, t: Date.now() };
-    if (r.fim) room.phase = "fim";
+    if (r.fim) { room.phase = "fim"; noite.vitoria("pingpong", room.code, nomesDe(room, [room.lados[lado]]), nomesDe(room, [room.lados[1 - lado]])); }
     room.prontoEm = Date.now() + (r.fimGame ? PAUSA_MS * 2 : PAUSA_MS);
     broadcast(room);
   }

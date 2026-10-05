@@ -4,6 +4,8 @@
 // TB = módulo do tabuleiro (makeBoard e o que não depende do tamanho). Cada mesa guarda o seu tabuleiro em room.T.
 const TB = require("./public/banco/tabuleiro.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const MAX_PLAYERS = 8; // o tabuleiro normal aceita até 6; o grande, até 8
 const TURN_MS = +process.env.BANCO_TURN_MS || 40000, TURN_MS_OFFLINE = Math.min(TURN_MS, 15000); // tempo de cada jogada (quem caiu da internet tem menos)
@@ -199,9 +201,11 @@ module.exports = function attachBanco(io) {
       room.winnerTeam = tot.indexOf(Math.max(...tot));
       const order = [...alive, ...dead].sort((a, b) => (room.players[a].team === room.winnerTeam ? 0 : 1) - (room.players[b].team === room.winnerTeam ? 0 : 1));
       order.forEach((id, k) => { room.players[id].rank = k + 1; });
+      noite.vitoria("banco", room.code, nomesDe(room, room.order.filter((id) => room.players[id].team === room.winnerTeam)), nomesDe(room, room.order.filter((id) => room.players[id].team !== room.winnerTeam)));
       log(room, `🏁 ${why} O ${teamName(room.winnerTeam)} venceu!`);
       return;
     }
+    if (room.winner) noite.vitoria("banco", room.code, nomesDe(room, [room.winner]), nomesDe(room, room.order.filter((id) => id !== room.winner)));
     log(room, `🏁 ${why} ${room.winner ? `${nameOf(room, room.winner)} venceu!` : ""}`);
   }
 

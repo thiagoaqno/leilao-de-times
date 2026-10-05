@@ -6,6 +6,8 @@
 // Quem decide dano, morte, rodada e placar é o servidor.
 const A = require("./public/tiro/arena.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js"); // as peças de sala que todo jogo repete
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const FREEZE_MS = 4000, ROUND_MS = 100000, END_MS = 4500, INTERP_MS = 100, MAX_REWIND_MS = 300, HIST_MS = 1000;
 const NAMES = { A: "Azul", B: "Laranja" };
@@ -81,7 +83,7 @@ module.exports = function attachTiro(io) {
     log(room, winner ? `Rodada ${r.n}: time ${NAMES[winner]} venceu${reason === "tempo" ? " no tempo" : ""}.` : `Rodada ${r.n}: empate.`);
     const champ = ["A", "B"].find((t) => room.score[t] >= room.config.rounds);
     room.timer = setTimeout(() => {
-      if (champ) { room.phase = "over"; room.winner = champ; log(room, `🏆 Time ${NAMES[champ]} venceu a partida!`); broadcast(room); }
+      if (champ) { room.phase = "over"; room.winner = champ; noite.vitoria("tiro", room.code, teamOf(room, champ).map((p) => p.name), teamOf(room, champ === "A" ? "B" : "A").map((p) => p.name)); log(room, `🏆 Time ${NAMES[champ]} venceu a partida!`); broadcast(room); }
       else { startRound(room, r.n + 1); broadcast(room); }
     }, END_MS);
     broadcast(room);

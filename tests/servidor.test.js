@@ -286,3 +286,46 @@ test("proibida: as cartas não se repetem de uma partida para a outra (o monte c
     assert.strictEqual(new Set(vistas).size, vistas.length, "nenhuma carta repetida nas duas partidas");
   } finally { m.fechar(); }
 });
+
+// ---------- Noite da Galera ----------
+// A noite junta as salas: quem está na mesma sala cai na mesma noite; "chamar" leva todo mundo para a sala nova de
+// outro jogo; e o fim de uma partida soma no placar da noite.
+test("noite: mesma noite para a sala, chamar para outro jogo leva a galera e a vitória entra no placar", async () => {
+  const pp = await mesa("/pingpong", 2, { pontos: 11, games: 1 });
+  const na = await conectar(srv.url, "/noite"), nb = await conectar(srv.url, "/noite");
+  try {
+    const [a, b] = pp.todos; // J1 e J2
+    const ra = await pedir(na, "sala", { jogo: "pingpong", sala: pp.code, nome: "J1" });
+    const rb = await pedir(nb, "sala", { jogo: "pingpong", sala: pp.code, nome: "J2" });
+    assert.strictEqual(ra.id, rb.id, "os dois na mesma noite");
+    // uma partida de pingue-pongue até 11: quem recebe diz que o sacador fez o ponto
+    const P = require("../public/pingpong/regras.js");
+    const resultado = new Promise((ok) => nb.once("resultado", ok));
+    await pedir(a, "act", { type: "start" });
+    await esperarEstado(a, (s) => s.phase === "jogo");
+    for (let i = 0; i < 40; i++) {
+      const st = await esperarEstado(a, (s) => s.phase === "fim" || s.phase === "jogo");
+      if (st.phase === "fim") break;
+      const sac = st.placar.sacador, lados = [a, b], bola = P.sacar(sac, 0, 0);
+      await new Promise((ok) => setTimeout(ok, Math.max(0, st.prontoEm - Date.now()) + 30));
+      const quem = st.lados.indexOf(a.pid) === sac ? a : b, rec = quem === a ? b : a;
+      quem.emit("bola", { p: bola.p, v: bola.v, saque: true, t: Date.now() });
+      await new Promise((ok) => setTimeout(ok, 40));
+      rec.emit("ponto", { vence: st.lados.indexOf(a.pid), motivo: "teste" }); // J1 ganha todos
+      await esperarEstado(a, (s) => s.phase === "fim" || (s.ultimo && (!st.ultimo || s.ultimo.t !== st.ultimo.t)));
+    }
+    const r = await resultado;
+    assert.deepStrictEqual(r.ganhadores, ["J1"]);
+    const noite = await new Promise((ok) => { nb.once("noite", ok); nb.emit("sala", { jogo: "pingpong", sala: pp.code, nome: "J2" }); });
+    assert.deepStrictEqual(noite.ranking.map((x) => [x.nome, x.v, x.d]), [["J1", 1, 0], ["J2", 0, 1]]);
+    assert.ok(noite.ranking[0].titulos.some((t) => t.includes("Campeão")));
+    // J1 chama para o Truco: J2 fica sabendo; J1 abre a sala do Truco e J2 recebe o destino
+    const chamado = new Promise((ok) => nb.once("chamado", ok));
+    await pedir(na, "chamar", { jogo: "truco" });
+    assert.strictEqual((await chamado).quem, "J1");
+    const destino = new Promise((ok) => nb.once("destino", ok));
+    await pedir(na, "sala", { jogo: "truco", sala: "TRUCO", nome: "J1", noite: ra.id });
+    const d = await destino;
+    assert.deepStrictEqual([d.jogo, d.sala, d.noite], ["truco", "TRUCO", ra.id]);
+  } finally { pp.fechar(); na.close(); nb.close(); }
+});

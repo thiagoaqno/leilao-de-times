@@ -3,6 +3,8 @@
 // Todas as regras ficam aqui. Cada jogador recebe só as próprias cartas; dos outros, só quantas têm.
 const R = require("./public/uno/regras.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const MAX_PLAYERS = 8, HAND = 7;
 const TURN_MS = +process.env.UNO_TURN_MS || 30000, TURN_MS_OFFLINE = Math.min(TURN_MS, 10000);
@@ -113,6 +115,7 @@ module.exports = function attachUno(io) {
     if (!t || room.players[winner].score >= t) {
       room.phase = "ended";
       room.winner = room.order.slice().sort((a, b) => room.players[b].score - room.players[a].score)[0];
+      noite.vitoria("uno", room.code, nomesDe(room, [room.winner]), nomesDe(room, room.order.filter((id) => id !== room.winner)));
       log(room, `🎉 ${nameOf(room, room.winner)} venceu ${t ? `com ${room.players[room.winner].score} pontos` : "a partida"}!`);
     } else {
       room.phase = "roundEnd";

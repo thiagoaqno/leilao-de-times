@@ -7,6 +7,8 @@
 const C = require("./public/pelada/campo.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js"); // as peças de sala que todo jogo repete
 const Bots = require("./peladaBots.js"); // amistoso com bots (a IA roda aqui)
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM = 5;
 const HOLD_MS = 6000, DOWN_MS = 1400;
@@ -81,6 +83,7 @@ module.exports = function attachPelada(io) {
     clearInterval(room.loop); room.loop = null;
     room.phase = "over"; m.phase = "over";
     const { A, B } = m.score;
+    if (A !== B) { const w = A > B ? "A" : "B", lado = (t) => room.order.filter((id) => room.players[id].team === t); noite.vitoria("pelada", room.code, nomesDe(room, lado(w)), nomesDe(room, lado(w === "A" ? "B" : "A"))); } // a Pelada e o Rocket (o noite.js acha a sala pelos dois)
     log(room, A === B ? `Fim de jogo: empate em ${A} a ${B}.` : `Fim de jogo: ${SIDES[A > B ? "A" : "B"]} venceu por ${Math.max(A, B)} a ${Math.min(A, B)}.`);
     broadcast(room);
   }

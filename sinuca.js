@@ -4,6 +4,8 @@
 // tacada e refazem a mesma simulação só para animar.
 const F = require("./public/sinuca/fisica.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const MAX_PLAYERS = 8;
 const OFFLINE_MS = 12000, NEXT_MS = 8000;
@@ -139,6 +141,7 @@ module.exports = function attachSinuca(io) {
   function champion(room, ids) {
     room.phase = "ended";
     room.champion = { ids, at: Date.now() };
+    noite.vitoria("sinuca", room.code, nomesDe(room, ids), nomesDe(room, room.order.filter((id) => !ids.includes(id))));
     room.nextAt = null;
     log(room, `👑 ${ids.map((id) => nameOf(room, id)).join(" e ")} ${ids.length > 1 ? "são os campeões" : "é o campeão"}!`);
   }
