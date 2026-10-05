@@ -177,6 +177,35 @@ body.flat .plane .edge{display:none}
 .die i{width:calc(var(--u) * 1.5);height:calc(var(--u) * 1.5);border-radius:50%;background:var(--ink);place-self:center;visibility:hidden}
 .die i.on{visibility:visible}
 .die.rolling{animation:shake .6s}
+/* ---------- a casa em que eu caí (o cartão no meio da tela) ---------- */
+.casaPop{position:fixed;left:50%;top:50%;translate:-50% -50%;z-index:85;width:min(340px,calc(100vw - 32px));cursor:pointer;perspective:900px;transform-style:preserve-3d;filter:drop-shadow(0 20px 40px #0009)}
+.casaPop{max-height:calc(100vh - 16px);overflow:auto}
+.casaPop .deed2{margin:0}
+.casaPop .casaTopo{background:var(--ink);color:#fff8e6;font:700 14px var(--body);text-align:center;padding:8px 12px;border-radius:14px 14px 0 0;margin:0 12px -2px;position:relative}
+.casaPop .casaTopo b{color:#f2c14e}
+.casaPop .casaDica{display:block;text-align:center;color:#fff8e6;font-size:12px;margin-top:8px;opacity:.8;text-shadow:0 1px 2px #000}
+.casaSimples{background:linear-gradient(180deg,#fffdf6,#f5ebd0);color:var(--ink);border-radius:20px;padding:22px 20px 20px;text-align:center;box-shadow:0 0 0 3px var(--ink)}
+.casaSimples .ic{font-size:64px;line-height:1;display:block}
+.casaSimples h2{font-size:30px;margin:8px 0 6px}
+.casaSimples p{margin:0;font-size:16px;color:var(--ink2)}
+.casaSimples.t-card{box-shadow:0 0 0 3px #8a3ab8}.casaSimples.t-gojail,.casaSimples.t-tax{box-shadow:0 0 0 3px #b3261e}.casaSimples.t-go{box-shadow:0 0 0 3px #2e7d32}
+/* o peão chegando: onda na cor do jogador e um quique */
+.onda{position:fixed;width:var(--t);height:var(--t);margin:calc(var(--t) / -2) 0 0 calc(var(--t) / -2);border-radius:50%;border:3px solid var(--c);pointer-events:none;animation:onda .85s ease-out forwards}
+@keyframes onda{0%{transform:scale(.3);opacity:1}100%{transform:scale(1.9);opacity:0}}
+.piece.chegou .fig{animation:chegou .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes chegou{0%{transform:scale(1.25,.75)}45%{transform:scale(.9,1.15) translateY(-12%)}100%{transform:none}}
+/* comprou: a casa pisca na cor do dono e o peão do dono "carimba" o canto */
+.sq.carimbo{animation:carimbo .7s cubic-bezier(.2,1.4,.4,1)}
+.sq.carimbo::before{animation:carimboPeao .7s cubic-bezier(.2,1.4,.4,1)}
+@keyframes carimbo{0%{box-shadow:inset 0 0 0 6px var(--oc);filter:brightness(1.35)}100%{box-shadow:inset 0 0 0 0 var(--oc)}}
+@keyframes carimboPeao{0%{transform:scale(3) rotate(-25deg);opacity:0}60%{transform:scale(.85) rotate(6deg);opacity:1}100%{transform:none}}
+/* dados: quicam girando enquanto rolam e dão um "tum" quando param */
+.die.rolling{animation:dadoRola .18s ease-in-out infinite alternate}
+@keyframes dadoRola{0%{transform:translateY(0) rotate(-14deg)}100%{transform:translateY(calc(var(--u) * -2.2)) rotate(16deg)}}
+.die.parou{animation:dadoParou .4s cubic-bezier(.2,1.6,.4,1)}
+@keyframes dadoParou{0%{transform:translateY(calc(var(--u) * -2)) scale(1.15)}60%{transform:scale(.92,1.06)}100%{transform:none}}
+.pop.dupla{background:#f2c14e;color:var(--ink)}
+
 @keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-25deg) translateY(calc(var(--u) * -3))}40%{transform:rotate(18deg) translateY(calc(var(--u) * -1))}60%{transform:rotate(-12deg) translateY(calc(var(--u) * -2))}80%{transform:rotate(6deg)}}
 .cardpop{position:absolute;z-index:4;width:calc(var(--u) * 52);transform:translate(-50%,-50%) rotate(-2deg);background:#fff;border:calc(var(--u) * .4) solid var(--ink);border-radius:calc(var(--u) * 2);padding:calc(var(--u) * 2.4);box-shadow:0 calc(var(--u) * 2) calc(var(--u) * 4) #0006;animation:pop .35s cubic-bezier(.2,1.6,.4,1);cursor:pointer;text-align:center}
 .cardpop h4{margin:0 0 calc(var(--u) * 1);font:800 calc(var(--u) * 3.2) var(--display);color:#fff;display:inline-block;padding:calc(var(--u) * .3) calc(var(--u) * 1.6);border-radius:calc(var(--u) * 1)}

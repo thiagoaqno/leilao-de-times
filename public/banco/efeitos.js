@@ -54,6 +54,69 @@ function renderSoundBtn() { Comum.iconeSom(!Sound.muted, { titulo: true }); }
 $("btnSound").onclick = () => { Sound.toggle(); renderSoundBtn(); if (!Sound.muted) Sound.play("coin"); };
 renderSoundBtn();
 
+// ---------- a casa em que eu caí ----------
+// Quando o MEU peão para numa casa, o cartão dela sai voando da casa no tabuleiro, vira e fica no meio da tela com
+// as informações: a escritura (aluguéis, dono, valores) nas casas que se compram, ou o que acontece ali (Início,
+// Prisão, Férias, Sorte ou Revés, imposto). Some sozinho depois de uns segundos, ou com um toque.
+const CASA_TXT = {
+  go: ["➜", "Início", () => `Passou ou parou aqui: ganha ${money(200)} de salário.`],
+  jail: ["🚔", "Prisão", () => (me() && me().inJail ? "Você está preso! Para sair: tire uma dupla, pague a fiança ou use a carta de saída." : "Só visitando. Nada acontece.")],
+  free: ["🏖️", "Férias", () => (S.config.freeParking && S.jackpot ? `Descanse! E leve o pote das férias: ${money(S.jackpot)}.` : "Descanse. Nada acontece aqui.")],
+  gojail: ["👮", "Vá para a prisão!", () => "Direto para a prisão, sem passar pelo Início."],
+  card: ["❓", "Sorte ou Revés", () => "Puxe uma carta: pode ser sorte… ou revés."],
+  tax: ["💸", "", (s) => `Pague ${money(s.amount)} ao banco.`],
+};
+let casaAberta = null;
+function mostrarCasa(i) {
+  const s = BOARD[i], sq = $("sq" + i); if (!s || !sq || document.hidden) return;
+  fecharCasa(true);
+  const pr = S.props[i], m = me(), dono = pr && P(pr.owner), ev = S.event ? S.event.id : null, tm = teamsMap();
+  let topo = "", corpo;
+  if (s.price) {
+    topo = !pr ? `À venda por ${money(T.priceOf(i, ev))}` : m && pr.owner === m.id ? "Essa é sua!" : m && T.sameSide(pr.owner, m.id, tm) ? `É do seu colega ${dono ? dono.pawn : ""}: você não paga` : pr.mortgaged ? "Hipotecada: não cobra aluguel" : `Aluguel para ${dono ? `${dono.pawn} ${h(dono.name)}` : "o dono"}`;
+    const box = document.createElement("div"); box.innerHTML = propModal(i); corpo = box.querySelector(".deed2").outerHTML; // a mesma escritura do modal, sem os botões
+  } else {
+    const [ic, nome, txt] = CASA_TXT[s.type] || ["", s.name, () => ""];
+    corpo = `<div class="casaSimples t-${s.type}"><span class="ic">${ic}</span><h2>${h(nome || s.name)}</h2><p>${txt(s)}</p></div>`;
+  }
+  const el = document.createElement("div"); el.className = "casaPop"; el.setAttribute("role", "status");
+  el.innerHTML = `<div class="casaTopo">Você caiu em${topo ? ` · <b>${topo}</b>` : ""}</div>${corpo}<small class="casaDica">toque para fechar</small>`;
+  // fica no meio do tabuleiro (no layout largo, o tabuleiro não está no meio da janela)
+  document.body.appendChild(el);
+  const tb = ($("board") || document.body).getBoundingClientRect(), ec = el.getBoundingClientRect(), mw = ec.width / 2 + 8, mh = Math.min(ec.height, innerHeight - 16) / 2 + 8;
+  el.style.left = Math.min(Math.max(tb.left + tb.width / 2, mw), innerWidth - mw) + "px";
+  el.style.top = Math.min(Math.max(tb.top + tb.height / 2, mh), innerHeight - mh) + "px";
+  // voa da casa no tabuleiro até o meio, virando
+  const r = sq.getBoundingClientRect(), f = el.getBoundingClientRect(), dx = r.left + r.width / 2 - (f.left + f.width / 2), dy = r.top + r.height / 2 - (f.top + f.height / 2);
+  const anda = matchMedia("(prefers-reduced-motion: reduce)").matches ? null : el.animate([
+    { transform: `translate(${dx}px,${dy}px) scale(.18) rotateY(180deg)`, opacity: 0.4 },
+    { transform: `translate(${dx * 0.3}px,${dy * 0.3 - 40}px) scale(.8) rotateY(60deg)`, opacity: 1, offset: 0.55 },
+    { transform: "none", opacity: 1 },
+  ], { duration: 560, easing: "cubic-bezier(.2,.8,.3,1)" });
+  casaAberta = { el, i, timer: setTimeout(() => fecharCasa(), s.price && !pr ? 6500 : 4500) };
+  el.onclick = () => fecharCasa();
+  Sound.play("deed");
+  return anda;
+}
+// abriu um leilão (sem estar minimizado) ou uma janela por cima: o cartão sai da frente
+const aberta = (el) => el && getComputedStyle(el).display !== "none";
+setInterval(() => { if (casaAberta && (aberta($("auc")) || aberta($("modal")))) fecharCasa(); }, 250);
+function fecharCasa(rapido) {
+  const c = casaAberta; if (!c) return; casaAberta = null; clearTimeout(c.timer);
+  if (rapido || matchMedia("(prefers-reduced-motion: reduce)").matches) return c.el.remove();
+  const sq = $("sq" + c.i), r = sq ? sq.getBoundingClientRect() : null, f = c.el.getBoundingClientRect();
+  const dx = r ? r.left + r.width / 2 - (f.left + f.width / 2) : 0, dy = r ? r.top + r.height / 2 - (f.top + f.height / 2) : 40;
+  c.el.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${dx}px,${dy}px) scale(.2)`, opacity: 0 }], { duration: 380, easing: "cubic-bezier(.5,0,.8,.4)", fill: "forwards" }).finished.then(() => c.el.remove(), () => c.el.remove());
+}
+// o peão chegou: uma onda na cor do jogador sai da casa
+function ondaNaCasa(i, cor) {
+  const sq = $("sq" + i); if (!sq || document.hidden) return;
+  const r = sq.getBoundingClientRect(), el = document.createElement("div");
+  el.className = "onda"; el.style.left = r.left + r.width / 2 + "px"; el.style.top = r.top + r.height / 2 + "px"; el.style.setProperty("--c", cor || "#f2c14e");
+  el.style.setProperty("--t", Math.max(r.width, r.height) + "px");
+  $("fly").appendChild(el); setTimeout(() => el.remove(), 900);
+}
+
 // ---------- reações ----------
 function renderReacts() {
   const m = me(), el = $("reacts");
