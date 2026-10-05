@@ -67,8 +67,25 @@ function proj(el, wr) {
   const r = el.getBoundingClientRect();
   return { x: r.left - wr.left + r.width / 2, y: r.top - wr.top + r.height / 2, r, sc: r.width / (el.offsetWidth || 1) };
 }
-const pieceEls = {}, bldEls = {}, hopping = {};
+const pieceEls = {}, bldEls = {}, hopping = {}, demolidaEm = {};
 let bldReady = false;
+// Casa ou hotel voando entre o banco (no meio do tabuleiro) e a cidade: construir traz do banco, vender devolve.
+// "de" e "para" são pontos da tela (o pé da casa); sc é o tamanho dela no tabuleiro.
+const semMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+function voaCasa(svg, de, para, sc, delay, volta) {
+  const el = document.createElement("div");
+  el.className = "casaVoa"; el.innerHTML = svg; $("fly").appendChild(el);
+  const lift = Math.min(130, 50 + Math.hypot(para.x - de.x, para.y - de.y) * 0.25);
+  const at = (x, y, s, r) => `translate(${x}px, ${y}px) translate(-50%, -100%) rotate(${r}deg) scale(${s})`;
+  const mx = (de.x + para.x) / 2, my = (de.y + para.y) / 2 - lift;
+  const quadros = [
+    { transform: at(de.x, de.y, sc * (volta ? 1 : 0.4), 0), opacity: volta ? 1 : 0 },
+    { transform: at(de.x + (para.x - de.x) * 0.12, de.y - 30, sc * 1.5, -8), opacity: 1, offset: 0.25 },
+    { transform: at(mx, my, sc * 1.6, 6), opacity: 1, offset: 0.6 },
+    { transform: at(para.x, para.y, sc * (volta ? 0.4 : 1), 0), opacity: volta ? 0 : 1 },
+  ];
+  return el.animate(quadros, { duration: 950, delay, easing: "cubic-bezier(.37,0,.25,1)", fill: "both" }).finished.then(() => el.remove(), () => el.remove());
+}
 // casa: parede da frente, parede do lado mais escura, telhado de duas águas, chaminé, porta e janela acesa
 const HOUSE_SVG = `<svg width="22" height="25" viewBox="0 0 24 27"><g stroke="#0b2e19" stroke-width=".7" stroke-linejoin="round">
 <path d="M15 12 L22 8.6 V19.6 L15 23 Z" fill="#23864a"/><rect x="2" y="12" width="13" height="11" fill="#3fc27a"/>
@@ -127,7 +144,7 @@ function layout() {
   for (const id of Object.keys(pieceEls)) if (!alive.has(id)) { pieceEls[id].remove(); delete pieceEls[id]; }
 
   // casas e hotéis em cima da faixa de cor de cada cidade
-  const want = new Set();
+  const want = new Set(), chegam = [], banco = spotEl($("dice"));
   for (const [i, pr] of Object.entries(S.props)) {
     if (!pr.houses) continue;
     const band = $("sq" + i).querySelector(".band"); if (!band) continue;
@@ -141,12 +158,26 @@ function layout() {
       const key = `${i}-${k}-${hotel ? "h" : "c"}`;
       want.add(key);
       let el = bldEls[key];
-      if (!el) { el = document.createElement("div"); el.className = "bld" + (bldReady ? " new" : ""); el.innerHTML = hotel ? HOTEL_SVG : HOUSE_SVG; $("pieces").appendChild(el); bldEls[key] = el; }
+      let novo = false;
+      if (!el) { novo = true; el = document.createElement("div"); el.className = "bld" + (bldReady ? " new" : ""); el.innerHTML = hotel ? HOTEL_SVG : HOUSE_SVG; $("pieces").appendChild(el); bldEls[key] = el; }
       el.style.left = x + "px"; el.style.top = y + "px"; el.style.zIndex = Math.round(y) - 1;
       el.style.setProperty("--s", s.toFixed(3));
+      // construiu: a casa vem voando do banco e só aparece no lugar quando chega
+      if (novo && bldReady && !semMovimento() && !document.hidden) { el.className = "bld esperando"; chegam.push({ el, svg: hotel ? HOTEL_SVG : HOUSE_SVG, para: { x: wr.left + x, y: wr.top + y }, s }); }
     }
   }
-  for (const key of Object.keys(bldEls)) if (!want.has(key)) { bldEls[key].remove(); delete bldEls[key]; }
+  let saem = 0;
+  for (const key of Object.keys(bldEls)) if (!want.has(key)) {
+    // vendeu (ou trocou 4 casas por um hotel): volta voando para o banco. Demolida não volta.
+    const el = bldEls[key], sq = +key.split("-")[0], svg = el.querySelector("svg");
+    if (bldReady && !semMovimento() && !document.hidden && svg && !(Date.now() - (demolidaEm[sq] || 0) < 3000)) {
+      const r = svg.getBoundingClientRect();
+      voaCasa(el.innerHTML, { x: r.left + r.width / 2, y: r.bottom }, banco, +el.style.getPropertyValue("--s") || 1, saem++ * 90, true);
+    }
+    el.remove(); delete bldEls[key];
+  }
+  // as que chegam saem depois das que voltam (no hotel: as 4 casas voltam e o hotel vem)
+  chegam.forEach((c, k) => voaCasa(c.svg, banco, c.para, c.s, (saem ? 450 : 0) + k * 130, false).then(() => { c.el.classList.remove("esperando"); c.el.classList.add("pousou"); Sound.play("knock"); }));
   bldReady = true;
 }
 
