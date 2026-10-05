@@ -287,6 +287,8 @@ const GAMES = [
   { id: "tenis", url: "/tenis/", icon: "🎾", sign: "TÊNIS", name: "Clube de Tênis", desc: "Tênis arcade em 3D, simples ou duplas, contra a galera ou contra robôs: top spin, cortada, balão, curtinha e smash.", meta: "Tênis da Galera · 1x1 ou 2x2",
     x: 11, y: 28, w: 7, h: 4, doors: [14], bairro: "esportes", roof: "#2f6aa8", roof2: "#24578c", wall: "#f2f4f0", wall2: "#d4dad0", tenis: true },
   // ruazinha que desce da rua nova, entre o tênis e a batalha: o Clube do Rumi, com telhado de feltro e peças
+  { id: "festa", url: "/festa/", icon: "🎉", sign: "FESTA", name: "Salão de Festas", desc: "15 minijogos rápidos valendo moedas: batata quente, pular o laser, sumô, cronômetro cego e muito mais. Quem juntar mais moedas ganha a festa.", meta: "Festa da Galera · 2 a 8 jogadores",
+    x: 11, y: 35, w: 7, h: 4, doors: [14], bairro: "esportes", roof: "#6d28d9", roof2: "#5221a8", wall: "#fff3e0", wall2: "#ead6b4", festa: true },
   { id: "pingpong", url: "/pingpong/", icon: "🏓", sign: "PINGUE-PONGUE", name: "Salão do Pingue-Pongue", desc: "Tênis de mesa em 3D no mouse: a raquete vai onde o mouse aponta. 1x1 contra a galera ou contra o robô.", meta: "Pingue-Pongue da Galera · 1x1",
     x: 3, y: 35, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#7a3b1e", roof2: "#5e2c15", wall: "#f2efe6", wall2: "#d8d2c2", pingpong: true },
   { id: "rumi", url: "/rumi/", icon: "🀄", sign: "RUMI", name: "Clube do Rumi", desc: "O jogo de peças numeradas: sequências, grupos, coringa e a mesa inteira para mexer. De 2 a 4, com robôs.", meta: "Rumi da Galera · 2 a 4 jogadores",
@@ -300,7 +302,7 @@ GAMES.forEach((g) => { g.doorY = g.y + g.h - 1; g.mats = g.doors.map((x) => [x, 
 const FOUNTAIN = { x: 18, y: 19, w: 4, h: 3 };
 const LAMPS = [[2, 9], [18, 9], [21, 9], [37, 9], [11, 17], [28, 17], [11, 24], [28, 24], [2, 34], [21, 34], [37, 34], [18, 41], [21, 41]];
 const BENCHES = [[14, 18], [25, 18], [14, 23], [25, 23]];
-const TREES = [[3, 25], [8, 26], [13, 25], [16, 26], [23, 25], [27, 26], [33, 25], [36, 26], [12, 36], [15, 37], [11, 38], [17, 35], [14, 35],
+const TREES = [[3, 25], [8, 26], [13, 25], [16, 26], [23, 25], [27, 26], [33, 25], [36, 26],
   [5, 41], [10, 41], [14, 41], [25, 41], [30, 41], [35, 41], [10, 9], [28, 9]];
 
 // tipos de chão: g grama, r paralelepípedo, p pedra portuguesa, q pista de atletismo, a asfalto, f flores, t árvore, m capacho
@@ -495,6 +497,10 @@ function drawBuilding(c, g) {
     px(c, "#1f5c48", qx, qy, qw, qh); c.strokeStyle = "#f6f6f2"; c.lineWidth = 1; c.strokeRect(qx + 0.5, qy + 0.5, qw - 1, qh - 1);
     px(c, "#f6f6f2", qx, qy + qh / 2, qw, 1); px(c, "#222", qx + qw / 2 - 1, qy - 2, 2, qh + 4);
     c.fillStyle = "#ff8a1f"; c.beginPath(); c.arc(qx + qw * 0.25, qy + qh * 0.3, 2, 0, 7); c.fill();
+  }
+  if (g.festa) { // telhado roxo com confete e três bexigas amarradas na fachada
+    for (let i = 0; i < 46; i++) { const hh = hash(g.x, i, 9); px(c, ["#ff5fa2", "#ffc93c", "#33d6e8", "#5ee07a", "#ffffff"][hh % 5], rx + 2 + (hh >> 3) % (rw - 4), Y + 2 + (hh >> 9) % (roofH - 7), 2, 1); }
+    [["#ff5fa2", -18], ["#ffc93c", -12], ["#33d6e8", 14]].forEach(([col, dx]) => { const bx = X + W / 2 + dx, by = wallY + 2; px(c, "#f4f4f4", bx, by + 4, 1, 6); c.fillStyle = col; c.beginPath(); c.ellipse(bx + 0.5, by, 3, 4, 0, 0, 7); c.fill(); });
   }
   if (g.rumi) { // telhado de feltro verde com umas peças creme (7-8-9 vermelho e o coringa)
     const by = Y + roofH / 2 - 6;

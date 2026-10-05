@@ -10,7 +10,7 @@ const { rid, limparNome: cleanName } = require("./salas.js");
 const MW = 40, MH = 44, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
 const INVITE_MS = 20000, CHOICE_MS = 45000, RECONNECT_MS = +process.env.VILA_RECONNECT_MS || 45000;
 const POKEMON_ON = process.env.POKEMON !== "0"; // modo Pokémon (sprites do PokeAPI). POKEMON=0 desliga.
-const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "ludo", "botao", "corrida", "tiro", "pelada", "rocket", "batalha", "tenis", "rumi", "proibida", "pingpong"];
+const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "ludo", "botao", "corrida", "tiro", "pelada", "rocket", "batalha", "tenis", "rumi", "proibida", "pingpong", "festa"];
 const DIRS = ["up", "down", "left", "right"];
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

@@ -329,3 +329,25 @@ test("noite: mesma noite para a sala, chamar para outro jogo leva a galera e a v
     assert.deepStrictEqual([d.jogo, d.sala, d.noite], ["truco", "TRUCO", ra.id]);
   } finally { pp.fechar(); na.close(); nb.close(); }
 });
+
+// ---------- Festa da Galera ----------
+test("festa: começa com robôs, explica o minijogo, joga (pacotes chegando) e aceita os controles", async () => {
+  const m = await mesa("/festa", 1, { qtd: 5, robos: 3 });
+  try {
+    const s = m.host;
+    await pedir(s, "act", { type: "start" });
+    const st = await esperarEstado(s, (x) => x.phase === "festa" && x.festa && x.festa.sub === "intro");
+    assert.strictEqual(st.festa.lista.length, 5);
+    assert.strictEqual(st.festa.gente.length, 4);
+    assert.ok(st.festa.gente.filter((g) => g.id.startsWith("bot")).length === 3);
+    const snap = new Promise((ok) => s.once("snap", ok));
+    await esperarEstado(s, (x) => x.festa && x.festa.sub === "jogo", 12000);
+    const sn = await snap;
+    assert.strictEqual(sn.id, st.festa.lista[0]);
+    s.emit("in", { dx: 1, dz: 0, p: 1, a: 1 });
+    s.emit("tela", { tipo: "parar", s: 3 });
+    await new Promise((ok) => setTimeout(ok, 300));
+    await pedir(s, "act", { type: "lobby" });
+    await esperarEstado(s, (x) => x.phase === "lobby");
+  } finally { m.fechar(); }
+});

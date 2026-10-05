@@ -1,42 +1,47 @@
-# Noite da Galera: ir junto para outro jogo e o placar da noite
+# Festa da Galera (novo jogo: minijogos rápidos valendo moedas)
 
-Uma camada nova que liga todos os jogos numa mesma noite. Quem está numa sala de qualquer jogo entra na "noite"
-daquela sala sozinho, sem fazer nada. A aba **🌙 Noite** aparece na beirada esquerda da tela.
+Em `/festa/`, e com um salão na vila (Vila Esportiva, ao lado do Pingue-Pongue, com telhado de confete e bexigas).
 
-## "Bora de outro jogo" (trocar de jogo sem sair da galera)
-- Na aba da Noite, qualquer um escolhe o próximo jogo (Truco, Uno, Pelada...).
-- A galera vê o aviso "Fulano chamou todo mundo pro Truco".
-- O navegador de quem chamou abre a sala nova sozinho. Assim que ela existe, todo mundo vai junto, entrando com o
-  próprio nome, sem digitar código. Antes de ir, cada um tem 3 segundos para apertar "Ficar aqui".
-- A revanche com os mesmos times já existia em todos os jogos ("Jogar de novo"/"Revanche" na mesma sala).
+## Como funciona
+- Uma sequência de minijogos rápidos (de 15 s a 1,5 min cada), todo mundo jogando junto ao mesmo tempo. O organizador
+  escolhe quantos: 5, 8, 10 ou 15 (todos). A ordem é sorteada.
+- Cada minijogo tem a explicação (7 s, com a regra e os controles), o jogo e o resultado (7 s).
+- **Moedas por colocação:** 1º 10, 2º 7, 3º 5, 4º 3, 5º 2, os outros 1. Empate leva as moedas da melhor posição.
+- Quem tiver mais moedas no fim ganha a festa (desempate: mais vezes em 1º). Vale na Noite da Galera.
+- De 2 a 8 jogadores, com robôs completando. Quem cai da internet no meio vira robô até voltar.
+- Os bonecos são os da Pelada, com a skin de cada um (a mesma escolha da Corrida, Batalha e Tênis).
 
-## Placar da noite
-- Cada jogo avisa a Noite quando uma partida termina: quem ganhou e quem perdeu.
-  - O Leilão fica de fora, porque não tem um vencedor de partida.
-  - Os robôs não entram no placar.
-- Na aba da Noite: o ranking (vitórias e derrotas), o que rolou nas últimas partidas e os títulos:
-  - 👑 **Campeão da noite**: quem tem mais vitórias, sozinho na frente;
-  - 🏅 **Rei do Truco** (de cada jogo): quem mais ganhou naquele jogo, com pelo menos 2 vitórias;
-  - 🔥 **Em chamas**: 3 vitórias seguidas ou mais;
-  - 🧊 **Pé-frio**: 3 derrotas seguidas ou mais.
-- No fim de cada partida aparece o aviso "🏆 Fulano ganhou no Uno: +1 na noite". A aba mostra quem está na frente.
-- A noite fica na memória do servidor e some depois de 12 horas parada. Se o servidor reiniciar, a noite recomeça.
+## Os 15 minijogos
+Na arena (os bonecos numa plataforma; WASD/setas andam, Espaço pula ou dá o empurrão):
+- 💣 **Batata quente**: passe a bomba encostando em alguém; quem estiver com ela quando explodir sai.
+- 🔴 **Pular o laser**: um laser gira rente ao chão, cada vez mais rápido (depois vem um segundo); pule na hora.
+- 🪙 **Chuva de moedas**: pegue as moedas que caem (a dourada vale 3); a bomba deixa tonto e tira 2.
+- 🤼 **Sumô**: empurre todo mundo para fora; a plataforma vai encolhendo.
+- 🟥 **Chão que cai**: o ladrilho que você pisa cai logo depois (e volta um tempo depois, cada vez mais devagar).
+- 🧟 **Pega-pega zumbi**: quem o zumbi pegar vira zumbi; quem escapar até o fim ganha.
+- 👑 **Rei da colina**: fique no círculo dourado que anda (sozinho vale o dobro).
+- ☄️ **Chuva de meteoros**: saia de baixo da sombra vermelha; 3 vidas.
+
+Na tela (Espaço, clique ou toque):
+- ⏱️ **Cronômetro cego**: pare no tempo pedido; o relógio some depois de 3 s. 3 tentativas, ganha quem errar menos.
+- ⚡ **Reflexo**: aperte quando ficar verde (antes da hora: +1 s de castigo). 8 rodadas.
+- 🐔 **Conta os bichos**: passa uma bicharada; no fim, quantos de um bicho passaram?
+- 🎈 **Enche o balão**: cada balão estoura num ponto secreto; pare antes de estourar.
+- 🟩 **Sequência de cores**: repita a sequência, que cresce a cada rodada.
+- 🎯 **Tiro ao alvo**: quem acertar o alvo primeiro leva (o dourado vale 3).
+- 🧮 **Conta de cabeça**: 10 contas, quem acerta primeiro ganha 2 pontos.
 
 ## Arquivos
-- `noite.js` (servidor, canal `/noite`): junta as salas numa noite, o "chamar"/destino e o placar
-  (`vitoria(jogo, sala, ganhadores, perdedores)`).
-- `public/noite.js`: a aba, o painel e os avisos, e a entrada/criação automática da sala. Vai em todas as páginas de
-  jogo (`?entrar=1` entra com o nome salvo; `?criar=1` cria a sala).
-- Cada servidor de jogo chama `noite.vitoria(...)` no fim da partida: banco, uno, sinuca, botao, truco, domino,
-  ludo, corrida, tiro, pelada (e Rocket), batalha, tenis, rumi, proibida e pingpong.
+- `public/festa/minijogos.js`: as regras dos 15 minijogos, a física da arena e os robôs.
+- `festa.js`: o servidor (canal `/festa`): a sala, a sequência, o relógio de 30 quadros/s, as moedas e a Noite.
+- `public/festa/index.html` e `public/festa/jogo.js`: a página, a arena em 3D, as telas, a explicação, o resultado e
+  o pódio.
+- A vila (`public/index.html`, `vila.js`), `server.js` e `noite.js` (a Festa conta na noite).
 
 ## Testes
-- `tests/servidor.test.js`, uma noite de verdade:
-  - dois numa sala de Pingue-Pongue caem na mesma noite;
-  - a partida até 11 entra no placar (1 V para quem ganhou, 1 D para quem perdeu, com o título de campeão);
-  - "chamar" para o Truco avisa o outro, e a sala nova manda o destino.
-- No navegador:
-  - criei uma sala de Uno e uma amiga de mentira entrou;
-  - "Truco" na aba da Noite criou a sala de Truco sozinha e a amiga recebeu o destino;
-  - indo para uma sala de Dominó com `?entrar=1`, o navegador entrou sozinho com o nome salvo.
-- `npm test` (46) e os testes no navegador de páginas, Pingue-Pongue e Tênis passando.
+- `tests/festa.test.js`: cada minijogo só com robôs (2, 4 e 8 jogadores) termina no tempo, coloca todo mundo e dá
+  as moedas; e as moedas por colocação com empate.
+- `tests/servidor.test.js`: uma festa com 3 robôs começa, explica, joga (com os pacotes chegando) e aceita os controles.
+- Teste das salas regravado (só entrou `/festa`) e o de abrir as páginas.
+- `npm test` (93) passando.
+- Jogado no navegador com 3 robôs: Pega-pega zumbi, Conta de cabeça e Chão que cai, com as moedas indo para o placar.
