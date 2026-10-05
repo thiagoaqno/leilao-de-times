@@ -294,13 +294,18 @@ function propModal(i) {
     acts += pr.mortgaged ? `<button data-do="unmortgage">🏦 Resgatar (${money(T.unmortgageCost(i))})</button>` : `<button data-do="mortgage">🏦 Hipotecar (+${money(T.mortgageValue(i))})</button>`;
     acts += `<button data-do="sellbank" ${lockedC(i) ? "disabled title='Venda as casas antes'" : ""}>💰 Vender ao banco (+${money(pr.mortgaged ? 0 : T.mortgageValue(i))})</button>`;
   }
+  return `${deedHTML(i, { ribs, rows, tiles, now })}
+    ${acts ? `<div class="acts">${acts}</div>` : ""}<div class="acts" style="grid-template-columns:1fr"><button data-close>Fechar</button></div>`;
+}
+// a escritura (o cartão da casa): cabeçalho na cor do bairro, faixas (dono, à venda...), aluguéis e valores
+function deedHTML(i, { ribs, rows, tiles, now }) {
+  const s = BOARD[i], pr = S && S.props[i], g = s.group ? GROUPS[s.group] : null;
   const gname = g ? g.name : s.type === "air" ? "Aeroporto" : "Companhia";
   const dicon = s.type === "air" ? "✈️" : s.type === "util" ? s.icon : "🏙️";
   return `<div class="deed2 ${s.type} ${pr && pr.mortgaged ? "mort" : ""}" style="--g:${g ? g.color : "#40445f"};--gi:${g ? g.ink : "#fff"}">
     <div class="dh"><span class="dicon">${dicon}</span><div class="dg">${h(gname)}</div><h2>${h(s.name)}</h2><span class="dprice">${money(s.price)}</span></div>
     ${ribs.length ? `<div class="dribbons">${ribs.join("")}</div>` : ""}
-    <div class="drows">${rows}</div><div class="dtiles">${tiles}</div>${now}</div>
-    ${acts ? `<div class="acts">${acts}</div>` : ""}<div class="acts" style="grid-template-columns:1fr"><button data-close>Fechar</button></div>`;
+    <div class="drows">${rows}</div><div class="dtiles">${tiles}</div>${now}</div>`;
 }
 function rulesModal() {
   return `<div class="in rules"><h2 style="font-size:26px">Como jogar</h2>

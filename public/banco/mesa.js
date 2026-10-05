@@ -117,7 +117,7 @@ function layout() {
       alive.add(p.id);
       const x = a.x + (k - (list.length - 1) / 2) * 20 * s * (list.length > 3 ? 0.8 : 1);
       const y = a.y + a.r.height * 0.22 + (k % 2 ? -5 : 3) * s;
-      el.className = `piece ${ME && p.id === ME.id ? "me" : ""} ${p.inJail && +i === T.JAIL && !walking[p.id] ? "jailed" : ""} ${hopping[p.id] ? "hop" : ""} ${flyUntil[p.id] > Date.now() ? "fly" : ""}`;
+      el.className = `piece ${ME && p.id === ME.id ? "me" : ""} ${p.inJail && +i === T.JAIL && !walking[p.id] ? "jailed" : ""} ${hopping[p.id] ? "hop" : ""} ${flyUntil[p.id] > Date.now() ? "fly" : ""} ${chegouAte[p.id] > Date.now() ? "chegou" : ""}`;
       el.style.left = x + "px"; el.style.top = y + "px"; el.style.zIndex = Math.round(y);
       el.style.setProperty("--s", s.toFixed(3)); el.style.setProperty("--c", p.color);
       el.title = p.name;
@@ -151,13 +151,13 @@ function layout() {
 }
 
 // peões andando casa por casa (depois que os dados param)
-const disp = {}, walking = {}, flyUntil = {};
+const disp = {}, walking = {}, flyUntil = {}, chegouAte = {};
 let lastMove = null;
 function syncTokens(delay) {
   const m = S.move;
   if (m && m.seq !== lastMove) {
     const from = disp[m.player];
-    if (m.jail && lastMove !== null) { flyUntil[m.player] = Date.now() + 1000; setTimeout(layout, 1050); Sound.play("siren"); }
+    if (m.jail && lastMove !== null) { flyUntil[m.player] = Date.now() + 1000; setTimeout(layout, 1050); Sound.play("siren"); setTimeout(() => chegou(m.player, T.JAIL), 1100); }
     else if (lastMove !== null && from != null && from !== m.to) {
       walking[m.player] = true;
       setTimeout(() => walk(m.player, from, m.to, m.steps < 0 ? -1 : 1, m.ms || 170), delay ? 650 : 0);
@@ -177,22 +177,35 @@ function walk(pid, from, to, dir, ms) {
     hopping[pid] = true; layout(); Sound.play("step");
     setTimeout(() => { hopping[pid] = false; }, ms - 30);
     if (k < n) setTimeout(step, ms);
-    else setTimeout(() => { walking[pid] = false; disp[pid] = P(pid)?.pos ?? to; layout(); }, 200);
+    else setTimeout(() => { walking[pid] = false; disp[pid] = P(pid)?.pos ?? to; layout(); chegou(pid, disp[pid]); }, 200);
   })();
 }
 
+// o peão parou numa casa: o pulinho de chegada, a onda e, se for o meu, o cartão da casa
+function chegou(pid, i) {
+  const p = P(pid); if (!p) return;
+  chegouAte[pid] = Date.now() + 460; layout(); setTimeout(layout, 480); // o quique de chegada (a classe fica enquanto durar)
+  ondaNaCasa(i, p.color);
+  if (ME && pid === ME.id) setTimeout(() => mostrarCasa(i), 180);
+}
+// quem era o dono de cada casa no último desenho (para o carimbo de compra)
+const donoVisto = {};
+let donosProntos = false;
 function renderBoard() {
   buildBoard();
   for (let i = 0; i < BOARD.length; i++) {
     const s = BOARD[i]; if (!s.price) continue;
     const el = $("sq" + i), pr = S.props[i], owner = pr && P(pr.owner);
     el.classList.toggle("owned", !!owner);
+    const antes = donoVisto[i]; donoVisto[i] = owner ? owner.id : null;
+    if (donosProntos && owner && antes !== owner.id) { el.classList.remove("carimbo"); void el.offsetWidth; el.classList.add("carimbo"); } // comprou (ou trocou de dono): carimbo
     if (owner) { el.style.setProperty("--oc", owner.color); el.dataset.pawn = owner.pawn; } else delete el.dataset.pawn;
     el.classList.toggle("shield", !!(pr && pr.shield));
     el.classList.toggle("pick", !!(S.choice && S.choice.step === 1 && S.choice.options.includes(i)));
     el.classList.toggle("mort", !!(pr && pr.mortgaged));
     el.classList.toggle("hot", S.buyOffer === i || (S.auction && S.auction.prop === i));
   }
+  donosProntos = true;
   const free = T.OWNABLE.filter((i) => !S.props[i]).length;
   $("pileDeedN").textContent = free ? `${free} à venda` : "tudo vendido";
   $("pileDeed").classList.toggle("empty", !free);
@@ -220,7 +233,11 @@ function renderCenter() {
   if (r && r.t > lastRollT) { rolled = !!lastRollT; lastRollT = r.t; if (rolled) { rollingUntil = Date.now() + 600; Sound.play("dice"); } }
   if (Date.now() < rollingUntil) {
     const spin = () => {
-      if (Date.now() >= rollingUntil) { $("dice").innerHTML = dieHTML((S.dice || d)[0]) + dieHTML((S.dice || d)[1]); return; }
+      if (Date.now() >= rollingUntil) {
+        const dd = S.dice || d; $("dice").innerHTML = dieHTML(dd[0], "parou") + dieHTML(dd[1], "parou");
+        if (dd[0] === dd[1]) { const r = $("dice").getBoundingClientRect(); popAt({ x: r.left + r.width / 2, y: r.top }, "Dupla!", "dupla"); }
+        return;
+      }
       $("dice").innerHTML = dieHTML(1 + Math.floor(Math.random() * 6), "rolling") + dieHTML(1 + Math.floor(Math.random() * 6), "rolling");
       setTimeout(spin, 90);
     };
