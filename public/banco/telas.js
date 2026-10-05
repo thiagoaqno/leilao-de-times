@@ -135,6 +135,7 @@ function spotNext() {
   const it = spotQ.shift(), el = $("spot");
   if (!it || !S || S.phase === "lobby") { spotBusy = false; el.classList.add("hidden"); $("spotDim").classList.remove("on"); return; }
   spotBusy = true;
+  fecharCasa(); // um destaque novo no meio (carta, aluguel, compra…): o cartão da casa sai da frente
   el.className = "spot " + it.cls;
   el.innerHTML = it.html;
   $("spotDim").classList.add("on");

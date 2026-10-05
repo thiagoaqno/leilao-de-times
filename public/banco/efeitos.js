@@ -63,12 +63,12 @@ const CASA_TXT = {
   jail: ["🚔", "Prisão", () => (me() && me().inJail ? "Você está preso! Para sair: tire uma dupla, pague a fiança ou use a carta de saída." : "Só visitando. Nada acontece.")],
   free: ["🏖️", "Férias", () => (S.config.freeParking && S.jackpot ? `Descanse! E leve o pote das férias: ${money(S.jackpot)}.` : "Descanse. Nada acontece aqui.")],
   gojail: ["👮", "Vá para a prisão!", () => "Direto para a prisão, sem passar pelo Início."],
-  card: ["❓", "Sorte ou Revés", () => "Puxe uma carta: pode ser sorte… ou revés."],
   tax: ["💸", "", (s) => `Pague ${money(s.amount)} ao banco.`],
 };
 let casaAberta = null;
 function mostrarCasa(i) {
   const s = BOARD[i], sq = $("sq" + i); if (!s || !sq || document.hidden) return;
+  if (s.type === "card" || (typeof spotBusy !== "undefined" && spotBusy)) return;
   fecharCasa(true);
   const pr = S.props[i], m = me(), dono = pr && P(pr.owner), ev = S.event ? S.event.id : null, tm = teamsMap();
   let topo = "", corpo;

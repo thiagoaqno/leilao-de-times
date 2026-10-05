@@ -52,13 +52,13 @@ function setView(flat) {
   document.body.classList.toggle("flat", flat);
   $("btnView").innerHTML = flat ? `🎥<span class="lg"> Visão inclinada</span>` : `⬇️<span class="lg"> Visão de cima</span>`;
   $("btnView").title = flat ? "Visão inclinada" : "Visão de cima";
-  store.set("banco:flat", flat);
+  store.set("banco:vista", flat ? "cima" : "inclinada");
   // acompanha a animação da câmera
   const t0 = performance.now();
   (function f() { layout(); if (performance.now() - t0 < 800) requestAnimationFrame(f); })();
 }
 $("btnView").onclick = () => setView(!document.body.classList.contains("flat"));
-setView(!!store.get("banco:flat"));
+setView(store.get("banco:vista") !== "inclinada");
 
 // ---------- peças em pé ----------
 // Peões, casas, hotéis e dados ficam numa camada por cima do tabuleiro inclinado. A posição de
@@ -160,7 +160,7 @@ function syncTokens(delay) {
     if (m.jail && lastMove !== null) { flyUntil[m.player] = Date.now() + 1000; setTimeout(layout, 1050); Sound.play("siren"); setTimeout(() => chegou(m.player, T.JAIL), 1100); }
     else if (lastMove !== null && from != null && from !== m.to) {
       walking[m.player] = true;
-      setTimeout(() => walk(m.player, from, m.to, m.steps < 0 ? -1 : 1, m.ms || 170), delay ? 650 : 0);
+      setTimeout(() => walk(m.player, from, m.to, m.steps < 0 ? -1 : 1, m.ms || 170), Math.max(0, rollingUntil - Date.now()));
     }
     lastMove = m.seq;
   }
@@ -214,9 +214,24 @@ function renderBoard() {
   syncTokens(rolled);
 }
 
+// Dados de verdade: um cubo com as 6 faces (CSS 3D). Jogados, caem do alto em cima do tabuleiro girando, quicam duas
+// vezes e param com o resultado virado para cima, cada um meio torto. O giro final de cada dado fica guardado para o
+// desenho parado bater com o fim da queda.
 const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const dieHTML = (n, cls = "") => `<div class="die ${cls}">${Array.from({ length: 9 }, (_, k) => `<i class="${(PIPS[n] || []).includes(k) ? "on" : ""}"></i>`).join("")}</div>`;
-let lastRollT = 0, lastCard = null, rollingUntil = 0;
+const FACE_GIRO = { 1: [0, 0], 2: [0, -90], 3: [-90, 0], 4: [90, 0], 5: [0, 90], 6: [0, 180] }; // [rotateX, rotateY] que põe a face n para cima
+const QUEDA_MS = 1250;
+const dadoGiro = [-6, 9];
+const sorteia = (a, b) => a + Math.random() * (b - a), sinal = () => (Math.random() < 0.5 ? -1 : 1);
+const faceHTML = (v) => `<div class="f f${v}">${Array.from({ length: 9 }, (_, k) => `<i class="${PIPS[v].includes(k) ? "on" : ""}"></i>`).join("")}</div>`;
+const FACES = [1, 2, 3, 4, 5, 6].map(faceHTML).join("");
+function dieHTML(n, k, cai) {
+  const [fx, fy] = FACE_GIRO[n] || [0, 0];
+  let st = `--fx:${fx}deg;--fy:${fy}deg;--fz:${dadoGiro[k]}deg`;
+  if (cai) st += `;--tx:${sinal() * 360 * (2 + Math.round(Math.random()))}deg;--ty:${sinal() * 360 * (1 + Math.round(Math.random()))}deg;--tz:${sorteia(-200, 200).toFixed(0)}deg`
+    + `;--sx:calc(var(--u) * ${((k ? 1 : -1) * sorteia(10, 18)).toFixed(1)});--sy:calc(var(--u) * ${(-sorteia(12, 20)).toFixed(1)})`;
+  return `<div class="die3d${cai ? " cai" : ""}${k ? " k1" : ""}" style="${st}"><div class="sombra"></div><div class="cubo">${FACES}</div></div>`;
+}
+let lastRollT = 0, lastCard = null, rollingUntil = 0, dadosVistos = "";
 // Devolve true quando os dados acabaram de ser jogados (para o peão esperar eles pararem).
 function renderCenter() {
   const cur = P(S.turn), d = S.dice || [1, 1];
@@ -227,21 +242,23 @@ function renderCenter() {
   $("evchip").classList.toggle("hidden", !(S.event && S.phase === "playing"));
   if (S.event) $("evchip").textContent = `${S.event.icon} ${S.event.name}`;
   $("pot").textContent = S.config.freeParking ? `🏖️ Pote das Férias: ${money(S.jackpot)}` : "";
-  // dados: quando sai um lance novo no histórico, giram com faces sorteadas e param no resultado
+  // dados: quando sai um lance novo no histórico, caem no tabuleiro já com o resultado (que o servidor mandou junto)
   const r = [...S.log].reverse().find((l) => l.text.startsWith("🎲 ") && !l.text.startsWith("🎲 Começou"));
   let rolled = false;
-  if (r && r.t > lastRollT) { rolled = !!lastRollT; lastRollT = r.t; if (rolled) { rollingUntil = Date.now() + 600; Sound.play("dice"); } }
-  if (Date.now() < rollingUntil) {
-    const spin = () => {
-      if (Date.now() >= rollingUntil) {
-        const dd = S.dice || d; $("dice").innerHTML = dieHTML(dd[0], "parou") + dieHTML(dd[1], "parou");
-        if (dd[0] === dd[1]) { const r = $("dice").getBoundingClientRect(); popAt({ x: r.left + r.width / 2, y: r.top }, "Dupla!", "dupla"); }
-        return;
-      }
-      $("dice").innerHTML = dieHTML(1 + Math.floor(Math.random() * 6), "rolling") + dieHTML(1 + Math.floor(Math.random() * 6), "rolling");
-      setTimeout(spin, 90);
-    };
-    if (rolled) spin();
-  } else $("dice").innerHTML = dieHTML(d[0]) + dieHTML(d[1]);
+  if (r && r.t > lastRollT) { rolled = !!lastRollT; lastRollT = r.t; }
+  if (rolled && !document.hidden) {
+    rollingUntil = Date.now() + QUEDA_MS + 80;
+    dadoGiro[0] = sorteia(-16, 16); dadoGiro[1] = sorteia(-16, 16);
+    $("dice").innerHTML = dieHTML(d[0], 0, true) + dieHTML(d[1], 1, true); dadosVistos = "";
+    Sound.play("dice");
+    for (const at of [0.4, 0.68]) setTimeout(() => Sound.play("knock"), QUEDA_MS * at); // as batidas no tabuleiro
+    setTimeout(() => {
+      if (d[0] === d[1]) { const b = $("dice").getBoundingClientRect(); popAt({ x: b.left + b.width / 2, y: b.top }, "Dupla!", "dupla"); }
+    }, QUEDA_MS);
+    setTimeout(renderCenter, QUEDA_MS + 120);
+  } else if (Date.now() >= rollingUntil) {
+    const k = d.join() + dadoGiro.join(); // parados: só redesenha se mudou
+    if (k !== dadosVistos) { dadosVistos = k; $("dice").innerHTML = dieHTML(d[0], 0) + dieHTML(d[1], 1); }
+  }
   return rolled;
 }
