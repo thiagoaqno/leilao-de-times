@@ -41,6 +41,9 @@ test("primeira descida: só peças da mão, sem mexer na mesa, somando 30", () =
   assert.strictEqual(R.conferir(mesa, mao, [ids(a), ids(pouco)], false, P).ok, false); // 9 pontos
   assert.ok(R.conferir(mesa, mao, [ids(a), ids(muito)], false, P).ok); // 30
   assert.strictEqual(R.conferir(mesa, mao, [[...ids(a), extra.id], ids(muito)], false, P).ok, false); // encostou na mesa
+  // sala com a primeira descida "Livre": o servidor confere como quem já abriu (9 pontos valem e pode mexer na mesa)
+  assert.ok(R.conferir(mesa, mao, [ids(a), ids(pouco)], true, P).ok);
+  assert.ok(R.conferir(mesa, mao, [[...ids(a), extra.id], ids(muito)], true, P).ok);
 });
 
 test("robô: abre com 30 quando dá, encaixa peças depois e compra quando não tem jogada", () => {

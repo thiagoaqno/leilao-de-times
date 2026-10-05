@@ -1,31 +1,26 @@
-# Leilão: o campeonato ao vivo roda para todo mundo (inclusive iPad com "Reduzir movimento")
+# Rumi: a regra dos 30 pontos da primeira descida virou opção da sala
 
-## O problema
-No iPad, o campeonato pulava direto para o resultado final, sem relógio e sem as cartas dos gols.
+## Como fica
+- Na sala de espera, o organizador escolhe **Primeira descida: Precisa de 30** ou **Livre**. O padrão continua
+  "Precisa de 30", então para quem já joga nada muda.
+- **Livre:** todo mundo começa como se já tivesse aberto. Vale baixar qualquer combinação válida (sem mínimo de
+  pontos) e mexer nas combinações da mesa desde a primeira jogada. Os robôs seguem a mesma regra.
+- **Na tela, com "Livre":**
+  - some o "· não abriu" embaixo de cada jogador;
+  - some a conta "Primeira descida: X/30";
+  - a mesa vazia não fala mais em 30 pontos;
+  - não aparece a mensagem "abriu o jogo".
+- As regras da página explicam a opção. A escolha fica salva para as próximas salas.
 
-- **A causa:** quem tem o ajuste do sistema que pede menos movimento ligado (no iPad: Ajustes → Acessibilidade →
-  Movimento → Reduzir movimento) não via o jogo ao vivo. A página tratava o jogo como enfeite e mostrava o fim na
-  hora.
-- **A consequência:** essa pessoa via o resultado **antes** de todo mundo.
-
-## A correção
-- O jogo ao vivo agora toca para todo mundo. O relógio e os gols são o conteúdo (o suspense), não enfeite.
-- Com "menos movimento", somem só os efeitos: a carta girando ao entrar e o placar pulando. A carta do gol aparece
-  parada, do lado do time que marcou.
-
-## Todo mundo vê ao mesmo tempo?
-Sim. O tempo de cada jogo conta a partir da hora em que o organizador revelou a parte, no relógio do **servidor**
-(cada aparelho corrige a diferença do próprio relógio).
-
-- **Quem entra ou recarrega a página no meio** pega o jogo no ponto certo.
-- **Quem deixa a aba em segundo plano** continua com o jogo andando.
-- **"Revelar tudo"** mostra tudo pronto para todo mundo, de propósito.
-
-O único caso em que alguém via antes era esse do "menos movimento", agora corrigido.
+## Por dentro
+- `rumi.js`: a configuração `abertura` (ligada por padrão). Na hora de conferir a jogada (de gente e de robô), o
+  servidor trata quem ainda não abriu como já aberto quando a regra está desligada. O servidor continua conferindo
+  tudo.
+- `public/rumi/jogo.js` e `public/rumi/index.html`: a opção na sala, o aviso e a regra explicada.
 
 ## Conferido
-Num navegador emulando um iPad com "Reduzir movimento" ligado, revelando uma rodada:
-- o relógio andou (7', 12', 17', 22');
-- os gols foram entrando;
-- as cartas apareceram paradas no lado certo;
-- o texto do resultado só apareceu no fim.
+- **Servidor de verdade**, primeira jogada de 15 pontos: recusada na sala "Precisa de 30" ("a primeira descida
+  precisa de 30 pontos (tem 15)") e aceita na sala "Livre".
+- **Teste novo da regra:** sem a regra dos 30, 9 pontos valem e pode encostar na mesa.
+- **No navegador:** a opção na sala de espera.
+- `npm test` e o teste de abrir as páginas passando.
