@@ -21,7 +21,7 @@ function renderAction() {
     if (m && c.player === m.id) {
       html = `<h3>${pw.icon} ${h(pw.title)}</h3>` + (c.step === 2
         ? `<p class="muted" style="margin:4px 0 10px">${h(pw.ask2)} (${h(BOARD[c.prop].name)})</p><div class="row">${c.options.map((id) => { const o = P(id); return `<button data-pick="${id}">${o.pawn} ${h(o.name)}</button>`; }).join("")}</div>`
-        : `<p class="muted" style="margin:4px 0 10px">${h(pw.ask)} Toque na casa piscando no tabuleiro ou aqui:</p><div class="chips">${c.options.map((i) => { const o = P(S.props[i].owner), pr = S.props[i]; return `<button class="chip" data-pick="${i}" style="--g:${gcolor(i)}"><i></i>${o.pawn} ${h(BOARD[i].name)}${pr.houses ? ` <small>${pr.houses === 5 ? "🏨" : "🏠" + pr.houses}</small>` : ""}</button>`; }).join("")}</div>`);
+        : `<p class="muted" style="margin:4px 0 10px">${h(pw.ask)} Toque na casa piscando no tabuleiro ou aqui:</p><div class="chips">${c.options.map((i) => { const o = P(S.props[i].owner), pr = S.props[i]; return `<button class="chip" data-pick="${i}" style="${gvars(i)}"><i></i>${o.pawn} ${h(BOARD[i].name)}${pr.houses ? ` <small>${pr.houses === 5 ? "🏨" : "🏠" + pr.houses}</small>` : ""}</button>`; }).join("")}</div>`);
     } else html = `<h3>${pw.icon} ${h(pw.title)}</h3><p class="muted" style="margin:6px 0 0">${who.pawn} ${h(who.name)} está escolhendo o alvo…</p>`;
   } else if (myDebts.length) {
     const total = myDebts.reduce((s, d) => s + d.amount, 0);
@@ -110,13 +110,16 @@ function tickTimer() {
 // ---------- jogadores, imóveis, trocas, histórico ----------
 function propsOf(pid) { return Object.keys(S.props).map(Number).filter((i) => S.props[i].owner === pid).sort((a, b) => a - b); }
 const gcolor = (i) => (BOARD[i].group ? GROUPS[BOARD[i].group].color : "#cbbf9f");
+// a cor do bairro e a cor da letra em cima dela (para o nome escrito na faixa, como no tabuleiro)
+// (aeroportos e companhias: o azul-escuro das escrituras pequenas)
+const gvars = (i) => (BOARD[i].group ? `--g:${GROUPS[BOARD[i].group].color};--gi:${GROUPS[BOARD[i].group].ink}` : "--g:#40445f;--gi:#fff");
 const seenTrades = new Set();
 function renderTrades() {
   const m = me();
   $("tradesCard").classList.toggle("hidden", !m || m.bankrupt || S.phase !== "playing");
   $("btnGift").classList.toggle("hidden", !(m && S.config.teams && S.players.some((p) => p.team === m.team && p.id !== m.id && !p.bankrupt)));
   if (!m) return;
-  const side = (s) => [...s.props.map((i) => `<span class="chip" style="--g:${gcolor(i)};margin:2px 0" data-i="${i}"><i></i>${h(BOARD[i].name)}</span>`), s.cash ? `<b>${money(s.cash)}</b>` : "", s.cards ? "🎫 habeas corpus" : ""].filter(Boolean).join(" ") || "<span class='muted'>nada</span>";
+  const side = (s) => [...s.props.map((i) => `<span class="chip" style="${gvars(i)};margin:2px 0" data-i="${i}"><i></i>${h(BOARD[i].name)}</span>`), s.cash ? `<b>${money(s.cash)}</b>` : "", s.cards ? "🎫 habeas corpus" : ""].filter(Boolean).join(" ") || "<span class='muted'>nada</span>";
   const mineT = S.trades.filter((t) => t.from === m.id || t.to === m.id);
   $("trades").innerHTML = mineT.map((t) => {
     const inc = t.to === m.id, other = P(inc ? t.from : t.to);
