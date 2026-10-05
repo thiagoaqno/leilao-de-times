@@ -21,7 +21,10 @@ module.exports = function attachRumi(io) {
     tempo: [0, 60, 90, 120].includes(int(c.tempo, 60)) ? int(c.tempo, 60) : 60, // segundos por vez (0: sem limite)
     rodadas: [1, 3, 5].includes(int(c.rodadas, 3)) ? int(c.rodadas, 3) : 3,
     robos: Math.max(0, Math.min(3, int(c.robos, 0))),
+    abertura: c.abertura !== false, // primeira descida de 30 pontos (desligada: todo mundo começa como se já tivesse aberto)
   });
+  // já pode jogar livre? (abriu o jogo, ou a sala não usa a regra da primeira descida)
+  const livre = (room, id) => !room.config.abertura || !!room.r.abriu[id];
   const nome = (room, id) => (room.players[id] ? room.players[id].name : "?");
   function log(room, text) { room.log.push({ t: Date.now(), text }); if (room.log.length > 60) room.log.splice(0, room.log.length - 60); }
   const pecas = (room, ids) => ids.map((id) => room.P[id]);
@@ -108,7 +111,7 @@ module.exports = function attachRumi(io) {
     const r = room.r;
     r.mesa = mesa.map((g) => R.avaliar(pecas(room, g)).ordem.map((t) => t.id)); // guarda cada combinação já na ordem de mostrar
     r.maos[pid] = r.maos[pid].filter((id) => !usadas.includes(id));
-    const primeira = !r.abriu[pid]; r.abriu[pid] = true; r.passes = 0;
+    const primeira = room.config.abertura && !r.abriu[pid]; r.abriu[pid] = true; r.passes = 0;
     r.ultima = { quem: pid, tipo: "jogou", n: usadas.length, primeira };
     log(room, `${primeira ? "🎉 " : ""}${nome(room, pid)} ${primeira ? "abriu o jogo e " : ""}baixou ${usadas.length} peça${usadas.length > 1 ? "s" : ""}.`);
     if (!r.maos[pid].length) return fimRodada(room, pid, "bateu");
@@ -127,8 +130,8 @@ module.exports = function attachRumi(io) {
       room.prazo = { chave, quem, ate: null, total: 0 };
       room.turnTimer = setTimeout(() => {
         if (room.phase !== "jogando" || room.order[room.r.vez] !== quem) return;
-        const nova = R.jogadaRobo(r.mesa, r.maos[quem], r.abriu[quem], room.P);
-        if (nova) { const c = R.conferir(r.mesa, r.maos[quem], nova, r.abriu[quem], room.P); if (c.ok) jogar(room, quem, nova, c.usadas); else comprar(room, quem, "robo"); }
+        const nova = R.jogadaRobo(r.mesa, r.maos[quem], livre(room, quem), room.P);
+        if (nova) { const c = R.conferir(r.mesa, r.maos[quem], nova, livre(room, quem), room.P); if (c.ok) jogar(room, quem, nova, c.usadas); else comprar(room, quem, "robo"); }
         else comprar(room, quem, "robo");
         broadcast(room);
       }, ROBO_MS[0] + Math.random() * (ROBO_MS[1] - ROBO_MS[0]));
@@ -215,7 +218,7 @@ module.exports = function attachRumi(io) {
           if (!minhaVez) return "Não é a sua vez.";
           const mesa = Array.isArray(data.mesa) ? data.mesa.filter((g) => Array.isArray(g) && g.length).map((g) => g.map((x) => int(x, -1))) : null;
           if (!mesa) return "Jogada inválida.";
-          const c = R.conferir(r.mesa, r.maos[me.id], mesa, r.abriu[me.id], room.P);
+          const c = R.conferir(r.mesa, r.maos[me.id], mesa, livre(room, me.id), room.P);
           if (!c.ok) return "Não vale: " + c.motivo + ".";
           jogar(room, me.id, mesa, c.usadas); return;
         }

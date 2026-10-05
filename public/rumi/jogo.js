@@ -30,6 +30,7 @@
       + Array.from({ length: S.config.robos }, (_, i) => `<div class="pl muted">🤖 Robô ${i + 1}</div>`).join("");
     seg("cTempo", [[60, "1 min"], [90, "1,5 min"], [120, "2 min"], [0, "Sem limite"]], S.config.tempo, "data-tempo", dis);
     seg("cRodadas", [[1, "1 rodada"], [3, "3 rodadas"], [5, "5 rodadas"]], S.config.rodadas, "data-rodadas", dis);
+    seg("cAbertura", [[1, "Precisa de 30"], [0, "Livre"]], S.config.abertura ? 1 : 0, "data-abertura", dis);
     seg("cRobos", Array.from({ length: Math.max(1, 5 - humanos) }, (_, i) => [i, String(i)]).slice(0, 4), S.config.robos, "data-robos", dis);
     $("startBox").innerHTML = isHost ? `<button class="primary" id="btnStart" style="width:100%">🀄 Distribuir as peças</button>` : `<p class="muted">Esperando o organizador começar…</p>`;
     if ($("btnStart")) $("btnStart").onclick = () => act("start");
@@ -39,6 +40,7 @@
     const b = e.target.closest("button"); if (!b || b.disabled) return;
     if (b.dataset.tempo && S) setCfg({ tempo: +b.dataset.tempo });
     else if (b.dataset.rodadas && S) setCfg({ rodadas: +b.dataset.rodadas });
+    else if (b.dataset.abertura && S) setCfg({ abertura: b.dataset.abertura === "1" });
     else if (b.dataset.robos != null && S && b.dataset.robos !== undefined) setCfg({ robos: +b.dataset.robos });
     else if (b.dataset.kick) act("kick", { id: b.dataset.kick });
   });
@@ -99,7 +101,7 @@
   function conferirRascunho() {
     if (!RAS) return null;
     const me = myP();
-    return R.conferir(S.rodada.mesa.map((g) => g.map((t) => t.id)), S.minhaMao.map((t) => t.id), RAS.mesa, me && me.abriu, P);
+    return R.conferir(S.rodada.mesa.map((g) => g.map((t) => t.id)), S.minhaMao.map((t) => t.id), RAS.mesa, (me && me.abriu) || !S.config.abertura, P); // sem a regra dos 30, joga livre
   }
   function desenhar() {
     if (!S || !S.rodada) return;
@@ -107,7 +109,7 @@
     // jogadores no topo (com a barrinha do tempo de quem está na vez)
     $("topo").innerHTML = S.players.map((p) => {
       const vez = r.vez === p.id, pr = S.prazo && S.prazo.quem === p.id && S.prazo.ate ? Math.max(0, (S.prazo.ate - agora) / S.prazo.total) : null;
-      return `<div class="jog ${vez ? "vez" : ""}"><span class="av">${p.avatar}</span><div>${h(p.name)}${ME && p.id === ME.id ? " (você)" : ""}<small>${p.n} peça${p.n === 1 ? "" : "s"}${p.abriu ? "" : " · não abriu"} · ${p.total} pts</small></div>${pr != null ? `<span class="barra" data-ate="${S.prazo.ate}" data-total="${S.prazo.total}" style="width:${pr * 100}%"></span>` : ""}</div>`;
+      return `<div class="jog ${vez ? "vez" : ""}"><span class="av">${p.avatar}</span><div>${h(p.name)}${ME && p.id === ME.id ? " (você)" : ""}<small>${p.n} peça${p.n === 1 ? "" : "s"}${p.abriu || !S.config.abertura ? "" : " · não abriu"} · ${p.total} pts</small></div>${pr != null ? `<span class="barra" data-ate="${S.prazo.ate}" data-total="${S.prazo.total}" style="width:${pr * 100}%"></span>` : ""}</div>`;
     }).join("") + `<div class="monte">🂠 ${r.monte} no monte · rodada ${r.no}/${S.config.rodadas}</div>`;
     // a mesa: a minha cópia (se é a minha vez), o rascunho de quem está jogando, ou a mesa de verdade
     const grupos = minha ? RAS.mesa : rascunhoAlheio || r.mesa.map((g) => g.map((t) => t.id));
@@ -121,7 +123,7 @@
       return `<div class="grupo ${minha ? "alvo" : ""} ${av.ok ? "ok" : "ruim"}" data-g="${gi}">${ordem.map((t) => peca(t, `${sel.has(t.id) || (!minha && pegandoAlheio.has(t.id)) ? "sel" : ""} ${daMao.has(t.id) ? "nova" : ""}`)).join("")}${mais}</div>`;
     }).join("");
     if (minha) html += `<div class="novo" data-novo="1">＋ nova combinação</div>`;
-    if (!grupos.length && !minha) html += `<div class="quem">A mesa está vazia. A primeira descida precisa de 30 pontos.</div>`;
+    if (!grupos.length && !minha) html += `<div class="quem">A mesa está vazia.${S.config.abertura ? " A primeira descida precisa de 30 pontos." : ""}</div>`;
     $("mesa").innerHTML = html;
     // peças que não estavam na mesa no desenho anterior: entram com um quique (uma depois da outra)
     const novaRodada = vistas.rodada !== r.no; if (novaRodada) { vistas.rodada = r.no; vistas.mesa = new Set(); vistas.mao = null; }
@@ -145,7 +147,7 @@
       if (!usadas.length) aviso = "Sua vez: baixe peças (toque nelas e depois numa combinação) ou compre.";
       else if (c.ok) { aviso = "✅ Está valendo: pode confirmar."; classe = "bom"; }
       else { aviso = "❌ " + c.motivo; classe = "ruim"; }
-      if (me && !me.abriu) { const novas = RAS.mesa.filter((g) => g.every((id) => daMao.has(id))), soma = novas.reduce((s, g) => { const a = R.avaliar(g.map(P_)); return s + (a.ok ? a.valor : 0); }, 0); aviso += ` · Primeira descida: ${soma}/${R.ABERTURA}`; }
+      if (me && !me.abriu && S.config.abertura) { const novas = RAS.mesa.filter((g) => g.every((id) => daMao.has(id))), soma = novas.reduce((s, g) => { const a = R.avaliar(g.map(P_)); return s + (a.ok ? a.valor : 0); }, 0); aviso += ` · Primeira descida: ${soma}/${R.ABERTURA}`; }
     } else if (S.phase === "jogando") aviso = `Vez de ${h(nomeDe(r.vez))}.`;
     $("aviso").innerHTML = aviso; $("aviso").className = "aviso " + classe;
   }
