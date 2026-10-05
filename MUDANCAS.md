@@ -1,42 +1,34 @@
-# Noite da Galera: ir junto para outro jogo e o placar da noite
+# Pelada e Rocket mais leves (otimização do 3D)
 
-Uma camada nova que liga todos os jogos numa mesma noite. Quem está numa sala de qualquer jogo entra na "noite"
-daquela sala sozinho, sem fazer nada. A aba **🌙 Noite** aparece na beirada esquerda da tela.
+A Pelada desenhava ~500 peças por quadro. Os triângulos eram poucos: o peso era o número de peças, e quase todas
+ainda eram desenhadas uma segunda vez para fazer sombra. Medido numa partida contra bots (8 jogadores):
 
-## "Bora de outro jogo" (trocar de jogo sem sair da galera)
-- Na aba da Noite, qualquer um escolhe o próximo jogo (Truco, Uno, Pelada...).
-- A galera vê o aviso "Fulano chamou todo mundo pro Truco".
-- O navegador de quem chamou abre a sala nova sozinho. Assim que ela existe, todo mundo vai junto, entrando com o
-  próprio nome, sem digitar código. Antes de ir, cada um tem 3 segundos para apertar "Ficar aqui".
-- A revanche com os mesmos times já existia em todos os jogos ("Jogar de novo"/"Revanche" na mesma sala).
+| | antes | agora |
+| --- | --- | --- |
+| tempo de CPU para desenhar um quadro | 4,6 ms | 2,5 ms (−45%) |
+| peças por boneco | ~20 | 12 |
+| peças da quadra | 90 | 39 |
+| peças que fazem sombra | 191 | ~80 |
 
-## Placar da noite
-- Cada jogo avisa a Noite quando uma partida termina: quem ganhou e quem perdeu.
-  - O Leilão fica de fora, porque não tem um vencedor de partida.
-  - Os robôs não entram no placar.
-- Na aba da Noite: o ranking (vitórias e derrotas), o que rolou nas últimas partidas e os títulos:
-  - 👑 **Campeão da noite**: quem tem mais vitórias, sozinho na frente;
-  - 🏅 **Rei do Truco** (de cada jogo): quem mais ganhou naquele jogo, com pelo menos 2 vitórias;
-  - 🔥 **Em chamas**: 3 vitórias seguidas ou mais;
-  - 🧊 **Pé-frio**: 3 derrotas seguidas ou mais.
-- No fim de cada partida aparece o aviso "🏆 Fulano ganhou no Uno: +1 na noite". A aba mostra quem está na frente.
-- A noite fica na memória do servidor e some depois de 12 horas parada. Se o servidor reiniciar, a noite recomeça.
+Em PC mais fraco, que leva umas 3x mais tempo, é a diferença entre ficar abaixo ou acima de 60 quadros por segundo.
 
-## Arquivos
-- `noite.js` (servidor, canal `/noite`): junta as salas numa noite, o "chamar"/destino e o placar
-  (`vitoria(jogo, sala, ganhadores, perdedores)`).
-- `public/noite.js`: a aba, o painel e os avisos, e a entrada/criação automática da sala. Vai em todas as páginas de
-  jogo (`?entrar=1` entra com o nome salvo; `?criar=1` cria a sala).
-- Cada servidor de jogo chama `noite.vitoria(...)` no fim da partida: banco, uno, sinuca, botao, truco, domino,
-  ludo, corrida, tiro, pelada (e Rocket), batalha, tenis, rumi, proibida e pingpong.
+## O que mudou (nada muda na aparência nem no jogo)
+- **Bonecos:** as caixinhas de cor lisa que se mexem juntas viram uma peça só, com a cor de cada uma guardada nos
+  vértices. Por exemplo, a coxa com o calção, ou a canela com o meião e a chuteira. As articulações continuam sendo
+  as mesmas, então a animação, o carrinho e o boneco de pano funcionam igual. A camisa e o rosto (que têm desenho)
+  ficam como estavam. Vale também para o Tênis, a Corrida e a Batalha, que usam os mesmos bonecos.
+- **Sombra só nas peças grandes:** tronco, cabeça e pernas fazem sombra. As miudezas quase não apareciam nela. No
+  Rocket, a carroceria e as rodas.
+- **Quadra:** as peças fixas de cor lisa (traves, postes, alambrado, arquibancada, o morro do Rio...) são juntadas
+  numa peça por acabamento. Ficam de fora o que o jogo mexe depois: a faixa colorida do gol, as bolinhas de turbo e
+  a cerca elétrica.
+- **Gráficos automáticos:**
+  - se o jogo passar uns segundos abaixo de ~45 quadros por segundo, ele baixa a resolução e o tamanho da sombra;
+  - se continuar lento, desliga a sombra (a bola mantém a sombrinha);
+  - nunca sobe de novo sozinho, para não ficar piscando.
+- **Opção no menu de pausa** (Esc): **Gráficos: Automático / Alto / Leve (PC fraco)**. A escolha fica salva.
 
-## Testes
-- `tests/servidor.test.js`, uma noite de verdade:
-  - dois numa sala de Pingue-Pongue caem na mesma noite;
-  - a partida até 11 entra no placar (1 V para quem ganhou, 1 D para quem perdeu, com o título de campeão);
-  - "chamar" para o Truco avisa o outro, e a sala nova manda o destino.
-- No navegador:
-  - criei uma sala de Uno e uma amiga de mentira entrou;
-  - "Truco" na aba da Noite criou a sala de Truco sozinha e a amiga recebeu o destino;
-  - indo para uma sala de Dominó com `?entrar=1`, o navegador entrou sozinho com o nome salvo.
-- `npm test` (46) e os testes no navegador de páginas, Pingue-Pongue e Tênis passando.
+## Conferido
+- Fotos lado a lado antes e depois nas três quadras (Society, Rio e Ginásio), no Rocket e nas skins de personagem:
+  Shrek, Homem-Aranha, Ghostface, Gojo, Woody, Ben 10 etc.
+- Testes no navegador da Pelada, dos modos da Pelada, do Tênis e de abrir as páginas (31) e `npm test` (46) passando.

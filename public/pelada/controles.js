@@ -2,6 +2,7 @@
 // toque no celular, a mira, o chute/passe (doKick) e o "pedir a bola".
 import { E, C, $, store, clamp, FL, toast, socket, relogio, sNow, myP, canvas, G, VIEWS, VIEW_NAMES, ctrlYaw, keys, now, TOUCH, locked, ballS, local, isCar, offline, PAD, myAttackTeam, trocaLigada } from "./estado.js";
 import { Sound } from "./sons.js";
+import { graficos, escolherGraficos, aplicarGraficos } from "./cena.js";
 import { leaveGame } from "./jogo.js";
 import { flashMsg, scoreTable, renderPauseSb } from "./hud.js";
 import { trocaNoPasse, trocarJogador, pedidoBots } from "./bots.js";
@@ -39,6 +40,15 @@ document.addEventListener("pointerlockchange", () => {
 });
 $("sens").value = E.sens; $("sensV").textContent = E.sens.toFixed(2);
 $("sens").oninput = (e) => { E.sens = +e.target.value; $("sensV").textContent = E.sens.toFixed(2); store.set("pelada:sens", E.sens); };
+// gráficos: automático (baixa sozinho se ficar lento), alto ou leve
+function mostrarGraficos() {
+  document.querySelectorAll("#graf [data-graf]").forEach((b) => b.classList.toggle("on", b.dataset.graf === graficos.modo));
+  $("grafInfo").textContent = graficos.modo === "auto" ? ["Rodando no máximo.", "Baixei um pouco a resolução e a sombra para ficar liso.", "No leve: menos resolução e sem sombra, para ficar liso."][graficos.nivel] : graficos.modo === "leve" ? "Menos resolução e sem sombra." : "Sempre no máximo.";
+}
+$("graf").addEventListener("click", (e) => { const b = e.target.closest("[data-graf]"); if (!b) return; escolherGraficos(b.dataset.graf); mostrarGraficos(); });
+setInterval(() => { if (!$("pause").classList.contains("hidden")) mostrarGraficos(); }, 1000);
+if (graficos.modo === "leve") aplicarGraficos(2);
+mostrarGraficos();
 $("vol").value = Sound.vol; $("volV").textContent = Math.round(Sound.vol * 100) + "%";
 $("vol").oninput = (e) => { Sound.setVol(+e.target.value); $("volV").textContent = Math.round(Sound.vol * 100) + "%"; };
 document.addEventListener("mousemove", (e) => {

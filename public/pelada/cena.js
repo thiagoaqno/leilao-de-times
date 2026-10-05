@@ -60,5 +60,35 @@ passMark.rotation.x = -Math.PI / 2; passMark.visible = false; scene.add(passMark
 export const meMark = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 4), new THREE.MeshBasicMaterial({ color: 0xffd84a }));
 meMark.rotation.x = Math.PI; meMark.visible = false; scene.add(meMark);
 
+// ---------- gráficos: alto, leve ou automático ----------
+// Nível 0: resolução até 1,5x e sombra de 2048. Nível 1: resolução 1x e sombra de 1024. Nível 2: resolução 0,8x e sem
+// sombra (só a sombrinha da bola). No automático, o jogo começa no 0 e desce um nível quando passa uns segundos abaixo
+// de ~45 quadros por segundo (nunca sobe de novo sozinho, para não ficar piscando).
+const lerModo = () => { try { return JSON.parse(localStorage.getItem("pelada:graficos")) || "auto"; } catch { return "auto"; } };
+export const graficos = { modo: lerModo(), nivel: 0 };
+export function aplicarGraficos(nivel) {
+  graficos.nivel = nivel;
+  const dpr = window.devicePixelRatio || 1;
+  renderer.setPixelRatio(nivel === 0 ? Math.min(dpr, 1.5) : nivel === 1 ? Math.min(dpr, 1) : Math.min(dpr, 0.8));
+  const sombra = nivel < 2, tam = nivel === 0 ? 2048 : 1024;
+  if (renderer.shadowMap.enabled !== sombra) { renderer.shadowMap.enabled = sombra; scene.traverse((o) => { if (o.material) [].concat(o.material).forEach((m) => (m.needsUpdate = true)); }); }
+  sunL.castShadow = sombra;
+  if (sombra && sunL.shadow.mapSize.x !== tam) { sunL.shadow.mapSize.set(tam, tam); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; } }
+  resize();
+}
+export function escolherGraficos(modo) {
+  graficos.modo = modo; try { localStorage.setItem("pelada:graficos", JSON.stringify(modo)); } catch {}
+  aplicarGraficos(modo === "leve" ? 2 : 0);
+}
+// o automático olha a média de tempo por quadro a cada ~3 s
+const medida = { soma: 0, n: 0, t0: 0 };
+export function medirQuadro(dtReal, agora) {
+  if (graficos.modo !== "auto" || graficos.nivel >= 2 || dtReal > 0.25) return; // aba escondida/voltando: não conta
+  medida.soma += dtReal; medida.n++;
+  if (!medida.t0) medida.t0 = agora;
+  if (agora - medida.t0 < 3) return;
+  const media = medida.soma / medida.n; medida.soma = 0; medida.n = 0; medida.t0 = agora;
+  if (media > 1 / 45) aplicarGraficos(graficos.nivel + 1);
+}
 export function resize() { const w = innerWidth, hh = innerHeight; renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); }
 window.addEventListener("resize", resize);
