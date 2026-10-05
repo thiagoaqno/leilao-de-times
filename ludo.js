@@ -4,6 +4,8 @@
 // (os dois iguais) joga de novo; três dobradinhas seguidas perdem a vez. Com 1 dado, é o ludo de sempre (6 joga de novo).
 const R = require("./public/ludo/regras.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const OFFLINE_MS = 8000; // quem caiu não segura a vez dos outros
 const AUTO_MS = +process.env.LUDO_AUTO_MS || 650; // só tinha uma jogada: anda sozinho depois de mostrar o dado
@@ -107,6 +109,7 @@ module.exports = function attachLudo(io) {
     if (left.length <= 1) { // só sobrou um: acabou
       if (left.length) g.ranking.push(left[0]);
       room.phase = "ended"; room.winner = g.ranking[0]; g.stage = "over"; g.legal = [];
+      noite.vitoria("ludo", room.code, nomesDe(room, room.order.filter((id) => room.players[id].color === room.winner)), nomesDe(room, room.order.filter((id) => room.players[id].color !== room.winner)));
       return;
     }
     // comeu alguém ou chegou em casa: ganha mais uma rolada (depois de usar os dados que sobraram)

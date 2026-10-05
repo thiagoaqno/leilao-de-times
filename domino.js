@@ -6,6 +6,8 @@
 // Cada jogador recebe só as próprias peças; dos outros, só quantas têm (no fim da mão, todo mundo vê).
 const R = require("./public/domino/regras.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const PASS_MS = +process.env.DOMINO_PASS_MS || 1300, HAND_PAUSE = 6000, OFFLINE_MS = 8000;
 const MAX = { dupla: 4, individual: 4, burrinho: 6 }, MIN = { dupla: 4, individual: 2, burrinho: 2 };
@@ -108,6 +110,7 @@ module.exports = function attachDomino(io) {
     room.phase = "handEnd";
     if (side >= 0 && room.score[side] >= room.config.target) {
       room.phase = "ended"; room.winner = side; room.games[side] = (room.games[side] || 0) + 1; room.nextAt = null;
+      noite.vitoria("domino", room.code, nomesDe(room, room.order.filter((id) => sideOf(room, id) === side)), nomesDe(room, room.order.filter((id) => sideOf(room, id) !== side)));
       fx(room, { kind: "game", team: side });
       log(room, `👑 ${sideName(room, side)} ${dupla(room) ? "ganharam" : "ganhou"} o jogo!`);
       return;

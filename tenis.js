@@ -6,6 +6,8 @@
 const T = require("./public/tenis/regras.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js");
 const C = require("./public/pelada/campo.js"); // a lista de skins é a mesma da Pelada
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const TICK = 1 / 60, SNAP_EVERY = 3, MAX_SALA = 8;
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
@@ -64,7 +66,7 @@ module.exports = function attachTenis(io) {
       nsp.to(room.code).emit("ev", evs);
       if (evs.some((e) => e.tipo === "ponto" || e.tipo === "game" || e.tipo === "fim" || e.tipo === "falta")) {
         const fim = evs.find((e) => e.tipo === "fim");
-        if (fim) { room.phase = "over"; clearInterval(room.loop); room.loop = null; log(room, `🏆 Vitória do time ${fim.time === "A" ? "Azul" : "Vermelho"}.`); }
+        if (fim) { room.phase = "over"; clearInterval(room.loop); room.loop = null; noite.vitoria("tenis", room.code, m.jogadores.filter((j) => j.team === fim.time).map((j) => j.nome), m.jogadores.filter((j) => j.team !== fim.time).map((j) => j.nome)); log(room, `🏆 Vitória do time ${fim.time === "A" ? "Azul" : "Vermelho"}.`); }
         broadcast(room);
       }
     }

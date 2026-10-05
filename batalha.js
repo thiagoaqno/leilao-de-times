@@ -5,6 +5,8 @@
 const R = require("./public/batalha/regras.js");
 const { SKINS } = require("./public/pelada/campo.js"); // o piloto do kart usa as skins da Pelada
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js"); // as peças de sala que todo jogo repete
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3500, MAX_KARTS = 8;
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
@@ -64,6 +66,7 @@ module.exports = function attachBatalha(io) {
     room.results = [...m.players].sort((a, b) => b.points - a.points || b.pops - a.pops).map((k) => ({ id: k.id, name: k.name, color: k.color, bot: k.bot, points: k.points, pops: k.pops, hits: k.hits }));
     room.phase = "over";
     const w = room.results[0];
+    if (w) noite.vitoria("batalha", room.code, [w.name], room.results.slice(1).map((k) => k.name));
     log(room, w ? `🏆 ${w.name} venceu com ${w.points} ponto${w.points === 1 ? "" : "s"}.` : "Fim da batalha.");
     broadcast(room);
   }

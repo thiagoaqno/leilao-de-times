@@ -6,6 +6,8 @@
 // começa quando quem vai explicar (ou o organizador) aperta para começar. Ganha quem chegar primeiro aos pontos.
 const { CARTAS } = require("./public/proibida/cartas.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js");
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const embaralhar = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -118,7 +120,7 @@ module.exports = function attachProibida(io) {
           if (!jogando || !iv || !me) return "Agora não.";
           if (me.id !== iv.proxQuem && !isHost) return "Quem começa é quem vai explicar (ou o organizador).";
           const w = venceu(room);
-          if (w) { room.phase = "fim"; room.vencedor = w; room.intervalo = null; log(room, `🏆 Time ${w === "A" ? "Azul" : "Laranja"} venceu!`); return; }
+          if (w) { room.phase = "fim"; room.vencedor = w; room.intervalo = null; noite.vitoria("proibida", room.code, nomesDe(room, time(room, w)), nomesDe(room, time(room, w === "A" ? "B" : "A"))); log(room, `🏆 Time ${w === "A" ? "Azul" : "Laranja"} venceu!`); return; }
           novaVez(room, iv.prox, room.players[iv.proxQuem] && room.players[iv.proxQuem].team === iv.prox ? iv.proxQuem : undefined); return;
         }
         if (!jogando || !v || !me) return "Agora não.";

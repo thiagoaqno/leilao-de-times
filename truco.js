@@ -3,6 +3,8 @@
 // Cada jogador recebe só as próprias cartas (na mão de onze, o time que tem 11 vê as cartas do parceiro).
 const R = require("./public/truco/regras.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const MAX_PLAYERS = 6, TARGET = 12;
 const OFFLINE_MS = 8000, ROUND_PAUSE = 1500, HAND_PAUSE = 4000, GAME_PAUSE = 8000;
@@ -101,6 +103,7 @@ module.exports = function attachTruco(io) {
       log(room, `🏆 ${teamName(room, team)} ${pl(room, team, "ganhou", "ganharam")} a partida!`);
       if (room.games[team] >= room.config.games) {
         room.phase = "ended"; room.winner = team; room.nextAt = null;
+        noite.vitoria("truco", room.code, nomesDe(room, teamIds(room, team)), nomesDe(room, room.order.filter((id) => teamOf(room, id) !== team)));
         log(room, `👑 ${teamName(room, team)} ${pl(room, team, "é o campeão", "são os campeões")}!`);
         return;
       }

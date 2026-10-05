@@ -6,6 +6,8 @@
 const T = require("./public/corrida/pistas.js");
 const { SKINS } = require("./public/pelada/campo.js"); // o piloto do kart usa as skins da Pelada
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const MAX_PLAYERS = 8, COUNTDOWN_MS = 4500, AFTER_FIRST_MS = 45000, MAX_RACE_MS = 15 * 60000;
 const COLORS = ["#e63946", "#1e88e5", "#43a047", "#fdd835", "#8e24aa", "#fb8c00", "#00acc1", "#f06292"];
@@ -53,6 +55,7 @@ module.exports = function attachCorrida(io) {
     if (room.phase !== "race") return;
     clearTimeout(room.endTimer);
     room.phase = "results";
+    if (room.finishOrder.length) noite.vitoria("corrida", room.code, nomesDe(room, room.finishOrder.slice(0, 1)), nomesDe(room, room.order.filter((id) => id !== room.finishOrder[0])));
     log(room, "🏆 Fim de corrida!");
     broadcast(room);
   }

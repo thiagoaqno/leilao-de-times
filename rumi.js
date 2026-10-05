@@ -4,6 +4,8 @@
 // da mesa enquanto você mexe (todo mundo vê ao vivo) e, no fim, a mesa proposta: o servidor confere e aplica.
 const R = require("./public/rumi/regras.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js");
+const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const MAX = 4, PAUSA_RODADA = 9000, ROBO_MS = [1400, 2600];
 const NOMES_ROBO = ["Robozão", "Tchuco", "Parafuso"];
@@ -83,6 +85,7 @@ module.exports = function attachRumi(io) {
     clearTimeout(room.turnTimer); room.prazo = null;
     if (r.no >= room.config.rodadas) {
       room.phase = "fim"; room.vencedor = room.order.slice().sort((a, b) => room.placar[b] - room.placar[a])[0];
+      noite.vitoria("rumi", room.code, nomesDe(room, [room.vencedor]), nomesDe(room, room.order.filter((id) => id !== room.vencedor)));
       log(room, `👑 ${nome(room, room.vencedor)} venceu o jogo com ${room.placar[room.vencedor]} pontos.`);
       return;
     }
