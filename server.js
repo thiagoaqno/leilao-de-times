@@ -102,6 +102,8 @@ function revealPublic(room) {
 // de agora terminam na tela: antes disso, os confrontos da próxima entregariam quem ganhou.
 const rolandoAte = (r) => { const i = r.shown - 1, l = r.lives && r.lives[i]; return l && r.quando[i] ? r.quando[i] + Ritmo.duracaoParte(l) : 0; };
 const proximos = (r) => (r.lives && r.shown < r.lives.length && r.lives[r.shown] && Date.now() >= rolandoAte(r) ? r.lives[r.shown].jogos : []);
+// as trocas fecham (simulou, abriu a votação dos pratos ou o organizador fechou)
+function fecharTrocas(room) { if (room.trocas) { room.trocas.aberto = false; room.trocas.props = []; } }
 // revelou as partes de..até: marca a hora (para o placar ao vivo) e, no fim do campeonato, avisa a Noite
 function revelou(room, de, ate, aoVivo) {
   const r = room.reveal; if (!r.lives) return;
@@ -178,6 +180,13 @@ function canTake(room, cap, item) {
   return left - 1 >= missing(room, cap) - helps;
 }
 function takers(room, item) { return room.order.filter((id) => canTake(room, room.captains[id], item)); }
+// o time cumpre a composição? (exata: nenhuma categoria passa do limite; mínima: as obrigatórias estão lá)
+function compOk(room, team) {
+  const comp = room.config.comp, n = (cat) => team.filter((t) => catOf(t.player) === cat).length;
+  if (comp.mode === "exact") return Object.entries(comp.slots).every(([k, v]) => n(k) <= v);
+  if (comp.mode === "min") return Object.entries(comp.req).every(([k, v]) => n(k) >= v);
+  return true;
+}
 
 // Public view of the room (sealed bids hidden until reveal)
 function view(room, forId) {
@@ -206,13 +215,15 @@ function view(room, forId) {
     spin,
     captains: room.order.map((id) => {
       const c = room.captains[id];
-      return { id, name: c.name, formation: c.formation || "auto", pins: c.pins || {}, coins: c.coins, skipsLeft: c.skipsLeft, team: c.team, connected: c.sockets.size > 0, isHost: id === room.hostCap };
+      return { id, name: c.name, teamName: c.teamName || "", formation: c.formation || "auto", pins: c.pins || {}, coins: c.coins, skipsLeft: c.skipsLeft, team: c.team, connected: c.sockets.size > 0, isHost: id === room.hostCap };
     }),
     current,
     log: room.log.slice(-40),
     now: Date.now(),
     reveal: revealPublic(room),
     judge: judgePublic(room, forId),
+    // trocas depois do leilão: cada um vê só as propostas em que está (as que fez e as que recebeu)
+    trocas: room.trocas ? { aberto: room.trocas.aberto, props: room.trocas.props.filter((p) => forId && (p.de === forId || p.para === forId)) } : null,
   };
 }
 
@@ -496,6 +507,7 @@ io.on("connection", (socket) => {
       if (room.phase !== "done") return fail(cb, "Encerre o leilão antes de abrir a votação.");
       if (withDish(room).length < 2) return fail(cb, "Precisa de pelo menos 2 pratos para ter batalha.");
       room.judge = { status: "voting", votes: {} };
+      fecharTrocas(room);
       log(room, "Votação aberta! Cada um dá nota para os pratos dos outros.");
     } else if (a === "judgeClose") {
       if (!room.judge || room.judge.status !== "voting") return fail(cb, "A votação não está aberta.");
@@ -511,6 +523,7 @@ io.on("connection", (socket) => {
       try {
         const { sections, lives, campeao, summary } = simulate(room, { sport: data.sport, format: data.format });
         room.reveal = { sections, shown: 0, summary, lives, campeao, quando: [], palpites: {} };
+        fecharTrocas(room);
         log(room, `Campeonato simulado com as notas do FC 27 (${sections.length} partes). Prepare-se!`);
       } catch (e) { return fail(cb, e.message || "Erro na simulação."); }
     } else if (a === "publish") {
@@ -534,12 +547,19 @@ io.on("connection", (socket) => {
       room.unsold = []; room.current = null; room.spin = null; room.history = [];
       room.reveal = { sections: [], shown: 0 };
       for (const id of room.order) { const c = room.captains[id]; c.coins = room.config.coins; c.skipsLeft = room.config.skips; c.team = []; c.pins = {}; }
-      room.judge = null;
+      room.judge = null; room.trocas = null;
       room.phase = "lobby";
       log(room, "🔄 O organizador reiniciou o leilão. Moedas, pulos e times zerados; todos os itens voltaram para a roleta.");
     } else if (a === "finish") {
       room.phase = "done"; if (room.current) clearTimeout(room.current.timer); room.current = null;
       log(room, "O organizador encerrou o leilão.");
+    } else if (a === "trocasAbrir" || a === "trocasFechar") {
+      // trocas 1 por 1 entre os participantes, depois do leilão (opcional: o organizador abre)
+      if (a === "trocasAbrir") {
+        if (room.phase !== "done") return fail(cb, "Encerre o leilão antes de abrir as trocas.");
+        room.trocas = { aberto: true, props: [] };
+        log(room, "🔁 Trocas abertas! Proponha trocar um jogador seu por um de outro time.");
+      } else { fecharTrocas(room); log(room, "🔁 Trocas fechadas."); }
     } else return fail(cb, "Ação desconhecida.");
     cb && cb({ ok: true });
     broadcast(room);
@@ -607,6 +627,61 @@ io.on("connection", (socket) => {
     if (!room || !bound.capId) return fail(cb, "Você não é um participante nesta sala.");
     const c = room.captains[bound.capId];
     c.pins = cleanPins(data && data.pins, c.team.map((t) => Ratings.parseItem(t.player).name));
+    cb && cb({ ok: true });
+    broadcast(room);
+  });
+
+  // o nome do time (opcional; sem nome, o time é chamado pelo nome de quem montou)
+  socket.on("teamName", (data, cb) => {
+    const room = bound && rooms.get(bound.code);
+    if (!room || !bound.capId) return fail(cb, "Você não é um participante nesta sala.");
+    const nome = Array.from(String((data && data.nome) || "").replace(/\s+/g, " ").trim()).slice(0, 20).join("").trim();
+    room.captains[bound.capId].teamName = nome;
+    cb && cb({ ok: true });
+    broadcast(room);
+  });
+
+  // trocas depois do leilão: propor (meu jogador pelo de outro), aceitar, recusar ou cancelar
+  socket.on("troca", (data, cb) => {
+    const room = bound && rooms.get(bound.code), d = data || {};
+    if (!room || !bound.capId) return fail(cb, "Você não é um participante nesta sala.");
+    const T = room.trocas;
+    if (!T || !T.aberto) return fail(cb, "As trocas não estão abertas.");
+    const eu = bound.capId, tem = (id, item) => room.captains[id] && room.captains[id].team.some((t) => t.player === item);
+    if (d.acao === "propor") {
+      const para = String(d.para || ""), meu = String(d.meu || ""), dele = String(d.dele || "");
+      if (para === eu || !room.captains[para]) return fail(cb, "Escolha com quem trocar.");
+      if (!tem(eu, meu) || !tem(para, dele)) return fail(cb, "Escolha os dois jogadores da troca.");
+      if (T.props.some((p) => p.de === eu && p.para === para && p.meu === meu && p.dele === dele)) return fail(cb, "Você já fez essa proposta.");
+      if (T.props.filter((p) => p.de === eu).length >= 8) return fail(cb, "Você já tem 8 propostas esperando resposta.");
+      T.props.push({ id: rid(5), de: eu, para, meu, dele, t: Date.now() });
+      log(room, `🔁 ${room.captains[eu].name} propôs uma troca para ${room.captains[para].name}.`);
+    } else {
+      const p = T.props.find((x) => x.id === String(d.id || ""));
+      if (!p) return fail(cb, "Essa proposta não existe mais.");
+      if (d.acao === "cancelar") {
+        if (p.de !== eu) return fail(cb, "Só quem propôs pode cancelar.");
+        T.props = T.props.filter((x) => x !== p);
+      } else if (d.acao === "recusar") {
+        if (p.para !== eu) return fail(cb, "Essa proposta não é para você.");
+        T.props = T.props.filter((x) => x !== p);
+        log(room, `🔁 ${room.captains[eu].name} recusou a troca de ${room.captains[p.de].name}.`);
+      } else if (d.acao === "aceitar") {
+        if (p.para !== eu) return fail(cb, "Essa proposta não é para você.");
+        const A = room.captains[p.de], B = room.captains[p.para];
+        if (!tem(p.de, p.meu) || !tem(p.para, p.dele)) { T.props = T.props.filter((x) => x !== p); broadcast(room); return fail(cb, "Um dos jogadores já mudou de time."); }
+        const ia = A.team.findIndex((t) => t.player === p.meu), ib = B.team.findIndex((t) => t.player === p.dele);
+        const novoA = A.team.slice(), novoB = B.team.slice();
+        [novoA[ia], novoB[ib]] = [B.team[ib], A.team[ia]];
+        // a composição (ex.: ter goleiro) não pode piorar com a troca
+        if ((compOk(room, A.team) && !compOk(room, novoA)) || (compOk(room, B.team) && !compOk(room, novoB))) return fail(cb, "Essa troca deixaria um dos times fora da composição (ex.: sem goleiro).");
+        A.team = novoA; B.team = novoB;
+        // quem trocou de time perde a posição fixada no time antigo
+        for (const [c, item] of [[A, p.meu], [B, p.dele]]) if (c.pins) delete c.pins[Ratings.parseItem(item).name];
+        T.props = T.props.filter((x) => x === p ? false : ![x.meu, x.dele].some((it) => it === p.meu || it === p.dele));
+        log(room, `🔁 Troca feita: ${Ratings.parseItem(p.meu).name} vai para ${B.name} e ${Ratings.parseItem(p.dele).name} vai para ${A.name}.`);
+      } else return fail(cb, "Ação desconhecida.");
+    }
     cb && cb({ ok: true });
     broadcast(room);
   });

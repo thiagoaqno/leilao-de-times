@@ -228,7 +228,7 @@ function simulate(room, opts = {}) {
   const kind = opts.sport === "futebol" ? "futebol" : "futsal";
   const cfg = { futsal: kind === "futsal" };
   const N = makeNarrator();
-  const caps = room.order.map((id) => ({ id, ...room.captains[id] })).filter((c) => c.team.length);
+  const caps = room.order.map((id) => ({ id, ...room.captains[id], name: room.captains[id].teamName || room.captains[id].name })).filter((c) => c.team.length); // o nome do time, se tiver
   if (caps.length < 2) throw new Error("Precisa de pelo menos 2 times com jogadores.");
   const teams = caps.map((c) => buildTeam(c, kind)).sort(() => rnd() - 0.5);
   const n = teams.length;

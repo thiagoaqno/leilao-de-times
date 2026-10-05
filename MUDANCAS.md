@@ -1,61 +1,54 @@
-# Leilão: campeonato ao vivo, palpites, carta do gol, tabela que se mexe e Noite da Galera
+# Leilão: elenco com vida (voo até o time, falas, nome do time e trocas)
 
-O campeonato simulado deixa de ser só texto para ler. Cada parte revelada que tem jogos toca como um placar de TV,
-e a galera palpita antes de cada parte.
+## 1. Animações
+- **Comprou:** o jogador (ou ingrediente) sai voando da roleta até o time de quem comprou e só então pousa na vaga do
+  campinho, na lista ou no prato. No futebol, o cartãozinho mostra a nota.
+- **Trocou de time:** ele voa da vaga no time antigo até o novo.
+- **Mudou de posição:** no campinho, o jogador desliza do lugar antigo até o novo, em vez de pular.
 
-## 1. Jogo ao vivo
-- **O relógio:** ao revelar uma rodada (ou semifinal, final...), os jogos dela começam juntos e o relógio corre do
-  apito ao fim em uns 16 segundos.
-- **Os gols:** entram no minuto em que saíram. O placar pula, e a lista de quem marcou vai crescendo de cada lado.
-- **Prorrogação e pênaltis:** a prorrogação aparece com o relógio continuando. Os pênaltis vêm cobrança por cobrança
-  (bolinha verde para gol, vermelha para erro).
-- **Todo mundo junto:** o tempo conta da hora em que o organizador revelou, no relógio do servidor. Quem entra no
-  meio pega o jogo no ponto certo, e quem recarrega a página vê o jogo já terminado.
-- **Depois do apito:** aparece o texto de sempre, com a narração e as pérolas.
-- **O organizador:** enquanto os jogos rolam, o botão mostra "⏱️ Jogo rolando…" e a próxima parte espera. "Revelar
-  tudo" mostra os jogos já terminados, sem tocar.
-- O seu time aparece em azul no placar.
+## 2. Nome do time
+- Cada participante pode dar um nome ao time (até 20 letras), no campo "Nome do seu time" do painel.
+- **Onde aparece:**
+  - no cartão do time, em cima do nome de quem montou;
+  - no texto do campeonato simulado, no placar ao vivo, na tabela e no card do campeão;
+  - na batalha dos pratos e no texto para a IA.
+- Sem nome, o time continua sendo chamado pelo nome da pessoa, como antes.
 
-## 2. Palpites e bolão
-- **Palpitar:** antes de cada parte com jogos, cada participante escolhe quem ganha cada jogo (ou empate, nos pontos
-  corridos), com um toque. Aparece embaixo de cada opção quem escolheu o quê.
-- **Quando abrem:** os palpites da próxima parte só abrem quando os jogos de agora terminam na tela. Senão, os
-  confrontos da final entregariam quem ganhou a semi. Eles fecham quando o organizador revela.
-- **O bolão:** acertou o resultado, ganha 1 ponto. Cada jogo mostra quem acertou, e o ranking do bolão fica embaixo.
-  Os pontos só entram quando o jogo termina na tela, para não entregar o resultado antes.
-- No fim do campeonato, quem fez mais pontos ganha a coroa de 👑 rei do bolão.
+## 3. Frases no balãozinho
+- **Ao chegar:** o jogador fala num balão em cima dele no campinho. São 20 frases, como "Meu sonho sempre foi jogar no
+  Galáticos!", "Vou honrar cada uma das 9 moedas!" e "Primeira coisa: alguém me passa a senha do Wi-Fi?". Usa o
+  nome do time e o preço.
+  - Nos temas de comida, o ingrediente fala em cima do prato (12 frases). Nos outros temas, há 8 frases gerais.
+  - Quem chega por troca tem as suas próprias frases ("Nem desfiz a mala e já mudei pro…").
+- **Ao mudar de posição no seu campinho:** a fala depende de como ele rende no lugar novo.
+  - Rende melhor: "Agora sim, professor!".
+  - Rende pior: "Professor… tem certeza disso?".
+  - Foi para o gol sem ser goleiro: "Alguém me empresta as luvas?".
+  - Saiu do banco: "Até que enfim!".
+  - Foi para o banco: a fala aparece num aviso, porque o banco não tem lugar no campinho.
+- As frases não repetem até usar todas do grupo. Cada balão fica uns 3,5 segundos.
 
-## 3. A carta do jogador no gol
-- A cada gol, a carta de quem marcou aparece do lado do time dele (esquerda ou direita do placar), com a nota, a
-  posição, o nome, o time e o minuto.
-- **As cores:** bronze, prata, ouro e ouro brilhante para 85 ou mais, conforme a nota.
-- **Hat-trick:** o terceiro gol do mesmo jogador vem numa carta especial roxa e rosa, "Hat-trick! 🎩".
-- **Muitos gols seguidos:** as cartas passam mais rápido, e as que sobrarem depois do apito não entram.
+## 4. Trocas depois do leilão (opcional)
+- Com o leilão encerrado, o organizador aperta **🔁 Abrir trocas**. Aparece o quadro de trocas para os participantes.
+- **Propor:** escolha um jogador seu, o time e o jogador de lá. O outro vê a proposta e aceita ou recusa, e quem
+  propôs pode cancelar.
+- **Regras:**
+  - a troca é de 1 por 1, sem moedas;
+  - a composição do tema não pode piorar (por exemplo, um time obrigado a ter goleiro não fica sem);
+  - quem muda de time perde a posição fixada no time antigo;
+  - propostas que envolviam um jogador já trocado somem.
+- **Quando fecham:** quando o organizador simula o campeonato ou abre a votação dos pratos, ou se ele apertar
+  "Fechar trocas".
 
-## 4. Tabela que se mexe
-- Nos pontos corridos, depois dos jogos de cada rodada, a classificação aparece com cada time deslizando da posição
-  de antes para a nova. Ao lado do nome, quem subiu ganha ▲ e quem caiu, ▼. Os pontos ganhos na rodada aparecem
-  como "+3" ou "+1".
-- O seu time aparece em azul na tabela.
-
-## 5. Leilão na Noite da Galera
-- O campeão do campeonato simulado agora entra no placar da noite: ganha o dono do time campeão, perdem os outros
-  que tinham time. Conta quando a última parte (o campeão) é revelada.
-
-## Por dentro
-- **`simulador.js`:** além do texto, devolve os dados de cada jogo (gols com minuto e autor, prorrogação, cada
-  pênalti) e a tabela antes e depois de cada rodada.
-- **`public/leilao/ritmo.js`:** guarda quanto dura cada pedaço do jogo na tela. O servidor usa a mesma conta para
-  saber quando abrir os palpites.
-- **`public/leilao/aovivo.js`:** o placar ao vivo, as cartas, a tabela, os palpites e o bolão.
+## Também corrigido
+- Às vezes o estado do servidor chegava antes de as últimas partes da página carregarem, e a tela quebrava (um erro
+  no console). Agora a página espera a última parte e desenha assim que ela chega.
 
 ## Conferido
-- No navegador, com leilões de teste de 4 participantes (1 pessoa e 3 robôs que palpitam), em pontos corridos e em
-  mata-mata:
-  - os palpites e quem escolheu o quê;
-  - o relógio, os gols e a carta do lado do time;
-  - a tabela mexendo com ▲▼ e os pontos;
-  - "acertou o palpite" em cada jogo e o bolão sem entregar o resultado;
-  - os palpites da final fechados durante a semi e abrindo no fim dela;
-  - o botão do organizador esperando os jogos e a coroa de rei do bolão no fim.
-- Noite da Galera: um leilão ligado a uma noite, revelado até o fim, mandou o campeão para o placar da noite.
+- No navegador, com 1 pessoa e 3 robôs, no futsal e no hambúrguer:
+  - nome do time;
+  - o voo da roleta até o campinho e até o prato;
+  - os balões de chegada no campinho e no prato;
+  - a troca de posição deslizando, com a fala do gol ("Vou fechar o gol. Ou pelo menos tentar.");
+  - trocas propostas e aceitas, com os dois jogadores voando e o quadro de trocas atualizado.
+- `npm test` (46) e o teste de abrir as páginas (22) passando.

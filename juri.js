@@ -214,7 +214,7 @@ function julgar(room) {
   const caps = room.order.map((id) => ({ id, ...room.captains[id] })).filter((c) => c.team.length);
   if (caps.length < 2) throw new Error("Precisa de pelo menos 2 pratos para ter batalha.");
   const votes = (room.judge && room.judge.votes) || {};
-  const nomeDe = (id) => room.captains[id].name, prato = (c) => `${terms.prefix || NOME[skin]} ${c.name}`;
+  const nomeDe = (id) => room.captains[id].name, prato = (c) => c.teamName || `${terms.prefix || NOME[skin]} ${c.name}`; // o nome que a pessoa deu, se deu
 
   const pratos = caps.map((c) => {
     const a = analisar(skin, c.team, room.config.perTeam);
