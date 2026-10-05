@@ -78,15 +78,19 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 .jog .barra{position:absolute;left:0;bottom:0;height:3px;background:var(--accent)}
 .monte{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:700}
 .mesa{background:radial-gradient(circle at 50% 40%,var(--felt),var(--felt2));border:8px solid #6b4423;border-radius:16px;box-shadow:inset 0 0 40px #0008;padding:12px;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:14px 18px;min-height:160px}
-.grupo{display:flex;gap:3px;padding:5px;border-radius:10px;border:2px dashed transparent;cursor:pointer}
+.grupo{display:flex;gap:3px;padding:5px;border-radius:10px;border:2px dashed transparent;cursor:pointer;position:relative}
 .grupo.ok{border-color:#5fd48a55}.grupo.ruim{border-color:var(--bad);background:#ff6b5a1a}
 .grupo.alvo:hover{background:#ffffff14}
 .novo{display:grid;place-items:center;min-width:120px;height:66px;border:2px dashed #ffffff44;border-radius:10px;color:var(--muted);font-weight:700;cursor:pointer;padding:0 10px}
 .novo:hover{background:#ffffff10;color:var(--text)}
-.poe{display:grid;place-items:center;width:34px;border-radius:7px;border:2px dashed var(--accent);color:var(--accent);font:700 22px var(--display);cursor:pointer;background:#f2c14e1a}
-.poe:hover{background:#f2c14e33}
+/* o "＋" de pôr as peças escolhidas é um selo por cima do canto da combinação: não ocupa espaço na mesa. Antes ele
+   entrava no fim de cada combinação quando você escolhia uma peça, todas ficavam mais largas e a mesa quebrava as
+   linhas em outro lugar (as combinações "teleportavam"). Escolher peça não pode mexer no lugar de nada. */
+.poe{position:absolute;top:-11px;right:-11px;z-index:2;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid var(--accent);color:var(--accent);font:700 18px/1 var(--display);cursor:pointer;background:#1b2a1f;box-shadow:0 2px 6px #0008}
+.poe:hover{background:#3a3a22}
 .quem{width:100%;color:var(--muted);font-weight:700;font-size:13px}
-.quem.ao-vivo{color:#e8f5ec;background:#1f5a3c;border:1px solid #5fd48a88;border-radius:8px;padding:6px 10px}
+.quem.ao-vivo{color:#e8f5ec;background:#1f5a3c;border:1px solid #5fd48a88;border-radius:8px;padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quem.ao-vivo.espera{background:#ffffff0d;border-color:#ffffff22;color:var(--muted)}
 .quem.ao-vivo b{color:#fff}
 .base{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
 .suporte{background:linear-gradient(180deg,var(--madeira),var(--madeira2));border-radius:12px 12px 6px 6px;padding:10px 10px 14px;box-shadow:0 8px 20px #0008,inset 0 2px 0 #ffffff33;display:flex;flex-wrap:wrap;gap:5px;min-height:90px;align-content:flex-start;cursor:pointer}
