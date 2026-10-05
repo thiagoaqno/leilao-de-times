@@ -50,9 +50,9 @@ function renderAction() {
       <div class="row"><button class="primary big" id="aBuy" ${can ? "" : "disabled"}>Comprar por ${money(price)}${price < s.price ? ` <s style="opacity:.55;font-weight:600">${short(s.price)}</s>` : ""}</button><button id="aDecline">${S.config.auction ? "Mandar a leilão" : "Não comprar"}</button></div>
       <p class="muted" style="font-size:12.5px;margin:8px 0 0">Você tem ${money(m.cash)}.${can ? "" : " Hipoteque algo para ter dinheiro, ou mande a leilão."} <a href="#" id="aSee" style="color:inherit">Ver escritura</a></p>`;
   } else if (S.stage === "done") {
-    html = `<h3>Sua vez</h3><p class="muted" style="margin:4px 0 12px">Construa, hipoteque ou negocie antes de passar.</p><button class="primary big" id="aEnd" style="width:100%">Passar a vez</button>`;
+    html = `<h3>Jogada feita ✓</h3><p class="muted" style="margin:4px 0 0">A vez passa para o próximo… Construir, hipotecar e trocar dá para fazer a qualquer hora.</p>`;
   }
-  if (S.phase === "playing" && !S.auction && S.deadline && m && S.deadline.who === m.id) {
+  if (S.phase === "playing" && !S.auction && S.deadline && m && S.deadline.who === m.id && (S.stage !== "done" || myDebts.length)) {
     const what = myDebts.length ? "o banco vende e hipoteca por você" : S.stage === "choose" ? "o alvo é sorteado" : S.stage === "roll" ? "o dado roda sozinho" : S.stage === "buy" ? (S.config.auction ? "a cidade vai a leilão" : "você não compra") : "a vez passa";
     html = `<div class="tbar" id="tbar"><i></i></div><p class="muted" style="margin:-6px 0 8px;font-size:12.5px">⏱ <span class="tsec" data-clock="turn"></span> para agir, senão ${what}.</p>` + html;
   }
@@ -63,7 +63,7 @@ function renderAction() {
 
   const on = (id, fn) => { if ($(id)) $(id).onclick = fn; };
   on("aRoll", () => act("roll")); on("aJailPay", () => act("payJail")); on("aJailCard", () => act("useCard"));
-  on("aBuy", () => act("buy")); on("aDecline", () => act("decline")); on("aEnd", () => act("endTurn"));
+  on("aBuy", () => act("buy")); on("aDecline", () => act("decline"));
   on("aSee", (e) => { e.preventDefault(); openModal({ kind: "prop", i: S.buyOffer }); });
   on("aPay", () => act("pay"));
   on("aBroke", () => { if (confirm("Declarar falência? Você sai do jogo e seus bens vão para quem você deve.")) act("bankrupt"); });
@@ -113,19 +113,21 @@ const gcolor = (i) => (BOARD[i].group ? GROUPS[BOARD[i].group].color : "#cbbf9f"
 // a cor do bairro e a cor da letra em cima dela (para o nome escrito na faixa, como no tabuleiro)
 // (aeroportos e companhias: o azul-escuro das escrituras pequenas)
 const gvars = (i) => (BOARD[i].group ? `--g:${GROUPS[BOARD[i].group].color};--gi:${GROUPS[BOARD[i].group].ink}` : "--g:#40445f;--gi:#fff");
+// as construções que vão junto com o imóvel numa troca
+const casinhas = (i) => { const c = S.props[i] ? S.props[i].houses : 0; return c ? ` <small>${c === 5 ? "🏨" : "🏠" + c}</small>` : ""; };
 const seenTrades = new Set();
 function renderTrades() {
   const m = me();
   $("tradesCard").classList.toggle("hidden", !m || m.bankrupt || S.phase !== "playing");
   $("btnGift").classList.toggle("hidden", !(m && S.config.teams && S.players.some((p) => p.team === m.team && p.id !== m.id && !p.bankrupt)));
   if (!m) return;
-  const side = (s) => [...s.props.map((i) => `<span class="chip" style="${gvars(i)};margin:2px 0" data-i="${i}"><i></i>${h(BOARD[i].name)}</span>`), s.cash ? `<b>${money(s.cash)}</b>` : "", s.cards ? "🎫 habeas corpus" : ""].filter(Boolean).join(" ") || "<span class='muted'>nada</span>";
+  const side = (s) => [...s.props.map((i) => `<span class="chip" style="${gvars(i)};margin:2px 0" data-i="${i}"><i></i>${h(BOARD[i].name)}${casinhas(i)}</span>`), s.cash ? `<b>${money(s.cash)}</b>` : "", s.cards ? "🎫 habeas corpus" : ""].filter(Boolean).join(" ") || "<span class='muted'>nada</span>";
   const mineT = S.trades.filter((t) => t.from === m.id || t.to === m.id);
   $("trades").innerHTML = mineT.map((t) => {
     const inc = t.to === m.id, other = P(inc ? t.from : t.to);
     const youGive = inc ? t.get : t.give, youGet = inc ? t.give : t.get;
     return `<div class="trade ${inc ? "in" : ""}"><b>${inc ? `${other.pawn} ${h(other.name)} te propôs:` : `Sua proposta para ${other.pawn} ${h(other.name)}:`}</b>
-      <div class="sides"><div><small class="muted">Você dá</small><br>${side(youGive)}</div><span>⇄</span><div><small class="muted">Você recebe</small><br>${side(youGet)}</div></div>
+      <div class="sides"><div class="sai"><small>➖ Sai de você</small><br>${side(youGive)}</div><span>⇄</span><div class="vem"><small>➕ Vem para você</small><br>${side(youGet)}</div></div>
       <div class="row">${inc ? `<button class="primary small" data-acc="${t.id}">Aceitar</button><button class="small" data-rej="${t.id}">Recusar</button>` : `<span class="muted" style="font-size:13px">Esperando resposta…</span><button class="ghost small" data-can="${t.id}">Retirar</button>`}</div></div>`;
   }).join("");
   $("trades").querySelectorAll("[data-acc]").forEach((b) => (b.onclick = () => act("accept", { id: b.dataset.acc })));

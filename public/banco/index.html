@@ -683,7 +683,13 @@ body.flat .plane .edge{display:none}
 .tlist label{display:flex;gap:8px;align-items:center;color:var(--ink);font-weight:600;margin:0;padding:4px 6px;border-radius:6px;background:#fff}
 .tlist label i{width:15px;height:19px;flex:none;border-radius:2px;border:1.5px solid var(--ink);background:linear-gradient(var(--g) 0 40%,#fffaf0 40%)}
 .tlist input{width:auto}
-.tlist label.dis{opacity:.4}
+/* troca: o que sai de você em vermelho, o que vem para você em verde */
+.tlado{border-radius:10px;padding:8px 10px;border:2px solid var(--lado);background:color-mix(in srgb,var(--lado) 9%,transparent)}
+.tlado > b{color:var(--lado)}
+.sai{--lado:#c0392b}
+.vem{--lado:#1e8449}
+.trade .sides div.sai,.trade .sides div.vem{border:2px solid var(--lado);background:color-mix(in srgb,var(--lado) 9%,#fffaf0)}
+.trade .sides small{color:var(--lado);font-weight:800}
 .rules h3{font-size:18px;margin:14px 0 4px}
 .rules p,.rules li{font-size:14.5px}
 .rules ul{padding-left:18px;margin:4px 0}

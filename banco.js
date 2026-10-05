@@ -12,6 +12,7 @@ const TURN_MS = +process.env.BANCO_TURN_MS || 40000, TURN_MS_OFFLINE = Math.min(
 // Ritmo das animações (ms). BANCO_ANIM=0 zera tudo nos testes automáticos.
 const ANIM = process.env.BANCO_ANIM != null ? +process.env.BANCO_ANIM : 1;
 const DICE_MS = 1300, STEP_MS = 190, FAST_MS = 110, CARD_MS = 2600, BEAT_MS = 700, JAIL_MS = 1000;
+const PASS_MS = 1200; // pausa entre terminar a jogada (pagar, comprar, leilão) e a vez passar sozinha
 const AUCTION_FIRST = 15000, AUCTION_BID = 8000; // ms: tempo inicial do leilão e tempo depois de cada lance
 const AUCTION_COMMISSION = 0.1; // quem mandou a leilão fica com 10% do lance vencedor (pago pelo banco)
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
@@ -146,8 +147,20 @@ module.exports = function attachBanco(io) {
     if (cur.bankrupt) return nextTurn(room);
     if (room.buyOffer != null) { room.stage = "buy"; return; }
     room.stage = !room.hasRolled || (room.rollAgain && !cur.inJail) ? "roll" : "done";
+    if (room.stage === "done") autoPass(room);
+  }
+  // Não tem botão de passar a vez: quando a jogada termina (e as contas estão pagas), a vez passa sozinha
+  // depois de uma pausa curta. Construir, hipotecar e trocar dá para fazer a qualquer hora.
+  function autoPass(room) {
+    clearTimeout(room.passTimer);
+    const g = room.gen, t = room.turn, step = room.stepNo;
+    room.passTimer = setTimeout(() => {
+      if (room.phase !== "playing" || room.gen !== g || room.turn !== t || room.stepNo !== step || room.stage !== "done") return;
+      nextTurn(room); broadcast(room);
+    }, PASS_MS * ANIM);
   }
   function nextTurn(room) {
+    clearTimeout(room.passTimer);
     room.buyOffer = null; room.rollAgain = false; room.doublesCount = 0; room.card = null; room.hasRolled = false;
     if (checkEnd(room)) return;
     let i = room.turn;
@@ -542,8 +555,8 @@ module.exports = function attachBanco(io) {
 
   // ---------- construções e hipoteca ----------
   function groupOf(room, i) { return room.T.BOARD[i].type === "prop" ? room.T.GROUP_SQUARES[room.T.BOARD[i].group] : [i]; }
-  function groupHasBuildings(room, i) { return groupOf(room, i).some((j) => room.props[j] && room.props[j].houses > 0); }
-  // Imóvel "travado" para hipoteca, troca e cartas: no jogo normal, qualquer construção no grupo trava
+  function groupHasBuildings(room, i) { const dono = room.props[i] && room.props[i].owner; return groupOf(room, i).some((j) => room.props[j] && room.props[j].owner === dono && room.props[j].houses > 0); }
+  // Imóvel "travado" para hipoteca e cartas (trocar pode, as construções vão junto): no jogo normal, qualquer construção no grupo trava
   // o grupo todo; no modo rápido, só as construções do próprio imóvel.
   function locked(room, i) { return room.config.quick ? !!(room.props[i] && room.props[i].houses > 0) : groupHasBuildings(room, i); }
   function canBuild(room, pid, i) {
@@ -567,7 +580,7 @@ module.exports = function attachBanco(io) {
     const s = room.T.BOARD[i], pr = room.props[i];
     if (s.type !== "prop" || !pr || pr.owner !== pid || !pr.houses) return "Não há o que vender aqui.";
     const g = room.T.GROUP_SQUARES[s.group];
-    if (!room.config.quick && pr.houses < Math.max(...g.map((j) => room.props[j].houses))) return "Venda por igual: comece pelas cidades com mais construções.";
+    if (!room.config.quick && pr.houses < Math.max(...g.filter((j) => room.props[j] && room.props[j].owner === pid).map((j) => room.props[j].houses))) return "Venda por igual: comece pelas cidades com mais construções.";
     return null;
   }
 
@@ -587,7 +600,6 @@ module.exports = function attachBanco(io) {
     for (const i of side.props) {
       const pr = room.props[i];
       if (!pr || pr.owner !== pid) return `${room.T.BOARD[i].name} não é de ${p.name}.`;
-      if (locked(room, i)) return room.config.quick ? `Venda as construções de ${room.T.BOARD[i].name} antes de negociar.` : `Venda as construções de ${TB.GROUPS[room.T.BOARD[i].group]?.name || room.T.BOARD[i].name} antes de negociar ${room.T.BOARD[i].name}.`;
     }
     return null;
   }
@@ -598,7 +610,7 @@ module.exports = function attachBanco(io) {
     for (let k = 0; k < side.cards; k++) b.jailCards.push(a.jailCards.pop());
   }
   function describe(room, side) {
-    const parts = side.props.map((i) => room.T.BOARD[i].name);
+    const parts = side.props.map((i) => { const c = room.props[i] ? room.props[i].houses : 0; return room.T.BOARD[i].name + (c === 5 ? " (com hotel)" : c ? ` (com ${c} casa${c > 1 ? "s" : ""})` : ""); });
     if (side.cash) parts.push($(side.cash));
     if (side.cards) parts.push(side.cards > 1 ? `${side.cards} cartas de habeas corpus` : "carta de habeas corpus");
     return parts.join(", ") || "nada";
@@ -813,11 +825,6 @@ module.exports = function attachBanco(io) {
           else { room.buyOffer = null; log(room, `${me.name} não quis comprar ${room.T.BOARD[i].name}.`); settle(room); }
           return;
         }
-        if (type === "endTurn") {
-          if (!myTurn || room.stage !== "done") return "Ainda não dá para passar a vez.";
-          nextTurn(room); return;
-        }
-
         // ---- modo equipes: mandar dinheiro para um colega ----
         if (type === "gift") {
           const to = room.players[data.to], v = int(data.value, 0);
