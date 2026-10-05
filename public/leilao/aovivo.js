@@ -6,7 +6,6 @@
 // conta a partir da hora em que o organizador revelou (no relógio do servidor).
 // Os tempos de cada pedaço do jogo ficam em ritmo.js (o servidor usa a mesma conta).
 const { RITMO: VIVO, duracaoJogo, duracaoParte } = Ritmo;
-const semMovimentoL = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const agoraServidor = () => Date.now() + (typeof clockSkew === "number" ? clockSkew : 0);
 // até quando tem jogo rolando (o organizador espera para revelar a próxima)
 let vivoAte = 0;
@@ -141,7 +140,10 @@ function montarAoVivo(el, live, inicio, mdHtml) {
     if (live.tabela) desenhaTabela(el.querySelector(".tabVivo"), live.tabela, false);
     el.querySelector(".revmd").classList.remove("hidden");
   };
-  if (!inicio || agoraServidor() - inicio >= total || semMovimentoL()) return terminou();
+  // o jogo toca para todo mundo, inclusive quem pediu "menos movimento" no aparelho (ex.: iPad com Reduzir Movimento):
+  // o relógio e os gols são o conteúdo, não enfeite. Para essas pessoas, só somem os efeitos (a carta girando, o placar
+  // pulando), pelo CSS. Antes, elas iam direto para o resultado final, antes de todo mundo.
+  if (!inicio || agoraServidor() - inicio >= total) return terminou();
   vivoAte = Math.max(vivoAte, inicio + total);
   let tabFeita = false;
   (function quadro() {
