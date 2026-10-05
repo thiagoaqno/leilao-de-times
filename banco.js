@@ -11,7 +11,7 @@ const MAX_PLAYERS = 8; // o tabuleiro normal aceita até 6; o grande, até 8
 const TURN_MS = +process.env.BANCO_TURN_MS || 40000, TURN_MS_OFFLINE = Math.min(TURN_MS, 15000); // tempo de cada jogada (quem caiu da internet tem menos)
 // Ritmo das animações (ms). BANCO_ANIM=0 zera tudo nos testes automáticos.
 const ANIM = process.env.BANCO_ANIM != null ? +process.env.BANCO_ANIM : 1;
-const DICE_MS = 850, STEP_MS = 190, FAST_MS = 110, CARD_MS = 2600, BEAT_MS = 700, JAIL_MS = 1000;
+const DICE_MS = 1300, STEP_MS = 190, FAST_MS = 110, CARD_MS = 2600, BEAT_MS = 700, JAIL_MS = 1000;
 const AUCTION_FIRST = 15000, AUCTION_BID = 8000; // ms: tempo inicial do leilão e tempo depois de cada lance
 const AUCTION_COMMISSION = 0.1; // quem mandou a leilão fica com 10% do lance vencedor (pago pelo banco)
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };

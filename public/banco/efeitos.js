@@ -63,12 +63,12 @@ const CASA_TXT = {
   jail: ["🚔", "Prisão", () => (me() && me().inJail ? "Você está preso! Para sair: tire uma dupla, pague a fiança ou use a carta de saída." : "Só visitando. Nada acontece.")],
   free: ["🏖️", "Férias", () => (S.config.freeParking && S.jackpot ? `Descanse! E leve o pote das férias: ${money(S.jackpot)}.` : "Descanse. Nada acontece aqui.")],
   gojail: ["👮", "Vá para a prisão!", () => "Direto para a prisão, sem passar pelo Início."],
-  card: ["❓", "Sorte ou Revés", () => "Puxe uma carta: pode ser sorte… ou revés."],
   tax: ["💸", "", (s) => `Pague ${money(s.amount)} ao banco.`],
 };
 let casaAberta = null;
 function mostrarCasa(i) {
   const s = BOARD[i], sq = $("sq" + i); if (!s || !sq || document.hidden) return;
+  if (s.type === "card" || (typeof spotBusy !== "undefined" && spotBusy)) return;
   fecharCasa(true);
   const pr = S.props[i], m = me(), dono = pr && P(pr.owner), ev = S.event ? S.event.id : null, tm = teamsMap();
   let topo = "", corpo;
@@ -162,16 +162,18 @@ function flyDeed(e) {
   const n = document.createElement("div");
   n.className = "deedfly";
   n.style.setProperty("--g", s.group ? GROUPS[s.group].color : "#ece0bf"); n.style.setProperty("--gi", gInk(e.sq));
-  n.innerHTML = `<i>${h(s.name)}</i><span>ESCRITURA</span>`;
+  // um título de posse pequeno: a faixa da cor com o nome e as linhas dos aluguéis
+  n.innerHTML = `<i>${h(s.name)}</i><span></span>`;
   $("fly").appendChild(n);
-  const at = (x, y, sc, ry, r) => `translate(${x}px, ${y}px) translate(-50%, -50%) perspective(600px) rotateY(${ry}deg) rotate(${r}deg) scale(${sc})`;
-  const flip = e.from === "pile" ? 180 : 0, lift = Math.min(160, 60 + Math.hypot(b.x - a.x, b.y - a.y) * 0.3);
+  const at = (x, y, sc, ry, rx, r) => `translate(${x}px, ${y}px) translate(-50%, -50%) perspective(600px) rotateY(${ry}deg) rotateX(${rx}deg) rotate(${r}deg) scale(${sc})`;
+  const flip = e.from === "pile" ? 180 : 0, lift = Math.min(150, 50 + Math.hypot(b.x - a.x, b.y - a.y) * 0.28);
   n.animate([
-    { transform: at(a.x, a.y, 0.5, flip, -6), opacity: 0 },
-    { transform: at(a.x, a.y - 30, 1.2, flip / 2, 0), opacity: 1, offset: 0.25 },
-    { transform: at((a.x + b.x) / 2, (a.y + b.y) / 2 - lift, 1.25, 0, 6), opacity: 1, offset: 0.6 },
-    { transform: at(b.x, b.y, 0.6, 0, 0), opacity: 0.9 },
-  ], { duration: 1300, easing: "cubic-bezier(.45,0,.35,1)", fill: "both" }).finished.then(() => n.remove(), () => n.remove());
+    { transform: at(a.x, a.y, 0.45, flip, 0, -8), opacity: 0 },
+    { transform: at(a.x + (b.x - a.x) * 0.1, a.y - 34, 1.15, flip * 0.5, 16, -3), opacity: 1, offset: 0.24 },
+    { transform: at((a.x + b.x) / 2, (a.y + b.y) / 2 - lift, 1.25, 0, -12, 5), opacity: 1, offset: 0.58 },
+    { transform: at(a.x + (b.x - a.x) * 0.88, a.y + (b.y - a.y) * 0.88 - lift * 0.25, 0.95, 0, 6, 1), opacity: 1, offset: 0.84 },
+    { transform: at(b.x, b.y, 0.55, 0, 0, 0), opacity: 0 },
+  ], { duration: 1350, easing: "cubic-bezier(.37,0,.25,1)", fill: "both" }).finished.then(() => n.remove(), () => n.remove());
   Sound.play(e.gavel ? "gavel" : "deed");
 }
 function spotEl(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
@@ -183,6 +185,7 @@ function burstAt(sq, emoji, cls) {
   setTimeout(() => el.remove(), 1600);
 }
 function boomAt(sq) {
+  demolidaEm[sq] = Date.now(); // as casas que somem aqui foram demolidas: não voltam voando para o banco
   burstAt(sq, "💥");
   const sc = document.querySelector(".scene"); sc.classList.remove("shake"); void sc.offsetWidth; sc.classList.add("shake");
   const q = $("sq" + sq); q.classList.remove("boomed"); void q.offsetWidth; q.classList.add("boomed");

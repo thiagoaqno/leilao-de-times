@@ -21,7 +21,7 @@ function renderAction() {
     if (m && c.player === m.id) {
       html = `<h3>${pw.icon} ${h(pw.title)}</h3>` + (c.step === 2
         ? `<p class="muted" style="margin:4px 0 10px">${h(pw.ask2)} (${h(BOARD[c.prop].name)})</p><div class="row">${c.options.map((id) => { const o = P(id); return `<button data-pick="${id}">${o.pawn} ${h(o.name)}</button>`; }).join("")}</div>`
-        : `<p class="muted" style="margin:4px 0 10px">${h(pw.ask)} Toque na casa piscando no tabuleiro ou aqui:</p><div class="chips">${c.options.map((i) => { const o = P(S.props[i].owner), pr = S.props[i]; return `<button class="chip" data-pick="${i}" style="--g:${gcolor(i)}"><i></i>${o.pawn} ${h(BOARD[i].name)}${pr.houses ? ` <small>${pr.houses === 5 ? "🏨" : "🏠" + pr.houses}</small>` : ""}</button>`; }).join("")}</div>`);
+        : `<p class="muted" style="margin:4px 0 10px">${h(pw.ask)} Toque na casa piscando no tabuleiro ou aqui:</p><div class="chips">${c.options.map((i) => { const o = P(S.props[i].owner), pr = S.props[i]; return `<button class="chip" data-pick="${i}" style="${gvars(i)}"><i></i>${o.pawn} ${h(BOARD[i].name)}${pr.houses ? ` <small>${pr.houses === 5 ? "🏨" : "🏠" + pr.houses}</small>` : ""}</button>`; }).join("")}</div>`);
     } else html = `<h3>${pw.icon} ${h(pw.title)}</h3><p class="muted" style="margin:6px 0 0">${who.pawn} ${h(who.name)} está escolhendo o alvo…</p>`;
   } else if (myDebts.length) {
     const total = myDebts.reduce((s, d) => s + d.amount, 0);
@@ -110,13 +110,16 @@ function tickTimer() {
 // ---------- jogadores, imóveis, trocas, histórico ----------
 function propsOf(pid) { return Object.keys(S.props).map(Number).filter((i) => S.props[i].owner === pid).sort((a, b) => a - b); }
 const gcolor = (i) => (BOARD[i].group ? GROUPS[BOARD[i].group].color : "#cbbf9f");
+// a cor do bairro e a cor da letra em cima dela (para o nome escrito na faixa, como no tabuleiro)
+// (aeroportos e companhias: o azul-escuro das escrituras pequenas)
+const gvars = (i) => (BOARD[i].group ? `--g:${GROUPS[BOARD[i].group].color};--gi:${GROUPS[BOARD[i].group].ink}` : "--g:#40445f;--gi:#fff");
 const seenTrades = new Set();
 function renderTrades() {
   const m = me();
   $("tradesCard").classList.toggle("hidden", !m || m.bankrupt || S.phase !== "playing");
   $("btnGift").classList.toggle("hidden", !(m && S.config.teams && S.players.some((p) => p.team === m.team && p.id !== m.id && !p.bankrupt)));
   if (!m) return;
-  const side = (s) => [...s.props.map((i) => `<span class="chip" style="--g:${gcolor(i)};margin:2px 0" data-i="${i}"><i></i>${h(BOARD[i].name)}</span>`), s.cash ? `<b>${money(s.cash)}</b>` : "", s.cards ? "🎫 habeas corpus" : ""].filter(Boolean).join(" ") || "<span class='muted'>nada</span>";
+  const side = (s) => [...s.props.map((i) => `<span class="chip" style="${gvars(i)};margin:2px 0" data-i="${i}"><i></i>${h(BOARD[i].name)}</span>`), s.cash ? `<b>${money(s.cash)}</b>` : "", s.cards ? "🎫 habeas corpus" : ""].filter(Boolean).join(" ") || "<span class='muted'>nada</span>";
   const mineT = S.trades.filter((t) => t.from === m.id || t.to === m.id);
   $("trades").innerHTML = mineT.map((t) => {
     const inc = t.to === m.id, other = P(inc ? t.from : t.to);
@@ -205,18 +208,31 @@ function bump(id, cls) {
   const el = $("pl-" + id); if (!el) return;
   el.classList.remove("gain", "loss"); void el.offsetWidth; el.classList.add(cls);
 }
-function flyNote(a, b, text, delay) {
+// As cédulas do Banco da Galera (valores em mil): cada uma com a sua cor, como as notas do jogo de verdade.
+const CEDULAS = [[500, "#f39a4a", "#5a2400"], [100, "#e3c18e", "#5a3410"], [50, "#7fb6e8", "#0d2b4a"], [20, "#8fd48a", "#0b3d1f"], [10, "#f6d76b", "#5a4300"], [5, "#f4a6c0", "#5a1730"], [1, "#f1ece0", "#3d3a2e"]];
+// o valor em notas, das maiores para as menores (no máximo 8 voando)
+function notasDe(v) {
+  const out = []; let r = Math.round(v);
+  for (const c of CEDULAS) while (r >= c[0] && out.length < 8) { out.push(c); r -= c[0]; }
+  return out.length ? out : [CEDULAS[CEDULAS.length - 1]];
+}
+// uma cédula voando de a até b: sobe num arco, cada uma abrindo um pouco para um lado, e balança como papel no ar
+function flyNote(a, b, nota, delay, k) {
   const n = document.createElement("div");
-  n.className = "note"; n.textContent = text;
+  n.className = "cedula"; n.style.setProperty("--cc", nota[1]); n.style.setProperty("--ct", nota[2]);
+  n.innerHTML = `${nota[0]}<small>mil</small>`;
   $("fly").appendChild(n);
-  const dx = b.x - a.x, dy = b.y - a.y, lift = Math.min(170, 50 + Math.hypot(dx, dy) * 0.3);
-  const at = (x, y, s, r) => `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${s}) rotate(${r}deg)`;
+  const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy) || 1, lift = Math.min(150, 40 + dist * 0.28);
+  const lado = (k % 2 ? 1 : -1) * (12 + k * 5), px = (-dy / dist) * lado, py = (dx / dist) * lado; // abre para os lados do caminho
+  const at = (x, y, s, rx, r) => `translate(${x}px, ${y}px) translate(-50%, -50%) perspective(500px) rotateX(${rx}deg) rotate(${r}deg) scale(${s})`;
+  const gira = ((k * 37) % 24) - 12;
   const anim = n.animate([
-    { transform: at(a.x, a.y, 0.5, -10), opacity: 0 },
-    { transform: at(a.x + dx * 0.15, a.y + dy * 0.15 - lift * 0.5, 1.1, -4), opacity: 1, offset: 0.2 },
-    { transform: at(a.x + dx * 0.55, a.y + dy * 0.55 - lift, 1.15, 6), opacity: 1, offset: 0.55 },
-    { transform: at(b.x, b.y, 0.75, 0), opacity: 1 },
-  ], { duration: 1000, delay, easing: "cubic-bezier(.45,0,.35,1)", fill: "both" });
+    { transform: at(a.x, a.y, 0.35, 0, gira - 10), opacity: 0 },
+    { transform: at(a.x + dx * 0.1 + px * 0.4, a.y + dy * 0.1 + py * 0.4 - lift * 0.45, 1, 28, gira - 4), opacity: 1, offset: 0.18 },
+    { transform: at(a.x + dx * 0.5 + px, a.y + dy * 0.5 + py - lift, 1.08, -22, gira + 8), opacity: 1, offset: 0.52 },
+    { transform: at(a.x + dx * 0.86 + px * 0.3, a.y + dy * 0.86 + py * 0.3 - lift * 0.3, 0.95, 14, gira / 2), opacity: 1, offset: 0.82 },
+    { transform: at(b.x, b.y, 0.5, 0, 0), opacity: 0 },
+  ], { duration: 1150, delay, easing: "cubic-bezier(.37,0,.25,1)", fill: "both" });
   return anim.finished.then(() => n.remove(), () => n.remove());
 }
 function flash(sq) {
@@ -231,10 +247,8 @@ function playFx(e) {
   const a = spot(e.from, e.sq), b = spot(e.to, e.sq);
   if (e.sq != null) flash(e.sq);
   if (isPlayer(e.from)) { popAt(a, "−" + money(e.amount), "minus", e.label); bump(e.from, "loss"); Sound.play("pay"); }
-  // notas: mais dinheiro, mais notas voando
-  const n = e.amount >= 500 ? 4 : e.amount >= 150 ? 3 : e.amount >= 50 ? 2 : 1;
-  const flights = [];
-  for (let k = 0; k < n; k++) flights.push(flyNote(a, b, k === n - 1 ? money(e.amount) : "💵", k * 110));
+  // as cédulas que formam o valor, uma atrás da outra
+  const flights = notasDe(e.amount).map((nota, k) => flyNote(a, b, nota, k * 90, k));
   Promise.all(flights).then(() => {
     if (isPlayer(e.to)) {
       inflight[e.to] = Math.max(0, (inflight[e.to] || 0) - e.amount);

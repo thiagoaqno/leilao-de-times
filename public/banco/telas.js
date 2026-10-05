@@ -112,7 +112,7 @@ function renderMine() {
       btns.push(`<button data-do="sellbank" data-i="${i}" ${lockedC(i) ? "disabled title='Venda as casas antes'" : ""}>💰 Vender ao banco +${short(pr.mortgaged ? 0 : T.mortgageValue(i))}</button>`);
     }
     const hs = pr.houses === 5 ? "🏨" : pr.houses ? "🏠".repeat(pr.houses) : "";
-    return `<div class="prow ${pr.mortgaged ? "mort" : ""}" style="--g:${gcolor(i)}">
+    return `<div class="prow ${pr.mortgaged ? "mort" : ""}" style="${gvars(i)}">
       <div class="pinfo" data-open="${i}"><b>${h(s.name)}</b>${pr.shield ? "🛡️" : ""}<span class="pmeta">${hs} ${rentText(i)}</span></div>
       <div class="pbtns">${btns.join("")}</div>${why ? `<span class="why">${h(why)}</span>` : ""}</div>`;
   }).join("");
@@ -135,6 +135,7 @@ function spotNext() {
   const it = spotQ.shift(), el = $("spot");
   if (!it || !S || S.phase === "lobby") { spotBusy = false; el.classList.add("hidden"); $("spotDim").classList.remove("on"); return; }
   spotBusy = true;
+  fecharCasa(); // um destaque novo no meio (carta, aluguel, compra…): o cartão da casa sai da frente
   el.className = "spot " + it.cls;
   el.innerHTML = it.html;
   $("spotDim").classList.add("on");

@@ -1,53 +1,42 @@
-# Banco: visual novo, cartão da casa onde você caiu e mais animações
+# Banco: dados 3D caindo na mesa, visão de cima e sem faixinhas coloridas
 
-## Visual novo
-O Banco agora tem a cara do jogo de verdade, em cima da mesa da sala, em vez do feltro verde (que já é o da Sinuca e
-do Truco):
-- **A mesa:** madeira, com tábuas, veios e a luz do lustre em cima do tabuleiro.
-- **Os painéis:** viram folhas de papel apoiadas na mesa (sua vez, trocas, imóveis, a mesa de cada jogador).
-- **A sua carteira:** virou uma cédula do Banco da Galera, na cor do seu peão, com moldura gravada e o peão num
-  medalhão. No celular, é a barra de baixo.
-- **As placas de dinheiro:** viraram notinhas com a faixa da cor de cada jogador. As notas que voam ganharam moldura
-  de cédula.
-- **As letras:** Bitter (serifa grossa, de papel-moeda) para títulos e valores, e Commissioner para o resto.
-- O leilão ganhou o cabeçalho de madeira. Os rótulos que estavam em caixa-alta agora são escritos normal.
+## Dados 3D
+- Os dados agora são cubos de verdade, com as 6 faces. São cor de marfim, com bolinhas pretas, e o 1 é uma bolinha
+  vermelha grande.
+- **A jogada:** os dois caem do alto em cima do tabuleiro, cada um de um lado, girando no ar. Eles batem no tabuleiro,
+  quicam alto, quicam baixinho e assentam meio tortos, com o resultado para cima. A sombra fica no tabuleiro e aperta
+  quando o dado chega. Cada batida tem o seu som.
+- O peão só começa a andar quando os dados param: o servidor espera 1,3 s em vez de 0,85 s.
+- Na dupla, o "Dupla!" aparece quando eles param.
+- Na sua vez, os dados ganham um brilho dourado embaixo (dá para jogar tocando neles).
+- Quem pede "menos movimento" no sistema vê os dados já parados no resultado.
 
-## Vila
-- O prédio do Banco Imobiliário agora se chama **Banco** (antes "Cassino"), com o ícone 🏦.
+## Visão de cima como padrão
+- O tabuleiro abre visto de cima. A visão inclinada continua no botão do topo, e a escolha fica salva.
 
+## Sorte ou Revés sem cartão por cima
+- Ao cair em Sorte ou Revés, aparecia o cartão da casa e a carta tirada ao mesmo tempo, um em cima do outro. Agora
+  só a carta aparece.
+- Em qualquer casa, quando aparece um destaque no meio do tabuleiro (carta, aluguel, compra...), o cartão da casa
+  sai da frente.
 
-## Cartão da casa
-Quando o seu peão para numa casa, aparece um cartão saindo da própria casa, virando no ar:
-- **Imóvel, companhia ou aeroporto:** a escritura completa, com preço, aluguéis, casas e hipoteca. No topo, a
-  situação da casa:
-  - "À venda por $X";
-  - "Essa é sua!";
-  - "Aluguel para Fulano";
-  - hipotecada.
-- **Casas especiais:** um cartão próprio para Início, Prisão (presa ou só visitando), Estacionamento (com o pote
-  acumulado), Vá para a prisão, Sorte/Revés e Imposto.
+## Sem as faixinhas coloridas de lado
+(Esta parte ficou de fora do PR anterior, que foi juntado antes dela chegar.)
 
-Ele some sozinho depois de uns segundos, ou na hora com um toque. Quando a casa está à venda, ele fica um pouco mais.
-Também sai do caminho quando abre o leilão ou outra janela.
+A cor aparece como no jogo de verdade:
+- cada imóvel em "Seus imóveis" é um título de posse pequeno, com o nome na faixa da cor do bairro;
+- nas trocas e na compra, a escritura vira um titulozinho de papel com a faixa da cor em cima;
+- os imóveis a escolher viram plaquinhas na cor do bairro, como no tabuleiro;
+- os jogadores são reconhecidos pelo peão colorido;
+- na escritura, o aluguel que vale agora fica marcado a marca-texto.
 
-## Mais animações
-- Os dados chacoalham rolando e quicam ao parar. Na dupla, aparece "Dupla!".
-- O peão dá um quique ao chegar na casa, e uma onda da cor dele se espalha a partir dela.
-- Quando alguém compra uma casa, ela leva um "carimbo" da cor do dono.
-- Quem pede "menos movimento" no sistema fica sem as animações.
-
-## Mapa do projeto (CLAUDE.md)
-Novo arquivo na raiz com a organização do site. Ele lista:
-- onde fica cada jogo e os arquivos de cada um;
-- as peças comuns (salas, bonecos/skins, Noite da Galera, controles de toque);
-- como a vila é montada;
-- os testes;
-- o jeito de trabalhar no projeto.
-
-Serve para achar as coisas rápido nas próximas mudanças. O Claude Code lê esse arquivo sozinho ao abrir o projeto.
+Também nesta parte:
+- a carteira não quebra mais o valor em várias linhas no celular;
+- o cabeçalho cabe em telas bem estreitas.
 
 ## Conferido
-No navegador, numa partida de verdade com um segundo jogador:
-- o visual novo no celular e no computador (entrada, sala de espera, tabuleiro, carteira, painéis e escritura);
-- o cartão em casas de imóvel (à venda, minhas e de outro) e em casas especiais;
-- os dados, o quique, a onda e o carimbo.
+- No navegador, numa partida com um segundo jogador:
+  - a visão de cima abrindo como padrão;
+  - os dados parados e a jogada;
+  - a queda congelada em três momentos: no alto girando, quicando e assentando.
+- `npm test` (46) passando, e o teste de abrir as páginas (22).
