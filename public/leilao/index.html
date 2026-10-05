@@ -260,6 +260,64 @@ pre.export{white-space:pre-wrap;background:var(--deep);border:1px solid var(--li
 .simempty{color:var(--muted);padding:20px 0;text-align:center}
 .revsec{border-top:1px solid var(--line);padding-top:6px;margin-top:6px;animation:revIn .6s ease}
 .revsec:first-child{border-top:0;margin-top:0}
+/* ---------- campeonato ao vivo (aovivo.js): o placar de TV, a carta do gol, a tabela mexendo, palpites e bolão ---------- */
+.jogosVivo{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:12px;margin:12px 0}
+.jogoVivo{position:relative;background:linear-gradient(180deg,#0c1d55,#071240);border:1px solid var(--line);border-radius:16px;padding:12px 12px 10px;box-shadow:inset 0 1px 0 #ffffff14}
+.jvTit{font:800 13px var(--display);color:var(--muted);text-align:center;margin-bottom:4px}
+.jvPlacar{display:grid;grid-template-columns:1fr auto auto auto 1fr;align-items:center;gap:8px}
+.jvTime{font:800 19px/1.05 var(--display);overflow-wrap:anywhere;transition:color .4s}
+.jvTime.a{text-align:right}.jvTime.meu{color:var(--info)}
+.jvTime.venceu{color:var(--good)}.jvTime.venceu::after{content:" ✓"}
+.jvGol{font:800 40px/1 var(--display);min-width:30px;text-align:center;font-variant-numeric:tabular-nums;background:var(--deep);border-radius:10px;padding:4px 8px;box-shadow:inset 0 0 0 1px var(--line)}
+.jvGol.pulou{animation:golPulo .7s cubic-bezier(.2,1.6,.4,1)}
+@keyframes golPulo{0%{transform:scale(1.6);color:var(--accent2);box-shadow:inset 0 0 0 2px var(--accent2),0 0 24px #ff2e88aa}100%{transform:none}}
+.jvRel{font:700 14px var(--display);color:var(--deep);background:var(--accent);border-radius:999px;padding:2px 9px;min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
+.jogoVivo.acabou .jvRel{background:var(--accent-dark)}
+.jvFase{text-align:center;font-size:13px;color:var(--muted);margin-top:6px;font-weight:600}
+.jvLances{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13.5px;margin-top:6px;min-height:4px}
+.jvLances .la{text-align:right}.jvLances div div{animation:revIn .4s ease}
+.jvPens{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.jvPens .pa{display:flex;justify-content:flex-end;gap:4px}.jvPens .pb{display:flex;gap:4px}
+.jvPens i{width:14px;height:14px;border-radius:50%;animation:golPulo .5s}
+.jvPens i.ok{background:var(--good)}.jvPens i.erro{background:var(--bad);box-shadow:inset 0 0 0 3px #00000040}
+.jvPalp{text-align:center;font-size:13px;color:var(--muted);margin-top:6px}.jvPalp:empty{display:none}.jvPalp b{color:var(--text)}
+/* a carta de quem marcou: entra virando por cima do placar e sai deslizando */
+.cartaGol{position:absolute;left:50%;top:50%;width:118px;padding:10px 8px 8px;border-radius:12px 12px 22px 22px;text-align:center;color:#2a1d02;z-index:5;
+  background:linear-gradient(160deg,#fff4c2,#e8c35a 45%,#b98a1f);box-shadow:0 14px 30px #000a,inset 0 0 0 2px #fff6;animation:cartaGol 1.9s cubic-bezier(.2,.9,.3,1) both}
+.cartaGol.ladoA{left:22%}.cartaGol.ladoB{left:78%}
+.cartaGol.lenda{background:linear-gradient(160deg,#fffbe6,#ffd75e 35%,#e0a200 70%,#fff1a8);box-shadow:0 14px 30px #000a,0 0 22px #ffd75eaa,inset 0 0 0 2px #fff8}
+.cartaGol.prata{background:linear-gradient(160deg,#ffffff,#c9d1de 50%,#8e99ab);color:#1c2433}
+.cartaGol.bronze{background:linear-gradient(160deg,#ffe2c4,#c98a52 50%,#8a5226);color:#2b1606}
+.cartaGol.hat{background:linear-gradient(160deg,#3b1060,#7a1fa8 50%,#ff2e88);color:#fff;box-shadow:0 14px 30px #000a,0 0 26px #ff2e88aa,inset 0 0 0 2px #ffffff55}
+.cgTopo{display:flex;align-items:baseline;justify-content:center;gap:6px}
+.cgTopo b{font:800 38px/1 var(--display)}.cgTopo span{font:800 15px var(--display);opacity:.8}
+.cgNome{font:800 19px/1.05 var(--display);margin-top:2px;overflow-wrap:anywhere}
+.cgTime{font-size:11.5px;font-weight:600;opacity:.8;margin-top:2px}
+.cgFaixa{margin:6px -8px -8px;padding:4px 0 6px;border-radius:0 0 22px 22px;background:#0006;color:#fff;font:800 15px var(--display)}
+@keyframes cartaGol{0%{transform:translate(-50%,-50%) perspective(600px) rotateY(100deg) scale(.4);opacity:0}18%{transform:translate(-50%,-50%) perspective(600px) rotateY(-12deg) scale(1.08);opacity:1}28%{transform:translate(-50%,-50%) perspective(600px) rotateY(0) scale(1)}82%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(-50%,-140%) scale(.8);opacity:0}}
+/* a tabela depois da rodada: cada time desliza da posição de antes para a nova */
+.tabVivo{background:var(--deep);border:1px solid var(--line);border-radius:14px;padding:6px 8px;margin:4px 0 12px;overflow:hidden}
+.tvCab,.tvLin{display:grid;grid-template-columns:28px 1fr 64px 30px 40px;align-items:center;gap:6px;height:34px;font-variant-numeric:tabular-nums}
+.tvCab{height:26px;font-size:12px;color:var(--muted);font-weight:700}
+.tvLin{border-top:1px solid #ffffff10;position:relative;background:var(--deep)}
+.tvLin:nth-child(2) span:first-child{color:var(--good);font-weight:800}
+.tvLin.meu{color:var(--info)}
+.tvLin small{color:var(--good);font-weight:700;margin-left:4px}
+.tvLin i{font-style:normal;font-size:11px;font-weight:800;margin-left:4px}.tvLin i.sobe{color:var(--good)}.tvLin i.cai{color:var(--bad)}
+.comVivo .revmd table,.comVivo .revmd h4{display:none}
+/* palpites e bolão */
+.palp,.bolao{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.palp h3,.bolao h3{font-size:20px}
+.palp.espera{color:var(--muted);font-weight:600;text-align:center}
+.pj{margin-top:10px}.pjt{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:4px}
+.pbts{display:flex;gap:6px}
+.pbt{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 8px;min-width:0}
+.pbt span{font:800 16px/1.1 var(--display);overflow-wrap:anywhere}
+.pbt small{font-size:11.5px;font-weight:600;color:var(--muted);overflow-wrap:anywhere}
+.pbt.on{background:linear-gradient(180deg,#ffffff,#c9d4f0);color:var(--ink);border-color:#eef3ff;box-shadow:0 4px 0 var(--accent-dark)}
+.pbt.on small{color:#3a4a7a}
+.bl{display:grid;grid-template-columns:34px 1fr auto;gap:8px;padding:6px 4px;border-top:1px solid #ffffff10}
+.bl:first-of-type{border-top:0}.bl.meu{color:var(--info)}.bl.rei{color:#ffd75e}
 @keyframes revIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .revbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
 .revwait{text-align:center;color:var(--muted);margin-top:18px;padding:16px;border:1px dashed var(--line);border-radius:14px}
@@ -335,7 +393,7 @@ body.skin-cozinha{
   .drawn .name{font-size:32px}
 }
 @media (prefers-reduced-motion:reduce){
-  .revsec,.result,.timer.hot,.cursor,.pl.new,.pl.ghost i,.dish .ly{animation:none}
+  .cartaGol,.jvGol.pulou,.revsec,.result,.timer.hot,.cursor,.pl.new,.pl.ghost i,.dish .ly{animation:none}
   button{transition:none}
 }
 </style>
@@ -564,6 +622,7 @@ body.skin-cozinha{
         <span class="pill" id="revCount"></span>
       </div>
       <div class="md" id="revOut"></div>
+      <div id="palpBox"></div>
       <div id="revFoot"></div>
     </div>
   </section>
@@ -672,5 +731,7 @@ body.skin-cozinha{
 <script src="/leilao/sala.js"></script>
 <script src="/leilao/pratos.js"></script>
 <script src="/leilao/roleta.js"></script>
+<script src="/leilao/ritmo.js"></script>
+<script src="/leilao/aovivo.js"></script>
 </body>
 </html>

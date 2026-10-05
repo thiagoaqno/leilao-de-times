@@ -118,7 +118,7 @@ function penalties(A, B) {
     const ha = shot(pa, B), hb = shot(pb, A); a += ha; b += hb; kicks.push([pa, ha, "A"], [pb, hb, "B"]);
   }
   const missA = kicks.filter(([, h, s]) => s === "A" && !h).map(([p]) => p.name), missB = kicks.filter(([, h, s]) => s === "B" && !h).map(([p]) => p.name);
-  return { a, b, missA, missB };
+  return { a, b, missA, missB, kicks };
 }
 
 // ---------- texto da partida ----------
@@ -181,6 +181,23 @@ function matchMd(m, N, title) {
   return out.join("\n");
 }
 
+// ---------- jogo ao vivo ----------
+// Os dados de cada partida para o placar ao vivo do navegador: minuto e autor de cada gol, prorrogação e cada
+// cobrança de pênalti. O texto (Markdown) continua igual; isto vai junto, parte por parte.
+let jogoSeq = 0;
+function liveOf(m, titulo, mataMata) {
+  const lado = (T) => (T === m.A ? "A" : "B");
+  return {
+    id: "j" + ++jogoSeq, titulo: titulo || "", mataMata: !!mataMata, mins: m.mins, extra: m.et ? (m.mins === 40 ? 10 : 30) : 0,
+    A: { id: m.A.id, nome: m.A.name }, B: { id: m.B.id, nome: m.B.name }, gA: m.gA, gB: m.gB,
+    gols: m.goals.map((g) => ({ min: g.min, lado: lado(g.team), nome: g.scorer.name, ovr: g.scorer.ovr, pos: g.scorer.pos })),
+    pens: m.pens ? { a: m.pens.a, b: m.pens.b, cob: m.pens.kicks.map(([p, ok, s]) => ({ lado: s, nome: p.name, ok: !!ok })) } : null,
+    vencedor: m.winner === m.A ? "A" : m.winner === m.B ? "B" : null,
+  };
+}
+// a classificação como lista (para a tabela animada entre as rodadas)
+const tabelaSnap = (teams) => sortTable(teams).map((t) => ({ id: t.id, nome: t.name, ...t.stats }));
+
 // ---------- tabela ----------
 function applyStats(m) {
   const { A, B } = m;
@@ -218,9 +235,11 @@ function simulate(room, opts = {}) {
   let format = opts.format || "auto";
   if (n === 2) format = "series";
   else if (!["league", "knockout"].includes(format)) format = "league";
-  const sections = [];
+  const sections = [], lives = []; // lives[i]: os jogos da parte i (ou null), para o placar ao vivo
+  const put = (md, live = null) => { sections.push(md); lives.push(live); };
   const allMatches = [];
   const ctx = {};
+  const fim = () => ({ sections, lives, campeao: ctx.campeao || null, summary: ctx.summary ? { ...ctx.summary, torneio: title, modalidade: kind, data: new Date().toISOString() } : null });
 
   // 1) elencos
   const title = kind === "futsal" ? "Copa de Futsal da Galera" : "Copa da Galera (futebol de campo)";
@@ -248,7 +267,7 @@ function simulate(room, opts = {}) {
     if (t.holes) s.push(`- 🕳️ **${t.name}** entra com ${t.holes} vaga(s) sem ninguém na escalação.`);
   });
   if (ests) s.push("", `_Obs.: ${ests} jogador(es) sem nota oficial do FC 27 entraram com nota estimada._`);
-  sections.push(s.join("\n"));
+  put(s.join("\n"));
 
   const play = (a, b, o) => { const m = playMatch(a, b, cfg, o); allMatches.push(m); return m; };
 
@@ -258,13 +277,13 @@ function simulate(room, opts = {}) {
       const decisive = wa === 1 && wb === 1;
       const m = play(g % 2 ? A : B, g % 2 ? B : A, { knockout: true }); // todo jogo da série tem vencedor
       if (m.winner === A) wa++; else if (m.winner === B) wb++;
-      sections.push(`## ⚽ Jogo ${g}${decisive ? " — o decisivo" : ""}\n\n${matchMd(m, N)}\n\n**Série: ${A.name} ${wa} x ${wb} ${B.name}**`);
+      put(`## ⚽ Jogo ${g}${decisive ? " — o decisivo" : ""}\n\n${matchMd(m, N)}\n\n**Série: ${A.name} ${wa} x ${wb} ${B.name}**`, { jogos: [liveOf(m, `Jogo ${g}`, true)] });
       g++;
       if (g > 7) break;
     }
     const champ = wa > wb ? A : B, vice = champ === A ? B : A;
-    sections.push(finalSection(champ, vice, null, teams, allMatches, N, ctx, `Série melhor de 3: ${A.name} ${wa} x ${wb} ${B.name}`));
-    return { sections, summary: ctx.summary ? { ...ctx.summary, torneio: title, modalidade: kind, data: new Date().toISOString() } : null };
+    put(finalSection(champ, vice, null, teams, allMatches, N, ctx, `Série melhor de 3: ${A.name} ${wa} x ${wb} ${B.name}`));
+    return fim();
   }
 
   if (format === "knockout") {
@@ -274,24 +293,24 @@ function simulate(room, opts = {}) {
       roundN++;
       const size = alive.length, byes = roundN === 1 ? byesTo - size : 0;
       const name = size <= 2 ? "Final" : size <= 4 ? "Semifinais" : size <= 8 ? "Quartas de final" : `Rodada ${roundN}`;
-      const next = [], lines = [];
+      const next = [], lines = [], jogos = [];
       const bye = alive.slice(0, byes), playing = alive.slice(byes);
       if (bye.length) lines.push(`- 😴 Passaram direto (folga): **${bye.map((t) => t.name).join("**, **")}**`);
       const losers = [];
       for (let i = 0; i < playing.length; i += 2) {
         const m = play(playing[i], playing[i + 1], { knockout: true });
-        lines.push(matchMd(m, N)); next.push(m.winner); losers.push(m.winner === m.A ? m.B : m.A);
+        lines.push(matchMd(m, N)); jogos.push(liveOf(m, name === "Final" ? "Final" : "", true)); next.push(m.winner); losers.push(m.winner === m.A ? m.B : m.A);
       }
       if (name === "Final") {
         const m = allMatches[allMatches.length - 1];
         const third = semiLosers.length === 2 ? play(semiLosers[0], semiLosers[1], { knockout: true }) : null;
-        if (third) sections.push(`## 🥉 Disputa de 3º lugar\n\n${matchMd(third, N)}`);
-        sections.push(`## 🏟️ A GRANDE FINAL\n\n${lines.join("\n\n")}`);
-        sections.push(finalSection(m.winner, m.winner === m.A ? m.B : m.A, third ? third.winner : null, teams, allMatches, N, ctx, `Final: ${scoreTxt(m)}`));
-        return { sections, summary: ctx.summary ? { ...ctx.summary, torneio: title, modalidade: kind, data: new Date().toISOString() } : null };
+        if (third) put(`## 🥉 Disputa de 3º lugar\n\n${matchMd(third, N)}`, { jogos: [liveOf(third, "3º lugar", true)] });
+        put(`## 🏟️ A GRANDE FINAL\n\n${lines.join("\n\n")}`, { jogos });
+        put(finalSection(m.winner, m.winner === m.A ? m.B : m.A, third ? third.winner : null, teams, allMatches, N, ctx, `Final: ${scoreTxt(m)}`));
+        return fim();
       }
       if (name === "Semifinais") semiLosers = losers;
-      sections.push(`## ⚔️ ${name}\n\n${lines.join("\n\n")}`);
+      put(`## ⚔️ ${name}\n\n${lines.join("\n\n")}`, { jogos });
       alive = [...bye, ...next];
     }
   }
@@ -301,27 +320,28 @@ function simulate(room, opts = {}) {
   rounds.forEach((games, i) => {
     const played = teams.filter((t) => games.some(([a, b]) => a === t || b === t));
     const off = teams.filter((t) => !played.includes(t));
-    const parts = games.map(([a, b]) => { const m = play(a, b); applyStats(m); return matchMd(m, N); });
+    const antes = tabelaSnap(teams), jogos = [];
+    const parts = games.map(([a, b]) => { const m = play(a, b); applyStats(m); jogos.push(liveOf(m, "", false)); return matchMd(m, N); });
     if (off.length) parts.push(`- 😴 Folga: **${off.map((t) => t.name).join(", ")}**`);
-    sections.push(`## ⚽ Rodada ${i + 1}\n\n${parts.join("\n\n")}\n\n#### 📊 Classificação\n\n${tableMd(teams)}`);
+    put(`## ⚽ Rodada ${i + 1}\n\n${parts.join("\n\n")}\n\n#### 📊 Classificação\n\n${tableMd(teams)}`, { jogos, tabela: { antes, depois: tabelaSnap(teams) } });
   });
   const table = sortTable(teams);
   if (n >= 6) {
     const [t1, t2, t3, t4] = table;
     const s1 = play(t1, t4, { knockout: true }), s2 = play(t2, t3, { knockout: true });
-    sections.push(`## ⚔️ Semifinais\n\n${matchMd(s1, N, "1º x 4º")}\n\n${matchMd(s2, N, "2º x 3º")}`);
+    put(`## ⚔️ Semifinais\n\n${matchMd(s1, N, "1º x 4º")}\n\n${matchMd(s2, N, "2º x 3º")}`, { jogos: [liveOf(s1, "1º x 4º", true), liveOf(s2, "2º x 3º", true)] });
     const lose = (m) => (m.winner === m.A ? m.B : m.A);
     const third = play(lose(s1), lose(s2), { knockout: true });
-    sections.push(`## 🥉 Disputa de 3º lugar\n\n${matchMd(third, N)}`);
+    put(`## 🥉 Disputa de 3º lugar\n\n${matchMd(third, N)}`, { jogos: [liveOf(third, "3º lugar", true)] });
     const f = play(s1.winner, s2.winner, { knockout: true });
-    sections.push(`## 🏟️ A GRANDE FINAL\n\n${matchMd(f, N)}`);
-    sections.push(finalSection(f.winner, lose(f), third.winner, teams, allMatches, N, ctx, `Final: ${scoreTxt(f)}`));
+    put(`## 🏟️ A GRANDE FINAL\n\n${matchMd(f, N)}`, { jogos: [liveOf(f, "Final", true)] });
+    put(finalSection(f.winner, lose(f), third.winner, teams, allMatches, N, ctx, `Final: ${scoreTxt(f)}`));
   } else {
     const f = play(table[0], table[1], { knockout: true });
-    sections.push(`## 🏟️ A GRANDE FINAL — 1º x 2º\n\n${matchMd(f, N)}`);
-    sections.push(finalSection(f.winner, f.winner === f.A ? f.B : f.A, table[2] || null, teams, allMatches, N, ctx, `Final: ${scoreTxt(f)}`));
+    put(`## 🏟️ A GRANDE FINAL — 1º x 2º\n\n${matchMd(f, N)}`, { jogos: [liveOf(f, "Final", true)] });
+    put(finalSection(f.winner, f.winner === f.A ? f.B : f.A, table[2] || null, teams, allMatches, N, ctx, `Final: ${scoreTxt(f)}`));
   }
-  return { sections, summary: ctx.summary ? { ...ctx.summary, torneio: title, modalidade: kind, data: new Date().toISOString() } : null };
+  return fim();
 }
 
 const scoreTxt = (m) => `${m.A.name} ${m.gA} x ${m.gB} ${m.B.name}` + (m.pens ? ` (${m.pens.a} x ${m.pens.b} pên.)` : m.et ? " (prorr.)" : "");
@@ -335,6 +355,7 @@ function finalSection(champ, vice, third, teams, matches, N, ctx, decider) {
   const bestGk = [...teams].filter((t) => t.keeper && !t.improvised).sort((a, b) => conceded.get(a) / games.get(a) - conceded.get(b) / games.get(b))[0];
   const craque = [...champ.players].sort((a, b) => b.goals * 3 + b.ovr / 10 - (a.goals * 3 + a.ovr / 10))[0];
   const big = [...matches].sort((a, b) => Math.abs(b.gA - b.gB) - Math.abs(a.gA - a.gB) || (b.gA + b.gB) - (a.gA + a.gB))[0];
+  ctx.campeao = champ.id; // o capitão campeão (para o placar da Noite da Galera)
   const out = [`## 🏆 CAMPEÃO: ${champ.name.toUpperCase()}!`, ""];
   const grito = pick(BORDOES.lavada);
   out.push(`🗣️ **${N.show(champ.name)}:** "${grito}"`);
