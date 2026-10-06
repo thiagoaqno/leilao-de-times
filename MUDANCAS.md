@@ -1,44 +1,44 @@
-# Ginásio: página jogável da Fase 3
+# Ginásio: casinha e desafios na Vila (Fase 4)
 
 ## Como fica
-- `/ginasio/` agora abre a arena de pixel-art, com piso de quadra, arquibancadas, pilastras e os sprites dos dois dex. `/ginasio` redireciona para a página.
-- Dá para jogar imediatamente contra um robô ou criar/entrar numa sala, escolher Galeramon ou Pokémon, 1x1 ou 2x2 e os 3 bichos de cada pessoa. O seletor tem busca, filtro de tipo e páginas para os 493 Pokémon.
-- O time reaproveita `galeramon_time` e `pokemon_time`, sem mudar a batalha por turnos da Vila. O convite pode ser copiado e quem entra só para assistir não recebe controles.
-- No computador: WASD/setas, mira no mouse, cliques esquerdo/direito, Q/E, Espaço e 1/2/3. No celular: joystick, quatro golpes, esquiva e reservas; segurar um golpe mostra a mira e soltar dispara.
-- Os ataques têm efeitos por tipo e categoria, projéteis em movimento, aviso de área antes da explosão, impactos, dano, cura, escudo e troca. Todos os bichos usam esse sistema, com diferenças de golpes e atributos; não são animações exclusivas desenhadas individualmente para cada Pokémon.
-- A tela mostra vida, recargas, relógio e resultado, com revanche e retorno à sala. Recarregar a página recupera o mesmo jogador por token.
+- Novo prédio na Vila Esportiva, ao lado do Pingue-Pongue e abaixo do Tênis, com telhado arredondado, Pokébola e placa do Ginásio.
+- A porta abre `/ginasio/`; o menu Jogos e o minimapa incluem o prédio. Voltar à Vila deixa o jogador na porta do Ginásio.
+- Pelo botão Batalha ou clicando no boneco de um amigo, dá para escolher Por turnos ou Ginásio (tempo real), com Galeramon ou Pokémon e o time já salvo.
+- A opção **Desafiar no Ginásio (tempo real)** envia um convite com aceite/recusa. Aceitar leva os dois à mesma sala 1x1, sem robôs, com seus times e lados reservados. O desafiante organiza e inicia a partida quando ambos chegam.
+- O cabeçalho da Vila usa duas linhas no celular: o botão Jogos não fica mais fora da tela. O painel do desafio cabe em retrato e tem rolagem em paisagem.
+- A batalha antiga por turnos continua na Vila e permanece a escolha padrão.
 
 ## Por dentro
-- HTML/JS puro, sem dependências novas. `sala.js`, `desenho.js`, `controles.js`, `rede.js`, `sons.js` e `hud.js` dividem as variáveis globais, seguindo os jogos existentes.
-- Canvas 2D em baixa resolução, com `imageSmoothingEnabled = false`, sprites `GaleramonSprite`/PokeDex e pilastras na posição dos obstáculos do motor.
-- `Ginasio.preverMovimento` compartilha movimento, paredes, pilastras e esquiva com o servidor. A previsão não aplica dano nem cura; golpes, vida e trocas continuam autoritativos.
-- Comandos a 30/s, reconciliação pela sequência confirmada, interpolação dos outros a 100 ms e trajetórias de projéteis iniciadas por evento e corrigidas pelos pacotes.
-- `Toque.setup`, áreas seguras do celular, recargas nos botões, cancelamento de toque e limpeza dos comandos ao perder foco. Quem pede menos movimento fica sem tremor, pulinho dos sprites e deslocamentos decorativos dos efeitos.
-- Sons curtos sintetizados com Web Audio, iniciados por gesto, com preferência de som salva. Nenhum áudio externo.
-- `#debug` expõe `window.__ginasio`; a página entrou na lista de testes de abertura. `CLAUDE.md` foi atualizado com os arquivos e testes.
+- `GAMES` e `drawBuilding` em `public/index.html` ganham `ginasio: true`; cinco árvores mudam de lugar para liberar o lote. A rua existente já atende à porta, sem ampliar o mapa.
+- `ginasio.js` reaproveita criação de sala/jogadores na ponte interna `criarDesafio`. A sala só nasce após o aceite, com validação dos dois times.
+- `vila.js` mantém os eventos de convite e acrescenta `jogo: "ginasio"`; `irGinasio` envia somente a credencial de cada destinatário. Os jogadores ficam ocupados durante a transição, impedindo desafios duplicados.
+- O navegador guarda `ginasio:<código>` antes de abrir `?sala=&entrar=1`. Tokens não aparecem na URL nem no estado público; reconectar recupera o mesmo jogador e não duplica a entrada automática.
+- Sem dependências novas. Sem alteração no motor, golpes, sprites ou regras dos turnos. `CLAUDE.md` documenta a integração; `#debug` expõe `window.__vila` para testar mapa e câmera.
 
 ## Conferido
-- `npm test`: 58 testes passaram, sem falhas.
-- `npx playwright test tests/e2e/ginasio.spec.js`: 6 testes passaram no servidor real.
-- `npx playwright test tests/e2e/paginas.spec.js`: 23 testes passaram, incluindo abertura do Ginásio e páginas dos outros jogos.
-- Computador 480x270: movimento, quatro ataques, esquiva, troca, reconexão e saída da sala.
-- Toque emulado em 375x812 e 480x270: dois dedos, mira ao segurar, ataque ao soltar, esquiva, troca e dano causado pelo robô.
-- Pokémon: seleção dentre os 493, busca vazia e sprites remotos carregados na arena. Verificações de pixels do canvas, ausência de suavização, botões dentro da tela e sem sobreposição.
-- Sala 2x2 com dois navegadores e robôs, time salvo e espectador sem controles. Partida completa com relógio acelerado apenas no servidor de teste, resultado, revanche e lobby.
-- Inspeção visual no navegador do app. Toque foi verificado por emulação Chromium, não em aparelho físico; falta jogar no celular real para avaliar o conforto dos controles.
+- `npm test`: 62 testes passaram, sem falhas.
+- `npx playwright test tests/e2e/vila-ginasio.spec.js tests/e2e/ginasio.spec.js tests/e2e/paginas.spec.js`: 33 testes passaram, sem falhas.
+- Servidor real: desafios Galeramon/Pokémon, lados e times preservados, tokens privados, invasor sem acesso aos lados reservados, recusa, aceite falso, time inválido, saída e bloqueio de convites duplicados.
+- Caminhada até a porta, colisão do prédio, capacho acessível, pixels do telhado, entrada por teclado/toque e retorno à porta em 1280x800 e 375x812.
+- Dois navegadores: desafio pelo sprite e pela central Batalha, recusa no celular, aceite na mesma sala, recarga sem perder identidade e partida com dois humanos. Opção padrão por turnos também testada pela interface.
+- Painel do desafio em 375x812 e 480x270: texto sem transbordar e botões sem sobreposição. Regressão dos controles, sala, sprites e resultados do Ginásio, além da abertura dos outros jogos.
+- Inspeção visual no navegador do app. Toque verificado por emulação Chromium, não em aparelho físico.
 
 ## Fotos
-Computador, 480x270:
-![Ginásio no computador](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-3/planos/imagens/ginasio-fase-3-computador.png)
+Prédio e porta na Vila, 1280x800:
+![Ginásio na Vila](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-vila.png)
 
 Celular, 375x812:
-![Ginásio no celular](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-3/planos/imagens/ginasio-fase-3-celular.png)
+![Ginásio na Vila no celular](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-celular.png)
 
-Celular deitado, 480x270:
-![Ginásio em paisagem](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-3/planos/imagens/ginasio-fase-3-paisagem.png)
+Escolha do desafio:
+![Desafio no Ginásio](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-desafio.png)
 
-Pokémon, 1280x800:
-![Pokémon no Ginásio](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-3/planos/imagens/ginasio-fase-3-pokemon.png)
+Convite com aceite/recusa no celular:
+![Convite no celular](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-convite.png)
+
+Os dois amigos na arena:
+![Amigos no Ginásio](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-amigos.png)
 
 ## Limite desta fase
-Sem prédio novo ou desafio pelo boneco da Vila: entram somente na Fase 4. Sem mudanças no banco de dados ou no plano de carreira.
+Somente a Fase 4 de `planos/ginasio.md`. Balanceamento e refinamentos de efeitos ficam na Fase 5. Sem banco de dados, carreira ou refatoração do desenho do mapa.
