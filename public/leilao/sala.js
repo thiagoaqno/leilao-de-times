@@ -104,7 +104,7 @@ function mdToHtml(text){
   return `<pre style="white-space:pre-wrap;font:inherit">${Icones.iconizar(esc(text))}</pre>`;
 }
 const FORMS = {
-  futsal: [["auto","Automática (a melhor para o seu time)"],["2-2","2-2 (2 defensores, 2 atacantes)"],["3-1","3-1 (3 defensores, 1 pivô)"],["1-2-1","1-2-1 losango (1 defensor, 2 meias, 1 atacante)"],["1-1-2","1-1-2 (1 defensor, 1 meia, 2 atacantes)"]],
+  futsal: [["auto","Automática (a melhor para o seu time)"],["2-2","2-2 (2 defensores, 2 atacantes)"],["3-1","3-1 (3 defensores, 1 pivô)"],["1-2-1","1-2-1 losango (1 defensor, 2 meias, 1 atacante)"],["1-1-2","1-1-2 (1 defensor, 1 meia, 2 atacantes)"],["2-1-1","2-1-1 em T (2 defensores, 1 meia, 1 pivô)"],["1-3","1-3 ofensiva (1 defensor, 3 atacantes)"],["4-0","4-0 rodízio (4 meias em linha, sem pivô)"]],
   futebol: [["auto","Automática (a melhor para o seu time)"],["4-3-3","4-3-3"],["4-4-2","4-4-2"],["3-5-2","3-5-2"],["4-2-3-1","4-2-3-1"],["3-4-3","3-4-3"],["5-3-2","5-3-2"]],
 };
 function formKind(){ return T().prompt === "futebol" ? "futebol" : "futsal"; }
