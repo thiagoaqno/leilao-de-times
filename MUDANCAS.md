@@ -42,6 +42,7 @@
 - O servidor não mudou.
 
 ## Conferido
+- Os testes de navegador do Leilão passando (a página abre sem erro e outra pessoa entra pelo convite).
 - No navegador: cada tipo de gol, quadro a quadro, e cada comemoração, no close.
 - 2.000 gols sorteados com jogadores das listas, montados e desenhados em vários instantes, sem nenhum erro. Os 20
   tipos e as 45 comemorações aparecem; os tipos raros (gol olímpico, Panenka) saem perto de 1 a 2% das vezes.
