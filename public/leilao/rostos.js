@@ -96,42 +96,56 @@ André Onana:5kp-|Bart Verbruggen:1cc-|Guglielmo Vicario:2cpb|Robert Sánchez:2c
     "Rogério Ceni": "São Paulo", "Alex": "Cruzeiro", "Ruud Gullit": "Milan", "Marco van Basten": "Milan", "Frank Rijkaard": "Milan", "Paolo Maldini": "Milan", "Andrea Pirlo": "Milan",
   };
   const ATUAIS = new Set(Object.values((window.FOOTBALL && FOOTBALL.atuais) || {}).flat().map(norm));
-  // a camisa do jogador: [cor, detalhe, desenho]
-  function camisaDe(nome) {
-    const info = typeof Quimica !== "undefined" && Quimica.infoOf(nome), sel = (info && CAMISA[info.pais]) || ["#24372d", "#c6ff3a"];
-    const fixo = EMBLEMA[nome]; if (fixo) return fixo === "sel" ? sel : KITS[fixo] || sel;
+  // o calção de cada camisa (pelo clube ou pela seleção); quem não está aqui ganha o da regra em uniformeDe
+  const CALCAO = {
+    Brasil: "#1f4fa0", Argentina: "#1a1a1a", França: "#f4f4f4", Alemanha: "#1a1a1a", Itália: "#f4f4f4", Espanha: "#1d2d6b", Inglaterra: "#1d2d6b",
+    Portugal: "#1c8a3a", Holanda: "#f4f4f4", Uruguai: "#1a1a1a", Bélgica: "#c8102e", Croácia: "#f4f4f4", Suécia: "#1f5fbf", Colômbia: "#1d2d6b",
+    Camarões: "#c8102e", México: "#f4f4f4", Chile: "#1d2d6b", Paraguai: "#1d2d6b", Marrocos: "#1c8a3a", "Estados Unidos": "#1d2d6b",
+    "Real Madrid": "#f4f4f4", Barcelona: "#004d98", Milan: "#f4f4f4", Bayern: "#dc052d", Juventus: "#f4f4f4", "Manchester United": "#f4f4f4",
+    Liverpool: "#c8102e", "Inter de Milão": "#1a1a1a", Santos: "#f4f4f4", Flamengo: "#f4f4f4", Ajax: "#f4f4f4", Napoli: "#f4f4f4", Arsenal: "#f4f4f4",
+    Chelsea: "#034694", "Manchester City": "#f4f4f4", PSG: "#004170", "Borussia Dortmund": "#1a1a1a", "Atlético de Madrid": "#1d2d6b", Benfica: "#f4f4f4",
+    Porto: "#003893", Roma: "#f4f4f4", Lazio: "#f4f4f4", "Boca Juniors": "#103f79", "River Plate": "#1a1a1a", Palmeiras: "#f4f4f4", "São Paulo": "#f4f4f4",
+    Corinthians: "#1a1a1a", Fluminense: "#f4f4f4", Vasco: "#1a1a1a", Botafogo: "#1a1a1a", Grêmio: "#1a1a1a", Internacional: "#f4f4f4", Cruzeiro: "#f4f4f4",
+    "Atlético-MG": "#1a1a1a", Marseille: "#f4f4f4", Lyon: "#f4f4f4", Sporting: "#1a1a1a", Celtic: "#f4f4f4", Tottenham: "#132257", Leverkusen: "#1a1a1a",
+    Valencia: "#1a1a1a", Sevilla: "#f4f4f4", Fiorentina: "#f4f4f4", Newcastle: "#1a1a1a", "Al-Nassr": "#0a3d91", "Al-Hilal": "#f4f4f4", "Inter Miami": "#1a1a1a",
+  };
+  // de onde vem a camisa do jogador: o clube (ou o país, para a seleção) e as cores [cor, detalhe, desenho]
+  function kitDe(nome) {
+    const info = typeof Quimica !== "undefined" && Quimica.infoOf(nome), pais = info && CAMISA[info.pais] ? info.pais : null;
+    const sel = { chave: pais, cores: pais ? CAMISA[pais] : ["#24372d", "#c6ff3a"] };
+    const fixo = EMBLEMA[nome]; if (fixo) return fixo === "sel" || !KITS[fixo] ? sel : { chave: fixo, cores: KITS[fixo] };
     const clubes = ((info && info.lista) || []).filter((c) => KITS[c]); if (!clubes.length) return sel;
-    if (ATUAIS.has(norm(nome))) return KITS[clubes[clubes.length - 1]];
-    const top = PRIORIDADE.find((c) => clubes.includes(c));
-    return KITS[top || clubes[0]];
+    const clube = ATUAIS.has(norm(nome)) ? clubes[clubes.length - 1] : PRIORIDADE.find((c) => clubes.includes(c)) || clubes[0];
+    return { chave: clube, cores: KITS[clube] };
   }
+  // a camisa do jogador: [cor, detalhe, desenho]
+  const camisaDe = (nome) => kitDe(nome).cores;
+  const claro = (hex) => { const n = parseInt(hex.slice(1), 16); return (0.3 * (n >> 16) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255)) / 255; };
   function semente(nome) { let h = 2166136261; for (const ch of nome) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; return h; }
+  // o uniforme inteiro (para o boneco dos lances): camisa, calção, meião e chuteira. As lendas jogam de chuteira preta;
+  // os atuais, das coloridas (sorteada pelo nome, sempre a mesma)
+  function uniformeDe(nome) {
+    const { chave, cores: [cam, det, desenho] } = kitDe(nome);
+    const calcao = CALCAO[chave] || (claro(cam) > 0.85 ? (claro(det) < 0.35 ? det : "#f4f4f4") : claro(cam) < 0.15 ? "#1a1a1a" : "#f4f4f4");
+    const atual = ATUAIS.has(norm(nome)), h = semente(norm(nome));
+    const chuteira = atual ? ["#f4f15a", "#ff5fa2", "#5ad0ff", "#ff8a3d", "#f4f4f4", "#b6ff3a"][h % 6] : "#1a1a1a";
+    return { cam, det, desenho, calcao, meiao: calcao === "#f4f4f4" ? cam : calcao, chuteira };
+  }
   function tracosDe(nome) {
     const t = TRACOS[norm(nome)]; if (t) return t;
     const h = semente(norm(nome)); // quem não está na tabela: sorteado pelo nome, sempre igual
     return "12345"[h % 5] + "ccccrxlo"[(h >>> 3) % 8] + "ppcclr"[(h >>> 6) % 6] + "---sb"[(h >>> 9) % 5];
   }
-  const cache = new Map();
-  function de(nome) {
-    if (cache.has(nome)) return cache.get(nome);
-    const [pele, cabelo, corC, barba] = tracosDe(nome), [cam, det, desenho] = camisaDe(nome);
-    const cv = document.createElement("canvas"); cv.width = 16; cv.height = 16;
-    const g = cv.getContext("2d"), px = (x, y, c, a = 1) => { g.globalAlpha = a; g.fillStyle = c; g.fillRect(x, y, 1, 1); g.globalAlpha = 1; };
+  // a cabeça (pescoço, rosto, orelhas, cabelo e barba) no canvas g, com o canto do quadro de 16x16 em (ox, oy). A carta
+  // usa no rosto; os lances, no boneco. olhar (-1 ou 1) vira os olhos, o nariz e a boca um pixel para o lado.
+  function pintaCabeca(g, nome, ox = 0, oy = 0, olhar = 0) {
+    const [pele, cabelo, corC, barba] = tracosDe(nome);
+    const px = (x, y, c, a = 1) => { g.globalAlpha = a; g.fillStyle = c; g.fillRect(ox + x, oy + y, 1, 1); g.globalAlpha = 1; };
     const ret = (x0, y0, x1, y1, c, a) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) px(x, y, c, a); };
-    const P = PELE[pele] || PELE[2], C = CABELO[corC] || CABELO.p, sombra = "#00000040";
-    // camisa (ombros) e gola
-    ret(2, 13, 13, 15, cam); ret(3, 12, 12, 12, cam);
-    const dentro = (x, y) => (y >= 13 ? x >= 2 && x <= 13 : x >= 3 && x <= 12);
-    for (let y = 12; y <= 15; y++) for (let x = 2; x <= 13; x++) {
-      if (!dentro(x, y)) continue;
-      const pinta = desenho === "l" ? Math.floor((x - 2) / 2) % 2 === 1 : desenho === "h" ? y % 2 === 1 : desenho === "x" ? (x + y) % 2 === 1
-        : desenho === "c" ? x === 7 || x === 8 : desenho === "f" ? y === 14 : desenho === "d" ? x - y === -6 || x - y === -5 : desenho === "m" ? x >= 8 : false;
-      if (pinta) px(x, y, det);
-    }
-    px(6, 12, det); px(9, 12, det); if (!desenho) { px(7, 13, det); px(8, 13, det); } // a gola
+    const P = PELE[pele] || PELE[2], C = CABELO[corC] || CABELO.p, sombra = "#00000040", o = olhar;
     // pescoço, cabeça e orelhas
     ret(6, 10, 9, 12, P); px(6, 11, sombra); px(9, 11, sombra);
-    ret(4, 3, 11, 9, P); g.clearRect(4, 3, 1, 1); g.clearRect(11, 3, 1, 1); px(4, 9, sombra, .5); px(11, 9, sombra, .5); ret(5, 10, 10, 10, P);
+    ret(5, 3, 10, 3, P); ret(4, 4, 11, 9, P); px(4, 9, sombra, .5); px(11, 9, sombra, .5); ret(5, 10, 10, 10, P);
     px(3, 6, P); px(12, 6, P); px(3, 7, P); px(12, 7, P);
     // cabelo
     if (cabelo === "c") { ret(4, 1, 11, 2, C); ret(4, 3, 4, 4, C); ret(11, 3, 11, 4, C); ret(5, 3, 7, 3, C); }
@@ -144,13 +158,37 @@ André Onana:5kp-|Bart Verbruggen:1cc-|Guglielmo Vicario:2cpb|Robert Sánchez:2c
     else if (cabelo === "m") { ret(7, 0, 8, 2, C); ret(4, 2, 11, 3, C, .4); }
     else px(9, 3, "#ffffff", .35); // careca: o brilho
     // olhos, sobrancelhas, nariz e boca
-    px(6, 6, "#1a1210"); px(9, 6, "#1a1210"); px(6, 5, C, .7); px(9, 5, C, .7);
-    px(7, 7, sombra); px(7, 8, "#00000059"); px(8, 8, "#00000059");
+    px(6 + o, 6, "#1a1210"); px(9 + o, 6, "#1a1210"); px(6 + o, 5, C, .7); px(9 + o, 5, C, .7);
+    px(7 + o, 7, sombra); px(7 + o, 8, "#00000059"); px(8 + o, 8, "#00000059");
     // barba
     if (barba === "b" || barba === "s") { const a = barba === "s" ? .45 : 1; ret(4, 8, 4, 9, C, a); ret(11, 8, 11, 9, C, a); ret(5, 9, 10, 10, C, a); px(6, 8, C, a); px(9, 8, C, a); }
     else if (barba === "v") { ret(7, 9, 8, 10, C); px(6, 8, C); px(9, 8, C); }
     else if (barba === "g") ret(6, 7, 9, 7, C);
+  }
+  const cache = new Map();
+  function de(nome) {
+    if (cache.has(nome)) return cache.get(nome);
+    const [cam, det, desenho] = camisaDe(nome);
+    const cv = document.createElement("canvas"); cv.width = 16; cv.height = 16;
+    const g = cv.getContext("2d"), px = (x, y, c, a = 1) => { g.globalAlpha = a; g.fillStyle = c; g.fillRect(x, y, 1, 1); g.globalAlpha = 1; };
+    const ret = (x0, y0, x1, y1, c, a) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) px(x, y, c, a); };
+    // camisa (ombros) e gola
+    ret(2, 13, 13, 15, cam); ret(3, 12, 12, 12, cam);
+    const dentro = (x, y) => (y >= 13 ? x >= 2 && x <= 13 : x >= 3 && x <= 12);
+    for (let y = 12; y <= 15; y++) for (let x = 2; x <= 13; x++) {
+      if (!dentro(x, y)) continue;
+      if (pintaListra(desenho, x - 2, y)) px(x, y, det);
+    }
+    px(6, 12, det); px(9, 12, det); if (!desenho) { px(7, 13, det); px(8, 13, det); } // a gola
+    pintaCabeca(g, nome);
     const url = cv.toDataURL(); cache.set(nome, url); return url;
   }
-  window.Rostos = { de, tracosDe, camisaDe };
+  // o desenho da camisa no pixel (x a partir do ombro esquerdo, y da linha): l listras, h aros, x xadrez, c faixa
+  // vertical no meio, f faixa horizontal, d faixa diagonal, m metade de cada cor. O boneco dos lances usa o mesmo.
+  function pintaListra(desenho, x, y) {
+    return desenho === "l" ? Math.floor(x / 2) % 2 === 1 : desenho === "h" ? y % 2 === 1 : desenho === "x" ? (x + y) % 2 === 1
+      : desenho === "c" ? x === 5 || x === 6 : desenho === "f" ? y === 14 : desenho === "d" ? x - y === -8 || x - y === -7 : desenho === "m" ? x >= 6 : false;
+  }
+  const peleDe = (nome) => PELE[tracosDe(nome)[0]] || PELE[2];
+  window.Rostos = { de, tracosDe, camisaDe, uniformeDe, pele: peleDe, cabeca: pintaCabeca, listra: pintaListra };
 })();
