@@ -7,7 +7,10 @@
 // a pessoa tem RECONNECT_MS para voltar com o mesmo token e a batalha continua de onde parou.
 const G = require("./galeramon.js");
 const { rid, limparNome: cleanName } = require("./salas.js");
-const MW = 40, MH = 44, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
+const MW = 320, MH = 260, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
+const OX = 140, OY = 100; // onde fica a vila dentro do mapa grande
+const ZONAS = ["", "nubank", "neoquimica", "morumbis", "belmiro"]; // na rua ("") ou dentro de um estádio
+const zonaDe = (z) => (ZONAS.includes(z) ? z : "");
 const INVITE_MS = 20000, CHOICE_MS = 45000, RECONNECT_MS = +process.env.VILA_RECONNECT_MS || 45000;
 const POKEMON_ON = process.env.POKEMON !== "0"; // modo Pokémon (sprites do PokeAPI). POKEMON=0 desliga.
 const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "ludo", "botao", "corrida", "tiro", "pelada", "rocket", "batalha", "tenis", "rumi", "proibida", "pingpong"];
@@ -22,7 +25,7 @@ module.exports = function attachVila(io) {
   const byToken = new Map(); // token -> jogador
   const invites = new Map(); // id de quem foi desafiado -> { from, team, mode, timer }
 
-  const pub = (p) => ({ id: p.id, name: p.name, look: p.look, x: p.x, y: p.y, dir: p.dir, busy: !!p.battle });
+  const pub = (p) => ({ id: p.id, name: p.name, look: p.look, x: p.x, y: p.y, dir: p.dir, busy: !!p.battle, z: p.z || "", car: !!p.car });
   const to = (id) => { const p = players.get(id); return nsp.to(p ? p.sock : "-"); }; // manda só para essa pessoa
   // avisa os outros que alguém mudou. A própria pessoa não recebe, senão vira um "clone" dela na tela.
   const tellOthers = (p, ev = "update") => nsp.except(p.sock).emit(ev, pub(p));
@@ -86,11 +89,11 @@ module.exports = function attachVila(io) {
   }
 
   nsp.on("connection", (socket) => {
-    let me = null, budget = 40, lastRefill = Date.now();
+    let me = null, budget = 60, lastRefill = Date.now();
     socket.emit("cfg", { pokemon: POKEMON_ON });
-    const allow = () => { // no máximo ~20 atualizações por segundo por pessoa
+    const allow = () => { // no máximo ~30 atualizações por segundo por pessoa (de carro, anda-se rápido)
       const now = Date.now();
-      budget = Math.min(40, budget + ((now - lastRefill) / 1000) * 20); lastRefill = now;
+      budget = Math.min(60, budget + ((now - lastRefill) / 1000) * 30); lastRefill = now;
       if (budget < 1) return false;
       budget--; return true;
     };
@@ -124,7 +127,7 @@ module.exports = function attachVila(io) {
         me = { id: rid(6), token, sock: socket.id, battle: null, offline: false };
         players.set(me.id, me); byToken.set(token, me);
       }
-      Object.assign(me, { name, look, x: clamp(int(d.x, 19), 0, MW - 1), y: clamp(int(d.y, 23), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down" });
+      Object.assign(me, { name, look, x: clamp(int(d.x, OX + 19), 0, MW - 1), y: clamp(int(d.y, OY + 23), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down", z: zonaDe(d.z), car: !!d.car });
       socket.emit("me", { id: me.id, token });
       socket.emit("all", [...players.values()].filter((p) => p !== me && !p.offline).map(pub));
       tellOthers(me, fresh ? "join" : "update");
@@ -134,7 +137,8 @@ module.exports = function attachVila(io) {
       if (!mine() || !allow()) return;
       me.x = clamp(int(d.x, me.x), 0, MW - 1); me.y = clamp(int(d.y, me.y), 0, MH - 1);
       if (DIRS.includes(d.dir)) me.dir = d.dir;
-      nsp.except(me.sock).emit("move", { id: me.id, x: me.x, y: me.y, dir: me.dir, run: !!d.run });
+      me.z = zonaDe(d.z); me.car = !!d.car;
+      nsp.except(me.sock).emit("move", { id: me.id, x: me.x, y: me.y, dir: me.dir, run: !!d.run, z: me.z, car: me.car });
     });
 
     socket.on("look", (d = {}) => {
