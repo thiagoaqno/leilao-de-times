@@ -1282,5 +1282,86 @@
       false,
       true
     ]
+  },
+  "/ginasio": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa sala."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na sala."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "Ação desconhecida."
+    },
+    "camposDoEstado": [
+      "code",
+      "config",
+      "feed",
+      "host",
+      "match",
+      "now",
+      "phase",
+      "players",
+      "results"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
   }
 }

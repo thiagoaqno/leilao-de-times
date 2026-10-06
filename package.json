@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test tests/comum.test.js tests/regras.test.js tests/campo.test.js tests/servidor.test.js tests/salas.test.js tests/rumi.test.js tests/pingpong.test.js tests/ginasio.test.js",
+    "test": "node --test tests/comum.test.js tests/regras.test.js tests/campo.test.js tests/servidor.test.js tests/salas.test.js tests/rumi.test.js tests/pingpong.test.js tests/ginasio.test.js tests/ginasio-servidor.test.js",
     "test:e2e": "playwright test"
   },
   "engines": {
