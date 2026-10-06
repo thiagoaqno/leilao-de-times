@@ -43,6 +43,14 @@
   const ativo = (j) => j.time[j.ativo];
   const vivo = (m) => m.hp > 0;
   const emCampo = (e) => e.campo && e.bicho && e.bicho.hp > 0;
+  // quem está voando alto ou debaixo da terra não pode ser acertado
+  const alcancavel = (e) => emCampo(e) && !e.oculto;
+
+  // golpes que viram movimento: o bicho some (voando, cavando, mergulhando ou nas sombras) e cai em cima do alvo
+  const SUMIR = { fly: "voo", bounce: "voo", dig: "cova", escavar: "cova", mergulho: "mergulho", shadowforce: "sombra" };
+  const DURACAO_SUMIR = { voo: 1.1, cova: 1, mergulho: 1, sombra: 0.9 };
+  // golpes de giro: viram investida, e o bicho gira no caminho
+  const GIROS = new Set(["gyroball", "flamewheel", "rolamento", "cambalhota"]);
 
   function habilidadeDeGolpe(id, mv) {
     if (!mv) throw new Error(`Golpe desconhecido: ${id}`);
@@ -66,6 +74,11 @@
     if (mv.halve) return { ...base, classe: "projetil", especial: "metade", poder: 1, recarga: 3.8, velocidade: 7.2, largura: 0.22 };
     if (mv.self && poder <= 0 && !mv.foe) return { ...base, classe: "reforco", recarga: 8 };
     if (mv.foe && poder <= 0) return { ...base, classe: "debuff", recarga: 4.5, velocidade: 4.6, largura: 0.24 };
+    if (SUMIR[id] && poder > 0) {
+      const jeito = SUMIR[id];
+      return { ...base, classe: "sumir", jeito, duracao: DURACAO_SUMIR[jeito], raio: 1.3, alcance: 5.5, recarga: clamp(2.5 + poder / 40, 3, 6) };
+    }
+    if (GIROS.has(id) && poder > 0) return { ...base, classe: "investida", giro: true, alcance: 3.2, velocidade: 11, recarga: clamp(1.4 + poder / 50, 1, 3.5) };
     if (poder > 0 && mv.pri > 0) return { ...base, classe: "investida", alcance: 3, velocidade: 13, recarga: clamp(1.1 + poder / 55, 1, 3.5) };
     if (poder >= 100) return { ...base, classe: "area", aviso: 0.7, raio: 1.5, alcance: 5 };
     if (poder > 0 && !fisico) return { ...base, classe: "projetil" };
@@ -135,7 +148,7 @@
       id: j.id, lado: j.lado, slot: j.slot, jogador: j, bicho: ativo(j),
       x, y, vx: 0, vy: 0, mira: { x: j.lado === 0 ? 1 : -1, y: 0 },
       campo: true, raio: RAIO_BICHO, invulneravel: 0, esquivaCd: 0, esquivaT: 0,
-      dash: null, canal: null, escudo: null, impedido: 0,
+      dash: null, canal: null, escudo: null, impedido: 0, oculto: null,
     };
   }
 
@@ -236,7 +249,7 @@
   }
 
   function usarGolpe(p, e, idx, c = {}) {
-    if (!emCampo(e) || e.canal || e.impedido > 0) return false;
+    if (!emCampo(e) || e.canal || e.impedido > 0 || e.oculto) return false;
     const b = e.bicho, spc = spec(p, b), key = spc.moves[idx], mv = p.dex.MOVES[key];
     if (!mv || b.cds[idx] > 0) return false;
     let hab = prepararGolpe(p, habilidadeDeGolpe(key, mv));
@@ -254,7 +267,7 @@
       if (b.usos[key] > mv.max) { p.ev.push({ tipo: "falhou", id: e.id, golpe: key }); return false; }
     }
     b.cds[idx] = hab.recarga;
-    p.ev.push({ tipo: "golpe", id: e.id, golpe: key, classe: hab.classe });
+    p.ev.push({ tipo: "golpe", id: e.id, golpe: key, classe: hab.classe, elemento: hab.tipo });
 
     if (hab.classe === "metronomo") {
       const opts = Object.entries(p.dex.MOVES).filter(([, x]) => x.p > 0);
@@ -273,7 +286,7 @@
     }
     if (hab.classe === "transformar") {
       const alvo = alvoMaisPerto(p, e);
-      if (alvo) { b.as = alvo.bicho.as || alvo.bicho.id; b.st = { ...alvo.bicho.st }; p.ev.push({ tipo: "transformar", id: e.id, alvo: alvo.id }); }
+      if (alvo && !alvo.oculto) { b.as = alvo.bicho.as || alvo.bicho.id; b.st = { ...alvo.bicho.st }; p.ev.push({ tipo: "transformar", id: e.id, alvo: alvo.id }); }
       return true;
     }
     if (hab.classe === "cura") { e.canal = { t: 0.8, heal: mv.heal || 0.5 }; e.vx = 0; e.vy = 0; return true; }
@@ -282,6 +295,7 @@
     const mira = dirMira(e, c);
     e.mira = { x: mira.x, y: mira.y };
     if (hab.classe === "corpo") acertarCorpo(p, e, hab);
+    else if (hab.classe === "sumir") sumir(p, e, c, hab);
     else if (hab.classe === "investida") e.dash = { x: mira.x, y: mira.y, falta: hab.alcance, hab, hit: new Set() };
     else if (hab.classe === "area") p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: pontoMira(e, c, hab).x, y: pontoMira(e, c, hab).y, r: hab.raio, t: hab.aviso, hab });
     else if (hab.classe === "projetil" || hab.classe === "debuff") p.projeteis.push({ id: p.seq++, lado: e.lado, dono: e.id, x: e.x + mira.x * 0.45, y: e.y + mira.y * 0.45, dx: mira.x, dy: mira.y, v: hab.velocidade, raio: hab.largura, vida: 1.8, hab });
@@ -289,8 +303,17 @@
     return true;
   }
 
+  // some agora e volta no ponto mirado quando a área cair (os dois acabam no mesmo passo)
+  function sumir(p, e, c, hab) {
+    const para = pontoMira(e, c, hab);
+    e.oculto = { jeito: hab.jeito, t: hab.duracao, total: hab.duracao, de: { x: e.x, y: e.y }, para };
+    e.vx = 0; e.vy = 0;
+    p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: para.x, y: para.y, r: hab.raio, t: hab.duracao, hab });
+    p.ev.push({ tipo: "sumiu", id: e.id, jeito: hab.jeito, elemento: hab.tipo, de: { ...e.oculto.de }, para: { ...para } });
+  }
+
   function acertarCorpo(p, e, hab) {
-    for (const o of p.entidades) if (o.lado !== e.lado && emCampo(o)) {
+    for (const o of p.entidades) if (o.lado !== e.lado && alcancavel(o)) {
       const dx = o.x - e.x, dy = o.y - e.y, d = Math.hypot(dx, dy);
       if (d > hab.alcance + o.raio) continue;
       const frente = (dx / (d || 1)) * e.mira.x + (dy / (d || 1)) * e.mira.y;
@@ -321,7 +344,7 @@
   }
 
   function aplicarDano(p, atacante, defensor, hab) {
-    if (!emCampo(defensor) || defensor.invulneravel > 0) { p.ev.push({ tipo: "esquivou", id: defensor.id }); return false; }
+    if (!emCampo(defensor) || defensor.invulneravel > 0 || defensor.oculto) { p.ev.push({ tipo: "esquivou", id: defensor.id }); return false; }
     const r = calcularDano(p, atacante, defensor, hab);
     if (r.dano <= 0) { p.ev.push({ tipo: "imune", id: defensor.id, eff: r.eff }); return true; }
     const b = defensor.bicho, antes = b.hp;
@@ -354,7 +377,7 @@
 
   function desmaiar(p, e) {
     if (!e.campo) return;
-    e.campo = false; e.dash = null; e.canal = null; e.escudo = null;
+    e.campo = false; e.dash = null; e.canal = null; e.escudo = null; e.oculto = null;
     e.jogador.entradaEm = temReserva(e.jogador) ? ENTRADA_DESMAIO : 0;
     p.ev.push({ tipo: "desmaiou", id: e.id, bicho: e.bicho.id });
   }
@@ -366,13 +389,13 @@
   function trocar(p, e, idx, forcar = false) {
     const j = e.jogador, novo = j.time[idx];
     if (!novo || novo.hp <= 0 || idx === j.ativo) return false;
-    if (!forcar && j.trocaCd > 0) return false;
+    if (!forcar && (j.trocaCd > 0 || e.oculto)) return false;
     e.bicho.mods.length = 0;
     e.bicho.st = { atk: 0, def: 0, spd: 0 };
     e.bicho.as = null;
     j.ativo = idx;
     e.bicho = ativo(j);
-    e.campo = true; e.invulneravel = Math.max(e.invulneravel, 0.45); e.canal = null; e.dash = null;
+    e.campo = true; e.invulneravel = Math.max(e.invulneravel, 0.45); e.canal = null; e.dash = null; e.oculto = null;
     if (!forcar) j.trocaCd = TROCA_RECARGA;
     const spawn = spawnDe(j.lado, j.slot);
     e.x = spawn.x; e.y = spawn.y; e.vx = 0; e.vy = 0;
@@ -395,7 +418,7 @@
   }
 
   function esquivar(p, e, c) {
-    if (!emCampo(e) || e.esquivaCd > 0) return;
+    if (!emCampo(e) || e.esquivaCd > 0 || e.oculto) return;
     const mov = dirMov(c), d = norm(mov.x, mov.y, e.mira);
     e.invulneravel = Math.max(e.invulneravel, 0.25);
     e.esquivaCd = 3;
@@ -407,10 +430,21 @@
 
   function mover(e, dt, c, p, previsao = false) {
     if (!emCampo(e)) return;
+    if (e.oculto) {
+      const o = e.oculto;
+      o.t = Math.max(0, o.t - dt);
+      const k = 1 - o.t / o.total;
+      e.x = o.de.x + (o.para.x - o.de.x) * k; e.y = o.de.y + (o.para.y - o.de.y) * k;
+      if (o.t <= 0) {
+        limitar(e); e.oculto = null; e.invulneravel = Math.max(e.invulneravel, 0.1);
+        p.ev.push({ tipo: "voltou", id: e.id, jeito: o.jeito, x: e.x, y: e.y });
+      }
+      return;
+    }
     if (e.dash) {
       const d = Math.min(e.dash.falta, e.dash.hab.velocidade * dt);
       e.x += e.dash.x * d; e.y += e.dash.y * d; e.dash.falta -= d; limitar(e);
-      for (const o of previsao ? [] : p.entidades) if (o.lado !== e.lado && emCampo(o) && !e.dash.hit.has(o.id) && dist(e, o) < e.raio + o.raio + 0.35) {
+      for (const o of previsao ? [] : p.entidades) if (o.lado !== e.lado && alcancavel(o) && !e.dash.hit.has(o.id) && dist(e, o) < e.raio + o.raio + 0.35) {
         e.dash.hit.add(o.id); aplicarDano(p, e, o, e.dash.hab);
       }
       if (e.dash.falta <= 0) e.dash = null;
@@ -433,7 +467,7 @@
     if (pr.vida <= 0 || projetilBateParede(pr)) return false;
     const dono = p.entidades.find((e) => e.id === pr.dono);
     if (!dono) return false;
-    for (const o of p.entidades) if (o.lado !== pr.lado && emCampo(o) && Math.hypot(o.x - pr.x, o.y - pr.y) < o.raio + pr.raio) {
+    for (const o of p.entidades) if (o.lado !== pr.lado && alcancavel(o) && Math.hypot(o.x - pr.x, o.y - pr.y) < o.raio + pr.raio) {
       if (pr.hab.classe === "debuff") aplicarMod(p, o, pr.hab.mv.foe || {});
       else aplicarDano(p, dono, o, pr.hab);
       return false;
@@ -445,7 +479,7 @@
     a.t -= dt;
     if (a.t > 0) return true;
     const dono = p.entidades.find((e) => e.id === a.dono);
-    if (dono) for (const o of p.entidades) if (o.lado !== a.lado && emCampo(o) && Math.hypot(o.x - a.x, o.y - a.y) <= a.r + o.raio) aplicarDano(p, dono, o, a.hab);
+    if (dono) for (const o of p.entidades) if (o.lado !== a.lado && alcancavel(o) && Math.hypot(o.x - a.x, o.y - a.y) <= a.r + o.raio) aplicarDano(p, dono, o, a.hab);
     return false;
   }
 
@@ -472,7 +506,8 @@
     if (perigo && e.esquivaCd <= 0) { cmd.esquiva = true; cmd.dx = -dy / d; cmd.dy = dx / d; }
     if (golpe != null && (d < 5 || valor > 4) && p.rng() < 0.18) {
       cmd.golpe = golpe;
-      if (p.dex.MOVES[moves[golpe]] && p.dex.MOVES[moves[golpe]].p >= 100) cmd.alvo = { x: alvo.x, y: alvo.y };
+      const hab = habilidadeDeGolpe(moves[golpe], p.dex.MOVES[moves[golpe]]);
+      if (hab.classe === "area" || hab.classe === "sumir") cmd.alvo = { x: alvo.x, y: alvo.y };
     }
     if (e.bicho.hp < e.bicho.max * 0.18 && e.jogador.trocaCd <= 0) {
       const idx = e.jogador.time.findIndex((m, i) => i !== e.jogador.ativo && m.hp > m.max * 0.4);
@@ -564,6 +599,7 @@
     e.esquivaCd = Math.max(0, e.esquivaCd - dt);
     e.impedido = Math.max(0, (e.impedido || 0) - dt);
     if (e.canal) { e.canal.t -= dt; if (e.canal.t <= 0) e.canal = null; }
+    if (e.oculto) { mover(e, dt, c, p, true); return e; }
     const mira = dirMira(e, c);
     e.mira = { x: mira.x, y: mira.y };
     if (c.esquiva) esquivar(p, e, c);

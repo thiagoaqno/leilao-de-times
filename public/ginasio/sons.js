@@ -24,6 +24,8 @@ function tocarEvento(e) {
   else if (e.tipo === "esquiva") nota(280, 760, 0.1);
   else if (e.tipo === "cura") nota(500, 900, 0.16);
   else if (e.tipo === "troca") nota(320, 640, 0.12);
+  else if (e.tipo === "sumiu") nota(e.jeito === "voo" ? 300 : 160, e.jeito === "voo" ? 900 : 60, 0.22, e.jeito === "voo" ? "sine" : "triangle");
+  else if (e.tipo === "voltou") { nota(e.jeito === "voo" ? 700 : 110, 40, 0.18, "triangle"); nota(90, 30, 0.2, "square", 0.03); }
   else if (e.tipo === "fim") { for (let i = 0; i < 3; i++) nota([440, 550, 660][i], [440, 550, 660][i], 0.18, "triangle", i * 0.13); }
   else return;
   ultimoSom = agora;
