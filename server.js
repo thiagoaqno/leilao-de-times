@@ -85,8 +85,10 @@ function splitSections(text) {
 }
 function revealPublic(room) {
   const r = room.reveal;
+  // com os pênaltis da galera, o campeonato vai sendo simulado aos poucos: até chegar ao fim, o total é o previsto
+  const total = r.lives && !r.completo ? Math.max(r.previstas || 0, r.sections.length) : r.sections.length;
   // o resumo (para o card do campeão) só vai para os participantes depois que tudo foi revelado
-  const out = { total: r.sections.length, shown: r.shown, sections: r.sections.slice(0, r.shown), summary: r.summary && r.shown >= r.sections.length ? r.summary : null };
+  const out = { total, shown: r.shown, sections: r.sections.slice(0, r.shown).map((s) => s || ""), summary: r.summary && r.shown >= total ? r.summary : null };
   if (r.lives) {
     // campeonato simulado: os jogos das partes já reveladas (para o placar ao vivo), quando cada parte saiu,
     // os confrontos da próxima parte (sem resultado, para os palpites) e os palpites. O bolão é contado no
@@ -95,28 +97,120 @@ function revealPublic(room) {
     out.quando = r.quando.slice(0, r.shown);
     out.proximos = proximos(r).map((j) => ({ id: j.id, titulo: j.titulo, mataMata: j.mataMata, A: j.A, B: j.B }));
     out.palpites = r.palpites;
+    // os pênaltis da galera: as pausas do relógio de cada parte e o duelo aberto (os cantos só aparecem no resultado)
+    out.pausas = (r.pausas || []).slice(0, r.shown);
+    out.duelo = r.duelo ? dueloPublico(r.duelo) : null;
   }
   return out;
 }
+const dueloPublico = (d) => ({ id: d.id, parte: d.parte, jogo: d.jogo, tipo: d.tipo, min: d.min, cob: d.cob, lado: d.lado, batedor: d.batedor, goleiro: d.goleiro,
+  bate: d.bate, defende: d.defende, prazo: d.prazo, escolheu: { chute: !!d.escolhas.chute, pulo: !!d.escolhas.pulo }, resultado: d.resultado, ate: d.ate });
 // os jogos da próxima parte a ser revelada (é neles que dá para palpitar). Só abrem depois que os jogos da parte
 // de agora terminam na tela: antes disso, os confrontos da próxima entregariam quem ganhou.
-const rolandoAte = (r) => { const i = r.shown - 1, l = r.lives && r.lives[i]; return l && r.quando[i] ? r.quando[i] + Ritmo.duracaoParte(l) : 0; };
+const rolandoAte = (r) => {
+  const i = r.shown - 1, l = r.lives && r.lives[i];
+  if (!l || !r.quando[i]) return 0;
+  if (r.duelo || l.jogos.some((j) => j.pendente)) return Infinity; // ainda tem pênalti para a galera decidir
+  return r.quando[i] + Ritmo.pausado(r.pausas[i], Date.now()) + Ritmo.duracaoParte(l);
+};
 const proximos = (r) => (r.lives && r.shown < r.lives.length && r.lives[r.shown] && Date.now() >= rolandoAte(r) ? r.lives[r.shown].jogos : []);
 // as trocas fecham (simulou, abriu a votação dos pratos ou o organizador fechou)
 function fecharTrocas(room) { if (room.trocas) { room.trocas.aberto = false; room.trocas.props = []; } }
 // revelou as partes de..até: marca a hora (para o placar ao vivo) e, no fim do campeonato, avisa a Noite
 function revelou(room, de, ate, aoVivo) {
   const r = room.reveal; if (!r.lives) return;
-  for (let i = de; i < ate; i++) r.quando[i] = aoVivo ? Date.now() : 0;
-  // quando os jogos de agora terminarem, manda o estado de novo (abre os palpites da próxima parte)
-  const fim = rolandoAte(r);
-  if (fim) setTimeout(() => { if (room.reveal === r) broadcast(room); }, fim - Date.now() + 100);
-  if (r.shown >= r.sections.length && r.campeao && !r.noiteFeita && room.captains[r.campeao]) {
+  for (let i = de; i < ate; i++) { r.quando[i] = aoVivo ? Date.now() : 0; r.pausas[i] = []; }
+  agendaPenalti(room);
+  avisaFimDaParte(room);
+  avisaNoite(room);
+}
+// quando os jogos de agora terminarem, manda o estado de novo (abre os palpites da próxima parte)
+function avisaFimDaParte(room) {
+  const r = room.reveal, fim = rolandoAte(r);
+  if (fim && fim !== Infinity) setTimeout(() => { if (room.reveal === r) broadcast(room); }, fim - Date.now() + 100);
+}
+// no fim do campeonato (tudo revelado), avisa a Noite quem foi o campeão
+function avisaNoite(room) {
+  const r = room.reveal;
+  if (r.completo && r.shown >= r.sections.length && r.campeao && !r.noiteFeita && room.captains[r.campeao]) {
     r.noiteFeita = true;
     const nome = (id) => room.captains[id].name;
     noite.vitoria("leilao", room.code, [nome(r.campeao)], room.order.filter((id) => id !== r.campeao && room.captains[id].team.length).map(nome));
   }
 }
+
+// ---------- os pênaltis da galera ----------
+// Quando o placar ao vivo da parte que está rolando chega num pênalti que ainda não foi decidido, abre o duelo: o dono
+// do time que bate escolhe o canto, o dono do outro time escolhe para onde o goleiro pula, e o relógio da parte para
+// (r.pausas). Quem não escolhe a tempo fica com um canto sorteado; o mesmo canto é defesa, e de vez em quando a bola
+// vai para fora. Com a decisão, o campeonato é simulado de novo com a mesma semente (o que já saiu não muda).
+const zonaQualquer = () => Ritmo.ZONAS[Math.floor(Math.random() * Ritmo.ZONAS.length)];
+const decideCobranca = (chute, pulo) => { const fora = Math.random() < Ritmo.DUELO.FORA; return { chute, pulo, fora, gol: !fora && chute !== pulo }; };
+// os times como estavam na hora de simular: o campeonato é simulado de novo depois de cada pênalti, e não pode mudar
+// se alguém mexer na escalação no meio
+const fotoDosTimes = (room) => JSON.parse(JSON.stringify({ order: room.order, captains: Object.fromEntries(room.order.map((id) => {
+  const c = room.captains[id]; return [id, { name: c.name, teamName: c.teamName, team: c.team, formation: c.formation, pins: c.pins }];
+})) }));
+function resimula(room) {
+  const r = room.reveal, res = simulate(r.elenco, r.opts, { seed: r.seed, decisoes: r.decisoes, penaltis: r.opts.penaltis });
+  Object.assign(r, { sections: res.sections, lives: res.lives, completo: res.completo, previstas: res.previstas, campeao: res.campeao, summary: res.summary });
+}
+// marca a hora em que o relógio da parte que está rolando chega no próximo pênalti
+function agendaPenalti(room) {
+  const r = room.reveal; clearTimeout(r.timer); r.timer = null;
+  if (!r.lives || r.duelo) return;
+  const i = r.shown - 1, live = r.lives[i];
+  if (!live || !r.quando[i]) return;
+  const j = live.jogos.filter((x) => x.pendente).sort((a, b) => Ritmo.tempoPendente(a) - Ritmo.tempoPendente(b))[0];
+  if (!j) return;
+  const quando = r.quando[i] + Ritmo.pausado(r.pausas[i], Date.now()) + Ritmo.tempoPendente(j);
+  r.timer = setTimeout(() => { if (room.reveal === r) abreDuelo(room, i, j.id); }, Math.max(0, quando - Date.now()));
+}
+function abreDuelo(room, i, jogoId) {
+  const r = room.reveal, j = r.lives[i] && r.lives[i].jogos.find((x) => x.id === jogoId), p = j && j.pendente;
+  if (!p || r.duelo) return;
+  const agora = Date.now(), dono = (lado) => (lado === "A" ? j.A.id : j.B.id);
+  r.duelo = { id: p.id, parte: i, jogo: j.id, tipo: p.tipo, min: p.min, cob: p.cob, lado: p.lado, batedor: p.batedor, goleiro: p.goleiro,
+    bate: dono(p.lado), defende: dono(p.lado === "A" ? "B" : "A"), prazo: agora + (p.tipo === "disputa" ? Ritmo.DUELO.DISPUTA : Ritmo.DUELO.JOGO),
+    escolhas: {}, resultado: null, ate: null };
+  r.pausas[i].push([agora, null]);
+  r.timer = setTimeout(() => { if (room.reveal === r) fechaDuelo(room); }, r.duelo.prazo - agora);
+  broadcast(room);
+}
+// os dois escolheram (ou o tempo acabou): decide, simula de novo e mostra o replay; depois o relógio volta a andar
+function fechaDuelo(room) {
+  const r = room.reveal, d = r.duelo;
+  if (!d || d.resultado) return;
+  clearTimeout(r.timer);
+  d.resultado = decideCobranca(d.escolhas.chute || zonaQualquer(), d.escolhas.pulo || zonaQualquer());
+  r.decisoes[d.id] = d.resultado;
+  resimula(room);
+  d.ate = Date.now() + (d.tipo === "disputa" ? Ritmo.DUELO.REPLAY_DISPUTA : Ritmo.DUELO.REPLAY);
+  const pausas = r.pausas[d.parte]; pausas[pausas.length - 1][1] = d.ate;
+  broadcast(room);
+  r.timer = setTimeout(() => {
+    if (room.reveal !== r || r.duelo !== d) return;
+    r.duelo = null;
+    agendaPenalti(room); avisaFimDaParte(room); avisaNoite(room); broadcast(room);
+  }, d.ate - Date.now());
+}
+// o duelo aberto fecha sem decidir (a parte saiu da tela ou o campeonato acabou de outro jeito)
+function cancelaDuelo(r) {
+  clearTimeout(r.timer); r.timer = null;
+  if (r.duelo && !r.duelo.resultado) { const p = r.pausas[r.duelo.parte]; if (p && p.length && !p[p.length - 1][1]) p.pop(); }
+  r.duelo = null;
+}
+// "revelar tudo": os pênaltis que faltam saem com cantos sorteados, até o campeonato chegar ao fim
+function decideTudo(room) {
+  const r = room.reveal;
+  cancelaDuelo(r);
+  for (let volta = 0; volta < 500 && !r.completo; volta++) {
+    for (const l of r.lives) if (l) for (const j of l.jogos) if (j.pendente) r.decisoes[j.pendente.id] = decideCobranca(zonaQualquer(), zonaQualquer());
+    resimula(room);
+  }
+}
+// antes de trocar o resultado (simulou de novo, apagou, reiniciou...): para o relógio dos pênaltis
+function paraRelogios(room) { const r = room.reveal; if (r && r.lives) cancelaDuelo(r); }
 
 
 const str = (v, d, max = 30) => { const t = String(v ?? "").trim().slice(0, max); return t || d; };
@@ -513,6 +607,7 @@ io.on("connection", (socket) => {
       if (!room.judge || room.judge.status !== "voting") return fail(cb, "A votação não está aberta.");
       try {
         const { sections, summary } = Juri.julgar(room);
+        paraRelogios(room);
         room.reveal = { sections, shown: 0, summary };
         room.judge.status = "done";
         log(room, `Votação encerrada e pratos julgados (${sections.length} partes). Prepare-se!`);
@@ -521,30 +616,40 @@ io.on("connection", (socket) => {
       if (!room.order.some((id) => room.captains[id].team.length)) return fail(cb, "Ainda não tem time para simular.");
       if (room.reveal.sections.length && room.reveal.shown < room.reveal.sections.length && !data.force) return fail(cb, "Ainda tem resultado sendo revelado.");
       try {
-        const { sections, lives, campeao, summary } = simulate(room, { sport: data.sport, format: data.format });
-        room.reveal = { sections, shown: 0, summary, lives, campeao, quando: [], palpites: {} };
+        const opts = { sport: data.sport, format: data.format, penaltis: data.penaltis !== false };
+        const elenco = fotoDosTimes(room), seed = Math.random().toString(36).slice(2, 10);
+        const res = simulate(elenco, opts, { seed, decisoes: {}, penaltis: opts.penaltis });
+        paraRelogios(room);
+        room.reveal = { sections: res.sections, shown: 0, summary: res.summary, lives: res.lives, campeao: res.campeao, completo: res.completo, previstas: res.previstas,
+          quando: [], pausas: [], palpites: {}, seed, decisoes: {}, opts, elenco, duelo: null, timer: null };
         fecharTrocas(room);
-        log(room, `Campeonato simulado com as notas do FC 27 (${sections.length} partes). Prepare-se!`);
+        log(room, `Campeonato simulado com as notas do FC 27 (${revealPublic(room).total} partes)${opts.penaltis ? ", com os pênaltis decididos pela galera" : ""}. Prepare-se!`);
       } catch (e) { return fail(cb, e.message || "Erro na simulação."); }
     } else if (a === "publish") {
       const text = String(data.text || "").slice(0, 80000).trim();
       if (text.length < 20) return fail(cb, "Cole a resposta da IA antes de publicar.");
       const sections = splitSections(text);
+      paraRelogios(room);
       room.reveal = { sections, shown: 0 };
       log(room, `Resultado publicado em ${sections.length} partes. Prepare-se!`);
     } else if (a === "revealNext" || a === "revealAll" || a === "revealPrev") {
       const r = room.reveal;
       if (!r.sections.length) return fail(cb, "Nenhum resultado publicado.");
+      if (a === "revealNext" && r.lives && Date.now() < rolandoAte(r)) return fail(cb, "Espere os jogos de agora terminarem.");
+      if (a === "revealAll" && r.lives) decideTudo(room);
+      if (a === "revealPrev" && r.lives && r.duelo && r.duelo.parte === r.shown - 1) cancelaDuelo(r);
       const antes = r.shown;
       r.shown = a === "revealAll" ? r.sections.length : a === "revealPrev" ? Math.max(0, r.shown - 1) : Math.min(r.sections.length, r.shown + 1);
       if (r.shown > antes) revelou(room, antes, r.shown, a === "revealNext"); // "revelar tudo" mostra os jogos já terminados
     } else if (a === "revealClear") {
+      paraRelogios(room);
       room.reveal = { sections: [], shown: 0 };
     } else if (a === "reset") {
       // recomeça o leilão com os mesmos participantes, a mesma lista e as mesmas regras
       if (room.current) clearTimeout(room.current.timer);
       room.pool = room.original.slice();
       room.unsold = []; room.current = null; room.spin = null; room.history = [];
+      paraRelogios(room);
       room.reveal = { sections: [], shown: 0 };
       for (const id of room.order) { const c = room.captains[id]; c.coins = room.config.coins; c.skipsLeft = room.config.skips; c.team = []; c.pins = {}; }
       room.judge = null; room.trocas = null;
@@ -684,6 +789,20 @@ io.on("connection", (socket) => {
     }
     cb && cb({ ok: true });
     broadcast(room);
+  });
+
+  // o canto do pênalti: o dono do time que bate escolhe onde chutar; o do outro time, para onde o goleiro pula
+  socket.on("penalti", (data, cb) => {
+    const room = bound && rooms.get(bound.code), r = room && room.reveal, d = r && r.duelo;
+    if (!d || d.resultado) return fail(cb, "Não tem pênalti para escolher agora.");
+    const zona = Ritmo.ZONAS.includes(data && data.zona) ? data.zona : null;
+    if (!zona) return fail(cb, "Escolha um canto do gol.");
+    const papel = bound.capId === d.bate ? "chute" : bound.capId === d.defende ? "pulo" : null;
+    if (!papel) return fail(cb, "Quem escolhe são os donos dos dois times.");
+    if (d.escolhas[papel]) return fail(cb, "Você já escolheu.");
+    d.escolhas[papel] = zona;
+    cb && cb({ ok: true });
+    if (d.escolhas.chute && d.escolhas.pulo) fechaDuelo(room); else broadcast(room);
   });
 
   // palpite num jogo da próxima parte do campeonato: A, E (empate) ou B. Fecha quando a parte é revelada.

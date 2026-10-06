@@ -57,7 +57,7 @@ function renderReveal(){
   const r = S.reveal || { total: 0, shown: 0, sections: [] }, card = $("revCard"), t = T();
   card.classList.toggle("hidden", !r.total);
   $("pubBox").classList.toggle("hidden", !me.host);
-  if (!r.total) { lastShown = -1; lastRevTotal = -1; return; }
+  if (!r.total) { lastShown = -1; lastRevTotal = -1; renderDuelo(); return; }
   const julga = t.prompt === "food" || t.prompt === "generic";
   $("revTitle").innerHTML = ic(julga ? "urna" : "taca") + (julga ? "Julgamento" : "Campeonato");
   $("revCount").innerHTML = r.shown >= r.total ? `${ic("ok")} Tudo revelado (${r.total} partes)` : `${r.shown} de ${r.total} partes`;
@@ -69,14 +69,14 @@ function renderReveal(){
     for (let i = out.children.length; i < r.shown; i++) {
       const d = document.createElement("div"); d.className = "revsec"; out.appendChild(d);
       const live = r.lives && r.lives[i];
-      if (live) { d.classList.add("comVivo"); montarAoVivo(d, live, r.quando[i], mdToHtml(r.sections[i])); } // jogo ao vivo (aovivo.js)
+      if (live) { d.classList.add("comVivo"); montarAoVivo(d, i); } // jogo ao vivo (aovivo.js)
       else d.innerHTML = mdToHtml(r.sections[i]);
     }
     if (r.shown > lastShown && lastShown >= 0 && out.lastElementChild) out.lastElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
     lastShown = r.shown; lastRevTotal = r.total;
   }
-  const left = r.total - r.shown, rolando = vivoAte > agoraServidor(); // jogo ao vivo na tela: a próxima parte espera
-  renderPalpites();
+  const left = r.total - r.shown, rolando = vivoAte > agoraServidor() || !!r.duelo; // jogo ao vivo na tela: a próxima parte espera
+  renderPalpites(); renderDuelo();
   const cardBtn = r.summary ? `<div class="revbar" style="border-top:0;margin-top:6px;padding-top:0"><button class="primary" onclick="downloadCard()">${ic("imagem")}Baixar card do campeão</button></div>` : "";
   $("revFoot").innerHTML = me.host
     ? `<div class="revbar">
@@ -92,7 +92,7 @@ $("btnFc").onclick = () => {
   if (!S) return;
   const pending = S.reveal && S.reveal.total && S.reveal.shown < S.reveal.total;
   if (!confirm(pending ? "Ainda tem resultado sendo revelado. Simular um campeonato novo mesmo assim?" : S.reveal && S.reveal.total ? "Simular de novo? O resultado atual será substituído." : "Simular o campeonato agora? O resultado fica escondido e você revela parte por parte.")) return;
-  socket.emit("host", { action: "simFootball", sport: $("fcSport").value, format: $("fcFormat").value, force: true }, (r) => {
+  socket.emit("host", { action: "simFootball", sport: $("fcSport").value, format: $("fcFormat").value, penaltis: $("fcPenaltis").checked, force: true }, (r) => {
     if (r && !r.ok) return toast(r.error);
     toast("Campeonato simulado! Revele parte por parte.");
     setTimeout(() => $("revCard").scrollIntoView({ behavior: "smooth", block: "start" }), 150);

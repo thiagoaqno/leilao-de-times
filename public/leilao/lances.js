@@ -421,7 +421,7 @@
   }
   function cenaAberta(g, L, t) {
     if (!L.fundoA) { L.fundoA = fundoAberto(L, false); L.fundoB = fundoAberto(L, true); }
-    const gol = t >= L.tGol, c = L.tipo.cena(L, t);
+    const gol = t >= L.tGol && L.resultado === "gol", c = L.tipo.cena(L, t);
     g.drawImage(gol && Math.floor((t - L.tGol) / 140) % 2 === 0 ? L.fundoB : L.fundoA, 0, 0);
     if (gol) { const s = sorteio(L.semente + Math.floor(t / 90)); cor(g, "#ffffff"); for (let k = 0; k < 6; k++) g.fillRect(Math.floor(s() * W), Math.floor(s() * 26), 1, 1); g.globalAlpha = 1; } // os flashes
     const forca = gol ? Math.max(0, 1 - (t - L.tGol) / 450) * (1 + Math.sin((t - L.tGol) / 35)) * (L.tipo.forcaRede || 1) : 0;
@@ -478,7 +478,7 @@
     if (fx === "bandeira") bandeirinha(g, x + 26, chao, 34, 2, Math.floor(tc / 90) % 2);
     for (const e of c.extras || []) if (!e.frente) extra(e);
     if (!c.deitado) sombra(g, x, chao, (c.p && c.p.sobe) || 0, esc);
-    poe(g, L.art, c.p, x, chao, esc, c.rot || 0, c.vira, c.deitado || 0);
+    poe(g, L.estrela || L.art, c.p, x, chao, esc, c.rot || 0, c.vira, c.deitado || 0);
     for (const e of c.extras || []) if (e.frente) extra(e);
     if (fx === "brilho") { // as estrelinhas em cima dos dedos
       cor(g, "#fff6c8");
@@ -541,12 +541,12 @@
   }
   // tudo o que o lance de um gol precisa: quem marcou, o goleiro, os outros em campo, o tipo de gol, a comemoração e o
   // fundo do close
-  function monta(g, j) {
+  function monta(g, j, cobranca = null) {
     const semente = `${j.id}|${g.min}|${g.nome}|${g.lado}`, sorte = sorteio(semente), futsal = j.mins === 40;
     const art = figura(g.nome, Rostos.uniformeDe(g.nome), { num: numeroDe(g.nome, g.pos, sorte) });
     const paleta = ["#f7d417", "#3ad37a", "#ff7a2f", "#8a8f98", "#b06cff", "#25b4c9"];
     const corGol = paleta.slice().sort((a, b) => distCor(b, art.u.cam) - distCor(a, art.u.cam))[0];
-    const nomeGol = "goleiro " + Math.floor(sorte() * 99999);
+    const nomeGol = (cobranca && cobranca.goleiro) || "goleiro " + Math.floor(sorte() * 99999); // no pênalti da galera, o goleiro de verdade
     const gol = figura(nomeGol, { cam: corGol, det: "#1a1a1a", desenho: "", calcao: "#1a1a1a", meiao: corGol, chuteira: "#1a1a1a", luva: "#f4f4f4" }, { goleiro: true });
     // os zagueiros do outro time: a camisa que mais se diferencia de quem marcou e do goleiro
     const cores = ["#e63946", "#1d4ed8", "#16a34a", "#f59e0b", "#7c3aed", "#0f172a", "#f4f4f4"];
@@ -555,8 +555,9 @@
     const rival = { cam: camRival, det: detRival, desenho: "", calcao: detRival, meiao: camRival, chuteira: "#1a1a1a" };
     const rivais = [0, 1, 2].map((k) => figura(`zagueiro ${semente} ${k}`, rival));
     const parceiros = [0, 1].map((k) => figura(`parceiro ${semente} ${k}`, art.u, { num: [8, 11][k] }));
-    const tipoNome = escolheTipo(sorte, g.pos, g.ovr || 80, futsal, g.nome), tipo = Lances.GOLS[tipoNome];
-    const L = { semente, futsal, espelho: g.lado === "B", art, gol, rivais, parceiros, tipoNome, tipo, d0: 8 + sorte() * 16 };
+    const tipoNome = cobranca ? "penalti" : escolheTipo(sorte, g.pos, g.ovr || 80, futsal, g.nome), tipo = Lances.GOLS[tipoNome];
+    const L = { semente, futsal, espelho: g.lado === "B", art, gol, rivais, parceiros, tipoNome, tipo, d0: 8 + sorte() * 16, cobranca,
+      resultado: !cobranca || cobranca.gol ? "gol" : cobranca.fora ? "fora" : "defesa" };
     art.espelho = parceiros[0].espelho = parceiros[1].espelho = L.espelho;
     L.alvo = tipo.alvo(sorte, L);
     L.tGol = typeof tipo.tGol === "function" ? tipo.tGol(L) : tipo.tGol;
@@ -564,6 +565,9 @@
     L.impacto = tela(GOL_X + GOL_FUNDO - 1, L.alvo.D, L.alvo.A);
     if (tipo.prepara) tipo.prepara(L, sorte);
     L.comemora = escolheComemora(sorte, g.nome);
+    // pênalti perdido: no close, o goleiro comemora a defesa, ou quem bateu põe as mãos na cabeça
+    if (L.resultado === "defesa") { L.estrela = gol; L.comemora = ["soco", "abre", "batePeito", "orelha", "muque", "raio"][Math.floor(sorte() * 6)]; }
+    if (L.resultado === "fora") L.comemora = "naoAcredita";
     L.fundoClose = fundoClose(L); // os fundos do lance (fundoA e fundoB) só são desenhados quando o replay toca
     return L;
   }
@@ -575,15 +579,16 @@
   }
   // o telão de um gol: toca o replay (auto) ou já mostra o último quadro, parado na comemoração (quem chega depois, ou
   // pediu "menos movimento"). Um toque no telão toca de novo.
-  function criar(g, j, { nome, hat, auto = true }) {
-    const L = monta(g, j), ms = L.total;
+  function criar(g, j, { nome, hat, auto = true, cobranca = null }) {
+    const L = monta(g, j, cobranca), ms = L.total, res = L.resultado;
+    const faixa = res === "defesa" ? ["luva", "Defendeu", cobranca.goleiro || ""] : res === "fora" ? ["bola", "Pra fora", nome || g.nome] : [hat ? "cartola" : "bola", hat ? "Hat-trick" : cobranca ? "Pênalti" : "Gol", nome || g.nome];
     const el = document.createElement("div"), icone = (n) => (window.Icones ? Icones.ic(n) : "");
     el.className = `telao lado${g.lado}${hat ? " hat" : ""}`;
     el.setAttribute("role", "button"); el.tabIndex = 0;
     el.setAttribute("aria-label", `Ver o gol de ${nome || g.nome} aos ${g.min} minutos`);
     el.innerHTML = `<canvas width="${W}" height="${H}" aria-hidden="true"></canvas><span class="lcTag"><i></i><span>Replay</span></span>
-      <b class="lcGrito" aria-hidden="true">${L.comemora === "siu" ? "Siuuu!" : "Gol!"}</b><span class="lcPlay" aria-hidden="true">${icone("play")}</span>
-      <div class="lcFaixa">${icone(hat ? "cartola" : "bola")}<span>${hat ? "Hat-trick" : "Gol"}</span><b>${escapa(nome || g.nome)}</b><span>${g.min}'</span></div>`;
+      <b class="lcGrito" aria-hidden="true">${res === "defesa" ? "Defendeu!" : res === "fora" ? "Pra fora!" : L.comemora === "siu" ? "Siuuu!" : "Gol!"}</b><span class="lcPlay" aria-hidden="true">${icone("play")}</span>
+      <div class="lcFaixa">${icone(faixa[0])}<span>${faixa[1]}</span><b>${escapa(faixa[2])}</b><span>${g.min}'</span></div>`;
     const ctx = el.querySelector("canvas").getContext("2d");
     ctx.imageSmoothingEnabled = false;
     // parado, o telão fica num instante da comemoração que muda de gol para gol (o mesmo craque não repete a pose), e os
