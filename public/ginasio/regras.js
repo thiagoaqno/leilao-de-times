@@ -405,12 +405,12 @@
     p.ev.push({ tipo: "esquiva", id: e.id });
   }
 
-  function mover(e, dt, c, p) {
+  function mover(e, dt, c, p, previsao = false) {
     if (!emCampo(e)) return;
     if (e.dash) {
       const d = Math.min(e.dash.falta, e.dash.hab.velocidade * dt);
       e.x += e.dash.x * d; e.y += e.dash.y * d; e.dash.falta -= d; limitar(e);
-      for (const o of p.entidades) if (o.lado !== e.lado && emCampo(o) && !e.dash.hit.has(o.id) && dist(e, o) < e.raio + o.raio + 0.35) {
+      for (const o of previsao ? [] : p.entidades) if (o.lado !== e.lado && emCampo(o) && !e.dash.hit.has(o.id) && dist(e, o) < e.raio + o.raio + 0.35) {
         e.dash.hit.add(o.id); aplicarDano(p, e, o, e.dash.hab);
       }
       if (e.dash.falta <= 0) e.dash = null;
@@ -557,6 +557,20 @@
     };
   }
 
-  const api = { ARENA, TEMPO_MAX, K_DANO, K_DANO_POKEMON, sorteDe, criarPartida, passo, pensarRobo, habilidadeDeGolpe, habilidadesDoDex, calcularDano, estado };
+  // A tela preve somente o movimento. Vida, acertos, golpes e trocas continuam no servidor.
+  function preverMovimento(p, e, dt, c = {}) {
+    dt = clamp(Number(dt) || 0, 0, 0.1);
+    e.invulneravel = Math.max(0, e.invulneravel - dt);
+    e.esquivaCd = Math.max(0, e.esquivaCd - dt);
+    e.impedido = Math.max(0, (e.impedido || 0) - dt);
+    if (e.canal) { e.canal.t -= dt; if (e.canal.t <= 0) e.canal = null; }
+    const mira = dirMira(e, c);
+    e.mira = { x: mira.x, y: mira.y };
+    if (c.esquiva) esquivar(p, e, c);
+    mover(e, dt, c, p, true);
+    return e;
+  }
+
+  const api = { ARENA, TEMPO_MAX, K_DANO, K_DANO_POKEMON, sorteDe, criarPartida, passo, preverMovimento, pensarRobo, habilidadeDeGolpe, habilidadesDoDex, calcularDano, estado };
   return api;
 });

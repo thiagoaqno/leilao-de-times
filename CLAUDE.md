@@ -78,12 +78,20 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Futebol de Botão | `botao.js` | mesma organização da Sinuca |
 | Corrida (kart 3D) | `corrida.js` | `pistas.js` (pistas e carros), `pista.js`, `carros.js` (os karts), `cena.js`, `fisica.js`, `controles.js`, `rede.js`, `menus.js`, `hud.js`, `fantasma.js`, `estado.js`, `sons.js`, `jogo.js` |
 | Batalha (balões de kart) | `batalha.js` | `index.html`, `jogo.js`, `regras.js` (arenas, física, itens, robôs) |
-| Ginásio (Galeramon/Pokémon em tempo real) | `ginasio.js` | `regras.js` (motor); a página entra na Fase 3 de `planos/ginasio.md` |
+| Ginásio (Galeramon/Pokémon em tempo real) | `ginasio.js` | `regras.js` (motor), `estilo.css`, `sala.js`, `desenho.js`, `controles.js`, `rede.js`, `sons.js`, `hud.js` |
 | Tiro (FPS) | `tiro.js` | `arena.js`, `bonecos.js`, `bots.js`, `cena.js`, `controles.js`, `efeitos.js`, `estado.js`, `hud.js`, `menus.js`, `rede.js`, `sons.js`, `jogo.js` |
 | Pelada (futsal 3D) e Rocket (futebol de carro) | `pelada.js` (+ `peladaBots.js`) | ver logo abaixo |
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
 | Pingue-Pongue | `pingpong.js` | `index.html`, `jogo.js`, `regras.js` (voo com efeito, juiz, placar, robô) |
 | Vila (o mapa) + Galeramon + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
+
+**Ginásio:**
+- `/ginasio/` abre a sala e a arena 2D de pixel-art. Ainda não há prédio no mapa: isso é a Fase 4 de `planos/ginasio.md`.
+- Os scripts dividem as variáveis globais, nesta ordem: `sala`, `desenho`, `controles`, `rede`, `sons`, `hud`.
+- `sala.js` reaproveita `galeramon_time` e `pokemon_time`, monta o seletor de criaturas e guarda o token da sala.
+- `desenho.js` usa `GaleramonSprite`/PokeDex, pilastras do motor e efeitos por tipo de golpe; `controles.js` usa teclado, mouse e `Toque.setup`.
+- `rede.js` manda comandos a 30/s, prevê só o movimento com `Ginasio.preverMovimento`, reconcilia pela sequência confirmada e interpola os outros com 100 ms de atraso. Vida, acertos, recargas e trocas continuam no servidor.
+- `hud.js` atualiza a vida, os golpes, as recargas, as reservas e o resultado sem remontar a cada pacote. `#debug` expõe `window.__ginasio`.
 
 **Banco:**
 - O visual fica em `estilo.css` (a mesa à noite, as casas escuras que brilham na cor do dono, o dourado do dinheiro).
@@ -200,6 +208,8 @@ Para achar algo dentro de um jogo:
     `tests/ajuda.js`: `subirServidor`, `conectar`, `pedir`, `esperarEstado`).
 - **Ginásio:** `tests/ginasio.test.js` cobre o motor; `tests/ginasio-servidor.test.js` cobre salas, comandos,
   reconexão e uma partida inteira com clientes Socket.io e robôs, incluindo o placar da Noite.
+  `tests/e2e/ginasio.spec.js` cobre controles reais, seleção, sprites, toque com dois dedos, 2x2, espectador,
+  reconexão, resultado e revanche. `GINASIO_FOTOS=planos/imagens` salva capturas opcionais.
 - **`tests/salas.test.js`:** compara a forma do estado de cada jogo com `tests/salas-esperado.json`.
   - Se mudar o estado de propósito, regrave com `GRAVAR=1 node --test tests/salas.test.js` e confira que no diff só
     entrou o que devia.

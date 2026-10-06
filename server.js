@@ -46,6 +46,7 @@ app.get("/corrida", (req, res) => res.redirect("/corrida/"));
 app.get("/tiro", (req, res) => res.redirect("/tiro/"));
 app.get("/pelada", (req, res) => res.redirect("/pelada/"));
 app.get("/batalha", (req, res) => res.redirect("/batalha/"));
+app.get("/ginasio", (req, res) => res.redirect("/ginasio/"));
 app.get("/tenis", (req, res) => res.redirect("/tenis/"));
 app.get("/pingpong", (req, res) => res.redirect("/pingpong/"));
 app.get("/rumi", (req, res) => res.redirect("/rumi/"));
