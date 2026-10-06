@@ -1,5 +1,6 @@
 # Imagem usada pelo Fly.io para rodar o servidor
-FROM node:22-slim
+# node 24: o node:sqlite (banco de dados, bd.js) já vem sem precisar de flag
+FROM node:24-slim
 
 WORKDIR /app
 ENV NODE_ENV=production

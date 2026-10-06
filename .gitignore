@@ -1,3 +1,5 @@
 node_modules
+dados/*.db
+dados/*.db-*
 test-results
 playwright-report
