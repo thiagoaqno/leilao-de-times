@@ -13,7 +13,7 @@ function gridPos(i) {
   if (i === 3 * S) return [1, L, "top"];
   return [1 + (i - 3 * S), L, "right"];
 }
-const CORNER_ICON = { go: "➜", jail: "🚔", free: "🏖️", gojail: "👮" };
+const CORNER_ICON = { go: ic("dir"), jail: ic("viatura"), free: ic("guardasol"), gojail: ic("policial") };
 const CORNER_LABEL = { go: "INÍCIO", jail: "PRISÃO", free: "FÉRIAS", gojail: "VÁ PARA A PRISÃO" };
 function buildBoard() {
   const b = $("board"); if (b.dataset.built) return; b.dataset.built = 1;
@@ -27,8 +27,8 @@ function buildBoard() {
     if (corner) inner = `<div class="body"><div class="ic">${CORNER_ICON[s.type]}</div><div class="cd">${CORNER_LABEL[s.type]}</div>${i === 0 ? `<div class="pr">+${short(200)}</div>` : ""}</div>`;
     else if (s.type === "prop") inner = `<div class="band"></div><div class="body"><div class="pill" style="--g:${GROUPS[s.group].color};--gi:${GROUPS[s.group].ink}">${h(s.name)}</div><div class="pr">${short(s.price)}</div></div>`;
     else {
-      const ic = s.type === "air" ? "✈️" : s.type === "util" ? s.icon : s.type === "card" ? "❓" : s.type === "tax" ? "💸" : "";
-      inner = `<div class="body"><div class="ic">${ic}</div><div class="nm2">${h(s.name)}</div>${s.price ? `<div class="pr">${short(s.price)}</div>` : s.amount ? `<div class="pr">${short(s.amount)}</div>` : ""}</div>`;
+      const icone = s.type === "air" ? ic("aviao") : s.type === "util" ? Icones.iconizar(s.icon) : s.type === "card" ? ic("interrogacao") : s.type === "tax" ? ic("recibo") : "";
+      inner = `<div class="body"><div class="ic">${icone}</div><div class="nm2">${h(s.name)}</div>${s.price ? `<div class="pr">${short(s.price)}</div>` : s.amount ? `<div class="pr">${short(s.amount)}</div>` : ""}</div>`;
     }
     html += `<div class="sq ${corner ? "corner" : "s-" + side} t-${s.type}" id="sq${i}" data-i="${i}" style="grid-row:${r};grid-column:${c}" title="${h(s.name)}">${inner}</div>`;
   });
@@ -50,7 +50,7 @@ function buildBoard() {
 // ---------- visão inclinada ou de cima ----------
 function setView(flat) {
   document.body.classList.toggle("flat", flat);
-  $("btnView").innerHTML = flat ? `🎥<span class="lg"> Visão inclinada</span>` : `⬇️<span class="lg"> Visão de cima</span>`;
+  $("btnView").innerHTML = flat ? `${ic("camera")}<span class="lg">Visão inclinada</span>` : `${ic("baixo")}<span class="lg">Visão de cima</span>`;
   $("btnView").title = flat ? "Visão inclinada" : "Visão de cima";
   store.set("banco:vista", flat ? "cima" : "inclinada");
   // acompanha a animação da câmera
@@ -138,7 +138,7 @@ function layout() {
       el.style.left = x + "px"; el.style.top = y + "px"; el.style.zIndex = Math.round(y);
       el.style.setProperty("--s", s.toFixed(3)); el.style.setProperty("--c", p.color);
       el.title = p.name;
-      const head = el.querySelector(".head"); if (head.textContent !== p.pawn) head.textContent = p.pawn;
+      const head = el.querySelector(".head"); if (head.dataset.p !== p.pawn) { head.dataset.p = p.pawn; head.innerHTML = peao(p.pawn); }
     });
   }
   for (const id of Object.keys(pieceEls)) if (!alive.has(id)) { pieceEls[id].remove(); delete pieceEls[id]; }
@@ -267,8 +267,8 @@ let lastRollT = 0, lastCard = null, rollingUntil = 0, dadosVistos = "";
 function renderCenter() {
   const cur = P(S.turn), d = S.dice || [1, 1];
   let status = "";
-  if (S.phase === "ended") status = `🏆 ${h(P(S.winner)?.name || "")} venceu!`;
-  else if (cur) status = `Vez de <span style="color:${cur.color}">${cur.pawn}</span> ${h(cur.name)} · rodada ${S.round}${S.deadline && S.deadline.who === cur.id ? ` · <span class="clock" data-clock="turn"></span>` : ""}`;
+  if (S.phase === "ended") status = `${ic("taca", "ouro")} ${h(P(S.winner)?.name || "")} venceu!`;
+  else if (cur) status = `Vez de <span style="color:${cur.color}">${peao(cur.pawn)}</span> ${h(cur.name)} · rodada ${S.round}${S.deadline && S.deadline.who === cur.id ? ` · <span class="clock" data-clock="turn"></span>` : ""}`;
   $("status").innerHTML = status;
   $("evchip").classList.toggle("hidden", !(S.event && S.phase === "playing"));
   if (S.event) $("evchip").textContent = `${S.event.icon} ${S.event.name}`;

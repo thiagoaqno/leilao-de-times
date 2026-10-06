@@ -14,6 +14,9 @@ function useBoard(kind) {
 }
 const socket = io("/banco");
 const { $, h, store } = Comum;
+const { ic, peao } = Icones;
+// todo emoji que aparecer na página (histórico, notícias do servidor, botões...) vira ícone, e os peões viram o desenho
+Icones.observar(document.body, { peoes: true });
 
 let S = null;          // estado da mesa
 let ME = null;         // { code, id, token }
@@ -24,7 +27,18 @@ const me = () => ME && ME.id ? P(ME.id) : null;
 
 const toast = Comum.criarToast(3200);
 const act = Comum.criarAct(socket, toast);
-function show(id) { for (const s of ["home", "lobby", "game"]) $(s).classList.toggle("hidden", s !== id); $("btnView").classList.toggle("hidden", id !== "game"); }
+// a troca de tela (início, sala de espera, jogo): com a transição do navegador, quando tem
+let telaAgora = null;
+function show(id) {
+  const troca = () => { for (const s of ["home", "lobby", "game"]) $(s).classList.toggle("hidden", s !== id); $("btnView").classList.toggle("hidden", id !== "game"); $("btnMesa").classList.toggle("hidden", id !== "game"); };
+  if (telaAgora === id) return troca();
+  const antes = telaAgora; telaAgora = id;
+  if (antes && document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) semErro(document.startViewTransition(troca)); else troca();
+}
+// uma transição nova cancela a anterior (duas trocas de tela seguidas): o cancelamento é normal, não é erro
+function semErro(vt) {
+  for (const p of [vt.ready, vt.finished, vt.updateCallbackDone]) if (p) p.catch(() => {});
+}
 
 // ---------- entrar / criar ----------
 const urlCode = new URLSearchParams(location.search).get("mesa");
@@ -93,7 +107,7 @@ function render() {
 function renderLobby() {
   const m = me(), isHost = m && S.host === m.id;
   const seat = (p) => `
-    <div class="seat" style="--c:${p.color}"><div class="pw">${p.pawn}</div>
+    <div class="seat" style="--c:${p.color}"><div class="pw">${peao(p.pawn)}</div>
       <div style="min-width:0"><b>${h(p.name)}</b><small><span class="dot ${p.online ? "" : "off"}"></span>${p.id === S.host ? "organizador" : p.online ? "pronto" : "desconectado"}${m && p.id === m.id ? " · você" : ""}</small></div>
       ${isHost && p.id !== m.id ? `<button class="x" data-kick="${p.id}" title="Tirar da mesa">✕</button>` : ""}
     </div>`;
@@ -117,7 +131,7 @@ function renderLobby() {
   if (m) {
     const takenP = new Set(S.players.filter((p) => p.id !== m.id).map((p) => p.pawn));
     const takenC = new Set(S.players.filter((p) => p.id !== m.id).map((p) => p.color));
-    $("pawnPick").innerHTML = T.PAWNS.map((x) => `<button class="${x === m.pawn ? "on" : ""} ${takenP.has(x) ? "taken" : ""}" data-p="${x}" ${takenP.has(x) ? "disabled" : ""} aria-label="Peão ${x}">${x}</button>`).join("");
+    $("pawnPick").innerHTML = T.PAWNS.map((x) => `<button class="${x === m.pawn ? "on" : ""} ${takenP.has(x) ? "taken" : ""}" data-p="${x}" ${takenP.has(x) ? "disabled" : ""} aria-label="Peão">${peao(x)}</button>`).join("");
     $("colorPick").innerHTML = T.COLORS.map((c) => `<button class="sw ${c === m.color ? "on" : ""} ${takenC.has(c) ? "taken" : ""}" style="background:${c}" data-c="${c}" ${takenC.has(c) ? "disabled" : ""} aria-label="Cor"></button>`).join("");
     $("pawnPick").querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => act("pawn", { pawn: b.dataset.p })));
     $("colorPick").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => act("pawn", { color: b.dataset.c })));

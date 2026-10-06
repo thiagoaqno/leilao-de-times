@@ -1,54 +1,44 @@
-# Vila: o mapa cresceu, tem carro e quatro estádios para entrar
+# Banco: visual novo (a mesa à noite, cartão de banco e peões desenhados)
 
 ## Como fica
-- **O mapa ficou 8 vezes maior.** A vila continua igual, no meio, e em volta tem a cidade: prédios, o Rio Pinheiros e o
-  Tietê (com pontes), a Serra do Mar e, lá embaixo, Santos, com praia e mar.
-- **Os estádios ficam longe, cada um no seu canto (como em São Paulo):**
-  - **Nubank Parque** a oeste (Perdizes): a caixa de cantos arredondados, fachada branca de escamas, cobertura cinza e
-    cadeiras verdes, com a luz roxa;
-  - **Neo Química Arena** lá no leste (Itaquera): as coberturas nos lados compridos, a fachada de vidro azul, o telão
-    gigante de fora e as cadeiras pretas;
-  - **Morumbis** a sudoeste: o oval de concreto com os pilares e a arquibancada tricolor sem cobertura;
-  - **Vila Belmiro** descendo a serra pela Imigrantes, em Santos: pequenininha, muro branco, a faixa alvinegra na
-    fachada e as casinhas do bairro em volta.
-- **Só de carro.** Fora da vila é rodovia, e pedestre não passa. Em cada saída da vila (oeste, leste e sul) tem um
-  estacionamento: aperte A (ou Espaço) para pegar o carro e de novo para descer. O carro é bem mais rápido e anda
-  só na rodovia, que leva ao estacionamento do estádio. As placas verdes mostram o caminho.
-- **Dá para entrar nos estádios.** Na frente do portão, Espaço/A entra. Lá dentro:
-  - o gramado com as linhas e os gols com rede;
-  - a arquibancada nas cores do clube, com a torcida pulando;
-  - o telão com o placar e os bancos de reservas.
-- **Tem uma bola no meio de campo.** Encoste para chutar (correndo, o chute sai mais forte). Entrou na rede, o telão e
-  o campo gritam GOOOL e o placar muda. Para sair, é o túnel.
-- **Minimapa** no canto (o botão "Mapa" esconde). No menu "Jogos", a seção **Estádios** marca um destino: uma seta
-  amarela aponta o caminho e o estádio pisca no minimapa.
-- Quem está de carro aparece de carro para os outros, e quem está dentro de um estádio só vê (e é visto por) quem está
-  no mesmo estádio.
+- **Visual novo**, no mesmo espírito do Leilão: a mesa de jogo à noite, com a silhueta da cidade lá embaixo, o
+  dourado do dinheiro e as cores dos bairros bem vivas. O tabuleiro continua claro para dar para ler, com a borda
+  dourada e o miolo azul-noite (o logo, as pilhas e os dados).
+- **O seu dinheiro é um cartão de banco** na cor do seu peão: chip, número, nome e o saldo contando. Quando você paga,
+  aparece o recibo da maquininha ("Pago no cartão −R$ 100 mil"). Quando recebe, aparece "Pix recebido". No celular, o
+  cartão vira a barra de baixo com a ação da vez.
+- **Sem emojis.** Os 12 peões viraram peças desenhadas (carro, moto, cachorro, gato, cartola, bola, pizza, guitarra,
+  foguete, dinossauro, tênis e papagaio). Tudo o mais virou ícone: as casas do tabuleiro, as notícias, o histórico, as
+  reações e os botões.
+- **Menos coisa na tela:** a mesa de todo mundo (o dinheiro e as escrituras de cada um) e o histórico foram para a
+  gaveta **Mesa**, no topo. Do lado do tabuleiro fica só o cartão, a sua vez, os seus imóveis e as trocas.
+- **Animações:**
+  - a troca entre as telas (início, sala de espera, jogo) é animada;
+  - os lugares da sala de espera e as placas entram pulando;
+  - o cartão entra girando e tem um brilho passando;
+  - o leilão, as janelas, os eventos e o "SUA VEZ!" ganharam o visual novo.
+- **Tela inicial nova:** o título grande, o cartão flutuando e o "Entrar na mesa" mais limpo.
 
 ## Por dentro
-- `public/index.html`:
-  - `MW` x `MH` virou 320 x 260; a vila fica em `OX`, `OY` (140, 100), e as coordenadas dela continuam escritas como
-    antes e são deslocadas no carregamento;
-  - `montaMundo` monta as rodovias (`rodovia`), os estacionamentos (`lote`), a cidade (`PREDIOS`), os rios, a serra
-    e o litoral;
-  - o mapa passou a ser desenhado em pedaços de 32 x 32 casas (`pedaco`), só os que aparecem na tela, e a luz da
-    noite é do tamanho da tela (antes era do mapa inteiro);
-  - o carro (`player.car`, `carOk`, `spriteCarro`), os estádios por dentro (`INT`, `entraEstadio`, `saiEstadio`), a
-    bola (`chuta`, `gol`), o minimapa e a seta do destino;
-  - o caminho por clique (`bfs`) segue o mapa e o jeito em que a pessoa está (a pé, de carro ou no estádio).
-- `public/vila/estadios.js` (novo): onde fica cada estádio, a fachada de cada um e o lado de dentro (gramado,
-  arquibancada, torcida, telão).
-- `vila.js`: o mapa grande, e cada pessoa manda a zona (`z`: a rua ou um dos 4 estádios) e se está de carro. O limite
-  subiu para 30 movimentos por segundo (de carro se anda rápido).
+- `public/banco/index.html` foi reescrito, e o CSS foi para `public/banco/estilo.css`.
+- `public/icones.js` (novo, comum): os ícones do Leilão vieram para cá (o Leilão passa a carregar este) e ganharam:
+  - os ícones do Banco e os 12 peões (`peao(emoji)`); o servidor continua guardando o peão pelo emoji;
+  - `observar(raiz)`, que troca por ícone qualquer emoji que aparecer na página.
+- Os scripts do Banco mudaram pouco:
+  - os peões desenhados (`sala.js`, `mesa.js`, `painel.js`, `telas.js`) e os ícones das casas (`mesa.js`);
+  - o número do cartão e a gaveta da mesa (`telas.js`);
+  - o recibo da maquininha (`painel.js`);
+  - a troca de tela animada (`sala.js`).
+- A transição de tela do navegador pode ser cancelada por outra (duas trocas seguidas): no Banco e no Leilão, esse
+  cancelamento agora é tratado e não vira erro.
+- O servidor não mudou.
 
 ## Conferido
-- `npm test` passando (47), com um teste novo: quem está de carro ou dentro de um estádio chega assim para os outros, e
-  um estádio que não existe vira "a rua".
-- O teste de navegador da página da vila passando.
-- Por script, na página: de cada saída, o carro chega ao estacionamento do seu estádio (de 108 a 140 casas), e a pé
-  dá para ir do estacionamento ao portão de todos e da Vila Belmiro até a praia.
-- No navegador:
-  - pegar o carro no estacionamento oeste, dirigir até o Nubank Parque, descer e entrar;
-  - por dentro dos 4 estádios;
-  - chutar a bola para o gol (placar 1 x 0, e a bola volta ao meio);
-  - sair pelo túnel.
+- `npm test` passando (47).
+- Os testes de navegador do Banco, do Leilão e da Vila passando (duas vezes seguidas).
+- No navegador, com 2 robôs jogando:
+  - criar a mesa e a sala de espera;
+  - jogar os dados, cair na Mooca e comprar (com o recibo da maquininha, a escritura voando e a notícia "Comprou!");
+  - um leilão aberto por um robô;
+  - a gaveta da mesa;
+  - o celular (375 px) e a tela larga (1440 px).

@@ -31,7 +31,9 @@ function renderWallet() {
   if (!show) return;
   w.style.setProperty("--c", m.color);
   w.classList.toggle("myturn", S.turn === m.id);
-  $("wPawn").textContent = m.pawn;
+  if ($("wPawn").dataset.p !== m.pawn) { $("wPawn").dataset.p = m.pawn; $("wPawn").innerHTML = peao(m.pawn); }
+  // o número do cartão sai do id do jogador (sempre o mesmo para a mesma pessoa)
+  $("wNum").textContent = "•••• " + String([...m.id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 10000, 7)).padStart(4, "0");
   $("wName").textContent = m.name;
   const tags = [];
   if (m.team != null) tags.push(`<span class="tteam" style="--tc:${T.TEAMS[m.team].color}">${T.TEAMS[m.team].icon} ${h(T.TEAMS[m.team].name)}</span>`);
@@ -183,7 +185,7 @@ function renderPlayers() {
     if (p.bankrupt) tags.push("💀 faliu");
     const list = propsOf(p.id);
     return `<div class="pcol ${p.id === S.turn && S.phase === "playing" ? "turn" : ""} ${p.bankrupt ? "dead" : ""}" style="--c:${p.color}">
-      <div class="phead"><span class="pw">${p.pawn}</span><div style="min-width:0"><b>${h(p.name)}${m && p.id === m.id ? " <span class='muted' style='font-weight:500'>(você)</span>" : ""}</b><small>${tags.join(" · ") || "&nbsp;"}</small></div>
+      <div class="phead"><span class="pw">${peao(p.pawn)}</span><div style="min-width:0"><b>${h(p.name)}${m && p.id === m.id ? " <span class='muted' style='font-weight:500'>(você)</span>" : ""}</b><small>${tags.join(" · ") || "&nbsp;"}</small></div>
         <div class="pc"><b>${p.bankrupt ? "—" : money(p.cash)}</b><small>patrimônio ${money(p.worth)}</small></div></div>
       <div class="deeds">${list.map((i) => deedMini(i)).join("") || `<span class="muted" style="font-size:13px">Nenhuma escritura ainda.</span>`}</div></div>`;
   }).join("");
@@ -367,5 +369,12 @@ function giftModal() {
     <label for="gVal" style="margin-top:12px">Quanto, em mil (você tem ${money(m.cash)})</label><input id="gVal" type="number" min="1" max="${m.cash}" inputmode="numeric" placeholder="Ex.: 100">
     <div class="row" style="margin-top:16px;justify-content:flex-end"><button data-close>Cancelar</button><button class="primary" id="gSend">Mandar</button></div></div>`;
 }
+
+// a gaveta da mesa: o dinheiro e as escrituras de todo mundo, e o histórico
+const gaveta = (on) => document.body.classList.toggle("gaveta-aberta", on);
+$("btnMesa").onclick = () => gaveta(true);
+$("btnFecharMesa").onclick = () => gaveta(false);
+$("gavetaFundo").onclick = () => gaveta(false);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") gaveta(false); });
 
 if (!urlCode) show("home");

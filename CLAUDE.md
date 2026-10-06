@@ -26,6 +26,7 @@ decisões dos primeiros dias estão em `PROJETO.md`, e o que mudou em cada PR fi
 | `salas.js` | Salas com código de 5 letras (o que todo jogo usa). Ver a lista de funções logo abaixo. |
 | `noite.js` + `public/noite.js` | **Noite da Galera.** Ver a seção própria abaixo. |
 | `public/comum.js` | `window.Comum`. Ver a lista de funções logo abaixo. |
+| `public/icones.js` | `window.Icones`: os ícones SVG do site (Leilão e Banco), no lugar dos emojis. `ic(nome)`, `iconizar(html)`, `peao(emoji)` (os peões do Banco) e `observar(raiz)`, que troca sozinho por ícone todo emoji que aparecer na página. |
 | `public/toque.js` | Controles de toque no celular: `Toque.setup({ buttons, top, look, onStick })` e `Toque.show(bool)`. Os botões disparam teclas de mentira. |
 | `public/semzoom.js` | Impede o zoom do toque duplo (vai no `<head>` de toda página). |
 | `public/pelada/bonecos.js` | **Os bonecos e as skins** (Pelada, Tênis, Corrida, Batalha, Pingue-Pongue). Ver a lista de funções logo abaixo. |
@@ -83,6 +84,10 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Pingue-Pongue | `pingpong.js` | `index.html`, `jogo.js`, `regras.js` (voo com efeito, juiz, placar, robô) |
 | Vila (o mapa) + Galeramon + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
 
+**Banco:** o visual fica em `estilo.css` (a mesa à noite, o miolo azul do tabuleiro, o dourado do dinheiro e o cartão de
+banco na carteira). A página chama `Icones.observar`, então qualquer emoji que os scripts ou o servidor mandarem vira
+ícone; os peões são guardados pelo emoji e desenhados com `peao()`. A mesa de todos e o histórico ficam na gaveta (`#gaveta`).
+
 **Banco: os 5 scripts, nesta ordem:**
 1. `sala.js`: entrar/criar e a sala de espera;
 2. `mesa.js`: o tabuleiro, os peões andando, os dados e o "você caiu em";
@@ -92,7 +97,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 
 **Leilão:** o visual fica em `estilo.css` (noite de estádio, verde-limão, cartas estilo FUT). Os scripts rodam em ordem e
 **dividem as variáveis globais**:
-1. `icones.js`: os ícones SVG (`Icones.ic`), a troca dos emojis da narração por ícones (`iconizar`) e o ícone de cada tema;
+1. `/icones.js` (comum, na raiz de `public/`): os ícones SVG, a troca dos emojis da narração por ícones e o ícone de cada tema;
 2. `inicio.js`: a tela inicial, os temas e criar/entrar;
 3. `sala.js`: os botões da sala, o resultado revelado e o campinho (deitado) com a troca de posições;
 4. `pratos.js`: o prato, a votação dos pratos, a chegada do `state` e as contas das regras (`capById`, `maxBidFor`...);

@@ -159,8 +159,7 @@ function renderPlates() {
     el.classList.toggle("turn", p.id === S.turn && S.phase === "playing");
     el.classList.toggle("dead", p.bankrupt);
     el.classList.toggle("me", !!(ME && p.id === ME.id));
-    el.querySelector(".pw").textContent = p.pawn;
-    el.querySelector(".nm").dataset.pawn = p.pawn;
+    const pw = el.querySelector(".pw"); if (pw.dataset.p !== p.pawn) { pw.dataset.p = p.pawn; pw.innerHTML = peao(p.pawn); }
     el.querySelector(".nm").textContent = p.bankrupt ? `${p.name} · faliu` : p.inJail ? `${p.name} · 🚔` : p.name;
   }
   updatePlates();
@@ -248,15 +247,27 @@ function playFx(e) {
   if (e.kind === "shield") return shieldAt(e.sq);
   const a = spot(e.from, e.sq), b = spot(e.to, e.sq);
   if (e.sq != null) flash(e.sq);
-  if (isPlayer(e.from)) { popAt(a, "−" + money(e.amount), "minus", e.label); bump(e.from, "loss"); Sound.play("pay"); }
+  if (isPlayer(e.from)) { popAt(a, "−" + money(e.amount), "minus", e.label); bump(e.from, "loss"); Sound.play("pay"); if (ME && e.from === ME.id) recibo("pago", e.amount, e.label); }
   // as cédulas que formam o valor, uma atrás da outra
   const flights = notasDe(e.amount).map((nota, k) => flyNote(a, b, nota, k * 90, k));
   Promise.all(flights).then(() => {
     if (isPlayer(e.to)) {
       inflight[e.to] = Math.max(0, (inflight[e.to] || 0) - e.amount);
       popAt(b, "+" + money(e.amount), "plus", e.label); bump(e.to, "gain"); updatePlates(); Sound.play("coin");
+      if (ME && e.to === ME.id) recibo("recebido", e.amount, e.label);
     }
   });
+}
+// A maquininha: quando eu pago ou recebo, um recibo aparece rapidinho em cima do meu cartão ("Pago" ou "Pix recebido")
+function recibo(tipo, valor, motivo) {
+  const w = $("wallet"); if (!w || w.classList.contains("hidden")) return;
+  const r = w.getBoundingClientRect(), el = document.createElement("div");
+  el.className = "recibo " + tipo;
+  el.innerHTML = `<span class="rmaq">${ic(tipo === "pago" ? "maquininha" : "pix")}</span><div><small>${tipo === "pago" ? "Pago no cartão" : "Pix recebido"}</small><b>${tipo === "pago" ? "−" : "+"}${money(valor)}</b>${motivo ? `<span>${h(motivo)}</span>` : ""}</div><span class="rok">${ic("ok")}</span>`;
+  const fixo = getComputedStyle(w).position === "fixed"; // no celular o cartão vira a barra de baixo
+  el.style.left = Math.max(8, Math.min(innerWidth - 240, r.left + (fixo ? 8 : 20))) + "px";
+  el.style.top = (fixo ? r.top - 74 : Math.max(70, r.top - 30)) + "px";
+  $("fly").appendChild(el); setTimeout(() => el.remove(), 2500);
 }
 // Chamado a cada estado: toca os pagamentos novos, um atrás do outro.
 function runFx() {
