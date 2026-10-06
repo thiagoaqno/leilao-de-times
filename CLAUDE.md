@@ -125,6 +125,14 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 10. `ritmo.js`, `aovivo.js` (o campeonato ao vivo: a carta de cada gol, lado a lado quando os gols saem juntos, e os
     replays, um embaixo do outro, o mais novo em cima) e `elenco.js` (o voo até o time, os balõezinhos, o nome e as trocas).
 
+**Leilão: pênaltis da galera.** Quem bate escolhe um dos 6 cantos e o outro dono escolhe o pulo do goleiro (opção
+`penaltis` da simulação, ligada por padrão).
+- `ritmo.js` tem os cantos (`ZONAS`) e os tempos do duelo (`DUELO`).
+- O `simulador.js` simula por partes com uma semente (`seed`) e para no primeiro pênalti sem decisão (`completo:
+  false`). O servidor guarda as decisões em `r.decisoes` e simula de novo: o que já saiu continua igual.
+- No servidor, o duelo aberto fica em `r.duelo`, e o relógio da parte para em `r.pausas` (`abreDuelo`, `fechaDuelo`,
+  evento `penalti`). No navegador, o duelo é o `renderDuelo()` do `aovivo.js`.
+
 **Pelada e Rocket:**
 - A mesma página `public/pelada/index.html` serve os dois. `/rocket/` usa o modo carros.
 - Arquivos:

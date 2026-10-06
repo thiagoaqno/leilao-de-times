@@ -99,18 +99,39 @@
       return { art, extras, bola, spray: { X: wx - 3, D0: dm - 7, D1: dm + 7 }, gol: goleiroVoa(L, t, { reage: tc + 160, D0: 22 + (dm > 22 ? -4 : 4) }) };
     } };
   // de pênalti: o goleiro pula para o outro lado
-  G.penalti = { tGol: 1000, peso: peso(0.7, { GK: 3, DEF: 0.5 }, 0.2), alvo: (s) => ({ D: canto(s), A: s() < 0.7 ? 2 + s() * 4 : 10 + s() * 6 }),
-    cena: (L, t) => batePenalti(L, t, { tc: 760, bate: CHUTE.bate, arco: 1, reage: 790, para: L.alvo.D > 22 ? 9 : 35 }) };
+  // (o pênalti decidido pela galera chega em L.cobranca: a bola vai para o canto escolhido e o goleiro para o dele)
+  G.penalti = { tGol: 1000, peso: peso(0.7, { GK: 3, DEF: 0.5 }, 0.2),
+    alvo: (s, L) => (L.cobranca ? alvoDoCanto(L.cobranca) : { D: canto(s), A: s() < 0.7 ? 2 + s() * 4 : 10 + s() * 6 }),
+    cena: (L, t) => batePenalti(L, t, { tc: 760, bate: CHUTE.bate, arco: 1, reage: 790, ...(L.cobranca ? puloDoCanto(L.cobranca.pulo) : { para: L.alvo.D > 22 ? 9 : 35 }) }) };
+  // os cantos (vistos de quem bate): a esquerda dele é a trave do fundo, a direita é a trave de cá
+  const COL = { e: 33, m: 22, d: 10 };
+  function alvoDoCanto(c) {
+    const D = COL[c.chute[0]], alto = c.chute[1] === "a";
+    if (!c.fora) return { D, A: alto ? 18 : 3 };
+    return alto || c.chute[0] === "m" ? { D, A: 30 } : { D: c.chute[0] === "e" ? 47 : -3, A: 3 }; // por cima do travessão ou ao lado da trave
+  }
+  const puloDoCanto = (z) => (z[0] === "m" ? { para: 22, alto: z[1] === "a" ? 7 : 1, fica: true } : { para: COL[z[0]], alto: z[1] === "a" ? 9 : 3 });
   // a cavadinha no pênalti (a Panenka): o goleiro já foi para um canto e a bola sai devagar pelo meio
   G.panenka = { tGol: 1320, peso: peso(0.15, { GK: 0.5, MEI: 0.3 }, 0.3), alvo: (s) => ({ D: 19 + s() * 6, A: 7 + s() * 3 }),
     cena: (L, t) => batePenalti(L, t, { tc: 760, bate: CHUTE.cavada, arco: 12, reage: 740, para: L.alvo.D < 22 ? 36 : 8 }) };
-  function batePenalti(L, t, { tc, bate, arco, reage, para }) {
+  function batePenalti(L, t, { tc, bate, arco, reage, para, alto = 5, fica = false }) {
     const mx = marcaPenalti(L.futsal);
     const art = t < 450 ? { X: mx - 12, D: 26, p: { ...CHUTE.olha, sobe: Math.abs(Math.sin(t / 200)) * 0.8 } }
       : t < tc - 80 ? { X: mix(mx - 12, mx - 3, fase(t, 450, tc - 80)), D: mix(26, 23, fase(t, 450, tc - 80)), p: corre(t, "balanca", 260) }
       : t < L.tGol ? { X: mx - 3 + 3 * fase(t, tc - 80, tc + 180), D: 23, p: chutando(t, tc, bate) } : festejando(L, t, mx, 23);
-    const bola = t < tc ? parada(mx, 22) : t < L.tGol ? voo(t, tc, L.tGol, { X: mx + 1, D: 22, A: 1 }, naLinha(L), arco) : naRede(L, t);
-    return { art, bola, gol: goleiroVoa(L, t, { reage, X0: 131, D0: 22, para, alto: 5, fim: reage + 300, pose: GOLEIRO.alto }) };
+    const pe = { X: mx + 1, D: 22, A: 1 }, res = L.resultado;
+    let bola;
+    if (t < tc) bola = parada(mx, 22);
+    else if (res === "defesa") { // a bola bate nas mãos do goleiro e volta para o campo
+      const mao = { X: GOL_X - 4, D: L.alvo.D, A: L.alvo.A };
+      bola = t < L.tGol ? voo(t, tc, L.tGol, pe, mao, arco) : voo(t, L.tGol, L.tGol + 520, mao, { X: GOL_X - 26, D: L.alvo.D + (L.alvo.D > 22 ? -8 : 8), A: 0 }, 7);
+    } else if (res === "fora") bola = voo(t, tc, L.tGol + 300, pe, { X: GOL_X + 16, D: L.alvo.D, A: L.alvo.A + 6 }, arco); // passa e segue para fora
+    else bola = t < L.tGol ? voo(t, tc, L.tGol, pe, naLinha(L), arco) : naRede(L, t);
+    const gol = fica ? (t < reage ? { X: 131, D: 22, p: { ...GOLEIRO.alto, sobe: Math.abs(Math.sin(t / 160)) } } : { X: 131, D: 22, p: { ...GOLEIRO.alto, sobe: alto * Math.sin(Math.PI * Math.min(1, fase(t, reage, reage + 320))) } })
+      : goleiroVoa(L, t, { reage, X0: 131, D0: 22, para, alto, fim: reage + 300, pose: GOLEIRO.alto });
+    if (res === "fora" && t >= L.tGol) return { art: { X: mx, D: 23, p: { ...CHUTE.olha, bE: [-165, 150], bD: [165, -150] } }, bola, gol }; // as mãos na cabeça
+    if (res === "defesa" && t >= L.tGol) return { art: { X: mx, D: 23, p: CHUTE.olha }, bola, gol };
+    return { art, bola, gol };
   }
   // olímpico: direto do escanteio, a bola faz a curva e entra
   G.olimpico = { tGol: 1260, escanteio: true, peso: peso(0.15, { MEI: 0.5, VOL: 0.3, GK: 0 }, 0.3), alvo: (s) => ({ D: 6 + s() * 14, A: 12 + s() * 6 }),

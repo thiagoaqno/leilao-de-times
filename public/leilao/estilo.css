@@ -800,3 +800,30 @@ body.skin-cozinha{
   body::before{animation:none}
   .fala{animation:none!important}
 }
+/* o duelo de pênalti (aovivo.js): por cima da página, para todo mundo; o gol de 6 cantos para quem decide */
+.duelo{position:fixed;inset:0;z-index:60;display:grid;place-items:end center;padding:16px;background:#000a;animation:revIn .3s ease}
+.dlCard{width:min(420px,100%);padding:16px 16px 14px;border-radius:20px;background:linear-gradient(180deg,#12261c,#09140f);border:2px solid var(--acc);box-shadow:0 0 50px -10px var(--acc-glow),0 20px 50px #000c;text-align:center;animation:dlSobe .45s var(--mola)}
+.dlTopo{display:flex;align-items:center;justify-content:center;gap:8px;font:900 22px/1 var(--display);text-transform:uppercase;letter-spacing:.04em;color:var(--acc)}
+.dlTopo .ic{width:22px;height:22px}
+.dlQuem{margin:8px 0 0;font-size:15px}.dlQuem small{color:var(--muted)}
+.dlInstr{margin:10px 0 8px;font-weight:700}
+.dlGol{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,64px);gap:4px;padding:6px;margin:0 auto;max-width:330px;border:5px solid #f4f4f4;border-bottom:0;border-radius:6px 6px 0 0;
+  background:repeating-linear-gradient(45deg,#ffffff14 0 2px,transparent 2px 10px),repeating-linear-gradient(-45deg,#ffffff14 0 2px,transparent 2px 10px),#0b1a12}
+.dlGol button{padding:0;border-radius:8px;background:#ffffff0d;border:1px dashed #ffffff33;display:grid;place-items:center;color:var(--acc-ink)}
+.dlGol button:hover:not(:disabled){background:#c6ff3a40;border-color:var(--acc)}
+.dlGol button.on{background:var(--acc);border:0}
+.dlGol button.on .ic{width:26px;height:26px}
+.dlGol button:disabled{opacity:1;cursor:default}
+.dlVisto{margin:4px 0 0;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+.dlTempo{height:5px;margin:10px 0 0;border-radius:3px;background:#ffffff14;overflow:hidden}
+.dlTempo i{display:block;height:100%;background:var(--acc);transform-origin:left;animation:dlTempo linear both}
+.dlStatus{display:flex;justify-content:center;gap:16px;margin:10px 0 0;font-size:13px;color:var(--muted)}
+.dlStatus span{display:flex;align-items:center;gap:5px}.dlStatus .ic{width:14px;height:14px}.dlStatus .ok{color:var(--acc)}
+.dlTelao{margin:10px 0 0}
+.dlRes{display:block;margin:10px 0 0;font:italic 900 40px/1 var(--display);text-transform:uppercase}
+.dlRes.gol{color:var(--acc)}.dlRes.defesa{color:var(--gold)}.dlRes.fora{color:var(--red)}
+.dlRes{animation:dlRes .6s var(--mola) both}
+.dlCantos{display:flex;justify-content:center;gap:6px;align-items:center;margin:8px 0 0;color:var(--muted);font-size:13px}.dlCantos .ic{width:14px;height:14px;color:var(--acc)}
+@keyframes dlSobe{from{transform:translateY(40px);opacity:0}}
+@keyframes dlTempo{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes dlRes{from{transform:scale(.3);opacity:0}}
