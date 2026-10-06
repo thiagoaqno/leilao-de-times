@@ -1,24 +1,29 @@
-// Leilão da Galera — tela inicial e temas (parte 1 de 4 do script da página; os arquivos rodam em ordem, pelo
+// Leilão da Galera — tela inicial e temas (a primeira parte do script da página; os arquivos rodam em ordem, pelo
 // index.html, e dividem as mesmas variáveis globais, como quando era um <script> só).
 const { $, store } = Comum;
 const socket = io();
 let S = null;            // last state
 let me = { capId: null, host: false, code: null };
-let lastSpinId = null, spinning = false, wheelAngle = 0;
-// cores da roleta e do aro: estádio (padrão) ou cozinha (temas de comida)
-const WHEEL = {
-  estadio: { seg: ["#dfe7fb","#2fd3ff","#ff5aa0","#5fe39a","#9a8cff","#7fb2ff"], rim: "#030822", rimLine: "#7f8fbd", bulbOn: "#ffffff", bulbOff: "#243766", glow: "#9fe8ff", sep: "#050d33", ring: "#dfe7fb", empty: "#11225c", emptyText: "#9fb0d9", text: "#061036" },
-  cozinha: { seg: ["#ffc23d","#e8452c","#8fcf4f","#f28c28","#fff1d6","#c94f7c"], rim: "#241510", rimLine: "#8a5a3a", bulbOn: "#fff4d6", bulbOff: "#4a2e22", glow: "#ffb347", sep: "#1c100c", ring: "#fff1d6", empty: "#3a241c", emptyText: "#d8b89a", text: "#2a150c" },
-};
+let lastSpinId = null, spinning = false;
+const { ic } = Icones;
 const FOOD_SKINS = ["hamburguer", "pizza", "drink", "sobremesa"];
 let skinNow = null; // tema de comida em uso (sala ou tema escolhido na tela inicial)
-function wheelPal(){ return skinNow ? WHEEL.cozinha : WHEEL.estadio; }
 function setSkin(s){ skinNow = FOOD_SKINS.includes(s) ? s : null; document.body.classList.toggle("skin-cozinha", !!skinNow); }
 const skinOfTheme = (th) => th.skin || (FOOD_SKINS.includes(th.id) ? th.id : null);
 
 const toast = Comum.criarToast(2600);
 function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 const escA = (s) => esc(s).replace(/"/g, "&quot;");
+
+// os botões − e + ao lado dos números (participantes, moedas, o lance): respeitam o mínimo e o máximo do campo
+document.addEventListener("click", (e) => {
+  const b = e.target.closest(".stepper [data-step]"); if (!b) return;
+  const inp = b.parentElement.querySelector("input"), passo = +b.dataset.step;
+  const min = inp.min !== "" ? +inp.min : -Infinity, max = inp.max !== "" ? +inp.max : Infinity;
+  inp.value = Math.max(min, Math.min(max, (+inp.value || 0) + passo));
+  inp.dispatchEvent(new Event("input", { bubbles: true })); inp.dispatchEvent(new Event("change", { bubbles: true }));
+  b.animate([{ transform: "scale(.8)" }, { transform: "none" }], { duration: 200 });
+});
 
 // ---------- HOME ----------
 const params = new URLSearchParams(location.search);
@@ -60,9 +65,13 @@ function applyFormTerms(){
 ["tItem","tItems","tTeam","tTeams","tPrefix"].forEach(id => $(id).addEventListener("input", applyFormTerms));
 function slotsOf(th){ return th.mine ? null : (th.slots || null); }
 function itemsOf(th){ return th.items || (th.pool && FOOTBALL[th.pool]) || null; }
+// os temas de futebol em destaque (cartões com o gramado); os outros (CS, comida, os seus) numa fileira menor
+const FUT_ROTULO = { "futsal-lendas": ["Futsal", "Lendas"], "futsal-atuais": ["Futsal", "Atuais"], "futebol-lendas": ["Futebol 11", "Lendas"], "futebol-atuais": ["Futebol 11", "Atuais"] };
 function renderThemes(){
-  $("themes").innerHTML = allThemes().map(t => `<button type="button" class="theme ${t.id===themeId?"on":""}" data-id="${esc(t.id)}"><span class="ic">${esc(t.icon||"⭐")}</span><span>${esc(t.label)}</span></button>`).join("");
-  document.querySelectorAll(".theme").forEach(b => b.onclick = () => selectTheme(b.dataset.id, true));
+  const todos = allThemes(), fut = todos.filter(t => FUT_ROTULO[t.id]), outros = todos.filter(t => !FUT_ROTULO[t.id]);
+  $("themes").innerHTML = `<div class="temas-fut">${fut.map(t => `<button type="button" class="tema ${t.id===themeId?"on":""}" data-id="${escA(t.id)}">${ic(Icones.deTema(t))}<b>${esc(FUT_ROTULO[t.id][0])}</b><small>${esc(FUT_ROTULO[t.id][1])}</small></button>`).join("")}</div>`
+    + `<div class="temas-outros">${outros.map(t => `<button type="button" class="tema-mini ${t.id===themeId?"on":""}" data-id="${escA(t.id)}">${ic(Icones.deTema(t))}${esc(t.label)}</button>`).join("")}</div>`;
+  $("themes").querySelectorAll("[data-id]").forEach(b => b.onclick = () => selectTheme(b.dataset.id, true));
 }
 function selectTheme(id, user){
   if (user && listDirty && id !== themeId && $("cPlayers").value.trim() && !confirm("Trocar de tema substitui a lista que você editou. Continuar?")) return;
@@ -70,7 +79,7 @@ function selectTheme(id, user){
   const th = curTheme();
   $("tItem").value = th.terms.item; $("tItems").value = th.terms.items; $("tTeam").value = th.terms.team; $("tTeams").value = th.terms.teams; $("tPrefix").value = th.terms.prefix;
   $("btnDelTheme").classList.toggle("hidden", !th.mine);
-  if (!me.code) { setSkin(skinOfTheme(th)); if (user && !spinning) drawWheel(["—"], wheelAngle); }
+  if (!me.code) setSkin(skinOfTheme(th));
   renderThemes();
   if (th.mine) { $("cPer").value = th.perTeam; $("cPlayers").value = th.list || ""; listDirty = false; }
   else if (slotsOf(th)) { $("cPer").value = Object.values(th.slots).reduce((a,b)=>a+b,0); if (user || !$("cPlayers").value.trim()) generate(); }
@@ -108,11 +117,11 @@ function updateComp(){
   const th = curTheme(), slots = slotsOf(th), t = formTerms();
   $("btnGen").disabled = !slots;
   $("cExtra").disabled = !slots; $("cParts").disabled = !slots;
-  if (!slots) { $("cComp").innerHTML = th.mine ? `Tema salvo: <b>${esc(th.label)}</b>. A lista é a que você salvou; edite à vontade.` : `Cole a sua lista abaixo e ajuste os nomes em "Nomes usados neste tema".`; return; }
+  if (!slots) { $("cComp").innerHTML = th.mine ? `Tema salvo: <b>${esc(th.label)}</b>. A lista é a que você salvou; edite à vontade em "Ajustes da sala".` : `Cole a sua lista em "Ajustes da sala" e ajuste os nomes usados no tema.`; return; }
   const c = counts(th), items = itemsOf(th);
   const short = Object.keys(c).filter(k => c[k] > items[k].length);
   $("cComp").innerHTML = `Cada ${esc(t.team)}: ` + Object.entries(slots).map(([k,v]) => `<b>${v} ${esc(k)}</b>`).join(", ") +
-    `<br>Lista: ${Object.values(c).reduce((a,b)=>a+b,0)} ${esc(t.items)} (${Object.entries(c).map(([k,v])=>`${v} ${esc(k)}`).join(", ")})` +
+    ` · ${Object.values(c).reduce((a,b)=>a+b,0)} ${esc(t.items)} na lista` +
     (short.length ? `<br><span class="warn">O tema não tem ${short.map(k=>esc(k)).join(", ")} suficientes para tanta gente; entram todos os disponíveis. Complete a lista à mão se quiser.</span>` : "");
 }
 function generate(){
@@ -191,10 +200,14 @@ function join(watch){
     enter(r.code, r.capId, r.host);
   });
 }
+// a troca da tela inicial para a sala: com a transição do navegador (quando tem), senão a sala entra deslizando
 function enter(code, capId, host){
+  const jaNaSala = !!me.code && !$("room").classList.contains("hidden");
   me = { code, capId, host };
   history.replaceState(null, "", "?sala="+code);
-  $("home").classList.add("hidden"); $("room").classList.remove("hidden"); document.body.classList.add("inroom");
+  if (jaNaSala) return;
+  const troca = () => { $("home").classList.add("hidden"); $("room").classList.remove("hidden"); document.body.classList.add("inroom"); scrollTo(0, 0); };
+  if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.startViewTransition(troca); else troca();
 }
 // auto-rejoin (refresh / reconnect)
 function tryRejoin(){

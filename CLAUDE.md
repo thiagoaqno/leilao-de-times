@@ -65,7 +65,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 
 | Jogo | Servidor | Arquivos do navegador (`public/<jogo>/`) |
 | --- | --- | --- |
-| Leilão (o primeiro jogo, montar times) | dentro de `server.js` (+ `simulador.js`, `juri.js`) | `index.html`, `inicio.js`, `sala.js`, `roleta.js`, `pratos.js`, `aovivo.js` (o campeonato ao vivo: placar, carta do gol, tabela mexendo, palpites e bolão), `ritmo.js` (os tempos do ao vivo, usado também pelo servidor), `elenco.js` (item voando até o time, balõezinhos com frases, nome do time e trocas depois do leilão; é a última parte do script) (+ `public/presets.js`, `prompts.js`, `ratings.js`, `escalacao.js`, `quimica.js`, `card.js`, `cozinha.js`, `bordoes.js`) |
+| Leilão (o primeiro jogo, montar times) | dentro de `server.js` (+ `simulador.js`, `juri.js`) | ver logo abaixo (+ `public/presets.js`, `prompts.js`, `ratings.js`, `escalacao.js`, `quimica.js`, `card.js`, `cozinha.js`, `bordoes.js`) |
 | Banco (Banco Imobiliário) | `banco.js` | `tabuleiro.js` (as casas e regras), e 5 scripts que rodam em ordem e **dividem as variáveis globais**. Ver a lista logo abaixo. |
 | Uno | `uno.js` | `index.html` (tudo inline), `regras.js` |
 | Truco | `truco.js` | `index.html` (tudo inline), `regras.js` |
@@ -89,6 +89,19 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 3. `painel.js`: o painel de ação, os jogadores e o dinheiro voando;
 4. `efeitos.js`: os sons, as reações, a escritura voando e o cartão da casa (`mostrarCasa`);
 5. `telas.js`: a carteira, os imóveis, o leilão e os modais (`propModal`, `deedHTML`).
+
+**Leilão:** o visual fica em `estilo.css` (noite de estádio, verde-limão, cartas estilo FUT). Os scripts rodam em ordem e
+**dividem as variáveis globais**:
+1. `icones.js`: os ícones SVG (`Icones.ic`), a troca dos emojis da narração por ícones (`iconizar`) e o ícone de cada tema;
+2. `inicio.js`: a tela inicial, os temas e criar/entrar;
+3. `sala.js`: os botões da sala, o resultado revelado e o campinho (deitado) com a troca de posições;
+4. `pratos.js`: o prato, a votação dos pratos, a chegada do `state` e as contas das regras (`capById`, `maxBidFor`...);
+5. `rostos.js`: o rosto de cada jogador em pixel-art 16x16 (tabela de pele/cabelo/barba) com a camisa mais marcante: clube (`KITS`, `PRIORIDADE`, `EMBLEMA`) ou seleção;
+6. `carta.js`: a carta de jogador (`cartaHTML`, `versoHTML`, bronze/prata/ouro/ícone) e as faíscas;
+7. `palco.js`: o `render()`. O placar da galera, a cena do meio (só remonta quando muda de momento: `cenaChave`), o
+   painel do lance, o elenco ao lado (um time por vez: `verTime`), a barra do organizador e a gaveta;
+8. `roleta.js`: o sorteio (a fita de cartas que para no sorteado);
+9. `ritmo.js`, `aovivo.js` (o campeonato ao vivo) e `elenco.js` (o voo até o time, os balõezinhos, o nome e as trocas).
 
 **Pelada e Rocket:**
 - A mesma página `public/pelada/index.html` serve os dois. `/rocket/` usa o modo carros.

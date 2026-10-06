@@ -11,17 +11,11 @@ const agoraServidor = () => Date.now() + (typeof clockSkew === "number" ? clockS
 let vivoAte = 0;
 
 // ---------- a carta do jogador que marcou ----------
-const POS_CURTA = { GK: "GOL", DEF: "ZAG", MID: "MEI", ATT: "ATA", MEI: "MEI", VOL: "VOL" };
-const sobrenome = (n) => { const p = String(n).trim().split(/\s+/); return p.length > 1 && p[p.length - 1].length > 2 ? p[p.length - 1] : p[0]; };
+const sobrenome = (n) => { const p = String(n).trim().split(/s+/); return p.length > 1 && p[p.length - 1].length > 2 ? p[p.length - 1] : p[0]; };
+// a mesma carta do leilão (carta.js), com a faixa do gol embaixo; sai do lado do time que marcou
 function cartaGol(g, time, hat) {
-  const nivel = hat ? "hat" : g.ovr >= 85 ? "lenda" : g.ovr >= 75 ? "ouro" : g.ovr >= 65 ? "prata" : "bronze";
-  // a carta sai do lado do time que marcou (esquerda ou direita do placar)
-  return `<div class="cartaGol ${nivel} lado${g.lado}" aria-hidden="true">
-    <div class="cgTopo"><b>${g.ovr || "?"}</b><span>${POS_CURTA[g.pos] || esc(g.pos || "")}</span></div>
-    <div class="cgNome">${esc(sobrenome(g.nome))}</div>
-    <div class="cgTime">${esc(time)} · ${g.min}'</div>
-    <div class="cgFaixa">${hat ? "Hat-trick! 🎩" : "Gol!"}</div>
-  </div>`;
+  return `<div class="cartaGol lado${g.lado}${hat ? " hat" : ""}" aria-hidden="true">${cartaHTML(g.nome)}
+    <div class="cgFaixa">${hat ? ic("cartola") + "Hat-trick" : ic("bola") + "Gol"} · ${g.min}'</div></div>`;
 }
 
 // ---------- o placar de um jogo ----------
@@ -60,9 +54,10 @@ function desenhaJogo(el, j, m, anima) {
   q(".jvRel").textContent = m.fim ? "Fim" : m.fase === "Pênaltis" ? "Pên." : `${Math.min(Math.floor(m.min) + 1, j.mins + j.extra)}'`;
   q(".jvFase").textContent = m.fase;
   el.classList.toggle("acabou", m.fim);
+  el.style.setProperty("--p", Math.min(1, m.min / (j.mins + j.extra || 1)).toFixed(3)); // a barrinha do tempo de jogo
   if (m.gols.length !== vistos) {
     // a lista de gols de cada lado, e a carta de quem marcou nos que acabaram de sair
-    const lista = (lado) => m.gols.filter((g) => g.lado === lado).map((g) => `<div>⚽ ${esc(sobrenome(g.nome))} ${g.min > j.mins ? `${g.min}' (prorr.)` : `${g.min}'`}</div>`).join("");
+    const lista = (lado) => m.gols.filter((g) => g.lado === lado).map((g) => `<div>${ic("bola")}${esc(sobrenome(g.nome))} ${g.min > j.mins ? `${g.min}' (prorr.)` : `${g.min}'`}</div>`).join("");
     q(".la").innerHTML = lista("A"); q(".lb").innerHTML = lista("B");
     if (anima) for (const g of m.gols.slice(vistos)) {
       const hat = m.gols.filter((x) => x.nome === g.nome && x.lado === g.lado && x.min <= g.min).length === 3;
@@ -107,7 +102,7 @@ function acertaramHTML(j) {
   const certo = certoDe(j);
   const nomes = Object.entries(p).filter(([, e]) => e === certo).map(([id]) => capById(id)).filter(Boolean).map((c) => esc(c.name));
   if (!Object.keys(p).length) return "";
-  return nomes.length ? `🎯 Acertou o palpite: <b>${nomes.join(", ")}</b>` : "🎯 Ninguém acertou o palpite";
+  return nomes.length ? `${ic("alvo")}<span>Acertou o palpite: <b>${nomes.join(", ")}</b></span>` : `${ic("alvo")}<span>Ninguém acertou o palpite</span>`;
 }
 
 // ---------- a tabela da rodada, mexendo ----------
@@ -169,12 +164,12 @@ function renderPalpites() {
     return `<button class="pbt${meu ? " on" : ""}" ${eu ? "" : "disabled"} onclick="palpitar('${j.id}','${e}')"><span>${esc(txt)}</span>${quem.length ? `<small>${quem.join(", ")}</small>` : ""}</button>`;
   };
   let h = "";
-  if (!prox.length && vivoAte > agoraServidor() && r.shown < r.total) h += `<div class="palp espera">🎯 Os palpites da próxima parte abrem quando estes jogos terminarem.</div>`;
-  if (prox.length) h += `<div class="palp"><h3>🎯 Palpites da próxima parte</h3><p class="hint">${eu ? "Quem você acha que ganha? Acertou, ganha 1 ponto no bolão. Fecha quando o organizador revelar." : "Os participantes palpitam quem ganha cada jogo antes de revelar."}</p>`
+  if (!prox.length && vivoAte > agoraServidor() && r.shown < r.total) h += `<div class="palp espera">${ic("alvo")}Os palpites da próxima parte abrem quando estes jogos terminarem.</div>`;
+  if (prox.length) h += `<div class="palp"><h3>${ic("alvo")}Palpites da próxima parte</h3><p class="hint">${eu ? "Quem você acha que ganha? Acertou, ganha 1 ponto no bolão. Fecha quando o organizador revelar." : "Os participantes palpitam quem ganha cada jogo antes de revelar."}</p>`
     + prox.map((j) => `<div class="pj">${j.titulo ? `<div class="pjt">${esc(j.titulo)}</div>` : ""}<div class="pbts">${botao(j, "A", j.A.nome)}${j.mataMata ? "" : botao(j, "E", "Empate")}${botao(j, "B", j.B.nome)}</div></div>`).join("") + `</div>`;
   if (bolao.length) {
     const acabou = r.shown >= r.total && vivoAte <= agoraServidor(), top = bolao[0].pts, reis = acabou && top > 0 ? bolao.filter((b) => b.pts === top) : [];
-    h += `<div class="bolao"><h3>🎯 Bolão</h3>${bolao.map((b, k) => `<div class="bl${reis.includes(b) ? " rei" : ""}${b.id === eu ? " meu" : ""}"><span>${k + 1}º</span><span>${esc(b.nome)}${reis.includes(b) ? " 👑 rei do bolão" : ""}</span><b>${b.pts} pt${b.pts === 1 ? "" : "s"}</b></div>`).join("")}</div>`;
+    h += `<div class="bolao"><h3>${ic("coroa")}Bolão</h3>${bolao.map((b, k) => `<div class="bl${reis.includes(b) ? " rei" : ""}${b.id === eu ? " meu" : ""}"><span>${k + 1}º</span><span>${esc(b.nome)}${reis.includes(b) ? ` ${ic("coroa")} rei do bolão` : ""}</span><b>${b.pts} pt${b.pts === 1 ? "" : "s"}</b></div>`).join("")}</div>`;
   }
   box.innerHTML = h;
 }

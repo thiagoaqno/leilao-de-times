@@ -1,28 +1,62 @@
-# Banco: trocas mais claras, com casas, e a vez passa sozinha
+# Leilão: refeito do zero, com cara de futebol, cartas em pixel-art e 400 jogadores novos
 
 ## Como fica
-- **Trocas em vermelho e verde:** na proposta e na janela de propor troca, o que **sai de você** fica num quadro
-  vermelho ("➖ Sai de você") e o que **vem para você** num quadro verde ("➕ Vem para você").
-- **Trocar imóvel com casas:** cidade com casas ou hotel agora pode entrar na troca, e as construções vão junto. A
-  proposta mostra quantas casas têm (🏠2, 🏨), e o histórico diz "Mooca (com 2 casas)".
-- **Sem "Passar a vez":** o botão saiu. Quando a jogada termina (comprou, mandou a leilão, pagou o que devia), a vez
-  passa sozinha para o próximo depois de uma pausa curta. Enquanto alguém deve, a vez espera o pagamento.
-  Construir, hipotecar e trocar continuam valendo a qualquer hora.
-- As regras da página foram atualizadas.
+- **Visual novo:** noite de estádio. Fundo quase preto puxado para o verde, refletores balançando, destaque verde-limão
+  e o gramado no palco. Sem emojis: todos os ícones são desenhados (SVG). Na narração do campeonato e do júri dos pratos,
+  os emojis também viram ícones.
+- **Cartas de jogador estilo FUT:** cada jogador vira uma carta com nota, posição, país e o **rosto em pixel-art**,
+  desenhado na hora (pele, cabelo e barba). A cor da carta segue a nota: **dourada** só para 90 ou mais (com brilho
+  holográfico, raios girando e faíscas), **prata** de 87 a 89 e a **padrão** (escura, com o verde-limão) abaixo de 87.
+- **A camisa mais marcante:** o jogador veste a camisa de clube mais emblemática dele, com o desenho certo (listras
+  do Barça e da Juve, faixa do Vasco e do River, a faixa do Boca, os aros do Sporting...). Os atuais vestem o clube de
+  agora; as lendas, o clube mais marcante da carreira, com escolhas à mão (Zico no Flamengo, Cruyff no Ajax, Henry no
+  Arsenal, Riquelme no Boca...). Alguns vão com a seleção: Pelé, Maradona, Ronaldo, Romário, Baggio.
+- **400 jogadores novos:** 212 lendas e 210 atuais, todos com nota (estimativa), posição, país e clubes (para a
+  química) e rosto. As listas passaram para 318 lendas e 310 atuais.
+- **O sorteio virou abertura de pacote:** uma fita de cartas corre pelo palco e vai freando até parar no sorteado. A
+  carta escolhida gira e entra grande no meio do palco. Com a roleta oculta, as outras cartas da fita aparecem viradas.
+- **Revelação com suspense:** os lances secretos viram um por um, do menor para o maior, e o carimbo **VENDIDO** bate
+  com o palco tremendo. Só depois o jogador voa até o time. Quem levou ganha confete.
+- **Menos informação na tela:**
+  - em cima, o **placar da galera**: um cartão por pessoa, com as moedas descendo em contagem, as vagas acendendo quando
+    o jogador pousa e o que cada um está fazendo (pensando, pronto, na frente, saiu);
+  - ao lado do palco, **um campinho só**: o seu, ou o de quem você tocar no placar. O campinho agora fica deitado (gol à
+    esquerda) e mostra ataque, defesa e química;
+  - a lista, os sem dono, o histórico e as regras da sala foram para a gaveta **Lista**.
+- **Lance:** botões − e +, lances rápidos e "Tudo". O tempo é uma barra que fica vermelha e pulsa nos últimos 5 s. No
+  lance aberto, o maior lance pula a cada lance novo, e os últimos lances aparecem embaixo.
+- **Organizador:** os botões ficam numa barra no rodapé do palco, só com o que vale naquele momento. Em tela larga, a
+  carta e o lance ficam lado a lado.
+- **Momentos com cena própria:** sala de espera (código grande e cada um entrando pulando), intervalo (o baralho
+  respirando), fim (taça, a contratação mais cara, a pechincha e o favorito no papel) e "Hora do campeonato".
+- **Tela inicial:** três lendas em leque, os temas de futebol em destaque e o resto dos ajustes recolhido em "Ajustes
+  da sala". A troca da tela inicial para a sala é animada.
+- Quem pede "menos movimento" no sistema fica sem as animações (o jogo ao vivo continua andando).
 
 ## Por dentro
-- `banco.js`:
-  - `settle` chama `autoPass` quando a jogada chega em "done": um relógio de `PASS_MS` (1,2 s) que só passa a vez se
-    nada mudou (mesma vez, mesma jogada, ainda em "done"). A ação `endTurn` saiu.
-  - `checkSide` não trava mais imóvel com construção; o dono muda e as casas ficam.
-  - Como o grupo pode ficar dividido entre dois donos depois de uma troca, a trava de hipoteca e a regra de vender
-    por igual só olham as cidades do mesmo dono.
-- `public/banco/painel.js`, `telas.js` e `index.html`: os quadros vermelho/verde, as casinhas nos imóveis da troca e
-  o painel "Jogada feita ✓" no lugar do botão.
+- `public/leilao/index.html` foi reescrito, e o CSS foi para `estilo.css`.
+- Arquivos novos em `public/leilao/`:
+  - `icones.js`: o sprite SVG e `iconizar`;
+  - `rostos.js`: os rostos 16x16 (uma tabela de 4 letras por jogador das listas; quem não está nela ganha um rosto
+    sorteado pelo nome) e a camisa (`KITS` dos clubes, `PRIORIDADE` e as escolhas à mão em `EMBLEMA`);
+  - `carta.js`: a carta FUT;
+  - `palco.js`: o `render()` novo. A cena do meio só é remontada quando muda de momento, para as animações não
+    recomeçarem a cada estado.
+- `roleta.js` trocou o canvas da roleta pela fita de cartas.
+- `elenco.js`: o voo espera o carimbo (`atrasoVoo`) e vai para o cartão do placar quando o time não está aberto. A fala
+  de quem chegou aparece embaixo do cartão no placar.
+- `aovivo.js`: a carta do gol usa a carta nova, e cada jogo tem uma barrinha com o tempo de jogo.
+- `card.js` (o card do campeão) usa as cores novas.
+- `ratings.js`, `quimica.js` e `presets.js`: os jogadores novos (notas, país e clubes, listas por posição).
+- O servidor não mudou.
 
 ## Conferido
-- **Teste novo (`tests/banco.test.js`):** uma partida inteira só com dados, comprar e pagar (ninguém passa a vez) e
-  uma troca de cidade com casa, que chega no outro jogador com a casa.
-- **No navegador:** a proposta com Mooca (2 casas) em vermelho e Liberdade + R$ 200 mil em verde; a janela de propor
-  troca deixa marcar a cidade com casas; aceitar levou a Mooca com as 2 casas para o outro jogador.
-- `npm test` passando.
+- `npm test` passando (46).
+- Todos os 628 jogadores das listas têm nota, química e rosto (conferido por script).
+- Os testes de navegador do leilão passando (`paginas.spec.js` e `salas.spec.js`).
+- No navegador, com 3 robôs dando lance:
+  - lance secreto e aberto;
+  - sorteio, revelação e voo até o time;
+  - fim e campeonato simulado (placar ao vivo, carta do gol, tabela);
+  - tema de hambúrguer;
+  - celular (375 px) e tela larga (1400 px).
