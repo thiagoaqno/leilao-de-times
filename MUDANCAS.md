@@ -1,29 +1,29 @@
-# Leilão: novas formações de futsal
+# Sinuca: o taco sempre puxa até 100%
+
+## O que acontecia
+- **A força travava baixo.** Ela contava a partir de onde o dedo (ou o mouse) pegava a barra. Quem pegava a barra no meio
+  ou perto do fim ficava sem espaço para puxar, porque a beirada da tela chegava antes. No celular deitado, pegando a barra
+  pelo lado esquerdo, o máximo era uns **46%**, e parecia que o taco não puxava.
+- **O puxão era cancelado no celular.** Segurar a barra um instante antes de puxar podia abrir a seleção de texto ou a
+  lupa, que cancelava o puxão e zerava a força.
 
 ## Como fica
-- **Três formações novas no futsal**, além de 2-2, 3-1, 1-2-1 (losango) e 1-1-2:
-  - **2-1-1 em T:** dois defensores, um meia e o pivô. Segura atrás sem abrir mão do pivô.
-  - **1-3 ofensiva:** um defensor e três atacantes. Ataque lá em cima, defesa exposta.
-  - **4-0 rodízio:** os quatro em linha no meio da quadra, sem pivô fixo. Para time de meias que sabem fazer de tudo.
-- Aparecem na caixa "Formação" da sala, com a explicação de cada uma, e o campinho mostra os jogadores no lugar certo.
-- A **automática** também testa as novas e fica com a que deixa o time mais forte.
-- As regras da sala citam as 7 formações do futsal.
+- **O 100% fica sempre ao alcance.** Quando sobra pouca barra ou pouca tela, a distância do 100% encolhe até o espaço que
+  sobra.
+  - Quem pega pela ponta do taco, como antes, continua usando a barra inteira: metade do puxão é 50%.
+- A barra de força, o efeito e o ajuste fino não selecionam texto nem abrem a lupa ou o menu do toque longo.
+- Apertar a barra com o mouse também não seleciona a página nem arrasta nada junto.
 
 ## Por dentro
-- `public/escalacao.js`: as três entram em `FORMATIONS.futsal`.
-  - O 4-0 é `{ DEF: 0, MID: 4, ATT: 0 }`.
-  - `spotsOf` ignora a linha "0", então os quatro ficam numa linha só, no meio da quadra.
-- `public/leilao/sala.js`: os nomes na lista `FORMS`.
-- `public/leilao/index.html`: o texto das regras.
-- O servidor já aceita qualquer formação de `FORMATIONS` (`ALL_FORMATIONS`), sem mudança.
+- `public/sinuca/mira.js`:
+  - `curso(e)` calcula, na hora em que a pessoa pega a barra, quanto falta de barra e de tela na direção de puxar;
+  - a força passa a ser a distância puxada dividida por esse curso (de 36 px até o tamanho da barra);
+  - o `pointerdown` chama `preventDefault`.
+- `public/sinuca/index.html`: `user-select: none` e `-webkit-touch-callout: none` na força, no efeito e no ajuste fino.
 
 ## Conferido
-- `npm test`: 62 passaram, 0 falharam.
-- As vagas de cada formação batem com o número de jogadores (goleiro e mais 4), e a química liga o goleiro aos quatro do 4-0.
-- Um campeonato de futsal simulado com um time em cada formação nova e um na automática terminou normal. A
-  automática escolheu o 2-1-1 para aquele elenco.
-- No navegador, numa sala de futsal com robôs:
-  - a lista mostra as 7 formações;
-  - trocar para 4-0 salvou e o campinho pôs os quatro em linha no meio;
-  - no 1-3, os três ficaram na frente, com ataque 87 e defesa 71.
-- Foto em `planos/imagens/leilao-formacao-4-0.jpg`.
+- `npm test`: 69 passaram, 0 falharam.
+- `npx playwright test tests/e2e/mesa.spec.js`: 2 passaram.
+- No navegador, numa mesa com um segundo jogador de teste, na tela deitada do celular:
+  - pegando a barra pelo lado esquerdo e puxando até a beirada, a força chegou a **100%** (antes, 46%);
+  - pegando pela ponta e puxando metade da barra, deu **50%**, igual a antes.
