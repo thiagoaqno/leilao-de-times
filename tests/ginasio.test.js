@@ -1,4 +1,4 @@
-// Ginásio: motor em tempo real, ainda sem servidor e sem tela.
+// Ginásio: motor em tempo real e previsão de movimento da tela.
 const test = require("node:test");
 const assert = require("node:assert");
 const G = require("../public/ginasio/regras.js");
@@ -70,4 +70,32 @@ test("ginásio: robô contra robô termina e a duração média fica boa", () =>
   for (let i = 0; i < 12; i++) tempos.push(simular(`pokemon-${i}`, "pokemon"));
   const media = tempos.reduce((a, b) => a + b, 0) / tempos.length;
   assert.ok(media >= 90 && media <= 210, `média ${(media / 60).toFixed(2)} min`);
+});
+
+test("ginásio: previsão repete movimento, pilastras, paredes e esquiva sem mudar vida", () => {
+  for (const modo of ["galeramon", "pokemon"]) {
+    const p = G.criarPartida({ seed: "previsao", modo, bots: false }, [[{ id: "a" }], [{ id: "b" }]]);
+    const a = p.entidades[0], e = structuredClone(a);
+    const mundo = { dex: p.dex, entidades: [], ev: [] };
+    for (let i = 0; i < 720; i++) {
+      const c = { dx: i < 240 ? 1 : i < 480 ? -1 : 0, dy: i < 480 ? -0.2 : 1, mira: { x: 1, y: 0 }, esquiva: i % 200 === 0 };
+      G.passo(p, 1 / 60, { a: c }); G.preverMovimento(mundo, e, 1 / 60, c);
+      for (const campo of ["x", "y", "vx", "vy", "esquivaT", "esquivaCd", "invulneravel"]) assert.strictEqual(e[campo], a[campo], `${modo}/${i}/${campo}`);
+    }
+    assert.strictEqual(e.bicho.hp, e.bicho.max);
+  }
+});
+
+test("ginásio: prever investida ou canalização não aplica dano nem cura", () => {
+  const p = G.criarPartida({ seed: "prever-sem-dano", bots: false }, [[{ id: "a" }], [{ id: "b" }]]);
+  const [a, b] = p.entidades, hab = G.habilidadeDeGolpe("investida", { n: "Investida", t: "Normal", p: 40, pri: 1 });
+  Object.assign(a, { x: -0.4, y: 0, dash: { x: 1, y: 0, falta: 3, hab, hit: new Set() } });
+  Object.assign(b, { x: 0, y: 0 });
+  const hp = b.bicho.hp;
+  G.preverMovimento(p, a, 0.05);
+  assert.strictEqual(b.bicho.hp, hp); assert.strictEqual(p.ev.length, 0); assert.strictEqual(a.dash.hit.size, 0);
+  a.dash = null; a.bicho.hp /= 2; a.canal = { t: 0.01, heal: 0.5 };
+  const antes = a.bicho.hp;
+  G.preverMovimento(p, a, 0.05);
+  assert.strictEqual(a.bicho.hp, antes); assert.strictEqual(a.canal, null);
 });

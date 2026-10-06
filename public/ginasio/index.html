@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#242b2c">
+<script src="/semzoom.js"></script>
+<title>Ginásio da Galera</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<header id="barra">
+  <a href="/" class="voltar">← Vila</a>
+  <span id="salaCodigo" class="codigo hidden"></span>
+  <span id="conexao" role="status">Conectando…</span>
+  <button id="btnSound" class="icone" title="Desligar o som" aria-label="Desligar o som"></button>
+  <button id="btnSala" class="icone hidden" title="Sala" aria-label="Sala"></button>
+</header>
+<main id="principal">
+  <section id="quadra" aria-label="Arena do Ginásio">
+    <canvas id="cv" aria-label="Batalha em tempo real"></canvas>
+    <div id="placar" class="hidden">
+      <div class="lado azul"><span id="nomeAzul"></span><div class="vida"><i id="vidaAzul"></i></div></div>
+      <time id="relogio">4:00</time>
+      <div class="lado vermelho"><span id="nomeVermelho"></span><div class="vida"><i id="vidaVermelha"></i></div></div>
+    </div>
+    <div id="contagem" class="hidden" aria-live="polite"></div>
+    <div id="observando" class="hidden">Assistindo</div>
+    <div id="reconectando" class="hidden" role="status">Reconectando…</div>
+  </section>
+  <aside id="painel">
+    <div class="titulo"><span class="marca">GALERA</span><h1>Ginásio</h1><span id="rCode" class="codigo hidden"></span></div>
+    <div id="inicio">
+      <label for="hName">Seu nome</label><input id="hName" maxlength="16" autocomplete="nickname" enterkeyhint="done">
+      <button id="btnRobo" class="primario largo">Jogar contra robô</button>
+      <div class="acoes"><button id="btnCreate">Criar sala</button></div>
+      <div class="entrada"><label for="hCode">Código da sala</label><div class="linha"><input id="hCode" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go"><button id="btnJoin">Entrar</button><button id="btnWatch" class="icone" title="Assistir" aria-label="Assistir"></button></div></div>
+      <p id="hErr" class="erro" role="alert"></p>
+    </div>
+    <fieldset id="opcoes"><legend>Partida</legend>
+      <div class="segmentos" aria-label="Modo"><button data-modo="galeramon" aria-pressed="true">Galeramon</button><button data-modo="pokemon" aria-pressed="false">Pokémon</button></div>
+      <div class="linha opcoes-linha"><div class="segmentos formato" aria-label="Formato"><button data-formato="1x1" aria-pressed="true">1x1</button><button data-formato="2x2" aria-pressed="false">2x2</button></div><label class="check"><input id="bots" type="checkbox" checked>Robôs</label></div>
+    </fieldset>
+    <section id="escolha"><h2>Seu time</h2><div id="meuTime" class="time-escolha"></div></section>
+    <section id="sala" class="hidden">
+      <div class="linha"><h2>Na arena</h2><button id="btnInvite" class="icone" title="Copiar convite" aria-label="Copiar convite"></button></div>
+      <div id="participantes"></div>
+      <div class="segmentos lados"><button data-lado="0">Lado azul</button><button data-lado="1">Lado vermelho</button><button data-lado="null" title="Ficar de fora" aria-label="Ficar de fora"></button></div>
+      <button id="btnStart" class="primario largo">Começar batalha</button>
+      <button id="btnLeave" class="discreto largo">Sair da sala</button>
+      <ul id="feed" aria-label="Acontecimentos da sala"></ul>
+    </section>
+  </aside>
+</main>
+<footer id="hud" class="hidden">
+  <div id="reservas" aria-label="Time na batalha"></div>
+  <div id="habilidades" aria-label="Golpes"></div>
+  <button id="btnEsquiva" class="habilidade esquiva" title="Esquiva" aria-label="Esquiva"></button>
+</footer>
+<dialog id="dex">
+  <div class="dialogo-topo"><h2 id="dexTitulo">Escolher bicho</h2><button id="dexFechar" class="icone" title="Fechar" aria-label="Fechar"></button></div>
+  <div class="busca"><input id="dexBusca" type="search" placeholder="Buscar" aria-label="Buscar criatura" autocomplete="off"><select id="dexTipo" aria-label="Tipo"><option value="">Todos os tipos</option></select></div>
+  <div id="dexLista"></div><p id="dexVazio" class="hidden">Nenhum bicho encontrado.</p>
+  <div class="paginacao"><button id="dexAnterior" class="icone" title="Página anterior" aria-label="Página anterior"></button><span id="dexPagina"></span><button id="dexProximo" class="icone" title="Próxima página" aria-label="Próxima página"></button></div>
+</dialog>
+<dialog id="resultado">
+  <div class="dialogo-topo"><h2 id="resultadoTitulo"></h2><button id="resultadoFechar" class="icone" title="Fechar" aria-label="Fechar"></button></div>
+  <div id="resultadoLados"></div>
+  <div class="linha resultado-acoes"><button id="btnRevanche" class="primario">Revanche</button><button id="btnLobby">Voltar à sala</button></div>
+</dialog>
+<div id="toast" class="hidden" role="status"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/noite.js"></script>
+<script src="/comum.js"></script>
+<script src="/icones.js"></script>
+<script src="/toque.js"></script>
+<script src="/galeramon/dados.js"></script>
+<script src="/galeramon/pokemon.js"></script>
+<script src="/galeramon/sprites.js"></script>
+<script src="regras.js"></script>
+<script src="sala.js"></script>
+<script src="desenho.js"></script>
+<script src="controles.js"></script>
+<script src="rede.js"></script>
+<script src="sons.js"></script>
+<script src="hud.js"></script>
+</body>
+</html>
