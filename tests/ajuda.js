@@ -16,7 +16,7 @@ function portaLivre() {
 // Sobe o servidor e espera ele dizer que está rodando. env: variáveis extras (ex.: DOMINO_PASS_MS).
 async function subirServidor(env = {}) {
   const porta = await portaLivre();
-  const proc = spawn(process.execPath, [path.join(__dirname, "..", "server.js")], { env: { ...process.env, ...env, PORT: String(porta) }, stdio: ["ignore", "pipe", "pipe"] });
+  const proc = spawn(process.execPath, [path.join(__dirname, "..", "server.js")], { env: { DB_PATH: ":memory:", ...process.env, ...env, PORT: String(porta) }, stdio: ["ignore", "pipe", "pipe"] });
   let saida = "";
   await new Promise((ok, erro) => {
     const t = setTimeout(() => erro(new Error("O servidor não subiu:\n" + saida)), 15000);

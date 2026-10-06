@@ -24,6 +24,8 @@ decisões dos primeiros dias estão em `PROJETO.md`, e o que mudou em cada PR fi
 | Arquivo | O que é |
 | --- | --- |
 | `salas.js` | Salas com código de 5 letras (o que todo jogo usa). Ver a lista de funções logo abaixo. |
+| `bd.js` + `migracoes/` | **Banco de dados** (SQLite pelo `node:sqlite`). `DB_PATH` diz onde fica (no Fly, `/data/galera.db` num volume: ver `DEPLOY-FLY.md`); sem ele, `dados/galera.db`; os testes usam `:memory:`. As migrações `migracoes/NNN-nome.sql` rodam em ordem, uma vez só. Por enquanto guarda as carreiras: `criarCarreira`, `carreiraPorToken`, `recuperarCarreira`, `salvarCarreira` (só o hash do token e do código de recuperação vai para o banco). |
+| `public/carreira/motor.js` | **Carreira de Treinador:** o motor da partida (UMD, com semente). `simularPartida({ casa, fora, semente, modo, controla, decisoes })`: modo 1 simulada, 2 com paradas táticas, 3 também com os lances decisivos; sem resposta em `decisoes[id]`, devolve `parado` e quem chama simula de novo. A calibragem fica em `AJUSTE`. Plano completo em `planos/carreira.md`. |
 | `noite.js` + `public/noite.js` | **Noite da Galera.** Ver a seção própria abaixo. |
 | `public/comum.js` | `window.Comum`. Ver a lista de funções logo abaixo. |
 | `public/icones.js` | `window.Icones`: os ícones SVG do site (Leilão e Banco), no lugar dos emojis. `ic(nome)`, `iconizar(html)`, `peao(emoji)` (o símbolo de cada peão do Banco) e `observar(raiz)`, que troca sozinho por ícone todo emoji que aparecer na página. |
@@ -223,6 +225,7 @@ Para achar algo dentro de um jogo:
   - As páginas abrem com `#debug` e expõem `window.__<jogo>` (por exemplo `__pelada`, `__tenis`, `__rumi`,
     `__pingpong`) para o teste mexer no jogo.
   - Jogo novo entra na lista de `tests/e2e/paginas.spec.js`.
+- **Carreira:** `tests/bd.test.js` (banco em memória) e `tests/carreira-motor.test.js` (10 mil jogos conferem gols, mando e força; se mexer no `AJUSTE` do motor, esses testes dizem se o futebol continua com cara de futebol).
 - **Testes que às vezes falham por tempo:** um do Dominó e um do relógio. Repetir antes de investigar.
 
 ## Jeito de trabalhar neste projeto

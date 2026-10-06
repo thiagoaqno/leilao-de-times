@@ -28,6 +28,8 @@ require("./tiro.js")(io); // Tiro da Galera: FPS de arena x1 ou x2 com AK-47 e A
 require("./pelada.js")(io); // Pelada da Galera: futsal 3D do 1x1 ao 5x5, canal /pelada (e o Rocket, de carro)
 require("./batalha.js")(io); // Batalha da Galera: batalha de balões de kart estilo Mario Kart, canal /batalha
 const Ritmo = require("./public/leilao/ritmo.js"); // quanto dura cada parte do campeonato ao vivo
+// o banco de dados (bd.js: SQLite, carreiras de treinador). Se não abrir, o resto do site segue funcionando.
+try { require("./bd.js").abrir(); } catch (e) { console.warn("Banco de dados não abriu:", e.message); }
 const noite = require("./noite.js"); noite.attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
 require("./pingpong.js")(io); // Pingue-Pongue da Galera: tênis de mesa 1x1 no mouse, canal /pingpong

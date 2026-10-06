@@ -98,6 +98,34 @@ Enquanto o segredo não existir, a action só avisa e não faz nada (não dá er
 
 ---
 
+## Banco de dados (carreira de treinador)
+
+O site guarda as carreiras num arquivo SQLite (`bd.js`). Sem volume, o arquivo fica dentro da máquina e **some a cada
+deploy**. Por isso, antes de abrir a carreira para a galera, crie um volume (um disco que não some). É uma vez só:
+
+1. Crie o volume de 1 GB em São Paulo, com o mesmo nome que o `fly.toml` vai usar:
+   ```bash
+   fly volumes create galera_dados --region gru --size 1
+   ```
+2. Só **depois** de criar o volume, acrescente no fim do `fly.toml` (se acrescentar antes, o deploy falha procurando
+   o volume):
+   ```toml
+   [mounts]
+     source = "galera_dados"
+     destination = "/data"
+
+   [env]
+     DB_PATH = "/data/galera.db"
+   ```
+3. Publique de novo (`fly deploy`, ou o deploy automático ao entrar na `main`). No `fly logs`, não pode aparecer
+   "Banco de dados não abriu".
+
+**Backup:** o Fly tira uma foto do volume por dia e guarda por 5 dias (`fly volumes snapshots list ID_DO_VOLUME`). Para
+baixar o arquivo para o seu computador:
+```bash
+fly ssh sftp get /data/galera.db galera.db
+```
+
 ## Comandos úteis
 
 | Comando | O que faz |
