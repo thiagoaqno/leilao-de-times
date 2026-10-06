@@ -108,10 +108,16 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 3. `sala.js`: os botões da sala, o resultado revelado e o campinho (deitado) com a troca de posições;
 4. `pratos.js`: o prato, a votação dos pratos, a chegada do `state` e as contas das regras (`capById`, `maxBidFor`...);
 5. `rostos.js`: o rosto de cada jogador em pixel-art 16x16 (tabela de pele/cabelo/barba) com a camisa mais marcante: clube (`KITS`, `PRIORIDADE`, `EMBLEMA`) ou seleção;
-   para os replays, também a cabeça sozinha (`cabeca`) e o uniforme inteiro (`uniformeDe`: calção, meião e chuteira);
-6. `lances.js`: os replays dos gols do campeonato ao vivo em pixel-art, um telão por gol: o boneco (cabeça e uniforme de
-   `rostos.js`), o lance de lado (chute, ângulo, voleio, cabeçada, cavadinha), o goleiro, a rede e a comemoração em close
-   (`COMEMORA`; os craques com comemoração própria ficam em `ASSINATURA`). Tudo sorteado pelo gol: todos veem o mesmo;
+   para os replays, também a cabeça sozinha (`cabeca`), a cor do cabelo (`cabelo`) e o uniforme inteiro (`uniformeDe`:
+   calção, meião e chuteira);
+6. `lances.js`, `lances-gols.js` e `lances-comemoracoes.js`: os replays dos gols do campeonato ao vivo em pixel-art, um
+   telão por gol. Tudo sorteado pelo gol: todos veem o mesmo.
+   - `lances.js` é o motor: o boneco (cabeça e uniforme de `rostos.js`, com enfeites como sem camisa e de costas com o
+     número), o cenário, o goleiro, a rede, o close e o telão. As peças para os outros dois ficam em `Lances.kit`;
+   - `lances-gols.js`: os 20 tipos de gol (`Lances.GOLS`), cada um com o seu roteiro; os preferidos dos craques somam no
+     sorteio (`Lances.FINALIZACAO`);
+   - `lances-comemoracoes.js`: as 45 comemorações (`Lances.COMEMORA`); a própria de cada craque (`Lances.ASSINATURA`) sai
+     às vezes;
 7. `carta.js`: a carta de jogador (`cartaHTML`, `versoHTML`, bronze/prata/ouro/ícone) e as faíscas;
 8. `palco.js`: o `render()`. O placar da galera, a cena do meio (só remonta quando muda de momento: `cenaChave`), o
    painel do lance, o elenco ao lado (um time por vez: `verTime`), a barra do organizador e a gaveta;

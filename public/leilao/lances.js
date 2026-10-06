@@ -1,15 +1,14 @@
-// Leilão da Galera — os replays dos gols em pixel-art (8 bits), no campeonato ao vivo. Cada gol ganha um telão que toca
-// na hora do gol: o jogador, com o rosto e a camisa da carta dele (rostos.js), chuta, o goleiro voa, a rede balança e,
-// em close, vem a comemoração. Craque conhecido comemora do jeito dele: o soco no ar do Pelé, o "siu" do Cristiano, o
-// Haaland meditando, o Bebeto embalando o nenê...
+// Leilão da Galera — os replays dos gols em pixel-art (8 bits), no campeonato ao vivo: o motor. Cada gol ganha um telão
+// que toca na hora do gol: o jogador, com o rosto e a camisa da carta dele (rostos.js), faz o lance (um dos tipos de gol
+// de lances-gols.js), o goleiro voa, a rede balança e, em close, vem a comemoração (lances-comemoracoes.js).
 // Tudo é desenhado num canvas de 160x90 e ampliado sem borrar (image-rendering: pixelated). O lance de cada gol é
 // sorteado pelo jogo, pelo minuto e pelo nome: todo mundo vê o mesmo.
 // Lances.criar(gol, jogo, { nome, hat, auto }) devolve o telão (um elemento): com auto, toca o replay na hora (o lance,
-// o corte e a comemoração, em 3,4 segundos) e depois fica parado na comemoração; um toque toca de novo.
+// o corte e a comemoração) e depois fica parado na comemoração; um toque toca de novo.
+// Os tipos de gol entram em Lances.GOLS, as comemorações em Lances.COMEMORA, e as peças para montá-los ficam em
+// Lances.kit.
 (function () {
-  const W = 160, H = 90;
-  // os tempos do lance (ms): o chute, a bola na rede e o corte para o close da comemoração
-  const T_CHUTE = 780, T_GOL = 1120, T_CORTE = 1760;
+  const W = 160, H = 90, FESTA = 1640; // a comemoração em close dura FESTA ms
   const quieto = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // ---------- contas ----------
@@ -25,6 +24,7 @@
   }
   const rgb = (hex) => { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
   const distCor = (a, b) => { const p = rgb(a), q = rgb(b); return Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]); };
+  const claro = (hex) => { const [r, g, b] = rgb(hex); return 0.3 * r + 0.59 * g + 0.11 * b; };
   const escapa = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
   // ---------- pixel ----------
@@ -46,10 +46,13 @@
   function elipse(g, cx, cy, rx, ry) {
     for (let y = -ry; y <= ry; y++) { const w = Math.round(rx * Math.sqrt(1 - (y / (ry + 0.5)) ** 2)); g.fillRect(Math.round(cx - w), Math.round(cy + y), w * 2 + 1, 1); }
   }
-  // as letras das placas de propaganda (3x5); espelho: escreve ao contrário (o telão do time B é virado)
-  const LETRA = { G: "011100101101011", A: "010101111101101", L: "100100100100111", E: "111100110100111", R: "110101110101101" };
+  // as letras das placas de propaganda e os números das camisas (3x5); espelho: escreve ao contrário (o telão do time B
+  // é virado)
+  const LETRA = { G: "011100101101011", A: "010101111101101", L: "100100100100111", E: "111100110100111", R: "110101110101101",
+    0: "111101101101111", 1: "010110010010111", 2: "111001111100111", 3: "111001111001111", 4: "101101111001001", 5: "111100111001111",
+    6: "111100111101111", 7: "111001010010010", 8: "111101111101111", 9: "111101111001111" };
   function escreve(g, txt, x, y, espelho) {
-    for (const ch of txt) {
+    for (const ch of String(txt)) {
       const b = LETRA[ch];
       if (b) for (let i = 0; i < 15; i++) if (b[i] === "1") { const xx = x + (i % 3); g.fillRect(espelho ? W - 1 - xx : xx, y + Math.floor(i / 3), 1, 1); }
       x += 4;
@@ -66,12 +69,30 @@
   // para onde ele ataca), -90 = para trás e 180 = para cima. Cada braço e cada perna tem dois ângulos: [ombro, cotovelo]
   // e [quadril, joelho]. tr: o tronco inclinado (os ombros andam tr pixels), ag: agachado, ol: para onde olha,
   // pes: "fora" com as chuteiras para os lados (de frente) ou para a frente (de lado).
+  // Os enfeites da pose: semCamisa, camisaNaCabeca, costas (de costas, com o número), barriga (a bola debaixo da camisa),
+  // oculos, beijo, escudo (a camisa puxada até a boca), nene (no colo), guitarra, camisaNaMao (girando; giro: o ângulo),
+  // dedo (apontando) e pernasPorCima (as pernas desenhadas na frente do corpo).
   const Q = 48, PE = 46;
   const spr = document.createElement("canvas"); spr.width = spr.height = Q;
   const sg = spr.getContext("2d", { willReadFrequently: true });
   const vetor = (a) => [Math.sin((a * Math.PI) / 180), Math.cos((a * Math.PI) / 180)];
+  // a cabeça vista de trás: a nuca, as orelhas e o cabelo (pelo corte de cabelo do jogador, o mesmo do rosto da carta)
+  function nuca(g, b, ox, oy) {
+    const estilo = Rostos.tracosDe(b.nome)[1], P = b.pele, C = Rostos.cabelo(b.nome);
+    const ret = (x0, y0, x1, y1, c, a = 1) => { cor(g, c, a); g.fillRect(ox + x0, oy + y0, x1 - x0 + 1, y1 - y0 + 1); };
+    ret(6, 10, 9, 12, P); ret(5, 3, 10, 3, P); ret(4, 4, 11, 9, P); ret(5, 10, 10, 10, P); ret(3, 6, 3, 7, P); ret(12, 6, 12, 7, P);
+    if (estilo === "k" || estilo === "f") ret(7, 4, 8, 4, "#ffffff", 0.3);
+    else if (estilo === "r") ret(4, 2, 11, 8, C, 0.55);
+    else if (estilo === "x") ret(4, 5, 11, 8, C);
+    else if (estilo === "m") ret(7, 0, 8, 9, C);
+    else if (estilo === "l") { ret(4, 1, 11, 10, C); ret(3, 2, 12, 11, C); }
+    else if (estilo === "o") ret(3, 0, 12, 8, C);
+    else if (estilo === "a") ret(2, 0, 13, 9, C);
+    else ret(4, 1, 11, 8, C);
+    g.globalAlpha = 1;
+  }
   function boneco(b, p) {
-    const g = sg, u = b.u, ag = Math.round(p.ag || 0), tr = Math.round(p.tr || 0), topo = 24 + ag, qy = 35 + ag;
+    const g = sg, u = b.u, ag = Math.round(p.ag || 0), tr = Math.round(p.tr || 0), topo = 24 + ag, qy = 35 + ag, ox = 16 + tr, oy = 12 + ag;
     g.globalAlpha = 1; g.clearRect(0, 0, Q, Q);
     // pernas: a coxa sai do calção, o meião e a chuteira
     const perna = (hx, [a1, a2], lado) => {
@@ -80,28 +101,62 @@
       cor(g, u.meiao); reta(g, kx + x2 * 1.5, ky + y2 * 1.5, fx, fy, 2);
       cor(g, u.chuteira); px(g, p.pes === "fora" && lado < 0 ? fx - 1 : fx, fy + 1, 3, 2);
     };
-    perna(21, p.pE || [0, 0], -1); perna(25, p.pD || [0, 0], 1);
+    if (!p.pernasPorCima) { perna(21, p.pE || [0, 0], -1); perna(25, p.pD || [0, 0], 1); }
     // o calção
     cor(g, u.calcao); g.fillRect(20, qy - 2, 8, 3); g.fillRect(20, qy + 1, 3, 1); g.fillRect(25, qy + 1, 3, 1);
     cor(g, "#000", 0.2); g.fillRect(27, qy - 2, 1, 4);
-    // a camisa, com o desenho do clube (o mesmo da carta), e a sombra do lado direito
+    // a camisa, com o desenho do clube (o mesmo da carta), e a sombra do lado direito. Sem camisa (ou com ela na cabeça),
+    // aparece o peito; com a bola debaixo da camisa, a barriga cresce para os lados
     for (let r = 0; r <= 8; r++) {
-      const y = topo + r, d = Math.round((tr * (8 - r)) / 8), x0 = r >= 7 ? 20 : 19, x1 = r >= 7 ? 27 : 28;
-      for (let x = x0; x <= x1; x++) { cor(g, !b.goleiro && Rostos.listra(u.desenho, x - 18, r + 12) ? u.det : u.cam); g.fillRect(x + d, y, 1, 1); }
+      const y = topo + r, d = Math.round((tr * (8 - r)) / 8), bar = p.barriga ? [0, 0, 0, 0, 1, 2, 2, 1, 0][r] : 0, x0 = (r >= 7 ? 20 : 19) - bar, x1 = (r >= 7 ? 27 : 28) + bar;
+      for (let x = x0; x <= x1; x++) {
+        const pelada = p.semCamisa || (p.camisaNaCabeca && r >= 3);
+        cor(g, pelada ? b.pele : !b.goleiro && Rostos.listra(u.desenho, x - 18, r + 12) ? u.det : u.cam); g.fillRect(x + d, y, 1, 1);
+      }
       cor(g, "#000", 0.2); g.fillRect(x1 + d, y, 1, 1);
     }
-    if (!u.desenho || b.goleiro) { cor(g, u.det); g.fillRect(23 + tr, topo + 1, 2, 1); } // a gola
-    Rostos.cabeca(g, b.nome, 16 + tr, 12 + ag, p.ol || 0);
+    if (p.semCamisa || p.camisaNaCabeca) { cor(g, "#000", 0.16); g.fillRect(21 + tr, topo + 4, 2, 1); g.fillRect(25 + tr, topo + 4, 2, 1); g.fillRect(23 + tr, topo + 6, 2, 1); } // o peito e o umbigo
+    else if (p.costas) { // o número nas costas (espelhado no telão virado, para ler direito depois de virar)
+      const num = String(b.num || 10), x0 = 24 + tr - (num.length * 4 - 1) / 2;
+      cor(g, claro(u.cam) > 150 ? "#1a1a1a" : "#f4f4f4");
+      [...num].forEach((ch, k) => { const m = LETRA[ch]; for (let i = 0; i < 15; i++) if (m[i] === "1") { const x = Math.round(x0 + k * 4 + (i % 3)); g.fillRect(b.espelho ? 47 - x : x, topo + 2 + Math.floor(i / 3), 1, 1); } });
+    }
+    else if (!u.desenho || b.goleiro) { cor(g, u.det); g.fillRect(23 + tr, topo + 1, 2, 1); } // a gola
+    // a cabeça: o rosto da carta, a nuca (de costas) ou coberta pela camisa
+    if (p.costas) nuca(g, b, ox, oy);
+    else Rostos.cabeca(g, b.nome, ox, oy, p.ol || 0);
+    if (p.camisaNaCabeca) {
+      for (let y = 0; y <= 10; y++) for (let x = 3; x <= 12; x++) {
+        if (y < 2 && (x < 5 || x > 10)) continue;
+        cor(g, Rostos.listra(u.desenho, x - 1, y + 12) ? u.det : u.cam); g.fillRect(ox + x, oy + y, 1, 1);
+      }
+      cor(g, "#000", 0.22); g.fillRect(ox + 3, oy + 10, 10, 1); g.fillRect(ox + 7, oy + 2, 1, 7);
+    }
+    if (p.pernasPorCima) { perna(21, p.pE || [0, 0], -1); perna(25, p.pD || [0, 0], 1); } // a perna que passa por cima do corpo (a bicicleta)
+    if (p.oculos) { cor(g, "#16181a"); g.fillRect(ox + 5, oy + 5, 3, 3); g.fillRect(ox + 8, oy + 5, 3, 3); cor(g, "#9fe0ff"); g.fillRect(ox + 6, oy + 6, 1, 1); g.fillRect(ox + 9, oy + 6, 1, 1); }
+    if (p.beijo) { cor(g, "#e8335a"); g.fillRect(ox + 7 + (p.ol || 0), oy + 8, 2, 2); }
     if (p.nene) { cor(g, "#f4f4f4"); g.fillRect(20 + tr, topo + 4, 7, 3); cor(g, "#9fd3ff"); g.fillRect(20 + tr, topo + 6, 7, 1); cor(g, b.pele); g.fillRect(25 + tr, topo + 4, 2, 2); } // o nenê no colo
+    if (p.guitarra) { // a guitarra, na frente do corpo (as mãos vêm por cima): o braço comprido para a esquerda e o corpo vermelho
+      cor(g, "#d9b273"); reta(g, 22 + tr, topo + 6, 8 + tr, topo + 1, 2); cor(g, "#3a2a1a"); g.fillRect(6 + tr, topo, 3, 3);
+      cor(g, "#d62828"); g.fillRect(21 + tr, topo + 4, 8, 6); g.fillRect(20 + tr, topo + 5, 10, 4);
+      cor(g, "#1a1a1a"); g.fillRect(24 + tr, topo + 6, 2, 2); cor(g, "#f4f4f4"); g.fillRect(22 + tr, topo + 8, 6, 1);
+    }
     // braços: a manga, o braço e a mão (o goleiro, de manga comprida e luva)
-    const braco = (ox, [a1, a2]) => {
-      const [x1, y1] = vetor(a1), [x2, y2] = vetor(a2), oy = topo + 1, ex = ox + x1 * 4, ey = oy + y1 * 4, mx = ex + x2 * 3.5, my = ey + y2 * 3.5;
-      cor(g, u.cam); reta(g, ox, oy, ox + x1 * 1.5, oy + y1 * 1.5, 2);
-      cor(g, b.goleiro ? u.cam : b.pele); reta(g, ox + x1 * 2, oy + y1 * 2, ex, ey, 2); reta(g, ex, ey, mx, my, 2);
+    const maos = [];
+    const braco = (bx, [a1, a2]) => {
+      const [x1, y1] = vetor(a1), [x2, y2] = vetor(a2), by = topo + 1, ex = bx + x1 * 4, ey = by + y1 * 4, mx = ex + x2 * 3.5, my = ey + y2 * 3.5;
+      cor(g, p.semCamisa ? b.pele : u.cam); reta(g, bx, by, bx + x1 * 1.5, by + y1 * 1.5, 2);
+      cor(g, b.goleiro ? u.cam : b.pele); reta(g, bx + x1 * 2, by + y1 * 2, ex, ey, 2); reta(g, ex, ey, mx, my, 2);
       cor(g, b.goleiro ? u.luva : b.pele); px(g, mx + x2, my + y2, 2, 2);
       if (p.dedo) px(g, mx + x2 * 3 + 0.5, my + y2 * 3, 1, 1); // o dedo apontando
+      maos.push([mx + x2 + 0.5, my + y2 + 0.5]);
     };
     braco(17 + tr, p.bE || [0, 0]); braco(29 + tr, p.bD || [0, 0]);
+    if (p.escudo) { cor(g, u.cam); g.fillRect(ox + 6, oy + 8, 4, 3); cor(g, u.det); g.fillRect(ox + 7, oy + 9, 2, 1); } // a camisa puxada até a boca
+    if (p.camisaNaMao) { // a camisa girando na mão
+      const [hx, hy] = maos[1], a = ((p.giro || 0) * Math.PI) / 180, cx = hx + Math.cos(a) * 3.5, cy = hy + Math.sin(a) * 3.5;
+      cor(g, u.cam); reta(g, hx, hy, cx, cy, 2); g.fillRect(Math.round(cx) - 1, Math.round(cy) - 1, 4, 3); cor(g, u.det); g.fillRect(Math.round(cx), Math.round(cy), 2, 1);
+    }
     // o contorno escuro em volta, o jeito das ilustrações em pixel-art
     g.globalAlpha = 1;
     const img = g.getImageData(0, 0, Q, Q), d = img.data, borda = [], cheio = (i) => d[i * 4 + 3] > 60;
@@ -114,9 +169,10 @@
     return spr;
   }
   // põe o boneco na cena com os pés em (x, y); esc: 1 no lance, 2 no close; rot: giro em passos de 90 graus (em volta
-  // do meio do corpo); vira: espelhado (correndo para a esquerda)
-  function poe(g, b, p, x, y, esc = 1, rot = 0, vira = false) {
+  // do meio do corpo); vira: espelhado (virado para a esquerda); deitado (-90 ou 90): o corpo no chão, na horizontal
+  function poe(g, b, p, x, y, esc = 1, rot = 0, vira = false, deitado = 0) {
     const s = boneco(b, p);
+    if (deitado) { rot = deitado; y += 12 * esc; }
     g.save(); g.globalAlpha = 1; g.imageSmoothingEnabled = false;
     g.translate(Math.round(x), Math.round(y - (p.sobe || 0) * esc));
     if (rot) { g.translate(0, -16 * esc); g.rotate((rot * Math.PI) / 180); g.translate(0, 16 * esc); }
@@ -124,9 +180,9 @@
     g.drawImage(s, -24 * esc, -PE * esc, Q * esc, Q * esc);
     g.restore();
   }
-  function sombra(g, x, y, alto, esc = 1) {
+  function sombra(g, x, y, alto, esc = 1, larga = 0) {
     cor(g, "#000", Math.max(0.12, 0.3 - alto * 0.015));
-    elipse(g, x, y, Math.max(3, 6 - alto * 0.2) * esc, esc);
+    elipse(g, x, y, (Math.max(3, 6 - alto * 0.2) + larga) * esc, esc);
     g.globalAlpha = 1;
   }
   function bola(g, x, y, giro) {
@@ -144,19 +200,20 @@
     const o = {};
     for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
       const x = a[k] !== undefined ? a[k] : P0[k], y = b[k] !== undefined ? b[k] : P0[k];
-      o[k] = Array.isArray(x) ? x.map((v, i) => mix(v, y[i], f)) : typeof x === "number" ? mix(x, y, f) : f < 0.5 ? x : y;
+      o[k] = Array.isArray(x) ? x.map((v, i) => mix(v, y[i], f)) : typeof x === "number" && typeof y === "number" ? mix(x, y, f) : f < 0.5 ? x : y;
     }
     return o;
   }
-  // a pose no tempo t de uma lista de quadros [[ms, pose], ...]; com volta, o último emenda no primeiro
-  function quadros(t, lista, volta) {
+  // a pose no tempo t de uma lista de quadros [[ms, pose], ...]; com volta, o último emenda no primeiro; seco: sem
+  // misturar (pula de uma pose para a outra, como um robô)
+  function quadros(t, lista, volta, seco) {
     const fim = lista[lista.length - 1][0];
     t = volta ? ((t % fim) + fim) % fim : prende(t, 0, fim);
     for (let i = 1; i < lista.length; i++) if (t <= lista[i][0]) {
       const [t0, a] = lista[i - 1], [t1, b] = lista[i];
-      return entre(a, b, suave((t - t0) / (t1 - t0 || 1)));
+      return seco ? { ...a } : entre(a, b, suave((t - t0) / (t1 - t0 || 1)));
     }
-    return entre(lista[lista.length - 1][1], lista[lista.length - 1][1], 1);
+    return { ...lista[lista.length - 1][1] };
   }
   // correndo de lado, para a direita; braços "balanca" (correndo) ou "alto" (comemorando, braços para cima)
   function corre(t, bracos = "balanca", passo = 280) {
@@ -177,84 +234,15 @@
     voleio: { pE: [-30, -80], pD: [92, 95], bE: [-120, -100], bD: [70, 40], tr: -3, ol: 1 }, // de voleio, no ar
     cabeca: { pE: [-25, -70], pD: [-10, -60], bE: [-110, -80], bD: [110, 80], tr: 0, ol: 1 }, // subindo para cabecear
     cavada: { pE: [8, 0], pD: [45, 40], bE: [-70, -50], bD: [40, 80], tr: 0, ol: 1 }, // a cavadinha
+    trivela: { pE: [8, 0], pD: [55, 78], bE: [-85, -60], bD: [25, 70], tr: 2, ol: 1 }, // com o lado de fora do pé
+    toque: { pE: [6, 0], pD: [35, 30], bE: [-40, -20], bD: [30, 60], tr: 0, ol: 1 }, // o passe, de leve
   };
   const GOLEIRO = {
     base: { pE: [-18, -8], pD: [18, 8], bE: [-55, -25], bD: [55, 25], ag: 2, ol: -1 },
+    alto: { pE: [-18, -8], pD: [18, 8], bE: [-110, -150], bD: [110, 150], ag: 1, ol: -1 }, // de braços abertos (no pênalti)
     voa: { pE: [-8, -14], pD: [8, 14], bE: [-172, -178], bD: [172, 178], ol: -1 }, // esticado (a cena gira 90 graus)
     chao: { pE: [-6, -12], pD: [6, 12], bE: [-160, -172], bD: [160, 172], ol: -1 },
   };
-
-  // ---------- as comemorações (de frente, no close) ----------
-  // Cada uma devolve { p: a pose, dx: andando para o lado, rot, vira, fx: um efeito ("brilho", "coracao", "aura",
-  // "grama") } no tempo t desde o começo do close.
-  const F = (o) => ({ pes: "fora", ...o });
-  const EM_V = { bE: [-150, -160], bD: [150, 160] }; // os braços para cima, em V
-  const COMEMORA = {
-    // o soco no ar (o Pelé em 1970)
-    soco: (t) => ({ p: quadros(t, [
-      [0, F({ ag: 2, bE: [-25, 15], bD: [25, -15], pE: [-14, 6], pD: [14, -6] })],
-      [260, F({ sobe: 5, bE: [-45, -20], bD: [150, 172], pE: [-10, 10], pD: [30, -10] })],
-      [470, F({ sobe: 7, bE: [-60, -35], bD: [178, 180], pE: [-14, 6], pD: [45, -30] })],
-      [720, F({ ag: 2, bE: [-25, 15], bD: [165, 178], pE: [-14, 6], pD: [14, -6] })],
-      [1000, F({ ag: 2, bE: [-25, 15], bD: [25, -15], pE: [-14, 6], pD: [14, -6] })]], true) }),
-    // o "siu" do Cristiano: pula girando e cai de pernas abertas, braços para baixo
-    siu: (t) => ({ vira: t > 380 && t < 560, p: quadros(t, [
-      [0, F({ ...marcha(t), bE: [-30, -10], bD: [30, 10] })],
-      [300, F({ ag: 3, bE: [-40, -20], bD: [40, 20], pE: [-12, 8], pD: [12, -8] })],
-      [520, F({ sobe: 8, ...EM_V, pE: [-4, -2], pD: [4, 2] })],
-      [760, F({ ag: 4, bE: [-38, -42], bD: [38, 42], pE: [-30, -30], pD: [30, 30] })],
-      [1100, F({ ag: 3, bE: [-36, -40], bD: [36, 40], pE: [-30, -30], pD: [30, 30] })]]) }),
-    // os dois dedos para o céu (Messi, Kaká)
-    ceu: (t) => ({ fx: "brilho", p: F({ ...marcha(t, 520), dedo: true, bE: [-160 - 4 * Math.sin(t / 200), -176], bD: [160 + 4 * Math.sin(t / 200), 176] }) }),
-    // embalando o nenê (o Bebeto em 1994)
-    nene: (t) => {
-      const s = Math.sin(t / 130);
-      return { dx: 3 * s, p: F({ nene: true, bE: [-25 + 12 * s, 62 + 12 * s], bD: [25 + 12 * s, -62 + 12 * s], tr: 2 * s, pE: [-8 + 5 * s, -4], pD: [8 + 5 * s, 4] }) };
-    },
-    // o aviãozinho: braços abertos, inclinando de um lado para o outro
-    aviao: (t) => {
-      const s = Math.sin(t / 170);
-      return { dx: 7 * Math.sin(t / 420), p: F({ ...marcha(t, 260), tr: 3 * s, bE: [-90 + 18 * s, -95 + 18 * s], bD: [90 + 18 * s, 95 + 18 * s] }) };
-    },
-    // de joelhos, deslizando na grama, de braços para cima
-    joelhos: (t) => {
-      const f = fase(t, 0, 600), b = Math.sin(t / 110) * 8 * (f >= 1 ? 1 : 0);
-      return { dx: -38 * (1 - suave(f)), fx: f < 1 ? "grama" : "", p: F({ ag: 5, pE: [-10, -95], pD: [10, 95], bE: [-150 - b, -160 - b], bD: [150 + b, 160 + b] }) };
-    },
-    // sentado de pernas cruzadas, meditando (o Haaland)
-    zen: (t) => ({ fx: "aura", p: F({ ag: 8, pE: [-78, 62], pD: [78, -62], bE: [-5, 5], bD: [5, -5], sobe: Math.sin(t / 500) > 0.6 ? 1 : 0 }) }),
-    // de braços cruzados (o Mbappé)
-    cruzado: (t) => ({ p: F({ pE: [-12, -10], pD: [12, 10], bE: [20, 85], bD: [-25, -80], sobe: Math.sin(t / 400) > 0.7 ? 1 : 0 }) }),
-    // tremendo de frio, abraçado (o Cole Palmer)
-    frio: (t) => { const s = Math.floor(t / 60) % 2 ? 1 : -1; return { dx: s * 0.5, p: F({ pE: [-8, -6], pD: [8, 6], bE: [20 + 4 * s, 85], bD: [-25 + 4 * s, -80], tr: s * 0.6 }) }; },
-    // dancinha (Roger Milla, Vini Jr., Ronaldinho, Griezmann)
-    danca: (t) => ({ dx: 3 * Math.sin((t / 600) * Math.PI * 2), p: quadros(t, [
-      [0, F({ tr: -2, bE: [-150, -120], bD: [45, 85], pE: [-16, 8], pD: [6, 2] })],
-      [300, F({ tr: 2, bE: [-45, -85], bD: [150, 120], pE: [-6, -2], pD: [16, -8] })],
-      [600, F({ tr: -2, bE: [-150, -120], bD: [45, 85], pE: [-16, 8], pD: [6, 2] })]], true) }),
-    // a cambalhota (o Klose)
-    cambalhota: (t) => {
-      if (t < 300) return { dx: mix(-34, -14, t / 300), p: F({ ...marcha(t, 160), bE: [-40, -20], bD: [40, 20] }) };
-      const f = fase(t, 300, 900);
-      if (f < 1) return { dx: mix(-14, 4, f), rot: Math.floor(f * 4) * 90, p: F({ sobe: 9 * Math.sin(Math.PI * f), ag: 2, pE: [-70, 20], pD: [70, -20], bE: [-40, 40], bD: [40, -40] }) };
-      return { dx: 4, p: F({ ...EM_V, pE: [-10, -8], pD: [10, 8], sobe: Math.abs(Math.sin(t / 160)) * 1.5 }) };
-    },
-    // a mão na orelha, como quem fala ao telefone (o Gabriel Jesus)
-    alo: (t) => ({ p: F({ ...marcha(t, 450), bE: [-15, -5], bD: [118, -160] }) }),
-    // as mãos nas orelhas, provocando a torcida
-    orelha: (t) => ({ p: F({ ...marcha(t, 450), tr: Math.sin(t / 300) > 0 ? 1 : -1, bE: [-118, 160], bD: [118, -160] }) }),
-    // de braços bem abertos, parado (o Bellingham)
-    abre: (t) => ({ p: F({ pE: [-14, -12], pD: [14, 12], bE: [-95, -100], bD: [95, 100], sobe: Math.sin(t / 380) > 0.75 ? 1 : 0 }) }),
-    // o coraçãozinho com as mãos (o Neymar)
-    coracao: (t) => ({ fx: "coracao", p: F({ ...marcha(t, 600), bE: [15, 120], bD: [-15, -120] }) }),
-  };
-  const ASSINATURA = {
-    "Pelé": "soco", "Cristiano Ronaldo": "siu", "Lionel Messi": "ceu", "Kaká": "ceu", "Bebeto": "nene", "Erling Haaland": "zen",
-    "Kylian Mbappé": "cruzado", "Cole Palmer": "frio", "Roger Milla": "danca", "Vinícius Júnior": "danca", "Ronaldinho Gaúcho": "danca",
-    "Antoine Griezmann": "danca", "Miroslav Klose": "cambalhota", "Gabriel Jesus": "alo", "Jude Bellingham": "abre", "Neymar": "coracao",
-    "Ronaldo Fenômeno": "aviao",
-  };
-  const COMUNS = ["soco", "aviao", "joelhos", "orelha", "ceu", "danca", "abre"];
 
   // ---------- o cenário ----------
   // A quadra vista de lado, em perspectiva: X ao longo da quadra (o gol fica à direita), D a profundidade (para o fundo,
@@ -265,6 +253,9 @@
     const nb = tela(GOL_X, 4), fb = tela(GOL_X, 40), bnb = tela(GOL_X + GOL_FUNDO, 4), bfb = tela(GOL_X + GOL_FUNDO, 40);
     return { nb, fb, nt: [nb[0], nb[1] - GOL_ALTO], ft: [fb[0], fb[1] - GOL_ALTO], bnb, bfb, bnt: [bnb[0], bnb[1] - 16], bft: [bfb[0], bfb[1] - 16] };
   })();
+  // a marca do pênalti (no futsal, a de 6 metros) e a bandeirinha de escanteio, perto da trave de cá
+  const marcaPenalti = (futsal) => GOL_X - (futsal ? 40 : 24);
+  const ESCANTEIO = { X: GOL_X, D: -14 };
   // a arquibancada, as placas e o chão (gramado listrado ou a quadra do futsal), com as linhas; pula: a torcida pulando
   function fundoAberto(L, pula) {
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
@@ -287,7 +278,7 @@
     }
     g.putImageData(img, 0, 0);
     // as placas de propaganda
-    const [r, gg, bb] = rgb(L.art.u.cam), letra = 0.3 * r + 0.59 * gg + 0.11 * bb > 150 ? "#1a1a1a" : "#f4f4f4";
+    const letra = claro(L.art.u.cam) > 150 ? "#1a1a1a" : "#f4f4f4";
     for (let k = 0; k * 40 < W; k++) {
       const lima = k % 2 === 0, x0 = k * 40;
       cor(g, lima ? "#c6ff3a" : L.art.u.cam); g.fillRect(x0, 27, 40, 8);
@@ -299,19 +290,18 @@
     cor(g, "#ffffff", 0.75);
     const linha = (X1, D1, X2, D2) => { const [a, b] = tela(X1, D1), [c, e] = tela(X2, D2); reta(g, a, b, c, e); };
     linha(GOL_X, -20, GOL_X, 90); // a linha de fundo
-    if (L.futsal) { // a área do futsal (o arco em volta do gol) e a marca do pênalti
+    if (L.futsal) { // a área do futsal (o arco em volta do gol)
       let ant = null;
       for (let k = 0; k <= 24; k++) {
         const th = ((-90 + k * 7.5) * Math.PI) / 180, p = tela(GOL_X - 30 * Math.cos(th), 22 + 32 * Math.sin(th));
         if (ant) reta(g, ant[0], ant[1], p[0], p[1]);
         ant = p;
       }
-      const m = tela(GOL_X - 40, 22); g.fillRect(Math.round(m[0]), Math.round(m[1]), 2, 1);
-    } else { // a grande área, a pequena área e a marca do pênalti
+    } else { // a grande área e a pequena área
       linha(GOL_X - 34, -20, GOL_X - 34, 64); linha(GOL_X - 34, 64, GOL_X, 64);
       linha(GOL_X - 12, -2, GOL_X - 12, 46); linha(GOL_X - 12, 46, GOL_X, 46); linha(GOL_X - 12, -2, GOL_X, -2);
-      const m = tela(GOL_X - 24, 22); g.fillRect(Math.round(m[0]), Math.round(m[1]), 2, 1);
     }
+    const m = tela(marcaPenalti(L.futsal), 22); g.fillRect(Math.round(m[0]), Math.round(m[1]), 2, 1); // a marca do pênalti
     g.globalAlpha = 1;
     return cv;
   }
@@ -348,140 +338,167 @@
     }
     g.globalAlpha = 1;
   }
-  function traves(g, frente) {
+  // as traves (as do fundo e o travessão, ou a trave de cá); bate: a trave que a bola acertou brilha e treme
+  function traves(g, frente, bate) {
     const { nb, fb, nt, ft, bnb, bfb, bnt, bft } = GOL, r = (a, b, e = 1) => reta(g, a[0], a[1], b[0], b[1], e);
+    const treme = (lado) => (bate && bate.lado === lado ? bate.treme : 0);
     if (!frente) {
       cor(g, "#b8c2bc"); r(bnt, bft); r(bft, bfb); r(bfb, bnb); r(ft, bft); r(nt, bnt); r(bnt, bnb);
-      cor(g, "#ffffff"); r(fb, ft, 2); r(nt, ft, 2);
+      const s = treme("longe");
+      cor(g, s ? "#fff6b0" : "#ffffff"); r([fb[0] + s, fb[1]], [ft[0] + s, ft[1]], 2); r(nt, ft, 2);
     } else {
-      cor(g, "#ffffff"); r(nb, nt, 2); cor(g, "#000", 0.25); r([nb[0] + 2, nb[1]], [nt[0] + 2, nt[1] + 1]);
+      const s = treme("perto");
+      cor(g, s ? "#fff6b0" : "#ffffff"); r([nb[0] + s, nb[1]], [nt[0] + s, nt[1]], 2); cor(g, "#000", 0.25); r([nb[0] + 2, nb[1]], [nt[0] + 2, nt[1] + 1]);
     }
     g.globalAlpha = 1;
   }
+  // a bandeirinha de escanteio, na beira da quadra
+  function bandeirinha(g, x, y, alto = 9, esc = 1, onda = 0) {
+    cor(g, "#f4f4f4"); g.fillRect(Math.round(x), Math.round(y - alto * esc), esc, alto * esc);
+    cor(g, "#ff4f5e"); for (let k = 0; k < 4; k++) g.fillRect(Math.round(x + esc + k * esc), Math.round(y - alto * esc + (k % 2 ? onda : 0) * esc), esc, 3 * esc);
+    cor(g, "#c6ff3a"); g.fillRect(Math.round(x + esc), Math.round(y - alto * esc + 3 * esc), 4 * esc, esc);
+  }
+  // a grama (ou o piso) voando onde alguém escorrega
+  function poeira(g, L, x, y, t, lado = -1, esc = 1) {
+    const s = sorteio(L.semente + Math.floor(t / 50));
+    for (let k = 0; k < 7; k++) { cor(g, k % 3 ? (L.futsal ? "#9fc2ea" : "#8fd16a") : "#ffffff"); g.fillRect(Math.round(x + lado * (4 + s() * 13) * esc), Math.round(y - 1 - s() * 5 * esc), 2, 1); }
+    g.globalAlpha = 1;
+  }
 
-  // ---------- o lance ----------
-  // o tipo de gol, pela posição e pela nota de quem marcou
-  function escolheTipo(sorte, pos, ovr, futsal) {
-    const p = { chute: 3, angulo: 2.5, voleio: 1.5, cabeca: 1.5, cavadinha: 1.2 };
-    if (pos === "DEF") Object.assign(p, { cabeca: 5, chute: 2, angulo: 1, voleio: 1, cavadinha: 0.3 });
-    else if (pos === "VOL") Object.assign(p, { chute: 4, angulo: 3 });
-    else if (pos === "MEI") Object.assign(p, { angulo: 3, cavadinha: 2 });
-    else if (pos === "ATT") Object.assign(p, { voleio: 2, cabeca: 2, cavadinha: 2 });
-    if (ovr >= 88) { p.angulo += 1.5; p.voleio += 1; p.cavadinha += 0.5; }
-    if (futsal) p.cabeca *= 0.5;
-    let r = sorte() * Object.values(p).reduce((a, b) => a + b, 0);
-    for (const [k, v] of Object.entries(p)) if ((r -= v) <= 0) return k;
-    return "chute";
+  // ---------- peças dos roteiros dos gols (lances-gols.js) ----------
+  // Cada tipo de gol diz onde cada um está no tempo t: { art, gol, bola, extras, spray, bate (a bola na trave), poeira }. art e gol são
+  // quem marcou e o goleiro ({ X, D, p, vira, deitado }); extras, os outros (zagueiros, a barreira, o companheiro: { b,
+  // X, D, p... }); bola, { X, D, A, rastro }.
+  const naLinha = (L) => ({ X: GOL_X + 3, D: L.alvo.D, A: L.alvo.A }); // a bola cruzando a linha do gol
+  // a bola voando de a até b (pontos { X, D, A }) entre t0 e t1, com arco (altura a mais no meio) e curva (de lado)
+  function voo(t, t0, t1, a, b, arco = 0, curva = 0) {
+    const f = fase(t, t0, t1);
+    return { X: mix(a.X, b.X, f), D: mix(a.D, b.D, f) + curva * Math.sin(Math.PI * f), A: mix(a.A, b.A, f) + arco * Math.sin(Math.PI * f) };
   }
-  // para onde vai a bola dentro do gol: D (de 4, a trave de perto, a 40, a de longe) e a altura
-  function alvoDe(tipo, sorte) {
-    const canto = () => (sorte() < 0.5 ? 8 + sorte() * 5 : 31 + sorte() * 6);
-    if (tipo === "angulo") return { D: sorte() < 0.6 ? 34 + sorte() * 3 : 7 + sorte() * 3, A: 18 + sorte() * 3 };
-    if (tipo === "voleio") return { D: canto(), A: 7 + sorte() * 9 };
-    if (tipo === "cabeca") return { D: canto(), A: sorte() < 0.6 ? 2 + sorte() * 4 : 15 + sorte() * 4 };
-    if (tipo === "cavadinha") return { D: 16 + sorte() * 10, A: 5 + sorte() * 4 };
-    return { D: canto(), A: 1 + sorte() * 2 };
+  // a bola em curva (Bézier): sai de a, puxada para c, e chega em b
+  function curva(t, t0, t1, a, c, b) {
+    const f = fase(t, t0, t1), m = (k) => (1 - f) * (1 - f) * a[k] + 2 * (1 - f) * f * c[k] + f * f * b[k];
+    return { X: m("X"), D: m("D"), A: m("A") };
   }
-  // onde está quem marcou (X, D) e com que pose, no tempo t
-  function artilheiro(L, t) {
-    const d0 = L.d0, tipo = L.tipo, depois = (x) => {
-      // depois do chute: olha a bola; com o gol, corre para a torcida de braços para cima
-      const f = fase(t, T_GOL + 60, T_CORTE);
-      if (t < T_GOL) return { X: x, D: d0, p: t < T_CHUTE + 300 ? null : CHUTE.olha };
-      return { X: x + 14 * f, D: d0 - 16 * f, p: corre(t, "alto", 240) };
-    };
-    if (tipo === "voleio" || tipo === "cabeca") {
-      const [x0, x1, pulo, fim] = tipo === "voleio" ? [66, 96, 640, 980] : [72, 106, 600, 960];
-      if (t < pulo) return { X: mix(x0, x1, t / pulo), D: d0, p: corre(t) };
-      if (t < fim) {
-        const f = fase(t, pulo, fim), sobe = (tipo === "voleio" ? 6.5 : 7.5) * Math.sin(Math.PI * f);
-        const p = tipo === "voleio" ? (t < T_CHUTE ? entre(CHUTE.arma, CHUTE.voleio, fase(t, pulo, T_CHUTE)) : entre(CHUTE.voleio, CHUTE.segue, fase(t, T_CHUTE, fim)))
-          : { ...CHUTE.cabeca, tr: t < T_CHUTE + 40 ? -1 : 3 };
-        return { X: x1 + 6 * f, D: d0, p: { ...p, sobe } };
-      }
-      const r = depois(x1 + 6); if (!r.p) r.p = entre(CHUTE.segue, CHUTE.olha, fase(t, fim, fim + 120)); return r;
+  // a bola dentro do gol, depois de entrar: estufa a rede, cai e quica
+  function naRede(L, t) {
+    const { alvo, tGol } = L, f = fase(t, tGol, tGol + 300);
+    return { X: mix(GOL_X + 3, GOL_X + GOL_FUNDO - 1, fase(t, tGol, tGol + 90)), D: alvo.D, A: Math.max(0, alvo.A * (1 - f)) + 2 * Math.sin(Math.PI * fase(t, tGol + 300, tGol + 420)) };
+  }
+  const conduz = (art, t) => ({ X: art.X + 6, D: art.D - 1, A: Math.abs(Math.sin((t / 140) * Math.PI)) * 2 }); // a bola no pé, correndo
+  // o chute de quem marcou: arma a perna, bate (tc: a hora do toque), segue e fica olhando
+  function chutando(t, tc, bate = CHUTE.bate) {
+    if (t < tc) return entre(CHUTE.arma, bate, fase(t, tc - 80, tc));
+    if (t < tc + 180) return entre(bate, CHUTE.segue, fase(t, tc, tc + 180));
+    return entre(CHUTE.segue, CHUTE.olha, fase(t, tc + 180, tc + 300));
+  }
+  // depois do gol, quem marcou sai correndo para a torcida de braços para cima
+  function festejando(L, t, x, d, dx = 14, dd = -16) {
+    const f = fase(t, L.tGol + 60, L.tCorte);
+    return { X: x + dx * f, D: d + dd * f, p: corre(t, "alto", 240), vira: dx < 0 };
+  }
+  // o goleiro: espera (chegando um pouco para o lado do chute), voa atrasado e fica no chão. reage: a hora do pulo;
+  // para: até onde ele vai (D); alto: a altura do voo; sai: { t0, t1, X } sai do gol correndo antes; frente: pula para
+  // a frente, nos pés de quem chuta; fim: quando ele termina de cair (normalmente, logo depois do gol); pose: a da espera
+  function goleiroVoa(L, t, { reage, X0 = 127, D0 = null, para = null, alto = null, sai = null, frente = false, fim = null, pose = GOLEIRO.base } = {}) {
+    const base = D0 !== null ? D0 : 22 + (L.d0 - 22) * 0.25 * suave(fase(t, 0, reage));
+    let X = X0;
+    if (sai) {
+      const f = fase(t, sai.t0, sai.t1); X = mix(X0, sai.X, suave(f));
+      if (f > 0 && f < 1 && t < reage) return { X, D: base, p: corre(t, "balanca", 220), vira: true };
     }
-    const xc = tipo === "cavadinha" ? 104 : 99;
-    if (t < T_CHUTE - 80) return { X: mix(42, xc, t / (T_CHUTE - 80)), D: d0, p: corre(t) };
-    const bate = tipo === "cavadinha" ? CHUTE.cavada : CHUTE.bate;
-    if (t < T_CHUTE) return { X: xc + 2 * fase(t, T_CHUTE - 80, T_CHUTE), D: d0, p: entre(CHUTE.arma, bate, fase(t, T_CHUTE - 80, T_CHUTE)) };
-    if (t < T_CHUTE + 180) return { X: xc + 2 + 3 * fase(t, T_CHUTE, T_CHUTE + 180), D: d0, p: entre(bate, CHUTE.segue, fase(t, T_CHUTE, T_CHUTE + 180)) };
-    const r = depois(xc + 5); if (!r.p) r.p = entre(CHUTE.segue, CHUTE.olha, fase(t, T_CHUTE + 180, T_CHUTE + 300)); return r;
+    if (t < reage) return { X, D: base, p: { ...pose, sobe: Math.abs(Math.sin(t / 160)) } };
+    const f = fase(t, reage, fim || Math.max(L.tGol + 60, reage + 220)), alvo = para !== null ? para : L.alvo.D + (L.alvo.D > 22 ? -7 : 7);
+    const D = frente ? base : mix(base, alvo, suave(f)), h = alto !== null ? alto : L.alvo.A > 10 ? 9 : 4;
+    if (f < 0.15) return { X, D, p: entre(pose, GOLEIRO.voa, f / 0.15) };
+    return { X: X - (frente ? 6 * f : 0), D, deitado: -90, p: { ...(f < 1 ? GOLEIRO.voa : GOLEIRO.chao), sobe: h * Math.sin(Math.PI * Math.min(1, f)) } };
   }
-  // a bola (X, D, A) no tempo t: conduzida, cruzada, chutada e dentro da rede
-  function bolaEm(L, t, art) {
-    const { alvo, tipo, d0 } = L, gx = GOL_X + 3;
-    if (t >= T_GOL) { // na rede: estufa, cai e quica
-      const f = fase(t, T_GOL, T_GOL + 300);
-      return { X: mix(gx, GOL_X + GOL_FUNDO - 1, fase(t, T_GOL, T_GOL + 90)), D: alvo.D, A: Math.max(0, alvo.A * (1 - f)) + 2 * Math.sin(Math.PI * fase(t, T_GOL + 300, T_GOL + 420)) };
-    }
-    if (tipo === "voleio" || tipo === "cabeca") {
-      const tb = tipo === "voleio" ? T_CHUTE : T_CHUTE + 40, toque = artilheiro(L, tb);
-      const pt = tipo === "voleio" ? { X: toque.X + 6, D: d0, A: 8 + toque.p.sobe } : { X: toque.X + 3, D: d0, A: 29 + toque.p.sobe };
-      if (t < tb) { const f = t / tb; return { X: mix(4, pt.X, f), D: mix(d0 + 16, pt.D, f), A: mix(16, pt.A, f) + 14 * Math.sin(Math.PI * f) }; } // o cruzamento, da ponta esquerda
-      const f = fase(t, tb, T_GOL);
-      return { X: mix(pt.X, gx, f), D: mix(pt.D, alvo.D, f), A: mix(pt.A, alvo.A, f) };
-    }
-    if (t < T_CHUTE) return { X: art.X + 6, D: d0 - 1, A: Math.abs(Math.sin((t / 140) * Math.PI)) * 2 }; // conduzindo
-    const f = fase(t, T_CHUTE, T_GOL), arco = { chute: 2, angulo: 9, cavadinha: 22 }[tipo] || 2, x0 = artilheiro(L, T_CHUTE).X + 6;
-    return { X: mix(x0, gx, f), D: mix(d0 - 1, alvo.D, f), A: mix(1, alvo.A, f) + arco * Math.sin(Math.PI * f) };
-  }
-  // o goleiro: espera, voa atrasado para o lado da bola e fica no chão; na cavadinha, sai do gol antes
-  function goleiro(L, t) {
-    const { alvo, d0, tipo } = L, D0 = 22 + (d0 - 22) * 0.25 * suave(fase(t, 0, T_CHUTE));
-    const saida = tipo === "cavadinha" ? fase(t, 450, T_CHUTE + 60) : 0, X0 = 127 - 14 * suave(saida);
-    const voo0 = T_CHUTE + 90, voo1 = T_GOL + 60;
-    if (t < voo0) return { X: X0, D: D0, p: saida > 0 && saida < 1 ? corre(t, "balanca", 220) :{ ...GOLEIRO.base, sobe: Math.abs(Math.sin(t / 160)) }, vira: saida > 0 && saida < 1 };
-    const Dd = tipo === "cavadinha" ? D0 : alvo.D + (alvo.D > 22 ? -7 : 7), f = fase(t, voo0, voo1);
-    const D = mix(D0, Dd, suave(f)), alto = (alvo.A > 10 && tipo !== "cavadinha" ? 9 : 4) * Math.sin(Math.PI * Math.min(1, f));
-    if (f < 0.15) return { X: X0, D, p: entre(GOLEIRO.base, GOLEIRO.voa, f / 0.15) };
-    return { X: X0 - (tipo === "cavadinha" ? 6 * f : 0), D, deitado: true, p: { ...(f < 1 ? GOLEIRO.voa : GOLEIRO.chao), sobe: alto } };
+
+  // ---------- as cenas ----------
+  function ator(g, a) {
+    const [x, y] = tela(a.X, a.D);
+    poe(g, a.b, a.p, x, y, 1, a.rot || 0, a.vira, a.deitado || 0);
   }
   function cenaAberta(g, L, t) {
     if (!L.fundoA) { L.fundoA = fundoAberto(L, false); L.fundoB = fundoAberto(L, true); }
-    const gol = t >= T_GOL;
-    g.drawImage(gol && Math.floor((t - T_GOL) / 140) % 2 === 0 ? L.fundoB : L.fundoA, 0, 0);
+    const gol = t >= L.tGol, c = L.tipo.cena(L, t);
+    g.drawImage(gol && Math.floor((t - L.tGol) / 140) % 2 === 0 ? L.fundoB : L.fundoA, 0, 0);
     if (gol) { const s = sorteio(L.semente + Math.floor(t / 90)); cor(g, "#ffffff"); for (let k = 0; k < 6; k++) g.fillRect(Math.floor(s() * W), Math.floor(s() * 26), 1, 1); g.globalAlpha = 1; } // os flashes
-    const forca = gol ? Math.max(0, 1 - (t - T_GOL) / 450) * (1 + Math.sin((t - T_GOL) / 35)) : 0;
+    const forca = gol ? Math.max(0, 1 - (t - L.tGol) / 450) * (1 + Math.sin((t - L.tGol) / 35)) * (L.tipo.forcaRede || 1) : 0;
     const { nt, ft, bft, bfb, bnb, nb, bnt } = GOL;
-    rede(g, [nt, ft, bft, bfb, bnb, nb], L.impacto, forca, 0.36); traves(g, false);
-    const a = artilheiro(L, t), k = goleiro(L, t), b = bolaEm(L, t, a);
-    for (const c of [a, k]) { const [x, y] = tela(c.X, c.D); sombra(g, x, y, c.p.sobe || 0); }
+    rede(g, [nt, ft, bft, bfb, bnb, nb], L.impacto, forca, 0.36); traves(g, false, c.bate);
+    if (c.spray) { // a linha do spray na frente da barreira
+      cor(g, "#ffffff", 0.7);
+      for (let D = c.spray.D0; D <= c.spray.D1; D += 2) { const [x, y] = tela(c.spray.X, D); g.fillRect(Math.round(x), Math.round(y), 1, 1); }
+      g.globalAlpha = 1;
+    }
+    if (L.tipo.escanteio) { const [x, y] = tela(ESCANTEIO.X, ESCANTEIO.D); bandeirinha(g, x, y, 9, 1, Math.floor(t / 120) % 2); }
+    const atores = [{ b: L.art, ...c.art }, { b: L.gol, ...c.gol }, ...(c.extras || [])];
+    for (const a of atores) { const [x, y] = tela(a.X, a.D); sombra(g, x, y, (a.p && a.p.sobe) || 0, 1, a.deitado ? 3 : 0); }
+    const b = c.bola;
     { const [x, y] = tela(b.X, b.D); cor(g, "#000", 0.28); g.fillRect(Math.round(x) - 1, Math.round(y), 3, 1); g.globalAlpha = 1; }
-    const coisas = [
-      { D: a.D, faz: () => { const [x, y] = tela(a.X, a.D); poe(g, L.art, a.p, x, y); } },
-      { D: k.D, faz: () => { const [x, y] = tela(k.X, k.D); if (k.deitado) poe(g, L.gol, k.p, x, y + 12, 1, -90); else poe(g, L.gol, k.p, x, y, 1, 0, k.vira); } },
-      { D: b.D - 0.5, faz: () => { const [x, y] = tela(b.X, b.D, b.A); bola(g, x, y, t / 60); } },
-    ].sort((p, q) => q.D - p.D);
-    coisas.forEach((c) => c.faz());
-    rede(g, [nt, bnt, bnb, nb], L.impacto, 0, 0.22); traves(g, true); // a rede do lado de cá e a trave da frente
-    if (gol && t < T_GOL + 140) { cor(g, "#ffffff", 0.4 * (1 - (t - T_GOL) / 140)); g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
+    const coisas = atores.map((a) => ({ D: a.D, faz: () => ator(g, a) }));
+    coisas.push({ D: b.D - 0.5, faz: () => {
+      const [x, y] = tela(b.X, b.D, b.A);
+      if (b.rastro) { // o rastro da bola, nos chutes fortes
+        const a = L.tipo.cena(L, t - 50).bola, [x0, y0] = tela(a.X, a.D, a.A);
+        cor(g, "#ffffff", 0.35); reta(g, x0, y0, x, y, 2); cor(g, "#ffffff", 0.6); reta(g, mix(x0, x, 0.5), mix(y0, y, 0.5), x, y, 1); g.globalAlpha = 1;
+      }
+      bola(g, x, y, t / 60);
+    } });
+    coisas.sort((p, q) => q.D - p.D).forEach((k) => k.faz());
+    rede(g, [nt, bnt, bnb, nb], L.impacto, 0, 0.22); traves(g, true, c.bate); // a rede do lado de cá e a trave da frente
+    if (c.poeira) { const [x, y] = tela(c.poeira.X, c.poeira.D); poeira(g, L, x, y, t); }
+    if (c.bate && c.bate.onde && c.bate.t < 140) { // o estalo da bola na trave
+      const [x, y] = tela(c.bate.onde.X, c.bate.onde.D, c.bate.onde.A), r = 3 + c.bate.t / 30;
+      cor(g, "#ffe14d"); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7]]) g.fillRect(Math.round(x + dx * r), Math.round(y + dy * r), 2, 1);
+      g.globalAlpha = 1;
+    }
+    if (gol && t < L.tGol + 140) { cor(g, "#ffffff", 0.4 * (1 - (t - L.tGol) / 140)); g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
   }
-  // o close da comemoração (tc: ms desde o começo do close)
+  // o close da comemoração (tc: ms desde o começo do close). A comemoração devolve { p, dx, rot, vira, deitado, zoom,
+  // chao, fx, extras }: zoom é o tamanho do boneco (2 normal, 3 bem perto da câmera); fx, os efeitos; extras, os
+  // companheiros que entram na festa ({ b: "parceiro"/"parceiro2", p, dx, vira, deitado, frente }).
   function cenaClose(g, L, tc) {
     g.drawImage(L.fundoClose, 0, 0);
-    const c = COMEMORA[L.comemora](tc), x = 80 + (c.dx || 0) * 2, chao = 85;
-    sombra(g, x, chao, c.p.sobe || 0, 2);
-    if (c.fx === "aura") { // o brilho dourado em volta de quem medita
+    const c = Lances.COMEMORA[L.comemora](tc, L), esc = c.zoom || 2, chao = c.chao || 85, x = 80 + (c.dx || 0) * 2, fx = c.fx || "";
+    const pessoa = (e) => (e.b === "parceiro2" ? L.parceiros[1] : L.parceiros[0]);
+    const extra = (e) => poe(g, pessoa(e), e.p, 80 + (e.dx || 0) * 2, chao, esc, e.rot || 0, e.vira, e.deitado || 0);
+    if (fx === "aura") { // o brilho dourado em volta de quem medita
       const r = 25 + Math.round(2 * Math.sin(tc / 300));
       cor(g, "#f6c64e", 0.5); for (let k = 0; k < 48; k++) { const a = (k / 48) * Math.PI * 2; g.fillRect(Math.round(x + Math.cos(a) * r), Math.round(chao - 26 + Math.sin(a) * r * 0.9), 1, 1); }
       g.globalAlpha = 1;
     }
-    if (c.fx === "grama") { // a grama voando atrás do joelho
-      const s = sorteio(L.semente + Math.floor(tc / 50));
-      for (let k = 0; k < 7; k++) { cor(g, k % 3 ? (L.futsal ? "#9fc2ea" : "#8fd16a") : "#ffffff"); g.fillRect(Math.round(x - 22 - s() * 26), Math.round(chao - 2 - s() * 10), 2, 1); }
-      g.globalAlpha = 1;
+    if (fx === "grama") poeira(g, L, x - 18, chao, tc, -1, 2); // a grama voando atrás de quem escorrega
+    if (fx === "cadeira") { // a cadeira do banco de reservas, atrás dele
+      cor(g, "#5b6470"); g.fillRect(x - 22, chao - 50, 4, 36); g.fillRect(x + 18, chao - 50, 4, 36);
+      cor(g, "#2b6bd6"); g.fillRect(x - 22, chao - 54, 44, 9); g.fillRect(x - 24, chao - 16, 48, 5);
+      cor(g, "#3c434c"); g.fillRect(x - 21, chao - 11, 3, 11); g.fillRect(x + 18, chao - 11, 3, 11);
     }
-    poe(g, L.art, c.p, x, chao, 2, c.rot || 0, c.vira);
-    if (c.fx === "brilho") { // as estrelinhas em cima dos dedos
+    if (fx === "bandeira") bandeirinha(g, x + 26, chao, 34, 2, Math.floor(tc / 90) % 2);
+    for (const e of c.extras || []) if (!e.frente) extra(e);
+    if (!c.deitado) sombra(g, x, chao, (c.p && c.p.sobe) || 0, esc);
+    poe(g, L.art, c.p, x, chao, esc, c.rot || 0, c.vira, c.deitado || 0);
+    for (const e of c.extras || []) if (e.frente) extra(e);
+    if (fx === "brilho") { // as estrelinhas em cima dos dedos
       cor(g, "#fff6c8");
       for (let k = 0; k < 4; k++) { const on = Math.floor(tc / 120 + k * 1.7) % 3 === 0; if (on) { const sx = x + [-24, -14, 14, 24][k], sy = 10 + ((k * 7) % 12); g.fillRect(sx, sy - 1, 1, 3); g.fillRect(sx - 1, sy, 3, 1); } }
       g.globalAlpha = 1;
     }
-    if (c.fx === "coracao") { // os coraçõezinhos subindo das mãos
+    if (fx === "coracao") { // os coraçõezinhos subindo das mãos
       for (let k = 0; k < 2; k++) { const f = ((tc + k * 450) % 900) / 900; cor(g, "#ff4f8b", 1 - f * f); desenho(g, CORACAO, x - 5 + (k ? 1 : -1) * (6 + 22 * f), chao - 46 - f * 30, 2); }
       g.globalAlpha = 1;
     }
+    if (fx === "raio") { // o raio no céu, para onde ele aponta
+      if (Math.floor(tc / 110) % 3) { cor(g, "#ffe14d"); reta(g, x + 40, 2, x + 34, 10, 2); reta(g, x + 34, 10, x + 42, 12, 2); reta(g, x + 42, 12, x + 35, 22, 2); g.globalAlpha = 1; }
+    }
+    if (fx === "carga" || fx === "feixe") { // a bola de energia nas mãos e o raio saindo (o golpe do desenho japonês)
+      const hx = x + 26, hy = chao - 36, r = fx === "carga" ? 2 + Math.floor(tc / 120) % 3 : 4;
+      cor(g, "#bdf3ff", 0.9); elipse(g, hx, hy, r + 1, r); cor(g, "#ffffff"); elipse(g, hx, hy, Math.max(1, r - 1), Math.max(1, r - 2));
+      if (fx === "feixe") { const al = 7 + (Math.floor(tc / 60) % 2); cor(g, "#7fe6ff", 0.85); g.fillRect(hx, hy - al / 2, W - hx, al); cor(g, "#ffffff"); g.fillRect(hx, hy - 1, W - hx, 3); }
+      g.globalAlpha = 1;
+    }
+    if (fx === "marca") { cor(g, "#e8335a", 0.55); desenho(g, CORACAO, 46, 22, 9); g.globalAlpha = 1; } // o batom na lente
     // o papel picado caindo, nas cores do time
     const cores = [L.art.u.cam, L.art.u.det, "#ffffff", "#f6c64e", "#c6ff3a"], s = sorteio(L.semente + "papel");
     for (let k = 0; k < 26; k++) {
@@ -503,29 +520,63 @@
   }
 
   // ---------- o telão ----------
-  // tudo o que o lance de um gol precisa: quem marcou, o goleiro, o tipo de gol, a comemoração e o fundo do close
+  const figura = (nome, u, extra) => ({ nome, u, pele: Rostos.pele(nome), ...extra });
+  // o número nas costas: o famoso de cada craque; os outros, pela posição
+  const NUMERO = { "Pelé": 10, "Diego Maradona": 10, "Zico": 10, "Lionel Messi": 10, "Cristiano Ronaldo": 7, "Ronaldo Fenômeno": 9, "Romário": 11,
+    "Neymar": 10, "Ronaldinho Gaúcho": 10, "Kaká": 22, "Zinedine Zidane": 10, "Erling Haaland": 9, "Kylian Mbappé": 10, "Johan Cruyff": 14, "Rivaldo": 10 };
+  const NUMERO_POS = { GK: [1], DEF: [3, 4, 2, 6], VOL: [5, 8], MEI: [10, 8, 7], ATT: [9, 11, 7] };
+  const numeroDe = (nome, pos, sorte) => { const l = NUMERO_POS[pos] || [9, 10, 11], r = sorte(); return NUMERO[nome] || l[Math.floor(r * l.length)]; };
+  // o tipo de gol, pela posição e pela nota de quem marcou (e pelo jeito de cada craque, em Lances.FINALIZACAO)
+  function escolheTipo(sorte, pos, ovr, futsal, nome) {
+    const extra = Lances.FINALIZACAO[nome] || {};
+    const pesos = Object.entries(Lances.GOLS).map(([k, t]) => [k, Math.max(0, t.peso(pos, ovr, futsal) + (extra[k] || 0))]);
+    let r = sorte() * pesos.reduce((a, [, v]) => a + v, 0);
+    for (const [k, v] of pesos) if ((r -= v) <= 0) return k;
+    return "chute";
+  }
+  // a comemoração: a do craque (quando ele tem) sai às vezes; no resto, qualquer uma das outras
+  function escolheComemora(sorte, nome) {
+    const propria = Lances.ASSINATURA[nome], r = sorte(), todas = Object.keys(Lances.COMEMORA);
+    return propria && r < 0.4 ? propria : todas[Math.floor(sorte() * todas.length)];
+  }
+  // tudo o que o lance de um gol precisa: quem marcou, o goleiro, os outros em campo, o tipo de gol, a comemoração e o
+  // fundo do close
   function monta(g, j) {
-    const semente = `${j.id}|${g.min}|${g.nome}|${g.lado}`, sorte = sorteio(semente);
-    const art = { nome: g.nome, u: Rostos.uniformeDe(g.nome), pele: Rostos.pele(g.nome) };
-    const corGol = ["#f7d417", "#3ad37a", "#ff7a2f", "#8a8f98", "#b06cff", "#25b4c9"].sort((a, b) => distCor(b, art.u.cam) - distCor(a, art.u.cam))[0];
+    const semente = `${j.id}|${g.min}|${g.nome}|${g.lado}`, sorte = sorteio(semente), futsal = j.mins === 40;
+    const art = figura(g.nome, Rostos.uniformeDe(g.nome), { num: numeroDe(g.nome, g.pos, sorte) });
+    const paleta = ["#f7d417", "#3ad37a", "#ff7a2f", "#8a8f98", "#b06cff", "#25b4c9"];
+    const corGol = paleta.slice().sort((a, b) => distCor(b, art.u.cam) - distCor(a, art.u.cam))[0];
     const nomeGol = "goleiro " + Math.floor(sorte() * 99999);
-    const gol = { nome: nomeGol, goleiro: true, pele: Rostos.pele(nomeGol), u: { cam: corGol, det: "#1a1a1a", desenho: "", calcao: "#1a1a1a", meiao: corGol, chuteira: "#1a1a1a", luva: "#f4f4f4" } };
-    const futsal = j.mins === 40, tipo = escolheTipo(sorte, g.pos, g.ovr || 80, futsal), alvo = alvoDe(tipo, sorte);
-    const comemora = ASSINATURA[g.nome] || COMUNS[Math.floor(sorte() * COMUNS.length)];
-    const L = { semente, futsal, espelho: g.lado === "B", art, gol, tipo, alvo, comemora, d0: 8 + sorte() * 16, impacto: tela(GOL_X + GOL_FUNDO - 1, alvo.D, alvo.A) };
+    const gol = figura(nomeGol, { cam: corGol, det: "#1a1a1a", desenho: "", calcao: "#1a1a1a", meiao: corGol, chuteira: "#1a1a1a", luva: "#f4f4f4" }, { goleiro: true });
+    // os zagueiros do outro time: a camisa que mais se diferencia de quem marcou e do goleiro
+    const cores = ["#e63946", "#1d4ed8", "#16a34a", "#f59e0b", "#7c3aed", "#0f172a", "#f4f4f4"];
+    const camRival = cores.slice().sort((a, b) => Math.min(distCor(b, art.u.cam), distCor(b, corGol)) - Math.min(distCor(a, art.u.cam), distCor(a, corGol)))[0];
+    const detRival = claro(camRival) > 150 ? "#1a1a1a" : "#f4f4f4";
+    const rival = { cam: camRival, det: detRival, desenho: "", calcao: detRival, meiao: camRival, chuteira: "#1a1a1a" };
+    const rivais = [0, 1, 2].map((k) => figura(`zagueiro ${semente} ${k}`, rival));
+    const parceiros = [0, 1].map((k) => figura(`parceiro ${semente} ${k}`, art.u, { num: [8, 11][k] }));
+    const tipoNome = escolheTipo(sorte, g.pos, g.ovr || 80, futsal, g.nome), tipo = Lances.GOLS[tipoNome];
+    const L = { semente, futsal, espelho: g.lado === "B", art, gol, rivais, parceiros, tipoNome, tipo, d0: 8 + sorte() * 16 };
+    art.espelho = parceiros[0].espelho = parceiros[1].espelho = L.espelho;
+    L.alvo = tipo.alvo(sorte, L);
+    L.tGol = typeof tipo.tGol === "function" ? tipo.tGol(L) : tipo.tGol;
+    L.tCorte = L.tGol + 640; L.total = L.tCorte + FESTA;
+    L.impacto = tela(GOL_X + GOL_FUNDO - 1, L.alvo.D, L.alvo.A);
+    if (tipo.prepara) tipo.prepara(L, sorte);
+    L.comemora = escolheComemora(sorte, g.nome);
     L.fundoClose = fundoClose(L); // os fundos do lance (fundoA e fundoB) só são desenhados quando o replay toca
     return L;
   }
   // um quadro do telão no tempo t (ms)
   function desenha(ctx, L, t) {
-    if (t < T_CORTE) cenaAberta(ctx, L, t); else cenaClose(ctx, L, t - T_CORTE);
-    const f = fase(t, T_CORTE - 130, T_CORTE + 130);
+    if (t < L.tCorte) cenaAberta(ctx, L, t); else cenaClose(ctx, L, t - L.tCorte);
+    const f = fase(t, L.tCorte - 130, L.tCorte + 130);
     if (f > 0 && f < 1) cortina(ctx, f);
   }
   // o telão de um gol: toca o replay (auto) ou já mostra o último quadro, parado na comemoração (quem chega depois, ou
   // pediu "menos movimento"). Um toque no telão toca de novo.
-  function criar(g, j, { nome, hat, ms = 3400, auto = true }) {
-    const L = monta(g, j);
+  function criar(g, j, { nome, hat, auto = true }) {
+    const L = monta(g, j), ms = L.total;
     const el = document.createElement("div"), icone = (n) => (window.Icones ? Icones.ic(n) : "");
     el.className = `telao lado${g.lado}${hat ? " hat" : ""}`;
     el.setAttribute("role", "button"); el.tabIndex = 0;
@@ -550,8 +601,8 @@
         if (!el.isConnected && t > 300) return; // o telão saiu da tela
         if (t >= ms) return parado();
         desenha(ctx, L, t);
-        el.classList.toggle("gol", t >= T_GOL);
-        el.classList.toggle("close", t >= T_CORTE);
+        el.classList.toggle("gol", t >= L.tGol);
+        el.classList.toggle("close", t >= L.tCorte);
         requestAnimationFrame(anda);
       };
       requestAnimationFrame(anda);
@@ -561,5 +612,10 @@
     if (auto && !quieto()) toca(); else parado();
     return el;
   }
-  window.Lances = { criar, monta, desenha, COMEMORA }; // monta e desenha: para conferir quadro a quadro (#debug)
+  // monta e desenha também servem para conferir quadro a quadro (#debug)
+  window.Lances = {
+    criar, monta, desenha, GOLS: {}, COMEMORA: {}, ASSINATURA: {}, FINALIZACAO: {},
+    kit: { W, H, mix, prende, fase, suave, sorteio, cor, px, reta, elipse, desenho, CORACAO, poe, entre, quadros, corre, marcha, P0, CHUTE, GOLEIRO,
+      tela, GOL_X, GOL_ALTO, GOL_FUNDO, marcaPenalti, ESCANTEIO, naLinha, voo, curva, naRede, conduz, chutando, festejando, goleiroVoa },
+  };
 })();
