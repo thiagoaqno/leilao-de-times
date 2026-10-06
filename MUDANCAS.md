@@ -1,44 +1,73 @@
-# Ginásio: casinha e desafios na Vila (Fase 4)
+# Ginásio: os bichos se mexendo de verdade
 
 ## Como fica
-- Novo prédio na Vila Esportiva, ao lado do Pingue-Pongue e abaixo do Tênis, com telhado arredondado, Pokébola e placa do Ginásio.
-- A porta abre `/ginasio/`; o menu Jogos e o minimapa incluem o prédio. Voltar à Vila deixa o jogador na porta do Ginásio.
-- Pelo botão Batalha ou clicando no boneco de um amigo, dá para escolher Por turnos ou Ginásio (tempo real), com Galeramon ou Pokémon e o time já salvo.
-- A opção **Desafiar no Ginásio (tempo real)** envia um convite com aceite/recusa. Aceitar leva os dois à mesma sala 1x1, sem robôs, com seus times e lados reservados. O desafiante organiza e inicia a partida quando ambos chegam.
-- O cabeçalho da Vila usa duas linhas no celular: o botão Jogos não fica mais fora da tela. O painel do desafio cabe em retrato e tem rolagem em paisagem.
-- A batalha antiga por turnos continua na Vila e permanece a escolha padrão.
+- **Os Pokémon têm animação de verdade.**
+  - Na arena, cada Pokémon toca o sprite animado do Black/White: os 493, e não mais uma imagem parada.
+  - Charizard, Pidgeot e Butterfree batem asa, as chamas mexem e todo mundo respira.
+  - Enquanto o GIF chega, aparece o sprite parado de antes.
+- **Os Galeramon ganharam quadros.** O corpo respira, as chamas do Churrasquilo, do Boitatá e do Mico-Leão tremulam, a
+  asa do Fofocaio bate, as faíscas do Pastelétrico e do Loboguaraná piscam, o redemoinho do Saci gira, e eles piscam o olho.
+- **Cada momento tem o seu jeito:**
+  - **parado:** os voadores e os fantasmas flutuam, com a sombra menor no chão;
+  - **andando:** pulinho e poeira nos pés;
+  - **virando:** achata por um instante;
+  - **golpe:** corpo a corpo com antecipação, avanço e volta; golpe à distância com brilho do tipo e tranco para trás;
+  - **apanhando:** pisca branco e é empurrado;
+  - **esquiva:** pulinho e achatado na queda;
+  - **investida:** estica, com rastro;
+  - **velocidade em alta:** rastro;
+  - **entrada:** em campo com um "pop";
+  - **desmaio:** tomba de lado, quica e vira pó.
+- **Golpes que viram movimento:**
+  - **Fly e Bounce:** o bicho sobe e sai da tela; a sombra segue até o ponto mirado e ele cai com estouro de poeira.
+  - **Dig e Escavar:** afunda num buraco, um montinho de terra anda pelo chão e ele explode para fora em pedras.
+  - **Mergulho:** poça, bolhas andando e espirro na saída.
+  - **Shadow Force:** some numa sombra.
+  - Enquanto o bicho está sumido, **ninguém acerta**. Ele cai em cima de quem estiver no ponto mirado, com o aviso no chão para dar tempo de desviar.
+  - **Giros:** Gyro Ball, Flame Wheel, Rolamento e Cambalhota viram investida, com o sprite girando.
+- **Golpes de cada tipo animados** (são 18 famílias):
+  - bola de fogo que tremula, jato d'água com gotas, raio em zigue-zague que pisca, folhas girando, cristal de gelo,
+    pedra rolando, anéis psíquicos, fantasma ondulando, gosma de veneno, lua sombria, rajada de vento, soco, brilhos de
+    fada, estrela de aço e mais;
+  - cada impacto estoura no jeito do tipo: brasas sobem, gotas espirram, pedras quicam, folhas caem devagar;
+  - os golpes de área caem do céu: raio, coluna de fogo, gêiser e pedras caindo no fim do aviso.
+- **Botões:**
+  - os golpes afundam de leve ao apertar;
+  - a borda acende na cor do tipo quando a recarga acaba;
+  - a vida do placar desce suave.
+- Quem pede menos movimento no sistema fica sem tremor, rastros, partículas e tombos. Os quadros dos sprites continuam.
 
 ## Por dentro
-- `GAMES` e `drawBuilding` em `public/index.html` ganham `ginasio: true`; cinco árvores mudam de lugar para liberar o lote. A rua existente já atende à porta, sem ampliar o mapa.
-- `ginasio.js` reaproveita criação de sala/jogadores na ponte interna `criarDesafio`. A sala só nasce após o aceite, com validação dos dois times.
-- `vila.js` mantém os eventos de convite e acrescenta `jogo: "ginasio"`; `irGinasio` envia somente a credencial de cada destinatário. Os jogadores ficam ocupados durante a transição, impedindo desafios duplicados.
-- O navegador guarda `ginasio:<código>` antes de abrir `?sala=&entrar=1`. Tokens não aparecem na URL nem no estado público; reconectar recupera o mesmo jogador e não duplica a entrada automática.
-- Sem dependências novas. Sem alteração no motor, golpes, sprites ou regras dos turnos. `CLAUDE.md` documenta a integração; `#debug` expõe `window.__vila` para testar mapa e câmera.
+- `public/ginasio/gif.js` (novo): lê GIF animado sem dependência. Cuida de paleta, transparência, entrelaçado, descarte
+  e LZW, e devolve os quadros montados com o tempo de cada um.
+- `public/ginasio/animacao.js` (novo):
+  - carrega os quadros (`animacaoDe`), com o sprite parado de reserva;
+  - `desenharBicho`, com todos os estados acima, vindos dos eventos do servidor (`animarEvento`);
+  - as partículas, numa lista fixa de 260.
+- `public/ginasio/golpes.js` (novo): o projétil de cada tipo, o corte, o estouro e os golpes de área.
+- `public/galeramon/sprites.js`: `GaleramonSprite.quadros(id)` (4 quadros e o de olho fechado). A batalha por turnos
+  continua com o quadro de sempre.
+- `public/galeramon/pokemon.js`: `PokeDex.spriteAnimado(id)`.
+- `public/ginasio/regras.js`:
+  - as classes `sumir` (`SUMIR`: voo, cova, mergulho, sombra) e o `giro` na investida;
+  - o `oculto` não pode ser acertado nem atacar, esquivar ou trocar;
+  - o evento `golpe` passa a levar o tipo; os novos eventos são `sumiu` e `voltou`.
+- `ginasio.js` e `rede.js`: o pacote leva o `oculto` e o `giro`, e a previsão de movimento acompanha o voo.
 
 ## Conferido
-- `npm test`: 62 testes passaram, sem falhas.
-- `npx playwright test tests/e2e/vila-ginasio.spec.js tests/e2e/ginasio.spec.js tests/e2e/paginas.spec.js`: 33 testes passaram, sem falhas.
-- Servidor real: desafios Galeramon/Pokémon, lados e times preservados, tokens privados, invasor sem acesso aos lados reservados, recusa, aceite falso, time inválido, saída e bloqueio de convites duplicados.
-- Caminhada até a porta, colisão do prédio, capacho acessível, pixels do telhado, entrada por teclado/toque e retorno à porta em 1280x800 e 375x812.
-- Dois navegadores: desafio pelo sprite e pela central Batalha, recusa no celular, aceite na mesma sala, recarga sem perder identidade e partida com dois humanos. Opção padrão por turnos também testada pela interface.
-- Painel do desafio em 375x812 e 480x270: texto sem transbordar e botões sem sobreposição. Regressão dos controles, sala, sprites e resultados do Ginásio, além da abertura dos outros jogos.
-- Inspeção visual no navegador do app. Toque verificado por emulação Chromium, não em aparelho físico.
-
-## Fotos
-Prédio e porta na Vila, 1280x800:
-![Ginásio na Vila](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-vila.png)
-
-Celular, 375x812:
-![Ginásio na Vila no celular](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-celular.png)
-
-Escolha do desafio:
-![Desafio no Ginásio](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-desafio.png)
-
-Convite com aceite/recusa no celular:
-![Convite no celular](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-convite.png)
-
-Os dois amigos na arena:
-![Amigos no Ginásio](https://raw.githubusercontent.com/thiagoaqno/leilao-de-times/ginasio-fase-4/planos/imagens/ginasio-fase-4-amigos.png)
-
-## Limite desta fase
-Somente a Fase 4 de `planos/ginasio.md`. Balanceamento e refinamentos de efeitos ficam na Fase 5. Sem banco de dados, carreira ou refatoração do desenho do mapa.
+- `npm test`: 67 passaram, 0 falharam.
+  - Os testes novos: o leitor de GIF; voo, buraco e mergulho sem levar dano e caindo no ponto mirado; a tela prevendo o voo igual ao servidor; os giros.
+- `npx playwright test tests/e2e/ginasio.spec.js tests/e2e/vila-ginasio.spec.js`: 10 passaram.
+- O leitor de GIF abriu os sprites reais de Charizard (72 quadros), Beedrill, Gengar, Pikachu e Gyarados.
+- No navegador, contra o robô, sem erro no console:
+  - os sprites animados carregaram (Charizard, Blastoise, Charmander);
+  - o Fly do Aerodactyl sumiu e voltou no ponto mirado;
+  - o Agility do Pidgeot deixou o rastro.
+- Numa cena montada na prévia da arena:
+  - o voo, subindo e só com a sombra;
+  - o Gible afundando e o montinho de terra;
+  - o Golem girando na investida;
+  - o Gengar flutuando;
+  - as pedras caindo na área;
+  - os 18 projéteis.
+- Fotos em `planos/imagens/ginasio-animacoes-*.jpg`.

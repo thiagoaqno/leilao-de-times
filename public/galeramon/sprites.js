@@ -1,7 +1,12 @@
 // Galeramon — desenhos dos bichos. Cada um é pintado numa tela de 32x32 e ampliado sem suavizar (pixel art).
+// Para o Ginásio, cada bicho também tem quadros de animação (GaleramonSprite.quadros): o corpo respira, as chamas
+// tremulam, as asas batem, as faíscas piscam, e um quadro extra de olho fechado para piscar.
 (function () {
   const S = 32;
   const OUT = "#1b1b2f";
+  let Q = 0, PISCA = false; // o quadro que está sendo desenhado (0 a 3) e se é o quadro do olho fechado
+  const tremula = () => [0, 0.6, 0, -0.6][Q]; // as chamas sobem e descem
+  const pisca = () => Q % 2 === 0; // faíscas e brilhos aparecem um quadro sim, outro não
   function ell(c, x, y, rx, ry, col) { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, 7); c.fill(); }
   function rect(c, x, y, w, h, col) { c.fillStyle = col; c.fillRect(x, y, w, h); }
   // desenha as formas duas vezes: primeiro maiores na cor do contorno, depois por cima na cor certa
@@ -10,6 +15,7 @@
     for (const p of parts) p[0] === "e" ? ell(c, p[1], p[2], p[3], p[4], p[5]) : rect(c, p[1], p[2], p[3], p[4], p[5]);
   }
   function eye(c, x, y, big) {
+    if (PISCA) { rect(c, x, y + 1, big ? 3 : 2, 1, OUT); return; }
     rect(c, x, y, big ? 3 : 2, big ? 3 : 2, OUT);
     rect(c, x, y, 1, 1, "#ffffff");
   }
@@ -22,7 +28,7 @@
       rect(c, 14, 21, 1, 2, OUT); rect(c, 17, 21, 1, 2, OUT);
       eye(c, 11, 17); eye(c, 20, 17);
       rect(c, 10, 15, 3, 1, OUT); rect(c, 20, 15, 3, 1, OUT); // sobrancelha brava
-      ell(c, 16, 8, 3.5, 4.5, "#ff6a1a"); ell(c, 15, 5, 2, 3, "#ff6a1a"); ell(c, 16, 8.5, 2, 3, "#ffd34d"); rect(c, 16, 3, 1, 2, "#ffd34d");
+      const f = tremula(); ell(c, 16, 8 - f * 0.5, 3.5, 4.5 + f, "#ff6a1a"); ell(c, 15 + f, 5 - f, 2, 3, "#ff6a1a"); ell(c, 16, 8.5 - f * 0.5, 2, 3 + f * 0.5, "#ffd34d"); rect(c, 16 - Math.sign(f), 3 - Math.max(0, f), 1, 2, "#ffd34d");
     },
     sirizao(c) {
       for (const x of [6, 9, 23, 26]) { rect(c, x, 24, 1, 5, OUT); rect(c, x - 1, 28, 2, 1, OUT); }
@@ -50,9 +56,9 @@
       ell(c, 12, 16, 4, 2, "#ffe09a");
       eye(c, 11, 16, true); eye(c, 19, 16, true);
       rect(c, 14, 20, 4, 1, OUT);
-      c.fillStyle = "#ffe066"; c.beginPath(); c.moveTo(25, 3); c.lineTo(20, 12); c.lineTo(24, 12); c.lineTo(21, 19); c.lineTo(29, 9); c.lineTo(25, 9); c.lineTo(28, 3); c.closePath(); c.fill();
+      c.fillStyle = Q === 2 ? "#fff6c0" : "#ffe066"; c.beginPath(); c.moveTo(25, 3); c.lineTo(20, 12); c.lineTo(24, 12); c.lineTo(21, 19); c.lineTo(29, 9); c.lineTo(25, 9); c.lineTo(28, 3); c.closePath(); c.fill();
       c.strokeStyle = OUT; c.lineWidth = 1; c.stroke();
-      rect(c, 4, 9, 1, 3, "#fff27a"); rect(c, 3, 10, 3, 1, "#fff27a"); rect(c, 8, 4, 1, 1, "#fff27a");
+      if (pisca()) { rect(c, 4, 9, 1, 3, "#fff27a"); rect(c, 3, 10, 3, 1, "#fff27a"); rect(c, 8, 4, 1, 1, "#fff27a"); } else { rect(c, 6, 6, 1, 1, "#fff27a"); rect(c, 2, 14, 1, 1, "#fff27a"); }
       for (const x of [9, 22]) { rect(c, x, 22, 2, 5, OUT); rect(c, x - 1, 26, 4, 2, OUT); }
     },
     pedrolho(c) {
@@ -66,14 +72,14 @@
     },
     saci(c) {
       // redemoinho embaixo
-      for (let i = 0; i < 4; i++) ell(c, 16, 28 - i * 2, 9 - i * 1.5, 1.5, i % 2 ? "#d9d2ff" : "#b3a6f0");
+      for (let i = 0; i < 4; i++) ell(c, 16 + [0, 1, 0, -1][(Q + i) % 4] * 0.6, 28 - i * 2, 9 - i * 1.5, 1.5, (i + Q) % 2 ? "#d9d2ff" : "#b3a6f0");
       body(c, [["r", 15, 19, 3, 8, "#5a3320"], ["e", 16, 17, 5, 5, "#e0352b"], ["e", 16, 10, 5.5, 5.5, "#6b3b22"]]);
       c.fillStyle = OUT; c.beginPath(); c.moveTo(9, 7); c.lineTo(23, 7); c.lineTo(18, -1); c.closePath(); c.fill();
       c.fillStyle = "#e0352b"; c.beginPath(); c.moveTo(10, 6); c.lineTo(22, 6); c.lineTo(18, 0); c.closePath(); c.fill();
       eye(c, 13, 9); eye(c, 18, 9);
       rect(c, 14, 13, 4, 1, "#ffffff");
       rect(c, 20, 12, 5, 1, "#8a5a34"); rect(c, 24, 10, 2, 3, "#8a5a34"); // cachimbo
-      ell(c, 26, 7, 1.5, 1.5, "#dcdce6"); ell(c, 28, 4, 2, 2, "#ececf4");
+      ell(c, 26, 7 - Q * 0.4, 1.5, 1.5, "#dcdce6"); ell(c, 28 + Q * 0.2, 4 - Q * 0.5, 2, 2, "#ececf4");
     },
     capivarao(c) {
       body(c, [["e", 14, 21, 12.5, 7.5, "#a87445"], ["e", 24, 14, 6.5, 5.5, "#a87445"], ["r", 27, 13, 4, 5, "#8a5a34"], ["e", 21, 9.5, 2, 2, "#8a5a34"]]);
@@ -88,7 +94,7 @@
       const seg = [[6, 26, 3.5], [10, 23, 4.5], [15, 24, 5], [20, 22, 5], [22, 16, 5.5]];
       body(c, seg.map(([x, y, r]) => ["e", x, y, r, r * 0.85, "#ff6a1a"]).concat([["e", 17, 10, 8, 6.5, "#ff6a1a"]]));
       seg.forEach(([x, y, r]) => ell(c, x, y - 1, r * 0.55, r * 0.4, "#ffd34d"));
-      for (const [x, y] of [[13, 3], [17, 2], [21, 3]]) { ell(c, x, y + 2, 1.8, 3, "#ff6a1a"); ell(c, x, y + 3, 1, 1.8, "#ffd34d"); }
+      [[13, 3], [17, 2], [21, 3]].forEach(([x, y], i) => { const f = [0, 0.6, 0, -0.6][(Q + i) % 4]; ell(c, x, y + 2 - f, 1.8, 3 + f, "#ff6a1a"); ell(c, x, y + 3 - f * 0.5, 1, 1.8 + f * 0.5, "#ffd34d"); });
       ell(c, 13, 9, 3, 3, "#fff6a0"); ell(c, 21, 9, 3, 3, "#fff6a0");
       rect(c, 13, 8, 1, 3, "#ff3a1a"); rect(c, 21, 8, 1, 3, "#ff3a1a");
       rect(c, 14, 14, 6, 1, OUT); rect(c, 16, 15, 1, 2, "#e0352b");
@@ -101,7 +107,7 @@
       ell(c, 11, 17, 4, 4.5, "#fff2b0");
       ell(c, 12, 11, 2.6, 2.6, "#4fb3ff"); rect(c, 12, 10, 2, 2, OUT); rect(c, 12, 10, 1, 1, "#ffffff");
       rect(c, 10, 28, 2, 1, "#ff8a1a"); rect(c, 14, 28, 2, 1, "#ff8a1a");
-      rect(c, 25, 4, 1, 3, "#fff27a"); rect(c, 24, 5, 3, 1, "#fff27a"); // brilho de neon
+      if (pisca()) { rect(c, 25, 4, 1, 3, "#fff27a"); rect(c, 24, 5, 3, 1, "#fff27a"); } // brilho de neon
     },
     jacareu(c) {
       for (const x of [6, 12, 18]) rect(c, x, 24, 3, 5, "#4a6a2e");
@@ -140,10 +146,10 @@
       ell(c, 16, 18, 3.5, 2.5, "#7a4a2e");
       eye(c, 13, 13); eye(c, 18, 13);
       rect(c, 15, 18, 2, 1, OUT);
-      ell(c, 16, 3, 2.2, 3, "#ff5a1a"); ell(c, 16, 4, 1.2, 1.8, "#ffe066"); ell(c, 10, 5, 1.5, 2, "#ff5a1a"); ell(c, 22, 5, 1.5, 2, "#ff5a1a");
+      const f = tremula(); ell(c, 16, 3 - f * 0.5, 2.2, 3 + f, "#ff5a1a"); ell(c, 16, 4 - f * 0.5, 1.2, 1.8 + f * 0.5, "#ffe066"); ell(c, 10, 5 + f * 0.5, 1.5, 2 - f * 0.4, "#ff5a1a"); ell(c, 22, 5 + f * 0.5, 1.5, 2 - f * 0.4, "#ff5a1a");
     },
     tatubala(c) {
-      for (const y of [12, 18, 24]) rect(c, 0, y, 5, 1, "#ffffff"); // riscos de velocidade
+      for (const y of [12, 18, 24]) rect(c, Q % 2, y, 5 - (Q % 2) * 2, 1, "#ffffff"); // riscos de velocidade
       body(c, [["e", 16, 18, 11, 10.5, "#b08a5e"], ["e", 26, 25, 4.5, 3.5, "#c9a57a"], ["e", 24, 20, 1.5, 2.5, "#c9a57a"]]);
       for (const x of [9, 13, 17, 21]) rect(c, x, 9, 1, 19, "#8a6a44");
       ell(c, 13, 12, 5, 2.5, "#ccaa7c");
@@ -156,7 +162,7 @@
       rect(c, 21, 13, 2, 2, OUT);
       ell(c, 11, 12, 2.2, 1.6, "#ffe066"); ell(c, 13, 22, 4.5, 5, "#5fd06a");
       eye(c, 15, 8);
-      ell(c, 7, 19, 3, 6, "#2f8f3a"); rect(c, 5, 24, 4, 2, "#e0352b"); rect(c, 6, 26, 3, 1, "#2f6fd6");
+      const asa = [6, 4.5, 3, 4.5][Q]; ell(c, 7, 25 - asa, 3, asa, "#2f8f3a"); rect(c, 5, 24, 4, 2, "#e0352b"); rect(c, 6, 26, 3, 1, "#2f6fd6"); // a asa batendo
       rect(c, 12, 29, 2, 1, OUT); rect(c, 16, 29, 2, 1, OUT);
       // balão de fofoca
       rect(c, 22, 1, 10, 7, OUT); rect(c, 23, 2, 8, 5, "#ffffff"); rect(c, 23, 8, 2, 2, OUT);
@@ -168,7 +174,7 @@
       ell(c, 18, 23, 7, 1, "#8fc46a"); ell(c, 16, 28, 9, 1, "#8fc46a");
       ell(c, 19, 7, 1.8, 1.8, "#ffe066"); ell(c, 24, 7, 1.8, 1.8, "#ffe066"); rect(c, 19, 6, 1, 2, OUT); rect(c, 24, 6, 1, 2, OUT);
       rect(c, 18, 10, 8, 1, OUT); // sorrisão
-      rect(c, 27, 9, 3, 1, "#e0352b"); rect(c, 30, 8, 1, 1, "#e0352b"); rect(c, 30, 10, 1, 1, "#e0352b");
+      if (Q < 2) { rect(c, 27, 9, 3, 1, "#e0352b"); rect(c, 30, 8, 1, 1, "#e0352b"); rect(c, 30, 10, 1, 1, "#e0352b"); } // a língua
     },
     preguicudo(c) {
       rect(c, 0, 3, 32, 3, "#8a5a34"); ell(c, 4, 3, 3, 2, "#3aa04a"); ell(c, 27, 2, 3.5, 2, "#3aa04a"); // galho
@@ -179,7 +185,7 @@
       rect(c, 12, 16, 2, 1, "#1b1b2f"); rect(c, 19, 16, 2, 1, "#1b1b2f"); // olho fechado de sono
       rect(c, 15, 18, 2, 1, "#4a3a2a"); rect(c, 14, 20, 4, 1, "#4a3a2a");
       ell(c, 16, 25, 5, 3, "#b39a7c");
-      rect(c, 26, 12, 1, 1, "#ffffff"); rect(c, 28, 9, 2, 1, "#ffffff"); rect(c, 29, 10, 1, 1, "#ffffff"); // zzz
+      const z = Math.floor(Q / 2); rect(c, 26, 12 - z, 1, 1, "#ffffff"); rect(c, 28, 9 - z, 2, 1, "#ffffff"); rect(c, 29, 10 - z, 1, 1, "#ffffff"); // zzz
     },
     loboguarana(c) {
       rect(c, 2, 19, 5, 10, OUT); rect(c, 3, 20, 3, 8, "#1f9d55"); rect(c, 3, 23, 3, 2, "#e0352b"); rect(c, 3, 19, 3, 1, "#c9c9d6"); // latinha de guaraná
@@ -189,17 +195,32 @@
       ell(c, 16, 19, 6, 2, "#f59050");
       rect(c, 31, 12, 1, 1, OUT);
       rect(c, 25, 10, 2, 2, OUT); rect(c, 25, 10, 1, 1, "#ffffff");
-      rect(c, 9, 15, 1, 3, "#fff27a"); rect(c, 8, 16, 3, 1, "#fff27a"); rect(c, 12, 9, 1, 1, "#fff27a");
+      if (pisca()) { rect(c, 9, 15, 1, 3, "#fff27a"); rect(c, 8, 16, 3, 1, "#fff27a"); rect(c, 12, 9, 1, 1, "#fff27a"); }
     },
   };
 
-  const cache = {};
+  const cache = {}, cacheQuadros = {};
+  function pintar(id, q, olhoFechado) {
+    const cv = document.createElement("canvas"); cv.width = S; cv.height = S;
+    Q = q; PISCA = olhoFechado;
+    try { (DRAW[id] || DRAW.capivarao)(cv.getContext("2d")); } finally { Q = 0; PISCA = false; }
+    return cv;
+  }
   function sprite(id) {
     if (cache[id]) return cache[id];
+    return (cache[id] = pintar(id, 0, false).toDataURL());
+  }
+  // respirar: a parte de cima do corpo desce 1 pixel nos quadros 1 e 2 (as pernas, embaixo, ficam paradas)
+  const CORTE = 22, RESPIRA = [0, 1, 1, 0];
+  function respirando(base, q) {
     const cv = document.createElement("canvas"); cv.width = S; cv.height = S;
     const c = cv.getContext("2d");
-    (DRAW[id] || DRAW.capivarao)(c);
-    return (cache[id] = cv.toDataURL());
+    c.drawImage(base, 0, CORTE, S, S - CORTE, 0, CORTE, S, S - CORTE);
+    c.drawImage(base, 0, 0, S, CORTE, 0, RESPIRA[q], S, CORTE);
+    return cv;
   }
+  // os 4 quadros do bicho parado e, no fim, o quadro de olho fechado (quem anima decide quando piscar)
+  sprite.quadros = (id) => cacheQuadros[id] || (cacheQuadros[id] = [0, 1, 2, 3].map((q) => respirando(pintar(id, q, false), q)).concat([pintar(id, 0, true)]));
+  sprite.TAM = S;
   window.GaleramonSprite = sprite;
 })();

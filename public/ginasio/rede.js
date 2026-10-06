@@ -9,7 +9,8 @@ function entidadePrevista(e) {
   return {
     ...e, mira: { ...e.mira }, bicho: { id: e.bicho, as: e.forma !== e.bicho ? e.forma : null, hp: e.hp, max: e.max, st: { ...e.st }, cds: [...e.cds] },
     jogador: { id: e.id, lado: e.lado }, impedido: e.impedido || 0,
-    canal: e.canal && { ...e.canal }, dash: e.dash && { ...e.dash, hab: { velocidade: e.dash.velocidade }, hit: new Set() },
+    canal: e.canal && { ...e.canal }, dash: e.dash && { ...e.dash, hab: { velocidade: e.dash.velocidade, giro: e.dash.giro, tipo: e.dash.elemento }, hit: new Set() },
+    oculto: e.oculto && { ...e.oculto, de: { ...e.oculto.de }, para: { ...e.oculto.para } },
   };
 }
 function receberPacote(sn) {

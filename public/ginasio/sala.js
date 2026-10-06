@@ -48,6 +48,7 @@ function renderSala() {
   if (S) { $("rCode").textContent = S.code; $("salaCodigo").textContent = S.code; }
   preencher("meuTime", timeAtual().map((id, i) => `<button class="bicho" data-escolher="${i}" title="${h(dexAtual().MONS[id].n)}" ${S && (!ME?.id || S.phase === "play") ? "disabled" : ""}>${htmlBicho(id)}</button>`).join(""));
   timeAtual().forEach((id) => imagemDe(id));
+  if (typeof animacaoDe === "function") for (const id of [...timeAtual(), ...(S?.players || []).flatMap((p) => p.time || [])]) animacaoDe(id); // os GIFs chegam antes da partida
   if (!S) return;
   const organizador = S.host === ME?.id, n = S.config.formato === "2x2" ? 2 : 1;
   let lista = S.players.map((p) => `<div class="participante ${p.lado === 1 ? "vermelho" : p.lado == null ? "fora" : ""} ${p.online ? "" : "offline"}"><span class="nome">${h(p.name)}${p.id === ME?.id ? " · você" : ""}</span>${p.ping == null ? "" : `<span class="ping">${p.ping} ms</span>`}${organizador && p.id !== ME.id && S.phase !== "play" ? `<button class="icone" data-kick="${p.id}" title="Retirar ${h(p.name)}" aria-label="Retirar ${h(p.name)}">${ic("fechar")}</button>` : ""}</div>`).join("");
