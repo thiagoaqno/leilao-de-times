@@ -145,14 +145,27 @@ cv.addEventListener("wheel", (e) => { if (!myTurn()) return; e.preventDefault();
 function renderSpin() { const d = $("spinDot"); d.style.left = 50 + aim.sx * 40 + "%"; d.style.top = 50 - aim.sy * 40 + "%"; }
 
 // força: puxa o taco para trás e solta
+// O 100% fica sempre ao alcance: quem pega a barra perto do fim (ou com a barra encostada na beirada da tela) não tem
+// mais a barra inteira para puxar, então a distância do 100% encolhe até o espaço que sobra (antes, a força travava
+// em 20% ou 30% e parecia que o taco não puxava).
 (() => {
   const el = $("power"); let st = null;
   const len = () => (view.rot ? el.clientWidth : el.clientHeight) - 12;
-  el.addEventListener("pointerdown", (e) => { if (!myTurn() && !vezChegando()) return; el.setPointerCapture(e.pointerId); st = { x: e.clientX, y: e.clientY }; aim.p = 0; puxando = true; });
+  function curso(e) {
+    const r = el.getBoundingClientRect();
+    const naBarra = view.rot ? e.clientX - r.left : r.bottom - e.clientY; // quanto da barra sobra na direção de puxar
+    const naTela = view.rot ? e.clientX : window.innerHeight - e.clientY; // até a beirada da tela
+    return Math.max(36, Math.min(len(), Math.max(naBarra, len() * 0.6), naTela - 6));
+  }
+  el.addEventListener("pointerdown", (e) => {
+    if (!myTurn() && !vezChegando()) return;
+    e.preventDefault(); // sem selecionar texto nem arrastar a página junto
+    el.setPointerCapture(e.pointerId); st = { x: e.clientX, y: e.clientY, curso: curso(e) }; aim.p = 0; puxando = true;
+  });
   el.addEventListener("pointermove", (e) => {
     if (!st) return;
     const d = view.rot ? st.x - e.clientX : e.clientY - st.y;
-    aim.p = Math.max(0, Math.min(1, d / len())); renderPower(); sendAim();
+    aim.p = Math.max(0, Math.min(1, d / st.curso)); renderPower(); sendAim();
   });
   const end = (e) => { if (!st) return; st = null; puxando = false; if (aim.p >= 0.02 && vezChegando()) shootQuandoPuder(); else { aim.p = 0; renderPower(); sendAim(true); } };
   el.addEventListener("pointerup", end); el.addEventListener("pointercancel", () => { st = null; puxando = false; aim.p = 0; renderPower(); });
