@@ -81,7 +81,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Pelada (futsal 3D) e Rocket (futebol de carro) | `pelada.js` (+ `peladaBots.js`) | ver logo abaixo |
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
 | Pingue-Pongue | `pingpong.js` | `index.html`, `jogo.js`, `regras.js` (voo com efeito, juiz, placar, robô) |
-| Vila (o mapa) + Galeramon | `vila.js` (+ `galeramon.js`) | `public/index.html` (tudo inline) e `public/galeramon/` |
+| Vila (o mapa) + Galeramon + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
 
 **Banco: os 5 scripts, nesta ordem:**
 1. `sala.js`: entrar/criar e a sala de espera;
@@ -144,10 +144,23 @@ Para achar algo dentro de um jogo:
     telhado (`casino`, `uno`, `tenis`...);
   - `BAIRROS` traz o nome de cada bairro e a posição da placa azul de rua;
   - o chão é feito de tipos de casa: `g` grama, `r` paralelepípedo, `p` pedra portuguesa, `q` pista de atletismo,
-    `a` asfalto, `f` flores, `t` árvore, `m` capacho da porta;
+    `a` asfalto, `f` flores, `t` árvore, `m` capacho da porta; fora da vila, `e` rodovia (só carro), `E`
+    estacionamento, `c` calçada, `w` água, `s` areia, `j` jardim da orla;
   - `TREES`, `LAMPS`, `BENCHES` e `FOUNTAIN` são a decoração.
 - `drawBuilding` desenha os prédios, e cada jogo tem o seu `if (g.<sinal>)` para o telhado.
-- **Tamanho do mapa:** `MW` x `MH` (40x44). O `vila.js` repete esse tamanho e a lista `GAMES`: precisam bater.
+- **Tamanho do mapa:** `MW` x `MH` (320x260). A vila (40x44) fica no meio, deslocada por `OX`, `OY` (140, 100): as
+  coordenadas da vila em `GAMES`, `LAMPS`... continuam escritas de 0 a 39 / 0 a 43 e são deslocadas no carregamento.
+  O `vila.js` repete `MW`, `MH`, `OX`, `OY`, a lista `GAMES` e as zonas dos estádios: precisam bater.
+- **O mundo em volta (`montaMundo`):** `rodovia()` (trechos retos de duas faixas; passa por cima da água como ponte),
+  `lote()` (estacionamento, com carros parados), `PREDIOS` (a cidade de enfeite), o Pinheiros, o Tietê, a Serra do Mar e
+  Santos (praia). Fora da vila o pedestre não passa (`solid`): só de carro (`carOk`), que se pega num estacionamento.
+- **O mapa é desenhado em pedaços** de 32x32 casas (`pedaco(cx, cy)`), só os que aparecem, e a luz da noite é do tamanho
+  da tela. Coisa nova no mapa precisa ser desenhada dentro de `pedaco`.
+- **Estádios (`public/vila/estadios.js`):** `LISTA` (onde fica cada um, a praça, o estacionamento e o portão), `fachada`
+  (o lado de fora) e `interior` (o lado de dentro: gramado, arquibancada com torcida, túnel, gols). Na página, `INT` é o
+  estádio em que a pessoa está, e a bola (`bola`, `chuta`, `gol`) só existe lá dentro.
+- **Quem aparece para quem:** cada pessoa manda `z` (a zona: `""` na rua ou o id do estádio) e `car`; só se vê quem
+  está na mesma zona.
 
 ## Testes
 
