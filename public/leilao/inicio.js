@@ -207,7 +207,10 @@ function enter(code, capId, host){
   history.replaceState(null, "", "?sala="+code);
   if (jaNaSala) return;
   const troca = () => { $("home").classList.add("hidden"); $("room").classList.remove("hidden"); document.body.classList.add("inroom"); scrollTo(0, 0); };
-  if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.startViewTransition(troca); else troca();
+  if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const vt = document.startViewTransition(troca);
+    for (const p of [vt.ready, vt.finished, vt.updateCallbackDone]) if (p) p.catch(() => {}); // cancelada por outra: não é erro
+  } else troca();
 }
 // auto-rejoin (refresh / reconnect)
 function tryRejoin(){

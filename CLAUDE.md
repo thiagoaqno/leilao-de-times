@@ -26,6 +26,7 @@ decisões dos primeiros dias estão em `PROJETO.md`, e o que mudou em cada PR fi
 | `salas.js` | Salas com código de 5 letras (o que todo jogo usa). Ver a lista de funções logo abaixo. |
 | `noite.js` + `public/noite.js` | **Noite da Galera.** Ver a seção própria abaixo. |
 | `public/comum.js` | `window.Comum`. Ver a lista de funções logo abaixo. |
+| `public/icones.js` | `window.Icones`: os ícones SVG do site (Leilão e Banco), no lugar dos emojis. `ic(nome)`, `iconizar(html)`, `peao(emoji)` (o símbolo de cada peão do Banco) e `observar(raiz)`, que troca sozinho por ícone todo emoji que aparecer na página. |
 | `public/toque.js` | Controles de toque no celular: `Toque.setup({ buttons, top, look, onStick })` e `Toque.show(bool)`. Os botões disparam teclas de mentira. |
 | `public/semzoom.js` | Impede o zoom do toque duplo (vai no `<head>` de toda página). |
 | `public/pelada/bonecos.js` | **Os bonecos e as skins** (Pelada, Tênis, Corrida, Batalha, Pingue-Pongue). Ver a lista de funções logo abaixo. |
@@ -83,16 +84,26 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Pingue-Pongue | `pingpong.js` | `index.html`, `jogo.js`, `regras.js` (voo com efeito, juiz, placar, robô) |
 | Vila (o mapa) + Galeramon + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
 
+**Banco:**
+- O visual fica em `estilo.css` (a mesa à noite, as casas escuras que brilham na cor do dono, o dourado do dinheiro).
+- A tela do jogo tem três colunas: as contas (o cartão do jogador e `#plates`, a conta de cada um), o tabuleiro (com o
+  cofre do banco, `#cofre`, no miolo) e o momento da jogada com o extrato ao vivo (`#extrato`).
+- Os peões são guardados pelo emoji e desenhados em 3D por `peoes.js` (`Peoes.svg(cor, emoji, { tam })`), que carrega
+  antes dos 5 scripts.
+- A página chama `Icones.observar`, então qualquer emoji que os scripts ou o servidor mandarem vira ícone.
+- A mesa de todos e o histórico ficam na gaveta (`#gaveta`).
+
 **Banco: os 5 scripts, nesta ordem:**
 1. `sala.js`: entrar/criar e a sala de espera;
 2. `mesa.js`: o tabuleiro, os peões andando, os dados e o "você caiu em";
-3. `painel.js`: o painel de ação, os jogadores e o dinheiro voando;
+3. `painel.js`: o painel de ação, as contas, as moedas voando (`chuvaMoedas`), o extrato e a cena do aluguel;
 4. `efeitos.js`: os sons, as reações, a escritura voando e o cartão da casa (`mostrarCasa`);
-5. `telas.js`: a carteira, os imóveis, o leilão e os modais (`propModal`, `deedHTML`).
+5. `telas.js`: a carteira, os imóveis (por bairro), as cenas do meio (`spotPush`), o leilão e os modais (`propModal`,
+   `deedHTML`, `deedCompacto`).
 
 **Leilão:** o visual fica em `estilo.css` (noite de estádio, verde-limão, cartas estilo FUT). Os scripts rodam em ordem e
 **dividem as variáveis globais**:
-1. `icones.js`: os ícones SVG (`Icones.ic`), a troca dos emojis da narração por ícones (`iconizar`) e o ícone de cada tema;
+1. `/icones.js` (comum, na raiz de `public/`): os ícones SVG, a troca dos emojis da narração por ícones e o ícone de cada tema;
 2. `inicio.js`: a tela inicial, os temas e criar/entrar;
 3. `sala.js`: os botões da sala, o resultado revelado e o campinho (deitado) com a troca de posições;
 4. `pratos.js`: o prato, a votação dos pratos, a chegada do `state` e as contas das regras (`capById`, `maxBidFor`...);
