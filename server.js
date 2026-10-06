@@ -26,6 +26,7 @@ require("./vila.js")(io); // Vila da Galera: o lobby em mapinha, canal /vila
 require("./tiro.js")(io); // Tiro da Galera: FPS de arena x1 ou x2 com AK-47 e AWP, canal /tiro
 require("./pelada.js")(io); // Pelada da Galera: futsal 3D do 1x1 ao 5x5, canal /pelada (e o Rocket, de carro)
 require("./batalha.js")(io); // Batalha da Galera: batalha de balões de kart estilo Mario Kart, canal /batalha
+require("./ginasio.js")(io); // Ginasio: Galeramon e Pokemon em tempo real, canal /ginasio
 const Ritmo = require("./public/leilao/ritmo.js"); // quanto dura cada parte do campeonato ao vivo
 const noite = require("./noite.js"); noite.attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis

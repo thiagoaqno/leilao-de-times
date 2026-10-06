@@ -78,6 +78,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Futebol de Botão | `botao.js` | mesma organização da Sinuca |
 | Corrida (kart 3D) | `corrida.js` | `pistas.js` (pistas e carros), `pista.js`, `carros.js` (os karts), `cena.js`, `fisica.js`, `controles.js`, `rede.js`, `menus.js`, `hud.js`, `fantasma.js`, `estado.js`, `sons.js`, `jogo.js` |
 | Batalha (balões de kart) | `batalha.js` | `index.html`, `jogo.js`, `regras.js` (arenas, física, itens, robôs) |
+| Ginásio (Galeramon/Pokémon em tempo real) | `ginasio.js` | `regras.js` (motor); a página entra na Fase 3 de `planos/ginasio.md` |
 | Tiro (FPS) | `tiro.js` | `arena.js`, `bonecos.js`, `bots.js`, `cena.js`, `controles.js`, `efeitos.js`, `estado.js`, `hud.js`, `menus.js`, `rede.js`, `sons.js`, `jogo.js` |
 | Pelada (futsal 3D) e Rocket (futebol de carro) | `pelada.js` (+ `peladaBots.js`) | ver logo abaixo |
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
@@ -197,6 +198,8 @@ Para achar algo dentro de um jogo:
 - **`npm test`:** `node --test` em `tests/*.test.js`.
   - Os testes de servidor sobem o `server.js` de verdade e jogam com clientes Socket.io (ajudas em
     `tests/ajuda.js`: `subirServidor`, `conectar`, `pedir`, `esperarEstado`).
+- **Ginásio:** `tests/ginasio.test.js` cobre o motor; `tests/ginasio-servidor.test.js` cobre salas, comandos,
+  reconexão e uma partida inteira com clientes Socket.io e robôs, incluindo o placar da Noite.
 - **`tests/salas.test.js`:** compara a forma do estado de cada jogo com `tests/salas-esperado.json`.
   - Se mudar o estado de propósito, regrave com `GRAVAR=1 node --test tests/salas.test.js` e confira que no diff só
     entrou o que devia.

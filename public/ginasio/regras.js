@@ -535,6 +535,8 @@
     }
     for (const e of p.entidades) {
       const c = e.jogador.bot ? pensarRobo(p, e) : comandoDe(comandos, e);
+      const mira = dirMira(e, c);
+      e.mira = { x: mira.x, y: mira.y };
       if (c.troca != null) trocar(p, e, Number(c.troca), false);
       if (c.esquiva) esquivar(p, e, c);
       if (c.golpe != null) usarGolpe(p, e, clamp(Number(c.golpe), 0, 3), c);
