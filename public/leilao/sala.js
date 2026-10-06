@@ -1,5 +1,5 @@
-// Leilão da Galera — a sala, o campinho e a troca de posições (parte 2 de 4 do script da página; os arquivos rodam em ordem, pelo
-// index.html, e dividem as mesmas variáveis globais, como quando era um <script> só).
+// Leilão da Galera — os botões da sala, o resultado revelado, o campinho e a troca de posições (os arquivos rodam em
+// ordem, pelo index.html, e dividem as mesmas variáveis globais, como quando era um <script> só).
 // ---------- ROOM ----------
 $("btnCopyLink").onclick = () => { const url = location.origin + location.pathname + "?sala=" + me.code; navigator.clipboard?.writeText(url).then(()=>toast("Link copiado!"), ()=>prompt("Copie o link:", url)); };
 const host = (action, extra={}) => socket.emit("host", { action, ...extra }, (r) => { if (r && !r.ok) toast(r.error); });
@@ -58,9 +58,10 @@ function renderReveal(){
   card.classList.toggle("hidden", !r.total);
   $("pubBox").classList.toggle("hidden", !me.host);
   if (!r.total) { lastShown = -1; lastRevTotal = -1; return; }
-  $("revTitle").textContent = t.prompt === "food" || t.prompt === "generic" ? "🎬 Julgamento" : "🎬 Campeonato";
-  $("revCount").textContent = r.shown >= r.total ? `✓ Tudo revelado (${r.total} partes)` : `${r.shown} de ${r.total} partes`;
-  $("revCount").style.color = r.shown >= r.total ? "var(--good)" : "var(--accent)";
+  const julga = t.prompt === "food" || t.prompt === "generic";
+  $("revTitle").innerHTML = ic(julga ? "urna" : "taca") + (julga ? "Julgamento" : "Campeonato");
+  $("revCount").innerHTML = r.shown >= r.total ? `${ic("ok")} Tudo revelado (${r.total} partes)` : `${r.shown} de ${r.total} partes`;
+  $("revCount").style.color = r.shown >= r.total ? "var(--green)" : "var(--acc)";
   // redesenha só se mudou (para a animação aparecer só na parte nova)
   if (r.shown !== lastShown || r.total !== lastRevTotal) {
     const out = $("revOut");
@@ -76,15 +77,15 @@ function renderReveal(){
   }
   const left = r.total - r.shown, rolando = vivoAte > agoraServidor(); // jogo ao vivo na tela: a próxima parte espera
   renderPalpites();
-  const cardBtn = r.summary ? `<div class="revbar" style="border-top:0;margin-top:6px;padding-top:0"><button class="primary" onclick="downloadCard()">🖼️ Baixar card do campeão</button></div>` : "";
+  const cardBtn = r.summary ? `<div class="revbar" style="border-top:0;margin-top:6px;padding-top:0"><button class="primary" onclick="downloadCard()">${ic("imagem")}Baixar card do campeão</button></div>` : "";
   $("revFoot").innerHTML = me.host
     ? `<div class="revbar">
-        <button class="primary" ${left && !rolando ? "" : "disabled"} onclick="host('revealNext')">${rolando ? "⏱️ Jogo rolando…" : `▶ Revelar próxima${left ? ` (faltam ${left})` : ""}`}</button>
+        <button class="primary" ${left && !rolando ? "" : "disabled"} onclick="host('revealNext')">${rolando ? `${ic("relogio")}Jogo rolando…` : `${ic("play")}Revelar próxima${left ? ` (faltam ${left})` : ""}`}</button>
         <button ${left ? "" : "disabled"} onclick="if(confirm('Revelar tudo de uma vez?')) host('revealAll')">Revelar tudo</button>
-        <button ${r.shown ? "" : "disabled"} onclick="host('revealPrev')">↩ Esconder última</button>
+        <button ${r.shown ? "" : "disabled"} onclick="host('revealPrev')">${ic("desfazer")}Esconder última</button>
         <button class="danger" onclick="if(confirm('Apagar o resultado publicado?')) host('revealClear')">Apagar</button>
       </div>` + cardBtn
-    : (left ? `<div class="revwait">${r.shown ? "" : "O resultado está pronto! "}Aguardando o organizador revelar a próxima parte… <b>faltam ${left}</b></div>` : cardBtn);
+    : (left ? `<div class="revwait">${ic("relogio")}<span>${r.shown ? "" : "O resultado está pronto! "}Aguardando o organizador revelar a próxima parte… <b>faltam ${left}</b></span></div>` : cardBtn);
 }
 
 $("btnFc").onclick = () => {
@@ -97,9 +98,10 @@ $("btnFc").onclick = () => {
     setTimeout(() => $("revCard").scrollIntoView({ behavior: "smooth", block: "start" }), 150);
   });
 };
+// o texto (markdown) do resultado, já limpo, com os emojis da narração trocados pelos ícones da página
 function mdToHtml(text){
-  try { if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: false })); } catch {}
-  return `<pre style="white-space:pre-wrap;font:inherit">${esc(text)}</pre>`;
+  try { if (window.marked && window.DOMPurify) return Icones.iconizar(DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: false }))); } catch {}
+  return `<pre style="white-space:pre-wrap;font:inherit">${Icones.iconizar(esc(text))}</pre>`;
 }
 const FORMS = {
   futsal: [["auto","Automática (a melhor para o seu time)"],["2-2","2-2 (2 defensores, 2 atacantes)"],["3-1","3-1 (3 defensores, 1 pivô)"],["1-2-1","1-2-1 losango (1 defensor, 2 meias, 1 atacante)"],["1-1-2","1-1-2 (1 defensor, 1 meia, 2 atacantes)"]],
@@ -109,7 +111,7 @@ function formKind(){ return T().prompt === "futebol" ? "futebol" : "futsal"; }
 let formKindShown = null;
 function renderFormation(){
   const mine = me.capId && capById(me.capId);
-  const show = !!mine && isFootball();
+  const show = !!mine && isFootball() && verTime === mine.id;
   $("formBox").classList.toggle("hidden", !show);
   if (!show) return;
   const kind = formKind(), sel = $("myFormation");
@@ -117,26 +119,29 @@ function renderFormation(){
   if (document.activeElement !== sel) sel.value = FORMS[kind].some(([v]) => v === mine.formation) ? mine.formation : "auto";
   const locked = S.config.formLock === "locked", frozen = locked && S.phase !== "lobby";
   sel.disabled = frozen;
-  $("formHint").textContent = (frozen ? "🔒 Formação travada: o leilão já começou. "
-    : locked ? "🔒 Atenção: a formação trava quando o leilão começar. Escolha agora! "
-    : "Formação fluida: dá para mudar até a simulação. ") + "Toque nos jogadores do seu campinho para mudar as posições. Quanto cada um rende fora de posição está em Regras.";
+  $("formHint").textContent = (frozen ? "Formação travada: o leilão já começou. "
+    : locked ? "Atenção: a formação trava quando o leilão começar. Escolha agora! "
+    : "") + "Toque num jogador do campinho para mudar a posição dele.";
 }
 $("myFormation").addEventListener("change", () => socket.emit("formation", { formation: $("myFormation").value }, (r) => { if (r && !r.ok) toast(r.error); else toast("Formação salva!"); }));
 function isFootball(){ const k = T().prompt; return k === "futsal" || k === "futebol"; }
 function subTag(item){ const t = Ratings.meiaType(item); return t ? ` <span class="sub">${t === "VOL" ? "volante" : "meia-atacante"}</span>` : ""; }
 // ---------- CAMPINHO ----------
 // A escalação vem de escalacao.js, a mesma que o simulador usa.
+// o campinho fica deitado: o gol do time à esquerda e o ataque para a direita
 const FIELD_SVG = {
-  futebol: `<svg viewBox="0 0 68 100" aria-hidden="true"><rect width="68" height="100" fill="#155c38"/>${Array.from({length:10},(_,i)=>i%2?`<rect y="${i*10}" width="68" height="10" fill="#196a41"/>`:"").join("")}
-    <g fill="none" stroke="#ffffffa6" stroke-width=".5"><rect x="2" y="2" width="64" height="96"/><path d="M2 50H66"/><circle cx="34" cy="50" r="8.4"/>
-    <rect x="13.85" y="2" width="40.3" height="15"/><rect x="24.85" y="2" width="18.3" height="5"/><path d="M27.25 17A8.4 8.4 0 0 0 40.75 17"/>
-    <rect x="13.85" y="83" width="40.3" height="15"/><rect x="24.85" y="93" width="18.3" height="5"/><path d="M27.25 83A8.4 8.4 0 0 1 40.75 83"/></g>
-    <g fill="#ffffffa6"><circle cx="34" cy="50" r=".8"/><circle cx="34" cy="12" r=".6"/><circle cx="34" cy="88" r=".6"/></g></svg>`,
-  futsal: `<svg viewBox="0 0 64 100" aria-hidden="true"><rect width="64" height="100" fill="#c96f36"/><rect x="2" y="2" width="60" height="96" fill="#2c6fb2"/>
-    <g fill="none" stroke="#ffffffb3" stroke-width=".55"><rect x="2" y="2" width="60" height="96"/><path d="M2 50H62"/><circle cx="32" cy="50" r="7"/>
-    <path d="M9.5 2A18 18 0 0 0 27.5 20L36.5 20A18 18 0 0 0 54.5 2"/><path d="M9.5 98A18 18 0 0 1 27.5 80L36.5 80A18 18 0 0 1 54.5 98"/></g>
-    <g fill="#ffffffb3"><circle cx="32" cy="50" r=".8"/><circle cx="32" cy="16" r=".6"/><circle cx="32" cy="84" r=".6"/><circle cx="32" cy="26" r=".5"/><circle cx="32" cy="74" r=".5"/></g></svg>`,
+  futebol: `<svg viewBox="0 0 100 66" preserveAspectRatio="none" aria-hidden="true"><rect width="100" height="66" fill="#0e4529"/>${Array.from({length:10},(_,i)=>i%2?`<rect x="${i*10}" width="10" height="66" fill="#11502f"/>`:"").join("")}
+    <g fill="none" stroke="#ffffff80" stroke-width=".45"><rect x="2" y="2" width="96" height="62"/><path d="M50 2V64"/><circle cx="50" cy="33" r="8.4"/>
+    <rect x="2" y="12.85" width="15" height="40.3"/><rect x="2" y="23.85" width="5" height="18.3"/><path d="M17 27.4A8.4 8.4 0 0 1 17 38.6"/>
+    <rect x="83" y="12.85" width="15" height="40.3"/><rect x="93" y="23.85" width="5" height="18.3"/><path d="M83 27.4A8.4 8.4 0 0 0 83 38.6"/></g>
+    <g fill="#ffffff80"><circle cx="50" cy="33" r=".8"/><circle cx="12" cy="33" r=".6"/><circle cx="88" cy="33" r=".6"/></g></svg>`,
+  futsal: `<svg viewBox="0 0 100 62" preserveAspectRatio="none" aria-hidden="true"><rect width="100" height="62" fill="#0b3a40"/><rect x="2" y="2" width="96" height="58" fill="#115b64"/>
+    <g fill="none" stroke="#ffffff8c" stroke-width=".5"><rect x="2" y="2" width="96" height="58"/><path d="M50 2V60"/><circle cx="50" cy="31" r="7"/>
+    <path d="M2 9A18 18 0 0 1 20 27L20 35A18 18 0 0 1 2 53"/><path d="M98 9A18 18 0 0 0 80 27L80 35A18 18 0 0 0 98 53"/></g>
+    <g fill="#ffffff8c"><circle cx="50" cy="31" r=".8"/><circle cx="14" cy="31" r=".6"/><circle cx="86" cy="31" r=".6"/><circle cx="24" cy="31" r=".5"/><circle cx="76" cy="31" r=".5"/></g></svg>`,
 };
+// a vaga em pé (escalacao.js: x de lado a lado, y do ataque ao gol) vira a posição no campinho deitado
+const deitado = (sp) => ({ left: 100 - sp.y, top: sp.x });
 const POS_ABBR = { GK: "GOL", DEF: "DEF", MID: "MEI", ATT: "ATA" };
 const SLOT_EM = { GK: "no gol", DEF: "na defesa", MID: "no meio", ATT: "no ataque" };
 const CHEM_TXT = { alta: "química alta", media: "química média", baixa: "química baixa" };
@@ -202,8 +207,8 @@ function pitchHTML(c){
   const spots = E.spots.map((sp, i) => ({ ...sp, s: E.xi[i] }));
   // linhas de química entre os vizinhos (verde alta, amarela média, vermelha baixa)
   const chemLines = `<svg class="chem" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${E.links.map(l => {
-    const a = E.spots[l.a], b = E.spots[l.b];
-    return `<line class="${l.nivel}${l.semDados ? " nd" : ""}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    const a = deitado(E.spots[l.a]), b = deitado(E.spots[l.b]);
+    return `<line class="${l.nivel}${l.semDados ? " nd" : ""}" x1="${a.left}" y1="${a.top}" x2="${b.left}" y2="${b.top}"/>`;
   }).join("")}</svg>`;
   const chemTip = (s) => {
     const mine = E.links.filter(l => E.xi[l.a] === s || E.xi[l.b] === s);
@@ -218,16 +223,18 @@ function pitchHTML(c){
   const tag = (cls, style, tip, body, s, attr = "") => mineCard
     ? `<button type="button" class="${cls} tap" style="${style}" title="${escA(tip)}" data-tap data-g="${s.slot}" data-k="${s.k}"${attr}>${body}</button>`
     : `<div class="${cls}" style="${style}" title="${escA(tip)}"${attr}>${body}</div>`;
-  const marks = spots.map(({ x, y, s }) => {
-    const lado = y < 30 ? "baixo" : "", canto = x < 30 ? " esq" : x > 70 ? " dir" : ""; // o balão não sai do campinho
-    const at = `left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
+  const marks = spots.map((sp) => {
+    const { s } = sp, { left, top } = deitado(sp);
+    const lado = top < 34 ? "baixo" : "", canto = left < 25 ? " esq" : left > 75 ? " dir" : ""; // o balão não sai do campinho
+    const at = `left:${left.toFixed(1)}%;top:${top.toFixed(1)}%`;
     if (!s.p) return tag(`pl empty${pickKey === "s:" + s.slot + s.k ? " sel" : ""}`, at, `Vaga ${SLOT_EM[s.slot]}`, `<i>${POS_ABBR[s.slot]}</i>`, s);
     const off = Escalacao.HOME_SLOT(s.p.pos) !== s.slot, eff = Math.round(s.eff);
+    const nv = " t-" + nivelDe(s.p.ovr);
     if (s.p.name === ghostName) return tag(`pl ghost${off ? " off" : ""}`, at, `Se você levar ${s.p.name}, ele entra aqui${off ? ` fora de posição, rendendo ${eff}` : ""}`, `<i>${off ? eff : s.p.ovr}</i><span>${esc(shortName(s.p.name))}</span>`, s);
     const pr = price(s.p.name), key = c.id + "|" + s.p.name;
     viuItem(c, doTime(s.p.name).player, key); const ch = chegada(key); // chegou agora: voa até a vaga (elenco.js)
     const tip = `${s.p.name}: nota ${s.p.ovr}${s.p.est ? " (estimada)" : ""}${off ? `, fora de posição ${SLOT_EM[s.slot]}, rende ${eff}` : ""}${pr != null ? `. Custou ${pr}` : ""}${s.pinned ? ". Posição fixada" : ""}${chemTip(s)}`;
-    const cls = `pl${off ? " off" : ""}${ch.cls}${s.pinned ? " pinned" : ""}${pickKey === "n:" + s.p.name ? " sel" : ""}`;
+    const cls = `pl${nv}${off ? " off" : ""}${ch.cls}${s.pinned ? " pinned" : ""}${pickKey === "n:" + s.p.name ? " sel" : ""}`;
     return tag(cls, at + ch.style, tip, `<i>${off ? eff : s.p.ovr}</i><span>${esc(shortName(s.p.name))}</span>${balao(key, lado + canto)}`, s, ` data-item="${escA(s.p.name)}"`);
   }).join("");
   const benchList = E.bench.filter(p => p.name !== ghostName);
@@ -251,5 +258,5 @@ function pitchHTML(c){
       (out.length ? `. ${out.join(" e ")} ${out.length > 1 ? "iriam" : "iria"} para a reserva` : "") +
       (E.formation !== base.formation ? `. O time passaria para o ${E.formation}` : "") + `. Ataque ${delta(base.att, E.att)}, defesa ${delta(base.def, E.def)}.`) + `</div>`;
   }
-  return `${note}<div class="pitch ${kind}${mineCard && pinPick ? " picking" : ""}">${FIELD_SVG[kind]}${chemLines}<span class="ftag">${E.formation}${E.auto ? " · auto" : ""}</span>${c.team.length > 1 ? `<span class="ctag ${CHEM_CLS(E.chem)}" title="Química do time: linhas verdes (mesmo país e mesmo clube), amarelas (mesmo país ou mesmo clube) e vermelhas (nada em comum)">🔗 ${E.chem}</span>` : ""}${marks}</div>${bench}`;
+  return `${note}<div class="pitch ${kind}${mineCard && pinPick ? " picking" : ""}">${FIELD_SVG[kind]}${chemLines}<span class="ftag">${E.formation}${E.auto ? " · auto" : ""}</span>${marks}</div>${bench}`;
 }

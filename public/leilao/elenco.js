@@ -1,6 +1,7 @@
 // Leilão da Galera — o elenco ganhando vida (carregado depois das outras partes do script da página; divide as mesmas
 // variáveis globais: S, me, socket, $, esc, escA, toast, render, capById, T, isFootball, skinNow).
-// - quem foi comprado (ou trocado) sai voando da roleta (ou do outro time) até a vaga no time novo;
+// - quem foi comprado (ou trocado) sai voando da carta do palco (ou do outro time) até a vaga no time novo, ou até o
+//   cartão do time no placar, quando o time não está aberto ao lado; na revelação, o voo espera o carimbo (atrasoVoo);
 // - quem muda de posição no campinho desliza até o lugar novo;
 // - o jogador fala num balãozinho: ao chegar no time e ao mudar de posição;
 // - o nome do time;
@@ -107,10 +108,11 @@ function viuItem(c, item, key) {
   if (arrivedAt.has(key)) return;
   const now = performance.now();
   if (!pitchSeeded || semMovimentoE()) { arrivedAt.set(key, pitchSeeded ? now - VOO_MS : -1e9); if (pitchSeeded) falaChegada(c, item, key, 0, false); return; }
-  arrivedAt.set(key, now);
+  const atraso = typeof atrasoVoo === "number" ? atrasoVoo : 0;
+  arrivedAt.set(key, now + atraso);
   const nome = Ratings.parseItem(item).name, antes = donoAntes.get(item);
-  pendentesVoo.push({ c, item, nome, key, de: antes && antes !== c.id ? antes : null });
-  falaChegada(c, item, key, VOO_MS + 250, !!(antes && antes !== c.id));
+  pendentesVoo.push({ c, item, nome, key, atraso, de: antes && antes !== c.id ? antes : null });
+  falaChegada(c, item, key, atraso + VOO_MS + 250, !!(antes && antes !== c.id));
 }
 function falaChegada(c, item, key, atraso, trocado) {
   const t = c.team.find((x) => x.player === item), food = !!skinNow, fb = isFootball();
@@ -131,18 +133,24 @@ function depoisDeDesenhar() {
     const r = el.getBoundingClientRect(), dx = old.left - r.left, dy = old.top - r.top;
     if (Math.abs(dx) + Math.abs(dy) > 3) el.animate([{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }], { duration: 520, easing: "cubic-bezier(.3,.9,.3,1)" });
   });
-  // os que chegaram: voam da roleta (ou do time de onde vieram) até o lugar novo
+  // os que chegaram: voam da carta do palco (ou do time de onde vieram) até o lugar novo. As posições são medidas na
+  // hora em que o voo sai (na revelação, ele espera o carimbo e a tela pode ter mudado até lá)
   const voos = pendentesVoo; pendentesVoo = [];
+  const ondeDe = (id) => document.querySelector(`#teams [data-team="${id}"]`) || $("placar").querySelector(`[data-cap="${id}"]`);
   voos.forEach((v, k) => {
-    const card = document.querySelector(`#teams [data-team="${v.c.id}"]`); if (!card) return;
-    const alvo = card.querySelector(`[data-item="${CSS.escape(v.nome)}"]`) || card.querySelector(".dish, .pitch, ol") || card;
-    let de = null;
-    if (v.de) { const r = retAntes.get(v.de + "|" + v.nome) || (document.querySelector(`#teams [data-team="${v.de}"]`) || card).getBoundingClientRect(); de = centro(r); }
-    else { const st = $("drawnName"), r = st && st.getBoundingClientRect(); de = r && r.width ? centro(r) : { x: innerWidth / 2, y: innerHeight / 3 }; }
-    voarItem(v, de, centro(alvo.getBoundingClientRect()), k * 120);
+    const deRet = v.de ? retAntes.get(v.de + "|" + v.nome) : null;
+    setTimeout(() => {
+      const card = document.querySelector(`#teams [data-team="${v.c.id}"]`);
+      const alvo = (card && (card.querySelector(`[data-item="${CSS.escape(v.nome)}"]`) || card.querySelector(".dish, .pitch, ol"))) || $("placar").querySelector(`[data-cap="${v.c.id}"]`);
+      if (!alvo) return;
+      let de;
+      if (v.de) { const o = ondeDe(v.de); de = centro(deRet || (o || alvo).getBoundingClientRect()); }
+      else { const c = $("cartaAtual") || $("cena"), r = c && c.getBoundingClientRect(); de = r && r.width ? centro(r) : { x: innerWidth / 2, y: innerHeight / 3 }; }
+      voarItem(v, de, centro(alvo.getBoundingClientRect()), 0);
+    }, v.atraso + k * 120);
   });
   // o item novo continua escondido até o fim do voo: redesenha para ele pousar
-  if (voos.length) setTimeout(() => S && render(), VOO_MS + 40 + (voos.length - 1) * 120);
+  if (voos.length) setTimeout(() => S && render(), Math.max(...voos.map((v) => v.atraso)) + VOO_MS + 40 + (voos.length - 1) * 120);
   // de quem era cada item agora (para saber, na próxima vez, de onde ele veio)
   donoAntes = new Map(); (S.captains || []).forEach((c) => c.team.forEach((t) => donoAntes.set(t.player, c.id)));
 }
@@ -150,7 +158,7 @@ function voarItem(v, a, b, atraso) {
   const el = document.createElement("div"), fb = isFootball();
   const r = fb ? Ratings.ratingOf(v.item) : null;
   el.className = "vooItem" + (fb ? "" : " semNota");
-  el.innerHTML = `${fb ? `<b>${r.ovr}</b>` : ""}<span>${esc(fb ? shortName(v.nome) : v.nome)}</span>`;
+  el.innerHTML = `${fb ? `${window.Rostos ? `<img class="pix" src="${Rostos.de(v.nome)}" alt="">` : ""}<b>${r.ovr}</b>` : ""}<span>${esc(fb ? shortName(v.nome) : v.nome)}</span>`;
   ($("vooLeilao") || document.body).appendChild(el);
   const lift = Math.min(160, 50 + Math.hypot(b.x - a.x, b.y - a.y) * 0.25);
   const at = (x, y, s, rz) => `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${rz}deg) scale(${s})`;
@@ -181,14 +189,15 @@ function falasDaTroca(mine, nomes, pins) {
 // ---------- nome do time ----------
 function renderNome() {
   const mine = me.capId && capById(me.capId), box = $("nomeBox"); if (!box) return;
-  box.classList.toggle("hidden", !mine);
-  if (!mine) return;
+  const show = !!mine && verTime === mine.id && nomeAberto;
+  box.classList.toggle("hidden", !show);
+  if (!show) return;
   const inp = $("teamNameIn");
   if (document.activeElement !== inp) inp.value = mine.teamName || "";
   inp.placeholder = `Ex.: Galáticos da ${mine.name}`;
 }
 function salvarNome() {
-  socket.emit("teamName", { nome: $("teamNameIn").value }, (r) => { if (r && !r.ok) toast(r.error); else { toast($("teamNameIn").value.trim() ? "Nome do time salvo!" : "Nome do time apagado."); $("teamNameIn").blur(); } });
+  socket.emit("teamName", { nome: $("teamNameIn").value }, (r) => { if (r && !r.ok) toast(r.error); else { toast($("teamNameIn").value.trim() ? "Nome do time salvo!" : "Nome do time apagado."); $("teamNameIn").blur(); nomeAberto = false; if (S) render(); } });
 }
 $("teamNameBtn").onclick = salvarNome;
 $("teamNameIn").addEventListener("keydown", (e) => { if (e.key === "Enter") salvarNome(); });
@@ -206,7 +215,7 @@ function renderTrocas() {
   const tr = S.trocas, card = $("trocasCard"), mine = me.capId && capById(me.capId);
   if (me.host) {
     $("hTrocas").classList.toggle("hidden", S.phase !== "done");
-    $("hTrocas").textContent = tr && tr.aberto ? "🔁 Fechar trocas" : "🔁 Abrir trocas";
+    $("hTrocasTxt").textContent = tr && tr.aberto ? "Fechar trocas" : "Abrir trocas";
   }
   const show = !!(tr && tr.aberto && mine);
   card.classList.toggle("hidden", !show);
@@ -220,7 +229,7 @@ function renderTrocas() {
     const outro = capById(recebi ? p.de : p.para); if (!outro) return "";
     const dou = recebi ? p.dele : p.meu, recebo = recebi ? p.meu : p.dele;
     return `<div class="trprop${recebi ? " recebi" : ""}"><div>${recebi ? `<b>${esc(outro.name)}</b> quer trocar` : `Você propôs para <b>${esc(outro.name)}</b>:`}
-      <span class="trpar"><span class="sai">${esc(nomeItem(dou))}${esc(notaItem(dou))}</span> ⇄ <span class="vem">${esc(nomeItem(recebo))}${esc(notaItem(recebo))}</span></span></div>
+      <span class="trpar"><span class="sai">${esc(nomeItem(dou))}${esc(notaItem(dou))}</span>${ic("troca")}<span class="vem">${esc(nomeItem(recebo))}${esc(notaItem(recebo))}</span></span></div>
       <div class="row" style="gap:6px">${recebi ? `<button class="primary" onclick="trocar('aceitar','${p.id}')">Aceitar</button><button onclick="trocar('recusar','${p.id}')">Recusar</button>` : `<button class="ghost" onclick="trocar('cancelar','${p.id}')">Cancelar</button>`}</div></div>`;
   };
   const rec = tr.props.filter((p) => p.para === me.capId), fiz = tr.props.filter((p) => p.de === me.capId);

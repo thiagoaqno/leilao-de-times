@@ -1,7 +1,8 @@
 // Card do campeão: desenha uma imagem PNG (1080x1350) com o resumo do campeonato.
 (function (root) {
 const W = 1080, H = 1350;
-const C = { bg1: "#030822", bg2: "#0a1847", grass1: "#155c38", grass2: "#196a41", line: "rgba(255,255,255,.28)", gold: "#dfe7fb", gold2: "#2fd3ff", text: "#eef3ff", muted: "#9fb0d9", chip: "rgba(255,255,255,.08)" };
+// as cores da página do leilão: noite de estádio, verde-limão e o dourado das cartas
+const C = { bg1: "#050a08", bg2: "#0c1813", grass1: "#0e4529", grass2: "#11502f", line: "rgba(255,255,255,.28)", gold: "#c6ff3a", gold2: "#f6c64e", text: "#eef6f0", muted: "#8ba597", chip: "rgba(255,255,255,.08)" };
 const SLOT_ROW = { GK: 0, DEF: 1, MID: 2, ATT: 3 };
 const SLOT_LABEL = { GK: "GOL", DEF: "DEF", MID: "MEI", ATT: "ATA" };
 
