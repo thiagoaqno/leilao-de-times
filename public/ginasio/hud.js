@@ -15,6 +15,10 @@ function montarHud() {
   configurarToque();
 }
 function recargaBotao(b, falta, total) {
+  // quando a recarga acaba, a borda acende na cor do tipo por um instante
+  const pronto = falta <= 0.05;
+  if (pronto && b.dataset.recarregando === "1") { b.classList.add("pronta"); clearTimeout(b._pronta); b._pronta = setTimeout(() => b.classList.remove("pronta"), 220); }
+  b.dataset.recarregando = pronto ? "0" : "1";
   b.querySelector(".recarga").style.transform = `scaleY(${clamp(falta / total, 0, 1)})`;
   b.querySelector(".segundos").textContent = falta > 0.05 ? falta.toFixed(1) : "";
   b.setAttribute("aria-disabled", falta > 0.05 ? "true" : "false");

@@ -806,6 +806,9 @@
   // até o 386 os sprites são do FireRed/LeafGreen; da 4ª geração em diante, do Platinum (DS)
   const SPRITES4 = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iv/platinum/";
   const sprite = (id, back) => (MONS[id].num > 386 ? SPRITES4 : SPRITES) + (back ? "back/" : "") + MONS[id].num + ".png";
+  // os sprites animados do Black/White (GIF, todos os 493), usados no Ginásio
+  const ANIMADOS = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/";
+  const spriteAnimado = (id, back) => ANIMADOS + (back ? "back/" : "") + MONS[id].num + ".gif";
 
-  return { TYPES, CHART, MOVES, MONS, IDS, TEAM_SIZE, DEFAULT_TEAM, STAT_NAMES, effect, cleanTeam, stageMult, sprite };
+  return { TYPES, CHART, MOVES, MONS, IDS, TEAM_SIZE, DEFAULT_TEAM, STAT_NAMES, effect, cleanTeam, stageMult, sprite, spriteAnimado };
 });

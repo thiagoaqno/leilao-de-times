@@ -99,3 +99,43 @@ test("ginásio: prever investida ou canalização não aplica dano nem cura", ()
   G.preverMovimento(p, a, 0.05);
   assert.strictEqual(a.bicho.hp, antes); assert.strictEqual(a.canal, null);
 });
+
+// voar, cavar e mergulhar: some, ninguém acerta, e cai em cima de quem estiver no ponto mirado
+for (const [modo, atacante, golpe, jeito] of [["galeramon", "tatubala", 1, "cova"], ["galeramon", "capivarao", 1, "mergulho"], ["pokemon", "aerodactyl", 3, "voo"]]) {
+  test(`ginásio: ${jeito} some sem levar dano e cai no ponto mirado`, () => {
+    const D = modo === "pokemon" ? PokeDex : Galeramon, outros = D.IDS.filter((id) => id !== atacante);
+    const p = G.criarPartida({ seed: "sumir-" + jeito, modo }, [[{ id: "a", team: [atacante, ...outros.slice(0, 2)] }], [{ id: "b", team: outros.slice(2, 5) }]]);
+    const [a, b] = p.entidades;
+    Object.assign(a, { x: -2, y: 0 }); Object.assign(b, { x: 1.5, y: 0 });
+    G.passo(p, 1 / 60, { a: { golpe, alvo: { x: 1.5, y: 0 } } });
+    assert.ok(a.oculto && a.oculto.jeito === jeito, "sumiu");
+    assert.strictEqual(p.areas.length, 1, "o aviso no chão");
+    const hp = a.bicho.hp, hpB = b.bicho.hp;
+    let voltou = false;
+    for (let i = 0; i < 90 && !voltou; i++) {
+      b.bicho.cds = [0, 0, 0, 0];
+      const ev = G.passo(p, 1 / 60, { b: { golpe: 0, alvo: { x: a.x, y: a.y }, mira: { x: a.x - b.x, y: a.y - b.y } } });
+      if (a.oculto) assert.strictEqual(a.bicho.hp, hp, "ninguém acerta quem sumiu");
+      voltou = ev.some((e) => e.tipo === "voltou" && e.id === "a");
+    }
+    assert.ok(voltou, "voltou");
+    assert.ok(Math.hypot(a.x - 1.5, a.y) < 0.8, `caiu no ponto mirado (${a.x.toFixed(2)}, ${a.y.toFixed(2)})`);
+    assert.ok(b.bicho.hp < hpB, "acertou quem estava lá");
+  });
+}
+
+test("ginásio: a tela prevê o voo igual ao servidor", () => {
+  const p = G.criarPartida({ seed: "prever-voo", modo: "pokemon" }, [[{ id: "a", team: ["aerodactyl", "charizard", "blastoise"] }], [{ id: "b" }]]);
+  const [a] = p.entidades;
+  G.passo(p, 1 / 60, { a: { golpe: 3, alvo: { x: 2, y: 1 } } });
+  const e = { ...a, mira: { ...a.mira }, oculto: { ...a.oculto, de: { ...a.oculto.de }, para: { ...a.oculto.para } }, jogador: { id: "a", lado: 0 } };
+  const mundo = { dex: PokeDex, entidades: [], ev: [] };
+  for (let i = 0; i < 80; i++) { G.passo(p, 1 / 60, {}); G.preverMovimento(mundo, e, 1 / 60, {}); assert.ok(Math.abs(e.x - a.x) < 1e-9 && Math.abs(e.y - a.y) < 1e-9, `passo ${i}`); }
+  assert.strictEqual(e.oculto, null);
+});
+
+test("ginásio: golpes de giro viram investida", () => {
+  assert.strictEqual(G.habilidadeDeGolpe("rolamento", Galeramon.MOVES.rolamento).classe, "investida");
+  assert.strictEqual(G.habilidadeDeGolpe("rolamento", Galeramon.MOVES.rolamento).giro, true);
+  assert.strictEqual(G.habilidadeDeGolpe("dig", PokeDex.MOVES.dig).classe, "sumir");
+});
