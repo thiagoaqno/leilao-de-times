@@ -32,7 +32,7 @@ function buildBoard() {
     }
     html += `<div class="sq ${corner ? "corner" : "s-" + side} t-${s.type}" id="sq${i}" data-i="${i}" style="grid-row:${r};grid-column:${c}" title="${h(s.name)}">${inner}</div>`;
   });
-  html += `<div class="center" id="center" style="grid-column:2/${T.SIDE + 1};grid-row:2/${T.SIDE + 1}"><div class="logo">Banco da<span>Galera</span></div><div class="piles"><div class="pile cards" id="pileCard"><b>?</b><small id="pileCardN">Sorte ou Revés</small></div><div class="pile deeds" id="pileDeed"><div class="dback"><span class="orn tl">❖</span><span class="orn tr">❖</span><span class="orn bl">❖</span><span class="orn br">❖</span><div class="seal"><b>BG</b></div></div><small id="pileDeedN"></small></div></div><div class="pot" id="pot"></div></div>`;
+  html += `<div class="center" id="center" style="grid-column:2/${T.SIDE + 1};grid-row:2/${T.SIDE + 1}"><div class="logo">Banco da<span>Galera</span></div><div class="cofre" id="cofre" title="O banco"><div class="cofre-pilha"><i></i><i></i><i></i><i></i><i></i></div><span>Banco</span></div><div class="piles"><div class="pile cards" id="pileCard"><b>?</b><small id="pileCardN">Sorte ou Revés</small></div><div class="pile deeds" id="pileDeed"><div class="dback"><span class="orn tl">❖</span><span class="orn tr">❖</span><span class="orn bl">❖</span><span class="orn br">❖</span><div class="seal"><b>BG</b></div></div><small id="pileDeedN"></small></div></div><div class="pot" id="pot"></div></div>`;
   b.innerHTML = html;
   if (b.dataset.listen) { layout(); return; } // ouvintes só na primeira vez
   b.dataset.listen = 1;
@@ -130,7 +130,7 @@ function layout() {
     const s = (unit / 50) * a.sc;
     list.forEach((p, k) => {
       let el = pieceEls[p.id];
-      if (!el) { el = document.createElement("div"); el.innerHTML = `<div class="gnd"></div><div class="fig"><div class="head"></div><div class="neck"></div><div class="foot"></div></div>`; $("pieces").appendChild(el); pieceEls[p.id] = el; }
+      if (!el) { el = document.createElement("div"); el.innerHTML = `<div class="gnd"></div><div class="fig"></div>`; $("pieces").appendChild(el); pieceEls[p.id] = el; }
       alive.add(p.id);
       const x = a.x + (k - (list.length - 1) / 2) * 20 * s * (list.length > 3 ? 0.8 : 1);
       const y = a.y + a.r.height * 0.22 + (k % 2 ? -5 : 3) * s;
@@ -138,7 +138,7 @@ function layout() {
       el.style.left = x + "px"; el.style.top = y + "px"; el.style.zIndex = Math.round(y);
       el.style.setProperty("--s", s.toFixed(3)); el.style.setProperty("--c", p.color);
       el.title = p.name;
-      const head = el.querySelector(".head"); if (head.dataset.p !== p.pawn) { head.dataset.p = p.pawn; head.innerHTML = peao(p.pawn); }
+      const fig = el.querySelector(".fig"), chave = p.pawn + p.color; if (fig.dataset.p !== chave) { fig.dataset.p = chave; fig.innerHTML = Peoes.svg(p.color, p.pawn, { tam: 40 }); }
     });
   }
   for (const id of Object.keys(pieceEls)) if (!alive.has(id)) { pieceEls[id].remove(); delete pieceEls[id]; }

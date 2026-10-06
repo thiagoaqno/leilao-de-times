@@ -31,9 +31,7 @@
         <h2><span class="lin">Compre a Paulista.</span><span class="lin"><em>Cobre aluguel</em> da galera.</span></h2>
         <p class="hero-sub">Os bairros de São Paulo, de 2 a 8 jogadores, cada um no próprio celular. O banco faz todas as contas: aluguel, casas, hipoteca, leilão e prisão.</p>
         <div id="resume" class="hidden" style="margin-top:18px"></div>
-        <div class="hero-cartao" aria-hidden="true">
-          <div class="cartao-demo"><span class="cd-marca">Banco da Galera</span><span class="cd-chip"></span><span class="cd-num">•••• •••• •••• 2026</span><span class="cd-nome">SUA MESA</span><span class="cd-val">R$ 1,5 mi</span></div>
-        </div>
+        <div class="hero-cena" id="heroCena" aria-hidden="true"></div>
       </div>
       <div class="painel entrar">
         <h3>Entrar na mesa</h3>
@@ -72,13 +70,18 @@
     </div>
   </section>
 
-  <!-- JOGO -->
+  <!-- JOGO: as contas (à esquerda), o tabuleiro (no meio) e o momento da jogada com o extrato (à direita) -->
   <section id="game" class="tela hidden">
     <div class="game">
-      <div class="boardwrap" id="bwrap"><div class="plates" id="plates"></div><div class="scene"><div class="plane"><div class="board" id="board"></div><div class="edge"></div></div></div><div class="pieces" id="pieces"></div><div class="hud" id="hud"><div class="dice" id="dice"></div><div class="tap hidden" id="tapHint">Toque nos dados</div><div class="status" id="status"></div><div class="evchip hidden" id="evchip"></div><div class="gtime hidden" id="boardClock" title="Tempo que falta para acabar a partida"></div></div><div class="spotdim" id="spotDim"></div><div class="spot hidden" id="spot"></div><div class="reacts hidden" id="reacts"></div></div>
-      <div class="side">
+      <aside class="rail">
         <div class="wallet hidden" id="wallet"><span class="wmarca">Banco da Galera</span><span class="wchip"></span><div class="wtop"><div class="pw" id="wPawn"></div><div class="wid"><div class="wname" id="wName"></div><div class="wtags" id="wTags"></div></div></div><div class="wmeio"><div class="wlabel">Saldo</div><div class="wamt" id="wAmt"></div><div class="wsub" id="wSub"></div></div><span class="wnum" id="wNum"></span><button class="primary wbtn" id="wBtn"></button></div>
+        <h3 class="rail-tit">As contas</h3>
+        <div class="contas" id="plates"></div>
+      </aside>
+      <div class="boardwrap" id="bwrap"><div class="scene"><div class="plane"><div class="board" id="board"></div><div class="edge"></div></div></div><div class="pieces" id="pieces"></div><div class="hud" id="hud"><div class="dice" id="dice"></div><div class="tap hidden" id="tapHint">Toque nos dados</div><div class="status" id="status"></div><div class="evchip hidden" id="evchip"></div><div class="gtime hidden" id="boardClock" title="Tempo que falta para acabar a partida"></div></div><div class="spotdim" id="spotDim"></div><div class="spot hidden" id="spot"></div><div class="reacts hidden" id="reacts"></div></div>
+      <div class="side">
         <div class="card act" id="act"></div>
+        <div class="card extrato" id="extratoCard"><h3><svg class="ic"><use href="#i-recibo"/></svg>Extrato ao vivo</h3><div class="ext-lista" id="extrato"></div></div>
         <div class="card" id="mineCard"><h3><svg class="ic"><use href="#i-casa"/></svg>Seus imóveis</h3><div id="mine"></div></div>
         <div class="card" id="tradesCard"><h3><svg class="ic"><use href="#i-aperto"/></svg>Trocas</h3><div id="trades"></div><div class="row"><button id="btnTrade" class="small">Propor troca</button><button id="btnGift" class="small hidden"><svg class="ic"><use href="#i-nota"/></svg>Mandar dinheiro a um colega</button></div></div>
       </div>
@@ -104,6 +107,7 @@
 <script src="/comum.js"></script>
 <script src="/icones.js"></script>
 <script src="/banco/tabuleiro.js"></script>
+<script src="/banco/peoes.js"></script>
 <script src="/banco/sala.js"></script>
 <script src="/banco/mesa.js"></script>
 <script src="/banco/painel.js"></script>

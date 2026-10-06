@@ -40,6 +40,14 @@ function semErro(vt) {
   for (const p of [vt.ready, vt.finished, vt.updateCallbackDone]) if (p) p.catch(() => {});
 }
 
+// ---------- a cena da tela inicial: três peões pulando de casa em casa e moedas subindo ----------
+(() => {
+  const casas = ["#c2185b", "#ff9f1c", "#2ec27e", "#3a86ff", "#a259ff", "#ff4d6d"].map((c) => `<i style="--g:${c}"></i>`).join("");
+  const peoes = [["#ff4d6d", "🚗"], ["#3a86ff", "🐶"], ["#ffbe0b", "🎩"]].map(([c, e], k) => `<div class="hc-peao" style="--k:${k}">${Peoes.svg(c, e, { tam: 70 })}</div>`).join("");
+  const moedas = Array.from({ length: 8 }, (_, k) => `<b style="--k:${k};left:${8 + k * 11}%"></b>`).join("");
+  $("heroCena").innerHTML = `<div class="hc-moedas">${moedas}</div><div class="hc-peoes">${peoes}</div><div class="hc-casas">${casas}</div>`;
+})();
+
 // ---------- entrar / criar ----------
 const urlCode = new URLSearchParams(location.search).get("mesa");
 $("hName").value = store.get("banco:name") || "";
@@ -107,7 +115,7 @@ function render() {
 function renderLobby() {
   const m = me(), isHost = m && S.host === m.id;
   const seat = (p) => `
-    <div class="seat" style="--c:${p.color}"><div class="pw">${peao(p.pawn)}</div>
+    <div class="seat" style="--c:${p.color}"><div class="pw">${Peoes.svg(p.color, p.pawn, { tam: 30 })}</div>
       <div style="min-width:0"><b>${h(p.name)}</b><small><span class="dot ${p.online ? "" : "off"}"></span>${p.id === S.host ? "organizador" : p.online ? "pronto" : "desconectado"}${m && p.id === m.id ? " · você" : ""}</small></div>
       ${isHost && p.id !== m.id ? `<button class="x" data-kick="${p.id}" title="Tirar da mesa">✕</button>` : ""}
     </div>`;
@@ -131,7 +139,7 @@ function renderLobby() {
   if (m) {
     const takenP = new Set(S.players.filter((p) => p.id !== m.id).map((p) => p.pawn));
     const takenC = new Set(S.players.filter((p) => p.id !== m.id).map((p) => p.color));
-    $("pawnPick").innerHTML = T.PAWNS.map((x) => `<button class="${x === m.pawn ? "on" : ""} ${takenP.has(x) ? "taken" : ""}" data-p="${x}" ${takenP.has(x) ? "disabled" : ""} aria-label="Peão">${peao(x)}</button>`).join("");
+    $("pawnPick").innerHTML = T.PAWNS.map((x) => `<button class="${x === m.pawn ? "on" : ""} ${takenP.has(x) ? "taken" : ""}" data-p="${x}" ${takenP.has(x) ? "disabled" : ""} aria-label="Peão">${Peoes.svg(m.color, x, { tam: 28 })}</button>`).join("");
     $("colorPick").innerHTML = T.COLORS.map((c) => `<button class="sw ${c === m.color ? "on" : ""} ${takenC.has(c) ? "taken" : ""}" style="background:${c}" data-c="${c}" ${takenC.has(c) ? "disabled" : ""} aria-label="Cor"></button>`).join("");
     $("pawnPick").querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => act("pawn", { pawn: b.dataset.p })));
     $("colorPick").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => act("pawn", { color: b.dataset.c })));

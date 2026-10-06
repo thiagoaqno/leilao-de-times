@@ -31,7 +31,7 @@ function renderWallet() {
   if (!show) return;
   w.style.setProperty("--c", m.color);
   w.classList.toggle("myturn", S.turn === m.id);
-  if ($("wPawn").dataset.p !== m.pawn) { $("wPawn").dataset.p = m.pawn; $("wPawn").innerHTML = peao(m.pawn); }
+  if ($("wPawn").dataset.p !== m.pawn + m.color) { $("wPawn").dataset.p = m.pawn + m.color; $("wPawn").innerHTML = Peoes.svg(m.color, m.pawn, { tam: 30 }); }
   // o número do cartão sai do id do jogador (sempre o mesmo para a mesma pessoa)
   $("wNum").textContent = "•••• " + String([...m.id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 10000, 7)).padStart(4, "0");
   $("wName").textContent = m.name;
@@ -96,10 +96,21 @@ function renderMine() {
   const m = me();
   $("mineCard").classList.toggle("hidden", !m || m.bankrupt);
   if (!m) return;
-  const list = propsOf(m.id), playing = S.phase === "playing", busy = !!S.auction;
+  // ordenados por bairro (aeroportos e companhias ficam espalhados pelo tabuleiro): a primeira casa do grupo manda
+  const ordem = (i) => BOARD.findIndex((s) => (BOARD[i].group ? s.group === BOARD[i].group : s.type === BOARD[i].type));
+  const list = propsOf(m.id).sort((a, b) => ordem(a) - ordem(b) || a - b), playing = S.phase === "playing", busy = !!S.auction;
   if (!list.length) { $("mine").innerHTML = `<p class="muted" style="margin:0">Nenhum ainda. Caia numa cidade livre e compre!</p>`; return; }
   const houses = list.reduce((a, i) => a + (S.props[i].houses === 5 ? 0 : S.props[i].houses), 0), hotels = list.filter((i) => S.props[i].houses === 5).length;
+  const grupoDe = (i) => BOARD[i].group || BOARD[i].type, nomeGrupo = (i) => (BOARD[i].group ? GROUPS[BOARD[i].group].name : BOARD[i].type === "air" ? "Aeroportos" : "Companhias");
+  const totalGrupo = (i) => (BOARD[i].group ? GROUP_SQUARES[BOARD[i].group].length : BOARD.filter((s) => s.type === BOARD[i].type).length);
+  let grupoAtual = null;
   $("mine").innerHTML = `<div class="mine-sum"><span>${list.length} imóveis · 🏠 ${houses} · 🏨 ${hotels}</span><span>toque no nome para ver a escritura</span></div>` + list.map((i) => {
+    let topo = "";
+    if (grupoDe(i) !== grupoAtual) {
+      grupoAtual = grupoDe(i);
+      const tem = list.filter((j) => grupoDe(j) === grupoAtual).length, tot = totalGrupo(i);
+      topo = `<div class="g-topo" style="${gvars(i)}"><i class="g-cor"></i><b>${h(nomeGrupo(i))}</b><span class="g-pontos">${Array.from({ length: tot }, (_, k) => `<i class="${k < tem ? "on" : ""}"></i>`).join("")}</span>${tem === tot ? `<span class="g-ok">completo</span>` : ""}</div>`;
+    }
     const s = BOARD[i], pr = S.props[i], btns = [];
     let why = "";
     if (s.type === "prop" && playing) {
@@ -114,7 +125,7 @@ function renderMine() {
       btns.push(`<button data-do="sellbank" data-i="${i}" ${lockedC(i) ? "disabled title='Venda as casas antes'" : ""}>💰 Vender ao banco +${short(pr.mortgaged ? 0 : T.mortgageValue(i))}</button>`);
     }
     const hs = pr.houses === 5 ? "🏨" : pr.houses ? "🏠".repeat(pr.houses) : "";
-    return `<div class="prow ${pr.mortgaged ? "mort" : ""}" style="${gvars(i)}">
+    return topo + `<div class="prow ${pr.mortgaged ? "mort" : ""}" style="${gvars(i)}">
       <div class="pinfo" data-open="${i}"><b>${h(s.name)}</b>${pr.shield ? "🛡️" : ""}<span class="pmeta">${hs} ${rentText(i)}</span></div>
       <div class="pbtns">${btns.join("")}</div>${why ? `<span class="why">${h(why)}</span>` : ""}</div>`;
   }).join("");
@@ -140,6 +151,7 @@ function spotNext() {
   fecharCasa(); // um destaque novo no meio (carta, aluguel, compra…): o cartão da casa sai da frente
   el.className = "spot " + it.cls;
   el.innerHTML = it.html;
+  el.querySelectorAll("[data-conta]").forEach(contaAte);
   $("spotDim").classList.add("on");
   if (it.sq != null) flash(it.sq);
   layout();
@@ -152,6 +164,8 @@ function spotCard(c) {
   spotPush({ cls: "cardspot", ms: 3200, html: `<div class="cardpop ${power ? "power" : c.good ? "good" : "bad"}" id="cardpop"><div class="face"><h4>${power ? "PODER" : c.good ? "SORTE" : "REVÉS"}</h4><div class="who">${who ? `${who.pawn} ${h(who.name)} tirou` : ""}</div><p>${h(c.text)}</p></div><div class="back">?</div></div>` });
 }
 function spotNews(e) {
+  if (/^Aluguel/.test(e.title)) return; // o aluguel tem a cena própria (cenaAluguel), com os dois peões e as moedas
+  if (e.title === "Comprou!" && e.sq != null && BOARD[e.sq]) return spotPush({ cls: "cena compra", ms: 2600, sq: e.sq, html: `${deedCompacto(e.sq)}<div class="carimbo-c">Comprado</div><p>${h(e.text)}</p>` });
   spotPush({ cls: "news tone-" + (e.tone || "info"), ms: 2400, sq: e.sq, html: `<div class="ic">${e.icon}</div><h4>${h(e.title)}</h4><p>${h(e.text)}</p>` });
 }
 function checkCard() {
@@ -159,6 +173,8 @@ function checkCard() {
   if (S.card && S.card.seq !== lastCard) { lastCard = S.card.seq; if (!document.hidden) spotCard(S.card); }
 }
 
+// a escritura da casa, sem os botões (o momento de comprar, a cena da compra e o cartão da casa)
+function deedCompacto(i) { const box = document.createElement("div"); box.innerHTML = propModal(i); return box.querySelector(".deed2").outerHTML; }
 // ---------- escrituras pequenas ----------
 function deedMini(i, big = false) {
   const s = BOARD[i], pr = S.props[i], g = s.group ? GROUPS[s.group] : null;
@@ -185,7 +201,7 @@ function renderPlayers() {
     if (p.bankrupt) tags.push("💀 faliu");
     const list = propsOf(p.id);
     return `<div class="pcol ${p.id === S.turn && S.phase === "playing" ? "turn" : ""} ${p.bankrupt ? "dead" : ""}" style="--c:${p.color}">
-      <div class="phead"><span class="pw">${peao(p.pawn)}</span><div style="min-width:0"><b>${h(p.name)}${m && p.id === m.id ? " <span class='muted' style='font-weight:500'>(você)</span>" : ""}</b><small>${tags.join(" · ") || "&nbsp;"}</small></div>
+      <div class="phead"><span class="pw">${Peoes.svg(p.color, p.pawn, { tam: 30 })}</span><div style="min-width:0"><b>${h(p.name)}${m && p.id === m.id ? " <span class='muted' style='font-weight:500'>(você)</span>" : ""}</b><small>${tags.join(" · ") || "&nbsp;"}</small></div>
         <div class="pc"><b>${p.bankrupt ? "—" : money(p.cash)}</b><small>patrimônio ${money(p.worth)}</small></div></div>
       <div class="deeds">${list.map((i) => deedMini(i)).join("") || `<span class="muted" style="font-size:13px">Nenhuma escritura ainda.</span>`}</div></div>`;
   }).join("");
@@ -234,6 +250,7 @@ function renderGame() {
   checkCard();
   runFx(); renderPlates(); checkEvent(); stateSounds(); renderReacts(); renderWallet(); yourTurnFlash();
   renderBoard(); renderAction(); renderPlayers(); renderMine(); renderTrades(); renderLog(); renderAuction(); tickClocks(); renderDiceHint();
+  if (!$("extrato").innerHTML) renderExtrato();
 }
 
 // ---------- modais ----------

@@ -33,7 +33,7 @@ function renderAction() {
     const d = S.debts[0];
     html = `<h3>⏳ Esperando pagamento</h3><p style="margin:6px 0 0">${h(P(d.from)?.name)} precisa levantar ${money(d.amount)} para pagar ${h(P(d.to)?.name || "o banco")}.</p>`;
   } else if (!mine) {
-    html = `<h3>Vez de ${cur ? `${cur.pawn} ${h(cur.name)}` : "…"}</h3>
+    html = `<div class="vez-outro">${cur ? Peoes.svg(cur.color, cur.pawn, { tam: 56, cls: "pula-devagar" }) : ""}<div><small>Agora joga</small><h3>${cur ? h(cur.name) : "…"}</h3></div></div>
       <p class="muted" style="margin:6px 0 0">${S.stage === "buy" ? `Decidindo se compra ${h(BOARD[S.buyOffer].name)}…` : S.stage === "moving" ? "Jogando…" : cur && !cur.online ? "Está desconectado. Quando voltar, continua de onde parou." : "Enquanto isso, dá para negociar trocas e mexer nos seus imóveis."}</p>
       ${m && S.host === m.id && cur && !cur.online ? `<button class="danger small" id="aKickCur" style="margin-top:10px">Tirar ${h(cur.name)} do jogo</button>` : ""}`;
   } else if (S.stage === "moving") {
@@ -42,11 +42,10 @@ function renderAction() {
     if (m.inJail) {
       html = `<h3>🚔 Você está preso</h3><p class="muted" style="margin:4px 0 12px">Tentativa ${m.jailTurns + 1} de 3. Tire uma dupla para sair, ou pague a fiança.</p>
         <div class="row"><button class="primary big" id="aRoll">Tentar dupla</button><button id="aJailPay" ${m.cash < T.JAIL_FINE ? "disabled" : ""}>Pagar ${money(T.JAIL_FINE)}</button>${m.jailCards.length ? `<button id="aJailCard">Usar habeas corpus</button>` : ""}</div>`;
-    } else html = `<h3>Sua vez!</h3><p class="muted" style="margin:4px 0 12px">${S.doubles ? "Você tirou dupla, jogue de novo." : "Jogue os dados."}</p><button class="primary big" id="aRoll" style="width:100%">🎲 Jogar os dados</button>`;
+    } else html = `<h3>Sua vez!</h3><p class="muted" style="margin:4px 0 12px">${S.doubles ? "Você tirou dupla, jogue de novo." : "Jogue os dados."}</p><button class="primary big rolar" id="aRoll" style="width:100%"><span class="mini-dado"><i></i></span>Jogar os dados</button>`;
   } else if (S.stage === "buy") {
     const s = BOARD[S.buyOffer], price = T.priceOf(S.buyOffer, S.event?.id), can = m.cash >= price;
-    html = `<h3>Comprar?</h3>
-      <div class="deed-mini" style="--g:${s.group ? GROUPS[s.group].color : "#bbb"}"><div class="sw"></div><div><b style="font-size:18px">${h(s.name)}</b><div class="muted" style="font-size:13px">${s.type === "prop" ? `aluguel ${money(s.rent[0])} · com hotel ${money(s.rent[5])}` : s.type === "air" ? "aluguel de R$ 25 mil a R$ 200 mil" : "aluguel 4x ou 10x os dados"}</div></div></div>
+    html = `<h3>Comprar?</h3><div class="compra-deed">${deedCompacto(S.buyOffer)}</div>
       <div class="row"><button class="primary big" id="aBuy" ${can ? "" : "disabled"}>Comprar por ${money(price)}${price < s.price ? ` <s style="opacity:.55;font-weight:600">${short(s.price)}</s>` : ""}</button><button id="aDecline">${S.config.auction ? "Mandar a leilão" : "Não comprar"}</button></div>
       <p class="muted" style="font-size:12.5px;margin:8px 0 0">Você tem ${money(m.cash)}.${can ? "" : " Hipoteque algo para ter dinheiro, ou mande a leilão."} <a href="#" id="aSee" style="color:inherit">Ver escritura</a></p>`;
   } else if (S.stage === "done") {
@@ -83,6 +82,8 @@ function tickClocks() {
   const now = relogio.agora(), dl = S.deadline;
   const left = dl ? Math.max(0, Math.ceil((dl.at - now) / 1000)) : null;
   document.querySelectorAll("[data-clock=turn]").forEach((el) => { el.textContent = left == null ? "" : left + "s"; });
+  const cv = document.querySelector(".conta.turn .c-vez i");
+  if (cv) cv.style.width = dl ? Math.max(0, Math.min(1, (dl.at - now) / dl.total)) * 100 + "%" : "0";
   const bar = $("tbar");
   if (bar && dl) { bar.firstChild.style.width = Math.max(0, Math.min(1, (dl.at - now) / dl.total)) * 100 + "%"; bar.classList.toggle("low", left <= 10); }
   const g = $("gclock");
@@ -140,27 +141,31 @@ function renderLog() {
   $("log").innerHTML = [...S.log].reverse().slice(0, 60).map((l) => `<div>${h(l.text)}</div>`).join("");
 }
 // ---------- dinheiro na tela ----------
-// Placas com o dinheiro de cada jogador em cima do tabuleiro. Cada pagamento vira uma nota
-// voando de quem paga para quem recebe (ou para o banco/casa), com "+R$"/"−R$" pulando e o
-// número da placa contando até o valor novo. Quem recebe só vê o dinheiro subir quando a nota chega.
+// As contas (a coluna da esquerda): cada jogador com o peão 3D, o saldo, as cores de bairro que tem e a vez com o relógio.
+// Cada pagamento vira uma rajada de moedas (e notas, nos valores grandes) voando de quem paga para quem recebe (ou para o
+// cofre do banco, no meio do tabuleiro), com "+R$"/"−R$" pulando, a linha nova no extrato e o saldo contando até o
+// valor novo. Quem recebe só vê o dinheiro subir quando as moedas chegam.
 const shown = {}, inflight = {}, tweens = {};
 let lastFx = null;
 function renderPlates() {
   const box = $("plates");
   const list = S.config.teams ? [...S.players].sort((a, b) => a.team - b.team) : S.players;
-  const ids = list.map((p) => p.id + (p.team ?? "")).join();
+  const ids = list.map((p) => p.id + (p.team ?? "") + p.pawn + p.color).join();
   if (box.dataset.ids !== ids) {
     box.dataset.ids = ids;
-    box.innerHTML = list.map((p) => `<div class="plate" id="pl-${p.id}">${p.team != null ? `<span class="tteam team" style="--tc:${T.TEAMS[p.team].color}">${T.TEAMS[p.team].icon}</span>` : ""}<div class="pw"></div><div class="tx"><div class="nm"></div><div class="amt num"></div></div></div>`).join("");
+    box.innerHTML = list.map((p, k) => `<div class="conta" id="pl-${p.id}" style="--c:${p.color};animation-delay:${k * 70}ms">${p.team != null ? `<span class="tteam team" style="--tc:${T.TEAMS[p.team].color}">${T.TEAMS[p.team].icon}</span>` : ""}<div class="c-peao">${Peoes.svg(p.color, p.pawn, { tam: 34 })}</div><div class="tx"><div class="nm"></div><div class="amt num"></div><div class="c-bairros"></div></div><span class="c-estado"></span><i class="c-vez"><i></i></i></div>`).join("");
   }
   for (const p of S.players) {
-    const el = $("pl-" + p.id);
-    el.style.setProperty("--c", p.color);
-    el.classList.toggle("turn", p.id === S.turn && S.phase === "playing");
+    const el = $("pl-" + p.id), vez = p.id === S.turn && S.phase === "playing";
+    el.classList.toggle("turn", vez);
     el.classList.toggle("dead", p.bankrupt);
     el.classList.toggle("me", !!(ME && p.id === ME.id));
-    const pw = el.querySelector(".pw"); if (pw.dataset.p !== p.pawn) { pw.dataset.p = p.pawn; pw.innerHTML = peao(p.pawn); }
-    el.querySelector(".nm").textContent = p.bankrupt ? `${p.name} · faliu` : p.inJail ? `${p.name} · 🚔` : p.name;
+    el.querySelector(".nm").textContent = p.name;
+    const est = p.bankrupt ? ["faliu", "dead"] : p.inJail ? ["preso", "preso"] : vez ? ["jogando", "vez"] : !p.online ? ["fora", "fora"] : ["", ""];
+    const e = el.querySelector(".c-estado"); if (e.textContent !== est[0]) { e.textContent = est[0]; e.className = "c-estado " + est[1]; }
+    // as cidades que a pessoa tem, numa fileira de quadradinhos nas cores dos bairros
+    const bairros = propsOf(p.id).map((i) => `<i style="background:${gcolor(i)}" title="${h(BOARD[i].name)}"></i>`).join("");
+    const cb = el.querySelector(".c-bairros"); if (cb.dataset.h !== bairros) { cb.dataset.h = bairros; cb.innerHTML = bairros; }
   }
   updatePlates();
 }
@@ -191,10 +196,10 @@ function spot(who, sq) {
     const r = $("wAmt").getBoundingClientRect(); // o seu dinheiro voa para a sua carteira, se ela estiver na tela
     if (r.bottom > 0 && r.top < innerHeight) return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
-  if (isPlayer(who) && $("pl-" + who)) return c($("pl-" + who));
+  if (isPlayer(who) && $("pl-" + who)) return c($("pl-" + who).querySelector(".amt"));
   if (who === "pot" && $("pot").textContent) return c($("pot"));
   if (sq != null && $("sq" + sq)) return c($("sq" + sq));
-  return c($("dice")); // o banco fica no meio do tabuleiro
+  return c($("cofre") || $("dice")); // o banco é o cofre no meio do tabuleiro
 }
 function popAt(pt, text, cls, sub) {
   const el = document.createElement("div");
@@ -240,17 +245,49 @@ function flash(sq) {
   const el = $("sq" + sq); if (!el) return;
   el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
 }
+// uma moeda dourada voando num arco (cada uma abre um pouco para um lado e gira no ar)
+function moedaVoa(a, b, delay) {
+  const el = document.createElement("div"); el.className = "moeda-voa"; $("fly").appendChild(el);
+  const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy) || 1, lift = Math.min(170, 50 + dist * 0.32);
+  const lado = (Math.random() - 0.5) * 70, px = (-dy / dist) * lado, py = (dx / dist) * lado;
+  const sx = a.x + (Math.random() - 0.5) * 20, sy = a.y + (Math.random() - 0.5) * 14;
+  const at = (x, y, s) => `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${s})`;
+  return el.animate([
+    { transform: at(sx, sy, 0.3), opacity: 0 },
+    { transform: at(sx + dx * 0.2 + px * 0.6, sy + dy * 0.2 + py * 0.6 - lift * 0.6, 1.15), opacity: 1, offset: 0.28 },
+    { transform: at(sx + dx * 0.55 + px, sy + dy * 0.55 + py - lift, 1), opacity: 1, offset: 0.56 },
+    { transform: at(b.x, b.y, 0.5), opacity: 0.85 },
+  ], { duration: 880 + Math.random() * 160, delay, easing: "cubic-bezier(.4,0,.3,1)", fill: "both" }).finished.then(() => el.remove(), () => el.remove());
+}
+// a rajada de moedas do valor (mais moedas para valores maiores) e umas notas nos valores grandes
+function chuvaMoedas(a, b, valor) {
+  const n = Math.min(16, 5 + Math.round(Math.log10(valor + 1) * 3.2)), voos = [];
+  for (let k = 0; k < n; k++) voos.push(moedaVoa(a, b, k * 42));
+  if (valor >= 100) notasDe(valor).slice(0, 3).forEach((nota, k) => voos.push(flyNote(a, b, nota, 140 + k * 120, k)));
+  return voos;
+}
+// o brilho onde as moedas chegam
+function brilhoEm(pt, cor) {
+  const el = document.createElement("div"); el.className = "brilho-chega"; el.style.left = pt.x + "px"; el.style.top = pt.y + "px"; if (cor) el.style.setProperty("--c", cor);
+  $("fly").appendChild(el); setTimeout(() => el.remove(), 800);
+}
+// o cofre do banco (no meio do tabuleiro) pula quando o dinheiro entra ou sai dele
+function cofrePula() { const c = $("cofre"); if (!c) return; c.classList.remove("pula"); void c.offsetWidth; c.classList.add("pula"); }
 function playFx(e) {
   if (e.kind === "news") return spotNews(e);
   if (e.kind === "deed") return flyDeed(e);
   if (e.kind === "boom") return boomAt(e.sq);
   if (e.kind === "shield") return shieldAt(e.sq);
   const a = spot(e.from, e.sq), b = spot(e.to, e.sq);
+  extratoAdd(e, true);
   if (e.sq != null) flash(e.sq);
+  if (!e.from) cofrePula();
   if (isPlayer(e.from)) { popAt(a, "−" + money(e.amount), "minus", e.label); bump(e.from, "loss"); Sound.play("pay"); if (ME && e.from === ME.id) recibo("pago", e.amount, e.label); }
-  // as cédulas que formam o valor, uma atrás da outra
-  const flights = notasDe(e.amount).map((nota, k) => flyNote(a, b, nota, k * 90, k));
+  if (/^aluguel de /.test(e.label || "") && isPlayer(e.from) && isPlayer(e.to)) cenaAluguel(e);
+  const flights = chuvaMoedas(a, b, e.amount);
   Promise.all(flights).then(() => {
+    brilhoEm(b, isPlayer(e.to) ? P(e.to).color : "#f5c542");
+    if (!e.to) cofrePula();
     if (isPlayer(e.to)) {
       inflight[e.to] = Math.max(0, (inflight[e.to] || 0) - e.amount);
       popAt(b, "+" + money(e.amount), "plus", e.label); bump(e.to, "gain"); updatePlates(); Sound.play("coin");
@@ -269,14 +306,47 @@ function recibo(tipo, valor, motivo) {
   el.style.top = (fixo ? r.top - 74 : Math.max(70, r.top - 30)) + "px";
   $("fly").appendChild(el); setTimeout(() => el.remove(), 2500);
 }
+// ---------- o extrato ao vivo ----------
+// Cada movimento de dinheiro da mesa vira uma linha (de quem, para quem, o motivo e o valor), a nova entrando por cima.
+const extrato = [];
+function quemExt(w) {
+  if (w === "pot") return `<span class="ext-av banco" title="Pote das Férias">${ic("guardasol")}</span>`;
+  const p = isPlayer(w) && P(w);
+  return p ? `<span class="ext-av" title="${h(p.name)}">${Peoes.svg(p.color, p.pawn, { tam: 18 })}</span>` : `<span class="ext-av banco" title="Banco">${ic("banco")}</span>`;
+}
+function extratoAdd(e, novo) {
+  if (e.kind) return;
+  extrato.unshift({ ...e, novo: novo ? Date.now() : 0 }); if (extrato.length > 14) extrato.length = 14;
+  renderExtrato();
+}
+function renderExtrato() {
+  const m = me(), agora = Date.now();
+  $("extrato").innerHTML = extrato.length ? extrato.map((x) => {
+    const cls = m && x.to === m.id ? "entra" : m && x.from === m.id ? "sai" : "";
+    return `<div class="ext-row ${cls}${agora - x.novo < 900 ? " novo" : ""}">${quemExt(x.from)}<span class="ext-seta">${ic("dir")}</span>${quemExt(x.to)}<span class="ext-txt">${h(x.label || "")}</span><b>${cls === "entra" ? "+" : cls === "sai" ? "−" : ""}${money(x.amount)}</b></div>`;
+  }).join("") : `<p class="muted ext-vazio">As transações da mesa aparecem aqui, na hora.</p>`;
+}
+// ---------- as cenas no meio do tabuleiro ----------
+// o aluguel: quem paga, o fluxo de moedas e quem recebe, com o valor contando
+function cenaAluguel(e) {
+  const pa = P(e.from), pb = P(e.to);
+  spotPush({ cls: "cena aluguel", ms: 2900, sq: e.sq, html: `<small>Aluguel</small><h4>${h(e.label.replace(/^aluguel de /, ""))}</h4>
+    <div class="ca-linha"><div class="ca-p">${Peoes.svg(pa.color, pa.pawn, { tam: 54 })}<span>${h(pa.name)}</span></div><div class="ca-fluxo">${"<i></i>".repeat(7)}</div><div class="ca-p">${Peoes.svg(pb.color, pb.pawn, { tam: 54 })}<span>${h(pb.name)}</span></div></div>
+    <div class="ca-valor" data-conta="${e.amount}">${money(0)}</div>` });
+}
+// o valor contando de 0 até o total (o aluguel, por exemplo)
+function contaAte(el) {
+  const alvo = +el.dataset.conta, t0 = performance.now();
+  (function f(t) { const k = Math.min(1, (t - t0) / 900), v = Math.round(alvo * (1 - Math.pow(1 - k, 3))); el.textContent = money(v); if (k < 1) requestAnimationFrame(f); })(t0);
+}
 // Chamado a cada estado: toca os pagamentos novos, um atrás do outro.
 function runFx() {
   const list = S.fx || [];
   const max = list.reduce((m, e) => Math.max(m, e.id), 0);
-  if (lastFx === null) { lastFx = max; return; } // ao entrar na mesa, não repete o passado
+  if (lastFx === null) { lastFx = max; list.filter((e) => !e.kind).slice(-14).forEach((e) => extratoAdd(e, false)); return; } // ao entrar na mesa, não repete o passado
   const news = list.filter((e) => e.id > lastFx);
   lastFx = Math.max(lastFx, max);
-  if (document.hidden) return; // aba escondida: só atualiza os números
+  if (document.hidden) { news.forEach((e) => extratoAdd(e, false)); return; } // aba escondida: só atualiza os números
   news.forEach((e, k) => {
     if (!e.kind && isPlayer(e.to)) inflight[e.to] = (inflight[e.to] || 0) + e.amount; // segura o número até a nota chegar
     setTimeout(() => playFx(e), k * 260);
