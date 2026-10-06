@@ -86,7 +86,9 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Vila (o mapa) + Galeramon + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
 
 **Ginásio:**
-- `/ginasio/` abre a sala e a arena 2D de pixel-art. Ainda não há prédio no mapa: isso é a Fase 4 de `planos/ginasio.md`.
+- `/ginasio/` abre a sala e a arena 2D de pixel-art. O prédio fica na Vila Esportiva, ao lado do Pingue-Pongue, abaixo do Tênis: `ginasio: true` desenha o telhado arredondado com Pokébola.
+- Na Vila, clicar no amigo ou usar Batalha permite escolher turnos ou Ginásio. O convite `jogo: "ginasio"` reutiliza aceite/recusa; `vila.js` chama `ginasio.criarDesafio` só depois do aceite, reserva os dois lados de uma sala 1x1 sem robôs e envia `irGinasio` com credenciais privadas a cada participante.
+- O navegador guarda essas credenciais em `ginasio:<código>` e abre `?sala=&entrar=1`; os tokens não vão no endereço ou no estado público. Voltar à Vila deixa o jogador na porta do Ginásio. As batalhas por turnos continuam no canal `/vila`.
 - Os scripts dividem as variáveis globais, nesta ordem: `sala`, `desenho`, `controles`, `rede`, `sons`, `hud`.
 - `sala.js` reaproveita `galeramon_time` e `pokemon_time`, monta o seletor de criaturas e guarda o token da sala.
 - `desenho.js` usa `GaleramonSprite`/PokeDex, pilastras do motor e efeitos por tipo de golpe; `controles.js` usa teclado, mouse e `Toque.setup`.
@@ -207,9 +209,9 @@ Para achar algo dentro de um jogo:
   - Os testes de servidor sobem o `server.js` de verdade e jogam com clientes Socket.io (ajudas em
     `tests/ajuda.js`: `subirServidor`, `conectar`, `pedir`, `esperarEstado`).
 - **Ginásio:** `tests/ginasio.test.js` cobre o motor; `tests/ginasio-servidor.test.js` cobre salas, comandos,
-  reconexão e uma partida inteira com clientes Socket.io e robôs, incluindo o placar da Noite.
+  reconexão, convites da Vila (Galeramon/Pokémon, tokens privados, recusa, saída e regressão dos turnos) e uma partida inteira com clientes Socket.io e robôs, incluindo o placar da Noite.
   `tests/e2e/ginasio.spec.js` cobre controles reais, seleção, sprites, toque com dois dedos, 2x2, espectador,
-  reconexão, resultado e revanche. `GINASIO_FOTOS=planos/imagens` salva capturas opcionais.
+  reconexão, resultado e revanche. `tests/e2e/vila-ginasio.spec.js` cobre caminhada, porta, retorno, desafio pelo sprite/Batalha e aceite no toque; `#debug` expõe `window.__vila` para inspecionar mapa/câmera. `GINASIO_FOTOS=planos/imagens` salva capturas opcionais.
 - **`tests/salas.test.js`:** compara a forma do estado de cada jogo com `tests/salas-esperado.json`.
   - Se mudar o estado de propósito, regrave com `GRAVAR=1 node --test tests/salas.test.js` e confira que no diff só
     entrou o que devia.

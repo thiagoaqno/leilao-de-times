@@ -57,6 +57,30 @@ module.exports = function ligarGinasio(io) {
   function limparEntrada(p) {
     p.recebida = -1; p.processada = -1; p.comandos = []; p.movimento = null; p.ultComando = 0;
   }
+  function novaSala(config) {
+    const sala = { code: novoCodigo(salas), host: null, phase: "lobby", config, players: {}, order: [], match: null, results: null, feed: [], loop: null, t: Date.now() };
+    salas.set(sala.code, sala);
+    return sala;
+  }
+  function adicionar(sala, name, time) {
+    const id = rid(6), n = tamanho(sala), a = doLado(sala, 0).length, b = doLado(sala, 1).length;
+    const lado = a <= b && a < n ? 0 : b < n ? 1 : null;
+    const p = { id, token: rid(12), name, lado, rtt: null, sockets: new Set(), times: { galeramon: Galeramon.DEFAULT_TEAM.slice(), pokemon: PokeDex.DEFAULT_TEAM.slice() } };
+    if (time) p.times[sala.config.modo] = time.slice();
+    sala.players[id] = p; sala.order.push(id); limparEntrada(p);
+    return p;
+  }
+  // A Vila reserva os dois lados; cada pessoa assume seu lugar com o proprio token.
+  function criarDesafio(modo, a, b) {
+    if (!["galeramon", "pokemon"].includes(modo)) return null;
+    const nomes = [a, b].map((p) => limparNome(p.name));
+    if (nomes.some((n) => !n) || ![a, b].every((p) => timeValido(modo, p.team))) return null;
+    const sala = novaSala({ modo, formato: "1x1", bots: false });
+    const pessoas = [a, b].map((p, i) => adicionar(sala, nomes[i], p.team));
+    sala.host = pessoas[0].id;
+    log(sala, `Desafio da Vila: ${nomes[0]} contra ${nomes[1]}.`);
+    return pessoas.map((p) => ({ code: sala.code, id: p.id, token: p.token }));
+  }
   function log(sala, text) {
     sala.feed.push({ t: Date.now(), text });
     if (sala.feed.length > 30) sala.feed.splice(0, sala.feed.length - 30);
@@ -181,21 +205,12 @@ module.exports = function ligarGinasio(io) {
       ligarSocket(socket, salas, sala, pid);
       if (pid) limparEntrada(sala.players[pid]);
     }
-    function adicionar(sala, name, time) {
-      const id = rid(6), n = tamanho(sala), a = doLado(sala, 0).length, b = doLado(sala, 1).length;
-      const lado = a <= b && a < n ? 0 : b < n ? 1 : null;
-      const p = { id, token: rid(12), name, lado, rtt: null, sockets: new Set(), times: { galeramon: Galeramon.DEFAULT_TEAM.slice(), pokemon: PokeDex.DEFAULT_TEAM.slice() } };
-      if (time) p.times[sala.config.modo] = time.slice();
-      sala.players[id] = p; sala.order.push(id); limparEntrada(p);
-      return p;
-    }
     socket.on("create", (data, cb) => {
       data = objeto(data) ? data : {};
       const name = limparNome(typeof data.name === "string" ? data.name : ""), config = limparConfig(data.config);
       if (!name) return falha(cb, "Coloque o seu nome.");
       if (data.time != null && !timeValido(config.modo, data.time)) return falha(cb, "Escolha 3 bichos diferentes desse modo.");
-      const sala = { code: novoCodigo(salas), host: null, phase: "lobby", config, players: {}, order: [], match: null, results: null, feed: [], loop: null, t: Date.now() };
-      salas.set(sala.code, sala);
+      const sala = novaSala(config);
       const p = adicionar(sala, name, data.time);
       sala.host = p.id; bind(sala, p.id);
       log(sala, `Ginásio aberto por ${name}.`);
@@ -298,4 +313,5 @@ module.exports = function ligarGinasio(io) {
     },
     aoApagar: (sala) => clearInterval(sala.loop),
   });
+  return { timeValido, criarDesafio };
 };

@@ -86,6 +86,7 @@ async function criarSala(rapido = false) {
 async function juntar(assistir = false) {
   if (ocupado) return;
   const code = $("hCode").value.trim().toUpperCase(), name = $("hName").value.trim();
+  if (!assistir && ME?.code === code && meuJogador()) return;
   if (!/^[A-Z2-9]{5}$/.test(code)) return ($("hErr").textContent = "O código tem 5 letras ou números.");
   if (!socket.connected) return ($("hErr").textContent = "Aguarde a conexão.");
   store.set("galera:name", name); ocupado = true;

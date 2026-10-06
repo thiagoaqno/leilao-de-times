@@ -94,6 +94,14 @@ button{font:inherit;cursor:pointer}
 .menu .row2 button{flex:1;border:0;border-radius:8px;padding:10px;font:700 16px "Pixelify Sans",monospace;background:#e6ecff;color:var(--ink)}
 .menu .row2 button.go{background:var(--ink);color:#fff;box-shadow:0 3px 0 #000}
 .menu .row2 button:disabled{opacity:.4}
+.desafio-escolhas{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+#popBox{max-height:calc(100dvh - 32px);overflow:auto}
+.desafio-escolhas button{flex:1;min-height:44px;border:2px solid #c9d4f0;border-radius:6px;padding:8px;font:700 15px "Pixelify Sans",monospace;background:#fff;color:var(--ink);touch-action:manipulation}
+.desafio-escolhas button[aria-pressed="true"]{border-color:#187b66;background:#dbf2e9}
+.desafio-escolhas button:active{background:#c5e5d9}
+.menu .row2.desafio-acao{flex-direction:column}
+.desafio-acao button{min-height:44px;touch-action:manipulation}
+.desafio-acao button:active{filter:brightness(.9)}
 .menu p{margin:0 0 6px}
 .tchip{display:inline-block;color:#fff;border-radius:5px;padding:0 6px;font:700 12px/18px "Pixelify Sans",monospace;text-shadow:0 1px 0 #0006}
 .mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -188,6 +196,14 @@ canvas.mini.off{display:none}
 .blist div b{flex:1}
 @media (max-width:560px){.bcards{grid-template-columns:1fr}}
 @media (max-width:560px){.tbtn .tx{display:none}.tbtn .tx.keep{display:inline}.brand small{font-size:11px}.brand h1{font-size:19px}.brand img{width:24px;height:28px}.dlg{font-size:15px}.dlg h2{font-size:19px}}
+@media (max-width:560px){
+  .top{flex-wrap:wrap;gap:6px;padding-inline:12px}
+  .brand{flex:1;min-width:0}.brand h1{white-space:nowrap;letter-spacing:0}
+  .tools{width:100%;gap:6px}.tbtn{flex:1;min-height:44px;padding:8px 6px;touch-action:manipulation}
+  canvas.mini{top:max(128px,calc(env(safe-area-inset-top) + 118px))}
+  .toasts{top:max(126px,calc(env(safe-area-inset-top) + 116px));max-width:calc(100% - 24px)}
+  .toast{white-space:normal;text-align:center;max-width:100%}
+}
 @media (prefers-reduced-motion:reduce){.dlg,.fade{transition:none}}
 </style>
 </head>
@@ -300,6 +316,8 @@ const GAMES = [
   // ruazinha que desce da rua nova, entre o tênis e a batalha: o Clube do Rumi, com telhado de feltro e peças
   { id: "pingpong", url: "/pingpong/", icon: "🏓", sign: "PINGUE-PONGUE", name: "Salão do Pingue-Pongue", desc: "Tênis de mesa em 3D no mouse: a raquete vai onde o mouse aponta. 1x1 contra a galera ou contra o robô.", meta: "Pingue-Pongue da Galera · 1x1",
     x: 3, y: 35, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#7a3b1e", roof2: "#5e2c15", wall: "#f2efe6", wall2: "#d8d2c2", pingpong: true },
+  { id: "ginasio", url: "/ginasio/", icon: "🐾", sign: "GINÁSIO", name: "Ginásio", desc: "Galeramon e Pokémon em batalhas de tempo real, com esquivas e golpes na arena.", meta: "Ginásio da Galera · 1x1 ou 2x2",
+    x: 11, y: 35, w: 7, h: 4, doors: [14], bairro: "esportes", roof: "#9ebfbd", roof2: "#638e8c", wall: "#e9efee", wall2: "#bdcecb", ginasio: true },
   { id: "rumi", url: "/rumi/", icon: "🀄", sign: "RUMI", name: "Clube do Rumi", desc: "O jogo de peças numeradas: sequências, grupos, coringa e a mesa inteira para mexer. De 2 a 4, com robôs.", meta: "Rumi da Galera · 2 a 4 jogadores",
     x: 22, y: 10, w: 7, h: 5, doors: [25], bairro: "cartas", roof: "#1f5a44", roof2: "#174535", wall: "#f3ead6", wall2: "#dccfae", rumi: true },
   // do outro lado da ruazinha: a casa da Palavra Proibida, com telhado roxo
@@ -310,7 +328,7 @@ const GAMES = [
 const FOUNTAIN = { x: 18, y: 19, w: 4, h: 3 };
 const LAMPS = [[2, 9], [18, 9], [21, 9], [37, 9], [11, 17], [28, 17], [11, 24], [28, 24], [2, 34], [21, 34], [37, 34], [18, 41], [21, 41]];
 const BENCHES = [[14, 18], [25, 18], [14, 23], [25, 23]];
-const TREES = [[3, 25], [8, 26], [13, 25], [16, 26], [23, 25], [27, 26], [33, 25], [36, 26], [12, 36], [15, 37], [11, 38], [17, 35], [14, 35],
+const TREES = [[3, 25], [8, 26], [13, 25], [16, 26], [23, 25], [27, 26], [33, 25], [36, 26], [11, 34], [18, 35], [18, 37], [11, 41], [16, 41],
   [5, 41], [10, 41], [14, 41], [25, 41], [30, 41], [35, 41], [10, 9], [28, 9]];
 // leva a vila para o meio do mapa grande
 const noMapa = (lista) => lista.splice(0, lista.length, ...lista.map(([x, y]) => [x + OX, y + OY]));
@@ -568,7 +586,20 @@ function drawBuilding(c, g) {
   px(c, "#00000055", X, Y + H - 1, W, 1);
   // telhado
   const rx = X - 3, rw = W + 6;
-  if (g.uno) {
+  if (g.ginasio) {
+    for (let xx = 0; xx < rw; xx += 2) {
+      const z = (xx + 1) / rw * 2 - 1, topo = Math.round(10 * (1 - Math.sqrt(1 - z * z)));
+      px(c, g.roof, rx + xx, Y + topo, Math.min(2, rw - xx), roofH - topo);
+      px(c, "#d6e7e5", rx + xx, Y + topo, 2, 2);
+      if (xx % 12 === 0) px(c, g.roof2, rx + xx, Y + topo + 3, 1, roofH - topo - 3);
+    }
+    const bx = Math.round(rx + rw * .82), by = Y + roofH / 2 - 1;
+    c.fillStyle = "#243c3c"; c.beginPath(); c.arc(bx, by, 10, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#ee554c"; c.beginPath(); c.arc(bx, by, 8, Math.PI, Math.PI * 2); c.fill();
+    c.fillStyle = "#fff"; c.beginPath(); c.arc(bx, by, 8, 0, Math.PI); c.fill();
+    px(c, "#243c3c", bx - 8, by - 1, 16, 2);
+    px(c, "#243c3c", bx - 3, by - 3, 6, 6); px(c, "#fff", bx - 1, by - 1, 2, 2);
+  } else if (g.uno) {
     const cols = [["#e0352b", "#a82218"], ["#f4c20d", "#c49a08"], ["#1f9d55", "#157040"], ["#2f6fd6", "#1f4ea0"]];
     const band = rw / 4;
     cols.forEach(([a], i) => px(c, a, Math.round(rx + i * band), Y, Math.ceil(band), roofH));
@@ -654,7 +685,7 @@ function drawBuilding(c, g) {
     const pips = (cx, cy) => { for (const [dx, dy] of [[-6, -6], [6, -6], [0, 0], [-6, 6], [6, 6]]) px(c, "#f6f3ea", cx + dx - 1, cy + dy - 1, 3, 3); };
     pips(X + W / 4, Y + roofH / 2 - 1); pips(X + (3 * W) / 4, Y + roofH / 2 - 1);
   }
-  px(c, "#ffffff40", rx, Y, rw, 1);
+  if (!g.ginasio) px(c, "#ffffff40", rx, Y, rw, 1);
   px(c, g.casino ? "#ffc83d" : "#00000055", rx, wallY - 3, rw, 3);
   px(c, "#00000030", X, wallY, W, 2);
   // janelas
@@ -1260,7 +1291,7 @@ function openBattle() {
   delete $("pop").dataset.invite;
   const modes = pokemonOn ? ["galeramon", "pokemon"] : ["galeramon"];
   const people = [...others.values()].filter((o) => o.name).sort((a, b) => a.name.localeCompare(b.name));
-  $("popBox").innerHTML = `<h2>⚔️ Batalha</h2><p>Monte o seu time de 3 e desafie alguém que está na vila. É por turnos, estilo Pokémon.</p>
+  $("popBox").innerHTML = `<h2>⚔️ Batalha</h2>
     <div class="bcards">${modes.map((m) => `<div class="bcard"><b>${m === "pokemon" ? "⚪ Pokémon" : "🐾 Galeramon"}</b><span>Seu time: ${teamText(m)}</span><button data-team="${m}">Montar time</button></div>`).join("")}</div>
     <h2 style="font-size:17px;margin-top:4px">Quem está na vila</h2>
     <div class="blist">${people.length ? people.map((o) => `<div><b>${esc(o.name)}</b>${o.busy ? `<small>em batalha</small>` : `<button data-who="${esc(o.id)}">Desafiar</button>`}</div>`).join("") : `<p style="margin:0;color:#4a5690">Ninguém mais por aqui agora. Manda o link para a galera!</p>`}</div>
@@ -1282,29 +1313,40 @@ function openPlayer(o) {
   if (!myName) return askNick();
   delete $("pop").dataset.invite;
   const modes = pokemonOn ? ["galeramon", "pokemon"] : ["galeramon"];
-  $("popBox").innerHTML = `<h2>${esc(o.name)}</h2><p>${o.busy ? "Está no meio de uma batalha agora." : "Chamar para uma batalha? Cada um usa o próprio time de 3."}</p>
-    ${modes.map((m) => `<p style="font-size:14px;color:#4a5690">Seu time de ${MODE_NAME[m]}: ${teamText(m)}</p>`).join("")}
+  let jogo = "turnos", mode = modes[0];
+  $("popBox").innerHTML = `<h2>${esc(o.name)}</h2>${o.busy ? "<p>Está no meio de uma batalha agora.</p>" : ""}
+    <div class="desafio-escolhas" role="group" aria-label="Batalha"><button data-jogo="turnos" aria-pressed="true">Por turnos</button><button data-jogo="ginasio" aria-pressed="false">Ginásio (tempo real)</button></div>
+    <div class="desafio-escolhas" role="group" aria-label="Criaturas">${modes.map((m) => `<button data-modo="${m}" aria-pressed="${m === mode}">${MODE_NAME[m]}</button>`).join("")}</div>
+    <p id="desafioTime" style="font-size:14px;color:#4a5690"></p>
     <p style="font-size:14px"><a href="#" id="popTeam">Trocar time</a></p>
-    <div class="row2"><button id="popX">Fechar</button>${modes.map((m) => `<button class="go" data-go="${m}" ${o.busy ? "disabled" : ""}>⚔️ ${MODE_NAME[m]}</button>`).join("")}</div>`;
+    <div class="row2 desafio-acao"><button class="go" id="desafioEnviar" ${o.busy ? "disabled" : ""}></button><button id="popX">Fechar</button></div>`;
   $("pop").classList.add("on");
   $("popX").onclick = closePop;
   $("popTeam").onclick = (e) => { e.preventDefault(); closePop(); $("bTeam").click(); };
-  $("popBox").querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => {
-    const mode = b.dataset.go;
+  const atualizar = () => {
+    $("desafioTime").textContent = `Seu time de ${MODE_NAME[mode]}: ${teamText(mode)}`;
+    $("desafioEnviar").textContent = jogo === "ginasio" ? "Desafiar no Ginásio (tempo real)" : `⚔️ Desafiar em ${MODE_NAME[mode]}`;
+    $("popBox").querySelectorAll("[data-jogo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.jogo === jogo)));
+    $("popBox").querySelectorAll("[data-modo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.modo === mode)));
+  };
+  $("popBox").querySelectorAll("[data-jogo]").forEach((b) => (b.onclick = () => { jogo = b.dataset.jogo; atualizar(); }));
+  $("popBox").querySelectorAll("[data-modo]").forEach((b) => (b.onclick = () => { mode = b.dataset.modo; atualizar(); }));
+  atualizar();
+  $("desafioEnviar").onclick = () => {
     closePop();
-    socket.emit("challenge", { to: o.id, team: teams[mode], mode }, (r) => {
+    socket.emit("challenge", { to: o.id, team: teams[mode], mode, ...(jogo === "ginasio" && { jogo }) }, (r) => {
       if (!r || r.error) return toast(r ? r.error : "Não deu para desafiar.");
-      toast(`⚔️ Desafio de ${MODE_NAME[mode]} enviado para ${o.name}. Esperando…`);
+      toast(`⚔️ Desafio ${jogo === "ginasio" ? "no Ginásio" : "de " + MODE_NAME[mode]} enviado para ${o.name}. Esperando…`);
     });
-  }));
-  setTimeout(() => $("popBox").querySelector("[data-go]")?.focus(), 30);
+  };
+  setTimeout(() => $("desafioEnviar")?.focus(), 30);
 }
 let inviteTimer = null;
 socket.on("invite", (d) => {
   $("pop").dataset.invite = d.from;
   const end = Date.now() + d.ms;
   const mode = DEXES[d.mode] ? d.mode : "galeramon";
-  $("popBox").innerHTML = `<h2>⚔️ ${esc(d.name)} te desafiou!</h2><p>Batalha de ${MODE_NAME[mode]}, 3 contra 3.</p>
+  $("popBox").innerHTML = `<h2>⚔️ ${esc(d.name)} te desafiou!</h2><p>${d.jogo === "ginasio" ? "Ginásio · tempo real · " + MODE_NAME[mode] : "Batalha de " + MODE_NAME[mode]}, 3 contra 3.</p>
     <p style="font-size:14px;color:#4a5690">Seu time: ${teamText(mode)}</p>
     <div class="row2"><button id="invNo">Recusar</button><button class="go" id="invYes">Aceitar <span id="invS"></span></button></div>`;
   $("pop").classList.add("on");
@@ -1314,7 +1356,7 @@ socket.on("invite", (d) => {
   $("invYes").onclick = () => answer(true);
   $("invNo").onclick = () => answer(false);
   held.length = 0; path = null;
-  setTimeout(() => $("invYes").focus(), 30);
+  setTimeout(() => $("invYes")?.focus(), 30);
 });
 socket.on("inviteGone", (d) => {
   if ($("pop").dataset.invite === d.id) { clearInterval(inviteTimer); delete $("pop").dataset.invite; closePop(); toast("O desafio foi cancelado."); return; }
@@ -1323,6 +1365,14 @@ socket.on("inviteGone", (d) => {
   else if (d.why === "tempo") toast(`${n} não respondeu o desafio.`);
   else if (d.why === "ocupado") toast(`${n} já está em outra batalha.`);
   else if (d.why === "saiu") toast(`${n} saiu da vila.`);
+  else if (d.why === "invalido") toast("Não deu para abrir o Ginásio. Confira os nomes e os times de 3 bichos diferentes.");
+});
+socket.on("irGinasio", (d) => {
+  clearInterval(inviteTimer); delete $("pop").dataset.invite; closePop();
+  store.set("ginasio:" + d.code, d); store.set("vila_spawn", "ginasio");
+  held.length = 0; path = null;
+  socket.emit("enter", "ginasio");
+  location.href = `/ginasio/?sala=${encodeURIComponent(d.code)}&entrar=1${location.hash === "#debug" ? "#debug" : ""}`;
 });
 
 // ----- batalha -----
@@ -1700,6 +1750,11 @@ $("mini").classList.toggle("off", !miniOn);
 $("bMapa").onclick = () => { miniOn = !miniOn; if (!INT) $("mini").classList.toggle("off", !miniOn); $("bMapa").blur(); };
 setHere(lugarEm(player.x, player.y));
 requestAnimationFrame(frame);
+if (location.hash === "#debug") window.__vila = {
+  GAMES, player, others, ground, solid, walkable, bfs,
+  get here() { return here; }, get myId() { return myId; },
+  get camera() { return { x: camX, y: camY, scale: scale / dpr, tile: TS }; },
+};
 document.fonts && document.fonts.load('700 10px "Pixelify Sans"');
 </script>
 </body>

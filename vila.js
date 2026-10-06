@@ -19,13 +19,13 @@ const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const cleanToken = (t) => (typeof t === "string" && /^[a-f0-9]{16,64}$/.test(t) ? t : null);
 
-module.exports = function attachVila(io) {
+module.exports = function attachVila(io, ginasio) {
   const nsp = io.of("/vila");
   const players = new Map(); // id público -> { id, token, sock, name, look, x, y, dir, battle, offline, dropTimer }
   const byToken = new Map(); // token -> jogador
   const invites = new Map(); // id de quem foi desafiado -> { from, team, mode, timer }
 
-  const pub = (p) => ({ id: p.id, name: p.name, look: p.look, x: p.x, y: p.y, dir: p.dir, busy: !!p.battle, z: p.z || "", car: !!p.car });
+  const pub = (p) => ({ id: p.id, name: p.name, look: p.look, x: p.x, y: p.y, dir: p.dir, busy: !!(p.battle || p.ginasio), z: p.z || "", car: !!p.car });
   const to = (id) => { const p = players.get(id); return nsp.to(p ? p.sock : "-"); }; // manda só para essa pessoa
   // avisa os outros que alguém mudou. A própria pessoa não recebe, senão vira um "clone" dela na tela.
   const tellOthers = (p, ev = "update") => nsp.except(p.sock).emit(ev, pub(p));
@@ -168,15 +168,17 @@ module.exports = function attachVila(io) {
       if (!mine() || !allow()) return reply({ error: "Espere um pouco." });
       const target = players.get(String(d.to || ""));
       if (!target || target === me || target.offline) return reply({ error: "Essa pessoa não está mais na vila." });
-      if (me.battle) return reply({ error: "Você já está numa batalha." });
-      if (target.battle) return reply({ error: `${target.name} já está numa batalha.` });
+      if (me.battle || me.ginasio) return reply({ error: "Você já está numa batalha." });
+      if (target.battle || target.ginasio) return reply({ error: `${target.name} já está numa batalha.` });
       if (invites.has(target.id)) return reply({ error: `${target.name} já tem um desafio esperando resposta.` });
       if ([...invites.values()].some((v) => v.from === me.id)) return reply({ error: "Você já desafiou alguém. Espere a resposta." });
       const mode = d.mode === "pokemon" && POKEMON_ON ? "pokemon" : "galeramon";
+      const jogo = d.jogo === "ginasio" ? "ginasio" : "turnos";
+      if (jogo === "ginasio" && !ginasio?.timeValido(mode, d.team)) return reply({ error: "Escolha 3 bichos diferentes desse modo." });
       const from = me.id;
-      const inv = { from, team: d.team, mode, timer: setTimeout(() => { invites.delete(target.id); to(from).emit("inviteGone", { id: target.id, why: "tempo" }); to(target.id).emit("inviteGone", { id: from }); }, INVITE_MS) };
+      const inv = { from, team: jogo === "ginasio" ? d.team.slice() : d.team, mode, jogo, timer: setTimeout(() => { invites.delete(target.id); to(from).emit("inviteGone", { id: target.id, why: "tempo" }); to(target.id).emit("inviteGone", { id: from }); }, INVITE_MS) };
       invites.set(target.id, inv);
-      to(target.id).emit("invite", { from, name: me.name, ms: INVITE_MS, mode });
+      to(target.id).emit("invite", { from, name: me.name, ms: INVITE_MS, mode, ...(jogo === "ginasio" && { jogo }) });
       reply({ ok: true, ms: INVITE_MS });
     });
 
@@ -186,7 +188,21 @@ module.exports = function attachVila(io) {
       if (!inv || inv.from !== d.from) return;
       clearTimeout(inv.timer); invites.delete(me.id);
       const other = players.get(inv.from);
-      if (!d.ok || !other || other.offline || other.battle || me.battle) { to(inv.from).emit("inviteGone", { id: me.id, why: d.ok ? "ocupado" : "recusou" }); return; }
+      if (!d.ok || !other || other.offline || other.battle || other.ginasio || me.battle || me.ginasio) { to(inv.from).emit("inviteGone", { id: me.id, why: d.ok ? "ocupado" : "recusou" }); return; }
+      if (inv.jogo === "ginasio") {
+        const lugares = ginasio.criarDesafio(inv.mode, { name: other.name, team: inv.team }, { name: me.name, team: d.team });
+        if (!lugares) {
+          to(other.id).emit("inviteGone", { id: me.id, why: "invalido" });
+          to(me.id).emit("inviteGone", { id: other.id, why: "invalido" });
+          return;
+        }
+        [other.ginasio, me.ginasio] = lugares;
+        dropInvites(other.id); dropInvites(me.id);
+        tellOthers(other); tellOthers(me);
+        to(other.id).emit("irGinasio", other.ginasio);
+        to(me.id).emit("irGinasio", me.ginasio);
+        return;
+      }
       const b = { state: G.createBattle({ id: other.id, name: other.name, team: inv.team }, { id: me.id, name: me.name, team: d.team }, inv.mode), seq: 0, timer: null, deadline: null };
       other.battle = b; me.battle = b;
       dropInvites(other.id); dropInvites(me.id);

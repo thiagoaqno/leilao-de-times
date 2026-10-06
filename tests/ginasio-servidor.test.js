@@ -42,6 +42,98 @@ async function abrir(t, config = {}, quantidade = 2, times = []) {
 
 const envio = (seq, extra = {}) => ({ seq, dx: 0, dy: 0, mira: { x: 1, y: 0 }, ...extra });
 
+async function entrarVila(t, name) {
+  const s = await conectar(srv.url, "/vila");
+  t.after(() => s.close());
+  const eu = esperarEvento(s, "me");
+  s.emit("hello", { name });
+  s.pid = (await eu).id;
+  return s;
+}
+async function convidar(a, b, modo = "galeramon", jogo = "ginasio") {
+  const time = modo === "pokemon" ? PokeDex.DEFAULT_TEAM : Galeramon.DEFAULT_TEAM;
+  const convite = esperarEvento(b, "invite");
+  await pedir(a, "challenge", { to: b.pid, mode: modo, team: time, ...(jogo === "ginasio" && { jogo }) });
+  return convite;
+}
+
+for (const modo of ["galeramon", "pokemon"]) {
+  test(`ginásio/vila: desafio ${modo} reserva os lados, protege tokens e começa com dois humanos`, async (t) => {
+    const a = await entrarVila(t, "Thiago"), b = await entrarVila(t, "Amigo"), c = await entrarVila(t, "Visita");
+    const vazamentos = [], atualizacoes = [];
+    c.on("irGinasio", (d) => vazamentos.push(d));
+    c.on("update", (d) => atualizacoes.push(d));
+    const convite = await convidar(a, b, modo);
+    assert.equal(convite.jogo, "ginasio"); assert.equal(convite.mode, modo);
+    const destinoA = esperarEvento(a, "irGinasio"), destinoB = esperarEvento(b, "irGinasio");
+    const ocupado = esperarEvento(c, "update", (d) => d.id === b.pid && d.busy);
+    const timeA = modo === "pokemon" ? PokeDex.DEFAULT_TEAM : Galeramon.DEFAULT_TEAM;
+    const timeB = timeA.slice().reverse();
+    b.emit("answer", { from: a.pid, ok: true, team: timeB });
+    const ra = await destinoA, rb = await destinoB; await ocupado;
+    assert.equal(ra.code, rb.code); assert.notEqual(ra.id, rb.id); assert.notEqual(ra.token, rb.token);
+    assert.deepEqual(vazamentos, []);
+    assert.ok(!JSON.stringify(atualizacoes).includes(ra.token) && !JSON.stringify(atualizacoes).includes(rb.token));
+    await assert.rejects(pedir(c, "challenge", { to: b.pid, mode: modo, jogo: "ginasio", team: timeA }), /já está numa batalha/);
+    const ga = await conectar(srv.url, "/ginasio"), gb = await conectar(srv.url, "/ginasio"), intruso = await conectar(srv.url, "/ginasio");
+    t.after(async () => { if (ga.connected) await pedir(ga, "act", { type: "lobby" }); [ga, gb, intruso].forEach((s) => s.close()); });
+    const falso = await pedir(intruso, "join", { code: ra.code, id: ra.id, token: "errado", name: "Intruso" });
+    assert.notEqual(falso.id, ra.id);
+    let st = await esperarEstado(intruso, (s) => s.players.length === 3);
+    assert.equal(st.players.find((p) => p.id === falso.id).lado, null, "os lados já pertencem aos convidados");
+    await assert.rejects(pedir(intruso, "act", { type: "start" }), /Só o organizador/);
+    assert.equal((await pedir(ga, "join", ra)).id, ra.id);
+    await assert.rejects(pedir(ga, "act", { type: "start" }), /desconectado/);
+    assert.equal((await pedir(gb, "join", rb)).id, rb.id);
+    st = await esperarEstado(ga, (s) => s.players.filter((p) => p.online).length === 3);
+    assert.deepEqual(st.config, { modo, formato: "1x1", bots: false });
+    assert.equal(st.host, ra.id);
+    assert.deepEqual(st.players.slice(0, 2).map((p) => [p.name, p.lado, p.time]), [["Thiago", 0, timeA], ["Amigo", 1, timeB]]);
+    assert.ok(!JSON.stringify(st).includes(ra.token) && !JSON.stringify(st).includes(rb.token));
+    a.emit("enter", "ginasio"); b.emit("enter", "ginasio");
+    await pedir(ga, "act", { type: "start" });
+    st = await esperarEstado(gb, (s) => s.phase === "play");
+    assert.equal(st.match.jogadores.length, 2); assert.ok(st.match.jogadores.every((p) => !p.bot));
+    const sn = await esperarEvento(ga, "snap", (s) => s.tempo > 0);
+    assert.equal(sn.entidades.length, 2);
+  });
+}
+
+test("ginásio/vila: valida times, recusa, ignora aceite falso e cancela quando alguém sai", async (t) => {
+  const a = await entrarVila(t, "A"), b = await entrarVila(t, "B"), c = await entrarVila(t, "C");
+  const destinos = [];
+  for (const s of [a, b, c]) s.on("irGinasio", (d) => destinos.push(d));
+  await assert.rejects(pedir(a, "challenge", { to: b.pid, jogo: "ginasio", team: ["saci", "saci", "sirizao"] }), /3 bichos diferentes/);
+  await assert.rejects(pedir(a, "challenge", { to: b.pid, jogo: "ginasio", team: PokeDex.DEFAULT_TEAM }), /3 bichos diferentes/);
+  await convidar(a, b);
+  await assert.rejects(pedir(a, "challenge", { to: c.pid, jogo: "ginasio", team: Galeramon.DEFAULT_TEAM }), /Espere a resposta/);
+  c.emit("answer", { from: a.pid, ok: true, team: Galeramon.DEFAULT_TEAM });
+  await assert.rejects(pedir(c, "challenge", { to: b.pid, jogo: "ginasio", team: Galeramon.DEFAULT_TEAM }), /esperando resposta/);
+  let fim = esperarEvento(a, "inviteGone", (d) => d.why === "recusou");
+  b.emit("answer", { from: a.pid, ok: false }); await fim;
+  await convidar(a, b);
+  fim = esperarEvento(a, "inviteGone", (d) => d.why === "invalido");
+  b.emit("answer", { from: a.pid, ok: true, team: ["__proto__", "saci", "sirizao"] }); await fim;
+  await convidar(a, b);
+  fim = esperarEvento(a, "inviteGone", (d) => d.why === "saiu");
+  b.emit("enter", "tenis"); await fim;
+  assert.deepEqual(destinos, []);
+  const convite = await convidar(a, c); assert.equal(convite.from, a.pid);
+});
+
+test("ginásio/vila: desafio sem jogo continua na batalha por turnos", async (t) => {
+  const a = await entrarVila(t, "Turnos1"), b = await entrarVila(t, "Turnos2");
+  const destinos = []; a.on("irGinasio", (d) => destinos.push(d));
+  const convite = await convidar(a, b, "galeramon", "turnos"); assert.equal(convite.jogo, undefined);
+  const batalhaA = esperarEvento(a, "bt"), batalhaB = esperarEvento(b, "bt");
+  b.emit("answer", { from: a.pid, ok: true, team: Galeramon.DEFAULT_TEAM });
+  const st = await batalhaA; await batalhaB;
+  assert.equal(st.mode, "galeramon"); assert.equal(st.phase, "choose"); assert.equal(st.sides.length, 2);
+  const terminou = esperarEvento(b, "bt", (s) => s.phase === "over");
+  a.emit("forfeit"); await terminou;
+  assert.deepEqual(destinos, []);
+});
+
 test("ginásio/servidor: lobby, permissões, lados e times separados por modo", async (t) => {
   const m = await abrir(t, { formato: "2x2", bots: false }, 3);
   const [a, b, c] = m.todos;
