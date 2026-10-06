@@ -626,14 +626,56 @@ details summary{cursor:pointer}
 .jvPens i.ok{background:var(--green)}.jvPens i.erro{background:var(--red);box-shadow:inset 0 0 0 3px #00000040}
 .jvPalp{display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;font-size:13px;color:var(--muted);margin-top:8px}.jvPalp:empty{display:none}.jvPalp b{color:var(--text)}
 .jvPalp .ic{color:var(--acc)}
-/* a carta de quem marcou: entra virando por cima do placar e sai deslizando */
-.cartaGol{position:absolute;left:50%;top:50%;z-index:5;animation:cartaGol 1.9s var(--out) both}
-.cartaGol.ladoA{left:22%}.cartaGol.ladoB{left:78%}
-.cartaGol .fut{--w:112px}
+/* as cartas de quem marcou: entram virando por cima do placar, do lado do time que marcou. Gols quase juntos ficam
+   lado a lado: a fila vai para o meio, deslizando, e cada carta que sai fecha o seu espaço devagar */
+.jvPlacar{position:relative}
+.cgFila{position:absolute;left:50%;top:50%;z-index:5;display:flex;align-items:center;translate:-50% -50%;transition:left .35s var(--out);pointer-events:none}
+.cgFila.so-A{left:22%}.cgFila.so-B{left:78%}
+.cartaGol{--cw:112px;position:relative;margin-inline:5px;animation:cartaGol 1.9s var(--out) both}
+.cgFila.muitas .cartaGol{--cw:88px}
+.cartaGol.ladoA{order:0}.cartaGol.ladoB{order:1}
+.cartaGol .fut{--w:var(--cw)}
 .cartaGol .fut-in::after{animation:none}
 .cgFaixa{position:absolute;left:50%;bottom:-6px;translate:-50% 0;white-space:nowrap;display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:var(--acc);color:var(--acc-ink);font:900 15px/1 var(--display);text-transform:uppercase;box-shadow:0 6px 16px #000a}
 .cartaGol.hat .cgFaixa{background:var(--pink);color:#fff}
-@keyframes cartaGol{0%{transform:translate(-50%,-50%) perspective(600px) rotateY(100deg) scale(.4);opacity:0}18%{transform:translate(-50%,-50%) perspective(600px) rotateY(-12deg) scale(1.08);opacity:1}28%{transform:translate(-50%,-50%) perspective(600px) rotateY(0) scale(1)}82%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(-50%,-140%) scale(.8);opacity:0}}
+@keyframes cartaGol{0%{transform:perspective(600px) rotateY(100deg) scale(.4);opacity:0}18%{transform:perspective(600px) rotateY(-12deg) scale(1.08);opacity:1}28%{transform:perspective(600px) rotateY(0) scale(1)}82%{transform:scale(1);opacity:1;margin-inline-end:5px}100%{transform:translateY(-90%) scale(.8);opacity:0;margin-inline-end:calc(-1 * var(--cw) - 5px)}}
+/* os replays dos gols (lances.js): um telão em pixel-art por gol, um embaixo do outro (o mais novo em cima). Toca na
+   hora do gol, liga como uma TV e depois fica parado na comemoração; um toque toca de novo */
+.jvReplays{display:grid;gap:8px;margin-top:12px}
+.jvReplays:empty{display:none}
+.rpItem{display:grid;grid-template-rows:1fr;animation:rpAbre .45s var(--out)}
+.rpItem>.telao{min-height:0}
+@keyframes rpAbre{from{grid-template-rows:0fr;opacity:0}}
+.telao{position:relative;width:min(320px,100%);margin:0 auto;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#050a08;cursor:pointer;
+  box-shadow:0 0 0 2px var(--line2),0 12px 28px -12px #000c;transition:box-shadow .3s}
+.telao:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
+.telao.tocando{box-shadow:0 0 0 2px var(--acc),0 0 34px -8px var(--acc-glow);animation:telaoLiga .45s var(--out)}
+.telao.vitoria{box-shadow:0 0 0 2px var(--gold),0 0 30px -10px #f6c64e99}
+.telao canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.telao.ladoB canvas{transform:scaleX(-1)}
+.telao::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#0000 0 2px,#0000001c 2px 3px)} /* as linhas da TV */
+.lcTag{position:absolute;left:8px;top:7px;display:flex;align-items:center;gap:5px;padding:3px 7px 2px 6px;border-radius:5px;background:#000b;color:#fff;font:800 11px/1.1 var(--display);letter-spacing:.14em;text-transform:uppercase;opacity:0;transition:opacity .25s}
+.lcTag i{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 6px var(--red);animation:lcPisca .9s steps(1) infinite}
+.telao.tocando .lcTag,.telao.vitoria .lcTag{opacity:1}
+.telao.vitoria .lcTag{background:var(--gold);color:#241a02}
+.telao.vitoria:not(.tocando) .lcTag i{display:none}
+.lcGrito{position:absolute;left:50%;top:42%;translate:-50% -50%;font:italic 900 46px/1 var(--display);color:var(--acc);text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;
+  -webkit-text-stroke:2px #0b1604;paint-order:stroke fill;text-shadow:0 4px 0 #0b1604,0 0 26px #c6ff3a88;opacity:0;pointer-events:none}
+.telao.gol .lcGrito{animation:lcGrito 1s var(--mola) both}
+.lcPlay{position:absolute;right:8px;top:7px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#000a;color:#fff;opacity:0;transition:opacity .25s,background .2s}
+.lcPlay .ic{width:12px;height:12px;margin-left:2px}
+.telao.fim .lcPlay{opacity:.85}
+.telao.fim:hover .lcPlay{opacity:1;background:var(--acc);color:var(--acc-ink)}
+.lcFaixa{position:absolute;left:8px;bottom:8px;display:flex;align-items:center;gap:6px;max-width:calc(100% - 16px);padding:5px 10px 4px 8px;border-radius:8px;background:var(--acc);color:var(--acc-ink);
+  font:900 13px/1 var(--display);text-transform:uppercase;letter-spacing:.04em;box-shadow:0 3px 0 #0b1604;transform:translateX(calc(-100% - 12px));transition:transform .45s var(--out)}
+.lcFaixa b{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lcFaixa span{opacity:.7}
+.lcFaixa .ic{width:15px;height:15px}
+.telao.close .lcFaixa{transform:none}
+.telao.hat .lcFaixa{background:var(--pink);color:#fff}
+@keyframes telaoLiga{0%{transform:scale(.8,.03);opacity:0}55%{transform:scale(1.02,.08);opacity:1}100%{transform:none}}
+@keyframes lcGrito{0%{opacity:0;transform:scale(.3) rotate(-8deg)}35%{opacity:1;transform:scale(1.15) rotate(-6deg)}55%{transform:scale(1) rotate(-6deg)}80%{opacity:1}100%{opacity:0;transform:scale(1.04) rotate(-6deg)}}
+@keyframes lcPisca{50%{opacity:.15}}
 .tabVivo{background:#000000aa;border:1px solid var(--line);border-radius:16px;padding:6px 10px;margin:4px 0 12px;overflow:hidden}
 .tvCab,.tvLin{display:grid;grid-template-columns:28px 1fr 64px 30px 40px;align-items:center;gap:6px;height:36px;font-variant-numeric:tabular-nums}
 .tvCab{height:26px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}

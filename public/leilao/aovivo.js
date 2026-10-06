@@ -1,7 +1,8 @@
 // Leilão da Galera — o campeonato ao vivo (carregado depois das outras partes do script da página; divide as mesmas
 // variáveis globais: S, me, socket, $, esc, toast, clockSkew, renderReveal).
 // Cada parte revelada que tem jogos toca como um placar de TV: o relógio corre, os gols entram no minuto certo com a
-// carta de quem marcou, a prorrogação e os pênaltis aparecem cobrança por cobrança. Depois, a tabela da rodada se
+// carta de quem marcou (gols quase juntos: as cartas lado a lado) e o replay do lance em pixel-art (lances.js), um
+// telão embaixo do outro; a prorrogação e os pênaltis aparecem cobrança por cobrança. Depois, a tabela da rodada se
 // mexe (quem subiu, quem caiu) e só então aparece o texto da narração. Todo mundo vê junto: o tempo de cada parte
 // conta a partir da hora em que o organizador revelou (no relógio do servidor).
 // Os tempos de cada pedaço do jogo ficam em ritmo.js (o servidor usa a mesma conta).
@@ -11,11 +12,53 @@ const agoraServidor = () => Date.now() + (typeof clockSkew === "number" ? clockS
 let vivoAte = 0;
 
 // ---------- a carta do jogador que marcou ----------
-const sobrenome = (n) => { const p = String(n).trim().split(/s+/); return p.length > 1 && p[p.length - 1].length > 2 ? p[p.length - 1] : p[0]; };
-// a mesma carta do leilão (carta.js), com a faixa do gol embaixo; sai do lado do time que marcou
-function cartaGol(g, time, hat) {
-  return `<div class="cartaGol lado${g.lado}${hat ? " hat" : ""}" aria-hidden="true">${cartaHTML(g.nome)}
+// o sobrenome ("Messi"), com a partícula junto ("van Basten", "Di Stéfano"); quem é conhecido pelo primeiro nome fica
+// com ele ("Vinícius Júnior" vira "Vinícius", "Ronaldinho Gaúcho" vira "Ronaldinho")
+const PARTICULA = /^(van|von|der|den|de|di|da|do|dos|das|del|della|la|le|ter|mac)$/i;
+const APELIDO = /^(júnior|junior|jr\.?|filho|neto|gaúcho|fenômeno|pernambucano|paulista|baiano|carioca|mineiro)$/i;
+function sobrenome(n) {
+  const p = String(n).trim().split(/\s+/);
+  if (p.length > 1 && APELIDO.test(p[p.length - 1])) p.pop();
+  if (p.length < 2) return p[0];
+  let k = p.length - 1;
+  while (k > 0 && PARTICULA.test(p[k - 1])) k--;
+  return p[k].length > 2 || k < p.length - 1 ? p.slice(k).join(" ") : p[0];
+}
+// a mesma carta do leilão (carta.js), com a faixa do gol embaixo
+function cartaGol(g, hat) {
+  return `<div class="cartaGol lado${g.lado}${hat ? " hat" : ""}">${cartaHTML(g.nome)}
     <div class="cgFaixa">${hat ? ic("cartola") + "Hat-trick" : ic("bola") + "Gol"} · ${g.min}'</div></div>`;
+}
+// a carta entra na hora, do lado do time que marcou; com outra ainda na tela (gols quase juntos), entra ao lado dela,
+// e a fila vai para o meio (com três ou mais, as cartas ficam menores)
+function cartaNaFila(el, g, hat) {
+  const fila = el.querySelector(".cgFila"), box = document.createElement("div");
+  box.innerHTML = cartaGol(g, hat);
+  const c = box.firstElementChild;
+  fila.appendChild(c); arrumaFila(fila);
+  setTimeout(() => { c.remove(); arrumaFila(fila); }, 1900);
+}
+function arrumaFila(fila) {
+  const cartas = [...fila.children];
+  fila.classList.toggle("so-A", cartas.length === 1 && cartas[0].classList.contains("ladoA"));
+  fila.classList.toggle("so-B", cartas.length === 1 && cartas[0].classList.contains("ladoB"));
+  fila.classList.toggle("muitas", cartas.length >= 3);
+}
+
+// ---------- os replays dos gols (lances.js) ----------
+// cada gol ganha o seu telão em pixel-art, um embaixo do outro (o mais novo em cima, logo abaixo do placar): toca na
+// hora do gol e depois fica parado na comemoração (um toque toca de novo). Quem chega depois vê todos parados.
+function replayDoGol(el, j, g, hat, toca) {
+  const r = Lances.criar(g, j, { nome: sobrenome(g.nome), hat, auto: toca }), item = document.createElement("div");
+  r.dataset.g = j.gols.indexOf(g);
+  item.className = "rpItem"; item.appendChild(r);
+  el.querySelector(".jvReplays").prepend(item);
+}
+// o gol da vitória: o do vencedor que deixou o placar a favor de vez (nos pênaltis, nenhum)
+function golDaVitoria(j) {
+  if (!j.vencedor || j.pens) return null;
+  const dele = j.gols.filter((g) => g.lado === j.vencedor);
+  return dele[j.gols.length - dele.length] || null;
 }
 
 // ---------- o placar de um jogo ----------
@@ -27,11 +70,13 @@ function jogoHTML(j) {
       <span class="jvTime a${meu(j.A)}">${esc(j.A.nome)}</span>
       <b class="jvGol ga">0</b><span class="jvRel">0'</span><b class="jvGol gb">0</b>
       <span class="jvTime b${meu(j.B)}">${esc(j.B.nome)}</span>
+      <div class="cgFila" aria-hidden="true"></div>
     </div>
     <div class="jvFase">1º tempo</div>
     <div class="jvLances"><div class="la"></div><div class="lb"></div></div>
     <div class="jvPens hidden"><div class="pa"></div><div class="pb"></div></div>
     <div class="jvPalp"></div>
+    <div class="jvReplays"></div>
   </div>`;
 }
 // o jogo no instante t (ms desde o apito): minuto, fase, gols que já saíram e cobranças já batidas
@@ -56,12 +101,14 @@ function desenhaJogo(el, j, m, anima) {
   el.classList.toggle("acabou", m.fim);
   el.style.setProperty("--p", Math.min(1, m.min / (j.mins + j.extra || 1)).toFixed(3)); // a barrinha do tempo de jogo
   if (m.gols.length !== vistos) {
-    // a lista de gols de cada lado, e a carta de quem marcou nos que acabaram de sair
+    // a lista de gols de cada lado e, nos que acabaram de sair, o replay e a carta de quem marcou
     const lista = (lado) => m.gols.filter((g) => g.lado === lado).map((g) => `<div>${ic("bola")}${esc(sobrenome(g.nome))} ${g.min > j.mins ? `${g.min}' (prorr.)` : `${g.min}'`}</div>`).join("");
     q(".la").innerHTML = lista("A"); q(".lb").innerHTML = lista("B");
-    if (anima) for (const g of m.gols.slice(vistos)) {
+    for (const g of m.gols.slice(vistos)) {
       const hat = m.gols.filter((x) => x.nome === g.nome && x.lado === g.lado && x.min <= g.min).length === 3;
-      fila(el, cartaGol(g, g.lado === "A" ? j.A.nome : j.B.nome, hat));
+      replayDoGol(el, j, g, hat, anima);
+      if (!anima) continue;
+      cartaNaFila(el, g, hat);
       const placar = q(g.lado === "A" ? ".ga" : ".gb"); placar.classList.remove("pulou"); void placar.offsetWidth; placar.classList.add("pulou");
     }
     el.dataset.gols = m.gols.length;
@@ -79,20 +126,12 @@ function desenhaJogo(el, j, m, anima) {
     if (j.pens) q(".jvFase").textContent = `Fim: ${j.pens.a} x ${j.pens.b} nos pênaltis`;
     else if (j.extra) q(".jvFase").textContent = "Fim, na prorrogação";
     q(".jvPalp").innerHTML = acertaramHTML(j);
+    if (!el.dataset.fim) { // no apito final, o replay do gol da vitória ganha a etiqueta dourada
+      el.dataset.fim = "1";
+      const v = golDaVitoria(j), r = v && el.querySelector(`.telao[data-g="${j.gols.indexOf(v)}"]`);
+      if (r) { r.classList.add("vitoria"); r.querySelector(".lcTag span").textContent = "Gol da vitória"; }
+    }
   }
-}
-// as cartas de um jogo entram uma de cada vez; com fila (muitos gols seguidos), cada uma fica menos tempo,
-// e as que sobrarem depois do apito final não entram
-function fila(el, html) {
-  el._pend = (el._pend || 0) + 1;
-  el._fila = (el._fila || Promise.resolve()).then(() => new Promise((ok) => {
-    el._pend--;
-    if (!el.isConnected || el.classList.contains("acabou")) return ok();
-    const ms = el._pend ? 950 : 1900;
-    const box = document.createElement("div"); box.innerHTML = html; const c = box.firstElementChild;
-    c.style.animationDuration = ms + "ms";
-    el.appendChild(c); setTimeout(() => { c.remove(); ok(); }, ms);
-  }));
 }
 // o resultado de um jogo para o palpite: A, B ou E (empate; no mata-mata sempre tem vencedor)
 const certoDe = (j) => (j.mataMata ? j.vencedor : j.gA > j.gB ? "A" : j.gB > j.gA ? "B" : "E");

@@ -108,11 +108,16 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 3. `sala.js`: os botões da sala, o resultado revelado e o campinho (deitado) com a troca de posições;
 4. `pratos.js`: o prato, a votação dos pratos, a chegada do `state` e as contas das regras (`capById`, `maxBidFor`...);
 5. `rostos.js`: o rosto de cada jogador em pixel-art 16x16 (tabela de pele/cabelo/barba) com a camisa mais marcante: clube (`KITS`, `PRIORIDADE`, `EMBLEMA`) ou seleção;
-6. `carta.js`: a carta de jogador (`cartaHTML`, `versoHTML`, bronze/prata/ouro/ícone) e as faíscas;
-7. `palco.js`: o `render()`. O placar da galera, a cena do meio (só remonta quando muda de momento: `cenaChave`), o
+   para os replays, também a cabeça sozinha (`cabeca`) e o uniforme inteiro (`uniformeDe`: calção, meião e chuteira);
+6. `lances.js`: os replays dos gols do campeonato ao vivo em pixel-art, um telão por gol: o boneco (cabeça e uniforme de
+   `rostos.js`), o lance de lado (chute, ângulo, voleio, cabeçada, cavadinha), o goleiro, a rede e a comemoração em close
+   (`COMEMORA`; os craques com comemoração própria ficam em `ASSINATURA`). Tudo sorteado pelo gol: todos veem o mesmo;
+7. `carta.js`: a carta de jogador (`cartaHTML`, `versoHTML`, bronze/prata/ouro/ícone) e as faíscas;
+8. `palco.js`: o `render()`. O placar da galera, a cena do meio (só remonta quando muda de momento: `cenaChave`), o
    painel do lance, o elenco ao lado (um time por vez: `verTime`), a barra do organizador e a gaveta;
-8. `roleta.js`: o sorteio (a fita de cartas que para no sorteado);
-9. `ritmo.js`, `aovivo.js` (o campeonato ao vivo) e `elenco.js` (o voo até o time, os balõezinhos, o nome e as trocas).
+9. `roleta.js`: o sorteio (a fita de cartas que para no sorteado);
+10. `ritmo.js`, `aovivo.js` (o campeonato ao vivo: a carta de cada gol, lado a lado quando os gols saem juntos, e os
+    replays, um embaixo do outro, o mais novo em cima) e `elenco.js` (o voo até o time, os balõezinhos, o nome e as trocas).
 
 **Pelada e Rocket:**
 - A mesma página `public/pelada/index.html` serve os dois. `/rocket/` usa o modo carros.
