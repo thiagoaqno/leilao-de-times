@@ -189,6 +189,6 @@ André Onana:5kp-|Bart Verbruggen:1cc-|Guglielmo Vicario:2cpb|Robert Sánchez:2c
     return desenho === "l" ? Math.floor(x / 2) % 2 === 1 : desenho === "h" ? y % 2 === 1 : desenho === "x" ? (x + y) % 2 === 1
       : desenho === "c" ? x === 5 || x === 6 : desenho === "f" ? y === 14 : desenho === "d" ? x - y === -8 || x - y === -7 : desenho === "m" ? x >= 6 : false;
   }
-  const peleDe = (nome) => PELE[tracosDe(nome)[0]] || PELE[2];
-  window.Rostos = { de, tracosDe, camisaDe, uniformeDe, pele: peleDe, cabeca: pintaCabeca, listra: pintaListra };
+  const peleDe = (nome) => PELE[tracosDe(nome)[0]] || PELE[2], cabeloDe = (nome) => CABELO[tracosDe(nome)[2]] || CABELO.p;
+  window.Rostos = { de, tracosDe, camisaDe, uniformeDe, pele: peleDe, cabelo: cabeloDe, cabeca: pintaCabeca, listra: pintaListra };
 })();
