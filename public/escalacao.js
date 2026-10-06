@@ -31,6 +31,8 @@ const FORMATIONS = {
   futsal: {
     "2-2": { DEF: 2, MID: 0, ATT: 2 }, "3-1": { DEF: 3, MID: 0, ATT: 1 },
     "1-2-1": { DEF: 1, MID: 2, ATT: 1 }, "1-1-2": { DEF: 1, MID: 1, ATT: 2 },
+    // "T" (dois atrás, um ala e o pivô), três na frente e o 4-0 (os quatro em linha, rodando sem pivô fixo)
+    "2-1-1": { DEF: 2, MID: 1, ATT: 1 }, "1-3": { DEF: 1, MID: 0, ATT: 3 }, "4-0": { DEF: 0, MID: 4, ATT: 0 },
   },
   futebol: {
     "4-3-3": { DEF: 4, MID: 3, ATT: 3 }, "4-4-2": { DEF: 4, MID: 4, ATT: 2 }, "3-5-2": { DEF: 3, MID: 5, ATT: 2 },
@@ -113,7 +115,7 @@ function cleanPins(raw, names) {
 // Onde cada vaga fica no campinho (em % da largura/altura), na mesma ordem do xi: goleiro e depois as
 // linhas da formação, de trás para a frente. row = linha (0 = goleiro).
 function spotsOf(formation, kind) {
-  const rows = formation.split("-").map(Number), R = rows.length;
+  const rows = formation.split("-").map(Number).filter((n) => n > 0), R = rows.length; // o "0" do 4-0 não é linha
   const [top, bottom, gkY] = kind === "futsal" ? [24, 68, 89] : [15, 73, 91];
   const spots = [{ x: 50, y: gkY, row: 0 }];
   rows.forEach((n, r) => {
