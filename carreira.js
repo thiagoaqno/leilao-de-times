@@ -248,6 +248,8 @@ function fecharJogoMundo(save, r) {
   const p = save.partida, clube = clubeDe(save, save.clube), emCasa = p.casa === save.clube;
   const moralAntes = save.moral, caixaAntes = save.caixa;
   const [nos, eles] = emCasa ? r.placar : [r.placar[1], r.placar[0]];
+  // quem cumpriu suspensão ou estava machucado neste jogo tem um jogo a menos para voltar (antes dos cartões novos)
+  for (const lista of [save.lesoes, save.suspensos]) for (const pid of Object.keys(lista)) if (--lista[pid] <= 0) delete lista[pid];
   contarGols(save, r); cartoesELesoes(save, r, p.semente);
   save.resultadosFixos[p.jogoId] = { placar: [...r.placar] };
   save.jogosJogados.push(p.jogoId);
@@ -258,6 +260,8 @@ function fecharJogoMundo(save, r) {
   movimentar(save, "Salários (1 semana)", -Math.round(folhaDe(save) / 4));
   save.ultimo = { rodada: save.rodada, jogoId: p.jogoId, competicao: p.competicao, fase: p.fase, casa: p.casa, fora: p.fora, placar: r.placar, eventos: r.eventos, modo: p.modo };
   save.partida = null; save.rodada++; recalcularMundo(save);
+  save.efeitos = (save.efeitos || []).filter((e) => e.ate >= save.rodada);
+  for (const [pid, ind] of Object.entries(save.indicacoes)) if (ind.ate < save.rodada) delete save.indicacoes[pid];
   const comp = save.competicoes[p.competicao];
   Feed.postar(save, { tipo: nos > eles ? "vitoria" : nos === eles ? "empate" : "derrota", perfil: save.clube, humor: nos > eles ? "bom" : nos < eles ? "ruim" : "neutro", arte: { cena: nos > eles ? "vitoria" : nos === eles ? "empate" : "derrota", casa: p.casa, fora: p.fora, placar: r.placar }, texto: `${comp.nome} · ${clubeDe(save, p.casa).nome} ${r.placar[0]} × ${r.placar[1]} ${clubeDe(save, p.fora).nome}.` });
   if (p.fase === "final") Feed.postar(save, { tipo: comp.campeao === save.clube ? "campeao" : "eliminado", perfil: "galeranews", galeranews: true, humor: comp.campeao === save.clube ? "bom" : "ruim", arte: { cena: "trofeu", clube: comp.campeao }, texto: comp.campeao === save.clube ? `CAMPEÃO! O ${clube.nome} conquista a ${comp.nome}.` : `O ${clube.nome} fica com o vice da ${comp.nome}.` });
@@ -535,4 +539,4 @@ module.exports = function ligarCarreira(io) {
   });
 };
 // para os testes: montar uma carreira e mexer nela sem o socket
-module.exports.paraTestes = { novaCarreira, ajudas, timeDe, fecharRodada, propor, estado };
+module.exports.paraTestes = { novaCarreira, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo };
