@@ -308,3 +308,25 @@ test("ginásio/servidor: dois clientes e robôs jogam até o fim e pontuam na No
   assert.equal(lobby.match, null); assert.equal(lobby.results, null);
   assert.deepEqual(lobby.players[0].time, time);
 });
+
+test("ginasio: o desafio de um líder da Vila põe o robô com o nome e o time dele", async (t) => {
+  const Lideres = require("../public/galeramon/lideres.js");
+  const mesa = await abrir(t, { modo: "pokemon", formato: "2x2", bots: false, lider: "mare" }, 1);
+  const st = await esperarEstado(mesa.host, (s) => s.config && s.config.lider === "mare");
+  assert.equal(st.config.formato, "1x1", "desafio de líder é sempre 1x1");
+  assert.equal(st.config.bots, true, "com robô");
+  await pedir(mesa.host, "act", { type: "start" });
+  const jogo = await esperarEstado(mesa.host, (s) => s.match && s.match.jogadores);
+  const robo = jogo.match.jogadores.find((p) => p.bot);
+  assert.equal(robo.nome, "Líder Maré");
+  assert.deepEqual(robo.time, Lideres.de("mare").times.pokemon);
+});
+
+test("ginasio: o robô comum não é mais sempre o time de fogo", () => {
+  const times = new Set();
+  for (let i = 0; i < 30; i++) {
+    const p = G.criarPartida({ seed: "robo" + i, modo: "pokemon" }, [[{ id: "a", time: ["pikachu", "eevee", "snorlax"] }], []]);
+    times.add(p.lados[1].jogadores[0].time.map((b) => b.id).join());
+  }
+  assert.ok(times.size >= 4, `${times.size} times diferentes`);
+});

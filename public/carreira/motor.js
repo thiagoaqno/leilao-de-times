@@ -53,19 +53,32 @@
   }
   const valorNa = (p, slot) => p.nota * FIT[p.grp][slot] * (0.84 + 0.16 * p.energia / 100);
   // escala o time: as vagas da formação, cada uma com quem rende mais nela (os escolhidos primeiro, se houver)
-  function escalar(jogadores, formacao, preferidos) {
-    const form = { GK: 1, ...FORMATIONS.futebol[formacao] }, vagas = [];
+  // as vagas da formação, na ordem do campinho: o goleiro, a defesa, o meio e o ataque
+  function vagasDe(formacao) {
+    const form = { GK: 1, ...FORMATIONS.futebol[FORMATIONS.futebol[formacao] ? formacao : "4-3-3"] }, vagas = [];
     for (const [g, n] of Object.entries(form)) for (let i = 0; i < n; i++) vagas.push(g);
-    const livres = jogadores.filter((p) => !p.fora && !p.lesionado), em = new Array(vagas.length).fill(null);
-    const ordem = preferidos && preferidos.length ? preferidos.map((id) => livres.find((p) => p.id === id)).filter(Boolean) : null;
-    const pool = ordem || livres;
-    // o goleiro primeiro, depois as vagas mais disputadas, cada uma com o melhor que sobrou
+    return vagas;
+  }
+  // escala o time: as vagas da formação, cada uma com quem rende mais nela (os escolhidos primeiro, se houver).
+  // fixo: os escolhidos já vêm na ordem das vagas (o técnico pôs cada um no seu lugar); quem não puder jogar (lesão,
+  // suspensão) deixa a vaga para o melhor que sobrou no elenco
+  function escalar(jogadores, formacao, preferidos, fixo) {
+    const vagas = vagasDe(formacao);
+    const livres = jogadores.filter((p) => !p.fora && !p.lesionado), em = new Array(vagas.length).fill(null), usados = new Set();
+    if (fixo && preferidos && preferidos.length === vagas.length) {
+      preferidos.forEach((id, i) => { const p = livres.find((x) => x.id === id); if (p && !usados.has(p.id)) { em[i] = p; usados.add(p.id); } });
+    }
+    const ordem = !fixo && preferidos && preferidos.length ? preferidos.map((id) => livres.find((p) => p.id === id)).filter(Boolean) : null;
+    // o goleiro primeiro, depois as outras vagas, cada uma com o melhor que sobrou (dos escolhidos, e depois do elenco)
     const fila = vagas.map((g, i) => i).sort((a, b) => (vagas[a] === "GK" ? -1 : vagas[b] === "GK" ? 1 : 0));
-    const usados = new Set();
-    for (const i of fila) {
-      let melhor = null, bv = -1;
-      for (const p of pool) if (!usados.has(p.id)) { const v = valorNa(p, vagas[i]); if (v > bv) { bv = v; melhor = p; } }
-      if (melhor) { em[i] = melhor; usados.add(melhor.id); }
+    for (const pool of [ordem, livres]) {
+      if (!pool) continue;
+      for (const i of fila) {
+        if (em[i]) continue;
+        let melhor = null, bv = -1;
+        for (const p of pool) if (!usados.has(p.id)) { const v = valorNa(p, vagas[i]); if (v > bv) { bv = v; melhor = p; } }
+        if (melhor) { em[i] = melhor; usados.add(melhor.id); }
+      }
     }
     return vagas.map((slot, i) => ({ slot, p: em[i] }));
   }
@@ -73,7 +86,7 @@
     const jogadores = (t.jogadores || []).map(prepararJogador);
     const formacao = FORMATIONS.futebol[t.formacao] ? t.formacao : "4-3-3";
     const time = { lado, id: t.id || `time${lado}`, nome: t.nome || `Time ${lado + 1}`, jogadores, formacao, tatica: { ...TATICA_PADRAO, ...(t.tatica || {}) }, subs: AJUSTE.SUBS, cansacoAvisado: false, mexeu: 0 };
-    time.campo = escalar(jogadores, formacao, t.titulares);
+    time.campo = escalar(jogadores, formacao, t.titulares, t.fixo);
     time.emCampo = new Set(time.campo.filter((v) => v.p).map((v) => v.p.id));
     recalcular(time);
     return time;
@@ -172,6 +185,7 @@
       return {
         tipo: "tatica", motivo, lado: time.lado, formacao: time.formacao, tatica: { ...time.tatica }, subs: time.subs,
         titulares: titulares(time).map((p) => ({ id: p.id, nome: p.nome, pos: p.grp, nota: p.nota, energia: Math.round(p.energia), amarelos: p.amarelos })),
+        campo: time.campo.map((v) => ({ slot: v.slot, id: v.p && !v.p.fora ? v.p.id : null })), // o lugar de cada um, para o campinho
         banco: banco(time).map((p) => ({ id: p.id, nome: p.nome, pos: p.grp, nota: p.nota })),
       };
     }
@@ -179,6 +193,11 @@
       if (!d || typeof d !== "object") return;
       if (d.tatica) for (const k of Object.keys(TATICA_PADRAO)) if (d.tatica[k] != null) time.tatica[k] = clamp(Math.round(Number(d.tatica[k]) || 0), k === "mentalidade" ? -2 : 0, 2);
       for (const [sai, entra] of Array.isArray(d.subs) ? d.subs : []) substituir(time, sai, entra);
+      // trocar dois de lugar no campo (sem gastar substituição)
+      for (const [a, b] of Array.isArray(d.trocas) ? d.trocas : []) {
+        const va = time.campo.find((v) => v.p && v.p.id === a), vb = time.campo.find((v) => v.p && v.p.id === b);
+        if (va && vb && va !== vb) { [va.p, vb.p] = [vb.p, va.p]; ev({ tipo: "posicao", lado: time.lado, a, b }); }
+      }
       if (d.formacao && FORMATIONS.futebol[d.formacao] && d.formacao !== time.formacao) {
         time.formacao = d.formacao;
         time.campo = escalar(time.jogadores.filter((p) => time.emCampo.has(p.id)), d.formacao);
@@ -357,6 +376,8 @@
 
   // quem entra jogando se o técnico deixar no automático (a mesma conta da partida)
   const escalacaoAutomatica = (t) => titulares(prepararTime(t, 0)).map((p) => p.id);
+  // a escalação com o lugar de cada um (na ordem das vagas de vagasDe): para o campinho da tela
+  const escalacaoDetalhada = (t) => prepararTime(t, 0).campo.map((v) => ({ slot: v.slot, id: v.p ? v.p.id : null }));
 
-  return { AJUSTE, simularPartida, decisaoAutomatica, escalacaoAutomatica, sorteDe, grupoDe };
+  return { AJUSTE, simularPartida, decisaoAutomatica, escalacaoAutomatica, escalacaoDetalhada, vagasDe, valorNa: (j, slot) => valorNa(prepararJogador(j), slot), sorteDe, grupoDe };
 });

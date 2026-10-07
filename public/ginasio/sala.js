@@ -41,6 +41,7 @@ function atualizarOpcoes() {
   $("bots").checked = c.bots; $("bots").disabled = !pode;
 }
 function renderSala() {
+  if (LIDER) mostrarDesafio();
   atualizarOpcoes();
   $("inicio").classList.toggle("hidden", !!S); $("sala").classList.toggle("hidden", !S);
   $("rCode").classList.toggle("hidden", !S); $("salaCodigo").classList.toggle("hidden", !S);
@@ -74,13 +75,27 @@ function entrar(r, novo = false) {
 function pedirSala(evento, dados) {
   return new Promise((res) => socket.timeout(7000).emit(evento, dados, (err, r) => res(err ? { ok: false, error: "Sem conexão. Tente de novo." } : r)));
 }
+// o desafio a um líder ou treinador da Vila: /ginasio/?lider=brasa
+const LIDER = window.Lideres ? Lideres.de(new URLSearchParams(location.search).get("lider")) : null;
+const insignias = () => store.get("ginasio:insignias") || {};
+function mostrarInsignias() {
+  $("insignias").innerHTML = `<h2>Insígnias</h2><div class="lista-insignias">${Lideres.GINASIOS.map((l) => `<span class="insignia ${insignias()[l.id] ? "ganha" : ""}" style="--cor:${l.cor}" title="${h(l.nome)} (${l.tipo})${insignias()[l.id] ? ": conquistada" : ""}">${ic(l.simbolo)}<small>${h(l.tipo)}</small></span>`).join("")}</div><p class="dica-insignias">Os ginásios ficam perto dos estacionamentos da Vila. Os treinadores estão pelas ruas.</p>`;
+}
+function mostrarDesafio() {
+  if (!LIDER) return;
+  const modo = configLocal.modo, time = LIDER.times[modo];
+  $("desafioLider").classList.remove("hidden");
+  $("desafioLider").style.cssText = `--cor:${LIDER.cor}`;
+  $("desafioLider").innerHTML = `<span class="tipo-lider">${h(LIDER.onde === "ginasio" ? "Ginásio" : "Treinador")} · ${h(LIDER.tipo)}</span><h2>${h(LIDER.nome)}</h2><p>“${h(LIDER.frase)}”</p><div class="time-lider">${time.map((id) => htmlBicho(id, modo)).join("")}</div>${LIDER.onde === "ginasio" && insignias()[LIDER.id] ? "<p class=\"ja-tem\">Você já tem esta insígnia.</p>" : ""}`;
+  $("btnRobo").textContent = `Aceitar o desafio`;
+}
 async function criarSala(rapido = false) {
   if (ocupado) return;
   if (!socket.connected) return ($("hErr").textContent = "Aguarde a conexão.");
   let name = $("hName").value.trim();
   if (!name && rapido) { name = "Você"; $("hName").value = name; }
   store.set("galera:name", name); ocupado = true; $("hErr").textContent = ""; $("btnRobo").disabled = true;
-  const config = { ...configLocal, ...(rapido && { formato: "1x1", bots: true }) };
+  const config = { ...configLocal, ...(rapido && { formato: "1x1", bots: true }), ...(rapido && LIDER && { lider: LIDER.id }) };
   const r = await pedirSala("create", { name, config, time: times[config.modo] });
   if (entrar(r) && rapido) { salaVisivel = false; await act("start"); }
 }
@@ -143,4 +158,5 @@ $("dexLista").onclick = async (e) => {
   const time = [...timeAtual()]; time[slotDex] = b.dataset.bicho;
   if (!S || await act("time", { time })) { guardarTime(modoAtual(), time); $("dex").close(); renderSala(); }
 };
+mostrarInsignias();
 renderSala();

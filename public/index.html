@@ -253,6 +253,7 @@ canvas.mini.off{display:none}
 <script src="/galeramon/dados.js"></script>
 <script src="/galeramon/sprites.js"></script>
 <script src="/galeramon/pokemon.js"></script>
+<script src="/galeramon/lideres.js"></script>
 <script src="/comum.js"></script>
 <script src="/vila/estadios.js"></script>
 
@@ -275,6 +276,7 @@ const BAIRROS = [
   { id: "praca", nome: "Praça da Galera", placa: [3, 17] },
   { id: "esportes", nome: "Vila Esportiva", placa: [17, 34] },
   { id: "autodromo", nome: "Autódromo", placa: [22, 34] },
+  { id: "ginasios", nome: "Ginásios", placa: [-11, 4] }, // fora da vila, ao lado do estacionamento oeste
 ];
 const GAMES = [
   { id: "leilao", url: "/leilao/", icon: "🔨", sign: "LEILÃO", name: "Casa de Leilão", desc: "Roleta, lances e moedas: monte o seu time (ou hambúrguer, pizza, drink…) e vença no fim.", meta: "Leilão da Galera",
@@ -327,6 +329,18 @@ const GAMES = [
   { id: "carreira", url: "/carreira/", icon: "🏆", sign: "SEDE", name: "Sede da Carreira", desc: "Carreira de treinador: assuma um clube do Brasileirão, escale, mexa na tática e jogue a temporada inteira. Tudo fica salvo.", meta: "Carreira de Treinador · 1 jogador",
     x: 23, y: 18, w: 6, h: 4, doors: [25, 26], bairro: "praca", roof: "#1f5a3a", roof2: "#174a2f", wall: "#f3ead6", wall2: "#dccfae", sede: true },
 ];
+// os ginásios dos líderes (Lideres.GINASIOS): dois em cima do estacionamento oeste e dois em cima do leste, fora da
+// cerca. Dá para ir a pé: a rua de saída leva ao estacionamento, e a porta abre para ele. Cada um desafia o seu líder.
+const escurece = (hex, f = 0.72) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * f).toString(16).padStart(2, "0")).join("");
+Lideres.GINASIOS.forEach((l, i) => {
+  const x = [-10, -5, 40, 45][i];
+  GAMES.push({ id: "lider-" + l.id, url: "/ginasio/?lider=" + l.id, icon: "🏅", sign: l.tipo.toUpperCase(), name: "Ginásio " + l.tipo, verbo: "desafiar o líder", textoBotao: "Desafiar",
+    desc: l.nome + ": “" + l.frase + "” Vença no Ginásio em tempo real para ganhar a insígnia.", meta: "Ginásio de " + l.tipo + " · desafio de líder",
+    x, y: 0, w: 5, h: 4, doors: [x + 2], bairro: "ginasios", roof: l.cor, roof2: escurece(l.cor), wall: "#efe9dc", wall2: "#d6cdb8", lider: l });
+});
+// os treinadores (Lideres.TREINADORES): parados pelas ruas e pela praça; de frente para eles, dá para desafiar
+Lideres.TREINADORES.forEach((l) => GAMES.push({ id: "lider-" + l.id, url: "/ginasio/?lider=" + l.id, icon: "⚔️", name: l.nome, verbo: "desafiar", textoBotao: "Desafiar",
+  desc: "“" + l.frase + "” Time de " + l.tipo + ", no Ginásio em tempo real.", meta: "Treinador · " + l.tipo, x: l.x, y: l.y, w: 1, h: 1, doors: [l.x], bairro: "rua", npc: l }));
 
 const FOUNTAIN = { x: 18, y: 19, w: 4, h: 3 };
 const LAMPS = [[2, 9], [18, 9], [21, 9], [37, 9], [11, 17], [28, 17], [11, 24], [28, 24], [2, 34], [21, 34], [37, 34], [18, 41], [21, 41]];
@@ -358,6 +372,7 @@ vfaixa(0, 1, 7, 8, "r", false); vfaixa(VW - 2, VW - 1, 7, 8, "r", false); vfaixa
 for (const g of GAMES) {
   for (let y = g.y; y < g.y + g.h; y++) for (let x = g.x; x < g.x + g.w; x++) solid[y][x] = true;
   for (const [mx, my] of g.mats) set(mx, my, "m");
+  if (g.npc) continue; // o treinador não tem canteiro
   // canteiros de flor na frente das janelas
   for (const dx of [-2, -1, 1, 2]) { const fx = g.doors[0] + (dx > 0 ? g.doors.length - 1 : 0) + dx; if (ground[g.doorY + 1][fx] === "g") set(fx, g.doorY + 1, "f"); }
 }
@@ -427,7 +442,7 @@ function montaMundo() {
   PLACAS_VERDES.push([127, 105, "Perdizes · Nubank Parque"], [192, 105, "Radial Leste · Itaquera"], [162, 152, "Morumbis · Santos"], [156, 158, "Morumbis"], [162, 188, "Imigrantes · Santos"]);
   for (const [x, y] of PLACAS_VERDES) set(x, y, ground[y][x] === "t" ? "g" : ground[y][x], true);
   // a cidade: prédios de enfeite onde sobrou grama (longe das rodovias, do rio, da vila e das praças)
-  const livre = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { if (x < 0 || y < 0 || x >= MW || y >= MH || !"gt".includes(ground[y][x])) return false; if (x >= OX - 2 && x < OX + VW + 2 && y >= OY - 2 && y < OY + VH + 2) return false; } return true; };
+  const livre = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { if (x < 0 || y < 0 || x >= MW || y >= MH || !"gt".includes(ground[y][x])) return false; if (x >= OX - 2 && x < OX + VW + 2 && y >= OY - 2 && y < OY + VH + 2) return false; if (GAMES.some((g) => x >= g.x - 1 && x <= g.x + g.w && y >= g.y - 1 && y <= g.y + g.h)) return false; } return true; };
   for (let by = 14; by < 166; by += 7) for (let bx = 8; bx < MW - 10; bx += 7) {
     const h = hash(bx, by, 11); if (h % 10 < 3) continue;
     const w = 3 + (h % 3), hh = 3 + ((h >>> 4) % 3), x = bx + ((h >>> 8) % 2), y = by + ((h >>> 10) % 2);
@@ -442,6 +457,8 @@ function montaMundo() {
   }
 }
 montaMundo();
+// os ginásios fora da cerca: o capacho da porta (em cima do estacionamento) fica livre para quem chega a pé
+for (const g of GAMES) for (const [mx, my] of g.mats) if (mx < OX || mx >= OX + VW || my < OY || my >= OY + VH) { PARADOS.delete(k(mx, my)); set(mx, my, "m", false); }
 const carOk = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH && (ground[y][x] === "e" || ground[y][x] === "E") && !PARADOS.has(k(x, y));
 const estadioAt = (x, y) => ESTADIOS.find((e) => x >= e.ret.x && x < e.ret.x + e.ret.w && y >= e.ret.y && y < e.ret.y + e.ret.h);
 const portaoAt = (x, y) => ESTADIOS.find((e) => e.portao.some(([px, py]) => px === x && py === y));
@@ -578,6 +595,7 @@ function drawMat(c, x, y) {
 }
 
 function drawBuilding(c, g) {
+  if (g.npc) { drawChar(c, { fx: g.x, fy: g.y, dir: "down" }, g.npc.look); px(c, g.npc.cor, g.x * TS + 11, g.y * TS - 2, 4, 4); px(c, "#ffffff", g.x * TS + 12, g.y * TS - 1, 2, 2); return; } // o treinador, com o selo do tipo
   const X = g.x * TS, Y = g.y * TS, W = g.w * TS, H = g.h * TS, roofH = (g.h - 2) * TS, wallY = Y + roofH;
   // sombra no chão
   px(c, "#00000030", X + 3, Y + H, W - 2, 3);
@@ -589,7 +607,15 @@ function drawBuilding(c, g) {
   px(c, "#00000055", X, Y + H - 1, W, 1);
   // telhado
   const rx = X - 3, rw = W + 6;
-  if (g.ginasio) {
+  if (g.lider) { // ginásio de líder: telhado na cor do tipo, com a faixa clara e o emblema redondo com a inicial
+    px(c, g.roof, rx, Y, rw, roofH);
+    for (let yy = Y + 4; yy < wallY - 3; yy += 6) px(c, g.roof2, rx, yy, rw, 1);
+    px(c, g.lider.cor2 || "#ffffff", rx, Y + roofH - 6, rw, 2);
+    const bx = Math.round(rx + rw * 0.82), by = Y + roofH / 2 - 2;
+    c.fillStyle = "#1b1b2f"; c.beginPath(); c.arc(bx, by, 8, 0, Math.PI * 2); c.fill();
+    c.fillStyle = g.lider.cor2 || "#ffffff"; c.beginPath(); c.arc(bx, by, 6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = g.roof2; c.font = "bold 9px monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(g.lider.tipo[0], bx, by + 1);
+  } else if (g.ginasio) {
     for (let xx = 0; xx < rw; xx += 2) {
       const z = (xx + 1) / rw * 2 - 1, topo = Math.round(10 * (1 - Math.sqrt(1 - z * z)));
       px(c, g.roof, rx + xx, Y + topo, Math.min(2, rw - xx), roofH - topo);
@@ -1027,7 +1053,7 @@ function setHere(g) {
   const touch = document.body.classList.contains("touch");
   const verbo = g.verbo || "entrar";
   el.innerHTML = `<h2>${g.icon ? `<span>${g.icon}</span>` : ""}${esc(g.name || g.nome)}</h2><p>${esc(g.desc)}</p>${g.meta ? `<p class="meta">${esc(g.meta)}</p>` : ""}
-    <div class="go"><span>${touch ? "Toque em A para " + verbo : "Aperte Espaço para " + verbo}</span><button id="dlgGo">${esc(g.botao || "Entrar")}</button></div>`;
+    <div class="go"><span>${touch ? "Toque em A para " + verbo : "Aperte Espaço para " + verbo}</span><button id="dlgGo">${esc(g.textoBotao || (typeof g.botao === "string" ? g.botao : "Entrar"))}</button></div>`;
   $("dlgGo").onclick = () => enter(g);
   el.classList.add("on");
 }
@@ -1598,6 +1624,7 @@ function drawCasinoBulbs(c, g, t) {
   for (let i = 0, xx = X + 2; xx < X + W - 1; xx += 5, i++) px(c, (i + step) % 3 ? "#ffe066" : "#7a5410", xx, Y, 2, 2);
 }
 function drawSign(c, g, t) {
+  if (!g.sign) return; // os treinadores não têm placa
   const cx = (g.doors[0] + g.doors.length / 2) * TS, y = g.y * TS + (g.h - 2) * TS - (g.casino ? 17 : 13);
   c.font = `700 ${g.casino ? 9 : 7}px "Pixelify Sans", monospace`;
   const tw = c.measureText(g.sign).width, ew = g.casino ? 10 : 8, w = Math.ceil(tw + ew + 8), h = g.casino ? 13 : 10, x = Math.round(cx - w / 2);
@@ -1753,7 +1780,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-GAMES.forEach((g) => drawBuilding(rascunho, g)); // só para saber onde ficam as janelas (as luzes da noite)
+GAMES.filter((g) => !g.npc).forEach((g) => drawBuilding(rascunho, g)); // só para saber onde ficam as janelas (as luzes da noite)
 collectWindowLights();
 resize();
 $("mini").classList.toggle("off", !miniOn);

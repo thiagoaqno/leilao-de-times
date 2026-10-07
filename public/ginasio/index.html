@@ -32,10 +32,12 @@
     <div class="titulo"><span class="marca">GALERA</span><h1>Ginásio</h1><span id="rCode" class="codigo hidden"></span></div>
     <div id="inicio">
       <label for="hName">Seu nome</label><input id="hName" maxlength="16" autocomplete="nickname" enterkeyhint="done">
+      <div id="desafioLider" class="desafio-lider hidden"></div>
       <button id="btnRobo" class="primario largo">Jogar contra robô</button>
       <div class="acoes"><button id="btnCreate">Criar sala</button></div>
       <div class="entrada"><label for="hCode">Código da sala</label><div class="linha"><input id="hCode" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go"><button id="btnJoin">Entrar</button><button id="btnWatch" class="icone" title="Assistir" aria-label="Assistir"></button></div></div>
       <p id="hErr" class="erro" role="alert"></p>
+      <div id="insignias" class="insignias" aria-label="Insígnias dos ginásios"></div>
     </div>
     <fieldset id="opcoes"><legend>Partida</legend>
       <div class="segmentos" aria-label="Modo"><button data-modo="galeramon" aria-pressed="true">Galeramon</button><button data-modo="pokemon" aria-pressed="false">Pokémon</button></div>
@@ -77,6 +79,7 @@
 <script src="/galeramon/dados.js"></script>
 <script src="/galeramon/pokemon.js"></script>
 <script src="/galeramon/sprites.js"></script>
+<script src="/galeramon/lideres.js"></script>
 <script src="regras.js"></script>
 <script src="gif.js"></script>
 <script src="sala.js"></script>
