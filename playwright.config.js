@@ -26,7 +26,7 @@ module.exports = defineConfig({
   webServer: {
     command: "node server.js",
     url: `http://localhost:${PORTA}/`,
-    env: { PORT: String(PORTA), DOMINO_PASS_MS: "300", DB_PATH: ":memory:" },
+    env: { PORT: String(PORTA), DOMINO_PASS_MS: "300", DB_PATH: ":memory:", CARREIRA_VEL: "20", CARREIRA_ESPERA_MS: "0" },
     reuseExistingServer: false,
     timeout: 30000,
   },

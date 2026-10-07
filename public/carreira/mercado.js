@@ -63,6 +63,13 @@
     if (salario < pedidoSalario * 0.95) return { resultado: "jogador", salarioPedido: pedidoSalario, motivo: `O clube aceitou, mas ${jogador.nome} quer ${dinheiro(pedidoSalario)} por mês.` };
     return { resultado: "aceita", motivo: `Negócio fechado! ${jogador.nome} é do seu time.` };
   }
+  // o preço mínimo do clube para o leilão da carreira em grupo: o mesmo pedido que ele faria a uma proposta (a mesma
+  // semente e o mesmo sorteio de avaliarProposta: pagar isso sempre fecha)
+  function precoMinimo({ jogador, vendedor, comprador, titular, semente, fator = 1 }) {
+    const r = Motor.sorteDe(`proposta:${semente}`);
+    const apego = (titular ? 1.35 : 1.05) * (vendedor.tamanho >= comprador.tamanho ? 1.08 : 0.97);
+    return Math.ceil(valorDe(jogador, fator) * apego * (0.94 + r() * 0.12) / 1e5) * 1e5;
+  }
   // vender na hora para o mercado: sai rápido, mas por menos do que vale
   const vendaRapida = (j, fator = 1) => arred(valorDe(j, fator) * 0.7, 1e5);
   // a chance de chegar proposta numa rodada por um jogador na lista: cai quanto mais alto o pedido; em alta, sobe
@@ -93,6 +100,6 @@
     return { lances, limite };
   }
 
-  return { valorDe, fatorForma, salarioDe, janelaAberta, proximaJanela, avaliarProposta, vendaRapida, chanceDeProposta, disputa, dinheiro,
+  return { valorDe, fatorForma, salarioDe, janelaAberta, proximaJanela, avaliarProposta, precoMinimo, vendaRapida, chanceDeProposta, disputa, dinheiro,
     ELENCO_MAX, ELENCO_MIN, CAIXA_INICIAL, PEDIDO_MIN, PEDIDO_MAX, PARCELAS, JUROS, ENTRADA, CARENCIA };
 });

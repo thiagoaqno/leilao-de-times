@@ -159,6 +159,7 @@
       <label class="faixa">Até <b id="mPrecoTxt"></b><input id="mPreco" type="range" min="1" max="100" value="100"></label>
       <label class="check"><input type="checkbox" id="mCabe"> Só o que cabe no caixa</label>
     </div>
+    <div class="olheiro"><button id="mOlheiro" class="secundario">Chamar o olheiro</button><div id="mOlheiroLista"></div></div>
     <div id="mLista" class="lista-mercado"></div>
     <button id="mMais" class="secundario largo hidden">Mostrar mais</button>
   </section>
@@ -236,6 +237,8 @@
   <p id="erroExcluir" class="erro" role="alert"></p>
   <div class="linha fim"><button id="btnExcluirCancela" class="secundario" autofocus>Cancelar</button><button id="btnExcluirSim" class="perigo" disabled>Excluir para sempre</button></div>
 </dialog>
+<!-- o leilão aberto na carreira em grupo (grupo.js): todo mundo vê e dá lance daqui -->
+<div id="leilaoBox" class="leilao-box hidden" role="status"></div>
 <div id="toast" class="hidden" role="status"></div>
 
 <script src="/socket.io/socket.io.js"></script>

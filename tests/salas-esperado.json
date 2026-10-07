@@ -1419,14 +1419,22 @@
       "error": "Agora não."
     },
     "camposDoEstado": [
+      "carreiraAcabou",
       "clubes",
       "code",
       "fase",
       "host",
+      "leilao",
       "max",
+      "nRodada",
+      "now",
       "ocupados",
       "opcoes",
-      "players"
+      "players",
+      "rodada",
+      "temporadaAcabou",
+      "ultimaRodada",
+      "ultimoLeilao"
     ],
     "nomes": [
       "Fulano d",

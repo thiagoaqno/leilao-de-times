@@ -33,10 +33,13 @@ const textoDoClima = (c) => (c.chuva ? (c.hora === "dia" ? "chuva de dia" : "chu
 
 // abre a partida: a que está em andamento ou a que acabou de terminar (rodada)
 function abrirPartida(rodada) {
-  const src = E.partida || (E.ultimo && (rodada == null || E.ultimo.rodada === rodada) ? E.ultimo : null);
+  // na carreira em grupo, o jogo da rodada da turma (grupo.js): o relógio é o do servidor
+  const meuGrupo = EM_GRUPO && E.rodadaGrupo && E.rodadaGrupo.meu;
+  const src = meuGrupo ? { ...meuGrupo, rodada: meuGrupo.id } : E.partida || (E.ultimo && (rodada == null || E.ultimo.rodada === rodada) ? E.ultimo : null);
   if (!src) return mostrarTela("sede");
   const nova = J.rodada !== src.rodada || J.casa !== src.casa;
-  Object.assign(J, { rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: !E.partida, decidindo: false });
+  Object.assign(J, { rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, decidindo: false, grupo: !!meuGrupo });
+  document.querySelector(".faixa-jogo .controles").classList.toggle("hidden", !!meuGrupo);
   if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
   $("pNomeCasa").textContent = nomeClube(J.casa); $("pNomeFora").textContent = nomeClube(J.fora);
@@ -44,7 +47,7 @@ function abrirPartida(rodada) {
   J.clima = climaDoJogo(E.temporada, J.rodada, J.casa, J.fora);
   $("partida").classList.remove("clima-dia", "clima-noite", "clima-chuva");
   $("partida").classList.add(`clima-${J.clima.hora}`); if (J.clima.chuva) $("partida").classList.add("clima-chuva");
-  $("pLocal").innerHTML = `${ic("estadio")} Rodada ${src.rodada + 1} · ${h(CLUBES[J.casa].estadio)} · ${textoDoClima(J.clima)}`;
+  $("pLocal").innerHTML = `${ic("estadio")} ${meuGrupo ? "Rodada da turma" : `Rodada ${src.rodada + 1}`} · ${h(CLUBES[J.casa].estadio)} · ${textoDoClima(J.clima)}`;
   if ($("decisao").open) $("decisao").close();
   $("fimJogo").classList.add("hidden");
   mostrarTela("partida");
@@ -142,7 +145,7 @@ function passo(agora) {
   const dt = Math.min(0.1, (agora - (J.ultimoQuadro || agora)) / 1000); J.ultimoQuadro = agora;
   if (telaAtual === "partida" && !J.decidindo && !document.hidden) {
     const lim = limite();
-    J.relogio = Math.min(lim, J.relogio + dt * 2 * J.vel);
+    J.relogio = J.grupo ? Math.min(lim, relogioGrupo()) : Math.min(lim, J.relogio + dt * 2 * J.vel);
     // um erro num efeito não pode parar o relógio da partida
     while (J.i < J.eventos.length && tempoDe(J.eventos[J.i]) <= J.relogio + 1e-9) { const e = J.eventos[J.i++]; try { mostrarEvento(e); } catch (err) { console.warn("lance", err); } }
     J.pulando = false;
@@ -162,6 +165,13 @@ $("btnVoltarSede").onclick = () => { J.rodada = null; mostrarTela("sede"); mostr
 // ---------- as decisões ----------
 function abrirDecisao(p) {
   J.decidindo = true;
+  if (p.esperando) { // humano contra humano: você já decidiu, falta o outro
+    $("dTempoBox").classList.add("hidden"); $("dEstadio").classList.add("hidden");
+    $("dTitulo").textContent = "Esperando o outro técnico"; $("dTexto").textContent = "A sua decisão já foi. O jogo volta quando ele decidir (ou o tempo acabar).";
+    $("dCorpo").innerHTML = "";
+    if (!$("decisao").open) $("decisao").showModal();
+    return;
+  }
   $("dTempoBox").classList.toggle("hidden", p.tipo !== "lance");
   // na parada tática, o estádio de quem joga em casa (estadios.js) fica atrás da prancheta
   const est = $("dEstadio"); est.innerHTML = ""; est.classList.toggle("hidden", p.tipo !== "tatica");
@@ -178,6 +188,7 @@ async function enviarDecisao(resposta) {
   for (const b of $("dCorpo").querySelectorAll("button")) b.disabled = true;
   const r = await pedir("decidir", { id: J.parado.id, resposta });
   if (!r.ok) { toast(r.error); for (const b of $("dCorpo").querySelectorAll("button")) b.disabled = false; return; }
+  if (J.grupo) { atualizarRodadaGrupo(r.rodada); return; } // grupo.js: a rodada segue (ou espera o outro técnico)
   receber(r.estado);
   $("dEstadio").innerHTML = "";
   $("decisao").close();

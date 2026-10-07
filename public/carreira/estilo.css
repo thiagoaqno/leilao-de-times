@@ -630,3 +630,10 @@ button.cta:active{transform:translateY(1px) scale(.99)}
 body[data-grupo] .botoes-carreira{display:none}
 @media (max-width:760px){.sala-grade{grid-template-columns:1fr}.sala-topo #gStatus{text-align:left}.codigo-sala{font-size:38px}}
 button.cta:disabled{animation:none;filter:saturate(.35);box-shadow:none}
+
+/* a carreira em grupo: a faixa do leilão aberto e as dicas do olheiro (o visual fica para depois) */
+.leilao-box{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:50;width:min(760px,calc(100% - 24px));display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:14px;background:#0c1824f2;border:1px solid var(--acento);box-shadow:0 14px 40px -12px #000}
+.leilao-info{display:flex;gap:10px;align-items:center;font-size:14px}.leilao-info .ic{width:26px;height:26px;color:var(--acento)}.leilao-info small{color:var(--giz2)}
+.leilao-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.olheiro{margin:12px 0}#mOlheiroLista{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:10px}
+.dica-olheiro{display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;background:#00000033;border:1px solid var(--linha)}.dica-olheiro p{font-size:13px}.dica-olheiro .figurinha{flex:none;width:120px}

@@ -4,6 +4,15 @@ let modoMercado = "comprar", mostrar = 24, posMercado = "todas";
 const POS_FILTRO = [["todas", "Todas"], ["GOL", "GOL"], ["DEF", "DEF"], ["MEI", "MEI"], ["ATA", "ATA"]];
 const precoMax = () => { const v = +$("mPreco").value; return v >= 100 ? Infinity : Math.round(Math.pow(v / 100, 2.2) * 1.2e8 / 1e5) * 1e5; };
 
+// o olheiro: as posições mais fracas do time e 2 ou 3 nomes que cabem no caixa, com o porquê (carreira.js, olheiro)
+$("mOlheiro").onclick = async () => {
+  $("mOlheiro").disabled = true;
+  const r = await pedir("olheiro");
+  $("mOlheiro").disabled = false;
+  if (!r.ok) return toast(r.error);
+  $("mOlheiroLista").innerHTML = r.sugestoes.length ? r.sugestoes.map((s) => `<div class="dica-olheiro">${figurinha(s.jogador)}<p>${h(s.motivo)}</p></div>`).join("")
+    : `<p class="suave">O olheiro não achou ninguém que melhore o time e caiba no caixa.</p>`;
+};
 function telaMercado() {
   $("mCaixa").innerHTML = `${ic("moeda")} ${dinheiro(E.caixa)}`;
   $("mJanela").innerHTML = E.janela.aberta ? `${ic("maleta")} Janela aberta${E.rodada < 4 ? " até a rodada 4" : " até a rodada 21"}. Folha atual: ${dinheiro(E.folha)} por mês.`

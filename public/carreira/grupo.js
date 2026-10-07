@@ -23,7 +23,7 @@ async function entrarNaSala(dados) {
   $("gErro").textContent = "";
   MEU_ID = r.id;
   if (r.id) store.set(`carreira-online:${r.code}`, { id: r.id, token: r.token });
-  history.replaceState(null, "", `?sala=${r.code}`); // a Noite da Galera acha a sala pelo endereço
+  history.replaceState(null, "", `?sala=${r.code}${location.hash}`); // a Noite da Galera acha a sala pelo endereço
   return true;
 }
 $("btnCreate").onclick = () => {
@@ -51,13 +51,15 @@ socket.on("state", (st) => {
   const comecou = st.fase === "carreira" && (!SALA || SALA.fase !== "carreira");
   SALA = st;
   if (st.fase === "carreira") {
-    if (comecou || !E) pedir("entrar").then((r) => { if (r.ok) { receber(r.estado); if (telaAtual === "grupo" || !telaAtual) abrirSede(); } });
+    if (comecou || !E) pedir("entrar").then((r) => { if (r.ok) { receber(r.estado); DESVIO = st.now - Date.now(); if (telaAtual === "grupo" || !telaAtual) abrirSede(); atualizarRodadaGrupo(r.estado.rodadaGrupo); } });
+    desenharLeilao(); avisarLeilao(st);
+    if (E && telaAtual === "sede") telaSede();
     return;
   }
   desenharSala();
 });
 // o estado do meu clube, sempre que algo muda na sala
-socket.on("carreira", (e) => { if (EM_GRUPO && E) receber(e); });
+socket.on("carreira", (e) => { if (EM_GRUPO && E) { receber(e); atualizarRodadaGrupo(e.rodadaGrupo); } });
 
 function desenharSala() {
   if (telaAtual !== "grupo") mostrarTela("grupo");
@@ -103,3 +105,76 @@ $("gCopiar").onclick = () => {
   const url = `${location.origin}/carreira/?sala=${SALA.code}`;
   navigator.clipboard?.writeText(url).then(() => toast("Convite copiado.")).catch(() => toast(url));
 };
+
+// ---------- a rodada da turma (carreira-rodada.js no servidor) ----------
+let DESVIO = 0; // a diferença entre o relógio do servidor e o daqui
+const agoraServidor = () => Date.now() + DESVIO;
+// o minuto do meu jogo agora, pelo relógio que o servidor mandou (partida.js usa no lugar do relógio dela)
+function relogioGrupo() {
+  const m = E && E.rodadaGrupo && E.rodadaGrupo.meu; if (!m) return 0;
+  const r = m.relogio;
+  return Math.min(r.limite, r.minuto + (r.rodando ? Math.max(0, agoraServidor() - Math.max(r.t, E.rodadaGrupo.inicio)) / 1000 * r.vel : 0));
+}
+const agirGrupo = async (dados) => {
+  const r = await new Promise((ok) => socket.emit("act", dados, (x) => ok(x || { ok: false, error: "Sem resposta do servidor." })));
+  if (!r.ok) toast(r.error);
+  else if (r.pulou) toast(`Turbo: ${r.pulou} rodada${r.pulou > 1 ? "s" : ""} simulada${r.pulou > 1 ? "s" : ""} na hora.`);
+  return r;
+};
+// a rodada mudou (o relógio, uma parada, um jogo que acabou): atualiza o jogo aberto sem fechar a decisão à toa
+function atualizarRodadaGrupo(v) {
+  if (!E) return;
+  if (v) DESVIO = v.agora - Date.now();
+  const antes = E.rodadaGrupo && E.rodadaGrupo.meu;
+  E.rodadaGrupo = v;
+  const m = v && v.meu;
+  if (!m) return;
+  if (telaAtual !== "partida" || !J.grupo || J.rodada !== m.id) { if (!m.fim) abrirPartida(); return; }
+  const mudouParada = (J.parado && J.parado.id) !== (m.parado && m.parado.id) || !!(J.parado && J.parado.esperando) !== !!(m.parado && m.parado.esperando);
+  Object.assign(J, { eventos: m.eventos, parado: m.parado || null, completo: !!m.completo });
+  if (mudouParada && $("decisao").open) { $("decisao").close(); J.decidindo = false; }
+  if (!antes) atualizarPlacar();
+}
+socket.on("rodada", (v) => { if (EM_GRUPO) atualizarRodadaGrupo(v); });
+// o botão grande da sede: o anfitrião começa a rodada; os outros esperam (e veem quem já mexeu no time)
+function botaoRodadaGrupo() {
+  const b = $("btnJogar"), txt = b.querySelector("span"), meu = E.rodadaGrupo && E.rodadaGrupo.meu;
+  $("cartaoJogo").querySelector(".modos")?.classList.toggle("hidden", !!E.rodadaGrupo);
+  if (meu && !meu.fim) { txt.textContent = "Voltar para a partida"; b.disabled = false; b.onclick = () => abrirPartida(); return; }
+  if (E.rodadaGrupo) { txt.textContent = "Rodada rolando: os amigos estão jogando"; b.disabled = true; return; }
+  const prontos = SALA ? SALA.players.filter((p) => p.pronto).map((p) => p.name) : [];
+  if (E.anfitriao) { txt.textContent = `Jogar a rodada ${(SALA ? SALA.nRodada : 0) + 1}`; b.disabled = false; b.onclick = () => agirGrupo({ type: "rodada" }); }
+  else { txt.textContent = "Esperando o anfitrião começar a rodada"; b.disabled = true; }
+  let info = $("cartaoJogo").querySelector(".prontos");
+  if (!info) { info = document.createElement("p"); info.className = "prontos suave"; b.after(info); }
+  info.textContent = prontos.length ? `Já mexeram no time: ${prontos.join(", ")}.` : "Antes da rodada, cada um ajusta o time, o mercado e os avisos.";
+}
+
+// ---------- o leilão entre os amigos ----------
+function desenharLeilao() {
+  const caixa = $("leilaoBox"), l = SALA && SALA.leilao;
+  if (!l || !E) { caixa.classList.add("hidden"); return; }
+  const j = JOGADORES[l.jogador], topo = l.lances[l.lances.length - 1], meu = E.clube;
+  const proximo = topo ? topo.valor + l.passo : l.minimo, resta = Math.max(0, Math.ceil(((l.estado === "martelo" ? l.ate : l.fim) - agoraServidor()) / 1000));
+  caixa.classList.remove("hidden");
+  caixa.innerHTML = `<div class="leilao-info">${ic("martelo")}<span><b>Leilão: ${h(j ? j.nome : "?")}</b> <small>do ${h(nomeClube(l.dono))} · mínimo ${dinheiro(l.minimo)}</small><br>
+      ${topo ? `Maior lance: <b>${dinheiro(topo.valor)}</b> (${h(nomeClube(topo.clube))})` : "Sem lances ainda"} · <b>${resta}s</b>${l.estado === "martelo" ? " para o dono decidir" : ""}</span></div>
+    <div class="leilao-acoes">${l.dono === meu
+      ? (l.estado === "martelo" || topo ? `<button id="lMartelo" class="primario" ${topo ? "" : "disabled"}>Bater o martelo</button><button id="lRecusar" class="secundario">Ficar com ele</button>` : "<small>O jogador é seu: você decide no fim.</small>")
+      : l.estado === "lances" ? `<button id="lLance" class="primario" ${topo && topo.clube === meu ? "disabled" : ""}>Dar ${dinheiro(proximo)}</button>` : "<small>Esperando o dono decidir.</small>"}
+      <button id="lVer" class="discreto">Ficha</button></div>`;
+  if ($("lLance")) $("lLance").onclick = () => agirGrupo({ type: "lance", valor: proximo });
+  if ($("lMartelo")) $("lMartelo").onclick = () => agirGrupo({ type: "martelo" });
+  if ($("lRecusar")) $("lRecusar").onclick = () => agirGrupo({ type: "recusar" });
+  $("lVer").onclick = () => abrirFicha(l.jogador);
+}
+setInterval(() => { if (EM_GRUPO && SALA && SALA.leilao) desenharLeilao(); }, 1000);
+// o fim do leilão: um aviso para todo mundo
+let ultimoLeilaoVisto = null;
+function avisarLeilao(st) {
+  const u = st.ultimoLeilao; if (!u || u.t === ultimoLeilaoVisto) return;
+  const primeira = ultimoLeilaoVisto === null; ultimoLeilaoVisto = u.t; if (primeira) return;
+  const nome = JOGADORES[u.jogador] ? JOGADORES[u.jogador].nome : "o jogador";
+  toast(u.resultado === "vendido" ? `Martelo batido: ${nome} vai para o ${nomeClube(u.para)} por ${dinheiro(u.valor)}.` : u.resultado === "recusado" ? `O dono ficou com ${nome}.` : `O leilão de ${nome} terminou sem venda.`);
+  if (u.resultado === "vendido" && E && u.para === E.clube) festa();
+}
