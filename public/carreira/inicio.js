@@ -2,20 +2,26 @@
 // a conexão, o estado que chega do servidor, os escudos, a troca de tela, e começar ou continuar a carreira.
 const { $, h, store } = Comum;
 const socket = io("/carreira", { autoConnect: false }), toast = Comum.criarToast();
-const BASE = window.BasesCarreira.teste; // a base real do Brasileirão entra na fase 1
-const CLUBES = Object.fromEntries(BASE.clubes.map((c) => [c.id, c]));
-const JOGADORES = Object.fromEntries(BASE.clubes.flatMap((c) => c.jogadores.map((j) => [j.id, { ...j, clube: c.id }])));
+const BASE_PADRAO = "brasileirao-2026"; // a base das carreiras novas (as antigas seguem na delas)
+let BASE = null, CLUBES = {}, JOGADORES = {};
+function usarBase(id) {
+  const b = window.BasesCarreira[id] || window.BasesCarreira[BASE_PADRAO];
+  if (b === BASE) return;
+  BASE = b;
+  CLUBES = Object.fromEntries(BASE.clubes.map((c) => [c.id, c]));
+  JOGADORES = Object.fromEntries(BASE.clubes.flatMap((c) => c.jogadores.map((j) => [j.id, { ...j, clube: c.id }])));
+}
+usarBase(BASE_PADRAO);
 let E = null, telaAtual = null, clubeEscolhido = null;
 
 const pedir = (evento, dados) => new Promise((ok) => socket.emit(evento, dados, (r) => ok(r || { ok: false, error: "Sem resposta do servidor." })));
 const nomeClube = (id) => CLUBES[id]?.nome || id;
 const nomeJogador = (id) => JOGADORES[id]?.nome || "alguém";
 const meuClube = () => CLUBES[E.clube];
-// o escudo desenhado com as cores do clube (nada de escudo oficial: na base real também será assim)
+// o escudo em pixel-art (escudos.js): parecido com o de verdade, sem copiar
 function escudo(id) {
   const c = CLUBES[id]; if (!c) return "";
-  const [a, b] = c.cores;
-  return `<span class="escudo" title="${h(c.nome)}"><svg viewBox="0 0 40 46" aria-hidden="true"><path d="M3 4h34v18c0 12-8 19-17 22C11 41 3 34 3 22z" fill="${a}" stroke="#0b1510" stroke-width="2"/><path d="M3 15h34v7H3z" fill="${b}"/><text x="20" y="35" text-anchor="middle" font-size="10" font-weight="800" font-family="ui-monospace,monospace" fill="${b}" stroke="#0b1510" stroke-width=".6">${h(c.curto)}</text></svg></span>`;
+  return `<span class="escudo" title="${h(c.nome)}">${Escudos.svg(c)}</span>`;
 }
 const estrelas = (n) => "★".repeat(n) + `<i>${"★".repeat(5 - n)}</i>`;
 
@@ -29,6 +35,7 @@ document.addEventListener("click", (e) => { const b = e.target.closest("[data-ir
 
 // chegou um estado novo do servidor
 function receber(estado) {
+  usarBase(estado.base);
   E = estado;
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
 }
@@ -36,7 +43,9 @@ function receber(estado) {
 // ---------- começar ----------
 function telaInicio() {
   $("cNome").value = store.get("galera:name") || "";
-  if (BASE.ficticia) { $("avisoBase").textContent = "Por enquanto, os clubes são de teste, do universo da Vila. Os clubes e jogadores de verdade do Brasileirão chegam na próxima fase."; $("avisoBase").classList.remove("hidden"); }
+  usarBase(BASE_PADRAO);
+  $("avisoBase").textContent = `${BASE.nome} ${BASE.ano}: os elencos vêm da Wikipédia (${BASE.fonte.replace(/^.*, /, "")}); as notas são estimativas nossas.`;
+  $("avisoBase").classList.remove("hidden");
   $("clubes").innerHTML = [...BASE.clubes].sort((a, b) => b.tamanho - a.tamanho || a.nome.localeCompare(b.nome)).map((c) =>
     `<button class="clube" data-clube="${c.id}" aria-pressed="${c.id === clubeEscolhido}">${escudo(c.id)}<span>${h(c.nome)}<small>${h(c.cidade)}</small><span class="estrelas" aria-label="Tamanho ${c.tamanho} de 5">${estrelas(c.tamanho)}</span></span></button>`).join("");
   mostrarTela("inicio");

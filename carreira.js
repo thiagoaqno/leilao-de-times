@@ -8,8 +8,9 @@ const Temporada = require("./public/carreira/temporada.js");
 const { FORMATIONS } = require("./public/escalacao.js");
 const crypto = require("crypto");
 
-const BASES = { teste: require("./public/carreira/base/teste.js") };
-const BASE_PADRAO = "teste"; // a base real do Brasileirão entra aqui na fase 1
+// as carreiras antigas continuam na base em que nasceram; as novas começam no Brasileirão
+const BASES = { teste: require("./public/carreira/base/teste.js"), "brasileirao-2026": require("./public/carreira/base/brasileirao-2026.js") };
+const BASE_PADRAO = "brasileirao-2026";
 const VERSAO = 1;
 
 const ok = (cb, extra = {}) => typeof cb === "function" && cb({ ok: true, ...extra });

@@ -3,6 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert");
 const { subirServidor, conectar, pedir } = require("./ajuda.js");
 const Motor = require("../public/carreira/motor.js");
+const base = require("../public/carreira/base/brasileirao-2026.js");
 
 let srv;
 test.before(async () => { srv = await subirServidor(); });
@@ -10,8 +11,8 @@ test.after(async () => { await srv.parar(); });
 
 test("carreira: cria, joga uma rodada, volta pelo token e pelo código", async () => {
   const a = await conectar(srv.url, "/carreira");
-  await assert.rejects(pedir(a, "criar", { nome: "", clube: "vila" }));
-  const c = await pedir(a, "criar", { nome: "Thiago", clube: "vila" });
+  await assert.rejects(pedir(a, "criar", { nome: "", clube: "flamengo" }));
+  const c = await pedir(a, "criar", { nome: "Thiago", clube: "flamengo" });
   assert.match(c.recuperacao, /^[A-Z2-9]{12}$/);
   assert.strictEqual(c.estado.rodada, 0);
   assert.strictEqual(c.estado.total, 38);
@@ -36,7 +37,7 @@ test("carreira: cria, joga uma rodada, volta pelo token e pelo código", async (
 
 test("carreira: a partida parada fica salva, só aceita a decisão de agora e recarregar não muda nada", async () => {
   const a = await conectar(srv.url, "/carreira");
-  const c = await pedir(a, "criar", { nome: "Kizzy", clube: "praia" });
+  const c = await pedir(a, "criar", { nome: "Kizzy", clube: "palmeiras" });
   let r = await pedir(a, "jogar", { modo: 3 });
   assert.ok(r.estado.partida && r.estado.partida.parado, "parou para decidir");
   const parado = r.estado.partida.parado;
@@ -60,9 +61,10 @@ test("carreira: a partida parada fica salva, só aceita a decisão de agora e re
 
 test("carreira: escalação, a temporada inteira e a próxima", async () => {
   const a = await conectar(srv.url, "/carreira");
-  const c = await pedir(a, "criar", { nome: "Rafa", clube: "boteco" });
-  await assert.rejects(pedir(a, "escalacao", { titulares: ["boteco-1"] }), /11/);
-  const ids = ["boteco-1", "boteco-2", "boteco-3", "boteco-4", "boteco-5", "boteco-6", "boteco-7", "boteco-8", "boteco-9", "boteco-10", "boteco-11"];
+  const c = await pedir(a, "criar", { nome: "Rafa", clube: "corinthians" });
+  const elenco = base.clubes.find((c) => c.id === "corinthians").jogadores;
+  await assert.rejects(pedir(a, "escalacao", { titulares: [elenco[0].id] }), /11/);
+  const ids = [elenco.find((j) => j.pos === "GOL"), ...elenco.filter((j) => j.pos !== "GOL").slice(0, 10)].map((j) => j.id);
   const e = await pedir(a, "escalacao", { formacao: "4-4-2", tatica: { mentalidade: 1, pressao: 2, linha: 0 }, titulares: ids });
   assert.deepStrictEqual(e.estado.escalacao.titulares, ids);
   assert.deepStrictEqual(e.estado.escalacao.tatica, { mentalidade: 1, pressao: 2, linha: 0 });

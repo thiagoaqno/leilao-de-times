@@ -81,7 +81,7 @@ function telaElenco() {
   const tit = new Set(rascunho.titulares || autoTitulares());
   const grupos = ORDEM_POS.reduce((acc, p) => { const n = NOME_POS[p]; (acc[n] = acc[n] || []).push(...c.jogadores.filter((j) => j.pos === p)); return acc; }, {});
   $("eLista").innerHTML = Object.entries(grupos).map(([nome, js]) => `<h4>${nome}</h4>` + js.map((j) =>
-    `<button class="jogador ${tit.has(j.id) ? "titular" : ""}" data-jogador="${j.id}" aria-pressed="${tit.has(j.id)}"><span class="pos">${j.pos}</span><span>${h(j.nome)}<br><small>${j.idade} anos</small></span><span class="atr">RIT ${j.atr.rit} FIN ${j.atr.fin} PAS ${j.atr.pas} DEF ${j.atr.def}</span><span class="nota">${j.nota}</span></button>`).join("")).join("");
+    `<button class="jogador ${tit.has(j.id) ? "titular" : ""}" data-jogador="${j.id}" aria-pressed="${tit.has(j.id)}"><span class="pos">${j.pos}</span><span>${h(j.nome)}<br><small>${j.idade ? `${j.idade} anos` : h(j.nat || "")}</small></span><span class="atr">RIT ${j.atr.rit} FIN ${j.atr.fin} PAS ${j.atr.pas} DEF ${j.atr.def}</span><span class="nota">${j.nota}</span></button>`).join("")).join("");
   $("eConta").textContent = rascunho.titulares ? `${rascunho.titulares.length} de 11 titulares escolhidos. Toque num jogador para pôr ou tirar do time.` : "Os titulares marcados são os que a escalação automática escolheria agora. Toque num jogador para escalar do seu jeito.";
 }
 // quem o motor escalaria sozinho (a mesma conta da partida)
