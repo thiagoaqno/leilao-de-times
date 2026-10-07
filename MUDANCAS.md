@@ -1,63 +1,37 @@
-# Carreira: 115 eventos que mexem no jogo · Ginásios com tema · Bichos de costas
+# Ginásio: marcas no chão que vão sumindo até o fim da partida
 
-## Carreira: os eventos (`carreira-catalogo.js`)
-- O catálogo tem **115 eventos** em 9 grupos: vestiário, torcida, imprensa, dinheiro, treino, mercado, jogo, vida pessoal
-  e comissão técnica.
-- Cada evento tem quem ele atinge (titular, reserva, craque, goleiro, estrangeiro, lesionado, um jogador de outro
-  clube...) e quando pode sair (jogo em casa ou fora, sequência de derrotas, brigando pelo título, perto do
-  rebaixamento, caixa apertado, janela aberta...).
-- As escolhas mudam o jogo de verdade:
-  - moral e caixa (com o extrato);
-  - a nota do time ou de um jogador por algumas rodadas, ou para sempre;
-  - a nota do próximo adversário;
-  - lesões, suspensões e curas;
-  - salários, lista de venda, dicas do olheiro e uma proposta milionária por um titular.
-- Algumas escolhas são apostas, por exemplo espiar o treino do rival ou cobrar o elenco em público. O sorteio tem
-  semente: recarregar a página não muda o resultado.
-- Sai um evento quase toda rodada, às vezes dois, e nenhum repete na mesma temporada. Os que ficam sem resposta valem a
-  escolha padrão na hora de jogar, como antes.
-- Os efeitos com prazo ficam em `save.efeitos` e entram na nota pelo `timeDe`. Na tela:
-  - a caixa de entrada mostra o que está valendo ("Time +2 · 3 jogos", "Próximo adversário −1");
-  - a figurinha ganha a marca de jogador em alta ou em baixa;
-  - a força na prancheta já soma os efeitos.
-- Foto: `planos/imagens/carreira-eventos.png`.
+## O que muda (`public/ginasio/marcas.js`)
+- Os golpes passam a deixar marca na quadra, do jeito do tipo:
 
-## Ginásios com tema (`public/ginasio/temas.js`)
-- Desafiar um líder ou treinador agora leva para a casa dele. Cada tipo tem suas cores de quadra e arquibancada, o
-  desenho do chão, os pilares, o letreiro e um clima por cima da luta:
+| Golpe | Marca |
+| --- | --- |
+| Terra, Pedra, Lutador, Normal, Aço, Voador (golpe de área) e Fly/Bounce | cratera com rachaduras e pedrinhas |
+| Dig | buraco com anel de terra onde o bicho sai, e um buraquinho por onde ele entrou |
+| Fogo e Dragão | chamusco, com brasas que se apagam em poucos segundos |
+| Elétrico | rachaduras de raio, que piscam no começo |
+| Água e mergulho | poça com marolinha |
+| Gelo | gelo trincado |
+| Grama e Inseto | mato arrancado |
+| Psíquico, Fantasma, Venenoso, Sombrio, Fada e Shadow Force | mancha com uma runa girando |
 
-| Arena | Chão | Clima |
-| --- | --- | --- |
-| Ginásio Brasa (Fogo) | rachaduras de lava pulsando | brasas subindo |
-| Ginásio Maré (Água) | água ondulando | bolhas |
-| Ginásio Mata (Grama) | grama com flores | folhas caindo |
-| Ginásio Faísca (Elétrico) | placas de metal com faixa de perigo | raios piscando |
-| Arena Rochedo (Pedra) | areia com pedras | poeira |
-| Salão Místico (Psíquico) | círculos mágicos girando | estrelas piscando |
-| Casarão Assombrado (Fantasma) | tábuas rachadas | névoa |
-| Toca do Dragão (Dragão) | escamas | brasas roxas e douradas |
-| Dojô do Punho (Lutador) | tatame | poeira |
-| Pista Geada (Gelo) | gelo trincado com brilhos | neve |
-
-- Sem líder, fica o Ginásio da Galera de sempre.
-- Quem pede "menos movimento" fica sem clima e sem animação no chão.
-- Foto: `planos/imagens/ginasio-temas.png`.
-
-## Bichos de costas (`public/ginasio/animacao.js`)
-- Mirando ou andando para o fundo da quadra, o bicho vira de costas. Há uma folga perto do meio para ele não ficar
-  trocando à toa.
-- Pokémon: o GIF animado de costas do Black/White. Enquanto ele carrega, aparece o sprite parado de costas.
-- Galeramon: o próprio desenho sem o rosto (olhos e boca cobertos com a cor do corpo) e um pouco mais escuro.
-- Foto: `planos/imagens/ginasio-costas.png`.
+- Cada marca nasce forte e esmaece aos poucos, de um jeito que acabe de sumir justo no **fim da partida**: uma marca
+  feita aos 20 s de uma partida de 90 s fica com metade da força aos 55 s e some aos 90 s. As que nascem nos últimos 6 s
+  ainda duram o mínimo para dar tempo de ver.
+- Só enfeita: a marca nasce dos eventos `explosao` e `sumiu`, que o navegador já recebia. Não mexe no servidor, no dano
+  nem nos acertos.
+- Guarda no máximo 48 marcas (a mais velha sai primeiro) e começa limpa a cada partida.
+- Fica por baixo dos bichos, dos pilares e do aviso de área, e só em cima do piso.
+- Quem pede "menos movimento" no sistema fica sem o estouro ao abrir, as brasas piscando, a marolinha e a runa girando
+  (a marca continua esmaecendo do mesmo jeito).
+- Foto: `planos/imagens/ginasio-marcas.png`. As 8 marcas em 4 momentos (nova, 1/3, 2/3 e quase sumida), na quadra
+  padrão e na do Fogo.
 
 ## Conferido
-- No navegador:
-  - os 10 temas e a quadra padrão;
-  - o Charizard e o Churrasquilo virando de costas numa partida;
-  - a caixa de entrada da carreira com os efeitos valendo.
-- Teste novo, `tests/carreira-eventos.test.js`:
-  - roda todo evento com toda escolha numa carreira de verdade, sem texto com "undefined" e com algum efeito;
-  - confere que os efeitos entram no jogo e vencem no prazo;
-  - joga uma temporada inteira sem repetir evento.
-- `npm test`: 92 de 92 passaram, mas antes de o teste novo entrar no `npm test`. A rodada completa com ele e os e2e
-  (Ginásio, Vila e carreira) ainda estão rodando.
+- `npm test`: 102 de 102 passaram. Teste novo, `tests/ginasio-marcas.test.js` (já no `npm test`):
+  - o esmaecer vai de 1 a 0 justo no fim da partida e depois dele continua em 0;
+  - a marca que nasce nos últimos segundos ainda dura o mínimo;
+  - cada golpe real do jogo deixa a marca do seu jeito (inclusive Dig, Fly e Shadow Force);
+  - o mesmo evento chegando duas vezes não repete a marca, e passando de 48 as mais velhas saem.
+- A foto foi gerada fora do navegador: o desenho de `marcas.js` e da quadra rodou num canvas do Node. **Ainda falta
+  olhar numa partida de verdade no navegador**, porque o Chromium do teste não baixou neste ambiente (os e2e do
+  Playwright também não rodaram).

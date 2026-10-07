@@ -83,6 +83,7 @@ function efeitoVisual(ev) {
   if (ev.tipo === "impacto") { projeteisVisuais.delete(ev.id); estouro(ev.elemento, ev.x, ev.y, 0.6); }
   if (ev.tipo === "explosao") { areasVisuais.delete(ev.id); estouro(ev.elemento, ev.x, ev.y, 1.4); }
   animarEvento(ev, agora);
+  registrarMarca(ev); // a cratera, o buraco ou a poça que o golpe deixa no chão (marcas.js)
   const e = N.snap?.entidades.find((p) => p.id === (ev.id || ev.em));
   if (ev.tipo === "golpe") ataques.set(ev.id, { ...ev, t: agora });
   if (["golpe", "dano", "cura", "esquiva", "troca", "desmaiou", "explosao", "impacto", "atributo", "transformar"].includes(ev.tipo)) {
@@ -134,6 +135,7 @@ function desenhar(agora = relogio.agora(), dt = 0) {
   ajustarCanvas(); ctx.save();
   if (tremor > 0 && !movimentoReduzido.matches) { ctx.translate(Math.sin(agora * 0.03) * 1.5, Math.cos(agora * 0.04)); tremor = Math.max(0, tremor - dt); }
   desenharQuadra(agora);
+  desenharMarcas(agora); // no chão, por baixo dos avisos de área, dos bichos e dos pilares
   for (const a of areasVisuais.values()) desenharArea(a, agora);
   const lista = entidadesVisuais(agora);
   const objetos = [...lista.map((e) => ({ y: e.y, bicho: e })), ...Ginasio.ARENA.pilares.map((p) => ({ y: p.y, pilar: p }))].sort((a, b) => a.y - b.y);

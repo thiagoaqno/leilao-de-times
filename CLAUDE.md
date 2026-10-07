@@ -81,7 +81,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Futebol de Botão | `botao.js` | mesma organização da Sinuca |
 | Corrida (kart 3D) | `corrida.js` | `pistas.js` (pistas e carros), `pista.js`, `carros.js` (os karts), `cena.js`, `fisica.js`, `controles.js`, `rede.js`, `menus.js`, `hud.js`, `fantasma.js`, `estado.js`, `sons.js`, `jogo.js` |
 | Batalha (balões de kart) | `batalha.js` | `index.html`, `jogo.js`, `regras.js` (arenas, física, itens, robôs) |
-| Ginásio (Galeramon/Pokémon em tempo real) | `ginasio.js` | `regras.js` (motor), `gif.js`, `estilo.css`, `sala.js`, `desenho.js`, `temas.js` (a quadra de cada líder), `animacao.js`, `golpes.js`, `controles.js`, `rede.js`, `sons.js`, `hud.js` |
+| Ginásio (Galeramon/Pokémon em tempo real) | `ginasio.js` | `regras.js` (motor), `gif.js`, `estilo.css`, `sala.js`, `desenho.js`, `temas.js` (a quadra de cada líder), `animacao.js`, `golpes.js`, `marcas.js`, `controles.js`, `rede.js`, `sons.js`, `hud.js` |
 | Tiro (FPS) | `tiro.js` | `arena.js`, `bonecos.js`, `bots.js`, `cena.js`, `controles.js`, `efeitos.js`, `estado.js`, `hud.js`, `menus.js`, `rede.js`, `sons.js`, `jogo.js` |
 | Pelada (futsal 3D) e Rocket (futebol de carro) | `pelada.js` (+ `peladaBots.js`) | ver logo abaixo |
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
@@ -93,11 +93,12 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 - `/ginasio/` abre a sala e a arena 2D de pixel-art. O prédio fica na Vila Esportiva, ao lado do Pingue-Pongue, abaixo do Tênis: `ginasio: true` desenha o telhado arredondado com Pokébola.
 - Na Vila, clicar no amigo ou usar Batalha permite escolher turnos ou Ginásio. O convite `jogo: "ginasio"` reutiliza aceite/recusa; `vila.js` chama `ginasio.criarDesafio` só depois do aceite, reserva os dois lados de uma sala 1x1 sem robôs e envia `irGinasio` com credenciais privadas a cada participante.
 - O navegador guarda essas credenciais em `ginasio:<código>` e abre `?sala=&entrar=1`; os tokens não vão no endereço ou no estado público. Voltar à Vila deixa o jogador na porta do Ginásio. As batalhas por turnos continuam no canal `/vila`.
-- Os scripts dividem as variáveis globais, nesta ordem: `regras`, `gif`, `sala`, `desenho`, `animacao`, `golpes`, `controles`, `rede`, `sons`, `hud`.
+- Os scripts dividem as variáveis globais, nesta ordem: `regras`, `gif`, `sala`, `desenho`, `animacao`, `golpes`, `marcas`, `controles`, `rede`, `sons`, `hud`.
 - `sala.js` reaproveita `galeramon_time` e `pokemon_time`, monta o seletor de criaturas e guarda o token da sala.
 - `desenho.js` desenha a quadra, a câmera e a ordem das coisas; `controles.js` usa teclado, mouse e `Toque.setup`.
 - **Os bichos se mexendo (`animacao.js`):** os Pokémon tocam o GIF animado do Black/White (`PokeDex.spriteAnimado`, lido por `gif.js`, sem dependência), e os Galeramon, os quadros de `GaleramonSprite.quadros` (respirar, chamas, asas, piscar). `desenharBicho` monta o jeito de cada momento (andar, virar, antecipação do golpe, apanhar, esquiva, investida, giro, voo, buraco, mergulho, troca, desmaio) a partir dos eventos (`animarEvento`); as partículas ficam numa lista fixa (`PARTICULAS`). Mirando para o fundo, o bicho vira de costas (`animacaoCostas`: GIF de costas dos Pokémon; Galeramon sem o rosto, `semRosto`).
 - **Os golpes por tipo (`golpes.js`):** `desenharProjetil` (um desenho animado por família de tipo), `desenharCorte`, `estouro` e o golpe de área caindo.
+- **As marcas no chão (`marcas.js`):** golpe de área que cai, Dig (e a saída dele), Fly/Bounce, mergulho e Shadow Force deixam uma marca na quadra, do jeito do tipo: cratera, buraco com terra, chamusco com brasas, rachaduras de raio, poça com marolinha, gelo trincado, mato arrancado ou runa. Nasce dos eventos `explosao` e `sumiu` que o navegador já recebe (`registrarMarca`, chamado por `efeitoVisual`), então é só enfeite: não vai para o servidor nem muda dano. Cada marca esmaece linearmente do momento em que nasce até o fim da partida (`alfaDaMarca`, com o tempo de jogo do último pacote; as que nascem nos últimos 6 s ainda duram o mínimo), guarda no máximo 48 e é limpa a cada partida (`limparRede`). `desenharMarcas` roda logo depois da quadra, por baixo dos bichos e dos pilares.
 - **Golpes que viram movimento** (`SUMIR` e `GIROS` em `regras.js`): Fly/Bounce, Dig/Escavar, Mergulho e Shadow Force deixam o bicho `oculto` (ninguém acerta) e caem no ponto mirado com uma área de aviso; os giros viram investida.
 - `rede.js` manda comandos a 30/s, prevê só o movimento com `Ginasio.preverMovimento`, reconcilia pela sequência confirmada e interpola os outros com 100 ms de atraso. Vida, acertos, recargas e trocas continuam no servidor.
 - `hud.js` atualiza a vida, os golpes, as recargas, as reservas e o resultado sem remontar a cada pacote. `#debug` expõe `window.__ginasio`.
@@ -215,7 +216,7 @@ Para achar algo dentro de um jogo:
 - **`npm test`:** `node --test` em `tests/*.test.js`.
   - Os testes de servidor sobem o `server.js` de verdade e jogam com clientes Socket.io (ajudas em
     `tests/ajuda.js`: `subirServidor`, `conectar`, `pedir`, `esperarEstado`).
-- **Ginásio:** `tests/ginasio.test.js` cobre o motor; `tests/ginasio-servidor.test.js` cobre salas, comandos,
+- **Ginásio:** `tests/ginasio.test.js` cobre o motor; `tests/ginasio-marcas.test.js` cobre as marcas no chão (o tipo de marca de cada golpe e o esmaecer até o fim); `tests/ginasio-servidor.test.js` cobre salas, comandos,
   reconexão, convites da Vila (Galeramon/Pokémon, tokens privados, recusa, saída e regressão dos turnos) e uma partida inteira com clientes Socket.io e robôs, incluindo o placar da Noite.
   `tests/e2e/ginasio.spec.js` cobre controles reais, seleção, sprites, toque com dois dedos, 2x2, espectador,
   reconexão, resultado e revanche. `tests/e2e/vila-ginasio.spec.js` cobre caminhada, porta, retorno, desafio pelo sprite/Batalha e aceite no toque; `#debug` expõe `window.__vila` para inspecionar mapa/câmera. `GINASIO_FOTOS=planos/imagens` salva capturas opcionais.
