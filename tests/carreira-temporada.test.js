@@ -32,3 +32,22 @@ test("empate eliminatório termina nos pênaltis", () => {
   assert.ok(alterado.competicoes.libertadores.jogos.find((j) => j.id === final.id).penaltis);
   assert.ok(alterado.competicoes.libertadores.campeao);
 });
+
+test("no calendário mundial, suspensão e lesão contam os jogos e o jogador volta", () => {
+  process.env.DB_PATH = process.env.DB_PATH || ":memory:";
+  const { novaCarreira, ajudas, timeDe, fecharRodada, proximoJogoMundo, simularMinha, sementeDoJogo } = require("../carreira.js").paraTestes;
+  const save = novaCarreira("T", "flamengo", "");
+  const [a, b] = ajudas.elencoDe(save, "flamengo");
+  save.suspensos[a.id] = 1; save.lesoes[b.id] = 2;
+  const jogar = () => {
+    const jogo = proximoJogoMundo(save);
+    save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, casa: jogo.casa, fora: jogo.fora, modo: 1, semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
+    fecharRodada(save, simularMinha(save));
+  };
+  assert.ok(!timeDe(save, "flamengo").jogadores.some((j) => j.id === a.id), "o suspenso fica fora do jogo");
+  jogar();
+  assert.ok(!save.suspensos[a.id], "cumpriu a suspensão de 1 jogo");
+  assert.strictEqual(save.lesoes[b.id], 1);
+  jogar();
+  assert.ok(!save.lesoes[b.id], "voltou da lesão de 2 jogos");
+});
