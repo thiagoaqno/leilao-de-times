@@ -10,6 +10,7 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     const erros = vigiar(page);
     await page.setViewportSize(tela);
     await page.goto("/carreira/#debug");
+    await expect(page.locator('[data-clube="liverpool"]')).toHaveCount(1);
     await page.fill("#cNome", "Teste");
     await page.click('[data-clube="flamengo"]');
     await page.click("#btnCriar");
@@ -52,6 +53,15 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await expect(page.locator("#fLista .post").first()).toBeVisible();
     await expect(page.locator("#fLista .post .arte img").first()).toHaveAttribute("src", /^data:image\/png/);
     await page.click('#feed [data-ir="sede"]');
+    // as competições ficam dentro da tabela, e o calendário mistura liga e copa
+    await page.click('#sede [data-ir="tabela"]');
+    await expect(page.locator('#tTabela [data-competicao="libertadores"]')).toBeVisible();
+    await page.click('#tTabela [data-competicao="libertadores"]');
+    await expect(page.locator("#tTabela .grupo-copa")).toHaveCount(8);
+    await page.click('#tabela [data-ir="sede"]');
+    await page.click('#sede [data-ir="calendario"]');
+    await expect(page.locator("#cLista")).toContainText("Libertadores");
+    await page.click('#calendario [data-ir="sede"]');
     // uma partida com decisões táticas: na parada, o estádio do mandante e a troca começando pelo banco
     await page.evaluate(() => { modoEscolhido = 2; });
     await page.click("#btnJogar");

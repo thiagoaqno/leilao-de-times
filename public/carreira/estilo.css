@@ -429,3 +429,4 @@ button.link{min-height:32px;padding:4px 8px;background:transparent;border:0;colo
 @media (prefers-reduced-motion:reduce){
   .pj-cartao,#pjContinuar,.pj-medidor i,.ds-lance.novo b,.ds-fim .ds-martelo,.post .acoes .curtir[aria-pressed=true] svg{animation:none}
 }
+.abas-competicoes{display:flex;gap:8px;overflow-x:auto;padding:4px 0 14px}.abas-competicoes button{white-space:nowrap;border:1px solid var(--linha);border-radius:999px;background:var(--painel);color:inherit;padding:8px 12px}.abas-competicoes button.ativa{background:var(--clube);color:#fff;border-color:var(--clube)}.grupo-copa{margin:18px 0}.grupo-copa h3{margin:0 0 8px}.campeao-copa{padding:16px;font-weight:800;text-align:center}.linha-tempo .rd small{display:block;font-size:.62rem;opacity:.7;margin-top:3px}

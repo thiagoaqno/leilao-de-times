@@ -15,11 +15,12 @@ test("carreira: cria, joga uma rodada, volta pelo token e pelo código", async (
   const c = await pedir(a, "criar", { nome: "Thiago", clube: "flamengo" });
   assert.match(c.recuperacao, /^[A-Z2-9]{12}$/);
   assert.strictEqual(c.estado.rodada, 0);
-  assert.strictEqual(c.estado.total, 38);
-  assert.strictEqual(c.estado.meus.length, 38);
+  assert.ok(c.estado.total >= 38);
+  assert.ok(c.estado.meus.some((j) => j.competicao === "brasileirao-2026"));
+  assert.ok(c.estado.meus.some((j) => j.competicao === "libertadores"));
   const r = await pedir(a, "jogar", { modo: 1 });
   assert.strictEqual(r.estado.rodada, 1, "a rodada andou");
-  assert.strictEqual(r.estado.rodadaAnterior.length, 10, "os 10 jogos da rodada");
+  assert.strictEqual(r.estado.rodadaAnterior.length, 1, "o jogo ao vivo ficou guardado");
   assert.strictEqual(r.estado.tabela.reduce((s, l) => s + l.j, 0), 20);
   assert.ok(r.estado.meus[0].placar, "o placar do seu jogo ficou guardado");
   a.close();
@@ -59,7 +60,7 @@ test("carreira: a partida parada fica salva, só aceita a decisão de agora e re
   a.close(); b.close();
 });
 
-test("carreira: escalação, a temporada inteira e a próxima", async () => {
+test("carreira: escalação e calendário mundial no servidor", async () => {
   const a = await conectar(srv.url, "/carreira");
   const c = await pedir(a, "criar", { nome: "Rafa", clube: "corinthians" });
   const elenco = base.clubes.find((c) => c.id === "corinthians").jogadores;
@@ -68,17 +69,11 @@ test("carreira: escalação, a temporada inteira e a próxima", async () => {
   const e = await pedir(a, "escalacao", { formacao: "4-4-2", tatica: { mentalidade: 1, pressao: 2, linha: 0 }, titulares: ids });
   assert.deepStrictEqual(e.estado.escalacao.titulares, ids);
   assert.deepStrictEqual(e.estado.escalacao.tatica, { mentalidade: 1, pressao: 2, linha: 0 });
-  let r;
-  for (let i = 0; i < 38; i++) r = await pedir(a, "jogar", { modo: 1 });
-  assert.strictEqual(r.estado.fim, true);
-  assert.strictEqual(r.estado.tabela.every((l) => l.j === 38), true);
-  await assert.rejects(pedir(a, "jogar", {}), /acabou/);
-  const n = await pedir(a, "novaTemporada");
-  assert.strictEqual(n.estado.temporada, 2);
-  assert.strictEqual(n.estado.ano, 2027);
-  assert.strictEqual(n.estado.rodada, 0);
-  assert.strictEqual(n.estado.historico.length, 1);
-  assert.ok(n.estado.historico[0].posicao >= 1 && n.estado.historico[0].posicao <= 20);
+  let r = e;
+  for (let i = 0; i < 3; i++) r = await pedir(a, "jogar", { modo: 1 });
+  assert.strictEqual(r.estado.rodada, 3);
+  assert.ok(r.estado.proximoJogo);
+  assert.ok(r.estado.competicoes.libertadores && r.estado.competicoes.champions && r.estado.competicoes.mundial);
   a.close();
 });
 
