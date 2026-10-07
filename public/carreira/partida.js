@@ -89,6 +89,36 @@ function mostrarEvento(e) {
   if (J.pulando || calmo()) li.classList.add("sem-entrada");
   $("narracao").prepend(li);
   if (e.tipo === "gol") gol(e);
+  else if (LANCES_COM_CENA.has(e.tipo) && !(e.tipo === "penalti" && e.chute)) lance(e);
+}
+// os telões ficam numa linha por minuto: o que acontece no mesmo minuto aparece lado a lado, na hora (sem fila)
+const MAX_TELOES = 12;
+function poeTelao(el, e, nosso) {
+  const item = document.createElement("div"); item.className = "replay" + (nosso ? " nosso" : "") + (e.tipo === "gol" ? " de-gol" : "");
+  item.appendChild(el);
+  let linha = $("replays").firstElementChild;
+  if (!linha || linha.dataset.min !== String(e.min)) {
+    linha = document.createElement("div"); linha.className = "lance-linha"; linha.dataset.min = String(e.min);
+    $("replays").prepend(linha);
+  }
+  linha.appendChild(item);
+  // os mais velhos saem (o celular não precisa guardar a partida inteira)
+  const todos = $("replays").querySelectorAll(".replay");
+  for (let k = MAX_TELOES; k < todos.length; k++) { const l = todos[k].parentElement; todos[k].remove(); if (l && !l.children.length) l.remove(); }
+}
+// os outros lances em pixel-art (lances-outros.js): defesa, chance perdida, pênalti, cartões, lesão, troca e contra-ataque
+const LANCES_COM_CENA = new Set(["defesa", "perdeu", "penalti", "amarelo", "vermelho", "lesao", "sub", "contra_ataque"]);
+function lance(e) {
+  if (!Lances.criarLance) return;
+  const clube = clubeDoLado(e.lado), outro = clubeDoLado(1 - e.lado);
+  const quem = e.tipo === "sub" ? e.sai : e.jogador, j = JOGADORES[quem] || { nome: "?" };
+  const numero = (pid) => 2 + (([...String(pid)].reduce((s, c) => s + c.charCodeAt(0), 0)) % 28);
+  const d = { id: `${E.temporada}-${J.rodada}-${J.casa}-${J.fora}-${e.min}-${e.acr || 0}`, min: e.min, lado: e.lado === 0 ? "A" : "B", nome: j.nome,
+    uniforme: uniformeDoClube(clube), uniformeRival: uniformeDoClube(outro), estadio: { cores: CLUBES[J.casa].cores, visitante: CLUBES[J.fora].cores, curto: CLUBES[J.casa].curto }, clima: J.clima,
+    outro: e.tipo === "defesa" ? (e.goleiro ? nomeJogador(e.goleiro) : null) : e.tipo === "sub" ? sobrenome(nomeJogador(e.entra)) : null,
+    numeros: e.tipo === "sub" ? [numero(e.sai), numero(e.entra)] : null };
+  d.curto = sobrenome(j.nome);
+  try { const el = Lances.criarLance(e.tipo, d, { auto: !J.pulando }); if (el) poeTelao(el, e, clube === E.clube); } catch (err) { console.warn("lance", err); }
 }
 // o gol: o replay em pixel-art com a camisa do clube e, se foi seu, a festa
 function gol(e) {
@@ -97,8 +127,7 @@ function gol(e) {
     estadio: { cores: CLUBES[J.casa].cores, visitante: CLUBES[J.fora].cores, curto: CLUBES[J.casa].curto }, clima: J.clima }; // o cenário veste as cores de quem joga em casa
   try {
     const telao = Lances.criar(g, { id: `${E.temporada}-${J.rodada}-${J.casa}-${J.fora}`, mins: 90 }, { nome: sobrenome(j.nome), auto: !J.pulando, cobranca: null });
-    const item = document.createElement("div"); item.className = "replay" + (clube === E.clube ? " nosso" : "");
-    item.appendChild(telao); $("replays").prepend(item);
+    poeTelao(telao, e, clube === E.clube);
   } catch (err) { console.warn("replay", err); }
   if (J.pulando) return;
   const placar = $("pGols");
@@ -126,12 +155,18 @@ function passo(agora) {
 requestAnimationFrame(passo);
 for (const b of document.querySelectorAll("[data-vel]")) b.onclick = () => { J.vel = +b.dataset.vel; for (const x of document.querySelectorAll("[data-vel]")) x.setAttribute("aria-pressed", String(x === b)); };
 $("btnPular").onclick = () => { J.pulando = true; J.relogio = limite(); };
-$("btnVoltarSede").onclick = () => { J.rodada = null; mostrarTela("sede"); };
+$("btnVoltarSede").onclick = () => { J.rodada = null; mostrarTela("sede"); mostrarPosJogo(); };
 
 // ---------- as decisões ----------
 function abrirDecisao(p) {
   J.decidindo = true;
   $("dTempoBox").classList.toggle("hidden", p.tipo !== "lance");
+  // na parada tática, o estádio de quem joga em casa (estadios.js) fica atrás da prancheta
+  const est = $("dEstadio"); est.innerHTML = ""; est.classList.toggle("hidden", p.tipo !== "tatica");
+  if (p.tipo === "tatica") {
+    est.innerHTML = `<span class="placa-estadio">${ic("estadio")} ${h(CLUBES[J.casa].estadio)} · ${textoDoClima(J.clima)}</span>`;
+    Estadio.montar(est, CLUBES[J.casa], CLUBES[J.fora], J.clima);
+  }
   if (p.tipo === "tatica") decisaoTatica(p); else decisaoLance(p);
   if (!$("decisao").open) $("decisao").showModal();
 }
@@ -142,6 +177,7 @@ async function enviarDecisao(resposta) {
   const r = await pedir("decidir", { id: J.parado.id, resposta });
   if (!r.ok) { toast(r.error); for (const b of $("dCorpo").querySelectorAll("button")) b.disabled = false; return; }
   receber(r.estado);
+  $("dEstadio").innerHTML = "";
   $("decisao").close();
   abrirPartida(J.rodada);
 }
@@ -178,34 +214,40 @@ function decisaoTatica(p) {
   const d = { tatica: { ...p.tatica }, formacao: p.formacao, subs: [], trocas: [] };
   const campo = p.campo.map((v) => ({ ...v })), energia = Object.fromEntries(p.titulares.map((t) => [t.id, t.energia]));
   let banco = p.banco.map((b) => b.id), sel = null;
+  const substituir = (i, entra) => {
+    if (p.subs - d.subs.length <= 0) { sel = null; return toast("Acabaram as substituições."); }
+    d.subs.push([campo[i].id, entra]); campo[i].id = entra; energia[entra] = 100; banco = banco.filter((x) => x !== entra); sel = null;
+  };
   $("dTitulo").textContent = MOTIVO[p.motivo] || "Parada técnica";
   const desenhar = () => {
     const sobra = p.subs - d.subs.length;
     $("dTexto").innerHTML = `<span class="min-tag">${minutoTexto(p)}</span> ${h(nomeClube(J.casa))} ${p.placar[0]} × ${p.placar[1]} ${h(nomeClube(J.fora))} · ${sobra} substituiç${sobra === 1 ? "ão" : "ões"}`;
     $("dCorpo").innerHTML = `<div class="tatica-jogo">
-      <div class="prancheta-jogo">${campinho(campo, d.formacao === p.formacao ? p.formacao : p.formacao, { selecionado: sel?.onde === "campo" ? sel.i : null, energia })}
-        <p class="dica">${sel ? "Toque em quem troca de lugar com ele, ou num reserva para entrar." : "Toque num jogador para trocar de lugar ou substituir."}</p></div>
+      <div class="prancheta-jogo">${campinho(campo, p.formacao, { selecionado: sel?.onde === "campo" ? sel.i : null, energia })}
+        <p class="dica">${sel?.onde === "banco" ? `Agora toque em quem sai para entrar ${h(sobrenome(nomeJogador(sel.pid)))}.` : sel ? "Toque em quem troca de lugar com ele, ou num reserva para entrar." : "Toque num jogador (do campo ou do banco) para trocar de lugar ou substituir."}</p></div>
       <div class="lado-tatica">
         <span class="rotulo">Mentalidade</span><div class="segmentos">${MENTALIDADE.map((t, i) => `<button data-t="mentalidade" data-v="${i - 2}" aria-pressed="${d.tatica.mentalidade === i - 2}">${t}</button>`).join("")}</div>
         <span class="rotulo">Pressão</span><div class="segmentos">${NIVEL.map((t, i) => `<button data-t="pressao" data-v="${i}" aria-pressed="${d.tatica.pressao === i}">${t}</button>`).join("")}</div>
         <span class="rotulo">Linha</span><div class="segmentos">${NIVEL.map((t, i) => `<button data-t="linha" data-v="${i}" aria-pressed="${d.tatica.linha === i}">${t}</button>`).join("")}</div>
         <span class="rotulo">Formação</span><div class="segmentos pequenos">${Object.keys(Escalacao.FORMATIONS.futebol).map((f) => `<button data-f="${f}" aria-pressed="${d.formacao === f}">${f}</button>`).join("")}</div>
         <span class="rotulo">Banco ${sobra > 0 ? "" : "(sem substituições)"}</span>
-        <div class="banco-jogo">${banco.map((pid) => `<button data-reserva="${pid}" ${sobra > 0 ? "" : "disabled"}><img class="pix" src="${retrato(pid)}" alt=""><b>${notaDe(JOGADORES[pid])}</b><span>${h(sobrenome(nomeJogador(pid)))}<small>${JOGADORES[pid].pos}</small></span></button>`).join("")}</div>
+        <div class="banco-jogo">${banco.map((pid) => `<button data-reserva="${pid}" class="${sel?.onde === "banco" && sel.pid === pid ? "sel" : ""}" ${sobra > 0 ? "" : "disabled"}><img class="pix" src="${retrato(pid)}" alt=""><b>${notaDe(JOGADORES[pid])}</b><span>${h(sobrenome(nomeJogador(pid)))}<small>${JOGADORES[pid].pos}</small></span></button>`).join("")}</div>
         ${d.subs.length ? `<p class="trocas-feitas">${d.subs.map(([s, e]) => `${ic("troca")} ${h(sobrenome(nomeJogador(e)))} no lugar de ${h(sobrenome(nomeJogador(s)))}`).join("<br>")}</p>` : ""}
       </div></div>
       <button id="dVoltar" class="primario largo">Voltar ao jogo</button>`;
     $("dCorpo").querySelector(".gramado").onclick = (e) => {
       const b = e.target.closest(".peca"); if (!b || !campo[+b.dataset.i].id) return;
       const i = +b.dataset.i;
-      if (sel && sel.i !== i) { const a = campo[sel.i].id, c = campo[i].id; d.trocas.push([a, c]); [campo[sel.i].id, campo[i].id] = [c, a]; sel = null; }
+      if (sel?.onde === "banco") substituir(i, sel.pid); // escolheu o reserva primeiro: este é quem sai
+      else if (sel && sel.i !== i) { const a = campo[sel.i].id, c = campo[i].id; d.trocas.push([a, c]); [campo[sel.i].id, campo[i].id] = [c, a]; sel = null; }
       else sel = sel ? null : { onde: "campo", i };
       desenhar();
     };
+    // o reserva: com um titular marcado, ele entra; sem nada marcado, fica marcado esperando quem sai
     for (const b of $("dCorpo").querySelectorAll("[data-reserva]")) b.onclick = () => {
-      if (!sel) return toast("Primeiro toque em quem vai sair, no campo.");
-      const sai = campo[sel.i].id, entra = b.dataset.reserva;
-      d.subs.push([sai, entra]); campo[sel.i].id = entra; energia[entra] = 100; banco = banco.filter((x) => x !== entra); sel = null;
+      const pid = b.dataset.reserva;
+      if (sel?.onde === "campo") substituir(sel.i, pid);
+      else sel = sel?.onde === "banco" && sel.pid === pid ? null : { onde: "banco", pid };
       desenhar();
     };
     for (const b of $("dCorpo").querySelectorAll("[data-t]")) b.onclick = () => { d.tatica[b.dataset.t] = +b.dataset.v; desenhar(); };

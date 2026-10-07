@@ -16,6 +16,7 @@ function desenharTela(id) {
   else if (id === "mercado") telaMercado();
   else if (id === "tabela") telaTabela();
   else if (id === "calendario") telaCalendario();
+  else if (id === "feed") telaFeed();
 }
 const posicaoDe = (id) => E.tabela.findIndex((l) => l.id === id) + 1;
 const placarTxt = (p) => (p ? `${p[0]} × ${p[1]}` : "×");
@@ -35,6 +36,7 @@ function telaSede() {
     </div>`;
   telaJogo(pos);
   telaEntrada();
+  feedNaSede();
   // o último jogo
   const u = E.ultimo;
   $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div>${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}</span><div>${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>
@@ -80,8 +82,10 @@ function telaEntrada() {
   const lista = [...E.caixaEntrada].sort((a, b) => (a.resolvido === b.resolvido ? 0 : a.resolvido ? 1 : -1)).slice(0, 8);
   $("cartaoEntrada").innerHTML = `<h3>Caixa de entrada</h3>${efeitosHTML()}${lista.length ? `<ul class="entrada">${lista.map((e) => `<li class="${e.resolvido ? "lido" : "novo"} ${e.tipo}">
     <span class="ic-evento">${ic(e.icone || "sino")}</span><div><b>${h(e.titulo)}</b><p>${h(e.texto)}</p>
-    ${e.resolvido ? (e.resultado ? `<p class="resultado">${h(e.resultado)}</p>` : "") : `<div class="opcoes-evento">${e.opcoes.map((o) => `<button data-evento="${e.id}" data-opcao="${o.id}" class="${o.id === e.padrao ? "" : "secundario"}">${h(o.nome)}</button>`).join("")}</div>`}</div>
+    ${e.resolvido ? (e.resultado ? `<p class="resultado">${h(e.resultado)}</p>` : "") : e.tipo === "disputa" ? `<div class="opcoes-evento"><button data-disputa="${e.id}">${ic("martelo")} Abrir a disputa</button></div>`
+      : `<div class="opcoes-evento">${e.opcoes.map((o) => `<button data-evento="${e.id}" data-opcao="${o.id}" class="${o.id === e.padrao ? "" : "secundario"}">${h(o.nome)}</button>`).join("")}</div>`}</div>
     <small class="rod">R${e.rodada + 1}</small></li>`).join("")}</ul>` : `<p class="suave">Nada por enquanto.</p>`}`;
+  for (const b of $("cartaoEntrada").querySelectorAll("[data-disputa]")) b.onclick = () => abrirDisputa(b.dataset.disputa);
   for (const b of $("cartaoEntrada").querySelectorAll("[data-evento]")) b.onclick = async () => {
     b.disabled = true;
     const r = await pedir("evento", { id: b.dataset.evento, opcao: b.dataset.opcao });
