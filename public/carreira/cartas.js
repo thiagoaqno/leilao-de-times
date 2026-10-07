@@ -2,12 +2,8 @@
 // clube de agora), a figurinha (o card: faixa pela nota, posição, atributos, valor e situação) e a ficha aberta, com
 // as ações: proposta (jogador de outro clube) ou pôr à venda / vender na hora (jogador seu).
 const retratos = new Map();
-// a camisa no retrato: as cores do clube e as listras do escudo
-function camisaDoClube(clube) {
-  const c = CLUBES[clube]; if (!c) return ["#3a4a5a", "#dde4ea", ""];
-  const l = c.escudo && c.escudo.listras ? c.escudo.listras[0] : "";
-  return [c.cores[0], c.cores[1], l === "v" || l === "v-topo" ? "l" : l === "h" || l === "h-baixo" ? "h" : l === "d" ? "d" : ""];
-}
+// a camisa de verdade do clube (camisas.js): [cor, detalhe, desenho, calção]
+const camisaDoClube = (clube) => Camisas.de(CLUBES[clube]);
 function retrato(pid) {
   const j = JOGADORES[pid], clube = donoDe(pid), chave = pid + "|" + clube;
   if (retratos.has(chave)) return retratos.get(chave);
@@ -22,11 +18,17 @@ function retrato(pid) {
   Rostos.cabeca(g, j.nome);
   const url = cv.toDataURL(); retratos.set(chave, url); return url;
 }
-// o uniforme do boneco dos replays (lances.js) com as cores do clube
-function uniformeDoClube(clube) {
-  const [cam, det, desenho] = camisaDoClube(clube), claro = (hx) => { const n = parseInt(hx.slice(1), 16); return 0.3 * (n >> 16) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255); };
-  const calcao = claro(cam) > 200 ? "#1a1a1a" : claro(cam) < 50 ? "#1a1a1a" : "#f4f4f4";
-  return { cam, det, desenho, calcao, meiao: cam, chuteira: "#1a1a1a" };
+// o uniforme do boneco dos replays (lances.js) com a camisa do clube. contra: o clube da casa, quando quem veste é o
+// visitante; se as camisas forem parecidas demais, o visitante joga com a reserva (as cores invertidas, ou a branca)
+const corRGB = (hx) => { const n = parseInt(hx.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const distanciaCor = (a, b) => { const [x, y] = [corRGB(a), corRGB(b)]; return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]); };
+function uniformeDoClube(clube, contra) {
+  let [cam, det, desenho, calcao] = camisaDoClube(clube);
+  if (contra && contra !== clube && distanciaCor(cam, camisaDoClube(contra)[0]) < 110) {
+    const casa = camisaDoClube(contra)[0];
+    [cam, det, desenho, calcao] = distanciaCor(det, casa) >= 110 ? [det, cam, "", det] : distanciaCor("#f4f4f4", casa) >= 110 ? ["#f4f4f4", cam, "", "#f4f4f4"] : ["#1a1a1a", cam, "", "#1a1a1a"];
+  }
+  return { cam, det, desenho, calcao, meiao: calcao === "#f4f4f4" || calcao === "#ffffff" ? cam : calcao, chuteira: "#1a1a1a" };
 }
 
 const ATRIBUTOS = [["rit", "Ritmo"], ["fin", "Finalização"], ["pas", "Passe"], ["dri", "Drible"], ["def", "Defesa"], ["fis", "Físico"]];

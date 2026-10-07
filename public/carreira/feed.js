@@ -306,11 +306,20 @@ function telaFeed() {
   const posts = E.feed || [];
   $("fLista").innerHTML = posts.length ? posts.map((p) => postHTML(p)).join("") : `<p class="suave vazio">As notícias aparecem aqui depois da primeira rodada.</p>`;
 }
-// na sede: os 3 posts mais novos
+// a editoria de cada post (a etiqueta da notícia no hub)
+const EDITORIA = { contratacao: "Transferência", venda: "Transferência", vitoria: "Resultado", empate: "Resultado", derrota: "Resultado", campeao: "Taça",
+  classificado: "Copa", eliminado: "Copa", tecnico: "Clube", base: "Base", aposentadoria: "Adeus", tabela: "Tabela", gol: "Gol", goleada: "Resultado",
+  lesao: "Departamento médico", cartao: "Arbitragem", evento: "Bastidores", disputa: "Rumor" };
+const editoriaDe = (p) => EDITORIA[p.tipo] || "Bastidores";
+// na sede: as notícias em destaque. A mais nova vira a manchete (a arte grande), e as seguintes, uma grade de cards.
 function feedNaSede() {
-  const posts = (E.feed || []).slice(0, 3);
-  $("cartaoFeed").innerHTML = `<div class="linha-titulo"><h3>Notícias</h3><button class="link" data-ir="feed">Ver tudo</button></div>
-    ${posts.length ? `<div class="feed-mini">${posts.map((p) => postHTML(p, true)).join("")}</div>` : `<p class="suave">Nada por enquanto.</p>`}`;
+  const posts = E.feed || [], [manchete, ...resto] = posts;
+  const card = (p) => `<button class="noticia" data-ir="feed"><img class="pix" src="${artePost(p)}" alt=""><span><i class="editoria">${h(editoriaDe(p))}</i><b>@${h(perfilDe(p.perfil).nome)}</b><span>${h(p.texto)}</span></span></button>`;
+  $("cartaoFeed").innerHTML = `<div class="linha-titulo"><h3>Notícias</h3><button class="link" data-ir="feed">Ver todas</button></div>
+    ${manchete ? `<button class="manchete" data-ir="feed"><span class="manchete-arte"><img class="pix" src="${artePost(manchete)}" alt=""></span>
+      <span class="manchete-txt"><i class="editoria">${h(editoriaDe(manchete))}</i><b class="manchete-titulo">${h(manchete.texto)}</b>
+        <small>@${h(perfilDe(manchete.perfil).nome)} · ${milhar(manchete.curtidas)} curtidas · ${(manchete.comentarios || []).length} comentários</small></span></button>
+      ${resto.length ? `<div class="noticias-grade">${resto.slice(0, 6).map(card).join("")}</div>` : ""}` : `<p class="suave">As notícias aparecem aqui depois do primeiro jogo.</p>`}`;
 }
 // curtir (com o pulinho do coração; com "menos movimento", sem o pulinho)
 document.addEventListener("click", (e) => {

@@ -66,3 +66,13 @@ test("bd: as cartas que saíram, por jogo, e o recomeço", () => {
   assert.strictEqual(bd.cartasSaidas("proibida").size, 0);
   assert.strictEqual(bd.cartasSaidas("outro").size, 1, "zerar um jogo não mexe no outro");
 });
+
+test("bd: as salas da carreira em grupo ficam guardadas até alguém apagar", () => {
+  bd.salvarSalaCarreira("ABCDE", { fase: "espera", players: {} });
+  bd.salvarSalaCarreira("ABCDE", { fase: "carreira", players: {} });
+  const [s] = bd.salasCarreira();
+  assert.strictEqual(s.codigo, "ABCDE");
+  assert.strictEqual(s.dados.fase, "carreira", "salvar de novo atualiza");
+  assert.ok(bd.apagarSalaCarreira("ABCDE"));
+  assert.deepStrictEqual(bd.salasCarreira(), []);
+});

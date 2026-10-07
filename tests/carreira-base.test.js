@@ -107,3 +107,18 @@ test("motor: Liverpool vence Sunderland na maioria, mas não em todos os jogos",
   }
   assert.ok(vitorias > 500 && vitorias < 1000, `${vitorias}/1000 vitórias`);
 });
+
+test("camisas: todo clube tem camisa, e a camisa é a de verdade (não as listras do escudo)", () => {
+  const Camisas = require("../public/carreira/camisas.js");
+  for (const c of clubesMundo) {
+    const [cor, det, desenho, calcao] = Camisas.de(c);
+    assert.match(cor, /^#[0-9a-f]{6}$/i, c.id); assert.match(det, /^#[0-9a-f]{6}$/i, c.id); assert.match(calcao, /^#[0-9a-f]{6}$/i, c.id);
+    assert.ok(["", "l", "h", "c", "f", "d", "m", "x"].includes(desenho), c.id);
+  }
+  const de = (id) => Camisas.de(clubesMundo.find((c) => c.id === id));
+  assert.strictEqual(de("liverpool")[2], "", "o Liverpool joga de camisa lisa");
+  assert.strictEqual(de("chelsea")[2], "");
+  assert.strictEqual(de("newcastle-utd")[2], "l", "o Newcastle é listrado");
+  assert.strictEqual(de("juventus")[2], "l");
+  assert.strictEqual(de("flamengo")[2], "h", "os brasileiros seguem as listras do escudo");
+});

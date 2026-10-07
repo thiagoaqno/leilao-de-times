@@ -41,26 +41,79 @@
       <div class="linha"><input id="cCodigo" maxlength="20" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH-JKLM" aria-label="Código de recuperação"><button id="btnRecuperar">Entrar</button></div>
       <p id="erroCodigo" class="erro" role="alert"></p>
     </div>
+    <a class="quadro convite-grupo" href="?grupo=1"><span class="sobre">Novo</span><b>Carreira em grupo</b><span class="suave">A turma toda no mesmo mundo, cada um com o seu clube.</span></a>
   </section>
 
-  <!-- a sede: o centro da carreira -->
-  <section id="sede" class="tela hidden">
-    <div id="cabecalho" class="cabecalho"></div>
-    <div class="sede-grade">
-      <div class="quadro destaque" id="cartaoJogo"></div>
-      <div class="quadro" id="cartaoEntrada"></div>
-      <div class="quadro" id="cartaoUltimo"></div>
-      <div class="quadro" id="cartaoTabela"></div>
-      <div class="quadro" id="cartaoFinancas"></div>
-      <div class="quadro" id="cartaoFeed"></div>
-      <nav class="atalhos" aria-label="Ir para">
-        <button data-ir="elenco"><span class="atalho-ic" data-ic="campo"></span><span><b>Elenco e tática</b><small>Prancheta, titulares e formação</small></span></button>
-        <button data-ir="mercado"><span class="atalho-ic" data-ic="maleta"></span><span><b>Mercado</b><small id="atalhoJanela">Contratar e vender</small></span></button>
-        <button data-ir="tabela"><span class="atalho-ic" data-ic="taca"></span><span><b>Tabela</b><small>Classificação e artilharia</small></span></button>
-        <button data-ir="calendario"><span class="atalho-ic" data-ic="relogio"></span><span><b>Calendário</b><small>Ligas e copas</small></span></button>
-        <button data-ir="feed"><span class="atalho-ic" data-ic="camera"></span><span><b>Notícias</b><small>O que a galera está postando</small></span></button>
-      </nav>
-      <div class="quadro hidden" id="cartaoHistorico"></div>
+  <!-- a carreira em grupo: entrar na sala e a sala de espera (as opções do anfitrião e a escolha dos clubes) -->
+  <section id="grupo" class="tela hidden">
+    <div class="capa">
+      <span class="sobre">Carreira em grupo</span>
+      <h1>A turma inteira no mesmo mundo.</h1>
+      <p>Cada amigo assume um clube. O anfitrião abre a sala, escolhe as regras e começa quando todo mundo tiver o seu time.</p>
+    </div>
+    <div id="gEntrar" class="duas">
+      <div class="quadro">
+        <h2>Abrir uma sala</h2>
+        <label for="hName">Seu nome de técnico</label>
+        <input id="hName" maxlength="8" autocomplete="nickname" enterkeyhint="done">
+        <button id="btnCreate" class="primario largo">Criar a sala</button>
+      </div>
+      <div class="quadro secundario">
+        <h2>Entrar com o código</h2>
+        <label for="hCode">Código da sala</label>
+        <div class="linha"><input id="hCode" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCDE"><button id="btnJoin">Entrar</button></div>
+        <p class="suave">O nome vem do campo ao lado.</p>
+      </div>
+      <p id="gErro" class="erro" role="alert"></p>
+    </div>
+    <div id="gSala" class="hidden">
+      <div class="quadro sala-topo">
+        <div><span class="sobre">Código da sala</span><b id="gCodigo" class="codigo-sala"></b></div>
+        <button id="gCopiar" class="secundario">Copiar o convite</button>
+        <p id="gStatus" class="suave"></p>
+      </div>
+      <div class="sala-grade">
+        <div class="quadro">
+          <h3>Técnicos</h3>
+          <ul id="gPessoas" class="pessoas"></ul>
+        </div>
+        <div class="quadro">
+          <h3>Regras da carreira</h3>
+          <div id="gOpcoes" class="opcoes-sala"></div>
+        </div>
+      </div>
+      <div class="quadro">
+        <div class="linha-titulo"><h3>Escolha o seu clube</h3><span id="gMeuClube" class="suave"></span></div>
+        <div id="gClubes" class="clubes"></div>
+      </div>
+      <button id="btnComecar" class="primario largo cta hidden"><span>Começar a carreira</span></button>
+    </div>
+    <p class="suave centro"><a href="/carreira/">Prefere jogar sozinho? Carreira solo</a></p>
+  </section>
+
+  <!-- a sede: o hub da carreira (no PC, três colunas: o próximo jogo e a gestão, as notícias no meio, os avisos ao lado) -->
+  <section id="sede" class="tela hidden hub">
+    <header id="cabecalho" class="cabecalho hub-topo"></header>
+    <div class="hub-grade">
+      <div class="hub-principal">
+        <section class="quadro destaque hub-jogo" id="cartaoJogo" aria-label="Próxima partida"></section>
+        <nav class="hub-tiles" aria-label="Gestão do time">
+          <button class="tile tile-elenco" data-ir="elenco"><span class="tile-ic" data-ic="campo"></span><span class="tile-txt"><b>Elenco e tática</b><small>Prancheta, titulares e formação</small></span><span class="tile-dado" id="tileElenco"></span></button>
+          <button class="tile tile-mercado" data-ir="mercado"><span class="tile-ic" data-ic="maleta"></span><span class="tile-txt"><b>Mercado</b><small id="atalhoJanela">Contratar e vender</small></span><span class="tile-dado" id="tileMercado"></span></button>
+          <button class="tile" data-ir="tabela"><span class="tile-ic" data-ic="taca"></span><span class="tile-txt"><b>Tabela</b><small>Ligas, copas e artilharia</small></span><span class="tile-dado" id="tileTabela"></span></button>
+          <button class="tile" data-ir="calendario"><span class="tile-ic" data-ic="relogio"></span><span class="tile-txt"><b>Calendário</b><small>Ligas e copas</small></span><span class="tile-dado" id="tileCalendario"></span></button>
+        </nav>
+      </div>
+      <section class="quadro hub-noticias" id="cartaoFeed" aria-label="Notícias"></section>
+      <aside class="hub-lado" aria-label="Avisos e último jogo">
+        <section class="quadro hub-entrada" id="cartaoEntrada"></section>
+        <section class="quadro" id="cartaoUltimo"></section>
+      </aside>
+      <div class="hub-rodape">
+        <section class="quadro" id="cartaoTabela"></section>
+        <section class="quadro" id="cartaoFinancas"></section>
+        <section class="quadro hidden" id="cartaoHistorico"></section>
+      </div>
     </div>
     <div class="botoes-carreira">
       <button id="btnVerCodigo" class="discreto">Código de recuperação</button>
@@ -202,6 +255,7 @@
 <script src="evolucao.js"></script>
 <script src="orcamentos.js"></script>
 <script src="escudos.js"></script>
+<script src="camisas.js"></script>
 <script src="base/teste.js"></script>
 <script src="base/brasileirao-2026.js"></script>
 <script src="base/inglaterra-2026.js"></script>
@@ -213,6 +267,7 @@
 <script src="base/sulamericanos-2026.js"></script>
 <script src="base/mundo-2026.js"></script>
 <script src="inicio.js"></script>
+<script src="grupo.js"></script>
 <script src="cartas.js"></script>
 <script src="telas.js"></script>
 <script src="elenco.js"></script>

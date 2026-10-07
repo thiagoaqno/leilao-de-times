@@ -25,16 +25,18 @@ const humor = (m) => (m >= 80 ? "Embalado" : m >= 65 ? "Confiante" : m >= 50 ? "
 
 function telaSede() {
   const c = meuClube(), pos = posicaoDe(E.clube), forma = E.meus.filter((j) => j.placar).slice(-5).map(resultadoMeu);
-  $("cabecalho").innerHTML = `${escudo(E.clube, 4)}
-    <div class="cab-nome"><span class="sobre">Técnico ${h(E.tecnico.nome)} · Temporada ${E.ano}${E.temporadasMax ? ` (${E.temporada} de ${E.temporadasMax})` : ""}</span><h1>${h(c.nome)}</h1>
-      <span class="forma">${forma.map((r) => `<i class="res ${r}">${r}</i>`).join("") || "<small>A temporada ainda não começou</small>"}</span></div>
-    <div class="cab-numeros">
-      <div><small>Posição</small><b>${E.rodada > 0 ? pos + "º" : "—"}</b></div>
-      <div><small>Rodada</small><b>${E.fim ? "Fim" : `${E.rodada + 1}<i>/${E.total}</i>`}</b></div>
-      <div><small>Caixa</small><b class="${E.caixa < 0 ? "neg" : ""}">${dinheiro(E.caixa)}</b></div>
-      <div class="moral"><small>Moral · ${humor(E.moral)}</small><span class="medidor"><i style="--v:${E.moral}%"></i></span></div>
-    </div>`;
+  document.body.dataset.liga = c.liga || "brasileirao-2026"; // a cor do campeonato no hub (--acento)
+  $("cabecalho").innerHTML = `<div class="hub-clube">${escudo(E.clube, 4)}
+    <div class="cab-nome"><span class="sobre">Técnico ${h(E.tecnico.nome)} · ${h(Temporada.NOMES[c.liga] || "Temporada")} ${E.ano}${E.temporadasMax ? ` · temporada ${E.temporada} de ${E.temporadasMax}` : ""}</span><h1>${h(c.nome)}</h1>
+      <span class="forma" aria-label="Últimos resultados">${forma.map((r) => `<i class="res ${r}">${r}</i>`).join("") || "<small>A temporada ainda não começou</small>"}</span></div></div>
+    <dl class="cab-numeros">
+      <div><dt>Posição</dt><dd>${E.rodada > 0 ? pos + "º" : "—"}</dd></div>
+      <div><dt>Jogo</dt><dd>${E.fim ? "Fim" : `${E.rodada + 1}<i>/${E.total}</i>`}</dd></div>
+      <div><dt>Caixa</dt><dd class="${E.caixa < 0 ? "neg" : ""}">${dinheiro(E.caixa)}</dd></div>
+      <div class="moral"><dt>Moral · ${humor(E.moral)}</dt><dd><span class="medidor"><i style="--v:${E.moral}%"></i></span></dd></div>
+    </dl>`;
   telaJogo(pos);
+  telaTiles(pos);
   telaEntrada();
   feedNaSede();
   // o último jogo
@@ -44,15 +46,26 @@ function telaSede() {
     : `<h3>Último jogo</h3><p class="suave">A estreia é na rodada 1.</p>`;
   // a tabela resumida: o seu lugar e os vizinhos
   const ini = Math.max(0, Math.min(E.tabela.length - 5, pos - 3));
-  $("cartaoTabela").innerHTML = `<h3>Tabela</h3><table class="mini-tabela">${E.tabela.slice(ini, ini + 5).map((l, i) => `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(ini + i + 1)}">${ini + i + 1}</td><td>${escudo(l.id, 1)}</td><td class="nome">${h(nomeClube(l.id))}</td><td><b>${l.p}</b></td></tr>`).join("")}</table>`;
+  $("cartaoTabela").innerHTML = `<div class="linha-titulo"><h3>Tabela</h3><button class="link" data-ir="tabela">Ver tudo</button></div><table class="mini-tabela">${E.tabela.slice(ini, ini + 5).map((l, i) => `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(ini + i + 1)}">${ini + i + 1}</td><td>${escudo(l.id, 1)}</td><td class="nome">${h(nomeClube(l.id))}</td><td><b>${l.p}</b></td></tr>`).join("")}</table>`;
   // o dinheiro: caixa, folha e o extrato da última rodada
   const f = E.financas[0];
   $("cartaoFinancas").innerHTML = `<h3>Finanças</h3><div class="numeros-fin"><div><small>Caixa</small><b>${dinheiro(E.caixa)}</b></div><div><small>Folha por mês</small><b>${dinheiro(E.folha)}</b></div></div>
     ${f ? `<ul class="extrato">${f.itens.slice(-6).map(([n, v]) => `<li><span>${h(n)}</span><b class="${v < 0 ? "neg" : "positivo"}">${v > 0 ? "+" : ""}${dinheiro(v)}</b></li>`).join("")}</ul>` : `<p class="suave">O extrato aparece depois do primeiro jogo.</p>`}`;
-  $("atalhoJanela").textContent = E.janela.aberta ? "Janela aberta" : E.janela.proxima != null ? `Janela abre na rodada ${E.janela.proxima + 1}` : "Janela fechada";
   // o histórico fica no resumo final quando a carreira acabou
   $("cartaoHistorico").classList.toggle("hidden", !E.historico.length || E.encerrada);
   $("cartaoHistorico").innerHTML = `<h3>Histórico</h3>${E.historico.map((x) => `<p class="hist"><b>${x.ano}</b> ${x.posicao}º lugar, ${x.pontos} pts.${x.titulos && x.titulos.length ? ` Títulos: ${h(x.titulos.join(", "))}.` : ` Campeão: ${h(nomeClube(x.campeao))}.`}${x.artilheiro ? ` Artilheiro: ${h(nomeJogador(x.artilheiro.id))} (${x.artilheiro.gols})` : ""}</p>`).join("")}`;
+}
+// os blocos da gestão: o número de agora de cada um (a força do time, o caixa, a posição, o próximo compromisso)
+function telaTiles(pos) {
+  const elenco = elencoDe(E.clube), notas = elenco.filter((j) => !fora(j.id)).map(notaDe).sort((a, b) => b - a).slice(0, 11);
+  const forca = notas.length ? Math.round(notas.reduce((s, n) => s + n, 0) / notas.length) : 0, desfalques = elenco.filter((j) => fora(j.id)).length;
+  $("tileElenco").innerHTML = `<b>${forca}</b><small>força · ${h(E.escalacao.formacao)}${desfalques ? ` · ${desfalques} fora` : ""}</small>`;
+  $("atalhoJanela").textContent = E.janela.aberta ? "Janela aberta: contratar e vender" : E.janela.proxima != null ? `Janela abre no jogo ${E.janela.proxima + 1}` : "Janela fechada";
+  $("tileMercado").innerHTML = `<b>${dinheiro(E.caixa)}</b><small>${elenco.length} no elenco</small>`;
+  $("tileMercado").closest(".tile").classList.toggle("aberta", !!E.janela.aberta);
+  $("tileTabela").innerHTML = `<b>${E.rodada > 0 ? pos + "º" : "—"}</b><small>${E.rodada > 0 ? `${E.tabela[pos - 1].p} ponto${E.tabela[pos - 1].p === 1 ? "" : "s"}` : "sem jogos ainda"}</small>`;
+  const prox = E.proximoJogo, comp = prox && E.competicoes && E.competicoes[prox.competicao];
+  $("tileCalendario").innerHTML = prox ? `<b>${escudo(prox.casa === E.clube ? prox.fora : prox.casa, 1)}</b><small>${h(comp ? comp.nome : "Liga")}</small>` : `<b>—</b><small>fim da temporada</small>`;
 }
 // o fim da carreira (a última temporada acabou): os títulos, o artilheiro de cada ano, o melhor negócio e a força do
 // elenco temporada a temporada. Não tem "nova temporada".
@@ -85,24 +98,32 @@ function telaJogo(pos) {
   if (modoEscolhido == null) modoEscolhido = E.modo;
   const desfalques = E.elenco.filter((pid) => fora(pid));
   const pendentes = E.caixaEntrada.filter((e) => !e.resolvido).length;
-  $("cartaoJogo").innerHTML = `<span class="sobre">${E.partida ? "Partida em andamento" : `Rodada ${E.rodada + 1} · ${casa === E.clube ? "em casa" : "fora"}`}</span>
+  const prox = E.proximoJogo, comp = prox && E.competicoes && E.competicoes[prox.competicao];
+  const onde = `${comp ? h(comp.nome) : `Rodada ${E.rodada + 1}`}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""} · ${casa === E.clube ? "em casa" : "fora"}`;
+  $("cartaoJogo").innerHTML = `<span class="sobre">${E.partida ? "Partida em andamento" : `Próxima partida · ${onde}`}</span>
     <div class="confronto"><div style="${coresClube(casa)}">${escudo(casa, 4)}<b>${h(nomeClube(casa))}</b><small>${posicaoDe(casa) && E.rodada ? posicaoDe(casa) + "º" : ""}</small></div><span class="x">×</span><div style="${coresClube(visitante)}">${escudo(visitante, 4)}<b>${h(nomeClube(visitante))}</b><small>${posicaoDe(visitante) && E.rodada ? posicaoDe(visitante) + "º" : ""}</small></div></div>
     <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p>
     ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}
-    ${E.partida ? "" : `<div class="modos" role="group" aria-label="Como jogar">${MODOS.map(([m, t, d]) => `<button data-modo="${m}" aria-pressed="${m === modoEscolhido}"><b>${t}</b><small>${d}</small></button>`).join("")}</div>`}
+    ${E.partida ? "" : `<div class="modos" role="group" aria-label="Como jogar">${MODOS.map(([m, t, d]) => `<button data-modo="${m}" aria-pressed="${m === modoEscolhido}" title="${h(d)}"><b>${t}</b><small>${d}</small></button>`).join("")}</div>`}
     ${pendentes && !E.partida ? `<p class="pendente">${ic("sino")} ${pendentes} aviso${pendentes > 1 ? "s" : ""} esperando resposta. Se jogar agora, vale a opção padrão.</p>` : ""}
-    <button id="btnJogar" class="primario largo">${E.partida ? "Voltar para a partida" : "Ir para o jogo"}</button>`;
+    <button id="btnJogar" class="primario largo cta"><span>${E.partida ? "Voltar para a partida" : "Jogar a próxima partida"}</span>${ic("apito")}</button>`;
   for (const b of $("cartaoJogo").querySelectorAll("[data-modo]")) b.onclick = () => { modoEscolhido = +b.dataset.modo; pedir("modo", { modo: modoEscolhido }); for (const x of $("cartaoJogo").querySelectorAll("[data-modo]")) x.setAttribute("aria-pressed", String(+x.dataset.modo === modoEscolhido)); };
   $("btnJogar").onclick = jogar;
+  // na carreira em grupo, a rodada é de todos ao mesmo tempo (a rodada ao vivo da turma ainda está chegando)
+  if (EM_GRUPO) { $("btnJogar").disabled = true; $("btnJogar").querySelector("span").textContent = "Rodada da turma: em breve"; $("cartaoJogo").querySelector(".modos")?.remove(); }
 }
-// a caixa de entrada: os eventos entre as rodadas (os que pedem resposta primeiro)
+// a caixa de entrada, ao lado: uma central de avisos curtos. O que pede resposta fica aberto, com as opções; o resto é
+// uma linha (o título) que abre o texto ao tocar.
 function telaEntrada() {
-  const lista = [...E.caixaEntrada].sort((a, b) => (a.resolvido === b.resolvido ? 0 : a.resolvido ? 1 : -1)).slice(0, 8);
-  $("cartaoEntrada").innerHTML = `<h3>Caixa de entrada</h3>${efeitosHTML()}${lista.length ? `<ul class="entrada">${lista.map((e) => `<li class="${e.resolvido ? "lido" : "novo"} ${e.tipo}">
-    <span class="ic-evento">${ic(e.icone || "sino")}</span><div><b>${h(e.titulo)}</b><p>${h(e.texto)}</p>
-    ${e.resolvido ? (e.resultado ? `<p class="resultado">${h(e.resultado)}</p>` : "") : e.tipo === "disputa" ? `<div class="opcoes-evento"><button data-disputa="${e.id}">${ic("martelo")} Abrir a disputa</button></div>`
-      : `<div class="opcoes-evento">${e.opcoes.map((o) => `<button data-evento="${e.id}" data-opcao="${o.id}" class="${o.id === e.padrao ? "" : "secundario"}">${h(o.nome)}</button>`).join("")}</div>`}</div>
-    <small class="rod">R${e.rodada + 1}</small></li>`).join("")}</ul>` : `<p class="suave">Nada por enquanto.</p>`}`;
+  const lista = [...E.caixaEntrada].sort((a, b) => (a.resolvido === b.resolvido ? 0 : a.resolvido ? 1 : -1)).slice(0, 10);
+  const novos = lista.filter((e) => !e.resolvido).length;
+  const item = (e) => e.resolvido
+    ? `<li class="lido ${e.tipo}"><details><summary><span class="ic-evento">${ic(e.icone || "sino")}</span><b>${h(e.titulo)}</b><small class="rod">J${e.rodada + 1}</small></summary><p>${h(e.texto)}</p>${e.resultado ? `<p class="resultado">${h(e.resultado)}</p>` : ""}</details></li>`
+    : `<li class="novo ${e.tipo}"><div class="aviso-topo"><span class="ic-evento">${ic(e.icone || "sino")}</span><b>${h(e.titulo)}</b><small class="rod">J${e.rodada + 1}</small></div><p>${h(e.texto)}</p>
+      ${e.tipo === "disputa" ? `<div class="opcoes-evento"><button data-disputa="${e.id}">${ic("martelo")} Abrir a disputa</button></div>`
+        : `<div class="opcoes-evento">${e.opcoes.map((o) => `<button data-evento="${e.id}" data-opcao="${o.id}" class="${o.id === e.padrao ? "" : "secundario"}">${h(o.nome)}</button>`).join("")}</div>`}</li>`;
+  $("cartaoEntrada").innerHTML = `<div class="linha-titulo"><h3>Caixa de entrada</h3>${novos ? `<span class="selo">${novos} nova${novos > 1 ? "s" : ""}</span>` : ""}</div>${efeitosHTML()}
+    ${lista.length ? `<ul class="entrada">${lista.map(item).join("")}</ul>` : `<p class="suave">Nada por enquanto.</p>`}`;
   for (const b of $("cartaoEntrada").querySelectorAll("[data-disputa]")) b.onclick = () => abrirDisputa(b.dataset.disputa);
   for (const b of $("cartaoEntrada").querySelectorAll("[data-evento]")) b.onclick = async () => {
     b.disabled = true;

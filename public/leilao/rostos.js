@@ -131,10 +131,43 @@ André Onana:5kp-|Bart Verbruggen:1cc-|Guglielmo Vicario:2cpb|Robert Sánchez:2c
     const chuteira = atual ? ["#f4f15a", "#ff5fa2", "#5ad0ff", "#ff8a3d", "#f4f4f4", "#b6ff3a"][h % 6] : "#1a1a1a";
     return { cam, det, desenho, calcao, meiao: calcao === "#f4f4f4" ? cam : calcao, chuteira };
   }
+  // Quem não está na tabela mas tem país conhecido (a Carreira registra a nacionalidade e a idade de cada jogador com
+  // Rostos.registrar): o rosto sai sorteado pelo nome, mas com o jeito de quem nasceu lá (o tom de pele, o cabelo e a
+  // cor) e com a idade (os veteranos ficam grisalhos ou calvos). Sem país, o sorteio puro de antes.
+  // O peso de cada tom de pele (1 a 5) por região:
+  const REGIOES = {
+    norte: [[6, 3, 1, 0, 0], ["Noruega", "Suécia", "Dinamarca", "Islândia", "Finlândia", "Polônia", "Rússia", "Ucrânia", "Tchéquia", "Eslováquia", "Hungria", "Estônia", "Letônia", "Lituânia", "Escócia", "Irlanda", "Irlanda do Norte", "Áustria", "Eslovênia", "Croácia", "Sérvia", "Bósnia e Herzegovina", "Montenegro", "Kosovo", "Albânia", "Macedônia do Norte", "Bulgária", "Romênia", "Geórgia", "Armênia", "Luxemburgo", "Nova Zelândia", "Austrália", "Uzbequistão"]],
+    oeste: [[4, 3, 1, 1, 1.6], ["Inglaterra", "França", "Alemanha", "Holanda", "Bélgica", "Suíça", "País de Gales", "Estados Unidos", "Canadá"]],
+    sul: [[1, 6, 2, 0.3, 0.3], ["Espanha", "Itália", "Portugal", "Grécia", "Chipre", "Israel", "Turquia"]],
+    arabe: [[0, 2, 6, 2, 0.2], ["Marrocos", "Argélia", "Tunísia", "Egito", "Líbia", "Arábia Saudita", "Jordânia", "Síria", "Comores"]],
+    africa: [[0, 0, 0, 2, 8], ["Senegal", "Costa do Marfim", "Nigéria", "Gana", "Camarões", "Mali", "RD Congo", "Burkina Faso", "Guiné", "Angola", "Gâmbia", "Gabão", "Guiné-Bissau", "Zimbábue", "Togo", "Benim", "República Centro-Africana", "Guiné Equatorial", "Cabo Verde", "África do Sul", "Moçambique", "Níger", "Zâmbia", "Tanzânia", "Burundi", "Serra Leoa", "Haiti", "Jamaica", "Suriname"]],
+    prata: [[1, 5, 3, 1, 0.2], ["Argentina", "Uruguai", "Chile"]],
+    andes: [[0, 1.5, 5, 3, 1], ["Colômbia", "Equador", "Venezuela", "Peru", "Bolívia", "Paraguai", "México", "Panamá", "Honduras", "República Dominicana"]],
+    brasil: [[1, 2, 3, 3, 2], ["Brasil"]],
+    asia: [[2, 4, 1, 0, 0], ["Japão", "Coreia do Sul", "Indonésia", "Malásia"]],
+  };
+  const REGIAO = {};
+  for (const [r, [, paises]] of Object.entries(REGIOES)) for (const p of paises) REGIAO[p] = r;
+  const PERFIS = {};
+  // a Carreira avisa o país e a idade de cada jogador (o mesmo nome sempre dá o mesmo rosto)
+  function registrar(nome, { nat, idade } = {}) { PERFIS[norm(nome)] = { nat, idade }; }
+  const pesado = (pesos, x) => { const tot = pesos.reduce((s, p) => s + p, 0); let a = x * tot; for (let i = 0; i < pesos.length; i++) { a -= pesos[i]; if (a < 0) return i; } return pesos.length - 1; };
   function tracosDe(nome) {
     const t = TRACOS[norm(nome)]; if (t) return t;
-    const h = semente(norm(nome)); // quem não está na tabela: sorteado pelo nome, sempre igual
-    return "12345"[h % 5] + "ccccrxlo"[(h >>> 3) % 8] + "ppcclr"[(h >>> 6) % 6] + "---sb"[(h >>> 9) % 5];
+    const h = semente(norm(nome)), perfil = PERFIS[norm(nome)]; // quem não está na tabela: sorteado pelo nome, sempre igual
+    const regiao = perfil && REGIOES[REGIAO[perfil.nat]];
+    if (!regiao) return "12345"[h % 5] + "ccccrxlo"[(h >>> 3) % 8] + "ppcclr"[(h >>> 6) % 6] + "---sb"[(h >>> 9) % 5];
+    const fr = (n) => ((h >>> n) & 1023) / 1024;
+    const pele = 1 + pesado(regiao[0], fr(0));
+    // o cabelo: as peles escuras usam mais o raspado, o cacheado e o black power; as outras, o curto e o longo
+    let corte = pele >= 4 ? "rrooacck"[(h >>> 11) % 8] : "cccccxlrmk"[(h >>> 11) % 10];
+    // a cor: loiro e ruivo só nas peles claras
+    let cor = pele === 1 ? "lccpprl"[(h >>> 15) % 7] : pele === 2 ? "ccppplc"[(h >>> 15) % 7] : "p";
+    const idade = perfil.idade || 0;
+    if (idade >= 33 && fr(18) < 0.35) cor = "g";
+    if (idade >= 31 && fr(20) < 0.2) corte = "x";
+    const barba = idade >= 24 ? "--sbbv"[(h >>> 22) % 6] : "---s"[(h >>> 22) % 4];
+    return String(pele) + corte + cor + barba;
   }
   // a cabeça (pescoço, rosto, orelhas, cabelo e barba) no canvas g, com o canto do quadro de 16x16 em (ox, oy). A carta
   // usa no rosto; os lances, no boneco. olhar (-1 ou 1) vira os olhos, o nariz e a boca um pixel para o lado.
@@ -190,5 +223,5 @@ André Onana:5kp-|Bart Verbruggen:1cc-|Guglielmo Vicario:2cpb|Robert Sánchez:2c
       : desenho === "c" ? x === 5 || x === 6 : desenho === "f" ? y === 14 : desenho === "d" ? x - y === -8 || x - y === -7 : desenho === "m" ? x >= 6 : false;
   }
   const peleDe = (nome) => PELE[tracosDe(nome)[0]] || PELE[2], cabeloDe = (nome) => CABELO[tracosDe(nome)[2]] || CABELO.p;
-  window.Rostos = { de, tracosDe, camisaDe, uniformeDe, pele: peleDe, cabelo: cabeloDe, cabeca: pintaCabeca, listra: pintaListra };
+  window.Rostos = { de, registrar, tracosDe, camisaDe, uniformeDe, pele: peleDe, cabelo: cabeloDe, cabeca: pintaCabeca, listra: pintaListra };
 })();

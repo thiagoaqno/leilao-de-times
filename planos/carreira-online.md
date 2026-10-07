@@ -389,6 +389,9 @@ Só depois que a noite inteira funcionar:
 | 7 | Fim da noite e ranking | médio | PR 6 |
 | 8 | Acabamento | pequeno | PR 7 |
 
+**Andamento:** os PRs 1 e 2 entraram (#77 e #78). Os PRs 3 e 4 entraram juntos, a pedido do Thiago, no mesmo PR da
+repaginada da sede (o hub no estilo EA FC) e das camisas e rostos dos jogadores importados. O próximo é o PR 5.
+
 **Se precisar cortar para jogar logo:** os PRs 4 a 7 funcionam só com o Brasileirão e a Libertadores (o PR 2 pode
 deixar a Europa para depois). A noite em grupo já fica completa sem as ligas europeias, e elas entram depois.
 

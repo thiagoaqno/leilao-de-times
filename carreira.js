@@ -114,17 +114,20 @@ function recalcularMundo(save) {
   return mundo;
 }
 const proximoJogoMundo = (save) => (save.calendarioMundo || []).find((j) => (j.casa === save.clube || j.fora === save.clube) && !(save.jogosJogados || []).includes(j.id)) || null;
-function novaCarreira(nome, clube, skin, temporadas = Evolucao.TEMPORADAS.padrao) {
-  const semente = crypto.randomBytes(6).toString("hex"), base = BASES[BASE_PADRAO];
-  const save = {
-    v: VERSAO, base: base.id, ano: base.ano, temporada: 1, clube, tecnico: { nome, skin: String(skin || "").slice(0, 20) }, semente,
-    temporadasMax: inteiro(temporadas, Evolucao.TEMPORADAS.min, Evolucao.TEMPORADAS.max, Evolucao.TEMPORADAS.padrao),
-    calendario: [], resultadosFixos: {}, jogosJogados: [],
-    rodada: 0, resultados: [], gols: {}, modo: 1,
-    escalacao: { formacao: base.clubes.find((c) => c.id === clube).formacao, tatica: { mentalidade: 0, pressao: 1, linha: 1 }, titulares: null, fixo: false },
-    partida: null, ultimo: null, historico: [],
-  };
+// o mundo de uma carreira nova, ainda sem técnico: a carreira solo assume um clube, e a carreira em grupo, um por pessoa
+function mundoNovo(temporadas = Evolucao.TEMPORADAS.padrao) {
+  const base = BASES[BASE_PADRAO];
+  const save = { v: VERSAO, base: base.id, ano: base.ano, temporada: 1, semente: crypto.randomBytes(6).toString("hex"),
+    temporadasMax: inteiro(temporadas, Evolucao.TEMPORADAS.min, Evolucao.TEMPORADAS.max, Evolucao.TEMPORADAS.padrao), resultadosFixos: {}, resultados: [], gols: {} };
   recalcularMundo(save);
+  return save;
+}
+function novaCarreira(nome, clube, skin, temporadas = Evolucao.TEMPORADAS.padrao) { return assumirClube(mundoNovo(temporadas), clube, nome, skin); }
+// o técnico assume o clube: o calendário dele, o caixa, a situação, a escalação, o aviso de boas-vindas e o post no feed
+function assumirClube(save, clube, nome, skin) {
+  Object.assign(save, { clube, tecnico: { nome, skin: String(skin || "").slice(0, 20) }, calendario: [], jogosJogados: [], rodada: 0, modo: 1,
+    escalacao: { formacao: clubeDe(save, clube).formacao, tatica: { mentalidade: 0, pressao: 1, linha: 1 }, titulares: null, fixo: false },
+    partida: null, ultimo: null, historico: [] });
   save.calendario = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, clube).map((j) => [[j.casa, j.fora]]);
   completar(save);
   save.caixa = clubeDe(save, clube).orcamento || save.caixa;
@@ -135,6 +138,48 @@ function novaCarreira(nome, clube, skin, temporadas = Evolucao.TEMPORADAS.padrao
   Feed.postar(save, { tipo: "tecnico", perfil: clube, arte: { cena: "apresentacao", clube }, texto: `O ${clubeDe(save, clube).nome} apresenta ${nome} como novo técnico. "Vamos brigar por tudo", disse na chegada.` });
   return save;
 }
+
+// ---------- a carreira em grupo (carreira-online.js) ----------
+// Um mundo só, com vários clubes humanos. O que é de cada clube (o caixa, a moral, a escalação, a caixa de entrada, o
+// feed, o calendário dele...) fica em save.humanos[clube].estado; o resto (os donos, as notas, as competições, as
+// lesões...) é de todos. Para usar as funções da carreira solo com um clube, monta-se a visão daquele clube
+// (vistaDe: o save com os campos dele por cima, e save.clube = ele) e, depois, guarda-se de volta (guardarVista).
+const CAMPOS_CLUBE = ["clube", "tecnico", "caixa", "moral", "situacao", "escalacao", "caixaEntrada", "financas", "feed", "posJogo", "compras", "valores", "pedidos",
+  "parcelas", "aVenda", "indicacoes", "tentativas", "bonusVitoria", "provocado", "efeitos", "eventosVistos", "segredos", "jogosJogados", "calendario", "rodada",
+  "partida", "ultimo", "modo", "historico", "jogosTemporada"];
+function vistaDe(save, clube) {
+  const v = { ...save, ...save.humanos[clube].estado };
+  delete v.humanos;
+  return v;
+}
+function guardarVista(save, v) {
+  const h = save.humanos[v.clube];
+  h.estado = Object.fromEntries(CAMPOS_CLUBE.map((k) => [k, v[k]]));
+  for (const [k, valor] of Object.entries(v)) if (!CAMPOS_CLUBE.includes(k)) save[k] = valor;
+}
+// o mundo da sala: cada humano assume o seu clube; o aporte do investidor entra no caixa de cada um. Os clubes humanos
+// saem da lista dos clubes do computador (caixaIA).
+function novaCarreiraGrupo(humanos, { temporadas, aporte = 0 } = {}) {
+  const save = mundoNovo(temporadas);
+  save.humanos = {};
+  for (const hm of humanos) {
+    const v = { ...save };
+    for (const k of CAMPOS_CLUBE) delete v[k];
+    delete v.humanos;
+    assumirClube(v, hm.clube, hm.nome, hm.skin);
+    if (aporte > 0) {
+      movimentar(v, "Aporte do investidor", aporte);
+      avisar(v, { tipo: "aporte", icone: "maleta", titulo: "Aporte do investidor", texto: `O investidor da galera pôs ${dinheiro(aporte)} no caixa. Caixa agora: ${dinheiro(v.caixa)}.` });
+    }
+    save.humanos[hm.clube] = { nome: hm.nome, skin: String(hm.skin || "").slice(0, 20) };
+    guardarVista(save, v);
+  }
+  for (const id of Object.keys(save.humanos)) delete save.caixaIA[id];
+  return save;
+}
+// os clubes que dá para escolher: só o Brasileirão, ou o Brasileirão e as cinco grandes ligas
+const LIGAS_GRUPO = { brasil: ["brasileirao-2026"], mundo: ["brasileirao-2026", ...Temporada.EUROPA] };
+const clubesEscolhiveis = (ligas) => BASES[BASE_PADRAO].clubes.filter((c) => (LIGAS_GRUPO[ligas] || LIGAS_GRUPO.mundo).includes(c.liga));
 
 // o time que entra em campo: o elenco de agora (com as transferências), sem lesionados e suspensos, com a moral no seu
 const moralBonus = (save) => Math.round((save.moral - 60) / 12);
@@ -708,3 +753,5 @@ module.exports = function ligarCarreira(io) {
 };
 // para os testes: montar uma carreira e mexer nela sem o socket
 module.exports.paraTestes = { novaCarreira, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, APOSENTADO };
+// para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
+module.exports.grupo = { novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };

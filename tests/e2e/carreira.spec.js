@@ -87,6 +87,7 @@ test("carreira: temporadas do contrato, código de recuperação, sair e excluir
   await page.click('[data-clube="santos"]');
   await page.click('#cTemporadas [data-temporadas="3"]');
   await page.click("#btnCriar");
+  await expect(page.locator("#dlgCodigo")).toBeVisible({ timeout: 30000 });
   const codigo = await page.locator("#codigoGrande").textContent();
   await page.click("#btnAnotei");
   expect(await page.evaluate(() => __carreira.E.temporadasMax)).toBe(3);
@@ -113,4 +114,43 @@ test("carreira: temporadas do contrato, código de recuperação, sair e excluir
   await page.click("#btnRecuperar");
   await expect(page.locator("#erroCodigo")).toContainText("não encontrado");
   expect(erros).toEqual([]);
+});
+
+// a carreira em grupo: duas pessoas na mesma sala, cada uma num clube, e o hub de cada uma depois do começo
+test("carreira em grupo: sala, clubes e o hub de cada um", async ({ browser }) => {
+  const [ca, cb] = [await browser.newContext(), await browser.newContext()];
+  const a = await ca.newPage(), b = await cb.newPage();
+  const erros = [...vigiar(a), ...vigiar(b)];
+  await a.setViewportSize({ width: 1440, height: 900 });
+  await a.goto("/carreira/?grupo=1#debug");
+  await a.fill("#hName", "Ana");
+  await a.click("#btnCreate");
+  await expect(a.locator("#gCodigo")).toHaveText(/^[A-Z2-9]{5}$/);
+  const codigo = await a.locator("#gCodigo").textContent();
+  await expect(a).toHaveURL(new RegExp(`sala=${codigo}`));
+  await b.goto(`/carreira/?sala=${codigo}#debug`);
+  await b.fill("#hName", "Bia");
+  await b.click("#btnJoin");
+  await expect(a.locator("#gPessoas li")).toHaveCount(2);
+  // o anfitrião mexe nas regras; quem entrou só vê
+  await expect(b.locator('#gOpcoes [data-opcao-sala="temporadas"]').first()).toBeDisabled();
+  await a.click('#gOpcoes [data-opcao-sala="aporte"][data-valor="500000000"]');
+  await a.click('[data-clube-sala="flamengo"]');
+  await expect(b.locator('[data-clube-sala="flamengo"]')).toBeDisabled();
+  await b.click('[data-clube-sala="liverpool"]');
+  await expect(a.locator("#btnComecar")).toBeEnabled();
+  await a.click("#btnComecar");
+  // cada um no hub do seu clube
+  await expect(a.locator("#sede")).toBeVisible({ timeout: 30000 });
+  await expect(b.locator("#sede")).toBeVisible({ timeout: 30000 });
+  await expect(a.locator("#cabecalho h1")).toHaveText("Flamengo");
+  await expect(b.locator("#cabecalho h1")).toHaveText("Liverpool");
+  await expect(a.locator(".hub-tiles .tile")).toHaveCount(4);
+  await expect(a.locator("#cartaoFeed .manchete")).toBeVisible();
+  await expect(a.locator("#btnJogar")).toBeDisabled();
+  // recarregou: volta sozinho para o clube dele
+  await b.reload();
+  await expect(b.locator("#cabecalho h1")).toHaveText("Liverpool", { timeout: 30000 });
+  expect(erros).toEqual([]);
+  await ca.close(); await cb.close();
 });

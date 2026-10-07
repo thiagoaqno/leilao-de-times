@@ -1,7 +1,9 @@
 // Carreira de Treinador (parte 1 dos scripts da página; eles rodam em ordem e dividem as variáveis globais):
 // a conexão, o estado que chega do servidor, a base, os escudos, as contas do elenco, a troca de tela e o começo.
 const { $, h, store } = Comum;
-const socket = io("/carreira", { autoConnect: false }), avisar = Comum.criarToast();
+// a carreira em grupo usa esta mesma página, no canal /carreira-online: ?sala=CÓDIGO, ?grupo=1 ou ?criar=1 (vindo da Noite)
+const PARAMS_URL = new URLSearchParams(location.search), EM_GRUPO = PARAMS_URL.has("sala") || PARAMS_URL.has("grupo") || PARAMS_URL.get("criar") === "1";
+const socket = io(EM_GRUPO ? "/carreira-online" : "/carreira", { autoConnect: false }), avisar = Comum.criarToast();
 // o aviso aparece por cima do diálogo aberto (senão some atrás dele)
 const toast = (msg) => { const d = [...document.querySelectorAll("dialog[open]")].pop(); (d || document.body).append($("toast")); avisar(msg); };
 const ic = (nome, cls) => Icones.ic(nome, cls);
@@ -19,7 +21,10 @@ function usarBase(id) {
   BASE = b;
   CLUBES = Object.fromEntries(BASE.clubes.map((c) => [c.id, c]));
   JOGADORES = Object.fromEntries(BASE.clubes.flatMap((c) => c.jogadores.map((j) => [j.id, { ...j, origem: c.id }])));
+  for (const j of Object.values(JOGADORES)) registrarRosto(j);
 }
+// o rosto em pixel-art de quem não está na tabela do Leilão sai do país e da idade do jogador (rostos.js)
+const registrarRosto = (j) => Rostos.registrar(j.nome, { nat: j.nat, idade: Evolucao.idadeBase(j) });
 usarBase(BASE_PADRAO);
 
 const pedir = (evento, dados) => new Promise((ok) => socket.emit(evento, dados, (r) => ok(r || { ok: false, error: "Sem resposta do servidor." })));
@@ -56,13 +61,17 @@ function escudo(id, escala = 2) {
   const c = CLUBES[id]; if (!c) return "";
   return `<span class="escudo" style="--e:${escala}" title="${h(c.nome)}">${Escudos.svg(c)}</span>`;
 }
-const coresClube = (id) => (CLUBES[id] ? `--clube:${CLUBES[id].cores[0]};--clube2:${CLUBES[id].cores[1]}` : "");
+// a letra em cima da cor do clube: a segunda cor, se der para ler; senão, branco ou preto (o que contrastar mais)
+const luz = (hx) => { const n = parseInt(String(hx).slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+const contraste = (a, b) => { const [x, y] = [luz(a), luz(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const tintaSobre = (fundo, preferida) => (contraste(fundo, preferida) >= 3 ? preferida : contraste(fundo, "#ffffff") >= contraste(fundo, "#111111") ? "#ffffff" : "#111111");
+const coresClube = (id) => (CLUBES[id] ? `--clube:${CLUBES[id].cores[0]};--clube2:${CLUBES[id].cores[1]};--clube-tinta:${tintaSobre(CLUBES[id].cores[0], CLUBES[id].cores[1])}` : "");
 // a festa (gol seu, contratação): confete nas cores do clube; quem pede menos movimento fica sem
 const festa = () => { if (matchMedia("(prefers-reduced-motion: reduce)").matches || !E) return; const c = CLUBES[E.clube]; Comum.confetti([c.cores[0], c.cores[1], "#ffb21e", "#e8efe7"]); };
 const estrelas = (n) => Array.from({ length: 5 }, (_, i) => `<i class="${i < n ? "acesa" : ""}">${ic("estrela")}</i>`).join("");
 
 function mostrarTela(id) {
-  telaAtual = id;
+  telaAtual = id; document.body.dataset.tela = id; // a sede (o hub) usa a largura toda do PC
   for (const s of document.querySelectorAll(".tela")) s.classList.toggle("hidden", s.id !== id);
   if (id !== "partida") desenharTela(id);
   window.scrollTo({ top: 0 });
@@ -73,7 +82,7 @@ function receber(estado) {
   usarBase(estado.base);
   E = estado;
   // os jovens que subiram da base não estão nos arquivos: chegam com o estado (o clube de origem vem do id)
-  for (const [id, j] of Object.entries(E.jovens || {})) JOGADORES[id] = { ...j, origem: id.replace(/-t\d+b\d+$/, "") };
+  for (const [id, j] of Object.entries(E.jovens || {})) { JOGADORES[id] = { ...j, origem: id.replace(/-t\d+b\d+$/, "") }; registrarRosto(j); }
   document.body.style.cssText = coresClube(E.clube);
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
 }
@@ -85,7 +94,7 @@ $("fichaFechar").innerHTML = ic("fechar");
 function telaInicio() {
   usarBase(BASE_PADRAO);
   document.body.style.cssText = "";
-  $("cNome").value = store.get("galera:name") || "";
+  if (!$("cNome").value) $("cNome").value = store.get("galera:name") || ""; // não apaga o que a pessoa já digitou
   $("avisoBase").innerHTML = `${ic("livro")} ${h(BASE.nome)} ${BASE.ano}: Brasileirão e cinco grandes ligas, com Libertadores, Champions e Mundial.`;
   $("avisoBase").classList.remove("hidden");
   // cada clube com o orçamento e a situação (orcamentos.js): do rico ao pequeno
@@ -201,8 +210,9 @@ function abrirSede() { if (E.partida) abrirPartida(); else { mostrarTela("sede")
 
 async function conectar() {
   $("conexao").textContent = "Online";
+  if (EM_GRUPO) return conectarGrupo(); // grupo.js
   const token = store.get("carreira:token");
-  if (!token) { if (!E) telaInicio(); return; }
+  if (!token) { if (!E && telaAtual !== "inicio") telaInicio(); return; } // reconectou na tela inicial: nada a redesenhar
   const r = await pedir("entrar", { token });
   if (!r.ok) { store.set("carreira:token", null); store.set("carreira:codigo", null); toast("Essa carreira não foi encontrada neste servidor."); telaInicio(); return; }
   const primeira = !E;
