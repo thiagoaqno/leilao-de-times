@@ -108,7 +108,7 @@ deploy**. Por isso, antes de abrir a carreira para a galera, crie um volume (um 
    fly volumes create galera_dados --region gru --size 1
    ```
 2. Só **depois** de criar o volume, acrescente no fim do `fly.toml` (se acrescentar antes, o deploy falha procurando
-   o volume):
+   o volume). No app `leilao-de-times`, isso já foi feito (volume criado em 07/10/2026):
    ```toml
    [mounts]
      source = "galera_dados"
