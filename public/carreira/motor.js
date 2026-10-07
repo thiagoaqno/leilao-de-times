@@ -261,7 +261,7 @@
       ev({ tipo: "lance", lado: at.lado, lance: qual, opcao: op.id, certo, jogador: autor.id, decisivo: id });
       if (aFavor) {
         if (certo) { est[at.lado].noAlvo++; return gol(at, autor, op.id === "tocar" || op.id === "cruzar" || op.id === "ensaiada" ? garcom(at, autor) : null, tipo); }
-        return ev({ tipo: gk && rng() < 0.5 ? "defesa" : "perdeu", lado: at.lado, jogador: autor.id, como: tipo });
+        return gk && rng() < 0.5 ? ev({ tipo: "defesa", lado: at.lado, jogador: autor.id, goleiro: gk.id, como: tipo }) : ev({ tipo: "perdeu", lado: at.lado, jogador: autor.id, como: tipo });
       }
       if (certo) {
         if (op.contra) { ev({ tipo: "contra_ataque", lado: df.lado }); est[df.lado].chutes++; if (rng() < 0.33) { const a = finalizador(df); est[df.lado].noAlvo++; return gol(df, a, garcom(df, a), "contra_ataque"); } }
@@ -355,5 +355,8 @@
     return [...parado.opcoes].sort((a, b) => b.chance - a.chance)[0].id;
   }
 
-  return { AJUSTE, simularPartida, decisaoAutomatica, sorteDe, grupoDe };
+  // quem entra jogando se o técnico deixar no automático (a mesma conta da partida)
+  const escalacaoAutomatica = (t) => titulares(prepararTime(t, 0)).map((p) => p.id);
+
+  return { AJUSTE, simularPartida, decisaoAutomatica, escalacaoAutomatica, sorteDe, grupoDe };
 });

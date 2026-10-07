@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0e1a14">
+<script src="/semzoom.js"></script>
+<title>Carreira de Treinador</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<header id="barra">
+  <a href="/" class="voltar">← Vila</a>
+  <span id="conexao" role="status">Conectando…</span>
+</header>
+<main id="tela">
+  <!-- começar: nova carreira ou continuar pelo código -->
+  <section id="inicio" class="tela hidden">
+    <div class="capa">
+      <span class="marca">GALERA</span>
+      <h1>Carreira de Treinador</h1>
+      <p>Assuma um clube, escale, mexa na tática e jogue a temporada inteira. Tudo fica salvo.</p>
+    </div>
+    <p id="avisoBase" class="aviso hidden"></p>
+    <div class="cartao">
+      <label for="cNome">Seu nome de técnico</label>
+      <input id="cNome" maxlength="24" autocomplete="nickname" enterkeyhint="done">
+      <h2>Escolha o clube</h2>
+      <div id="clubes" class="clubes"></div>
+      <button id="btnCriar" class="primario largo">Começar a carreira</button>
+      <p id="erroCriar" class="erro" role="alert"></p>
+    </div>
+    <div class="cartao">
+      <h2>Já tem carreira?</h2>
+      <p class="suave">Em outro aparelho, use o código de recuperação de 12 letras.</p>
+      <div class="linha"><input id="cCodigo" maxlength="20" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH-JKLM" aria-label="Código de recuperação"><button id="btnRecuperar">Entrar</button></div>
+      <p id="erroCodigo" class="erro" role="alert"></p>
+    </div>
+  </section>
+
+  <!-- a sede: o centro da carreira -->
+  <section id="sede" class="tela hidden">
+    <div id="cabecalho" class="cabecalho"></div>
+    <div class="grade">
+      <div class="cartao" id="cartaoJogo"></div>
+      <div class="cartao" id="cartaoUltimo"></div>
+      <div class="cartao" id="cartaoTabela"></div>
+      <div class="cartao menu">
+        <button data-ir="elenco">Elenco e tática</button>
+        <button data-ir="tabela">Tabela e artilharia</button>
+        <button data-ir="calendario">Calendário</button>
+      </div>
+      <div class="cartao hidden" id="cartaoHistorico"></div>
+    </div>
+    <button id="btnSairCarreira" class="discreto">Sair desta carreira neste aparelho</button>
+  </section>
+
+  <section id="elenco" class="tela hidden">
+    <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2>Elenco e tática</h2></div>
+    <div class="cartao">
+      <div class="campos">
+        <label>Formação<select id="eFormacao"></select></label>
+        <label>Mentalidade<select id="eMentalidade"></select></label>
+        <label>Pressão<select id="ePressao"></select></label>
+        <label>Linha de defesa<select id="eLinha"></select></label>
+      </div>
+      <label class="check"><input type="checkbox" id="eAuto"> Escalação automática (o melhor time para a formação)</label>
+      <p class="suave" id="eConta"></p>
+    </div>
+    <div id="eLista" class="cartao lista-jogadores"></div>
+    <div class="rodape-tela"><button id="btnSalvarEscalacao" class="primario">Salvar escalação</button><p id="erroEscalacao" class="erro" role="alert"></p></div>
+  </section>
+
+  <section id="tabela" class="tela hidden">
+    <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2 id="tituloTabela">Tabela</h2></div>
+    <div class="cartao"><div id="tTabela" class="rolagem"></div><p class="legenda"><i class="z campeao"></i>Campeão <i class="z libertadores"></i>Libertadores <i class="z sulamericana"></i>Sul-Americana <i class="z rebaixamento"></i>Rebaixamento</p></div>
+    <div class="grade">
+      <div class="cartao"><h3>Artilharia</h3><div id="tArtilharia"></div></div>
+      <div class="cartao"><h3 id="tituloRodada">Última rodada</h3><div id="tRodada"></div></div>
+    </div>
+  </section>
+
+  <section id="calendario" class="tela hidden">
+    <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2>Calendário</h2></div>
+    <div id="cLista" class="cartao"></div>
+  </section>
+
+  <!-- a partida ao vivo -->
+  <section id="partida" class="tela hidden">
+    <div class="placar" aria-live="polite">
+      <div class="time casa"><span id="pEscudoCasa"></span><b id="pNomeCasa"></b></div>
+      <div class="led"><span id="pGols">0 × 0</span><time id="pRelogio">0'</time></div>
+      <div class="time fora"><b id="pNomeFora"></b><span id="pEscudoFora"></span></div>
+    </div>
+    <div class="controles">
+      <button data-vel="1" aria-pressed="true">1x</button><button data-vel="3" aria-pressed="false">3x</button>
+      <button id="btnPular">Pular</button>
+    </div>
+    <ol id="narracao" class="narracao" aria-label="Narração"></ol>
+    <div id="decisao" class="decisao hidden" role="dialog" aria-modal="true" aria-labelledby="dTitulo">
+      <div class="caixa">
+        <div class="tempo"><i id="dTempo"></i></div>
+        <h2 id="dTitulo"></h2>
+        <p id="dTexto" class="suave"></p>
+        <div id="dCorpo"></div>
+      </div>
+    </div>
+    <div id="fimJogo" class="fim-jogo hidden"><button id="btnVoltarSede" class="primario largo">Voltar à sede</button></div>
+  </section>
+</main>
+
+<dialog id="dlgCodigo">
+  <h2>Anote o seu código</h2>
+  <p>Com ele você continua a carreira em outro aparelho. Ele aparece só agora.</p>
+  <p id="codigoGrande" class="codigo-grande"></p>
+  <div class="linha"><button id="btnCopiarCodigo">Copiar</button><button id="btnAnotei" class="primario" autofocus>Anotei</button></div>
+</dialog>
+<div id="toast" class="hidden" role="status"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/noite.js"></script>
+<script src="/comum.js"></script>
+<script src="/icones.js"></script>
+<script src="/escalacao.js"></script>
+<script src="/leilao/ritmo.js"></script>
+<script src="motor.js"></script>
+<script src="temporada.js"></script>
+<script src="base/teste.js"></script>
+<script src="inicio.js"></script>
+<script src="telas.js"></script>
+<script src="partida.js"></script>
+</body>
+</html>
