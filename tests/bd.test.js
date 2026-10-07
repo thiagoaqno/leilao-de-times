@@ -43,3 +43,11 @@ test("bd: salva o andamento da carreira", () => {
   assert.deepStrictEqual(bd.carreiraPorToken(c.token).dados, { rodada: 3, caixa: 1500000 });
   assert.ok(!bd.salvarCarreira(9999, {}));
 });
+
+test("bd: as cartas que saíram, por jogo, e o recomeço", () => {
+  bd.marcarCarta("proibida", "Praia"); bd.marcarCarta("proibida", "Praia"); bd.marcarCarta("proibida", "Café"); bd.marcarCarta("outro", "Praia");
+  assert.deepStrictEqual([...bd.cartasSaidas("proibida")].sort(), ["Café", "Praia"]);
+  bd.zerarCartas("proibida");
+  assert.strictEqual(bd.cartasSaidas("proibida").size, 0);
+  assert.strictEqual(bd.cartasSaidas("outro").size, 1, "zerar um jogo não mexe no outro");
+});

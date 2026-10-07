@@ -7,6 +7,7 @@
 const { CARTAS } = require("./public/proibida/cartas.js");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js");
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
+const bd = require("./bd.js"); // as cartas que já saíram ficam no banco
 const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
@@ -41,9 +42,21 @@ module.exports = function attachProibida(io) {
     }
   }
   // um monte só para o servidor inteiro: a carta só volta depois que as mais de 2000 saíram (em qualquer sala e em
-  // qualquer partida). Antes cada partida embaralhava tudo de novo e as cartas de uma partida voltavam na seguinte.
+  // qualquer partida). As que já saíram ficam no banco: o servidor desliga quando ninguém está jogando (e reinicia a
+  // cada deploy), e antes o monte voltava inteiro a cada vez, então as mesmas palavras apareciam de novo.
   let monte = [];
-  function puxar(room) { if (!monte.length) monte = embaralhar(CARTAS.map((_, i) => i)); room.vez.carta = CARTAS[monte.pop()]; }
+  const comBanco = (f, reserva) => { try { return f(); } catch { return reserva; } }; // sem banco, o monte fica só na memória
+  function montar() {
+    const saidas = comBanco(() => bd.cartasSaidas("proibida"), new Set());
+    let resto = CARTAS.map((_, i) => i).filter((i) => !saidas.has(CARTAS[i][0]));
+    if (!resto.length) { comBanco(() => bd.zerarCartas("proibida")); resto = CARTAS.map((_, i) => i); } // todas saíram: recomeça
+    return embaralhar(resto);
+  }
+  function puxar(room) {
+    if (!monte.length) monte = montar();
+    room.vez.carta = CARTAS[monte.pop()];
+    comBanco(() => bd.marcarCarta("proibida", room.vez.carta[0]));
+  }
   // quem explica na próxima vez do time t (em rodízio)
   function proximoDe(room, t) { const lista = time(room, t); room.prox[t] = (room.prox[t] + 1) % lista.length; return lista[room.prox[t]]; }
   function novaVez(room, t, quem = proximoDe(room, t)) {

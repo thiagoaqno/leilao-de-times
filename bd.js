@@ -1,7 +1,8 @@
 // Banco de dados do site (SQLite pelo node:sqlite, que já vem no Node: sem dependência nativa).
 // - Onde fica: DB_PATH (no Fly, /data/galera.db, num volume); sem DB_PATH, ./dados/galera.db; nos testes, ":memory:".
 // - Migrações: os arquivos migracoes/NNN-nome.sql rodam em ordem, uma vez só, e ficam anotados na tabela "migracoes".
-// - Por enquanto guarda só as carreiras de treinador (planos/carreira.md). Nada de ORM: funções pequenas.
+// - Guarda as carreiras de treinador (planos/carreira.md) e as cartas que já saíram nos jogos de baralho. Nada de ORM:
+//   funções pequenas.
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -94,4 +95,9 @@ function salvarCarreira(id, dados) {
   return r.changes > 0;
 }
 
-module.exports = { abrir, fechar, migrar, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, limparCodigo };
+// ---------- cartas que já saíram (o monte dura entre reinícios do servidor) ----------
+const cartasSaidas = (jogo) => new Set(bd().prepare("SELECT carta FROM cartas_saidas WHERE jogo = ?").all(jogo).map((r) => r.carta));
+const marcarCarta = (jogo, carta) => { bd().prepare("INSERT OR IGNORE INTO cartas_saidas (jogo, carta, saiu_em) VALUES (?, ?, ?)").run(jogo, carta, Date.now()); };
+const zerarCartas = (jogo) => { bd().prepare("DELETE FROM cartas_saidas WHERE jogo = ?").run(jogo); };
+
+module.exports = { abrir, fechar, migrar, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas };

@@ -1,31 +1,29 @@
-# Vila: a Sede da Carreira
+# Palavra Proibida: as palavras não repetem mais
+
+## O que acontecia
+- O jogo já tinha um monte só para o servidor inteiro: uma carta só voltava depois que as 2.226 saíssem. Mas esse monte
+  ficava só na memória.
+- No Fly, a máquina desliga quando ninguém está conectado e liga de novo quando alguém entra. Ela também reinicia a cada
+  deploy. A cada vez, o monte voltava inteiro, e as mesmas palavras apareciam de novo nas noites seguintes.
+- O baralho em si está certo: são 2.226 palavras, todas diferentes.
 
 ## Como fica
-- **Prédio novo na Praça da Galera:** a **Sede da Carreira**, entre o chafariz e o Quiosque do Botão, com a porta virada
-  para a praça.
-  - O telhado é verde de telha, com a cumeeira dourada e um escudo pintado com a estrela.
-  - A placa diz "SEDE".
-- **Chegando na porta** aparece o cartão "Sede da Carreira", e Espaço (ou "Entrar") abre a Carreira de Treinador
-  (`/carreira/`).
-- **Voltando com "← Vila"**, você aparece na porta da Sede.
-- **A Sede também aparece no menu Jogos**, em "Praça da Galera", e no minimapa.
-- O banco de praça que ficava nesse lugar saiu; os outros três continuam.
+- **As cartas que já saíram ficam guardadas no banco de dados.** Desligar, ligar ou fazer deploy não traz nenhuma de
+  volta.
+- **Uma carta só aparece de novo depois que todas as 2.226 saírem.** Aí o monte zera e recomeça, embaralhado.
+- **Cartas novas no baralho entram direto no monte:** a carta é guardada pela palavra, não pela posição na lista.
+- **Se o banco não responder,** o jogo segue com o monte só na memória, como antes.
 
 ## Por dentro
-- `public/index.html`:
-  - a Sede entra em `GAMES` (`x: 23, y: 18`, 6x4, portas 25 e 26, bairro `praca`, `sede: true`);
-  - o telhado próprio fica em `drawBuilding`;
-  - o banco `[25, 18]` saiu de `BENCHES`.
-- `vila.js`: `carreira` entra na lista `GAMES`, para o servidor aceitar a entrada no prédio.
+- `migracoes/002-cartas-saidas.sql`: a tabela `cartas_saidas` (`jogo`, `carta`, `saiu_em`). Ela serve para outros jogos
+  de baralho no futuro.
+- `bd.js`: `cartasSaidas(jogo)`, `marcarCarta(jogo, carta)` e `zerarCartas(jogo)`.
+- `proibida.js`:
+  - o monte é montado só com as cartas que ainda não saíram (`montar`);
+  - cada carta puxada é anotada no banco.
 
 ## Conferido
-- `npm test`: 85 passaram, 0 falharam. Numa das rodadas, um teste dos que às vezes falham por tempo falhou; na seguinte,
-  tudo passou.
-- `npx playwright test tests/e2e/vila-ginasio.spec.js tests/e2e/paginas.spec.js`: 28 passaram (caminhada até as portas,
-  entrar e voltar, e todas as páginas abrindo sem erro).
-- No navegador:
-  - a Sede apareceu na Praça;
-  - o cartão abriu na porta;
-  - "Entrar" levou para `/carreira/` e guardou a volta na porta da Sede;
-  - a Sede apareceu no menu Jogos, em "Praça da Galera".
-  - Foto em `planos/imagens/vila-sede-carreira.jpg`.
+- `npm test`: 87 passaram, 0 falharam. Os testes novos:
+  - `tests/proibida.test.js`: uma noite de 6 cartas, o servidor desliga e liga com o mesmo banco, e outra noite de 6.
+    Nenhuma carta da primeira voltou, e as 12 ficaram anotadas no banco.
+  - `tests/bd.test.js`: as cartas são guardadas por jogo, anotar duas vezes não duplica, e zerar um jogo não mexe no outro.
