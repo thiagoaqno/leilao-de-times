@@ -1,29 +1,31 @@
-# Configuração do Fly.io — veja DEPLOY-FLY.md para o passo a passo
+# fly.toml app configuration file generated for leilao-de-times on 2026-10-01T17:46:17Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
 app = 'leilao-de-times'
-primary_region = 'gru' # São Paulo: menor ping para quem joga no Brasil
+primary_region = 'gru'
 
 [build]
 
 [http_service]
   internal_port = 3000
   force_https = true
-  # Desliga a máquina quando ninguém está conectado (economiza dinheiro)
-  # e liga sozinha quando alguém abre o site (demora ~2s na primeira vez)
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
   [http_service.concurrency]
     type = 'connections'
-    soft_limit = 800
     hard_limit = 1000
+    soft_limit = 800
 
   [[http_service.checks]]
-    grace_period = '10s'
     interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
     method = 'GET'
     path = '/'
-    timeout = '5s'
 
 [[vm]]
   size = 'shared-cpu-1x'
