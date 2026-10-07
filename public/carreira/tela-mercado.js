@@ -22,7 +22,7 @@ function listaCompra() {
   const busca = $("mBusca").value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""), notaMin = +$("mNota").value, max = precoMax(), cabe = $("mCabe").checked;
   const lista = Object.values(JOGADORES).filter((j) => {
     if (donoDe(j.id) === E.clube) return false;
-    const n = notaDe(j), v = Mercado.valorDe(comNota(j)) * (E.indicacoes[j.id] ? 0.85 : 1);
+    const n = notaDe(j), v = valorAtual(j.id) * (E.indicacoes[j.id] ? 0.85 : 1);
     if (n < notaMin || v > max || (cabe && v > E.caixa)) return false;
     if (posMercado !== "todas" && GRUPO_TELA[j.pos] !== posMercado) return false;
     return !busca || j.nome.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(busca);
@@ -36,10 +36,12 @@ function listaVenda() {
   $("mLista").innerHTML = `<p class="suave cheio">${E.elenco.length} jogadores (mínimo ${Mercado.ELENCO_MIN}, máximo ${Mercado.ELENCO_MAX}). Toque num jogador para pôr à venda ou vender.</p>` + meus.map((pid) => figurinha(pid)).join("");
   $("mMais").classList.add("hidden");
 }
+// as movimentações: os posts de mercado do feed (com a arte) e, embaixo, a lista de todas as transferências
 function listaNoticias() {
-  $("mLista").innerHTML = E.transferencias.length ? `<ul class="movimentos">${E.transferencias.map((t) => `<li class="${t.de === E.clube || t.para === E.clube ? "meu" : ""}">
+  const posts = (E.feed || []).filter((p) => ["contratacao", "venda", "disputa"].includes(p.tipo));
+  $("mLista").innerHTML = (posts.length ? `<div class="feed">${posts.map((p) => postHTML(p)).join("")}</div><h3 class="sub-lista">Todas as movimentações</h3>` : "") + (E.transferencias.length ? `<ul class="movimentos">${E.transferencias.map((t) => `<li class="${t.de === E.clube || t.para === E.clube ? "meu" : ""}">
     <img class="pix" src="${retrato(t.jogador)}" alt=""><span><b>${h(nomeJogador(t.jogador))}</b><small>${escudo(t.de, 1)} ${h(nomeClube(t.de))} → ${escudo(t.para, 1)} ${h(nomeClube(t.para))}</small></span><b>${dinheiro(t.valor)}</b><small class="rod">R${t.rodada + 1}</small></li>`).join("")}</ul>`
-    : `<p class="suave vazio">Nenhuma transferência ainda nesta carreira.</p>`;
+    : `<p class="suave vazio">Nenhuma transferência ainda nesta carreira.</p>`);
   $("mMais").classList.add("hidden");
 }
 $("mModo").addEventListener("click", (e) => { const b = e.target.closest("[data-modo]"); if (!b) return; modoMercado = b.dataset.modo; mostrar = 24; telaMercado(); });

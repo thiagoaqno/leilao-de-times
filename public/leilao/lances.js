@@ -668,6 +668,8 @@
   window.Lances = {
     criar, monta, desenha, GOLS: {}, COMEMORA: {}, ASSINATURA: {}, FINALIZACAO: {},
     kit: { W, H, mix, prende, fase, suave, sorteio, cor, px, reta, elipse, desenho, CORACAO, poe, entre, quadros, corre, marcha, P0, CHUTE, GOLEIRO,
-      tela, GOL_X, GOL_ALTO, GOL_FUNDO, marcaPenalti, ESCANTEIO, naLinha, voo, curva, naRede, conduz, chutando, festejando, goleiroVoa },
+      tela, GOL_X, GOL_ALTO, GOL_FUNDO, marcaPenalti, ESCANTEIO, naLinha, voo, curva, naRede, conduz, chutando, festejando, goleiroVoa,
+      // para as outras cenas (lances-outros.js): o boneco, a bola, a sombra, os fundos, a rede, as traves e o clima
+      figura, bola, sombra, escreve, fundoAberto, fundoClose, rede, traves, bandeirinha, poeira, chuvaQuadro, GOL, claro, escapa },
   };
 })();

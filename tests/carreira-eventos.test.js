@@ -65,6 +65,7 @@ test("catálogo: todo evento, com toda escolha, roda e mexe em alguma coisa do j
 
 test("efeitos: a nota do time, de um jogador e do adversário entram no jogo e somem depois", () => {
   const save = carreiraNoMeio("santos", 2);
+  save.efeitos = []; // os eventos das rodadas de antes podem ter deixado efeitos valendo
   const R = save.rodada, [casa, fora] = save.calendario[R].find((m) => m.includes(save.clube));
   const rival = casa === save.clube ? fora : casa;
   const media = (t) => t.jogadores.reduce((s, j) => s + j.nota, 0) / t.jogadores.length;

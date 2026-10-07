@@ -103,16 +103,44 @@ function gerarEventos(save, c) {
   const outroClube = (filtro = () => true) => sorteio(r, c.idsDosClubes(save).filter((x) => x !== save.clube && filtro(c.clubeDe(save, x))));
   const add = (e) => novos.push({ id: id(e), rodada: save.rodada, resolvido: !e.opcoes, ...e });
 
-  // propostas pelos seus jogadores: quem está à venda atrai mais; às vezes chega uma por um titular
-  const titulares = new Set(c.titularesDe(save, save.clube));
-  const alvos = [...save.aVenda.filter((pid) => meu.some((j) => j.id === pid) && r() < 0.45),
-    ...(r() < 0.18 ? [sorteio(r, meu.filter((j) => titulares.has(j.id)))?.id] : [])].filter(Boolean);
-  if (Mercado.janelaAberta(save.rodada)) for (const pid of [...new Set(alvos)].slice(0, 2)) {
-    const j = c.jogadorDe(save, pid); if (!j) continue;
-    const comprador = outroClube((cl) => cl.tamanho >= Math.max(1, meuClube.tamanho - 2)), cl = c.clubeDe(save, comprador);
-    const valor = Math.round(Mercado.valorDe(c.comNota(save, j)) * (save.aVenda.includes(pid) ? 0.85 + r() * 0.35 : 1.1 + r() * 0.35) / 1e5) * 1e5;
-    add({ tipo: "proposta", icone: "maleta", titulo: `Proposta do ${cl.nome}`, texto: `O ${cl.nome} oferece ${dinheiro(valor)} por ${j.nome} (vale ${dinheiro(Mercado.valorDe(c.comNota(save, j)))}).`,
-      dados: { jogador: pid, comprador, valor }, opcoes: [{ id: "aceitar", nome: `Vender por ${dinheiro(valor)}` }, { id: "mais", nome: "Pedir 15% a mais" }, { id: "recusar", nome: "Recusar" }], padrao: "recusar" });
+  // propostas pelos seus jogadores. Na lista de venda, a chance cai quanto mais alto o preço pedido e a oferta fica perto
+  // dele (acima, se o jogador está em alta); às vezes chega uma por um titular, sem estar à venda. Quem compra precisa
+  // ter caixa. Se dois ou mais clubes querem o mesmo jogador, vira disputa (os lances sobem, como no Leilão).
+  const titulares = new Set(c.titularesDe(save, save.clube)), caixaDe = (id) => (save.caixaIA ? save.caixaIA[id] ?? 0 : 1e12);
+  const compradores = (min) => c.idsDosClubes(save).filter((id) => id !== save.clube && caixaDe(id) >= min && c.clubeDe(save, id).tamanho >= Math.max(1, meuClube.tamanho - 2));
+  let houveDisputa = false;
+  if (Mercado.janelaAberta(save.rodada)) {
+    const listados = save.aVenda.filter((pid) => meu.some((j) => j.id === pid));
+    const surpresa = r() < 0.18 ? sorteio(r, meu.filter((j) => titulares.has(j.id) && !listados.includes(j.id))) : null;
+    let feitas = 0;
+    for (const pid of [...listados, ...(surpresa ? [surpresa.id] : [])]) {
+      if (feitas >= 2) break;
+      const j = c.jogadorDe(save, pid); if (!j) continue;
+      const fator = c.fatorDe(save, pid), valor = c.valorAtual(save, j), listado = listados.includes(pid);
+      const pedido = listado ? save.pedidos[pid] || valor : Math.round(valor * 1.25);
+      // a disputa: jogador em alta e preço razoável atraem vários clubes
+      if (listado && !houveDisputa && r() < (fator >= 1.05 && pedido <= valor * 1.3 ? 0.35 : 0.12)) {
+        const interessados = compradores(pedido * 0.9).sort(() => r() - 0.5).slice(0, 2 + Math.floor(r() * 3));
+        const clubes = interessados.map((id) => ({ id, teto: Math.min(caixaDe(id) * 0.6, valor * (0.95 + r() * 0.6) * (fator > 1.1 ? 1.15 : 1)) }));
+        const dsp = Mercado.disputa(clubes, Math.min(pedido, valor) * 0.9, r);
+        if (dsp) {
+          houveDisputa = true; feitas++;
+          const lances = dsp.lances.map((l) => ({ ...l, valor: c.tetoVenda(save, pid, l.valor) }));
+          const e = { tipo: "disputa", icone: "martelo", titulo: `Disputa por ${j.nome}`, texto: `${interessados.length} clubes querem ${j.nome}. Os lances vão subir: bata o martelo quando achar bom, mas quem espera demais pode ver os clubes esfriarem.`,
+            dados: { jogador: pid, lances, valor }, opcoes: [...lances.map((l, i) => ({ id: `martelo-${i}`, nome: `Vender por ${dinheiro(l.valor)}` })), { id: "recusar", nome: "Manter o jogador" }], padrao: "recusar" };
+          add(e);
+          (save.segredos || (save.segredos = {}))[novos[novos.length - 1].id] = dsp.limite; // até onde os clubes aguentam: o navegador não sabe
+          continue;
+        }
+      }
+      if (listado && r() > Mercado.chanceDeProposta(pedido, valor, fator)) continue;
+      const lista = compradores(pedido * 0.85); if (!lista.length) continue;
+      const comprador = sorteio(r, lista), cl = c.clubeDe(save, comprador);
+      const oferta = c.tetoVenda(save, pid, Math.round((listado ? pedido * (0.88 + r() * (fator >= 1.15 ? 0.25 : 0.14)) : valor * (1.1 + r() * 0.35)) / 1e5) * 1e5);
+      feitas++;
+      add({ tipo: "proposta", icone: "maleta", titulo: `Proposta do ${cl.nome}`, texto: `O ${cl.nome} oferece ${dinheiro(oferta)} por ${j.nome} (vale ${dinheiro(valor)}${listado ? `, você pede ${dinheiro(pedido)}` : ""}).`,
+        dados: { jogador: pid, comprador, valor: oferta }, opcoes: [{ id: "aceitar", nome: `Vender por ${dinheiro(oferta)}` }, { id: "mais", nome: "Pedir 15% a mais" }, { id: "recusar", nome: "Recusar" }], padrao: "recusar" });
+    }
   }
   // os eventos do catálogo (carreira-catalogo.js): um quase toda rodada, às vezes dois, sem repetir na temporada
   const x = contexto(save, c, r);
@@ -130,23 +158,27 @@ function gerarEventos(save, c) {
   }
   // os outros clubes também negociam
   if (Mercado.janelaAberta(save.rodada) && r() < 0.4) {
+    // quem compra precisa ter o dinheiro: clube pobre leva jogador barato, clube rico leva caro
     const de = outroClube(), para = outroClube((cl) => cl.id !== de);
     const elencoDe = c.elencoDe(save, de);
-    const j = elencoDe.length > Mercado.ELENCO_MIN + 6 ? sorteio(r, elencoDe.filter((x) => !x.base)) : null;
+    const cabe = (x) => !x.base && c.valorAtual(save, x) <= caixaDe(para) * 0.5;
+    const j = elencoDe.length > Mercado.ELENCO_MIN + 6 && para ? sorteio(r, elencoDe.filter(cabe)) : null;
     if (j && para) {
-      const valor = Math.round(Mercado.valorDe(c.comNota(save, j)) * (0.9 + r() * 0.4) / 1e5) * 1e5;
+      const valor = Math.round(c.valorAtual(save, j) * (0.9 + r() * 0.4) / 1e5) * 1e5;
       save.donos[j.id] = para;
+      if (save.caixaIA) { save.caixaIA[para] -= valor; if (de in save.caixaIA) save.caixaIA[de] += valor; }
       save.transferencias.unshift({ rodada: save.rodada, jogador: j.id, de, para, valor });
       add({ tipo: "ia", icone: "troca", titulo: "Mercado da bola", texto: `${j.nome} troca o ${c.clubeDe(save, de).nome} pelo ${c.clubeDe(save, para).nome} por ${dinheiro(valor)}.` });
     }
   }
   // a torcida reage às sequências
-  const ultimos = c.ultimosResultados(save, 3);
-  if (ultimos.length === 3 && ultimos.every((x) => x === "D")) {
+  // (só quando a sequência acabou de chegar a 3: a quarta derrota seguida não traz outro protesto)
+  const quatro = c.ultimosResultados(save, 4), ultimos = quatro.slice(0, 3), seguida = (r) => ultimos.length === 3 && ultimos.every((x) => x === r) && quatro[3] !== r;
+  if (seguida("D")) {
     c.mudarMoral(save, -5);
     add({ tipo: "protesto", icone: "alerta", titulo: "Protesto no CT", texto: "Três derrotas seguidas: a torcida foi ao CT cobrar o elenco. A moral caiu." });
   }
-  if (ultimos.length === 3 && ultimos.every((x) => x === "V")) {
+  if (seguida("V")) {
     const extra = meuClube.tamanho * 3e5;
     c.mudarMoral(save, 4); c.movimentar(save, "Bilheteria extra (festa da torcida)", extra);
     add({ tipo: "festa", icone: "palmas", titulo: "A torcida abraçou o time", texto: `Três vitórias seguidas: estádio lotado e ${dinheiro(extra)} a mais na bilheteria.` });
@@ -168,11 +200,24 @@ function responder(save, e, opcao, c) {
     if (!j || c.donoDe(save, j.id) !== save.clube) return (e.resultado = "O jogador já não está no seu elenco.");
     if (opcao === "mais") {
       const r = Motor.sorteDe(`mais:${save.semente}:${e.id}`);
-      if (r() < 0.5) return (e.resultado = c.vender(save, j.id, d.comprador, Math.round(d.valor * 1.15 / 1e5) * 1e5));
+      if (r() < 0.5) return (e.resultado = c.vender(save, j.id, d.comprador, c.tetoVenda(save, j.id, Math.round(d.valor * 1.15 / 1e5) * 1e5)));
       return (e.resultado = `O ${c.clubeDe(save, d.comprador).nome} não subiu a oferta e desistiu.`);
     }
     if (opcao === "aceitar") return (e.resultado = c.vender(save, j.id, d.comprador, d.valor));
     return (e.resultado = "Proposta recusada.");
+  }
+  // a disputa: o martelo no lance i. Depois do limite (que só o servidor sabe), os clubes esfriaram: sobra o primeiro
+  if (e.tipo === "disputa") {
+    if (opcao === "recusar") return (e.resultado = `${j ? j.nome : "O jogador"} fica. Os clubes vão atrás de outro.`);
+    if (!j || c.donoDe(save, j.id) !== save.clube) return (e.resultado = "O jogador já não está no seu elenco.");
+    if (c.elencoDe(save, save.clube).length <= Mercado.ELENCO_MIN) return (e.resultado = `O elenco não pode ficar com menos de ${Mercado.ELENCO_MIN}: a venda não saiu.`);
+    const i = Math.min(d.lances.length - 1, Math.max(0, parseInt(String(opcao).split("-")[1], 10) || 0));
+    const limite = save.segredos && save.segredos[e.id] != null ? save.segredos[e.id] : d.lances.length - 1;
+    if (save.segredos) delete save.segredos[e.id];
+    e.martelo = i;
+    if (i > limite) { e.esfriou = limite; const l = d.lances[0]; return (e.resultado = `Os clubes esfriaram depois do lance ${limite + 1}... sobrou o ${c.clubeDe(save, l.clube).nome}: ${c.vender(save, j.id, l.clube, l.valor)}`); }
+    const l = d.lances[i];
+    return (e.resultado = `Martelo batido! ${c.vender(save, j.id, l.clube, l.valor)}`);
   }
   if (e.tipo === "aumento") {
     if (opcao === "aceitar" && j) { save.salarios[j.id] = d.novo; c.mudarMoral(save, 3); return (e.resultado = `${j.nome} renovou animado. A moral subiu.`); }

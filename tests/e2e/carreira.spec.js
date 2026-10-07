@@ -42,7 +42,28 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await expect(page.locator("#fimJogo")).toBeVisible({ timeout: 20000 });
     await page.click("#btnVoltarSede");
     expect(await page.evaluate(() => __carreira.E.rodada)).toBe(1);
+    // o pós-jogo abre com o placar e o dinheiro da rodada
+    await expect(page.locator("#posJogo .pj-placar")).toBeVisible();
+    await expect(page.locator("#posJogo .pj-dinheiro .extrato li").first()).toBeVisible();
+    await page.click("#pjContinuar");
     await expect(page.locator("#cartaoUltimo .confronto")).toBeVisible();
+    // as notícias: o feed com a arte de cada post
+    await page.click('#sede [data-ir="feed"]');
+    await expect(page.locator("#fLista .post").first()).toBeVisible();
+    await expect(page.locator("#fLista .post .arte img").first()).toHaveAttribute("src", /^data:image\/png/);
+    await page.click('#feed [data-ir="sede"]');
+    // uma partida com decisões táticas: na parada, o estádio do mandante e a troca começando pelo banco
+    await page.evaluate(() => { modoEscolhido = 2; });
+    await page.click("#btnJogar");
+    await page.click("#btnPular");
+    await expect(page.locator("#decisao[open] .tatica-jogo")).toBeVisible({ timeout: 20000 });
+    await expect(page.locator("#dEstadio canvas")).toBeVisible();
+    await page.locator("#dCorpo [data-reserva]").first().click();
+    await expect(page.locator("#dCorpo [data-reserva].sel")).toHaveCount(1);
+    await page.locator("#dCorpo .gramado .peca").nth(5).click();
+    await expect(page.locator("#dCorpo .trocas-feitas")).toBeVisible();
+    await page.click("#dVoltar");
+    await expect(page.locator("#decisao")).not.toHaveAttribute("open", "");
     expect(erros).toEqual([]);
   });
 }

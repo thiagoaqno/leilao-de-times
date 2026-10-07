@@ -29,6 +29,9 @@ const notaDe = (j) => Math.max(40, Math.min(95, j.nota + ((E && E.bonusNota[j.id
 const comNota = (j) => ({ ...j, nota: notaDe(j) });
 const fora = (pid) => (E.lesoes[pid] ? "lesao" : E.suspensos[pid] ? "suspenso" : null);
 const salarioDe = (j) => E.salarios[j.id] || Mercado.salarioDe(comNota(j));
+// o valor de agora: a nota e o momento do jogador (gols, fase, à venda), igual ao servidor
+const formaDe = (pid) => (E && E.forma && E.forma[pid]) || 1;
+const valorAtual = (pid) => Mercado.valorDe(comNota(JOGADORES[pid]), formaDe(pid));
 // o seu time como o servidor monta (para a prancheta mostrar o mesmo que vai a campo)
 // os efeitos dos eventos que valem no próximo jogo (o servidor soma igual)
 const efeitosAgora = () => (E.efeitos || []).filter((e) => e.de <= E.rodada && e.ate >= E.rodada);
@@ -78,15 +81,30 @@ function telaInicio() {
   $("cNome").value = store.get("galera:name") || "";
   $("avisoBase").innerHTML = `${ic("livro")} ${h(BASE.nome)} ${BASE.ano}: os elencos vêm da Wikipédia (${h(BASE.fonte.replace(/^.*, /, ""))}); as notas são estimativas nossas.`;
   $("avisoBase").classList.remove("hidden");
-  $("clubes").innerHTML = [...BASE.clubes].sort((a, b) => b.tamanho - a.tamanho || a.nome.localeCompare(b.nome)).map((c) =>
-    `<button class="clube" style="${coresClube(c.id)}" data-clube="${c.id}" aria-pressed="${c.id === clubeEscolhido}">${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b><small>${h(c.cidade)}</small><span class="estrelas" aria-label="Tamanho ${c.tamanho} de 5">${estrelas(c.tamanho)}</span></span></button>`).join("");
+  // cada clube com o orçamento e a situação (orcamentos.js): do rico ao pequeno
+  const orc = (c) => Orcamentos.de(c);
+  $("clubes").innerHTML = [...BASE.clubes].sort((a, b) => orc(b).caixa - orc(a).caixa || a.nome.localeCompare(b.nome)).map((c) => {
+    const o = orc(c), sit = Orcamentos.SITUACOES[o.situacao];
+    return `<button class="clube" style="${coresClube(c.id)}" data-clube="${c.id}" aria-pressed="${c.id === clubeEscolhido}" title="${h(sit.texto)}">${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b><small>${h(c.cidade)}</small>
+      <span class="orcamento"><span class="caixa-clube">${ic("moeda")} ${dinheiro(o.caixa)}</span><span class="situacao ${o.situacao}">${h(sit.nome)}</span></span></span></button>`;
+  }).join("");
+  mostrarSituacao();
   mostrarTela("inicio");
 }
 $("clubes").addEventListener("click", (e) => {
   const b = e.target.closest("[data-clube]"); if (!b) return;
   clubeEscolhido = b.dataset.clube;
   for (const x of $("clubes").children) x.setAttribute("aria-pressed", String(x.dataset.clube === clubeEscolhido));
+  mostrarSituacao();
 });
+// o que a situação do clube escolhido quer dizer
+function mostrarSituacao() {
+  const c = CLUBES[clubeEscolhido], el = $("situacaoClube");
+  if (!c) { el.classList.add("hidden"); return; }
+  const o = Orcamentos.de(c), sit = Orcamentos.SITUACOES[o.situacao];
+  el.innerHTML = `${escudo(c.id, 2)}<span><b>${h(c.nome)} · ${h(sit.nome)}</b> Caixa de ${dinheiro(o.caixa)}. ${h(sit.texto)}</span>`;
+  el.classList.remove("hidden");
+}
 $("btnCriar").onclick = async () => {
   const nome = $("cNome").value.trim();
   $("erroCriar").textContent = !nome ? "Coloque o seu nome." : !clubeEscolhido ? "Escolha um clube." : "";
@@ -114,7 +132,7 @@ $("btnSairCarreira").onclick = async () => {
   await pedir("sair"); store.set("carreira:token", null); E = null; telaInicio();
 };
 // entra na sede, ou direto na partida que estava em andamento
-function abrirSede() { if (E.partida) abrirPartida(); else mostrarTela("sede"); }
+function abrirSede() { if (E.partida) abrirPartida(); else { mostrarTela("sede"); mostrarPosJogo(); } }
 
 async function conectar() {
   $("conexao").textContent = "Online";

@@ -30,6 +30,7 @@
       <input id="cNome" maxlength="24" autocomplete="nickname" enterkeyhint="done">
       <h2>Escolha o clube</h2>
       <div id="clubes" class="clubes"></div>
+      <p id="situacaoClube" class="situacao-clube hidden"></p>
       <button id="btnCriar" class="primario largo">Assinar contrato</button>
       <p id="erroCriar" class="erro" role="alert"></p>
     </div>
@@ -50,11 +51,13 @@
       <div class="quadro" id="cartaoUltimo"></div>
       <div class="quadro" id="cartaoTabela"></div>
       <div class="quadro" id="cartaoFinancas"></div>
+      <div class="quadro" id="cartaoFeed"></div>
       <nav class="atalhos" aria-label="Ir para">
         <button data-ir="elenco"><span class="atalho-ic" data-ic="campo"></span><span><b>Elenco e tática</b><small>Prancheta, titulares e formação</small></span></button>
         <button data-ir="mercado"><span class="atalho-ic" data-ic="maleta"></span><span><b>Mercado</b><small id="atalhoJanela">Contratar e vender</small></span></button>
         <button data-ir="tabela"><span class="atalho-ic" data-ic="taca"></span><span><b>Tabela</b><small>Classificação e artilharia</small></span></button>
         <button data-ir="calendario"><span class="atalho-ic" data-ic="relogio"></span><span><b>Calendário</b><small>As 38 rodadas</small></span></button>
+        <button data-ir="feed"><span class="atalho-ic" data-ic="camera"></span><span><b>Notícias</b><small>O que a galera está postando</small></span></button>
       </nav>
       <div class="quadro hidden" id="cartaoHistorico"></div>
     </div>
@@ -111,6 +114,12 @@
     </div>
   </section>
 
+  <!-- as notícias: o feed com cara de rede social -->
+  <section id="feed" class="tela hidden">
+    <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2>Notícias</h2></div>
+    <div id="fLista" class="feed"></div>
+  </section>
+
   <section id="calendario" class="tela hidden">
     <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2>Calendário</h2></div>
     <div id="cLista" class="quadro calendario"></div>
@@ -137,12 +146,22 @@
   <div class="tempo hidden" id="dTempoBox"><i id="dTempo"></i></div>
   <h2 id="dTitulo"></h2>
   <p id="dTexto" class="suave"></p>
+  <div id="dEstadio" class="estadio-jogo hidden"></div>
   <div id="dCorpo"></div>
 </dialog>
 <!-- a ficha (o card) do jogador, com a proposta -->
 <dialog id="ficha" class="dialogo ficha" aria-label="Ficha do jogador">
   <button class="fechar" id="fichaFechar" aria-label="Fechar"></button>
   <div id="fichaCorpo"></div>
+</dialog>
+<!-- o pós-jogo: o que mexeu no time -->
+<dialog id="posJogo" class="dialogo posjogo" aria-labelledby="pjTitulo">
+  <div id="pjCorpo"></div>
+</dialog>
+<!-- a disputa entre clubes por um jogador seu (os lances subindo, como no Leilão) -->
+<dialog id="disputa" class="dialogo disputa" aria-labelledby="dsTitulo">
+  <button class="fechar" id="disputaFechar" aria-label="Fechar"></button>
+  <div id="dsCorpo"></div>
 </dialog>
 <dialog id="dlgCodigo" class="dialogo">
   <h2>Anote o seu código</h2>
@@ -162,9 +181,11 @@
 <script src="/leilao/lances.js"></script>
 <script src="/leilao/lances-gols.js"></script>
 <script src="/leilao/lances-comemoracoes.js"></script>
+<script src="/leilao/lances-outros.js"></script>
 <script src="motor.js"></script>
 <script src="temporada.js"></script>
 <script src="mercado.js"></script>
+<script src="orcamentos.js"></script>
 <script src="escudos.js"></script>
 <script src="base/teste.js"></script>
 <script src="base/brasileirao-2026.js"></script>
@@ -173,6 +194,10 @@
 <script src="telas.js"></script>
 <script src="elenco.js"></script>
 <script src="tela-mercado.js"></script>
+<script src="feed.js"></script>
+<script src="posjogo.js"></script>
+<script src="disputa.js"></script>
+<script src="estadios.js"></script>
 <script src="partida.js"></script>
 </body>
 </html>
