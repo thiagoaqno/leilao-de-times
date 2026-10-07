@@ -315,3 +315,7 @@ td.pos.campeao{box-shadow:inset 3px 0 var(--ouro)}td.pos.libertadores{box-shadow
 .estrelas i.acesa .ic{fill:currentColor}
 .confetti{position:fixed;top:-14px;width:9px;height:14px;z-index:95;pointer-events:none;border-radius:2px;animation:cai linear both}@keyframes cai{to{transform:translateY(110vh) rotate(540deg)}}
 @media (max-width:860px){.ficha{padding-top:58px}}
+
+/* o estádio: a faixa do local e os replays com a cor de quem joga em casa */
+#pLocal{border-left:4px solid var(--mando,var(--apito));padding-left:8px;background:linear-gradient(90deg,color-mix(in srgb,var(--mando,transparent) 28%,transparent),transparent 70%)}
+#partida .replay{border-bottom:3px solid var(--mando,transparent)}

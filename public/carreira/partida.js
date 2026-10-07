@@ -30,7 +30,7 @@ function abrirPartida(rodada) {
   if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
   $("pNomeCasa").textContent = nomeClube(J.casa); $("pNomeFora").textContent = nomeClube(J.fora);
-  $("partida").style.cssText = `--casa:${CLUBES[J.casa].cores[0]};--fora:${CLUBES[J.fora].cores[0]}`;
+  $("partida").style.cssText = `--casa:${CLUBES[J.casa].cores[0]};--fora:${CLUBES[J.fora].cores[0]};--mando:${CLUBES[J.casa].cores[0]}`;
   $("pLocal").innerHTML = `${ic("estadio")} Rodada ${src.rodada + 1} · ${h(CLUBES[J.casa].estadio)}`;
   if ($("decisao").open) $("decisao").close();
   $("fimJogo").classList.add("hidden");
@@ -80,7 +80,8 @@ function mostrarEvento(e) {
 // o gol: o replay em pixel-art com a camisa do clube e, se foi seu, a festa
 function gol(e) {
   const j = JOGADORES[e.jogador] || { nome: "?", pos: "ATA", nota: 70 }, clube = clubeDoLado(e.lado), outro = clubeDoLado(1 - e.lado);
-  const g = { min: e.min, lado: e.lado === 0 ? "A" : "B", nome: j.nome, pos: Motor.grupoDe(j.pos), ovr: notaDe(j), uniforme: uniformeDoClube(clube), uniformeRival: uniformeDoClube(outro) };
+  const g = { min: e.min, lado: e.lado === 0 ? "A" : "B", nome: j.nome, pos: Motor.grupoDe(j.pos), ovr: notaDe(j), uniforme: uniformeDoClube(clube), uniformeRival: uniformeDoClube(outro),
+    estadio: { cores: CLUBES[J.casa].cores, visitante: CLUBES[J.fora].cores, curto: CLUBES[J.casa].curto } }; // o cenário veste as cores de quem joga em casa
   try {
     const telao = Lances.criar(g, { id: `${E.temporada}-${J.rodada}-${J.casa}-${J.fora}`, mins: 90 }, { nome: sobrenome(j.nome), auto: !J.pulando, cobranca: null });
     const item = document.createElement("div"); item.className = "replay" + (clube === E.clube ? " nosso" : "");
