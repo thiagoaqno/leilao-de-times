@@ -1,28 +1,27 @@
-# PR 1 — A base do mundo
+# PR 2 — A temporada com várias competições
 
 ## O que mudou
 
-- Cria `ferramentas/base-mundo.js`, uma ferramenta determinística que lê `dados/ea_fc26/ea_fc26_players.csv` com um parser de CSV próprio, inclusive campos entre aspas com vírgulas.
-- Gera uma base separada para Premier League, La Liga, Serie A, Bundesliga e Ligue 1, além dos seis argentinos da Libertadores e dos clubes sul-americanos.
-- Converte posição, nacionalidade, data de nascimento, nota e atributos do EA FC 26 para o formato da Carreira. Cada jogador mantém o ID de origem em `ea`; jovens fictícios aparecem apenas para completar o mínimo do elenco e levam `base: true`.
-- Limita cada elenco a 18–28 atletas e garante pelo menos três goleiros. A chave de origem de clube usa sempre `leagueName + team`, então os dois Racing Club continuam separados.
-- Corrige os nomes sem licença da Itália (Inter de Milão, Milan, Lazio e Atalanta) e outros nomes abreviados do CSV.
-- Acrescenta cores, sigla, estádio, país, receita de escudo, tamanho e orçamento aos clubes. O orçamento estrangeiro vem do valor de mercado do elenco com o fator da liga.
-- Calibra todo o Brasileirão com uma única diferença de escala em relação a River Plate e Boca Juniors, preserva a base estimada existente e acrescenta `liga`, `pais` e `orcamento`.
-- Gera `mundo-2026.js`, com o índice das ligas e a primeira Libertadores de 32 clubes: sete brasileiros, seis argentinos e 19 dos outros países.
-- Adiciona `npm run base:mundo` e amplia `tests/carreira-base.test.js` com as validações previstas no plano. As ligas novas ainda não são usadas pela carreira solo; isso fica para o PR 2.
+- A carreira solo nova passa a carregar o mundo de 2026: Brasileirão, Premier League, La Liga, Serie A, Bundesliga e Ligue 1. Também é possível começar por um clube europeu.
+- `temporada.js` monta um calendário determinístico em semanas de jogo: ligas no fim de semana e Libertadores/Champions no meio de semana, sem um clube aparecer duas vezes na mesma semana.
+- Libertadores e Champions têm oito grupos de quatro, turno e returno, oitavas, quartas e semifinais em ida e volta e final única. Empates eliminatórios são decididos nos pênaltis.
+- A primeira Champions recebe os quatro clubes mais fortes de cada liga europeia e mais 12 por força. A Libertadores usa os 32 classificados do índice gerado no PR 1.
+- O Mundial acontece depois das ligas: campeão da Libertadores contra vice da Champions e campeão da Champions contra vice da Libertadores, com semifinal e final únicas.
+- Jogos sem o clube humano são simulados pelo `Motor.simularPartida`. O cache guarda apenas resultados determinísticos já calculados; um placar jogado ao vivo substitui a simulação e recalcula classificados e mata-matas.
+- O save passa a guardar `competicoes`, com tipo, fase, grupos, jogos e resultados, além dos placares ao vivo que substituem a simulação. Saves antigos não são promovidos ao mundo novo e continuam apenas no Brasileirão.
+- A tabela ganhou abas internas para todas as competições, sem criar navegação nova no topo. O calendário identifica competição, fase e semana de cada jogo.
+- O feed publica resultados e os momentos de classificação, eliminação e título das copas.
+- Mercado, salários e caixa inicial passam a considerar todos os clubes e o fator econômico de cada liga.
+- `tests/carreira-temporada.test.js` cobre campeões determinísticos, composição do Mundial, conflitos de calendário e pênaltis. O E2E da Carreira também confere as abas e os jogos de copa.
 
-## Arquivos gerados
+## Compatibilidade
 
-- `inglaterra-2026.js`, `espanha-2026.js`, `italia-2026.js`, `alemanha-2026.js` e `franca-2026.js`;
-- `argentina-2026.js` e `sulamericanos-2026.js`;
-- `brasileirao-2026.js`, agora calibrado e limitado a 28 atletas por clube;
-- `mundo-2026.js`, o índice das competições.
+- Carreiras criadas antes deste PR mantêm a base e o calendário em que nasceram.
+- A evolução e a criação da temporada seguinte continuam reservadas ao PR 3.
 
 ## Conferido de verdade
 
-- `npm test`: 115 testes passaram, 0 falharam (57,7 s).
-- `npm run test:e2e`: a execução completa foi interrompida no teste 50 de 61 depois de dois casos instáveis falharem durante a rodada; todos os outros executados passaram.
-- Os dois casos que falharam foram repetidos isoladamente e passaram: Carreira desktop (1/1, 13,7 s) e Pelada online com dois navegadores (1/1, 12,9 s).
-- A ferramenta foi executada duas vezes seguidas e gerou os mesmos hashes.
+- Testes focados da Carreira: 36 casos cobertos; 30 passaram na primeira execução e os seis que apontaram uma incompatibilidade dos auxiliares antigos foram repetidos isoladamente depois da correção, com 6/6 passando.
+- E2E da Carreira com as verificações novas: desktop 1280×800 passou (1/1, 25,3 s) e celular 375×812 passou após a correção da espera inicial (1/1, 16,0 s).
+- A suíte geral do servidor e os E2Es dos outros jogos não foram executados, por decisão de testar apenas a área alterada neste PR.
 - `node_modules/` permanece ignorado e não faz parte do commit.

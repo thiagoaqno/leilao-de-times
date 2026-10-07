@@ -6,7 +6,12 @@ const socket = io("/carreira", { autoConnect: false }), avisar = Comum.criarToas
 const toast = (msg) => { const d = [...document.querySelectorAll("dialog[open]")].pop(); (d || document.body).append($("toast")); avisar(msg); };
 const ic = (nome, cls) => Icones.ic(nome, cls);
 const { dinheiro } = Mercado;
-const BASE_PADRAO = "brasileirao-2026"; // a base das carreiras novas (as antigas seguem na delas)
+const BASE_PADRAO = "mundo-2026"; // as antigas seguem na base em que nasceram
+const LIGAS_JOGAVEIS = new Set(["brasileirao-2026", "inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
+window.BasesCarreira[BASE_PADRAO] = {
+  id: BASE_PADRAO, ano: MundoCarreira.ano, nome: "Temporada Mundial", fonte: "EA FC 26 + base brasileira",
+  clubes: MundoCarreira.ligas.flatMap((l) => window.BasesCarreira[l.id].clubes),
+};
 let BASE = null, CLUBES = {}, JOGADORES = {}, E = null, telaAtual = null, clubeEscolhido = null;
 function usarBase(id) {
   const b = window.BasesCarreira[id] || window.BasesCarreira[BASE_PADRAO];
@@ -79,11 +84,11 @@ function telaInicio() {
   usarBase(BASE_PADRAO);
   document.body.style.cssText = "";
   $("cNome").value = store.get("galera:name") || "";
-  $("avisoBase").innerHTML = `${ic("livro")} ${h(BASE.nome)} ${BASE.ano}: os elencos vêm da Wikipédia (${h(BASE.fonte.replace(/^.*, /, ""))}); as notas são estimativas nossas.`;
+  $("avisoBase").innerHTML = `${ic("livro")} ${h(BASE.nome)} ${BASE.ano}: Brasileirão e cinco grandes ligas, com Libertadores, Champions e Mundial.`;
   $("avisoBase").classList.remove("hidden");
   // cada clube com o orçamento e a situação (orcamentos.js): do rico ao pequeno
-  const orc = (c) => Orcamentos.de(c);
-  $("clubes").innerHTML = [...BASE.clubes].sort((a, b) => orc(b).caixa - orc(a).caixa || a.nome.localeCompare(b.nome)).map((c) => {
+  const orc = (c) => ({ ...Orcamentos.de(c), caixa: c.orcamento || Orcamentos.de(c).caixa });
+  $("clubes").innerHTML = BASE.clubes.filter((c) => LIGAS_JOGAVEIS.has(c.liga)).sort((a, b) => a.liga.localeCompare(b.liga) || orc(b).caixa - orc(a).caixa || a.nome.localeCompare(b.nome)).map((c) => {
     const o = orc(c), sit = Orcamentos.SITUACOES[o.situacao];
     return `<button class="clube" style="${coresClube(c.id)}" data-clube="${c.id}" aria-pressed="${c.id === clubeEscolhido}" title="${h(sit.texto)}">${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b><small>${h(c.cidade)}</small>
       <span class="orcamento"><span class="caixa-clube">${ic("moeda")} ${dinheiro(o.caixa)}</span><span class="situacao ${o.situacao}">${h(sit.nome)}</span></span></span></button>`;
@@ -101,7 +106,7 @@ $("clubes").addEventListener("click", (e) => {
 function mostrarSituacao() {
   const c = CLUBES[clubeEscolhido], el = $("situacaoClube");
   if (!c) { el.classList.add("hidden"); return; }
-  const o = Orcamentos.de(c), sit = Orcamentos.SITUACOES[o.situacao];
+  const o = { ...Orcamentos.de(c), caixa: c.orcamento || Orcamentos.de(c).caixa }, sit = Orcamentos.SITUACOES[o.situacao];
   el.innerHTML = `${escudo(c.id, 2)}<span><b>${h(c.nome)} · ${h(sit.nome)}</b> Caixa de ${dinheiro(o.caixa)}. ${h(sit.texto)}</span>`;
   el.classList.remove("hidden");
 }
