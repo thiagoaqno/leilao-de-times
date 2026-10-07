@@ -1,34 +1,28 @@
-# Carreira online: o plano e a base do EA FC 26
+# PR 1 — A base do mundo
 
-Este PR não mexe no jogo. Ele só prepara a carreira online em grupo: o plano e os dados que o PR 1 do plano vai usar.
+## O que mudou
 
-## O que entra
-- **`planos/carreira-online.md`:** o plano em 8 PRs, com as decisões já tomadas:
-  - notas do EA FC 26;
-  - clube europeu jogável (joga a liga dele);
-  - Mundial com 4 clubes;
-  - de 1 a 5 temporadas;
-  - aporte de até R$ 1 bi;
-  - rodada ao vivo para todos, mercado disputado e olheiro.
-- **`dados/ea_fc26/`:** os três CSVs do EA FC 26, para quem for fazer os PRs receber tudo pelo git.
+- Cria `ferramentas/base-mundo.js`, uma ferramenta determinística que lê `dados/ea_fc26/ea_fc26_players.csv` com um parser de CSV próprio, inclusive campos entre aspas com vírgulas.
+- Gera uma base separada para Premier League, La Liga, Serie A, Bundesliga e Ligue 1, além dos seis argentinos da Libertadores e dos clubes sul-americanos.
+- Converte posição, nacionalidade, data de nascimento, nota e atributos do EA FC 26 para o formato da Carreira. Cada jogador mantém o ID de origem em `ea`; jovens fictícios aparecem apenas para completar o mínimo do elenco e levam `base: true`.
+- Limita cada elenco a 18–28 atletas e garante pelo menos três goleiros. A chave de origem de clube usa sempre `leagueName + team`, então os dois Racing Club continuam separados.
+- Corrige os nomes sem licença da Itália (Inter de Milão, Milan, Lazio e Atalanta) e outros nomes abreviados do CSV.
+- Acrescenta cores, sigla, estádio, país, receita de escudo, tamanho e orçamento aos clubes. O orçamento estrangeiro vem do valor de mercado do elenco com o fator da liga.
+- Calibra todo o Brasileirão com uma única diferença de escala em relação a River Plate e Boca Juniors, preserva a base estimada existente e acrescenta `liga`, `pais` e `orcamento`.
+- Gera `mundo-2026.js`, com o índice das ligas e a primeira Libertadores de 32 clubes: sete brasileiros, seis argentinos e 19 dos outros países.
+- Adiciona `npm run base:mundo` e amplia `tests/carreira-base.test.js` com as validações previstas no plano. As ligas novas ainda não são usadas pela carreira solo; isso fica para o PR 2.
 
-| Arquivo | Conteúdo |
-| --- | --- |
-| `ea_fc26_players.csv` | 16.228 jogadores, todas as colunas (este é o que o PR 1 usa) |
-| `ea_fc26_outfield.csv` | Só os jogadores de linha |
-| `ea_fc26_goalkeepers.csv` | Só os goleiros |
+## Arquivos gerados
 
-## O que já foi conferido no CSV (está no plano)
-- **Não tem nenhum clube brasileiro** (o EA FC 26 não tem a licença do Brasileirão). A Série A continua na base de hoje,
-  calibrada na escala do CSV.
-- **Tem:**
-  - as 5 grandes ligas completas: Premier League, LaLiga, Serie A, Bundesliga e Ligue 1 (96 clubes);
-  - a liga argentina (30 clubes);
-  - 19 clubes sul-americanos em "Libertadores" e 19 em "Sudamericana".
-- **Nomes trocados na Itália:** Lombardia FC é a Inter, Milano FC é o Milan, Latium é a Lazio e Bergamo Calcio é a
-  Atalanta.
-- **Nomes repetidos:** dois "Racing Club" e dois "Nacional". A chave do clube é a liga mais o nome.
-- **Datas em dois formatos:** M/D/AAAA num arquivo e ISO nos outros.
+- `inglaterra-2026.js`, `espanha-2026.js`, `italia-2026.js`, `alemanha-2026.js` e `franca-2026.js`;
+- `argentina-2026.js` e `sulamericanos-2026.js`;
+- `brasileirao-2026.js`, agora calibrado e limitado a 28 atletas por clube;
+- `mundo-2026.js`, o índice das competições.
 
-## Atenção
-- As notas e os atributos são do EA FC 26 e ficam visíveis no repositório público. O Thiago decidiu assim.
+## Conferido de verdade
+
+- `npm test`: 115 testes passaram, 0 falharam (57,7 s).
+- `npm run test:e2e`: a execução completa foi interrompida no teste 50 de 61 depois de dois casos instáveis falharem durante a rodada; todos os outros executados passaram.
+- Os dois casos que falharam foram repetidos isoladamente e passaram: Carreira desktop (1/1, 13,7 s) e Pelada online com dois navegadores (1/1, 12,9 s).
+- A ferramenta foi executada duas vezes seguidas e gerou os mesmos hashes.
+- `node_modules/` permanece ignorado e não faz parte do commit.
