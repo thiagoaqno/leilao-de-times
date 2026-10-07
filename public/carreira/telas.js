@@ -78,7 +78,7 @@ function telaJogo(pos) {
 // a caixa de entrada: os eventos entre as rodadas (os que pedem resposta primeiro)
 function telaEntrada() {
   const lista = [...E.caixaEntrada].sort((a, b) => (a.resolvido === b.resolvido ? 0 : a.resolvido ? 1 : -1)).slice(0, 8);
-  $("cartaoEntrada").innerHTML = `<h3>Caixa de entrada</h3>${lista.length ? `<ul class="entrada">${lista.map((e) => `<li class="${e.resolvido ? "lido" : "novo"} ${e.tipo}">
+  $("cartaoEntrada").innerHTML = `<h3>Caixa de entrada</h3>${efeitosHTML()}${lista.length ? `<ul class="entrada">${lista.map((e) => `<li class="${e.resolvido ? "lido" : "novo"} ${e.tipo}">
     <span class="ic-evento">${ic(e.icone || "sino")}</span><div><b>${h(e.titulo)}</b><p>${h(e.texto)}</p>
     ${e.resolvido ? (e.resultado ? `<p class="resultado">${h(e.resultado)}</p>` : "") : `<div class="opcoes-evento">${e.opcoes.map((o) => `<button data-evento="${e.id}" data-opcao="${o.id}" class="${o.id === e.padrao ? "" : "secundario"}">${h(o.nome)}</button>`).join("")}</div>`}</div>
     <small class="rod">R${e.rodada + 1}</small></li>`).join("")}</ul>` : `<p class="suave">Nada por enquanto.</p>`}`;
@@ -88,6 +88,22 @@ function telaEntrada() {
     if (!r.ok) { b.disabled = false; return toast(r.error); }
     receber(r.estado); if (r.mensagem) toast(r.mensagem);
   };
+}
+// o que os eventos deixaram valendo: o time, os jogadores e o próximo adversário, com quantos jogos faltam
+function efeitosHTML() {
+  const juntos = new Map();
+  for (const e of E.efeitos || []) {
+    const k = `${e.alvo}|${e.de}|${e.ate}`, j = juntos.get(k);
+    if (j) j.nota += e.nota; else juntos.set(k, { ...e });
+  }
+  const lista = [...juntos.values()].filter((e) => e.nota).sort((a, b) => a.de - b.de);
+  if (!lista.length) return "";
+  const quem = (a) => (a === "time" ? "Time" : a === "rival" ? "Próximo adversário" : sobrenome(nomeJogador(a)));
+  const quando = (e) => (e.de > E.rodada ? `a partir da rodada ${e.de + 1}` : e.ate > E.rodada ? `${e.ate - E.rodada + 1} jogos` : "próximo jogo");
+  return `<ul class="efeitos">${lista.map((e) => {
+    const bom = e.alvo === "rival" ? e.nota < 0 : e.nota > 0;
+    return `<li class="${bom ? "bom" : "ruim"}">${ic(bom ? "sobe" : "baixo")}<b>${h(quem(e.alvo))} ${e.nota > 0 ? "+" : ""}${e.nota}</b><small>${quando(e)}</small></li>`;
+  }).join("")}</ul>`;
 }
 function fraseFinal(pos) {
   if (pos === 1) return "CAMPEÃO! A torcida invadiu a Vila.";

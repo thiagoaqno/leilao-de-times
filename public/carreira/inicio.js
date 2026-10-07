@@ -30,9 +30,12 @@ const comNota = (j) => ({ ...j, nota: notaDe(j) });
 const fora = (pid) => (E.lesoes[pid] ? "lesao" : E.suspensos[pid] ? "suspenso" : null);
 const salarioDe = (j) => E.salarios[j.id] || Mercado.salarioDe(comNota(j));
 // o seu time como o servidor monta (para a prancheta mostrar o mesmo que vai a campo)
+// os efeitos dos eventos que valem no próximo jogo (o servidor soma igual)
+const efeitosAgora = () => (E.efeitos || []).filter((e) => e.de <= E.rodada && e.ate >= E.rodada);
+const efeitoDe = (alvo) => efeitosAgora().reduce((s, e) => s + (e.alvo === alvo ? e.nota : 0), 0);
 function meuTime(mudar = {}) {
-  const esc = { ...E.escalacao, ...mudar }, moral = Math.round((E.moral - 60) / 12);
-  return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: notaDe(j) + moral })),
+  const esc = { ...E.escalacao, ...mudar }, extra = Math.round((E.moral - 60) / 12) + efeitoDe("time");
+  return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: Math.min(97, notaDe(j) + extra + efeitoDe(j.id)) })),
     formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo };
 }
 // a faixa da carta pela nota
