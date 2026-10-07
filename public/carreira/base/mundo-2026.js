@@ -1,0 +1,237 @@
+// Índice das bases da Carreira de Treinador em 2026. Gerado por ferramentas/base-mundo.js.
+(function (root, factory) {
+  const mundo = factory();
+  if (typeof module === "object" && module.exports) module.exports = mundo;
+  else root.MundoCarreira = mundo;
+})(typeof self !== "undefined" ? self : this, function () {
+  return ({
+  "id": "mundo-2026",
+  "ano": 2026,
+  "ligas": [
+    {
+      "id": "brasileirao-2026",
+      "nome": "Brasileirão Série A",
+      "clubes": [
+        "flamengo",
+        "palmeiras",
+        "cruzeiro",
+        "mirassol",
+        "fluminense",
+        "botafogo",
+        "bahia",
+        "saopaulo",
+        "gremio",
+        "bragantino",
+        "atleticomg",
+        "santos",
+        "corinthians",
+        "vasco",
+        "vitoria",
+        "internacional",
+        "coritiba",
+        "athletico",
+        "chapecoense",
+        "remo"
+      ]
+    },
+    {
+      "id": "inglaterra-2026",
+      "nome": "Premier League",
+      "clubes": [
+        "afc-bournemouth",
+        "arsenal",
+        "aston-villa",
+        "brentford",
+        "brighton",
+        "burnley",
+        "chelsea",
+        "crystal-palace",
+        "everton",
+        "fulham",
+        "leeds-united",
+        "liverpool",
+        "manchester-city",
+        "manchester-united",
+        "newcastle-utd",
+        "nottingham-forest",
+        "sunderland",
+        "tottenham",
+        "west-ham",
+        "wolves"
+      ]
+    },
+    {
+      "id": "espanha-2026",
+      "nome": "La Liga",
+      "clubes": [
+        "alaves",
+        "athletic-club",
+        "atletico-de-madrid",
+        "ca-osasuna",
+        "celta-de-vigo",
+        "elche-cf",
+        "fc-barcelona",
+        "getafe-cf",
+        "girona-fc",
+        "levante-ud",
+        "rayo-vallecano",
+        "rcd-espanyol",
+        "rcd-mallorca",
+        "real-betis",
+        "real-madrid",
+        "real-oviedo",
+        "real-sociedad",
+        "sevilla-fc",
+        "valencia-cf",
+        "villarreal-cf"
+      ]
+    },
+    {
+      "id": "italia-2026",
+      "nome": "Serie A",
+      "clubes": [
+        "as-roma",
+        "atalanta",
+        "bologna",
+        "cagliari",
+        "como",
+        "cremonese",
+        "fiorentina",
+        "genoa",
+        "hellas-verona",
+        "inter-de-milao",
+        "juventus",
+        "lazio",
+        "lecce",
+        "milan",
+        "parma",
+        "pisa",
+        "sassuolo",
+        "ssc-napoli",
+        "torino",
+        "udinese"
+      ]
+    },
+    {
+      "id": "alemanha-2026",
+      "nome": "Bundesliga",
+      "clubes": [
+        "1-fc-koln",
+        "1-fsv-mainz-05",
+        "bayer-leverkusen",
+        "borussia-dortmund",
+        "borussia-monchengladbach",
+        "eintracht-frankfurt",
+        "fc-augsburg",
+        "fc-bayern-munchen",
+        "fc-st-pauli",
+        "hamburger-sv",
+        "heidenheim",
+        "rb-leipzig",
+        "sc-freiburg",
+        "sv-werder-bremen",
+        "tsg-hoffenheim",
+        "union-berlin",
+        "vfb-stuttgart",
+        "vfl-wolfsburg"
+      ]
+    },
+    {
+      "id": "franca-2026",
+      "nome": "Ligue 1",
+      "clubes": [
+        "aj-auxerre",
+        "angers-sco",
+        "as-monaco",
+        "fc-lorient",
+        "fc-metz",
+        "fc-nantes",
+        "havre-ac",
+        "losc-lille",
+        "lyon",
+        "ogc-nice",
+        "olympique-de-marseille",
+        "paris-fc",
+        "paris-saint-germain",
+        "rc-lens",
+        "stade-brestois-29",
+        "stade-rennais-fc",
+        "strasbourg",
+        "toulouse-fc"
+      ]
+    },
+    {
+      "id": "argentina-2026",
+      "nome": "Argentina — Libertadores",
+      "clubes": [
+        "river-plate",
+        "boca-juniors",
+        "racing-club-argentina",
+        "estudiantes",
+        "velez-sarsfield",
+        "talleres"
+      ]
+    },
+    {
+      "id": "sulamericanos-2026",
+      "nome": "Clubes sul-americanos",
+      "clubes": [
+        "nacional",
+        "penarol",
+        "colo-colo",
+        "atletico-nacional",
+        "libertad",
+        "universidad-de-chile",
+        "bolivar",
+        "alianza-lima",
+        "olimpia",
+        "universitario",
+        "sporting-cristal",
+        "cerro-porteno",
+        "barcelona-sc",
+        "ldu-quito",
+        "independiente-del-valle",
+        "bucaramanga",
+        "deportivo-tachira",
+        "carabobo-fc",
+        "san-antonio",
+        "racing-club-uruguai"
+      ]
+    }
+  ],
+  "libertadores": [
+    "flamengo",
+    "palmeiras",
+    "cruzeiro",
+    "corinthians",
+    "santos",
+    "fluminense",
+    "atleticomg",
+    "river-plate",
+    "boca-juniors",
+    "racing-club-argentina",
+    "estudiantes",
+    "velez-sarsfield",
+    "talleres",
+    "nacional",
+    "penarol",
+    "colo-colo",
+    "atletico-nacional",
+    "libertad",
+    "universidad-de-chile",
+    "bolivar",
+    "alianza-lima",
+    "olimpia",
+    "universitario",
+    "sporting-cristal",
+    "cerro-porteno",
+    "barcelona-sc",
+    "ldu-quito",
+    "independiente-del-valle",
+    "bucaramanga",
+    "deportivo-tachira",
+    "carabobo-fc",
+    "san-antonio"
+  ]
+});
+});
