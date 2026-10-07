@@ -323,11 +323,14 @@ const GAMES = [
   // do outro lado da ruazinha: a casa da Palavra Proibida, com telhado roxo
   { id: "proibida", url: "/proibida/", icon: "🤐", sign: "PROIBIDA", name: "Casa da Palavra Proibida", desc: "Explique a palavra sem falar as 5 proibidas! Dois times, e o time adversário fiscaliza.", meta: "Palavra Proibida da Galera · 2 times",
     x: 30, y: 10, w: 7, h: 5, doors: [33], bairro: "cartas", roof: "#5a2a8a", roof2: "#45206b", wall: "#f3ead6", wall2: "#dccfae" },
+  // na Praça, entre o chafariz e o Quiosque do Botão: a Sede da Carreira, com o telhado de clube e o escudo pintado
+  { id: "carreira", url: "/carreira/", icon: "🏆", sign: "SEDE", name: "Sede da Carreira", desc: "Carreira de treinador: assuma um clube do Brasileirão, escale, mexa na tática e jogue a temporada inteira. Tudo fica salvo.", meta: "Carreira de Treinador · 1 jogador",
+    x: 23, y: 18, w: 6, h: 4, doors: [25, 26], bairro: "praca", roof: "#1f5a3a", roof2: "#174a2f", wall: "#f3ead6", wall2: "#dccfae", sede: true },
 ];
 
 const FOUNTAIN = { x: 18, y: 19, w: 4, h: 3 };
 const LAMPS = [[2, 9], [18, 9], [21, 9], [37, 9], [11, 17], [28, 17], [11, 24], [28, 24], [2, 34], [21, 34], [37, 34], [18, 41], [21, 41]];
-const BENCHES = [[14, 18], [25, 18], [14, 23], [25, 23]];
+const BENCHES = [[14, 18], [14, 23], [25, 23]]; // o banco de [25, 18] deu lugar à Sede da Carreira
 const TREES = [[3, 25], [8, 26], [13, 25], [16, 26], [23, 25], [27, 26], [33, 25], [36, 26], [11, 34], [18, 35], [18, 37], [11, 41], [16, 41],
   [5, 41], [10, 41], [14, 41], [25, 41], [30, 41], [35, 41], [10, 9], [28, 9]];
 // leva a vila para o meio do mapa grande
@@ -640,6 +643,13 @@ function drawBuilding(c, g) {
     c.beginPath(); c.arc(fx + fw / 2 + 0.5, fy + fh / 2, 4, 0, 7); c.stroke();
     px(c, "#f4f4f0", fx - 2, fy + fh / 2 - 4, 2, 8); px(c, "#f4f4f0", fx + fw, fy + fh / 2 - 4, 2, 8);
     px(c, "#ffffff", fx + fw / 2 + 6, fy + fh / 2 + 2, 2, 2);
+  }
+  if (g.sede) { // telhado de sede de clube: a cumeeira dourada e o escudo com a estrela, ao lado da placa
+    px(c, "#d4af37", rx, Y, rw, 2);
+    const ex = Math.round(rx + rw * 0.8) - 7, ey = Y + 3;
+    const linhas = ["##############", "#gggwwgggwwggg#", "#gggwwgggwwggg#", "#ggwwwwwwwwwgg#", "#gggwwwwwwwggg#", "#ggggwwgwwgggg#", " #gggwgggwggg# ", "  #ggggggggg#  ", "   #ggggggg#   ", "    #ggggg#    ", "     #####     "];
+    const cor = { "#": "#d4af37", g: "#2e8b57", w: "#f4f1e6" };
+    linhas.forEach((l, j) => [...l].forEach((ch, i) => { if (cor[ch]) px(c, cor[ch], ex + i, ey + j, 1, 1); }));
   }
   if (g.rocket) { // telhado metade azul, metade laranja, com a bola gigante no meio
     px(c, "#2f6fde", rx, Y, rw / 2, roofH - 3); px(c, "#e0742a", rx + rw / 2, Y, rw / 2, roofH - 3);
