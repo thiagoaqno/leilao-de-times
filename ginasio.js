@@ -3,6 +3,7 @@
 const G = require("./public/ginasio/regras.js");
 const Galeramon = require("./public/galeramon/dados.js");
 const PokeDex = require("./public/galeramon/pokemon.js");
+const Lideres = require("./public/galeramon/lideres.js"); // os líderes e treinadores da Vila (o time dos robôs)
 const { rid, novoCodigo, limparNome, ok, falha, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js");
 const noite = require("./noite.js");
 
@@ -19,7 +20,9 @@ const dexDe = (modo) => modo === "pokemon" ? PokeDex : Galeramon;
 
 function limparConfig(c) {
   c = objeto(c) ? c : {};
-  return { modo: c.modo === "pokemon" ? "pokemon" : "galeramon", formato: c.formato === "2x2" ? "2x2" : "1x1", bots: c.bots !== false };
+  // lider: o desafio a um líder ou treinador da Vila (1x1 contra o robô com o time dele)
+  const lider = Lideres.de(c.lider) ? c.lider : null;
+  return { modo: c.modo === "pokemon" ? "pokemon" : "galeramon", formato: lider ? "1x1" : c.formato === "2x2" ? "2x2" : "1x1", bots: lider ? true : c.bots !== false, ...(lider && { lider }) };
 }
 
 function timeValido(modo, time) {
@@ -142,7 +145,8 @@ module.exports = function ligarGinasio(io) {
     const lados = [0, 1].map((lado) => doLado(sala, lado).map((p) => ({ id: p.id, nome: p.name, bot: false, time: p.times[sala.config.modo] })));
     sala.match = G.criarPartida({ ...sala.config, seed: rid(16) }, lados);
     let b = 0;
-    for (const l of sala.match.lados) for (const p of l.jogadores) if (p.bot) p.nome = BOT_NOMES[b++];
+    const lider = Lideres.de(sala.config.lider);
+    for (const l of sala.match.lados) for (const p of l.jogadores) if (p.bot) p.nome = lider && p.lado === 1 ? lider.nome : BOT_NOMES[b++];
     for (const p of Object.values(sala.players)) limparEntrada(p);
     sala.inicio = Date.now() + PRONTO_MS; sala.frame = 0; sala.results = null; sala.phase = "play";
     log(sala, `Valendo: ${sala.config.formato}, modo ${sala.config.modo === "pokemon" ? "Pokémon" : "Galeramon"}.`);

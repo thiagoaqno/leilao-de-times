@@ -81,3 +81,80 @@ test("carreira: escalação, a temporada inteira e a próxima", async () => {
   assert.ok(n.estado.historico[0].posicao >= 1 && n.estado.historico[0].posicao <= 20);
   a.close();
 });
+
+const Mercado = require("../public/carreira/mercado.js");
+const todos = base.clubes.flatMap((c) => c.jogadores.map((j) => ({ ...j, clube: c.id })));
+
+test("carreira: comprar na janela, vender na hora, pôr à venda e a janela fechando", async () => {
+  const a = await conectar(srv.url, "/carreira");
+  const c = await pedir(a, "criar", { nome: "Duda", clube: "mirassol" });
+  const caixa0 = c.estado.caixa;
+  assert.ok(caixa0 > 0 && c.estado.janela.aberta);
+  // um reserva barato de outro clube, pagando bem acima do valor
+  const alvo = todos.find((j) => j.clube !== "mirassol" && j.nota <= 64 && !j.base);
+  const valor = Math.round(Mercado.valorDe(alvo) * 1.8 / 1e5) * 1e5, salario = Mercado.salarioDe(alvo) * 2;
+  await assert.rejects(pedir(a, "proposta", { jogador: alvo.id, valor: caixa0 + 1e6, salario }), /caixa/);
+  const r = await pedir(a, "proposta", { jogador: alvo.id, valor, salario });
+  assert.strictEqual(r.resposta.resultado, "aceita", r.resposta.motivo);
+  assert.ok(r.estado.elenco.includes(alvo.id), "entrou no elenco");
+  assert.strictEqual(r.estado.caixa, caixa0 - valor);
+  assert.strictEqual(r.estado.transferencias[0].jogador, alvo.id);
+  // a mesma proposta de novo: o jogador já é seu
+  await assert.rejects(pedir(a, "proposta", { jogador: alvo.id, valor, salario }), /disponível/);
+  // pôr à venda e tirar
+  const meu = r.estado.elenco.find((id) => id !== alvo.id);
+  let e = await pedir(a, "vender", { jogador: meu, modo: "lista" });
+  assert.ok(e.estado.aVenda.includes(meu));
+  e = await pedir(a, "vender", { jogador: meu, modo: "lista" });
+  assert.ok(!e.estado.aVenda.includes(meu));
+  // vender na hora: sai do elenco e o dinheiro entra
+  const v = await pedir(a, "vender", { jogador: alvo.id, modo: "agora" });
+  assert.ok(!v.estado.elenco.includes(alvo.id));
+  assert.strictEqual(v.estado.caixa, caixa0 - valor + Mercado.vendaRapida(alvo));
+  // depois da rodada 4 a janela fecha
+  for (let i = 0; i < 4; i++) await pedir(a, "jogar", { modo: 1 });
+  const outro = todos.find((j) => j.clube !== "mirassol" && j.nota <= 64 && j.id !== alvo.id && !j.base);
+  await assert.rejects(pedir(a, "proposta", { jogador: outro.id, valor, salario }), /fechada/);
+  await assert.rejects(pedir(a, "vender", { jogador: meu, modo: "agora" }), /fechada/);
+  a.close();
+});
+
+test("carreira: os eventos pedem resposta, a resposta vale e o que ficou sem resposta usa a padrão", async () => {
+  const a = await conectar(srv.url, "/carreira");
+  let r = await pedir(a, "criar", { nome: "Rafa", clube: "santos" });
+  let respondido = false, lesao = false, extrato = false;
+  for (let i = 0; i < 20 && !(respondido && extrato); i++) {
+    r = await pedir(a, "jogar", { modo: 1 });
+    extrato = extrato || r.estado.financas.some((f) => f.itens.some(([nome]) => nome === "Cota de TV"));
+    lesao = lesao || Object.keys(r.estado.lesoes).length > 0;
+    const pendente = r.estado.caixaEntrada.find((e) => !e.resolvido && e.opcoes);
+    if (pendente && !respondido) {
+      const resp = await pedir(a, "evento", { id: pendente.id, opcao: pendente.opcoes[0].id });
+      assert.ok(resp.estado.caixaEntrada.find((e) => e.id === pendente.id).resolvido);
+      await assert.rejects(pedir(a, "evento", { id: pendente.id, opcao: pendente.opcoes[0].id }), /resolvido/);
+      respondido = true;
+    }
+  }
+  assert.ok(respondido, "apareceu um evento com escolha");
+  assert.ok(extrato, "o extrato tem a cota de TV");
+  // jogar resolve o que ficou pendente
+  r = await pedir(a, "jogar", { modo: 1 });
+  const antigos = r.estado.caixaEntrada.filter((e) => e.rodada < r.estado.rodada && !e.resolvido);
+  assert.deepStrictEqual(antigos, []);
+  a.close();
+});
+
+test("carreira: a escalação fixa (cada um no seu lugar) é respeitada e o jogo para machucados", async () => {
+  const a = await conectar(srv.url, "/carreira");
+  const c = await pedir(a, "criar", { nome: "Bia", clube: "flamengo" });
+  const elenco = base.clubes.find((x) => x.id === "flamengo").jogadores;
+  const gol = elenco.find((j) => j.pos === "GOL"), linha = elenco.filter((j) => j.pos !== "GOL").slice(0, 10);
+  await assert.rejects(pedir(a, "escalacao", { titulares: [linha[0].id, gol.id, ...linha.slice(1).map((j) => j.id)], fixo: true }), /goleiro/);
+  const ids = [gol.id, ...linha.map((j) => j.id)];
+  const e = await pedir(a, "escalacao", { formacao: "4-3-3", titulares: ids, fixo: true });
+  assert.strictEqual(e.estado.escalacao.fixo, true);
+  assert.deepStrictEqual(e.estado.escalacao.titulares, ids);
+  const r = await pedir(a, "jogar", { modo: 1 });
+  assert.ok(r.estado.ultimo.eventos.length > 0);
+  a.close();
+});

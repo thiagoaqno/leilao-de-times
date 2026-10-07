@@ -1,29 +1,54 @@
-// Carreira de Treinador (parte 1 de 3 dos scripts da página; eles rodam em ordem e dividem as variáveis globais):
-// a conexão, o estado que chega do servidor, os escudos, a troca de tela, e começar ou continuar a carreira.
+// Carreira de Treinador (parte 1 dos scripts da página; eles rodam em ordem e dividem as variáveis globais):
+// a conexão, o estado que chega do servidor, a base, os escudos, as contas do elenco, a troca de tela e o começo.
 const { $, h, store } = Comum;
-const socket = io("/carreira", { autoConnect: false }), toast = Comum.criarToast();
+const socket = io("/carreira", { autoConnect: false }), avisar = Comum.criarToast();
+// o aviso aparece por cima do diálogo aberto (senão some atrás dele)
+const toast = (msg) => { const d = [...document.querySelectorAll("dialog[open]")].pop(); (d || document.body).append($("toast")); avisar(msg); };
+const ic = (nome, cls) => Icones.ic(nome, cls);
+const { dinheiro } = Mercado;
 const BASE_PADRAO = "brasileirao-2026"; // a base das carreiras novas (as antigas seguem na delas)
-let BASE = null, CLUBES = {}, JOGADORES = {};
+let BASE = null, CLUBES = {}, JOGADORES = {}, E = null, telaAtual = null, clubeEscolhido = null;
 function usarBase(id) {
   const b = window.BasesCarreira[id] || window.BasesCarreira[BASE_PADRAO];
   if (b === BASE) return;
   BASE = b;
   CLUBES = Object.fromEntries(BASE.clubes.map((c) => [c.id, c]));
-  JOGADORES = Object.fromEntries(BASE.clubes.flatMap((c) => c.jogadores.map((j) => [j.id, { ...j, clube: c.id }])));
+  JOGADORES = Object.fromEntries(BASE.clubes.flatMap((c) => c.jogadores.map((j) => [j.id, { ...j, origem: c.id }])));
 }
 usarBase(BASE_PADRAO);
-let E = null, telaAtual = null, clubeEscolhido = null;
 
 const pedir = (evento, dados) => new Promise((ok) => socket.emit(evento, dados, (r) => ok(r || { ok: false, error: "Sem resposta do servidor." })));
 const nomeClube = (id) => CLUBES[id]?.nome || id;
 const nomeJogador = (id) => JOGADORES[id]?.nome || "alguém";
+const sobrenome = (nome) => { const p = String(nome).split(" "); return p.length > 1 && p.at(-1).length > 2 ? p.at(-1) : nome; };
 const meuClube = () => CLUBES[E.clube];
-// o escudo em pixel-art (escudos.js): parecido com o de verdade, sem copiar
-function escudo(id) {
-  const c = CLUBES[id]; if (!c) return "";
-  return `<span class="escudo" title="${h(c.nome)}">${Escudos.svg(c)}</span>`;
+// as contas do elenco de agora (a base mais as transferências da carreira)
+const donoDe = (pid) => (E && E.donos[pid]) || JOGADORES[pid]?.origem;
+const elencoDe = (clube) => Object.values(JOGADORES).filter((j) => donoDe(j.id) === clube);
+const notaDe = (j) => Math.max(40, Math.min(95, j.nota + ((E && E.bonusNota[j.id]) || 0)));
+const comNota = (j) => ({ ...j, nota: notaDe(j) });
+const fora = (pid) => (E.lesoes[pid] ? "lesao" : E.suspensos[pid] ? "suspenso" : null);
+const salarioDe = (j) => E.salarios[j.id] || Mercado.salarioDe(comNota(j));
+// o seu time como o servidor monta (para a prancheta mostrar o mesmo que vai a campo)
+function meuTime(mudar = {}) {
+  const esc = { ...E.escalacao, ...mudar }, moral = Math.round((E.moral - 60) / 12);
+  return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: notaDe(j) + moral })),
+    formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo };
 }
-const estrelas = (n) => "★".repeat(n) + `<i>${"★".repeat(5 - n)}</i>`;
+// a faixa da carta pela nota
+const faixa = (n) => (n >= 83 ? "lenda" : n >= 75 ? "ouro" : n >= 65 ? "prata" : "bronze");
+const POS_NOME = { GOL: "Goleiro", ZAG: "Zagueiro", LD: "Lateral-direito", LE: "Lateral-esquerdo", VOL: "Volante", MC: "Meio-campista", MEI: "Meia", PE: "Ponta-esquerda", PD: "Ponta-direita", ATA: "Atacante" };
+const GRUPO_TELA = { GOL: "GOL", ZAG: "DEF", LD: "DEF", LE: "DEF", VOL: "MEI", MC: "MEI", MEI: "MEI", PE: "ATA", PD: "ATA", ATA: "ATA" };
+
+// o escudo em pixel-art (escudos.js), em tamanho múltiplo de 16x18 para os pixels ficarem nítidos
+function escudo(id, escala = 2) {
+  const c = CLUBES[id]; if (!c) return "";
+  return `<span class="escudo" style="--e:${escala}" title="${h(c.nome)}">${Escudos.svg(c)}</span>`;
+}
+const coresClube = (id) => (CLUBES[id] ? `--clube:${CLUBES[id].cores[0]};--clube2:${CLUBES[id].cores[1]}` : "");
+// a festa (gol seu, contratação): confete nas cores do clube; quem pede menos movimento fica sem
+const festa = () => { if (matchMedia("(prefers-reduced-motion: reduce)").matches || !E) return; const c = CLUBES[E.clube]; Comum.confetti([c.cores[0], c.cores[1], "#ffb21e", "#e8efe7"]); };
+const estrelas = (n) => Array.from({ length: 5 }, (_, i) => `<i class="${i < n ? "acesa" : ""}">${ic("estrela")}</i>`).join("");
 
 function mostrarTela(id) {
   telaAtual = id;
@@ -32,22 +57,26 @@ function mostrarTela(id) {
   window.scrollTo({ top: 0 });
 }
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-ir]"); if (b) mostrarTela(b.dataset.ir); });
-
 // chegou um estado novo do servidor
 function receber(estado) {
   usarBase(estado.base);
   E = estado;
+  document.body.style.cssText = coresClube(E.clube);
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
 }
+// os ícones dos atalhos (montados uma vez)
+for (const s of document.querySelectorAll("[data-ic]")) s.innerHTML = ic(s.dataset.ic);
+$("fichaFechar").innerHTML = ic("fechar");
 
 // ---------- começar ----------
 function telaInicio() {
-  $("cNome").value = store.get("galera:name") || "";
   usarBase(BASE_PADRAO);
-  $("avisoBase").textContent = `${BASE.nome} ${BASE.ano}: os elencos vêm da Wikipédia (${BASE.fonte.replace(/^.*, /, "")}); as notas são estimativas nossas.`;
+  document.body.style.cssText = "";
+  $("cNome").value = store.get("galera:name") || "";
+  $("avisoBase").innerHTML = `${ic("livro")} ${h(BASE.nome)} ${BASE.ano}: os elencos vêm da Wikipédia (${h(BASE.fonte.replace(/^.*, /, ""))}); as notas são estimativas nossas.`;
   $("avisoBase").classList.remove("hidden");
   $("clubes").innerHTML = [...BASE.clubes].sort((a, b) => b.tamanho - a.tamanho || a.nome.localeCompare(b.nome)).map((c) =>
-    `<button class="clube" data-clube="${c.id}" aria-pressed="${c.id === clubeEscolhido}">${escudo(c.id)}<span>${h(c.nome)}<small>${h(c.cidade)}</small><span class="estrelas" aria-label="Tamanho ${c.tamanho} de 5">${estrelas(c.tamanho)}</span></span></button>`).join("");
+    `<button class="clube" style="${coresClube(c.id)}" data-clube="${c.id}" aria-pressed="${c.id === clubeEscolhido}">${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b><small>${h(c.cidade)}</small><span class="estrelas" aria-label="Tamanho ${c.tamanho} de 5">${estrelas(c.tamanho)}</span></span></button>`).join("");
   mostrarTela("inicio");
 }
 $("clubes").addEventListener("click", (e) => {
@@ -94,6 +123,3 @@ async function conectar() {
   receber(r.estado);
   if (primeira) abrirSede();
 }
-socket.on("connect", conectar);
-socket.on("disconnect", () => { $("conexao").textContent = "Sem conexão"; });
-socket.on("connect_error", () => { $("conexao").textContent = "Sem conexão"; });

@@ -543,7 +543,8 @@
   // fundo do close
   function monta(g, j, cobranca = null) {
     const semente = `${j.id}|${g.min}|${g.nome}|${g.lado}`, sorte = sorteio(semente), futsal = j.mins === 40;
-    const art = figura(g.nome, Rostos.uniformeDe(g.nome), { num: numeroDe(g.nome, g.pos, sorte) });
+    // o uniforme vem da carta (Leilão) ou do clube de quem marcou (g.uniforme, na Carreira de Treinador)
+    const art = figura(g.nome, g.uniforme || Rostos.uniformeDe(g.nome), { num: numeroDe(g.nome, g.pos, sorte) });
     const paleta = ["#f7d417", "#3ad37a", "#ff7a2f", "#8a8f98", "#b06cff", "#25b4c9"];
     const corGol = paleta.slice().sort((a, b) => distCor(b, art.u.cam) - distCor(a, art.u.cam))[0];
     const nomeGol = (cobranca && cobranca.goleiro) || "goleiro " + Math.floor(sorte() * 99999); // no pênalti da galera, o goleiro de verdade
@@ -552,7 +553,7 @@
     const cores = ["#e63946", "#1d4ed8", "#16a34a", "#f59e0b", "#7c3aed", "#0f172a", "#f4f4f4"];
     const camRival = cores.slice().sort((a, b) => Math.min(distCor(b, art.u.cam), distCor(b, corGol)) - Math.min(distCor(a, art.u.cam), distCor(a, corGol)))[0];
     const detRival = claro(camRival) > 150 ? "#1a1a1a" : "#f4f4f4";
-    const rival = { cam: camRival, det: detRival, desenho: "", calcao: detRival, meiao: camRival, chuteira: "#1a1a1a" };
+    const rival = g.uniformeRival || { cam: camRival, det: detRival, desenho: "", calcao: detRival, meiao: camRival, chuteira: "#1a1a1a" };
     const rivais = [0, 1, 2].map((k) => figura(`zagueiro ${semente} ${k}`, rival));
     const parceiros = [0, 1].map((k) => figura(`parceiro ${semente} ${k}`, art.u, { num: [8, 11][k] }));
     const tipoNome = cobranca ? "penalti" : escolheTipo(sorte, g.pos, g.ovr || 80, futsal, g.nome), tipo = Lances.GOLS[tipoNome];

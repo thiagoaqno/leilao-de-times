@@ -119,7 +119,7 @@ function desenharEfeitos(agora) {
 function entidadesVisuais(agora) {
   if (!S?.match || S.phase === "lobby") return [
     { id: "previa0", bicho: times[modoAtual()][0], forma: times[modoAtual()][0], x: -5.5, y: 0, vx: 0, vy: 0, lado: 0, campo: true, mira: { x: 1, y: 0 }, hp: 1, max: 1 },
-    { id: "previa1", bicho: dexAtual().DEFAULT_TEAM[1], forma: dexAtual().DEFAULT_TEAM[1], x: 5.5, y: 0, vx: 0, vy: 0, lado: 1, campo: true, mira: { x: -1, y: 0 }, hp: 1, max: 1 },
+    { id: "previa1", bicho: LIDER ? LIDER.times[modoAtual()][0] : dexAtual().DEFAULT_TEAM[1], forma: LIDER ? LIDER.times[modoAtual()][0] : dexAtual().DEFAULT_TEAM[1], x: 5.5, y: 0, vx: 0, vy: 0, lado: 1, campo: true, mira: { x: -1, y: 0 }, hp: 1, max: 1 },
   ];
   const remoto = interpolarEntidades(agora - 100);
   if (N.previsto && S.phase === "play") {

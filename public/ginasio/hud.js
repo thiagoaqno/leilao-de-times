@@ -57,8 +57,13 @@ function atualizarHud(agora) {
 }
 function mostrarResultado() {
   limparControles(); Toque.show(false);
-  const r = S.results, ganhou = r.vencedor === meuJogador()?.lado;
+  const r = S.results, ganhou = r.vencedor === meuJogador()?.lado, lider = Lideres.de(S.config.lider);
   $("resultadoTitulo").textContent = r.empate ? "Empate" : ganhou ? "Vitória!" : ME?.id ? "Fim da batalha" : `Lado ${r.vencedor + 1} venceu`;
+  // venceu um líder: a insígnia fica guardada neste navegador
+  if (ganhou && lider) {
+    if (lider.onde === "ginasio") { const ins = insignias(); const nova = !ins[lider.id]; ins[lider.id] = true; store.set("ginasio:insignias", ins); $("resultadoTitulo").textContent = nova ? `Insígnia ${lider.tipo} conquistada!` : `Você venceu ${lider.nome} de novo!`; mostrarInsignias(); }
+    else $("resultadoTitulo").textContent = `Você venceu ${lider.nome}!`;
+  }
   $("resultadoLados").innerHTML = r.lados.map((l) => `<div class="resultado-lado"><i class="cor ${l.lado ? "vermelho" : ""}"></i><span>${l.jogadores.map((p) => h(p.nome)).join(" + ")}</span><strong>${Math.round(l.vida / (l.jogadores.length * 3) * 100)}%</strong></div>`).join("");
   $("btnRevanche").classList.toggle("hidden", S.host !== ME?.id); $("resultado").showModal();
 }

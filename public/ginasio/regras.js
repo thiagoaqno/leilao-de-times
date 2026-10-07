@@ -1,9 +1,9 @@
 // Ginásio da Galera — motor da batalha em tempo real.
 // Roda igual no servidor e no navegador: o servidor decide dano, acertos, desmaios e fim da partida.
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/dados.js"), require("../galeramon/pokemon.js"));
-  else root.Ginasio = factory(root.Galeramon, root.PokeDex);
-})(typeof self !== "undefined" ? self : this, function (Galeramon, PokeDex) {
+  if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/dados.js"), require("../galeramon/pokemon.js"), require("../galeramon/lideres.js"));
+  else root.Ginasio = factory(root.Galeramon, root.PokeDex, root.Lideres);
+})(typeof self !== "undefined" ? self : this, function (Galeramon, PokeDex, Lideres) {
   const DEX = { galeramon: Galeramon, pokemon: PokeDex };
   const ARENA = {
     w: 18, h: 12,
@@ -126,7 +126,10 @@
       const lista = jogadoresDoLado(lados, lado);
       for (let slot = 0; slot < porLado; slot++) {
         const raw = lista[slot] || {};
-        const team = dex.cleanTeam(raw.time || raw.team || raw.bichos || timePadrao(dex, lado, slot));
+        // o robô usa o time do líder (no lado de lá) ou um dos times temáticos, sorteado
+        const lider = lado === 1 && Lideres && Lideres.de(config.lider);
+        const doRobo = () => (lider ? lider.times[modo].slice() : Lideres ? Lideres.timeDeRobo(modo, p.rng) : timePadrao(dex, lado, slot));
+        const team = dex.cleanTeam(raw.time || raw.team || raw.bichos || doRobo());
         const j = {
           id: raw.id || `bot${lado + 1}${slot + 1}`,
           nome: raw.nome || raw.name || `Robô ${lado + 1}-${slot + 1}`,
