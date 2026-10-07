@@ -73,8 +73,10 @@ carreira solo.
 - **Telas menores:** duas colunas até 1240 px e uma no celular (primeiro o jogo e a gestão, depois as notícias e os
   avisos).
 - **Visual:**
-  - escuro, com o acento na cor do campeonato do clube (`body[data-liga]`): verde-neon no Brasileirão, roxo na
-    Premier, vermelho na La Liga, azul na Serie A, vermelho na Bundesliga e amarelo na Ligue 1;
+  - escuro, com o **tema na cor do seu clube**: o acento (o botão de jogar, os destaques, o brilho) é a primeira cor
+    colorida do clube, clareada só o necessário para dar leitura no fundo escuro (o Flamengo fica vermelho, o
+    Palmeiras verde, o Real Madrid dourado). Clube preto e branco (Corinthians, Botafogo, Santos, Juventus) fica com o
+    branco, e a letra em cima do acento sempre contrasta. Na sala em grupo, a tela pega a cor do clube escolhido;
   - as cores ficam em variáveis no `:root` (`--acento`, `--vidro`...);
   - o fundo é um estádio à noite feito só com CSS (os refletores e o gramado listrado), e os painéis têm efeito de
     vidro (`backdrop-filter`);
@@ -130,7 +132,7 @@ carreira solo.
   de vez em quando (o extrato do último jogo sem a "Cota de TV"). Falhou 1 de 10 vezes no `main`, sem este PR.
 
 ## Fotos (`planos/imagens/`)
-- `carreira-hub-pc.png`: o hub no PC (Real Madrid, depois de 4 jogos).
+- `carreira-hub-pc.png`: o hub no PC (Flamengo, depois de 4 jogos, no vermelho do clube).
 - `carreira-hub-celular.png`: o hub no celular.
 - `carreira-cards-camisas.png`: os cards no mercado, com as camisas de verdade e os rostos pela nacionalidade.
 - `carreira-grupo-sala.png`: a sala de espera da carreira em grupo.
