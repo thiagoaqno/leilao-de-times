@@ -27,12 +27,13 @@ function tempoDePartida(agora) {
   if (!sn) return 0;
   return sn.tempo + (S?.phase === "play" ? Math.max(0, agora - sn.t) / 1000 : 0);
 }
-const semente = (txt) => { let h = 7; for (const c of String(txt)) h = (h * 31 + c.charCodeAt(0)) % 9973; return h; };
+// (nome próprio: animacao.js já tem uma "semente" global, e as duas não podem conviver)
+const sementeMarca = (txt) => { let h = 7; for (const c of String(txt)) h = (h * 31 + c.charCodeAt(0)) % 9973; return h; };
 
 function novaMarca(jeito, x, y, r, elemento, chave) {
   if (marcas.some((m) => m.chave === chave)) return; // o mesmo evento chegando duas vezes
   const agora = relogio.agora();
-  marcas.push({ jeito, x, y, r, elemento, chave, sem: semente(chave), t0: tempoDePartida(agora), nasceu: agora });
+  marcas.push({ jeito, x, y, r, elemento, chave, sem: sementeMarca(chave), t0: tempoDePartida(agora), nasceu: agora });
   if (marcas.length > MAX_MARCAS) marcas.splice(0, marcas.length - MAX_MARCAS);
 }
 // chamado por efeitoVisual (desenho.js) a cada evento do servidor
