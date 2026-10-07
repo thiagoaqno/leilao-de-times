@@ -3,7 +3,7 @@ const N = { snap: null, buf: [], previsto: null, mundo: null, seq: 0, historico:
 let resultadoVisto = null;
 function limparRede() {
   Object.assign(N, { snap: null, buf: [], previsto: null, mundo: null, seq: 0, historico: [], erro: { x: 0, y: 0 }, inicio: null });
-  projeteisVisuais.clear(); areasVisuais.clear(); efeitos.length = 0; ataques.clear(); limparControles();
+  projeteisVisuais.clear(); areasVisuais.clear(); efeitos.length = 0; marcas.length = 0; ataques.clear(); limparControles();
 }
 function entidadePrevista(e) {
   return {
