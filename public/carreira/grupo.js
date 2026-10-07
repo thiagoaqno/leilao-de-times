@@ -72,6 +72,7 @@ function desenharSala() {
     `<button data-opcao-sala="${k}" data-valor="${v}" aria-pressed="${st.opcoes[k] === v}" ${anfitriao ? "" : "disabled"}>${t}</button>`).join("")}</div></div>`).join("")
     + (anfitriao ? "" : `<p class="suave">Só o anfitrião muda as regras.</p>`);
   $("gMeuClube").textContent = eu && eu.clube ? `Você: ${nomeClube(eu.clube)}` : "";
+  document.body.style.cssText = eu && eu.clube ? `${coresClube(eu.clube)};${temaClube(eu.clube)}` : ""; // a sala já ganha a cor do clube escolhido
   const orc = (c) => c.orcamento || Orcamentos.de(c).caixa, ordemLiga = (c) => ["brasileirao-2026", ...Temporada.EUROPA].indexOf(c.liga);
   $("gClubes").innerHTML = st.clubes.map((id) => CLUBES[id]).filter(Boolean).sort((a, b) => ordemLiga(a) - ordemLiga(b) || orc(b) - orc(a)).map((c) => {
     const dono = st.ocupados[c.id], meu = dono === MEU_ID, outro = dono && !meu ? st.players.find((p) => p.id === dono) : null;

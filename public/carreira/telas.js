@@ -25,7 +25,6 @@ const humor = (m) => (m >= 80 ? "Embalado" : m >= 65 ? "Confiante" : m >= 50 ? "
 
 function telaSede() {
   const c = meuClube(), pos = posicaoDe(E.clube), forma = E.meus.filter((j) => j.placar).slice(-5).map(resultadoMeu);
-  document.body.dataset.liga = c.liga || "brasileirao-2026"; // a cor do campeonato no hub (--acento)
   $("cabecalho").innerHTML = `<div class="hub-clube">${escudo(E.clube, 4)}
     <div class="cab-nome"><span class="sobre">Técnico ${h(E.tecnico.nome)} · ${h(Temporada.NOMES[c.liga] || "Temporada")} ${E.ano}${E.temporadasMax ? ` · temporada ${E.temporada} de ${E.temporadasMax}` : ""}</span><h1>${h(c.nome)}</h1>
       <span class="forma" aria-label="Últimos resultados">${forma.map((r) => `<i class="res ${r}">${r}</i>`).join("") || "<small>A temporada ainda não começou</small>"}</span></div></div>
