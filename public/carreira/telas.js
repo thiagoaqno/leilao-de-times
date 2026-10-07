@@ -26,7 +26,7 @@ const humor = (m) => (m >= 80 ? "Embalado" : m >= 65 ? "Confiante" : m >= 50 ? "
 function telaSede() {
   const c = meuClube(), pos = posicaoDe(E.clube), forma = E.meus.filter((j) => j.placar).slice(-5).map(resultadoMeu);
   $("cabecalho").innerHTML = `${escudo(E.clube, 4)}
-    <div class="cab-nome"><span class="sobre">Técnico ${h(E.tecnico.nome)} · Temporada ${E.ano}</span><h1>${h(c.nome)}</h1>
+    <div class="cab-nome"><span class="sobre">Técnico ${h(E.tecnico.nome)} · Temporada ${E.ano}${E.temporadasMax ? ` (${E.temporada} de ${E.temporadasMax})` : ""}</span><h1>${h(c.nome)}</h1>
       <span class="forma">${forma.map((r) => `<i class="res ${r}">${r}</i>`).join("") || "<small>A temporada ainda não começou</small>"}</span></div>
     <div class="cab-numeros">
       <div><small>Posição</small><b>${E.rodada > 0 ? pos + "º" : "—"}</b></div>
@@ -50,17 +50,35 @@ function telaSede() {
   $("cartaoFinancas").innerHTML = `<h3>Finanças</h3><div class="numeros-fin"><div><small>Caixa</small><b>${dinheiro(E.caixa)}</b></div><div><small>Folha por mês</small><b>${dinheiro(E.folha)}</b></div></div>
     ${f ? `<ul class="extrato">${f.itens.slice(-6).map(([n, v]) => `<li><span>${h(n)}</span><b class="${v < 0 ? "neg" : "positivo"}">${v > 0 ? "+" : ""}${dinheiro(v)}</b></li>`).join("")}</ul>` : `<p class="suave">O extrato aparece depois do primeiro jogo.</p>`}`;
   $("atalhoJanela").textContent = E.janela.aberta ? "Janela aberta" : E.janela.proxima != null ? `Janela abre na rodada ${E.janela.proxima + 1}` : "Janela fechada";
-  $("cartaoHistorico").classList.toggle("hidden", !E.historico.length);
-  $("cartaoHistorico").innerHTML = `<h3>Histórico</h3>${E.historico.map((x) => `<p class="hist"><b>${x.ano}</b> ${x.posicao}º lugar, ${x.pontos} pts. Campeão: ${h(nomeClube(x.campeao))}${x.artilheiro ? `. Artilheiro: ${h(nomeJogador(x.artilheiro.id))} (${x.artilheiro.gols})` : ""}.</p>`).join("")}`;
+  // o histórico fica no resumo final quando a carreira acabou
+  $("cartaoHistorico").classList.toggle("hidden", !E.historico.length || E.encerrada);
+  $("cartaoHistorico").innerHTML = `<h3>Histórico</h3>${E.historico.map((x) => `<p class="hist"><b>${x.ano}</b> ${x.posicao}º lugar, ${x.pontos} pts.${x.titulos && x.titulos.length ? ` Títulos: ${h(x.titulos.join(", "))}.` : ` Campeão: ${h(nomeClube(x.campeao))}.`}${x.artilheiro ? ` Artilheiro: ${h(nomeJogador(x.artilheiro.id))} (${x.artilheiro.gols})` : ""}</p>`).join("")}`;
+}
+// o fim da carreira (a última temporada acabou): os títulos, o artilheiro de cada ano, o melhor negócio e a força do
+// elenco temporada a temporada. Não tem "nova temporada".
+function resumoCarreira() {
+  const hist = E.historico, titulos = hist.flatMap((x) => (x.titulos || []).map((t) => [x.ano, t]));
+  const negocio = hist.map((x) => x.negocio && { ...x.negocio, ano: x.ano }).filter(Boolean).sort((a, b) => b.lucro - a.lucro)[0];
+  const forcas = hist.map((x) => x.forca).filter((f) => f != null), menor = Math.min(...forcas) - 2, maior = Math.max(...forcas);
+  return `<div class="fim-carreira"><span class="sobre">Fim da carreira · ${hist.length} temporada${hist.length > 1 ? "s" : ""} no ${h(meuClube().nome)}</span>
+    <div class="tacas">${titulos.length ? titulos.map(([ano, t]) => `<div class="taca-ganha">${ic("taca")}<b>${h(t)}</b><small>${ano}</small></div>`).join("") : `<p class="suave">Nenhum título desta vez. A torcida lembra da raça.</p>`}</div>
+    <table class="resumo-anos"><thead><tr><th>Ano</th><th>Liga</th><th>Artilheiro do time</th><th>Força</th></tr></thead><tbody>${hist.map((x) => `<tr>
+      <td><b>${x.ano}</b></td><td>${x.posicao}º${x.liga ? ` <small>${h(x.liga)}</small>` : ""}</td>
+      <td>${x.artilheiro ? `${h(sobrenome(nomeJogador(x.artilheiro.id)))} <small>${x.artilheiro.gols} gols</small>` : "—"}</td>
+      <td>${x.forca != null ? `<span class="barra-forca"><i style="--v:${Math.round((x.forca - menor) / Math.max(1, maior - menor) * 100)}%"></i></span><b>${x.forca}</b>` : "—"}</td></tr>`).join("")}</tbody></table>
+    <p class="negocio">${ic("maleta")} ${negocio ? `Melhor negócio: ${h(nomeJogador(negocio.jogador))} vendido ao ${h(nomeClube(negocio.para))} em ${negocio.ano}, com lucro de <b class="positivo">${dinheiro(negocio.lucro)}</b>.` : "Nenhuma venda com lucro na carreira."}</p>
+    <p class="suave">A carreira terminou. Para jogar de novo, saia ou exclua esta carreira e assine com um clube novo.</p></div>`;
 }
 function telaJogo(pos) {
+  if (E.encerrada) { $("cartaoJogo").innerHTML = resumoCarreira(); return; }
   if (E.fim) {
     const campeao = E.tabela[0], meu = E.tabela[pos - 1];
     $("cartaoJogo").innerHTML = `<div class="fim-temporada"><span class="sobre">Fim da temporada ${E.ano}</span>
       <div class="podio">${escudo(campeao.id, 4)}<div><b>${h(nomeClube(campeao.id))}</b><small>Campeão · ${campeao.p} pontos</small></div></div>
       <p class="posicao-final"><b>${pos}º</b> lugar para o ${h(meuClube().nome)} (${meu.p} pontos). ${h(fraseFinal(pos))}</p>
-      <button id="btnNovaTemporada" class="primario largo">Começar a temporada ${E.ano + 1}</button></div>`;
-    $("btnNovaTemporada").onclick = async () => { const r = await pedir("novaTemporada"); if (!r.ok) return toast(r.error); receber(r.estado); toast(`Temporada ${E.ano}: bola rolando.`); };
+      <p class="suave">Na virada, o elenco evolui: os jovens tendem a subir, os veteranos a cair, e alguns se aposentam. A base manda reforços.</p>
+      <button id="btnNovaTemporada" class="primario largo">Começar a temporada ${E.ano + 1} (${E.temporada + 1} de ${E.temporadasMax})</button></div>`;
+    $("btnNovaTemporada").onclick = async () => { $("btnNovaTemporada").disabled = true; const r = await pedir("novaTemporada"); if (!r.ok) { $("btnNovaTemporada").disabled = false; return toast(r.error); } receber(r.estado); toast(`Temporada ${E.ano}: bola rolando.`); };
     return;
   }
   const [casa, visitante] = E.proximo;

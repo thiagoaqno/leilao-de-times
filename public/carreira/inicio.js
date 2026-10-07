@@ -12,7 +12,7 @@ window.BasesCarreira[BASE_PADRAO] = {
   id: BASE_PADRAO, ano: MundoCarreira.ano, nome: "Temporada Mundial", fonte: "EA FC 26 + base brasileira",
   clubes: MundoCarreira.ligas.flatMap((l) => window.BasesCarreira[l.id].clubes),
 };
-let BASE = null, CLUBES = {}, JOGADORES = {}, E = null, telaAtual = null, clubeEscolhido = null;
+let BASE = null, CLUBES = {}, JOGADORES = {}, E = null, telaAtual = null, clubeEscolhido = null, temporadasEscolhidas = Evolucao.TEMPORADAS.padrao;
 function usarBase(id) {
   const b = window.BasesCarreira[id] || window.BasesCarreira[BASE_PADRAO];
   if (b === BASE) return;
@@ -72,6 +72,8 @@ document.addEventListener("click", (e) => { const b = e.target.closest("[data-ir
 function receber(estado) {
   usarBase(estado.base);
   E = estado;
+  // os jovens que subiram da base não estão nos arquivos: chegam com o estado (o clube de origem vem do id)
+  for (const [id, j] of Object.entries(E.jovens || {})) JOGADORES[id] = { ...j, origem: id.replace(/-t\d+b\d+$/, "") };
   document.body.style.cssText = coresClube(E.clube);
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
 }
@@ -94,8 +96,19 @@ function telaInicio() {
       <span class="orcamento"><span class="caixa-clube">${ic("moeda")} ${dinheiro(o.caixa)}</span><span class="situacao ${o.situacao}">${h(sit.nome)}</span></span></span></button>`;
   }).join("");
   mostrarSituacao();
+  desenharTemporadas();
   mostrarTela("inicio");
 }
+// quantas temporadas a carreira vai ter (de 1 a 5)
+function desenharTemporadas() {
+  const { min, max } = Evolucao.TEMPORADAS;
+  $("cTemporadas").innerHTML = Array.from({ length: max - min + 1 }, (_, i) => min + i)
+    .map((n) => `<button data-temporadas="${n}" aria-pressed="${n === temporadasEscolhidas}">${n}</button>`).join("");
+}
+$("cTemporadas").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-temporadas]"); if (!b) return;
+  temporadasEscolhidas = +b.dataset.temporadas; desenharTemporadas();
+});
 $("clubes").addEventListener("click", (e) => {
   const b = e.target.closest("[data-clube]"); if (!b) return;
   clubeEscolhido = b.dataset.clube;
@@ -116,25 +129,72 @@ $("btnCriar").onclick = async () => {
   if (!nome || !clubeEscolhido) return;
   store.set("galera:name", nome);
   $("btnCriar").disabled = true;
-  const r = await pedir("criar", { nome, clube: clubeEscolhido, skin: store.get("galera:skin") });
+  const r = await pedir("criar", { nome, clube: clubeEscolhido, skin: store.get("galera:skin"), temporadas: temporadasEscolhidas });
   $("btnCriar").disabled = false;
   if (!r.ok) { $("erroCriar").textContent = r.error; return; }
   store.set("carreira:token", r.token);
   receber(r.estado);
-  $("codigoGrande").textContent = r.recuperacao.replace(/(.{4})(?=.)/g, "$1-");
-  $("dlgCodigo").showModal();
+  mostrarCodigo(r.recuperacao, "criada");
 };
+// ---------- o código de recuperação ----------
+// O servidor guarda só o hash; o navegador guarda o código (carreira:codigo) para mostrar de novo na sede e ao sair.
+// Quem não tem o código guardado (carreira antiga, outro aparelho) pede um novo, e o antigo deixa de valer.
+const formatarCodigo = (c) => String(c).replace(/(.{4})(?=.)/g, "$1-");
+let depoisDoCodigo = null;
+const TEXTOS_CODIGO = {
+  criada: ["Anote o seu código", "Com ele você continua a carreira em outro aparelho, ou neste mesmo depois de sair.", "Anotei"],
+  ver: ["Código de recuperação", "Com ele você volta para esta carreira em qualquer aparelho. Gerar outro faz este parar de valer.", "Fechar"],
+  sair: ["Antes de sair, anote o código", "Sem ele não dá para voltar para esta carreira. Ele também fica na sede, em \"Código de recuperação\".", "Anotei, sair"],
+};
+function mostrarCodigo(codigo, como) {
+  store.set("carreira:codigo", codigo);
+  const [titulo, texto, botao] = TEXTOS_CODIGO[como];
+  $("codigoTitulo").textContent = titulo; $("codigoTexto").textContent = texto; $("btnAnotei").textContent = botao;
+  $("codigoGrande").textContent = formatarCodigo(codigo);
+  $("btnCodigoNovo").classList.toggle("hidden", como !== "ver");
+  depoisDoCodigo = como;
+  if (!$("dlgCodigo").open) $("dlgCodigo").showModal();
+}
+async function pedirCodigoNovo() {
+  const r = await pedir("codigo");
+  if (!r.ok) { toast(r.error); return null; }
+  return r.recuperacao;
+}
+async function abrirCodigo(como) {
+  const codigo = store.get("carreira:codigo") || await pedirCodigoNovo();
+  if (codigo) mostrarCodigo(codigo, como);
+}
 $("btnCopiarCodigo").onclick = () => { navigator.clipboard?.writeText($("codigoGrande").textContent).then(() => toast("Código copiado.")).catch(() => {}); };
-$("btnAnotei").onclick = () => { $("dlgCodigo").close(); mostrarTela("sede"); };
+$("btnCodigoNovo").onclick = async () => {
+  if (!confirm("Gerar outro código? O que aparece agora deixa de valer.")) return;
+  const codigo = await pedirCodigoNovo(); if (codigo) { mostrarCodigo(codigo, "ver"); toast("Código novo gerado."); }
+};
+$("btnAnotei").onclick = async () => {
+  $("dlgCodigo").close();
+  if (depoisDoCodigo === "criada") mostrarTela("sede");
+  else if (depoisDoCodigo === "sair") { await pedir("sair"); store.set("carreira:token", null); E = null; telaInicio(); }
+};
+$("btnVerCodigo").onclick = () => abrirCodigo("ver");
+$("btnSairCarreira").onclick = () => abrirCodigo("sair");
 $("btnRecuperar").onclick = async () => {
   const r = await pedir("recuperar", { codigo: $("cCodigo").value });
   if (!r.ok) { $("erroCodigo").textContent = r.error; return; }
   store.set("carreira:token", r.token);
+  store.set("carreira:codigo", $("cCodigo").value.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+  $("cCodigo").value = "";
   receber(r.estado); abrirSede();
 };
-$("btnSairCarreira").onclick = async () => {
-  if (!confirm("Sair desta carreira neste aparelho? Para voltar, você vai precisar do código de recuperação.")) return;
-  await pedir("sair"); store.set("carreira:token", null); E = null; telaInicio();
+// ---------- excluir a carreira ----------
+$("btnExcluirCarreira").onclick = () => { $("exConfirma").value = ""; $("btnExcluirSim").disabled = true; $("erroExcluir").textContent = ""; $("dlgExcluir").showModal(); };
+$("exConfirma").oninput = () => { $("btnExcluirSim").disabled = $("exConfirma").value.trim().toUpperCase() !== "EXCLUIR"; };
+$("btnExcluirCancela").onclick = () => $("dlgExcluir").close();
+$("btnExcluirSim").onclick = async () => {
+  $("btnExcluirSim").disabled = true;
+  const r = await pedir("excluir");
+  if (!r.ok) { $("erroExcluir").textContent = r.error; $("btnExcluirSim").disabled = false; return; }
+  $("dlgExcluir").close();
+  store.set("carreira:token", null); store.set("carreira:codigo", null); E = null;
+  telaInicio(); toast("Carreira excluída.");
 };
 // entra na sede, ou direto na partida que estava em andamento
 function abrirSede() { if (E.partida) abrirPartida(); else { mostrarTela("sede"); mostrarPosJogo(); } }
@@ -144,7 +204,7 @@ async function conectar() {
   const token = store.get("carreira:token");
   if (!token) { if (!E) telaInicio(); return; }
   const r = await pedir("entrar", { token });
-  if (!r.ok) { store.set("carreira:token", null); toast("Essa carreira não foi encontrada neste servidor."); telaInicio(); return; }
+  if (!r.ok) { store.set("carreira:token", null); store.set("carreira:codigo", null); toast("Essa carreira não foi encontrada neste servidor."); telaInicio(); return; }
   const primeira = !E;
   receber(r.estado);
   if (primeira) abrirSede();

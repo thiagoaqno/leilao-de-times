@@ -37,6 +37,21 @@ test("bd: o código de recuperação dá um token novo e o antigo deixa de valer
   assert.strictEqual(bd.recuperarCarreira("AAAAAAAAAAAA"), null);
 });
 
+test("bd: o código novo substitui o antigo, e excluir apaga a carreira de vez", () => {
+  const c = bd.criarCarreira("Duda");
+  const novo = bd.novoCodigoDe(c.id);
+  assert.match(novo, /^[A-Z2-9]{12}$/);
+  assert.notStrictEqual(novo, c.recuperacao);
+  assert.strictEqual(bd.recuperarCarreira(c.recuperacao), null, "o código antigo deixa de valer");
+  const r = bd.recuperarCarreira(novo);
+  assert.strictEqual(r.id, c.id);
+  assert.strictEqual(bd.novoCodigoDe(9999), null);
+  assert.ok(bd.excluirCarreira(c.id));
+  assert.strictEqual(bd.carreiraPorToken(r.token), null);
+  assert.strictEqual(bd.recuperarCarreira(novo), null);
+  assert.ok(!bd.excluirCarreira(c.id), "não tem o que excluir de novo");
+});
+
 test("bd: salva o andamento da carreira", () => {
   const c = bd.criarCarreira("Rafa");
   assert.ok(bd.salvarCarreira(c.id, { rodada: 3, caixa: 1500000 }));

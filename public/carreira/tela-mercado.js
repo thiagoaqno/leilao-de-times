@@ -21,7 +21,7 @@ function telaMercado() {
 function listaCompra() {
   const busca = $("mBusca").value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""), notaMin = +$("mNota").value, max = precoMax(), cabe = $("mCabe").checked;
   const lista = Object.values(JOGADORES).filter((j) => {
-    if (donoDe(j.id) === E.clube) return false;
+    if (donoDe(j.id) === E.clube || !CLUBES[donoDe(j.id)]) return false; // os aposentados não têm clube
     const n = notaDe(j), v = valorAtual(j.id) * (E.indicacoes[j.id] ? 0.85 : 1);
     if (n < notaMin || v > max || (cabe && v > E.caixa)) return false;
     if (posMercado !== "todas" && GRUPO_TELA[j.pos] !== posMercado) return false;

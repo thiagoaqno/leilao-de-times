@@ -31,6 +31,7 @@
       <h2>Escolha o clube</h2>
       <div id="clubes" class="clubes"></div>
       <p id="situacaoClube" class="situacao-clube hidden"></p>
+      <div class="controle"><span class="rotulo">Temporadas do contrato</span><div id="cTemporadas" class="segmentos" role="group" aria-label="Temporadas"></div></div>
       <button id="btnCriar" class="primario largo">Assinar contrato</button>
       <p id="erroCriar" class="erro" role="alert"></p>
     </div>
@@ -61,7 +62,11 @@
       </nav>
       <div class="quadro hidden" id="cartaoHistorico"></div>
     </div>
-    <button id="btnSairCarreira" class="discreto">Sair desta carreira neste aparelho</button>
+    <div class="botoes-carreira">
+      <button id="btnVerCodigo" class="discreto">Código de recuperação</button>
+      <button id="btnSairCarreira" class="discreto">Sair desta carreira neste aparelho</button>
+      <button id="btnExcluirCarreira" class="discreto perigo">Excluir esta carreira</button>
+    </div>
   </section>
 
   <!-- elenco e tática: a prancheta -->
@@ -164,10 +169,19 @@
   <div id="dsCorpo"></div>
 </dialog>
 <dialog id="dlgCodigo" class="dialogo">
-  <h2>Anote o seu código</h2>
-  <p class="suave">Com ele você continua a carreira em outro aparelho. Ele aparece só agora.</p>
+  <h2 id="codigoTitulo">Anote o seu código</h2>
+  <p id="codigoTexto" class="suave">Com ele você continua a carreira em outro aparelho. Ele aparece só agora.</p>
   <p id="codigoGrande" class="codigo-grande"></p>
-  <div class="linha fim"><button id="btnCopiarCodigo">Copiar</button><button id="btnAnotei" class="primario" autofocus>Anotei</button></div>
+  <div class="linha fim"><button id="btnCodigoNovo" class="secundario hidden">Gerar outro</button><button id="btnCopiarCodigo">Copiar</button><button id="btnAnotei" class="primario" autofocus>Anotei</button></div>
+</dialog>
+<!-- apagar a carreira de vez -->
+<dialog id="dlgExcluir" class="dialogo">
+  <h2>Excluir a carreira?</h2>
+  <p class="suave">O clube, o elenco, o histórico e o código de recuperação somem para sempre, em todos os aparelhos. Não tem volta.</p>
+  <label for="exConfirma">Para confirmar, escreva <b>EXCLUIR</b></label>
+  <input id="exConfirma" autocomplete="off" autocapitalize="characters" spellcheck="false">
+  <p id="erroExcluir" class="erro" role="alert"></p>
+  <div class="linha fim"><button id="btnExcluirCancela" class="secundario" autofocus>Cancelar</button><button id="btnExcluirSim" class="perigo" disabled>Excluir para sempre</button></div>
 </dialog>
 <div id="toast" class="hidden" role="status"></div>
 
@@ -185,6 +199,7 @@
 <script src="motor.js"></script>
 <script src="temporada.js"></script>
 <script src="mercado.js"></script>
+<script src="evolucao.js"></script>
 <script src="orcamentos.js"></script>
 <script src="escudos.js"></script>
 <script src="base/teste.js"></script>

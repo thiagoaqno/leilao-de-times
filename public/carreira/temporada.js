@@ -80,7 +80,8 @@
     }
     return { jogos, campeao: atuais[0], vice };
   }
-  function simularMundo({ bases, indice, semente, resultadosFixos = {} }) {
+  // classificados (da segunda temporada em diante): { libertadores: [32 ids], europa: { [liga]: [4 ids] } }
+  function simularMundo({ bases, indice, semente, resultadosFixos = {}, classificados = null }) {
     const mundo = indice, normal = normalizarBases(bases), clubes = normal.clubes, jogar = simuladorDoMundo(clubes, semente, resultadosFixos), competicoes = {}, todosJogos = [];
     const semanasLiga = Array.from({ length: 38 }, (_, i) => i * 2 + 1);
     for (const liga of mundo.ligas.filter((l) => normal.bases[l.id] && !["argentina-2026", "sulamericanos-2026"].includes(l.id))) {
@@ -91,10 +92,12 @@
     const forca = (a, b) => FORCA(clubes[b]) - FORCA(clubes[a]) || a.localeCompare(b);
     // Na primeira temporada, sem classificação anterior salva, a força da base define os quatro de cada país.
     const porLiga = Object.fromEntries(EUROPA.map((id) => [id, normal.bases[id].clubes.map((c) => c.id).sort(forca)]));
-    const europeus = EUROPA.flatMap((id) => porLiga[id].slice(0, 4));
-    const restantes = EUROPA.flatMap((id) => porLiga[id].slice(4)).sort(forca);
+    // Da segunda em diante, vão os 4 primeiros da liga do ano anterior.
+    const quatro = (id) => (classificados && classificados.europa && classificados.europa[id]) || porLiga[id].slice(0, 4);
+    const europeus = EUROPA.flatMap(quatro);
+    const restantes = EUROPA.flatMap((id) => porLiga[id].filter((c) => !quatro(id).includes(c))).sort(forca);
     const semanasGrupos = [2, 8, 14, 20, 26, 32], semanasMata = [40, 42, 46, 48, 52, 54, 58];
-    for (const [id, participantes] of [["libertadores", mundo.libertadores], ["champions", [...europeus, ...restantes.slice(0, 12)]]]) {
+    for (const [id, participantes] of [["libertadores", (classificados && classificados.libertadores) || mundo.libertadores],["champions", [...europeus, ...restantes.slice(0, 12)]]]) {
       const g = gruposDaCopa(id, participantes, semente, jogar, semanasGrupos), classificados = [];
       for (let i = 0; i < 8; i++) { classificados.push(g.grupos[i].tabela[0].id); classificados.push(g.grupos[(i + 1) % 8].tabela[1].id); }
       const m = mataMata(id, classificados, semente, jogar, clubes, semanasMata), jogos = [...g.jogos, ...m.jogos];

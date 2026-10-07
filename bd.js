@@ -94,10 +94,20 @@ function salvarCarreira(id, dados) {
   const r = bd().prepare("UPDATE carreiras SET dados = ?, atualizada_em = ? WHERE id = ?").run(JSON.stringify(dados), Date.now(), id);
   return r.changes > 0;
 }
+// mostrar o código de novo: o banco só tem o hash, então nasce um código novo (o antigo deixa de valer)
+function novoCodigoDe(id) {
+  const recuperacao = novoCodigoRecuperacao();
+  const r = bd().prepare("UPDATE carreiras SET recuperacao_hash = ?, atualizada_em = ? WHERE id = ?").run(hash(recuperacao), Date.now(), id);
+  return r.changes > 0 ? recuperacao : null;
+}
+// apagar a carreira de vez (o token e o código deixam de valer)
+function excluirCarreira(id) {
+  return bd().prepare("DELETE FROM carreiras WHERE id = ?").run(id).changes > 0;
+}
 
 // ---------- cartas que já saíram (o monte dura entre reinícios do servidor) ----------
 const cartasSaidas = (jogo) => new Set(bd().prepare("SELECT carta FROM cartas_saidas WHERE jogo = ?").all(jogo).map((r) => r.carta));
 const marcarCarta = (jogo, carta) => { bd().prepare("INSERT OR IGNORE INTO cartas_saidas (jogo, carta, saiu_em) VALUES (?, ?, ?)").run(jogo, carta, Date.now()); };
 const zerarCartas = (jogo) => { bd().prepare("DELETE FROM cartas_saidas WHERE jogo = ?").run(jogo); };
 
-module.exports = { abrir, fechar, migrar, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas };
+module.exports = { abrir, fechar, migrar, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas };

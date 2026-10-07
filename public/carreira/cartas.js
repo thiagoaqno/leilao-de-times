@@ -53,7 +53,7 @@ function figurinha(pid, tamanho = "mini") {
     <header><span class="nota">${n}</span><span class="pos">${j.pos}</span>${escudo(clube, tamanho === "grande" ? 2 : 1)}</header>
     <div class="foto"><img class="pix" src="${retrato(pid)}" alt=""></div>
     <h4>${h(tamanho === "grande" ? j.nome : sobrenome(j.nome))}</h4>
-    ${tamanho === "grande" ? `<p class="sub">${h(POS_NOME[j.pos] || j.pos)} · ${h(j.nat || "")}${j.idade ? ` · ${j.idade} anos` : ""}</p><ul class="atributos">${atr}</ul>` : ""}
+    ${tamanho === "grande" ? `<p class="sub">${h(POS_NOME[j.pos] || j.pos)} · ${h(j.nat || "")} · ${Evolucao.idadeNa(j, E ? E.temporada : 1)} anos${j.idade ? "" : " (estimada)"}</p><ul class="atributos">${atr}</ul>` : ""}
     <footer><span>${dinheiro(valor)}${forma !== 1 ? `<i class="seta ${forma > 1 ? "sobe" : "desce"}" title="Momento: ${Math.round((forma - 1) * 100)}%">${ic(forma > 1 ? "sobe" : "baixo")}</i>` : ""}</span><span class="marcas">${situacao(pid, true)}</span></footer>
   </article>`;
 }
