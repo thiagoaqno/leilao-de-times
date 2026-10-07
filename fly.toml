@@ -28,3 +28,12 @@ primary_region = 'gru' # São Paulo: menor ping para quem joga no Brasil
 [[vm]]
   size = 'shared-cpu-1x'
   memory = '256mb'
+
+# o disco que não some a cada deploy: o banco de dados (bd.js) mora nele. O volume foi criado com
+#   fly volumes create galera_dados --region gru --size 1
+[mounts]
+  source = "galera_dados"
+  destination = "/data"
+
+[env]
+  DB_PATH = "/data/galera.db"
