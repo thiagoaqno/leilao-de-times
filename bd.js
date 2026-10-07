@@ -1,8 +1,8 @@
 // Banco de dados do site (SQLite pelo node:sqlite, que já vem no Node: sem dependência nativa).
 // - Onde fica: DB_PATH (no Fly, /data/galera.db, num volume); sem DB_PATH, ./dados/galera.db; nos testes, ":memory:".
 // - Migrações: os arquivos migracoes/NNN-nome.sql rodam em ordem, uma vez só, e ficam anotados na tabela "migracoes".
-// - Guarda as carreiras de treinador (planos/carreira.md) e as cartas que já saíram nos jogos de baralho. Nada de ORM:
-//   funções pequenas.
+// - Guarda as carreiras de treinador (planos/carreira.md), as salas da carreira em grupo e as cartas que já saíram
+//   nos jogos de baralho. Nada de ORM: funções pequenas.
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -94,10 +94,33 @@ function salvarCarreira(id, dados) {
   const r = bd().prepare("UPDATE carreiras SET dados = ?, atualizada_em = ? WHERE id = ?").run(JSON.stringify(dados), Date.now(), id);
   return r.changes > 0;
 }
+// mostrar o código de novo: o banco só tem o hash, então nasce um código novo (o antigo deixa de valer)
+function novoCodigoDe(id) {
+  const recuperacao = novoCodigoRecuperacao();
+  const r = bd().prepare("UPDATE carreiras SET recuperacao_hash = ?, atualizada_em = ? WHERE id = ?").run(hash(recuperacao), Date.now(), id);
+  return r.changes > 0 ? recuperacao : null;
+}
+// apagar a carreira de vez (o token e o código deixam de valer)
+function excluirCarreira(id) {
+  return bd().prepare("DELETE FROM carreiras WHERE id = ?").run(id).changes > 0;
+}
+
+// ---------- as salas da carreira em grupo (carreira-online.js) ----------
+function salvarSalaCarreira(codigo, dados) {
+  const agora = Date.now();
+  bd().prepare("INSERT INTO carreiras_online (codigo, dados, criada_em, atualizada_em) VALUES (?, ?, ?, ?) ON CONFLICT(codigo) DO UPDATE SET dados = excluded.dados, atualizada_em = excluded.atualizada_em")
+    .run(codigo, JSON.stringify(dados), agora, agora);
+}
+// todas as salas guardadas (o servidor carrega ao subir): [{ codigo, dados, atualizadaEm }]
+const salasCarreira = () => bd().prepare("SELECT * FROM carreiras_online").all().map((l) => {
+  let dados = null; try { dados = JSON.parse(l.dados); } catch {}
+  return { codigo: l.codigo, dados, atualizadaEm: Number(l.atualizada_em) };
+}).filter((s) => s.dados);
+const apagarSalaCarreira = (codigo) => bd().prepare("DELETE FROM carreiras_online WHERE codigo = ?").run(codigo).changes > 0;
 
 // ---------- cartas que já saíram (o monte dura entre reinícios do servidor) ----------
 const cartasSaidas = (jogo) => new Set(bd().prepare("SELECT carta FROM cartas_saidas WHERE jogo = ?").all(jogo).map((r) => r.carta));
 const marcarCarta = (jogo, carta) => { bd().prepare("INSERT OR IGNORE INTO cartas_saidas (jogo, carta, saiu_em) VALUES (?, ?, ?)").run(jogo, carta, Date.now()); };
 const zerarCartas = (jogo) => { bd().prepare("DELETE FROM cartas_saidas WHERE jogo = ?").run(jogo); };
 
-module.exports = { abrir, fechar, migrar, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas };
+module.exports = { abrir, fechar, migrar, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas };

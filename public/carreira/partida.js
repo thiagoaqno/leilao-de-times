@@ -107,6 +107,8 @@ function poeTelao(el, e, nosso) {
   for (let k = MAX_TELOES; k < todos.length; k++) { const l = todos[k].parentElement; todos[k].remove(); if (l && !l.children.length) l.remove(); }
 }
 // os outros lances em pixel-art (lances-outros.js): defesa, chance perdida, pênalti, cartões, lesão, troca e contra-ataque
+// o uniforme de cada time no jogo: o visitante troca de camisa se ela parecer com a do mandante
+const uniformeDoJogo = (clube) => uniformeDoClube(clube, clube === J.fora ? J.casa : null);
 const LANCES_COM_CENA = new Set(["defesa", "perdeu", "penalti", "amarelo", "vermelho", "lesao", "sub", "contra_ataque"]);
 function lance(e) {
   if (!Lances.criarLance) return;
@@ -114,7 +116,7 @@ function lance(e) {
   const quem = e.tipo === "sub" ? e.sai : e.jogador, j = JOGADORES[quem] || { nome: "?" };
   const numero = (pid) => 2 + (([...String(pid)].reduce((s, c) => s + c.charCodeAt(0), 0)) % 28);
   const d = { id: `${E.temporada}-${J.rodada}-${J.casa}-${J.fora}-${e.min}-${e.acr || 0}`, min: e.min, lado: e.lado === 0 ? "A" : "B", nome: j.nome,
-    uniforme: uniformeDoClube(clube), uniformeRival: uniformeDoClube(outro), estadio: { cores: CLUBES[J.casa].cores, visitante: CLUBES[J.fora].cores, curto: CLUBES[J.casa].curto }, clima: J.clima,
+    uniforme: uniformeDoJogo(clube), uniformeRival: uniformeDoJogo(outro), estadio: { cores: CLUBES[J.casa].cores, visitante: CLUBES[J.fora].cores, curto: CLUBES[J.casa].curto }, clima: J.clima,
     outro: e.tipo === "defesa" ? (e.goleiro ? nomeJogador(e.goleiro) : null) : e.tipo === "sub" ? sobrenome(nomeJogador(e.entra)) : null,
     numeros: e.tipo === "sub" ? [numero(e.sai), numero(e.entra)] : null };
   d.curto = sobrenome(j.nome);
@@ -123,7 +125,7 @@ function lance(e) {
 // o gol: o replay em pixel-art com a camisa do clube e, se foi seu, a festa
 function gol(e) {
   const j = JOGADORES[e.jogador] || { nome: "?", pos: "ATA", nota: 70 }, clube = clubeDoLado(e.lado), outro = clubeDoLado(1 - e.lado);
-  const g = { min: e.min, lado: e.lado === 0 ? "A" : "B", nome: j.nome, pos: Motor.grupoDe(j.pos), ovr: notaDe(j), uniforme: uniformeDoClube(clube), uniformeRival: uniformeDoClube(outro),
+  const g = { min: e.min, lado: e.lado === 0 ? "A" : "B", nome: j.nome, pos: Motor.grupoDe(j.pos), ovr: notaDe(j), uniforme: uniformeDoJogo(clube), uniformeRival: uniformeDoJogo(outro),
     estadio: { cores: CLUBES[J.casa].cores, visitante: CLUBES[J.fora].cores, curto: CLUBES[J.casa].curto }, clima: J.clima }; // o cenário veste as cores de quem joga em casa
   try {
     const telao = Lances.criar(g, { id: `${E.temporada}-${J.rodada}-${J.casa}-${J.fora}`, mins: 90 }, { nome: sobrenome(j.nome), auto: !J.pulando, cobranca: null });

@@ -153,3 +153,26 @@ test("carreira: a escalação fixa (cada um no seu lugar) é respeitada e o jogo
   assert.ok(r.estado.ultimo.eventos.length > 0);
   a.close();
 });
+
+test("carreira: o contrato de temporadas, o código de novo e excluir a carreira", async () => {
+  const a = await conectar(srv.url, "/carreira");
+  const c = await pedir(a, "criar", { nome: "Lia", clube: "santos", temporadas: 4 });
+  assert.strictEqual(c.estado.temporadasMax, 4);
+  assert.strictEqual(c.estado.encerrada, false);
+  await assert.rejects(pedir(a, "novaTemporada", {}), /não acabou/);
+  // o código de novo: nasce outro, e o antigo deixa de valer
+  const n = await pedir(a, "codigo", {});
+  assert.match(n.recuperacao, /^[A-Z2-9]{12}$/);
+  const outro = await conectar(srv.url, "/carreira");
+  await assert.rejects(pedir(outro, "recuperar", { codigo: c.recuperacao }));
+  const rec = await pedir(outro, "recuperar", { codigo: n.recuperacao });
+  assert.strictEqual(rec.estado.clube, "santos");
+  // excluir: some para todos os aparelhos
+  await pedir(outro, "excluir", {});
+  await assert.rejects(pedir(outro, "jogar", {}), /não encontrada/);
+  const b = await conectar(srv.url, "/carreira");
+  await assert.rejects(pedir(b, "entrar", { token: rec.token }));
+  await assert.rejects(pedir(b, "recuperar", { codigo: n.recuperacao }));
+  await assert.rejects(pedir(b, "excluir", {}), /não encontrada/);
+  a.close(); outro.close(); b.close();
+});

@@ -77,3 +77,80 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     expect(erros).toEqual([]);
   });
 }
+
+// o contrato de temporadas, o código de recuperação de novo, sair com o código na tela, voltar por ele e excluir
+test("carreira: temporadas do contrato, código de recuperação, sair e excluir", async ({ page }) => {
+  const erros = vigiar(page);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/carreira/#debug");
+  await page.fill("#cNome", "Codigo");
+  await page.click('[data-clube="santos"]');
+  await page.click('#cTemporadas [data-temporadas="3"]');
+  await page.click("#btnCriar");
+  await expect(page.locator("#dlgCodigo")).toBeVisible({ timeout: 30000 });
+  const codigo = await page.locator("#codigoGrande").textContent();
+  await page.click("#btnAnotei");
+  expect(await page.evaluate(() => __carreira.E.temporadasMax)).toBe(3);
+  await expect(page.locator("#cabecalho")).toContainText("1 de 3");
+  // na sede, o mesmo código aparece de novo
+  await page.click("#btnVerCodigo");
+  await expect(page.locator("#codigoGrande")).toHaveText(codigo);
+  await page.click("#btnAnotei");
+  // sair mostra o código antes, e ele leva de volta
+  await page.click("#btnSairCarreira");
+  await expect(page.locator("#codigoTitulo")).toContainText("Antes de sair");
+  await page.click("#btnAnotei");
+  await expect(page.locator("#inicio")).toBeVisible();
+  await page.fill("#cCodigo", codigo);
+  await page.click("#btnRecuperar");
+  await expect(page.locator("#sede")).toBeVisible();
+  // excluir pede a palavra e apaga de vez
+  await page.click("#btnExcluirCarreira");
+  await expect(page.locator("#btnExcluirSim")).toBeDisabled();
+  await page.fill("#exConfirma", "excluir");
+  await page.click("#btnExcluirSim");
+  await expect(page.locator("#inicio")).toBeVisible();
+  await page.fill("#cCodigo", codigo);
+  await page.click("#btnRecuperar");
+  await expect(page.locator("#erroCodigo")).toContainText("não encontrado");
+  expect(erros).toEqual([]);
+});
+
+// a carreira em grupo: duas pessoas na mesma sala, cada uma num clube, e o hub de cada uma depois do começo
+test("carreira em grupo: sala, clubes e o hub de cada um", async ({ browser }) => {
+  const [ca, cb] = [await browser.newContext(), await browser.newContext()];
+  const a = await ca.newPage(), b = await cb.newPage();
+  const erros = [...vigiar(a), ...vigiar(b)];
+  await a.setViewportSize({ width: 1440, height: 900 });
+  await a.goto("/carreira/?grupo=1#debug");
+  await a.fill("#hName", "Ana");
+  await a.click("#btnCreate");
+  await expect(a.locator("#gCodigo")).toHaveText(/^[A-Z2-9]{5}$/);
+  const codigo = await a.locator("#gCodigo").textContent();
+  await expect(a).toHaveURL(new RegExp(`sala=${codigo}`));
+  await b.goto(`/carreira/?sala=${codigo}#debug`);
+  await b.fill("#hName", "Bia");
+  await b.click("#btnJoin");
+  await expect(a.locator("#gPessoas li")).toHaveCount(2);
+  // o anfitrião mexe nas regras; quem entrou só vê
+  await expect(b.locator('#gOpcoes [data-opcao-sala="temporadas"]').first()).toBeDisabled();
+  await a.click('#gOpcoes [data-opcao-sala="aporte"][data-valor="500000000"]');
+  await a.click('[data-clube-sala="flamengo"]');
+  await expect(b.locator('[data-clube-sala="flamengo"]')).toBeDisabled();
+  await b.click('[data-clube-sala="liverpool"]');
+  await expect(a.locator("#btnComecar")).toBeEnabled();
+  await a.click("#btnComecar");
+  // cada um no hub do seu clube
+  await expect(a.locator("#sede")).toBeVisible({ timeout: 30000 });
+  await expect(b.locator("#sede")).toBeVisible({ timeout: 30000 });
+  await expect(a.locator("#cabecalho h1")).toHaveText("Flamengo");
+  await expect(b.locator("#cabecalho h1")).toHaveText("Liverpool");
+  await expect(a.locator(".hub-tiles .tile")).toHaveCount(4);
+  await expect(a.locator("#cartaoFeed .manchete")).toBeVisible();
+  await expect(a.locator("#btnJogar")).toBeDisabled();
+  // recarregou: volta sozinho para o clube dele
+  await b.reload();
+  await expect(b.locator("#cabecalho h1")).toHaveText("Liverpool", { timeout: 30000 });
+  expect(erros).toEqual([]);
+  await ca.close(); await cb.close();
+});
