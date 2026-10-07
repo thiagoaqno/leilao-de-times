@@ -21,6 +21,16 @@ const clubeDoLado = (lado) => (lado === 0 ? J.casa : J.fora);
 // até onde o relógio pode andar: a parada (os acréscimos antes dela também aparecem) ou o fim
 const limite = () => (J.parado ? Math.max(tempoDe(J.parado), ...J.eventos.map(tempoDe)) : 96);
 
+// o clima do jogo: sai da rodada e dos dois clubes, então o mesmo jogo tem sempre o mesmo céu (só enfeita, não muda o placar)
+function climaDoJogo(temporada, rodada, casa, fora) {
+  let a = 2166136261;
+  for (const ch of `${temporada}-${rodada}-${casa}-${fora}:clima`) a = Math.imul(a ^ ch.charCodeAt(0), 16777619);
+  a = Math.imul(a ^ (a >>> 15), 2246822519); a ^= a >>> 13;
+  const u = a >>> 0;
+  return { hora: u % 100 < 45 ? "dia" : "noite", chuva: ((u >>> 8) % 100) < 18 };
+}
+const textoDoClima = (c) => (c.chuva ? (c.hora === "dia" ? "chuva de dia" : "chuva à noite") : c.hora === "dia" ? "jogo de dia" : "jogo à noite");
+
 // abre a partida: a que está em andamento ou a que acabou de terminar (rodada)
 function abrirPartida(rodada) {
   const src = E.partida || (E.ultimo && (rodada == null || E.ultimo.rodada === rodada) ? E.ultimo : null);
@@ -30,8 +40,11 @@ function abrirPartida(rodada) {
   if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
   $("pNomeCasa").textContent = nomeClube(J.casa); $("pNomeFora").textContent = nomeClube(J.fora);
-  $("partida").style.cssText = `--casa:${CLUBES[J.casa].cores[0]};--fora:${CLUBES[J.fora].cores[0]}`;
-  $("pLocal").innerHTML = `${ic("estadio")} Rodada ${src.rodada + 1} · ${h(CLUBES[J.casa].estadio)}`;
+  $("partida").style.cssText = `--casa:${CLUBES[J.casa].cores[0]};--fora:${CLUBES[J.fora].cores[0]};--mando:${CLUBES[J.casa].cores[0]}`;
+  J.clima = climaDoJogo(E.temporada, J.rodada, J.casa, J.fora);
+  $("partida").classList.remove("clima-dia", "clima-noite", "clima-chuva");
+  $("partida").classList.add(`clima-${J.clima.hora}`); if (J.clima.chuva) $("partida").classList.add("clima-chuva");
+  $("pLocal").innerHTML = `${ic("estadio")} Rodada ${src.rodada + 1} · ${h(CLUBES[J.casa].estadio)} · ${textoDoClima(J.clima)}`;
   if ($("decisao").open) $("decisao").close();
   $("fimJogo").classList.add("hidden");
   mostrarTela("partida");
@@ -80,7 +93,8 @@ function mostrarEvento(e) {
 // o gol: o replay em pixel-art com a camisa do clube e, se foi seu, a festa
 function gol(e) {
   const j = JOGADORES[e.jogador] || { nome: "?", pos: "ATA", nota: 70 }, clube = clubeDoLado(e.lado), outro = clubeDoLado(1 - e.lado);
-  const g = { min: e.min, lado: e.lado === 0 ? "A" : "B", nome: j.nome, pos: Motor.grupoDe(j.pos), ovr: notaDe(j), uniforme: uniformeDoClube(clube), uniformeRival: uniformeDoClube(outro) };
+  const g = { min: e.min, lado: e.lado === 0 ? "A" : "B", nome: j.nome, pos: Motor.grupoDe(j.pos), ovr: notaDe(j), uniforme: uniformeDoClube(clube), uniformeRival: uniformeDoClube(outro),
+    estadio: { cores: CLUBES[J.casa].cores, visitante: CLUBES[J.fora].cores, curto: CLUBES[J.casa].curto }, clima: J.clima }; // o cenário veste as cores de quem joga em casa
   try {
     const telao = Lances.criar(g, { id: `${E.temporada}-${J.rodada}-${J.casa}-${J.fora}`, mins: 90 }, { nome: sobrenome(j.nome), auto: !J.pulando, cobranca: null });
     const item = document.createElement("div"); item.className = "replay" + (clube === E.clube ? " nosso" : "");

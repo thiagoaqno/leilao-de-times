@@ -50,7 +50,12 @@
   // é virado)
   const LETRA = { G: "011100101101011", A: "010101111101101", L: "100100100100111", E: "111100110100111", R: "110101110101101",
     0: "111101101101111", 1: "010110010010111", 2: "111001111100111", 3: "111001111001111", 4: "101101111001001", 5: "111100111001111",
-    6: "111100111101111", 7: "111001010010010", 8: "111101111101111", 9: "111101111001111" };
+    6: "111100111101111", 7: "111001010010010", 8: "111101111101111", 9: "111101111001111",
+    // o resto do alfabeto, para a sigla do clube nas placas (3 de largura por 5 de altura, linha por linha)
+    B: "110101110101110", C: "011100100100011", D: "110101101101110", F: "111100110100100", H: "101101111101101", I: "111010010010111",
+    J: "001001001101010", K: "101101110101101", M: "101111111101101", N: "110101101101101", O: "010101101101010", P: "110101110100100",
+    Q: "010101101110011", S: "011100010001110", T: "111010010010010", U: "101101101101111", V: "101101101101010", W: "101101111111101",
+    X: "101101010101101", Y: "101101010010010", Z: "111001010100111" };
   function escreve(g, txt, x, y, espelho) {
     for (const ch of String(txt)) {
       const b = LETRA[ch];
@@ -248,6 +253,11 @@
   // A quadra vista de lado, em perspectiva: X ao longo da quadra (o gol fica à direita), D a profundidade (para o fundo,
   // a tela sobe e anda um pouco para a direita) e A a altura.
   const tela = (X, D, A = 0) => [X + D * 0.35, 80 - D * 0.5 - A];
+  // o estádio (só na Carreira): g.estadio = { cores: [casa, casa2], visitante: [cam, det], curto: "FLA" }. A arquibancada, as
+  // placas e a torcida vestem as cores do time da CASA, com um cantinho de visitantes; no Leilão não há estádio e fica
+  // tudo como era (as cores de quem marcou).
+  const mistura = (a, b, t) => { const x = rgb(a), y = rgb(b); return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join(""); };
+  const donoDoEstadio = (L) => (L.estadio && L.estadio.cores ? L.estadio : null);
   const GOL_X = 134, GOL_ALTO = 24, GOL_FUNDO = 9;
   const GOL = (() => {
     const nb = tela(GOL_X, 4), fb = tela(GOL_X, 40), bnb = tela(GOL_X + GOL_FUNDO, 4), bfb = tela(GOL_X + GOL_FUNDO, 40);
@@ -256,33 +266,65 @@
   // a marca do pênalti (no futsal, a de 6 metros) e a bandeirinha de escanteio, perto da trave de cá
   const marcaPenalti = (futsal) => GOL_X - (futsal ? 40 : 24);
   const ESCANTEIO = { X: GOL_X, D: -14 };
+  // o clima do jogo (só na Carreira): g.clima = { hora: "dia" | "noite", chuva: true | false }. Dia clareia o cenário,
+  // noite escurece e acende os refletores, chuva acinzenta tudo e põe os fios de água caindo por cima (chuvaQuadro).
+  function aplicaClima(g, L) {
+    const c = L.clima;
+    if (!c) return;
+    if (c.hora === "dia") { cor(g, "#fff1b8", 0.14); g.fillRect(0, 0, W, H); }
+    else {
+      cor(g, "#0a1430", 0.22); g.fillRect(0, 0, W, H);
+      for (const x of [9, W - 10]) for (const [r, a] of [[10, 0.08], [7, 0.12], [4, 0.2], [2, 0.6]]) { cor(g, "#fffbd0", a); g.fillRect(x - r, 3 - Math.floor(r / 2), r * 2, r); }
+    }
+    if (c.chuva) { cor(g, "#5b6f80", 0.26); g.fillRect(0, 0, W, H); cor(g, "#ffffff", 0.05); g.fillRect(0, 36, W, 2); } // o gramado molhado brilha
+    g.globalAlpha = 1;
+  }
+  // os fios de chuva, por cima de tudo (por t, caem sempre do mesmo jeito: o mesmo gol tem a mesma chuva)
+  function chuvaQuadro(g, L, t) {
+    if (!L.clima || !L.clima.chuva) return;
+    if (!L.gotas) { const s = sorteio(L.semente + "chuva"); L.gotas = Array.from({ length: 80 }, () => ({ x: s() * (W + 30), fase: s() * H, v: 0.09 + s() * 0.07, c: s() < 0.5 ? 2 : 3 })); }
+    cor(g, "#cfe3f5", 0.55);
+    for (const d of L.gotas) {
+      const y = (d.fase + t * d.v) % H, x = Math.round(d.x - y * 0.25) % W;
+      g.fillRect((x + W) % W, Math.round(y), 1, d.c);
+    }
+    g.globalAlpha = 1;
+  }
   // a arquibancada, as placas e o chão (gramado listrado ou a quadra do futsal), com as linhas; pula: a torcida pulando
   function fundoAberto(L, pula) {
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     const g = cv.getContext("2d"), img = g.createImageData(W, H), d = img.data, sorte = sorteio(L.semente + "torcida");
     const poe = (x, y, c) => { if (x < 0 || y < 0 || x >= W || y >= H) return; const i = (y * W + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; };
     const piso = (L.futsal ? ["#2f6db4", "#2b66aa"] : ["#3f8f3a", "#4a9c43"]).map(rgb);
-    const arq = rgb(L.futsal ? "#121b29" : "#0b1611"), degrau = rgb(L.futsal ? "#1c2a3d" : "#132219");
+    const est = donoDoEstadio(L);
+    const arqBase = L.futsal ? "#121b29" : "#0b1611", degBase = L.futsal ? "#1c2a3d" : "#132219";
+    const arq = rgb(est ? mistura(arqBase, est.cores[0], 0.22) : arqBase), degrau = rgb(est ? mistura(degBase, est.cores[0], 0.32) : degBase);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       if (y < 27) poe(x, y, y % 5 === 4 ? degrau : arq);
       else if (y >= 35) { const D = (80 - y) / 0.5; poe(x, y, piso[Math.floor((x - D * 0.35 + 200) / 12) & 1]); }
     }
     // a torcida: a cabecinha e a camisa (as cores do time que marcou, branco e o verde-limão)
     const peles = ["#f6d3b5", "#e6b48a", "#c68b5e", "#9c6640", "#5f3a24"].map(rgb);
-    const camisas = [L.art.u.cam, L.art.u.det, L.art.u.cam, "#d8dcd9", "#a6d63a", "#1a1a1a"].map((c) => rgb(c).map((v) => Math.round(v * 0.78)));
+    const escuro = (c) => rgb(c).map((v) => Math.round(v * 0.78));
+    const camisas = (est ? [est.cores[0], est.cores[1] || "#d8dcd9", est.cores[0], est.cores[0], "#d8dcd9", "#1a1a1a"] : [L.art.u.cam, L.art.u.det, L.art.u.cam, "#d8dcd9", "#a6d63a", "#1a1a1a"]).map(escuro);
+    const visitas = est && est.visitante ? [est.visitante[0], est.visitante[1] || est.visitante[0], est.visitante[0]].map(escuro) : null;
     for (let fil = 0; fil < 5; fil++) for (let x = fil & 1; x < W; x += 3) {
-      const vazio = sorte() < 0.12, pe = peles[Math.floor(sorte() * 5)], c = camisas[Math.floor(sorte() * camisas.length)];
+      const vazio = sorte() < 0.12, pe = peles[Math.floor(sorte() * 5)];
+      const cantinho = visitas && x >= W - 27; // o setor dos visitantes, no canto
+      const c = cantinho ? visitas[Math.floor(sorte() * visitas.length)] : camisas[Math.floor(sorte() * camisas.length)];
       if (vazio) continue;
       const y = fil * 5 + 1 - (pula && (x + fil) % 2 === 0 ? 1 : 0);
       poe(x, y, pe); poe(x, y + 1, c); poe(x + 1, y + 1, c); poe(x, y + 2, c); poe(x + 1, y + 2, c);
     }
     g.putImageData(img, 0, 0);
     // as placas de propaganda
-    const letra = claro(L.art.u.cam) > 150 ? "#1a1a1a" : "#f4f4f4";
+    const camPlaca = est ? est.cores[0] : L.art.u.cam, letra = claro(camPlaca) > 150 ? "#1a1a1a" : "#f4f4f4";
+    const txtPlaca = est && est.curto ? String(est.curto).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6) : "GALERA";
+    const corDois = est ? est.cores[1] || "#f4f4f4" : "#c6ff3a";
     for (let k = 0; k * 40 < W; k++) {
       const lima = k % 2 === 0, x0 = k * 40;
-      cor(g, lima ? "#c6ff3a" : L.art.u.cam); g.fillRect(x0, 27, 40, 8);
-      cor(g, lima ? "#0b1604" : letra); escreve(g, "GALERA", x0 + 8, 29, L.espelho);
+      cor(g, lima ? corDois : camPlaca); g.fillRect(x0, 27, 40, 8);
+      cor(g, lima ? (claro(corDois) > 150 ? "#0b1604" : "#f4f4f4") : letra); escreve(g, txtPlaca, x0 + Math.max(2, Math.floor((40 - txtPlaca.length * 4) / 2)), 29, L.espelho);
       cor(g, "#000", 0.3); g.fillRect(x0 + 39, 27, 1, 8);
     }
     cor(g, "#000", 0.35); g.fillRect(0, 35, W, 1);
@@ -303,20 +345,23 @@
     }
     const m = tela(marcaPenalti(L.futsal), 22); g.fillRect(Math.round(m[0]), Math.round(m[1]), 2, 1); // a marca do pênalti
     g.globalAlpha = 1;
+    aplicaClima(g, L);
     return cv;
   }
   // o fundo do close: a torcida desfocada lá atrás, as placas e o chão (como as ilustrações de 8 bits, chão liso)
   function fundoClose(L) {
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     const g = cv.getContext("2d"), sorte = sorteio(L.semente + "close");
-    cor(g, L.futsal ? "#121b29" : "#0b1611"); g.fillRect(0, 0, W, 18);
-    const camisas = [L.art.u.cam, L.art.u.det, "#f4f4f4", "#c6ff3a", "#e6b48a"];
+    const est = donoDoEstadio(L);
+    cor(g, mistura(L.futsal ? "#121b29" : "#0b1611", est ? est.cores[0] : "#000000", est ? 0.22 : 0)); g.fillRect(0, 0, W, 18);
+    const camisas = est ? [est.cores[0], est.cores[0], est.cores[1] || "#f4f4f4", "#f4f4f4", "#e6b48a"] : [L.art.u.cam, L.art.u.det, "#f4f4f4", "#c6ff3a", "#e6b48a"];
     for (let k = 0; k < 90; k++) { cor(g, camisas[Math.floor(sorte() * camisas.length)], 0.35); g.fillRect(Math.floor(sorte() * W), Math.floor(sorte() * 16), 3, 2); }
-    for (let k = 0; k * 40 < W; k++) { cor(g, k % 2 ? L.art.u.cam : "#c6ff3a", 0.85); g.fillRect(k * 40, 18, 40, 6); }
+    for (let k = 0; k * 40 < W; k++) { cor(g, k % 2 ? (est ? est.cores[0] : L.art.u.cam) : (est ? est.cores[1] || "#f4f4f4" : "#c6ff3a"), 0.85); g.fillRect(k * 40, 18, 40, 6); }
     for (let y = 24; y < H; y++) { cor(g, L.futsal ? (Math.floor((y - 24) / 11) % 2 ? "#2b66aa" : "#2f6db4") : Math.floor((y - 24) / 11) % 2 ? "#5b8c3b" : "#659846"); g.fillRect(0, y, W, 1); }
     cor(g, "#000", 0.3); g.fillRect(0, 24, W, 1);
     if (L.futsal) { cor(g, "#ffffff", 0.6); g.fillRect(0, 70, W, 1); } // uma linha da quadra
     g.globalAlpha = 1;
+    aplicaClima(g, L);
     return cv;
   }
   const dentroDe = (pol, x, y) => {
@@ -557,7 +602,7 @@
     const rivais = [0, 1, 2].map((k) => figura(`zagueiro ${semente} ${k}`, rival));
     const parceiros = [0, 1].map((k) => figura(`parceiro ${semente} ${k}`, art.u, { num: [8, 11][k] }));
     const tipoNome = cobranca ? "penalti" : escolheTipo(sorte, g.pos, g.ovr || 80, futsal, g.nome), tipo = Lances.GOLS[tipoNome];
-    const L = { semente, futsal, espelho: g.lado === "B", art, gol, rivais, parceiros, tipoNome, tipo, d0: 8 + sorte() * 16, cobranca,
+    const L = { semente, futsal, espelho: g.lado === "B", estadio: g.estadio || null, clima: g.clima || null, art, gol, rivais, parceiros, tipoNome, tipo, d0: 8 + sorte() * 16, cobranca,
       resultado: !cobranca || cobranca.gol ? "gol" : cobranca.fora ? "fora" : "defesa" };
     art.espelho = parceiros[0].espelho = parceiros[1].espelho = L.espelho;
     L.alvo = tipo.alvo(sorte, L);
@@ -575,6 +620,7 @@
   // um quadro do telão no tempo t (ms)
   function desenha(ctx, L, t) {
     if (t < L.tCorte) cenaAberta(ctx, L, t); else cenaClose(ctx, L, t - L.tCorte);
+    chuvaQuadro(ctx, L, t);
     const f = fase(t, L.tCorte - 130, L.tCorte + 130);
     if (f > 0 && f < 1) cortina(ctx, f);
   }
