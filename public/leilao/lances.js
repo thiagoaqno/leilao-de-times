@@ -50,7 +50,12 @@
   // é virado)
   const LETRA = { G: "011100101101011", A: "010101111101101", L: "100100100100111", E: "111100110100111", R: "110101110101101",
     0: "111101101101111", 1: "010110010010111", 2: "111001111100111", 3: "111001111001111", 4: "101101111001001", 5: "111100111001111",
-    6: "111100111101111", 7: "111001010010010", 8: "111101111101111", 9: "111101111001111" };
+    6: "111100111101111", 7: "111001010010010", 8: "111101111101111", 9: "111101111001111",
+    // o resto do alfabeto, para a sigla do clube nas placas (3 de largura por 5 de altura, linha por linha)
+    B: "110101110101110", C: "011100100100011", D: "110101101101110", F: "111100110100100", H: "101101111101101", I: "111010010010111",
+    J: "001001001101010", K: "101101110101101", M: "101111111101101", N: "110101101101101", O: "010101101101010", P: "110101110100100",
+    Q: "010101101110011", S: "011100010001110", T: "111010010010010", U: "101101101101111", V: "101101101101010", W: "101101111111101",
+    X: "101101010101101", Y: "101101010010010", Z: "111001010100111" };
   function escreve(g, txt, x, y, espelho) {
     for (const ch of String(txt)) {
       const b = LETRA[ch];
@@ -261,6 +266,30 @@
   // a marca do pênalti (no futsal, a de 6 metros) e a bandeirinha de escanteio, perto da trave de cá
   const marcaPenalti = (futsal) => GOL_X - (futsal ? 40 : 24);
   const ESCANTEIO = { X: GOL_X, D: -14 };
+  // o clima do jogo (só na Carreira): g.clima = { hora: "dia" | "noite", chuva: true | false }. Dia clareia o cenário,
+  // noite escurece e acende os refletores, chuva acinzenta tudo e põe os fios de água caindo por cima (chuvaQuadro).
+  function aplicaClima(g, L) {
+    const c = L.clima;
+    if (!c) return;
+    if (c.hora === "dia") { cor(g, "#fff1b8", 0.14); g.fillRect(0, 0, W, H); }
+    else {
+      cor(g, "#0a1430", 0.22); g.fillRect(0, 0, W, H);
+      for (const x of [9, W - 10]) for (const [r, a] of [[10, 0.08], [7, 0.12], [4, 0.2], [2, 0.6]]) { cor(g, "#fffbd0", a); g.fillRect(x - r, 3 - Math.floor(r / 2), r * 2, r); }
+    }
+    if (c.chuva) { cor(g, "#5b6f80", 0.26); g.fillRect(0, 0, W, H); cor(g, "#ffffff", 0.05); g.fillRect(0, 36, W, 2); } // o gramado molhado brilha
+    g.globalAlpha = 1;
+  }
+  // os fios de chuva, por cima de tudo (por t, caem sempre do mesmo jeito: o mesmo gol tem a mesma chuva)
+  function chuvaQuadro(g, L, t) {
+    if (!L.clima || !L.clima.chuva) return;
+    if (!L.gotas) { const s = sorteio(L.semente + "chuva"); L.gotas = Array.from({ length: 80 }, () => ({ x: s() * (W + 30), fase: s() * H, v: 0.09 + s() * 0.07, c: s() < 0.5 ? 2 : 3 })); }
+    cor(g, "#cfe3f5", 0.55);
+    for (const d of L.gotas) {
+      const y = (d.fase + t * d.v) % H, x = Math.round(d.x - y * 0.25) % W;
+      g.fillRect((x + W) % W, Math.round(y), 1, d.c);
+    }
+    g.globalAlpha = 1;
+  }
   // a arquibancada, as placas e o chão (gramado listrado ou a quadra do futsal), com as linhas; pula: a torcida pulando
   function fundoAberto(L, pula) {
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
@@ -316,6 +345,7 @@
     }
     const m = tela(marcaPenalti(L.futsal), 22); g.fillRect(Math.round(m[0]), Math.round(m[1]), 2, 1); // a marca do pênalti
     g.globalAlpha = 1;
+    aplicaClima(g, L);
     return cv;
   }
   // o fundo do close: a torcida desfocada lá atrás, as placas e o chão (como as ilustrações de 8 bits, chão liso)
@@ -331,6 +361,7 @@
     cor(g, "#000", 0.3); g.fillRect(0, 24, W, 1);
     if (L.futsal) { cor(g, "#ffffff", 0.6); g.fillRect(0, 70, W, 1); } // uma linha da quadra
     g.globalAlpha = 1;
+    aplicaClima(g, L);
     return cv;
   }
   const dentroDe = (pol, x, y) => {
@@ -571,7 +602,7 @@
     const rivais = [0, 1, 2].map((k) => figura(`zagueiro ${semente} ${k}`, rival));
     const parceiros = [0, 1].map((k) => figura(`parceiro ${semente} ${k}`, art.u, { num: [8, 11][k] }));
     const tipoNome = cobranca ? "penalti" : escolheTipo(sorte, g.pos, g.ovr || 80, futsal, g.nome), tipo = Lances.GOLS[tipoNome];
-    const L = { semente, futsal, espelho: g.lado === "B", estadio: g.estadio || null, art, gol, rivais, parceiros, tipoNome, tipo, d0: 8 + sorte() * 16, cobranca,
+    const L = { semente, futsal, espelho: g.lado === "B", estadio: g.estadio || null, clima: g.clima || null, art, gol, rivais, parceiros, tipoNome, tipo, d0: 8 + sorte() * 16, cobranca,
       resultado: !cobranca || cobranca.gol ? "gol" : cobranca.fora ? "fora" : "defesa" };
     art.espelho = parceiros[0].espelho = parceiros[1].espelho = L.espelho;
     L.alvo = tipo.alvo(sorte, L);
@@ -589,6 +620,7 @@
   // um quadro do telão no tempo t (ms)
   function desenha(ctx, L, t) {
     if (t < L.tCorte) cenaAberta(ctx, L, t); else cenaClose(ctx, L, t - L.tCorte);
+    chuvaQuadro(ctx, L, t);
     const f = fase(t, L.tCorte - 130, L.tCorte + 130);
     if (f > 0 && f < 1) cortina(ctx, f);
   }
