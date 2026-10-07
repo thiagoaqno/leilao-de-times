@@ -450,19 +450,12 @@ button.perigo:disabled{opacity:.45;cursor:not-allowed}
 
 /* ---------- o hub (a sede): menu de videogame de futebol ----------
    No PC, três colunas: o próximo jogo e os blocos da gestão, as notícias no meio e a caixa de entrada ao lado. O acento
-   segue a cor do campeonato do clube (body[data-liga]); o fundo é um estádio à noite, desenhado só com CSS. */
+   é a cor do clube (temaClube, em inicio.js); o fundo é um estádio à noite, desenhado só com CSS. */
 :root{
   --acento:#39ff88;--acento-tinta:#03140a;--acento2:#22d3ee;
   --vidro:#0c1824b8;--vidro2:#11233399;--vidro-borda:#ffffff17;--vidro-brilho:#ffffff0f;
   --sombra-hub:0 18px 50px -24px #000000e6;--hub-r:16px;
 }
-body[data-liga="brasileirao-2026"]{--acento:#39ff88;--acento2:#ffd84a}
-body[data-liga="inglaterra-2026"]{--acento:#c86bff;--acento2:#00ff85}
-body[data-liga="espanha-2026"]{--acento:#ff5a4f;--acento2:#ffb21e}
-body[data-liga="italia-2026"]{--acento:#4f9dff;--acento2:#36e0c2}
-body[data-liga="alemanha-2026"]{--acento:#ff3b47;--acento2:#f4f4f4}
-body[data-liga="franca-2026"]{--acento:#dae025;--acento2:#4f9dff}
-body[data-liga="inglaterra-2026"],body[data-liga="italia-2026"],body[data-liga="alemanha-2026"],body[data-liga="espanha-2026"]{--acento-tinta:#ffffff}
 body[data-tela=sede] #tela{max-width:1520px}
 
 /* o estádio à noite: os refletores, a arquibancada escura e o gramado listrado lá embaixo */

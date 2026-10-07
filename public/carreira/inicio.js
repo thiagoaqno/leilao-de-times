@@ -65,6 +65,21 @@ function escudo(id, escala = 2) {
 const luz = (hx) => { const n = parseInt(String(hx).slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
 const contraste = (a, b) => { const [x, y] = [luz(a), luz(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const tintaSobre = (fundo, preferida) => (contraste(fundo, preferida) >= 3 ? preferida : contraste(fundo, "#ffffff") >= contraste(fundo, "#111111") ? "#ffffff" : "#111111");
+// o tema da carreira na cor do clube: o acento (botões, destaques, brilho) é a primeira cor colorida do clube (o preto, o
+// branco e o cinza não contam), clareada só o necessário para dar leitura no fundo escuro. Clube preto e branco fica
+// com o branco. A letra em cima do acento contrasta (branca ou preta).
+const FUNDO_ESCURO = "#0c1824";
+const rgbDe = (hx) => { const n = parseInt(hx.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const misturar = (a, b, p) => { const [x, y] = [rgbDe(a), rgbDe(b)]; return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * p).toString(16).padStart(2, "0")).join(""); };
+const colorida = (hx) => { const c = rgbDe(hx); return Math.max(...c) - Math.min(...c) > 60; };
+function temaClube(id) {
+  const c = CLUBES[id]; if (!c) return "";
+  const base = c.cores.find(colorida);
+  let acento = "#ffffff";
+  if (base) { acento = base; for (let p = 0.1; contraste(acento, FUNDO_ESCURO) < 3.2 && p <= 0.7; p += 0.1) acento = misturar(base, "#ffffff", p); }
+  const tinta = contraste(acento, "#ffffff") >= contraste(acento, "#111111") ? "#ffffff" : "#111111";
+  return `--acento:${acento};--acento2:${c.cores.find((cor) => cor !== base) || "#ffffff"};--acento-tinta:${tinta}`;
+}
 const coresClube = (id) => (CLUBES[id] ? `--clube:${CLUBES[id].cores[0]};--clube2:${CLUBES[id].cores[1]};--clube-tinta:${tintaSobre(CLUBES[id].cores[0], CLUBES[id].cores[1])}` : "");
 // a festa (gol seu, contratação): confete nas cores do clube; quem pede menos movimento fica sem
 const festa = () => { if (matchMedia("(prefers-reduced-motion: reduce)").matches || !E) return; const c = CLUBES[E.clube]; Comum.confetti([c.cores[0], c.cores[1], "#ffb21e", "#e8efe7"]); };
@@ -83,7 +98,7 @@ function receber(estado) {
   E = estado;
   // os jovens que subiram da base não estão nos arquivos: chegam com o estado (o clube de origem vem do id)
   for (const [id, j] of Object.entries(E.jovens || {})) { JOGADORES[id] = { ...j, origem: id.replace(/-t\d+b\d+$/, "") }; registrarRosto(j); }
-  document.body.style.cssText = coresClube(E.clube);
+  document.body.style.cssText = `${coresClube(E.clube)};${temaClube(E.clube)}`;
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
 }
 // os ícones dos atalhos (montados uma vez)
