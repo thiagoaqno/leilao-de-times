@@ -37,6 +37,8 @@ function situacao(pid, curto) {
   if (E.suspensos[pid]) s.push(`<span class="tag ruim">${ic("cartas")}${curto ? "" : "Suspenso"}</span>`);
   if (E.amarelos[pid] && !curto) s.push(`<span class="tag aviso">${E.amarelos[pid]} amarelo${E.amarelos[pid] > 1 ? "s" : ""}</span>`);
   if (E.aVenda.includes(pid)) s.push(`<span class="tag venda">${ic("etiqueta")}${curto ? "" : "À venda"}</span>`);
+  const forma = efeitoDe(pid);
+  if (forma) s.push(`<span class="tag ${forma > 0 ? "alta" : "baixa"}">${ic(forma > 0 ? "sobe" : "baixo")}${curto ? (forma > 0 ? "+" : "") + forma : `${forma > 0 ? "Em alta" : "Em baixa"}: ${forma > 0 ? "+" : ""}${forma} no próximo jogo`}</span>`);
   if (E.indicacoes[pid]) s.push(`<span class="tag dica">${ic("olho")}${curto ? "-15%" : "Dica do olheiro: -15%"}</span>`);
   return s.join("");
 }

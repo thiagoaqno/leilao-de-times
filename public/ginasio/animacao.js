@@ -4,6 +4,8 @@
 // - O jeito de cada momento: parado, andando, virando, golpe (com antecipação), apanhando, esquiva, investida, giro,
 //   voo, buraco, mergulho, troca e desmaio. Tudo só visual: o servidor continua decidindo acertos e dano.
 // - As partículas (poeira, pedrinhas, gotas, faíscas...) numa lista de tamanho fixo.
+// - De costas: andando ou mirando para o fundo da quadra, o bicho vira de costas. Os Pokémon usam o GIF de costas do
+//   Black/White (ou o sprite parado de costas); os Galeramon, o próprio desenho sem o rosto e um pouco mais escuro.
 const animacoes = new Map(), visuais = new Map();
 const ESCALA_GIF = 3.1 / 96, ESCALA_PARADO = 3.1 / 64, ESCALA_GALERAMON = 1.8 / 32; // casas da arena por pixel do sprite
 const NAO_FLUTUAM = new Set(["doduo", "dodrio", "farfetchd", "chatot", "murkrow"]); // voadores que ficam no chão
@@ -48,6 +50,64 @@ function animacaoDe(id, modo = modoAtual()) {
     })
     .catch(() => { a.erro = true; });
   return a;
+}
+// o bicho de costas (ver o começo do arquivo). Devolve null enquanto não há quadro de costas: aí vale o de frente.
+function animacaoCostas(id, modo = modoAtual()) {
+  const chave = `${modo}:${id}:costas`;
+  let a = animacoes.get(chave);
+  if (!a) {
+    a = { id, modo, quadros: [], atrasos: [], total: 1, medida: null, piscar: null, brancos: new Map(), pronto: false, olha: 1, costas: true };
+    animacoes.set(chave, a);
+    if (modo !== "pokemon") {
+      const q = GaleramonSprite.quadros(id).slice(0, 4).map(semRosto);
+      usarQuadros(a, q, [240, 240, 240, 240], medirCanvas(q[0]), ESCALA_GALERAMON);
+      a.olha = animacaoDe(id, modo).olha;
+    } else {
+      const img = new Image(); img.crossOrigin = "anonymous";
+      a.parado = { img, pronto: false };
+      img.onload = () => { a.parado.pronto = true; };
+      img.onerror = () => { a.erroParado = true; };
+      img.src = PokeDex.sprite(id, true);
+      fetch(PokeDex.spriteAnimado(id, true))
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+        .then((buf) => {
+          const g = GifQuadros.decodificar(new Uint8Array(buf));
+          usarQuadros(a, g.quadros.map((q) => canvasDe(q.rgba, g.w, g.h)), g.quadros.map((q) => q.atraso), medirQuadros(g.quadros.map((q) => q.rgba), g.w, g.h), ESCALA_GIF);
+        })
+        .catch(() => { a.erro = true; });
+    }
+  }
+  return a.pronto || a.parado?.pronto ? a : null;
+}
+// as costas de um Galeramon: o mesmo corpo, mas os olhos, a boca e os brilhos de dentro viram a cor do corpo ao lado,
+// e tudo fica um pouco mais escuro (a luz vem da frente)
+function semRosto(cv) {
+  const w = cv.width, h = cv.height, src = cv.getContext("2d").getImageData(0, 0, w, h), d = src.data, o = new Uint8ClampedArray(d);
+  const opaco = (x, y) => x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 24;
+  const escuroOuBranco = (i) => (d[i] + d[i + 1] + d[i + 2] < 140) || (d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if (!opaco(x, y)) continue;
+    // um detalhe de dentro do corpo (não o contorno): procura a cor do corpo mais perto na mesma linha
+    if (escuroOuBranco(i) && opaco(x - 1, y) && opaco(x + 1, y) && opaco(x, y - 1) && opaco(x, y + 1)) {
+      for (let k = 1; k < 5; k++) {
+        const viz = [[x - k, y], [x + k, y], [x, y - k], [x, y + k]].find(([a, b]) => opaco(a, b) && !escuroOuBranco((b * w + a) * 4));
+        if (viz) { const j = (viz[1] * w + viz[0]) * 4; o[i] = d[j]; o[i + 1] = d[j + 1]; o[i + 2] = d[j + 2]; break; }
+      }
+    }
+    o[i] *= 0.82; o[i + 1] *= 0.82; o[i + 2] *= 0.86;
+  }
+  return canvasDe(o, w, h);
+}
+// o quadro de costas da vez (o GIF, ou o sprite parado enquanto o GIF carrega)
+function quadroCostas(a, tempo) {
+  if (a.pronto) return quadroDe(a, tempo, false);
+  if (!a.reserva) {
+    const img = a.parado.img, cv = document.createElement("canvas"); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    cv.getContext("2d").drawImage(img, 0, 0);
+    a.reserva = { cv, medida: { ...medirCanvas(cv), escala: ESCALA_PARADO } };
+  }
+  return a.reserva;
 }
 // o sprite parado (FireRed) enquanto o GIF carrega ou se ele falhar
 function quadroReserva(a) {
@@ -226,8 +286,13 @@ function desenharBicho(e, agora, modo) {
   v.tempo += dt * (andando ? 1.7 : 1) * (o?.jeito === "voo" ? 2.5 : 1);
   const lado = e.mira.x < -0.05 ? -1 : e.mira.x > 0.05 ? 1 : v.lado;
   if (lado !== v.lado) { v.lado = lado; v.viradaEm = agora; }
+  // de costas: mirando para o fundo da quadra (com uma folga, para não ficar trocando à toa perto do meio)
+  const costas = e.mira.y < -0.55 ? true : e.mira.y > -0.25 ? false : !!v.costas;
+  if (costas !== !!v.costas) { v.costas = costas; v.viradaEm = agora; }
   if (agora > v.piscaEm + 3000 + (semente(e.id) % 1500)) v.piscaEm = agora;
-  const q = quadroDe(a, v.tempo, agora - v.piscaEm < 130);
+  const ac = costas ? animacaoCostas(id, modo) : null;
+  const q = ac ? quadroCostas(ac, v.tempo) : quadroDe(a, v.tempo, agora - v.piscaEm < 130);
+  const anim = ac || a;
   const p = pontoTela(e.x, e.y), chao = p.y + s * 0.35, mira = e.mira;
   const f = { lado: v.lado, altura: 0, sx: 1, sy: 1, estica: 0, anguloEstica: Math.atan2(mira.y, mira.x), alfa: 1 };
   let ox = 0, oy = 0, sombra = 1, carga = null;
@@ -306,20 +371,20 @@ function desenharBicho(e, agora, modo) {
   const rapido = e.dash || ie < 250 || (andando && (e.st?.spd || 0) > 0);
   if (!calmo && rapido && !escondido && q && agora - v.rastroEm > 35) {
     v.rastroEm = agora;
-    v.rastro.unshift({ x, y, f: { ...f, branco: false }, q, t: agora });
+    v.rastro.unshift({ x, y, f: { ...f, branco: false }, q, a: anim, t: agora });
     v.rastro.length = Math.min(v.rastro.length, 4);
   }
   for (let i = v.rastro.length - 1; i >= 0; i--) {
     const r = v.rastro[i], idade = agora - r.t;
     if (idade > 180) { v.rastro.splice(i, 1); continue; }
-    pintarQuadro(a, r.q, r.x, r.y, { ...r.f, alfa: 0.32 * (1 - idade / 180) });
+    pintarQuadro(r.a || a, r.q, r.x, r.y, { ...r.f, alfa: 0.32 * (1 - idade / 180) });
   }
   if (carga && !calmo) { // brilho do tipo carregando o golpe
     ctx.save(); ctx.globalAlpha = 0.35 * carga.k; circulo(x, y - s * 0.6 - f.altura * s, s * (0.5 + carga.k * 0.35), corTipo(carga.elemento)); ctx.restore();
   }
   if (e.escudo) circulo(x, y - s * 0.5, s * (0.9 + Math.sin(agora / 80) * 0.05), "#75c8c3", false);
   let alturaSprite = s * 1.2;
-  if (q && !escondido) alturaSprite = pintarQuadro(a, q, x, y, f);
+  if (q && !escondido) alturaSprite = pintarQuadro(anim, q, x, y, f);
   else if (!q && !escondido) { ret(x - s * 0.4, y - s * 0.9, s * 0.8, s * 0.9, corTipo(dexDe(modo).MONS[e.bicho]?.types[0])); texto(a.erro ? "?" : "·", x, y - s * 0.4, "#fff", Math.max(6, s * 0.7)); }
   if (!e.campo) return;
   // a vida fica em cima da cabeça (ou no chão, enquanto o bicho está no alto ou debaixo da terra)

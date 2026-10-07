@@ -102,6 +102,12 @@ label{display:block;font-size:12px;font-weight:700;color:var(--giz2);margin:0 0 
 .entrada li.novo{border-color:#ffb21e66;background:#ffb21e0d}
 .entrada li.lido{opacity:.82}
 .entrada b{font-size:14px}.entrada p{font-size:13px;color:var(--giz2)}.entrada .resultado{color:var(--giz);margin-top:4px}
+/* o que os eventos deixaram valendo (nota do time, de jogadores e do adversário) */
+.efeitos{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.efeitos li{display:flex;align-items:center;gap:6px;padding:4px 9px 4px 6px;border-radius:999px;font-size:12px;border:1px solid var(--linha);background:#0a1520}
+.efeitos li .ic{width:14px;height:14px}.efeitos li small{color:var(--giz2)}
+.efeitos li.bom{border-color:#3ecf8e66;color:#8ff0c2}.efeitos li.ruim{border-color:#ff6b5c66;color:#ffb0a6}
+.efeitos li b{color:inherit;font-size:12px}
 .ic-evento{display:grid;place-items:center;width:32px;height:32px;border-radius:8px;background:var(--quadro3);color:var(--apito)}
 .rod{color:var(--giz3);font-size:11px;font-weight:700}
 .opcoes-evento{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.opcoes-evento button{min-height:36px;padding:6px 10px;font-size:13px}
@@ -135,7 +141,7 @@ td.pos.campeao{box-shadow:inset 3px 0 var(--ouro)}td.pos.libertadores{box-shadow
 .figurinha footer{display:flex;justify-content:space-between;align-items:center;gap:4px;padding:5px 8px 7px;font-size:12px;font-weight:700;color:#5a5345;margin-top:auto}
 .marcas{display:flex;gap:3px}
 .tag{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:6px;font-size:11px;font-weight:800;background:#00000014;color:var(--tinta)}
-.tag .ic{width:12px;height:12px}.tag.ruim{background:#d8433a;color:#fff}.tag.venda{background:#ffb21e;color:var(--apito-tinta)}.tag.dica{background:#1f8a5b;color:#fff}.tag.aviso{background:#f2d05c}
+.tag .ic{width:12px;height:12px}.tag.ruim{background:#d8433a;color:#fff}.tag.venda{background:#ffb21e;color:var(--apito-tinta)}.tag.dica{background:#1f8a5b;color:#fff}.tag.aviso{background:#f2d05c}.tag.alta{background:#3ecf8e;color:#06281a}.tag.baixa{background:#6b2a2a;color:#ffd6d0}
 .figurinha.grande{cursor:default;width:100%;max-width:280px}
 .figurinha.grande .foto img{width:128px;height:128px}.figurinha.grande h4{font-size:22px;white-space:normal}
 .figurinha.grande .nota{font-size:34px}.figurinha .sub{text-align:center;font-size:12px;color:#6b6252;font-weight:600;padding:0 8px 6px}

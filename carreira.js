@@ -48,7 +48,7 @@ const folhaDe = (save) => elencoDe(save, save.clube).reduce((s, j) => s + salari
 function completar(save) {
   const c = clubeDe(save, save.clube);
   const padrao = { caixa: Mercado.CAIXA_INICIAL[c.tamanho] || 15e6, moral: 60, donos: {}, aVenda: [], lesoes: {}, suspensos: {}, amarelos: {}, bonusNota: {},
-    salarios: {}, caixaEntrada: [], transferencias: [], indicacoes: {}, financas: [], tentativas: { rodada: -1, por: {} }, bonusVitoria: 0, provocado: null };
+    salarios: {}, caixaEntrada: [], transferencias: [], indicacoes: {}, financas: [], tentativas: { rodada: -1, por: {} }, bonusVitoria: 0, provocado: null, efeitos: [], eventosVistos: {} };
   for (const [k, v] of Object.entries(padrao)) if (save[k] === undefined) save[k] = v;
   return save;
 }
@@ -69,13 +69,18 @@ function novaCarreira(nome, clube, skin) {
 
 // o time que entra em campo: o elenco de agora (com as transferências), sem lesionados e suspensos, com a moral no seu
 const moralBonus = (save) => Math.round((save.moral - 60) / 12);
+// os efeitos dos eventos que valem na rodada (carreira-eventos.js): nota do time, de um jogador ou do próximo adversário
+const efeitosAtivos = (save, rodada) => (save.efeitos || []).filter((e) => e.de <= rodada && e.ate >= rodada);
+const somaEfeitos = (lista, alvo) => lista.reduce((s, e) => s + (e.alvo === alvo ? e.nota : 0), 0);
 function timeDe(save, id) {
-  const c = clubeDe(save, id), meu = id === save.clube;
-  const rival = !meu && save.provocado && save.provocado.rodada === (save.partida ? save.partida.rodada : save.rodada) && save.partida && (save.partida.casa === id || save.partida.fora === id);
-  const extra = meu ? moralBonus(save) : rival ? save.provocado.nota : 0;
+  const c = clubeDe(save, id), meu = id === save.clube, R = save.partida ? save.partida.rodada : save.rodada;
+  const rival = !meu && save.partida && (save.partida.casa === id || save.partida.fora === id);
+  const ativos = meu || rival ? efeitosAtivos(save, R) : [];
+  const extra = meu ? moralBonus(save) + somaEfeitos(ativos, "time")
+    : rival ? (save.provocado && save.provocado.rodada === R ? save.provocado.nota : 0) + somaEfeitos(ativos, "rival") : 0;
   return {
     id: c.id, nome: c.nome,
-    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, nota: clamp(notaDe(save, j) + extra, 40, 97) })),
+    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
     formacao: meu ? save.escalacao.formacao : c.formacao,
     tatica: meu ? save.escalacao.tatica : { mentalidade: 0, pressao: 1, linha: 1 },
     titulares: meu && save.escalacao.titulares ? save.escalacao.titulares : undefined,
@@ -157,6 +162,7 @@ function fecharRodada(save, r) {
   save.partida = null;
   save.provocado = null;
   save.rodada = rodada + 1;
+  save.efeitos = (save.efeitos || []).filter((e) => e.ate >= save.rodada);
   // quem se machucou ou foi suspenso no seu time vira aviso
   const fora = elencoDe(save, meu).filter((j) => save.lesoes[j.id] || save.suspensos[j.id]).filter((j) => r.eventos.some((e) => e.jogador === j.id && ["lesao", "vermelho", "amarelo"].includes(e.tipo)));
   for (const j of fora) avisar(save, { tipo: "desfalque", icone: save.lesoes[j.id] ? "alerta" : "cartas", titulo: `${j.nome} desfalca o time`, texto: save.lesoes[j.id] ? `Lesão: fica fora por ${save.lesoes[j.id]} rodada${save.lesoes[j.id] > 1 ? "s" : ""}.` : "Suspenso para o próximo jogo." });
@@ -198,6 +204,7 @@ function estado(save) {
     indicacoes: save.indicacoes, transferencias: save.transferencias.slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25),
     janela: { aberta: Mercado.janelaAberta(save.rodada), proxima: Mercado.proximaJanela(save.rodada) },
     tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {},
+    efeitos: (save.efeitos || []).filter((e) => e.ate >= save.rodada),
   };
 }
 
@@ -352,10 +359,12 @@ module.exports = function ligarCarreira(io) {
       movimentar(save, `Premiação: ${pos}º lugar`, (21 - pos) * 1e6);
       save.temporada++; save.ano++;
       save.calendario = Temporada.gerarCalendario(idsDosClubes(save), `${save.semente}:${save.temporada}`);
-      Object.assign(save, { rodada: 0, resultados: [], gols: {}, partida: null, ultimo: null, amarelos: {}, bonusVitoria: 0, provocado: null });
+      Object.assign(save, { rodada: 0, resultados: [], gols: {}, partida: null, ultimo: null, amarelos: {}, bonusVitoria: 0, provocado: null, efeitos: [] });
       avisar(save, { tipo: "temporada", icone: "taca", titulo: `Começa a temporada ${save.ano}`, texto: `A janela está aberta até a rodada 4. Caixa: ${dinheiro(save.caixa)}.` });
       return null;
     }));
     socket.on("sair", (d, cb) => { token = null; ok(cb); });
   });
 };
+// para os testes: montar uma carreira e mexer nela sem o socket
+module.exports.paraTestes = { novaCarreira, ajudas, timeDe, fecharRodada };
