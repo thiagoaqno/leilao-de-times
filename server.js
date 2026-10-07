@@ -30,6 +30,7 @@ require("./batalha.js")(io); // Batalha da Galera: batalha de balões de kart es
 const Ritmo = require("./public/leilao/ritmo.js"); // quanto dura cada parte do campeonato ao vivo
 // o banco de dados (bd.js: SQLite, carreiras de treinador). Se não abrir, o resto do site segue funcionando.
 try { require("./bd.js").abrir(); } catch (e) { console.warn("Banco de dados não abriu:", e.message); }
+require("./carreira.js")(io); // Carreira de Treinador: a temporada contra o computador, salva no banco, canal /carreira
 const noite = require("./noite.js"); noite.attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
 require("./pingpong.js")(io); // Pingue-Pongue da Galera: tênis de mesa 1x1 no mouse, canal /pingpong
@@ -49,6 +50,7 @@ app.get("/tiro", (req, res) => res.redirect("/tiro/"));
 app.get("/pelada", (req, res) => res.redirect("/pelada/"));
 app.get("/batalha", (req, res) => res.redirect("/batalha/"));
 app.get("/ginasio", (req, res) => res.redirect("/ginasio/"));
+app.get("/carreira", (req, res) => res.redirect("/carreira/"));
 app.get("/tenis", (req, res) => res.redirect("/tenis/"));
 app.get("/pingpong", (req, res) => res.redirect("/pingpong/"));
 app.get("/rumi", (req, res) => res.redirect("/rumi/"));
