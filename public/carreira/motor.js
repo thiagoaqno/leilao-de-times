@@ -166,14 +166,18 @@
   function simularPartida(cfg = {}) {
     const rng = sorteDe(cfg.semente || "partida");
     const modo = [1, 2, 3].includes(cfg.modo) ? cfg.modo : 1;
-    const controla = cfg.controla === 0 || cfg.controla === 1 ? cfg.controla : null;
+    // controla: o lado do humano (0 casa, 1 fora) ou 2, os dois lados humanos (carreira em grupo, humano contra humano):
+    // aí as paradas e os lances pedem a decisão dos dois de uma vez (parado.ambos, com o pedido de cada lado em
+    // parado.pedidos), e a resposta é { 0: ..., 1: ... }
+    const ambos = cfg.controla === 2;
+    const controla = ambos ? null : cfg.controla === 0 || cfg.controla === 1 ? cfg.controla : null;
     const decisoes = cfg.decisoes || {};
     const times = [prepararTime(cfg.casa || {}, 0), prepararTime(cfg.fora || {}, 1)];
     const neutro = !!cfg.neutro;
     const placar = [0, 0], eventos = [], est = [0, 1].map(() => ({ chutes: 0, noAlvo: 0, faltas: 0, amarelos: 0, vermelhos: 0, lances: 0 }));
     let decisivos = 0, golsContra = 0, minuto = 0, acrescimo = 0, parado = null;
     const ev = (e) => eventos.push({ min: minuto, ...(acrescimo ? { acr: acrescimo } : {}), ...e });
-    const humano = (lado) => controla === lado && modo >= 2;
+    const humano = (lado) => (ambos || controla === lado) && modo >= 2;
 
     // pede (ou usa) a decisão do ponto `id`; sem resposta, para a partida aqui
     function decidir(id, pedido) {
@@ -205,7 +209,16 @@
       }
       recalcular(time);
     }
-    function parada(time, id, motivo) { if (humano(time.lado)) aplicarTatica(time, decidir(id, pedidoTatico(time, motivo))); }
+    function parada(time, id, motivo) {
+      if (!humano(time.lado)) return;
+      if (ambos) { const d = decidir(`${id}:${time.lado}`, { tipo: "tatica", ambos: true, pedidos: { [time.lado]: pedidoTatico(time, motivo) } }); return aplicarTatica(time, d && d[time.lado]); }
+      aplicarTatica(time, decidir(id, pedidoTatico(time, motivo)));
+    }
+    // as paradas dos dois técnicos ao mesmo tempo (intervalo e reta final, no humano contra humano)
+    function paradaDosDois(id, motivo) {
+      const d = decidir(id, { tipo: "tatica", ambos: true, pedidos: { 0: pedidoTatico(times[0], motivo), 1: pedidoTatico(times[1], motivo) } });
+      for (const t of times) aplicarTatica(t, d && d[t.lado]);
+    }
     function substituir(time, saiId, entraId) {
       if (time.subs <= 0) return false;
       const vaga = time.campo.find((v) => v.p && v.p.id === saiId && !v.p.fora);
@@ -235,6 +248,7 @@
       placar[at.lado]++;
       ev({ tipo: "gol", lado: at.lado, jogador: autor.id, ...(assist ? { assist: assist.id } : {}), como, placar: [...placar] });
       if (controla === 1 - at.lado) { golsContra++; parada(times[controla], `gol${golsContra}`, "gol_sofrido"); }
+      else if (ambos) { golsContra++; parada(times[1 - at.lado], `gol${golsContra}`, "gol_sofrido"); }
     }
     function finalizador(at) { return sortearPeso(rng, titulares(at), (p) => PESO_GOL[p.grp] * p.atr.fin); }
     function garcom(at, autor) { const l = titulares(at).filter((p) => p !== autor && p.grp !== "GK"); return l.length && rng() < 0.75 ? sortearPeso(rng, l, (p) => PESO_PASSE[p.grp] * p.atr.pas) : null; }
@@ -246,8 +260,8 @@
       const perigosa = tipo !== "jogada" || rng() < AJUSTE.PERIGOSA;
       const autor = tipo === "jogada" ? finalizador(at) : sortearPeso(rng, titulares(at), (p) => (p.grp === "GK" ? 0 : p.atr.fin * (p.grp === "ATT" ? 2 : 1)));
       const gk = df.gk, gkNota = gk ? gk.atr.gol : 40;
-      const decisivo = modo === 3 && controla != null && perigosa && decisivos < AJUSTE.MAX_DECISIVOS && rng() < AJUSTE.DECISIVO;
-      if (decisivo) return lanceDecisivo(at, df, tipo, autor, gk);
+      const decisivo = modo === 3 && (controla != null || ambos) && perigosa && decisivos < AJUSTE.MAX_DECISIVOS && rng() < AJUSTE.DECISIVO;
+      if (decisivo) return ambos ? lanceDosDois(at, df, tipo, autor, gk) : lanceDecisivo(at, df, tipo, autor, gk);
       let conv = tipo === "penalti" ? AJUSTE.CONV_PENALTI : tipo === "falta" ? AJUSTE.CONV_FALTA : perigosa ? AJUSTE.CONV_PERIGOSA : AJUSTE.CONV_COMUM;
       if (tipo !== "penalti") conv *= Math.exp(0.03 * (autor.atr.fin - gkNota)) * (1 + 0.1 * (df.tatica.linha - 1));
       est[at.lado].chutes++;
@@ -288,6 +302,36 @@
       }
       if (rng() < op.risco) { est[at.lado].noAlvo++; return gol(at, autor, garcom(at, autor), tipo); }
       ev({ tipo: "perdeu", lado: at.lado, jogador: autor.id, como: tipo });
+    }
+    // o lance decisivo no humano contra humano: quem ataca escolhe a jogada e quem defende escolhe a defesa, ao mesmo
+    // tempo. No pênalti, o duelo do Leilão: quem bate escolhe o canto e o goleiro escolhe o pulo.
+    function lanceDosDois(at, df, tipo, autor, gk) {
+      decisivos++;
+      const id = `lance${decisivos}`;
+      est[at.lado].chutes++;
+      if (tipo === "penalti") {
+        const pedidos = { [at.lado]: { tipo: "lance", lance: "penalti_favor", lado: at.lado, batedor: autor.id, goleiro: gk ? gk.id : null, opcoes: opcoesDoPenalti(true, autor, gk) },
+          [df.lado]: { tipo: "lance", lance: "penalti_contra", lado: df.lado, batedor: autor.id, goleiro: gk ? gk.id : null, opcoes: opcoesDoPenalti(false, autor, gk) } };
+        const dec = decidir(id, { tipo: "lance", ambos: true, pedidos }) || {};
+        const zona = (x) => (ZONAS.includes(x) ? x : ZONAS.includes(x && x.opcao) ? x.opcao : ZONAS[0]);
+        const chute = zona(dec[at.lado]), pulo = zona(dec[df.lado]), foraDoGol = rng() < FORA;
+        ev({ tipo: "penalti", lado: at.lado, jogador: autor.id, chute, pulo, fora: foraDoGol, decisivo: id });
+        if (!foraDoGol && chute !== pulo) { est[at.lado].noAlvo++; return gol(at, autor, null, "penalti"); }
+        return ev({ tipo: foraDoGol ? "perdeu" : "defesa", lado: at.lado, jogador: autor.id, ...(gk && !foraDoGol ? { goleiro: gk.id } : {}), como: "penalti" });
+      }
+      const favor = tipo === "falta" ? "falta_favor" : "ataque_favor", contra = tipo === "falta" ? "falta_contra" : "ataque_contra";
+      const opA = opcoesDoLance(favor, at, df, autor, gk), opD = opcoesDoLance(contra, df, at, autor, df.gk);
+      const so = (l) => l.map(({ id: oid, nome, chance }) => ({ id: oid, nome, chance }));
+      const dec = decidir(id, { tipo: "lance", ambos: true, pedidos: { [at.lado]: { tipo: "lance", lance: favor, lado: at.lado, jogador: autor.id, opcoes: so(opA) },
+        [df.lado]: { tipo: "lance", lance: contra, lado: df.lado, jogador: autor.id, adversario: at.id, opcoes: so(opD) } } }) || {};
+      const escolha = (lista, x) => lista.find((o) => o.id === (x && x.opcao ? x.opcao : x)) || lista[0];
+      const a = escolha(opA, dec[at.lado]), d = escolha(opD, dec[df.lado]);
+      // a jogada dá certo pela chance dela, descontada a da defesa escolhida
+      const certo = rng() < clamp(a.chance * (1.45 - d.chance), 0.05, 0.9);
+      ev({ tipo: "lance", lado: at.lado, lance: favor, opcao: a.id, defesa: d.id, certo, jogador: autor.id, decisivo: id });
+      if (certo) { est[at.lado].noAlvo++; return gol(at, autor, a.id === "tocar" || a.id === "cruzar" || a.id === "ensaiada" ? garcom(at, autor) : null, tipo); }
+      if (d.contra && rng() < 0.5) { ev({ tipo: "contra_ataque", lado: df.lado }); est[df.lado].chutes++; if (rng() < 0.33) { const x = finalizador(df); est[df.lado].noAlvo++; return gol(df, x, garcom(df, x), "contra_ataque"); } return; }
+      return gk && rng() < 0.5 ? ev({ tipo: "defesa", lado: at.lado, jogador: autor.id, goleiro: gk.id, como: tipo }) : ev({ tipo: "perdeu", lado: at.lado, jogador: autor.id, como: tipo });
     }
     function sortearIndice(r, pesos) { let x = r() * pesos.reduce((a, b) => a + b, 0); for (let i = 0; i < pesos.length; i++) { x -= pesos[i]; if (x <= 0) return i; } return pesos.length - 1; }
 
@@ -334,7 +378,13 @@
           * (1 + 0.12 * at.tatica.mentalidade) * (1 + 0.08 * df.tatica.mentalidade) * (1 - 0.06 * (df.tatica.pressao - 1)) * (1 - 0.04 * (df.tatica.linha - 1));
         if (rng() < taxa) lance(at, df);
       }
-      if (controla != null && modo >= 2) {
+      if (ambos && modo >= 2) {
+        for (const t of times) {
+          const linha = titulares(t).filter((p) => p.grp !== "GK");
+          if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < 72) { t.cansacoAvisado = true; parada(t, "cansaco", "cansaco"); }
+        }
+        if (minuto === 70 && !acrescimo) paradaDosDois("m70", "minuto_70");
+      } else if (controla != null && modo >= 2) {
         const t = times[controla];
         const linha = titulares(t).filter((p) => p.grp !== "GK");
         if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < 72) {
@@ -354,7 +404,8 @@
         if (tempo === 0) {
           ev({ tipo: "intervalo", placar: [...placar] });
           for (const t of times) t.jogadores.forEach((p) => { if (!p.fora) p.energia = Math.min(100, p.energia + 8); });
-          if (controla != null && modo >= 2) parada(times[controla], "intervalo", "intervalo");
+          if (ambos && modo >= 2) paradaDosDois("intervalo", "intervalo");
+          else if (controla != null && modo >= 2) parada(times[controla], "intervalo", "intervalo");
         }
       }
       minuto = 90;
@@ -370,6 +421,7 @@
   // o técnico do computador nos lances decisivos (para testar o modo 3 sem gente): pega a opção de maior chance
   function decisaoAutomatica(parado) {
     if (!parado) return null;
+    if (parado.ambos) return Object.fromEntries(Object.entries(parado.pedidos).map(([lado, p]) => [lado, decisaoAutomatica(p)]));
     if (parado.tipo === "tatica") return {};
     return [...parado.opcoes].sort((a, b) => b.chance - a.chance)[0].id;
   }

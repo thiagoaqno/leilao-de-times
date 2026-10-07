@@ -1,8 +1,13 @@
-// Carreira em grupo — canal "/carreira-online" do Socket.io (planos/carreira-online.md, PR 4: a sala).
+// Carreira em grupo — canal "/carreira-online" do Socket.io (planos/carreira-online.md, PRs 4, 5 e 6).
 // Uma turma joga a mesma carreira: o criador abre a sala com código e vira o anfitrião (escolhe as temporadas, o aporte
 // do investidor, as ligas e o ritmo), os amigos entram pelo código e cada um escolhe um clube livre. Quando o
 // anfitrião começa, nasce um mundo só (carreira.js, novaCarreiraGrupo) com um clube humano por pessoa; cada um vê a
-// sede do seu clube e mexe na escalação. A rodada ao vivo para todos é o PR 5; o mercado disputado, o PR 6.
+// sede do seu clube.
+// - A rodada ao vivo (carreira-rodada.js): o anfitrião aperta "Jogar a rodada" e todos assistem juntos, cada um o seu
+//   jogo, com o placar dos outros numa faixa. As paradas só pausam o jogo delas, com tempo para decidir. No turbo, as
+//   rodadas sem humano contra humano e sem final saem na hora.
+// - O mercado disputado: o leilão de um jogador por vez, com os amigos dando lances (cada lance reinicia o relógio); o
+//   jogador de um amigo só sai quando o dono bate o martelo. E o olheiro (carreira.js, olheiro).
 // - Reconexão: cada pessoa tem um token (fica no navegador em "carreira-online:<CÓDIGO>"; o servidor guarda só o
 //   hash). Fechar a aba não tira ninguém da sala.
 // - A sala inteira fica no banco (bd.js, tabela carreiras_online): o servidor pode reiniciar no meio da noite. A sala
@@ -11,11 +16,20 @@ const crypto = require("crypto");
 const bd = require("./bd.js");
 const { rid, novoCodigo, limparNome, ok, falha, buscarSala, nomeEmUso, limparSalasParadas } = require("./salas.js");
 const Carreira = require("./carreira.js").grupo;
+const Rd = require("./carreira-rodada.js");
 
 const MAX_PESSOAS = 8;
 const APORTES = [0, 250e6, 500e6, 1e9];
 const OPCOES_PADRAO = { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal" };
 const HORAS_PARADA = 24;
+// os tempos (os testes aceleram pelo ambiente): o relógio do jogo (minutos de jogo por segundo), a decisão, o lance do
+// leilão (cada lance reinicia), a primeira janela do leilão, o martelo do dono e a contagem antes da rodada
+const VEL = Number(process.env.CARREIRA_VEL) || 1.5;
+const DECISAO_MS = Number(process.env.CARREIRA_DECISAO_MS) || 20000;
+const LANCE_MS = Number(process.env.CARREIRA_LANCE_MS) || 15000;
+const ABERTURA_MS = LANCE_MS + 5000, MARTELO_MS = 30000;
+const ESPERA_MS = process.env.CARREIRA_ESPERA_MS != null ? Number(process.env.CARREIRA_ESPERA_MS) : 3000;
+const TICK_MS = 250;
 const hash = (t) => crypto.createHash("sha256").update(String(t)).digest("hex");
 
 // as opções do anfitrião, sempre dentro do permitido
@@ -34,6 +48,7 @@ module.exports = function ligarCarreiraOnline(io) {
 
   // ---------- o banco: guardar e carregar as salas ----------
   const paraGuardar = (room) => ({ code: room.code, host: room.host, fase: room.fase, opcoes: room.opcoes, order: room.order, save: room.save, t: room.t,
+    nRodada: room.nRodada || 0, prontos: room.prontos || {}, rodada: room.rodada || null, ultimaRodada: room.ultimaRodada || null, leilao: room.leilao || null, ultimoLeilao: room.ultimoLeilao || null,
     players: Object.fromEntries(Object.entries(room.players).map(([id, p]) => [id, { id, name: p.name, skin: p.skin, clube: p.clube, tokenHash: p.tokenHash }])) });
   function guardar(room) { room.t = Date.now(); try { bd.salvarSalaCarreira(room.code, paraGuardar(room)); } catch (e) { console.warn("carreira-online: não salvou a sala", room.code, e.message); } }
   try {
@@ -46,15 +61,31 @@ module.exports = function ligarCarreiraOnline(io) {
   limparSalasParadas(rooms, { horas: HORAS_PARADA, aoApagar: (room) => { try { bd.apagarSalaCarreira(room.code); } catch {} } });
 
   // ---------- o estado ----------
-  // o que todo mundo da sala vê: as pessoas (com o clube de cada uma), as opções e a fase
+  // o leilão aberto, como todo mundo vê
+  const verLeilao = (l) => (l ? { jogador: l.jogador, dono: l.dono, tipo: l.tipo, minimo: l.minimo, abertoPor: l.abertoPor, lances: l.lances.slice(-12), fim: l.fim, estado: l.estado, ate: l.ate || null,
+    passo: Carreira.passoDoLance(l.lances.length ? l.lances[l.lances.length - 1].valor : l.minimo), teto: Number.isFinite(l.teto) ? l.teto : null } : null);
+  // o que todo mundo da sala vê: as pessoas (com o clube de cada uma), as opções, a fase, a rodada e o leilão
   const publicState = (room) => ({
-    code: room.code, fase: room.fase, host: room.host, opcoes: room.opcoes, max: MAX_PESSOAS,
-    players: room.order.map((id) => { const p = room.players[id]; return { id, name: p.name, clube: p.clube || null, online: p.sockets.size > 0, host: id === room.host }; }),
+    code: room.code, fase: room.fase, host: room.host, opcoes: room.opcoes, max: MAX_PESSOAS, now: Date.now(),
+    players: room.order.map((id) => { const p = room.players[id]; return { id, name: p.name, clube: p.clube || null, online: p.sockets.size > 0, host: id === room.host, pronto: !!(p.clube && room.prontos && room.prontos[p.clube] === (room.nRodada || 0)) }; }),
     ocupados: Object.fromEntries(room.order.filter((id) => room.players[id].clube).map((id) => [room.players[id].clube, id])),
     clubes: Carreira.clubesEscolhiveis(room.opcoes.ligas).map((c) => c.id),
+    nRodada: room.nRodada || 0,
+    rodada: room.rodada ? { n: room.rodada.n, semana: room.rodada.semana, inicio: room.rodada.inicio, jogos: room.rodada.jogos.map((j) => ({ casa: j.casa, fora: j.fora, fim: j.fim })) } : null,
+    ultimaRodada: room.ultimaRodada || null,
+    leilao: verLeilao(room.leilao), ultimoLeilao: room.ultimoLeilao || null,
+    temporadaAcabou: room.save ? !Carreira.proximaRodadaGrupo(room.save) : false,
+    carreiraAcabou: room.save ? !Carreira.proximaRodadaGrupo(room.save) && room.save.temporada >= room.save.temporadasMax : false,
   });
-  // a sede de cada pessoa (depois do começo): o estado da carreira visto pelo clube dela
-  const estadoDe = (room, p) => (room.save && p.clube && room.save.humanos[p.clube] ? Carreira.estado(Carreira.vistaDe(room.save, p.clube)) : null);
+  // a sede de cada pessoa (depois do começo): o estado da carreira visto pelo clube dela, com a rodada ao vivo
+  const estadoDe = (room, p) => {
+    if (!room.save || !p.clube || !room.save.humanos[p.clube]) return null;
+    const e = Carreira.estado(Carreira.vistaDe(room.save, p.clube));
+    e.rodadaGrupo = Rd.visao(room.save, room.rodada, p.clube, Date.now());
+    e.anfitriao = p.id === room.host;
+    return e;
+  };
+  // tudo para todo mundo: a sala (state) e a sede de cada um (carreira)
   function broadcast(room) {
     nsp.to(room.code).emit("state", publicState(room));
     if (room.fase !== "carreira") return;
@@ -63,6 +94,93 @@ module.exports = function ligarCarreiraOnline(io) {
       if (e) for (const sid of p.sockets) nsp.to(sid).emit("carreira", e);
     }
   }
+  // só a rodada (leve, várias vezes por rodada: o relógio, as paradas e a faixa dos outros jogos)
+  function mandarRodada(room) {
+    const agora = Date.now();
+    for (const id of room.order) {
+      const p = room.players[id]; if (!p.sockets.size || !p.clube) continue;
+      const v = Rd.visao(room.save, room.rodada, p.clube, agora);
+      for (const sid of p.sockets) nsp.to(sid).emit("rodada", v);
+    }
+  }
+
+  // ---------- a rodada ao vivo (carreira-rodada.js) ----------
+  function comecarRodada(room) {
+    const save = room.save;
+    if (room.rodada) return "A rodada já está rolando.";
+    if (room.leilao) return "Espere o leilão acabar.";
+    let p = Carreira.proximaRodadaGrupo(save), pulou = 0;
+    if (!p) return "A temporada acabou. Comece a próxima.";
+    // turbo: as rodadas sem humano contra humano e sem final saem na hora
+    if (room.opcoes.ritmo === "turbo") {
+      const especial = (x) => x.jogos.some((j) => (save.humanos[j.casa] && save.humanos[j.fora]) || j.fase === "final");
+      while (p && !especial(p)) {
+        Carreira.comecarRodadaGrupo(save);
+        const jogos = p.jogos.map((j) => ({ casa: j.casa, fora: j.fora, placar: Carreira.jogarNaHora(save, j).placar }));
+        Carreira.fecharRodadaGrupo(save);
+        room.nRodada = (room.nRodada || 0) + 1; pulou++;
+        room.ultimaRodada = { n: room.nRodada, jogos };
+        p = Carreira.proximaRodadaGrupo(save);
+      }
+      if (!p) return { pulou };
+    }
+    // os avisos sem resposta valem a opção padrão, como antes de um jogo
+    for (const c of Object.keys(save.humanos)) { const v = Carreira.vistaDe(save, c); Carreira.resolverPendentes(v); Carreira.guardarVista(save, v); }
+    Carreira.comecarRodadaGrupo(save);
+    room.nRodada = (room.nRodada || 0) + 1;
+    room.rodada = Rd.criarRodada(save, p, Date.now(), { vel: VEL, decisaoMs: DECISAO_MS, espera: ESPERA_MS, n: room.nRodada });
+    return { pulou };
+  }
+  // ---------- o leilão entre os amigos ----------
+  function fecharLeilao(room, agora, resultado, venda) {
+    const l = room.leilao;
+    room.ultimoLeilao = { jogador: l.jogador, de: l.dono, resultado, t: agora, ...(venda || {}) };
+    room.leilao = null;
+  }
+  // o martelo: o maior lance que ainda pode pagar leva (alguém pode ter gastado o caixa no meio do caminho)
+  function venderNoLeilao(room, agora) {
+    const l = room.leilao, save = room.save;
+    if (Carreira.donoDe(Carreira.vistaDe(save, Object.keys(save.humanos)[0]), l.jogador) !== l.dono) return fecharLeilao(room, agora, "cancelado");
+    for (const x of [...l.lances].reverse()) {
+      const v = Carreira.vistaDe(save, x.clube);
+      if (v.caixa < x.valor || Carreira.elencoDe(v, x.clube).length >= Carreira.Mercado.ELENCO_MAX) continue;
+      Carreira.concluirLeilao(save, { jogador: l.jogador, dono: l.dono, comprador: x.clube, valor: x.valor });
+      return fecharLeilao(room, agora, "vendido", { para: x.clube, valor: x.valor });
+    }
+    fecharLeilao(room, agora, "sem lances");
+  }
+  function tickLeilao(room, agora) {
+    const l = room.leilao; if (!l) return false;
+    if (l.estado === "lances" && agora >= l.fim) {
+      if (!l.lances.length) fecharLeilao(room, agora, "sem lances");
+      else if (l.tipo === "cpu") venderNoLeilao(room, agora);
+      else { l.estado = "martelo"; l.ate = agora + MARTELO_MS; } // o dono decide: bater o martelo ou ficar com ele
+      return true;
+    }
+    if (l.estado === "martelo" && agora >= l.ate) { fecharLeilao(room, agora, "recusado"); return true; }
+    return false;
+  }
+  // o relógio da sala: a rodada e o leilão andam sozinhos
+  let ultimaRodadaMandada = 0;
+  setInterval(() => {
+    const agora = Date.now();
+    for (const room of rooms.values()) {
+      if (room.fase !== "carreira" || !room.save) continue;
+      let mudou = false, rodadaMudou = false;
+      if (room.rodada) {
+        const r = Rd.tick(room.save, room.rodada, agora);
+        rodadaMudou = r.mudou;
+        if (r.acabou) {
+          room.ultimaRodada = { n: room.rodada.n, jogos: room.rodada.jogos.map((j) => ({ casa: j.casa, fora: j.fora, placar: j.placar })) };
+          room.rodada = null; room.prontos = {}; mudou = true;
+        }
+      }
+      if (tickLeilao(room, agora)) mudou = true;
+      if (mudou) { guardar(room); broadcast(room); }
+      else if (room.rodada && (rodadaMudou || agora - ultimaRodadaMandada > 2000)) { if (rodadaMudou) guardar(room); mandarRodada(room); }
+    }
+    if (agora - ultimaRodadaMandada > 2000) ultimaRodadaMandada = agora;
+  }, TICK_MS).unref?.();
 
   nsp.on("connection", (socket) => {
     const minha = () => { const room = socket.data.code && rooms.get(socket.data.code); return { room, me: room && socket.data.pid ? room.players[socket.data.pid] : null }; };
@@ -80,6 +198,7 @@ module.exports = function ligarCarreiraOnline(io) {
       room.order.push(id);
       return { id, token };
     }
+    socket.on("clock", (cb) => typeof cb === "function" && cb(Date.now()));
 
     socket.on("create", (d = {}, cb) => {
       const name = limparNome(d.name);
@@ -111,11 +230,14 @@ module.exports = function ligarCarreiraOnline(io) {
       broadcast(room);
     });
 
-    // as ações da sala de espera: as opções (só o anfitrião), escolher o clube e começar (só o anfitrião)
+    // as ações da sala: na espera, as opções (anfitrião), o clube e começar (anfitrião); depois do começo, jogar a
+    // rodada e a temporada nova (anfitrião), e o leilão (abrir, dar lance, bater o martelo ou recusar)
     socket.on("act", (d = {}, cb) => {
       const { room, me } = minha();
       if (!room) return falha(cb, "Você não está numa sala.");
       if (!me) return falha(cb, "Quem assiste não mexe na sala.");
+      const agora = Date.now();
+      let extra = {};
       if (d.type === "opcoes") {
         if (me.id !== room.host) return falha(cb, "Só o anfitrião muda as opções.");
         if (room.fase !== "espera") return falha(cb, "A carreira já começou.");
@@ -139,10 +261,40 @@ module.exports = function ligarCarreiraOnline(io) {
           room.save = Carreira.novaCarreiraGrupo(room.order.map((id) => ({ clube: room.players[id].clube, nome: room.players[id].name, skin: room.players[id].skin })),
             { temporadas: room.opcoes.temporadas, aporte: room.opcoes.aporte });
         } catch (e) { console.warn("carreira-online: não começou", e); return falha(cb, "Não deu para montar a carreira. Tente de novo."); }
-        room.fase = "carreira";
+        room.fase = "carreira"; room.nRodada = 0; room.prontos = {};
+      } else if (room.fase !== "carreira" || !me.clube) return falha(cb, "Agora não.");
+      else if (d.type === "rodada") {
+        if (me.id !== room.host) return falha(cb, "Quem começa a rodada é o anfitrião.");
+        const r = comecarRodada(room);
+        if (typeof r === "string") return falha(cb, r);
+        extra = r;
+      } else if (d.type === "novaTemporada") {
+        if (me.id !== room.host) return falha(cb, "Quem começa a temporada é o anfitrião.");
+        if (room.rodada || room.leilao) return falha(cb, "Espere a rodada e o leilão acabarem.");
+        const r = Carreira.novaTemporadaGrupo(room.save);
+        if (r) return falha(cb, r);
+      } else if (d.type === "leilao") {
+        if (room.rodada) return falha(cb, "Com a bola rolando, o mercado espera o fim da rodada.");
+        if (room.leilao) return falha(cb, "Já tem um leilão aberto: um por vez.");
+        const pid = String(d.jogador || ""), info = Carreira.infoLeilao(room.save, me.clube, pid);
+        if (typeof info === "string") return falha(cb, info);
+        room.leilao = { jogador: pid, ...info, abertoPor: me.clube, lances: [], fim: agora + ABERTURA_MS, estado: "lances" };
+      } else if (d.type === "lance") {
+        const l = room.leilao;
+        if (!l || l.estado !== "lances") return falha(cb, "Não tem leilão recebendo lances agora.");
+        const valor = Math.round(Number(d.valor) / 1e5) * 1e5, erro = Carreira.erroDoLance(room.save, me.clube, l, valor);
+        if (erro) return falha(cb, erro);
+        l.lances.push({ clube: me.clube, valor, t: agora });
+        l.fim = agora + LANCE_MS; // cada lance novo reinicia o relógio
+      } else if (d.type === "martelo" || d.type === "recusar") {
+        const l = room.leilao;
+        if (!l || l.dono !== me.clube) return falha(cb, "Só o dono do jogador bate o martelo.");
+        if (d.type === "recusar") fecharLeilao(room, agora, "recusado");
+        else if (!l.lances.length) return falha(cb, "Ainda não tem lance.");
+        else venderNoLeilao(room, agora);
       } else return falha(cb, "Agora não.");
       guardar(room);
-      ok(cb);
+      ok(cb, extra);
       broadcast(room);
     });
 
@@ -154,18 +306,38 @@ module.exports = function ligarCarreiraOnline(io) {
       if (room.fase !== "carreira" || !me.clube) return falha(cb, "A carreira desta sala ainda não começou.");
       const v = Carreira.vistaDe(room.save, me.clube);
       Carreira.completar(v);
-      const r = acao(v);
+      const r = acao(v, room, me);
       if (typeof r === "string") return falha(cb, r);
       Carreira.guardarVista(room.save, v);
       guardar(room);
-      ok(cb, { ...(r || {}), estado: Carreira.estado(Carreira.vistaDe(room.save, me.clube)) });
+      ok(cb, { ...(r || {}), estado: estadoDe(room, me) });
     }
+    const semRodada = (room) => (room.rodada ? "Com a bola rolando, o mercado espera o fim da rodada." : null);
     socket.on("entrar", (d, cb) => comClube(cb, () => null));
-    socket.on("escalacao", (d = {}, cb) => comClube(cb, (v) => Carreira.limparEscalacao(v, d)));
+    socket.on("escalacao", (d = {}, cb) => comClube(cb, (v, room) => {
+      const erro = Carreira.limparEscalacao(v, d); if (erro) return erro;
+      (room.prontos ||= {})[v.clube] = room.nRodada || 0; // o anfitrião vê quem já mexeu no time para a rodada
+      setImmediate(() => nsp.to(room.code).emit("state", publicState(room)));
+      return null;
+    }));
     socket.on("modo", (d = {}, cb) => comClube(cb, (v) => { const m = Math.round(Number(d.modo)); v.modo = m >= 1 && m <= 3 ? m : 1; }));
-    // o que ainda vem: a rodada ao vivo para todos e o mercado disputado entre os amigos
-    for (const ev of ["jogar", "decidir", "novaTemporada"]) socket.on(ev, (d, cb) => falha(cb, "A rodada ao vivo para a turma toda ainda está chegando. Por enquanto, monte o time e espere o anfitrião."));
-    for (const ev of ["proposta", "vender", "evento"]) socket.on(ev, (d, cb) => falha(cb, "O mercado disputado entre os amigos ainda está chegando. Por enquanto, monte o time."));
+    socket.on("vender", (d = {}, cb) => comClube(cb, (v, room) => semRodada(room) || (room.leilao && room.leilao.jogador === String(d.jogador) ? "Ele está em leilão agora." : Carreira.venderAcao(v, d))));
+    socket.on("evento", (d = {}, cb) => comClube(cb, (v) => Carreira.eventoAcao(v, d)));
+    socket.on("olheiro", (d, cb) => comClube(cb, (v) => ({ sugestoes: Carreira.olheiro(v) })));
+    // a decisão do jogo ao vivo (a parada do seu jogo)
+    socket.on("decidir", (d = {}, cb) => {
+      const { room, me } = minha();
+      if (!room || !me || !room.rodada) return falha(cb, "Nenhuma partida em andamento.");
+      const erro = Rd.decidir(room.save, room.rodada, me.clube, String(d.id || ""), d.resposta, Date.now());
+      if (erro) return falha(cb, erro);
+      guardar(room);
+      ok(cb, { rodada: Rd.visao(room.save, room.rodada, me.clube, Date.now()) });
+      mandarRodada(room);
+    });
+    // na carreira em grupo, quem começa a rodada é o anfitrião, e a compra é por leilão
+    socket.on("jogar", (d, cb) => falha(cb, "Na carreira em grupo, quem começa a rodada é o anfitrião."));
+    socket.on("proposta", (d, cb) => falha(cb, "Na carreira em grupo, a compra é por leilão: abra o leilão do jogador."));
+    socket.on("novaTemporada", (d, cb) => falha(cb, "Quem começa a temporada é o anfitrião."));
 
     socket.on("disconnect", () => {
       const { room, me } = minha();

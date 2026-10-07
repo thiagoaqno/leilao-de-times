@@ -66,11 +66,11 @@ test("carreira em grupo: começa um mundo só, com o aporte no caixa de cada um,
   const e = await pedir(a, "escalacao", { formacao: "4-4-2" });
   assert.strictEqual(e.estado.escalacao.formacao, "4-4-2");
   assert.notStrictEqual((await pedir(b, "entrar")).estado.escalacao.formacao, "4-4-2", "a do outro não muda");
-  // depois do começo, ninguém novo entra como técnico (só assiste), e o mercado e a rodada ainda não abrem
+  // depois do começo, ninguém novo entra como técnico (só assiste), e a rodada é do anfitrião
   const c = await canal();
   await assert.rejects(pedir(c, "join", { code: sala.code, name: "Caio" }), /já começou/);
   await pedir(c, "join", { code: sala.code, watch: true });
-  await assert.rejects(pedir(a, "jogar", {}), /ainda está chegando/);
+  await assert.rejects(pedir(a, "jogar", {}), /anfitrião/);
   // fechou a aba: volta pelo id e token, no mesmo clube
   b.close();
   const b2 = await canal();

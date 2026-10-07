@@ -90,6 +90,7 @@ function telaJogo(pos) {
       <p class="posicao-final"><b>${pos}º</b> lugar para o ${h(meuClube().nome)} (${meu.p} pontos). ${h(fraseFinal(pos))}</p>
       <p class="suave">Na virada, o elenco evolui: os jovens tendem a subir, os veteranos a cair, e alguns se aposentam. A base manda reforços.</p>
       <button id="btnNovaTemporada" class="primario largo">Começar a temporada ${E.ano + 1} (${E.temporada + 1} de ${E.temporadasMax})</button></div>`;
+    if (EM_GRUPO) { $("btnNovaTemporada").onclick = () => agirGrupo({ type: "novaTemporada" }); if (!E.anfitriao) { $("btnNovaTemporada").disabled = true; $("btnNovaTemporada").textContent = "Esperando o anfitrião começar a temporada"; } return; }
     $("btnNovaTemporada").onclick = async () => { $("btnNovaTemporada").disabled = true; const r = await pedir("novaTemporada"); if (!r.ok) { $("btnNovaTemporada").disabled = false; return toast(r.error); } receber(r.estado); toast(`Temporada ${E.ano}: bola rolando.`); };
     return;
   }
@@ -108,8 +109,8 @@ function telaJogo(pos) {
     <button id="btnJogar" class="primario largo cta"><span>${E.partida ? "Voltar para a partida" : "Jogar a próxima partida"}</span>${ic("apito")}</button>`;
   for (const b of $("cartaoJogo").querySelectorAll("[data-modo]")) b.onclick = () => { modoEscolhido = +b.dataset.modo; pedir("modo", { modo: modoEscolhido }); for (const x of $("cartaoJogo").querySelectorAll("[data-modo]")) x.setAttribute("aria-pressed", String(+x.dataset.modo === modoEscolhido)); };
   $("btnJogar").onclick = jogar;
-  // na carreira em grupo, a rodada é de todos ao mesmo tempo (a rodada ao vivo da turma ainda está chegando)
-  if (EM_GRUPO) { $("btnJogar").disabled = true; $("btnJogar").querySelector("span").textContent = "Rodada da turma: em breve"; $("cartaoJogo").querySelector(".modos")?.remove(); }
+  // na carreira em grupo, a rodada é de todos ao mesmo tempo: quem começa é o anfitrião (grupo.js)
+  if (EM_GRUPO) botaoRodadaGrupo();
 }
 // a caixa de entrada, ao lado: uma central de avisos curtos. O que pede resposta fica aberto, com as opções; o resto é
 // uma linha (o título) que abre o texto ao tocar.

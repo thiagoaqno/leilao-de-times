@@ -147,10 +147,28 @@ test("carreira em grupo: sala, clubes e o hub de cada um", async ({ browser }) =
   await expect(b.locator("#cabecalho h1")).toHaveText("Liverpool");
   await expect(a.locator(".hub-tiles .tile")).toHaveCount(4);
   await expect(a.locator("#cartaoFeed .manchete")).toBeVisible();
-  await expect(a.locator("#btnJogar")).toBeDisabled();
+  // só o anfitrião começa a rodada
+  await expect(b.locator("#btnJogar")).toBeDisabled();
+  await expect(a.locator("#btnJogar")).toBeEnabled();
   // recarregou: volta sozinho para o clube dele
   await b.reload();
   await expect(b.locator("#cabecalho h1")).toHaveText("Liverpool", { timeout: 30000 });
+  // a rodada ao vivo: os dois vão para a partida juntos e ela vai até o fim pelo relógio do servidor
+  await a.click("#btnJogar");
+  await expect(a.locator("#partida")).toBeVisible({ timeout: 30000 });
+  await expect(b.locator("#partida")).toBeVisible({ timeout: 30000 });
+  await expect(a.locator(".faixa-jogo .controles")).toBeHidden();
+  await expect(a.locator("#fimJogo")).toBeVisible({ timeout: 60000 });
+  await expect(b.locator("#fimJogo")).toBeVisible({ timeout: 60000 });
+  await a.click("#btnVoltarSede");
+  await expect(a.locator("#sede")).toBeVisible();
+  // o leilão: Ana abre o de um jogador do Santos, Bia dá o lance e leva
+  await a.evaluate(() => __carreira.abrirFicha("santos-5"));
+  await a.click("#fLeilao");
+  await expect(b.locator("#leilaoBox")).toBeVisible({ timeout: 15000 });
+  await b.click("#lLance");
+  await expect(b.locator("#leilaoBox")).toBeHidden({ timeout: 40000 });
+  await expect.poll(() => b.evaluate(() => __carreira.E.elenco.includes("santos-5")), { timeout: 15000 }).toBe(true);
   expect(erros).toEqual([]);
   await ca.close(); await cb.close();
 });
