@@ -13,8 +13,8 @@ from PIL import Image, ImageDraw
 
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 SAIDA = os.path.join(RAIZ, "public", "galeramon", "naruto-sprites")
-W, H = 40, 62
-DY = 5  # tudo é desenhado DY pixels mais para baixo, para as pontas do cabelo caberem em cima
+W, H = 42, 72
+DY = 9  # tudo é desenhado DY pixels mais para baixo, para as pontas do cabelo caberem em cima
 CONTORNO = (22, 18, 30, 255)
 
 
@@ -77,151 +77,167 @@ class Tela:
         return self.im
 
 
-# ---------- as peças que todos têm ----------
-def pernas(t, calca, sombra, sapato, b, afasta=0):
-    # a perna de trás e a da frente (a da frente vai um pouco mais para a frente)
-    # a guarda: a perna de trás vai para trás e a da frente se abre para a frente
-    t.pol([(14, 37), (20, 37), (17, 53), (11, 53)], sombra); t.pol([(14, 37), (19, 37), (15, 53), (11, 53)], calca)
-    t.pol([(21, 37), (27, 37), (31, 53), (25, 53)], calca); t.pol([(25, 37), (27, 37), (31, 53), (29, 53)], sombra)
-    t.ret(24, 45, 29, 46, sombra)  # o joelho
-    t.ret(8, 54, 17, 57, sapato); t.ret(24, 54, 34, 57, sapato)
-    t.ret(8, 57, 17, 57, sombra); t.ret(24, 57, 34, 57, sombra)
+# ---------- o esqueleto que todos têm ----------
+# Proporção de luta de anime: a cabeça tem uns 11 pixels, o tronco 17 e as pernas 22. De lado, com a guarda levantada.
+def pernas(t, calca, sombra, sapato, b):
+    # a perna de trás vai para trás, esticada; a da frente se dobra no joelho e pisa mais à frente
+    t.pol([(16, 36), (21, 36), (17, 57), (11, 57)], sombra)
+    t.pol([(16, 36), (20, 36), (15, 57), (11, 57)], calca)
+    t.pol([(21, 36), (26, 36), (29, 47), (24, 47)], calca); t.pol([(24, 36), (26, 36), (29, 47), (27, 47)], sombra)
+    t.pol([(24, 47), (29, 47), (31, 58), (26, 58)], calca); t.pol([(28, 47), (29, 47), (31, 58), (29, 58)], sombra)
+    t.ret(8, 57, 17, 60, sapato); t.ret(25, 58, 35, 61, sapato)
+    t.ret(8, 60, 17, 60, "#14101c"); t.ret(25, 61, 35, 61, "#14101c")
 
 
-def cabeca(t, pele, sombra, b, olho="#16121e", y0=7):
-    y = y0 - b
-    t.elipse(15, y, 26, y + 12, pele)
-    t.ret(16, y + 9, 25, y + 12, pele)
-    t.ret(15, y + 8, 17, y + 12, sombra)  # o lado de trás do rosto
-    t.ret(19, y + 12, 24, y + 14, pele)   # o queixo e o pescoço
-    t.ret(20, y + 12, 21, y + 15, sombra)
-    t.px(22, y + 6, "#f4f0ec"); t.px(23, y + 6, "#f4f0ec"); t.px(24, y + 6, olho); t.px(24, y + 7, olho); t.px(23, y + 7, "#f4f0ec")  # o olho (de lado)
-    t.ret(22, y + 4, 25, y + 4, "#16121e")  # a sobrancelha
-    t.px(26, y + 8, sombra); t.px(26, y + 9, sombra)  # o nariz
-    t.px(24, y + 10, "#8a5a50"); t.px(25, y + 10, "#8a5a50")  # a boca
+def pescoco(t, pele, sombra, b):
+    t.ret(19, 16 - b, 22, 20 - b, pele); t.ret(19, 16 - b, 20, 20 - b, sombra)
 
 
-def braco_de_tras(t, manga, sombra, mao, b):
-    t.ret(10, 23 - b, 13, 35 - b, sombra)
-    t.ret(10, 34 - b, 13, 36 - b, mao)
+def cabeca(t, pele, sombra, b, olho="#16121e", brilho=None):
+    y = 5 - b
+    t.elipse(15, y, 25, y + 11, pele)           # o crânio e o rosto
+    t.ret(16, y + 9, 25, y + 12, pele)           # a mandíbula
+    t.ret(15, y + 5, 17, y + 11, sombra)         # o lado de trás do rosto, na sombra
+    t.ret(22, y + 12, 24, y + 13, sombra)        # a sombra do queixo
+    t.px(26, y + 7, sombra); t.px(26, y + 8, sombra)                   # o nariz
+    t.ret(23, y + 10, 25, y + 10, "#8a5a50")                           # a boca
+    t.ret(21, y + 4, 25, y + 4, "#16121e")                             # a sobrancelha
+    t.ret(22, y + 5, 24, y + 6, "#f4f0ec"); t.px(24, y + 5, olho); t.px(24, y + 6, olho)  # o olho
+    if brilho:
+        t.px(23, y + 5, brilho)
 
 
-def braco_da_frente(t, manga, sombra, mao, b):
-    # o braço dobrado com o punho levantado, como na guarda dos sprites de DS
-    t.ret(24, 22 - b, 28, 29 - b, manga); t.ret(27, 22 - b, 28, 29 - b, sombra)
-    t.ret(25, 28 - b, 32, 32 - b, manga); t.ret(25, 31 - b, 32, 32 - b, sombra)
-    t.ret(31, 27 - b, 34, 31 - b, mao)
-    t.px(34, 27 - b, mao)
+def braco_de_tras(t, manga, sombra, pele, b):
+    t.pol([(14, 21 - b), (17, 21 - b), (15, 34 - b), (12, 34 - b)], sombra)
+    t.pol([(14, 21 - b), (16, 21 - b), (14, 34 - b), (12, 34 - b)], manga)
+    t.ret(11, 34 - b, 15, 37 - b, pele)
 
 
-def tronco(t, base, sombra, b, topo=20):
-    y = topo - b
-    t.ret(13, y + 1, 27, 37, base)
-    t.ret(12, y, 28, y + 3, base)
-    t.ret(24, y + 3, 27, 37, sombra)
-    t.ret(13, 35, 27, 37, sombra)
+def braco_da_frente(t, manga, sombra, pele, b, luva=None):
+    # o braço dobrado: o ombro, o cotovelo para baixo e o punho levantado na guarda
+    t.pol([(23, 21 - b), (27, 21 - b), (30, 30 - b), (26, 31 - b)], manga); t.pol([(26, 22 - b), (27, 21 - b), (30, 30 - b), (28, 31 - b)], sombra)
+    t.pol([(26, 29 - b), (30, 29 - b), (34, 22 - b), (30, 21 - b)], manga); t.pol([(29, 28 - b), (30, 29 - b), (34, 22 - b), (33, 21 - b)], sombra)
+    t.ret(31, 17 - b, 36, 22 - b, luva or pele); t.ret(31, 17 - b, 36, 17 - b, sombra if luva is None else "#2a2a34")
+
+
+def tronco(t, base, sombra, b):
+    t.pol([(15, 20 - b), (27, 20 - b), (26, 36), (15, 36)], base)
+    t.pol([(23, 21 - b), (27, 20 - b), (26, 36), (22, 36)], sombra)
+    t.ret(15, 33, 26, 36, sombra)
 
 
 def cinto(t, c, fivela, b=0):
-    t.ret(13, 34, 27, 35, c)
-    t.px(20, 34, fivela); t.px(21, 34, fivela)
+    t.ret(15, 33, 26, 35, c)
+    t.ret(19, 33, 21, 35, fivela)
 
 
 # ---------- cada ninja ----------
 def hashirama(t, b):
     pele, sp = "#c89a74", "#9c7250"
-    cabelo, cb = "#16121e", "#2c2a3c"
-    # o cabelo comprido, caindo pelas costas
-    t.pol([(11, 8 - b), (16, 5 - b), (25, 6 - b), (27, 12 - b), (28, 30), (25, 42), (13, 41), (10, 30), (10, 14 - b)], cabelo)
-    t.ret(12, 22, 14, 41, cb)
-    pernas(t, "#3c3c58", "#2a2a40", "#1c1824", b)
-    braco_de_tras(t, "#16121e", "#16121e", pele, b)
-    tronco(t, "#1c1824", "#120e18", b)
-    # a armadura vermelha: o peitoral, as ombreiras e a faixa
-    t.ret(13, 22 - b, 27, 33, "#b02c2c"); t.ret(24, 24 - b, 27, 33, "#7a1c24"); t.ret(13, 31, 27, 33, "#7a1c24")
-    t.ret(11, 20 - b, 16, 25 - b, "#c43838"); t.ret(11, 24 - b, 16, 25 - b, "#7a1c24")
-    t.ret(24, 20 - b, 29, 25 - b, "#c43838"); t.ret(24, 24 - b, 29, 25 - b, "#7a1c24")
-    t.ret(19, 22 - b, 21, 32, "#d8c8a0")  # o detalhe branco do meio
-    t.ret(13, 34, 27, 36, "#d8c8a0"); t.ret(13, 36, 27, 36, "#a89878")  # o cinto
-    braco_da_frente(t, "#1c1824", "#120e18", pele, b)
+    cabelo, cb, cc = "#14101c", "#2a2a3c", "#3c3c52"
+    # o cabelo comprido e liso, caindo pelas costas até a cintura
+    t.pol([(12, 7 - b), (16, 2 - b), (26, 3 - b), (28, 9 - b), (29, 30), (27, 46), (17, 47), (11, 40), (11, 26), (11, 12 - b)], cabelo)
+    t.pol([(11, 18), (13, 18), (14, 44), (11, 44)], cb)
+    pernas(t, "#2c3050", "#1c2038", "#1c1824", b)
+    braco_de_tras(t, "#1c1824", "#12101a", pele, b)
+    tronco(t, "#1c1824", "#12101a", b)
+    # a armadura vermelha: o peitoral, as ombreiras e as tiras
+    t.pol([(15, 22 - b), (26, 22 - b), (25, 33), (16, 33)], "#b02c2c"); t.pol([(23, 23 - b), (26, 22 - b), (25, 33), (22, 33)], "#7a1c24")
+    t.ret(15, 22 - b, 26, 23 - b, "#d84a4a")
+    t.ret(19, 24 - b, 21, 32, "#d8c8a0")
+    t.ret(13, 19 - b, 19, 25 - b, "#c43838"); t.ret(13, 24 - b, 19, 25 - b, "#7a1c24")
+    t.ret(23, 19 - b, 29, 25 - b, "#c43838"); t.ret(23, 24 - b, 29, 25 - b, "#7a1c24")
+    cinto(t, "#d8c8a0", "#a89878")
+    braco_da_frente(t, "#1c1824", "#12101a", pele, b, luva=pele)
+    t.ret(26, 28 - b, 30, 30 - b, "#6a6a7a")  # a munhequeira de metal
+    pescoco(t, pele, sp, b)
     cabeca(t, pele, sp, b)
-    # a franja e as mechas na frente do rosto
-    t.pol([(14, 8 - b), (18, 5 - b), (26, 6 - b), (27, 9 - b), (23, 8 - b), (19, 10 - b), (15, 14 - b)], cabelo)
-    t.ret(14, 9 - b, 15, 26, cabelo); t.ret(26, 9 - b, 27, 23, cabelo)
-    t.px(22, 8 - b, cb); t.px(21, 7 - b, cb)
+    # a franja e as mechas lisas na frente dos ombros
+    t.pol([(14, 8 - b), (17, 3 - b), (26, 4 - b), (27, 8 - b), (23, 7 - b), (18, 9 - b), (15, 15 - b)], cabelo)
+    t.ret(13, 8 - b, 15, 30, cabelo); t.ret(26, 8 - b, 28, 27, cabelo)
+    t.px(22, 5 - b, cc); t.px(20, 4 - b, cc); t.ret(13, 20, 13, 28, cc)
 
 
 def minato(t, b):
     pele, sp = "#f0c4a8", "#c89a80"
     ouro, ob = "#f0d048", "#c89c28"
+    # o casaco branco de Hokage nas costas, com a barra de chamas vermelhas
+    t.pol([(14, 22 - b), (16, 20 - b), (15, 48), (6, 55), (9, 38)], "#f4f4f0"); t.pol([(6, 55), (15, 48), (15, 52), (8, 58)], "#f4f4f0")
+    t.pol([(9, 38), (15, 38), (15, 48), (7, 54)], "#dcdcd4")
+    for i, (x0, x1) in enumerate([(6, 8), (9, 11), (12, 14)]):
+        t.pol([(x0, 58), (x1, 58), ((x0 + x1) // 2, 52 - (i % 2) * 2)], "#d03a2a")
     pernas(t, "#242c4c", "#181e38", "#14121c", b)
-    braco_de_tras(t, "#6a8a58", "#4a6a3c", pele, b)
+    braco_de_tras(t, "#242c4c", "#181e38", pele, b)
     tronco(t, "#242c4c", "#181e38", b)
-    # o colete verde de Konoha
-    t.ret(13, 22 - b, 27, 35, "#6a8a58"); t.ret(24, 24 - b, 27, 35, "#4a6a3c"); t.ret(13, 33, 27, 35, "#4a6a3c")
-    t.ret(19, 21 - b, 21, 35, "#3a5230")  # o zíper
-    t.ret(12, 20 - b, 28, 22 - b, "#3a5230")
-    t.ret(17, 19 - b, 24, 21 - b, "#1c3a78")  # a gola azul
-    t.ret(17, 20, 17, 20, "#1c3a78")
-    t.ret(13, 36, 27, 37, "#c43838"); t.ret(13, 37, 27, 37, "#8a2020")  # a barra vermelha do casaco
-    braco_da_frente(t, "#6a8a58", "#4a6a3c", pele, b)
-    # o casaco branco de Hokage nas costas
-    t.pol([(11, 22 - b), (13, 20 - b), (13, 44), (8, 50), (9, 36)], "#f4f4f0"); t.ret(8, 47, 12, 50, "#c43838"); t.ret(10, 30, 11, 46, "#d8d8d0")
-    cabeca(t, pele, sp, b, olho="#3a78d0")
-    # a testa: a bandana azul com a placa prateada
-    t.ret(15, 8 - b, 26, 10 - b, "#1c3a78"); t.ret(19, 7 - b, 24, 10 - b, "#d8dce8"); t.ret(21, 8 - b, 22, 9 - b, "#7a8098")
-    # o cabelo amarelo espetado, com as duas mechas na frente do rosto
-    t.pol([(14, 8 - b), (11, 2 - b), (16, 5 - b), (16, -1 - b), (20, 4 - b), (22, -2 - b), (24, 4 - b), (29, 0 - b), (27, 8 - b), (14, 8 - b)], ouro)
-    t.pol([(13, 6 - b), (8, 4 - b), (14, 9 - b)], ouro)
-    t.ret(14, 9 - b, 15, 19 - b, ouro); t.ret(14, 17 - b, 15, 19 - b, ob)
-    t.ret(26, 9 - b, 27, 18 - b, ouro); t.ret(27, 15 - b, 27, 18 - b, ob)
-    t.px(18, 3 - b, ob); t.px(22, 1 - b, ob); t.px(26, 4 - b, ob)
+    # o colete verde de Konoha com a gola azul
+    t.pol([(15, 22 - b), (26, 22 - b), (26, 36), (15, 36)], "#6a8a58"); t.pol([(23, 23 - b), (26, 22 - b), (26, 36), (22, 36)], "#4a6a3c")
+    t.ret(15, 33, 26, 36, "#4a6a3c"); t.ret(20, 22 - b, 21, 36, "#3a5230")
+    t.ret(15, 22 - b, 26, 23 - b, "#8aaa72")
+    t.ret(15, 19 - b, 26, 22 - b, "#1c3a78"); t.ret(23, 20 - b, 26, 22 - b, "#142a58")
+    t.ret(15, 36, 26, 36, "#d03a2a")
+    braco_da_frente(t, "#242c4c", "#181e38", pele, b, luva=pele)
+    t.ret(27, 29 - b, 30, 31 - b, "#c8ccd8")  # o protetor de braço
+    pescoco(t, pele, sp, b)
+    cabeca(t, pele, sp, b, olho="#3a78d0", brilho="#ffffff")
+    # a bandana azul com a placa prateada
+    t.ret(15, 6 - b, 25, 8 - b, "#1c3a78"); t.ret(19, 5 - b, 24, 8 - b, "#d8dce8"); t.ret(19, 5 - b, 24, 5 - b, "#f4f6fc"); t.ret(21, 6 - b, 22, 7 - b, "#7a8098")
+    # o cabelo amarelo espetado, com as duas mechas compridas na frente do rosto
+    t.pol([(15, 6 - b), (12, 0 - b), (17, 3 - b), (17, -4 - b), (21, 2 - b), (23, -5 - b), (25, 2 - b), (30, -2 - b), (27, 6 - b)], ouro)
+    t.pol([(15, 5 - b), (9, 3 - b), (14, 8 - b)], ouro); t.pol([(16, 3 - b), (11, -2 - b), (18, 1 - b)], ouro)
+    t.ret(14, 8 - b, 16, 18 - b, ouro); t.ret(14, 15 - b, 16, 18 - b, ob)
+    t.ret(26, 8 - b, 27, 16 - b, ouro); t.ret(27, 13 - b, 27, 16 - b, ob)
+    t.px(19, 1 - b, ob); t.px(23, -1 - b, ob); t.px(27, 1 - b, ob)
 
 
 def madara(t, b):
     pele, sp = "#d8b496", "#a88468"
-    cabelo, cb = "#1c2430", "#2c3848"
-    # o cabelo enorme: muitas pontas pelas costas
-    t.pol([(10, 10 - b), (6, 2 - b), (13, 6 - b), (13, -1 - b), (19, 5 - b), (24, -2 - b), (25, 5 - b), (31, 1 - b), (28, 12 - b), (30, 24), (26, 40), (20, 46), (14, 42), (7, 36), (9, 22)], cabelo)
-    t.pol([(8, 24), (4, 34), (10, 38)], cabelo); t.pol([(28, 26), (33, 34), (27, 38)], cabelo)
-    t.ret(10, 14, 13, 40, cb)
+    cabelo, cb, cc = "#1c2430", "#2c3848", "#3c4c60"
+    # o cabelo enorme e espetado, para todos os lados, até a cintura
+    t.pol([(11, 10 - b), (4, 3 - b), (13, 6 - b), (12, -3 - b), (19, 4 - b), (24, -5 - b), (26, 3 - b), (33, -1 - b), (29, 11 - b), (33, 24), (28, 42), (21, 50), (14, 46), (6, 40), (9, 22)], cabelo)
+    t.pol([(8, 26), (2, 38), (10, 40)], cabelo); t.pol([(29, 28), (35, 38), (28, 42)], cabelo)
+    t.pol([(11, 18), (14, 18), (13, 44), (9, 40)], cb)
+    # o leque de guerra preso às costas
+    t.elipse(2, 22, 11, 32, "#9a2a2a"); t.elipse(4, 24, 9, 30, "#c43838"); t.px(6, 27, "#16121e"); t.ret(10, 30, 15, 31, "#6a6a7a")
     pernas(t, "#2a2a3c", "#1a1a28", "#14121c", b)
     braco_de_tras(t, "#4a2c44", "#34202e", pele, b)
     tronco(t, "#4a2c44", "#34202e", b)
-    # a armadura vermelha e a gola alta
-    t.ret(13, 24 - b, 27, 34, "#b02828"); t.ret(24, 26 - b, 27, 34, "#7a1818"); t.ret(13, 31, 27, 34, "#7a1818")
-    t.ret(13, 24 - b, 27, 25 - b, "#d84040"); t.ret(14, 26, 26, 27, "#7a1818")
-    t.ret(11, 19 - b, 17, 24 - b, "#4a2c44"); t.ret(15, 17 - b, 28, 21 - b, "#4a2c44"); t.ret(24, 18 - b, 28, 24 - b, "#34202e")
-    t.ret(13, 35, 27, 37, "#16121e")
-    braco_da_frente(t, "#4a2c44", "#34202e", pele, b)
+    # a armadura vermelha e a gola alta roxa
+    t.pol([(15, 24 - b), (26, 24 - b), (25, 34), (16, 34)], "#b02828"); t.pol([(23, 25 - b), (26, 24 - b), (25, 34), (22, 34)], "#7a1818")
+    t.ret(15, 24 - b, 26, 25 - b, "#e04848"); t.ret(16, 28, 25, 29, "#7a1818"); t.ret(16, 31, 25, 32, "#7a1818")
+    t.ret(13, 19 - b, 19, 25 - b, "#c43838"); t.ret(13, 24 - b, 19, 25 - b, "#7a1818")
+    t.ret(15, 17 - b, 27, 22 - b, "#4a2c44"); t.ret(23, 18 - b, 27, 23 - b, "#34202e"); t.ret(15, 17 - b, 27, 17 - b, "#6a4262")
+    cinto(t, "#16121e", "#c8b878")
+    braco_da_frente(t, "#4a2c44", "#34202e", pele, b, luva=pele)
+    t.ret(26, 28 - b, 30, 30 - b, "#6a6a7a")
+    pescoco(t, pele, sp, b)
     cabeca(t, pele, sp, b, olho="#d02020")
-    # o cabelo na frente: cobre o olho de trás
-    t.pol([(14, 7 - b), (18, 3 - b), (27, 5 - b), (28, 12 - b), (24, 11 - b), (21, 17 - b), (19, 11 - b), (15, 14 - b)], cabelo)
-    t.ret(14, 9 - b, 16, 24 - b, cabelo); t.ret(22, 9 - b, 24, 19 - b, cabelo)
-    t.px(18, 6 - b, cb); t.px(23, 5 - b, cb)
-    # o leque de guerra nas costas
-    t.ret(5, 27, 9, 29, "#7a7a8a"); t.elipse(1, 20, 9, 28, "#9a2a2a"); t.px(4, 24, "#16121e")
+    # o cabelo na frente cobre o olho de trás e parte do rosto
+    t.pol([(14, 8 - b), (18, 2 - b), (28, 4 - b), (29, 12 - b), (24, 10 - b), (21, 17 - b), (19, 11 - b), (15, 15 - b)], cabelo)
+    t.ret(13, 8 - b, 16, 26 - b, cabelo); t.ret(22, 8 - b, 24, 19 - b, cabelo)
+    t.px(19, 4 - b, cc); t.px(24, 3 - b, cc); t.ret(14, 14, 14, 24, cc)
 
 
 def obito(t, b):
     pele, sp = "#d8c4b4", "#a89484"
-    cabelo, cb = "#1c1c28", "#34344a"
-    pernas(t, "#1c1c28", "#12121c", "#14121c", b)
+    cabelo, cb = "#1c1c28", "#3c3c52"
+    pernas(t, "#22222e", "#14141c", "#14121c", b)
     braco_de_tras(t, "#4a4a58", "#32323e", pele, b)
     tronco(t, "#3a3a48", "#26262e", b)
-    # a capa cinza com a gola alta
-    t.ret(12, 20 - b, 28, 37, "#4a4a58"); t.ret(24, 22 - b, 28, 37, "#32323e"); t.ret(12, 34, 28, 37, "#32323e")
-    t.ret(13, 18 - b, 28, 22 - b, "#6a6a7c"); t.ret(24, 19 - b, 28, 22 - b, "#4a4a58")
-    t.ret(19, 22 - b, 20, 36, "#32323e")
-    t.ret(13, 36, 28, 37, "#1c1c28")
-    braco_da_frente(t, "#4a4a58", "#32323e", pele, b)
+    # a capa cinza de gola alta, comprida até os joelhos
+    t.pol([(14, 21 - b), (27, 21 - b), (28, 44), (13, 44)], "#4a4a58"); t.pol([(24, 22 - b), (27, 21 - b), (28, 44), (24, 44)], "#32323e")
+    t.ret(13, 40, 28, 44, "#32323e"); t.ret(19, 24 - b, 20, 43, "#32323e")
+    t.ret(15, 16 - b, 27, 22 - b, "#8a8a9c"); t.ret(24, 17 - b, 27, 23 - b, "#6a6a7c"); t.ret(15, 16 - b, 27, 16 - b, "#aaaabc")
+    t.ret(14, 34, 27, 35, "#1c1c28")
+    braco_da_frente(t, "#4a4a58", "#32323e", pele, b, luva="#2a2a34")
+    pescoco(t, pele, sp, b)
     cabeca(t, pele, sp, b, olho="#d02020")
-    # as cicatrizes do lado do rosto
-    t.ret(22, 9 - b, 25, 9 - b, "#a89484"); t.px(23, 11 - b, "#a89484"); t.px(25, 12 - b, "#a89484"); t.ret(21, 8 - b, 21, 11 - b, "#b8a494")
-    t.px(23, 7 - b, "#e8e0d8")  # o olho de trás, claro
+    # a pele do lado direito do rosto, branca, com as cicatrizes
+    t.pol([(20, 6 - b), (25, 6 - b), (26, 12 - b), (21, 16 - b)], "#e4dcd4")
+    t.ret(21, 8 - b, 25, 8 - b, "#a89484"); t.ret(22, 11 - b, 25, 11 - b, "#a89484"); t.px(23, 9 - b, "#a89484"); t.px(24, 13 - b, "#a89484"); t.ret(21, 6 - b, 21, 10 - b, "#b8a494")
+    t.ret(22, 5 - b, 24, 6 - b, "#f4f0ec"); t.px(24, 5 - b, "#d02020"); t.px(24, 6 - b, "#d02020")
     # o cabelo curto e espetado
-    t.pol([(14, 8 - b), (13, 3 - b), (17, 5 - b), (18, 0 - b), (21, 4 - b), (24, 0 - b), (26, 5 - b), (29, 3 - b), (27, 9 - b), (24, 8 - b), (20, 6 - b), (15, 11 - b)], cabelo)
-    t.px(18, 3 - b, cb); t.px(23, 2 - b, cb)
+    t.pol([(15, 8 - b), (13, 2 - b), (17, 4 - b), (18, -2 - b), (21, 3 - b), (24, -3 - b), (26, 3 - b), (30, 1 - b), (27, 8 - b), (24, 7 - b), (20, 5 - b), (16, 12 - b)], cabelo)
+    t.px(18, 2 - b, cb); t.px(23, 0 - b, cb); t.px(27, 3 - b, cb)
 
 
 def shisui(t, b):
@@ -230,22 +246,22 @@ def shisui(t, b):
     pernas(t, "#1c2438", "#12182a", "#14121c", b)
     braco_de_tras(t, "#2c344c", "#1c2438", pele, b)
     tronco(t, "#2c344c", "#1c2438", b)
-    # o casaco azul-escuro com o acabamento marrom e o cachecol cinza
-    t.ret(12, 20 - b, 28, 37, "#2c344c"); t.ret(24, 22 - b, 28, 37, "#1c2438"); t.ret(12, 35, 28, 37, "#1c2438")
-    t.ret(12, 20 - b, 14, 37, "#6a4a38"); t.ret(26, 20 - b, 28, 37, "#4a3228")
-    t.ret(14, 18 - b, 27, 21 - b, "#8a90a0"); t.ret(14, 18 - b, 27, 18 - b, "#b8bcc8"); t.ret(24, 20 - b, 27, 21 - b, "#6a7080")
-    t.ret(19, 22 - b, 21, 36, "#1c2438")
-    t.ret(13, 34, 27, 35, "#16121e"); t.ret(19, 34, 21, 35, "#c8b878")
-    braco_da_frente(t, "#2c344c", "#1c2438", pele, b)
-    cabeca(t, pele, sp, b, olho="#e02828")
-    t.px(25, 7 - b, "#e02828")  # o sharingan (o brilho)
+    # o casaco azul-marinho com o acabamento marrom, o cachecol cinza e o leque Uchiha nas costas
+    t.pol([(14, 21 - b), (27, 21 - b), (27, 40), (14, 40)], "#2c344c"); t.pol([(24, 22 - b), (27, 21 - b), (27, 40), (24, 40)], "#1c2438")
+    t.ret(14, 21 - b, 16, 40, "#6a4a38"); t.ret(25, 21 - b, 27, 40, "#4a3228"); t.ret(14, 38, 27, 40, "#1c2438")
+    t.ret(14, 17 - b, 27, 21 - b, "#8a90a0"); t.ret(14, 17 - b, 27, 17 - b, "#c0c4d0"); t.ret(24, 19 - b, 27, 21 - b, "#6a7080")
+    t.ret(20, 22 - b, 21, 38, "#1c2438"); t.ret(14, 34, 27, 35, "#16121e"); t.ret(19, 34, 21, 35, "#c8b878")
+    braco_da_frente(t, "#2c344c", "#1c2438", pele, b, luva="#e0d8c8")
+    pescoco(t, pele, sp, b)
+    cabeca(t, pele, sp, b, olho="#e02828", brilho="#ffd0d0")
+    t.px(24, 7 - b, "#a01818")
     # a bandana preta com a placa de Konoha
-    t.ret(14, 6 - b, 26, 9 - b, "#16121e"); t.ret(18, 5 - b, 24, 9 - b, "#c8ccd8"); t.ret(18, 5 - b, 24, 5 - b, "#e8ecf4"); t.ret(18, 9 - b, 24, 9 - b, "#7a8098")
-    t.px(21, 7 - b, "#4a5068"); t.px(22, 7 - b, "#4a5068"); t.px(22, 6 - b, "#4a5068")
-    # o cabelo bagunçado
-    t.pol([(14, 6 - b), (12, 0 - b), (17, 3 - b), (20, -2 - b), (22, 3 - b), (26, -1 - b), (27, 5 - b), (29, 4 - b), (27, 8 - b), (14, 8 - b)], cabelo)
-    t.pol([(13, 8 - b), (9, 11 - b), (14, 14 - b)], cabelo); t.ret(14, 9 - b, 15, 14 - b, cabelo)
-    t.px(18, 1 - b, cb); t.px(23, 0 - b, cb); t.px(26, 3 - b, cb)
+    t.ret(14, 4 - b, 26, 7 - b, "#16121e"); t.ret(18, 3 - b, 24, 7 - b, "#c8ccd8"); t.ret(18, 3 - b, 24, 3 - b, "#f0f4fc"); t.ret(18, 7 - b, 24, 7 - b, "#7a8098")
+    t.px(21, 5 - b, "#4a5068"); t.px(22, 5 - b, "#4a5068"); t.px(22, 4 - b, "#4a5068"); t.px(21, 6 - b, "#4a5068")
+    # o cabelo bagunçado: pontas para cima e para trás, e mechas na nuca
+    t.pol([(14, 4 - b), (12, -2 - b), (17, 1 - b), (20, -4 - b), (22, 1 - b), (26, -3 - b), (27, 3 - b), (31, 2 - b), (27, 6 - b), (14, 6 - b)], cabelo)
+    t.pol([(12, 8 - b), (7, 12 - b), (13, 16 - b)], cabelo); t.pol([(13, 14 - b), (9, 22 - b), (15, 18 - b)], cabelo); t.ret(14, 7 - b, 15, 14 - b, cabelo)
+    t.px(18, -1 - b, cb); t.px(24, -2 - b, cb); t.px(28, 3 - b, cb)
 
 
 DESENHOS = {"hashirama": hashirama, "minato": minato, "madara": madara, "obito": obito, "shisui": shisui}
