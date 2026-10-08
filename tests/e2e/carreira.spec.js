@@ -240,7 +240,12 @@ test("carreira em grupo: sala, clubes e o hub de cada um", async ({ browser }) =
   await a.click('[data-vel="3"]');
   await expect(a.locator('[data-vel="1"]')).toHaveAttribute("aria-pressed", "false");
   await expect(a.locator('[data-vel="3"]')).toHaveAttribute("aria-pressed", "true");
-  await expect(a.locator('[data-vel="3"]')).toHaveCSS("background-color", "rgb(255, 178, 30)");
+  // o botão ligado fica na cor de destaque do clube (o tema do clube, --acento)
+  await expect.poll(() => a.evaluate(() => {
+    const t = document.createElement("i"); t.style.color = "var(--acento)"; document.body.append(t);
+    const cor = getComputedStyle(t).color; t.remove();
+    return getComputedStyle(document.querySelector('[data-vel="3"]')).backgroundColor === cor;
+  })).toBe(true);
   await expect(a.locator("#pVelDono")).toContainText("3× para todos");
   await fotografar(a, "carreira-grupo-3x");
   await expect(b.locator('[data-vel="3"]')).toHaveAttribute("aria-pressed", "true");
