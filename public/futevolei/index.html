@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<script src="/semzoom.js"></script>
+<title>Futevôlei da Galera</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏐</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* praia no fim de tarde: o mar verde-azulado, a areia, o sol laranja e as cores dos times (amarelo e azul) */
+  --bg:#0b2630;--panel:#10394a;--panel2:#154658;--line:#2a6274;
+  --text:#fbf6ec;--muted:#a9c6cc;--accent:#ffb84d;--good:#3ddc84;--bad:#ff6b5a;--areia:#e6cf9f;
+  --azul:#1e5bc6;--amarelo:#f5c400;
+  --display:Anton,Impact,system-ui,sans-serif;
+  --body:Figtree,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--body)}
+body{min-height:100vh;background:radial-gradient(700px 360px at 80% -6%,#ff9a3c40,transparent),linear-gradient(180deg,transparent 60%,#e6cf9f14),var(--bg)}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:1.05;margin:0;letter-spacing:.02em;text-transform:uppercase}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;padding:10px 16px;background:#17506a;color:var(--text);border:1px solid #2c6a84;box-shadow:0 3px 0 #000;transition:transform .08s,box-shadow .08s,filter .15s}
+button:hover:not(:disabled){filter:brightness(1.15)}
+button:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #000}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.ghost{background:transparent;box-shadow:none;border-color:transparent;color:var(--muted)}
+button.small{padding:6px 11px;font-size:13px}
+button.primary{background:linear-gradient(#ffd27a,#ff9f3a);color:#3a1d00;border-color:#c56f12;font-family:var(--display);font-weight:400;letter-spacing:.05em;text-transform:uppercase}
+button.on{outline:2px solid var(--accent);background:#5a3d14}
+input{font:inherit;color:var(--text);background:#071c24;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+input[type=range]{padding:0;accent-color:var(--accent)}
+label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.err{color:var(--bad);font-size:14px;min-height:20px;margin-top:10px;font-weight:700}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 16px 60px}
+.lines{height:6px;background:repeating-linear-gradient(90deg,var(--amarelo) 0 40px,var(--azul) 40px 80px)}
+.bar{position:sticky;top:0;z-index:20;background:#0b2630ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1100px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;gap:10px}
+.brand{margin-right:auto;min-width:0}
+.brand h1{font-size:22px;white-space:nowrap}
+.brand h1 span{color:var(--accent)}
+.tovila{color:var(--muted);text-decoration:none;font-weight:700;font-size:14px;padding:6px 10px 6px 4px;white-space:nowrap}
+.tovila:hover{color:var(--text)}
+.roomtag{display:flex;align-items:center;gap:8px}
+.roomtag .code{font:22px var(--display);letter-spacing:.14em;color:var(--accent)}
+.panel{background:linear-gradient(180deg,#134456,#0d2f3c);border:1px solid #2a6274;border-radius:14px;box-shadow:0 20px 40px #0008;overflow:hidden}
+.panel .in{padding:20px}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;align-items:center;margin-top:24px}
+.hero h2{font-size:clamp(42px,7vw,76px)}
+.hero h2 em{font-style:normal;color:var(--accent)}
+.lead{font-size:17px;color:#d8e8ea;max-width:520px}
+.feats{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.feats span{background:#14495c;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13.5px;font-weight:700}
+.or{text-align:center;color:var(--muted);margin:12px 0;font-size:13px}
+@media (max-width:760px){.hero{grid-template-columns:1fr}}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:60px}
+.skins{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.skins button{padding:7px 4px;font-size:12.5px;line-height:1.2;text-align:center}
+.skins button i{display:block;font-style:normal;font-size:20px}
+.lobby{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;margin-top:18px}
+@media (max-width:860px){.lobby{grid-template-columns:1fr}}
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.team{border-radius:12px;padding:12px;min-height:140px;border:2px solid var(--line);background:#082029}
+.team.A{border-color:var(--amarelo)}.team.B{border-color:var(--azul)}
+.team h3{font-size:20px;margin-bottom:8px}
+.pl{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:#0006;margin-bottom:6px;font-weight:700}
+.pl .dot{width:8px;height:8px;border-radius:50%;background:#555}.pl .dot.on{background:var(--good)}
+.pl.me{outline:2px solid var(--accent)}
+.bench{margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:10px}
+.keys{font-size:13.5px;color:#cfdeea;margin:8px 0 0;padding-left:18px}
+kbd{display:inline-block;background:#17506a;border:1px solid #3a7a90;border-bottom-width:3px;border-radius:5px;padding:0 6px;font:700 12px var(--body);color:#fff;min-width:20px;text-align:center}
+/* ---------- jogo ---------- */
+#game{position:fixed;inset:0;background:#000;z-index:30}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;pointer-events:none;color:#fff;text-shadow:0 2px 0 #000a,0 0 8px #0008}
+#hTop{top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;border-radius:8px;overflow:hidden;box-shadow:0 6px 20px #0008}
+#hTop .t{display:flex;align-items:center;gap:8px;padding:4px 12px;background:#06161cdd;font:700 15px var(--body)}
+#hTop .t i{width:12px;height:12px;border-radius:3px;display:block}
+#hTop .g{font:26px var(--display);padding:2px 12px;background:#000d;color:var(--accent);min-width:40px;text-align:center}
+#hTop .p{font:800 12px var(--body);padding:5px 10px;background:#17506ae8;min-width:96px;text-align:center;display:flex;flex-direction:column;justify-content:center;line-height:1.2}
+#hTop .p b{font:14px var(--display);letter-spacing:.06em;color:var(--accent);font-weight:400}
+.toq{display:flex;gap:4px;justify-content:center;margin-top:3px}.toq i{width:9px;height:9px;border-radius:50%;background:#ffffff30;display:block}.toq i.on{background:var(--accent)}
+#hMsg{top:22%;left:50%;transform:translateX(-50%);text-align:center;font:48px var(--display);white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+#hMsg small{display:block;font:700 18px var(--body);opacity:.95;text-transform:none;letter-spacing:0}
+#hMsg.pop{animation:pop .45s ease-out}
+@keyframes pop{0%{transform:translateX(-50%) scale(.4);opacity:0}70%{transform:translateX(-50%) scale(1.12)}100%{transform:translateX(-50%) scale(1)}}
+#hArm{left:50%;bottom:58px;transform:translateX(-50%);font:22px var(--display);letter-spacing:.06em;padding:4px 16px;border-radius:999px;background:#000a;border:2px solid #fff6}
+#hArm.passe{border-color:#4fc3f7;color:#b3e5fc}#hArm.ataque{border-color:var(--accent);color:var(--accent)}
+#hGolpe{left:50%;bottom:24%;transform:translateX(-50%);font:30px var(--display);letter-spacing:.05em;white-space:nowrap;opacity:0;transition:opacity .25s;text-transform:uppercase}
+#hGolpe.on{opacity:1}#hGolpe.grande{font-size:56px;color:var(--accent)}
+#hHint{right:16px;bottom:16px;font:600 13px var(--body);text-align:right;opacity:.85;line-height:1.6}
+#hInfo{left:12px;top:10px;font:700 13px var(--body);opacity:.85}
+@media (pointer:coarse){#hHint{display:none!important}#hArm{bottom:130px}}
+@media (prefers-reduced-motion:reduce){#hMsg.pop{animation:none}.confetti{display:none}#hGolpe{transition:none}}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#000a;padding:16px;z-index:5}
+.overlay .box{background:#0d2f3cf2;border:1px solid #2c6a84;border-radius:14px;padding:20px;width:min(560px,100%);max-height:100%;overflow:auto}
+.overlay h2{font-size:30px;margin-bottom:6px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#154658;border:1px solid #2c6a84;border-radius:10px;padding:10px 16px;font-weight:700;z-index:60;box-shadow:0 10px 30px #000a}
+.confetti{position:fixed;top:-12px;width:9px;height:14px;z-index:70;animation:fall linear forwards;pointer-events:none}
+@keyframes fall{to{transform:translateY(105vh) rotate(720deg)}}
+</style>
+</head>
+<body>
+<header class="bar" id="bar">
+  <div class="bar-in">
+    <a class="tovila" href="/" title="Voltar para a vila">← Vila</a>
+    <div class="brand"><h1>Futevôlei da <span>Galera</span></h1></div>
+    <div class="roomtag hidden" id="roomTag"><span class="muted">Sala</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
+  </div>
+</header>
+<div class="lines"></div>
+
+<div class="wrap">
+  <section id="home" class="hidden">
+    <div class="hero">
+      <div>
+        <h2>Futevôlei<br>na <em>areia</em></h2>
+        <p class="lead">Futevôlei em 3D na praia de Santos ou na arena coberta. Só dois botões: <b>passar</b> para o parceiro ou <b>atacar</b>. O golpe sai sozinho pela altura da bola: cabeceio, peito, pé de lado, letra, voleio, bicicleta e o Shark Attack em cima da rede.</p>
+        <div class="feats"><span>2x2 ou 1x1</span><span>robôs</span><span>3 toques por lado</span><span>Shark Attack</span><span>praia ou arena</span><span>as skins da galera</span></div>
+      </div>
+      <div class="panel"><div class="lines"></div><div class="in">
+        <div class="err hidden" id="mobileWarn" style="color:var(--accent)">No celular aparecem botões na tela: deite o celular.</div>
+        <label for="hName">Seu nome</label>
+        <input id="hName" maxlength="8" placeholder="Ex.: Romário" autocomplete="off">
+        <label for="hCode" style="margin-top:14px">Código da sala</label>
+        <input id="hCode" maxlength="5" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em">
+        <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
+        <div class="or">ou</div>
+        <button id="btnCreate" style="width:100%">Abrir sala nova</button>
+        <label style="margin-top:16px">Treino contra robôs</label>
+        <div class="seg" id="hModo"></div>
+        <div class="seg" id="hDif" style="margin-top:6px"></div>
+        <div class="seg" id="hArena" style="margin-top:6px"></div>
+        <button class="primary" id="btnPractice" style="width:100%;margin-top:10px">Jogar contra robôs</button>
+        <label style="margin-top:14px">Sua skin</label>
+        <div class="skins" id="hSkins"></div>
+        <div class="err" id="hErr"></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section id="lobby" class="hidden">
+    <div class="lobby">
+      <div class="panel"><div class="in">
+        <h2 style="font-size:26px;margin-bottom:12px">Times</h2>
+        <div class="teams">
+          <div class="team A"><h3 style="color:var(--amarelo)">Amarelo</h3><div id="tA"></div><button class="small" id="joinA">Jogar aqui</button></div>
+          <div class="team B"><h3 style="color:#5b9bff">Azul</h3><div id="tB"></div><button class="small" id="joinB">Jogar aqui</button></div>
+        </div>
+        <div class="bench"><div class="row" style="justify-content:space-between"><b>De fora</b><button class="small ghost" id="joinBench">Sair do time</button></div><div id="tN" class="muted" style="margin-top:6px"></div></div>
+        <label style="margin-top:16px">Sua skin</label>
+        <div class="skins" id="lSkins"></div>
+      </div></div>
+      <div class="panel"><div class="in">
+        <h2 style="font-size:26px;margin-bottom:12px">Partida</h2>
+        <label>Modo</label><div class="seg" id="cModo"></div>
+        <label style="margin-top:14px">Set até</label><div class="seg" id="cPontos"></div>
+        <label style="margin-top:14px">Onde</label><div class="seg" id="cArena"></div>
+        <label style="margin-top:14px">Robôs</label><div class="seg" id="cBots"></div>
+        <label style="margin-top:14px">Dificuldade dos robôs</label><div class="seg" id="cDif"></div>
+        <div id="startBox" style="margin-top:18px"></div>
+        <button id="btnPractice2" style="width:100%;margin-top:10px">Treinar enquanto espera</button>
+        <label style="margin-top:18px">Controles</label>
+        <div id="keysBox"></div>
+      </div></div>
+    </div>
+  </section>
+</div>
+
+<section id="game" class="hidden">
+  <canvas id="cv"></canvas>
+  <div class="hud" id="hTop"></div>
+  <div class="hud" id="hInfo"></div>
+  <div class="hud" id="hMsg"></div>
+  <div class="hud hidden" id="hArm"></div>
+  <div class="hud" id="hGolpe"></div>
+  <div class="hud" id="hHint"></div>
+  <div class="overlay hidden" id="pause"><div class="box">
+    <h2>Pausado</h2>
+    <button class="primary" id="btnResume" style="width:100%;margin-top:8px">Voltar pro jogo</button>
+    <label style="margin-top:16px">Volume: <span id="volV"></span></label>
+    <input type="range" id="vol" min="0" max="1" step="0.05">
+    <div id="pauseKeys" style="margin-top:14px"></div>
+    <div class="row" style="margin-top:14px;justify-content:space-between"><button class="ghost" id="btnLeave">Sair da quadra</button><span class="muted" id="pauseHint" style="font-size:13px"></span></div>
+  </div></div>
+  <div class="overlay hidden" id="over"><div class="box" id="overBox"></div></div>
+</section>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/noite.js"></script>
+<script src="/comum.js"></script>
+<script src="/pelada/campo.js"></script>
+<script src="/futevolei/regras.js"></script>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
+<script src="/toque.js"></script>
+<script type="module" src="/futevolei/jogo.js"></script>
+</body>
+</html>

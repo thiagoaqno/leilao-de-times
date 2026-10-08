@@ -277,6 +277,7 @@ const BAIRROS = [
   { id: "esportes", nome: "Vila Esportiva", placa: [17, 34] },
   { id: "autodromo", nome: "Autódromo", placa: [22, 34] },
   { id: "ginasios", nome: "Ginásios", placa: [-11, 4] }, // fora da vila, ao lado do estacionamento oeste
+  { id: "praia", nome: "Praia de Santos", placa: [101, 132] }, // lá embaixo, na areia de Santos (de carro, pela Imigrantes)
 ];
 const GAMES = [
   { id: "leilao", url: "/leilao/", icon: "🔨", sign: "LEILÃO", name: "Casa de Leilão", desc: "Roleta, lances e moedas: monte o seu time (ou hambúrguer, pizza, drink…) e vença no fim.", meta: "Leilão da Galera",
@@ -328,6 +329,9 @@ const GAMES = [
   // na Praça, entre o chafariz e o Quiosque do Botão: a Sede da Carreira, com o telhado de clube e o escudo pintado
   { id: "carreira", url: "/carreira/", icon: "🏆", sign: "SEDE", name: "Sede da Carreira", desc: "Carreira de treinador: sozinho ou com a turma no mesmo mundo, assuma um clube do Brasil ou da Europa, escale, mexa na tática e jogue as temporadas. Tudo fica salvo.", meta: "Carreira de Treinador · solo ou em grupo",
     x: 23, y: 18, w: 6, h: 4, doors: [25, 26], bairro: "praca", roof: "#1f5a3a", roof2: "#174a2f", wall: "#f3ead6", wall2: "#dccfae", sede: true },
+  // na areia da praia de Santos: a Arena de Futevôlei, com o telhado de areia, a rede e a bola nas cores do futevôlei
+  { id: "futevolei", url: "/futevolei/", icon: "🏐", sign: "FUTEVÔLEI", name: "Arena de Futevôlei", desc: "Futevôlei 3D na areia da praia ou na arena coberta. Só dois botões, passar e atacar: o golpe sai sozinho (cabeceio, peito, letra, voleio, bicicleta e o Shark Attack).", meta: "Futevôlei da Galera · 2x2 ou 1x1",
+    x: 106, y: 133, w: 7, h: 4, doors: [109], bairro: "praia", roof: "#e6cf9f", roof2: "#c9ac72", wall: "#f6f1e4", wall2: "#d9cfb6", futevolei: true },
 ];
 // os ginásios dos líderes (Lideres.GINASIOS): dois em cima do estacionamento oeste e dois em cima do leste, fora da
 // cerca. Dá para ir a pé: a rua de saída leva ao estacionamento, e a porta abre para ele. Cada um desafia o seu líder.
@@ -459,6 +463,9 @@ function montaMundo() {
 montaMundo();
 // os ginásios fora da cerca: o capacho da porta (em cima do estacionamento) fica livre para quem chega a pé
 for (const g of GAMES) for (const [mx, my] of g.mats) if (mx < OX || mx >= OX + VW || my < OY || my >= OY + VH) { PARADOS.delete(k(mx, my)); set(mx, my, "m", false); }
+// a Arena de Futevôlei fica na areia de Santos, que o montaMundo desenhou por cima: o prédio volta a ser sólido
+for (const g of GAMES) if (g.bairro === "praia") for (let y = g.y; y < g.y + g.h; y++) for (let x = g.x; x < g.x + g.w; x++) solid[y][x] = true;
+{ const [x, y] = BAIRROS.find((b) => b.id === "praia").placa; solid[y][x] = true; } // e a placa da rua também
 const carOk = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH && (ground[y][x] === "e" || ground[y][x] === "E") && !PARADOS.has(k(x, y));
 const estadioAt = (x, y) => ESTADIOS.find((e) => x >= e.ret.x && x < e.ret.x + e.ret.w && y >= e.ret.y && y < e.ret.y + e.ret.h);
 const portaoAt = (x, y) => ESTADIOS.find((e) => e.portao.some(([px, py]) => px === x && py === y));
@@ -697,6 +704,13 @@ function drawBuilding(c, g) {
     c.strokeStyle = "#f4f7fa"; c.lineWidth = 1; c.strokeRect(qx + 0.5, qy + 0.5, qw - 1, qh - 1); c.strokeRect(qx + qw * 0.12 + 0.5, qy + 0.5, qw * 0.76 - 1, qh - 1);
     px(c, "#f4f7fa", qx + qw / 2, qy, 1, qh); px(c, "#1b1b1b", qx, qy + qh / 2 - 1, qw, 2);
     c.fillStyle = "#d7f23c"; c.beginPath(); c.arc(qx + qw * 0.7, qy + qh * 0.3, 2.5, 0, 7); c.fill();
+  }
+  if (g.futevolei) { // telhado: a quadra de areia com a fita azul, a rede e a bola amarela, azul e verde
+    const qx = rx + 5, qy = Y + 3, qw = rw - 10, qh = roofH - 6;
+    for (let i = 0; i < 40; i++) px(c, i % 2 ? "#d8be88" : "#f0dcae", qx + ((i * 37) % qw), qy + ((i * 11) % qh), 1, 1);
+    c.strokeStyle = "#1e5bc6"; c.lineWidth = 1; c.strokeRect(qx + 0.5, qy + 0.5, qw - 1, qh - 1);
+    px(c, "#2a2a2a", qx + qw / 2, qy - 2, 1, qh + 4); px(c, "#f4f4f0", qx + qw / 2 - 1, qy - 2, 3, 1);
+    [["#f5c400", 0], ["#1e5bc6", 1], ["#2e9e4f", 2]].forEach(([col, i]) => { c.fillStyle = col; c.beginPath(); c.arc(qx + qw * 0.72, qy + qh * 0.35, 3 - i, 0, 7); c.fill(); });
   }
   if (g.pingpong) { // telhado: a mesa verde vista de cima, com as linhas, a rede e a bolinha laranja
     const qx = rx + 6, qy = Y + 4, qw = rw - 12, qh = roofH - 8;

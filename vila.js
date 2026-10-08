@@ -13,7 +13,7 @@ const ZONAS = ["", "nubank", "neoquimica", "morumbis", "belmiro"]; // na rua (""
 const zonaDe = (z) => (ZONAS.includes(z) ? z : "");
 const INVITE_MS = 20000, CHOICE_MS = 45000, RECONNECT_MS = +process.env.VILA_RECONNECT_MS || 45000;
 const POKEMON_ON = process.env.POKEMON !== "0"; // modo Pokémon (sprites do PokeAPI). POKEMON=0 desliga.
-const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "ludo", "botao", "corrida", "tiro", "pelada", "rocket", "batalha", "tenis", "rumi", "proibida", "pingpong", "ginasio", "carreira", ...require("./public/galeramon/lideres.js").LISTA.map((l) => "lider-" + l.id)]; // e os ginásios e treinadores dos líderes
+const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "ludo", "botao", "corrida", "tiro", "pelada", "rocket", "batalha", "tenis", "rumi", "proibida", "pingpong", "ginasio", "carreira", "futevolei", ...require("./public/galeramon/lideres.js").LISTA.map((l) => "lider-" + l.id)]; // e os ginásios e treinadores dos líderes
 const DIRS = ["up", "down", "left", "right"];
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

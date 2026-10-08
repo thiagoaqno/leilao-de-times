@@ -1,88 +1,59 @@
-# Ginásio em 3D: HD, bichos com volume, golpes em 3D e cenários dos líderes
+# Futevôlei da Galera
 
-Continua o Ginásio em 3D do #92 e junta num PR só as partes 2 e 3 do plano e o volume dos bichos. É só visual:
-`regras.js`, `ginasio.js` e `rede.js` não mudaram.
+Jogo novo: futevôlei 3D na areia, 1x1 ou em duplas, contra a galera ou contra robôs. Na Vila, a **Arena de Futevôlei**
+fica na areia da praia de Santos (com a placa "Praia de Santos" e no menu de jogos).
 
-## Mais definição (HD)
+## Como joga
+- **Só dois botões:** passar (`J` / clique) e atacar (`K` / botão direito); o direcional corre e mira o ataque. No
+  celular aparecem os dois botões na tela; no controle, A passa e B/X ataca.
+- O toque é armado: aperte antes da bola chegar e o jogador vai sozinho até ela e toca (o "ímã").
+- **O golpe sai sozinho pela altura e pelo lugar da bola:**
+  - cabeceio, peito, pé de frente e pé de lado;
+  - letra e pé para trás, quando a bola está atrás do corpo;
+  - atacando: voleio de lado, bicicleta por cima e o **Shark Attack**. O Shark é sempre de pé, de voleio ou de
+    bicicleta, no pulo lá no alto perto da rede.
+- O pulo é automático.
+- **Regras do futevôlei de verdade:**
+  - a bola não pode cair na areia;
+  - 3 toques por time, e em duplas ninguém toca duas vezes seguidas;
+  - saque de chute de trás da linha de fundo;
+  - ponto corrido, set de 10, 15 ou 18 com 2 de vantagem.
+- O 2º toque é a levantada perto da rede, para quem ataca subir.
 
-- A cena agora sai na resolução da tela, inclusive em telas de alta densidade, com antisserrilhado e sombra macia. A
-  versão do #92 desenhava em baixa resolução e deixava os sprites borrados.
-- O sprite entra no atlas pixel por pixel: o GIF do Black/White sem reduzir nem suavizar, e cada pixel do Galeramon
-  com 2 pixels do atlas.
-- O chão ganhou mais definição (48 pixels por casa), a sombra um mapa de 2048 e os pilares 16 lados.
-- As linhas finas, a barra de vida, os sinais e o clima de tela crescem junto com a resolução.
-- No modo leve (celular fraco ou `?leve=1`), a cena fica em meia resolução, sem antisserrilhado e sem sombra de
-  verdade.
-- No celular em pé, a névoa do fundo acompanha a distância da câmera e não apaga mais a quadra.
+## Onde
+- **Praia** (sala aberta): céu com sol e nuvens, mar com espuma, areia com relevo e pegadas, coqueiros, guarda-sóis,
+  quiosque, salva-vidas, calçadão em ondas e os prédios da orla.
+- **Arena coberta** (sala fechada): tanque de areia, refletores no teto de treliça, arquibancada, placas de LED e o
+  telão com o placar.
+- **A câmera** fica alta, atrás do seu time, vendo a quadra inteira, e acompanha o atleta.
 
-## Os bichos com volume (`volume.js`)
+## Arquitetura (pedida no PR)
+- **`public/futevolei/atleta.js`:** é o "FutevoleiPlayer". Ele não cria malha nenhuma.
+  - O gancho de skin é `vestir(visual)`: o sistema de skins (`bonecos.js`) monta o visual e o atleta só o pendura no
+    próprio transform.
+  - As animações saem por gatilhos, como num Animator: `disparar("cabeca")`, `disparar("shark", { estilo })`...
+- **Skins melhoradas para a praia:** `makePlayer(..., { praia: true })` deixa os jogadores de camisa de time descalços
+  e de regata, com a bermuda na cor do time.
+- **Física da bola nova** (não reaproveita a de outros jogos): gravidade, arrasto do ar e efeito.
 
-- O sprite de sempre, já com o pisca branco, o esticar e o tombo, vira uma pilha de camadas, como voxels.
-- Cada pixel ganha uma espessura que cresce com a distância até a borda do desenho. O bicho fica estufado no meio e
-  fino nas bordas.
-- O relevo recebe a luz do sol em três tons, e a sombra no chão sai da pilha inteira.
-- O que é meio transparente (o rastro e o sumir do desmaio) fica num cartaz "fantasma" junto da pilha.
-- Não precisa de uma malha por quadro do GIF: a espessura é medida no atlas a cada quadro.
+## Arquivos
+- **Novos:**
+  - `futevolei.js` (servidor, canal `/futevolei`);
+  - `public/futevolei/` (`index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js`);
+  - `tests/futevolei.test.js`.
+- **Mexidos:**
+  - `server.js`, `noite.js` (placar da Noite), `vila.js` e `public/index.html` (o prédio, o telhado e o bairro da
+    praia);
+  - `public/pelada/bonecos.js` (opção `praia`);
+  - `package.json`, `tests/salas.test.js` + `salas-esperado.json` (regravado: só entrou o `/futevolei`) e
+    `tests/e2e/paginas.spec.js`;
+  - `CLAUDE.md`.
 
-## Os golpes com volume (`golpes3d.js`)
-
-- **Projéteis em 3D, um desenho por família:**
-  - fogo e dragão: bola de fogo com casca e cauda;
-  - água: gota com brilho;
-  - elétrico: raio em zigue-zague que pisca;
-  - planta: folhas girando;
-  - inseto: um cone com asinhas;
-  - gelo: cristais cruzados;
-  - aço: estrela de arremesso;
-  - pedra e terra: rocha rolando;
-  - psíquico: anéis;
-  - fantasma: um fantasminha com olhos;
-  - veneno: bolha com bolinhas;
-  - sombrio: meia-lua;
-  - voador: lâminas de vento;
-  - lutador: punho;
-  - fada: estrelinhas;
-  - normal: estrela.
-- Cada projétil deixa o seu rastro, e os que brilham acendem o chão por onde passam.
-- **Estouro do impacto:** clarão, anel no chão e luz.
-- **Corte do corpo a corpo:** um arco em volta de quem bate.
-- **Golpes de área, por família:** coluna de fogo, raio do céu com clarão, gêiser, espinhos de gelo e de planta,
-  pedras voando com poeira ou cúpula de energia. No fim do aviso, as pedras caem de verdade.
-- **Anéis:** um no chão na esquiva; um que sobe com brilhinhos na cura, na troca e na mudança de atributo.
-- **Partículas:** as de `animacao.js` (poeira, terra, gotas, brasas...) viram cubinhos 3D.
-- **Câmera:** treme nos golpes fortes e dá um "soco" de aproximação nos críticos, nos desmaios, nas explosões e na
-  volta do voo ou do buraco.
-- Com "menos movimento" no sistema, não há tremor, aproximação nem clarão.
-- Nos temas de chão claro, nenhum golpe usa a mistura que soma luz, porque lá ela estoura em branco.
-
-## Os cenários dos líderes (`cenarios.js`)
-
-- **Luz:** cada tema tem a cor do sol e do ambiente.
-- **Enfeites em volta da quadra:**
-  - Brasa: poças de lava que pulsam e braseiros;
-  - Maré: água em volta do tablado, com marolas, e boias balançando;
-  - Mata: árvores, arbustos e flores;
-  - Faísca: torres com bobinas e uma esfera que pisca;
-  - Rochedo: rochas e estalagmites;
-  - Místico: cristais flutuando;
-  - Casarão: lápides tortas e velas;
-  - Toca do Dragão: braseiros roxos e chifres no muro;
-  - Dojô: o pórtico vermelho e as lanternas;
-  - Pista Geada: espinhos de gelo e montes de neve;
-  - Ginásio da Galera: torres de refletor e bandeiras das duas cores.
-- **Clima em 3D:** brasas, bolhas, folhas, neve, poeira, estrelas e névoa. As faíscas continuam desenhadas na tela.
-
-## Código
-
-- Novos: `public/ginasio/volume.js`, `golpes3d.js` e `cenarios.js`.
-- Mudaram: `cena3d.js`, `desenho.js`, `animacao.js`, `golpes.js`, `temas.js` e `index.html`.
-- `CLAUDE.md` atualizado.
-- Fotos novas em `planos/imagens/ginasio-3d-*.png`.
-
-## O que não foi conferido
-
-- `npm test` e o e2e (`tests/e2e/ginasio.spec.js` e `vila-ginasio.spec.js`) não foram rodados neste PR, a pedido.
-- A revisão foi feita pelas fotos, no Chrome com WebGL de software (SwiftShader). Ainda falta jogar de verdade num
-  celular fraco para ver o modo leve.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+## Conferido
+- `npm test`: 158 testes, tudo passando (o do Dominó que às vezes falha por tempo passou na repetição).
+- `paginas.spec.js`: `/` e `/futevolei/` abrem sem erro.
+- No navegador:
+  - treino na praia e na arena;
+  - uma sala online com robôs (o saque e os toques chegando do servidor);
+  - o prédio na Vila;
+  - fotos de cada golpe.

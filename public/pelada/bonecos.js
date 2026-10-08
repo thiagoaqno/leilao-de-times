@@ -171,7 +171,7 @@ const hex = (c) => new THREE.Color(c).getHex();
 // cria o jogador: um container (é ele que anda e gira) com o nome em cima; o visual (a skin) fica dentro
 export function makePlayer(kitId, num, name, opts = {}) {
   const g = new THREE.Group();
-  g.userData = { kitId, num, gk: !!opts.gk, nameLen: name.length, skin: null, pedido: 0, tag: null };
+  g.userData = { kitId, num, gk: !!opts.gk, praia: !!opts.praia, nameLen: name.length, skin: null, pedido: 0, tag: null };
   if (name) { const tag = nameSprite((opts.gk ? "🧤 " : "") + name, tagColor(kitId)); tag.position.y = 2.15; g.add(tag); g.userData.tag = tag; }
   marcador(g, kitId, name ? 2.45 : 2.15);
   mudarSkinJogador(g, opts.skin);
@@ -261,6 +261,9 @@ function montarVoxel(g, id) {
   const skin = M(tom), shorts = M(R ? R.coxa : bob ? 0x8a5a2b : hex(K.shorts)), sock = M(R ? R.meia : bob ? 0xf4f4f4 : hex(u.gk ? "#26282b" : C.kitColor(u.kitId))), boot = M(R ? R.bota : 0x161616);
   const shirtC = M(R ? R.ombro : bob ? 0xffffff : hex(K.c[0])), hair = M(typeof L.cabelo === "number" ? L.cabelo : 0x2a1b10);
   const canela = R ? M(R.canela ?? tom) : skin, rw = R ? lwOf(L) : 1;
+  // praia (opts.praia, o Futevôlei): os jogadores de camisa de time ficam descalços e de regata (o ombro de fora); a
+  // bermuda fica na cor do time. Os personagens continuam com a roupa deles.
+  const praia = u.praia && !R && !bob, pe = praia ? skin : boot, meiaPraia = praia ? skin : sock;
   const part = (gg, w, hh, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); m.position.set(x, y, z); gg.add(m); return m; };
   const lw = L.larg || 1, perna = bob ? 0.6 : 1; // o Bob tem perninha fina
   // pernas e braços com joelho e cotovelo (dobram na corrida, para o boneco não ficar duro)
@@ -269,7 +272,9 @@ function montarVoxel(g, id) {
     const l = new THREE.Group(); l.position.set(sx, 0.85, 0);
     part(l, 0.18 * lw, 0.3, 0.2, shorts, 0, -0.12, 0); part(l, 0.14 * perna * rw, 0.12, 0.15 * perna, canela, 0, -0.29, 0);
     const kn = new THREE.Group(); kn.position.y = -0.3; l.add(kn);
-    part(kn, 0.14 * perna * rw, 0.2, 0.15 * perna, canela, 0, -0.08, 0); part(kn, 0.15 * (bob ? 0.8 : 1) * rw, 0.22, 0.16 * (bob ? 0.8 : 1), sock, 0, -0.36, 0); part(kn, 0.16 * rw, 0.1, 0.27, boot, 0, -0.5, -0.04);
+    part(kn, 0.14 * perna * rw, 0.2, 0.15 * perna, canela, 0, -0.08, 0); part(kn, (praia ? 0.13 : 0.15 * (bob ? 0.8 : 1)) * rw, 0.22, praia ? 0.14 : 0.16 * (bob ? 0.8 : 1), meiaPraia, 0, -0.36, 0);
+    if (praia) { part(kn, 0.12, 0.07, 0.25, pe, 0, -0.51, -0.05); for (const dx of [-0.035, 0, 0.035]) part(kn, 0.025, 0.03, 0.03, pe, dx, -0.53, -0.18); } // pé descalço (com os dedinhos)
+    else part(kn, 0.16 * rw, 0.1, 0.27, boot, 0, -0.5, -0.04);
     if (L.capa) part(l, 0.19, 0.03, 0.21, M(0x5a3a1e), 0, -0.2, 0); // cinto do equipamento de manobra (Levi)
     if (bob) part(kn, 0.13, 0.04, 0.14, M(hex(K.c[0])), 0, -0.3, 0); // faixa da meia com a cor do time
     body.add(l); legs.push(l); knees.push(kn);
@@ -295,7 +300,8 @@ function montarVoxel(g, id) {
   const arms = [], elbows = [], fore = u.gk ? shirtC : R ? M(R.antebraco ?? tom) : skin, ombro = bob ? 0.36 : 0.3 * lw;
   for (const sx of [-ombro, ombro]) {
     const a = new THREE.Group(); a.position.set(sx, (bob ? 1.36 : 1.42) - SPINE_Y, 0);
-    part(a, 0.13 * (bob ? 0.9 : 1), 0.26, 0.14, shirtC, 0, -0.12, 0);
+    if (praia) { part(a, 0.135, 0.07, 0.145, shirtC, 0, -0.02, 0); part(a, 0.12, 0.2, 0.13, skin, 0, -0.15, 0); } // regata: só a alça
+    else part(a, 0.13 * (bob ? 0.9 : 1), 0.26, 0.14, shirtC, 0, -0.12, 0);
     if (R && sx < 0) part(a, 0.145, 0.08, 0.155, M(hex(C.kitColor(u.kitId))), 0, -0.1, 0); // braçadeira com a cor do time
     const el = new THREE.Group(); el.position.y = -0.25; a.add(el);
     part(el, 0.11 * perna, 0.3, 0.12 * perna, fore, 0, -0.15, 0);

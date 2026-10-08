@@ -73,7 +73,8 @@ segmentos de ritmo em `rod.ritmos`, para trocar a velocidade sem saltar o minuto
 - `confetti`, `flutuar` e `iconeSom`.
 
 **`public/pelada/bonecos.js`:**
-- `makePlayer(kit, num, nome, { skin })`, `animate` e `descartarJogador`;
+- `makePlayer(kit, num, nome, { skin, praia })`, `animate` e `descartarJogador` (`praia`: os jogadores de camisa de time
+  ficam descalços e de regata, com a bermuda do time; os personagens continuam com a roupa deles. O Futevôlei usa);
 - `SKINS_CONFIG`, com o visual de cada skin;
 - `configurarBonecos({ scene, limites })`;
 - `fundirPecas` e `sombraSoGrande` (otimização).
@@ -106,7 +107,32 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Pelada (futsal 3D) e Rocket (futebol de carro) | `pelada.js` (+ `peladaBots.js`) | ver logo abaixo |
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
 | Pingue-Pongue | `pingpong.js` | `index.html`, `jogo.js`, `regras.js` (voo com efeito, juiz, placar, robô) |
+| Futevôlei | `futevolei.js` | `index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js` (ver logo abaixo) |
 | Vila (o mapa) + Galeramon + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
+
+**Futevôlei:**
+- 1x1 ou duplas (2x2), robôs completando, set de 10, 15 ou 18 pontos com 2 de vantagem, ponto corrido. Na Vila, a **Arena
+  de Futevôlei** fica na areia de Santos (bairro `praia`, fora da cerca: o prédio volta a ser sólido depois do
+  `montaMundo`).
+- **Controles: só dois botões**, passar (`J`, clique) e atacar (`K`, botão direito), mais o direcional (corre e mira o
+  ataque). O toque é armado: aperta antes e o jogador toca quando a bola entra no alcance; com o toque armado, o "ímã"
+  (`ima` no `jogo.js`) leva o jogador até o ponto bom (`F.pontoDeToque`). O pulo é sozinho.
+- **`regras.js` (`window.Futevolei`):** bola nova (gravidade, arrasto do ar e o efeito que mergulha; não quica: na areia
+  acabou o ponto), `lancar` (acha a velocidade para chegar no alvo com o arrasto e sobe a bola até passar da rede),
+  `golpeDe` (o golpe pela altura e pelo lugar da bola: cabeca, peito, frente, lado, letra, calcanhar e, só atacando,
+  voleio, bicicleta e shark; o **Shark Attack é sempre de pé**, voleio ou bicicleta no alto perto da rede, com
+  `estilo` no evento), os 3 toques (em duplas, ninguém toca duas vezes seguidas), o 2º toque é a levantada perto da
+  rede, o saque e os robôs (`DIF`). A calibragem dos robôs está nos tempos de `GOLPES` e em `DIF.espirra`.
+- **`atleta.js`:** o atleta (o "FutevoleiPlayer"): um transform (`raiz`) que **não cria malha**. O gancho de skin é
+  `vestir(visual)` (o `jogo.js` monta o visual com o `makePlayer` e entrega); as animações saem por gatilhos
+  (`disparar("cabeca")`, `disparar("shark", { estilo })`...), mexendo nas juntas do boneco (`GOLPES` com as poses).
+- **`cenarios.js`:** `montarCenario(renderer, scene, "praia" | "arena")`. A praia: céu `Sky` com nuvens (o sol fica
+  atrás do time Amarelo; exposição baixa porque o céu é forte), o ambiente (reflexos) tirado do próprio céu, areia com
+  relevo, mar e espuma animados, coqueiros, guarda-sóis, quiosque, torre do salva-vidas, calçadão e prédios. A arena
+  coberta: `RoomEnvironment`, tanque de areia, treliças com refletores, arquibancada, placas de LED e o telão com o
+  placar (`placar(a, b, texto)`).
+- **Câmera:** alta, atrás do meu time, vendo a quadra inteira, e acompanha o atleta (lados e profundidade).
+- `#debug` expõe `window.__futevolei` (`avancar(seg)`, `toque(tipo)` e `congelar()` para fotos do quadro exato).
 
 **Ginásio:**
 - **Líderes e treinadores (`public/galeramon/lideres.js`):** 4 líderes de ginásio (fogo, água, grama, elétrico) e 6 treinadores (pedra, psíquico, fantasma, dragão, lutador, gelo), cada um com o time nos dois modos. `/ginasio/?lider=<id>` abre o desafio (1x1 contra o robô com o time dele; `config.lider`); vencer um líder guarda a insígnia no navegador (`ginasio:insignias`). Os robôs comuns ganham um dos times temáticos, sorteado. Na Vila, os ginásios ficam fora da cerca, em cima dos estacionamentos oeste e leste (`lider: l` em `GAMES`), e os treinadores são `GAMES` de 1x1 com `npc` (desenhados como bonecos). Cada tipo tem a sua quadra em `temas.js` (`TEMAS`: cores, `chao` e `clima`).
@@ -252,6 +278,8 @@ Para achar algo dentro de um jogo:
   - As páginas abrem com `#debug` e expõem `window.__<jogo>` (por exemplo `__pelada`, `__tenis`, `__rumi`,
     `__pingpong`) para o teste mexer no jogo.
   - Jogo novo entra na lista de `tests/e2e/paginas.spec.js`.
+- **Futevôlei:** `tests/futevolei.test.js` (o golpe de cada posição da bola, os 3 toques, passe e ataque passando a rede,
+  o juiz da areia, robô contra robô e uma partida pelo servidor).
 - **Carreira:** `tests/bd.test.js` (banco em memória), `tests/carreira-motor.test.js` (10 mil jogos conferem gols, mando e força; se mexer no `AJUSTE` do motor, esses testes dizem se o futebol continua com cara de futebol) `tests/carreira-rodada.test.js` (a rodada ao vivo com o relógio à mão), `tests/carreira-online-mercado.test.js` (rodada e leilão pelo canal), `tests/carreira-online.test.js` (a sala em grupo: opções, clubes sem repetir, aporte, reconexão e o servidor reiniciando), `tests/carreira-evolucao.test.js` (evolução, aposentadoria, jovens, virada de temporada e limite) e `tests/carreira-base.test.js` (Brasileirão, base mundial, nomes licenciados, elencos, calibragem, Libertadores e Liverpool × Sunderland).
   `tests/carreira-animacoes.test.js` confere as 40 falas únicas da prancheta; o E2E da carreira cobre o balão, o relatório do olheiro, a animação ao terminar o leilão, o ritmo 3× compartilhado, os pênaltis eliminatórios e a leitura da evolução/perda por posição na prancheta.
 - **Testes que às vezes falham por tempo:** um do Dominó e um do relógio. Repetir antes de investigar.
