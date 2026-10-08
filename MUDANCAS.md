@@ -36,6 +36,20 @@ fica na areia da praia de Santos (com a placa "Praia de Santos" e no menu de jog
   e de regata, com a bermuda na cor do time.
 - **Física da bola nova** (não reaproveita a de outros jogos): gravidade, arrasto do ar e efeito.
 
+## Animações
+- **O golpe começa antes do toque:** o jogo prevê quando o jogador armado vai pegar na bola e começa o golpe na hora
+  certa para o pé, a cabeça ou o peito chegarem junto com ela. No online, o toque espera a bola chegar na tela.
+- Golpes mais rápidos e transições suaves (cada junta vai atrás da pose com uma mola).
+- **Boneco vivo:**
+  - parado, ele respira e troca o peso de perna;
+  - esperando a bola, fica na base quicando;
+  - correndo, inclina o corpo; de lado, faz o passo lateral;
+  - de vez em quando, uma mania: alongar, mão na cintura, girar o pescoço, ajeitar a areia com o pé.
+- **Comemorações** (pulos com os braços para cima, soco no ar, dancinha, aviãozinho) e **frustrações** (mãos na cabeça,
+  agachar com as mãos nos joelhos, reclamar de braços abertos, chutar a areia), sorteadas a cada ponto. A pausa entre
+  os pontos ficou um pouco maior para dar tempo.
+- O saque tem o balanço da perna antes do chute.
+
 ## Arquivos
 - **Novos:**
   - `futevolei.js` (servidor, canal `/futevolei`);

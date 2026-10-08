@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { makePlayer, descartarJogador, configurarBonecos } from "/pelada/bonecos.js";
 import { canvasTex } from "/pelada/tex.js";
-import { Atleta } from "/futevolei/atleta.js";
+import { Atleta, ateImpacto } from "/futevolei/atleta.js";
 import { montarCenario } from "/futevolei/cenarios.js";
 
 const F = window.Futevolei, C = window.Campo, Q = F.Q, { $, h, store } = Comum;
@@ -281,7 +281,14 @@ socket.on("state", (st) => {
   else $("over").classList.add("hidden");
 });
 socket.on("snap", (d) => { if (!G.active || G.offline) return; G.buf.push(d); if (G.buf.length > 40) G.buf.shift(); G.fase = d.f; });
-socket.on("ev", (lista) => { if (G.active && !G.offline) for (const e of lista) aoEvento(e); });
+// os eventos chegam antes da bola aparecer lá (a tela mostra tudo INTERP ms "no passado"): cada um espera a hora dele
+socket.on("ev", (lista) => {
+  if (!G.active || G.offline) return;
+  for (const e of lista) {
+    const atraso = e.t ? e.t - (relogio.agora() - INTERP) : 0;
+    if (atraso > 5) setTimeout(() => G.active && !G.offline && aoEvento(e), Math.min(atraso, 500)); else aoEvento(e);
+  }
+});
 
 // ======================================================================
 // Começar e parar
@@ -391,7 +398,7 @@ function posDe(id) { const a = G.atletas.get(id); return a ? a.raiz.position : n
 function aoEvento(e) {
   if (e.tipo === "toque") {
     const a = G.atletas.get(e.id);
-    if (a) a.disparar(e.golpe, { lado: e.lado, pulo: e.pulo, h: e.h, estilo: e.estilo });
+    if (a) a.confirmar(e.golpe, { lado: e.lado, pulo: e.pulo, h: e.h, estilo: e.estilo }); // o golpe já vinha (antecipado): acerta o impacto
     Som.toque(e.golpe);
     if (G.me && e.id === G.me.id) G.me.armado = null;
     const p = posDe(e.id);
@@ -402,6 +409,7 @@ function aoEvento(e) {
     else if (e.golpe !== "saque" && !grandeNaTela) golpeNaTela((F.GOLPES[e.golpe] || {}).nome || "", false);
     if (e.espirrou && !grandeNaTela) golpeNaTela("Espirrou!", false);
   }
+  else if (e.tipo === "preSaque") { const a = G.atletas.get(e.id); if (a) a.antecipar("saque", { lado: 1 }, e.falta); }
   else if (e.tipo === "areia") { poeira(e.x, e.z, 70, 1.2); Som.areia(); }
   else if (e.tipo === "rede") Som.rede();
   else if (e.tipo === "ponto") {
@@ -492,6 +500,11 @@ function frame() {
     const a = G.atletas.get(j.id); if (!a) continue;
     const local = me && j.id === me.id && !G.offline ? me : j;
     a.pronto = !!local.armado || (estado.fase === "jogo" && F.ladoDe(bolaV.z) === a.team);
+    // com o toque armado, prevê quando vai pegar na bola e começa o golpe antes, para o pé chegar junto com ela
+    if (local.armado && estado.fase === "jogo" && !G.pausa && !a.golpeNoAr) {
+      const p = F.previsaoToque(bolaV, { ...local, team: a.team }, local.armado.intencao, 0.6, j.bot ? 0 : 0.4);
+      if (p && p.t <= ateImpacto(p.golpe, p)) a.antecipar(p.golpe, p, p.t);
+    }
     const perto = F.ladoDe(bolaV.z) === a.team && Math.hypot(bolaV.x - local.x, bolaV.z - local.z) < 9;
     a.atualizar(local, perto ? bolaV : null, dt);
   }
