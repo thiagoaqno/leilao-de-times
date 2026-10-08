@@ -19,10 +19,14 @@ leitura e transparência; a regra da partida não foi alterada.
 - **Notícia da fase de grupos:** classificação ou eliminação só é anunciada depois da sexta partida real do grupo. O
   sexto jogo geral da carreira não é mais confundido com a sexta rodada da Libertadores ou da Champions. Saves já
   afetados têm a notícia prematura removida ao serem carregados.
+- **Velocidade da rodada em grupo:** durante os jogos multiplayer, o anfitrião pode alternar entre `1×` e `3×`. O
+  servidor aplica o ritmo a todas as partidas e todos veem a mesma opção marcada, sem saltar o minuto atual ou reduzir
+  o tempo das decisões.
 
 ## Conferido
 
-- **Testes focados do motor, evolução e temporada:** 22 testes passaram, incluindo a regressão do sexto jogo geral.
-- **E2E focado:** o cenário novo confirmou os selos `+2` e `-1`, trocou um defensor com um atacante e verificou que
-  as duas notas efetivas ficaram menores que as notas normais.
-- **Foto:** `planos/imagens/carreira-rendimento-posicao.png`.
+- **Testes focados:** 28 testes passaram entre motor, evolução, temporada, relógio e canal multiplayer.
+- **E2E focado:** o cenário de escalação confirmou os selos `+2` e `-1`, trocou um defensor com um atacante e
+  verificou as notas efetivas menores; o cenário em grupo confirmou que só o anfitrião controla o ritmo, que o 3×
+  aparece para os dois participantes e que a rodada chega ao fim normalmente.
+- **Fotos:** `planos/imagens/carreira-rendimento-posicao.png` e `planos/imagens/carreira-grupo-3x.png`.

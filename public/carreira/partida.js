@@ -21,6 +21,18 @@ const clubeDoLado = (lado) => (lado === 0 ? J.casa : J.fora);
 // até onde o relógio pode andar: a parada (os acréscimos antes dela também aparecem) ou o fim
 const limite = () => (J.parado ? Math.max(tempoDe(J.parado), ...J.eventos.map(tempoDe)) : 96);
 
+// Na carreira em grupo, a velocidade vem do servidor: só o anfitrião muda e todos enxergam o mesmo ritmo.
+function atualizarControlesVelocidade() {
+  const grupo = !!J.grupo, velocidade = grupo ? (E.rodadaGrupo?.velocidade || E.rodadaGrupo?.meu?.relogio?.multiplicador || 1) : J.vel;
+  const dono = $("pVelDono"); dono.classList.toggle("hidden", !grupo);
+  if (grupo) dono.textContent = `${E.anfitriao ? "Você controla" : "Anfitrião controla"} · ${velocidade}× para todos`;
+  $("btnPular").classList.toggle("hidden", grupo);
+  for (const b of document.querySelectorAll("[data-vel]")) {
+    b.disabled = grupo && !E.anfitriao;
+    b.setAttribute("aria-pressed", String(+b.dataset.vel === velocidade));
+  }
+}
+
 // o clima do jogo: sai da rodada e dos dois clubes, então o mesmo jogo tem sempre o mesmo céu (só enfeita, não muda o placar)
 function climaDoJogo(temporada, rodada, casa, fora) {
   let a = 2166136261;
@@ -39,7 +51,7 @@ function abrirPartida(rodada) {
   if (!src) return mostrarTela("sede");
   const nova = J.rodada !== src.rodada || J.casa !== src.casa;
   Object.assign(J, { rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, decidindo: false, grupo: !!meuGrupo });
-  document.querySelector(".faixa-jogo .controles").classList.toggle("hidden", !!meuGrupo);
+  document.querySelector(".faixa-jogo .controles").classList.remove("hidden"); atualizarControlesVelocidade();
   if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
   $("pNomeCasa").textContent = nomeClube(J.casa); $("pNomeFora").textContent = nomeClube(J.fora);
@@ -158,7 +170,11 @@ function passo(agora) {
   requestAnimationFrame(passo);
 }
 requestAnimationFrame(passo);
-for (const b of document.querySelectorAll("[data-vel]")) b.onclick = () => { J.vel = +b.dataset.vel; for (const x of document.querySelectorAll("[data-vel]")) x.setAttribute("aria-pressed", String(x === b)); };
+for (const b of document.querySelectorAll("[data-vel]")) b.onclick = async () => {
+  const velocidade = +b.dataset.vel;
+  if (J.grupo) { if (E.anfitriao) await agirGrupo({ type: "velocidade", velocidade }); }
+  else { J.vel = velocidade; atualizarControlesVelocidade(); }
+};
 $("btnPular").onclick = () => { J.pulando = true; J.relogio = limite(); };
 $("btnVoltarSede").onclick = () => { J.rodada = null; mostrarTela("sede"); mostrarPosJogo(); };
 
