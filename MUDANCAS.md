@@ -1,59 +1,37 @@
-# Futevôlei da Galera
+# Ginásio: o FPS de volta
 
-Jogo novo: futevôlei 3D na areia, 1x1 ou em duplas, contra a galera ou contra robôs. Na Vila, a **Arena de Futevôlei**
-fica na areia da praia de Santos (com a placa "Praia de Santos" e no menu de jogos).
+Depois do Ginásio 3D (#92 a #94), o jogo caiu para uns 23 quadros por segundo numa placa de vídeo integrada (Intel UHD),
+e para 13 numa tela de alta densidade.
 
-## Como joga
-- **Só dois botões:** passar (`J` / clique) e atacar (`K` / botão direito); o direcional corre e mira o ataque. No
-  celular aparecem os dois botões na tela; no controle, A passa e B/X ataca.
-- O toque é armado: aperte antes da bola chegar e o jogador vai sozinho até ela e toca (o "ímã").
-- **O golpe sai sozinho pela altura e pelo lugar da bola:**
-  - cabeceio, peito, pé de frente e pé de lado;
-  - letra e pé para trás, quando a bola está atrás do corpo;
-  - atacando: voleio de lado, bicicleta por cima e o **Shark Attack**. O Shark é sempre de pé, de voleio ou de
-    bicicleta, no pulo lá no alto perto da rede.
-- O pulo é automático.
-- **Regras do futevôlei de verdade:**
-  - a bola não pode cair na areia;
-  - 3 toques por time, e em duplas ninguém toca duas vezes seguidas;
-  - saque de chute de trás da linha de fundo;
-  - ponto corrido, set de 10, 15 ou 18 com 2 de vantagem.
-- O 2º toque é a levantada perto da rede, para quem ataca subir.
+## O que travava
+Medido no navegador, parte por parte do quadro:
+- **Não era a cena 3D:** desenhar a cena levava uns 2 ms.
+- **Subir texturas inteiras a cada quadro:** o chão (888x600) e o atlas dos bichos (1024x512), uns 2 MB cada, mais a
+  textura da espessura.
+- **Ler o atlas de volta da placa:** os quadros dos GIFs moravam na placa de vídeo e o atlas na memória. Desenhar um no
+  outro obrigava a ler de volta da placa, e o processador ficava esperando a placa terminar tudo (aparecia como 38 a
+  69 ms na `medirEspessura`).
 
-## Onde
-- **Praia** (sala aberta): céu com sol e nuvens, mar com espuma, areia com relevo e pegadas, coqueiros, guarda-sóis,
-  quiosque, salva-vidas, calçadão em ondas e os prédios da orla.
-- **Arena coberta** (sala fechada): tanque de areia, refletores no teto de treliça, arquibancada, placas de LED e o
-  telão com o placar.
-- **A câmera** fica alta, atrás do seu time, vendo a quadra inteira, e acompanha o atleta.
+## O que mudou (o visual é o mesmo)
+- **Só o que mudou sobe para a placa:**
+  - o chão e o atlas viraram texturas de dados;
+  - a cada quadro, o canvas é comparado com o anterior em ladrilhos de 32 px, e só os ladrilhos diferentes sobem
+    (`compararParcial` e `subirRetangulos`, em `cena3d.js`);
+  - do atlas, só as casas em uso; da espessura, só as casas medidas no quadro.
+- **Tudo na memória:** o chão, o atlas e os quadros dos bichos (os GIFs, o sprite parado, a silhueta branca e os quadros
+  dos Galeramon) ficam na memória (`willReadFrequently`), sem ida e volta da placa.
+- **Resolução até 1,5x:** a resolução da cena vai até 1,5 pixel por pixel da página (antes 2). Numa tela 2x fica quase
+  igual de nítido, com 44% menos pixels para pintar.
 
-## Arquitetura (pedida no PR)
-- **`public/futevolei/atleta.js`:** é o "FutevoleiPlayer". Ele não cria malha nenhuma.
-  - O gancho de skin é `vestir(visual)`: o sistema de skins (`bonecos.js`) monta o visual e o atleta só o pendura no
-    próprio transform.
-  - As animações saem por gatilhos, como num Animator: `disparar("cabeca")`, `disparar("shark", { estilo })`...
-- **Skins melhoradas para a praia:** `makePlayer(..., { praia: true })` deixa os jogadores de camisa de time descalços
-  e de regata, com a bermuda na cor do time.
-- **Física da bola nova** (não reaproveita a de outros jogos): gravidade, arrasto do ar e efeito.
-
-## Arquivos
-- **Novos:**
-  - `futevolei.js` (servidor, canal `/futevolei`);
-  - `public/futevolei/` (`index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js`);
-  - `tests/futevolei.test.js`.
-- **Mexidos:**
-  - `server.js`, `noite.js` (placar da Noite), `vila.js` e `public/index.html` (o prédio, o telhado e o bairro da
-    praia);
-  - `public/pelada/bonecos.js` (opção `praia`);
-  - `package.json`, `tests/salas.test.js` + `salas-esperado.json` (regravado: só entrou o `/futevolei`) e
-    `tests/e2e/paginas.spec.js`;
-  - `CLAUDE.md`.
+## Resultado (Intel UHD, partida contra o robô, golpes saindo)
+| Tela | Antes | Depois |
+| --- | --- | --- |
+| 1x (1366x700) | 23,5 FPS | 89,9 FPS |
+| 1,25x | não medido | 61 FPS |
+| 2x | 13,3 FPS | 56,6 FPS |
 
 ## Conferido
-- `npm test`: 158 testes, tudo passando (o do Dominó que às vezes falha por tempo passou na repetição).
-- `paginas.spec.js`: `/` e `/futevolei/` abrem sem erro.
-- No navegador:
-  - treino na praia e na arena;
-  - uma sala online com robôs (o saque e os toques chegando do servidor);
-  - o prédio na Vila;
-  - fotos de cada golpe.
+- Fotos do Ginásio antes e depois: a quadra, as marcas no chão, a mira, os bichos com volume e as sombras iguais.
+- `tests/e2e/ginasio.spec.js`: 6 de 7 passando.
+  - O que falha ("resultado de partida real, revanche e retorno à sala") falha igual no `main` sem esta mudança: a partida
+    não termina nos 60 s do teste.

@@ -10,6 +10,7 @@
 const CAMADAS = 8; // camadas para cada lado do meio
 const FUNDO_PX = 16; // a espessura máxima, para cada lado, em pixels do atlas
 const ESPESSURA = new Uint8Array(ATLAS.w * ATLAS.h);
+const ESPESSURA_MUDOU = []; // as casas medidas neste quadro (só elas sobem para a placa: cena3d.js, subirRetangulos)
 const distancias = new Uint16Array(ATLAS.casa * ATLAS.casa);
 
 // a distância até a borda (chanfro 3-4: duas passadas), só dos pixels bem opacos
@@ -31,6 +32,7 @@ function medirEspessura(ctxAtlas, x0, y0) {
     d[i] = v;
   }
   // a textura fica de cabeça para baixo em relação ao canvas (a linha 0 é a de baixo)
+  ESPESSURA_MUDOU.push({ x: x0, y: y0, w: n, h: n });
   for (let y = 0; y < n; y++) {
     const linha = (ATLAS.h - 1 - (y0 + y)) * ATLAS.w + x0;
     for (let x = 0; x < n; x++) {
@@ -38,10 +40,6 @@ function medirEspessura(ctxAtlas, x0, y0) {
       ESPESSURA[linha + x] = px ? Math.round(Math.min(1, (px * 0.85 + 0.6) / FUNDO_PX) * 255) : 0;
     }
   }
-}
-function limparEspessura(x0, y0) {
-  const n = ATLAS.casa;
-  for (let y = 0; y < n; y++) ESPESSURA.fill(0, (ATLAS.h - 1 - (y0 + y)) * ATLAS.w + x0, (ATLAS.h - 1 - (y0 + y)) * ATLAS.w + x0 + n);
 }
 
 const VOLUME_VERTICE = `

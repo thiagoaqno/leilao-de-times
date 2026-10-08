@@ -18,7 +18,9 @@ const coresLados = ["#237dcd", "#df515a"];
 const corTipo = (t) => dexAtual().TYPES[t] || "#bccdbd";
 // o chão visto de cima: a quadra com a borda, 18,5 x 12,5 casas, PX_CHAO pixels por casa
 const CHAO = { w: 18.5, h: 12.5 }, PX_CHAO = 48;
-const chaoCv = document.createElement("canvas"), chaoCtx = chaoCv.getContext("2d");
+// os dois canvases moram na memória (willReadFrequently): a cena 3D compara cada quadro com o anterior e sobe para a
+// placa de vídeo só o que mudou (cena3d.js, texturaParcial)
+const chaoCv = document.createElement("canvas"), chaoCtx = chaoCv.getContext("2d", { willReadFrequently: true });
 chaoCv.width = CHAO.w * PX_CHAO; chaoCv.height = CHAO.h * PX_CHAO;
 const atlasCv = document.createElement("canvas"), atlasCtx = atlasCv.getContext("2d", { willReadFrequently: true });
 atlasCv.width = ATLAS.w; atlasCv.height = ATLAS.h;
@@ -58,7 +60,9 @@ function passada(novoCtx, cam, fn) {
 }
 
 function ajustarCanvas() {
-  const r = cv.getBoundingClientRect(), fator = cena3d.leve ? 2 : 1 / Math.min(2, devicePixelRatio || 1); // a resolução da tela (meia no modo leve)
+  // a resolução da tela, até 1,5 pixel por pixel da página (numa tela 2x, quase igual de nítido e bem mais leve para a
+  // placa de vídeo); meia resolução no modo leve
+  const r = cv.getBoundingClientRect(), fator = cena3d.leve ? 2 : 1 / Math.min(1.5, devicePixelRatio || 1);
   const w = Math.max(1, Math.round(r.width / fator)), hh = Math.max(1, Math.round(r.height / fator));
   if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; }
   camera.largura = w; camera.altura = hh;
