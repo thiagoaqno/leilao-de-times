@@ -1,59 +1,41 @@
-# Futevôlei da Galera
+# Futevôlei: o golpe na hora certa e o boneco vivo
 
-Jogo novo: futevôlei 3D na areia, 1x1 ou em duplas, contra a galera ou contra robôs. Na Vila, a **Arena de Futevôlei**
-fica na areia da praia de Santos (com a placa "Praia de Santos" e no menu de jogos).
+Continuação do Futevôlei (#95), com o que apareceu jogando: o jogador tocava na bola e só depois fazia a animação, os
+golpes eram lentos e o boneco ficava duro parado.
 
-## Como joga
-- **Só dois botões:** passar (`J` / clique) e atacar (`K` / botão direito); o direcional corre e mira o ataque. No
-  celular aparecem os dois botões na tela; no controle, A passa e B/X ataca.
-- O toque é armado: aperte antes da bola chegar e o jogador vai sozinho até ela e toca (o "ímã").
-- **O golpe sai sozinho pela altura e pelo lugar da bola:**
-  - cabeceio, peito, pé de frente e pé de lado;
-  - letra e pé para trás, quando a bola está atrás do corpo;
-  - atacando: voleio de lado, bicicleta por cima e o **Shark Attack**. O Shark é sempre de pé, de voleio ou de
-    bicicleta, no pulo lá no alto perto da rede.
-- O pulo é automático.
-- **Regras do futevôlei de verdade:**
-  - a bola não pode cair na areia;
-  - 3 toques por time, e em duplas ninguém toca duas vezes seguidas;
-  - saque de chute de trás da linha de fundo;
-  - ponto corrido, set de 10, 15 ou 18 com 2 de vantagem.
-- O 2º toque é a levantada perto da rede, para quem ataca subir.
+## O golpe na hora certa
+- **O golpe começa antes do toque:** cada animação tem o seu momento de impacto (`impacto`). O jogo prevê quando o
+  jogador com o toque armado vai pegar na bola (`F.previsaoToque`, com as mesmas contas do toque) e começa o golpe para
+  o pé, a cabeça ou o peito chegarem junto com ela (`antecipar`). Quando o toque acontece, só acerta o relógio
+  (`confirmar`).
+- **Online:** os eventos levam a hora do servidor (`e.t`) e esperam a bola chegar na tela (a tela mostra tudo 100 ms
+  "no passado").
+- **Saque:** tem o balanço da perna antes do chute (0,3 s, evento `preSaque`).
+- Medido no navegador: 15 de 16 toques com o golpe já em andamento, chegando no impacto com no máximo 20 ms de
+  diferença.
 
-## Onde
-- **Praia** (sala aberta): céu com sol e nuvens, mar com espuma, areia com relevo e pegadas, coqueiros, guarda-sóis,
-  quiosque, salva-vidas, calçadão em ondas e os prédios da orla.
-- **Arena coberta** (sala fechada): tanque de areia, refletores no teto de treliça, arquibancada, placas de LED e o
-  telão com o placar.
-- **A câmera** fica alta, atrás do seu time, vendo a quadra inteira, e acompanha o atleta.
+## Mais rápido e fluido
+- Golpes mais curtos.
+- Cada junta vai atrás da pose com uma mola, então nada pula de uma pose para outra.
 
-## Arquitetura (pedida no PR)
-- **`public/futevolei/atleta.js`:** é o "FutevoleiPlayer". Ele não cria malha nenhuma.
-  - O gancho de skin é `vestir(visual)`: o sistema de skins (`bonecos.js`) monta o visual e o atleta só o pendura no
-    próprio transform.
-  - As animações saem por gatilhos, como num Animator: `disparar("cabeca")`, `disparar("shark", { estilo })`...
-- **Skins melhoradas para a praia:** `makePlayer(..., { praia: true })` deixa os jogadores de camisa de time descalços
-  e de regata, com a bermuda na cor do time.
-- **Física da bola nova** (não reaproveita a de outros jogos): gravidade, arrasto do ar e efeito.
+## O boneco vivo
+- **Parado:** respira e troca o peso de perna. Esperando a bola, fica na base quicando.
+- **Correndo:** inclina o corpo e, de lado, faz o passo lateral.
+- **Manias, de vez em quando, parado:** alongar, mão na cintura, girar o pescoço, ajeitar a areia com o pé.
+- **Comemorações**, sorteadas a cada ponto: pulos com os braços para cima, soco no ar, dancinha, aviãozinho.
+- **Frustrações**, sorteadas a cada ponto: mãos na cabeça, agachar com as mãos nos joelhos, reclamar de braços abertos,
+  chutar a areia.
+- A pausa entre os pontos subiu de 1,9 s para 2,3 s, para dar tempo de comemorar.
+- Robôs do Difícil um pouco menos perfeitos (robô contra robô passava de 20 minutos).
 
 ## Arquivos
-- **Novos:**
-  - `futevolei.js` (servidor, canal `/futevolei`);
-  - `public/futevolei/` (`index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js`);
-  - `tests/futevolei.test.js`.
-- **Mexidos:**
-  - `server.js`, `noite.js` (placar da Noite), `vila.js` e `public/index.html` (o prédio, o telhado e o bairro da
-    praia);
-  - `public/pelada/bonecos.js` (opção `praia`);
-  - `package.json`, `tests/salas.test.js` + `salas-esperado.json` (regravado: só entrou o `/futevolei`) e
-    `tests/e2e/paginas.spec.js`;
-  - `CLAUDE.md`.
+- `public/futevolei/atleta.js` (reescrito: clipes com impacto, base viva, grupos e suavização);
+- `public/futevolei/regras.js` (`previsaoToque`, hora nos eventos, preparo do saque);
+- `public/futevolei/jogo.js` (antecipar e confirmar, eventos online na hora certa);
+- `futevolei.js` (hora do servidor em cada evento);
+- `CLAUDE.md`.
 
 ## Conferido
-- `npm test`: 158 testes, tudo passando (o do Dominó que às vezes falha por tempo passou na repetição).
-- `paginas.spec.js`: `/` e `/futevolei/` abrem sem erro.
-- No navegador:
-  - treino na praia e na arena;
-  - uma sala online com robôs (o saque e os toques chegando do servidor);
-  - o prédio na Vila;
-  - fotos de cada golpe.
+- `npm test`: 158 testes passando.
+- `paginas.spec.js` (`/futevolei/`) passando.
+- No navegador: o tempo dos golpes medido e as poses fotografadas.

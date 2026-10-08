@@ -39,7 +39,7 @@
     // espirra: chance de errar o domínio (a bola sai torta) num ataque forte
     facil: { nome: "Fácil", vel: 0.7, reac: 0.55, erro: 1.6, ataca2: 0, cabeca: 0.25, espirra: 0.3 },
     medio: { nome: "Médio", vel: 0.84, reac: 0.4, erro: 1.15, ataca2: 0.08, cabeca: 0.6, espirra: 0.17 },
-    dificil: { nome: "Difícil", vel: 0.92, reac: 0.3, erro: 0.85, ataca2: 0.18, cabeca: 0.9, espirra: 0.12 },
+    dificil: { nome: "Difícil", vel: 0.9, reac: 0.3, erro: 0.85, ataca2: 0.25, cabeca: 0.9, espirra: 0.16 },
   };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, k) => a + (b - a) * k;
@@ -256,24 +256,30 @@
     // o Shark Attack é sempre de pé: de voleio (bola de lado ou na frente) ou de bicicleta (bola atrás do corpo)
     const estilo = golpe === "shark" ? ((j.z - b.z) * s < -0.12 ? "bicicleta" : "voleio") : undefined;
     j.armado = null; m.rally++;
-    m.ev.push({ tipo: "toque", id: j.id, golpe, estilo, intencao, pulo, espirrou, h: Math.round(b.y * 100) / 100, lado: Math.sign(b.x - j.x) * sinal(j.team) || 1, toques: b.toques, time: j.team });
+    m.ev.push({ tipo: "toque", t: m.t, id: j.id, golpe, estilo, intencao, pulo, espirrou, h: Math.round(b.y * 100) / 100, lado: Math.sign(b.x - j.x) * sinal(j.team) || 1, toques: b.toques, time: j.team });
   }
-  // saque: chute de trás da linha de fundo, por cima da rede, para o fundo do outro lado
-  function sacar(m, j, mira, rnd = Math.random) {
-    if (m.fase !== "saque" || j.id !== m.sacador || m.t < m.ate) return;
-    const b = m.bola, Gp = GOLPES.saque;
+  // saque: chute de trás da linha de fundo, por cima da rede, para o fundo do outro lado. Primeiro o balanço da perna
+  // (PREPARO_SAQUE: o navegador já começa a animação, evento "preSaque"), depois a bola sai.
+  const PREPARO_SAQUE = 300;
+  function sacar(m, j, mira) {
+    if (m.fase !== "saque" || j.id !== m.sacador || m.t < m.ate || m.sacando) return;
+    m.sacando = { mira: mira || j.mira, ate: m.t + PREPARO_SAQUE }; j.armado = null;
+    m.ev.push({ tipo: "preSaque", t: m.t, id: j.id, falta: PREPARO_SAQUE / 1000 });
+  }
+  function chutarSaque(m, j, mira, rnd) {
+    const b = m.bola, Gp = GOLPES.saque; m.sacando = null;
     const alvo = alvoAtaque(m, j, "saque", mira), sig = 0.35 * (j.bot ? DIF_ATUAL.erro : 1);
     alvo.x += gauss(rnd) * sig; alvo.z += gauss(rnd) * sig * 0.8;
     const v = lancar({ x: b.x, y: b.y, z: b.z }, { x: alvo.x, y: Q.R, z: alvo.z }, lerp(Gp.T[0], Gp.T[1], 0.5 + rnd() * 0.3), Gp.efeito, true);
     Object.assign(b, { vx: v.vx, vy: v.vy, vz: v.vz, efeito: v.efeito, viva: true, ultimo: j.team, por: j.id, time: j.team, toques: 3, tToque: m.t, golpe: "saque" });
     m.fase = "jogo"; m.rally = 0; j.armado = null;
-    m.ev.push({ tipo: "toque", id: j.id, golpe: "saque", intencao: "ataque", pulo: false, h: b.y, lado: 1, toques: 0, time: j.team });
+    m.ev.push({ tipo: "toque", t: m.t, id: j.id, golpe: "saque", intencao: "ataque", pulo: false, h: b.y, lado: 1, toques: 0, time: j.team });
   }
   // apertou um botão: arma o toque (ou saca, se é a vez dele)
   function armar(m, j, intencao, agora, mira, rnd) {
     if (intencao !== "passe" && intencao !== "ataque") return;
     if (m.fase === "saque" && j.id === m.sacador) { // cedo demais: guarda e saca assim que puder
-      if (m.t >= m.ate) return sacar(m, j, mira || j.mira, rnd);
+      if (m.t >= m.ate) return sacar(m, j, mira || j.mira);
       j.armado = { intencao, t0: agora, ate: m.ate + 1500 }; return;
     }
     if (m.fase !== "jogo") return;
@@ -292,7 +298,7 @@
     // ponto corrido: quem fez saca. Quando o saque volta para o time, troca quem saca.
     if (m.sacaTime !== time) { m.sacaTime = time; m.ordemSaque[time]++; }
     m.bola.viva = false;
-    m.fase = "ponto"; m.ate = agora + 1900;
+    m.fase = "ponto"; m.ate = agora + 2300; // tempo para comemorar (ou reclamar)
   }
   // a bola caiu na areia: dentro, perde o time do lado em que caiu; fora, perde quem tocou por último
   function caiu(m, agora) {
@@ -313,10 +319,15 @@
     robos(m, dt, agora, rnd);
     if (m.fase === "ponto") {
       if (m.bola.y > Q.R) passoBola(m.bola, dt); // a bola termina de cair
-      if (agora >= m.ate) { m.sacador = escolherSacador(m); posicionar(m); m.fase = "saque"; m.ate = agora + 700; }
+      if (agora >= m.ate) { m.sacador = escolherSacador(m); posicionar(m); m.fase = "saque"; m.ate = agora + 700; m.sacando = null; }
       return;
     }
-    if (m.fase === "saque") { bolaNoPe(m); const sac = m.jogadores.find((j) => j.id === m.sacador); if (sac && sac.armado && agora >= m.ate) sacar(m, sac, sac.mira, rnd); return; }
+    if (m.fase === "saque") {
+      bolaNoPe(m); const sac = m.jogadores.find((j) => j.id === m.sacador);
+      if (sac && m.sacando && agora >= m.sacando.ate) chutarSaque(m, sac, m.sacando.mira, rnd);
+      else if (sac && sac.armado && agora >= m.ate) sacar(m, sac, sac.mira);
+      return;
+    }
     if (m.fase !== "jogo") return;
     const b = m.bola, n = Math.max(1, Math.ceil(dt / (1 / 120)));
     for (let k = 0; k < n && m.fase === "jogo"; k++) {
@@ -332,6 +343,26 @@
         break;
       }
     }
+  }
+
+  // Quando (e com que golpe) o jogador j, com o toque armado, vai pegar na bola: simula a bola (e o jogador andando com
+  // a velocidade de agora) com as mesmas contas do toque. Serve para a animação começar ANTES do toque, e o pé chegar
+  // na bola junto com ela. null: não pega nos próximos `max` segundos.
+  function previsaoToque(bola, j, intencao, max = 0.8, folga = 0) {
+    const c = { ...bola }, s = sinal(j.team), p = { team: j.team, x: j.x, z: j.z }, ataque = intencao === "ataque";
+    for (let t = 0; t <= max; t += 1 / 60) {
+      if (t > 0) { const ev = passoBola(c, 1 / 60); if (ev === "areia" || ev === "antena") return null; p.x = j.x + (j.vx || 0) * t; p.z = j.z + (j.vz || 0) * t; }
+      if (ladoDe(c.z) !== j.team || c.y < 0.12 || c.y > ALTURA_MAX + folga * 0.5 || (c.vy > 1 && c.y > 1.2)) continue;
+      if (Math.hypot(c.x - p.x, c.z - p.z) > ALCANCE + folga) continue;
+      if (c.y > 1.9 && c.vy <= 0 && !(ataque && Math.abs(p.z) < 2.6)) { // espera descer (a mesma conta do toque)
+        const fx = c.x + c.vx * 0.08, fz = c.z + c.vz * 0.08, fy = c.y + c.vy * 0.08;
+        if (fy > 1.0 && Math.hypot(fx - p.x, fz - p.z) <= ALCANCE) continue;
+      }
+      const golpe = golpeDe(p, c, ataque ? "ataque" : "passe");
+      return { t, golpe, h: c.y, lado: Math.sign(c.x - p.x) * s || 1, pulo: c.y > ALTURA_PULO || golpe === "shark" || golpe === "bicicleta",
+        estilo: golpe === "shark" ? ((p.z - c.z) * s < -0.12 ? "bicicleta" : "voleio") : undefined };
+    }
+    return null;
   }
 
   // ======================================================================
@@ -366,7 +397,7 @@
       if (!j.bot) continue;
       const s = sinal(j.team), parceiro = m.jogadores.find((o) => o !== j && o.team === j.team);
       if (m.fase === "saque") {
-        if (j.id === m.sacador && agora >= m.ate + 900) { j.mira = { x: rnd() * 2 - 1, z: rnd() * 2 - 1 }; sacar(m, j, j.mira, rnd); }
+        if (j.id === m.sacador && agora >= m.ate + 900 && !m.sacando) { j.mira = { x: rnd() * 2 - 1, z: rnd() * 2 - 1 }; sacar(m, j, j.mira); }
         j.vx *= 0.8; j.vz *= 0.8; continue;
       }
       if (m.fase !== "jogo") { j.vx *= 0.8; j.vz *= 0.8; continue; }
@@ -426,7 +457,7 @@
   }
 
   const api = { Q, G, GOLPES, DIF, VEL, ALCANCE, ALTURA_PULO, ARMADO_MAX, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, lancar, voar, queda,
-    golpeDe, alcanca, alvoAtaque, alvoPasse, tocar, sacar, armar, passo, pontoDeToque, pacote, estado, posicionar };
+    golpeDe, alcanca, previsaoToque, alvoAtaque, alvoPasse, tocar, sacar, armar, passo, pontoDeToque, pacote, estado, posicionar };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Futevolei = api;
 })(typeof window !== "undefined" ? window : globalThis);
