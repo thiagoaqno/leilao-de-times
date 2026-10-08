@@ -6,7 +6,8 @@ const ic = (nome) => Icones.ic(nome);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dexDe = (modo) => ({ galeramon: Galeramon, pokemon: PokeDex, naruto: NarutoDex })[modo] || Galeramon;
 const salvo = store.get("ginasio:config") || {};
-const configLocal = { modo: ["galeramon", "pokemon", "naruto"].includes(salvo.modo) ? salvo.modo : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false };
+const modoDoEndereco = new URLSearchParams(location.search).get("modo"); // a casa do Naruto, na Vila, abre direto no modo Naruto
+const configLocal = { modo: ["galeramon", "pokemon", "naruto"].includes(modoDoEndereco) ? modoDoEndereco : ["galeramon", "pokemon", "naruto"].includes(salvo.modo) ? salvo.modo : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false };
 const times = { galeramon: Galeramon.cleanTeam(store.get("galeramon_time")), pokemon: PokeDex.cleanTeam(store.get("pokemon_time")), naruto: NarutoDex.cleanTeam(store.get("naruto_time")) };
 let S = null, ME = null, salaVisivel = true, timeInicial = false, modoAnterior = null, ocupado = false;
 const modoAtual = () => S?.config.modo || configLocal.modo;

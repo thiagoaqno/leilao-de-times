@@ -1,18 +1,13 @@
-# Naruto: os cinco lendários redesenhados
+# A Casa do Naruto na Vila
 
-Os sprites em 8 bits do Primeiro Hokage, do Quarto Hokage, do Madara, do Obito e do Shisui (#102) ficaram baixinhos e
-quadrados. Desenhei de novo, com o corpo no estilo dos sprites dos jogos de DS.
+Uma casinha nova na Praça da Galera, ao lado da fonte: o **Ichiraku Ramen**, a casa do Naruto. Entrar nela abre o Ginásio já no
+modo Naruto Shippuden (os 30 ninjas, em tempo real, contra o robô ou os amigos).
 
-- **Proporção de luta:** cabeça menor, tronco mais fino e pernas compridas (antes a cabeça e o tronco eram largos e as pernas
-  curtas). Todos na guarda dos outros ninjas: perna de trás esticada, a da frente dobrada no joelho e os punhos
-  levantados.
-- **Mais detalhe:** rosto com sobrancelha, olho e nariz; cabelo com brilho; braços de verdade, com cotovelo, punho e
-  protetor; pescoço; luz nas bordas de cima e sombra nas de baixo.
-- **Cada um:** Hashirama com o cabelo liso até a cintura e a armadura vermelha com ombreiras; Minato com as mechas, a bandana, o
-  colete verde e o casaco branco com as chamas na barra; Madara com o cabelo enorme, o leque de guerra e a gola alta;
-  Obito com o lado direito do rosto branco e cicatrizado e a capa cinza de gola alta; Shisui com a bandana de Konoha, o
-  Sharingan e o cachecol.
-- É só `ferramentas/sprites-lendarios.py` e os PNGs de `public/galeramon/naruto-sprites/` (`<slug>.png` e `<slug>-idle.png`);
-  nada mais mudou. Foto: `planos/imagens/naruto-lendarios.png`.
+- **No mapa:** `id: "naruto"` na lista `GAMES` de `public/index.html` (e no `vila.js`, que repete a lista), em
+  `x: 12, y: 19`, entre o Quiosque do Ludo e a fonte. Telhado de telhas marrons com o redemoinho laranja do Naruto e uma lanterna
+  vermelha; a placa tem o narutomaki. O banco que ficava nesse lugar saiu.
+- **O link:** `/ginasio/?modo=naruto`. O `sala.js` do Ginásio agora lê o `?modo=` do endereço (galeramon, pokemon ou naruto) e
+  ele ganha do último modo guardado no navegador. Sem o parâmetro, tudo como antes.
+- `CLAUDE.md` atualizado. Foto em `planos/imagens/naruto-casinha.png`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

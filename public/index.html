@@ -333,6 +333,9 @@ const GAMES = [
   // na Praça, entre o chafariz e o Quiosque do Botão: a Sede da Carreira, com o telhado de clube e o escudo pintado
   { id: "carreira", url: "/carreira/", icon: "🏆", sign: "SEDE", name: "Sede da Carreira", desc: "Carreira de treinador: sozinho ou com a turma no mesmo mundo, assuma um clube do Brasil ou da Europa, escale, mexa na tática e jogue as temporadas. Tudo fica salvo.", meta: "Carreira de Treinador · solo ou em grupo",
     x: 23, y: 18, w: 6, h: 4, doors: [25, 26], bairro: "praca", roof: "#1f5a3a", roof2: "#174a2f", wall: "#f3ead6", wall2: "#dccfae", sede: true },
+  // a casinha do Naruto, do outro lado da fonte: o Ichiraku Ramen, que leva ao Ginásio no modo Naruto Shippuden
+  { id: "naruto", url: "/ginasio/?modo=naruto", icon: "🍥", sign: "ICHIRAKU", name: "Casa do Naruto", desc: "Ichiraku Ramen, a casa do Naruto: 30 ninjas de Naruto Shippuden em batalhas de tempo real, contra o robô ou os amigos.", meta: "Naruto Shippuden · Ginásio · 1x1 ou 2x2",
+    x: 12, y: 19, w: 5, h: 3, doors: [14], bairro: "praca", roof: "#8a4a22", roof2: "#6a3515", wall: "#f3e8d0", wall2: "#dccaa0", naruto: true },
   // na areia da praia de Santos: a Arena de Futevôlei, com o telhado de areia, a rede e a bola nas cores do futevôlei
   { id: "futevolei", url: "/futevolei/", icon: "🏐", sign: "FUTEVÔLEI", name: "Arena de Futevôlei", desc: "Futevôlei 3D na areia da praia ou na arena coberta. Só dois botões, passar e atacar: o golpe sai sozinho (cabeceio, peito, letra, voleio, bicicleta e o Shark Attack).", meta: "Futevôlei da Galera · 2x2 ou 1x1",
     x: 106, y: 133, w: 7, h: 4, doors: [109], bairro: "praia", roof: "#e6cf9f", roof2: "#c9ac72", wall: "#f6f1e4", wall2: "#d9cfb6", futevolei: true },
@@ -352,7 +355,7 @@ Lideres.TREINADORES.forEach((l) => GAMES.push({ id: "lider-" + l.id, url: "/gina
 
 const FOUNTAIN = { x: 18, y: 19, w: 4, h: 3 };
 const LAMPS = [[2, 9], [18, 9], [21, 9], [37, 9], [11, 17], [28, 17], [11, 24], [28, 24], [2, 34], [21, 34], [37, 34], [18, 41], [21, 41]];
-const BENCHES = [[14, 18], [14, 23], [25, 23]]; // o banco de [25, 18] deu lugar à Sede da Carreira
+const BENCHES = [[14, 23], [25, 23]]; // o banco de [25, 18] deu lugar à Sede da Carreira
 const TREES = [[3, 25], [8, 26], [13, 25], [16, 26], [23, 25], [27, 26], [33, 25], [36, 26], [11, 34], [18, 35], [18, 37], [11, 41], [16, 41],
   [5, 41], [10, 41], [14, 41], [25, 41], [30, 41], [35, 41], [10, 9], [28, 9]];
 // leva a vila para o meio do mapa grande
@@ -639,6 +642,16 @@ function drawBuilding(c, g) {
     c.fillStyle = "#fff"; c.beginPath(); c.arc(bx, by, 8, 0, Math.PI); c.fill();
     px(c, "#243c3c", bx - 8, by - 1, 16, 2);
     px(c, "#243c3c", bx - 3, by - 3, 6, 6); px(c, "#fff", bx - 1, by - 1, 2, 2);
+  } else if (g.naruto) {
+    px(c, g.roof, rx, Y, rw, roofH);
+    for (let yy = Y + 4; yy < wallY - 3; yy += 5) px(c, g.roof2, rx, yy, rw, 1);
+    px(c, "#a85f30", rx, Y, rw, 2);
+    const bx = Math.round(rx + rw * .86), by = Y + Math.round(roofH / 2) - 1; // o redemoinho (Uzumaki) laranja
+    c.fillStyle = "#e8761e"; c.beginPath(); c.arc(bx, by, 7, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = "#fff3d8"; c.lineWidth = 1.4; c.beginPath();
+    for (let a = 0; a < 11; a += 0.25) { const r = 0.6 + a * 0.52; c.lineTo(bx + Math.cos(a) * r, by + Math.sin(a) * r); }
+    c.stroke();
+    px(c, "#d03a2a", rx + 2, Y + 3, 2, 5); // a lanterna vermelha
   } else if (g.uno) {
     const cols = [["#e0352b", "#a82218"], ["#f4c20d", "#c49a08"], ["#1f9d55", "#157040"], ["#2f6fd6", "#1f4ea0"]];
     const band = rw / 4;
