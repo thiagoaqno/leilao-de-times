@@ -20,7 +20,8 @@ function desenharTela(id) {
 }
 const posicaoDe = (id) => E.tabela.findIndex((l) => l.id === id) + 1;
 const placarTxt = (p) => (p ? `${p[0]} × ${p[1]}` : "×");
-const resultadoMeu = (j) => { if (!j.placar) return ""; const [a, b] = j.casa === E.clube ? j.placar : [j.placar[1], j.placar[0]]; return a > b ? "V" : a === b ? "E" : "D"; };
+const resultadoMeu = (j) => { if (!j.placar) return ""; const decisivo = j.penaltis || j.placar, [a, b] = j.casa === E.clube ? decisivo : [decisivo[1], decisivo[0]]; return a > b ? "V" : a === b ? "E" : "D"; };
+const linhaPenaltis = (p) => p ? `<small class="placar-penaltis">Pên. ${p[0]} × ${p[1]}</small>` : "";
 const humor = (m) => (m >= 80 ? "Embalado" : m >= 65 ? "Confiante" : m >= 50 ? "Normal" : m >= 35 ? "Cabisbaixo" : "Em crise");
 
 function telaSede() {
@@ -40,7 +41,7 @@ function telaSede() {
   feedNaSede();
   // o último jogo
   const u = E.ultimo;
-  $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div>${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}</span><div>${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>
+  $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div>${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}${linhaPenaltis(u.penaltis)}</span><div>${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>
     <ul class="gols">${u.eventos.filter((e) => e.tipo === "gol").map((e) => `<li class="${(e.lado === 0 ? u.casa : u.fora) === E.clube ? "nosso" : ""}">${ic("bola")} ${h(nomeJogador(e.jogador))} <span>${e.min}'${e.acr ? "+" + e.acr : ""}</span></li>`).join("") || "<li class='suave'>Sem gols.</li>"}</ul>`
     : `<h3>Último jogo</h3><p class="suave">A estreia é na rodada 1.</p>`;
   // a tabela resumida: o seu lugar e os vizinhos
@@ -187,7 +188,7 @@ function telaCalendario() {
   $("cLista").innerHTML = `<ol class="linha-tempo">${E.meus.map((j) => {
     const r = resultadoMeu(j), adv = j.casa === E.clube ? j.fora : j.casa, janela = Mercado.janelaAberta(j.rodada);
     const atual = E.proximoJogo && j.id === E.proximoJogo.id;
-    return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h(j.fase)} · S${j.semana}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === E.clube ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}</span><span class="res ${r}">${r}</span></li>`;
+    return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h(j.fase)} · S${j.semana}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === E.clube ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}${linhaPenaltis(j.penaltis)}</span><span class="res ${r}">${r}</span></li>`;
   }).join("")}</ol>`;
   $("cLista").querySelector(".proxima")?.scrollIntoView({ block: "center" });
 }

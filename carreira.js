@@ -219,14 +219,20 @@ function simularJogoGrupo(save, j, { modo = 1, decisoes = {} } = {}) {
 }
 // o jogo acabou: fecha para cada humano dele (o que é de todos, uma vez só)
 function fecharJogoGrupo(save, j, r, modo, decisoes) {
-  let primeiro = true;
+  // O resultado humano entra no chaveamento antes do pós-jogo e das notícias de cada técnico.
+  // Assim um empate eliminatório já chega aqui com o vencedor e o placar dos pênaltis corretos.
+  save.resultadosFixos[j.id] = { placar: [...r.placar] };
+  recalcularMundo(save);
+  let primeiro = true, penaltis = null;
   for (const c of [j.casa, j.fora].filter((x) => save.humanos[x])) {
     const v = vistaDe(save, c);
     v.partida = partidaDoJogo(v, j, modo, decisoes);
     fecharJogoMundo(v, r, { comum: primeiro, cumprir: false, recalcular: false });
+    penaltis ||= v.ultimo.penaltis || null;
     guardarVista(save, v);
     primeiro = false;
   }
+  return penaltis;
 }
 // o jogo sem ninguém decidindo (o turbo): as decisões automáticas, na hora
 function jogarNaHora(save, j) {
@@ -516,8 +522,14 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   save.efeitos = (save.efeitos || []).filter((e) => e.ate >= save.rodada);
   for (const [pid, ind] of Object.entries(save.indicacoes)) if (ind.ate < save.rodada) delete save.indicacoes[pid];
   const comp = save.competicoes[p.competicao], jogoDaCompeticao = comp.jogos.find((j) => j.id === p.jogoId), da = comp.id === "mundial" ? "do" : "da";
-  Feed.postar(save, { tipo: nos > eles ? "vitoria" : nos === eles ? "empate" : "derrota", perfil: save.clube, humor: nos > eles ? "bom" : nos < eles ? "ruim" : "neutro", arte: { cena: nos > eles ? "vitoria" : nos === eles ? "empate" : "derrota", casa: p.casa, fora: p.fora, placar: r.placar }, texto: `${comp.nome} · ${clubeDe(save, p.casa).nome} ${r.placar[0]} × ${r.placar[1]} ${clubeDe(save, p.fora).nome}.` });
-  if (p.fase === "final") Feed.postar(save, { tipo: comp.campeao === save.clube ? "campeao" : "eliminado", perfil: "galeranews", galeranews: true, humor: comp.campeao === save.clube ? "bom" : "ruim", arte: { cena: "trofeu", clube: comp.campeao }, texto: comp.campeao === save.clube ? `CAMPEÃO! O ${clube.nome} conquista ${comp.id === "mundial" ? "o" : "a"} ${comp.nome}.` : `O ${clube.nome} fica com o vice ${da} ${comp.nome}.` });
+  const penaltis = jogoDaCompeticao && Array.isArray(jogoDaCompeticao.penaltis) ? [...jogoDaCompeticao.penaltis] : null;
+  if (penaltis) { save.resultadosFixos[p.jogoId].penaltis = [...penaltis]; save.ultimo.penaltis = [...penaltis]; }
+  const [nosFinais, elesFinais] = penaltis ? (emCasa ? penaltis : [penaltis[1], penaltis[0]]) : [nos, eles];
+  const resultadoFinal = nosFinais > elesFinais ? "V" : nosFinais < elesFinais ? "D" : "E";
+  const tipoFinal = resultadoFinal === "V" ? "vitoria" : resultadoFinal === "D" ? "derrota" : "empate";
+  const sufixoPenaltis = penaltis ? ` Pênaltis: ${penaltis[0]} × ${penaltis[1]}.` : "";
+  Feed.postar(save, { tipo: tipoFinal, perfil: save.clube, humor: resultadoFinal === "V" ? "bom" : resultadoFinal === "D" ? "ruim" : "neutro", arte: { cena: tipoFinal, casa: p.casa, fora: p.fora, placar: r.placar }, texto: `${comp.nome} · ${clubeDe(save, p.casa).nome} ${r.placar[0]} × ${r.placar[1]} ${clubeDe(save, p.fora).nome}.${sufixoPenaltis}` });
+  if (p.fase === "final") Feed.postar(save, { tipo: comp.campeao === save.clube ? "campeao" : "eliminado", perfil: "galeranews", galeranews: true, humor: comp.campeao === save.clube ? "bom" : "ruim", arte: { cena: "trofeu", clube: comp.campeao }, texto: comp.campeao === save.clube ? `CAMPEÃO${penaltis ? " NOS PÊNALTIS" : ""}! O ${clube.nome} conquista ${comp.id === "mundial" ? "o" : "a"} ${comp.nome}${penaltis ? ` após ${nosFinais} × ${elesFinais} no desempate.` : "."}` : `O ${clube.nome} fica com o vice ${da} ${comp.nome}${penaltis ? ` após ${nosFinais} × ${elesFinais} nos pênaltis.` : "."}` });
   else if (p.mataMata) {
     const ainda = comp.jogos.some((j) => !save.jogosJogados.includes(j.id) && (j.casa === save.clube || j.fora === save.clube));
     if (!ainda) Feed.postar(save, { tipo: "eliminado", perfil: "galeranews", galeranews: true, humor: "ruim", arte: { cena: "derrota", clube: save.clube }, texto: `O ${clube.nome} foi eliminado ${da} ${comp.nome}.` });
@@ -532,7 +544,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   const novos = save.caixaEntrada.filter((e) => !entradaAntes.has(e.id));
   Feed.entreRodadas(save, { novos, transferencias: save.transferencias.slice(0, save.transferencias.length - transfAntes), ajudas });
   const f = save.financas[0] && save.financas[0].rodada === save.rodada - 1 ? save.financas[0].itens : [];
-  save.posJogo = { rodada: save.rodada - 1, casa: p.casa, fora: p.fora, placar: r.placar, resultado: nos > eles ? "V" : nos === eles ? "E" : "D", moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: [], avisos: [] };
+  save.posJogo = { rodada: save.rodada - 1, casa: p.casa, fora: p.fora, placar: r.placar, ...(penaltis && { penaltis }), resultado: resultadoFinal, moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: [], avisos: [] };
   if (recalcular) registrarTemporada(save);
 }
 // uma rodada a menos para quem está machucado ou suspenso
@@ -692,7 +704,11 @@ function estadoMundo(save) {
     return [id, { ...c, fase: futuro ? futuro.fase : "encerrada", grupos, jogos, resultados, tabela: c.tipo === "liga" ? Temporada.tabela(ids, resultados) : undefined, campeao: futuro ? null : c.campeao, vice: futuro ? null : c.vice }];
   }));
   const liga = ligaDoClube(save.clube), tabela = competicoes[liga].tabela;
-  const meus = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, save.clube).map((j) => ({ ...j, placar: save.jogosJogados.includes(j.id) ? j.placar : null }));
+  // Liga e grupos têm tabela definida desde o começo. No mata-mata, só aparece o que já foi jogado ou o próximo jogo:
+  // mandar as fases posteriores entregava antecipadamente classificação, eliminação e adversários.
+  const meus = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, save.clube)
+    .filter((j) => !j.mataMata || save.jogosJogados.includes(j.id) || (proximo && j.id === proximo.id))
+    .map((j) => ({ ...j, placar: save.jogosJogados.includes(j.id) ? j.placar : null }));
   let partida = null;
   if (save.partida) { const r = simularMinha(save); partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times }; }
   const elenco = elencoDe(save, save.clube), artilharia = Object.entries(save.gols).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, gols }));

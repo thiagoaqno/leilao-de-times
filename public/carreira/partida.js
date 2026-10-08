@@ -11,7 +11,7 @@ const NOME_OPCAO = {
 };
 const ICONE_LANCE = { gol: "bola", defesa: "luva", perdeu: "alvo", penalti: "alvo", amarelo: "cartas", vermelho: "cartas", lesao: "alerta", sub: "troca", posicao: "troca", formacao: "campo", lance: "chuteira", contra_ataque: "raio", intervalo: "apito", fim: "apito" };
 const TEMPO_LANCE = 20000; // ms para decidir um lance; sem resposta, vai a opção de maior chance
-const J = { rodada: null, casa: null, fora: null, eventos: [], i: 0, relogio: 0, vel: 1, parado: null, completo: false, ultimoQuadro: 0, decidindo: false, timerLance: null, pulando: false };
+const J = { rodada: null, casa: null, fora: null, eventos: [], i: 0, relogio: 0, vel: 1, parado: null, completo: false, penaltis: null, ultimoQuadro: 0, decidindo: false, timerLance: null, pulando: false };
 const calmo = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const tempoDe = (e) => e.min + (e.acr ? e.acr / 100 : 0);
@@ -50,7 +50,7 @@ function abrirPartida(rodada) {
   const src = meuGrupo ? { ...meuGrupo, rodada: meuGrupo.id } : E.partida || (E.ultimo && (rodada == null || E.ultimo.rodada === rodada) ? E.ultimo : null);
   if (!src) return mostrarTela("sede");
   const nova = J.rodada !== src.rodada || J.casa !== src.casa;
-  Object.assign(J, { rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, decidindo: false, grupo: !!meuGrupo });
+  Object.assign(J, { rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, penaltis: src.penaltis || null, decidindo: false, grupo: !!meuGrupo });
   document.querySelector(".faixa-jogo .controles").classList.remove("hidden"); atualizarControlesVelocidade();
   if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
@@ -71,7 +71,7 @@ function atualizarPlacar() {
   const txt = `${g[0]} × ${g[1]}`;
   if ($("pGols").textContent !== txt) $("pGols").textContent = txt;
   const r = J.relogio;
-  $("pRelogio").textContent = r >= 90 ? (J.completo && J.i >= J.eventos.length ? "Fim" : "90+'") : r > 45 && r < 46 ? "45+'" : `${Math.max(0, Math.floor(r))}'`;
+  $("pRelogio").textContent = r >= 90 ? (J.completo && J.i >= J.eventos.length ? (J.penaltis ? `Pênaltis ${J.penaltis[0]} × ${J.penaltis[1]}` : "Fim") : "90+'") : r > 45 && r < 46 ? "45+'" : `${Math.max(0, Math.floor(r))}'`;
 }
 
 function narrar(e) {

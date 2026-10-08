@@ -29,8 +29,63 @@ test("empate eliminatório termina nos pênaltis", () => {
   const inicial = Temporada.simularMundo({ bases, indice, semente: "penaltis" });
   const final = inicial.competicoes.libertadores.jogos.find((j) => j.fase === "final");
   const alterado = Temporada.simularMundo({ bases, indice, semente: "penaltis", resultadosFixos: { [final.id]: { placar: [1, 1] } } });
-  assert.ok(alterado.competicoes.libertadores.jogos.find((j) => j.id === final.id).penaltis);
-  assert.ok(alterado.competicoes.libertadores.campeao);
+  const decidido = alterado.competicoes.libertadores.jogos.find((j) => j.id === final.id), penaltis = decidido.penaltis;
+  assert.ok(penaltis);
+  const repetido = Temporada.simularMundo({ bases, indice, semente: "penaltis", resultadosFixos: { [final.id]: { placar: [1, 1], penaltis } } });
+  assert.deepStrictEqual(repetido.competicoes.libertadores.jogos.find((j) => j.id === final.id).penaltis, penaltis, "preserva o desempate salvo");
+  assert.strictEqual(repetido.competicoes.libertadores.campeao, penaltis[0] > penaltis[1] ? final.casa : final.fora);
+});
+
+test("o calendário não revela fases futuras do mata-mata", () => {
+  process.env.DB_PATH = process.env.DB_PATH || ":memory:";
+  const { novaCarreira, estado } = require("../carreira.js").paraTestes;
+  const save = novaCarreira("Sem spoiler", "flamengo", "");
+  save.semente = "calendario"; save.calendarioMundo = null;
+  const e = estado(save), futurosBrutos = save.calendarioMundo.filter((j) => j.mataMata && (j.casa === save.clube || j.fora === save.clube));
+  assert.ok(futurosBrutos.some((j) => j.fase === "final"), "a simulação interna tem o caminho futuro para tentar vazar");
+  assert.deepStrictEqual(e.meus.filter((j) => j.mataMata), [], "a visão pública esconde o chaveamento que ainda não chegou");
+});
+
+test("a final empatada salva e anuncia o vencedor dos pênaltis", () => {
+  process.env.DB_PATH = process.env.DB_PATH || ":memory:";
+  const { novaCarreira, estado, simularMinha, fecharRodada } = require("../carreira.js").paraTestes;
+  const save = novaCarreira("Final visível", "flamengo", "");
+  save.semente = "calendario"; save.calendarioMundo = null; estado(save);
+  const final = save.competicoes.libertadores.jogos.find((j) => j.fase === "final");
+  assert.ok([final.casa, final.fora].includes(save.clube), "a semente leva o clube à final");
+  let r = null;
+  for (let i = 0; i < 200; i++) {
+    save.partida = { rodada: save.rodada, jogoId: final.id, competicao: "libertadores", fase: "final", mataMata: true,
+      casa: final.casa, fora: final.fora, modo: 1, semente: `empate-final-${i}`, decisoes: {} };
+    r = simularMinha(save);
+    if (r.placar[0] === r.placar[1]) break;
+  }
+  assert.strictEqual(r.placar[0], r.placar[1], "encontrou uma final empatada");
+  fecharRodada(save, r);
+  const penaltis = save.ultimo.penaltis, venceuCasa = penaltis[0] > penaltis[1], campeao = venceuCasa ? final.casa : final.fora;
+  assert.deepStrictEqual(save.posJogo.penaltis, penaltis);
+  assert.deepStrictEqual(save.resultadosFixos[final.id].penaltis, penaltis);
+  assert.strictEqual(save.competicoes.libertadores.campeao, campeao);
+  assert.strictEqual(save.posJogo.resultado, campeao === save.clube ? "V" : "D");
+  assert.ok(save.feed.some((p) => p.texto.includes(`Pênaltis: ${penaltis[0]} × ${penaltis[1]}.`)), "a notícia mostra o desempate");
+  assert.ok(save.feed.some((p) => /CAMPEÃO NOS PÊNALTIS|vice.*nos pênaltis/.test(p.texto)), "a notícia do título explica como a final foi decidida");
+});
+
+test("a carreira em grupo atualiza o chaveamento antes de anunciar a final", () => {
+  process.env.DB_PATH = process.env.DB_PATH || ":memory:";
+  const G = require("../carreira.js").grupo;
+  const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "A" }], { temporadas: 1 });
+  save.semente = "calendario"; save.calendarioMundo = null; G.fecharRodadaGrupo(save);
+  const final = save.competicoes.libertadores.jogos.find((j) => j.fase === "final");
+  assert.ok([final.casa, final.fora].includes("flamengo"));
+  const simulado = G.simularJogoGrupo(save, final, { modo: 1, decisoes: {} });
+  const r = { ...simulado, placar: [1, 1], completo: true, eventos: simulado.eventos.map((e) => e.tipo === "fim" ? { ...e, placar: [1, 1] } : e) };
+  const penaltisDoGrupo = G.fecharJogoGrupo(save, final, r, 1, {});
+  const vista = G.vistaDe(save, "flamengo"), penaltis = vista.ultimo.penaltis;
+  assert.ok(penaltis, "o desempate foi calculado antes de fechar a visão do técnico");
+  assert.deepStrictEqual(penaltisDoGrupo, penaltis, "a rodada ao vivo também recebe o desempate");
+  assert.deepStrictEqual(vista.posJogo.penaltis, penaltis);
+  assert.ok(vista.feed.some((p) => p.texto.includes(`Pênaltis: ${penaltis[0]} × ${penaltis[1]}.`)));
 });
 
 test("no calendário mundial, suspensão e lesão contam os jogos e o jogador volta", () => {

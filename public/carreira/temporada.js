@@ -47,7 +47,8 @@
       const cache = `${semente}:${id}`;
       let sim = fixo || RESULTADOS_CPU.get(cache);
       if (!sim) { sim = Motor.simularPartida({ casa: clubes[casa], fora: clubes[fora], semente: cache }); RESULTADOS_CPU.set(cache, { placar: [...sim.placar] }); }
-      return { id, competicao, fase, rodada, semana, periodo, casa, fora, placar: fixo ? [...fixo.placar] : [...sim.placar], mataMata, ...(fixo && { aoVivo: true }) };
+      return { id, competicao, fase, rodada, semana, periodo, casa, fora, placar: fixo ? [...fixo.placar] : [...sim.placar], mataMata,
+        ...(fixo && { aoVivo: true }), ...(fixo && Array.isArray(fixo.penaltis) && { penaltis: [...fixo.penaltis] }) };
     };
   }
   function gruposDaCopa(id, participantes, semente, jogar, semanas) {
@@ -59,6 +60,7 @@
   }
   function vencedorJogo(jogo, semente, clubes) {
     if (jogo.placar[0] !== jogo.placar[1]) return jogo.placar[0] > jogo.placar[1] ? jogo.casa : jogo.fora;
+    if (Array.isArray(jogo.penaltis) && jogo.penaltis[0] !== jogo.penaltis[1]) return jogo.penaltis[0] > jogo.penaltis[1] ? jogo.casa : jogo.fora;
     const r = Motor.sorteDe(`penaltis:${semente}:${jogo.id}`), fc = FORCA(clubes[jogo.casa]), ff = FORCA(clubes[jogo.fora]);
     const casa = r() < 0.5 + Math.max(-0.18, Math.min(0.18, (fc - ff) / 50)); jogo.penaltis = casa ? [5, 4] : [4, 5]; return casa ? jogo.casa : jogo.fora;
   }

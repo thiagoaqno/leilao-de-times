@@ -131,7 +131,7 @@ function atualizarRodadaGrupo(v) {
   if (!m) {
     // O servidor já fechou a rodada: conclui a tela pelo último jogo, mesmo se o último pulso do relógio não chegou.
     if (J.grupo && telaAtual === "partida" && E.ultimo && E.ultimo.casa === J.casa && E.ultimo.fora === J.fora) {
-      Object.assign(J, { eventos: E.ultimo.eventos, parado: null, completo: true, relogio: 96 });
+      Object.assign(J, { eventos: E.ultimo.eventos, penaltis: E.ultimo.penaltis || null, parado: null, completo: true, relogio: 96 });
     }
     return;
   }
