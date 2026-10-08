@@ -59,7 +59,7 @@ test("carreira em grupo: começa um mundo só, com o aporte no caixa de cada um,
   assert.strictEqual(eb2.clube, "liverpool");
   assert.strictEqual(ea.temporadasMax, 2);
   assert.deepStrictEqual(Object.keys(ea.competicoes).sort(), Object.keys(eb2.competicoes).sort());
-  assert.ok(ea.financas[0].itens.some(([n, v]) => n === "Aporte do investidor" && v === 250e6));
+  assert.ok(ea.financas.flatMap((f) => f.itens).some(([n, v]) => n === "Aporte do investidor" && v === 250e6));
   assert.ok(ea.caixaEntrada.some((e) => e.tipo === "aporte"));
   assert.ok(eb2.caixa > ea.caixa, "o Liverpool tem mais dinheiro que o Santos");
   // a escalação é de cada um

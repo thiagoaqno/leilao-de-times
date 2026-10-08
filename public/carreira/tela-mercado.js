@@ -18,7 +18,7 @@ $("mOlheiro").onclick = async () => {
 };
 function telaMercado() {
   $("mCaixa").innerHTML = `${ic("moeda")} ${dinheiro(E.caixa)}`;
-  $("mJanela").innerHTML = E.janela.aberta ? `${ic("maleta")} Janela aberta${E.rodada < 4 ? " até a rodada 4" : " até a rodada 21"}. Folha atual: ${dinheiro(E.folha)} por mês.`
+  $("mJanela").innerHTML = E.janela.aberta ? `${ic("maleta")} Janela aberta${(E.rodadaLiga ?? E.rodada) < 4 ? " até a rodada 4" : " até a rodada 21"}. Folha atual: ${dinheiro(E.folha)} por mês.`
     : `${ic("cadeado")} Janela fechada${E.janela.proxima != null ? `: abre na rodada ${E.janela.proxima + 1}` : " até a próxima temporada"}. Dá para olhar e pôr jogadores na lista de venda.`;
   $("mJanela").classList.toggle("fechada", !E.janela.aberta);
   for (const b of $("mModo").children) b.setAttribute("aria-pressed", String(b.dataset.modo === modoMercado));

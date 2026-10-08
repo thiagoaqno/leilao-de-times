@@ -30,7 +30,7 @@ test("orçamentos: cada clube começa com o seu caixa e a sua situação", () =>
   assert.ok(fla.caixaIA.palmeiras > fla.caixaIA.chapecoense, "a IA também tem caixas diferentes");
   // o endividado paga a parcela da dívida a cada rodada
   jogarRodada(cor);
-  assert.ok(cor.financas[0].itens.some(([n]) => n === "Parcela da dívida"));
+  assert.ok(cor.financas.find((f) => f.rodada === 0).itens.some(([n]) => n === "Parcela da dívida"));
 });
 
 test("mercado: sem lucro em revenda na hora; com valorização de verdade, a venda dá lucro", () => {
