@@ -1059,6 +1059,231 @@
       "ferramentas": [
         "Military Rations Pill"
       ]
+    },
+    "hashirama": {
+      "api": 1063,
+      "nome": "Hashirama Senju",
+      "aldeia": "Vila da Folha",
+      "afiliacoes": [
+        "Vila da Folha"
+      ],
+      "cla": "Senju",
+      "patente": "Kage",
+      "classificacao": [
+        "Sage"
+      ],
+      "jutsus": [
+        "Bringer-of-Darkness Technique",
+        "Chakra Transfer Technique",
+        "Contract Seal",
+        "Four Red Yang Formation",
+        "Hokage-Style Sixty-Year-Old Technique — Kakuan Entering Society with Bliss-Bringing Hands",
+        "Regeneration Ability",
+        "Sage Art Wood Release: True Several Thousand Hands",
+        "Sage Art: Gate of the Great God",
+        "Sage Mode",
+        "Summoning Technique",
+        "Summoning: Quintuple Rashōmon",
+        "Summoning: Rashōmon",
+        "Top Transformed Buddha",
+        "Wood Clone Technique",
+        "Wood Release Secret Technique: Nativity of a World of Trees",
+        "Wood Release: Advent of a World of Flowering Trees",
+        "Wood Release: Great Forest Technique",
+        "Wood Release: Hōbi Technique",
+        "Wood Release: Hotei Technique",
+        "Wood Release: Wood Dragon Technique",
+        "Wood Release: Wood Human Technique",
+        "Wood Release: Wood Locking Wall"
+      ],
+      "ferramentas": [
+        "First Hokage's Necklace",
+        "Sword"
+      ]
+    },
+    "minato": {
+      "api": 865,
+      "nome": "Minato Namikaze",
+      "aldeia": "Vila da Folha",
+      "afiliacoes": [
+        "Vila da Folha"
+      ],
+      "cla": "",
+      "patente": "Kage",
+      "classificacao": [
+        "Jinchūriki",
+        "Sage",
+        "Sensor Type"
+      ],
+      "jutsus": [
+        "Area Scanning Technique",
+        "Chakra Transfer Technique",
+        "Contract Seal",
+        "Dead Demon Consuming Seal",
+        "Eight Trigrams Sealing Style",
+        "Flying Thunder Formation Technique",
+        "Flying Thunder God Mutually Instantaneous Revolving Technique",
+        "Flying Thunder God Slash",
+        "Flying Thunder God Technique",
+        "Flying Thunder God — Second Step",
+        "Flying Thunder God: Guiding Thunder",
+        "Four Red Yang Formation",
+        "Four Symbols Seal",
+        "Memory Erasing Seal",
+        "Nine-Tails Chakra Mode",
+        "Parent and Child Rasengan",
+        "Rasengan",
+        "Sage Mode",
+        "Sensing Technique",
+        "Shadow Clone Technique",
+        "Spiralling Flash Super Round Dance Howl Style Three",
+        "Summoning Technique",
+        "Summoning: Food Cart Destroyer Technique",
+        "Supreme Ultimate Rasengan",
+        "Tailed Beast Ball",
+        "Tailed Beast Chakra Arms",
+        "Tailed Beast Transfer Technique"
+      ],
+      "ferramentas": [
+        "Flying Thunder God Kunai"
+      ]
+    },
+    "madara": {
+      "api": 1299,
+      "nome": "Madara Uchiha",
+      "aldeia": "Vila da Folha",
+      "afiliacoes": [
+        "Vila da Folha",
+        "Akatsuki"
+      ],
+      "cla": "Uchiha",
+      "patente": "",
+      "classificacao": [
+        "Jinchūriki",
+        "Missing-nin",
+        "Sensor Type",
+        "Sage"
+      ],
+      "jutsus": [
+        "Animal Path",
+        "Asura Path",
+        "Black Receiver",
+        "Blocking Technique Absorption Seal",
+        "Chibaku Tensei",
+        "Demonic Statue Chains",
+        "Deva Path",
+        "Evil Disturbance Waltz",
+        "Fire Release: Dragon Flame Release Song Technique",
+        "Fire Release: Great Fire Annihilation",
+        "Fire Release: Great Fire Destruction",
+        "Fire Release: Great Fireball Technique",
+        "Fire Release: Great Flame Flower",
+        "Fire Release: Hiding in Ash and Dust Technique",
+        "Forbidden Individual Curse Tag",
+        "Genjutsu: Sharingan",
+        "God: Nativity of a World of Trees",
+        "Gunbai Fanned Wind",
+        "Hiding in Surface Technique",
+        "Human Path",
+        "Infinite Tsukuyomi",
+        "Izanagi",
+        "Kamui",
+        "Limbo: Border Jail",
+        "Majestic Attire: Susanoo",
+        "Multiple Wood Release Clone Technique",
+        "Naraka Path",
+        "Outer Path",
+        "Preta Path",
+        "Regeneration Ability"
+      ],
+      "ferramentas": [
+        "Fūma Shuriken",
+        "Gunbai",
+        "Kama",
+        "Spear",
+        "Sword",
+        "Tantō"
+      ]
+    },
+    "obito": {
+      "api": 1303,
+      "nome": "Obito Uchiha",
+      "aldeia": "Vila da Folha",
+      "afiliacoes": [
+        "Vila da Folha",
+        "Akatsuki",
+        "Vila da Névoa"
+      ],
+      "cla": "Uchiha",
+      "patente": "Chūnin",
+      "classificacao": [
+        "Jinchūriki",
+        "Pseudo-Jinchūriki",
+        "Missing-nin",
+        "S-rank",
+        "Sensor Type"
+      ],
+      "jutsus": [
+        "Animal Path",
+        "Asura Path",
+        "Black Receiver",
+        "Chakra Transfer Technique",
+        "Demonic Statue Chains",
+        "Deva Path",
+        "Earth Release: Hiding Like a Mole Technique",
+        "Explosive Landmines",
+        "Fire Release: Blast Wave Wild Dance",
+        "Fire Release: Great Fireball Technique",
+        "Fire Release: Phoenix Sage Fire Technique",
+        "Genjutsu: Sharingan",
+        "Hands of Flame",
+        "Human Path",
+        "Infinite Tsukuyomi",
+        "Izanagi",
+        "Kamui",
+        "Naraka Path",
+        "Outer Path",
+        "Outer Path — Samsara of Heavenly Life Technique",
+        "Preta Path",
+        "Regeneration Ability",
+        "Sealing Technique: Phantom Dragons Nine Consuming Seals",
+        "Sensing Technique",
+        "Six Paths Senjutsu",
+        "Six Paths Technique",
+        "Six Paths Ten-Tails Coffin Seal",
+        "Six Paths of Pain",
+        "Six Red Yang Formation",
+        "Summoning Rinnegan"
+      ],
+      "ferramentas": [
+        "Fūma Shuriken",
+        "Gunbai",
+        "Kusari",
+        "Sword",
+        "Sword of Nunoboko"
+      ]
+    },
+    "shisui": {
+      "api": 1310,
+      "nome": "Shisui Uchiha",
+      "aldeia": "Vila da Folha",
+      "afiliacoes": [
+        "Vila da Folha"
+      ],
+      "cla": "Uchiha",
+      "patente": "Jōnin",
+      "classificacao": [],
+      "jutsus": [
+        "Afterimage Clone",
+        "Body Flicker Technique",
+        "Fire Release: Great Fireball Technique",
+        "Genjutsu: Sharingan",
+        "Kotoamatsukami",
+        "Summoning Technique"
+      ],
+      "ferramentas": [
+        "Tantō"
+      ]
     }
   };
 });

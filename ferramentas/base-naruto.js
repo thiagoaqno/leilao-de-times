@@ -13,6 +13,7 @@ const ELENCO = {
   naruto: 1344, sasuke: 1307, sakura: 374, kakashi: 376, shikamaru: 878, itachi: 1293, kisame: 421, deidara: 193,
   lee: 739, sai: 1008, sasori: 1042, yamato: 1373, jiraiya: 515, kabuto: 1359, neji: 444, orochimaru: 928,
   tsunade: 1280, temari: 1208, kankuro: 577, guy: 344, tenten: 1216, gaara: 259, ino: 1365, shino: 13, kiba: 466,
+  hashirama: 1063, minato: 865, madara: 1299, obito: 1303, shisui: 1310,
 };
 const VILAS = {
   Konohagakure: "Vila da Folha", Sunagakure: "Vila da Areia", Kirigakure: "Vila da Névoa", Kumogakure: "Vila da Nuvem",

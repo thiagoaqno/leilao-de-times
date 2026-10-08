@@ -648,3 +648,76 @@ function impactoNaruto(f, agora) {
   else if (jeito !== "faisca") pedirLuz(P[1], 6, f.x, f.y, 0.8, 250, agora);
   return true;
 }
+
+// ---------- os lendários ----------
+PROJETIL_N.dragaomadeira = function (r) {
+  const g = gp(), seg = [], n = 9;
+  for (let i = 0; i < n; i++) { const m = pecaN(G3.geo.esfera, i % 2 ? NC.madeira[1] : NC.madeira[2], { toon: true, escala: r * (0.8 - i * 0.04) }); g.add(m); seg.push(m); }
+  const folhas = Array.from({ length: 6 }, (_, i) => { const f = pecaN(G3.geo.cubo, NC.madeira[3], { toon: true }); f.scale.set(r * 0.4, r * 0.08, r * 0.25); g.add(f); return f; });
+  const cabeca = pecaN(G3.geo.esfera, NC.madeira[1], { toon: true }); cabeca.scale.set(r * 1.2, r * 0.8, r * 0.8); cabeca.position.x = r * 0.9; g.add(cabeca);
+  for (const s of [-1, 1]) { const chifre = pecaN(geoN().espinho, NC.madeira[2], { toon: true }); chifre.scale.set(r * 0.22, r * 0.8, r * 0.22); chifre.position.set(r * 0.7, r * 0.6, s * r * 0.4); chifre.rotation.z = 0.7; g.add(chifre); const olho = pecaN(G3.geo.cubo, "#ffe14d"); olho.scale.setScalar(r * 0.18); olho.position.set(r * 1.5, r * 0.2, s * r * 0.4); g.add(olho); }
+  return { grupo: g, animar: (t) => { seg.forEach((m, i) => m.position.set(-i * r * 0.85, Math.sin(t * 11 - i * 0.8) * r * 0.7, Math.cos(t * 8 - i * 0.7) * r * 0.5)); folhas.forEach((f, i) => { const s = seg[(i * 3 + 1) % n]; f.position.set(s.position.x, s.position.y + r * 0.7, s.position.z); f.rotation.y = t * 6 + i; }); }, rastro: (x, y) => particula(x, y, { z: 0.45, vz: 0.3, g: 3, vida: 0.5, cor: Math.random() < 0.5 ? NC.madeira[3] : NC.madeira[1], tam: 0.08 }) };
+};
+PROJETIL_N.bolapreta = function (r) {
+  const g = gp(), bola = pecaN(G3.geo.esfera, "#0a060e", { escala: r * 1.7 }), anel = pecaN(G3.geo.toro, "#e8d8ff", { opacidade: 0.9, somar: true }), orbes = [0, 1, 2].map(() => { const o = pecaN(G3.geo.esfera, "#0a060e", { escala: r * 0.4 }); g.add(o); return o; });
+  anel.scale.setScalar(r * 2.1); g.add(bola, anel, brilhoG3("#8a5acc", r * 8, 0.4));
+  return { grupo: g, animar: (t) => { anel.rotation.set(t * 5, t * 3, 0); orbes.forEach((o, i) => { const a = t * 8 + i * 2.1; o.position.set(Math.cos(a) * r * 2.4, Math.sin(a * 1.3) * r * 1.2, Math.sin(a) * r * 2.4); }); }, rastro: (x, y) => particula(x, y, { z: 0.45, vz: 0.2, g: 0, vida: 0.4, cor: "#2a1a3a", tam: 0.09 }) };
+};
+AREA_N.meteoro = function (f, agora) {
+  const g = gp(); g.position.set(f.x, 0, f.y);
+  const pedra = pecaN(G3.geo.pedra, "#3a2a24", { toon: true, escala: f.r * 0.62 }), fogo = pecaN(G3.geo.bola, NC.fogo[1], { opacidade: 0.85, somar: true, escala: f.r * 0.9 }), brilho = brilhoG3(NC.fogo[1], f.r * 5, 0.8);
+  const sombra = pecaN(G3.geo.disco ? G3.geo.disco : geoN().disco, "#000000", { opacidade: 0.3 }); sombra.position.y = 0.05; g.add(sombra);
+  const rastro = Array.from({ length: 5 }, (_, i) => { const c = pecaN(G3.geo.bola, NC.fogo[Math.min(3, i)], { opacidade: 0.7 - i * 0.1, somar: true }); g.add(c); return c; });
+  g.add(pedra, fogo, brilho);
+  const explode = () => { const t = relogio.agora(); anelNoChao(f.x, f.y, "#ffffff", 0.4, f.r * 2.6, 0.5, t); anelNoChao(f.x, f.y, "#ffb060", 0.3, f.r * 2, 0.7, t); rachaduras(f.x, f.y, f.r * 1.5, t); if (!movimentoReduzido.matches) G3.clarao = 1; sacudir(1, 0.7); pedirLuz("#ffc070", 20, f.x, f.y, 1.4, 600, t); espalhar(f.x, f.y, 40, ["#ffffff", "#ffd890", "#ff9a4a", "#3a2a24"], { vel: 5, sobe: 5, vida: 0.9, tam: 0.2, g: 7, z: 0.3, raio: f.r * 0.6 }); const o = gp(); o.position.set(f.x, 0.6, f.y); const bolaE = pecaN(G3.geo.esfera, "#fff8e8", { somar: true, opacidade: 1 }), casca = pecaN(G3.geo.esfera, "#ff9a4a", { somar: true, opacidade: 0.6 }); o.add(bolaE, casca); vivo(o, 0.8, (k) => { const s = f.r * (0.4 + Math.sin(Math.min(1, k * 1.6) * Math.PI / 2) * 1.6); bolaE.scale.setScalar(s * 0.8); bolaE.material.opacity = Math.max(0, 1 - k * 2.2); casca.scale.setScalar(s); casca.material.opacity = 0.6 * (1 - k); }, t); };
+  let bateu = false;
+  vivo(g, 1.1, (k, t) => { const cai = Math.min(1, k / 0.32); const alt = 12 * (1 - cai) * (1 - cai); pedra.position.y = alt + 0.6; fogo.position.y = alt + 0.6; brilho.position.y = alt + 0.6; pedra.rotation.set(t * 4, t * 3, 0); fogo.scale.setScalar(f.r * (0.9 + Math.sin(t * 25) * 0.1)); rastro.forEach((c, i) => { c.position.y = alt + 0.6 + (i + 1) * f.r * 0.55; c.scale.setScalar(f.r * (0.8 - i * 0.12)); }); sombra.scale.setScalar(f.r * (0.3 + cai * 1.2)); if (cai >= 1) { if (!bateu) { bateu = true; explode(); } pedra.visible = fogo.visible = brilho.visible = false; rastro.forEach((c) => { c.visible = false; }); sombra.material.opacity = 0.3 * (1 - (k - 0.32) / 0.68); } }, agora);
+};
+REFORCO_N.sabio = function (f, agora) {
+  acompanha(f, 1.2, agora, ({ g }) => {
+    const aura = pecaN(G3.geo.cupula, "#ff9a30", { opacidade: 0.28, somar: true, dupla: true }); aura.scale.set(0.95, 1.7, 0.95); g.add(aura);
+    const aneis = [0, 1].map(() => { const a = pecaN(G3.geo.toro, "#ffd070", { somar: true, opacidade: 0.85 }); a.rotation.x = Math.PI / 2; g.add(a); return a; });
+    const faiscas = Array.from({ length: 10 }, () => { const m = pecaN(G3.geo.cubo, "#ffd870", { somar: true }); m.scale.setScalar(0.07); g.add(m); return m; });
+    const marcas = [-1, 1].map((s) => { const m = pecaN(G3.geo.cubo, "#d8601a", { opacidade: 0.9 }); m.scale.set(0.2, 0.05, 0.05); m.position.set(0.12, 1.75, s * 0.14); g.add(m); return m; });
+    return (k, t) => { const op = 1 - Math.max(0, k - 0.8) * 5; aura.material.opacity = 0.28 * op; aneis.forEach((a, i) => { const c = (t * 1.4 + i / 2) % 1; a.position.y = c * 2.1; a.scale.setScalar(0.55); a.material.opacity = 0.85 * (1 - c) * op; }); faiscas.forEach((m, i) => { const c = (t * 0.9 + i * 0.1) % 1, a = i * 1.9 + t * 2; m.position.set(Math.cos(a) * 0.5, c * 2.0, Math.sin(a) * 0.5); }); };
+  });
+  pedirLuz("#ffa040", 5, f.x, f.y, 1, 900, agora); anelNoChao(f.x, f.y, "#ffb050", 0.3, 1.4, 0.6, agora);
+};
+REFORCO_N.susanoo = function (f, agora) {
+  acompanha(f, 1.4, agora, ({ g }) => {
+    const cor = "#8a70ff", costelas = Array.from({ length: 6 }, (_, i) => { const c = pecaN(G3.geo.vento, cor, { opacidade: 0.8, somar: true, dupla: true }); c.scale.set(1.9, 1.9, 0.5); c.rotation.set(Math.PI / 2, 0, 0); c.position.y = 0.4 + i * 0.38; g.add(c); return c; });
+    const espinha = pecaN(G3.geo.cubo, "#c8b8ff", { somar: true, opacidade: 0.85 }); espinha.scale.set(0.12, 2.6, 0.12); espinha.position.set(-0.55, 1.4, 0); g.add(espinha);
+    const caveira = pecaN(G3.geo.esfera, "#b0a0ff", { opacidade: 0.75, somar: true, escala: 0.55 }); caveira.position.set(-0.4, 3.0, 0); g.add(caveira);
+    for (const s of [-1, 1]) { const olho = pecaN(G3.geo.cubo, "#ffffff", { somar: true }); olho.scale.set(0.1, 0.12, 0.1); olho.position.set(-0.05, 3.1, s * 0.2); g.add(olho); }
+    const brilho = brilhoG3("#8a70ff", 4.5, 0.55); brilho.position.y = 1.6; g.add(brilho);
+    return (k, t) => { const e = Math.min(1, k * 5), op = 1 - Math.max(0, k - 0.8) * 5; g.scale.setScalar(e); costelas.forEach((c, i) => { c.rotation.z = Math.sin(t * 2 + i) * 0.1; c.material.opacity = 0.8 * op; }); espinha.material.opacity = 0.85 * op; caveira.material.opacity = 0.75 * op; brilho.material.opacity = 0.55 * op; };
+  });
+  pedirLuz("#8a70ff", 8, f.x, f.y, 1.4, 1100, agora); anelNoChao(f.x, f.y, "#8a70ff", 0.3, 1.8, 0.6, agora); sacudir(0.35, 0.15);
+};
+REFORCO_N.kamui = function (f, agora) {
+  acompanha(f, 0.9, agora, ({ g }) => {
+    const aneis = Array.from({ length: 8 }, (_, i) => { const a = pecaN(G3.geo.toro, i % 2 ? "#2a1038" : "#8a2a9a", { opacidade: 0.9, somar: i % 2 === 0 }); a.rotation.x = Math.PI / 2; g.add(a); return a; });
+    const nucleo = pecaN(G3.geo.esfera, "#d01818", { somar: true, escala: 0.18 }); nucleo.position.y = 1.0; g.add(nucleo);
+    return (k, t) => { const op = 1 - Math.max(0, k - 0.75) * 4; aneis.forEach((a, i) => { const u = i / 7; a.position.y = 1.0 + (u - 0.5) * 0.25; a.scale.setScalar((0.2 + u * 0.8) * (0.4 + Math.min(1, k * 4) * 0.8)); a.rotation.z = t * (10 - i); a.material.opacity = 0.9 * op; }); nucleo.scale.setScalar(0.18 * (1 + Math.sin(t * 30) * 0.2) * op); };
+  });
+  anelNoChao(f.x, f.y, "#8a2a9a", 0.2, 1.4, 0.5, agora); pedirLuz("#8a2a9a", 6, f.x, f.y, 1, 700, agora);
+};
+INVESTIDA_N.shunshin = function (f, agora) {
+  fumacaN(f.x, 0.4, f.y, "#f4f4f0", 0.7, 0.5, agora, 6);
+  acompanha(f, 0.6, agora, ({ g }) => {
+    const folhas = Array.from({ length: 16 }, (_, i) => { const m = pecaN(G3.geo.cubo, i % 3 ? NC.verde[2] : NC.verde[1], { toon: true }); m.scale.set(0.2, 0.03, 0.12); g.add(m); return m; });
+    return (k, t) => folhas.forEach((m, i) => { const a = t * 14 + i * 0.7, u = i / 15; m.position.set(-u * 1.4 + Math.cos(a) * 0.4, 0.3 + u * 1.5, Math.sin(a) * 0.5); m.rotation.set(a, a * 1.3, 0); m.visible = k < 0.92; });
+  });
+  sacudir(0.15, 0.1);
+};
+INVESTIDA_N.hiraishin = function (f, agora) {
+  anelNoChao(f.x, f.y, "#ffe14d", 0.2, 1.1, 0.35, agora); pedirLuz("#ffe14d", 8, f.x, f.y, 1, 400, agora);
+  acompanha(f, 0.5, agora, ({ g }) => {
+    const rastros = Array.from({ length: 7 }, (_, i) => { const m = pecaN(G3.geo.cubo, i % 2 ? "#ffffff" : "#ffe14d", { somar: true, opacidade: 0.95 }); m.scale.set(2.8, 0.05, 0.05); m.position.set(-1.4, 0.2 + i * 0.22, (i - 3) * 0.1); g.add(m); return m; });
+    const kunai = pecaN(geoN().espinho, NC.aco, { toon: true }); kunai.scale.set(0.12, 0.6, 0.06); kunai.rotation.z = -Math.PI / 2; kunai.position.set(0.9, 0.8, 0); g.add(kunai);
+    const flash = brilhoG3("#ffe14d", 3.2, 0.9); flash.position.y = 0.9; g.add(flash);
+    return (k, t) => { rastros.forEach((m, i) => { m.material.opacity = 0.95 * (1 - k) * (((Math.floor(t * 40) + i) % 2) ? 1 : 0.5); m.scale.y = 0.05 * (1 + Math.sin(t * 50 + i) * 0.4); }); flash.material.opacity = 0.9 * (1 - k); };
+  });
+  sacudir(0.3, 0.2);
+};
+Object.assign(IMPACTO_N, { dragaomadeira: ["areia", NC.madeira], bolapreta: ["flash", NC.preto] });

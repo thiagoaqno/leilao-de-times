@@ -58,10 +58,85 @@ LISTA = [
     ("guy", "guy", NC4, 98866, (37, 42), True),
     ("tenten", "tenten", NC4, 98872, (45, 50), True),
     ("gaara", "gaara", NC4, 89537, ("linha", 72, 138), True),
+    # com as cores trocadas (veja `troca`): sprite de verdade ainda não há
+    ("minato", "minato", NVS, 98901, (41, 46), True, "minato"),
+    ("madara", "madara", NVS, 98908, (320, 325), True, "madara"),
+    ("hashirama", "hashirama", NVS, 98907, (69, 74), True, "hashirama"),
+    ("obito", "obito", NVS, 98897, (86, 93), True, "obito"),
+    ("shisui", "shisui", NVS, 98894, (42, 45), True, "shisui"),
     ("ino", "ino", NVS, 98909, ("npc", 17, 24), True),
     ("shino", "shino", NVS, 98909, ("npc", 83, 90), True),
     ("kiba", "kiba", NVS, 98909, ("npc", 48, 54), True),
 ]
+
+
+# ---------- os ninjas sem sprite próprio: o mesmo sprite com outras cores ----------
+# Os jogos de DS não têm o Primeiro e o Quarto Hokage, o Madara, o Obito nem o Shisui. Enquanto não há um sprite deles, cada
+# um usa o sprite de outro ninja com as cores trocadas (como nos jogos de luta antigos). Para trocar de verdade, ponha o
+# sprite no lugar: é só tirar o nome da troca da tabela LISTA.
+def para_hsv(rgb):
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    d = mx - mn
+    h = np.zeros_like(mx)
+    m = d > 1e-6
+    h[m & (mx == r)] = ((g - b)[m & (mx == r)] / d[m & (mx == r)]) % 6
+    h[m & (mx == g)] = ((b - r)[m & (mx == g)] / d[m & (mx == g)]) + 2
+    h[m & (mx == b)] = ((r - g)[m & (mx == b)] / d[m & (mx == b)]) + 4
+    return h * 60, np.where(mx > 0, d / np.maximum(mx, 1e-6), 0), mx
+
+
+def de_hsv(h, s, v):
+    h = (h % 360) / 60
+    c = v * s
+    x = c * (1 - np.abs(h % 2 - 1))
+    z = np.zeros_like(h)
+    pares = [(c, x, z), (x, c, z), (z, c, x), (z, x, c), (x, z, c), (c, z, x)]
+    out = np.zeros(h.shape + (3,))
+    for i, (a, b, cc) in enumerate(pares):
+        m = (h >= i) & (h < i + 1)
+        out[m] = np.stack([a, b, cc], -1)[m]
+    return out + (v - c)[..., None]
+
+
+def troca(quadro, nome):
+    a = np.array(quadro).astype(float) / 255
+    h, s, v = para_hsv(a[..., :3])
+    vivo = a[..., 3] > 0
+    H, S, V = h.copy(), s.copy(), v.copy()
+    if nome == "minato":      # o casaco branco do Hokage: a parte de cima escura vira branca, e o laranja vira roupa escura
+        ys = np.where(vivo.any(1))[0]
+        em_cima = np.arange(a.shape[0])[:, None] < ys.min() + (ys.max() - ys.min()) * 0.66
+        laranja = vivo & (h >= 5) & (h <= 42) & (s > 0.4) & (v > 0.3)
+        escuro = vivo & ~laranja & (v < 0.55) & (s < 0.6) & em_cima & ~((h >= 40) & (h <= 70) & (s > 0.4))
+        H[escuro], S[escuro], V[escuro] = 215, 0.06, np.clip(0.72 + v[escuro] * 0.5, 0, 1)
+        H[laranja], S[laranja], V[laranja] = 225, 0.45, np.clip(v[laranja] * 0.5, 0, 1)
+        barra = np.arange(a.shape[0])[:, None] > ys.min() + (ys.max() - ys.min()) * 0.8
+        vermelho = laranja & barra  # a barra do casaco
+        H[vermelho], S[vermelho], V[vermelho] = 5, 0.7, np.clip(v[vermelho] * 0.8, 0, 1)
+    elif nome == "madara":    # a camisa clara do Sasuke vira a armadura vermelha
+        m = vivo & (s < 0.22) & (v > 0.5)
+        H[m], S[m], V[m] = 355, 0.78, v[m] * 0.82
+        m = vivo & (h >= 200) & (h <= 260) & (s > 0.3)  # a calça azul fica quase preta
+        S[m], V[m] = 0.25, v[m] * 0.65
+    elif nome == "hashirama": # as cores do Yamato viram a armadura vermelha e o cabelo preto
+        m = vivo & (h >= 70) & (h <= 190) & (s > 0.12)
+        H[m], S[m] = 2, np.clip(s[m] + 0.35, 0, 0.85)
+        m = vivo & (h >= 15) & (h <= 45) & (s > 0.3) & (v < 0.55)
+        S[m], V[m] = 0.2, v[m] * 0.5
+        m = vivo & (h >= 220) & (h <= 320) & (s > 0.15)
+        H[m], S[m] = 218, 0.55
+    elif nome == "obito":     # o cabelo prateado do Kakashi fica preto; o resto é o colete de Konoha
+        m = vivo & (s < 0.16) & (v > 0.5)
+        V[m], S[m] = v[m] * 0.2, 0
+    elif nome == "shisui":    # a capa cinza do Itachi vira um uniforme azul-marinho, sem as nuvens vermelhas
+        m = vivo & (s < 0.2) & (v > 0.12) & (v < 0.62)
+        H[m], S[m], V[m] = 220, 0.6, np.clip(v[m] * 1.1 + 0.05, 0, 1)
+        m = vivo & ((h < 22) | (h > 335)) & (s > 0.5)
+        H[m], S[m], V[m] = 215, 0.35, np.clip(v[m] * 0.9, 0, 1)
+    rgb = de_hsv(H, S, V)
+    out = np.concatenate([np.clip(rgb, 0, 1), a[..., 3:]], -1)
+    return Image.fromarray((out * 255 + 0.5).astype(np.uint8))
 
 
 def baixar(url):
@@ -144,10 +219,13 @@ def tira(quadros):
 def main():
     so = set(sys.argv[1:])
     os.makedirs(SAIDA, exist_ok=True)
-    for slug, imagem, jogo, numero, como, novo in LISTA:
+    for item in LISTA:
+        slug, imagem, jogo, numero, como, novo = item[:6]
         if so and slug not in so:
             continue
         qs = quadros_de(folha(jogo, numero), como)[:MAX_QUADROS]
+        if len(item) > 6:
+            qs = [troca(q, item[6]) for q in qs]
         faixa, w, h, primeiro = tira(qs)
         faixa.save(os.path.join(SAIDA, f"{imagem}-idle.png"), optimize=True)
         if novo:

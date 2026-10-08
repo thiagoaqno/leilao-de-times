@@ -12,7 +12,7 @@ function luta() {
 }
 
 test("Naruto: elenco, golpes e time de três válidos", () => {
-  assert.equal(D.IDS.length, 25);
+  assert.equal(D.IDS.length, 30);
   assert.deepEqual(D.cleanTeam(["naruto", "naruto", "sakura"]), D.DEFAULT_TEAM);
   assert.deepEqual(D.cleanTeam(["__proto__", "naruto", "sakura"]), D.DEFAULT_TEAM);
   for (const id of D.IDS) {

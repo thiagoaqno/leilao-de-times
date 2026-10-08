@@ -94,6 +94,16 @@
     presa: { n: "Presa Sobre Presa", t: "Taijutsu", p: 100, a: 90, custo: 30, forma: "investida", giro: true, fx: "gatsuuga" },
     uivo: { n: "Uivo de Akamaru", t: "Taijutsu", p: 0, a: 100, custo: 15, self: { atk: 1, spd: 1 }, d: "Aumenta ataque e velocidade.", fx: "uivo" },
     garouga: { n: "Presa Dupla", t: "Taijutsu", p: 120, a: 85, custo: 38, forma: "investida", giro: true, fx: "garouga" },
+    // os lendários
+    florestamadeira: { n: "Grande Floresta", t: "Terra", p: 115, a: 88, custo: 40, forma: "area", raio: 2, fx: "mokuton" },
+    dragaomadeira: { n: "Dragão de Madeira", t: "Terra", p: 105, a: 92, custo: 34, forma: "projetil", fx: "dragaomadeira" },
+    sabio: { n: "Modo Sábio", t: "Medicina", p: 0, a: 100, custo: 25, self: { atk: 1, def: 1 }, d: "Aumenta ataque e defesa.", fx: "sabio" },
+    susanoo: { n: "Susanoo", t: "Sombra", p: 0, a: 100, custo: 28, self: { def: 2 }, d: "Aumenta muito a defesa.", fx: "susanoo" },
+    meteoro: { n: "Meteoro de Madara", t: "Terra", p: 140, a: 75, custo: 55, forma: "area", raio: 2.3, fx: "meteoro" },
+    kamui: { n: "Kamui", t: "Sombra", p: 0, a: 100, custo: 22, self: { def: 1, spd: 2 }, d: "Aumenta a velocidade e a defesa.", fx: "kamui" },
+    bolapreta: { n: "Bola Busca-Verdade", t: "Sombra", p: 112, a: 88, custo: 38, forma: "projetil", fx: "bolapreta" },
+    shunshin: { n: "Shunshin", t: "Taijutsu", p: 85, a: 100, custo: 18, forma: "investida", fx: "shunshin" },
+    hiraishin: { n: "Hiraishin", t: "Raio", p: 110, a: 95, custo: 32, forma: "investida", fx: "hiraishin" },
   };
   // Ícones locais: o site original oscila e não serve como CDN para o jogo.
   // `imagem` é o nome do arquivo em naruto-sprites/: <imagem>.png (parado) e <imagem>-idle.png (a tira com os `quadros`
@@ -126,6 +136,12 @@
     ino: { n: "Ino", types: ["Sombra"], hp: 180, atk: 92, def: 88, spd: 100, moves: ["kunai", "mente", "destruicao", "cura"], imagem: "ino", quadros: 8, altura: 2.0, bio: "Ataca a mente do rival e ainda cura a si mesma." },
     shino: { n: "Shino", types: ["Terra", "Sombra"], hp: 195, atk: 96, def: 108, spd: 92, moves: ["kunai", "kikai", "muralhainsetos", "enxame"], imagem: "shino", quadros: 8, altura: 2.15, bio: "Insetos que sugam chakra e fazem uma muralha viva." },
     kiba: { n: "Kiba", types: ["Taijutsu"], hp: 195, atk: 108, def: 92, spd: 114, moves: ["kunai", "presa", "uivo", "garouga"], imagem: "kiba", quadros: 7, altura: 2.0, bio: "Ao lado de Akamaru, gira em investidas rápidas." },
+    // os lendários (o sprite deles ainda é o de outro ninja com as cores trocadas: ferramentas/sprites-naruto.py)
+    hashirama: { n: "Primeiro Hokage", types: ["Terra", "Medicina"], hp: 240, atk: 118, def: 112, spd: 92, moves: ["kunai", "dragaomadeira", "sabio", "florestamadeira"], imagem: "hashirama", quadros: 6, altura: 2.3, bio: "Hashirama Senju: a madeira cresce onde ele manda, e o Modo Sábio fecha a luta." },
+    minato: { n: "Quarto Hokage", types: ["Vento", "Raio"], hp: 205, atk: 118, def: 92, spd: 130, moves: ["kunai", "rasengan", "hiraishin", "odama"], imagem: "minato", quadros: 6, altura: 2.2, bio: "Minato Namikaze: o Raio Voador chega antes de qualquer defesa." },
+    madara: { n: "Madara", types: ["Fogo", "Sombra"], hp: 235, atk: 126, def: 108, spd: 100, moves: ["katon", "susanoo", "amaterasu", "meteoro"], imagem: "madara", quadros: 6, altura: 2.3, bio: "Madara Uchiha: Susanoo para aguentar e o Meteoro para decidir." },
+    obito: { n: "Obito", types: ["Sombra", "Fogo"], hp: 200, atk: 112, def: 98, spd: 112, moves: ["kunai", "katon", "kamui", "bolapreta"], imagem: "obito", quadros: 8, altura: 2.2, bio: "Obito Uchiha: o Kamui o deixa fora do alcance antes da Bola Busca-Verdade." },
+    shisui: { n: "Shisui", types: ["Sombra", "Taijutsu"], hp: 190, atk: 108, def: 92, spd: 128, moves: ["kunai", "shunshin", "corvos", "katon"], imagem: "shisui", quadros: 4, altura: 2.2, bio: "Shisui Uchiha: o Shunshin o põe nas costas do rival e os corvos fecham a conta." },
   };
   const IDS = Object.keys(MONS);
   const TEAM_SIZE = 3, DEFAULT_TEAM = ["naruto", "sakura", "kakashi"];
