@@ -111,7 +111,7 @@ let DESVIO = 0; // a diferença entre o relógio do servidor e o daqui
 const agoraServidor = () => Date.now() + DESVIO;
 // o minuto do meu jogo agora, pelo relógio que o servidor mandou (partida.js usa no lugar do relógio dela)
 function relogioGrupo() {
-  const m = E && E.rodadaGrupo && E.rodadaGrupo.meu; if (!m) return 0;
+  const m = E && E.rodadaGrupo && E.rodadaGrupo.meu; if (!m) return J.relogio;
   const r = m.relogio;
   return Math.min(r.limite, r.minuto + (r.rodando ? Math.max(0, agoraServidor() - Math.max(r.t, E.rodadaGrupo.inicio)) / 1000 * r.vel : 0));
 }
@@ -128,7 +128,14 @@ function atualizarRodadaGrupo(v) {
   const antes = E.rodadaGrupo && E.rodadaGrupo.meu;
   E.rodadaGrupo = v;
   const m = v && v.meu;
-  if (!m) return;
+  if (!m) {
+    // O servidor já fechou a rodada: conclui a tela pelo último jogo, mesmo se o último pulso do relógio não chegou.
+    if (J.grupo && telaAtual === "partida" && E.ultimo && E.ultimo.casa === J.casa && E.ultimo.fora === J.fora) {
+      Object.assign(J, { eventos: E.ultimo.eventos, parado: null, completo: true, relogio: 96 });
+    }
+    return;
+  }
+  if (J.grupo) atualizarControlesVelocidade();
   if (telaAtual !== "partida" || !J.grupo || J.rodada !== m.id) { if (!m.fim) abrirPartida(); return; }
   const mudouParada = (J.parado && J.parado.id) !== (m.parado && m.parado.id) || !!(J.parado && J.parado.esperando) !== !!(m.parado && m.parado.esperando);
   Object.assign(J, { eventos: m.eventos, parado: m.parado || null, completo: !!m.completo });

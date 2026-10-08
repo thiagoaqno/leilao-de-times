@@ -37,6 +37,12 @@ test("rodada ao vivo: só o anfitrião começa, a parada espera a decisão e rec
   await agir(a, { type: "rodada" });
   const st = await esperarEstado(b, (s) => s.rodada && s.rodada.n === 1);
   assert.strictEqual(st.rodada.jogos.length, 2, "os dois humanos jogam, cada um no seu jogo");
+  await assert.rejects(agir(b, { type: "velocidade", velocidade: 3 }), /anfitrião/);
+  const viu3x = esperarRodada(b, (x) => x.meu && x.velocidade === 3);
+  await agir(a, { type: "velocidade", velocidade: 3 });
+  assert.strictEqual((await esperarEstado(b, (s) => s.rodada && s.rodada.velocidade === 3)).rodada.velocidade, 3);
+  assert.strictEqual((await viu3x).meu.relogio.multiplicador, 3, "o ritmo 3× chegou ao jogo do outro técnico");
+  await agir(a, { type: "velocidade", velocidade: 1 });
   // o jogo do Flamengo para no intervalo esperando a decisão
   const v = await esperarRodada(a, (x) => x.meu && x.meu.parado && !x.meu.parado.esperando);
   assert.strictEqual(v.meu.parado.tipo, "tatica");

@@ -16,8 +16,9 @@ const ladoDe = (jg, clube) => (jg.casa === clube ? 0 : jg.fora === clube ? 1 : n
 
 function criarRodada(save, proxima, agora, { vel = 1.5, decisaoMs = 20000, espera = 3000, n = 1 } = {}) {
   const modoDe = (c) => (save.humanos[c] ? save.humanos[c].estado.modo || 1 : 0);
+  const inicio = agora + espera;
   return {
-    n, semana: proxima.semana, inicio: agora + espera, vel, decisaoMs,
+    n, semana: proxima.semana, inicio, vel, velBase: vel, multiplicador: 1, ritmos: [{ desde: inicio, vel }], decisaoMs,
     jogos: proxima.jogos.map((j) => ({ id: j.id, j, casa: j.casa, fora: j.fora, modo: Math.max(modoDe(j.casa), modoDe(j.fora)), modos: [modoDe(j.casa), modoDe(j.fora)],
       decisoes: {}, parciais: {}, pausas: [], parado: null, fim: false })),
   };
@@ -31,8 +32,37 @@ function simular(save, jg) {
   cache.set(jg, { chave, r });
   return r;
 }
-const pausado = (jg, agora) => jg.pausas.reduce((s, [a, b]) => s + (b - a), 0) + (jg.parado ? agora - jg.parado.desde : 0);
-const minutoDe = (rod, jg, agora) => Math.max(0, ((agora - rod.inicio - pausado(jg, agora)) / 1000) * rod.vel);
+// Soma o tempo de jogo entre dois instantes, respeitando as trocas 1×/3× feitas pelo anfitrião.
+function minutosEntre(rod, de, ate) {
+  if (ate <= de) return 0;
+  const ritmos = rod.ritmos && rod.ritmos.length ? rod.ritmos : [{ desde: rod.inicio, vel: rod.vel }];
+  let total = 0;
+  for (let i = 0; i < ritmos.length; i++) {
+    const inicio = Math.max(de, ritmos[i].desde), fim = Math.min(ate, ritmos[i + 1] ? ritmos[i + 1].desde : ate);
+    if (fim > inicio) total += (fim - inicio) / 1000 * ritmos[i].vel;
+  }
+  return total;
+}
+const minutoDe = (rod, jg, agora) => {
+  const ate = Math.max(rod.inicio, agora);
+  let minuto = minutosEntre(rod, rod.inicio, ate);
+  for (const [a, b] of jg.pausas) minuto -= minutosEntre(rod, Math.max(rod.inicio, a), Math.min(ate, b));
+  if (jg.parado) minuto -= minutosEntre(rod, Math.max(rod.inicio, jg.parado.desde), ate);
+  return Math.max(0, minuto);
+};
+// A velocidade muda para a rodada inteira. Os segmentos mantêm o minuto contínuo mesmo se algum jogo estiver pausado.
+function alterarVelocidade(rod, multiplicador, agora) {
+  if (![1, 3].includes(multiplicador)) return false;
+  const atual = rod.multiplicador || 1;
+  if (atual === multiplicador) return false;
+  rod.velBase ||= rod.vel / atual;
+  rod.ritmos ||= [{ desde: rod.inicio, vel: rod.vel }];
+  const vel = rod.velBase * multiplicador;
+  if (agora <= rod.inicio) rod.ritmos = [{ desde: rod.inicio, vel }];
+  else rod.ritmos.push({ desde: agora, vel });
+  rod.vel = vel; rod.multiplicador = multiplicador;
+  return true;
+}
 // quem precisa decidir esta parada: os lados humanos do pedido que quiseram decidir (tática no modo 2+, lance no 3)
 function pendentesDe(jg, parado) {
   const lados = parado.ambos ? Object.keys(parado.pedidos).map(Number) : [parado.lado ?? ladoDe(jg, jg.casa)];
@@ -98,7 +128,7 @@ function decidir(save, rod, clube, id, resposta, agora) {
 // o que cada humano vê da rodada: o jogo dele (a narração até a parada ou o fim, o relógio e a parada que é dele) e o
 // placar dos outros jogos de humanos, numa faixa
 function relogioDe(rod, jg, agora, r) {
-  return { minuto: Math.min(minutoDe(rod, jg, agora), limiteDe(r)), t: agora, rodando: !jg.parado && !jg.fim && agora >= rod.inicio, limite: limiteDe(r), vel: rod.vel };
+  return { minuto: Math.min(minutoDe(rod, jg, agora), limiteDe(r)), t: agora, rodando: !jg.parado && !jg.fim && agora >= rod.inicio, limite: limiteDe(r), vel: rod.vel, multiplicador: rod.multiplicador || 1 };
 }
 function visao(save, rod, clube, agora) {
   if (!rod) return null;
@@ -115,7 +145,7 @@ function visao(save, rod, clube, agora) {
     }
     return { ...base, lado, eventos: r.eventos, parado, completo: r.completo, modo: jg.modo, placar: r.placar };
   };
-  return { n: rod.n, semana: rod.semana, inicio: rod.inicio, agora, meu: meu ? ver(meu) : null, outros: rod.jogos.filter((x) => x !== meu).map(ver) };
+  return { n: rod.n, semana: rod.semana, inicio: rod.inicio, agora, velocidade: rod.multiplicador || 1, meu: meu ? ver(meu) : null, outros: rod.jogos.filter((x) => x !== meu).map(ver) };
 }
 
-module.exports = { criarRodada, tick, decidir, visao, minutoDe, limiteDe };
+module.exports = { criarRodada, tick, decidir, visao, minutoDe, limiteDe, alterarVelocidade };

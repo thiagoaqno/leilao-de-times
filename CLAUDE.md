@@ -40,6 +40,8 @@ posição (`nota → rendimento`). `bonusNota` aparece como selo permanente nas 
 válidos para o próximo jogo usam outro selo, temporário, para as duas mudanças não serem confundidas.
 No calendário mundial, `save.rodada`/`partida.rodada` contam todos os jogos do técnico. Para decidir o fim da fase de
 grupos, use `rodada` do jogo correspondente em `competicao.jogos`; não confunda os dois contadores.
+Na rodada ao vivo em grupo, o anfitrião controla `1×`/`3×` para todos pelo servidor. `carreira-rodada.js` guarda os
+segmentos de ritmo em `rod.ritmos`, para trocar a velocidade sem saltar o minuto dos jogos ativos ou pausados.
 | `ferramentas/base-mundo.js` + `dados/ea_fc26/` + `public/carreira/base/*-2026.js` | **Base mundial da Carreira.** `npm run base:mundo` lê o CSV completo do EA FC 26 com parser próprio, converte as cinco grandes ligas, seis argentinos e os clubes sul-americanos, calibra a base brasileira e gera um módulo UMD por liga. `mundo-2026.js` é o índice das ligas e dos 32 clubes da Libertadores. A chave de origem é sempre `leagueName + team`; jogadores guardam `ea`, e jovens fictícios que completam elenco têm `base: true`. Desde o PR 2 de `planos/carreira-online.md`, todas essas bases são carregadas pela carreira solo e pelo mercado mundial. |
 | `noite.js` + `public/noite.js` | **Noite da Galera.** Ver a seção própria abaixo. |
 | `public/comum.js` | `window.Comum`. Ver a lista de funções logo abaixo. |
@@ -243,7 +245,7 @@ Para achar algo dentro de um jogo:
     `__pingpong`) para o teste mexer no jogo.
   - Jogo novo entra na lista de `tests/e2e/paginas.spec.js`.
 - **Carreira:** `tests/bd.test.js` (banco em memória), `tests/carreira-motor.test.js` (10 mil jogos conferem gols, mando e força; se mexer no `AJUSTE` do motor, esses testes dizem se o futebol continua com cara de futebol) `tests/carreira-rodada.test.js` (a rodada ao vivo com o relógio à mão), `tests/carreira-online-mercado.test.js` (rodada e leilão pelo canal), `tests/carreira-online.test.js` (a sala em grupo: opções, clubes sem repetir, aporte, reconexão e o servidor reiniciando), `tests/carreira-evolucao.test.js` (evolução, aposentadoria, jovens, virada de temporada e limite) e `tests/carreira-base.test.js` (Brasileirão, base mundial, nomes licenciados, elencos, calibragem, Libertadores e Liverpool × Sunderland).
-  `tests/carreira-animacoes.test.js` confere as 40 falas únicas da prancheta; o E2E da carreira cobre o balão, o relatório do olheiro, a animação ao terminar o leilão e a leitura da evolução/perda por posição na prancheta.
+  `tests/carreira-animacoes.test.js` confere as 40 falas únicas da prancheta; o E2E da carreira cobre o balão, o relatório do olheiro, a animação ao terminar o leilão, o ritmo 3× compartilhado e a leitura da evolução/perda por posição na prancheta.
 - **Testes que às vezes falham por tempo:** um do Dominó e um do relógio. Repetir antes de investigar.
 
 ## Jeito de trabalhar neste projeto

@@ -207,7 +207,16 @@ test("carreira em grupo: sala, clubes e o hub de cada um", async ({ browser }) =
   await a.click("#btnJogar");
   await expect(a.locator("#partida")).toBeVisible({ timeout: 30000 });
   await expect(b.locator("#partida")).toBeVisible({ timeout: 30000 });
-  await expect(a.locator(".faixa-jogo .controles")).toBeHidden();
+  await expect(a.locator("#pVelDono")).toHaveText("Você controla · 1× para todos");
+  await expect(b.locator("#pVelDono")).toHaveText("Anfitrião controla · 1× para todos");
+  await expect(b.locator('[data-vel="3"]')).toBeDisabled();
+  await a.click('[data-vel="3"]');
+  await expect(a.locator('[data-vel="1"]')).toHaveAttribute("aria-pressed", "false");
+  await expect(a.locator('[data-vel="3"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(a.locator('[data-vel="3"]')).toHaveCSS("background-color", "rgb(255, 178, 30)");
+  await expect(a.locator("#pVelDono")).toContainText("3× para todos");
+  await fotografar(a, "carreira-grupo-3x");
+  await expect(b.locator('[data-vel="3"]')).toHaveAttribute("aria-pressed", "true");
   await expect(a.locator("#fimJogo")).toBeVisible({ timeout: 60000 });
   await expect(b.locator("#fimJogo")).toBeVisible({ timeout: 60000 });
   await a.click("#btnVoltarSede");
