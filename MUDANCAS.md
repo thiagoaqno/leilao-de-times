@@ -1,28 +1,26 @@
-# Carreira: rendimento visível na escalação
+# Carreira em grupo: rodada em 3×
 
-Este PR deixa claro o que acontece com a nota de cada jogador: a evolução continua sendo permanente, os eventos
-continuam sendo temporários e jogar fora de posição continua reduzindo a força usada pelo motor. A mudança é de
-leitura e transparência; a regra da partida não foi alterada.
+Este PR permite que o anfitrião acelere para `3×` os jogos multiplayer que estão acontecendo ao vivo. A velocidade
+é uma decisão única da sala: todas as partidas humanas avançam juntas e todos os participantes enxergam o mesmo
+ritmo.
 
 ## O que muda
 
-- **Rendimento por posição:** a prancheta mostra a nota normal e, quando houver perda, a nota efetiva naquela faixa
-  do campo (`78 → 70`). Qualquer encaixe abaixo de 100% passa a ser sinalizado, inclusive perdas leves de 5% ou 10%.
-- **Resumo do time:** ao lado da média dos titulares aparece a média considerando as posições e a quantidade de
-  improvisados.
-- **Evolução permanente:** jogadores que ganharam ou perderam nota recebem um selo com seta e valor, como `+2` ou
-  `-1`, tanto nas figurinhas quanto nas peças da formação.
-- **Efeitos temporários:** bônus e punições válidos para o próximo jogo usam um selo amarelo separado, para não serem
-  confundidos com a evolução definitiva.
-- **Leitura visual:** peças improvisadas têm borda tracejada e brilho âmbar, mantendo as cores do clube e o visual da
-  prancheta.
-- **Notícia da fase de grupos:** classificação ou eliminação só é anunciada depois da sexta partida real do grupo. O
-  sexto jogo geral da carreira não é mais confundido com a sexta rodada da Libertadores ou da Champions. Saves já
-  afetados têm a notícia prematura removida ao serem carregados.
+- **Controle do anfitrião:** durante a rodada, quem criou a sala pode alternar entre `1×` e `3×`; para os demais, os
+  botões aparecem sincronizados e desabilitados.
+- **Relógio contínuo:** mudar o ritmo não pula o minuto atual. O servidor guarda os segmentos de velocidade e aplica
+  o cálculo também aos jogos que estiverem pausados.
+- **Decisões preservadas:** o 3× acelera somente o relógio da partida. O prazo real para decisões táticas e lances
+  decisivos não fica três vezes menor.
+- **Sem atalhos locais:** o botão `Pular` continua oculto no multiplayer. O modo `Turbo` da sala permanece separado:
+  ele encurta a temporada, enquanto o 3× apenas acelera a rodada em andamento.
+- **Fim de jogo estável:** se o servidor fechar uma rodada em 3× antes do último quadro visual, o cliente usa o
+  resultado confirmado para mostrar o apito final normalmente.
 
 ## Conferido
 
-- **Testes focados do motor, evolução e temporada:** 22 testes passaram, incluindo a regressão do sexto jogo geral.
-- **E2E focado:** o cenário novo confirmou os selos `+2` e `-1`, trocou um defensor com um atacante e verificou que
-  as duas notas efetivas ficaram menores que as notas normais.
-- **Foto:** `planos/imagens/carreira-rendimento-posicao.png`.
+- **Testes focados:** 6 testes passaram no relógio da rodada e no canal multiplayer, incluindo troca de velocidade,
+  pausas, permissão exclusiva do anfitrião e sincronização com o outro participante.
+- **E2E focado:** 1 cenário passou em 48,0 s, confirmando o controle do anfitrião, o botão bloqueado para o convidado,
+  o 3× visível para os dois e a conclusão normal da rodada.
+- **Foto:** `planos/imagens/carreira-grupo-3x.png`.

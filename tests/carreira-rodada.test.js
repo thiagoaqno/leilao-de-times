@@ -14,6 +14,21 @@ function andar(save, rod, t, ate, cond = () => false) {
 }
 const jogoDe = (rod, clube) => rod.jogos.find((j) => j.casa === clube || j.fora === clube);
 
+test("rodada: o anfitrião alterna 1× e 3× sem fazer o relógio pular", () => {
+  const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "A" }], { temporadas: 1 });
+  const rod = Rd.criarRodada(save, G.proximaRodadaGrupo(save), 0, OPC), jogo = rod.jogos[0];
+  assert.strictEqual(Rd.minutoDe(rod, jogo, 10000), 10);
+  assert.strictEqual(Rd.alterarVelocidade(rod, 3, 10000), true);
+  assert.strictEqual(Rd.minutoDe(rod, jogo, 10000), 10, "trocar para 3× preserva o minuto");
+  assert.strictEqual(Rd.minutoDe(rod, jogo, 15000), 25, "cinco segundos em 3× avançam quinze minutos");
+  jogo.parado = { desde: 15000 };
+  Rd.alterarVelocidade(rod, 1, 18000);
+  assert.strictEqual(Rd.minutoDe(rod, jogo, 20000), 25, "a decisão continua pausada mesmo se o ritmo mudar");
+  jogo.pausas.push([15000, 20000]); jogo.parado = null;
+  assert.strictEqual(Rd.minutoDe(rod, jogo, 25000), 30, "o jogo retoma em 1×");
+  assert.strictEqual(Rd.alterarVelocidade(rod, 2, 25000), false, "não aceita uma velocidade fora das opções");
+});
+
 test("rodada: o jogo de um humano pausa na decisão e o do outro continua", () => {
   // clubes de ligas diferentes: os dois jogam na primeira semana, cada um no seu jogo
   const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "A" }, { clube: "liverpool", nome: "B" }], { temporadas: 1 });

@@ -242,7 +242,7 @@ td.pos.campeao{box-shadow:inset 3px 0 var(--ouro)}td.pos.libertadores{box-shadow
 #pGols.pulso{animation:pulso 420ms var(--ease-out)}@keyframes pulso{40%{transform:scale(1.12);color:var(--apito)}}
 #pRelogio{font:600 14px var(--titulo);color:var(--apito);letter-spacing:.08em}
 .faixa-jogo{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--giz2);font-size:13px;flex-wrap:wrap}
-.controles{display:flex;gap:4px}.controles button{min-height:36px;padding:4px 12px;font-size:13px}
+.controles{display:flex;align-items:center;gap:4px}.controles button{min-height:36px;padding:4px 12px;font-size:13px}.controles #pVelDono{margin-right:5px;color:var(--giz3);font-size:11px}.controles button[aria-pressed=true]{background:var(--apito);border-color:var(--apito);color:var(--apito-tinta);box-shadow:0 0 0 2px #ffb21e33}.controles button:disabled[aria-pressed=true]{opacity:1;background:var(--apito);border-color:var(--apito);color:var(--apito-tinta)}
 .partida-grade{display:grid;grid-template-columns:minmax(0,340px) 1fr;gap:16px;align-items:start}
 .replays{display:flex;flex-direction:column;gap:12px}.replays:empty::before{content:"Os gols aparecem aqui, com replay.";display:block;padding:24px;border:1px dashed var(--linha2);border-radius:12px;color:var(--giz3);text-align:center;font-size:13px}
 .replay{border-radius:12px}.replay.nosso .telao{box-shadow:0 0 0 2px var(--apito),0 10px 24px -12px #000}

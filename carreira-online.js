@@ -71,7 +71,7 @@ module.exports = function ligarCarreiraOnline(io) {
     ocupados: Object.fromEntries(room.order.filter((id) => room.players[id].clube).map((id) => [room.players[id].clube, id])),
     clubes: Carreira.clubesEscolhiveis(room.opcoes.ligas).map((c) => c.id),
     nRodada: room.nRodada || 0,
-    rodada: room.rodada ? { n: room.rodada.n, semana: room.rodada.semana, inicio: room.rodada.inicio, jogos: room.rodada.jogos.map((j) => ({ casa: j.casa, fora: j.fora, fim: j.fim })) } : null,
+    rodada: room.rodada ? { n: room.rodada.n, semana: room.rodada.semana, inicio: room.rodada.inicio, velocidade: room.rodada.multiplicador || 1, jogos: room.rodada.jogos.map((j) => ({ casa: j.casa, fora: j.fora, fim: j.fim })) } : null,
     ultimaRodada: room.ultimaRodada || null,
     leilao: verLeilao(room.leilao), ultimoLeilao: room.ultimoLeilao || null,
     temporadaAcabou: room.save ? !Carreira.proximaRodadaGrupo(room.save) : false,
@@ -268,6 +268,13 @@ module.exports = function ligarCarreiraOnline(io) {
         const r = comecarRodada(room);
         if (typeof r === "string") return falha(cb, r);
         extra = r;
+      } else if (d.type === "velocidade") {
+        if (me.id !== room.host) return falha(cb, "Só o anfitrião controla a velocidade.");
+        if (!room.rodada) return falha(cb, "Não tem rodada ao vivo agora.");
+        const velocidade = Number(d.velocidade);
+        if (![1, 3].includes(velocidade)) return falha(cb, "Escolha 1× ou 3×.");
+        Rd.alterarVelocidade(room.rodada, velocidade, agora);
+        extra = { velocidade };
       } else if (d.type === "novaTemporada") {
         if (me.id !== room.host) return falha(cb, "Quem começa a temporada é o anfitrião.");
         if (room.rodada || room.leilao) return falha(cb, "Espere a rodada e o leilão acabarem.");
