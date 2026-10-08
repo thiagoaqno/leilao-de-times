@@ -8,7 +8,7 @@ const fs = require("fs");
 const path = require("path");
 const { subirServidor, conectar } = require("./ajuda.js");
 
-const CANAIS = ["/domino", "/ludo", "/uno", "/truco", "/sinuca", "/botao", "/batalha", "/corrida", "/tiro", "/pelada", "/banco", "/tenis", "/rumi", "/proibida", "/pingpong", "/ginasio", "/carreira-online"];
+const CANAIS = ["/domino", "/ludo", "/uno", "/truco", "/sinuca", "/botao", "/batalha", "/corrida", "/tiro", "/pelada", "/banco", "/tenis", "/rumi", "/proibida", "/pingpong", "/futevolei", "/ginasio", "/carreira-online"];
 const ARQ = path.join(__dirname, "salas-esperado.json");
 const chamar = (s, ev, d) => new Promise((ok) => { const t = setTimeout(() => ok("sem resposta"), 3000); s.emit(ev, d, (r) => { clearTimeout(t); ok(r); }); });
 const quieto = () => new Promise((ok) => setTimeout(ok, 150));
