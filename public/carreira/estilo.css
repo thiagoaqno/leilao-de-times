@@ -637,3 +637,42 @@ button.cta:disabled{animation:none;filter:saturate(.35);box-shadow:none}
 .leilao-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .olheiro{margin:12px 0}#mOlheiroLista{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:10px}
 .dica-olheiro{display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;background:#00000033;border:1px solid var(--linha)}.dica-olheiro p{font-size:13px}.dica-olheiro .figurinha{flex:none;width:120px}
+
+/* ---------- as outras telas no visual do hub: elenco, mercado, tabela, calendário e notícias ----------
+   (a classe hub dá o estádio ao fundo e os painéis de vidro; aqui, o topo, os controles e as listas com o acento do clube) */
+body:is([data-tela=elenco],[data-tela=mercado],[data-tela=tabela],[data-tela=calendario]) #tela{max-width:1320px}
+.hub .topo-tela{gap:14px;margin-bottom:16px;padding:12px 16px;border-radius:var(--hub-r);background:linear-gradient(100deg,color-mix(in srgb,var(--clube) 30%,#0c1824e6) 0%,#0c1824d9 55%,#0c182499 100%);border:1px solid var(--vidro-borda);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 4px 0 0 var(--acento),var(--sombra-hub)}
+.hub .topo-tela h2{font-size:clamp(24px,2.6vw,34px);letter-spacing:.03em}
+.hub .topo-tela .volta{background:#ffffff0d;border-color:var(--vidro-borda);transition:border-color .2s,color .2s}.hub .topo-tela .volta:hover{border-color:var(--acento);color:var(--acento)}
+.hub .caixa-topo{color:var(--acento)}
+.hub .segmentos{background:#00000040;border-color:var(--vidro-borda)}
+.hub .segmentos button{transition:background .15s,color .15s}.hub .segmentos button:hover:not([aria-pressed=true]){background:#ffffff0d}
+.hub .segmentos button[aria-pressed=true]{background:var(--acento);color:var(--acento-tinta);box-shadow:0 0 18px -6px var(--acento)}
+.hub .aviso{background:color-mix(in srgb,var(--acento) 10%,#0c1824cc);border-color:color-mix(in srgb,var(--acento) 40%,transparent);color:var(--giz)}
+.hub .aviso .ic{color:var(--acento)}
+.hub input[type=range]{accent-color:var(--acento)}.hub .check input{accent-color:var(--acento)}
+.hub .filtros{position:sticky;top:54px;z-index:5}
+/* os cards sobem e brilham na borda no hover */
+.hub .figurinha{transition:transform .2s var(--ease-out),box-shadow .2s}
+.hub .lista-mercado .figurinha:hover,.hub .banco .figurinha:hover,#mOlheiroLista .figurinha:hover{transform:translateY(-4px) scale(1.03);box-shadow:0 0 0 2px var(--acento),0 18px 34px -14px var(--acento)}
+/* a tabela, a artilharia e a última rodada */
+.hub .tabela-cheia tbody tr{transition:background .15s}.hub .tabela-cheia tbody tr:hover td{background:#ffffff08}
+.hub .tabela-cheia tr.meu td{background:color-mix(in srgb,var(--acento) 16%,transparent)}.hub .tabela-cheia tr.meu td:first-child{box-shadow:inset 3px 0 0 var(--acento)}
+.hub .abas-competicoes button{background:#00000040;border-color:var(--vidro-borda);transition:border-color .15s}.hub .abas-competicoes button:hover{border-color:var(--acento)}
+.hub .abas-competicoes button.ativa{background:var(--acento);color:var(--acento-tinta);border-color:var(--acento)}
+.hub .artilharia li.meu span{color:var(--acento)}.hub .jogo-linha.meu{background:color-mix(in srgb,var(--acento) 10%,transparent)}
+/* o calendário: a linha do tempo com o próximo jogo em destaque */
+.hub .linha-tempo{border-left-color:color-mix(in srgb,var(--acento) 35%,transparent)}
+.hub .linha-tempo li{background:#00000033;border-color:var(--vidro-borda);transition:transform .15s var(--ease-out),border-color .15s}.hub .linha-tempo li:hover{transform:translateX(3px);border-color:var(--linha2)}
+.hub .linha-tempo li.proxima{border-color:var(--acento);background:color-mix(in srgb,var(--acento) 12%,#00000040);box-shadow:0 0 24px -10px var(--acento)}
+.hub .linha-tempo li.proxima::before{background:var(--acento);border-color:var(--acento)}.hub .linha-tempo .rd i{color:var(--acento)}
+/* as notícias e a prancheta */
+.hub .feed .post{box-shadow:0 18px 40px -20px #000,0 0 0 1px #ffffff14}
+.hub .campo{filter:drop-shadow(0 18px 30px #0008)}
+/* o leilão e o olheiro com o mesmo vidro */
+.leilao-box{background:linear-gradient(180deg,#11233df2,#0c1824f2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 0 0 1px var(--acento),0 18px 50px -14px var(--acento)}
+.leilao-info b{font-family:var(--titulo);letter-spacing:.02em}.leilao-acoes .primario{min-height:44px}
+.dica-olheiro{background:linear-gradient(160deg,color-mix(in srgb,var(--acento) 10%,#13263799),#0c1824cc);border-color:var(--vidro-borda)}
+#mOlheiro{border-color:var(--acento);color:var(--acento)}
+@media (prefers-reduced-motion:reduce){.hub .figurinha,.hub .linha-tempo li{transition:none}.hub .lista-mercado .figurinha:hover,.hub .banco .figurinha:hover,.hub .linha-tempo li:hover{transform:none}}
+.hub .tabela-cheia td.nome{display:table-cell}.hub .tabela-cheia td.nome>*{vertical-align:middle}.hub .tabela-cheia td.nome .escudo{margin-right:8px}
