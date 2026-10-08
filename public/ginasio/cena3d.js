@@ -62,6 +62,7 @@ function iniciarCena3d() {
       scene.add(m); cartazes.push(m);
     }
     Object.assign(cena3d, { renderer, scene, cam, sol, ambiente, degrade, texChao, texAtlas, cartazes, raio: new THREE.Raycaster(), plano: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), v: new THREE.Vector3(), tremor: new THREE.Vector3(), ok: true });
+    montarVolume(cena3d); // os bichos com volume (volume.js)
     definirLeve(cena3d.leve, true);
     return true;
   } catch (erro) {
@@ -210,29 +211,37 @@ function chao3d(px, py) {
 }
 
 // ---------- o quadro ----------
+// o cartaz no lugar: o do bicho fica em pé (deitado um pouco para trás) com os pés no chão; o do projétil, virado para
+// a câmera, com o centro no ponto
+function posicionarCartaz(m, c) {
+  m.visible = true;
+  if (c.bicho) {
+    m.rotation.set(-DEITA_CARTAZ, 0, 0); m.scale.set(1, ESTICA_CARTAZ, 1);
+    const sobe = (PE_CARTAZ - ATLAS.casa / 2) / PX_CARTAZ * ESTICA_CARTAZ; // o centro da casa fica acima dos pés
+    m.position.set(c.x, c.altura + sobe * Math.cos(DEITA_CARTAZ), c.y - sobe * Math.sin(DEITA_CARTAZ));
+  } else {
+    m.rotation.set(-INCLINACAO, 0, 0); m.scale.set(1, 1, 1);
+    m.position.set(c.x, c.altura, c.y);
+  }
+  m.castShadow = false;
+  if (m.renderOrder !== 1) m.renderOrder = c.bicho ? 0 : 2;
+}
 // lista: [{ casa, x, y, altura, bicho, sombra }] — bicho: cartaz em pé, com os pés na linha PE_CARTAZ; senão, o centro
 // da casa fica no ponto (projéteis), virado para a câmera
 function renderizar3d(lista, agora, tremor) {
-  const { renderer, scene, cam, cartazes, texChao, texAtlas } = cena3d;
+  const { renderer, scene, cam, cartazes, volumes, texChao, texAtlas, texEspessura } = cena3d;
   const T = temaAtual();
   if (cena3d.temaFeito !== T) montarTema(T);
   mexerTorcida(agora);
-  texChao.needsUpdate = true; texAtlas.needsUpdate = true;
-  const pe = (PE_CARTAZ - ATLAS.casa / 2) / PX_CARTAZ;
+  texChao.needsUpdate = true; texAtlas.needsUpdate = true; texEspessura.needsUpdate = true;
   cartazes.forEach((m) => { m.visible = false; });
+  volumes.forEach((v) => { v.volume.visible = v.fantasma.visible = false; });
   for (const c of lista) {
-    const m = cartazes[c.casa]; if (!m) continue;
-    m.visible = true; m.castShadow = !!c.sombra;
-    if (c.bicho) {
-      m.rotation.set(-DEITA_CARTAZ, 0, 0); m.scale.set(1, ESTICA_CARTAZ, 1);
-      // o centro da casa fica acima dos pés, ao longo do cartaz deitado
-      const sobe = pe * ESTICA_CARTAZ;
-      m.position.set(c.x, c.altura + sobe * Math.cos(DEITA_CARTAZ), c.y - sobe * Math.sin(DEITA_CARTAZ));
-    } else {
-      m.rotation.set(-INCLINACAO, 0, 0); m.scale.set(1, 1, 1);
-      m.position.set(c.x, c.altura, c.y);
-    }
-    m.renderOrder = c.bicho ? 1 : 2;
+    const plano = cartazes[c.casa]; if (!plano) continue;
+    // com volume, a pilha de camadas e o fantasma (o meio transparente) andam juntos no lugar do cartaz plano
+    const pecas = c.volume ? [volumes[c.casa].volume, volumes[c.casa].fantasma] : [plano];
+    for (const m of pecas) posicionarCartaz(m, c);
+    pecas[0].castShadow = !!c.sombra;
   }
   // o tremor de quem apanhou (nunca com menos movimento)
   cam.position.copy(cena3d.base);

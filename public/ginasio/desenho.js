@@ -20,7 +20,7 @@ const corTipo = (t) => dexAtual().TYPES[t] || "#bccdbd";
 const CHAO = { w: 18.5, h: 12.5 }, PX_CHAO = 20;
 const chaoCv = document.createElement("canvas"), chaoCtx = chaoCv.getContext("2d");
 chaoCv.width = CHAO.w * PX_CHAO; chaoCv.height = CHAO.h * PX_CHAO;
-const atlasCv = document.createElement("canvas"), atlasCtx = atlasCv.getContext("2d");
+const atlasCv = document.createElement("canvas"), atlasCtx = atlasCv.getContext("2d", { willReadFrequently: true });
 atlasCv.width = ATLAS.w; atlasCv.height = ATLAS.h;
 // o modo leve: ?leve=1 liga, ?leve=0 desliga; sem nada, liga sozinho num celular fraco ou se os quadros saem lentos
 const pedidoLeve = new URLSearchParams(location.search).get("leve");
@@ -156,7 +156,9 @@ function pintarAtlas(agora, poses, projeteis) {
       ctx.save(); ctx.beginPath(); ctx.rect(c.x, c.y, casa, casa); ctx.clip();
       p.alturaSprite = bichoNoQuadro(p, agora, c.x + casa / 2, c.y + PE_CARTAZ) / PX_CARTAZ;
       ctx.restore();
-      lista.push({ casa: c.i, x: p.wx, y: p.wy, altura: p.altura, bicho: true, sombra: p.sombra > 0.5 && p.altura < 1 });
+      const volume = cena3d.ok && !cena3d.leve;
+      if (volume) medirEspessura(atlasCtx, c.x, c.y); // o bicho com volume (volume.js)
+      lista.push({ casa: c.i, x: p.wx, y: p.wy, altura: p.altura, bicho: true, volume, sombra: p.sombra > 0.5 && p.altura < 1 });
     }
     for (const j of projeteis) {
       if (lista.length >= total) break;
