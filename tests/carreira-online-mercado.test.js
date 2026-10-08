@@ -5,7 +5,7 @@ const assert = require("node:assert");
 const { subirServidor, conectar, pedir, esperarEstado } = require("./ajuda.js");
 
 let srv;
-test.before(async () => { srv = await subirServidor({ CARREIRA_VEL: "30", CARREIRA_DECISAO_MS: "1500", CARREIRA_LANCE_MS: "700", CARREIRA_ESPERA_MS: "0" }); });
+test.before(async () => { srv = await subirServidor({ CARREIRA_VEL: "30", CARREIRA_DECISAO_MS: "8000", CARREIRA_LANCE_MS: "700", CARREIRA_ESPERA_MS: "0" }); });
 test.after(async () => { await srv.parar(); });
 
 const canal = () => conectar(srv.url, "/carreira-online");

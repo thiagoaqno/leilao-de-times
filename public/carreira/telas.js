@@ -31,7 +31,7 @@ function telaSede() {
       <span class="forma" aria-label="Últimos resultados">${forma.map((r) => `<i class="res ${r}">${r}</i>`).join("") || "<small>A temporada ainda não começou</small>"}</span></div></div>
     <dl class="cab-numeros">
       <div><dt>Posição</dt><dd>${E.rodada > 0 ? pos + "º" : "—"}</dd></div>
-      <div><dt>Jogo</dt><dd>${E.fim ? "Fim" : `${E.rodada + 1}<i>/${E.total}</i>`}</dd></div>
+      <div><dt>Rodada</dt><dd>${E.fim ? "Fim" : `${(E.rodadaLiga ?? E.rodada) + 1}<i>/${E.meus.filter((j) => !j.competicao || j.competicao === c.liga).length || E.total}</i>`}</dd></div>
       <div><dt>Caixa</dt><dd class="${E.caixa < 0 ? "neg" : ""}">${dinheiro(E.caixa)}</dd></div>
       <div class="moral"><dt>Moral · ${humor(E.moral)}</dt><dd><span class="medidor"><i style="--v:${E.moral}%"></i></span></dd></div>
     </dl>`;
