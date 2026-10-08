@@ -41,7 +41,7 @@ function montarGolpes3d(c) {
 // ---------- peças ----------
 // somar (mistura aditiva) só nos temas escuros: no chão claro o que é somado vira branco e some
 function malhaG3(geometria, cor, o = {}) {
-  if (G3.claro && o.somar) o = { ...o, somar: false, opacidade: o.opacidade ?? 1 };
+  if (G3.claro && o.somar) o = { ...o, somar: false, opacidade: Math.min(1, (o.opacidade ?? 1) * 1.4) };
   const mat = o.toon ? new THREE.MeshToonMaterial({ color: corG3(cor), gradientMap: G3.cena.degrade, transparent: o.opacidade != null, opacity: o.opacidade ?? 1 })
     : new THREE.MeshBasicMaterial({ color: corG3(cor), transparent: true, opacity: o.opacidade ?? 1, blending: o.somar ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: !o.somar && o.opacidade == null, side: o.dupla ? THREE.DoubleSide : THREE.FrontSide });
   const m = new THREE.Mesh(geometria, mat);
@@ -60,6 +60,7 @@ function soltarG3(obj) {
 // uma luz por um tempo (ou por um quadro, para o que anda): fica com a que está mais perto de acabar
 function pedirLuz(cor, forca, x, y, h, dur, agora) {
   if (cena3d.leve) return;
+  if (G3.claro) forca *= 0.3; // no chão claro, a luz estoura em branco
   const l = G3.luzes.reduce((a, b) => (a.ate - agora) * a.forca < (b.ate - agora) * b.forca ? a : b);
   if (l.ate > agora && l.forca > forca * 1.5) return;
   l.luz.color.copy(corG3(cor)); l.luz.position.set(x, h, y); Object.assign(l, { ate: agora + dur, forca, total: dur });
@@ -184,11 +185,16 @@ function atualizarProjeteis3d(projeteis, agora, dt) {
     vistos.add(pr.id);
     let o = G3.projeteis.get(pr.id);
     // o desenho é maior que o acerto, para ver bem
-    if (!o) { o = { ...montarProjetil(fam, Math.max(0.2, pr.raio * 1.7)), fam, nasceu: agora }; G3.projeteis.set(pr.id, o); G3.cena.scene.add(o.grupo); }
+    if (!o) {
+      const r = Math.max(0.2, pr.raio * 1.7), fx = modoAtual() === "naruto" ? dexAtual().MOVES[pr.golpe]?.fx : null, doNaruto = fx && projetilNaruto(fx, r);
+      o = { ...(doNaruto || montarProjetil(fam, r)), fam, fx, nasceu: agora, naruto: !!doNaruto };
+      G3.projeteis.set(pr.id, o); G3.cena.scene.add(o.grupo);
+    }
     o.grupo.position.set(j.x, 0.45, j.y); o.grupo.rotation.y = -Math.atan2(pr.dy, pr.dx);
     o.animar(movimentoReduzido.matches ? 0 : (agora - o.nasceu) / 1000, dt);
-    if (Math.random() < 0.7) rastroDe(fam, j.x, j.y, PALETA[fam]);
-    if (BRILHAM.has(fam)) pedirLuz(PALETA[fam][1], 2.5, j.x, j.y, 0.7, 60, agora);
+    if (Math.random() < 0.7) { if (o.rastro) o.rastro(j.x, j.y); else if (!o.naruto) rastroDe(fam, j.x, j.y, PALETA[fam]); }
+    if (o.naruto) { if (LUZ_PROJETIL_N[o.fx]) pedirLuz(LUZ_PROJETIL_N[o.fx], 2.5, j.x, j.y, 0.7, 60, agora); }
+    else if (BRILHAM.has(fam)) pedirLuz(PALETA[fam][1], 2.5, j.x, j.y, 0.7, 60, agora);
   }
   for (const [id, o] of G3.projeteis) if (!vistos.has(id)) { soltarG3(o.grupo); G3.projeteis.delete(id); }
 }
@@ -285,15 +291,20 @@ function pedrasCaindo(agora) {
 }
 
 // ---------- o quadro ----------
-function atualizarGolpes3d(projeteis, agora, dt) {
+function atualizarGolpes3d(projeteis, agora, dt, poses = []) {
   if (!G3.ok) return;
+  G3.poses = poses; // onde cada ninja está agora (os jutsus que acompanham quem avança)
+  const naruto = modoAtual() === "naruto";
   // os efeitos novos da lista de desenho.js viram efeitos 3D (uma vez cada)
   for (const f of efeitos) {
     if (f.g3 || agora < f.t) continue;
     f.g3 = true;
-    if (f.tipo === "estouro") estouro3d(f, agora);
-    else if (f.tipo === "golpe" && f.classe === "corpo") corte3d(f, agora);
-    else if (f.tipo === "explosao") area3d(f, agora);
+    if (f.tipo === "estouro") { if (!(naruto && impactoNaruto(f, agora))) estouro3d(f, agora); }
+    else if (f.tipo === "golpe" && f.classe === "corpo") { if (!(naruto && corpoNaruto(f, agora))) corte3d(f, agora); }
+    else if (f.tipo === "golpe" && naruto) {
+      if (!efeitoNaruto(f, agora) && (f.classe === "projetil" || f.classe === "area")) anelNoChao(f.x, f.y, paletaDe(f.elemento)[1], 0.2, 0.7, 0.3, agora); // o chakra juntando nos pés
+    }
+    else if (f.tipo === "explosao") { if (!(naruto && areaNaruto(f, agora))) area3d(f, agora); }
     else if (f.tipo === "esquiva") anelNoChao(f.x, f.y, "#fef5aa", 0.4, 0.9, 0.25, agora);
     else if (["cura", "atributo", "troca", "transformar"].includes(f.tipo)) anelSubindo(f.x, f.y, f.tipo === "cura" ? "#7be0a0" : "#68b987", agora);
     else if (f.tipo === "dano" && f.crit) sacudir(0.45, 0.6);

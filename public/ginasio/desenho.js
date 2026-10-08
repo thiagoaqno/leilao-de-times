@@ -199,8 +199,8 @@ function efeitoVisual(ev) {
   const agora = ev.t || relogio.agora();
   if (ev.tipo === "projetil") projeteisVisuais.set(ev.id, { ...ev });
   if (ev.tipo === "area") areasVisuais.set(ev.id, { ...ev });
-  if (ev.tipo === "impacto") { projeteisVisuais.delete(ev.id); estouro(ev.elemento, ev.x, ev.y, 0.6); }
-  if (ev.tipo === "explosao") { areasVisuais.delete(ev.id); estouro(ev.elemento, ev.x, ev.y, 1.4); }
+  if (ev.tipo === "impacto") { projeteisVisuais.delete(ev.id); estouro(ev.elemento, ev.x, ev.y, 0.6, ev.golpe); }
+  if (ev.tipo === "explosao") { areasVisuais.delete(ev.id); estouro(ev.elemento, ev.x, ev.y, 1.4, ev.golpe); }
   animarEvento(ev, agora);
   registrarMarca(ev); // a cratera, o buraco ou a poça que o golpe deixa no chão (marcas.js)
   const e = N.snap?.entidades.find((p) => p.id === (ev.id || ev.em));
@@ -270,7 +270,7 @@ function desenhar(agora = relogio.agora(), dt = 0) {
   pintarChao(agora, poses, projeteis);
   // com a cena 3D, os projéteis, estouros e partículas são de golpes3d.js; sem ela, ficam no atlas e na tela
   const cartazes = pintarAtlas(agora, poses, cena3d.ok ? [] : projeteis);
-  if (cena3d.ok) { atualizarGolpes3d(projeteis, agora, dt); ctx.drawImage(renderizar3d(cartazes, agora, tremor), 0, 0); }
+  if (cena3d.ok) { atualizarGolpes3d(projeteis, agora, dt, poses); ctx.drawImage(renderizar3d(cartazes, agora, tremor), 0, 0); }
   else desenharReto(cartazes);
   if (tremor > 0) tremor = Math.max(0, tremor - dt);
   // por cima da cena, na tela
