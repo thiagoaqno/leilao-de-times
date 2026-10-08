@@ -18,8 +18,9 @@ imagem parada. As folhas vêm do The Spriters Resource:
   Sai, Sasori, Yamato, Jiraiya, Kabuto, Neji e Orochimaru; mais Ino, Shino e Kiba (com o Akamaru), da folha de figurantes.
 - *Naruto Shippuden: Ninja Council 4* (DS), rips de "Naruto: Saikyo Ninja Daikesshu 5" (Pakis Pride): Tsunade, Temari,
   Kankurō, Might Guy, Tenten e Gaara.
-- Primeiro Hokage, Quarto Hokage, Madara, Obito e Shisui não têm sprite nesses jogos: usam o sprite de outro ninja com as
-  cores trocadas (função `troca` da ferramenta), até haver um sprite de verdade.
+- Primeiro Hokage, Quarto Hokage, Madara, Obito e Shisui não têm sprite nesses jogos: foram desenhados em 8 bits por
+  `ferramentas/sprites-lendarios.py` (do zero, por código), com o visual e as cores das imagens de referência da Narutopedia
+  (as da Dattebayo API). São desenho próprio, não rip de jogo.
 
 ## A base de dados
 
