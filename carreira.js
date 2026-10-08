@@ -73,6 +73,21 @@ function tetoVenda(save, pid, valor) {
   return c && c.temporada === save.temporada && save.rodada - c.rodada < Mercado.CARENCIA ? Math.min(valor, c.valor) : valor;
 }
 
+// Uma versão anterior confundia o sexto jogo geral com a sexta rodada do grupo. Remove a notícia falsa dos saves já
+// afetados, inclusive se a pessoa continuou jogando: a rodada do post precisa ser a do sexto jogo real daquele grupo.
+function limparNoticiasPrematurasDeGrupo(save) {
+  if (!Array.isArray(save.feed) || !save.competicoes || !Array.isArray(save.jogosJogados)) return;
+  const copas = Object.values(save.competicoes).filter((c) => c.tipo === "copa" && c.grupos && c.grupos.length);
+  save.feed = save.feed.filter((post) => {
+    if (!/fase de grupos|classificado no mata-mata/.test(post.texto || "")) return true;
+    const comp = copas.find((c) => post.texto.includes(c.nome)), grupo = comp && comp.grupos.find((g) => g.clubes.includes(save.clube));
+    if (!grupo) return true;
+    const ids = new Set(comp.jogos.filter((j) => j.fase === `grupo-${grupo.id}` && (j.casa === save.clube || j.fora === save.clube)).map((j) => j.id));
+    const ordem = save.jogosJogados.map((id, i) => ids.has(id) ? i + 1 : 0).filter(Boolean), rodadaCerta = ordem.length >= 6 ? ordem[5] : Infinity;
+    return post.rodada >= rodadaCerta;
+  });
+}
+
 // as carreiras criadas antes destas partes ganham os campos novos na primeira vez que abrem
 function completar(save) {
   const c = clubeDe(save, save.clube);
@@ -88,6 +103,7 @@ function completar(save) {
   const temporadas = { desempenho: {}, jogosTemporada: 0, evolucao: {}, jovens: {}, aposentados: {}, donosInicio: null, classificados: null,
     temporadasMax: Math.max(Evolucao.TEMPORADAS.max, save.temporada || 1) };
   for (const [k, v] of Object.entries(temporadas)) if (save[k] === undefined) save[k] = v;
+  limparNoticiasPrematurasDeGrupo(save);
   registrarTemporada(save);
   return save;
 }
@@ -499,14 +515,15 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   save.partida = null; save.rodada++; if (recalcular) recalcularMundo(save);
   save.efeitos = (save.efeitos || []).filter((e) => e.ate >= save.rodada);
   for (const [pid, ind] of Object.entries(save.indicacoes)) if (ind.ate < save.rodada) delete save.indicacoes[pid];
-  const comp = save.competicoes[p.competicao], da = comp.id === "mundial" ? "do" : "da";
+  const comp = save.competicoes[p.competicao], jogoDaCompeticao = comp.jogos.find((j) => j.id === p.jogoId), da = comp.id === "mundial" ? "do" : "da";
   Feed.postar(save, { tipo: nos > eles ? "vitoria" : nos === eles ? "empate" : "derrota", perfil: save.clube, humor: nos > eles ? "bom" : nos < eles ? "ruim" : "neutro", arte: { cena: nos > eles ? "vitoria" : nos === eles ? "empate" : "derrota", casa: p.casa, fora: p.fora, placar: r.placar }, texto: `${comp.nome} · ${clubeDe(save, p.casa).nome} ${r.placar[0]} × ${r.placar[1]} ${clubeDe(save, p.fora).nome}.` });
   if (p.fase === "final") Feed.postar(save, { tipo: comp.campeao === save.clube ? "campeao" : "eliminado", perfil: "galeranews", galeranews: true, humor: comp.campeao === save.clube ? "bom" : "ruim", arte: { cena: "trofeu", clube: comp.campeao }, texto: comp.campeao === save.clube ? `CAMPEÃO! O ${clube.nome} conquista ${comp.id === "mundial" ? "o" : "a"} ${comp.nome}.` : `O ${clube.nome} fica com o vice ${da} ${comp.nome}.` });
   else if (p.mataMata) {
     const ainda = comp.jogos.some((j) => !save.jogosJogados.includes(j.id) && (j.casa === save.clube || j.fora === save.clube));
     if (!ainda) Feed.postar(save, { tipo: "eliminado", perfil: "galeranews", galeranews: true, humor: "ruim", arte: { cena: "derrota", clube: save.clube }, texto: `O ${clube.nome} foi eliminado ${da} ${comp.nome}.` });
   }
-  else if (p.fase.startsWith("grupo-") && p.rodada === 5) {
+  // p.rodada é o total de jogos do técnico, não a rodada dentro da competição. A notícia só sai depois da rodada 6 real do grupo.
+  else if (p.fase.startsWith("grupo-") && jogoDaCompeticao && jogoDaCompeticao.rodada === 5) {
     const passou = comp.jogos.some((j) => j.mataMata && (j.casa === save.clube || j.fora === save.clube));
     Feed.postar(save, { tipo: passou ? "classificado" : "eliminado", perfil: "galeranews", galeranews: true, humor: passou ? "bom" : "ruim", arte: { cena: passou ? "festa" : "derrota", clube: save.clube }, texto: passou ? `O ${clube.nome} está classificado no mata-mata ${da} ${comp.nome}!` : `O ${clube.nome} foi eliminado na fase de grupos ${da} ${comp.nome}.` });
   }

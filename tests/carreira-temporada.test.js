@@ -65,3 +65,27 @@ test("no calendário mundial, os eventos aleatórios também viram notícias", (
   assert.ok(eventos.length > 0, "ao menos um evento do catálogo apareceu no feed");
   assert.strictEqual(new Set(eventos.map((p) => p.id)).size, eventos.length, "nenhuma notícia foi duplicada");
 });
+
+test("a notícia da fase de grupos só sai depois do sexto jogo da copa", () => {
+  process.env.DB_PATH = process.env.DB_PATH || ":memory:";
+  const { novaCarreira, proximoJogoMundo, simularMinha, fecharRodada, sementeDoJogo, estado } = require("../carreira.js").paraTestes;
+  const preparar = (save, jogo) => {
+    save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata,
+      casa: jogo.casa, fora: jogo.fora, modo: 1, semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
+    fecharRodada(save, simularMinha(save));
+  };
+
+  const cedo = novaCarreira("Notícia cedo", "flamengo", "");
+  const jogados = [];
+  while (jogados.length < 6) { const jogo = proximoJogoMundo(cedo); jogados.push(jogo); preparar(cedo, jogo); }
+  assert.strictEqual(jogados.filter((j) => j.competicao === "libertadores").length, 2, "o sexto jogo geral ainda é só o segundo da Libertadores");
+  assert.ok(!cedo.feed.some((p) => /fase de grupos da Libertadores/.test(p.texto)), "não anunciou o fim do grupo antes da hora");
+  cedo.feed.unshift({ tipo: "eliminado", texto: "O Flamengo foi eliminado na fase de grupos da Libertadores.", rodada: 6 });
+  estado(cedo);
+  assert.ok(!cedo.feed.some((p) => /fase de grupos da Libertadores/.test(p.texto)), "removeu a notícia prematura de um save afetado");
+
+  const naHora = novaCarreira("Notícia certa", "flamengo", "");
+  const ultimoDoGrupo = naHora.calendarioMundo.find((j) => j.competicao === "libertadores" && j.fase.startsWith("grupo-") && j.rodada === 5 && (j.casa === naHora.clube || j.fora === naHora.clube));
+  preparar(naHora, ultimoDoGrupo);
+  assert.ok(naHora.feed.some((p) => /fase de grupos da Libertadores|classificado no mata-mata da Libertadores/.test(p.texto)), "anunciou o destino depois da sexta rodada real");
+});

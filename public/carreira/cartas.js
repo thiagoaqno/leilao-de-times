@@ -52,7 +52,7 @@ function figurinha(pid, tamanho = "mini") {
     return `<li><span>${k === "def" && j.pos === "GOL" ? "Goleiro" : nome}</span><b>${v}</b><i style="--v:${v}%"></i></li>`;
   }).join("");
   return `<article class="figurinha ${tamanho} ${faixa(n)}" style="${coresClube(clube)}" data-jogador="${pid}">
-    <header><span class="nota">${n}</span><span class="pos">${j.pos}</span>${escudo(clube, tamanho === "grande" ? 2 : 1)}</header>
+    <header><span class="nota">${n}</span><span class="pos">${j.pos}</span>${seloMudancaNota(pid, "na-figurinha")}${escudo(clube, tamanho === "grande" ? 2 : 1)}</header>
     <div class="foto"><img class="pix" src="${retrato(pid)}" alt=""></div>
     <h4>${h(tamanho === "grande" ? j.nome : sobrenome(j.nome))}</h4>
     ${tamanho === "grande" ? `<p class="sub">${h(POS_NOME[j.pos] || j.pos)} · ${h(j.nat || "")} · ${Evolucao.idadeNa(j, E ? E.temporada : 1)} anos${j.idade ? "" : " (estimada)"}</p><ul class="atributos">${atr}</ul>` : ""}
