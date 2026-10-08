@@ -28,6 +28,58 @@ function texturaDe(cv, repetir = false) {
   return t;
 }
 
+// ---------- texturas que sobem só o que mudou ----------
+// O chão e o atlas são canvases 2D repintados a cada quadro. Subir a imagem inteira para a placa de vídeo a cada quadro
+// (uns 2 MB cada) travava o jogo: o processador ficava esperando a placa (numa placa integrada, de 156 para 23 quadros
+// por segundo). Agora os dois canvases moram na memória (willReadFrequently), cada quadro é comparado com o anterior em
+// ladrilhos de LADRILHO pixels e só os ladrilhos que mudaram sobem (texSubImage2D). A textura é de dados, de cabeça
+// para baixo em relação ao canvas (a linha 0 é a de baixo), como a ESPESSURA do volume.js.
+const LADRILHO = 32;
+function texturaParcial(cv, ctx2d) {
+  const w = cv.width, h = cv.height, dados = new Uint8Array(w * h * 4);
+  const tex = new THREE.DataTexture(dados, w, h, THREE.RGBAFormat);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false; tex.needsUpdate = true;
+  return { tex, ctx: ctx2d, w, h, dados, antes: new Uint32Array(w * h), mudou: [] };
+}
+// compara um retângulo do canvas com o quadro anterior; os ladrilhos que mudaram vão para os dados e para a lista
+function compararParcial(p, rx, ry, rw, rh) {
+  const img = p.ctx.getImageData(rx, ry, rw, rh).data, novo = new Uint32Array(img.buffer), { w, h, antes, dados } = p;
+  for (let ty = ry; ty < ry + rh; ty += LADRILHO) for (let tx = rx; tx < rx + rw; tx += LADRILHO) {
+    const lw = Math.min(LADRILHO, rx + rw - tx), lh = Math.min(LADRILHO, ry + rh - ty);
+    let diferente = false;
+    for (let y = ty; y < ty + lh && !diferente; y++) {
+      const a = y * w + tx, n = (y - ry) * rw + (tx - rx);
+      for (let x = 0; x < lw; x++) if (antes[a + x] !== novo[n + x]) { diferente = true; break; }
+    }
+    if (!diferente) continue;
+    for (let y = ty; y < ty + lh; y++) {
+      const n = (y - ry) * rw + (tx - rx);
+      antes.set(novo.subarray(n, n + lw), y * w + tx);
+      dados.set(img.subarray(n * 4, (n + lw) * 4), ((h - 1 - y) * w + tx) * 4);
+    }
+    // junta com o ladrilho da esquerda, se ele também mudou (menos chamadas para a placa)
+    const ult = p.mudou[p.mudou.length - 1];
+    if (ult && ult.y === ty && ult.h === lh && ult.x + ult.w === tx) ult.w += lw; else p.mudou.push({ x: tx, y: ty, w: lw, h: lh });
+  }
+}
+// sobe para a placa os retângulos (em pixels do canvas) de uma textura de dados. Da primeira vez, sobe inteira.
+function subirRetangulos(tex, lista, formato, bytes) {
+  const { renderer } = cena3d, gl = renderer.getContext(), st = renderer.state, prop = renderer.properties.get(tex);
+  if (!prop.__webglTexture || tex.version === 0) { tex.needsUpdate = true; lista.length = 0; return; }
+  if (!lista.length) return;
+  const H = tex.image.height;
+  st.bindTexture(gl.TEXTURE_2D, prop.__webglTexture);
+  st.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); st.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  st.pixelStorei(gl.UNPACK_ALIGNMENT, bytes === 4 ? 4 : 1); st.pixelStorei(gl.UNPACK_ROW_LENGTH, tex.image.width);
+  for (const r of lista) {
+    const y = H - r.y - r.h; // a textura é de cabeça para baixo
+    st.pixelStorei(gl.UNPACK_SKIP_PIXELS, r.x); st.pixelStorei(gl.UNPACK_SKIP_ROWS, y);
+    st.texSubImage2D(gl.TEXTURE_2D, 0, r.x, y, r.w, r.h, formato, gl.UNSIGNED_BYTE, tex.image.data);
+  }
+  st.pixelStorei(gl.UNPACK_ROW_LENGTH, 0); st.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0); st.pixelStorei(gl.UNPACK_SKIP_ROWS, 0);
+  lista.length = 0;
+}
+
 function iniciarCena3d() {
   if (cena3d.ok) return true;
   if (cena3d.falhou || !window.THREE) return false;
@@ -50,7 +102,7 @@ function iniciarCena3d() {
     const degrade = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
     degrade.magFilter = degrade.minFilter = THREE.NearestFilter; degrade.needsUpdate = true;
     // o chão da quadra (o canvas visto de cima) e o atlas dos cartazes
-    const texChao = texturaDe(chaoCv), texAtlas = texturaDe(atlasCv);
+    const chao = texturaParcial(chaoCv, chaoCtx), atlas = texturaParcial(atlasCv, atlasCtx), texChao = chao.tex, texAtlas = atlas.tex;
     const matCartaz = new THREE.MeshBasicMaterial({ map: texAtlas, transparent: true, alphaTest: 0.04, depthWrite: false });
     matCartaz.shadowSide = THREE.DoubleSide; // o cartaz é uma folha só: sem isto, a sombra dele some
     const sombraCartaz = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: texAtlas, alphaTest: 0.5 });
@@ -64,7 +116,7 @@ function iniciarCena3d() {
       m.customDepthMaterial = sombraCartaz; m.visible = false; m.frustumCulled = false;
       scene.add(m); cartazes.push(m);
     }
-    Object.assign(cena3d, { renderer, scene, cam, sol, ambiente, degrade, texChao, texAtlas, cartazes, raio: new THREE.Raycaster(), plano: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), v: new THREE.Vector3(), tremor: new THREE.Vector3(), ok: true });
+    Object.assign(cena3d, { renderer, scene, cam, sol, ambiente, degrade, chao, atlas, texChao, texAtlas, cartazes, raio: new THREE.Raycaster(), plano: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), v: new THREE.Vector3(), tremor: new THREE.Vector3(), ok: true });
     montarVolume(cena3d); // os bichos com volume (volume.js)
     montarGolpes3d(cena3d); // os golpes com volume (golpes3d.js)
     definirLeve(cena3d.leve, true);
@@ -236,11 +288,17 @@ function posicionarCartaz(m, c) {
 // lista: [{ casa, x, y, altura, bicho, sombra }] — bicho: cartaz em pé, com os pés na linha PE_CARTAZ; senão, o centro
 // da casa fica no ponto (projéteis), virado para a câmera
 function renderizar3d(lista, agora, tremor) {
-  const { renderer, scene, cam, cartazes, volumes, texChao, texAtlas, texEspessura } = cena3d;
+  const { renderer, scene, cam, cartazes, volumes, chao, atlas, texEspessura } = cena3d;
   const T = temaAtual();
   if (cena3d.temaFeito !== T) { montarTema(T); G3.claro = luminancia(T.piso[0]) > 0.55; }
   mexerTorcida(agora); cena3d.cenario?.(agora);
-  texChao.needsUpdate = true; texAtlas.needsUpdate = true; texEspessura.needsUpdate = true;
+  // só o que mudou sobe para a placa: o chão inteiro é comparado; do atlas, só as casas em uso; da espessura, só as
+  // casas medidas neste quadro
+  const gl = renderer.getContext(), casa = ATLAS.casa, colunas = ATLAS.w / casa;
+  compararParcial(chao, 0, 0, chao.w, chao.h); subirRetangulos(chao.tex, chao.mudou, gl.RGBA, 4);
+  for (const c of lista) compararParcial(atlas, (c.casa % colunas) * casa, Math.floor(c.casa / colunas) * casa, casa, casa);
+  subirRetangulos(atlas.tex, atlas.mudou, gl.RGBA, 4);
+  subirRetangulos(texEspessura, ESPESSURA_MUDOU, gl.RED, 1);
   cartazes.forEach((m) => { m.visible = false; });
   volumes.forEach((v) => { v.volume.visible = v.fantasma.visible = false; });
   for (const c of lista) {

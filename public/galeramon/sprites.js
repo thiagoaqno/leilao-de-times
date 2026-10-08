@@ -203,7 +203,7 @@
   function pintar(id, q, olhoFechado) {
     const cv = document.createElement("canvas"); cv.width = S; cv.height = S;
     Q = q; PISCA = olhoFechado;
-    try { (DRAW[id] || DRAW.capivarao)(cv.getContext("2d")); } finally { Q = 0; PISCA = false; }
+    try { (DRAW[id] || DRAW.capivarao)(cv.getContext("2d", { willReadFrequently: true })); } finally { Q = 0; PISCA = false; } // na memória: o Ginásio desenha no atlas a cada quadro
     return cv;
   }
   function sprite(id) {
@@ -214,7 +214,7 @@
   const CORTE = 22, RESPIRA = [0, 1, 1, 0];
   function respirando(base, q) {
     const cv = document.createElement("canvas"); cv.width = S; cv.height = S;
-    const c = cv.getContext("2d");
+    const c = cv.getContext("2d", { willReadFrequently: true });
     c.drawImage(base, 0, CORTE, S, S - CORTE, 0, CORTE, S, S - CORTE);
     c.drawImage(base, 0, 0, S, CORTE, 0, RESPIRA[q], S, CORTE);
     return cv;
