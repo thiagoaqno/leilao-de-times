@@ -10,7 +10,10 @@ $("mOlheiro").onclick = async () => {
   const r = await pedir("olheiro");
   $("mOlheiro").disabled = false;
   if (!r.ok) return toast(r.error);
-  $("mOlheiroLista").innerHTML = r.sugestoes.length ? r.sugestoes.map((s) => `<div class="dica-olheiro">${figurinha(s.jogador)}<p>${h(s.motivo)}</p></div>`).join("")
+  $("mOlheiroLista").innerHTML = r.sugestoes.length ? r.sugestoes.map((s, i) => { const j = JOGADORES[s.jogador]; return `<article class="dica-olheiro" style="--ordem:${i}">
+      <header><span>${ic("olho")} Relatório ${String(i + 1).padStart(2, "0")}</span><b>${i === 0 ? "Reforço ideal" : "Boa opção"}</b></header>
+      <div class="dica-corpo">${figurinha(s.jogador)}<div><strong>${h(j.nome)}</strong><small>${h(POS_NOME[j.pos] || j.pos)} · ${notaDe(j)} GER · ${dinheiro(valorAtual(j.id))}</small><p>${h(s.motivo)}</p></div></div>
+    </article>`; }).join("")
     : `<p class="suave">O olheiro não achou ninguém que melhore o time e caiba no caixa.</p>`;
 };
 function telaMercado() {

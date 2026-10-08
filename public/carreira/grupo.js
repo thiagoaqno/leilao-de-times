@@ -156,9 +156,14 @@ function desenharLeilao() {
   if (!l || !E) { caixa.classList.add("hidden"); return; }
   const j = JOGADORES[l.jogador], topo = l.lances[l.lances.length - 1], meu = E.clube;
   const proximo = topo ? topo.valor + l.passo : l.minimo, resta = Math.max(0, Math.ceil(((l.estado === "martelo" ? l.ate : l.fim) - agoraServidor()) / 1000));
+  const chave = `${l.jogador}:${l.t || l.inicio || l.fim}`, lanceAnterior = caixa.dataset.lance, lanceAtual = topo ? `${topo.clube}:${topo.valor}` : "";
+  const novo = caixa.dataset.leilao !== chave, mudouLance = !!lanceAnterior && lanceAnterior !== lanceAtual;
+  caixa.dataset.leilao = chave; caixa.dataset.lance = lanceAtual;
   caixa.classList.remove("hidden");
-  caixa.innerHTML = `<div class="leilao-info">${ic("martelo")}<span><b>Leilão: ${h(j ? j.nome : "?")}</b> <small>do ${h(nomeClube(l.dono))} · mínimo ${dinheiro(l.minimo)}</small><br>
-      ${topo ? `Maior lance: <b>${dinheiro(topo.valor)}</b> (${h(nomeClube(topo.clube))})` : "Sem lances ainda"} · <b>${resta}s</b>${l.estado === "martelo" ? " para o dono decidir" : ""}</span></div>
+  caixa.classList.toggle("novo", novo);
+  caixa.innerHTML = `<div class="leilao-jogador"><img class="pix" src="${j ? retrato(j.id) : ""}" alt=""><span><small>AO VIVO · ${j ? h(j.pos) : ""}</small><b>${h(j ? j.nome : "?")}</b><em>${h(nomeClube(l.dono))}</em></span></div>
+    <div class="leilao-info"><span class="leilao-icone">${ic("martelo")}</span><span><small>${topo ? "Maior lance" : "Lance inicial"}</small><b class="leilao-valor${mudouLance ? " mudou" : ""}">${dinheiro(topo ? topo.valor : l.minimo)}</b>${topo ? `<em>${escudo(topo.clube, 1)} ${h(nomeClube(topo.clube))}</em>` : `<em>mínimo pedido</em>`}</span></div>
+    <div class="leilao-tempo" style="--resta:${Math.min(30, resta)}"><b>${resta}</b><small>${l.estado === "martelo" ? "decisão" : "segundos"}</small></div>
     <div class="leilao-acoes">${l.dono === meu
       ? (l.estado === "martelo" || topo ? `<button id="lMartelo" class="primario" ${topo ? "" : "disabled"}>Bater o martelo</button><button id="lRecusar" class="secundario">Ficar com ele</button>` : "<small>O jogador é seu: você decide no fim.</small>")
       : l.estado === "lances" ? `<button id="lLance" class="primario" ${topo && topo.clube === meu ? "disabled" : ""}>Dar ${dinheiro(proximo)}</button>` : "<small>Esperando o dono decidir.</small>"}
@@ -167,14 +172,19 @@ function desenharLeilao() {
   if ($("lMartelo")) $("lMartelo").onclick = () => agirGrupo({ type: "martelo" });
   if ($("lRecusar")) $("lRecusar").onclick = () => agirGrupo({ type: "recusar" });
   $("lVer").onclick = () => abrirFicha(l.jogador);
+  if (novo) setTimeout(() => caixa.classList.remove("novo"), 500);
 }
 setInterval(() => { if (EM_GRUPO && SALA && SALA.leilao) desenharLeilao(); }, 1000);
 // o fim do leilão: um aviso para todo mundo
-let ultimoLeilaoVisto = null;
+let leiloesCarregados = false, ultimoLeilaoVisto = null;
 function avisarLeilao(st) {
-  const u = st.ultimoLeilao; if (!u || u.t === ultimoLeilaoVisto) return;
-  const primeira = ultimoLeilaoVisto === null; ultimoLeilaoVisto = u.t; if (primeira) return;
+  const u = st.ultimoLeilao;
+  // Ao entrar numa sala, não repete uma venda antiga. Depois da primeira carga, o primeiro leilão novo já aparece.
+  if (!leiloesCarregados) { leiloesCarregados = true; ultimoLeilaoVisto = u ? u.t : null; return; }
+  if (!u || u.t === ultimoLeilaoVisto) return;
+  ultimoLeilaoVisto = u.t;
   const nome = JOGADORES[u.jogador] ? JOGADORES[u.jogador].nome : "o jogador";
   toast(u.resultado === "vendido" ? `Martelo batido: ${nome} vai para o ${nomeClube(u.para)} por ${dinheiro(u.valor)}.` : u.resultado === "recusado" ? `O dono ficou com ${nome}.` : `O leilão de ${nome} terminou sem venda.`);
+  if (u.resultado === "vendido") AnimacoesCarreira.animarTransferencia({ jogador: u.jogador, tipo: "venda", de: u.de || u.dono, para: u.para, valor: u.valor });
   if (u.resultado === "vendido" && E && u.para === E.clube) festa();
 }

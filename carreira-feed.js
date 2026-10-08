@@ -54,6 +54,24 @@ const CENA_EVENTO = {
 };
 const CENA_GRUPO = { vestiario: "vestiario", torcida: "torcida", imprensa: "imprensa", dinheiro: "contrato", treino: "treino", mercado: "olheiro", jogo: "estadio", pessoal: "vestiario", comissao: "prancheta" };
 
+// O que acontece entre dois jogos também vira notícia. O calendário antigo e o mundial chamam a mesma função para
+// não deixar os eventos aleatórios presos só na caixa de entrada.
+function entreRodadas(save, { novos, transferencias, ajudas: c }) {
+  const meu = save.clube, clube = c.clubeDe(save, meu);
+  for (const t of transferencias) if (t.de !== meu && t.para !== meu) transferencia(save, t, c);
+  for (const e of novos) {
+    if (e.def) {
+      const cena = CENA_EVENTO[e.def] || CENA_GRUPO[e.grupo] || "vestiario", pid = e.dados && e.dados.jogador;
+      postar(save, { tipo: "evento", perfil: e.grupo === "imprensa" || e.grupo === "torcida" ? "galeranews" : meu, galeranews: e.grupo === "imprensa",
+        humor: ["lesao", "protesto", "balada", "chuva"].includes(cena) ? "ruim" : ["festa", "trofeu", "selecao"].includes(cena) ? "bom" : "neutro",
+        arte: { cena, jogador: pid || null, clube: pid ? c.donoDe(save, pid) : meu }, texto: `${e.titulo}. ${e.texto}` });
+    } else if (e.tipo === "disputa") {
+      postar(save, { tipo: "disputa", perfil: "galeranews", galeranews: true, humor: "mercado", peso: 1.4, arte: { cena: "martelo", jogador: e.dados.jogador, clube: meu },
+        texto: `LEILÃO NO MERCADO: ${e.dados.lances.length > 2 ? "vários clubes" : "dois clubes"} brigam por ${c.jogadorDe(save, e.dados.jogador).nome}, do ${clube.nome}.` });
+    }
+  }
+}
+
 // os posts da rodada que acabou
 function daRodada(save, { rodada, r, novos, transferencias, ajudas: c }) {
   const meu = save.clube, clube = c.clubeDe(save, meu), u = save.ultimo, nosLado = u.casa === meu ? 0 : 1;
@@ -90,20 +108,7 @@ function daRodada(save, { rodada, r, novos, transferencias, ajudas: c }) {
     postar(save, { tipo: "tabela", perfil: "galeranews", galeranews: true, humor: faixa(pos) === "z4" ? "ruim" : "bom", arte: { cena: "tabela", clube: meu, posicao: pos }, texto });
   }
   save.posAnterior = pos;
-  // as transferências da IA nesta rodada
-  for (const t of transferencias) if (t.de !== meu && t.para !== meu) transferencia(save, t, c);
-  // os eventos novos (do catálogo e as disputas)
-  for (const e of novos) {
-    if (e.def) {
-      const cena = CENA_EVENTO[e.def] || CENA_GRUPO[e.grupo] || "vestiario", pid = e.dados && e.dados.jogador;
-      postar(save, { tipo: "evento", perfil: e.grupo === "imprensa" || e.grupo === "torcida" ? "galeranews" : meu, galeranews: e.grupo === "imprensa",
-        humor: ["lesao", "protesto", "balada", "chuva"].includes(cena) ? "ruim" : ["festa", "trofeu", "selecao"].includes(cena) ? "bom" : "neutro",
-        arte: { cena, jogador: pid || null, clube: pid ? c.donoDe(save, pid) : meu }, texto: `${e.titulo}. ${e.texto}` });
-    } else if (e.tipo === "disputa") {
-      postar(save, { tipo: "disputa", perfil: "galeranews", galeranews: true, humor: "mercado", peso: 1.4, arte: { cena: "martelo", jogador: e.dados.jogador, clube: meu },
-        texto: `LEILÃO NO MERCADO: ${e.dados.lances.length > 2 ? "vários clubes" : "dois clubes"} brigam por ${c.jogadorDe(save, e.dados.jogador).nome}, do ${clube.nome}.` });
-    }
-  }
+  entreRodadas(save, { novos, transferencias, ajudas: c });
 }
 
-module.exports = { postar, transferencia, daRodada, MAX };
+module.exports = { postar, transferencia, entreRodadas, daRodada, MAX };

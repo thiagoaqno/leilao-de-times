@@ -51,3 +51,17 @@ test("no calendário mundial, suspensão e lesão contam os jogos e o jogador vo
   jogar();
   assert.ok(!save.lesoes[b.id], "voltou da lesão de 2 jogos");
 });
+
+test("no calendário mundial, os eventos aleatórios também viram notícias", () => {
+  process.env.DB_PATH = process.env.DB_PATH || ":memory:";
+  const { novaCarreira, proximoJogoMundo, simularMinha, fecharRodada, sementeDoJogo } = require("../carreira.js").paraTestes;
+  const save = novaCarreira("Notícias", "flamengo", "");
+  for (let i = 0; i < 8 && !save.feed.some((p) => p.tipo === "evento"); i++) {
+    const jogo = proximoJogoMundo(save);
+    save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, casa: jogo.casa, fora: jogo.fora, modo: 1, semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
+    fecharRodada(save, simularMinha(save));
+  }
+  const eventos = save.feed.filter((p) => p.tipo === "evento");
+  assert.ok(eventos.length > 0, "ao menos um evento do catálogo apareceu no feed");
+  assert.strictEqual(new Set(eventos.map((p) => p.id)).size, eventos.length, "nenhuma notícia foi duplicada");
+});
