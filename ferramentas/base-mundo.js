@@ -1,4 +1,4 @@
-// Gera as bases da Carreira de Treinador a partir do CSV do EA FC 26.
+// Gera as bases da Carreira de Treinador a partir do CSV do EA FC 27 (dados/ea_fc27: o README conta de onde ele veio).
 // Uso: node ferramentas/base-mundo.js
 const fs = require("node:fs");
 const path = require("node:path");
@@ -6,7 +6,10 @@ const Mercado = require("../public/carreira/mercado.js");
 const Orcamentos = require("../public/carreira/orcamentos.js");
 
 const RAIZ = path.join(__dirname, "..");
-const CSV = path.join(RAIZ, "dados", "ea_fc26", "ea_fc26_players.csv");
+const CSV = path.join(RAIZ, "dados", "ea_fc27", "ea_fc27_players.csv");
+const FONTE = "EA FC 27", ORIGEM = "dados/ea_fc27/ea_fc27_players.csv";
+// as ligas sul-americanas no CSV (no FC 26 eram "Libertadores" e "Sudamericana")
+const LIBERTADORES = "CONMEBOL Libertadores", SUDAMERICANA = "CONMEBOL Sudamericana";
 const DESTINO = path.join(RAIZ, "public", "carreira", "base");
 const DATA_BASE = new Date(Date.UTC(2026, 6, 1));
 const LIMITE_ELENCO = 28;
@@ -22,8 +25,9 @@ const LIGAS = [
 
 // A Libertadores argentina usa estes seis clubes. A ordem também serve de desempate na geração.
 const ARGENTINOS_LIBERTADORES = ["River Plate", "Boca Juniors", "Racing Club", "Estudiantes", "Vélez Sarsfield", "Talleres"];
-// O Racing uruguaio fica como reserva continental e garante que nomes iguais nunca sejam tratados como o mesmo clube.
-const SULAMERICANOS_RESERVA = ["Racing Club"];
+// Clubes de fora da Libertadores do CSV que entram no grupo dos sul-americanos (no FC 26 era o Racing uruguaio; no
+// FC 27 a Libertadores já tem os 20 de que a Carreira precisa). O id do Racing continua com o país (racing-club-argentina).
+const SULAMERICANOS_RESERVA = [];
 
 const NOMES = {
   "Lombardia FC": "Inter de Milão", "Milano FC": "Milan", Latium: "Lazio", "Bergamo Calcio": "Atalanta",
@@ -33,6 +37,11 @@ const NOMES = {
   "R. Oviedo": "Real Oviedo", Celta: "Celta de Vigo", Defensa: "Defensa y Justicia", "Ind. Rivadavia": "Independiente Rivadavia",
   "Argentinos Jrs.": "Argentinos Juniors", "Dep. Riestra": "Deportivo Riestra", "Atl. Nacional": "Atlético Nacional",
   "Dep. Táchira": "Deportivo Táchira", IDV: "Independiente del Valle", "U. de Chile": "Universidad de Chile",
+  // os que chegaram no FC 27
+  Ipswich: "Ipswich Town", "R. Racing Club": "Racing de Santander", "RC Deportivo": "Deportivo La Coruña", "Málaga CF": "Málaga",
+  "FC Schalke 04": "Schalke 04", "SC Paderborn 07": "Paderborn", "SV Elversberg": "Elversberg", "ESTAC Troyes": "Troyes",
+  "Indep. Medellín": "Independiente Medellín", "Indep. Santa Fe": "Independiente Santa Fe", "Dep. La Guaira": "Deportivo La Guaira",
+  "Uni. Católica": "Universidad Católica", "UCV FC": "UCV",
 };
 
 // clube CSV|sigla|estádio|cor principal|cor secundária|país (o país só é necessário na América do Sul)
@@ -159,6 +168,30 @@ Sporting Cristal|SCR|Alberto Gallardo|#6bb7d6|#ffffff|Peru
 U. de Chile|UCH|Nacional de Chile|#005bac|#d71920|Chile
 Universitario|UNI|Monumental de Lima|#f3e2c7|#7a263a|Peru
 Racing Club|RAU|Parque Osvaldo Roberto|#00843d|#ffffff|Uruguai
+Coventry City|COV|Coventry Building Society Arena|#6cb4e4|#ffffff
+Hull City|HUL|MKM Stadium|#f5a12d|#111111
+Ipswich|IPS|Portman Road|#0044a9|#ffffff
+Málaga CF|MAL|La Rosaleda|#00a3e0|#ffffff
+R. Racing Club|RSA|El Sardinero|#00843d|#ffffff
+RC Deportivo|DEP|Riazor|#005bac|#ffffff
+Frosinone|FRO|Benito Stirpe|#ffd100|#005bac
+Monza|MON|U-Power Stadium|#d71920|#ffffff
+Venezia|VEN|Pier Luigi Penzo|#111111|#f58220
+FC Schalke 04|S04|Veltins-Arena|#004d9d|#ffffff
+SC Paderborn 07|SCP|Home Deluxe Arena|#1f3c88|#111111
+SV Elversberg|SVE|Waldstadion an der Kaiserlinde|#111111|#ffffff
+ESTAC Troyes|ETR|Stade de l'Aube|#005bac|#ffffff
+Le Mans FC|LEM|MMArena|#d71920|#ffd100
+Always Ready|ARE|Municipal de El Alto|#d71920|#ffffff|Bolívia
+Coquimbo Unido|COQ|Francisco Sánchez Rumoroso|#ffd100|#111111|Chile
+Cusco FC|CUS|Inca Garcilaso de la Vega|#ffd100|#111111|Peru
+Dep. La Guaira|LGU|Olímpico de la UCV|#f58220|#005bac|Venezuela
+Deportes Tolima|TOL|Manuel Murillo Toro|#7a263a|#ffd100|Colômbia
+Indep. Medellín|DIM|Atanasio Girardot|#d71920|#005bac|Colômbia
+Indep. Santa Fe|SFE|El Campín|#d71920|#ffffff|Colômbia
+Junior|JUN|Roberto Meléndez|#d71920|#ffffff|Colômbia
+UCV FC|UCV|Olímpico de la UCV|#005bac|#ffffff|Venezuela
+Uni. Católica|UCA|Claro Arena|#ffffff|#005bac|Chile
 `;
 
 const METADADOS = new Map(METADADOS_TEXTO.trim().split("\n").map((linha) => {
@@ -192,6 +225,8 @@ Object.assign(PAISES, {
   Panama: "Panamá", "Republic of Ireland": "Irlanda", Russia: "Rússia", "Sierra Leone": "Serra Leoa",
   "South Africa": "África do Sul", Suriname: "Suriname", Syria: "Síria", Tanzania: "Tanzânia", Togo: "Togo",
   Tunisia: "Tunísia", "United States": "Estados Unidos", Uzbekistan: "Uzbequistão", Zambia: "Zâmbia", Zimbabwe: "Zimbábue",
+  Kenya: "Quênia", Mauritania: "Mauritânia", Iraq: "Iraque", Thailand: "Tailândia", Philippines: "Filipinas", Congo: "Congo",
+  "China PR": "China", "Costa Rica": "Costa Rica",
 });
 
 const POSICOES = {
@@ -218,6 +253,20 @@ function lerCSV(texto) {
   if (campo || linha.length) { linha.push(campo.replace(/\r$/, "")); linhas.push(linha); }
   const cabecalho = linhas.shift();
   return linhas.filter((l) => l.some(Boolean)).map((l) => Object.fromEntries(cabecalho.map((k, i) => [k, l[i] ?? ""])));
+}
+
+// o CSV do FC 27 tem outros nomes de colunas (player_id, overall_rating, club, league...): traduz para os de antes, que
+// o resto da ferramenta usa. Fica só com o futebol masculino (o arquivo traz as ligas femininas também).
+const COLUNAS_FC27 = { id: "player_id", overallRating: "overall_rating", firstName: "first_name", lastName: "last_name", commonName: "common_name",
+  team: "club", leagueName: "league", pac: "pace", sho: "shooting", pas: "passing", dri: "dribbling", def: "defending", phy: "physicality",
+  gkDiving: "goalkeeping_diving", gkHandling: "goalkeeping_handling", gkPositioning: "goalkeeping_positioning", gkReflexes: "goalkeeping_reflexes" };
+function jogadoresDoCSV(texto) {
+  return lerCSV(texto).filter((l) => !l.gender || l.gender === "Men's Football").map((l) => {
+    if (!("player_id" in l)) return l; // o formato antigo (FC 26)
+    const o = { ...l };
+    for (const [antigo, novo] of Object.entries(COLUNAS_FC27)) o[antigo] = l[novo];
+    return o;
+  });
 }
 
 function dataDe(valor) {
@@ -328,7 +377,7 @@ function calibrarBrasil(base, argentinos) {
 }
 
 function moduloBase(base, origem) {
-  const cabecalho = `// Carreira de Treinador: ${base.nome} 2026, gerada por ferramentas/base-mundo.js.\n// Fonte dos jogadores e notas: EA FC 26 (${origem}). Não edite à mão; altere a ferramenta e gere de novo.\n`;
+  const cabecalho = `// Carreira de Treinador: ${base.nome} 2026, gerada por ferramentas/base-mundo.js.\n// Fonte dos jogadores e notas: ${FONTE} (${origem}). Não edite à mão; altere a ferramenta e gere de novo.\n`;
   const topo = { ...base }; delete topo.clubes;
   const jsonTopo = JSON.stringify(topo).slice(0, -1);
   const clubes = base.clubes.map((clube) => {
@@ -360,20 +409,20 @@ function gerarIndice(bases, brasil) {
 }
 
 function gerar() {
-  const linhas = lerCSV(fs.readFileSync(CSV, "utf8"));
+  const linhas = jogadoresDoCSV(fs.readFileSync(CSV, "utf8"));
   const porClube = new Map();
   for (const linha of linhas) {
     const chave = chaveClube(linha.leagueName, linha.team);
     if (!porClube.has(chave)) porClube.set(chave, []);
     porClube.get(chave).push(linha);
   }
-  const bases = LIGAS.map((liga) => ({ id: liga.id, nome: liga.nome, ano: 2026, fonte: "EA FC 26", clubes: [...porClube.entries()].filter(([chave]) => chave.startsWith(`${liga.csv}\u0000`)).map(([chave, elenco]) => clubeDe(liga.csv, chave.split("\u0000")[1], elenco, liga)).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")) }));
+  const bases = LIGAS.map((liga) => ({ id: liga.id, nome: liga.nome, ano: 2026, fonte: FONTE, clubes: [...porClube.entries()].filter(([chave]) => chave.startsWith(`${liga.csv}\u0000`)).map(([chave, elenco]) => clubeDe(liga.csv, chave.split("\u0000")[1], elenco, liga)).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")) }));
   const ligaArgentina = { csv: "LPF", id: "argentina-2026", nome: "Argentina — Libertadores", pais: "Argentina", fator: 0.82 };
-  const argentina = { id: ligaArgentina.id, nome: ligaArgentina.nome, ano: 2026, fonte: "EA FC 26", clubes: ARGENTINOS_LIBERTADORES.map((time) => clubeDe("LPF", time, porClube.get(chaveClube("LPF", time)) || [], ligaArgentina)) };
-  const ligaSul = { csv: "Libertadores", id: "sulamericanos-2026", nome: "Clubes sul-americanos", pais: "", fator: 0.72 };
-  const timesSul = [...new Set([...linhas.filter((l) => l.leagueName === "Libertadores").map((l) => l.team), ...SULAMERICANOS_RESERVA])];
-  const sulamericanos = { id: ligaSul.id, nome: ligaSul.nome, ano: 2026, fonte: "EA FC 26", clubes: timesSul.map((time) => {
-    const origem = linhas.some((l) => l.leagueName === "Libertadores" && l.team === time) ? "Libertadores" : "Sudamericana";
+  const argentina = { id: ligaArgentina.id, nome: ligaArgentina.nome, ano: 2026, fonte: FONTE, clubes: ARGENTINOS_LIBERTADORES.map((time) => clubeDe("LPF", time, porClube.get(chaveClube("LPF", time)) || [], ligaArgentina)) };
+  const ligaSul = { csv: LIBERTADORES, id: "sulamericanos-2026", nome: "Clubes sul-americanos", pais: "", fator: 0.72 };
+  const timesSul = [...new Set([...linhas.filter((l) => l.leagueName === LIBERTADORES).map((l) => l.team), ...SULAMERICANOS_RESERVA])];
+  const sulamericanos = { id: ligaSul.id, nome: ligaSul.nome, ano: 2026, fonte: FONTE, clubes: timesSul.map((time) => {
+    const origem = linhas.some((l) => l.leagueName === LIBERTADORES && l.team === time) ? LIBERTADORES : SUDAMERICANA;
     return clubeDe(origem, time, porClube.get(chaveClube(origem, time)) || [], ligaSul);
   }) };
   bases.push(argentina, sulamericanos);
@@ -381,12 +430,12 @@ function gerar() {
   const caminhoBrasil = path.join(DESTINO, "brasileirao-2026.js");
   delete require.cache[require.resolve(caminhoBrasil)];
   const brasil = calibrarBrasil(require(caminhoBrasil), argentina.clubes);
-  gravarBase(brasil, "base brasileira estimada, calibrada na escala do EA FC 26");
-  for (const base of bases) gravarBase(base, "dados/ea_fc26/ea_fc26_players.csv");
+  gravarBase(brasil, `base brasileira estimada, calibrada na escala do ${FONTE}`);
+  for (const base of bases) gravarBase(base, ORIGEM);
   gerarIndice(bases, brasil);
   console.log(`Brasileirão: ajuste único ${brasil.calibragem.ajuste >= 0 ? "+" : ""}${brasil.calibragem.ajuste}; Libertadores: 32 clubes.`);
   return { brasil, bases };
 }
 
 if (require.main === module) gerar();
-module.exports = { lerCSV, dataDe, idadeEm, chaveClube, fecharElenco, calibrarBrasil, gerar };
+module.exports = { lerCSV, jogadoresDoCSV, dataDe, idadeEm, chaveClube, fecharElenco, calibrarBrasil, gerar };

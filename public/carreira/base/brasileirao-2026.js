@@ -1,5 +1,5 @@
 // Carreira de Treinador: Brasileirão Série A 2026, gerada por ferramentas/base-mundo.js.
-// Fonte dos jogadores e notas: EA FC 26 (base brasileira estimada, calibrada na escala do EA FC 26). Não edite à mão; altere a ferramenta e gere de novo.
+// Fonte dos jogadores e notas: EA FC 27 (base brasileira estimada, calibrada na escala do EA FC 27). Não edite à mão; altere a ferramenta e gere de novo.
 (function (root, factory) {
   const base = factory();
   if (typeof module === "object" && module.exports) module.exports = base;
