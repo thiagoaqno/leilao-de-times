@@ -16,10 +16,13 @@ leitura e transparência; a regra da partida não foi alterada.
   confundidos com a evolução definitiva.
 - **Leitura visual:** peças improvisadas têm borda tracejada e brilho âmbar, mantendo as cores do clube e o visual da
   prancheta.
+- **Notícia da fase de grupos:** classificação ou eliminação só é anunciada depois da sexta partida real do grupo. O
+  sexto jogo geral da carreira não é mais confundido com a sexta rodada da Libertadores ou da Champions. Saves já
+  afetados têm a notícia prematura removida ao serem carregados.
 
 ## Conferido
 
-- **Testes focados do motor e da evolução:** 15 testes passaram.
+- **Testes focados do motor, evolução e temporada:** 22 testes passaram, incluindo a regressão do sexto jogo geral.
 - **E2E focado:** o cenário novo confirmou os selos `+2` e `-1`, trocou um defensor com um atacante e verificou que
   as duas notas efetivas ficaram menores que as notas normais.
 - **Foto:** `planos/imagens/carreira-rendimento-posicao.png`.

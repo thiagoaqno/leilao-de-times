@@ -38,6 +38,8 @@ catálogo e as transferências da IA apareçam no feed além da caixa de entrada
 Na prancheta, `elenco.js` mostra a nota nominal e, quando `Escalacao.FIT` é menor que 100%, o rendimento efetivo na
 posição (`nota → rendimento`). `bonusNota` aparece como selo permanente nas peças e figurinhas; efeitos de evento
 válidos para o próximo jogo usam outro selo, temporário, para as duas mudanças não serem confundidas.
+No calendário mundial, `save.rodada`/`partida.rodada` contam todos os jogos do técnico. Para decidir o fim da fase de
+grupos, use `rodada` do jogo correspondente em `competicao.jogos`; não confunda os dois contadores.
 | `ferramentas/base-mundo.js` + `dados/ea_fc26/` + `public/carreira/base/*-2026.js` | **Base mundial da Carreira.** `npm run base:mundo` lê o CSV completo do EA FC 26 com parser próprio, converte as cinco grandes ligas, seis argentinos e os clubes sul-americanos, calibra a base brasileira e gera um módulo UMD por liga. `mundo-2026.js` é o índice das ligas e dos 32 clubes da Libertadores. A chave de origem é sempre `leagueName + team`; jogadores guardam `ea`, e jovens fictícios que completam elenco têm `base: true`. Desde o PR 2 de `planos/carreira-online.md`, todas essas bases são carregadas pela carreira solo e pelo mercado mundial. |
 | `noite.js` + `public/noite.js` | **Noite da Galera.** Ver a seção própria abaixo. |
 | `public/comum.js` | `window.Comum`. Ver a lista de funções logo abaixo. |
