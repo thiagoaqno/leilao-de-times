@@ -65,6 +65,7 @@ module.exports = function attachFutevolei(io) {
     F.passo(m, TICK, now);
     if (m.ev.length) {
       const evs = m.ev.splice(0);
+      for (const e of evs) e.t ??= now; // a hora (do servidor) de cada evento: o navegador mostra quando a bola chega na tela
       nsp.to(room.code).emit("ev", evs);
       if (evs.some((e) => e.tipo === "ponto" || e.tipo === "fim" || (e.tipo === "toque" && e.golpe === "saque"))) {
         const fim = evs.find((e) => e.tipo === "fim");

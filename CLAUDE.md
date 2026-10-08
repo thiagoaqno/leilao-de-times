@@ -125,7 +125,12 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
   rede, o saque e os robôs (`DIF`). A calibragem dos robôs está nos tempos de `GOLPES` e em `DIF.espirra`.
 - **`atleta.js`:** o atleta (o "FutevoleiPlayer"): um transform (`raiz`) que **não cria malha**. O gancho de skin é
   `vestir(visual)` (o `jogo.js` monta o visual com o `makePlayer` e entrega); as animações saem por gatilhos
-  (`disparar("cabeca")`, `disparar("shark", { estilo })`...), mexendo nas juntas do boneco (`GOLPES` com as poses).
+  (`disparar("cabeca")`, `disparar("shark", { estilo })`...), mexendo nas juntas do boneco (`CLIPES` com as poses; os
+  grupos `comemora`, `lamenta` e `mania` sorteiam uma versão). **O golpe começa antes do toque:** cada clipe tem o seu
+  `impacto`; o `jogo.js` usa `F.previsaoToque` para `antecipar` o golpe e o evento do toque só `confirmar` (acerta o
+  impacto). Online, os eventos levam a hora do servidor (`e.t`) e esperam a bola chegar na tela (`INTERP`). O saque tem
+  0,3 s de preparo (`PREPARO_SAQUE`, evento `preSaque`). Parado, o boneco respira, troca o peso de perna, quica na base
+  e, de vez em quando, faz uma mania; tudo passa por uma suavização (cada junta vai atrás do alvo).
 - **`cenarios.js`:** `montarCenario(renderer, scene, "praia" | "arena")`. A praia: céu `Sky` com nuvens (o sol fica
   atrás do time Amarelo; exposição baixa porque o céu é forte), o ambiente (reflexos) tirado do próprio céu, areia com
   relevo, mar e espuma animados, coqueiros, guarda-sóis, quiosque, torre do salva-vidas, calçadão e prédios. A arena

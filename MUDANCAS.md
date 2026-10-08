@@ -1,37 +1,41 @@
-# Ginásio: o FPS de volta
+# Futevôlei: o golpe na hora certa e o boneco vivo
 
-Depois do Ginásio 3D (#92 a #94), o jogo caiu para uns 23 quadros por segundo numa placa de vídeo integrada (Intel UHD),
-e para 13 numa tela de alta densidade.
+Continuação do Futevôlei (#95), com o que apareceu jogando: o jogador tocava na bola e só depois fazia a animação, os
+golpes eram lentos e o boneco ficava duro parado.
 
-## O que travava
-Medido no navegador, parte por parte do quadro:
-- **Não era a cena 3D:** desenhar a cena levava uns 2 ms.
-- **Subir texturas inteiras a cada quadro:** o chão (888x600) e o atlas dos bichos (1024x512), uns 2 MB cada, mais a
-  textura da espessura.
-- **Ler o atlas de volta da placa:** os quadros dos GIFs moravam na placa de vídeo e o atlas na memória. Desenhar um no
-  outro obrigava a ler de volta da placa, e o processador ficava esperando a placa terminar tudo (aparecia como 38 a
-  69 ms na `medirEspessura`).
+## O golpe na hora certa
+- **O golpe começa antes do toque:** cada animação tem o seu momento de impacto (`impacto`). O jogo prevê quando o
+  jogador com o toque armado vai pegar na bola (`F.previsaoToque`, com as mesmas contas do toque) e começa o golpe para
+  o pé, a cabeça ou o peito chegarem junto com ela (`antecipar`). Quando o toque acontece, só acerta o relógio
+  (`confirmar`).
+- **Online:** os eventos levam a hora do servidor (`e.t`) e esperam a bola chegar na tela (a tela mostra tudo 100 ms
+  "no passado").
+- **Saque:** tem o balanço da perna antes do chute (0,3 s, evento `preSaque`).
+- Medido no navegador: 15 de 16 toques com o golpe já em andamento, chegando no impacto com no máximo 20 ms de
+  diferença.
 
-## O que mudou (o visual é o mesmo)
-- **Só o que mudou sobe para a placa:**
-  - o chão e o atlas viraram texturas de dados;
-  - a cada quadro, o canvas é comparado com o anterior em ladrilhos de 32 px, e só os ladrilhos diferentes sobem
-    (`compararParcial` e `subirRetangulos`, em `cena3d.js`);
-  - do atlas, só as casas em uso; da espessura, só as casas medidas no quadro.
-- **Tudo na memória:** o chão, o atlas e os quadros dos bichos (os GIFs, o sprite parado, a silhueta branca e os quadros
-  dos Galeramon) ficam na memória (`willReadFrequently`), sem ida e volta da placa.
-- **Resolução até 1,5x:** a resolução da cena vai até 1,5 pixel por pixel da página (antes 2). Numa tela 2x fica quase
-  igual de nítido, com 44% menos pixels para pintar.
+## Mais rápido e fluido
+- Golpes mais curtos.
+- Cada junta vai atrás da pose com uma mola, então nada pula de uma pose para outra.
 
-## Resultado (Intel UHD, partida contra o robô, golpes saindo)
-| Tela | Antes | Depois |
-| --- | --- | --- |
-| 1x (1366x700) | 23,5 FPS | 89,9 FPS |
-| 1,25x | não medido | 61 FPS |
-| 2x | 13,3 FPS | 56,6 FPS |
+## O boneco vivo
+- **Parado:** respira e troca o peso de perna. Esperando a bola, fica na base quicando.
+- **Correndo:** inclina o corpo e, de lado, faz o passo lateral.
+- **Manias, de vez em quando, parado:** alongar, mão na cintura, girar o pescoço, ajeitar a areia com o pé.
+- **Comemorações**, sorteadas a cada ponto: pulos com os braços para cima, soco no ar, dancinha, aviãozinho.
+- **Frustrações**, sorteadas a cada ponto: mãos na cabeça, agachar com as mãos nos joelhos, reclamar de braços abertos,
+  chutar a areia.
+- A pausa entre os pontos subiu de 1,9 s para 2,3 s, para dar tempo de comemorar.
+- Robôs do Difícil um pouco menos perfeitos (robô contra robô passava de 20 minutos).
+
+## Arquivos
+- `public/futevolei/atleta.js` (reescrito: clipes com impacto, base viva, grupos e suavização);
+- `public/futevolei/regras.js` (`previsaoToque`, hora nos eventos, preparo do saque);
+- `public/futevolei/jogo.js` (antecipar e confirmar, eventos online na hora certa);
+- `futevolei.js` (hora do servidor em cada evento);
+- `CLAUDE.md`.
 
 ## Conferido
-- Fotos do Ginásio antes e depois: a quadra, as marcas no chão, a mira, os bichos com volume e as sombras iguais.
-- `tests/e2e/ginasio.spec.js`: 6 de 7 passando.
-  - O que falha ("resultado de partida real, revanche e retorno à sala") falha igual no `main` sem esta mudança: a partida
-    não termina nos 60 s do teste.
+- `npm test`: 158 testes passando.
+- `paginas.spec.js` (`/futevolei/`) passando.
+- No navegador: o tempo dos golpes medido e as poses fotografadas.
