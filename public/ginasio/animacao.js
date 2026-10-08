@@ -20,9 +20,11 @@ function medirQuadros(lista, w, h) {
   return x1 < 0 ? { cx: w / 2, pe: h, topo: 0 } : { cx: (x0 + x1 + 1) / 2, pe: y1 + 1, topo: y0 };
 }
 function medirCanvas(cv) { return medirQuadros([cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data], cv.width, cv.height); }
+// os quadros dos bichos moram na memória (willReadFrequently), como o atlas em que são desenhados a cada quadro: um
+// canvas na placa de vídeo desenhado num canvas na memória obriga a ler de volta da placa, e o jogo ficava esperando
 function canvasDe(rgba, w, h) {
   const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-  cv.getContext("2d").putImageData(new ImageData(rgba, w, h), 0, 0);
+  cv.getContext("2d", { willReadFrequently: true }).putImageData(new ImageData(rgba, w, h), 0, 0);
   return cv;
 }
 function usarQuadros(a, quadros, atrasos, medida, escala) {
@@ -104,7 +106,7 @@ function quadroCostas(a, tempo) {
   if (a.pronto) return quadroDe(a, tempo, false);
   if (!a.reserva) {
     const img = a.parado.img, cv = document.createElement("canvas"); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
-    cv.getContext("2d").drawImage(img, 0, 0);
+    cv.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
     a.reserva = { cv, medida: { ...medirCanvas(cv), escala: ESCALA_PARADO } };
   }
   return a.reserva;
@@ -116,7 +118,7 @@ function quadroReserva(a) {
   const img = a.parado.img;
   try {
     const cv = document.createElement("canvas"); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
-    cv.getContext("2d").drawImage(img, 0, 0);
+    cv.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
     a.reserva = { cv, medida: { ...medirCanvas(cv), escala: ESCALA_PARADO } };
   } catch { a.reserva = { cv: img, medida: { cx: 32, pe: 60, topo: 6, escala: ESCALA_PARADO } }; }
   return a.reserva;
@@ -135,7 +137,7 @@ function silhuetaBranca(a, cv) {
   let b = a.brancos.get(cv);
   if (b) return b;
   b = document.createElement("canvas"); b.width = cv.width; b.height = cv.height;
-  const c = b.getContext("2d");
+  const c = b.getContext("2d", { willReadFrequently: true });
   c.drawImage(cv, 0, 0); c.globalCompositeOperation = "source-atop"; c.fillStyle = "#fff"; c.fillRect(0, 0, b.width, b.height);
   a.brancos.set(cv, b);
   return b;
