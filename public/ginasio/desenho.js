@@ -3,7 +3,7 @@
 // 1. O chão (chaoCv): a quadra do tema, as marcas, os avisos de área, a mira e o que fica no chão embaixo dos bichos
 //    (sombra, anel do lado, buraco), tudo visto de cima. Vira a textura do piso na cena 3D.
 // 2. O atlas (atlasCv): cada bicho e cada projétil numa casa de 128 pixels, que vira um cartaz em pé na cena.
-// 3. O #cv: a cena 3D em baixa resolução e, por cima, o que é da tela (partículas, estouros, números de dano, vida,
+// 3. O #cv: a cena 3D em meia resolução e, por cima, o que é da tela (partículas, estouros, números de dano, vida,
 //    clima). O #cv é ampliado com pixels nítidos (image-rendering: pixelated, sem suavizar).
 // Quem desenha usa o ctx e a camera da passada da vez: pontoTela(x, y, altura) leva da arena ao ctx de agora, e
 // pontoMundo(clientX, clientY) leva de um ponto da página ao chão da arena (a mira do mouse).
@@ -17,7 +17,7 @@ let tremor = 0;
 const coresLados = ["#237dcd", "#df515a"];
 const corTipo = (t) => dexAtual().TYPES[t] || "#bccdbd";
 // o chão visto de cima: a quadra com a borda, 18,5 x 12,5 casas, PX_CHAO pixels por casa
-const CHAO = { w: 18.5, h: 12.5 }, PX_CHAO = 20;
+const CHAO = { w: 18.5, h: 12.5 }, PX_CHAO = 32;
 const chaoCv = document.createElement("canvas"), chaoCtx = chaoCv.getContext("2d");
 chaoCv.width = CHAO.w * PX_CHAO; chaoCv.height = CHAO.h * PX_CHAO;
 const atlasCv = document.createElement("canvas"), atlasCtx = atlasCv.getContext("2d", { willReadFrequently: true });
@@ -58,7 +58,7 @@ function passada(novoCtx, cam, fn) {
 }
 
 function ajustarCanvas() {
-  const r = cv.getBoundingClientRect(), fator = clamp(Math.round(r.height / 180), 2, 5) + (cena3d.leve ? 1 : 0);
+  const r = cv.getBoundingClientRect(), fator = clamp(Math.round(r.height / 400), 2, 3) + (cena3d.leve ? 1 : 0); // meia resolução (um terço em tela grande)
   const w = Math.max(1, Math.round(r.width / fator)), hh = Math.max(1, Math.round(r.height / fator));
   if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; }
   camera.largura = w; camera.altura = hh;

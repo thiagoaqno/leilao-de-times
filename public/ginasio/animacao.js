@@ -7,7 +7,7 @@
 // - De costas: andando ou mirando para o fundo da quadra, o bicho vira de costas. Os Pokémon usam o GIF de costas do
 //   Black/White (ou o sprite parado de costas); os Galeramon, o próprio desenho sem o rosto e um pouco mais escuro.
 const animacoes = new Map(), visuais = new Map();
-const ESCALA_GIF = 3.1 / 96, ESCALA_PARADO = 3.1 / 64, ESCALA_GALERAMON = 1.8 / 32; // casas da arena por pixel do sprite
+const ESCALA_GIF = 3.1 / 96, ESCALA_PARADO = 3.1 / 64, ESCALA_GALERAMON = 2 / PX_CARTAZ; // casas da arena por pixel do sprite (o Galeramon fica com 2 pixels do atlas por pixel)
 const NAO_FLUTUAM = new Set(["doduo", "dodrio", "farfetchd", "chatot", "murkrow"]); // voadores que ficam no chão
 const FLUTUAM_GALERAMON = new Set(["saci"]);
 const OCULTO_VOO = 9; // quantas casas o bicho sobe ao voar (sai da tela)

@@ -1,5 +1,5 @@
 // O Ginásio em 3D pixelado: a quadra, a arquibancada com a torcida, os pilares, a luz e as sombras numa cena Three.js
-// pequena, desenhada em baixa resolução e ampliada sem suavizar (desenho.js junta tudo no #cv).
+// desenhada em meia resolução e ampliada sem suavizar (desenho.js junta tudo no #cv).
 // - O chão da quadra é o desenho 2D de sempre (temas.js, marcas.js, as áreas e a mira), pintado num canvas visto de
 //   cima (chaoCv, em desenho.js) e usado como textura do piso.
 // - Os bichos e os projéteis continuam sendo os desenhos de animacao.js e golpes.js, pintados num atlas (atlasCv) e
@@ -9,7 +9,7 @@
 // - Modo leve (celular fraco ou quadros lentos): menos pixels, sem sombra de verdade (só a mancha embaixo do bicho) e
 //   torcida parada. Com "menos movimento" no sistema, a torcida também fica parada e a câmera não treme.
 const ATLAS = { w: 1024, h: 512, casa: 128 }; // 8 x 4 casas de 128 pixels
-const PX_CARTAZ = 24; // pixels do atlas por casa da arena
+const PX_CARTAZ = 96 / 3.1; // pixels do atlas por casa da arena: o GIF do Black/White entra pixel por pixel, sem reduzir
 const PE_CARTAZ = 116; // a linha do chão dentro da casa do atlas (onde ficam os pés do bicho)
 const INCLINACAO = 50 * Math.PI / 180; // quanto a câmera olha para baixo
 const DEITA_CARTAZ = INCLINACAO / 2; // o cartaz do bicho deita um pouco para trás, para não sair achatado
@@ -41,7 +41,7 @@ function iniciarCena3d() {
     const sol = new THREE.DirectionalLight(0xffffff, 0.43 * Math.PI / 0.89);
     sol.position.set(-4, 10, -2.5); sol.target.position.set(0, 0, 0);
     Object.assign(sol.shadow.camera, { left: -12, right: 12, top: 10, bottom: -10, near: 1, far: 30 });
-    sol.shadow.camera.updateProjectionMatrix(); sol.shadow.mapSize.set(1024, 1024); sol.shadow.bias = -0.002;
+    sol.shadow.camera.updateProjectionMatrix(); sol.shadow.mapSize.set(2048, 2048); sol.shadow.bias = -0.002;
     scene.add(ambiente, sol, sol.target);
     // o degradê do sombreado chapado: três tons, sem passagem suave
     const degrade = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
