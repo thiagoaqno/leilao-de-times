@@ -77,7 +77,9 @@ function renderReveal(){
   }
   const left = r.total - r.shown, rolando = vivoAte > agoraServidor() || !!r.duelo; // jogo ao vivo na tela: a próxima parte espera
   renderPalpites(); renderDuelo();
-  const cardBtn = r.summary ? `<div class="revbar" style="border-top:0;margin-top:6px;padding-top:0"><button class="primary" onclick="downloadCard()">${ic("imagem")}Baixar card do campeão</button></div>` : "";
+  // acabou (tudo revelado e a final já terminou na tela): a festa do campeão, uma vez por campeonato (campeao.js)
+  if (r.summary && r.shown >= r.total && !rolando && typeof abrirFesta === "function") abrirFesta(r.summary);
+  const cardBtn = r.summary ? `<div class="revbar" style="border-top:0;margin-top:6px;padding-top:0"><button class="primary" onclick="reverFesta()">${ic("taca")}Rever a festa do título</button><button onclick="downloadCard()">${ic("imagem")}Baixar card do campeão</button></div>` : "";
   $("revFoot").innerHTML = me.host
     ? `<div class="revbar">
         <button class="primary" ${left && !rolando ? "" : "disabled"} onclick="host('revealNext')">${rolando ? `${ic("relogio")}Jogo rolando…` : `${ic("play")}Revelar próxima${left ? ` (faltam ${left})` : ""}`}</button>

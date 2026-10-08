@@ -107,17 +107,20 @@ async function draw(sum) {
 }
 
 async function download(sum) {
-  const cv = await draw(sum);
+  return baixar(await draw(sum), `campeao-${sum.campeao}`, `Campeão: ${sum.campeao}`);
+}
+// baixa (ou compartilha, no celular) um canvas como PNG: o card e a foto dos campeões (leilao/campeao.js)
+async function baixar(cv, nome, titulo = nome) {
   const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
-  const name = `campeao-${String(sum.campeao).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-")}.png`;
+  const name = `${String(nome).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}.png`;
   const file = new File([blob], name, { type: "image/png" });
   // no celular, abre o menu de compartilhar (WhatsApp etc.); no computador, baixa o arquivo
   if (navigator.canShare && navigator.canShare({ files: [file] }) && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
-    try { await navigator.share({ files: [file], title: `Campeão: ${sum.campeao}` }); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancel"; }
+    try { await navigator.share({ files: [file], title: titulo }); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancel"; }
   }
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   return "downloaded";
 }
-root.ChampionCard = { draw, download };
+root.ChampionCard = { draw, download, baixar };
 })(window);
