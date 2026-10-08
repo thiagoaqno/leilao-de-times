@@ -150,6 +150,7 @@ button{font:inherit;cursor:pointer}
 .ibox .bar{flex:1;height:9px;background:#3c4466;border-radius:5px;overflow:hidden;border:2px solid var(--ink)}
 .ibox .bar i{display:block;height:100%;background:#3ed06d;transition:width .6s ease-out,background .3s}
 .ibox .bar i.mid{background:#f2c027}.ibox .bar i.low{background:#e8483b}
+.ibox .chakra{font:700 12px "Pixelify Sans";color:#3972a7;margin-top:3px}
 .ibox .sub{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:3px;font-size:13px;color:#4a5690;min-height:18px}
 .ibox .balls{letter-spacing:1px}
 .ibox .st{font-size:12px;color:#4a5690}
@@ -159,6 +160,7 @@ button{font:inherit;cursor:pointer}
 .bmoves button{border:0;border-radius:10px;padding:8px 10px;color:#fff;text-align:left;font:700 16px/1.15 "Pixelify Sans",monospace;box-shadow:0 4px 0 #0005;text-shadow:0 1px 0 #0006;min-height:52px}
 .bmoves button small{display:block;font-weight:500;font-size:12px;opacity:.95}
 .bmoves button:active{transform:translateY(2px);box-shadow:0 2px 0 #0005}
+.bmoves button:disabled{opacity:.42;cursor:not-allowed;transform:none;box-shadow:0 4px 0 #0005}
 .brow{display:flex;gap:8px;align-items:center}
 .brow button{border:0;border-radius:8px;padding:8px 14px;font:700 15px "Pixelify Sans",monospace;background:#e6ecff;color:var(--ink)}
 .brow .go{background:var(--ink);color:#fff}
@@ -215,7 +217,7 @@ canvas.mini.off{display:none}
   <div class="brand"><img src="/emblema.svg" alt=""><div><h1>Vila da <span>Galera</span></h1><small id="online">conectando…</small></div></div>
   <div class="tools">
     <button class="tbtn" id="bNick" title="Trocar o nick">👤 <span class="tx" id="bNickTx">Nick</span></button>
-    <button class="tbtn battle" id="bTeam" title="Batalha de Galeramon ou Pokémon">⚔️<span class="tx keep"> Batalha</span></button>
+    <button class="tbtn battle" id="bTeam" title="Batalhas de Galeramon, Pokémon ou Naruto Shippuden">⚔️<span class="tx keep"> Batalha</span></button>
     <button class="tbtn" id="bLook" title="Trocar a roupa do boneco">👕<span class="tx"> Roupa</span></button>
     <button class="tbtn" id="bMapa" title="Mostrar ou esconder o mapa">🗺️<span class="tx"> Mapa</span></button>
     <button class="tbtn" id="bMenu" title="Lista de jogos">☰<span class="tx"> Jogos</span></button>
@@ -238,7 +240,7 @@ canvas.mini.off{display:none}
 <div class="nick" id="nick" role="dialog" aria-modal="true" aria-labelledby="nickT"><form id="nickF"><h2 id="nickT">Qual é o seu nick?</h2><p>É o nome que aparece em cima do seu boneco para a galera (até 8 letras).</p><input id="nickIn" maxlength="8" autocomplete="off" placeholder="Ex.: Kizzy" required><button>Entrar na vila</button></form></div>
 <div class="menu" id="team" role="dialog" aria-modal="true" aria-labelledby="teamT"><div class="box wide"><h2 id="teamT">🐾 Seu time</h2><div class="mtabs" id="mtabs"></div><p style="font-size:15px;color:#4a5690" id="teamHelp"></p><input class="msearch" id="msearch" type="search" placeholder="Buscar por nome, número ou tipo (ex.: fogo)" autocomplete="off"><div class="mgrid" id="mgrid"></div><div class="minfo" id="minfo"></div><div class="row2"><button id="teamX">Fechar</button><button class="go" id="teamOk">Salvar time</button></div></div></div>
 <div class="menu" id="pop" role="dialog" aria-modal="true"><div class="box" id="popBox"></div></div>
-<div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="Batalha Galeramon">
+<div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="Batalha por turnos">
   <div class="arena">
     <div class="ibox foe" id="ibFoe"></div>
     <div class="spot foe"><img class="mon" id="imFoe" alt=""><div class="plat"></div></div>
@@ -253,6 +255,7 @@ canvas.mini.off{display:none}
 <script src="/galeramon/dados.js"></script>
 <script src="/galeramon/sprites.js"></script>
 <script src="/galeramon/pokemon.js"></script>
+<script src="/galeramon/naruto.js"></script>
 <script src="/galeramon/lideres.js"></script>
 <script src="/comum.js"></script>
 <script src="/vila/estadios.js"></script>
@@ -1270,14 +1273,15 @@ socket.on("leave", (d) => {
 socket.on("full", () => { $("online").textContent = "vila lotada"; });
 socket.on("news", (d) => toast(d.text));
 
-// ================= Galeramon =================
-// dois modos: Galeramon (bichos da galera) e Pokémon (sprites do FireRed carregados do PokeAPI)
-const DEXES = { galeramon: window.Galeramon, pokemon: window.PokeDex };
-const MODE_NAME = { galeramon: "Galeramon", pokemon: "Pokémon" };
+// ================= Batalhas por turnos =================
+const DEXES = { galeramon: window.Galeramon, pokemon: window.PokeDex, naruto: window.NarutoDex };
+const MODE_NAME = { galeramon: "Galeramon", pokemon: "Pokémon", naruto: "Naruto Shippuden" };
+const MODE_ICON = { galeramon: "🐾", pokemon: "⚪", naruto: "🍥" };
+const modesAvailable = () => pokemonOn ? Object.keys(DEXES) : ["galeramon", "naruto"];
 let gmMode = "galeramon", GM = DEXES.galeramon, pokemonOn = true;
 function useMode(m) { gmMode = DEXES[m] ? m : "galeramon"; GM = DEXES[gmMode]; }
-const spr = (id, back) => (gmMode === "pokemon" ? PokeDex.sprite(id, back) : GaleramonSprite(id));
-const teams = { galeramon: Galeramon.cleanTeam(store.get("galeramon_time")), pokemon: PokeDex.cleanTeam(store.get("pokemon_time")) };
+const spr = (id, back) => gmMode === "pokemon" ? PokeDex.sprite(id, back) : gmMode === "naruto" ? NarutoDex.sprite(id) : GaleramonSprite(id);
+const teams = { galeramon: Galeramon.cleanTeam(store.get("galeramon_time")), pokemon: PokeDex.cleanTeam(store.get("pokemon_time")), naruto: NarutoDex.cleanTeam(store.get("naruto_time")) };
 const teamText = (m) => teams[m].map((id) => DEXES[m].MONS[id].n).join(", ");
 socket.on("cfg", (d) => { pokemonOn = !!d.pokemon; });
 const typeChip = (t) => `<span class="tchip" style="background:${GM.TYPES[t]}">${esc(t)}</span>`;
@@ -1296,14 +1300,15 @@ function monInfo(id) {
     : bar(m.hp, "Vida", 240) + bar(m.atk, "Ataque", 135) + bar(m.def, "Defesa", 135) + bar(m.spd, "Velocidade", 135);
   return `<b style="font-size:18px">${pk ? `Nº ${String(m.num).padStart(3, "0")} ` : ""}${esc(m.n)}</b> ${m.types.map(typeChip).join(" ")}${m.bio ? `<p style="margin:4px 0 0">${esc(m.bio)}</p>` : ""}${m.abilInfo ? `<p style="margin:4px 0 0"><b>⭐ ${esc(m.abilInfo)}</b></p>` : ""}
     <div class="bars">${bars}</div>
-    <div class="mvs">${m.moves.map((k) => { const v = GM.MOVES[k]; return `<div>${typeChip(v.t)} <b>${esc(v.n)}</b> <span style="color:#4a5690">${v.counter ? "devolve 2x o dano" : v.p ? `poder ${v.p}${pk ? (v.c === "s" ? " especial" : " físico") : ""}` : "status"}${v.a < 100 ? ` · ${v.a}%` : ""}${v.d ? " · " + esc(v.d) : ""}</span></div>`; }).join("")}</div>`;
+    <div class="mvs">${m.moves.map((k) => { const v = GM.MOVES[k]; return `<div>${typeChip(v.t)} <b>${esc(v.n)}</b> <span style="color:#4a5690">${v.counter ? "devolve 2x o dano" : v.p ? `poder ${v.p}${pk ? (v.c === "s" ? " especial" : " físico") : ""}` : "status"}${v.custo != null ? ` · ${v.custo} chakra` : ""}${v.a < 100 ? ` · ${v.a}%` : ""}${v.d ? " · " + esc(v.d) : ""}</span></div>`; }).join("")}</div>`;
 }
 function openTeam(m) {
   useMode(m);
+  $("teamT").textContent = `${MODE_ICON[gmMode]} Seu time de ${MODE_NAME[gmMode]}`;
   draft = teams[gmMode].slice(); infoId = draft[0];
-  $("mtabs").innerHTML = pokemonOn ? Object.keys(DEXES).map((k) => `<button data-m="${k}" class="${k === gmMode ? "on" : ""}">${k === "pokemon" ? "⚪ Pokémon" : "🐾 Galeramon"}</button>`).join("") : "";
+  $("mtabs").innerHTML = modesAvailable().map((k) => `<button data-m="${k}" class="${k === gmMode ? "on" : ""}">${MODE_ICON[k]} ${MODE_NAME[k]}</button>`).join("");
   $("mtabs").querySelectorAll("button").forEach((b) => (b.onclick = () => openTeam(b.dataset.m)));
-  $("teamHelp").textContent = `Escolha ${GM.TEAM_SIZE} ${gmMode === "pokemon" ? "Pokémon" : "bichos"}. O primeiro que você escolher entra na batalha primeiro.` + (gmMode === "pokemon" ? " Sprites do FireRed/LeafGreen e do Platinum, carregados do PokeAPI." : "");
+  $("teamHelp").textContent = `Escolha ${GM.TEAM_SIZE} ${gmMode === "pokemon" ? "Pokémon" : gmMode === "naruto" ? "ninjas" : "bichos"}. O primeiro que você escolher entra na batalha primeiro.` + (gmMode === "pokemon" ? " Sprites do FireRed/LeafGreen e do Platinum, carregados do PokeAPI." : gmMode === "naruto" ? " Use chakra para jutsus; concentrar recupera chakra e substituição evita um ataque." : "");
   // a grade é montada uma vez; clicar só atualiza a seleção (são 151 Pokémon)
   $("mgrid").innerHTML = GM.IDS.map((id) => { const m = GM.MONS[id];
     return `<button class="mcard" data-id="${id}"><span class="n"></span><img src="${spr(id)}" alt="" loading="lazy">${m.num ? `<small>Nº ${String(m.num).padStart(3, "0")}</small>` : ""}<b>${esc(m.n)}</b>${m.types.map(typeChip).join(" ")}</button>`; }).join("");
@@ -1335,14 +1340,14 @@ function renderTeam() {
   $("teamOk").disabled = draft.length !== GM.TEAM_SIZE;
   $("teamOk").textContent = draft.length === GM.TEAM_SIZE ? "Salvar time" : `Faltam ${GM.TEAM_SIZE - draft.length}`;
 }
-// Central de batalha: monta o time de Galeramon ou de Pokémon e desafia quem está na vila (clicar no boneco também vale).
+// Central de batalha: monta o time e desafia quem está na vila (clicar no boneco também vale).
 function openBattle() {
   if (!myName) return askNick();
   delete $("pop").dataset.invite;
-  const modes = pokemonOn ? ["galeramon", "pokemon"] : ["galeramon"];
+  const modes = modesAvailable();
   const people = [...others.values()].filter((o) => o.name).sort((a, b) => a.name.localeCompare(b.name));
   $("popBox").innerHTML = `<h2>⚔️ Batalha</h2>
-    <div class="bcards">${modes.map((m) => `<div class="bcard"><b>${m === "pokemon" ? "⚪ Pokémon" : "🐾 Galeramon"}</b><span>Seu time: ${teamText(m)}</span><button data-team="${m}">Montar time</button></div>`).join("")}</div>
+    <div class="bcards">${modes.map((m) => `<div class="bcard"><b>${MODE_ICON[m]} ${MODE_NAME[m]}</b><span>Seu time: ${teamText(m)}</span><button data-team="${m}">Montar time</button></div>`).join("")}</div>
     <h2 style="font-size:17px;margin-top:4px">Quem está na vila</h2>
     <div class="blist">${people.length ? people.map((o) => `<div><b>${esc(o.name)}</b>${o.busy ? `<small>em batalha</small>` : `<button data-who="${esc(o.id)}">Desafiar</button>`}</div>`).join("") : `<p style="margin:0;color:#4a5690">Ninguém mais por aqui agora. Manda o link para a galera!</p>`}</div>
     <p style="font-size:13px;color:#4a5690;margin:8px 0 0">Dica: também dá para clicar no boneco de um amigo na vila.</p>
@@ -1362,7 +1367,7 @@ $("pop").addEventListener("click", (e) => { if (e.target.id === "pop" && !$("pop
 function openPlayer(o) {
   if (!myName) return askNick();
   delete $("pop").dataset.invite;
-  const modes = pokemonOn ? ["galeramon", "pokemon"] : ["galeramon"];
+  const modes = modesAvailable();
   let jogo = "turnos", mode = modes[0];
   $("popBox").innerHTML = `<h2>${esc(o.name)}</h2>${o.busy ? "<p>Está no meio de uma batalha agora.</p>" : ""}
     <div class="desafio-escolhas" role="group" aria-label="Batalha"><button data-jogo="turnos" aria-pressed="true">Por turnos</button><button data-jogo="ginasio" aria-pressed="false">Ginásio (tempo real)</button></div>
@@ -1374,12 +1379,14 @@ function openPlayer(o) {
   $("popX").onclick = closePop;
   $("popTeam").onclick = (e) => { e.preventDefault(); closePop(); $("bTeam").click(); };
   const atualizar = () => {
+    if (mode === "naruto" && jogo === "ginasio") jogo = "turnos";
     $("desafioTime").textContent = `Seu time de ${MODE_NAME[mode]}: ${teamText(mode)}`;
     $("desafioEnviar").textContent = jogo === "ginasio" ? "Desafiar no Ginásio (tempo real)" : `⚔️ Desafiar em ${MODE_NAME[mode]}`;
     $("popBox").querySelectorAll("[data-jogo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.jogo === jogo)));
+    $("popBox").querySelector('[data-jogo="ginasio"]').disabled = mode === "naruto";
     $("popBox").querySelectorAll("[data-modo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.modo === mode)));
   };
-  $("popBox").querySelectorAll("[data-jogo]").forEach((b) => (b.onclick = () => { jogo = b.dataset.jogo; atualizar(); }));
+  $("popBox").querySelectorAll("[data-jogo]").forEach((b) => (b.onclick = () => { if (b.disabled) return; jogo = b.dataset.jogo; atualizar(); }));
   $("popBox").querySelectorAll("[data-modo]").forEach((b) => (b.onclick = () => { mode = b.dataset.modo; atualizar(); }));
   atualizar();
   $("desafioEnviar").onclick = () => {
@@ -1439,9 +1446,10 @@ function hpClass(f) { return f > 0.5 ? "" : f > 0.2 ? "mid" : "low"; }
 function renderBox(s) {
   const side = shown[s], m = side.team[side.active], mine = s === BS.me, base = GM.MONS[m.id], form = GM.MONS[m.as || m.id];
   const st = Object.entries(m.st || {}).filter(([, v]) => v).map(([k, v]) => `${{ atk: "Atq", def: "Def", spd: "Vel" }[k]} ${v > 0 ? "+" : ""}${v}`).join(" · ");
-  $(mine ? "ibMe" : "ibFoe").innerHTML = `<div class="ihead"><span>${esc(base.n)}</span><small>${mine ? "você" : esc(side.name)} · Nv. 50</small></div>
+  $(mine ? "ibMe" : "ibFoe").innerHTML = `<div class="ihead"><span>${esc(base.n)}</span><small>${mine ? "você" : esc(side.name)}${gmMode === "naruto" ? "" : " · Nv. 50"}</small></div>
     <div class="hp">PV <div class="bar"><i class="${hpClass(m.hp / m.max)}" style="width:${(m.hp / m.max) * 100}%"></i></div></div>
-    <div class="sub"><span>${form.types.map(typeChip).join(" ")} <span class="st">${st}</span></span><span>${mine ? `${m.hp}/${m.max}` : ""}</span><span class="balls" title="bichos">${side.team.map((x) => (x.hp > 0 ? "●" : "○")).join("")}</span></div>`;
+    ${gmMode === "naruto" ? `<div class="chakra">◈ Chakra ${m.chakra}/100 · Substituições: ${side.substitutes}</div>` : ""}
+    <div class="sub"><span>${form.types.map(typeChip).join(" ")} <span class="st">${st}</span></span><span>${mine ? `${m.hp}/${m.max}` : ""}</span><span class="balls" title="time">${side.team.map((x) => (x.hp > 0 ? "●" : "○")).join("")}</span></div>`;
 }
 function renderMon(s, anim) {
   const side = shown[s], m = side.team[side.active], el = $(s === BS.me ? "imMe" : "imFoe");
@@ -1469,6 +1477,10 @@ async function playEvent(e) {
       if (e.eff > 1) { say("Foi super efetivo!"); await sleep(850); } else if (e.eff < 1) { say("Não foi muito efetivo…"); await sleep(850); }
       break;
     case "heal": setHp(e.s, e.hp); say(e.why === "drain" ? `${who(e.s)} sugou a energia do adversário!` : `${who(e.s)} recuperou vida!`); await sleep(850); break;
+    case "chakra": shown[e.s].team[shown[e.s].active].chakra = e.chakra; renderBox(e.s); break;
+    case "focus": shown[e.s].team[shown[e.s].active].chakra = e.chakra; renderBox(e.s); say(`${who(e.s)} concentrou chakra!`); await sleep(750); break;
+    case "substituteReady": shown[e.s].team[shown[e.s].active].chakra = e.chakra; shown[e.s].substitutes = e.left; renderBox(e.s); say(`${who(e.s)} preparou a Substituição!`); await sleep(700); break;
+    case "substitute": say(`${who(e.s)} escapou com a Substituição!`); animMon(e.s, "hit"); await sleep(850); break;
     case "recoil": setHp(e.s, e.hp); say(`${who(e.s)} se machucou com o próprio golpe!`); await sleep(850); break;
     case "stat": {
       const nm = GM.STAT_NAMES[e.stat], m = shown[e.s].team[shown[e.s].active]; m.st = m.st || {}; m.st[e.stat] = (m.st[e.stat] || 0) + e.d; renderBox(e.s);
@@ -1534,15 +1546,16 @@ function renderControls() {
     say(`Esperando ${foeName} escolher…`);
     ctl.innerHTML = `<div class="brow"><button id="bFf">🏳️ Desistir</button>${timer}</div>`;
   } else if (st.phase === "replace") {
-    say("Seu bicho desmaiou! Quem entra agora?");
+    say(gmMode === "naruto" ? "Seu ninja caiu! Quem entra agora?" : "Seu bicho desmaiou! Quem entra agora?");
     ctl.innerHTML = switchList(true); bindSwitch();
   } else {
     say(`O que ${monName(m.id)} vai fazer?`);
-    const moves = GM.MONS[m.as || m.id].moves.map((k, i) => { const v = GM.MOVES[k]; return `<button data-mv="${i}" style="background:${GM.TYPES[v.t]}" title="${esc(v.d || "")}">${esc(v.n)}<small>${esc(v.t)} · ${v.counter ? "devolve 2x" : v.p ? "poder " + v.p : "status"}${v.a < 100 ? " · " + v.a + "%" : ""}</small></button>`; }).join("");
-    ctl.innerHTML = `<div class="bmoves">${moves}</div><div class="brow" style="margin-top:8px"><button id="bSw">🔁 Trocar</button><button id="bFf">🏳️ Desistir</button>${timer}</div>`;
+    const moves = GM.MONS[m.as || m.id].moves.map((k, i) => { const v = GM.MOVES[k]; return `<button data-mv="${i}" style="background:${GM.TYPES[v.t]}" title="${esc(v.d || "")}" ${gmMode === "naruto" && m.chakra < v.custo ? "disabled" : ""}>${esc(v.n)}<small>${esc(v.t)} · ${v.counter ? "devolve 2x" : v.p ? "poder " + v.p : "status"}${v.custo != null ? " · ◈ " + v.custo : ""}${v.a < 100 ? " · " + v.a + "%" : ""}</small></button>`; }).join("");
+    ctl.innerHTML = `<div class="bmoves">${moves}</div>${gmMode === "naruto" ? `<div class="brow"><button id="bFocus" ${m.chakra >= 100 ? "disabled" : ""}>◈ Concentrar (+35)</button><button id="bSub" ${side.substitutes <= 0 || m.chakra < 20 ? "disabled" : ""}>🪵 Substituição (20)</button></div>` : ""}<div class="brow" style="margin-top:8px"><button id="bSw">🔁 Trocar</button><button id="bFf">🏳️ Desistir</button>${timer}</div>`;
     ctl.querySelectorAll("[data-mv]").forEach((b) => (b.onclick = () => choose({ move: +b.dataset.mv })));
+    if (gmMode === "naruto") { $("bFocus").onclick = () => choose({ focus: true }); $("bSub").onclick = () => choose({ substitute: true }); }
     $("bSw").onclick = () => {
-      if (!side.team.some((x, i) => x.hp > 0 && i !== side.active)) return say("Não tem outro bicho em pé para trocar!");
+      if (!side.team.some((x, i) => x.hp > 0 && i !== side.active)) return say(gmMode === "naruto" ? "Não tem outro ninja em pé para trocar!" : "Não tem outro bicho em pé para trocar!");
       say("Quem entra no lugar?"); ctl.innerHTML = switchList(false); bindSwitch(); $("bBack").onclick = renderControls; tick();
     };
   }

@@ -1,8 +1,8 @@
 // Galeramon — motor da batalha (roda só no servidor, ninguém consegue trapacear pelo navegador).
 // Batalha 1x1 por turnos, 3 bichos para cada lado. Os dois escolhem ao mesmo tempo; depois o turno é resolvido:
 // trocas primeiro, depois os golpes por prioridade e velocidade.
-// dois "modos" com as mesmas regras: os bichos da galera e os Pokémon de Kanto
-const DEX = { galeramon: require("./public/galeramon/dados.js"), pokemon: require("./public/galeramon/pokemon.js") };
+// Galeramon, Pokémon e Naruto compartilham o duelo; Naruto acrescenta chakra e substituição.
+const DEX = { galeramon: require("./public/galeramon/dados.js"), pokemon: require("./public/galeramon/pokemon.js"), naruto: require("./public/galeramon/naruto.js") };
 
 const LEVEL_K = (2 * 50) / 5 + 2; // nível 50 para todo mundo
 const MAX_TURNS = 60; // depois disso ganha quem tiver mais vida (para ninguém ficar só se curando para sempre)
@@ -10,12 +10,12 @@ const rnd = () => Math.random();
 
 function makeMon(D, id) {
   const m = D.MONS[id];
-  return { id, hp: m.hp, max: m.hp, st: { atk: 0, def: 0, spd: 0 }, uses: {} };
+  return { id, hp: m.hp, max: m.hp, st: { atk: 0, def: 0, spd: 0 }, uses: {}, ...(D.CHAKRA_MAX && { chakra: D.CHAKRA_START }) };
 }
 function createBattle(a, b, mode) {
   if (!DEX[mode]) mode = "galeramon";
   const D = DEX[mode];
-  const side = (p) => ({ pid: p.id, name: p.name, team: D.cleanTeam(p.team).map((id) => makeMon(D, id)), active: 0, choice: null });
+  const side = (p) => ({ pid: p.id, name: p.name, team: D.cleanTeam(p.team).map((id) => makeMon(D, id)), active: 0, choice: null, ...(D.CHAKRA_MAX && { substitutes: 2 }) });
   return { mode, dex: D, sides: [side(a), side(b)], turn: 1, phase: "choose", winner: null, events: [] };
 }
 const active = (b, s) => b.sides[s].team[b.sides[s].active];
@@ -38,14 +38,21 @@ function validChoice(b, s, c) {
     return { switch: i };
   }
   if (b.phase !== "choose") return null;
+  if (b.mode === "naruto") {
+    if (c.focus === true) return { focus: true };
+    if (c.substitute === true && side.substitutes > 0 && active(b, s).chakra >= 20) return { substitute: true };
+  }
   const i = parseInt(c.move);
   if (!(i >= 0 && i < spec(b, active(b, s)).moves.length)) return null;
+  if (b.mode === "naruto" && active(b, s).chakra < (b.dex.MOVES[spec(b, active(b, s)).moves[i]].custo || 0)) return null;
   return { move: i };
 }
 function autoChoice(b, s) {
   const side = b.sides[s];
   if (b.phase === "replace") return { switch: side.team.findIndex((m, i) => m.hp > 0 && i !== side.active) };
-  return { move: Math.floor(rnd() * spec(b, active(b, s)).moves.length) };
+  const moves = spec(b, active(b, s)).moves;
+  const allowed = b.mode === "naruto" ? moves.map((k, i) => ({ k, i })).filter(({ k }) => (b.dex.MOVES[k].custo || 0) <= active(b, s).chakra).map(({ i }) => i) : moves.map((_, i) => i);
+  return { move: allowed[Math.floor(rnd() * allowed.length)] };
 }
 
 function doSwitch(b, s, i, ev) {
@@ -74,6 +81,7 @@ function useMove(b, s, mi, ev) {
   const key = spec(b, me).moves[mi];
   let mv = D.MOVES[key];
   ev.push({ t: "use", s, id: me.id, move: mv.n, type: mv.t });
+  if (b.mode === "naruto") { me.chakra -= mv.custo || 0; ev.push({ t: "chakra", s, chakra: me.chakra }); }
   if (mv.max) {
     me.uses[key] = (me.uses[key] || 0) + 1;
     if (me.uses[key] > mv.max) { ev.push({ t: "msg", text: "Mas cansou! Esse golpe já foi usado demais." }); return; }
@@ -127,6 +135,7 @@ function useMove(b, s, mi, ev) {
   }
   if (mv.p > 0 || mv.foe) {
     if (foe.hp <= 0) { ev.push({ t: "msg", text: "Mas não tinha ninguém para acertar!" }); return; }
+    if (mv.p > 0 && foe.guard) { foe.guard = false; ev.push({ t: "substitute", s: 1 - s }); return; }
     if (rnd() * 100 >= mv.a) { ev.push({ t: "miss", s }); return; }
   }
   if (mv.p > 0) {
@@ -163,8 +172,14 @@ function resolve(b) {
   const D = b.dex, ev = [];
   const acts = [0, 1].filter((s) => needs(b, s)).map((s) => ({ s, ...b.sides[s].choice }));
   b.sides.forEach((x) => (x.choice = null));
+  b.sides.forEach((x) => { if (x.team[x.active]) x.team[x.active].guard = false; });
   for (const a of acts) if (a.switch != null) doSwitch(b, a.s, a.switch, ev);
   if (b.phase === "choose") {
+    for (const a of acts) {
+      const mon = active(b, a.s);
+      if (a.focus) { mon.chakra = Math.min(D.CHAKRA_MAX, mon.chakra + 35); ev.push({ t: "focus", s: a.s, chakra: mon.chakra }); }
+      if (a.substitute) { mon.chakra -= 20; mon.guard = true; b.sides[a.s].substitutes--; ev.push({ t: "substituteReady", s: a.s, chakra: mon.chakra, left: b.sides[a.s].substitutes }); }
+    }
     const spd = (s) => spec(b, active(b, s)).spd * D.stageMult(active(b, s).st.spd);
     const order = acts.filter((a) => a.move != null).map((a) => ({ ...a, pri: D.MOVES[spec(b, active(b, a.s)).moves[a.move]].pri || 0, sp: spd(a.s), r: rnd() }));
     order.sort((x, y) => y.pri - x.pri || y.sp - x.sp || x.r - y.r);
@@ -200,7 +215,7 @@ function view(b, s) {
   return {
     me: s, mode: b.mode, turn: b.turn, phase: b.phase, winner: b.winner,
     need: needs(b, s), chosen: !!b.sides[s].choice,
-    sides: b.sides.map((x) => ({ name: x.name, active: x.active, team: x.team.map((m) => ({ id: m.id, as: m.as || null, hp: m.hp, max: m.max, st: m.st, uses: m.uses })) })),
+    sides: b.sides.map((x) => ({ name: x.name, active: x.active, ...(b.mode === "naruto" && { substitutes: x.substitutes }), team: x.team.map((m) => ({ id: m.id, as: m.as || null, hp: m.hp, max: m.max, st: m.st, uses: m.uses, ...(b.mode === "naruto" && { chakra: m.chakra }) })) })),
   };
 }
 

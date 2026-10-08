@@ -1,6 +1,6 @@
 // Vila da Galera — o lobby em mapinha 2D. Canal "/vila" do Socket.io.
 // Guarda quem está andando pela vila agora (posição, direção, roupa e nick) e repassa para os outros.
-// Também cuida dos desafios e das batalhas de Galeramon/Pokémon entre quem está na vila.
+// Também cuida dos desafios e das batalhas de Galeramon/Pokémon/Naruto entre quem está na vila.
 //
 // Cada pessoa tem um id público (o que os outros veem) e um "token" secreto guardado na aba.
 // Se a conexão cair no meio de uma batalha (celular bloqueou, trocou de rede, a aba recarregou…),
@@ -62,7 +62,7 @@ module.exports = function attachVila(io, ginasio) {
       if (p && p.battle === b) { p.battle = null; if (!p.offline) tellOthers(p); }
     });
     const w = b.state.winner;
-    if (w >= 0) nsp.emit("news", { text: `⚔️ ${b.state.sides[w].name} venceu ${b.state.sides[1 - w].name} no ${b.state.mode === "pokemon" ? "Pokémon" : "Galeramon"}!` });
+    if (w >= 0) nsp.emit("news", { text: `⚔️ ${b.state.sides[w].name} venceu ${b.state.sides[1 - w].name} no ${{ pokemon: "Pokémon", naruto: "Naruto Shippuden", galeramon: "Galeramon" }[b.state.mode]}!` });
   }
   function leaveBattle(p) { // desistiu (ou não voltou a tempo): perde
     const b = p.battle;
@@ -172,7 +172,7 @@ module.exports = function attachVila(io, ginasio) {
       if (target.battle || target.ginasio) return reply({ error: `${target.name} já está numa batalha.` });
       if (invites.has(target.id)) return reply({ error: `${target.name} já tem um desafio esperando resposta.` });
       if ([...invites.values()].some((v) => v.from === me.id)) return reply({ error: "Você já desafiou alguém. Espere a resposta." });
-      const mode = d.mode === "pokemon" && POKEMON_ON ? "pokemon" : "galeramon";
+      const mode = d.mode === "naruto" ? "naruto" : d.mode === "pokemon" && POKEMON_ON ? "pokemon" : "galeramon";
       const jogo = d.jogo === "ginasio" ? "ginasio" : "turnos";
       if (jogo === "ginasio" && !ginasio?.timeValido(mode, d.team)) return reply({ error: "Escolha 3 bichos diferentes desse modo." });
       const from = me.id;
