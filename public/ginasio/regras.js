@@ -79,6 +79,15 @@
       return { ...base, classe: "sumir", jeito, duracao: DURACAO_SUMIR[jeito], raio: 1.3, alcance: 5.5, recarga: clamp(2.5 + poder / 40, 3, 6) };
     }
     if (GIROS.has(id) && poder > 0) return { ...base, classe: "investida", giro: true, alcance: 3.2, velocidade: 11, recarga: clamp(1.4 + poder / 50, 1, 3.5) };
+    // os golpes do Naruto dizem como saem (corpo, projetil, area ou investida): a regra de sempre não conhece os jutsus
+    if (mv.forma && poder > 0) {
+      if (mv.forma === "projetil") return { ...base, classe: "projetil" };
+      if (mv.forma === "area") return { ...base, classe: "area", aviso: 0.7, raio: mv.raio || 1.5, alcance: mv.alcance || 5 };
+      if (mv.forma === "corpo") return { ...base, classe: "corpo", alcance: mv.alcance || 1.2, arco: Math.PI / 2 };
+      if (mv.forma === "investida") return mv.giro
+        ? { ...base, classe: "investida", giro: true, alcance: 3.2, velocidade: 11, recarga: clamp(1.4 + poder / 50, 1, 3.5) }
+        : { ...base, classe: "investida", alcance: 3.4, velocidade: 12.5, recarga: clamp(1.3 + poder / 50, 1, 3.8) };
+    }
     if (poder > 0 && mv.pri > 0) return { ...base, classe: "investida", alcance: 3, velocidade: 13, recarga: clamp(1.1 + poder / 55, 1, 3.5) };
     if (poder >= 100) return { ...base, classe: "area", aviso: 0.7, raio: 1.5, alcance: 5 };
     if (poder > 0 && !fisico) return { ...base, classe: "projetil" };

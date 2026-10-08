@@ -12,7 +12,7 @@ function luta() {
 }
 
 test("Naruto: elenco, golpes e time de três válidos", () => {
-  assert.equal(D.IDS.length, 12);
+  assert.equal(D.IDS.length, 25);
   assert.deepEqual(D.cleanTeam(["naruto", "naruto", "sakura"]), D.DEFAULT_TEAM);
   assert.deepEqual(D.cleanTeam(["__proto__", "naruto", "sakura"]), D.DEFAULT_TEAM);
   for (const id of D.IDS) {
@@ -21,6 +21,41 @@ test("Naruto: elenco, golpes e time de três válidos", () => {
     assert.ok(D.sprite(id).endsWith(`${ninja.imagem}.png`));
     for (const golpe of ninja.moves) assert.ok(D.MOVES[golpe], `${id}: ${golpe}`);
   }
+});
+
+const fs = require("node:fs");
+const path = require("node:path");
+const Ginasio = require("../public/ginasio/regras.js");
+const publico = (url) => path.join(__dirname, "..", "public", url);
+const largura = (arquivo) => fs.readFileSync(arquivo).readUInt32BE(16); // a largura do PNG fica no cabeçalho (IHDR)
+
+test("Naruto: cada ninja tem a imagem parada, a tira do parado e os dados da base", () => {
+  for (const id of D.IDS) {
+    const ninja = D.MONS[id], parada = publico(D.sprite(id));
+    assert.ok(fs.existsSync(parada), `${id}: falta ${D.sprite(id)}`);
+    assert.ok(ninja.quadros >= 2 && ninja.quadros <= 8, `${id}: quadros`);
+    const tira = publico(D.animacao(id));
+    assert.ok(fs.existsSync(tira), `${id}: falta ${D.animacao(id)}`);
+    assert.equal(largura(tira) % ninja.quadros, 0, `${id}: a tira não divide em ${ninja.quadros} quadros`);
+    const base = D.perfil(id);
+    assert.ok(base && base.api > 0 && base.nome, `${id}: sem dados na base`);
+    assert.ok(D.ficha(id), `${id}: sem ficha`);
+  }
+});
+
+test("Naruto: todo golpe diz como aparece na arena e a regra do Ginásio respeita", () => {
+  const formas = new Set(["corpo", "projetil", "area", "investida"]);
+  for (const [id, mv] of Object.entries(D.MOVES)) {
+    assert.ok(mv.fx, `${id}: sem fx`);
+    const hab = Ginasio.habilidadeDeGolpe(id, mv);
+    if (mv.forma) assert.equal(hab.classe, mv.forma, `${id}: ${hab.classe}`);
+    else if (mv.p > 0 && !mv.pri) assert.fail(`${id}: golpe de dano sem forma`);
+    if (mv.p > 0) assert.ok(mv.forma ? formas.has(mv.forma) : mv.pri > 0, id);
+  }
+  assert.equal(Ginasio.habilidadeDeGolpe("chidori", D.MOVES.chidori).classe, "investida");
+  assert.equal(Ginasio.habilidadeDeGolpe("katon", D.MOVES.katon).classe, "projetil");
+  assert.equal(Ginasio.habilidadeDeGolpe("presa", D.MOVES.presa).giro, true);
+  assert.equal(Ginasio.habilidadeDeGolpe("funeral", D.MOVES.funeral).raio, 2.2);
 });
 
 test("Naruto: chakra limita jutsus e concentrar recupera até o máximo", () => {
