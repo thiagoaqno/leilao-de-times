@@ -55,7 +55,7 @@ function abrirPartida(rodada) {
   if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
   $("pNomeCasa").textContent = nomeClube(J.casa); $("pNomeFora").textContent = nomeClube(J.fora);
-  $("partida").style.cssText = `--casa:${CLUBES[J.casa].cores[0]};--fora:${CLUBES[J.fora].cores[0]};--mando:${CLUBES[J.casa].cores[0]}`;
+  $("partida").style.cssText = `--casa:${CLUBES[J.casa].cores[0]};--fora:${CLUBES[J.fora].cores[0]};--mando:${CLUBES[J.casa].cores[0]};--casa-tinta:${tintaSobre(CLUBES[J.casa].cores[0], "#ffffff")};--fora-tinta:${tintaSobre(CLUBES[J.fora].cores[0], "#ffffff")}`;
   J.clima = climaDoJogo(E.temporada, J.rodada, J.casa, J.fora);
   $("partida").classList.remove("clima-dia", "clima-noite", "clima-chuva");
   $("partida").classList.add(`clima-${J.clima.hora}`); if (J.clima.chuva) $("partida").classList.add("clima-chuva");
