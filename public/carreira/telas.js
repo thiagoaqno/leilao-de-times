@@ -39,6 +39,7 @@ function telaSede() {
   telaTiles(pos);
   telaEntrada();
   feedNaSede();
+  painelTime();
   // o último jogo
   const u = E.ultimo;
   $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div>${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}${linhaPenaltis(u.penaltis)}</span><div>${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>

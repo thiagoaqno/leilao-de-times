@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="theme-color" content="#0d1823">
+<meta name="theme-color" content="#09090b">
 <script src="/semzoom.js"></script>
 <title>Carreira de Treinador</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
@@ -92,7 +92,7 @@
     <p class="suave centro"><a href="/carreira/">Prefere jogar sozinho? Carreira solo</a></p>
   </section>
 
-  <!-- a sede: o hub da carreira (no PC, três colunas: o próximo jogo e a gestão, as notícias no meio, os avisos ao lado) -->
+  <!-- a sede: o hub da carreira (no PC, três colunas: o próximo jogo e a gestão; o painel do time e as notícias no meio; os avisos, a tabela e as finanças ao lado) -->
   <section id="sede" class="tela hidden hub">
     <header id="cabecalho" class="cabecalho hub-topo"></header>
     <div class="hub-grade">
@@ -105,16 +105,17 @@
           <button class="tile" data-ir="calendario"><span class="tile-ic" data-ic="relogio"></span><span class="tile-txt"><b>Calendário</b><small>Ligas e copas</small></span><span class="tile-dado" id="tileCalendario"></span></button>
         </nav>
       </div>
-      <section class="quadro hub-noticias" id="cartaoFeed" aria-label="Notícias"></section>
-      <aside class="hub-lado" aria-label="Avisos e último jogo">
+      <div class="hub-centro">
+        <section class="quadro painel-time" id="painelTime" aria-label="Painel do time"></section>
+        <section class="quadro hub-noticias" id="cartaoFeed" aria-label="Notícias"></section>
+      </div>
+      <aside class="hub-lado" aria-label="Avisos, último jogo, tabela e finanças">
         <section class="quadro hub-entrada" id="cartaoEntrada"></section>
         <section class="quadro" id="cartaoUltimo"></section>
-      </aside>
-      <div class="hub-rodape">
         <section class="quadro" id="cartaoTabela"></section>
         <section class="quadro" id="cartaoFinancas"></section>
         <section class="quadro hidden" id="cartaoHistorico"></section>
-      </div>
+      </aside>
     </div>
     <div class="botoes-carreira">
       <button id="btnVerCodigo" class="discreto">Código de recuperação</button>
@@ -246,6 +247,7 @@
 <script src="/noite.js"></script>
 <script src="/comum.js"></script>
 <script src="/icones.js"></script>
+<script src="simbolos.js"></script>
 <script src="/escalacao.js"></script>
 <script src="/leilao/ritmo.js"></script>
 <script src="/leilao/rostos.js"></script>
@@ -279,6 +281,7 @@
 <script src="tela-mercado.js"></script>
 <script src="feed.js"></script>
 <script src="posjogo.js"></script>
+<script src="painel.js"></script>
 <script src="disputa.js"></script>
 <script src="estadios.js"></script>
 <script src="partida.js"></script>

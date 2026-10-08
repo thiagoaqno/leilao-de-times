@@ -62,8 +62,8 @@ function meuTime(mudar = {}) {
   return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: Math.min(97, notaDe(j) + extra + efeitoDe(j.id)) })),
     formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo };
 }
-// a faixa da carta pela nota
-const faixa = (n) => (n >= 83 ? "lenda" : n >= 75 ? "ouro" : n >= 65 ? "prata" : "bronze");
+// a faixa da carta pela nota: 90 ou mais é a elite (o ouro mais forte, com brilho), 85 a 89 ouro, 80 a 84 prata
+const faixa = (n) => (n >= 90 ? "elite" : n >= 85 ? "ouro" : n >= 80 ? "prata" : "bronze");
 const POS_NOME = { GOL: "Goleiro", ZAG: "Zagueiro", LD: "Lateral-direito", LE: "Lateral-esquerdo", VOL: "Volante", MC: "Meio-campista", MEI: "Meia", PE: "Ponta-esquerda", PD: "Ponta-direita", ATA: "Atacante" };
 const GRUPO_TELA = { GOL: "GOL", ZAG: "DEF", LD: "DEF", LE: "DEF", VOL: "MEI", MC: "MEI", MEI: "MEI", PE: "ATA", PD: "ATA", ATA: "ATA" };
 
