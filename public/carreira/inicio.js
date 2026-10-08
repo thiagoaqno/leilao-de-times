@@ -91,6 +91,8 @@ function temaClube(id) {
   const tinta = contraste(acento, "#ffffff") >= contraste(acento, "#111111") ? "#ffffff" : "#111111";
   return `--acento:${acento};--acento2:${c.cores.find((cor) => cor !== base) || "#ffffff"};--acento-tinta:${tinta}`;
 }
+// o escudo gigante do clube atrás de tudo (a marca d'água)
+const marcaClube = (id) => { const m = $("marcaClube"); if (m && m.dataset.clube !== (id || "")) { m.dataset.clube = id || ""; m.innerHTML = id ? escudo(id, 28) : ""; } };
 const coresClube = (id) => (CLUBES[id] ? `--clube:${CLUBES[id].cores[0]};--clube2:${CLUBES[id].cores[1]};--clube-tinta:${tintaSobre(CLUBES[id].cores[0], CLUBES[id].cores[1])}` : "");
 // a festa (gol seu, contratação): confete nas cores do clube; quem pede menos movimento fica sem
 const festa = () => { if (matchMedia("(prefers-reduced-motion: reduce)").matches || !E) return; const c = CLUBES[E.clube]; Comum.confetti([c.cores[0], c.cores[1], "#ffb21e", "#e8efe7"]); };
@@ -104,13 +106,32 @@ function mostrarTela(id) {
 }
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-ir]"); if (b) mostrarTela(b.dataset.ir); });
 // chegou um estado novo do servidor
+// as transferências do seu clube que chegam sem um clique seu (a proposta aceita na caixa de entrada, o leilão que você
+// levou, a venda da lista): a mesma cena da ficha (animacoes.js). Na primeira chegada do estado, nada anima.
+const transfVistas = new Set();
+let transfPrimeira = true;
+function animarTransferenciasNovas() {
+  const novas = [];
+  for (const t of E.transferencias || []) {
+    const k = `${t.temporada || ""}:${t.rodada}:${t.jogador}:${t.de}:${t.para}`;
+    if (transfVistas.has(k)) continue;
+    transfVistas.add(k);
+    if (!transfPrimeira && (t.para === E.clube || t.de === E.clube) && JOGADORES[t.jogador]) novas.push(t);
+  }
+  transfPrimeira = false;
+  const t = novas[0]; if (!t || telaAtual === "partida" || typeof AnimacoesCarreira === "undefined") return;
+  AnimacoesCarreira.animarTransferencia({ jogador: t.jogador, tipo: t.para === E.clube ? "contratacao" : "venda", de: t.de, para: t.para, valor: t.valor });
+  if (t.para === E.clube) festa();
+}
 function receber(estado) {
   usarBase(estado.base);
   E = estado;
   // os jovens que subiram da base não estão nos arquivos: chegam com o estado (o clube de origem vem do id)
   for (const [id, j] of Object.entries(E.jovens || {})) { JOGADORES[id] = { ...j, origem: id.replace(/-t\d+b\d+$/, "") }; registrarRosto(j); }
   document.body.style.cssText = `${coresClube(E.clube)};${temaClube(E.clube)}`;
+  marcaClube(E.clube);
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
+  animarTransferenciasNovas();
 }
 // os ícones dos atalhos (montados uma vez)
 for (const s of document.querySelectorAll("[data-ic]")) s.innerHTML = ic(s.dataset.ic);
@@ -119,7 +140,8 @@ $("fichaFechar").innerHTML = ic("fechar");
 // ---------- começar ----------
 function telaInicio() {
   usarBase(BASE_PADRAO);
-  document.body.style.cssText = "";
+  document.body.style.cssText = clubeEscolhido ? `${coresClube(clubeEscolhido)};${temaClube(clubeEscolhido)}` : "";
+  marcaClube(clubeEscolhido);
   if (!$("cNome").value) $("cNome").value = store.get("galera:name") || ""; // não apaga o que a pessoa já digitou
   $("avisoBase").innerHTML = `${ic("livro")} ${h(BASE.nome)} ${BASE.ano}: Brasileirão e cinco grandes ligas, com Libertadores, Champions e Mundial.`;
   $("avisoBase").classList.remove("hidden");
@@ -148,6 +170,8 @@ $("clubes").addEventListener("click", (e) => {
   const b = e.target.closest("[data-clube]"); if (!b) return;
   clubeEscolhido = b.dataset.clube;
   for (const x of $("clubes").children) x.setAttribute("aria-pressed", String(x.dataset.clube === clubeEscolhido));
+  document.body.style.cssText = `${coresClube(clubeEscolhido)};${temaClube(clubeEscolhido)}`; // a página já ganha a cor do clube
+  marcaClube(clubeEscolhido);
   mostrarSituacao();
 });
 // o que a situação do clube escolhido quer dizer

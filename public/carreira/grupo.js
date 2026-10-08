@@ -75,6 +75,7 @@ function desenharSala() {
     + (anfitriao ? "" : `<p class="suave">Só o anfitrião muda as regras.</p>`);
   $("gMeuClube").textContent = eu && eu.clube ? `Você: ${nomeClube(eu.clube)}` : "";
   document.body.style.cssText = eu && eu.clube ? `${coresClube(eu.clube)};${temaClube(eu.clube)}` : ""; // a sala já ganha a cor do clube escolhido
+  marcaClube(eu && eu.clube);
   const orc = (c) => c.orcamento || Orcamentos.de(c).caixa, ordemLiga = (c) => ["brasileirao-2026", ...Temporada.EUROPA].indexOf(c.liga);
   $("gClubes").innerHTML = st.clubes.map((id) => CLUBES[id]).filter(Boolean).sort((a, b) => ordemLiga(a) - ordemLiga(b) || orc(b) - orc(a)).map((c) => {
     const dono = st.ocupados[c.id], meu = dono === MEU_ID, outro = dono && !meu ? st.players.find((p) => p.id === dono) : null;
@@ -170,6 +171,7 @@ function desenharLeilao() {
   caixa.classList.toggle("novo", novo);
   caixa.innerHTML = `<div class="leilao-jogador"><img class="pix" src="${j ? retrato(j.id) : ""}" alt=""><span><small>AO VIVO · ${j ? h(j.pos) : ""}</small><b>${h(j ? j.nome : "?")}</b><em>${h(nomeClube(l.dono))}</em></span></div>
     <div class="leilao-info"><span class="leilao-icone">${ic("martelo")}</span><span><small>${topo ? "Maior lance" : "Lance inicial"}</small><b class="leilao-valor${mudouLance ? " mudou" : ""}">${dinheiro(topo ? topo.valor : l.minimo)}</b>${topo ? `<em>${escudo(topo.clube, 1)} ${h(nomeClube(topo.clube))}</em>` : `<em>mínimo pedido</em>`}</span></div>
+    ${l.lances.length > 1 ? `<div class="leilao-historico" aria-label="Os últimos lances">${l.lances.slice(-6).reverse().map((x, i) => `<span class="${i ? "" : "topo"}">${escudo(x.clube, 1)}<b>${dinheiro(x.valor)}</b></span>`).join("")}</div>` : ""}
     <div class="leilao-tempo" style="--resta:${Math.min(30, resta)}"><b>${resta}</b><small>${l.estado === "martelo" ? "decisão" : "segundos"}</small></div>
     <div class="leilao-acoes">${l.dono === meu
       ? (l.estado === "martelo" || topo ? `<button id="lMartelo" class="primario" ${topo ? "" : "disabled"}>Bater o martelo</button><button id="lRecusar" class="secundario">Ficar com ele</button>` : "<small>O jogador é seu: você decide no fim.</small>")

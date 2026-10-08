@@ -703,3 +703,96 @@ body:is([data-tela=elenco],[data-tela=mercado],[data-tela=tabela],[data-tela=cal
 
 @media (max-width:760px){.leilao-box{grid-template-columns:1fr 62px;padding:9px;gap:8px}.leilao-jogador>img{width:46px;height:46px}.leilao-info{grid-column:1}.leilao-tempo{grid-column:2;grid-row:1 / span 2;width:56px;height:56px}.leilao-acoes{grid-column:1 / -1;justify-content:stretch}.leilao-acoes button{flex:1}.transferencia-palco{height:270px;padding:30px 18px}.transferencia-clube{width:72px}.transferencia-card,.transferencia-card .figurinha{width:112px}.transferencia-martelo{left:calc(50% + 52px)}}
 @media (prefers-reduced-motion:reduce){.leilao-box.novo::before,.leilao-valor.mudou,.dica-olheiro,.fala-jogador{animation:none}.transferencia-fx{animation:transferencia-fundo .8s both}.transferencia-card,.transferencia-fx.venda .transferencia-card{animation:none;opacity:1;transform:translate(-50%,-50%)}.transferencia-carimbo{animation:none;opacity:1;transform:translate(-50%,-50%) rotate(-10deg) scale(1)}.transferencia-martelo{display:none}}
+
+/* ---------- a revolução visual: as telas que faltavam (início, sala, partida, ficha, pós-jogo e decisões) ---------- */
+body:is([data-tela=inicio],[data-tela=grupo]) #tela{max-width:1180px}
+.hub .capa h1{background:linear-gradient(90deg,var(--giz),color-mix(in srgb,var(--acento) 70%,var(--giz)));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hub .capa .sobre{color:var(--acento)}
+.hub .clube{background:#00000040;border-color:var(--vidro-borda);transition:transform .18s var(--ease-out),border-color .18s,box-shadow .18s}
+.hub .clube:hover:not(:disabled){transform:translateY(-3px);border-color:color-mix(in srgb,var(--clube) 70%,transparent);box-shadow:0 14px 30px -16px var(--clube)}
+.hub .clube[aria-pressed=true]{border-color:var(--acento);box-shadow:0 0 0 2px var(--acento),0 14px 34px -14px var(--acento)}
+.hub .codigo-sala{color:var(--acento)}
+/* os diálogos (ficha, decisão, pós-jogo, disputa, código): vidro escuro com a borda na cor do clube */
+.dialogo{background:linear-gradient(180deg,#132538f2,#0b1621f7);border-color:color-mix(in srgb,var(--acento) 45%,transparent);box-shadow:0 0 0 1px #ffffff0d,0 30px 80px -20px #000,0 0 60px -30px var(--acento)}
+.dialogo::backdrop{background:radial-gradient(circle at 50% 30%,#0b1a26cc,#020609ee);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.dialogo h2{letter-spacing:.03em}.dialogo .primario{box-shadow:0 0 22px -10px var(--acento)}
+.ficha .dados>div{background:#00000033;border:1px solid var(--vidro-borda);border-radius:12px}
+.posjogo{background:linear-gradient(180deg,#132538f7,#0b1621fa)}.pj-titulo{color:var(--acento)}
+.pj-cartao{background:#00000040;border-color:var(--vidro-borda)}
+.pj-placar{background:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--clube) 40%,transparent),#00000055 72%)}
+/* a partida: o placar de vidro na cor dos dois clubes e a narração com o acento */
+#partida .placar{background:linear-gradient(90deg,color-mix(in srgb,var(--casa) 38%,#0c1824e6),#0c1824e6 40%,#0c1824e6 60%,color-mix(in srgb,var(--fora) 38%,#0c1824e6));border:1px solid var(--vidro-borda);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 18px 40px -22px #000}
+#partida .placar #pGols{text-shadow:0 0 24px color-mix(in srgb,var(--acento) 55%,transparent)}
+#partida .faixa-jogo button[aria-pressed=true]{background:var(--acento);color:var(--acento-tinta)}
+.narracao li{background:#0c1824cc;border-color:var(--vidro-borda)}
+.narracao li.nosso{border-left-color:var(--acento)}
+.narracao li.gol{background:color-mix(in srgb,var(--acento) 14%,#0c1824e6);border-color:color-mix(in srgb,var(--acento) 55%,transparent);box-shadow:0 0 26px -12px var(--acento)}
+.narracao li.gol .ic-lance{color:var(--acento)}
+/* o leilão: o histórico dos lances com o escudo de quem está na briga */
+.leilao-historico{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;font-size:12px}
+.leilao-historico span{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:99px;background:#ffffff0d;color:var(--giz2)}
+.leilao-historico span.topo{background:color-mix(in srgb,var(--acento) 20%,transparent);color:var(--giz)}.leilao-historico b{font-family:var(--titulo);font-weight:600}
+@media (prefers-reduced-motion:reduce){.hub .clube{transition:none}.hub .clube:hover:not(:disabled){transform:none}}
+/* os botões principais na cor do clube (no lugar do âmbar antigo), dentro dos diálogos e das telas do hub */
+.dialogo button.primario,.hub button.primario:not(.cta){background:var(--acento);color:var(--acento-tinta);box-shadow:0 4px 0 color-mix(in srgb,var(--acento) 55%,#000),0 0 22px -10px var(--acento)}
+/* ---------- a cor do clube na página inteira ----------
+   O estádio deixa de ser verde: os refletores, as faixas na diagonal e a arquibancada ficam nas cores do clube, e o
+   escudo gigante fica de marca d'água atrás de tudo (#marcaClube, montado em inicio.js). Sem clube, fica o azul-noite. */
+.hub::before{background:
+    radial-gradient(560px 280px at 6% -60px,#fff8d955,transparent 70%),
+    radial-gradient(560px 280px at 94% -60px,#fff8d955,transparent 70%),
+    radial-gradient(1100px 520px at 50% -80px,color-mix(in srgb,var(--clube) 46%,transparent),transparent 74%),
+    repeating-linear-gradient(115deg,transparent 0 120px,color-mix(in srgb,var(--clube) 9%,transparent) 120px 210px,transparent 210px 330px,color-mix(in srgb,var(--clube2) 5%,transparent) 330px 360px),
+    linear-gradient(180deg,color-mix(in srgb,var(--clube) 18%,#05090f) 0%,#08121b 46%,#0a141d 100%)}
+.hub::after{height:34%;background:linear-gradient(180deg,transparent 0%,color-mix(in srgb,var(--clube) 14%,#060b11cc) 100%),
+    repeating-linear-gradient(90deg,#ffffff05 0 80px,transparent 80px 160px)}
+/* o fundo do estádio (z -2) e a marca (z -1) ficam atrás do conteúdo: a .hub deixa de isolar e o body fica sem fundo próprio */
+body{background:none}.hub{isolation:auto}.hub::before,.hub::after{z-index:-2}
+.marca-clube{position:fixed;right:-4vw;top:16vh;z-index:-1;pointer-events:none;opacity:.07;transform:rotate(-12deg);filter:saturate(1.2)}
+.marca-clube .escudo{--e:28!important}
+body[data-tela=partida] .marca-clube{opacity:.04}
+#barra{background:linear-gradient(90deg,color-mix(in srgb,var(--clube) 55%,#0a1520) 0%,#0a1520e6 38%);border-bottom:0;
+  box-shadow:0 3px 0 var(--clube),0 6px 0 var(--clube2),0 10px 30px -10px #000}
+#barra .voltar{font-weight:800;letter-spacing:.02em}
+/* os painéis com um toque da cor do clube e uma faixa em cima */
+.hub .quadro{background:linear-gradient(180deg,color-mix(in srgb,var(--clube) 9%,#11233399),#0c1824c4);
+  border-color:color-mix(in srgb,var(--clube) 26%,#ffffff14)}
+.hub .quadro::before{content:"";position:absolute;left:12px;right:12px;top:0;height:3px;border-radius:0 0 3px 3px;background:linear-gradient(90deg,var(--clube) 0 60%,var(--clube2) 60% 80%,transparent 80%);opacity:.85;pointer-events:none}
+.hub .quadro:not(.filtros,.hub-lado){position:relative} /* a faixa precisa do painel posicionado; os grudados continuam sticky */
+/* o topo de cada tela: uma faixa de transmissão com as listras do clube */
+.hub .topo-tela,.hub-topo{background:
+    repeating-linear-gradient(115deg,transparent 0 22px,color-mix(in srgb,var(--clube2) 9%,transparent) 22px 30px) right/42% 100% no-repeat,
+    linear-gradient(100deg,color-mix(in srgb,var(--clube) 62%,#0c1824) 0%,color-mix(in srgb,var(--clube) 24%,#0c1824e6) 48%,#0c1824cc 100%);
+  border-color:color-mix(in srgb,var(--clube) 45%,transparent);box-shadow:inset 6px 0 0 var(--clube2),var(--sombra-hub)}
+.hub .topo-tela h1,.hub .topo-tela h2{font-size:clamp(30px,3.2vw,44px);text-shadow:0 3px 0 #0006}
+.hub-topo .cab-numeros>div{background:#00000047;border-color:#ffffff1f}
+/* a tela inicial: cada clube com a faixa das suas cores; escolher um já pinta a página */
+.hub .clube{background:linear-gradient(110deg,color-mix(in srgb,var(--clube) 30%,#0a1520) 0%,#0a1520d9 55%);border-color:color-mix(in srgb,var(--clube) 30%,#ffffff12);
+  box-shadow:inset 4px 0 0 var(--clube),inset 7px 0 0 var(--clube2)}
+.hub .clube:hover:not(:disabled){box-shadow:inset 4px 0 0 var(--clube),inset 7px 0 0 var(--clube2),0 16px 34px -14px var(--clube)}
+.hub .clube[aria-pressed=true]{background:linear-gradient(110deg,color-mix(in srgb,var(--clube) 55%,#0a1520) 0%,color-mix(in srgb,var(--clube) 18%,#0a1520) 100%);
+  box-shadow:inset 4px 0 0 var(--clube2),0 0 0 2px var(--acento),0 18px 40px -12px var(--acento)}
+.hub .capa h1{font-size:clamp(44px,6vw,84px);text-shadow:0 6px 30px color-mix(in srgb,var(--clube) 40%,transparent)}
+/* a prancheta: o gramado com a luz do refletor e a moldura do clube */
+.hub .campo{border-color:color-mix(in srgb,var(--clube) 55%,#ffffff40);box-shadow:0 0 0 6px #0c182499,0 24px 60px -20px #000,0 0 60px -20px var(--clube)}
+/* a partida: o placar de transmissão de TV, cada lado na cor do seu clube */
+#partida .placar{gap:0;padding:0;overflow:hidden;border-radius:14px;background:#05090f;border:0;box-shadow:0 0 0 1px #ffffff1a,0 24px 50px -20px #000}
+#partida .placar .time{padding:16px 22px;align-self:stretch}
+#partida .placar .casa{background:linear-gradient(100deg,var(--casa),color-mix(in srgb,var(--casa) 45%,#05090f))}
+#partida .placar .fora{background:linear-gradient(260deg,var(--fora),color-mix(in srgb,var(--fora) 45%,#05090f))}
+#partida .placar .time b{text-shadow:0 2px 6px #0005}#partida .placar .casa b{color:var(--casa-tinta,#fff)}#partida .placar .fora b{color:var(--fora-tinta,#fff)}#partida .placar .time b{font-size:clamp(20px,2.2vw,30px)}
+#partida .placar .escudo{filter:drop-shadow(0 4px 6px #0009)}
+#partida .marcador{border-radius:0;border:0;padding:8px 26px;background:linear-gradient(180deg,#18212c,#05090f);min-width:150px;align-self:stretch;justify-content:center}
+#partida #pGols{font-size:48px}
+#partida #pRelogio{display:inline-block;margin-top:4px;padding:1px 10px;border-radius:99px;background:var(--acento);color:var(--acento-tinta);font:700 13px/1.4 var(--titulo)}
+#partida .faixa-jogo{padding:8px 12px;border-radius:12px;background:#0c1824b3;border:1px solid #ffffff14}
+.narracao li{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.narracao li.gol{font-size:16px;font-weight:800}
+@media (max-width:760px){#partida .placar .time{padding:10px}#partida .marcador{min-width:96px;padding:6px 10px}#partida #pGols{font-size:32px}.marca-clube{display:none}}
+/* cada tela entra subindo; quem pede menos movimento fica sem */
+@media (prefers-reduced-motion:no-preference){
+  .hub:not(.hidden)>*{animation:tela-entra .42s var(--ease-out) both}.hub>*:nth-child(2){animation-delay:.05s}.hub>*:nth-child(3){animation-delay:.1s}.hub>*:nth-child(n+4){animation-delay:.15s}
+  .marca-clube .escudo{animation:marca-entra .9s var(--ease-out) both}
+}
+@keyframes tela-entra{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes marca-entra{from{opacity:0;transform:rotate(-14deg) scale(.82)}to{opacity:1;transform:none}}
