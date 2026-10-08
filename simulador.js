@@ -49,7 +49,7 @@ function buildWith(cap, kind, fname) {
   const ovr = Math.round(avg(players.map((p) => p.ovr)));
   const offPos = xi.filter((x) => x.p && HOME_SLOT(x.p.pos) !== x.slot);
   const holes = xi.filter((x) => !x.p).length;
-  return { id: cap.id, name: cap.name, formation: fname, players, xi, bench, links, chem, keeper, gkEff: gkSlot.eff * gkSlot.cm, improvised, offPos, holes, att, def, ovr, stats: { p: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0 } };
+  return { id: cap.id, name: cap.name, dono: cap.dono || cap.name, formation: fname, players, xi, bench, links, chem, keeper, gkEff: gkSlot.eff * gkSlot.cm, improvised, offPos, holes, att, def, ovr, stats: { p: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0 } };
 }
 
 // ---------- narração ----------
@@ -280,7 +280,7 @@ function simular(room, opts, { seed, decisoes, interativo }, parcial) {
   const kind = opts.sport === "futebol" ? "futebol" : "futsal";
   const cfg = { futsal: kind === "futsal", decisoes, interativo }, pref = seed.slice(0, 6);
   const N = makeNarrator();
-  const caps = room.order.map((id) => ({ id, ...room.captains[id], name: room.captains[id].teamName || room.captains[id].name })).filter((c) => c.team.length); // o nome do time, se tiver
+  const caps = room.order.map((id) => ({ id, ...room.captains[id], dono: room.captains[id].name, name: room.captains[id].teamName || room.captains[id].name })).filter((c) => c.team.length); // o nome do time, se tiver (dono: quem montou)
   if (caps.length < 2) throw new Error("Precisa de pelo menos 2 times com jogadores.");
   const teams = caps.map((c) => buildTeam(c, kind)).sort(() => rnd() - 0.5);
   const n = teams.length;
@@ -294,7 +294,10 @@ function simular(room, opts, { seed, decisoes, interativo }, parcial) {
   const ctx = {};
   const previstas = 1 + (format === "series" ? 4 : format === "knockout" ? Math.ceil(Math.log2(n)) + (n >= 4 ? 1 : 0) + 1 : roundRobin(teams).length + (n >= 6 ? 3 : 1) + 1);
   Object.assign(parcial, { sections, lives, previstas });
-  const fim = () => ({ sections, lives, completo: true, previstas: sections.length, campeao: ctx.campeao || null, summary: ctx.summary ? { ...ctx.summary, torneio: title, modalidade: kind, data: new Date().toISOString() } : null });
+  // o jogo que decidiu o título (a festa do campeão mostra o placar e quem marcou): a última parte com jogos, e nela a
+  // Final (na série melhor de 3, o último jogo). Só copia o que já saiu: não sorteia nada, o campeonato não muda.
+  const finalDe = () => { const l = [...lives].reverse().find((x) => x && x.jogos && x.jogos.length); return l ? l.jogos.find((j) => j.titulo === "Final") || l.jogos[l.jogos.length - 1] : null; };
+  const fim = () => ({ sections, lives, completo: true, previstas: sections.length, campeao: ctx.campeao || null, summary: ctx.summary ? { ...ctx.summary, final: finalDe(), torneio: title, modalidade: kind, data: new Date().toISOString() } : null });
 
   // 1) elencos
   const title = kind === "futsal" ? "Copa de Futsal da Galera" : "Copa da Galera (futebol de campo)";
@@ -448,8 +451,9 @@ function finalSection(champ, vice, third, teams, matches, N, ctx, decider) {
   const rec = { v: 0, e: 0, d: 0, gp: 0, gc: 0 };
   mine.forEach((m) => { const gf = m.A === champ ? m.gA : m.gB, ga = m.A === champ ? m.gB : m.gA; rec.gp += gf; rec.gc += ga; if (m.winner === champ) rec.v++; else if (m.winner) rec.d++; else if (gf > ga) rec.v++; else if (gf < ga) rec.d++; else rec.e++; });
   ctx.summary = {
+    id: champ.id, dono: champ.dono, // o capitão campeão e o nome de quem montou o time
     campeao: champ.name, vice: vice.name, terceiro: third ? third.name : null, formacao: champ.formation,
-    time: champ.xi.filter((x) => x.p).map((x) => ({ nome: x.p.name, vaga: x.slot, nota: x.p.ovr, rende: Math.round(x.eff), gols: x.p.goals })),
+    time: champ.xi.filter((x) => x.p).map((x) => ({ nome: x.p.name, vaga: x.slot, pos: x.p.pos, nota: x.p.ovr, rende: Math.round(x.eff), gols: x.p.goals })),
     reservas: champ.bench.map((p) => ({ nome: p.name, nota: p.ovr, gols: p.goals })),
     decisao: decider, campanha: rec, jogos: mine.length,
     artilheiro: { nome: art.name, time: art.team, gols: art.goals }, craque: { nome: craque.name, gols: craque.goals },

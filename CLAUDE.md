@@ -203,6 +203,16 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 9. `roleta.js`: o sorteio (a fita de cartas que para no sorteado);
 10. `ritmo.js`, `aovivo.js` (o campeonato ao vivo: a carta de cada gol, lado a lado quando os gols saem juntos, e os
     replays, um embaixo do outro, o mais novo em cima) e `elenco.js` (o voo até o time, os balõezinhos, o nome e as trocas).
+11. `campeao.js`, que carrega entre `aovivo.js` e `elenco.js`: a **festa do campeão**. É um `<dialog>` que passa como um vídeo
+    em cenas: o fim de jogo com o placar da final, os gols da final, os pênaltis, a campanha, os artilheiros e a foto do
+    elenco com a faixa CAMPEÕES.
+    - O telão é um canvas de 160x90, com os bonecos e as comemorações de `Lances.kit`. Os textos ficam em HTML por cima.
+    - Abre uma vez por campeonato: `abrirFesta`, chamada no `renderReveal` quando o `summary` chega e nada está rolando.
+      A chave fica em `lt_festa_<código>`. `reverFesta()` é o botão "Rever a festa do título".
+    - "Baixar a foto" gera um PNG que passa por `ChampionCard.baixar`.
+    - `#debug` expõe `window.__festa`.
+    - Tudo vem do `summary` do simulador: `final` (o jogo que decidiu o título, igual ao de `lives`), `id` do campeão,
+      `dono` e a `pos` dos titulares. Esses campos só copiam o que já saiu, sem sortear nada.
 
 **Leilão: pênaltis da galera.** Quem bate escolhe um dos 6 cantos e o outro dono escolhe o pulo do goleiro (opção
 `penaltis` da simulação, ligada por padrão).
@@ -290,6 +300,9 @@ Para achar algo dentro de um jogo:
   - Jogo novo entra na lista de `tests/e2e/paginas.spec.js`.
 - **Futevôlei:** `tests/futevolei.test.js` (o golpe de cada posição da bola, os 3 toques, passe e ataque passando a rede,
   o juiz da areia, robô contra robô e uma partida pelo servidor).
+- **Leilão:**
+  - `tests/leilao-campeao.test.js`: o resumo do campeão em todos os formatos, e a mesma semente dando o mesmo campeonato.
+  - `tests/e2e/leilao-campeao.spec.js`: a festa numa sala de verdade e com menos movimento.
 - **Carreira:** `tests/bd.test.js` (banco em memória), `tests/carreira-motor.test.js` (10 mil jogos conferem gols, mando e força; se mexer no `AJUSTE` do motor, esses testes dizem se o futebol continua com cara de futebol) `tests/carreira-rodada.test.js` (a rodada ao vivo com o relógio à mão), `tests/carreira-online-mercado.test.js` (rodada e leilão pelo canal), `tests/carreira-online.test.js` (a sala em grupo: opções, clubes sem repetir, aporte, reconexão e o servidor reiniciando), `tests/carreira-evolucao.test.js` (evolução, aposentadoria, jovens, virada de temporada e limite) e `tests/carreira-base.test.js` (Brasileirão, base mundial, nomes licenciados, elencos, calibragem, Libertadores e Liverpool × Sunderland).
   `tests/carreira-animacoes.test.js` confere as 40 falas únicas da prancheta; o E2E da carreira cobre o balão, o relatório do olheiro, a animação ao terminar o leilão, o ritmo 3× compartilhado, os pênaltis eliminatórios e a leitura da evolução/perda por posição na prancheta.
 - **Testes que às vezes falham por tempo:** um do Dominó e um do relógio. Repetir antes de investigar.
