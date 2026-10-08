@@ -48,6 +48,33 @@ test("carreira: a prancheta mostra evolução e perda por posição", async ({ p
   expect(erros).toEqual([]);
 });
 
+test("carreira: um empate eliminatório mostra os pênaltis", async ({ page }) => {
+  const erros = vigiar(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/carreira/#debug");
+  await page.fill("#cNome", "Pênaltis");
+  await page.click('[data-clube="flamengo"]');
+  await page.click("#btnCriar");
+  await page.click("#btnAnotei");
+  expect(await page.evaluate(() => __carreira.E.meus.filter((j) => j.mataMata).length)).toBe(0);
+  await page.evaluate(() => {
+    const e = __carreira.E, jogo = { rodada: e.rodada, jogoId: "final-teste", competicao: "libertadores", fase: "final", mataMata: true,
+      casa: "flamengo", fora: "palmeiras", placar: [1, 1], penaltis: [4, 5], eventos: [{ tipo: "fim", min: 90, placar: [1, 1] }], modo: 1 };
+    e.ultimo = jogo;
+    e.posJogo = { rodada: e.rodada, casa: jogo.casa, fora: jogo.fora, placar: jogo.placar, penaltis: jogo.penaltis, resultado: "D",
+      moral: [e.moral, e.moral], caixa: [e.caixa, e.caixa], financas: [], lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: [], avisos: [] };
+    __carreira.abrirPartida();
+  });
+  await page.click("#btnPular");
+  await expect(page.locator("#pRelogio")).toHaveText("Pênaltis 4 × 5");
+  await expect(page.locator("#fimJogo")).toBeVisible();
+  await page.click("#btnVoltarSede");
+  await expect(page.locator("#posJogo .placar-penaltis")).toHaveText("Pên. 4 × 5");
+  await expect(page.locator("#posJogo .pj-resultado")).toHaveText("Derrota nos pênaltis");
+  await fotografar(page, "carreira-penaltis");
+  expect(erros).toEqual([]);
+});
+
 for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) {
   test(`carreira ${tela.width}x${tela.height}: prancheta, mercado e uma rodada`, async ({ page }) => {
     const erros = vigiar(page);

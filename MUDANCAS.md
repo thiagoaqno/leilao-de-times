@@ -1,26 +1,26 @@
-# Carreira em grupo: rodada em 3×
+# Carreira: mata-mata sem spoiler e pênaltis visíveis
 
-Este PR permite que o anfitrião acelere para `3×` os jogos multiplayer que estão acontecendo ao vivo. A velocidade
-é uma decisão única da sala: todas as partidas humanas avançam juntas e todos os participantes enxergam o mesmo
-ritmo.
+Este PR corrige dois problemas do calendário mundial: fases futuras da Libertadores, Champions e Mundial não entregam
+mais o destino do clube antes da hora, e um empate eliminatório não escolhe mais o vencedor em pênaltis invisíveis.
 
 ## O que muda
 
-- **Controle do anfitrião:** durante a rodada, quem criou a sala pode alternar entre `1×` e `3×`; para os demais, os
-  botões aparecem sincronizados e desabilitados.
-- **Relógio contínuo:** mudar o ritmo não pula o minuto atual. O servidor guarda os segmentos de velocidade e aplica
-  o cálculo também aos jogos que estiverem pausados.
-- **Decisões preservadas:** o 3× acelera somente o relógio da partida. O prazo real para decisões táticas e lances
-  decisivos não fica três vezes menor.
-- **Sem atalhos locais:** o botão `Pular` continua oculto no multiplayer. O modo `Turbo` da sala permanece separado:
-  ele encurta a temporada, enquanto o 3× apenas acelera a rodada em andamento.
-- **Fim de jogo estável:** se o servidor fechar uma rodada em 3× antes do último quadro visual, o cliente usa o
-  resultado confirmado para mostrar o apito final normalmente.
+- **Calendário sem spoiler:** jogos de liga e da fase de grupos continuam visíveis, mas o mata-mata mostra somente
+  confrontos já disputados e o próximo jogo real. O caminho simulado até quartas, semifinal ou final fica no servidor.
+- **Pênaltis persistidos:** o placar do desempate passa a fazer parte do resultado fixo. Recalcular o mundo ou reiniciar
+  uma sala não sorteia outro campeão.
+- **Saves já afetados:** ao abrir, o jogo recupera do chaveamento os pênaltis de uma final já concluída e corrige o
+  último jogo, o pós-jogo e as notícias antigas.
+- **Resultado coerente:** partida, último jogo, calendário, notícia e pós-jogo mostram o placar dos pênaltis. O cartão
+  final diz explicitamente “Vitória nos pênaltis” ou “Derrota nos pênaltis”.
+- **Multiplayer:** antes de produzir notícias para os técnicos, o servidor atualiza o chaveamento compartilhado com o
+  resultado humano; todos recebem o mesmo vencedor.
+- **Todos os eliminatórios:** a regra vale para final em jogo único e para empate agregado em oitavas, quartas ou
+  semifinal.
 
 ## Conferido
 
-- **Testes focados:** 6 testes passaram no relógio da rodada e no canal multiplayer, incluindo troca de velocidade,
-  pausas, permissão exclusiva do anfitrião e sincronização com o outro participante.
-- **E2E focado:** 1 cenário passou em 48,0 s, confirmando o controle do anfitrião, o botão bloqueado para o convidado,
-  o 3× visível para os dois e a conclusão normal da rodada.
-- **Foto:** `planos/imagens/carreira-grupo-3x.png`.
+- **Testes focados:** 18 testes passaram entre temporada mundial, relógio e canal multiplayer.
+- **E2E focado:** o novo cenário passou em 21,2 s, confirmando o placar `1 × 1`, o desempate `4 × 5`, a derrota nos
+  pênaltis e a ausência de confrontos futuros; a sala em grupo também passou novamente em 47,9 s.
+- **Foto:** `planos/imagens/carreira-penaltis.png`.

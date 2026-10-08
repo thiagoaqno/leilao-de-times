@@ -99,7 +99,7 @@ function tick(save, rod, agora) {
         break;
       }
       if (minutoDe(rod, jg, agora) >= limiteDe(r) + 0.5) {
-        G.fecharJogoGrupo(save, jg.j, r, jg.modo, jg.decisoes);
+        jg.penaltis = G.fecharJogoGrupo(save, jg.j, r, jg.modo, jg.decisoes);
         jg.fim = true; jg.placar = [...r.placar]; mudou = true;
       }
       break;
@@ -143,7 +143,7 @@ function visao(save, rod, clube, agora) {
       if (meuPedido && jg.parado.pendentes.includes(lado)) parado = { ...meuPedido, id: r.parado.id, min: r.parado.min, acr: r.parado.acr, placar: r.parado.placar, ate: jg.parado.ate };
       else parado = { esperando: true, id: r.parado.id, min: r.parado.min, acr: r.parado.acr, placar: r.parado.placar, ate: jg.parado.ate };
     }
-    return { ...base, lado, eventos: r.eventos, parado, completo: r.completo, modo: jg.modo, placar: r.placar };
+    return { ...base, lado, eventos: r.eventos, parado, completo: r.completo, modo: jg.modo, placar: r.placar, penaltis: jg.penaltis || null };
   };
   return { n: rod.n, semana: rod.semana, inicio: rod.inicio, agora, velocidade: rod.multiplicador || 1, meu: meu ? ver(meu) : null, outros: rod.jogos.filter((x) => x !== meu).map(ver) };
 }

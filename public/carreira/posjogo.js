@@ -15,7 +15,7 @@ function mostrarPosJogo(forcar = false) {
 }
 const RESULTADO_PJ = { V: ["Vitória", "bom"], E: ["Empate", "neutro"], D: ["Derrota", "ruim"] };
 function desenharPosJogo(p) {
-  const [nome, humorPJ] = RESULTADO_PJ[p.resultado], dm = p.moral[1] - p.moral[0], dc = p.caixa[1] - p.caixa[0];
+  const [nomeBase, humorPJ] = RESULTADO_PJ[p.resultado], nome = p.penaltis ? `${nomeBase} nos pênaltis` : nomeBase, dm = p.moral[1] - p.moral[0], dc = p.caixa[1] - p.caixa[0];
   const eventos = p.eventos.map((id) => E.caixaEntrada.find((e) => e.id === id)).filter((e) => e && !e.resolvido);
   const avisos = p.avisos.map((id) => E.caixaEntrada.find((e) => e.id === id)).filter(Boolean).slice(0, 4);
   const desfalques = [...p.lesoes.map(([pid, n]) => [pid, `Lesão · fora ${n} rod.`, "ruim"]), ...p.suspensos.map((pid) => [pid, "Suspenso", "ruim"]), ...p.pendurados.map((pid) => [pid, "Pendurado (2 amarelos)", "aviso"])];
@@ -23,7 +23,7 @@ function desenharPosJogo(p) {
   const sinal = (v) => (v > 0 ? "+" : v < 0 ? "−" : "");
   $("pjCorpo").innerHTML = `
     <h2 id="pjTitulo" class="pj-titulo">Pós-jogo · Rodada ${p.rodada + 1}</h2>
-    ${cartao(`pj-placar ${humorPJ}`, `<div class="pj-times">${escudo(p.casa, 3)}<span class="pj-gols">${p.placar[0]}<i>×</i>${p.placar[1]}</span>${escudo(p.fora, 3)}</div><b class="pj-resultado">${nome}</b>`)}
+    ${cartao(`pj-placar ${humorPJ}`, `<div class="pj-times">${escudo(p.casa, 3)}<span class="pj-gols">${p.placar[0]}<i>×</i>${p.placar[1]}${linhaPenaltis(p.penaltis)}</span>${escudo(p.fora, 3)}</div><b class="pj-resultado">${nome}</b>`)}
     <div class="pj-grade">
       ${cartao("pj-moral", `<h3>${ic(dm >= 0 ? "sobe" : "baixo")} Moral</h3><div class="pj-medidor"><i style="--de:${p.moral[0]}%;--para:${p.moral[1]}%"></i></div>
         <p><b class="${dm > 0 ? "positivo" : dm < 0 ? "neg" : ""}">${sinal(dm)}${Math.abs(dm)}</b> · agora ${humor(p.moral[1])}</p>`)}
