@@ -41,9 +41,9 @@ mandando no acento (o brilho no topo, o botão de jogar, as abas e as seleções
   desenha; o leilão sobe como uma gaveta.
 - Quem pede menos movimento no sistema fica sem elas (a cena da transferência e os balões aparecem parados).
 
-## Inclui o #90
-- Este PR parte do `main` e traz junto os commits do #90 (as transferências que chegam sem clique animadas e o
-  histórico de lances no leilão). O visual do #90 foi substituído por este; o #90 pode ser fechado.
+## Junto com o #90
+- O #90 (as transferências que chegam sem clique animadas e o histórico de lances no leilão) já está no `main`; este PR
+  mantém o que ele fez nos scripts e troca o visual dele por este.
 
 ## Conferido
 - **Fotos:** `planos/imagens/carreira-nova-inicio.png`, `carreira-nova-sede.png`, `carreira-nova-painel-setores.png`,

@@ -1,4 +1,4 @@
-// Carreira de Treinador: o catálogo dos eventos (mais de 100) da caixa de entrada. Cada um tem quem ele atinge (alvo), quando pode
+// Carreira de Treinador: o catálogo dos eventos (mais de 200, com os de carreira-catalogo-extra.js) da caixa de entrada. Cada um tem quem ele atinge (alvo), quando pode
 // acontecer (quando), o texto e as escolhas; cada escolha mexe no jogo de verdade pelas ajudas de `x` (ver
 // carreira-eventos.js):
 //   x.moral(n)                  a moral do elenco (20 a 95, que vira nota em campo)
@@ -478,5 +478,8 @@ const CATALOGO = [
     titulo: "Chuteiras novas", texto: "O fornecedor mandou chuteiras novas para o elenco inteiro.",
     efeito: (x) => { x.time(1, 2); return "Tudo novo para os próximos 2 jogos."; } },
 ];
+
+// mais 100 eventos inesperados (carreira-catalogo-extra.js)
+CATALOGO.push(...require("./carreira-catalogo-extra.js").EXTRA);
 
 module.exports = { CATALOGO };

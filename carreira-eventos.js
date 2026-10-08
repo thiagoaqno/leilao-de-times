@@ -50,7 +50,7 @@ function contexto(save, c, sorte, j = null, v = {}) {
     n: j ? j.nome : "", clubeDoAlvo: j ? c.clubeDe(save, c.donoDe(save, j.id)).nome : "",
     salarioAtual: j ? c.salarioDe(save, j) : 0, valorAlvo: j ? Mercado.valorDe(c.comNota(save, j)) : 0,
     adv: advId ? c.clubeDe(save, advId).nome : null, advTamanho: advId ? c.clubeDe(save, advId).tamanho : 0,
-    casa: !!jogo && jogo[0] === save.clube, janela: Mercado.janelaAberta(R), posicao: pos,
+    casa: !!jogo && jogo[0] === save.clube, janela: Mercado.janelaAberta(c.rodadaDaJanela ? c.rodadaDaJanela(save) : R), posicao: pos,
     vitorias: ult.filter((u) => u === "V").length, derrotas: ult.filter((u) => u === "D").length,
     caixaAtual: save.caixa, folha: c.elencoDe(save, save.clube).reduce((s, p) => s + c.salarioDe(save, p), 0),
     sorte: (p) => sorte() < p,
@@ -109,7 +109,7 @@ function gerarEventos(save, c) {
   const titulares = new Set(c.titularesDe(save, save.clube)), caixaDe = (id) => (save.caixaIA ? save.caixaIA[id] ?? 0 : 1e12);
   const compradores = (min) => c.idsDosClubes(save).filter((id) => id !== save.clube && caixaDe(id) >= min && c.clubeDe(save, id).tamanho >= Math.max(1, meuClube.tamanho - 2));
   let houveDisputa = false;
-  if (Mercado.janelaAberta(save.rodada)) {
+  if (Mercado.janelaAberta(c.rodadaDaJanela ? c.rodadaDaJanela(save) : save.rodada)) {
     const listados = save.aVenda.filter((pid) => meu.some((j) => j.id === pid));
     const surpresa = r() < 0.18 ? sorteio(r, meu.filter((j) => titulares.has(j.id) && !listados.includes(j.id))) : null;
     let feitas = 0;
@@ -157,7 +157,7 @@ function gerarEventos(save, c) {
     }
   }
   // os outros clubes também negociam
-  if (Mercado.janelaAberta(save.rodada) && r() < 0.4) {
+  if (Mercado.janelaAberta(c.rodadaDaJanela ? c.rodadaDaJanela(save) : save.rodada) && r() < 0.4) {
     // quem compra precisa ter o dinheiro: clube pobre leva jogador barato, clube rico leva caro
     const de = outroClube(), para = outroClube((cl) => cl.id !== de);
     const elencoDe = c.elencoDe(save, de);

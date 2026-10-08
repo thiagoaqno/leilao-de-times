@@ -126,3 +126,16 @@ test("motor: no humano contra humano, o pênalti é o duelo (quem bate escolhe o
   assert.strictEqual(e.chute, "ea"); assert.strictEqual(e.pulo, "ea");
   assert.ok(!igual.eventos.some((x) => x.tipo === "gol" && x.min === e.min && x.como === "penalti"), "pulou no canto certo: não entra");
 });
+
+test("rodada: quem joga copa e quem não joga ficam na mesma rodada da liga, com a mesma janela", () => {
+  // o Flamengo joga a Libertadores no meio da semana; o Bahia, não
+  const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "A" }, { clube: "bahia", nome: "B" }], { temporadas: 1 });
+  for (let n = 0; n < 12; n++) {
+    const p = G.proximaRodadaGrupo(save);
+    G.comecarRodadaGrupo(save); for (const j of p.jogos) G.jogarNaHora(save, j); G.fecharRodadaGrupo(save);
+    const a = G.estado(G.vistaDe(save, "flamengo")), b = G.estado(G.vistaDe(save, "bahia"));
+    assert.strictEqual(a.rodadaLiga, b.rodadaLiga, `rodada da turma ${n + 1}: a mesma rodada do Brasileirão`);
+    assert.deepStrictEqual(a.janela, b.janela, `rodada da turma ${n + 1}: a janela abre e fecha junto`);
+  }
+  assert.ok(G.estado(G.vistaDe(save, "flamengo")).rodada > G.estado(G.vistaDe(save, "bahia")).rodada, "o Flamengo jogou mais (as copas)");
+});
