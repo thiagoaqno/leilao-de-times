@@ -88,6 +88,30 @@ function limparNoticiasPrematurasDeGrupo(save) {
   });
 }
 
+const textoTituloFinal = (save, comp, clube, penaltis, nos, eles) => comp.campeao === save.clube
+  ? `CAMPEÃO${penaltis ? " NOS PÊNALTIS" : ""}! O ${clube.nome} conquista ${comp.id === "mundial" ? "o" : "a"} ${comp.nome}${penaltis ? ` após ${nos} × ${eles} no desempate.` : "."}`
+  : `O ${clube.nome} fica com o vice ${comp.id === "mundial" ? "do" : "da"} ${comp.nome}${penaltis ? ` após ${nos} × ${eles} nos pênaltis.` : "."}`;
+
+// Saves que terminaram um mata-mata antes de o desempate ser exibido já têm os pênaltis no chaveamento simulado.
+// Ao abrir, leva esse resultado para as telas e corrige os dois posts antigos sem jogar a partida outra vez.
+function recuperarPenaltisDoUltimo(save) {
+  const u = save.ultimo, comp = u && u.jogoId && save.competicoes && save.competicoes[u.competicao];
+  const jogo = comp && comp.jogos.find((j) => j.id === u.jogoId), penaltis = jogo && jogo.penaltis;
+  if (!Array.isArray(penaltis)) return;
+  u.penaltis = [...penaltis];
+  if (save.resultadosFixos && save.resultadosFixos[u.jogoId]) save.resultadosFixos[u.jogoId].penaltis = [...penaltis];
+  const emCasa = u.casa === save.clube, [nos, eles] = emCasa ? penaltis : [penaltis[1], penaltis[0]];
+  const resultado = nos > eles ? "V" : "D", tipo = resultado === "V" ? "vitoria" : "derrota";
+  if (save.posJogo && save.posJogo.casa === u.casa && save.posJogo.fora === u.fora) { save.posJogo.penaltis = [...penaltis]; save.posJogo.resultado = resultado; }
+  const placarBase = `${comp.nome} · ${clubeDe(save, u.casa).nome} ${u.placar[0]} × ${u.placar[1]} ${clubeDe(save, u.fora).nome}.`;
+  const postJogo = save.feed.find((post) => (post.texto || "").startsWith(placarBase));
+  if (postJogo) { postJogo.texto = `${placarBase} Pênaltis: ${penaltis[0]} × ${penaltis[1]}.`; postJogo.tipo = tipo; postJogo.humor = resultado === "V" ? "bom" : "ruim"; if (postJogo.arte) postJogo.arte.cena = tipo; }
+  if (u.fase === "final") {
+    const postTitulo = save.feed.find((post) => post.texto && post.texto.includes(comp.nome) && (/CAMPEÃO/.test(post.texto) || /fica com o vice/.test(post.texto)));
+    if (postTitulo) postTitulo.texto = textoTituloFinal(save, comp, clubeDe(save, save.clube), penaltis, nos, eles);
+  }
+}
+
 // as carreiras criadas antes destas partes ganham os campos novos na primeira vez que abrem
 function completar(save) {
   const c = clubeDe(save, save.clube);
@@ -104,6 +128,7 @@ function completar(save) {
     temporadasMax: Math.max(Evolucao.TEMPORADAS.max, save.temporada || 1) };
   for (const [k, v] of Object.entries(temporadas)) if (save[k] === undefined) save[k] = v;
   limparNoticiasPrematurasDeGrupo(save);
+  recuperarPenaltisDoUltimo(save);
   registrarTemporada(save);
   return save;
 }
@@ -529,7 +554,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   const tipoFinal = resultadoFinal === "V" ? "vitoria" : resultadoFinal === "D" ? "derrota" : "empate";
   const sufixoPenaltis = penaltis ? ` Pênaltis: ${penaltis[0]} × ${penaltis[1]}.` : "";
   Feed.postar(save, { tipo: tipoFinal, perfil: save.clube, humor: resultadoFinal === "V" ? "bom" : resultadoFinal === "D" ? "ruim" : "neutro", arte: { cena: tipoFinal, casa: p.casa, fora: p.fora, placar: r.placar }, texto: `${comp.nome} · ${clubeDe(save, p.casa).nome} ${r.placar[0]} × ${r.placar[1]} ${clubeDe(save, p.fora).nome}.${sufixoPenaltis}` });
-  if (p.fase === "final") Feed.postar(save, { tipo: comp.campeao === save.clube ? "campeao" : "eliminado", perfil: "galeranews", galeranews: true, humor: comp.campeao === save.clube ? "bom" : "ruim", arte: { cena: "trofeu", clube: comp.campeao }, texto: comp.campeao === save.clube ? `CAMPEÃO${penaltis ? " NOS PÊNALTIS" : ""}! O ${clube.nome} conquista ${comp.id === "mundial" ? "o" : "a"} ${comp.nome}${penaltis ? ` após ${nosFinais} × ${elesFinais} no desempate.` : "."}` : `O ${clube.nome} fica com o vice ${da} ${comp.nome}${penaltis ? ` após ${nosFinais} × ${elesFinais} nos pênaltis.` : "."}` });
+  if (p.fase === "final") Feed.postar(save, { tipo: comp.campeao === save.clube ? "campeao" : "eliminado", perfil: "galeranews", galeranews: true, humor: comp.campeao === save.clube ? "bom" : "ruim", arte: { cena: "trofeu", clube: comp.campeao }, texto: textoTituloFinal(save, comp, clube, penaltis, nosFinais, elesFinais) });
   else if (p.mataMata) {
     const ainda = comp.jogos.some((j) => !save.jogosJogados.includes(j.id) && (j.casa === save.clube || j.fora === save.clube));
     if (!ainda) Feed.postar(save, { tipo: "eliminado", perfil: "galeranews", galeranews: true, humor: "ruim", arte: { cena: "derrota", clube: save.clube }, texto: `O ${clube.nome} foi eliminado ${da} ${comp.nome}.` });

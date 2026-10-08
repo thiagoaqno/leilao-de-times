@@ -69,6 +69,12 @@ test("a final empatada salva e anuncia o vencedor dos pênaltis", () => {
   assert.strictEqual(save.posJogo.resultado, campeao === save.clube ? "V" : "D");
   assert.ok(save.feed.some((p) => p.texto.includes(`Pênaltis: ${penaltis[0]} × ${penaltis[1]}.`)), "a notícia mostra o desempate");
   assert.ok(save.feed.some((p) => /CAMPEÃO NOS PÊNALTIS|vice.*nos pênaltis/.test(p.texto)), "a notícia do título explica como a final foi decidida");
+  delete save.ultimo.penaltis; delete save.posJogo.penaltis; delete save.resultadosFixos[final.id].penaltis;
+  for (const post of save.feed) post.texto = post.texto.replace(/ Pênaltis: \d+ × \d+\.$/, "").replace("CAMPEÃO NOS PÊNALTIS", "CAMPEÃO").replace(/ após \d+ × \d+ (?:no desempate|nos pênaltis)\.$/, ".");
+  estado(save);
+  assert.deepStrictEqual(save.ultimo.penaltis, penaltis, "um save já afetado recupera o desempate ao abrir");
+  assert.deepStrictEqual(save.posJogo.penaltis, penaltis);
+  assert.ok(save.feed.some((p) => /CAMPEÃO NOS PÊNALTIS|vice.*nos pênaltis/.test(p.texto)), "corrige também a notícia antiga");
 });
 
 test("a carreira em grupo atualiza o chaveamento antes de anunciar a final", () => {

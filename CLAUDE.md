@@ -43,6 +43,7 @@ grupos, use `rodada` do jogo correspondente em `competicao.jogos`; não confunda
 O estado público do calendário só envia mata-matas já disputados e o próximo jogo eliminatório do clube; fases
 posteriores simuladas ficam no servidor para não antecipar classificação, eliminação ou adversário. Empates decisivos
 guardam `penaltis` em `resultadosFixos`, `ultimo` e `posJogo`; o resultado do pós-jogo usa o vencedor desse desempate.
+`completar` recupera esses campos e corrige as notícias de saves que terminaram empatados antes dessa mudança.
 Na rodada ao vivo em grupo, o anfitrião controla `1×`/`3×` para todos pelo servidor. `carreira-rodada.js` guarda os
 segmentos de ritmo em `rod.ritmos`, para trocar a velocidade sem saltar o minuto dos jogos ativos ou pausados.
 | `ferramentas/base-mundo.js` + `dados/ea_fc26/` + `public/carreira/base/*-2026.js` | **Base mundial da Carreira.** `npm run base:mundo` lê o CSV completo do EA FC 26 com parser próprio, converte as cinco grandes ligas, seis argentinos e os clubes sul-americanos, calibra a base brasileira e gera um módulo UMD por liga. `mundo-2026.js` é o índice das ligas e dos 32 clubes da Libertadores. A chave de origem é sempre `leagueName + team`; jogadores guardam `ea`, e jovens fictícios que completam elenco têm `base: true`. Desde o PR 2 de `planos/carreira-online.md`, todas essas bases são carregadas pela carreira solo e pelo mercado mundial. |

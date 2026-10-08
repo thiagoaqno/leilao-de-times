@@ -9,6 +9,8 @@ mais o destino do clube antes da hora, e um empate eliminatório não escolhe ma
   confrontos já disputados e o próximo jogo real. O caminho simulado até quartas, semifinal ou final fica no servidor.
 - **Pênaltis persistidos:** o placar do desempate passa a fazer parte do resultado fixo. Recalcular o mundo ou reiniciar
   uma sala não sorteia outro campeão.
+- **Saves já afetados:** ao abrir, o jogo recupera do chaveamento os pênaltis de uma final já concluída e corrige o
+  último jogo, o pós-jogo e as notícias antigas.
 - **Resultado coerente:** partida, último jogo, calendário, notícia e pós-jogo mostram o placar dos pênaltis. O cartão
   final diz explicitamente “Vitória nos pênaltis” ou “Derrota nos pênaltis”.
 - **Multiplayer:** antes de produzir notícias para os técnicos, o servidor atualiza o chaveamento compartilhado com o
