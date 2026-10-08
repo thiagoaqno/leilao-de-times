@@ -91,7 +91,8 @@ function quadroAcaoNaruto(a, tipo, tempo, duracao) {
   const acao = a.acoes?.[tipo];
   if (!acao) return null;
   const i = Math.min(acao.quadros.length - 1, Math.floor(Math.max(0, tempo) / duracao * acao.quadros.length));
-  return { cv: acao.quadros[i], medida: acao.medida };
+  // A escala do parado conserva o tamanho do pixel ao alternar entre poses de larguras diferentes.
+  return { cv: acao.quadros[i], medida: { ...acao.medida, escala: a.medida?.escala || acao.medida.escala } };
 }
 // o bicho de costas (ver o começo do arquivo). Devolve null enquanto não há quadro de costas: aí vale o de frente.
 function animacaoCostas(id, modo = modoAtual()) {

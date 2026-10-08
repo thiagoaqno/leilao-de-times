@@ -9,8 +9,9 @@
 #
 # Saída, para cada ninja:
 #   <imagem>-idle.png  a tira com os quadros do parado, lado a lado (todos do mesmo tamanho; os pés ficam embaixo);
+#   <imagem>-ataque.png, -lance.png e -dano.png: soco/chute, arremesso/selo e reação ao acerto;
 #   <imagem>.png       o primeiro quadro, só para os ninjas novos (os 12 primeiros já tinham a imagem parada).
-# No fim, imprime a linha "slug: quadros, largura, altura" de cada um; o número de quadros vai para `quadros` em naruto.js.
+# No fim, imprime as contagens por pose; elas vão para os campos `quadros*` em naruto.js.
 #
 # Uso (precisa de Pillow, numpy e scipy):  python ferramentas/sprites-naruto.py [slug ...]
 # As folhas ficam em cache em NARUTO_FOLHAS (padrão: a pasta temporária do sistema).
@@ -62,6 +63,32 @@ LISTA = [
     ("shino", "shino", NVS, 98909, ("npc", 83, 90), True),
     ("kiba", "kiba", NVS, 98909, ("npc", 48, 54), True),
 ]
+
+# Intervalos escolhidos nas folhas de contato numeradas (ferramentas/contato-naruto.py).
+# Cada trio é ataque de perto, lançamento/selo e dano. As folhas de Gaara e dos figurantes não têm essas poses.
+ACOES = {
+    "naruto": ((0, 4), (112, 116), (47, 54)),
+    "sasuke": ((0, 5), (96, 100), (58, 63)),
+    "sakura": ((0, 3), (10, 13), (53, 56)),
+    "kakashi": ((0, 4), (96, 99), (101, 108)),
+    "shikamaru": ((0, 3), (23, 26), (54, 59)),
+    "itachi": ((4, 7), (14, 17), (48, 55)),
+    "kisame": ((1, 4), (24, 27), (52, 59)),
+    "deidara": ((2, 4), (30, 35), (131, 138)),
+    "lee": ((0, 3), (15, 18), (49, 52)),
+    "sai": ((0, 3), (30, 33), (102, 108)),
+    "sasori": ((16, 21), (42, 44), (10, 15)),
+    "yamato": ((0, 4), (71, 75), (50, 57)),
+    "jiraiya": ((0, 5), (28, 32), (59, 65)),
+    "kabuto": ((0, 3), (19, 23), (49, 53)),
+    "neji": ((0, 3), (20, 24), (61, 67)),
+    "orochimaru": ((0, 3), (8, 12), (54, 60)),
+    "tsunade": ((0, 3), (24, 29), (68, 75)),
+    "temari": ((0, 3), (10, 15), (67, 72)),
+    "kankuro": ((0, 3), (14, 19), (76, 83)),
+    "guy": ((0, 3), (20, 24), (69, 76)),
+    "tenten": ((0, 3), (6, 9), (76, 83)),
+}
 
 
 def baixar(url):
@@ -147,12 +174,19 @@ def main():
     for slug, imagem, jogo, numero, como, novo in LISTA:
         if so and slug not in so:
             continue
-        qs = quadros_de(folha(jogo, numero), como)[:MAX_QUADROS]
+        im = folha(jogo, numero)
+        qs = quadros_de(im, como)[:MAX_QUADROS]
         faixa, w, h, primeiro = tira(qs)
         faixa.save(os.path.join(SAIDA, f"{imagem}-idle.png"), optimize=True)
         if novo:
             primeiro.save(os.path.join(SAIDA, f"{imagem}.png"), optimize=True)
-        print(f"{slug}: {len(qs)} quadros, {w}x{h}")
+        resumo = [f"parado {len(qs)}"]
+        for tipo, intervalo in zip(("ataque", "lance", "dano"), ACOES.get(slug, ())):
+            qs = quadros_de(im, intervalo)[:MAX_QUADROS]
+            faixa, _, _, _ = tira(qs)
+            faixa.save(os.path.join(SAIDA, f"{imagem}-{tipo}.png"), optimize=True)
+            resumo.append(f"{tipo} {len(qs)}")
+        print(f"{slug}: {', '.join(resumo)}, parado {w}x{h}")
 
 
 if __name__ == "__main__":

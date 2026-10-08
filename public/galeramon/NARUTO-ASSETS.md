@@ -12,7 +12,9 @@ protegidos por direitos autorais e não podem ser usados em projetos comerciais 
 ## Os sprites animados e os ninjas novos
 
 `ferramentas/sprites-naruto.py` gera, para cada ninja, a tira com os quadros do "parado" (`<imagem>-idle.png`) e, nos novos, a
-imagem parada. As folhas vêm do The Spriters Resource:
+imagem parada. Para os 21 ninjas com poses de combate, gera também `<imagem>-ataque.png`, `<imagem>-lance.png` e
+`<imagem>-dano.png`. `LISTA` e `ACOES` guardam os intervalos escolhidos nas folhas de contato numeradas de
+`ferramentas/contato-naruto.py`; todos os quadros ficam no tamanho original, com os pés alinhados. As folhas vêm do The Spriters Resource:
 
 - *Naruto Shippuden: Naruto vs. Sasuke* (DS): Naruto, Sasuke, Sakura, Kakashi, Shikamaru, Itachi, Kisame, Deidara, Lee,
   Sai, Sasori, Yamato, Jiraiya, Kabuto, Neji e Orochimaru; mais Ino, Shino e Kiba (com o Akamaru), da folha de figurantes.
@@ -23,6 +25,10 @@ imagem parada. As folhas vêm do The Spriters Resource:
   (as da Dattebayo API). São desenho próprio, não rip de jogo. A versão atual mantém quatro quadros de respiração e
   acrescenta sombras e luz internas, dobras, mechas, rosto, dedos e sandálias. A comparação com Naruto, Sasuke e Kakashi
   na arena está em `planos/imagens/naruto-lendarios.png`.
+
+Gaara (folha com legendas), Ino, Shino e Kiba (folha de figurantes) e os cinco lendários conservam apenas o parado.
+O Ginásio usa o parado quando uma tira de ação falta e ao receber a preferência por menos movimento. A troca de poses
+na arena aparece em `planos/imagens/naruto-ataque-dano.png` e `planos/imagens/naruto-lance-dano.png`.
 
 ## A base de dados
 
