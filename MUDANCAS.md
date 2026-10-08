@@ -1,26 +1,35 @@
-# Carreira: mata-mata sem spoiler e pênaltis visíveis
+# Carreira: a revolução visual (as telas que faltavam, as transferências animadas e o leilão)
 
-Este PR corrige dois problemas do calendário mundial: fases futuras da Libertadores, Champions e Mundial não entregam
-mais o destino do clube antes da hora, e um empate eliminatório não escolhe mais o vencedor em pênaltis invisíveis.
+Depois do hub e das telas de menu, o resto da carreira entra no mesmo visual: o estádio à noite, os painéis de vidro e
+a cor do seu clube.
 
-## O que muda
+## As telas que faltavam
+- **Tela inicial e sala da carreira em grupo:**
+  - ganham o estádio ao fundo e o título com degradê;
+  - os clubes sobem e brilham ao passar o mouse, e o escolhido fica com a borda na cor de destaque.
+- **Diálogos (ficha, decisão no jogo, pós-jogo, disputa e código):** vidro escuro com a borda e o brilho na cor do
+  clube, e o fundo desfocado atrás.
+- **Partida:**
+  - o placar de vidro vai da cor do mandante à do visitante;
+  - o gol brilha na cor de destaque na narração, e os lances do seu time têm o filete do clube;
+  - os botões de velocidade usam a cor do clube.
+- **Botões principais** dentro dos diálogos e das telas: saem do âmbar antigo e vão para a cor do clube. O botão "3×"
+  da rodada em grupo também. O e2e que conferia o âmbar agora confere a cor do clube.
 
-- **Calendário sem spoiler:** jogos de liga e da fase de grupos continuam visíveis, mas o mata-mata mostra somente
-  confrontos já disputados e o próximo jogo real. O caminho simulado até quartas, semifinal ou final fica no servidor.
-- **Pênaltis persistidos:** o placar do desempate passa a fazer parte do resultado fixo. Recalcular o mundo ou reiniciar
-  uma sala não sorteia outro campeão.
-- **Saves já afetados:** ao abrir, o jogo recupera do chaveamento os pênaltis de uma final já concluída e corrige o
-  último jogo, o pós-jogo e as notícias antigas.
-- **Resultado coerente:** partida, último jogo, calendário, notícia e pós-jogo mostram o placar dos pênaltis. O cartão
-  final diz explicitamente “Vitória nos pênaltis” ou “Derrota nos pênaltis”.
-- **Multiplayer:** antes de produzir notícias para os técnicos, o servidor atualiza o chaveamento compartilhado com o
-  resultado humano; todos recebem o mesmo vencedor.
-- **Todos os eliminatórios:** a regra vale para final em jogo único e para empate agregado em oitavas, quartas ou
-  semifinal.
+## Transferências animadas
+- O Codex já tinha feito a cena da transferência no #85 (`AnimacoesCarreira.animarTransferencia`: o card, os escudos
+  de origem e destino, o carimbo e o martelo). Ela só tocava quando você comprava ou vendia pela ficha, na disputa ou
+  no leilão.
+- Agora ela também toca nas transferências do seu clube que chegam sem um clique seu: uma proposta aceita pela caixa
+  de entrada, a venda da lista ou o leilão que você levou (`animarTransferenciasNovas`, em `inicio.js`). A contratação
+  ganha confete. Na primeira vez que o estado chega, nada anima.
+
+## Leilão
+- A faixa do leilão (que o #85 já tinha deixado viva) mostra o histórico dos últimos lances, com o escudo de quem está
+  na briga e o maior lance em destaque.
 
 ## Conferido
-
-- **Testes focados:** 18 testes passaram entre temporada mundial, relógio e canal multiplayer.
-- **E2E focado:** o novo cenário passou em 21,2 s, confirmando o placar `1 × 1`, o desempate `4 × 5`, a derrota nos
-  pênaltis e a ausência de confrontos futuros; a sala em grupo também passou novamente em 47,9 s.
-- **Foto:** `planos/imagens/carreira-penaltis.png`.
+- **Fotos:** `planos/imagens/carreira-visual-inicio.png`, `carreira-visual-ficha.png`, `carreira-visual-partida.png` e
+  `carreira-visual-posjogo.png`.
+- **E2E da carreira:** 6 de 6.
+- A mudança é só no navegador (o servidor não muda).

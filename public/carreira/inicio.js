@@ -104,6 +104,23 @@ function mostrarTela(id) {
 }
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-ir]"); if (b) mostrarTela(b.dataset.ir); });
 // chegou um estado novo do servidor
+// as transferências do seu clube que chegam sem um clique seu (a proposta aceita na caixa de entrada, o leilão que você
+// levou, a venda da lista): a mesma cena da ficha (animacoes.js). Na primeira chegada do estado, nada anima.
+const transfVistas = new Set();
+let transfPrimeira = true;
+function animarTransferenciasNovas() {
+  const novas = [];
+  for (const t of E.transferencias || []) {
+    const k = `${t.temporada || ""}:${t.rodada}:${t.jogador}:${t.de}:${t.para}`;
+    if (transfVistas.has(k)) continue;
+    transfVistas.add(k);
+    if (!transfPrimeira && (t.para === E.clube || t.de === E.clube) && JOGADORES[t.jogador]) novas.push(t);
+  }
+  transfPrimeira = false;
+  const t = novas[0]; if (!t || telaAtual === "partida" || typeof AnimacoesCarreira === "undefined") return;
+  AnimacoesCarreira.animarTransferencia({ jogador: t.jogador, tipo: t.para === E.clube ? "contratacao" : "venda", de: t.de, para: t.para, valor: t.valor });
+  if (t.para === E.clube) festa();
+}
 function receber(estado) {
   usarBase(estado.base);
   E = estado;
@@ -111,6 +128,7 @@ function receber(estado) {
   for (const [id, j] of Object.entries(E.jovens || {})) { JOGADORES[id] = { ...j, origem: id.replace(/-t\d+b\d+$/, "") }; registrarRosto(j); }
   document.body.style.cssText = `${coresClube(E.clube)};${temaClube(E.clube)}`;
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
+  animarTransferenciasNovas();
 }
 // os ícones dos atalhos (montados uma vez)
 for (const s of document.querySelectorAll("[data-ic]")) s.innerHTML = ic(s.dataset.ic);
