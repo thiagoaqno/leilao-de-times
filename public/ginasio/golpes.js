@@ -113,7 +113,7 @@ function desenharProjetil(tipo, x, y, r, angulo, agora, id = 0) {
 
 // o corte do corpo a corpo: um arco na cor do tipo que afina em 3 quadros
 function desenharCorte(f, idade) {
-  const s = camera.escala, p = pontoTela(f.x, f.y), P = paletaDe(f.elemento), a = Math.atan2(f.mira.y, f.mira.x);
+  const s = camera.escala, p = pontoTela(f.x, f.y), P = paletaDe(f.elemento), a = anguloTela(f.x, f.y, f.mira.x, f.mira.y);
   const k = idade / 0.2, r = (1 + k * 0.35) * s, abre = Math.PI * (0.25 + k * 0.2);
   ctx.save();
   ctx.globalAlpha = 1 - k * 0.6;
@@ -151,14 +151,14 @@ function desenharEstouro(f, idade) {
   ctx.restore();
 }
 
-// o golpe de área caindo: pedras no fim do aviso; na hora, raio do céu, coluna de fogo ou gêiser
+// o golpe de área caindo (na tela, por cima da cena): pedras no fim do aviso; na hora, raio do céu, coluna de fogo ou gêiser
 function desenharQuedaArea(a, falta) {
   const fam = familiaDe(a.elemento);
   if ((fam !== "pedra" && fam !== "terra") || falta > 0.35 || movimentoReduzido.matches) return;
   const s = camera.escala, P = PALETA[fam], k = falta / 0.35;
   for (let i = 0; i < 3; i++) {
     const ang = i * 2.1 + a.id, px = a.x + Math.cos(ang) * a.r * 0.45, py = a.y + Math.sin(ang) * a.r * 0.35;
-    const p = pontoTela(px, py - k * 6 - i * 0.6), r = s * 0.28;
+    const p = pontoTela(px, py, k * 6 + i * 0.6), r = s * 0.28;
     ctx.save(); ctx.translate(Math.round(p.x), Math.round(p.y)); ctx.rotate(k * 6 + i);
     poligono([[-r, -r * 0.5], [-r * 0.2, -r], [r * 0.9, -r * 0.4], [r, r * 0.45], [r * 0.1, r], [-r * 0.85, r * 0.6]], P[2], P[3]);
     ctx.restore();

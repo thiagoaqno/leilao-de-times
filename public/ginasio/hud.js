@@ -83,5 +83,5 @@ function quadro(agora) {
   requestAnimationFrame(quadro);
 }
 requestAnimationFrame(quadro);
-if (location.hash.includes("debug")) window.__ginasio = { get S() { return S; }, get ME() { return ME; }, N, entrada, imagens, camera, movimentoReduzido, efeitos, desenhar, mandarGolpe, mandarEsquiva, mandarTroca, comandoAtual };
+if (location.hash.includes("debug")) window.__ginasio = { get S() { return S; }, get ME() { return ME; }, N, entrada, imagens, camera, cena3d, pontoTela, pontoMundo, movimentoReduzido, efeitos, desenhar, mandarGolpe, mandarEsquiva, mandarTroca, comandoAtual };
 socket.connect();

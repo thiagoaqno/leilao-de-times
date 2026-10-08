@@ -172,10 +172,10 @@ function atualizarParticulas(dt) {
     if (p.atrito) { const f = Math.exp(-p.atrito * dt); p.vx *= f; p.vy *= f; }
   }
 }
+// na tela, por cima da cena: z é a altura (o quadradinho fica menor longe da câmera)
 function desenharParticulas() {
-  const s = camera.escala;
   for (const p of PARTICULAS) if (p.vida > 0) {
-    const t = pontoTela(p.x, p.y - p.z), k = p.vida / p.total, tam = Math.max(1, p.tam * s * (0.45 + 0.55 * k));
+    const t = pontoTela(p.x, p.y, p.z), k = p.vida / p.total, tam = Math.max(1, p.tam * escalaEm(p.x, p.y) * (0.45 + 0.55 * k));
     ret(t.x - tam / 2, t.y - tam / 2, tam, tam, p.cor);
   }
 }
@@ -205,41 +205,41 @@ function animarEvento(ev, agora) {
   else if (ev.tipo === "desmaiou") visualDe(ev.id).desmaio = { t: agora, bicho: ev.bicho };
   else if (ev.tipo === "sumiu") {
     const { x, y } = ev.de;
-    if (ev.jeito === "voo") espalhar(x, y + 0.3, 8, POEIRA, { vel: 2.6, sobe: 1.2, vida: 0.45, tam: 0.14 });
-    else if (ev.jeito === "cova") espalhar(x, y + 0.3, 14, TERRA, { vel: 1.8, sobe: 4, vida: 0.6, tam: 0.13 });
-    else if (ev.jeito === "mergulho") espalhar(x, y + 0.3, 14, AGUA, { vel: 1.6, sobe: 4.5, vida: 0.55, tam: 0.11, quica: 0 });
+    if (ev.jeito === "voo") espalhar(x, y, 8, POEIRA, { vel: 2.6, sobe: 1.2, vida: 0.45, tam: 0.14 });
+    else if (ev.jeito === "cova") espalhar(x, y, 14, TERRA, { vel: 1.8, sobe: 4, vida: 0.6, tam: 0.13 });
+    else if (ev.jeito === "mergulho") espalhar(x, y, 14, AGUA, { vel: 1.6, sobe: 4.5, vida: 0.55, tam: 0.11, quica: 0 });
     else espalhar(x, y, 10, SOMBRA, { vel: 1.2, sobe: 1.5, g: -2, vida: 0.6, tam: 0.12 });
     visualDe(ev.id).buraco = { t: agora, x, y, jeito: ev.jeito };
   } else if (ev.tipo === "voltou") {
     const { x, y } = ev;
-    if (ev.jeito === "voo") espalhar(x, y + 0.3, 16, POEIRA, { vel: 3.4, sobe: 1.6, vida: 0.5, tam: 0.15, atrito: 3 });
-    else if (ev.jeito === "cova") espalhar(x, y + 0.2, 22, TERRA, { vel: 2.6, sobe: 6, vida: 0.8, tam: 0.16 });
-    else if (ev.jeito === "mergulho") espalhar(x, y + 0.2, 22, AGUA, { vel: 2.2, sobe: 6.5, vida: 0.7, tam: 0.12, quica: 0 });
+    if (ev.jeito === "voo") espalhar(x, y, 16, POEIRA, { vel: 3.4, sobe: 1.6, vida: 0.5, tam: 0.15, atrito: 3 });
+    else if (ev.jeito === "cova") espalhar(x, y, 22, TERRA, { vel: 2.6, sobe: 6, vida: 0.8, tam: 0.16 });
+    else if (ev.jeito === "mergulho") espalhar(x, y, 22, AGUA, { vel: 2.2, sobe: 6.5, vida: 0.7, tam: 0.12, quica: 0 });
     else espalhar(x, y, 16, SOMBRA, { vel: 2.4, sobe: 2, g: -1, vida: 0.7, tam: 0.14 });
   }
 }
 
 // o que fica no chão enquanto o bicho está escondido: o montinho de terra andando, as bolhas, a sombra
+// (no chão da quadra, visto de cima: ver pintarChao em desenho.js)
 function desenharEscondido(e, o, agora) {
-  const s = camera.escala, p = pontoTela(e.x, e.y + 0.35), t = agora / 1000;
+  const s = camera.escala, p = pontoTela(e.x, e.y), t = agora / 1000;
   if (o.jeito === "cova") {
     const mexe = Math.round(Math.sin(t * 30) * s * 0.05);
-    ctx.fillStyle = "#6b4a26"; ctx.beginPath(); ctx.ellipse(p.x + mexe, p.y, s * 0.55, s * 0.24, 0, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = "#8a6436"; ctx.beginPath(); ctx.ellipse(p.x + mexe, p.y, s * 0.4, s * 0.15, 0, Math.PI, 0); ctx.fill();
-    ret(p.x - s * 0.5, p.y, s, Math.max(1, s * 0.06), "#5a3d1f");
-    if (Math.random() < 0.3) particula(e.x + (Math.random() - 0.5) * 0.6, e.y + 0.3, { vz: 2.5, vx: (Math.random() - 0.5) * 2, cor: TERRA[Math.floor(Math.random() * 4)], vida: 0.35, tam: 0.09 });
+    ctx.fillStyle = "#6b4a26"; ctx.beginPath(); ctx.ellipse(p.x + mexe, p.y, s * 0.55, s * 0.34, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#8a6436"; ctx.beginPath(); ctx.ellipse(p.x + mexe, p.y - s * 0.05, s * 0.4, s * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+    if (Math.random() < 0.3) particula(e.x + (Math.random() - 0.5) * 0.6, e.y, { vz: 2.5, vx: (Math.random() - 0.5) * 2, cor: TERRA[Math.floor(Math.random() * 4)], vida: 0.35, tam: 0.09 });
   } else if (o.jeito === "mergulho") {
+    ctx.fillStyle = "#3f9ee0aa"; ctx.beginPath(); ctx.ellipse(p.x, p.y, s * 0.42, s * 0.3, 0, 0, Math.PI * 2); ctx.fill();
     for (let i = 0; i < 2; i++) {
       const fase = (t * 2.2 + i / 2) % 1;
-      ctx.globalAlpha = 1 - fase; ctx.strokeStyle = "#e8ffff"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, s * (0.25 + fase * 0.45), s * (0.1 + fase * 0.18), 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1 - fase; ctx.strokeStyle = "#e8ffff"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, s * (0.25 + fase * 0.45), s * (0.18 + fase * 0.32), 0, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.globalAlpha = 1;
-    ctx.fillStyle = "#3f9ee0aa"; ctx.beginPath(); ctx.ellipse(p.x, p.y, s * 0.42, s * 0.16, 0, 0, Math.PI * 2); ctx.fill();
-    if (Math.random() < 0.35) particula(e.x + (Math.random() - 0.5) * 0.5, e.y + 0.3, { vz: 1.6, g: 1, cor: "#e8ffff", vida: 0.4, tam: 0.08, quica: 0 });
+    if (Math.random() < 0.35) particula(e.x + (Math.random() - 0.5) * 0.5, e.y, { vz: 1.6, g: 1, cor: "#e8ffff", vida: 0.4, tam: 0.08, quica: 0 });
   } else if (o.jeito === "sombra") {
     ctx.globalAlpha = 0.55 + Math.sin(t * 14) * 0.15;
-    ctx.fillStyle = "#1f1430"; ctx.beginPath(); ctx.ellipse(p.x, p.y, s * 0.6, s * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#1f1430"; ctx.beginPath(); ctx.ellipse(p.x, p.y, s * 0.6, s * 0.42, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
 }
@@ -247,11 +247,11 @@ function desenharEscondido(e, o, agora) {
 function desenharBuraco(v, agora) {
   const b = v.buraco;
   if (!b || agora - b.t > 900 || b.jeito === "voo") return;
-  const s = camera.escala, p = pontoTela(b.x, b.y + 0.35), k = 1 - (agora - b.t) / 900;
+  const s = camera.escala, p = pontoTela(b.x, b.y), k = 1 - (agora - b.t) / 900;
   ctx.globalAlpha = Math.min(1, k * 1.6);
+  if (b.jeito === "cova") { ctx.fillStyle = "#8a6436"; ctx.beginPath(); ctx.ellipse(p.x, p.y, s * 0.62, s * 0.46, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.fillStyle = b.jeito === "cova" ? "#3d2a14" : b.jeito === "mergulho" ? "#2a6aa8" : "#1f1430";
-  ctx.beginPath(); ctx.ellipse(p.x, p.y, s * 0.5, s * 0.18, 0, 0, Math.PI * 2); ctx.fill();
-  if (b.jeito === "cova") { ctx.fillStyle = "#8a6436"; ctx.beginPath(); ctx.ellipse(p.x, p.y + s * 0.06, s * 0.6, s * 0.12, 0, 0, Math.PI); ctx.fill(); }
+  ctx.beginPath(); ctx.ellipse(p.x, p.y, s * 0.5, s * 0.36, 0, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
 }
 
@@ -275,11 +275,16 @@ function pintarQuadro(a, q, x, chao, o) {
   return altura * (o.sy || 1);
 }
 
-function desenharBicho(e, agora, modo) {
-  const v = visualDe(e.id), s = camera.escala, calmo = movimentoReduzido.matches;
+// O bicho é desenhado em três partes, uma em cada passada de desenho.js:
+// - poseBicho: o jeito do momento (uma vez por quadro; anda o relógio do GIF e solta as partículas);
+// - bichoNoChao: o que fica no chão (sombra, anel do lado, buraco, o montinho de quem está escondido);
+// - bichoNoQuadro: o corpo, numa casa do atlas, que vira o cartaz em pé na cena 3D;
+// - bichoInfo: a vida, a barra de canalizar e os sinais de atributo, na tela.
+function poseBicho(e, agora, modo) {
+  const v = visualDe(e.id), calmo = movimentoReduzido.matches;
   const desm = v.desmaio && agora - v.desmaio.t < 800 ? v.desmaio : null;
-  desenharBuraco(v, agora);
-  if (!e.campo && !desm) { v.rastro.length = 0; return; }
+  const pose = { e, v, modo, visivel: false };
+  if (!e.campo && !desm) { v.rastro.length = 0; return pose; }
   const id = e.forma || e.bicho, a = animacaoDe(id, modo);
   const dt = v.ultimo == null ? 0 : clamp(agora - v.ultimo, 0, 100); v.ultimo = agora;
   const o = e.oculto, andando = Math.hypot(e.vx || 0, e.vy || 0) > 0.1 && !e.dash && !o;
@@ -292,8 +297,7 @@ function desenharBicho(e, agora, modo) {
   if (agora > v.piscaEm + 3000 + (semente(e.id) % 1500)) v.piscaEm = agora;
   const ac = costas ? animacaoCostas(id, modo) : null;
   const q = ac ? quadroCostas(ac, v.tempo) : quadroDe(a, v.tempo, agora - v.piscaEm < 130);
-  const anim = ac || a;
-  const p = pontoTela(e.x, e.y), chao = p.y + s * 0.35, mira = e.mira;
+  const anim = ac || a, mira = e.mira;
   const f = { lado: v.lado, altura: 0, sx: 1, sy: 1, estica: 0, anguloEstica: Math.atan2(mira.y, mira.x), alfa: 1 };
   let ox = 0, oy = 0, sombra = 1, carga = null;
 
@@ -301,7 +305,7 @@ function desenharBicho(e, agora, modo) {
   if (andando) {
     if (!calmo) f.altura += Math.abs(Math.sin(agora / 95)) * 0.09;
     const passo = Math.floor(agora / 190);
-    if (passo !== v.passo) { v.passo = passo; if (sombra === 1) espalhar(e.x, e.y + 0.32, 2, POEIRA, { vel: 0.6, sobe: 0.8, vida: 0.35, tam: 0.1 }); }
+    if (passo !== v.passo) { v.passo = passo; if (sombra === 1) espalhar(e.x, e.y, 2, POEIRA, { vel: 0.6, sobe: 0.8, vida: 0.35, tam: 0.1 }); }
   }
   if (agora - v.viradaEm < 80) { f.sx *= 0.8; f.sy *= 1.08; } // virar de lado: achata por um instante
   // o golpe: antecipação, avanço e volta (só visual: o acerto já foi decidido no servidor)
@@ -345,7 +349,6 @@ function desenharBicho(e, agora, modo) {
       const entrar = 0.2, sair = 0.18;
       f.afundar = passou < entrar ? passou / entrar : o.t < sair ? o.t / sair : 1;
       escondido = f.afundar >= 1; sombra = 0;
-      if (escondido) desenharEscondido(e, o, agora);
     }
   }
   // desmaio: tomba de lado, quica e vira pó
@@ -360,42 +363,67 @@ function desenharBicho(e, agora, modo) {
   if (e.invulneravel > 0 && !f.branco && ie >= 250) f.alfa *= 0.65;
   if (calmo) { f.altura = Math.min(f.altura, o?.jeito === "voo" ? f.altura : 0.45); f.estica = 0; f.giro = 0; }
 
-  const x = p.x + ox * s, y = chao + oy * s;
-  // a sombra fica no chão, menor quando o bicho está no alto
-  if (sombra > 0) {
-    ctx.fillStyle = "#314c3450"; ctx.beginPath();
-    ctx.ellipse(x, y, s * 0.62 * sombra, s * 0.21 * sombra, 0, 0, Math.PI * 2); ctx.fill();
-  }
-  if (e.campo && !escondido) circulo(x, y - s * 0.08, s * 0.57, e.id === ME?.id ? "#ffe56a" : coresLados[e.lado], false);
-  // o rastro (investida, esquiva, velocidade em alta)
+  const wx = e.x + ox, wy = e.y + oy, altura = f.altura;
+  // o rastro (investida, esquiva, velocidade em alta): os quadros de antes, onde o bicho estava
   const rapido = e.dash || ie < 250 || (andando && (e.st?.spd || 0) > 0);
   if (!calmo && rapido && !escondido && q && agora - v.rastroEm > 35) {
     v.rastroEm = agora;
-    v.rastro.unshift({ x, y, f: { ...f, branco: false }, q, a: anim, t: agora });
+    v.rastro.unshift({ wx, wy, altura, f: { ...f, branco: false }, q, a: anim, t: agora });
     v.rastro.length = Math.min(v.rastro.length, 4);
   }
+  for (let i = v.rastro.length - 1; i >= 0; i--) if (agora - v.rastro[i].t > 180) v.rastro.splice(i, 1);
+  return Object.assign(pose, { visivel: true, a, anim, q, f, o, desm, ie, sombra, carga, escondido, wx, wy, altura, alturaSprite: 1.2 });
+}
+function bichoNoChao(pose, agora) {
+  const { e, v } = pose, s = camera.escala;
+  desenharBuraco(v, agora);
+  if (!pose.visivel) return;
+  if (pose.escondido && pose.o.jeito !== "voo") desenharEscondido(e, pose.o, agora);
+  const p = pontoTela(pose.wx, pose.wy);
+  // a mancha embaixo do bicho, menor quando ele está no alto (com sombra de verdade, só um contato fraquinho)
+  if (pose.sombra > 0) {
+    const k = pose.sombra * clamp(1 - pose.altura / 12, 0.3, 1);
+    ctx.fillStyle = cena3d.ok && !cena3d.leve ? "#00000030" : "#0000004c"; ctx.beginPath();
+    ctx.ellipse(p.x, p.y, s * 0.62 * k, s * 0.42 * k, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  if (e.campo && !pose.escondido) {
+    ctx.strokeStyle = e.id === ME?.id ? "#ffe56a" : coresLados[e.lado]; ctx.lineWidth = Math.max(2, s * 0.1);
+    ctx.beginPath(); ctx.arc(p.x, p.y, s * 0.57, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+// o corpo na casa do atlas: x e chao são os pés, em pixels; a altura vai no cartaz (cena3d.js), não aqui.
+// Devolve a altura do desenho, em pixels.
+function bichoNoQuadro(pose, agora, x, chao) {
+  const { e, v, f, q, a, anim } = pose, s = camera.escala, calmo = movimentoReduzido.matches;
   for (let i = v.rastro.length - 1; i >= 0; i--) {
     const r = v.rastro[i], idade = agora - r.t;
-    if (idade > 180) { v.rastro.splice(i, 1); continue; }
-    pintarQuadro(r.a || a, r.q, r.x, r.y, { ...r.f, alfa: 0.32 * (1 - idade / 180) });
+    const rx = x + (r.wx - pose.wx) * s, ry = chao + ((r.wy - pose.wy) * 0.6 - (r.altura - pose.altura)) * s;
+    pintarQuadro(r.a || a, r.q, rx, ry, { ...r.f, altura: 0, alfa: 0.32 * (1 - idade / 180) });
   }
-  if (carga && !calmo) { // brilho do tipo carregando o golpe
-    ctx.save(); ctx.globalAlpha = 0.35 * carga.k; circulo(x, y - s * 0.6 - f.altura * s, s * (0.5 + carga.k * 0.35), corTipo(carga.elemento)); ctx.restore();
+  if (pose.carga && !calmo) { // brilho do tipo carregando o golpe
+    ctx.save(); ctx.globalAlpha = 0.35 * pose.carga.k; circulo(x, chao - s * 0.6, s * (0.5 + pose.carga.k * 0.35), corTipo(pose.carga.elemento)); ctx.restore();
   }
-  if (e.escudo) circulo(x, y - s * 0.5, s * (0.9 + Math.sin(agora / 80) * 0.05), "#75c8c3", false);
-  let alturaSprite = s * 1.2;
-  if (q && !escondido) alturaSprite = pintarQuadro(anim, q, x, y, f);
-  else if (!q && !escondido) { ret(x - s * 0.4, y - s * 0.9, s * 0.8, s * 0.9, corTipo(dexDe(modo).MONS[e.bicho]?.types[0])); texto(a.erro ? "?" : "·", x, y - s * 0.4, "#fff", Math.max(6, s * 0.7)); }
-  if (!e.campo) return;
-  // a vida fica em cima da cabeça (ou no chão, enquanto o bicho está no alto ou debaixo da terra)
-  const largura = Math.max(15, s * 1.5);
-  const topoVida = Math.max(6, (escondido || o ? y - s * 1.3 : y - alturaSprite - f.altura * s - s * 0.35));
+  if (e.escudo) { ctx.strokeStyle = "#75c8c3"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, chao - s * 0.5, s * (0.9 + Math.sin(agora / 80) * 0.05), 0, Math.PI * 2); ctx.stroke(); }
+  if (q) return pintarQuadro(anim, q, x, chao, { ...f, altura: 0 });
+  ret(x - s * 0.4, chao - s * 0.9, s * 0.8, s * 0.9, corTipo(dexDe(pose.modo).MONS[e.bicho]?.types[0])); texto(a.erro ? "?" : "·", x, chao - s * 0.4, "#fff", Math.max(6, s * 0.7));
+  return s * 1.2;
+}
+// a vida em cima da cabeça (ou no chão, enquanto o bicho está no alto ou debaixo da terra) e o resto, na tela
+function bichoInfo(pose, agora) {
+  const { e } = pose;
+  if (!pose.visivel || !e.campo) return;
+  const s = escalaEm(pose.wx, pose.wy), alto = pose.escondido || pose.o;
+  // o topo do cartaz, que deita um pouco para trás (cena3d.js)
+  const h = alto ? 1.3 : pose.alturaSprite * ESTICA_CARTAZ + 0.25, deita = alto || !cena3d.ok ? 0 : DEITA_CARTAZ;
+  const topo = pontoTela(pose.wx, pose.wy - h * Math.sin(deita), (alto ? 0 : pose.altura) + h * Math.cos(deita));
+  const largura = Math.max(15, s * 1.5), x = topo.x, topoVida = Math.max(6, topo.y);
   ret(x - largura / 2 - 1, topoVida - 1, largura + 2, 4, "#334d3b");
   ret(x - largura / 2, topoVida, largura * Math.max(0, e.hp / e.max), 2, e.lado ? "#ec828b" : "#55b49c");
   if (e.canal) {
-    ret(x - largura / 2, y + s * 0.33, largura, 2, "#315747"); ret(x - largura / 2, y + s * 0.33, largura * (1 - e.canal.t / 0.8), 2, "#b7f59b");
-    if (Math.random() < 0.25) particula(e.x + (Math.random() - 0.5) * 0.7, e.y + 0.2, { vz: 1.4, g: -0.5, cor: "#b7f59b", vida: 0.6, tam: 0.09 });
+    const pe = pontoTela(pose.wx, pose.wy);
+    ret(x - largura / 2, pe.y + 2, largura, 2, "#315747"); ret(x - largura / 2, pe.y + 2, largura * (1 - e.canal.t / 0.8), 2, "#b7f59b");
+    if (Math.random() < 0.25) particula(e.x + (Math.random() - 0.5) * 0.7, e.y, { vz: 1.4, g: -0.5, cor: "#b7f59b", vida: 0.6, tam: 0.09 });
   }
-  if (Object.values(e.st || {}).some((n) => n > 0)) texto("+", x + s * 0.7, topoVida + s * 0.6, "#167247", 8);
-  if (Object.values(e.st || {}).some((n) => n < 0)) texto("−", x - s * 0.7, topoVida + s * 0.6, "#9f3254", 8);
+  if (Object.values(e.st || {}).some((n) => n > 0)) texto("+", x + largura / 2 + 3, topoVida + 6, "#167247", 8);
+  if (Object.values(e.st || {}).some((n) => n < 0)) texto("−", x - largura / 2 - 3, topoVida + 6, "#9f3254", 8);
 }
