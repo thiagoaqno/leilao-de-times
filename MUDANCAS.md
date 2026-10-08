@@ -1,13 +1,10 @@
-# A Casa do Naruto na Vila
+# Naruto: quadros de combate e lendários refinados
 
-Uma casinha nova na Praça da Galera, ao lado da fonte: o **Ichiraku Ramen**, a casa do Naruto. Entrar nela abre o Ginásio já no
-modo Naruto Shippuden (os 30 ninjas, em tempo real, contra o robô ou os amigos).
+Os ninjas do Ginásio agora usam poses próprias quando golpeiam, lançam um jutsu ou recebem dano. As regras, o dano e os efeitos 3D continuam com os mesmos responsáveis.
 
-- **No mapa:** `id: "naruto"` na lista `GAMES` de `public/index.html` (e no `vila.js`, que repete a lista), em
-  `x: 12, y: 19`, entre o Quiosque do Ludo e a fonte. Telhado de telhas marrons com o redemoinho laranja do Naruto e uma lanterna
-  vermelha; a placa tem o narutomaki. O banco que ficava nesse lugar saiu.
-- **O link:** `/ginasio/?modo=naruto`. O `sala.js` do Ginásio agora lê o `?modo=` do endereço (galeramon, pokemon ou naruto) e
-  ele ganha do último modo guardado no navegador. Sem o parâmetro, tudo como antes.
-- `CLAUDE.md` atualizado. Foto em `planos/imagens/naruto-casinha.png`.
+- `ferramentas/sprites-naruto.py` mapeia e extrai ataque, lance e dano das folhas de *Naruto vs. Sasuke* e *Ninja Council 4*. As folhas de contato numeradas podem ser geradas com `ferramentas/contato-naruto.py`. São 63 tiras novas para 21 ninjas, com contagens em `naruto.js` e quadros no tamanho original.
+- `animacao.js` carrega cada tira sob demanda e escolhe o quadro pelo tempo do evento. Sem a tira, o ninja mantém o parado; com `prefers-reduced-motion`, não troca para poses de ação.
+- Hashirama, Minato, Madara, Obito e Shisui ganharam sombras e luz internas, dobras, mechas, detalhes no rosto, dedos e sandálias. `ferramentas/sprites-lendarios.py` continua gerando seus PNGs e quatro quadros de respiração.
+- `CLAUDE.md` e `public/galeramon/NARUTO-ASSETS.md` registram o fluxo e as exceções. As fotos da arena estão em `planos/imagens/naruto-ataque-dano.png`, `naruto-lance-dano.png` e `naruto-lendarios.png`.
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+**Verificação:** `node --test tests/naruto.test.js` e `npx playwright test tests/e2e/naruto.spec.js` no Chrome do Playwright. O teste do navegador também confirma as três poses e a preferência por menos movimento.

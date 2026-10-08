@@ -43,6 +43,26 @@ test("Naruto: cada ninja tem a imagem parada, a tira do parado e os dados da bas
   }
 });
 
+test("Naruto: tiras de ataque, lançamento e dano dos ninjas com poses nas folhas", () => {
+  const comCombate = D.IDS.filter((id) => D.MONS[id].quadrosAtaque);
+  assert.equal(comCombate.length, 21);
+  for (const id of ["naruto", "sasuke", "sakura", "kakashi", "shikamaru", "itachi", "kisame", "deidara", "lee", "sai", "sasori", "yamato", "tsunade", "temari", "kankuro", "guy", "tenten"]) {
+    assert.ok(comCombate.includes(id), `${id}: sem quadros de combate`);
+  }
+  for (const id of D.IDS) {
+    const ninja = D.MONS[id];
+    for (const [tipo, campo] of [["ataque", "quadrosAtaque"], ["lance", "quadrosLance"], ["dano", "quadrosDano"]]) {
+      const url = D.animacao(id, tipo), n = ninja[campo] || 0;
+      if (!n) { assert.equal(url, "", `${id}: ${tipo} sem pose`); continue; }
+      assert.ok(n >= 2 && n <= 8, `${id}: ${tipo} tem ${n} quadros`);
+      const arquivo = publico(url);
+      assert.ok(fs.existsSync(arquivo), `${id}: falta ${url}`);
+      assert.equal(largura(arquivo) % n, 0, `${id}: ${tipo} não divide em ${n} quadros`);
+      assert.ok(fs.readFileSync(arquivo).readUInt32BE(20) > 0, `${id}: ${tipo} sem altura`);
+    }
+  }
+});
+
 test("Naruto: todo golpe diz como aparece na arena e a regra do Ginásio respeita", () => {
   const formas = new Set(["corpo", "projetil", "area", "investida"]);
   for (const [id, mv] of Object.entries(D.MOVES)) {

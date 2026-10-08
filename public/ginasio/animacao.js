@@ -62,23 +62,37 @@ function animacaoDe(id, modo = modoAtual()) {
     .catch(() => { a.erro = true; });
   return a;
 }
-// os ninjas do Naruto: a tira com os quadros do "parado" (naruto-sprites/<imagem>-idle.png); enquanto ela carrega vale a imagem parada
+// Os ninjas têm tiras separadas para respirar, atacar, lançar e apanhar. Cada uma conserva a resolução original.
 function carregarTiraNaruto(a, id) {
-  const url = NarutoDex.animacao(id), n = NarutoDex.MONS[id]?.quadros || 0;
-  if (!url) return;
-  const img = new Image(); img.crossOrigin = "anonymous";
-  img.onload = () => {
-    const w = Math.floor(img.naturalWidth / n), h = img.naturalHeight, quadros = [], dados = [];
-    for (let i = 0; i < n; i++) {
-      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-      const c = cv.getContext("2d", { willReadFrequently: true }); c.drawImage(img, i * w, 0, w, h, 0, 0, w, h);
-      quadros.push(cv); dados.push(c.getImageData(0, 0, w, h).data);
-    }
-    const m = medirQuadros(dados, w, h);
-    usarQuadros(a, quadros, quadros.map(() => 150), m, escalaNinja(m.pe - m.topo, m.larg, NarutoDex.MONS[id].altura));
-  };
-  img.onerror = () => { a.erro = true; };
-  img.src = url;
+  const ninja = NarutoDex.MONS[id];
+  a.acoes = {};
+  for (const [tipo, campo] of [["idle", "quadros"], ["ataque", "quadrosAtaque"], ["lance", "quadrosLance"], ["dano", "quadrosDano"]]) {
+    const url = NarutoDex.animacao(id, tipo), n = ninja?.[campo] || 0;
+    if (!url || !n) continue;
+    const img = new Image(); img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (img.naturalWidth % n) return;
+      const w = img.naturalWidth / n, h = img.naturalHeight, quadros = [], dados = [];
+      for (let i = 0; i < n; i++) {
+        const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+        const c = cv.getContext("2d", { willReadFrequently: true }); c.drawImage(img, i * w, 0, w, h, 0, 0, w, h);
+        quadros.push(cv); dados.push(c.getImageData(0, 0, w, h).data);
+      }
+      const m = medirQuadros(dados, w, h);
+      const escala = escalaNinja(m.pe - m.topo, m.larg, ninja.altura);
+      if (tipo === "idle") usarQuadros(a, quadros, quadros.map(() => 150), m, escala);
+      else a.acoes[tipo] = { quadros, medida: { ...m, escala } };
+    };
+    img.onerror = () => { if (tipo === "idle") a.erro = true; };
+    img.src = url;
+  }
+}
+function quadroAcaoNaruto(a, tipo, tempo, duracao) {
+  const acao = a.acoes?.[tipo];
+  if (!acao) return null;
+  const i = Math.min(acao.quadros.length - 1, Math.floor(Math.max(0, tempo) / duracao * acao.quadros.length));
+  // A escala do parado conserva o tamanho do pixel ao alternar entre poses de larguras diferentes.
+  return { cv: acao.quadros[i], medida: { ...acao.medida, escala: a.medida?.escala || acao.medida.escala } };
 }
 // o bicho de costas (ver o começo do arquivo). Devolve null enquanto não há quadro de costas: aí vale o de frente.
 function animacaoCostas(id, modo = modoAtual()) {
@@ -329,8 +343,8 @@ function poseBicho(e, agora, modo) {
   if (costas !== !!v.costas) { v.costas = costas; v.viradaEm = agora; }
   if (agora > v.piscaEm + 3000 + (semente(e.id) % 1500)) v.piscaEm = agora;
   const ac = costas ? animacaoCostas(id, modo) : null;
-  const q = ac ? quadroCostas(ac, v.tempo) : quadroDe(a, v.tempo, agora - v.piscaEm < 130);
-  const anim = ac || a, mira = e.mira;
+  let q = ac ? quadroCostas(ac, v.tempo) : quadroDe(a, v.tempo, agora - v.piscaEm < 130);
+  let anim = ac || a; const mira = e.mira;
   const f = { lado: v.lado, altura: 0, sx: 1, sy: 1, estica: 0, anguloEstica: Math.atan2(mira.y, mira.x), alfa: 1 };
   let ox = 0, oy = 0, sombra = 1, carga = null;
 
@@ -356,6 +370,14 @@ function poseBicho(e, agora, modo) {
   // apanhando: pisca branco e é empurrado
   const d = v.dano, idn = d ? agora - d.t : 1e9;
   if (idn < 170) { const k = 1 - idn / 170; ox += d.dir.x * (d.crit ? 0.4 : 0.26) * k; oy += d.dir.y * (d.crit ? 0.4 : 0.26) * k; if (idn < 75) f.branco = true; }
+  if (modo === "naruto" && !calmo) {
+    const dano = idn < 170 || desm;
+    const tipo = dano ? "dano" : g && ig >= 0 && ig < 320 && !o
+      ? (["projetil", "debuff", "area", "sumir"].includes(g.classe) ? "lance" : "ataque") : null;
+    const acao = tipo && (quadroAcaoNaruto(a, tipo, dano && desm ? agora - desm.t : tipo === "dano" ? idn : ig, tipo === "dano" ? desm ? 800 : 170 : 320)
+      || (tipo === "lance" && quadroAcaoNaruto(a, "ataque", ig, 320)));
+    if (acao) { q = acao; anim = a; }
+  }
   // esquiva: um pulinho e o achatado ao cair
   const ie = v.esquiva != null ? agora - v.esquiva : 1e9;
   if (ie < 250) f.altura += Math.sin((ie / 250) * Math.PI) * 0.45;
