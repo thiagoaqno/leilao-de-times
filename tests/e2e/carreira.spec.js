@@ -7,6 +7,47 @@ const fotografar = async (page, nome) => { if (!fotos) return; fs.mkdirSync(foto
 test.setTimeout(120000);
 const vigiar = (page) => { const erros = []; page.on("pageerror", (e) => erros.push(String(e))); return erros; };
 
+test("carreira: a prancheta mostra evolução e perda por posição", async ({ page }) => {
+  const erros = vigiar(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/carreira/#debug");
+  await page.fill("#cNome", "Rendimento");
+  await page.click('[data-clube="flamengo"]');
+  await page.click("#btnCriar");
+  await page.click("#btnAnotei");
+  await page.click('#sede [data-ir="elenco"]');
+
+  const ids = await page.locator("#eCampo .peca").evaluateAll((pecas) => pecas.slice(0, 2).map((p) => p.dataset.jogador));
+  await page.evaluate(([subiu, caiu]) => {
+    __carreira.E.bonusNota[subiu] = 2;
+    __carreira.E.bonusNota[caiu] = -1;
+    __carreira.mostrarTela("elenco");
+  }, ids);
+  await expect(page.locator(`#eCampo [data-jogador="${ids[0]}"] .delta-nota.permanente`)).toContainText("+2");
+  await expect(page.locator(`#eCampo [data-jogador="${ids[1]}"] .delta-nota.permanente`)).toContainText("-1");
+
+  const defensor = page.locator("#eCampo .peca").nth(1), atacante = page.locator("#eCampo .peca").nth(9);
+  const [idDefensor, idAtacante] = await Promise.all([defensor.getAttribute("data-jogador"), atacante.getAttribute("data-jogador")]);
+  await defensor.click();
+  await atacante.click();
+  for (const id of [idDefensor, idAtacante]) {
+    const peca = page.locator(`#eCampo [data-jogador="${id}"]`);
+    await expect(peca).toHaveClass(/improvisado/);
+    await expect(peca.locator(".nota-em-campo em")).toContainText("→");
+    const notas = await peca.evaluate((p) => [Number(p.dataset.nota), Number(p.dataset.rendimento)]);
+    expect(notas[1]).toBeLessThan(notas[0]);
+  }
+  await expect(page.locator("#eForca")).toContainText("rendimento nas posições");
+  await page.evaluate(([subiu, caiu]) => {
+    __carreira.E.bonusNota[subiu] = 2;
+    __carreira.E.bonusNota[caiu] = -1;
+    __carreira.mostrarTela("elenco");
+  }, [idDefensor, idAtacante]);
+  if (fotos) await page.waitForTimeout(250);
+  await fotografar(page, "carreira-rendimento-posicao");
+  expect(erros).toEqual([]);
+});
+
 for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) {
   test(`carreira ${tela.width}x${tela.height}: prancheta, mercado e uma rodada`, async ({ page }) => {
     const erros = vigiar(page);

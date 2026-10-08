@@ -16,10 +16,12 @@ function campinho(detalhe, formacao, opcoes = {}) {
     const s = spots[i]; if (!s) return "";
     if (!v.id) return `<button class="peca vazia" data-i="${i}" style="left:${s.x}%;top:${s.y}%"><span class="sem">?</span><small>${NOME_VAGA[v.slot]}</small></button>`;
     const j = JOGADORES[v.id], fit = encaixe(j.pos, v.slot), energia = opcoes.energia ? opcoes.energia[v.id] : null;
+    const nota = notaDe(j), rendimento = Math.round(nota * fit);
     const sel = opcoes.selecionado === i;
-    return `<button class="peca ${faixa(notaDe(j))}${sel ? " sel" : ""}${fit < 0.9 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" style="left:${s.x}%;top:${s.y}%" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 0.9 ? " (improvisado)" : ""}">
-      <img class="pix" src="${retrato(v.id)}" alt=""><b>${notaDe(j)}</b><small>${h(sobrenome(j.nome))}</small>
-      ${fit < 0.9 ? `<em class="alerta" aria-hidden="true">!</em>` : ""}${energia != null ? `<span class="energia"><i style="--v:${energia}%"></i></span>` : ""}</button>`;
+    return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="left:${s.x}%;top:${s.y}%" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""}">
+      <span class="peca-mudancas">${seloMudancaNota(v.id)}${seloEfeitoNota(v.id)}</span>
+      <img class="pix" src="${retrato(v.id)}" alt=""><span class="nota-em-campo"><b>${nota}</b>${fit < 1 ? `<em>→ ${rendimento}</em>` : ""}</span><small>${h(sobrenome(j.nome))}</small>
+      ${energia != null ? `<span class="energia"><i style="--v:${energia}%"></i></span>` : ""}</button>`;
   }).join("")}</div>`;
 }
 
@@ -27,12 +29,13 @@ function telaElenco() {
   const t = meuTime(), det = Motor.escalacaoDetalhada(t), esc = E.escalacao;
   const titulares = new Set(det.map((v) => v.id).filter(Boolean));
   $("eCampo").innerHTML = campinho(det, t.formacao, { selecionado: selecionado?.onde === "campo" ? selecionado.i : null });
-  const media = det.filter((v) => v.id).reduce((s, v) => s + notaDe(JOGADORES[v.id]), 0) / Math.max(1, titulares.size);
-  const improvisados = det.filter((v) => v.id && encaixe(JOGADORES[v.id].pos, v.slot) < 0.9).length;
+  const comJogador = det.filter((v) => v.id), media = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]), 0) / Math.max(1, titulares.size);
+  const mediaPosicao = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]) * encaixe(JOGADORES[v.id].pos, v.slot), 0) / Math.max(1, titulares.size);
+  const improvisados = det.filter((v) => v.id && encaixe(JOGADORES[v.id].pos, v.slot) < 1).length;
   $("eDica").innerHTML = E.partida ? `${ic("cadeado")} A partida está em andamento: a prancheta volta depois do apito final.`
     : selecionado ? `${ic("troca")} Agora toque em quem vai trocar de lugar com ${h(sobrenome(nomeJogador(selecionado.onde === "campo" ? det[selecionado.i].id : selecionado.pid)))}. Toque de novo para ver a ficha.`
     : `${ic("dedo")} Toque num jogador e depois em outro para trocar os dois de lugar. Do banco para o campo, entra no time.`;
-  $("eForca").innerHTML = `Média dos titulares: <b>${media.toFixed(1)}</b>${improvisados ? ` · <span class="aviso-txt">${improvisados} improvisado${improvisados > 1 ? "s" : ""}</span>` : ""}${esc.fixo ? " · escalação sua" : " · escalação automática"}`;
+  $("eForca").innerHTML = `Média dos titulares: <b>${media.toFixed(1)}</b> · rendimento nas posições: <b class="${mediaPosicao < media - 0.05 ? "aviso-txt" : ""}">${mediaPosicao.toFixed(1)}</b>${improvisados ? ` · <span class="aviso-txt">${improvisados} improvisado${improvisados > 1 ? "s" : ""}</span>` : ""}${efeitoDe("time") ? ` · time ${sinalDe(efeitoDe("time"))} no próximo jogo` : ""}${esc.fixo ? " · escalação sua" : " · escalação automática"}`;
   // os controles
   const seg = (id, lista, atual, chave) => { $(id).innerHTML = lista.map(([v, t]) => `<button data-${chave}="${v}" aria-pressed="${String(v) === String(atual)}">${t}</button>`).join(""); };
   seg("eFormacao", Object.keys(Escalacao.FORMATIONS.futebol).map((f) => [f, f]), esc.formacao, "formacao");

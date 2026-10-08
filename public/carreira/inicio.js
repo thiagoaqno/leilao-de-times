@@ -46,6 +46,17 @@ const valorAtual = (pid) => Mercado.valorDe(comNota(JOGADORES[pid]), formaDe(pid
 // os efeitos dos eventos que valem no próximo jogo (o servidor soma igual)
 const efeitosAgora = () => (E.efeitos || []).filter((e) => e.de <= E.rodada && e.ate >= E.rodada);
 const efeitoDe = (alvo) => efeitosAgora().reduce((s, e) => s + (e.alvo === alvo ? e.nota : 0), 0);
+const mudancaNotaDe = (pid) => (E && E.bonusNota && E.bonusNota[pid]) || 0;
+const sinalDe = (n) => `${n > 0 ? "+" : ""}${n}`;
+// A mudança acumulada altera a nota do jogador de vez; o efeito temporário vale só nas rodadas indicadas pelo evento.
+function seloMudancaNota(pid, classe = "") {
+  const n = mudancaNotaDe(pid); if (!n) return "";
+  return `<span class="delta-nota permanente ${n > 0 ? "subiu" : "caiu"} ${classe}" title="Nota acumulada: ${sinalDe(n)}">${ic(n > 0 ? "sobe" : "baixo")}<span>${sinalDe(n)}</span></span>`;
+}
+function seloEfeitoNota(pid) {
+  const n = efeitoDe(pid); if (!n) return "";
+  return `<span class="delta-nota temporario ${n > 0 ? "subiu" : "caiu"}" title="Efeito temporário no próximo jogo: ${sinalDe(n)}">${ic(n > 0 ? "sobe" : "baixo")}<span>${sinalDe(n)}</span></span>`;
+}
 function meuTime(mudar = {}) {
   const esc = { ...E.escalacao, ...mudar }, extra = Math.round((E.moral - 60) / 12) + efeitoDe("time");
   return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: Math.min(97, notaDe(j) + extra + efeitoDe(j.id)) })),
