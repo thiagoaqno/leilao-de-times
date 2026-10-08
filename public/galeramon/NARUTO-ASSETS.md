@@ -20,7 +20,9 @@ imagem parada. As folhas vêm do The Spriters Resource:
   Kankurō, Might Guy, Tenten e Gaara.
 - Primeiro Hokage, Quarto Hokage, Madara, Obito e Shisui não têm sprite nesses jogos: foram desenhados em 8 bits por
   `ferramentas/sprites-lendarios.py` (do zero, por código), com o visual e as cores das imagens de referência da Narutopedia
-  (as da Dattebayo API). São desenho próprio, não rip de jogo.
+  (as da Dattebayo API). São desenho próprio, não rip de jogo. A versão atual mantém quatro quadros de respiração e
+  acrescenta sombras e luz internas, dobras, mechas, rosto, dedos e sandálias. A comparação com Naruto, Sasuke e Kakashi
+  na arena está em `planos/imagens/naruto-lendarios.png`.
 
 ## A base de dados
 

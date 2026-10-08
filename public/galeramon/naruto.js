@@ -106,8 +106,8 @@
     hiraishin: { n: "Hiraishin", t: "Raio", p: 110, a: 95, custo: 32, forma: "investida", fx: "hiraishin" },
   };
   // Ícones locais: o site original oscila e não serve como CDN para o jogo.
-  // `imagem` é o nome do arquivo em naruto-sprites/: <imagem>.png (parado) e <imagem>-idle.png (a tira com os `quadros`
-  // quadros do "parado") e `altura` é a altura do ninja na arena, em casas. Eles saem de ferramentas/sprites-naruto.py.
+  // `imagem` nomeia as tiras -idle, -ataque, -lance e -dano. Cada contagem indica quantos quadros há na tira;
+  // `altura` é a altura do ninja na arena, em casas. Sem tira de ação, vale o parado.
   const BASE = "/galeramon/naruto-sprites/";
   const MONS = {
     naruto: { n: "Naruto", types: ["Vento"], hp: 215, atk: 112, def: 95, spd: 105, moves: ["shuriken", "rasengan", "clones", "odama"], imagem: "98901", quadros: 6, altura: 2.1, bio: "Clones e Rasengan: pressão constante, mas gasta chakra rápido." },
@@ -152,7 +152,8 @@
   }
   const sprite = (id) => Object.hasOwn(MONS, id) ? `${BASE}${MONS[id].imagem}.png` : "";
   // a tira com os quadros do "parado" (um ao lado do outro); vazio se o ninja não tiver
-  const animacao = (id) => Object.hasOwn(MONS, id) && MONS[id].quadros > 1 ? `${BASE}${MONS[id].imagem}-idle.png` : "";
+  const CONTAGENS = { idle: "quadros", ataque: "quadrosAtaque", lance: "quadrosLance", dano: "quadrosDano" };
+  const animacao = (id, tipo = "idle") => Object.hasOwn(MONS, id) && MONS[id][CONTAGENS[tipo]] > 0 ? `${BASE}${MONS[id].imagem}-${tipo}.png` : "";
   // os dados da base (vila, clã, patente, jutsus) e uma linha pronta para mostrar na escolha do ninja
   const perfil = (id) => (Object.hasOwn(BASE_DADOS, id) ? BASE_DADOS[id] : null);
   function ficha(id) {

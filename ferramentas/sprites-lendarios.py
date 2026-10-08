@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Desenha em 8 bits os ninjas que não têm sprite nos jogos de DS: Primeiro Hokage, Quarto Hokage, Madara, Obito e Shisui.
-# Cada um é montado por código (cabeça, cabelo, roupa, braços e pernas, com contorno escuro e duas cores por peça), no
+# Cada um é montado por código (cabeça, cabelo, roupa, braços e pernas, com contorno e três tons por peça), no
 # mesmo tamanho e na mesma pose dos sprites dos jogos de DS: de lado, com a guarda levantada, respirando em 4 quadros.
 # As cores e o visual vêm das imagens de referência da Narutopedia (as da Dattebayo API).
 #
@@ -87,6 +87,15 @@ def pernas(t, calca, sombra, sapato, b):
     t.pol([(24, 47), (29, 47), (31, 58), (26, 58)], calca); t.pol([(28, 47), (29, 47), (31, 58), (29, 58)], sombra)
     t.ret(8, 57, 17, 60, sapato); t.ret(25, 58, 35, 61, sapato)
     t.ret(8, 60, 17, 60, "#14101c"); t.ret(25, 61, 35, 61, "#14101c")
+    # Pregas nos joelhos, luz na coxa e as tiras das sandálias sobre o pé.
+    t.linha([(17, 39), (13, 51)], "#586078")
+    t.linha([(22, 39), (26, 45)], "#586078")
+    t.linha([(13, 48), (16, 50)], sombra)
+    t.linha([(25, 48), (28, 50)], sombra)
+    t.ret(11, 56, 16, 57, "#aaa4a0"); t.ret(27, 57, 32, 58, "#aaa4a0")
+    t.linha([(10, 58), (15, 60)], "#77717a")
+    t.linha([(27, 59), (32, 61)], "#77717a")
+    t.px(9, 59, "#c8ae96"); t.px(26, 60, "#c8ae96")
 
 
 def pescoco(t, pele, sombra, b):
@@ -105,12 +114,18 @@ def cabeca(t, pele, sombra, b, olho="#16121e", brilho=None):
     t.ret(22, y + 5, 24, y + 6, "#f4f0ec"); t.px(24, y + 5, olho); t.px(24, y + 6, olho)  # o olho
     if brilho:
         t.px(23, y + 5, brilho)
+    t.ret(19, y + 7, 20, y + 10, "#f0d2b8")  # luz na maçã do rosto
+    t.px(25, y + 9, sombra)  # a lateral do nariz
+    t.px(22, y + 11, "#80584e")  # canto da boca
+    t.px(23, y + 13, "#f0d2b8")  # queixo
 
 
 def braco_de_tras(t, manga, sombra, pele, b):
     t.pol([(14, 21 - b), (17, 21 - b), (15, 34 - b), (12, 34 - b)], sombra)
     t.pol([(14, 21 - b), (16, 21 - b), (14, 34 - b), (12, 34 - b)], manga)
     t.ret(11, 34 - b, 15, 37 - b, pele)
+    t.linha([(14, 23 - b), (13, 29 - b)], "#606078")
+    t.px(12, 36 - b, "#eed0ae"); t.px(13, 37 - b, "#805e4a")
 
 
 def braco_da_frente(t, manga, sombra, pele, b, luva=None):
@@ -118,12 +133,22 @@ def braco_da_frente(t, manga, sombra, pele, b, luva=None):
     t.pol([(23, 21 - b), (27, 21 - b), (30, 30 - b), (26, 31 - b)], manga); t.pol([(26, 22 - b), (27, 21 - b), (30, 30 - b), (28, 31 - b)], sombra)
     t.pol([(26, 29 - b), (30, 29 - b), (34, 22 - b), (30, 21 - b)], manga); t.pol([(29, 28 - b), (30, 29 - b), (34, 22 - b), (33, 21 - b)], sombra)
     t.ret(31, 17 - b, 36, 22 - b, luva or pele); t.ret(31, 17 - b, 36, 17 - b, sombra if luva is None else "#2a2a34")
+    t.linha([(24, 23 - b), (27, 27 - b)], "#72728a")
+    t.linha([(30, 27 - b), (32, 23 - b)], sombra)
+    # Quatro dedos separados no punho fechado.
+    dedos = "#aca2a0" if luva else "#b88c70"
+    for x in (32, 33, 34, 35):
+        t.px(x, 20 - b, dedos)
+    t.linha([(32, 18 - b), (35, 18 - b)], "#f2d0b2" if not luva else "#d2d0d0")
+    t.px(31, 21 - b, dedos)
 
 
 def tronco(t, base, sombra, b):
     t.pol([(15, 20 - b), (27, 20 - b), (26, 36), (15, 36)], base)
     t.pol([(23, 21 - b), (27, 20 - b), (26, 36), (22, 36)], sombra)
     t.ret(15, 33, 26, 36, sombra)
+    t.linha([(17, 26 - b), (16, 31)], "#777084")
+    t.linha([(19, 30), (22, 32)], sombra)
 
 
 def cinto(t, c, fivela, b=0):
@@ -264,6 +289,66 @@ def shisui(t, b):
     t.px(18, -1 - b, cb); t.px(24, -2 - b, cb); t.px(28, 3 - b, cb)
 
 
+def acabamento(t, slug, b):
+    """Mechas, dobras e reflexos internos, aplicados depois das peças de cada personagem."""
+    if slug == "hashirama":
+        # Três valores no cabelo preto e nas placas vermelhas; juntas da armadura à vista.
+        t.linha([(17, 3 - b), (15, 12 - b), (14, 22)], "#555064")
+        t.linha([(22, 3 - b), (19, 12 - b), (17, 29)], "#39394e")
+        t.linha([(26, 9 - b), (27, 23), (24, 38)], "#514a60")
+        t.linha([(12, 31), (13, 39)], "#474354")
+        t.linha([(16, 24 - b), (17, 30)], "#ec6660")
+        t.linha([(24, 25 - b), (24, 31)], "#923034")
+        t.ret(16, 27, 25, 27, "#782028")
+        t.px(18, 27, "#eabca0"); t.px(23, 27, "#eabca0")
+        t.px(16, 21 - b, "#ff8174"); t.px(25, 21 - b, "#ff8174")
+        t.linha([(16, 32), (18, 33)], "#e46355")
+    elif slug == "minato":
+        # O manto claro ganha sombra de tecido e borda iluminada; as pontas do cabelo se separam.
+        t.linha([(11, 25), (10, 43), (8, 51)], "#ffffff")
+        t.linha([(14, 25), (13, 42), (10, 50)], "#b8bec8")
+        t.linha([(11, 47), (13, 50)], "#d4d8dc")
+        t.px(9, 53, "#f57356"); t.px(12, 54, "#a82c2c")
+        t.linha([(17, 26 - b), (18, 31)], "#a8bc84")
+        t.linha([(23, 25 - b), (23, 31)], "#385636")
+        t.ret(16, 30, 19, 31, "#506e44")
+        t.linha([(17, 0 - b), (19, 4 - b)], "#fff384")
+        t.linha([(23, -2 - b), (23, 3 - b)], "#ffe968")
+        t.linha([(28, 0 - b), (25, 6 - b)], "#a87820")
+        t.px(25, 12 - b, "#fff384")
+    elif slug == "madara":
+        t.linha([(12, 4 - b), (14, 17), (10, 31)], "#4b5868")
+        t.linha([(19, 2 - b), (17, 12 - b), (17, 26)], "#566578")
+        t.linha([(25, 1 - b), (27, 12 - b), (29, 27)], "#3c4858")
+        t.linha([(28, 29), (24, 43)], "#526070")
+        t.linha([(17, 26), (18, 32)], "#ed5a52")
+        t.linha([(23, 27), (23, 33)], "#8c2428")
+        t.px(16, 21 - b, "#f46c60"); t.px(26, 21 - b, "#f46c60")
+        t.ret(17, 28, 24, 28, "#771e28")
+        t.px(17, 31, "#f09078"); t.px(24, 31, "#f09078")
+        t.linha([(17, 18 - b), (23, 18 - b)], "#775274")
+    elif slug == "obito":
+        t.linha([(16, 24 - b), (16, 38)], "#747484")
+        t.linha([(24, 24 - b), (25, 39)], "#292b38")
+        t.linha([(17, 30), (20, 33)], "#777786")
+        t.linha([(23, 36), (26, 39)], "#252633")
+        t.linha([(16, 18 - b), (23, 18 - b)], "#c8c8d0")
+        t.linha([(24, 20 - b), (26, 23 - b)], "#515363")
+        t.linha([(18, 0 - b), (19, 4 - b)], "#666477")
+        t.linha([(24, -1 - b), (24, 4 - b)], "#4b4c60")
+        t.px(22, 9 - b, "#fff8f0"); t.px(25, 13 - b, "#846e68")
+    else:  # Shisui
+        t.linha([(16, 25 - b), (16, 36)], "#53607a")
+        t.linha([(23, 25 - b), (24, 36)], "#151c30")
+        t.linha([(17, 28), (19, 30)], "#70809a")
+        t.linha([(15, 18 - b), (22, 18 - b)], "#e0e4ea")
+        t.linha([(25, 20 - b), (26, 22 - b)], "#525a70")
+        t.linha([(15, 1 - b), (17, 4 - b)], "#58647e")
+        t.linha([(21, -2 - b), (21, 4 - b)], "#69738a")
+        t.linha([(27, 0 - b), (25, 5 - b)], "#414b68")
+        t.px(24, 10 - b, "#d38576")
+
+
 DESENHOS = {"hashirama": hashirama, "minato": minato, "madara": madara, "obito": obito, "shisui": shisui}
 # o balanço de cada quadro (a cabeça e o tronco sobem 1 pixel na respiração)
 RESPIRA = [0, 0, 1, 1]
@@ -290,6 +375,7 @@ def main():
         for b in RESPIRA:
             t = Tela()
             desenha(t, b)
+            acabamento(t, slug, b)
             quadros.append(t.contorno())
         x0, y0, x1, y1 = recorta(quadros)
         w, h = x1 - x0, y1 - y0
