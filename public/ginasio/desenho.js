@@ -3,21 +3,21 @@
 // 1. O chão (chaoCv): a quadra do tema, as marcas, os avisos de área, a mira e o que fica no chão embaixo dos bichos
 //    (sombra, anel do lado, buraco), tudo visto de cima. Vira a textura do piso na cena 3D.
 // 2. O atlas (atlasCv): cada bicho e cada projétil numa casa de 128 pixels, que vira um cartaz em pé na cena.
-// 3. O #cv: a cena 3D em baixa resolução e, por cima, o que é da tela (partículas, estouros, números de dano, vida,
+// 3. O #cv: a cena 3D na resolução da tela e, por cima, o que é da tela (partículas, estouros, números de dano, vida,
 //    clima). O #cv é ampliado com pixels nítidos (image-rendering: pixelated, sem suavizar).
 // Quem desenha usa o ctx e a camera da passada da vez: pontoTela(x, y, altura) leva da arena ao ctx de agora, e
 // pontoMundo(clientX, clientY) leva de um ponto da página ao chão da arena (a mira do mouse).
 // Sem WebGL (ou enquanto o Three carrega), o #cv mostra o chão reto, visto de cima, com os cartazes por cima.
 const cv = $("cv"), ctxTela = cv.getContext("2d");
 let ctx = ctxTela; // troca de dono durante as passadas (chão, atlas, tela)
-const camera = { x: 0, y: 0, escala: 1, largura: 0, altura: 0, projetar: null };
+const camera = { x: 0, y: 0, escala: 1, largura: 0, altura: 0, projetar: null, traco: 1 }; // traco: a grossura de uma linha fina
 const movimentoReduzido = matchMedia("(prefers-reduced-motion: reduce)");
 const efeitos = [], ataques = new Map(), projeteisVisuais = new Map(), areasVisuais = new Map();
 let tremor = 0;
 const coresLados = ["#237dcd", "#df515a"];
 const corTipo = (t) => dexAtual().TYPES[t] || "#bccdbd";
 // o chão visto de cima: a quadra com a borda, 18,5 x 12,5 casas, PX_CHAO pixels por casa
-const CHAO = { w: 18.5, h: 12.5 }, PX_CHAO = 20;
+const CHAO = { w: 18.5, h: 12.5 }, PX_CHAO = 48;
 const chaoCv = document.createElement("canvas"), chaoCtx = chaoCv.getContext("2d");
 chaoCv.width = CHAO.w * PX_CHAO; chaoCv.height = CHAO.h * PX_CHAO;
 const atlasCv = document.createElement("canvas"), atlasCtx = atlasCv.getContext("2d", { willReadFrequently: true });
@@ -58,7 +58,7 @@ function passada(novoCtx, cam, fn) {
 }
 
 function ajustarCanvas() {
-  const r = cv.getBoundingClientRect(), fator = clamp(Math.round(r.height / 180), 2, 5) + (cena3d.leve ? 1 : 0);
+  const r = cv.getBoundingClientRect(), fator = cena3d.leve ? 2 : 1 / Math.min(2, devicePixelRatio || 1); // a resolução da tela (meia no modo leve)
   const w = Math.max(1, Math.round(r.width / fator)), hh = Math.max(1, Math.round(r.height / fator));
   if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; }
   camera.largura = w; camera.altura = hh;
@@ -66,19 +66,19 @@ function ajustarCanvas() {
   const cima = S?.phase === "play" ? 22 : 6, baixo = paisagemToque ? 52 : 6; // pixels da página livres em cima e embaixo
   if (usar3d()) {
     enquadrar3d(w, hh, 1 - 2 * cima / Math.max(1, r.height), -1 + 2 * baixo / Math.max(1, r.height));
-    Object.assign(camera, { x: w / 2, y: hh / 2, escala: escalaEm(0, 0), projetar: projetar3d });
+    Object.assign(camera, { x: w / 2, y: hh / 2, escala: escalaEm(0, 0), projetar: projetar3d, traco: 2 / fator });
   } else {
     const fundo = baixo / fator;
     tela.escala = Math.max(1, Math.min((w - 8) / 19, (hh - fundo - 8) / 13));
     tela.x = w / 2; tela.y = (hh - fundo) / 2 + (S?.phase === "play" ? cima / fator / 2 : 0);
-    Object.assign(camera, { ...tela, projetar: projetarReto });
+    Object.assign(camera, { ...tela, projetar: projetarReto, traco: 2 / fator });
   }
   ctx.imageSmoothingEnabled = false;
 }
 function ret(x, y, w, hh, cor) { ctx.fillStyle = cor; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(hh)); }
 function circulo(x, y, r, cor, cheio = true) {
   ctx.beginPath(); ctx.arc(Math.round(x), Math.round(y), Math.max(0.1, r), 0, Math.PI * 2);
-  if (cheio) { ctx.fillStyle = cor; ctx.fill(); } else { ctx.strokeStyle = cor; ctx.lineWidth = 1; ctx.stroke(); }
+  if (cheio) { ctx.fillStyle = cor; ctx.fill(); } else { ctx.strokeStyle = cor; ctx.lineWidth = camera.traco; ctx.stroke(); }
 }
 function texto(t, x, y, cor = "#fff", tam = 6, alinhamento = "center") {
   ctx.fillStyle = cor; ctx.font = `700 ${tam}px ui-monospace,monospace`; ctx.textAlign = alinhamento; ctx.fillText(t, Math.round(x), Math.round(y));
@@ -118,11 +118,11 @@ function desenharMira() {
   const hab = Ginasio.habilidadeDeGolpe(golpe, dex.MOVES[golpe]);
   const distancia = c.alvo ? Math.hypot(c.alvo.x - e.x, c.alvo.y - e.y) : hab.alcance;
   const alcance = Math.min(hab.alcance, distancia), p = pontoTela(e.x, e.y), alvo = pontoTela(e.x + c.mira.x * alcance, e.y + c.mira.y * alcance);
-  ctx.strokeStyle = "#ffdc65"; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(alvo.x, alvo.y); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = "#ffdc65"; ctx.lineWidth = camera.traco * 1.2; ctx.setLineDash([9, 6]); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(alvo.x, alvo.y); ctx.stroke(); ctx.setLineDash([]);
   if (hab.classe === "area") { ctx.strokeStyle = "#c18e2d"; ctx.beginPath(); ctx.arc(alvo.x, alvo.y, hab.raio * camera.escala, 0, Math.PI * 2); ctx.stroke(); }
 }
 function pintarChao(agora, poses, projeteis) {
-  passada(chaoCtx, { escala: PX_CHAO, x: CHAO.w / 2 * PX_CHAO, y: CHAO.h / 2 * PX_CHAO, projetar: projetarReto }, () => {
+  passada(chaoCtx, { escala: PX_CHAO, x: CHAO.w / 2 * PX_CHAO, y: CHAO.h / 2 * PX_CHAO, projetar: projetarReto, traco: PX_CHAO / 20 }, () => {
     ctx.imageSmoothingEnabled = false;
     desenharPiso(agora);
     desenharMarcas(agora); // no chão, por baixo dos avisos de área e dos bichos
@@ -149,7 +149,7 @@ function pintarAtlas(agora, poses, projeteis) {
   const casa = ATLAS.casa, colunas = ATLAS.w / casa, total = colunas * (ATLAS.h / casa), lista = [];
   atlasCtx.clearRect(0, 0, ATLAS.w, ATLAS.h);
   const proxima = () => { const i = lista.length; return { i, x: (i % colunas) * casa, y: Math.floor(i / colunas) * casa }; };
-  passada(atlasCtx, { escala: PX_CARTAZ, x: 0, y: 0, projetar: projetarReto }, () => {
+  passada(atlasCtx, { escala: PX_CARTAZ, x: 0, y: 0, projetar: projetarReto, traco: 1.5 }, () => {
     for (const p of poses) {
       if (!p.visivel || p.escondido || lista.length >= total) continue;
       const c = proxima();
@@ -201,7 +201,7 @@ function efeitoVisual(ev) {
   registrarMarca(ev); // a cratera, o buraco ou a poça que o golpe deixa no chão (marcas.js)
   const e = N.snap?.entidades.find((p) => p.id === (ev.id || ev.em));
   if (ev.tipo === "golpe") ataques.set(ev.id, { ...ev, t: agora });
-  if (["golpe", "dano", "cura", "esquiva", "troca", "desmaiou", "explosao", "impacto", "atributo", "transformar"].includes(ev.tipo)) {
+  if (["golpe", "dano", "cura", "esquiva", "troca", "desmaiou", "explosao", "impacto", "atributo", "transformar", "voltou"].includes(ev.tipo)) {
     efeitos.push({ ...ev, t: agora, x: ev.x ?? e?.x ?? 0, y: ev.y ?? e?.y ?? 0, mira: e?.mira || { x: 1, y: 0 } });
     if (efeitos.length > 120) efeitos.splice(0, efeitos.length - 120);
   }
@@ -223,6 +223,7 @@ function desenharEfeitos(agora) {
     const f = efeitos[i], idade = (agora - f.t) / 1000;
     if (idade > 0.8) { efeitos.splice(i, 1); continue; }
     if (idade < 0) continue;
+    if (cena3d.ok && f.tipo !== "dano" && f.tipo !== "cura") continue; // o resto é 3D (golpes3d.js)
     const s = (camera.escala = escalaEm(f.x, f.y)), meio = pontoTela(f.x, f.y, 0.5);
     ctx.save();
     if (f.tipo === "dano" || f.tipo === "cura") {
@@ -263,15 +264,19 @@ function desenhar(agora = relogio.agora(), dt = 0) {
   const poses = entidadesVisuais(agora).map((e) => poseBicho(e, agora, modoAtual())), projeteis = projeteisAgora(agora);
   atualizarParticulas(dt);
   pintarChao(agora, poses, projeteis);
-  const cartazes = pintarAtlas(agora, poses, projeteis);
-  if (cena3d.ok) ctx.drawImage(renderizar3d(cartazes, agora, tremor), 0, 0);
+  // com a cena 3D, os projéteis, estouros e partículas são de golpes3d.js; sem ela, ficam no atlas e na tela
+  const cartazes = pintarAtlas(agora, poses, cena3d.ok ? [] : projeteis);
+  if (cena3d.ok) { atualizarGolpes3d(projeteis, agora, dt); ctx.drawImage(renderizar3d(cartazes, agora, tremor), 0, 0); }
   else desenharReto(cartazes);
   if (tremor > 0) tremor = Math.max(0, tremor - dt);
   // por cima da cena, na tela
-  desenharParticulas();
-  for (const a of areasVisuais.values()) { camera.escala = escalaEm(a.x, a.y); desenharQuedaArea(a, faltaDaArea(a, agora)); }
+  if (!cena3d.ok) {
+    desenharParticulas();
+    for (const a of areasVisuais.values()) { camera.escala = escalaEm(a.x, a.y); desenharQuedaArea(a, faltaDaArea(a, agora)); }
+  }
+  if (G3.clarao > 0) { ctx.save(); ctx.globalAlpha = G3.clarao * 0.3; ret(0, 0, cv.width, cv.height, "#fffbe0"); ctx.restore(); } // o clarão do raio
   for (const p of poses) bichoInfo(p, agora);
-  desenharClima(temaAtual(), agora);
+  if (!cena3d.ok || temaAtual().clima === "faiscas") desenharClima(temaAtual(), agora); // o resto do clima é 3D (cenarios.js)
   desenharEfeitos(agora);
   camera.escala = escalaTela;
   medirRitmo(dt);

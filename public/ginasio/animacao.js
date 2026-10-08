@@ -7,7 +7,7 @@
 // - De costas: andando ou mirando para o fundo da quadra, o bicho vira de costas. Os Pokémon usam o GIF de costas do
 //   Black/White (ou o sprite parado de costas); os Galeramon, o próprio desenho sem o rosto e um pouco mais escuro.
 const animacoes = new Map(), visuais = new Map();
-const ESCALA_GIF = 3.1 / 96, ESCALA_PARADO = 3.1 / 64, ESCALA_GALERAMON = 1.8 / 32; // casas da arena por pixel do sprite
+const ESCALA_GIF = 3.1 / 96, ESCALA_PARADO = 3.1 / 64, ESCALA_GALERAMON = 2 / PX_CARTAZ; // casas da arena por pixel do sprite (o Galeramon fica com 2 pixels do atlas por pixel)
 const NAO_FLUTUAM = new Set(["doduo", "dodrio", "farfetchd", "chatot", "murkrow"]); // voadores que ficam no chão
 const FLUTUAM_GALERAMON = new Set(["saci"]);
 const OCULTO_VOO = 9; // quantas casas o bicho sobe ao voar (sai da tela)
@@ -416,14 +416,15 @@ function bichoInfo(pose, agora) {
   // o topo do cartaz, que deita um pouco para trás (cena3d.js)
   const h = alto ? 1.3 : pose.alturaSprite * ESTICA_CARTAZ + 0.25, deita = alto || !cena3d.ok ? 0 : DEITA_CARTAZ;
   const topo = pontoTela(pose.wx, pose.wy - h * Math.sin(deita), (alto ? 0 : pose.altura) + h * Math.cos(deita));
-  const largura = Math.max(15, s * 1.5), x = topo.x, topoVida = Math.max(6, topo.y);
-  ret(x - largura / 2 - 1, topoVida - 1, largura + 2, 4, "#334d3b");
-  ret(x - largura / 2, topoVida, largura * Math.max(0, e.hp / e.max), 2, e.lado ? "#ec828b" : "#55b49c");
+  const u = Math.max(1, camera.traco / 2); // um pixel de meia tela
+  const largura = Math.max(15 * u, s * 1.5), x = topo.x, topoVida = Math.max(6 * u, topo.y);
+  ret(x - largura / 2 - u, topoVida - u, largura + 2 * u, 4 * u, "#334d3b");
+  ret(x - largura / 2, topoVida, largura * Math.max(0, e.hp / e.max), 2 * u, e.lado ? "#ec828b" : "#55b49c");
   if (e.canal) {
     const pe = pontoTela(pose.wx, pose.wy);
-    ret(x - largura / 2, pe.y + 2, largura, 2, "#315747"); ret(x - largura / 2, pe.y + 2, largura * (1 - e.canal.t / 0.8), 2, "#b7f59b");
+    ret(x - largura / 2, pe.y + 2 * u, largura, 2 * u, "#315747"); ret(x - largura / 2, pe.y + 2 * u, largura * (1 - e.canal.t / 0.8), 2 * u, "#b7f59b");
     if (Math.random() < 0.25) particula(e.x + (Math.random() - 0.5) * 0.7, e.y, { vz: 1.4, g: -0.5, cor: "#b7f59b", vida: 0.6, tam: 0.09 });
   }
-  if (Object.values(e.st || {}).some((n) => n > 0)) texto("+", x + largura / 2 + 3, topoVida + 6, "#167247", 8);
-  if (Object.values(e.st || {}).some((n) => n < 0)) texto("−", x - largura / 2 - 3, topoVida + 6, "#9f3254", 8);
+  if (Object.values(e.st || {}).some((n) => n > 0)) texto("+", x + largura / 2 + 3 * u, topoVida + 6 * u, "#167247", 8 * u);
+  if (Object.values(e.st || {}).some((n) => n < 0)) texto("−", x - largura / 2 - 3 * u, topoVida + 6 * u, "#9f3254", 8 * u);
 }

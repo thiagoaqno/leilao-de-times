@@ -1,21 +1,24 @@
 // O Ginásio em 3D pixelado: a quadra, a arquibancada com a torcida, os pilares, a luz e as sombras numa cena Three.js
-// pequena, desenhada em baixa resolução e ampliada sem suavizar (desenho.js junta tudo no #cv).
+// desenhada na resolução da tela, com antisserrilhado (desenho.js junta tudo no #cv). Os sprites continuam com os pixels
+// nítidos, sem suavizar.
 // - O chão da quadra é o desenho 2D de sempre (temas.js, marcas.js, as áreas e a mira), pintado num canvas visto de
 //   cima (chaoCv, em desenho.js) e usado como textura do piso.
 // - Os bichos e os projéteis continuam sendo os desenhos de animacao.js e golpes.js, pintados num atlas (atlasCv) e
 //   mostrados como cartazes em pé na quadra, na profundidade certa. Os bichos fazem sombra no chão.
 // - O THREE chega por um <script type="module"> no index.html (window.THREE). Até lá (ou sem WebGL), desenho.js
 //   desenha a quadra reta, vista de cima.
-// - Modo leve (celular fraco ou quadros lentos): menos pixels, sem sombra de verdade (só a mancha embaixo do bicho) e
+// - Modo leve (celular fraco ou quadros lentos): meia resolução, sem antisserrilhado, sem sombra de verdade (só a mancha embaixo do bicho) e
 //   torcida parada. Com "menos movimento" no sistema, a torcida também fica parada e a câmera não treme.
 const ATLAS = { w: 1024, h: 512, casa: 128 }; // 8 x 4 casas de 128 pixels
-const PX_CARTAZ = 24; // pixels do atlas por casa da arena
+const PX_CARTAZ = 96 / 3.1; // pixels do atlas por casa da arena: o GIF do Black/White entra pixel por pixel, sem reduzir
 const PE_CARTAZ = 116; // a linha do chão dentro da casa do atlas (onde ficam os pés do bicho)
 const INCLINACAO = 50 * Math.PI / 180; // quanto a câmera olha para baixo
 const DEITA_CARTAZ = INCLINACAO / 2; // o cartaz do bicho deita um pouco para trás, para não sair achatado
 const ESTICA_CARTAZ = 1 / Math.cos(INCLINACAO - DEITA_CARTAZ);
 const cena3d = { ok: false, falhou: false, leve: false, temaFeito: null, enquadre: "" };
 
+// o quanto uma cor é clara, de 0 a 1 (para o brilho dos golpes não estourar no chão claro)
+const luminancia = (hex) => { const c = new THREE.Color(hex); return 0.3 * c.r + 0.59 * c.g + 0.11 * c.b; };
 // cores do tema viram cor do Three (o hex é sRGB; o Three converte)
 const cor3 = (hex) => new THREE.Color(hex);
 function texturaDe(cv, repetir = false) {
@@ -29,10 +32,10 @@ function iniciarCena3d() {
   if (cena3d.ok) return true;
   if (cena3d.falhou || !window.THREE) return false;
   try {
-    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "default" });
+    const renderer = new THREE.WebGLRenderer({ antialias: !cena3d.leve, alpha: false, powerPreference: cena3d.leve ? "low-power" : "high-performance" });
     renderer.setPixelRatio(1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.type = THREE.BasicShadowMap; // sombra de borda dura, que combina com o pixel
+    renderer.shadowMap.type = THREE.PCFShadowMap; // sombra de borda macia
     const scene = new THREE.Scene();
     const cam = new THREE.PerspectiveCamera(30, 16 / 9, 1, 160);
     // a luz: o ambiente (o que fica na sombra) e o sol vindo do alto, da esquerda e do fundo (a sombra cai para a
@@ -41,7 +44,7 @@ function iniciarCena3d() {
     const sol = new THREE.DirectionalLight(0xffffff, 0.43 * Math.PI / 0.89);
     sol.position.set(-4, 10, -2.5); sol.target.position.set(0, 0, 0);
     Object.assign(sol.shadow.camera, { left: -12, right: 12, top: 10, bottom: -10, near: 1, far: 30 });
-    sol.shadow.camera.updateProjectionMatrix(); sol.shadow.mapSize.set(1024, 1024); sol.shadow.bias = -0.002;
+    sol.shadow.camera.updateProjectionMatrix(); sol.shadow.mapSize.set(2048, 2048); sol.shadow.bias = -0.002;
     scene.add(ambiente, sol, sol.target);
     // o degradê do sombreado chapado: três tons, sem passagem suave
     const degrade = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
@@ -63,6 +66,7 @@ function iniciarCena3d() {
     }
     Object.assign(cena3d, { renderer, scene, cam, sol, ambiente, degrade, texChao, texAtlas, cartazes, raio: new THREE.Raycaster(), plano: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), v: new THREE.Vector3(), tremor: new THREE.Vector3(), ok: true });
     montarVolume(cena3d); // os bichos com volume (volume.js)
+    montarGolpes3d(cena3d); // os golpes com volume (golpes3d.js)
     definirLeve(cena3d.leve, true);
     return true;
   } catch (erro) {
@@ -100,7 +104,7 @@ function montarTema(T) {
     m.castShadow = sombra; m.receiveShadow = true; grupo.add(m); return m;
   };
   scene.background = cor3(T.fundo[0]).multiplyScalar(0.55);
-  scene.fog = new THREE.Fog(scene.background, 34, 70);
+  scene.fog = new THREE.Fog(scene.background, (cena3d.distancia || 26) + 8, (cena3d.distancia || 26) + 40);
   // o chão de fora: os ladrilhos do fundo (liso no modo leve)
   const fora = document.createElement("canvas"); fora.width = 64; fora.height = 32;
   const fc = fora.getContext("2d"); fc.fillStyle = T.fundo[0]; fc.fillRect(0, 0, 64, 32);
@@ -145,16 +149,17 @@ function montarTema(T) {
   pc.font = "700 14px ui-monospace,monospace"; pc.textAlign = "center"; pc.textBaseline = "middle"; pc.fillText(T.nome, 128, 13);
   const letreiro = new THREE.Mesh(new THREE.PlaneGeometry(12, 1.125), new THREE.MeshBasicMaterial({ map: texturaDe(placa) }));
   letreiro.position.set(0, 2.75, -9.58); grupo.add(letreiro);
-  // os pilares: oito lados, com a tampa e a faixa de brilho do tema
+  // os pilares: dezesseis lados, com a tampa e a faixa de brilho do tema
   const [, corpoPilar, topoPilar, brilhoPilar] = T.pilar;
   for (const p of Ginasio.ARENA.pilares) {
-    const c = new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r * 1.06, 1.1, 8), toon(corpoPilar));
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r * 1.06, 1.1, 16), toon(corpoPilar));
     c.position.set(p.x, 0.55, p.y); c.castShadow = c.receiveShadow = true; grupo.add(c);
-    const tampa = new THREE.Mesh(new THREE.CylinderGeometry(p.r * 1.08, p.r * 1.08, 0.18, 8), toon(topoPilar));
+    const tampa = new THREE.Mesh(new THREE.CylinderGeometry(p.r * 1.08, p.r * 1.08, 0.18, 16), toon(topoPilar));
     tampa.position.set(p.x, 1.15, p.y); tampa.castShadow = true; grupo.add(tampa);
-    const faixa = new THREE.Mesh(new THREE.CylinderGeometry(p.r * 1.02, p.r * 1.02, 0.08, 8), toon(brilhoPilar));
+    const faixa = new THREE.Mesh(new THREE.CylinderGeometry(p.r * 1.02, p.r * 1.02, 0.08, 16), toon(brilhoPilar));
     faixa.position.set(p.x, 0.85, p.y); grupo.add(faixa);
   }
+  cena3d.cenario = montarCenario(T, grupo, toon); // a luz, os enfeites e o clima do tema (cenarios.js)
   cena3d.temaFeito = T;
 }
 // a torcida pulando no ritmo de cada um (parada com menos movimento ou no modo leve)
@@ -196,6 +201,8 @@ function enquadrar3d(w, h, topo, baixo) {
   const m = medir(longe), sobe = (topo + baixo) / 2 - (m.y1 + m.y0) / 2;
   cam.setViewOffset(w, h, 0, -sobe * h / 2, w, h);
   cena3d.base = cam.position.clone();
+  cena3d.distancia = longe; // a névoa começa depois da quadra, por mais longe que a câmera fique (celular em pé)
+  if (cena3d.scene.fog) { cena3d.scene.fog.near = longe + 8; cena3d.scene.fog.far = longe + 40; }
 }
 // o ponto da arena (x, y, altura) na tela do #cv
 function projetar3d(x, y, h = 0) {
@@ -231,8 +238,8 @@ function posicionarCartaz(m, c) {
 function renderizar3d(lista, agora, tremor) {
   const { renderer, scene, cam, cartazes, volumes, texChao, texAtlas, texEspessura } = cena3d;
   const T = temaAtual();
-  if (cena3d.temaFeito !== T) montarTema(T);
-  mexerTorcida(agora);
+  if (cena3d.temaFeito !== T) { montarTema(T); G3.claro = luminancia(T.piso[0]) > 0.55; }
+  mexerTorcida(agora); cena3d.cenario?.(agora);
   texChao.needsUpdate = true; texAtlas.needsUpdate = true; texEspessura.needsUpdate = true;
   cartazes.forEach((m) => { m.visible = false; });
   volumes.forEach((v) => { v.volume.visible = v.fantasma.visible = false; });
@@ -244,8 +251,14 @@ function renderizar3d(lista, agora, tremor) {
     pecas[0].castShadow = !!c.sombra;
   }
   // o tremor de quem apanhou (nunca com menos movimento)
+  // e a câmera reagindo aos golpes (golpes3d.js): treme e dá o "soco" de aproximação
   cam.position.copy(cena3d.base);
-  if (tremor > 0 && !movimentoReduzido.matches) cam.position.add(cena3d.tremor.set(Math.sin(agora * 0.03) * 0.12, Math.cos(agora * 0.04) * 0.08, 0));
+  if (!movimentoReduzido.matches) {
+    const forca = Math.max(tremor > 0 ? 0.35 : 0, G3.sacudida);
+    if (forca > 0.01) cam.position.add(cena3d.tremor.set(Math.sin(agora * 0.05) * 0.3 * forca, Math.cos(agora * 0.067) * 0.2 * forca, 0));
+  }
+  const fov = 30 - 3 * (movimentoReduzido.matches ? 0 : G3.soco);
+  if (Math.abs(cam.fov - fov) > 0.001) { cam.fov = fov; cam.updateProjectionMatrix(); }
   cam.updateMatrixWorld();
   renderer.render(scene, cam);
   return renderer.domElement;

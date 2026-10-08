@@ -72,7 +72,7 @@ function desenharChao(T, agora) {
       else { ret(px, py, Math.max(1, s * 0.08), Math.max(1, s * 0.22), "#3c7d2f"); ret(px + s * 0.14, py + s * 0.05, Math.max(1, s * 0.08), Math.max(1, s * 0.17), "#3c7d2f"); }
     }
   } else if (T.chao === "placas") { // placas de metal com rebites e a faixa de perigo nas pontas
-    ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = camera.traco;
     for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(x0 + i * W / 6, y0); ctx.lineTo(x0 + i * W / 6, y0 + H); ctx.stroke(); }
     for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(x0, y0 + i * H / 4); ctx.lineTo(x0 + W, y0 + i * H / 4); ctx.stroke(); }
     for (let a = 0; a <= 6; a++) for (let b = 0; b <= 4; b++) circulo(x0 + a * W / 6, y0 + b * H / 4, Math.max(0.6, s * 0.08), "#9a9aa3");
@@ -94,7 +94,7 @@ function desenharChao(T, agora) {
       for (let k = 0; k < 6; k++) { const a = t * 0.4 + k * Math.PI / 3; circulo(p.x + Math.cos(a) * s * 2.35, p.y + Math.sin(a) * s * 2.35, Math.max(1, s * 0.12), "#ffd0f0"); }
     }
   } else if (T.chao === "rachaduras") { // tábuas velhas e rachadas
-    ctx.strokeStyle = "rgba(0,0,0,.4)"; ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0,0,0,.4)"; ctx.lineWidth = camera.traco;
     for (let i = 1; i < 12; i++) { ctx.beginPath(); ctx.moveTo(x0, y0 + i * H / 12); ctx.lineTo(x0 + W, y0 + i * H / 12); ctx.stroke(); }
     for (let i = 0; i < 40; i++) ret(x0 + fixo(i) * W, y0 + Math.floor(fixo(i + 3) * 12) * H / 12, 1, H / 12, "rgba(0,0,0,.4)");
   } else if (T.chao === "escamas") {
@@ -110,7 +110,7 @@ function desenharChao(T, agora) {
       if (deitado) { ctx.beginPath(); ctx.moveTo(x0 + a * W / 6, y0 + (b + 0.5) * H / 3); ctx.lineTo(x0 + (a + 1) * W / 6, y0 + (b + 0.5) * H / 3); ctx.stroke(); }
     }
   } else if (T.chao === "gelo") { // trincas e brilhos no gelo
-    ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = camera.traco;
     for (let i = 0; i < 14; i++) {
       let px = x0 + fixo(i) * W, py = y0 + fixo(i + 20) * H; ctx.beginPath(); ctx.moveTo(px, py);
       for (let k = 0; k < 3; k++) { px += (fixo(i * 5 + k) - 0.5) * s * 2; py += (fixo(i * 9 + k) - 0.5) * s * 2; ctx.lineTo(px, py); }
@@ -124,8 +124,8 @@ function desenharChao(T, agora) {
 // o clima por cima da luta: tudo calculado pelo relógio (não guarda partículas); menos movimento, sem clima
 function desenharClima(T, agora) {
   if (!T.clima || movimentoReduzido.matches) return;
-  const t = agora / 1000, W = cv.width, H = cv.height;
-  ctx.save();
+  const k = Math.max(1, camera.traco / 2), t = agora / 1000, W = cv.width / k, H = cv.height / k; // em pixels de meia tela
+  ctx.save(); ctx.scale(k, k);
   if (T.clima === "brasas") for (let i = 0; i < 26; i++) { // sobem e somem
     const ciclo = 4 + fixo(i) * 3, f = ((t + fixo(i + 9) * ciclo) % ciclo) / ciclo;
     const x = fixo(i + 1) * W + Math.sin(t * 2 + i) * 4, y = H * (1.05 - f * 1.1);
@@ -144,7 +144,7 @@ function desenharClima(T, agora) {
   else if (T.clima === "faiscas") for (let i = 0; i < 6; i++) { // raios curtinhos que piscam pela quadra
     const janela = Math.floor(t * 3 + fixo(i) * 10); if (fixo(janela * 13 + i) < 0.55) continue;
     let x = fixo(janela + i * 31) * W, y = fixo(janela * 3 + i) * H;
-    ctx.globalAlpha = 0.9; ctx.strokeStyle = "#fff5b0"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.globalAlpha = 0.9; ctx.strokeStyle = "#fff5b0"; ctx.lineWidth = camera.traco; ctx.beginPath(); ctx.moveTo(x, y);
     for (let k = 0; k < 4; k++) { x += (fixo(janela + k + i) - 0.5) * 10; y += 3 + fixo(k + i * 2 + janela) * 4; ctx.lineTo(x, y); }
     ctx.stroke();
   }

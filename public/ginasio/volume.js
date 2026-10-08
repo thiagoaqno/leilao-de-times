@@ -7,8 +7,8 @@
 // - cada casa do atlas tem, além do cartaz plano (cena3d.js), uma malha de camadas (CAMADAS para cada lado) e um
 //   cartaz "fantasma" que só mostra o que é meio transparente (o rastro, o sumir do desmaio).
 // - no modo leve fica só o cartaz plano.
-const CAMADAS = 6; // camadas para cada lado do meio
-const FUNDO_PX = 12; // a espessura máxima, para cada lado, em pixels do atlas
+const CAMADAS = 8; // camadas para cada lado do meio
+const FUNDO_PX = 16; // a espessura máxima, para cada lado, em pixels do atlas
 const ESPESSURA = new Uint8Array(ATLAS.w * ATLAS.h);
 const distancias = new Uint16Array(ATLAS.casa * ATLAS.casa);
 
