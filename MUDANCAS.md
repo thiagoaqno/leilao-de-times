@@ -1,53 +1,43 @@
-# Carreira: o visual refeito do zero (minimalista, animado, painel do time, cartas por nota e ícones novos)
+# Ginásio em 3D pixelado (parte 1: arena, câmera, luz e sombras)
 
-A carreira inteira ganhou outra cara, no estilo das interfaces do Emil Kowalski: escuro, limpo, com tipografia fina e
-movimento curto em tudo. O CSS foi reescrito do zero (`public/carreira/estilo.css`); a cor do seu clube continua
-mandando no acento (o brilho no topo, o botão de jogar, as abas e as seleções).
+O Ginásio deixa de ser um desenho 2D visto de cima e vira uma cena Three.js inclinada, desenhada em baixa resolução
+(perto de 180 linhas) e ampliada com pixels nítidos. Continua 8 bits, mas agora tem cara de jogo 3D. É só visual:
+`regras.js`, `ginasio.js` e `rede.js` não mudaram.
 
-## O visual
-- **Base nova:** fundo quase preto, superfícies com borda fina, fonte Geist (e Geist Mono nos números), cantos
-  arredondados e sombras suaves. Sai o estádio verde, sai o âmbar antigo e saem os títulos em caixa alta.
-- **Todas as telas refeitas:** início, sala em grupo, sede, elenco e tática, mercado, tabela, calendário, notícias,
-  partida, pós-jogo, ficha, decisões, disputa, código, leilão e a cena da transferência.
-- **Layout da sede:** três colunas. À esquerda o próximo jogo e os atalhos; no meio, o painel do time e as notícias; à
-  direita, a caixa de entrada, o último jogo, a tabela e as finanças. No celular, uma coluna só.
+## O que mudou na tela
 
-## O painel do time (novo, `painel.js`)
-- **Visão geral:** a força do time num anel, pontos, aproveitamento, gols, idade média, valor do elenco, artilheiro,
-  moral e os últimos jogos. Os números sobem contando.
-- **Setores:** a média dos titulares no gol, na defesa, no meio e no ataque, com as barras na cor da faixa. Mostra o
-  ponto forte e o setor a reforçar; tocar num setor abre quem joga nele.
-- **Elenco:** quantos jogadores há em cada faixa (elite, ouro, prata, bronze) e os melhores por nota, valor ou idade.
-  Tocar num jogador abre a ficha.
-- **Finanças:** caixa, folha, valor do elenco e o saldo de cada jogo num gráfico de barras.
-- A pílula da aba desliza até a escolhida, e o conteúdo troca com um desfoque curto.
+- **Câmera inclinada em perspectiva**, que se ajusta para a quadra inteira caber em qualquer tela: no computador, em
+  pé no celular e deitado com os controles de toque.
+- **Luz do sol mais ambiente, com sombreado chapado** (três tons) e sombras de borda dura. Os pilares e a torcida fazem
+  sombra, e os bichos também: a silhueta do sprite cai no chão, mais uma mancha de contato embaixo.
+- **A quadra do tema (`temas.js`) virou um tablado 3D**, com as linhas, o desenho do chão de cada líder (lava, ondas,
+  flores, tatame...), as marcas dos golpes, os avisos de área e a mira, tudo em perspectiva.
+- **Arquibancada de verdade**: degraus no fundo e nos lados, com a torcida das duas cores pulando, o muro do fundo com o
+  letreiro do ginásio e a mureta na frente.
+- **Os bichos continuam com os sprites de hoje** (GIF do Black/White e os quadros dos Galeramon), como cartazes em pé
+  na quadra, na profundidade certa: quem está na frente cobre quem está atrás, e os pilares escondem quem passa por
+  trás. Pulo, voo, Dig, desmaio, rastro e pisca branco continuam iguais.
+- **Os projéteis são cartazes na cena** e deixam uma sombrinha no chão. Os estouros, cortes, golpes de área, números
+  de dano, partículas e o clima continuam desenhados por cima da cena (os golpes com volume ficam para a parte 2).
+- **Modo leve**: liga sozinho num celular fraco ou se os quadros saem lentos no começo da partida (dá para forçar com
+  `?leve=1` ou desligar com `?leve=0`). Fica com menos pixels, sem sombra de verdade (só a mancha) e com a torcida
+  parada.
+- **Menos movimento** no sistema (`prefers-reduced-motion`): sem tremor de câmera e com a torcida parada.
+- Sem WebGL (ou nos primeiros quadros, enquanto o Three carrega), a quadra aparece reta, vista de cima, com os mesmos
+  desenhos.
 
-## As cartas por nota
-- **Bronze** (até 79): escura, com o cobre na borda.
-- **Prata** (80 a 84): metálica prateada.
-- **Ouro** (85 a 89): metálica dourada.
-- **Elite** (90 ou mais): o ouro mais forte, com o brilho correndo pela carta, um reflexo passando e um halo dourado.
-- Com mouse, as cartas inclinam atrás do ponteiro e o reflexo segue o cursor. As peças da prancheta e as barras do
-  painel usam as mesmas faixas.
+## Como ficou o código
 
-## Ícones novos
-- `simbolos.js` redesenha em SVG os 73 ícones que a carreira usa (traço fino e uma segunda camada suave). O sprite
-  entra antes do de `/icones.js` e ganha dele, então nenhum outro script mudou; os outros jogos continuam com os
-  ícones de antes.
+- `public/ginasio/cena3d.js` (novo): a cena Three.js. Renderizador, câmera (`enquadrar3d`), luzes, o cenário de cada
+  tema (`montarTema`), a torcida, os 32 cartazes e as contas entre a tela e a arena (`projetar3d`, `chao3d`).
+- `public/ginasio/desenho.js`: três passadas por quadro. O chão (`chaoCv`, visto de cima, vira textura do piso), o
+  atlas dos cartazes (`atlasCv`) e o `#cv` (a cena 3D e, por cima, o que é da tela). `pontoTela(x, y, altura)` e
+  `pontoMundo` funcionam em qualquer passada; `escalaEm` e `anguloTela` dão o tamanho e o ângulo na tela de um ponto
+  da arena.
+- `public/ginasio/animacao.js`: o bicho foi dividido em `poseBicho` (o jeito do momento), `bichoNoChao`,
+  `bichoNoQuadro` (o corpo no atlas) e `bichoInfo` (a vida na tela). As partículas agora têm altura de verdade.
+- `public/ginasio/golpes.js`: o corte e as pedras caindo usam o ângulo e a altura da tela 3D.
+- `index.html` carrega o Three pelo importmap (`/vendor/three/three.module.js`).
+- Fotos novas em `planos/imagens/ginasio-3d-*.png`.
 
-## As animações
-- As telas entram em cascata (sobem e saem do desfoque); os diálogos crescem de 96%; o aviso sobe como um toast; os
-  botões encolhem ao tocar; os lances da narração descem; o placar pulsa no gol; o gráfico de valor da ficha se
-  desenha; o leilão sobe como uma gaveta.
-- Quem pede menos movimento no sistema fica sem elas (a cena da transferência e os balões aparecem parados).
-
-## Junto com o #90
-- O #90 (as transferências que chegam sem clique animadas e o histórico de lances no leilão) já está no `main`; este PR
-  mantém o que ele fez nos scripts e troca o visual dele por este.
-
-## Conferido
-- **Fotos:** `planos/imagens/carreira-nova-inicio.png`, `carreira-nova-sede.png`, `carreira-nova-painel-setores.png`,
-  `carreira-nova-mercado.png`, `carreira-nova-ficha.png`, `carreira-nova-partida.png` e `carreira-nova-celular.png`.
-- Telas conferidas no navegador (PC e celular de 390 px, sem rolagem lateral e sem erro no console).
-- **E2E da carreira:** 6 de 6.
-- A mudança é só no navegador (o servidor não muda).
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

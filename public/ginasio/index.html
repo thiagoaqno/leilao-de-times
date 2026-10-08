@@ -83,6 +83,7 @@
 <script src="regras.js"></script>
 <script src="gif.js"></script>
 <script src="sala.js"></script>
+<script src="cena3d.js"></script>
 <script src="desenho.js"></script>
 <script src="temas.js"></script>
 <script src="animacao.js"></script>
@@ -92,5 +93,7 @@
 <script src="rede.js"></script>
 <script src="sons.js"></script>
 <script src="hud.js"></script>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<script type="module">import * as THREE from "three"; window.THREE = THREE; // a cena 3D (cena3d.js) começa no próximo quadro</script>
 </body>
 </html>
