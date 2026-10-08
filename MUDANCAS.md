@@ -8,9 +8,11 @@ ninjas se mexendo e cada jutsu com o desenho certo.
 - **Do jogo de DS que já era a fonte** (*Naruto vs. Sasuke*): Jiraiya, Kabuto, Neji e Orochimaru; mais Ino, Shino e Kiba (com
   o Akamaru), da folha de figurantes.
 - **De *Ninja Council 4*** (DS): Tsunade, Temari, Kankurō, Might Guy, Tenten e Gaara.
-- **Os lendários**: Primeiro Hokage, Quarto Hokage, Madara, Obito e Shisui. Esses jogos não têm sprite deles, então por
-  enquanto cada um usa o sprite de outro ninja com as cores trocadas (Minato com o casaco branco, Madara de armadura
-  vermelha...). Quando houver um sprite de verdade, é só pôr no lugar (`ferramentas/sprites-naruto.py`).
+- **Os lendários**: Primeiro Hokage, Quarto Hokage, Madara, Obito e Shisui. Esses jogos não têm sprite deles, então eles foram
+  **desenhados em 8 bits do zero** (`ferramentas/sprites-lendarios.py`), na mesma pose dos outros e respirando em 4 quadros,
+  com o visual das imagens de referência da Narutopedia: Hashirama de cabelo comprido e armadura vermelha, Minato loiro
+  com a bandana, o colete verde e o casaco branco, Madara de cabelo enorme, armadura e o leque de guerra, Obito com as
+  cicatrizes e a capa cinza, Shisui de bandana e Sharingan.
 - Cada ninja tem 4 jutsus, vida, ataque, defesa e velocidade próprios. Todos entram na escolha de time dos dois modos.
 
 ## A base de dados nova
