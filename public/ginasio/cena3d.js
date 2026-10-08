@@ -17,6 +17,8 @@ const DEITA_CARTAZ = INCLINACAO / 2; // o cartaz do bicho deita um pouco para tr
 const ESTICA_CARTAZ = 1 / Math.cos(INCLINACAO - DEITA_CARTAZ);
 const cena3d = { ok: false, falhou: false, leve: false, temaFeito: null, enquadre: "" };
 
+// o quanto uma cor é clara, de 0 a 1 (para o brilho dos golpes não estourar no chão claro)
+const luminancia = (hex) => { const c = new THREE.Color(hex); return 0.3 * c.r + 0.59 * c.g + 0.11 * c.b; };
 // cores do tema viram cor do Three (o hex é sRGB; o Three converte)
 const cor3 = (hex) => new THREE.Color(hex);
 function texturaDe(cv, repetir = false) {
@@ -64,6 +66,7 @@ function iniciarCena3d() {
     }
     Object.assign(cena3d, { renderer, scene, cam, sol, ambiente, degrade, texChao, texAtlas, cartazes, raio: new THREE.Raycaster(), plano: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), v: new THREE.Vector3(), tremor: new THREE.Vector3(), ok: true });
     montarVolume(cena3d); // os bichos com volume (volume.js)
+    montarGolpes3d(cena3d); // os golpes com volume (golpes3d.js)
     definirLeve(cena3d.leve, true);
     return true;
   } catch (erro) {
@@ -232,7 +235,7 @@ function posicionarCartaz(m, c) {
 function renderizar3d(lista, agora, tremor) {
   const { renderer, scene, cam, cartazes, volumes, texChao, texAtlas, texEspessura } = cena3d;
   const T = temaAtual();
-  if (cena3d.temaFeito !== T) montarTema(T);
+  if (cena3d.temaFeito !== T) { montarTema(T); G3.claro = luminancia(T.piso[0]) > 0.55; }
   mexerTorcida(agora);
   texChao.needsUpdate = true; texAtlas.needsUpdate = true; texEspessura.needsUpdate = true;
   cartazes.forEach((m) => { m.visible = false; });
@@ -245,8 +248,14 @@ function renderizar3d(lista, agora, tremor) {
     pecas[0].castShadow = !!c.sombra;
   }
   // o tremor de quem apanhou (nunca com menos movimento)
+  // e a câmera reagindo aos golpes (golpes3d.js): treme e dá o "soco" de aproximação
   cam.position.copy(cena3d.base);
-  if (tremor > 0 && !movimentoReduzido.matches) cam.position.add(cena3d.tremor.set(Math.sin(agora * 0.03) * 0.12, Math.cos(agora * 0.04) * 0.08, 0));
+  if (!movimentoReduzido.matches) {
+    const forca = Math.max(tremor > 0 ? 0.35 : 0, G3.sacudida);
+    if (forca > 0.01) cam.position.add(cena3d.tremor.set(Math.sin(agora * 0.05) * 0.3 * forca, Math.cos(agora * 0.067) * 0.2 * forca, 0));
+  }
+  const fov = 30 - 3 * (movimentoReduzido.matches ? 0 : G3.soco);
+  if (Math.abs(cam.fov - fov) > 0.001) { cam.fov = fov; cam.updateProjectionMatrix(); }
   cam.updateMatrixWorld();
   renderer.render(scene, cam);
   return renderer.domElement;

@@ -201,7 +201,7 @@ function efeitoVisual(ev) {
   registrarMarca(ev); // a cratera, o buraco ou a poça que o golpe deixa no chão (marcas.js)
   const e = N.snap?.entidades.find((p) => p.id === (ev.id || ev.em));
   if (ev.tipo === "golpe") ataques.set(ev.id, { ...ev, t: agora });
-  if (["golpe", "dano", "cura", "esquiva", "troca", "desmaiou", "explosao", "impacto", "atributo", "transformar"].includes(ev.tipo)) {
+  if (["golpe", "dano", "cura", "esquiva", "troca", "desmaiou", "explosao", "impacto", "atributo", "transformar", "voltou"].includes(ev.tipo)) {
     efeitos.push({ ...ev, t: agora, x: ev.x ?? e?.x ?? 0, y: ev.y ?? e?.y ?? 0, mira: e?.mira || { x: 1, y: 0 } });
     if (efeitos.length > 120) efeitos.splice(0, efeitos.length - 120);
   }
@@ -223,6 +223,7 @@ function desenharEfeitos(agora) {
     const f = efeitos[i], idade = (agora - f.t) / 1000;
     if (idade > 0.8) { efeitos.splice(i, 1); continue; }
     if (idade < 0) continue;
+    if (cena3d.ok && f.tipo !== "dano" && f.tipo !== "cura") continue; // o resto é 3D (golpes3d.js)
     const s = (camera.escala = escalaEm(f.x, f.y)), meio = pontoTela(f.x, f.y, 0.5);
     ctx.save();
     if (f.tipo === "dano" || f.tipo === "cura") {
@@ -263,13 +264,17 @@ function desenhar(agora = relogio.agora(), dt = 0) {
   const poses = entidadesVisuais(agora).map((e) => poseBicho(e, agora, modoAtual())), projeteis = projeteisAgora(agora);
   atualizarParticulas(dt);
   pintarChao(agora, poses, projeteis);
-  const cartazes = pintarAtlas(agora, poses, projeteis);
-  if (cena3d.ok) ctx.drawImage(renderizar3d(cartazes, agora, tremor), 0, 0);
+  // com a cena 3D, os projéteis, estouros e partículas são de golpes3d.js; sem ela, ficam no atlas e na tela
+  const cartazes = pintarAtlas(agora, poses, cena3d.ok ? [] : projeteis);
+  if (cena3d.ok) { atualizarGolpes3d(projeteis, agora, dt); ctx.drawImage(renderizar3d(cartazes, agora, tremor), 0, 0); }
   else desenharReto(cartazes);
   if (tremor > 0) tremor = Math.max(0, tremor - dt);
   // por cima da cena, na tela
-  desenharParticulas();
-  for (const a of areasVisuais.values()) { camera.escala = escalaEm(a.x, a.y); desenharQuedaArea(a, faltaDaArea(a, agora)); }
+  if (!cena3d.ok) {
+    desenharParticulas();
+    for (const a of areasVisuais.values()) { camera.escala = escalaEm(a.x, a.y); desenharQuedaArea(a, faltaDaArea(a, agora)); }
+  }
+  if (G3.clarao > 0) { ctx.save(); ctx.globalAlpha = G3.clarao * 0.3; ret(0, 0, cv.width, cv.height, "#fffbe0"); ctx.restore(); } // o clarão do raio
   for (const p of poses) bichoInfo(p, agora);
   desenharClima(temaAtual(), agora);
   desenharEfeitos(agora);
