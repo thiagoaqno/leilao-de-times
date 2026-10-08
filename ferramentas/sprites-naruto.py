@@ -4,8 +4,8 @@
 # De onde vêm: as folhas de sprites de Naruto Shippuden: Naruto vs. Sasuke (DS) e de Naruto Shippuden: Ninja Council 4
 # (DS), no The Spriters Resource (veja public/galeramon/NARUTO-ASSETS.md). Para cada ninja o script baixa a folha, acha
 # os quadros (cada um fica numa caixa separada por linhas ciano), pega os quadros do "parado" (o intervalo está na
-# tabela LISTA, escolhido olhando a folha), tira o fundo, corta pela área que o ninja ocupa e amplia com pixels
-# nítidos (um número inteiro de vezes) até ele ficar com uns 110 pixels de altura.
+# tabela LISTA, escolhido olhando a folha), tira o fundo e corta pela área que o ninja ocupa. Os quadros ficam no
+# tamanho original (pixel por pixel): quem amplia é o Ginásio, na altura de cada ninja.
 #
 # Saída, para cada ninja:
 #   <imagem>-idle.png  a tira com os quadros do parado, lado a lado (todos do mesmo tamanho; os pés ficam embaixo);
@@ -31,7 +31,6 @@ CACHE = os.environ.get("NARUTO_FOLHAS") or os.path.join(tempfile.gettempdir(), "
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 SITE = "https://www.spriters-resource.com"
 NVS, NC4 = "ds_dsi/narutoshippudennarutovssasuke", "ds_dsi/narutoshippudenninjacouncil4"
-ALTURA_ALVO = 110  # altura do ninja, em pixels, depois de ampliar
 MAX_QUADROS = 8
 
 # slug, nome do arquivo, jogo, folha, o que pegar: (primeiro, último) quadro; ("linha", ...) para o "Parado" de uma folha
@@ -136,12 +135,10 @@ def tira(quadros):
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     todos = [p.crop((x0, y0, x1, y1)) for p in todos]
     w, h = x1 - x0, y1 - y0
-    k = max(1, min(4, round(ALTURA_ALVO / h)))
-    todos = [p.resize((w * k, h * k), Image.NEAREST) for p in todos]
-    faixa = Image.new("RGBA", (w * k * len(todos), h * k), (0, 0, 0, 0))
+    faixa = Image.new("RGBA", (w * len(todos), h), (0, 0, 0, 0))
     for i, p in enumerate(todos):
-        faixa.alpha_composite(p, (i * w * k, 0))
-    return faixa, w * k, h * k, todos[0]
+        faixa.alpha_composite(p, (i * w, 0))
+    return faixa, w, h, todos[0]
 
 
 def main():
