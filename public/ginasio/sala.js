@@ -145,7 +145,7 @@ function renderDex() {
   const ids = D.IDS.filter((id) => (!busca || D.MONS[id].n.toLocaleLowerCase("pt-BR").includes(busca) || String(D.MONS[id].num || "").includes(busca)) && (!tipo || D.MONS[id].types.includes(tipo)));
   const paginas = Math.max(1, Math.ceil(ids.length / 24)); paginaDex = clamp(paginaDex, 0, paginas - 1);
   const time = timeAtual();
-  $("dexLista").innerHTML = ids.slice(paginaDex * 24, paginaDex * 24 + 24).map((id) => `<button class="bicho ${time.includes(id) ? "selecionado" : ""}" data-bicho="${id}" title="${h(D.MONS[id].n)} · ${h(D.MONS[id].types.join(" / "))}" ${time.includes(id) && time[slotDex] !== id ? "disabled" : ""}>${htmlBicho(id)}</button>`).join("");
+  $("dexLista").innerHTML = ids.slice(paginaDex * 24, paginaDex * 24 + 24).map((id) => `<button class="bicho ${time.includes(id) ? "selecionado" : ""}" data-bicho="${id}" title="${h(D.MONS[id].n)} · ${h(D.MONS[id].types.join(" / "))}${modoAtual() === "naruto" && D.ficha(id) ? ` · ${h(D.ficha(id))}` : ""}" ${time.includes(id) && time[slotDex] !== id ? "disabled" : ""}>${htmlBicho(id)}</button>`).join("");
   $("dexVazio").classList.toggle("hidden", ids.length > 0); $("dexPagina").textContent = `${paginaDex + 1} / ${paginas}`;
   $("dexAnterior").disabled = paginaDex === 0; $("dexProximo").disabled = paginaDex === paginas - 1;
 }

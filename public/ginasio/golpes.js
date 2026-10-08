@@ -5,6 +5,8 @@ const FAMILIA = {
   Fogo: "fogo", "Dragão": "dragao", "Água": "agua", Raio: "raio", "Elétrico": "raio", Grama: "planta", Inseto: "inseto",
   Gelo: "gelo", "Aço": "aco", Pedra: "pedra", Terrestre: "terra", "Psíquico": "psiquico", Fantasma: "fantasma",
   Venenoso: "veneno", Sombrio: "sombrio", Voador: "voador", Lutador: "lutador", Fada: "fada", Normal: "normal",
+  // os tipos do modo Naruto (naruto.js); Fogo, Raio e Água já estão acima
+  Taijutsu: "lutador", Vento: "voador", Terra: "terra", Sombra: "sombrio", Medicina: "planta",
   Vento: "voador", Terra: "terra", Sombra: "fantasma", Medicina: "fada", Taijutsu: "lutador",
 };
 // do mais claro ao mais escuro
@@ -125,7 +127,7 @@ function desenharCorte(f, idade) {
 }
 
 // o estouro: o anel e as partículas no jeito do tipo (brasas sobem, gotas espirram, pedras quicam...)
-function estouro(tipo, x, y, forca = 1) {
+function estouro(tipo, x, y, forca = 1, golpe = null) {
   const fam = familiaDe(tipo), P = PALETA[fam], n = Math.round(6 + forca * 8);
   const o = {
     fogo: { vel: 1.6, sobe: 2.5, g: -1.5, vida: 0.55, tam: 0.12 }, dragao: { vel: 1.8, sobe: 2.5, g: -1, vida: 0.55, tam: 0.12 },
@@ -139,7 +141,7 @@ function estouro(tipo, x, y, forca = 1) {
     fada: { vel: 1.2, sobe: 2, g: -0.6, vida: 0.7, tam: 0.1 }, normal: { vel: 2.2, sobe: 2, g: 8, vida: 0.4, tam: 0.1 },
   }[fam];
   espalhar(x, y, n, [P[0], P[1], P[2]], { ...o, z: 0.4 });
-  efeitos.push({ tipo: "estouro", elemento: tipo, x, y, forca, t: relogio.agora() });
+  efeitos.push({ tipo: "estouro", elemento: tipo, x, y, forca, golpe, t: relogio.agora() });
 }
 function desenharEstouro(f, idade) {
   if (idade > 0.32) return;

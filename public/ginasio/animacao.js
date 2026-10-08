@@ -10,6 +10,14 @@ const animacoes = new Map(), visuais = new Map();
 const ESCALA_GIF = 3.1 / 96, ESCALA_PARADO = 3.1 / 64, ESCALA_NARUTO = 3.1 / 148, ESCALA_GALERAMON = 2 / PX_CARTAZ; // casas da arena por pixel do sprite (o Galeramon fica com 2 pixels do atlas por pixel)
 const NAO_FLUTUAM = new Set(["doduo", "dodrio", "farfetchd", "chatot", "murkrow"]); // voadores que ficam no chão
 const FLUTUAM_GALERAMON = new Set(["saci"]);
+const ALTURA_NINJA = 2.15, LARGURA_NINJA = 2.9; // casas da arena: a altura de um ninja (cada sprite é ajustado a ela) e a largura máxima dos compridos
+// a escala de um ninja a partir do tamanho da figura no sprite (pixels)
+const escalaNinja = (altura, largura, alvo = ALTURA_NINJA) => Math.min(alvo / Math.max(1, altura), LARGURA_NINJA / Math.max(1, largura));
+function escalaDaReserva(a, cv) { // a imagem parada, enquanto a tira do "parado" carrega
+  if (a.modo !== "naruto") return ESCALA_PARADO;
+  const m = medirCanvas(cv);
+  return escalaNinja(m.pe - m.topo, m.larg);
+}
 const OCULTO_VOO = 9; // quantas casas o bicho sobe ao voar (sai da tela)
 
 function medirQuadros(lista, w, h) {
@@ -17,7 +25,7 @@ function medirQuadros(lista, w, h) {
   for (const px of lista) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[(y * w + x) * 4 + 3] > 24) {
     if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
   }
-  return x1 < 0 ? { cx: w / 2, pe: h, topo: 0 } : { cx: (x0 + x1 + 1) / 2, pe: y1 + 1, topo: y0 };
+  return x1 < 0 ? { cx: w / 2, pe: h, topo: 0, larg: w } : { cx: (x0 + x1 + 1) / 2, pe: y1 + 1, topo: y0, larg: x1 - x0 + 1 };
 }
 function medirCanvas(cv) { return medirQuadros([cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data], cv.width, cv.height); }
 // os quadros dos bichos moram na memória (willReadFrequently), como o atlas em que são desenhados a cada quadro: um
@@ -44,7 +52,7 @@ function animacaoDe(id, modo = modoAtual()) {
     return a;
   }
   a.parado = imagemDe(id, modo);
-  if (modo === "naruto") return a;
+  if (modo === "naruto") { carregarTiraNaruto(a, id); return a; }
   fetch(PokeDex.spriteAnimado(id))
     .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
     .then((buf) => {
@@ -54,8 +62,27 @@ function animacaoDe(id, modo = modoAtual()) {
     .catch(() => { a.erro = true; });
   return a;
 }
+// os ninjas do Naruto: a tira com os quadros do "parado" (naruto-sprites/<imagem>-idle.png); enquanto ela carrega vale a imagem parada
+function carregarTiraNaruto(a, id) {
+  const url = NarutoDex.animacao(id), n = NarutoDex.MONS[id]?.quadros || 0;
+  if (!url) return;
+  const img = new Image(); img.crossOrigin = "anonymous";
+  img.onload = () => {
+    const w = Math.floor(img.naturalWidth / n), h = img.naturalHeight, quadros = [], dados = [];
+    for (let i = 0; i < n; i++) {
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      const c = cv.getContext("2d", { willReadFrequently: true }); c.drawImage(img, i * w, 0, w, h, 0, 0, w, h);
+      quadros.push(cv); dados.push(c.getImageData(0, 0, w, h).data);
+    }
+    const m = medirQuadros(dados, w, h);
+    usarQuadros(a, quadros, quadros.map(() => 150), m, escalaNinja(m.pe - m.topo, m.larg, NarutoDex.MONS[id].altura));
+  };
+  img.onerror = () => { a.erro = true; };
+  img.src = url;
+}
 // o bicho de costas (ver o começo do arquivo). Devolve null enquanto não há quadro de costas: aí vale o de frente.
 function animacaoCostas(id, modo = modoAtual()) {
+  if (modo === "naruto") { const n = animacaoDe(id, modo); return n.pronto || n.parado?.pronto ? n : null; } // os ninjas não têm sprite de costas
   const chave = `${modo}:${id}:costas`;
   let a = animacoes.get(chave);
   if (!a) {
@@ -110,7 +137,7 @@ function quadroCostas(a, tempo) {
   if (!a.reserva) {
     const img = a.parado.img, cv = document.createElement("canvas"); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
     cv.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
-    a.reserva = { cv, medida: { ...medirCanvas(cv), escala: a.modo === "naruto" ? ESCALA_NARUTO : ESCALA_PARADO } };
+    a.reserva = { cv, medida: { ...medirCanvas(cv), escala: escalaDaReserva(a, cv) } };
   }
   return a.reserva;
 }
@@ -122,7 +149,8 @@ function quadroReserva(a) {
   try {
     const cv = document.createElement("canvas"); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
     cv.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
-    a.reserva = { cv, medida: { ...medirCanvas(cv), escala: a.modo === "naruto" ? ESCALA_NARUTO : ESCALA_PARADO } };
+    const m = medirCanvas(cv);
+    a.reserva = { cv, medida: { ...m, escala: a.modo === "naruto" ? escalaNinja(m.pe - m.topo, m.larg) : ESCALA_PARADO } };
   } catch { a.reserva = { cv: img, medida: { cx: img.naturalWidth / 2, pe: img.naturalHeight, topo: 0, escala: a.modo === "naruto" ? ESCALA_NARUTO : ESCALA_PARADO } }; }
   return a.reserva;
 }

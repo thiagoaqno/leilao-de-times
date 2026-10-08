@@ -255,6 +255,7 @@ canvas.mini.off{display:none}
 <script src="/galeramon/dados.js"></script>
 <script src="/galeramon/sprites.js"></script>
 <script src="/galeramon/pokemon.js"></script>
+<script src="/galeramon/naruto-base.js"></script>
 <script src="/galeramon/naruto.js"></script>
 <script src="/galeramon/lideres.js"></script>
 <script src="/comum.js"></script>
@@ -1298,7 +1299,7 @@ function monInfo(id) {
   const bars = pk
     ? ["PV", "Ataque", "Defesa", "Atq. esp.", "Def. esp.", "Velocidade"].map((l, i) => bar(m.base[i], l, 160)).join("")
     : bar(m.hp, "Vida", 240) + bar(m.atk, "Ataque", 135) + bar(m.def, "Defesa", 135) + bar(m.spd, "Velocidade", 135);
-  return `<b style="font-size:18px">${pk ? `Nº ${String(m.num).padStart(3, "0")} ` : ""}${esc(m.n)}</b> ${m.types.map(typeChip).join(" ")}${m.bio ? `<p style="margin:4px 0 0">${esc(m.bio)}</p>` : ""}${m.abilInfo ? `<p style="margin:4px 0 0"><b>⭐ ${esc(m.abilInfo)}</b></p>` : ""}
+  return `<b style="font-size:18px">${pk ? `Nº ${String(m.num).padStart(3, "0")} ` : ""}${esc(m.n)}</b> ${m.types.map(typeChip).join(" ")}${gmMode === "naruto" && NarutoDex.ficha(id) ? `<small style="display:block;opacity:.75">${esc(NarutoDex.ficha(id))}</small>` : ""}${m.bio ? `<p style="margin:4px 0 0">${esc(m.bio)}</p>` : ""}${m.abilInfo ? `<p style="margin:4px 0 0"><b>⭐ ${esc(m.abilInfo)}</b></p>` : ""}
     <div class="bars">${bars}</div>
     <div class="mvs">${m.moves.map((k) => { const v = GM.MOVES[k]; return `<div>${typeChip(v.t)} <b>${esc(v.n)}</b> <span style="color:#4a5690">${v.counter ? "devolve 2x o dano" : v.p ? `poder ${v.p}${pk ? (v.c === "s" ? " especial" : " físico") : ""}` : "status"}${v.custo != null ? ` · ${v.custo} chakra` : ""}${v.a < 100 ? ` · ${v.a}%` : ""}${v.d ? " · " + esc(v.d) : ""}</span></div>`; }).join("")}</div>`;
 }

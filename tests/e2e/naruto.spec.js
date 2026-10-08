@@ -18,7 +18,7 @@ test("Vila: monta time de Naruto e joga um turno com chakra", async ({ browser }
     await a.locator("#bTeam").click();
     await a.locator('[data-team="naruto"]').click();
     await expect(a.locator('#mtabs [data-m="naruto"]')).toHaveClass(/on/);
-    await expect(a.locator("#mgrid .mcard")).toHaveCount(12);
+    await expect(a.locator("#mgrid .mcard")).toHaveCount(30);
     await expect.poll(() => a.locator('#mgrid [data-id="naruto"] img').evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
     await a.screenshot({ path: test.info().outputPath("naruto-time.png") });
     await a.locator("#teamX").click();
