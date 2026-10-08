@@ -104,7 +104,7 @@ function montarTema(T) {
     m.castShadow = sombra; m.receiveShadow = true; grupo.add(m); return m;
   };
   scene.background = cor3(T.fundo[0]).multiplyScalar(0.55);
-  scene.fog = new THREE.Fog(scene.background, 34, 70);
+  scene.fog = new THREE.Fog(scene.background, (cena3d.distancia || 26) + 8, (cena3d.distancia || 26) + 40);
   // o chão de fora: os ladrilhos do fundo (liso no modo leve)
   const fora = document.createElement("canvas"); fora.width = 64; fora.height = 32;
   const fc = fora.getContext("2d"); fc.fillStyle = T.fundo[0]; fc.fillRect(0, 0, 64, 32);
@@ -201,6 +201,8 @@ function enquadrar3d(w, h, topo, baixo) {
   const m = medir(longe), sobe = (topo + baixo) / 2 - (m.y1 + m.y0) / 2;
   cam.setViewOffset(w, h, 0, -sobe * h / 2, w, h);
   cena3d.base = cam.position.clone();
+  cena3d.distancia = longe; // a névoa começa depois da quadra, por mais longe que a câmera fique (celular em pé)
+  if (cena3d.scene.fog) { cena3d.scene.fog.near = longe + 8; cena3d.scene.fog.far = longe + 40; }
 }
 // o ponto da arena (x, y, altura) na tela do #cv
 function projetar3d(x, y, h = 0) {
