@@ -54,6 +54,7 @@ module.exports = function ligarCarreiraOnline(io) {
   try {
     for (const { codigo, dados, atualizadaEm } of bd.salasCarreira()) {
       if (Date.now() - atualizadaEm > HORAS_PARADA * 3600e3) { bd.apagarSalaCarreira(codigo); continue; }
+      if (dados.save && dados.save.v !== Carreira.VERSAO) { bd.apagarSalaCarreira(codigo); continue; } // mundo da base antiga (EA FC 26)
       const players = Object.fromEntries(Object.entries(dados.players || {}).map(([id, p]) => [id, { ...p, sockets: new Set() }]));
       rooms.set(codigo, { ...dados, code: codigo, players, t: atualizadaEm });
     }

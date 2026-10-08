@@ -64,10 +64,13 @@ test("base mundial: elencos, notas, goleiros e ids válidos", () => {
 test("base mundial: nomes licenciados e clubes homônimos não se confundem", () => {
   const italianos = require("../public/carreira/base/italia-2026.js").clubes.map((c) => c.nome);
   for (const nome of ["Inter de Milão", "Milan", "Lazio", "Atalanta"]) assert.ok(italianos.includes(nome), nome);
-  const racings = clubesMundo.filter((c) => c.nome === "Racing Club");
-  assert.strictEqual(racings.length, 2);
-  assert.notStrictEqual(racings[0].id, racings[1].id);
-  assert.deepStrictEqual(new Set(racings.map((c) => c.pais)), new Set(["Argentina", "Uruguai"]));
+  // no EA FC 27, "Racing Club" (Argentina) e "R. Racing Club" (Racing de Santander) não viram o mesmo clube
+  const racing = clubesMundo.find((c) => c.nome === "Racing Club"), santander = clubesMundo.find((c) => c.nome === "Racing de Santander");
+  assert.ok(racing && santander);
+  assert.strictEqual(racing.id, "racing-club-argentina"); assert.strictEqual(racing.pais, "Argentina");
+  assert.notStrictEqual(racing.id, santander.id);
+  const ids = clubesMundo.map((c) => c.id);
+  assert.strictEqual(new Set(ids).size, ids.length, "nenhum id de clube repetido");
 });
 
 test("base mundial: o Brasil fica entre a Argentina e a Premier League", () => {

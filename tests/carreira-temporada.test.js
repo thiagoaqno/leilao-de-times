@@ -36,11 +36,12 @@ test("empate eliminatório termina nos pênaltis", () => {
   assert.strictEqual(repetido.competicoes.libertadores.campeao, penaltis[0] > penaltis[1] ? final.casa : final.fora);
 });
 
+// "calendario-1": no EA FC 27, esta semente leva o Flamengo à final da Libertadores (os três testes de baixo contam com isso)
 test("o calendário não revela fases futuras do mata-mata", () => {
   process.env.DB_PATH = process.env.DB_PATH || ":memory:";
   const { novaCarreira, estado } = require("../carreira.js").paraTestes;
   const save = novaCarreira("Sem spoiler", "flamengo", "");
-  save.semente = "calendario"; save.calendarioMundo = null;
+  save.semente = "calendario-1"; save.calendarioMundo = null;
   const e = estado(save), futurosBrutos = save.calendarioMundo.filter((j) => j.mataMata && (j.casa === save.clube || j.fora === save.clube));
   assert.ok(futurosBrutos.some((j) => j.fase === "final"), "a simulação interna tem o caminho futuro para tentar vazar");
   assert.deepStrictEqual(e.meus.filter((j) => j.mataMata), [], "a visão pública esconde o chaveamento que ainda não chegou");
@@ -50,7 +51,7 @@ test("a final empatada salva e anuncia o vencedor dos pênaltis", () => {
   process.env.DB_PATH = process.env.DB_PATH || ":memory:";
   const { novaCarreira, estado, simularMinha, fecharRodada } = require("../carreira.js").paraTestes;
   const save = novaCarreira("Final visível", "flamengo", "");
-  save.semente = "calendario"; save.calendarioMundo = null; estado(save);
+  save.semente = "calendario-1"; save.calendarioMundo = null; estado(save);
   const final = save.competicoes.libertadores.jogos.find((j) => j.fase === "final");
   assert.ok([final.casa, final.fora].includes(save.clube), "a semente leva o clube à final");
   let r = null;
@@ -81,7 +82,7 @@ test("a carreira em grupo atualiza o chaveamento antes de anunciar a final", () 
   process.env.DB_PATH = process.env.DB_PATH || ":memory:";
   const G = require("../carreira.js").grupo;
   const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "A" }], { temporadas: 1 });
-  save.semente = "calendario"; save.calendarioMundo = null; G.fecharRodadaGrupo(save);
+  save.semente = "calendario-1"; save.calendarioMundo = null; G.fecharRodadaGrupo(save);
   const final = save.competicoes.libertadores.jogos.find((j) => j.fase === "final");
   assert.ok([final.casa, final.fora].includes("flamengo"));
   const simulado = G.simularJogoGrupo(save, final, { modo: 1, decisoes: {} });

@@ -24,7 +24,11 @@ for (const id of ["brasileirao", "inglaterra", "espanha", "italia", "alemanha", 
 const INDICE_MUNDO = require("./public/carreira/base/mundo-2026.js");
 BASES[INDICE_MUNDO.id] = { id: INDICE_MUNDO.id, ano: INDICE_MUNDO.ano, clubes: INDICE_MUNDO.ligas.flatMap((l) => BASES[l.id].clubes) };
 const BASE_PADRAO = "mundo-2026";
-const VERSAO = 1;
+// 2: a base do EA FC 27 (os saves da versão 1 eram do FC 26: os ids de clube e de jogador não batem mais, a carreira
+// antiga não abre e a pessoa começa outra)
+const VERSAO = 2;
+const ANTIGA = "Essa carreira é da base antiga (EA FC 26). A Carreira agora usa o EA FC 27: comece uma carreira nova.";
+const antiga = (save) => !save || save.v !== VERSAO;
 
 const ok = (cb, extra = {}) => typeof cb === "function" && cb({ ok: true, ...extra });
 const falha = (cb, error) => typeof cb === "function" && cb({ ok: false, error });
@@ -893,7 +897,7 @@ module.exports = function ligarCarreira(io) {
       const c = token && bd.carreiraPorToken(token);
       if (!c) return falha(cb, "Carreira não encontrada. Entre de novo.");
       const save = c.dados;
-      if (!save || save.v !== VERSAO) return falha(cb, "Essa carreira é de uma versão antiga.");
+      if (antiga(save)) return falha(cb, ANTIGA);
       completar(save);
       const r = acao(save);
       if (typeof r === "string") return falha(cb, r);
@@ -915,6 +919,7 @@ module.exports = function ligarCarreira(io) {
       let c = null;
       try { c = bd.carreiraPorToken(d.token); } catch {}
       if (!c) return falha(cb, "Carreira não encontrada.");
+      if (antiga(c.dados)) return falha(cb, ANTIGA);
       token = d.token;
       ok(cb, { estado: estado(c.dados), nome: c.nome });
     });
@@ -922,6 +927,7 @@ module.exports = function ligarCarreira(io) {
       let c = null;
       try { c = bd.recuperarCarreira(d.codigo); } catch {}
       if (!c) return falha(cb, "Código não encontrado. Confira as 12 letras.");
+      if (antiga(c.dados)) return falha(cb, ANTIGA);
       token = c.token;
       ok(cb, { token: c.token, estado: estado(c.dados) });
     });
@@ -980,6 +986,6 @@ module.exports = function ligarCarreira(io) {
 // para os testes: montar uma carreira e mexer nela sem o socket
 module.exports.paraTestes = { novaCarreira, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, APOSENTADO };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
-module.exports.grupo = { novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
+module.exports.grupo = { VERSAO, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
   infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };

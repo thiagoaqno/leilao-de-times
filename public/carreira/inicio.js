@@ -11,7 +11,7 @@ const { dinheiro } = Mercado;
 const BASE_PADRAO = "mundo-2026"; // as antigas seguem na base em que nasceram
 const LIGAS_JOGAVEIS = new Set(["brasileirao-2026", "inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
 window.BasesCarreira[BASE_PADRAO] = {
-  id: BASE_PADRAO, ano: MundoCarreira.ano, nome: "Temporada Mundial", fonte: "EA FC 26 + base brasileira",
+  id: BASE_PADRAO, ano: MundoCarreira.ano, nome: "Temporada Mundial", fonte: "EA FC 27 + base brasileira",
   clubes: MundoCarreira.ligas.flatMap((l) => window.BasesCarreira[l.id].clubes),
 };
 let BASE = null, CLUBES = {}, JOGADORES = {}, E = null, telaAtual = null, clubeEscolhido = null, temporadasEscolhidas = Evolucao.TEMPORADAS.padrao;
@@ -264,7 +264,7 @@ async function conectar() {
   const token = store.get("carreira:token");
   if (!token) { if (!E && telaAtual !== "inicio") telaInicio(); return; } // reconectou na tela inicial: nada a redesenhar
   const r = await pedir("entrar", { token });
-  if (!r.ok) { store.set("carreira:token", null); store.set("carreira:codigo", null); toast("Essa carreira não foi encontrada neste servidor."); telaInicio(); return; }
+  if (!r.ok) { store.set("carreira:token", null); store.set("carreira:codigo", null); toast(r.error && r.error.includes("base antiga") ? r.error : "Essa carreira não foi encontrada neste servidor."); telaInicio(); return; }
   const primeira = !E;
   receber(r.estado);
   if (primeira) abrirSede();
