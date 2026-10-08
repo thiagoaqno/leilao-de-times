@@ -1,57 +1,68 @@
-# Carreira: a base do EA FC 27
+# Naruto: 30 ninjas, base de dados nova, sprites animados e os jutsus em 3D
 
-A Carreira de Treinador trocou a base do EA FC 26 pela do EA FC 27 (temporada 2026/27).
+O modo Naruto Shippuden ficou mais completo, nas batalhas por turnos da Vila e no Ginásio em tempo real: mais ninjas, os
+ninjas se mexendo e cada jutsu com o desenho certo.
 
-## De onde vêm os dados
-- **O CSV:** `dados/ea_fc27/ea_fc27_players.csv`, o conjunto "EA SPORTS FC 27 Player Ratings" do Kaggle, que é a API
-  oficial de notas da EA, com foto tirada em 12/09/2026. Tem 19.789 jogadores, 17.849 deles no futebol masculino.
-  - O `README.md` do conjunto vem junto.
-  - O `dados/ea_fc26/` saiu.
-- **As colunas mudaram de nome** (`player_id`, `overall_rating`, `club`, `league`...). A ferramenta traduz para os nomes
-  de antes (`jogadoresDoCSV`) e fica só com o futebol masculino (o arquivo traz as ligas femininas também).
-  - Altura e peso ainda vêm vazios (a EA não publicou), mas a Carreira não usa.
-- **A Libertadores e a Sul-Americana** se chamam "CONMEBOL Libertadores" e "CONMEBOL Sudamericana" no CSV novo.
+## Mais ninjas (de 12 para 30)
 
-## O que mudou no mundo
-- **Subidas e quedas de 2026/27:**
-  - **Premier League:** saem Burnley, West Ham e Wolves; entram Coventry, Hull e Ipswich.
-  - **La Liga:** saem Girona, Mallorca e Real Oviedo; entram Málaga, Racing de Santander e Deportivo La Coruña.
-  - **Serie A:** saem Cremonese, Hellas Verona e Pisa; entram Frosinone, Monza e Venezia.
-  - **Bundesliga:** saem St. Pauli, Heidenheim e Wolfsburg; entram Schalke, Paderborn e Elversberg.
-  - **Ligue 1:** saem Metz e Nantes; entram Troyes e Le Mans.
-- **Sul-americanos da Libertadores:** entram, entre outros, Junior, Tolima, Independiente Medellín, Santa Fe,
-  Universidad Católica e Coquimbo. Saem Colo-Colo, Atlético Nacional, Universidad de Chile, Alianza Lima, Olimpia e
-  outros. Continuam 32 clubes, sem repetir.
-- **Todo clube novo tem sigla, estádio e cores.** As nacionalidades novas (Quênia, Iraque, Tailândia...) foram
-  traduzidas.
-- **O Racing uruguaio saiu** (ele não está no FC 27). O Racing argentino continua `racing-club-argentina`, e o Racing
-  de Santander não se confunde com ele.
-- **O Brasileirão continua** sendo a base brasileira estimada (o FC 27 só tem o Bahia), recalibrada na escala do
-  FC 27: ajuste de −1.
-- **As médias dos 11 melhores por liga** ficaram parecidas com as do FC 26 (por exemplo, Premier League de 80,4 para
-  80,3).
+- **Do jogo de DS que já era a fonte** (*Naruto vs. Sasuke*): Jiraiya, Kabuto, Neji e Orochimaru; mais Ino, Shino e Kiba (com
+  o Akamaru), da folha de figurantes.
+- **De *Ninja Council 4*** (DS): Tsunade, Temari, Kankurō, Might Guy, Tenten e Gaara.
+- **Os lendários**: Primeiro Hokage, Quarto Hokage, Madara, Obito e Shisui. Esses jogos não têm sprite deles, então por
+  enquanto cada um usa o sprite de outro ninja com as cores trocadas (Minato com o casaco branco, Madara de armadura
+  vermelha...). Quando houver um sprite de verdade, é só pôr no lugar (`ferramentas/sprites-naruto.py`).
+- Cada ninja tem 4 jutsus, vida, ataque, defesa e velocidade próprios. Todos entram na escolha de time dos dois modos.
 
-## As carreiras antigas
-- Os saves apontam para a base pelos ids de clube e de jogador. Com a base nova, uma carreira do FC 26 apontaria para
-  clubes que caíram e para jogadores trocados.
-- Por isso a `VERSAO` dos saves subiu para 2.
-  - Quem abre uma carreira antiga recebe: "Essa carreira é da base antiga (EA FC 26). A Carreira agora usa o EA FC 27:
-    comece uma carreira nova." Isso vale para entrar, para o código de recuperação e para qualquer ação.
-  - As salas de carreira em grupo que já tinham começado no FC 26 são apagadas ao carregar.
+## A base de dados nova
 
-## Arquivos
-- `dados/ea_fc27/` (novo) e `dados/ea_fc26/` (saiu);
-- `ferramentas/base-mundo.js`;
-- as bases geradas em `public/carreira/base/*-2026.js`;
-- `carreira.js` (a versão e a mensagem);
-- `carreira-online.js` (as salas antigas);
-- `public/carreira/inicio.js` (o texto e a mensagem);
-- os testes `tests/carreira-base.test.js` (os homônimos) e `tests/carreira-temporada.test.js` (a semente que leva o
-  Flamengo à final da Libertadores mudou para `calendario-1`);
-- `CLAUDE.md`.
+- `ferramentas/base-naruto.js` busca na **Dattebayo API** (dados da Narutopedia, 1.431 personagens) a vila, o clã, a patente e
+  os jutsus de cada ninja e gera `public/galeramon/naruto-base.js`. Para pôr um ninja novo, basta o número dele na tabela
+  `ELENCO`.
+- `NarutoDex.ficha(id)` mostra "Vila da Folha / Akatsuki · Clã Uchiha · Jōnin" na escolha do ninja, na Vila e no Ginásio.
+- As imagens da API são capturas do anime (só o rosto, com fundo) e não servem de sprite, então não entraram.
 
-## Conferido
-- Os 74 testes da Carreira (`tests/carreira*.test.js` e `tests/bd.test.js`) passam.
-- Os 7 testes no navegador da Carreira (`carreira.spec.js` e `paginas.spec.js`) passam, inclusive celular e grupo.
-- Num servidor de verdade, uma carreira nova com o Coventry funciona, e um save de versão 1 recebe a mensagem ao
-  entrar e ao recuperar.
+## Os ninjas se mexendo
+
+- `ferramentas/sprites-naruto.py` corta, nas folhas de sprites, os quadros do "parado" de cada ninja e monta uma tira
+  (`<imagem>-idle.png`), no tamanho original (pixel por pixel). No Ginásio eles respiram em vez de ficarem congelados.
+- Cada ninja tem a sua altura na arena (o Kisame é maior, a Ino e a Tenten menores), e os compridos (Sasori, Kiba com o
+  Akamaru) não passam de uma largura máxima.
+
+## Os jutsus do jeito certo
+
+Antes, quase todo jutsu saía como uma estrela genérica, porque a regra só conhecia os tipos do Pokémon, e todo golpe de
+poder abaixo de 100 era um golpe de perto. Agora:
+
+- **Cada golpe diz como sai** (`forma`): o Rasengan é uma bola na mão de quem bate, o Chidori e o Raikiri são investidas, a Bola
+  de Fogo, o Tubarão de Água e o Dragão C2 voam, o Kirin, o Amaterasu e o Funeral do Deserto caem no ponto mirado. A regra do
+  Ginásio (`regras.js`) obedece a `forma`.
+- **Cada jutsu tem o seu desenho em 3D** (`public/ginasio/golpes-naruto.js`):
+  - o que voa: shuriken girando, Bola de Fogo com cauda, Tubarão de Água, Aranha e Dragão de Argila, ninken correndo, corvos,
+    feras de tinta, cobras, lâminas e Dragão de Vento, cabeça do Tigre Diurno, chuva de armas, mão de areia, insetos, Bola
+    Busca-Verdade;
+  - o de perto: corte de kunai, soco, Rasengan, Samehada, bisturi de chakra, Palma Divina (com o trigrama), espada e leque;
+  - o que cai: Kirin (raio do céu), Amaterasu (chamas negras), Grande Onda, explosão C3, espinhos de areia de ferro, madeira,
+    prisão de madeira, o sapo Gamabunta, as 64 Palmas, Manda saindo do chão, ciclone, nuvem de veneno, Dragão Ascendente,
+    Caixão e Funeral de Areia, enxame, Meteoro;
+  - quem avança: Chidori e Raikiri com o raio crepitando, Ōdama Rasengan, Lótus Frontal, Tornado da Folha, Presa Sobre Presa,
+    Shunshin e Hiraishin;
+  - o que fortalece: fumaça dos clones, Sharingan, Portões Internos, parede de terra, Rotação Celestial, Byakugan, escudo de
+    areia, cura, Modo Sábio, Susanoo, Kamui, Uivo, muralha de insetos e outros;
+  - o estouro de quando o projétil acerta também é de cada jutsu (água espirra, argila explode, penas dos corvos...).
+- Nos tipos do Naruto que faltavam (Taijutsu, Vento, Terra, Sombra, Medicina), o desenho de reserva usa as cores certas.
+- Com "menos movimento" no sistema, não há tremor de câmera nem clarão. Nos temas de chão claro, nada usa a mistura que
+  soma luz, e as luzes dos golpes são mais fracas, para não estourar em branco.
+
+## Código
+
+- Novos: `public/galeramon/naruto-base.js` (gerado), `public/ginasio/golpes-naruto.js`, `ferramentas/base-naruto.js` e
+  `ferramentas/sprites-naruto.py` (precisa de Pillow, numpy e scipy).
+- Mudaram: `naruto.js` (elenco e golpes), `regras.js` (`forma`), `animacao.js` (a tira do parado e a escala de cada ninja),
+  `golpes3d.js` (chama os jutsus), `golpes.js`, `desenho.js`, `sala.js`, `public/index.html` e os `index.html` do Ginásio.
+- Testes: `tests/naruto.test.js` confere o elenco, as imagens, a base e a `forma`/`fx` de todo golpe; o e2e passou a esperar 30
+  ninjas.
+- O The Spriters Resource passou a pedir verificação de robô enquanto este PR era feito; as folhas ficaram em cache local e o
+  `NARUTO-ASSETS.md` explica como usar o `NARUTO_FOLHAS`.
+- `CLAUDE.md` e `NARUTO-ASSETS.md` atualizados. Fotos em `planos/imagens/naruto-*.png`.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
