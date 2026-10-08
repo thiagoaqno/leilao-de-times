@@ -108,7 +108,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
 | Pingue-Pongue | `pingpong.js` | `index.html`, `jogo.js`, `regras.js` (voo com efeito, juiz, placar, robô) |
 | Futevôlei | `futevolei.js` | `index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js` (ver logo abaixo) |
-| Vila (o mapa) + Galeramon + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
+| Vila (o mapa) + Galeramon/Pokémon/Naruto por turnos + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
 
 **Futevôlei:**
 - 1x1 ou duplas (2x2), robôs completando, set de 10, 15 ou 18 pontos com 2 de vantagem, ponto corrido. Na Vila, a **Arena
@@ -143,6 +143,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 - **Líderes e treinadores (`public/galeramon/lideres.js`):** 4 líderes de ginásio (fogo, água, grama, elétrico) e 6 treinadores (pedra, psíquico, fantasma, dragão, lutador, gelo), cada um com o time nos dois modos. `/ginasio/?lider=<id>` abre o desafio (1x1 contra o robô com o time dele; `config.lider`); vencer um líder guarda a insígnia no navegador (`ginasio:insignias`). Os robôs comuns ganham um dos times temáticos, sorteado. Na Vila, os ginásios ficam fora da cerca, em cima dos estacionamentos oeste e leste (`lider: l` em `GAMES`), e os treinadores são `GAMES` de 1x1 com `npc` (desenhados como bonecos). Cada tipo tem a sua quadra em `temas.js` (`TEMAS`: cores, `chao` e `clima`).
 - `/ginasio/` abre a sala e a arena 2D de pixel-art. O prédio fica na Vila Esportiva, ao lado do Pingue-Pongue, abaixo do Tênis: `ginasio: true` desenha o telhado arredondado com Pokébola.
 - Na Vila, clicar no amigo ou usar Batalha permite escolher turnos ou Ginásio. O convite `jogo: "ginasio"` reutiliza aceite/recusa; `vila.js` chama `ginasio.criarDesafio` só depois do aceite, reserva os dois lados de uma sala 1x1 sem robôs e envia `irGinasio` com credenciais privadas a cada participante.
+- Naruto Shippuden é o terceiro modo por turnos da Vila. `public/galeramon/naruto.js` contém 12 ninjas e jutsus; `galeramon.js` resolve chakra, Concentrar e Substituição no servidor. Os ícones ficam em `public/galeramon/naruto-sprites/` (créditos em `NARUTO-ASSETS.md`). Não entra no Ginásio em tempo real.
 - O navegador guarda essas credenciais em `ginasio:<código>` e abre `?sala=&entrar=1`; os tokens não vão no endereço ou no estado público. Voltar à Vila deixa o jogador na porta do Ginásio. As batalhas por turnos continuam no canal `/vila`.
 - Os scripts dividem as variáveis globais, nesta ordem: `regras`, `gif`, `sala`, `cena3d`, `volume`, `cenarios`, `desenho`, `temas`, `animacao`, `golpes`, `golpes3d`, `marcas`, `controles`, `rede`, `sons`, `hud`. O Three chega depois, por um `<script type="module">` no fim do `index.html` (`window.THREE`).
 - `sala.js` reaproveita `galeramon_time` e `pokemon_time`, monta o seletor de criaturas e guarda o token da sala.

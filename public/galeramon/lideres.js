@@ -1,4 +1,4 @@
-// Os líderes de ginásio e os treinadores da Vila (Galeramon e Pokémon): cada um com o seu tipo e o time de 3 nos dois
+// Os líderes de ginásio e os treinadores da Vila: cada um com o seu tipo e o time de 3 nos três
 // modos. Os líderes ficam nos ginásios perto dos estacionamentos de saída da Vila; os treinadores ficam pelas ruas e
 // pela praça. Desafiar qualquer um abre o Ginásio em tempo real contra o time dele. Vencer um líder dá a insígnia.
 // Usado pelo servidor do Ginásio (os robôs), pela página do Ginásio e pela Vila (os prédios e os treinadores no mapa).
@@ -6,7 +6,7 @@
   if (typeof module === "object" && module.exports) module.exports = factory();
   else root.Lideres = factory();
 })(typeof self !== "undefined" ? self : this, function () {
-  // id, nome, tipo, cor, frase, times { galeramon, pokemon }, onde (ginasio ou rua), look (a roupa do boneco na Vila)
+  // id, nome, tipo, cor, frase, times { galeramon, pokemon, naruto }, onde (ginasio ou rua), look (a roupa do boneco na Vila)
   const LISTA = [
     { id: "brasa", nome: "Líder Brasa", tipo: "Fogo", cor: "#ee6a2c", cor2: "#ffd34d", simbolo: "fogo", onde: "ginasio", look: 3,
       frase: "Aqui dentro faz 40 graus. Aguenta?", times: { galeramon: ["churrasquilo", "micoleao", "boitata"], pokemon: ["arcanine", "typhlosion", "charizard"] } },
@@ -29,9 +29,17 @@
     { id: "geada", nome: "Treinadora Geada", tipo: "Gelo", cor: "#78c8c8", onde: "rua", look: 1, x: 29, y: 9,
       frase: "Vou congelar esse seu sorriso.", times: { galeramon: ["sirizao", "caipirito", "botoso"], pokemon: ["glaceon", "mamoswine", "lapras"] } },
   ];
+  const TIMES_NARUTO = {
+    brasa: ["sasuke", "itachi", "kakashi"], mare: ["kisame", "yamato", "sai"],
+    mata: ["yamato", "sakura", "naruto"], faisca: ["kakashi", "sasuke", "lee"],
+    rochedo: ["deidara", "sasori", "yamato"], mistica: ["itachi", "shikamaru", "sai"],
+    assombra: ["itachi", "shikamaru", "sasori"], escama: ["naruto", "sasuke", "deidara"],
+    punho: ["lee", "sakura", "kakashi"], geada: ["kisame", "sai", "sakura"],
+  };
+  for (const lider of LISTA) lider.times.naruto = TIMES_NARUTO[lider.id];
   const POR_ID = Object.fromEntries(LISTA.map((l) => [l.id, l]));
   const de = (id) => POR_ID[id] || null;
   // o time de um robô qualquer (sem líder): um dos times temáticos, sorteado (antes era sempre o de fogo)
-  const timeDeRobo = (modo, sorte) => LISTA[Math.floor(sorte() * LISTA.length)].times[modo === "pokemon" ? "pokemon" : "galeramon"].slice();
+  const timeDeRobo = (modo, sorte) => LISTA[Math.floor(sorte() * LISTA.length)].times[modo].slice();
   return { LISTA, de, timeDeRobo, GINASIOS: LISTA.filter((l) => l.onde === "ginasio"), TREINADORES: LISTA.filter((l) => l.onde === "rua") };
 });

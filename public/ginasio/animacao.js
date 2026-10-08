@@ -7,7 +7,7 @@
 // - De costas: andando ou mirando para o fundo da quadra, o bicho vira de costas. Os Pokémon usam o GIF de costas do
 //   Black/White (ou o sprite parado de costas); os Galeramon, o próprio desenho sem o rosto e um pouco mais escuro.
 const animacoes = new Map(), visuais = new Map();
-const ESCALA_GIF = 3.1 / 96, ESCALA_PARADO = 3.1 / 64, ESCALA_GALERAMON = 2 / PX_CARTAZ; // casas da arena por pixel do sprite (o Galeramon fica com 2 pixels do atlas por pixel)
+const ESCALA_GIF = 3.1 / 96, ESCALA_PARADO = 3.1 / 64, ESCALA_NARUTO = 3.1 / 148, ESCALA_GALERAMON = 2 / PX_CARTAZ; // casas da arena por pixel do sprite (o Galeramon fica com 2 pixels do atlas por pixel)
 const NAO_FLUTUAM = new Set(["doduo", "dodrio", "farfetchd", "chatot", "murkrow"]); // voadores que ficam no chão
 const FLUTUAM_GALERAMON = new Set(["saci"]);
 const OCULTO_VOO = 9; // quantas casas o bicho sobe ao voar (sai da tela)
@@ -37,13 +37,14 @@ function animacaoDe(id, modo = modoAtual()) {
   if (a) return a;
   a = { id, modo, quadros: [], atrasos: [], total: 1, medida: null, piscar: null, brancos: new Map(), pronto: false, olha: modo === "pokemon" ? -1 : 1 };
   animacoes.set(chave, a);
-  if (modo !== "pokemon") {
+  if (modo === "galeramon") {
     const q = GaleramonSprite.quadros(id);
     usarQuadros(a, q.slice(0, 4), [240, 240, 240, 240], medirCanvas(q[0]), ESCALA_GALERAMON);
     a.piscar = q[4];
     return a;
   }
   a.parado = imagemDe(id, modo);
+  if (modo === "naruto") return a;
   fetch(PokeDex.spriteAnimado(id))
     .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
     .then((buf) => {
@@ -60,10 +61,12 @@ function animacaoCostas(id, modo = modoAtual()) {
   if (!a) {
     a = { id, modo, quadros: [], atrasos: [], total: 1, medida: null, piscar: null, brancos: new Map(), pronto: false, olha: 1, costas: true };
     animacoes.set(chave, a);
-    if (modo !== "pokemon") {
+    if (modo === "galeramon") {
       const q = GaleramonSprite.quadros(id).slice(0, 4).map(semRosto);
       usarQuadros(a, q, [240, 240, 240, 240], medirCanvas(q[0]), ESCALA_GALERAMON);
       a.olha = animacaoDe(id, modo).olha;
+    } else if (modo === "naruto") {
+      a.parado = imagemDe(id, modo);
     } else {
       const img = new Image(); img.crossOrigin = "anonymous";
       a.parado = { img, pronto: false };
@@ -107,7 +110,7 @@ function quadroCostas(a, tempo) {
   if (!a.reserva) {
     const img = a.parado.img, cv = document.createElement("canvas"); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
     cv.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
-    a.reserva = { cv, medida: { ...medirCanvas(cv), escala: ESCALA_PARADO } };
+    a.reserva = { cv, medida: { ...medirCanvas(cv), escala: a.modo === "naruto" ? ESCALA_NARUTO : ESCALA_PARADO } };
   }
   return a.reserva;
 }
@@ -119,8 +122,8 @@ function quadroReserva(a) {
   try {
     const cv = document.createElement("canvas"); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
     cv.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
-    a.reserva = { cv, medida: { ...medirCanvas(cv), escala: ESCALA_PARADO } };
-  } catch { a.reserva = { cv: img, medida: { cx: 32, pe: 60, topo: 6, escala: ESCALA_PARADO } }; }
+    a.reserva = { cv, medida: { ...medirCanvas(cv), escala: a.modo === "naruto" ? ESCALA_NARUTO : ESCALA_PARADO } };
+  } catch { a.reserva = { cv: img, medida: { cx: img.naturalWidth / 2, pe: img.naturalHeight, topo: 0, escala: a.modo === "naruto" ? ESCALA_NARUTO : ESCALA_PARADO } }; }
   return a.reserva;
 }
 function quadroDe(a, tempo, piscando) {

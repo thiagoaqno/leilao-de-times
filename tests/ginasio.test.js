@@ -4,6 +4,7 @@ const assert = require("node:assert");
 const G = require("../public/ginasio/regras.js");
 const Galeramon = require("../public/galeramon/dados.js");
 const PokeDex = require("../public/galeramon/pokemon.js");
+const NarutoDex = require("../public/galeramon/naruto.js");
 
 function simular(seed, modo = "galeramon") {
   const p = G.criarPartida({ seed, modo }, [[{ bot: true }], [{ bot: true }]]);
@@ -14,7 +15,7 @@ function simular(seed, modo = "galeramon") {
 }
 
 test("ginásio: todos os golpes viram uma habilidade válida", () => {
-  for (const [modo, D] of Object.entries({ galeramon: Galeramon, pokemon: PokeDex })) {
+  for (const [modo, D] of Object.entries({ galeramon: Galeramon, pokemon: PokeDex, naruto: NarutoDex })) {
     const habilidades = G.habilidadesDoDex(modo);
     assert.strictEqual(Object.keys(habilidades).length, Object.keys(D.MOVES).length, modo);
     for (const [id, mv] of Object.entries(D.MOVES)) {
@@ -26,6 +27,45 @@ test("ginásio: todos os golpes viram uma habilidade válida", () => {
       if (mv.p > 0 || mv.halve) assert.notStrictEqual(h.classe, "nada", `${modo}/${id}: golpe de ataque não vira nada`);
     }
   }
+});
+
+test("ginásio Naruto: chakra limita jutsus, regenera e Substituição tem dois usos", () => {
+  const p = G.criarPartida({ modo: "naruto", seed: "chakra" }, [[{ id: "a", bot: false, team: NarutoDex.DEFAULT_TEAM }], [{ id: "b", bot: false, team: NarutoDex.DEFAULT_TEAM }]]);
+  const a = p.entidades[0];
+  assert.deepStrictEqual(a.jogador.time.map((b) => b.id), NarutoDex.DEFAULT_TEAM);
+  assert.strictEqual(a.bicho.chakra, 60);
+  a.bicho.chakra = 0;
+  G.passo(p, 1 / 60, { a: { golpe: 1 } });
+  assert.strictEqual(a.bicho.cds[1], 0, "Rasengan sem chakra não sai");
+  G.passo(p, 1 / 60, { a: { golpe: 0 } });
+  assert.ok(a.bicho.cds[0] > 0, "Shuriken sem custo ainda sai");
+  for (let i = 0; i < 300; i++) G.passo(p, 1 / 60);
+  assert.ok(a.bicho.chakra >= 40 && a.bicho.chakra <= 41, "chakra recuperado com o tempo");
+  G.passo(p, 1 / 60, { a: { golpe: 1 } });
+  assert.ok(a.bicho.cds[1] > 0, "Rasengan liberado");
+  assert.ok(a.bicho.chakra < 12, "custo cobrado");
+  a.bicho.chakra = 60;
+  for (let i = 0; i < 2; i++) {
+    a.esquivaCd = 0;
+    G.passo(p, 1 / 60, { a: { esquiva: true, dx: 1, dy: 0 } });
+    assert.strictEqual(a.jogador.substitutes, 1 - i);
+  }
+  a.esquivaCd = 0;
+  G.passo(p, 1 / 60, { a: { esquiva: true } });
+  assert.strictEqual(a.esquivaCd, 0, "não há terceira Substituição");
+  assert.strictEqual(G.estado(p).entidades[0].substitutes, 0);
+});
+
+test("ginásio Naruto: partida 2x2 cria quatro ninjas e times válidos", () => {
+  const p = G.criarPartida({ modo: "naruto", formato: "2x2", seed: "duplas" });
+  assert.strictEqual(p.entidades.length, 4);
+  for (const e of p.entidades) {
+    assert.strictEqual(e.jogador.time.length, 3);
+    assert.strictEqual(e.jogador.substitutes, 2);
+    assert.ok(e.jogador.time.every((b) => NarutoDex.MONS[b.id]));
+  }
+  G.passo(p, 1 / 60);
+  assert.strictEqual(G.estado(p).entidades.length, 4);
 });
 
 test("ginásio: quem está na esquiva não leva dano", () => {

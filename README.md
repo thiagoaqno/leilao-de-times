@@ -12,6 +12,8 @@ Site multiplayer para montar times (ou hambúrgueres, pizzas, drinks…) por lei
 
 **Modo Pokémon:** no desafio dá para escolher Galeramon ou Pokémon. O modo Pokémon tem os 493 Pokémon de Kanto, Johto, Hoenn e Sinnoh (com Wonder Guard do Shedinja, Truant do Slaking, Huge Power do Azumarill, Transform do Ditto, Metronome, Splash do Magikarp, Counter/Mirror Coat do Wobbuffet, Hidden Power do Unown e Belly Drum) com atributos, golpes e a tabela de tipos oficiais, e usa os sprites do FireRed/LeafGreen (até o 386) e do Platinum (da 4ª geração), carregados na hora do PokeAPI (nenhuma imagem fica no site). Os dados ficam em `public/galeramon/pokemon.js`. Os sprites são da Nintendo: deixe o link só entre amigos. Para desligar o modo, rode o servidor com `POKEMON=0`.
 
+**Modo Naruto Shippuden:** nas batalhas por turnos da Vila e no Ginásio em tempo real, monte um time de 3 entre 12 ninjas. Jutsus consomem chakra; nos turnos, Concentrar recupera 35 pontos; no Ginásio, o chakra regenera durante a luta. Cada jogador pode usar duas Substituições para escapar de ataques. Os dados ficam em `public/galeramon/naruto.js`, e os sprites e seus créditos em `public/galeramon/naruto-sprites/` e `public/galeramon/NARUTO-ASSETS.md`.
+
 **Banco da Galera:** o mesmo site também tem um jogo de tabuleiro de compra e venda de cidades, de 2 a 6 jogadores, em `/banco/` (ex.: http://localhost:3000/banco/). Quem manda uma cidade a leilão ganha 10% do lance vencedor de comissão (se outro jogador levar). As regras estão no botão "Regras" da página.
 
 **Uno da Galera:** jogo de cartas com as regras oficiais, de 2 a 8 jogadores, em `/uno/` (ex.: http://localhost:3000/uno/).

@@ -40,7 +40,7 @@
       <div id="insignias" class="insignias" aria-label="Insígnias dos ginásios"></div>
     </div>
     <fieldset id="opcoes"><legend>Partida</legend>
-      <div class="segmentos" aria-label="Modo"><button data-modo="galeramon" aria-pressed="true">Galeramon</button><button data-modo="pokemon" aria-pressed="false">Pokémon</button></div>
+      <div class="segmentos" aria-label="Modo"><button data-modo="galeramon" aria-pressed="true">Galeramon</button><button data-modo="pokemon" aria-pressed="false">Pokémon</button><button data-modo="naruto" aria-pressed="false">Naruto</button></div>
       <div class="linha opcoes-linha"><div class="segmentos formato" aria-label="Formato"><button data-formato="1x1" aria-pressed="true">1x1</button><button data-formato="2x2" aria-pressed="false">2x2</button></div><label class="check"><input id="bots" type="checkbox" checked>Robôs</label></div>
     </fieldset>
     <section id="escolha"><h2>Seu time</h2><div id="meuTime" class="time-escolha"></div></section>
@@ -55,6 +55,7 @@
   </aside>
 </main>
 <footer id="hud" class="hidden">
+  <div id="chakraHud" class="hidden" role="status"></div>
   <div id="reservas" aria-label="Time na batalha"></div>
   <div id="habilidades" aria-label="Golpes"></div>
   <button id="btnEsquiva" class="habilidade esquiva" title="Esquiva" aria-label="Esquiva"></button>
@@ -78,6 +79,7 @@
 <script src="/toque.js"></script>
 <script src="/galeramon/dados.js"></script>
 <script src="/galeramon/pokemon.js"></script>
+<script src="/galeramon/naruto.js"></script>
 <script src="/galeramon/sprites.js"></script>
 <script src="/galeramon/lideres.js"></script>
 <script src="regras.js"></script>
