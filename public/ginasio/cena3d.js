@@ -159,6 +159,7 @@ function montarTema(T) {
     const faixa = new THREE.Mesh(new THREE.CylinderGeometry(p.r * 1.02, p.r * 1.02, 0.08, 16), toon(brilhoPilar));
     faixa.position.set(p.x, 0.85, p.y); grupo.add(faixa);
   }
+  cena3d.cenario = montarCenario(T, grupo, toon); // a luz, os enfeites e o clima do tema (cenarios.js)
   cena3d.temaFeito = T;
 }
 // a torcida pulando no ritmo de cada um (parada com menos movimento ou no modo leve)
@@ -236,7 +237,7 @@ function renderizar3d(lista, agora, tremor) {
   const { renderer, scene, cam, cartazes, volumes, texChao, texAtlas, texEspessura } = cena3d;
   const T = temaAtual();
   if (cena3d.temaFeito !== T) { montarTema(T); G3.claro = luminancia(T.piso[0]) > 0.55; }
-  mexerTorcida(agora);
+  mexerTorcida(agora); cena3d.cenario?.(agora);
   texChao.needsUpdate = true; texAtlas.needsUpdate = true; texEspessura.needsUpdate = true;
   cartazes.forEach((m) => { m.visible = false; });
   volumes.forEach((v) => { v.volume.visible = v.fantasma.visible = false; });

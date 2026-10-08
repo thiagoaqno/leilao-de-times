@@ -276,7 +276,7 @@ function desenhar(agora = relogio.agora(), dt = 0) {
   }
   if (G3.clarao > 0) { ctx.save(); ctx.globalAlpha = G3.clarao * 0.3; ret(0, 0, cv.width, cv.height, "#fffbe0"); ctx.restore(); } // o clarão do raio
   for (const p of poses) bichoInfo(p, agora);
-  desenharClima(temaAtual(), agora);
+  if (!cena3d.ok || temaAtual().clima === "faiscas") desenharClima(temaAtual(), agora); // o resto do clima é 3D (cenarios.js)
   desenharEfeitos(agora);
   camera.escala = escalaTela;
   medirRitmo(dt);
