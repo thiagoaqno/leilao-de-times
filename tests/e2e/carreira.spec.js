@@ -1,6 +1,8 @@
 // Carreira de Treinador no navegador: começa a carreira, mexe na prancheta, abre o mercado e a ficha, e joga uma
 // rodada inteira no modo "só o resultado".
 const { test, expect } = require("@playwright/test");
+const fs = require("node:fs"), path = require("node:path"), fotos = process.env.CARREIRA_FOTOS;
+const fotografar = async (page, nome) => { if (!fotos) return; fs.mkdirSync(fotos, { recursive: true }); await page.screenshot({ path: path.join(fotos, `${nome}.png`) }); };
 
 test.setTimeout(120000);
 const vigiar = (page) => { const erros = []; page.on("pageerror", (e) => erros.push(String(e))); return erros; };
@@ -24,6 +26,9 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await page.locator("#eCampo .peca").nth(9).click();
     await page.locator("#eCampo .peca").nth(10).click();
     await expect.poll(nomes).toEqual([...antes.slice(0, 9), antes[10], antes[9]]);
+    await expect(page.locator(".fala-jogador").first()).toBeVisible();
+    if (fotos) await page.waitForTimeout(250);
+    await fotografar(page, `carreira-formacao-${tela.width}`);
     expect(await page.evaluate(() => __carreira.E.escalacao.fixo)).toBe(true);
     // a formação nova reorganiza os mesmos 11
     await page.click('#elenco [data-formacao="4-4-2"]');
@@ -32,6 +37,10 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await page.click('#elenco [data-ir="sede"]');
     await page.click('#sede [data-ir="mercado"]');
     await expect(page.locator("#mLista .figurinha").first()).toBeVisible();
+    await page.click("#mOlheiro");
+    await expect(page.locator(".dica-olheiro").first()).toBeVisible();
+    if (fotos) await page.waitForTimeout(300);
+    await fotografar(page, `carreira-olheiro-${tela.width}`);
     await page.locator("#mLista .figurinha").first().click();
     await expect(page.locator("#ficha #fProposta")).toBeVisible();
     await page.click("#fichaFechar");
@@ -166,7 +175,11 @@ test("carreira em grupo: sala, clubes e o hub de cada um", async ({ browser }) =
   await a.evaluate(() => __carreira.abrirFicha("santos-5"));
   await a.click("#fLeilao");
   await expect(b.locator("#leilaoBox")).toBeVisible({ timeout: 15000 });
+  await fotografar(b, "carreira-leilao");
   await b.click("#lLance");
+  await expect(b.locator(".transferencia-fx")).toBeVisible({ timeout: 40000 });
+  if (fotos) await b.waitForTimeout(750);
+  await fotografar(b, "carreira-transferencia");
   await expect(b.locator("#leilaoBox")).toBeHidden({ timeout: 40000 });
   await expect.poll(() => b.evaluate(() => __carreira.E.elenco.includes("santos-5")), { timeout: 15000 }).toBe(true);
   expect(erros).toEqual([]);

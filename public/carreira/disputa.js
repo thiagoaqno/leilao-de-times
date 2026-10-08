@@ -42,6 +42,10 @@ async function responderDisputa(opcao) {
   $("dsCorpo").innerHTML = `<div class="ds-fim ${vendeu ? (esfriou ? "ruim" : "bom") : ""}"><span class="ds-martelo">${ic("martelo")}</span><h2>${vendeu ? (esfriou ? "Os clubes esfriaram..." : "Vendido!") : "Ficou no elenco"}</h2><p>${h(r.mensagem || "")}</p>
     <button id="dsOk" class="primario largo">Fechar</button></div>`;
   $("dsOk").onclick = () => $("disputa").close();
+  if (vendeu) {
+    const transferencia = r.estado.transferencias.find((t) => t.jogador === d.e.dados.jogador && t.de === E.clube);
+    AnimacoesCarreira.animarTransferencia({ jogador: d.e.dados.jogador, tipo: "venda", de: E.clube, para: transferencia?.para, valor: transferencia?.valor });
+  }
   if (vendeu && !esfriou) festa();
 }
 $("disputaFechar").innerHTML = ic("fechar");

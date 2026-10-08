@@ -17,7 +17,7 @@ function campinho(detalhe, formacao, opcoes = {}) {
     if (!v.id) return `<button class="peca vazia" data-i="${i}" style="left:${s.x}%;top:${s.y}%"><span class="sem">?</span><small>${NOME_VAGA[v.slot]}</small></button>`;
     const j = JOGADORES[v.id], fit = encaixe(j.pos, v.slot), energia = opcoes.energia ? opcoes.energia[v.id] : null;
     const sel = opcoes.selecionado === i;
-    return `<button class="peca ${faixa(notaDe(j))}${sel ? " sel" : ""}${fit < 0.9 ? " improvisado" : ""}" data-i="${i}" style="left:${s.x}%;top:${s.y}%" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 0.9 ? " (improvisado)" : ""}">
+    return `<button class="peca ${faixa(notaDe(j))}${sel ? " sel" : ""}${fit < 0.9 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" style="left:${s.x}%;top:${s.y}%" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 0.9 ? " (improvisado)" : ""}">
       <img class="pix" src="${retrato(v.id)}" alt=""><b>${notaDe(j)}</b><small>${h(sobrenome(j.nome))}</small>
       ${fit < 0.9 ? `<em class="alerta" aria-hidden="true">!</em>` : ""}${energia != null ? `<span class="energia"><i style="--v:${energia}%"></i></span>` : ""}</button>`;
   }).join("")}</div>`;
@@ -46,21 +46,23 @@ function telaElenco() {
   $("eContagem").textContent = `${E.elenco.length} no elenco`;
   $("eBanco").innerHTML = reservas.map((pid) => `<div class="no-banco${selecionado?.onde === "banco" && selecionado.pid === pid ? " sel" : ""}${fora(pid) ? " indisponivel" : ""}">${figurinha(pid)}</div>`).join("");
 }
-async function salvarEscalacao(dados) {
+async function salvarEscalacao(dados, movimento = {}) {
+  const antes = AnimacoesCarreira.capturarEscalacao();
   const r = await pedir("escalacao", dados);
   if (!r.ok) { toast(r.error); return false; }
-  receber(r.estado); return true;
+  receber(r.estado); AnimacoesCarreira.animarEscalacao(antes, movimento); return true;
 }
 // tocar no campo e no banco
 $("eCampo").addEventListener("click", async (e) => {
   const b = e.target.closest(".peca"); if (!b || E.partida) return;
   const i = +b.dataset.i, det = Motor.escalacaoDetalhada(meuTime()), ids = det.map((v) => v.id);
   if (selecionado?.onde === "campo" && selecionado.i === i) { selecionado = null; if (ids[i]) abrirFicha(ids[i]); return telaElenco(); }
-  if (selecionado?.onde === "campo") { [ids[i], ids[selecionado.i]] = [ids[selecionado.i], ids[i]]; selecionado = null; }
-  else if (selecionado?.onde === "banco") { ids[i] = selecionado.pid; selecionado = null; }
+  let envolvidos = [];
+  if (selecionado?.onde === "campo") { envolvidos = [ids[i], ids[selecionado.i]]; [ids[i], ids[selecionado.i]] = [ids[selecionado.i], ids[i]]; selecionado = null; }
+  else if (selecionado?.onde === "banco") { envolvidos = [ids[i], selecionado.pid]; ids[i] = selecionado.pid; selecionado = null; }
   else { selecionado = { onde: "campo", i }; return telaElenco(); }
   if (ids.some((x) => !x)) { telaElenco(); return toast("Falta gente para completar os 11."); }
-  await salvarEscalacao({ titulares: ids, fixo: true });
+  await salvarEscalacao({ titulares: ids, fixo: true }, { tipo: "troca", envolvidos });
 });
 $("eBanco").addEventListener("click", async (e) => {
   const f = e.target.closest(".figurinha"); if (!f || E.partida) return;
@@ -72,7 +74,7 @@ $("eBanco").addEventListener("click", async (e) => {
     if (fora(pid)) { telaElenco(); return toast(`${nomeJogador(pid)} não pode jogar (${fora(pid) === "lesao" ? "lesionado" : "suspenso"}).`); }
     ids[i] = pid;
     if (ids.some((x) => !x)) { telaElenco(); return toast("Falta gente para completar os 11."); }
-    return salvarEscalacao({ titulares: ids, fixo: true });
+    return salvarEscalacao({ titulares: ids, fixo: true }, { tipo: "troca", envolvidos: [pid] });
   }
   selecionado = { onde: "banco", pid }; telaElenco();
 });
@@ -84,9 +86,9 @@ document.addEventListener("click", async (e) => {
     // os mesmos 11, e o motor acha o melhor lugar de cada um na formação nova
     const ids = Motor.escalacaoDetalhada(meuTime()).map((v) => v.id).filter(Boolean);
     selecionado = null;
-    return salvarEscalacao(ids.length === 11 && esc.titulares ? { formacao: b.dataset.formacao, titulares: ids, fixo: false } : { formacao: b.dataset.formacao });
+    return salvarEscalacao(ids.length === 11 && esc.titulares ? { formacao: b.dataset.formacao, titulares: ids, fixo: false } : { formacao: b.dataset.formacao }, { tipo: "formacao" });
   }
   const k = ["mentalidade", "pressao", "linha"].find((x) => b.dataset[x] != null);
   salvarEscalacao({ tatica: { ...esc.tatica, [k]: +b.dataset[k] } });
 });
-$("eAuto").onclick = () => { selecionado = null; salvarEscalacao({ titulares: null }); };
+$("eAuto").onclick = () => { selecionado = null; salvarEscalacao({ titulares: null }, { tipo: "formacao" }); };

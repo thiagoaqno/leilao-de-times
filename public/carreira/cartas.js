@@ -124,8 +124,11 @@ function desenharFicha(resposta) {
     if ($("fTirar")) $("fTirar").onclick = async () => { const r = await pedir("vender", { jogador: pid, modo: "lista" }); if (!r.ok) return toast(r.error); receber(r.estado); desenharFicha(); };
     $("fVenderJa").onclick = async () => {
       if (!confirm(`Vender ${j.nome} agora por ${$("fVenderJa").textContent.replace(/^.*por /, "")}?`)) return;
+      const de = E.clube;
       const r = await pedir("vender", { jogador: pid, modo: "agora" }); if (!r.ok) return toast(r.error);
+      const transferencia = r.estado.transferencias.find((t) => t.jogador === pid && t.de === de);
       receber(r.estado); $("ficha").close(); toast(r.mensagem);
+      AnimacoesCarreira.animarTransferencia({ jogador: pid, tipo: "venda", de, para: transferencia?.para, valor: transferencia?.valor });
     };
   } else if (EM_GRUPO) {
     if ($("fLeilao")) $("fLeilao").onclick = async () => { const r = await agirGrupo({ type: "leilao", jogador: pid }); if (r.ok) $("ficha").close(); };
@@ -149,7 +152,7 @@ function desenharFicha(resposta) {
       const r = await pedir("proposta", { jogador: pid, valor: v, salario: s, parcelas: $("fParcelas").checked, troca: $("fTroca").value || null });
       if (!r.ok) return toast(r.error);
       receber(r.estado);
-      if (r.resposta.resultado === "aceita") { $("ficha").close(); toast(r.resposta.motivo); festa(); return; }
+      if (r.resposta.resultado === "aceita") { $("ficha").close(); toast(r.resposta.motivo); festa(); AnimacoesCarreira.animarTransferencia({ jogador: pid, de: clube, para: E.clube, valor: v }); return; }
       desenharFicha(r.resposta);
     };
   }

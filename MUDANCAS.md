@@ -1,26 +1,30 @@
-# Carreira: as outras telas no visual do hub
+# Carreira: mercado e prancheta vivos
 
-O hub da carreira (a sede no estilo EA FC) já tinha a cara nova. Agora o elenco, o mercado, a tabela, o calendário e
-as notícias seguem o mesmo visual. É só CSS, mais a classe `hub` nas telas (`public/carreira/index.html`); nenhum
-JavaScript e nenhum servidor mudam.
+Este PR intermediário completa o polimento visual que ficou fora da repaginação do hub. Não muda as regras da carreira
+nem implementa o encerramento do PR 7: anima somente resultados já confirmados pelo servidor.
 
 ## O que muda
-- **As cinco telas** ganham o estádio à noite ao fundo, os painéis de vidro e a cor de destaque do seu clube (a mesma
-  do hub: o Flamengo em vermelho, o Palmeiras em verde...). No PC, elas usam até 1320 px de largura.
-- **O topo de cada tela** (o "← Sede" e o título) virou uma faixa como a do hub, com a cor do clube e um filete no acento.
-- **Os controles:** os botões de escolha (formação, posições do mercado, modos), as abas das competições e os controles
-  deslizantes usam a cor do clube. No mercado, os filtros acompanham a rolagem da tela.
-- **Os cards** do mercado, do banco e do olheiro sobem e brilham na borda ao passar o mouse.
-- **A tabela:** a linha do seu clube fica na cor dele, com um filete; as linhas acendem no hover.
-- **O calendário:** o próximo jogo fica destacado na cor do clube.
-- **O leilão e o olheiro** (carreira em grupo) ganham o mesmo vidro e o brilho.
-- Quem pede "menos movimento" no sistema fica sem as animações de hover.
 
-## Ficou para depois
-As animações de contratação e de transferência (o card voando, o carimbo de "vendido", o martelo).
+- **Prancheta animada:** jogadores voam da posição antiga para a nova ao trocar titulares, banco ou formação. Depois
+  da mudança, eles comentam o ajuste em balões; são 40 frases diferentes, separadas entre entrar em campo, ir para o
+  banco, trocar de posição e mudar a formação.
+- **Contratações e vendas:** a figurinha cruza a tela entre os clubes, o martelo bate e entra o carimbo de
+  `CONTRATADO` ou `VENDIDO`. O efeito aparece na proposta aceita, na venda imediata, na disputa do mercado e no leilão
+  em grupo.
+- **Faixa do leilão:** agora mostra retrato, posição, clube, maior lance, líder, relógio circular e ações numa faixa de
+  estádio que usa a cor do time. Um lance novo pulsa sem reiniciar a animação inteira a cada segundo.
+- **Olheiro:** as sugestões viraram relatórios numerados, com selo de prioridade, posição, nota, valor e justificativa.
+- **Notícias aleatórias:** os eventos do catálogo voltam a aparecer no feed da carreira mundial. Eles continuavam sendo
+  sorteados e enviados à caixa de entrada, mas o calendário novo publicava no feed apenas resultados e transferências.
+- **Acessibilidade:** quem pede menos movimento recebe os mesmos estados e informações sem voos, carimbadas ou entradas
+  animadas.
 
 ## Conferido
-- **Fotos:** `planos/imagens/carreira-tela-elenco.png`, `carreira-tela-mercado.png`, `carreira-tela-tabela.png` e
-  `carreira-tela-calendario.png` (Flamengo, no vermelho do clube).
-- **E2E da carreira:** 4 de 4 passando. Na primeira rodada, um teste falhou esperando o diálogo de decisão fechar, o
-  que parece instabilidade de tempo (a mudança é só de CSS); na segunda, passaram os 4.
+
+- **Testes focados:** 12 testes de catálogo, temporada mundial e animações passaram, incluindo uma regressão nova que
+  exige evento aleatório no feed mundial e impede notícia duplicada. Na rodada anterior, 10 de 12 testes de mercado e
+  carreira online passaram juntos; os dois casos antigos de finanças simuladas oscilaram e passaram repetidos sozinhos.
+- **E2E da carreira:** os quatro cenários passaram; o cenário em grupo foi repetido depois do ajuste do primeiro leilão
+  da sessão e passou. Desktop, celular, olheiro, balões e venda em grupo ficaram cobertos.
+- **Fotos:** `planos/imagens/carreira-formacao-1280.png`, `carreira-olheiro-1280.png`, `carreira-leilao.png` e
+  `carreira-transferencia.png`.

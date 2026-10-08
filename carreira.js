@@ -482,7 +482,7 @@ function fecharRodada(save, r) {
 // pelos machucados e suspensos uma vez por rodada (cumprir), e o mundo é recalculado no fim da rodada (recalcular).
 function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = true } = {}) {
   const p = save.partida, clube = clubeDe(save, save.clube), emCasa = p.casa === save.clube;
-  const moralAntes = save.moral, caixaAntes = save.caixa;
+  const moralAntes = save.moral, caixaAntes = save.caixa, entradaAntes = new Set(save.caixaEntrada.map((e) => e.id)), transfAntes = save.transferencias.length;
   const [nos, eles] = emCasa ? r.placar : [r.placar[1], r.placar[0]];
   // quem cumpriu suspensão ou estava machucado neste jogo tem um jogo a menos para voltar (antes dos cartões novos)
   if (cumprir) cumprirRodada(save);
@@ -512,6 +512,8 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   }
   if (proximoJogoMundo(save)) for (const e of Eventos.gerarEventos(save, ajudas)) save.caixaEntrada.unshift(e);
   save.caixaEntrada.length = Math.min(save.caixaEntrada.length, 40);
+  const novos = save.caixaEntrada.filter((e) => !entradaAntes.has(e.id));
+  Feed.entreRodadas(save, { novos, transferencias: save.transferencias.slice(0, save.transferencias.length - transfAntes), ajudas });
   const f = save.financas[0] && save.financas[0].rodada === save.rodada - 1 ? save.financas[0].itens : [];
   save.posJogo = { rodada: save.rodada - 1, casa: p.casa, fora: p.fora, placar: r.placar, resultado: nos > eles ? "V" : nos === eles ? "E" : "D", moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: [], avisos: [] };
   if (recalcular) registrarTemporada(save);
