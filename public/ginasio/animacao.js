@@ -416,14 +416,15 @@ function bichoInfo(pose, agora) {
   // o topo do cartaz, que deita um pouco para trás (cena3d.js)
   const h = alto ? 1.3 : pose.alturaSprite * ESTICA_CARTAZ + 0.25, deita = alto || !cena3d.ok ? 0 : DEITA_CARTAZ;
   const topo = pontoTela(pose.wx, pose.wy - h * Math.sin(deita), (alto ? 0 : pose.altura) + h * Math.cos(deita));
-  const largura = Math.max(15, s * 1.5), x = topo.x, topoVida = Math.max(6, topo.y);
-  ret(x - largura / 2 - 1, topoVida - 1, largura + 2, 4, "#334d3b");
-  ret(x - largura / 2, topoVida, largura * Math.max(0, e.hp / e.max), 2, e.lado ? "#ec828b" : "#55b49c");
+  const u = Math.max(1, camera.traco / 2); // um pixel de meia tela
+  const largura = Math.max(15 * u, s * 1.5), x = topo.x, topoVida = Math.max(6 * u, topo.y);
+  ret(x - largura / 2 - u, topoVida - u, largura + 2 * u, 4 * u, "#334d3b");
+  ret(x - largura / 2, topoVida, largura * Math.max(0, e.hp / e.max), 2 * u, e.lado ? "#ec828b" : "#55b49c");
   if (e.canal) {
     const pe = pontoTela(pose.wx, pose.wy);
-    ret(x - largura / 2, pe.y + 2, largura, 2, "#315747"); ret(x - largura / 2, pe.y + 2, largura * (1 - e.canal.t / 0.8), 2, "#b7f59b");
+    ret(x - largura / 2, pe.y + 2 * u, largura, 2 * u, "#315747"); ret(x - largura / 2, pe.y + 2 * u, largura * (1 - e.canal.t / 0.8), 2 * u, "#b7f59b");
     if (Math.random() < 0.25) particula(e.x + (Math.random() - 0.5) * 0.7, e.y, { vz: 1.4, g: -0.5, cor: "#b7f59b", vida: 0.6, tam: 0.09 });
   }
-  if (Object.values(e.st || {}).some((n) => n > 0)) texto("+", x + largura / 2 + 3, topoVida + 6, "#167247", 8);
-  if (Object.values(e.st || {}).some((n) => n < 0)) texto("−", x - largura / 2 - 3, topoVida + 6, "#9f3254", 8);
+  if (Object.values(e.st || {}).some((n) => n > 0)) texto("+", x + largura / 2 + 3 * u, topoVida + 6 * u, "#167247", 8 * u);
+  if (Object.values(e.st || {}).some((n) => n < 0)) texto("−", x - largura / 2 - 3 * u, topoVida + 6 * u, "#9f3254", 8 * u);
 }

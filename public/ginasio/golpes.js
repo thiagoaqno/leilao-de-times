@@ -26,7 +26,7 @@ const ZIGUE = [[0.5, -0.45, 0.6, -0.5], [-0.5, 0.5, -0.3, 0.45], [0.35, -0.6, 0.
 function poligono(pontos, cor, contorno) {
   ctx.beginPath(); pontos.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
   ctx.fillStyle = cor; ctx.fill();
-  if (contorno) { ctx.strokeStyle = contorno; ctx.lineWidth = 1; ctx.stroke(); }
+  if (contorno) { ctx.strokeStyle = contorno; ctx.lineWidth = camera.traco; ctx.stroke(); }
 }
 function estrela(n, r1, r2, giro, cor, contorno) {
   const pts = [];
@@ -37,7 +37,7 @@ function raioZigue(de, ate, r, quadro, grosso, fina) {
   const z = ZIGUE[quadro % 4], pts = [[de, 0]];
   for (let i = 0; i < 4; i++) pts.push([de + ((ate - de) * (i + 1)) / 5, z[i] * r]);
   pts.push([ate, 0]);
-  for (const [cor, lw] of [[grosso, Math.max(2, r * 0.55)], [fina, 1]]) {
+  for (const [cor, lw] of [[grosso, Math.max(2, r * 0.55)], [fina, camera.traco]]) {
     ctx.strokeStyle = cor; ctx.lineWidth = lw; ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
   }
 }
@@ -70,7 +70,7 @@ function desenharProjetil(tipo, x, y, r, angulo, agora, id = 0) {
     if (fam === "gelo") {
       ctx.strokeStyle = P[3]; ctx.lineWidth = Math.max(2, r * 0.35);
       for (let a = 0; a < 3; a++) { const c = Math.cos((a * Math.PI) / 3) * r * 1.1, s2 = Math.sin((a * Math.PI) / 3) * r * 1.1; ctx.beginPath(); ctx.moveTo(c, s2); ctx.lineTo(-c, -s2); ctx.stroke(); }
-      ctx.strokeStyle = P[1]; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = P[1]; ctx.lineWidth = camera.traco; ctx.stroke();
       estrela(4, r * 0.55, r * 0.25, 0, P[0]);
     } else { estrela(4, r * 1.15, r * 0.4, 0, P[2], P[3]); estrela(4, r * 0.55, r * 0.2, 0, P[0]); }
   } else if (fam === "pedra" || fam === "terra") {
@@ -93,11 +93,11 @@ function desenharProjetil(tipo, x, y, r, angulo, agora, id = 0) {
   } else if (fam === "sombrio") {
     ctx.rotate(t / 60);
     ctx.beginPath(); ctx.arc(0, 0, r * 1.1, -Math.PI * 0.75, Math.PI * 0.75); ctx.arc(r * 0.45, 0, r * 0.8, Math.PI * 0.62, -Math.PI * 0.62, true); ctx.closePath();
-    ctx.fillStyle = P[3]; ctx.fill(); ctx.strokeStyle = P[1]; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = P[3]; ctx.fill(); ctx.strokeStyle = P[1]; ctx.lineWidth = camera.traco; ctx.stroke();
   } else if (fam === "voador") {
     ctx.strokeStyle = P[2]; ctx.lineWidth = Math.max(2, r * 0.3);
     for (let i = -1; i <= 1; i++) { const dx = ((quadro + i + 3) % 3) * r * 0.25; ctx.beginPath(); ctx.arc(-r * 0.4 - dx, i * r * 0.55, r * 0.9, -Math.PI * 0.35, Math.PI * 0.35); ctx.stroke(); }
-    ctx.strokeStyle = P[0]; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(-r * 0.4, 0, r * 0.9, -Math.PI * 0.35, Math.PI * 0.35); ctx.stroke();
+    ctx.strokeStyle = P[0]; ctx.lineWidth = camera.traco; ctx.beginPath(); ctx.arc(-r * 0.4, 0, r * 0.9, -Math.PI * 0.35, Math.PI * 0.35); ctx.stroke();
   } else if (fam === "lutador") {
     for (let i = -1; i <= 1; i++) ret(-r * 2.2 + (quadro % 2) * r * 0.3, i * r * 0.6, r * 1.1, 1, P[1]);
     ret(-r * 0.7, -r * 0.8, r * 1.5, r * 1.6, P[3]); ret(-r * 0.55, -r * 0.65, r * 1.2, r * 1.3, P[1]);

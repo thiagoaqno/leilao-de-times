@@ -1,12 +1,13 @@
 // O Ginásio em 3D pixelado: a quadra, a arquibancada com a torcida, os pilares, a luz e as sombras numa cena Three.js
-// desenhada em meia resolução e ampliada sem suavizar (desenho.js junta tudo no #cv).
+// desenhada na resolução da tela, com antisserrilhado (desenho.js junta tudo no #cv). Os sprites continuam com os pixels
+// nítidos, sem suavizar.
 // - O chão da quadra é o desenho 2D de sempre (temas.js, marcas.js, as áreas e a mira), pintado num canvas visto de
 //   cima (chaoCv, em desenho.js) e usado como textura do piso.
 // - Os bichos e os projéteis continuam sendo os desenhos de animacao.js e golpes.js, pintados num atlas (atlasCv) e
 //   mostrados como cartazes em pé na quadra, na profundidade certa. Os bichos fazem sombra no chão.
 // - O THREE chega por um <script type="module"> no index.html (window.THREE). Até lá (ou sem WebGL), desenho.js
 //   desenha a quadra reta, vista de cima.
-// - Modo leve (celular fraco ou quadros lentos): menos pixels, sem sombra de verdade (só a mancha embaixo do bicho) e
+// - Modo leve (celular fraco ou quadros lentos): meia resolução, sem antisserrilhado, sem sombra de verdade (só a mancha embaixo do bicho) e
 //   torcida parada. Com "menos movimento" no sistema, a torcida também fica parada e a câmera não treme.
 const ATLAS = { w: 1024, h: 512, casa: 128 }; // 8 x 4 casas de 128 pixels
 const PX_CARTAZ = 96 / 3.1; // pixels do atlas por casa da arena: o GIF do Black/White entra pixel por pixel, sem reduzir
@@ -29,10 +30,10 @@ function iniciarCena3d() {
   if (cena3d.ok) return true;
   if (cena3d.falhou || !window.THREE) return false;
   try {
-    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "default" });
+    const renderer = new THREE.WebGLRenderer({ antialias: !cena3d.leve, alpha: false, powerPreference: cena3d.leve ? "low-power" : "high-performance" });
     renderer.setPixelRatio(1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.type = THREE.BasicShadowMap; // sombra de borda dura, que combina com o pixel
+    renderer.shadowMap.type = THREE.PCFShadowMap; // sombra de borda macia
     const scene = new THREE.Scene();
     const cam = new THREE.PerspectiveCamera(30, 16 / 9, 1, 160);
     // a luz: o ambiente (o que fica na sombra) e o sol vindo do alto, da esquerda e do fundo (a sombra cai para a
@@ -145,14 +146,14 @@ function montarTema(T) {
   pc.font = "700 14px ui-monospace,monospace"; pc.textAlign = "center"; pc.textBaseline = "middle"; pc.fillText(T.nome, 128, 13);
   const letreiro = new THREE.Mesh(new THREE.PlaneGeometry(12, 1.125), new THREE.MeshBasicMaterial({ map: texturaDe(placa) }));
   letreiro.position.set(0, 2.75, -9.58); grupo.add(letreiro);
-  // os pilares: oito lados, com a tampa e a faixa de brilho do tema
+  // os pilares: dezesseis lados, com a tampa e a faixa de brilho do tema
   const [, corpoPilar, topoPilar, brilhoPilar] = T.pilar;
   for (const p of Ginasio.ARENA.pilares) {
-    const c = new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r * 1.06, 1.1, 8), toon(corpoPilar));
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r * 1.06, 1.1, 16), toon(corpoPilar));
     c.position.set(p.x, 0.55, p.y); c.castShadow = c.receiveShadow = true; grupo.add(c);
-    const tampa = new THREE.Mesh(new THREE.CylinderGeometry(p.r * 1.08, p.r * 1.08, 0.18, 8), toon(topoPilar));
+    const tampa = new THREE.Mesh(new THREE.CylinderGeometry(p.r * 1.08, p.r * 1.08, 0.18, 16), toon(topoPilar));
     tampa.position.set(p.x, 1.15, p.y); tampa.castShadow = true; grupo.add(tampa);
-    const faixa = new THREE.Mesh(new THREE.CylinderGeometry(p.r * 1.02, p.r * 1.02, 0.08, 8), toon(brilhoPilar));
+    const faixa = new THREE.Mesh(new THREE.CylinderGeometry(p.r * 1.02, p.r * 1.02, 0.08, 16), toon(brilhoPilar));
     faixa.position.set(p.x, 0.85, p.y); grupo.add(faixa);
   }
   cena3d.temaFeito = T;
