@@ -3,6 +3,7 @@
 const G = require("./public/ginasio/regras.js");
 const Galeramon = require("./public/galeramon/dados.js");
 const PokeDex = require("./public/galeramon/pokemon.js");
+const NarutoDex = require("./public/galeramon/naruto.js");
 const Lideres = require("./public/galeramon/lideres.js"); // os líderes e treinadores da Vila (o time dos robôs)
 const { rid, novoCodigo, limparNome, ok, falha, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js");
 const noite = require("./noite.js");
@@ -16,13 +17,13 @@ const BOT_NOMES = ["Robozinho", "Parafuso", "Tchuco", "Bip-Bop"];
 const objeto = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 const finito = (v) => typeof v === "number" && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const dexDe = (modo) => modo === "pokemon" ? PokeDex : Galeramon;
+const dexDe = (modo) => ({ galeramon: Galeramon, pokemon: PokeDex, naruto: NarutoDex })[modo] || Galeramon;
 
 function limparConfig(c) {
   c = objeto(c) ? c : {};
   // lider: o desafio a um líder ou treinador da Vila (1x1 contra o robô com o time dele)
   const lider = Lideres.de(c.lider) ? c.lider : null;
-  return { modo: c.modo === "pokemon" ? "pokemon" : "galeramon", formato: lider ? "1x1" : c.formato === "2x2" ? "2x2" : "1x1", bots: lider ? true : c.bots !== false, ...(lider && { lider }) };
+  return { modo: ["galeramon", "pokemon", "naruto"].includes(c.modo) ? c.modo : "galeramon", formato: lider ? "1x1" : c.formato === "2x2" ? "2x2" : "1x1", bots: lider ? true : c.bots !== false, ...(lider && { lider }) };
 }
 
 function timeValido(modo, time) {
@@ -68,14 +69,14 @@ module.exports = function ligarGinasio(io) {
   function adicionar(sala, name, time) {
     const id = rid(6), n = tamanho(sala), a = doLado(sala, 0).length, b = doLado(sala, 1).length;
     const lado = a <= b && a < n ? 0 : b < n ? 1 : null;
-    const p = { id, token: rid(12), name, lado, rtt: null, sockets: new Set(), times: { galeramon: Galeramon.DEFAULT_TEAM.slice(), pokemon: PokeDex.DEFAULT_TEAM.slice() } };
+    const p = { id, token: rid(12), name, lado, rtt: null, sockets: new Set(), times: { galeramon: Galeramon.DEFAULT_TEAM.slice(), pokemon: PokeDex.DEFAULT_TEAM.slice(), naruto: NarutoDex.DEFAULT_TEAM.slice() } };
     if (time) p.times[sala.config.modo] = time.slice();
     sala.players[id] = p; sala.order.push(id); limparEntrada(p);
     return p;
   }
   // A Vila reserva os dois lados; cada pessoa assume seu lugar com o proprio token.
   function criarDesafio(modo, a, b) {
-    if (!["galeramon", "pokemon"].includes(modo)) return null;
+    if (!["galeramon", "pokemon", "naruto"].includes(modo)) return null;
     const nomes = [a, b].map((p) => limparNome(p.name));
     if (nomes.some((n) => !n) || ![a, b].every((p) => timeValido(modo, p.team))) return null;
     const sala = novaSala({ modo, formato: "1x1", bots: false });
@@ -96,6 +97,7 @@ module.exports = function ligarGinasio(io) {
         id: e.id, lado: e.lado, slot: e.slot, x: e.x, y: e.y, vx: e.vx, vy: e.vy, mira: { ...e.mira },
         campo: e.campo, bicho: e.bicho.id, forma: e.bicho.as || e.bicho.id, raio: e.raio,
         hp: e.bicho.hp, max: e.bicho.max, cds: [...e.bicho.cds], st: { ...e.bicho.st },
+        ...(m.modo === "naruto" && { chakra: e.bicho.chakra, substitutes: e.jogador.substitutes }),
         esquivaCd: e.esquivaCd, esquivaT: e.esquivaT, invulneravel: e.invulneravel,
         canal: e.canal && { ...e.canal }, escudo: e.escudo && { ...e.escudo },
         dash: e.dash && { x: e.dash.x, y: e.dash.y, falta: e.dash.falta, velocidade: e.dash.hab.velocidade, giro: !!e.dash.hab.giro, elemento: e.dash.hab.tipo },
@@ -149,7 +151,7 @@ module.exports = function ligarGinasio(io) {
     for (const l of sala.match.lados) for (const p of l.jogadores) if (p.bot) p.nome = lider && p.lado === 1 ? lider.nome : BOT_NOMES[b++];
     for (const p of Object.values(sala.players)) limparEntrada(p);
     sala.inicio = Date.now() + PRONTO_MS; sala.frame = 0; sala.results = null; sala.phase = "play";
-    log(sala, `Valendo: ${sala.config.formato}, modo ${sala.config.modo === "pokemon" ? "Pokémon" : "Galeramon"}.`);
+    log(sala, `Valendo: ${sala.config.formato}, modo ${{ pokemon: "Pokémon", naruto: "Naruto Shippuden" }[sala.config.modo] || "Galeramon"}.`);
     clearInterval(sala.loop);
     sala.loop = setInterval(() => tick(sala), TICK_MS);
   }

@@ -5,6 +5,7 @@ const FAMILIA = {
   Fogo: "fogo", "Dragão": "dragao", "Água": "agua", Raio: "raio", "Elétrico": "raio", Grama: "planta", Inseto: "inseto",
   Gelo: "gelo", "Aço": "aco", Pedra: "pedra", Terrestre: "terra", "Psíquico": "psiquico", Fantasma: "fantasma",
   Venenoso: "veneno", Sombrio: "sombrio", Voador: "voador", Lutador: "lutador", Fada: "fada", Normal: "normal",
+  Vento: "voador", Terra: "terra", Sombra: "fantasma", Medicina: "fada", Taijutsu: "lutador",
 };
 // do mais claro ao mais escuro
 const PALETA = {

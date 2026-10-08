@@ -1379,11 +1379,9 @@ function openPlayer(o) {
   $("popX").onclick = closePop;
   $("popTeam").onclick = (e) => { e.preventDefault(); closePop(); $("bTeam").click(); };
   const atualizar = () => {
-    if (mode === "naruto" && jogo === "ginasio") jogo = "turnos";
     $("desafioTime").textContent = `Seu time de ${MODE_NAME[mode]}: ${teamText(mode)}`;
     $("desafioEnviar").textContent = jogo === "ginasio" ? "Desafiar no Ginásio (tempo real)" : `⚔️ Desafiar em ${MODE_NAME[mode]}`;
     $("popBox").querySelectorAll("[data-jogo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.jogo === jogo)));
-    $("popBox").querySelector('[data-jogo="ginasio"]').disabled = mode === "naruto";
     $("popBox").querySelectorAll("[data-modo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.modo === mode)));
   };
   $("popBox").querySelectorAll("[data-jogo]").forEach((b) => (b.onclick = () => { if (b.disabled) return; jogo = b.dataset.jogo; atualizar(); }));

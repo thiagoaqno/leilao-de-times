@@ -1,10 +1,10 @@
 // Ginásio da Galera — motor da batalha em tempo real.
 // Roda igual no servidor e no navegador: o servidor decide dano, acertos, desmaios e fim da partida.
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/dados.js"), require("../galeramon/pokemon.js"), require("../galeramon/lideres.js"));
-  else root.Ginasio = factory(root.Galeramon, root.PokeDex, root.Lideres);
-})(typeof self !== "undefined" ? self : this, function (Galeramon, PokeDex, Lideres) {
-  const DEX = { galeramon: Galeramon, pokemon: PokeDex };
+  if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/dados.js"), require("../galeramon/pokemon.js"), require("../galeramon/naruto.js"), require("../galeramon/lideres.js"));
+  else root.Ginasio = factory(root.Galeramon, root.PokeDex, root.NarutoDex, root.Lideres);
+})(typeof self !== "undefined" ? self : this, function (Galeramon, PokeDex, NarutoDex, Lideres) {
+  const DEX = { galeramon: Galeramon, pokemon: PokeDex, naruto: NarutoDex };
   const ARENA = {
     w: 18, h: 12,
     pilares: [
@@ -93,7 +93,7 @@
 
   function novoBicho(D, id) {
     const m = D.MONS[id];
-    return { id, hp: m.hp, max: m.hp, st: { atk: 0, def: 0, spd: 0 }, usos: {}, mods: [], cds: [0, 0, 0, 0], as: null, folga: false };
+    return { id, hp: m.hp, max: m.hp, st: { atk: 0, def: 0, spd: 0 }, usos: {}, mods: [], cds: [0, 0, 0, 0], as: null, folga: false, ...(D.CHAKRA_MAX && { chakra: D.CHAKRA_START }) };
   }
 
   function timePadrao(D, lado, slot) {
@@ -134,7 +134,7 @@
           id: raw.id || `bot${lado + 1}${slot + 1}`,
           nome: raw.nome || raw.name || `Robô ${lado + 1}-${slot + 1}`,
           bot: raw.bot !== false && (raw.bot || !lista[slot]),
-          lado, slot, ativo: 0, trocaCd: 0, entradaEm: 0,
+          lado, slot, ativo: 0, trocaCd: 0, entradaEm: 0, ...(modo === "naruto" && { substitutes: 2 }),
           time: team.map((id) => novoBicho(dex, id)),
         };
         p.lados[lado].jogadores.push(j);
@@ -254,7 +254,7 @@
   function usarGolpe(p, e, idx, c = {}) {
     if (!emCampo(e) || e.canal || e.impedido > 0 || e.oculto) return false;
     const b = e.bicho, spc = spec(p, b), key = spc.moves[idx], mv = p.dex.MOVES[key];
-    if (!mv || b.cds[idx] > 0) return false;
+    if (!mv || b.cds[idx] > 0 || (p.modo === "naruto" && b.chakra < (mv.custo || 0))) return false;
     let hab = prepararGolpe(p, habilidadeDeGolpe(key, mv));
     if (spc.abil === "truant") {
       if (b.folga) {
@@ -266,10 +266,11 @@
       b.folga = true;
     }
     if (mv.max) {
+      if ((b.usos[key] || 0) >= mv.max) { p.ev.push({ tipo: "falhou", id: e.id, golpe: key }); return false; }
       b.usos[key] = (b.usos[key] || 0) + 1;
-      if (b.usos[key] > mv.max) { p.ev.push({ tipo: "falhou", id: e.id, golpe: key }); return false; }
     }
     b.cds[idx] = hab.recarga;
+    if (p.modo === "naruto") b.chakra -= mv.custo || 0;
     p.ev.push({ tipo: "golpe", id: e.id, golpe: key, classe: hab.classe, elemento: hab.tipo });
 
     if (hab.classe === "metronomo") {
@@ -422,9 +423,14 @@
 
   function esquivar(p, e, c) {
     if (!emCampo(e) || e.esquivaCd > 0 || e.oculto) return;
+    if (p.modo === "naruto") {
+      if (e.jogador.substitutes <= 0 || e.bicho.chakra < 20) return;
+      e.jogador.substitutes--;
+      e.bicho.chakra -= 20;
+    }
     const mov = dirMov(c), d = norm(mov.x, mov.y, e.mira);
     e.invulneravel = Math.max(e.invulneravel, 0.25);
-    e.esquivaCd = 3;
+    e.esquivaCd = p.modo === "naruto" ? 5 : 3;
     e.esquivaT = 0.18;
     e.vx = d.x * 8;
     e.vy = d.y * 8;
@@ -494,7 +500,7 @@
     let ideal = 3.2, golpe = null, valor = -Infinity;
     const moves = spec(p, e.bicho).moves || [];
     for (let i = 0; i < moves.length; i++) {
-      if (e.bicho.cds[i] > 0) continue;
+      if (e.bicho.cds[i] > 0 || (p.modo === "naruto" && e.bicho.chakra < (p.dex.MOVES[moves[i]].custo || 0))) continue;
       const hab = habilidadeDeGolpe(moves[i], p.dex.MOVES[moves[i]]);
       const alcance = hab.classe === "corpo" ? 1.1 : hab.classe === "investida" ? 2.5 : 4.2;
       const eff = p.dex.effect(hab.tipo, spec(p, alvo.bicho).types || ["Normal"]);
@@ -506,7 +512,7 @@
     else if (d < ideal - 0.35) { mx = -dx / d; my = -dy / d; }
     const perigo = p.projeteis.some((pr) => pr.lado !== e.lado && vindoNaDirecao(pr, e));
     const cmd = { dx: mx, dy: my, mira: { x: dx, y: dy } };
-    if (perigo && e.esquivaCd <= 0) { cmd.esquiva = true; cmd.dx = -dy / d; cmd.dy = dx / d; }
+    if (perigo && e.esquivaCd <= 0 && (p.modo !== "naruto" || (e.jogador.substitutes > 0 && e.bicho.chakra >= 20))) { cmd.esquiva = true; cmd.dx = -dy / d; cmd.dy = dx / d; }
     if (golpe != null && (d < 5 || valor > 4) && p.rng() < 0.18) {
       cmd.golpe = golpe;
       const hab = habilidadeDeGolpe(moves[golpe], p.dex.MOVES[moves[golpe]]);
@@ -559,6 +565,7 @@
     for (const e of p.entidades) {
       const b = e.bicho;
       for (let i = 0; i < b.cds.length; i++) b.cds[i] = Math.max(0, b.cds[i] - dt);
+      if (p.modo === "naruto" && e.campo && b.hp > 0) b.chakra = Math.min(p.dex.CHAKRA_MAX, b.chakra + dt * 8);
       atualizarMods(b, dt);
       e.invulneravel = Math.max(0, e.invulneravel - dt);
       e.esquivaCd = Math.max(0, e.esquivaCd - dt);
@@ -589,7 +596,7 @@
   function estado(p) {
     return {
       modo: p.modo, t: p.t, fim: p.fim, vencedor: p.vencedor, empate: p.empate,
-      entidades: p.entidades.map((e) => ({ id: e.id, lado: e.lado, x: e.x, y: e.y, campo: e.campo, bicho: e.bicho.id, hp: e.bicho.hp, max: e.bicho.max, ativo: e.jogador.ativo })),
+      entidades: p.entidades.map((e) => ({ id: e.id, lado: e.lado, x: e.x, y: e.y, campo: e.campo, bicho: e.bicho.id, hp: e.bicho.hp, max: e.bicho.max, ativo: e.jogador.ativo, ...(p.modo === "naruto" && { chakra: e.bicho.chakra, substitutes: e.jogador.substitutes }) })),
       projeteis: p.projeteis.map((pr) => ({ id: pr.id, x: pr.x, y: pr.y, tipo: pr.hab.tipo })),
       areas: p.areas.map((a) => ({ id: a.id, x: a.x, y: a.y, r: a.r, t: a.t, tipo: a.hab.tipo })),
     };

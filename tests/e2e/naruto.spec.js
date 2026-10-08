@@ -25,7 +25,7 @@ test("Vila: monta time de Naruto e joga um turno com chakra", async ({ browser }
     await a.locator("#bTeam").click();
     await a.locator(".blist > div").filter({ hasText: "NinjaB" }).getByRole("button", { name: "Desafiar" }).click();
     await a.locator('[data-modo="naruto"]').click();
-    await expect(a.locator('[data-jogo="ginasio"]')).toBeDisabled();
+    await expect(a.locator('[data-jogo="ginasio"]')).toBeEnabled();
     await a.locator("#desafioEnviar").click();
     await expect(b.locator("#popBox")).toContainText("Naruto Shippuden");
     await b.locator("#invYes").click();
@@ -39,6 +39,35 @@ test("Vila: monta time de Naruto e joga um turno com chakra", async ({ browser }
   } finally {
     await a.close(); await b.close();
   }
+});
+
+test("Ginásio: Naruto em tempo real carrega sprites, gasta chakra e usa Substituição", async ({ page }) => {
+  const erros = []; page.on("pageerror", (e) => erros.push(e.message));
+  await page.goto("/ginasio/#debug");
+  await expect(page.locator("#conexao")).toHaveText("Online");
+  await page.locator('[data-modo="naruto"]').click();
+  await expect(page.locator("#meuTime")).toContainText("Naruto");
+  await page.locator("#hName").fill("Ninja");
+  await page.locator("#btnRobo").click();
+  await page.waitForFunction(() => window.__ginasio?.S?.phase === "play" && window.__ginasio.N.snap?.tempo > 0.1);
+  await page.waitForFunction(() => {
+    const g = window.__ginasio;
+    return g.N.snap.entidades.every((e) => g.imagens.get(`naruto:${e.forma}`)?.pronto);
+  });
+  await expect(page.locator("#chakraHud")).toContainText("Chakra");
+  await expect(page.locator("#btnEsquiva")).toHaveAttribute("aria-label", /Substituição/);
+  await page.keyboard.press("Space");
+  await expect.poll(() => page.evaluate(() => window.__ginasio.N.snap.entidades.find((e) => e.id === window.__ginasio.ME.id).substitutes)).toBe(1);
+  const antes = await page.evaluate(() => window.__ginasio.N.snap.entidades.find((e) => e.id === window.__ginasio.ME.id).chakra);
+  await page.keyboard.press("q");
+  await expect.poll(() => page.evaluate(() => window.__ginasio.N.snap.entidades.find((e) => e.id === window.__ginasio.ME.id).cds[2])).toBeGreaterThan(0);
+  const depois = await page.evaluate(() => window.__ginasio.N.snap.entidades.find((e) => e.id === window.__ginasio.ME.id).chakra);
+  expect(depois).toBeLessThan(antes);
+  await page.screenshot({ path: test.info().outputPath("naruto-ginasio.png") });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("naruto-ginasio-celular.png") });
+  expect(erros).toEqual([]);
 });
 
 test("Vila: seleção de Naruto cabe na tela do celular", async ({ browser }) => {

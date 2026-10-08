@@ -66,12 +66,12 @@ function configurarToque() {
           entrada.preparando = null; mandarGolpe(i);
         },
       })),
-      { icon: ic("pular"), label: "Esquiva", down: mandarEsquiva },
+      { icon: ic("pular"), label: modoAtual() === "naruto" ? "Subst." : "Esquiva", down: mandarEsquiva },
     ],
   });
   const el = $("toque");
   el.querySelectorAll(".btns button").forEach((b, i) => {
-    b.setAttribute("aria-label", i === 4 ? "Esquiva" : dexAtual().MOVES[mon.moves[i]].n);
+    b.setAttribute("aria-label", i === 4 ? (modoAtual() === "naruto" ? "Substituição" : "Esquiva") : dexAtual().MOVES[mon.moves[i]].n);
     b.title = b.getAttribute("aria-label"); b.dataset.habilidade = i;
     b.insertAdjacentHTML("beforeend", '<i class="recarga"></i><span class="segundos"></span>');
   });

@@ -5,6 +5,7 @@ const { subirServidor, conectar, pedir, esperarEstado } = require("./ajuda.js");
 const G = require("../public/ginasio/regras.js");
 const Galeramon = require("../public/galeramon/dados.js");
 const PokeDex = require("../public/galeramon/pokemon.js");
+const NarutoDex = require("../public/galeramon/naruto.js");
 
 let srv;
 test.before(async () => { srv = await subirServidor({ NODE_ENV: "test", GINASIO_TICK_MS: "1" }); });
@@ -51,13 +52,13 @@ async function entrarVila(t, name) {
   return s;
 }
 async function convidar(a, b, modo = "galeramon", jogo = "ginasio") {
-  const time = modo === "pokemon" ? PokeDex.DEFAULT_TEAM : Galeramon.DEFAULT_TEAM;
+  const time = modo === "pokemon" ? PokeDex.DEFAULT_TEAM : modo === "naruto" ? NarutoDex.DEFAULT_TEAM : Galeramon.DEFAULT_TEAM;
   const convite = esperarEvento(b, "invite");
   await pedir(a, "challenge", { to: b.pid, mode: modo, team: time, ...(jogo === "ginasio" && { jogo }) });
   return convite;
 }
 
-for (const modo of ["galeramon", "pokemon"]) {
+for (const modo of ["galeramon", "pokemon", "naruto"]) {
   test(`ginásio/vila: desafio ${modo} reserva os lados, protege tokens e começa com dois humanos`, async (t) => {
     const a = await entrarVila(t, "Thiago"), b = await entrarVila(t, "Amigo"), c = await entrarVila(t, "Visita");
     const vazamentos = [], atualizacoes = [];
@@ -67,7 +68,7 @@ for (const modo of ["galeramon", "pokemon"]) {
     assert.equal(convite.jogo, "ginasio"); assert.equal(convite.mode, modo);
     const destinoA = esperarEvento(a, "irGinasio"), destinoB = esperarEvento(b, "irGinasio");
     const ocupado = esperarEvento(c, "update", (d) => d.id === b.pid && d.busy);
-    const timeA = modo === "pokemon" ? PokeDex.DEFAULT_TEAM : Galeramon.DEFAULT_TEAM;
+    const timeA = modo === "pokemon" ? PokeDex.DEFAULT_TEAM : modo === "naruto" ? NarutoDex.DEFAULT_TEAM : Galeramon.DEFAULT_TEAM;
     const timeB = timeA.slice().reverse();
     b.emit("answer", { from: a.pid, ok: true, team: timeB });
     const ra = await destinoA, rb = await destinoB; await ocupado;
@@ -96,6 +97,10 @@ for (const modo of ["galeramon", "pokemon"]) {
     assert.equal(st.match.jogadores.length, 2); assert.ok(st.match.jogadores.every((p) => !p.bot));
     const sn = await esperarEvento(ga, "snap", (s) => s.tempo > 0);
     assert.equal(sn.entidades.length, 2);
+    if (modo === "naruto") {
+      assert.equal(sn.entidades[0].substitutes, 2);
+      assert.ok(sn.entidades[0].chakra >= 60);
+    }
   });
 }
 
@@ -309,18 +314,20 @@ test("ginásio/servidor: dois clientes e robôs jogam até o fim e pontuam na No
   assert.deepEqual(lobby.players[0].time, time);
 });
 
-test("ginasio: o desafio de um líder da Vila põe o robô com o nome e o time dele", async (t) => {
-  const Lideres = require("../public/galeramon/lideres.js");
-  const mesa = await abrir(t, { modo: "pokemon", formato: "2x2", bots: false, lider: "mare" }, 1);
-  const st = await esperarEstado(mesa.host, (s) => s.config && s.config.lider === "mare");
-  assert.equal(st.config.formato, "1x1", "desafio de líder é sempre 1x1");
-  assert.equal(st.config.bots, true, "com robô");
-  await pedir(mesa.host, "act", { type: "start" });
-  const jogo = await esperarEstado(mesa.host, (s) => s.match && s.match.jogadores);
-  const robo = jogo.match.jogadores.find((p) => p.bot);
-  assert.equal(robo.nome, "Líder Maré");
-  assert.deepEqual(robo.time, Lideres.de("mare").times.pokemon);
-});
+for (const modo of ["pokemon", "naruto"]) {
+  test(`ginasio: o desafio de um líder da Vila usa o time ${modo}`, async (t) => {
+    const Lideres = require("../public/galeramon/lideres.js");
+    const mesa = await abrir(t, { modo, formato: "2x2", bots: false, lider: "mare" }, 1);
+    const st = await esperarEstado(mesa.host, (s) => s.config && s.config.lider === "mare");
+    assert.equal(st.config.formato, "1x1", "desafio de líder é sempre 1x1");
+    assert.equal(st.config.bots, true, "com robô");
+    await pedir(mesa.host, "act", { type: "start" });
+    const jogo = await esperarEstado(mesa.host, (s) => s.match && s.match.jogadores);
+    const robo = jogo.match.jogadores.find((p) => p.bot);
+    assert.equal(robo.nome, "Líder Maré");
+    assert.deepEqual(robo.time, Lideres.de("mare").times[modo]);
+  });
+}
 
 test("ginasio: o robô comum não é mais sempre o time de fogo", () => {
   const times = new Set();

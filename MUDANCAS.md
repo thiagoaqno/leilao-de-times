@@ -1,4 +1,4 @@
-# Naruto Shippuden nas batalhas por turnos da Vila
+# Naruto Shippuden nas batalhas da Vila e do Ginásio
 
 ## O que entrou
 
@@ -6,10 +6,10 @@
 - Quatro ações por ninja, com jutsus que consomem chakra. Concentrar recupera 35 pontos; cada lado tem duas Substituições que custam 20 de chakra e bloqueiam um ataque.
 - O servidor valida o chakra, resolve as ações e envia os novos estados para os dois jogadores. Galeramon e Pokémon continuam com as regras anteriores.
 - Ícones de sprites do jogo *Naruto Shippuden: Naruto vs. Sasuke* (Nintendo DS), guardados localmente para não depender do site de origem durante a partida. A fonte e as condições de uso estão em `public/galeramon/NARUTO-ASSETS.md`.
-- O Ginásio em tempo real continua com Galeramon e Pokémon; o botão fica indisponível ao escolher Naruto.
+- Ginásio em tempo real com Naruto em 1x1 e 2x2, contra pessoas, robôs ou líderes. Chakra regenera a 8 pontos por segundo; jutsus têm custo próprio e cada jogador dispõe de duas Substituições (20 de chakra cada).
 
 ## Conferido
 
-- `npm test`: 164 testes passando após atualizar a branch com `main`.
-- `npx playwright test tests/e2e/naruto.spec.js`: dois testes passando; seleção, carregamento do sprite, convite, um turno com chakra e layout no celular.
-- Capturas da seleção, da luta e da tela do celular em `test-results/`.
+- `node --test tests/ginasio.test.js tests/ginasio-servidor.test.js tests/naruto.test.js`: 30 testes passando.
+- `npx playwright test tests/e2e/naruto.spec.js`: três testes passando; Vila por turnos, Ginásio em tempo real e layout no celular.
+- Capturas da seleção, da luta e da tela do celular em `test-results/` (geradas pelos testes).

@@ -4,10 +4,10 @@ const socket = io("/ginasio", { autoConnect: false }), relogio = Comum.relogio()
 const act = Comum.criarAct(socket, toast);
 const ic = (nome) => Icones.ic(nome);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const dexDe = (modo) => modo === "pokemon" ? PokeDex : Galeramon;
+const dexDe = (modo) => ({ galeramon: Galeramon, pokemon: PokeDex, naruto: NarutoDex })[modo] || Galeramon;
 const salvo = store.get("ginasio:config") || {};
-const configLocal = { modo: salvo.modo === "pokemon" ? "pokemon" : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false };
-const times = { galeramon: Galeramon.cleanTeam(store.get("galeramon_time")), pokemon: PokeDex.cleanTeam(store.get("pokemon_time")) };
+const configLocal = { modo: ["galeramon", "pokemon", "naruto"].includes(salvo.modo) ? salvo.modo : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false };
+const times = { galeramon: Galeramon.cleanTeam(store.get("galeramon_time")), pokemon: PokeDex.cleanTeam(store.get("pokemon_time")), naruto: NarutoDex.cleanTeam(store.get("naruto_time")) };
 let S = null, ME = null, salaVisivel = true, timeInicial = false, modoAnterior = null, ocupado = false;
 const modoAtual = () => S?.config.modo || configLocal.modo;
 const dexAtual = () => dexDe(modoAtual());
@@ -15,7 +15,7 @@ const meuJogador = () => S?.players.find((p) => p.id === ME?.id);
 const timeAtual = () => meuJogador()?.time || times[modoAtual()];
 const imagens = new Map();
 
-function spriteUrl(id, modo = modoAtual()) { return modo === "pokemon" ? PokeDex.sprite(id, false) : GaleramonSprite(id); }
+function spriteUrl(id, modo = modoAtual()) { return modo === "pokemon" ? PokeDex.sprite(id, false) : modo === "naruto" ? NarutoDex.sprite(id) : GaleramonSprite(id); }
 function imagemDe(id, modo = modoAtual()) {
   const chave = `${modo}:${id}`;
   if (!imagens.has(chave)) {
@@ -32,7 +32,7 @@ function htmlBicho(id, modo = modoAtual()) {
   return `<img src="${h(spriteUrl(id, modo))}" alt="" loading="lazy" width="56" height="56"><span>${h(b.n)}</span><i class="tipo" style="--tipo:${D.TYPES[b.types[0]]}"></i>`;
 }
 function preencher(id, html) { const el = $(id); if (el._html !== html) { el._html = html; el.innerHTML = html; } }
-function guardarTime(modo, time) { times[modo] = [...time]; store.set(modo === "pokemon" ? "pokemon_time" : "galeramon_time", time); }
+function guardarTime(modo, time) { times[modo] = [...time]; store.set(`${modo}_time`, time); }
 function guardarConfig() { if (S) Object.assign(configLocal, S.config); store.set("ginasio:config", configLocal); }
 function atualizarOpcoes() {
   const c = S?.config || configLocal, pode = !S || (S.host === ME?.id && S.phase !== "play");
@@ -136,7 +136,7 @@ $("btnInvite").onclick = async () => { try { await navigator.clipboard.writeText
 let slotDex = 0, paginaDex = 0;
 function abrirDex(slot) {
   slotDex = slot; paginaDex = 0; $("dexBusca").value = "";
-  $("dexTitulo").textContent = modoAtual() === "pokemon" ? "Escolher Pokémon" : "Escolher Galeramon";
+  $("dexTitulo").textContent = modoAtual() === "pokemon" ? "Escolher Pokémon" : modoAtual() === "naruto" ? "Escolher ninja" : "Escolher Galeramon";
   $("dexTipo").innerHTML = '<option value="">Todos os tipos</option>' + Object.keys(dexAtual().TYPES).map((t) => `<option>${h(t)}</option>`).join("");
   renderDex(); $("dex").showModal(); $("dexBusca").focus();
 }

@@ -9,7 +9,8 @@ function montarHud() {
   const D = dexAtual(), mon = D.MONS[e.forma || e.bicho];
   preencher("habilidades", mon.moves.map((id, i) => {
     const mv = D.MOVES[id], hab = Ginasio.habilidadeDeGolpe(id, mv);
-    return `<button class="habilidade" data-golpe="${i}" style="--tipo:${D.TYPES[mv.t]}" title="${h(mv.n)}" aria-label="${h(mv.n)}">${ic(iconeHabilidade(hab))}<span class="nome">${h(mv.n)}</span><i class="recarga"></i><span class="segundos"></span></button>`;
+    const custo = modoAtual() === "naruto" ? ` · ${mv.custo || 0} chakra` : "";
+    return `<button class="habilidade" data-golpe="${i}" style="--tipo:${D.TYPES[mv.t]}" title="${h(mv.n + custo)}" aria-label="${h(mv.n + custo)}">${ic(iconeHabilidade(hab))}<span class="nome">${h(mv.n)}</span><i class="recarga"></i><span class="segundos"></span></button>`;
   }).join(""));
   preencher("reservas", e.time.map((b, i) => `<button data-troca="${i}" title="${h(D.MONS[b.id].n)}" aria-label="${h(D.MONS[b.id].n)}"><img src="${h(spriteUrl(b.id))}" alt=""><span class="mini-vida"><i></i></span></button>`).join(""));
   configurarToque();
@@ -38,12 +39,18 @@ function atualizarHud(agora) {
   const contagem = S.phase === "play" ? Math.ceil((S.match.start - agora) / 1000) : 0;
   $("contagem").classList.toggle("hidden", contagem <= 0); if (contagem > 0) $("contagem").textContent = contagem;
   const e = sn.entidades.find((p) => p.id === ME?.id); if (!e) return;
+  const naruto = modoAtual() === "naruto";
+  $("chakraHud").classList.toggle("hidden", !naruto);
+  if (naruto) $("chakraHud").textContent = `◈ Chakra ${Math.floor(e.chakra)}/100 · Substituições ${e.substitutes}/2`;
+  $("btnEsquiva").querySelector(".nome").textContent = naruto ? "Subst." : "Esquiva";
+  $("btnEsquiva").title = naruto ? "Substituição · 20 chakra" : "Esquiva";
+  $("btnEsquiva").setAttribute("aria-label", $("btnEsquiva").title);
   const mon = dexAtual().MONS[e.forma || e.bicho];
   document.querySelectorAll("#habilidades [data-golpe]").forEach((b) => {
     const i = +b.dataset.golpe, falta = Math.max(0, e.cds[i] - delta), hab = Ginasio.habilidadeDeGolpe(mon.moves[i], dexAtual().MOVES[mon.moves[i]]);
-    recargaBotao(b, falta, hab.recarga); b.disabled = !e.campo || !!e.canal;
+    recargaBotao(b, falta, hab.recarga); b.disabled = !e.campo || !!e.canal || (naruto && e.chakra < (dexAtual().MOVES[mon.moves[i]].custo || 0));
   });
-  recargaBotao($("btnEsquiva"), Math.max(0, e.esquivaCd - delta), 3); $("btnEsquiva").disabled = !e.campo;
+  recargaBotao($("btnEsquiva"), Math.max(0, e.esquivaCd - delta), naruto ? 5 : 3); $("btnEsquiva").disabled = !e.campo || (naruto && (e.substitutes <= 0 || e.chakra < 20));
   document.querySelectorAll("#reservas [data-troca]").forEach((b) => {
     const i = +b.dataset.troca; b.classList.toggle("ativo", i === e.ativo);
     b.disabled = i === e.ativo || e.time[i].hp <= 0 || e.trocaCd > delta || !e.campo;
@@ -51,8 +58,8 @@ function atualizarHud(agora) {
   });
   if (toque) document.querySelectorAll("#toque [data-habilidade]").forEach((b) => {
     const i = +b.dataset.habilidade, falta = Math.max(0, (i === 4 ? e.esquivaCd : e.cds[i]) - delta);
-    const total = i === 4 ? 3 : Ginasio.habilidadeDeGolpe(mon.moves[i], dexAtual().MOVES[mon.moves[i]]).recarga;
-    recargaBotao(b, falta, total); b.disabled = !e.campo || (i !== 4 && !!e.canal);
+    const total = i === 4 ? (naruto ? 5 : 3) : Ginasio.habilidadeDeGolpe(mon.moves[i], dexAtual().MOVES[mon.moves[i]]).recarga;
+    recargaBotao(b, falta, total); b.disabled = !e.campo || (i === 4 ? naruto && (e.substitutes <= 0 || e.chakra < 20) : !!e.canal || naruto && e.chakra < (dexAtual().MOVES[mon.moves[i]].custo || 0));
   });
 }
 function mostrarResultado() {
