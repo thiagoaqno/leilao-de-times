@@ -4,9 +4,14 @@
 // por rodada (carreira:posjogo guarda a última vista). Quem pede "menos movimento" vê tudo pronto, sem animação.
 const quietoPJ = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const chavePJ = (p) => `${E.clube}:${E.temporada}:${p.rodada}`;
-function mostrarPosJogo(forcar = false) {
+// esperado: o jogo que acabou de terminar ("casa:fora"). O estado novo pode chegar depois do clique em "Voltar à sede" (principalmente na sala):
+// enquanto o pós-jogo que temos for de outro jogo, espera o estado novo em vez de abrir o da rodada anterior
+let posJogoEsperado = null;
+function mostrarPosJogo(forcar = false, esperado = posJogoEsperado) {
   const p = E && E.posJogo;
   if (!p || E.partida || $("posJogo").open) return;
+  if (!forcar && esperado && `${p.casa}:${p.fora}` !== esperado) { posJogoEsperado = esperado; return; }
+  posJogoEsperado = null;
   if (!forcar && store.get("carreira:posjogo") === chavePJ(p)) return;
   store.set("carreira:posjogo", chavePJ(p));
   desenharPosJogo(p);
@@ -22,7 +27,7 @@ function desenharPosJogo(p) {
   let i = 0; const cartao = (cls, html) => `<section class="pj-cartao ${cls}" style="--i:${i++}">${html}</section>`;
   const sinal = (v) => (v > 0 ? "+" : v < 0 ? "−" : "");
   $("pjCorpo").innerHTML = `
-    <h2 id="pjTitulo" class="pj-titulo">Pós-jogo · Rodada ${p.rodada + 1}</h2>
+    <h2 id="pjTitulo" class="pj-titulo">Pós-jogo · ${p.rotulo ? h(p.rotulo) : `Jogo ${p.rodada + 1}`}</h2>
     ${cartao(`pj-placar ${humorPJ}`, `<div class="pj-times">${escudo(p.casa, 3)}<span class="pj-gols">${p.placar[0]}<i>×</i>${p.placar[1]}${linhaPenaltis(p.penaltis)}</span>${escudo(p.fora, 3)}</div><b class="pj-resultado">${nome}</b>`)}
     <div class="pj-grade">
       ${cartao("pj-moral", `<h3>${ic(dm >= 0 ? "sobe" : "baixo")} Moral</h3><div class="pj-medidor"><i style="--de:${p.moral[0]}%;--para:${p.moral[1]}%"></i></div>

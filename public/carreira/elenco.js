@@ -22,8 +22,9 @@ function campinho(detalhe, formacao, opcoes = {}) {
     const nota = notaDe(j), cansaco = energia != null ? Taticas.penalidadeEnergia(energia) : 0, rendimento = Math.round((nota - cansaco) * fit);
     const sel = opcoes.selecionado === i;
     return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="left:${s.x}%;top:${s.y}%" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""}${cansaco ? ` · cansaço: -${cansaco} na nota (energia ${energia}%)` : ""}">
+      ${cansaco ? `<span class="cansaco-canto" title="Cansaço: -${cansaco} na nota (energia ${energia}%)">-${cansaco}</span>` : ""}
       <span class="peca-mudancas">${seloMudancaNota(v.id)}${seloEfeitoNota(v.id)}</span>
-      <img class="pix" src="${retrato(v.id)}" alt=""><span class="nota-em-campo"><b>${nota}</b>${rendimento !== nota ? `<em>→ ${rendimento}${cansaco ? `<i class="cansaco-tag">-${cansaco}</i>` : ""}</em>` : ""}</span><small>${h(sobrenome(j.nome))}</small>
+      <img class="pix" src="${retrato(v.id)}" alt=""><span class="nota-em-campo"><b>${nota}</b>${rendimento !== nota ? `<em>→ ${rendimento}</em>` : ""}</span><small>${h(sobrenome(j.nome))}</small>
       ${energia != null ? `<span class="energia ${nivelEnergia(energia)}" title="Energia ${energia}%"><i style="--v:${energia}%"></i></span>` : ""}</button>`;
   }).join("")}</div>`;
 }
@@ -61,7 +62,7 @@ function telaElenco() {
   const ordem = ["GOL", "ZAG", "LD", "LE", "VOL", "MC", "MEI", "PE", "PD", "ATA"];
   const reservas = E.elenco.filter((pid) => !titulares.has(pid)).sort((a, b) => ordem.indexOf(JOGADORES[a].pos) - ordem.indexOf(JOGADORES[b].pos) || notaDe(JOGADORES[b]) - notaDe(JOGADORES[a]));
   $("eContagem").textContent = `${E.elenco.length} no elenco`;
-  $("eBanco").innerHTML = reservas.map((pid) => `<div class="no-banco${selecionado?.onde === "banco" && selecionado.pid === pid ? " sel" : ""}${fora(pid) ? " indisponivel" : ""}">${figurinha(pid)}<span class="energia ${nivelEnergia(energiaDe(pid))}" title="Energia ${energiaDe(pid)}%"><i style="--v:${energiaDe(pid)}%"></i></span></div>`).join("");
+  $("eBanco").innerHTML = reservas.map((pid) => `<div class="no-banco${selecionado?.onde === "banco" && selecionado.pid === pid ? " sel" : ""}${fora(pid) ? " indisponivel" : ""}">${figurinha(pid)}${energiaDe(pid) < 85 ? `<span class="cansaco-canto" title="Cansaço: -${Taticas.penalidadeEnergia(energiaDe(pid))} na nota (energia ${energiaDe(pid)}%)">-${Taticas.penalidadeEnergia(energiaDe(pid))}</span>` : ""}<span class="energia ${nivelEnergia(energiaDe(pid))}" title="Energia ${energiaDe(pid)}%"><i style="--v:${energiaDe(pid)}%"></i></span></div>`).join("");
 }
 async function salvarEscalacao(dados, movimento = {}) {
   const antes = AnimacoesCarreira.capturarEscalacao();

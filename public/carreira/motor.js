@@ -23,7 +23,7 @@
     PERIGOSA: 0.3, CONV_PERIGOSA: 0.27, CONV_COMUM: 0.055, CONV_PENALTI: 0.76, CONV_FALTA: 0.09,
     PENALTI: 0.013, FALTA_PERIGOSA: 0.07, // parte dos lances que vira pênalti ou falta perto da área
     FALTA: 0.13, AMARELO: 0.14, VERMELHO: 0.004, LESAO: 0.0009,
-    DECISIVO: 0.5, MAX_DECISIVOS: 6, SUBS: 5,
+    DECISIVO: 0.5, MAX_DECISIVOS: 6, SUBS: 5, IMPULSO_MIN: 10,
   };
 
   function sorteDe(txt) { // o mesmo sorteio com semente do simulador do Leilão
@@ -152,10 +152,10 @@
       const meus = doGrupo(at, ["DEF", "VOL", "MID"]), eles = doGrupo(df, ["ATT", "MEI", "MID"]);
       const d = media(meus, "def"), r = media(meus, "rit");
       return [
-        { id: "impedimento", nome: "Fazer a linha de impedimento", chance: pct(0.52 + 0.014 * (r - media(eles, "rit")) + 0.04 * (at.tatica.linha - 1)), risco: 0.62 },
-        { id: "bloco", nome: "Marcar em bloco baixo", chance: pct(0.66 + 0.01 * (d - media(eles, "fin"))), risco: 0.32 },
-        { id: "mano", nome: "Mano a mano", chance: pct(0.5 + 0.015 * (d - media(eles, "dri"))), risco: 0.45 },
-        { id: "contra", nome: "Deixar o time pronto para o contra-ataque", chance: pct(0.34 + 0.01 * (media(doGrupo(at, ["ATT"]), "rit") - d)), risco: 0.55, contra: true },
+        { id: "impedimento", nome: "Fazer a linha de impedimento", chance: pct(0.52 + 0.014 * (r - media(eles, "rit")) + 0.04 * (at.tatica.linha - 1)), risco: 0.42, bonus: 0.32 },
+        { id: "bloco", nome: "Marcar em bloco baixo", chance: pct(0.66 + 0.01 * (d - media(eles, "fin"))), risco: 0.32, bonus: 0.04 },
+        { id: "mano", nome: "Mano a mano", chance: pct(0.5 + 0.015 * (d - media(eles, "dri"))), risco: 0.42, bonus: 0.36 },
+        { id: "contra", nome: "Deixar o time pronto para o contra-ataque", chance: pct(0.34 + 0.01 * (media(doGrupo(at, ["ATT"]), "rit") - d)), risco: 0.35, contra: true, bonus: 0.63 },
       ];
     }
     if (tipo === "falta_favor") return [
@@ -193,7 +193,7 @@
     const times = [prepararTime(cfg.casa || {}, 0), prepararTime(cfg.fora || {}, 1)];
     const neutro = !!cfg.neutro;
     const placar = [0, 0], eventos = [], est = [0, 1].map(() => ({ chutes: 0, noAlvo: 0, faltas: 0, amarelos: 0, vermelhos: 0, lances: 0 }));
-    let decisivos = 0, golsContra = 0, minuto = 0, acrescimo = 0, parado = null;
+    let decisivos = 0, golsContra = 0, minuto = 0, acrescimo = 0, parado = null, impAtual = 0;
     const ev = (e) => eventos.push({ min: minuto, ...(acrescimo ? { acr: acrescimo } : {}), ...e });
     const humano = (lado) => (ambos || controla === lado) && modo >= 2;
 
@@ -226,7 +226,7 @@
       }
       // ocupar vaga vazia (depois de uma expulsão ou de uma lesão sem troca), na ordem em que o técnico fez: [ "m", id, vaga ] muda de
       // lugar alguém que está em campo; [ "e", id, vaga ] põe um reserva (gasta uma substituição)
-      for (const [tipo, pid, idx] of Array.isArray(d.ocupar) ? d.ocupar : []) {
+      const ocupar = (lista) => { for (const [tipo, pid, idx] of Array.isArray(lista) ? lista : []) {
         const alvo = time.campo[idx];
         if (!alvo || alvo.slot === "GK" || (alvo.p && !alvo.p.fora)) continue;
         if (tipo === "m") {
@@ -238,12 +238,14 @@
           if (!entra || time.subs <= 0 || entra.grp === "GK") continue;
           alvo.p = entra; time.emCampo.add(entra.id); time.subs--; ev({ tipo: "entrada", lado: time.lado, jogador: pid, fino: alvo.fino });
         }
-      }
+      } };
+      ocupar(d.ocupar); // as vagas abertas que ele ocupou antes de mudar a formação (os números das vagas são os da formação de antes)
       if (d.formacao && Taticas.FORMACOES[d.formacao] && d.formacao !== time.formacao) {
         time.formacao = d.formacao;
         time.campo = escalar(time.jogadores.filter((p) => time.emCampo.has(p.id)), d.formacao);
         ev({ tipo: "formacao", lado: time.lado, formacao: d.formacao });
       }
+      ocupar(d.ocupar2);
       recalcular(time);
     }
     function parada(time, id, motivo) {
@@ -293,6 +295,8 @@
     // um lance de `at` contra `df`
     function lance(at, df) {
       est[at.lado].lances++;
+      // o impulso de uma defesa arriscada que deu certo: a chance do próximo lance sobe (vale uma vez, por até IMPULSO_MIN minutos)
+      const imp = at.impulso && minuto <= at.impulso.ate ? at.impulso.v : 0; at.impulso = null; impAtual = imp;
       const r = rng(), tipo = r < AJUSTE.PENALTI ? "penalti" : r < AJUSTE.PENALTI + AJUSTE.FALTA_PERIGOSA ? "falta" : "jogada";
       const perigosa = tipo !== "jogada" || rng() < AJUSTE.PERIGOSA;
       const autor = tipo === "jogada" ? finalizador(at) : sortearPeso(rng, titulares(at), (p) => (p.grp === "GK" ? 0 : p.atr.fin * (efG(p) === "ATT" ? 2 : 1)));
@@ -300,7 +304,7 @@
       const decisivo = modo === 3 && (controla != null || ambos) && perigosa && decisivos < AJUSTE.MAX_DECISIVOS && rng() < AJUSTE.DECISIVO;
       if (decisivo) return ambos ? lanceDosDois(at, df, tipo, autor, gk) : lanceDecisivo(at, df, tipo, autor, gk);
       let conv = tipo === "penalti" ? AJUSTE.CONV_PENALTI : tipo === "falta" ? AJUSTE.CONV_FALTA : perigosa ? AJUSTE.CONV_PERIGOSA : AJUSTE.CONV_COMUM;
-      if (tipo !== "penalti") conv *= Math.exp(0.03 * (autor.atr.fin - gkNota)) * (1 + 0.1 * (df.tatica.linha - 1)) * at.est.conv;
+      if (tipo !== "penalti") conv = Math.min(0.95, conv * Math.exp(0.03 * (autor.atr.fin - gkNota)) * (1 + 0.1 * (df.tatica.linha - 1)) * at.est.conv + imp);
       est[at.lado].chutes++;
       if (tipo === "penalti") ev({ tipo: "penalti", lado: at.lado, jogador: autor.id });
       if (rng() < conv) { est[at.lado].noAlvo++; return gol(at, autor, tipo === "jogada" ? garcom(at, autor) : null, tipo); }
@@ -324,8 +328,9 @@
         return ev({ tipo: foraDoGol ? "perdeu" : "defesa", lado: at.lado, jogador: autor.id, ...(gk && !foraDoGol ? { goleiro: gk.id } : {}), como: "penalti" });
       }
       const qual = tipo === "falta" ? (aFavor ? "falta_favor" : "falta_contra") : aFavor ? "ataque_favor" : "ataque_contra";
-      const opcoes = opcoesDoLance(qual, euDecido, aFavor ? df : at, autor, aFavor ? gk : euDecido.gk);
-      const dec = decidir(id, { tipo: "lance", lance: qual, lado: euDecido.lado, jogador: autor.id, adversario: aFavor ? null : at.id, opcoes: opcoes.map(({ id: oid, nome, chance }) => ({ id: oid, nome, chance })) });
+      let opcoes = opcoesDoLance(qual, euDecido, aFavor ? df : at, autor, aFavor ? gk : euDecido.gk);
+      if (aFavor && impAtual) opcoes = opcoes.map((o) => ({ ...o, chance: pct(o.chance + impAtual) }));
+      const dec = decidir(id, { tipo: "lance", lance: qual, lado: euDecido.lado, jogador: autor.id, adversario: aFavor ? null : at.id, ...(aFavor && impAtual ? { impulso: impAtual } : {}), opcoes: opcoes.map(({ id: oid, nome, chance, bonus }) => ({ id: oid, nome, chance, ...(bonus ? { bonus } : {}) })) });
       const op = opcoes.find((o) => o.id === (dec && dec.opcao ? dec.opcao : dec)) || opcoes[0];
       const certo = rng() < op.chance;
       ev({ tipo: "lance", lado: at.lado, lance: qual, opcao: op.id, certo, jogador: autor.id, decisivo: id });
@@ -334,7 +339,8 @@
         return gk && rng() < 0.5 ? ev({ tipo: "defesa", lado: at.lado, jogador: autor.id, goleiro: gk.id, como: tipo }) : ev({ tipo: "perdeu", lado: at.lado, jogador: autor.id, como: tipo });
       }
       if (certo) {
-        if (op.contra) { ev({ tipo: "contra_ataque", lado: df.lado }); est[df.lado].chutes++; if (rng() < 0.33) { const a = finalizador(df); est[df.lado].noAlvo++; return gol(df, a, garcom(df, a), "contra_ataque"); } }
+        if (op.bonus) df.impulso = { v: op.bonus, ate: minuto + AJUSTE.IMPULSO_MIN };
+        if (op.contra) ev({ tipo: "contra_ataque", lado: df.lado });
         return;
       }
       if (rng() < op.risco) { est[at.lado].noAlvo++; return gol(at, autor, garcom(at, autor), tipo); }
@@ -357,8 +363,8 @@
         return ev({ tipo: foraDoGol ? "perdeu" : "defesa", lado: at.lado, jogador: autor.id, ...(gk && !foraDoGol ? { goleiro: gk.id } : {}), como: "penalti" });
       }
       const favor = tipo === "falta" ? "falta_favor" : "ataque_favor", contra = tipo === "falta" ? "falta_contra" : "ataque_contra";
-      const opA = opcoesDoLance(favor, at, df, autor, gk), opD = opcoesDoLance(contra, df, at, autor, df.gk);
-      const so = (l) => l.map(({ id: oid, nome, chance }) => ({ id: oid, nome, chance }));
+      const opA = opcoesDoLance(favor, at, df, autor, gk).map((o) => (impAtual ? { ...o, chance: pct(o.chance + impAtual) } : o)), opD = opcoesDoLance(contra, df, at, autor, df.gk);
+      const so = (l) => l.map(({ id: oid, nome, chance, bonus }) => ({ id: oid, nome, chance, ...(bonus ? { bonus } : {}) }));
       const dec = decidir(id, { tipo: "lance", ambos: true, pedidos: { [at.lado]: { tipo: "lance", lance: favor, lado: at.lado, jogador: autor.id, opcoes: so(opA) },
         [df.lado]: { tipo: "lance", lance: contra, lado: df.lado, jogador: autor.id, adversario: at.id, opcoes: so(opD) } } }) || {};
       const escolha = (lista, x) => lista.find((o) => o.id === (x && x.opcao ? x.opcao : x)) || lista[0];
@@ -367,7 +373,8 @@
       const certo = rng() < clamp(a.chance * (1.45 - d.chance), 0.05, 0.9);
       ev({ tipo: "lance", lado: at.lado, lance: favor, opcao: a.id, defesa: d.id, certo, jogador: autor.id, decisivo: id });
       if (certo) { est[at.lado].noAlvo++; return gol(at, autor, a.id === "tocar" || a.id === "cruzar" || a.id === "ensaiada" ? garcom(at, autor) : null, tipo); }
-      if (d.contra && rng() < 0.5) { ev({ tipo: "contra_ataque", lado: df.lado }); est[df.lado].chutes++; if (rng() < 0.33) { const x = finalizador(df); est[df.lado].noAlvo++; return gol(df, x, garcom(df, x), "contra_ataque"); } return; }
+      if (d.bonus) df.impulso = { v: d.bonus, ate: minuto + AJUSTE.IMPULSO_MIN };
+      if (d.contra) { ev({ tipo: "contra_ataque", lado: df.lado }); return; }
       return gk && rng() < 0.5 ? ev({ tipo: "defesa", lado: at.lado, jogador: autor.id, goleiro: gk.id, como: tipo }) : ev({ tipo: "perdeu", lado: at.lado, jogador: autor.id, como: tipo });
     }
     function sortearIndice(r, pesos) { let x = r() * pesos.reduce((a, b) => a + b, 0); for (let i = 0; i < pesos.length; i++) { x -= pesos[i]; if (x <= 0) return i; } return pesos.length - 1; }

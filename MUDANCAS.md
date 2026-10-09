@@ -1,20 +1,24 @@
-# Carreira: vaga aberta depois da expulsão, campinho que acompanha a variação e cansaço em pontos de OVR
+# Carreira: ajustes de jogo (impulso, formação, pós-jogo, cansaço no canto) e escudos da TheSportsDB
 
-## Mais escolhas no jogo: a vaga aberta
-- Quando alguém é expulso (ou se machuca sem troca), a vaga fica aberta na parada tática. Agora dá para **pôr outro jogador nela**: toque num jogador do campo
-  (ele muda de posição para a vaga, e a vaga dele é que fica aberta: você escolhe qual setor sacrificar) ou num reserva (ele entra na vaga, gastando uma substituição) e depois na vaga.
-  Exemplo: zagueiro expulso, um volante vai para a zaga e um reserva entra no meio. O jogador improvisado rende pelo encaixe da nova posição.
-- A narração conta ("Pereira muda de posição para ocupar a vaga de zagueiro", "Entra X, na vaga que ficou aberta").
+## Defesa arriscada compensa
+- Nos lances de defesa, quem escolhe a opção mais arriscada (menor chance de evitar o gol) ganha um **impulso**: se der certo, a chance do seu próximo lance de ataque
+  sobe (por uns 10 minutos). Cada opção mostra o bônus: bloco baixo +4%, linha de impedimento +32%, mano a mano +36%, contra-ataque +63%. Ficou parecido na conta: o bloco baixo
+  é o seguro, e as outras valem o risco. Em dois técnicos humanos funciona igual.
+- O pop-up do lance explica o impulso e, quando ele está valendo, diz no ataque que "já inclui +X% do impulso da sua defesa".
 
-## O campinho acompanha a variação do meio
-- As posições no campinho seguem a função: laterais e pontas colados na linha; o **único volante** fica no meio e mais recuado, entre dois meio-campistas; com
-  **2 volantes + 1 meia**, o meia fica no meio, à frente dos volantes; o falso 9 joga atrás do centroavante; os alas do 3-5-2 ficam na linha lateral.
+## Correções
+- **Formação no meio do jogo:** trocar a formação na parada agora refaz o campinho **na hora**, com os mesmos jogadores que estão em campo (sem o expulso) cada um na vaga em que rende mais.
+  (O desenho estava usando a formação antiga.) As vagas abertas ocupadas depois da troca valem no desenho novo.
+- **Pós-jogo do jogo certo:** o pop-up só abre com o pós-jogo do jogo que acabou de terminar. Se o estado novo ainda não chegou (principalmente na sala), ele espera em vez de
+  mostrar o da rodada anterior. O título agora diz de que jogo é ("Brasileirão Série A · rodada 4", "Libertadores · fase de grupos, rodada 2", "Copa do Brasil · quartas de final"),
+  e não mais o número do jogo do clube, que contava as copas e não batia com a rodada da liga.
+- **Cansaço no canto da carta:** o −1, −2 ou −3 aparece em cima, à direita, na carta do campinho e no banco.
 
-## Cansaço em pontos de OVR
-- A energia tira de **0 a 3 pontos da nota**: 85% ou mais, nada; de 70 a 84%, −1; de 50 a 69%, −2; abaixo de 50%, −3. A conta vale no rendimento do time e nos atributos dos
-  lances. No campinho aparece o OVR, o que sobra (ex.: 80 → 77) e uma etiqueta vermelha com o −1, −2 ou −3; a média da energia dos titulares fica embaixo da prancheta.
+## Escudos da TheSportsDB
+- Os escudos agora vêm da **API da TheSportsDB** (chave gratuita de teste): `tools/baixar-escudos.js` achou o escudo de 141 dos 142 clubes e gravou os endereços em
+  `public/carreira/escudos-api.js` (a página não chama a API a cada abertura). O escudo desenhado continua por baixo: aparece enquanto a imagem carrega e no lugar dela se faltar
+  (hoje só o Nottingham Forest, que a busca da API não acha) ou se não houver internet. Para atualizar: `node tools/baixar-escudos.js`.
 
 ## Conferido
-- `tests/carreira-taticas.test.js`: a tabela do cansaço, o desenho de cada variação (volante recuado, meia à frente, falso 9, alas na linha, tudo dentro do campo) e a vaga aberta depois
-  de uma expulsão (um do campo muda de lugar, um reserva entra, vaga ocupada ou sem substituição é ignorada). O motor continua calibrado.
-  Na tela: `planos/imagens/carreira-vaga-aberta.jpg`.
+- `tests/carreira-ajustes.test.js`: os bônus das opções de defesa (quanto menor a chance, maior o bônus), o contra-ataque fazendo e levando mais gols que o bloco baixo, a formação trocada com
+  um jogador a menos (os mesmos 10 em campo e a vaga aberta ocupada no desenho novo), o pós-jogo do jogo certo com o rótulo e o arquivo de escudos.
