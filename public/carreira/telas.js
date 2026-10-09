@@ -195,7 +195,9 @@ function telaTabela() {
     const ids = Object.keys(E.competicoes); if (!competicaoTabela || !E.competicoes[competicaoTabela]) competicaoTabela = Object.keys(E.tabelas || {})[0] || ids[0];
     const c = E.competicoes[competicaoTabela], abas = ids.map((id) => `<button class="${id === competicaoTabela ? "ativa" : ""}" data-competicao="${id}">${h(E.competicoes[id].nome)}</button>`).join("");
     const corpo = c.tipo === "liga" ? tabelaHTML(c.tabela) : `${c.grupos.map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(g.tabela)}</section>`).join("")}${chaveHTML(c)}${c.campeao ? `<div class="campeao-copa">${ic("taca")} Campeão: ${escudo(c.campeao, 1)} ${h(nomeClube(c.campeao))}</div>` : ""}`;
-    $("tTabela").innerHTML = `<div class="abas-competicoes">${abas}</div>${corpo}`;
+    const revFesta = c.festa ? `<button class="discreto festa-btn" data-rever-festa="${competicaoTabela}">${ic("taca")} Rever a festa do campeão</button>` : "";
+    $("tTabela").innerHTML = `<div class="abas-competicoes">${abas}</div>${corpo}${revFesta}`;
+    $("tTabela").querySelectorAll("[data-rever-festa]").forEach((b) => b.onclick = () => Campeoes.rever(b.dataset.reverFesta));
     $("tTabela").querySelectorAll("[data-competicao]").forEach((b) => b.onclick = () => { competicaoTabela = b.dataset.competicao; telaTabela(); });
   } else $("tTabela").innerHTML = tabelaHTML(E.tabela);
   $("tArtilharia").innerHTML = E.artilharia.length ? `<ol class="artilharia">${E.artilharia.map((a) => `<li class="${donoDe(a.id) === E.clube ? "meu" : ""}"><img class="pix" src="${retrato(a.id)}" alt=""><span>${h(nomeJogador(a.id))}<small>${h(nomeClube(donoDe(a.id)))}</small></span><b>${a.gols}</b></li>`).join("")}</ol>` : `<p class="suave">Ninguém marcou ainda.</p>`;

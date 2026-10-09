@@ -135,6 +135,7 @@ function receber(estado) {
   marcaClube(E.clube);
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
   animarTransferenciasNovas();
+  if (window.Campeoes) setTimeout(Campeoes.verificar, 600);
 }
 // os ícones dos atalhos (montados uma vez)
 for (const s of document.querySelectorAll("[data-ic]")) s.innerHTML = ic(s.dataset.ic);
