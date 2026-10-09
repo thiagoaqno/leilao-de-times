@@ -36,14 +36,30 @@ test("base: cada elenco tem goleiros, defesa, meio e ataque para escalar", () =>
   }
 });
 
-test("escudos: todo clube tem um escudo de 16x18 com contorno", () => {
-  for (const c of base.clubes) {
-    const g = Escudos.grade(c);
-    assert.strictEqual(g.length, Escudos.H); assert.strictEqual(g[0].length, Escudos.W);
-    const cores = new Set(g.flat().filter(Boolean));
-    assert.ok(cores.has("#0b1510") && cores.size >= 3, `${c.nome}: ${cores.size} cores`);
-    assert.match(Escudos.svg(c), /^<svg viewBox="0 0 16 18"/);
+// tira os números de id (cada escudo na página traz os seus) para comparar os desenhos
+const semIds = (s) => s.replace(/ec\d+|eg\d+/g, "");
+test("escudos: todo clube tem um escudo em SVG com contorno e sem erro de montagem", () => {
+  for (const c of clubesMundo) {
+    const s = Escudos.svg(c);
+    assert.match(s, /^<svg viewBox="0 0 80 90"/, c.nome);
+    assert.ok(s.includes(Escudos.CONTORNO) && s.includes("<clipPath") && /<text|<polygon/.test(s), `${c.nome}: faltou o contorno, o recorte ou o desenho`);
+    assert.ok(!/NaN|undefined|null|\[object/.test(s), `${c.nome}: erro na montagem`);
   }
+});
+
+test("escudos: os 20 do Brasileirão têm desenho próprio e nenhum clube repete o desenho de outro", () => {
+  for (const c of base.clubes) assert.ok(Escudos.ESPECIAIS[c.id], `${c.nome} sem escudo feito à mão`);
+  const desenhos = new Map();
+  for (const c of clubesMundo) { const k = semIds(Escudos.svg(c)); desenhos.set(k, [...(desenhos.get(k) || []), c.id]); }
+  const repetidos = [...desenhos.values()].filter((v) => v.length > 1);
+  assert.deepStrictEqual(repetidos, [], `escudos iguais: ${repetidos.map((v) => v.join(" = ")).join("; ")}`);
+});
+
+test("escudos: cada escudo traz as suas próprias definições (ids novos a cada vez)", () => {
+  const a = Escudos.svg(base.clubes[0]), b = Escudos.svg(base.clubes[0]);
+  assert.notStrictEqual(a, b);
+  assert.strictEqual(semIds(a), semIds(b));
+  assert.ok(a.includes('clip-path="url(#ec') && a.includes('id="ec'));
 });
 
 test("base mundial: elencos, notas, goleiros e ids válidos", () => {
