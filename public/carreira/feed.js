@@ -309,7 +309,7 @@ function telaFeed() {
 // a editoria de cada post (a etiqueta da notícia no hub)
 const EDITORIA = { contratacao: "Transferência", venda: "Transferência", vitoria: "Resultado", empate: "Resultado", derrota: "Resultado", campeao: "Taça",
   classificado: "Copa", eliminado: "Copa", tecnico: "Clube", base: "Base", aposentadoria: "Adeus", tabela: "Tabela", gol: "Gol", goleada: "Resultado",
-  lesao: "Departamento médico", cartao: "Arbitragem", evento: "Bastidores", disputa: "Rumor" };
+  lesao: "Departamento médico", cartao: "Arbitragem", evento: "Bastidores", disputa: "Rumor", hall: "Hall da Fama" };
 const editoriaDe = (p) => EDITORIA[p.tipo] || "Bastidores";
 // na sede: as notícias em destaque. A mais nova vira a manchete (a arte grande), e as seguintes, uma grade de cards.
 function feedNaSede() {
