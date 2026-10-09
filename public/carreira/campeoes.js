@@ -61,7 +61,8 @@
     const camp = f.campeao, vice = f.vice, u = uniformeDoClube(camp, vice), uVice = uniformeDoClube(vice, camp), luva = { ...u, luva: "#f4f4f4" };
     const gols = Object.fromEntries((f.artilheiros || []).map((a) => [a.id, a.gols]));
     // o time do campeão: o melhor goleiro e os 10 melhores de linha de titulares, mais os reservas (até 8 na foto)
-    const todos = elencoDe(camp).slice().sort((a, b) => notaDe(b) - notaDe(a));
+    // a festa guardada de uma temporada passada leva os 20 melhores daquele elenco (f.elenco); a de agora usa o elenco atual
+    const todos = (f.elenco ? f.elenco.map((id) => JOGADORES[id]).filter(Boolean) : elencoDe(camp)).slice().sort((a, b) => notaDe(b) - notaDe(a));
     const goleiros = todos.filter((j) => Motor.grupoDe(j.pos) === "GK"), linha = todos.filter((j) => Motor.grupoDe(j.pos) !== "GK");
     const titulares = [...goleiros.slice(0, 1), ...linha.slice(0, 10)], resto = [...goleiros.slice(1, 2), ...linha.slice(10)];
     const vaga = (j) => (Motor.grupoDe(j.pos) === "GK" ? "GK" : "");
@@ -295,7 +296,7 @@
   function mostrar(k) {
     const dlg = FESTA.dlg; if (!dlg) return;
     FESTA.atual = k; const { id, f } = FESTA.lista[k];
-    marcarVista(chaveDe(id));
+    if (!FESTA.lista[k].sem) marcarVista(chaveDe(id));
     const F = FESTA.F = dados(f), lista = FESTA.cenas = cenas(F);
     dlg.setAttribute("aria-label", `Festa do campeão: ${nomeClube(f.campeao)}`);
     dlg.style.cssText = coresClube(f.campeao);
@@ -410,6 +411,8 @@
     const k = Math.max(0, lista.findIndex((x) => x.id === id));
     if (lista.length) abrir(lista, k);
   }
-  window.Campeoes = { verificar, rever, abrir, fechar };
+  // a festa de uma temporada que já passou (a tela Temporadas): não conta como vista
+  function reverArquivo(a, id) { const c = a.competicoes[id]; if (c && c.festa) abrir([{ id, f: c.festa, sem: true }]); }
+  window.Campeoes = { verificar, rever, reverArquivo, abrir, fechar };
   if (location.hash === "#debug") window.__festa = { FESTA, irPara, dados, cenas, abrir, mostrar, verificar };
 })();

@@ -17,6 +17,8 @@ function desenharTela(id) {
   else if (id === "tabela") telaTabela();
   else if (id === "calendario") telaCalendario();
   else if (id === "feed") telaFeed();
+  else if (id === "trocas") telaTrocas();
+  else if (id === "temporadas") telaTemporadas();
 }
 const posicaoDe = (id) => E.tabela.findIndex((l) => l.id === id) + 1;
 const placarTxt = (p) => (p ? `${p[0]} × ${p[1]}` : "×");

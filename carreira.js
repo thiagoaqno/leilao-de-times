@@ -204,6 +204,11 @@ const CAMPOS_CLUBE = ["clube", "tecnico", "caixa", "moral", "situacao", "escalac
 function vistaDe(save, clube) {
   const v = { ...save, ...save.humanos[clube].estado };
   delete v.humanos;
+  // na sala, as notícias de transferência são as mesmas para todos (carreira-feed.js): a visão enxerga os feeds dos outros
+  // técnicos e quem é humano. Ficam fora do que é copiado de volta (não enumeráveis).
+  Object.defineProperty(v, "humanosLista", { value: () => Object.entries(save.humanos).map(([c, hm]) => ({ clube: c, tecnico: (hm.estado && hm.estado.tecnico) || hm.nome || c })) });
+  Object.defineProperty(v, "humanoDe", { value: (id) => !!save.humanos[id] });
+  Object.defineProperty(v, "outrosHumanos", { value: () => Object.entries(save.humanos).filter(([c, hm]) => c !== clube && hm.estado).map(([, hm]) => ({ feed: hm.estado.feed, rodada: hm.estado.rodada, temporada: save.temporada, semente: save.semente })) });
   return v;
 }
 function guardarVista(save, v) {
@@ -275,20 +280,33 @@ function proximaRodadaGrupo(save) {
   return { semana, jogos };
 }
 // a partida do jogo vista por um clube dele (timeDe usa para saber quem é o rival e os efeitos que valem)
-const partidaDoJogo = (v, j, modo, decisoes) => ({ rodada: v.rodada, jogoId: j.id, competicao: j.competicao, fase: j.fase, mataMata: j.mataMata, casa: j.casa, fora: j.fora,
+// os gols de cada lado nas pernas anteriores do confronto (a volta de um mata-mata): com o agregado empatado depois dos 90
+// minutos, o jogo vai para a disputa de pênaltis do motor (o humano escolhe o canto e o pulo; não é sorteio)
+function agregadoDe(save, j) {
+  const comp = j.mataMata && save.competicoes && save.competicoes[j.competicao];
+  if (!comp) return [0, 0];
+  let a = 0, b = 0;
+  for (const x of comp.jogos) {
+    if (x.id === j.id || x.fase !== j.fase || x.rodada !== j.rodada || x.semana >= j.semana || !x.placar) continue;
+    a += x.casa === j.casa ? x.placar[0] : x.placar[1]; b += x.casa === j.fora ? x.placar[0] : x.placar[1];
+  }
+  return [a, b];
+}
+const desempateDe = (p) => (p.mataMata ? { agregado: p.agregado || [0, 0] } : undefined);
+const partidaDoJogo = (v, j, modo, decisoes) => ({ agregado: agregadoDe(v, j), rodada: v.rodada, jogoId: j.id, competicao: j.competicao, fase: j.fase, mataMata: j.mataMata, casa: j.casa, fora: j.fora,
   modo, semente: sementeDoJogo(v, j.semana, j.casa, j.fora), decisoes: decisoes || {} });
 // o jogo de humanos com o motor: um humano (controla 0 ou 1) ou os dois (controla 2)
 function simularJogoGrupo(save, j, { modo = 1, decisoes = {} } = {}) {
   const hc = !!save.humanos[j.casa], hf = !!save.humanos[j.fora];
   const vc = vistaDe(save, hc ? j.casa : j.fora), vf = vistaDe(save, hf ? j.fora : j.casa);
   vc.partida = partidaDoJogo(vc, j, modo, decisoes); vf.partida = partidaDoJogo(vf, j, modo, decisoes);
-  return Motor.simularPartida({ casa: timeDe(vc, j.casa), fora: timeDe(vf, j.fora), semente: vc.partida.semente, modo, controla: hc && hf ? 2 : hc ? 0 : 1, decisoes });
+  return Motor.simularPartida({ casa: timeDe(vc, j.casa), fora: timeDe(vf, j.fora), semente: vc.partida.semente, modo, controla: hc && hf ? 2 : hc ? 0 : 1, decisoes, desempate: desempateDe(vc.partida) });
 }
 // o jogo acabou: fecha para cada humano dele (o que é de todos, uma vez só)
 function fecharJogoGrupo(save, j, r, modo, decisoes) {
   // O resultado humano entra no chaveamento antes do pós-jogo e das notícias de cada técnico.
   // Assim um empate eliminatório já chega aqui com o vencedor e o placar dos pênaltis corretos.
-  save.resultadosFixos[j.id] = { placar: [...r.placar] };
+  save.resultadosFixos[j.id] = { placar: [...r.placar], ...(r.penaltis && { penaltis: [...r.penaltis] }) };
   recalcularMundo(save);
   let primeiro = true, penaltis = null;
   for (const c of [j.casa, j.fora].filter((x) => save.humanos[x])) {
@@ -438,6 +456,49 @@ function concluirLeilao(save, { jogador: pid, dono, comprador, valor }) {
   avisar(v, { tipo: "contratacao", icone: "martelo", titulo: `${j.nome} chegou!`, texto: `Você levou o leilão: ${dinheiro(valor)} ao ${clubeDe(v, dono).nome}, com salário de ${dinheiro(v.salarios[pid])} por mês.` });
   guardarVista(save, v);
 }
+// ---------- trocas entre técnicos (carreira em grupo) ----------
+// Sem limite nenhum: vale qualquer nota, a janela pode estar fechada e não conta na cota de compras da turma. A troca é de
+// jogador por jogador, com dinheiro de um lado (positivo: `de` paga a `para`; negativo: `de` recebe). Só confere se os
+// jogadores ainda são de quem propôs e de quem recebeu, o tamanho dos elencos e o caixa de quem paga.
+const TROCA_MAX_JOGADORES = 6;
+function erroDeTroca(save, t) {
+  if (!save.humanos || !save.humanos[t.de] || !save.humanos[t.para] || t.de === t.para) return "Escolha outro técnico da sala.";
+  if (!Array.isArray(t.dou) || !Array.isArray(t.recebo) || !Number.isFinite(t.dinheiro) || Math.abs(t.dinheiro) > 2e9) return "Proposta inválida.";
+  if (!t.dou.length && !t.recebo.length) return "Inclua pelo menos um jogador na troca.";
+  if (t.dou.length > TROCA_MAX_JOGADORES || t.recebo.length > TROCA_MAX_JOGADORES) return `No máximo ${TROCA_MAX_JOGADORES} jogadores de cada lado.`;
+  const todos = [...t.dou, ...t.recebo];
+  if (new Set(todos).size !== todos.length) return "Jogador repetido na proposta.";
+  for (const pid of t.dou) if (!jogadorDe(save, pid) || donoDe(save, pid) !== t.de) return "Um dos jogadores oferecidos não é mais do seu elenco.";
+  for (const pid of t.recebo) if (!jogadorDe(save, pid) || donoDe(save, pid) !== t.para) return "Um dos jogadores pedidos não é mais do outro elenco.";
+  const va = vistaDe(save, t.de), vb = vistaDe(save, t.para);
+  const tamA = elencoDe(va, t.de).length - t.dou.length + t.recebo.length, tamB = elencoDe(vb, t.para).length - t.recebo.length + t.dou.length;
+  if (tamA < Mercado.ELENCO_MIN || tamB < Mercado.ELENCO_MIN) return `O elenco não pode ficar com menos de ${Mercado.ELENCO_MIN} jogadores.`;
+  if (tamA > Mercado.ELENCO_MAX || tamB > Mercado.ELENCO_MAX) return `O elenco não pode passar de ${Mercado.ELENCO_MAX} jogadores.`;
+  if (t.dinheiro > 0 && va.caixa < t.dinheiro) return "Quem propôs não tem esse dinheiro em caixa.";
+  if (t.dinheiro < 0 && vb.caixa < -t.dinheiro) return "Você não tem esse dinheiro em caixa.";
+  return null;
+}
+function executarTroca(save, t) {
+  const va = vistaDe(save, t.de), vb = vistaDe(save, t.para);
+  const mover = (origem, destino, pid) => {
+    const j = jogadorDe(origem, pid);
+    delete origem.salarios[pid]; delete origem.pedidos[pid]; delete origem.compras[pid]; delete origem.valores[pid];
+    origem.aVenda = origem.aVenda.filter((x) => x !== pid);
+    destino.donos[pid] = destino.clube; delete destino.pedidos[pid]; destino.aVenda = destino.aVenda.filter((x) => x !== pid);
+    destino.salarios[pid] = Math.round(Mercado.salarioDe(comNota(destino, j)) * (FATOR_LIGA[ligaDoClube(destino.clube)] || 1) / 1e3) * 1e3;
+    destino.compras[pid] = { valor: valorAtual(destino, j), rodada: destino.rodada, temporada: destino.temporada };
+    destino.valores[pid] = [valorAtual(destino, j)];
+    destino.transferencias.unshift({ rodada: destino.rodada, temporada: destino.temporada, jogador: pid, de: origem.clube, para: destino.clube, valor: 0, entreTecnicos: true });
+  };
+  for (const pid of t.dou) mover(va, vb, pid);
+  for (const pid of t.recebo) mover(vb, va, pid);
+  if (t.dinheiro) { movimentar(va, `Troca com o ${clubeDe(va, t.para).nome}`, -t.dinheiro); movimentar(vb, `Troca com o ${clubeDe(vb, t.de).nome}`, t.dinheiro); }
+  const nomes = (v, ids) => ids.map((pid) => jogadorDe(v, pid).nome).join(", ") || "ninguém";
+  avisar(va, { tipo: "troca", icone: "troca", titulo: "Troca fechada", texto: `O ${clubeDe(va, t.para).nome} aceitou: você manda ${nomes(va, t.dou)} e recebe ${nomes(va, t.recebo)}${t.dinheiro ? ` (${t.dinheiro > 0 ? "paga" : "recebe"} ${dinheiro(Math.abs(t.dinheiro))})` : ""}.` });
+  avisar(vb, { tipo: "troca", icone: "troca", titulo: "Troca fechada", texto: `Você aceitou a proposta do ${clubeDe(vb, t.de).nome}: manda ${nomes(vb, t.recebo)} e recebe ${nomes(vb, t.dou)}${t.dinheiro ? ` (${t.dinheiro > 0 ? "recebe" : "paga"} ${dinheiro(Math.abs(t.dinheiro))})` : ""}.` });
+  Feed.troca(va, t, ajudas);
+  guardarVista(save, va); guardarVista(save, vb);
+}
 // o olheiro: as posições mais fracas do time (o pior de cada setor, comparado com a média dos titulares) e 2 ou 3
 // jogadores que cabem no caixa e melhoram ali, com o porquê. Não inventa ninguém: escolhe da base, pelo valor de hoje.
 const SETOR = { GK: "goleiro", DEF: "defensor", MID: "meio-campista", ATT: "atacante" };
@@ -487,7 +548,7 @@ const titularesDe = (save, id) => Motor.escalacaoAutomatica(timeDe(save, id));
 const sementeDoJogo = (save, rodada, casa, fora) => `${save.semente}:${save.temporada}:${rodada}:${casa}-${fora}`;
 function simularMinha(save) {
   const p = save.partida;
-  return Motor.simularPartida({ casa: timeDe(save, p.casa), fora: timeDe(save, p.fora), semente: p.semente, modo: p.modo, controla: p.casa === save.clube ? 0 : 1, decisoes: p.decisoes });
+  return Motor.simularPartida({ casa: timeDe(save, p.casa), fora: timeDe(save, p.fora), semente: p.semente, modo: p.modo, controla: p.casa === save.clube ? 0 : 1, decisoes: p.decisoes, desempate: desempateDe(p) });
 }
 function contarGols(save, r) { for (const e of r.eventos) if (e.tipo === "gol") save.gols[e.jogador] = (save.gols[e.jogador] || 0) + 1; }
 // a nota de cada um no seu jogo (dos dois times): save.desempenho[pid] = [jogos, soma das notas], para a evolução
@@ -726,7 +787,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   if (cumprir) cumprirRodada(save);
   if (comum) { contarGols(save, r); cartoesELesoes(save, r, p.semente); anotarDesempenho(save, r); }
   else save.jogosTemporada++; // o outro lado já anotou o que é de todos
-  save.resultadosFixos[p.jogoId] = { placar: [...r.placar] };
+  save.resultadosFixos[p.jogoId] = { placar: [...r.placar], ...(r.penaltis && { penaltis: [...r.penaltis] }) };
   save.jogosJogados.push(p.jogoId);
   if (emCasa) movimentar(save, "Bilheteria", Math.round(clube.tamanho * 6e5 * (0.7 + save.moral / 200) / 1e4) * 1e4);
   movimentar(save, "Cota de TV", Math.round(clube.tamanho * 4e5 * (FATOR_LIGA[ligaDoClube(clube.id)] || 1)));
@@ -788,8 +849,50 @@ function registrarTemporada(save) {
   save.historico.push({ ano: save.ano, temporada: save.temporada, posicao: pos, pontos: tabela[pos - 1].p, liga: nomeLiga, campeao: tabela[0].id, titulos, vices,
     artilheiro: artilheiro ? { id: artilheiro[0], gols: artilheiro[1] } : null, negocio: negocios[0] ? { jogador: negocios[0].jogador, lucro: negocios[0].lucro, para: negocios[0].para } : null,
     forca: forcaDoElenco(save) });
+  if (save.base === BASE_PADRAO && save.calendarioMundo) arquivarTemporada(save);
   movimentar(save, `Premiação: ${pos}º lugar`, (tabela.length + 1 - pos) * 1e6);
   for (const t of titulos) movimentar(save, `Premiação: campeão da ${t}`, 15e6);
+}
+// o arquivo das temporadas (save.arquivo, de todos): quando a temporada acaba, guarda os campeões, as tabelas, as chaves, a festa,
+// a artilharia, os prêmios (artilheiro, maior goleada, melhor negócio) e os pontos de cada técnico, para a tela "Temporadas".
+// Uma vez por temporada (na sala, a primeira visão que fecha a temporada faz por todos).
+const PONTOS_LIGA = [10, 6, 4, 3, 2, 2], PONTOS_TITULO = { champions: 8, libertadores: 8, supermundial: 8, mundial: 8 };
+function arquivarTemporada(save) {
+  const arquivo = save.arquivo || (save.arquivo = []);
+  if (arquivo.some((x) => x.temporada === save.temporada)) return;
+  const mundo = estadoMundo(save), golsTodos = golsDoMundo(save, Infinity);
+  const humanos = save.humanosLista ? save.humanosLista() : [{ clube: save.clube, tecnico: save.tecnico }];
+  const competicoes = {}; let goleada = null;
+  for (const [id, c] of Object.entries(mundo.competicoes)) {
+    if (!c.campeao) continue;
+    const limpa = (tab) => tab.map(({ ultimos, ...l }) => l);
+    const elenco = elencoDe(save, c.campeao).sort((a, b) => notaDe(save, b) - notaDe(save, a)).slice(0, 20).map((j) => j.id);
+    competicoes[id] = { nome: c.nome, tipo: c.tipo, campeao: c.campeao, vice: c.vice, ...(c.tabela && { tabela: limpa(c.tabela) }),
+      ...(c.grupos && c.grupos.length && { grupos: c.grupos.map((g) => ({ id: g.id, tabela: limpa(g.tabela) })) }), ...(c.chave && c.chave.length && { chave: c.chave }),
+      ...(c.festa && { festa: { ...c.festa, elenco } }) };
+    for (const j of save.competicoes[id].jogos) {
+      if (!j.placar) continue;
+      const dif = Math.abs(j.placar[0] - j.placar[1]), total = j.placar[0] + j.placar[1];
+      if (!goleada || dif > goleada.dif || (dif === goleada.dif && total > goleada.total)) goleada = { dif, total, competicao: c.nome, casa: j.casa, fora: j.fora, placar: [...j.placar] };
+    }
+  }
+  const artilharia = Object.entries(golsTodos).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, nome: (jogadorDe(save, id) || {}).nome || id, clube: donoDe(save, id), gols }));
+  const clubesHumanos = new Set(humanos.map((h) => h.clube));
+  const negocio = save.transferencias.filter((t) => clubesHumanos.has(t.de) && t.lucro != null && (t.temporada || save.temporada) === save.temporada).sort((a, b) => b.lucro - a.lucro)[0];
+  const tecnicos = humanos.map((h) => {
+    const liga = mundo.competicoes[ligaDoClube(h.clube)], pos = liga && liga.tabela ? liga.tabela.findIndex((l) => l.id === h.clube) + 1 : 0;
+    const titulos = [], vices = []; let pontos = PONTOS_LIGA[pos - 1] || 0;
+    for (const [id, c] of Object.entries(competicoes)) {
+      const peso = PONTOS_TITULO[id] || (c.tipo === "liga" ? 10 : 5);
+      if (c.campeao === h.clube) { titulos.push(c.nome); if (c.tipo !== "liga") pontos += peso; }
+      else if (c.vice === h.clube) { vices.push(c.nome); if (c.tipo !== "liga") pontos += Math.floor(peso / 2); }
+    }
+    return { clube: h.clube, tecnico: (h.tecnico && h.tecnico.nome) || (typeof h.tecnico === "string" ? h.tecnico : h.clube), posicao: pos, liga: liga ? liga.nome : "", titulos, vices, pontos };
+  });
+  arquivo.push({ ano: save.ano, temporada: save.temporada, competicoes, artilharia,
+    premios: { artilheiro: artilharia[0] || null, goleada: goleada && { competicao: goleada.competicao, casa: goleada.casa, fora: goleada.fora, placar: goleada.placar },
+      negocio: negocio ? { jogador: negocio.jogador, nome: (jogadorDe(save, negocio.jogador) || {}).nome || negocio.jogador, de: negocio.de, para: negocio.para, lucro: negocio.lucro } : null },
+    tecnicos });
 }
 // a virada: cada jogador evolui (de -2 a +3), os veteranos podem se aposentar e cada clube ganha 1 ou 2 jovens da base.
 // Devolve o que mudou no seu time, para o aviso da pré-temporada.
@@ -867,7 +970,7 @@ function jovensDoEstado(save, e) {
   const todos = save.jovens || {}; if (!Object.keys(todos).length) return {};
   const clubes = new Set([save.clube, ...(e.proximo || []), ...(e.partida ? [e.partida.casa, e.partida.fora] : []), ...(e.ultimo ? [e.ultimo.casa, e.ultimo.fora] : [])]);
   const ids = new Set(Object.keys(todos).filter((id) => clubes.has(donoDe(save, id))));
-  for (const m of JSON.stringify([e.artilharia, e.transferencias, e.feed, e.historico, e.caixaEntrada]).matchAll(RE_JOVEM)) if (todos[m[1]]) ids.add(m[1]);
+  for (const m of JSON.stringify([e.artilharia, e.transferencias, e.feed, e.historico, e.caixaEntrada, e.arquivo]).matchAll(RE_JOVEM)) if (todos[m[1]]) ids.add(m[1]);
   return Object.fromEntries([...ids].map((id) => [id, todos[id]]));
 }
 function estado(save) {
@@ -875,6 +978,7 @@ function estado(save) {
   const e = save.base === BASE_PADRAO ? estadoMundo(save) : estadoBrasileirao(save);
   e.temporadasMax = save.temporadasMax;
   e.encerrada = e.fim && save.temporada >= save.temporadasMax;
+  e.arquivo = save.arquivo || [];
   e.jovens = jovensDoEstado(save, e);
   return e;
 }
@@ -1132,7 +1236,7 @@ module.exports = function ligarCarreira(io) {
       if (save.base === BASE_PADRAO) {
         const jogo = proximoJogoMundo(save); if (!jogo) return "A temporada acabou.";
         resolverPendentes(save);
-        save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, casa: jogo.casa, fora: jogo.fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
+        save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, agregado: agregadoDe(save, jogo), casa: jogo.casa, fora: jogo.fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
         const r = simularMinha(save); if (r.completo) fecharRodada(save, r); return null;
       }
       if (save.rodada >= save.calendario.length) return "A temporada acabou.";
@@ -1179,6 +1283,6 @@ module.exports = function ligarCarreira(io) {
 // para os testes: montar uma carreira e mexer nela sem o socket
 module.exports.paraTestes = { novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, APOSENTADO };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
-module.exports.grupo = { VERSAO, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
+module.exports.grupo = { VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
   infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };

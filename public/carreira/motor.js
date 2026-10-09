@@ -394,6 +394,45 @@
       }
     }
 
+    // a disputa de pênaltis (mata-mata empatado no agregado): 5 cobranças para cada lado e depois uma de cada vez. Nos modos 2 e 3
+    // quem tem humano escolhe o canto (ao bater) e o pulo (ao defender), como no Leilão; sem humano, os cantos saem das manias.
+    // Acaba assim que um lado não alcança mais o outro. O resultado vai em `penaltis` ([casa, fora]) e em eventos "disputa".
+    let penaltis = null;
+    function disputaDePenaltis() {
+      const gols = [0, 0], cobradas = [0, 0];
+      const quem = times.map((t) => {
+        const linha = titulares(t).filter((p) => p.grp !== "GK").sort((a, b) => b.atr.fin - a.atr.fin || (a.id < b.id ? -1 : 1));
+        return { batedores: linha.length ? linha : titulares(t), goleiro: t.gk || titulares(t).find((p) => p.grp === "GK") || null };
+      });
+      const zona = (x) => (ZONAS.includes(x) ? x : ZONAS.includes(x && x.opcao) ? x.opcao : ZONAS[0]);
+      const sorteio = (p) => ZONAS[sortearIndice(rng, maniaDe(p))];
+      const decidida = () => {
+        if (cobradas[0] >= 5 && cobradas[1] >= 5) return cobradas[0] === cobradas[1] && gols[0] !== gols[1];
+        return gols[0] > gols[1] + (5 - cobradas[1]) || gols[1] > gols[0] + (5 - cobradas[0]);
+      };
+      ev({ tipo: "disputa_inicio" });
+      let n = 0;
+      for (let rodada = 0; rodada < 40 && !decidida(); rodada++) {
+        for (const lado of [0, 1]) {
+          if (decidida()) break;
+          const bat = quem[lado].batedores[cobradas[lado] % quem[lado].batedores.length], gk = quem[1 - lado].goleiro;
+          const id = `pen${++n}`, base = { disputa: { n, gols: [...gols], cobradas: [...cobradas], lado }, batedor: bat.id, goleiro: gk ? gk.id : null };
+          const pedido = (aFavor) => ({ tipo: "lance", lance: aFavor ? "penalti_favor" : "penalti_contra", lado: aFavor ? lado : 1 - lado, ...base, opcoes: opcoesDoPenalti(aFavor, bat, gk) });
+          let chute, pulo;
+          if (ambos && modo >= 2) {
+            const d = decidir(id, { tipo: "lance", ambos: true, ...base, pedidos: { [lado]: pedido(true), [1 - lado]: pedido(false) } }) || {};
+            chute = zona(d[lado]); pulo = zona(d[1 - lado]);
+          } else if (modo >= 2 && controla === lado) { chute = zona(decidir(id, pedido(true))); pulo = sorteio(gk); }
+          else if (modo >= 2 && controla === 1 - lado) { pulo = zona(decidir(id, pedido(false))); chute = sorteio(bat); }
+          else { chute = sorteio(bat); pulo = sorteio(gk); }
+          const fora = rng() < FORA, entrou = !fora && chute !== pulo;
+          cobradas[lado]++; if (entrou) gols[lado]++;
+          ev({ tipo: "disputa", lado, jogador: bat.id, ...(gk ? { goleiro: gk.id } : {}), chute, pulo, fora, entrou, n, placar: [...gols] });
+        }
+      }
+      penaltis = [...gols];
+    }
+
     try {
       const acr = [1 + Math.floor(rng() * 3), 2 + Math.floor(rng() * 4)];
       for (let tempo = 0; tempo < 2; tempo++) {
@@ -410,10 +449,12 @@
       }
       minuto = 90;
       ev({ tipo: "fim", placar: [...placar] });
+      const antes = (cfg.desempate && cfg.desempate.agregado) || [0, 0];
+      if (cfg.desempate && placar[0] + antes[0] === placar[1] + antes[1]) disputaDePenaltis();
     } catch (e) { if (e !== PARAR) throw e; }
 
     return {
-      placar, eventos, parado, completo: !parado, estatisticas: est,
+      placar, eventos, parado, completo: !parado, estatisticas: est, ...(penaltis && { penaltis }),
       times: times.map((t) => ({ id: t.id, nome: t.nome, formacao: t.formacao, tatica: { ...t.tatica }, titulares: titulares(t).map((p) => p.id), subs: t.subs })),
     };
   }

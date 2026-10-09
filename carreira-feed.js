@@ -36,10 +36,30 @@ function postar(save, p) {
 function transferencia(save, t, c) {
   const j = c.jogadorDe(save, t.jogador); if (!j) return;
   const de = c.clubeDe(save, t.de), para = c.clubeDe(save, t.para), meu = t.para === save.clube || t.de === save.clube;
+  // na carreira em grupo a notícia é uma só, igual para todos os técnicos (o mesmo texto, perfil e arte), de quem for o negócio
+  if (save.outrosHumanos) {
+    const p = { tipo: "contratacao", perfil: t.para, humor: "mercado", peso: 1.5, arte: { cena: "contratacao", jogador: t.jogador, clube: t.para },
+      texto: `CHEGOU! ${j.nome} é do ${para.nome}. Veio do ${de.nome} por ${dinheiro(t.valor)}${t.parcelado ? " (parcelado)" : ""}.${t.lucro != null ? ` O ${de.nome} ${t.lucro >= 0 ? "lucrou" : "perdeu"} ${dinheiro(Math.abs(t.lucro))} no negócio.` : ""}` };
+    postar(save, p);
+    for (const outro of save.outrosHumanos()) postar(outro, p);
+    return;
+  }
   if (t.para === save.clube) postar(save, { tipo: "contratacao", perfil: t.para, humor: "mercado", peso: 1.5, arte: { cena: "contratacao", jogador: t.jogador, clube: t.para },
     texto: `CHEGOU! ${j.nome} é do ${para.nome}. Veio do ${de.nome} por ${dinheiro(t.valor)}${t.parcelado ? " (parcelado)" : ""}. Bem-vindo, craque!` });
   else postar(save, { tipo: "venda", perfil: meu ? "galeranews" : t.para, galeranews: meu, humor: "mercado", arte: { cena: "aperto", jogador: t.jogador, de: t.de, para: t.para, valor: t.valor },
     texto: `${j.nome} deixa o ${de.nome} e assina com o ${para.nome} por ${dinheiro(t.valor)}.${t.lucro != null ? ` O ${de.nome} ${t.lucro >= 0 ? "lucrou" : "perdeu"} ${dinheiro(Math.abs(t.lucro))} no negócio.` : ""}` });
+}
+
+// uma troca entre dois técnicos da sala: a mesma notícia no feed de todos (quem é de quem, o que foi e o dinheiro)
+function troca(save, t, c) {
+  const a = c.clubeDe(save, t.de), b = c.clubeDe(save, t.para), nomes = (ids) => ids.map((pid) => c.jogadorDe(save, pid).nome).join(", ");
+  const dou = t.dou.length ? nomes(t.dou) : "ninguém", recebo = t.recebo.length ? nomes(t.recebo) : "ninguém";
+  const grana = t.dinheiro ? ` e mais ${dinheiro(Math.abs(t.dinheiro))} do ${t.dinheiro > 0 ? a.nome : b.nome}` : "";
+  const p = { tipo: "troca", perfil: "galeranews", galeranews: true, humor: "mercado", peso: 1.5,
+    arte: { cena: "aperto", jogador: (t.dou[0] || t.recebo[0]), de: t.de, para: t.para, valor: Math.abs(t.dinheiro) },
+    texto: `TROCA FECHADA! O ${a.nome} manda ${dou} para o ${b.nome} e recebe ${recebo}${grana}.` };
+  postar(save, p);
+  if (save.outrosHumanos) for (const outro of save.outrosHumanos()) postar(outro, p);
 }
 
 // a cena de cada evento do catálogo (pelo id; os outros, pelo grupo)
@@ -58,7 +78,8 @@ const CENA_GRUPO = { vestiario: "vestiario", torcida: "torcida", imprensa: "impr
 // não deixar os eventos aleatórios presos só na caixa de entrada.
 function entreRodadas(save, { novos, transferencias, ajudas: c }) {
   const meu = save.clube, clube = c.clubeDe(save, meu);
-  for (const t of transferencias) if (t.de !== meu && t.para !== meu) transferencia(save, t, c);
+  // (na sala, o negócio de qualquer técnico já foi para o feed de todos na hora: só entram os do computador)
+  for (const t of transferencias) if (t.de !== meu && t.para !== meu && !(save.humanoDe && (save.humanoDe(t.de) || save.humanoDe(t.para)))) transferencia(save, t, c);
   for (const e of novos) {
     if (e.def) {
       const cena = CENA_EVENTO[e.def] || CENA_GRUPO[e.grupo] || "vestiario", pid = e.dados && e.dados.jogador;
@@ -111,4 +132,4 @@ function daRodada(save, { rodada, r, novos, transferencias, ajudas: c }) {
   entreRodadas(save, { novos, transferencias, ajudas: c });
 }
 
-module.exports = { postar, transferencia, entreRodadas, daRodada, MAX };
+module.exports = { postar, transferencia, troca, entreRodadas, daRodada, MAX };

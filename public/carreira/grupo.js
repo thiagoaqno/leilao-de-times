@@ -58,6 +58,7 @@ socket.on("state", (st) => {
     if (comecou || !E) pedir("entrar").then((r) => { if (r.ok) { receber(r.estado); DESVIO = st.now - Date.now(); if (telaAtual === "grupo" || !telaAtual) abrirSede(); atualizarRodadaGrupo(r.estado.rodadaGrupo); } });
     desenharLeilao(); avisarLeilao(st); desenharTurma(st);
     if (E && telaAtual === "sede") telaSede();
+    else if (E && telaAtual === "trocas") telaTrocas();
     return;
   }
   desenharSala();

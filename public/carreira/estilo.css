@@ -909,3 +909,39 @@ dialog.festa::backdrop{background:#000d;backdrop-filter:blur(4px)}
 .fsChip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 6px;border-radius:99px;background:var(--s3);border:1px solid var(--b2);color:var(--t2);font-size:13px;transition:transform .16s var(--ease),border-color .16s var(--ease)}
 .fsChip:active{transform:scale(.97)}.fsChip.on{border-color:var(--ouro2);color:var(--t1)}
 .festa-btn{margin-left:8px}
+/* trocas entre técnicos e as temporadas anteriores */
+.troca-aviso p{margin:0;display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--t2)}.troca-aviso b{color:var(--t1)}
+.trocas-grade{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:14px;margin-top:14px;align-items:start}
+@media(max-width:900px){.trocas-grade{grid-template-columns:1fr}}
+.trocas-grade>div{display:flex;flex-direction:column;gap:14px}
+.proposta-troca{display:flex;flex-direction:column;gap:10px;padding:12px;margin-top:10px;border-radius:var(--r2);background:var(--s2);border:1px solid var(--b1);animation:sobe .3s var(--ease) both}
+.proposta-troca header{display:flex;align-items:center;gap:8px}.proposta-troca header small{color:var(--t3)}
+.troca-lados{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:start}.troca-lados>div{display:flex;flex-direction:column;gap:4px}
+.troca-lados small{color:var(--t3);font-size:11px}.troca-seta{align-self:center;color:var(--t3)}
+.troca-jog{display:flex;align-items:center;gap:6px;font-size:13px}.troca-jog img{width:24px;height:24px}.troca-jog small{margin-left:auto;font:600 12px var(--mono);color:var(--t2)}
+.troca-grana{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--alerta)}
+.proposta-troca footer{display:flex;gap:8px;justify-content:flex-end}
+.troca-tecnicos{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.troca-tec{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r2);background:var(--s2);border:1px solid var(--b1);text-align:left;transition:border-color .16s var(--ease),transform .16s var(--ease)}
+.troca-tec:active{transform:scale(.97)}.troca-tec small{display:block;color:var(--t3);font-size:11px}.troca-tec.ativo{border-color:var(--acento)}
+.troca-colunas{display:grid;grid-template-columns:1fr 1fr;gap:12px}.troca-colunas h4{margin:0 0 6px;font-size:12px;font-weight:500;color:var(--t3)}
+@media(max-width:600px){.troca-colunas{grid-template-columns:1fr}}
+.troca-elenco{display:flex;flex-direction:column;gap:3px;max-height:340px;overflow-y:auto;padding-right:4px}
+.troca-linha{display:grid;grid-template-columns:auto 26px 1fr auto;gap:8px;align-items:center;padding:5px 8px;border-radius:var(--r3);background:var(--s1);border:1px solid transparent;cursor:pointer;transition:background .15s ease,border-color .15s ease}
+.troca-linha.marcado{border-color:var(--acento);background:color-mix(in srgb,var(--acento) 8%,var(--s1))}.troca-linha img{width:26px;height:26px}
+.troca-linha b{font-size:13px;font-weight:600}.troca-linha small{display:block;color:var(--t3);font-size:11px}.nota-troca{font:600 13px var(--mono);font-style:normal;color:var(--t2)}
+.troca-dinheiro{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}.troca-dinheiro label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2)}
+.troca-dinheiro input,.troca-dinheiro select{background:var(--s2);color:var(--t1);border:1px solid var(--b2);border-radius:var(--r3);padding:6px 8px;font:inherit;width:auto}.troca-dinheiro input{width:90px}
+.premios{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:6px}
+.premio{display:flex;flex-direction:column;gap:3px;padding:12px;border-radius:var(--r2);background:var(--s2);border:1px solid var(--b1);animation:sobe .3s var(--ease) both}
+.premio-ic{width:28px;height:28px;color:var(--ouro2)}.premio small{color:var(--t3);font-size:11px}.premio b{display:flex;align-items:center;gap:6px;font-weight:600}.premio>span:last-child{font-size:12px;color:var(--t2);display:flex;align-items:center;gap:6px}
+.campeoes-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.campeao-card{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;border-radius:var(--r2);background:var(--s2);border:1px solid var(--b1)}
+.campeao-card.meu{border-color:var(--ouro2);background:color-mix(in srgb,var(--ouro2) 8%,var(--s2))}
+.campeao-card small{display:block;color:var(--t3);font-size:11px}.campeao-card b{display:block;font-weight:600}.campeao-card em{font-style:normal;font-size:11px;color:var(--t3)}
+.tecnicos-temp,.ranking-tecnicos{display:flex;flex-direction:column;gap:6px;list-style:none;margin:10px 0 0;padding:0}
+.tec-temp,.ranking-tecnicos li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 10px;border-radius:var(--r3);background:var(--s2)}
+.ranking-tecnicos li{grid-template-columns:auto auto 1fr auto auto}.pos-rank{font:600 13px var(--mono);color:var(--t3);min-width:26px}
+.tec-temp.meu,.ranking-tecnicos li.meu{outline:1px solid var(--acento)}.tec-temp small,.ranking-tecnicos small{display:block;color:var(--t3);font-size:11px}
+.tec-temp strong,.ranking-tecnicos strong{font:600 15px var(--mono)}.rank-tit{display:inline-flex;align-items:center;gap:4px;color:var(--ouro2);font-size:13px}.rank-tit small{display:inline}
+.abas-temporadas{margin:14px 0}
