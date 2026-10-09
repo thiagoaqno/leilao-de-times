@@ -50,20 +50,26 @@ function abrirPartida(rodada) {
   const src = meuGrupo ? { ...meuGrupo, rodada: meuGrupo.id } : E.partida || (E.ultimo && (rodada == null || E.ultimo.rodada === rodada) ? E.ultimo : null);
   if (!src) return mostrarTela("sede");
   const nova = J.rodada !== src.rodada || J.casa !== src.casa;
-  Object.assign(J, { rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, penaltis: src.penaltis || null, decidindo: false, grupo: !!meuGrupo });
+  Object.assign(J, { competicao: src.competicao || null, jogoId: src.jogoId || src.id || null, paralelos: src.paralelos || (J.casa === src.casa && J.rodada === src.rodada ? J.paralelos : []), rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, penaltis: src.penaltis || null, decidindo: false, grupo: !!meuGrupo });
   document.querySelector(".faixa-jogo .controles").classList.remove("hidden"); atualizarControlesVelocidade();
   if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
+  // a partida que acabou na hora (só o resultado) já não vem com os outros jogos da semana: pede à parte
+  if (!meuGrupo && !src.paralelos && !J.paralelos.length && J.jogoId) buscarParalelos(J.jogoId);
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
   $("pNomeCasa").textContent = nomeClube(J.casa); $("pNomeFora").textContent = nomeClube(J.fora);
   $("partida").style.cssText = `--casa:${CLUBES[J.casa].cores[0]};--fora:${CLUBES[J.fora].cores[0]};--mando:${CLUBES[J.casa].cores[0]};--casa-tinta:${tintaSobre(CLUBES[J.casa].cores[0], "#ffffff")};--fora-tinta:${tintaSobre(CLUBES[J.fora].cores[0], "#ffffff")}`;
   J.clima = climaDoJogo(E.temporada, J.rodada, J.casa, J.fora);
   $("partida").classList.remove("clima-dia", "clima-noite", "clima-chuva");
   $("partida").classList.add(`clima-${J.clima.hora}`); if (J.clima.chuva) $("partida").classList.add("clima-chuva");
-  $("pLocal").innerHTML = `${ic("estadio")} ${meuGrupo ? "Rodada da turma" : `Rodada ${src.rodada + 1}`} · ${h(CLUBES[J.casa].estadio)} · ${textoDoClima(J.clima)}`;
+  $("pLocal").innerHTML = `${ic("estadio")} ${linhaDoJogo()}`; // o campeonato, a rodada ou a fase, o estádio e o clima (aovivo.js)
   if ($("decisao").open) $("decisao").close();
   $("fimJogo").classList.add("hidden");
   mostrarTela("partida");
   atualizarPlacar();
+}
+async function buscarParalelos(jogoId) {
+  const r = await pedir("paralelos", { jogoId });
+  if (r.ok && J.jogoId === jogoId) J.paralelos = r.paralelos;
 }
 function atualizarPlacar() {
   let g = [0, 0];
@@ -166,6 +172,7 @@ function passo(agora) {
       else if (J.completo) { J.relogio = 96; $("fimJogo").classList.remove("hidden"); }
     }
     atualizarPlacar();
+    atualizarAoVivo();
   }
   requestAnimationFrame(passo);
 }

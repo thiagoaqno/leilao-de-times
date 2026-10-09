@@ -116,6 +116,10 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await page.click('#mercado [data-ir="sede"]');
     await page.click("#btnJogar");
     await expect(page.locator("#partida")).toBeVisible();
+    // o painel ao vivo: o campeonato e a rodada no topo e os outros jogos da semana andando no relógio
+    await expect(page.locator("#pLocal")).toContainText("Brasileirão");
+    await expect(page.locator("#avInfo")).toContainText(/Rodada 1 de 38/);
+    await expect(page.locator("#aoVivo .av-jogo").first()).toBeVisible();
     await page.click("#btnPular");
     await expect(page.locator("#fimJogo")).toBeVisible({ timeout: 20000 });
     await page.click("#btnVoltarSede");

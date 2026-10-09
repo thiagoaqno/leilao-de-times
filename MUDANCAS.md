@@ -1,49 +1,37 @@
-# Carreira: os escudos de todos os clubes refeitos em vetor, e os brasileiros desenhados um a um
+# Carreira: a partida com as informações do jogo e os resultados dos outros jogos ao vivo
 
-Os 142 escudos da carreira mudaram. Antes eram pixel-art de 16x18, com as letras borradas e vários clubes quase iguais
-(a mesma forma com cores diferentes). Agora são desenhos em SVG, nítidos em qualquer tamanho, e nenhum escudo é cópia
-de escudo de verdade.
+Durante a partida, a tela agora mostra de que jogo se trata e o que acontece nos outros campos, no mesmo relógio.
 
-## Os 20 do Brasileirão, feitos à mão
-Cada um com o jeito do clube (as cores e um elemento que lembra o escudo, sem copiar o desenho):
-- **Flamengo:** listras vermelhas e pretas com o monograma CRF numa pílula.
-- **Palmeiras:** redondo verde com anel branco e o P grande.
-- **Cruzeiro:** redondo azul com o Cruzeiro do Sul (as cinco estrelas).
-- **Mirassol:** amarelo com faixa verde e o M grande.
-- **Fluminense:** as três faixas grená, branca e verde.
-- **Botafogo:** preto com a estrela branca grande.
-- **Bahia:** redondo tricolor com o B no centro.
-- **São Paulo:** branco com as faixas vermelha e preta e as três estrelas.
-- **Grêmio:** as faixas azul, preta e branca.
-- **Bragantino:** branco e vermelho com a bola.
-- **Atlético-MG:** listras pretas e brancas com a estrela dourada.
-- **Santos:** branco com as listras pretas em cima.
-- **Corinthians:** redondo branco e preto com a âncora.
-- **Vasco:** preto com a faixa diagonal e a cruz.
-- **Vitória:** listras vermelhas e pretas com as estrelas douradas.
-- **Internacional:** redondo vermelho com o SCI.
-- **Coritiba:** redondo verde e branco com o CFC.
-- **Athletico-PR:** pontudo, listras vermelhas e pretas na diagonal e o raio.
-- **Chapecoense:** verde com o ACF.
-- **Remo:** azul-marinho com os remos cruzados e a estrela.
+## As informações do jogo
+- **No topo da partida:** o campeonato, a rodada ou a fase, o estádio e o clima. Por exemplo, "Brasileirão Série A · Rodada
+  5 de 38 · Maracanã · jogo à noite", ou "Libertadores · Fase de grupos · Grupo A · Rodada 3 de 6", ou "Copa do Brasil ·
+  Oitavas de final · jogo de volta".
+- **No painel da direita:** a classificação dos dois clubes (a posição e os pontos, **antes** do jogo: mesmo quando a partida
+  acaba na hora, o painel não entrega o resultado), no mata-mata o resultado da ida e o **agregado ao vivo** (ele sobe quando
+  sai um gol).
 
-## Todos os outros
-- Os escudos das outras ligas usam a receita que já estava na base (cores, listras, anel, símbolo, estrelas) no
-  desenho novo.
-- Quando a receita era só fundo, borda e três letras (a maioria), o escudo ganha um de 7 desenhos (faixa no topo, duas
-  metades, faixa no meio, V, diagonal, listras ou cantos) e uma de 3 formas (escudo, tábua ou ponta), sorteados pelo id
-  do clube: com as mesmas cores, dois clubes não ficam iguais. Nenhum dos 142 se repete.
-- As letras ficam numa pílula na cor que dá leitura (se a cor das letras é parecida com a do fundo, a pílula troca de cor).
-- Contorno escuro, brilho suave por cima, e cada escudo na tela traz os seus próprios ids (sem choque quando o mesmo
-  escudo aparece várias vezes).
+## Os outros jogos ao vivo
+- Os outros jogos da mesma semana (do mesmo campeonato e, numa lista que abre, das outras competições) com o placar andando
+  no relógio da partida: o gol aparece na hora, o placar do jogo pisca e entra na lista dos **últimos gols** (quem fez e o
+  placar). No fim, cada um mostra "Fim" e o placar final, que é o mesmo da tabela.
+- Os gols de cada jogo vêm do mesmo jogo simulado do mundo (a mesma semente), então nada é inventado para a tela.
+- **Carreira em grupo:** os jogos dos outros técnicos entram primeiro ("Jogos da turma"), cada um com o relógio dele. Os
+  outros jogos da semana também aparecem, e os jogos de humanos não se repetem entre eles.
+- No celular, o painel desce para baixo da narração.
 
-## O que não mudou
-- A API é a mesma (`Escudos.svg(clube)`), então todas as telas já usam os escudos novos. Ficou de fora a `grade`, que só o
-  teste antigo usava.
+## Como funciona
+- **Servidor:** `paralelosDaSemana` (carreira.js) devolve, para uma semana, cada jogo com os gols (minuto e lado). Vai em
+  `estado.partida.paralelos` (solo), em `Rd.visao` (turma, calculado uma vez no começo da rodada) e, quando a partida
+  acaba na hora (só o resultado), a tela pede ao servidor pelo evento `paralelos` (só para o jogo dela). Os jogos de
+  ida e volta agora sabem qual perna são (`perna`).
+- **Tela:** `public/carreira/aovivo.js`; só lê o estado e o relógio da partida.
+
+## Também
+- **Correção nos testes:** o `npm test` lista os arquivos de teste um a um, e os testes dos PRs das copas e de dispensar nunca
+  entraram na lista. Agora entram (junto com os deste PR): 190 testes.
 
 ## Conferido
-- Folhas de contato de todas as ligas no navegador (os 142 clubes, sem erro no console) e a sede e a tabela com os escudos novos. Fotos: `planos/imagens/carreira-escudos-*.png`.
-- `npm test`: 175 de 175. O e2e da carreira não foi rodado desta vez.
-- A arte pixel-art das notícias (o feed) continua com o desenho dela: não usa estes escudos.
-- `tests/carreira-base.test.js`: todo clube tem escudo montado certo, os 20 do Brasileirão têm desenho próprio, nenhum
-  clube repete o desenho de outro e os ids mudam a cada escudo.
+- Fotos: `planos/imagens/carreira-ao-vivo-solo.png`, `carreira-ao-vivo-turma.png` e `carreira-ao-vivo-celular.png`.
+- `npm test`: 190 de 190 (`tests/carreira-ao-vivo.test.js` cobre os jogos paralelos no solo e na turma, o pedido à parte e as
+  pernas de ida e volta). E2E: os dois testes da rodada (1280x800 e 375x812), com as verificações novas do painel.
+- Na tela: solo (Brasileirão e Libertadores), jogo de volta com agregado, rodada da turma com dois navegadores e celular.

@@ -21,6 +21,8 @@ function criarRodada(save, proxima, agora, { vel = 1.5, decisaoMs = 20000, esper
   const inicio = agora + espera;
   return {
     n, semana: proxima.semana, inicio, vel, velBase: vel, multiplicador: 1, ritmos: [{ desde: inicio, vel }], decisaoMs,
+    // os outros jogos da semana, com os gols (a tela mostra ao vivo)
+    paralelos: G.paralelosDaSemana(save, proxima.semana, proxima.jogos.map((j) => j.id)),
     jogos: proxima.jogos.map((j) => ({ id: j.id, j, casa: j.casa, fora: j.fora, modo: Math.max(modoDe(j.casa), modoDe(j.fora)), modos: [modoDe(j.casa), modoDe(j.fora)],
       decisoes: {}, parciais: {}, pausas: [], parado: null, fim: false })),
   };
@@ -152,7 +154,7 @@ function visao(save, rod, clube, agora) {
     }
     return { ...base, lado, eventos: r.eventos, parado, completo: r.completo, modo: jg.modo, placar: r.placar, penaltis: jg.penaltis || null };
   };
-  return { n: rod.n, semana: rod.semana, inicio: rod.inicio, agora, velocidade: rod.multiplicador || 1, meu: meu ? ver(meu) : null, outros: rod.jogos.filter((x) => x !== meu).map(ver) };
+  return { n: rod.n, semana: rod.semana, inicio: rod.inicio, agora, paralelos: rod.paralelos || [], velocidade: rod.multiplicador || 1, meu: meu ? ver(meu) : null, outros: rod.jogos.filter((x) => x !== meu).map(ver) };
 }
 
 module.exports = { criarRodada, tick, decidir, visao, minutoDe, limiteDe, alterarVelocidade };

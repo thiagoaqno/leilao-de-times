@@ -78,7 +78,7 @@
       for (let i = 0; i < atuais.length; i += 2) {
         const a = atuais[i], b = atuais[i + 1], ida = jogar(id, fase.nome, i / 2, a, b, semanaIda, "meio", true); jogos.push(ida); let vencedor;
         if (fase.idaVolta) {
-          const volta = jogar(id, fase.nome, i / 2, b, a, semanaVolta, "meio", true); jogos.push(volta);
+          const volta = jogar(id, fase.nome, i / 2, b, a, semanaVolta, "meio", true); jogos.push(volta); ida.perna = "ida"; volta.perna = "volta";
           const ga = ida.placar[0] + volta.placar[1], gb = ida.placar[1] + volta.placar[0];
           if (ga === gb) { const desempate = { ...volta, placar: [ga, gb], id: `${volta.id}:agregado` }; vencedor = vencedorJogo(desempate, semente, clubes); volta.penaltis = desempate.penaltis; } else vencedor = ga > gb ? a : b;
         } else vencedor = vencedorJogo(ida, semente, clubes);
