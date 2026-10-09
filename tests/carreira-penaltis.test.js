@@ -3,8 +3,14 @@ process.env.DB_PATH = process.env.DB_PATH || ":memory:";
 const test = require("node:test");
 const assert = require("node:assert");
 const Motor = require("../public/carreira/motor.js");
+const Ritmo = require("../public/leilao/ritmo.js");
 const Temporada = require("../public/carreira/temporada.js");
 const { novaCarreira, proximoJogoMundo, simularMinha, fecharRodada, estado, sementeDoJogo, timeDe } = require("../carreira.js").paraTestes;
+
+test("pênaltis da Carreira têm seis zonas na ordem certa e 5% de chance de ir para fora", () => {
+  assert.deepStrictEqual(Ritmo.ZONAS, ["ea", "ma", "da", "eb", "mb", "db"]);
+  assert.strictEqual(Ritmo.DUELO.FORA, 0.05);
+});
 
 // dois times iguais, o jogo costuma terminar em poucos gols: procura uma semente que empata
 function time(id) {
