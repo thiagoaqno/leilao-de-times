@@ -964,3 +964,11 @@ dialog.festa::backdrop{background:#000d;backdrop-filter:blur(4px)}
 .estilo-encaixe{margin:6px 0 0;font-size:12px;padding:8px 10px;border-radius:var(--r3);background:var(--s2);border-left:3px solid var(--t3)}
 .estilo-encaixe.bom{border-left-color:var(--ok)}.estilo-encaixe.medio{border-left-color:var(--alerta)}.estilo-encaixe.ruim{border-left-color:var(--erro)}
 .estilo-encaixe b{color:var(--t1)}
+.rotulo.sub{display:block;margin-top:10px;font-size:11px;color:var(--t3)}
+.estilo-pct{margin-left:6px;font:600 10px var(--mono);opacity:.8}
+.efeito .efeito-sub{font:600 11px var(--mono);margin-top:1px}.efeito .efeito-sub.bom{color:var(--ok)}.efeito .efeito-sub.ruim{color:var(--erro)}.efeito .efeito-sub.neutro{color:var(--t3)}
+.efeito .efeito-txt{font:600 13px var(--fonte);color:var(--t1)}
+/* a energia (o cansaço que vem dos jogos): a barra do campinho e do banco muda de cor quando cai */
+.energia.media i{background:var(--alerta)}.energia.baixa i{background:var(--erro)}
+.no-banco .energia{display:block;height:4px;margin:4px 6px 0;border-radius:2px;background:#ffffff1f;overflow:hidden}.no-banco .energia i{display:block;height:100%;width:var(--v);background:var(--ok);border-radius:2px}
+.no-banco .energia.media i{background:var(--alerta)}.no-banco .energia.baixa i{background:var(--erro)}

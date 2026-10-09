@@ -11,30 +11,48 @@
   // ---------- as formações: as linhas de trás para a frente, cada uma com o grupo (DEF, MID, ATT) e a vaga de cada um ----------
   // O grupo é o que a força do time usa (escalacao.js: strength); a vaga fina (LE, ZAG, VOL, PE, ATA...) é o encaixe de cada jogador.
   const Z4 = ["LE", "ZAG", "ZAG", "LD"], Z5 = ["LE", "ZAG", "ZAG", "ZAG", "LD"], Z3 = ["ZAG", "ZAG", "ZAG"];
-  const FORMACOES = {
-    "4-3-3": [["DEF", Z4], ["MID", ["VOL", "MC", "MC"]], ["ATT", ["PE", "ATA", "PD"]]],
-    "4-2-3-1": [["DEF", Z4], ["MID", ["VOL", "VOL"]], ["MID", ["PE", "MEI", "PD"]], ["ATT", ["ATA"]]],
-    "4-4-2": [["DEF", Z4], ["MID", ["PE", "MC", "MC", "PD"]], ["ATT", ["ATA", "ATA"]]],
-    "4-4-2 L": [["DEF", Z4], ["MID", ["VOL"]], ["MID", ["MC", "MC"]], ["MID", ["MEI"]], ["ATT", ["ATA", "ATA"]]],
-    "4-1-4-1": [["DEF", Z4], ["MID", ["VOL"]], ["MID", ["PE", "MC", "MC", "PD"]], ["ATT", ["ATA"]]],
-    "4-2-4": [["DEF", Z4], ["MID", ["VOL", "MC"]], ["ATT", ["PE", "ATA", "ATA", "PD"]]],
-    "3-5-2": [["DEF", Z3], ["MID", ["VOL"]], ["MID", ["LE", "MC", "MC", "LD"]], ["ATT", ["ATA", "ATA"]]],
-    "3-4-3": [["DEF", Z3], ["MID", ["LE", "MC", "MC", "LD"]], ["ATT", ["PE", "ATA", "PD"]]],
-    "3-2-4-1": [["DEF", Z3], ["MID", ["VOL", "VOL"]], ["MID", ["PE", "MEI", "MEI", "PD"]], ["ATT", ["ATA"]]],
-    "3-6-1": [["DEF", Z3], ["MID", ["VOL", "VOL"]], ["MID", ["LE", "MC", "MC", "LD"]], ["ATT", ["ATA"]]],
-    "5-3-2": [["DEF", Z5], ["MID", ["MC", "VOL", "MC"]], ["ATT", ["ATA", "ATA"]]],
-    "5-4-1": [["DEF", Z5], ["MID", ["PE", "MC", "MC", "PD"]], ["ATT", ["ATA"]]],
-    "2-3-5": [["DEF", ["ZAG", "ZAG"]], ["MID", ["MC", "VOL", "MC"]], ["ATT", ["PE", "ATA", "ATA", "ATA", "PD"]]],
+  const AT3 = ["PE", "ATA", "PD"], AT3F = ["PE", "F9", "PD"];
+  // cada esquema tem variações (o 4-3-3 com 1 volante e 2 meio-campistas, 2 volantes e 1 meia...): o nome é "esquema" ou "esquema X";
+  // o rótulo diz o que muda no meio. F9 é o falso 9: o atacante recua para armar (rende como meia e como centroavante).
+  const DEFS = [
+    ["4-3-3", "1 volante + 2 meio-campistas", [["DEF", Z4], ["MID", ["VOL", "MC", "MC"]], ["ATT", AT3]]],
+    ["4-3-3 M", "1 volante + 2 meias", [["DEF", Z4], ["MID", ["VOL", "MEI", "MEI"]], ["ATT", AT3]]],
+    ["4-3-3 V", "2 volantes + 1 meia", [["DEF", Z4], ["MID", ["VOL", "VOL", "MEI"]], ["ATT", AT3]]],
+    ["4-3-3 C", "3 meio-campistas", [["DEF", Z4], ["MID", ["MC", "MC", "MC"]], ["ATT", AT3]]],
+    ["4-3-3 F", "falso 9", [["DEF", Z4], ["MID", ["VOL", "MC", "MC"]], ["ATT", AT3F]]],
+    ["4-2-3-1", "2 volantes + 3 meias", [["DEF", Z4], ["MID", ["VOL", "VOL"]], ["MID", ["PE", "MEI", "PD"]], ["ATT", ["ATA"]]]],
+    ["4-2-3-1 C", "dupla de meio-campo", [["DEF", Z4], ["MID", ["MC", "MC"]], ["MID", ["PE", "MEI", "PD"]], ["ATT", ["ATA"]]]],
+    ["4-2-3-1 M", "3 meias por dentro", [["DEF", Z4], ["MID", ["VOL", "VOL"]], ["MID", ["MEI", "MEI", "MEI"]], ["ATT", ["ATA"]]]],
+    ["4-2-3-1 F", "falso 9", [["DEF", Z4], ["MID", ["VOL", "VOL"]], ["MID", ["PE", "MEI", "PD"]], ["ATT", ["F9"]]]],
+    ["4-4-2", "linha de 4 com pontas", [["DEF", Z4], ["MID", ["PE", "MC", "MC", "PD"]], ["ATT", ["ATA", "ATA"]]]],
+    ["4-4-2 L", "losango", [["DEF", Z4], ["MID", ["VOL"]], ["MID", ["MC", "MC"]], ["MID", ["MEI"]], ["ATT", ["ATA", "ATA"]]]],
+    ["4-4-2 V", "linha de 4 com volante", [["DEF", Z4], ["MID", ["PE", "VOL", "MC", "PD"]], ["ATT", ["ATA", "ATA"]]]],
+    ["4-1-4-1", "volante + 4 meias", [["DEF", Z4], ["MID", ["VOL"]], ["MID", ["PE", "MC", "MC", "PD"]], ["ATT", ["ATA"]]]],
+    ["4-2-4", "4 atacantes", [["DEF", Z4], ["MID", ["VOL", "MC"]], ["ATT", ["PE", "ATA", "ATA", "PD"]]]],
+    ["3-5-2", "1 volante + 2 meio-campistas", [["DEF", Z3], ["MID", ["VOL"]], ["MID", ["LE", "MC", "MC", "LD"]], ["ATT", ["ATA", "ATA"]]]],
+    ["3-5-2 V", "2 volantes + 1 meia", [["DEF", Z3], ["MID", ["VOL", "VOL"]], ["MID", ["LE", "MEI", "LD"]], ["ATT", ["ATA", "ATA"]]]],
+    ["3-4-3", "alas e dois meio-campistas", [["DEF", Z3], ["MID", ["LE", "MC", "MC", "LD"]], ["ATT", AT3]]],
+    ["3-4-3 V", "alas, volante e meio-campista", [["DEF", Z3], ["MID", ["LE", "VOL", "MC", "LD"]], ["ATT", AT3]]],
+    ["3-2-4-1", "dois volantes e quatro meias", [["DEF", Z3], ["MID", ["VOL", "VOL"]], ["MID", ["PE", "MEI", "MEI", "PD"]], ["ATT", ["ATA"]]]],
+    ["3-6-1", "seis no meio", [["DEF", Z3], ["MID", ["VOL", "VOL"]], ["MID", ["LE", "MC", "MC", "LD"]], ["ATT", ["ATA"]]]],
+    ["5-3-2", "1 volante + 2 meio-campistas", [["DEF", Z5], ["MID", ["MC", "VOL", "MC"]], ["ATT", ["ATA", "ATA"]]]],
+    ["5-3-2 V", "2 volantes + 1 meia", [["DEF", Z5], ["MID", ["VOL", "VOL", "MEI"]], ["ATT", ["ATA", "ATA"]]]],
+    ["5-4-1", "ônibus estacionado", [["DEF", Z5], ["MID", ["PE", "MC", "MC", "PD"]], ["ATT", ["ATA"]]]],
+    ["2-3-5", "a pirâmide", [["DEF", ["ZAG", "ZAG"]], ["MID", ["MC", "VOL", "MC"]], ["ATT", ["PE", "ATA", "ATA", "ATA", "PD"]]]],
+  ];
+  const FORMACOES = Object.fromEntries(DEFS.map(([k, , rows]) => [k, rows]));
+  const ROTULO_FORMACAO = Object.fromEntries(DEFS.map(([k, r]) => [k, r]));
+  const NOMES_FORMACOES = DEFS.map(([k]) => k);
+  const baseDe = (nome) => String(nome).split(" ")[0]; // o esquema de uma formação
+  const ESQUEMAS = [...new Set(NOMES_FORMACOES.map(baseDe))]; // 4-3-3, 4-2-3-1, 4-4-2...
+  const variacoesDe = (esquema) => NOMES_FORMACOES.filter((k) => baseDe(k) === esquema);
+  const DESCRICAO_ESQUEMA = {
+    "4-3-3": "Dois pontas abertos e três no meio: ofensivo e equilibrado.", "4-2-3-1": "Dupla no meio protege três meias atrás do centroavante.",
+    "4-4-2": "Duas linhas de quatro e dupla de ataque.", "4-1-4-1": "Um volante cobre a defesa e quatro meias avançam em bloco.", "4-2-4": "O Brasil de 58: quatro atacantes e pouca proteção.",
+    "3-5-2": "Alas cobrem o corredor inteiro; meio congestionado.", "3-4-3": "Agressivo: três atacantes e quatro no meio.", "3-2-4-1": "Dois volantes e quatro meias criam um quadrado central.",
+    "3-6-1": "Seis no meio para esconder a bola, um só na frente.", "5-3-2": "Linha de cinco e dois atacantes para o contra-ataque.", "5-4-1": "Duas linhas fechadas, de cinco e de quatro.", "2-3-5": "A pirâmide: quase todo mundo perto do gol.",
   };
-  const NOMES_FORMACOES = Object.keys(FORMACOES);
-  const DESCRICAO_FORMACAO = {
-    "4-3-3": "Dois pontas abertos e três no meio: ofensiva e equilibrada.", "4-2-3-1": "Dupla de volantes protege três meias atrás do centroavante.",
-    "4-4-2": "Duas linhas de quatro compactas e dupla de ataque.", "4-4-2 L": "Losango: volante, dois meias e armador atrás de dois atacantes.",
-    "4-1-4-1": "Um volante cobre a defesa e quatro meias avançam em bloco.", "4-2-4": "O Brasil de 58: quatro atacantes e pouca proteção.",
-    "3-5-2": "Alas cobrem o corredor inteiro; meio congestionado.", "3-4-3": "Agressiva: três atacantes e quatro no meio.",
-    "3-2-4-1": "Dois volantes e quatro meias criam um quadrado central.", "3-6-1": "Seis no meio para esconder a bola, um só na frente.",
-    "5-3-2": "Linha de cinco e dois atacantes para o contra-ataque.", "5-4-1": "Ônibus estacionado: duas linhas fechadas de cinco e quatro.", "2-3-5": "A pirâmide: quase todo mundo perto do gol.",
-  };
+  const DESCRICAO_FORMACAO = Object.fromEntries(NOMES_FORMACOES.map((k) => [k, `${DESCRICAO_ESQUEMA[baseDe(k)]} Variação: ${ROTULO_FORMACAO[k]}.`]));
   // as vagas, na ordem do campinho: o gol, e depois a defesa, o meio e o ataque (de trás para a frente, da esquerda para a direita)
   function vagasDe(nome) {
     const f = FORMACOES[FORMACOES[nome] ? nome : "4-3-3"], v = [{ g: "GK", fino: "GOL" }];
@@ -54,7 +72,7 @@
 
   // ---------- o encaixe: quanto de cada jogador rende em cada vaga ----------
   // posições da base: GOL, ZAG, LE, LD, VOL, MC, MEI, PE, PD, ATA. Cada uma tem a linha (de trás para a frente) e o lado.
-  const COORD = { GOL: [0, 0], ZAG: [1, 0], LE: [1, -1], LD: [1, 1], VOL: [2, 0], MC: [3, 0], MEI: [4, 0], PE: [5, -1], PD: [5, 1], ATA: [6, 0] };
+  const COORD = { GOL: [0, 0], ZAG: [1, 0], LE: [1, -1], LD: [1, 1], VOL: [2, 0], MC: [3, 0], MEI: [4, 0], F9: [5, 0], PE: [5, -1], PD: [5, 1], ATA: [6, 0] };
   const SINONIMOS = { GK: "GOL", LAT: "LE", DEF: "ZAG", MID: "MC", ATT: "ATA" };
   const posDe = (p) => { const x = String(p || "").toUpperCase(); return COORD[x] ? x : SINONIMOS[x] || "MC"; };
   // 1 na posição dele; perde 3,5% por linha de distância e 4% por lado trocado; lateral na zaga (e o contrário) perde mais 6%;
@@ -76,17 +94,17 @@
   const ESTILOS = {
     equilibrado: { nome: "Equilibrado", desc: "Sem foco: nada a ganhar nem a perder.", perfil: "—", bonus: {}, custo: {}, lance: {} },
     tikitaka: { nome: "Tiki-taka", desc: "Posse obsessiva, passes curtos e rápidos. Exige meias e atacantes de passe.", perfil: "passe dos meias e atacantes",
-      bonus: { chance: 0.12 }, custo: { cede: 0.03, faltas: -0.05 }, lance: { tocar: 0.07, driblar: -0.05, cruzar: -0.05 } },
+      bonus: { chance: 0.11 }, custo: { cede: 0.05, faltas: -0.05 }, lance: { tocar: 0.06, driblar: -0.05, cruzar: -0.05 } },
     gegenpressing: { nome: "Gegenpressing", desc: "Recupera a bola logo depois de perdê-la, sufocando no campo de ataque. Cansa muito.", perfil: "ritmo e físico de quem joga na linha",
-      bonus: { chance: 0.06, cede: -0.12 }, custo: { cansaco: 0.25, faltas: 0.15 }, lance: { tocar: -0.02 } },
+      bonus: { chance: 0.04, cede: -0.075 }, custo: { cansaco: 0.18, faltas: 0.11 }, lance: { tocar: -0.02 } },
     posicional: { nome: "Jogo de posição", desc: "Zonas rígidas e triângulos de passe para desmontar a defesa. Exige passe e boa marcação.", perfil: "passe e defesa de quem joga na linha",
-      bonus: { cede: -0.1, chance: 0.05 }, custo: { cansaco: 0.05 }, lance: { tocar: 0.04, impedimento: 0.03 } },
+      bonus: { cede: -0.056, chance: 0.028 }, custo: { cansaco: 0.05 }, lance: { tocar: 0.025, impedimento: 0.02 } },
     funcional: { nome: "Futebol funcional", desc: "Liberdade para se aproximar da bola, com tabelas e improviso. Exige drible e passe.", perfil: "drible e passe dos meias e atacantes",
-      bonus: { chance: 0.08 }, custo: { cede: 0.06 }, lance: { driblar: 0.05, tocar: 0.04, cruzar: -0.03 } },
+      bonus: { chance: 0.1 }, custo: { cede: 0.045 }, lance: { driblar: 0.065, tocar: 0.05, cruzar: -0.03 } },
     catenaccio: { nome: "Retranca (catenaccio)", desc: "Defesa ultrassólida fechando a própria área. Cria pouco. Exige defensores e goleiro fortes.", perfil: "defesa e físico dos defensores e goleiro",
-      bonus: { cede: -0.2 }, custo: { chance: -0.18, cansaco: -0.1, faltas: 0.08 }, lance: { bloco: 0.05, barreira: 0.04, impedimento: -0.03, contra: 0.04 } },
+      bonus: { cede: -0.21 }, custo: { chance: -0.11, cansaco: -0.1, faltas: 0.08 }, lance: { bloco: 0.05, barreira: 0.04, impedimento: -0.03, contra: 0.04 } },
     contra: { nome: "Contra-ataque direto", desc: "Entrega a bola, espera e sai em velocidade com passes longos. Exige atacantes rápidos e finalizadores.", perfil: "ritmo e finalização dos atacantes",
-      bonus: { conv: 0.12 }, custo: { chance: -0.1, cede: 0.05 }, lance: { contra: 0.08, driblar: 0.03, chutar: 0.03, cruzar: -0.03 } },
+      bonus: { conv: 0.115 }, custo: { chance: -0.04, cede: 0.025 }, lance: { contra: 0.08, driblar: 0.03, chutar: 0.03, cruzar: -0.03 } },
   };
   const NOMES_ESTILOS = Object.keys(ESTILOS);
   const estiloValido = (e) => (ESTILOS[e] ? e : "equilibrado");
@@ -132,5 +150,5 @@
       faltas: pc((1 + 0.15 * (p - 1)) * fat.faltas),
     };
   }
-  return { FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
+  return { FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
 });

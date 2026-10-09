@@ -7,8 +7,11 @@ let selecionado = null; // { onde: "campo", i } ou { onde: "banco", pid }
 
 const grupoDe = (pos) => Motor.grupoDe(pos);
 const encaixe = (pos, vaga) => Taticas.afinidade(pos, vaga); // 1 = posição dele; menos = improvisado (lateral na zaga, ponta de centroavante...)
-const NOME_VAGA = { GOL: "Gol", ZAG: "Zagueiro", LE: "Lat. esq.", LD: "Lat. dir.", VOL: "Volante", MC: "Meio", MEI: "Meia", PE: "Ponta esq.", PD: "Ponta dir.", ATA: "Centroavante" };
+const NOME_VAGA = { GOL: "Gol", ZAG: "Zagueiro", LE: "Lat. esq.", LD: "Lat. dir.", VOL: "Volante", MC: "Meio", MEI: "Meia", PE: "Ponta esq.", PD: "Ponta dir.", ATA: "Centroavante", F9: "Falso 9" };
 
+// a energia do jogador (0 a 100): o cansaço dos jogos anteriores; a barra muda de cor quando cai
+const nivelEnergia = (e) => (e < 45 ? "baixa" : e < 70 ? "media" : "");
+const energiaDe = (pid) => (E.energia && E.energia[pid] != null ? E.energia[pid] : 100);
 // o campinho: peças nas posições da formação (spotsOf: o gol embaixo, o ataque em cima)
 function campinho(detalhe, formacao, opcoes = {}) {
   const spots = Taticas.spots(formacao);
@@ -21,24 +24,29 @@ function campinho(detalhe, formacao, opcoes = {}) {
     return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="left:${s.x}%;top:${s.y}%" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""}">
       <span class="peca-mudancas">${seloMudancaNota(v.id)}${seloEfeitoNota(v.id)}</span>
       <img class="pix" src="${retrato(v.id)}" alt=""><span class="nota-em-campo"><b>${nota}</b>${fit < 1 ? `<em>→ ${rendimento}</em>` : ""}</span><small>${h(sobrenome(j.nome))}</small>
-      ${energia != null ? `<span class="energia"><i style="--v:${energia}%"></i></span>` : ""}</button>`;
+      ${energia != null ? `<span class="energia ${nivelEnergia(energia)}" title="Energia ${energia}%"><i style="--v:${energia}%"></i></span>` : ""}</button>`;
   }).join("")}</div>`;
 }
 
 function telaElenco() {
   const t = meuTime(), det = Motor.escalacaoDetalhada(t), esc = E.escalacao;
   const titulares = new Set(det.map((v) => v.id).filter(Boolean));
-  $("eCampo").innerHTML = campinho(det, t.formacao, { selecionado: selecionado?.onde === "campo" ? selecionado.i : null });
+  $("eCampo").innerHTML = campinho(det, t.formacao, { selecionado: selecionado?.onde === "campo" ? selecionado.i : null, energia: E.energia });
   const comJogador = det.filter((v) => v.id), media = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]), 0) / Math.max(1, titulares.size);
   const mediaPosicao = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]) * encaixe(JOGADORES[v.id].pos, v.fino), 0) / Math.max(1, titulares.size);
+  const energiaMedia = comJogador.reduce((s, v) => s + energiaDe(v.id), 0) / Math.max(1, comJogador.length);
   const improvisados = det.filter((v) => v.id && encaixe(JOGADORES[v.id].pos, v.fino) < 1).length;
   $("eDica").innerHTML = E.partida ? `${ic("cadeado")} A partida está em andamento: a prancheta volta depois do apito final.`
     : selecionado ? `${ic("troca")} Agora toque em quem vai trocar de lugar com ${h(sobrenome(nomeJogador(selecionado.onde === "campo" ? det[selecionado.i].id : selecionado.pid)))}. Toque de novo para ver a ficha.`
     : `${ic("dedo")} Toque num jogador e depois em outro para trocar os dois de lugar. Do banco para o campo, entra no time.`;
-  $("eForca").innerHTML = `Média dos titulares: <b>${media.toFixed(1)}</b> · rendimento nas posições: <b class="${mediaPosicao < media - 0.05 ? "aviso-txt" : ""}">${mediaPosicao.toFixed(1)}</b>${improvisados ? ` · <span class="aviso-txt">${improvisados} improvisado${improvisados > 1 ? "s" : ""}</span>` : ""}${efeitoDe("time") ? ` · time ${sinalDe(efeitoDe("time"))} no próximo jogo` : ""}${esc.fixo ? " · escalação sua" : " · escalação automática"}`;
+  $("eForca").innerHTML = `Média dos titulares: <b>${media.toFixed(1)}</b> · energia: <b class="${energiaMedia < 70 ? "aviso-txt" : ""}">${Math.round(energiaMedia)}%</b> · rendimento nas posições: <b class="${mediaPosicao < media - 0.05 ? "aviso-txt" : ""}">${mediaPosicao.toFixed(1)}</b>${improvisados ? ` · <span class="aviso-txt">${improvisados} improvisado${improvisados > 1 ? "s" : ""}</span>` : ""}${efeitoDe("time") ? ` · time ${sinalDe(efeitoDe("time"))} no próximo jogo` : ""}${esc.fixo ? " · escalação sua" : " · escalação automática"}`;
   // os controles
   const seg = (id, lista, atual, chave) => { $(id).innerHTML = lista.map(([v, t]) => `<button data-${chave}="${v}" aria-pressed="${String(v) === String(atual)}">${t}</button>`).join(""); };
-  seg("eFormacao", Taticas.NOMES_FORMACOES.map((f) => [f, f]), esc.formacao, "formacao");
+  // o esquema (4-3-3, 4-2-3-1...) e, embaixo, as variações dele (1 volante e 2 meias, 2 volantes e 1 meia...)
+  const esquema = Taticas.baseDe(esc.formacao), variacoes = Taticas.variacoesDe(esquema);
+  seg("eFormacao", Taticas.ESQUEMAS.map((e) => [e, e]), esquema, "esquema");
+  seg("eVariacao", variacoes.map((f) => [f, Taticas.ROTULO_FORMACAO[f]]), esc.formacao, "formacao");
+  $("eVariacao").previousElementSibling.classList.toggle("hidden", variacoes.length < 2); $("eVariacao").classList.toggle("hidden", variacoes.length < 2);
   $("eFormacaoInfo").textContent = Taticas.DESCRICAO_FORMACAO[esc.formacao] || "";
   seg("eMentalidade", MENTALIDADE.map((t, i) => [i - 2, t]), esc.tatica.mentalidade, "mentalidade");
   seg("ePressao", NIVEL.map((t, i) => [i, t]), esc.tatica.pressao, "pressao");
@@ -53,7 +61,7 @@ function telaElenco() {
   const ordem = ["GOL", "ZAG", "LD", "LE", "VOL", "MC", "MEI", "PE", "PD", "ATA"];
   const reservas = E.elenco.filter((pid) => !titulares.has(pid)).sort((a, b) => ordem.indexOf(JOGADORES[a].pos) - ordem.indexOf(JOGADORES[b].pos) || notaDe(JOGADORES[b]) - notaDe(JOGADORES[a]));
   $("eContagem").textContent = `${E.elenco.length} no elenco`;
-  $("eBanco").innerHTML = reservas.map((pid) => `<div class="no-banco${selecionado?.onde === "banco" && selecionado.pid === pid ? " sel" : ""}${fora(pid) ? " indisponivel" : ""}">${figurinha(pid)}</div>`).join("");
+  $("eBanco").innerHTML = reservas.map((pid) => `<div class="no-banco${selecionado?.onde === "banco" && selecionado.pid === pid ? " sel" : ""}${fora(pid) ? " indisponivel" : ""}">${figurinha(pid)}<span class="energia ${nivelEnergia(energiaDe(pid))}" title="Energia ${energiaDe(pid)}%"><i style="--v:${energiaDe(pid)}%"></i></span></div>`).join("");
 }
 async function salvarEscalacao(dados, movimento = {}) {
   const antes = AnimacoesCarreira.capturarEscalacao();
@@ -89,13 +97,14 @@ $("eBanco").addEventListener("click", async (e) => {
 });
 // formação e tática
 document.addEventListener("click", async (e) => {
-  const b = e.target.closest("#elenco [data-formacao], #elenco [data-mentalidade], #elenco [data-pressao], #elenco [data-linha], #elenco [data-estilo]"); if (!b || E.partida) return;
+  const b = e.target.closest("#elenco [data-formacao], #elenco [data-esquema], #elenco [data-mentalidade], #elenco [data-pressao], #elenco [data-linha], #elenco [data-estilo]"); if (!b || E.partida) return;
   const esc = E.escalacao;
-  if (b.dataset.formacao) {
-    // os mesmos 11, e o motor acha o melhor lugar de cada um na formação nova
+  if (b.dataset.formacao || b.dataset.esquema) {
+    // trocar de esquema vai para a variação padrão dele (o nome do esquema); os mesmos 11 e o motor acha o melhor lugar de cada um
+    const formacao = b.dataset.formacao || b.dataset.esquema;
     const ids = Motor.escalacaoDetalhada(meuTime()).map((v) => v.id).filter(Boolean);
     selecionado = null;
-    return salvarEscalacao(ids.length === 11 && esc.titulares ? { formacao: b.dataset.formacao, titulares: ids, fixo: false } : { formacao: b.dataset.formacao }, { tipo: "formacao" });
+    return salvarEscalacao(ids.length === 11 && esc.titulares ? { formacao, titulares: ids, fixo: false } : { formacao }, { tipo: "formacao" });
   }
   if (b.dataset.estilo) return salvarEscalacao({ tatica: { ...esc.tatica, estilo: b.dataset.estilo } });
   const k = ["mentalidade", "pressao", "linha"].find((x) => b.dataset[x] != null);

@@ -27,8 +27,11 @@ test("o encaixe diferencia lateral de zagueiro e ponta de centroavante, e contin
   assert.ok(Motor.valorNa(lat, "DEF", "ZAG") < Motor.valorNa(lat, "DEF", "LD"));
 });
 
-test("as 13 formações têm 11 vagas, o gol em primeiro e as 6 antigas mantêm a conta de defesa, meio e ataque", () => {
-  assert.strictEqual(Taticas.NOMES_FORMACOES.length, 13);
+test("as formações (12 esquemas e suas variações) têm 11 vagas, o gol em primeiro e as 6 antigas mantêm a conta de defesa, meio e ataque", () => {
+  assert.strictEqual(Taticas.ESQUEMAS.length, 12);
+  assert.ok(Taticas.NOMES_FORMACOES.length >= 20);
+  assert.deepStrictEqual(Taticas.variacoesDe("4-3-3"), ["4-3-3", "4-3-3 M", "4-3-3 V", "4-3-3 C", "4-3-3 F"], "o 4-3-3 tem 1 volante + 2 meias, 2 volantes + 1 meia, 3 meio-campistas e falso 9");
+  assert.ok(Taticas.ESQUEMAS.every((e) => Taticas.FORMACOES[e]), "todo esquema tem a variação padrão com o mesmo nome");
   for (const nome of Taticas.NOMES_FORMACOES) {
     const v = Taticas.vagasDe(nome), s = Taticas.spots(nome);
     assert.strictEqual(v.length, 11, nome); assert.strictEqual(s.length, 11, nome);
@@ -88,4 +91,60 @@ test("o servidor guarda o estilo e a formação nova da escalação, e rejeita o
   G.limparEscalacao(save, { formacao: "9-9-9", tatica: { estilo: "inventado" } });
   assert.strictEqual(save.escalacao.formacao, "3-2-4-1", "formação inexistente não troca");
   assert.strictEqual(save.escalacao.tatica.estilo, "equilibrado", "estilo inexistente vira equilibrado");
+});
+
+test("o meio-campista (MC) rende em qualquer vaga do meio e conta nos lances, de um lado e do outro", () => {
+  for (const vaga of ["VOL", "MC", "MEI"]) assert.ok(Taticas.afinidade("MC", vaga) >= 0.96, `MC como ${vaga}`);
+  assert.strictEqual(Taticas.afinidade("MC", "MC"), 1);
+  assert.ok(Taticas.afinidade("MC", "ZAG") < Taticas.afinidade("MC", "VOL"), "MC na zaga rende menos do que de volante");
+  assert.ok(Taticas.afinidade("MEI", "F9") > Taticas.afinidade("MC", "F9") && Taticas.afinidade("ATA", "F9") > 0.95, "o falso 9 é de meia ou de centroavante");
+  // um time só de MC no meio ainda joga e as opções dos lances usam o passe e a defesa deles
+  const t = time("m", { formacao: "4-3-3 C" });
+  const det = Motor.escalacaoDetalhada(t);
+  assert.strictEqual(det.filter((v) => v.fino === "MC").length, 3);
+  assert.ok(Motor.simularPartida({ casa: t, fora: time("b"), semente: "mc", modo: 3, controla: 0 }).eventos.length > 0);
+});
+
+test("equilíbrio dos estilos: com o perfil certo ajudam um pouco, com o perfil errado atrapalham, e nenhum quebra o jogo", () => {
+  const PERFIL = { tikitaka: ["pas"], gegenpressing: ["rit", "fis"], posicional: ["pas", "def"], funcional: ["dri", "pas"], catenaccio: ["def", "fis", "gol"], contra: ["rit", "fin"] };
+  const elenco = (estilo, v) => time("a", { atr: Object.fromEntries(PERFIL[estilo].map((a) => [a, v])), tatica: { estilo } });
+  const ppj = (casa, fora) => { let p = 0; const N = 700; for (let k = 0; k < N; k++) for (const [c, f, inv] of [[casa, fora, false], [fora, casa, true]]) { const r = Motor.simularPartida({ casa: c, fora: f, semente: `eq${k}` }), [a, b] = inv ? [r.placar[1], r.placar[0]] : r.placar; p += a > b ? 3 : a === b ? 1 : 0; } return p / (2 * N); };
+  const oponente = time("o");
+  for (const estilo of Object.keys(PERFIL)) {
+    const base = (v) => ppj({ ...elenco(estilo, v), tatica: { estilo: "equilibrado" } }, oponente);
+    const ideal = ppj(elenco(estilo, 88), oponente) - base(88), ruim = ppj(elenco(estilo, 56), oponente) - base(56);
+    assert.ok(ideal > ruim + 0.06, `${estilo}: ideal (${ideal.toFixed(3)}) bem acima do perfil errado (${ruim.toFixed(3)})`);
+    assert.ok(ideal < 0.3, `${estilo}: o bônus não passa de 0,3 ponto por jogo (${ideal.toFixed(3)})`);
+    assert.ok(ruim < 0.03, `${estilo}: sem o perfil, não ganha nada (${ruim.toFixed(3)})`);
+  }
+});
+
+test("o cansaço vem do jogo anterior: quem chega cansado rende menos, e o motor devolve a energia do fim do jogo", () => {
+  const fresco = time("a"), cansado = { ...time("a"), energia: Object.fromEntries(POSICOES.map((_, i) => [`a${i}`, 40])) };
+  const r = Motor.simularPartida({ casa: cansado, fora: time("b"), semente: "e0" });
+  assert.ok(r.energia.a1 < 40 + 1 && r.energia.a1 >= 20 && r.energia.b1 < 100, "o fim do jogo gasta mais energia");
+  assert.ok(Object.keys(r.energia).length === 28, "a energia de todos os jogadores dos dois times");
+  const ppj = (casa) => { let p = 0; for (let k = 0; k < 800; k++) for (const inv of [false, true]) { const x = Motor.simularPartida({ casa: inv ? time("b") : casa, fora: inv ? casa : time("b"), semente: `c${k}` }), [g, s] = inv ? [x.placar[1], x.placar[0]] : x.placar; p += g > s ? 3 : g === s ? 1 : 0; } return p / 1600; };
+  assert.ok(ppj(fresco) > ppj(cansado) + 0.12, "o time cansado rende bem menos");
+});
+
+test("na carreira, repetir os mesmos 11 derruba a energia e o banco descansa; as férias devolvem tudo", () => {
+  const Temporada = require("../public/carreira/temporada.js");
+  const { proximoJogoMundo, simularMinha, fecharRodada, estado, sementeDoJogo } = require("../carreira.js").paraTestes;
+  const save = novaCarreira("Teste", "flamengo", "x");
+  const rodar = () => {
+    const jogo = proximoJogoMundo(save);
+    save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, agregado: [0, 0], casa: jogo.casa, fora: jogo.fora, modo: 1, semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
+    const r = simularMinha(save); assert.ok(r.completo); fecharRodada(save, r);
+  };
+  const titulares = () => { const d = require("../public/carreira/motor.js").escalacaoDetalhada(require("../carreira.js").paraTestes.timeDe(save, save.clube)); return d.map((v) => v.id).filter(Boolean); };
+  save.escalacao.titulares = titulares(); save.escalacao.fixo = true; // sempre os mesmos 11
+  const onze = [...save.escalacao.titulares];
+  assert.strictEqual(estado(save).energia[onze[0]], 100, "no começo todo mundo está com 100");
+  for (let i = 0; i < 8; i++) rodar();
+  const e = estado(save).energia, media = (ids) => ids.reduce((s, id) => s + e[id], 0) / ids.length;
+  const banco = Object.keys(e).filter((id) => !onze.includes(id));
+  assert.ok(media(onze) < 80, `os titulares cansam depois de 8 jogos seguidos (${media(onze).toFixed(0)}%)`);
+  assert.ok(media(banco) > media(onze) + 10, "o banco está bem mais descansado");
+  assert.ok(Math.min(...onze.map((id) => e[id])) >= 20, "o piso é 20%");
 });

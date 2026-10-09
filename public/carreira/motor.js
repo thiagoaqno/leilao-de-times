@@ -84,9 +84,12 @@
   }
   function prepararTime(t, lado) {
     const jogadores = (t.jogadores || []).map(prepararJogador);
+    // a energia com que cada um chega ao jogo: a que sobrou dos jogos anteriores (t.energia = { id: 0 a 100 }); sem registro, 100
+    if (t.energia) for (const p of jogadores) if (t.energia[p.id] != null) p.energia = clamp(Number(t.energia[p.id]) || 0, 20, 100);
+    const energiaInicial = jogadores.length ? jogadores.reduce((s, p) => s + p.energia, 0) / jogadores.length : 100;
     const formacao = Taticas.FORMACOES[t.formacao] ? t.formacao : "4-3-3";
     const estilo = Taticas.estiloValido(t.tatica && t.tatica.estilo);
-    const time = { lado, id: t.id || `time${lado}`, nome: t.nome || `Time ${lado + 1}`, jogadores, formacao, tatica: { ...TATICA_PADRAO, ...(t.tatica || {}), estilo }, subs: AJUSTE.SUBS, cansacoAvisado: false, mexeu: 0 };
+    const time = { lado, id: t.id || `time${lado}`, nome: t.nome || `Time ${lado + 1}`, jogadores, formacao, tatica: { ...TATICA_PADRAO, ...(t.tatica || {}), estilo }, subs: AJUSTE.SUBS, cansacoAvisado: false, mexeu: 0, energiaInicial };
     time.campo = escalar(jogadores, formacao, t.titulares, t.fixo);
     // estilo "auto" (o computador): o que mais combina com o elenco que vai a campo
     if (t.tatica && t.tatica.estilo === "auto") time.tatica.estilo = Taticas.estiloIdeal(time.campo.filter((v) => v.p).map((v) => ({ grp: v.p.grp, atr: v.p.atr })));
@@ -137,7 +140,7 @@
     return lista.map((o) => (aj[o.id] ? { ...o, chance: pct(o.chance + aj[o.id]) } : o));
   }
   function opcoesBase(tipo, at, df, quem, goleiro) {
-    const atq = doGrupo(at, ["ATT", "MEI"]), dfs = doGrupo(df, ["DEF", "VOL"]);
+    const atq = doGrupo(at, ["ATT", "MEI", "MID"]), dfs = doGrupo(df, ["DEF", "VOL", "MID"]);
     const gk = goleiro ? goleiro.atr.gol : 45, defesa = media(dfs, "def"), fisD = media(dfs, "fis");
     if (tipo === "ataque_favor") return [
       { id: "chutar", nome: "Chutar de primeira", chance: pct(0.27 + 0.012 * (quem.atr.fin - gk)) },
@@ -146,7 +149,7 @@
       { id: "cruzar", nome: "Cruzar na área", chance: pct(0.22 + 0.012 * (media(atq, "fis") - fisD)) },
     ];
     if (tipo === "ataque_contra") { // aqui "chance" é de evitar o gol
-      const meus = doGrupo(at, ["DEF", "VOL"]), eles = doGrupo(df, ["ATT", "MEI"]);
+      const meus = doGrupo(at, ["DEF", "VOL", "MID"]), eles = doGrupo(df, ["ATT", "MEI", "MID"]);
       const d = media(meus, "def"), r = media(meus, "rit");
       return [
         { id: "impedimento", nome: "Fazer a linha de impedimento", chance: pct(0.52 + 0.014 * (r - media(eles, "rit")) + 0.04 * (at.tatica.linha - 1)), risco: 0.62 },
@@ -161,7 +164,7 @@
       { id: "ensaiada", nome: "Jogada ensaiada", chance: pct(0.17 + 0.01 * (media(atq, "pas") - defesa)) },
     ];
     if (tipo === "falta_contra") {
-      const meuGk = at.gk ? at.gk.atr.gol : 45, meus = doGrupo(at, ["DEF", "VOL"]);
+      const meuGk = at.gk ? at.gk.atr.gol : 45, meus = doGrupo(at, ["DEF", "VOL", "MID"]);
       return [
         { id: "barreira", nome: "Barreira com mais gente", chance: pct(0.8 + 0.006 * (meuGk - quem.atr.fin)), risco: 0.4 },
         { id: "adiantado", nome: "Goleiro adiantado", chance: pct(0.72 + 0.012 * (meuGk - quem.atr.fin)), risco: 0.5 },
@@ -375,7 +378,8 @@
       if (humano(time.lado)) parada(time, `vermelho${est[time.lado].vermelhos}`, "vermelho");
     }
     function lesoes(time) {
-      if (rng() >= AJUSTE.LESAO) return;
+      const tit = titulares(time), media = tit.length ? tit.reduce((s, p) => s + p.energia, 0) / tit.length : 100;
+      if (rng() >= AJUSTE.LESAO * (1 + clamp((80 - media) / 40, 0, 1.5))) return;
       const p = sortearPeso(rng, titulares(time), () => 1);
       p.lesionado = true;
       ev({ tipo: "lesao", lado: time.lado, jogador: p.id });
@@ -401,13 +405,13 @@
       if (ambos && modo >= 2) {
         for (const t of times) {
           const linha = titulares(t).filter((p) => p.grp !== "GK");
-          if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < 72) { t.cansacoAvisado = true; parada(t, "cansaco", "cansaco"); }
+          if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < Math.min(72, t.energiaInicial - 8)) { t.cansacoAvisado = true; parada(t, "cansaco", "cansaco"); }
         }
         if (minuto === 70 && !acrescimo) paradaDosDois("m70", "minuto_70");
       } else if (controla != null && modo >= 2) {
         const t = times[controla];
         const linha = titulares(t).filter((p) => p.grp !== "GK");
-        if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < 72) {
+        if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < Math.min(72, t.energiaInicial - 8)) {
           t.cansacoAvisado = true; parada(t, "cansaco", "cansaco");
         }
         if (minuto === 70 && !acrescimo) parada(t, "m70", "minuto_70");
@@ -475,6 +479,8 @@
 
     return {
       placar, eventos, parado, completo: !parado, estatisticas: est, ...(penaltis && { penaltis }),
+      // a energia de cada jogador no fim (quem ficou no banco guarda a que tinha): o que o jogo seguinte herda
+      energia: Object.fromEntries(times.flatMap((tm) => tm.jogadores.map((p) => [p.id, Math.round(p.energia)]))),
       times: times.map((t) => ({ id: t.id, nome: t.nome, formacao: t.formacao, tatica: { ...t.tatica }, titulares: titulares(t).map((p) => p.id), subs: t.subs })),
     };
   }
