@@ -53,7 +53,7 @@ socket.on("state", (st) => {
   SALA = st;
   if (st.fase === "carreira") {
     if (comecou || !E) pedir("entrar").then((r) => { if (r.ok) { receber(r.estado); DESVIO = st.now - Date.now(); if (telaAtual === "grupo" || !telaAtual) abrirSede(); atualizarRodadaGrupo(r.estado.rodadaGrupo); } });
-    desenharLeilao(); avisarLeilao(st);
+    desenharLeilao(); avisarLeilao(st); desenharTurma(st);
     if (E && telaAtual === "sede") telaSede();
     return;
   }
@@ -70,7 +70,7 @@ function desenharSala() {
   const faltam = st.players.filter((p) => !p.clube);
   $("gStatus").textContent = faltam.length ? `Esperando ${faltam.map((p) => p.name).join(", ")} escolher o clube.` : anfitriao ? "Todo mundo tem clube. Pode começar!" : "Todo mundo tem clube. Esperando o anfitrião começar.";
   $("gPessoas").innerHTML = st.players.map((p) => `<li class="${p.online ? "" : "fora"}">${p.clube ? escudo(p.clube, 2) : `<span class="sem-clube">${ic("campo")}</span>`}
-    <span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "escolhendo..."}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${p.online ? "" : `<i class="tag">fora</i>`}</li>`).join("");
+    <span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "escolhendo..."}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${p.online ? "" : `<i class="tag">fora</i>`}${anfitriao && !p.host ? `<button class="discreto perigo dispensar" data-dispensar="${p.id}" title="Tirar da sala">Dispensar</button>` : ""}</li>`).join("");
   $("gOpcoes").innerHTML = OPCOES_SALA.map(([k, nome, lista]) => `<div class="controle"><span class="rotulo">${nome}</span><div class="segmentos">${lista.map(([v, t]) =>
     `<button data-opcao-sala="${k}" data-valor="${v}" aria-pressed="${st.opcoes[k] === v}" ${anfitriao ? "" : "disabled"}>${t}</button>`).join("")}</div></div>`).join("")
     + (anfitriao ? "" : `<p class="suave">Só o anfitrião muda as regras.</p>`);
@@ -86,12 +86,34 @@ function desenharSala() {
   $("btnComecar").classList.toggle("hidden", !anfitriao);
   $("btnComecar").disabled = !!faltam.length;
 }
+// a turma na sede: quem está no ar e, para o anfitrião, o botão de dispensar (quem sai no meio joga no automático até lá)
+function desenharTurma(st) {
+  const el = $("cartaoTurma"); if (!el) return;
+  const anfitriao = MEU_ID === st.host, algumFora = st.players.some((p) => !p.online);
+  el.classList.remove("hidden");
+  el.innerHTML = `<h3>Turma</h3><ul class="pessoas turma">${st.players.map((p) => `<li class="${p.online ? "" : "fora"}">${p.clube ? escudo(p.clube, 2) : ""}<span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "sem clube"} · ${p.online ? "no ar" : "fora do ar"}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${anfitriao && !p.host ? `<button class="discreto perigo dispensar" data-dispensar="${p.id}">Dispensar</button>` : ""}</li>`).join("")}</ul>
+    ${algumFora ? `<p class="suave">Quem sai da sala joga no automático, sem segurar a rodada. ${anfitriao ? "Dispensar passa o clube para o computador." : ""}</p>` : ""}`;
+}
+// foi dispensado pelo anfitrião: esquece a sala e volta para o começo
+socket.on("dispensado", () => {
+  if (SALA) store.set(`carreira-online:${SALA.code}`, null);
+  toast("O anfitrião dispensou você da sala. O seu clube passou para o computador.");
+  setTimeout(() => { location.href = "/carreira/?grupo=1"; }, 2800);
+});
 const agir = async (dados) => {
   const r = await new Promise((ok) => socket.emit("act", dados, (x) => ok(x || { ok: false, error: "Sem resposta do servidor." })));
   if (!r.ok) toast(r.error);
   return r;
 };
 document.addEventListener("click", (e) => {
+  const dsp = e.target.closest("[data-dispensar]");
+  if (dsp) {
+    const p = SALA && SALA.players.find((x) => x.id === dsp.dataset.dispensar);
+    if (p && confirm(`Dispensar ${p.name}?${p.clube ? ` O ${nomeClube(p.clube)} passa para o computador e a pessoa sai da sala.` : " A pessoa sai da sala."}`)) {
+      agir({ type: "dispensar", pessoa: p.id }).then((r) => { if (r.ok) toast(r.noFimDaRodada ? `${p.name} sai no fim da rodada (o jogo dele anda no automático).` : `${p.name} foi dispensado.`); });
+    }
+    return;
+  }
   const o = e.target.closest("[data-opcao-sala]");
   if (o) { const k = o.dataset.opcaoSala, v = ["temporadas", "aporte", "caixaIgual"].includes(k) ? Number(o.dataset.valor) : o.dataset.valor; agir({ type: "opcoes", [k]: v }); return; }
   const c = e.target.closest("[data-clube-sala]");

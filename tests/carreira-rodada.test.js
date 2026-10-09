@@ -139,3 +139,24 @@ test("rodada: quem joga copa e quem não joga ficam na mesma rodada da liga, com
   }
   assert.ok(G.estado(G.vistaDe(save, "flamengo")).rodada > G.estado(G.vistaDe(save, "bahia")).rodada, "o Flamengo jogou mais (as copas)");
 });
+
+test("rodada: o jogo de quem saiu da sala anda na hora, sem esperar o relógio nem as decisões", () => {
+  const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "A" }, { clube: "liverpool", nome: "B" }], { temporadas: 1 });
+  save.humanos.flamengo.estado.modo = 3; save.humanos.liverpool.estado.modo = 3;
+  const rod = Rd.criarRodada(save, G.proximaRodadaGrupo(save), 0, OPC), a = jogoDe(rod, "flamengo"), b = jogoDe(rod, "liverpool");
+  const ausentes = new Set(["flamengo"]);
+  // o relógio fica parado em 0: só o jogo de quem saiu anda (várias paradas, todas decididas na hora)
+  for (let i = 0; i < 400 && !a.fim; i++) Rd.tick(save, rod, 0, ausentes);
+  assert.ok(a.fim, "o jogo de quem saiu fechou sem esperar");
+  assert.ok(Array.isArray(a.placar));
+  assert.ok(!b.fim, "o de quem está aqui continua no relógio");
+  assert.strictEqual(Rd.minutoDe(rod, b, 0), 0);
+  // quem está aqui segue o relógio normal e para para decidir
+  let t = andar(save, rod, 0, 600000, () => b.parado && b.parado.pendentes.length);
+  assert.ok(b.parado, "o jogo de quem está aqui parou para decidir");
+  // se o técnico sai no meio da decisão, a parada vale a padrão na hora
+  Rd.tick(save, rod, t, new Set(["liverpool"]));
+  assert.ok(!b.parado || b.parado.pendentes.length === 0, "a parada de quem saiu não espera");
+  andar(save, rod, t, 2000000, () => rod.fechada);
+  assert.ok(rod.fechada && b.fim);
+});
