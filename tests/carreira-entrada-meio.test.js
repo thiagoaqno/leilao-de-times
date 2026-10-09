@@ -120,25 +120,10 @@ test("entrar com a janela aberta (começo da temporada) vale a regra normal da j
   assert.strictEqual(v.jogosJogados.length, 0);
 });
 
-test("artilharia: só entram gols de jogos com humano (os jogos só do computador não contam)", () => {
-  const save = grupo(["flamengo", "liverpool"]);
-  jogarRodadas(save, 3);
-  const jogados = Object.keys(save.resultadosFixos).flatMap((id) => id.split(":").slice(-2)); // casa e fora de cada jogo de humano
-  const v = G.vistaDe(save, "flamengo"), clubes = new Set(jogados);
-  const artilheiros = Object.keys(save.gols);
-  assert.ok(artilheiros.length > 0);
-  for (const pid of artilheiros) assert.ok(clubes.has(G.donoDe(v, pid)), `${pid} marcou sem jogar contra (ou por) um humano`);
-  assert.ok(G.estado(v).artilharia.every((a) => clubes.has(G.donoDe(v, a.id))));
-});
-
-test("jogos ao vivo: sem mata-mata (as chaves não aparecem) e sem o nome de quem fez o gol", () => {
+test("jogos ao vivo: com o mata-mata e com o nome de quem fez o gol", () => {
   const save = novaCarreira("Teste", "flamengo", "x");
-  const semana10 = G.paralelosDaSemana(save, 10); // a semana das oitavas de ida da Copa do Brasil: só mata-mata
-  assert.deepStrictEqual(semana10, [], "só jogos de mata-mata: nada aparece");
-  const semana8 = G.paralelosDaSemana(save, 8); // fase de grupos
-  assert.ok(semana8.length > 0 && semana8.every((x) => !save.calendarioMundo.find((j) => j.id === x.id).mataMata));
-  const semana1 = G.paralelosDaSemana(save, 1);
-  assert.ok(semana1.every((x) => x.gols.every((g) => g.jogador === undefined)), "o artilheiro da máquina não vai para a tela");
+  assert.ok(G.paralelosDaSemana(save, 10).length > 0, "a semana das oitavas de ida da Copa do Brasil aparece");
+  assert.ok(G.paralelosDaSemana(save, 1).every((x) => x.gols.every((g) => typeof g.jogador === "string")), "quem fez o gol vai junto");
 });
 
 test("a sala em grupo só expira depois de 48 horas", () => {

@@ -171,14 +171,30 @@ async function jogar() {
 let competicaoTabela = null;
 const tabelaHTML = (tab) => `<table class="tabela-cheia"><thead><tr><th>#</th><th>Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Últimos</th></tr></thead><tbody>${tab.map((l, i) =>
   `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(i + 1, tab.length)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
-// os nomes das fases do mata-mata (a tela da partida usa; as chaves em si não aparecem em lugar nenhum da tabela)
+// os nomes das fases do mata-mata
 const NOME_FASE = { preliminar: "Fase preliminar", oitavas: "Oitavas de final", quartas: "Quartas de final", semifinal: "Semifinais", final: "Final" };
+// a chave do mata-mata de uma copa, fase por fase (a coluna de cada fase só aparece quando a anterior acabou): cada confronto
+// com os clubes, o resultado de cada jogo (ida e volta), o agregado, os pênaltis e quem passou
+function confrontoCopaHTML(t) {
+  const [a, b] = t.clubes, jogoDePenaltis = t.jogos.find((j) => j.penaltis);
+  const linha = (id) => {
+    const placares = t.jogos.map((j) => (j.placar ? (j.casa === id ? j.placar[0] : j.placar[1]) : "·"));
+    const total = t.agregado ? t.agregado[id === a ? 0 : 1] : "";
+    const pen = jogoDePenaltis ? (jogoDePenaltis.casa === id ? jogoDePenaltis.penaltis[0] : jogoDePenaltis.penaltis[1]) : null;
+    return `<div class="cc-time ${t.vencedor === id ? "passou" : t.vencedor ? "caiu" : ""}">${escudo(id, 1)}<b>${h(CLUBES[id].curto)}</b><span class="cc-pernas">${t.jogos.length > 1 ? placares.join(" · ") : ""}</span><strong>${total}${pen != null && t.vencedor ? ` <small>(${pen})</small>` : ""}</strong></div>`;
+  };
+  return `<div class="confronto-copa${a === E.clube || b === E.clube ? " meu" : ""}">${linha(a)}${linha(b)}</div>`;
+}
+function chaveHTML(c) {
+  if (!c.chave || !c.chave.length) return "";
+  return `<section class="chave"><h3>Mata-mata</h3><div class="chave-fases">${c.chave.map((f) => `<div class="chave-fase"><h4>${h(NOME_FASE[f.nome] || f.nome)}</h4>${f.confrontos.map(confrontoCopaHTML).join("")}</div>`).join("")}</div></section>`;
+}
 function telaTabela() {
   $("tituloTabela").textContent = `Competições ${E.ano}`;
   if (E.competicoes) {
     const ids = Object.keys(E.competicoes); if (!competicaoTabela || !E.competicoes[competicaoTabela]) competicaoTabela = Object.keys(E.tabelas || {})[0] || ids[0];
     const c = E.competicoes[competicaoTabela], abas = ids.map((id) => `<button class="${id === competicaoTabela ? "ativa" : ""}" data-competicao="${id}">${h(E.competicoes[id].nome)}</button>`).join("");
-    const corpo = c.tipo === "liga" ? tabelaHTML(c.tabela) : `${c.grupos.map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(g.tabela)}</section>`).join("")}<div class="campeao-copa">${c.campeao ? `${ic("taca")} Campeão: ${escudo(c.campeao, 1)} ${h(nomeClube(c.campeao))}` : `As chaves do mata-mata não aparecem: só os jogos do seu clube.`}</div>`;
+    const corpo = c.tipo === "liga" ? tabelaHTML(c.tabela) : `${c.grupos.map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(g.tabela)}</section>`).join("")}${chaveHTML(c)}${c.campeao ? `<div class="campeao-copa">${ic("taca")} Campeão: ${escudo(c.campeao, 1)} ${h(nomeClube(c.campeao))}</div>` : ""}`;
     $("tTabela").innerHTML = `<div class="abas-competicoes">${abas}</div>${corpo}`;
     $("tTabela").querySelectorAll("[data-competicao]").forEach((b) => b.onclick = () => { competicaoTabela = b.dataset.competicao; telaTabela(); });
   } else $("tTabela").innerHTML = tabelaHTML(E.tabela);

@@ -140,7 +140,6 @@ function atualizarAoVivo() {
 function desenharUltimosGols() {
   $("avGols").innerHTML = AV.gols.length ? `<h4>Últimos gols</h4><ul class="av-gols">${AV.gols.map(({ g, casa, fora, placar }) => {
     const clube = g.lado === 0 ? casa : fora;
-    // sem o nome de quem fez o gol: o artilheiro da máquina não aparece (só o clube e o placar)
-    return `<li><span class="min">${minutoTexto(g)}</span>${ic("bola")}<span><b>Gol do ${h(CLUBES[clube].curto)}</b><small>${h(CLUBES[casa].curto)} ${placar[0]} × ${placar[1]} ${h(CLUBES[fora].curto)}</small></span></li>`;
+    return `<li><span class="min">${minutoTexto(g)}</span>${ic("bola")}<span><b>${h(CLUBES[clube].curto)}</b> ${h(sobrenome(nomeJogador(g.jogador)))}<small>${h(CLUBES[casa].curto)} ${placar[0]} × ${placar[1]} ${h(CLUBES[fora].curto)}</small></span></li>`;
   }).join("")}</ul>` : "";
 }
