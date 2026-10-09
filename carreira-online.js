@@ -31,6 +31,8 @@ const LANCE_MS = Number(process.env.CARREIRA_LANCE_MS) || 15000;
 const ABERTURA_MS = LANCE_MS + 5000, MARTELO_MS = 30000;
 const ESPERA_MS = process.env.CARREIRA_ESPERA_MS != null ? Number(process.env.CARREIRA_ESPERA_MS) : 3000;
 const TICK_MS = 250;
+// quem fica fora da sala mais do que isso é "ausente": o jogo dele anda no automático (a volta de uma recarga não conta)
+const AUSENTE_MS = process.env.CARREIRA_AUSENTE_MS != null ? Number(process.env.CARREIRA_AUSENTE_MS) : 15000;
 const hash = (t) => crypto.createHash("sha256").update(String(t)).digest("hex");
 
 // as opções do anfitrião, sempre dentro do permitido
@@ -51,13 +53,13 @@ module.exports = function ligarCarreiraOnline(io) {
   // ---------- o banco: guardar e carregar as salas ----------
   const paraGuardar = (room) => ({ code: room.code, host: room.host, fase: room.fase, opcoes: room.opcoes, order: room.order, save: room.save, t: room.t,
     nRodada: room.nRodada || 0, prontos: room.prontos || {}, rodada: room.rodada || null, ultimaRodada: room.ultimaRodada || null, leilao: room.leilao || null, ultimoLeilao: room.ultimoLeilao || null,
-    players: Object.fromEntries(Object.entries(room.players).map(([id, p]) => [id, { id, name: p.name, skin: p.skin, clube: p.clube, tokenHash: p.tokenHash }])) });
+    players: Object.fromEntries(Object.entries(room.players).map(([id, p]) => [id, { id, name: p.name, skin: p.skin, clube: p.clube, tokenHash: p.tokenHash, ...(p.dispensado && { dispensado: true }) }])) });
   function guardar(room) { room.t = Date.now(); try { bd.salvarSalaCarreira(room.code, paraGuardar(room)); } catch (e) { console.warn("carreira-online: não salvou a sala", room.code, e.message); } }
   try {
     for (const { codigo, dados, atualizadaEm } of bd.salasCarreira()) {
       if (Date.now() - atualizadaEm > HORAS_PARADA * 3600e3) { bd.apagarSalaCarreira(codigo); continue; }
       if (dados.save && dados.save.v !== Carreira.VERSAO) { bd.apagarSalaCarreira(codigo); continue; } // mundo da base antiga (EA FC 26)
-      const players = Object.fromEntries(Object.entries(dados.players || {}).map(([id, p]) => [id, { ...p, sockets: new Set() }]));
+      const players = Object.fromEntries(Object.entries(dados.players || {}).map(([id, p]) => [id, { ...p, sockets: new Set(), saiuEm: Date.now() }]));
       rooms.set(codigo, { ...dados, code: codigo, players, t: atualizadaEm });
     }
   } catch (e) { console.warn("carreira-online: o banco não abriu; as salas ficam só na memória.", e.message); }
@@ -107,10 +109,47 @@ module.exports = function ligarCarreiraOnline(io) {
     }
   }
 
+  // ---------- quem saiu da sala ----------
+  // os clubes de quem está fora há mais de AUSENTE_MS (ou já foi dispensado): o jogo deles anda no automático
+  function ausentesDe(room, agora) {
+    const ausentes = new Set();
+    for (const id of room.order) {
+      const p = room.players[id];
+      if (p.clube && (p.dispensado || (!p.sockets.size && agora - (p.saiuEm || agora) > AUSENTE_MS))) ausentes.add(p.clube);
+    }
+    return ausentes;
+  }
+  // tira a pessoa da sala. Se tinha clube na carreira, o clube volta para o computador (com o caixa que tinha) e o
+  // leilão em que ele estava é cancelado. Quem estava na sala vira espectador.
+  function removerPessoa(room, p) {
+    const clube = p.clube;
+    if (clube && room.save && room.save.humanos[clube]) {
+      const l = room.leilao;
+      if (l && (l.dono === clube || l.abertoPor === clube || l.lances.some((x) => x.clube === clube))) fecharLeilao(room, Date.now(), "cancelado");
+      room.save.caixaIA[clube] = room.save.humanos[clube].estado.caixa;
+      delete room.save.humanos[clube];
+      if (room.prontos) delete room.prontos[clube];
+    }
+    for (const sid of p.sockets) { nsp.to(sid).emit("dispensado", { sala: room.code }); const s = nsp.sockets.get(sid); if (s) s.data.pid = null; }
+    room.order = room.order.filter((id) => id !== p.id);
+    delete room.players[p.id];
+  }
+  // quem foi dispensado sai na hora; com a bola rolando, o clube só passa para o computador no fim da rodada (o jogo dele anda no automático)
+  function limparDispensados(room) {
+    let saiu = false;
+    for (const id of [...room.order]) {
+      const p = room.players[id];
+      if (!p || !p.dispensado) continue;
+      if (room.rodada && p.clube && room.save && room.save.humanos[p.clube]) continue;
+      removerPessoa(room, p); saiu = true;
+    }
+    return saiu;
+  }
   // ---------- a rodada ao vivo (carreira-rodada.js) ----------
   function comecarRodada(room) {
     const save = room.save;
     if (room.rodada) return "A rodada já está rolando.";
+    limparDispensados(room);
     if (room.leilao) return "Espere o leilão acabar.";
     let p = Carreira.proximaRodadaGrupo(save), pulou = 0;
     if (!p) return "A temporada acabou. Comece a próxima.";
@@ -171,11 +210,12 @@ module.exports = function ligarCarreiraOnline(io) {
       if (room.fase !== "carreira" || !room.save) continue;
       let mudou = false, rodadaMudou = false;
       if (room.rodada) {
-        const r = Rd.tick(room.save, room.rodada, agora);
+        const r = Rd.tick(room.save, room.rodada, agora, ausentesDe(room, agora));
         rodadaMudou = r.mudou;
         if (r.acabou) {
           room.ultimaRodada = { n: room.rodada.n, jogos: room.rodada.jogos.map((j) => ({ casa: j.casa, fora: j.fora, placar: j.placar })) };
           room.rodada = null; room.prontos = {}; mudou = true;
+          limparDispensados(room); // quem foi dispensado no meio da rodada sai agora
         }
       }
       if (tickLeilao(room, agora)) mudou = true;
@@ -193,7 +233,7 @@ module.exports = function ligarCarreiraOnline(io) {
       if (velho.room) socket.leave(velho.room.code);
       socket.data.code = room.code; socket.data.pid = pid;
       socket.join(room.code);
-      if (pid) room.players[pid].sockets.add(socket.id);
+      if (pid) { room.players[pid].sockets.add(socket.id); delete room.players[pid].saiuEm; }
     }
     function novaPessoa(room, name, skin) {
       const id = rid(8), token = rid(16);
@@ -241,6 +281,7 @@ module.exports = function ligarCarreiraOnline(io) {
       if (!me) return falha(cb, "Quem assiste não mexe na sala.");
       const agora = Date.now();
       let extra = {};
+      if (me.dispensado) return falha(cb, "O anfitrião dispensou você da sala.");
       if (d.type === "opcoes") {
         if (me.id !== room.host) return falha(cb, "Só o anfitrião muda as opções.");
         if (room.fase !== "espera") return falha(cb, "A carreira já começou.");
@@ -265,6 +306,16 @@ module.exports = function ligarCarreiraOnline(io) {
             { temporadas: room.opcoes.temporadas, aporte: room.opcoes.aporte, caixaIgual: room.opcoes.caixaIgual || 0 });
         } catch (e) { console.warn("carreira-online: não começou", e); return falha(cb, "Não deu para montar a carreira. Tente de novo."); }
         room.fase = "carreira"; room.nRodada = 0; room.prontos = {};
+      } else if (d.type === "dispensar") {
+        // o anfitrião tira alguém da sala (quem saiu no meio e não vai voltar): o clube passa para o computador
+        if (me.id !== room.host) return falha(cb, "Só o anfitrião dispensa alguém.");
+        const alvo = room.players[String(d.pessoa || "")];
+        if (!alvo) return falha(cb, "Essa pessoa não está mais na sala.");
+        if (alvo.id === me.id) return falha(cb, "Você é o anfitrião: não dá para se dispensar.");
+        const nome = alvo.name, clube = alvo.clube;
+        alvo.dispensado = true;
+        limparDispensados(room);
+        extra = { dispensado: nome, clube, noFimDaRodada: !!room.players[alvo.id] };
       } else if (room.fase !== "carreira" || !me.clube) return falha(cb, "Agora não.");
       else if (d.type === "rodada") {
         if (me.id !== room.host) return falha(cb, "Quem começa a rodada é o anfitrião.");
@@ -313,6 +364,7 @@ module.exports = function ligarCarreiraOnline(io) {
     function comClube(cb, acao) {
       const { room, me } = minha();
       if (!room || !me) return falha(cb, "Você não está numa sala.");
+      if (me.dispensado) return falha(cb, "O anfitrião dispensou você da sala.");
       if (room.fase !== "carreira" || !me.clube) return falha(cb, "A carreira desta sala ainda não começou.");
       const v = Carreira.vistaDe(room.save, me.clube);
       Carreira.completar(v);
@@ -338,6 +390,7 @@ module.exports = function ligarCarreiraOnline(io) {
     socket.on("decidir", (d = {}, cb) => {
       const { room, me } = minha();
       if (!room || !me || !room.rodada) return falha(cb, "Nenhuma partida em andamento.");
+      if (me.dispensado) return falha(cb, "O anfitrião dispensou você da sala.");
       const erro = Rd.decidir(room.save, room.rodada, me.clube, String(d.id || ""), d.resposta, Date.now());
       if (erro) return falha(cb, erro);
       guardar(room);
@@ -351,7 +404,7 @@ module.exports = function ligarCarreiraOnline(io) {
 
     socket.on("disconnect", () => {
       const { room, me } = minha();
-      if (me) me.sockets.delete(socket.id);
+      if (me) { me.sockets.delete(socket.id); if (!me.sockets.size) me.saiuEm = Date.now(); }
       if (room) broadcast(room);
     });
   });

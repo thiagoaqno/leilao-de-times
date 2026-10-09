@@ -766,3 +766,4 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
   .transferencia-fx,.transferencia-fx *,.fala-jogador{animation:none!important;opacity:1}
   .transferencia-card{transform:translate(-50%,-50%)}.transferencia-carimbo{transform:translate(-50%,-50%) rotate(-10deg)}.transferencia-martelo{transform:none}
 }
+.turma .dispensar{margin-left:auto;min-height:28px;font-size:12px}

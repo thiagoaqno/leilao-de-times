@@ -5,6 +5,8 @@
 // - Paradas: quando o jogo de um humano chega numa parada (tática ou lance decisivo), só aquele jogo pausa. A decisão
 //   tem um tempo (DECISAO_MS); sem resposta, vale a padrão (Motor.decisaoAutomatica). Ninguém trava os outros jogos.
 // - Humano contra humano: os dois decidem na mesma parada (parado.ambos); o jogo espera os dois (ou o tempo).
+// - Quem saiu da sala (ausentes, de carreira-online.js) não segura ninguém: o jogo só de ausentes anda na hora, com as
+//   decisões automáticas, e nas paradas de um jogo com alguém aqui as decisões do ausente valem a padrão sem esperar.
 // - Quem escolheu jogar "só o resultado" (modo 1) ou não quer os lances (modo 2) recebe a decisão automática na hora.
 const G = require("./carreira.js").grupo;
 const { Motor } = G;
@@ -79,26 +81,31 @@ function resolver(jg, r, agora) {
 }
 
 // o relógio anda: abre as paradas que chegaram, decide as que venceram o tempo e fecha os jogos que acabaram.
-// Devolve { mudou, acabou } (acabou: todos os jogos da rodada fecharam e o mundo foi recalculado).
-function tick(save, rod, agora) {
+// ausentes: os clubes de quem saiu da sala (ou foi dispensado). Devolve { mudou, acabou } (acabou: todos os jogos da
+// rodada fecharam e o mundo foi recalculado).
+function tick(save, rod, agora, ausentes = new Set()) {
   let mudou = false;
   for (const jg of rod.jogos) {
     if (jg.fim) continue;
+    const humanos = [jg.casa, jg.fora].filter((c) => save.humanos[c]), rapido = humanos.length > 0 && humanos.every((c) => ausentes.has(c));
+    const minuto = () => (rapido ? Infinity : minutoDe(rod, jg, agora)); // o jogo só de ausentes anda na hora
+    const presente = (lado) => !ausentes.has(lado === 0 ? jg.casa : jg.fora);
     for (let volta = 0; volta < 20; volta++) {
       const r = simular(save, jg);
       if (r.parado) {
         if (!jg.parado) {
-          if (minutoDe(rod, jg, agora) < limiteDe(r)) break;
-          const pend = pendentesDe(jg, r.parado);
+          if (minuto() < limiteDe(r)) break;
+          const pend = pendentesDe(jg, r.parado).filter(presente);
           jg.parado = { id: r.parado.id, desde: agora, ate: agora + rod.decisaoMs, pendentes: pend };
           mudou = true;
           if (!pend.length) { resolver(jg, r, agora); continue; } // ninguém quis decidir esta: segue na hora
           break;
         }
+        if (jg.parado.pendentes.some((l) => !presente(l))) { jg.parado.pendentes = jg.parado.pendentes.filter(presente); mudou = true; } // saiu no meio da decisão
         if (agora >= jg.parado.ate || !jg.parado.pendentes.length) { resolver(jg, r, agora); mudou = true; continue; }
         break;
       }
-      if (minutoDe(rod, jg, agora) >= limiteDe(r) + 0.5) {
+      if (minuto() >= limiteDe(r) + 0.5) {
         jg.penaltis = G.fecharJogoGrupo(save, jg.j, r, jg.modo, jg.decisoes);
         jg.fim = true; jg.placar = [...r.placar]; mudou = true;
       }

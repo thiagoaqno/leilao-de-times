@@ -74,7 +74,10 @@ test("fim da temporada: o histórico guarda posição, títulos, artilheiro do t
 });
 
 test("virada de temporada: a mesma carreira evolui sempre igual, dentro dos limites", () => {
-  const a = carreiraNoFim(), b = carreiraNoFim(), antes = { ...a.bonusNota };
+  const a = carreiraNoFim(), b = carreiraNoFim();
+  // o aviso sem resposta vale a opção padrão na virada e pode mexer na nota de alguém: aqui só a evolução conta
+  for (const x of [a, b]) for (const e of x.caixaEntrada) e.resolvido = true;
+  const antes = { ...a.bonusNota };
   assert.strictEqual(novaTemporada(a), null);
   assert.strictEqual(novaTemporada(b), null);
   assert.deepStrictEqual(a.bonusNota, b.bonusNota);
