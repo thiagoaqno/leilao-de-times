@@ -799,3 +799,8 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 @keyframes av-pisca{50%{opacity:.25}}
 @media (max-width:1180px){.partida-grade{grid-template-columns:minmax(0,320px) minmax(0,1fr)}.ao-vivo{grid-column:1/-1;position:static;max-height:none}}
 @media (max-width:860px){.partida-grade{grid-template-columns:1fr}.ao-vivo{order:3}}
+/* a regra de compra da turma, os clubes livres e o convite */
+.regra-compras{align-items:flex-start}.regra-compras b{color:var(--t1)}
+.figurinha.fora-regra{opacity:.42;filter:grayscale(.55)}
+.convite-sala{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding:8px 10px;border-radius:var(--r3);background:var(--bg2);border:1px solid var(--b1);font-size:12px;color:var(--t2)}
+.convite-sala b{font:600 14px var(--mono);letter-spacing:.14em;color:var(--t1);margin-left:4px}

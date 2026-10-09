@@ -97,9 +97,10 @@ function desenharFicha(resposta) {
     </div>`;
   } else if (EM_GRUPO) {
     // na carreira em grupo, a compra é por leilão entre os amigos (grupo.js mostra o leilão aberto)
-    const l = SALA && SALA.leilao, aqui = l && l.jogador === pid;
-    acoes = `<div class="acoes"><p class="suave">${aqui ? "Este jogador está em leilão agora: dê o seu lance na faixa de baixo." : `Na turma, a compra é por leilão: todos podem dar lance, e cada lance reinicia o relógio. ${clube && SALA && SALA.players.some((p) => p.clube === clube) ? "Ele é de um amigo: quem bate o martelo é o dono." : "O clube tem um preço mínimo."}`}</p>
-      <button id="fLeilao" class="primario largo" ${aqui || l || !E.janela.aberta ? "disabled" : ""}>${ic("martelo")} ${!E.janela.aberta ? "Janela fechada" : l && !aqui ? "Já tem um leilão aberto" : aqui ? "Em leilão" : "Abrir o leilão"}</button></div>`;
+    const l = SALA && SALA.leilao, aqui = l && l.jogador === pid, regra = E.regraCompras, nota = notaDe(j);
+    const bloqueio = regra && regra.tipo && !regra.ok[Math.min(99, nota)] ? `${regra.texto}${regra.usadas.length ? ` Você já levou ${regra.usadas.length === 1 ? "um de" : "jogadores de"} ${regra.usadas.join(", ")}.` : ""} Um jogador de ${nota} não entra nessa conta.` : "";
+    acoes = `<div class="acoes">${bloqueio ? `<p class="resposta recusa">${h(bloqueio)}</p>` : ""}<p class="suave">${aqui ? "Este jogador está em leilão agora: dê o seu lance na faixa de baixo." : `Na turma, a compra é por leilão: todos podem dar lance, e cada lance reinicia o relógio. ${clube && SALA && SALA.players.some((p) => p.clube === clube) ? "Ele é de um amigo: quem bate o martelo é o dono." : "O clube tem um preço mínimo."}`}</p>
+      <button id="fLeilao" class="primario largo" ${aqui || l || !E.janela.aberta || bloqueio ? "disabled" : ""}>${ic("martelo")} ${!E.janela.aberta ? "Janela fechada" : l && !aqui ? "Já tem um leilão aberto" : aqui ? "Em leilão" : "Abrir o leilão"}</button></div>`;
   } else {
     const tent = E.tentativas[pid] || 0, desconto = E.indicacoes[pid] ? 0.85 : 1;
     const sugerido = Math.round(valor * desconto * 1.15 / 1e5) * 1e5;

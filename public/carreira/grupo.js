@@ -52,6 +52,9 @@ socket.on("state", (st) => {
   const comecou = st.fase === "carreira" && (!SALA || SALA.fase !== "carreira");
   SALA = st;
   if (st.fase === "carreira") {
+    // entrou com a carreira rolando e ainda não tem clube (ou só está assistindo): escolhe um clube livre
+    const eu = st.players.find((p) => p.id === MEU_ID);
+    if (!eu || !eu.clube) { entradaNoMeio(st, eu); return; }
     if (comecou || !E) pedir("entrar").then((r) => { if (r.ok) { receber(r.estado); DESVIO = st.now - Date.now(); if (telaAtual === "grupo" || !telaAtual) abrirSede(); atualizarRodadaGrupo(r.estado.rodadaGrupo); } });
     desenharLeilao(); avisarLeilao(st); desenharTurma(st);
     if (E && telaAtual === "sede") telaSede();
@@ -59,6 +62,23 @@ socket.on("state", (st) => {
   }
   desenharSala();
 });
+// a tela de quem entrou com a carreira já rolando: os clubes livres (o caixa e a força de agora) e a regra de entrada
+function entradaNoMeio(st, eu) {
+  desenharSala(); // os técnicos, as regras da sala e o código
+  const forca = (id) => { const n = elencoDe(id).map(notaDe).sort((a, b) => b - a).slice(0, 11); return n.length ? Math.round(n.reduce((s, x) => s + x, 0) / n.length) : 0; };
+  const livres = st.clubes.filter((id) => !st.ocupados[id] && CLUBES[id]).map((id) => CLUBES[id]);
+  const ordemLiga = (c) => ["brasileirao-2026", ...Temporada.EUROPA].indexOf(c.liga);
+  $("gStatus").textContent = !eu ? "Você está só assistindo. Para assumir um clube, entre na sala pelo código, com um nome."
+    : st.rodada ? "A rodada está rolando: escolha o clube e entre quando ela acabar. Quem entra no meio leva 1 jogador de até 88 (ou segue as regras da janela, se ela estiver aberta)."
+    : "A carreira já começou. Escolha um clube livre para assumir agora. Quem entra no meio leva 1 jogador de até 88 (ou segue as regras da janela, se ela estiver aberta).";
+  $("gMeuClube").textContent = livres.length ? `${livres.length} clube${livres.length === 1 ? "" : "s"} livre${livres.length === 1 ? "" : "s"}` : "Não tem clube livre";
+  $("btnComecar").classList.add("hidden");
+  $("gClubes").innerHTML = eu ? livres.sort((a, b) => ordemLiga(a) - ordemLiga(b) || forca(b.id) - forca(a.id)).map((c) => {
+    const caixa = st.caixas && st.caixas[c.id];
+    return `<button class="clube" style="${coresClube(c.id)}" data-entrar-clube="${c.id}">${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b>
+      <small>${h(Temporada.NOMES[c.liga] || "")} · força ${forca(c.id)}</small><span class="orcamento">${caixa != null ? `<span class="caixa-clube">${ic("moeda")} ${dinheiro(caixa)}</span>` : ""}</span></span></button>`;
+  }).join("") : "";
+}
 // o estado do meu clube, sempre que algo muda na sala
 socket.on("carreira", (e) => { if (EM_GRUPO && E) { receber(e); atualizarRodadaGrupo(e.rodadaGrupo); } });
 
@@ -92,7 +112,9 @@ function desenharTurma(st) {
   const anfitriao = MEU_ID === st.host, algumFora = st.players.some((p) => !p.online);
   el.classList.remove("hidden");
   el.innerHTML = `<h3>Turma</h3><ul class="pessoas turma">${st.players.map((p) => `<li class="${p.online ? "" : "fora"}">${p.clube ? escudo(p.clube, 2) : ""}<span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "sem clube"} · ${p.online ? "no ar" : "fora do ar"}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${anfitriao && !p.host ? `<button class="discreto perigo dispensar" data-dispensar="${p.id}">Dispensar</button>` : ""}</li>`).join("")}</ul>
-    ${algumFora ? `<p class="suave">Quem sai da sala joga no automático, sem segurar a rodada. ${anfitriao ? "Dispensar passa o clube para o computador." : ""}</p>` : ""}`;
+    ${algumFora ? `<p class="suave">Quem sai da sala joga no automático, sem segurar a rodada. ${anfitriao ? "Dispensar passa o clube para o computador." : ""}</p>` : ""}
+    <div class="convite-sala"><span>Código da sala <b>${h(st.code)}</b></span><button class="discreto" data-copiar-convite>Copiar convite</button></div>
+    <p class="suave">Quem entrar pelo código assume um clube livre, mesmo com a carreira rolando.</p>`;
 }
 // foi dispensado pelo anfitrião: esquece a sala e volta para o começo
 socket.on("dispensado", () => {
@@ -106,6 +128,9 @@ const agir = async (dados) => {
   return r;
 };
 document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-copiar-convite]")) { const url = `${location.origin}/carreira/?sala=${SALA.code}`; navigator.clipboard?.writeText(url).then(() => toast("Convite copiado.")).catch(() => toast(url)); return; }
+  const entrar = e.target.closest("[data-entrar-clube]");
+  if (entrar) { const id = entrar.dataset.entrarClube; if (confirm(`Assumir o ${nomeClube(id)} agora? Depois de entrar não dá para trocar de clube.`)) agir({ type: "clube", clube: id }); return; }
   const dsp = e.target.closest("[data-dispensar]");
   if (dsp) {
     const p = SALA && SALA.players.find((x) => x.id === dsp.dataset.dispensar);

@@ -1,40 +1,45 @@
-# Carreira: os escudos dos 96 clubes europeus refeitos à mão
+# Carreira em grupo: entrar no meio da carreira, regras de compra por janela e sala por 48 horas
 
-Depois dos brasileiros, as cinco ligas europeias ganham o mesmo cuidado: cada clube com as suas cores e um elemento que
-lembra o escudo, sem copiar o desenho de verdade. Nenhum dos 96 se repete.
+Tudo num PR só, para já valer nas salas que estão rolando (nada muda no formato salvo: as salas antigas ganham os recursos
+sozinhas quando o servidor subir com este código).
 
-## Premier League (20)
-Bournemouth, Arsenal (o canhão), Aston Villa (a coroa), Brentford, Brighton, Chelsea, Coventry, Crystal Palace, Everton (a
-torre), Fulham, Hull City (as listras de tigre), Ipswich, Leeds, Liverpool (a chama), Manchester City, Manchester United,
-Newcastle, Nottingham Forest (a árvore), Sunderland e Tottenham (a bola).
+## Entrar no meio da carreira (pelo código da sala)
+- Com a carreira rolando, qualquer pessoa pode entrar pelo código (na tela inicial, "Entrar com o código", ou pelo link da
+  sala). Ela escolhe um **clube livre**: o clube que ainda é do computador, com o caixa de agora, a força e a liga.
+- Dá para entrar no meio da temporada, na segunda temporada ou em qualquer momento. Só **não** dá para escolher o clube com a
+  rodada rolando ou um leilão aberto (a tela avisa e a pessoa entra assim que acabar).
+- O clube entra no ponto em que o mundo está: os jogos que ele já fez contam como jogados (a tabela e o calendário
+  continuam iguais), o caixa é o que ele tinha e o aporte do investidor da sala entra como para os outros. O clube sai da lista
+  do computador e a pessoa joga a rodada seguinte com a turma.
+- O painel **Turma** da sede agora mostra o código da sala e o botão de copiar o convite.
 
-## La Liga (20)
-Alavés, Athletic Club, Atlético de Madrid (as sete estrelas), Osasuna (a cruz), Celta, Deportivo, Elche, Barcelona (a
-faixa dourada e o azul-grená), Getafe, Levante, Málaga (a torre), Racing, Rayo (o raio), Espanyol, Betis, Real Madrid (a
-coroa), Real Sociedad, Sevilla, Valencia (o morcego) e Villarreal (o submarino amarelo).
+## Regras de compra da turma (para os clubes brasileiros não ficarem roubados)
+Valem para todos os técnicos, por janela, no leilão da turma:
+- **Começo da temporada** (a janela até a rodada 4): ou 1 jogador de **90 ou mais**, ou 2 de **até 87**, ou 3 de **até 83**.
+  Jogadores de 88 e 89 não entram nessa janela.
+- **Meio da temporada** (a janela das rodadas 17 a 21): **1 jogador de até 88**.
+- **Quem entra no meio** com a janela fechada ganha uma entrada: 1 jogador de até 88 (até o fim da temporada). Se entrar com a
+  janela aberta, vale a regra da janela.
+- A nota que vale é a de agora (com o que o jogador evoluiu). A regra vale para abrir o leilão, dar lance e bater o martelo.
+- Na tela: o mercado mostra a regra, o que já foi levado e o que ainda dá; os jogadores fora da cota ficam apagados e a ficha
+  explica por que não dá. A carreira solo não tem essa regra.
 
-## Serie A (20)
-Roma (SPQR), Atalanta, Bologna, Cagliari, Como, Fiorentina (a flor-de-lis), Frosinone, Genoa, Inter (redondo, com o FCIM),
-Juventus (as duas estrelas), Lazio (a estrela), Lecce, Milan, Monza, Parma (a cruz azul), Sassuolo, Napoli (o N), Torino (o
-touro), Udinese e Venezia.
+## A sala dura 48 horas
+- A carreira em grupo só expira depois de **48 horas** sem ninguém mexer (antes eram 24).
 
-## Bundesliga (18)
-Köln, Mainz (o 05), Leverkusen (o 04), Dortmund (BVB 09), Gladbach, Frankfurt, Elversberg, Augsburg, Bayern (redondo, com os
-losangos), Hamburgo (o losango azul), Paderborn, Leipzig (RB), Freiburg, Schalke (S04), Werder (o W redondo), Hoffenheim,
-Union Berlin e Stuttgart (o V vermelho).
-
-## Ligue 1 (18)
-Auxerre, Angers, Monaco (a diagonal e a coroa), Lorient (a âncora), Le Havre, Le Mans, Lille (a flor-de-lis), Lyon, Nice,
-Marseille (OM), Paris FC, PSG (redondo, com a torre Eiffel), Lens, Brest (o 29), Rennes, Strasbourg, Toulouse (a flor) e
-Troyes.
-
-## Peças novas
-- Camadas: `cruz`, `chevron`, `metade` e `losangos`.
-- Símbolos: `canhao`, `chama`, `torre`, `arvore`, `morcego`, `submarino`, `flordelis`, `flor`, `touro` e `eiffel`.
-- Os clubes da Argentina e os sul-americanos seguem com o desenho automático (a receita da base, com um de 7 jeitos).
+## Artilheiros e chaves
+- **Artilharia:** só entram gols de jogos com algum técnico humano (os dois lados, ou seja, quem joga contra a turma). Os jogos só do
+  computador não contam. Nos jogos ao vivo, o gol do computador aparece só com o clube e o placar, sem o nome de quem fez.
+- **Chaves:** as chaves do mata-mata (Champions, Libertadores, Copa do Brasil, Sul-Americana, Super Mundial, Mundial) não aparecem
+  conforme acontecem: a Tabela mostra os grupos e o campeão no fim, e o painel ao vivo mostra só jogos de liga e de fase de grupos.
+  Só os jogos do seu clube aparecem (no calendário e na partida).
 
 ## Conferido
-- `npm test`: 176 de 176. O e2e da carreira não foi rodado (a mudança é só o desenho dos escudos).
-- Folhas de contato das cinco ligas no navegador, sem erro no console. Fotos: `planos/imagens/carreira-escudos-*.png`.
-- `tests/carreira-base.test.js`: os 96 europeus têm desenho próprio, nenhum desenho sobra sem clube, e nenhum clube repete o
-  desenho de outro.
+- `tests/carreira-entrada-meio.test.js` (no `npm test`): as regras de compra, o leilão e o lance, o meio da temporada, a entrada
+  no meio (caixa, jogos já feitos, entrada), a artilharia, os jogos ao vivo sem mata-mata e sem nome, as 48 horas e a entrada
+  pelo canal de verdade (com rodada rolando, entre as rodadas e como espectador).
+- Dois testes antigos mudaram porque o comportamento mudou de propósito: quem entra com a carreira rolando agora é aceito, e o
+  estado público da sala ganhou o campo `caixas`.
+- `npm test`: 201 de 201. E2E: o teste da carreira em grupo. Fotos: `planos/imagens/carreira-entrar-no-meio.png` e `carreira-regra-de-compras.png`.
+- Na tela, com dois navegadores: a pessoa entra pelo código, escolhe o clube, vê a regra no mercado, e a Copa do Brasil não mostra
+  as chaves.

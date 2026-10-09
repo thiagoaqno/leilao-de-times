@@ -16,9 +16,14 @@ $("mOlheiro").onclick = async () => {
     </article>`; }).join("")
     : `<p class="suave">O olheiro não achou ninguém que melhore o time e caiba no caixa.</p>`;
 };
+// a regra de compra da turma (carreira em grupo): a nota que não cabe na cota de agora fica apagada na lista
+const foraDaRegra = (j) => EM_GRUPO && E.regraCompras && E.regraCompras.tipo && !E.regraCompras.ok[Math.min(99, notaDe(j))];
 function telaMercado() {
   $("mCaixa").innerHTML = `${ic("moeda")} ${dinheiro(E.caixa)}`;
-  $("mJanela").innerHTML = E.janela.aberta ? `${ic("maleta")} Janela aberta${(E.rodadaLiga ?? E.rodada) < 4 ? " até a rodada 4" : " até a rodada 21"}. Folha atual: ${dinheiro(E.folha)} por mês.`
+  const regra = EM_GRUPO && E.regraCompras && E.regraCompras.tipo ? E.regraCompras : null;
+  $("mRegra").classList.toggle("hidden", !regra);
+  if (regra) $("mRegra").innerHTML = `${ic("lista")} <span><b>${h(regra.titulo)}.</b> ${h(regra.texto)} ${regra.usadas.length ? `Já levou: ${regra.usadas.join(", ")}.` : ""} ${regra.ainda.length ? `Ainda pode: ${h(regra.ainda.join(" ou "))}.` : "Você já usou a sua cota desta janela."}</span>`;
+  $("mJanela").innerHTML = E.janela.entrada ? `${ic("maleta")} Você acabou de entrar na carreira: mesmo com a janela fechada, tem a sua entrada. Folha atual: ${dinheiro(E.folha)} por mês.` : E.janela.aberta ? `${ic("maleta")} Janela aberta${(E.rodadaLiga ?? E.rodada) < 4 ? " até a rodada 4" : " até a rodada 21"}. Folha atual: ${dinheiro(E.folha)} por mês.`
     : `${ic("cadeado")} Janela fechada${E.janela.proxima != null ? `: abre na rodada ${E.janela.proxima + 1}` : " até a próxima temporada"}. Dá para olhar e pôr jogadores na lista de venda.`;
   $("mJanela").classList.toggle("fechada", !E.janela.aberta);
   for (const b of $("mModo").children) b.setAttribute("aria-pressed", String(b.dataset.modo === modoMercado));
@@ -39,7 +44,7 @@ function listaCompra() {
     if (posMercado !== "todas" && GRUPO_TELA[j.pos] !== posMercado) return false;
     return !busca || j.nome.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(busca);
   }).sort((a, b) => (E.indicacoes[b.id] ? 1 : 0) - (E.indicacoes[a.id] ? 1 : 0) || notaDe(b) - notaDe(a));
-  $("mLista").innerHTML = lista.length ? lista.slice(0, mostrar).map((j) => figurinha(j.id)).join("") : `<p class="suave vazio">Ninguém com esses filtros.</p>`;
+  $("mLista").innerHTML = lista.length ? lista.slice(0, mostrar).map((j) => (foraDaRegra(j) ? figurinha(j.id).replace('class="figurinha ', 'class="figurinha fora-regra ') : figurinha(j.id))).join("") : `<p class="suave vazio">Ninguém com esses filtros.</p>`;
   $("mMais").classList.toggle("hidden", lista.length <= mostrar);
 }
 function listaVenda() {
