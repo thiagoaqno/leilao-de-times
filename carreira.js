@@ -219,7 +219,7 @@ function assumirClube(save, clube, nome, skin) {
 // (vistaDe: o save com os campos dele por cima, e save.clube = ele) e, depois, guarda-se de volta (guardarVista).
 const CAMPOS_CLUBE = ["clube", "tecnico", "caixa", "moral", "situacao", "escalacao", "caixaEntrada", "financas", "feed", "posJogo", "compras", "valores", "pedidos",
   "parcelas", "aVenda", "indicacoes", "tentativas", "bonusVitoria", "provocado", "efeitos", "eventosVistos", "segredos", "jogosJogados", "calendario", "rodada",
-  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "entrada", "energia", "meta"];
+  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "janelasAnteriores", "entrada", "energia", "meta"];
 function vistaDe(save, clube) {
   const v = { ...save, ...save.humanos[clube].estado };
   delete v.humanos;
@@ -257,7 +257,7 @@ function novaCarreiraGrupo(humanos, { temporadas, aporte = 0, caixaIgual = 0 } =
 }
 // alguém entra com a carreira já rolando (no meio da temporada ou na segunda): assume um clube do computador no ponto em que o
 // mundo está. Os jogos que o clube já fez contam como jogados, o caixa é o que o clube tinha, o aporte do investidor entra
-// como para os outros e, fora da janela, ganha uma entrada (1 jogador de até 88 até o fim da temporada).
+// como para os outros e, fora da janela, ganha uma janela de entrada (as opções da regra de compras), até a próxima janela abrir.
 function entrarNaCarreira(save, { clube, nome, skin }, { aporte = 0 } = {}) {
   if (!save.humanos) return "Não é uma carreira em grupo.";
   if (save.humanos[clube]) return "Esse clube já é de outro técnico.";
@@ -272,10 +272,10 @@ function entrarNaCarreira(save, { clube, nome, skin }, { aporte = 0 } = {}) {
   v.jogosJogados = jaJogados.map((j) => j.id); v.rodada = v.jogosJogados.length; v.jogosTemporada = v.rodada;
   if (caixaDoClube != null) v.caixa = caixaDoClube;
   if (save.caixaIA) delete save.caixaIA[clube];
-  const janelaAberta = Mercado.janelaAberta(rodadaDaJanela(v));
-  v.entrada = janelaAberta ? null : { temporada: v.temporada };
+  const rodadaLiga = rodadaDaJanela(v), janelaAberta = Mercado.janelaAberta(rodadaLiga);
+  v.entrada = janelaAberta ? null : { temporada: v.temporada, antesDoMeio: rodadaLiga < 16 }; // antes do meio, a entrada vale até a janela do meio abrir
   const boasVindas = v.caixaEntrada.find((e) => e.id === "boas-vindas");
-  if (boasVindas) boasVindas.texto = `A diretoria apresentou ${nome} como novo técnico, com a carreira já rolando (temporada ${v.temporada} de ${v.temporadasMax}, ${v.jogosJogados.length} jogo${v.jogosJogados.length === 1 ? "" : "s"} do clube já feito${v.jogosJogados.length === 1 ? "" : "s"}). Caixa: ${dinheiro(v.caixa)}. ${janelaAberta ? "A janela de transferências está aberta." : "A janela está fechada, mas você tem uma entrada: 1 jogador de até 88."} ${quadroDaRegra(janelaDeCompras(v)?.tipo || "entrada")}`;
+  if (boasVindas) boasVindas.texto = `A diretoria apresentou ${nome} como novo técnico, com a carreira já rolando (temporada ${v.temporada} de ${v.temporadasMax}, ${v.jogosJogados.length} jogo${v.jogosJogados.length === 1 ? "" : "s"} do clube já feito${v.jogosJogados.length === 1 ? "" : "s"}). Caixa: ${dinheiro(v.caixa)}. ${janelaAberta ? "A janela de transferências está aberta." : "A janela está fechada, mas você tem uma janela de entrada."} ${quadroDaRegra(janelaDeCompras(v)?.tipo || "entrada")}`;
   if (aporte > 0) {
     movimentar(v, "Aporte do investidor", aporte);
     avisar(v, { tipo: "aporte", icone: "maleta", titulo: "Aporte do investidor", texto: `O investidor da galera pôs ${dinheiro(aporte)} no caixa. Caixa agora: ${dinheiro(v.caixa)}.` });
@@ -388,47 +388,119 @@ function novaTemporadaGrupo(save) {
 // ---------- o mercado disputado (PR 6): o leilão entre os humanos e o olheiro ----------
 // pode abrir o leilão desse jogador? Devolve o erro (texto) ou { tipo: "cpu" | "humano", dono, minimo, teto }
 // ---------- as regras de compra da turma ----------
-// Para os clubes brasileiros não ficarem "roubados", cada técnico só leva reforço de peso por janela:
-//  - começo da temporada (a janela até a rodada 4): 1 jogador de 90 ou mais, OU 2 jogadores entre 84 e 87, OU 3 jogadores de 83 ou menos;
-//  - meio da temporada (a janela das rodadas 17 a 21): 1 jogador de até 88;
-//  - quem entra na carreira com a janela fechada ganha uma entrada: 1 jogador de até 88 (até o fim da temporada).
-// Vale para o leilão da turma (a carreira solo não tem essa regra). A nota é a de agora (com o que o jogador evoluiu).
-const PACOTES_INICIO = [{ n: 1, min: 90 }, { n: 2, min: 84, max: 87 }, { n: 3, max: 83 }], PACOTE_UNICO = { n: 1, max: 88 };
-const encaixaNoPacote = (p, notas) => notas.length <= p.n && notas.every((n) => (p.min == null || n >= p.min) && (p.max == null || n <= p.max));
-const quadroDaRegra = (tipo) => (tipo === "inicio" ? "No começo da temporada cada técnico leva: 1 jogador de 90 ou mais, ou 2 jogadores entre 84 e 87, ou 3 jogadores de 83 ou menos."
-  : tipo === "meio" ? "No meio da temporada cada técnico leva 1 jogador de até 88." : "Quem entra no meio da carreira leva 1 jogador de até 88.");
-// qual regra vale agora para este clube (null: a janela está fechada e ele não tem entrada)
+// Para ninguém ficar "roubado", cada técnico leva reforço por janela (o começo da temporada, até a rodada 4 da liga, e o meio, rodadas 17 a 21):
+//  - em cada janela, UMA destas opções: 3 jogadores de até 80, OU 2 de até 82, OU 1 de até 85;
+//  - a opção usada numa janela não vale na janela seguinte (pegou o de 85 no começo: no meio, 3 de até 80 ou 2 de até 82). A opção usada é a
+//    mais baixa em que as compras cabem (um de 78 sozinho gasta a de 80; com 82 no meio, a de 82);
+//  - os campeões da temporada anterior ganham, a mais, na janela do começo, um prêmio por título: Libertadores 1 jogador de até 85,
+//    Sul-Americana 1 de até 83 e Brasileirão 1 de até 82 (cada prêmio leva um jogador, fora da opção da janela);
+//  - quem entra na carreira com a janela fechada ganha uma janela de entrada (as mesmas opções), até a próxima janela abrir.
+// Vale para o leilão da turma (a carreira solo e as trocas entre técnicos não têm essa regra). A nota é a de agora (com o que o jogador evoluiu).
+const PACOTES = [{ id: "80", n: 3, max: 80 }, { id: "82", n: 2, max: 82 }, { id: "85", n: 1, max: 85 }];
+const ORDEM_PACOTE = { "": 0, 80: 1, 82: 2, 85: 3 };
+const NOME_PACOTE = { 80: "3 jogadores de até 80", 82: "2 jogadores de até 82", 85: "1 jogador de até 85" };
+const PREMIOS_CAMPEAO = [["libertadores", 85, "Libertadores"], ["sulamericana", 83, "Sul-Americana"], ["brasileirao-2026", 82, "Brasileirão"]];
+const OPCOES_TEXTO = "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85";
+// a janela de agora: o id (temporada:tipo) e a ordem na carreira (o começo da temporada T é 2(T-1), o meio é 2(T-1)+1; a entrada vale pela janela
+// em que o técnico entrou: antes do meio, no lugar do começo; depois, no lugar do meio). null: a janela está fechada e ele não tem entrada
 function janelaDeCompras(v) {
-  const r = rodadaDaJanela(v);
-  if (Mercado.janelaAberta(r)) { const tipo = r < 4 ? "inicio" : "meio"; return { id: `${v.temporada}:${tipo}`, tipo }; }
-  if (v.entrada && v.entrada.temporada === v.temporada) return { id: `${v.temporada}:entrada`, tipo: "entrada" };
+  const r = rodadaDaJanela(v), T = v.temporada;
+  if (Mercado.janelaAberta(r)) { const tipo = r < 4 ? "inicio" : "meio"; return { id: `${T}:${tipo}`, tipo, temporada: T, ordem: 2 * (T - 1) + (tipo === "inicio" ? 0 : 1) }; }
+  const e = v.entrada;
+  if (e && e.temporada === T && !(e.antesDoMeio && r >= 16)) return { id: `${T}:entrada`, tipo: "entrada", temporada: T, ordem: 2 * (T - 1) + (e.antesDoMeio ? 0 : 1) };
   return null;
 }
-const notasDaJanela = (v, jan) => (v.comprasJanela && v.comprasJanela.id === jan.id ? v.comprasJanela.notas : []);
-const pacotesDa = (jan) => (jan.tipo === "inicio" ? PACOTES_INICIO : [PACOTE_UNICO]);
+// a ordem de uma janela já guardada (as compras antigas só tinham o id)
+function ordemDoId(v, id) {
+  const [T, tipo] = String(id).split(":"), t = Number(T) || 1;
+  if (tipo === "inicio") return 2 * (t - 1);
+  if (tipo === "meio") return 2 * (t - 1) + 1;
+  return 2 * (t - 1) + (v.entrada && v.entrada.temporada === t && v.entrada.antesDoMeio ? 0 : 1);
+}
+// as notas compradas numa janela (pela ordem): a de agora (comprasJanela) e as anteriores guardadas (janelasAnteriores)
+function comprasDaOrdem(v, ordem) {
+  const todas = [...(v.janelasAnteriores || []), ...(v.comprasJanela ? [v.comprasJanela] : [])];
+  const w = todas.find((x) => (x.ordem ?? ordemDoId(v, x.id)) === ordem);
+  return w ? w.notas : [];
+}
+// os prêmios de campeão de uma janela: só a do começo da temporada (ordem par), pelos títulos do clube na temporada anterior (o arquivo)
+function premiosDaOrdem(v, ordem) {
+  if (ordem % 2) return [];
+  const T = ordem / 2 + 1, a = (v.arquivo || []).find((x) => x.temporada === T - 1);
+  if (!a || !a.competicoes) return [];
+  return PREMIOS_CAMPEAO.filter(([comp]) => a.competicoes[comp] && a.competicoes[comp].campeao === v.clube).map(([comp, max, nome]) => ({ comp, max, nome }));
+}
+// cada prêmio leva um jogador de até a nota dele: os maiores com os maiores
+const cabeNosPremios = (resto, premios) => {
+  if (resto.length > premios.length) return false;
+  const a = [...resto].sort((x, y) => y - x), b = premios.map((p) => p.max).sort((x, y) => y - x);
+  return a.every((x, i) => x <= b[i]);
+};
+// a melhor divisão das notas entre a opção da janela (uma das permitidas) e os prêmios: a que gasta a opção mais baixa. null: não cabe
+function dividir(notas, permitidos, premios) {
+  let melhor = null;
+  for (let mask = 0; mask < 1 << notas.length; mask++) {
+    const op = [], resto = [];
+    notas.forEach((x, i) => (mask & (1 << i) ? op : resto).push(x));
+    if (!cabeNosPremios(resto, premios)) continue;
+    let pacote = "";
+    if (op.length) {
+      const p = permitidos.filter((q) => op.length <= q.n && op.every((x) => x <= q.max)).sort((a, b) => ORDEM_PACOTE[a.id] - ORDEM_PACOTE[b.id])[0];
+      if (!p) continue;
+      pacote = p.id;
+    }
+    if (!melhor || ORDEM_PACOTE[pacote] < ORDEM_PACOTE[melhor.pacote]) melhor = { pacote };
+  }
+  return melhor;
+}
+// a opção usada numa janela (a que fica proibida na janela seguinte); olha até 4 janelas para trás para saber o que estava proibido em cada uma
+function opcaoUsada(v, ordem, fundo = 0) {
+  const notas = comprasDaOrdem(v, ordem);
+  if (!notas.length) return "";
+  const proibida = fundo < 4 ? opcaoUsada(v, ordem - 1, fundo + 1) : "";
+  const div = dividir(notas, PACOTES.filter((p) => p.id !== proibida), premiosDaOrdem(v, ordem));
+  return div ? div.pacote : "";
+}
+// o que vale na janela de agora: as opções (sem a proibida), os prêmios e o que já foi comprado nela
+function contaDaJanela(v, jan) {
+  const proibida = opcaoUsada(v, jan.ordem - 1);
+  return { proibida, permitidos: PACOTES.filter((p) => p.id !== proibida), premios: premiosDaOrdem(v, jan.ordem), usadas: comprasDaOrdem(v, jan.ordem) };
+}
+const quadroDaRegra = (tipo, conta) => {
+  const base = tipo === "entrada" ? `Quem entra no meio da carreira tem uma janela de entrada: ${OPCOES_TEXTO}.` : `Em cada janela, cada técnico leva ${OPCOES_TEXTO}. A opção usada numa janela não vale na seguinte.`;
+  const proibida = conta && conta.proibida ? ` Nesta janela não vale a de ${NOME_PACOTE[conta.proibida]} (você usou na janela anterior).` : "";
+  const premios = conta && conta.premios.length ? ` Prêmio de campeão nesta janela, a mais: ${conta.premios.map((p) => `1 jogador de até ${p.max} (${p.nome})`).join(", ")}.` : "";
+  return base + proibida + premios;
+};
 function erroDeRegra(v, nota) {
   const jan = janelaDeCompras(v); if (!jan) return "A janela de transferências está fechada.";
-  const usadas = notasDaJanela(v, jan);
-  if (pacotesDa(jan).some((p) => encaixaNoPacote(p, [...usadas, nota]))) return null;
-  return `${quadroDaRegra(jan.tipo)}${usadas.length ? ` Você já levou ${usadas.length === 1 ? "um de" : "jogadores de"} ${usadas.join(", ")}.` : ""} Um jogador de ${nota} não entra nessa conta.`;
+  const conta = contaDaJanela(v, jan);
+  if (dividir([...conta.usadas, nota], conta.permitidos, conta.premios)) return null;
+  return `${quadroDaRegra(jan.tipo, conta)}${conta.usadas.length ? ` Você já levou ${conta.usadas.length === 1 ? "um de" : "jogadores de"} ${conta.usadas.join(", ")}.` : ""} Um jogador de ${nota} não entra nessa conta.`;
 }
 const erroDeCompra = (save, clube, pid) => { const v = vistaDe(save, clube), j = jogadorDe(v, pid); return j ? erroDeRegra(v, notaDe(v, j)) : "Esse jogador não está disponível."; };
 function registrarCompraDaJanela(v, nota) {
   const jan = janelaDeCompras(v); if (!jan) return;
-  if (!v.comprasJanela || v.comprasJanela.id !== jan.id) v.comprasJanela = { id: jan.id, notas: [] };
+  if (!v.comprasJanela || v.comprasJanela.id !== jan.id) {
+    // a janela mudou: a anterior fica guardada (a opção que ela usou proíbe a mesma na janela seguinte)
+    if (v.comprasJanela && v.comprasJanela.notas.length) v.janelasAnteriores = [...(v.janelasAnteriores || []), { ...v.comprasJanela, ordem: v.comprasJanela.ordem ?? ordemDoId(v, v.comprasJanela.id) }].slice(-4);
+    v.comprasJanela = { id: jan.id, ordem: jan.ordem, notas: [] };
+  }
   v.comprasJanela.notas.push(nota);
 }
 // o que a tela mostra: a regra de agora, o que já foi levado, o que ainda pode e, para cada nota, se pode
 function regraDeCompras(v) {
   const jan = janelaDeCompras(v);
-  if (!jan) return { tipo: null, titulo: "", texto: "", usadas: [], ainda: [], ok: Array(100).fill(false) };
-  const usadas = notasDaJanela(v, jan);
-  const ainda = pacotesDa(jan).filter((p) => encaixaNoPacote(p, usadas) && p.n - usadas.length > 0).map((p) => {
-    const falta = p.n - usadas.length;
-    return `${falta} jogador${falta === 1 ? "" : "es"} ${p.min != null && p.max != null ? `entre ${p.min} e ${p.max}` : p.min != null ? `de ${p.min} ou mais` : `de ${p.max} ou menos`}`;
-  });
-  return { tipo: jan.tipo, titulo: jan.tipo === "inicio" ? "Começo da temporada" : jan.tipo === "meio" ? "Meio da temporada" : "Entrada na carreira", texto: quadroDaRegra(jan.tipo), usadas, ainda,
-    ok: Array.from({ length: 100 }, (_, n) => !erroDeRegra(v, n)) };
+  if (!jan) return { tipo: null, titulo: "", texto: "", usadas: [], ainda: [], proibida: "", premios: [], ok: Array(100).fill(false) };
+  const conta = contaDaJanela(v, jan), { usadas, premios } = conta;
+  // quantos ainda cabem em cada opção permitida (contando com os prêmios)
+  const ainda = conta.permitidos.map((p) => {
+    let k = 0;
+    for (let c = 1; c <= p.n; c++) if (dividir([...usadas, ...Array(c).fill(p.max)], [p], premios)) k = c;
+    return k ? `${k} jogador${k === 1 ? "" : "es"} de até ${p.max}` : null;
+  }).filter(Boolean);
+  return { tipo: jan.tipo, titulo: jan.tipo === "inicio" ? "Começo da temporada" : jan.tipo === "meio" ? "Meio da temporada" : "Entrada na carreira", texto: quadroDaRegra(jan.tipo, conta), usadas, ainda,
+    proibida: conta.proibida, premios, ok: Array.from({ length: 100 }, (_, n) => !!dividir([...usadas, n], conta.permitidos, premios)) };
 }
 
 function infoLeilao(save, comprador, pid) {
