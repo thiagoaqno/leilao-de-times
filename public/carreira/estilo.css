@@ -815,3 +815,97 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 .cc-time b{font-weight:600;letter-spacing:-.01em}.cc-pernas{font:500 11px var(--mono);color:var(--t3)}
 .cc-time strong{font:600 14px var(--mono);text-align:right}.cc-time small{font-size:10px;color:var(--t3)}
 .cc-time.passou b,.cc-time.passou strong{color:var(--t1)}.cc-time.caiu{opacity:.5}
+/* a festa do campeão (campeoes.js): o pop-up de fim de competição, adaptado da festa do Leilão */
+dialog.festa{--acc:var(--ouro2);--acc-ink:#09090b;--gold:var(--ouro2);--red:var(--erro);--pane:var(--s1);--pane2:var(--s2);--pane3:var(--s3);--muted:var(--t2);--text:var(--t1);--display:var(--fonte);--body:var(--fonte);--mola:var(--ease);--out:var(--ease);--line2:var(--b2);width:min(920px,calc(100% - 20px));max-width:none;max-height:96vh;padding:12px;border:1px solid var(--b2);border-radius:22px;background:var(--pane);color:var(--text);box-shadow:0 0 0 4px #e8be4f22,0 30px 80px #000c;overflow:auto;animation:fsAbre .55s var(--mola) both}
+dialog.festa::backdrop{background:#000d;backdrop-filter:blur(4px)}
+@keyframes fsAbre{from{transform:scale(.86) translateY(24px);opacity:0}}
+.fsTela{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#050a08;container-type:inline-size}
+.fsTela canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.fsCena{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:2.6cqw 3cqw;pointer-events:none;text-shadow:0 .3cqw 0 #000a,0 0 1.4cqw #000c;text-align:center}
+.fsCena .ic{width:1em;height:1em;vertical-align:-.12em}
+.fsTopo{display:flex;flex-direction:column;align-items:center;gap:.6cqw;animation:fsDesce .5s var(--out) both}
+.fsCarimbo{display:inline-flex;align-items:center;gap:.8cqw;padding:.5cqw 1.8cqw;border-radius:99px;background:var(--acc);color:var(--acc-ink);font:800 max(11px,3.2cqw)/1.1 var(--display);letter-spacing:.06em;text-transform:uppercase;text-shadow:none;box-shadow:0 .4cqw 0 #0008}
+.fsSub{font:700 max(10px,2.3cqw)/1.2 var(--body);color:#fff;background:#050a08b0;padding:.3cqw 1.4cqw;border-radius:99px}
+.fsMini{font-family:var(--display);color:var(--acc);font-size:1.15em;margin:0 .6cqw}
+/* no fim de jogo e na campanha, o texto fica em cima: embaixo, o time comemora e dá a volta olímpica */
+.fs-fim,.fs-campanha,.fs-foto{justify-content:flex-start;gap:1.6cqw}
+.fs-foto{gap:.8cqw}
+.fs-fim .fsPlacar,.fs-campanha .fsNums{width:88%}
+.fsRodape{display:flex;gap:1cqw;flex-wrap:wrap;justify-content:center;min-height:3cqw}
+.fsTag{display:inline-flex;align-items:center;gap:.6cqw;font:700 max(9px,2cqw)/1.2 var(--body);background:#050a08c8;border:1px solid #ffffff30;border-radius:99px;padding:.4cqw 1.4cqw;animation:fsSobe .5s .9s var(--out) both}
+.fsTag.ouro{color:var(--gold);border-color:#f6c64e88}
+@keyframes fsDesce{from{transform:translateY(-120%);opacity:0}}
+@keyframes fsSobe{from{transform:translateY(60%);opacity:0}}
+@keyframes fsPula{0%{transform:scale(.2);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+/* 1. o placar final */
+.fsPlacar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:2cqw;width:100%;background:#050a08b8;border-radius:2cqw;padding:1.6cqw 2cqw;border:1px solid #ffffff22;animation:fsPula .6s .25s var(--mola) both}
+.fsTime{display:flex;align-items:center;justify-content:flex-end;gap:1cqw;font:800 3.6cqw/1.05 var(--display);text-transform:uppercase;color:var(--muted);min-width:0}
+.fsTime span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fsTime:last-child{justify-content:flex-start;flex-direction:row-reverse}
+.fsTime.ganhou{color:#fff}.fsTime.ganhou .ic{color:var(--gold);width:1.2em;height:1.2em;flex:none}
+.fsGols{display:flex;align-items:center;gap:1.4cqw;font:800 9cqw/1 var(--display);color:var(--acc)}
+.fsGols i{font-style:normal;font-size:.45em;color:var(--muted)}
+.fsPens{font:800 2.6cqw/1.2 var(--display);color:var(--gold);letter-spacing:.04em;text-transform:uppercase;animation:fsSobe .5s 1.4s var(--out) both}
+/* 2. os gols: a faixa de baixo, como na TV */
+.fsGolBox{width:100%;display:flex;justify-content:center}
+.fsGol{display:flex;align-items:center;gap:1.6cqw;padding:1cqw 2cqw 1cqw 1cqw;border-radius:1.6cqw;background:linear-gradient(90deg,#050a08f0,#0c1813e0);border-left:1cqw solid var(--acc);animation:fsEntra .55s var(--out) both;max-width:100%}
+.fsGol.deles{border-left-color:var(--red)}
+@keyframes fsEntra{from{transform:translateX(-40%);opacity:0}}
+.fsMin{font:800 4cqw/1 var(--display);color:var(--acc);min-width:6cqw;white-space:nowrap}
+.fsGol.deles .fsMin{color:var(--red)}
+.fsRosto{width:6cqw;height:6cqw;image-rendering:pixelated;border-radius:1cqw;background:#ffffff14;flex:none}
+.fsQuem{display:flex;flex-direction:column;align-items:flex-start;min-width:0;text-align:left}
+.fsQuem b{font:800 3.4cqw/1.05 var(--display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46cqw}
+.fsQuem small{font:600 max(9px,1.9cqw)/1.2 var(--body);color:var(--muted)}
+.fsBola{font-size:4cqw;color:#fff;animation:fsPula .5s .35s var(--mola) both}
+/* 2b. os pênaltis */
+.fsPenBox{display:flex;flex-direction:column;gap:1.2cqw;background:#050a08c8;border-radius:2cqw;padding:1.6cqw 2.4cqw}
+.fsFila{display:flex;align-items:center;gap:1cqw}
+.fsFila span{font:800 2.8cqw/1 var(--display);text-transform:uppercase;width:24cqw;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsFila i{display:grid;place-items:center;width:4.4cqw;height:4.4cqw;border-radius:50%;font-size:2.6cqw;animation:fsPula .4s var(--mola) both}
+.fsFila i.ok{background:var(--acc);color:var(--acc-ink)}.fsFila i.erro{background:var(--red);color:#fff}
+/* 3. a campanha */
+.fsNums{display:grid;grid-template-columns:repeat(5,1fr);gap:1.2cqw;width:100%}
+.fsNum{display:flex;flex-direction:column;align-items:center;background:#050a08d0;border:1px solid #ffffff22;border-radius:1.6cqw;padding:1.2cqw .6cqw;animation:fsPula .5s var(--mola) both}
+.fsNum:nth-child(2){animation-delay:.12s}.fsNum:nth-child(3){animation-delay:.24s}.fsNum:nth-child(4){animation-delay:.36s}.fsNum:nth-child(5){animation-delay:.48s}
+.fsNum b{font:800 7cqw/1 var(--display);color:#fff}
+.fsNum.bom b{color:var(--acc)}.fsNum.ruim b{color:var(--red)}
+.fsNum span{font:700 max(8px,1.8cqw)/1.2 var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+/* 4. os artilheiros do time */
+.fsArts{display:flex;flex-direction:column;gap:.8cqw;width:62%;align-self:flex-start}
+.fsArt{display:grid;grid-template-columns:4.4cqw 22cqw 1fr 4cqw;align-items:center;gap:1cqw;background:#050a08c8;border-radius:1cqw;padding:.5cqw .8cqw;animation:fsEntra .45s calc(var(--i) * .25s + .2s) var(--out) both}
+.fsArt .fsRosto{width:4.4cqw;height:4.4cqw}
+.fsNome{font:800 max(9px,2.4cqw)/1 var(--display);text-transform:uppercase;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsBarra{height:1.6cqw;border-radius:99px;background:#ffffff18;overflow:hidden}
+.fsBarra i{display:block;height:100%;width:var(--w);background:linear-gradient(90deg,var(--acc),var(--gold));border-radius:99px;transform-origin:left;animation:fsCresce .8s calc(var(--i) * .25s + .45s) var(--out) both}
+@keyframes fsCresce{from{transform:scaleX(0)}}
+.fsArt b{font:800 3cqw/1 var(--display);color:var(--acc)}
+/* 5. a foto: a faixa dos campeões em cima e a legenda embaixo */
+.fsFaixa{display:flex;flex-direction:column;align-items:center;animation:fsPula .7s .25s var(--mola) both}
+.fsFaixa b{font:800 8.6cqw/.95 var(--display);color:var(--gold);text-transform:uppercase;letter-spacing:.05em;padding:.2cqw 4cqw;background:linear-gradient(#0c1813e8,#050a08e8);border:.4cqw solid var(--gold);border-radius:1.2cqw;text-shadow:0 .4cqw 0 #000}
+.fsFaixa span{margin-top:.6cqw;font:800 3.4cqw/1.1 var(--display);text-transform:uppercase;background:var(--acc);color:var(--acc-ink);padding:.2cqw 2cqw;border-radius:99px;text-shadow:none;max-width:80cqw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsLegenda{display:flex;gap:1.4cqw;flex-wrap:wrap;justify-content:center;font:700 max(9px,2cqw)/1.2 var(--body);animation:fsSobe .5s 1s var(--out) both}
+.fsLegenda>*{background:#050a08c8;padding:.3cqw 1.4cqw;border-radius:99px}
+.fsVoce{color:var(--gold)}
+/* a barra das cenas (como nos stories: cada pedaço enche) e os botões */
+.fsBarraCenas{display:flex;gap:6px;margin:10px 2px 0}
+.fsSeg{flex:1;height:8px;padding:0;border:0;border-radius:99px;background:#ffffff1c;box-shadow:none;overflow:hidden;cursor:pointer;min-width:0}
+.fsSeg i{display:block;height:100%;width:0;background:var(--acc);border-radius:99px}
+.fsSeg.on{background:#ffffff33}
+.fsBotoes{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+.fsBotoes button{display:inline-flex;align-items:center;gap:6px}
+.fsBotoes .ic{width:16px;height:16px}
+@media (max-width:600px){dialog.festa{padding:8px;border-radius:16px}.fsBotoes button{padding:8px 11px;font-size:13px}.fsSom span{display:none}}
+/* embaixo da foto: a final, a campanha e os jogadores campeões (rosto, nome e gols) */
+.fsFicha{margin-top:10px;padding:10px 12px;border-radius:14px;background:var(--pane2);border:1px solid var(--line2);animation:fsSobe .5s .6s var(--out) both}
+.fsLinha{margin:0 0 8px;text-align:center;font-size:14px;color:var(--muted)}.fsLinha b{color:var(--acc);font-family:var(--display);font-size:16px;letter-spacing:.02em}
+.fsElenco{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.fsJog{display:inline-flex;align-items:center;gap:6px;padding:3px 9px 3px 3px;border-radius:99px;background:var(--pane3);font-size:13px}
+.fsJog .fsRosto{width:24px;height:24px;border-radius:50%}
+.fsJog b{font-weight:700}.fsJog.reserva{opacity:.75}
+.fsJog i{display:inline-flex;align-items:center;gap:2px;font-style:normal;font-weight:800;color:var(--acc)}.fsJog i .ic{width:13px;height:13px}
+@media (prefers-reduced-motion:reduce){dialog.festa *,dialog.festa{animation-delay:0s!important}}
+.fsChips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:10px}.fsChips:empty{display:none}
+.fsChip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 6px;border-radius:99px;background:var(--s3);border:1px solid var(--b2);color:var(--t2);font-size:13px;transition:transform .16s var(--ease),border-color .16s var(--ease)}
+.fsChip:active{transform:scale(.97)}.fsChip.on{border-color:var(--ouro2);color:var(--t1)}
+.festa-btn{margin-left:8px}
