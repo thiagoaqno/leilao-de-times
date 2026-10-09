@@ -206,3 +206,14 @@ test("depois de uma expulsão dá para pôr outro jogador na vaga aberta (do cam
   const r4 = seguir({ ...base, subs: [], ocupar: [["e", reserva.id, vaga], ["e", p.banco.filter((b) => b.pos !== "GK")[1].id, vaga]] });
   assert.strictEqual(r4.eventos.filter((e) => e.tipo === "entrada").length, 1, "a segunda tentativa na mesma vaga é ignorada");
 });
+
+test("improvisar dentro da mesma linha custa pouco: 1 ou 2 pontos; mudar de linha custa mais", () => {
+  const p = Taticas.pontosDeEncaixe;
+  assert.deepStrictEqual([["PE", "PD"], ["PD", "PE"], ["LE", "LD"], ["LD", "LE"]].map(([a, b]) => p(a, b)), [1, 1, 1, 1], "ponta e lateral do outro lado: 1 ponto");
+  assert.deepStrictEqual([["PD", "ATA"], ["ATA", "PE"], ["ATA", "F9"]].map(([a, b]) => p(a, b)), [2, 2, 1], "ponta e centroavante: 1 ou 2 pontos");
+  assert.deepStrictEqual([["VOL", "MC"], ["MC", "MEI"], ["MEI", "MC"], ["VOL", "MEI"]].map(([a, b]) => p(a, b)), [1, 1, 1, 2], "volante, meio e meia: 1 ou 2 pontos");
+  assert.ok(p("LD", "ZAG") >= 4 && p("MC", "ZAG") >= 4 && p("ATA", "ZAG") > p("MC", "ZAG"), "mudar de linha custa 4 pontos ou mais");
+  // numa nota 80, 1 ponto = menos de 1,5% e 2 pontos = menos de 3%
+  assert.ok(80 * (1 - Taticas.afinidade("PE", "PD")) < 1.1 && 80 * (1 - Taticas.afinidade("ATA", "PD")) < 2.1);
+  assert.strictEqual(Taticas.afinidade("ATA", "GOL"), 0.5);
+});

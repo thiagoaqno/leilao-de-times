@@ -22,3 +22,14 @@
 ## Conferido
 - `tests/carreira-ajustes.test.js`: os bônus das opções de defesa (quanto menor a chance, maior o bônus), o contra-ataque fazendo e levando mais gols que o bloco baixo, a formação trocada com
   um jogador a menos (os mesmos 10 em campo e a vaga aberta ocupada no desenho novo), o pós-jogo do jogo certo com o rótulo e o arquivo de escudos.
+
+## Encaixe de posição bem mais leve
+- Improvisar dentro da mesma linha do campo agora custa **1 ou 2 pontos** de nota (antes chegava a 6): ponta do outro lado (PE no PD e o contrário) e lateral do outro lado (LE no LD) **1 ponto**;
+  ponta de centroavante e o contrário **2**; centroavante de falso 9 **1**; volante de meio, meio de meia **1**; volante de meia **2**. Lateral na zaga e zagueiro na lateral custam 4;
+  mudar de linha (meio na zaga, meia no ataque) custa 4 por linha. Os alas (laterais na linha do meio) são laterais naturais, sem custo.
+
+## Tema vidro líquido
+- A sede, os pop-ups, a prancheta, as trocas e as temporadas ganharam o visual de **vidro líquido**: painéis translúcidos que desfocam o fundo, com borda e brilho de vidro, o botão escolhido
+  nos controles como uma pílula de vidro e o brilho que passa nos cartões da sede. Atrás de tudo ficam manchas suaves nas **cores do clube** (mudam com o clube) que passam devagar.
+- Quem pede "reduzir transparência" ou "menos movimento" no sistema vê os painéis sólidos e as manchas paradas; navegador sem `backdrop-filter` também cai nos painéis sólidos.
+- Teste novo em `tests/carreira-taticas.test.js` (os pontos de encaixe). Na tela: `planos/imagens/carreira-vidro-*.jpg`.
