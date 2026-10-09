@@ -29,7 +29,7 @@ primary_region = 'gru'
 
 [[vm]]
   size = 'shared-cpu-1x'
-  memory = '256mb'
+  memory = '1gb'
 
 # o disco que não some a cada deploy: o banco de dados (bd.js) mora nele. O volume foi criado com
 #   fly volumes create galera_dados --region gru --size 1

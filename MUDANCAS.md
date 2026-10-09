@@ -1,14 +1,6 @@
-# Carreira em grupo: a regra de compra do começo da temporada ficou mais precisa
+# Fly: a máquina passou de 256 MB para 1 GB de memória
 
-## O que mudou
-- Na janela do **começo da temporada**, cada técnico leva **uma** destas opções:
-  - **1 jogador de 90 ou mais**; ou
-  - **2 jogadores entre 84 e 87**; ou
-  - **3 jogadores de 83 ou menos**.
-- Antes a segunda opção era "2 de até 87". Agora os dois precisam estar entre 84 e 87: um de 84 a 87 não combina com um de 83 ou menos
-  (nem com 90+), porque as opções não se misturam. Jogadores de 88 e 89 continuam fora da janela do começo.
-- O meio da temporada (1 jogador de até 88) e a entrada de quem chega no meio (1 jogador de até 88) não mudaram.
-- A tela do mercado mostra a regra nova e o que ainda dá para levar ("1 jogador entre 84 e 87", "1 jogador de 83 ou menos").
-
-## Conferido
-- `tests/carreira-entrada-meio.test.js` atualizado: as três opções, 84 a 87 com 84 a 87, e a mistura de 84 a 87 com 83 ou menos sendo recusada.
+- A máquina de produção (`leilao-de-times`, região gru) foi ampliada com `fly scale memory 1024`: continua `shared-cpu-1x`, agora com **1 GB** de memória (antes 256 MB).
+- O `fly.toml` foi atualizado (`memory = '1gb'`) para o próximo `fly deploy` não voltar para 256 MB.
+- Motivo: criar uma carreira usa ~9 MB de memória e ~3 s de CPU, e uma sala de grupo fica na memória; com 256 MB poucos jogadores simultâneos esgotavam a memória.
+- Para mais CPU (o gargalo seguinte): `fly scale vm shared-cpu-2x --memory 1024 -a leilao-de-times` (e trocar `size` no `fly.toml`). Para voltar: `fly scale memory 256 -a leilao-de-times`.
