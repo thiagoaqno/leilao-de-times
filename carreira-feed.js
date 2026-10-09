@@ -50,6 +50,18 @@ function transferencia(save, t, c) {
     texto: `${j.nome} deixa o ${de.nome} e assina com o ${para.nome} por ${dinheiro(t.valor)}.${t.lucro != null ? ` O ${de.nome} ${t.lucro >= 0 ? "lucrou" : "perdeu"} ${dinheiro(Math.abs(t.lucro))} no negócio.` : ""}` });
 }
 
+// uma troca entre dois técnicos da sala: a mesma notícia no feed de todos (quem é de quem, o que foi e o dinheiro)
+function troca(save, t, c) {
+  const a = c.clubeDe(save, t.de), b = c.clubeDe(save, t.para), nomes = (ids) => ids.map((pid) => c.jogadorDe(save, pid).nome).join(", ");
+  const dou = t.dou.length ? nomes(t.dou) : "ninguém", recebo = t.recebo.length ? nomes(t.recebo) : "ninguém";
+  const grana = t.dinheiro ? ` e mais ${dinheiro(Math.abs(t.dinheiro))} do ${t.dinheiro > 0 ? a.nome : b.nome}` : "";
+  const p = { tipo: "troca", perfil: "galeranews", galeranews: true, humor: "mercado", peso: 1.5,
+    arte: { cena: "aperto", jogador: (t.dou[0] || t.recebo[0]), de: t.de, para: t.para, valor: Math.abs(t.dinheiro) },
+    texto: `TROCA FECHADA! O ${a.nome} manda ${dou} para o ${b.nome} e recebe ${recebo}${grana}.` };
+  postar(save, p);
+  if (save.outrosHumanos) for (const outro of save.outrosHumanos()) postar(outro, p);
+}
+
 // a cena de cada evento do catálogo (pelo id; os outros, pelo grupo)
 const CENA_EVENTO = {
   lesao: "lesao", acidente: "lesao", estiramento: "lesao", "volta-antes": "lesao", fisioterapia: "lesao", virose: "lesao",
@@ -120,4 +132,4 @@ function daRodada(save, { rodada, r, novos, transferencias, ajudas: c }) {
   entreRodadas(save, { novos, transferencias, ajudas: c });
 }
 
-module.exports = { postar, transferencia, entreRodadas, daRodada, MAX };
+module.exports = { postar, transferencia, troca, entreRodadas, daRodada, MAX };

@@ -104,6 +104,8 @@
           <button class="tile tile-mercado" data-ir="mercado"><span class="tile-ic" data-ic="maleta"></span><span class="tile-txt"><b>Mercado</b><small id="atalhoJanela">Contratar e vender</small></span><span class="tile-dado" id="tileMercado"></span></button>
           <button class="tile" data-ir="tabela"><span class="tile-ic" data-ic="taca"></span><span class="tile-txt"><b>Tabela</b><small>Ligas, copas e artilharia</small></span><span class="tile-dado" id="tileTabela"></span></button>
           <button class="tile" data-ir="calendario"><span class="tile-ic" data-ic="relogio"></span><span class="tile-txt"><b>Calendário</b><small>Ligas e copas</small></span><span class="tile-dado" id="tileCalendario"></span></button>
+          <button class="tile" id="tileTrocas" data-ir="trocas"><span class="tile-ic" data-ic="troca"></span><span class="tile-txt"><b>Trocas</b><small>Entre técnicos da sala</small></span><span class="tile-dado" id="dadoTrocas"></span></button>
+          <button class="tile" data-ir="temporadas"><span class="tile-ic" data-ic="medalha"></span><span class="tile-txt"><b>Temporadas</b><small>Campeões, prêmios e ranking</small></span><span class="tile-dado" id="dadoTemporadas"></span></button>
         </nav>
       </div>
       <div class="hub-centro">
@@ -124,6 +126,18 @@
       <button id="btnSairCarreira" class="discreto">Sair desta carreira neste aparelho</button>
       <button id="btnExcluirCarreira" class="discreto perigo">Excluir esta carreira</button>
     </div>
+  </section>
+
+  <!-- trocas entre técnicos (carreira em grupo) -->
+  <section id="trocas" class="tela hidden hub">
+    <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2>Trocas entre técnicos</h2></div>
+    <div id="trocasCorpo"></div>
+  </section>
+
+  <!-- as temporadas anteriores: campeões, prêmios, tabelas e o ranking dos técnicos -->
+  <section id="temporadas" class="tela hidden hub">
+    <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2>Temporadas</h2></div>
+    <div id="temporadasCorpo"></div>
   </section>
 
   <!-- elenco e tática: a prancheta -->
@@ -295,6 +309,8 @@
 <script src="aovivo.js"></script>
 <script src="/card.js"></script>
 <script src="campeoes.js"></script>
+<script src="trocas.js"></script>
+<script src="temporadas.js"></script>
 <script src="partida.js"></script>
 </body>
 </html>
