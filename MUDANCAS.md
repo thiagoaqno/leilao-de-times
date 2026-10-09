@@ -1,25 +1,14 @@
-# Carreira: vidro líquido em todas as telas de gestão e animações mais leves
+# Carreira: o zoom da sede (abre e fecha como uma janela) e o "← Sede" no cabeçalho
 
-## O que travava
-- Cada tela entrava com um **desfoque animado** (`filter: blur`) em dezenas de painéis que, ao mesmo tempo, têm `backdrop-filter` (o vidro). Animar um filtro sobre um painel de vidro obriga o navegador a refazer o desfoque de tudo que está atrás, a cada quadro.
-- O fundo também se mexia o tempo todo (as manchas coloridas e a foto do estádio "respirando"), e cada painel de vidro refazia o desfoque do que estava atrás de si a cada quadro, mesmo com a sede parada.
-- O brilho dos blocos animava sombra e posição do fundo ao passar o mouse.
+## O zoom
+- Clicou num bloco da sede (**Elenco e tática, Mercado, Tabela, Calendário, Clube, Temporadas** e **Trocas**, na sala), uma folha de vidro com o nome do bloco **cresce do lugar dele até a tela toda**, a tela nova aparece por baixo e a folha some. É o jeito de abrir uma janela no Mac.
+- Voltando, a folha cobre a tela, a sede reaparece por baixo (na mesma posição de rolagem) e a folha **encolhe até o bloco**.
+- É só um retângulo liso (posição, tamanho e canto arredondado), sem texto nem desfoque animado, e as entradas em cascata param enquanto ele anima: continua leve. Quem pede "reduzir movimento" no sistema troca de tela na hora. Clique rápido não trava (cliques durante o zoom trocam direto).
 
-## O que mudou
-- As entradas das telas, do painel do time, do pós-jogo e dos pop-ups agora só sobem e aparecem (opacidade e posição), sem desfoque animado; o contêiner da grade da sede não anima mais por cima dos painéis de vidro filhos.
-- O fundo ficou **parado**: as manchas de cor e a foto do estádio não se mexem mais. O desfoque do vidro caiu de 22 para 16 px e perdeu o realce de brilho.
-- Os blocos da sede animam só a subida.
+## O botão do cabeçalho
+- Antes ficava sempre "← Vila", e era fácil clicar sem querer e sair da carreira. Agora é **"← Vila" só na sede, na entrada e na partida**, e **"← Sede"** em todas as telas de gestão (no mesmo lugar). O "← Sede" repetido dentro de cada tela saiu, já que o do cabeçalho faz o mesmo.
+- O cabeçalho vira "← Sede" já no começo do zoom, para o clique durante a animação nunca cair em "← Vila".
 
-## Vidro em mais telas
-- Mercado, Tabela, Calendário, Notícias e Clube agora usam o mesmo vidro da sede, com a **foto do estádio atrás de todas as telas de gestão** (antes só na sede). Painel dentro de painel não leva vidro de novo (só translúcido), para não empilhar desfoques.
-- Continua valendo o "reduzir transparência" do sistema, que volta aos painéis sólidos.
-
-## Medido (Chrome, processador 4 vezes mais lento para imitar um computador fraco)
-| | antes | depois |
-| --- | --- | --- |
-| sede parada | 49 quadros/s | 144 quadros/s |
-| entrar na sede | 20 | 59 |
-| entrar no mercado | 18 | 57 |
-| entrar no Clube | 58 | 73 |
-
-Fotos em `planos/imagens/carreira-vidro-*.jpg`.
+## Conferido
+- `tests/carreira-zoom.test.js` (4 testes): o texto do cabeçalho em cada tela, o atalho de quem pede menos movimento, o "Ver todas" (sem bloco) e a ordem dos scripts.
+- No Chrome, os 6 blocos (e o voltar de cada um): a folha aparece com o nome certo, a tela abre, o cabeçalho troca para "← Sede" durante e depois, e a sede volta com "← Vila"; sem erros no console. Fotos em `planos/imagens/carreira-zoom-*.jpg`.
