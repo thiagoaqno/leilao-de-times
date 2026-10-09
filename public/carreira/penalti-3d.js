@@ -142,9 +142,9 @@ import * as THREE from "/vendor/three/three.module.js";
   function encenar(info) {
     if (atual) fechar();
     if (menosMovimento() || !ZONAS[info.chute] || !ZONAS[info.pulo]) return false;
-    let palco, renderer;
+    let palco, renderer, raiz;
     try {
-      const raiz = document.createElement("div");
+      raiz = document.createElement("div");
       raiz.className = "pen3d"; raiz.setAttribute("role", "dialog");
       raiz.setAttribute("aria-label", "Replay cinematográfico da cobrança de pênalti");
       raiz.innerHTML = '<div class="pen3d-topo"><span>● REPLAY DA CARREIRA</span><button class="pen3d-pular" type="button">Pular animação →</button></div>' +
@@ -247,6 +247,7 @@ import * as THREE from "/vendor/three/three.module.js";
       console.warn("Replay 3D indisponível:", erro);
       fechar();
       if (renderer) renderer.dispose();
+      raiz?.remove();
       return false;
     }
   }
