@@ -254,6 +254,8 @@ function decisaoLance(p) {
   requestAnimationFrame(() => requestAnimationFrame(() => { barra.style.transition = `transform ${TEMPO_LANCE}ms linear`; barra.style.transform = "scaleX(0)"; }));
   J.timerLance = setTimeout(() => enviarDecisao(Motor.decisaoAutomatica(p)), TEMPO_LANCE);
 }
+// o time da parada (para as contas do que muda): os jogadores do clube, o campo que está na tela e a tática escolhida até agora
+const timeDaParada = (p, d) => ({ ...meuTime(), formacao: d.formacao, tatica: d.tatica });
 // a parada tática: a prancheta do jogo (trocar de lugar e substituir), a tática e a formação
 function decisaoTatica(p) {
   const d = { tatica: { ...p.tatica }, formacao: p.formacao, subs: [], trocas: [] };
@@ -274,7 +276,9 @@ function decisaoTatica(p) {
         <span class="rotulo">Mentalidade</span><div class="segmentos">${MENTALIDADE.map((t, i) => `<button data-t="mentalidade" data-v="${i - 2}" aria-pressed="${d.tatica.mentalidade === i - 2}">${t}</button>`).join("")}</div>
         <span class="rotulo">Pressão</span><div class="segmentos">${NIVEL.map((t, i) => `<button data-t="pressao" data-v="${i}" aria-pressed="${d.tatica.pressao === i}">${t}</button>`).join("")}</div>
         <span class="rotulo">Linha</span><div class="segmentos">${NIVEL.map((t, i) => `<button data-t="linha" data-v="${i}" aria-pressed="${d.tatica.linha === i}">${t}</button>`).join("")}</div>
-        <span class="rotulo">Formação</span><div class="segmentos pequenos">${Object.keys(Escalacao.FORMATIONS.futebol).map((f) => `<button data-f="${f}" aria-pressed="${d.formacao === f}">${f}</button>`).join("")}</div>
+        <span class="rotulo">Estilo de jogo</span><div id="dEstiloBox">${estiloHTML(d.tatica, timeDaParada(p, d), "data-t-estilo")}</div>
+        <span class="rotulo">O que muda</span>${chipsDeEfeito(efeitosDaTatica(d.tatica, timeDaParada(p, d)).ef)}
+        <span class="rotulo">Formação</span><div class="segmentos pequenos largos">${Taticas.NOMES_FORMACOES.map((f) => `<button data-f="${f}" aria-pressed="${d.formacao === f}">${f}</button>`).join("")}</div>
         <span class="rotulo">Banco ${sobra > 0 ? "" : "(sem substituições)"}</span>
         <div class="banco-jogo">${banco.map((pid) => `<button data-reserva="${pid}" class="${sel?.onde === "banco" && sel.pid === pid ? "sel" : ""}" ${sobra > 0 ? "" : "disabled"}><img class="pix" src="${retrato(pid)}" alt=""><b>${notaDe(JOGADORES[pid])}</b><span>${h(sobrenome(nomeJogador(pid)))}<small>${JOGADORES[pid].pos}</small></span></button>`).join("")}</div>
         ${d.subs.length ? `<p class="trocas-feitas">${d.subs.map(([s, e]) => `${ic("troca")} ${h(sobrenome(nomeJogador(e)))} no lugar de ${h(sobrenome(nomeJogador(s)))}`).join("<br>")}</p>` : ""}
@@ -295,7 +299,8 @@ function decisaoTatica(p) {
       else sel = sel?.onde === "banco" && sel.pid === pid ? null : { onde: "banco", pid };
       desenhar();
     };
-    for (const b of $("dCorpo").querySelectorAll("[data-t]")) b.onclick = () => { d.tatica[b.dataset.t] = +b.dataset.v; desenhar(); };
+    for (const b of $("dCorpo").querySelectorAll("[data-t]")) { b.title = dicaDaOpcao(d.tatica, b.dataset.t, +b.dataset.v, timeDaParada(p, d)); b.onclick = () => { d.tatica[b.dataset.t] = +b.dataset.v; desenhar(); }; }
+    for (const b of $("dCorpo").querySelectorAll("[data-t-estilo]")) b.onclick = () => { d.tatica.estilo = b.dataset.tEstilo; desenhar(); };
     for (const b of $("dCorpo").querySelectorAll("[data-f]")) b.onclick = () => { d.formacao = b.dataset.f; desenhar(); };
     $("dVoltar").onclick = () => enviarDecisao(d);
   };

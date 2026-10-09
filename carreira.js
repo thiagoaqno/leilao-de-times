@@ -13,7 +13,7 @@ const Eventos = require("./carreira-eventos.js");
 const Feed = require("./carreira-feed.js");
 const Orcamentos = require("./public/carreira/orcamentos.js");
 const Evolucao = require("./public/carreira/evolucao.js");
-const { FORMATIONS } = require("./public/escalacao.js");
+const Taticas = require("./public/carreira/taticas.js");
 const crypto = require("crypto");
 
 // As carreiras antigas continuam na base em que nasceram; as novas enxergam o mundo inteiro.
@@ -179,7 +179,7 @@ function novaCarreira(nome, clube, skin, temporadas = Evolucao.TEMPORADAS.padrao
 // o técnico assume o clube: o calendário dele, o caixa, a situação, a escalação, o aviso de boas-vindas e o post no feed
 function assumirClube(save, clube, nome, skin) {
   Object.assign(save, { clube, tecnico: { nome, skin: String(skin || "").slice(0, 20) }, calendario: [], jogosJogados: [], rodada: 0, modo: 1,
-    escalacao: { formacao: clubeDe(save, clube).formacao, tatica: { mentalidade: 0, pressao: 1, linha: 1 }, titulares: null, fixo: false },
+    escalacao: { formacao: clubeDe(save, clube).formacao, tatica: { mentalidade: 0, pressao: 1, linha: 1, estilo: "equilibrado" }, titulares: null, fixo: false },
     partida: null, ultimo: null, historico: [] });
   save.calendario = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, clube).map((j) => [[j.casa, j.fora]]);
   completar(save);
@@ -200,7 +200,7 @@ function assumirClube(save, clube, nome, skin) {
 // (vistaDe: o save com os campos dele por cima, e save.clube = ele) e, depois, guarda-se de volta (guardarVista).
 const CAMPOS_CLUBE = ["clube", "tecnico", "caixa", "moral", "situacao", "escalacao", "caixaEntrada", "financas", "feed", "posJogo", "compras", "valores", "pedidos",
   "parcelas", "aVenda", "indicacoes", "tentativas", "bonusVitoria", "provocado", "efeitos", "eventosVistos", "segredos", "jogosJogados", "calendario", "rodada",
-  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "entrada"];
+  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "entrada", "energia"];
 function vistaDe(save, clube) {
   const v = { ...save, ...save.humanos[clube].estado };
   delete v.humanos;
@@ -348,6 +348,7 @@ function novaTemporadaGrupo(save) {
   recalcularMundo(save);
   for (const c of clubes) {
     const v = vistaDe(save, c), m = meus[c];
+    v.energia = {}; // as férias: todo mundo volta a 100
     const fora = (pid) => donoDe(v, pid) !== c;
     v.aVenda = v.aVenda.filter((pid) => !fora(pid));
     for (const lista of [v.pedidos, v.compras, v.valores]) for (const pid of Object.keys(lista)) if (fora(pid)) delete lista[pid];
@@ -539,9 +540,10 @@ function timeDe(save, id) {
     id: c.id, nome: c.nome,
     jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
     formacao: meu ? save.escalacao.formacao : c.formacao,
-    tatica: meu ? save.escalacao.tatica : { mentalidade: 0, pressao: 1, linha: 1 },
+    tatica: meu ? save.escalacao.tatica : { mentalidade: 0, pressao: 1, linha: 1, estilo: "auto" }, // o computador escolhe o estilo que combina com o elenco
     titulares: meu && save.escalacao.titulares ? save.escalacao.titulares : undefined,
     fixo: meu && !!save.escalacao.fixo,
+    energia: meu ? save.energia : undefined, // o cansaço que vem dos jogos anteriores
   };
 }
 const titularesDe = (save, id) => Motor.escalacaoAutomatica(timeDe(save, id));
@@ -787,6 +789,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   if (cumprir) cumprirRodada(save);
   if (comum) { contarGols(save, r); cartoesELesoes(save, r, p.semente); anotarDesempenho(save, r); }
   else save.jogosTemporada++; // o outro lado já anotou o que é de todos
+  aplicarFadiga(save, r);
   save.resultadosFixos[p.jogoId] = { placar: [...r.placar], ...(r.penaltis && { penaltis: [...r.penaltis] }) };
   save.jogosJogados.push(p.jogoId);
   if (emCasa) movimentar(save, "Bilheteria", Math.round(clube.tamanho * 6e5 * (0.7 + save.moral / 200) / 1e4) * 1e4);
@@ -823,6 +826,17 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   const f = (save.financas.find((x) => x.rodada === save.rodada - 1) || { itens: [] }).itens; // a linha do jogo, mesmo que um evento já tenha aberto a próxima
   save.posJogo = { rodada: save.rodada - 1, casa: p.casa, fora: p.fora, placar: r.placar, ...(penaltis && { penaltis }), resultado: resultadoFinal, moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: [], avisos: [] };
   if (recalcular) registrarTemporada(save);
+}
+// O cansaço dura a temporada: cada jogo gasta a energia de quem joga (mais com pressão alta e estilos que cansam), e entre uma rodada
+// e a outra todos recuperam RECUPERA pontos (quem ficou no banco volta a 100 em poucas rodadas). Usar sempre os mesmos 11 vai derrubando
+// o rendimento (a nota vale até 16% menos) e aumenta o risco de lesão. A virada de temporada (férias) devolve tudo a 100.
+const RECUPERA = 16;
+function aplicarFadiga(save, r) {
+  const e = save.energia || (save.energia = {});
+  for (const j of elencoDe(save, save.clube)) {
+    const fim = r.energia && r.energia[j.id] != null ? r.energia[j.id] : e[j.id] ?? 100;
+    e[j.id] = clamp(fim + RECUPERA, 20, 100);
+  }
 }
 // uma rodada a menos para quem está machucado ou suspenso
 function cumprirRodada(save) { for (const lista of [save.lesoes, save.suspensos]) for (const pid of Object.keys(lista)) if (--lista[pid] <= 0) delete lista[pid]; }
@@ -1011,7 +1025,7 @@ function estadoBrasileirao(save) {
     efeitos: (save.efeitos || []).filter((e) => e.ate >= save.rodada),
     // o orçamento, o mercado (momento de cada um, compras, preço pedido, parcelas), o feed e o pós-jogo
     situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas,
-    feed: save.feed.slice(0, 30), posJogo: save.posJogo,
+    feed: save.feed.slice(0, 30), posJogo: save.posJogo, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])),
   };
 }
 function estadoMundo(save) {
@@ -1036,14 +1050,14 @@ function estadoMundo(save) {
   let partida = null;
   if (save.partida) { const r = simularMinha(save); partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times, paralelos: paralelosDaPartida(save, save.partida) }; }
   const elenco = elencoDe(save, save.clube), artilharia = Object.entries(golsTodos).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, gols }));
-  return { base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, artilharia, partida, ultimo: save.ultimo, historico: save.historico, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
+  return { base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, artilharia, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
     caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.slice(0, 30), posJogo: save.posJogo };
 }
 
 function limparEscalacao(save, d) {
   const e = save.escalacao, elenco = elencoDe(save, save.clube);
-  if (d.formacao && FORMATIONS.futebol[d.formacao]) e.formacao = d.formacao;
-  if (d.tatica && typeof d.tatica === "object") e.tatica = { mentalidade: inteiro(d.tatica.mentalidade, -2, 2, 0), pressao: inteiro(d.tatica.pressao, 0, 2, 1), linha: inteiro(d.tatica.linha, 0, 2, 1) };
+  if (d.formacao && Taticas.FORMACOES[d.formacao]) e.formacao = d.formacao;
+  if (d.tatica && typeof d.tatica === "object") e.tatica = { mentalidade: inteiro(d.tatica.mentalidade, -2, 2, 0), pressao: inteiro(d.tatica.pressao, 0, 2, 1), linha: inteiro(d.tatica.linha, 0, 2, 1), estilo: Taticas.estiloValido(d.tatica.estilo) };
   if (d.titulares === null) { e.titulares = null; e.fixo = false; }
   else if (Array.isArray(d.titulares)) {
     const ids = d.titulares.map(String);
@@ -1064,8 +1078,8 @@ function limparDecisao(parado, d) {
   }
   const out = {}, par = (l, max) => (Array.isArray(l) ? l.slice(0, max).filter((s) => Array.isArray(s) && s.length === 2).map(([a, b]) => [String(a), String(b)]) : undefined);
   if (d && typeof d === "object") {
-    if (d.tatica && typeof d.tatica === "object") out.tatica = { mentalidade: inteiro(d.tatica.mentalidade, -2, 2, 0), pressao: inteiro(d.tatica.pressao, 0, 2, 1), linha: inteiro(d.tatica.linha, 0, 2, 1) };
-    if (d.formacao && FORMATIONS.futebol[d.formacao]) out.formacao = d.formacao;
+    if (d.tatica && typeof d.tatica === "object") out.tatica = { mentalidade: inteiro(d.tatica.mentalidade, -2, 2, 0), pressao: inteiro(d.tatica.pressao, 0, 2, 1), linha: inteiro(d.tatica.linha, 0, 2, 1), estilo: Taticas.estiloValido(d.tatica.estilo) };
+    if (d.formacao && Taticas.FORMACOES[d.formacao]) out.formacao = d.formacao;
     if (d.subs) out.subs = par(d.subs, 5);
     if (d.trocas) out.trocas = par(d.trocas, 10);
   }
@@ -1129,6 +1143,7 @@ function novaTemporada(save) {
   resolverPendentes(save); // o que ficou sem resposta vale a opção padrão, como antes de um jogo
   const mundo = save.base === BASE_PADRAO, classificados = mundo ? classificadosDe(save) : null;
   const meus = virarTemporada(save)[save.clube];
+  save.energia = {}; // as férias: todo mundo volta a 100
   save.temporada++; save.ano++;
   Object.assign(save, { rodada: 0, resultados: [], gols: {}, partida: null, ultimo: null, amarelos: {}, lesoes: {}, suspensos: {}, bonusVitoria: 0, provocado: null, efeitos: [], posJogo: null,
     desempenho: {}, jogosTemporada: 0, tentativas: { rodada: -1, por: {} }, indicacoes: {} });
