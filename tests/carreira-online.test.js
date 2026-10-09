@@ -22,14 +22,14 @@ test("carreira em grupo: criar, entrar, opções do anfitrião e escolher clube 
   const entra = await pedir(b, "join", { code: sala.code, name: "Kizzy" });
   let st = await esperarEstado(a, (s) => s.players.length === 2);
   assert.strictEqual(st.host, sala.id);
-  assert.deepStrictEqual(st.opcoes, { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal" });
+  assert.deepStrictEqual(st.opcoes, { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal", caixaIgual: 0 });
   assert.ok(st.clubes.includes("liverpool") && st.clubes.includes("flamengo"));
   // só o anfitrião mexe nas regras, e fora do permitido não vale
   await assert.rejects(agir(b, { type: "opcoes", temporadas: 4 }), /anfitrião/);
-  await agir(a, { type: "opcoes", temporadas: 9, aporte: 123 });
+  await agir(a, { type: "opcoes", temporadas: 9, aporte: 123, caixaIgual: 42 });
   await agir(a, { type: "opcoes", temporadas: 3, aporte: 500e6, ligas: "brasil" });
   st = await esperarEstado(a, (s) => s.opcoes.temporadas === 3);
-  assert.deepStrictEqual(st.opcoes, { temporadas: 3, aporte: 500e6, ligas: "brasil", ritmo: "normal" });
+  assert.deepStrictEqual(st.opcoes, { temporadas: 3, aporte: 500e6, ligas: "brasil", ritmo: "normal", caixaIgual: 0 });
   assert.ok(!st.clubes.includes("liverpool"), "só o Brasileirão");
   // cada um no seu clube: dois humanos nunca no mesmo
   await assert.rejects(agir(a, { type: "clube", clube: "liverpool" }), /ligas/);

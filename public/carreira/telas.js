@@ -171,12 +171,19 @@ async function jogar() {
 let competicaoTabela = null;
 const tabelaHTML = (tab) => `<table class="tabela-cheia"><thead><tr><th>#</th><th>Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Últimos</th></tr></thead><tbody>${tab.map((l, i) =>
   `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(i + 1, tab.length)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
+// os confrontos do mata-mata, fase por fase (só o que já foi jogado ou já está marcado: o resto é segredo)
+const NOME_FASE = { preliminar: "Fase preliminar", oitavas: "Oitavas de final", quartas: "Quartas de final", semifinal: "Semifinais", final: "Final" };
+function confrontosHTML(c) {
+  const fases = [];
+  for (const j of c.jogos) if (j.mataMata && j.placar) { let f = fases.find((x) => x.nome === j.fase); if (!f) fases.push(f = { nome: j.fase, jogos: [] }); f.jogos.push(j); }
+  return fases.map((f) => `<section class="confrontos"><h3>${h(NOME_FASE[f.nome] || f.nome)}</h3>${f.jogos.map((j) => linhaJogo(j.casa, j.fora, j.placar) + (j.penaltis ? linhaPenaltis(j.penaltis) : "")).join("")}</section>`).join("");
+}
 function telaTabela() {
   $("tituloTabela").textContent = `Competições ${E.ano}`;
   if (E.competicoes) {
     const ids = Object.keys(E.competicoes); if (!competicaoTabela || !E.competicoes[competicaoTabela]) competicaoTabela = Object.keys(E.tabelas || {})[0] || ids[0];
     const c = E.competicoes[competicaoTabela], abas = ids.map((id) => `<button class="${id === competicaoTabela ? "ativa" : ""}" data-competicao="${id}">${h(E.competicoes[id].nome)}</button>`).join("");
-    const corpo = c.tipo === "liga" ? tabelaHTML(c.tabela) : `${c.grupos.map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(g.tabela)}</section>`).join("")}<div class="campeao-copa">${c.campeao ? `${ic("taca")} Campeão: ${escudo(c.campeao, 1)} ${h(nomeClube(c.campeao))}` : `Fase atual: ${h(c.fase)}`}</div>`;
+    const corpo = c.tipo === "liga" ? tabelaHTML(c.tabela) : `${c.grupos.map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(g.tabela)}</section>`).join("")}${confrontosHTML(c)}<div class="campeao-copa">${c.campeao ? `${ic("taca")} Campeão: ${escudo(c.campeao, 1)} ${h(nomeClube(c.campeao))}` : `Fase atual: ${h(c.fase)}`}</div>`;
     $("tTabela").innerHTML = `<div class="abas-competicoes">${abas}</div>${corpo}`;
     $("tTabela").querySelectorAll("[data-competicao]").forEach((b) => b.onclick = () => { competicaoTabela = b.dataset.competicao; telaTabela(); });
   } else $("tTabela").innerHTML = tabelaHTML(E.tabela);

@@ -14,7 +14,10 @@ window.BasesCarreira[BASE_PADRAO] = {
   id: BASE_PADRAO, ano: MundoCarreira.ano, nome: "Temporada Mundial", fonte: "EA FC 27 + base brasileira",
   clubes: MundoCarreira.ligas.flatMap((l) => window.BasesCarreira[l.id].clubes),
 };
-let BASE = null, CLUBES = {}, JOGADORES = {}, E = null, telaAtual = null, clubeEscolhido = null, temporadasEscolhidas = Evolucao.TEMPORADAS.padrao;
+let BASE = null, CLUBES = {}, JOGADORES = {}, E = null, telaAtual = null, clubeEscolhido = null, temporadasEscolhidas = Evolucao.TEMPORADAS.padrao, dinheiroIgual = 0;
+// o caixa de um clube no começo: o orçamento dele, ou o valor igual para todos (a opção "dinheiro igual")
+const DINHEIROS_IGUAIS = [[0, "Cada clube o seu"], [100e6, "Igual: R$ 100 mi"], [300e6, "Igual: R$ 300 mi"]];
+const caixaDoClube = (c, igual = dinheiroIgual) => (igual > 0 ? igual : c.orcamento || Orcamentos.de(c).caixa);
 function usarBase(id) {
   const b = window.BasesCarreira[id] || window.BasesCarreira[BASE_PADRAO];
   if (b === BASE) return;
@@ -146,16 +149,27 @@ function telaInicio() {
   $("avisoBase").innerHTML = `${ic("livro")} ${h(BASE.nome)} ${BASE.ano}: Brasileirão e cinco grandes ligas, com Libertadores, Champions e Mundial.`;
   $("avisoBase").classList.remove("hidden");
   // cada clube com o orçamento e a situação (orcamentos.js): do rico ao pequeno
-  const orc = (c) => ({ ...Orcamentos.de(c), caixa: c.orcamento || Orcamentos.de(c).caixa });
+  desenharClubes();
+  desenharTemporadas();
+  desenharDinheiro();
+  mostrarTela("inicio");
+}
+function desenharClubes() {
+  const orc = (c) => ({ ...Orcamentos.de(c), caixa: caixaDoClube(c), situacao: dinheiroIgual > 0 ? "equilibrado" : Orcamentos.de(c).situacao });
   $("clubes").innerHTML = BASE.clubes.filter((c) => LIGAS_JOGAVEIS.has(c.liga)).sort((a, b) => a.liga.localeCompare(b.liga) || orc(b).caixa - orc(a).caixa || a.nome.localeCompare(b.nome)).map((c) => {
     const o = orc(c), sit = Orcamentos.SITUACOES[o.situacao];
     return `<button class="clube" style="${coresClube(c.id)}" data-clube="${c.id}" aria-pressed="${c.id === clubeEscolhido}" title="${h(sit.texto)}">${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b><small>${h(c.cidade)}</small>
       <span class="orcamento"><span class="caixa-clube">${ic("moeda")} ${dinheiro(o.caixa)}</span><span class="situacao ${o.situacao}">${h(sit.nome)}</span></span></span></button>`;
   }).join("");
   mostrarSituacao();
-  desenharTemporadas();
-  mostrarTela("inicio");
 }
+function desenharDinheiro() {
+  $("cDinheiro").innerHTML = DINHEIROS_IGUAIS.map(([v, nome]) => `<button data-dinheiro="${v}" aria-pressed="${v === dinheiroIgual}">${nome}</button>`).join("");
+}
+$("cDinheiro").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-dinheiro]"); if (!b) return;
+  dinheiroIgual = +b.dataset.dinheiro; desenharDinheiro(); desenharClubes();
+});
 // quantas temporadas a carreira vai ter (de 1 a 5)
 function desenharTemporadas() {
   const { min, max } = Evolucao.TEMPORADAS;
@@ -178,7 +192,7 @@ $("clubes").addEventListener("click", (e) => {
 function mostrarSituacao() {
   const c = CLUBES[clubeEscolhido], el = $("situacaoClube");
   if (!c) { el.classList.add("hidden"); return; }
-  const o = { ...Orcamentos.de(c), caixa: c.orcamento || Orcamentos.de(c).caixa }, sit = Orcamentos.SITUACOES[o.situacao];
+  const o = { ...Orcamentos.de(c), caixa: caixaDoClube(c), situacao: dinheiroIgual > 0 ? "equilibrado" : Orcamentos.de(c).situacao }, sit = Orcamentos.SITUACOES[o.situacao];
   el.innerHTML = `${escudo(c.id, 2)}<span><b>${h(c.nome)} · ${h(sit.nome)}</b> Caixa de ${dinheiro(o.caixa)}. ${h(sit.texto)}</span>`;
   el.classList.remove("hidden");
 }
@@ -188,7 +202,7 @@ $("btnCriar").onclick = async () => {
   if (!nome || !clubeEscolhido) return;
   store.set("galera:name", nome);
   $("btnCriar").disabled = true;
-  const r = await pedir("criar", { nome, clube: clubeEscolhido, skin: store.get("galera:skin"), temporadas: temporadasEscolhidas });
+  const r = await pedir("criar", { nome, clube: clubeEscolhido, skin: store.get("galera:skin"), temporadas: temporadasEscolhidas, caixaIgual: dinheiroIgual });
   $("btnCriar").disabled = false;
   if (!r.ok) { $("erroCriar").textContent = r.error; return; }
   store.set("carreira:token", r.token);
