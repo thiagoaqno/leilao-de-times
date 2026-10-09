@@ -52,7 +52,7 @@ function abrirPartida(rodada) {
   const nova = J.rodada !== src.rodada || J.casa !== src.casa;
   Object.assign(J, { competicao: src.competicao || null, jogoId: src.jogoId || src.id || null, paralelos: src.paralelos || (J.casa === src.casa && J.rodada === src.rodada ? J.paralelos : []), rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, penaltis: src.penaltis || null, decidindo: false, grupo: !!meuGrupo });
   document.querySelector(".faixa-jogo .controles").classList.remove("hidden"); atualizarControlesVelocidade();
-  if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
+  if (nova) { window.Penalti3D?.fechar(); J.ultimoPenalti3D = null; J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
   // a partida que acabou na hora (só o resultado) já não vem com os outros jogos da semana: pede à parte
   if (!meuGrupo && !src.paralelos && !J.paralelos.length && J.jogoId) buscarParalelos(J.jogoId);
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
@@ -117,8 +117,22 @@ function mostrarEvento(e) {
   li.innerHTML = classe === "apito" ? `<span>${texto}</span>` : `<span class="min">${e.tipo === "disputa" ? "Pên." : minutoTexto(e)}</span><span class="ic-lance">${ic(ICONE_LANCE[e.tipo] || "bola")}</span><span>${texto}</span>`;
   if (J.pulando || calmo()) li.classList.add("sem-entrada");
   $("narracao").prepend(li);
-  if (e.tipo === "gol") gol(e);
-  else if (LANCES_COM_CENA.has(e.tipo) && !(e.tipo === "penalti" && e.chute)) lance(e);
+  // A cobrança confirmada pelo servidor entra no replay 3D (inclusive a disputa decisiva).
+  // O placar e a classificação continuam sendo calculados pelo motor da Carreira.
+  const penalti = e.tipo === "disputa" || (e.tipo === "penalti" && e.chute);
+  if (penalti && !J.pulando && !calmo() && window.Penalti3D) {
+    const entrou = e.tipo === "disputa" ? e.entrou : !e.fora && e.chute !== e.pulo;
+    const começou = Penalti3D.reproduzir({
+      chute: e.chute, pulo: e.pulo, fora: e.fora, entrou,
+      batedor: nomeJogador(e.jogador), goleiro: e.goleiro ? nomeJogador(e.goleiro) : "Goleiro",
+      uniforme: uniformeDoJogo(clubeDoLado(e.lado)),
+    });
+    J.ultimoPenalti3D = começou && e.tipo === "penalti" ? e.jogador : null;
+  }
+  const repetido3D = e.como === "penalti" && e.jogador === J.ultimoPenalti3D;
+  if (repetido3D) J.ultimoPenalti3D = null;
+  if (e.tipo === "gol") { if (!repetido3D) gol(e); else if (!J.pulando && clubeDoLado(e.lado) === E.clube) festa(); }
+  else if (!repetido3D && LANCES_COM_CENA.has(e.tipo) && !(e.tipo === "penalti" && e.chute)) lance(e);
 }
 // os telões ficam numa linha por minuto: o que acontece no mesmo minuto aparece lado a lado, na hora (sem fila)
 const MAX_TELOES = 12;
@@ -169,7 +183,8 @@ function gol(e) {
 // o relógio da partida: 2 minutos de jogo por segundo (6 no 3x) até a próxima parada ou o fim
 function passo(agora) {
   const dt = Math.min(0.1, (agora - (J.ultimoQuadro || agora)) / 1000); J.ultimoQuadro = agora;
-  if (telaAtual === "partida" && !J.decidindo && !document.hidden) {
+  // O relógio visual espera a conclusão do replay. A rodada multiplayer no servidor não pausa.
+  if (telaAtual === "partida" && !J.decidindo && !document.hidden && !window.Penalti3D?.ocupado()) {
     const lim = limite();
     J.relogio = J.grupo ? Math.min(lim, relogioGrupo()) : Math.min(lim, J.relogio + dt * 2 * J.vel);
     // um erro num efeito não pode parar o relógio da partida
