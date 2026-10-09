@@ -9,7 +9,7 @@ const NOME_OPCAO = {
   impedimento: "linha de impedimento", bloco: "bloco baixo", mano: "mano a mano", contra: "pronto para o contra-ataque",
   direto: "chute direto", cruzamento: "cruzamento na área", ensaiada: "jogada ensaiada", barreira: "barreira reforçada", adiantado: "goleiro adiantado", zona: "marcação por zona",
 };
-const ICONE_LANCE = { gol: "bola", defesa: "luva", perdeu: "alvo", penalti: "alvo", amarelo: "cartas", vermelho: "cartas", lesao: "alerta", sub: "troca", posicao: "troca", formacao: "campo", lance: "chuteira", contra_ataque: "raio", intervalo: "apito", fim: "apito", disputa: "alvo", disputa_inicio: "apito" };
+const ICONE_LANCE = { gol: "bola", defesa: "luva", perdeu: "alvo", penalti: "alvo", amarelo: "cartas", vermelho: "cartas", lesao: "alerta", sub: "troca", posicao: "troca", formacao: "campo", lance: "chuteira", contra_ataque: "raio", reposicao: "troca", entrada: "troca", intervalo: "apito", fim: "apito", disputa: "alvo", disputa_inicio: "apito" };
 const TEMPO_LANCE = 20000; // ms para decidir um lance; sem resposta, vai a opção de maior chance
 const J = { rodada: null, casa: null, fora: null, eventos: [], i: 0, relogio: 0, vel: 1, parado: null, completo: false, penaltis: null, ultimoQuadro: 0, decidindo: false, timerLance: null, pulando: false };
 const calmo = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -93,6 +93,8 @@ function narrar(e) {
   if (e.tipo === "vermelho") return [`<b>Expulso!</b> ${jog} (${clube}) ${e.como === "segundo_amarelo" ? "leva o segundo amarelo" : "recebe o vermelho direto"}.`, "vermelho"];
   if (e.tipo === "lesao") return [`${jog} sente e sai machucado (${clube}).`, ""];
   if (e.tipo === "sub") return [`Troca no ${clube}: sai ${h(nomeJogador(e.sai))}, entra ${h(nomeJogador(e.entra))}.`, ""];
+  if (e.tipo === "reposicao") return [`${jog} muda de posição para ocupar a vaga de ${(NOME_VAGA[e.fino] || e.fino || "").toLowerCase()} (${clube}).`, ""];
+  if (e.tipo === "entrada") return [`Entra ${jog} no ${clube}, na vaga que ficou aberta.`, ""];
   if (e.tipo === "posicao") return [`${h(nomeJogador(e.a))} e ${h(nomeJogador(e.b))} trocam de posição.`, ""];
   if (e.tipo === "formacao") return [`O ${clube} muda para o ${e.formacao}.`, ""];
   if (e.tipo === "lance") return [`A jogada: ${NOME_OPCAO[e.opcao] || e.opcao}. ${e.certo ? "Deu certo!" : "Não deu."}`, e.certo ? "bom" : ""];
@@ -192,7 +194,7 @@ for (const b of document.querySelectorAll("[data-vel]")) b.onclick = async () =>
   else { J.vel = velocidade; atualizarControlesVelocidade(); }
 };
 $("btnPular").onclick = () => { J.pulando = true; J.relogio = limite(); };
-$("btnVoltarSede").onclick = () => { J.rodada = null; mostrarTela("sede"); mostrarPosJogo(); };
+$("btnVoltarSede").onclick = () => { const esperado = J.casa ? `${J.casa}:${J.fora}` : null; J.rodada = null; mostrarTela("sede"); mostrarPosJogo(false, esperado); };
 
 // ---------- as decisões ----------
 function abrirDecisao(p) {
@@ -244,8 +246,8 @@ function decisaoLance(p) {
       <p class="suave">${p.lance === "penalti_favor" ? "Chance de gol em cada canto: o goleiro tem as manias dele." : "Chance de defesa em cada canto: o batedor tem as manias dele."}</p>`;
   } else {
     const contra = p.lance.endsWith("contra");
-    $("dCorpo").innerHTML = `<div class="opcoes">${p.opcoes.map((o) => `<button class="opcao" data-op="${o.id}"><span>${h(o.nome)}</span><b>${pct(o)}%</b><i style="--v:${pct(o)}%"></i></button>`).join("")}</div>
-      <p class="suave">${contra ? "Chance de evitar o gol" : "Chance de gol"}, pelas notas de quem está no lance.</p>`;
+    $("dCorpo").innerHTML = `<div class="opcoes">${p.opcoes.map((o) => `<button class="opcao" data-op="${o.id}"><span>${h(o.nome)}</span><b>${pct(o)}%</b><i style="--v:${pct(o)}%"></i>${o.bonus ? `<small class="bonus-opcao">Se der certo: +${Math.round(o.bonus * 100)}% de gol no seu próximo lance</small>` : ""}</button>`).join("")}</div>
+      <p class="suave">${contra ? "Chance de evitar o gol, pelas notas de quem está no lance. Quem arrisca mais (chance menor) ganha mais impulso no ataque se der certo: o bônus vale para o seu próximo lance, por uns 10 minutos." : "Chance de gol, pelas notas de quem está no lance."}${p.impulso ? ` <b class="impulso-nota">Já inclui +${Math.round(p.impulso * 100)}% do impulso da sua defesa.</b>` : ""}</p>`;
   }
   for (const b of $("dCorpo").querySelectorAll("[data-op]")) b.onclick = () => { b.classList.add("escolhida"); enviarDecisao(b.dataset.op); };
   // o tempo: uma transição só, linear, que não recomeça
@@ -258,20 +260,23 @@ function decisaoLance(p) {
 const timeDaParada = (p, d) => ({ ...meuTime(), formacao: d.formacao, tatica: d.tatica });
 // a parada tática: a prancheta do jogo (trocar de lugar e substituir), a tática e a formação
 function decisaoTatica(p) {
-  const d = { tatica: { ...p.tatica }, formacao: p.formacao, subs: [], trocas: [] };
+  const d = { tatica: { ...p.tatica }, formacao: p.formacao, subs: [], trocas: [], ocupar: [], ocupar2: [] };
+  // as vagas abertas que o técnico ocupa depois de mudar a formação vão em outra lista (os números das vagas são os do desenho novo)
+  const registrarOcupar = (item) => (d.mudouFormacao ? d.ocupar2 : d.ocupar).push(item);
+  const trocasGastas = () => d.subs.length + [...d.ocupar, ...d.ocupar2].filter((x) => x[0] === "e").length; // as substituições usadas (trocas de quem sai e reservas que entram na vaga aberta)
   const campo = p.campo.map((v) => ({ ...v })), energia = Object.fromEntries(p.titulares.map((t) => [t.id, t.energia]));
   let banco = p.banco.map((b) => b.id), sel = null;
   const substituir = (i, entra) => {
-    if (p.subs - d.subs.length <= 0) { sel = null; return toast("Acabaram as substituições."); }
+    if (p.subs - trocasGastas() <= 0) { sel = null; return toast("Acabaram as substituições."); }
     d.subs.push([campo[i].id, entra]); campo[i].id = entra; energia[entra] = 100; banco = banco.filter((x) => x !== entra); sel = null;
   };
   $("dTitulo").textContent = MOTIVO[p.motivo] || "Parada técnica";
   const desenhar = () => {
-    const sobra = p.subs - d.subs.length;
+    const sobra = p.subs - trocasGastas();
     $("dTexto").innerHTML = `<span class="min-tag">${minutoTexto(p)}</span> ${h(nomeClube(J.casa))} ${p.placar[0]} × ${p.placar[1]} ${h(nomeClube(J.fora))} · ${sobra} substituiç${sobra === 1 ? "ão" : "ões"}`;
     $("dCorpo").innerHTML = `<div class="tatica-jogo">
-      <div class="prancheta-jogo">${campinho(campo, p.formacao, { selecionado: sel?.onde === "campo" ? sel.i : null, energia })}
-        <p class="dica">${sel?.onde === "banco" ? `Agora toque em quem sai para entrar ${h(sobrenome(nomeJogador(sel.pid)))}.` : sel ? "Toque em quem troca de lugar com ele, ou num reserva para entrar." : "Toque num jogador (do campo ou do banco) para trocar de lugar ou substituir."}</p></div>
+      <div class="prancheta-jogo">${campinho(campo, d.formacao, { selecionado: sel?.onde === "campo" ? sel.i : null, energia })}
+        <p class="dica">${sel?.onde === "banco" ? `Agora toque em quem sai para entrar ${h(sobrenome(nomeJogador(sel.pid)))}${campo.some((v) => !v.id && v.slot !== "GK") ? " ou numa vaga aberta" : ""}.` : sel ? `Toque em quem troca de lugar com ele, num reserva para entrar${campo.some((v) => !v.id && v.slot !== "GK") ? " ou na vaga aberta para ele ocupar" : ""}.` : campo.some((v) => !v.id && v.slot !== "GK") ? "Há uma vaga aberta (expulsão ou lesão): toque num jogador do campo ou do banco e depois na vaga para ele ocupar. Um reserva que entra gasta uma substituição." : "Toque num jogador (do campo ou do banco) para trocar de lugar ou substituir."}</p></div>
       <div class="lado-tatica">
         <span class="rotulo">Mentalidade</span><div class="segmentos">${MENTALIDADE.map((t, i) => `<button data-t="mentalidade" data-v="${i - 2}" aria-pressed="${d.tatica.mentalidade === i - 2}">${t}</button>`).join("")}</div>
         <span class="rotulo">Pressão</span><div class="segmentos">${NIVEL.map((t, i) => `<button data-t="pressao" data-v="${i}" aria-pressed="${d.tatica.pressao === i}">${t}</button>`).join("")}</div>
@@ -285,8 +290,18 @@ function decisaoTatica(p) {
       </div></div>
       <button id="dVoltar" class="primario largo">Voltar ao jogo</button>`;
     $("dCorpo").querySelector(".gramado").onclick = (e) => {
-      const b = e.target.closest(".peca"); if (!b || !campo[+b.dataset.i].id) return;
+      const b = e.target.closest(".peca"); if (!b) return;
       const i = +b.dataset.i;
+      // a vaga aberta (expulsão ou lesão sem troca): quem estiver marcado vai para lá, do campo (muda de posição) ou do banco (gasta uma troca)
+      if (!campo[i].id) {
+        if (campo[i].slot === "GK") return toast("O goleiro o time troca sozinho.");
+        if (sel?.onde === "campo") { const pid = campo[sel.i].id; registrarOcupar(["m", pid, i]); campo[i].id = pid; campo[sel.i].id = null; sel = null; }
+        else if (sel?.onde === "banco") {
+          if (p.subs - trocasGastas() <= 0) { sel = null; toast("Acabaram as substituições."); }
+          else { registrarOcupar(["e", sel.pid, i]); campo[i].id = sel.pid; banco = banco.filter((x) => x !== sel.pid); energia[sel.pid] = 100; sel = null; }
+        } else toast("Toque antes num jogador do campo ou do banco para ele ocupar essa vaga.");
+        return desenhar();
+      }
       if (sel?.onde === "banco") substituir(i, sel.pid); // escolheu o reserva primeiro: este é quem sai
       else if (sel && sel.i !== i) { const a = campo[sel.i].id, c = campo[i].id; d.trocas.push([a, c]); [campo[sel.i].id, campo[i].id] = [c, a]; sel = null; }
       else sel = sel ? null : { onde: "campo", i };
@@ -301,7 +316,14 @@ function decisaoTatica(p) {
     };
     for (const b of $("dCorpo").querySelectorAll("[data-t]")) { b.title = dicaDaOpcao(d.tatica, b.dataset.t, +b.dataset.v, timeDaParada(p, d)); b.onclick = () => { d.tatica[b.dataset.t] = +b.dataset.v; desenhar(); }; }
     for (const b of $("dCorpo").querySelectorAll("[data-t-estilo]")) b.onclick = () => { d.tatica.estilo = b.dataset.tEstilo; desenhar(); };
-    for (const b of $("dCorpo").querySelectorAll("[data-f]")) b.onclick = () => { d.formacao = b.dataset.f; desenhar(); };
+    for (const b of $("dCorpo").querySelectorAll("[data-f]")) b.onclick = () => {
+      if (b.dataset.f === d.formacao) return;
+      d.formacao = b.dataset.f; d.mudouFormacao = true;
+      const ids = campo.map((v) => v.id).filter(Boolean), base = meuTime();
+      const novo = Motor.escalacaoDetalhada({ ...base, jogadores: base.jogadores.filter((j) => ids.includes(j.id)), formacao: d.formacao, titulares: ids, fixo: false, energia });
+      campo.splice(0, campo.length, ...novo.map((v) => ({ ...v })));
+      sel = null; desenhar();
+    };
     $("dVoltar").onclick = () => enviarDecisao(d);
   };
   desenhar();

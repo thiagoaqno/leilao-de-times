@@ -28,7 +28,7 @@
   function notasDaPartida(r) {
     const notas = {}, lado = {};
     (r.times || []).forEach((t, l) => { for (const id of t.titulares || []) { notas[id] = 6; lado[id] = l; } });
-    for (const e of r.eventos) if (e.tipo === "sub") { for (const id of [e.sai, e.entra]) { notas[id] ??= 6; lado[id] = e.lado; } }
+    for (const e of r.eventos) if (e.tipo === "sub" || e.tipo === "entrada") { for (const id of [e.sai, e.entra, e.jogador]) if (id != null) { notas[id] ??= 6; lado[id] = e.lado; } }
     const soma = (id, v) => { if (id != null && notas[id] != null) notas[id] += v; };
     for (const e of r.eventos) {
       if (e.tipo === "gol") { soma(e.jogador, 1); soma(e.assist, 0.6); }

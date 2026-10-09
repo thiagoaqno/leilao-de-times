@@ -824,7 +824,10 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   const novos = save.caixaEntrada.filter((e) => !entradaAntes.has(e.id));
   Feed.entreRodadas(save, { novos, transferencias: save.transferencias.slice(0, save.transferencias.length - transfAntes), ajudas });
   const f = (save.financas.find((x) => x.rodada === save.rodada - 1) || { itens: [] }).itens; // a linha do jogo, mesmo que um evento já tenha aberto a próxima
-  save.posJogo = { rodada: save.rodada - 1, casa: p.casa, fora: p.fora, placar: r.placar, ...(penaltis && { penaltis }), resultado: resultadoFinal, moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: [], avisos: [] };
+  const FASES = { preliminar: "fase preliminar", oitavas: "oitavas de final", quartas: "quartas de final", semifinal: "semifinal", final: "final" };
+  const fase = jogoDaCompeticao && jogoDaCompeticao.fase, rotulo = comp.tipo === "liga" ? `${comp.nome} · rodada ${(jogoDaCompeticao.rodada || 0) + 1}`
+    : `${comp.nome} · ${String(fase).startsWith("grupo-") ? `fase de grupos, rodada ${(jogoDaCompeticao.rodada || 0) + 1}` : FASES[fase] || fase}`;
+  save.posJogo = { rodada: save.rodada - 1, jogoId: p.jogoId, rotulo, casa: p.casa, fora: p.fora, placar: r.placar, ...(penaltis && { penaltis }), resultado: resultadoFinal, moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: [], avisos: [] };
   if (recalcular) registrarTemporada(save);
 }
 // O cansaço dura a temporada: cada jogo gasta a energia de quem joga (mais com pressão alta e estilos que cansam), e entre uma rodada

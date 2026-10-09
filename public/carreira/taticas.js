@@ -59,13 +59,29 @@
     for (const [g, codigos] of f) for (const c of codigos) v.push({ g, fino: c });
     return v;
   }
-  // onde cada vaga fica no campinho (x e y em %, o gol embaixo e o ataque em cima), na mesma ordem das vagas
+  // onde cada vaga fica no campinho (x e y em %, o gol embaixo e o ataque em cima), na mesma ordem das vagas. O desenho segue a função:
+  // laterais e pontas ficam colados na linha lateral; entre os do centro, o mais recuado (o volante) fica no meio e o mais avançado nas pontas
+  // do triângulo; o volante joga um pouco atrás da linha, o meia um pouco à frente e o falso 9 recuado atrás do centroavante.
+  const AJUSTE_Y = { VOL: 5, MC: 0, MEI: -5, F9: 7 }, PROFUNDIDADE = { VOL: 0, MC: 1, MEI: 2, F9: 3, ZAG: 1, ATA: 4 }, LARGOS = { LE: -1, PE: -1, LD: 1, PD: 1 };
   function spots(nome) {
     const f = FORMACOES[FORMACOES[nome] ? nome : "4-3-3"], R = f.length, [topo, base] = [15, 73];
     const out = [{ x: 50, y: 91, row: 0 }];
     f.forEach(([, codigos], r) => {
-      const y = R === 1 ? (topo + base) / 2 : base - r * (base - topo) / (R - 1), n = codigos.length, gap = n > 1 ? Math.min(26, 80 / (n - 1)) : 0;
-      codigos.forEach((c, j) => out.push({ x: 50 + (j - (n - 1) / 2) * gap, y, row: r + 1 }));
+      const y0 = R === 1 ? (topo + base) / 2 : base - r * (base - topo) / (R - 1), xs = new Array(codigos.length);
+      const centros = codigos.map((c, k) => [c, k]).filter(([c]) => !LARGOS[c]), temLargos = centros.length < codigos.length;
+      codigos.forEach((c, k) => { if (LARGOS[c]) xs[k] = LARGOS[c] < 0 ? 13 : 87; });
+      const n = centros.length, gap = n > 1 ? (temLargos ? Math.min(26, 44 / (n - 1)) : Math.min(26, 80 / (n - 1))) : 0;
+      // com número ímpar de centrais, o que é diferente dos outros (o único volante entre dois meio-campistas, o único meia entre dois volantes)
+      // fica no meio e os outros dois nos lados; nos demais casos vale a ordem da lista, da esquerda para a direita
+      const contagem = {}; for (const [c] of centros) contagem[c] = (contagem[c] || 0) + 1;
+      const unicos = centros.filter(([c]) => contagem[c] === 1);
+      let posic = centros.map(([, k], m) => [k, m]);
+      if (n % 2 && unicos.length === 1) {
+        const resto = centros.filter((x) => x !== unicos[0]), meio = (n - 1) / 2;
+        posic = [[unicos[0][1], meio], ...resto.map(([, k], m) => [k, m < meio ? m : m + 1])];
+      }
+      for (const [k, lugar] of posic) xs[k] = 50 + (lugar - (n - 1) / 2) * gap;
+      codigos.forEach((c, k) => out.push({ x: xs[k], y: y0 + (AJUSTE_Y[c] || 0), row: r + 1 }));
     });
     return out;
   }
@@ -75,17 +91,31 @@
   const COORD = { GOL: [0, 0], ZAG: [1, 0], LE: [1, -1], LD: [1, 1], VOL: [2, 0], MC: [3, 0], MEI: [4, 0], F9: [5, 0], PE: [5, -1], PD: [5, 1], ATA: [6, 0] };
   const SINONIMOS = { GK: "GOL", LAT: "LE", DEF: "ZAG", MID: "MC", ATT: "ATA" };
   const posDe = (p) => { const x = String(p || "").toUpperCase(); return COORD[x] ? x : SINONIMOS[x] || "MC"; };
-  // 1 na posição dele; perde 3,5% por linha de distância e 4% por lado trocado; lateral na zaga (e o contrário) perde mais 6%;
-  // goleiro fora do gol (e quem não é goleiro no gol) rende 50%
+  // O encaixe é contado em PONTOS de nota (1 ponto ≈ 1,25% de uma nota 80), e fica leve dentro da mesma linha do campo:
+  //   ataque (PE, PD, ATA, F9): ponta trocada de lado 1 ponto; ponta de centroavante e o contrário 2; centroavante de falso 9 e o contrário 1
+  //   meio (VOL, MC, MEI): vizinhos (volante-meio, meio-meia) 1 ponto; volante de meia e o contrário 2
+  //   defesa: lateral trocado de lado (e ala, que é o lateral no meio) 1 ponto; lateral na zaga e zagueiro na lateral 4
+  // Mudar de linha custa mais: 4 pontos por linha de distância (meio na zaga 4, centroavante na zaga 8), mais 1 se trocar o lado.
+  // Goleiro fora do gol (e quem não é goleiro no gol) rende 50%.
+  const LINHA_DE = { ZAG: 1, LE: 1, LD: 1, VOL: 2, MC: 2, MEI: 2, PE: 3, PD: 3, ATA: 3, F9: 3 };
+  const MESMA_LINHA = { "LD LE": 1, "LE ZAG": 4, "LD ZAG": 4, "MC VOL": 1, "MC MEI": 1, "MEI VOL": 2, "PD PE": 1, "ATA PE": 2, "ATA PD": 2, "ATA F9": 1, "F9 PE": 2, "F9 PD": 2 };
+  const pontosDeEncaixe = (a, b) => {
+    if (a === b) return 0;
+    if (LINHA_DE[a] === LINHA_DE[b]) return MESMA_LINHA[[a, b].sort().join(" ")] ?? 1;
+    if (a === "MEI" && b === "F9") return 2; // o meia é o falso 9 natural
+    if (a === "F9" && b === "MEI") return 2;
+    const lado = (COORD[a][1] && COORD[b][1] && COORD[a][1] !== COORD[b][1]) ? 1 : 0;
+    return 4 * Math.abs(LINHA_DE[a] - LINHA_DE[b]) + lado;
+  };
   function afinidade(pos, vaga) {
     const a = posDe(pos), b = posDe(vaga);
     if (a === b) return 1;
     if (a === "GOL" || b === "GOL") return 0.5;
-    const [la, sa] = COORD[a], [lb, sb] = COORD[b];
-    let pen = 0.035 * Math.abs(la - lb) + 0.04 * Math.abs(sa - sb);
-    if ((a === "ZAG" && (b === "LE" || b === "LD")) || (b === "ZAG" && (a === "LE" || a === "LD"))) pen += 0.06;
-    return Math.round(clamp(1 - pen, 0.6, 1) * 1000) / 1000;
+    return Math.round(clamp(1 - pontosDeEncaixe(a, b) / 80, 0.6, 1) * 1000) / 1000;
   }
+
+  // O cansaço tira de 0 a 3 pontos da nota: 85% ou mais de energia não pesa; de 70 a 84, -1; de 50 a 69, -2; abaixo de 50, -3
+  const penalidadeEnergia = (e) => (e >= 85 ? 0 : e >= 70 ? 1 : e >= 50 ? 2 : 3);
 
   // ---------- os estilos de jogo ----------
   // bonus: o que o estilo dá quando o elenco tem o perfil (multiplicado pelo encaixe f, de 0 a 1,5); custo: o que ele cobra sempre.
@@ -150,5 +180,5 @@
       faltas: pc((1 + 0.15 * (p - 1)) * fat.faltas),
     };
   }
-  return { FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
+  return { pontosDeEncaixe: (pos, vaga) => { const a = posDe(pos), b = posDe(vaga); return a === b ? 0 : a === "GOL" || b === "GOL" ? 40 : pontosDeEncaixe(a, b); }, penalidadeEnergia, FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
 });

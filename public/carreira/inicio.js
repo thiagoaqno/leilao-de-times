@@ -70,10 +70,14 @@ const faixa = (n) => (n >= 90 ? "elite" : n >= 85 ? "ouro" : n >= 80 ? "prata" :
 const POS_NOME = { GOL: "Goleiro", ZAG: "Zagueiro", LD: "Lateral-direito", LE: "Lateral-esquerdo", VOL: "Volante", MC: "Meio-campista", MEI: "Meia", PE: "Ponta-esquerda", PD: "Ponta-direita", ATA: "Atacante" };
 const GRUPO_TELA = { GOL: "GOL", ZAG: "DEF", LD: "DEF", LE: "DEF", VOL: "MEI", MC: "MEI", MEI: "MEI", PE: "ATA", PD: "ATA", ATA: "ATA" };
 
-// o escudo em SVG (escudos.js): a escala é o tamanho em múltiplos de 16x18 pixels (a proporção é 8:9)
+// o escudo: a imagem da TheSportsDB (escudos-api.js, gerado por tools/baixar-escudos.js) por cima do escudo desenhado em SVG (escudos.js),
+// que aparece enquanto a imagem carrega e fica no lugar dela quando o clube não está no arquivo ou a imagem não abre (sem internet).
+// A escala é o tamanho em múltiplos de 16x18 pixels (a proporção é 8:9)
 function escudo(id, escala = 2) {
   const c = CLUBES[id]; if (!c) return "";
-  return `<span class="escudo" style="--e:${escala}" title="${h(c.nome)}">${Escudos.svg(c)}</span>`;
+  const api = window.ESCUDOS_API && window.ESCUDOS_API[id];
+  const img = api ? `<img class="escudo-img" src="${h(api.url)}/small" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add('img-ok')" onerror="this.remove()">` : "";
+  return `<span class="escudo" style="--e:${escala}" title="${h(c.nome)}"><span class="escudo-svg">${Escudos.svg(c)}</span>${img}</span>`;
 }
 // a letra em cima da cor do clube: a segunda cor, se der para ler; senão, branco ou preto (o que contrastar mais)
 const luz = (hx) => { const n = parseInt(String(hx).slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -135,6 +139,7 @@ function receber(estado) {
   marcaClube(E.clube);
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
   animarTransferenciasNovas();
+  if (typeof posJogoEsperado !== "undefined" && posJogoEsperado && telaAtual === "sede") mostrarPosJogo(); // o pós-jogo do jogo que acabou chegou
   if (window.Campeoes) setTimeout(Campeoes.verificar, 600);
 }
 // os ícones dos atalhos (montados uma vez)
