@@ -389,13 +389,13 @@ function novaTemporadaGrupo(save) {
 // pode abrir o leilão desse jogador? Devolve o erro (texto) ou { tipo: "cpu" | "humano", dono, minimo, teto }
 // ---------- as regras de compra da turma ----------
 // Para os clubes brasileiros não ficarem "roubados", cada técnico só leva reforço de peso por janela:
-//  - começo da temporada (a janela até a rodada 4): 1 jogador de 90 ou mais, OU 2 de até 87, OU 3 de até 83;
+//  - começo da temporada (a janela até a rodada 4): 1 jogador de 90 ou mais, OU 2 jogadores entre 84 e 87, OU 3 jogadores de 83 ou menos;
 //  - meio da temporada (a janela das rodadas 17 a 21): 1 jogador de até 88;
 //  - quem entra na carreira com a janela fechada ganha uma entrada: 1 jogador de até 88 (até o fim da temporada).
 // Vale para o leilão da turma (a carreira solo não tem essa regra). A nota é a de agora (com o que o jogador evoluiu).
-const PACOTES_INICIO = [{ n: 1, min: 90 }, { n: 2, max: 87 }, { n: 3, max: 83 }], PACOTE_UNICO = { n: 1, max: 88 };
+const PACOTES_INICIO = [{ n: 1, min: 90 }, { n: 2, min: 84, max: 87 }, { n: 3, max: 83 }], PACOTE_UNICO = { n: 1, max: 88 };
 const encaixaNoPacote = (p, notas) => notas.length <= p.n && notas.every((n) => (p.min == null || n >= p.min) && (p.max == null || n <= p.max));
-const quadroDaRegra = (tipo) => (tipo === "inicio" ? "No começo da temporada cada técnico leva: 1 jogador de 90 ou mais, ou 2 de até 87, ou 3 de até 83."
+const quadroDaRegra = (tipo) => (tipo === "inicio" ? "No começo da temporada cada técnico leva: 1 jogador de 90 ou mais, ou 2 jogadores entre 84 e 87, ou 3 jogadores de 83 ou menos."
   : tipo === "meio" ? "No meio da temporada cada técnico leva 1 jogador de até 88." : "Quem entra no meio da carreira leva 1 jogador de até 88.");
 // qual regra vale agora para este clube (null: a janela está fechada e ele não tem entrada)
 function janelaDeCompras(v) {
@@ -425,7 +425,7 @@ function regraDeCompras(v) {
   const usadas = notasDaJanela(v, jan);
   const ainda = pacotesDa(jan).filter((p) => encaixaNoPacote(p, usadas) && p.n - usadas.length > 0).map((p) => {
     const falta = p.n - usadas.length;
-    return `${falta} jogador${falta === 1 ? "" : "es"} ${p.min != null ? `de ${p.min} ou mais` : `de até ${p.max}`}`;
+    return `${falta} jogador${falta === 1 ? "" : "es"} ${p.min != null && p.max != null ? `entre ${p.min} e ${p.max}` : p.min != null ? `de ${p.min} ou mais` : `de ${p.max} ou menos`}`;
   });
   return { tipo: jan.tipo, titulo: jan.tipo === "inicio" ? "Começo da temporada" : jan.tipo === "meio" ? "Meio da temporada" : "Entrada na carreira", texto: quadroDaRegra(jan.tipo), usadas, ainda,
     ok: Array.from({ length: 100 }, (_, n) => !erroDeRegra(v, n)) };
