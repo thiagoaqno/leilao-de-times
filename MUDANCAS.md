@@ -1,37 +1,40 @@
-# Carreira: a partida com as informações do jogo e os resultados dos outros jogos ao vivo
+# Carreira: os escudos dos 96 clubes europeus refeitos à mão
 
-Durante a partida, a tela agora mostra de que jogo se trata e o que acontece nos outros campos, no mesmo relógio.
+Depois dos brasileiros, as cinco ligas europeias ganham o mesmo cuidado: cada clube com as suas cores e um elemento que
+lembra o escudo, sem copiar o desenho de verdade. Nenhum dos 96 se repete.
 
-## As informações do jogo
-- **No topo da partida:** o campeonato, a rodada ou a fase, o estádio e o clima. Por exemplo, "Brasileirão Série A · Rodada
-  5 de 38 · Maracanã · jogo à noite", ou "Libertadores · Fase de grupos · Grupo A · Rodada 3 de 6", ou "Copa do Brasil ·
-  Oitavas de final · jogo de volta".
-- **No painel da direita:** a classificação dos dois clubes (a posição e os pontos, **antes** do jogo: mesmo quando a partida
-  acaba na hora, o painel não entrega o resultado), no mata-mata o resultado da ida e o **agregado ao vivo** (ele sobe quando
-  sai um gol).
+## Premier League (20)
+Bournemouth, Arsenal (o canhão), Aston Villa (a coroa), Brentford, Brighton, Chelsea, Coventry, Crystal Palace, Everton (a
+torre), Fulham, Hull City (as listras de tigre), Ipswich, Leeds, Liverpool (a chama), Manchester City, Manchester United,
+Newcastle, Nottingham Forest (a árvore), Sunderland e Tottenham (a bola).
 
-## Os outros jogos ao vivo
-- Os outros jogos da mesma semana (do mesmo campeonato e, numa lista que abre, das outras competições) com o placar andando
-  no relógio da partida: o gol aparece na hora, o placar do jogo pisca e entra na lista dos **últimos gols** (quem fez e o
-  placar). No fim, cada um mostra "Fim" e o placar final, que é o mesmo da tabela.
-- Os gols de cada jogo vêm do mesmo jogo simulado do mundo (a mesma semente), então nada é inventado para a tela.
-- **Carreira em grupo:** os jogos dos outros técnicos entram primeiro ("Jogos da turma"), cada um com o relógio dele. Os
-  outros jogos da semana também aparecem, e os jogos de humanos não se repetem entre eles.
-- No celular, o painel desce para baixo da narração.
+## La Liga (20)
+Alavés, Athletic Club, Atlético de Madrid (as sete estrelas), Osasuna (a cruz), Celta, Deportivo, Elche, Barcelona (a
+faixa dourada e o azul-grená), Getafe, Levante, Málaga (a torre), Racing, Rayo (o raio), Espanyol, Betis, Real Madrid (a
+coroa), Real Sociedad, Sevilla, Valencia (o morcego) e Villarreal (o submarino amarelo).
 
-## Como funciona
-- **Servidor:** `paralelosDaSemana` (carreira.js) devolve, para uma semana, cada jogo com os gols (minuto e lado). Vai em
-  `estado.partida.paralelos` (solo), em `Rd.visao` (turma, calculado uma vez no começo da rodada) e, quando a partida
-  acaba na hora (só o resultado), a tela pede ao servidor pelo evento `paralelos` (só para o jogo dela). Os jogos de
-  ida e volta agora sabem qual perna são (`perna`).
-- **Tela:** `public/carreira/aovivo.js`; só lê o estado e o relógio da partida.
+## Serie A (20)
+Roma (SPQR), Atalanta, Bologna, Cagliari, Como, Fiorentina (a flor-de-lis), Frosinone, Genoa, Inter (redondo, com o FCIM),
+Juventus (as duas estrelas), Lazio (a estrela), Lecce, Milan, Monza, Parma (a cruz azul), Sassuolo, Napoli (o N), Torino (o
+touro), Udinese e Venezia.
 
-## Também
-- **Correção nos testes:** o `npm test` lista os arquivos de teste um a um, e os testes dos PRs das copas e de dispensar nunca
-  entraram na lista. Agora entram (junto com os deste PR): 190 testes.
+## Bundesliga (18)
+Köln, Mainz (o 05), Leverkusen (o 04), Dortmund (BVB 09), Gladbach, Frankfurt, Elversberg, Augsburg, Bayern (redondo, com os
+losangos), Hamburgo (o losango azul), Paderborn, Leipzig (RB), Freiburg, Schalke (S04), Werder (o W redondo), Hoffenheim,
+Union Berlin e Stuttgart (o V vermelho).
+
+## Ligue 1 (18)
+Auxerre, Angers, Monaco (a diagonal e a coroa), Lorient (a âncora), Le Havre, Le Mans, Lille (a flor-de-lis), Lyon, Nice,
+Marseille (OM), Paris FC, PSG (redondo, com a torre Eiffel), Lens, Brest (o 29), Rennes, Strasbourg, Toulouse (a flor) e
+Troyes.
+
+## Peças novas
+- Camadas: `cruz`, `chevron`, `metade` e `losangos`.
+- Símbolos: `canhao`, `chama`, `torre`, `arvore`, `morcego`, `submarino`, `flordelis`, `flor`, `touro` e `eiffel`.
+- Os clubes da Argentina e os sul-americanos seguem com o desenho automático (a receita da base, com um de 7 jeitos).
 
 ## Conferido
-- Fotos: `planos/imagens/carreira-ao-vivo-solo.png`, `carreira-ao-vivo-turma.png` e `carreira-ao-vivo-celular.png`.
-- `npm test`: 190 de 190 (`tests/carreira-ao-vivo.test.js` cobre os jogos paralelos no solo e na turma, o pedido à parte e as
-  pernas de ida e volta). E2E: os dois testes da rodada (1280x800 e 375x812), com as verificações novas do painel.
-- Na tela: solo (Brasileirão e Libertadores), jogo de volta com agregado, rodada da turma com dois navegadores e celular.
+- `npm test`: 176 de 176. O e2e da carreira não foi rodado (a mudança é só o desenho dos escudos).
+- Folhas de contato das cinco ligas no navegador, sem erro no console. Fotos: `planos/imagens/carreira-escudos-*.png`.
+- `tests/carreira-base.test.js`: os 96 europeus têm desenho próprio, nenhum desenho sobra sem clube, e nenhum clube repete o
+  desenho de outro.
