@@ -20,7 +20,8 @@ const Rd = require("./carreira-rodada.js");
 
 const MAX_PESSOAS = 8;
 const APORTES = [0, 250e6, 500e6, 1e9];
-const OPCOES_PADRAO = { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal" };
+const CAIXAS_IGUAIS = [0, 100e6, 300e6]; // 0: cada clube com o seu orçamento
+const OPCOES_PADRAO = { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal", caixaIgual: 0 };
 const HORAS_PARADA = 24;
 // os tempos (os testes aceleram pelo ambiente): o relógio do jogo (minutos de jogo por segundo), a decisão, o lance do
 // leilão (cada lance reinicia), a primeira janela do leilão, o martelo do dono e a contagem antes da rodada
@@ -37,6 +38,7 @@ function limparOpcoes(atual, d = {}) {
   const o = { ...atual };
   if (d.temporadas != null) { const n = Math.round(Number(d.temporadas)); if (n >= 1 && n <= 5) o.temporadas = n; }
   if (d.aporte != null && APORTES.includes(Number(d.aporte))) o.aporte = Number(d.aporte);
+  if (d.caixaIgual != null && CAIXAS_IGUAIS.includes(Number(d.caixaIgual))) o.caixaIgual = Number(d.caixaIgual);
   if (d.ligas === "brasil" || d.ligas === "mundo") o.ligas = d.ligas;
   if (d.ritmo === "normal" || d.ritmo === "turbo") o.ritmo = d.ritmo;
   return o;
@@ -260,7 +262,7 @@ module.exports = function ligarCarreiraOnline(io) {
         if (sem.length) return falha(cb, `Falta escolher o clube: ${sem.join(", ")}.`);
         try {
           room.save = Carreira.novaCarreiraGrupo(room.order.map((id) => ({ clube: room.players[id].clube, nome: room.players[id].name, skin: room.players[id].skin })),
-            { temporadas: room.opcoes.temporadas, aporte: room.opcoes.aporte });
+            { temporadas: room.opcoes.temporadas, aporte: room.opcoes.aporte, caixaIgual: room.opcoes.caixaIgual || 0 });
         } catch (e) { console.warn("carreira-online: não começou", e); return falha(cb, "Não deu para montar a carreira. Tente de novo."); }
         room.fase = "carreira"; room.nRodada = 0; room.prontos = {};
       } else if (room.fase !== "carreira" || !me.clube) return falha(cb, "Agora não.");

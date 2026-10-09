@@ -9,6 +9,7 @@ const OPCOES_SALA = [
   ["aporte", "Aporte do investidor (para cada um)", [[0, "Nenhum"], [250e6, "R$ 250 mi"], [500e6, "R$ 500 mi"], [1e9, "R$ 1 bi"]]],
   ["ligas", "Clubes", [["brasil", "Só o Brasileirão"], ["mundo", "Brasil e Europa"]]],
   ["ritmo", "Ritmo", [["normal", "Normal"], ["turbo", "Turbo"]]],
+  ["caixaIgual", "Dinheiro no começo", [[0, "Cada clube o seu"], [100e6, "Igual: R$ 100 mi"], [300e6, "Igual: R$ 300 mi"]]],
 ];
 
 function telaGrupo() {
@@ -76,7 +77,7 @@ function desenharSala() {
   $("gMeuClube").textContent = eu && eu.clube ? `Você: ${nomeClube(eu.clube)}` : "";
   document.body.style.cssText = eu && eu.clube ? `${coresClube(eu.clube)};${temaClube(eu.clube)}` : ""; // a sala já ganha a cor do clube escolhido
   marcaClube(eu && eu.clube);
-  const orc = (c) => c.orcamento || Orcamentos.de(c).caixa, ordemLiga = (c) => ["brasileirao-2026", ...Temporada.EUROPA].indexOf(c.liga);
+  const orc = (c) => (st.opcoes.caixaIgual > 0 ? st.opcoes.caixaIgual : c.orcamento || Orcamentos.de(c).caixa), ordemLiga = (c) => ["brasileirao-2026", ...Temporada.EUROPA].indexOf(c.liga);
   $("gClubes").innerHTML = st.clubes.map((id) => CLUBES[id]).filter(Boolean).sort((a, b) => ordemLiga(a) - ordemLiga(b) || orc(b) - orc(a)).map((c) => {
     const dono = st.ocupados[c.id], meu = dono === MEU_ID, outro = dono && !meu ? st.players.find((p) => p.id === dono) : null;
     return `<button class="clube" style="${coresClube(c.id)}" data-clube-sala="${c.id}" aria-pressed="${meu}" ${outro ? "disabled" : ""}>${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b>
@@ -92,7 +93,7 @@ const agir = async (dados) => {
 };
 document.addEventListener("click", (e) => {
   const o = e.target.closest("[data-opcao-sala]");
-  if (o) { const k = o.dataset.opcaoSala, v = ["temporadas", "aporte"].includes(k) ? Number(o.dataset.valor) : o.dataset.valor; agir({ type: "opcoes", [k]: v }); return; }
+  if (o) { const k = o.dataset.opcaoSala, v = ["temporadas", "aporte", "caixaIgual"].includes(k) ? Number(o.dataset.valor) : o.dataset.valor; agir({ type: "opcoes", [k]: v }); return; }
   const c = e.target.closest("[data-clube-sala]");
   if (c) agir({ type: "clube", clube: c.getAttribute("aria-pressed") === "true" ? null : c.dataset.clubeSala });
 });

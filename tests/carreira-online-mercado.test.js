@@ -64,6 +64,16 @@ test("rodada ao vivo: só o anfitrião começa, a parada espera a decisão e rec
   a2.close(); b.close();
 });
 
+test("dinheiro igual: a sala começa com o mesmo caixa para todos", async () => {
+  const { ss: [a, b] } = await sala(["flamengo", "mirassol"], { aporte: 0, caixaIgual: 100e6 });
+  const ea = (await pedir(a, "entrar")).estado, eb = (await pedir(b, "entrar")).estado;
+  assert.strictEqual(ea.caixa, 100e6);
+  assert.strictEqual(eb.caixa, 100e6);
+  assert.strictEqual(ea.situacao, "equilibrado");
+  assert.strictEqual(eb.situacao, "equilibrado");
+  a.close(); b.close();
+});
+
 test("leilão: o relógio reinicia a cada lance, o maior leva e o caixa fecha certo", async () => {
   const { ss: [a, b, c] } = await sala(["flamengo", "palmeiras", "liverpool"], { aporte: 0 });
   const alvo = "santos-5";

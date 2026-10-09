@@ -106,8 +106,8 @@ test("carreira: comprar na janela, vender na hora, pôr à venda e a janela fech
   const v = await pedir(a, "vender", { jogador: alvo.id, modo: "agora" });
   assert.ok(!v.estado.elenco.includes(alvo.id));
   assert.strictEqual(v.estado.caixa, caixa0 - valor + Mercado.vendaRapida(alvo));
-  // depois da rodada 4 a janela fecha
-  for (let i = 0; i < 4; i++) await pedir(a, "jogar", { modo: 1 });
+  // depois da rodada 4 da liga a janela fecha (os jogos de copa não contam)
+  for (let i = 0, j = { estado: { janela: { aberta: true } } }; i < 8 && j.estado.janela.aberta; i++) j = await pedir(a, "jogar", { modo: 1 });
   const outro = todos.find((j) => j.clube !== "mirassol" && j.nota <= 64 && j.id !== alvo.id && !j.base);
   await assert.rejects(pedir(a, "proposta", { jogador: outro.id, valor, salario }), /fechada/);
   await assert.rejects(pedir(a, "vender", { jogador: meu, modo: "agora" }), /fechada/);
