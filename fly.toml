@@ -28,7 +28,7 @@ primary_region = 'gru'
     path = '/'
 
 [[vm]]
-  size = 'shared-cpu-1x'
+  size = 'shared-cpu-2x'
   memory = '1gb'
 
 # o disco que não some a cada deploy: o banco de dados (bd.js) mora nele. O volume foi criado com
