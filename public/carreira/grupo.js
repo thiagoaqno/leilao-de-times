@@ -71,8 +71,8 @@ function entradaNoMeio(st, eu) {
   const livres = st.clubes.filter((id) => !st.ocupados[id] && CLUBES[id]).map((id) => CLUBES[id]);
   const ordemLiga = (c) => ["brasileirao-2026", ...Temporada.EUROPA].indexOf(c.liga);
   $("gStatus").textContent = !eu ? "Você está só assistindo. Para assumir um clube, entre na sala pelo código, com um nome."
-    : st.rodada ? "A rodada está rolando: escolha o clube e entre quando ela acabar. Quem entra no meio leva 1 jogador de até 88 (ou segue as regras da janela, se ela estiver aberta)."
-    : "A carreira já começou. Escolha um clube livre para assumir agora. Quem entra no meio leva 1 jogador de até 88 (ou segue as regras da janela, se ela estiver aberta).";
+    : st.rodada ? "A rodada está rolando: escolha o clube e entre quando ela acabar. Quem entra no meio ganha uma janela de entrada: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85 (com a janela aberta, vale a da janela)."
+    : "A carreira já começou. Escolha um clube livre para assumir agora. Quem entra no meio ganha uma janela de entrada: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85 (com a janela aberta, vale a da janela).";
   $("gMeuClube").textContent = livres.length ? `${livres.length} clube${livres.length === 1 ? "" : "s"} livre${livres.length === 1 ? "" : "s"}` : "Não tem clube livre";
   $("btnComecar").classList.add("hidden");
   $("gClubes").innerHTML = eu ? livres.sort((a, b) => ordemLiga(a) - ordemLiga(b) || forca(b.id) - forca(a.id)).map((c) => {
