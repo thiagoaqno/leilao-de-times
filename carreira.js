@@ -204,6 +204,10 @@ const CAMPOS_CLUBE = ["clube", "tecnico", "caixa", "moral", "situacao", "escalac
 function vistaDe(save, clube) {
   const v = { ...save, ...save.humanos[clube].estado };
   delete v.humanos;
+  // na sala, as notícias de transferência são as mesmas para todos (carreira-feed.js): a visão enxerga os feeds dos outros
+  // técnicos e quem é humano. Ficam fora do que é copiado de volta (não enumeráveis).
+  Object.defineProperty(v, "humanoDe", { value: (id) => !!save.humanos[id] });
+  Object.defineProperty(v, "outrosHumanos", { value: () => Object.entries(save.humanos).filter(([c, hm]) => c !== clube && hm.estado).map(([, hm]) => ({ feed: hm.estado.feed, rodada: hm.estado.rodada, temporada: save.temporada, semente: save.semente })) });
   return v;
 }
 function guardarVista(save, v) {
@@ -275,20 +279,33 @@ function proximaRodadaGrupo(save) {
   return { semana, jogos };
 }
 // a partida do jogo vista por um clube dele (timeDe usa para saber quem é o rival e os efeitos que valem)
-const partidaDoJogo = (v, j, modo, decisoes) => ({ rodada: v.rodada, jogoId: j.id, competicao: j.competicao, fase: j.fase, mataMata: j.mataMata, casa: j.casa, fora: j.fora,
+// os gols de cada lado nas pernas anteriores do confronto (a volta de um mata-mata): com o agregado empatado depois dos 90
+// minutos, o jogo vai para a disputa de pênaltis do motor (o humano escolhe o canto e o pulo; não é sorteio)
+function agregadoDe(save, j) {
+  const comp = j.mataMata && save.competicoes && save.competicoes[j.competicao];
+  if (!comp) return [0, 0];
+  let a = 0, b = 0;
+  for (const x of comp.jogos) {
+    if (x.id === j.id || x.fase !== j.fase || x.rodada !== j.rodada || x.semana >= j.semana || !x.placar) continue;
+    a += x.casa === j.casa ? x.placar[0] : x.placar[1]; b += x.casa === j.fora ? x.placar[0] : x.placar[1];
+  }
+  return [a, b];
+}
+const desempateDe = (p) => (p.mataMata ? { agregado: p.agregado || [0, 0] } : undefined);
+const partidaDoJogo = (v, j, modo, decisoes) => ({ agregado: agregadoDe(v, j), rodada: v.rodada, jogoId: j.id, competicao: j.competicao, fase: j.fase, mataMata: j.mataMata, casa: j.casa, fora: j.fora,
   modo, semente: sementeDoJogo(v, j.semana, j.casa, j.fora), decisoes: decisoes || {} });
 // o jogo de humanos com o motor: um humano (controla 0 ou 1) ou os dois (controla 2)
 function simularJogoGrupo(save, j, { modo = 1, decisoes = {} } = {}) {
   const hc = !!save.humanos[j.casa], hf = !!save.humanos[j.fora];
   const vc = vistaDe(save, hc ? j.casa : j.fora), vf = vistaDe(save, hf ? j.fora : j.casa);
   vc.partida = partidaDoJogo(vc, j, modo, decisoes); vf.partida = partidaDoJogo(vf, j, modo, decisoes);
-  return Motor.simularPartida({ casa: timeDe(vc, j.casa), fora: timeDe(vf, j.fora), semente: vc.partida.semente, modo, controla: hc && hf ? 2 : hc ? 0 : 1, decisoes });
+  return Motor.simularPartida({ casa: timeDe(vc, j.casa), fora: timeDe(vf, j.fora), semente: vc.partida.semente, modo, controla: hc && hf ? 2 : hc ? 0 : 1, decisoes, desempate: desempateDe(vc.partida) });
 }
 // o jogo acabou: fecha para cada humano dele (o que é de todos, uma vez só)
 function fecharJogoGrupo(save, j, r, modo, decisoes) {
   // O resultado humano entra no chaveamento antes do pós-jogo e das notícias de cada técnico.
   // Assim um empate eliminatório já chega aqui com o vencedor e o placar dos pênaltis corretos.
-  save.resultadosFixos[j.id] = { placar: [...r.placar] };
+  save.resultadosFixos[j.id] = { placar: [...r.placar], ...(r.penaltis && { penaltis: [...r.penaltis] }) };
   recalcularMundo(save);
   let primeiro = true, penaltis = null;
   for (const c of [j.casa, j.fora].filter((x) => save.humanos[x])) {
@@ -487,7 +504,7 @@ const titularesDe = (save, id) => Motor.escalacaoAutomatica(timeDe(save, id));
 const sementeDoJogo = (save, rodada, casa, fora) => `${save.semente}:${save.temporada}:${rodada}:${casa}-${fora}`;
 function simularMinha(save) {
   const p = save.partida;
-  return Motor.simularPartida({ casa: timeDe(save, p.casa), fora: timeDe(save, p.fora), semente: p.semente, modo: p.modo, controla: p.casa === save.clube ? 0 : 1, decisoes: p.decisoes });
+  return Motor.simularPartida({ casa: timeDe(save, p.casa), fora: timeDe(save, p.fora), semente: p.semente, modo: p.modo, controla: p.casa === save.clube ? 0 : 1, decisoes: p.decisoes, desempate: desempateDe(p) });
 }
 function contarGols(save, r) { for (const e of r.eventos) if (e.tipo === "gol") save.gols[e.jogador] = (save.gols[e.jogador] || 0) + 1; }
 // a nota de cada um no seu jogo (dos dois times): save.desempenho[pid] = [jogos, soma das notas], para a evolução
@@ -726,7 +743,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   if (cumprir) cumprirRodada(save);
   if (comum) { contarGols(save, r); cartoesELesoes(save, r, p.semente); anotarDesempenho(save, r); }
   else save.jogosTemporada++; // o outro lado já anotou o que é de todos
-  save.resultadosFixos[p.jogoId] = { placar: [...r.placar] };
+  save.resultadosFixos[p.jogoId] = { placar: [...r.placar], ...(r.penaltis && { penaltis: [...r.penaltis] }) };
   save.jogosJogados.push(p.jogoId);
   if (emCasa) movimentar(save, "Bilheteria", Math.round(clube.tamanho * 6e5 * (0.7 + save.moral / 200) / 1e4) * 1e4);
   movimentar(save, "Cota de TV", Math.round(clube.tamanho * 4e5 * (FATOR_LIGA[ligaDoClube(clube.id)] || 1)));
@@ -1132,7 +1149,7 @@ module.exports = function ligarCarreira(io) {
       if (save.base === BASE_PADRAO) {
         const jogo = proximoJogoMundo(save); if (!jogo) return "A temporada acabou.";
         resolverPendentes(save);
-        save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, casa: jogo.casa, fora: jogo.fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
+        save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, agregado: agregadoDe(save, jogo), casa: jogo.casa, fora: jogo.fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
         const r = simularMinha(save); if (r.completo) fecharRodada(save, r); return null;
       }
       if (save.rodada >= save.calendario.length) return "A temporada acabou.";

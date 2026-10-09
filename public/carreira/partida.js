@@ -9,7 +9,7 @@ const NOME_OPCAO = {
   impedimento: "linha de impedimento", bloco: "bloco baixo", mano: "mano a mano", contra: "pronto para o contra-ataque",
   direto: "chute direto", cruzamento: "cruzamento na área", ensaiada: "jogada ensaiada", barreira: "barreira reforçada", adiantado: "goleiro adiantado", zona: "marcação por zona",
 };
-const ICONE_LANCE = { gol: "bola", defesa: "luva", perdeu: "alvo", penalti: "alvo", amarelo: "cartas", vermelho: "cartas", lesao: "alerta", sub: "troca", posicao: "troca", formacao: "campo", lance: "chuteira", contra_ataque: "raio", intervalo: "apito", fim: "apito" };
+const ICONE_LANCE = { gol: "bola", defesa: "luva", perdeu: "alvo", penalti: "alvo", amarelo: "cartas", vermelho: "cartas", lesao: "alerta", sub: "troca", posicao: "troca", formacao: "campo", lance: "chuteira", contra_ataque: "raio", intervalo: "apito", fim: "apito", disputa: "alvo", disputa_inicio: "apito" };
 const TEMPO_LANCE = 20000; // ms para decidir um lance; sem resposta, vai a opção de maior chance
 const J = { rodada: null, casa: null, fora: null, eventos: [], i: 0, relogio: 0, vel: 1, parado: null, completo: false, penaltis: null, ultimoQuadro: 0, decidindo: false, timerLance: null, pulando: false };
 const calmo = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -72,12 +72,12 @@ async function buscarParalelos(jogoId) {
   if (r.ok && J.jogoId === jogoId) J.paralelos = r.paralelos;
 }
 function atualizarPlacar() {
-  let g = [0, 0];
-  for (let k = 0; k < J.i; k++) if (J.eventos[k].tipo === "gol") g = J.eventos[k].placar;
-  const txt = `${g[0]} × ${g[1]}`;
+  let g = [0, 0], pen = null;
+  for (let k = 0; k < J.i; k++) { const e = J.eventos[k]; if (e.tipo === "gol") g = e.placar; else if (e.tipo === "disputa") pen = e.placar; }
+  const txt = `${g[0]} × ${g[1]}${pen ? ` (${pen[0]} × ${pen[1]})` : ""}`;
   if ($("pGols").textContent !== txt) $("pGols").textContent = txt;
   const r = J.relogio;
-  $("pRelogio").textContent = r >= 90 ? (J.completo && J.i >= J.eventos.length ? (J.penaltis ? `Pênaltis ${J.penaltis[0]} × ${J.penaltis[1]}` : "Fim") : "90+'") : r > 45 && r < 46 ? "45+'" : `${Math.max(0, Math.floor(r))}'`;
+  $("pRelogio").textContent = pen && !(J.completo && J.i >= J.eventos.length) ? "Pênaltis" : r >= 90 ? (J.completo && J.i >= J.eventos.length ? (J.penaltis ? `Pênaltis ${J.penaltis[0]} × ${J.penaltis[1]}` : "Fim") : "90+'") : r > 45 && r < 46 ? "45+'" : `${Math.max(0, Math.floor(r))}'`;
 }
 
 function narrar(e) {
@@ -97,6 +97,12 @@ function narrar(e) {
   if (e.tipo === "formacao") return [`O ${clube} muda para o ${e.formacao}.`, ""];
   if (e.tipo === "lance") return [`A jogada: ${NOME_OPCAO[e.opcao] || e.opcao}. ${e.certo ? "Deu certo!" : "Não deu."}`, e.certo ? "bom" : ""];
   if (e.tipo === "contra_ataque") return [`Roubou e saiu no contra-ataque o ${clube}!`, ""];
+  if (e.tipo === "disputa_inicio") return ["Empate no agregado: disputa de pênaltis!", "apito"];
+  if (e.tipo === "disputa") {
+    const onde = Ritmo.ZONA_NOME[e.chute], pulo = Ritmo.ZONA_NOME[e.pulo];
+    const lance = e.fora ? `bate ${onde}... e manda para fora!` : e.entrou ? `bate ${onde}; o goleiro pula ${pulo}. <b>Gol!</b>` : `bate ${onde}; o goleiro pula ${pulo} e defende!`;
+    return [`${jog} (${clube}) ${lance} Pênaltis: ${e.placar[0]} × ${e.placar[1]}.`, e.entrou ? "gol" : ""];
+  }
   if (e.tipo === "intervalo") return [`Intervalo · ${e.placar[0]} × ${e.placar[1]}`, "apito"];
   if (e.tipo === "fim") return [`Fim de jogo · ${e.placar[0]} × ${e.placar[1]}`, "apito"];
   return [null, ""];
@@ -106,7 +112,7 @@ function mostrarEvento(e) {
   if (!texto) return;
   const li = document.createElement("li");
   li.className = `${classe} lado${e.lado ?? ""}${e.lado === meuLado() ? " nosso" : ""}`;
-  li.innerHTML = classe === "apito" ? `<span>${texto}</span>` : `<span class="min">${minutoTexto(e)}</span><span class="ic-lance">${ic(ICONE_LANCE[e.tipo] || "bola")}</span><span>${texto}</span>`;
+  li.innerHTML = classe === "apito" ? `<span>${texto}</span>` : `<span class="min">${e.tipo === "disputa" ? "Pên." : minutoTexto(e)}</span><span class="ic-lance">${ic(ICONE_LANCE[e.tipo] || "bola")}</span><span>${texto}</span>`;
   if (J.pulando || calmo()) li.classList.add("sem-entrada");
   $("narracao").prepend(li);
   if (e.tipo === "gol") gol(e);
@@ -165,7 +171,10 @@ function passo(agora) {
     const lim = limite();
     J.relogio = J.grupo ? Math.min(lim, relogioGrupo()) : Math.min(lim, J.relogio + dt * 2 * J.vel);
     // um erro num efeito não pode parar o relógio da partida
-    while (J.i < J.eventos.length && tempoDe(J.eventos[J.i]) <= J.relogio + 1e-9) { const e = J.eventos[J.i++]; try { mostrarEvento(e); } catch (err) { console.warn("lance", err); } }
+    while (J.i < J.eventos.length && tempoDe(J.eventos[J.i]) <= J.relogio + 1e-9) {
+      if (J.eventos[J.i].tipo === "disputa" && !J.pulando && agora - (J.ultDisputa || 0) < 1500 / J.vel) break; // uma cobrança por vez
+      if (J.eventos[J.i].tipo === "disputa") J.ultDisputa = agora;
+      const e = J.eventos[J.i++]; try { mostrarEvento(e); } catch (err) { console.warn("lance", err); } }
     J.pulando = false;
     if (J.i >= J.eventos.length) {
       if (J.parado && J.relogio >= lim) abrirDecisao(J.parado);
@@ -224,11 +233,11 @@ function decisaoLance(p) {
     ataque_contra: [`O ${adv} vem para cima!`, `${jog} avança com a bola. Como a defesa reage?`],
     falta_favor: ["Falta perto da área", `${jog} vai para a bola. A jogada é:`],
     falta_contra: ["Falta perigosa contra", `${jog} vai bater. Você arma:`],
-    penalti_favor: ["Pênalti para você!", `${jog} na bola. Escolha o canto.`],
-    penalti_contra: ["Pênalti contra!", `${jog} vai bater. Para onde o goleiro pula?`],
+    penalti_favor: p.disputa ? ["Sua cobrança!", `${jog} na bola. Escolha o canto.`] : ["Pênalti para você!", `${jog} na bola. Escolha o canto.`],
+    penalti_contra: p.disputa ? ["Cobrança do adversário", `${jog} vai bater. Para onde o goleiro pula?`] : ["Pênalti contra!", `${jog} vai bater. Para onde o goleiro pula?`],
   };
   const [titulo, texto] = titulos[p.lance] || ["Lance decisivo", ""];
-  $("dTitulo").textContent = titulo; $("dTexto").innerHTML = `<span class="min-tag">${minutoTexto(p)}</span> ${texto}`;
+  $("dTitulo").textContent = titulo; $("dTexto").innerHTML = `<span class="min-tag">${p.disputa ? `Pênaltis ${p.disputa.gols[0]} × ${p.disputa.gols[1]}` : minutoTexto(p)}</span> ${texto}`;
   const pct = (o) => Math.round(o.chance * 100);
   if (p.lance.startsWith("penalti")) {
     $("dCorpo").innerHTML = `<div class="trave"><div class="rede">${p.opcoes.map((o) => `<button data-op="${o.id}" aria-label="${h(o.nome)}: ${pct(o)}%"><b>${pct(o)}%</b><small>${h(o.nome)}</small></button>`).join("")}</div></div>
