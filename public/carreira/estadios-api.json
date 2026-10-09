@@ -1,0 +1,542 @@
+{
+ "1-fc-koln": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/txtprw1423713153.jpg",
+  "nome": "RheinEnergieStadion"
+ },
+ "1-fsv-mainz-05": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/rpvquu1423713456.jpg",
+  "nome": "MEWA ARENA"
+ },
+ "bayer-leverkusen": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/qsytyu1423712470.jpg",
+  "nome": "BayArena"
+ },
+ "borussia-dortmund": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ruuywx1421658343.jpg",
+  "nome": "Signal Iduna Park"
+ },
+ "borussia-monchengladbach": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/yth0mz1724697580.jpg",
+  "nome": "Stadion im Borussia-Park"
+ },
+ "eintracht-frankfurt": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/vqyqxv1423712780.jpg",
+  "nome": "Deutsche Bank Park"
+ },
+ "elversberg": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/e1kj6h1772549298.jpg",
+  "nome": "Waldstadion Kaiserlinde"
+ },
+ "fc-augsburg": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/wrqsxv1423713279.jpg",
+  "nome": "WWK Arena"
+ },
+ "fc-bayern-munchen": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/uypvrq1420399659.jpg",
+  "nome": "Allianz Arena"
+ },
+ "paderborn": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/9qd70h1773404829.jpg",
+  "nome": "Home Deluxe Arena"
+ },
+ "rb-leipzig": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/bey1wn1719334645.jpg",
+  "nome": "Red Bull Arena Leipzig"
+ },
+ "sc-freiburg": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/3mj1lm1721728005.jpg",
+  "nome": "Europa-Park Stadion"
+ },
+ "schalke-04": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/rywvwq1420677493.jpg",
+  "nome": "VELTINS-Arena"
+ },
+ "tsg-hoffenheim": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ivkuzm1724698933.jpg",
+  "nome": "PreZero Arena"
+ },
+ "union-berlin": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ffl4i51724704656.jpg",
+  "nome": "Stadion An der Alten Försterei"
+ },
+ "vfb-stuttgart": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/q70nyl1720464526.jpg",
+  "nome": "MHP Arena"
+ },
+ "river-plate": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/q2ngax1755835905.jpg",
+  "nome": "Estadio Mâs Monumental"
+ },
+ "boca-juniors": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/j9amy21634339566.jpg",
+  "nome": "Estadio Alberto José Armando"
+ },
+ "racing-club-argentina": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/xxqquu1424078101.jpg",
+  "nome": "Estadio Presidente Perón"
+ },
+ "velez-sarsfield": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/4nfka01678756486.jpg",
+  "nome": "Estadio José Amalfitani"
+ },
+ "talleres": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/j0o11y1749201565.jpg",
+  "nome": "Estadio Mario Alberto Kempes"
+ },
+ "flamengo": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/h8dimb1764150889.jpg",
+  "nome": "Estádio do Maracanã"
+ },
+ "palmeiras": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/x3bkfu1710015241.jpg",
+  "nome": "Nubank Parque"
+ },
+ "cruzeiro": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/r0meap1749462758.jpg",
+  "nome": "Estádio Mineirão"
+ },
+ "mirassol": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/k1t3ro1749477149.jpg",
+  "nome": "Estádio José Maria de Campos Maia"
+ },
+ "fluminense": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/h8dimb1764150889.jpg",
+  "nome": "Estádio do Maracanã"
+ },
+ "botafogo": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/g9htbv1736283357.jpg",
+  "nome": "Estádio Olímpico Nilton Santos"
+ },
+ "bahia": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/dnzq3j1748629405.jpg",
+  "nome": "Arena Fonte Nova"
+ },
+ "saopaulo": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/rawn2h1774910959.jpg",
+  "nome": "Estádio do Morumbi"
+ },
+ "gremio": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/gkhc091749473685.jpg",
+  "nome": "Arena do Grêmio"
+ },
+ "bragantino": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/r6ond71774911666.jpg",
+  "nome": "Estadio Cicero de Souza Marques"
+ },
+ "santos": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/a9bd1i1749486289.jpg",
+  "nome": "Estádio Urbano Caldeira"
+ },
+ "corinthians": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/8qf0x81725814253.jpg",
+  "nome": "Neo Química Arena"
+ },
+ "vasco": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/azk0cs1749483329.jpg",
+  "nome": "Estádio São Januário"
+ },
+ "vitoria": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ok48up1749486577.jpg",
+  "nome": "Estádio Manoel Barradas"
+ },
+ "internacional": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/4fcror1749400041.jpg",
+  "nome": "Estádio Beira-Rio"
+ },
+ "coritiba": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/1q28gb1767284964.jpg",
+  "nome": "Estádio Major Antônio Couto Pereira"
+ },
+ "chapecoense": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/6h79031767206776.jpg",
+  "nome": "Arena Condá"
+ },
+ "remo": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/5t64bo1767713900.jpg",
+  "nome": "Estádio Evandro Almeida"
+ },
+ "alaves": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/irmagb1783190076.jpg",
+  "nome": "Ciudad Deportiva José Luis Compañón"
+ },
+ "atletico-de-madrid": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/doa0md1727732428.jpg",
+  "nome": "Riyadh Air Metropolitano"
+ },
+ "ca-osasuna": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/cdy89w1725046093.jpg",
+  "nome": "Estadio El Sadar"
+ },
+ "deportivo-la-coruna": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/y75ocr1751802033.jpg",
+  "nome": "Ciudad Deportiva de Abegondo"
+ },
+ "elche-cf": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/n7xbow1750587843.jpg",
+  "nome": "Estadio Martínez Valero"
+ },
+ "fc-barcelona": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/4sca9p1727732678.jpg",
+  "nome": "Spotify Camp Nou"
+ },
+ "getafe-cf": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/h6ktj01727891746.jpg",
+  "nome": "Estadio Coliseum"
+ },
+ "levante-ud": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/42n1i91750588224.jpg",
+  "nome": "Estadio Ciudad de Valencia"
+ },
+ "malaga": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/qvqtqs1420330677.jpg",
+  "nome": "Estadio La Rosaleda"
+ },
+ "racing-de-santander": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/llnif31751630663.jpg",
+  "nome": "Campos de Sport de El Sardinero"
+ },
+ "rayo-vallecano": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/lqfpei1728070907.jpg",
+  "nome": "Estadio de Vallecas"
+ },
+ "rcd-espanyol": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ql1sap1727891545.jpg",
+  "nome": "RCDE Stadium"
+ },
+ "real-betis": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/v7dpss1745661526.jpg",
+  "nome": "Estadio de La Cartuja"
+ },
+ "real-madrid": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/1p5j211727901197.jpg",
+  "nome": "Estadio Santiago Bernabéu"
+ },
+ "real-sociedad": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/x3oj841750589044.jpg",
+  "nome": "Reale Arena"
+ },
+ "sevilla-fc": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/75hxow1728072170.jpg",
+  "nome": "Estadio Ramón Sánchez Pizjuán"
+ },
+ "valencia-cf": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/lp2lmv1728071559.jpg",
+  "nome": "Estadio de Mestalla"
+ },
+ "villarreal-cf": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/jjmwf91752217395.jpg",
+  "nome": "Estadio de la Cerámica"
+ },
+ "aj-auxerre": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/4wh13v1727099691.jpg",
+  "nome": "Stade de l'Abbé Deschamps"
+ },
+ "fc-lorient": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/b5c29q1731661858.jpg",
+  "nome": "Stade du Moustoir"
+ },
+ "havre-ac": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/7fopei1727098218.jpg",
+  "nome": "Stade Océane"
+ },
+ "le-mans-fc": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/mu8u9s1700145490.jpg",
+  "nome": "Stade Marie-Marvingt"
+ },
+ "lyon": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/0uyypt1725815825.jpg",
+  "nome": "Groupama Stadium"
+ },
+ "ogc-nice": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/uspuxq1420595857.jpg",
+  "nome": "Allianz Riviera"
+ },
+ "paris-fc": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ib76pl1623729262.jpg",
+  "nome": "Stade Jean-Bouin"
+ },
+ "rc-lens": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/atzwm01727185729.jpg",
+  "nome": "Stade Bollaert-Delelis"
+ },
+ "stade-brestois-29": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ddrhph1607720300.jpg",
+  "nome": "Stade Francis-Le Blé"
+ },
+ "stade-rennais-fc": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/v9daxf1727710842.jpg",
+  "nome": "Roazhon Park"
+ },
+ "strasbourg": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/d5iljk1727711086.jpg",
+  "nome": "Stade de la Meinau"
+ },
+ "toulouse-fc": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/wbkpuc1727709118.jpg",
+  "nome": "Stadium de Toulouse"
+ },
+ "troyes": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/vwzby61755945766.jpg",
+  "nome": "Stade de l'Aube"
+ },
+ "arsenal": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/br6s761786310366.jpg",
+  "nome": "Emirates Stadium"
+ },
+ "aston-villa": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/uwyqtq1420238705.jpg",
+  "nome": "Villa Park"
+ },
+ "brentford": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/imb6k21754074798.jpg",
+  "nome": "Brentford Community Stadium"
+ },
+ "brighton": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/82fifm1734013456.jpg",
+  "nome": "Broadfield Stadium"
+ },
+ "chelsea": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/vpuxsx1420200157.jpg",
+  "nome": "Stamford Bridge"
+ },
+ "coventry-city": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/56vv6l1519316577.jpg",
+  "nome": "The Coventry Building Society Arena"
+ },
+ "crystal-palace": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/tvsxvw1420238927.jpg",
+  "nome": "Selhurst Park"
+ },
+ "everton": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/calo4u1742813691.jpg",
+  "nome": "Hill Dickinson Stadium"
+ },
+ "fulham": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/bmvgfu1788882568.jpg",
+  "nome": "Craven Cottage"
+ },
+ "hull-city": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/gli4rv1731789066.jpg",
+  "nome": "The MKM Stadium"
+ },
+ "ipswich-town": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/qyvwst1420708540.jpg",
+  "nome": "Portman Road"
+ },
+ "leeds-united": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/y1sksb1754074702.jpg",
+  "nome": "Elland Road"
+ },
+ "liverpool": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/j1oc1z1550061770.jpg",
+  "nome": "Anfield"
+ },
+ "manchester-city": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/qtwvus1420231540.jpg",
+  "nome": "Etihad Stadium"
+ },
+ "manchester-united": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/r2b8r61719753826.jpg",
+  "nome": "Old Trafford"
+ },
+ "sunderland": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/urpqyy1420245811.jpg",
+  "nome": "Stadium of Light"
+ },
+ "tottenham": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/e5vfx81734013876.jpg",
+  "nome": "BetWright Stadium"
+ },
+ "as-roma": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/d0iaqs1731599683.jpg",
+  "nome": "Stadio Olimpico"
+ },
+ "atalanta": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/jf624z1731837834.jpg",
+  "nome": "New Balance Arena"
+ },
+ "bologna": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ti34fh1719844091.jpg",
+  "nome": "Stadio Renato Dall'Ara"
+ },
+ "cagliari": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/2xu94n1731837352.jpg",
+  "nome": "Unipol Domus"
+ },
+ "como": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/j33yyp1728328672.jpg",
+  "nome": "Stadio Giuseppe Sinigaglia"
+ },
+ "fiorentina": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ozd18w1731620718.jpg",
+  "nome": "Stadio Artemio Franchi"
+ },
+ "frosinone": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ibnano1733152080.jpg",
+  "nome": "Stadio Benito Stirpe"
+ },
+ "genoa": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/tn3y2a1731620945.jpg",
+  "nome": "Stadio Luigi Ferraris"
+ },
+ "juventus": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/sk7wcn1731600222.jpg",
+  "nome": "Allianz Stadium Turin"
+ },
+ "lazio": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/d0iaqs1731599683.jpg",
+  "nome": "Stadio Olimpico"
+ },
+ "lecce": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/fuc7ni1715845193.jpg",
+  "nome": "Stadio Via del mare"
+ },
+ "milan": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ekyqjj1755710227.jpg",
+  "nome": "Puma House of Football"
+ },
+ "monza": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/2oo6e61718365747.jpg",
+  "nome": "U-Power Stadium"
+ },
+ "parma": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/vrciwj1731427375.jpg",
+  "nome": "Stadio Ennio Tardini"
+ },
+ "sassuolo": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/vywprt1423704049.jpg",
+  "nome": "Mapei Stadium – Città del Tricolore"
+ },
+ "ssc-napoli": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/wdvzls1731335710.jpg",
+  "nome": "Stadio Diego Armando Maradona"
+ },
+ "torino": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/h8lzlk1719923293.jpg",
+  "nome": "Stadio Olimpico Grande Torino"
+ },
+ "udinese": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/dn1l1t1728327705.jpg",
+  "nome": "Bluenergy Stadium"
+ },
+ "venezia": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/t31zes1636928370.jpg",
+  "nome": "Stadio Pierluigi Penzo"
+ },
+ "penarol": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/93ugua1765927564.jpg",
+  "nome": "Estadio Campeón del Siglo"
+ },
+ "independiente-santa-fe": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/vyue841749203632.jpg",
+  "nome": "Estadio El Campín"
+ },
+ "cerro-porteno": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ci75qa1775952041.jpg",
+  "nome": "Estadio General Pablo Rojas"
+ },
+ "universidad-catolica": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/d3nz0h1755107583.jpg",
+  "nome": "Claro Arena"
+ },
+ "universitario": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/6bmyzi1764026032.jpg",
+  "nome": "Estadio Monumental U"
+ },
+ "independiente-del-valle": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/4688rw1754264191.jpg",
+  "nome": "Estadio Banco Guayaquil"
+ },
+ "barcelona-sc": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/2fb6ht1775843395.jpg",
+  "nome": "Estadio Monumental Isidro Romero Carbo"
+ },
+ "ldu-quito": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/epxa731754264661.jpg",
+  "nome": "Estadio Rodrigo Paz Delgado"
+ },
+ "always-ready": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/hbdw021775845726.jpg",
+  "nome": "Estadio Municipal de El Alto"
+ },
+ "cusco-fc": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/9rttka1774910745.jpg",
+  "nome": "Estadio Inca Garcilaso de la Vega"
+ },
+ "bolivar": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/0e289r1607475885.jpg",
+  "nome": "Estadio Hernando Siles"
+ },
+ "independiente-medellin": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/100jdx1576161197.jpg",
+  "nome": "Estadio Atanasio Girardot"
+ },
+ "deportes-tolima": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/vr79em1576158940.jpg",
+  "nome": "Estadio Manuel Murillo Toro"
+ },
+ "coquimbo-unido": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/1elq8f1775845024.jpg",
+  "nome": "Estadio Bicentenario Francisco Sánchez Rumoroso"
+ },
+ "deportivo-la-guaira": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ob0g671774911244.jpg",
+  "nome": "Estadio Olímpico de la UCV"
+ },
+ "atleticomg": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/qwadfr1668251878.jpg",
+  "nome": "Arena MRV"
+ },
+ "athletico": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/7s3f1b1753302283.jpg",
+  "nome": "Arena da Baixada"
+ },
+ "athletic-club": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/q5ju371727732008.jpg",
+  "nome": "San Mamés Barria"
+ },
+ "angers-sco": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/2lcoti1727098059.jpg",
+  "nome": "Stade Raymond Kopa"
+ },
+ "newcastle-utd": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ywsxxp1420245335.jpg",
+  "nome": "St James Park"
+ },
+ "nacional": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/bc39as1765927197.jpg",
+  "nome": "Estadio Gran Parque Central"
+ },
+ "junior": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/v9fvl11576162025.jpg",
+  "nome": "Estadio Metropolitano Roberto Meléndez"
+ },
+ "libertad": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/jr0qeo1785453355.jpg",
+  "nome": "Estadio Dr. Nicolás Leoz"
+ },
+ "ucv": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/ob0g671774911244.jpg",
+  "nome": "Estadio Olímpico de la UCV"
+ },
+ "celta-de-vigo": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/g2otiy1727731593.jpg",
+  "nome": "Estadio Abanca-Balaídos"
+ },
+ "hamburger-sv": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/wxvsqu1423712242.jpg",
+  "nome": "Volksparkstadion"
+ },
+ "estudiantes": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/imcknv1716576975.jpg",
+  "nome": "Estadio Jorge Luis Hirschi"
+ },
+ "as-monaco": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/cv7bie1787117881.jpg",
+  "nome": "Stade Louis II"
+ },
+ "inter-de-milao": {
+  "url": "https://r2.thesportsdb.com/images/media/venue/thumb/uuw82a1731599902.jpg",
+  "nome": "Stadio Giuseppe Meazza"
+ }
+}

@@ -121,11 +121,30 @@ const CAIXAS_IGUAIS = [0, 100e6, 300e6];
 const caixaInicial = (save, c) => (save.caixaIgual > 0 ? save.caixaIgual : c.orcamento || Orcamentos.de(c).caixa);
 
 // as carreiras criadas antes destas partes ganham os campos novos na primeira vez que abrem
+// A diretoria define a meta da temporada pela força do elenco (a média dos 11 melhores) em relação aos outros clubes da MESMA liga:
+//   os 2 mais fortes: brigar pelo título (terminar no G2); do 3º ao 6º: vaga continental (G6); do 7º ao 12º: meio de tabela (top 12);
+//   do 13º para baixo: fugir do rebaixamento (fora dos 4 últimos). Cumprir a meta rende bônus no caixa e moral; não cumprir, pressão.
+function forcaDoClube(save, id) {
+  const n = elencoDe(save, id).map((j) => notaDe(save, j)).sort((a, b) => b - a).slice(0, 11);
+  return n.length ? n.reduce((s, x) => s + x, 0) / n.length : 0;
+}
+function definirMeta(save) {
+  const liga = ligaDoClube(save.clube), indice = INDICE_MUNDO.ligas.find((l) => l.id === liga), clubes = indice ? indice.clubes : [save.clube];
+  const forcas = clubes.map((id) => [id, forcaDoClube(save, id)]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+  const rank = Math.max(1, forcas.findIndex(([id]) => id === save.clube) + 1), total = clubes.length;
+  const [alvo, nivel, texto] = rank <= 2 ? [2, "titulo", "Brigar pelo título: terminar entre os 2 primeiros"]
+    : rank <= 6 ? [6, "continental", "Garantir vaga em competição continental: terminar entre os 6 primeiros"]
+    : rank <= 12 ? [Math.min(12, total), "meio", "Fazer uma campanha de meio de tabela: terminar entre os 12 primeiros"]
+    : [Math.max(1, total - 4), "rebaixamento", "Fugir do rebaixamento: terminar fora dos 4 últimos"];
+  return { temporada: save.temporada, liga, rank, total, forca: Math.round(forcas.find(([id]) => id === save.clube)[1] * 10) / 10, alvo, nivel, texto };
+}
 function completar(save) {
   const c = clubeDe(save, save.clube);
   const padrao = { caixa: caixaInicial(save, c), moral: 60, compras: {}, valores: {}, pedidos: {}, parcelas: [], caixaIA: null, situacao: null, feed: [], posJogo: null, segredos: {}, donos: {}, aVenda: [], lesoes: {}, suspensos: {}, amarelos: {}, bonusNota: {},
     salarios: {}, caixaEntrada: [], transferencias: [], indicacoes: {}, financas: [], tentativas: { rodada: -1, por: {} }, bonusVitoria: 0, provocado: null, efeitos: [], eventosVistos: {} };
   for (const [k, v] of Object.entries(padrao)) if (save[k] === undefined) save[k] = v;
+  // a meta da diretoria (precisa dos donos dos jogadores, que acabaram de ganhar o padrão)
+  if (save.base === BASE_PADRAO && save.calendarioMundo && (!save.meta || save.meta.temporada !== save.temporada)) save.meta = definirMeta(save);
   // o caixa dos outros clubes (as compras da IA dependem dele)
   if (!save.caixaIA) save.caixaIA = Object.fromEntries(idsDosClubes(save).filter((id) => id !== save.clube).map((id) => { const c2 = clubeDe(save, id); return [id, caixaInicial(save, c2)]; }));
   // Saves anteriores ao mundo mantêm somente o Brasileirão, sem serem promovidos silenciosamente.
@@ -200,7 +219,7 @@ function assumirClube(save, clube, nome, skin) {
 // (vistaDe: o save com os campos dele por cima, e save.clube = ele) e, depois, guarda-se de volta (guardarVista).
 const CAMPOS_CLUBE = ["clube", "tecnico", "caixa", "moral", "situacao", "escalacao", "caixaEntrada", "financas", "feed", "posJogo", "compras", "valores", "pedidos",
   "parcelas", "aVenda", "indicacoes", "tentativas", "bonusVitoria", "provocado", "efeitos", "eventosVistos", "segredos", "jogosJogados", "calendario", "rodada",
-  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "entrada", "energia"];
+  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "entrada", "energia", "meta"];
 function vistaDe(save, clube) {
   const v = { ...save, ...save.humanos[clube].estado };
   delete v.humanos;
@@ -863,10 +882,17 @@ function registrarTemporada(save) {
   const pos = tabela.findIndex((l) => l.id === save.clube) + 1;
   const [artilheiro] = Object.entries(save.gols).filter(([pid]) => donoDe(save, pid) === save.clube).sort((a, b) => b[1] - a[1]);
   const negocios = save.transferencias.filter((t) => t.de === save.clube && t.lucro != null && (t.temporada || save.temporada) === save.temporada).sort((a, b) => b.lucro - a.lucro);
-  save.historico.push({ ano: save.ano, temporada: save.temporada, posicao: pos, pontos: tabela[pos - 1].p, liga: nomeLiga, campeao: tabela[0].id, titulos, vices,
+  const meta = save.meta && save.meta.temporada === save.temporada ? save.meta : null;
+  if (meta && meta.cumprida === undefined) meta.cumprida = pos <= meta.alvo;
+  save.historico.push({ ...(meta && { meta: { alvo: meta.alvo, texto: meta.texto, cumprida: meta.cumprida, rank: meta.rank } }), ano: save.ano, temporada: save.temporada, posicao: pos, pontos: tabela[pos - 1].p, liga: nomeLiga, campeao: tabela[0].id, titulos, vices,
     artilheiro: artilheiro ? { id: artilheiro[0], gols: artilheiro[1] } : null, negocio: negocios[0] ? { jogador: negocios[0].jogador, lucro: negocios[0].lucro, para: negocios[0].para } : null,
     forca: forcaDoElenco(save) });
   if (save.base === BASE_PADRAO && save.calendarioMundo) arquivarTemporada(save);
+  if (meta) {
+    const tamanho = clubeDe(save, save.clube).tamanho || 3;
+    if (meta.cumprida) { movimentar(save, "Bônus da diretoria: meta cumprida", Math.round(tamanho * 3e6 / 1e5) * 1e5); mudarMoral(save, 8); avisar(save, { tipo: "diretoria", icone: "aperto", titulo: "A diretoria está satisfeita", texto: `Meta cumprida (${meta.texto.toLowerCase()}): ${pos}º lugar. Bônus no caixa e o vestiário comemora.` }); }
+    else { mudarMoral(save, -6); avisar(save, { tipo: "diretoria", icone: "alerta", titulo: "A diretoria cobra", texto: `A meta não foi cumprida (${meta.texto.toLowerCase()}): ${pos}º lugar. A pressão cresce para a próxima temporada.` }); }
+  }
   movimentar(save, `Premiação: ${pos}º lugar`, (tabela.length + 1 - pos) * 1e6);
   for (const t of titulos) movimentar(save, `Premiação: campeão da ${t}`, 15e6);
 }
@@ -1053,7 +1079,7 @@ function estadoMundo(save) {
   let partida = null;
   if (save.partida) { const r = simularMinha(save); partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times, paralelos: paralelosDaPartida(save, save.partida) }; }
   const elenco = elencoDe(save, save.clube), artilharia = Object.entries(golsTodos).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, gols }));
-  return { base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, artilharia, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
+  return { meta: save.meta, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, artilharia, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
     caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.slice(0, 30), posJogo: save.posJogo };
 }
 

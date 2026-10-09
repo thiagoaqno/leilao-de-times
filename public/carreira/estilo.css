@@ -1016,3 +1016,32 @@ body::before{content:"";position:fixed;inset:-12vmax;z-index:-2;pointer-events:n
 @media (prefers-reduced-transparency:reduce){#sede .quadro,#sede .tile,#elenco .quadro,#trocas .quadro,#temporadas .quadro,.dialogo,#toast,.segmentos{background:var(--s1);-webkit-backdrop-filter:none;backdrop-filter:none}body::before{display:none}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#sede .quadro,#sede .tile,#elenco .quadro,#trocas .quadro,#temporadas .quadro,.dialogo,#toast{background:var(--s1)}}
 @media (prefers-reduced-motion:reduce){body::before{animation:none}#sede .tile{transition:none}}
+/* o corpo da página vira um contexto de empilhamento: assim as camadas de fundo (manchas do vidro, foto do estádio, marca do clube) ficam por cima do fundo do body e por baixo do conteúdo */
+body{isolation:isolate}
+/* o fundo da sede: a foto do estádio do clube, borrada e com pouco brilho; só aparece na sede */
+.fundo-estadio{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:0;transition:opacity 700ms var(--ease)}
+body[data-tela="sede"] .fundo-estadio{opacity:1}
+.fundo-estadio-foto,.fundo-estadio-desenho{position:absolute;inset:-48px;width:calc(100% + 96px);height:calc(100% + 96px);background-size:cover;background-position:center 35%;object-fit:cover;
+  filter:blur(14px) brightness(.46) saturate(1.15);transform:scale(1.06);animation:estadio-respira 40s ease-in-out infinite alternate}
+.fundo-estadio-desenho{image-rendering:auto;filter:blur(12px) brightness(.62) saturate(1.2)}
+@keyframes estadio-respira{to{transform:scale(1.12) translate3d(-1.2%,.8%,0)}}
+.fundo-estadio::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#09090b73 0%,#09090b99 50%,#09090bf0 100%),radial-gradient(70vmax 40vmax at 50% 0%,color-mix(in srgb,var(--clube) 22%,transparent),transparent 70%)}
+.credito-estadio{position:fixed;left:14px;bottom:8px;z-index:5;margin:0;font-size:11px;color:var(--t3);opacity:0;pointer-events:none;transition:opacity 700ms var(--ease);text-shadow:0 1px 6px #000}
+body[data-tela="sede"] .credito-estadio:not(:empty){opacity:.85}
+@media (prefers-reduced-motion:reduce){.fundo-estadio-foto,.fundo-estadio-desenho{animation:none}}
+@media (prefers-reduced-transparency:reduce){.fundo-estadio-foto,.fundo-estadio-desenho{filter:brightness(.25)}}
+/* a meta da diretoria no topo da sede */
+.cab-numeros .meta dd{font:600 22px/1 var(--fonte);letter-spacing:-.03em}.cab-numeros .meta dd i{font-size:11px;color:var(--t3);font-style:normal;font-weight:400;margin-left:2px}
+.cab-numeros .meta dd.ok{color:var(--ok)}.cab-numeros .meta dd.atras{color:var(--alerta)}
+/* os pop-ups de aviso: antes do jogo, a diretoria e a troca recebida */
+.popup-aviso{width:min(560px,calc(100vw - 24px))}
+.pa-titulo{display:flex;align-items:center;gap:10px;margin-bottom:12px}.pa-ic{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(145deg,#ffffff30,#ffffff0d);border:1px solid #ffffff2e;color:var(--acento);flex:none}
+.pa-ic .ic{width:17px;height:17px}.pa-lead{margin-bottom:12px;color:var(--t2)}.pa-lead b{color:var(--t1)}
+.pa-lista{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:8px}
+.pa-lista li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--r2);background:#ffffff0d;border:1px solid #ffffff1c}
+.pa-lista li.ruim{border-color:color-mix(in srgb,var(--erro) 45%,transparent)}.pa-lista li.ruim .pa-ic{color:var(--erro)}.pa-lista li.aviso .pa-ic{color:var(--alerta)}
+.pa-lista b{display:block;font-size:14px}.pa-lista small{display:block;color:var(--t2);font-size:12px;line-height:1.45;margin-top:2px}
+.pa-meta{display:flex;flex-direction:column;gap:3px;padding:14px;border-radius:var(--r2);background:linear-gradient(135deg,color-mix(in srgb,var(--clube) 24%,transparent),#ffffff0a);border:1px solid #ffffff26;margin-bottom:12px}
+.pa-meta small{color:var(--t3);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.pa-meta b{font-size:17px;letter-spacing:-.02em}.pa-meta span{color:var(--t2);font-size:13px}.pa-meta strong{color:var(--t1)}
+.pa-botoes{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px}.pa-botoes button{display:inline-flex;align-items:center;gap:6px}.pa-botoes .ic{width:16px;height:16px}
+.popup-aviso.risco .pa-ic{color:var(--alerta)}
