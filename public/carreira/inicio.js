@@ -70,7 +70,7 @@ const faixa = (n) => (n >= 90 ? "elite" : n >= 85 ? "ouro" : n >= 80 ? "prata" :
 const POS_NOME = { GOL: "Goleiro", ZAG: "Zagueiro", LD: "Lateral-direito", LE: "Lateral-esquerdo", VOL: "Volante", MC: "Meio-campista", MEI: "Meia", PE: "Ponta-esquerda", PD: "Ponta-direita", ATA: "Atacante" };
 const GRUPO_TELA = { GOL: "GOL", ZAG: "DEF", LD: "DEF", LE: "DEF", VOL: "MEI", MC: "MEI", MEI: "MEI", PE: "ATA", PD: "ATA", ATA: "ATA" };
 
-// o escudo em pixel-art (escudos.js), em tamanho múltiplo de 16x18 para os pixels ficarem nítidos
+// o escudo em SVG (escudos.js): a escala é o tamanho em múltiplos de 16x18 pixels (a proporção é 8:9)
 function escudo(id, escala = 2) {
   const c = CLUBES[id]; if (!c) return "";
   return `<span class="escudo" style="--e:${escala}" title="${h(c.nome)}">${Escudos.svg(c)}</span>`;

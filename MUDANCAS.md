@@ -1,30 +1,49 @@
-# Carreira em grupo: quem sai no meio não segura a turma, e o anfitrião pode dispensar
+# Carreira: os escudos de todos os clubes refeitos em vetor, e os brasileiros desenhados um a um
 
-Antes, se um parceiro saísse no meio, a rodada esperava por ele: o jogo dele continuava e cada parada (os lances do modo
-3, por exemplo) esperava 20 segundos pela decisão. Agora dá para seguir sem ele, de duas formas.
+Os 142 escudos da carreira mudaram. Antes eram pixel-art de 16x18, com as letras borradas e vários clubes quase iguais
+(a mesma forma com cores diferentes). Agora são desenhos em SVG, nítidos em qualquer tamanho, e nenhum escudo é cópia
+de escudo de verdade.
 
-## Quem saiu joga no automático (sem configurar nada)
-- Quem fica fora da sala por mais de 15 segundos é **ausente**. Recarregar a página ou perder o sinal por um instante
-  não conta.
-- O jogo só de ausentes anda na hora, com as decisões automáticas (as mesmas que valem quando o tempo acaba).
-- Num jogo com alguém que está aqui, as paradas do ausente valem a decisão automática na hora, sem esperar os 20 segundos.
-  Quem está aqui joga no ritmo normal.
-- Se a pessoa volta, retoma do ponto em que está, com o time e o caixa como ficaram.
+## Os 20 do Brasileirão, feitos à mão
+Cada um com o jeito do clube (as cores e um elemento que lembra o escudo, sem copiar o desenho):
+- **Flamengo:** listras vermelhas e pretas com o monograma CRF numa pílula.
+- **Palmeiras:** redondo verde com anel branco e o P grande.
+- **Cruzeiro:** redondo azul com o Cruzeiro do Sul (as cinco estrelas).
+- **Mirassol:** amarelo com faixa verde e o M grande.
+- **Fluminense:** as três faixas grená, branca e verde.
+- **Botafogo:** preto com a estrela branca grande.
+- **Bahia:** redondo tricolor com o B no centro.
+- **São Paulo:** branco com as faixas vermelha e preta e as três estrelas.
+- **Grêmio:** as faixas azul, preta e branca.
+- **Bragantino:** branco e vermelho com a bola.
+- **Atlético-MG:** listras pretas e brancas com a estrela dourada.
+- **Santos:** branco com as listras pretas em cima.
+- **Corinthians:** redondo branco e preto com a âncora.
+- **Vasco:** preto com a faixa diagonal e a cruz.
+- **Vitória:** listras vermelhas e pretas com as estrelas douradas.
+- **Internacional:** redondo vermelho com o SCI.
+- **Coritiba:** redondo verde e branco com o CFC.
+- **Athletico-PR:** pontudo, listras vermelhas e pretas na diagonal e o raio.
+- **Chapecoense:** verde com o ACF.
+- **Remo:** azul-marinho com os remos cruzados e a estrela.
 
-## O anfitrião pode dispensar
-- Na sede, um painel **Turma** mostra quem está no ar e quem está fora. O anfitrião ganha o botão **Dispensar** (com
-  confirmação) ao lado de cada técnico. Na sala de espera, o mesmo botão aparece na lista de técnicos.
-- **Na sala de espera:** a pessoa sai da sala e o clube fica livre.
-- **No meio da carreira:** o clube passa para o computador, com o caixa que tinha e o elenco como estava. O leilão em que
-  ele estava (como dono ou com lance) é cancelado. A pessoa vira espectador e volta para o começo, com um aviso.
-- **Com a bola rolando:** o jogo dele anda no automático e ele sai no fim da rodada. Não dá para dispensar o anfitrião.
-- As rodadas seguintes têm só os jogos de quem ficou.
+## Todos os outros
+- Os escudos das outras ligas usam a receita que já estava na base (cores, listras, anel, símbolo, estrelas) no
+  desenho novo.
+- Quando a receita era só fundo, borda e três letras (a maioria), o escudo ganha um de 7 desenhos (faixa no topo, duas
+  metades, faixa no meio, V, diagonal, listras ou cantos) e uma de 3 formas (escudo, tábua ou ponta), sorteados pelo id
+  do clube: com as mesmas cores, dois clubes não ficam iguais. Nenhum dos 142 se repete.
+- As letras ficam numa pílula na cor que dá leitura (se a cor das letras é parecida com a do fundo, a pílula troca de cor).
+- Contorno escuro, brilho suave por cima, e cada escudo na tela traz os seus próprios ids (sem choque quando o mesmo
+  escudo aparece várias vezes).
+
+## O que não mudou
+- A API é a mesma (`Escudos.svg(clube)`), então todas as telas já usam os escudos novos. Ficou de fora a `grade`, que só o
+  teste antigo usava.
 
 ## Conferido
-- `tests/carreira-rodada.test.js` (o jogo de ausentes anda sem o relógio, e a parada de quem sai no meio da decisão não
-  espera) e `tests/carreira-online-dispensar.test.js` (pelo canal de verdade: a rodada com um técnico ausente acaba sem
-  esperar as decisões dele, dispensar na espera, entre as rodadas e com a bola rolando).
-- Na tela, com dois navegadores (`planos/imagens/carreira-turma-dispensar.png`): o botão aparece só para o anfitrião, e o dispensado volta para o começo.
-- O e2e da carreira não foi rodado desta vez.
-- `tests/carreira-evolucao.test.js` ficou estável: os avisos sem resposta valem a opção padrão na virada e podiam mexer na nota de um jogador depois de o teste anotar o "antes" (falhava em cerca de 1 de cada 3 execuções). O teste agora resolve os avisos antes.
-- A mudança é no servidor da sala em grupo e na página (`CARREIRA_AUSENTE_MS` ajusta o tempo de ausência).
+- Folhas de contato de todas as ligas no navegador (os 142 clubes, sem erro no console) e a sede e a tabela com os escudos novos. Fotos: `planos/imagens/carreira-escudos-*.png`.
+- `npm test`: 175 de 175. O e2e da carreira não foi rodado desta vez.
+- A arte pixel-art das notícias (o feed) continua com o desenho dela: não usa estes escudos.
+- `tests/carreira-base.test.js`: todo clube tem escudo montado certo, os 20 do Brasileirão têm desenho próprio, nenhum
+  clube repete o desenho de outro e os ids mudam a cada escudo.
