@@ -148,3 +148,61 @@ test("na carreira, repetir os mesmos 11 derruba a energia e o banco descansa; as
   assert.ok(media(banco) > media(onze) + 10, "o banco está bem mais descansado");
   assert.ok(Math.min(...onze.map((id) => e[id])) >= 20, "o piso é 20%");
 });
+
+test("o cansaço tira de 0 a 3 pontos da nota", () => {
+  const p = Taticas.penalidadeEnergia;
+  assert.deepStrictEqual([100, 85, 84, 70, 69, 50, 49, 20].map(p), [0, 0, 1, 1, 2, 2, 3, 3]);
+});
+
+test("o campinho desenha a variação: volante recuado, meia avançado, falso 9 atrás e alas na linha", () => {
+  const pos = (nome) => { const s = Taticas.spots(nome), v = Taticas.vagasDe(nome); return v.map((x, i) => ({ ...x, ...s[i] })); };
+  const v433 = pos("4-3-3"), vol = v433.find((x) => x.fino === "VOL"), mcs = v433.filter((x) => x.fino === "MC");
+  assert.strictEqual(vol.x, 50, "o único volante fica no meio");
+  assert.ok(vol.y > mcs[0].y && mcs[0].x < 50 && mcs[1].x > 50, "volante mais recuado, os dois meio-campistas nas pontas do triângulo");
+  const v433v = pos("4-3-3 V"), volantes = v433v.filter((x) => x.fino === "VOL"), mei = v433v.find((x) => x.fino === "MEI");
+  assert.ok(volantes.every((x) => x.y > mei.y), "2 volantes + 1 meia: o meia joga mais à frente");
+  assert.strictEqual(mei.x, 50, "o meia fica no meio, os volantes dos lados");
+  const lados = pos("4-3-3").filter((x) => x.fino === "LE" || x.fino === "LD" || x.fino === "PE" || x.fino === "PD");
+  assert.ok(lados.every((x) => x.x <= 14 || x.x >= 86), "laterais e pontas colados na linha");
+  const f9 = pos("4-3-3 F").find((x) => x.fino === "F9"), ata = pos("4-3-3").find((x) => x.fino === "ATA");
+  assert.ok(f9.y > ata.y, "o falso 9 joga mais atrás do que o centroavante");
+  for (const nome of Taticas.NOMES_FORMACOES) { const s = Taticas.spots(nome); assert.ok(s.every((p) => p.x >= 8 && p.x <= 92 && p.y >= 5 && p.y <= 95), nome); }
+  const alas = pos("3-5-2").filter((x) => x.fino === "LE" || x.fino === "LD");
+  assert.ok(alas.every((x) => x.x <= 14 || x.x >= 86), "os alas do 3-5-2 na linha lateral");
+});
+
+test("depois de uma expulsão dá para pôr outro jogador na vaga aberta (do campo ou do banco)", () => {
+  const cfg = { casa: time("a"), fora: time("b"), modo: 2, controla: 0 };
+  // procura um jogo em que o seu time leva um vermelho e para na parada do vermelho
+  let achou = null;
+  for (let k = 0; k < 4000 && !achou; k++) {
+    const decisoes = {};
+    for (let v = 0; v < 12; v++) {
+      const r = Motor.simularPartida({ ...cfg, semente: `v${k}`, decisoes });
+      if (r.completo) break;
+      if (r.parado.motivo === "vermelho") { achou = { semente: `v${k}`, decisoes: { ...decisoes }, p: r.parado }; break; }
+      decisoes[r.parado.id] = Motor.decisaoAutomatica(r.parado);
+    }
+  }
+  assert.ok(achou, "algum jogo com expulsão do seu time");
+  const { p } = achou, vazias = p.campo.map((v, i) => (v.id ? -1 : i)).filter((i) => i >= 0);
+  assert.strictEqual(vazias.length, 1, "uma vaga aberta");
+  const vaga = vazias[0], alvo = p.campo[vaga], doCampo = p.campo.find((v, i) => v.id && i > 0 && i !== vaga);
+  const base = { tatica: p.tatica, formacao: p.formacao, subs: [], trocas: [] };
+  const seguir = (d) => { const decisoes = { ...achou.decisoes, [p.id]: d }; let r; for (let v = 0; v < 12; v++) { r = Motor.simularPartida({ ...cfg, semente: achou.semente, decisoes }); if (r.completo || !r.parado) return r; decisoes[r.parado.id] = r.parado.id === p.id ? d : Motor.decisaoAutomatica(r.parado); } return r; };
+  // do campo: um jogador muda de lugar para a vaga aberta e a vaga dele fica aberta no lugar
+  const r1 = seguir({ ...base, ocupar: [["m", doCampo.id, vaga]] });
+  const ev1 = r1.eventos.find((e) => e.tipo === "reposicao");
+  assert.ok(ev1 && ev1.jogador === doCampo.id && ev1.fino === alvo.fino, "o jogador foi para a vaga da zaga");
+  // do banco: um reserva entra na vaga aberta e gasta uma substituição
+  const reserva = p.banco.find((b) => b.pos !== "GK");
+  const r2 = seguir({ ...base, ocupar: [["e", reserva.id, vaga]] });
+  const ev2 = r2.eventos.find((e) => e.tipo === "entrada");
+  assert.ok(ev2 && ev2.jogador === reserva.id && ev2.fino === alvo.fino, "o reserva entrou na vaga aberta");
+  // pedir uma vaga que já tem dono não faz nada
+  const r3 = seguir({ ...base, ocupar: [["m", doCampo.id, p.campo.findIndex((v, i) => v.id && i > 0 && v.id !== doCampo.id)]] });
+  assert.ok(!r3.eventos.some((e) => e.tipo === "reposicao"), "vaga ocupada não vira posição nova");
+  // sem substituições sobrando, o reserva não entra
+  const r4 = seguir({ ...base, subs: [], ocupar: [["e", reserva.id, vaga], ["e", p.banco.filter((b) => b.pos !== "GK")[1].id, vaga]] });
+  assert.strictEqual(r4.eventos.filter((e) => e.tipo === "entrada").length, 1, "a segunda tentativa na mesma vaga é ignorada");
+});

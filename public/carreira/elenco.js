@@ -19,11 +19,11 @@ function campinho(detalhe, formacao, opcoes = {}) {
     const s = spots[i]; if (!s) return "";
     if (!v.id) return `<button class="peca vazia" data-i="${i}" style="left:${s.x}%;top:${s.y}%"><span class="sem">?</span><small>${NOME_VAGA[v.fino] || v.fino}</small></button>`;
     const j = JOGADORES[v.id], fit = encaixe(j.pos, v.fino), energia = opcoes.energia ? opcoes.energia[v.id] : null;
-    const nota = notaDe(j), rendimento = Math.round(nota * fit);
+    const nota = notaDe(j), cansaco = energia != null ? Taticas.penalidadeEnergia(energia) : 0, rendimento = Math.round((nota - cansaco) * fit);
     const sel = opcoes.selecionado === i;
-    return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="left:${s.x}%;top:${s.y}%" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""}">
+    return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="left:${s.x}%;top:${s.y}%" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""}${cansaco ? ` · cansaço: -${cansaco} na nota (energia ${energia}%)` : ""}">
       <span class="peca-mudancas">${seloMudancaNota(v.id)}${seloEfeitoNota(v.id)}</span>
-      <img class="pix" src="${retrato(v.id)}" alt=""><span class="nota-em-campo"><b>${nota}</b>${fit < 1 ? `<em>→ ${rendimento}</em>` : ""}</span><small>${h(sobrenome(j.nome))}</small>
+      <img class="pix" src="${retrato(v.id)}" alt=""><span class="nota-em-campo"><b>${nota}</b>${rendimento !== nota ? `<em>→ ${rendimento}${cansaco ? `<i class="cansaco-tag">-${cansaco}</i>` : ""}</em>` : ""}</span><small>${h(sobrenome(j.nome))}</small>
       ${energia != null ? `<span class="energia ${nivelEnergia(energia)}" title="Energia ${energia}%"><i style="--v:${energia}%"></i></span>` : ""}</button>`;
   }).join("")}</div>`;
 }
@@ -33,7 +33,7 @@ function telaElenco() {
   const titulares = new Set(det.map((v) => v.id).filter(Boolean));
   $("eCampo").innerHTML = campinho(det, t.formacao, { selecionado: selecionado?.onde === "campo" ? selecionado.i : null, energia: E.energia });
   const comJogador = det.filter((v) => v.id), media = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]), 0) / Math.max(1, titulares.size);
-  const mediaPosicao = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]) * encaixe(JOGADORES[v.id].pos, v.fino), 0) / Math.max(1, titulares.size);
+  const mediaPosicao = comJogador.reduce((s, v) => s + (notaDe(JOGADORES[v.id]) - Taticas.penalidadeEnergia(energiaDe(v.id))) * encaixe(JOGADORES[v.id].pos, v.fino), 0) / Math.max(1, titulares.size);
   const energiaMedia = comJogador.reduce((s, v) => s + energiaDe(v.id), 0) / Math.max(1, comJogador.length);
   const improvisados = det.filter((v) => v.id && encaixe(JOGADORES[v.id].pos, v.fino) < 1).length;
   $("eDica").innerHTML = E.partida ? `${ic("cadeado")} A partida está em andamento: a prancheta volta depois do apito final.`

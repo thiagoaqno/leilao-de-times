@@ -55,7 +55,7 @@
   }
   // o rendimento na vaga: a nota, o encaixe da posicao dele na vaga fina (lateral na zaga, ponta de centroavante...) e o cansaco
   const slotPadrao = (slot) => ({ GK: "GOL", DEF: "ZAG", MID: "MC", ATT: "ATA" })[slot] || "MC";
-  const valorNa = (p, slot, fino) => p.nota * Taticas.afinidade(p.pos, fino || slotPadrao(slot)) * (0.84 + 0.16 * p.energia / 100);
+  const valorNa = (p, slot, fino) => (p.nota - Taticas.penalidadeEnergia(p.energia)) * Taticas.afinidade(p.pos, fino || slotPadrao(slot));
   // escala o time: as vagas da formação, cada uma com quem rende mais nela (os escolhidos primeiro, se houver)
   // as vagas da formação, na ordem do campinho: o goleiro, a defesa, o meio e o ataque
   const vagasDe = (formacao) => Taticas.vagasDe(formacao).map((v) => v.g);
@@ -100,7 +100,7 @@
   function recalcular(time) {
     // cada titular leva o encaixe da vaga em que esta (p.fit) e o grupo em que atua (p.efGrp)
     for (const v of time.campo) if (v.p) {
-      v.p.fit = Taticas.afinidade(v.p.pos, v.fino);
+      v.p.fit = Taticas.afinidade(v.p.pos, v.fino) * ((v.p.nota - Taticas.penalidadeEnergia(v.p.energia)) / v.p.nota); // os atributos também sentem o cansaço
       v.p.efGrp = v.slot === "DEF" ? "DEF" : v.slot === "ATT" ? "ATT" : v.slot === "GK" ? "GK" : ["MEI", "VOL", "MID"].includes(v.p.grp) ? v.p.grp : "MID";
     }
     const xi = time.campo.map((v) => ({ slot: v.slot, eff: v.p && !v.p.fora ? valorNa(v.p, v.slot, v.fino) : 0, cm: 1 }));
@@ -223,6 +223,21 @@
       for (const [a, b] of Array.isArray(d.trocas) ? d.trocas : []) {
         const va = time.campo.find((v) => v.p && v.p.id === a), vb = time.campo.find((v) => v.p && v.p.id === b);
         if (va && vb && va !== vb) { [va.p, vb.p] = [vb.p, va.p]; ev({ tipo: "posicao", lado: time.lado, a, b }); }
+      }
+      // ocupar vaga vazia (depois de uma expulsão ou de uma lesão sem troca), na ordem em que o técnico fez: [ "m", id, vaga ] muda de
+      // lugar alguém que está em campo; [ "e", id, vaga ] põe um reserva (gasta uma substituição)
+      for (const [tipo, pid, idx] of Array.isArray(d.ocupar) ? d.ocupar : []) {
+        const alvo = time.campo[idx];
+        if (!alvo || alvo.slot === "GK" || (alvo.p && !alvo.p.fora)) continue;
+        if (tipo === "m") {
+          const de = time.campo.find((v) => v.p && !v.p.fora && v.p.id === pid && v.slot !== "GK");
+          if (!de || de === alvo) continue;
+          alvo.p = de.p; de.p = null; ev({ tipo: "reposicao", lado: time.lado, jogador: pid, fino: alvo.fino });
+        } else if (tipo === "e") {
+          const entra = banco(time).find((p) => p.id === pid);
+          if (!entra || time.subs <= 0 || entra.grp === "GK") continue;
+          alvo.p = entra; time.emCampo.add(entra.id); time.subs--; ev({ tipo: "entrada", lado: time.lado, jogador: pid, fino: alvo.fino });
+        }
       }
       if (d.formacao && Taticas.FORMACOES[d.formacao] && d.formacao !== time.formacao) {
         time.formacao = d.formacao;

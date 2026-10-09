@@ -59,13 +59,29 @@
     for (const [g, codigos] of f) for (const c of codigos) v.push({ g, fino: c });
     return v;
   }
-  // onde cada vaga fica no campinho (x e y em %, o gol embaixo e o ataque em cima), na mesma ordem das vagas
+  // onde cada vaga fica no campinho (x e y em %, o gol embaixo e o ataque em cima), na mesma ordem das vagas. O desenho segue a função:
+  // laterais e pontas ficam colados na linha lateral; entre os do centro, o mais recuado (o volante) fica no meio e o mais avançado nas pontas
+  // do triângulo; o volante joga um pouco atrás da linha, o meia um pouco à frente e o falso 9 recuado atrás do centroavante.
+  const AJUSTE_Y = { VOL: 5, MC: 0, MEI: -5, F9: 7 }, PROFUNDIDADE = { VOL: 0, MC: 1, MEI: 2, F9: 3, ZAG: 1, ATA: 4 }, LARGOS = { LE: -1, PE: -1, LD: 1, PD: 1 };
   function spots(nome) {
     const f = FORMACOES[FORMACOES[nome] ? nome : "4-3-3"], R = f.length, [topo, base] = [15, 73];
     const out = [{ x: 50, y: 91, row: 0 }];
     f.forEach(([, codigos], r) => {
-      const y = R === 1 ? (topo + base) / 2 : base - r * (base - topo) / (R - 1), n = codigos.length, gap = n > 1 ? Math.min(26, 80 / (n - 1)) : 0;
-      codigos.forEach((c, j) => out.push({ x: 50 + (j - (n - 1) / 2) * gap, y, row: r + 1 }));
+      const y0 = R === 1 ? (topo + base) / 2 : base - r * (base - topo) / (R - 1), xs = new Array(codigos.length);
+      const centros = codigos.map((c, k) => [c, k]).filter(([c]) => !LARGOS[c]), temLargos = centros.length < codigos.length;
+      codigos.forEach((c, k) => { if (LARGOS[c]) xs[k] = LARGOS[c] < 0 ? 13 : 87; });
+      const n = centros.length, gap = n > 1 ? (temLargos ? Math.min(26, 44 / (n - 1)) : Math.min(26, 80 / (n - 1))) : 0;
+      // com número ímpar de centrais, o que é diferente dos outros (o único volante entre dois meio-campistas, o único meia entre dois volantes)
+      // fica no meio e os outros dois nos lados; nos demais casos vale a ordem da lista, da esquerda para a direita
+      const contagem = {}; for (const [c] of centros) contagem[c] = (contagem[c] || 0) + 1;
+      const unicos = centros.filter(([c]) => contagem[c] === 1);
+      let posic = centros.map(([, k], m) => [k, m]);
+      if (n % 2 && unicos.length === 1) {
+        const resto = centros.filter((x) => x !== unicos[0]), meio = (n - 1) / 2;
+        posic = [[unicos[0][1], meio], ...resto.map(([, k], m) => [k, m < meio ? m : m + 1])];
+      }
+      for (const [k, lugar] of posic) xs[k] = 50 + (lugar - (n - 1) / 2) * gap;
+      codigos.forEach((c, k) => out.push({ x: xs[k], y: y0 + (AJUSTE_Y[c] || 0), row: r + 1 }));
     });
     return out;
   }
@@ -86,6 +102,9 @@
     if ((a === "ZAG" && (b === "LE" || b === "LD")) || (b === "ZAG" && (a === "LE" || a === "LD"))) pen += 0.06;
     return Math.round(clamp(1 - pen, 0.6, 1) * 1000) / 1000;
   }
+
+  // O cansaço tira de 0 a 3 pontos da nota: 85% ou mais de energia não pesa; de 70 a 84, -1; de 50 a 69, -2; abaixo de 50, -3
+  const penalidadeEnergia = (e) => (e >= 85 ? 0 : e >= 70 ? 1 : e >= 50 ? 2 : 3);
 
   // ---------- os estilos de jogo ----------
   // bonus: o que o estilo dá quando o elenco tem o perfil (multiplicado pelo encaixe f, de 0 a 1,5); custo: o que ele cobra sempre.
@@ -150,5 +169,5 @@
       faltas: pc((1 + 0.15 * (p - 1)) * fat.faltas),
     };
   }
-  return { FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
+  return { penalidadeEnergia, FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
 });

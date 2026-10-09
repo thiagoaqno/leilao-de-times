@@ -972,3 +972,5 @@ dialog.festa::backdrop{background:#000d;backdrop-filter:blur(4px)}
 .energia.media i{background:var(--alerta)}.energia.baixa i{background:var(--erro)}
 .no-banco .energia{display:block;height:4px;margin:4px 6px 0;border-radius:2px;background:#ffffff1f;overflow:hidden}.no-banco .energia i{display:block;height:100%;width:var(--v);background:var(--ok);border-radius:2px}
 .no-banco .energia.media i{background:var(--alerta)}.no-banco .energia.baixa i{background:var(--erro)}
+.peca .cansaco-tag{font-style:normal;font-size:9px;font-weight:700;margin-left:2px;color:var(--erro);background:#00000040;padding:0 3px;border-radius:4px}
+.peca.ouro .cansaco-tag,.peca.prata .cansaco-tag,.peca.elite .cansaco-tag{background:#ffffff90;color:#9b1c1c}
