@@ -26,11 +26,11 @@ function jogarRodadas(save, n) {
 }
 const faixa = (ok) => ok.map((v, n) => (v ? n : null)).filter((n) => n != null);
 
-test("começo da temporada: 1 de 90+, ou 2 de até 87, ou 3 de até 83", () => {
+test("começo da temporada: 1 de 90+, ou 2 entre 84 e 87, ou 3 de 83 ou menos", () => {
   const save = grupo(), v = () => G.vistaDe(save, "flamengo");
   const r0 = G.regraDeCompras(v());
   assert.strictEqual(r0.tipo, "inicio");
-  assert.ok(r0.ok[90] && r0.ok[95] && r0.ok[87] && r0.ok[83] && r0.ok[60], "90+ ou até 87 entram na conta");
+  assert.ok(r0.ok[90] && r0.ok[95] && r0.ok[87] && r0.ok[84] && r0.ok[83] && r0.ok[60], "90+, de 84 a 87 e de 83 para baixo entram na conta");
   assert.ok(!r0.ok[88] && !r0.ok[89], "88 e 89 não cabem em nenhum pacote do começo");
   // um de 90+ fecha a cota
   const astro = jogador(90, 99);
@@ -42,18 +42,23 @@ test("começo da temporada: 1 de 90+, ou 2 de até 87, ou 3 de até 83", () => {
   assert.match(G.erroDeCompra(save, "flamengo", jogador(70, 80).id), /não entra nessa conta/);
 });
 
-test("começo da temporada: dois de até 87 fecham; três de até 83 cabem; o 90+ depois de um menor não cabe", () => {
-  const dois = grupo(), um = jogador(84, 87), dois2 = jogador(60, 87);
-  comprar(dois, "flamengo", um); comprar(dois, "flamengo", dois2);
-  assert.ok(G.regraDeCompras(G.vistaDe(dois, "flamengo")).ok.every((x) => !x), "dois de até 87 e acabou");
+test("começo da temporada: dois entre 84 e 87 fecham; três de 83 ou menos cabem; o 90+ depois de um menor não cabe", () => {
+  const dois = grupo(), um = jogador(84, 87), dois2 = jogador(84, 87);
+  comprar(dois, "flamengo", um);
+  const aposUm = G.regraDeCompras(G.vistaDe(dois, "flamengo"));
+  assert.ok(aposUm.ok[84] && aposUm.ok[87] && !aposUm.ok[83] && !aposUm.ok[60] && !aposUm.ok[90], "com um de 84 a 87, só falta mais um de 84 a 87");
+  assert.deepStrictEqual(aposUm.ainda, ["1 jogador entre 84 e 87"]);
+  assert.match(G.erroDeCompra(dois, "flamengo", jogador(60, 83).id), /não entra nessa conta/, "um de 84 a 87 e um de 83 ou menos não combinam");
+  comprar(dois, "flamengo", dois2);
+  assert.ok(G.regraDeCompras(G.vistaDe(dois, "flamengo")).ok.every((x) => !x), "dois entre 84 e 87 e acabou");
   const tres = grupo(), a = jogador(60, 83), b = jogador(60, 83), c = jogador(60, 83);
   comprar(tres, "flamengo", a); comprar(tres, "flamengo", b);
   const r = G.regraDeCompras(G.vistaDe(tres, "flamengo"));
   assert.ok(r.ok[83] && r.ok[60] && !r.ok[84] && !r.ok[90], "com dois de até 83, só falta mais um de até 83");
-  assert.deepStrictEqual(r.ainda, ["1 jogador de até 83"]);
+  assert.deepStrictEqual(r.ainda, ["1 jogador de 83 ou menos"]);
   assert.strictEqual(G.erroDeCompra(tres, "flamengo", c.id), null);
   comprar(tres, "flamengo", c);
-  assert.ok(G.regraDeCompras(G.vistaDe(tres, "flamengo")).ok.every((x) => !x), "três de até 83 e acabou");
+  assert.ok(G.regraDeCompras(G.vistaDe(tres, "flamengo")).ok.every((x) => !x), "três de 83 ou menos e acabou");
   const misto = grupo(), pequeno = jogador(60, 83);
   comprar(misto, "flamengo", pequeno);
   assert.match(G.erroDeCompra(misto, "flamengo", jogador(90, 99).id), /não entra nessa conta/, "um de 90+ depois de um menor não cabe: o 90+ é o pacote inteiro");
