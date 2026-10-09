@@ -200,7 +200,7 @@ function assumirClube(save, clube, nome, skin) {
 // (vistaDe: o save com os campos dele por cima, e save.clube = ele) e, depois, guarda-se de volta (guardarVista).
 const CAMPOS_CLUBE = ["clube", "tecnico", "caixa", "moral", "situacao", "escalacao", "caixaEntrada", "financas", "feed", "posJogo", "compras", "valores", "pedidos",
   "parcelas", "aVenda", "indicacoes", "tentativas", "bonusVitoria", "provocado", "efeitos", "eventosVistos", "segredos", "jogosJogados", "calendario", "rodada",
-  "partida", "ultimo", "modo", "historico", "jogosTemporada"];
+  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "entrada"];
 function vistaDe(save, clube) {
   const v = { ...save, ...save.humanos[clube].estado };
   delete v.humanos;
@@ -230,6 +230,35 @@ function novaCarreiraGrupo(humanos, { temporadas, aporte = 0, caixaIgual = 0 } =
   }
   for (const id of Object.keys(save.humanos)) delete save.caixaIA[id];
   return save;
+}
+// alguém entra com a carreira já rolando (no meio da temporada ou na segunda): assume um clube do computador no ponto em que o
+// mundo está. Os jogos que o clube já fez contam como jogados, o caixa é o que o clube tinha, o aporte do investidor entra
+// como para os outros e, fora da janela, ganha uma entrada (1 jogador de até 88 até o fim da temporada).
+function entrarNaCarreira(save, { clube, nome, skin }, { aporte = 0 } = {}) {
+  if (!save.humanos) return "Não é uma carreira em grupo.";
+  if (save.humanos[clube]) return "Esse clube já é de outro técnico.";
+  if (!BASES[BASE_PADRAO].clubes.some((c) => c.id === clube)) return "Esse clube não existe.";
+  const proxima = proximaRodadaGrupo(save), semana = proxima ? proxima.semana : Infinity;
+  const caixaDoClube = save.caixaIA ? save.caixaIA[clube] : null;
+  const v = { ...save };
+  for (const k of CAMPOS_CLUBE) delete v[k];
+  delete v.humanos;
+  assumirClube(v, clube, nome, skin);
+  const jaJogados = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, clube).filter((j) => j.semana < semana);
+  v.jogosJogados = jaJogados.map((j) => j.id); v.rodada = v.jogosJogados.length; v.jogosTemporada = v.rodada;
+  if (caixaDoClube != null) v.caixa = caixaDoClube;
+  if (save.caixaIA) delete save.caixaIA[clube];
+  const janelaAberta = Mercado.janelaAberta(rodadaDaJanela(v));
+  v.entrada = janelaAberta ? null : { temporada: v.temporada };
+  const boasVindas = v.caixaEntrada.find((e) => e.id === "boas-vindas");
+  if (boasVindas) boasVindas.texto = `A diretoria apresentou ${nome} como novo técnico, com a carreira já rolando (temporada ${v.temporada} de ${v.temporadasMax}, ${v.jogosJogados.length} jogo${v.jogosJogados.length === 1 ? "" : "s"} do clube já feito${v.jogosJogados.length === 1 ? "" : "s"}). Caixa: ${dinheiro(v.caixa)}. ${janelaAberta ? "A janela de transferências está aberta." : "A janela está fechada, mas você tem uma entrada: 1 jogador de até 88."} ${quadroDaRegra(janelaDeCompras(v)?.tipo || "entrada")}`;
+  if (aporte > 0) {
+    movimentar(v, "Aporte do investidor", aporte);
+    avisar(v, { tipo: "aporte", icone: "maleta", titulo: "Aporte do investidor", texto: `O investidor da galera pôs ${dinheiro(aporte)} no caixa. Caixa agora: ${dinheiro(v.caixa)}.` });
+  }
+  save.humanos[clube] = { nome, skin: String(skin || "").slice(0, 20) };
+  guardarVista(save, v);
+  return null;
 }
 // os clubes que dá para escolher: só o Brasileirão, ou o Brasileirão e as cinco grandes ligas
 const LIGAS_GRUPO = { brasil: ["brasileirao-2026"], mundo: ["brasileirao-2026", ...Temporada.EUROPA] };
@@ -320,11 +349,55 @@ function novaTemporadaGrupo(save) {
 
 // ---------- o mercado disputado (PR 6): o leilão entre os humanos e o olheiro ----------
 // pode abrir o leilão desse jogador? Devolve o erro (texto) ou { tipo: "cpu" | "humano", dono, minimo, teto }
+// ---------- as regras de compra da turma ----------
+// Para os clubes brasileiros não ficarem "roubados", cada técnico só leva reforço de peso por janela:
+//  - começo da temporada (a janela até a rodada 4): 1 jogador de 90 ou mais, OU 2 de até 87, OU 3 de até 83;
+//  - meio da temporada (a janela das rodadas 17 a 21): 1 jogador de até 88;
+//  - quem entra na carreira com a janela fechada ganha uma entrada: 1 jogador de até 88 (até o fim da temporada).
+// Vale para o leilão da turma (a carreira solo não tem essa regra). A nota é a de agora (com o que o jogador evoluiu).
+const PACOTES_INICIO = [{ n: 1, min: 90 }, { n: 2, max: 87 }, { n: 3, max: 83 }], PACOTE_UNICO = { n: 1, max: 88 };
+const encaixaNoPacote = (p, notas) => notas.length <= p.n && notas.every((n) => (p.min == null || n >= p.min) && (p.max == null || n <= p.max));
+const quadroDaRegra = (tipo) => (tipo === "inicio" ? "No começo da temporada cada técnico leva: 1 jogador de 90 ou mais, ou 2 de até 87, ou 3 de até 83."
+  : tipo === "meio" ? "No meio da temporada cada técnico leva 1 jogador de até 88." : "Quem entra no meio da carreira leva 1 jogador de até 88.");
+// qual regra vale agora para este clube (null: a janela está fechada e ele não tem entrada)
+function janelaDeCompras(v) {
+  const r = rodadaDaJanela(v);
+  if (Mercado.janelaAberta(r)) { const tipo = r < 4 ? "inicio" : "meio"; return { id: `${v.temporada}:${tipo}`, tipo }; }
+  if (v.entrada && v.entrada.temporada === v.temporada) return { id: `${v.temporada}:entrada`, tipo: "entrada" };
+  return null;
+}
+const notasDaJanela = (v, jan) => (v.comprasJanela && v.comprasJanela.id === jan.id ? v.comprasJanela.notas : []);
+const pacotesDa = (jan) => (jan.tipo === "inicio" ? PACOTES_INICIO : [PACOTE_UNICO]);
+function erroDeRegra(v, nota) {
+  const jan = janelaDeCompras(v); if (!jan) return "A janela de transferências está fechada.";
+  const usadas = notasDaJanela(v, jan);
+  if (pacotesDa(jan).some((p) => encaixaNoPacote(p, [...usadas, nota]))) return null;
+  return `${quadroDaRegra(jan.tipo)}${usadas.length ? ` Você já levou ${usadas.length === 1 ? "um de" : "jogadores de"} ${usadas.join(", ")}.` : ""} Um jogador de ${nota} não entra nessa conta.`;
+}
+const erroDeCompra = (save, clube, pid) => { const v = vistaDe(save, clube), j = jogadorDe(v, pid); return j ? erroDeRegra(v, notaDe(v, j)) : "Esse jogador não está disponível."; };
+function registrarCompraDaJanela(v, nota) {
+  const jan = janelaDeCompras(v); if (!jan) return;
+  if (!v.comprasJanela || v.comprasJanela.id !== jan.id) v.comprasJanela = { id: jan.id, notas: [] };
+  v.comprasJanela.notas.push(nota);
+}
+// o que a tela mostra: a regra de agora, o que já foi levado, o que ainda pode e, para cada nota, se pode
+function regraDeCompras(v) {
+  const jan = janelaDeCompras(v);
+  if (!jan) return { tipo: null, titulo: "", texto: "", usadas: [], ainda: [], ok: Array(100).fill(false) };
+  const usadas = notasDaJanela(v, jan);
+  const ainda = pacotesDa(jan).filter((p) => encaixaNoPacote(p, usadas) && p.n - usadas.length > 0).map((p) => {
+    const falta = p.n - usadas.length;
+    return `${falta} jogador${falta === 1 ? "" : "es"} ${p.min != null ? `de ${p.min} ou mais` : `de até ${p.max}`}`;
+  });
+  return { tipo: jan.tipo, titulo: jan.tipo === "inicio" ? "Começo da temporada" : jan.tipo === "meio" ? "Meio da temporada" : "Entrada na carreira", texto: quadroDaRegra(jan.tipo), usadas, ainda,
+    ok: Array.from({ length: 100 }, (_, n) => !erroDeRegra(v, n)) };
+}
+
 function infoLeilao(save, comprador, pid) {
   const v = vistaDe(save, comprador), j = jogadorDe(v, pid), dono = j && donoDe(v, pid);
   if (!j || !dono || dono === APOSENTADO || !clubeDe(v, dono)) return "Esse jogador não está disponível.";
   if (dono === comprador) return "Ele já é do seu time.";
-  if (!Mercado.janelaAberta(rodadaDaJanela(v))) return "A janela de transferências está fechada.";
+  const regra = erroDeRegra(v, notaDe(v, j)); if (regra) return regra; // a janela fechada e as regras de compra da turma
   if (elencoDe(v, comprador).length >= Mercado.ELENCO_MAX) return `O elenco já tem ${Mercado.ELENCO_MAX} jogadores. Venda alguém antes.`;
   if (save.humanos[dono]) {
     // de um amigo: começa em 70% do valor, e a carência vale (sem lucro em revenda na hora)
@@ -342,6 +415,7 @@ function erroDoLance(save, clube, leilao, valor) {
   const v = vistaDe(save, clube), atual = leilao.lances.length ? leilao.lances[leilao.lances.length - 1] : null;
   if (!(valor > 0)) return "Dê um valor.";
   if (valor > v.caixa) return `O caixa não tem ${dinheiro(valor)}.`;
+  const regra = erroDeCompra(save, clube, leilao.jogador); if (regra) return regra;
   if (elencoDe(v, clube).length >= Mercado.ELENCO_MAX) return `O elenco já tem ${Mercado.ELENCO_MAX} jogadores.`;
   if (valor < leilao.minimo) return `O mínimo é ${dinheiro(leilao.minimo)}.`;
   if (atual && valor < atual.valor + passoDoLance(atual.valor)) return `Cubra com pelo menos ${dinheiro(atual.valor + passoDoLance(atual.valor))}.`;
@@ -357,6 +431,7 @@ function concluirLeilao(save, { jogador: pid, dono, comprador, valor }) {
   v.donos[pid] = comprador; delete v.pedidos[pid]; v.aVenda = v.aVenda.filter((x) => x !== pid);
   v.salarios[pid] = Math.round(Mercado.salarioDe(comNota(v, j)) * (FATOR_LIGA[ligaDoClube(comprador)] || 1) / 1e3) * 1e3;
   v.compras[pid] = { valor, rodada: v.rodada, temporada: v.temporada };
+  registrarCompraDaJanela(v, notaDe(v, j)); // conta na regra da janela (antes de a nota mudar de clube, é a mesma)
   v.valores[pid] = [valorAtual(v, j)];
   movimentar(v, `Leilão: ${j.nome}`, -valor);
   if (!save.humanos[dono]) { v.transferencias.unshift({ rodada: v.rodada, temporada: v.temporada, jogador: pid, de: dono, para: comprador, valor, leilao: true }); Feed.transferencia(v, v.transferencias[0], ajudas); }
@@ -540,7 +615,8 @@ function fecharRodada(save, r) {
 }
 // os outros jogos da mesma semana (do mesmo campeonato e das outras competições) com os gols minuto a minuto, para a tela
 // da partida mostrar os resultados andando junto com o relógio. É o mesmo jogo da simulação do mundo (a mesma semente de
-// simuladorDoMundo), então o placar final bate com a tabela. Jogos de humanos ficam de fora: esses têm o relógio deles.
+// simuladorDoMundo), então o placar final bate com a tabela. Ficam de fora os jogos de humanos (esses têm o relógio deles) e
+// os de mata-mata (as chaves não aparecem). O gol vem só com o minuto e o lado: o artilheiro da máquina não aparece.
 const paralelosCache = new Map();
 function paralelosDaSemana(save, semana, excluir = []) {
   if (!save.calendarioMundo || semana == null) return [];
@@ -550,9 +626,9 @@ function paralelosDaSemana(save, semana, excluir = []) {
   for (const b of Object.values(basesDaTemporada(save))) for (const c of b.clubes) clubes[c.id] = c;
   const lista = [];
   for (const j of save.calendarioMundo) {
-    if (j.semana !== semana || excluir.includes(j.id) || j.aoVivo || (save.humanos && (save.humanos[j.casa] || save.humanos[j.fora])) || !clubes[j.casa] || !clubes[j.fora]) continue;
+    if (j.semana !== semana || j.mataMata || excluir.includes(j.id) || j.aoVivo || (save.humanos && (save.humanos[j.casa] || save.humanos[j.fora])) || !clubes[j.casa] || !clubes[j.fora]) continue;
     const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${semente}:${j.id}` });
-    const gols = r.placar[0] === j.placar[0] && r.placar[1] === j.placar[1] ? r.eventos.filter((e) => e.tipo === "gol").map((e) => ({ min: e.min, ...(e.acr && { acr: e.acr }), lado: e.lado, jogador: e.jogador })) : [];
+    const gols = r.placar[0] === j.placar[0] && r.placar[1] === j.placar[1] ? r.eventos.filter((e) => e.tipo === "gol").map((e) => ({ min: e.min, ...(e.acr && { acr: e.acr }), lado: e.lado })) : [];
     lista.push({ id: j.id, competicao: j.competicao, fase: j.fase, rodada: j.rodada, ...(j.perna && { perna: j.perna }), casa: j.casa, fora: j.fora, placar: [...j.placar], gols });
   }
   if (paralelosCache.size > 30) paralelosCache.delete(paralelosCache.keys().next().value);
@@ -1024,6 +1100,6 @@ module.exports = function ligarCarreira(io) {
 // para os testes: montar uma carreira e mexer nela sem o socket
 module.exports.paraTestes = { novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, APOSENTADO };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
-module.exports.grupo = { VERSAO, paralelosDaSemana, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
+module.exports.grupo = { VERSAO, paralelosDaSemana, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
   infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };

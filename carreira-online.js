@@ -22,7 +22,7 @@ const MAX_PESSOAS = 8;
 const APORTES = [0, 250e6, 500e6, 1e9];
 const CAIXAS_IGUAIS = [0, 100e6, 300e6]; // 0: cada clube com o seu orçamento
 const OPCOES_PADRAO = { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal", caixaIgual: 0 };
-const HORAS_PARADA = 24;
+const HORAS_PARADA = 48; // a sala (e a carreira) só expira depois de 48 horas sem ninguém mexer
 // os tempos (os testes aceleram pelo ambiente): o relógio do jogo (minutos de jogo por segundo), a decisão, o lance do
 // leilão (cada lance reinicia), a primeira janela do leilão, o martelo do dono e a contagem antes da rodada
 const VEL = Number(process.env.CARREIRA_VEL) || 1.5;
@@ -76,6 +76,7 @@ module.exports = function ligarCarreiraOnline(io) {
     ocupados: Object.fromEntries(room.order.filter((id) => room.players[id].clube).map((id) => [room.players[id].clube, id])),
     clubes: Carreira.clubesEscolhiveis(room.opcoes.ligas).map((c) => c.id),
     nRodada: room.nRodada || 0,
+    caixas: room.fase === "carreira" && room.save && room.save.caixaIA ? Object.fromEntries(Carreira.clubesEscolhiveis(room.opcoes.ligas).filter((c) => c.id in room.save.caixaIA).map((c) => [c.id, Math.round(room.save.caixaIA[c.id] / 1e5) * 1e5])) : null,
     rodada: room.rodada ? { n: room.rodada.n, semana: room.rodada.semana, inicio: room.rodada.inicio, velocidade: room.rodada.multiplicador || 1, jogos: room.rodada.jogos.map((j) => ({ casa: j.casa, fora: j.fora, fim: j.fim })) } : null,
     ultimaRodada: room.ultimaRodada || null,
     leilao: verLeilao(room.leilao), ultimoLeilao: room.ultimoLeilao || null,
@@ -85,7 +86,9 @@ module.exports = function ligarCarreiraOnline(io) {
   // a sede de cada pessoa (depois do começo): o estado da carreira visto pelo clube dela, com a rodada ao vivo
   const estadoDe = (room, p) => {
     if (!room.save || !p.clube || !room.save.humanos[p.clube]) return null;
-    const e = Carreira.estado(Carreira.vistaDe(room.save, p.clube));
+    const v = Carreira.vistaDe(room.save, p.clube), e = Carreira.estado(v);
+    e.regraCompras = Carreira.regraDeCompras(v); // as regras de compra da turma (e, para quem entrou agora, a janela da entrada)
+    if (e.regraCompras.tipo === "entrada" && !e.janela.aberta) e.janela = { ...e.janela, aberta: true, entrada: true };
     e.rodadaGrupo = Rd.visao(room.save, room.rodada, p.clube, Date.now());
     e.anfitriao = p.id === room.host;
     return e;
@@ -185,7 +188,7 @@ module.exports = function ligarCarreiraOnline(io) {
     if (Carreira.donoDe(Carreira.vistaDe(save, Object.keys(save.humanos)[0]), l.jogador) !== l.dono) return fecharLeilao(room, agora, "cancelado");
     for (const x of [...l.lances].reverse()) {
       const v = Carreira.vistaDe(save, x.clube);
-      if (v.caixa < x.valor || Carreira.elencoDe(v, x.clube).length >= Carreira.Mercado.ELENCO_MAX) continue;
+      if (v.caixa < x.valor || Carreira.elencoDe(v, x.clube).length >= Carreira.Mercado.ELENCO_MAX || Carreira.erroDeCompra(save, x.clube, l.jogador)) continue;
       Carreira.concluirLeilao(save, { jogador: l.jogador, dono: l.dono, comprador: x.clube, valor: x.valor });
       return fecharLeilao(room, agora, "vendido", { para: x.clube, valor: x.valor });
     }
@@ -265,7 +268,7 @@ module.exports = function ligarCarreiraOnline(io) {
       const name = limparNome(d.name);
       if (!name) return falha(cb, "Coloque o seu nome.");
       if (nomeEmUso(room, name)) return falha(cb, "Já tem alguém com esse nome na sala.");
-      if (room.fase !== "espera") return falha(cb, "A carreira desta sala já começou. Dá para assistir.");
+      // com a carreira rolando também dá para entrar: a pessoa escolhe um clube livre quando não tiver rodada nem leilão
       if (room.order.length >= MAX_PESSOAS) return falha(cb, `A sala está cheia (${MAX_PESSOAS} técnicos).`);
       const { id, token } = novaPessoa(room, name, d.skin);
       ligar(room, id); guardar(room);
@@ -289,8 +292,19 @@ module.exports = function ligarCarreiraOnline(io) {
         // trocou as ligas: quem estava num clube que saiu da lista volta a escolher
         const pode = new Set(Carreira.clubesEscolhiveis(room.opcoes.ligas).map((c) => c.id));
         for (const id of room.order) if (room.players[id].clube && !pode.has(room.players[id].clube)) room.players[id].clube = null;
+      } else if (d.type === "clube" && room.fase !== "espera") {
+        // a carreira já rolando: quem entrou depois assume um clube livre (o clube é do computador até alguém pegar)
+        if (me.clube) return falha(cb, "Você já tem um clube nesta carreira.");
+        const clube = String(d.clube || "");
+        if (!Carreira.clubesEscolhiveis(room.opcoes.ligas).some((c) => c.id === clube)) return falha(cb, "Esse clube não está nas ligas desta sala.");
+        const dono = room.order.find((id) => room.players[id].clube === clube);
+        if (dono) return falha(cb, `O ${Carreira.clubeDe(clube).nome} já é do ${room.players[dono].name}.`);
+        if (room.rodada) return falha(cb, "Tem rodada rolando: espere ela acabar para entrar.");
+        if (room.leilao) return falha(cb, "Tem leilão aberto: espere ele acabar para entrar.");
+        const r = Carreira.entrarNaCarreira(room.save, { clube, nome: me.name, skin: me.skin }, { aporte: room.opcoes.aporte });
+        if (typeof r === "string") return falha(cb, r);
+        me.clube = clube;
       } else if (d.type === "clube") {
-        if (room.fase !== "espera") return falha(cb, "A carreira já começou.");
         const clube = d.clube == null ? null : String(d.clube);
         if (clube && !Carreira.clubesEscolhiveis(room.opcoes.ligas).some((c) => c.id === clube)) return falha(cb, "Esse clube não está nas ligas desta sala.");
         const dono = clube && room.order.find((id) => id !== me.id && room.players[id].clube === clube);
@@ -409,3 +423,4 @@ module.exports = function ligarCarreiraOnline(io) {
     });
   });
 };
+module.exports.HORAS_PARADA = HORAS_PARADA;
