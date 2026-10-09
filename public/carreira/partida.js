@@ -189,6 +189,7 @@ function passo(agora) {
     J.relogio = J.grupo ? Math.min(lim, relogioGrupo()) : Math.min(lim, J.relogio + dt * 2 * J.vel);
     // um erro num efeito não pode parar o relógio da partida
     while (J.i < J.eventos.length && tempoDe(J.eventos[J.i]) <= J.relogio + 1e-9) {
+      if (window.Penalti3D?.ocupado()) break; // não revela o gol antes de a bola chegar ao gol na animação
       if (J.eventos[J.i].tipo === "disputa" && !J.pulando && agora - (J.ultDisputa || 0) < 1500 / J.vel) break; // uma cobrança por vez
       if (J.eventos[J.i].tipo === "disputa") J.ultDisputa = agora;
       const e = J.eventos[J.i++]; try { mostrarEvento(e); } catch (err) { console.warn("lance", err); } }
