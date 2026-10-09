@@ -945,3 +945,22 @@ dialog.festa::backdrop{background:#000d;backdrop-filter:blur(4px)}
 .tec-temp.meu,.ranking-tecnicos li.meu{outline:1px solid var(--acento)}.tec-temp small,.ranking-tecnicos small{display:block;color:var(--t3);font-size:11px}
 .tec-temp strong,.ranking-tecnicos strong{font:600 15px var(--mono)}.rank-tit{display:inline-flex;align-items:center;gap:4px;color:var(--ouro2);font-size:13px}.rank-tit small{display:inline}
 .abas-temporadas{margin:14px 0}
+/* as cartinhas do campinho com a cor de verdade da faixa (bronze, prata, ouro e elite), como a figurinha */
+.peca:not(.vazia){--tinta-peca:#fbe8d4;--fundo-peca:linear-gradient(155deg,#5a3c25,#2c1f15 55%,#3b2818);background:var(--fundo-peca);color:var(--tinta-peca);-webkit-backdrop-filter:none;backdrop-filter:none}
+.peca.bronze:not(.vazia){--borda-peca:#c88958}
+.peca.prata:not(.vazia){--tinta-peca:#14181d;--fundo-peca:linear-gradient(155deg,var(--prata1) 0%,var(--prata2) 40%,#eef1f4 58%,var(--prata3) 100%);--borda-peca:#ffffffc0}
+.peca.ouro:not(.vazia){--tinta-peca:#2a1c02;--fundo-peca:linear-gradient(155deg,var(--ouro1) 0%,var(--ouro2) 38%,#fbe39a 56%,var(--ouro3) 100%);--borda-peca:#fff1b8}
+.peca.elite:not(.vazia){--tinta-peca:#241500;--fundo-peca:linear-gradient(115deg,#8a5a0c 0%,#d9a43a 16%,#fff2bf 30%,#e2ad44 44%,#fff8d9 52%,#c48a22 66%,#ffe18a 82%,#8a5a0c 100%);--borda-peca:#fff3c4}
+.peca:not(.vazia) b,.peca.ouro b,.peca.elite b{color:inherit}.peca:not(.vazia) small{color:inherit;opacity:.78}
+.peca:not(.vazia) img{border-radius:8px;background:#ffffff24}
+/* as contas da tática e o estilo de jogo */
+.segmentos.largos{flex-wrap:wrap}.segmentos.largos button{flex:0 1 auto}
+.efeitos{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}
+.efeito{display:flex;flex-direction:column;gap:2px;padding:7px 9px;border-radius:var(--r3);background:var(--s2);border:1px solid var(--b1)}
+.efeito small{font-size:10px;color:var(--t3);line-height:1.2}.efeito b{font:600 15px var(--mono)}
+.efeito.bom b{color:var(--ok)}.efeito.ruim b{color:var(--erro)}.efeito.neutro b{color:var(--t2)}
+.efeito.bom{border-color:color-mix(in srgb,var(--ok) 30%,var(--b1))}.efeito.ruim{border-color:color-mix(in srgb,var(--erro) 30%,var(--b1))}
+.estilo-desc{margin:8px 0 0}
+.estilo-encaixe{margin:6px 0 0;font-size:12px;padding:8px 10px;border-radius:var(--r3);background:var(--s2);border-left:3px solid var(--t3)}
+.estilo-encaixe.bom{border-left-color:var(--ok)}.estilo-encaixe.medio{border-left-color:var(--alerta)}.estilo-encaixe.ruim{border-left-color:var(--erro)}
+.estilo-encaixe b{color:var(--t1)}

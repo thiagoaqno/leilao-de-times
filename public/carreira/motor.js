@@ -8,10 +8,10 @@
 //   (como os pênaltis do Leilão). Quem chama guarda a resposta em decisoes[id] e simula de novo: o que já aconteceu
 //   continua igual, porque o sorteio é o mesmo até aquele ponto.
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory(require("../escalacao.js"), require("../leilao/ritmo.js"));
-  else root.Motor = factory(root.Escalacao, root.Ritmo);
-})(typeof self !== "undefined" ? self : this, function (Escalacao, Ritmo) {
-  const { FIT, FORMATIONS, strength } = Escalacao;
+  if (typeof module === "object" && module.exports) module.exports = factory(require("../escalacao.js"), require("../leilao/ritmo.js"), require("./taticas.js"));
+  else root.Motor = factory(root.Escalacao, root.Ritmo, root.Taticas);
+})(typeof self !== "undefined" ? self : this, function (Escalacao, Ritmo, Taticas) {
+  const { strength } = Escalacao;
   const ZONAS = Ritmo.ZONAS, FORA = Ritmo.DUELO.FORA;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -44,26 +44,26 @@
   const PESO_PASSE = { ATT: 2, MEI: 4, MID: 3, VOL: 1.5, DEF: 1, GK: 0.1 };
   const PESO_FALTA = { ATT: 1, MEI: 1, MID: 1.4, VOL: 2.2, DEF: 2, GK: 0.1 };
   const TATICA_PADRAO = { mentalidade: 0, pressao: 1, linha: 1 };
+  // o grupo em que o jogador atua de verdade (pela vaga em que esta) e o quanto rende ali: valem nos lances e nos pesos
+  const efG = (p) => p.efGrp || p.grp;
 
   // ---------- os times ----------
   function prepararJogador(j) {
     const nota = clamp(Number(j.nota) || 60, 30, 99), atr = {};
     for (const k of ATRIBUTOS) atr[k] = clamp(Number(j.atr && j.atr[k]) || nota, 20, 99);
-    return { id: String(j.id ?? j.nome), nome: j.nome || String(j.id), grp: grupoDe(j.pos), nota, atr, mania: j.mania || null, energia: 100, amarelos: 0, fora: false, lesionado: false };
+    return { id: String(j.id ?? j.nome), nome: j.nome || String(j.id), grp: grupoDe(j.pos), pos: Taticas.posDe(j.pos), nota, atr, mania: j.mania || null, energia: 100, amarelos: 0, fora: false, lesionado: false };
   }
-  const valorNa = (p, slot) => p.nota * FIT[p.grp][slot] * (0.84 + 0.16 * p.energia / 100);
+  // o rendimento na vaga: a nota, o encaixe da posicao dele na vaga fina (lateral na zaga, ponta de centroavante...) e o cansaco
+  const slotPadrao = (slot) => ({ GK: "GOL", DEF: "ZAG", MID: "MC", ATT: "ATA" })[slot] || "MC";
+  const valorNa = (p, slot, fino) => p.nota * Taticas.afinidade(p.pos, fino || slotPadrao(slot)) * (0.84 + 0.16 * p.energia / 100);
   // escala o time: as vagas da formação, cada uma com quem rende mais nela (os escolhidos primeiro, se houver)
   // as vagas da formação, na ordem do campinho: o goleiro, a defesa, o meio e o ataque
-  function vagasDe(formacao) {
-    const form = { GK: 1, ...FORMATIONS.futebol[FORMATIONS.futebol[formacao] ? formacao : "4-3-3"] }, vagas = [];
-    for (const [g, n] of Object.entries(form)) for (let i = 0; i < n; i++) vagas.push(g);
-    return vagas;
-  }
+  const vagasDe = (formacao) => Taticas.vagasDe(formacao).map((v) => v.g);
   // escala o time: as vagas da formação, cada uma com quem rende mais nela (os escolhidos primeiro, se houver).
   // fixo: os escolhidos já vêm na ordem das vagas (o técnico pôs cada um no seu lugar); quem não puder jogar (lesão,
   // suspensão) deixa a vaga para o melhor que sobrou no elenco
   function escalar(jogadores, formacao, preferidos, fixo) {
-    const vagas = vagasDe(formacao);
+    const finas = Taticas.vagasDe(formacao), vagas = finas.map((v) => v.g);
     const livres = jogadores.filter((p) => !p.fora && !p.lesionado), em = new Array(vagas.length).fill(null), usados = new Set();
     if (fixo && preferidos && preferidos.length === vagas.length) {
       preferidos.forEach((id, i) => { const p = livres.find((x) => x.id === id); if (p && !usados.has(p.id)) { em[i] = p; usados.add(p.id); } });
@@ -76,23 +76,34 @@
       for (const i of fila) {
         if (em[i]) continue;
         let melhor = null, bv = -1;
-        for (const p of pool) if (!usados.has(p.id)) { const v = valorNa(p, vagas[i]); if (v > bv) { bv = v; melhor = p; } }
+        for (const p of pool) if (!usados.has(p.id)) { const v = valorNa(p, vagas[i], finas[i].fino); if (v > bv) { bv = v; melhor = p; } }
         if (melhor) { em[i] = melhor; usados.add(melhor.id); }
       }
     }
-    return vagas.map((slot, i) => ({ slot, p: em[i] }));
+    return vagas.map((slot, i) => ({ slot, fino: finas[i].fino, p: em[i] }));
   }
   function prepararTime(t, lado) {
     const jogadores = (t.jogadores || []).map(prepararJogador);
-    const formacao = FORMATIONS.futebol[t.formacao] ? t.formacao : "4-3-3";
-    const time = { lado, id: t.id || `time${lado}`, nome: t.nome || `Time ${lado + 1}`, jogadores, formacao, tatica: { ...TATICA_PADRAO, ...(t.tatica || {}) }, subs: AJUSTE.SUBS, cansacoAvisado: false, mexeu: 0 };
+    const formacao = Taticas.FORMACOES[t.formacao] ? t.formacao : "4-3-3";
+    const estilo = Taticas.estiloValido(t.tatica && t.tatica.estilo);
+    const time = { lado, id: t.id || `time${lado}`, nome: t.nome || `Time ${lado + 1}`, jogadores, formacao, tatica: { ...TATICA_PADRAO, ...(t.tatica || {}), estilo }, subs: AJUSTE.SUBS, cansacoAvisado: false, mexeu: 0 };
     time.campo = escalar(jogadores, formacao, t.titulares, t.fixo);
+    // estilo "auto" (o computador): o que mais combina com o elenco que vai a campo
+    if (t.tatica && t.tatica.estilo === "auto") time.tatica.estilo = Taticas.estiloIdeal(time.campo.filter((v) => v.p).map((v) => ({ grp: v.p.grp, atr: v.p.atr })));
     time.emCampo = new Set(time.campo.filter((v) => v.p).map((v) => v.p.id));
     recalcular(time);
     return time;
   }
   function recalcular(time) {
-    const xi = time.campo.map((v) => ({ slot: v.slot, eff: v.p && !v.p.fora ? valorNa(v.p, v.slot) : 0, cm: 1 }));
+    // cada titular leva o encaixe da vaga em que esta (p.fit) e o grupo em que atua (p.efGrp)
+    for (const v of time.campo) if (v.p) {
+      v.p.fit = Taticas.afinidade(v.p.pos, v.fino);
+      v.p.efGrp = v.slot === "DEF" ? "DEF" : v.slot === "ATT" ? "ATT" : v.slot === "GK" ? "GK" : ["MEI", "VOL", "MID"].includes(v.p.grp) ? v.p.grp : "MID";
+    }
+    const xi = time.campo.map((v) => ({ slot: v.slot, eff: v.p && !v.p.fora ? valorNa(v.p, v.slot, v.fino) : 0, cm: 1 }));
+    // o estilo de jogo: o bonus vale pelo encaixe do elenco (nos 11 em campo), o custo vale sempre
+    const jogando = time.campo.filter((v) => v.p && !v.p.fora).map((v) => ({ grp: v.p.efGrp, atr: v.p.atr }));
+    time.estF = Taticas.encaixe(time.tatica.estilo, jogando); time.est = Taticas.fatores(time.tatica.estilo, time.estF);
     const fora = time.campo.filter((v) => !v.p || v.p.fora).length;
     const f = strength(xi.map((x) => (x.eff ? x : { ...x, eff: 30 })));
     const menos = Math.pow(0.9, fora); // cada um a menos pesa
@@ -101,8 +112,8 @@
   }
   const titulares = (time) => time.campo.filter((v) => v.p && !v.p.fora).map((v) => v.p);
   const banco = (time) => time.jogadores.filter((p) => !time.emCampo.has(p.id) && !p.fora && !p.lesionado && !p.saiu);
-  const media = (lista, k) => (lista.length ? lista.reduce((s, p) => s + (k ? p.atr[k] : p.nota), 0) / lista.length : 50);
-  const doGrupo = (time, gs) => titulares(time).filter((p) => gs.includes(p.grp));
+  const media = (lista, k) => (lista.length ? lista.reduce((s, p) => s + (k ? p.atr[k] * (p.fit || 1) : p.nota), 0) / lista.length : 50);
+  const doGrupo = (time, gs) => titulares(time).filter((p) => gs.includes(efG(p)));
   function sortearPeso(rng, lista, peso) {
     const total = lista.reduce((s, p) => s + peso(p), 0);
     let r = rng() * total;
@@ -122,6 +133,10 @@
   const pct = (x) => Math.round(clamp(x, 0.03, 0.97) * 100) / 100;
   // opções de cada lance: chance de dar certo e o que acontece se der errado (quanto o gol fica provável)
   function opcoesDoLance(tipo, at, df, quem, goleiro) {
+    const lista = opcoesBase(tipo, at, df, quem, goleiro), aj = at.est ? at.est.lance : {};
+    return lista.map((o) => (aj[o.id] ? { ...o, chance: pct(o.chance + aj[o.id]) } : o));
+  }
+  function opcoesBase(tipo, at, df, quem, goleiro) {
     const atq = doGrupo(at, ["ATT", "MEI"]), dfs = doGrupo(df, ["DEF", "VOL"]);
     const gk = goleiro ? goleiro.atr.gol : 45, defesa = media(dfs, "def"), fisD = media(dfs, "fis");
     if (tipo === "ataque_favor") return [
@@ -189,20 +204,24 @@
       return {
         tipo: "tatica", motivo, lado: time.lado, formacao: time.formacao, tatica: { ...time.tatica }, subs: time.subs,
         titulares: titulares(time).map((p) => ({ id: p.id, nome: p.nome, pos: p.grp, nota: p.nota, energia: Math.round(p.energia), amarelos: p.amarelos })),
-        campo: time.campo.map((v) => ({ slot: v.slot, id: v.p && !v.p.fora ? v.p.id : null })), // o lugar de cada um, para o campinho
+        campo: time.campo.map((v) => ({ slot: v.slot, fino: v.fino, id: v.p && !v.p.fora ? v.p.id : null })), // o lugar de cada um, para o campinho
+        estiloF: time.estF,
         banco: banco(time).map((p) => ({ id: p.id, nome: p.nome, pos: p.grp, nota: p.nota })),
       };
     }
     function aplicarTatica(time, d) {
       if (!d || typeof d !== "object") return;
-      if (d.tatica) for (const k of Object.keys(TATICA_PADRAO)) if (d.tatica[k] != null) time.tatica[k] = clamp(Math.round(Number(d.tatica[k]) || 0), k === "mentalidade" ? -2 : 0, 2);
+      if (d.tatica) {
+        for (const k of Object.keys(TATICA_PADRAO)) if (d.tatica[k] != null) time.tatica[k] = clamp(Math.round(Number(d.tatica[k]) || 0), k === "mentalidade" ? -2 : 0, 2);
+        if (d.tatica.estilo != null) time.tatica.estilo = Taticas.estiloValido(d.tatica.estilo);
+      }
       for (const [sai, entra] of Array.isArray(d.subs) ? d.subs : []) substituir(time, sai, entra);
       // trocar dois de lugar no campo (sem gastar substituição)
       for (const [a, b] of Array.isArray(d.trocas) ? d.trocas : []) {
         const va = time.campo.find((v) => v.p && v.p.id === a), vb = time.campo.find((v) => v.p && v.p.id === b);
         if (va && vb && va !== vb) { [va.p, vb.p] = [vb.p, va.p]; ev({ tipo: "posicao", lado: time.lado, a, b }); }
       }
-      if (d.formacao && FORMATIONS.futebol[d.formacao] && d.formacao !== time.formacao) {
+      if (d.formacao && Taticas.FORMACOES[d.formacao] && d.formacao !== time.formacao) {
         time.formacao = d.formacao;
         time.campo = escalar(time.jogadores.filter((p) => time.emCampo.has(p.id)), d.formacao);
         ev({ tipo: "formacao", lado: time.lado, formacao: d.formacao });
@@ -237,7 +256,7 @@
         const cansado = titulares(time).filter((p) => p.grp !== "GK").sort((a, b) => a.energia - b.energia)[0];
         const vaga = cansado && time.campo.find((v) => v.p === cansado);
         if (cansado && cansado.energia < 75 && vaga) {
-          const melhor = banco(time).filter((p) => p.grp !== "GK").sort((a, b) => valorNa(b, vaga.slot) - valorNa(a, vaga.slot))[0];
+          const melhor = banco(time).filter((p) => p.grp !== "GK").sort((a, b) => valorNa(b, vaga.slot, vaga.fino) - valorNa(a, vaga.slot, vaga.fino))[0];
           if (melhor && substituir(time, cansado.id, melhor.id)) time.mexeu++;
         }
       }
@@ -250,20 +269,20 @@
       if (controla === 1 - at.lado) { golsContra++; parada(times[controla], `gol${golsContra}`, "gol_sofrido"); }
       else if (ambos) { golsContra++; parada(times[1 - at.lado], `gol${golsContra}`, "gol_sofrido"); }
     }
-    function finalizador(at) { return sortearPeso(rng, titulares(at), (p) => PESO_GOL[p.grp] * p.atr.fin); }
-    function garcom(at, autor) { const l = titulares(at).filter((p) => p !== autor && p.grp !== "GK"); return l.length && rng() < 0.75 ? sortearPeso(rng, l, (p) => PESO_PASSE[p.grp] * p.atr.pas) : null; }
+    function finalizador(at) { return sortearPeso(rng, titulares(at), (p) => PESO_GOL[efG(p)] * p.atr.fin * (p.fit || 1)); }
+    function garcom(at, autor) { const l = titulares(at).filter((p) => p !== autor && p.grp !== "GK"); return l.length && rng() < 0.75 ? sortearPeso(rng, l, (p) => PESO_PASSE[efG(p)] * p.atr.pas) : null; }
 
     // um lance de `at` contra `df`
     function lance(at, df) {
       est[at.lado].lances++;
       const r = rng(), tipo = r < AJUSTE.PENALTI ? "penalti" : r < AJUSTE.PENALTI + AJUSTE.FALTA_PERIGOSA ? "falta" : "jogada";
       const perigosa = tipo !== "jogada" || rng() < AJUSTE.PERIGOSA;
-      const autor = tipo === "jogada" ? finalizador(at) : sortearPeso(rng, titulares(at), (p) => (p.grp === "GK" ? 0 : p.atr.fin * (p.grp === "ATT" ? 2 : 1)));
+      const autor = tipo === "jogada" ? finalizador(at) : sortearPeso(rng, titulares(at), (p) => (p.grp === "GK" ? 0 : p.atr.fin * (efG(p) === "ATT" ? 2 : 1)));
       const gk = df.gk, gkNota = gk ? gk.atr.gol : 40;
       const decisivo = modo === 3 && (controla != null || ambos) && perigosa && decisivos < AJUSTE.MAX_DECISIVOS && rng() < AJUSTE.DECISIVO;
       if (decisivo) return ambos ? lanceDosDois(at, df, tipo, autor, gk) : lanceDecisivo(at, df, tipo, autor, gk);
       let conv = tipo === "penalti" ? AJUSTE.CONV_PENALTI : tipo === "falta" ? AJUSTE.CONV_FALTA : perigosa ? AJUSTE.CONV_PERIGOSA : AJUSTE.CONV_COMUM;
-      if (tipo !== "penalti") conv *= Math.exp(0.03 * (autor.atr.fin - gkNota)) * (1 + 0.1 * (df.tatica.linha - 1));
+      if (tipo !== "penalti") conv *= Math.exp(0.03 * (autor.atr.fin - gkNota)) * (1 + 0.1 * (df.tatica.linha - 1)) * at.est.conv;
       est[at.lado].chutes++;
       if (tipo === "penalti") ev({ tipo: "penalti", lado: at.lado, jogador: autor.id });
       if (rng() < conv) { est[at.lado].noAlvo++; return gol(at, autor, tipo === "jogada" ? garcom(at, autor) : null, tipo); }
@@ -336,11 +355,11 @@
     function sortearIndice(r, pesos) { let x = r() * pesos.reduce((a, b) => a + b, 0); for (let i = 0; i < pesos.length; i++) { x -= pesos[i]; if (x <= 0) return i; } return pesos.length - 1; }
 
     function faltasECartoes(time) {
-      if (rng() >= AJUSTE.FALTA * (1 + 0.15 * (time.tatica.pressao - 1))) return;
+      if (rng() >= AJUSTE.FALTA * (1 + 0.15 * (time.tatica.pressao - 1)) * time.est.faltas) return;
       est[time.lado].faltas++;
       const r = rng();
       if (r >= AJUSTE.AMARELO + AJUSTE.VERMELHO) return;
-      const p = sortearPeso(rng, titulares(time), (x) => PESO_FALTA[x.grp]);
+      const p = sortearPeso(rng, titulares(time), (x) => PESO_FALTA[efG(x)]);
       if (r < AJUSTE.VERMELHO || ++p.amarelos >= 2) expulsar(time, p, r < AJUSTE.VERMELHO ? "direto" : "segundo_amarelo");
       else { est[time.lado].amarelos++; ev({ tipo: "amarelo", lado: time.lado, jogador: p.id }); }
     }
@@ -361,11 +380,11 @@
       p.lesionado = true;
       ev({ tipo: "lesao", lado: time.lado, jogador: p.id });
       const vaga = time.campo.find((v) => v.p === p);
-      const subst = banco(time).filter((x) => (vaga.slot === "GK") === (x.grp === "GK")).sort((a, b) => valorNa(b, vaga.slot) - valorNa(a, vaga.slot))[0];
+      const subst = banco(time).filter((x) => (vaga.slot === "GK") === (x.grp === "GK")).sort((a, b) => valorNa(b, vaga.slot, vaga.fino) - valorNa(a, vaga.slot, vaga.fino))[0];
       if (!subst || !substituir(time, p.id, subst.id)) { vaga.p = null; time.emCampo.delete(p.id); recalcular(time); }
     }
     function cansar(time) {
-      const gasto = 0.24 + 0.1 * time.tatica.pressao;
+      const gasto = (0.24 + 0.1 * time.tatica.pressao) * time.est.cansaco;
       for (const p of titulares(time)) p.energia = Math.max(30, p.energia - gasto * (1.15 - p.atr.fis / 400) * (p.grp === "GK" ? 0.3 : 1));
     }
     function minutoDeJogo() {
@@ -375,7 +394,8 @@
         const at = times[a], df = times[d];
         const mando = neutro ? 1 : a === 0 ? AJUSTE.MANDO : AJUSTE.VISITANTE;
         const taxa = AJUSTE.CHANCE * Math.exp(AJUSTE.K * (at.att - df.def)) * mando
-          * (1 + 0.12 * at.tatica.mentalidade) * (1 + 0.08 * df.tatica.mentalidade) * (1 - 0.06 * (df.tatica.pressao - 1)) * (1 - 0.04 * (df.tatica.linha - 1));
+          * (1 + 0.12 * at.tatica.mentalidade) * (1 + 0.08 * df.tatica.mentalidade) * (1 - 0.06 * (df.tatica.pressao - 1)) * (1 - 0.04 * (df.tatica.linha - 1))
+          * at.est.chance * df.est.cede;
         if (rng() < taxa) lance(at, df);
       }
       if (ambos && modo >= 2) {
@@ -470,7 +490,13 @@
   // quem entra jogando se o técnico deixar no automático (a mesma conta da partida)
   const escalacaoAutomatica = (t) => titulares(prepararTime(t, 0)).map((p) => p.id);
   // a escalação com o lugar de cada um (na ordem das vagas de vagasDe): para o campinho da tela
-  const escalacaoDetalhada = (t) => prepararTime(t, 0).campo.map((v) => ({ slot: v.slot, id: v.p ? v.p.id : null }));
+  const escalacaoDetalhada = (t) => prepararTime(t, 0).campo.map((v) => ({ slot: v.slot, fino: v.fino, id: v.p ? v.p.id : null }));
+  // o estilo de jogo de um time cru ({ jogadores, formacao, titulares, tatica }): o encaixe do elenco nos 11 e as contas, para a tela
+  function resumoDoEstilo(t, estilo) {
+    const time = prepararTime({ ...t, tatica: { ...(t.tatica || {}), estilo: estilo || (t.tatica && t.tatica.estilo) } }, 0);
+    const jogando = time.campo.filter((v) => v.p).map((v) => ({ grp: v.p.efGrp, atr: v.p.atr }));
+    return { f: time.estF, perfil: Taticas.perfilDe(time.tatica.estilo, jogando), fat: time.est };
+  }
 
-  return { AJUSTE, simularPartida, decisaoAutomatica, escalacaoAutomatica, escalacaoDetalhada, vagasDe, valorNa: (j, slot) => valorNa(prepararJogador(j), slot), sorteDe, grupoDe };
+  return { AJUSTE, simularPartida, decisaoAutomatica, escalacaoAutomatica, escalacaoDetalhada, vagasDe, valorNa: (j, slot, fino) => valorNa(prepararJogador(j), slot, fino), resumoDoEstilo, sorteDe, grupoDe };
 });

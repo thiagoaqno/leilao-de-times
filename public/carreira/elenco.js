@@ -6,16 +6,16 @@
 let selecionado = null; // { onde: "campo", i } ou { onde: "banco", pid }
 
 const grupoDe = (pos) => Motor.grupoDe(pos);
-const encaixe = (pos, slot) => Escalacao.FIT[grupoDe(pos)][slot]; // 1 = posição dele; menos = improvisado
-const NOME_VAGA = { GK: "Gol", DEF: "Defesa", MID: "Meio", ATT: "Ataque" };
+const encaixe = (pos, vaga) => Taticas.afinidade(pos, vaga); // 1 = posição dele; menos = improvisado (lateral na zaga, ponta de centroavante...)
+const NOME_VAGA = { GOL: "Gol", ZAG: "Zagueiro", LE: "Lat. esq.", LD: "Lat. dir.", VOL: "Volante", MC: "Meio", MEI: "Meia", PE: "Ponta esq.", PD: "Ponta dir.", ATA: "Centroavante" };
 
 // o campinho: peças nas posições da formação (spotsOf: o gol embaixo, o ataque em cima)
 function campinho(detalhe, formacao, opcoes = {}) {
-  const spots = Escalacao.spotsOf(formacao, "futebol");
+  const spots = Taticas.spots(formacao);
   return `<div class="gramado">${'<i class="linha-meio"></i><i class="circulo"></i><i class="area cima"></i><i class="area baixo"></i>'}${detalhe.map((v, i) => {
     const s = spots[i]; if (!s) return "";
-    if (!v.id) return `<button class="peca vazia" data-i="${i}" style="left:${s.x}%;top:${s.y}%"><span class="sem">?</span><small>${NOME_VAGA[v.slot]}</small></button>`;
-    const j = JOGADORES[v.id], fit = encaixe(j.pos, v.slot), energia = opcoes.energia ? opcoes.energia[v.id] : null;
+    if (!v.id) return `<button class="peca vazia" data-i="${i}" style="left:${s.x}%;top:${s.y}%"><span class="sem">?</span><small>${NOME_VAGA[v.fino] || v.fino}</small></button>`;
+    const j = JOGADORES[v.id], fit = encaixe(j.pos, v.fino), energia = opcoes.energia ? opcoes.energia[v.id] : null;
     const nota = notaDe(j), rendimento = Math.round(nota * fit);
     const sel = opcoes.selecionado === i;
     return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="left:${s.x}%;top:${s.y}%" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""}">
@@ -30,18 +30,24 @@ function telaElenco() {
   const titulares = new Set(det.map((v) => v.id).filter(Boolean));
   $("eCampo").innerHTML = campinho(det, t.formacao, { selecionado: selecionado?.onde === "campo" ? selecionado.i : null });
   const comJogador = det.filter((v) => v.id), media = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]), 0) / Math.max(1, titulares.size);
-  const mediaPosicao = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]) * encaixe(JOGADORES[v.id].pos, v.slot), 0) / Math.max(1, titulares.size);
-  const improvisados = det.filter((v) => v.id && encaixe(JOGADORES[v.id].pos, v.slot) < 1).length;
+  const mediaPosicao = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]) * encaixe(JOGADORES[v.id].pos, v.fino), 0) / Math.max(1, titulares.size);
+  const improvisados = det.filter((v) => v.id && encaixe(JOGADORES[v.id].pos, v.fino) < 1).length;
   $("eDica").innerHTML = E.partida ? `${ic("cadeado")} A partida está em andamento: a prancheta volta depois do apito final.`
     : selecionado ? `${ic("troca")} Agora toque em quem vai trocar de lugar com ${h(sobrenome(nomeJogador(selecionado.onde === "campo" ? det[selecionado.i].id : selecionado.pid)))}. Toque de novo para ver a ficha.`
     : `${ic("dedo")} Toque num jogador e depois em outro para trocar os dois de lugar. Do banco para o campo, entra no time.`;
   $("eForca").innerHTML = `Média dos titulares: <b>${media.toFixed(1)}</b> · rendimento nas posições: <b class="${mediaPosicao < media - 0.05 ? "aviso-txt" : ""}">${mediaPosicao.toFixed(1)}</b>${improvisados ? ` · <span class="aviso-txt">${improvisados} improvisado${improvisados > 1 ? "s" : ""}</span>` : ""}${efeitoDe("time") ? ` · time ${sinalDe(efeitoDe("time"))} no próximo jogo` : ""}${esc.fixo ? " · escalação sua" : " · escalação automática"}`;
   // os controles
   const seg = (id, lista, atual, chave) => { $(id).innerHTML = lista.map(([v, t]) => `<button data-${chave}="${v}" aria-pressed="${String(v) === String(atual)}">${t}</button>`).join(""); };
-  seg("eFormacao", Object.keys(Escalacao.FORMATIONS.futebol).map((f) => [f, f]), esc.formacao, "formacao");
+  seg("eFormacao", Taticas.NOMES_FORMACOES.map((f) => [f, f]), esc.formacao, "formacao");
+  $("eFormacaoInfo").textContent = Taticas.DESCRICAO_FORMACAO[esc.formacao] || "";
   seg("eMentalidade", MENTALIDADE.map((t, i) => [i - 2, t]), esc.tatica.mentalidade, "mentalidade");
   seg("ePressao", NIVEL.map((t, i) => [i, t]), esc.tatica.pressao, "pressao");
   seg("eLinha", NIVEL.map((t, i) => [i, t]), esc.tatica.linha, "linha");
+  // o que cada opção muda (title) e o painel com as contas do que está escolhido
+  const tat = { ...esc.tatica, estilo: esc.tatica.estilo || "equilibrado" };
+  for (const [id, chave] of [["eMentalidade", "mentalidade"], ["ePressao", "pressao"], ["eLinha", "linha"]]) for (const b of $(id).querySelectorAll("button")) b.title = dicaDaOpcao(tat, chave, +b.dataset[chave], t);
+  $("eEstilo").innerHTML = estiloHTML(tat, t);
+  $("eEfeitos").innerHTML = chipsDeEfeito(efeitosDaTatica(tat, t).ef);
   $("eAuto").disabled = !esc.fixo && !esc.titulares;
   // o banco: o resto do elenco, por posição
   const ordem = ["GOL", "ZAG", "LD", "LE", "VOL", "MC", "MEI", "PE", "PD", "ATA"];
@@ -83,7 +89,7 @@ $("eBanco").addEventListener("click", async (e) => {
 });
 // formação e tática
 document.addEventListener("click", async (e) => {
-  const b = e.target.closest("#elenco [data-formacao], #elenco [data-mentalidade], #elenco [data-pressao], #elenco [data-linha]"); if (!b || E.partida) return;
+  const b = e.target.closest("#elenco [data-formacao], #elenco [data-mentalidade], #elenco [data-pressao], #elenco [data-linha], #elenco [data-estilo]"); if (!b || E.partida) return;
   const esc = E.escalacao;
   if (b.dataset.formacao) {
     // os mesmos 11, e o motor acha o melhor lugar de cada um na formação nova
@@ -91,6 +97,7 @@ document.addEventListener("click", async (e) => {
     selecionado = null;
     return salvarEscalacao(ids.length === 11 && esc.titulares ? { formacao: b.dataset.formacao, titulares: ids, fixo: false } : { formacao: b.dataset.formacao }, { tipo: "formacao" });
   }
+  if (b.dataset.estilo) return salvarEscalacao({ tatica: { ...esc.tatica, estilo: b.dataset.estilo } });
   const k = ["mentalidade", "pressao", "linha"].find((x) => b.dataset[x] != null);
   salvarEscalacao({ tatica: { ...esc.tatica, [k]: +b.dataset[k] } });
 });

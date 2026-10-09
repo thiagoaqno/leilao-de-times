@@ -68,7 +68,7 @@ test("carreira: escalação e calendário mundial no servidor", async () => {
   const ids = [elenco.find((j) => j.pos === "GOL"), ...elenco.filter((j) => j.pos !== "GOL").slice(0, 10)].map((j) => j.id);
   const e = await pedir(a, "escalacao", { formacao: "4-4-2", tatica: { mentalidade: 1, pressao: 2, linha: 0 }, titulares: ids });
   assert.deepStrictEqual(e.estado.escalacao.titulares, ids);
-  assert.deepStrictEqual(e.estado.escalacao.tatica, { mentalidade: 1, pressao: 2, linha: 0 });
+  assert.deepStrictEqual(e.estado.escalacao.tatica, { mentalidade: 1, pressao: 2, linha: 0, estilo: "equilibrado" });
   let r = e;
   for (let i = 0; i < 3; i++) r = await pedir(a, "jogar", { modo: 1 });
   assert.strictEqual(r.estado.rodada, 3);

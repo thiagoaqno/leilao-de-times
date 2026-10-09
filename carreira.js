@@ -13,7 +13,7 @@ const Eventos = require("./carreira-eventos.js");
 const Feed = require("./carreira-feed.js");
 const Orcamentos = require("./public/carreira/orcamentos.js");
 const Evolucao = require("./public/carreira/evolucao.js");
-const { FORMATIONS } = require("./public/escalacao.js");
+const Taticas = require("./public/carreira/taticas.js");
 const crypto = require("crypto");
 
 // As carreiras antigas continuam na base em que nasceram; as novas enxergam o mundo inteiro.
@@ -179,7 +179,7 @@ function novaCarreira(nome, clube, skin, temporadas = Evolucao.TEMPORADAS.padrao
 // o técnico assume o clube: o calendário dele, o caixa, a situação, a escalação, o aviso de boas-vindas e o post no feed
 function assumirClube(save, clube, nome, skin) {
   Object.assign(save, { clube, tecnico: { nome, skin: String(skin || "").slice(0, 20) }, calendario: [], jogosJogados: [], rodada: 0, modo: 1,
-    escalacao: { formacao: clubeDe(save, clube).formacao, tatica: { mentalidade: 0, pressao: 1, linha: 1 }, titulares: null, fixo: false },
+    escalacao: { formacao: clubeDe(save, clube).formacao, tatica: { mentalidade: 0, pressao: 1, linha: 1, estilo: "equilibrado" }, titulares: null, fixo: false },
     partida: null, ultimo: null, historico: [] });
   save.calendario = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, clube).map((j) => [[j.casa, j.fora]]);
   completar(save);
@@ -539,7 +539,7 @@ function timeDe(save, id) {
     id: c.id, nome: c.nome,
     jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
     formacao: meu ? save.escalacao.formacao : c.formacao,
-    tatica: meu ? save.escalacao.tatica : { mentalidade: 0, pressao: 1, linha: 1 },
+    tatica: meu ? save.escalacao.tatica : { mentalidade: 0, pressao: 1, linha: 1, estilo: "auto" }, // o computador escolhe o estilo que combina com o elenco
     titulares: meu && save.escalacao.titulares ? save.escalacao.titulares : undefined,
     fixo: meu && !!save.escalacao.fixo,
   };
@@ -1042,8 +1042,8 @@ function estadoMundo(save) {
 
 function limparEscalacao(save, d) {
   const e = save.escalacao, elenco = elencoDe(save, save.clube);
-  if (d.formacao && FORMATIONS.futebol[d.formacao]) e.formacao = d.formacao;
-  if (d.tatica && typeof d.tatica === "object") e.tatica = { mentalidade: inteiro(d.tatica.mentalidade, -2, 2, 0), pressao: inteiro(d.tatica.pressao, 0, 2, 1), linha: inteiro(d.tatica.linha, 0, 2, 1) };
+  if (d.formacao && Taticas.FORMACOES[d.formacao]) e.formacao = d.formacao;
+  if (d.tatica && typeof d.tatica === "object") e.tatica = { mentalidade: inteiro(d.tatica.mentalidade, -2, 2, 0), pressao: inteiro(d.tatica.pressao, 0, 2, 1), linha: inteiro(d.tatica.linha, 0, 2, 1), estilo: Taticas.estiloValido(d.tatica.estilo) };
   if (d.titulares === null) { e.titulares = null; e.fixo = false; }
   else if (Array.isArray(d.titulares)) {
     const ids = d.titulares.map(String);
@@ -1064,8 +1064,8 @@ function limparDecisao(parado, d) {
   }
   const out = {}, par = (l, max) => (Array.isArray(l) ? l.slice(0, max).filter((s) => Array.isArray(s) && s.length === 2).map(([a, b]) => [String(a), String(b)]) : undefined);
   if (d && typeof d === "object") {
-    if (d.tatica && typeof d.tatica === "object") out.tatica = { mentalidade: inteiro(d.tatica.mentalidade, -2, 2, 0), pressao: inteiro(d.tatica.pressao, 0, 2, 1), linha: inteiro(d.tatica.linha, 0, 2, 1) };
-    if (d.formacao && FORMATIONS.futebol[d.formacao]) out.formacao = d.formacao;
+    if (d.tatica && typeof d.tatica === "object") out.tatica = { mentalidade: inteiro(d.tatica.mentalidade, -2, 2, 0), pressao: inteiro(d.tatica.pressao, 0, 2, 1), linha: inteiro(d.tatica.linha, 0, 2, 1), estilo: Taticas.estiloValido(d.tatica.estilo) };
+    if (d.formacao && Taticas.FORMACOES[d.formacao]) out.formacao = d.formacao;
     if (d.subs) out.subs = par(d.subs, 5);
     if (d.trocas) out.trocas = par(d.trocas, 10);
   }
