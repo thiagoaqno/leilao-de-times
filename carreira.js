@@ -538,6 +538,30 @@ function fecharRodada(save, r) {
   Feed.daRodada(save, { rodada, r, novos, transferencias: save.transferencias.slice(0, save.transferencias.length - transfAntes), ajudas });
   registrarTemporada(save);
 }
+// os outros jogos da mesma semana (do mesmo campeonato e das outras competições) com os gols minuto a minuto, para a tela
+// da partida mostrar os resultados andando junto com o relógio. É o mesmo jogo da simulação do mundo (a mesma semente de
+// simuladorDoMundo), então o placar final bate com a tabela. Jogos de humanos ficam de fora: esses têm o relógio deles.
+const paralelosCache = new Map();
+function paralelosDaSemana(save, semana, excluir = []) {
+  if (!save.calendarioMundo || semana == null) return [];
+  const chave = `${save.semente}:${save.temporada}:${semana}:${excluir.join(",")}`;
+  if (paralelosCache.has(chave)) return paralelosCache.get(chave);
+  const clubes = {}, semente = `${save.semente}:${save.temporada}`;
+  for (const b of Object.values(basesDaTemporada(save))) for (const c of b.clubes) clubes[c.id] = c;
+  const lista = [];
+  for (const j of save.calendarioMundo) {
+    if (j.semana !== semana || excluir.includes(j.id) || j.aoVivo || (save.humanos && (save.humanos[j.casa] || save.humanos[j.fora])) || !clubes[j.casa] || !clubes[j.fora]) continue;
+    const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${semente}:${j.id}` });
+    const gols = r.placar[0] === j.placar[0] && r.placar[1] === j.placar[1] ? r.eventos.filter((e) => e.tipo === "gol").map((e) => ({ min: e.min, ...(e.acr && { acr: e.acr }), lado: e.lado, jogador: e.jogador })) : [];
+    lista.push({ id: j.id, competicao: j.competicao, fase: j.fase, rodada: j.rodada, ...(j.perna && { perna: j.perna }), casa: j.casa, fora: j.fora, placar: [...j.placar], gols });
+  }
+  if (paralelosCache.size > 30) paralelosCache.delete(paralelosCache.keys().next().value);
+  paralelosCache.set(chave, lista);
+  return lista;
+}
+const paralelosDaPartida = (save, p) => (save.base === BASE_PADRAO && save.calendarioMundo && p.jogoId
+  ? paralelosDaSemana(save, (save.calendarioMundo.find((j) => j.id === p.jogoId) || {}).semana, [p.jogoId]) : []);
+
 // fecha o jogo do clube (save.clube) no calendário mundial. Na carreira em grupo, o jogo de dois humanos fecha uma vez
 // para cada um: o que é de todos (gols, cartões, desempenho, o resultado) só na primeira (comum), a rodada cumprida
 // pelos machucados e suspensos uma vez por rodada (cumprir), e o mundo é recalculado no fim da rodada (recalcular).
@@ -710,7 +734,7 @@ function estadoBrasileirao(save) {
   let partida = null;
   if (save.partida) {
     const r = simularMinha(save);
-    partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times };
+    partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times, paralelos: paralelosDaPartida(save, save.partida) };
   }
   const artilharia = Object.entries(save.gols).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, gols }));
   const elenco = elencoDe(save, save.clube);
@@ -751,7 +775,7 @@ function estadoMundo(save) {
     .filter((j) => !j.mataMata || save.jogosJogados.includes(j.id) || (proximo && j.id === proximo.id))
     .map((j) => ({ ...j, placar: save.jogosJogados.includes(j.id) ? j.placar : null }));
   let partida = null;
-  if (save.partida) { const r = simularMinha(save); partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times }; }
+  if (save.partida) { const r = simularMinha(save); partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times, paralelos: paralelosDaPartida(save, save.partida) }; }
   const elenco = elencoDe(save, save.clube), artilharia = Object.entries(save.gols).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, gols }));
   return { base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, artilharia, partida, ultimo: save.ultimo, historico: save.historico, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
     caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.slice(0, 30), posJogo: save.posJogo };
@@ -940,6 +964,13 @@ module.exports = function ligarCarreira(io) {
     });
     socket.on("escalacao", (d = {}, cb) => comCarreira(cb, (save) => (save.partida ? "Não dá para mexer na escalação com a partida em andamento." : limparEscalacao(save, d))));
     socket.on("modo", (d = {}, cb) => comCarreira(cb, (save) => { save.modo = inteiro(d.modo, 1, 3, 1); }));
+    // os outros jogos da semana de um jogo que já foi jogado (ou está em andamento): o painel ao vivo da partida. Quando a
+    // partida acaba na hora (só o resultado), o estado já vem sem a partida em andamento e a tela pede aqui.
+    socket.on("paralelos", (d = {}, cb) => comCarreira(cb, (save) => {
+      const id = String(d.jogoId || ""), meu = (save.partida && save.partida.jogoId === id) || (save.ultimo && save.ultimo.jogoId === id);
+      if (!meu) return "Esse não é o seu jogo de agora.";
+      return { paralelos: paralelosDaPartida(save, { jogoId: id }) };
+    }));
     // começa a partida da rodada (ou devolve a que já estava em andamento)
     socket.on("jogar", (d = {}, cb) => comCarreira(cb, (save) => {
       if (save.partida) return null;
@@ -993,6 +1024,6 @@ module.exports = function ligarCarreira(io) {
 // para os testes: montar uma carreira e mexer nela sem o socket
 module.exports.paraTestes = { novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, APOSENTADO };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
-module.exports.grupo = { VERSAO, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
+module.exports.grupo = { VERSAO, paralelosDaSemana, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
   infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };
