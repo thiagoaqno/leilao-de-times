@@ -63,7 +63,7 @@ function seloEfeitoNota(pid) {
 function meuTime(mudar = {}) {
   const esc = { ...E.escalacao, ...mudar }, extra = Math.round((E.moral - 60) / 12) + efeitoDe("time");
   return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: Math.min(97, notaDe(j) + extra + efeitoDe(j.id)) })),
-    formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo };
+    formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo, energia: E.energia };
 }
 // a faixa da carta pela nota: 90 ou mais é a elite (o ouro mais forte, com brilho), 85 a 89 ouro, 80 a 84 prata
 const faixa = (n) => (n >= 90 ? "elite" : n >= 85 ? "ouro" : n >= 80 ? "prata" : "bronze");
@@ -109,6 +109,7 @@ function mostrarTela(id) {
   telaAtual = id; document.body.dataset.tela = id; // a sede (o hub) usa a largura toda do PC
   for (const s of document.querySelectorAll(".tela")) s.classList.toggle("hidden", s.id !== id);
   if (id !== "partida") desenharTela(id);
+  if (id === "sede" && window.Popups) setTimeout(Popups.verificar, 700);
   window.scrollTo({ top: 0 });
 }
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-ir]"); if (b) mostrarTela(b.dataset.ir); });
@@ -141,6 +142,8 @@ function receber(estado) {
   animarTransferenciasNovas();
   if (typeof posJogoEsperado !== "undefined" && posJogoEsperado && telaAtual === "sede") mostrarPosJogo(); // o pós-jogo do jogo que acabou chegou
   if (window.Campeoes) setTimeout(Campeoes.verificar, 600);
+  if (typeof atualizarFundoEstadio === "function") atualizarFundoEstadio(); // a foto do estádio atrás da sede
+  if (window.Popups) setTimeout(Popups.verificar, 900); // os avisos que estiverem esperando (a diretoria, a troca recebida)
 }
 // os ícones dos atalhos (montados uma vez)
 for (const s of document.querySelectorAll("[data-ic]")) s.innerHTML = ic(s.dataset.ic);

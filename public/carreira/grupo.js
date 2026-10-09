@@ -59,6 +59,7 @@ socket.on("state", (st) => {
     desenharLeilao(); avisarLeilao(st); desenharTurma(st);
     if (E && telaAtual === "sede") telaSede();
     else if (E && telaAtual === "trocas") telaTrocas();
+    if (window.Popups) setTimeout(Popups.verificar, 500); // a proposta de troca que chegou
     return;
   }
   desenharSala();
@@ -200,7 +201,7 @@ function botaoRodadaGrupo() {
   if (meu && !meu.fim) { txt.textContent = "Voltar para a partida"; b.disabled = false; b.onclick = () => abrirPartida(); return; }
   if (E.rodadaGrupo) { txt.textContent = "Rodada rolando: os amigos estão jogando"; b.disabled = true; return; }
   const prontos = SALA ? SALA.players.filter((p) => p.pronto).map((p) => p.name) : [];
-  if (E.anfitriao) { txt.textContent = "Jogar a próxima rodada"; b.disabled = false; b.onclick = () => agirGrupo({ type: "rodada" }); }
+  if (E.anfitriao) { txt.textContent = "Jogar a próxima rodada"; b.disabled = false; b.onclick = async () => { if (window.Popups && !(await Popups.confirmarAntesDoJogo())) return; agirGrupo({ type: "rodada" }); }; }
   else { txt.textContent = "Esperando o anfitrião começar a rodada"; b.disabled = true; }
   let info = $("cartaoJogo").querySelector(".prontos");
   if (!info) { info = document.createElement("p"); info.className = "prontos suave"; b.after(info); }
