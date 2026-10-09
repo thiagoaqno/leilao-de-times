@@ -55,6 +55,15 @@ test("escudos: os 20 do Brasileirão têm desenho próprio e nenhum clube repete
   assert.deepStrictEqual(repetidos, [], `escudos iguais: ${repetidos.map((v) => v.join(" = ")).join("; ")}`);
 });
 
+test("escudos: os 96 clubes das cinco ligas europeias têm desenho feito à mão", () => {
+  const europeus = basesMundo.filter((b) => ["inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"].includes(b.id)).flatMap((b) => b.clubes);
+  assert.strictEqual(europeus.length, 96);
+  for (const c of europeus) assert.ok(Escudos.ESPECIAIS[c.id], `${c.nome} sem escudo feito à mão`);
+  // nenhum desenho especial sobra sem clube (id errado): todos pertencem a um clube da base
+  const ids = new Set(clubesMundo.map((c) => c.id));
+  for (const id of Object.keys(Escudos.ESPECIAIS)) assert.ok(ids.has(id), `escudo para um clube que não existe: ${id}`);
+});
+
 test("escudos: cada escudo traz as suas próprias definições (ids novos a cada vez)", () => {
   const a = Escudos.svg(base.clubes[0]), b = Escudos.svg(base.clubes[0]);
   assert.notStrictEqual(a, b);
