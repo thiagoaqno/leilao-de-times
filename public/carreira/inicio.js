@@ -108,11 +108,12 @@ const estrelas = (n) => Array.from({ length: 5 }, (_, i) => `<i class="${i < n ?
 function mostrarTela(id) {
   telaAtual = id; document.body.dataset.tela = id; // a sede (o hub) usa a largura toda do PC
   for (const s of document.querySelectorAll(".tela")) s.classList.toggle("hidden", s.id !== id);
+  if (typeof Zoom !== "undefined") Zoom.cabecalho(id); // "← Vila" na sede e "← Sede" nas outras telas
   if (id !== "partida") desenharTela(id);
   if (id === "sede" && window.Popups) setTimeout(Popups.verificar, 700);
   window.scrollTo({ top: 0 });
 }
-document.addEventListener("click", (e) => { const b = e.target.closest("[data-ir]"); if (b) mostrarTela(b.dataset.ir); });
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-ir]"); if (!b) return; e.preventDefault(); if (typeof Zoom !== "undefined") Zoom.ir(b.dataset.ir, b); else mostrarTela(b.dataset.ir); });
 // chegou um estado novo do servidor
 // as transferências do seu clube que chegam sem um clique seu (a proposta aceita na caixa de entrada, o leilão que você
 // levou, a venda da lista): a mesma cena da ficha (animacoes.js). Na primeira chegada do estado, nada anima.

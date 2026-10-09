@@ -327,6 +327,7 @@ Para achar algo dentro de um jogo:
   coisa rasa: a Festa da Galera (15 minijogos de uma vez) foi rejeitada inteira.
 - **Animações:**
   - na Carreira, nunca animar `filter` (desfoque) em painel de vidro (`backdrop-filter`) nem deixar o fundo (manchas, foto do estádio) se mexer: cada painel de vidro refaz o desfoque do que está atrás a cada quadro. Entradas só com opacidade e posição.
+  - Carreira, `public/carreira/zoom.js` (`Zoom`): o bloco da sede (Elenco e tática, Mercado, Tabela, Calendário, Clube, Temporadas, Trocas) cresce como uma janela até a tela toda e o "← Sede" encolhe de volta até o bloco; o botão do cabeçalho é "← Vila" só na sede, na entrada e na partida, e "← Sede" nas telas de gestão. Tela nova de gestão entra em `TELAS_DE_GESTAO` e precisa de um `.tile[data-ir]` na sede.
   - quem pede "menos movimento" no sistema fica sem elas (`prefers-reduced-motion`);
   - quando a tela é redesenhada a cada estado do servidor, use um relógio único com `animation-delay` negativo para
     a animação não recomeçar (exemplo: a distribuição no Truco).
