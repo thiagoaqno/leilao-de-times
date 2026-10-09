@@ -326,6 +326,7 @@ Para achar algo dentro de um jogo:
 - **Regras:** o jogo de mesa real; nada de "todo mundo aperta Pronto". Melhor pouca coisa bem feita do que muita
   coisa rasa: a Festa da Galera (15 minijogos de uma vez) foi rejeitada inteira.
 - **Animações:**
+  - na Carreira, nunca animar `filter` (desfoque) em painel de vidro (`backdrop-filter`) nem deixar o fundo (manchas, foto do estádio) se mexer: cada painel de vidro refaz o desfoque do que está atrás a cada quadro. Entradas só com opacidade e posição.
   - quem pede "menos movimento" no sistema fica sem elas (`prefers-reduced-motion`);
   - quando a tela é redesenhada a cada estado do servidor, use um relógio único com `animation-delay` negativo para
     a animação não recomeçar (exemplo: a distribuição no Truco).
