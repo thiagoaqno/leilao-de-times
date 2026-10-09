@@ -278,7 +278,7 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 .abas button:hover:not([aria-selected=true]){background:transparent;color:var(--t2)}
 .abas-pilula{position:absolute;z-index:0;left:4px;top:4px;bottom:4px;border-radius:8px;background:var(--s3);box-shadow:0 1px 0 #ffffff14 inset,0 2px 10px -2px #000a;transition:transform 380ms var(--ease),width 380ms var(--ease)}
 .painel-corpo.troca{animation:painel-troca 360ms var(--ease)}
-@keyframes painel-troca{from{opacity:0;transform:translateY(6px);filter:blur(3px)}}
+@keyframes painel-troca{from{opacity:0;transform:translateY(6px)}}
 .rotulo-mini{font-size:12px;color:var(--t3)}
 .trilho{display:block;height:6px;border-radius:99px;background:var(--s3);overflow:hidden}
 .trilho i{display:block;height:100%;width:0;border-radius:inherit;background:var(--acento);transition:width 1s var(--ease)}
@@ -723,16 +723,17 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 
 /* ---------- as animações ---------- */
 /* cada tela entra em cascata: os blocos de cima primeiro, subindo e saindo do desfoque */
-.tela:not(.hidden)>*{animation:tela-entra 560ms var(--ease) both}
+.tela:not(.hidden)>*{animation:tela-entra 420ms var(--ease) backwards}
+.tela:not(.hidden)>.hub-grade{animation:none}
 .tela:not(.hidden)>:nth-child(2){animation-delay:50ms}.tela:not(.hidden)>:nth-child(3){animation-delay:100ms}.tela:not(.hidden)>:nth-child(4){animation-delay:150ms}.tela:not(.hidden)>:nth-child(n+5){animation-delay:200ms}
-.hub-grade>*>*{animation:tela-entra 600ms var(--ease) both;animation-delay:120ms}
-.hub-grade>*>:nth-child(2){animation-delay:180ms}.hub-grade>*>:nth-child(3){animation-delay:240ms}.hub-grade>*>:nth-child(n+4){animation-delay:300ms}
-@keyframes tela-entra{from{opacity:0;transform:translateY(10px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+.hub-grade>*>*{animation:tela-entra 460ms var(--ease) backwards;animation-delay:60ms}
+.hub-grade>*>:nth-child(2){animation-delay:110ms}.hub-grade>*>:nth-child(3){animation-delay:160ms}.hub-grade>*>:nth-child(n+4){animation-delay:210ms}
+@keyframes tela-entra{from{opacity:0;transform:translateY(10px)}}
 @keyframes sobe{from{opacity:0;transform:translateY(6px)}}
 @keyframes estala{from{opacity:0;transform:scale(.6)}}
 @keyframes enche{from{width:0}}
 @keyframes esmaece{from{opacity:0}}
-@keyframes dialogo-abre{from{opacity:0;transform:translateY(10px) scale(.96);filter:blur(4px)}}
+@keyframes dialogo-abre{from{opacity:0;transform:translateY(10px) scale(.96)}}
 @keyframes toast-entra{from{opacity:0;transform:translate(-50%,16px) scale(.96)}}
 @keyframes carta-entra{from{opacity:0;transform:translateY(14px) scale(.97)}}
 @keyframes lance-entra{from{opacity:0;transform:translateY(-8px);filter:blur(3px)}}
@@ -740,7 +741,7 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 @keyframes grito{0%{opacity:0;transform:scale(.85);filter:blur(6px)}20%{opacity:1;transform:scale(1.04);filter:none}75%{opacity:1;transform:none}100%{opacity:0}}
 @keyframes traca{to{stroke-dashoffset:0}}
 @keyframes curtiu{40%{transform:scale(1.3)}}
-@keyframes pj-entra{from{opacity:0;transform:translateY(14px) scale(.98);filter:blur(4px)}}
+@keyframes pj-entra{from{opacity:0;transform:translateY(14px) scale(.98)}}
 @keyframes pj-medidor{from{width:var(--de)}to{width:var(--para)}}
 @keyframes lance-pulsa{0%{transform:scale(.85);color:var(--acento)}60%{transform:scale(1.06)}100%{transform:none}}
 @keyframes martelo-bate{0%{transform:rotate(-40deg)}55%{transform:rotate(12deg) scale(1.1)}100%{transform:none}}
@@ -987,23 +988,23 @@ dialog.festa::backdrop{background:#000d;backdrop-filter:blur(4px)}
    O vidro precisa de algo para refratar: manchas suaves nas cores do clube ficam atrás de tudo e passam devagar. */
 :root{--vidro-fundo:linear-gradient(125deg,#ffffff2b 0%,#ffffff0d 34%,#ffffff08 62%,#ffffff1c 100%);--vidro-borda:#ffffff2e;
   --vidro-brilho:inset 0 1px 0 #ffffff66,inset 0 -1px 0 #ffffff14,inset 1px 0 0 #ffffff1f,inset 0 0 26px -10px #ffffff38;--vidro-sombra:0 20px 44px -24px #000d;
-  --vidro-blur:blur(22px) saturate(175%) brightness(1.06)}
-body::before{content:"";position:fixed;inset:-12vmax;z-index:-2;pointer-events:none;will-change:transform;
+  --vidro-blur:blur(16px) saturate(165%)}
+body::before{content:"";position:fixed;inset:-12vmax;z-index:-2;pointer-events:none;
   background:radial-gradient(36vmax 28vmax at 10% 12%,color-mix(in srgb,var(--clube) 78%,transparent),transparent 70%),
     radial-gradient(32vmax 26vmax at 90% 20%,color-mix(in srgb,var(--clube2) 55%,transparent),transparent 70%),
     radial-gradient(40vmax 30vmax at 72% 94%,color-mix(in srgb,var(--clube) 60%,transparent),transparent 70%),
-    radial-gradient(26vmax 22vmax at 30% 70%,color-mix(in srgb,var(--azul) 18%,transparent),transparent 70%);
-  animation:vidro-flutua 32s ease-in-out infinite alternate}
-@keyframes vidro-flutua{to{transform:translate3d(-2.5vmax,2vmax,0) scale(1.07)}}
+    radial-gradient(26vmax 22vmax at 30% 70%,color-mix(in srgb,var(--azul) 18%,transparent),transparent 70%);}
 /* as peças de vidro */
-#sede .quadro,#sede .tile,#elenco .quadro,#trocas .quadro,#temporadas .quadro,.dialogo{
+#sede .quadro,#sede .tile,#elenco .quadro,#trocas .quadro,#temporadas .quadro,#mercado .quadro,#tabela .quadro,#calendario .quadro,#feed .quadro,#clube .quadro,#clube .gc-resumo,.dialogo{
   background:var(--vidro-fundo),color-mix(in srgb,var(--s1) 34%,transparent);border-color:var(--vidro-borda);box-shadow:var(--vidro-brilho),var(--vidro-sombra);
   -webkit-backdrop-filter:var(--vidro-blur);backdrop-filter:var(--vidro-blur)}
 .dialogo{background:var(--vidro-fundo),color-mix(in srgb,var(--s1) 58%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%) brightness(1.04);backdrop-filter:blur(30px) saturate(180%) brightness(1.04);
   box-shadow:var(--vidro-brilho),0 30px 80px -20px #000,0 0 90px -36px var(--clube)}
 .dialogo::backdrop{background:radial-gradient(60vmax 40vmax at 50% 30%,color-mix(in srgb,var(--clube) 24%,transparent),transparent 75%),#0009;-webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%)}
+/* vidro dentro de vidro não: o painel de dentro fica só translúcido (um desfoque sobre outro desfoque pesa e some o efeito) */
+.quadro .quadro,.dialogo .quadro{-webkit-backdrop-filter:none;backdrop-filter:none;background:color-mix(in srgb,var(--s1) 55%,transparent)}
 /* o brilho que corre pelo vidro quando o mouse passa */
-#sede .tile{transition:transform 260ms var(--ease),box-shadow 260ms var(--ease),background-position 600ms var(--ease);background-size:220% 100%,auto;background-position:0 0,0 0}
+#sede .tile{transition:transform 220ms var(--ease);background-size:220% 100%,auto;background-position:0 0,0 0}
 @media (hover:hover) and (pointer:fine){#sede .tile:hover{transform:translateY(-2px);background-position:100% 0,0 0;box-shadow:var(--vidro-brilho),0 26px 50px -22px #000e,0 0 40px -22px var(--acento)}}
 #sede .tile:active{transform:scale(.985)}
 .tile-ic{background:linear-gradient(145deg,#ffffff30,#ffffff0d);border-color:#ffffff2e;box-shadow:inset 0 1px 0 #ffffff55}
@@ -1013,18 +1014,17 @@ body::before{content:"";position:fixed;inset:-12vmax;z-index:-2;pointer-events:n
 #toast{background:var(--vidro-fundo),color-mix(in srgb,var(--s2) 50%,transparent);border-color:var(--vidro-borda);box-shadow:var(--vidro-brilho),0 18px 40px -16px #000;-webkit-backdrop-filter:var(--vidro-blur);backdrop-filter:var(--vidro-blur)}
 .proposta-troca,.premio,.campeao-card,.efeito,.estilo-encaixe{background:linear-gradient(135deg,#ffffff1c,#ffffff08);border-color:#ffffff24;box-shadow:inset 0 1px 0 #ffffff33}
 /* sem vidro (navegador antigo ou "reduzir transparência" no sistema): volta aos painéis sólidos; sem movimento, as manchas ficam paradas */
-@media (prefers-reduced-transparency:reduce){#sede .quadro,#sede .tile,#elenco .quadro,#trocas .quadro,#temporadas .quadro,.dialogo,#toast,.segmentos{background:var(--s1);-webkit-backdrop-filter:none;backdrop-filter:none}body::before{display:none}}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#sede .quadro,#sede .tile,#elenco .quadro,#trocas .quadro,#temporadas .quadro,.dialogo,#toast{background:var(--s1)}}
-@media (prefers-reduced-motion:reduce){body::before{animation:none}#sede .tile{transition:none}}
+@media (prefers-reduced-transparency:reduce){#sede .quadro,#sede .tile,#elenco .quadro,#trocas .quadro,#temporadas .quadro,#mercado .quadro,#tabela .quadro,#calendario .quadro,#feed .quadro,#clube .quadro,#clube .gc-resumo,.dialogo,#toast,.segmentos{background:var(--s1);-webkit-backdrop-filter:none;backdrop-filter:none}body::before{display:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#sede .quadro,#sede .tile,#elenco .quadro,#trocas .quadro,#temporadas .quadro,#mercado .quadro,#tabela .quadro,#calendario .quadro,#feed .quadro,#clube .quadro,#clube .gc-resumo,.dialogo,#toast{background:var(--s1)}}
+@media (prefers-reduced-motion:reduce){#sede .tile{transition:none}}
 /* o corpo da página vira um contexto de empilhamento: assim as camadas de fundo (manchas do vidro, foto do estádio, marca do clube) ficam por cima do fundo do body e por baixo do conteúdo */
 body{isolation:isolate}
 /* o fundo da sede: a foto do estádio do clube, borrada e com pouco brilho; só aparece na sede */
 .fundo-estadio{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:0;transition:opacity 700ms var(--ease)}
-body[data-tela="sede"] .fundo-estadio{opacity:1}
+body:not([data-tela="inicio"]):not([data-tela="grupo"]):not([data-tela="partida"]) .fundo-estadio{opacity:1}
 .fundo-estadio-foto,.fundo-estadio-desenho{position:absolute;inset:-48px;width:calc(100% + 96px);height:calc(100% + 96px);background-size:cover;background-position:center 35%;object-fit:cover;
-  filter:blur(14px) brightness(.46) saturate(1.15);transform:scale(1.06);animation:estadio-respira 40s ease-in-out infinite alternate}
+  filter:blur(14px) brightness(.46) saturate(1.15);transform:scale(1.06)}
 .fundo-estadio-desenho{image-rendering:auto;filter:blur(12px) brightness(.62) saturate(1.2)}
-@keyframes estadio-respira{to{transform:scale(1.12) translate3d(-1.2%,.8%,0)}}
 .fundo-estadio::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#09090b73 0%,#09090b99 50%,#09090bf0 100%),radial-gradient(70vmax 40vmax at 50% 0%,color-mix(in srgb,var(--clube) 22%,transparent),transparent 70%)}
 .credito-estadio{position:fixed;left:14px;bottom:8px;z-index:5;margin:0;font-size:11px;color:var(--t3);opacity:0;pointer-events:none;transition:opacity 700ms var(--ease);text-shadow:0 1px 6px #000}
 body[data-tela="sede"] .credito-estadio:not(:empty){opacity:.85}
