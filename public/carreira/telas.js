@@ -19,6 +19,7 @@ function desenharTela(id) {
   else if (id === "feed") telaFeed();
   else if (id === "trocas") telaTrocas();
   else if (id === "temporadas") telaTemporadas();
+  else if (id === "clube") telaClube();
 }
 const posicaoDe = (id) => E.tabela.findIndex((l) => l.id === id) + 1;
 const placarTxt = (p) => (p ? `${p[0]} × ${p[1]}` : "×");
@@ -37,7 +38,9 @@ function telaSede() {
       <div><dt>Rodada</dt><dd>${E.fim ? "Fim" : `${(E.rodadaLiga ?? E.rodada) + 1}<i>/${E.meus.filter((j) => !j.competicao || j.competicao === c.liga).length || E.total}</i>`}</dd></div>
       <div><dt>Caixa</dt><dd class="${E.caixa < 0 ? "neg" : ""}">${dinheiro(E.caixa)}</dd></div>
       <div class="moral"><dt>Moral · ${humor(E.moral)}</dt><dd><span class="medidor"><i style="--v:${E.moral}%"></i></span></dd></div>
-    </dl>`;
+      <div class="moral diretoria ${E.gestao.confianca < 35 ? "perigo" : ""}"><dt>Diretoria · ${gestaoSede().nivel}</dt><dd><span class="medidor"><i style="--v:${E.gestao.confianca}%"></i></span></dd></div>
+    </dl>
+    ${gestaoSede().alertas ? `<ul class="alertas-clube">${gestaoSede().alertas}</ul>` : ""}`;
   telaJogo(pos);
   telaTiles(pos);
   telaEntrada();
@@ -67,9 +70,21 @@ function telaTiles(pos) {
   $("atalhoJanela").textContent = E.janela.aberta ? "Janela aberta: contratar e vender" : E.janela.proxima != null ? `Janela abre no jogo ${E.janela.proxima + 1}` : "Janela fechada";
   $("tileMercado").innerHTML = `<b>${dinheiro(E.caixa)}</b><small>${elenco.length} no elenco</small>`;
   $("tileMercado").closest(".tile").classList.toggle("aberta", !!E.janela.aberta);
+  const restam = E.gestao.janela.restam;
+  if (restam != null && E.janela.aberta) $("atalhoJanela").textContent = restam === 1 ? "ÚLTIMO JOGO com a janela aberta" : `Janela aberta: fecha em ${restam} jogos`;
+  $("tileMercado").closest(".tile").classList.toggle("urgente", restam != null && restam <= 2 && !!E.janela.aberta);
+  const noUltimoAno = E.gestao.contratos.filter((k) => k.anos <= 1).length;
+  $("dadoClube").innerHTML = `<b>${E.gestao.confianca}%</b><small>diretoria${noUltimoAno ? ` · ${noUltimoAno} contrato${noUltimoAno > 1 ? "s" : ""} no fim` : ""}</small>`;
   $("tileTabela").innerHTML = `<b>${E.rodada > 0 ? pos + "º" : "—"}</b><small>${E.rodada > 0 ? `${E.tabela[pos - 1].p} ponto${E.tabela[pos - 1].p === 1 ? "" : "s"}` : "sem jogos ainda"}</small>`;
   const prox = E.proximoJogo, comp = prox && E.competicoes && E.competicoes[prox.competicao];
   $("tileCalendario").innerHTML = prox ? `<b>${escudo(prox.casa === E.clube ? prox.fora : prox.casa, 1)}</b><small>${h(comp ? comp.nome : "Liga")}</small>` : `<b>—</b><small>fim da temporada</small>`;
+}
+// a diretoria perdeu a paciência: a carreira solo acaba aqui, com o que ficou da passagem pelo clube
+function resumoDemissao() {
+  const d = E.demitido, hist = E.historico, titulos = hist.reduce((s, x) => s + (x.titulos || []).length, 0);
+  return `<div class="fim-carreira demissao"><span class="sobre">Demitido · temporada ${d.temporada}, rodada ${d.rodada + 1}</span><h2>A diretoria do ${h(meuClube().nome)} agradece os serviços</h2>
+    <p>Depois da sequência de resultados e do ultimato sem resposta, a confiança acabou. Você passou ${hist.length} temporada${hist.length === 1 ? "" : "s"} completa${hist.length === 1 ? "" : "s"} no clube${titulos ? ` e deixou ${titulos} título${titulos > 1 ? "s" : ""}` : ""}. Reputação final: ${E.gestao.reputacao} (${ClubeRegras.nivelReputacao(E.gestao.reputacao)}).</p>
+    <p class="suave">Dá para ver o legado do clube na tela Clube e começar outra carreira pelo botão lá embaixo.</p><button class="primario" data-ir="clube">Ver o legado do clube</button></div>`;
 }
 // o fim da carreira (a última temporada acabou): os títulos, o artilheiro de cada ano, o melhor negócio e a força do
 // elenco temporada a temporada. Não tem "nova temporada".
@@ -87,6 +102,7 @@ function resumoCarreira() {
     <p class="suave">A carreira terminou. Para jogar de novo, saia ou exclua esta carreira e assine com um clube novo.</p></div>`;
 }
 function telaJogo(pos) {
+  if (E.demitido) { $("cartaoJogo").innerHTML = resumoDemissao(); return; }
   if (E.encerrada) { $("cartaoJogo").innerHTML = resumoCarreira(); return; }
   if (E.fim) {
     const campeao = E.tabela[0], meu = E.tabela[pos - 1];

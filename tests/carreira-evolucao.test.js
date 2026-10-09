@@ -108,7 +108,8 @@ test("virada de temporada: aposentados saem dos elencos, a base manda jovens e a
   const jovens = Object.values(save.jovens);
   assert.ok(jovens.length >= 100);
   for (const j of jovens) assert.ok(j.idade <= 18 && j.base && j.desde === 2 && ajudas.donoDe(save, j.id));
-  assert.ok(jovens.some((j) => ajudas.donoDe(save, j.id) === "palmeiras"), "o seu clube também ganha jovens");
+  // o seu clube não ganha mais jovens de graça: os garotos vão para a categoria de base, e quem sobe é decisão sua
+  assert.ok(estado(save).gestao.base.length >= 2, "o seu clube recebe garotos na categoria de base");
   assert.deepStrictEqual(save.competicoes.champions.participantes.slice(0, 4), premier.slice(0, 4));
   assert.deepStrictEqual(save.competicoes.libertadores.participantes.slice(0, 6), tabelaBR.slice(0, 6));
   assert.strictEqual(new Set(save.competicoes.libertadores.participantes).size, 32);

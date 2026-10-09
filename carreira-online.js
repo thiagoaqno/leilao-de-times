@@ -433,6 +433,7 @@ module.exports = function ligarCarreiraOnline(io) {
     });
     socket.on("evento", (d = {}, cb) => comClube(cb, (v) => Carreira.eventoAcao(v, d)));
     socket.on("olheiro", (d, cb) => comClube(cb, (v) => ({ sugestoes: Carreira.olheiro(v) })));
+    socket.on("clube", (d = {}, cb) => comClube(cb, (v, room) => semRodada(room) || Carreira.Clube.acao(v, Carreira.ajudas, d)));
     // a decisão do jogo ao vivo (a parada do seu jogo)
     socket.on("decidir", (d = {}, cb) => {
       const { room, me } = minha();

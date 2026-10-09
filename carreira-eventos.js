@@ -196,6 +196,7 @@ function responder(save, e, opcao, c) {
     const x = contexto(save, c, Motor.sorteDe(`resposta:${save.semente}:${e.id}:${op[0]}`), j, d.v || {});
     return (e.resultado = op[2](x) || "");
   }
+  if (e.tipo === "clube") return (e.resultado = c.clubeResponder(save, e, opcao));
   if (e.tipo === "proposta") {
     if (!j || c.donoDe(save, j.id) !== save.clube) return (e.resultado = "O jogador já não está no seu elenco.");
     if (opcao === "mais") {
