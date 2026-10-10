@@ -1,14 +1,8 @@
-# Carreira: conserta o que o PR #133 quebrou na interface
+# Carreira: o teste dos dilemas para de falhar às vezes
 
-O PR #133 entrou no `main` sem a correção do CSS (ela ficou só na branch). Este PR traz essa correção e o resto do que a revisão encontrou.
+O teste `dilemas: cada resposta muda o jogo e a conta chega depois, como aviso` (`tests/carreira-clube.test.js`) falhava de vez em quando (umas 3 vezes em 40) na linha que espera a lista `gestao.depois` vazia.
 
-- **CSS quebrado:** sobrou uma linha solta de uma regra apagada (uma chave `}` a mais), e o navegador ignorava várias regras seguintes.
-- **Card "Próxima partida" da Sede desmontado** (escudos sobrepostos, botão espremido): a classe nova `.destaque` do cartão do jogador já era usada por esse card. Virou `.cartao-jog`.
-- **Foto do elenco na festa do campeão:** a classe nova `.reserva` (cartão do banco) colidia com a dos reservas da foto. Virou `.carta-reserva` (e `.ponto` virou `.ponto-pos`).
-- **Caixa escura atrás da camisa** ao passar o mouse num jogador do campinho (a regra geral de botão ganhava).
-- **Improvisado e selecionado** ficavam com a mesma etiqueta amarela: o improvisado agora só tem o contorno.
-- **Parada tática:** a janela rolava sozinha e escondia o título ("Intervalo", "Tomamos um gol").
-- **Sede invisível depois do jogo** (bug antigo do `zoom.js`, de antes do #133): o esmaecer da Sede ficava preso com opacidade 0 quando a volta não era pelo zoom.
-- **E2E da carreira** (já falhava antes do #133): fecha os avisos que aparecem sozinhos (reunião com a diretoria), usa o "← Sede" do cabeçalho esperando o zoom, a formação em duas linhas, os 7 blocos da Sede e os posts no lugar da manchete. Agora os 8 testes de `carreira.spec.js` e `carreira-transicoes.spec.js` passam.
+- **A causa:** não era outro dilema agendando consequência. A sobra era a própria conta do patrocínio polêmico, que nunca chegava porque o técnico tinha sido **demitido**. A temporada que o teste joga antes sai de uma semente sorteada; às vezes ela termina em demissão, ou deixa a confiança da diretoria abaixo de 30, e aí os 8 empates do teste viram ultimato (4 pontos, faltava 1) e demissão. Demitido, `Clube.aposJogo` para de contar os jogos e a consequência fica parada na lista.
+- **A correção (só no teste):** antes do dilema, o teste deixa a diretoria tranquila (`demitido` limpo, confiança 60, sem ultimato) e confere que o técnico seguiu no cargo. A regra do jogo não mudou.
 
-Conferido: o CSS regra por regra no Chromium (só saíram as regras da prancheta antiga), fotos da Sede, prancheta, parada tática, mercado e notícias no PC e no celular, `npm test` (287 de 288; a que falha, os dilemas de `carreira-clube.test.js`, é instável e falha também antes do #133) e os E2E da carreira.
+Conferido: o teste passou 60 vezes seguidas (antes, com a demissão, falhava em laço) e os 27 testes de `tests/carreira-clube.test.js` passam.
