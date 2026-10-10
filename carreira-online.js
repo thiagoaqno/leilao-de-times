@@ -63,6 +63,7 @@ module.exports = function ligarCarreiraOnline(io) {
       if (dados.save && dados.save.v !== Carreira.VERSAO) { bd.apagarSalaCarreira(codigo); continue; } // mundo da base antiga (EA FC 26)
       const players = Object.fromEntries(Object.entries(dados.players || {}).map(([id, p]) => [id, { ...p, sockets: new Set(), saiuEm: Date.now() }]));
       rooms.set(codigo, { ...dados, code: codigo, players, t: atualizadaEm });
+      if (dados.fase === "carreira") try { Carreira.estanteDaSala(dados.save); } catch (e) { console.warn("carreira-online: estante da sala", codigo, e.message); }
     }
   } catch (e) { console.warn("carreira-online: o banco não abriu; as salas ficam só na memória.", e.message); }
   limparSalasParadas(rooms, { horas: HORAS_PARADA, aoApagar: (room) => { try { bd.apagarSalaCarreira(room.code); } catch {} } });
