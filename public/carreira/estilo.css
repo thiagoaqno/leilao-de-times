@@ -252,7 +252,7 @@ button.cta:disabled{filter:saturate(.3);box-shadow:none}
 .mini-tabela{width:100%;border-collapse:collapse;font-size:13px}.mini-tabela td{padding:6px 4px;border-bottom:1px solid var(--b1)}.mini-tabela tr:last-child td{border:0}.mini-tabela td.nome{width:100%}
 .mini-tabela tr.meu td{background:color-mix(in srgb,var(--acento) 9%,transparent);font-weight:600}
 td.pos{width:30px;text-align:center;font:500 13px var(--mono);color:var(--t2)}
-td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shadow:inset 2px 0 var(--azul)}td.pos.sulamericana{box-shadow:inset 2px 0 #86efac}td.pos.rebaixamento{box-shadow:inset 2px 0 var(--erro)}
+td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shadow:inset 2px 0 var(--azul)}td.pos.sulamericana{box-shadow:inset 2px 0 #86efac}td.pos.acesso{box-shadow:inset 2px 0 #86efac}td.pos.rebaixamento{box-shadow:inset 2px 0 var(--erro)}
 .numeros-fin{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.numeros-fin small{display:block;font-size:12px;color:var(--t3)}.numeros-fin b{font:600 17px var(--fonte);letter-spacing:-.02em}
 .extrato{list-style:none;margin:0;padding:0;font-size:12px}.extrato li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1);color:var(--t2)}.extrato li b{font:500 12px var(--mono)}
 .hist{font-size:13px;color:var(--t2);padding:4px 0}.hist b{color:var(--t1)}

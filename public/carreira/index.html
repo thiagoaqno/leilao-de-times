@@ -8,8 +8,9 @@
 <title>Carreira de Treinador</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Geist:wght@300..800&family=Geist+Mono:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="estilo.css">
+<link rel="stylesheet" href="hub.css">
 </head>
 <body>
 <header id="barra">
@@ -97,14 +98,24 @@
     <p class="suave centro"><a href="/carreira/">Prefere jogar sozinho? Carreira solo</a></p>
   </section>
 
-  <!-- a sede: o hub da carreira (no PC, três colunas: o próximo jogo e a gestão; o painel do time e as notícias no meio; os avisos, a tabela e as finanças ao lado) -->
-  <section id="sede" class="tela hidden hub">
+  <!-- a sede: o hub da carreira, no jeito da central de carreira dos jogos de futebol (sede-hub.js): o clube e os números no
+       topo, as abas e os painéis. Central: avançar (o próximo jogo), a gestão, o desenvolvimento do jogador, as notícias e a
+       caixa de entrada. Meu time: o painel do time e as finanças. Temporada: a tabela, o último jogo e o histórico. -->
+  <section id="sede" class="tela hidden hub" data-aba="central">
     <header id="cabecalho" class="cabecalho hub-topo"></header>
+    <nav id="abasSede" class="hub-abas" role="tablist" aria-label="Partes da sede">
+      <button role="tab" data-aba="central" aria-selected="true">Central</button><button role="tab" data-aba="time" aria-selected="false">Meu time</button><button role="tab" data-aba="temporada" aria-selected="false">Temporada</button>
+    </nav>
     <div class="hub-grade">
       <div class="hub-principal">
-        <section class="quadro destaque hub-jogo" id="cartaoJogo" aria-label="Próxima partida"></section>
-        <section class="quadro tv-painel hidden" id="cartaoAoVivo" aria-label="Rodada da turma ao vivo" aria-live="off"></section>
-        <nav class="hub-tiles" aria-label="Gestão do time">
+        <section class="quadro destaque hub-jogo" id="cartaoJogo" data-na-aba="central" aria-label="Avançar: próxima partida"></section>
+        <section class="quadro tv-painel hidden" id="cartaoAoVivo" data-na-aba="central" aria-label="Rodada da turma ao vivo" aria-live="off"></section>
+        <section class="quadro hub-dev" id="cartaoDesenvolvimento" data-na-aba="central" aria-label="Desenvolvimento do jogador"></section>
+        <section class="quadro painel-time" id="painelTime" data-na-aba="time" aria-label="Painel do time"></section>
+        <section class="quadro" id="cartaoTabela" data-na-aba="temporada"></section>
+      </div>
+      <div class="hub-centro">
+        <nav class="hub-tiles" data-na-aba="central" aria-label="Gestão do time">
           <button class="tile tile-elenco" data-ir="elenco"><span class="tile-ic" data-ic="campo"></span><span class="tile-txt"><b>Elenco e tática</b><small>Prancheta, titulares e formação</small></span><span class="tile-dado" id="tileElenco"></span></button>
           <button class="tile tile-mercado" data-ir="mercado"><span class="tile-ic" data-ic="maleta"></span><span class="tile-txt"><b>Mercado</b><small id="atalhoJanela">Contratar e vender</small></span><span class="tile-dado" id="tileMercado"></span></button>
           <button class="tile" data-ir="tabela"><span class="tile-ic" data-ic="taca"></span><span class="tile-txt"><b>Tabela</b><small>Ligas, copas e artilharia</small></span><span class="tile-dado" id="tileTabela"></span></button>
@@ -113,18 +124,14 @@
           <button class="tile tile-clube" id="tileClube" data-ir="clube"><span class="tile-ic" data-ic="coroa"></span><span class="tile-txt"><b>Clube</b><small id="atalhoClube">Contratos, base, estrutura e legado</small></span><span class="tile-dado" id="dadoClube"></span></button>
           <button class="tile" data-ir="temporadas"><span class="tile-ic" data-ic="taca"></span><span class="tile-txt"><b>Estante</b><small>Troféus, campeões e ranking</small></span><span class="tile-dado" id="dadoTemporadas"></span></button>
         </nav>
+        <section class="quadro hub-noticias" id="cartaoFeed" data-na-aba="central" aria-label="Notícias"></section>
+        <section class="quadro" id="cartaoFinancas" data-na-aba="time temporada"></section>
       </div>
-      <div class="hub-centro">
-        <section class="quadro painel-time" id="painelTime" aria-label="Painel do time"></section>
-        <section class="quadro hub-noticias" id="cartaoFeed" aria-label="Notícias"></section>
-      </div>
-      <aside class="hub-lado" aria-label="Avisos, último jogo, tabela e finanças">
-        <section class="quadro hub-entrada" id="cartaoEntrada"></section>
-        <section class="quadro" id="cartaoUltimo"></section>
-        <section class="quadro" id="cartaoTabela"></section>
-        <section class="quadro" id="cartaoFinancas"></section>
-        <section class="quadro hidden" id="cartaoHistorico"></section>
-        <section class="quadro hidden" id="cartaoTurma" aria-label="Turma"></section>
+      <aside class="hub-lado" aria-label="Avisos, último jogo e histórico">
+        <section class="quadro hub-entrada" id="cartaoEntrada" data-na-aba="central time"></section>
+        <section class="quadro" id="cartaoUltimo" data-na-aba="central temporada"></section>
+        <section class="quadro hidden" id="cartaoHistorico" data-na-aba="temporada"></section>
+        <section class="quadro hidden" id="cartaoTurma" data-na-aba="central" aria-label="Turma"></section>
       </aside>
     </div>
     <div class="botoes-carreira">
@@ -308,6 +315,7 @@
 <script src="camisas.js"></script>
 <script src="base/teste.js"></script>
 <script src="base/brasileirao-2026.js"></script>
+<script src="base/serieb-2026.js"></script>
 <script src="base/inglaterra-2026.js"></script>
 <script src="base/espanha-2026.js"></script>
 <script src="base/italia-2026.js"></script>
@@ -328,6 +336,7 @@
 <script src="feed.js"></script>
 <script src="posjogo.js"></script>
 <script src="painel.js"></script>
+<script src="sede-hub.js"></script>
 <script src="disputa.js"></script>
 <script src="estadios.js"></script>
 <script src="aovivo.js"></script>

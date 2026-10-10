@@ -10,7 +10,7 @@ const Carreira = require("../carreira.js");
 const { novaCarreira, completar, ajudas } = Carreira.paraTestes;
 const G = Carreira.grupo;
 
-const LIGAS = ["brasileirao", "argentina", "inglaterra", "espanha", "italia", "alemanha", "franca", "sulamericanos"];
+const LIGAS = ["brasileirao", "serieb", "argentina", "inglaterra", "espanha", "italia", "alemanha", "franca", "sulamericanos"];
 const IDS = new Set(LIGAS.flatMap((l) => require(`../public/carreira/base/${l}-2026.js`).clubes.map((c) => c.id)));
 
 test("clássicos: todo clube da tabela existe na base e cada dupla aparece uma vez", () => {

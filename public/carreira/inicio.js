@@ -9,7 +9,7 @@ const toast = (msg) => { const d = [...document.querySelectorAll("dialog[open]")
 const ic = (nome, cls) => Icones.ic(nome, cls);
 const { dinheiro } = Mercado;
 const BASE_PADRAO = "mundo-2026"; // as antigas seguem na base em que nasceram
-const LIGAS_JOGAVEIS = new Set(["brasileirao-2026", "inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
+const LIGAS_JOGAVEIS = new Set(["brasileirao-2026", "serieb-2026", "inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
 window.BasesCarreira[BASE_PADRAO] = {
   id: BASE_PADRAO, ano: MundoCarreira.ano, nome: "Temporada Mundial", fonte: "EA FC 27 + base brasileira",
   clubes: MundoCarreira.ligas.flatMap((l) => window.BasesCarreira[l.id].clubes),
@@ -98,7 +98,11 @@ function temaClube(id) {
   let acento = "#ffffff";
   if (base) { acento = base; for (let p = 0.1; contraste(acento, FUNDO_ESCURO) < 3.2 && p <= 0.7; p += 0.1) acento = misturar(base, "#ffffff", p); }
   const tinta = contraste(acento, "#ffffff") >= contraste(acento, "#111111") ? "#ffffff" : "#111111";
-  return `--acento:${acento};--acento2:${c.cores.find((cor) => cor !== base) || "#ffffff"};--acento-tinta:${tinta}`;
+  // a cor do time nos painéis claros da Sede e do intervalo (hub.css): a colorida, ou a mais escura das duas (nunca o branco)
+  const time = base || [...c.cores].sort((x, y) => contraste(y, "#ffffff") - contraste(x, "#ffffff"))[0];
+  const timeTinta = contraste(time, "#ffffff") >= contraste(time, "#111111") ? "#ffffff" : "#111111";
+  const time2 = c.cores.find((cor) => cor !== time) || "#ffffff";
+  return `--acento:${acento};--acento2:${c.cores.find((cor) => cor !== base) || "#ffffff"};--acento-tinta:${tinta};--time:${time};--time2:${time2};--time-tinta:${timeTinta};--time-escuro:${misturar(time, "#000000", 0.38)};--time-claro:${misturar(time, "#ffffff", 0.16)}`;
 }
 // o escudo gigante do clube atrás de tudo (a marca d'água)
 const marcaClube = (id) => { const m = $("marcaClube"); if (m && m.dataset.clube !== (id || "")) { m.dataset.clube = id || ""; m.innerHTML = id ? escudo(id, 28) : ""; } };
@@ -190,9 +194,11 @@ function telaInicio() {
   mostrarTela("inicio");
   if (typeof estanteNoInicio === "function") estanteNoInicio(); // temporadas.js: o top 5 da estante da galera
 }
+// a ordem das ligas na escolha do clube: a Série B logo depois da Série A
+const chaveLiga = (c) => (c.liga === "serieb-2026" ? "brasileirao-2026~" : c.liga);
 function desenharClubes() {
   const orc = (c) => ({ ...Orcamentos.de(c), caixa: caixaDoClube(c), situacao: dinheiroIgual > 0 ? "equilibrado" : Orcamentos.de(c).situacao });
-  $("clubes").innerHTML = BASE.clubes.filter((c) => LIGAS_JOGAVEIS.has(c.liga)).sort((a, b) => a.liga.localeCompare(b.liga) || orc(b).caixa - orc(a).caixa || a.nome.localeCompare(b.nome)).map((c) => {
+  $("clubes").innerHTML = BASE.clubes.filter((c) => LIGAS_JOGAVEIS.has(c.liga)).sort((a, b) => chaveLiga(a).localeCompare(chaveLiga(b)) || orc(b).caixa - orc(a).caixa || a.nome.localeCompare(b.nome)).map((c) => {
     const o = orc(c), sit = Orcamentos.SITUACOES[o.situacao];
     return `<button class="clube" style="${coresClube(c.id)}" data-clube="${c.id}" aria-pressed="${c.id === clubeEscolhido}" title="${h(sit.texto)}">${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b><small>${h(c.cidade)}</small>
       <span class="orcamento"><span class="caixa-clube">${ic("moeda")} ${dinheiro(o.caixa)}</span><span class="situacao ${o.situacao}">${h(sit.nome)}</span></span></span></button>`;

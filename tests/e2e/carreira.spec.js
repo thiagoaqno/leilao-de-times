@@ -149,7 +149,7 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await expect(page.locator("#fLista .post .arte img").first()).toHaveAttribute("src", /^data:image\/png/);
     await voltarSede(page);
     // as competições ficam dentro da tabela, e o calendário mistura liga e copa
-    await page.click('#sede [data-ir="tabela"]');
+    await page.click('#sede .tile[data-ir="tabela"]');
     await expect(page.locator('#tTabela [data-competicao="libertadores"]')).toBeVisible();
     await page.click('#tTabela [data-competicao="libertadores"]');
     await expect(page.locator("#tTabela .grupo-copa")).toHaveCount(8);
@@ -161,7 +161,13 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await page.evaluate(() => { modoEscolhido = 2; });
     await page.click("#btnJogar");
     await page.click("#btnPular");
-    await expect(page.locator("#decisao[open] .tatica-jogo")).toBeVisible({ timeout: 20000 });
+    await expect(page.locator("#decisao[open] .tatica-jogo, #decisao[open] .int-grade")).toBeVisible({ timeout: 20000 });
+    // o intervalo abre no menu (o placar com os números e os blocos): o bloco das substituições leva à prancheta
+    if (await page.locator("#decisao[open] .int-grade").isVisible()) {
+      await expect(page.locator(".int-numeros tr")).not.toHaveCount(0);
+      await page.click('.int-tile[data-ir-int="elenco"]');
+    }
+    await expect(page.locator("#decisao[open] .tatica-jogo")).toBeVisible();
     await expect(page.locator("#dEstadio canvas")).toBeVisible();
     await page.locator("#dCorpo [data-reserva]").first().click();
     await expect(page.locator("#dCorpo [data-reserva].sel")).toHaveCount(1);
