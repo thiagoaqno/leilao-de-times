@@ -321,7 +321,10 @@ function decisaoTatica(p) {
         <span class="rotulo">Formação</span><div class="segmentos pequenos largos">${Taticas.NOMES_FORMACOES.map((f) => `<button data-f="${f}" aria-pressed="${d.formacao === f}">${f}</button>`).join("")}</div>
       </div></div>
       <button id="dVoltar" class="primario largo">Voltar ao jogo</button>`;
-    if (intervalo) $("dCorpo").insertAdjacentHTML("afterbegin", `<button class="int-volta" data-ir-int="menu">← Intervalo</button>`);
+    if (intervalo) { // a volta ao menu do intervalo: presa no alto enquanto rola e também ao lado do "Voltar ao jogo"
+      $("dCorpo").insertAdjacentHTML("afterbegin", `<button class="int-volta" data-ir-int="menu">← Menu do intervalo</button>`);
+      $("dVoltar").insertAdjacentHTML("beforebegin", `<button class="int-volta int-volta-fim largo" data-ir-int="menu">← Menu do intervalo</button>`);
+    }
     ligarVoltaIntervalo();
     $("dCorpo").querySelector(".gramado").onclick = (e) => {
       const b = e.target.closest(".peca"); if (!b) return;
