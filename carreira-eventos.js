@@ -167,7 +167,7 @@ function gerarEventos(save, c) {
       const valor = Math.round(c.valorAtual(save, j) * (0.9 + r() * 0.4) / 1e5) * 1e5;
       save.donos[j.id] = para;
       if (save.caixaIA) { save.caixaIA[para] -= valor; if (de in save.caixaIA) save.caixaIA[de] += valor; }
-      save.transferencias.unshift({ rodada: save.rodada, jogador: j.id, de, para, valor });
+      save.transferencias.unshift({ rodada: save.rodada, ...c.carimbo(save), jogador: j.id, de, para, valor });
       add({ tipo: "ia", icone: "troca", titulo: "Mercado da bola", texto: `${j.nome} troca o ${c.clubeDe(save, de).nome} pelo ${c.clubeDe(save, para).nome} por ${dinheiro(valor)}.` });
     }
   }

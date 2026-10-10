@@ -28,7 +28,7 @@ function postar(save, p) {
   const humor = p.humor || "neutro";
   const comentarios = Array.from({ length: 2 + Math.floor(r() * 2) }, () => [sorteio(r, PERFIS), sorteio(r, COMENTARIOS[humor] || COMENTARIOS.neutro)]);
   const curtidas = Math.round((p.galeranews ? 9000 : 1500) * (0.4 + r() * 1.6) * (p.peso || 1));
-  save.feed.unshift({ id, rodada: save.rodada, temporada: save.temporada, tipo: p.tipo, perfil: p.perfil || "galeranews", arte: p.arte, texto: p.texto, humor, curtidas, comentarios });
+  save.feed.unshift({ id, rodada: save.rodada, ...(p.semana != null && { semana: p.semana }), temporada: save.temporada, tipo: p.tipo, perfil: p.perfil || "galeranews", arte: p.arte, texto: p.texto, humor, curtidas, comentarios });
   if (save.feed.length > MAX) save.feed.length = MAX;
 }
 
@@ -38,7 +38,7 @@ function transferencia(save, t, c) {
   const de = c.clubeDe(save, t.de), para = c.clubeDe(save, t.para), meu = t.para === save.clube || t.de === save.clube;
   // na carreira em grupo a notícia é uma só, igual para todos os técnicos (o mesmo texto, perfil e arte), de quem for o negócio
   if (save.outrosHumanos) {
-    const p = { tipo: "contratacao", perfil: t.para, humor: "mercado", peso: 1.5, arte: { cena: "contratacao", jogador: t.jogador, clube: t.para },
+    const p = { tipo: "contratacao", semana: c.semanaDe(save), perfil: t.para, humor: "mercado", peso: 1.5, arte: { cena: "contratacao", jogador: t.jogador, clube: t.para },
       texto: `CHEGOU! ${j.nome} é do ${para.nome}. Veio do ${de.nome} por ${dinheiro(t.valor)}${t.parcelado ? " (parcelado)" : ""}.${t.lucro != null ? ` O ${de.nome} ${t.lucro >= 0 ? "lucrou" : "perdeu"} ${dinheiro(Math.abs(t.lucro))} no negócio.` : ""}` };
     postar(save, p);
     for (const outro of save.outrosHumanos()) postar(outro, p);
@@ -55,7 +55,7 @@ function troca(save, t, c) {
   const a = c.clubeDe(save, t.de), b = c.clubeDe(save, t.para), nomes = (ids) => ids.map((pid) => c.jogadorDe(save, pid).nome).join(", ");
   const dou = t.dou.length ? nomes(t.dou) : "ninguém", recebo = t.recebo.length ? nomes(t.recebo) : "ninguém";
   const grana = t.dinheiro ? ` e mais ${dinheiro(Math.abs(t.dinheiro))} do ${t.dinheiro > 0 ? a.nome : b.nome}` : "";
-  const p = { tipo: "troca", perfil: "galeranews", galeranews: true, humor: "mercado", peso: 1.5,
+  const p = { tipo: "troca", semana: c.semanaDe(save), perfil: "galeranews", galeranews: true, humor: "mercado", peso: 1.5,
     arte: { cena: "aperto", jogador: (t.dou[0] || t.recebo[0]), de: t.de, para: t.para, valor: Math.abs(t.dinheiro) },
     texto: `TROCA FECHADA! O ${a.nome} manda ${dou} para o ${b.nome} e recebe ${recebo}${grana}.` };
   postar(save, p);
