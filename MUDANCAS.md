@@ -1,8 +1,11 @@
-# Carreira: o teste dos dilemas para de falhar às vezes
+# Carreira: só o Brasileirão conta como rodada
 
-O teste `dilemas: cada resposta muda o jogo e a conta chega depois, como aviso` (`tests/carreira-clube.test.js`) falhava de vez em quando (umas 3 vezes em 40) na linha que espera a lista `gestao.depois` vazia.
+Na carreira do calendário mundial, cada clube contava as rodadas da própria liga e várias telas usavam a contagem de jogos do técnico (que soma as copas). Agora a rodada é uma só para todo mundo: as rodadas do Brasileirão que o mundo já jogou, pela semana.
 
-- **A causa:** não era outro dilema agendando consequência. A sobra era a própria conta do patrocínio polêmico, que nunca chegava porque o técnico tinha sido **demitido**. A temporada que o teste joga antes sai de uma semente sorteada; às vezes ela termina em demissão, ou deixa a confiança da diretoria abaixo de 30, e aí os 8 empates do teste viram ultimato (4 pontos, faltava 1) e demissão. Demitido, `Clube.aposJogo` para de contar os jogos e a consequência fica parada na lista.
-- **A correção (só no teste):** antes do dilema, o teste deixa a diretoria tranquila (`demitido` limpo, confiança 60, sem ultimato) e confere que o técnico seguiu no cargo. A regra do jogo não mudou.
+- **Janela de transferências:** abre e fecha pela rodada do Brasileirão (começo até a rodada 4, meio da 17 à 21) para qualquer clube, de qualquer liga, inclusive quem só joga copa. Na carreira em grupo, a rodada é a do técnico mais adiantado da sala (todos jogam as mesmas semanas), então a janela do meio abre no mesmo momento para todos. Jogo de copa não muda a rodada.
+- **Na tela:** a "Rodada" do cabeçalho da Sede conta até 38 (as rodadas do Brasileirão), o ícone de janela aberta no calendário vem do servidor pela semana de cada jogo (antes, o jogo de copa usava o número da rodada da copa), e o "R" das notícias mostra a rodada do Brasileirão (`rl`), e não mais o número de jogos do técnico. O painel da rodada ao vivo da turma (do PR #136) dizia "Rodada N da turma" contando cada semana jogada, com as de copa: agora mostra a rodada do Brasileirão da semana (`rl` na visão da rodada, `rodadaDaSemana`) ou "Jogos de copa da turma".
+- **Código:** `rodadaDaJanela` (`carreira.js`) conta as semanas do Brasileirão até a última semana jogada (`semanaFeita`; na sala, com `ultimaSemanaDosHumanos` e `semanaDosHumanos` da visão). O estado ganha `rodadasLiga` e `janela` em cada jogo de `meus`. A contagem de jogos do técnico (`save.rodada`) continua valendo para o resto (efeitos, finanças, ids).
+- Carreiras antigas (só o Brasileirão) seguem como antes.
+- Testes: `tests/carreira-rodada-brasileirao.test.js` (Flamengo, Arsenal e Bayern na mesma sala ficam na mesma rodada semana a semana; copa não conta; a rodada ao vivo da turma; sozinho com o Arsenal, a janela do meio abre na rodada 17 do Brasileirão). Três testes antigos usavam ids de jogo inventados para marcar a rodada e passaram a usar os jogos de verdade do calendário.
 
-Conferido: o teste passou 60 vezes seguidas (antes, com a demissão, falhava em laço) e os 27 testes de `tests/carreira-clube.test.js` passam.
+Conferido: os testes da carreira e das salas (191 de 191) e o E2E da carreira (6 de 6), já com o `main` de agora (PRs #136 e #137).

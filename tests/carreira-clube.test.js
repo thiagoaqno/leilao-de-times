@@ -22,6 +22,12 @@ const melhor = (v) => [...elenco(v)].sort((a, b) => ajudas.notaDe(v, b) - ajudas
 // o aviso criado por um dilema (sem passar pelo sorteio)
 const dilema = (v, id) => { const def = Clube.DILEMAS.find((d) => d.id === id); return Clube.criarDilema(v, ajudas, def, () => 0.3); };
 
+// os jogos do clube antes da rodada n do Brasileirão (só o Brasileirão conta como rodada: as copas da semana não mudam a conta)
+const ateARodada = (save, clube, n) => {
+  const semanas = [...new Set(save.calendarioMundo.filter((j) => j.competicao === "brasileirao-2026").map((j) => j.semana))].sort((a, b) => a - b);
+  const limite = n < semanas.length ? semanas[n] : Infinity;
+  return save.calendarioMundo.filter((j) => (j.casa === clube || j.fora === clube) && j.semana < limite).map((j) => j.id);
+};
 test("regras: a renovação cobra mais de quem é craque e menos de quem aceita contrato longo ou multa baixa", () => {
   const base = { salario: 1e6, nota: 80 };
   const t = (o) => R.termos({ ...base, ...o });
@@ -200,7 +206,7 @@ test("dilemas: a oferta irrecusável só aparece no último jogo da janela e ven
   const v = nova("palmeiras");
   v.jogosJogados = []; v.rodada = 2;
   assert.strictEqual(dilema(v, "oferta-irrecusavel"), null, "faltam mais jogos para a janela fechar");
-  v.jogosJogados = Array.from({ length: 3 }, (_, i) => `brasileirao-2026:liga:${i}:x:y`);
+  v.jogosJogados = ateARodada(v, v.clube, 3);
   const e = dilema(v, "oferta-irrecusavel"); assert.ok(e, "no último jogo da janela");
   v.caixaEntrada.unshift(e);
   const caixa = v.caixa, texto = Clube.responder(v, ajudas, e, "aceitar");

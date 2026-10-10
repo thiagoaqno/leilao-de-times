@@ -21,6 +21,7 @@ const COMENTARIOS = {
   neutro: ["kkkkk", "interessante", "olha isso", "eita", "tamo junto", "fonte?", "marca o amigo que...", "isso aí"],
 };
 
+// rl: a rodada do Brasileirão em que saiu (a que aparece no post); carreira.js liga o rodadaDe
 function postar(save, p) {
   if (!save.feed) save.feed = [];
   const id = `${save.temporada}-${save.rodada}-${p.tipo}-${save.feed.length}-${(p.texto || "").length}`;
@@ -28,7 +29,7 @@ function postar(save, p) {
   const humor = p.humor || "neutro";
   const comentarios = Array.from({ length: 2 + Math.floor(r() * 2) }, () => [sorteio(r, PERFIS), sorteio(r, COMENTARIOS[humor] || COMENTARIOS.neutro)]);
   const curtidas = Math.round((p.galeranews ? 9000 : 1500) * (0.4 + r() * 1.6) * (p.peso || 1));
-  save.feed.unshift({ id, rodada: save.rodada, ...(p.semana != null && { semana: p.semana }), temporada: save.temporada, tipo: p.tipo, perfil: p.perfil || "galeranews", arte: p.arte, texto: p.texto, humor, curtidas, comentarios });
+  save.feed.unshift({ id, rodada: save.rodada, ...(module.exports.rodadaDe && { rl: module.exports.rodadaDe(save) }), ...(p.semana != null && { semana: p.semana }), temporada: save.temporada, tipo: p.tipo, perfil: p.perfil || "galeranews", arte: p.arte, texto: p.texto, humor, curtidas, comentarios });
   if (save.feed.length > MAX) save.feed.length = MAX;
 }
 

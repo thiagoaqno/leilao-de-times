@@ -39,7 +39,7 @@ catálogo e as transferências da IA apareçam no feed além da caixa de entrada
 Na prancheta, `elenco.js` mostra a nota nominal e, quando `Escalacao.FIT` é menor que 100%, o rendimento efetivo na
 posição (`nota → rendimento`). `bonusNota` aparece como selo permanente nas peças e figurinhas; efeitos de evento
 válidos para o próximo jogo usam outro selo, temporário, para as duas mudanças não serem confundidas.
-No calendário mundial, `save.rodada`/`partida.rodada` contam todos os jogos do técnico. Para decidir o fim da fase de
+No calendário mundial, `save.rodada`/`partida.rodada` contam todos os jogos do técnico. A rodada que vale para a janela e para a tela é a do Brasileirão (`rodadaDaJanela`: as rodadas do Brasileirão que o mundo já jogou, pela semana, igual para qualquer liga e, na sala, para todos; `rodadaLiga`/`rodadasLiga` no estado, `rl` nas transferências e no feed). Para decidir o fim da fase de
 grupos, use `rodada` do jogo correspondente em `competicao.jogos`; não confunda os dois contadores.
 O estado público do calendário só envia mata-matas já disputados e o próximo jogo eliminatório do clube; fases
 posteriores simuladas ficam no servidor para não antecipar classificação, eliminação ou adversário. Empates decisivos

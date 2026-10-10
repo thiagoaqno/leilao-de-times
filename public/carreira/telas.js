@@ -35,7 +35,7 @@ function telaSede() {
     <dl class="cab-numeros">
       <div><dt>Posição</dt><dd>${E.rodada > 0 ? pos + "º" : "—"}</dd></div>
       ${E.meta ? `<div class="meta" title="${h(E.meta.texto)}"><dt>Meta da diretoria</dt><dd class="${E.rodada > 0 && pos <= E.meta.alvo ? "ok" : E.rodada > 0 ? "atras" : ""}">${E.meta.alvo}º<i> ou melhor</i></dd></div>` : ""}
-      <div><dt>Rodada</dt><dd>${E.fim ? "Fim" : `${(E.rodadaLiga ?? E.rodada) + 1}<i>/${E.meus.filter((j) => !j.competicao || j.competicao === c.liga).length || E.total}</i>`}</dd></div>
+      <div><dt>Rodada</dt><dd>${E.fim ? "Fim" : `${(E.rodadaLiga ?? E.rodada) + 1}<i>/${E.rodadasLiga || E.meus.filter((j) => !j.competicao || j.competicao === c.liga).length || E.total}</i>`}</dd></div>
       <div><dt>Caixa</dt><dd class="${E.caixa < 0 ? "neg" : ""}">${dinheiro(E.caixa)}</dd></div>
       <div class="moral"><dt>Moral · ${humor(E.moral)}</dt><dd><span class="medidor"><i style="--v:${E.moral}%"></i></span></dd></div>
       <div class="moral diretoria ${E.gestao.confianca < 35 ? "perigo" : ""}"><dt>Diretoria · ${gestaoSede().nivel}</dt><dd><span class="medidor"><i style="--v:${E.gestao.confianca}%"></i></span></dd></div>
@@ -245,7 +245,7 @@ function telaCalendario() {
   const jogos = E.meus.map((j) => ({ semana: j.semana ?? -1, j })).concat((E.tba || []).map((t) => ({ semana: t.semana, t })));
   jogos.sort((a, b) => a.semana - b.semana);
   $("cLista").innerHTML = `<ol class="linha-tempo">${jogos.map((x) => { if (x.t) return linhaTba(x.t); const j = x.j;
-    const r = resultadoMeu(j), adv = j.casa === E.clube ? j.fora : j.casa, janela = Mercado.janelaAberta(j.rodada);
+    const r = resultadoMeu(j), adv = j.casa === E.clube ? j.fora : j.casa, janela = j.janela ?? Mercado.janelaAberta(j.rodada); // j.janela: pela rodada do Brasileirão da semana do jogo
     const atual = E.proximoJogo && j.id === E.proximoJogo.id;
     return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h([nomeFase(j.fase), `S${j.semana}`].filter(Boolean).join(" · "))}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === E.clube ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}${linhaPenaltis(j.penaltis)}</span><span class="res ${r}">${r}</span></li>`;
   }).join("")}</ol>`;

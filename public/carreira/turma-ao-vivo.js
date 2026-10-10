@@ -36,7 +36,7 @@ const TurmaAoVivo = (() => {
     };
     const secao = (titulo, itens, aberta, id) => `<details class="tv-secao" data-sec="${h(id)}"${aberta ? " open" : ""}><summary>${h(titulo)} <small>${itens.length} jogo${itens.length === 1 ? "" : "s"}</small></summary><ul class="av-lista">${itens.map(linha).join("")}</ul></details>`;
     const comps = [...porComp.entries()].sort((a, b) => (compsTurma.has(b[0]) - compsTurma.has(a[0])) || b[1].length - a[1].length);
-    el.innerHTML = `<div class="linha-titulo"><h3><span class="tv-ponto" aria-hidden="true"></span>Rodada ${v.n} da turma <small class="tv-estado"></small></h3></div>
+    el.innerHTML = `<div class="linha-titulo"><h3><span class="tv-ponto" aria-hidden="true"></span>${v.rl ? `Rodada ${v.rl} da turma` : "Jogos de copa da turma"} <small class="tv-estado"></small></h3></div>
       <div class="tv-corpo">${turma.length ? `<ul class="av-lista tv-lista-turma">${turma.map(linha).join("")}</ul>` : ""}
       ${comps.map(([id, itens]) => secao(nomeComp(id), itens, TV.abertos.has(id), id)).join("")}</div>`;
     for (const d of el.querySelectorAll(".tv-secao")) d.addEventListener("toggle", () => { if (d.open) TV.abertos.add(d.dataset.sec); else TV.abertos.delete(d.dataset.sec); });
