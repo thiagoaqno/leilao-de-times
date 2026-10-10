@@ -1147,3 +1147,18 @@ body.zoom-ativo .tela>*,body.zoom-ativo .hub-grade>*>*{animation:none!important}
 #feedPontos{display:flex;gap:5px;align-items:center}#feedPontos i{width:6px;height:6px;border-radius:50%;background:var(--b3);transition:background 200ms ease,transform 200ms var(--ease)}
 #feedPontos i.on{background:var(--acento);transform:scale(1.4)}
 @media (max-width:640px){.insta-rolagem{height:min(80vh,640px)}}
+
+/* a rodada da turma ao vivo, para quem não está jogando (turma-ao-vivo.js): na sede e na tela da sala */
+.tv-painel h3{display:flex;align-items:center;gap:8px}.tv-painel h3 small{font-weight:500;font-size:12px;color:var(--t3)}
+.tv-ponto{width:8px;height:8px;border-radius:50%;background:var(--erro);box-shadow:0 0 0 3px color-mix(in srgb,var(--erro) 25%,transparent);animation:av-pisca 1.4s ease-in-out infinite}
+.tv-encerrada .tv-ponto{background:var(--t3);box-shadow:none;animation:none}
+.tv-corpo{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.tv-lista-turma .av-jogo{padding-bottom:28px}
+.av-jogo .tv-tec{position:absolute;left:0;right:0;bottom:15px;text-align:center;font-size:10.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
+.tv-secao summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:var(--r3);background:var(--s1);border:1px solid var(--b1);color:var(--t2);font-size:12px;list-style:none}
+.tv-secao summary::-webkit-details-marker{display:none}.tv-secao summary small{color:var(--t3)}
+.tv-secao[open] summary{margin-bottom:6px;color:var(--t1)}
+@media (hover:hover) and (pointer:fine){.tv-secao summary:hover{background:var(--s2);color:var(--t1)}}
+#gAoVivo{margin-bottom:16px}
+@media (prefers-reduced-motion:reduce){.tv-ponto{animation:none}}
+.tv-painel .av-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px}
