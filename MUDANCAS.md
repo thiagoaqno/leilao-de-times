@@ -1,15 +1,24 @@
-# Carreira: o zoom da sede (a tela sobe já carregada, como abrir uma janela) e o "← Sede" no cabeçalho
+# Carreira: premiação do campeonato até o G6
 
-## O zoom
-- Clicou num bloco da sede (**Elenco e tática, Mercado, Tabela, Calendário, Clube, Temporadas** e **Trocas**, na sala), a tela nova é **desenhada por inteiro antes** (cartas, listas, números) e a **própria tela, já carregada, cresce do lugar do bloco até o tamanho final**, com a sede esmaecendo por baixo. Voltando, a tela encolhe até o bloco e a sede (também já desenhada) reaparece por baixo.
-- **Sem troca no fim:** o último quadro da animação é igual à tela parada (medido: zero de diferença no abrir e no fechar). Antes havia uma folha cinza e borrada e um "recarregar" no final; agora nada é trocado.
-- Para isso: só `transform` (mais canto e sombra) anima; a tela não ganha opacidade nem desfoque (o vidro dos painéis não muda no meio); uma placa escura em pseudo-elemento fica por trás durante o movimento, para a sede não vazar pelo vidro; a entrada em cascata dos painéis fica desligada (se ela voltasse no fim, reiniciaria e daria o "pulo").
-- A tela começa já no tamanho do bloco enquanto pinta (sem piscar em tamanho cheio), e cliques durante o zoom são ignorados (inclusive no cabeçalho). Quem pede "reduzir movimento" no sistema troca de tela na hora.
+## Por quê
+O caixa do pessoal estava secando (as compras da sala custam caro e a premiação por posição era pequena). Agora os seis primeiros da liga recebem uma premiação do campeonato por cima do que já existia.
 
-## O botão do cabeçalho
-- Antes ficava sempre "← Vila", e era fácil clicar sem querer e sair da carreira. Agora é **"← Vila" só na sede, na entrada e na partida**, e **"← Sede"** em todas as telas de gestão (no mesmo lugar). O "← Sede" repetido dentro de cada tela saiu, já que o do cabeçalho faz o mesmo.
-- O cabeçalho vira "← Sede" já no começo do zoom, e cliques nele durante a animação não fazem nada (nunca caem no "← Vila" que aparece por baixo).
+## A premiação
+| Posição | Prêmio (Brasileirão) |
+| --- | --- |
+| 1º | R$ 60 mi |
+| 2º | R$ 45 mi |
+| 3º | R$ 35 mi |
+| 4º | R$ 28 mi |
+| 5º | R$ 22 mi |
+| 6º | R$ 18 mi |
+
+- Vale o **fator da liga** (a Premier League paga 35% a mais, a Liga Argentina e os sul-americanos pagam menos), igual ao resto do dinheiro da carreira.
+- **Fora do G6, não tem esse prêmio** (a premiação por posição e o bônus de campeão continuam como eram).
+- É **somada** à premiação por posição (R$ 1 mi por posição, de R$ 20 mi para o 1º) e ao bônus de R$ 15 mi de campeão: o campeão do Brasileirão passa a levar R$ 95 mi na virada.
+- **Adiantamento no turno:** quando o clube completa 19 jogos na liga, quem está no G6 naquele momento recebe 25% do prêmio da posição em que está (uma vez por temporada, com aviso na caixa de entrada). O resto sai no fim da temporada.
+- Entra no extrato ("Premiação do turno" e "Premiação do campeonato") e na caixa de entrada, na carreira solo e na sala.
 
 ## Conferido
-- `tests/carreira-zoom.test.js` (4 testes): o texto do cabeçalho em cada tela, o atalho de quem pede menos movimento, o "Ver todas" (sem bloco) e a ordem dos scripts.
-- No Chrome (Mercado, Elenco, Clube e Tabela, abrindo e fechando): o último quadro da animação é idêntico à tela parada; sem erros no console. Fotos em câmera lenta em `planos/imagens/carreira-zoom-*.jpg`.
+- `tests/carreira-premios.test.js` (2 testes): a tabela (seis posições, decrescente, fator da liga, nada fora do G6, 25% do turno) e uma temporada inteira (o adiantamento do turno uma vez só e o prêmio final só de quem fica no G6, igual à posição do histórico).
+- Testes de temporada, diretoria, evolução, mercado e servidor da carreira continuam passando.

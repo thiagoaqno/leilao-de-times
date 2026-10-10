@@ -60,6 +60,9 @@ function todosJogadores(save) {
 const elencoDe = (save, clube) => todosJogadores(save).filter((j) => donoDe(save, j.id) === clube);
 const notaDe = (save, j) => clamp(j.nota + (save.bonusNota[j.id] || 0), 40, 95);
 const comNota = (save, j) => ({ ...j, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
+// a premiação do campeonato até o G6 (do 1º ao 6º lugar da liga), paga no fim da temporada; no meio da liga (19 jogos), quem está no G6 já recebe 25% do prêmio
+// da posição em que está. Vale o fator da liga (a Premier League paga mais que a Argentina) e vem junto com a premiação por posição e o bônus de campeão.
+const PREMIOS_G6 = [60e6, 45e6, 35e6, 28e6, 22e6, 18e6];
 const FATOR_LIGA = { "inglaterra-2026": 1.35, "espanha-2026": 1.18, "italia-2026": 1.12, "alemanha-2026": 1.1, "franca-2026": 1.05, "brasileirao-2026": 1, "argentina-2026": 0.82, "sulamericanos-2026": 0.75 };
 const ligaDoClube = (id) => INDICE_MUNDO.ligas.find((l) => l.clubes.includes(id))?.id || "brasileirao-2026";
 const salarioDe = (save, j) => save.salarios[j.id] || Math.round(Mercado.salarioDe(comNota(save, j)) * (FATOR_LIGA[ligaDoClube(donoDe(save, j.id))] || 1) / 1e3) * 1e3;
@@ -694,6 +697,21 @@ function ultimosResultados(save, n) {
   return out;
 }
 const lesionado = (save, pid) => !!save.lesoes[pid];
+// o prêmio do G6 para a posição (0 fora dele); parcela: 1 no fim da temporada, 0,25 no meio
+const premioG6 = (save, pos, parcela = 1) => (pos >= 1 && pos <= PREMIOS_G6.length ? Math.round(PREMIOS_G6[pos - 1] * (FATOR_LIGA[ligaDoClube(save.clube)] || 1) * parcela / 1e5) * 1e5 : 0);
+// no meio da liga (19 jogos do clube na liga): o G6 do momento recebe um adiantamento de 25%, uma vez por temporada
+function premioDoTurno(save) {
+  const liga = ligaDoClube(save.clube), c = save.competicoes && save.competicoes[liga]; if (!c || c.tipo !== "liga") return;
+  const feitos = (save.jogosJogados || []).filter((id) => id.startsWith(`${liga}:`)).length, g = Clube.gestaoDe(save);
+  if (feitos !== 19 || g.visto.premioTurno === save.temporada) return;
+  g.visto.premioTurno = save.temporada;
+  const prox = proximoJogoMundo(save), limite = prox ? prox.semana : Infinity, jaFoi = (j) => j.semana < limite || save.jogosJogados.includes(j.id);
+  const ids = INDICE_MUNDO.ligas.find((l) => l.id === liga).clubes, tab = Temporada.tabela(ids, [c.jogos.filter(jaFoi).map((j) => [j.casa, j.fora, ...j.placar])]);
+  const pos = tab.findIndex((l) => l.id === save.clube) + 1, valor = premioG6(save, pos, 0.25);
+  if (!valor) return;
+  movimentar(save, `Premiação do turno: ${pos}º lugar (G6)`, valor);
+  avisar(save, { tipo: "premio", icone: "taca", titulo: `Premiação do turno: ${dinheiro(valor)}`, texto: `No meio do campeonato você está em ${pos}º, dentro do G6: a liga adianta 25% do prêmio da posição (${dinheiro(valor)}). O resto sai no fim da temporada.` });
+}
 const ajudas = { avisar, ligaDoClube, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
 
 // lesões, cartões e suspensões de todos os jogos da rodada
@@ -901,6 +919,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   movimentar(save, "Salários (1 semana)", -Math.round(folhaDe(save) / 4));
   save.ultimo = { rodada: save.rodada, jogoId: p.jogoId, competicao: p.competicao, fase: p.fase, casa: p.casa, fora: p.fora, placar: r.placar, eventos: r.eventos, modo: p.modo };
   save.partida = null; save.rodada++; if (recalcular) recalcularMundo(save);
+  premioDoTurno(save);
   save.efeitos = (save.efeitos || []).filter((e) => e.ate >= save.rodada);
   for (const [pid, ind] of Object.entries(save.indicacoes)) if (ind.ate < save.rodada) delete save.indicacoes[pid];
   const comp = save.competicoes[p.competicao], jogoDaCompeticao = comp.jogos.find((j) => j.id === p.jogoId), da = Temporada.masculina(comp) ? "do" : "da";
@@ -987,6 +1006,8 @@ function registrarTemporada(save) {
   }
   movimentar(save, `Premiação: ${pos}º lugar`, (tabela.length + 1 - pos) * 1e6);
   for (const t of titulos) movimentar(save, `Premiação: campeão da ${t}`, 15e6);
+  const g6 = premioG6(save, pos);
+  if (g6) { movimentar(save, `Premiação do campeonato: ${pos}º lugar (G6)`, g6); avisar(save, { tipo: "premio", icone: "taca", titulo: `Premiação do campeonato: ${dinheiro(g6)}`, texto: `Terminar em ${pos}º entre os 6 primeiros paga ${dinheiro(g6)} da premiação do campeonato.` }); }
   Clube.fechouTemporada(save, ajudas, { pos, titulos, vices, cumpriuMeta: meta ? meta.cumprida : undefined });
 }
 // o arquivo das temporadas (save.arquivo, de todos): quando a temporada acaba, guarda os campeões, as tabelas, as chaves, a festa,
@@ -1427,7 +1448,7 @@ module.exports = function ligarCarreira(io) {
   });
 };
 // para os testes: montar uma carreira e mexer nela sem o socket
-module.exports.paraTestes = { novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
+module.exports.paraTestes = { PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
 module.exports.grupo = { Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
