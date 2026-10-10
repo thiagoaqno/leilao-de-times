@@ -2,7 +2,7 @@
 process.env.DB_PATH = process.env.DB_PATH || ":memory:";
 const test = require("node:test");
 const assert = require("node:assert");
-const { PREMIOS_G6, premioG6, novaCarreira, fecharRodada, proximoJogoMundo, simularMinha, sementeDoJogo } = require("../carreira.js").paraTestes;
+const { PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, fecharRodada, proximoJogoMundo, simularMinha, sementeDoJogo } = require("../carreira.js").paraTestes;
 
 const jogar = (save, ate = Infinity) => {
   for (let jogo, n = 0; n < ate && (jogo = proximoJogoMundo(save)); n++) {
@@ -39,4 +39,14 @@ test("na carreira: no meio da liga o G6 do momento recebe 25%, no fim quem ficou
     assert.ok(save.caixaEntrada.some((e) => e.tipo === "premio" && /Premiação do campeonato/.test(e.titulo)));
   } else assert.strictEqual(final.length, 0, "fora do G6 não tem o prêmio do campeonato");
   assert.ok(extrato(save).filter(([n]) => /Premiação do turno/.test(n)).length <= 1, "o prêmio do turno não repete (o extrato guarda só as últimas rodadas)");
+});
+
+test("o bônus de título: R$ 60 mi na Libertadores, R$ 50 mi na Copa do Brasil, R$ 40 mi na Sul-Americana e R$ 15 mi nas outras competições", () => {
+  const save = novaCarreira("Teste", "flamengo", "", 1), nome = (id) => save.competicoes[id].nome;
+  assert.deepStrictEqual(PREMIO_TITULO, { libertadores: 60e6, copadobrasil: 50e6, sulamericana: 40e6 });
+  assert.strictEqual(premioDoTitulo(save, nome("copadobrasil")), 50e6);
+  assert.strictEqual(premioDoTitulo(save, nome("libertadores")), 60e6);
+  assert.strictEqual(premioDoTitulo(save, nome("sulamericana")), 40e6);
+  for (const id of ["brasileirao-2026", "champions", "supermundial", "mundial"]) assert.strictEqual(premioDoTitulo(save, nome(id)), 15e6, id);
+  assert.strictEqual(premioDoTitulo(save, "Brasileirão"), 15e6, "nome que não é de competição do mundo (carreira antiga): R$ 15 mi");
 });

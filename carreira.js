@@ -62,6 +62,8 @@ const notaDe = (save, j) => clamp(j.nota + (save.bonusNota[j.id] || 0), 40, 95);
 const comNota = (save, j) => ({ ...j, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
 // a premiação do campeonato até o G6 (do 1º ao 6º lugar da liga), paga no fim da temporada; no meio da liga (19 jogos), quem está no G6 já recebe 25% do prêmio
 // da posição em que está. Vale o fator da liga (a Premier League paga mais que a Argentina) e vem junto com a premiação por posição e o bônus de campeão.
+// o bônus de campeão de cada competição (R$ 15 mi para todas as outras): a Libertadores, a Copa do Brasil e a Sul-Americana pagam mais
+const PREMIO_TITULO = { libertadores: 60e6, copadobrasil: 50e6, sulamericana: 40e6 };
 const PREMIOS_G6 = [75e6, 56.3e6, 43.8e6, 35e6, 27.5e6, 22.5e6];
 const FATOR_LIGA = { "inglaterra-2026": 1.35, "espanha-2026": 1.18, "italia-2026": 1.12, "alemanha-2026": 1.1, "franca-2026": 1.05, "brasileirao-2026": 1, "argentina-2026": 0.82, "sulamericanos-2026": 0.75 };
 const ligaDoClube = (id) => INDICE_MUNDO.ligas.find((l) => l.clubes.includes(id))?.id || "brasileirao-2026";
@@ -708,6 +710,8 @@ function ultimosResultados(save, n) {
   return out;
 }
 const lesionado = (save, pid) => !!save.lesoes[pid];
+// o bônus de título da competição pelo nome (as ligas e as outras copas: R$ 15 mi)
+const premioDoTitulo = (save, nome) => { const c = Object.values(save.competicoes || {}).find((x) => x.nome === nome); return (c && PREMIO_TITULO[c.id]) || 15e6; };
 // o prêmio do G6 para a posição (0 fora dele); parcela: 1 no fim da temporada, 0,25 no meio
 const premioG6 = (save, pos, parcela = 1) => (pos >= 1 && pos <= PREMIOS_G6.length ? Math.round(PREMIOS_G6[pos - 1] * (FATOR_LIGA[ligaDoClube(save.clube)] || 1) * parcela / 1e5) * 1e5 : 0);
 // no meio da liga (19 jogos do clube na liga): o G6 do momento recebe um adiantamento de 25%, uma vez por temporada
@@ -1020,7 +1024,7 @@ function registrarTemporada(save) {
     else { mudarMoral(save, -6); avisar(save, { tipo: "diretoria", icone: "alerta", titulo: "A diretoria cobra", texto: `A meta não foi cumprida (${meta.texto.toLowerCase()}): ${pos}º lugar. A pressão cresce para a próxima temporada.` }); }
   }
   movimentar(save, `Premiação: ${pos}º lugar`, (tabela.length + 1 - pos) * 1e6);
-  for (const t of titulos) movimentar(save, `Premiação: campeão da ${t}`, 15e6);
+  for (const t of titulos) movimentar(save, `Premiação: campeão da ${t}`, premioDoTitulo(save, t));
   const g6 = premioG6(save, pos);
   if (g6) { movimentar(save, `Premiação do campeonato: ${pos}º lugar (G6)`, g6); avisar(save, { tipo: "premio", icone: "taca", titulo: `Premiação do campeonato: ${dinheiro(g6)}`, texto: `Terminar em ${pos}º entre os 6 primeiros paga ${dinheiro(g6)} da premiação do campeonato.` }); }
   Clube.fechouTemporada(save, ajudas, { pos, titulos, vices, cumpriuMeta: meta ? meta.cumprida : undefined });
@@ -1520,7 +1524,7 @@ module.exports = function ligarCarreira(io) {
   });
 };
 // para os testes: montar uma carreira e mexer nela sem o socket
-module.exports.paraTestes = { PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
+module.exports.paraTestes = { PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
 module.exports.grupo = { Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
