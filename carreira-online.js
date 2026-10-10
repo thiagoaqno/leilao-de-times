@@ -92,6 +92,7 @@ module.exports = function ligarCarreiraOnline(io) {
     if (e.regraCompras.tipo === "entrada" && !e.janela.aberta) e.janela = { ...e.janela, aberta: true, entrada: true };
     e.rodadaGrupo = Rd.visao(room.save, room.rodada, p.clube, Date.now());
     e.anfitriao = p.id === room.host;
+    e.faltamJogos = !!Carreira.proximaRodadaGrupo(room.save); // algum técnico da sala ainda tem jogo nesta temporada (mesmo que o seu clube já tenha acabado)
     return e;
   };
   // tudo para todo mundo: a sala (state) e a sede de cada um (carreira)
