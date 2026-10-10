@@ -57,7 +57,7 @@ test("o arquivo guarda a temporada que acabou: campeões, tabelas, chaves, prêm
   const e = estado(save), a = e.arquivo[0];
   assert.strictEqual(e.arquivo.length, 1);
   assert.strictEqual(a.temporada, save.temporada);
-  for (const id of ["brasileirao-2026", "libertadores", "copadobrasil", "mundial"]) assert.ok(a.competicoes[id] && a.competicoes[id].campeao && a.competicoes[id].vice, id);
+  for (const id of ["brasileirao-2026", "libertadores", "copadobrasil", "supermundial"]) assert.ok(a.competicoes[id] && a.competicoes[id].campeao && a.competicoes[id].vice, id);
   assert.ok(a.competicoes["brasileirao-2026"].tabela.length === 20 && !a.competicoes["brasileirao-2026"].tabela[0].ultimos);
   assert.ok(a.competicoes.libertadores.chave.length >= 3 && a.competicoes.libertadores.grupos.length >= 4);
   assert.ok(a.competicoes.copadobrasil.festa.final && a.competicoes.copadobrasil.festa.elenco.length > 10);

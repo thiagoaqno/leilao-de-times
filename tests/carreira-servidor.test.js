@@ -73,7 +73,7 @@ test("carreira: escalação e calendário mundial no servidor", async () => {
   for (let i = 0; i < 3; i++) r = await pedir(a, "jogar", { modo: 1 });
   assert.strictEqual(r.estado.rodada, 3);
   assert.ok(r.estado.proximoJogo);
-  assert.ok(r.estado.competicoes.libertadores && r.estado.competicoes.champions && r.estado.competicoes.mundial);
+  assert.ok(r.estado.competicoes.libertadores && r.estado.competicoes.champions && r.estado.competicoes.supermundial && !r.estado.competicoes.mundial, "carreira nova: Super Mundial sem o Mundial");
   a.close();
 });
 

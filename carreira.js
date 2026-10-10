@@ -178,6 +178,7 @@ function completar(save) {
   limparNoticiasPrematurasDeGrupo(save);
   recuperarPenaltisDoUltimo(save);
   registrarTemporada(save);
+  guardarNaEstante(save); // as conquistas das temporadas de antes da estante (ou de antes deste conserto)
   Clube.garantir(save, ajudas);
   return save;
 }
@@ -199,7 +200,7 @@ function basesDaTemporada(save) {
   return bases;
 }
 function recalcularMundo(save) {
-  const mundo = Temporada.simularMundo({ bases: basesDaTemporada(save), indice: indiceDe(save), semente: `${save.semente}:${save.temporada}`, resultadosFixos: save.resultadosFixos || {}, classificados: save.classificados, copasNovas: save.formatoCopas === 2 });
+  const mundo = Temporada.simularMundo({ bases: basesDaTemporada(save), indice: indiceDe(save), semente: `${save.semente}:${save.temporada}`, resultadosFixos: save.resultadosFixos || {}, classificados: save.classificados, copasNovas: save.formatoCopas === 2, semMundial: !!save.semMundial });
   save.competicoes = mundo.competicoes; save.calendarioMundo = mundo.jogos;
   return mundo;
 }
@@ -236,7 +237,7 @@ const proximoJogoMundo = (save) => (save.calendarioMundo || []).find((j) => (j.c
 // o mundo de uma carreira nova, ainda sem técnico: a carreira solo assume um clube, e a carreira em grupo, um por pessoa
 function mundoNovo(temporadas = Evolucao.TEMPORADAS.padrao, caixaIgual = 0) {
   const base = BASES[BASE_PADRAO];
-  const save = { v: VERSAO, base: base.id, ano: base.ano, temporada: 1, semente: crypto.randomBytes(6).toString("hex"), formatoCopas: 2, caixaIgual: CAIXAS_IGUAIS.includes(Number(caixaIgual)) ? Number(caixaIgual) : 0,
+  const save = { v: VERSAO, base: base.id, ano: base.ano, temporada: 1, semente: crypto.randomBytes(6).toString("hex"), formatoCopas: 2, semMundial: true, caixaIgual: CAIXAS_IGUAIS.includes(Number(caixaIgual)) ? Number(caixaIgual) : 0,
     temporadasMax: inteiro(temporadas, Evolucao.TEMPORADAS.min, Evolucao.TEMPORADAS.max, Evolucao.TEMPORADAS.padrao), resultadosFixos: {}, resultados: [], gols: {}, divisoes: divisoesIniciais() };
   recalcularMundo(save);
   return save;
@@ -426,11 +427,12 @@ function novaTemporadaGrupo(save) {
   const clubes = humanosDe(save), vistas = clubes.map((c) => completar(vistaDe(save, c)));
   if (vistas.some((v) => v.partida || !temporadaAcabou(v))) return "Ainda tem jogo nesta temporada.";
   if (save.temporada >= save.temporadasMax) return `A carreira terminou: foram ${save.temporadasMax} temporada${save.temporadasMax > 1 ? "s" : ""}.`;
-  for (const v of vistas) { registrarTemporada(v); resolverPendentes(v); guardarVista(save, v); }
+  // o arquivo da temporada com tudo o que acabou (quem terminou primeiro arquivou antes das copas do fim do ano)
+  for (const v of vistas) { registrarTemporada(v); if (v.base === BASE_PADRAO && v.calendarioMundo) arquivarTemporada(v); resolverPendentes(v); guardarVista(save, v); }
   const v0 = vistaDe(save, clubes[0]), classificados = classificadosDe(v0), troca = trocarDivisoes(v0);
   const meus = virarTemporada(v0, Object.fromEntries(clubes.map((c) => [c, save.humanos[c].estado.jogosTemporada || 0])));
   guardarVista(save, v0);
-  Object.assign(save, { temporada: save.temporada + 1, ano: save.ano + 1, gols: {}, amarelos: {}, lesoes: {}, suspensos: {}, desempenho: {}, classificados, divisoes: troca.divisoes, formatoCopas: 2, resultadosFixos: {}, donosInicio: { ...save.donos } });
+  Object.assign(save, { temporada: save.temporada + 1, ano: save.ano + 1, gols: {}, amarelos: {}, lesoes: {}, suspensos: {}, desempenho: {}, classificados, divisoes: troca.divisoes, formatoCopas: 2, semMundial: true, resultadosFixos: {}, donosInicio: { ...save.donos } });
   recalcularMundo(save);
   for (const c of clubes) {
     const v = vistaDe(save, c), m = meus[c];
@@ -1089,10 +1091,11 @@ function registrarTemporada(save) {
   if (meta && meta.cumprida === undefined) meta.cumprida = pos <= meta.alvo;
   const ligaId = save.base === BASE_PADRAO && save.divisoes ? ligaDoClube(save.clube, save) : null;
   const divisao = ligaId === "brasileirao-2026" && pos > tabela.length - TROCAM ? "rebaixado" : ligaId === "serieb-2026" && pos <= TROCAM ? "acesso" : null;
-  save.historico.push({ ...(meta && { meta: { alvo: meta.alvo, texto: meta.texto, cumprida: meta.cumprida, rank: meta.rank } }), ano: save.ano, temporada: save.temporada, posicao: pos, pontos: tabela[pos - 1].p, liga: nomeLiga, campeao: tabela[0].id, titulos, vices,
+  save.historico.push({ ...(meta && { meta: { alvo: meta.alvo, texto: meta.texto, cumprida: meta.cumprida, rank: meta.rank } }), ano: save.ano, temporada: save.temporada, clube: save.clube, posicao: pos, pontos: tabela[pos - 1].p, liga: nomeLiga, campeao: tabela[0].id, titulos, vices,
     artilheiro: artilheiro ? { id: artilheiro[0], gols: artilheiro[1] } : null, negocio: negocios[0] ? { jogador: negocios[0].jogador, lucro: negocios[0].lucro, para: negocios[0].para } : null,
     forca: forcaDoElenco(save), ...(divisao && { divisao }) });
   if (save.base === BASE_PADRAO && save.calendarioMundo) arquivarTemporada(save);
+  guardarNaEstante(save);
   if (meta) {
     const tamanho = clubeDe(save, save.clube).tamanho || 3;
     if (meta.cumprida) { movimentar(save, "Bônus da diretoria: meta cumprida", Math.round(tamanho * 3e6 / 1e5) * 1e5); mudarMoral(save, 8); avisar(save, { tipo: "diretoria", icone: "aperto", titulo: "A diretoria está satisfeita", texto: `Meta cumprida (${meta.texto.toLowerCase()}): ${pos}º lugar. Bônus no caixa e o vestiário comemora.` }); }
@@ -1124,8 +1127,16 @@ const PONTOS_SERIEB = [4, 3, 2, 2];
 const pontosDaLiga = (liga, pos) => (liga === "serieb-2026" ? PONTOS_SERIEB : PONTOS_LIGA)[pos - 1] || 0;
 function arquivarTemporada(save) {
   const arquivo = save.arquivo || (save.arquivo = []);
-  if (arquivo.some((x) => x.temporada === save.temporada)) return;
-  const mundo = estadoMundo(save), golsTodos = golsDoMundo(save, Infinity);
+  const antes = arquivo.findIndex((x) => x.temporada === save.temporada);
+  const mundo = estadoMundo(save);
+  // na sala, quem termina primeiro arquiva antes das copas do fim do ano (Mundial, Super Mundial...): quem termina depois
+  // refaz o arquivo da temporada com as competições que acabaram desde então
+  if (antes >= 0) {
+    const novas = Object.entries(mundo.competicoes).filter(([id, c]) => c.campeao && !arquivo[antes].competicoes[id]);
+    if (!novas.length) return;
+    arquivo.splice(antes, 1);
+  }
+  const golsTodos = golsDoMundo(save, Infinity);
   const humanos = save.humanosLista ? save.humanosLista() : [{ clube: save.clube, tecnico: save.tecnico }];
   const competicoes = {}; let goleada = null;
   for (const [id, c] of Object.entries(mundo.competicoes)) {
@@ -1154,23 +1165,39 @@ function arquivarTemporada(save) {
     }
     return { clube: h.clube, tecnico: (h.tecnico && h.tecnico.nome) || (typeof h.tecnico === "string" ? h.tecnico : h.clube), posicao: pos, liga: liga ? liga.nome : "", titulos, vices, pontos };
   });
-  guardarNaEstante(save, competicoes, tecnicos);
-  arquivo.push({ ano: save.ano, temporada: save.temporada, competicoes, artilharia,
+  arquivo.splice(antes >= 0 ? antes : arquivo.length, 0, { ano: save.ano, temporada: save.temporada, competicoes, artilharia,
     premios: { artilheiro: artilharia[0] || null, goleada: goleada && { competicao: goleada.competicao, casa: goleada.casa, fora: goleada.fora, placar: goleada.placar },
       negocio: negocio ? { jogador: negocio.jogador, nome: (jogadorDe(save, negocio.jogador) || {}).nome || negocio.jogador, de: negocio.de, para: negocio.para, lucro: negocio.lucro } : null },
     tecnicos });
 }
-// a estante de troféus da galera (bd.js, tabela estante): os títulos e os vices dos técnicos desta temporada ficam guardados
-// para sempre, fora do save (a carreira solo pode ser excluída e a sala em grupo expira). Sem banco (um teste), segue sem guardar.
-function guardarNaEstante(save, competicoes, tecnicos) {
-  const lista = [];
-  for (const t of tecnicos) for (const [id, c] of Object.entries(competicoes)) {
-    const colocacao = c.campeao === t.clube ? 1 : c.vice === t.clube ? 2 : 0; if (!colocacao) continue;
-    const peso = c.tipo === "liga" ? pontosDaLiga(id, colocacao) : colocacao === 1 ? PONTOS_TITULO[id] || 5 : Math.floor((PONTOS_TITULO[id] || 5) / 2);
-    lista.push({ carreira: save.semente, modo: save.humanosLista ? "grupo" : "solo", tecnico: t.tecnico, clube: t.clube, competicao: id, nome: c.nome, colocacao, pontos: peso, ano: save.ano, temporada: save.temporada });
+// a estante de troféus da galera (bd.js, tabela estante): os títulos e os vices de cada técnico ficam guardados para sempre,
+// fora do save (a carreira solo pode ser excluída e a sala em grupo expira). A fonte é o histórico do técnico (save.historico,
+// escrito por registrarTemporada quando o calendário DELE acaba, depois do último jogo, Mundial e Super Mundial incluídos).
+// O arquivo das temporadas não serve: na sala, ele nasce quando o primeiro técnico termina, antes das copas do fim do ano.
+// completar também chama, e assim as conquistas das temporadas antigas entram na estante (a mesma conquista não entra duas
+// vezes). Sem banco (um teste), segue sem guardar.
+const ID_DA_COMPETICAO = Object.fromEntries(Object.entries(Temporada.NOMES).map(([id, nome]) => [nome, id]));
+const estanteFeita = new Set(); // o que este processo já mandou para a estante (para completar não escrever no banco toda vez)
+const nomeDoTecnico = (save) => {
+  const t = save.tecnico || ((save.humanosLista ? save.humanosLista() : []).find((x) => x.clube === save.clube) || {}).tecnico;
+  return typeof t === "string" ? t : (t && t.nome) || "";
+};
+function guardarNaEstante(save) {
+  if (save.base !== BASE_PADRAO || !save.semente || !save.historico || !save.historico.length) return;
+  const tecnico = nomeDoTecnico(save); if (!tecnico) return;
+  const ids = Object.fromEntries(Object.values(save.competicoes || {}).map((c) => [c.nome, c.id]));
+  const lista = [], chaves = [];
+  for (const x of save.historico) {
+    const clube = x.clube || save.clube, chave = `${save.semente}:${clube}:${x.temporada}`; if (estanteFeita.has(chave)) continue;
+    chaves.push(chave);
+    for (const [nomes, colocacao] of [[x.titulos || [], 1], [x.vices || [], 2]]) for (const nome of nomes) {
+      const id = ID_DA_COMPETICAO[nome] || ids[nome]; if (!id) continue;
+      const pontos = id.endsWith("-2026") ? pontosDaLiga(id, colocacao) : colocacao === 1 ? PONTOS_TITULO[id] || 5 : Math.floor((PONTOS_TITULO[id] || 5) / 2);
+      lista.push({ carreira: save.semente, modo: save.humanosLista ? "grupo" : "solo", tecnico, clube, competicao: id, nome, colocacao, pontos, ano: x.ano, temporada: x.temporada });
+    }
   }
-  if (!lista.length) return;
-  try { bd.guardarConquistas(lista); } catch (e) { console.warn("estante:", e.message); }
+  if (!chaves.length) return;
+  try { if (lista.length) bd.guardarConquistas(lista); for (const k of chaves) estanteFeita.add(k); } catch (e) { console.warn("estante:", e.message); }
 }
 // a virada: cada jogador evolui (de -2 a +3), os veteranos podem se aposentar e cada clube ganha 1 ou 2 jovens da base.
 // Devolve o que mudou no seu time, para o aviso da pré-temporada.
@@ -1487,6 +1514,7 @@ function novaTemporada(save) {
   if (!temporadaAcabou(save)) return "A temporada ainda não acabou.";
   if (save.temporada >= save.temporadasMax) return `A carreira terminou: foram ${save.temporadasMax} temporada${save.temporadasMax > 1 ? "s" : ""}.`;
   registrarTemporada(save);
+  if (save.base === BASE_PADRAO && save.calendarioMundo) arquivarTemporada(save);
   resolverPendentes(save); // o que ficou sem resposta vale a opção padrão, como antes de um jogo
   const mundo = save.base === BASE_PADRAO, classificados = mundo ? classificadosDe(save) : null, troca = mundo ? trocarDivisoes(save) : null;
   const meus = virarTemporada(save)[save.clube];
@@ -1499,7 +1527,7 @@ function novaTemporada(save) {
   const elenco = new Set(elencoDe(save, save.clube).map((j) => j.id));
   if (save.escalacao.titulares && !save.escalacao.titulares.every((id) => elenco.has(id))) Object.assign(save.escalacao, { titulares: null, fixo: false });
   if (mundo) {
-    Object.assign(save, { classificados, divisoes: troca.divisoes, formatoCopas: 2, resultadosFixos: {}, jogosJogados: [], donosInicio: { ...save.donos } });
+    Object.assign(save, { classificados, divisoes: troca.divisoes, formatoCopas: 2, semMundial: true, resultadosFixos: {}, jogosJogados: [], donosInicio: { ...save.donos } });
     recalcularMundo(save);
     save.calendario = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, save.clube).map((j) => [[j.casa, j.fora]]);
   } else save.calendario = Temporada.gerarCalendario(idsDosClubes(save), `${save.semente}:${save.temporada}`);

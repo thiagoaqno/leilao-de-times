@@ -137,7 +137,9 @@
   }
   // classificados (da segunda temporada em diante): { libertadores: [32 ids], europa: { [liga]: [4 ids] }, brasileiros: [ids na ordem da tabela] }
   // copasNovas: a Copa do Brasil, a Sul-Americana e o Super Mundial (as carreiras que já estavam no meio da temporada ficam sem elas)
-  function simularMundo({ bases, indice, semente, resultadosFixos = {}, classificados = null, copasNovas = false }) {
+  // semMundial: sem o Mundial de Clubes (o Super Mundial fica sendo o torneio mundial); só vale junto com copasNovas, e as
+  // temporadas que já estavam rolando com o Mundial continuam com ele até a virada
+  function simularMundo({ bases, indice, semente, resultadosFixos = {}, classificados = null, copasNovas = false, semMundial = false }) {
     const mundo = indice, normal = normalizarBases(bases), clubes = normal.clubes, jogar = simuladorDoMundo(clubes, semente, resultadosFixos), competicoes = {}, todosJogos = [];
     const semanasLiga = Array.from({ length: 38 }, (_, i) => i * 2 + 1);
     for (const liga of mundo.ligas.filter((l) => normal.bases[l.id] && !["argentina-2026", "sulamericanos-2026"].includes(l.id))) {
@@ -168,10 +170,12 @@
       todosJogos.push(...competicoes.copadobrasil.jogos, ...competicoes.sulamericana.jogos, ...competicoes.supermundial.jogos);
       semanasMundial[0] = 82; semanasMundial[1] = 83; // o Mundial vem depois do Super Mundial
     }
-    const lib = competicoes.libertadores, cha = competicoes.champions, semifinalistas = [lib.campeao, cha.vice, cha.campeao, lib.vice], semi = [];
-    for (let i = 0; i < 2; i++) semi.push(jogar("mundial", "semifinal", i, semifinalistas[i * 2], semifinalistas[i * 2 + 1], semanasMundial[0], "fim", true));
-    const finalistas = semi.map((j) => vencedorJogo(j, semente, clubes)), final = jogar("mundial", "final", 0, finalistas[0], finalistas[1], semanasMundial[1], "fim", true), campeao = vencedorJogo(final, semente, clubes), jogos = [...semi, final];
-    competicoes.mundial = { id: "mundial", nome: NOMES.mundial, tipo: "copa", fase: "encerrada", grupos: [], jogos, resultados: jogos.map((j) => [j.casa, j.fora, ...j.placar]), participantes: semifinalistas, campeao, vice: finalistas.find((id) => id !== campeao) }; todosJogos.push(...jogos);
+    if (!(copasNovas && semMundial)) {
+      const lib = competicoes.libertadores, cha = competicoes.champions, semifinalistas = [lib.campeao, cha.vice, cha.campeao, lib.vice], semi = [];
+      for (let i = 0; i < 2; i++) semi.push(jogar("mundial", "semifinal", i, semifinalistas[i * 2], semifinalistas[i * 2 + 1], semanasMundial[0], "fim", true));
+      const finalistas = semi.map((j) => vencedorJogo(j, semente, clubes)), final = jogar("mundial", "final", 0, finalistas[0], finalistas[1], semanasMundial[1], "fim", true), campeao = vencedorJogo(final, semente, clubes), jogos = [...semi, final];
+      competicoes.mundial = { id: "mundial", nome: NOMES.mundial, tipo: "copa", fase: "encerrada", grupos: [], jogos, resultados: jogos.map((j) => [j.casa, j.fora, ...j.placar]), participantes: semifinalistas, campeao, vice: finalistas.find((id) => id !== campeao) }; todosJogos.push(...jogos);
+    }
     todosJogos.sort((a, b) => a.semana - b.semana || a.periodo.localeCompare(b.periodo) || a.id.localeCompare(b.id));
     return { competicoes, jogos: todosJogos, campeoes: Object.fromEntries(Object.entries(competicoes).map(([id, c]) => [id, c.campeao])) };
   }
