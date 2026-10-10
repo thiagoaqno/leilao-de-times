@@ -8,6 +8,8 @@ test.setTimeout(120000);
 // os avisos que aparecem sozinhos (a reunião com a diretoria no começo da temporada, o aviso antes do jogo...) são fechados
 // no botão principal quando ficam na frente de um clique
 const semAvisos = (page) => page.addLocatorHandler(page.locator("dialog.popup-aviso[open]"), async (d) => { await d.locator("button.primario").first().click(); });
+// o "← Sede" do cabeçalho, esperando o zoom de volta acabar (durante o zoom o jogo ignora os cliques de propósito)
+const voltarSede = async (page) => { const livre = () => page.waitForFunction(() => !Zoom.ocupado()); await livre(); await page.click("#barra .voltar"); await livre(); };
 const vigiar = (page) => { const erros = []; page.on("pageerror", (e) => erros.push(String(e))); semAvisos(page); return erros; };
 
 test("carreira: a prancheta mostra evolução e perda por posição", async ({ page }) => {
@@ -102,10 +104,10 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await fotografar(page, `carreira-formacao-${tela.width}`);
     expect(await page.evaluate(() => __carreira.E.escalacao.fixo)).toBe(true);
     // a formação nova reorganiza os mesmos 11
-    await page.click('#elenco [data-formacao="4-4-2"]');
+    await page.click('#elenco [data-esquema="4-4-2"]');
     await expect.poll(() => page.evaluate(() => __carreira.E.escalacao.formacao)).toBe("4-4-2");
     // o mercado e a ficha com a proposta
-    await page.click("#barra .voltar");
+    await voltarSede(page);
     await page.click('#sede [data-ir="mercado"]');
     await expect(page.locator("#mLista .figurinha").first()).toBeVisible();
     await page.click("#mOlheiro");
@@ -116,7 +118,7 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await expect(page.locator("#ficha #fProposta")).toBeVisible();
     await page.click("#fichaFechar");
     // uma rodada no modo "só o resultado", pulando até o fim
-    await page.click("#barra .voltar");
+    await voltarSede(page);
     await page.click("#btnJogar");
     await expect(page.locator("#partida")).toBeVisible();
     // o painel ao vivo: o campeonato e a rodada no topo e os outros jogos da semana andando no relógio
@@ -136,16 +138,16 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await page.click('#sede [data-ir="feed"]');
     await expect(page.locator("#fLista .post").first()).toBeVisible();
     await expect(page.locator("#fLista .post .arte img").first()).toHaveAttribute("src", /^data:image\/png/);
-    await page.click("#barra .voltar");
+    await voltarSede(page);
     // as competições ficam dentro da tabela, e o calendário mistura liga e copa
     await page.click('#sede [data-ir="tabela"]');
     await expect(page.locator('#tTabela [data-competicao="libertadores"]')).toBeVisible();
     await page.click('#tTabela [data-competicao="libertadores"]');
     await expect(page.locator("#tTabela .grupo-copa")).toHaveCount(8);
-    await page.click("#barra .voltar");
+    await voltarSede(page);
     await page.click('#sede [data-ir="calendario"]');
     await expect(page.locator("#cLista")).toContainText("Libertadores");
-    await page.click("#barra .voltar");
+    await voltarSede(page);
     // uma partida com decisões táticas: na parada, o estádio do mandante e a troca começando pelo banco
     await page.evaluate(() => { modoEscolhido = 2; });
     await page.click("#btnJogar");
