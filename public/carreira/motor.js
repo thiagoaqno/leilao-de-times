@@ -211,6 +211,7 @@
         titulares: titulares(time).map((p) => ({ id: p.id, nome: p.nome, pos: p.grp, nota: p.nota, energia: Math.round(p.energia), amarelos: p.amarelos })),
         campo: time.campo.map((v) => ({ slot: v.slot, fino: v.fino, id: v.p && !v.p.fora ? v.p.id : null })), // o lugar de cada um, para o campinho
         estiloF: time.estF,
+        estatisticas: est.map((x) => ({ ...x })), // os números do jogo até aqui (a tela do intervalo mostra)
         banco: banco(time).map((p) => ({ id: p.id, nome: p.nome, pos: p.grp, nota: p.nota })),
       };
     }

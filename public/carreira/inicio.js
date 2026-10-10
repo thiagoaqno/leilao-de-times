@@ -98,7 +98,11 @@ function temaClube(id) {
   let acento = "#ffffff";
   if (base) { acento = base; for (let p = 0.1; contraste(acento, FUNDO_ESCURO) < 3.2 && p <= 0.7; p += 0.1) acento = misturar(base, "#ffffff", p); }
   const tinta = contraste(acento, "#ffffff") >= contraste(acento, "#111111") ? "#ffffff" : "#111111";
-  return `--acento:${acento};--acento2:${c.cores.find((cor) => cor !== base) || "#ffffff"};--acento-tinta:${tinta}`;
+  // a cor do time nos painéis claros da Sede e do intervalo (hub.css): a colorida, ou a mais escura das duas (nunca o branco)
+  const time = base || [...c.cores].sort((x, y) => contraste(y, "#ffffff") - contraste(x, "#ffffff"))[0];
+  const timeTinta = contraste(time, "#ffffff") >= contraste(time, "#111111") ? "#ffffff" : "#111111";
+  const time2 = c.cores.find((cor) => cor !== time) || "#ffffff";
+  return `--acento:${acento};--acento2:${c.cores.find((cor) => cor !== base) || "#ffffff"};--acento-tinta:${tinta};--time:${time};--time2:${time2};--time-tinta:${timeTinta};--time-escuro:${misturar(time, "#000000", 0.38)};--time-claro:${misturar(time, "#ffffff", 0.16)}`;
 }
 // o escudo gigante do clube atrás de tudo (a marca d'água)
 const marcaClube = (id) => { const m = $("marcaClube"); if (m && m.dataset.clube !== (id || "")) { m.dataset.clube = id || ""; m.innerHTML = id ? escudo(id, 28) : ""; } };

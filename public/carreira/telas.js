@@ -46,6 +46,7 @@ function telaSede() {
   telaEntrada();
   feedNaSede();
   painelTime();
+  desenvolvimentoNaSede();
   // o último jogo
   const u = E.ultimo;
   $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div>${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}${linhaPenaltis(u.penaltis)}</span><div>${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>
@@ -134,13 +135,13 @@ function telaJogo(pos) {
   const onde = `${comp ? h(comp.nome) : `Rodada ${E.rodada + 1}`}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""} · ${casa === E.clube ? "em casa" : "fora"}`;
   const peso = pesoDe(prox || { casa, fora });
   if (peso) $("cartaoJogo").dataset.peso = peso.tema; else delete $("cartaoJogo").dataset.peso;
-  $("cartaoJogo").innerHTML = `${faixaPesoHTML(peso, casa, visitante)}<span class="sobre">${E.partida ? "Partida em andamento" : `Próxima partida · ${onde}`}</span>
+  $("cartaoJogo").innerHTML = `${faixaAvancarHTML()}${faixaPesoHTML(peso, casa, visitante)}<div class="jogo-corpo"><div class="jogo-info"><span class="sobre">${E.partida ? "Partida em andamento" : `Próxima partida · ${onde}`}</span>
     <div class="confronto"><div style="${coresClube(casa)}">${escudo(casa, 4)}<b>${h(nomeClube(casa))}</b><small>${posicaoDe(casa) && E.rodada ? posicaoDe(casa) + "º" : ""}</small></div><span class="x">×</span><div style="${coresClube(visitante)}">${escudo(visitante, 4)}<b>${h(nomeClube(visitante))}</b><small>${posicaoDe(visitante) && E.rodada ? posicaoDe(visitante) + "º" : ""}</small></div></div>
     <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p>
-    ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}
-    ${E.partida ? "" : `<div class="modos" role="group" aria-label="Como jogar">${MODOS.map(([m, t, d]) => `<button data-modo="${m}" aria-pressed="${m === modoEscolhido}" title="${h(d)}"><b>${t}</b><small>${d}</small></button>`).join("")}</div>`}
+    ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}</div>
+    <div class="jogo-acao">${E.partida ? "" : `<div class="modos" role="group" aria-label="Como jogar">${MODOS.map(([m, t, d]) => `<button data-modo="${m}" aria-pressed="${m === modoEscolhido}" title="${h(d)}"><b>${t}</b><small>${d}</small></button>`).join("")}</div>`}
     ${pendentes && !E.partida ? `<p class="pendente">${ic("sino")} ${pendentes} aviso${pendentes > 1 ? "s" : ""} esperando resposta. Se jogar agora, vale a opção padrão.</p>` : ""}
-    <button id="btnJogar" class="primario largo cta"><span>${E.partida ? "Voltar para a partida" : "Jogar a próxima partida"}</span>${ic("apito")}</button>`;
+    <button id="btnJogar" class="primario largo cta"><span>${E.partida ? "Voltar para a partida" : "Jogar a próxima partida"}</span>${ic("apito")}</button></div></div>`;
   for (const b of $("cartaoJogo").querySelectorAll("[data-modo]")) b.onclick = () => { modoEscolhido = +b.dataset.modo; pedir("modo", { modo: modoEscolhido }); for (const x of $("cartaoJogo").querySelectorAll("[data-modo]")) x.setAttribute("aria-pressed", String(+x.dataset.modo === modoEscolhido)); };
   $("btnJogar").onclick = jogar;
   // na carreira em grupo, a rodada é de todos ao mesmo tempo: quem começa é o anfitrião (grupo.js)
