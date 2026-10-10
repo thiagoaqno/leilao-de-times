@@ -154,7 +154,9 @@ function visao(save, rod, clube, agora) {
     }
     return { ...base, lado, eventos: r.eventos, parado, completo: r.completo, modo: jg.modo, placar: r.placar, penaltis: jg.penaltis || null };
   };
-  return { n: rod.n, semana: rod.semana, inicio: rod.inicio, agora, paralelos: rod.paralelos || [], velocidade: rod.multiplicador || 1, meu: meu ? ver(meu) : null, outros: rod.jogos.filter((x) => x !== meu).map(ver) };
+  // o relógio da rodada (sem as pausas de cada jogo): o dos jogos do computador, para quem acompanha da sede
+  const relogio = { minuto: minutosEntre(rod, rod.inicio, Math.max(rod.inicio, agora)), t: agora, vel: rod.vel, rodando: agora >= rod.inicio };
+  return { n: rod.n, rl: G.rodadaDaSemana(save, rod.semana), semana: rod.semana, inicio: rod.inicio, agora, relogio, paralelos: rod.paralelos || [], velocidade: rod.multiplicador || 1, meu: meu ? ver(meu) : null, outros: rod.jogos.filter((x) => x !== meu).map(ver) };
 }
 
 module.exports = { criarRodada, tick, decidir, visao, minutoDe, limiteDe, alterarVelocidade };

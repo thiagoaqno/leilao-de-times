@@ -48,3 +48,11 @@ test("sozinho, a rodada é a do Brasileirão também para quem é de outra liga,
   assert.strictEqual(e.janela.aberta, true);
   for (const j of e.meus) assert.strictEqual(j.janela, Mercado.janelaAberta(br.filter((x) => x < j.semana).length), j.id);
 });
+
+test("a rodada ao vivo da turma leva o número da rodada do Brasileirão da semana (semana só de copa: nenhum)", () => {
+  const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "Ana" }], { temporadas: 1 });
+  const br = semanasBR(save), copa = save.calendarioMundo.find((j) => !br.includes(j.semana)).semana;
+  assert.strictEqual(G.rodadaDaSemana(save, br[0]), 1);
+  assert.strictEqual(G.rodadaDaSemana(save, br[16]), 17);
+  assert.strictEqual(G.rodadaDaSemana(save, copa), null);
+});

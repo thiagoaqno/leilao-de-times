@@ -169,6 +169,9 @@ test("capitão: só do elenco, segura a moral depois da derrota e a ausência pe
 test("dilemas: cada resposta muda o jogo e a conta chega depois, como aviso", () => {
   const v = nova(); jogarTemporada(v); novaTemporada(v);
   v.rodada = 3; v.moral = 60;
+  // a diretoria tranquila: a temporada anterior é sorteada e às vezes termina em demissão, ou deixa a confiança baixa e os
+  // 8 empates abaixo davam ultimato e demissão; demitido, aposJogo para de contar e a conta do patrocínio nunca chega
+  v.demitido = null; v.gestao.confianca = 60; v.gestao.ultimato = null;
   const e = dilema(v, "patrocinio-polemico"); assert.ok(e && e.opcoes.length === 2 && !e.resolvido);
   v.caixaEntrada.unshift(e);
   const caixa = v.caixa, texto = Clube.responder(v, ajudas, e, "aceitar");
@@ -178,6 +181,7 @@ test("dilemas: cada resposta muda o jogo e a conta chega depois, como aviso", ()
   for (let i = 0; i < 7; i++) Clube.aposJogo(v, ajudas, { nos: 1, eles: 1, emCasa: false, adv: null });
   assert.strictEqual(v.gestao.depois.length, 1, "ainda falta um jogo");
   Clube.aposJogo(v, ajudas, { nos: 1, eles: 1, emCasa: false, adv: null });
+  assert.ok(!v.demitido, "o técnico seguiu no cargo");
   assert.strictEqual(v.gestao.depois.length, 0);
   assert.ok(v.moral <= moral - 4, `a torcida cobrou: ${moral} -> ${v.moral}`);
   assert.ok(v.caixaEntrada.some((x) => x.tipo === "clube-volta" && /torcida/.test(x.titulo)));

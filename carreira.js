@@ -213,6 +213,8 @@ function semanaFeita(save) {
   const proximo = proximoJogoMundo(save);
   return proximo ? proximo.semana - 1 : Infinity;
 }
+// a rodada do Brasileirão jogada na semana s (de 1 a 38), ou null numa semana só de copa
+const rodadaDaSemana = (save, s) => { const k = semanasDaRodada(save.calendarioMundo || []).indexOf(s); return k < 0 ? null : k + 1; };
 const rodadaDaJanela = (save) => (save.base === BASE_PADRAO && save.calendarioMundo ? rodadasAntes(save, semanaFeita(save) + 1) : save.rodada);
 Feed.rodadaDe = rodadaDaJanela;
 const proximoJogoMundo = (save) => (save.calendarioMundo || []).find((j) => (j.casa === save.clube || j.fora === save.clube) && !(save.jogosJogados || []).includes(j.id)) || null;
@@ -1587,6 +1589,6 @@ module.exports = function ligarCarreira(io) {
 // para os testes: montar uma carreira e mexer nela sem o socket
 module.exports.paraTestes = { PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
-module.exports.grupo = { Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
+module.exports.grupo = { rodadaDaSemana, Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
   infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };

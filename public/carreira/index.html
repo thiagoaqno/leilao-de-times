@@ -76,6 +76,7 @@
         <button id="gCopiar" class="secundario">Copiar o convite</button>
         <p id="gStatus" class="suave"></p>
       </div>
+      <section id="gAoVivo" class="quadro tv-painel hidden" aria-label="Rodada da turma ao vivo" aria-live="off"></section>
       <div class="sala-grade">
         <div class="quadro">
           <h3>Técnicos</h3>
@@ -101,6 +102,7 @@
     <div class="hub-grade">
       <div class="hub-principal">
         <section class="quadro destaque hub-jogo" id="cartaoJogo" aria-label="Próxima partida"></section>
+        <section class="quadro tv-painel hidden" id="cartaoAoVivo" aria-label="Rodada da turma ao vivo" aria-live="off"></section>
         <nav class="hub-tiles" aria-label="Gestão do time">
           <button class="tile tile-elenco" data-ir="elenco"><span class="tile-ic" data-ic="campo"></span><span class="tile-txt"><b>Elenco e tática</b><small>Prancheta, titulares e formação</small></span><span class="tile-dado" id="tileElenco"></span></button>
           <button class="tile tile-mercado" data-ir="mercado"><span class="tile-ic" data-ic="maleta"></span><span class="tile-txt"><b>Mercado</b><small id="atalhoJanela">Contratar e vender</small></span><span class="tile-dado" id="tileMercado"></span></button>
@@ -312,6 +314,7 @@
 <script src="base/mundo-2026.js"></script>
 <script src="inicio.js"></script>
 <script src="grupo.js"></script>
+<script src="turma-ao-vivo.js"></script>
 <script src="cartas.js"></script>
 <script src="animacoes.js"></script>
 <script src="telas.js"></script>
