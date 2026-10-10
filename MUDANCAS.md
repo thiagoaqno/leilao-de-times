@@ -1,9 +1,14 @@
-# Carreira: as notícias da Sede inteiras na tela, sem rolar
+# Carreira: o tema da Sede em todas as telas (sai o vidro líquido)
 
-Antes: na Sede, cada notícia era mais alta que a caixa. A legenda e os comentários ficavam embaixo da arte e só apareciam rolando, mas a rolagem pulava direto para a próxima notícia, então o texto quase nunca dava para ler.
+- **Todas as telas da carreira** ganharam o visual da Sede e do intervalo: painéis claros e retos por cima do estádio, títulos em letra condensada e caixa alta, e os destaques na cor do seu clube. Vale para a entrada (escolha do clube), Elenco e tática, Mercado, Tabela, Calendário, Clube, Estante, Trocas, Notícias e a sala em grupo.
+- **Sai o vidro líquido:** as manchas coloridas atrás de tudo e o desfoque dos painéis saíram. Os painéis agora são sólidos (também fica mais leve para o celular).
+- **Abas e controles:** as abas das competições, do Clube e das temporadas, e os botões de escolha (formação, mentalidade, filtros...) viraram a mesma faixa reta da Sede, com o escolhido na cor do clube. O botão principal de cada tela também fica na cor do clube.
+- **Prancheta:** o jogador em destaque aparece num painel na cor do clube, como o "Desenvolvimento do jogador" da Sede. As cartinhas do banco continuam escuras.
+- **Partida:** o placar virou o da transmissão, com os nomes dos times em placas claras e o marcador na cor do clube (ou na cor do jogo grande, no clássico, no decisivo e na final). A narração, os jogos da rodada e os gols ao vivo ficam em placas claras.
+- **Diálogos:** a ficha do jogador, o pós-jogo, as paradas táticas, os pênaltis e os pop-ups (antes do jogo, reunião com a diretoria, troca) usam o mesmo painel claro, com o título em caixa alta.
 
-Depois: cada notícia aparece inteira na caixa, com a arte, as curtidas, a legenda e os dois primeiros comentários de uma vez, sem precisar rolar. A troca de notícia virou explícita: setas de anterior e próxima, os pontinhos (que agora são clicáveis), as teclas ← → com a caixa em foco e o arrastar para o lado no celular. A roda do mouse não troca mais de notícia. Continua passando sozinha a cada 10 segundos, segurando quando a pessoa mexe; com "menos movimento" no sistema, só troca na mão.
+## Como
 
-Como: `feedNaSede` (`public/carreira/feed.js`) empilha os posts no mesmo lugar e mostra só o da vez (`.post.atual`, os outros ficam `inert`); a arte encolhe para caber (`flex` com `object-fit: contain`), a legenda corta em 4 linhas e os comentários em 2. A tela "Ver todas" não mudou. No celular, os pontinhos viram "2 de 7".
-
-Conferido: o E2E da carreira (`tests/e2e/carreira.spec.js`) agora confere que a legenda cabe na caixa e que a seta troca de notícia, e fotos da Sede no PC (1440x900) e no celular (390x844).
+- `public/carreira/hub.css`: os tokens claros passam a valer em `.tela .quadro`, `.dialogo`, no aviso (`#toast`), no caixa, nas abas e na partida; novos blocos para os títulos das telas, as abas, os botões, o destaque da prancheta e o placar da partida.
+- `public/carreira/estilo.css`: o bloco do tema vidro líquido foi removido.
+- `CLAUDE.md`: o mapa aponta o tema para o `hub.css`.
