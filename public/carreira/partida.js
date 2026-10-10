@@ -275,8 +275,11 @@ function decisaoTatica(p) {
     const sobra = p.subs - trocasGastas();
     $("dTexto").innerHTML = `<span class="min-tag">${minutoTexto(p)}</span> ${h(nomeClube(J.casa))} ${p.placar[0]} × ${p.placar[1]} ${h(nomeClube(J.fora))} · ${sobra} substituiç${sobra === 1 ? "ão" : "ões"}`;
     $("dCorpo").innerHTML = `<div class="tatica-jogo">
-      <div class="prancheta-jogo">${campinho(campo, d.formacao, { selecionado: sel?.onde === "campo" ? sel.i : null, energia })}
-        <p class="dica">${sel?.onde === "banco" ? `Agora toque em quem sai para entrar ${h(sobrenome(nomeJogador(sel.pid)))}${campo.some((v) => !v.id && v.slot !== "GK") ? " ou numa vaga aberta" : ""}.` : sel ? `Toque em quem troca de lugar com ele, num reserva para entrar${campo.some((v) => !v.id && v.slot !== "GK") ? " ou na vaga aberta para ele ocupar" : ""}.` : campo.some((v) => !v.id && v.slot !== "GK") ? "Há uma vaga aberta (expulsão ou lesão): toque num jogador do campo ou do banco e depois na vaga para ele ocupar. Um reserva que entra gasta uma substituição." : "Toque num jogador (do campo ou do banco) para trocar de lugar ou substituir."}</p></div>
+      <div class="prancheta-jogo"><div class="destaque-box" data-pid="${pidDestaque(campo, sel?.onde === "campo" ? campo[sel.i].id : sel?.pid) || ""}">${destaqueHTML(pidDestaque(campo, sel?.onde === "campo" ? campo[sel.i].id : sel?.pid))}</div>${campinho(campo, d.formacao, { selecionado: sel?.onde === "campo" ? sel.i : null, energia })}
+        <p class="dica">${sel?.onde === "banco" ? `Agora toque em quem sai para entrar ${h(sobrenome(nomeJogador(sel.pid)))}${campo.some((v) => !v.id && v.slot !== "GK") ? " ou numa vaga aberta" : ""}.` : sel ? `Toque em quem troca de lugar com ele, num reserva para entrar${campo.some((v) => !v.id && v.slot !== "GK") ? " ou na vaga aberta para ele ocupar" : ""}.` : campo.some((v) => !v.id && v.slot !== "GK") ? "Há uma vaga aberta (expulsão ou lesão): toque num jogador do campo ou do banco e depois na vaga para ele ocupar. Um reserva que entra gasta uma substituição." : "Toque num jogador (do campo ou do banco) para trocar de lugar ou substituir."}</p>
+        <div class="faixa-banco"><span class="rotulo">Banco ${sobra > 0 ? "" : "(sem substituições)"}</span>
+        <div class="banco-jogo">${banco.map((pid) => reservaHTML(pid, { sel: sel?.onde === "banco" && sel.pid === pid, attrs: `data-reserva="${pid}" ${sobra > 0 ? "" : "disabled"}` })).join("")}</div></div>
+        ${d.subs.length ? `<p class="trocas-feitas">${d.subs.map(([s, e]) => `${ic("troca")} ${h(sobrenome(nomeJogador(e)))} no lugar de ${h(sobrenome(nomeJogador(s)))}`).join("<br>")}</p>` : ""}</div>
       <div class="lado-tatica">
         <span class="rotulo">Mentalidade</span><div class="segmentos">${MENTALIDADE.map((t, i) => `<button data-t="mentalidade" data-v="${i - 2}" aria-pressed="${d.tatica.mentalidade === i - 2}">${t}</button>`).join("")}</div>
         <span class="rotulo">Pressão</span><div class="segmentos">${NIVEL.map((t, i) => `<button data-t="pressao" data-v="${i}" aria-pressed="${d.tatica.pressao === i}">${t}</button>`).join("")}</div>
@@ -284,9 +287,6 @@ function decisaoTatica(p) {
         <span class="rotulo">Estilo de jogo</span><div id="dEstiloBox">${estiloHTML(d.tatica, timeDaParada(p, d), "data-t-estilo")}</div>
         <span class="rotulo">O que muda</span>${chipsDeEfeito(efeitosDaTatica(d.tatica, timeDaParada(p, d)).ef)}
         <span class="rotulo">Formação</span><div class="segmentos pequenos largos">${Taticas.NOMES_FORMACOES.map((f) => `<button data-f="${f}" aria-pressed="${d.formacao === f}">${f}</button>`).join("")}</div>
-        <span class="rotulo">Banco ${sobra > 0 ? "" : "(sem substituições)"}</span>
-        <div class="banco-jogo">${banco.map((pid) => `<button data-reserva="${pid}" class="${sel?.onde === "banco" && sel.pid === pid ? "sel" : ""}" ${sobra > 0 ? "" : "disabled"}><img class="pix" src="${retrato(pid)}" alt=""><b>${notaDe(JOGADORES[pid])}</b><span>${h(sobrenome(nomeJogador(pid)))}<small>${JOGADORES[pid].pos}</small></span></button>`).join("")}</div>
-        ${d.subs.length ? `<p class="trocas-feitas">${d.subs.map(([s, e]) => `${ic("troca")} ${h(sobrenome(nomeJogador(e)))} no lugar de ${h(sobrenome(nomeJogador(s)))}`).join("<br>")}</p>` : ""}
       </div></div>
       <button id="dVoltar" class="primario largo">Voltar ao jogo</button>`;
     $("dCorpo").querySelector(".gramado").onclick = (e) => {

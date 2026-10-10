@@ -419,34 +419,61 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 
 /* ---------- a prancheta ---------- */
 .prancheta-grade{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:start}
-.campo{max-width:460px;margin:0 auto}
-.gramado{position:relative;aspect-ratio:68/100;border-radius:14px;overflow:hidden;border:1px solid var(--b2);
+.campo{max-width:640px;margin:0 auto}
+/* o gramado em perspectiva (o desenho é um SVG com a mesma conta que põe cada camisa) */
+.gramado{position:relative;aspect-ratio:100/88;border-radius:14px;overflow:hidden;border:1px solid var(--b2);background:linear-gradient(#0b1220,#05070d);box-shadow:0 30px 60px -30px #000}
+.gramado .relva{position:absolute;inset:0;width:100%;height:100%;display:block}
+.relva .fa{fill:#3a8a3f}.relva .fb{fill:#338237}.relva .ln{fill:none;stroke:#ffffffa6;stroke-width:1.4;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.gramado::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(#0a1a0e66,transparent 38%,transparent 80%,#0a1a0e55)}
+.peca{--e:1;position:absolute;z-index:1;transform:translate(-50%,-50%) scale(var(--e));display:flex;flex-direction:column;align-items:center;gap:2px;width:84px;min-height:0;height:auto;padding:0;
+  background:none;border:0;border-radius:10px;box-shadow:none;color:#fff;-webkit-backdrop-filter:none;backdrop-filter:none;transition:transform 200ms var(--ease),filter 160ms ease}
+.peca .cam{position:relative;display:block;width:46px;height:46px;filter:drop-shadow(0 4px 3px #0008)}.peca .camisa{display:block;width:100%;height:100%}
+.nota-em-campo{position:absolute;left:-17px;bottom:2px;display:flex;flex-direction:column;align-items:flex-end;line-height:1;text-shadow:0 1px 3px #000,0 0 6px #000a}
+.nota-em-campo b{font:800 15px/1 var(--mono);color:#fff}.nota-em-campo em{color:var(--alerta);font:700 10px/1 var(--mono);font-style:normal;margin-top:1px}
+.peca.prata .nota-em-campo b{color:#e6ebf0}.peca.ouro .nota-em-campo b{color:var(--ouro2)}.peca.elite .nota-em-campo b{color:#ffe08a;text-shadow:0 0 8px #ffc94a,0 1px 3px #000}.peca.bronze .nota-em-campo b{color:#f0c9a6}
+.peca small{display:block;max-width:86px;padding:1px 6px;border-radius:5px;font:700 11px/1.25 var(--fonte);color:#fff;background:#0b0f16b3;text-shadow:0 1px 2px #000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.peca .energia{display:block;width:40px;height:4px;background:#0009;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px #0006}.peca .energia i{position:static;display:block;border:0;height:100%;width:var(--v);background:var(--ok)}
+.peca-mudancas{position:absolute;z-index:2;left:-4px;right:-4px;top:-10px;display:flex;justify-content:space-between;pointer-events:none}.peca-mudancas .delta-nota:only-child.temporario{margin-left:auto}.peca-mudancas:empty{display:none}
+.peca .cansaco-canto{top:-4px;right:6px}
+.peca.sel small{background:var(--ouro2);color:#241500;text-shadow:none}
+.peca.sel .cam{filter:drop-shadow(0 0 10px #ffe08a) drop-shadow(0 0 3px #fff8)}
+.peca.sel::before{content:"";position:absolute;z-index:-1;left:50%;top:-4px;width:70px;height:54px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(#ffe08a66,transparent 70%)}
+.peca:active:not(:disabled){transform:translate(-50%,-50%) scale(calc(var(--e) * .94))}
+@media (hover:hover) and (pointer:fine){.peca:hover:not(:disabled){transform:translate(-50%,-50%) scale(calc(var(--e) * 1.08));background:none}}
+.peca.improvisado small{background:color-mix(in srgb,var(--alerta) 80%,#000);color:#241500;text-shadow:none}
+.peca.vazia{opacity:.85}.peca.vazia .cam{display:grid;place-items:center;border:2px dashed #ffffffb0;border-radius:50%;filter:none}.peca .sem{font:700 22px var(--mono);color:#fff}
+/* o cartão do jogador em destaque, no alto: foto, nota e o gráfico dos seis atributos */
+.destaque-box{margin-bottom:10px;min-height:128px}.dest-vazio{padding:40px 0;text-align:center}
+.destaque{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,260px);align-items:center;gap:8px 16px;padding:10px 14px;border-radius:14px;background:linear-gradient(100deg,#ffffff14,#ffffff06);border:1px solid var(--b2)}
+.dest-foto{position:relative;display:flex;align-items:flex-end;gap:2px;padding-top:20px}.dest-foto img{width:84px;height:84px;border-radius:12px;background:#ffffff1a}
+.dest-nota{font:800 54px/1 var(--mono);color:#fff;margin-left:-8px;text-shadow:0 2px 12px #000a}.destaque.ouro .dest-nota{color:var(--ouro1)}.destaque.elite .dest-nota{color:#ffe08a;text-shadow:0 0 18px #ffc94a}.destaque.prata .dest-nota{color:#e6ebf0}.destaque.bronze .dest-nota{color:#f0c9a6}
+.dest-pos{position:absolute;left:0;top:0;display:inline-flex;align-items:center;gap:6px;font:700 15px var(--mono);color:#fff}.ponto{display:inline-block;width:9px;height:9px;border-radius:50%}
+.dest-nome{display:flex;flex-direction:column;gap:4px;min-width:0}.dest-nome strong{font:700 24px/1.1 var(--fonte);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dest-nome small{font-size:12px;color:var(--t2)}
+.dest-nome .energia{display:block;height:5px;width:100%;max-width:200px;background:#ffffff1f;border-radius:3px;overflow:hidden}.dest-nome .energia i{display:block;height:100%;width:var(--v);background:var(--ok)}
+.destaque .energia.media i{background:var(--alerta)}.destaque .energia.baixa i{background:var(--erro)}
+.radar{display:block;width:100%;height:auto;overflow:visible}.rd-rede{fill:none;stroke:#ffffff2e;stroke-width:1}.rd-forma{fill:#fbbf2426;stroke:#fbbf24;stroke-width:2.2;stroke-linejoin:round}
+.rd-rotulo{font:500 10px var(--fonte);fill:var(--t2)}.rd-valor{font-weight:700;fill:var(--t1)}
+/* o banco de reservas (a faixa escura de baixo): posição, foto, nota, nome e energia de cada um */
+.banco,.banco-jogo{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.faixa-banco{margin-top:12px;padding:10px;border-radius:12px;background:#080b11cc;border:1px solid var(--b2)}.faixa-banco .rotulo{display:block;margin:0 0 8px}
+.banco-jogo{max-height:260px;overflow:auto}
+.reserva{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"pos pos" "foto nota" "marcas marcas" "bar bar" "nome nome";align-items:center;justify-items:start;gap:3px 8px;height:auto;min-height:0;padding:8px;text-align:left;
+  background:linear-gradient(#171c27,#0f131b);border:1px solid var(--b2);border-bottom:3px solid var(--borda-res,#a86b3d);border-radius:10px}
+.reserva.prata{--borda-res:#c4cad1}.reserva.ouro{--borda-res:#e8be4f}.reserva.elite{--borda-res:#ffe08a;box-shadow:0 0 14px -6px #ffc94a}
+.res-pos{grid-area:pos;display:inline-flex;align-items:center;gap:5px;font:700 11px var(--mono);color:var(--t2)}.res-pos .ponto{width:8px;height:8px}
+.reserva img{grid-area:foto;width:44px;height:44px;border-radius:8px;background:#ffffff1a}.res-nota{grid-area:nota;font:800 26px/1 var(--mono);color:#fff}
+.reserva.prata .res-nota{color:#e6ebf0}.reserva.ouro .res-nota{color:var(--ouro2)}.reserva.elite .res-nota{color:#ffe08a}.reserva.bronze .res-nota{color:#f0c9a6}
+.res-marcas{grid-area:marcas;display:flex;gap:3px;flex-wrap:wrap}.res-marcas:empty{display:none}
+.reserva .energia{grid-area:bar;display:block;width:100%;height:4px;background:#ffffff1f;border-radius:2px;overflow:hidden}.reserva .energia i{display:block;height:100%;width:var(--v);background:var(--ok)}
+.reserva .energia.media i{background:var(--alerta)}.reserva .energia.baixa i{background:var(--erro)}
+.res-nome{grid-area:nome;font:600 12px/1.2 var(--fonte);color:var(--t1);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reserva.sel{background:linear-gradient(#2c2a14,#1b1a0c);border-color:var(--ouro2);box-shadow:0 0 0 2px #e8be4f66,0 0 22px -6px var(--ouro2)}
+.reserva.sel .res-nome{color:#ffe08a}.reserva.indisponivel{filter:grayscale(.8);opacity:.6}
+@media (hover:hover) and (pointer:fine){.reserva:hover:not(:disabled){background:linear-gradient(#202737,#151a24)}}
   background:radial-gradient(ellipse at 50% 0,#ffffff0d,transparent 60%),repeating-linear-gradient(180deg,#123222 0 10%,#0f2b1d 10% 20%);box-shadow:0 30px 60px -30px #000}
-.gramado i{position:absolute;border:1.5px solid #ffffff2b;pointer-events:none}
-.gramado .linha-meio{left:0;right:0;top:50%;border-width:1.5px 0 0}
-.gramado .circulo{left:50%;top:50%;width:26%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%)}
-.gramado .area{left:22%;right:22%;height:14%}.gramado .area.cima{top:-2px;border-top:0}.gramado .area.baixo{bottom:-2px;border-bottom:0}
-.peca{--borda-peca:var(--bronze2);position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 4px 3px;min-height:0;width:66px;height:auto;border-radius:12px;
-  background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid var(--borda-peca);box-shadow:0 8px 16px -8px #000;
-  transition:transform 200ms var(--ease),border-color 160ms ease,box-shadow 200ms ease}
-.peca.prata{--borda-peca:var(--prata2)}.peca.ouro{--borda-peca:var(--ouro2);box-shadow:0 0 14px -6px var(--ouro2),0 8px 16px -8px #000}
-.peca.elite{--borda-peca:#ffe08a;box-shadow:0 0 0 1px #ffd76a,0 0 20px -4px #ffc94a,0 8px 16px -8px #000}
-.peca.elite b{color:#ffe08a}.peca.ouro b{color:var(--ouro1)}
-.peca img{width:32px;height:32px}.peca b{font:700 13px/1 var(--mono)}.peca small{font-size:10px;font-weight:500;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t2)}
-.nota-em-campo{display:flex;align-items:baseline;gap:3px;height:14px}.nota-em-campo em{color:var(--alerta);font:700 10px/1 var(--mono);font-style:normal}
-.peca-mudancas{position:absolute;z-index:2;left:-7px;right:-7px;top:-9px;display:flex;justify-content:space-between;pointer-events:none}.peca-mudancas .delta-nota:only-child.temporario{margin-left:auto}.peca-mudancas:empty{display:none}
-.peca.sel{border-color:var(--acento);box-shadow:0 0 0 3px color-mix(in srgb,var(--acento) 35%,transparent),0 0 24px -4px var(--acento)}
-.peca:active:not(:disabled){transform:translate(-50%,-50%) scale(.94)}
-@media (hover:hover) and (pointer:fine){.peca:hover:not(:disabled){transform:translate(-50%,-50%) scale(1.06);background:color-mix(in srgb,var(--s2) 90%,transparent)}}
-.peca.improvisado{border-style:dashed;border-color:var(--alerta)}
-.peca.vazia{border-style:dashed;opacity:.7}.peca .sem{font:600 20px var(--mono)}
-.peca .energia{width:100%;height:3px;background:#ffffff1f;border-radius:2px;overflow:hidden}.peca .energia i{position:static;display:block;border:0;height:100%;width:var(--v);background:var(--ok)}
 .dica{font-size:12px;color:var(--t3);text-align:center;margin-top:12px;display:flex;gap:6px;justify-content:center;align-items:center}
 .taticas{display:flex;flex-direction:column;gap:6px}.taticas .controle{margin:6px 0}
 .aviso-txt{color:var(--alerta)}
-.banco{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
-.no-banco{border-radius:14px}.no-banco.sel .figurinha{box-shadow:0 0 0 2px var(--acento),0 0 26px -4px var(--acento)}
-.no-banco.indisponivel .figurinha{filter:grayscale(.8);opacity:.6}
 
 /* ---------- o mercado ---------- */
 .filtros{position:sticky;top:60px;z-index:5;display:grid;grid-template-columns:1.2fr 1.4fr 1fr 1fr auto;gap:14px;align-items:center;padding:14px 16px;
@@ -598,12 +625,9 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 .trave{margin:14px auto 10px;max-width:520px;padding:10px 10px 0;border:6px solid #e4e4e7;border-bottom:0;border-radius:6px 6px 0 0}
 .rede{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px;background:repeating-linear-gradient(45deg,#ffffff0d 0 1px,transparent 1px 12px),repeating-linear-gradient(-45deg,#ffffff0d 0 1px,transparent 1px 12px)}
 .rede button{flex-direction:column;gap:2px;min-height:76px;background:color-mix(in srgb,var(--bg2) 85%,transparent)}.rede b{font:600 22px var(--mono);color:var(--acento)}.rede small{font-size:11px;color:var(--t3)}
-.tatica-jogo{display:grid;grid-template-columns:minmax(0,300px) 1fr;gap:16px;margin:12px 0 14px}
+.decisao:has(.tatica-jogo){width:min(1120px,calc(100vw - 24px))}
+.tatica-jogo{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;margin:12px 0 14px;align-items:start}
 .lado-tatica{display:flex;flex-direction:column;gap:6px}.lado-tatica .rotulo{margin:6px 0 0}
-.banco-jogo{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:220px;overflow:auto}
-.banco-jogo button{justify-content:flex-start;gap:8px;padding:6px 8px;min-height:48px;height:auto;background:var(--bg2)}.banco-jogo img{width:28px;height:28px}
-.banco-jogo b{font:600 13px var(--mono)}.banco-jogo span{display:flex;flex-direction:column;align-items:flex-start;font-size:12px;line-height:1.15}.banco-jogo small{color:var(--t3)}
-.banco-jogo button.sel{outline:2px solid var(--acento);outline-offset:-2px;background:color-mix(in srgb,var(--acento) 12%,var(--bg2))}
 .trocas-feitas{font-size:13px;color:var(--acento)}
 .estadio-jogo{position:relative;height:clamp(96px,17vw,150px);margin:-4px 0 12px;border-radius:var(--r2);overflow:hidden;box-shadow:0 0 0 1px var(--b2)}
 .estadio-canvas{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 38%;image-rendering:pixelated}
@@ -712,13 +736,14 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
   .cab-numeros>div{flex:1 1 40%;min-width:0}
   .opcoes,.faixas-resumo{grid-template-columns:1fr 1fr}
   .placar .time{padding:10px;gap:6px}.placar b{font-size:13px}#pGols{font-size:28px}.marcador{min-width:92px;padding:8px 10px}.placar .escudo{--e:2!important}
-  .banco{grid-template-columns:repeat(auto-fill,minmax(108px,1fr))}.lista-mercado{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
-  .peca{width:54px}.peca img{width:24px;height:24px}.peca small{font-size:9px}
+  .lista-mercado{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
   .linha-tempo li{grid-template-columns:96px auto 1fr auto 22px;gap:6px;font-size:13px}
   .pj-gols{font-size:40px}.ds-lance b{font-size:32px}.ds-topo .figurinha{width:86px}
   .transferencia-palco{height:260px;padding:30px 16px}.transferencia-clube{width:72px}.transferencia-card,.transferencia-card .figurinha{width:110px}.transferencia-martelo{left:calc(50% + 50px)}
   .painel-linha{grid-template-columns:1fr}
 }
+@media (max-width:640px){.peca{width:64px}.peca .cam{width:36px;height:36px}.peca small{font-size:9px;max-width:66px;padding:1px 3px}.nota-em-campo{left:-14px}.nota-em-campo b{font-size:12px}.peca .energia{width:32px}
+  .destaque{grid-template-columns:auto minmax(0,1fr)}.dest-radar{grid-column:1/-1}.dest-foto img{width:64px;height:64px}.dest-nota{font-size:40px}.dest-nome strong{font-size:20px}}
 @media (max-height:420px) and (orientation:landscape){.dialogo{padding:12px}.decisao h2{font-size:20px}.opcao{min-height:60px;padding:10px}}
 
 /* ---------- as animações ---------- */
@@ -944,14 +969,6 @@ dialog.festa::backdrop{background:#000d;backdrop-filter:blur(4px)}
 .tec-temp.meu,.ranking-tecnicos li.meu{outline:1px solid var(--acento)}.tec-temp small,.ranking-tecnicos small{display:block;color:var(--t3);font-size:11px}
 .tec-temp strong,.ranking-tecnicos strong{font:600 15px var(--mono)}.rank-tit{display:inline-flex;align-items:center;gap:4px;color:var(--ouro2);font-size:13px}.rank-tit small{display:inline}
 .abas-temporadas{margin:14px 0}
-/* as cartinhas do campinho com a cor de verdade da faixa (bronze, prata, ouro e elite), como a figurinha */
-.peca:not(.vazia){--tinta-peca:#fbe8d4;--fundo-peca:linear-gradient(155deg,#5a3c25,#2c1f15 55%,#3b2818);background:var(--fundo-peca);color:var(--tinta-peca);-webkit-backdrop-filter:none;backdrop-filter:none}
-.peca.bronze:not(.vazia){--borda-peca:#c88958}
-.peca.prata:not(.vazia){--tinta-peca:#14181d;--fundo-peca:linear-gradient(155deg,var(--prata1) 0%,var(--prata2) 40%,#eef1f4 58%,var(--prata3) 100%);--borda-peca:#ffffffc0}
-.peca.ouro:not(.vazia){--tinta-peca:#2a1c02;--fundo-peca:linear-gradient(155deg,var(--ouro1) 0%,var(--ouro2) 38%,#fbe39a 56%,var(--ouro3) 100%);--borda-peca:#fff1b8}
-.peca.elite:not(.vazia){--tinta-peca:#241500;--fundo-peca:linear-gradient(115deg,#8a5a0c 0%,#d9a43a 16%,#fff2bf 30%,#e2ad44 44%,#fff8d9 52%,#c48a22 66%,#ffe18a 82%,#8a5a0c 100%);--borda-peca:#fff3c4}
-.peca:not(.vazia) b,.peca.ouro b,.peca.elite b{color:inherit}.peca:not(.vazia) small{color:inherit;opacity:.78}
-.peca:not(.vazia) img{border-radius:8px;background:#ffffff24}
 /* as contas da tática e o estilo de jogo */
 .segmentos.largos{flex-wrap:wrap}.segmentos.largos button{flex:0 1 auto}
 .efeitos{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}
@@ -969,15 +986,10 @@ dialog.festa::backdrop{background:#000d;backdrop-filter:blur(4px)}
 .efeito .efeito-txt{font:600 13px var(--fonte);color:var(--t1)}
 /* a energia (o cansaço que vem dos jogos): a barra do campinho e do banco muda de cor quando cai */
 .energia.media i{background:var(--alerta)}.energia.baixa i{background:var(--erro)}
-.no-banco .energia{display:block;height:4px;margin:4px 6px 0;border-radius:2px;background:#ffffff1f;overflow:hidden}.no-banco .energia i{display:block;height:100%;width:var(--v);background:var(--ok);border-radius:2px}
-.no-banco .energia.media i{background:var(--alerta)}.no-banco .energia.baixa i{background:var(--erro)}
-.peca .cansaco-tag{font-style:normal;font-size:9px;font-weight:700;margin-left:2px;color:var(--erro);background:#00000040;padding:0 3px;border-radius:4px}
-.peca.ouro .cansaco-tag,.peca.prata .cansaco-tag,.peca.elite .cansaco-tag{background:#ffffff90;color:#9b1c1c}
 .opcao .bonus-opcao{display:block;grid-column:1/-1;margin-top:3px;font-size:11px;font-weight:500;color:var(--ok)}
 .impulso-nota{color:var(--ok);font-weight:600}
 /* o -1, -2 ou -3 do cansaço no canto de cima, à direita, da carta */
 .cansaco-canto{position:absolute;top:3px;right:3px;z-index:4;pointer-events:none;font:700 10px/1 var(--mono);color:#fff;background:var(--erro);border-radius:6px;padding:2px 4px;box-shadow:0 1px 4px #0006}
-.no-banco{position:relative}
 /* o escudo da API por cima do desenhado: o SVG some quando a imagem carrega */
 .escudo{position:relative}.escudo-svg{display:block;width:100%;height:100%}
 .escudo-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
