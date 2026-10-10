@@ -1,6 +1,8 @@
-# Carreira em grupo: pausa entre as rodadas e a rodada ao vivo para quem não está jogando
+# Carreira: o teste dos dilemas para de falhar às vezes
 
-- **Pausa de 1 minuto depois da rodada:** quando o último jogo da rodada acaba, o anfitrião só consegue puxar a próxima depois de 60 segundos. É o tempo de todo mundo mexer na escalação, no mercado e nos avisos. O botão da Sede mostra a contagem ("Jogar a próxima rodada · 0:42"; para os outros, "Próxima rodada liberada em 0:42"), e o servidor recusa a rodada antes da hora. Vale também para o "Liberar a rodada dos amigos". Só na carreira em grupo; a solo não muda. O tempo é `CARREIRA_PAUSA_MS` (os testes usam 0).
-- **A rodada ao vivo para quem não está jogando:** quem não tem jogo na rodada (ou já acabou o seu) vê na Sede o painel "Rodada N da turma · ao vivo", com os jogos da turma (o relógio de cada um e o nome dos técnicos) e os outros jogos da semana, separados por campeonato. Quem está na sala sem clube (entrou com a carreira rolando ou só assiste) vê o mesmo painel na tela da sala. O placar sobe quando o relógio passa pelo gol. Quando a rodada acaba, os resultados ficam na tela durante a pausa.
-- Arquivos: `carreira-online.js` (a pausa, e o evento `rodada` para todo mundo da sala), `carreira-rodada.js` (o relógio da rodada na visão), `public/carreira/turma-ao-vivo.js` (novo: o painel), `grupo.js` (a contagem), `telas.js`, `index.html` e `estilo.css`.
-- Testes: `tests/carreira-pausa-ao-vivo.test.js` (a pausa trava e libera o anfitrião; quem não tem clube recebe a rodada ao vivo). `tests/salas-esperado.json` ganhou o campo `liberaEm`.
+O teste `dilemas: cada resposta muda o jogo e a conta chega depois, como aviso` (`tests/carreira-clube.test.js`) falhava de vez em quando (umas 3 vezes em 40) na linha que espera a lista `gestao.depois` vazia.
+
+- **A causa:** não era outro dilema agendando consequência. A sobra era a própria conta do patrocínio polêmico, que nunca chegava porque o técnico tinha sido **demitido**. A temporada que o teste joga antes sai de uma semente sorteada; às vezes ela termina em demissão, ou deixa a confiança da diretoria abaixo de 30, e aí os 8 empates do teste viram ultimato (4 pontos, faltava 1) e demissão. Demitido, `Clube.aposJogo` para de contar os jogos e a consequência fica parada na lista.
+- **A correção (só no teste):** antes do dilema, o teste deixa a diretoria tranquila (`demitido` limpo, confiança 60, sem ultimato) e confere que o técnico seguiu no cargo. A regra do jogo não mudou.
+
+Conferido: o teste passou 60 vezes seguidas (antes, com a demissão, falhava em laço) e os 27 testes de `tests/carreira-clube.test.js` passam.
