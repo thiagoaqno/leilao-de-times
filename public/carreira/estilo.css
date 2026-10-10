@@ -470,7 +470,6 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 .reserva.sel{background:linear-gradient(#2c2a14,#1b1a0c);border-color:var(--ouro2);box-shadow:0 0 0 2px #e8be4f66,0 0 22px -6px var(--ouro2)}
 .reserva.sel .res-nome{color:#ffe08a}.reserva.indisponivel{filter:grayscale(.8);opacity:.6}
 @media (hover:hover) and (pointer:fine){.reserva:hover:not(:disabled){background:linear-gradient(#202737,#151a24)}}
-  background:radial-gradient(ellipse at 50% 0,#ffffff0d,transparent 60%),repeating-linear-gradient(180deg,#123222 0 10%,#0f2b1d 10% 20%);box-shadow:0 30px 60px -30px #000}
 .dica{font-size:12px;color:var(--t3);text-align:center;margin-top:12px;display:flex;gap:6px;justify-content:center;align-items:center}
 .taticas{display:flex;flex-direction:column;gap:6px}.taticas .controle{margin:6px 0}
 .aviso-txt{color:var(--alerta)}
@@ -742,7 +741,7 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
   .transferencia-palco{height:260px;padding:30px 16px}.transferencia-clube{width:72px}.transferencia-card,.transferencia-card .figurinha{width:110px}.transferencia-martelo{left:calc(50% + 50px)}
   .painel-linha{grid-template-columns:1fr}
 }
-@media (max-width:640px){.peca{width:64px}.peca .cam{width:36px;height:36px}.peca small{font-size:9px;max-width:66px;padding:1px 3px}.nota-em-campo{left:-14px}.nota-em-campo b{font-size:12px}.peca .energia{width:32px}
+@media (max-width:640px){.lista-mercado{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}.peca{width:64px}.peca .cam{width:36px;height:36px}.peca small{font-size:9px;max-width:66px;padding:1px 3px}.nota-em-campo{left:-14px}.nota-em-campo b{font-size:12px}.peca .energia{width:32px}
   .destaque{grid-template-columns:auto minmax(0,1fr)}.dest-radar{grid-column:1/-1}.dest-foto img{width:64px;height:64px}.dest-nota{font-size:40px}.dest-nome strong{font-size:20px}}
 @media (max-height:420px) and (orientation:landscape){.dialogo{padding:12px}.decisao h2{font-size:20px}.opcao{min-height:60px;padding:10px}}
 
