@@ -1102,7 +1102,18 @@ function classificadosDe(save) {
   const copa = cdb && cdb.campeao ? (br.slice(0, 6).includes(cdb.campeao) ? br[6] : cdb.campeao) : br[6 + Math.floor(Motor.sorteDe(`copa-do-brasil:${save.semente}:${save.temporada}`)() * 6)];
   const brasileiros = new Set(INDICE_MUNDO.ligas.find((l) => l.id === "brasileirao-2026").clubes);
   const anterior = (save.classificados && save.classificados.libertadores) || INDICE_MUNDO.libertadores;
-  return { europa, brasileiros: br, libertadores: [...br.slice(0, 6), copa, ...anterior.filter((id) => !brasileiros.has(id))] };
+  // Os campeões da Libertadores e da Sul-Americana ganham vaga na Libertadores seguinte: o brasileiro que ainda não está classificado entra a mais; o que já está
+  // (pelo Brasileirão ou pela Copa do Brasil) libera a vaga para o próximo colocado do Brasileirão. Campeão de fora do Brasil entra na lista dos estrangeiros.
+  // Os 32 lugares não mudam: quanto mais brasileiros, menos vagas sobram para os outros países.
+  const campeoes = ["libertadores", "sulamericana"].map((id) => save.competicoes[id] && save.competicoes[id].campeao).filter(Boolean);
+  const doBrasil = [...br.slice(0, 6), copa];
+  for (const c of campeoes.filter((id) => brasileiros.has(id))) {
+    if (!doBrasil.includes(c)) doBrasil.push(c);
+    else { const proximo = br.find((id) => !doBrasil.includes(id)); if (proximo) doBrasil.push(proximo); }
+  }
+  const sulamericanos = INDICE_MUNDO.ligas.filter((l) => ["argentina-2026", "sulamericanos-2026"].includes(l.id)).flatMap((l) => l.clubes);
+  const fora = [...new Set([...campeoes.filter((id) => !brasileiros.has(id)), ...anterior.filter((id) => !brasileiros.has(id)), ...INDICE_MUNDO.libertadores.filter((id) => !brasileiros.has(id)), ...sulamericanos])];
+  return { europa, brasileiros: br, libertadores: [...doBrasil, ...fora.filter((id) => !doBrasil.includes(id)).slice(0, 32 - doBrasil.length)] };
 }
 // antes de jogar: o que ficou sem resposta vale a opção padrão
 function resolverPendentes(save) {
