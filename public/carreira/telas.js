@@ -225,11 +225,19 @@ function telaTabela() {
   $("tRodada").innerHTML = E.rodadaAnterior ? E.rodadaAnterior.map(([c, f, a, b]) => linhaJogo(c, f, [a, b])).join("") : `<p class="suave">Nenhuma rodada jogada.</p>`;
 }
 const linhaJogo = (c, f, p) => `<div class="jogo-linha ${c === E.clube || f === E.clube ? "meu" : ""}"><span class="c">${h(nomeClube(c))}${escudo(c, 1)}</span><span class="r">${placarTxt(p)}</span><span class="f">${escudo(f, 1)}${h(nomeClube(f))}</span></div>`;
+// o nome de cada fase do mata-mata e dos grupos
+const nomeFase = (f) => (String(f).startsWith("grupo-") ? `Grupo ${String(f).slice(6)}` : String(f) === "liga" ? "" : NOME_FASE[f] || f);
+function linhaTba(t) {
+  const c = E.competicoes[t.competicao], perna = t.pernas > 1 ? ` · ${t.perna === 1 ? "ida" : "volta"}` : "";
+  return `<li class="tba"><span class="rd">${h(c ? c.nome : t.competicao)}<small>${h(nomeFase(t.fase))}${perna} · S${t.semana}</small></span><span class="escudo-tba" aria-hidden="true">?</span><span class="adv">A definir <b class="selo-tba">TBA</b></span><span class="r"></span><span class="res"></span></li>`;
+}
 function telaCalendario() {
-  $("cLista").innerHTML = `<ol class="linha-tempo">${E.meus.map((j) => {
+  const jogos = E.meus.map((j) => ({ semana: j.semana ?? -1, j })).concat((E.tba || []).map((t) => ({ semana: t.semana, t })));
+  jogos.sort((a, b) => a.semana - b.semana);
+  $("cLista").innerHTML = `<ol class="linha-tempo">${jogos.map((x) => { if (x.t) return linhaTba(x.t); const j = x.j;
     const r = resultadoMeu(j), adv = j.casa === E.clube ? j.fora : j.casa, janela = Mercado.janelaAberta(j.rodada);
     const atual = E.proximoJogo && j.id === E.proximoJogo.id;
-    return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h(j.fase)} · S${j.semana}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === E.clube ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}${linhaPenaltis(j.penaltis)}</span><span class="res ${r}">${r}</span></li>`;
+    return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h([nomeFase(j.fase), `S${j.semana}`].filter(Boolean).join(" · "))}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === E.clube ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}${linhaPenaltis(j.penaltis)}</span><span class="res ${r}">${r}</span></li>`;
   }).join("")}</ol>`;
   $("cLista").querySelector(".proxima")?.scrollIntoView({ block: "center" });
 }
