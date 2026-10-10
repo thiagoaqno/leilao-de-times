@@ -8,7 +8,7 @@ const { grupoDe } = Motor;
 const ferramenta = require("../ferramentas/base-mundo.js");
 
 const mundo = require("../public/carreira/base/mundo-2026.js");
-const basesMundo = ["brasileirao", "inglaterra", "espanha", "italia", "alemanha", "franca", "argentina", "sulamericanos"]
+const basesMundo = ["brasileirao", "serieb", "inglaterra", "espanha", "italia", "alemanha", "franca", "argentina", "sulamericanos"]
   .map((id) => require(`../public/carreira/base/${id}-2026.js`));
 const clubesMundo = basesMundo.flatMap((b) => b.clubes);
 const mediaOnze = (c) => c.jogadores.slice().sort((a, b) => b.nota - a.nota).slice(0, 11).reduce((s, j) => s + j.nota, 0) / 11;
@@ -73,7 +73,7 @@ test("escudos: cada escudo traz as suas próprias definições (ids novos a cada
 
 test("base mundial: elencos, notas, goleiros e ids válidos", () => {
   const clubes = new Set(), jogadores = new Set();
-  assert.strictEqual(clubesMundo.length, 142);
+  assert.strictEqual(clubesMundo.length, 162);
   for (const c of clubesMundo) {
     assert.ok(!clubes.has(c.id), `clube repetido ${c.id}`); clubes.add(c.id);
     assert.ok(c.jogadores.length >= 18 && c.jogadores.length <= 28, `${c.nome}: ${c.jogadores.length} jogadores`);

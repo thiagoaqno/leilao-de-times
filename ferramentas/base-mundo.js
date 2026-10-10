@@ -396,14 +396,14 @@ function gravarBase(base, origem) {
   console.log(`${base.nome.padEnd(24)} ${String(base.clubes.length).padStart(2)} clubes -> ${path.basename(arquivo)}`);
 }
 
-function gerarIndice(bases, brasil) {
+function gerarIndice(bases, brasil, serieB = null) {
   const libertadores = [
     ...brasil.clubes.slice().sort((a, b) => mediaOnze(b) - mediaOnze(a)).slice(0, 6).map((c) => c.id),
     brasil.clubes.slice().sort((a, b) => mediaOnze(b) - mediaOnze(a)).slice(6, 12)[0].id,
     ...bases.find((b) => b.id === "argentina-2026").clubes.map((c) => c.id),
     ...bases.find((b) => b.id === "sulamericanos-2026").clubes.filter((c) => c.id !== "racing-club-uruguai").slice(0, 19).map((c) => c.id),
   ];
-  const indice = { id: "mundo-2026", ano: 2026, ligas: [brasil, ...bases].map((b) => ({ id: b.id, nome: b.nome, clubes: b.clubes.map((c) => c.id) })), libertadores };
+  const indice = { id: "mundo-2026", ano: 2026, ligas: [brasil, ...(serieB ? [serieB] : []), ...bases].map((b) => ({ id: b.id, nome: b.nome, clubes: b.clubes.map((c) => c.id) })), libertadores };
   const texto = `// Índice das bases da Carreira de Treinador em 2026. Gerado por ferramentas/base-mundo.js.\n(function (root, factory) {\n  const mundo = factory();\n  if (typeof module === "object" && module.exports) module.exports = mundo;\n  else root.MundoCarreira = mundo;\n})(typeof self !== "undefined" ? self : this, function () {\n  return (${JSON.stringify(indice, null, 2)});\n});\n`;
   fs.writeFileSync(path.join(DESTINO, "mundo-2026.js"), texto, "utf8");
 }
@@ -432,7 +432,9 @@ function gerar() {
   const brasil = calibrarBrasil(require(caminhoBrasil), argentina.clubes);
   gravarBase(brasil, `base brasileira estimada, calibrada na escala do ${FONTE}`);
   for (const base of bases) gravarBase(base, ORIGEM);
-  gerarIndice(bases, brasil);
+  // a Série B (ferramentas/base-serieb.js) entra no índice logo depois da Série A
+  const caminhoSerieB = path.join(DESTINO, "serieb-2026.js");
+  gerarIndice(bases, brasil, fs.existsSync(caminhoSerieB) ? require(caminhoSerieB) : null);
   console.log(`Brasileirão: ajuste único ${brasil.calibragem.ajuste >= 0 ? "+" : ""}${brasil.calibragem.ajuste}; Libertadores: 32 clubes.`);
   return { brasil, bases };
 }

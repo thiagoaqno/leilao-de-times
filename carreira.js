@@ -19,7 +19,7 @@ const crypto = require("crypto");
 
 // As carreiras antigas continuam na base em que nasceram; as novas enxergam o mundo inteiro.
 const BASES = { teste: require("./public/carreira/base/teste.js") };
-for (const id of ["brasileirao", "inglaterra", "espanha", "italia", "alemanha", "franca", "argentina", "sulamericanos"]) {
+for (const id of ["brasileirao", "serieb", "inglaterra", "espanha", "italia", "alemanha", "franca", "argentina", "sulamericanos"]) {
   const b = require(`./public/carreira/base/${id}-2026.js`); BASES[b.id] = b;
 }
 const INDICE_MUNDO = require("./public/carreira/base/mundo-2026.js");
@@ -65,9 +65,16 @@ const comNota = (save, j) => ({ ...j, nota: notaDe(save, j), idade: Evolucao.ida
 // o bônus de campeão de cada competição (R$ 15 mi para todas as outras): a Libertadores, a Copa do Brasil e a Sul-Americana pagam mais
 const PREMIO_TITULO = { libertadores: 60e6, copadobrasil: 50e6, sulamericana: 40e6 };
 const PREMIOS_G6 = [75e6, 56.3e6, 43.8e6, 35e6, 27.5e6, 22.5e6];
-const FATOR_LIGA = { "inglaterra-2026": 1.35, "espanha-2026": 1.18, "italia-2026": 1.12, "alemanha-2026": 1.1, "franca-2026": 1.05, "brasileirao-2026": 1, "argentina-2026": 0.82, "sulamericanos-2026": 0.75 };
-const ligaDoClube = (id) => INDICE_MUNDO.ligas.find((l) => l.clubes.includes(id))?.id || "brasileirao-2026";
-const salarioDe = (save, j) => save.salarios[j.id] || Math.round(Mercado.salarioDe(comNota(save, j)) * (FATOR_LIGA[ligaDoClube(donoDe(save, j.id))] || 1) / 1e3) * 1e3;
+const FATOR_LIGA = { "inglaterra-2026": 1.35, "espanha-2026": 1.18, "italia-2026": 1.12, "alemanha-2026": 1.1, "franca-2026": 1.05, "brasileirao-2026": 1, "serieb-2026": 0.45, "argentina-2026": 0.82, "sulamericanos-2026": 0.75 };
+// as divisões do Brasil (save.divisoes: os clubes de cada uma nesta temporada). No fim da temporada, os 4 últimos da Série A
+// caem e os 4 primeiros da Série B sobem (trocarDivisoes). As outras ligas não mudam: os clubes delas vêm do índice.
+const DIVISOES = ["brasileirao-2026", "serieb-2026"], TROCAM = 4;
+const divisoesIniciais = () => Object.fromEntries(DIVISOES.map((id) => [id, [...INDICE_MUNDO.ligas.find((l) => l.id === id).clubes]]));
+const ligaDoClube = (id, save) => (save && save.divisoes && DIVISOES.find((l) => (save.divisoes[l] || []).includes(id))) || INDICE_MUNDO.ligas.find((l) => l.clubes.includes(id))?.id || "brasileirao-2026";
+const clubesDaLiga = (save, liga) => (save && save.divisoes && save.divisoes[liga]) || (INDICE_MUNDO.ligas.find((l) => l.id === liga) || { clubes: [] }).clubes;
+// o índice do mundo com as divisões desta temporada (para simular as ligas)
+const indiceDe = (save) => (save && save.divisoes ? { ...INDICE_MUNDO, ligas: INDICE_MUNDO.ligas.map((l) => (save.divisoes[l.id] ? { ...l, clubes: save.divisoes[l.id] } : l)) } : INDICE_MUNDO);
+const salarioDe = (save, j) => save.salarios[j.id] || Math.round(Mercado.salarioDe(comNota(save, j)) * (FATOR_LIGA[ligaDoClube(donoDe(save, j.id), save)] || 1) / 1e3) * 1e3;
 const disponivel = (save, pid) => !save.lesoes[pid] && !save.suspensos[pid];
 const folhaDe = (save) => elencoDe(save, save.clube).reduce((s, j) => s + salarioDe(save, j), 0);
 // o momento de um jogador (Mercado.fatorForma): gols na temporada, efeitos dos eventos valendo agora e estar à venda
@@ -135,10 +142,13 @@ function forcaDoClube(save, id) {
   return n.length ? n.reduce((s, x) => s + x, 0) / n.length : 0;
 }
 function definirMeta(save) {
-  const liga = ligaDoClube(save.clube), indice = INDICE_MUNDO.ligas.find((l) => l.id === liga), clubes = indice ? indice.clubes : [save.clube];
+  const liga = ligaDoClube(save.clube, save), lista = clubesDaLiga(save, liga), clubes = lista.length ? lista : [save.clube];
   const forcas = clubes.map((id) => [id, forcaDoClube(save, id)]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
   const rank = Math.max(1, forcas.findIndex(([id]) => id === save.clube) + 1), total = clubes.length;
-  const [alvo, nivel, texto] = rank <= 2 ? [2, "titulo", "Brigar pelo título: terminar entre os 2 primeiros"]
+  // na Série B (que não tem rebaixamento aqui): os 4 mais fortes têm de subir; os outros, ficar perto disso
+  const [alvo, nivel, texto] = liga === "serieb-2026" ? (rank <= TROCAM ? [TROCAM, "acesso", "Subir para a Série A: terminar entre os 4 primeiros"]
+      : rank <= 10 ? [10, "meio", "Brigar pelo acesso: terminar entre os 10 primeiros"] : [Math.min(16, total), "meio", "Fazer uma campanha segura: terminar entre os 16 primeiros"])
+    : rank <= 2 ? [2, "titulo", "Brigar pelo título: terminar entre os 2 primeiros"]
     : rank <= 6 ? [6, "continental", "Garantir vaga em competição continental: terminar entre os 6 primeiros"]
     : rank <= 12 ? [Math.min(12, total), "meio", "Fazer uma campanha de meio de tabela: terminar entre os 12 primeiros"]
     : [Math.max(1, total - 4), "rebaixamento", "Fugir do rebaixamento: terminar fora dos 4 últimos"];
@@ -149,6 +159,11 @@ function completar(save) {
   const padrao = { caixa: caixaInicial(save, c), moral: 60, compras: {}, valores: {}, pedidos: {}, parcelas: [], caixaIA: null, situacao: null, feed: [], posJogo: null, segredos: {}, donos: {}, aVenda: [], lesoes: {}, suspensos: {}, amarelos: {}, bonusNota: {}, sequencia: {},
     salarios: {}, caixaEntrada: [], transferencias: [], indicacoes: {}, financas: [], tentativas: { rodada: -1, por: {} }, bonusVitoria: 0, provocado: null, efeitos: [], eventosVistos: {} };
   for (const [k, v] of Object.entries(padrao)) if (save[k] === undefined) save[k] = v;
+  // as divisões: as carreiras de antes da Série B ganham as do índice (e o caixa dos clubes da Série B, para as compras da IA)
+  if (save.base === BASE_PADRAO && !save.divisoes) {
+    save.divisoes = divisoesIniciais();
+    if (save.caixaIA) for (const id of save.divisoes["serieb-2026"]) if (!(id in save.caixaIA)) save.caixaIA[id] = caixaInicial(save, clubeDe(save, id));
+  }
   // a meta da diretoria (precisa dos donos dos jogadores, que acabaram de ganhar o padrão)
   if (save.base === BASE_PADRAO && save.calendarioMundo && (!save.meta || save.meta.temporada !== save.temporada)) save.meta = definirMeta(save);
   // o caixa dos outros clubes (as compras da IA dependem dele)
@@ -184,7 +199,7 @@ function basesDaTemporada(save) {
   return bases;
 }
 function recalcularMundo(save) {
-  const mundo = Temporada.simularMundo({ bases: basesDaTemporada(save), indice: INDICE_MUNDO, semente: `${save.semente}:${save.temporada}`, resultadosFixos: save.resultadosFixos || {}, classificados: save.classificados, copasNovas: save.formatoCopas === 2 });
+  const mundo = Temporada.simularMundo({ bases: basesDaTemporada(save), indice: indiceDe(save), semente: `${save.semente}:${save.temporada}`, resultadosFixos: save.resultadosFixos || {}, classificados: save.classificados, copasNovas: save.formatoCopas === 2 });
   save.competicoes = mundo.competicoes; save.calendarioMundo = mundo.jogos;
   return mundo;
 }
@@ -222,7 +237,7 @@ const proximoJogoMundo = (save) => (save.calendarioMundo || []).find((j) => (j.c
 function mundoNovo(temporadas = Evolucao.TEMPORADAS.padrao, caixaIgual = 0) {
   const base = BASES[BASE_PADRAO];
   const save = { v: VERSAO, base: base.id, ano: base.ano, temporada: 1, semente: crypto.randomBytes(6).toString("hex"), formatoCopas: 2, caixaIgual: CAIXAS_IGUAIS.includes(Number(caixaIgual)) ? Number(caixaIgual) : 0,
-    temporadasMax: inteiro(temporadas, Evolucao.TEMPORADAS.min, Evolucao.TEMPORADAS.max, Evolucao.TEMPORADAS.padrao), resultadosFixos: {}, resultados: [], gols: {} };
+    temporadasMax: inteiro(temporadas, Evolucao.TEMPORADAS.min, Evolucao.TEMPORADAS.max, Evolucao.TEMPORADAS.padrao), resultadosFixos: {}, resultados: [], gols: {}, divisoes: divisoesIniciais() };
   recalcularMundo(save);
   return save;
 }
@@ -335,8 +350,8 @@ function entrarNaCarreira(save, { clube, nome, skin }, { aporte = 0 } = {}) {
   guardarVista(save, v);
   return null;
 }
-// os clubes que dá para escolher: só o Brasileirão, ou o Brasileirão e as cinco grandes ligas
-const LIGAS_GRUPO = { brasil: ["brasileirao-2026"], mundo: ["brasileirao-2026", ...Temporada.EUROPA] };
+// os clubes que dá para escolher: só o Brasil (Séries A e B), ou o Brasil e as cinco grandes ligas
+const LIGAS_GRUPO = { brasil: DIVISOES, mundo: [...DIVISOES, ...Temporada.EUROPA] };
 const clubesEscolhiveis = (ligas) => BASES[BASE_PADRAO].clubes.filter((c) => (LIGAS_GRUPO[ligas] || LIGAS_GRUPO.mundo).includes(c.liga));
 
 // ---------- a rodada da turma (carreira-online.js, PR 5) ----------
@@ -412,10 +427,10 @@ function novaTemporadaGrupo(save) {
   if (vistas.some((v) => v.partida || !temporadaAcabou(v))) return "Ainda tem jogo nesta temporada.";
   if (save.temporada >= save.temporadasMax) return `A carreira terminou: foram ${save.temporadasMax} temporada${save.temporadasMax > 1 ? "s" : ""}.`;
   for (const v of vistas) { registrarTemporada(v); resolverPendentes(v); guardarVista(save, v); }
-  const v0 = vistaDe(save, clubes[0]), classificados = classificadosDe(v0);
+  const v0 = vistaDe(save, clubes[0]), classificados = classificadosDe(v0), troca = trocarDivisoes(v0);
   const meus = virarTemporada(v0, Object.fromEntries(clubes.map((c) => [c, save.humanos[c].estado.jogosTemporada || 0])));
   guardarVista(save, v0);
-  Object.assign(save, { temporada: save.temporada + 1, ano: save.ano + 1, gols: {}, amarelos: {}, lesoes: {}, suspensos: {}, desempenho: {}, classificados, formatoCopas: 2, resultadosFixos: {}, donosInicio: { ...save.donos } });
+  Object.assign(save, { temporada: save.temporada + 1, ano: save.ano + 1, gols: {}, amarelos: {}, lesoes: {}, suspensos: {}, desempenho: {}, classificados, divisoes: troca.divisoes, formatoCopas: 2, resultadosFixos: {}, donosInicio: { ...save.donos } });
   recalcularMundo(save);
   for (const c of clubes) {
     const v = vistaDe(save, c), m = meus[c];
@@ -429,7 +444,7 @@ function novaTemporadaGrupo(save) {
     const elenco = new Set(elencoDe(v, c).map((j) => j.id));
     if (v.escalacao.titulares && !v.escalacao.titulares.every((id) => elenco.has(id))) Object.assign(v.escalacao, { titulares: null, fixo: false });
     const nomes = (lista) => lista.slice(0, 4).map(([pid, d]) => `${jogadorDe(v, pid).nome} (${d > 0 ? "+" : ""}${d})`).join(", ");
-    const partes = [m.subiram.length && `Subiram: ${nomes(m.subiram)}.`, m.cairam.length && `Caíram: ${nomes(m.cairam)}.`,
+    const partes = [noticiaDasDivisoes(v, troca), m.subiram.length && `Subiram: ${nomes(m.subiram)}.`, m.cairam.length && `Caíram: ${nomes(m.cairam)}.`,
       m.aposentados.length && `Se aposentaram: ${m.aposentados.map((pid) => jogadorDe(v, pid).nome).join(", ")}.`,
       m.jovens.length && `Subiram da base: ${m.jovens.map((pid) => jogadorDe(v, pid).nome).join(", ")}.`].filter(Boolean);
     avisar(v, { tipo: "temporada", icone: "taca", titulo: `Começa a temporada ${v.ano} (${v.temporada} de ${v.temporadasMax})`, texto: `A janela está aberta. Caixa: ${dinheiro(v.caixa)}. ${partes.join(" ")} ${gestaoTexto}`.trim() });
@@ -593,7 +608,7 @@ function concluirLeilao(save, { jogador: pid, dono, comprador, valor }) {
   else if (save.caixaIA && dono in save.caixaIA) save.caixaIA[dono] += valor;
   const v = vistaDe(save, comprador), j = jogadorDe(v, pid);
   v.donos[pid] = comprador; delete v.pedidos[pid]; v.aVenda = v.aVenda.filter((x) => x !== pid);
-  v.salarios[pid] = Math.round(Mercado.salarioDe(comNota(v, j)) * (FATOR_LIGA[ligaDoClube(comprador)] || 1) / 1e3) * 1e3;
+  v.salarios[pid] = Math.round(Mercado.salarioDe(comNota(v, j)) * (FATOR_LIGA[ligaDoClube(comprador, v)] || 1) / 1e3) * 1e3;
   v.compras[pid] = { valor, rodada: v.rodada, temporada: v.temporada };
   Clube.contratar(v, ajudas, pid);
   registrarCompraDaJanela(v, notaDe(v, j)); // conta na regra da janela (antes de a nota mudar de clube, é a mesma)
@@ -634,7 +649,7 @@ function executarTroca(save, t) {
     delete origem.salarios[pid]; delete origem.pedidos[pid]; delete origem.compras[pid]; delete origem.valores[pid];
     origem.aVenda = origem.aVenda.filter((x) => x !== pid);
     destino.donos[pid] = destino.clube; delete destino.pedidos[pid]; destino.aVenda = destino.aVenda.filter((x) => x !== pid);
-    destino.salarios[pid] = Math.round(Mercado.salarioDe(comNota(destino, j)) * (FATOR_LIGA[ligaDoClube(destino.clube)] || 1) / 1e3) * 1e3;
+    destino.salarios[pid] = Math.round(Mercado.salarioDe(comNota(destino, j)) * (FATOR_LIGA[ligaDoClube(destino.clube, destino)] || 1) / 1e3) * 1e3;
     destino.compras[pid] = { valor: valorAtual(destino, j), rodada: destino.rodada, temporada: destino.temporada };
     Clube.contratar(destino, ajudas, pid);
     destino.valores[pid] = [valorAtual(destino, j)];
@@ -758,7 +773,7 @@ function usarVale(v, pid) {
   if (elencoDe(v, v.clube).length >= Mercado.ELENCO_MAX) return `O elenco já tem ${Mercado.ELENCO_MAX} jogadores. Venda alguém antes.`;
   g.vales.splice(g.vales.indexOf(vale), 1);
   v.donos[pid] = v.clube; delete v.pedidos[pid]; delete v.indicacoes[pid]; v.aVenda = v.aVenda.filter((x) => x !== pid);
-  v.salarios[pid] = Math.round(Mercado.salarioDe(comNota(v, j)) * (FATOR_LIGA[ligaDoClube(v.clube)] || 1) / 1e3) * 1e3;
+  v.salarios[pid] = Math.round(Mercado.salarioDe(comNota(v, j)) * (FATOR_LIGA[ligaDoClube(v.clube, v)] || 1) / 1e3) * 1e3;
   v.compras[pid] = { valor: 0, rodada: v.rodada, temporada: v.temporada, vale: true };
   v.valores[pid] = [valorAtual(v, j)];
   g.bloqueados[pid] = v.temporada;
@@ -771,15 +786,15 @@ function usarVale(v, pid) {
 // o bônus de título da competição pelo nome (as ligas e as outras copas: R$ 15 mi)
 const premioDoTitulo = (save, nome) => { const c = Object.values(save.competicoes || {}).find((x) => x.nome === nome); return (c && PREMIO_TITULO[c.id]) || 15e6; };
 // o prêmio do G6 para a posição (0 fora dele); parcela: 1 no fim da temporada, 0,25 no meio
-const premioG6 = (save, pos, parcela = 1) => (pos >= 1 && pos <= PREMIOS_G6.length ? Math.round(PREMIOS_G6[pos - 1] * (FATOR_LIGA[ligaDoClube(save.clube)] || 1) * parcela / 1e5) * 1e5 : 0);
+const premioG6 = (save, pos, parcela = 1) => (pos >= 1 && pos <= PREMIOS_G6.length ? Math.round(PREMIOS_G6[pos - 1] * (FATOR_LIGA[ligaDoClube(save.clube, save)] || 1) * parcela / 1e5) * 1e5 : 0);
 // no meio da liga (19 jogos do clube na liga): o G6 do momento recebe um adiantamento de 25%, uma vez por temporada
 function premioDoTurno(save) {
-  const liga = ligaDoClube(save.clube), c = save.competicoes && save.competicoes[liga]; if (!c || c.tipo !== "liga") return;
+  const liga = ligaDoClube(save.clube, save), c = save.competicoes && save.competicoes[liga]; if (!c || c.tipo !== "liga") return;
   const feitos = (save.jogosJogados || []).filter((id) => id.startsWith(`${liga}:`)).length, g = Clube.gestaoDe(save);
   if (feitos !== 19 || g.visto.premioTurno === save.temporada) return;
   g.visto.premioTurno = save.temporada;
   const prox = proximoJogoMundo(save), limite = prox ? prox.semana : Infinity, jaFoi = (j) => j.semana < limite || save.jogosJogados.includes(j.id);
-  const ids = INDICE_MUNDO.ligas.find((l) => l.id === liga).clubes, tab = Temporada.tabela(ids, [c.jogos.filter(jaFoi).map((j) => [j.casa, j.fora, ...j.placar])]);
+  const ids = clubesDaLiga(save, liga), tab = Temporada.tabela(ids, [c.jogos.filter(jaFoi).map((j) => [j.casa, j.fora, ...j.placar])]);
   const pos = tab.findIndex((l) => l.id === save.clube) + 1, valor = premioG6(save, pos, 0.25);
   if (!valor) return;
   movimentar(save, `Premiação do turno: ${pos}º lugar (G6)`, valor);
@@ -789,7 +804,7 @@ function premioDoTurno(save) {
 // técnico, então a mesma transferência aparecia como "rodada 27" para quem tinha mais copas e a outra pessoa, na rodada 23, via notícia do futuro.
 const semanaDe = (save) => (save.ultimo && save.ultimo.semana) || 0;
 const carimbo = (save) => ({ semana: semanaDe(save), rl: rodadaDaJanela(save) });
-const ajudas = { usarVale, semVenda: (save, pid) => Clube.semVenda(save, save.clube, pid), semanaDe, carimbo, avisar, ligaDoClube, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
+const ajudas = { usarVale, semVenda: (save, pid) => Clube.semVenda(save, save.clube, pid), semanaDe, carimbo, avisar, ligaDoClube, clubesDaLiga, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
 
 // lesões, cartões e suspensões de todos os jogos da rodada
 function cartoesELesoes(save, r, semente) {
@@ -919,7 +934,7 @@ function festaDaCompeticao(save, c, visivel, gols) {
   const meus = c.jogos.filter((j) => visivel(j) && (j.casa === campeao || j.fora === campeao));
   const camp = { v: 0, e: 0, d: 0, gp: 0, gc: 0, jogos: meus.length };
   for (const j of meus) { const [pro, contra] = j.casa === campeao ? j.placar : [j.placar[1], j.placar[0]]; camp.gp += pro; camp.gc += contra; if (pro > contra) camp.v++; else if (pro === contra) camp.e++; else camp.d++; }
-  const linha = c.tipo === "liga" ? Temporada.tabela(INDICE_MUNDO.ligas.find((l) => l.id === c.id).clubes, c.jogos.filter(visivel).reduce((a, j) => { (a[j.rodada] ||= []).push([j.casa, j.fora, ...j.placar]); return a; }, [])) : null;
+  const linha = c.tipo === "liga" ? Temporada.tabela(clubesDaLiga(save, c.id), c.jogos.filter(visivel).reduce((a, j) => { (a[j.rodada] ||= []).push([j.casa, j.fora, ...j.placar]); return a; }, [])) : null;
   const pontos = linha ? linha.find((l) => l.id === campeao).p : null, segundo = linha ? linha.find((l) => l.id === vice).p : null;
   let final = null;
   const fj = copa && c.jogos.filter((j) => j.mataMata && j.fase === "final" && visivel(j)).pop();
@@ -990,7 +1005,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   save.jogosJogados.push(p.jogoId);
   const advId = emCasa ? p.fora : p.casa, classico = Clube.classicoCom(save, ajudas, advId);
   if (emCasa) movimentar(save, classico ? "Bilheteria (clássico)" : "Bilheteria", Math.round(clube.tamanho * 6e5 * (0.7 + save.moral / 200) * Clube.fatorBilheteria(save) * (classico ? 1.35 : 1) / 1e4) * 1e4);
-  movimentar(save, "Cota de TV", Math.round(clube.tamanho * 4e5 * (FATOR_LIGA[ligaDoClube(clube.id)] || 1)));
+  movimentar(save, "Cota de TV", Math.round(clube.tamanho * 4e5 * (FATOR_LIGA[ligaDoClube(clube.id, save)] || 1)));
   if (nos > eles) { movimentar(save, "Prêmio por vitória", clube.tamanho * 2e5); mudarMoral(save, 6); }
   else if (nos === eles) mudarMoral(save, 1); else mudarMoral(save, -6);
   movimentar(save, "Salários (1 semana)", -Math.round(folhaDe(save) / 4));
@@ -1060,7 +1075,7 @@ function registrarTemporada(save) {
   if (!save.historico || save.historico.some((x) => x.temporada === save.temporada) || !temporadaAcabou(save)) return;
   let tabela, nomeLiga, titulos = [], vices = [];
   if (save.base === BASE_PADRAO) {
-    const liga = save.competicoes[ligaDoClube(save.clube)];
+    const liga = save.competicoes[ligaDoClube(save.clube, save)];
     tabela = liga.tabela; nomeLiga = liga.nome;
     for (const c of Object.values(save.competicoes)) { if (c.campeao === save.clube) titulos.push(c.nome); else if (c.vice === save.clube) vices.push(c.nome); }
   } else {
@@ -1072,14 +1087,27 @@ function registrarTemporada(save) {
   const negocios = save.transferencias.filter((t) => t.de === save.clube && t.lucro != null && (t.temporada || save.temporada) === save.temporada).sort((a, b) => b.lucro - a.lucro);
   const meta = save.meta && save.meta.temporada === save.temporada ? save.meta : null;
   if (meta && meta.cumprida === undefined) meta.cumprida = pos <= meta.alvo;
+  const ligaId = save.base === BASE_PADRAO && save.divisoes ? ligaDoClube(save.clube, save) : null;
+  const divisao = ligaId === "brasileirao-2026" && pos > tabela.length - TROCAM ? "rebaixado" : ligaId === "serieb-2026" && pos <= TROCAM ? "acesso" : null;
   save.historico.push({ ...(meta && { meta: { alvo: meta.alvo, texto: meta.texto, cumprida: meta.cumprida, rank: meta.rank } }), ano: save.ano, temporada: save.temporada, posicao: pos, pontos: tabela[pos - 1].p, liga: nomeLiga, campeao: tabela[0].id, titulos, vices,
     artilheiro: artilheiro ? { id: artilheiro[0], gols: artilheiro[1] } : null, negocio: negocios[0] ? { jogador: negocios[0].jogador, lucro: negocios[0].lucro, para: negocios[0].para } : null,
-    forca: forcaDoElenco(save) });
+    forca: forcaDoElenco(save), ...(divisao && { divisao }) });
   if (save.base === BASE_PADRAO && save.calendarioMundo) arquivarTemporada(save);
   if (meta) {
     const tamanho = clubeDe(save, save.clube).tamanho || 3;
     if (meta.cumprida) { movimentar(save, "Bônus da diretoria: meta cumprida", Math.round(tamanho * 3e6 / 1e5) * 1e5); mudarMoral(save, 8); avisar(save, { tipo: "diretoria", icone: "aperto", titulo: "A diretoria está satisfeita", texto: `Meta cumprida (${meta.texto.toLowerCase()}): ${pos}º lugar. Bônus no caixa e o vestiário comemora.` }); }
     else { mudarMoral(save, -6); avisar(save, { tipo: "diretoria", icone: "alerta", titulo: "A diretoria cobra", texto: `A meta não foi cumprida (${meta.texto.toLowerCase()}): ${pos}º lugar. A pressão cresce para a próxima temporada.` }); }
+  }
+  if (divisao) {
+    const nome = clubeDe(save, save.clube).nome;
+    if (divisao === "acesso") {
+      avisar(save, { tipo: "temporada", icone: "taca", titulo: "Acesso! O clube sobe para a Série A", texto: `${pos}º lugar na Série B: o ${nome} sobe para a Série A na próxima temporada. A cota de TV e as premiações crescem.` });
+      Feed.postar(save, { tipo: "tabela", perfil: save.clube, humor: "bom", peso: 2, arte: { cena: "trofeu", clube: save.clube }, texto: `É ACESSO! O ${nome} termina a Série B em ${pos}º e volta à elite: está na Série A.` });
+    } else {
+      mudarMoral(save, -8);
+      avisar(save, { tipo: "temporada", icone: "alerta", titulo: "Rebaixado para a Série B", texto: `${pos}º lugar na Série A: o ${nome} cai para a Série B. A cota de TV e as premiações diminuem; a meta agora é voltar.` });
+      Feed.postar(save, { tipo: "tabela", perfil: "galeranews", galeranews: true, humor: "ruim", peso: 2, arte: { cena: "tabela", clube: save.clube, posicao: pos }, texto: `Rebaixado: o ${nome} termina em ${pos}º e vai jogar a Série B.` });
+    }
   }
   movimentar(save, `Premiação: ${pos}º lugar`, (tabela.length + 1 - pos) * 1e6);
   for (const t of titulos) movimentar(save, `Premiação: campeão da ${t}`, premioDoTitulo(save, t));
@@ -1091,6 +1119,9 @@ function registrarTemporada(save) {
 // a artilharia, os prêmios (artilheiro, maior goleada, melhor negócio) e os pontos de cada técnico, para a tela "Temporadas".
 // Uma vez por temporada (na sala, a primeira visão que fecha a temporada faz por todos).
 const PONTOS_LIGA = [10, 6, 4, 3, 2, 2], PONTOS_TITULO = { champions: 8, libertadores: 8, supermundial: 8, mundial: 8 };
+// na Série B, só quem sobe pontua (e bem menos que na Série A)
+const PONTOS_SERIEB = [4, 3, 2, 2];
+const pontosDaLiga = (liga, pos) => (liga === "serieb-2026" ? PONTOS_SERIEB : PONTOS_LIGA)[pos - 1] || 0;
 function arquivarTemporada(save) {
   const arquivo = save.arquivo || (save.arquivo = []);
   if (arquivo.some((x) => x.temporada === save.temporada)) return;
@@ -1114,8 +1145,8 @@ function arquivarTemporada(save) {
   const clubesHumanos = new Set(humanos.map((h) => h.clube));
   const negocio = save.transferencias.filter((t) => clubesHumanos.has(t.de) && t.lucro != null && (t.temporada || save.temporada) === save.temporada).sort((a, b) => b.lucro - a.lucro)[0];
   const tecnicos = humanos.map((h) => {
-    const liga = mundo.competicoes[ligaDoClube(h.clube)], pos = liga && liga.tabela ? liga.tabela.findIndex((l) => l.id === h.clube) + 1 : 0;
-    const titulos = [], vices = []; let pontos = PONTOS_LIGA[pos - 1] || 0;
+    const ligaId = ligaDoClube(h.clube, save), liga = mundo.competicoes[ligaId], pos = liga && liga.tabela ? liga.tabela.findIndex((l) => l.id === h.clube) + 1 : 0;
+    const titulos = [], vices = []; let pontos = pontosDaLiga(ligaId, pos);
     for (const [id, c] of Object.entries(competicoes)) {
       const peso = PONTOS_TITULO[id] || (c.tipo === "liga" ? 10 : 5);
       if (c.campeao === h.clube) { titulos.push(c.nome); if (c.tipo !== "liga") pontos += peso; }
@@ -1135,7 +1166,7 @@ function guardarNaEstante(save, competicoes, tecnicos) {
   const lista = [];
   for (const t of tecnicos) for (const [id, c] of Object.entries(competicoes)) {
     const colocacao = c.campeao === t.clube ? 1 : c.vice === t.clube ? 2 : 0; if (!colocacao) continue;
-    const peso = c.tipo === "liga" ? PONTOS_LIGA[colocacao - 1] : colocacao === 1 ? PONTOS_TITULO[id] || 5 : Math.floor((PONTOS_TITULO[id] || 5) / 2);
+    const peso = c.tipo === "liga" ? pontosDaLiga(id, colocacao) : colocacao === 1 ? PONTOS_TITULO[id] || 5 : Math.floor((PONTOS_TITULO[id] || 5) / 2);
     lista.push({ carreira: save.semente, modo: save.humanosLista ? "grupo" : "solo", tecnico: t.tecnico, clube: t.clube, competicao: id, nome: c.nome, colocacao, pontos: peso, ano: save.ano, temporada: save.temporada });
   }
   if (!lista.length) return;
@@ -1188,6 +1219,22 @@ function virarTemporada(save, humanos = { [save.clube]: save.jogosTemporada }) {
   for (const m of Object.values(meus)) { m.subiram.sort((a, b) => b[1] - a[1]); m.cairam.sort((a, b) => a[1] - b[1]); }
   return meus;
 }
+// o acesso e o rebaixamento: pelas tabelas da temporada que acabou, os 4 últimos da Série A trocam de lugar com os 4 primeiros
+// da Série B. Devolve as divisões da próxima temporada, quem subiu e quem caiu (a Série B não tem rebaixamento: não há Série C).
+function trocarDivisoes(save) {
+  const divisoes = save.divisoes || divisoesIniciais(), [a, b] = DIVISOES.map((id) => save.competicoes && save.competicoes[id] && save.competicoes[id].tabela);
+  if (!a || !b) return { divisoes, subiram: [], cairam: [] };
+  const cairam = a.slice(-TROCAM).map((l) => l.id), subiram = b.slice(0, TROCAM).map((l) => l.id);
+  return { subiram, cairam, divisoes: { [DIVISOES[0]]: [...divisoes[DIVISOES[0]].filter((id) => !cairam.includes(id)), ...subiram], [DIVISOES[1]]: [...divisoes[DIVISOES[1]].filter((id) => !subiram.includes(id)), ...cairam] } };
+}
+// a notícia da virada: quem sobe e quem cai, e a frase para o aviso da temporada nova do técnico
+function noticiaDasDivisoes(v, troca) {
+  if (!troca || !troca.subiram.length) return "";
+  const nomes = (ids) => ids.map((id) => clubeDe(v, id).nome).join(", ").replace(/, ([^,]*)$/, " e $1");
+  Feed.postar(v, { tipo: "tabela", perfil: "galeranews", galeranews: true, humor: "neutro", peso: 1.6, arte: { cena: "trofeu", clube: troca.subiram[0] },
+    texto: `Sobem para a Série A: ${nomes(troca.subiram)}. Caem para a Série B: ${nomes(troca.cairam)}.` });
+  return troca.subiram.includes(v.clube) ? "Nesta temporada o clube joga a Série A." : troca.cairam.includes(v.clube) ? "Nesta temporada o clube joga a Série B." : "";
+}
 // os classificados para as copas da próxima temporada: os 4 primeiros de cada liga europeia (Champions) e os 6
 // primeiros do Brasileirão, mais um sorteado do 7º ao 12º (o campeão da Copa do Brasil), no lugar dos brasileiros
 function classificadosDe(save) {
@@ -1196,7 +1243,7 @@ function classificadosDe(save) {
   const br = tab("brasileirao-2026"), cdb = save.competicoes.copadobrasil;
   // com a Copa do Brasil de verdade, o campeão leva a vaga (se já está entre os 6 primeiros, a vaga vai para o 7º); sem ela, o sorteio de antes
   const copa = cdb && cdb.campeao ? (br.slice(0, 6).includes(cdb.campeao) ? br[6] : cdb.campeao) : br[6 + Math.floor(Motor.sorteDe(`copa-do-brasil:${save.semente}:${save.temporada}`)() * 6)];
-  const brasileiros = new Set(INDICE_MUNDO.ligas.find((l) => l.id === "brasileirao-2026").clubes);
+  const brasileiros = new Set(DIVISOES.flatMap((id) => INDICE_MUNDO.ligas.find((l) => l.id === id).clubes)); // as duas divisões (quem caiu continua brasileiro)
   const anterior = (save.classificados && save.classificados.libertadores) || INDICE_MUNDO.libertadores;
   // Os campeões da Libertadores e da Sul-Americana ganham vaga na Libertadores seguinte: o brasileiro que ainda não está classificado entra a mais; o que já está
   // (pelo Brasileirão ou pela Copa do Brasil) libera a vaga para o próximo colocado do Brasileirão. Campeão de fora do Brasil entra na lista dos estrangeiros.
@@ -1332,13 +1379,13 @@ function estadoMundo(save) {
   const competicoes = Object.fromEntries(Object.entries(save.competicoes).map(([id, c]) => {
     const jogos = c.jogos.filter((j) => j.semana < limite || save.jogosJogados.includes(j.id));
     const resultados = c.tipo === "liga" ? jogos.reduce((a, j) => { (a[j.rodada] ||= []).push([j.casa, j.fora, ...j.placar]); return a; }, []) : jogos.map((j) => [j.casa, j.fora, ...j.placar]);
-    const ids = c.tipo === "liga" ? INDICE_MUNDO.ligas.find((l) => l.id === id).clubes : c.participantes;
+    const ids = c.tipo === "liga" ? clubesDaLiga(save, id) : c.participantes;
     const grupos = c.grupos.map((g) => { const r = jogos.filter((j) => j.fase === `grupo-${g.id}`).reduce((a, j) => { (a[j.rodada] ||= []).push([j.casa, j.fora, ...j.placar]); return a; }, []); return { id: g.id, clubes: g.clubes, tabela: Temporada.tabela(g.clubes, r) }; });
     const futuro = c.jogos.find((j) => !jogos.some((x) => x.id === j.id));
     const visivel = (j) => j.semana < limite || save.jogosJogados.includes(j.id);
     return [id, { ...c, chave: c.tipo === "copa" ? chaveDaCopa(c, visivel) : undefined, fase: futuro ? futuro.fase : "encerrada", grupos, jogos, resultados, tabela: c.tipo === "liga" ? Temporada.tabela(ids, resultados) : undefined, campeao: futuro ? null : c.campeao, vice: futuro ? null : c.vice, festa: futuro || !c.campeao || !jaAconteceu(c) ? undefined : festaDaCompeticao(save, c, visivel, golsTodos) }];
   }));
-  const liga = ligaDoClube(save.clube), tabela = competicoes[liga].tabela;
+  const liga = ligaDoClube(save.clube, save), tabela = competicoes[liga].tabela;
   // Liga e grupos têm tabela definida desde o começo. No mata-mata, só aparece o que já foi jogado ou o próximo jogo:
   // mandar as fases posteriores entregava antecipadamente classificação, eliminação e adversários.
   const visivelAgora = (j) => j.semana < limite || save.jogosJogados.includes(j.id);
@@ -1348,7 +1395,7 @@ function estadoMundo(save) {
   let partida = null;
   if (save.partida) { const r = simularMinha(save); partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times, paralelos: paralelosDaPartida(save, save.partida) }; }
   const elenco = elencoDe(save, save.clube), artilharia = Object.entries(golsTodos).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, gols }));
-  return { meta: save.meta, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
+  return { meta: save.meta, liga, divisoes: save.divisoes, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
     caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.filter((t) => t.semana == null || t.semana < semanaPropria).slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), rodadasLiga: semanasDaRodada(save.calendarioMundo).length, tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.filter((f) => f.semana == null || f.semana < semanaPropria).slice(0, 30), posJogo: save.posJogo };
 }
 
@@ -1441,7 +1488,7 @@ function novaTemporada(save) {
   if (save.temporada >= save.temporadasMax) return `A carreira terminou: foram ${save.temporadasMax} temporada${save.temporadasMax > 1 ? "s" : ""}.`;
   registrarTemporada(save);
   resolverPendentes(save); // o que ficou sem resposta vale a opção padrão, como antes de um jogo
-  const mundo = save.base === BASE_PADRAO, classificados = mundo ? classificadosDe(save) : null;
+  const mundo = save.base === BASE_PADRAO, classificados = mundo ? classificadosDe(save) : null, troca = mundo ? trocarDivisoes(save) : null;
   const meus = virarTemporada(save)[save.clube];
   save.energia = {}; save.sequencia = {}; // férias: energia cheia e sequência zerada
   save.temporada++; save.ano++;
@@ -1452,12 +1499,12 @@ function novaTemporada(save) {
   const elenco = new Set(elencoDe(save, save.clube).map((j) => j.id));
   if (save.escalacao.titulares && !save.escalacao.titulares.every((id) => elenco.has(id))) Object.assign(save.escalacao, { titulares: null, fixo: false });
   if (mundo) {
-    Object.assign(save, { classificados, formatoCopas: 2, resultadosFixos: {}, jogosJogados: [], donosInicio: { ...save.donos } });
+    Object.assign(save, { classificados, divisoes: troca.divisoes, formatoCopas: 2, resultadosFixos: {}, jogosJogados: [], donosInicio: { ...save.donos } });
     recalcularMundo(save);
     save.calendario = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, save.clube).map((j) => [[j.casa, j.fora]]);
   } else save.calendario = Temporada.gerarCalendario(idsDosClubes(save), `${save.semente}:${save.temporada}`);
   const nomes = (lista) => lista.slice(0, 4).map(([pid, d]) => `${jogadorDe(save, pid).nome} (${d > 0 ? "+" : ""}${d})`).join(", ");
-  const partes = [meus.subiram.length && `Subiram: ${nomes(meus.subiram)}.`, meus.cairam.length && `Caíram: ${nomes(meus.cairam)}.`,
+  const partes = [mundo && noticiaDasDivisoes(save, troca), meus.subiram.length && `Subiram: ${nomes(meus.subiram)}.`, meus.cairam.length && `Caíram: ${nomes(meus.cairam)}.`,
     meus.aposentados.length && `Se aposentaram: ${meus.aposentados.map((pid) => jogadorDe(save, pid).nome).join(", ")}.`,
     meus.jovens.length && `Subiram da base: ${meus.jovens.map((pid) => `${jogadorDe(save, pid).nome} (${jogadorDe(save, pid).pos}, ${jogadorDe(save, pid).nota})`).join(", ")}.`].filter(Boolean);
   avisar(save, { tipo: "temporada", icone: "taca", titulo: `Começa a temporada ${save.ano} (${save.temporada} de ${save.temporadasMax})`, texto: `A janela está aberta até a rodada 4. Caixa: ${dinheiro(save.caixa)}. ${partes.join(" ")} ${gestaoTexto}`.trim() });
@@ -1600,7 +1647,7 @@ module.exports = function ligarCarreira(io) {
   });
 };
 // para os testes: montar uma carreira e mexer nela sem o socket
-module.exports.paraTestes = { PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
+module.exports.paraTestes = { trocarDivisoes, ligaDoClube, clubesDaLiga, definirMeta, registrarTemporada, PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
 module.exports.grupo = { rodadaDaSemana, Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,

@@ -414,9 +414,9 @@ function rivaisReaisDe(v, c, clube = v.clube) {
   return Rivais.rivaisReais(clube).filter((r) => existe.has(r.id));
 }
 function rivalDaLiga(v, c, clube = v.clube) {
-  const meu = c.clubeDe(v, clube), liga = c.ligaDoClube(clube);
-  const lista = c.idsDosClubes(v).filter((id) => id !== clube && c.ligaDoClube(id) === liga && Math.abs((c.clubeDe(v, id).tamanho || 0) - (meu.tamanho || 0)) <= 1);
-  const base = lista.length ? lista : c.idsDosClubes(v).filter((id) => id !== clube && c.ligaDoClube(id) === liga);
+  const meu = c.clubeDe(v, clube), liga = c.ligaDoClube(clube, v);
+  const lista = c.idsDosClubes(v).filter((id) => id !== clube && c.ligaDoClube(id, v) === liga && Math.abs((c.clubeDe(v, id).tamanho || 0) - (meu.tamanho || 0)) <= 1);
+  const base = lista.length ? lista : c.idsDosClubes(v).filter((id) => id !== clube && c.ligaDoClube(id, v) === liga);
   return base.length ? [...base].sort((a, b) => hash(`rival:${clube}:${a}`) - hash(`rival:${clube}:${b}`))[0] : null;
 }
 // os clássicos do clube fora da sala: os de verdade ou, sem nenhum, o rival de tamanho parecido da liga
