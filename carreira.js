@@ -1175,6 +1175,51 @@ function estadoBrasileirao(save) {
     feed: save.feed.slice(0, 30), posJogo: save.posJogo, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia,
   };
 }
+// O calendário só mostra o que já está definido; o resto vira "TBA" (a definir). As fases do mata-mata: ordenadas pela semana, com as semanas de cada uma
+// (ida e volta). Uma fase só está definida quando a anterior acabou (a primeira, quando os grupos acabaram): os confrontos dela saem do sorteio ou da chave.
+function fasesDeMata(c) {
+  const por = new Map();
+  for (const j of c.jogos) if (j.mataMata) { if (!por.has(j.fase)) por.set(j.fase, { fase: j.fase, semanas: new Set(), jogos: [] }); const f = por.get(j.fase); f.semanas.add(j.semana); f.jogos.push(j); }
+  return [...por.values()].map((f) => ({ ...f, semanas: [...f.semanas].sort((a, b) => a - b) })).sort((a, b) => a.semanas[0] - b.semanas[0]);
+}
+function faseDefinida(c, fases, i, visivel) {
+  if (i === 0) return c.jogos.filter((j) => String(j.fase).startsWith("grupo-")).every(visivel);
+  return fases[i - 1].jogos.every(visivel);
+}
+// A participação de cada competição: Libertadores, Champions e Copa do Brasil têm os participantes desde o começo da temporada. A Sul-Americana só depois
+// dos grupos da Libertadores (entram os terceiros colocados), o Super Mundial depois das finais das outras copas e o Mundial depois das finais da Libertadores
+// e da Champions: antes disso, quem joga o que é só previsão da simulação e não vai para o calendário.
+function competicaoDefinida(save, id, visivel) {
+  const C = save.competicoes, acabou = (x) => !C[x] || C[x].jogos.every(visivel), gruposAcabaram = (x) => !C[x] || C[x].jogos.filter((j) => String(j.fase).startsWith("grupo-")).every(visivel);
+  if (id === "sulamericana") return gruposAcabaram("libertadores");
+  if (id === "supermundial") return ["sulamericana", "copadobrasil", "champions", "libertadores"].every(acabou);
+  if (id === "mundial") return ["libertadores", "champions"].every(acabou);
+  return true;
+}
+// o jogo do seu clube já tem os dois lados definidos? (os de liga, sempre)
+function jogoDefinido(save, j, visivel) {
+  const c = save.competicoes[j.competicao];
+  if (!c || c.tipo === "liga") return true;
+  if (!competicaoDefinida(save, c.id, visivel)) return false;
+  if (!j.mataMata) return true;
+  const fases = fasesDeMata(c), i = fases.findIndex((f) => f.fase === j.fase);
+  return i >= 0 && faseDefinida(c, fases, i, visivel);
+}
+// as fases que o seu clube ainda pode jogar, mas que ainda não estão definidas: "TBA". Só nas copas em que a participação é certa (Libertadores, Champions e Copa
+// do Brasil) e enquanto o clube não foi eliminado (uma chave perdida ou a fase de grupos encerrada sem ele no mata-mata).
+function calendarioTba(save, visivel) {
+  const clube = save.clube, jogados = new Set(save.jogosJogados || []), out = [];
+  for (const id of ["libertadores", "champions", "copadobrasil"]) {
+    const c = save.competicoes[id]; if (!c || !(c.participantes || []).includes(clube) || c.jogos.every(visivel)) continue;
+    const fases = fasesDeMata(c); if (!fases.length) continue;
+    const grupos = c.jogos.filter((j) => String(j.fase).startsWith("grupo-")), minhas = c.jogos.filter((j) => j.casa === clube || j.fora === clube);
+    if (grupos.length && grupos.every(visivel) && !minhas.some((j) => j.mataMata)) continue; // os grupos acabaram sem o clube no mata-mata
+    const perdeu = chaveDaCopa(c, visivel).some((f) => f.confrontos.some((x) => x.clubes.includes(clube) && x.vencedor && x.vencedor !== clube));
+    if (perdeu) continue;
+    fases.forEach((f, i) => { if (!faseDefinida(c, fases, i, visivel)) f.semanas.forEach((semana, k) => out.push({ competicao: id, fase: f.fase, semana, perna: k + 1, pernas: f.semanas.length })); });
+  }
+  return out.sort((a, b) => a.semana - b.semana);
+}
 function estadoMundo(save) {
   if (!save.calendarioMundo) recalcularMundo(save);
   const proximo = proximoJogoMundo(save), limite = proximo ? proximo.semana : Infinity;
@@ -1191,13 +1236,14 @@ function estadoMundo(save) {
   const liga = ligaDoClube(save.clube), tabela = competicoes[liga].tabela;
   // Liga e grupos têm tabela definida desde o começo. No mata-mata, só aparece o que já foi jogado ou o próximo jogo:
   // mandar as fases posteriores entregava antecipadamente classificação, eliminação e adversários.
+  const visivelAgora = (j) => j.semana < limite || save.jogosJogados.includes(j.id);
   const meus = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, save.clube)
-    .filter((j) => !j.mataMata || save.jogosJogados.includes(j.id) || (proximo && j.id === proximo.id))
+    .filter((j) => save.jogosJogados.includes(j.id) || (proximo && j.id === proximo.id) || jogoDefinido(save, j, visivelAgora))
     .map((j) => ({ ...j, placar: save.jogosJogados.includes(j.id) ? j.placar : null }));
   let partida = null;
   if (save.partida) { const r = simularMinha(save); partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times, paralelos: paralelosDaPartida(save, save.partida) }; }
   const elenco = elencoDe(save, save.clube), artilharia = Object.entries(golsTodos).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, gols }));
-  return { meta: save.meta, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, artilharia, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
+  return { meta: save.meta, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
     caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.slice(0, 30), posJogo: save.posJogo };
 }
 
