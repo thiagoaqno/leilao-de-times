@@ -4,15 +4,15 @@
 // acaba) e o mural dos técnicos. Mostra o ranking de técnicos (pontos acumulados), e, para cada temporada: os prêmios (artilheiro, maior goleada, melhor
 // negócio), os campeões de cada competição (com "Rever a festa"), as tabelas, as chaves e os técnicos da temporada.
 const TEMP = { i: null, comp: null };
-const ordemComp = (id, c) => (c.tipo === "liga" ? 0 : 1) * 100 + (id === "brasileirao-2026" ? 0 : 1) * 10 + Object.keys(NOMES_COMP_ORDEM).indexOf(id);
-const NOMES_COMP_ORDEM = { "brasileirao-2026": 0, "inglaterra-2026": 1, "espanha-2026": 2, "italia-2026": 3, "alemanha-2026": 4, "franca-2026": 5, champions: 6, libertadores: 7, copadobrasil: 8, sulamericana: 9, supermundial: 10, mundial: 11 };
+const ordemComp = (id, c) => (c.tipo === "liga" ? 0 : 1) * 100 + (id === "brasileirao-2026" || id === "serieb-2026" ? 0 : 1) * 10 + Object.keys(NOMES_COMP_ORDEM).indexOf(id);
+const NOMES_COMP_ORDEM = { "brasileirao-2026": 0, "serieb-2026": 0.5, "inglaterra-2026": 1, "espanha-2026": 2, "italia-2026": 3, "alemanha-2026": 4, "franca-2026": 5, champions: 6, libertadores: 7, copadobrasil: 8, sulamericana: 9, supermundial: 10, mundial: 11 };
 
 // ---------- a estante ----------
 // a cor de cada taça: a da competição (as ligas no ouro)
 const COR_TACA = { libertadores: "#f2c14e", champions: "#d9e2ec", mundial: "#ffd86b", supermundial: "#9fd8ff", copadobrasil: "#7fdc95", sulamericana: "#ffae6b" };
 const corTaca = (comp) => COR_TACA[comp] || "#e8be4f";
 const NOME_CURTO = { libertadores: "Liberta", champions: "Champions", mundial: "Mundial", supermundial: "Super Mundial", copadobrasil: "Copa do BR", sulamericana: "Sul-Americana",
-  "brasileirao-2026": "Brasileirão", "inglaterra-2026": "Premier", "espanha-2026": "La Liga", "italia-2026": "Serie A", "alemanha-2026": "Bundesliga", "franca-2026": "Ligue 1" };
+  "brasileirao-2026": "Brasileirão", "serieb-2026": "Série B", "inglaterra-2026": "Premier", "espanha-2026": "La Liga", "italia-2026": "Serie A", "alemanha-2026": "Bundesliga", "franca-2026": "Ligue 1" };
 const tacaHTML = (comp, nome, n = 1) => `<span class="taca-est" style="--cor:${corTaca(comp)}" title="${h(nome)}${n > 1 ? ` · ${n} títulos` : ""}"><span class="taca-ic">${ic("taca")}</span>${n > 1 ? `<i>${n}×</i>` : ""}<small>${h(NOME_CURTO[comp] || nome)}</small></span>`;
 // uma prateleira: as taças de um técnico (ou a mensagem de prateleira vazia)
 const prateleiraHTML = (tacas) => `<div class="prateleira">${tacas.length ? tacas.map((t) => tacaHTML(t.competicao, t.nome, t.n)).join("") : `<span class="prateleira-vazia">Prateleira vazia por enquanto</span>`}</div>`;
@@ -100,7 +100,7 @@ function telaTemporadas() {
     <section class="quadro"><h3>Temporada ${a.ano}</h3>${premiosHTML(a)}<h3>Campeões</h3>${campeoesHTML(a)}${tecnicosTemporadaHTML(a)}</section>
     <section class="quadro"><h3>Tabelas e chaves</h3>${tabelaArquivoHTML(a, TEMP.comp)}</section>`;
 }
-const ligaDoClubeCliente = () => (CLUBES[E.clube] || {}).liga;
+const ligaDoClubeCliente = () => E.liga || (CLUBES[E.clube] || {}).liga;
 document.addEventListener("click", (e) => {
   const t = e.target.closest("[data-temp-i]"); if (t) { TEMP.i = +t.dataset.tempI; TEMP.comp = null; return telaTemporadas(); }
   const c = e.target.closest("[data-temp-comp]"); if (c) { TEMP.comp = c.dataset.tempComp; return telaTemporadas(); }

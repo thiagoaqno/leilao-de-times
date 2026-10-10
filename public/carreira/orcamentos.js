@@ -23,6 +23,11 @@
     gremio: [45 * M, "equilibrado"], internacional: [45 * M, "equilibrado"], athletico: [40 * M, "equilibrado"],
     corinthians: [35 * M, "endividado"], santos: [35 * M, "endividado"], saopaulo: [30 * M, "endividado"], vasco: [30 * M, "endividado"],
     coritiba: [20 * M, "pequeno"], vitoria: [18 * M, "pequeno"], remo: [15 * M, "pequeno"], mirassol: [12 * M, "pequeno"], chapecoense: [10 * M, "pequeno"],
+    // Série B
+    fortaleza: [25 * M, "saf"], americamg: [16 * M, "saf"], cuiaba: [15 * M, "equilibrado"], sport: [14 * M, "endividado"], ceara: [14 * M, "equilibrado"],
+    goias: [12 * M, "equilibrado"], atleticogo: [12 * M, "equilibrado"], juventude: [10 * M, "pequeno"], criciuma: [10 * M, "pequeno"], novorizontino: [9 * M, "pequeno"],
+    avai: [8 * M, "endividado"], nautico: [8 * M, "endividado"], pontepreta: [8 * M, "endividado"], crb: [7 * M, "pequeno"], vilanova: [7 * M, "pequeno"],
+    operario: [6 * M, "pequeno"], botafogosp: [6 * M, "saf"], londrina: [5 * M, "pequeno"], saobernardo: [5 * M, "pequeno"], athletic: [4 * M, "pequeno"],
   };
   // o orçamento de um clube (os de fora da tabela, como os da base de teste, ficam pelo tamanho)
   function de(clube) {

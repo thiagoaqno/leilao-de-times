@@ -9,7 +9,7 @@ const toast = (msg) => { const d = [...document.querySelectorAll("dialog[open]")
 const ic = (nome, cls) => Icones.ic(nome, cls);
 const { dinheiro } = Mercado;
 const BASE_PADRAO = "mundo-2026"; // as antigas seguem na base em que nasceram
-const LIGAS_JOGAVEIS = new Set(["brasileirao-2026", "inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
+const LIGAS_JOGAVEIS = new Set(["brasileirao-2026", "serieb-2026", "inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
 window.BasesCarreira[BASE_PADRAO] = {
   id: BASE_PADRAO, ano: MundoCarreira.ano, nome: "Temporada Mundial", fonte: "EA FC 27 + base brasileira",
   clubes: MundoCarreira.ligas.flatMap((l) => window.BasesCarreira[l.id].clubes),
@@ -190,9 +190,11 @@ function telaInicio() {
   mostrarTela("inicio");
   if (typeof estanteNoInicio === "function") estanteNoInicio(); // temporadas.js: o top 5 da estante da galera
 }
+// a ordem das ligas na escolha do clube: a Série B logo depois da Série A
+const chaveLiga = (c) => (c.liga === "serieb-2026" ? "brasileirao-2026~" : c.liga);
 function desenharClubes() {
   const orc = (c) => ({ ...Orcamentos.de(c), caixa: caixaDoClube(c), situacao: dinheiroIgual > 0 ? "equilibrado" : Orcamentos.de(c).situacao });
-  $("clubes").innerHTML = BASE.clubes.filter((c) => LIGAS_JOGAVEIS.has(c.liga)).sort((a, b) => a.liga.localeCompare(b.liga) || orc(b).caixa - orc(a).caixa || a.nome.localeCompare(b.nome)).map((c) => {
+  $("clubes").innerHTML = BASE.clubes.filter((c) => LIGAS_JOGAVEIS.has(c.liga)).sort((a, b) => chaveLiga(a).localeCompare(chaveLiga(b)) || orc(b).caixa - orc(a).caixa || a.nome.localeCompare(b.nome)).map((c) => {
     const o = orc(c), sit = Orcamentos.SITUACOES[o.situacao];
     return `<button class="clube" style="${coresClube(c.id)}" data-clube="${c.id}" aria-pressed="${c.id === clubeEscolhido}" title="${h(sit.texto)}">${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b><small>${h(c.cidade)}</small>
       <span class="orcamento"><span class="caixa-clube">${ic("moeda")} ${dinheiro(o.caixa)}</span><span class="situacao ${o.situacao}">${h(sit.nome)}</span></span></span></button>`;

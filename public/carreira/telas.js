@@ -30,12 +30,12 @@ const humor = (m) => (m >= 80 ? "Embalado" : m >= 65 ? "Confiante" : m >= 50 ? "
 function telaSede() {
   const c = meuClube(), pos = posicaoDe(E.clube), forma = E.meus.filter((j) => j.placar).slice(-5).map(resultadoMeu);
   $("cabecalho").innerHTML = `<div class="hub-clube">${escudo(E.clube, 4)}
-    <div class="cab-nome"><span class="sobre">Técnico ${h(E.tecnico.nome)} · ${h(Temporada.NOMES[c.liga] || "Temporada")} ${E.ano}${E.temporadasMax ? ` · temporada ${E.temporada} de ${E.temporadasMax}` : ""}</span><h1>${h(c.nome)}</h1>
+    <div class="cab-nome"><span class="sobre">Técnico ${h(E.tecnico.nome)} · ${h(Temporada.NOMES[E.liga || c.liga] || "Temporada")} ${E.ano}${E.temporadasMax ? ` · temporada ${E.temporada} de ${E.temporadasMax}` : ""}</span><h1>${h(c.nome)}</h1>
       <span class="forma" aria-label="Últimos resultados">${forma.map((r) => `<i class="res ${r}">${r}</i>`).join("") || "<small>A temporada ainda não começou</small>"}</span></div></div>
     <dl class="cab-numeros">
       <div><dt>Posição</dt><dd>${E.rodada > 0 ? pos + "º" : "—"}</dd></div>
       ${E.meta ? `<div class="meta" title="${h(E.meta.texto)}"><dt>Meta da diretoria</dt><dd class="${E.rodada > 0 && pos <= E.meta.alvo ? "ok" : E.rodada > 0 ? "atras" : ""}">${E.meta.alvo}º<i> ou melhor</i></dd></div>` : ""}
-      <div><dt>Rodada</dt><dd>${E.fim ? "Fim" : `${(E.rodadaLiga ?? E.rodada) + 1}<i>/${E.rodadasLiga || E.meus.filter((j) => !j.competicao || j.competicao === c.liga).length || E.total}</i>`}</dd></div>
+      <div><dt>Rodada</dt><dd>${E.fim ? "Fim" : `${(E.rodadaLiga ?? E.rodada) + 1}<i>/${E.rodadasLiga || E.meus.filter((j) => !j.competicao || j.competicao === (E.liga || c.liga)).length || E.total}</i>`}</dd></div>
       <div><dt>Caixa</dt><dd class="${E.caixa < 0 ? "neg" : ""}">${dinheiro(E.caixa)}</dd></div>
       <div class="moral"><dt>Moral · ${humor(E.moral)}</dt><dd><span class="medidor"><i style="--v:${E.moral}%"></i></span></dd></div>
       <div class="moral diretoria ${E.gestao.confianca < 35 ? "perigo" : ""}"><dt>Diretoria · ${gestaoSede().nivel}</dt><dd><span class="medidor"><i style="--v:${E.gestao.confianca}%"></i></span></dd></div>
@@ -53,7 +53,7 @@ function telaSede() {
     : `<h3>Último jogo</h3><p class="suave">A estreia é na rodada 1.</p>`;
   // a tabela resumida: o seu lugar e os vizinhos
   const ini = Math.max(0, Math.min(E.tabela.length - 5, pos - 3));
-  $("cartaoTabela").innerHTML = `<div class="linha-titulo"><h3>Tabela</h3><button class="link" data-ir="tabela">Ver tudo</button></div><table class="mini-tabela">${E.tabela.slice(ini, ini + 5).map((l, i) => `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(ini + i + 1)}">${ini + i + 1}</td><td>${escudo(l.id, 1)}</td><td class="nome">${h(nomeClube(l.id))}</td><td><b>${l.p}</b></td></tr>`).join("")}</table>`;
+  $("cartaoTabela").innerHTML = `<div class="linha-titulo"><h3>Tabela</h3><button class="link" data-ir="tabela">Ver tudo</button></div><table class="mini-tabela">${E.tabela.slice(ini, ini + 5).map((l, i) => `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(ini + i + 1, E.tabela.length, E.liga)}">${ini + i + 1}</td><td>${escudo(l.id, 1)}</td><td class="nome">${h(nomeClube(l.id))}</td><td><b>${l.p}</b></td></tr>`).join("")}</table>`;
   // o dinheiro: caixa, folha e o extrato da última rodada
   const f = E.financas[0];
   $("cartaoFinancas").innerHTML = `<h3>Finanças</h3><div class="numeros-fin"><div><small>Caixa</small><b>${dinheiro(E.caixa)}</b></div><div><small>Folha por mês</small><b>${dinheiro(E.folha)}</b></div></div>
@@ -202,8 +202,8 @@ async function jogar() {
 
 // ---------- tabela e calendário ----------
 let competicaoTabela = null;
-const tabelaHTML = (tab) => `<table class="tabela-cheia"><thead><tr><th>#</th><th>Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Últimos</th></tr></thead><tbody>${tab.map((l, i) =>
-  `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(i + 1, tab.length)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
+const tabelaHTML = (tab, liga = "") => `<table class="tabela-cheia"><thead><tr><th>#</th><th>Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Últimos</th></tr></thead><tbody>${tab.map((l, i) =>
+  `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(i + 1, tab.length, liga)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
 // os nomes das fases do mata-mata
 const NOME_FASE = { preliminar: "Fase preliminar", oitavas: "Oitavas de final", quartas: "Quartas de final", semifinal: "Semifinais", final: "Final" };
 // a chave do mata-mata de uma copa, fase por fase (a coluna de cada fase só aparece quando a anterior acabou): cada confronto
@@ -225,14 +225,14 @@ function chaveHTML(c) {
 function telaTabela() {
   $("tituloTabela").textContent = `Competições ${E.ano}`;
   if (E.competicoes) {
-    const ids = Object.keys(E.competicoes); if (!competicaoTabela || !E.competicoes[competicaoTabela]) competicaoTabela = Object.keys(E.tabelas || {})[0] || ids[0];
+    const ids = Object.keys(E.competicoes); if (!competicaoTabela || !E.competicoes[competicaoTabela]) competicaoTabela = (E.liga && E.competicoes[E.liga] ? E.liga : Object.keys(E.tabelas || {})[0]) || ids[0];
     const c = E.competicoes[competicaoTabela], abas = ids.map((id) => `<button class="${id === competicaoTabela ? "ativa" : ""}" data-competicao="${id}">${h(E.competicoes[id].nome)}</button>`).join("");
-    const corpo = c.tipo === "liga" ? tabelaHTML(c.tabela) : `${c.grupos.map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(g.tabela)}</section>`).join("")}${chaveHTML(c)}${c.campeao ? `<div class="campeao-copa">${ic("taca")} Campeão: ${escudo(c.campeao, 1)} ${h(nomeClube(c.campeao))}</div>` : ""}`;
+    const corpo = c.tipo === "liga" ? tabelaHTML(c.tabela, competicaoTabela) : `${c.grupos.map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(g.tabela)}</section>`).join("")}${chaveHTML(c)}${c.campeao ? `<div class="campeao-copa">${ic("taca")} Campeão: ${escudo(c.campeao, 1)} ${h(nomeClube(c.campeao))}</div>` : ""}`;
     const revFesta = c.festa ? `<button class="discreto festa-btn" data-rever-festa="${competicaoTabela}">${ic("taca")} Rever a festa do campeão</button>` : "";
     $("tTabela").innerHTML = `<div class="abas-competicoes">${abas}</div>${corpo}${revFesta}`;
     $("tTabela").querySelectorAll("[data-rever-festa]").forEach((b) => b.onclick = () => Campeoes.rever(b.dataset.reverFesta));
     $("tTabela").querySelectorAll("[data-competicao]").forEach((b) => b.onclick = () => { competicaoTabela = b.dataset.competicao; telaTabela(); });
-  } else $("tTabela").innerHTML = tabelaHTML(E.tabela);
+  } else $("tTabela").innerHTML = tabelaHTML(E.tabela, E.liga);
   $("tArtilharia").innerHTML = E.artilharia.length ? `<ol class="artilharia">${E.artilharia.map((a) => `<li class="${donoDe(a.id) === E.clube ? "meu" : ""}"><img class="pix" src="${retrato(a.id)}" alt=""><span>${h(nomeJogador(a.id))}<small>${h(nomeClube(donoDe(a.id)))}</small></span><b>${a.gols}</b></li>`).join("")}</ol>` : `<p class="suave">Ninguém marcou ainda.</p>`;
   $("tituloRodada").textContent = E.rodadaAnterior ? `Rodada ${E.rodada}` : "Última rodada";
   $("tRodada").innerHTML = E.rodadaAnterior ? E.rodadaAnterior.map(([c, f, a, b]) => linhaJogo(c, f, [a, b])).join("") : `<p class="suave">Nenhuma rodada jogada.</p>`;

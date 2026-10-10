@@ -54,7 +54,7 @@
     if (!c) return ["#3a4a5a", "#dde4ea", "", "#1a1a1a"];
     if (TABELA[c.id]) return TABELA[c.id];
     const [cor, det] = c.cores;
-    const l = c.liga === "brasileirao-2026" && c.escudo && c.escudo.listras ? c.escudo.listras[0] : "";
+    const l = c.pais === "Brasil" && c.escudo && c.escudo.listras ? c.escudo.listras[0] : "";
     const desenho = l === "v" || l === "v-topo" ? "l" : l === "h" || l === "h-baixo" ? "h" : l === "d" ? "d" : "";
     const claro = (hx) => { const n = parseInt(hx.slice(1), 16); return 0.3 * (n >> 16) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255); };
     return [cor, det, desenho, claro(cor) > 200 ? "#1a1a1a" : claro(cor) < 50 ? "#1a1a1a" : "#f4f4f4"];
