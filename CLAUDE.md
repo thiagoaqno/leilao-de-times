@@ -273,10 +273,17 @@ Para achar algo dentro de um jogo:
   - o chão é feito de tipos de casa: `g` grama, `r` paralelepípedo, `p` pedra portuguesa, `q` pista de atletismo,
     `a` asfalto, `f` flores, `t` árvore, `m` capacho da porta; fora da vila, `e` rodovia (só carro), `E`
     estacionamento, `c` calçada, `w` água, `s` areia, `j` jardim da orla;
-  - `TREES`, `LAMPS`, `BENCHES` e `FOUNTAIN` são a decoração.
+  - `TREES`, `LAMPS`, `BENCHES` e `FOUNTAIN` são a decoração;
+  - `TERRENOS` são os lotes vazios para os jogos novos (chão `l`, terra batida, sólido; `drawTerreno` desenha a cerca e
+    a placa "EM BREVE", e a casa logo abaixo do meio, `t.placa`, abre o aviso `TERRENO_LUGAR`). Jogo novo: tire o
+    terreno da lista e ponha o prédio em `GAMES` no mesmo lugar;
+  - `TELAO` é o telão da estante da galera, no alto da Praça (`drawTelao`, `TELAO_LUGAR`, `/api/estante`).
 - `drawBuilding` desenha os prédios, e cada jogo tem o seu `if (g.<sinal>)` para o telhado.
-- **Tamanho do mapa:** `MW` x `MH` (320x260). A vila (40x44) fica no meio, deslocada por `OX`, `OY` (140, 100): as
-  coordenadas da vila em `GAMES`, `LAMPS`... continuam escritas de 0 a 39 / 0 a 43 e são deslocadas no carregamento.
+- **Tamanho do mapa:** `MW` x `MH` (320x260). A vila (58x52, `VW` x `VH`) fica no meio, deslocada por `OX`, `OY` (131, 100): as
+  coordenadas da vila em `GAMES`, `LAMPS`, `TERRENOS`... são escritas de 0 a 57 / 0 a 51 e deslocadas no carregamento.
+  As ruas: Rua das Cartas nas linhas 7-8 e 15-16, a Praça de 17 a 27, a avenida do meio nas colunas 28-29, e as
+  ruas da Vila Esportiva (à esquerda) e do Autódromo (à direita) nas linhas 35-36 e 43-44. Os treinadores
+  (`Lideres.TREINADORES`, em `public/galeramon/lideres.js`) também usam essas coordenadas.
   O `vila.js` repete `MW`, `MH`, `OX`, `OY`, a lista `GAMES` e as zonas dos estádios: precisam bater.
 - **O mundo em volta (`montaMundo`):** `rodovia()` (trechos retos de duas faixas; passa por cima da água como ponte),
   `lote()` (estacionamento, com carros parados), `PREDIOS` (a cidade de enfeite), o Pinheiros, o Tietê, a Serra do Mar e
