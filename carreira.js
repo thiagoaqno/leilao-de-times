@@ -60,6 +60,11 @@ function todosJogadores(save) {
 const elencoDe = (save, clube) => todosJogadores(save).filter((j) => donoDe(save, j.id) === clube);
 const notaDe = (save, j) => clamp(j.nota + (save.bonusNota[j.id] || 0), 40, 95);
 const comNota = (save, j) => ({ ...j, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
+// a premiação do campeonato até o G6 (do 1º ao 6º lugar da liga), paga no fim da temporada; no meio da liga (19 jogos), quem está no G6 já recebe 25% do prêmio
+// da posição em que está. Vale o fator da liga (a Premier League paga mais que a Argentina) e vem junto com a premiação por posição e o bônus de campeão.
+// o bônus de campeão de cada competição (R$ 15 mi para todas as outras): a Libertadores, a Copa do Brasil e a Sul-Americana pagam mais
+const PREMIO_TITULO = { libertadores: 60e6, copadobrasil: 50e6, sulamericana: 40e6 };
+const PREMIOS_G6 = [75e6, 56.3e6, 43.8e6, 35e6, 27.5e6, 22.5e6];
 const FATOR_LIGA = { "inglaterra-2026": 1.35, "espanha-2026": 1.18, "italia-2026": 1.12, "alemanha-2026": 1.1, "franca-2026": 1.05, "brasileirao-2026": 1, "argentina-2026": 0.82, "sulamericanos-2026": 0.75 };
 const ligaDoClube = (id) => INDICE_MUNDO.ligas.find((l) => l.clubes.includes(id))?.id || "brasileirao-2026";
 const salarioDe = (save, j) => save.salarios[j.id] || Math.round(Mercado.salarioDe(comNota(save, j)) * (FATOR_LIGA[ligaDoClube(donoDe(save, j.id))] || 1) / 1e3) * 1e3;
@@ -526,6 +531,7 @@ function infoLeilao(save, comprador, pid) {
   if (dono === comprador) return "Ele já é do seu time.";
   const regra = erroDeRegra(v, notaDe(v, j)); if (regra) return regra; // a janela fechada e as regras de compra da turma
   if (elencoDe(v, comprador).length >= Mercado.ELENCO_MAX) return `O elenco já tem ${Mercado.ELENCO_MAX} jogadores. Venda alguém antes.`;
+  if (Clube.semVenda(save, dono, pid)) return "Esse jogador chegou pelo vale de campeão e não pode ser vendido nesta temporada.";
   if (save.humanos[dono]) {
     // de um amigo: começa em 70% do valor, e a carência vale (sem lucro em revenda na hora)
     const vd = vistaDe(save, dono);
@@ -579,6 +585,8 @@ function erroDeTroca(save, t) {
   const todos = [...t.dou, ...t.recebo];
   if (new Set(todos).size !== todos.length) return "Jogador repetido na proposta.";
   for (const pid of t.dou) if (!jogadorDe(save, pid) || donoDe(save, pid) !== t.de) return "Um dos jogadores oferecidos não é mais do seu elenco.";
+  for (const pid of t.dou) if (Clube.semVenda(save, t.de, pid)) return "Um dos jogadores oferecidos chegou pelo vale de campeão e não pode ser trocado nesta temporada.";
+  for (const pid of t.recebo) if (Clube.semVenda(save, t.para, pid)) return "Um dos jogadores pedidos chegou pelo vale de campeão e não pode ser trocado nesta temporada.";
   for (const pid of t.recebo) if (!jogadorDe(save, pid) || donoDe(save, pid) !== t.para) return "Um dos jogadores pedidos não é mais do outro elenco.";
   const va = vistaDe(save, t.de), vb = vistaDe(save, t.para);
   const tamA = elencoDe(va, t.de).length - t.dou.length + t.recebo.length, tamB = elencoDe(vb, t.para).length - t.recebo.length + t.dou.length;
@@ -705,11 +713,52 @@ function ultimosResultados(save, n) {
   return out;
 }
 const lesionado = (save, pid) => !!save.lesoes[pid];
+// o vale de campeão (gestao.vales, em carreira-clube.js): quem ganhou algum campeonato leva, de graça, 1 jogador de até 87 de nota de um clube do computador, em qualquer
+// janela da temporada seguinte. Não conta na cota de compras da turma, e o jogador não pode ser vendido nem trocado na temporada em que chega.
+function usarVale(v, pid) {
+  const g = Clube.gestaoDe(v), vale = (g.vales || []).find((x) => x.ate >= v.temporada);
+  if (!vale) return "Você não tem um vale de campeão para usar.";
+  if (v.partida) return "Termine a partida primeiro.";
+  if (!Mercado.janelaAberta(rodadaDaJanela(v)) && !(v.entrada && v.entrada.temporada === v.temporada)) return "A janela de transferências está fechada: o vale só vale nas janelas.";
+  const j = jogadorDe(v, pid), dono = j && donoDe(v, pid);
+  if (!j || !dono || dono === v.clube || dono === APOSENTADO || !clubeDe(v, dono)) return "Esse jogador não está disponível.";
+  if (typeof v.humanoDe === "function" && v.humanoDe(dono)) return "Esse jogador é de outro técnico: use o leilão.";
+  if (notaDe(v, j) > vale.max) return `O vale vale para jogadores de até ${vale.max} de nota (${j.nome} tem ${notaDe(v, j)}).`;
+  if (elencoDe(v, v.clube).length >= Mercado.ELENCO_MAX) return `O elenco já tem ${Mercado.ELENCO_MAX} jogadores. Venda alguém antes.`;
+  g.vales.splice(g.vales.indexOf(vale), 1);
+  v.donos[pid] = v.clube; delete v.pedidos[pid]; delete v.indicacoes[pid]; v.aVenda = v.aVenda.filter((x) => x !== pid);
+  v.salarios[pid] = Math.round(Mercado.salarioDe(comNota(v, j)) * (FATOR_LIGA[ligaDoClube(v.clube)] || 1) / 1e3) * 1e3;
+  v.compras[pid] = { valor: 0, rodada: v.rodada, temporada: v.temporada, vale: true };
+  v.valores[pid] = [valorAtual(v, j)];
+  g.bloqueados[pid] = v.temporada;
+  Clube.contratar(v, ajudas, pid);
+  v.transferencias.unshift({ rodada: v.rodada, ...carimbo(v), temporada: v.temporada, jogador: pid, de: dono, para: v.clube, valor: 0, vale: true });
+  Feed.transferencia(v, v.transferencias[0], ajudas);
+  avisar(v, { tipo: "contratacao", icone: "taca", titulo: `${j.nome} chegou de graça!`, texto: `Vale de campeão (${vale.motivo}): ${j.nome} (${j.pos}, ${notaDe(v, j)}) veio do ${clubeDe(v, dono).nome} sem custo, com salário de ${dinheiro(v.salarios[pid])} por mês. Ele não pode ser vendido nem trocado nesta temporada.` });
+  return { mensagem: `${j.nome} chegou de graça pelo vale de campeão.` };
+}
+// o bônus de título da competição pelo nome (as ligas e as outras copas: R$ 15 mi)
+const premioDoTitulo = (save, nome) => { const c = Object.values(save.competicoes || {}).find((x) => x.nome === nome); return (c && PREMIO_TITULO[c.id]) || 15e6; };
+// o prêmio do G6 para a posição (0 fora dele); parcela: 1 no fim da temporada, 0,25 no meio
+const premioG6 = (save, pos, parcela = 1) => (pos >= 1 && pos <= PREMIOS_G6.length ? Math.round(PREMIOS_G6[pos - 1] * (FATOR_LIGA[ligaDoClube(save.clube)] || 1) * parcela / 1e5) * 1e5 : 0);
+// no meio da liga (19 jogos do clube na liga): o G6 do momento recebe um adiantamento de 25%, uma vez por temporada
+function premioDoTurno(save) {
+  const liga = ligaDoClube(save.clube), c = save.competicoes && save.competicoes[liga]; if (!c || c.tipo !== "liga") return;
+  const feitos = (save.jogosJogados || []).filter((id) => id.startsWith(`${liga}:`)).length, g = Clube.gestaoDe(save);
+  if (feitos !== 19 || g.visto.premioTurno === save.temporada) return;
+  g.visto.premioTurno = save.temporada;
+  const prox = proximoJogoMundo(save), limite = prox ? prox.semana : Infinity, jaFoi = (j) => j.semana < limite || save.jogosJogados.includes(j.id);
+  const ids = INDICE_MUNDO.ligas.find((l) => l.id === liga).clubes, tab = Temporada.tabela(ids, [c.jogos.filter(jaFoi).map((j) => [j.casa, j.fora, ...j.placar])]);
+  const pos = tab.findIndex((l) => l.id === save.clube) + 1, valor = premioG6(save, pos, 0.25);
+  if (!valor) return;
+  movimentar(save, `Premiação do turno: ${pos}º lugar (G6)`, valor);
+  avisar(save, { tipo: "premio", icone: "taca", titulo: `Premiação do turno: ${dinheiro(valor)}`, texto: `No meio do campeonato você está em ${pos}º, dentro do G6: a liga adianta 25% do prêmio da posição (${dinheiro(valor)}). O resto sai no fim da temporada.` });
+}
 // O carimbo de tempo de uma transferência: a semana do mundo (a do último jogo do clube) e a rodada da LIGA. A rodada pessoal (save.rodada) conta os jogos de copa de cada
 // técnico, então a mesma transferência aparecia como "rodada 27" para quem tinha mais copas e a outra pessoa, na rodada 23, via notícia do futuro.
 const semanaDe = (save) => (save.ultimo && save.ultimo.semana) || 0;
 const carimbo = (save) => ({ semana: semanaDe(save), rl: rodadaDaJanela(save) });
-const ajudas = { semanaDe, carimbo, avisar, ligaDoClube, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
+const ajudas = { usarVale, semVenda: (save, pid) => Clube.semVenda(save, save.clube, pid), semanaDe, carimbo, avisar, ligaDoClube, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
 
 // lesões, cartões e suspensões de todos os jogos da rodada
 function cartoesELesoes(save, r, semente) {
@@ -916,6 +965,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   movimentar(save, "Salários (1 semana)", -Math.round(folhaDe(save) / 4));
   save.ultimo = { rodada: save.rodada, semana: ((save.calendarioMundo || []).find((x) => x.id === p.jogoId) || {}).semana || 0, jogoId: p.jogoId, competicao: p.competicao, fase: p.fase, casa: p.casa, fora: p.fora, placar: r.placar, eventos: r.eventos, modo: p.modo };
   save.partida = null; save.rodada++; if (recalcular) recalcularMundo(save);
+  premioDoTurno(save);
   save.efeitos = (save.efeitos || []).filter((e) => e.ate >= save.rodada);
   for (const [pid, ind] of Object.entries(save.indicacoes)) if (ind.ate < save.rodada) delete save.indicacoes[pid];
   const comp = save.competicoes[p.competicao], jogoDaCompeticao = comp.jogos.find((j) => j.id === p.jogoId), da = Temporada.masculina(comp) ? "do" : "da";
@@ -1001,7 +1051,9 @@ function registrarTemporada(save) {
     else { mudarMoral(save, -6); avisar(save, { tipo: "diretoria", icone: "alerta", titulo: "A diretoria cobra", texto: `A meta não foi cumprida (${meta.texto.toLowerCase()}): ${pos}º lugar. A pressão cresce para a próxima temporada.` }); }
   }
   movimentar(save, `Premiação: ${pos}º lugar`, (tabela.length + 1 - pos) * 1e6);
-  for (const t of titulos) movimentar(save, `Premiação: campeão da ${t}`, 15e6);
+  for (const t of titulos) movimentar(save, `Premiação: campeão da ${t}`, premioDoTitulo(save, t));
+  const g6 = premioG6(save, pos);
+  if (g6) { movimentar(save, `Premiação do campeonato: ${pos}º lugar (G6)`, g6); avisar(save, { tipo: "premio", icone: "taca", titulo: `Premiação do campeonato: ${dinheiro(g6)}`, texto: `Terminar em ${pos}º entre os 6 primeiros paga ${dinheiro(g6)} da premiação do campeonato.` }); }
   Clube.fechouTemporada(save, ajudas, { pos, titulos, vices, cumpriuMeta: meta ? meta.cumprida : undefined });
 }
 // o arquivo das temporadas (save.arquivo, de todos): quando a temporada acaba, guarda os campeões, as tabelas, as chaves, a festa,
@@ -1371,6 +1423,7 @@ function venderAcao(save, d) {
   if (save.partida) return "Termine a partida primeiro.";
   const pid = String(d.jogador || ""), j = jogadorDe(save, pid);
   if (!j || donoDe(save, pid) !== save.clube) return "Esse jogador não é do seu elenco.";
+  if (Clube.semVenda(save, save.clube, pid)) return `${j.nome} chegou pelo vale de campeão: não pode ser vendido nesta temporada.`;
   // a lista de venda: com pedido, entra (ou muda o preço); sem pedido, sai da lista (ou entra pelo valor, como antes)
   if (d.modo === "lista") {
     const listado = save.aVenda.includes(pid);
@@ -1499,7 +1552,7 @@ module.exports = function ligarCarreira(io) {
   });
 };
 // para os testes: montar uma carreira e mexer nela sem o socket
-module.exports.paraTestes = { novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
+module.exports.paraTestes = { PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
 module.exports.grupo = { Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,

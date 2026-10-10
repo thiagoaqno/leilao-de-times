@@ -25,6 +25,7 @@ function telaMercado() {
   if (regra) $("mRegra").innerHTML = `${ic("lista")} <span><b>${h(regra.titulo)}.</b> ${h(regra.texto)} ${regra.usadas.length ? `Já levou: ${regra.usadas.join(", ")}.` : ""} ${regra.ainda.length ? `Ainda pode: ${h(regra.ainda.join(" ou "))}.` : "Você já usou a sua cota desta janela."}</span>`;
   $("mJanela").innerHTML = E.janela.entrada ? `${ic("maleta")} Você acabou de entrar na carreira: mesmo com a janela fechada, tem a sua entrada. Folha atual: ${dinheiro(E.folha)} por mês.` : E.janela.aberta ? `${ic("maleta")} Janela aberta${(E.rodadaLiga ?? E.rodada) < 4 ? " até a rodada 4" : " até a rodada 21"}${E.gestao.janela.restam != null ? `: ${E.gestao.janela.restam === 1 ? "<b>último jogo para fechar negócio</b>" : `fecha em <b>${E.gestao.janela.restam} jogos</b>`}` : ""}. Folha atual: ${dinheiro(E.folha)} por mês.`
     : `${ic("cadeado")} Janela fechada${E.janela.proxima != null ? `: abre na rodada ${E.janela.proxima + 1}` : " até a próxima temporada"}. Dá para olhar e pôr jogadores na lista de venda.`;
+  if (E.gestao.vales.length) $("mJanela").innerHTML += ` ${ic("taca")} <b>Vale de campeão:</b> um jogador de até ${E.gestao.vales[0].max} de graça. Abra a ficha do jogador e use o vale.`;
   $("mJanela").classList.toggle("fechada", !E.janela.aberta);
   $("mJanela").classList.toggle("urgente", E.janela.aberta && E.gestao.janela.restam != null && E.gestao.janela.restam <= 2);
   for (const b of $("mModo").children) b.setAttribute("aria-pressed", String(b.dataset.modo === modoMercado));
