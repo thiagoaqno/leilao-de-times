@@ -58,7 +58,7 @@ function listaVenda() {
 function listaNoticias() {
   const posts = (E.feed || []).filter((p) => ["contratacao", "venda", "disputa"].includes(p.tipo));
   $("mLista").innerHTML = (posts.length ? `<div class="feed">${posts.map((p) => postHTML(p)).join("")}</div><h3 class="sub-lista">Todas as movimentações</h3>` : "") + (E.transferencias.length ? `<ul class="movimentos">${E.transferencias.map((t) => `<li class="${t.de === E.clube || t.para === E.clube ? "meu" : ""}">
-    <img class="pix" src="${retrato(t.jogador)}" alt=""><span><b>${h(nomeJogador(t.jogador))}</b><small>${escudo(t.de, 1)} ${h(nomeClube(t.de))} → ${escudo(t.para, 1)} ${h(nomeClube(t.para))}</small></span><b>${dinheiro(t.valor)}</b><small class="rod">R${t.rodada + 1}</small></li>`).join("")}</ul>`
+    <img class="pix" src="${retrato(t.jogador)}" alt=""><span><b>${h(nomeJogador(t.jogador))}</b><small>${escudo(t.de, 1)} ${h(nomeClube(t.de))} → ${escudo(t.para, 1)} ${h(nomeClube(t.para))}</small></span><b>${dinheiro(t.valor)}</b><small class="rod" title="Rodada da liga em que aconteceu">R${(t.rl ?? t.rodada) + 1}</small></li>`).join("")}</ul>`
     : `<p class="suave vazio">Nenhuma transferência ainda nesta carreira.</p>`);
   $("mMais").classList.add("hidden");
 }

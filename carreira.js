@@ -562,7 +562,7 @@ function concluirLeilao(save, { jogador: pid, dono, comprador, valor }) {
   registrarCompraDaJanela(v, notaDe(v, j)); // conta na regra da janela (antes de a nota mudar de clube, é a mesma)
   v.valores[pid] = [valorAtual(v, j)];
   movimentar(v, `Leilão: ${j.nome}`, -valor);
-  if (!save.humanos[dono]) { v.transferencias.unshift({ rodada: v.rodada, temporada: v.temporada, jogador: pid, de: dono, para: comprador, valor, leilao: true }); Feed.transferencia(v, v.transferencias[0], ajudas); }
+  if (!save.humanos[dono]) { v.transferencias.unshift({ rodada: v.rodada, ...carimbo(v), temporada: v.temporada, jogador: pid, de: dono, para: comprador, valor, leilao: true }); Feed.transferencia(v, v.transferencias[0], ajudas); }
   avisar(v, { tipo: "contratacao", icone: "martelo", titulo: `${j.nome} chegou!`, texto: `Você levou o leilão: ${dinheiro(valor)} ao ${clubeDe(v, dono).nome}, com salário de ${dinheiro(v.salarios[pid])} por mês.` });
   guardarVista(save, v);
 }
@@ -599,7 +599,7 @@ function executarTroca(save, t) {
     destino.compras[pid] = { valor: valorAtual(destino, j), rodada: destino.rodada, temporada: destino.temporada };
     Clube.contratar(destino, ajudas, pid);
     destino.valores[pid] = [valorAtual(destino, j)];
-    destino.transferencias.unshift({ rodada: destino.rodada, temporada: destino.temporada, jogador: pid, de: origem.clube, para: destino.clube, valor: 0, entreTecnicos: true });
+    destino.transferencias.unshift({ rodada: destino.rodada, ...carimbo(destino), temporada: destino.temporada, jogador: pid, de: origem.clube, para: destino.clube, valor: 0, entreTecnicos: true });
   };
   for (const pid of t.dou) mover(va, vb, pid);
   for (const pid of t.recebo) mover(vb, va, pid);
@@ -691,7 +691,7 @@ function vender(save, pid, comprador, valor) {
   movimentar(save, `Venda de ${j.nome}`, valor);
   if (save.caixaIA && comprador in save.caixaIA) save.caixaIA[comprador] -= valor;
   const lucro = compra ? valor - compra.valor : null;
-  save.transferencias.unshift({ rodada: save.rodada, temporada: save.temporada, jogador: pid, de: save.clube, para: comprador, valor, ...(lucro != null && { lucro }) });
+  save.transferencias.unshift({ rodada: save.rodada, ...carimbo(save), temporada: save.temporada, jogador: pid, de: save.clube, para: comprador, valor, ...(lucro != null && { lucro }) });
   Feed.transferencia(save, save.transferencias[0], ajudas);
   return `${j.nome} foi vendido ao ${clubeDe(save, comprador).nome} por ${dinheiro(valor)}${lucro != null ? ` (${lucro >= 0 ? "lucro" : "prejuízo"} de ${dinheiro(Math.abs(lucro))})` : ""}.`;
 }
@@ -705,7 +705,11 @@ function ultimosResultados(save, n) {
   return out;
 }
 const lesionado = (save, pid) => !!save.lesoes[pid];
-const ajudas = { avisar, ligaDoClube, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
+// O carimbo de tempo de uma transferência: a semana do mundo (a do último jogo do clube) e a rodada da LIGA. A rodada pessoal (save.rodada) conta os jogos de copa de cada
+// técnico, então a mesma transferência aparecia como "rodada 27" para quem tinha mais copas e a outra pessoa, na rodada 23, via notícia do futuro.
+const semanaDe = (save) => (save.ultimo && save.ultimo.semana) || 0;
+const carimbo = (save) => ({ semana: semanaDe(save), rl: rodadaDaJanela(save) });
+const ajudas = { semanaDe, carimbo, avisar, ligaDoClube, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
 
 // lesões, cartões e suspensões de todos os jogos da rodada
 function cartoesELesoes(save, r, semente) {
@@ -910,7 +914,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   if (nos > eles) { movimentar(save, "Prêmio por vitória", clube.tamanho * 2e5); mudarMoral(save, 6); }
   else if (nos === eles) mudarMoral(save, 1); else mudarMoral(save, -6);
   movimentar(save, "Salários (1 semana)", -Math.round(folhaDe(save) / 4));
-  save.ultimo = { rodada: save.rodada, jogoId: p.jogoId, competicao: p.competicao, fase: p.fase, casa: p.casa, fora: p.fora, placar: r.placar, eventos: r.eventos, modo: p.modo };
+  save.ultimo = { rodada: save.rodada, semana: ((save.calendarioMundo || []).find((x) => x.id === p.jogoId) || {}).semana || 0, jogoId: p.jogoId, competicao: p.competicao, fase: p.fase, casa: p.casa, fora: p.fora, placar: r.placar, eventos: r.eventos, modo: p.modo };
   save.partida = null; save.rodada++; if (recalcular) recalcularMundo(save);
   save.efeitos = (save.efeitos || []).filter((e) => e.ate >= save.rodada);
   for (const [pid, ind] of Object.entries(save.indicacoes)) if (ind.ate < save.rodada) delete save.indicacoes[pid];
@@ -1156,13 +1160,13 @@ function estadoBrasileirao(save) {
     caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4),
     elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos,
     bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])),
-    indicacoes: save.indicacoes, transferencias: save.transferencias.slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25),
+    indicacoes: save.indicacoes, transferencias: save.transferencias.filter((t) => t.semana == null || t.semana < semanaPropria).slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25),
     janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save),
     tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {},
     efeitos: (save.efeitos || []).filter((e) => e.ate >= save.rodada),
     // o orçamento, o mercado (momento de cada um, compras, preço pedido, parcelas), o feed e o pós-jogo
     situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas,
-    feed: save.feed.slice(0, 30), posJogo: save.posJogo, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia,
+    feed: save.feed.filter((f) => f.semana == null || f.semana < semanaPropria).slice(0, 30), posJogo: save.posJogo, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia,
   };
 }
 // O calendário só mostra o que já está definido; o resto vira "TBA" (a definir). As fases do mata-mata: ordenadas pela semana, com as semanas de cada uma
@@ -1212,7 +1216,7 @@ function calendarioTba(save, visivel) {
 }
 function estadoMundo(save) {
   if (!save.calendarioMundo) recalcularMundo(save);
-  const proximo = proximoJogoMundo(save), limite = Math.min(proximo ? proximo.semana : Infinity, typeof save.semanaDosHumanos === "function" ? save.semanaDosHumanos() : Infinity);
+  const proximo = proximoJogoMundo(save), semanaPropria = proximo ? proximo.semana : Infinity, limite = Math.min(proximo ? proximo.semana : Infinity, typeof save.semanaDosHumanos === "function" ? save.semanaDosHumanos() : Infinity);
   const golsTodos = golsDoMundo(save, limite);
   const competicoes = Object.fromEntries(Object.entries(save.competicoes).map(([id, c]) => {
     const jogos = c.jogos.filter((j) => j.semana < limite || save.jogosJogados.includes(j.id));
@@ -1234,7 +1238,7 @@ function estadoMundo(save) {
   if (save.partida) { const r = simularMinha(save); partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times, paralelos: paralelosDaPartida(save, save.partida) }; }
   const elenco = elencoDe(save, save.clube), artilharia = Object.entries(golsTodos).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, gols }));
   return { meta: save.meta, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
-    caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.slice(0, 30), posJogo: save.posJogo };
+    caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.filter((t) => t.semana == null || t.semana < semanaPropria).slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.filter((f) => f.semana == null || f.semana < semanaPropria).slice(0, 30), posJogo: save.posJogo };
 }
 
 function limparEscalacao(save, d) {
@@ -1307,10 +1311,10 @@ function propor(save, d) {
     if (troca) {
       save.donos[trocaId] = dono; delete save.salarios[trocaId]; delete save.compras[trocaId]; delete save.pedidos[trocaId]; delete save.valores[trocaId];
       save.aVenda = save.aVenda.filter((x) => x !== trocaId);
-      save.transferencias.unshift({ rodada: save.rodada, jogador: trocaId, de: save.clube, para: dono, valor: credito, troca: true });
+      save.transferencias.unshift({ rodada: save.rodada, ...carimbo(save), jogador: trocaId, de: save.clube, para: dono, valor: credito, troca: true });
     }
     if (save.caixaIA[dono] != null) save.caixaIA[dono] += dinheiroDaCompra;
-    save.transferencias.unshift({ rodada: save.rodada, temporada: save.temporada, jogador: pid, de: dono, para: save.clube, valor, ...(troca && { troca: trocaId }), ...(parcelado && { parcelado: true }) });
+    save.transferencias.unshift({ rodada: save.rodada, ...carimbo(save), temporada: save.temporada, jogador: pid, de: dono, para: save.clube, valor, ...(troca && { troca: trocaId }), ...(parcelado && { parcelado: true }) });
     Feed.transferencia(save, save.transferencias[0], ajudas);
     const como = [parcelado ? `entrada de ${dinheiro(agora)} e ${Mercado.PARCELAS} parcelas` : "", troca ? `${troca.nome} na troca` : ""].filter(Boolean).join(", ");
     avisar(save, { tipo: "contratacao", icone: "aperto", titulo: `${j.nome} chegou!`, texto: `Contratado do ${vendedor.nome} por ${dinheiro(valor)}${como ? ` (${como})` : ""}, com salário de ${dinheiro(salario)} por mês.` });
