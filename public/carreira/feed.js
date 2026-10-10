@@ -2,7 +2,7 @@
 // carreira-feed.js) tem o perfil, a arte em pixel-art desenhada aqui (uma cena por tipo de notícia, num canvas de 96x96
 // ampliado sem borrar), as curtidas, a legenda e os comentários. A arte sai da semente do post: a mesma notícia tem
 // sempre a mesma arte. Curtir fica guardado no navegador (carreira:curtidas).
-const ARTE = 96;
+const ARTE = 96, RESOLUCAO = 4;
 const artes = new Map(); // id do post -> dataURL da arte
 const K = Lances.kit;
 const sorteArte = (txt) => K.sorteio("arte:" + txt);
@@ -28,8 +28,35 @@ function letras(g, txt, x, y, c, esc = 1) {
   K.escreve(g, String(txt).toUpperCase().normalize("NFD").replace(/[^A-Z0-9]/g, ""), 0, 0, false); g.restore();
 }
 const larguraTexto = (txt, esc = 1) => String(txt).replace(/[^A-Za-z0-9]/g, "").length * 4 * esc - esc;
-// o escudo em pixel: o formato de brasão nas cores do clube, com a sigla
+// o escudo das notícias: o MESMO escudo do resto da carreira (Escudos.svg, desenhado à mão, ou a imagem da API quando o navegador
+// deixa desenhar no canvas). A imagem carrega depois: enquanto não chega, a arte sai com o brasão em pixel de antes e é refeita
+// quando o escudo novo fica pronto (refazerArtes). O escudo da API só entra se vier com CORS (senão o canvas ficaria bloqueado).
+const escudosArte = new Map(); // clube -> { img, api }
+let artePendente = false, refazendo = 0;
+function escudoDaArte(clube) {
+  const c = CLUBES[clube]; if (!c) return null;
+  let e = escudosArte.get(clube);
+  if (!e) {
+    e = { img: null, api: null }; escudosArte.set(clube, e);
+    const svg = Escudos.svg(c).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="180" ');
+    const img = new Image(); img.onload = () => { if (!e.api) { e.img = img; agendarRefazer(); } }; img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    const api = window.ESCUDOS_API && window.ESCUDOS_API[clube];
+    if (api) { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => { e.api = im; e.img = im; agendarRefazer(); }; im.src = `${api.url}/small`; }
+  }
+  return e.img;
+}
+function agendarRefazer() { clearTimeout(refazendo); refazendo = setTimeout(refazerArtes, 80); }
+// a caixa do escudo: 16x18 casas (8:9) a partir de (x, y), centrada na imagem (a da API é quadrada: cabe inteira)
 function brasao(g, clube, x, y, esc = 1) {
+  const img = escudoDaArte(clube);
+  if (!img) { artePendente = true; return brasaoPixel(g, clube, x, y, esc); }
+  const w = 16 * esc, h = 18 * esc, k = Math.min(w / img.naturalWidth, h / img.naturalHeight), dw = img.naturalWidth * k, dh = img.naturalHeight * k;
+  g.save(); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
+  g.globalAlpha = 0.35; g.fillStyle = "#000"; g.beginPath(); g.ellipse(x + w / 2, y + h - 0.5 * esc, dw * 0.38, esc * 0.9, 0, 0, 7); g.fill(); g.globalAlpha = 1; // a sombrinha embaixo
+  g.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh); g.restore();
+}
+// o brasão em pixel de antes (só enquanto o escudo novo carrega)
+function brasaoPixel(g, clube, x, y, esc = 1) {
   const [a, b] = coresDe(clube), sig = (CLUBES[clube] || {}).curto || "GAL";
   const linhas = [14, 16, 16, 16, 16, 16, 16, 15, 14, 12, 10, 8, 6, 4];
   linhas.forEach((w, i) => { P(g, "#0e1310", x + (16 - w) / 2 * esc - esc, y + i * esc - esc, (w + 2) * esc, esc * 2); });
@@ -274,11 +301,18 @@ function retratoCanvas(pid) {
 }
 function artePost(post) {
   if (artes.has(post.id)) return artes.get(post.id);
-  const cv = document.createElement("canvas"); cv.width = ARTE; cv.height = ARTE;
-  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false;
+  // a cena é desenhada em 96x96 "pixels" grandes, num canvas 4 vezes maior: o pixel-art fica duro e os escudos saem nítidos
+  const cv = document.createElement("canvas"); cv.width = ARTE * RESOLUCAO; cv.height = ARTE * RESOLUCAO;
+  const g = cv.getContext("2d"); g.scale(RESOLUCAO, RESOLUCAO); g.imageSmoothingEnabled = false;
   const r = sorteArte(post.id), cena = CENAS_FEED[post.arte && post.arte.cena] || CENAS_FEED.vestiario;
+  artePendente = false;
   try { cena(g, post.arte || {}, r); } catch (err) { console.warn("arte", post.arte, err); P(g, "#1b2430", 0, 0, ARTE, ARTE); }
-  const url = cv.toDataURL(); artes.set(post.id, url); return url;
+  const url = cv.toDataURL(); if (!artePendente) artes.set(post.id, url); return url; // com escudo ainda carregando, não guarda: refaz quando chegar
+}
+// quando um escudo chega, as artes que saíram com o brasão em pixel são refeitas e trocadas na tela
+function refazerArtes() {
+  for (const p of E && E.feed ? E.feed : []) if (!artes.has(p.id)) artePost(p);
+  for (const img of document.querySelectorAll("img[data-arte]")) { const p = (E.feed || []).find((x) => x.id === img.dataset.arte); if (p) { const u = artePost(p); if (img.src !== u) img.src = u; } }
 }
 
 // ---------- o post ----------
@@ -295,7 +329,7 @@ function postHTML(post, compacto = false) {
   if (compacto) return `<button class="post-mini" data-ir="feed"><img class="pix" src="${artePost(post)}" alt=""><span><b>@${h(pf.nome)}</b><span>${h(post.texto)}</span></span></button>`;
   return `<article class="post" data-post="${h(post.id)}">
     <header>${avatar(post)}<b>@${h(pf.nome)}</b>${pf.oficial ? SVG_FEED.verificado : ""}<small>· R${post.rodada + 1}</small></header>
-    <div class="arte"><img class="pix" src="${artePost(post)}" alt="${h(post.arte ? post.arte.cena : "")}"></div>
+    <div class="arte"><img class="pix" data-arte="${h(post.id)}" src="${artePost(post)}" alt="${h(post.arte ? post.arte.cena : "")}"></div>
     <div class="acoes"><button class="curtir" data-curtir="${h(post.id)}" aria-pressed="${curti}" aria-label="Curtir">${SVG_FEED.curtir}</button><button aria-label="Comentar">${SVG_FEED.comentar}</button><button aria-label="Enviar">${SVG_FEED.enviar}</button><button class="salvar" aria-label="Salvar">${SVG_FEED.salvar}</button></div>
     <p class="curtidas">Curtido por <b>@${h(quem)}</b> e outras <b>${milhar(Math.max(0, total - 1))}</b> pessoas</p>
     <p class="legenda"><b>@${h(pf.nome)}</b> ${h(post.texto)}</p>
@@ -311,15 +345,47 @@ const EDITORIA = { contratacao: "Transferência", venda: "Transferência", vitor
   classificado: "Copa", eliminado: "Copa", tecnico: "Clube", base: "Base", aposentadoria: "Adeus", tabela: "Tabela", gol: "Gol", goleada: "Resultado",
   lesao: "Departamento médico", cartao: "Arbitragem", evento: "Bastidores", disputa: "Rumor", hall: "Hall da Fama" };
 const editoriaDe = (p) => EDITORIA[p.tipo] || "Bastidores";
-// na sede: as notícias em destaque. A mais nova vira a manchete (a arte grande), e as seguintes, uma grade de cards.
+// na sede: as notícias no formato do Instagram (o post inteiro: arte, curtir, legenda e comentários), um de cada vez numa coluna que
+// rola sozinha para o próximo a cada 10 segundos. Passar o mouse, tocar ou mexer na rolagem segura por 10 s; "menos movimento" tira a rolagem sozinha.
+const INTERVALO_FEED = 10000, FEED_NA_SEDE = 12;
+let relogioFeed = null;
+function rolarFeed(para) { // vai para o post de índice `para` (de volta ao primeiro depois do último)
+  const rol = document.getElementById("feedRolagem"); if (!rol) return;
+  const posts = rol.querySelectorAll(".post"); if (!posts.length) return;
+  const i = ((para % posts.length) + posts.length) % posts.length, alvo = posts[i];
+  const calmo = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  rol.scrollTo({ top: alvo.offsetTop - rol.offsetTop, behavior: calmo || i === 0 ? "auto" : "smooth" });
+  rol.dataset.atual = i; marcarFeed();
+}
+function marcarFeed() { // o pontinho do post de agora
+  const rol = document.getElementById("feedRolagem"), pts = document.querySelectorAll("#feedPontos i"); if (!rol) return;
+  pts.forEach((p, k) => p.classList.toggle("on", k === +rol.dataset.atual));
+}
+function iniciarFeedAutomatico() {
+  clearInterval(relogioFeed);
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let segura = 0;
+  const rol = document.getElementById("feedRolagem"); if (!rol) return;
+  const segurar = () => { segura = Date.now() + INTERVALO_FEED; };
+  for (const ev of ["pointerenter", "pointerdown", "focusin", "wheel", "touchstart"]) rol.addEventListener(ev, segurar, { passive: true });
+  rol.addEventListener("pointerleave", () => { segura = Date.now() + 2000; });
+  relogioFeed = setInterval(() => {
+    if (document.hidden || typeof telaAtual === "undefined" || telaAtual !== "sede" || !document.getElementById("feedRolagem")) return;
+    if (Date.now() < segura) return;
+    rolarFeed(+(document.getElementById("feedRolagem").dataset.atual || 0) + 1);
+  }, INTERVALO_FEED);
+}
 function feedNaSede() {
-  const posts = E.feed || [], [manchete, ...resto] = posts;
-  const card = (p) => `<button class="noticia" data-ir="feed"><img class="pix" src="${artePost(p)}" alt=""><span><i class="editoria">${h(editoriaDe(p))}</i><b>@${h(perfilDe(p.perfil).nome)}</b><span>${h(p.texto)}</span></span></button>`;
-  $("cartaoFeed").innerHTML = `<div class="linha-titulo"><h3>Notícias</h3><button class="link" data-ir="feed">Ver todas</button></div>
-    ${manchete ? `<button class="manchete" data-ir="feed"><span class="manchete-arte"><img class="pix" src="${artePost(manchete)}" alt=""></span>
-      <span class="manchete-txt"><i class="editoria">${h(editoriaDe(manchete))}</i><b class="manchete-titulo">${h(manchete.texto)}</b>
-        <small>@${h(perfilDe(manchete.perfil).nome)} · ${milhar(manchete.curtidas)} curtidas · ${(manchete.comentarios || []).length} comentários</small></span></button>
-      ${resto.length ? `<div class="noticias-grade">${resto.slice(0, 6).map(card).join("")}</div>` : ""}` : `<p class="suave">As notícias aparecem aqui depois do primeiro jogo.</p>`}`;
+  const caixa = $("cartaoFeed"), posts = (E.feed || []).slice(0, FEED_NA_SEDE);
+  const assinatura = posts.map((p) => p.id + (curtidas()[p.id] ? "*" : "")).join("|");
+  if (caixa.dataset.assinatura === assinatura && caixa.querySelector("#feedRolagem")) return; // nada mudou: mantém onde está
+  const mesmoTopo = caixa.dataset.topo === (posts[0] && posts[0].id), atual = mesmoTopo ? +((caixa.querySelector("#feedRolagem") || {}).dataset?.atual || 0) : 0;
+  caixa.dataset.assinatura = assinatura; caixa.dataset.topo = posts[0] ? posts[0].id : "";
+  caixa.innerHTML = `<div class="linha-titulo"><h3>Notícias</h3><button class="link" data-ir="feed">Ver todas</button></div>
+    ${posts.length ? `<div class="insta"><div id="feedRolagem" class="insta-rolagem" data-atual="${atual}" tabindex="0" aria-label="Notícias (passam sozinhas a cada 10 segundos)">${posts.map((p) => postHTML(p)).join("")}</div>
+      <div class="insta-rodape"><span id="feedPontos" aria-hidden="true">${posts.map((_, k) => `<i${k === atual ? ' class="on"' : ""}></i>`).join("")}</span></div></div>`
+      : `<p class="suave">As notícias aparecem aqui depois do primeiro jogo.</p>`}`;
+  if (posts.length) { const rol = $("feedRolagem"); rol.addEventListener("scroll", () => { const ps = [...rol.querySelectorAll(".post")], i = ps.findIndex((p) => p.offsetTop - rol.offsetTop + p.offsetHeight / 2 > rol.scrollTop); if (i >= 0 && +rol.dataset.atual !== i) { rol.dataset.atual = i; marcarFeed(); } }, { passive: true }); if (atual) rol.scrollTop = rol.querySelectorAll(".post")[atual].offsetTop - rol.offsetTop; iniciarFeedAutomatico(); }
 }
 // curtir (com o pulinho do coração; com "menos movimento", sem o pulinho)
 document.addEventListener("click", (e) => {
