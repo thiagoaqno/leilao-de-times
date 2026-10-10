@@ -62,7 +62,7 @@ const notaDe = (save, j) => clamp(j.nota + (save.bonusNota[j.id] || 0), 40, 95);
 const comNota = (save, j) => ({ ...j, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
 // a premiação do campeonato até o G6 (do 1º ao 6º lugar da liga), paga no fim da temporada; no meio da liga (19 jogos), quem está no G6 já recebe 25% do prêmio
 // da posição em que está. Vale o fator da liga (a Premier League paga mais que a Argentina) e vem junto com a premiação por posição e o bônus de campeão.
-const PREMIOS_G6 = [60e6, 45e6, 35e6, 28e6, 22e6, 18e6];
+const PREMIOS_G6 = [75e6, 56.3e6, 43.8e6, 35e6, 27.5e6, 22.5e6];
 const FATOR_LIGA = { "inglaterra-2026": 1.35, "espanha-2026": 1.18, "italia-2026": 1.12, "alemanha-2026": 1.1, "franca-2026": 1.05, "brasileirao-2026": 1, "argentina-2026": 0.82, "sulamericanos-2026": 0.75 };
 const ligaDoClube = (id) => INDICE_MUNDO.ligas.find((l) => l.clubes.includes(id))?.id || "brasileirao-2026";
 const salarioDe = (save, j) => save.salarios[j.id] || Math.round(Mercado.salarioDe(comNota(save, j)) * (FATOR_LIGA[ligaDoClube(donoDe(save, j.id))] || 1) / 1e3) * 1e3;

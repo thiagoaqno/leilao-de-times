@@ -20,7 +20,7 @@ test("a tabela de prêmios: seis posições, do maior para o menor, com o fator 
   assert.strictEqual(premioG6(br, 7), 0); assert.strictEqual(premioG6(br, 0), 0); assert.strictEqual(premioG6(br, 20), 0);
   assert.ok(premioG6(ing, 1) > premioG6(br, 1), "a Premier League paga mais");
   assert.ok(premioG6(arg, 1) < premioG6(br, 1) || premioG6(arg, 1) === premioG6(br, 1), "uma liga menor não paga mais que o Brasileirão");
-  assert.strictEqual(premioG6(br, 1, 0.25), PREMIOS_G6[0] / 4, "o adiantamento do turno é 25%");
+  assert.strictEqual(premioG6(br, 1, 0.25), Math.round(PREMIOS_G6[0] / 4 / 1e5) * 1e5, "o adiantamento do turno é 25% (arredondado a R$ 100 mil)");
 });
 
 test("na carreira: no meio da liga o G6 do momento recebe 25%, no fim quem ficou no G6 recebe o prêmio, e nenhum paga duas vezes", () => {
