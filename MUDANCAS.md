@@ -1,15 +1,13 @@
-# Carreira: o calendário só mostra o que está definido, e o resto vira TBA
+# Carreira em grupo: o resultado de um jogo que um amigo ainda não jogou não aparece mais
 
-## O problema
-- A Copa do Brasil e a Libertadores (do mata-mata em diante) **apareciam do nada**: o calendário só mostrava o próximo confronto quando ele chegava, e ficava um buraco no meio das datas.
-- E o que aparecia com nome de adversário às vezes era **previsão da simulação**: o Super Mundial (e o Mundial e a Sul-Americana) listava jogos e adversários desde o começo da temporada, antes de saber quem se classifica.
+## O bug
+Na sala, cada técnico via o mundo até a semana do **próprio** próximo jogo. Quem já tinha passado da semana da final da Libertadores ou da Champions (por exemplo, um técnico eliminado, já jogando o Brasileirão) via o **campeão, a chave e o pop-up da festa do campeão** enquanto o amigo ainda não tinha jogado a final. Esse resultado era só a **previsão da simulação**, mostrada como se já tivesse acontecido: na prática, quando a final era jogada, o resultado saía diferente.
 
 ## Agora
-- **TBA onde ainda é previsão.** Libertadores, Champions e Copa do Brasil mostram as fases que o seu clube ainda pode jogar como linhas **"A definir · TBA"**, com a competição, a fase (ida/volta) e a semana. Elas viram jogo de verdade quando a fase anterior acaba (a primeira do mata-mata, quando os grupos acabam; as oitavas da Copa do Brasil, quando a fase preliminar acaba).
-- **Sem spoiler:** o TBA não diz quem joga nem se o clube passa. Se o clube é eliminado (chave perdida, ou grupos que acabaram sem ele no mata-mata), as linhas TBA daquela competição somem.
-- **Sul-Americana, Super Mundial e Mundial só aparecem quando a participação está definida** (a Sul-Americana depois dos grupos da Libertadores; o Super Mundial depois das finais da Libertadores, da Champions, da Copa do Brasil e da Sul-Americana; o Mundial depois das finais da Libertadores e da Champions). Antes disso o que a simulação previa era mostrado como certo.
-- Os nomes das fases ficaram legíveis ("Oitavas de final · ida", "Grupo F") e o ponto solto antes da semana dos jogos de liga saiu. Uma nota embaixo explica o TBA.
+- O mundo de cada técnico acompanha a **semana do jogo mais atrasado entre os técnicos da sala** (`semanaDosHumanos`, em `vistaDe`). Resultado, chave, campeão, artilharia, tabela, festa do campeão e as linhas do calendário só aparecem quando **todos** passaram daquela semana.
+- Enquanto o amigo não joga a final, quem está na frente não vê o campeão; assim que o último técnico passa da semana, tudo aparece de uma vez, já com o resultado de verdade.
+- A carreira solo não muda: vale a semana do próprio clube.
 
 ## Conferido
-- `tests/carreira-calendario.test.js` (5 testes): no começo, nenhum confronto de mata-mata aparece e as fases viram TBA (com as semanas de ida e volta); Sul-Americana, Super Mundial e Mundial não aparecem como previsão; depois dos grupos da Libertadores, as oitavas aparecem de verdade (ou some tudo de quem caiu); as oitavas da Copa do Brasil só depois da preliminar; clube eliminado não ganha TBA.
-- Os 70 testes de copas, chaves, campeões, temporada, servidor, ao vivo e clube continuam passando. Foto em `planos/imagens/carreira-calendario-tba.jpg`.
+- `tests/carreira-sem-spoiler.test.js` (3 testes): com a Ana na frente e a Bia ainda nas oitavas, a Ana não vê o campeão da Libertadores nem da Champions, nem a festa; quando a Bia passa da final, tudo aparece; o auxiliar não é copiado de volta para o save. Sem a correção, o primeiro teste falha (o bug reproduzido).
+- Os testes de rodada, trocas, campeões, chaves, copas, notícias iguais, ao vivo, calendário e sala continuam passando (35).

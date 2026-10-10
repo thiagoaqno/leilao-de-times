@@ -230,6 +230,17 @@ function vistaDe(save, clube) {
   Object.defineProperty(v, "humanosLista", { value: () => Object.entries(save.humanos).map(([c, hm]) => ({ clube: c, tecnico: (hm.estado && hm.estado.tecnico) || hm.nome || c })) });
   Object.defineProperty(v, "humanoDe", { value: (id) => !!save.humanos[id] });
   // a gestão (estrutura, contratos, habilidades) de qualquer clube da sala: o mundo precisa dela ao curar lesões e evoluir jogadores dos outros
+  // a semana em que o mundo está de verdade: a do jogo mais atrasado entre os técnicos da sala. Quem já passou dessa semana não pode ver (nem receber o pop-up
+  // do campeão) o resultado de um jogo que um amigo ainda não jogou: ele só existe como previsão da simulação
+  Object.defineProperty(v, "semanaDosHumanos", { value: () => {
+    let menor = Infinity;
+    for (const [c, hm] of Object.entries(save.humanos)) {
+      const jogados = c === clube ? v.jogosJogados : hm.estado && hm.estado.jogosJogados; if (!jogados) continue;
+      const proximo = (save.calendarioMundo || []).find((j) => (j.casa === c || j.fora === c) && !jogados.includes(j.id));
+      if (proximo) menor = Math.min(menor, proximo.semana);
+    }
+    return menor;
+  } });
   Object.defineProperty(v, "gestaoDe", { value: (id) => (id === clube ? v.gestao || null : (save.humanos[id] && save.humanos[id].estado && save.humanos[id].estado.gestao) || null) });
   Object.defineProperty(v, "outrosHumanos", { value: () => Object.entries(save.humanos).filter(([c, hm]) => c !== clube && hm.estado).map(([, hm]) => ({ feed: hm.estado.feed, rodada: hm.estado.rodada, temporada: save.temporada, semente: save.semente })) });
   return v;
@@ -1201,7 +1212,7 @@ function calendarioTba(save, visivel) {
 }
 function estadoMundo(save) {
   if (!save.calendarioMundo) recalcularMundo(save);
-  const proximo = proximoJogoMundo(save), limite = proximo ? proximo.semana : Infinity;
+  const proximo = proximoJogoMundo(save), limite = Math.min(proximo ? proximo.semana : Infinity, typeof save.semanaDosHumanos === "function" ? save.semanaDosHumanos() : Infinity);
   const golsTodos = golsDoMundo(save, limite);
   const competicoes = Object.fromEntries(Object.entries(save.competicoes).map(([id, c]) => {
     const jogos = c.jogos.filter((j) => j.semana < limite || save.jogosJogados.includes(j.id));
