@@ -264,9 +264,9 @@ test("carreira em grupo: sala, clubes e o hub de cada um", async ({ browser }) =
   await a.click('[data-vel="3"]');
   await expect(a.locator('[data-vel="1"]')).toHaveAttribute("aria-pressed", "false");
   await expect(a.locator('[data-vel="3"]')).toHaveAttribute("aria-pressed", "true");
-  // o botão ligado fica na cor de destaque do clube (o tema do clube, --acento)
+  // o botão ligado fica na cor do clube (o tema do hub.css, --fx-teal, que sai de --time)
   await expect.poll(() => a.evaluate(() => {
-    const t = document.createElement("i"); t.style.color = "var(--acento)"; document.body.append(t);
+    const t = document.createElement("i"); t.style.color = "var(--fx-teal)"; document.body.append(t);
     const cor = getComputedStyle(t).color; t.remove();
     return getComputedStyle(document.querySelector('[data-vel="3"]')).backgroundColor === cor;
   })).toBe(true);
