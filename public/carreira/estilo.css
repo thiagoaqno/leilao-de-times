@@ -1119,3 +1119,7 @@ body.zoom-ativo .tela>*,body.zoom-ativo .hub-grade>*>*{animation:none!important}
 /* a placa escura atrás da tela enquanto ela cresce ou encolhe: a sede não "vaza" pelo vidro. É um pseudo-elemento: a tela em si não ganha opacidade (o vidro dos painéis não muda no meio) */
 .tela.zoomando::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;background:radial-gradient(70vmax 50vmax at 50% 0%,color-mix(in srgb,var(--clube) 30%,transparent),transparent 72%),#0d0e11;opacity:var(--placa,0)}
 .topo-tela .volta[data-ir="sede"]{display:none}
+/* o calendário: a fase que ainda não está definida (TBA) */
+.linha-tempo li.tba{opacity:.72}.linha-tempo li.tba .adv{color:var(--t3);font-weight:500}
+.escudo-tba{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1.5px dashed var(--b2);color:var(--t3);font:600 16px/1 var(--fonte)}
+.selo-tba{margin-left:8px;padding:2px 7px;border-radius:99px;background:var(--s3);color:var(--t2);font:600 10px/1.4 var(--mono);letter-spacing:.08em}
