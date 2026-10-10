@@ -113,9 +113,9 @@ function telaJogo(pos) {
       <button id="btnNovaTemporada" class="primario largo">Começar a temporada ${E.ano + 1} (${E.temporada + 1} de ${E.temporadasMax})</button></div>`;
     // na sala: o seu clube acabou, mas os amigos ainda têm jogos. O anfitrião libera as rodadas deles; a temporada nova só abre quando todos terminam
     if (EM_GRUPO && E.faltamJogos) {
-      const rolando = !!E.rodadaGrupo, b = $("btnNovaTemporada");
-      b.id = "btnLiberarRodada"; b.disabled = rolando || !E.anfitriao;
-      b.textContent = rolando ? "Rodada rolando: os amigos estão jogando" : E.anfitriao ? "Liberar a rodada dos amigos" : "Esperando o anfitrião liberar os jogos";
+      const rolando = !!E.rodadaGrupo, b = $("btnNovaTemporada"), pausa = pausaRestante();
+      b.id = "btnLiberarRodada"; b.disabled = rolando || !E.anfitriao || pausa > 0;
+      b.textContent = rolando ? "Rodada rolando: os amigos estão jogando" : pausa > 0 ? `${E.anfitriao ? "Liberar a rodada dos amigos" : "Próxima rodada"} em ${mmss(pausa)}` : E.anfitriao ? "Liberar a rodada dos amigos" : "Esperando o anfitrião liberar os jogos";
       b.onclick = () => agirGrupo({ type: "rodada" });
       const aviso = document.createElement("p"); aviso.className = "suave"; aviso.textContent = "O seu clube já terminou a temporada, mas os amigos ainda têm jogos. A temporada nova só abre quando todos terminarem.";
       b.before(aviso);

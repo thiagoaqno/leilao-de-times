@@ -30,6 +30,8 @@ const DECISAO_MS = Number(process.env.CARREIRA_DECISAO_MS) || 20000;
 const LANCE_MS = Number(process.env.CARREIRA_LANCE_MS) || 15000;
 const ABERTURA_MS = LANCE_MS + 5000, MARTELO_MS = 30000;
 const ESPERA_MS = process.env.CARREIRA_ESPERA_MS != null ? Number(process.env.CARREIRA_ESPERA_MS) : 3000;
+// a pausa depois que a rodada acaba: o anfitrião só puxa a próxima depois dela, para todo mundo ter tempo de mexer no time
+const PAUSA_MS = process.env.CARREIRA_PAUSA_MS != null ? Number(process.env.CARREIRA_PAUSA_MS) : 60000;
 const TICK_MS = 250;
 // quem fica fora da sala mais do que isso é "ausente": o jogo dele anda no automático (a volta de uma recarga não conta)
 const AUSENTE_MS = process.env.CARREIRA_AUSENTE_MS != null ? Number(process.env.CARREIRA_AUSENTE_MS) : 15000;
@@ -52,7 +54,7 @@ module.exports = function ligarCarreiraOnline(io) {
 
   // ---------- o banco: guardar e carregar as salas ----------
   const paraGuardar = (room) => ({ code: room.code, host: room.host, fase: room.fase, opcoes: room.opcoes, order: room.order, save: room.save, t: room.t,
-    nRodada: room.nRodada || 0, prontos: room.prontos || {}, rodada: room.rodada || null, ultimaRodada: room.ultimaRodada || null, leilao: room.leilao || null, ultimoLeilao: room.ultimoLeilao || null, trocas: room.trocas || [],
+    nRodada: room.nRodada || 0, prontos: room.prontos || {}, liberaEm: room.liberaEm || 0, rodada: room.rodada || null, ultimaRodada: room.ultimaRodada || null, leilao: room.leilao || null, ultimoLeilao: room.ultimoLeilao || null, trocas: room.trocas || [],
     players: Object.fromEntries(Object.entries(room.players).map(([id, p]) => [id, { id, name: p.name, skin: p.skin, clube: p.clube, tokenHash: p.tokenHash, ...(p.dispensado && { dispensado: true }) }])) });
   function guardar(room) { room.t = Date.now(); try { bd.salvarSalaCarreira(room.code, paraGuardar(room)); } catch (e) { console.warn("carreira-online: não salvou a sala", room.code, e.message); } }
   try {
@@ -76,6 +78,7 @@ module.exports = function ligarCarreiraOnline(io) {
     ocupados: Object.fromEntries(room.order.filter((id) => room.players[id].clube).map((id) => [room.players[id].clube, id])),
     clubes: Carreira.clubesEscolhiveis(room.opcoes.ligas).map((c) => c.id),
     nRodada: room.nRodada || 0,
+    liberaEm: room.liberaEm > Date.now() ? room.liberaEm : null, // a próxima rodada só sai depois disso (a pausa para mexer no time)
     caixas: room.fase === "carreira" && room.save && room.save.caixaIA ? Object.fromEntries(Carreira.clubesEscolhiveis(room.opcoes.ligas).filter((c) => c.id in room.save.caixaIA).map((c) => [c.id, Math.round(room.save.caixaIA[c.id] / 1e5) * 1e5])) : null,
     rodada: room.rodada ? { n: room.rodada.n, semana: room.rodada.semana, inicio: room.rodada.inicio, velocidade: room.rodada.multiplicador || 1, jogos: room.rodada.jogos.map((j) => ({ casa: j.casa, fora: j.fora, fim: j.fim })) } : null,
     ultimaRodada: room.ultimaRodada || null,
@@ -102,14 +105,17 @@ module.exports = function ligarCarreiraOnline(io) {
     for (const id of room.order) {
       const p = room.players[id], e = p.sockets.size ? estadoDe(room, p) : null;
       if (e) for (const sid of p.sockets) nsp.to(sid).emit("carreira", e);
+      // quem ainda não tem clube não recebe a sede: a rodada ao vivo vai à parte (o clube já vem dentro da sede)
+      else if (p.sockets.size && room.rodada) { const v = Rd.visao(room.save, room.rodada, null, Date.now()); for (const sid of p.sockets) nsp.to(sid).emit("rodada", v); }
     }
   }
-  // só a rodada (leve, várias vezes por rodada: o relógio, as paradas e a faixa dos outros jogos)
+  // só a rodada (leve, várias vezes por rodada: o relógio, as paradas e a faixa dos outros jogos). Vai para todo mundo da
+  // sala: quem não tem jogo nesta rodada (ou ainda nem tem clube) acompanha os placares ao vivo
   function mandarRodada(room) {
     const agora = Date.now();
     for (const id of room.order) {
-      const p = room.players[id]; if (!p.sockets.size || !p.clube) continue;
-      const v = Rd.visao(room.save, room.rodada, p.clube, agora);
+      const p = room.players[id]; if (!p.sockets.size) continue;
+      const v = Rd.visao(room.save, room.rodada, p.clube || null, agora);
       for (const sid of p.sockets) nsp.to(sid).emit("rodada", v);
     }
   }
@@ -154,6 +160,7 @@ module.exports = function ligarCarreiraOnline(io) {
   function comecarRodada(room) {
     const save = room.save;
     if (room.rodada) return "A rodada já está rolando.";
+    if (room.liberaEm > Date.now()) return `Espere mais ${Math.ceil((room.liberaEm - Date.now()) / 1000)} s: a turma ainda está mexendo no time.`;
     limparDispensados(room);
     if (room.leilao) return "Espere o leilão acabar.";
     let p = Carreira.proximaRodadaGrupo(save), pulou = 0;
@@ -220,6 +227,7 @@ module.exports = function ligarCarreiraOnline(io) {
         if (r.acabou) {
           room.ultimaRodada = { n: room.rodada.n, jogos: room.rodada.jogos.map((j) => ({ casa: j.casa, fora: j.fora, placar: j.placar })) };
           room.rodada = null; room.prontos = {}; mudou = true;
+          if (PAUSA_MS > 0) room.liberaEm = agora + PAUSA_MS; // a pausa: todo mundo mexe no time antes da próxima
           limparDispensados(room); // quem foi dispensado no meio da rodada sai agora
         }
       }

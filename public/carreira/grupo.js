@@ -51,11 +51,13 @@ socket.on("state", (st) => {
   if (!EM_GRUPO) return;
   const comecou = st.fase === "carreira" && (!SALA || SALA.fase !== "carreira");
   SALA = st;
+  if (st.now) DESVIO = st.now - Date.now(); // o relógio do servidor (a contagem da pausa e a rodada ao vivo)
+  if (typeof TurmaAoVivo !== "undefined") TurmaAoVivo.sala(st);
   if (st.fase === "carreira") {
     // entrou com a carreira rolando e ainda não tem clube (ou só está assistindo): escolhe um clube livre
     const eu = st.players.find((p) => p.id === MEU_ID);
     if (!eu || !eu.clube) { entradaNoMeio(st, eu); return; }
-    if (comecou || !E) pedir("entrar").then((r) => { if (r.ok) { receber(r.estado); DESVIO = st.now - Date.now(); if (telaAtual === "grupo" || !telaAtual) abrirSede(); atualizarRodadaGrupo(r.estado.rodadaGrupo); } });
+    if (comecou || !E) pedir("entrar").then((r) => { if (r.ok) { receber(r.estado); DESVIO = st.now - Date.now(); if (telaAtual === "grupo" || !telaAtual) abrirSede(); atualizarRodadaGrupo(r.estado.rodadaGrupo); if (typeof TurmaAoVivo !== "undefined") { TurmaAoVivo.tela(); if (r.estado.rodadaGrupo) TurmaAoVivo.rodada(r.estado.rodadaGrupo); } } });
     desenharLeilao(); avisarLeilao(st); desenharTurma(st);
     if (E && telaAtual === "sede") telaSede();
     else if (E && telaAtual === "trocas") telaTrocas();
@@ -82,7 +84,7 @@ function entradaNoMeio(st, eu) {
   }).join("") : "";
 }
 // o estado do meu clube, sempre que algo muda na sala
-socket.on("carreira", (e) => { if (EM_GRUPO && E) { receber(e); atualizarRodadaGrupo(e.rodadaGrupo); } });
+socket.on("carreira", (e) => { if (EM_GRUPO && E) { receber(e); atualizarRodadaGrupo(e.rodadaGrupo); if (typeof TurmaAoVivo !== "undefined" && e.rodadaGrupo) TurmaAoVivo.rodada(e.rodadaGrupo); } });
 
 function desenharSala() {
   if (telaAtual !== "grupo") mostrarTela("grupo");
@@ -193,19 +195,34 @@ function atualizarRodadaGrupo(v) {
   if (mudouParada && $("decisao").open) { $("decisao").close(); J.decidindo = false; }
   if (!antes) atualizarPlacar();
 }
-socket.on("rodada", (v) => { if (EM_GRUPO) atualizarRodadaGrupo(v); });
+socket.on("rodada", (v) => { if (!EM_GRUPO) return; atualizarRodadaGrupo(v); if (typeof TurmaAoVivo !== "undefined") TurmaAoVivo.rodada(v); });
+// ---------- a pausa depois da rodada (carreira-online.js, PAUSA_MS) ----------
+// o anfitrião só puxa a próxima rodada depois dela: é o tempo de todo mundo mexer no time, no mercado e nos avisos
+const pausaRestante = () => (SALA && SALA.liberaEm ? Math.max(0, SALA.liberaEm - agoraServidor()) : 0);
+const mmss = (ms) => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+const TEXTO_PAUSA = "Pausa para a turma mexer no time: escalação, mercado e avisos.";
+// a contagem anda sozinha na sede (só o texto e o botão; nada é redesenhado)
+setInterval(() => {
+  if (!EM_GRUPO || !E || !SALA || !SALA.liberaEm || telaAtual !== "sede") return;
+  const fim = pausaRestante() <= 0;
+  if (fim) SALA.liberaEm = null; // acabou: o botão volta ao normal
+  if ($("btnJogar") && $("cartaoJogo").contains($("btnJogar"))) botaoRodadaGrupo();
+  const lib = $("btnLiberarRodada");
+  if (lib && !E.rodadaGrupo) { lib.disabled = !E.anfitriao || !fim; lib.textContent = fim ? (E.anfitriao ? "Liberar a rodada dos amigos" : "Esperando o anfitrião liberar os jogos") : `${E.anfitriao ? "Liberar a rodada dos amigos" : "Próxima rodada"} em ${mmss(pausaRestante())}`; }
+}, 500);
 // o botão grande da sede: o anfitrião começa a rodada; os outros esperam (e veem quem já mexeu no time)
 function botaoRodadaGrupo() {
   const b = $("btnJogar"), txt = b.querySelector("span"), meu = E.rodadaGrupo && E.rodadaGrupo.meu;
   $("cartaoJogo").querySelector(".modos")?.classList.toggle("hidden", !!E.rodadaGrupo);
   if (meu && !meu.fim) { txt.textContent = "Voltar para a partida"; b.disabled = false; b.onclick = () => abrirPartida(); return; }
   if (E.rodadaGrupo) { txt.textContent = "Rodada rolando: os amigos estão jogando"; b.disabled = true; return; }
-  const prontos = SALA ? SALA.players.filter((p) => p.pronto).map((p) => p.name) : [];
-  if (E.anfitriao) { txt.textContent = "Jogar a próxima rodada"; b.disabled = false; b.onclick = async () => { if (window.Popups && !(await Popups.confirmarAntesDoJogo())) return; agirGrupo({ type: "rodada" }); }; }
+  const prontos = SALA ? SALA.players.filter((p) => p.pronto).map((p) => p.name) : [], pausa = pausaRestante();
+  if (pausa > 0) { txt.textContent = E.anfitriao ? `Jogar a próxima rodada · ${mmss(pausa)}` : `Próxima rodada liberada em ${mmss(pausa)}`; b.disabled = true; }
+  else if (E.anfitriao) { txt.textContent = "Jogar a próxima rodada"; b.disabled = false; b.onclick = async () => { if (window.Popups && !(await Popups.confirmarAntesDoJogo())) return; agirGrupo({ type: "rodada" }); }; }
   else { txt.textContent = "Esperando o anfitrião começar a rodada"; b.disabled = true; }
   let info = $("cartaoJogo").querySelector(".prontos");
   if (!info) { info = document.createElement("p"); info.className = "prontos suave"; b.after(info); }
-  info.textContent = prontos.length ? `Já mexeram no time: ${prontos.join(", ")}.` : "Antes da rodada, cada um ajusta o time, o mercado e os avisos.";
+  info.textContent = `${pausa > 0 ? `${TEXTO_PAUSA} ` : ""}${prontos.length ? `Já mexeram no time: ${prontos.join(", ")}.` : pausa > 0 ? "" : "Antes da rodada, cada um ajusta o time, o mercado e os avisos."}`.trim();
 }
 
 // ---------- o leilão entre os amigos ----------
