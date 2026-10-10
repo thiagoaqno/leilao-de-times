@@ -7,16 +7,58 @@
 /* as cores do time (temaClube, em inicio.js, põe --time e as variações no body): o turquesa e o laranja são só a reserva */
 body{--fx-teal:var(--time,#1592a9);--fx-teal2:var(--time-escuro,#0d6f82);--fx-claro:var(--time-claro,#1fa6be);--fx-laranja:var(--time,#f39325);--fx-tinta:var(--time-tinta,#fff)}
 
-/* ---------- os tokens claros (dentro dos painéis) ---------- */
-#sede .quadro,#sede .tile,#sede .cab-numeros,#sede .hub-clube,#sede .hub-abas,.int-tile,.int-placar,.int-lista{
+/* ---------- os tokens claros (dentro dos painéis): valem em todas as telas da carreira, nos diálogos e no aviso ---------- */
+.tela .quadro,.tela .tile,.dialogo,#toast,.caixa-topo,.aviso,.segmentos,#sede .cab-numeros,#sede .hub-clube,#sede .hub-abas,.int-tile,.int-placar,.int-lista{
   --t1:#15212c;--t2:#41505d;--t3:#62717d;--s1:#ffffffa8;--s2:#e8eef3;--s3:#d0dae2;--s4:#b6c3ce;--bg2:#ffffff80;
-  --b1:#15212c17;--b2:#15212c26;--b3:#15212c3d;--ok:#13894a;--erro:#c42b2b;--alerta:#b86a00;--azul:#1e64b4;color:var(--t1)}
-#sede .quadro,#sede .tile,.int-tile,.int-placar,.int-lista{background:var(--fx-painel);border:0;border-radius:3px;box-shadow:var(--fx-sombra);
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-#sede .quadro .quadro{background:#ffffff73;box-shadow:none}
+  --b1:#15212c17;--b2:#15212c26;--b3:#15212c3d;--ok:#13894a;--erro:#c42b2b;--alerta:#b86a00;--azul:#1e64b4;
+  --acento:var(--fx-teal);--acento2:var(--fx-teal2);--acento-tinta:var(--fx-tinta);color:var(--t1)}
+.tela .quadro,.tela .tile,.dialogo,#toast,.int-tile,.int-placar,.int-lista{background:var(--fx-painel);border:0;border-radius:3px;box-shadow:var(--fx-sombra)}
+.tela .quadro .quadro,.dialogo .quadro{background:#ffffff73;box-shadow:none;border:1px solid var(--b1);border-radius:2px}
+.tela .quadro.secundario{background:#e3eaf0cc;box-shadow:none;border:1px dashed var(--b3)}
+.dialogo{box-shadow:0 30px 80px -24px #000}
+/* o que fica no fundo escuro, fora dos painéis: o título da tela em caixa alta, o "← Sede", o caixa e o aviso em placas claras */
+.topo-tela h2{font:600 clamp(28px,3vw,38px)/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.03em;color:#fff}
+.topo-tela .volta{font:600 15px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em}
+.caixa-topo{background:var(--fx-painel);border:0;border-radius:2px;box-shadow:var(--fx-sombra);clip-path:polygon(12px 0,100% 0,100% 100%,0 100%);padding-left:20px}
+.aviso{background:var(--fx-painel);border:0;border-radius:2px;box-shadow:var(--fx-sombra);border-left:4px solid var(--fx-teal)}
+#toast{border-left:4px solid var(--fx-teal)}
+/* os controles: a faixa reta das abas, o escolhido na cor do time */
+.segmentos{background:#d7e0e8e6;border:0;border-radius:2px;gap:3px;padding:3px}
+.segmentos button{border-radius:1px;color:#24323e;font-weight:600}
+.segmentos button[aria-pressed=true],.segmentos button[aria-pressed=true]:hover{background:var(--fx-teal);color:var(--fx-tinta);box-shadow:none}
+@media (hover:hover) and (pointer:fine){.segmentos button:hover:not([aria-pressed=true]):not(:disabled){background:#eef3f7;color:#15212c}}
+/* os botões dentro dos painéis: retos, o principal na cor do time */
+.tela .quadro button,.dialogo button{border-radius:2px}
+.tela .quadro button[aria-pressed=true],.dialogo button[aria-pressed=true]{background:var(--fx-teal);color:var(--fx-tinta);border-color:transparent}
+button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2px;box-shadow:0 10px 24px -14px var(--fx-teal);font-weight:600}
+@media (hover:hover) and (pointer:fine){button.primario:hover:not(:disabled){background:color-mix(in srgb,var(--fx-teal) 86%,#fff);box-shadow:0 12px 28px -12px var(--fx-teal)}}
+.tela .quadro button.perigo,.dialogo button.perigo{color:var(--erro);background:#c42b2b14;border-color:#c42b2b4d}
+.tela .quadro input,.tela .quadro select,.dialogo input,.dialogo select{border-radius:2px;background:#fff;border-color:var(--b2)}
+.tela .quadro input[type=range],.dialogo input[type=range]{background:none}
+.tela .quadro h3,.dialogo h3{font:500 19px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.04em;color:var(--t1)}
+.dialogo h2{font:600 26px/1.05 var(--fx-cond);text-transform:uppercase;letter-spacing:.03em;color:var(--t1)}
+.tela .quadro.tv-painel{--t1:#f4f4f5;--t2:#a1a1aa;--t3:#71717a;--s1:#111114;--s2:#17171b;--s3:#202026;--b1:#ffffff0f;--b2:#ffffff1a;background:#0d1b26e6;color:var(--t1)}
+
 #sede .quadro h3,.fx-titulo{font:500 19px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.04em;color:var(--t1);margin:0 0 12px}
 #sede button.link{color:var(--fx-teal2);font-weight:600}
 #sede .selo{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2px}
+
+/* as abas das telas (competições, clube, temporadas): a mesma faixa reta da sede */
+.abas,.abas-competicoes{gap:3px}
+.abas{padding:0;border:0;border-radius:0;background:none}
+.abas button,.abas-competicoes button{min-height:34px;padding:0 16px;border:0;border-radius:0;background:#d7e0e8e6;color:#24323e;font:600 15px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.06em}
+.abas button[aria-selected=true],.abas-competicoes button.ativa,.abas-competicoes button.ativa:hover:not(:disabled){background:var(--fx-teal);color:var(--fx-tinta);border-color:transparent}
+.abas-pilula{display:none}
+@media (hover:hover) and (pointer:fine){.abas button:hover:not([aria-selected=true]),.abas-competicoes button:hover:not(.ativa):not(:disabled){background:#eef3f7;color:#15212c}}
+.capa h1{font-family:var(--fx-cond);font-weight:600;text-transform:uppercase;letter-spacing:.01em}
+/* o jogador em destaque na prancheta: o painel nas cores do time, como o desenvolvimento do jogador na sede */
+.cartao-jog{--t1:var(--fx-tinta);--t2:color-mix(in srgb,var(--fx-tinta) 84%,transparent);--t3:color-mix(in srgb,var(--fx-tinta) 66%,transparent);--b1:#ffffff1f;--b2:#ffffff33;
+  background:linear-gradient(160deg,var(--fx-claro),var(--fx-teal) 50%,var(--fx-teal2));border:0;border-radius:2px;color:var(--fx-tinta)}
+.cartao-jog .dest-nota,.cartao-jog .dest-pos,.cartao-jog.ouro .dest-nota,.cartao-jog.prata .dest-nota,.cartao-jog.bronze .dest-nota,.cartao-jog.elite .dest-nota{color:var(--fx-tinta);text-shadow:none;font-family:var(--fx-cond)}
+.cartao-jog .dest-nome strong{font:500 28px/1 var(--fx-cond);letter-spacing:.02em}
+.cartao-jog .dest-foto img{border-radius:0;background:#ffffff26}
+/* as cartinhas escuras (banco e reservas) continuam escuras dentro do painel claro */
+.carta-reserva{--t1:#f4f4f5;--t2:#a1a1aa;--t3:#71717a;--b1:#ffffff0f;--b2:#ffffff1a;--b3:#ffffff2b;--ok:#4ade80;--erro:#f87171;--alerta:#fbbf24;border-radius:2px}
 
 /* ---------- o topo: a placa do clube (inclinada) e a barra dos números ---------- */
 #sede .hub-topo{align-items:flex-start;gap:12px}
@@ -187,4 +229,27 @@ body{--fx-teal:var(--time,#1592a9);--fx-teal2:var(--time-escuro,#0d6f82);--fx-cl
   .int-lances{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){.int-tile{transition:none}.int-tile:hover{transform:none}}
-@media (prefers-reduced-transparency:reduce){#sede .quadro,#sede .tile,.int-tile,.int-placar,.int-lista{background:#e3eaf0;-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-transparency:reduce){.tela .quadro:not(.tv-painel),.tela .tile,.dialogo,#toast,.int-tile,.int-placar,.int-lista{background:#e3eaf0}}
+
+/* ---------- a partida: o placar no jeito da transmissão (os times em placa clara, o marcador na cor do time) ---------- */
+#partida .placar,#pLocal,#partida .controles,#narracao,#aoVivo .av-bloco{
+  --t1:#15212c;--t2:#41505d;--t3:#62717d;--s1:#eef3f7;--s2:#e2e9ef;--s3:#d0dae2;--bg2:#ffffff80;
+  --b1:#15212c17;--b2:#15212c26;--b3:#15212c3d;--ok:#13894a;--erro:#c42b2b;--alerta:#b86a00;--azul:#1e64b4;
+  --acento:var(--fx-teal);--acento-tinta:var(--fx-tinta)}
+#partida .placar{background:var(--fx-painel);border:0;border-radius:3px;box-shadow:var(--fx-sombra);color:var(--t1)}
+#partida .placar b{font:600 clamp(15px,2.4vw,30px)/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.03em}
+#partida .marcador{background:var(--fx-teal);border:0}
+#partida #pGols{font:600 50px/1 var(--fx-cond);letter-spacing:.04em;color:var(--fx-tinta)}
+#partida #pRelogio{background:#15212c;color:#fff;border-radius:2px;font:600 15px var(--fx-cond);letter-spacing:.06em}
+#partida[data-peso] .placar{box-shadow:var(--fx-sombra),0 0 0 2px var(--peso)}
+#partida[data-peso] .marcador{background:var(--peso)}#partida[data-peso] #pGols{color:#14100a}
+#pLocal,#partida .controles{border:0;border-radius:2px;color:var(--t1)}
+#pLocal{background:var(--fx-painel)}
+#partida.clima-dia #pLocal,#partida.clima-noite #pLocal,#partida.clima-chuva #pLocal{color:var(--t1)}
+#partida .controles{background:#d7e0e8e6}
+#partida .controles button{border-radius:1px;color:#24323e;font:600 14px var(--fx-cond);letter-spacing:.05em;text-transform:uppercase}
+#partida .controles button[aria-pressed=true],#partida .controles button:disabled[aria-pressed=true]{background:var(--fx-teal);color:var(--fx-tinta)}
+#narracao li,#aoVivo .av-jogo,#aoVivo .av-gols li,#aoVivo .av-outros summary{border-radius:2px;color:var(--t1)}
+#narracao li.apito{background:#ffffff1a;border-color:#ffffff40;color:#c9d3db}
+#aoVivo .av-bloco h4{font:600 14px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;color:#c9d3db}
+#partida .replays:empty::before{border-radius:2px}

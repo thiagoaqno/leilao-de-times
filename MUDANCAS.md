@@ -1,10 +1,14 @@
-# Carreira: a Sede e o intervalo no jeito da carreira dos jogos de futebol
+# Carreira: o tema da Sede em todas as telas (sai o vidro líquido)
 
-- **Sede nova:** painéis claros e retos por cima do estádio, com os destaques (a aba escolhida, o dia do jogo, o botão de jogar, o painel do jogador e os ícones) na cor do seu clube, títulos em letra condensada e caixa alta. No topo, a placa do clube (inclinada) e a barra com posição, meta, rodada, caixa, moral e diretoria. Embaixo, três abas: **Central** (o que se usa toda rodada), **Meu time** (o painel do time, as finanças e a caixa de entrada) e **Temporada** (a tabela, as finanças, o último jogo e o histórico). A aba escolhida fica guardada no aparelho (`carreira:aba`).
-- **Avançar:** o cartão do próximo jogo ganhou a faixa dos compromissos, um quadradinho por jogo (o último, com o resultado, e os próximos, com o escudo do adversário, a semana, a competição e se é em casa). O próximo jogo fica na cor do clube, ou na cor do jogo grande (clássico, decisivo ou final), e o botão de jogar também.
-- **Desenvolvimento do jogador:** um painel na cor do clube com um jogador do elenco por vez (as setas passam; os que mais evoluíram na carreira aparecem primeiro): a foto, a nota com quanto subiu ou caiu, a posição, a idade, os gols, o valor estimado, a energia e os seis atributos. Tocar no jogador abre a ficha.
-- **Intervalo novo:** a parada do intervalo abre num menu, como nos jogos de futebol: o placar com os escudos e os números do 1º tempo (gols, finalizações, no gol, domínio, ataques, faltas, cartões e pontaria) e blocos grandes para **Tática**, **Substituições** e **Formação** (levam à prancheta de sempre, com "← Intervalo" para voltar), **Lances do 1º tempo** (a lista dos lances e o replay de cada gol, de novo) e **Voltar ao jogo**. As outras paradas (gol sofrido, 70 minutos, expulsão) continuam abrindo direto na prancheta. Os números vêm do motor, que agora manda `estatisticas` em cada parada tática.
+- **Todas as telas da carreira** ganharam o visual da Sede e do intervalo: painéis claros e retos por cima do estádio, títulos em letra condensada e caixa alta, e os destaques na cor do seu clube. Vale para a entrada (escolha do clube), Elenco e tática, Mercado, Tabela, Calendário, Clube, Estante, Trocas, Notícias e a sala em grupo.
+- **Sai o vidro líquido:** as manchas coloridas atrás de tudo e o desfoque dos painéis saíram. Os painéis agora são sólidos (também fica mais leve para o celular).
+- **Abas e controles:** as abas das competições, do Clube e das temporadas, e os botões de escolha (formação, mentalidade, filtros...) viraram a mesma faixa reta da Sede, com o escolhido na cor do clube. O botão principal de cada tela também fica na cor do clube.
+- **Prancheta:** o jogador em destaque aparece num painel na cor do clube, como o "Desenvolvimento do jogador" da Sede. As cartinhas do banco continuam escuras.
+- **Partida:** o placar virou o da transmissão, com os nomes dos times em placas claras e o marcador na cor do clube (ou na cor do jogo grande, no clássico, no decisivo e na final). A narração, os jogos da rodada e os gols ao vivo ficam em placas claras.
+- **Diálogos:** a ficha do jogador, o pós-jogo, as paradas táticas, os pênaltis e os pop-ups (antes do jogo, reunião com a diretoria, troca) usam o mesmo painel claro, com o título em caixa alta.
 
-A cor do clube sai de `temaClube` (`--time`, `--time2`, `--time-tinta`, `--time-escuro`, `--time-claro`): a cor colorida do clube, ou a mais escura das duas quando o clube é preto e branco, com o texto branco ou preto conforme o contraste.
+## Como
 
-Conferido: fotos da Sede (as três abas) e do intervalo (menu, prancheta e lances) no PC e no celular (Flamengo, Palmeiras, Corinthians e Dortmund, para ver as cores), os testes do motor, da rodada e da sala, e o E2E da carreira (que passa pelo menu do intervalo).
+- `public/carreira/hub.css`: os tokens claros passam a valer em `.tela .quadro`, `.dialogo`, no aviso (`#toast`), no caixa, nas abas e na partida; novos blocos para os títulos das telas, as abas, os botões, o destaque da prancheta e o placar da partida.
+- `public/carreira/estilo.css`: o bloco do tema vidro líquido foi removido.
+- `CLAUDE.md`: o mapa aponta o tema para o `hub.css`.
