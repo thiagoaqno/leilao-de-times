@@ -280,16 +280,16 @@ test("técnico: com reputação alta aparece o convite de um clube grande, com d
   v.gestao.reputacao = 10; assert.strictEqual(dilema(v, "convite-clube-grande"), null, "sem fama não há convite");
 });
 
-test("rivais: o clássico da liga é sempre o mesmo e rende mais bilheteria, moral e confiança", () => {
+test("rivais: o clássico de verdade é sempre o mesmo e rende mais bilheteria, moral e confiança", () => {
   const v = nova("palmeiras"), rival = Clube.rivaisDe(v, ajudas)[0];
-  assert.ok(rival && rival !== "palmeiras");
+  assert.strictEqual(rival, "corinthians", "o maior clássico vem primeiro (o Derby Paulista)");
   assert.strictEqual(Clube.rivaisDe(nova("palmeiras"), ajudas)[0], rival, "sempre o mesmo rival");
   assert.ok(Clube.classicoCom(v, ajudas, rival));
   const moral = v.moral;
   Clube.aposJogo(v, ajudas, { nos: 2, eles: 0, emCasa: true, adv: rival });
   const sem = nova("palmeiras"); sem.moral = moral; Clube.aposJogo(sem, ajudas, { nos: 2, eles: 0, emCasa: true, adv: null });
   assert.ok(v.moral > sem.moral, "vencer o clássico anima mais");
-  assert.ok(v.feed.some((p) => /CLÁSSICO/.test(p.texto)));
+  assert.ok(v.feed.some((p) => /DERBY PAULISTA/.test(p.texto)), "a notícia leva o nome do clássico");
 });
 
 test("rivais na sala: o confronto direto fica registrado, com freguês, provocação no feed e placar dos dois lados", () => {

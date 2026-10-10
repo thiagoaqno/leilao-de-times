@@ -39,6 +39,8 @@ require("./futevolei.js")(io); // Futevôlei da Galera: futevôlei 3D na areia, 
 require("./proibida.js")(io); // Palavra Proibida da Galera: explicar palavras em dois times, canal /proibida
 require("./rumi.js")(io); // Rumi da Galera: o jogo de peças numeradas clássico, 2 a 4 com robôs, canal /rumi
 app.use(express.static(path.join(__dirname, "public")));
+// a estante de troféus da Carreira (todas as carreiras, solo e em grupo): o ranking dos técnicos e as últimas conquistas
+app.get("/api/estante", (req, res) => { try { res.json(require("./bd.js").estante()); } catch (e) { res.status(500).json({ erro: "A estante não abriu." }); } });
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
 app.get("/uno", (req, res) => res.redirect("/uno/"));

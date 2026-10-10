@@ -103,6 +103,29 @@ function temaClube(id) {
 // o escudo gigante do clube atrás de tudo (a marca d'água)
 const marcaClube = (id) => { const m = $("marcaClube"); if (m && m.dataset.clube !== (id || "")) { m.dataset.clube = id || ""; m.innerHTML = id ? escudo(id, 28) : ""; } };
 const coresClube = (id) => (CLUBES[id] ? `--clube:${CLUBES[id].cores[0]};--clube2:${CLUBES[id].cores[1]};--clube-tinta:${tintaSobre(CLUBES[id].cores[0], CLUBES[id].cores[1])}` : "");
+// o peso do jogo (rivais.js): a final, a semifinal, o jogo que pode decidir a liga, o clássico de verdade e o duelo entre
+// técnicos da sala (sempre clássico). Devolve null num jogo comum. O jogo do título só se calcula para o seu clube.
+function pesoDe(j) {
+  if (!j || !window.Rivais) return null;
+  const comp = E && E.competicoes && E.competicoes[j.competicao];
+  const humanos = EM_GRUPO && typeof SALA !== "undefined" && SALA ? SALA.players.map((p) => p.clube).filter(Boolean) : [];
+  let titulo = false;
+  if (E && comp && comp.tipo === "liga" && comp.tabela && (j.casa === E.clube || j.fora === E.clube)) {
+    const restam = (E.meus || []).filter((x) => x.competicao === j.competicao && !x.placar).length;
+    titulo = Rivais.decideTitulo(comp.tabela, E.clube, restam);
+  }
+  return Rivais.pesoDoJogo({ ...j, nomeComp: comp ? comp.nome : (Temporada.NOMES[j.competicao] || "") }, { humanos, titulo });
+}
+const ICONE_PESO = { final: "taca", decisivo: "coroa", classico: "fogo" };
+// a faixa do jogo grande: o título (Clássico, Final, Jogo do título), o nome (Fla-Flu, Libertadores) e os outros selos,
+// com a faixa de torcida nas cores dos dois clubes
+function faixaPesoHTML(p, casa, fora) {
+  if (!p) return "";
+  const cor = (id, i) => (CLUBES[id] ? CLUBES[id].cores[i] || CLUBES[id].cores[0] : "#888");
+  return `<div class="peso-jogo peso-${p.tema}" style="--pa:${cor(casa, 0)};--pb:${cor(fora, 0)}"><i class="peso-torcida" aria-hidden="true"></i>
+    <span class="peso-ic">${ic(ICONE_PESO[p.tema])}</span><span class="peso-txt"><small>${h(p.titulo)}</small><b>${h(p.nome || p.titulo)}</b></span>
+    ${p.selos.length ? `<span class="peso-selos">${p.selos.map((x) => `<em>${h(x)}</em>`).join("")}</span>` : ""}</div>`;
+}
 // a festa (gol seu, contratação): confete nas cores do clube; quem pede menos movimento fica sem
 const festa = () => { if (matchMedia("(prefers-reduced-motion: reduce)").matches || !E) return; const c = CLUBES[E.clube]; Comum.confetti([c.cores[0], c.cores[1], "#ffb21e", "#e8efe7"]); };
 const estrelas = (n) => Array.from({ length: 5 }, (_, i) => `<i class="${i < n ? "acesa" : ""}">${ic("estrela")}</i>`).join("");
@@ -165,6 +188,7 @@ function telaInicio() {
   desenharTemporadas();
   desenharDinheiro();
   mostrarTela("inicio");
+  if (typeof estanteNoInicio === "function") estanteNoInicio(); // temporadas.js: o top 5 da estante da galera
 }
 function desenharClubes() {
   const orc = (c) => ({ ...Orcamentos.de(c), caixa: caixaDoClube(c), situacao: dinheiroIgual > 0 ? "equilibrado" : Orcamentos.de(c).situacao });
