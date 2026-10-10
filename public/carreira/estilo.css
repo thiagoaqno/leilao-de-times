@@ -351,8 +351,9 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 .figurinha.ouro{--tinta-carta:#2a1c02;--fundo-carta:linear-gradient(155deg,var(--ouro1) 0%,var(--ouro2) 38%,#fbe39a 56%,var(--ouro3) 100%);--borda-carta:#fff1b8}
 .figurinha.elite{--tinta-carta:#241500;--borda-carta:#fff3c4;
   background:linear-gradient(115deg,#8a5a0c 0%,#d9a43a 16%,#fff2bf 30%,#e2ad44 44%,#fff8d9 52%,#c48a22 66%,#ffe18a 82%,#8a5a0c 100%);background-size:260% 260%;
-  animation:elite-brilho 7s linear infinite;box-shadow:0 0 0 1px #fff3c4 inset,0 0 0 1px #ffd76a,0 0 26px -6px #ffc94a,0 14px 30px -12px #000}
-.figurinha.elite::before{content:"";position:absolute;inset:-40%;z-index:1;pointer-events:none;background:linear-gradient(115deg,transparent 42%,#ffffffb0 50%,transparent 58%);transform:translateX(-60%);animation:elite-varre 3.6s var(--ease-io) infinite}
+  box-shadow:0 0 0 1px #fff3c4 inset,0 0 0 1px #ffd76a,0 0 26px -6px #ffc94a,0 14px 30px -12px #000}
+.figurinha.elite::before{content:"";position:absolute;inset:-40%;z-index:1;pointer-events:none;background:linear-gradient(115deg,transparent 42%,#ffffffb0 50%,transparent 58%);transform:translateX(-60%);opacity:0;transition:opacity 200ms ease,transform 240ms var(--ease)}
+@media (hover:hover) and (pointer:fine){.figurinha.elite:hover::before{opacity:1;transform:translateX(0)}}
 .figurinha header{position:relative;z-index:3;display:flex;align-items:center;gap:6px;padding:8px 9px 0}
 .figurinha .nota{font:700 24px/1 var(--fonte);letter-spacing:-.05em;font-variant-numeric:tabular-nums}
 .figurinha .pos{font:600 11px/1 var(--mono);letter-spacing:.04em;opacity:.7}
@@ -452,8 +453,7 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
   background:color-mix(in srgb,var(--s1) 86%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .faixa{margin:0;display:flex;flex-direction:column;gap:4px;font-size:12px}.faixa b{color:var(--t1);font:500 12px var(--mono)}
 .lista-mercado{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:14px}
-.lista-mercado>.figurinha{animation:carta-entra .45s var(--ease) both}
-.lista-mercado>.figurinha:nth-child(-n+24){animation-delay:calc(var(--n,0) * 1ms)}
+.lista-mercado>.figurinha{animation:none}
 .lista-mercado .vazio,.lista-mercado .cheio{grid-column:1/-1}
 .movimentos{grid-column:1/-1;list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .movimentos li{display:grid;grid-template-columns:36px 1fr auto auto;gap:12px;align-items:center;padding:8px 12px;border-radius:var(--r2);background:var(--s1);border:1px solid var(--b1);animation:sobe .35s var(--ease) both}
@@ -747,8 +747,6 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 @keyframes martelo-bate{0%{transform:rotate(-40deg)}55%{transform:rotate(12deg) scale(1.1)}100%{transform:none}}
 @keyframes gaveta{from{transform:translate(-50%,120%)}}
 @keyframes varre{to{transform:translateX(100%)}}
-@keyframes elite-brilho{0%{background-position:0% 50%}100%{background-position:260% 50%}}
-@keyframes elite-varre{0%,55%{transform:translateX(-60%)}100%{transform:translateX(60%)}}
 @keyframes ouro-corre{to{background-position:-200% 0}}
 @keyframes cai{to{transform:translateY(110vh) rotate(540deg)}}
 @keyframes fala-jogador{0%{opacity:0;transform:translate(-50%,-85%) scale(.8)}12%,78%{opacity:1;transform:translate(-50%,-100%) scale(1)}100%{opacity:0;transform:translate(-50%,-110%) scale(.96)}}

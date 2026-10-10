@@ -114,8 +114,8 @@
     return Math.round(clamp(1 - pontosDeEncaixe(a, b) / 80, 0.6, 1) * 1000) / 1000;
   }
 
-  // O cansaço tira de 0 a 3 pontos da nota: 85% ou mais de energia não pesa; de 70 a 84, -1; de 50 a 69, -2; abaixo de 50, -3
-  const penalidadeEnergia = (e) => (e >= 85 ? 0 : e >= 70 ? 1 : e >= 50 ? 2 : 3);
+  // A queda de over depende dos jogos seguidos, e uma partida de descanso zera a sequência.
+  const penalidadeSequencia = (n) => (n >= 7 ? 3 : n >= 5 ? 2 : n >= 3 ? 1 : 0);
 
   // ---------- os estilos de jogo ----------
   // bonus: o que o estilo dá quando o elenco tem o perfil (multiplicado pelo encaixe f, de 0 a 1,5); custo: o que ele cobra sempre.
@@ -180,5 +180,5 @@
       faltas: pc((1 + 0.15 * (p - 1)) * fat.faltas),
     };
   }
-  return { pontosDeEncaixe: (pos, vaga) => { const a = posDe(pos), b = posDe(vaga); return a === b ? 0 : a === "GOL" || b === "GOL" ? 40 : pontosDeEncaixe(a, b); }, penalidadeEnergia, FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
+  return { pontosDeEncaixe: (pos, vaga) => { const a = posDe(pos), b = posDe(vaga); return a === b ? 0 : a === "GOL" || b === "GOL" ? 40 : pontosDeEncaixe(a, b); }, penalidadeSequencia, FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
 });

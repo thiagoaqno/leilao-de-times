@@ -119,13 +119,15 @@ test("equilíbrio dos estilos: com o perfil certo ajudam um pouco, com o perfil 
   }
 });
 
-test("o cansaço vem do jogo anterior: quem chega cansado rende menos, e o motor devolve a energia do fim do jogo", () => {
+test("o motor preserva a energia entre jogos e a sequência afeta o rendimento", () => {
   const fresco = time("a"), cansado = { ...time("a"), energia: Object.fromEntries(POSICOES.map((_, i) => [`a${i}`, 40])) };
   const r = Motor.simularPartida({ casa: cansado, fora: time("b"), semente: "e0" });
   assert.ok(r.energia.a1 < 40 + 1 && r.energia.a1 >= 20 && r.energia.b1 < 100, "o fim do jogo gasta mais energia");
   assert.ok(Object.keys(r.energia).length === 28, "a energia de todos os jogadores dos dois times");
+  assert.ok(r.jogaram.a.length >= 11 && r.jogaram.a.length <= 14 && new Set(r.jogaram.a).size === r.jogaram.a.length, "o motor informa quem entrou em campo");
   const ppj = (casa) => { let p = 0; for (let k = 0; k < 800; k++) for (const inv of [false, true]) { const x = Motor.simularPartida({ casa: inv ? time("b") : casa, fora: inv ? casa : time("b"), semente: `c${k}` }), [g, s] = inv ? [x.placar[1], x.placar[0]] : x.placar; p += g > s ? 3 : g === s ? 1 : 0; } return p / 1600; };
-  assert.ok(ppj(fresco) > ppj(cansado) + 0.12, "o time cansado rende bem menos");
+  const sequencia = { ...cansado, sequencia: Object.fromEntries(POSICOES.map((_, i) => [`a${i}`, 7])) };
+  assert.ok(ppj(fresco) > ppj(sequencia), "a sequência longa reduz o rendimento");
 });
 
 test("na carreira, repetir os mesmos 11 derruba a energia e o banco descansa; as férias devolvem tudo", () => {
@@ -149,9 +151,22 @@ test("na carreira, repetir os mesmos 11 derruba a energia e o banco descansa; as
   assert.ok(Math.min(...onze.map((id) => e[id])) >= 20, "o piso é 20%");
 });
 
-test("o cansaço tira de 0 a 3 pontos da nota", () => {
-  const p = Taticas.penalidadeEnergia;
-  assert.deepStrictEqual([100, 85, 84, 70, 69, 50, 49, 20].map(p), [0, 0, 1, 1, 2, 2, 3, 3]);
+test("o over cai em 3, 5 e 7 jogos seguidos", () => {
+  const p = Taticas.penalidadeSequencia;
+  assert.deepStrictEqual([0, 1, 2, 3, 4, 5, 6, 7, 8].map(p), [0, 0, 0, 1, 1, 2, 2, 3, 3]);
+});
+
+test("um jogo no banco recupera 80 pontos e zera a sequência", () => {
+  const { aplicarFadiga, timeDe } = require("../carreira.js").paraTestes;
+  const save = novaCarreira("Descanso", "flamengo", "x");
+  const pid = timeDe(save, save.clube).jogadores[0].id;
+  save.energia = { [pid]: 5 };
+  save.sequencia = { [pid]: 7 };
+  aplicarFadiga(save, { jogaram: { [save.clube]: [] }, energia: { [pid]: 13 } });
+  assert.ok(save.energia[pid] >= 85, "a recuperação usa a energia anterior ao jogo, não o intervalo da partida");
+  assert.strictEqual(save.sequencia[pid], 0);
+  aplicarFadiga(save, { jogaram: { [save.clube]: [pid] }, energia: { [pid]: 25 } });
+  assert.strictEqual(save.sequencia[pid], 1);
 });
 
 test("o campinho desenha a variação: volante recuado, meia avançado, falso 9 atrás e alas na linha", () => {

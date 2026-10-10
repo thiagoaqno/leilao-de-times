@@ -55,7 +55,7 @@
   }
   // o rendimento na vaga: a nota, o encaixe da posicao dele na vaga fina (lateral na zaga, ponta de centroavante...) e o cansaco
   const slotPadrao = (slot) => ({ GK: "GOL", DEF: "ZAG", MID: "MC", ATT: "ATA" })[slot] || "MC";
-  const valorNa = (p, slot, fino) => (p.nota - Taticas.penalidadeEnergia(p.energia)) * Taticas.afinidade(p.pos, fino || slotPadrao(slot));
+  const valorNa = (p, slot, fino) => (p.nota - Taticas.penalidadeSequencia(p.seguidos || 0)) * Taticas.afinidade(p.pos, fino || slotPadrao(slot));
   // escala o time: as vagas da formação, cada uma com quem rende mais nela (os escolhidos primeiro, se houver)
   // as vagas da formação, na ordem do campinho: o goleiro, a defesa, o meio e o ataque
   const vagasDe = (formacao) => Taticas.vagasDe(formacao).map((v) => v.g);
@@ -86,6 +86,7 @@
     const jogadores = (t.jogadores || []).map(prepararJogador);
     // a energia com que cada um chega ao jogo: a que sobrou dos jogos anteriores (t.energia = { id: 0 a 100 }); sem registro, 100
     if (t.energia) for (const p of jogadores) if (t.energia[p.id] != null) p.energia = clamp(Number(t.energia[p.id]) || 0, 20, 100);
+    if (t.sequencia) for (const p of jogadores) p.seguidos = t.sequencia[p.id] || 0;
     const energiaInicial = jogadores.length ? jogadores.reduce((s, p) => s + p.energia, 0) / jogadores.length : 100;
     const formacao = Taticas.FORMACOES[t.formacao] ? t.formacao : "4-3-3";
     const estilo = Taticas.estiloValido(t.tatica && t.tatica.estilo);
@@ -94,13 +95,14 @@
     // estilo "auto" (o computador): o que mais combina com o elenco que vai a campo
     if (t.tatica && t.tatica.estilo === "auto") time.tatica.estilo = Taticas.estiloIdeal(time.campo.filter((v) => v.p).map((v) => ({ grp: v.p.grp, atr: v.p.atr })));
     time.emCampo = new Set(time.campo.filter((v) => v.p).map((v) => v.p.id));
+    for (const p of jogadores) p.jogou = time.emCampo.has(p.id);
     recalcular(time);
     return time;
   }
   function recalcular(time) {
     // cada titular leva o encaixe da vaga em que esta (p.fit) e o grupo em que atua (p.efGrp)
     for (const v of time.campo) if (v.p) {
-      v.p.fit = Taticas.afinidade(v.p.pos, v.fino) * ((v.p.nota - Taticas.penalidadeEnergia(v.p.energia)) / v.p.nota); // os atributos também sentem o cansaço
+      v.p.fit = Taticas.afinidade(v.p.pos, v.fino) * ((v.p.nota - Taticas.penalidadeSequencia(v.p.seguidos || 0)) / v.p.nota);
       v.p.efGrp = v.slot === "DEF" ? "DEF" : v.slot === "ATT" ? "ATT" : v.slot === "GK" ? "GK" : ["MEI", "VOL", "MID"].includes(v.p.grp) ? v.p.grp : "MID";
     }
     const xi = time.campo.map((v) => ({ slot: v.slot, eff: v.p && !v.p.fora ? valorNa(v.p, v.slot, v.fino) : 0, cm: 1 }));
@@ -236,7 +238,7 @@
         } else if (tipo === "e") {
           const entra = banco(time).find((p) => p.id === pid);
           if (!entra || time.subs <= 0 || entra.grp === "GK") continue;
-          alvo.p = entra; time.emCampo.add(entra.id); time.subs--; ev({ tipo: "entrada", lado: time.lado, jogador: pid, fino: alvo.fino });
+          alvo.p = entra; time.emCampo.add(entra.id); entra.jogou = true; time.subs--; ev({ tipo: "entrada", lado: time.lado, jogador: pid, fino: alvo.fino });
         }
       } };
       ocupar(d.ocupar); // as vagas abertas que ele ocupou antes de mudar a formação (os números das vagas são os da formação de antes)
@@ -263,7 +265,7 @@
       const vaga = time.campo.find((v) => v.p && v.p.id === saiId && !v.p.fora);
       const entra = banco(time).find((p) => p.id === entraId);
       if (!vaga || !entra) return false;
-      vaga.p.saiu = true; time.emCampo.delete(saiId); time.emCampo.add(entra.id); vaga.p = entra; time.subs--;
+      vaga.p.saiu = true; time.emCampo.delete(saiId); time.emCampo.add(entra.id); entra.jogou = true; vaga.p = entra; time.subs--;
       ev({ tipo: "sub", lado: time.lado, sai: saiId, entra: entra.id });
       recalcular(time);
       return true;
@@ -393,7 +395,7 @@
       ev({ tipo: "vermelho", lado: time.lado, jogador: p.id, como });
       if (p.grp === "GK" || time.campo[0].p === p) { // sem goleiro: entra o reserva no lugar de um da linha, ou um da linha vai para o gol
         const reserva = banco(time).find((x) => x.grp === "GK"), sacrificado = titulares(time).filter((x) => x.grp !== "GK").sort((a, b) => a.nota - b.nota)[0];
-        if (reserva && sacrificado && time.subs > 0) { const v = time.campo.find((x) => x.p === sacrificado); v.p = null; time.campo[0].p = reserva; time.emCampo.delete(sacrificado.id); sacrificado.saiu = true; time.emCampo.add(reserva.id); time.subs--; ev({ tipo: "sub", lado: time.lado, sai: sacrificado.id, entra: reserva.id }); }
+        if (reserva && sacrificado && time.subs > 0) { const v = time.campo.find((x) => x.p === sacrificado); v.p = null; time.campo[0].p = reserva; time.emCampo.delete(sacrificado.id); sacrificado.saiu = true; time.emCampo.add(reserva.id); reserva.jogou = true; time.subs--; ev({ tipo: "sub", lado: time.lado, sai: sacrificado.id, entra: reserva.id }); }
         else if (sacrificado) { const v = time.campo.find((x) => x.p === sacrificado); v.p = null; time.campo[0].p = sacrificado; }
       }
       recalcular(time);
@@ -503,6 +505,7 @@
       placar, eventos, parado, completo: !parado, estatisticas: est, ...(penaltis && { penaltis }),
       // a energia de cada jogador no fim (quem ficou no banco guarda a que tinha): o que o jogo seguinte herda
       energia: Object.fromEntries(times.flatMap((tm) => tm.jogadores.map((p) => [p.id, Math.round(p.energia)]))),
+      jogaram: Object.fromEntries(times.map((tm) => [tm.id, tm.jogadores.filter((p) => p.jogou).map((p) => p.id)])),
       times: times.map((t) => ({ id: t.id, nome: t.nome, formacao: t.formacao, tatica: { ...t.tatica }, titulares: titulares(t).map((p) => p.id), subs: t.subs })),
     };
   }
