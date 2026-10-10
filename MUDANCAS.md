@@ -1,9 +1,7 @@
-# Carreira: as notícias da Sede inteiras na tela, sem rolar
+# Carreira: a estante conta o Mundial e o Super Mundial, e o Mundial sai do jogo
 
-Antes: na Sede, cada notícia era mais alta que a caixa. A legenda e os comentários ficavam embaixo da arte e só apareciam rolando, mas a rolagem pulava direto para a próxima notícia, então o texto quase nunca dava para ler.
+- **Por que o título não entrava na estante:** na sala, o arquivo da temporada nasce quando o primeiro técnico termina o calendário dele. Quem não joga as copas do fim do ano (Super Mundial e Mundial) termina antes delas, e o arquivo era feito sem essas competições; a estante lia esse arquivo, então o Super Mundial e o Mundial de quem joga depois nunca chegavam.
+- **O conserto:** a estante agora lê o histórico de cada técnico (`save.historico`), escrito quando o calendário DELE acaba, depois do último jogo. Ao abrir a carreira (`completar`), as conquistas das temporadas antigas que ficaram de fora entram na estante, sem repetir. O histórico passa a guardar o clube da temporada. O arquivo da temporada (a tela Estante) também é refeito quando outro técnico termina depois e quando a temporada nova começa, com as competições que acabaram desde então.
+- **Sem o Mundial:** as carreiras novas e todas as temporadas a partir da próxima virada ficam só com o Super Mundial (`save.semMundial`, `simularMundo({ semMundial })`). A temporada que já está rolando com o Mundial continua com ele até a virada, para não sumir com título ou jogo já disputado.
 
-Depois: cada notícia aparece inteira na caixa, com a arte, as curtidas, a legenda e os dois primeiros comentários de uma vez, sem precisar rolar. A troca de notícia virou explícita: setas de anterior e próxima, os pontinhos (que agora são clicáveis), as teclas ← → com a caixa em foco e o arrastar para o lado no celular. A roda do mouse não troca mais de notícia. Continua passando sozinha a cada 10 segundos, segurando quando a pessoa mexe; com "menos movimento" no sistema, só troca na mão.
-
-Como: `feedNaSede` (`public/carreira/feed.js`) empilha os posts no mesmo lugar e mostra só o da vez (`.post.atual`, os outros ficam `inert`); a arte encolhe para caber (`flex` com `object-fit: contain`), a legenda corta em 4 linhas e os comentários em 2. A tela "Ver todas" não mudou. No celular, os pontinhos viram "2 de 7".
-
-Conferido: o E2E da carreira (`tests/e2e/carreira.spec.js`) agora confere que a legenda cabe na caixa e que a seta troca de notícia, e fotos da Sede no PC (1440x900) e no celular (390x844).
+Conferido: `tests/carreira-rivais.test.js` (Mundial e Super Mundial de uma temporada antiga entram na estante uma vez só, a carreira nova sem o Mundial, a temporada antiga ainda com ele e o arquivo refeito com o Super Mundial) e `npm test`.

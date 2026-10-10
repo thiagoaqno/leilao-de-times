@@ -185,7 +185,7 @@ function telaInicio() {
   document.body.style.cssText = clubeEscolhido ? `${coresClube(clubeEscolhido)};${temaClube(clubeEscolhido)}` : "";
   marcaClube(clubeEscolhido);
   if (!$("cNome").value) $("cNome").value = store.get("galera:name") || ""; // não apaga o que a pessoa já digitou
-  $("avisoBase").innerHTML = `${ic("livro")} ${h(BASE.nome)} ${BASE.ano}: Brasileirão e cinco grandes ligas, com Libertadores, Champions e Mundial.`;
+  $("avisoBase").innerHTML = `${ic("livro")} ${h(BASE.nome)} ${BASE.ano}: Brasileirão e cinco grandes ligas, com Libertadores, Champions, Copa do Brasil, Sul-Americana e Super Mundial.`;
   $("avisoBase").classList.remove("hidden");
   // cada clube com o orçamento e a situação (orcamentos.js): do rico ao pequeno
   desenharClubes();

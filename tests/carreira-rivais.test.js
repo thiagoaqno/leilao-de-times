@@ -97,3 +97,38 @@ test("estante: a temporada que acaba manda os títulos e os vices do técnico pa
   assert.strictEqual(linhas.length, minhas);
   for (const l of linhas) assert.strictEqual(l.chave, "ze estante");
 });
+
+test("estante: as conquistas vêm do histórico do técnico, inclusive Mundial e Super Mundial de temporadas antigas", () => {
+  bd.fechar(); bd.abrir(":memory:");
+  const save = completar(novaCarreira("Vascaíno", "vasco", "", 3));
+  save.historico.push({ ano: 2026, temporada: 1, posicao: 3, titulos: ["Mundial de Clubes", "Super Mundial de Clubes"], vices: ["Copa do Brasil"] });
+  completar(save);
+  const linhas = bd.abrir().prepare("SELECT competicao, colocacao, clube, tecnico FROM estante WHERE carreira = ? ORDER BY competicao").all(save.semente);
+  assert.deepStrictEqual(linhas.map((l) => [l.competicao, l.colocacao]), [["copadobrasil", 2], ["mundial", 1], ["supermundial", 1]]);
+  assert.ok(linhas.every((l) => l.clube === "vasco" && l.tecnico === "Vascaíno"));
+  completar(save);
+  assert.strictEqual(bd.estante().total, 2, "não entra duas vezes");
+});
+
+test("Mundial: a carreira nova só tem o Super Mundial; a temporada que já tinha o Mundial segue com ele até a virada", () => {
+  const nova = completar(novaCarreira("Teste", "flamengo", "", 2));
+  assert.ok(nova.semMundial && nova.competicoes.supermundial && !nova.competicoes.mundial);
+  assert.ok(!nova.calendarioMundo.some((j) => j.competicao === "mundial"));
+  const Temporada = require("../public/carreira/temporada.js"), indice = require("../public/carreira/base/mundo-2026.js");
+  const bases = Object.fromEntries(LIGAS.map((l) => { const b = require(`../public/carreira/base/${l}-2026.js`); return [b.id, b]; }));
+  assert.ok(Temporada.simularMundo({ bases, indice, semente: "x", copasNovas: true }).competicoes.mundial, "sem semMundial (os saves do meio da temporada) o Mundial continua");
+  assert.ok(!Temporada.simularMundo({ bases, indice, semente: "x", copasNovas: true, semMundial: true }).competicoes.mundial);
+});
+
+test("arquivo: a temporada arquivada antes das copas do fim do ano é refeita com elas", () => {
+  const { novaTemporada, estado } = Carreira.paraTestes;
+  const Temporada = require("../public/carreira/temporada.js");
+  const save = novaCarreira("Teste", "flamengo", "x", 2);
+  save.jogosJogados = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, save.clube).map((j) => j.id); save.rodada = save.jogosJogados.length;
+  estado(save);
+  delete save.arquivo[0].competicoes.supermundial; // como na sala: o primeiro técnico que terminou arquivou antes do Super Mundial
+  novaTemporada(save);
+  const a = save.arquivo.find((x) => x.temporada === 1);
+  assert.ok(a.competicoes.supermundial && a.competicoes.supermundial.campeao, "o Super Mundial voltou para o arquivo");
+  assert.strictEqual(save.arquivo.filter((x) => x.temporada === 1).length, 1);
+});
