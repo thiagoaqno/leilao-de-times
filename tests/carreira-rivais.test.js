@@ -110,6 +110,17 @@ test("estante: as conquistas vêm do histórico do técnico, inclusive Mundial e
   assert.strictEqual(bd.estante().total, 2, "não entra duas vezes");
 });
 
+test("estante: a sala carregada do banco manda as conquistas dos técnicos, sem ninguém mexer nela", () => {
+  bd.fechar(); bd.abrir(":memory:");
+  const save = G.novaCarreiraGrupo([{ clube: "vasco", nome: "Thiago" }, { clube: "flamengo", nome: "Ana" }], { temporadas: 2, aporte: 0 });
+  save.humanos.vasco.estado.historico = [{ ano: 2026, temporada: 1, clube: "vasco", posicao: 2, titulos: ["Mundial de Clubes", "Super Mundial de Clubes"], vices: [] }];
+  bd.salvarSalaCarreira("VASCO", { code: "VASCO", fase: "carreira", save, players: {}, order: [] });
+  const ligar = require("../carreira-online.js"), io = { of: () => ({ on() {}, to: () => ({ emit() {} }), sockets: new Map() }) };
+  ligar(io);
+  const linhas = bd.abrir().prepare("SELECT competicao, clube, tecnico, modo FROM estante WHERE carreira = ? ORDER BY competicao").all(save.semente);
+  assert.deepStrictEqual(linhas.map((l) => [l.competicao, l.clube, l.tecnico, l.modo]), [["mundial", "vasco", "Thiago", "grupo"], ["supermundial", "vasco", "Thiago", "grupo"]]);
+});
+
 test("Mundial: a carreira nova só tem o Super Mundial; a temporada que já tinha o Mundial segue com ele até a virada", () => {
   const nova = completar(novaCarreira("Teste", "flamengo", "", 2));
   assert.ok(nova.semMundial && nova.competicoes.supermundial && !nova.competicoes.mundial);
