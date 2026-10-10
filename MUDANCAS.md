@@ -1,7 +1,14 @@
-# Prancheta no estilo EA FC, 100 eventos novos, notícias em formato Instagram
+# Carreira: conserta o que o PR #133 quebrou na interface
 
-- **Prancheta (Elenco e parada tática):** gramado em perspectiva, camisas em SVG nas cores do clube, cartão de destaque com o gráfico de atributos e banco de reservas em cartões.
-- **100 eventos aleatórios novos** (`carreira-catalogo-novos.js`, somados ao catálogo: agora são mais de 300). Todos mexem no jogo: moral, caixa, nota do time, do jogador ou do adversário, lesões, salários e evolução. Alguns só saem na situação certa (em casa, fora, janela de transferências, sequência de derrotas ou vitórias).
-- **Festa do campeão antes da hora (corrigido):** uma competição que terminava numa semana sem jogo do técnico já abria a festa na rodada anterior. Agora (`estadoMundo`) a festa só sai quando o último jogo da competição ficou para trás da semana do técnico. Teste: `tests/carreira-festa-sem-spoiler.test.js`.
-- **Notícias na Sede em formato Instagram:** o post inteiro (arte, curtir, legenda, comentários) direto na Sede, uma coluna que rola sozinha para o próximo a cada 10 segundos (para quando o mouse ou o dedo estão nela; sem a rolagem sozinha com "menos movimento").
-- **Notícias com os escudos novos:** a arte das notícias usa os mesmos escudos do resto da carreira (os desenhados à mão e, quando o navegador deixa, os da API) em vez do brasão em pixel de antes, num canvas 4 vezes maior para ficarem nítidos.
+O PR #133 entrou no `main` sem a correção do CSS (ela ficou só na branch). Este PR traz essa correção e o resto do que a revisão encontrou.
+
+- **CSS quebrado:** sobrou uma linha solta de uma regra apagada (uma chave `}` a mais), e o navegador ignorava várias regras seguintes.
+- **Card "Próxima partida" da Sede desmontado** (escudos sobrepostos, botão espremido): a classe nova `.destaque` do cartão do jogador já era usada por esse card. Virou `.cartao-jog`.
+- **Foto do elenco na festa do campeão:** a classe nova `.reserva` (cartão do banco) colidia com a dos reservas da foto. Virou `.carta-reserva` (e `.ponto` virou `.ponto-pos`).
+- **Caixa escura atrás da camisa** ao passar o mouse num jogador do campinho (a regra geral de botão ganhava).
+- **Improvisado e selecionado** ficavam com a mesma etiqueta amarela: o improvisado agora só tem o contorno.
+- **Parada tática:** a janela rolava sozinha e escondia o título ("Intervalo", "Tomamos um gol").
+- **Sede invisível depois do jogo** (bug antigo do `zoom.js`, de antes do #133): o esmaecer da Sede ficava preso com opacidade 0 quando a volta não era pelo zoom.
+- **E2E da carreira** (já falhava antes do #133): fecha os avisos que aparecem sozinhos (reunião com a diretoria), usa o "← Sede" do cabeçalho esperando o zoom, a formação em duas linhas, os 7 blocos da Sede e os posts no lugar da manchete. Agora os 8 testes de `carreira.spec.js` e `carreira-transicoes.spec.js` passam.
+
+Conferido: o CSS regra por regra no Chromium (só saíram as regras da prancheta antiga), fotos da Sede, prancheta, parada tática, mercado e notícias no PC e no celular, `npm test` (287 de 288; a que falha, os dilemas de `carreira-clube.test.js`, é instável e falha também antes do #133) e os E2E da carreira.
