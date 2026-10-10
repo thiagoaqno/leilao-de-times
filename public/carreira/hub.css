@@ -57,6 +57,10 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .cartao-jog .dest-nota,.cartao-jog .dest-pos,.cartao-jog.ouro .dest-nota,.cartao-jog.prata .dest-nota,.cartao-jog.bronze .dest-nota,.cartao-jog.elite .dest-nota{color:var(--fx-tinta);text-shadow:none;font-family:var(--fx-cond)}
 .cartao-jog .dest-nome strong{font:500 28px/1 var(--fx-cond);letter-spacing:.02em}
 .cartao-jog .dest-foto img{border-radius:0;background:#ffffff26}
+/* o campinho da prancheta: só o gramado em perspectiva, sem a moldura escura em volta */
+.gramado{background:none;border:0;border-radius:0;box-shadow:none}
+.gramado::after{display:none}
+.gramado .relva{filter:drop-shadow(0 16px 18px #15212c40)}
 /* as cartinhas escuras (banco e reservas) continuam escuras dentro do painel claro */
 .carta-reserva{--t1:#f4f4f5;--t2:#a1a1aa;--t3:#71717a;--b1:#ffffff0f;--b2:#ffffff1a;--b3:#ffffff2b;--ok:#4ade80;--erro:#f87171;--alerta:#fbbf24;border-radius:2px}
 
