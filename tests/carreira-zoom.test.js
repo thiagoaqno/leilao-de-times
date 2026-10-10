@@ -10,7 +10,7 @@ const fonte = fs.readFileSync(path.join(__dirname, "../public/carreira/zoom.js")
 function mundo({ telaAtual = "sede", reduz = false } = {}) {
   const voltar = { textContent: "← Vila", href: "/", dataset: {}, setAttribute(k, v) { this[k] = v; } };
   const chamadas = [];
-  const ctx = { document: { querySelector: (s) => (s === "#barra .voltar" ? voltar : null), body: { classList: { add() {}, remove() {} }, append() {} }, createElement: () => ({ style: {}, classList: { add() {} }, dataset: {}, animate: () => ({ finished: Promise.resolve() }), remove() {} }) },
+  const ctx = { document: { addEventListener() {}, getElementById: () => null, querySelector: (s) => (s === "#barra .voltar" ? voltar : null), body: { classList: { add() {}, remove() {} }, append() {} }, createElement: () => ({ style: {}, classList: { add() {} }, dataset: {}, animate: () => ({ finished: Promise.resolve() }), remove() {} }) },
     matchMedia: () => ({ matches: reduz }), innerWidth: 1000, innerHeight: 600, scrollY: 0, scrollTo() {}, telaAtual, mostrarTela: (id) => chamadas.push(id) };
   vm.createContext(ctx);
   vm.runInContext(`${fonte}; this.Zoom = Zoom;`, ctx);

@@ -1114,9 +1114,8 @@ body[data-tela="sede"] .credito-estadio:not(:empty){opacity:.85}
 .gc-duplo~p,.gc-duplo~h3{margin-top:16px}.gc-duplo~h3 small{font-weight:400;font-size:12px;margin-left:6px}
 .quadro h3~.gc-lista,.quadro h3~.gc-grade,.quadro h3~.gc-recordes,.quadro h3~.gc-tempo{margin-top:10px}
 .quadro .gc-recordes+h3,.quadro .gc-lista+h3,.quadro .gc-tempo+h3{margin-top:22px}
-/* o zoom entre a sede e as telas (zoom.js): a folha lisa que cresce do bloco até a tela toda e encolhe de volta; as entradas em cascata param enquanto ela anima */
-.zoom-folha{position:fixed;z-index:300;pointer-events:none;box-sizing:border-box;overflow:hidden;border:1px solid #ffffff38;background:linear-gradient(125deg,#ffffff22,#ffffff0a 40%,#ffffff12),radial-gradient(70vmax 50vmax at 50% 0%,color-mix(in srgb,var(--clube) 40%,transparent),transparent 72%),#101114;box-shadow:inset 0 1px 0 #ffffff66,0 30px 80px -20px #000;display:grid;place-items:center}
-.zoom-folha::after{content:attr(data-titulo);font:600 26px/1 var(--fonte);letter-spacing:-.03em;color:var(--t1);opacity:.9;white-space:nowrap}
-.zoom-folha.sem-titulo::after{content:none}
+/* o zoom entre a sede e as telas (zoom.js): a própria tela cresce do bloco e encolhe de volta; sem a entrada em cascata dos painéis (ela fica desligada até a próxima troca sem zoom) */
 body.zoom-ativo .tela>*,body.zoom-ativo .hub-grade>*>*{animation:none!important}
+/* a placa escura atrás da tela enquanto ela cresce ou encolhe: a sede não "vaza" pelo vidro. É um pseudo-elemento: a tela em si não ganha opacidade (o vidro dos painéis não muda no meio) */
+.tela.zoomando::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;background:radial-gradient(70vmax 50vmax at 50% 0%,color-mix(in srgb,var(--clube) 30%,transparent),transparent 72%),#0d0e11;opacity:var(--placa,0)}
 .topo-tela .volta[data-ir="sede"]{display:none}
