@@ -1,12 +1,12 @@
 // Carreira: o zoom entre a sede e as telas de gestão, como abrir e fechar uma janela no Mac. A tela nova é desenhada ANTES (com tudo carregado)
 // e a própria tela, de verdade, cresce a partir do bloco da sede até o tamanho final, enquanto a sede esmaece por baixo. Voltando, a tela
 // de gestão encolhe até o bloco e a sede (desenhada antes) reaparece por baixo. Nada é trocado no fim: o último quadro da animação é
-// igual à tela parada, então não há "pulo" nem recarga. Só `transform` (e canto/sombra) animam; nada de opacidade nem desfoque na tela, para
+// igual à tela parada, então não há "pulo" nem recarga. A escala, os cantos e a sombra acompanham a abertura, para
 // o vidro dos painéis não mudar no meio. Quem pede menos movimento no sistema troca de tela na hora.
 // Também troca o "← Vila" do cabeçalho por "← Sede" nas telas de gestão (um botão só para voltar, no mesmo lugar).
 const Zoom = (() => {
   const TELAS_DE_GESTAO = new Set(["elenco", "mercado", "tabela", "calendario", "feed", "trocas", "temporadas", "clube"]);
-  const ABRE = { duration: 440, easing: "cubic-bezier(.2,.9,.25,1)" }, FECHA = { duration: 380, easing: "cubic-bezier(.4,0,.2,1)" };
+  const ABRE = { duration: 480, easing: "cubic-bezier(.23,1,.32,1)" }, FECHA = { duration: 420, easing: "cubic-bezier(.77,0,.175,1)" };
   const SOMBRA = "0 0 0 1px #ffffff40, 0 30px 80px -20px #000", SEM_SOMBRA = "0 0 0 0 #ffffff00, 0 0 0 0 #0000";
   let ocupado = false, rolagemDaSede = 0;
   const reduz = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -39,7 +39,7 @@ const Zoom = (() => {
       await Promise.all([
         fim(tela.animate([{ transform: `scale(${s})`, borderRadius: "18px", boxShadow: SOMBRA }, { transform: "scale(1)", borderRadius: "0px", boxShadow: SEM_SOMBRA }], ABRE)),
         fim(tela.animate([{ opacity: 0.96 }, { opacity: 0.96, offset: 0.1 }, { opacity: 0, offset: 0.9 }, { opacity: 0 }], { ...ABRE, easing: "linear", pseudoElement: "::before" })),
-        fim(sede.animate([{ opacity: 1 }, { opacity: 0 }], { ...ABRE, easing: "ease-in", fill: "forwards" })),
+        fim(sede.animate([{ opacity: 1 }, { opacity: 0 }], { ...ABRE, easing: "linear", fill: "forwards" })),
       ]);
     } finally {
       sede.classList.add("hidden"); soltar(sede); // só agora a sede sai (já estava invisível)

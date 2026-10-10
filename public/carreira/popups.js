@@ -45,7 +45,7 @@ function avisosAntesDoJogo() {
   const esc = E.escalacao, det = Motor.escalacaoDetalhada(meuTime()).filter((v) => v.id), itens = [];
   const cansados = det.filter((v) => energiaDoJogador(v.id) < 70);
   if (cansados.length) itens.push({ ic: "ampulheta", cls: cansados.length >= 3 ? "ruim" : "aviso", titulo: `${cansados.length} titular${cansados.length > 1 ? "es" : ""} cansado${cansados.length > 1 ? "s" : ""}`,
-    texto: cansados.map((v) => `${h(sobrenome(nomeJogador(v.id)))} (${energiaDoJogador(v.id)}%, −${Taticas.penalidadeEnergia(energiaDoJogador(v.id))} na nota)`).join(", ") + ". Quem descansa no banco recupera 16 pontos por rodada." });
+    texto: cansados.map((v) => `${h(sobrenome(nomeJogador(v.id)))} (${energiaDoJogador(v.id)}% de energia${penalidadeSequencia(v.id) ? `, −${penalidadeSequencia(v.id)} no over` : ""})`).join(", ") + ". Quem descansa um jogo recupera 80 pontos de energia e zera a sequência." });
   const fixos = esc.titulares ? esc.titulares.filter((pid) => fora(pid)) : [];
   if (fixos.length) itens.push({ ic: "alerta", cls: "ruim", titulo: `${fixos.length} da escalação não joga${fixos.length > 1 ? "m" : ""}`,
     texto: fixos.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "machucado" : "suspenso"})`).join(", ") + ". O melhor que sobrou entra no lugar de cada um." });
