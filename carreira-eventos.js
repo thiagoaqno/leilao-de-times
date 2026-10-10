@@ -110,8 +110,8 @@ function gerarEventos(save, c) {
   const compradores = (min) => c.idsDosClubes(save).filter((id) => id !== save.clube && caixaDe(id) >= min && c.clubeDe(save, id).tamanho >= Math.max(1, meuClube.tamanho - 2));
   let houveDisputa = false;
   if (Mercado.janelaAberta(c.rodadaDaJanela ? c.rodadaDaJanela(save) : save.rodada)) {
-    const listados = save.aVenda.filter((pid) => meu.some((j) => j.id === pid));
-    const surpresa = r() < 0.18 ? sorteio(r, meu.filter((j) => titulares.has(j.id) && !listados.includes(j.id))) : null;
+    const listados = save.aVenda.filter((pid) => meu.some((j) => j.id === pid) && !c.semVenda(save, pid));
+    const surpresa = r() < 0.18 ? sorteio(r, meu.filter((j) => titulares.has(j.id) && !listados.includes(j.id) && !c.semVenda(save, j.id))) : null;
     let feitas = 0;
     for (const pid of [...listados, ...(surpresa ? [surpresa.id] : [])]) {
       if (feitas >= 2) break;
@@ -197,6 +197,7 @@ function responder(save, e, opcao, c) {
     return (e.resultado = op[2](x) || "");
   }
   if (e.tipo === "clube") return (e.resultado = c.clubeResponder(save, e, opcao));
+  if (j && (e.tipo === "proposta" || e.tipo === "disputa") && c.semVenda(save, j.id)) return (e.resultado = `${j.nome} chegou pelo vale de campeão e não pode ser vendido nesta temporada.`);
   if (e.tipo === "proposta") {
     if (!j || c.donoDe(save, j.id) !== save.clube) return (e.resultado = "O jogador já não está no seu elenco.");
     if (opcao === "mais") {

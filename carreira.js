@@ -531,6 +531,7 @@ function infoLeilao(save, comprador, pid) {
   if (dono === comprador) return "Ele já é do seu time.";
   const regra = erroDeRegra(v, notaDe(v, j)); if (regra) return regra; // a janela fechada e as regras de compra da turma
   if (elencoDe(v, comprador).length >= Mercado.ELENCO_MAX) return `O elenco já tem ${Mercado.ELENCO_MAX} jogadores. Venda alguém antes.`;
+  if (Clube.semVenda(save, dono, pid)) return "Esse jogador chegou pelo vale de campeão e não pode ser vendido nesta temporada.";
   if (save.humanos[dono]) {
     // de um amigo: começa em 70% do valor, e a carência vale (sem lucro em revenda na hora)
     const vd = vistaDe(save, dono);
@@ -584,6 +585,8 @@ function erroDeTroca(save, t) {
   const todos = [...t.dou, ...t.recebo];
   if (new Set(todos).size !== todos.length) return "Jogador repetido na proposta.";
   for (const pid of t.dou) if (!jogadorDe(save, pid) || donoDe(save, pid) !== t.de) return "Um dos jogadores oferecidos não é mais do seu elenco.";
+  for (const pid of t.dou) if (Clube.semVenda(save, t.de, pid)) return "Um dos jogadores oferecidos chegou pelo vale de campeão e não pode ser trocado nesta temporada.";
+  for (const pid of t.recebo) if (Clube.semVenda(save, t.para, pid)) return "Um dos jogadores pedidos chegou pelo vale de campeão e não pode ser trocado nesta temporada.";
   for (const pid of t.recebo) if (!jogadorDe(save, pid) || donoDe(save, pid) !== t.para) return "Um dos jogadores pedidos não é mais do outro elenco.";
   const va = vistaDe(save, t.de), vb = vistaDe(save, t.para);
   const tamA = elencoDe(va, t.de).length - t.dou.length + t.recebo.length, tamB = elencoDe(vb, t.para).length - t.recebo.length + t.dou.length;
@@ -710,6 +713,30 @@ function ultimosResultados(save, n) {
   return out;
 }
 const lesionado = (save, pid) => !!save.lesoes[pid];
+// o vale de campeão (gestao.vales, em carreira-clube.js): quem ganhou algum campeonato leva, de graça, 1 jogador de até 87 de nota de um clube do computador, em qualquer
+// janela da temporada seguinte. Não conta na cota de compras da turma, e o jogador não pode ser vendido nem trocado na temporada em que chega.
+function usarVale(v, pid) {
+  const g = Clube.gestaoDe(v), vale = (g.vales || []).find((x) => x.ate >= v.temporada);
+  if (!vale) return "Você não tem um vale de campeão para usar.";
+  if (v.partida) return "Termine a partida primeiro.";
+  if (!Mercado.janelaAberta(rodadaDaJanela(v)) && !(v.entrada && v.entrada.temporada === v.temporada)) return "A janela de transferências está fechada: o vale só vale nas janelas.";
+  const j = jogadorDe(v, pid), dono = j && donoDe(v, pid);
+  if (!j || !dono || dono === v.clube || dono === APOSENTADO || !clubeDe(v, dono)) return "Esse jogador não está disponível.";
+  if (typeof v.humanoDe === "function" && v.humanoDe(dono)) return "Esse jogador é de outro técnico: use o leilão.";
+  if (notaDe(v, j) > vale.max) return `O vale vale para jogadores de até ${vale.max} de nota (${j.nome} tem ${notaDe(v, j)}).`;
+  if (elencoDe(v, v.clube).length >= Mercado.ELENCO_MAX) return `O elenco já tem ${Mercado.ELENCO_MAX} jogadores. Venda alguém antes.`;
+  g.vales.splice(g.vales.indexOf(vale), 1);
+  v.donos[pid] = v.clube; delete v.pedidos[pid]; delete v.indicacoes[pid]; v.aVenda = v.aVenda.filter((x) => x !== pid);
+  v.salarios[pid] = Math.round(Mercado.salarioDe(comNota(v, j)) * (FATOR_LIGA[ligaDoClube(v.clube)] || 1) / 1e3) * 1e3;
+  v.compras[pid] = { valor: 0, rodada: v.rodada, temporada: v.temporada, vale: true };
+  v.valores[pid] = [valorAtual(v, j)];
+  g.bloqueados[pid] = v.temporada;
+  Clube.contratar(v, ajudas, pid);
+  v.transferencias.unshift({ rodada: v.rodada, ...carimbo(v), temporada: v.temporada, jogador: pid, de: dono, para: v.clube, valor: 0, vale: true });
+  Feed.transferencia(v, v.transferencias[0], ajudas);
+  avisar(v, { tipo: "contratacao", icone: "taca", titulo: `${j.nome} chegou de graça!`, texto: `Vale de campeão (${vale.motivo}): ${j.nome} (${j.pos}, ${notaDe(v, j)}) veio do ${clubeDe(v, dono).nome} sem custo, com salário de ${dinheiro(v.salarios[pid])} por mês. Ele não pode ser vendido nem trocado nesta temporada.` });
+  return { mensagem: `${j.nome} chegou de graça pelo vale de campeão.` };
+}
 // o bônus de título da competição pelo nome (as ligas e as outras copas: R$ 15 mi)
 const premioDoTitulo = (save, nome) => { const c = Object.values(save.competicoes || {}).find((x) => x.nome === nome); return (c && PREMIO_TITULO[c.id]) || 15e6; };
 // o prêmio do G6 para a posição (0 fora dele); parcela: 1 no fim da temporada, 0,25 no meio
@@ -731,7 +758,7 @@ function premioDoTurno(save) {
 // técnico, então a mesma transferência aparecia como "rodada 27" para quem tinha mais copas e a outra pessoa, na rodada 23, via notícia do futuro.
 const semanaDe = (save) => (save.ultimo && save.ultimo.semana) || 0;
 const carimbo = (save) => ({ semana: semanaDe(save), rl: rodadaDaJanela(save) });
-const ajudas = { semanaDe, carimbo, avisar, ligaDoClube, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
+const ajudas = { usarVale, semVenda: (save, pid) => Clube.semVenda(save, save.clube, pid), semanaDe, carimbo, avisar, ligaDoClube, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
 
 // lesões, cartões e suspensões de todos os jogos da rodada
 function cartoesELesoes(save, r, semente) {
@@ -1396,6 +1423,7 @@ function venderAcao(save, d) {
   if (save.partida) return "Termine a partida primeiro.";
   const pid = String(d.jogador || ""), j = jogadorDe(save, pid);
   if (!j || donoDe(save, pid) !== save.clube) return "Esse jogador não é do seu elenco.";
+  if (Clube.semVenda(save, save.clube, pid)) return `${j.nome} chegou pelo vale de campeão: não pode ser vendido nesta temporada.`;
   // a lista de venda: com pedido, entra (ou muda o preço); sem pedido, sai da lista (ou entra pelo valor, como antes)
   if (d.modo === "lista") {
     const listado = save.aVenda.includes(pid);

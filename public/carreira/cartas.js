@@ -116,7 +116,17 @@ function desenharFicha(resposta) {
       ${resposta ? `<p class="resposta ${resposta.resultado}">${h(resposta.motivo)}</p>` : ""}
     </form>`;
   }
+  // o vale de campeão: quem ganhou algum campeonato leva, de graça, um jogador de até 87 (o servidor confere se o dono é um clube do computador)
+  const vale = !meu && E.gestao && E.gestao.vales && E.gestao.vales.find((x) => notaDe(j) <= x.max);
+  if (vale) acoes = `<div class="acoes vale-campeao"><p class="vale-topo">${ic("taca")} <b>Vale de campeão</b>: leve ${h(j.nome)} de graça (nota ${notaDe(j)}, o vale vai até ${vale.max}).</p><button id="fVale" class="primario largo" ${E.janela.aberta ? "" : "disabled"}>Usar o vale (de graça)</button><p class="suave">Sem custo de transferência; o salário continua. Ele não pode ser vendido nem trocado nesta temporada, e não conta na cota de compras da turma.</p></div>` + acoes;
   $("fichaCorpo").innerHTML = `<div class="ficha-grade">${figurinha(pid, "grande")}<div class="ficha-info">${info}${acoes}</div></div>`;
+  if ($("fVale")) $("fVale").onclick = async () => {
+    $("fVale").disabled = true;
+    const de = donoDe(pid), r = await pedir("clube", { acao: "vale", jogador: pid });
+    if (!r.ok) { $("fVale").disabled = false; return toast(r.error); }
+    receber(r.estado); $("ficha").close(); toast(r.mensagem);
+    AnimacoesCarreira.animarTransferencia({ jogador: pid, tipo: "contratacao", de, para: E.clube, valor: 0 }); festa();
+  };
   if (meu) {
     const pedidoAtual = () => +$("fPedido").value * 1e5;
     const dica = () => { const p = pedidoAtual(), ch = Mercado.chanceDeProposta(p, valor, formaDe(pid)); $("fPedidoTxt").textContent = dinheiro(p); $("fPedidoDica").textContent = `${Math.round(p / valor * 100)}% do valor · chance de proposta por rodada: ${ch >= 0.6 ? "alta" : ch >= 0.3 ? "média" : "baixa"}${compra ? ` · ${p >= compra.valor ? "lucro" : "prejuízo"} de ${dinheiro(Math.abs(p - compra.valor))} se vender por isso` : ""}`; };

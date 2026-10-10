@@ -1,4 +1,4 @@
-# Carreira: premiação do campeonato até o G6 e bônus de título maior nas copas
+# Carreira: premiação do campeonato até o G6, bônus de título maior nas copas e o vale de campeão
 
 ## Por quê
 O caixa do pessoal estava secando (as compras da sala custam caro e a premiação por posição era pequena). Agora os seis primeiros da liga recebem uma premiação do campeonato por cima do que já existia.
@@ -29,6 +29,13 @@ O bônus de campeão era R$ 15 mi para qualquer competição. Agora:
 | Sul-Americana | R$ 40 mi |
 | Brasileirão, Champions, Super Mundial, Mundial e as outras ligas | R$ 15 mi (como era) |
 
+## Vale de campeão
+- **Quem ganhou algum campeonato** (liga ou copa, qualquer uma) recebe um **vale de campeão**: leva **de graça um jogador de até 87 de nota** de um clube do computador. É **um vale por temporada**, não importa quantos títulos (o aviso diz de qual título veio).
+- **Como usar:** em qualquer janela da temporada seguinte ao título, abra a ficha de um jogador de até 87 e toque em **"Usar o vale (de graça)"** (o mercado avisa que você tem o vale). Sem custo de transferência; o **salário continua**, o contrato é de 3 temporadas e o jogador entra no elenco na hora.
+- **Na sala:** não conta na cota de compras da turma (é um prêmio, fora do leilão) e **não vale para jogador de outro técnico** (esse é pelo leilão).
+- **Para não virar dinheiro de graça:** o jogador que chega pelo vale **não pode ser vendido, posto à venda, leiloado nem trocado na temporada em que chega** (propostas e disputas também o ignoram). Na virada ele fica livre.
+- O vale não usado **vence no fim da temporada seguinte** ao título.
+
 ## Conferido
-- `tests/carreira-premios.test.js` (3 testes, o terceiro é o bônus de título de cada competição): a tabela (seis posições, decrescente, fator da liga, nada fora do G6, 25% do turno) e uma temporada inteira (o adiantamento do turno uma vez só e o prêmio final só de quem fica no G6, igual à posição do histórico).
+- `tests/carreira-premios.test.js` (7 testes: a tabela do G6, a temporada inteira, o bônus de título de cada competição e o vale de campeão: um por temporada, de graça e com salário, limite de 87, uma vez só, bloqueio de venda e troca, só com a janela aberta, vencimento e, na sala, jogador de amigo só pelo leilão): a tabela (seis posições, decrescente, fator da liga, nada fora do G6, 25% do turno) e uma temporada inteira (o adiantamento do turno uma vez só e o prêmio final só de quem fica no G6, igual à posição do histórico).
 - Testes de temporada, diretoria, evolução, mercado e servidor da carreira continuam passando.

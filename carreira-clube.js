@@ -27,6 +27,7 @@ function padrao() {
     confianca: 70, ultimato: null, recentes: [], jogos: 0, intervencoes: 0,
     reputacao: 10, pontos: 1, habilidades: {},
     depois: [], visto: {}, // as consequências que chegam depois e os dilemas já vistos na temporada
+    vales: [], bloqueados: {}, // o vale de campeão (um jogador de até 87 de graça) e os jogadores que chegaram por ele (não podem ser vendidos na temporada)
     legado: { acumulado: {}, hall: {}, camisas: [], marcos: [], recordes: {} },
   };
 }
@@ -40,6 +41,7 @@ function gestaoDe(v) {
 function gestaoDoClube(v, id) {
   if (!id) return null;
   if (typeof v.gestaoDe === "function") return v.gestaoDe(id);
+  if (v.humanos && v.humanos[id]) return (v.humanos[id].estado && v.humanos[id].estado.gestao) || null; // o save da sala inteiro
   return id === v.clube ? v.gestao || null : null;
 }
 const tamanhoDe = (v, c) => (c.clubeDe(v, v.clube) || {}).tamanho || 3;
@@ -490,6 +492,8 @@ function fechouTemporada(v, c, { pos, titulos, vices, cumpriuMeta, posMeta }) {
   g.reputacao = clamp(g.reputacao + (cumpriuMeta === true ? 6 : cumpriuMeta === false ? -4 : 0) + titulos.length * 8 + (pos <= 3 ? 3 : 0), 0, 100);
   g.pontos += 2 + titulos.length;
   g.confianca = clamp(g.confianca + (cumpriuMeta === true ? 15 : cumpriuMeta === false ? -15 : 0) + titulos.length * 10, 0, 100);
+  // o vale de campeão: quem ganhou algum campeonato (um só vale por temporada, não importa quantos títulos) leva de graça um jogador de até 87 na temporada seguinte
+  if (titulos.length) { g.vales.push({ ate: T + 1, max: VALE_MAX, motivo: titulos.join(", ") }); c.avisar(v, { tipo: "vale", icone: "taca", titulo: "Vale de campeão", texto: `Pelo título (${titulos.join(", ")}), a diretoria libera um jogador de até ${VALE_MAX} de nota, de graça, na próxima janela. Escolha no mercado: o jogador não pode ser vendido nem trocado na temporada em que chega.` }); marco(v, "vale", `Título (${titulos.join(", ")}) rende o vale de campeão.`); }
   g.legado.temporadasFeitas = (g.legado.temporadasFeitas || 0) + 1;
   g.ultimato = null;
 }
@@ -544,6 +548,8 @@ function virada(v, c) {
   if (levados.length) partes.push(`Um clube levou da base: ${levados.map((l) => l.nome).join(", ")}.`);
   if (novos.length) partes.push(`Chegaram à base: ${novos.length} garoto${novos.length > 1 ? "s" : ""}.`);
   g.visto = {}; g.depois = g.depois.filter((d) => d.temporada >= T - 1);
+  g.vales = g.vales.filter((x) => x.ate >= T); // o vale não usado vence no fim da temporada seguinte ao título
+  for (const pid of Object.keys(g.bloqueados)) if (g.bloqueados[pid] < T) delete g.bloqueados[pid];
   // o capitão perdeu a braçadeira junto com o contrato? (garantir já limpou)
   return partes.join(" ");
 }
@@ -583,6 +589,7 @@ function acao(v, c, d) {
     g.pontos--; g.habilidades[id] = (g.habilidades[id] || 0) + 1;
     return { mensagem: `${h.nome} nível ${g.habilidades[id]}: ${h.texto(g.habilidades[id])}.` };
   }
+  if (tipo === "vale") return c.usarVale(v, String(d.jogador || ""));
   if (tipo === "camisa") { const r = aposentarCamisa(v, c, String(d.jogador || "")); return typeof r === "string" ? r : { mensagem: r.texto }; }
   return "Ação desconhecida.";
 }
@@ -610,6 +617,7 @@ function estado(v, c) {
     contratos, infra: g.infra, obra: g.obra, custos: [1, 2, 3].map((n) => Regras.custoObra(n, T)), manutencao: Regras.manutencao(g.infra, T),
     capitao: g.capitao, candidatos: [...elenco].sort((a, b) => c.notaDe(v, b) - c.notaDe(v, a)).slice(0, 12).map((j) => ({ id: j.id, lider: Regras.lideranca({ idade: Evolucao.idadeNa(j, v.temporada), nota: c.notaDe(v, j), anosClube: (g.legado.acumulado[j.id] || {}).temporadas || 0 }) })),
     base: g.prospectos.map((p) => ({ id: p.id, nome: p.nome, pos: p.pos, idade: p.idade, nota: p.nota, nat: p.nat, pot: Regras.potVisivel(p.pot, olh), impressao: Regras.impressao(p.pot), valor: valorProspecto(p), blindado: !!g.blindados[p.id], atr: p.atr })),
+    vales: g.vales.filter((x) => x.ate >= v.temporada).map((x) => ({ max: x.max, ate: x.ate, motivo: x.motivo })), bloqueados: Object.keys(g.bloqueados).filter((pid) => g.bloqueados[pid] >= v.temporada),
     futuro: g.depois.length, // quantas consequências estão a caminho (sem contar o que são)
     legado: { hall, camisas: g.legado.camisas, marcos: g.legado.marcos.slice(-30), recordes: g.legado.recordes, historico: v.historico || [] },
     rivais: confrontosDe(v, c), rivalLiga: rivalDaLiga(v, c),
@@ -618,11 +626,14 @@ function estado(v, c) {
 }
 
 // os ajustes que o resto do carreira.js pergunta
+const VALE_MAX = 87;
+// o jogador que chegou pelo vale de campeão não é vendido, trocado nem leiloado na temporada em que chega (senão virava dinheiro de graça)
+const semVenda = (v, clube, pid) => { const g = gestaoDoClube(v, clube); return !!(g && g.bloqueados && g.bloqueados[pid] >= v.temporada); };
 const infraDe = (v, id) => { const g = gestaoDoClube(v, id); return g ? g.infra : null; };
 const habilidadeDe = (v, id, h) => { const g = gestaoDoClube(v, id); return g ? g.habilidades[h] || 0 : 0; };
 const fatorBilheteria = (v) => Regras.fatorBilheteria(infraDe(v, v.clube));
 const bonusRecupera = (v) => Regras.bonusRecupera(infraDe(v, v.clube), habilidadeDe(v, v.clube, "preparador"));
 const fatorLesao = (v, id) => Regras.fatorLesao(infraDe(v, id));
 
-module.exports = { padrao, gestaoDe, garantir, contratar, acao, estado, aposJogo, responder, virada, fechouTemporada, registrarConfronto, provocacao, rivaisDe, classicoCom,
+module.exports = { VALE_MAX, semVenda, padrao, gestaoDe, garantir, contratar, acao, estado, aposJogo, responder, virada, fechouTemporada, registrarConfronto, provocacao, rivaisDe, classicoCom,
   fatorBilheteria, bonusRecupera, fatorLesao, infraDe, habilidadeDe, gestaoDoClube, novosProspectos, criarDilema, DILEMAS, Regras, demitir };
