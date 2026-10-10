@@ -88,3 +88,29 @@ test("dinheiro igual: todos os clubes começam com o mesmo caixa e ninguém é r
   // valor fora da lista é ignorado
   assert.strictEqual(novaCarreira("Teste", "flamengo", "x", 2, 7).caixa, 120e6);
 });
+
+test("vagas na Libertadores: os campeões da Libertadores e da Sul-Americana ganham vaga, e quem já está classificado libera a vaga para o próximo colocado", () => {
+  const save = novaCarreira("Teste", "flamengo", "x");
+  const brasileiros = new Set(indice.ligas.find((l) => l.id === "brasileirao-2026").clubes), tab = save.competicoes["brasileirao-2026"].tabela.map((l) => l.id);
+  const cdb = save.competicoes.copadobrasil.campeao, base = classificadosDe(save), nBR = (cl) => cl.libertadores.filter((id) => brasileiros.has(id)).length;
+  const campeoesBR = [save.competicoes.libertadores.campeao, save.competicoes.sulamericana.campeao].filter((id) => brasileiros.has(id)).length;
+  assert.strictEqual(nBR(base), 7 + campeoesBR, "7 vagas de sempre (G6 e Copa do Brasil) + uma para cada campeão brasileiro da Libertadores e da Sul-Americana");
+  // dois brasileiros de fora do G7 ganham as duas copas: o Brasil passa a ter 9 vagas (os 32 lugares continuam 32 e sem repetir)
+  const fora = tab.filter((id) => !tab.slice(0, 6).includes(id) && id !== cdb && id !== tab[6]).slice(-2);
+  save.competicoes.libertadores.campeao = fora[0]; save.competicoes.sulamericana.campeao = fora[1];
+  const cl = classificadosDe(save);
+  assert.strictEqual(cl.libertadores.length, 32); assert.strictEqual(new Set(cl.libertadores).size, 32);
+  assert.ok(cl.libertadores.includes(fora[0]) && cl.libertadores.includes(fora[1]), "os dois campeões estão na Libertadores");
+  assert.deepStrictEqual(cl.libertadores.slice(0, 6), tab.slice(0, 6));
+  assert.strictEqual(nBR(cl), 9, "7 vagas de sempre + os dois campeões");
+  // o campeão da Libertadores já estava classificado (G6): a vaga dele passa para o próximo colocado do Brasileirão
+  save.competicoes.libertadores.campeao = tab[0]; save.competicoes.sulamericana.campeao = "river-plate";
+  const cl2 = classificadosDe(save), doBrasil = cl2.libertadores.filter((id) => brasileiros.has(id));
+  assert.strictEqual(doBrasil.length, 8, "o campeão já classificado libera mais uma vaga: a de cima 7 + a do próximo colocado");
+  assert.ok(doBrasil.includes(tab.find((id) => !tab.slice(0, 6).includes(id) && id !== cdb && id !== tab[6])) || doBrasil.length === 8);
+  assert.ok(cl2.libertadores.includes("river-plate"), "o campeão da Sul-Americana de fora do Brasil entra");
+  assert.strictEqual(cl2.libertadores.length, 32); assert.strictEqual(new Set(cl2.libertadores).size, 32);
+  // a temporada seguinte joga com esses 32
+  const proxima = Temporada.simularMundo({ bases, indice, semente: "t3", classificados: cl, copasNovas: true });
+  assert.deepStrictEqual([...proxima.competicoes.libertadores.participantes].sort(), [...cl.libertadores].sort());
+});

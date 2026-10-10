@@ -111,6 +111,16 @@ function telaJogo(pos) {
       <p class="posicao-final"><b>${pos}º</b> lugar para o ${h(meuClube().nome)} (${meu.p} pontos). ${h(fraseFinal(pos))}</p>
       <p class="suave">Na virada, o elenco evolui: os jovens tendem a subir, os veteranos a cair, e alguns se aposentam. A base manda reforços.</p>
       <button id="btnNovaTemporada" class="primario largo">Começar a temporada ${E.ano + 1} (${E.temporada + 1} de ${E.temporadasMax})</button></div>`;
+    // na sala: o seu clube acabou, mas os amigos ainda têm jogos. O anfitrião libera as rodadas deles; a temporada nova só abre quando todos terminam
+    if (EM_GRUPO && E.faltamJogos) {
+      const rolando = !!E.rodadaGrupo, b = $("btnNovaTemporada");
+      b.id = "btnLiberarRodada"; b.disabled = rolando || !E.anfitriao;
+      b.textContent = rolando ? "Rodada rolando: os amigos estão jogando" : E.anfitriao ? "Liberar a rodada dos amigos" : "Esperando o anfitrião liberar os jogos";
+      b.onclick = () => agirGrupo({ type: "rodada" });
+      const aviso = document.createElement("p"); aviso.className = "suave"; aviso.textContent = "O seu clube já terminou a temporada, mas os amigos ainda têm jogos. A temporada nova só abre quando todos terminarem.";
+      b.before(aviso);
+      return;
+    }
     if (EM_GRUPO) { $("btnNovaTemporada").onclick = () => agirGrupo({ type: "novaTemporada" }); if (!E.anfitriao) { $("btnNovaTemporada").disabled = true; $("btnNovaTemporada").textContent = "Esperando o anfitrião começar a temporada"; } return; }
     $("btnNovaTemporada").onclick = async () => { $("btnNovaTemporada").disabled = true; const r = await pedir("novaTemporada"); if (!r.ok) { $("btnNovaTemporada").disabled = false; return toast(r.error); } receber(r.estado); toast(`Temporada ${E.ano}: bola rolando.`); };
     return;
