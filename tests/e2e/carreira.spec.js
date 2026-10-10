@@ -134,6 +134,15 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await expect(page.locator("#posJogo .pj-dinheiro .extrato li").first()).toBeVisible();
     await page.click("#pjContinuar");
     await expect(page.locator("#cartaoUltimo .confronto")).toBeVisible();
+    // as notícias na sede: o post inteiro cabe na caixa (a legenda aparece sem rolar) e as setas trocam de post
+    const legenda = page.locator("#feedRolagem .post.atual .legenda");
+    await expect(legenda).toBeVisible();
+    const [caixaFeed, caixaLegenda] = await Promise.all([page.locator("#feedRolagem").boundingBox(), legenda.boundingBox()]);
+    expect(caixaLegenda.y + caixaLegenda.height).toBeLessThanOrEqual(caixaFeed.y + caixaFeed.height + 1);
+    if (await page.locator("#feedRolagem .post").count() > 1) {
+      await page.click('#cartaoFeed [data-feed-passo="1"]');
+      await expect(page.locator("#feedRolagem")).toHaveAttribute("data-atual", "1");
+    }
     // as notícias: o feed com a arte de cada post
     await page.click('#sede [data-ir="feed"]');
     await expect(page.locator("#fLista .post").first()).toBeVisible();
