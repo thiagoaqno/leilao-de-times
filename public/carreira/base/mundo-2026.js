@@ -35,6 +35,32 @@
       ]
     },
     {
+      "id": "serieb-2026",
+      "nome": "Brasileirão Série B",
+      "clubes": [
+        "fortaleza",
+        "ceara",
+        "sport",
+        "juventude",
+        "goias",
+        "americamg",
+        "cuiaba",
+        "atleticogo",
+        "novorizontino",
+        "criciuma",
+        "avai",
+        "crb",
+        "vilanova",
+        "operario",
+        "nautico",
+        "pontepreta",
+        "botafogosp",
+        "londrina",
+        "saobernardo",
+        "athletic"
+      ]
+    },
+    {
       "id": "inglaterra-2026",
       "nome": "Premier League",
       "clubes": [

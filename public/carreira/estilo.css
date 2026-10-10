@@ -252,7 +252,7 @@ button.cta:disabled{filter:saturate(.3);box-shadow:none}
 .mini-tabela{width:100%;border-collapse:collapse;font-size:13px}.mini-tabela td{padding:6px 4px;border-bottom:1px solid var(--b1)}.mini-tabela tr:last-child td{border:0}.mini-tabela td.nome{width:100%}
 .mini-tabela tr.meu td{background:color-mix(in srgb,var(--acento) 9%,transparent);font-weight:600}
 td.pos{width:30px;text-align:center;font:500 13px var(--mono);color:var(--t2)}
-td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shadow:inset 2px 0 var(--azul)}td.pos.sulamericana{box-shadow:inset 2px 0 #86efac}td.pos.rebaixamento{box-shadow:inset 2px 0 var(--erro)}
+td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shadow:inset 2px 0 var(--azul)}td.pos.sulamericana{box-shadow:inset 2px 0 #86efac}td.pos.acesso{box-shadow:inset 2px 0 #86efac}td.pos.rebaixamento{box-shadow:inset 2px 0 var(--erro)}
 .numeros-fin{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.numeros-fin small{display:block;font-size:12px;color:var(--t3)}.numeros-fin b{font:600 17px var(--fonte);letter-spacing:-.02em}
 .extrato{list-style:none;margin:0;padding:0;font-size:12px}.extrato li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1);color:var(--t2)}.extrato li b{font:500 12px var(--mono)}
 .hist{font-size:13px;color:var(--t2);padding:4px 0}.hist b{color:var(--t1)}
@@ -1106,16 +1106,28 @@ body.zoom-ativo .tela>*,body.zoom-ativo .hub-grade>*>*{animation:none!important}
 .escudo-tba{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1.5px dashed var(--b2);color:var(--t3);font:600 16px/1 var(--fonte)}
 .selo-tba{margin-left:8px;padding:2px 7px;border-radius:99px;background:var(--s3);color:var(--t2);font:600 10px/1.4 var(--mono);letter-spacing:.08em}
 
-/* as notícias na sede, no formato do Instagram: um post por vez, rolando sozinho a cada 10 segundos */
+/* as notícias na sede, no formato do Instagram: um post por vez, inteiro na caixa (a arte encolhe para a legenda caber, sem rolar), trocando sozinho a cada 10 segundos */
 .insta{position:relative}
-.insta-rolagem{display:flex;flex-direction:column;gap:14px;height:min(78vh,760px);overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y mandatory;scrollbar-width:none;border-radius:var(--r)}
-.insta-rolagem::-webkit-scrollbar{display:none}
+.insta-rolagem{display:grid;height:min(78vh,760px);overflow:hidden;border-radius:var(--r);touch-action:pan-y}
 .insta-rolagem:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
-.insta-rolagem .post{flex:none;width:100%;max-width:520px;margin:0 auto;scroll-snap-align:start;animation:none}
-.insta-rodape{display:flex;justify-content:center;gap:6px;margin-top:10px}
-#feedPontos{display:flex;gap:5px;align-items:center}#feedPontos i{width:6px;height:6px;border-radius:50%;background:var(--b3);transition:background 200ms ease,transform 200ms var(--ease)}
-#feedPontos i.on{background:var(--acento);transform:scale(1.4)}
-@media (max-width:640px){.insta-rolagem{height:min(80vh,640px)}}
+.insta-rolagem .post{grid-area:1/1;display:flex;flex-direction:column;width:100%;max-width:520px;height:100%;min-height:0;margin:0 auto;animation:none;opacity:0;visibility:hidden;transition:opacity 260ms ease,visibility 0s linear 260ms}
+.insta-rolagem .post.atual{opacity:1;visibility:visible;transition:opacity 260ms ease}
+.insta-rolagem .post .arte{flex:1 1 auto;min-height:120px;aspect-ratio:auto;background:transparent;display:grid;place-items:center}
+.insta-rolagem .post .arte img{width:auto;height:auto;max-width:100%;max-height:100%;aspect-ratio:1;object-fit:contain}
+.insta-rolagem .post .legenda{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;flex:none}
+.insta-rolagem .post .comentarios{flex:none}.insta-rolagem .post .comentarios li:nth-child(n+3){display:none}
+.insta-rolagem .post .comentarios li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.insta-rodape{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:10px}
+.insta-seta{display:grid;place-items:center;width:34px;height:34px;min-height:0;padding:0;border-radius:50%;background:var(--s2);border:1px solid var(--b1);color:var(--t1)}
+.insta-seta svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.insta-seta:hover{border-color:var(--acento);color:var(--acento)}
+#feedPontos{display:flex;gap:2px;align-items:center}
+#feedPontos button{width:14px;height:20px;min-height:0;padding:0;background:transparent;border:0;display:grid;place-items:center}
+#feedPontos button::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--b3);transition:background 200ms ease,transform 200ms var(--ease)}
+#feedPontos button.on::before{background:var(--acento);transform:scale(1.4)}
+#feedNumero{display:none;font-size:12px}
+@media (max-width:640px){.insta-rolagem{height:min(80vh,640px)}#feedPontos{display:none}#feedNumero{display:inline}}
+@media (prefers-reduced-motion:reduce){.insta-rolagem .post,.insta-rolagem .post.atual{transition:none}}
 
 /* a rodada da turma ao vivo, para quem não está jogando (turma-ao-vivo.js): na sede e na tela da sala */
 .tv-painel h3{display:flex;align-items:center;gap:8px}.tv-painel h3 small{font-weight:500;font-size:12px;color:var(--t3)}

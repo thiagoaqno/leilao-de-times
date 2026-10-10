@@ -15,6 +15,9 @@
     ["santos", "corinthians", "Clássico Alvinegro", 2], ["santos", "palmeiras", "Clássico da Saudade", 2], ["santos", "saopaulo", "San-São", 2],
     ["gremio", "internacional", "Gre-Nal", 3], ["cruzeiro", "atleticomg", "Clássico Mineiro", 3], ["bahia", "vitoria", "Ba-Vi", 3],
     ["athletico", "coritiba", "Atletiba", 3],
+    ["fortaleza", "ceara", "Clássico-Rei", 3], ["sport", "nautico", "Clássico dos Clássicos", 3], ["goias", "vilanova", "Clássico Goiano", 2],
+    ["goias", "atleticogo", "Clássico Goiano", 2], ["atleticogo", "vilanova", "Clássico Goiano", 1], ["americamg", "atleticomg", "Clássico Mineiro", 1],
+    ["americamg", "cruzeiro", "Clássico Mineiro", 1],
     // Argentina e sul-americanos
     ["boca-juniors", "river-plate", "Superclásico", 3], ["nacional", "penarol", "Clásico Uruguayo", 3], ["cerro-porteno", "libertad", "Clásico de Asunción", 1],
     ["universitario", "sporting-cristal", "Clásico Moderno", 1], ["ldu-quito", "independiente-del-valle", "Clásico Quiteño", 1],

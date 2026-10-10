@@ -71,7 +71,7 @@ function entradaNoMeio(st, eu) {
   desenharSala(); // os técnicos, as regras da sala e o código
   const forca = (id) => { const n = elencoDe(id).map(notaDe).sort((a, b) => b - a).slice(0, 11); return n.length ? Math.round(n.reduce((s, x) => s + x, 0) / n.length) : 0; };
   const livres = st.clubes.filter((id) => !st.ocupados[id] && CLUBES[id]).map((id) => CLUBES[id]);
-  const ordemLiga = (c) => ["brasileirao-2026", ...Temporada.EUROPA].indexOf(c.liga);
+  const ordemLiga = (c) => ["brasileirao-2026", "serieb-2026", ...Temporada.EUROPA].indexOf(c.liga);
   $("gStatus").textContent = !eu ? "Você está só assistindo. Para assumir um clube, entre na sala pelo código, com um nome."
     : st.rodada ? "A rodada está rolando: escolha o clube e entre quando ela acabar. Quem entra no meio ganha uma janela de entrada: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85 (com a janela aberta, vale a da janela)."
     : "A carreira já começou. Escolha um clube livre para assumir agora. Quem entra no meio ganha uma janela de entrada: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85 (com a janela aberta, vale a da janela).";
@@ -101,7 +101,7 @@ function desenharSala() {
   $("gMeuClube").textContent = eu && eu.clube ? `Você: ${nomeClube(eu.clube)}` : "";
   document.body.style.cssText = eu && eu.clube ? `${coresClube(eu.clube)};${temaClube(eu.clube)}` : ""; // a sala já ganha a cor do clube escolhido
   marcaClube(eu && eu.clube);
-  const orc = (c) => (st.opcoes.caixaIgual > 0 ? st.opcoes.caixaIgual : c.orcamento || Orcamentos.de(c).caixa), ordemLiga = (c) => ["brasileirao-2026", ...Temporada.EUROPA].indexOf(c.liga);
+  const orc = (c) => (st.opcoes.caixaIgual > 0 ? st.opcoes.caixaIgual : c.orcamento || Orcamentos.de(c).caixa), ordemLiga = (c) => ["brasileirao-2026", "serieb-2026", ...Temporada.EUROPA].indexOf(c.liga);
   $("gClubes").innerHTML = st.clubes.map((id) => CLUBES[id]).filter(Boolean).sort((a, b) => ordemLiga(a) - ordemLiga(b) || orc(b) - orc(a)).map((c) => {
     const dono = st.ocupados[c.id], meu = dono === MEU_ID, outro = dono && !meu ? st.players.find((p) => p.id === dono) : null;
     return `<button class="clube" style="${coresClube(c.id)}" data-clube-sala="${c.id}" aria-pressed="${meu}" ${outro ? "disabled" : ""}>${escudo(c.id, 3)}<span class="clube-info"><b>${h(c.nome)}</b>
