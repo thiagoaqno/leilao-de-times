@@ -1,6 +1,7 @@
-# Prancheta no estilo EA FC
+# Prancheta no estilo EA FC, 100 eventos novos, notícias em formato Instagram
 
-- **Elenco e parada tática:** o campinho agora é um gramado em perspectiva, com camisas em SVG nas cores e no desenho do clube (goleiro de verde ou laranja), nota ao lado, nome em etiqueta e barra de energia.
-- **Cartão de destaque** no alto (foto, nota, posição, energia e gráfico dos seis atributos): mostra o jogador marcado, o que está sob o mouse ou o melhor titular.
-- **Banco de reservas** em cartões escuros (posição, foto, nota, nome e energia); na parada do jogo o banco fica embaixo do campo e o diálogo é mais largo.
-- Arquivos: `public/carreira/elenco.js`, `partida.js`, `index.html`, `estilo.css`.
+- **Prancheta (Elenco e parada tática):** gramado em perspectiva, camisas em SVG nas cores do clube, cartão de destaque com o gráfico de atributos e banco de reservas em cartões.
+- **100 eventos aleatórios novos** (`carreira-catalogo-novos.js`, somados ao catálogo: agora são mais de 300). Todos mexem no jogo: moral, caixa, nota do time, do jogador ou do adversário, lesões, salários e evolução. Alguns só saem na situação certa (em casa, fora, janela de transferências, sequência de derrotas ou vitórias).
+- **Festa do campeão antes da hora (corrigido):** uma competição que terminava numa semana sem jogo do técnico já abria a festa na rodada anterior. Agora (`estadoMundo`) a festa só sai quando o último jogo da competição ficou para trás da semana do técnico. Teste: `tests/carreira-festa-sem-spoiler.test.js`.
+- **Notícias na Sede em formato Instagram:** o post inteiro (arte, curtir, legenda, comentários) direto na Sede, uma coluna que rola sozinha para o próximo a cada 10 segundos (para quando o mouse ou o dedo estão nela; sem a rolagem sozinha com "menos movimento").
+- **Notícias com os escudos novos:** a arte das notícias usa os mesmos escudos do resto da carreira (os desenhados à mão e, quando o navegador deixa, os da API) em vez do brasão em pixel de antes, num canvas 4 vezes maior para ficarem nítidos.

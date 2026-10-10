@@ -1135,3 +1135,14 @@ body.zoom-ativo .tela>*,body.zoom-ativo .hub-grade>*>*{animation:none!important}
 .linha-tempo li.tba{opacity:.72}.linha-tempo li.tba .adv{color:var(--t3);font-weight:500}
 .escudo-tba{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1.5px dashed var(--b2);color:var(--t3);font:600 16px/1 var(--fonte)}
 .selo-tba{margin-left:8px;padding:2px 7px;border-radius:99px;background:var(--s3);color:var(--t2);font:600 10px/1.4 var(--mono);letter-spacing:.08em}
+
+/* as notícias na sede, no formato do Instagram: um post por vez, rolando sozinho a cada 10 segundos */
+.insta{position:relative}
+.insta-rolagem{display:flex;flex-direction:column;gap:14px;height:min(78vh,760px);overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y mandatory;scrollbar-width:none;border-radius:var(--r)}
+.insta-rolagem::-webkit-scrollbar{display:none}
+.insta-rolagem:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.insta-rolagem .post{flex:none;width:100%;max-width:520px;margin:0 auto;scroll-snap-align:start;animation:none}
+.insta-rodape{display:flex;justify-content:center;gap:6px;margin-top:10px}
+#feedPontos{display:flex;gap:5px;align-items:center}#feedPontos i{width:6px;height:6px;border-radius:50%;background:var(--b3);transition:background 200ms ease,transform 200ms var(--ease)}
+#feedPontos i.on{background:var(--acento);transform:scale(1.4)}
+@media (max-width:640px){.insta-rolagem{height:min(80vh,640px)}}

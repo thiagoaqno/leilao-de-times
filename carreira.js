@@ -1281,6 +1281,10 @@ function estadoMundo(save) {
   if (!save.calendarioMundo) recalcularMundo(save);
   const proximo = proximoJogoMundo(save), semanaPropria = proximo ? proximo.semana : Infinity, limite = Math.min(proximo ? proximo.semana : Infinity, typeof save.semanaDosHumanos === "function" ? save.semanaDosHumanos() : Infinity);
   const golsTodos = golsDoMundo(save, limite);
+  // a festa do campeão só abre quando o último jogo da competição já ficou para trás de verdade: na semana do seu último jogo ou antes dela
+  // (as semanas sem jogo seu, entre um jogo e o próximo, ainda não "aconteceram" para quem joga). Sem jogo à frente, a temporada acabou: tudo vale.
+  const semanaVista = proximo ? ((save.ultimo && save.ultimo.semana) ?? -1) : Infinity;
+  const jaAconteceu = (c) => c.jogos.every((j) => j.semana <= semanaVista);
   const competicoes = Object.fromEntries(Object.entries(save.competicoes).map(([id, c]) => {
     const jogos = c.jogos.filter((j) => j.semana < limite || save.jogosJogados.includes(j.id));
     const resultados = c.tipo === "liga" ? jogos.reduce((a, j) => { (a[j.rodada] ||= []).push([j.casa, j.fora, ...j.placar]); return a; }, []) : jogos.map((j) => [j.casa, j.fora, ...j.placar]);
@@ -1288,7 +1292,7 @@ function estadoMundo(save) {
     const grupos = c.grupos.map((g) => { const r = jogos.filter((j) => j.fase === `grupo-${g.id}`).reduce((a, j) => { (a[j.rodada] ||= []).push([j.casa, j.fora, ...j.placar]); return a; }, []); return { id: g.id, clubes: g.clubes, tabela: Temporada.tabela(g.clubes, r) }; });
     const futuro = c.jogos.find((j) => !jogos.some((x) => x.id === j.id));
     const visivel = (j) => j.semana < limite || save.jogosJogados.includes(j.id);
-    return [id, { ...c, chave: c.tipo === "copa" ? chaveDaCopa(c, visivel) : undefined, fase: futuro ? futuro.fase : "encerrada", grupos, jogos, resultados, tabela: c.tipo === "liga" ? Temporada.tabela(ids, resultados) : undefined, campeao: futuro ? null : c.campeao, vice: futuro ? null : c.vice, festa: futuro || !c.campeao ? undefined : festaDaCompeticao(save, c, visivel, golsTodos) }];
+    return [id, { ...c, chave: c.tipo === "copa" ? chaveDaCopa(c, visivel) : undefined, fase: futuro ? futuro.fase : "encerrada", grupos, jogos, resultados, tabela: c.tipo === "liga" ? Temporada.tabela(ids, resultados) : undefined, campeao: futuro ? null : c.campeao, vice: futuro ? null : c.vice, festa: futuro || !c.campeao || !jaAconteceu(c) ? undefined : festaDaCompeticao(save, c, visivel, golsTodos) }];
   }));
   const liga = ligaDoClube(save.clube), tabela = competicoes[liga].tabela;
   // Liga e grupos têm tabela definida desde o começo. No mata-mata, só aparece o que já foi jogado ou o próximo jogo:

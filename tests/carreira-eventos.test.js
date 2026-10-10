@@ -102,3 +102,12 @@ test("temporada inteira: os eventos aparecem quase toda rodada e nenhum se repet
   assert.ok(vistos.length >= 25, `só ${vistos.length} eventos na temporada`);
   assert.ok(Number.isFinite(save.caixa));
 });
+
+test("catálogo: os 100 eventos novos (carreira-catalogo-novos.js) entram no sorteio, em todos os grupos", () => {
+  const { NOVOS } = require("../carreira-catalogo-novos.js");
+  assert.strictEqual(NOVOS.length, 100);
+  const ids = new Set(Eventos.CATALOGO.map((d) => d.id));
+  assert.ok(NOVOS.every((d) => ids.has(d.id)));
+  assert.ok(Eventos.CATALOGO.length >= 300);
+  assert.ok(new Set(NOVOS.map((d) => d.grupo)).size >= 8);
+});
