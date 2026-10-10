@@ -172,14 +172,16 @@ function lance(e) {
   try { const el = Lances.criarLance(e.tipo, d, { auto: !J.pulando }); if (el) poeTelao(el, e, clube === E.clube); } catch (err) { console.warn("lance", err); }
 }
 // o gol: o replay em pixel-art com a camisa do clube e, se foi seu, a festa
-function gol(e) {
+// o telão de um gol (o replay em pixel-art); o intervalo usa de novo para o replay instantâneo
+function telaoDoGol(e, auto) {
   const j = JOGADORES[e.jogador] || { nome: "?", pos: "ATA", nota: 70 }, clube = clubeDoLado(e.lado), outro = clubeDoLado(1 - e.lado);
   const g = { min: e.min, lado: e.lado === 0 ? "A" : "B", nome: j.nome, pos: Motor.grupoDe(j.pos), ovr: notaDe(j), uniforme: uniformeDoJogo(clube), uniformeRival: uniformeDoJogo(outro),
     estadio: { cores: CLUBES[J.casa].cores, visitante: CLUBES[J.fora].cores, curto: CLUBES[J.casa].curto }, clima: J.clima }; // o cenário veste as cores de quem joga em casa
-  try {
-    const telao = Lances.criar(g, { id: `${E.temporada}-${J.rodada}-${J.casa}-${J.fora}`, mins: 90 }, { nome: sobrenome(j.nome), auto: !J.pulando, cobranca: null });
-    poeTelao(telao, e, clube === E.clube);
-  } catch (err) { console.warn("replay", err); }
+  return Lances.criar(g, { id: `${E.temporada}-${J.rodada}-${J.casa}-${J.fora}`, mins: 90 }, { nome: sobrenome(j.nome), auto, cobranca: null });
+}
+function gol(e) {
+  const clube = clubeDoLado(e.lado);
+  try { poeTelao(telaoDoGol(e, !J.pulando), e, clube === E.clube); } catch (err) { console.warn("replay", err); }
   if (J.pulando) return;
   const placar = $("pGols");
   placar.classList.remove("pulso"); void placar.offsetWidth; placar.classList.add("pulso");
@@ -227,6 +229,7 @@ function abrirDecisao(p) {
     return;
   }
   $("dTempoBox").classList.toggle("hidden", p.tipo !== "lance");
+  $("decisao").classList.remove("intervalo", "sem-prancheta");
   // na parada tática, o estádio de quem joga em casa (estadios.js) fica atrás da prancheta
   const est = $("dEstadio"); est.innerHTML = ""; est.classList.toggle("hidden", p.tipo !== "tatica");
   if (p.tipo === "tatica") {
@@ -287,6 +290,11 @@ function decisaoTatica(p) {
   const trocasGastas = () => d.subs.length + [...d.ocupar, ...d.ocupar2].filter((x) => x[0] === "e").length; // as substituições usadas (trocas de quem sai e reservas que entram na vaga aberta)
   const campo = p.campo.map((v) => ({ ...v })), energia = Object.fromEntries(p.titulares.map((t) => [t.id, t.energia]));
   let banco = p.banco.map((b) => b.id), sel = null;
+  // no intervalo, a tela começa no menu (como nos jogos de futebol): o placar com os números do 1º tempo e os blocos que
+  // levam à prancheta, aos lances e de volta ao jogo. Nas outras paradas, direto na prancheta.
+  const intervalo = p.motivo === "intervalo";
+  let vista = intervalo ? "menu" : "prancheta", replay = null, foco = null;
+  $("decisao").classList.toggle("intervalo", intervalo);
   const substituir = (i, entra) => {
     if (p.subs - trocasGastas() <= 0) { sel = null; return toast("Acabaram as substituições."); }
     d.subs.push([campo[i].id, entra]); campo[i].id = entra; energia[entra] = 100; banco = banco.filter((x) => x !== entra); sel = null;
@@ -294,6 +302,9 @@ function decisaoTatica(p) {
   $("dTitulo").textContent = MOTIVO[p.motivo] || "Parada técnica";
   const desenhar = () => {
     const sobra = p.subs - trocasGastas();
+    $("decisao").classList.toggle("sem-prancheta", vista !== "prancheta");
+    if (vista === "menu") return menuIntervalo(p, d, { sobra, banco, campo, energia, irPara });
+    if (vista === "lances") return lancesIntervalo(p, { replay, irPara, verReplay: (i) => { replay = i; desenhar(); } });
     $("dTexto").innerHTML = `<span class="min-tag">${minutoTexto(p)}</span> ${h(nomeClube(J.casa))} ${p.placar[0]} × ${p.placar[1]} ${h(nomeClube(J.fora))} · ${sobra} substituiç${sobra === 1 ? "ão" : "ões"}`;
     $("dCorpo").innerHTML = `<div class="tatica-jogo">
       <div class="prancheta-jogo"><div class="destaque-box" data-pid="${pidDestaque(campo, sel?.onde === "campo" ? campo[sel.i].id : sel?.pid) || ""}">${destaqueHTML(pidDestaque(campo, sel?.onde === "campo" ? campo[sel.i].id : sel?.pid))}</div>${campinho(campo, d.formacao, { selecionado: sel?.onde === "campo" ? sel.i : null, energia })}
@@ -310,6 +321,8 @@ function decisaoTatica(p) {
         <span class="rotulo">Formação</span><div class="segmentos pequenos largos">${Taticas.NOMES_FORMACOES.map((f) => `<button data-f="${f}" aria-pressed="${d.formacao === f}">${f}</button>`).join("")}</div>
       </div></div>
       <button id="dVoltar" class="primario largo">Voltar ao jogo</button>`;
+    if (intervalo) $("dCorpo").insertAdjacentHTML("afterbegin", `<button class="int-volta" data-ir-int="menu">← Intervalo</button>`);
+    ligarVoltaIntervalo();
     $("dCorpo").querySelector(".gramado").onclick = (e) => {
       const b = e.target.closest(".peca"); if (!b) return;
       const i = +b.dataset.i;
@@ -346,8 +359,74 @@ function decisaoTatica(p) {
       sel = null; desenhar();
     };
     $("dVoltar").onclick = () => enviarDecisao(d);
+    if (foco) { $("dCorpo").querySelector(foco)?.scrollIntoView({ block: "center" }); foco = null; }
   };
+  // os blocos do intervalo: para onde cada um leva (a prancheta pode abrir já na parte da tática ou da formação)
+  function irPara(destino) {
+    if (destino === "voltar") return enviarDecisao(d);
+    vista = destino === "menu" || destino === "lances" ? destino : "prancheta"; replay = null;
+    foco = destino === "tatica" ? ".lado-tatica" : destino === "formacao" ? "[data-f]" : null;
+    desenhar(); $("decisao").scrollTop = 0;
+  }
+  function ligarVoltaIntervalo() { for (const b of $("dCorpo").querySelectorAll("[data-ir-int]")) b.onclick = () => irPara(b.dataset.irInt); }
   desenhar();
+}
+
+// ---------- o intervalo: o placar com os números do 1º tempo e os blocos grandes ----------
+// os números que o motor manda na parada (estatisticas, por lado); sem eles, só o que a narração conta
+function numerosDoJogo(p) {
+  const ev = J.eventos.slice(0, J.i), conta = (tipo, lado) => ev.filter((e) => e.tipo === tipo && e.lado === lado).length;
+  const est = p.estatisticas || [0, 1].map((l) => ({ chutes: conta("gol", l) + conta("defesa", l) + conta("perdeu", l), noAlvo: conta("gol", l) + conta("defesa", l), amarelos: conta("amarelo", l), vermelhos: conta("vermelho", l) }));
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0), soma = (k) => est[0][k] + est[1][k];
+  const linhas = [["Gols", p.placar[0], p.placar[1]], ["Finalizações", est[0].chutes, est[1].chutes], ["No gol", est[0].noAlvo, est[1].noAlvo]];
+  if (est[0].lances != null && soma("lances")) {
+    const dom = pct(est[0].lances, soma("lances"));
+    linhas.push(["Domínio", `${dom}%`, `${100 - dom}%`], ["Ataques", est[0].lances, est[1].lances]);
+  }
+  if (est[0].faltas != null) linhas.push(["Faltas", est[0].faltas, est[1].faltas]);
+  linhas.push(["Amarelos", est[0].amarelos, est[1].amarelos], ["Vermelhos", est[0].vermelhos, est[1].vermelhos],
+    ["Pontaria", `${pct(est[0].noAlvo, est[0].chutes)}%`, `${pct(est[1].noAlvo, est[1].chutes)}%`]);
+  return linhas;
+}
+const MENTALIDADE_CURTA = ["Retranca", "Defensiva", "Equilibrada", "Ofensiva", "Ataque total"];
+function placarIntervaloHTML(p) {
+  const lado = (id) => `<div class="int-time" style="${coresClube(id)}">${escudo(id, 4)}<b>${h(CLUBES[id].curto || nomeClube(id).slice(0, 3).toUpperCase())}</b><small>${h(nomeClube(id))}</small></div>`;
+  const nos = meuLado();
+  return `<section class="int-placar" aria-label="Placar do intervalo"><h2 class="int-titulo">Intervalo</h2>
+    <div class="int-confronto">${lado(J.casa)}<div class="int-gols"><b>${p.placar[0]} – ${p.placar[1]}</b><time>45:00${p.acr ? ` +${p.acr}` : ""}</time></div>${lado(J.fora)}</div>
+    <table class="int-numeros"><tbody>${numerosDoJogo(p).map(([nome, a, b]) => `<tr><td class="${nos === 0 ? "nosso" : ""}">${a}</td><th scope="row">${nome}</th><td class="${nos === 1 ? "nosso" : ""}">${b}</td></tr>`).join("")}</tbody></table></section>`;
+}
+function menuIntervalo(p, d, { sobra, banco, campo, energia, irPara }) {
+  $("dTitulo").textContent = "Intervalo"; $("dTexto").textContent = "";
+  const ev = J.eventos.slice(0, J.i), golsEv = ev.filter((e) => e.tipo === "gol"), ultimo = golsEv.at(-1);
+  const cansados = campo.filter((v) => v.id && energia[v.id] != null).sort((a, b) => energia[a.id] - energia[b.id]).slice(0, 2);
+  const rostos = (ids) => `<span class="int-rostos">${ids.map((pid) => `<img class="pix" src="${retrato(pid)}" alt="">`).join("")}</span>`;
+  const est = Taticas.ESTILOS && Taticas.ESTILOS[d.tatica.estilo];
+  const tile = (id, titulo, info, arte, cls = "") => `<button class="int-tile ${cls}" data-ir-int="${id}"><span class="int-tile-txt"><b>${titulo}</b><small>${info}</small></span><span class="int-arte" aria-hidden="true">${arte}</span></button>`;
+  $("dCorpo").innerHTML = `<div class="int-grade">
+    ${tile("tatica", "Tática", `Mentalidade ${h((MENTALIDADE_CURTA[d.tatica.mentalidade + 2] || "").toLowerCase())} · pressão ${h((NIVEL[d.tatica.pressao] || "").toLowerCase())}${est ? ` · ${h(est.nome || d.tatica.estilo)}` : ""}`, ic("grafico"), "t-tatica")}
+    ${tile("elenco", "Substituições", `${sobra} troca${sobra === 1 ? "" : "s"} · ${cansados.length ? `menos fôlego: ${cansados.map((v) => h(sobrenome(nomeJogador(v.id)))).join(", ")}` : "time inteiro"}`, rostos(banco.slice(0, 4)), "t-elenco")}
+    ${placarIntervaloHTML(p)}
+    ${tile("formacao", "Formação", h(Taticas.ROTULO_FORMACAO[d.formacao] || d.formacao), `<span class="int-esquema">${h(String(d.formacao).replace(/[A-Z]+$/, ""))}</span>`, "t-formacao")}
+    ${tile("lances", "Lances do 1º tempo", golsEv.length ? `${golsEv.length} gol${golsEv.length > 1 ? "s" : ""} · replay instantâneo` : `${ev.filter((e) => ["defesa", "perdeu", "amarelo", "vermelho", "lesao"].includes(e.tipo)).length} lances · sem gols`, ultimo ? rostos([ultimo.jogador]) : ic("camera"), "t-lances")}
+    ${tile("voltar", "Voltar ao jogo", "Começa o 2º tempo", ic("apito"), "t-voltar")}
+  </div>`;
+  for (const b of $("dCorpo").querySelectorAll("[data-ir-int]")) b.onclick = () => irPara(b.dataset.irInt);
+  $("dCorpo").querySelector(".t-voltar").id = "dVoltar";
+}
+// os lances do 1º tempo: a lista (gols, cartões, lesões, defesas) e, no gol escolhido, o replay de novo
+function lancesIntervalo(p, { replay, irPara, verReplay }) {
+  $("dTitulo").textContent = "Lances do 1º tempo"; $("dTexto").textContent = "";
+  const ev = J.eventos.slice(0, J.i).map((e, i) => [e, i]).filter(([e]) => ["gol", "defesa", "perdeu", "amarelo", "vermelho", "lesao", "sub", "contra_ataque"].includes(e.tipo) || (e.tipo === "penalti" && e.chute));
+  $("dCorpo").innerHTML = `<button class="int-volta" data-ir-int="menu">← Intervalo</button>
+    <div class="int-lances">${placarIntervaloHTML(p)}
+    <section class="int-lista"><h3 class="fx-titulo">Lances do 1º tempo</h3><div class="int-replay" id="intReplay">${replay == null ? `<p class="suave">${ev.some(([e]) => e.tipo === "gol") ? "Toque num gol para ver o replay." : "Nenhum gol no 1º tempo."}</p>` : ""}</div>
+    <ol class="narracao">${ev.map(([e, i]) => { const [texto, classe] = narrar(e); return `<li class="${classe} lado${e.lado ?? ""}${e.lado === meuLado() ? " nosso" : ""}${e.tipo === "gol" ? " com-replay" : ""}${replay === i ? " ativo" : ""}" ${e.tipo === "gol" ? `data-replay="${i}" tabindex="0" role="button"` : ""}><span class="min">${minutoTexto(e)}</span><span class="ic-lance">${ic(ICONE_LANCE[e.tipo] || "bola")}</span><span>${texto}</span></li>`; }).join("") || `<li class="apito"><span>Primeiro tempo sem grandes lances.</span></li>`}</ol></section></div>
+    <button id="dVoltar" class="primario largo">Voltar ao jogo</button>`;
+  if (replay != null) { try { $("intReplay").appendChild(telaoDoGol(J.eventos[replay], true)); } catch (err) { console.warn("replay", err); } }
+  for (const li of $("dCorpo").querySelectorAll("[data-replay]")) { li.onclick = () => verReplay(+li.dataset.replay); li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); verReplay(+li.dataset.replay); } }; }
+  for (const b of $("dCorpo").querySelectorAll("[data-ir-int]")) b.onclick = () => irPara(b.dataset.irInt);
+  $("dVoltar").onclick = () => irPara("voltar");
 }
 
 if (location.hash.includes("debug")) window.__carreira = { get E() { return E; }, J, pedir, abrirPartida, mostrarTela, abrirFicha };
