@@ -16,6 +16,10 @@ body{--fx-teal:var(--time,#1592a9);--fx-teal2:var(--time-escuro,#0d6f82);--fx-cl
 .tela .quadro .quadro,.dialogo .quadro{background:#ffffff73;box-shadow:none;border:1px solid var(--b1);border-radius:2px}
 .tela .quadro.secundario{background:#e3eaf0cc;box-shadow:none;border:1px dashed var(--b3)}
 .dialogo{box-shadow:0 30px 80px -24px #000}
+/* o botão de voltar do cabeçalho: uma placa clara e reta; o "← Sede" (nas telas de gestão) na cor do time, maior */
+#barra .voltar{height:34px;padding:0 14px;border-radius:2px;background:#d7e0e8e6;color:#24323e;font:600 15px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.06em}
+#barra .voltar.para-sede{height:38px;padding:0 18px;background:var(--fx-teal);color:var(--fx-tinta);font-size:17px;box-shadow:0 10px 24px -14px var(--fx-teal)}
+@media (hover:hover) and (pointer:fine){#barra .voltar:hover{background:#eef3f7;color:#15212c}#barra .voltar.para-sede:hover{background:var(--fx-teal2);color:var(--fx-tinta)}}
 /* o que fica no fundo escuro, fora dos painéis: o título da tela em caixa alta, o "← Sede", o caixa e o aviso em placas claras */
 .topo-tela h2{font:600 clamp(28px,3vw,38px)/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.03em;color:#fff}
 .topo-tela .volta{font:600 15px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em}
