@@ -43,6 +43,7 @@ const Zoom = (() => {
       ]);
     } finally {
       sede.classList.add("hidden"); soltar(sede); // só agora a sede sai (já estava invisível)
+      for (const an of sede.getAnimations()) an.cancel(); // o esmaecer (fill: forwards) não pode ficar preso: a sede voltaria invisível por outro caminho (o fim do jogo)
       if (tela) { tela.classList.remove("zoomando"); soltar(tela); }
       ocupado = false; // (a classe zoom-ativo fica: se ela saísse agora, a entrada em cascata da tela recomeçaria e daria um pulo no fim)
     }
@@ -72,6 +73,7 @@ const Zoom = (() => {
       ]);
     } finally {
       tela.classList.add("hidden"); tela.classList.remove("zoomando"); soltar(tela); soltar(sede);
+      for (const an of sede.getAnimations()) an.cancel(); // a sede já terminou em opacidade 1: tira as animações presas
       ocupado = false;
     }
   }
