@@ -328,7 +328,7 @@ function postHTML(post, compacto = false) {
   const quem = post.comentarios && post.comentarios[0] ? post.comentarios[0][0] : "torcedor";
   if (compacto) return `<button class="post-mini" data-ir="feed"><img class="pix" src="${artePost(post)}" alt=""><span><b>@${h(pf.nome)}</b><span>${h(post.texto)}</span></span></button>`;
   return `<article class="post" data-post="${h(post.id)}">
-    <header>${avatar(post)}<b>@${h(pf.nome)}</b>${pf.oficial ? SVG_FEED.verificado : ""}<small>· R${post.rodada + 1}</small></header>
+    <header>${avatar(post)}<b>@${h(pf.nome)}</b>${pf.oficial ? SVG_FEED.verificado : ""}<small>· R${(post.rl ?? post.rodada) + 1}</small></header>
     <div class="arte"><img class="pix" data-arte="${h(post.id)}" src="${artePost(post)}" alt="${h(post.arte ? post.arte.cena : "")}"></div>
     <div class="acoes"><button class="curtir" data-curtir="${h(post.id)}" aria-pressed="${curti}" aria-label="Curtir">${SVG_FEED.curtir}</button><button aria-label="Comentar">${SVG_FEED.comentar}</button><button aria-label="Enviar">${SVG_FEED.enviar}</button><button class="salvar" aria-label="Salvar">${SVG_FEED.salvar}</button></div>
     <p class="curtidas">Curtido por <b>@${h(quem)}</b> e outras <b>${milhar(Math.max(0, total - 1))}</b> pessoas</p>

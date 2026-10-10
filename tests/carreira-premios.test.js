@@ -12,6 +12,12 @@ const jogar = (save, ate = Infinity) => {
 };
 const extrato = (save) => save.financas.flatMap((f) => f.itens);
 
+// os jogos do clube antes da rodada n do Brasileirão (só o Brasileirão conta como rodada: as copas da semana não mudam a conta)
+const ateARodada = (save, clube, n) => {
+  const semanas = [...new Set(save.calendarioMundo.filter((j) => j.competicao === "brasileirao-2026").map((j) => j.semana))].sort((a, b) => a - b);
+  const limite = n < semanas.length ? semanas[n] : Infinity;
+  return save.calendarioMundo.filter((j) => (j.casa === clube || j.fora === clube) && j.semana < limite).map((j) => j.id);
+};
 test("a tabela de prêmios: seis posições, do maior para o menor, com o fator da liga e sem nada fora do G6", () => {
   assert.strictEqual(PREMIOS_G6.length, 6);
   assert.ok(PREMIOS_G6.every((v, i) => i === 0 || v < PREMIOS_G6[i - 1]), "cada posição paga menos que a de cima");
@@ -92,7 +98,7 @@ test("vale de campeão: leva o jogador de graça, com salário, sem passar do li
 
 test("vale de campeão: só com a janela aberta, e vence no fim da temporada seguinte", () => {
   const v = campeao(novo()), j = alvo(v);
-  v.jogosJogados = Array.from({ length: 6 }, (_, i) => `brasileirao-2026:liga:${i}:x:y`); // rodada 6: janela fechada
+  v.jogosJogados = ateARodada(v, v.clube, 6); // rodada 6: janela fechada
   assert.match(Clube.acao(v, ajudas, { acao: "vale", jogador: j.id }), /janela/);
   v.jogosJogados = [];
   v.temporada++; Clube.virada(v, ajudas); // a temporada seguinte acabou: o vale vence

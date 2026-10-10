@@ -1,14 +1,11 @@
-# Carreira: conserta o que o PR #133 quebrou na interface
+# Carreira: só o Brasileirão conta como rodada
 
-O PR #133 entrou no `main` sem a correção do CSS (ela ficou só na branch). Este PR traz essa correção e o resto do que a revisão encontrou.
+Na carreira do calendário mundial, cada clube contava as rodadas da própria liga e várias telas usavam a contagem de jogos do técnico (que soma as copas). Agora a rodada é uma só para todo mundo: as rodadas do Brasileirão que o mundo já jogou, pela semana.
 
-- **CSS quebrado:** sobrou uma linha solta de uma regra apagada (uma chave `}` a mais), e o navegador ignorava várias regras seguintes.
-- **Card "Próxima partida" da Sede desmontado** (escudos sobrepostos, botão espremido): a classe nova `.destaque` do cartão do jogador já era usada por esse card. Virou `.cartao-jog`.
-- **Foto do elenco na festa do campeão:** a classe nova `.reserva` (cartão do banco) colidia com a dos reservas da foto. Virou `.carta-reserva` (e `.ponto` virou `.ponto-pos`).
-- **Caixa escura atrás da camisa** ao passar o mouse num jogador do campinho (a regra geral de botão ganhava).
-- **Improvisado e selecionado** ficavam com a mesma etiqueta amarela: o improvisado agora só tem o contorno.
-- **Parada tática:** a janela rolava sozinha e escondia o título ("Intervalo", "Tomamos um gol").
-- **Sede invisível depois do jogo** (bug antigo do `zoom.js`, de antes do #133): o esmaecer da Sede ficava preso com opacidade 0 quando a volta não era pelo zoom.
-- **E2E da carreira** (já falhava antes do #133): fecha os avisos que aparecem sozinhos (reunião com a diretoria), usa o "← Sede" do cabeçalho esperando o zoom, a formação em duas linhas, os 7 blocos da Sede e os posts no lugar da manchete. Agora os 8 testes de `carreira.spec.js` e `carreira-transicoes.spec.js` passam.
+- **Janela de transferências:** abre e fecha pela rodada do Brasileirão (começo até a rodada 4, meio da 17 à 21) para qualquer clube, de qualquer liga, inclusive quem só joga copa. Na carreira em grupo, a rodada é a do técnico mais adiantado da sala (todos jogam as mesmas semanas), então a janela do meio abre no mesmo momento para todos. Jogo de copa não muda a rodada.
+- **Na tela:** a "Rodada" do cabeçalho da Sede conta até 38 (as rodadas do Brasileirão), o ícone de janela aberta no calendário vem do servidor pela semana de cada jogo (antes, o jogo de copa usava o número da rodada da copa), e o "R" das notícias mostra a rodada do Brasileirão (`rl`), e não mais o número de jogos do técnico.
+- **Código:** `rodadaDaJanela` (`carreira.js`) conta as semanas do Brasileirão até a última semana jogada (`semanaFeita`; na sala, com `ultimaSemanaDosHumanos` e `semanaDosHumanos` da visão). O estado ganha `rodadasLiga` e `janela` em cada jogo de `meus`. A contagem de jogos do técnico (`save.rodada`) continua valendo para o resto (efeitos, finanças, ids).
+- Carreiras antigas (só o Brasileirão) seguem como antes.
+- Testes: `tests/carreira-rodada-brasileirao.test.js` (Flamengo, Arsenal e Bayern na mesma sala ficam na mesma rodada semana a semana; copa não conta; sozinho com o Arsenal, a janela do meio abre na rodada 17 do Brasileirão). Três testes antigos usavam ids de jogo inventados para marcar a rodada e passaram a usar os jogos de verdade do calendário.
 
-Conferido: o CSS regra por regra no Chromium (só saíram as regras da prancheta antiga), fotos da Sede, prancheta, parada tática, mercado e notícias no PC e no celular, `npm test` (287 de 288; a que falha, os dilemas de `carreira-clube.test.js`, é instável e falha também antes do #133) e os E2E da carreira.
+Conferido: os testes da carreira e das salas (189 de 189).

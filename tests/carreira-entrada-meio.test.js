@@ -27,8 +27,13 @@ function jogarRodadas(save, n) {
 const faixa = (ok) => ok.map((v, n) => (v ? n : null)).filter((n) => n != null);
 
 // as janelas pela quantidade de jogos da liga já feitos (a do começo até a rodada 4, a do meio das rodadas 17 a 21)
-const fake = (n) => Array.from({ length: n }, (_, i) => `brasileirao-2026:liga:${i}:x:y`);
-const naRodada = (save, clube, n) => { save.humanos[clube].estado.jogosJogados = fake(n); };
+// os jogos do clube antes da rodada n do Brasileirão (só o Brasileirão conta como rodada: as copas da semana não mudam a conta)
+const ateARodada = (save, clube, n) => {
+  const semanas = [...new Set(save.calendarioMundo.filter((j) => j.competicao === "brasileirao-2026").map((j) => j.semana))].sort((a, b) => a - b);
+  const limite = n < semanas.length ? semanas[n] : Infinity;
+  return save.calendarioMundo.filter((j) => (j.casa === clube || j.fora === clube) && j.semana < limite).map((j) => j.id);
+};
+const naRodada = (save, clube, n) => { save.humanos[clube].estado.jogosJogados = ateARodada(save, clube, n); };
 const regra = (save, clube = "flamengo") => G.regraDeCompras(G.vistaDe(save, clube));
 
 test("em cada janela: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85", () => {
