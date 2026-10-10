@@ -1,13 +1,11 @@
-# Carreira: voltar sem se perder (menu do intervalo e botão do topo)
+# Carreira: as fotos das notícias com os escudos da API
 
-- **No intervalo**, depois de abrir Tática, Substituições ou Formação, o botão "← Menu do intervalo" agora fica preso no alto da prancheta, numa faixa na cor do clube, e continua lá enquanto você rola a tela até o banco ou as formações. Antes ele era um botão pequeno e cinza, que sumia ao rolar.
-- O mesmo botão também aparece embaixo, logo acima do "Voltar ao jogo", para não precisar subir a tela inteira.
-- **O botão de voltar do topo** virou uma placa no tema: nas telas de gestão (Elenco e tática, Mercado, Tabela...) o "← Sede" fica maior e na cor do clube; na Sede, o "← Vila" é uma placa clara, menor.
-- **Sem sair sem querer:** o "← Vila" aparece no mesmo lugar do "← Sede" assim que você volta à Sede, e o segundo toque rápido levava à Vila. Agora um toque logo depois de voltar (menos de 1 s) é ignorado.
+- **Todas as artes das notícias agora usam os escudos da TheSportsDB** (os mesmos do resto da carreira). Antes, a arte era desenhada primeiro com o escudo feito à mão e ficava guardada assim: quando a imagem da API chegava, a notícia já estava pronta e não era refeita. E a imagem vinha direto do site da TheSportsDB, que pode bloquear o canvas; aí a arte nunca usava o escudo novo.
+- **As cenas sem escudo ganharam o do clube no canto** (gol, lesão, cartão, festa, treino, vestiário, balada, protesto, seleção...), como a marca do perfil que posta.
+- Os clubes que não estão na API (os argentinos e outros sul-americanos, a Série B) continuam com o escudo desenhado.
 
 ## Como
 
-- `public/carreira/partida.js`: na prancheta do intervalo, o "← Menu do intervalo" entra no alto e também antes do `#dVoltar`.
-- `public/carreira/hub.css`: o botão de cima fica `position: sticky` na cor do time (`--fx-teal`); o de baixo, na faixa clara das abas.
-- `public/carreira/zoom.js`: o botão do cabeçalho ganha a classe `para-sede` nas telas de gestão, e o clique no "← Vila" é ignorado por 900 ms depois de voltar à Sede.
-- `public/carreira/hub.css`: o estilo do `#barra .voltar` (placa clara; `para-sede` na cor do time).
+- `server.js`: `GET /api/escudo/:id` baixa o escudo do clube (`escudos-api.json`, versão `/small`) uma vez, guarda na memória e serve do nosso endereço, com cache de 7 dias no navegador. Clube fora da lista dá 404; se a TheSportsDB não responder, 502 (e tenta de novo no próximo pedido).
+- `public/carreira/feed.js`: `escudoDaArte` pede `/api/escudo/<id>`; enquanto a imagem da API não chega (`esperando`), a arte sai com o escudo desenhado mas não é guardada, e `refazerArtes` troca quando ela fica pronta. Se não abrir, fica o desenhado. `artePost` põe o escudo no canto das cenas que não desenharam nenhum (`comBrasao`). O post compacto também ganhou `data-arte`, para ser refeito.
+- `tests/e2e/carreira.spec.js`: teste novo com um escudo de mentira entregue com atraso, conferindo que a arte da apresentação é refeita com ele.

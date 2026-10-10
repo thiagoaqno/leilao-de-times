@@ -41,6 +41,23 @@ require("./rumi.js")(io); // Rumi da Galera: o jogo de peças numeradas clássic
 app.use(express.static(path.join(__dirname, "public")));
 // a estante de troféus da Carreira (todas as carreiras, solo e em grupo): o ranking dos técnicos e as últimas conquistas
 app.get("/api/estante", (req, res) => { try { res.json(require("./bd.js").estante()); } catch (e) { res.status(500).json({ erro: "A estante não abriu." }); } });
+// o escudo da TheSportsDB de um clube da Carreira, servido pelo nosso endereço: a arte das notícias desenha o escudo num canvas,
+// e uma imagem de outro site sem CORS bloquearia o canvas (a arte caía no escudo desenhado). Baixa uma vez e guarda na memória.
+const escudosApi = (() => { try { return require("./public/carreira/escudos-api.json"); } catch { return {}; } })();
+const escudosBaixados = new Map(); // id do clube -> Promise<{ tipo, dados } | null>
+app.get("/api/escudo/:id", async (req, res) => {
+  const e = Object.hasOwn(escudosApi, req.params.id) ? escudosApi[req.params.id] : null;
+  if (!e) return res.status(404).end();
+  if (!escudosBaixados.has(req.params.id)) {
+    escudosBaixados.set(req.params.id, fetch(`${e.url}/small`, { signal: AbortSignal.timeout(8000) })
+      .then(async (r) => (r.ok ? { tipo: r.headers.get("content-type") || "image/png", dados: Buffer.from(await r.arrayBuffer()) } : null))
+      .catch(() => null)
+      .then((x) => { if (!x) escudosBaixados.delete(req.params.id); return x; })); // se falhou, tenta de novo no próximo pedido
+  }
+  const x = await escudosBaixados.get(req.params.id);
+  if (!x) return res.status(502).end();
+  res.set("Cache-Control", "public, max-age=604800").type(x.tipo).send(x.dados);
+});
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
 app.get("/uno", (req, res) => res.redirect("/uno/"));

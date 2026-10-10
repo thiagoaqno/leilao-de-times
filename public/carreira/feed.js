@@ -28,26 +28,34 @@ function letras(g, txt, x, y, c, esc = 1) {
   K.escreve(g, String(txt).toUpperCase().normalize("NFD").replace(/[^A-Z0-9]/g, ""), 0, 0, false); g.restore();
 }
 const larguraTexto = (txt, esc = 1) => String(txt).replace(/[^A-Za-z0-9]/g, "").length * 4 * esc - esc;
-// o escudo das notícias: o MESMO escudo do resto da carreira (Escudos.svg, desenhado à mão, ou a imagem da API quando o navegador
-// deixa desenhar no canvas). A imagem carrega depois: enquanto não chega, a arte sai com o brasão em pixel de antes e é refeita
-// quando o escudo novo fica pronto (refazerArtes). O escudo da API só entra se vier com CORS (senão o canvas ficaria bloqueado).
-const escudosArte = new Map(); // clube -> { img, api }
-let artePendente = false, refazendo = 0;
+// o escudo das notícias: o MESMO escudo do resto da carreira (a imagem da API TheSportsDB, ou Escudos.svg, desenhado à mão,
+// para os clubes que não estão nela). A imagem da API vem pelo nosso servidor (/api/escudo/<id>, server.js), do mesmo endereço
+// da página, para o canvas não ficar bloqueado. Enquanto ela não chega, a arte sai com o escudo desenhado e NÃO é guardada:
+// é refeita quando a imagem da API fica pronta (refazerArtes); se ela não abrir, fica o desenhado.
+const escudosArte = new Map(); // clube -> { img, api, esperando }
+let artePendente = false, refazendo = 0, comBrasao = false;
 function escudoDaArte(clube) {
   const c = CLUBES[clube]; if (!c) return null;
   let e = escudosArte.get(clube);
   if (!e) {
-    e = { img: null, api: null }; escudosArte.set(clube, e);
+    const temApi = !!(window.ESCUDOS_API && window.ESCUDOS_API[clube]);
+    e = { img: null, api: null, esperando: temApi }; escudosArte.set(clube, e);
     const svg = Escudos.svg(c).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="180" ');
     const img = new Image(); img.onload = () => { if (!e.api) { e.img = img; agendarRefazer(); } }; img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-    const api = window.ESCUDOS_API && window.ESCUDOS_API[clube];
-    if (api) { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => { e.api = im; e.img = im; agendarRefazer(); }; im.src = `${api.url}/small`; }
+    if (temApi) {
+      const im = new Image();
+      im.onload = () => { e.api = im; e.img = im; e.esperando = false; agendarRefazer(); };
+      im.onerror = () => { e.esperando = false; agendarRefazer(); };
+      im.src = `/api/escudo/${encodeURIComponent(clube)}`;
+    }
   }
+  if (e.esperando) artePendente = true; // a arte com o escudo provisório não fica guardada
   return e.img;
 }
 function agendarRefazer() { clearTimeout(refazendo); refazendo = setTimeout(refazerArtes, 80); }
 // a caixa do escudo: 16x18 casas (8:9) a partir de (x, y), centrada na imagem (a da API é quadrada: cabe inteira)
 function brasao(g, clube, x, y, esc = 1) {
+  comBrasao = true;
   const img = escudoDaArte(clube);
   if (!img) { artePendente = true; return brasaoPixel(g, clube, x, y, esc); }
   const w = 16 * esc, h = 18 * esc, k = Math.min(w / img.naturalWidth, h / img.naturalHeight), dw = img.naturalWidth * k, dh = img.naturalHeight * k;
@@ -305,8 +313,10 @@ function artePost(post) {
   const cv = document.createElement("canvas"); cv.width = ARTE * RESOLUCAO; cv.height = ARTE * RESOLUCAO;
   const g = cv.getContext("2d"); g.scale(RESOLUCAO, RESOLUCAO); g.imageSmoothingEnabled = false;
   const r = sorteArte(post.id), cena = CENAS_FEED[post.arte && post.arte.cena] || CENAS_FEED.vestiario;
-  artePendente = false;
+  artePendente = false; comBrasao = false;
   try { cena(g, post.arte || {}, r); } catch (err) { console.warn("arte", post.arte, err); P(g, "#1b2430", 0, 0, ARTE, ARTE); }
+  const dono = post.arte && (post.arte.clube || post.arte.para);
+  if (!comBrasao && CLUBES[dono]) brasao(g, dono, ARTE - 15, ARTE - 17, 0.8); // a cena sem escudo ganha o do clube no canto, como a marca do perfil
   const url = cv.toDataURL(); if (!artePendente) artes.set(post.id, url); return url; // com escudo ainda carregando, não guarda: refaz quando chegar
 }
 // quando um escudo chega, as artes que saíram com o brasão em pixel são refeitas e trocadas na tela
@@ -326,7 +336,7 @@ const milhar = (n) => n.toLocaleString("pt-BR");
 function postHTML(post, compacto = false) {
   const pf = perfilDe(post.perfil), curti = !!curtidas()[post.id], total = post.curtidas + (curti ? 1 : 0);
   const quem = post.comentarios && post.comentarios[0] ? post.comentarios[0][0] : "torcedor";
-  if (compacto) return `<button class="post-mini" data-ir="feed"><img class="pix" src="${artePost(post)}" alt=""><span><b>@${h(pf.nome)}</b><span>${h(post.texto)}</span></span></button>`;
+  if (compacto) return `<button class="post-mini" data-ir="feed"><img class="pix" data-arte="${h(post.id)}" src="${artePost(post)}" alt=""><span><b>@${h(pf.nome)}</b><span>${h(post.texto)}</span></span></button>`;
   return `<article class="post" data-post="${h(post.id)}">
     <header>${avatar(post)}<b>@${h(pf.nome)}</b>${pf.oficial ? SVG_FEED.verificado : ""}<small>· R${(post.rl ?? post.rodada) + 1}</small></header>
     <div class="arte"><img class="pix" data-arte="${h(post.id)}" src="${artePost(post)}" alt="${h(post.arte ? post.arte.cena : "")}"></div>
