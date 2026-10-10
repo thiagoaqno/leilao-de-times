@@ -1,6 +1,7 @@
-# Carreira: os títulos antigos da sala entram na estante sem ninguém mexer nela
+# Estante: as taças da sala no "Nesta carreira" e o top 5 da galera num telão da Vila
 
-- **O problema:** o conserto anterior (o Mundial e o Super Mundial na estante) só mandava os títulos antigos para a estante quando alguém da sala fazia alguma coisa (escalar, jogar, abrir o mercado). Só abrir a sala e olhar a estante não bastava, e o título do Vasco continuava fora.
-- **Agora:** quando o servidor sobe e carrega as salas do banco, cada técnico de cada sala manda as conquistas do histórico dele para a estante (`estanteDaSala`, em `carreira.js`, chamada por `carreira-online.js`). A mesma conquista continua entrando uma vez só.
+- **"Nesta carreira" sem os mundiais:** a temporada da sala era arquivada quando o primeiro técnico terminava, antes do Mundial e do Super Mundial, e depois da virada o mundo daquela temporada não existe mais para refazer o arquivo. Agora `remendarArquivo` (`carreira.js`) completa o arquivo com as taças que estão no histórico de cada técnico: a taça entra com o campeão e conta os pontos dele no ranking da carreira. Roda quando o servidor carrega as salas, a cada ação na sala e, na carreira solo, ao abrir.
+- **Telão na Vila:** a estante da galera saiu da carreira e foi para um telão no alto da Praça da Galera, de frente para o chafariz, com o top 5 (posição, nome e número de taças) em letras de LED. Quem para na frente do telão vê o ranking na caixa de diálogo, com as taças e os pontos, e pode ir direto para a Sede da Carreira. O telão busca `/api/estante` ao abrir a Vila e a cada minuto.
+- **Na carreira, só "Nesta carreira":** a tela Estante mostra só o ranking e as taças desta carreira e as temporadas anteriores; a tela inicial da carreira não mostra mais o top 5.
 
-Conferido: `tests/carreira-rivais.test.js` (uma sala guardada no banco com o Mundial e o Super Mundial do Vasco: ao carregar, os dois títulos aparecem na estante com o nome do técnico; sem o conserto o teste falha) e os testes da carreira em grupo e do banco.
+Conferido: `tests/carreira-rivais.test.js` (o arquivo da sala ganha o Mundial e o Super Mundial do histórico, sem contar duas vezes, e o da carreira solo também), os testes da carreira e do banco, e fotos do telão no PC e no celular.

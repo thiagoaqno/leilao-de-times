@@ -396,6 +396,7 @@ module.exports = function ligarCarreiraOnline(io) {
       const r = acao(v, room, me);
       if (typeof r === "string") return falha(cb, r);
       Carreira.guardarVista(room.save, v);
+      Carreira.estanteDaSala(room.save);
       guardar(room);
       ok(cb, { ...(r || {}), estado: estadoDe(room, me) });
     }

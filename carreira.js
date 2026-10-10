@@ -179,6 +179,7 @@ function completar(save) {
   recuperarPenaltisDoUltimo(save);
   registrarTemporada(save);
   guardarNaEstante(save); // as conquistas das temporadas de antes da estante (ou de antes deste conserto)
+  if (!save.humanosLista) remendarArquivo(save); // na sala, quem remenda é estanteDaSala (precisa do histórico de todos)
   Clube.garantir(save, ajudas);
   return save;
 }
@@ -1201,7 +1202,28 @@ function guardarNaEstante(save) {
 }
 // a sala inteira: cada técnico manda as conquistas do histórico dele (o servidor chama ao carregar as salas do banco, para
 // as conquistas de antes do conserto entrarem sem ninguém precisar mexer na sala)
-function estanteDaSala(save) { if (save && save.humanos) for (const c of Object.keys(save.humanos)) guardarNaEstante(vistaDe(save, c)); }
+function estanteDaSala(save) {
+  if (!save || !save.humanos) return;
+  for (const c of Object.keys(save.humanos)) guardarNaEstante(vistaDe(save, c));
+  remendarArquivo(save);
+}
+// o arquivo das temporadas (o "Nesta carreira" da Estante) completado pelo histórico de cada técnico: na sala, a temporada
+// arquivada quando o primeiro terminou ficava sem as copas do fim do ano (Mundial, Super Mundial), e depois da virada o
+// mundo daquela temporada já não existe para refazer. O histórico de cada um tem os títulos: a taça que falta entra no
+// arquivo (só o campeão e o nome) e na conta do técnico. save: a carreira solo ou a sala inteira (save.humanos).
+function remendarArquivo(save) {
+  if (!save || !save.arquivo || !save.arquivo.length) return;
+  const humanos = save.humanos ? Object.entries(save.humanos).map(([c, hm]) => [c, (hm.estado || {}).historico]) : [[save.clube, save.historico]];
+  for (const [clube, historico] of humanos) for (const x of historico || []) {
+    const a = save.arquivo.find((t) => t.temporada === x.temporada); if (!a) continue;
+    const dono = x.clube || clube, tec = (a.tecnicos || []).find((t) => t.clube === dono);
+    for (const nome of x.titulos || []) {
+      const id = ID_DA_COMPETICAO[nome]; if (!id || id.endsWith("-2026") || (a.competicoes[id] && a.competicoes[id].campeao)) continue;
+      a.competicoes[id] = { nome, tipo: "copa", campeao: dono };
+      if (tec && !tec.titulos.includes(nome)) { tec.titulos.push(nome); tec.pontos += PONTOS_TITULO[id] || 5; }
+    }
+  }
+}
 // a virada: cada jogador evolui (de -2 a +3), os veteranos podem se aposentar e cada clube ganha 1 ou 2 jovens da base.
 // Devolve o que mudou no seu time, para o aviso da pré-temporada.
 // humanos: os clubes humanos e quantos jogos cada um fez na temporada (o solo é um só; a carreira em grupo, vários).
