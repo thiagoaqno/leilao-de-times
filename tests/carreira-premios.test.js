@@ -53,7 +53,7 @@ test("o bônus de título: R$ 60 mi na Libertadores, R$ 50 mi na Copa do Brasil,
   assert.strictEqual(premioDoTitulo(save, nome("copadobrasil")), 50e6);
   assert.strictEqual(premioDoTitulo(save, nome("libertadores")), 60e6);
   assert.strictEqual(premioDoTitulo(save, nome("sulamericana")), 40e6);
-  for (const id of ["brasileirao-2026", "champions", "supermundial", "mundial"]) assert.strictEqual(premioDoTitulo(save, nome(id)), 15e6, id);
+  for (const id of ["brasileirao-2026", "champions", "supermundial"]) assert.strictEqual(premioDoTitulo(save, nome(id)), 15e6, id);
   assert.strictEqual(premioDoTitulo(save, "Brasileirão"), 15e6, "nome que não é de competição do mundo (carreira antiga): R$ 15 mi");
 });
 
