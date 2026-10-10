@@ -43,7 +43,7 @@ const RELVA = (() => {
 // a posição da vaga no campo da tela (em %) e o tamanho da peça: quem está mais perto (embaixo) aparece maior
 const lugarNoCampo = (s) => { const p = PERSPECTIVA(s.x, s.y); return { x: p.x, y: p.y, e: 0.86 + 0.14 * s.y / 100 }; };
 const POS_COR = { GOL: "#f59e0b", DEF: "#60a5fa", MEI: "#4ade80", ATA: "#f87171" };
-const marcaPos = (pos) => `<i class="ponto" style="background:${POS_COR[GRUPO_TELA[pos]] || "#4ade80"}"></i>`;
+const marcaPos = (pos) => `<i class="ponto-pos" style="background:${POS_COR[GRUPO_TELA[pos]] || "#4ade80"}"></i>`;
 // o campinho: as camisas nas posições da formação (o gol embaixo, o ataque em cima)
 function campinho(detalhe, formacao, opcoes = {}) {
   const spots = Taticas.spots(formacao);
@@ -79,7 +79,7 @@ function radarSVG(j, pid) {
 function destaqueHTML(pid) {
   const j = pid && JOGADORES[pid]; if (!j) return `<p class="suave dest-vazio">Toque num jogador para ver o cartão dele.</p>`;
   const nota = notaDe(j), energia = energiaDe(pid), clube = donoDe(pid);
-  return `<div class="destaque ${faixa(nota)}"><div class="dest-foto"><span class="dest-pos">${marcaPos(j.pos)}${j.pos}</span><img class="pix" src="${retrato(pid)}" alt=""><b class="dest-nota">${nota}</b></div>
+  return `<div class="cartao-jog ${faixa(nota)}"><div class="dest-foto"><span class="dest-pos">${marcaPos(j.pos)}${j.pos}</span><img class="pix" src="${retrato(pid)}" alt=""><b class="dest-nota">${nota}</b></div>
     <div class="dest-nome"><strong>${h(sobrenome(j.nome))}</strong><small>${h(POS_NOME[j.pos] || j.pos)} · ${Evolucao.idadeNa(j, E.temporada)} anos · ${h((CLUBES[clube] || {}).nome || "")}</small>
     <span class="energia ${nivelEnergia(energia)}" title="Energia ${energia}%"><i style="--v:${energia}%"></i></span></div>
     <div class="dest-radar">${radarSVG(j, pid)}</div></div>`;
@@ -88,14 +88,14 @@ function destaqueHTML(pid) {
 const pidDestaque = (detalhe, marcado) => (marcado && JOGADORES[marcado] ? marcado : focoElenco && JOGADORES[focoElenco] && E.elenco.includes(focoElenco) ? focoElenco
   : detalhe.filter((v) => v.id).sort((a, b) => notaDe(JOGADORES[b.id]) - notaDe(JOGADORES[a.id]))[0]?.id);
 document.addEventListener("pointerover", (e) => {
-  const b = e.target.closest(".peca[data-jogador], .reserva[data-jogador]"); if (!b) return;
+  const b = e.target.closest(".peca[data-jogador], .carta-reserva[data-jogador]"); if (!b) return;
   const caixa = b.closest("#elenco, #dCorpo")?.querySelector(".destaque-box"); if (!caixa || caixa.dataset.pid === b.dataset.jogador) return;
   focoElenco = b.dataset.jogador; caixa.dataset.pid = focoElenco; caixa.innerHTML = destaqueHTML(focoElenco);
 });
 // o cartão de um reserva: a posição, a foto, a nota, o nome e a energia (attrs: o que o chamador precisa, como data-reserva)
 function reservaHTML(pid, { sel = false, attrs = "" } = {}) {
   const j = JOGADORES[pid], nota = notaDe(j), cans = penalidadeSequencia(pid), energia = energiaDe(pid), fr = fora(pid);
-  return `<button class="reserva ${faixa(nota)}${sel ? " sel" : ""}${fr ? " indisponivel" : ""}" data-jogador="${pid}" ${attrs} title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos} · energia ${energia}%${fr ? ` · ${fr === "lesao" ? "lesionado" : "suspenso"}` : ""}">
+  return `<button class="carta-reserva ${faixa(nota)}${sel ? " sel" : ""}${fr ? " indisponivel" : ""}" data-jogador="${pid}" ${attrs} title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos} · energia ${energia}%${fr ? ` · ${fr === "lesao" ? "lesionado" : "suspenso"}` : ""}">
     <span class="res-pos">${marcaPos(j.pos)}${j.pos}</span><img class="pix" src="${retrato(pid)}" alt=""><b class="res-nota">${nota}</b>
     ${cans ? `<span class="cansaco-canto" title="${sequenciaDe(pid)} jogos seguidos: over -${cans}">-${cans}</span>` : ""}
     <span class="res-marcas">${situacao(pid, true)}</span><span class="energia ${nivelEnergia(energia)}"><i style="--v:${energia}%"></i></span><span class="res-nome">${h(sobrenome(j.nome))}</span></button>`;
@@ -157,7 +157,7 @@ $("eCampo").addEventListener("click", async (e) => {
   await salvarEscalacao({ titulares: ids, fixo: true }, { tipo: "troca", envolvidos });
 });
 $("eBanco").addEventListener("click", async (e) => {
-  const f = e.target.closest(".reserva"); if (!f || E.partida) return;
+  const f = e.target.closest(".carta-reserva"); if (!f || E.partida) return;
   const pid = f.dataset.jogador;
   if (selecionado?.onde === "banco" && selecionado.pid === pid) { selecionado = null; telaElenco(); return abrirFicha(pid); }
   if (selecionado?.onde === "campo") {

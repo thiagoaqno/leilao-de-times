@@ -215,6 +215,7 @@ function abrirDecisao(p) {
   }
   if (p.tipo === "tatica") decisaoTatica(p); else decisaoLance(p);
   if (!$("decisao").open) $("decisao").showModal();
+  if (p.tipo === "tatica") $("decisao").scrollTop = 0; // o foco vai para o 1º jogador do campo (abaixo do cartão): sem isso a janela rolava e escondia o título
 }
 $("decisao").addEventListener("cancel", (e) => e.preventDefault()); // a decisão não fecha no Esc: precisa responder
 async function enviarDecisao(resposta) {
