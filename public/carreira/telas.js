@@ -102,6 +102,7 @@ function resumoCarreira() {
     <p class="suave">A carreira terminou. Para jogar de novo, saia ou exclua esta carreira e assine com um clube novo.</p></div>`;
 }
 function telaJogo(pos) {
+  delete $("cartaoJogo").dataset.peso;
   if (E.demitido) { $("cartaoJogo").innerHTML = resumoDemissao(); return; }
   if (E.encerrada) { $("cartaoJogo").innerHTML = resumoCarreira(); return; }
   if (E.fim) {
@@ -131,7 +132,9 @@ function telaJogo(pos) {
   const pendentes = E.caixaEntrada.filter((e) => !e.resolvido).length;
   const prox = E.proximoJogo, comp = prox && E.competicoes && E.competicoes[prox.competicao];
   const onde = `${comp ? h(comp.nome) : `Rodada ${E.rodada + 1}`}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""} · ${casa === E.clube ? "em casa" : "fora"}`;
-  $("cartaoJogo").innerHTML = `<span class="sobre">${E.partida ? "Partida em andamento" : `Próxima partida · ${onde}`}</span>
+  const peso = pesoDe(prox || { casa, fora });
+  if (peso) $("cartaoJogo").dataset.peso = peso.tema; else delete $("cartaoJogo").dataset.peso;
+  $("cartaoJogo").innerHTML = `${faixaPesoHTML(peso, casa, visitante)}<span class="sobre">${E.partida ? "Partida em andamento" : `Próxima partida · ${onde}`}</span>
     <div class="confronto"><div style="${coresClube(casa)}">${escudo(casa, 4)}<b>${h(nomeClube(casa))}</b><small>${posicaoDe(casa) && E.rodada ? posicaoDe(casa) + "º" : ""}</small></div><span class="x">×</span><div style="${coresClube(visitante)}">${escudo(visitante, 4)}<b>${h(nomeClube(visitante))}</b><small>${posicaoDe(visitante) && E.rodada ? posicaoDe(visitante) + "º" : ""}</small></div></div>
     <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p>
     ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}

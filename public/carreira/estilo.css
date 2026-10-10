@@ -1162,3 +1162,99 @@ body.zoom-ativo .tela>*,body.zoom-ativo .hub-grade>*>*{animation:none!important}
 #gAoVivo{margin-bottom:16px}
 @media (prefers-reduced-motion:reduce){.tv-ponto{animation:none}}
 .tv-painel .av-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px}
+
+/* os jogos grandes (rivais.js; pesoDe e faixaPesoHTML em inicio.js): o clássico (fogo), a semifinal e o jogo do título (prata
+   elétrica) e a final (ouro) mudam o tema do cartão da sede, da tela da partida e da linha na rodada ao vivo. A faixa de
+   torcida embaixo leva as cores dos dois clubes. Nada aqui mexe no fundo nem anima desfoque (o vidro dos painéis). */
+[data-peso="classico"],.peso-classico{--peso:#ff6a3d;--peso2:#ffc069}
+[data-peso="decisivo"],.peso-decisivo{--peso:#8fd3ff;--peso2:#eef8ff}
+[data-peso="final"],.peso-final{--peso:var(--ouro2);--peso2:var(--ouro1)}
+.peso-jogo{position:relative;display:flex;align-items:center;gap:12px;padding:12px 14px 14px;border-radius:var(--r2);overflow:hidden;
+  background:linear-gradient(100deg,color-mix(in srgb,var(--peso) 24%,var(--s1)),color-mix(in srgb,var(--peso) 5%,var(--s1)) 75%);
+  border:1px solid color-mix(in srgb,var(--peso) 45%,transparent);animation:peso-entra .5s var(--ease) both}
+.peso-jogo::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 35%,color-mix(in srgb,var(--peso2) 20%,transparent) 50%,transparent 65%);transform:translateX(-100%);animation:peso-brilho 2.4s var(--ease-io) .5s 2}
+.peso-torcida{position:absolute;left:0;right:0;bottom:0;height:4px;background:repeating-linear-gradient(115deg,var(--pa) 0 12px,var(--pb) 12px 24px)}
+.peso-ic{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:50%;background:color-mix(in srgb,var(--peso) 24%,transparent);color:var(--peso2);box-shadow:0 0 18px -4px var(--peso)}
+.peso-ic .ic{width:20px;height:20px}
+.peso-txt{display:flex;flex-direction:column;min-width:0}
+.peso-txt small{font:600 10.5px/1.3 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--peso)}
+.peso-txt b{font-size:19px;font-weight:700;letter-spacing:-.025em;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.peso-selos{margin-left:auto;display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+.peso-selos em,.ab-selos em{font:600 10.5px/1.5 var(--mono);font-style:normal;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--peso) 20%,transparent);color:var(--peso2);white-space:nowrap}
+.hub-jogo[data-peso]{border-color:color-mix(in srgb,var(--peso) 50%,var(--b1));box-shadow:var(--sombra),0 0 0 1px color-mix(in srgb,var(--peso) 20%,transparent),0 18px 60px -28px var(--peso)}
+.hub-jogo[data-peso]::before{background:radial-gradient(300px 140px at 50% 0,color-mix(in srgb,var(--peso) 26%,transparent),transparent 75%)}
+.hub-jogo[data-peso] .cta{background:var(--peso);color:#14100a;border-color:transparent}
+.hub-jogo[data-peso="decisivo"] .cta{color:#07121c}
+/* a partida */
+.p-peso:empty{display:none}.p-peso{margin:10px 0 0}
+#partida[data-peso] .placar{border-color:color-mix(in srgb,var(--peso) 55%,var(--b1));box-shadow:var(--sombra),0 0 0 1px color-mix(in srgb,var(--peso) 22%,transparent),0 20px 70px -30px var(--peso)}
+#partida[data-peso] .marcador{background:color-mix(in srgb,var(--peso) 14%,var(--s2))}
+#partida[data-peso] #pGols{color:var(--peso2)}
+/* a abertura: os dois escudos e o nome do jogo por cima de tudo, sem pegar os cliques */
+.abertura{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;pointer-events:none;
+  background:radial-gradient(70vmax 46vmax at 50% 50%,color-mix(in srgb,var(--peso) 26%,#000000c8),#000000eb);animation:ab-entra .4s ease both}
+.abertura.saindo{animation:ab-sai .4s ease both}
+.ab-caixa{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;max-width:100%}
+.ab-titulo{display:flex;align-items:center;gap:8px;font:600 12px/1 var(--mono);letter-spacing:.32em;text-transform:uppercase;color:var(--peso);animation:ab-sobe .5s var(--ease) .05s both}
+.abertura h2{font-size:clamp(32px,7vw,72px);font-weight:800;letter-spacing:-.045em;line-height:1;color:var(--peso2);text-shadow:0 0 48px color-mix(in srgb,var(--peso) 65%,transparent);animation:ab-sobe .6s var(--ease) .12s both}
+.ab-confronto{display:flex;align-items:center;justify-content:center;gap:clamp(14px,5vw,60px);margin-top:14px}
+.ab-time{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:38vw;min-width:0}
+.ab-time b{font-size:clamp(14px,2.2vw,22px);font-weight:700;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.ab-time small{color:var(--t2);font-size:13px}
+.ab-confronto .ab-time:first-child{animation:ab-esq .7s var(--ease) .2s both}.ab-confronto .ab-time:last-child{animation:ab-dir .7s var(--ease) .2s both}
+.ab-x{font:700 30px/1 var(--mono);color:var(--t3)}
+.ab-selos{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+@media (max-width:640px){.ab-time .escudo{--e:3.5!important}.peso-txt b{font-size:16px}.peso-selos{display:none}}
+/* a rodada ao vivo da turma */
+.av-jogo.tv-peso{border-color:color-mix(in srgb,var(--peso) 55%,var(--b1));background:linear-gradient(180deg,color-mix(in srgb,var(--peso) 12%,var(--s1)),var(--s1))}
+.tv-selo{grid-column:1/-1;justify-self:center;display:flex;align-items:center;gap:4px;font:600 10px/1.2 var(--mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--peso);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.tv-selo .ic{width:12px;height:12px}
+/* os clássicos do clube (a aba Rivais da tela Clube) */
+.gc-classicos{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.gc-classicos li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r2);background:var(--s1);border:1px solid var(--b1)}
+.gc-classicos li.peso-3{border-color:color-mix(in srgb,#ff6a3d 45%,var(--b1));background:linear-gradient(100deg,color-mix(in srgb,#ff6a3d 12%,var(--s1)),var(--s1))}
+.gc-classicos span{display:flex;flex-direction:column;min-width:0}.gc-classicos small{color:var(--t3);font-size:12px}
+.gc-classicos i{margin-left:auto;font-style:normal;color:#ff8a5c;letter-spacing:2px;font-size:10px}
+@keyframes peso-entra{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes peso-brilho{to{transform:translateX(100%)}}
+@keyframes ab-entra{from{opacity:0}to{opacity:1}}
+@keyframes ab-sai{to{opacity:0}}
+@keyframes ab-sobe{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes ab-esq{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
+@keyframes ab-dir{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.peso-jogo,.peso-jogo::after,.abertura,.abertura *{animation:none!important}.peso-jogo::after{display:none}}
+
+/* a estante (temporadas.js): a estante da galera, guardada no banco para sempre, e as taças desta carreira. Cada taça tem a
+   cor da competição (--cor) e fica numa prateleira; o pódio da galera ganha ouro, prata e bronze. */
+.estante-galera .linha-titulo{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.estante-galera h3{display:flex;align-items:center;gap:6px;color:var(--ouro2)}.estante-galera h3 .ic{width:16px;height:16px}
+.est-ranking{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.est-linha{display:grid;grid-template-columns:auto auto minmax(120px,1fr) auto auto;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r2);background:var(--s2);border:1px solid var(--b1)}
+.est-linha.meu{outline:1px solid var(--acento)}
+.est-linha .est-nome{display:flex;flex-direction:column;min-width:0}.est-linha .est-nome b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.est-linha .est-nome small{color:var(--t3);font-size:11.5px}
+.est-linha strong{font:700 17px var(--mono);text-align:right;min-width:52px}.est-linha strong small{font-size:11px;color:var(--t3);font-weight:500}
+.est-sem-escudo{display:grid;place-items:center;width:16px;height:18px;color:var(--t3)}
+.est-linha.podio-1{--pod:var(--ouro2)}.est-linha.podio-2{--pod:var(--prata2)}.est-linha.podio-3{--pod:var(--bronze1)}
+.est-linha[class*="podio-"]{border-color:color-mix(in srgb,var(--pod) 40%,var(--b1));background:linear-gradient(100deg,color-mix(in srgb,var(--pod) 13%,var(--s2)),var(--s2) 60%)}
+.est-linha[class*="podio-"] .pos-rank{color:var(--pod);font-weight:700}
+.prateleira{position:relative;display:flex;align-items:flex-end;gap:6px;min-height:44px;padding:0 6px 6px;flex-wrap:wrap}
+.prateleira::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:2px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--ouro2) 45%,var(--b2)) 15%,color-mix(in srgb,var(--ouro2) 45%,var(--b2)) 85%,transparent);box-shadow:0 6px 14px -4px color-mix(in srgb,var(--ouro2) 40%,transparent)}
+.prateleira-vazia{font-size:11px;color:var(--t3);padding-bottom:4px}
+.taca-est{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:44px}
+.taca-ic{display:grid;place-items:center;width:30px;height:30px;color:var(--cor);filter:drop-shadow(0 0 8px color-mix(in srgb,var(--cor) 55%,transparent))}
+.taca-ic .ic{width:26px;height:26px}
+.taca-est small{font:600 9px/1.2 var(--mono);color:var(--t2);white-space:nowrap;letter-spacing:.02em}
+.taca-est i{position:absolute;top:-4px;right:0;font:700 9.5px/1 var(--mono);font-style:normal;padding:2px 4px;border-radius:99px;background:var(--cor);color:#111}
+.ranking-tecnicos li{grid-template-columns:auto auto 1fr auto auto auto}
+.ranking-tecnicos .prateleira{min-height:40px}
+.est-ultimas{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px}
+.est-ultimas li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r3);background:var(--s2)}
+.est-ultimas span{display:flex;flex-direction:column;min-width:0}.est-ultimas small{color:var(--t3);font-size:11px}
+.estante-galera h3+.est-ultimas,.est-ranking+h3{margin-top:18px}
+.estante-inicio h2{display:flex;align-items:center;gap:8px}.estante-inicio h2 .ic{color:var(--ouro2)}
+.estante-inicio .est-linha{grid-template-columns:auto auto 1fr auto}
+@media (max-width:640px){
+  .est-linha{grid-template-columns:auto auto 1fr auto}.est-linha .prateleira{grid-column:1/-1;order:5}
+  .ranking-tecnicos li{grid-template-columns:auto auto 1fr auto auto}.ranking-tecnicos .prateleira{grid-column:1/-1;order:5}
+}

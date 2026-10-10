@@ -123,4 +123,41 @@ const cartasSaidas = (jogo) => new Set(bd().prepare("SELECT carta FROM cartas_sa
 const marcarCarta = (jogo, carta) => { bd().prepare("INSERT OR IGNORE INTO cartas_saidas (jogo, carta, saiu_em) VALUES (?, ?, ?)").run(jogo, carta, Date.now()); };
 const zerarCartas = (jogo) => { bd().prepare("DELETE FROM cartas_saidas WHERE jogo = ?").run(jogo); };
 
-module.exports = { abrir, fechar, migrar, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas };
+// ---------- a estante de troféus (todas as carreiras) ----------
+// o nome do técnico vira a chave do ranking: minúsculas, sem acento e sem espaço sobrando ("João " e "joao" são o mesmo)
+const chaveTecnico = (nome) => String(nome || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+// guarda as conquistas de uma temporada (a mesma conquista não entra duas vezes)
+function guardarConquistas(lista) {
+  const ins = bd().prepare(`INSERT OR IGNORE INTO estante (carreira, modo, tecnico, chave, clube, competicao, nome, colocacao, pontos, ano, temporada, criado_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  let novas = 0;
+  for (const c of lista) {
+    const chave = chaveTecnico(c.tecnico); if (!chave) continue;
+    novas += ins.run(String(c.carreira), c.modo === "grupo" ? "grupo" : "solo", String(c.tecnico).slice(0, 24), chave, String(c.clube), String(c.competicao), String(c.nome), c.colocacao === 1 ? 1 : 2,
+      Math.max(0, Math.round(c.pontos || 0)), c.ano | 0, c.temporada | 0, c.criadoEm || Date.now()).changes;
+  }
+  return novas;
+}
+// a estante inteira: o ranking dos técnicos (pontos, títulos, vices, as taças de cada competição e o clube mais vitorioso) e as
+// últimas conquistas
+function estante({ limite = 50, recentes = 24 } = {}) {
+  const linhas = bd().prepare("SELECT * FROM estante ORDER BY criado_em ASC, id ASC").all();
+  const por = new Map();
+  for (const l of linhas) {
+    const t = por.get(l.chave) || { tecnico: l.tecnico, chave: l.chave, pontos: 0, titulos: 0, vices: 0, tacas: {}, clubes: {}, carreiras: new Set(), ultimo: 0 };
+    t.tecnico = l.tecnico; t.pontos += l.pontos; t.carreiras.add(l.carreira); t.ultimo = Math.max(t.ultimo, l.criado_em);
+    if (l.colocacao === 1) {
+      t.titulos++;
+      const x = t.tacas[l.competicao] || (t.tacas[l.competicao] = { competicao: l.competicao, nome: l.nome, n: 0 }); x.n++;
+      t.clubes[l.clube] = (t.clubes[l.clube] || 0) + 1;
+    } else t.vices++;
+    por.set(l.chave, t);
+  }
+  const ranking = [...por.values()].map(({ carreiras, clubes, ...t }) => ({ ...t, carreiras: carreiras.size, clube: Object.entries(clubes).sort((a, b) => b[1] - a[1])[0]?.[0] || null, tacas: Object.values(t.tacas).sort((a, b) => b.n - a.n) }))
+    .sort((a, b) => b.pontos - a.pontos || b.titulos - a.titulos || a.ultimo - b.ultimo).slice(0, limite);
+  const ultimas = linhas.filter((l) => l.colocacao === 1).slice(-recentes).reverse()
+    .map((l) => ({ tecnico: l.tecnico, clube: l.clube, competicao: l.competicao, nome: l.nome, ano: l.ano, modo: l.modo, em: l.criado_em }));
+  return { ranking, ultimas, total: linhas.filter((l) => l.colocacao === 1).length };
+}
+
+module.exports = { abrir, fechar, migrar, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

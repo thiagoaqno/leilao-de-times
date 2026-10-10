@@ -58,6 +58,14 @@ function abrirPartida(rodada) {
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
   $("pNomeCasa").textContent = nomeClube(J.casa); $("pNomeFora").textContent = nomeClube(J.fora);
   $("partida").style.cssText = `--casa:${CLUBES[J.casa].cores[0]};--fora:${CLUBES[J.fora].cores[0]};--mando:${CLUBES[J.casa].cores[0]};--casa-tinta:${tintaSobre(CLUBES[J.casa].cores[0], "#ffffff")};--fora-tinta:${tintaSobre(CLUBES[J.fora].cores[0], "#ffffff")}`;
+  // o jogo grande (rivais.js): a faixa embaixo do placar, o tema da tela e, no começo do jogo, a abertura com os dois escudos
+  if (nova || J.peso === undefined) {
+    const jogo = (E.meus || []).find((x) => x.id === J.jogoId) || (E.proximoJogo && E.proximoJogo.id === J.jogoId ? E.proximoJogo : null) || { casa: J.casa, fora: J.fora, competicao: J.competicao };
+    J.peso = pesoDe({ ...jogo, casa: J.casa, fora: J.fora });
+    if (nova && J.peso && (!J.grupo || !(J.eventos || []).some((e) => e.min > 2))) abertura(J.peso); // na sala, quem chega com o jogo andando não vê
+  }
+  $("pPeso").innerHTML = faixaPesoHTML(J.peso, J.casa, J.fora);
+  if (J.peso) $("partida").dataset.peso = J.peso.tema; else delete $("partida").dataset.peso;
   J.clima = climaDoJogo(E.temporada, J.rodada, J.casa, J.fora);
   $("partida").classList.remove("clima-dia", "clima-noite", "clima-chuva");
   $("partida").classList.add(`clima-${J.clima.hora}`); if (J.clima.chuva) $("partida").classList.add("clima-chuva");
@@ -66,6 +74,18 @@ function abrirPartida(rodada) {
   $("fimJogo").classList.add("hidden");
   mostrarTela("partida");
   atualizarPlacar();
+}
+// a abertura do jogo grande: os dois escudos, o título e o nome do clássico (ou da final) por cima da tela, por 3 s, sem
+// segurar o relógio nem os cliques. Na carreira em grupo, os técnicos dos dois lados aparecem embaixo dos escudos.
+let timerAbertura = null;
+function abertura(p) {
+  const el = $("pAbertura"), tec = (id) => (EM_GRUPO && SALA ? (SALA.players.find((x) => x.clube === id) || {}).name : null);
+  const lado = (id) => `<div class="ab-time" style="${coresClube(id)}">${escudo(id, 5)}<b>${h(nomeClube(id))}</b>${tec(id) ? `<small>${h(tec(id))}</small>` : ""}</div>`;
+  el.className = `abertura peso-${p.tema}`;
+  el.innerHTML = `<div class="ab-caixa"><span class="ab-titulo">${ic(ICONE_PESO[p.tema])} ${h(p.titulo)}</span><h2>${h(p.nome || p.titulo)}</h2>
+    <div class="ab-confronto">${lado(J.casa)}<span class="ab-x">×</span>${lado(J.fora)}</div>${p.selos.length ? `<p class="ab-selos">${p.selos.map((x) => `<em>${h(x)}</em>`).join("")}</p>` : ""}</div>`;
+  clearTimeout(timerAbertura);
+  timerAbertura = setTimeout(() => { el.classList.add("saindo"); timerAbertura = setTimeout(() => el.classList.add("hidden"), 400); }, calmo() ? 2200 : 3000);
 }
 async function buscarParalelos(jogoId) {
   const r = await pedir("paralelos", { jogoId });

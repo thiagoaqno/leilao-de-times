@@ -161,14 +161,14 @@
 
   // ---------- rivais ----------
   function abaRivais() {
-    const gg = g(), rivais = gg.rivais, liga = gg.rivalLiga;
+    const gg = g(), rivais = gg.rivais, classicos = gg.classicos || [];
     const card = (r) => { const total = r.jogos;
       return `<article class="gc-rival"><header>${escudo(r.clube, 2)}<span><b>${h(nomeClube(r.clube))}</b><small>técnico ${h(r.tecnico)}</small></span>${r.fregues ? `<i class="gc-selo ${r.fregues === "voce" ? "bom" : "ruim"}">${r.fregues === "voce" ? "freguês seu" : "você é o freguês"}</i>` : ""}</header>
         <p class="gc-placar"><b class="${r.v > r.d ? "bom" : ""}">${r.v}</b><small>vitórias</small> <b>${r.e}</b><small>empates</small> <b class="${r.d > r.v ? "ruim" : ""}">${r.d}</b><small>derrotas</small></p>
         <p class="suave">${total ? `${total} jogo${total > 1 ? "s" : ""} · gols ${r.gols[0]} × ${r.gols[1]}` : "Ainda não se enfrentaram."}</p>
         ${r.ultimos.length ? `<ul class="gc-ultimos">${r.ultimos.map((u) => `<li><small>T${u.temporada}</small> ${h(nomeClube(u.casa))} <b>${u.placar[0]} × ${u.placar[1]}</b> ${h(nomeClube(u.fora))}${u.penaltis ? ` <small>(pên. ${u.penaltis[0]}×${u.penaltis[1]})</small>` : ""}</li>`).join("")}</ul>` : ""}</article>`; };
-    return `<section class="quadro"><h3>Rivais</h3><p class="suave">Contra o seu clássico a bilheteria sobe 35%, a vitória rende moral e a derrota pesa na confiança da diretoria.${EM_GRUPO ? " Contra os outros técnicos da sala o confronto direto fica registrado, com provocação no feed e o título de freguês para quem vence 3 vezes e abre 2 de vantagem." : ""}</p>
-      ${liga ? `<p class="gc-cap-atual">${ic("explosao")} Seu clássico na liga: <b>${escudo(liga, 1)} ${h(nomeClube(liga))}</b></p>` : ""}
+    return `<section class="quadro"><h3>Rivais</h3><p class="suave">Contra os seus clássicos a bilheteria sobe 35%, a vitória rende moral e a derrota pesa na confiança da diretoria.${EM_GRUPO ? " Todo jogo contra outro técnico da sala também é clássico: o confronto direto fica registrado, com provocação no feed e o título de freguês para quem vence 3 vezes e abre 2 de vantagem." : ""}</p>
+      ${classicos.length ? `<ul class="gc-classicos">${classicos.map((r) => `<li class="peso-${r.peso}">${escudo(r.id, 2)}<span><b>${h(r.nome)}</b><small>contra o ${h(nomeClube(r.id))}</small></span><i aria-label="Peso do clássico: ${r.peso} de 3">${"●".repeat(r.peso)}${"○".repeat(3 - r.peso)}</i></li>`).join("")}</ul>` : ""}
       ${rivais.length ? `<div class="gc-grade">${rivais.map(card).join("")}</div>` : (EM_GRUPO ? `<p class="suave">Ninguém mais na sala por enquanto.</p>` : "")}</section>`;
   }
 
@@ -176,7 +176,7 @@
   const CORPO = { contratos: abaContratos, base: abaBase, estrutura: abaEstrutura, vestiario: abaVestiario, tecnico: abaTecnico, legado: abaLegado, rivais: abaRivais };
   function telaClube() {
     if (!E || !E.gestao) return;
-    const gg = g(), abas = ABAS.filter(([id]) => id !== "rivais" || EM_GRUPO || gg.rivalLiga);
+    const gg = g(), abas = ABAS.filter(([id]) => id !== "rivais" || EM_GRUPO || (gg.classicos || []).length);
     if (!abas.some(([id]) => id === CL.aba)) CL.aba = "contratos";
     const alertas = gg.alertas.map((a) => `<li class="${a.tipo}">${ic(a.tipo === "janela" || a.tipo === "ultimato" ? "alerta" : "sino")} ${h(a.texto)}</li>`).join("");
     $("clubeCorpo").innerHTML = `<section class="quadro gc-resumo"><div><small>Diretoria</small><b>${gg.confianca}%</b>${barra(gg.confianca, gg.confianca < 35 ? "perigo" : "")}<em>${R.nivelConfianca(gg.confianca)}</em></div>

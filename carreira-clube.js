@@ -10,6 +10,7 @@ const Mercado = require("./public/carreira/mercado.js");
 const Evolucao = require("./public/carreira/evolucao.js");
 const Regras = require("./public/carreira/clube-regras.js");
 const Feed = require("./carreira-feed.js");
+const Rivais = require("./public/carreira/rivais.js");
 
 const { dinheiro } = Mercado;
 const { clamp } = Regras;
@@ -370,7 +371,7 @@ function aposJogo(v, c, { nos, eles, emCasa, adv }) {
     if (res === "D") g.confianca = clamp(g.confianca - 2, 0, 100);
     if (res === "V") { g.confianca = clamp(g.confianca + 2, 0, 100); g.reputacao = clamp(g.reputacao + 0.5, 0, 100); }
     if (res !== "E") Feed.postar(v, { tipo: res === "V" ? "vitoria" : "derrota", perfil: res === "V" ? v.clube : adv, humor: res === "V" ? "bom" : "ruim", arte: { cena: res === "V" ? "festa" : "derrota", clube: res === "V" ? v.clube : adv, casa: emCasa ? v.clube : adv, fora: emCasa ? adv : v.clube, placar: emCasa ? [nos, eles] : [eles, nos] },
-      texto: res === "V" ? `CLÁSSICO! O ${c.clubeDe(v, v.clube).nome} vence o ${c.clubeDe(v, adv).nome} por ${nos} × ${eles} e a torcida faz a festa.` : `Clássico amargo: o ${c.clubeDe(v, v.clube).nome} perde para o ${c.clubeDe(v, adv).nome} por ${nos} × ${eles}.` });
+      texto: res === "V" ? `${nomeDoClassico(v, adv).toUpperCase()}! O ${c.clubeDe(v, v.clube).nome} vence o ${c.clubeDe(v, adv).nome} por ${nos} × ${eles} e a torcida faz a festa.` : `${nomeDoClassico(v, adv)} amargo: o ${c.clubeDe(v, v.clube).nome} perde para o ${c.clubeDe(v, adv).nome} por ${nos} × ${eles}.` });
   }
   const gm = (g.legado.recordes.goleada);
   if (nos - eles >= 3 && (!gm || nos - eles > gm.saldo)) g.legado.recordes.goleada = { saldo: nos - eles, placar: [nos, eles], adv, ano: v.ano, emCasa };
@@ -406,18 +407,35 @@ function aposJogo(v, c, { nos, eles, emCasa, adv }) {
 const classicoCom = (v, c, adv) => rivaisDe(v, c).includes(adv);
 
 // ---------- os rivais ----------
-// o rival de cada técnico: os outros técnicos da sala e o clube da sua liga mais parecido (do mesmo país, de tamanho parecido)
+// os rivais de cada técnico: os outros técnicos da sala (todo jogo entre eles é clássico), os clássicos de verdade do clube
+// (rivais.js: Fla-Flu, Gre-Nal, El Clásico...) e, para quem não tem clássico na tabela, o clube da liga de tamanho parecido
+function rivaisReaisDe(v, c, clube = v.clube) {
+  const existe = new Set(c.idsDosClubes(v));
+  return Rivais.rivaisReais(clube).filter((r) => existe.has(r.id));
+}
 function rivalDaLiga(v, c, clube = v.clube) {
   const meu = c.clubeDe(v, clube), liga = c.ligaDoClube(clube);
   const lista = c.idsDosClubes(v).filter((id) => id !== clube && c.ligaDoClube(id) === liga && Math.abs((c.clubeDe(v, id).tamanho || 0) - (meu.tamanho || 0)) <= 1);
   const base = lista.length ? lista : c.idsDosClubes(v).filter((id) => id !== clube && c.ligaDoClube(id) === liga);
   return base.length ? [...base].sort((a, b) => hash(`rival:${clube}:${a}`) - hash(`rival:${clube}:${b}`))[0] : null;
 }
+// os clássicos do clube fora da sala: os de verdade ou, sem nenhum, o rival de tamanho parecido da liga
+function classicosDe(v, c, clube = v.clube) {
+  const reais = rivaisReaisDe(v, c, clube);
+  if (reais.length) return reais;
+  const cpu = rivalDaLiga(v, c, clube);
+  return cpu ? [{ id: cpu, nome: "Clássico", peso: 1 }] : [];
+}
 function rivaisDe(v, c) {
   const lista = v.humanosLista ? v.humanosLista().map((h) => h.clube).filter((id) => id !== v.clube) : [];
-  const cpu = rivalDaLiga(v, c);
-  if (cpu && !lista.includes(cpu)) lista.push(cpu);
+  for (const r of classicosDe(v, c)) if (!lista.includes(r.id)) lista.push(r.id);
   return lista;
+}
+// o nome do clássico (para as notícias): o de verdade, o da turma ou só "clássico"
+function nomeDoClassico(v, adv) {
+  const real = Rivais.classico(v.clube, adv);
+  if (real) return real.nome;
+  return v.humanoDe && v.humanoDe(adv) ? "Clássico da turma" : "Clássico";
 }
 // o placar de cada dupla de técnicos (global da sala)
 const chaveDupla = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
@@ -620,7 +638,7 @@ function estado(v, c) {
     vales: g.vales.filter((x) => x.ate >= v.temporada).map((x) => ({ max: x.max, ate: x.ate, motivo: x.motivo })), bloqueados: Object.keys(g.bloqueados).filter((pid) => g.bloqueados[pid] >= v.temporada),
     futuro: g.depois.length, // quantas consequências estão a caminho (sem contar o que são)
     legado: { hall, camisas: g.legado.camisas, marcos: g.legado.marcos.slice(-30), recordes: g.legado.recordes, historico: v.historico || [] },
-    rivais: confrontosDe(v, c), rivalLiga: rivalDaLiga(v, c),
+    rivais: confrontosDe(v, c), classicos: classicosDe(v, c),
     demitido: v.demitido || null,
   };
 }
@@ -635,5 +653,5 @@ const fatorBilheteria = (v) => Regras.fatorBilheteria(infraDe(v, v.clube));
 const bonusRecupera = (v) => Regras.bonusRecupera(infraDe(v, v.clube), habilidadeDe(v, v.clube, "preparador"));
 const fatorLesao = (v, id) => Regras.fatorLesao(infraDe(v, id));
 
-module.exports = { VALE_MAX, semVenda, padrao, gestaoDe, garantir, contratar, acao, estado, aposJogo, responder, virada, fechouTemporada, registrarConfronto, provocacao, rivaisDe, classicoCom,
+module.exports = { VALE_MAX, semVenda, padrao, gestaoDe, garantir, contratar, acao, estado, aposJogo, responder, virada, fechouTemporada, registrarConfronto, provocacao, rivaisDe, classicoCom, classicosDe, nomeDoClassico,
   fatorBilheteria, bonusRecupera, fatorLesao, infraDe, habilidadeDe, gestaoDoClube, novosProspectos, criarDilema, DILEMAS, Regras, demitir };

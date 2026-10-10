@@ -32,7 +32,8 @@ const TurmaAoVivo = (() => {
     const compsTurma = new Set(turma.map((o) => o.competicao));
     const linha = (x) => {
       const tec = x.turma ? [x.casa, x.fora].map(tecnicoDe) : [];
-      return `<li class="av-jogo${x.turma ? " tv-turma" : ""}" data-id="${h(x.id)}"${x.turma ? ' data-turma="1"' : ""}><span class="av-time casa"><b>${h(CLUBES[x.casa].curto)}</b>${escudo(x.casa, 1)}</span><span class="av-placar">0 × 0</span><span class="av-time fora">${escudo(x.fora, 1)}<b>${h(CLUBES[x.fora].curto)}</b></span>${tec.some(Boolean) ? `<small class="tv-tec">${h(tec[0] || nomeClube(x.casa))} × ${h(tec[1] || nomeClube(x.fora))}</small>` : ""}<small class="av-min"></small></li>`;
+      const peso = pesoDe(x); // o jogo grande: clássico, duelo entre técnicos, semifinal, final
+      return `<li class="av-jogo${x.turma ? " tv-turma" : ""}${peso ? ` tv-peso peso-${peso.tema}` : ""}" data-id="${h(x.id)}"${x.turma ? ' data-turma="1"' : ""}>${peso ? `<i class="tv-selo">${ic(ICONE_PESO[peso.tema])} ${h(peso.nome || peso.titulo)}</i>` : ""}<span class="av-time casa"><b>${h(CLUBES[x.casa].curto)}</b>${escudo(x.casa, 1)}</span><span class="av-placar">0 × 0</span><span class="av-time fora">${escudo(x.fora, 1)}<b>${h(CLUBES[x.fora].curto)}</b></span>${tec.some(Boolean) ? `<small class="tv-tec">${h(tec[0] || nomeClube(x.casa))} × ${h(tec[1] || nomeClube(x.fora))}</small>` : ""}<small class="av-min"></small></li>`;
     };
     const secao = (titulo, itens, aberta, id) => `<details class="tv-secao" data-sec="${h(id)}"${aberta ? " open" : ""}><summary>${h(titulo)} <small>${itens.length} jogo${itens.length === 1 ? "" : "s"}</small></summary><ul class="av-lista">${itens.map(linha).join("")}</ul></details>`;
     const comps = [...porComp.entries()].sort((a, b) => (compsTurma.has(b[0]) - compsTurma.has(a[0])) || b[1].length - a[1].length);

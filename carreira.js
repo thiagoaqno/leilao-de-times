@@ -1123,10 +1123,23 @@ function arquivarTemporada(save) {
     }
     return { clube: h.clube, tecnico: (h.tecnico && h.tecnico.nome) || (typeof h.tecnico === "string" ? h.tecnico : h.clube), posicao: pos, liga: liga ? liga.nome : "", titulos, vices, pontos };
   });
+  guardarNaEstante(save, competicoes, tecnicos);
   arquivo.push({ ano: save.ano, temporada: save.temporada, competicoes, artilharia,
     premios: { artilheiro: artilharia[0] || null, goleada: goleada && { competicao: goleada.competicao, casa: goleada.casa, fora: goleada.fora, placar: goleada.placar },
       negocio: negocio ? { jogador: negocio.jogador, nome: (jogadorDe(save, negocio.jogador) || {}).nome || negocio.jogador, de: negocio.de, para: negocio.para, lucro: negocio.lucro } : null },
     tecnicos });
+}
+// a estante de troféus da galera (bd.js, tabela estante): os títulos e os vices dos técnicos desta temporada ficam guardados
+// para sempre, fora do save (a carreira solo pode ser excluída e a sala em grupo expira). Sem banco (um teste), segue sem guardar.
+function guardarNaEstante(save, competicoes, tecnicos) {
+  const lista = [];
+  for (const t of tecnicos) for (const [id, c] of Object.entries(competicoes)) {
+    const colocacao = c.campeao === t.clube ? 1 : c.vice === t.clube ? 2 : 0; if (!colocacao) continue;
+    const peso = c.tipo === "liga" ? PONTOS_LIGA[colocacao - 1] : colocacao === 1 ? PONTOS_TITULO[id] || 5 : Math.floor((PONTOS_TITULO[id] || 5) / 2);
+    lista.push({ carreira: save.semente, modo: save.humanosLista ? "grupo" : "solo", tecnico: t.tecnico, clube: t.clube, competicao: id, nome: c.nome, colocacao, pontos: peso, ano: save.ano, temporada: save.temporada });
+  }
+  if (!lista.length) return;
+  try { bd.guardarConquistas(lista); } catch (e) { console.warn("estante:", e.message); }
 }
 // a virada: cada jogador evolui (de -2 a +3), os veteranos podem se aposentar e cada clube ganha 1 ou 2 jovens da base.
 // Devolve o que mudou no seu time, para o aviso da pré-temporada.
