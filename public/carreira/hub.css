@@ -16,6 +16,10 @@ body{--fx-teal:var(--time,#1592a9);--fx-teal2:var(--time-escuro,#0d6f82);--fx-cl
 .tela .quadro .quadro,.dialogo .quadro{background:#ffffff73;box-shadow:none;border:1px solid var(--b1);border-radius:2px}
 .tela .quadro.secundario{background:#e3eaf0cc;box-shadow:none;border:1px dashed var(--b3)}
 .dialogo{box-shadow:0 30px 80px -24px #000}
+/* o botão de voltar do cabeçalho: uma placa clara e reta; o "← Sede" (nas telas de gestão) na cor do time, maior */
+#barra .voltar{height:34px;padding:0 14px;border-radius:2px;background:#d7e0e8e6;color:#24323e;font:600 15px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.06em}
+#barra .voltar.para-sede{height:38px;padding:0 18px;background:var(--fx-teal);color:var(--fx-tinta);font-size:17px;box-shadow:0 10px 24px -14px var(--fx-teal)}
+@media (hover:hover) and (pointer:fine){#barra .voltar:hover{background:#eef3f7;color:#15212c}#barra .voltar.para-sede:hover{background:var(--fx-teal2);color:var(--fx-tinta)}}
 /* o que fica no fundo escuro, fora dos painéis: o título da tela em caixa alta, o "← Sede", o caixa e o aviso em placas claras */
 .topo-tela h2{font:600 clamp(28px,3vw,38px)/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.03em;color:#fff}
 .topo-tela .volta{font:600 15px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em}
@@ -214,7 +218,12 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .int-numeros td,.int-numeros th{padding:4px 10px;text-align:center;font-variant-numeric:tabular-nums}
 .int-numeros th{font-weight:400;color:var(--t2);width:40%}.int-numeros td{width:30%}.int-numeros td.nosso{font-weight:700}
 .int-volta{min-height:34px;margin:0 0 8px;border-radius:2px;background:#d7e0e8e6;color:#24323e;border:0;font:600 15px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em}
-.decisao.intervalo:not(.sem-prancheta) .int-volta{background:var(--s2);color:var(--t1)}
+/* na prancheta do intervalo: a volta ao menu fica presa no alto do diálogo, na cor do time, e repete embaixo */
+.decisao.intervalo:not(.sem-prancheta) .int-volta{position:sticky;top:-22px;z-index:5;margin:0 -22px 10px;width:calc(100% + 44px);min-height:42px;justify-content:flex-start;padding:0 22px;
+  background:var(--fx-teal);color:var(--fx-tinta);font-size:17px;box-shadow:0 8px 20px -12px #000a}
+@media (max-height:420px) and (orientation:landscape){.decisao.intervalo:not(.sem-prancheta) .int-volta{top:-12px;margin:0 -12px 8px;width:calc(100% + 24px);padding:0 12px}}
+.decisao.intervalo:not(.sem-prancheta) .int-volta-fim{position:static;margin:0 0 8px;width:100%;justify-content:center;background:#d7e0e8e6;color:#24323e;box-shadow:none}
+@media (hover:hover) and (pointer:fine){.decisao.intervalo:not(.sem-prancheta) .int-volta:not(.int-volta-fim):hover{background:var(--fx-teal2);color:var(--fx-tinta)}}
 .int-lances{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:6px;align-items:start;margin-bottom:10px}
 .int-lista{padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .int-lista .narracao{max-height:min(46vh,420px);overflow:auto}

@@ -1,6 +1,13 @@
-# Carreira: os títulos antigos da sala entram na estante sem ninguém mexer nela
+# Carreira: voltar sem se perder (menu do intervalo e botão do topo)
 
-- **O problema:** o conserto anterior (o Mundial e o Super Mundial na estante) só mandava os títulos antigos para a estante quando alguém da sala fazia alguma coisa (escalar, jogar, abrir o mercado). Só abrir a sala e olhar a estante não bastava, e o título do Vasco continuava fora.
-- **Agora:** quando o servidor sobe e carrega as salas do banco, cada técnico de cada sala manda as conquistas do histórico dele para a estante (`estanteDaSala`, em `carreira.js`, chamada por `carreira-online.js`). A mesma conquista continua entrando uma vez só.
+- **No intervalo**, depois de abrir Tática, Substituições ou Formação, o botão "← Menu do intervalo" agora fica preso no alto da prancheta, numa faixa na cor do clube, e continua lá enquanto você rola a tela até o banco ou as formações. Antes ele era um botão pequeno e cinza, que sumia ao rolar.
+- O mesmo botão também aparece embaixo, logo acima do "Voltar ao jogo", para não precisar subir a tela inteira.
+- **O botão de voltar do topo** virou uma placa no tema: nas telas de gestão (Elenco e tática, Mercado, Tabela...) o "← Sede" fica maior e na cor do clube; na Sede, o "← Vila" é uma placa clara, menor.
+- **Sem sair sem querer:** o "← Vila" aparece no mesmo lugar do "← Sede" assim que você volta à Sede, e o segundo toque rápido levava à Vila. Agora um toque logo depois de voltar (menos de 1 s) é ignorado.
 
-Conferido: `tests/carreira-rivais.test.js` (uma sala guardada no banco com o Mundial e o Super Mundial do Vasco: ao carregar, os dois títulos aparecem na estante com o nome do técnico; sem o conserto o teste falha) e os testes da carreira em grupo e do banco.
+## Como
+
+- `public/carreira/partida.js`: na prancheta do intervalo, o "← Menu do intervalo" entra no alto e também antes do `#dVoltar`.
+- `public/carreira/hub.css`: o botão de cima fica `position: sticky` na cor do time (`--fx-teal`); o de baixo, na faixa clara das abas.
+- `public/carreira/zoom.js`: o botão do cabeçalho ganha a classe `para-sede` nas telas de gestão, e o clique no "← Vila" é ignorado por 900 ms depois de voltar à Sede.
+- `public/carreira/hub.css`: o estilo do `#barra .voltar` (placa clara; `para-sede` na cor do time).

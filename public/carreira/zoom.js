@@ -8,7 +8,7 @@ const Zoom = (() => {
   const TELAS_DE_GESTAO = new Set(["elenco", "mercado", "tabela", "calendario", "feed", "trocas", "temporadas", "clube"]);
   const ABRE = { duration: 480, easing: "cubic-bezier(.23,1,.32,1)" }, FECHA = { duration: 420, easing: "cubic-bezier(.77,0,.175,1)" };
   const SOMBRA = "0 0 0 1px #ffffff40, 0 30px 80px -20px #000", SEM_SOMBRA = "0 0 0 0 #ffffff00, 0 0 0 0 #0000";
-  let ocupado = false, rolagemDaSede = 0;
+  let ocupado = false, rolagemDaSede = 0, voltouEm = 0;
   const reduz = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const px = (n) => `${Math.round(n * 100) / 100}px`;
   const fim = (anim) => anim.finished.catch(() => {});
@@ -83,7 +83,8 @@ const Zoom = (() => {
     if (!ocupado) document.body.classList.remove("zoom-ativo"); // uma troca sem zoom volta a ter a entrada em cascata
     const a = document.querySelector("#barra .voltar"); if (!a) return;
     const sede = TELAS_DE_GESTAO.has(id);
-    a.textContent = sede ? "← Sede" : "← Vila";
+    if (!sede && a.classList.contains("para-sede")) voltouEm = Date.now(); // acabou de virar "← Vila": o toque repetido não sai da carreira
+    a.textContent = sede ? "← Sede" : "← Vila"; a.classList.toggle("para-sede", sede);
     if (sede) { a.setAttribute("href", "#sede"); a.dataset.ir = "sede"; } else { a.setAttribute("href", "/"); delete a.dataset.ir; }
   }
   // para onde ir: a sede abre o zoom a partir do bloco; as telas de gestão voltam encolhendo até o bloco delas
@@ -98,6 +99,7 @@ const Zoom = (() => {
     return mostrarTela(id);
   }
   // clicou no cabeçalho com o zoom rodando: não faz nada (em vez de sair da carreira sem querer)
-  document.addEventListener("click", (e) => { if (ocupado && e.target.closest && e.target.closest("#barra .voltar")) { e.preventDefault(); e.stopPropagation(); } }, true);
+  // nem logo depois de voltar à sede (o segundo toque no "← Sede" caía no "← Vila", que aparece no mesmo lugar)
+  document.addEventListener("click", (e) => { if ((ocupado || Date.now() - voltouEm < 900) && e.target.closest && e.target.closest("#barra .voltar")) { e.preventDefault(); e.stopPropagation(); } }, true);
   return { ir, cabecalho, TELAS_DE_GESTAO, ocupado: () => ocupado };
 })();
