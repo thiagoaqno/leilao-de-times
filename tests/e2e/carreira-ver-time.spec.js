@@ -29,7 +29,7 @@ test("carreira em grupo: ver o elenco do amigo e de um clube da tabela", async (
 
   // a Bia muda a formação; a Ana toca nela na turma e vê o time do jeito que a Bia deixou
   await b.evaluate(() => new Promise((ok) => socket.emit("escalacao", { formacao: "4-4-2" }, ok)));
-  await a.click('#cartaoTurma [data-time="palmeiras"]');
+  await a.click('#cartaoTurma [data-time="palmeiras"] .escudo');
   const dlg = a.locator("#verTime");
   await expect(dlg).toBeVisible();
   await expect(dlg.locator(".vt-topo")).toContainText("Técnico: Bia");
@@ -55,7 +55,7 @@ test("carreira em grupo: ver o elenco do amigo e de um clube da tabela", async (
 
   // no celular
   await b.setViewportSize({ width: 390, height: 844 });
-  await b.click('#cartaoTurma [data-time="flamengo"]');
+  await b.click('#cartaoTurma [data-time="flamengo"] .escudo');
   await expect(b.locator("#verTime .vt-topo")).toContainText("Técnico: Ana");
   await fotografar(b, "amigo-cel");
   expect(erros).toEqual([]);

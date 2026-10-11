@@ -24,4 +24,4 @@
 - `hub.css`: a grade da Central passou a ter quatro colunas (as duas primeiras somam a do Desenvolvimento) e o bloco do jogo repete as mesmas colunas, com a Prévia nas duas últimas (acima de 1240 px; abaixo, nada mudou). Subgrid não serve aqui porque o `container-type` do `#cartaoJogo` isola a grade.
 - `zoom.js` (o nome ficou): `deslizar` troca uma tela inteira pela outra (a velha fica fixa por cima e sai para um lado, a nova entra pelo outro), `aba` faz o mesmo com o miolo da sede entre as abas, `passo` anda na fila da faixa e o arrastar do dedo (`touchstart`/`touchend`) chama `passo`. O zoom saiu (e a placa `.zoomando` do `estilo.css`).
 - `sede-hub.js`: os cliques e as setas das abas passam por `Zoom.aba`.
-- Testes: `tests/carreira-zoom.test.js` ganhou a fila do arrastar (das abas para os blocos, a Trocas escondida no solo e o fim da fila).
+- Testes: `tests/carreira-zoom.test.js` ganhou a fila do arrastar (das abas para os blocos, a Trocas escondida no solo e o fim da fila). `tests/e2e/carreira-ver-time.spec.js` toca no escudo de quem está na turma: no meio da linha agora fica o botão "Tornar anfitrião" (do #153), que não abre o elenco.
