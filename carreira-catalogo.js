@@ -1,4 +1,4 @@
-// Carreira de Treinador: o catálogo dos eventos (mais de 300, com os de carreira-catalogo-extra.js e carreira-catalogo-novos.js) da caixa de entrada. Cada um tem quem ele atinge (alvo), quando pode
+// Carreira de Treinador: o catálogo dos 624 eventos (com os arquivos extra, novos e imersao) da caixa de entrada. Cada um tem quem ele atinge (alvo), quando pode
 // acontecer (quando), o texto e as escolhas; cada escolha mexe no jogo de verdade pelas ajudas de `x` (ver
 // carreira-eventos.js):
 //   x.moral(n)                  a moral do elenco (20 a 95, que vira nota em campo)
@@ -483,5 +483,6 @@ const CATALOGO = [
 CATALOGO.push(...require("./carreira-catalogo-extra.js").EXTRA);
 // mais 100 eventos aleatórios (carreira-catalogo-novos.js)
 CATALOGO.push(...require("./carreira-catalogo-novos.js").NOVOS);
+CATALOGO.push(...require("./carreira-catalogo-imersao.js").IMERSAO);
 
 module.exports = { CATALOGO };

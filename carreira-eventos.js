@@ -7,6 +7,7 @@
 const Motor = require("./public/carreira/motor.js");
 const Mercado = require("./public/carreira/mercado.js");
 const Temporada = require("./public/carreira/temporada.js");
+const Rivais = require("./public/carreira/rivais.js");
 const { CATALOGO } = require("./carreira-catalogo.js");
 const POR_ID = Object.fromEntries(CATALOGO.map((d) => [d.id, d]));
 
@@ -27,6 +28,7 @@ function alvoDe(save, c, r, alvo) {
   else if (GRUPOS[alvo]) lista = tit.filter((j) => GRUPOS[alvo].includes(j.pos));
   else if (alvo === "estrangeiro") lista = meu.filter((j) => j.nat && j.nat !== "Brasil" && livre(j));
   else if (alvo === "lesionado") lista = meu.filter((j) => save.lesoes[j.id]);
+  else if (alvo === "suspenso") lista = meu.filter((j) => save.suspensos[j.id]);
   else if (alvo === "outro") lista = c.idsDosClubes(save).filter((x) => x !== save.clube).flatMap((cl) => c.elencoDe(save, cl)).filter((j) => c.notaDe(save, j) >= 70 && !j.base && !save.indicacoes[j.id]);
   else lista = meu.filter(livre);
   return lista.length ? sorteio(r, lista) : null;
@@ -37,6 +39,7 @@ function contexto(save, c, sorte, j = null, v = {}) {
   const clube = c.clubeDe(save, save.clube), R = save.rodada;
   const jogo = save.calendario[R] && save.calendario[R].find((m) => m.includes(save.clube));
   const advId = jogo ? (jogo[0] === save.clube ? jogo[1] : jogo[0]) : null;
+  const classico = Rivais.classico(save.clube, advId);
   const ult = c.ultimosResultados(save, 3);
   const pos = R > 0 ? Temporada.tabela(c.idsDosClubes(save), save.resultados).findIndex((l) => l.id === save.clube) + 1 : 0;
   const efeito = (alvo, nota, rodadas, atraso) => {
@@ -50,6 +53,7 @@ function contexto(save, c, sorte, j = null, v = {}) {
     n: j ? j.nome : "", clubeDoAlvo: j ? c.clubeDe(save, c.donoDe(save, j.id)).nome : "",
     salarioAtual: j ? c.salarioDe(save, j) : 0, valorAlvo: j ? Mercado.valorDe(c.comNota(save, j)) : 0,
     adv: advId ? c.clubeDe(save, advId).nome : null, advTamanho: advId ? c.clubeDe(save, advId).tamanho : 0,
+    classico: classico ? classico.nome : null,
     casa: !!jogo && jogo[0] === save.clube, janela: Mercado.janelaAberta(c.rodadaDaJanela ? c.rodadaDaJanela(save) : R), posicao: pos,
     vitorias: ult.filter((u) => u === "V").length, derrotas: ult.filter((u) => u === "D").length,
     caixaAtual: save.caixa, folha: c.elencoDe(save, save.clube).reduce((s, p) => s + c.salarioDe(save, p), 0),
