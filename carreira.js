@@ -1105,7 +1105,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   const FASES = { preliminar: "fase preliminar", oitavas: "oitavas de final", quartas: "quartas de final", semifinal: "semifinal", final: "final" };
   const fase = jogoDaCompeticao && jogoDaCompeticao.fase, rotulo = comp.tipo === "liga" ? `${comp.nome} · rodada ${(jogoDaCompeticao.rodada || 0) + 1}`
     : `${comp.nome} · ${String(fase).startsWith("grupo-") ? `fase de grupos, rodada ${(jogoDaCompeticao.rodada || 0) + 1}` : FASES[fase] || fase}`;
-  save.posJogo = { rodada: save.rodada - 1, jogoId: p.jogoId, rotulo, casa: p.casa, fora: p.fora, placar: r.placar, ...(penaltis && { penaltis }), resultado: resultadoFinal, moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: [], avisos: [] };
+  save.posJogo = { rodada: save.rodada - 1, jogoId: p.jogoId, rotulo, casa: p.casa, fora: p.fora, placar: r.placar, ...(penaltis && { penaltis }), resultado: resultadoFinal, moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: novos.filter((e) => !e.resolvido).map((e) => e.id), avisos: novos.filter((e) => e.resolvido && e.tipo !== "ia").map((e) => e.id) };
   if (recalcular) registrarTemporada(save);
 }
 // Quem descansa uma partida recupera 80 pontos de energia e zera a sequência. Quem entra em campo
