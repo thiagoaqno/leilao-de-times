@@ -371,3 +371,4 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .hub-memoria .diario li.marca{color:var(--t1);font-weight:600}
 .hub-memoria .diario small{color:var(--t3);margin-right:4px}
 .entrada .lembranca{font-size:12px;font-style:italic;color:var(--t2);border-left:3px solid var(--fx-teal);padding-left:8px;margin:4px 0}
+.pedido-clube{display:grid;gap:8px;margin-bottom:10px;padding:10px 12px;border-radius:var(--r);background:var(--s1);border:1px solid var(--b1)}.pedido-clube p{margin:0}

@@ -6,7 +6,7 @@ const assert = require("node:assert");
 const Motor = require("../public/carreira/motor.js");
 const Mercado = require("../public/carreira/mercado.js");
 const Eventos = require("../carreira-eventos.js");
-const { novaCarreira, ajudas, timeDe, fecharRodada, propor, estado } = require("../carreira.js").paraTestes;
+const { novaCarreira, ajudas, timeDe, fecharRodada, propor, estado, olheiro, consultarPedido } = require("../carreira.js").paraTestes;
 
 function jogarRodada(save, i = 0) {
   const [casa, fora] = save.calendario[save.rodada].find((m) => m.includes(save.clube));
@@ -117,4 +117,40 @@ test("feed e pós-jogo: depois das rodadas há posts com arte e o resumo da roda
   const e = estado(save);
   assert.ok(e.feed.length <= 30 && e.posJogo && e.situacao === "saf");
   assert.ok(!("segredos" in e), "o limite das disputas não vai para o navegador");
+});
+
+test("mercado: o veterano e a fase ruim desvalorizam, a promessa valoriza", () => {
+  const base = { nota: 80 };
+  const v = (idade, fator) => Mercado.valorDe({ ...base, idade }, fator);
+  assert.ok(v(34) < v(26) * 0.65, "34 anos vale bem menos que 26");
+  assert.ok(v(20) > v(26), "a promessa vale um pouco mais");
+  assert.ok(v(26, 0.8) < v(26), "fase ruim desvaloriza");
+  assert.ok(Mercado.fatorForma({ pos: "MC", media: 5.2 }) < 1 && Mercado.fatorForma({ pos: "MC", media: 7.5 }) > 1);
+  assert.ok(Mercado.desvalorizado({ idade: 34 }) && !Mercado.desvalorizado({ idade: 26 }));
+});
+
+test("mercado: o clube diz o que pede e pagar isso fecha na hora, sem conversa", () => {
+  const save = novaCarreira("T", "flamengo", "");
+  const j = ajudas.elencoDe(save, "palmeiras").filter((x) => !x.base).sort((a, b) => b.nota - a.nota)[3];
+  const c = consultarPedido(save, { jogador: j.id });
+  assert.ok(c.pedido > 0 && c.salario > 0);
+  // quem paga menos do que ele pede ouve a contraproposta com o mesmo preço
+  const baixo = propor(save, { jogador: j.id, valor: Math.round(c.pedido * 0.9 / 1e5) * 1e5, salario: c.salario });
+  assert.ok(["contra", "recusa"].includes(baixo.resposta.resultado));
+  // mesmo sem tentativas sobrando, "direto" fecha
+  save.tentativas = { rodada: save.rodada, por: { [j.id]: 3 } };
+  save.caixa = 5e9;
+  const r = propor(save, { jogador: j.id, direto: true });
+  assert.strictEqual(r.resposta.resultado, "aceita");
+  assert.strictEqual(save.compras[j.id].valor, c.pedido);
+});
+
+test("olheiro: o preço da dica é o que o clube pede, e cabe no caixa", () => {
+  const save = novaCarreira("T", "flamengo", "");
+  const sug = olheiro(save);
+  assert.ok(sug.length >= 1, "achou alguém");
+  for (const s of sug) {
+    assert.ok(s.preco <= save.caixa);
+    assert.strictEqual(s.preco, consultarPedido(save, { jogador: s.jogador }).pedido, "a dica mostra o mesmo preço que a compra cobra");
+  }
 });

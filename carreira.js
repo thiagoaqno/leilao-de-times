@@ -86,7 +86,8 @@ const folhaDe = (save) => elencoDe(save, save.clube).reduce((s, j) => s + salari
 function fatorDe(save, pid) {
   const j = jogadorDe(save, pid); if (!j) return 1;
   const efeito = (save.efeitos || []).filter((e) => e.alvo === pid && e.de <= save.rodada && e.ate >= save.rodada).reduce((s, e) => s + e.nota, 0);
-  return Mercado.fatorForma({ gols: save.gols[pid] || 0, pos: j.pos, efeito, aVenda: save.aVenda.includes(pid) });
+  const d = save.desempenho && save.desempenho[pid], media = d && d[0] >= 3 ? d[1] / d[0] : null; // a fase: a nota média nos jogos da temporada
+  return Mercado.fatorForma({ gols: save.gols[pid] || 0, pos: j.pos, efeito, aVenda: save.aVenda.includes(pid), media });
 }
 const valorAtual = (save, j) => Mercado.valorDe(comNota(save, j), fatorDe(save, j.id));
 // sem lucro em revenda na hora: nas primeiras rodadas depois da compra, ninguém paga mais do que você pagou
@@ -698,8 +699,24 @@ function fichaDoTime(save, id) {
     formacao: Taticas.FORMACOES[time.formacao] ? time.formacao : "4-3-3", estilo, campo, elenco: elenco.map((j) => j.id), jovens,
     fora: Object.fromEntries(elenco.filter((j) => !disponivel(save, j.id)).map((j) => [j.id, save.lesoes[j.id] ? "lesao" : "suspenso"])), forca: Math.round(forcaDoClube(save, id)) };
 }
+// o que o clube pede por um jogador agora (preço e salário do jogador) e o que a dica do olheiro já abate. Pagar isso fecha na hora.
+function pedidoDoClube(save, pid, titulares) {
+  const j = jogadorDe(save, pid), dono = j && donoDe(save, pid);
+  if (!j || !dono || dono === APOSENTADO || dono === save.clube || !clubeDe(save, dono)) return null;
+  const ind = save.indicacoes[pid];
+  const p = Mercado.pedidoDe({ jogador: comNota(save, j), vendedor: clubeDe(save, dono), comprador: clubeDe(save, save.clube), titular: (titulares || titularesDe(save, dono)).includes(pid),
+    semente: `${save.semente}:${save.temporada}:${save.rodada}:${pid}`, fator: fatorDe(save, pid) });
+  const pedido = ind ? Math.ceil(p.pedido * ind.desconto / 1e5) * 1e5 : p.pedido;
+  return { pedido, salario: p.salario, valor: p.V, dono };
+}
+// a ficha do jogador de outro clube: o que o clube pede, para a tela mostrar antes da proposta
+function consultarPedido(save, d) {
+  const pid = String(d.jogador || ""), r = pedidoDoClube(save, pid);
+  return r ? { pedido: r.pedido, salario: r.salario, valor: Math.round(r.valor / 1e5) * 1e5 } : "Esse jogador não está disponível.";
+}
 // o olheiro: as posições mais fracas do time (o pior de cada setor, comparado com a média dos titulares) e 2 ou 3
-// jogadores que cabem no caixa e melhoram ali, com o porquê. Não inventa ninguém: escolhe da base, pelo valor de hoje.
+// jogadores que melhoram ali e cabem no caixa PELO QUE O CLUBE PEDE (não pelo valor de mercado: o clube sempre pede mais),
+// com o porquê. Quem está desvalorizado (veterano, fase ruim) é mais barato e o olheiro avisa. Não inventa ninguém.
 const SETOR = { GK: "goleiro", DEF: "defensor", MID: "meio-campista", ATT: "atacante" };
 function olheiro(save) {
   const time = timeDe(save, save.clube), jog = Object.fromEntries(time.jogadores.map((j) => [j.id, j]));
@@ -709,18 +726,31 @@ function olheiro(save) {
   const piores = Object.values(campo.reduce((a, c) => { if (!a[c.slot] || c.v < a[c.slot].v) a[c.slot] = c; return a; }, {})).sort((a, b) => (a.v - media) - (b.v - media));
   const humanos = new Set(humanosDe(save));
   const disp = todosJogadores(save).filter((j) => { const d = donoDe(save, j.id); return d !== save.clube && d !== APOSENTADO && !humanos.has(d) && clubeDe(save, d); });
+  const titulares = new Map(), pedidos = new Map();
+  const pedidoDe = (j) => {
+    if (!pedidos.has(j.id)) { const dono = donoDe(save, j.id); if (!titulares.has(dono)) titulares.set(dono, titularesDe(save, dono)); pedidos.set(j.id, pedidoDoClube(save, j.id, titulares.get(dono))); }
+    return pedidos.get(j.id);
+  };
   const sugestoes = [], usados = new Set(), candidatos = [];
   for (const p of piores) {
-    const lista = disp.filter((j) => !usados.has(j.id)).map((j) => ({ j, v: Motor.valorNa(comNota(save, j), p.slot), preco: valorAtual(save, j) }))
-      .filter((x) => x.v >= p.v + 3 && x.preco <= save.caixa)
-      .sort((a, b) => (b.v - p.v) / Math.sqrt(b.preco) - (a.v - p.v) / Math.sqrt(a.preco));
+    // primeiro um corte barato pelo valor (com folga: o clube pede até uns 50% a mais), depois o pedido de verdade dos melhores
+    const pre = disp.filter((j) => !usados.has(j.id)).map((j) => ({ j, v: Motor.valorNa(comNota(save, j), p.slot), valor: valorAtual(save, j) }))
+      .filter((x) => x.v >= p.v + 3 && x.valor <= save.caixa)
+      .sort((a, b) => (b.v - p.v) / Math.sqrt(b.valor) - (a.v - p.v) / Math.sqrt(a.valor)).slice(0, 30);
+    const lista = pre.map((x) => ({ ...x, ped: pedidoDe(x.j) })).filter((x) => x.ped && x.ped.pedido <= save.caixa)
+      .map((x) => ({ ...x, preco: x.ped.pedido, baixa: Mercado.desvalorizado({ idade: comNota(save, x.j).idade, fator: fatorDe(save, x.j.id) }) }))
+      // quem está desvalorizado ganha um empurrão: leva o mesmo ganho de nota por menos
+      .sort((a, b) => (b.v - p.v) / Math.sqrt(b.preco) * (b.baixa ? 1.15 : 1) - (a.v - p.v) / Math.sqrt(a.preco) * (a.baixa ? 1.15 : 1));
     candidatos.push([p, lista]);
     if (lista[0] && sugestoes.length < 3) { sugestoes.push([p, lista[0]]); usados.add(lista[0].j.id); }
   }
   // pouca coisa: mais uma opção para a posição mais fraca
   for (const [p, lista] of candidatos) { if (sugestoes.length >= 2) break; const x = lista.find((y) => !usados.has(y.j.id)); if (x) { sugestoes.push([p, x]); usados.add(x.j.id); } }
-  return sugestoes.slice(0, 3).map(([p, x]) => ({ jogador: x.j.id, dono: donoDe(save, x.j.id), slot: p.slot, sai: p.id, notaAtual: Math.round(p.v), notaNova: Math.round(x.v), preco: x.preco,
-    motivo: `Seu ${SETOR[p.slot]} mais fraco é ${jogadorDe(save, p.id).nome}, que rende ${Math.round(p.v)} ali. ${x.j.nome} rende ${Math.round(x.v)} e custa ${dinheiro(x.preco)}.` }));
+  return sugestoes.slice(0, 3).map(([p, x]) => {
+    const cj = comNota(save, x.j), motivos = Mercado.motivosDoValor({ idade: cj.idade, fator: fatorDe(save, x.j.id) });
+    return { jogador: x.j.id, dono: donoDe(save, x.j.id), slot: p.slot, sai: p.id, notaAtual: Math.round(p.v), notaNova: Math.round(x.v), preco: x.preco, salario: x.ped.salario, baixa: x.baixa,
+      motivo: `Seu ${SETOR[p.slot]} mais fraco é ${jogadorDe(save, p.id).nome}, que rende ${Math.round(p.v)} ali. ${x.j.nome} rende ${Math.round(x.v)} e o ${clubeDe(save, donoDe(save, x.j.id)).nome} pede ${dinheiro(x.preco)}${x.baixa && motivos.length ? ` (desvalorizado: ${motivos.join(", ")})` : ""}.` };
+  });
 }
 
 // o time que entra em campo: o elenco de agora (com as transferências), sem lesionados e suspensos, com a moral no seu
@@ -1337,7 +1367,7 @@ function resolverPendentes(save) {
 
 // o momento de quem não está no normal (fator diferente de 1): o navegador calcula o mesmo valor que o servidor
 function formaDe(save) {
-  const ids = new Set([...Object.keys(save.gols), ...save.aVenda, ...(save.efeitos || []).map((e) => e.alvo).filter((a) => a !== "time" && a !== "rival")]);
+  const ids = new Set([...Object.keys(save.gols), ...Object.keys(save.desempenho || {}), ...save.aVenda, ...(save.efeitos || []).map((e) => e.alvo).filter((a) => a !== "time" && a !== "rival")]);
   const out = {};
   for (const pid of ids) { const f = fatorDe(save, pid); if (f !== 1) out[pid] = f; }
   return out;
@@ -1515,7 +1545,9 @@ function propor(save, d) {
   const pid = String(d.jogador || ""), j = jogadorDe(save, pid), dono = j && donoDe(save, pid);
   if (!j || dono === save.clube || dono === APOSENTADO) return "Esse jogador não está disponível.";
   if (elencoDe(save, save.clube).length >= Mercado.ELENCO_MAX) return `O elenco já tem ${Mercado.ELENCO_MAX} jogadores. Venda alguém antes.`;
-  const valor = inteiro(d.valor, 0, 5e9, 0), salario = inteiro(d.salario, 0, 1e8, 0);
+  // "comprar pelo preço pedido": sem conversa, o valor e o salário são os que o clube e o jogador pedem (fecha na hora)
+  const direto = !!d.direto && pedidoDoClube(save, pid);
+  const valor = direto ? direto.pedido : inteiro(d.valor, 0, 5e9, 0), salario = direto ? direto.salario : inteiro(d.salario, 0, 1e8, 0);
   // um jogador seu na troca: entra no pagamento pelo valor de mercado com 10% de desconto
   const trocaId = d.troca ? String(d.troca) : null, troca = trocaId && jogadorDe(save, trocaId);
   if (trocaId && (!troca || donoDe(save, trocaId) !== save.clube)) return "O jogador da troca não é do seu elenco.";
@@ -1526,8 +1558,8 @@ function propor(save, d) {
   if (agora > save.caixa) return `O caixa não tem ${dinheiro(agora)}${parcelado ? " para a entrada" : ""}.`;
   if (save.tentativas.rodada !== save.rodada) save.tentativas = { rodada: save.rodada, por: {} };
   const tentativa = save.tentativas.por[pid] || 0;
-  if (tentativa >= 3) return "Esse clube não quer mais conversa nesta rodada.";
-  save.tentativas.por[pid] = tentativa + 1;
+  if (!direto && tentativa >= 3) return "Esse clube não quer mais conversa nesta rodada.";
+  if (!direto) save.tentativas.por[pid] = tentativa + 1;
   const ind = save.indicacoes[pid], vendedor = clubeDe(save, dono), comprador = clubeDe(save, save.clube);
   const resposta = Mercado.avaliarProposta({ jogador: comNota(save, j), vendedor, comprador, titular: titularesDe(save, dono).includes(pid),
     valor: ind ? valor / ind.desconto : valor, salario, semente: `${save.semente}:${save.temporada}:${save.rodada}:${pid}`, tentativa, fator: fatorDe(save, pid) });
@@ -1716,6 +1748,15 @@ module.exports = function ligarCarreira(io) {
       const r = fichaDoTime(c.dados, String(d.clube || ""));
       return typeof r === "string" ? falha(cb, r) : ok(cb, { time: r });
     });
+    // o que o clube pede por um jogador (só leitura)
+    socket.on("pedido", (d = {}, cb) => {
+      const c = token && bd.carreiraPorToken(token);
+      if (!c) return falha(cb, "Carreira não encontrada. Entre de novo.");
+      if (antiga(c.dados)) return falha(cb, ANTIGA);
+      completar(c.dados);
+      const r = consultarPedido(c.dados, d);
+      return typeof r === "string" ? falha(cb, r) : ok(cb, { pedido: r });
+    });
     socket.on("clube", (d = {}, cb) => comCarreira(cb, (save) => Clube.acao(save, ajudas, d)));
     socket.on("novaTemporada", (d, cb) => comCarreira(cb, (save) => novaTemporada(save)));
     // o código de recuperação de novo (nasce outro: o banco só guarda o hash) e apagar a carreira de vez
@@ -1735,7 +1776,7 @@ module.exports = function ligarCarreira(io) {
   });
 };
 // para os testes: montar uma carreira e mexer nela sem o socket
-module.exports.paraTestes = { trocarDivisoes, ligaDoClube, clubesDaLiga, definirMeta, registrarTemporada, PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO };
+module.exports.paraTestes = { trocarDivisoes, ligaDoClube, clubesDaLiga, definirMeta, registrarTemporada, PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO, olheiro, consultarPedido };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
 module.exports.grupo = { rodadaDaSemana, estanteDaSala, Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,

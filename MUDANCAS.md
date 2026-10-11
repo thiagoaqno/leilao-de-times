@@ -1,20 +1,16 @@
-# Carreira: a memória do clube (efeito dominó nas escolhas)
+# Carreira: mercado sem leilão, jogadores desvalorizados e o olheiro acertando o preço
 
 ## O que muda no jogo
 
-Antes, cada acontecimento da caixa de entrada era um efeito solto: acontecia, passava e o jogo esquecia. Agora o clube lembra do que você fez, e isso volta.
+Antes, comprar de outro clube era um vai e volta de propostas e o olheiro indicava jogadores pelo valor de mercado, mas o clube sempre pedia mais do que isso: a dica "cabia no caixa" e na hora de comprar não cabia. Agora:
 
-- **Relações:** a torcida, a imprensa e o vestiário têm uma nota de 0 a 100 (a diretoria continua sendo a confiança). Resultados, clássicos, goleadas, títulos, rebaixamento, a venda de um craque e cada escolha da caixa de entrada mexem nelas. E elas mexem no jogo: a torcida muda a bilheteria (de -12% a +12%), o vestiário unido segura a moral depois da derrota (rachado, piora) e a imprensa amiga segura a diretoria (hostil, pressiona).
-- **Perfil do técnico:** sai do que as suas escolhas fizeram, não de uma pergunta. Punir e cobrar deixa você linha-dura; acolher deixa você paizão; abrir a carteira, mão-aberta; segurar o dinheiro, pão-duro.
-- **Laços com os jogadores:** cada decisão que atinge um jogador vira gratidão ou mágoa. Os acontecimentos seguintes preferem quem já tem história, então o mesmo jogador vira personagem.
-- **Ecos:** 13 acontecimentos novos que só existem por causa do passado, com a lembrança do que os causou: a mágoa que volta (e pode virar pedido de saída), a gratidão que se paga em campo ou no contrato, o vestiário reclamando do pulso firme, o treino relaxado de quem é paizão demais, a diretoria cobrando a conta, a faixa ou o mosaico da torcida, a coletiva hostil ou o jornalista que sopra a tática do adversário, o rival pedindo revanche, a torcida cobrando a venda do ídolo, o peso da faixa de campeão e a ferida do rebaixamento. As respostas dos ecos também ficam na memória: o dominó continua.
-- **Na tela:** cada resposta mostra o que andou nas relações (ex.: "Torcida +2 · Vestiário −3"). O painel **A história do clube** (Sede, abas Meu time e Temporada) mostra o perfil, as relações, quem guarda mágoa ou gratidão e o diário das últimas decisões e marcas.
-- Com o tempo a memória esfria: na virada as relações voltam um pouco ao meio e os laços perdem força.
+- **O clube diz o que pede.** Na ficha de um jogador de outro clube aparece "o clube pede R$ X (N% do valor de mercado) e o jogador quer R$ Y por mês", e o botão **Comprar pelo preço pedido** fecha na hora, sem conversa nem limite de tentativas (dá para parcelar e para dar um jogador na troca como antes). A proposta livre continua existindo, já com o preço pedido preenchido.
+- **Jogadores desvalorizados.** O valor agora considera a idade (a partir dos 29 vale menos a cada ano, aos 34 menos da metade; promessas até 21 anos valem um pouco mais) e a fase (a nota média nos jogos da temporada: abaixo de 6,1 desvaloriza, acima de 6,6 valoriza), além dos gols, eventos e de estar à venda. A ficha explica o porquê ("34 anos: 44% a menos") e o Mercado tem o filtro **Só desvalorizados**. O salário acompanha o valor.
+- **Olheiro reajustado.** Ele escolhe quem melhora o time e cabe no caixa pelo preço que o clube de fato pede (o mesmo da compra), mostra esse preço e o salário, e dá preferência a quem está desvalorizado (avisa o motivo). Vale na carreira solo e na em grupo.
 
 ## Como
 
-- `carreira-memoria.js` é o módulo novo: o estado em `save.memoria` (campo do clube, entra em `CAMPOS_CLUBE`; saves antigos criam na hora), `aprender` (lê o rastro das ajudas que a escolha chamou), `aposJogo`, `fimDeTemporada`, `vendeu`, `fatorTorcida`, `estado` e o catálogo `ECOS` (mesma forma do catálogo de eventos).
-- `carreira-eventos.js`: o contexto das ajudas grava o rastro e ganhou `x.torcida`, `x.imprensa`, `x.vestiario`, `x.confianca`, `x.perdoar` e `x.retribuir`; os alvos `magoado` e `grato`; no máximo um eco a cada 3 rodadas, cada um uma vez por temporada.
-- `carreira.js` chama a memória depois de cada jogo, no fim da temporada, na venda e na bilheteria, e manda `estado().memoria`.
-- `public/carreira/telas.js` (`memoriaNaSede`, a lembrança na caixa de entrada), `index.html` (`#cartaoMemoria`) e `hub.css`.
-- Testes em `tests/carreira-memoria.test.js`.
+- `public/carreira/mercado.js`: `fatorIdade`, `valorDe` com a idade, `fatorForma` com a fase (`media`), `motivosDoValor`, `desvalorizado` e `pedidoDe` (o preço e o salário que o clube e o jogador pedem; `avaliarProposta` e `precoMinimo` usam a mesma conta).
+- `carreira.js`: `fatorDe` lê `save.desempenho`; `pedidoDoClube`, `consultarPedido` (canal `pedido`, só leitura) e `propor` com `direto: true`; o `olheiro` pelo preço pedido.
+- Navegador: `cartas.js` (pedido do clube e motivos do preço), `tela-mercado.js` (filtro e relatório do olheiro), `inicio.js` (a idade entra no `comNota`).
+- Testes em `tests/carreira-mercado.test.js`.

@@ -9,17 +9,37 @@
 })(typeof self !== "undefined" ? self : this, function (Motor) {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const arred = (v, passo) => Math.round(v / passo) * passo;
-  // o valor de mercado (R$): cresce rápido com a nota; os da base valem menos. fator: o momento (0,8 a 1,5)
+  // a idade pesa no valor: o veterano perde valor a cada ano (o contrato curto e a queda vêm logo), a promessa vale um pouco mais
+  function fatorIdade(idade) {
+    if (!idade) return 1;
+    if (idade <= 21) return 1.1;
+    if (idade <= 28) return 1;
+    return [0.97, 0.92, 0.85, 0.76, 0.66, 0.56][idade - 29] ?? (idade >= 36 ? 0.45 : 0.5);
+  }
+  // o valor de mercado (R$): cresce rápido com a nota; os da base valem menos. fator: o momento (0,5 a 1,5); a idade (j.idade) entra sozinha
   function valorDe(j, fator = 1) {
-    const v = Math.pow(1.18, j.nota - 60) * 1e6 * (j.base ? 0.4 : 1) * clamp(fator, 0.8, 1.5);
+    const v = Math.pow(1.18, j.nota - 60) * 1e6 * (j.base ? 0.4 : 1) * clamp(fator, 0.5, 1.5) * fatorIdade(j.idade);
     return arred(v, v > 1e7 ? 5e5 : 1e5);
   }
   // o momento do jogador: gols na temporada, os efeitos dos eventos (fase boa ou ruim) e estar à venda (desvaloriza)
-  function fatorForma({ gols = 0, pos = "ATA", efeito = 0, aVenda = false }) {
+  // media: a nota média dos jogos na temporada (com pelo menos 3 jogos): fase ruim desvaloriza, fase boa valoriza
+  function fatorForma({ gols = 0, pos = "ATA", efeito = 0, aVenda = false, media = null }) {
     const porGol = ["ATA", "PE", "PD"].includes(pos) ? 0.035 : pos === "GOL" ? 0 : 0.06;
-    const f = (1 + Math.min(0.35, gols * porGol)) * (1 + 0.05 * efeito) * (aVenda ? 0.93 : 1);
-    return Math.round(clamp(f, 0.8, 1.5) * 100) / 100;
+    const fase = media == null ? 1 : media >= 7.2 ? 1.08 : media >= 6.6 ? 1.03 : media <= 5.4 ? 0.82 : media <= 5.8 ? 0.9 : media <= 6.1 ? 0.96 : 1;
+    const f = (1 + Math.min(0.35, gols * porGol)) * (1 + 0.05 * efeito) * (aVenda ? 0.93 : 1) * fase;
+    return Math.round(clamp(f, 0.5, 1.5) * 100) / 100;
   }
+  // por que o preço está abaixo (ou acima) do normal: a lista de motivos para a tela
+  function motivosDoValor({ idade, fator = 1 }) {
+    const m = [], fi = fatorIdade(idade);
+    if (fi < 0.95) m.push(`${idade} anos: ${Math.round((1 - fi) * 100)}% a menos`);
+    if (fator < 0.97) m.push(`fase ruim: ${Math.round((1 - fator) * 100)}% a menos`);
+    if (fi > 1.02) m.push(`${idade} anos: promessa vale mais`);
+    if (fator > 1.03) m.push(`fase boa: ${Math.round((fator - 1) * 100)}% a mais`);
+    return m;
+  }
+  // desvalorizado: o preço está pelo menos 12% abaixo do que a nota pediria (idade ou fase)
+  const desvalorizado = ({ idade, fator = 1 }) => fatorIdade(idade) * clamp(fator, 0.5, 1.5) <= 0.88;
   // o salário por mês (R$)
   const salarioDe = (j) => arred(valorDe(j) / 70, 5e3);
   // as janelas: a pré-temporada e as 4 primeiras rodadas, e a do meio do ano (rodadas 17 a 21)
@@ -46,30 +66,30 @@
   //   jogador, vendedor (o clube dono, com .tamanho), comprador (com .tamanho), titular (se o jogador é dos 11 do dono)
   //   valor e salario oferecidos; fator (o momento); semente (carreira + rodada + jogador); tentativas já feitas
   // devolve { resultado: "aceita" | "contra" | "recusa" | "jogador", pedido?, salarioPedido?, motivo }
-  function avaliarProposta({ jogador, vendedor, comprador, titular, valor, salario, semente, tentativa = 0, fator = 1 }) {
-    // o preço que o clube aceita é um só por jogador e rodada: pagar o que ele pediu sempre fecha o negócio
+  // o que o clube pede por um jogador: o preço (um só por jogador e rodada: pagar isso sempre fecha) e o salário que o jogador quer
+  function pedidoDe({ jogador, vendedor, comprador, titular, semente, fator = 1 }) {
     const r = Motor.sorteDe(`proposta:${semente}`);
     const V = valorDe(jogador, fator), apego = (titular ? 1.35 : 1.05) * (vendedor.tamanho >= comprador.tamanho ? 1.08 : 0.97);
     const minimo = V * apego * (0.94 + r() * 0.12);
     const pedido = Math.ceil(minimo / 1e5) * 1e5; // arredonda para cima: pagar o pedido sempre basta
+    // clube menor que o dele precisa pagar mais para convencer o jogador
+    const salario = arred(salarioDe(jogador) * (comprador.tamanho < vendedor.tamanho ? 1.25 + 0.1 * (vendedor.tamanho - comprador.tamanho) : 1) * (0.95 + r() * 0.1), 5e3);
+    return { V, minimo, pedido, salario };
+  }
+  function avaliarProposta({ jogador, vendedor, comprador, titular, valor, salario, semente, tentativa = 0, fator = 1 }) {
+    const { V, minimo, pedido, salario: pedidoSalario } = pedidoDe({ jogador, vendedor, comprador, titular, semente, fator });
     if (valor < V * 0.6) return { resultado: "recusa", motivo: "A proposta nem chegou a ser discutida: está muito abaixo do valor." };
     if (valor < minimo * 0.88) {
       if (tentativa >= 2) return { resultado: "recusa", motivo: "A diretoria encerrou a conversa por esta rodada." };
       return { resultado: "contra", pedido: pedido, motivo: `O ${vendedor.nome} só libera por ${dinheiro(pedido)}.` };
     }
     if (valor < minimo) return { resultado: "contra", pedido: pedido, motivo: `Quase lá: o ${vendedor.nome} pede ${dinheiro(pedido)}.` };
-    // o clube aceitou: agora o jogador. Clube menor que o dele precisa pagar mais para convencer.
-    const pedidoSalario = arred(salarioDe(jogador) * (comprador.tamanho < vendedor.tamanho ? 1.25 + 0.1 * (vendedor.tamanho - comprador.tamanho) : 1) * (0.95 + r() * 0.1), 5e3);
+    // o clube aceitou: agora o jogador
     if (salario < pedidoSalario * 0.95) return { resultado: "jogador", salarioPedido: pedidoSalario, motivo: `O clube aceitou, mas ${jogador.nome} quer ${dinheiro(pedidoSalario)} por mês.` };
     return { resultado: "aceita", motivo: `Negócio fechado! ${jogador.nome} é do seu time.` };
   }
-  // o preço mínimo do clube para o leilão da carreira em grupo: o mesmo pedido que ele faria a uma proposta (a mesma
-  // semente e o mesmo sorteio de avaliarProposta: pagar isso sempre fecha)
-  function precoMinimo({ jogador, vendedor, comprador, titular, semente, fator = 1 }) {
-    const r = Motor.sorteDe(`proposta:${semente}`);
-    const apego = (titular ? 1.35 : 1.05) * (vendedor.tamanho >= comprador.tamanho ? 1.08 : 0.97);
-    return Math.ceil(valorDe(jogador, fator) * apego * (0.94 + r() * 0.12) / 1e5) * 1e5;
-  }
+  // o preço mínimo do clube para o leilão da carreira em grupo: o mesmo pedido que ele faria a uma proposta
+  const precoMinimo = (args) => pedidoDe(args).pedido;
   // vender na hora para o mercado: sai rápido, mas por menos do que vale
   const vendaRapida = (j, fator = 1) => arred(valorDe(j, fator) * 0.7, 1e5);
   // a chance de chegar proposta numa rodada por um jogador na lista: cai quanto mais alto o pedido; em alta, sobe
@@ -100,6 +120,6 @@
     return { lances, limite };
   }
 
-  return { valorDe, fatorForma, salarioDe, janelaAberta, proximaJanela, avaliarProposta, precoMinimo, vendaRapida, chanceDeProposta, disputa, dinheiro,
+  return { valorDe, fatorIdade, fatorForma, motivosDoValor, desvalorizado, pedidoDe,  salarioDe, janelaAberta, proximaJanela, avaliarProposta, precoMinimo, vendaRapida, chanceDeProposta, disputa, dinheiro,
     ELENCO_MAX, ELENCO_MIN, CAIXA_INICIAL, PEDIDO_MIN, PEDIDO_MAX, PARCELAS, JUROS, ENTRADA, CARENCIA };
 });
