@@ -379,3 +379,23 @@ test("ações da tela Clube: nomes estranhos não passam (nem __proto__ nem cons
   assert.strictEqual(v.gestao.contratos[j.id].multa, 0);
   assert.ok(v.gestao.contratos[j.id].fim <= v.temporada + 3);
 });
+
+test("treino de posição: só posições parecidas, jovem aprende mais rápido, e no fim o jogador troca de posição", () => {
+  assert.deepStrictEqual(R.alvosDeTreino("GOL"), []);
+  assert.deepStrictEqual(R.alvosDeTreino("VOL").sort(), ["MC", "MEI"]);
+  assert.ok(R.jogosDeTreino({ pontos: 2, idade: 19 }) < R.jogosDeTreino({ pontos: 2, idade: 33 }));
+  const v = nova();
+  const j = elenco(v).find((x) => x.pos === "ATA" || x.pos === "PE" || x.pos === "PD");
+  const longe = elenco(v).find((x) => x.pos === "ZAG");
+  assert.match(Clube.acao(v, ajudas, { acao: "treinar", jogador: longe.id, para: "ATA" }), /parecida/);
+  const alvo = R.alvosDeTreino(j.pos)[0];
+  const r = Clube.acao(v, ajudas, { acao: "treinar", jogador: j.id, para: alvo });
+  assert.ok(r.mensagem, JSON.stringify(r));
+  assert.match(Clube.acao(v, ajudas, { acao: "treinar", jogador: j.id, para: alvo }), /já está em treino/);
+  const total = v.gestao.treinos[j.id].total;
+  for (let i = 0; i < total; i++) Clube.aposJogo(v, ajudas, { nos: 1, eles: 0, emCasa: true, adv: "santos" });
+  assert.strictEqual(v.posicoes[j.id], alvo);
+  assert.strictEqual(ajudas.jogadorDe(v, j.id).pos, alvo);
+  assert.ok(elenco(v).some((x) => x.id === j.id && x.pos === alvo));
+  assert.ok(!v.gestao.treinos[j.id]);
+});

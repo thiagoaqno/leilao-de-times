@@ -47,14 +47,15 @@ function telaSede() {
   feedNaSede();
   painelTime();
   desenvolvimentoNaSede();
+  artilhariaNaSede();
   // o último jogo
   const u = E.ultimo;
   $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div data-time="${u.casa}">${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}${linhaPenaltis(u.penaltis)}</span><div data-time="${u.fora}">${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>
     <ul class="gols">${u.eventos.filter((e) => e.tipo === "gol").map((e) => `<li class="${(e.lado === 0 ? u.casa : u.fora) === E.clube ? "nosso" : ""}">${ic("bola")} ${h(nomeJogador(e.jogador))} <span>${e.min}'${e.acr ? "+" + e.acr : ""}</span></li>`).join("") || "<li class='suave'>Sem gols.</li>"}</ul>`
     : `<h3>Último jogo</h3><p class="suave">A estreia é na rodada 1.</p>`;
-  // a tabela resumida: o seu lugar e os vizinhos
-  const ini = Math.max(0, Math.min(E.tabela.length - 5, pos - 3));
-  $("cartaoTabela").innerHTML = `<div class="linha-titulo"><h3>Tabela</h3><button class="link" data-ir="tabela">Ver tudo</button></div><table class="mini-tabela">${E.tabela.slice(ini, ini + 5).map((l, i) => `<tr class="${l.id === E.clube ? "meu" : ""}" data-time="${l.id}"><td class="pos ${Temporada.zona(ini + i + 1, E.tabela.length, E.liga)}">${ini + i + 1}</td><td>${escudo(l.id, 1)}</td><td class="nome">${h(nomeClube(l.id))}</td><td><b>${l.p}</b></td></tr>`).join("")}</table>`;
+  // a tabela resumida (como a "Tabelas" do FIFA 16): o seu lugar e os vizinhos, com os jogos e os pontos
+  const ini = Math.max(0, Math.min(E.tabela.length - 7, pos - 4));
+  $("cartaoTabela").innerHTML = `<div class="linha-titulo"><h3>Tabela</h3><button class="link" data-ir="tabela">Ver tudo</button></div><table class="mini-tabela"><thead><tr><th colspan="3">Clube</th><th>J</th><th>Pts</th></tr></thead><tbody>${E.tabela.slice(ini, ini + 7).map((l, i) => `<tr class="${l.id === E.clube ? "meu" : ""}" data-time="${l.id}"><td class="pos ${Temporada.zona(ini + i + 1, E.tabela.length, E.liga)}">${ini + i + 1}</td><td>${escudo(l.id, 1)}</td><td class="nome">${h(nomeClube(l.id))}</td><td>${l.j}</td><td><b>${l.p}</b></td></tr>`).join("")}</tbody></table>`;
   // o dinheiro: caixa, folha e o extrato da última rodada
   const f = E.financas[0];
   $("cartaoFinancas").innerHTML = `<h3>Finanças</h3><div class="numeros-fin"><div><small>Caixa</small><b>${dinheiro(E.caixa)}</b></div><div><small>Folha por mês</small><b>${dinheiro(E.folha)}</b></div></div>
@@ -135,13 +136,23 @@ function telaJogo(pos) {
   const onde = `${comp ? h(comp.nome) : `Rodada ${E.rodada + 1}`}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""} · ${casa === E.clube ? "em casa" : "fora"}`;
   const peso = pesoDe(prox || { casa, fora });
   if (peso) $("cartaoJogo").dataset.peso = peso.tema; else delete $("cartaoJogo").dataset.peso;
-  $("cartaoJogo").innerHTML = `${faixaAvancarHTML()}${faixaPesoHTML(peso, casa, visitante)}<div class="jogo-corpo"><div class="jogo-info"><span class="sobre">${E.partida ? "Partida em andamento" : `Próxima partida · ${onde}`}</span>
-    <div class="confronto"><div style="${coresClube(casa)}" data-time="${casa}" title="Ver o elenco">${escudo(casa, 4)}<b>${h(nomeClube(casa))}</b><small>${posicaoDe(casa) && E.rodada ? posicaoDe(casa) + "º" : ""}</small></div><span class="x">×</span><div style="${coresClube(visitante)}" data-time="${visitante}" title="Ver o elenco">${escudo(visitante, 4)}<b>${h(nomeClube(visitante))}</b><small>${posicaoDe(visitante) && E.rodada ? posicaoDe(visitante) + "º" : ""}</small></div></div>
-    <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p>
-    ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}</div>
-    <div class="jogo-acao">${E.partida ? "" : `<div class="modos" role="group" aria-label="Como jogar">${MODOS.map(([m, t, d]) => `<button data-modo="${m}" aria-pressed="${m === modoEscolhido}" title="${h(d)}"><b>${t}</b><small>${d}</small></button>`).join("")}</div>`}
-    ${pendentes && !E.partida ? `<p class="pendente">${ic("sino")} ${pendentes} aviso${pendentes > 1 ? "s" : ""} esperando resposta. Se jogar agora, vale a opção padrão.</p>` : ""}
-    <button id="btnJogar" class="primario largo cta"><span>${E.partida ? "Voltar para a partida" : "Jogar a próxima partida"}</span>${ic("apito")}</button></div></div>`;
+  // no jeito da central do FIFA 16: o bloco "Jogar partida" (na cor do clube, o botão inteiro), o "Como jogar" (os modos) e a prévia
+  // do jogo (o confronto, o estádio, o peso do jogo, os desfalques e os próximos compromissos), lado a lado
+  const adv = casa === E.clube ? visitante : casa, quando = prox && prox.semana != null ? `Semana ${prox.semana}` : `Rodada ${E.rodada + 1}`;
+  const foto = window.ESTADIOS_API && window.ESTADIOS_API[casa];
+  $("cartaoJogo").innerHTML = `<div class="cj">
+    <button id="btnJogar" class="cj-tile cj-jogar cta"><span>${E.partida ? "Voltar para a partida" : "Jogar a próxima partida"}</span>
+      <small>${quando} · ${casa === E.clube ? "em casa" : "fora"}</small><small>${comp ? h(comp.nome) : "Liga"}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""}</small>
+      <i class="cj-escudo">${escudo(adv, 4)}</i><i class="cj-apito">${ic("apito")}</i></button>
+    ${E.partida ? "" : `<div class="cj-tile cj-modos"><h3 class="fx-titulo">Como jogar</h3><div class="modos" role="group" aria-label="Como jogar">${MODOS.map(([m, t, d]) => `<button data-modo="${m}" aria-pressed="${m === modoEscolhido}" title="${h(d)}"><b>${t}</b><small>${d}</small></button>`).join("")}</div></div>`}
+    <div class="cj-tile cj-previa"${foto ? ` style="--foto:url('${h(foto.url)}')"` : ""}><div class="jogo-info"><span class="sobre">${E.partida ? "Partida em andamento" : `Prévia · ${onde}`}</span>
+      <h3 class="fx-titulo">${h(nomeClube(casa))} × ${h(nomeClube(visitante))}</h3>
+      <div class="confronto"><div style="${coresClube(casa)}" data-time="${casa}" title="Ver o elenco">${escudo(casa, 3)}<small>${posicaoDe(casa) && E.rodada ? posicaoDe(casa) + "º" : ""}</small></div><span class="x">×</span><div style="${coresClube(visitante)}" data-time="${visitante}" title="Ver o elenco">${escudo(visitante, 3)}<small>${posicaoDe(visitante) && E.rodada ? posicaoDe(visitante) + "º" : ""}</small></div></div>
+      <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p></div>
+      ${faixaPesoHTML(peso, casa, visitante)}
+      ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}
+      ${pendentes && !E.partida ? `<p class="pendente">${ic("sino")} ${pendentes} aviso${pendentes > 1 ? "s" : ""} esperando resposta. Se jogar agora, vale a opção padrão.</p>` : ""}
+      ${faixaAvancarHTML()}</div></div>`;
   for (const b of $("cartaoJogo").querySelectorAll("[data-modo]")) b.onclick = () => { modoEscolhido = +b.dataset.modo; pedir("modo", { modo: modoEscolhido }); for (const x of $("cartaoJogo").querySelectorAll("[data-modo]")) x.setAttribute("aria-pressed", String(+x.dataset.modo === modoEscolhido)); };
   $("btnJogar").onclick = jogar;
   // na carreira em grupo, a rodada é de todos ao mesmo tempo: quem começa é o anfitrião (grupo.js)
@@ -202,6 +213,8 @@ async function jogar() {
 }
 
 // ---------- tabela e calendário ----------
+// a lista dos artilheiros (de uma competição): a foto, o nome, o clube e os gols; o seu clube em destaque
+const artilhariaHTML = (lista) => (lista.length ? `<ol class="artilharia">${lista.map((a) => `<li class="${donoDe(a.id) === E.clube ? "meu" : ""}"><img class="pix" src="${retrato(a.id)}" alt=""><span>${h(nomeJogador(a.id))}<small>${h(nomeClube(donoDe(a.id)))}</small></span><b>${a.gols}</b></li>`).join("")}</ol>` : `<p class="suave">Ninguém marcou ainda.</p>`);
 let competicaoTabela = null;
 const tabelaHTML = (tab, liga = "") => `<table class="tabela-cheia"><thead><tr><th>#</th><th>Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Últimos</th></tr></thead><tbody>${tab.map((l, i) =>
   `<tr class="${l.id === E.clube ? "meu" : ""}" data-time="${l.id}"><td class="pos ${Temporada.zona(i + 1, tab.length, liga)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
@@ -234,7 +247,10 @@ function telaTabela() {
     $("tTabela").querySelectorAll("[data-rever-festa]").forEach((b) => b.onclick = () => Campeoes.rever(b.dataset.reverFesta));
     $("tTabela").querySelectorAll("[data-competicao]").forEach((b) => b.onclick = () => { competicaoTabela = b.dataset.competicao; telaTabela(); });
   } else $("tTabela").innerHTML = tabelaHTML(E.tabela, E.liga);
-  $("tArtilharia").innerHTML = E.artilharia.length ? `<ol class="artilharia">${E.artilharia.map((a) => `<li class="${donoDe(a.id) === E.clube ? "meu" : ""}"><img class="pix" src="${retrato(a.id)}" alt=""><span>${h(nomeJogador(a.id))}<small>${h(nomeClube(donoDe(a.id)))}</small></span><b>${a.gols}</b></li>`).join("")}</ol>` : `<p class="suave">Ninguém marcou ainda.</p>`;
+  // a artilharia da competição aberta (cada liga e cada copa tem a sua); a base antiga só tem o Brasileirão
+  const comp = E.competicoes && E.competicoes[competicaoTabela];
+  $("tituloArtilharia").textContent = comp ? `Artilharia · ${comp.nome}` : "Artilharia";
+  $("tArtilharia").innerHTML = artilhariaHTML(comp ? (E.artilharias || {})[competicaoTabela] || [] : E.artilharia);
   $("tituloRodada").textContent = E.rodadaAnterior ? `Rodada ${E.rodada}` : "Última rodada";
   $("tRodada").innerHTML = E.rodadaAnterior ? E.rodadaAnterior.map(([c, f, a, b]) => linhaJogo(c, f, [a, b])).join("") : `<p class="suave">Nenhuma rodada jogada.</p>`;
 }

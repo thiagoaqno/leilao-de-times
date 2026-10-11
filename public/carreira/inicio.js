@@ -168,6 +168,8 @@ function receber(estado) {
   E = estado;
   // os jovens que subiram da base não estão nos arquivos: chegam com o estado (o clube de origem vem do id)
   for (const [id, j] of Object.entries(E.jovens || {})) { JOGADORES[id] = { ...j, origem: id.replace(/-t\d+b\d+$/, "") }; registrarRosto(j); }
+  // quem aprendeu outra posição no treino (o servidor manda o mapa; a posição de antes fica em posOriginal)
+  for (const [id, pos] of Object.entries(E.posicoes || {})) if (JOGADORES[id] && JOGADORES[id].pos !== pos) { JOGADORES[id].posOriginal ??= JOGADORES[id].pos; JOGADORES[id].pos = pos; }
   document.body.style.cssText = `${coresClube(E.clube)};${temaClube(E.clube)}`;
   marcaClube(E.clube);
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);
@@ -194,7 +196,6 @@ function telaInicio() {
   desenharTemporadas();
   desenharDinheiro();
   mostrarTela("inicio");
-  if (typeof estanteNoInicio === "function") estanteNoInicio(); // temporadas.js: o top 5 da estante da galera
 }
 // a ordem das ligas na escolha do clube: a Série B logo depois da Série A
 const chaveLiga = (c) => (c.liga === "serieb-2026" ? "brasileirao-2026~" : c.liga);
