@@ -51,11 +51,15 @@ function indice(save) {
 // os jovens que subiram da base nas viradas de temporada ficam no save (save.jovens), e quem se aposentou tem o dono
 // APOSENTADO (sai de todos os elencos)
 const APOSENTADO = "aposentado";
-const jogadorDe = (save, pid) => indice(save).get(pid)?.j || (save.jovens && save.jovens[pid]) || null;
+// quem foi treinado para outra posição (save.posicoes, de todos: a posição nova vai junto se ele mudar de clube) sai com ela,
+// e a de antes fica em posOriginal
+const comPosicao = (save, j) => (j && save.posicoes && save.posicoes[j.id] ? { ...j, pos: save.posicoes[j.id], posOriginal: j.pos } : j);
+const jogadorDe = (save, pid) => comPosicao(save, indice(save).get(pid)?.j || (save.jovens && save.jovens[pid]) || null);
 const donoDe = (save, pid) => save.donos[pid] || indice(save).get(pid)?.clube || null;
 function todosJogadores(save) {
   const base = [...indice(save).values()].map(({ j }) => j);
-  return save.jovens && Object.keys(save.jovens).length ? base.concat(Object.values(save.jovens)) : base;
+  const todos = save.jovens && Object.keys(save.jovens).length ? base.concat(Object.values(save.jovens)) : base;
+  return save.posicoes && Object.keys(save.posicoes).length ? todos.map((j) => comPosicao(save, j)) : todos;
 }
 const elencoDe = (save, clube) => todosJogadores(save).filter((j) => donoDe(save, j.id) === clube);
 const notaDe = (save, j) => clamp(j.nota + (save.bonusNota[j.id] || 0), 40, 95);
@@ -172,7 +176,7 @@ function completar(save) {
   if (!save.competicoes && save.base !== BASE_PADRAO) save.competicoes = { [save.base]: { tipo: "liga", fase: "liga", grupos: [], jogos: save.calendario, resultados: save.resultados } };
   // as várias temporadas: o desempenho de cada um (para a evolução), o que já mudou nas viradas e o limite de temporadas
   // (as carreiras de antes do limite ficam com o máximo, para ninguém ser cortado no meio)
-  const temporadas = { desempenho: {}, jogosTemporada: 0, evolucao: {}, jovens: {}, aposentados: {}, donosInicio: null, classificados: null,
+  const temporadas = { desempenho: {}, jogosTemporada: 0, evolucao: {}, jovens: {}, aposentados: {}, posicoes: {}, donosInicio: null, classificados: null,
     temporadasMax: Math.max(Evolucao.TEMPORADAS.max, save.temporada || 1) };
   for (const [k, v] of Object.entries(temporadas)) if (save[k] === undefined) save[k] = v;
   limparNoticiasPrematurasDeGrupo(save);
@@ -1323,6 +1327,7 @@ function estado(save) {
   e.encerrada = e.fim && save.temporada >= save.temporadasMax;
   e.arquivo = save.arquivo || [];
   e.gestao = Clube.estado(save, ajudas);
+  e.posicoes = save.posicoes || {}; // quem já mudou de posição pelo treino (o navegador troca a posição da base)
   if (save.demitido) { e.encerrada = true; e.demitido = save.demitido; }
   e.jovens = jovensDoEstado(save, e);
   return e;
