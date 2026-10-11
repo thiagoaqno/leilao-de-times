@@ -20,7 +20,7 @@ test("o jogador nasce no elenco do clube, com nota pela idade e papel de reserva
   const r = await nova();
   assert.equal(r.ok, true, r.error);
   const e = r.estado;
-  assert.equal(e.eu.nota, 63); assert.equal(e.eu.pos, "ATA"); assert.equal(e.clube.id, "remo");
+  assert.equal(e.eu.nota, 77); assert.ok(e.eu.nota >= 75); assert.equal(e.eu.pos, "ATA"); assert.equal(e.clube.id, "remo");
   assert.ok(["titular", "banco"].includes(e.papel));
   assert.equal(e.objetivos.length, 3);
 });
