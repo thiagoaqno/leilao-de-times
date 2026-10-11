@@ -1,12 +1,11 @@
-# Modo Jogador: carreira mais longa, evolução mais rápida e começo em 75
+# Vila: prédios no estilo "arena"
 
 ## O que muda no jogo
 
-- **Mais temporadas:** a carreira do jogador pode ter 1, 2, 3, 5, 8, 10 ou 15 temporadas (o limite de 5 vale só para a carreira de técnico). O jogador não se aposenta no meio: fica até a última temporada que você escolheu.
-- **Começa com nota 75 ou mais:** a nota inicial vai de 75 (aos 17 anos) a 80 (aos 23), e o teto de potencial agora é de 84 a 95, para ter para onde crescer.
-- **Evolução mais rápida:** o treino rende mais por jogo e cada nível custa menos. Um titular que joga bem sobe cerca de 3 a 5 pontos por temporada no começo, e o reserva cresce mais devagar. A tela de criação mostra a chance de jogar com a nota nova.
+- Os prédios da Vila ganham a cara da central do FIFA: fachada escura na cor do prédio, vidro azulado nas janelas e nas portas, faixa de LED no beiral, marquise sobre a porta, claraboia no telhado de painéis e a placa em fundo azul-marinho com o acento do prédio.
+- Os telhados temáticos de cada jogo (quadra, tabuleiro, bandeira quadriculada, Pokébola...) continuam como eram, por cima do telhado novo.
 
-## Como
+## Como foi feito
 
-- `jogador.js`: `notaInicial`, `tetoDe`, `estrelas`, `xpPara` e o ganho de treino por jogo; `save.temporadasMax` vai até 15 depois de criar a carreira; `proximaTemporada` desfaz a aposentadoria do jogador. `public/jogador/jogador.js` usa a mesma nota inicial e as novas opções de temporadas.
-- `tests/jogador.test.js` confere a nota inicial.
+- Só o desenho em `public/index.html` (`drawBuilding`, `drawSign`, e os novos `mistura` e `acentoDe`): o acento vem de `roof` de cada prédio (mais claro quando o telhado é escuro). Nada de dados, servidor ou colisão mudou; `wall` e `wall2` ficam em `GAMES` sem uso, para não mexer nas entradas (o prédio do Rumo ao Estrelato já usa o estilo).
+- `tests/e2e/vila-ginasio.spec.js` passa.
