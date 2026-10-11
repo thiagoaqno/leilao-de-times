@@ -339,7 +339,7 @@ const GAMES = [
   { id: "carreira", url: "/carreira/", icon: "🏆", sign: "SEDE", name: "Sede da Carreira", desc: "Carreira de treinador: sozinho ou com a turma no mesmo mundo, assuma um clube do Brasil ou da Europa, escale, mexa na tática e jogue as temporadas. Tudo fica salvo.", meta: "Carreira de Treinador · solo ou em grupo",
     x: 34, y: 21, w: 6, h: 4, doors: [36, 37], bairro: "praca", roof: "#1f5a3a", roof2: "#174a2f", wall: "#f3ead6", wall2: "#dccfae", sede: true },
   { id: "jogador", url: "/jogador/", icon: "⭐", sign: "ESTRELATO", name: "Rumo ao Estrelato", desc: "Modo jogador: você é um atleta, não o técnico. Ganhe a confiança do treinador, jogue bem, treine e suba da base até craque, com objetivos a cada temporada.", meta: "Carreira de Jogador · solo",
-    x: 21, y: 31, w: 6, h: 4, doors: [23, 24], bairro: "esportes", roof: "#7a5ad0", roof2: "#5e43ad", wall: "#f3ead6", wall2: "#dccfae" },
+    x: 21, y: 31, w: 6, h: 4, doors: [23, 24], bairro: "esportes", roof: "#7a5ad0", roof2: "#5e43ad", wall: "#f3ead6", wall2: "#dccfae", jogador: true },
   // a casinha do Naruto, do outro lado da fonte: o Ichiraku Ramen, que leva ao Ginásio no modo Naruto Shippuden
   { id: "naruto", url: "/ginasio/?modo=naruto", icon: "🍥", sign: "ICHIRAKU", name: "Casa do Naruto", desc: "Ichiraku Ramen, a casa do Naruto: 30 ninjas de Naruto Shippuden em batalhas de tempo real, contra o robô ou os amigos.", meta: "Naruto Shippuden · Ginásio · 1x1 ou 2x2",
     x: 13, y: 22, w: 5, h: 3, doors: [15], bairro: "praca", roof: "#8a4a22", roof2: "#6a3515", wall: "#f3e8d0", wall2: "#dccaa0", naruto: true },
@@ -762,6 +762,18 @@ function drawBuilding(c, g) {
     c.strokeStyle = "#1e5bc6"; c.lineWidth = 1; c.strokeRect(qx + 0.5, qy + 0.5, qw - 1, qh - 1);
     px(c, "#2a2a2a", qx + qw / 2, qy - 2, 1, qh + 4); px(c, "#f4f4f0", qx + qw / 2 - 1, qy - 2, 3, 1);
     [["#f5c400", 0], ["#1e5bc6", 1], ["#2e9e4f", 2]].forEach(([col, i]) => { c.fillStyle = col; c.beginPath(); c.arc(qx + qw * 0.72, qy + qh * 0.35, 3 - i, 0, 7); c.fill(); });
+  }
+  if (g.jogador) { // telhado: o gramado com a estrela dourada do craque, as linhas do campo e a faixa roxa
+    const qx = rx + 5, qy = Y + 3, qw = rw - 10, qh = roofH - 6;
+    px(c, "#2f8f48", qx, qy, qw, qh);
+    for (let i = 0; i < qw; i += 6) px(c, "#38a255", qx + i, qy, 3, qh);
+    c.strokeStyle = "#ffffffcc"; c.lineWidth = 1; c.strokeRect(qx + 0.5, qy + 0.5, qw - 1, qh - 1);
+    px(c, "#ffffffcc", qx + qw / 2, qy, 1, qh);
+    const cx = qx + qw / 2, cy = qy + qh / 2; // a estrela de cinco pontas no círculo central
+    c.fillStyle = "#ffd54a"; c.beginPath();
+    for (let k = 0; k < 10; k++) { const r = k % 2 ? 2.2 : 5, a = -Math.PI / 2 + k * Math.PI / 5; c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+    c.closePath(); c.fill();
+    px(c, "#7a5ad0", qx, qy + qh - 2, qw, 2);
   }
   if (g.pingpong) { // telhado: a mesa verde vista de cima, com as linhas, a rede e a bolinha laranja
     const qx = rx + 6, qy = Y + 4, qw = rw - 12, qh = roofH - 8;
