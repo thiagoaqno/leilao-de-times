@@ -203,16 +203,13 @@ button.cta:disabled{filter:saturate(.3);box-shadow:none}
 .hub-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tile{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto 1fr;gap:12px;align-items:start;justify-content:stretch;text-align:left;min-height:118px;padding:14px;
   border-radius:var(--r);background:var(--s1);border:1px solid var(--b1);color:var(--t1);height:auto;overflow:hidden}
-.tile-ic{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:var(--s2);border:1px solid var(--b1);color:var(--acento);transition:transform 300ms var(--ease)}
-.tile-ic .ic{width:18px;height:18px}
 .tile-txt{grid-column:1/-1;grid-row:2;display:flex;flex-direction:column;gap:2px;align-self:end}
 .tile-txt b{font-size:15px;font-weight:600;letter-spacing:-.02em}.tile-txt small{color:var(--t3);font-size:12px;font-weight:400;line-height:1.35}
 .tile-dado{grid-column:2;grid-row:1;justify-self:end;display:flex;flex-direction:column;align-items:flex-end;text-align:right}
 .tile-dado b{font:600 22px/1 var(--fonte);letter-spacing:-.03em;font-variant-numeric:tabular-nums}.tile-mercado .tile-dado b{font-size:16px}
 .tile-dado small{color:var(--t3);font-size:11px;margin-top:3px}
 .tile-mercado.aberta .tile-txt small{color:var(--ok)}
-.tile-mercado.aberta .tile-ic::after{content:"";position:absolute;margin:-26px 0 0 26px;width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--s1)}
-@media (hover:hover) and (pointer:fine){.tile:hover{background:var(--s2);border-color:var(--b2);transform:translateY(-2px)}.tile:hover .tile-ic{transform:scale(1.08) rotate(-4deg)}}
+@media (hover:hover) and (pointer:fine){.tile:hover{background:var(--s2);border-color:var(--b2);transform:translateY(-2px)}}
 /* as notícias */
 .manchete{display:grid;grid-template-columns:minmax(180px,40%) 1fr;gap:18px;align-items:stretch;width:100%;padding:0;height:auto;text-align:left;justify-content:stretch;border-radius:var(--r2);overflow:hidden;background:var(--bg2);border:1px solid var(--b1);color:var(--t1);font-weight:400}
 .manchete-arte{display:block;aspect-ratio:1;background:#0b0b0e;overflow:hidden}.manchete-arte img{display:block;width:100%;height:100%;transition:transform 600ms var(--ease)}
@@ -1128,10 +1125,9 @@ body[data-tela="sede"] .credito-estadio:not(:empty){opacity:.85}
 .gc-duplo~p,.gc-duplo~h3{margin-top:16px}.gc-duplo~h3 small{font-weight:400;font-size:12px;margin-left:6px}
 .quadro h3~.gc-lista,.quadro h3~.gc-grade,.quadro h3~.gc-recordes,.quadro h3~.gc-tempo{margin-top:10px}
 .quadro .gc-recordes+h3,.quadro .gc-lista+h3,.quadro .gc-tempo+h3{margin-top:22px}
-/* o zoom entre a sede e as telas (zoom.js): a própria tela cresce do bloco e encolhe de volta; sem a entrada em cascata dos painéis (ela fica desligada até a próxima troca sem zoom) */
+/* a troca que desliza para o lado entre as abas e as telas (zoom.js): sem a entrada em cascata dos painéis (ela fica desligada até a próxima troca direta) e sem a barra de rolagem de lado enquanto a tela nova entra */
 body.zoom-ativo .tela>*,body.zoom-ativo .hub-grade>*>*{animation:none!important}
-/* a placa escura atrás da tela enquanto ela cresce ou encolhe: a sede não "vaza" pelo vidro. É um pseudo-elemento: a tela em si não ganha opacidade (o vidro dos painéis não muda no meio) */
-.tela.zoomando::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;background:radial-gradient(70vmax 50vmax at 50% 0%,color-mix(in srgb,var(--clube) 30%,transparent),transparent 72%),#0d0e11;opacity:var(--placa,0)}
+html:has(body.deslizando),body.deslizando{overflow-x:clip}
 .topo-tela .volta[data-ir="sede"]{display:none}
 /* o calendário: a fase que ainda não está definida (TBA) */
 .linha-tempo li.tba{opacity:.72}.linha-tempo li.tba .adv{color:var(--t3);font-weight:500}
