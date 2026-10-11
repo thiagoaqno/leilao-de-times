@@ -38,16 +38,16 @@ const arred = (v) => Math.round(v * 10) / 10;
 
 // ---------- o jogador ----------
 // a nota do começo pela idade: quem entra mais velho já chega mais pronto
-const notaInicial = (idade) => Math.round(58 + (idade - 17) * 1.6);
+const notaInicial = (idade) => Math.round(75 + (idade - 17) * 0.8);
 function criarJogador({ nome, pos, nat, idade, pe, semente }) {
   const nota = notaInicial(idade), r = Motor.sorteDe(`atr:${semente}`);
   const a = PERFIL[pos].map((v) => clamp(Math.round(nota + v + (r() - 0.5) * 6), 20, 95));
   return { id: ID, nome, pos, nat, idade, desde: 1, nota, est: false, base: true, pe, eu: true, atr: Object.fromEntries(ATRIBUTOS.map((k, i) => [k, a[i]])) };
 }
 // o teto do jogador (escondido): quanto ele pode chegar. No navegador só aparecem as estrelas
-const tetoDe = (semente) => 78 + Math.floor(Motor.sorteDe(`teto:${semente}`)() * 15);
-const estrelas = (teto) => clamp(Math.round((teto - 72) / 4), 1, 5);
-const xpPara = (nota, teto) => 110 + 30 * Math.max(0, nota - (teto - 10));
+const tetoDe = (semente) => 84 + Math.floor(Motor.sorteDe(`teto:${semente}`)() * 12);
+const estrelas = (teto) => clamp(Math.round((teto - 80) / 3), 1, 5);
+const xpPara = (nota, teto) => 90 + 30 * Math.max(0, nota - (teto - 10));
 
 // ---------- os objetivos da temporada ----------
 function objetivosDe(save) {
@@ -133,7 +133,7 @@ function aposJogo(save, antes) {
   // o treino da semana: uma nota (de 4 a 9) que sobe com o nível do jogador e o ritmo de evolução; treino bom convence o treinador
   const rt = Motor.sorteDe(`treino:${save.semente}:${save.temporada}:${save.rodada}`);
   const treino = arred(clamp(6 + (C.notaDe(save, e) - 60) / 12 + (rt() - 0.45) * 2.6, 4, 9));
-  let delta = treino >= 8 ? 4 : treino >= 7 ? 2 : treino < 5.5 ? -1 : 0, xp = 3 + (j.foco === "equilibrado" ? 0 : 1);
+  let delta = treino >= 8 ? 4 : treino >= 7 ? 2 : treino < 5.5 ? -1 : 0, xp = 4 + (j.foco === "equilibrado" ? 0 : 1);
   const linhas = [];
   if (jogou) {
     t.jogos++; t.soma = arred(t.soma + nota); t.gols += gols; t.assist += assist; t.cs += cs; if (titular) t.titular++; t.melhor = Math.max(t.melhor, nota);
@@ -218,6 +218,8 @@ function proximaTemporada(save) {
   if (save.gestao && save.gestao.contratos) save.gestao.contratos[ID] = { fim: save.temporada + 9, multa: 0 }; // o contrato do jogador é do modo jogador, não do clube
   const erro = C.novaTemporada(save);
   if (erro) { if (mudou) save.donos[ID] = velho; return erro; }
+  // o modo jogador não aposenta o jogador no meio da carreira: ele fica até a temporada final que você escolheu
+  if (save.aposentados && save.aposentados[ID]) { delete save.aposentados[ID]; save.donos[ID] = destino; }
   if (mudou) mudarDeClube(save, destino);
   j.contrato = novoContrato; j.mercado = null; j.balanco = null;
   // a confiança no clube novo depende do papel prometido; na renovação o treinador esquece um pouco
@@ -289,6 +291,7 @@ module.exports = function ligarJogador(io) {
       const idade = inteiro(d.idade, 17, 23, 18), nat = NACOES.includes(d.nat) ? d.nat : "Brasil", pe = d.pe === "E" ? "E" : "D";
       try {
         const save = C.novaCarreira(nome, d.clube, "", inteiro(d.temporadas, 1, 5, 3), 0);
+        save.temporadasMax = inteiro(d.temporadas, 1, 15, 3); // a carreira do técnico para em 5; a do jogador vai até 15
         const eu = criarJogador({ nome, pos: d.pos, nat, idade, pe, semente: save.semente });
         save.jovens[ID] = eu; save.donos[ID] = d.clube;
         save.jogador = { id: ID, nome, pos: d.pos, nat, pe, teto: tetoDe(save.semente), confianca: 45, ajuste: ajusteDe(45), foco: "equilibrado", xp: 0, niveis: 0, forma: [], relatorio: null, temp: tempVazia(), objetivos: [],

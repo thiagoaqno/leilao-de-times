@@ -38,7 +38,7 @@ function escudo(id, escala = 2) {
 }
 
 // ---------- criar ----------
-const notaInicial = (idade) => Math.round(58 + (idade - 17) * 1.6);
+const notaInicial = (idade) => Math.round(75 + (idade - 17) * 0.8);
 const segmentos = (id, itens, atual, quando) => {
   $(id).innerHTML = itens.map(([v, t]) => `<button type="button" data-v="${h(v)}" aria-pressed="${String(v) === String(atual)}">${h(t)}</button>`).join("");
   $(id).onclick = (e) => { const b = e.target.closest("button"); if (!b) return; quando(b.dataset.v); segmentos(id, itens, b.dataset.v, quando); };
@@ -57,7 +57,7 @@ function telaInicio() {
   segmentos("jPe", [["D", "Direita"], ["E", "Esquerda"]], escolha.pe, (v) => { escolha.pe = v; });
   segmentos("jIdade", [17, 18, 19, 20, 21, 22, 23].map((i) => [i, `${i}`]), escolha.idade, (v) => { escolha.idade = Number(v); dicaIdade(); desenharClubes(); });
   segmentos("jNat", NACOES.map((n) => [n, n]), escolha.nat, (v) => { escolha.nat = v; });
-  segmentos("jTemporadas", [1, 2, 3, 4, 5].map((t) => [t, `${t}`]), escolha.temporadas, (v) => { escolha.temporadas = Number(v); });
+  segmentos("jTemporadas", [1, 2, 3, 5, 8, 10, 15].map((t) => [t, `${t}`]), escolha.temporadas, (v) => { escolha.temporadas = Number(v); });
   dicaIdade(); desenharClubes();
 }
 function dicaIdade() { $("jIdadeDica").textContent = `Você começa com nota geral ${notaInicial(escolha.idade)}. Quem começa mais velho já chega mais pronto, mas tem menos tempo para crescer.`; }
