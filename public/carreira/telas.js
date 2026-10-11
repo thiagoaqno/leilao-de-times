@@ -60,6 +60,7 @@ function telaSede() {
   const f = E.financas[0];
   $("cartaoFinancas").innerHTML = `<h3>Finanças</h3><div class="numeros-fin"><div><small>Caixa</small><b>${dinheiro(E.caixa)}</b></div><div><small>Folha por mês</small><b>${dinheiro(E.folha)}</b></div></div>
     ${f ? `<ul class="extrato">${f.itens.slice(-6).map(([n, v]) => `<li><span>${h(n)}</span><b class="${v < 0 ? "neg" : "positivo"}">${v > 0 ? "+" : ""}${dinheiro(v)}</b></li>`).join("")}</ul>` : `<p class="suave">O extrato aparece depois do primeiro jogo.</p>`}`;
+  memoriaNaSede();
   // o histórico fica no resumo final quando a carreira acabou
   $("cartaoHistorico").classList.toggle("hidden", !E.historico.length || E.encerrada);
   $("cartaoHistorico").innerHTML = `<h3>Histórico</h3>${E.historico.map((x) => `<p class="hist"><b>${x.ano}</b> ${x.posicao}º lugar, ${x.pontos} pts.${x.titulos && x.titulos.length ? ` Títulos: ${h(x.titulos.join(", "))}.` : ` Campeão: ${h(nomeClube(x.campeao))}.`}${x.artilheiro ? ` Artilheiro: ${h(nomeJogador(x.artilheiro.id))} (${x.artilheiro.gols})` : ""}${x.meta ? ` Meta da diretoria (${x.meta.alvo}º): <b class="${x.meta.cumprida ? "positivo" : "neg"}">${x.meta.cumprida ? "cumprida" : "não cumprida"}</b>.` : ""}</p>`).join("")}`;
@@ -158,14 +159,27 @@ function telaJogo(pos) {
   // na carreira em grupo, a rodada é de todos ao mesmo tempo: quem começa é o anfitrião (grupo.js)
   if (EM_GRUPO) botaoRodadaGrupo();
 }
+// a história do clube (carreira-memoria.js): as relações, o perfil que as suas escolhas formaram, os laços com os
+// jogadores e o diário. É o que faz uma decisão de hoje voltar depois.
+function memoriaNaSede() {
+  const m = E.memoria;
+  if (!m) { $("cartaoMemoria").innerHTML = ""; return; }
+  const barra = (nome, v) => `<div class="rel ${v >= 65 ? "alta" : v <= 35 ? "baixa" : ""}"><span>${nome}</span><i style="--v:${v}%"><b></b></i><em>${v}</em></div>`;
+  const lacos = m.lacos.map((l) => `<li class="${l.magoa >= 2 ? "magoa" : "grato"}"><b>${h(nomeJogador(l.pid) || l.nome)}</b> ${l.magoa >= 2 ? `guarda mágoa${l.por ? ` (${h(l.por)})` : ""}` : "está grato a você"}</li>`).join("");
+  $("cartaoMemoria").innerHTML = `<h3>A história do clube</h3>
+    <p class="perfil-tecnico"><small>O seu jeito, pelas suas escolhas</small><b>${h(m.perfil.nome)}</b><span>${h(m.perfil.texto)}</span></p>
+    <div class="relacoes">${barra("Torcida", m.rel.torcida)}${barra("Imprensa", m.rel.imprensa)}${barra("Vestiário", m.rel.vestiario)}${E.gestao ? barra("Diretoria", E.gestao.confianca) : ""}</div>
+    ${lacos ? `<ul class="lacos">${lacos}</ul>` : ""}
+    ${m.diario.length ? `<ol class="diario">${m.diario.slice(0, 6).map((d) => `<li class="${d.tipo}"><small>T${d.temporada} · J${d.rodada + 1}</small> ${h(d.texto)}</li>`).join("")}</ol>` : `<p class="suave">Cada escolha que você fizer fica guardada aqui, e volta.</p>`}`;
+}
 // a caixa de entrada, ao lado: uma central de avisos curtos. O que pede resposta fica aberto, com as opções; o resto é
 // uma linha (o título) que abre o texto ao tocar.
 function telaEntrada() {
   const lista = [...E.caixaEntrada].sort((a, b) => (a.resolvido === b.resolvido ? 0 : a.resolvido ? 1 : -1)).slice(0, 10);
   const novos = lista.filter((e) => !e.resolvido).length;
   const item = (e) => e.resolvido
-    ? `<li class="lido ${e.tipo}"><details><summary><span class="ic-evento">${ic(e.icone || "sino")}</span><b>${h(e.titulo)}</b><small class="rod">J${e.rodada + 1}</small></summary><p>${h(e.texto)}</p>${e.resultado ? `<p class="resultado">${h(e.resultado)}</p>` : ""}</details></li>`
-    : `<li class="novo ${e.tipo}"><div class="aviso-topo"><span class="ic-evento">${ic(e.icone || "sino")}</span><b>${h(e.titulo)}</b><small class="rod">J${e.rodada + 1}</small></div><p>${h(e.texto)}</p>
+    ? `<li class="lido ${e.tipo}"><details><summary><span class="ic-evento">${ic(e.icone || "sino")}</span><b>${h(e.titulo)}</b><small class="rod">J${e.rodada + 1}</small></summary><p>${h(e.texto)}</p>${e.lembranca ? `<p class="lembranca">${h(e.lembranca)}</p>` : ""}${e.resultado ? `<p class="resultado">${h(e.resultado)}</p>` : ""}</details></li>`
+    : `<li class="novo ${e.tipo}"><div class="aviso-topo"><span class="ic-evento">${ic(e.icone || "sino")}</span><b>${h(e.titulo)}</b><small class="rod">J${e.rodada + 1}</small></div><p>${h(e.texto)}</p>${e.lembranca ? `<p class="lembranca">${h(e.lembranca)}</p>` : ""}
       ${e.tipo === "disputa" ? `<div class="opcoes-evento"><button data-disputa="${e.id}">${ic("martelo")} Abrir a disputa</button></div>`
         : `<div class="opcoes-evento">${e.opcoes.map((o) => `<button data-evento="${e.id}" data-opcao="${o.id}" class="${o.id === e.padrao ? "" : "secundario"}">${h(o.nome)}</button>`).join("")}</div>`}</li>`;
   $("cartaoEntrada").innerHTML = `<div class="linha-titulo"><h3>Caixa de entrada</h3>${novos ? `<span class="selo">${novos} nova${novos > 1 ? "s" : ""}</span>` : ""}</div>${efeitosHTML()}

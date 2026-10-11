@@ -9,7 +9,8 @@ const Mercado = require("./public/carreira/mercado.js");
 const Temporada = require("./public/carreira/temporada.js");
 const Rivais = require("./public/carreira/rivais.js");
 const { CATALOGO } = require("./carreira-catalogo.js");
-const POR_ID = Object.fromEntries(CATALOGO.map((d) => [d.id, d]));
+const Memoria = require("./carreira-memoria.js");
+const POR_ID = Object.fromEntries([...CATALOGO, ...Memoria.ECOS].map((d) => [d.id, d]));
 
 const { dinheiro } = Mercado;
 const sorteio = (r, lista) => lista[Math.floor(r() * lista.length)];
@@ -30,12 +31,17 @@ function alvoDe(save, c, r, alvo) {
   else if (alvo === "lesionado") lista = meu.filter((j) => save.lesoes[j.id]);
   else if (alvo === "suspenso") lista = meu.filter((j) => save.suspensos[j.id]);
   else if (alvo === "outro") lista = c.idsDosClubes(save).filter((x) => x !== save.clube).flatMap((cl) => c.elencoDe(save, cl)).filter((j) => c.notaDe(save, j) >= 70 && !j.base && !save.indicacoes[j.id]);
+  else if (alvo === "magoado" || alvo === "grato") return Memoria.alvoDeLaco(save, c, alvo, r);
   else lista = meu.filter(livre);
+  // as histórias se repetem com quem já tem história: quem tem laço (mágoa ou gratidão) é o alvo mais provável
+  const laco = Memoria.de(save).laco, comHistoria = lista.filter((j) => laco[j.id]);
+  if (comHistoria.length && r() < 0.45) return sorteio(r, comHistoria);
   return lista.length ? sorteio(r, lista) : null;
 }
 
 // as ajudas do catálogo (ver o começo de carreira-catalogo.js). sorte: o sorteio; j: o alvo; v: os valores da criação
-function contexto(save, c, sorte, j = null, v = {}) {
+function contexto(save, c, sorte, j = null, v = {}, rastro = null) {
+  const nota = (t, n) => { if (rastro) rastro.push([t, n]); };
   const clube = c.clubeDe(save, save.clube), R = save.rodada;
   const jogo = save.calendario[R] && save.calendario[R].find((m) => m.includes(save.clube));
   const advId = jogo ? (jogo[0] === save.clube ? jogo[1] : jogo[0]) : null;
@@ -60,23 +66,28 @@ function contexto(save, c, sorte, j = null, v = {}) {
     sorte: (p) => sorte() < p,
     nomeClube: (id) => (c.clubeDe(save, id) || {}).nome || "um clube grande",
     clubeGrande: () => sorteio(sorte, c.idsDosClubes(save).filter((id) => id !== save.clube && c.clubeDe(save, id).tamanho >= 4)),
-    moral: (n) => c.mudarMoral(save, n),
-    caixa: (nome, valor) => { if (valor) c.movimentar(save, nome, Math.round(valor)); },
-    time: (n, rodadas, _, atraso) => efeito("time", n, rodadas, atraso),
+    moral: (n) => { nota("moral", n); return c.mudarMoral(save, n); },
+    caixa: (nome, valor) => { if (valor) { nota("caixa", valor); c.movimentar(save, nome, Math.round(valor)); } },
+    time: (n, rodadas, _, atraso) => { nota("time", n); efeito("time", n, rodadas, atraso); },
     rival: (n) => efeito("rival", n, 1, 0),
-    jogador: (n, rodadas, pid, atraso) => { if (meu()) efeito(pid || j.id, n, rodadas, atraso); },
-    evoluir: (n) => { if (j) save.bonusNota[j.id] = (save.bonusNota[j.id] || 0) + n; },
+    jogador: (n, rodadas, pid, atraso) => { if (meu()) { if (!pid || pid === j.id) nota("jogador", n); efeito(pid || j.id, n, rodadas, atraso); } },
+    evoluir: (n) => { if (j) nota("evoluir", n); if (j) save.bonusNota[j.id] = (save.bonusNota[j.id] || 0) + n; },
     evoluirReserva: (n) => {
       const titulares = new Set(c.titularesDe(save, save.clube)), res = c.elencoDe(save, save.clube).filter((p) => !titulares.has(p.id));
       const p = res.length ? sorteio(sorte, res) : null; if (p) save.bonusNota[p.id] = (save.bonusNota[p.id] || 0) + n;
     },
-    lesao: (n) => { if (meu()) save.lesoes[j.id] = Math.max(save.lesoes[j.id] || 0, n); },
-    suspender: (n) => { if (meu()) save.suspensos[j.id] = Math.max(save.suspensos[j.id] || 0, n); },
+    lesao: (n) => { if (meu()) nota("lesao", n); if (meu()) save.lesoes[j.id] = Math.max(save.lesoes[j.id] || 0, n); },
+    suspender: (n) => { if (meu()) nota("suspender", n); if (meu()) save.suspensos[j.id] = Math.max(save.suspensos[j.id] || 0, n); },
     curar: () => { if (j) delete save.lesoes[j.id]; },
     curarTodos: (n) => { for (const p of c.elencoDe(save, save.clube)) if (save.lesoes[p.id] && (save.lesoes[p.id] -= n) <= 0) delete save.lesoes[p.id]; },
-    salario: (f) => { if (meu()) save.salarios[j.id] = Math.round(c.salarioDe(save, j) * f / 5e3) * 5e3; },
-    listar: () => { if (meu() && !save.aVenda.includes(j.id)) save.aVenda.push(j.id); },
+    salario: (f) => { if (meu()) nota("salario", f); if (meu()) save.salarios[j.id] = Math.round(c.salarioDe(save, j) * f / 5e3) * 5e3; },
+    listar: () => { if (meu() && !save.aVenda.includes(j.id)) { nota("listar", 1); save.aVenda.push(j.id); } },
     indicar: (pid) => { save.indicacoes[pid] = { desconto: 0.85, ate: R + 4 }; },
+    // a memória do clube (carreira-memoria.js)
+    m: Memoria.de(save), torcida: (n) => Memoria.mudar(save, "torcida", n), imprensa: (n) => Memoria.mudar(save, "imprensa", n), vestiario: (n) => Memoria.mudar(save, "vestiario", n),
+    confianca: (n) => { if (save.gestao) save.gestao.confianca = Math.max(0, Math.min(100, save.gestao.confianca + n)); },
+    perdoar: () => { if (j) Memoria.perdoar(save, j.id); }, retribuir: () => { if (j) Memoria.retribuir(save, j.id); },
+    lembrancaDe: (p, bom) => Memoria.lembrancaDe(save, p, bom),
     venderFora: (valor) => {
       if (!meu()) return "O jogador já não está no seu elenco.";
       if (!v.comprador) return "O clube desistiu da proposta.";
@@ -90,12 +101,18 @@ const texto = (t, x) => (typeof t === "function" ? t(x) : t);
 function criarDoCatalogo(save, c, r, d, j) {
   const v = d.valores ? d.valores(contexto(save, c, r, j)) : {};
   if (d.id === "empresario") v.comprador = contexto(save, c, r, j).clubeGrande();
-  const x = contexto(save, c, r, j, v);
+  const rastro = [], x = contexto(save, c, r, j, v, rastro);
   const e = { tipo: "cat", def: d.id, grupo: d.grupo, icone: d.icone, titulo: texto(d.titulo, x), texto: texto(d.texto, x), dados: { jogador: j ? j.id : null, v } };
+  if (d.lembranca) e.lembranca = texto(d.lembranca, x);
   if (d.opcoes) {
     e.opcoes = d.opcoes.map(([id, nome]) => ({ id, nome: texto(nome, x) }));
     e.padrao = d.padrao;
-  } else e.resultado = d.efeito(x) || "";
+  } else {
+    const antes = Memoria.foto(save);
+    e.resultado = d.efeito(x) || "";
+    Memoria.aprender(save, { titulo: e.titulo, j, rastro });
+    e.resultado += Memoria.resumo(save, antes);
+  }
   return e;
 }
 
@@ -149,6 +166,18 @@ function gerarEventos(save, c) {
   // os eventos do catálogo (carreira-catalogo.js): um quase toda rodada, às vezes dois, sem repetir na temporada
   const x = contexto(save, c, r);
   const vistos = save.eventosVistos || (save.eventosVistos = {});
+  // os ecos: o que você fez antes volta (carreira-memoria.js). No máximo um a cada 3 rodadas, e cada um uma vez por temporada
+  const mem = Memoria.de(save);
+  if (save.rodada >= mem.ultimoEco + 3 && r() < 0.6) {
+    const possiveis = Memoria.ECOS.filter((d) => vistos[d.id] !== save.temporada && d.quando(x, mem));
+    possiveis.sort((a, b) => (b.alvo ? 1 : 0) - (a.alvo ? 1 : 0)); // o laço com um jogador vem primeiro
+    for (const d of possiveis.slice(0, 4)) {
+      const j = d.alvo ? alvoDe(save, c, r, d.alvo) : null; if (d.alvo && !j) continue;
+      vistos[d.id] = save.temporada; mem.ultimoEco = save.rodada;
+      add({ ...criarDoCatalogo(save, c, r, d, j), eco: true });
+      break;
+    }
+  }
   const quantos = (r() < 0.8 ? 1 : 0) + (r() < 0.35 ? 1 : 0);
   for (let i = 0; i < quantos; i++) {
     const possiveis = CATALOGO.filter((d) => vistos[d.id] !== save.temporada && !novos.some((n) => n.def === d.id) && (!d.quando || d.quando(x)));
@@ -197,8 +226,10 @@ function responder(save, e, opcao, c) {
   const def = e.def && POR_ID[e.def];
   if (def) {
     const op = def.opcoes.find((o) => o[0] === opcao) || def.opcoes.find((o) => o[0] === def.padrao);
-    const x = contexto(save, c, Motor.sorteDe(`resposta:${save.semente}:${e.id}:${op[0]}`), j, d.v || {});
-    return (e.resultado = op[2](x) || "");
+    const rastro = [], x = contexto(save, c, Motor.sorteDe(`resposta:${save.semente}:${e.id}:${op[0]}`), j, d.v || {}, rastro);
+    const antes = Memoria.foto(save), dito = op[2](x) || "";
+    Memoria.aprender(save, { titulo: e.titulo, opcao: texto(op[1], x), j, rastro });
+    return (e.resultado = dito + Memoria.resumo(save, antes));
   }
   if (e.tipo === "clube") return (e.resultado = c.clubeResponder(save, e, opcao));
   if (j && (e.tipo === "proposta" || e.tipo === "disputa") && c.semVenda(save, j.id)) return (e.resultado = `${j.nome} chegou pelo vale de campeão e não pode ser vendido nesta temporada.`);
@@ -249,4 +280,4 @@ function responder(save, e, opcao, c) {
   return (e.resultado = "");
 }
 
-module.exports = { gerarEventos, responder, criarDoCatalogo, CATALOGO };
+module.exports = { gerarEventos, responder, criarDoCatalogo, CATALOGO, ECOS: Memoria.ECOS };
