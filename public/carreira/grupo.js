@@ -115,7 +115,7 @@ function desenharTurma(st) {
   const el = $("cartaoTurma"); if (!el) return;
   const anfitriao = MEU_ID === st.host, algumFora = st.players.some((p) => !p.online);
   el.classList.remove("hidden");
-  el.innerHTML = `<h3>Turma</h3><ul class="pessoas turma">${st.players.map((p) => `<li class="${p.online ? "" : "fora"}">${p.clube ? escudo(p.clube, 2) : ""}<span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "sem clube"} · ${p.online ? "no ar" : "fora do ar"}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${anfitriao && !p.host ? `<button class="discreto perigo dispensar" data-dispensar="${p.id}">Dispensar</button>` : ""}</li>`).join("")}</ul>
+  el.innerHTML = `<h3>Turma</h3><ul class="pessoas turma">${st.players.map((p) => `<li class="${p.online ? "" : "fora"}"${p.clube ? ` data-time="${p.clube}" title="Ver o elenco do ${h(nomeClube(p.clube))}"` : ""}>${p.clube ? escudo(p.clube, 2) : ""}<span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "sem clube"} · ${p.online ? "no ar" : "fora do ar"}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${anfitriao && !p.host ? `<button class="discreto perigo dispensar" data-dispensar="${p.id}">Dispensar</button>` : ""}</li>`).join("")}</ul>
     ${algumFora ? `<p class="suave">Quem sai da sala joga no automático, sem segurar a rodada. ${anfitriao ? "Dispensar passa o clube para o computador." : ""}</p>` : ""}
     <div class="convite-sala"><span>Código da sala <b>${h(st.code)}</b></span><button class="discreto" data-copiar-convite>Copiar convite</button></div>
     <p class="suave">Quem entrar pelo código assume um clube livre, mesmo com a carreira rolando.</p>`;

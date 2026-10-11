@@ -674,6 +674,28 @@ function executarTroca(save, t) {
   Feed.troca(va, t, ajudas);
   guardarVista(save, va); guardarVista(save, vb);
 }
+// a ficha de qualquer clube (só para ver): o elenco inteiro e o time que entraria em campo agora. O de um técnico da sala
+// sai da escalação dele (a visão do clube); o do computador, da escalação automática, como no jogo. Os jovens da base
+// daquele clube vão junto, porque o navegador só conhece os que já apareceram no estado.
+function fichaDoTime(save, id) {
+  const c = clubeDe(save, id); if (!c) return "Clube não encontrado.";
+  const humano = !!(save.humanos && save.humanos[id] && save.humanos[id].estado);
+  const meu = humano || (!save.humanos && id === save.clube);
+  const v = humano ? vistaDe(save, id) : save;
+  const time = meu ? timeDe(v, id) : { id, nome: c.nome, jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => comNota(save, j)), formacao: c.formacao, tatica: { mentalidade: 0, pressao: 1, linha: 1, estilo: "auto" } };
+  const campo = Motor.escalacaoDetalhada(time);
+  let estilo = Taticas.estiloValido(time.tatica && time.tatica.estilo);
+  if (!time.tatica || time.tatica.estilo === "auto") {
+    const jog = Object.fromEntries(time.jogadores.map((j) => [j.id, j]));
+    estilo = Taticas.estiloIdeal(campo.filter((x) => x.id).map((x) => ({ grp: Motor.grupoDe(jog[x.id].pos), atr: jog[x.id].atr })));
+  }
+  const elenco = elencoDe(save, id).sort((a, b) => notaDe(save, b) - notaDe(save, a));
+  const jovens = Object.fromEntries(elenco.filter((j) => save.jovens && save.jovens[j.id]).map((j) => [j.id, save.jovens[j.id]]));
+  const tecnico = humano ? v.tecnico || save.humanos[id].nome : meu ? save.tecnico : null;
+  return { clube: id, humano, tecnico: (tecnico && typeof tecnico === "object" ? tecnico.nome : tecnico) || null,
+    formacao: Taticas.FORMACOES[time.formacao] ? time.formacao : "4-3-3", estilo, campo, elenco: elenco.map((j) => j.id), jovens,
+    fora: Object.fromEntries(elenco.filter((j) => !disponivel(save, j.id)).map((j) => [j.id, save.lesoes[j.id] ? "lesao" : "suspenso"])), forca: Math.round(forcaDoClube(save, id)) };
+}
 // o olheiro: as posições mais fracas do time (o pior de cada setor, comparado com a média dos titulares) e 2 ou 3
 // jogadores que cabem no caixa e melhoram ali, com o porquê. Não inventa ninguém: escolhe da base, pelo valor de hoje.
 const SETOR = { GK: "goleiro", DEF: "defensor", MID: "meio-campista", ATT: "atacante" };
@@ -1673,6 +1695,15 @@ module.exports = function ligarCarreira(io) {
     socket.on("vender", (d = {}, cb) => comCarreira(cb, (save) => venderAcao(save, d)));
     socket.on("evento", (d = {}, cb) => comCarreira(cb, (save) => eventoAcao(save, d)));
     socket.on("olheiro", (d, cb) => comCarreira(cb, (save) => ({ sugestoes: olheiro(save) })));
+    // a ficha de outro clube (só leitura: não salva nada nem manda o estado de novo)
+    socket.on("verTime", (d = {}, cb) => {
+      const c = token && bd.carreiraPorToken(token);
+      if (!c) return falha(cb, "Carreira não encontrada. Entre de novo.");
+      if (antiga(c.dados)) return falha(cb, ANTIGA);
+      completar(c.dados);
+      const r = fichaDoTime(c.dados, String(d.clube || ""));
+      return typeof r === "string" ? falha(cb, r) : ok(cb, { time: r });
+    });
     socket.on("clube", (d = {}, cb) => comCarreira(cb, (save) => Clube.acao(save, ajudas, d)));
     socket.on("novaTemporada", (d, cb) => comCarreira(cb, (save) => novaTemporada(save)));
     // o código de recuperação de novo (nasce outro: o banco só guarda o hash) e apagar a carreira de vez
@@ -1696,4 +1727,4 @@ module.exports.paraTestes = { trocarDivisoes, ligaDoClube, clubesDaLiga, definir
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
 module.exports.grupo = { rodadaDaSemana, estanteDaSala, Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
-  infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };
+  fichaDoTime, infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };

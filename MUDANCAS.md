@@ -1,14 +1,15 @@
-# Carreira: treinar um jogador para outra posição
+# Carreira: ver o elenco e a escalação de qualquer clube, inclusive o dos amigos da sala
 
-- **Antes**, a posição de cada jogador era a da base e nunca mudava: um ponta ficava ponta a carreira inteira.
-- **Agora**, na ficha de um jogador do seu elenco aparece **Treinar para outra posição**, com as posições parecidas e quantos jogos cada uma leva. No último jogo do treino ele passa a ser daquela posição (aviso na caixa de entrada e notícia no feed), e a escalação, a força do time e o motor já usam a posição nova.
-- **Só posições parecidas**, na mesma linha do campo: defesa (ZAG, LE, LD), meio (VOL, MC, MEI) e ataque (PE, PD, ATA). Goleiro não troca.
-- **Duração:** 4 jogos do clube mais 2 por ponto de encaixe entre as duas posições (ponta para o outro lado é rápido; lateral para zagueiro é longo), vezes a idade: até 21 anos ×0,6, 22-24 ×0,8, 25-28 ×1, 29-31 ×1,3, 32+ ×1,6. O técnico formador tira 10% por nível. Mínimo de 3 jogos.
-- Até 3 jogadores treinando ao mesmo tempo, e dá para cancelar o treino. O treino anda a cada jogo do clube (liga ou copa).
+- **Antes**, só dava para ver o seu próprio time. O elenco de um amigo da sala ou de qualquer outro clube não aparecia em lugar nenhum, a não ser jogador por jogador no mercado.
+- **Agora**, tocar num clube abre uma janela com o elenco dele, nas cores do clube: o campinho com os 11 que entrariam em campo agora (na formação e no estilo de jogo dele, com a nota e quem está improvisado), a força, o técnico e o banco com o resto do elenco em figurinhas. Tocar num jogador abre a ficha dele por cima, com a proposta, como no mercado.
+- O time de um amigo da sala aparece com a escalação que **ele** deixou salva. O de um clube do computador é o time provável, a mesma escalação automática que o jogo usa.
+- Abre pela turma da sala (o painel "Turma" na sede), pela tabela (a cheia e a mini da sede, as copas e as temporadas anteriores), pelo calendário, pelo próximo jogo e pelo último jogo. Quem só está assistindo a sala também consegue ver.
+- É só para ver: nada muda no save e ninguém fica sabendo que você olhou.
 
 ## Como
-- `public/carreira/clube-regras.js`: `alvosDeTreino`, `jogosDeTreino`, `TREINOS_MAX`.
-- `carreira-clube.js`: ações `treinar` e `parar-treino` (canal `clube`, solo e grupo), `g.treinos` na gestão do clube, andamento em `aposJogo` (`treinarPosicoes`).
-- `carreira.js`: `save.posicoes` (id → posição nova, de todos) aplicado em `jogadorDe`/`todosJogadores`; `estado().posicoes` para o navegador.
-- Navegador: bloco na ficha (`treinoHTML`, `cartas.js`) e `receber` (`inicio.js`) troca a posição dos já treinados.
-- Teste novo em `tests/carreira-clube.test.js`. `tests/salas.test.js` já falha nesta máquina sem as mudanças.
+
+- `carreira.js`: `fichaDoTime(save, id)` monta o elenco (ordenado pela nota), a escalação (`Motor.escalacaoDetalhada`), a formação, o estilo (o `auto` do computador vira o que mais combina, `Taticas.estiloIdeal`), a força, quem está fora e os jovens da base daquele clube (o navegador só conhecia os que já tinham aparecido). Na sala, o técnico humano sai da visão do clube dele (`vistaDe`). Evento `verTime` no canal `/carreira`, só de leitura (não salva e não manda o estado).
+- `carreira-online.js`: o mesmo evento `verTime` na sala, para qualquer pessoa da sala depois do começo, com ou sem clube.
+- `public/carreira/ver-time.js` (novo, `window.VerTime`) e o diálogo `#verTime` em `index.html`: qualquer elemento com `data-time="<clube>"` abre a janela; usa o `campinho` da prancheta e a `figurinha` do mercado. O tema do clube visto vem de `temaClube`, e `hub.css` refaz as cores do painel dentro da janela.
+- `telas.js` e `grupo.js`: `data-time` nas linhas das tabelas, no calendário, nos confrontos do próximo e do último jogo, nas chaves das copas e na turma.
+- Testes: `tests/carreira-ver-time.test.js` (computador, o seu time, o amigo com a escalação dele e o evento nos dois canais) e `tests/e2e/carreira-ver-time.spec.js` (a turma, a tabela, a ficha por cima e o celular).
