@@ -429,6 +429,7 @@ function fecharRodadaGrupo(save) {
 // a temporada nova da turma: o resumo de cada um, a evolução de todos (uma vez), as copas pela tabela e o calendário
 // novo de cada clube humano
 function novaTemporadaGrupo(save) {
+  garantirSerieB(save);
   const clubes = humanosDe(save), vistas = clubes.map((c) => completar(vistaDe(save, c)));
   if (vistas.some((v) => v.partida || !temporadaAcabou(v))) return "Ainda tem jogo nesta temporada.";
   if (save.temporada >= save.temporadasMax) return `A carreira terminou: foram ${save.temporadasMax} temporada${save.temporadasMax > 1 ? "s" : ""}.`;
@@ -1283,6 +1284,11 @@ function virarTemporada(save, humanos = { [save.clube]: save.jogosTemporada }) {
 }
 // o acesso e o rebaixamento: pelas tabelas da temporada que acabou, os 4 últimos da Série A trocam de lugar com os 4 primeiros
 // da Série B. Devolve as divisões da próxima temporada, quem subiu e quem caiu (a Série B não tem rebaixamento: não há Série C).
+// a carreira de antes da Série B que chega à virada sem ter jogado depois da atualização ainda não tem a tabela da Série B (ela
+// só entra quando o mundo é refeito): refaz o mundo antes, com os placares de sempre, para ter acesso e rebaixamento
+function garantirSerieB(save) {
+  if (save.base === BASE_PADRAO && save.calendarioMundo && !(save.competicoes && save.competicoes[DIVISOES[1]])) recalcularMundo(save);
+}
 function trocarDivisoes(save) {
   const divisoes = save.divisoes || divisoesIniciais(), [a, b] = DIVISOES.map((id) => save.competicoes && save.competicoes[id] && save.competicoes[id].tabela);
   if (!a || !b) return { divisoes, subiram: [], cairam: [] };
@@ -1552,6 +1558,7 @@ function novaTemporada(save) {
   if (save.partida) return "Termine a partida primeiro.";
   if (!temporadaAcabou(save)) return "A temporada ainda não acabou.";
   if (save.temporada >= save.temporadasMax) return `A carreira terminou: foram ${save.temporadasMax} temporada${save.temporadasMax > 1 ? "s" : ""}.`;
+  garantirSerieB(save);
   registrarTemporada(save);
   if (save.base === BASE_PADRAO && save.calendarioMundo) arquivarTemporada(save);
   resolverPendentes(save); // o que ficou sem resposta vale a opção padrão, como antes de um jogo
