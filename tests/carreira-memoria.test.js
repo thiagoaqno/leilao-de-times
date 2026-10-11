@@ -91,3 +91,17 @@ test("memória: resultados mexem nas relações e a torcida mexe na bilheteria",
   Memoria.fimDeTemporada(save, { pos: 1, titulos: ["Brasileirão"] });
   assert.strictEqual(Memoria.de(save).marcas.ultimoTitulo, save.temporada);
 });
+
+test("eventos: o pós-jogo do calendário mundial leva os eventos novos da caixa de entrada", () => {
+  const save = novaCarreira("Teste", "flamengo", "");
+  let achou = false;
+  for (let i = 0; i < 12 && !achou; i++) {
+    const [casa, fora] = save.calendario[save.rodada].find((m) => m.includes(save.clube));
+    save.partida = { rodada: save.rodada, casa, fora, modo: 1, semente: `pj:${i}`, decisoes: {} };
+    fecharRodada(save, Motor.simularPartida({ casa: timeDe(save, casa), fora: timeDe(save, fora), semente: `pj:${i}` }));
+    const ids = new Set([...save.posJogo.eventos, ...save.posJogo.avisos]);
+    achou = save.caixaEntrada.some((e) => e.def && ids.has(e.id));
+    for (const id of save.posJogo.eventos) assert.ok(save.caixaEntrada.find((e) => e.id === id && !e.resolvido));
+  }
+  assert.ok(achou, "em 12 rodadas, algum evento do catálogo aparece no pós-jogo");
+});

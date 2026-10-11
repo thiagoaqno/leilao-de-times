@@ -1,9 +1,9 @@
-# Carreira: comissão técnica alinhada e sem ícones
+# Carreira: os eventos aleatórios voltam a aparecer no pós-jogo
 
 ## O que muda no jogo
 
-Na aba Técnico da tela Clube, a lista da Comissão técnica estava desalinhada (o título e o texto de cada preparador ficavam empurrados para a direita, com um buraco grande depois do ícone). Agora cada linha tem só o nome, a descrição e o botão, alinhados à esquerda, e os ícones SVG da lista saíram. No celular o botão desce para baixo do texto.
+Os eventos do catálogo (os ~620 da caixa de entrada) eram sorteados normalmente, mas nas carreiras do calendário mundial (todas as novas) o pop-up de pós-jogo saía sempre sem eventos e sem avisos. Quem não abria a caixa de entrada na Sede nunca via a maioria deles, e os que pedem escolha caíam na opção padrão ao jogar a próxima partida. Agora o pós-jogo mostra os eventos novos que pedem resposta e os avisos da rodada, como já era no calendário antigo.
 
 ## Como
 
-`.gc-linha.preparador` em `estilo.css` (duas colunas: texto e botão); `clube.js` não monta mais o `.gc-ic` e `clube-regras.js` não tem mais o campo `icone` dos preparadores.
+Medi o sorteio: cerca de 1,2 evento por rodada (13% das rodadas sem nenhum, por desenho) e só 7 dos 624 não saíram em 7650 sorteios, todos de situação extrema (caixa negativo, risco de rebaixamento, derrotas seguidas). Não há evento morto. A causa estava em `fecharJogoMundo` (`carreira.js`), que gravava `save.posJogo` com `eventos: []` e `avisos: []`; agora usa os `novos` da caixa de entrada. Teste novo em `tests/carreira-memoria.test.js`.
