@@ -32,6 +32,7 @@ const Ritmo = require("./public/leilao/ritmo.js"); // quanto dura cada parte do 
 try { require("./bd.js").abrir(); } catch (e) { console.warn("Banco de dados não abriu:", e.message); }
 require("./fotos-jogadores.js").attach(app);
 require("./carreira.js")(io); // Carreira de Treinador: a temporada contra o computador, salva no banco, canal /carreira
+require("./jogador.js")(io); // Modo Jogador (Rumo ao Estrelato): a mesma carreira, controlando um jogador, canal /jogador
 require("./carreira-online.js")(io); // Carreira em grupo: a sala com código, cada amigo num clube do mesmo mundo, canal /carreira-online
 const noite = require("./noite.js"); noite.attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
