@@ -11,6 +11,7 @@ const Evolucao = require("./public/carreira/evolucao.js");
 const Regras = require("./public/carreira/clube-regras.js");
 const Feed = require("./carreira-feed.js");
 const Rivais = require("./public/carreira/rivais.js");
+const Taticas = require("./public/carreira/taticas.js");
 
 const { dinheiro } = Mercado;
 const { clamp } = Regras;
@@ -27,6 +28,7 @@ function padrao() {
     capitao: null,
     confianca: 70, ultimato: null, recentes: [], jogos: 0, intervencoes: 0,
     reputacao: 10, pontos: 1, habilidades: {},
+    treinos: {}, // { pid: { para, restam, total } }: jogadores aprendendo outra posição
     depois: [], visto: {}, // as consequências que chegam depois e os dilemas já vistos na temporada
     vales: [], bloqueados: {}, // o antigo vale de campeão (não existe mais) e os jogadores que chegaram por ele (não podem ser vendidos na temporada)
     legado: { acumulado: {}, hall: {}, camisas: [], marcos: [], recordes: {} },
@@ -55,6 +57,7 @@ function garantir(v, c) {
   const g = gestaoDe(v), elenco = c.elencoDe(v, v.clube), nos = new Set(elenco.map((j) => j.id));
   for (const j of elenco) if (!g.contratos[j.id]) g.contratos[j.id] = { fim: v.temporada + (hash(`contrato:${v.semente}:${j.id}`) % 3), multa: 0 };
   for (const pid of Object.keys(g.contratos)) if (!nos.has(pid)) { delete g.contratos[pid]; delete g.recusou[pid]; }
+  for (const pid of Object.keys(g.treinos)) if (!nos.has(pid)) delete g.treinos[pid];
   if (g.capitao && !nos.has(g.capitao)) g.capitao = null;
   return g;
 }
@@ -353,6 +356,7 @@ function aposJogo(v, c, { nos, eles, emCasa, adv }) {
   if (v.demitido) return [];
   const g = garantir(v, c), res = nos > eles ? "V" : nos === eles ? "E" : "D", novos = [];
   g.jogos++; g.recentes.push(res); if (g.recentes.length > 8) g.recentes.shift();
+  treinarPosicoes(v, c, g, novos);
   // a confiança: a diretoria olha o resultado (derrota feia pesa mais) e cobra menos de quem tem o elenco mais fraco (a meta da temporada)
   const peso = ({ titulo: 1.15, continental: 1, meio: 0.8, rebaixamento: 0.55 })[(v.meta || {}).nivel] || 1;
   g.confianca = clamp(g.confianca + (res === "V" ? 3 : res === "E" ? (emCasa ? -1 : 0) : -Math.round((eles - nos >= 3 ? 7 : 4) * peso)), 0, 100);
@@ -570,6 +574,29 @@ function virada(v, c) {
   return partes.join(" ");
 }
 
+// ---------- o treino de posição ----------
+// a cada jogo do clube o treino anda; no último, o jogador passa a ser da posição nova (v.posicoes, que vale para o motor e para a tela)
+function treinarPosicoes(v, c, g, avisos) {
+  for (const [pid, t] of Object.entries(g.treinos)) {
+    const j = c.jogadorDe(v, pid); if (!j) { delete g.treinos[pid]; continue; }
+    if (--t.restam > 0) continue;
+    delete g.treinos[pid];
+    const antes = j.pos; (v.posicoes || (v.posicoes = {}))[pid] = t.para;
+    c.avisar(v, { tipo: "clube", icone: "bola", titulo: `${j.nome} aprendeu a posição`, texto: `Depois de ${t.total} jogos de treino, ${j.nome} deixa de ser ${antes} e passa a ser ${t.para}.` });
+    Feed.postar(v, { tipo: "base", perfil: v.clube, humor: "bom", arte: { cena: "treino", clube: v.clube, jogador: pid }, texto: `${j.nome} concluiu o treino de posição: agora joga de ${t.para}.` });
+  }
+}
+function treinar(v, c, g, d) {
+  const pid = String(d.jogador || ""), para = String(d.para || ""), j = c.elencoDe(v, v.clube).find((x) => x.id === pid);
+  if (!j) return "Esse jogador não é do seu elenco.";
+  if (g.treinos[pid]) return `${j.nome} já está em treino.`;
+  if (Object.keys(g.treinos).length >= Regras.TREINOS_MAX) return `No máximo ${Regras.TREINOS_MAX} jogadores treinando ao mesmo tempo.`;
+  if (!Regras.alvosDeTreino(j.pos).includes(para)) return "Só dá para treinar uma posição parecida com a que ele já joga (na mesma linha do campo).";
+  const pontos = Taticas.pontosDeEncaixe(j.pos, para), total = Regras.jogosDeTreino({ pontos, idade: Evolucao.idadeNa(j, v.temporada), formador: g.habilidades.formador || 0 });
+  g.treinos[pid] = { para, restam: total, total };
+  return { mensagem: `${j.nome} começou a treinar de ${para}: vira em ${total} jogos.` };
+}
+
 // ---------- as ações da tela Clube ----------
 function acao(v, c, d) {
   if (v.partida) return "Termine a partida primeiro.";
@@ -605,6 +632,8 @@ function acao(v, c, d) {
     g.pontos--; g.habilidades[id] = (g.habilidades[id] || 0) + 1;
     return { mensagem: `${h.nome} nível ${g.habilidades[id]}: ${h.texto(g.habilidades[id])}.` };
   }
+  if (tipo === "treinar") return treinar(v, c, g, d);
+  if (tipo === "parar-treino") { const pid = String(d.jogador || ""); if (!g.treinos[pid]) return "Ele não está em treino."; delete g.treinos[pid]; return { mensagem: "Treino cancelado." }; }
   if (tipo === "camisa") { const r = aposentarCamisa(v, c, String(d.jogador || "")); return typeof r === "string" ? r : { mensagem: r.texto }; }
   return "Ação desconhecida.";
 }
@@ -629,7 +658,7 @@ function estado(v, c) {
     ultimato: g.ultimato && (() => { const restam = Math.max(0, g.ultimato.ate - g.jogos), feitos = 4 - restam; return { restam, min: g.ultimato.min, pontos: feitos > 0 ? pontosDe(g.recentes.slice(-feitos)) : 0 }; })(),
     recentes: g.recentes.slice(-5), alertas,
     janela: { restam, ultimoJogo: restam === 1 },
-    contratos, infra: g.infra, obra: g.obra, custos: [1, 2, 3].map((n) => Regras.custoObra(n, T)), manutencao: Regras.manutencao(g.infra, T),
+    treinos: g.treinos, contratos, infra: g.infra, obra: g.obra, custos: [1, 2, 3].map((n) => Regras.custoObra(n, T)), manutencao: Regras.manutencao(g.infra, T),
     capitao: g.capitao, candidatos: [...elenco].sort((a, b) => c.notaDe(v, b) - c.notaDe(v, a)).slice(0, 12).map((j) => ({ id: j.id, lider: Regras.lideranca({ idade: Evolucao.idadeNa(j, v.temporada), nota: c.notaDe(v, j), anosClube: (g.legado.acumulado[j.id] || {}).temporadas || 0 }) })),
     base: g.prospectos.map((p) => ({ id: p.id, nome: p.nome, pos: p.pos, idade: p.idade, nota: p.nota, nat: p.nat, pot: Regras.potVisivel(p.pot, olh), impressao: Regras.impressao(p.pot), valor: valorProspecto(p), blindado: !!g.blindados[p.id], atr: p.atr })),
     bloqueados: Object.keys(g.bloqueados).filter((pid) => g.bloqueados[pid] >= v.temporada),

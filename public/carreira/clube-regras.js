@@ -72,6 +72,16 @@
   // quantos jogos faltam para a janela fechar (null: fechada). Começo da temporada: até a rodada 4; meio: até a 21
   const restamNaJanela = (rodada) => (rodada < 4 ? 4 - rodada : rodada >= 16 && rodada <= 20 ? 21 - rodada : null);
 
-  return { MULTAS, termos, INFRA, INFRA_MAX, custoObra, manutencao, fatorBilheteria, bonusRecupera, fatorLesao, IDADE_BASE_MAX, BASE_MAX, potVisivel, impressao,
+  // ---------- o treino de posição ----------
+  // O técnico treina um jogador para outra posição parecida com a dele: a mesma linha do campo (defesa, meio ou ataque).
+  // O goleiro não troca. Depois de alguns jogos do clube ele passa a ser daquela posição. São 4 jogos mais 2 por ponto de
+  // encaixe entre as duas posições (Taticas.pontosDeEncaixe: ponta trocada 1, volante de meia 2, lateral na zaga 4), vezes a
+  // idade (o garoto aprende rápido, o veterano devagar), e o técnico formador tira 10% por nível. Até 3 treinos ao mesmo tempo.
+  const LINHAS_TREINO = [["ZAG", "LE", "LD"], ["VOL", "MC", "MEI"], ["PE", "PD", "ATA"]], TREINOS_MAX = 3;
+  const alvosDeTreino = (pos) => (LINHAS_TREINO.find((l) => l.includes(pos)) || []).filter((p) => p !== pos);
+  const fatorIdadeTreino = (idade) => (idade <= 21 ? 0.6 : idade <= 24 ? 0.8 : idade <= 28 ? 1 : idade <= 31 ? 1.3 : 1.6);
+  const jogosDeTreino = ({ pontos, idade, formador = 0 }) => Math.max(3, Math.round((4 + 2 * pontos) * fatorIdadeTreino(idade) * (1 - 0.1 * formador)));
+
+  return { MULTAS, termos, LINHAS_TREINO, TREINOS_MAX, alvosDeTreino, fatorIdadeTreino, jogosDeTreino, INFRA, INFRA_MAX, custoObra, manutencao, fatorBilheteria, bonusRecupera, fatorLesao, IDADE_BASE_MAX, BASE_MAX, potVisivel, impressao,
     HABILIDADES, HAB_MAX, nivelReputacao, nivelConfianca, lideranca, restamNaJanela, clamp };
 });

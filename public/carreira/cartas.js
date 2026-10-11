@@ -70,6 +70,16 @@ function abrirFicha(pid) {
 $("fichaFechar").onclick = () => $("ficha").close();
 $("ficha").addEventListener("click", (e) => { if (e.target === $("ficha")) $("ficha").close(); });
 $("ficha").addEventListener("close", () => { fichaAberta = null; });
+// o treino de posição: a ficha mostra o andamento ou os botões das posições parecidas, com os jogos que cada uma leva
+function treinoHTML(pid) {
+  const j = JOGADORES[pid], t = E.gestao && E.gestao.treinos && E.gestao.treinos[pid];
+  if (t) return `<div class="treino"><p>${ic("bola")} Treinando de <b>${h(POS_NOME[t.para] || t.para)}</b>: faltam ${t.restam} de ${t.total} jogos.</p><button id="fPararTreino" class="discreto">Cancelar o treino</button></div>`;
+  const alvos = ClubeRegras.alvosDeTreino(j.pos), cheio = Object.keys((E.gestao && E.gestao.treinos) || {}).length >= ClubeRegras.TREINOS_MAX;
+  if (!alvos.length) return "";
+  const idade = Evolucao.idadeNa(j, E.temporada), formador = (E.gestao && E.gestao.habilidades.formador) || 0;
+  return `<div class="treino"><p>${ic("bola")} Treinar para outra posição${cheio ? ` <small>(já são ${ClubeRegras.TREINOS_MAX} em treino)</small>` : ""}${j.posOriginal ? ` <small>(nasceu ${h(j.posOriginal)})</small>` : ""}</p>
+    <div class="linha">${alvos.map((p) => `<button class="secundario" data-treinar="${p}" ${cheio ? "disabled" : ""}>${h(POS_NOME[p] || p)} · ${ClubeRegras.jogosDeTreino({ pontos: Taticas.pontosDeEncaixe(j.pos, p), idade, formador })} jogos</button>`).join("")}</div></div>`;
+}
 function desenharFicha(resposta) {
   const pid = fichaAberta; if (!pid) return;
   const j = JOGADORES[pid], clube = donoDe(pid), meu = clube === E.clube, valor = valorAtual(pid), sal = meu ? salarioDe(j) : Mercado.salarioDe(comNota(j));
@@ -88,6 +98,7 @@ function desenharFicha(resposta) {
     const pedido = (E.pedidos && E.pedidos[pid]) || Math.round(valor * 1.1 / 1e5) * 1e5;
     const rapida = Math.min(Mercado.vendaRapida(comNota(j), forma), compraRecente(pid) ? E.compras[pid].valor : Infinity);
     acoes = `<div class="acoes">
+      ${treinoHTML(pid)}
       <div class="pedido"><label for="fPedido">Preço pedido na lista <b id="fPedidoTxt">${dinheiro(pedido)}</b></label>
         <input id="fPedido" type="range" min="${Math.round(valor * Mercado.PEDIDO_MIN / 1e5)}" max="${Math.round(valor * Mercado.PEDIDO_MAX / 1e5)}" value="${Math.round(pedido / 1e5)}">
         <p class="suave" id="fPedidoDica"></p></div>
@@ -120,6 +131,8 @@ function desenharFicha(resposta) {
   if (meu) {
     const pedidoAtual = () => +$("fPedido").value * 1e5;
     const dica = () => { const p = pedidoAtual(), ch = Mercado.chanceDeProposta(p, valor, formaDe(pid)); $("fPedidoTxt").textContent = dinheiro(p); $("fPedidoDica").textContent = `${Math.round(p / valor * 100)}% do valor · chance de proposta por rodada: ${ch >= 0.6 ? "alta" : ch >= 0.3 ? "média" : "baixa"}${compra ? ` · ${p >= compra.valor ? "lucro" : "prejuízo"} de ${dinheiro(Math.abs(p - compra.valor))} se vender por isso` : ""}`; };
+    for (const b of $("fichaCorpo").querySelectorAll("[data-treinar]")) b.onclick = async () => { const r = await pedir("clube", { acao: "treinar", jogador: pid, para: b.dataset.treinar }); if (!r.ok) return toast(r.error); receber(r.estado); desenharFicha(); toast(r.mensagem); };
+    if ($("fPararTreino")) $("fPararTreino").onclick = async () => { const r = await pedir("clube", { acao: "parar-treino", jogador: pid }); if (!r.ok) return toast(r.error); receber(r.estado); desenharFicha(); };
     $("fPedido").oninput = dica; dica();
     $("fVenda").onclick = async () => { const r = await pedir("vender", { jogador: pid, modo: "lista", pedido: pedidoAtual() }); if (!r.ok) return toast(r.error); receber(r.estado); desenharFicha(); toast(`Na lista por ${dinheiro(pedidoAtual())}.`); };
     if ($("fTirar")) $("fTirar").onclick = async () => { const r = await pedir("vender", { jogador: pid, modo: "lista" }); if (!r.ok) return toast(r.error); receber(r.estado); desenharFicha(); };
