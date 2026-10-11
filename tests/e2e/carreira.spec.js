@@ -53,6 +53,40 @@ test("carreira: a prancheta mostra evolução e perda por posição", async ({ p
   expect(erros).toEqual([]);
 });
 
+test("carreira: arrastar um jogador até outro troca os dois, e soltar no vazio devolve a peça", async ({ page }) => {
+  const erros = vigiar(page);
+  await page.setViewportSize({ width: 1280, height: 1500 });
+  await page.goto("/carreira/#debug");
+  await page.fill("#cNome", "Arrasto");
+  await page.click('[data-clube="flamengo"]');
+  await page.click("#btnCriar");
+  await page.click("#btnAnotei");
+  await page.click('#sede [data-ir="elenco"]');
+  await expect(page.locator("#eCampo .peca")).toHaveCount(11);
+  await page.waitForFunction(() => !Zoom.ocupado());
+  const centro = async (loc) => { const r = await loc.boundingBox(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+  const arrastar = async (de, para) => {
+    const [x0, y0] = await centro(de), [x1, y1] = Array.isArray(para) ? para : await centro(para);
+    await page.mouse.move(x0, y0); await page.mouse.down(); await page.mouse.move(x1, y1, { steps: 10 }); await page.mouse.up();
+  };
+  const nomes = () => page.locator("#eCampo .peca small").allTextContents();
+  const antes = await nomes();
+  await arrastar(page.locator("#eCampo .peca").nth(9), page.locator("#eCampo .peca").nth(10));
+  await expect.poll(nomes).toEqual([...antes.slice(0, 9), antes[10], antes[9]]);
+  // do banco para o campo: o reserva entra
+  const reserva = page.locator("#eBanco .carta-reserva:not(.indisponivel)").first(), pid = await reserva.getAttribute("data-jogador");
+  await arrastar(reserva, page.locator("#eCampo .peca").nth(5));
+  await expect(page.locator(`#eCampo [data-jogador="${pid}"]`)).toHaveCount(1);
+  // no vazio: nada muda e a peça volta
+  const agora = await nomes();
+  const [x, y] = await centro(page.locator("#eCampo .peca").nth(2));
+  await arrastar(page.locator("#eCampo .peca").nth(2), [x + 900, y]);
+  await expect(page.locator(".na-mao")).toHaveCount(0);
+  await expect(page.locator(".pegado")).toHaveCount(0);
+  expect(await nomes()).toEqual(agora);
+  expect(erros).toEqual([]);
+});
+
 test("carreira: a arte das notícias usa o escudo da API, pelo nosso endereço", async ({ page, request }) => {
   const erros = vigiar(page);
   expect((await request.get("/api/escudo/clube-que-nao-existe")).status()).toBe(404);
@@ -161,14 +195,12 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await expect(page.locator("#posJogo .pj-dinheiro .extrato li").first()).toBeVisible();
     await page.click("#pjContinuar");
     await expect(page.locator("#cartaoUltimo .confronto")).toBeVisible();
-    // as notícias na sede: o post inteiro cabe na caixa (a legenda aparece sem rolar) e as setas trocam de post
-    const legenda = page.locator("#feedRolagem .post.atual .legenda");
-    await expect(legenda).toBeVisible();
-    const [caixaFeed, caixaLegenda] = await Promise.all([page.locator("#feedRolagem").boundingBox(), legenda.boundingBox()]);
-    expect(caixaLegenda.y + caixaLegenda.height).toBeLessThanOrEqual(caixaFeed.y + caixaFeed.height + 1);
-    if (await page.locator("#feedRolagem .post").count() > 1) {
-      await page.click('#cartaoFeed [data-feed-passo="1"]');
-      await expect(page.locator("#feedRolagem")).toHaveAttribute("data-atual", "1");
+    // as notícias na sede: as manchetes com a arte, e os pontinhos trocam a página
+    await expect(page.locator("#cartaoFeed .manchete").first()).toBeVisible();
+    await expect(page.locator("#cartaoFeed .manchete img").first()).toHaveAttribute("src", /^data:image\/png/);
+    if (await page.locator("#cartaoFeed [data-pagina-feed]").count() > 1) {
+      await page.click('#cartaoFeed [data-pagina-feed="1"]');
+      await expect(page.locator('#cartaoFeed [data-pagina-feed="1"]')).toHaveAttribute("aria-current", "true");
     }
     // as notícias: o feed com a arte de cada post
     await page.click('#sede [data-ir="feed"]');
@@ -274,7 +306,7 @@ test("carreira em grupo: sala, clubes e o hub de cada um", async ({ browser }) =
   await expect(a.locator("#cabecalho h1")).toHaveText("Flamengo");
   await expect(b.locator("#cabecalho h1")).toHaveText("Liverpool");
   await expect(a.locator(".hub-tiles .tile")).toHaveCount(7);
-  await expect(a.locator("#cartaoFeed .post").first()).toBeVisible();
+  await expect(a.locator("#cartaoFeed .manchete").first()).toBeVisible();
   // só o anfitrião começa a rodada
   await expect(b.locator("#btnJogar")).toBeDisabled();
   await expect(a.locator("#btnJogar")).toBeEnabled();

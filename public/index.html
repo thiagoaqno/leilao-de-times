@@ -52,6 +52,11 @@ button{font:inherit;cursor:pointer}
 .dlg h2{margin:0 0 4px;font:700 22px/1.1 "Pixelify Sans",monospace;display:flex;align-items:center;gap:8px}
 .dlg p{margin:0}
 .dlg .meta{color:#4a5690;font-size:15px;margin-top:4px}
+.telao-top{margin:6px 0 0;padding:0;list-style:none;counter-reset:t}
+.telao-top li{counter-increment:t;display:flex;align-items:baseline;gap:6px;padding:2px 0;border-bottom:1px dashed #c9d4f0}
+.telao-top li::before{content:counter(t) "º";min-width:24px;font-weight:700;color:#4a5690}
+.telao-top li:nth-child(1)::before{color:#b8860b}.telao-top li:nth-child(2)::before{color:#7a8496}.telao-top li:nth-child(3)::before{color:#a0522d}
+.telao-top i{margin-left:auto;font-style:normal;font-size:14px;white-space:nowrap}
 .dlg .go{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
 .dlg .go span{font-size:15px;color:#4a5690}
 .dlg .go span::after{content:" ▼";display:inline-block;animation:blink 1s steps(2) infinite}
@@ -267,10 +272,10 @@ const { $, store } = Comum;
 
 // ---------- o mapa ----------
 const TS = 16, MW = 320, MH = 260; // tamanho do tile e do mapa (em tiles)
-// A vila (40 x 44 casas) fica no meio de um mapa bem maior; em volta, as rodovias que levam aos estádios, cada um no
-// seu canto (como em São Paulo). As coordenadas da vila abaixo são escritas como sempre foram (de 0 a 39, de 0 a 43) e
+// A vila (58 x 52 casas) fica no meio de um mapa bem maior; em volta, as rodovias que levam aos estádios, cada um no
+// seu canto (como em São Paulo). As coordenadas da vila abaixo são escritas de 0 a 57 e de 0 a 51 e
 // depois deslocadas por OX, OY. Fora da vila é rodovia: pedestre não passa, só de carro (pega no estacionamento).
-const VW = 40, VH = 44, OX = 140, OY = 100;
+const VW = 58, VH = 52, OX = 131, OY = 100;
 // A vila é dividida em bairros, e o chão de cada um é do material do tema: a Rua das Cartas (jogos de mesa) tem
 // paralelepípedo; a Praça, pedra portuguesa em ondas (como o calçadão de Copacabana); a Vila Esportiva, a pista de
 // atletismo; o Autódromo, asfalto com a faixa amarela. Uma avenida no meio liga tudo, e a placa azul de rua (com o
@@ -278,8 +283,8 @@ const VW = 40, VH = 44, OX = 140, OY = 100;
 const BAIRROS = [
   { id: "cartas", nome: "Rua das Cartas", placa: [9, 9] },
   { id: "praca", nome: "Praça da Galera", placa: [3, 17] },
-  { id: "esportes", nome: "Vila Esportiva", placa: [17, 34] },
-  { id: "autodromo", nome: "Autódromo", placa: [22, 34] },
+  { id: "esportes", nome: "Vila Esportiva", placa: [22, 37] },
+  { id: "autodromo", nome: "Autódromo", placa: [35, 37] },
   { id: "ginasios", nome: "Ginásios", placa: [-11, 4] }, // fora da vila, ao lado do estacionamento oeste
   { id: "praia", nome: "Praia de Santos", placa: [101, 132] }, // lá embaixo, na areia de Santos (de carro, pela Imigrantes)
 ];
@@ -287,55 +292,55 @@ const GAMES = [
   { id: "leilao", url: "/leilao/", icon: "🔨", sign: "LEILÃO", name: "Casa de Leilão", desc: "Roleta, lances e moedas: monte o seu time (ou hambúrguer, pizza, drink…) e vença no fim.", meta: "Leilão da Galera",
     x: 3, y: 2, w: 7, h: 5, doors: [6], bairro: "cartas", roof: "#27408f", roof2: "#1a2d6b", wall: "#efe6cf", wall2: "#d6c8a4" },
   { id: "banco", url: "/banco/", icon: "🏦", sign: "BANCO", name: "Banco", desc: "Banco Imobiliário da galera: compre cidades, cobre aluguel e quebre os amigos.", meta: "Banco da Galera · 2 a 8 jogadores",
-    x: 11, y: 2, w: 8, h: 5, doors: [14, 15], bairro: "cartas", roof: "#9b1b30", roof2: "#6d1020", wall: "#3d2170", wall2: "#2b1552", casino: true },
+    x: 13, y: 2, w: 8, h: 5, doors: [16, 17], bairro: "cartas", roof: "#9b1b30", roof2: "#6d1020", wall: "#3d2170", wall2: "#2b1552", casino: true },
   { id: "uno", url: "/uno/", icon: "🃏", sign: "UNO", name: "Casa do Uno", desc: "Cartas coloridas, +4 na cara e grito de UNO! Regras oficiais.", meta: "Uno da Galera · 2 a 8 jogadores",
-    x: 21, y: 2, w: 7, h: 5, doors: [24], bairro: "cartas", roof: "#e0352b", roof2: "#a82218", wall: "#fff6e0", wall2: "#e6d6b0", uno: true },
+    x: 24, y: 2, w: 7, h: 5, doors: [27], bairro: "cartas", roof: "#e0352b", roof2: "#a82218", wall: "#fff6e0", wall2: "#e6d6b0", uno: true },
   { id: "sinuca", url: "/sinuca/", icon: "🎱", sign: "SINUCA", name: "Bar da Sinuca", desc: "Bola 8 em duplas, rei da mesa ou mata-mata. Giz no taco!", meta: "Sinuca da Galera · 2 a 8 jogadores",
     x: 3, y: 10, w: 7, h: 5, doors: [6], bairro: "cartas", roof: "#1f7a45", roof2: "#135530", wall: "#8a5a34", wall2: "#6b4323", planks: true },
   { id: "truco", url: "/truco/", icon: "🍺", sign: "TRUCO", name: "Boteco do Truco", desc: "Truco paulista, manilha pela vira. TRUCO, ladrão!", meta: "Truco da Galera · 2, 4 ou 6 jogadores",
-    x: 29, y: 2, w: 8, h: 5, doors: [32, 33], bairro: "cartas", roof: "#c4572e", roof2: "#93401f", wall: "#f3ead6", wall2: "#dccfae", awning: true },
+    x: 34, y: 2, w: 8, h: 5, doors: [37, 38], bairro: "cartas", roof: "#c4572e", roof2: "#93401f", wall: "#f3ead6", wall2: "#dccfae", awning: true },
   { id: "domino", url: "/domino/", icon: "🎲", sign: "DOMINÓ", name: "Praça do Dominó", desc: "Dominó de dupla com parceiro de frente. Carroça, lá-e-lô e cruzada.", meta: "Dominó da Galera · 4 jogadores",
-    x: 11, y: 10, w: 7, h: 5, doors: [14], bairro: "cartas", roof: "#23232b", roof2: "#111117", wall: "#f6f3ea", wall2: "#dcd6c4", domino: true },
+    x: 12, y: 10, w: 7, h: 5, doors: [15], bairro: "cartas", roof: "#23232b", roof2: "#111117", wall: "#f6f3ea", wall2: "#dcd6c4", domino: true },
   // quiosque na praça, com o telhado nas 4 cores do tabuleiro
   { id: "ludo", url: "/ludo/", icon: "🔴", sign: "LUDO", name: "Quiosque do Ludo", desc: "Tirou 6, sai da base. Comeu o peão do amigo, joga de novo.", meta: "Ludo da Galera · 2 a 4 jogadores",
-    x: 5, y: 19, w: 5, h: 3, doors: [7], bairro: "praca", roof: "#fffaf0", roof2: "#d8c7a6", wall: "#f1e4cf", wall2: "#d6c3a2", ludo: true },
+    x: 4, y: 22, w: 5, h: 3, doors: [6], bairro: "praca", roof: "#fffaf0", roof2: "#d8c7a6", wall: "#f1e4cf", wall2: "#d6c3a2", ludo: true },
   // quiosque do outro lado da praça, com o telhado pintado como uma mesa de botão
   { id: "botao", url: "/botao/", icon: "⚽", sign: "BOTÃO", name: "Quiosque do Botão", desc: "Futebol de botão com tampinhas do seu time: do 1x1 ao 4x4 ou rei do campo. Três toques por vez!", meta: "Botão da Galera · 2 a 8 jogadores",
-    x: 30, y: 19, w: 5, h: 3, doors: [32], bairro: "praca", roof: "#2a7f43", roof2: "#24683a", wall: "#8a5630", wall2: "#6b3f20", botao: true },
+    x: 45, y: 22, w: 5, h: 3, doors: [47], bairro: "praca", roof: "#2a7f43", roof2: "#24683a", wall: "#8a5630", wall2: "#6b3f20", botao: true },
   // autódromo no fim da vila, depois da rua de baixo: concreto e telhado de bandeira quadriculada
   { id: "corrida", url: "/corrida/", icon: "🏁", sign: "CORRIDA", name: "Autódromo", desc: "Carros esportivos em 3D (inspirados no R34, AE86, Mustang...) em Mônaco, Interlagos, Tóquio, Los Angeles e Rio, com vácuo, fantasma do seu recorde e lombadas para voar!", meta: "Corrida da Galera · 1 a 8 pilotos",
-    x: 22, y: 27, w: 10, h: 5, doors: [26, 27], bairro: "autodromo", roof: "#f4f4f4", roof2: "#151515", wall: "#9aa0a8", wall2: "#7d838c", race: true },
+    x: 31, y: 30, w: 10, h: 5, doors: [35, 36], bairro: "autodromo", roof: "#f4f4f4", roof2: "#151515", wall: "#9aa0a8", wall2: "#7d838c", race: true },
   // bunker no canto de baixo, à direita do autódromo: paredes de saco de areia e um alvo pintado no telhado
   { id: "tiro", url: "/tiro/", icon: "🎯", sign: "TIRO", name: "Arena de Tiro", desc: "FPS em rodadas no estilo CS, x1 ou x2, com AK-47 e AWP numa arena no deserto. Precisa de teclado e mouse.", meta: "Tiro da Galera · x1 ou x2",
-    x: 33, y: 28, w: 5, h: 4, doors: [35], bairro: "autodromo", roof: "#5b6440", roof2: "#4a5234", wall: "#b8a77a", wall2: "#9a8a60", tiro: true },
+    x: 44, y: 31, w: 5, h: 4, doors: [46], bairro: "autodromo", roof: "#5b6440", roof2: "#4a5234", wall: "#b8a77a", wall2: "#9a8a60", tiro: true },
   // quadra de society no canto de baixo, à esquerda do autódromo: o telhado é o gramado com as linhas e os dois gols
   { id: "pelada", url: "/pelada/", icon: "⚽", sign: "PELADA", name: "Quadra da Pelada", desc: "Futsal em 3D do 1x1 ao 3x3, numa quadra com alambrado. Chute, passe, cabeçada e as camisas do botão. Precisa de teclado e mouse.", meta: "Pelada da Galera · 1x1 a 3x3",
-    x: 3, y: 28, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#2f8f48", roof2: "#2a8141", wall: "#d9dde0", wall2: "#b9bfc4", pelada: true },
+    x: 3, y: 31, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#2f8f48", roof2: "#2a8141", wall: "#d9dde0", wall2: "#b9bfc4", pelada: true },
   // rua nova lá embaixo: a garagem do Rocket (futebol de carro), com o telhado nas cores dos dois times e a bola gigante
   { id: "rocket", url: "/rocket/", icon: "🚀", sign: "ROCKET", name: "Garagem do Rocket", desc: "Futebol de carro estilo Rocket League: bola gigante, turbo, pulo duplo e mortal. Carros pixelados inspirados no R34, 911, F40 e M3.", meta: "Rocket da Galera · 1x1 a 5x5",
-    x: 22, y: 35, w: 8, h: 4, doors: [25, 26], bairro: "autodromo", roof: "#1d2a5c", roof2: "#141d42", wall: "#3a3f4a", wall2: "#2b2f37", rocket: true },
+    x: 31, y: 39, w: 8, h: 4, doors: [34, 35], bairro: "autodromo", roof: "#1d2a5c", roof2: "#141d42", wall: "#3a3f4a", wall2: "#2b2f37", rocket: true },
   // do outro lado da rua nova: a arena da Batalha de kart, com telhado roxo, balões coloridos e uma caixa de item
   { id: "batalha", url: "/batalha/", icon: "🎈", sign: "BATALHA", name: "Arena da Batalha", desc: "Batalha de balões de kart estilo Mario Kart: 3 balões, caixas de item, cascos, bananas e bombas. Perdeu tudo? Vira fantasma!", meta: "Batalha da Galera · 2 a 8 pilotos",
-    x: 31, y: 35, w: 7, h: 4, doors: [34], bairro: "autodromo", roof: "#4a2f80", roof2: "#3a2466", wall: "#e9dcc4", wall2: "#cbb994", batalha: true },
+    x: 41, y: 39, w: 7, h: 4, doors: [44], bairro: "autodromo", roof: "#4a2f80", roof2: "#3a2466", wall: "#e9dcc4", wall2: "#cbb994", batalha: true },
   // no meio da rua nova, entre a garagem e a arena: o clube de tênis, com o telhado pintado como uma quadra azul
   { id: "tenis", url: "/tenis/", icon: "🎾", sign: "TÊNIS", name: "Clube de Tênis", desc: "Tênis arcade em 3D, simples ou duplas, contra a galera ou contra robôs: top spin, cortada, balão, curtinha e smash.", meta: "Tênis da Galera · 1x1 ou 2x2",
-    x: 11, y: 28, w: 7, h: 4, doors: [14], bairro: "esportes", roof: "#2f6aa8", roof2: "#24578c", wall: "#f2f4f0", wall2: "#d4dad0", tenis: true },
+    x: 12, y: 31, w: 7, h: 4, doors: [15], bairro: "esportes", roof: "#2f6aa8", roof2: "#24578c", wall: "#f2f4f0", wall2: "#d4dad0", tenis: true },
   // ruazinha que desce da rua nova, entre o tênis e a batalha: o Clube do Rumi, com telhado de feltro e peças
   { id: "pingpong", url: "/pingpong/", icon: "🏓", sign: "PINGUE-PONGUE", name: "Salão do Pingue-Pongue", desc: "Tênis de mesa em 3D no mouse: a raquete vai onde o mouse aponta. 1x1 contra a galera ou contra o robô.", meta: "Pingue-Pongue da Galera · 1x1",
-    x: 3, y: 35, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#7a3b1e", roof2: "#5e2c15", wall: "#f2efe6", wall2: "#d8d2c2", pingpong: true },
+    x: 3, y: 39, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#7a3b1e", roof2: "#5e2c15", wall: "#f2efe6", wall2: "#d8d2c2", pingpong: true },
   { id: "ginasio", url: "/ginasio/", icon: "🐾", sign: "GINÁSIO", name: "Ginásio", desc: "Galeramon e Pokémon em batalhas de tempo real, com esquivas e golpes na arena.", meta: "Ginásio da Galera · 1x1 ou 2x2",
-    x: 11, y: 35, w: 7, h: 4, doors: [14], bairro: "esportes", roof: "#9ebfbd", roof2: "#638e8c", wall: "#e9efee", wall2: "#bdcecb", ginasio: true },
+    x: 12, y: 39, w: 7, h: 4, doors: [15], bairro: "esportes", roof: "#9ebfbd", roof2: "#638e8c", wall: "#e9efee", wall2: "#bdcecb", ginasio: true },
   { id: "rumi", url: "/rumi/", icon: "🀄", sign: "RUMI", name: "Clube do Rumi", desc: "O jogo de peças numeradas: sequências, grupos, coringa e a mesa inteira para mexer. De 2 a 4, com robôs.", meta: "Rumi da Galera · 2 a 4 jogadores",
-    x: 22, y: 10, w: 7, h: 5, doors: [25], bairro: "cartas", roof: "#1f5a44", roof2: "#174535", wall: "#f3ead6", wall2: "#dccfae", rumi: true },
+    x: 32, y: 10, w: 7, h: 5, doors: [35], bairro: "cartas", roof: "#1f5a44", roof2: "#174535", wall: "#f3ead6", wall2: "#dccfae", rumi: true },
   // do outro lado da ruazinha: a casa da Palavra Proibida, com telhado roxo
   { id: "proibida", url: "/proibida/", icon: "🤐", sign: "PROIBIDA", name: "Casa da Palavra Proibida", desc: "Explique a palavra sem falar as 5 proibidas! Dois times, e o time adversário fiscaliza.", meta: "Palavra Proibida da Galera · 2 times",
-    x: 30, y: 10, w: 7, h: 5, doors: [33], bairro: "cartas", roof: "#5a2a8a", roof2: "#45206b", wall: "#f3ead6", wall2: "#dccfae" },
+    x: 41, y: 10, w: 7, h: 5, doors: [44], bairro: "cartas", roof: "#5a2a8a", roof2: "#45206b", wall: "#f3ead6", wall2: "#dccfae" },
   // na Praça, entre o chafariz e o Quiosque do Botão: a Sede da Carreira, com o telhado de clube e o escudo pintado
   { id: "carreira", url: "/carreira/", icon: "🏆", sign: "SEDE", name: "Sede da Carreira", desc: "Carreira de treinador: sozinho ou com a turma no mesmo mundo, assuma um clube do Brasil ou da Europa, escale, mexa na tática e jogue as temporadas. Tudo fica salvo.", meta: "Carreira de Treinador · solo ou em grupo",
-    x: 23, y: 18, w: 6, h: 4, doors: [25, 26], bairro: "praca", roof: "#1f5a3a", roof2: "#174a2f", wall: "#f3ead6", wall2: "#dccfae", sede: true },
+    x: 34, y: 21, w: 6, h: 4, doors: [36, 37], bairro: "praca", roof: "#1f5a3a", roof2: "#174a2f", wall: "#f3ead6", wall2: "#dccfae", sede: true },
   // a casinha do Naruto, do outro lado da fonte: o Ichiraku Ramen, que leva ao Ginásio no modo Naruto Shippuden
   { id: "naruto", url: "/ginasio/?modo=naruto", icon: "🍥", sign: "ICHIRAKU", name: "Casa do Naruto", desc: "Ichiraku Ramen, a casa do Naruto: 30 ninjas de Naruto Shippuden em batalhas de tempo real, contra o robô ou os amigos.", meta: "Naruto Shippuden · Ginásio · 1x1 ou 2x2",
-    x: 12, y: 19, w: 5, h: 3, doors: [14], bairro: "praca", roof: "#8a4a22", roof2: "#6a3515", wall: "#f3e8d0", wall2: "#dccaa0", naruto: true },
+    x: 13, y: 22, w: 5, h: 3, doors: [15], bairro: "praca", roof: "#8a4a22", roof2: "#6a3515", wall: "#f3e8d0", wall2: "#dccaa0", naruto: true },
   // na areia da praia de Santos: a Arena de Futevôlei, com o telhado de areia, a rede e a bola nas cores do futevôlei
   { id: "futevolei", url: "/futevolei/", icon: "🏐", sign: "FUTEVÔLEI", name: "Arena de Futevôlei", desc: "Futevôlei 3D na areia da praia ou na arena coberta. Só dois botões, passar e atacar: o golpe sai sozinho (cabeceio, peito, letra, voleio, bicicleta e o Shark Attack).", meta: "Futevôlei da Galera · 2x2 ou 1x1",
     x: 106, y: 133, w: 7, h: 4, doors: [109], bairro: "praia", roof: "#e6cf9f", roof2: "#c9ac72", wall: "#f6f1e4", wall2: "#d9cfb6", futevolei: true },
@@ -344,7 +349,7 @@ const GAMES = [
 // cerca. Dá para ir a pé: a rua de saída leva ao estacionamento, e a porta abre para ele. Cada um desafia o seu líder.
 const escurece = (hex, f = 0.72) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * f).toString(16).padStart(2, "0")).join("");
 Lideres.GINASIOS.forEach((l, i) => {
-  const x = [-10, -5, 40, 45][i];
+  const x = [-10, -5, VW, VW + 5][i];
   GAMES.push({ id: "lider-" + l.id, url: "/ginasio/?lider=" + l.id, icon: "🏅", sign: l.tipo.toUpperCase(), name: "Ginásio " + l.tipo, verbo: "desafiar o líder", textoBotao: "Desafiar",
     desc: l.nome + ": “" + l.frase + "” Vença no Ginásio em tempo real para ganhar a insígnia.", meta: "Ginásio de " + l.tipo + " · desafio de líder",
     x, y: 0, w: 5, h: 4, doors: [x + 2], bairro: "ginasios", roof: l.cor, roof2: escurece(l.cor), wall: "#efe9dc", wall2: "#d6cdb8", lider: l });
@@ -353,16 +358,28 @@ Lideres.GINASIOS.forEach((l, i) => {
 Lideres.TREINADORES.forEach((l) => GAMES.push({ id: "lider-" + l.id, url: "/ginasio/?lider=" + l.id, icon: "⚔️", name: l.nome, verbo: "desafiar", textoBotao: "Desafiar",
   desc: "“" + l.frase + "” Time de " + l.tipo + ", no Ginásio em tempo real.", meta: "Treinador · " + l.tipo, x: l.x, y: l.y, w: 1, h: 1, doors: [l.x], bairro: "rua", npc: l }));
 
-const FOUNTAIN = { x: 18, y: 19, w: 4, h: 3 };
-const LAMPS = [[2, 9], [18, 9], [21, 9], [37, 9], [11, 17], [28, 17], [11, 24], [28, 24], [2, 34], [21, 34], [37, 34], [18, 41], [21, 41]];
-const BENCHES = [[14, 23], [25, 23]]; // o banco de [25, 18] deu lugar à Sede da Carreira
-const TREES = [[3, 25], [8, 26], [13, 25], [16, 26], [23, 25], [27, 26], [33, 25], [36, 26], [11, 34], [18, 35], [18, 37], [11, 41], [16, 41],
-  [5, 41], [10, 41], [14, 41], [25, 41], [30, 41], [35, 41], [10, 9], [28, 9]];
+const FOUNTAIN = { x: 27, y: 21, w: 4, h: 3 };
+// o telão da estante da galera: no alto da Praça, de frente para o chafariz. A base (os dois postes) ocupa a linha 17 e a
+// tela sobe por cima da rua; quem para na linha de baixo (a 18) vê o top 5 inteiro na caixa de diálogo
+const TELAO = { x: 26, y: 17, w: 6 };
+// os terrenos prontos para as construções novas: cercados, com a placa "em breve"; quem para na frente lê a placa
+const TERRENOS = [
+  { x: 45, y: 2, w: 8, h: 5, bairro: "cartas" }, { x: 21, y: 10, w: 6, h: 5, bairro: "cartas" }, { x: 49, y: 10, w: 6, h: 5, bairro: "cartas" },
+  { x: 21, y: 31, w: 6, h: 4, bairro: "esportes" }, { x: 21, y: 39, w: 6, h: 4, bairro: "esportes" },
+  { x: 51, y: 31, w: 5, h: 4, bairro: "autodromo" }, { x: 50, y: 39, w: 6, h: 4, bairro: "autodromo" },
+];
+const LAMPS = [[2, 9], [26, 9], [31, 9], [55, 9], [11, 17], [44, 17], [11, 27], [44, 27], [2, 37], [27, 37], [30, 37], [55, 37], [27, 45], [30, 45]];
+const BENCHES = [[20, 26], [37, 26]];
+const TREES = [[2, 29], [9, 29], [15, 29], [20, 29], [25, 29], [33, 29], [43, 29], [50, 29], [55, 29], [2, 38], [10, 38], [19, 38], [25, 38],
+  [33, 38], [40, 38], [49, 38], [55, 38], [3, 46], [8, 46], [13, 46], [18, 46], [23, 46], [34, 46], [39, 46], [45, 46], [50, 46], [54, 46],
+  [5, 47], [16, 47], [37, 47], [48, 47], [12, 9], [41, 9]];
 // leva a vila para o meio do mapa grande
 const noMapa = (lista) => lista.splice(0, lista.length, ...lista.map(([x, y]) => [x + OX, y + OY]));
 BAIRROS.forEach((b) => { b.placa = [b.placa[0] + OX, b.placa[1] + OY]; });
 GAMES.forEach((g) => { g.x += OX; g.y += OY; g.doors = g.doors.map((d) => d + OX); g.doorY = g.y + g.h - 1; g.mats = g.doors.map((x) => [x, g.doorY + 1]); });
 FOUNTAIN.x += OX; FOUNTAIN.y += OY;
+TELAO.x += OX; TELAO.y += OY;
+TERRENOS.forEach((t) => { t.x += OX; t.y += OY; });
 [LAMPS, BENCHES, TREES].forEach(noMapa);
 
 // tipos de chão: g grama, r paralelepípedo, p pedra portuguesa, q pista de atletismo, a asfalto, f flores, t árvore, m capacho,
@@ -374,12 +391,14 @@ const faixa = (x0, x1, y0, y1, t, s) => { for (let y = y0; y <= y1; y++) for (le
 const vfaixa = (x0, x1, y0, y1, t, s) => faixa(x0 + OX, x1 + OX, y0 + OY, y1 + OY, t, s); // em coordenadas da vila
 for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) { const cerca = x < 2 || y < 2 || x >= VW - 2 || y >= VH - 2; set(x + OX, y + OY, cerca ? "t" : "g", cerca); }
 vfaixa(2, VW - 3, 7, 8, "r"); vfaixa(2, VW - 3, 15, 16, "r"); // Rua das Cartas: as duas ruas
-vfaixa(2, VW - 3, 17, 24, "p"); // a Praça
-vfaixa(19, 20, 9, 14, "r"); vfaixa(19, 20, 25, 40, "r"); // a avenida do meio
-vfaixa(2, 18, 32, 33, "q"); vfaixa(2, 18, 39, 40, "q"); // Vila Esportiva: a pista
-vfaixa(21, VW - 3, 32, 33, "a"); vfaixa(21, VW - 3, 39, 40, "a"); // Autódromo: o asfalto
+vfaixa(2, VW - 3, 17, 27, "p"); // a Praça
+vfaixa(28, 29, 9, 14, "r"); vfaixa(28, 29, 28, VH - 3, "r"); // a avenida do meio
+vfaixa(2, 27, 35, 36, "q"); vfaixa(2, 27, 43, 44, "q"); // Vila Esportiva: a pista
+vfaixa(30, VW - 3, 35, 36, "a"); vfaixa(30, VW - 3, 43, 44, "a"); // Autódromo: o asfalto
 // as saídas da vila: a rua atravessa a cerca a oeste e a leste (Rua das Cartas) e ao sul (a avenida do meio)
-vfaixa(0, 1, 7, 8, "r", false); vfaixa(VW - 2, VW - 1, 7, 8, "r", false); vfaixa(19, 20, VH - 3, VH - 1, "r", false);
+vfaixa(0, 1, 7, 8, "r", false); vfaixa(VW - 2, VW - 1, 7, 8, "r", false); vfaixa(28, 29, VH - 3, VH - 1, "r", false);
+// os terrenos: terra batida e cerca (sólidos); a casa de baixo do meio é onde se lê a placa
+for (const t of TERRENOS) { faixa(t.x, t.x + t.w - 1, t.y, t.y + t.h - 1, "l", true); t.placa = [t.x + (t.w >> 1), t.y + t.h]; }
 for (const g of GAMES) {
   for (let y = g.y; y < g.y + g.h; y++) for (let x = g.x; x < g.x + g.w; x++) solid[y][x] = true;
   for (const [mx, my] of g.mats) set(mx, my, "m");
@@ -387,10 +406,11 @@ for (const g of GAMES) {
   // canteiros de flor na frente das janelas
   for (const dx of [-2, -1, 1, 2]) { const fx = g.doors[0] + (dx > 0 ? g.doors.length - 1 : 0) + dx; if (ground[g.doorY + 1][fx] === "g") set(fx, g.doorY + 1, "f"); }
 }
-for (const y of [9, 26, 34, 41]) for (let x = 3; x < VW - 3; x++) if (ground[y + OY][x + OX] === "g" && (x * 7 + y * 3) % 5 === 0) set(x + OX, y + OY, "f"); // canteiros entre as ruas
+for (const y of [9, 29, 38, 46]) for (let x = 3; x < VW - 3; x++) if (ground[y + OY][x + OX] === "g" && (x * 7 + y * 3) % 5 === 0) set(x + OX, y + OY, "f"); // canteiros entre as ruas
 for (let y = FOUNTAIN.y; y < FOUNTAIN.y + FOUNTAIN.h; y++) for (let x = FOUNTAIN.x; x < FOUNTAIN.x + FOUNTAIN.w; x++) solid[y][x] = true;
+for (let x = TELAO.x; x < TELAO.x + TELAO.w; x++) solid[TELAO.y][x] = true;
 for (const [x, y] of [...LAMPS, ...BENCHES, ...BAIRROS.map((b) => b.placa)]) solid[y][x] = true;
-for (const [x, y] of TREES) set(x, y, "t", true);
+for (const [x, y] of TREES) if (!GAMES.some((g) => g.mats.some(([mx, my]) => Math.abs(mx - x) + Math.abs(my - y) < 2))) set(x, y, "t", true);
 
 // ---------- o mundo em volta da vila ----------
 // Rodovias de duas faixas (só carro), um estacionamento em cada saída da vila e um em cada estádio, a cidade (prédios
@@ -443,14 +463,14 @@ function montaMundo() {
     POSTES.push([p.x0, p.y0], [p.x1, p.y0], [p.x0, p.y1], [p.x1, p.y1]);
   }
   // os estacionamentos: um em cada saída da vila e um em cada estádio
-  lote(OX - 10, OY + 4, OX - 1, OY + 11, "oeste"); lote(OX + VW, OY + 4, OX + VW + 9, OY + 11, "leste"); lote(OX + 14, OY + VH, OX + 25, OY + VH + 6, "sul");
+  lote(OX - 10, OY + 4, OX - 1, OY + 11, "oeste"); lote(OX + VW, OY + 4, OX + VW + 9, OY + 11, "leste"); lote(OX + 23, OY + VH, OX + 34, OY + VH + 6, "sul");
   for (const e of ESTADIOS) { const l = e.lote; lote(l.x0, l.y0, l.x1, l.y1, e.nome); }
   // as rodovias
-  rodovia(50, 107, 129, 107); rodovia(50, 54, 50, 108); // oeste: Av. Sumaré até o Nubank Parque
-  rodovia(190, 107, 267, 107); rodovia(266, 107, 266, 121); // leste: Radial Leste até Itaquera
-  rodovia(159, 151, 159, 191); rodovia(62, 160, 158, 160); rodovia(62, 160, 62, 163); // sul: até o Morumbis
+  rodovia(50, 107, OX - 11, 107); rodovia(50, 54, 50, 108); // oeste: Av. Sumaré até o Nubank Parque
+  rodovia(OX + VW + 10, 107, 267, 107); rodovia(266, 107, 266, 121); // leste: Radial Leste até Itaquera
+  rodovia(OX + 28, OY + VH + 7, OX + 28, 191); rodovia(62, 160, 158, 160); rodovia(62, 160, 62, 163); // sul: até o Morumbis
   rodovia(159, 190, 228, 190); rodovia(227, 190, 227, 195); // e descendo a serra (Imigrantes) até Santos
-  PLACAS_VERDES.push([127, 105, "Perdizes · Nubank Parque"], [192, 105, "Radial Leste · Itaquera"], [162, 152, "Morumbis · Santos"], [156, 158, "Morumbis"], [162, 188, "Imigrantes · Santos"]);
+  PLACAS_VERDES.push([OX - 13, 105, "Perdizes · Nubank Parque"], [OX + VW + 11, 105, "Radial Leste · Itaquera"], [OX + 31, OY + VH + 8, "Morumbis · Santos"], [156, 162, "Morumbis"], [162, 188, "Imigrantes · Santos"]);
   for (const [x, y] of PLACAS_VERDES) set(x, y, ground[y][x] === "t" ? "g" : ground[y][x], true);
   // a cidade: prédios de enfeite onde sobrou grama (longe das rodovias, do rio, da vila e das praças)
   const livre = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { if (x < 0 || y < 0 || x >= MW || y >= MH || !"gt".includes(ground[y][x])) return false; if (x >= OX - 2 && x < OX + VW + 2 && y >= OY - 2 && y < OY + VH + 2) return false; if (GAMES.some((g) => x >= g.x - 1 && x <= g.x + g.w && y >= g.y - 1 && y <= g.y + g.h)) return false; } return true; };
@@ -853,6 +873,31 @@ function drawPlacaVerde(c, [tx, ty, nome]) { // placa verde de rodovia
   c.strokeStyle = "#f4f6fb"; c.lineWidth = 1; c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
   c.fillStyle = "#f4f6fb"; c.textBaseline = "middle"; c.textAlign = "center"; c.fillText(nome, cx, y + h / 2 + 0.5); c.textAlign = "left";
 }
+// os terrenos à espera de um jogo novo: terra batida com marcas de pneu, a cerca de madeira, as estacas da obra e a
+// placa "em breve" na frente
+function drawTerra(c, x, y) {
+  const X = x * TS, Y = y * TS;
+  px(c, "#a8784a", X, Y, TS, TS);
+  for (let i = 0; i < 6; i++) { const r = hash(x, y, i + 40); px(c, i % 2 ? "#946639" : "#bc8c5a", X + (r % 14), Y + ((r >> 5) % 14), 2, 1); }
+  if ((x + y) % 3 === 0) { const r = hash(x, y, 51); px(c, "#8a8277", X + (r % 12) + 2, Y + ((r >> 4) % 12) + 2, 2, 2); } // pedrinha
+}
+function drawTerreno(c, t) {
+  const X = t.x * TS, Y = t.y * TS, W = t.w * TS, H = t.h * TS;
+  px(c, "#7a5530", X + 6, Y + H - 22, W - 12, 2); px(c, "#7a5530", X + 6, Y + H - 14, W - 12, 2); // marcas de pneu
+  for (const [ex, ey] of [[0.3, 0.35], [0.7, 0.35]]) { const sx = X + Math.round(W * ex), sy = Y + Math.round(H * ey); px(c, "#00000030", sx, sy + 7, 3, 2); px(c, "#e9dcc0", sx, sy, 2, 8); px(c, "#ff6a2f", sx, sy, 2, 2); }
+  // a cerca: tábuas na volta inteira, com mourões
+  const madeira = "#c89a5e", escuro = "#7d5a32";
+  for (const yy of [Y + 1, Y + H - 5]) { px(c, "#00000028", X + 1, yy + 4, W - 2, 1); px(c, madeira, X + 1, yy, W - 2, 2); px(c, escuro, X + 1, yy + 2, W - 2, 1); }
+  for (const xx of [X + 1, X + W - 4]) { px(c, madeira, xx, Y + 1, 2, H - 4); px(c, escuro, xx + 2, Y + 1, 1, H - 4); }
+  for (let xx = X + 1; xx < X + W - 2; xx += 8) for (const yy of [Y - 1, Y + H - 7]) { px(c, escuro, xx, yy, 3, 6); px(c, madeira, xx, yy, 2, 5); }
+  // a placa
+  const cx = X + (t.w >> 1) * TS + 8, py = Y + H - 26;
+  px(c, "#00000030", cx - 8, Y + H - 4, 16, 2); px(c, escuro, cx - 7, py + 10, 2, 14); px(c, escuro, cx + 5, py + 10, 2, 14);
+  c.font = '700 7px "Pixelify Sans", monospace';
+  const w = 40, h = 13, x = cx - w / 2;
+  px(c, "#5a3d1f", x - 1, py - 1, w + 2, h + 2); px(c, "#f2e6c8", x, py, w, h); px(c, "#ffc83d", x, py, w, 2);
+  c.fillStyle = "#5a3d1f"; c.textBaseline = "middle"; c.textAlign = "center"; c.fillText("EM BREVE", cx, py + h / 2 + 1); c.textAlign = "left";
+}
 // O mapa é grande demais para um desenho só: ele é desenhado em pedaços de 32 x 32 casas, na hora em que aparecem na
 // tela, e os pedaços que ficam muito tempo sem aparecer saem da memória.
 const CH = 32, CHP = CH * TS;
@@ -866,12 +911,13 @@ function pedaco(cx, cy) {
   const x0 = cx * CH, y0 = cy * CH, x1 = Math.min(MW, x0 + CH), y1 = Math.min(MH, y0 + CH);
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
     const t = ground[y][x];
-    if (CHAO[t]) CHAO[t](c, x, y); else if (t === "m") drawMat(c, x, y); else if (t === "f") drawFlowers(c, x, y); else drawGrass(c, x, y);
+    if (CHAO[t]) CHAO[t](c, x, y); else if (t === "l") drawTerra(c, x, y); else if (t === "m") drawMat(c, x, y); else if (t === "f") drawFlowers(c, x, y); else drawGrass(c, x, y);
   }
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (ground[y][x] === "t") drawTree(c, x, y);
   PREDIOS.forEach((p) => { if (toca(p.x, p.y, p.w, p.h, cx, cy)) drawPredio(c, p); });
   ESTADIOS.forEach((e) => { if (toca(e.ret.x, e.ret.y, e.ret.w, e.ret.h, cx, cy, 2)) Estadios.fachada(c, e); });
   GAMES.forEach((g) => { if (toca(g.x, g.y, g.w, g.h, cx, cy)) drawBuilding(c, g); });
+  TERRENOS.forEach((t) => { if (toca(t.x, t.y, t.w, t.h, cx, cy)) drawTerreno(c, t); });
   if (toca(FOUNTAIN.x, FOUNTAIN.y, FOUNTAIN.w, FOUNTAIN.h, cx, cy)) drawFountainBase(c);
   [...LAMPS, ...POSTES].forEach(([x, y]) => { if (toca(x, y, 1, 1, cx, cy)) drawLampPost(c, x, y); });
   BENCHES.forEach(([x, y]) => { if (toca(x, y, 1, 1, cx, cy)) drawBench(c, x, y); });
@@ -927,7 +973,7 @@ function spritesFor(look) {
   return sprites;
 }
 
-const player = { x: OX + 19, y: OY + 23, dir: "up", moving: false, fx: OX + 19, fy: OY + 23, t: 0, from: null, steps: 0, entering: null, car: false };
+const player = { x: OX + 24, y: OY + 26, dir: "up", moving: false, fx: OX + 24, fy: OY + 26, t: 0, from: null, steps: 0, entering: null, car: false };
 let INT = null, bola = null, golAte = 0, destino = null, voltaFora = null; // INT: o estádio em que a pessoa está (o lado de dentro)
 const interiores = {};
 const zona = () => (INT ? INT.e.id : "");
@@ -1083,7 +1129,7 @@ function setHere(g) {
   if (!g) { el.classList.remove("on"); return; }
   const touch = document.body.classList.contains("touch");
   const verbo = g.verbo || "entrar";
-  el.innerHTML = `<h2>${g.icon ? `<span>${g.icon}</span>` : ""}${esc(g.name || g.nome)}</h2><p>${esc(g.desc)}</p>${g.meta ? `<p class="meta">${esc(g.meta)}</p>` : ""}
+  el.innerHTML = `<h2>${g.icon ? `<span>${g.icon}</span>` : ""}${esc(g.name || g.nome)}</h2>${g.html ? g.html() : `<p>${esc(g.desc)}</p>`}${g.meta ? `<p class="meta">${esc(g.meta)}</p>` : ""}
     <div class="go"><span>${touch ? "Toque em A para " + verbo : "Aperte Espaço para " + verbo}</span><button id="dlgGo">${esc(g.textoBotao || (typeof g.botao === "string" ? g.botao : "Entrar"))}</button></div>`;
   $("dlgGo").onclick = () => enter(g);
   el.classList.add("on");
@@ -1094,10 +1140,13 @@ const LOTE_A_PE = { tipo: "lote", name: "Estacionamento", desc: "Pegue um carro 
 const LOTE_CARRO = { tipo: "lote", name: "Estacionamento", desc: "Aqui dá para descer e seguir a pé.", verbo: "descer do carro", botao: "Descer" };
 const SAIDA = { tipo: "saida", name: "Túnel", desc: "Voltar para a rua, na frente do estádio.", verbo: "sair", botao: "Sair" };
 ESTADIOS.forEach((e) => { e.name = e.nome; e.botao = "Entrar"; });
+const naFrenteDoTelao = (x, y) => y === TELAO.y + 1 && x >= TELAO.x && x < TELAO.x + TELAO.w;
+const TERRENO_LUGAR = { tipo: "terreno", icon: "🚧", name: "Terreno", desc: "Reservado para um jogo novo da galera. Em breve tem construção aqui.", verbo: "seguir", botao: "Beleza" };
+const terrenoEm = (x, y) => TERRENOS.find((t) => t.placa[0] === x && t.placa[1] === y);
 function lugarEm(x, y) {
   if (INT) return INT.g[y] && INT.g[y][x] === "S" ? SAIDA : null;
   if (player.car) return loteAt(x, y) ? LOTE_CARRO : null;
-  return matAt(x, y) || portaoAt(x, y) || (loteAt(x, y) ? LOTE_A_PE : null);
+  return matAt(x, y) || portaoAt(x, y) || (loteAt(x, y) ? LOTE_A_PE : null) || (naFrenteDoTelao(x, y) ? TELAO_LUGAR : null) || (terrenoEm(x, y) ? TERRENO_LUGAR : null);
 }
 function trocaCarro() { // entra no carro (ou desce dele) no estacionamento
   if (player.moving) return;
@@ -1196,6 +1245,12 @@ function enter(g) {
   if (g.tipo === "lote") return trocaCarro();
   if (g.tipo === "estadio") return entraEstadio(g);
   if (g.tipo === "saida") return saiEstadio();
+  if (g.tipo === "terreno") return setHere(null);
+  if (g.tipo === "telao") { // vai para a Sede da Carreira (a estante de cada carreira fica lá)
+    setHere(null); store.set("vila_spawn", "sede");
+    setTimeout(() => $("fade").classList.add("on"), 60);
+    return setTimeout(() => (location.href = "/carreira/"), 420);
+  }
   store.set("vila_spawn", g.id);
   path = null; held.length = 0;
   const [mx, my] = g.mats.find(([x]) => x === player.x) || g.mats[0];
@@ -1635,6 +1690,7 @@ function collectWindowLights() {
     g.doors.forEach((d) => LIGHTS.push({ x: d * TS + (g.doors.length > 1 ? 16 : 8), y: g.doorY * TS + 8, r: g.casino ? 40 : 26, warm: g.casino ? 0.2 : 0.1 }));
   });
   LIGHTS.push({ x: (FOUNTAIN.x + FOUNTAIN.w / 2) * TS, y: (FOUNTAIN.y + FOUNTAIN.h / 2) * TS, r: 44, warm: 0, cool: 0.12 });
+  LIGHTS.push({ x: (TELAO.x + TELAO.w / 2) * TS, y: TELAO.y * TS - 24, r: 70, warm: 0, cool: 0.16 }); // o brilho do telão
   POSTES.forEach(([x, y]) => LIGHTS.push({ x: x * TS + 8, y: y * TS + 4, r: 54, warm: 0.2 }));
   // os refletores dos estádios iluminam a praça toda
   ESTADIOS.forEach((e) => { const r = e.ret; LIGHTS.push({ x: (r.x + r.w / 2) * TS, y: (r.y + r.h / 2) * TS, r: Math.max(r.w, r.h) * TS * 0.85, warm: 0, cool: 0.1 }); });
@@ -1656,6 +1712,63 @@ function drawFountainWater(c, t) {
     px(c, "#cfeaff", Math.round(cx + dx - 1), Math.round(cy + dy), 2, 2);
   }
   px(c, "#e8f6ff", cx - 1, cy - 2, 2, 5);
+}
+// ---------- o telão da estante da galera ----------
+// o top 5 de GET /api/estante (bd.estante: os técnicos com mais taças em todas as carreiras, solo e em grupo)
+const ESTANTE = { top: null, erro: false };
+const nomeTelao = (n) => String(n || "").toUpperCase().slice(0, 9);
+const TELAO_LUGAR = { tipo: "telao", icon: "🏆", name: "Telão da galera", verbo: "ir à Sede da Carreira", botao: "Ir à Sede",
+  html: () => {
+    const top = ESTANTE.top;
+    if (!top) return `<p>${ESTANTE.erro ? "O telão não abriu agora. Tente de novo daqui a pouco." : "Ligando o telão…"}</p>`;
+    if (!top.length) return `<p>Ninguém levantou uma taça ainda. O primeiro título da Carreira de Treinador (solo ou em grupo) estreia o telão.</p>`;
+    return `<p class="meta">Os técnicos com mais taças em todas as carreiras.</p><ol class="telao-top">${top.map((r) => `<li><b>${esc(r.tecnico)}</b><i>${r.titulos} ${r.titulos === 1 ? "taça" : "taças"} · ${r.pontos} pts</i></li>`).join("")}</ol>`;
+  } };
+function buscarEstante() {
+  fetch("/api/estante").then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status)))).then((d) => {
+    ESTANTE.top = (d.ranking || []).slice(0, 5).map((r) => ({ tecnico: r.tecnico, titulos: r.titulos, pontos: r.pontos }));
+    ESTANTE.erro = false;
+  }).catch(() => { ESTANTE.erro = true; }).finally(() => { if (here === TELAO_LUGAR) { here = null; setHere(TELAO_LUGAR); } });
+}
+const CORES_PODIO = ["#ffd34d", "#d6dde8", "#e09a5a"];
+function drawTelao(c, t) {
+  const x0 = TELAO.x * TS, base = TELAO.y * TS, W = TELAO.w * TS + 8, H = 54, X = x0 - 4, Y = base - H - 2;
+  // os postes e a base de concreto
+  px(c, "#00000040", x0 + 6, base + 13, TELAO.w * TS - 12, 3);
+  for (const dx of [12, TELAO.w * TS - 16]) { px(c, "#2b2f3a", x0 + dx, Y + H, 4, base + 14 - Y - H); px(c, "#4a5060", x0 + dx, Y + H, 1, base + 14 - Y - H); px(c, "#6b6f7c", x0 + dx - 2, base + 11, 8, 4); }
+  // a moldura e a tela
+  px(c, "#14161d", X - 2, Y - 2, W + 4, H + 4);
+  px(c, "#3a3f4d", X - 1, Y - 1, W + 2, 1);
+  px(c, "#04060c", X, Y, W, H);
+  // a faixa de cima: ESTANTE DA GALERA com as lâmpadas correndo
+  px(c, "#1a1405", X + 1, Y + 1, W - 2, 9);
+  const passo = Math.floor(t / 220);
+  for (let i = 0, xx = X + 2; xx < X + W - 2; xx += 4, i++) px(c, (i + passo) % 4 ? "#5a4210" : "#ffd34d", xx, Y + 1, 2, 1);
+  c.textBaseline = "middle"; c.textAlign = "center";
+  c.font = '700 7px "Pixelify Sans", monospace'; c.fillStyle = "#ffd34d";
+  c.fillText("ESTANTE DA GALERA", X + W / 2, Y + 6.5);
+  const top = ESTANTE.top;
+  c.font = '700 6px "Pixelify Sans", monospace';
+  if (!top || !top.length) {
+    c.fillStyle = "#8fa3c8";
+    c.fillText(!top ? (ESTANTE.erro ? "SEM SINAL" : "LIGANDO...") : "NENHUMA TAÇA AINDA", X + W / 2, Y + 30);
+  } else top.forEach((r, i) => {
+    const yy = Y + 16 + i * 8;
+    if (i % 2) px(c, "#0b1020", X + 2, yy - 4, W - 4, 8);
+    c.textAlign = "left"; c.fillStyle = CORES_PODIO[i] || "#8fa3c8";
+    c.fillText(`${i + 1}`, X + 4, yy);
+    c.fillStyle = i < 3 ? "#f4f6fb" : "#c3cde0";
+    c.fillText(nomeTelao(r.tecnico), X + 12, yy);
+    // a tacinha e o número de títulos
+    const tx = X + W - 22;
+    px(c, "#ffd34d", tx, yy - 3, 5, 3); px(c, "#ffd34d", tx + 2, yy, 1, 2); px(c, "#c99a1e", tx + 1, yy + 2, 3, 1);
+    c.textAlign = "right"; c.fillStyle = "#ffe9a0";
+    c.fillText(String(r.titulos), X + W - 4, yy);
+  });
+  c.textAlign = "left";
+  // o reflexo que passa pela tela de vez em quando
+  const fase = (t % 6000) / 6000;
+  if (fase < 0.25) { const rx = X + Math.round(fase * 4 * (W + 20)) - 10; px(c, "#ffffff0d", Math.max(X, rx), Y + 10, Math.min(6, X + W - Math.max(X, rx)), H - 10); }
 }
 function drawCasinoBulbs(c, g, t) {
   const Y = g.y * TS + (g.h - 2) * TS - 2, X = g.x * TS - 3, W = g.w * TS + 6;
@@ -1792,6 +1905,7 @@ function frame(now) {
     for (let cy = Math.floor(camY / CHP); cy <= Math.floor((camY + viewH) / CHP); cy++) for (let cx = Math.floor(camX / CHP); cx <= Math.floor((camX + viewW) / CHP); cx++)
       if (cx >= 0 && cy >= 0 && cx * CH < MW && cy * CH < MH) ctx.drawImage(pedaco(cx, cy), cx * CHP, cy * CHP);
     drawFountainWater(ctx, now);
+    drawTelao(ctx, now);
     GAMES.forEach((g) => { if (g.casino) drawCasinoBulbs(ctx, g, now); });
   }
   if (player.entering) { // a porta abre
@@ -1826,8 +1940,9 @@ $("mini").classList.toggle("off", !miniOn);
 $("bMapa").onclick = () => { miniOn = !miniOn; if (!INT) $("mini").classList.toggle("off", !miniOn); $("bMapa").blur(); };
 setHere(lugarEm(player.x, player.y));
 requestAnimationFrame(frame);
+buscarEstante(); setInterval(buscarEstante, 60e3);
 if (location.hash === "#debug") window.__vila = {
-  GAMES, player, others, ground, solid, walkable, bfs,
+  GAMES, player, others, ground, solid, walkable, bfs, TELAO, ESTANTE, TERRENOS,
   get here() { return here; }, get myId() { return myId; },
   get camera() { return { x: camX, y: camY, scale: scale / dpr, tile: TS }; },
 };

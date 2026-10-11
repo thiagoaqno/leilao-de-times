@@ -1,6 +1,5 @@
-// Carreira: a Estante. Em cima, a estante da galera (todas as carreiras, solo e em grupo, guardada no banco para sempre:
-// GET /api/estante, bd.estante): o ranking de todos os técnicos com as taças de cada um e as últimas conquistas. Embaixo, esta
-// carreira: a estante de cada técnico da sala, as temporadas anteriores (E.arquivo, guardado pelo servidor quando cada temporada
+// Carreira: a Estante desta carreira (a estante da galera, de todas as carreiras, fica no telão da Vila: public/index.html,
+// GET /api/estante). A estante de cada técnico da sala, as temporadas anteriores (E.arquivo, guardado pelo servidor quando cada temporada
 // acaba) e o mural dos técnicos. Mostra o ranking de técnicos (pontos acumulados), e, para cada temporada: os prêmios (artilheiro, maior goleada, melhor
 // negócio), os campeões de cada competição (com "Rever a festa"), as tabelas, as chaves e os técnicos da temporada.
 const TEMP = { i: null, comp: null };
@@ -26,33 +25,6 @@ function tacasDaCarreira(arquivo) {
   }
   return por;
 }
-const ESTANTE = { dados: null, pedido: null, erro: false };
-function buscarEstante(forcar) {
-  if (ESTANTE.pedido && !forcar) return ESTANTE.pedido;
-  ESTANTE.pedido = fetch("/api/estante").then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status)))).then((d) => { ESTANTE.dados = d; ESTANTE.erro = false; return d; })
-    .catch(() => { ESTANTE.erro = true; ESTANTE.pedido = null; return null; });
-  return ESTANTE.pedido;
-}
-// a estante da galera: o pódio e o ranking de todos os técnicos de todas as carreiras, com as taças, e as últimas conquistas
-function estanteGaleraHTML(d, { compacta = false } = {}) {
-  if (!d) return `<p class="suave">${ESTANTE.erro ? "A estante não abriu agora. Tente de novo daqui a pouco." : "Abrindo a estante…"}</p>`;
-  if (!d.ranking.length) return `<p class="suave">Ninguém levantou uma taça ainda. O primeiro título de uma carreira (solo ou em grupo) estreia a estante da galera.</p>`;
-  const eu = typeof E !== "undefined" && E && E.tecnico ? E.tecnico.nome : (store.get("galera:name") || "");
-  const chave = (n) => String(n || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
-  const lista = compacta ? d.ranking.slice(0, 5) : d.ranking;
-  const linha = (t, i) => `<li class="est-linha${chave(t.tecnico) === chave(eu) ? " meu" : ""}${i < 3 ? ` podio-${i + 1}` : ""}"><span class="pos-rank">${i + 1}º</span>
-    ${t.clube && CLUBES[t.clube] ? escudo(t.clube, 1) : `<span class="est-sem-escudo">${ic("galera")}</span>`}<span class="est-nome"><b>${h(t.tecnico)}</b><small>${t.titulos} título${t.titulos === 1 ? "" : "s"}${t.vices ? ` · ${t.vices} vice${t.vices === 1 ? "" : "s"}` : ""} · ${t.carreiras} carreira${t.carreiras === 1 ? "" : "s"}</small></span>
-    ${compacta ? "" : prateleiraHTML(t.tacas)}<strong>${t.pontos}<small> pts</small></strong></li>`;
-  const ultimas = compacta ? "" : d.ultimas.length ? `<h3>Últimas conquistas</h3><ul class="est-ultimas">${d.ultimas.slice(0, 12).map((u) => `<li>${tacaHTML(u.competicao, u.nome)}<span><b>${h(u.tecnico)}</b><small>${CLUBES[u.clube] ? h(nomeClube(u.clube)) : ""} · ${u.ano}${u.modo === "grupo" ? " · em grupo" : ""}</small></span></li>`).join("")}</ul>` : "";
-  return `<ol class="est-ranking">${lista.map(linha).join("")}</ol>${ultimas}`;
-}
-function desenharEstanteGalera() { const el = $("estanteGalera"); if (el) el.innerHTML = estanteGaleraHTML(ESTANTE.dados); }
-// na tela inicial: o top 5 da estante, para quem chega ver quem manda
-function estanteNoInicio() {
-  const el = $("estanteInicio"); if (!el) return;
-  const desenhar = () => { const d = ESTANTE.dados; el.classList.toggle("hidden", !d || !d.ranking.length); if (d && d.ranking.length) el.innerHTML = `<h2>${ic("taca")} Estante da galera</h2><p class="suave">Os técnicos com mais taças em todas as carreiras.</p>${estanteGaleraHTML(d, { compacta: true })}`; };
-  desenhar(); buscarEstante(true).then(desenhar);
-}
 function rankingTecnicos(arquivo) {
   const por = new Map();
   for (const a of arquivo) for (const t of a.tecnicos || []) {
@@ -64,7 +36,9 @@ function rankingTecnicos(arquivo) {
 }
 function premiosHTML(a) {
   const p = a.premios || {}, cards = [];
-  if (p.artilheiro) cards.push(`<div class="premio"><span class="premio-ic">${ic("chuteira")}</span><small>Artilheiro</small><b>${h(p.artilheiro.nome)}</b><span>${escudo(p.artilheiro.clube, 1)} ${p.artilheiro.gols} gols</span></div>`);
+  // o artilheiro é o da liga do seu clube (as competições não se misturam); arquivos antigos, sem a artilharia por competição, mostram o da temporada
+  const liga = a.competicoes[ligaDoClubeCliente()], daLiga = !!(liga && liga.artilharia), art = daLiga ? liga.artilharia[0] : p.artilheiro;
+  if (art) cards.push(`<div class="premio"><span class="premio-ic">${ic("chuteira")}</span><small>Artilheiro${daLiga ? ` · ${h(liga.nome)}` : ""}</small><b>${h(art.nome)}</b><span>${escudo(art.clube, 1)} ${art.gols} gols</span></div>`);
   if (p.goleada) cards.push(`<div class="premio"><span class="premio-ic">${ic("bola")}</span><small>Maior goleada</small><b>${escudo(p.goleada.casa, 1)} ${p.goleada.placar[0]} × ${p.goleada.placar[1]} ${escudo(p.goleada.fora, 1)}</b><span>${h(p.goleada.competicao)}</span></div>`);
   if (p.negocio) cards.push(`<div class="premio"><span class="premio-ic">${ic("maleta")}</span><small>Melhor negócio</small><b>${h(p.negocio.nome)}</b><span>${escudo(p.negocio.de, 1)} lucrou ${dinheiro(p.negocio.lucro)}</span></div>`);
   return cards.length ? `<div class="premios">${cards.join("")}</div>` : "";
@@ -72,7 +46,7 @@ function premiosHTML(a) {
 function campeoesHTML(a) {
   const ids = Object.keys(a.competicoes).sort((x, y) => ordemComp(x, a.competicoes[x]) - ordemComp(y, a.competicoes[y]));
   return `<div class="campeoes-grade">${ids.map((id) => { const c = a.competicoes[id];
-    return `<div class="campeao-card${c.campeao === E.clube ? " meu" : ""}">${escudo(c.campeao, 2)}<span><small>${h(c.nome)}</small><b>${h(nomeClube(c.campeao))}</b><em>vice: ${h(nomeClube(c.vice))}</em></span>${c.festa ? `<button class="discreto" data-festa-arq="${id}" title="Rever a festa">${ic("taca")}</button>` : ""}</div>`; }).join("")}</div>`;
+    return `<div class="campeao-card${c.campeao === E.clube ? " meu" : ""}">${escudo(c.campeao, 2)}<span><small>${h(c.nome)}</small><b>${h(nomeClube(c.campeao))}</b>${c.vice ? `<em>vice: ${h(nomeClube(c.vice))}</em>` : ""}</span>${c.festa ? `<button class="discreto" data-festa-arq="${id}" title="Rever a festa">${ic("taca")}</button>` : ""}</div>`; }).join("")}</div>`;
 }
 function tecnicosTemporadaHTML(a) {
   if (!a.tecnicos || !a.tecnicos.length) return "";
@@ -82,19 +56,18 @@ function tabelaArquivoHTML(a, id) {
   const c = a.competicoes[id]; if (!c) return "";
   const rows = (tab) => tab.map((l) => ({ ...l, ultimos: [] }));
   const corpo = c.tipo === "liga" ? tabelaHTML(rows(c.tabela)) : `${(c.grupos || []).map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(rows(g.tabela))}</section>`).join("")}${chaveHTML(c)}`;
-  return `<div class="abas-competicoes">${Object.keys(a.competicoes).sort((x, y) => ordemComp(x, a.competicoes[x]) - ordemComp(y, a.competicoes[y])).map((k) => `<button class="${k === id ? "ativa" : ""}" data-temp-comp="${k}">${h(a.competicoes[k].nome)}</button>`).join("")}</div>${corpo}`;
+  const artilharia = c.artilharia && c.artilharia.length ? `<h3>Artilharia · ${h(c.nome)}</h3><ol class="artilharia">${c.artilharia.map((x) => `<li class="${x.clube === E.clube ? "meu" : ""}"><img class="pix" src="${retrato(x.id)}" alt=""><span>${h(x.nome)}<small>${h(nomeClube(x.clube))}</small></span><b>${x.gols}</b></li>`).join("")}</ol>` : "";
+  return `<div class="abas-competicoes">${Object.keys(a.competicoes).sort((x, y) => ordemComp(x, a.competicoes[x]) - ordemComp(y, a.competicoes[y])).map((k) => `<button class="${k === id ? "ativa" : ""}" data-temp-comp="${k}">${h(a.competicoes[k].nome)}</button>`).join("")}</div>${corpo}${artilharia}`;
 }
 function telaTemporadas() {
   const corpo = $("temporadasCorpo"), arquivo = E.arquivo || [];
-  const galera = `<section class="quadro estante-galera"><div class="linha-titulo"><h3>${ic("taca")} Estante da galera</h3><small class="suave">todas as carreiras, para sempre</small></div><div id="estanteGalera">${estanteGaleraHTML(ESTANTE.dados)}</div></section>`;
-  buscarEstante(true).then(desenharEstanteGalera);
-  if (!arquivo.length) { corpo.innerHTML = `${galera}<section class="quadro"><p class="suave">Quando a primeira temporada desta carreira acabar, os campeões, os prêmios, as tabelas e o ranking dos técnicos ficam guardados aqui, e as taças vão para a estante.</p></section>`; return; }
+  if (!arquivo.length) { corpo.innerHTML = `<section class="quadro"><p class="suave">Quando a primeira temporada desta carreira acabar, os campeões, os prêmios, as tabelas e o ranking dos técnicos ficam guardados aqui, e as taças vão para a estante da galera, no telão da Vila.</p></section>`; return; }
   if (TEMP.i == null || !arquivo[TEMP.i]) TEMP.i = arquivo.length - 1;
   const a = arquivo[TEMP.i];
   if (!TEMP.comp || !a.competicoes[TEMP.comp]) TEMP.comp = Object.keys(a.competicoes).includes(ligaDoClubeCliente()) ? ligaDoClubeCliente() : Object.keys(a.competicoes)[0];
   const rank = rankingTecnicos(arquivo);
   const tacas = tacasDaCarreira(arquivo);
-  corpo.innerHTML = `${galera}<section class="quadro"><h3>Nesta carreira</h3><p class="suave">Pontos: título de liga 10, vice 6, 3º 4; copas 5 (Libertadores, Champions e mundiais 8) e metade no vice.</p>
+  corpo.innerHTML = `<section class="quadro"><h3>Nesta carreira</h3><p class="suave">Pontos: título de liga 10, vice 6, 3º 4; copas 5 (Libertadores, Champions e mundiais 8) e metade no vice.</p>
       <ol class="ranking-tecnicos">${rank.map((t, i) => `<li class="${t.clube === E.clube ? "meu" : ""}"><span class="pos-rank">${i + 1}º</span>${escudo(t.clube, 1)}<span><b>${h(t.tecnico)}</b><small>${h(nomeClube(t.clube))} · ${t.temporadas} temporada${t.temporadas === 1 ? "" : "s"}</small></span>${prateleiraHTML(Object.values((tacas.get(t.clube) || { tacas: {} }).tacas))}<span class="rank-tit">${ic("taca")} ${t.titulos}${t.vices ? ` <small>· ${t.vices} vice${t.vices === 1 ? "" : "s"}</small>` : ""}</span><strong>${t.pontos}</strong></li>`).join("")}</ol></section>
     <div class="abas-competicoes abas-temporadas">${arquivo.map((x, i) => `<button class="${i === TEMP.i ? "ativa" : ""}" data-temp-i="${i}">${x.ano}</button>`).join("")}</div>
     <section class="quadro"><h3>Temporada ${a.ano}</h3>${premiosHTML(a)}<h3>Campeões</h3>${campeoesHTML(a)}${tecnicosTemporadaHTML(a)}</section>

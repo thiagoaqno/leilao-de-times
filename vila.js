@@ -8,7 +8,7 @@
 const G = require("./galeramon.js");
 const { rid, limparNome: cleanName } = require("./salas.js");
 const MW = 320, MH = 260, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
-const OX = 140, OY = 100; // onde fica a vila dentro do mapa grande
+const OX = 131, OY = 100; // onde fica a vila dentro do mapa grande
 const ZONAS = ["", "nubank", "neoquimica", "morumbis", "belmiro"]; // na rua ("") ou dentro de um estádio
 const zonaDe = (z) => (ZONAS.includes(z) ? z : "");
 const INVITE_MS = 20000, CHOICE_MS = 45000, RECONNECT_MS = +process.env.VILA_RECONNECT_MS || 45000;
@@ -127,7 +127,7 @@ module.exports = function attachVila(io, ginasio) {
         me = { id: rid(6), token, sock: socket.id, battle: null, offline: false };
         players.set(me.id, me); byToken.set(token, me);
       }
-      Object.assign(me, { name, look, x: clamp(int(d.x, OX + 19), 0, MW - 1), y: clamp(int(d.y, OY + 23), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down", z: zonaDe(d.z), car: !!d.car });
+      Object.assign(me, { name, look, x: clamp(int(d.x, OX + 24), 0, MW - 1), y: clamp(int(d.y, OY + 26), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down", z: zonaDe(d.z), car: !!d.car });
       socket.emit("me", { id: me.id, token });
       socket.emit("all", [...players.values()].filter((p) => p !== me && !p.offline).map(pub));
       tellOthers(me, fresh ? "join" : "update");

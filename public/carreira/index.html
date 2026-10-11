@@ -46,7 +46,6 @@
       <div class="linha"><input id="cCodigo" maxlength="20" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH-JKLM" aria-label="Código de recuperação"><button id="btnRecuperar">Entrar</button></div>
       <p id="erroCodigo" class="erro" role="alert"></p>
     </div>
-    <section id="estanteInicio" class="quadro estante-inicio hidden" aria-label="Estante da galera"></section>
     <a class="quadro convite-grupo" href="?grupo=1"><span class="sobre">Novo</span><b>Carreira em grupo</b><span class="suave">A turma toda no mesmo mundo, cada um com o seu clube.</span></a>
   </section>
 
@@ -98,32 +97,36 @@
     <p class="suave centro"><a href="/carreira/">Prefere jogar sozinho? Carreira solo</a></p>
   </section>
 
-  <!-- a sede: o hub da carreira, no jeito da central de carreira dos jogos de futebol (sede-hub.js): o clube e os números no
-       topo, as abas e os painéis. Central: avançar (o próximo jogo), a gestão, o desenvolvimento do jogador, as notícias e a
-       caixa de entrada. Meu time: o painel do time e as finanças. Temporada: a tabela, o último jogo e o histórico. -->
+  <!-- a sede: o hub da carreira, no jeito da central de carreira do FIFA 16 (sede-hub.js): o clube e os números no topo, a barra com
+       as abas e os atalhos da gestão (os blocos que crescem até a tela, zoom.js) e os painéis. Central: jogar a partida, como jogar
+       e a prévia do jogo em cima; o desenvolvimento do jogador, as notícias e a tabela embaixo; depois a caixa de entrada, o último
+       jogo e a turma. Meu time: o painel do time e as finanças. Temporada: a tabela, o último jogo e o histórico. -->
   <section id="sede" class="tela hidden hub" data-aba="central">
     <header id="cabecalho" class="cabecalho hub-topo"></header>
-    <nav id="abasSede" class="hub-abas" role="tablist" aria-label="Partes da sede">
-      <button role="tab" data-aba="central" aria-selected="true">Central</button><button role="tab" data-aba="time" aria-selected="false">Meu time</button><button role="tab" data-aba="temporada" aria-selected="false">Temporada</button>
-    </nav>
+    <div class="hub-barra">
+      <nav id="abasSede" class="hub-abas" role="tablist" aria-label="Partes da sede">
+        <button role="tab" data-aba="central" aria-selected="true">Central</button><button role="tab" data-aba="time" aria-selected="false">Meu time</button><button role="tab" data-aba="temporada" aria-selected="false">Temporada</button>
+      </nav>
+      <nav class="hub-tiles" aria-label="Gestão do time">
+        <button class="tile tile-elenco" data-ir="elenco"><span class="tile-ic" data-ic="campo"></span><span class="tile-txt"><b>Elenco e tática</b><small>Prancheta, titulares e formação</small></span><span class="tile-dado" id="tileElenco"></span></button>
+        <button class="tile tile-mercado" data-ir="mercado"><span class="tile-ic" data-ic="maleta"></span><span class="tile-txt"><b>Mercado</b><small id="atalhoJanela">Contratar e vender</small></span><span class="tile-dado" id="tileMercado"></span></button>
+        <button class="tile" data-ir="tabela"><span class="tile-ic" data-ic="taca"></span><span class="tile-txt"><b>Tabela</b><small>Ligas, copas e artilharia</small></span><span class="tile-dado" id="tileTabela"></span></button>
+        <button class="tile" data-ir="calendario"><span class="tile-ic" data-ic="relogio"></span><span class="tile-txt"><b>Calendário</b><small>Ligas e copas</small></span><span class="tile-dado" id="tileCalendario"></span></button>
+        <button class="tile" id="tileTrocas" data-ir="trocas"><span class="tile-ic" data-ic="troca"></span><span class="tile-txt"><b>Trocas</b><small>Entre técnicos da sala</small></span><span class="tile-dado" id="dadoTrocas"></span></button>
+        <button class="tile tile-clube" id="tileClube" data-ir="clube"><span class="tile-ic" data-ic="coroa"></span><span class="tile-txt"><b>Clube</b><small id="atalhoClube">Contratos, base, estrutura e legado</small></span><span class="tile-dado" id="dadoClube"></span></button>
+        <button class="tile" data-ir="temporadas"><span class="tile-ic" data-ic="taca"></span><span class="tile-txt"><b>Estante</b><small>Troféus, campeões e ranking</small></span><span class="tile-dado" id="dadoTemporadas"></span></button>
+      </nav>
+    </div>
     <div class="hub-grade">
       <div class="hub-principal">
         <section class="quadro destaque hub-jogo" id="cartaoJogo" data-na-aba="central" aria-label="Avançar: próxima partida"></section>
         <section class="quadro tv-painel hidden" id="cartaoAoVivo" data-na-aba="central" aria-label="Rodada da turma ao vivo" aria-live="off"></section>
         <section class="quadro hub-dev" id="cartaoDesenvolvimento" data-na-aba="central" aria-label="Desenvolvimento do jogador"></section>
         <section class="quadro painel-time" id="painelTime" data-na-aba="time" aria-label="Painel do time"></section>
-        <section class="quadro" id="cartaoTabela" data-na-aba="temporada"></section>
+        <section class="quadro" id="cartaoTabela" data-na-aba="central temporada"></section>
+        <section class="quadro" id="cartaoArtilharia" data-na-aba="temporada" aria-label="Artilharia"></section>
       </div>
       <div class="hub-centro">
-        <nav class="hub-tiles" data-na-aba="central" aria-label="Gestão do time">
-          <button class="tile tile-elenco" data-ir="elenco"><span class="tile-ic" data-ic="campo"></span><span class="tile-txt"><b>Elenco e tática</b><small>Prancheta, titulares e formação</small></span><span class="tile-dado" id="tileElenco"></span></button>
-          <button class="tile tile-mercado" data-ir="mercado"><span class="tile-ic" data-ic="maleta"></span><span class="tile-txt"><b>Mercado</b><small id="atalhoJanela">Contratar e vender</small></span><span class="tile-dado" id="tileMercado"></span></button>
-          <button class="tile" data-ir="tabela"><span class="tile-ic" data-ic="taca"></span><span class="tile-txt"><b>Tabela</b><small>Ligas, copas e artilharia</small></span><span class="tile-dado" id="tileTabela"></span></button>
-          <button class="tile" data-ir="calendario"><span class="tile-ic" data-ic="relogio"></span><span class="tile-txt"><b>Calendário</b><small>Ligas e copas</small></span><span class="tile-dado" id="tileCalendario"></span></button>
-          <button class="tile" id="tileTrocas" data-ir="trocas"><span class="tile-ic" data-ic="troca"></span><span class="tile-txt"><b>Trocas</b><small>Entre técnicos da sala</small></span><span class="tile-dado" id="dadoTrocas"></span></button>
-          <button class="tile tile-clube" id="tileClube" data-ir="clube"><span class="tile-ic" data-ic="coroa"></span><span class="tile-txt"><b>Clube</b><small id="atalhoClube">Contratos, base, estrutura e legado</small></span><span class="tile-dado" id="dadoClube"></span></button>
-          <button class="tile" data-ir="temporadas"><span class="tile-ic" data-ic="taca"></span><span class="tile-txt"><b>Estante</b><small>Troféus, campeões e ranking</small></span><span class="tile-dado" id="dadoTemporadas"></span></button>
-        </nav>
         <section class="quadro hub-noticias" id="cartaoFeed" data-na-aba="central" aria-label="Notícias"></section>
         <section class="quadro" id="cartaoFinancas" data-na-aba="time temporada"></section>
       </div>
@@ -209,7 +212,7 @@
     <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2 id="tituloTabela">Tabela</h2></div>
     <div class="quadro"><div id="tTabela" class="rolagem"></div><p class="legenda"><i class="z campeao"></i>Campeão <i class="z libertadores"></i>Libertadores <i class="z sulamericana"></i>Sul-Americana <i class="z rebaixamento"></i>Rebaixamento</p></div>
     <div class="duas">
-      <div class="quadro"><h3>Artilharia</h3><div id="tArtilharia"></div></div>
+      <div class="quadro"><h3 id="tituloArtilharia">Artilharia</h3><div id="tArtilharia"></div></div>
       <div class="quadro"><h3 id="tituloRodada">Última rodada</h3><div id="tRodada"></div></div>
     </div>
   </section>

@@ -321,7 +321,8 @@ function artePost(post) {
 }
 // quando um escudo chega, as artes que saíram com o brasão em pixel são refeitas e trocadas na tela
 function refazerArtes() {
-  for (const p of E && E.feed ? E.feed : []) if (!artes.has(p.id)) artePost(p);
+  if (!E || !E.feed) return; // saiu da carreira: as manchetes que ficaram na página não têm mais de onde vir
+  for (const p of E.feed) if (!artes.has(p.id)) artePost(p);
   for (const img of document.querySelectorAll("img[data-arte]")) { const p = (E.feed || []).find((x) => x.id === img.dataset.arte); if (p) { const u = artePost(p); if (img.src !== u) img.src = u; } }
 }
 
@@ -355,60 +356,22 @@ const EDITORIA = { contratacao: "Transferência", venda: "Transferência", vitor
   classificado: "Copa", eliminado: "Copa", tecnico: "Clube", base: "Base", aposentadoria: "Adeus", tabela: "Tabela", gol: "Gol", goleada: "Resultado",
   lesao: "Departamento médico", cartao: "Arbitragem", evento: "Bastidores", disputa: "Rumor", hall: "Hall da Fama" };
 const editoriaDe = (p) => EDITORIA[p.tipo] || "Bastidores";
-// na sede: as notícias no formato do Instagram (o post inteiro: arte, curtir, legenda e comentários), um de cada vez, inteiro na caixa:
-// a arte encolhe para a legenda caber sem rolar. Passa sozinho para o próximo a cada 10 segundos; as setas, os pontinhos, as teclas ← →
-// e o arrastar para o lado trocam na mão. Passar o mouse ou tocar segura por 10 s; "menos movimento" tira a troca sozinha.
-const INTERVALO_FEED = 10000, FEED_NA_SEDE = 12;
-let relogioFeed = null;
-function rolarFeed(para) { // vai para o post de índice `para` (de volta ao primeiro depois do último)
-  const rol = document.getElementById("feedRolagem"); if (!rol) return;
-  const posts = rol.querySelectorAll(".post"); if (!posts.length) return;
-  rol.dataset.atual = ((para % posts.length) + posts.length) % posts.length; marcarFeed();
-}
-function marcarFeed() { // o post de agora aparece e o pontinho dele acende
-  const rol = document.getElementById("feedRolagem"); if (!rol) return;
-  const i = +rol.dataset.atual || 0;
-  rol.querySelectorAll(".post").forEach((p, k) => { p.classList.toggle("atual", k === i); p.toggleAttribute("inert", k !== i); });
-  document.querySelectorAll("#feedPontos button").forEach((p, k) => { p.classList.toggle("on", k === i); p.setAttribute("aria-current", k === i ? "true" : "false"); });
-  const n = document.getElementById("feedNumero"); if (n) n.textContent = `${i + 1} de ${rol.querySelectorAll(".post").length}`;
-}
-let seguraFeed = 0;
-const segurarFeed = (ms = INTERVALO_FEED) => { seguraFeed = Date.now() + ms; };
-function iniciarFeedAutomatico() {
-  clearInterval(relogioFeed);
-  const rol = document.getElementById("feedRolagem"); if (!rol) return;
-  for (const ev of ["pointerenter", "pointerdown", "focusin", "touchstart"]) rol.addEventListener(ev, () => segurarFeed(), { passive: true });
-  rol.addEventListener("pointerleave", () => segurarFeed(2000));
-  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  relogioFeed = setInterval(() => {
-    if (document.hidden || typeof telaAtual === "undefined" || telaAtual !== "sede" || !document.getElementById("feedRolagem")) return;
-    if (Date.now() < seguraFeed) return;
-    rolarFeed(+(document.getElementById("feedRolagem").dataset.atual || 0) + 1);
-  }, INTERVALO_FEED);
-}
-function ligarFeedNaMao(caixa, rol) { // setas, pontinhos, teclado e o arrastar para o lado
-  const passo = (d) => { segurarFeed(); rolarFeed((+rol.dataset.atual || 0) + d); };
-  caixa.querySelector("[data-feed-passo='-1']").addEventListener("click", () => passo(-1));
-  caixa.querySelector("[data-feed-passo='1']").addEventListener("click", () => passo(1));
-  caixa.querySelectorAll("#feedPontos button").forEach((b, k) => b.addEventListener("click", () => { segurarFeed(); rolarFeed(k); }));
-  rol.addEventListener("keydown", (e) => { if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); passo(1); } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); passo(-1); } });
-  let x0 = null, y0 = 0;
-  rol.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") { x0 = e.clientX; y0 = e.clientY; } });
-  rol.addEventListener("pointerup", (e) => { if (x0 === null) return; const dx = e.clientX - x0, dy = e.clientY - y0; x0 = null; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) passo(dx < 0 ? 1 : -1); });
-  rol.addEventListener("pointercancel", () => { x0 = null; });
-}
+// na sede: as notícias no jeito da central do FIFA 16, uma lista de manchetes (a arte pequena, a editoria e o texto), quatro por
+// página; os pontinhos trocam a página e cada manchete abre o feed inteiro (a tela Notícias, com os posts no formato do Instagram)
+const FEED_NA_SEDE = 12, MANCHETES_POR_PAGINA = 4;
+let paginaFeed = 0;
 function feedNaSede() {
-  const caixa = $("cartaoFeed"), posts = (E.feed || []).slice(0, FEED_NA_SEDE);
-  const assinatura = posts.map((p) => p.id + (curtidas()[p.id] ? "*" : "")).join("|");
-  if (caixa.dataset.assinatura === assinatura && caixa.querySelector("#feedRolagem")) return; // nada mudou: mantém onde está
-  const mesmoTopo = caixa.dataset.topo === (posts[0] && posts[0].id), atual = mesmoTopo ? Math.min(posts.length - 1, +((caixa.querySelector("#feedRolagem") || {}).dataset?.atual || 0)) : 0;
-  caixa.dataset.assinatura = assinatura; caixa.dataset.topo = posts[0] ? posts[0].id : "";
-  const seta = (d, rot) => `<button class="insta-seta" data-feed-passo="${d}" aria-label="${rot}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d < 0 ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"}"/></svg></button>`;
+  const caixa = $("cartaoFeed"), posts = (E.feed || []).slice(0, FEED_NA_SEDE), paginas = Math.max(1, Math.ceil(posts.length / MANCHETES_POR_PAGINA));
+  if (caixa.dataset.topo !== (posts[0] ? posts[0].id : "")) paginaFeed = 0; // chegou notícia nova: volta para a primeira página
+  caixa.dataset.topo = posts[0] ? posts[0].id : "";
+  paginaFeed = Math.min(paginaFeed, paginas - 1);
+  const pagina = posts.slice(paginaFeed * MANCHETES_POR_PAGINA, (paginaFeed + 1) * MANCHETES_POR_PAGINA);
   caixa.innerHTML = `<div class="linha-titulo"><h3>Notícias</h3><button class="link" data-ir="feed">Ver todas</button></div>
-    ${posts.length ? `<div class="insta"><div id="feedRolagem" class="insta-rolagem" data-atual="${atual}" tabindex="0" aria-roledescription="carrossel" aria-label="Notícias (passam sozinhas a cada 10 segundos; use as setas para trocar)">${posts.map((p) => postHTML(p)).join("")}</div>
-      <div class="insta-rodape">${seta(-1, "Notícia anterior")}<span id="feedPontos">${posts.map((_, k) => `<button aria-label="Notícia ${k + 1}"></button>`).join("")}</span><small id="feedNumero" class="suave"></small>${seta(1, "Próxima notícia")}</div></div>`
+    ${posts.length ? `<ul class="manchetes">${pagina.map((p) => `<li><button class="manchete" data-ir="feed"><img class="pix" data-arte="${h(p.id)}" src="${artePost(p)}" alt="">
+      <span><small>${h(editoriaDe(p))} · R${(p.rl ?? p.rodada) + 1}</small><b>${h(p.texto)}</b></span></button></li>`).join("")}</ul>
+      ${paginas > 1 ? `<div class="pontos-hub" role="group" aria-label="Páginas das notícias">${Array.from({ length: paginas }, (_, k) => `<button data-pagina-feed="${k}" aria-label="Página ${k + 1}" aria-current="${k === paginaFeed}"></button>`).join("")}</div>` : ""}`
       : `<p class="suave">As notícias aparecem aqui depois do primeiro jogo.</p>`}`;
-  if (posts.length) { const rol = $("feedRolagem"); marcarFeed(); ligarFeedNaMao(caixa, rol); iniciarFeedAutomatico(); }
+  for (const b of caixa.querySelectorAll("[data-pagina-feed]")) b.onclick = () => { paginaFeed = +b.dataset.paginaFeed; feedNaSede(); caixa.querySelector(`[data-pagina-feed="${paginaFeed}"]`).focus(); };
 }
 // curtir (com o pulinho do coração; com "menos movimento", sem o pulinho)
 document.addEventListener("click", (e) => {
@@ -417,7 +380,7 @@ document.addEventListener("click", (e) => {
   if (c[id]) delete c[id]; else c[id] = true;
   store.set("carreira:curtidas", c);
   const post = (E.feed || []).find((p) => p.id === id); if (!post) return;
-  const art = b.closest(".post"); art.outerHTML = postHTML(post); marcarFeed();
+  const art = b.closest(".post"); art.outerHTML = postHTML(post);
 });
 document.addEventListener("dblclick", (e) => { // dois toques na arte também curtem
   const a = e.target.closest(".post .arte"); if (!a) return;

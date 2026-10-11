@@ -196,7 +196,6 @@ function telaInicio() {
   desenharTemporadas();
   desenharDinheiro();
   mostrarTela("inicio");
-  if (typeof estanteNoInicio === "function") estanteNoInicio(); // temporadas.js: o top 5 da estante da galera
 }
 // a ordem das ligas na escolha do clube: a Série B logo depois da Série A
 const chaveLiga = (c) => (c.liga === "serieb-2026" ? "brasileirao-2026~" : c.liga);
