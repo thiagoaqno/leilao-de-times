@@ -72,3 +72,24 @@ test("os gols de jogos de humanos não contam duas vezes (já estão em save.gol
   const envolvidos = new Set(Object.keys(save.resultadosFixos).flatMap((id) => id.split(":").slice(-2))), v = G.vistaDe(save, "flamengo");
   assert.ok(Object.keys(G.golsDoMundo(save, limite)).some((pid) => !envolvidos.has(G.donoDe(v, pid))), "tem artilheiro de jogo só do computador");
 });
+
+test("cada competição tem a sua artilharia: os gols de uma não entram na outra, e os de humanos vão para a competição do jogo", () => {
+  const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "A" }, { clube: "liverpool", nome: "B" }], { temporadas: 1, aporte: 0 });
+  for (let i = 0; i < 6; i++) {
+    const p = G.proximaRodadaGrupo(save); G.comecarRodadaGrupo(save);
+    for (const j of p.jogos) G.jogarNaHora(save, j);
+    G.fecharRodadaGrupo(save);
+  }
+  const limite = G.proximaRodadaGrupo(save).semana, ids = Object.keys(save.competicoes);
+  // por competição, cada uma soma só os gols dos seus jogos (de humanos e do computador); somadas, dão o total
+  for (const id of ids) {
+    const esperado = save.calendarioMundo.filter((j) => j.competicao === id && j.semana < limite).reduce((s, j) => s + j.placar[0] + j.placar[1], 0);
+    assert.strictEqual(soma(G.golsDoMundo(save, limite, id)), esperado, id);
+  }
+  assert.strictEqual(ids.reduce((s, id) => s + soma(G.golsDoMundo(save, limite, id)), 0), soma(G.golsDoMundo(save, limite)));
+  assert.strictEqual(Object.values(save.golsComp).reduce((s, m) => s + soma(m), 0), soma(save.gols), "os gols de humanos ficam na competição do jogo");
+  // o estado manda a lista de cada competição, do maior para o menor
+  const e = G.estado(G.vistaDe(save, "flamengo"));
+  assert.ok((e.artilharias["brasileirao-2026"] || []).length > 0);
+  for (const lista of Object.values(e.artilharias)) assert.ok(lista.every((a, i, l) => i === 0 || l[i - 1].gols >= a.gols));
+});

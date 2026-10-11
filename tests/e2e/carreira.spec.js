@@ -195,14 +195,12 @@ for (const tela of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) 
     await expect(page.locator("#posJogo .pj-dinheiro .extrato li").first()).toBeVisible();
     await page.click("#pjContinuar");
     await expect(page.locator("#cartaoUltimo .confronto")).toBeVisible();
-    // as notícias na sede: o post inteiro cabe na caixa (a legenda aparece sem rolar) e as setas trocam de post
-    const legenda = page.locator("#feedRolagem .post.atual .legenda");
-    await expect(legenda).toBeVisible();
-    const [caixaFeed, caixaLegenda] = await Promise.all([page.locator("#feedRolagem").boundingBox(), legenda.boundingBox()]);
-    expect(caixaLegenda.y + caixaLegenda.height).toBeLessThanOrEqual(caixaFeed.y + caixaFeed.height + 1);
-    if (await page.locator("#feedRolagem .post").count() > 1) {
-      await page.click('#cartaoFeed [data-feed-passo="1"]');
-      await expect(page.locator("#feedRolagem")).toHaveAttribute("data-atual", "1");
+    // as notícias na sede: as manchetes com a arte, e os pontinhos trocam a página
+    await expect(page.locator("#cartaoFeed .manchete").first()).toBeVisible();
+    await expect(page.locator("#cartaoFeed .manchete img").first()).toHaveAttribute("src", /^data:image\/png/);
+    if (await page.locator("#cartaoFeed [data-pagina-feed]").count() > 1) {
+      await page.click('#cartaoFeed [data-pagina-feed="1"]');
+      await expect(page.locator('#cartaoFeed [data-pagina-feed="1"]')).toHaveAttribute("aria-current", "true");
     }
     // as notícias: o feed com a arte de cada post
     await page.click('#sede [data-ir="feed"]');
@@ -308,7 +306,7 @@ test("carreira em grupo: sala, clubes e o hub de cada um", async ({ browser }) =
   await expect(a.locator("#cabecalho h1")).toHaveText("Flamengo");
   await expect(b.locator("#cabecalho h1")).toHaveText("Liverpool");
   await expect(a.locator(".hub-tiles .tile")).toHaveCount(7);
-  await expect(a.locator("#cartaoFeed .post").first()).toBeVisible();
+  await expect(a.locator("#cartaoFeed .manchete").first()).toBeVisible();
   // só o anfitrião começa a rodada
   await expect(b.locator("#btnJogar")).toBeDisabled();
   await expect(a.locator("#btnJogar")).toBeEnabled();

@@ -23,7 +23,7 @@ $("abasSede").addEventListener("keydown", (e) => { // as setas andam entre as ab
 });
 mostrarAbaSede(abaSede);
 
-// a faixa "Avançar": o último jogo e os próximos, um por quadradinho (como os dias do calendário); o próximo em laranja
+// a faixa do calendário, na prévia do jogo: o último jogo e os próximos, um por quadradinho (como os dias do calendário); o próximo em laranja
 const curtoDe = (id) => (CLUBES[id] && CLUBES[id].curto) || nomeClube(id).slice(0, 3).toUpperCase();
 function faixaAvancarHTML() {
   const jogos = [...E.meus].sort((a, b) => (a.semana ?? a.rodada) - (b.semana ?? b.rodada));
@@ -37,8 +37,8 @@ function faixaAvancarHTML() {
       <span class="av-adv">${escudo(adv, 2)}<b>${h(curtoDe(adv))}</b><i>${j.casa === E.clube ? "casa" : "fora"}</i></span>
       ${j.placar ? `<span class="av-res ${r}">${j.casa === E.clube ? placarTxt(j.placar) : placarTxt([j.placar[1], j.placar[0]])}</span>` : atual ? `<span class="av-res prox">${ic("apito")}</span>` : ""}</li>`;
   };
-  return `<div class="av-topo"><h3 class="fx-titulo">Avançar</h3><span class="av-ano">Temporada ${E.ano}</span></div>
-    ${lista.length ? `<ol class="av-faixa" aria-label="Próximos compromissos">${lista.map(cel).join("")}</ol>` : ""}`;
+  return lista.length ? `<div class="av-topo"><small>Calendário</small><small class="av-ano">Temporada ${E.ano}</small></div>
+    <ol class="av-faixa" aria-label="Próximos compromissos">${lista.map(cel).join("")}</ol>` : "";
 }
 
 // o painel "Desenvolvimento do jogador": a foto, a nota com a evolução da carreira, a idade, o valor e os seis atributos
@@ -69,4 +69,20 @@ function desenvolvimentoNaSede() {
     <dl class="dev-atributos">${atr.map(([nome, v]) => `<div><dt>${h(nome)}</dt><dd>${v}${bonus ? `<small class="${bonus > 0 ? "sobe" : "cai"}">${bonus > 0 ? "+" : ""}${bonus}</small>` : ""}</dd></div>`).join("")}</dl>`;
   for (const b of box.querySelectorAll("[data-dev]")) b.onclick = () => { devSede += +b.dataset.dev; desenvolvimentoNaSede(); box.querySelector(`[data-dev="${b.dataset.dev}"]`).focus(); };
   box.querySelector("[data-ficha]").onclick = () => abrirFicha(pid);
+}
+
+// o painel Artilharia (aba Temporada): os artilheiros de uma competição por vez, escolhida nas abinhas (as do seu clube primeiro;
+// começa na liga). Cada competição tem a sua lista (estado().artilharias); sem o calendário mundial, só a lista da liga.
+let compArtilharia = null;
+function artilhariaNaSede() {
+  const box = $("cartaoArtilharia"); if (!box) return;
+  const todas = E.artilharias || {}, minhas = new Set([E.liga, ...E.meus.map((j) => j.competicao)].filter(Boolean));
+  const ids = E.competicoes ? Object.keys(E.competicoes).filter((id) => minhas.has(id) || todas[id]).sort((a, b) => minhas.has(b) - minhas.has(a)) : [];
+  if (!ids.includes(compArtilharia)) compArtilharia = ids.includes(E.liga) ? E.liga : ids[0] || null;
+  const lista = compArtilharia ? todas[compArtilharia] || [] : E.artilharia;
+  box.innerHTML = `<div class="linha-titulo"><h3>Artilharia</h3><button class="link" data-ir="tabela">Ver tabela</button></div>
+    ${ids.length > 1 ? `<div class="abas-competicoes" role="group" aria-label="Competição">${ids.map((id) => `<button class="${id === compArtilharia ? "ativa" : ""}" data-art-comp="${id}" aria-pressed="${id === compArtilharia}">${h(E.competicoes[id].nome)}</button>`).join("")}</div>` : ""}
+    ${artilhariaHTML(lista)}`;
+  box.querySelector("[data-ir]").addEventListener("click", () => { if (compArtilharia) competicaoTabela = compArtilharia; }); // a Tabela abre na mesma competição
+  for (const b of box.querySelectorAll("[data-art-comp]")) b.onclick = () => { compArtilharia = b.dataset.artComp; artilhariaNaSede(); box.querySelector(`[data-art-comp="${compArtilharia}"]`).focus(); };
 }

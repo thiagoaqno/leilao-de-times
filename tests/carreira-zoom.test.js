@@ -8,7 +8,8 @@ const vm = require("node:vm");
 const fonte = fs.readFileSync(path.join(__dirname, "../public/carreira/zoom.js"), "utf8");
 // o navegador de mentira: o cabeçalho, a lista das chamadas de mostrarTela e se o sistema pede menos movimento
 function mundo({ telaAtual = "sede", reduz = false } = {}) {
-  const voltar = { textContent: "← Vila", href: "/", dataset: {}, setAttribute(k, v) { this[k] = v; } };
+  const voltar = { textContent: "← Vila", href: "/", dataset: {}, setAttribute(k, v) { this[k] = v; }, classes: new Set() };
+  voltar.classList = { toggle: (c, sim) => (sim ? voltar.classes.add(c) : voltar.classes.delete(c)), contains: (c) => voltar.classes.has(c) };
   const chamadas = [];
   const ctx = { document: { addEventListener() {}, getElementById: () => null, querySelector: (s) => (s === "#barra .voltar" ? voltar : null), body: { classList: { add() {}, remove() {} }, append() {} }, createElement: () => ({ style: {}, classList: { add() {} }, dataset: {}, animate: () => ({ finished: Promise.resolve() }), remove() {} }) },
     matchMedia: () => ({ matches: reduz }), innerWidth: 1000, innerHeight: 600, scrollY: 0, scrollTo() {}, telaAtual, mostrarTela: (id) => chamadas.push(id) };
@@ -24,12 +25,14 @@ test("cabeçalho: ← Vila na sede, na entrada e na partida; ← Sede em todas a
     assert.strictEqual(voltar.textContent, "← Sede", id);
     assert.strictEqual(voltar.dataset.ir, "sede");
     assert.strictEqual(voltar.href, "#sede");
+    assert.ok(voltar.classes.has("para-sede"), id); // o "← Sede" ganha a cor do clube
   }
   for (const id of ["sede", "inicio", "grupo", "partida"]) {
     Zoom.cabecalho(id);
     assert.strictEqual(voltar.textContent, "← Vila", id);
     assert.strictEqual(voltar.dataset.ir, undefined);
     assert.strictEqual(voltar.href, "/");
+    assert.ok(!voltar.classes.has("para-sede"), id);
   }
 });
 

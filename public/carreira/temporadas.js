@@ -36,7 +36,9 @@ function rankingTecnicos(arquivo) {
 }
 function premiosHTML(a) {
   const p = a.premios || {}, cards = [];
-  if (p.artilheiro) cards.push(`<div class="premio"><span class="premio-ic">${ic("chuteira")}</span><small>Artilheiro</small><b>${h(p.artilheiro.nome)}</b><span>${escudo(p.artilheiro.clube, 1)} ${p.artilheiro.gols} gols</span></div>`);
+  // o artilheiro é o da liga do seu clube (as competições não se misturam); arquivos antigos, sem a artilharia por competição, mostram o da temporada
+  const liga = a.competicoes[ligaDoClubeCliente()], daLiga = !!(liga && liga.artilharia), art = daLiga ? liga.artilharia[0] : p.artilheiro;
+  if (art) cards.push(`<div class="premio"><span class="premio-ic">${ic("chuteira")}</span><small>Artilheiro${daLiga ? ` · ${h(liga.nome)}` : ""}</small><b>${h(art.nome)}</b><span>${escudo(art.clube, 1)} ${art.gols} gols</span></div>`);
   if (p.goleada) cards.push(`<div class="premio"><span class="premio-ic">${ic("bola")}</span><small>Maior goleada</small><b>${escudo(p.goleada.casa, 1)} ${p.goleada.placar[0]} × ${p.goleada.placar[1]} ${escudo(p.goleada.fora, 1)}</b><span>${h(p.goleada.competicao)}</span></div>`);
   if (p.negocio) cards.push(`<div class="premio"><span class="premio-ic">${ic("maleta")}</span><small>Melhor negócio</small><b>${h(p.negocio.nome)}</b><span>${escudo(p.negocio.de, 1)} lucrou ${dinheiro(p.negocio.lucro)}</span></div>`);
   return cards.length ? `<div class="premios">${cards.join("")}</div>` : "";
@@ -54,7 +56,8 @@ function tabelaArquivoHTML(a, id) {
   const c = a.competicoes[id]; if (!c) return "";
   const rows = (tab) => tab.map((l) => ({ ...l, ultimos: [] }));
   const corpo = c.tipo === "liga" ? tabelaHTML(rows(c.tabela)) : `${(c.grupos || []).map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(rows(g.tabela))}</section>`).join("")}${chaveHTML(c)}`;
-  return `<div class="abas-competicoes">${Object.keys(a.competicoes).sort((x, y) => ordemComp(x, a.competicoes[x]) - ordemComp(y, a.competicoes[y])).map((k) => `<button class="${k === id ? "ativa" : ""}" data-temp-comp="${k}">${h(a.competicoes[k].nome)}</button>`).join("")}</div>${corpo}`;
+  const artilharia = c.artilharia && c.artilharia.length ? `<h3>Artilharia · ${h(c.nome)}</h3><ol class="artilharia">${c.artilharia.map((x) => `<li class="${x.clube === E.clube ? "meu" : ""}"><img class="pix" src="${retrato(x.id)}" alt=""><span>${h(x.nome)}<small>${h(nomeClube(x.clube))}</small></span><b>${x.gols}</b></li>`).join("")}</ol>` : "";
+  return `<div class="abas-competicoes">${Object.keys(a.competicoes).sort((x, y) => ordemComp(x, a.competicoes[x]) - ordemComp(y, a.competicoes[y])).map((k) => `<button class="${k === id ? "ativa" : ""}" data-temp-comp="${k}">${h(a.competicoes[k].nome)}</button>`).join("")}</div>${corpo}${artilharia}`;
 }
 function telaTemporadas() {
   const corpo = $("temporadasCorpo"), arquivo = E.arquivo || [];
