@@ -56,10 +56,50 @@
   // o rendimento na vaga: a nota, o encaixe da posicao dele na vaga fina (lateral na zaga, ponta de centroavante...) e o cansaco
   const slotPadrao = (slot) => ({ GK: "GOL", DEF: "ZAG", MID: "MC", ATT: "ATA" })[slot] || "MC";
   const valorNa = (p, slot, fino) => (p.nota - Taticas.penalidadeSequencia(p.seguidos || 0)) * Taticas.afinidade(p.pos, fino || slotPadrao(slot));
-  // escala o time: as vagas da formação, cada uma com quem rende mais nela (os escolhidos primeiro, se houver)
   // as vagas da formação, na ordem do campinho: o goleiro, a defesa, o meio e o ataque
   const vagasDe = (formacao) => Taticas.vagasDe(formacao).map((v) => v.g);
-  // escala o time: as vagas da formação, cada uma com quem rende mais nela (os escolhidos primeiro, se houver).
+  // a nota que a escalação automática usa para escolher: o rendimento na vaga, menos FUNCAO por ponto de encaixe (além do que a
+  // vaga já tira no jogo). Assim, com força parecida, entra quem é da função (o volante no volante, o ponta esquerda na esquerda)
+  const FUNCAO = 1;
+  const notaNaVaga = (p, slot, fino) => valorNa(p, slot, fino) - FUNCAO * Taticas.pontosDeEncaixe(p.pos, fino || slotPadrao(slot));
+  // a melhor distribuição de uma vez (método húngaro): custo[i][j], com linhas <= colunas; devolve a coluna de cada linha, com a menor
+  // soma. Escolher vaga por vaga erra: o centroavante ia para a ponta (a primeira vaga do ataque) e o ponta acabava de centroavante
+  function distribuir(custo) {
+    const n = custo.length, m = n ? custo[0].length : 0, u = new Array(n + 1).fill(0), v = new Array(m + 1).fill(0), dono = new Array(m + 1).fill(0), via = new Array(m + 1).fill(0);
+    for (let i = 1; i <= n; i++) {
+      dono[0] = i;
+      let j0 = 0;
+      const menor = new Array(m + 1).fill(Infinity), visto = new Array(m + 1).fill(false);
+      do {
+        visto[j0] = true;
+        const i0 = dono[j0];
+        let delta = Infinity, j1 = 0;
+        for (let j = 1; j <= m; j++) if (!visto[j]) {
+          const c = custo[i0 - 1][j - 1] - u[i0] - v[j];
+          if (c < menor[j]) { menor[j] = c; via[j] = j0; }
+          if (menor[j] < delta) { delta = menor[j]; j1 = j; }
+        }
+        for (let j = 0; j <= m; j++) if (visto[j]) { u[dono[j]] += delta; v[j] -= delta; } else menor[j] -= delta;
+        j0 = j1;
+      } while (dono[j0] !== 0);
+      do { const j1 = via[j0]; dono[j0] = dono[j1]; j0 = j1; } while (j0);
+    }
+    const res = new Array(n).fill(-1);
+    for (let j = 1; j <= m; j++) if (dono[j]) res[dono[j] - 1] = j - 1;
+    return res;
+  }
+  // põe jogadores do pool nas vagas vazias (índices em `abertas`), com a maior soma de notaNaVaga; se faltar gente, sobram vagas vazias
+  function preencher(abertas, pool, vagas, finas, em, usados) {
+    const gente = pool.filter((p) => !usados.has(p.id));
+    if (!abertas.length || !gente.length) return;
+    const nota = abertas.map((i) => gente.map((p) => notaNaVaga(p, vagas[i], finas[i].fino)));
+    if (abertas.length <= gente.length) {
+      distribuir(nota.map((l) => l.map((x) => -x))).forEach((j, k) => { if (j >= 0) { em[abertas[k]] = gente[j]; usados.add(gente[j].id); } });
+    } else {
+      distribuir(gente.map((_, j) => abertas.map((_, k) => -nota[k][j]))).forEach((k, j) => { if (k >= 0) { em[abertas[k]] = gente[j]; usados.add(gente[j].id); } });
+    }
+  }
+  // escala o time: as vagas da formação, com a distribuição que rende mais respeitando a função de cada vaga (os escolhidos primeiro, se houver).
   // fixo: os escolhidos já vêm na ordem das vagas (o técnico pôs cada um no seu lugar); quem não puder jogar (lesão,
   // suspensão) deixa a vaga para o melhor que sobrou no elenco
   function escalar(jogadores, formacao, preferidos, fixo) {
@@ -69,17 +109,8 @@
       preferidos.forEach((id, i) => { const p = livres.find((x) => x.id === id); if (p && !usados.has(p.id)) { em[i] = p; usados.add(p.id); } });
     }
     const ordem = !fixo && preferidos && preferidos.length ? preferidos.map((id) => livres.find((p) => p.id === id)).filter(Boolean) : null;
-    // o goleiro primeiro, depois as outras vagas, cada uma com o melhor que sobrou (dos escolhidos, e depois do elenco)
-    const fila = vagas.map((g, i) => i).sort((a, b) => (vagas[a] === "GK" ? -1 : vagas[b] === "GK" ? 1 : 0));
-    for (const pool of [ordem, livres]) {
-      if (!pool) continue;
-      for (const i of fila) {
-        if (em[i]) continue;
-        let melhor = null, bv = -1;
-        for (const p of pool) if (!usados.has(p.id)) { const v = valorNa(p, vagas[i], finas[i].fino); if (v > bv) { bv = v; melhor = p; } }
-        if (melhor) { em[i] = melhor; usados.add(melhor.id); }
-      }
-    }
+    // primeiro os escolhidos (cada um na vaga que mais combina com ele), depois o resto do elenco nas vagas que sobraram
+    for (const pool of [ordem, livres]) if (pool) preencher(vagas.map((_, i) => i).filter((i) => !em[i]), pool, vagas, finas, em, usados);
     return vagas.map((slot, i) => ({ slot, fino: finas[i].fino, p: em[i] }));
   }
   function prepararTime(t, lado) {
