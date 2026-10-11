@@ -19,6 +19,8 @@
     ["4-3-3 M", "1 volante + 2 meias", [["DEF", Z4], ["MID", ["VOL", "MEI", "MEI"]], ["ATT", AT3]]],
     ["4-3-3 V", "2 volantes + 1 meia", [["DEF", Z4], ["MID", ["VOL", "VOL", "MEI"]], ["ATT", AT3]]],
     ["4-3-3 C", "3 meio-campistas", [["DEF", Z4], ["MID", ["MC", "MC", "MC"]], ["ATT", AT3]]],
+    ["4-3-3 O", "ofensivo: 2 meio-campistas + 1 meia", [["DEF", Z4], ["MID", ["MC", "MEI", "MC"]], ["ATT", AT3]]],
+    ["4-3-3 G", "Guardiola: volante, meio-campista e meia", [["DEF", Z4], ["MID", ["MEI", "VOL", "MC"]], ["ATT", AT3]]],
     ["4-3-3 F", "falso 9", [["DEF", Z4], ["MID", ["VOL", "MC", "MC"]], ["ATT", AT3F]]],
     ["4-2-3-1", "2 volantes + 3 meias", [["DEF", Z4], ["MID", ["VOL", "VOL"]], ["MID", ["PE", "MEI", "PD"]], ["ATT", ["ATA"]]]],
     ["4-2-3-1 C", "dupla de meio-campo", [["DEF", Z4], ["MID", ["MC", "MC"]], ["MID", ["PE", "MEI", "PD"]], ["ATT", ["ATA"]]]],

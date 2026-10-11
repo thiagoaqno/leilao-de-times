@@ -1,11 +1,11 @@
-# Carreira em grupo: passar o cargo de anfitrião
+# Carreira: duas variações novas do 4-3-3
 
-- **Antes**, quem criava a sala era o anfitrião para sempre. Se ele saísse ou não pudesse continuar, ninguém mais conseguia começar a rodada, mudar as regras ou começar a temporada.
-- **Agora**, o anfitrião tem o botão **Tornar anfitrião** ao lado de cada técnico (na sala de espera e no painel Turma da sede). Depois de confirmar, o cargo passa para aquela pessoa, e quem recebe ganha um aviso.
-- Se o anfitrião ficar fora da sala por 2 minutos, o cargo passa sozinho para o próximo técnico da lista que está no ar. Assim a turma não fica presa esperando.
+- **Antes**, o 4-3-3 tinha cinco variações de meio: 1 volante + 2 meio-campistas, 1 volante + 2 meias, 2 volantes + 1 meia, 3 meio-campistas e falso 9. Não dava para montar o 4-3-3 ofensivo com um meia na frente de dois meio-campistas, nem o meio do Barcelona do Guardiola (Busquets, Xavi e Iniesta).
+- **Agora**, a prancheta e a parada tática têm mais duas:
+  - **4-3-3 O, ofensivo:** 2 meio-campistas + 1 meia. O meia joga no meio, mais à frente, e os dois meio-campistas ficam dos lados.
+  - **4-3-3 G, Guardiola:** volante, meio-campista e meia. O volante fica no meio e mais atrás, o meia mais à frente pela esquerda e o meio-campista entre os dois pela direita, em escada.
 
 ## Como
 
-- `carreira-online.js`: a ação `act` `anfitriao` (`pessoa`, o id), só do anfitrião, na espera ou com a carreira rolando; e `anfitriaoSumiu`, no relógio da sala, que passa o cargo quando o anfitrião está fora há mais de `CARREIRA_ANFITRIAO_MS` (120 s; os testes encurtam).
-- `public/carreira/grupo.js`: `botoesDoAnfitriao` (Tornar anfitrião e Dispensar) nas duas listas, a confirmação e o aviso quando o cargo chega em você; `estilo.css` põe os dois botões lado a lado.
-- Teste: `tests/carreira-online-anfitriao.test.js` (só o anfitrião passa, o novo anfitrião manda nas regras e o cargo passa sozinho quando ele some).
+- `public/carreira/taticas.js`: as duas entradas novas em `DEFS`. O resto sai sozinho dessa lista: a prancheta (`variacoesDe`), a parada tática (`NOMES_FORMACOES`), o encaixe de cada jogador na vaga (`afinidade`), o campinho (`spots`) e o motor (`vagasDe`, força do time e lances).
+- Teste: `tests/carreira-taticas.test.js` confere as variações do 4-3-3 e o desenho do meio das duas novas.
