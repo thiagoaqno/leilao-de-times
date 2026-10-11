@@ -1,6 +1,6 @@
 // Carreira de Treinador (parte 4): a prancheta. Os 11 no campinho, cada um no lugar em que vai jogar (a mesma conta do
-// motor), e o banco com o resto do elenco. Tocar num jogador e depois em outro troca os dois de lugar; tocar num do
-// banco e depois num do campo (ou o contrário) põe o reserva no time. Cada mudança é salva na hora, com a escalação
+// motor), e o banco com o resto do elenco. Tocar num jogador e depois em outro (ou arrastar um até o outro) troca os dois
+// de lugar; do banco para o campo (ou o contrário), o reserva entra no time. As viagens das peças ficam em animacoes.js. Cada mudança é salva na hora, com a escalação
 // "fixa": o motor respeita o lugar de cada um (quem estiver machucado ou suspenso dá a vaga para o melhor que sobrou).
 // A mesma prancheta serve para a parada tática no meio do jogo (partida.js), com a energia de cada um.
 let selecionado = null; // { onde: "campo", i } ou { onde: "banco", pid }
@@ -107,13 +107,14 @@ function telaElenco() {
   $("eDestaque").dataset.pid = pidDestaque(det, selecionado?.onde === "campo" ? det[selecionado.i].id : selecionado?.pid) || "";
   $("eDestaque").innerHTML = destaqueHTML($("eDestaque").dataset.pid);
   $("eCampo").innerHTML = campinho(det, t.formacao, { selecionado: selecionado?.onde === "campo" ? selecionado.i : null, energia: E.energia });
+  for (const id of ["eCampo", "eBanco"]) { $(id).classList.toggle("com-selecao", !!selecionado && !E.partida); $(id).style.setProperty("--fase", `${-(performance.now() % 1400).toFixed(0)}ms`); }
   const comJogador = det.filter((v) => v.id), media = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]), 0) / Math.max(1, titulares.size);
   const mediaPosicao = comJogador.reduce((s, v) => s + (notaDe(JOGADORES[v.id]) - penalidadeSequencia(v.id)) * encaixe(JOGADORES[v.id].pos, v.fino), 0) / Math.max(1, titulares.size);
   const energiaMedia = comJogador.reduce((s, v) => s + energiaDe(v.id), 0) / Math.max(1, comJogador.length);
   const improvisados = det.filter((v) => v.id && encaixe(JOGADORES[v.id].pos, v.fino) < 1).length;
   $("eDica").innerHTML = E.partida ? `${ic("cadeado")} A partida está em andamento: a prancheta volta depois do apito final.`
     : selecionado ? `${ic("troca")} Agora toque em quem vai trocar de lugar com ${h(sobrenome(nomeJogador(selecionado.onde === "campo" ? det[selecionado.i].id : selecionado.pid)))}. Toque de novo para ver a ficha.`
-    : `${ic("dedo")} Toque num jogador e depois em outro para trocar os dois de lugar. Um jogo no banco recupera 80 de energia e zera a sequência.`;
+    : `${ic("dedo")} Arraste um jogador até outro (ou toque num e depois no outro) para trocar os dois de lugar. Um jogo no banco recupera 80 de energia e zera a sequência.`;
   $("eForca").innerHTML = `Média dos titulares: <b>${media.toFixed(1)}</b> · energia: <b class="${energiaMedia < 70 ? "aviso-txt" : ""}">${Math.round(energiaMedia)}%</b> · rendimento nas posições: <b class="${mediaPosicao < media - 0.05 ? "aviso-txt" : ""}">${mediaPosicao.toFixed(1)}</b>${improvisados ? ` · <span class="aviso-txt">${improvisados} improvisado${improvisados > 1 ? "s" : ""}</span>` : ""}${efeitoDe("time") ? ` · time ${sinalDe(efeitoDe("time"))} no próximo jogo` : ""}${esc.fixo ? " · escalação sua" : " · escalação automática"}`;
   // os controles
   const seg = (id, lista, atual, chave) => { $(id).innerHTML = lista.map(([v, t]) => `<button data-${chave}="${v}" aria-pressed="${String(v) === String(atual)}">${t}</button>`).join(""); };
@@ -142,33 +143,46 @@ async function salvarEscalacao(dados, movimento = {}) {
   const antes = AnimacoesCarreira.capturarEscalacao();
   const r = await pedir("escalacao", dados);
   if (!r.ok) { toast(r.error); return false; }
+  movimento.aoConfirmar?.();
   receber(r.estado); AnimacoesCarreira.animarEscalacao(antes, movimento); return true;
 }
+// trocar dois lugares: { onde: "campo", i } ou { onde: "banco", pid }. Serve ao toque (um e depois o outro) e ao arrastar
+// (extra: onde a peça foi solta, para ela viajar de lá). Devolve se trocou.
+async function trocarLugares(a, b, extra = {}) {
+  selecionado = null;
+  if (a.onde === "banco" && b.onde === "banco") { telaElenco(); return false; }
+  if (a.onde === "banco") [a, b] = [b, a]; // o do campo primeiro
+  const ids = Motor.escalacaoDetalhada(meuTime()).map((v) => v.id);
+  let envolvidos;
+  if (b.onde === "campo") { envolvidos = [ids[a.i], ids[b.i]]; [ids[a.i], ids[b.i]] = [ids[b.i], ids[a.i]]; }
+  else {
+    if (fora(b.pid)) { telaElenco(); toast(`${nomeJogador(b.pid)} não pode jogar (${fora(b.pid) === "lesao" ? "lesionado" : "suspenso"}).`); return false; }
+    envolvidos = [b.pid, ids[a.i]]; ids[a.i] = b.pid;
+  }
+  if (ids.some((x) => !x)) { telaElenco(); toast("Falta gente para completar os 11."); return false; }
+  const soltoEm = extra.pid ? { pid: extra.pid, x: extra.x, y: extra.y } : null;
+  return salvarEscalacao({ titulares: ids, fixo: true }, { tipo: "troca", envolvidos, soltoEm, aoConfirmar: extra.aoConfirmar });
+}
+const lugarDe = (el) => (el.closest("#eCampo") ? { onde: "campo", i: +el.dataset.i } : { onde: "banco", pid: el.dataset.jogador });
 // tocar no campo e no banco
 $("eCampo").addEventListener("click", async (e) => {
   const b = e.target.closest(".peca"); if (!b || E.partida) return;
-  const i = +b.dataset.i, det = Motor.escalacaoDetalhada(meuTime()), ids = det.map((v) => v.id);
+  const i = +b.dataset.i, ids = Motor.escalacaoDetalhada(meuTime()).map((v) => v.id);
   if (selecionado?.onde === "campo" && selecionado.i === i) { selecionado = null; if (ids[i]) abrirFicha(ids[i]); return telaElenco(); }
-  let envolvidos = [];
-  if (selecionado?.onde === "campo") { envolvidos = [ids[i], ids[selecionado.i]]; [ids[i], ids[selecionado.i]] = [ids[selecionado.i], ids[i]]; selecionado = null; }
-  else if (selecionado?.onde === "banco") { envolvidos = [ids[i], selecionado.pid]; ids[i] = selecionado.pid; selecionado = null; }
-  else { selecionado = { onde: "campo", i }; return telaElenco(); }
-  if (ids.some((x) => !x)) { telaElenco(); return toast("Falta gente para completar os 11."); }
-  await salvarEscalacao({ titulares: ids, fixo: true }, { tipo: "troca", envolvidos });
+  if (!selecionado) { selecionado = { onde: "campo", i }; return telaElenco(); }
+  await trocarLugares(selecionado, { onde: "campo", i });
 });
 $("eBanco").addEventListener("click", async (e) => {
   const f = e.target.closest(".carta-reserva"); if (!f || E.partida) return;
   const pid = f.dataset.jogador;
   if (selecionado?.onde === "banco" && selecionado.pid === pid) { selecionado = null; telaElenco(); return abrirFicha(pid); }
-  if (selecionado?.onde === "campo") {
-    const ids = Motor.escalacaoDetalhada(meuTime()).map((v) => v.id), i = selecionado.i;
-    selecionado = null;
-    if (fora(pid)) { telaElenco(); return toast(`${nomeJogador(pid)} não pode jogar (${fora(pid) === "lesao" ? "lesionado" : "suspenso"}).`); }
-    ids[i] = pid;
-    if (ids.some((x) => !x)) { telaElenco(); return toast("Falta gente para completar os 11."); }
-    return salvarEscalacao({ titulares: ids, fixo: true }, { tipo: "troca", envolvidos: [pid] });
-  }
+  if (selecionado?.onde === "campo") return trocarLugares(selecionado, { onde: "banco", pid });
   selecionado = { onde: "banco", pid }; telaElenco();
+});
+// arrastar um jogador até outro (do campo ou do banco) troca os dois
+AnimacoesCarreira.prancheta({
+  raizes: [$("eCampo"), $("eBanco")], alvos: "#eCampo .peca, #eBanco .carta-reserva",
+  aoSoltar: (de, para, extra) => (E.partida ? false : trocarLugares(lugarDe(de), lugarDe(para), extra)),
 });
 // formação e tática
 document.addEventListener("click", async (e) => {

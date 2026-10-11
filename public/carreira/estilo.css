@@ -694,8 +694,33 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 .leilao-historico span.topo{background:color-mix(in srgb,var(--acento) 16%,transparent);color:var(--t1)}.leilao-historico b{font:500 12px var(--mono)}
 
 /* ---------- os movimentos (animacoes.js): as peças viajando, os balões e a cena da transferência ---------- */
-.jogador-em-movimento{position:fixed!important;z-index:120!important;margin:0!important;transform:none!important;pointer-events:none!important;transform-origin:top left!important;box-shadow:0 14px 35px -10px #000,0 0 0 2px var(--acento)!important}
+/* a cópia que viaja entre o banco e o campo (a viagem em arco é das propriedades translate e scale, que somam com o transform) */
+.jogador-em-movimento{position:fixed!important;z-index:120!important;margin:0!important;transform:none!important;pointer-events:none!important;transform-origin:50% 50%!important}
+.jogador-em-movimento.e-carta{box-shadow:0 18px 36px -14px #000!important}
 .jogador-chegando{opacity:0!important}
+/* no campinho, a própria peça viaja por cima das outras */
+.gramado .peca.viajando{z-index:6}
+/* o pouso: a camisa assenta e a poeira do gramado abre em anel */
+.peca.pousou .cam{animation:peca-assenta .42s cubic-bezier(.3,1.5,.5,1)}
+.peca.pousou::after{content:"";position:absolute;z-index:-1;left:50%;top:34px;width:56px;height:16px;margin-left:-28px;border-radius:50%;border:2px solid #ffffffb0;pointer-events:none;animation:peca-poeira .5s ease-out both}
+.carta-reserva.pousou{animation:carta-assenta .4s cubic-bezier(.3,1.5,.5,1)}
+/* a peça marcada flutua (o relógio único, --fase, segura o ritmo quando a prancheta é redesenhada) e os outros mostram que podem receber a troca */
+#eCampo .peca.sel .cam{animation:peca-flutua 1.4s ease-in-out infinite;animation-delay:var(--fase,0ms)}
+#eCampo.com-selecao .peca:not(.sel) .cam::after{content:"";position:absolute;left:50%;bottom:-6px;width:40px;height:12px;margin-left:-20px;border-radius:50%;border:1.5px solid #ffffff8c;pointer-events:none;animation:alvo-pulsa 1.4s ease-in-out infinite;animation-delay:var(--fase,0ms)}
+#eBanco.com-selecao .carta-reserva:not(.sel):not(.indisponivel)::after{content:"";position:absolute;inset:-1px;border-radius:inherit;box-shadow:0 0 0 2px #e8be4f66;pointer-events:none;animation:alvo-brilha 1.4s ease-in-out infinite;animation-delay:var(--fase,0ms)}
+/* arrastar: a peça na mão segue o dedo, a de origem fica apagada e quem está embaixo acende */
+#eCampo .peca,#eBanco .carta-reserva{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#eBanco .carta-reserva img,#eCampo .peca svg{-webkit-user-drag:none;pointer-events:none}
+@media (hover:hover) and (pointer:fine){#eCampo .peca,#eBanco .carta-reserva{cursor:grab}}
+body.arrastando,body.arrastando *{cursor:grabbing!important;-webkit-user-select:none;user-select:none}
+.na-mao{position:fixed!important;left:0!important;top:0!important;z-index:130!important;margin:0!important;pointer-events:none!important;transition:none!important;will-change:transform}
+.na-mao.e-peca .cam{filter:drop-shadow(0 16px 10px #000b) drop-shadow(0 0 8px #ffe08a88)}
+.na-mao.e-carta{box-shadow:0 24px 44px -14px #000,0 0 0 2px var(--ouro2)!important}
+.na-mao.esperando{opacity:.9}
+.pegado{opacity:.28!important}
+#eCampo .peca.alvo-solta .cam{scale:1.14;filter:drop-shadow(0 0 10px #ffe08a) drop-shadow(0 4px 3px #0008)}
+#eCampo .peca.alvo-solta small{background:var(--ouro2);color:#241500;text-shadow:none}
+#eBanco .carta-reserva.alvo-solta{border-color:var(--ouro2)!important;box-shadow:0 0 0 2px #e8be4f88,0 0 24px -6px var(--ouro2)!important;scale:1.04}
 .fala-jogador{position:fixed;z-index:121;max-width:180px;padding:7px 11px;border-radius:12px 12px 12px 4px;transform:translate(-50%,-100%);background:var(--t1);color:var(--bg);font:500 12px/1.3 var(--fonte);box-shadow:0 12px 28px -10px #000;pointer-events:none;animation:fala-jogador 2s var(--ease) both}
 .fala-jogador::after{content:"";position:absolute;left:12px;bottom:-5px;width:10px;height:10px;background:var(--t1);transform:rotate(45deg);border-radius:2px}
 .transferencia-fx{position:fixed;inset:0;z-index:110;display:grid;place-items:center;background:radial-gradient(circle,#00000055,#000000cc);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);pointer-events:none;animation:transferencia-fundo 1.85s both}
@@ -775,6 +800,12 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 @keyframes varre{to{transform:translateX(100%)}}
 @keyframes ouro-corre{to{background-position:-200% 0}}
 @keyframes cai{to{transform:translateY(110vh) rotate(540deg)}}
+@keyframes peca-assenta{0%{scale:1.16 .86}55%{scale:.94 1.06}100%{scale:1}}
+@keyframes peca-poeira{0%{opacity:.9;scale:.4}100%{opacity:0;scale:1.5}}
+@keyframes carta-assenta{0%{scale:1.06}100%{scale:1}}
+@keyframes peca-flutua{0%,100%{translate:0 0}50%{translate:0 -5px}}
+@keyframes alvo-pulsa{0%,100%{opacity:.25;scale:.85}50%{opacity:.85;scale:1.05}}
+@keyframes alvo-brilha{0%,100%{opacity:0}50%{opacity:1}}
 @keyframes fala-jogador{0%{opacity:0;transform:translate(-50%,-85%) scale(.8)}12%,78%{opacity:1;transform:translate(-50%,-100%) scale(1)}100%{opacity:0;transform:translate(-50%,-110%) scale(.96)}}
 @keyframes transferencia-fundo{0%,100%{opacity:0}8%,84%{opacity:1}}
 @keyframes card-contratado{0%{opacity:0;transform:translate(70vw,-50%) rotate(12deg) scale(.72)}45%,100%{opacity:1;transform:translate(-50%,-50%) rotate(0) scale(1)}}
