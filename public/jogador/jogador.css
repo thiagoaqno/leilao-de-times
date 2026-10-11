@@ -1,0 +1,66 @@
+/* Modo Jogador (Rumo ao Estrelato): em cima do estilo.css da Carreira (o tema escuro com o acento na cor do clube) */
+body[data-tela=sede] #tela{max-width:1180px}
+.controle{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+.rotulo{font-size:12px;font-weight:500;color:var(--t3)}
+.chance{font-weight:500}.chance.alta,.chance.boa{color:var(--ok)}.chance.média{color:var(--alerta)}.chance.baixa{color:var(--erro)}
+.largo{width:100%}
+.linha{display:flex;gap:8px;align-items:center}.linha input{flex:1}
+
+/* ---------- o topo: a carta e o resumo ---------- */
+.j-topo{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:stretch}
+.carta{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px;height:100%;min-height:330px;padding:18px 18px 14px;border-radius:18px;color:#1b1303;
+  background:linear-gradient(155deg,var(--bronze1),var(--bronze2) 55%,var(--bronze3));box-shadow:0 20px 50px -22px var(--clube),0 0 0 1px #ffffff22 inset}
+.carta.prata{background:linear-gradient(155deg,var(--prata1),var(--prata2) 55%,var(--prata3))}
+.carta.ouro,.carta.elite{background:linear-gradient(155deg,var(--ouro1),var(--ouro2) 55%,var(--ouro3))}
+.carta-topo{display:flex;align-items:center;gap:10px}
+.carta-nota{font:700 54px/1 "Barlow Condensed",var(--fonte);letter-spacing:-.02em}
+.carta-pos{font:600 18px/1 "Barlow Condensed",var(--fonte);letter-spacing:.06em;margin-right:auto}
+.carta-nome{margin-top:auto;font:700 26px/1.05 "Barlow Condensed",var(--fonte);text-transform:uppercase;letter-spacing:.02em}
+.carta-meta{font-size:12px;font-weight:500;opacity:.75}
+.carta-atr{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;margin-top:6px;border-top:1px solid #1b130333;padding-top:8px}
+.carta-atr span{display:flex;gap:6px;align-items:baseline;font:600 12px/1 var(--mono);opacity:.85}.carta-atr b{font:700 20px/1 "Barlow Condensed",var(--fonte)}
+.carta-estrelas{letter-spacing:.15em;font-size:13px}
+.j-resumo{display:flex;flex-direction:column;justify-content:center;gap:14px;padding:6px 0}
+.j-clube{display:flex;align-items:center;gap:14px}.j-clube b{font-size:26px;letter-spacing:-.03em;display:block;line-height:1.1}.j-clube small{color:var(--t2);font-size:13px}
+.j-papel{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.selo{display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid var(--b2);background:var(--s2)}
+.selo.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);border-color:color-mix(in srgb,var(--ok) 45%,transparent);color:var(--ok)}
+.selo.mal{background:color-mix(in srgb,var(--erro) 14%,transparent);border-color:color-mix(in srgb,var(--erro) 40%,transparent);color:var(--erro)}
+.selo.banco{color:var(--alerta);border-color:color-mix(in srgb,var(--alerta) 40%,transparent)}
+.j-rotulo{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--t2);margin-bottom:6px}.j-rotulo b{color:var(--t1);font-weight:600;font-family:var(--mono);font-size:12px}
+.barra{height:10px;border-radius:99px;background:var(--s3);overflow:hidden}.barra.fina{height:6px}
+.barra i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--acento2),var(--acento));transition:width 600ms var(--ease)}
+.j-fala{font-size:15px;color:var(--t1);font-style:italic;max-width:520px}
+
+/* ---------- os painéis ---------- */
+.j-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.j-largo{grid-column:1/-1}
+.j-jogo{grid-column:1/-1;background:linear-gradient(120deg,color-mix(in srgb,var(--clube) 26%,var(--s1)),var(--s1) 70%);border-color:color-mix(in srgb,var(--clube) 45%,var(--b2))}
+.j-jogo h2{margin:6px 0 4px;font-size:24px}.j-jogo .cta{margin-top:14px;max-width:420px;width:100%}
+.j-confronto{display:flex;align-items:center;gap:14px}.j-confronto .x{color:var(--t3);font-weight:600}
+.j-placar{font-size:17px;font-weight:600;margin-bottom:10px}
+.j-nota-linha{display:flex;gap:18px;align-items:center}
+.j-nota{display:flex;flex-direction:column;align-items:center;justify-content:center;width:92px;height:92px;border-radius:20px;border:2px solid var(--b3);flex:none}
+.j-nota b{font:700 40px/1 "Barlow Condensed",var(--fonte)}.j-nota small{font-size:11px;color:var(--t2)}
+.j-nota.otima{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 16%,transparent)}.j-nota.boa{border-color:#a3e635;background:color-mix(in srgb,#a3e635 12%,transparent)}
+.j-nota.media{border-color:var(--alerta);background:color-mix(in srgb,var(--alerta) 12%,transparent)}.j-nota.ruim{border-color:var(--erro);background:color-mix(in srgb,var(--erro) 12%,transparent)}
+.j-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--t2)}.j-lista b{color:var(--t1)}
+.j-obj{margin-bottom:12px}.j-obj.feito .j-rotulo b{color:var(--ok)}.j-obj.feito .barra i{background:var(--ok)}
+.j-numeros{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center}
+.j-numeros span{display:flex;flex-direction:column;font-size:11px;color:var(--t3)}.j-numeros b{font:700 28px/1.1 "Barlow Condensed",var(--fonte);color:var(--t1)}
+.j-forma{display:flex;gap:6px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.j-forma i{font:600 12px/1 var(--mono);font-style:normal;padding:6px 8px;border-radius:8px;border:1px solid var(--b2)}
+.j-forma i.otima{color:var(--ok)}.j-forma i.boa{color:#a3e635}.j-forma i.media{color:var(--alerta)}.j-forma i.ruim{color:var(--erro)}
+.j-rivais{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.j-rivais li{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--b1)}
+.j-rivais li b{font:700 22px/1 "Barlow Condensed",var(--fonte);min-width:32px}.j-rivais li.eu{border-color:var(--acento);background:color-mix(in srgb,var(--acento) 10%,transparent)}
+.j-duas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:20px}
+.j-diario{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:13px}.j-diario small{display:inline-block;min-width:28px;color:var(--t3);font-family:var(--mono)}
+.j-hist{overflow-x:auto}.j-hist table{width:100%;border-collapse:collapse;font-size:12px}.j-hist th{color:var(--t3);font-weight:500;text-align:left;padding:4px 6px}.j-hist td{padding:6px;border-top:1px solid var(--b1)}
+.j-rodape{margin-top:8px;flex-wrap:wrap}
+
+@media (max-width:760px){
+  .j-topo{grid-template-columns:1fr}.carta{min-height:0}.j-grade{grid-template-columns:1fr}.j-duas{grid-template-columns:1fr}
+  .j-nota-linha{flex-direction:column;align-items:flex-start}
+}
+@media (prefers-reduced-motion:reduce){.barra i{transition:none}}
