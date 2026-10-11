@@ -11,7 +11,9 @@ const Rivais = require("./public/carreira/rivais.js");
 const { CATALOGO } = require("./carreira-catalogo.js");
 const Memoria = require("./carreira-memoria.js");
 const Pressao = require("./carreira-pressao.js");
-const POR_ID = Object.fromEntries([...CATALOGO, ...Memoria.ECOS, ...Pressao.TODAS].map((d) => [d.id, d]));
+const Personalidades = require("./carreira-personalidades.js");
+const Personalidade = require("./public/carreira/personalidade.js");
+const POR_ID = Object.fromEntries([...CATALOGO, ...Memoria.ECOS, ...Pressao.TODAS, ...Personalidades.PERSONALIDADES].map((d) => [d.id, d]));
 
 const { dinheiro } = Mercado;
 const sorteio = (r, lista) => lista[Math.floor(r() * lista.length)];
@@ -28,6 +30,7 @@ function alvoDe(save, c, r, alvo) {
   else if (alvo === "reserva") lista = meu.filter((j) => !titulares.has(j.id) && livre(j));
   else if (alvo === "craque") lista = [...tit].sort((a, b) => c.notaDe(save, b) - c.notaDe(save, a)).slice(0, 3);
   else if (GRUPOS[alvo]) lista = tit.filter((j) => GRUPOS[alvo].includes(j.pos));
+  else if (alvo.startsWith("p:")) lista = meu.filter((j) => livre(j) && Personalidade.tipoDe(j) === alvo.slice(2));
   else if (alvo === "estrangeiro") lista = meu.filter((j) => j.nat && j.nat !== "Brasil" && livre(j));
   else if (alvo === "lesionado") lista = meu.filter((j) => save.lesoes[j.id]);
   else if (alvo === "suspenso") lista = meu.filter((j) => save.suspensos[j.id]);
@@ -184,6 +187,12 @@ function gerarEventos(save, c) {
   if (pressao) {
     const j = pressao.alvo ? alvoDe(save, c, r, pressao.alvo) : null;
     if (!pressao.alvo || j) { vistos[pressao.id] = save.temporada; mem.ultimaPressao = save.rodada; add({ ...criarDoCatalogo(save, c, r, pressao, j), pressao: true }); }
+  }
+  // a personalidade dos jogadores (carreira-personalidades.js): um jeito de cada um vira história, no máximo uma a cada 3 rodadas
+  const pers = Personalidades.escolher(save, x, mem, r);
+  if (pers) {
+    const j = alvoDe(save, c, r, pers.alvo);
+    if (j) { vistos[pers.id] = save.temporada; mem.ultimaPers = save.rodada; add({ ...criarDoCatalogo(save, c, r, pers, j), personalidade: true }); }
   }
   const quantos = (r() < 0.8 ? 1 : 0) + (r() < 0.35 ? 1 : 0);
   for (let i = 0; i < quantos; i++) {

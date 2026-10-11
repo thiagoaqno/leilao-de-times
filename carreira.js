@@ -16,6 +16,7 @@ const Evolucao = require("./public/carreira/evolucao.js");
 const Taticas = require("./public/carreira/taticas.js");
 const Pressao = require("./carreira-pressao.js");
 const Tecnicos = require("./carreira-tecnicos.js");
+const Personalidade = require("./public/carreira/personalidade.js");
 const Clube = require("./carreira-clube.js");
 const Memoria = require("./carreira-memoria.js");
 const crypto = require("crypto");
@@ -775,11 +776,18 @@ const moralBonus = (save) => Math.round((save.moral - 60) / 12);
 // os efeitos dos eventos que valem na rodada (carreira-eventos.js): nota do time, de um jogador ou do próximo adversário
 const efeitosAtivos = (save, rodada) => (save.efeitos || []).filter((e) => e.de <= rodada && e.ate >= rodada);
 const somaEfeitos = (lista, alvo) => lista.reduce((s, e) => s + (e.alvo === alvo ? e.nota : 0), 0);
+// os prováveis titulares do seu clube sem montar o time (titularesDe chama timeDe): a escalação fixa, ou os 11 de maior nota
+function titularesAprox(save) {
+  const fixos = save.escalacao.titulares;
+  if (fixos && fixos.length) return fixos.map((pid) => jogadorDe(save, pid)).filter(Boolean);
+  return elencoDe(save, save.clube).filter((j) => disponivel(save, j.id)).sort((a, b) => notaDe(save, b) - notaDe(save, a)).slice(0, 11);
+}
 function timeDe(save, id) {
   const c = clubeDe(save, id), meu = id === save.clube, R = save.partida ? save.partida.rodada : save.rodada;
   const rival = !meu && save.partida && (save.partida.casa === id || save.partida.fora === id);
   const ativos = meu || rival ? efeitosAtivos(save, R) : [];
   const extra = meu ? moralBonus(save) + somaEfeitos(ativos, "time") + (save.partida ? Pressao.climaDoJogo(save, ajudas, save.partida.casa, save.partida.fora).nota : 0) // o clima do estádio
+    + Personalidade.bonusDoLider(titularesAprox(save), save.moral) // o líder em campo segura o time quando a moral cai
     : rival ? (save.provocado && save.provocado.rodada === R ? save.provocado.nota : 0) + somaEfeitos(ativos, "rival") : 0;
   return {
     id: c.id, nome: c.nome,
@@ -876,7 +884,7 @@ function cartoesELesoes(save, r, semente) {
     else if (e.tipo === "vermelho") { save.suspensos[e.jogador] = Math.max(save.suspensos[e.jogador] || 0, 1); delete save.amarelos[e.jogador]; }
     else if (e.tipo === "amarelo") {
       save.amarelos[e.jogador] = (save.amarelos[e.jogador] || 0) + 1;
-      if (save.amarelos[e.jogador] >= 3) { save.suspensos[e.jogador] = 1; delete save.amarelos[e.jogador]; } // o terceiro amarelo suspende
+      if (save.amarelos[e.jogador] >= Personalidade.limiteDeAmarelos(jogadorDe(save, e.jogador))) { save.suspensos[e.jogador] = 1; delete save.amarelos[e.jogador]; } // o terceiro amarelo suspende
     }
   }
 }

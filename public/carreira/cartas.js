@@ -139,6 +139,7 @@ function desenharFicha(resposta) {
     <div><dt>Clube</dt><dd>${escudo(clube, 1)} ${h(nomeClube(clube))}</dd></div>
     ${meu ? `<div><dt>Valor</dt><dd>${dinheiro(valor)}${forma !== 1 ? ` <small class="${forma > 1 ? "positivo" : "neg"}">${forma > 1 ? "em alta" : "em baixa"} (${forma > 1 ? "+" : ""}${Math.round((forma - 1) * 100)}%)</small>` : ""}</dd></div>` : ""}
     ${motivosPreco(pid) ? `<div><dt>Preço</dt><dd>${motivosPreco(pid)}</dd></div>` : ""}
+    <div><dt>Personalidade</dt><dd><b>${h(Personalidade.de(j).nome)}</b> <small>${h(Personalidade.de(j).texto)}</small></dd></div>
     <div><dt>Salário</dt><dd>${dinheiro(sal)}/mês</dd></div>
     <div><dt>Gols na temporada</dt><dd>${gols}</dd></div>
     ${compra ? `<div class="lucro"><dt>Comprado na R${compra.rodada + 1}${compra.temporada !== E.temporada ? " (temporada passada)" : ""}</dt><dd>${dinheiro(compra.valor)} <b class="${lucro >= 0 ? "positivo" : "neg"}">${lucro >= 0 ? "lucro" : "prejuízo"} ${dinheiro(Math.abs(lucro))}</b></dd></div>` : ""}

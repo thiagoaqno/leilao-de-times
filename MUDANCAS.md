@@ -1,12 +1,11 @@
-# Carreira: mercado de técnicos
+# Carreira: personalidade dos jogadores
 
 ## O que muda no jogo
 
-- **Propostas de outros clubes.** No fim de cada temporada (menos a última), clubes que gostaram do seu trabalho sondam você: até três, um maior, um do mesmo tamanho (de preferência em outra liga) e um menor. O que abre portas é a reputação, a meta da diretoria cumprida, os títulos e a classificação; quem foi mal recebe menos convites, e às vezes o telefone nem toca. Clubes que vão cair não convidam.
-- **Escolher na Sede.** A aba Temporada mostra cada proposta com escudo, liga, força comparada ao seu time, caixa e o projeto que a diretoria nova cobraria. Aceitar ou "Ficar" vale até a virada; dá para mudar de ideia. O fim de temporada avisa e leva até as propostas.
-- **A troca.** Na virada, você assume o clube novo: elenco, caixa, calendário, liga e copas são os dele. Você leva a reputação, os pontos e as habilidades de técnico; estádio, contratos, base e diretoria são do clube novo (confiança começa em 60), e a torcida chega desconfiada. Sai notícia da apresentação no feed, e o guia explica.
-- Só na carreira solo com a base mundial; na sala em grupo cada técnico segue com o clube que escolheu.
+- **Cada jogador tem um jeito.** Sete personalidades: líder, profissional, pavio curto, vaidoso, festeiro, guerreiro e reservado. O jeito sai do próprio jogador (não muda no meio da carreira), a posição inclina o sorteio (atacante é mais vaidoso, zagueiro mais líder, goleiro mais reservado ou profissional) e aparece na ficha.
+- **O jeito vale em campo.** O líder entre os titulares segura o time quando a moral está baixa (+1 na nota). O pavio curto é suspenso no 2º amarelo, e não no 3º.
+- **Cada jeito abre histórias.** 14 eventos novos na caixa de entrada, dois por personalidade, com escolhas que mexem em moral, vestiário, imprensa, caixa, rendimento do jogador e até na evolução de um reserva (o profissional que apadrinha a base, o líder que pede a palavra, o pavio curto que perde a cabeça depois da derrota, o vaidoso que exige status, o festeiro que faz aniversário, o guerreiro que quer jogar com dor, o reservado que precisa de atenção). No máximo um a cada 3 rodadas, cada um uma vez por temporada, e entra no sistema de memória do clube como os outros eventos.
 
 ## Como
 
-`carreira-tecnicos.js` (`gerar`, `escolher`, `aplicar`) guarda `save.vagas`; `registrarTemporada` gera as propostas, a ação `vaga` (socket) escolhe e `novaTemporada` aplica antes de a temporada virar. `estado().vagas` alimenta `vagasNaSede` (`telas.js`, `#cartaoVagas`). Testes em `tests/carreira-tecnicos.test.js`.
+`public/carreira/personalidade.js` (UMD: `tipoDe`, `de`, `bonusDoLider`, `limiteDeAmarelos`), `carreira-personalidades.js` (os eventos, `alvo: "p:<tipo>"`), `carreira-eventos.js` sorteia e acha o alvo pelo tipo, `carreira.js` soma o líder em `timeDe` (`titularesAprox`) e usa o limite de amarelos em `cartoesELesoes`; a ficha (`cartas.js`) e o guia mostram. Testes em `tests/carreira-personalidade.test.js`.
