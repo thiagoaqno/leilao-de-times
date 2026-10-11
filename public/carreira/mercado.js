@@ -14,7 +14,7 @@
     if (!idade) return 1;
     if (idade <= 21) return 1.1;
     if (idade <= 28) return 1;
-    return [0.97, 0.92, 0.85, 0.76, 0.66, 0.56][idade - 29] ?? (idade >= 36 ? 0.45 : 0.5);
+    return [1, 1, 0.97, 0.93, 0.87, 0.8, 0.72][idade - 29] ?? (idade >= 36 ? 0.62 : 0.7);
   }
   // o valor de mercado (R$): cresce rápido com a nota; os da base valem menos. fator: o momento (0,5 a 1,5); a idade (j.idade) entra sozinha
   function valorDe(j, fator = 1) {
@@ -25,7 +25,7 @@
   // media: a nota média dos jogos na temporada (com pelo menos 3 jogos): fase ruim desvaloriza, fase boa valoriza
   function fatorForma({ gols = 0, pos = "ATA", efeito = 0, aVenda = false, media = null }) {
     const porGol = ["ATA", "PE", "PD"].includes(pos) ? 0.035 : pos === "GOL" ? 0 : 0.06;
-    const fase = media == null ? 1 : media >= 7.2 ? 1.08 : media >= 6.6 ? 1.03 : media <= 5.4 ? 0.82 : media <= 5.8 ? 0.9 : media <= 6.1 ? 0.96 : 1;
+    const fase = media == null ? 1 : media >= 7.2 ? 1.06 : media >= 6.6 ? 1.02 : media <= 5.4 ? 0.88 : media <= 5.8 ? 0.93 : media <= 6.1 ? 0.97 : 1;
     const f = (1 + Math.min(0.35, gols * porGol)) * (1 + 0.05 * efeito) * (aVenda ? 0.93 : 1) * fase;
     return Math.round(clamp(f, 0.5, 1.5) * 100) / 100;
   }
@@ -39,7 +39,7 @@
     return m;
   }
   // desvalorizado: o preço está pelo menos 12% abaixo do que a nota pediria (idade ou fase)
-  const desvalorizado = ({ idade, fator = 1 }) => fatorIdade(idade) * clamp(fator, 0.5, 1.5) <= 0.88;
+  const desvalorizado = ({ idade, fator = 1 }) => fatorIdade(idade) * clamp(fator, 0.5, 1.5) <= 0.9;
   // o salário por mês (R$)
   const salarioDe = (j) => arred(valorDe(j) / 70, 5e3);
   // as janelas: a pré-temporada e as 4 primeiras rodadas, e a do meio do ano (rodadas 17 a 21)
@@ -69,8 +69,10 @@
   // o que o clube pede por um jogador: o preço (um só por jogador e rodada: pagar isso sempre fecha) e o salário que o jogador quer
   function pedidoDe({ jogador, vendedor, comprador, titular, semente, fator = 1 }) {
     const r = Motor.sorteDe(`proposta:${semente}`);
-    const V = valorDe(jogador, fator), apego = (titular ? 1.35 : 1.05) * (vendedor.tamanho >= comprador.tamanho ? 1.08 : 0.97);
-    const minimo = V * apego * (0.94 + r() * 0.12);
+    const V = valorDe(jogador, fator), apego = (titular ? 1.5 : 1.2) * (vendedor.tamanho >= comprador.tamanho ? 1.08 : 1);
+    // o clube nunca pede menos do que a nota do jogador vale (a idade e a fase só abatem parte do preço), 
+    const piso = valorDe({ ...jogador, idade: undefined }, 1) * 0.9;
+    const minimo = Math.max(V * apego, piso) * (0.94 + r() * 0.12);
     const pedido = Math.ceil(minimo / 1e5) * 1e5; // arredonda para cima: pagar o pedido sempre basta
     // clube menor que o dele precisa pagar mais para convencer o jogador
     const salario = arred(salarioDe(jogador) * (comprador.tamanho < vendedor.tamanho ? 1.25 + 0.1 * (vendedor.tamanho - comprador.tamanho) : 1) * (0.95 + r() * 0.1), 5e3);

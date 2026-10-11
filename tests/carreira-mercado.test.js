@@ -122,7 +122,7 @@ test("feed e pós-jogo: depois das rodadas há posts com arte e o resumo da roda
 test("mercado: o veterano e a fase ruim desvalorizam, a promessa valoriza", () => {
   const base = { nota: 80 };
   const v = (idade, fator) => Mercado.valorDe({ ...base, idade }, fator);
-  assert.ok(v(34) < v(26) * 0.65, "34 anos vale bem menos que 26");
+  assert.ok(v(34) < v(26) * 0.85, "34 anos vale menos que 26");
   assert.ok(v(20) > v(26), "a promessa vale um pouco mais");
   assert.ok(v(26, 0.8) < v(26), "fase ruim desvaloriza");
   assert.ok(Mercado.fatorForma({ pos: "MC", media: 5.2 }) < 1 && Mercado.fatorForma({ pos: "MC", media: 7.5 }) > 1);

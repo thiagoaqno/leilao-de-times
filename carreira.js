@@ -712,7 +712,7 @@ function pedidoDoClube(save, pid, titulares) {
 // a ficha do jogador de outro clube: o que o clube pede, para a tela mostrar antes da proposta
 function consultarPedido(save, d) {
   const pid = String(d.jogador || ""), r = pedidoDoClube(save, pid);
-  return r ? { pedido: r.pedido, salario: r.salario, valor: Math.round(r.valor / 1e5) * 1e5 } : "Esse jogador não está disponível.";
+  return r ? { pedido: r.pedido, salario: r.salario } : "Esse jogador não está disponível.";
 }
 // o olheiro: as posições mais fracas do time (o pior de cada setor, comparado com a média dos titulares) e 2 ou 3
 // jogadores que melhoram ali e cabem no caixa PELO QUE O CLUBE PEDE (não pelo valor de mercado: o clube sempre pede mais),

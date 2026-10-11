@@ -101,7 +101,7 @@ function figurinha(pid, tamanho = "mini") {
     <div class="foto">${fotoHTML(pid)}</div>
     <h4>${h(tamanho === "grande" ? j.nome : sobrenome(j.nome))}</h4>
     ${tamanho === "grande" ? `<p class="sub">${h(POS_NOME[j.pos] || j.pos)} · ${h(j.nat || "")} · ${Evolucao.idadeNa(j, E ? E.temporada : 1)} anos${j.idade ? "" : " (estimada)"}</p><ul class="atributos">${atr}</ul>` : ""}
-    <footer><span>${dinheiro(valor)}${forma !== 1 ? `<i class="seta ${forma > 1 ? "sobe" : "desce"}" title="Momento: ${Math.round((forma - 1) * 100)}%">${ic(forma > 1 ? "sobe" : "baixo")}</i>` : ""}</span><span class="marcas">${situacao(pid, true)}</span></footer>
+    <footer><span>${clube === E.clube ? dinheiro(valor) : ""}${forma !== 1 ? `<i class="seta ${forma > 1 ? "sobe" : "desce"}" title="Momento: ${Math.round((forma - 1) * 100)}%">${ic(forma > 1 ? "sobe" : "baixo")}</i>` : ""}</span><span class="marcas">${situacao(pid, true)}</span></footer>
   </article>`;
 }
 
@@ -137,7 +137,7 @@ function desenharFicha(resposta) {
   const lucro = compra ? valor - compra.valor : null;
   const info = `<dl class="dados">
     <div><dt>Clube</dt><dd>${escudo(clube, 1)} ${h(nomeClube(clube))}</dd></div>
-    <div><dt>Valor</dt><dd>${dinheiro(valor)}${forma !== 1 ? ` <small class="${forma > 1 ? "positivo" : "neg"}">${forma > 1 ? "em alta" : "em baixa"} (${forma > 1 ? "+" : ""}${Math.round((forma - 1) * 100)}%)</small>` : ""}</dd></div>
+    ${meu ? `<div><dt>Valor</dt><dd>${dinheiro(valor)}${forma !== 1 ? ` <small class="${forma > 1 ? "positivo" : "neg"}">${forma > 1 ? "em alta" : "em baixa"} (${forma > 1 ? "+" : ""}${Math.round((forma - 1) * 100)}%)</small>` : ""}</dd></div>` : ""}
     ${motivosPreco(pid) ? `<div><dt>Preço</dt><dd>${motivosPreco(pid)}</dd></div>` : ""}
     <div><dt>Salário</dt><dd>${dinheiro(sal)}/mês</dd></div>
     <div><dt>Gols na temporada</dt><dd>${gols}</dd></div>
@@ -174,7 +174,7 @@ function desenharFicha(resposta) {
       <label class="check"><input type="checkbox" id="fParcelas"> Parcelar: metade agora e o resto em ${Mercado.PARCELAS} rodadas (+${Math.round(Mercado.JUROS * 100)}% de juros)</label>
       <label>Jogador seu na troca (entra por 90% do valor)<select id="fTroca"><option value="">Ninguém, só dinheiro</option>${[...E.elenco].sort((a, b) => valorAtual(b) - valorAtual(a)).map((x) => `<option value="${x}">${h(JOGADORES[x].nome)} · ${JOGADORES[x].pos} · ${dinheiro(Math.round(valorAtual(x) * 0.9 / 1e5) * 1e5)}</option>`).join("")}</select></label>
       <p class="suave" id="fPagamento"></p>
-      <p class="suave">Caixa: ${dinheiro(E.caixa)} · valor de mercado: ${dinheiro(valor)}${desconto < 1 ? " · o olheiro diz que dá para pagar 15% menos" : ""}</p>
+      <p class="suave">Caixa: ${dinheiro(E.caixa)} ${desconto < 1 ? " · o olheiro diz que dá para pagar 15% menos" : ""}</p>
       <button class="primario largo" ${E.janela.aberta && tent < 3 ? "" : "disabled"}>${E.janela.aberta ? "Enviar proposta" : "Janela fechada"}</button>
       ${resposta ? `<p class="resposta ${resposta.resultado}">${h(resposta.motivo)}</p>` : ""}
     </form>`;
@@ -214,8 +214,8 @@ function desenharFicha(resposta) {
     pedir("pedido", { jogador: pid }).then((r) => {
       if (fichaAberta !== pidDaFicha || !$("fPedidoClube")) return;
       if (!r.ok) { $("fPedidoClube").innerHTML = ""; return; }
-      const p = r.pedido, pct = Math.round(p.pedido / Math.max(1, p.valor) * 100);
-      $("fPedidoClube").innerHTML = `<p>O ${h(nomeClube(clube))} pede <b>${dinheiro(p.pedido)}</b> <small>(${pct}% do valor de mercado)</small> e ${h(j.nome)} quer <b>${dinheiro(p.salario)}</b> por mês.</p>
+      const p = r.pedido;
+      $("fPedidoClube").innerHTML = `<p>O ${h(nomeClube(clube))} pede <b>${dinheiro(p.pedido)}</b> e ${h(j.nome)} quer <b>${dinheiro(p.salario)}</b> por mês.</p>
         <button type="button" id="fComprarJa" class="primario largo" ${E.janela.aberta ? "" : "disabled"}>${ic("aperto")} Comprar pelo preço pedido</button>`;
       if (!resposta) { $("fValor").value = p.pedido / 1e6; $("fSalario").value = Math.round(p.salario / 1e3); pagamento(); }
       $("fComprarJa").onclick = async () => {
