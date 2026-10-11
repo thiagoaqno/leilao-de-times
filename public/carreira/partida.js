@@ -270,8 +270,9 @@ function decisaoLance(p) {
       <p class="suave">${p.lance === "penalti_favor" ? "Chance de gol em cada canto: o goleiro tem as manias dele." : "Chance de defesa em cada canto: o batedor tem as manias dele."}</p>`;
   } else {
     const contra = p.lance.endsWith("contra");
-    $("dCorpo").innerHTML = `<div class="opcoes">${p.opcoes.map((o) => `<button class="opcao" data-op="${o.id}"><span>${h(o.nome)}</span><b>${pct(o)}%</b><i style="--v:${pct(o)}%"></i>${o.bonus ? `<small class="bonus-opcao">Se der certo: +${Math.round(o.bonus * 100)}% de gol no seu próximo lance</small>` : ""}</button>`).join("")}</div>
-      <p class="suave">${contra ? "Chance de evitar o gol, pelas notas de quem está no lance. Quem arrisca mais (chance menor) ganha mais impulso no ataque se der certo: o bônus vale para o seu próximo lance, por uns 10 minutos." : "Chance de gol, pelas notas de quem está no lance."}${p.impulso ? ` <b class="impulso-nota">Já inclui +${Math.round(p.impulso * 100)}% do impulso da sua defesa.</b>` : ""}</p>`;
+    const seta = (o) => (o.marca ? `<em class="marca ${o.marca > 0 ? "favor" : "contra"}" title="${o.marca > 0 ? "A situação favorece esta jogada" : "A situação atrapalha esta jogada"}">${o.marca > 0 ? "▲" : "▼"}</em>` : "");
+    $("dCorpo").innerHTML = `${p.situacao ? `<p class="situacao-lance"><b>Leia o lance:</b> ${h(p.situacao)}</p>` : ""}<div class="opcoes">${p.opcoes.map((o) => `<button class="opcao" data-op="${o.id}"><span>${h(o.nome)}${seta(o)}</span><b>${pct(o)}%</b><i style="--v:${pct(o)}%"></i>${o.bonus ? `<small class="bonus-opcao">Se der certo: +${Math.round(o.bonus * 100)}% de gol no seu próximo lance</small>` : ""}</button>`).join("")}</div>
+      <p class="suave">${contra ? "Chance de evitar o gol, pelas notas de quem está no lance. Quem arrisca mais (chance menor) ganha mais impulso no ataque se der certo: o bônus vale para o seu próximo lance, por uns 10 minutos." : "Chance de gol, pelas notas de quem está no lance."}${p.situacao ? " As setas ▲▼ mostram o que a situação muda: o número não conta tudo." : ""}${p.impulso ? ` <b class="impulso-nota">Já inclui +${Math.round(p.impulso * 100)}% do impulso da sua defesa.</b>` : ""}</p>`;
   }
   for (const b of $("dCorpo").querySelectorAll("[data-op]")) b.onclick = () => { b.classList.add("escolhida"); enviarDecisao(b.dataset.op); };
   // o tempo: uma transição só, linear, que não recomeça
@@ -279,6 +280,16 @@ function decisaoLance(p) {
   barra.style.transition = "none"; barra.style.transform = "scaleX(1)";
   requestAnimationFrame(() => requestAnimationFrame(() => { barra.style.transition = `transform ${TEMPO_LANCE}ms linear`; barra.style.transform = "scaleX(0)"; }));
   J.timerLance = setTimeout(() => enviarDecisao(Motor.decisaoAutomatica(p)), TEMPO_LANCE);
+}
+// o que o outro técnico montou e o que a SUA formação e o SEU estilo rendem contra ele (muda a cada escolha da prancheta)
+function rivalDaParadaHTML(p, d) {
+  if (!p.rival) return "";
+  const eu = { formacao: d.formacao, estilo: d.tatica.estilo || "equilibrado" }, ele = { formacao: p.rival.formacao, estilo: p.rival.estilo };
+  const a = Taticas.confronto(eu, ele), b = Taticas.confronto(ele, eu), est = Taticas.ESTILOS[ele.estilo];
+  const pc = (x) => `${x > 0 ? "+" : ""}${Math.round(x * 100)}%`;
+  const razoes = [...a.razoes.map((x) => [x.texto, x.valor]), ...b.razoes.map((x) => [`${x.texto} (a favor dele)`, -x.valor])].filter(([, v]) => v);
+  return `<span class="rotulo">Contra o ${h(nomeClube(p.rival.id))}</span>
+    <p class="rival-parada">Ele joga de <b>${h(Taticas.baseDe(ele.formacao))}</b>${est && ele.estilo !== "equilibrado" ? ` · ${h(est.nome)}` : ""}. Seus lances <b>${pc(a.criar)}</b>, os dele <b>${pc(b.criar)}</b>.${razoes.length ? ` ${razoes.map(([t, v]) => `${h(t)} ${v > 0 ? "▲" : "▼"}`).join(" · ")}` : ""}</p>`;
 }
 // o time da parada (para as contas do que muda): os jogadores do clube, o campo que está na tela e a tática escolhida até agora
 const timeDaParada = (p, d) => ({ ...meuTime(), formacao: d.formacao, tatica: d.tatica });
@@ -318,6 +329,7 @@ function decisaoTatica(p) {
         <span class="rotulo">Linha</span><div class="segmentos">${NIVEL.map((t, i) => `<button data-t="linha" data-v="${i}" aria-pressed="${d.tatica.linha === i}">${t}</button>`).join("")}</div>
         <span class="rotulo">Estilo de jogo</span><div id="dEstiloBox">${estiloHTML(d.tatica, timeDaParada(p, d), "data-t-estilo")}</div>
         <span class="rotulo">O que muda</span>${chipsDeEfeito(efeitosDaTatica(d.tatica, timeDaParada(p, d)).ef)}
+        ${rivalDaParadaHTML(p, d)}
         <span class="rotulo">Formação</span><div class="segmentos pequenos largos">${Taticas.NOMES_FORMACOES.map((f) => `<button data-f="${f}" aria-pressed="${d.formacao === f}">${f}</button>`).join("")}</div>
       </div></div>
       <button id="dVoltar" class="primario largo">Voltar ao jogo</button>`;

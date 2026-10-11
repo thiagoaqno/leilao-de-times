@@ -119,6 +119,66 @@
   // A queda de over depende dos jogos seguidos, e uma partida de descanso zera a sequência.
   const penalidadeSequencia = (n) => (n >= 7 ? 3 : n >= 5 ? 2 : n >= 3 ? 1 : 0);
 
+
+  // ---------- o cansaço: quanto a energia tira da nota ----------
+  // Até 90% de energia o jogador rende o que a nota diz; abaixo disso, cada 10 pontos de energia tiram 1 ponto de nota (no máximo 6).
+  // Vale a energia de AGORA, jogo a jogo e minuto a minuto: quem chega a 80% já entra jogando 1 ponto abaixo, e no fim de um jogo
+  // puxado o time cansado rende bem menos que o descansado.
+  const penalidadeEnergia = (e) => Math.round(clamp((90 - (e == null ? 100 : e)) * 0.1, 0, 6) * 10) / 10;
+
+  // ---------- o confronto: formação e estilo contra formação e estilo do rival ----------
+  // Cada regra é uma leitura de futebol de verdade e mexe pouco (de 3 a 5% nos lances que o time cria); somadas, uma boa resposta
+  // vale até uns 12%, uma má escolha custa o mesmo. confronto(eu, rival) devolve o que ESSE lado ganha ou perde; o do rival é
+  // confronto(rival, eu), então o que um ganha o outro perde. `eu` e `rival` são { formacao, estilo }.
+  const contar = (nome) => {
+    const c = { zag: 0, lat: 0, latDef: 0, meio: 0, vol: 0, mei: 0, pontas: 0, ata: 0 };
+    const f = FORMACOES[FORMACOES[nome] ? nome : "4-3-3"];
+    for (const [g, codigos] of f) for (const x of codigos) {
+      if (x === "ZAG") c.zag++;
+      else if (x === "LE" || x === "LD") { c.lat++; if (g === "DEF") c.latDef++; }
+      else if (x === "VOL") { c.vol++; c.meio++; } else if (x === "MC") c.meio++; else if (x === "MEI") { c.mei++; c.meio++; }
+      else if (x === "PE" || x === "PD") c.pontas++; else if (x === "ATA" || x === "F9") c.ata++;
+    }
+    c.defesa5 = c.zag + c.latDef >= 5; c.defesa3 = c.zag === 3 && !c.defesa5;
+    return c;
+  };
+  const CONTRA = {}; // memória: o motor pergunta isto a cada minuto
+  function confronto(eu, rival) {
+    const chave = `${eu.formacao}|${eu.estilo}|${rival.formacao}|${rival.estilo}`;
+    if (CONTRA[chave]) return CONTRA[chave];
+    const a = contar(eu.formacao), b = contar(rival.formacao), ea = estiloValido(eu.estilo), eb = estiloValido(rival.estilo);
+    let criar = 0, finalizar = 0; const razoes = [];
+    const ponto = (txt, c, f = 0) => { criar += c; finalizar += f; razoes.push({ texto: txt, valor: c || f }); };
+    // 1) o meio: quem tem mais gente no meio-campo domina a bola
+    const dm = clamp(Math.round(a.meio - b.meio), -1, 1);
+    if (dm) ponto(dm > 0 ? `Mais gente no meio (${a.meio} × ${b.meio})` : `Falta gente no meio (${a.meio} × ${b.meio})`, 0.035 * dm);
+    // 2) pontas abertos contra linha de 3 (os corredores ficam livres) e contra a linha de 5 (parede nas laterais)
+    if (a.pontas >= 2 && b.defesa3) ponto("Os pontas abrem a linha de 3 zagueiros", 0.05);
+    if (a.pontas >= 2 && b.defesa5) ponto("Os pontas esbarram na linha de 5", -0.05);
+    if (a.pontas >= 2 && b.meio >= 5 && !b.pontas) ponto("Os pontas atacam os lados do meio congestionado", 0.04);
+    // 3) dupla de ataque contra um volante só, e contra a linha de 5 o jogo é por dentro (meia atrás de dois atacantes)
+    if (a.ata >= 2 && b.vol <= 1 && b.zag <= 4 && !b.defesa5) ponto("Dois atacantes contra um volante só", 0.04);
+    if (b.defesa5 && a.mei >= 1 && a.ata >= 2) ponto("Meia por dentro e dois atacantes quebram a linha de 5", 0.04);
+    // 4) um centroavante só contra três zagueiros sobra homem na marcação
+    if (a.ata <= 1 && b.defesa3) ponto("Um atacante só contra três zagueiros", -0.04);
+    // 5) os estilos: o contra-ataque punia a posse, o pressing sufoca o toque curto, a retranca trava o tiki-taka...
+    const CRUZA = { "contra|tikitaka": [0, 0.05], "contra|posicional": [0, 0.04], "contra|gegenpressing": [0.03, 0.03], "gegenpressing|tikitaka": [0.05, 0],
+      "posicional|gegenpressing": [0.04, 0], "tikitaka|catenaccio": [-0.04, 0], "funcional|catenaccio": [0.03, 0], "catenaccio|contra": [0, -0.03],
+      "catenaccio|gegenpressing": [0.04, 0], "gegenpressing|catenaccio": [-0.03, 0] };
+    const nomeEstilo = (e) => (ESTILOS[e] || {}).nome || e;
+    const x = CRUZA[`${ea}|${eb}`];
+    if (x) ponto(`${nomeEstilo(ea)} contra ${nomeEstilo(eb)}`, x[0], x[1]);
+    criar = clamp(criar, -0.12, 0.12); finalizar = clamp(finalizar, -0.08, 0.08);
+    return (CONTRA[chave] = { criar, finalizar, razoes });
+  }
+  // o que cada formação (com o seu estilo) rende contra o rival: meu saldo menos o do rival, em % de lances; da melhor para a pior
+  function respostas(rival, estilo = "equilibrado", formacoes = NOMES_FORMACOES) {
+    return formacoes.map((f) => {
+      const eu = confronto({ formacao: f, estilo }, rival), ele = confronto(rival, { formacao: f, estilo });
+      return { formacao: f, criar: Math.round(eu.criar * 100), sofrer: Math.round(ele.criar * 100), saldo: Math.round((eu.criar - ele.criar + eu.finalizar - ele.finalizar) * 100), razoes: eu.razoes, deles: ele.razoes };
+    }).sort((x, y) => y.saldo - x.saldo || (x.formacao < y.formacao ? -1 : 1));
+  }
+
   // ---------- os estilos de jogo ----------
   // bonus: o que o estilo dá quando o elenco tem o perfil (multiplicado pelo encaixe f, de 0 a 1,5); custo: o que ele cobra sempre.
   // chance: lances que o seu time cria · cede: lances que o rival cria · conv: o quanto você converte · cansaco e faltas: desgaste.
@@ -182,5 +242,5 @@
       faltas: pc((1 + 0.15 * (p - 1)) * fat.faltas),
     };
   }
-  return { pontosDeEncaixe: (pos, vaga) => { const a = posDe(pos), b = posDe(vaga); return a === b ? 0 : a === "GOL" || b === "GOL" ? 40 : pontosDeEncaixe(a, b); }, penalidadeSequencia, FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
+  return { penalidadeEnergia, confronto, respostas, pontosDeEncaixe: (pos, vaga) => { const a = posDe(pos), b = posDe(vaga); return a === b ? 0 : a === "GOL" || b === "GOL" ? 40 : pontosDeEncaixe(a, b); }, penalidadeSequencia, FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
 });
