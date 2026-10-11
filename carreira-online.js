@@ -35,6 +35,8 @@ const PAUSA_MS = process.env.CARREIRA_PAUSA_MS != null ? Number(process.env.CARR
 const TICK_MS = 250;
 // quem fica fora da sala mais do que isso é "ausente": o jogo dele anda no automático (a volta de uma recarga não conta)
 const AUSENTE_MS = process.env.CARREIRA_AUSENTE_MS != null ? Number(process.env.CARREIRA_AUSENTE_MS) : 15000;
+// o anfitrião fora da sala por mais do que isso passa o cargo sozinho para o próximo técnico que está no ar
+const ANFITRIAO_AUSENTE_MS = process.env.CARREIRA_ANFITRIAO_MS != null ? Number(process.env.CARREIRA_ANFITRIAO_MS) : 120000;
 const hash = (t) => crypto.createHash("sha256").update(String(t)).digest("hex");
 
 // as opções do anfitrião, sempre dentro do permitido
@@ -157,6 +159,15 @@ module.exports = function ligarCarreiraOnline(io) {
     }
     return saiu;
   }
+  // o anfitrião sumiu (fora da sala há mais de ANFITRIAO_AUSENTE_MS): o cargo vai para o primeiro da lista que está no ar
+  function anfitriaoSumiu(room, agora) {
+    const h = room.players[room.host];
+    if (h && (h.sockets.size || agora - (h.saiuEm || agora) <= ANFITRIAO_AUSENTE_MS)) return false;
+    const novo = room.order.find((id) => id !== room.host && room.players[id].sockets.size && !room.players[id].dispensado);
+    if (!novo) return false;
+    room.host = novo;
+    return true;
+  }
   // ---------- a rodada ao vivo (carreira-rodada.js) ----------
   function comecarRodada(room) {
     const save = room.save;
@@ -220,6 +231,7 @@ module.exports = function ligarCarreiraOnline(io) {
   setInterval(() => {
     const agora = Date.now();
     for (const room of rooms.values()) {
+      if (anfitriaoSumiu(room, agora)) { guardar(room); broadcast(room); }
       if (room.fase !== "carreira" || !room.save) continue;
       let mudou = false, rodadaMudou = false;
       if (room.rodada) {
@@ -287,8 +299,9 @@ module.exports = function ligarCarreiraOnline(io) {
       broadcast(room);
     });
 
-    // as ações da sala: na espera, as opções (anfitrião), o clube e começar (anfitrião); depois do começo, jogar a
-    // rodada e a temporada nova (anfitrião), e o leilão (abrir, dar lance, bater o martelo ou recusar)
+    // as ações da sala: na espera, as opções (anfitrião), o clube e começar (anfitrião); a qualquer hora, dispensar ou
+    // passar o cargo de anfitrião; depois do começo, jogar a rodada e a temporada nova (anfitrião), e o leilão (abrir,
+    // dar lance, bater o martelo ou recusar)
     socket.on("act", (d = {}, cb) => {
       const { room, me } = minha();
       if (!room) return falha(cb, "Você não está numa sala.");
@@ -341,6 +354,14 @@ module.exports = function ligarCarreiraOnline(io) {
         alvo.dispensado = true;
         limparDispensados(room);
         extra = { dispensado: nome, clube, noFimDaRodada: !!room.players[alvo.id] };
+      } else if (d.type === "anfitriao") {
+        // o anfitrião passa o cargo para outro técnico da sala (na espera ou com a carreira rolando)
+        if (me.id !== room.host) return falha(cb, "Só o anfitrião passa o cargo.");
+        const alvo = room.players[String(d.pessoa || "")];
+        if (!alvo || alvo.dispensado) return falha(cb, "Essa pessoa não está mais na sala.");
+        if (alvo.id === me.id) return falha(cb, "Você já é o anfitrião.");
+        room.host = alvo.id;
+        extra = { anfitriao: alvo.name };
       } else if (room.fase !== "carreira" || !me.clube) return falha(cb, "Agora não.");
       else if (d.type === "rodada") {
         if (me.id !== room.host) return falha(cb, "Quem começa a rodada é o anfitrião.");
