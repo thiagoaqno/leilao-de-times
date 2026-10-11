@@ -97,7 +97,7 @@
       return `<li class="gc-linha"><span class="gc-info"><b>${hh.nome}</b>${pips(n, R.HAB_MAX)}<small>${n ? h(hh.texto(n)) : "Ainda sem nível"}</small>${n < R.HAB_MAX ? `<small class="prox">Próximo: ${h(hh.texto(n + 1))}</small>` : ""}</span>
         ${n >= R.HAB_MAX ? `<span class="gc-obra">No máximo</span>` : `<button data-gc-hab="${id}" ${gg.pontos > 0 ? "" : "disabled"}>Evoluir · 1 ponto</button>`}</li>`; }).join("");
     const prep = Object.entries(R.PREPARADORES).map(([id, p]) => { const tem = gg.preparadores.includes(id), cheio = gg.preparadores.length >= R.PREPARADORES_MAX;
-      return `<li class="gc-linha"><span class="gc-ic">${ic(p.icone)}</span><span class="gc-info"><b>${p.nome}</b><small>${h(p.texto)}</small></span>
+      return `<li class="gc-linha preparador"><span class="gc-info"><b>${p.nome}</b><small>${h(p.texto)}</small></span>
         ${tem ? `<button class="secundario" data-gc-prep="${id}" data-op="demitir">Dispensar</button>` : `<button data-gc-prep="${id}" data-op="contratar" ${cheio || E.caixa < gg.custosPreparadores[id] ? "disabled" : ""}>Contratar · ${dinheiro(gg.custosPreparadores[id])}/ano</button>`}</li>`; }).join("");
     return `<section class="quadro"><h3>Carreira do técnico</h3>
       <div class="gc-duplo"><div><small>Reputação</small><b class="gc-grande">${gg.reputacao}</b> <em>${R.nivelReputacao(gg.reputacao)}</em>${barra(gg.reputacao)}</div>
