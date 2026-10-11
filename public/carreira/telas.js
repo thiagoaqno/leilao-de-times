@@ -116,7 +116,7 @@ function telaJogo(pos) {
       <div class="podio">${escudo(campeao.id, 4)}<div><b>${h(nomeClube(campeao.id))}</b><small>Campeão · ${campeao.p} pontos</small></div></div>
       <p class="posicao-final"><b>${pos}º</b> lugar para o ${h(meuClube().nome)} (${meu.p} pontos). ${h(fraseFinal(pos))}</p>
       <p class="suave">Na virada, o elenco evolui: os jovens tendem a subir, os veteranos a cair, e alguns se aposentam. A base manda reforços.</p>
-      ${E.vagas && E.vagas.ofertas.length ? `<p class="aviso-vagas"><b>${E.vagas.ofertas.length} clube${E.vagas.ofertas.length > 1 ? "s" : ""} sondou${E.vagas.ofertas.length > 1 ? "aram" : ""} você.</b> ${E.vagas.escolha && E.vagas.escolha !== "ficar" ? `Você aceitou o ${h(nomeClube(E.vagas.escolha))}.` : "Veja as propostas na aba Temporada."} <button class="link" id="btnVerVagas">Ver propostas</button></p>` : ""}
+      ${E.vagas ? `<p class="aviso-vagas"><b>Mercado de técnicos aberto: ${E.vagas.ofertas.length} proposta${E.vagas.ofertas.length > 1 ? "s" : ""}.</b> ${E.vagas.escolha && E.vagas.escolha !== "ficar" ? `Você aceitou o ${h(nomeClube(E.vagas.escolha))}.` : "Quer mudar de clube?"} <button class="link" id="btnVerVagas">Ver propostas e candidatar-se</button></p>` : ""}
       <button id="btnNovaTemporada" class="primario largo">Começar a temporada ${E.ano + 1} (${E.temporada + 1} de ${E.temporadasMax})</button></div>`;
     if ($("btnVerVagas")) $("btnVerVagas").onclick = () => irParaAba("temporada");
     // na sala: o seu clube acabou, mas os amigos ainda têm jogos. O anfitrião libera as rodadas deles; a temporada nova só abre quando todos terminam
@@ -157,6 +157,7 @@ function telaJogo(pos) {
       ${E.clima && E.clima.texto ? `<p class="clima-jogo ${E.clima.nota > 0 ? "bom" : E.clima.nota < 0 ? "ruim" : ""}">${h(E.clima.texto)}</p>` : ""}</div>
       ${faixaPesoHTML(peso, casa, visitante)}
       ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}
+      ${E.vagas && E.vagas.momento === "comeco" && !E.partida ? `<p class="pendente">${ic("coroa")} Mercado de técnicos aberto até o primeiro jogo: veja as propostas na aba Temporada.</p>` : ""}
       ${pendentes && !E.partida ? `<p class="pendente">${ic("sino")} ${pendentes} aviso${pendentes > 1 ? "s" : ""} esperando resposta. Se jogar agora, vale a opção padrão.</p>` : ""}
       ${faixaAvancarHTML()}</div></div>`;
   for (const b of $("cartaoJogo").querySelectorAll("[data-modo]")) b.onclick = () => { modoEscolhido = +b.dataset.modo; pedir("modo", { modo: modoEscolhido }); for (const x of $("cartaoJogo").querySelectorAll("[data-modo]")) x.setAttribute("aria-pressed", String(+x.dataset.modo === modoEscolhido)); };
@@ -168,17 +169,28 @@ function telaJogo(pos) {
 // dá para mudar de ideia até lá.
 function vagasNaSede() {
   const v = E.vagas, el = $("cartaoVagas");
-  el.classList.toggle("hidden", !v || !v.ofertas.length);
-  if (!v || !v.ofertas.length) { el.innerHTML = ""; return; }
-  const card = (o) => `<li class="vaga ${v.escolha === o.id ? "escolhida" : ""}">${escudo(o.id, 3)}<div><b>${h(o.nome)}</b><small>${h(o.ligaNome)} · força ${o.forca} (${o.delta > 0 ? "+" : ""}${o.delta} que o seu time) · caixa ${dinheiro(o.caixa)}</small>
-      <span>Projeto: ${h(o.projeto)}</span></div><button class="${v.escolha === o.id ? "primario" : ""}" data-vaga="${o.id}">${v.escolha === o.id ? "Escolhido" : "Aceitar"}</button></li>`;
-  el.innerHTML = `<h3>Propostas de outros clubes</h3>
-    <p class="suave">Seu trabalho chamou a atenção. Quem aceita sai do ${h(meuClube().nome)} na virada da temporada e leva a reputação; estádio, contratos e diretoria ficam para trás.</p>
-    <ul class="vagas">${v.ofertas.map(card).join("")}</ul>
-    <button class="link ${v.escolha === "ficar" || !v.escolha ? "ativo" : ""}" data-vaga="ficar">${v.escolha === "ficar" || !v.escolha ? "✓ Ficar no " + h(meuClube().nome) : "Ficar no " + h(meuClube().nome)}</button>`;
+  el.classList.toggle("hidden", !v);
+  if (!v) { el.innerHTML = ""; return; }
+  const dados = (o) => `${h(o.ligaNome)} · força ${o.forca} (${o.delta > 0 ? "+" : ""}${o.delta} que o seu time) · caixa ${dinheiro(o.caixa)}`;
+  const card = (o) => `<li class="vaga ${v.escolha === o.id ? "escolhida" : ""}">${escudo(o.id, 3)}<div><b>${h(o.nome)}</b><small>${dados(o)}</small>
+      <span>Projeto: ${h(o.projeto)}</span></div><button class="${v.escolha === o.id ? "primario" : ""}" data-vaga="${o.id}">${v.escolha === o.id ? "Escolhido" : v.momento === "comeco" ? "Assumir agora" : "Aceitar"}</button></li>`;
+  const cand = (o) => `<li class="vaga cand">${escudo(o.id, 2)}<div><b>${h(o.nome)}</b><small>${dados(o)}</small>
+      <span>Chance de ser aceito: <b class="${o.chance >= 0.6 ? "positivo" : o.chance < 0.3 ? "neg" : ""}">${Math.round(o.chance * 100)}%</b> · ${h(o.projeto)}</span></div>
+      <button data-candidatar="${o.id}" ${o.tentou ? "disabled" : ""}>${o.tentou ? "Recusou" : "Candidatar-se"}</button></li>`;
+  const ficar = !v.escolha || v.escolha === "ficar";
+  el.innerHTML = `<h3>Mercado de técnicos</h3>
+    <p class="suave">${v.momento === "comeco" ? `A temporada ainda não começou: dá para trocar agora, antes do primeiro jogo.` : `Quem aceita sai do ${h(meuClube().nome)} na virada da temporada. Dá para mudar de ideia até lá.`} Você leva a reputação; estádio, contratos e diretoria ficam para trás.</p>
+    <h4>Propostas</h4><ul class="vagas">${v.ofertas.map(card).join("")}</ul>
+    <button class="link ${ficar ? "ativo" : ""}" data-vaga="ficar">${ficar ? "✓ " : ""}Ficar no ${h(meuClube().nome)}</button>
+    ${v.candidatos && v.candidatos.length ? `<h4>Procurar outro clube</h4><p class="suave">Mande a candidatura: cada clube responde uma vez, e a chance depende da sua reputação e dos resultados.</p><ul class="vagas">${v.candidatos.map(cand).join("")}</ul>` : ""}`;
   for (const b of el.querySelectorAll("[data-vaga]")) b.onclick = async () => {
     const r = await pedir("vaga", { id: b.dataset.vaga }); if (!r.ok) return toast(r.error);
-    receber(r.estado); toast(b.dataset.vaga === "ficar" ? "Você segue no clube." : "Proposta aceita: a troca vale na virada da temporada.");
+    receber(r.estado); toast(r.mensagem || (b.dataset.vaga === "ficar" ? "Você segue no clube." : "Proposta aceita: a troca vale na virada da temporada."));
+  };
+  for (const b of el.querySelectorAll("[data-candidatar]")) b.onclick = async () => {
+    b.disabled = true;
+    const r = await pedir("candidatar", { id: b.dataset.candidatar }); if (!r.ok) { b.disabled = false; return toast(r.error); }
+    receber(r.estado); toast(r.mensagem);
   };
 }
 // a história do clube (carreira-memoria.js): as relações, o perfil que as suas escolhas formaram, os laços com os

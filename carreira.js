@@ -190,6 +190,7 @@ function completar(save) {
   guardarNaEstante(save); // as conquistas das temporadas de antes da estante (ou de antes deste conserto)
   if (!save.humanosLista) remendarArquivo(save); // na sala, quem remenda é estanteDaSala (precisa do histórico de todos)
   Clube.garantir(save, ajudas);
+  if (save.base === BASE_PADRAO && save.calendarioMundo) Tecnicos.visao(save, ctxTecnicos(), resDaTemporada(save)); // as propostas existem para quem terminou a temporada
   return save;
 }
 // os clubes como estavam no começo da temporada (a evolução, os jovens, os aposentados e as transferências até a
@@ -1188,7 +1189,7 @@ function registrarTemporada(save) {
   if (g6) { movimentar(save, `Premiação do campeonato: ${pos}º lugar (G6)`, g6); avisar(save, { tipo: "premio", icone: "taca", titulo: `Premiação do campeonato: ${dinheiro(g6)}`, texto: `Terminar em ${pos}º entre os 6 primeiros paga ${dinheiro(g6)} da premiação do campeonato.` }); }
   Clube.fechouTemporada(save, ajudas, { pos, titulos, vices, cumpriuMeta: meta ? meta.cumprida : undefined });
   Memoria.fimDeTemporada(save, { pos, titulos, divisao, cumpriuMeta: meta ? meta.cumprida : undefined });
-  Tecnicos.gerar(save, { ...ajudas, forcaDoClube, caixaInicial }, { pos, titulos: titulos.length, cumpriuMeta: meta ? meta.cumprida : undefined, rebaixado: divisao === "rebaixado" }); // propostas de outros clubes
+  Tecnicos.gerar(save, ctxTecnicos(), { pos, titulos: titulos.length, cumpriuMeta: meta ? meta.cumprida : undefined, rebaixado: divisao === "rebaixado" }); // propostas de outros clubes
 }
 // o arquivo das temporadas (save.arquivo, de todos): quando a temporada acaba, guarda os campeões, as tabelas, as chaves, a festa,
 // a artilharia, os prêmios (artilheiro, maior goleada, melhor negócio) e os pontos de cada técnico, para a tela "Temporadas".
@@ -1410,6 +1411,13 @@ function jovensDoEstado(save, e) {
   for (const m of JSON.stringify([e.artilharia, e.transferencias, e.feed, e.historico, e.caixaEntrada, e.arquivo]).matchAll(RE_JOVEM)) if (todos[m[1]]) ids.add(m[1]);
   return Object.fromEntries([...ids].map((id) => [id, todos[id]]));
 }
+// o que o mercado de técnicos precisa saber de como foi a temporada (do histórico, que registrarTemporada preenche)
+const ctxTecnicos = () => ({ ...ajudas, forcaDoClube, caixaInicial, temporadaAcabou });
+// no começo da temporada seguinte, vale o que o técnico fez na anterior
+function resDaTemporada(save) {
+  const h = (save.historico || []).find((x) => x.temporada === save.temporada) || (save.historico || []).find((x) => x.temporada === save.temporada - 1);
+  return h ? { pos: h.posicao, titulos: (h.titulos || []).length, cumpriuMeta: h.meta ? h.meta.cumprida : undefined, rebaixado: h.divisao === "rebaixado" } : {};
+}
 function estado(save) {
   completar(save);
   const e = save.base === BASE_PADRAO ? estadoMundo(save) : estadoBrasileirao(save);
@@ -1418,7 +1426,7 @@ function estado(save) {
   e.arquivo = save.arquivo || [];
   e.gestao = Clube.estado(save, ajudas);
   e.memoria = Memoria.estado(save, ajudas);
-  e.vagas = save.vagas && save.vagas.temporada === save.temporada && Tecnicos.vale(save) && temporadaAcabou(save) ? { ofertas: save.vagas.ofertas, escolha: save.vagas.escolha } : null;
+  e.vagas = save.base === BASE_PADRAO ? Tecnicos.visao(save, ctxTecnicos(), resDaTemporada(save)) : null;
   e.posicoes = save.posicoes || {}; // quem já mudou de posição pelo treino (o navegador troca a posição da base)
   if (save.demitido) { e.encerrada = true; e.demitido = save.demitido; }
   e.jovens = jovensDoEstado(save, e);
@@ -1628,7 +1636,7 @@ function novaTemporada(save) {
   registrarTemporada(save);
   if (save.base === BASE_PADRAO && save.calendarioMundo) arquivarTemporada(save);
   resolverPendentes(save); // o que ficou sem resposta vale a opção padrão, como antes de um jogo
-  const mudanca = Tecnicos.aplicar(save, { ...ajudas, caixaInicial }); // o técnico que aceitou outro clube troca agora, antes de a temporada virar
+  const mudanca = Tecnicos.aplicar(save, ctxTecnicos()); // o técnico que aceitou outro clube troca agora, antes de a temporada virar
   const mundo = save.base === BASE_PADRAO, classificados = mundo ? classificadosDe(save) : null, troca = mundo ? trocarDivisoes(save) : null;
   const meus = virarTemporada(save)[save.clube];
   save.energia = {}; save.sequencia = {}; // férias: energia cheia e sequência zerada
@@ -1648,10 +1656,7 @@ function novaTemporada(save) {
   const partes = [mundo && noticiaDasDivisoes(save, troca), meus.subiram.length && `Subiram: ${nomes(meus.subiram)}.`, meus.cairam.length && `Caíram: ${nomes(meus.cairam)}.`,
     meus.aposentados.length && `Se aposentaram: ${meus.aposentados.map((pid) => jogadorDe(save, pid).nome).join(", ")}.`,
     meus.jovens.length && `Subiram da base: ${meus.jovens.map((pid) => `${jogadorDe(save, pid).nome} (${jogadorDe(save, pid).pos}, ${jogadorDe(save, pid).nota})`).join(", ")}.`].filter(Boolean);
-  if (mudanca && mudanca.mudou) {
-    avisar(save, { tipo: "mercado-tecnico", icone: "coroa", titulo: `Novo clube: ${mudanca.nomePara}`, texto: `Você deixou o ${mudanca.nomeDe} e assume o ${mudanca.nomePara}. A torcida ainda está te conhecendo, a diretoria quer ver trabalho e o elenco é outro.` });
-    Feed.postar(save, { tipo: "tecnico", perfil: save.clube, arte: { cena: "apresentacao", clube: save.clube }, peso: 2, texto: `O ${mudanca.nomePara} apresenta ${save.tecnico.nome} como novo técnico, vindo do ${mudanca.nomeDe}. "Chego para ganhar", disse na chegada.` });
-  }
+  if (mudanca && mudanca.mudou) Tecnicos.noticiar(save, ctxTecnicos(), mudanca);
   avisar(save, { tipo: "temporada", icone: "taca", titulo: `Começa a temporada ${save.ano} (${save.temporada} de ${save.temporadasMax})`, texto: `A janela está aberta até a rodada 4. Caixa: ${dinheiro(save.caixa)}. ${partes.join(" ")} ${gestaoTexto}`.trim() });
   if (meus.jovens.length) Feed.postar(save, { tipo: "base", perfil: save.clube, humor: "bom", arte: { cena: "treino", clube: save.clube, jogador: meus.jovens[0] },
     texto: `Da base para o profissional: ${meus.jovens.map((pid) => jogadorDe(save, pid).nome).join(" e ")} sobe${meus.jovens.length > 1 ? "m" : ""} para o time principal do ${clubeDe(save, save.clube).nome}.` });
@@ -1792,7 +1797,12 @@ module.exports = function ligarCarreira(io) {
       return typeof r === "string" ? falha(cb, r) : ok(cb, { pedido: r });
     });
     socket.on("clube", (d = {}, cb) => comCarreira(cb, (save) => Clube.acao(save, ajudas, d)));
-    socket.on("vaga", (d = {}, cb) => comCarreira(cb, (save) => Tecnicos.escolher(save, String(d.id || ""))));
+    socket.on("vaga", (d = {}, cb) => comCarreira(cb, (save) => Tecnicos.escolher(save, ctxTecnicos(), String(d.id || ""))));
+    socket.on("candidatar", (d = {}, cb) => comCarreira(cb, (save) => {
+      const r = Tecnicos.candidatar(save, ctxTecnicos(), String(d.id || ""), resDaTemporada(save));
+      if (typeof r === "string") return r;
+      return { mensagem: r.mensagem, aceitou: r.aceitou };
+    }));
     socket.on("novaTemporada", (d, cb) => comCarreira(cb, (save) => novaTemporada(save)));
     // o código de recuperação de novo (nasce outro: o banco só guarda o hash) e apagar a carreira de vez
     socket.on("codigo", (d, cb) => {
@@ -1811,7 +1821,7 @@ module.exports = function ligarCarreira(io) {
   });
 };
 // para os testes: montar uma carreira e mexer nela sem o socket
-module.exports.paraTestes = { trocarDivisoes, ligaDoClube, clubesDaLiga, definirMeta, registrarTemporada, PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO, olheiro, consultarPedido };
+module.exports.paraTestes = { forcaDoClube, caixaInicial, temporadaAcabou, trocarDivisoes, ligaDoClube, clubesDaLiga, definirMeta, registrarTemporada, PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO, olheiro, consultarPedido };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
 module.exports.grupo = { rodadaDaSemana, estanteDaSala, Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,

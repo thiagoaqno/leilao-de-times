@@ -1,15 +1,13 @@
-# Carreira: personalidade dos jogadores
+# Carreira: dá para trocar de clube também no começo da temporada, e se candidatar
 
 ## O que muda no jogo
 
-- **Cada jogador tem um jeito.** Sete personalidades: líder, profissional, pavio curto, vaidoso, festeiro, guerreiro e reservado. O jeito sai do próprio jogador (não muda no meio da carreira), a posição inclina o sorteio (atacante é mais vaidoso, zagueiro mais líder, goleiro mais reservado ou profissional) e aparece na ficha.
-- **O jeito vale em campo.** O líder entre os titulares segura o time quando a moral está baixa (+1 na nota). O pavio curto é suspenso no 2º amarelo, e não no 3º.
-- **Cada jeito abre histórias.** 14 eventos novos na caixa de entrada, dois por personalidade, com escolhas que mexem em moral, vestiário, imprensa, caixa, rendimento do jogador e até na evolução de um reserva (o profissional que apadrinha a base, o líder que pede a palavra, o pavio curto que perde a cabeça depois da derrota, o vaidoso que exige status, o festeiro que faz aniversário, o guerreiro que quer jogar com dor, o reservado que precisa de atenção). No máximo um a cada 3 rodadas, cada um uma vez por temporada, e entra no sistema de memória do clube como os outros eventos.
+- **Antes não aparecia proposta.** O mercado de técnicos só abria no fim da temporada e só para quem terminava a temporada depois da novidade. Carreiras que já estavam rodando viraram a temporada sem nenhuma proposta, e a janela fechava. Além disso, técnico com pouco prestígio podia ficar sem convite nenhum.
+- **Sempre sai pelo menos uma proposta.** Se nenhum clube caberia pelo prestígio do técnico, vêm os dois clubes de força mais próxima da do time dele.
+- **O mercado reabre no começo de cada temporada**, antes do primeiro jogo (a partir da segunda temporada). Lá a troca é na hora: o calendário, o elenco e o caixa já são do clube novo. Carreiras que já estão com a temporada nova começada e ainda sem jogo ganham as propostas ao abrir. Depois do primeiro jogo o mercado fecha até o fim da temporada.
+- **Candidatar-se.** A aba Temporada lista clubes (até 14) com a chance de o clube aceitar, pela reputação e pelos resultados do técnico. Cada clube responde uma vez, e o resultado é sempre o mesmo para a mesma carreira. Quem aceita vira a proposta escolhida (na hora, no começo da temporada; na virada, no fim).
+- A Central avisa quando o mercado está aberto, e o painel Mercado de técnicos ficou no alto da aba Temporada.
 
 ## Como
 
-`public/carreira/personalidade.js` (UMD: `tipoDe`, `de`, `bonusDoLider`, `limiteDeAmarelos`), `carreira-personalidades.js` (os eventos, `alvo: "p:<tipo>"`), `carreira-eventos.js` sorteia e acha o alvo pelo tipo, `carreira.js` soma o líder em `timeDe` (`titularesAprox`) e usa o limite de amarelos em `cartoesELesoes`; a ficha (`cartas.js`) e o guia mostram. Testes em `tests/carreira-personalidade.test.js`.
-
-## Também neste PR: aba Rival na Sede
-
-- A **Leitura do rival** saiu da prévia do jogo (que ficou limpa de novo) e ganhou uma aba própria na Sede, entre Meu time e Temporada: o escudo do adversário, onde é o jogo, a leitura da formação e do estilo dele contra os seus, e os botões de resposta (trocam a formação na hora). `rivalNaSede` em `sede-hub.js`, `#cartaoRival`; teste no navegador em `tests/e2e/carreira-rival.spec.js`.
+`carreira-tecnicos.js`: `momentoDe` (`fim` ou `comeco`), `gerar` (garante uma proposta), `visao` (as propostas e os candidatos, gerados ao abrir o save se faltarem), `candidatar`, `escolher` e `trocarClube` (a troca de clube, agora também com o calendário). `carreira.js`: ações `vaga` e `candidatar`, e `ctxTecnicos`. Testes em `tests/carreira-tecnicos.test.js` e `tests/e2e/carreira-mercado-tecnicos.spec.js`.
