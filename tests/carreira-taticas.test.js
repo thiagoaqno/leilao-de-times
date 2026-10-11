@@ -30,7 +30,7 @@ test("o encaixe diferencia lateral de zagueiro e ponta de centroavante, e contin
 test("as formações (12 esquemas e suas variações) têm 11 vagas, o gol em primeiro e as 6 antigas mantêm a conta de defesa, meio e ataque", () => {
   assert.strictEqual(Taticas.ESQUEMAS.length, 12);
   assert.ok(Taticas.NOMES_FORMACOES.length >= 20);
-  assert.deepStrictEqual(Taticas.variacoesDe("4-3-3"), ["4-3-3", "4-3-3 M", "4-3-3 V", "4-3-3 C", "4-3-3 F"], "o 4-3-3 tem 1 volante + 2 meias, 2 volantes + 1 meia, 3 meio-campistas e falso 9");
+  assert.deepStrictEqual(Taticas.variacoesDe("4-3-3"), ["4-3-3", "4-3-3 M", "4-3-3 V", "4-3-3 C", "4-3-3 O", "4-3-3 G", "4-3-3 F"], "o 4-3-3 tem 1 volante + 2 meias, 2 volantes + 1 meia, 3 meio-campistas, o ofensivo, o do Guardiola e falso 9");
   assert.ok(Taticas.ESQUEMAS.every((e) => Taticas.FORMACOES[e]), "todo esquema tem a variação padrão com o mesmo nome");
   for (const nome of Taticas.NOMES_FORMACOES) {
     const v = Taticas.vagasDe(nome), s = Taticas.spots(nome);
@@ -179,6 +179,10 @@ test("o campinho desenha a variação: volante recuado, meia avançado, falso 9 
   assert.strictEqual(mei.x, 50, "o meia fica no meio, os volantes dos lados");
   const lados = pos("4-3-3").filter((x) => x.fino === "LE" || x.fino === "LD" || x.fino === "PE" || x.fino === "PD");
   assert.ok(lados.every((x) => x.x <= 14 || x.x >= 86), "laterais e pontas colados na linha");
+  const v433o = pos("4-3-3 O"), meiO = v433o.find((x) => x.fino === "MEI");
+  assert.ok(meiO.x === 50 && v433o.filter((x) => x.fino === "MC").every((x) => x.y > meiO.y), "4-3-3 ofensivo: o meia à frente, no meio dos dois meio-campistas");
+  const v433g = pos("4-3-3 G"), [gVol, gMc, gMei] = ["VOL", "MC", "MEI"].map((f) => v433g.find((x) => x.fino === f));
+  assert.ok(gVol.x === 50 && gVol.y > gMc.y && gMc.y > gMei.y && gMei.x < 50 && gMc.x > 50, "Guardiola: volante no meio, meia à esquerda e meio-campista à direita, em escada");
   const f9 = pos("4-3-3 F").find((x) => x.fino === "F9"), ata = pos("4-3-3").find((x) => x.fino === "ATA");
   assert.ok(f9.y > ata.y, "o falso 9 joga mais atrás do que o centroavante");
   for (const nome of Taticas.NOMES_FORMACOES) { const s = Taticas.spots(nome); assert.ok(s.every((p) => p.x >= 8 && p.x <= 92 && p.y >= 5 && p.y <= 95), nome); }
