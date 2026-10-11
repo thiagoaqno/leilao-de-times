@@ -149,7 +149,8 @@ function telaJogo(pos) {
     <div class="cj-tile cj-previa"${foto ? ` style="--foto:url('${h(foto.url)}')"` : ""}><div class="jogo-info"><span class="sobre">${E.partida ? "Partida em andamento" : `Prévia · ${onde}`}</span>
       <h3 class="fx-titulo">${h(nomeClube(casa))} × ${h(nomeClube(visitante))}</h3>
       <div class="confronto"><div style="${coresClube(casa)}" data-time="${casa}" title="Ver o elenco">${escudo(casa, 3)}<small>${posicaoDe(casa) && E.rodada ? posicaoDe(casa) + "º" : ""}</small></div><span class="x">×</span><div style="${coresClube(visitante)}" data-time="${visitante}" title="Ver o elenco">${escudo(visitante, 3)}<small>${posicaoDe(visitante) && E.rodada ? posicaoDe(visitante) + "º" : ""}</small></div></div>
-      <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p></div>
+      <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p>
+      ${E.clima && E.clima.texto ? `<p class="clima-jogo ${E.clima.nota > 0 ? "bom" : E.clima.nota < 0 ? "ruim" : ""}">${h(E.clima.texto)}</p>` : ""}</div>
       ${faixaPesoHTML(peso, casa, visitante)}
       ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}
       ${E.partida ? "" : leituraRivalHTML()}

@@ -14,6 +14,7 @@ const Feed = require("./carreira-feed.js");
 const Orcamentos = require("./public/carreira/orcamentos.js");
 const Evolucao = require("./public/carreira/evolucao.js");
 const Taticas = require("./public/carreira/taticas.js");
+const Pressao = require("./carreira-pressao.js");
 const Clube = require("./carreira-clube.js");
 const Memoria = require("./carreira-memoria.js");
 const crypto = require("crypto");
@@ -777,7 +778,7 @@ function timeDe(save, id) {
   const c = clubeDe(save, id), meu = id === save.clube, R = save.partida ? save.partida.rodada : save.rodada;
   const rival = !meu && save.partida && (save.partida.casa === id || save.partida.fora === id);
   const ativos = meu || rival ? efeitosAtivos(save, R) : [];
-  const extra = meu ? moralBonus(save) + somaEfeitos(ativos, "time")
+  const extra = meu ? moralBonus(save) + somaEfeitos(ativos, "time") + (save.partida ? Pressao.climaDoJogo(save, ajudas, save.partida.casa, save.partida.fora).nota : 0) // o clima do estádio
     : rival ? (save.provocado && save.provocado.rodada === R ? save.provocado.nota : 0) + somaEfeitos(ativos, "rival") : 0;
   return {
     id: c.id, nome: c.nome,
@@ -864,7 +865,7 @@ function premioDoTurno(save) {
 // técnico, então a mesma transferência aparecia como "rodada 27" para quem tinha mais copas e a outra pessoa, na rodada 23, via notícia do futuro.
 const semanaDe = (save) => (save.ultimo && save.ultimo.semana) || 0;
 const carimbo = (save) => ({ semana: semanaDe(save), rl: rodadaDaJanela(save) });
-const ajudas = { semVenda: (save, pid) => Clube.semVenda(save, save.clube, pid), semanaDe, carimbo, avisar, ligaDoClube, clubesDaLiga, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
+const ajudas = { proximoJogoMundo, semVenda: (save, pid) => Clube.semVenda(save, save.clube, pid), semanaDe, carimbo, avisar, ligaDoClube, clubesDaLiga, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
 
 // lesões, cartões e suspensões de todos os jogos da rodada
 function cartoesELesoes(save, r, semente) {
@@ -1095,7 +1096,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   }
   Clube.provocacao(save, ajudas, { adv: advId, nos: nosFinais, eles: elesFinais });
   const dilemas = Clube.aposJogo(save, ajudas, { nos: nosFinais, eles: elesFinais, emCasa, adv: advId });
-  Memoria.aposJogo(save, ajudas, { nos: nosFinais, eles: elesFinais, emCasa, classico: !!(advId && Clube.classicoCom(save, ajudas, advId)) });
+  Memoria.aposJogo(save, ajudas, { nos: nosFinais, eles: elesFinais, emCasa, adv: advId, classico: !!(advId && Clube.classicoCom(save, ajudas, advId)) });
   if (proximoJogoMundo(save)) for (const e of Eventos.gerarEventos(save, ajudas)) save.caixaEntrada.unshift(e);
   if (proximoJogoMundo(save)) for (const e of dilemas) save.caixaEntrada.unshift(e);
   save.caixaEntrada.length = Math.min(save.caixaEntrada.length, 40);
@@ -1519,7 +1520,7 @@ function estadoMundo(save) {
   const elenco = elencoDe(save, save.clube), artilharia = topo(golsTodos);
   // a artilharia de cada competição (a tela Tabela e o painel da Sede escolhem qual mostrar)
   const artilharias = Object.fromEntries(Object.keys(save.competicoes).map((id) => [id, topo(golsDoMundo(save, limite, id))]).filter(([, l]) => l.length));
-  return { meta: save.meta, liga, divisoes: save.divisoes, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, artilharias, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo, rival: partida ? null : leituraDoRival(save, proximo),
+  return { meta: save.meta, liga, divisoes: save.divisoes, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, artilharias, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo, rival: partida ? null : leituraDoRival(save, proximo), clima: proximo ? Pressao.climaDoJogo(save, ajudas, proximo.casa, proximo.fora) : null,
     caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.filter((t) => t.semana == null || t.semana < semanaPropria).slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), rodadasLiga: semanasDaRodada(save.calendarioMundo).length, tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.filter((f) => f.semana == null || f.semana < semanaPropria).slice(0, 30), posJogo: save.posJogo };
 }
 

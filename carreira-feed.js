@@ -5,6 +5,7 @@
 const Motor = require("./public/carreira/motor.js");
 const Mercado = require("./public/carreira/mercado.js");
 const Temporada = require("./public/carreira/temporada.js");
+const Rivais = require("./public/carreira/rivais.js");
 
 const { dinheiro } = Mercado;
 const MAX = 60;
@@ -91,7 +92,57 @@ function entreRodadas(save, { novos, transferencias, ajudas: c }) {
       postar(save, { tipo: "disputa", perfil: "galeranews", galeranews: true, humor: "mercado", peso: 1.4, arte: { cena: "martelo", jogador: e.dados.jogador, clube: meu },
         texto: `LEILÃO NO MERCADO: ${e.dados.lances.length > 2 ? "vários clubes" : "dois clubes"} brigam por ${c.jogadorDe(save, e.dados.jogador).nome}, do ${clube.nome}.` });
     }
+  }  viagem(save, c);
+}
+
+// ---------- a viagem e a recepção ----------
+// as cidades dos clubes (latitude e longitude) para medir a viagem; clube de outro país ou cidade que não está aqui voa
+const CIDADES = { "Rio de Janeiro": [-22.9, -43.2], "São Paulo": [-23.55, -46.63], "Belo Horizonte": [-19.92, -43.94], Mirassol: [-20.82, -49.5], Salvador: [-12.97, -38.5],
+  "Porto Alegre": [-30.03, -51.23], "Bragança Paulista": [-22.95, -46.54], Santos: [-23.96, -46.33], Curitiba: [-25.43, -49.27], "Chapecó": [-27.1, -52.62], "Belém": [-1.46, -48.5],
+  Fortaleza: [-3.73, -38.52], Recife: [-8.05, -34.88], "Caxias do Sul": [-29.17, -51.18], "Goiânia": [-16.68, -49.25], "Cuiabá": [-15.6, -56.1], "Novo Horizonte": [-21.46, -49.22],
+  "Criciúma": [-28.68, -49.37], "Florianópolis": [-27.6, -48.55], "Maceió": [-9.67, -35.74], "Ponta Grossa": [-25.09, -50.16], Campinas: [-22.9, -47.06], "Ribeirão Preto": [-21.18, -47.81],
+  Londrina: [-23.31, -51.16], "São Bernardo do Campo": [-23.69, -46.56], "São João del-Rei": [-21.14, -44.26] };
+function distanciaKm(a, b) {
+  const A = CIDADES[a], B = CIDADES[b]; if (!A || !B) return null;
+  const rad = (g) => g * Math.PI / 180, dLa = rad(B[0] - A[0]), dLo = rad(B[1] - A[1]);
+  const h = Math.sin(dLa / 2) ** 2 + Math.cos(rad(A[0])) * Math.cos(rad(B[0])) * Math.sin(dLo / 2) ** 2;
+  return Math.round(12742 * Math.asin(Math.sqrt(h)));
+}
+// como o time viaja: a pé/ônibus curto, ônibus, avião ou voo internacional (km: null quando não dá para medir)
+function viagemDe(de, para) {
+  if (de.pais !== para.pais) return { modo: "internacional", km: null };
+  const km = de.cidade === para.cidade ? 0 : distanciaKm(de.cidade, para.cidade);
+  if (km == null) return { modo: "aviao", km: null };
+  return { modo: km <= 40 ? "perto" : km <= 450 ? "onibus" : "aviao", km };
+}
+// o que o time encontra: a torcida dele em casa (pela relação com a torcida) ou a do rival fora (clássico e clube grande esquentam)
+function recepcao(save, c, jogo, tor, classico) {
+  const casa = jogo.casa === save.clube;
+  if (casa) return tor >= 65 ? "festa" : tor <= 35 ? "cobranca" : "normal";
+  const adv = c.clubeDe(save, jogo.casa);
+  return classico || adv.tamanho >= 4 ? "hostil" : "normal";
+}
+function viagem(save, c) {
+  const jogo = c.proximoJogoMundo && c.proximoJogoMundo(save); if (!jogo) return;
+  const meu = save.clube, casa = jogo.casa === meu, advId = casa ? jogo.fora : jogo.casa, adv = c.clubeDe(save, advId), clube = c.clubeDe(save, meu);
+  const r = Motor.sorteDe(`viagem:${save.semente}:${save.temporada}:${jogo.id}`), tor = save.memoria && save.memoria.rel ? save.memoria.rel.torcida : 50;
+  const classico = !!Rivais.classico(meu, advId), v = casa ? null : viagemDe(clube, adv), rec = recepcao(save, c, jogo, tor, classico);
+  const km = v && v.km ? `${v.km.toLocaleString("pt-BR")} km` : "";
+  if (!casa) {
+    const textos = {
+      perto: [`O ${clube.nome} sai do CT de ônibus rumo ao ${adv.estadio}: viagem curta, sem dor de cabeça.`],
+      onibus: [`A delegação do ${clube.nome} embarca de ônibus para ${adv.cidade} (${km}). Viagem longa, mas o grupo foi com música e baralho.`],
+      aviao: [`O ${clube.nome} embarca para ${adv.cidade}${km ? ` (${km} de voo)` : ""}. A delegação aterrissou à tarde e foi direto para o hotel.`, `Aeroporto cheio: torcedores foram se despedir do ${clube.nome} na saída para ${adv.cidade}.`],
+      internacional: [`Voo internacional: o ${clube.nome} embarca para ${adv.cidade}, ${adv.pais}. A comissão fez treino leve no hotel.`],
+    }[v.modo];
+    postar(save, { tipo: "viagem", perfil: meu, humor: "neutro", arte: { cena: v.modo === "perto" || v.modo === "onibus" ? "estadio" : "aviao", clube: meu }, texto: textos[Math.floor(r() * textos.length)] });
   }
+  const recs = {
+    festa: [`Corredor de torcida na chegada ao estádio: o ônibus do ${clube.nome} foi recebido com sinalizadores e cantoria.`, `A torcida lotou a porta do CT para empurrar o ${clube.nome} antes do jogo contra o ${adv.nome}.`],
+    cobranca: [`Clima pesado: a torcida esperou o ônibus do ${clube.nome} com faixas e cobrança antes do jogo contra o ${adv.nome}.`],
+    hostil: [`Recepção quente: a torcida do ${adv.nome} esperou o ônibus do ${clube.nome} com fogos e gritaria na chegada ao ${adv.estadio}.`, `Hotel cercado: torcedores do ${adv.nome} passaram a noite fazendo barulho na porta da delegação do ${clube.nome}.`],
+  }[rec];
+  if (recs) postar(save, { tipo: "recepcao", perfil: "galeranews", galeranews: true, humor: rec === "festa" ? "bom" : "ruim", arte: { cena: rec === "festa" ? "torcida" : "protesto", clube: meu }, texto: recs[Math.floor(r() * recs.length)] });
 }
 
 // os posts da rodada que acabou
@@ -133,4 +184,4 @@ function daRodada(save, { rodada, r, novos, transferencias, ajudas: c }) {
   entreRodadas(save, { novos, transferencias, ajudas: c });
 }
 
-module.exports = { postar, transferencia, troca, entreRodadas, daRodada, MAX };
+module.exports = { viagem, viagemDe, distanciaKm, postar, transferencia, troca, entreRodadas, daRodada, MAX };

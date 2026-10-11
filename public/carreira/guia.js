@@ -37,6 +37,7 @@ const Guia = (() => {
         <li><b>Olheiro:</b> sugere quem melhora o time e cabe no caixa pelo preço que o clube realmente pede (e avisa quando o jogador está desvalorizado).</li>
         <li><b>Vender:</b> ponha na lista de vendas ou venda na hora.</li>
         <li><b>Propostas:</b> outros clubes mandam ofertas pelos seus jogadores na caixa de entrada.</li>
+        <li><b>Coletiva e torcida:</b> depois de jogos marcantes (goleada, derrota, clássico, sequência) chega uma coletiva, ou a torcida cobra ou abraça. O que você responde mexe com imprensa, torcida, vestiário e diretoria, e a torcida muda o clima do estádio: cheia e animada, vale +1 na nota em casa; irritada, vale -1. Fora, clube grande e clássico pressionam.</li>
       </ul>
       <p>Contratos acabam: renove os importantes na tela <b>Clube</b>, antes de perdê-los de graça.</p>`],
     ["temporada", "Temporada e copas", `
