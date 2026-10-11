@@ -38,7 +38,7 @@ function escudoDaArte(clube) {
   const c = CLUBES[clube]; if (!c) return null;
   let e = escudosArte.get(clube);
   if (!e) {
-    const temApi = !!(window.ESCUDOS_API && window.ESCUDOS_API[clube]);
+    const api = escudoDaApi(clube), temApi = !!api;
     e = { img: null, api: null, esperando: temApi }; escudosArte.set(clube, e);
     const svg = Escudos.svg(c).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="180" ');
     const img = new Image(); img.onload = () => { if (!e.api) { e.img = img; agendarRefazer(); } }; img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
@@ -46,7 +46,7 @@ function escudoDaArte(clube) {
       const im = new Image();
       im.onload = () => { e.api = im; e.img = im; e.esperando = false; agendarRefazer(); };
       im.onerror = () => { e.esperando = false; agendarRefazer(); };
-      im.src = `/api/escudo/${encodeURIComponent(clube)}`;
+      im.src = api;
     }
   }
   if (e.esperando) artePendente = true; // a arte com o escudo provisório não fica guardada
