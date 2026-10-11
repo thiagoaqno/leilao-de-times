@@ -1,13 +1,16 @@
-# Carreira: o Guia ("como jogar") na barra de cima
+# Carreira: preparadores técnicos
 
 ## O que muda no jogo
 
-Antes, o "Como jogar" da Sede só escolhia o modo da partida, e não havia explicação do resto da carreira. Quem chegava não sabia o que fazer entre as rodadas.
+Na tela Clube, aba **Técnico**, agora existe a **Comissão técnica**: dá para contratar até 3 preparadores (um de cada perfil) que mexem na velocidade com que os jogadores sobem ou caem de overall na virada de temporada.
 
-Agora a barra de cima tem o botão **Guia** (só o "?" no celular), em qualquer tela. Ele abre uma janela por cima, sem mexer em nada da tela de trás, com um assunto por aba: O básico, A partida, Elenco e tática, Mercado, Temporada e copas, Clube e Em grupo. A janela abre no assunto da tela em que você está (no Mercado, abre em Mercado) e fecha com "Entendi", fora dela ou com Esc.
+- **Especialista em jovens:** garotos de até 24 anos têm 30% de chance de ganhar +1 a mais.
+- **Fisiologista de veteranos:** quem tem 30 anos ou mais tem 30% de chance de perder 1 ponto a menos.
+- **Preparador geral:** o elenco inteiro tem 15% de chance de ganhar +1 a mais (ou perder 1 a menos).
+- **Gestor de carga:** o contrário, segura os garotos de até 24 anos (30% de chance de evoluir 1 a menos), barato, para quem quer ritmo lento.
+
+Cada um cobra um salário anual (proporcional ao tamanho do clube) descontado do caixa na virada, junto da manutenção. Dá para dispensar a qualquer momento. A contratação vale a partir da próxima virada, e nada passa de 95.
 
 ## Como
 
-- `public/carreira/guia.js` é o módulo novo (os textos ficam nele, um por assunto).
-- `index.html` ganha o botão `#btnGuia` na barra e o script; `hub.css` o estilo (abas que rolam de lado no celular).
-- Teste: `tests/e2e/carreira-guia.spec.js` (abre, troca de assunto, cabe na tela sem rolagem de lado, no PC e no celular).
+`clube-regras.js` tem `PREPARADORES` e `ajustePreparadores`; `carreira-clube.js` guarda `gestao.preparadores`, a ação `preparador` (`contratar`/`demitir`) e cobra a folha; `virarTemporada` (`carreira.js`) aplica o ajuste depois do bônus do CT. Vale para o solo e a sala em grupo. Testes em `tests/carreira-clube.test.js`.

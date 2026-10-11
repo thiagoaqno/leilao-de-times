@@ -96,11 +96,17 @@
     const hab = Object.entries(R.HABILIDADES).map(([id, hh]) => { const n = gg.habilidades[id] || 0;
       return `<li class="gc-linha"><span class="gc-info"><b>${hh.nome}</b>${pips(n, R.HAB_MAX)}<small>${n ? h(hh.texto(n)) : "Ainda sem nível"}</small>${n < R.HAB_MAX ? `<small class="prox">Próximo: ${h(hh.texto(n + 1))}</small>` : ""}</span>
         ${n >= R.HAB_MAX ? `<span class="gc-obra">No máximo</span>` : `<button data-gc-hab="${id}" ${gg.pontos > 0 ? "" : "disabled"}>Evoluir · 1 ponto</button>`}</li>`; }).join("");
+    const prep = Object.entries(R.PREPARADORES).map(([id, p]) => { const tem = gg.preparadores.includes(id), cheio = gg.preparadores.length >= R.PREPARADORES_MAX;
+      return `<li class="gc-linha"><span class="gc-ic">${ic(p.icone)}</span><span class="gc-info"><b>${p.nome}</b><small>${h(p.texto)}</small></span>
+        ${tem ? `<button class="secundario" data-gc-prep="${id}" data-op="demitir">Dispensar</button>` : `<button data-gc-prep="${id}" data-op="contratar" ${cheio || E.caixa < gg.custosPreparadores[id] ? "disabled" : ""}>Contratar · ${dinheiro(gg.custosPreparadores[id])}/ano</button>`}</li>`; }).join("");
     return `<section class="quadro"><h3>Carreira do técnico</h3>
       <div class="gc-duplo"><div><small>Reputação</small><b class="gc-grande">${gg.reputacao}</b> <em>${R.nivelReputacao(gg.reputacao)}</em>${barra(gg.reputacao)}</div>
       <div><small>Confiança da diretoria</small><b class="gc-grande">${gg.confianca}%</b> <em>${R.nivelConfianca(gg.confianca)}</em>${barra(gg.confianca, gg.confianca < 35 ? "perigo" : "")}</div></div>
       <p class="suave">A reputação sobe com metas cumpridas e títulos e rende patrocínio todo ano; a partir de 40 aparecem convites de clubes grandes (e uma decisão difícil). A confiança cai com derrotas: abaixo de 30 a diretoria dá um ultimato de 4 jogos${EM_GRUPO ? ", e sem pontos ela intervém no elenco." : ", e sem pontos você é demitido."}</p>
       ${gg.ultimato ? `<p class="gc-aviso perigo">${ic("alerta")} Ultimato: faltam ${gg.ultimato.restam} jogo${gg.ultimato.restam === 1 ? "" : "s"}. Você precisa de ${gg.ultimato.min} pontos em 4 jogos (já fez ${gg.ultimato.pontos}).</p>` : ""}
+      <h3>Comissão técnica <small class="suave">${gg.preparadores.length}/${R.PREPARADORES_MAX} preparadores · ${dinheiro(gg.custoPreparadores)} por temporada</small></h3>
+      <p class="suave">Mexem na velocidade com que os jogadores sobem (ou caem) de overall na virada de temporada. Cada contratação vale a partir da próxima virada.</p>
+      <ul class="gc-lista">${prep}</ul>
       <h3>Habilidades <small class="suave">${gg.pontos} ponto${gg.pontos === 1 ? "" : "s"} para gastar (chegam 2 por temporada, +1 por título)</small></h3>
       <ul class="gc-lista">${hab}</ul></section>`;
   }
@@ -188,7 +194,7 @@
   window.telaClube = telaClube;
 
   document.addEventListener("click", async (ev) => {
-    const t = ev.target.closest("[data-gc-aba],[data-gc-renovar],[data-gc-anos],[data-gc-multa],[data-gc-cancelar],[data-gc-fechar-contrato],[data-gc-promover],[data-gc-vender-base],[data-gc-dispensar-base],[data-gc-obra],[data-gc-capitao],[data-gc-hab],[data-gc-camisa],[data-gc-cartao]");
+    const t = ev.target.closest("[data-gc-aba],[data-gc-renovar],[data-gc-anos],[data-gc-multa],[data-gc-cancelar],[data-gc-fechar-contrato],[data-gc-promover],[data-gc-vender-base],[data-gc-dispensar-base],[data-gc-obra],[data-gc-capitao],[data-gc-hab],[data-gc-prep],[data-gc-camisa],[data-gc-cartao]");
     if (!t) return;
     const d = t.dataset;
     if (d.gcAba) { CL.aba = d.gcAba; return telaClube(); }
@@ -202,6 +208,7 @@
     if (d.gcDispensarBase) return agir({ acao: "dispensar-base", jogador: d.gcDispensarBase }, t);
     if (d.gcObra) return agir({ acao: "obra", tipo: d.gcObra }, t);
     if (d.gcCapitao) return agir({ acao: "capitao", jogador: d.gcCapitao }, t);
+    if (d.gcPrep) return agir({ acao: "preparador", id: d.gcPrep, op: d.op }, t);
     if (d.gcHab) return agir({ acao: "habilidade", id: d.gcHab }, t);
     if (d.gcCamisa) { const r = await agir({ acao: "camisa", jogador: d.gcCamisa }, t); if (r && r.ok) festa(); return; }
     if (t.hasAttribute("data-gc-cartao")) return abrirCartao();

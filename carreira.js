@@ -1264,6 +1264,8 @@ function virarTemporada(save, humanos = { [save.clube]: save.jogosTemporada }) {
     let delta = clamp(Evolucao.evolucaoDe({ idade, nota, jogos: d ? d[0] : 0, jogosTime: humanos[dono] || 0, media: d ? d[1] / d[0] : null, semente: `${semente}:${j.id}` }), 40 - nota, 95 - nota);
     const ct = (Clube.infraDe(save, dono) || {}).ct || 0;
     if (ct && delta + nota < 95 && Motor.sorteDe(`ct:${semente}:${j.id}`)() < 0.2 * ct && ((delta >= 0 && idade <= 24) || (delta < 0 && idade >= 30))) delta++;
+    const preps = Clube.preparadoresDe(save, dono);
+    if (preps.length) delta = Clube.Regras.ajustePreparadores(preps, { idade, nota, delta, sorte: Motor.sorteDe(`prep:${semente}:${j.id}`) });
     if (delta) { save.bonusNota[j.id] = (save.bonusNota[j.id] || 0) + delta; save.evolucao[j.id] = (save.evolucao[j.id] || 0) + delta; }
     if (meus[dono] && delta) (delta > 0 ? meus[dono].subiram : meus[dono].cairam).push([j.id, delta]);
     if (!porClube.has(dono)) porClube.set(dono, []);
