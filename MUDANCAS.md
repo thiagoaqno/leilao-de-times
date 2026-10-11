@@ -1,11 +1,16 @@
-# Carreira: coletivas, pressão da torcida e viagem com recepção
+# Carreira: a mesa de botão na partida
 
 ## O que muda no jogo
 
-- **Coletiva depois do jogo.** Depois de uma goleada, derrota, vitória em clássico, sequência de vitórias, ou quando a diretoria desconfia, chega uma coletiva com a pergunta do momento (e a de "o craque vai sair?"). Cada resposta mexe com imprensa, torcida, vestiário, diretoria, moral e até o próximo jogo (provocar o rival dá moral à sua torcida, mas ele vem mais motivado). No máximo uma a cada 2 rodadas.
-- **Pressão da torcida.** Com a torcida em baixa e derrotas, a organizada pede reunião ou abre faixas no estádio; com a fase boa, ela faz festa no CT. E o clima vale em campo: torcida animada dá +1 na nota do time em casa, torcida irritada dá -1; fora, clássico e clube grande pressionam (-1), a menos que a sua torcida esteja do seu lado. O clima aparece na prévia do jogo.
-- **Viagem e recepção no feed.** Antes de cada jogo saem as notícias do embarque (ônibus curto, ônibus, avião pela distância, voo internacional) e da recepção: festa da sua torcida em casa, cobrança quando ela está brava, ou fogos e barulho no hotel quando o rival é grande ou clássico.
+- **Os jogadores viram botões.** Na tela da partida, acima da narração, aparece um campo visto de cima, como no futebol de botão: 11 botões de cada time, nas cores da camisa de cada clube (o visitante troca de cor se for parecida com a do mandante), com o número em cima, o goleiro em amarelo ou verde-água e uma bolinha. O mandante ataca para a direita.
+- **Eles andam com os lances do jogo.** Cada lance que o motor já sorteia vira movimento: o gol (o passe do assistente, o botão do artilheiro na área, o chute, o goleiro caindo, o letreiro GOL! e o time pulando), a defesa, a chance perdida (a bola passa ao lado), o pênalti (a bola na marca e o canto escolhido, também na disputa), o contra-ataque, o amarelo e o vermelho (o botão sai e o time joga com 10), a lesão, as substituições, as mudanças de posição e de formação. O nome de quem faz o lance aparece por uns segundos.
+- **Entre um lance e outro**, os botões trocam passes de enfeite, com o time todo andando na direção da bola. Isso é só desenho: o resultado do jogo vem do motor, igual a antes.
+- **Botão Mesa** na faixa do jogo (liga e desliga; fica guardado no navegador). Respeita o 1×/3×, o Pular e o "menos movimento" do sistema.
 
 ## Como
 
-`carreira-pressao.js` (`COLETIVAS`, `TORCIDA`, `escolher`, `climaDoJogo`), no formato do catálogo; `carreira-memoria.js` grava `ultimoJogo` em `aposJogo`; `carreira-eventos.js` sorteia depois das ecos; `carreira.js` soma o clima em `timeDe` e manda `estado().clima`; `carreira-feed.js` ganhou `viagem` (cidades, distância, modo, recepção), chamada ao fim de `entreRodadas`. Testes em `tests/carreira-pressao.test.js`.
+`public/carreira/mesa.js` (`window.Mesa`, SVG, sem dependência) e `mesa.css`. `Mesa.montar` usa `partida.times` (formação e titulares que o motor já devolve; desfaz as trocas já feitas para achar o time do começo) e, sem isso (jogo já acabado ou em grupo), formação do clube com botões sem nome. `partida.js` chama `Mesa.evento(e)` em `mostrarEvento`. As posições vêm de `Taticas.spots`. Teste: `tests/e2e/carreira-mesa.spec.js`.
+
+## Limites desta primeira versão
+
+O motor não guarda posição nem posse de bola, então só os lances importantes são do jogo de verdade; os passes entre eles são enfeite e não são iguais para todo mundo na sala em grupo.

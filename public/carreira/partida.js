@@ -25,6 +25,7 @@ const limite = () => (J.parado ? Math.max(tempoDe(J.parado), ...J.eventos.map(te
 function atualizarControlesVelocidade() {
   const grupo = !!J.grupo, velocidade = grupo ? (E.rodadaGrupo?.velocidade || E.rodadaGrupo?.meu?.relogio?.multiplicador || 1) : J.vel;
   const dono = $("pVelDono"); dono.classList.toggle("hidden", !grupo);
+  Mesa.vel = velocidade;
   if (grupo) dono.textContent = `${E.anfitriao ? "Você controla" : "Anfitrião controla"} · ${velocidade}× para todos`;
   $("btnPular").classList.toggle("hidden", grupo);
   for (const b of document.querySelectorAll("[data-vel]")) {
@@ -69,6 +70,7 @@ function abrirPartida(rodada) {
   J.clima = climaDoJogo(E.temporada, J.rodada, J.casa, J.fora);
   $("partida").classList.remove("clima-dia", "clima-noite", "clima-chuva");
   $("partida").classList.add(`clima-${J.clima.hora}`); if (J.clima.chuva) $("partida").classList.add("clima-chuva");
+  montarMesa(src);
   $("pLocal").innerHTML = `${ic("estadio")} ${linhaDoJogo()}`; // o campeonato, a rodada ou a fase, o estádio e o clima (aovivo.js)
   if ($("decisao").open) $("decisao").close();
   $("fimJogo").classList.add("hidden");
@@ -90,6 +92,17 @@ function abertura(p) {
 async function buscarParalelos(jogoId) {
   const r = await pedir("paralelos", { jogoId });
   if (r.ok && J.jogoId === jogoId) J.paralelos = r.paralelos;
+}
+// a mesa de botão (mesa.js): os dois times como botões nas cores das camisas, andando conforme os lances da narração
+function montarMesa(src) {
+  const f = (id) => (CLUBES[id] && CLUBES[id].formacao) || "4-3-3";
+  Mesa.montar($("mesa"), { chave: `${E.temporada}-${J.rodada}-${J.casa}-${J.fora}`, uniformes: [uniformeDoJogo(J.casa), uniformeDoJogo(J.fora)],
+    formacoes: [f(J.casa), f(J.fora)], times: src.times && src.times.length === 2 ? src.times : null, eventos: src.eventos, nome: (pid) => sobrenome(nomeJogador(pid)) });
+}
+const mesaLigada = (() => { try { return localStorage.getItem("carreira:mesa") !== "0"; } catch (e) { return true; } })();
+function aplicarMesa(ligada) {
+  Mesa.ligada = ligada; $("mesaCaixa").classList.toggle("hidden", !ligada); $("btnMesa").setAttribute("aria-pressed", String(ligada));
+  try { localStorage.setItem("carreira:mesa", ligada ? "1" : "0"); } catch (e) { /* sem armazenamento */ }
 }
 function atualizarPlacar() {
   let g = [0, 0], pen = null;
@@ -137,6 +150,7 @@ function mostrarEvento(e) {
   li.innerHTML = classe === "apito" ? `<span>${texto}</span>` : `<span class="min">${e.tipo === "disputa" ? "Pên." : minutoTexto(e)}</span><span class="ic-lance">${ic(ICONE_LANCE[e.tipo] || "bola")}</span><span>${texto}</span>`;
   if (J.pulando || calmo()) li.classList.add("sem-entrada");
   $("narracao").prepend(li);
+  Mesa.rapido = J.pulando; try { Mesa.evento(e); } catch (err) { console.warn("mesa", err); }
   if (e.tipo === "gol") gol(e);
   else if (LANCES_COM_CENA.has(e.tipo) && !(e.tipo === "penalti" && e.chute)) lance(e);
 }
@@ -191,6 +205,7 @@ function gol(e) {
 // o relógio da partida: 2 minutos de jogo por segundo (6 no 3x) até a próxima parada ou o fim
 function passo(agora) {
   const dt = Math.min(0.1, (agora - (J.ultimoQuadro || agora)) / 1000); J.ultimoQuadro = agora;
+  Mesa.ativa = telaAtual === "partida" && !J.decidindo && !(J.completo && J.i >= J.eventos.length);
   if (telaAtual === "partida" && !J.decidindo && !document.hidden) {
     const lim = limite();
     J.relogio = J.grupo ? Math.min(lim, relogioGrupo()) : Math.min(lim, J.relogio + dt * 2 * J.vel);
@@ -215,6 +230,8 @@ for (const b of document.querySelectorAll("[data-vel]")) b.onclick = async () =>
   if (J.grupo) { if (E.anfitriao) await agirGrupo({ type: "velocidade", velocidade }); }
   else { J.vel = velocidade; atualizarControlesVelocidade(); }
 };
+aplicarMesa(mesaLigada);
+$("btnMesa").onclick = () => aplicarMesa(!Mesa.ligada);
 $("btnPular").onclick = () => { J.pulando = true; J.relogio = limite(); };
 $("btnVoltarSede").onclick = () => { const esperado = J.casa ? `${J.casa}:${J.fora}` : null; J.rodada = null; mostrarTela("sede"); mostrarPosJogo(false, esperado); };
 
