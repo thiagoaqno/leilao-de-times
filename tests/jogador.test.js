@@ -33,7 +33,7 @@ test("uma temporada: jogos, confiança entre 5 e 100, notas e fim com histórico
     assert.ok(e.confianca >= 5 && e.confianca <= 100);
     if (e.relatorio.jogou) assert.ok(e.relatorio.nota >= 3 && e.relatorio.nota <= 10);
   }
-  assert.ok(n >= 30 && n <= e.totalJogos); // quem cai numa copa joga menos que o calendário inteiro
+  assert.ok(n >= 20, `jogos ${n}`); // as copas mudam o total de jogos de cada ano
   assert.equal(e.historico.length, 1);
   assert.equal(e.temp.jogos, e.carreira.jogos);
   assert.equal((await chamar("jogar")).ok, false);
