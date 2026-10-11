@@ -28,7 +28,7 @@
   const ler = () => { try { return JSON.parse(localStorage.getItem("galera:musica")) || {}; } catch (e) { return {}; } };
   const guardar = () => { try { localStorage.setItem("galera:musica", JSON.stringify({ vol, tocando, i })); } catch (e) { /* sem armazenamento */ } };
   const salvo = ler();
-  let lista = [], i = Math.max(0, salvo.i | 0), vol = typeof salvo.vol === "number" ? salvo.vol : 0.4, tocando = !!salvo.tocando;
+  let lista = [], i = Math.max(0, salvo.i | 0), vol = typeof salvo.vol === "number" ? salvo.vol : 0.4, tocando = salvo.tocando !== false; // liga sozinha, a menos que a pessoa tenha pausado
   const audio = new Audio();
   audio.preload = "none";
 
@@ -70,7 +70,7 @@
     audio.volume = vol;
     bt.hidden = false;
     pintar();
-    if (tocando) { // quem deixou ligada volta a ouvir no primeiro toque na página (regra de autoplay dos navegadores)
+    if (tocando) { // começa sozinha; se o navegador barrar, começa no primeiro toque na página (regra de autoplay dos navegadores)
       const um = () => { removeEventListener("pointerdown", um); removeEventListener("keydown", um); if (tocando && audio.paused) tocar(); };
       addEventListener("pointerdown", um); addEventListener("keydown", um);
       tocar();
