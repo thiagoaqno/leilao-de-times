@@ -15,6 +15,7 @@ const Orcamentos = require("./public/carreira/orcamentos.js");
 const Evolucao = require("./public/carreira/evolucao.js");
 const Taticas = require("./public/carreira/taticas.js");
 const Clube = require("./carreira-clube.js");
+const Memoria = require("./carreira-memoria.js");
 const crypto = require("crypto");
 
 // As carreiras antigas continuam na base em que nasceram; as novas enxergam o mundo inteiro.
@@ -272,7 +273,7 @@ function assumirClube(save, clube, nome, skin) {
 // (vistaDe: o save com os campos dele por cima, e save.clube = ele) e, depois, guarda-se de volta (guardarVista).
 const CAMPOS_CLUBE = ["clube", "tecnico", "caixa", "moral", "situacao", "escalacao", "caixaEntrada", "financas", "feed", "posJogo", "compras", "valores", "pedidos",
   "parcelas", "aVenda", "indicacoes", "tentativas", "bonusVitoria", "provocado", "efeitos", "eventosVistos", "segredos", "jogosJogados", "calendario", "rodada",
-  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "janelasAnteriores", "entrada", "energia", "sequencia", "meta", "gestao"];
+  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "janelasAnteriores", "entrada", "energia", "sequencia", "meta", "gestao", "memoria"];
 function vistaDe(save, clube) {
   const v = { ...save, ...save.humanos[clube].estado };
   delete v.humanos;
@@ -782,6 +783,7 @@ function vender(save, pid, comprador, valor) {
   movimentar(save, `Venda de ${j.nome}`, valor);
   if (save.caixaIA && comprador in save.caixaIA) save.caixaIA[comprador] -= valor;
   const lucro = compra ? valor - compra.valor : null;
+  Memoria.vendeu(save, ajudas, j, valor);
   save.transferencias.unshift({ rodada: save.rodada, ...carimbo(save), temporada: save.temporada, jogador: pid, de: save.clube, para: comprador, valor, ...(lucro != null && { lucro }) });
   Feed.transferencia(save, save.transferencias[0], ajudas);
   return `${j.nome} foi vendido ao ${clubeDe(save, comprador).nome} por ${dinheiro(valor)}${lucro != null ? ` (${lucro >= 0 ? "lucro" : "prejuízo"} de ${dinheiro(Math.abs(lucro))})` : ""}.`;
@@ -1018,7 +1020,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   save.resultadosFixos[p.jogoId] = { placar: [...r.placar], ...(r.penaltis && { penaltis: [...r.penaltis] }) };
   save.jogosJogados.push(p.jogoId);
   const advId = emCasa ? p.fora : p.casa, classico = Clube.classicoCom(save, ajudas, advId);
-  if (emCasa) movimentar(save, classico ? "Bilheteria (clássico)" : "Bilheteria", Math.round(clube.tamanho * 6e5 * (0.7 + save.moral / 200) * Clube.fatorBilheteria(save) * (classico ? 1.35 : 1) / 1e4) * 1e4);
+  if (emCasa) movimentar(save, classico ? "Bilheteria (clássico)" : "Bilheteria", Math.round(clube.tamanho * 6e5 * (0.7 + save.moral / 200) * Clube.fatorBilheteria(save) * Memoria.fatorTorcida(save) * (classico ? 1.35 : 1) / 1e4) * 1e4);
   movimentar(save, "Cota de TV", Math.round(clube.tamanho * 4e5 * (FATOR_LIGA[ligaDoClube(clube.id, save)] || 1)));
   if (nos > eles) { movimentar(save, "Prêmio por vitória", clube.tamanho * 2e5); mudarMoral(save, 6); }
   else if (nos === eles) mudarMoral(save, 1); else mudarMoral(save, -6);
@@ -1048,6 +1050,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   }
   Clube.provocacao(save, ajudas, { adv: advId, nos: nosFinais, eles: elesFinais });
   const dilemas = Clube.aposJogo(save, ajudas, { nos: nosFinais, eles: elesFinais, emCasa, adv: advId });
+  Memoria.aposJogo(save, ajudas, { nos: nosFinais, eles: elesFinais, emCasa, classico: !!(advId && Clube.classicoCom(save, ajudas, advId)) });
   if (proximoJogoMundo(save)) for (const e of Eventos.gerarEventos(save, ajudas)) save.caixaEntrada.unshift(e);
   if (proximoJogoMundo(save)) for (const e of dilemas) save.caixaEntrada.unshift(e);
   save.caixaEntrada.length = Math.min(save.caixaEntrada.length, 40);
@@ -1129,6 +1132,7 @@ function registrarTemporada(save) {
   const g6 = premioG6(save, pos);
   if (g6) { movimentar(save, `Premiação do campeonato: ${pos}º lugar (G6)`, g6); avisar(save, { tipo: "premio", icone: "taca", titulo: `Premiação do campeonato: ${dinheiro(g6)}`, texto: `Terminar em ${pos}º entre os 6 primeiros paga ${dinheiro(g6)} da premiação do campeonato.` }); }
   Clube.fechouTemporada(save, ajudas, { pos, titulos, vices, cumpriuMeta: meta ? meta.cumprida : undefined });
+  Memoria.fimDeTemporada(save, { pos, titulos, divisao, cumpriuMeta: meta ? meta.cumprida : undefined });
 }
 // o arquivo das temporadas (save.arquivo, de todos): quando a temporada acaba, guarda os campeões, as tabelas, as chaves, a festa,
 // a artilharia, os prêmios (artilheiro, maior goleada, melhor negócio) e os pontos de cada técnico, para a tela "Temporadas".
@@ -1355,6 +1359,7 @@ function estado(save) {
   e.encerrada = e.fim && save.temporada >= save.temporadasMax;
   e.arquivo = save.arquivo || [];
   e.gestao = Clube.estado(save, ajudas);
+  e.memoria = Memoria.estado(save, ajudas);
   e.posicoes = save.posicoes || {}; // quem já mudou de posição pelo treino (o navegador troca a posição da base)
   if (save.demitido) { e.encerrada = true; e.demitido = save.demitido; }
   e.jovens = jovensDoEstado(save, e);

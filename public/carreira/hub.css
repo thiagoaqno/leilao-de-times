@@ -351,3 +351,23 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 /* os clubes que abrem o elenco */
 [data-time]{cursor:pointer}
 @media (hover:hover) and (pointer:fine){tr[data-time]:hover td,li[data-time]:hover{background:color-mix(in srgb,var(--fx-teal) 10%,transparent)}}
+/* a história do clube (memoriaNaSede, em telas.js): o perfil, as relações, os laços e o diário */
+.hub-memoria .perfil-tecnico{display:grid;gap:2px;margin:4px 0 10px}
+.hub-memoria .perfil-tecnico small{color:var(--t3);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.hub-memoria .perfil-tecnico b{font-family:var(--fx-cond);font-size:20px;color:var(--fx-teal)}
+.hub-memoria .perfil-tecnico span{color:var(--t2);font-size:13px}
+.hub-memoria .relacoes{display:grid;gap:6px;margin-bottom:10px}
+.hub-memoria .rel{display:grid;grid-template-columns:76px 1fr 28px;align-items:center;gap:8px;font-size:13px}
+.hub-memoria .rel span{color:var(--t2)}
+.hub-memoria .rel i{height:8px;border-radius:4px;background:var(--b1);overflow:hidden}
+.hub-memoria .rel i b{display:block;height:100%;width:var(--v);background:var(--fx-teal)}
+.hub-memoria .rel.alta i b{background:var(--ok)}
+.hub-memoria .rel.baixa i b{background:var(--erro)}
+.hub-memoria .rel em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;color:var(--t1)}
+.hub-memoria .lacos{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:4px;font-size:13px}
+.hub-memoria .lacos li{padding:4px 8px;border-left:3px solid var(--ok);background:color-mix(in srgb,var(--ok) 8%,transparent)}
+.hub-memoria .lacos li.magoa{border-color:var(--erro);background:color-mix(in srgb,var(--erro) 8%,transparent)}
+.hub-memoria .diario{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px;color:var(--t2)}
+.hub-memoria .diario li.marca{color:var(--t1);font-weight:600}
+.hub-memoria .diario small{color:var(--t3);margin-right:4px}
+.entrada .lembranca{font-size:12px;font-style:italic;color:var(--t2);border-left:3px solid var(--fx-teal);padding-left:8px;margin:4px 0}
