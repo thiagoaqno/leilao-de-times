@@ -25,6 +25,31 @@ $("abasSede").addEventListener("keydown", (e) => { // as setas andam entre as ab
 });
 mostrarAbaSede(abaSede);
 
+// a leitura do próximo adversário, na prévia do jogo: como ele joga, quem é o perigo e o que a SUA formação rende contra ele (os
+// confrontos de taticas.js). Os botões trocam a formação na hora; o resto da tática (estilo, pressão) continua na prancheta.
+const sinalPct = (n) => (n > 0 ? `+${n}%` : `${n}%`);
+function leituraRivalHTML() {
+  const r = E.rival; if (!r) return "";
+  const est = Taticas.ESTILOS[r.estilo], c = r.confronto, esc = E.escalacao;
+  const saldo = c.criar - c.sofrer, classe = saldo > 1 ? "bom" : saldo < -1 ? "ruim" : "";
+  const razoes = [...c.razoes.map((x) => [x.texto, x.valor]), ...c.deles.map((x) => [`${x.texto} (a favor dele)`, -x.valor])].filter(([, v]) => v);
+  const craques = r.destaques.map((pid) => h(sobrenome(nomeJogador(pid)))).join(", ");
+  const melhores = r.melhores.filter((m) => m.formacao !== esc.formacao && m.saldo > saldo).slice(0, 3);
+  return `<div class="leitura-rival ${classe}"><span class="sobre">${ic("olho") || ""}Leitura do rival</span>
+    <p><b>${h(nomeClube(r.clube))}</b> joga de <b>${h(Taticas.baseDe(r.formacao))}</b>${est && r.estilo !== "equilibrado" ? ` com <b>${h(est.nome)}</b>` : ""} · força ${r.forca} <small>(a sua ${r.minhaForca})</small>${craques ? ` · perigo: ${craques}` : ""}</p>
+    <p class="lr-saldo">Com o seu ${h(Taticas.baseDe(esc.formacao))}: <b>${sinalPct(c.criar)}</b> nos seus lances, <b>${sinalPct(c.sofrer)}</b> nos dele.</p>
+    ${razoes.length ? `<ul>${razoes.map(([t, v]) => `<li class="${v > 0 ? "bom" : "ruim"}">${h(t)} <small>${v > 0 ? "▲" : "▼"}</small></li>`).join("")}</ul>` : ""}
+    ${melhores.length ? `<div class="lr-resp"><small>Respostas melhores:</small>${melhores.map((m) => `<button data-usar-formacao="${h(m.formacao)}" title="${h(Taticas.ROTULO_FORMACAO[m.formacao])}">${h(m.formacao)} <b>${sinalPct(m.saldo)}</b></button>`).join("")}</div>` : `<p class="suave">Sua formação já é uma boa resposta a ele.</p>`}</div>`;
+}
+function ligarLeituraRival(raiz) {
+  for (const b of raiz.querySelectorAll("[data-usar-formacao]")) b.onclick = async () => {
+    b.disabled = true;
+    const r = await pedir("escalacao", { formacao: b.dataset.usarFormacao });
+    if (!r.ok) { b.disabled = false; return toast(r.error); }
+    receber(r.estado); toast(`Formação: ${b.dataset.usarFormacao}. Confira o elenco na prancheta.`);
+  };
+}
+
 // a faixa do calendário, na prévia do jogo: o último jogo e os próximos, um por quadradinho (como os dias do calendário); o próximo em laranja
 const curtoDe = (id) => (CLUBES[id] && CLUBES[id].curto) || nomeClube(id).slice(0, 3).toUpperCase();
 function faixaAvancarHTML() {

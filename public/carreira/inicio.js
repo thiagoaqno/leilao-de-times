@@ -41,6 +41,8 @@ const elencoDe = (clube) => Object.values(JOGADORES).filter((j) => donoDe(j.id) 
 const notaDe = (j) => Math.max(40, Math.min(95, j.nota + ((E && E.bonusNota[j.id]) || 0)));
 const sequenciaDe = (pid) => (E?.sequencia?.[pid] || 0);
 const penalidadeSequencia = (pid) => Taticas.penalidadeSequencia(sequenciaDe(pid));
+// tudo o que o cansaço tira da nota: os jogos seguidos e a energia de agora (cada 10 pontos abaixo de 90 tiram 1)
+const penalidadeCansaco = (pid) => Math.round((penalidadeSequencia(pid) + Taticas.penalidadeEnergia(E?.energia?.[pid])) * 10) / 10;
 const comNota = (j) => ({ ...j, nota: notaDe(j), idade: Evolucao.idadeNa(j, E ? E.temporada : 1) });
 const fora = (pid) => (E.lesoes[pid] ? "lesao" : E.suspensos[pid] ? "suspenso" : null);
 const salarioDe = (j) => E.salarios[j.id] || Mercado.salarioDe(comNota(j));

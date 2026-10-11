@@ -152,9 +152,11 @@ function telaJogo(pos) {
       <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p></div>
       ${faixaPesoHTML(peso, casa, visitante)}
       ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}
+      ${E.partida ? "" : leituraRivalHTML()}
       ${pendentes && !E.partida ? `<p class="pendente">${ic("sino")} ${pendentes} aviso${pendentes > 1 ? "s" : ""} esperando resposta. Se jogar agora, vale a opção padrão.</p>` : ""}
       ${faixaAvancarHTML()}</div></div>`;
   for (const b of $("cartaoJogo").querySelectorAll("[data-modo]")) b.onclick = () => { modoEscolhido = +b.dataset.modo; pedir("modo", { modo: modoEscolhido }); for (const x of $("cartaoJogo").querySelectorAll("[data-modo]")) x.setAttribute("aria-pressed", String(+x.dataset.modo === modoEscolhido)); };
+  ligarLeituraRival($("cartaoJogo"));
   $("btnJogar").onclick = jogar;
   // na carreira em grupo, a rodada é de todos ao mesmo tempo: quem começa é o anfitrião (grupo.js)
   if (EM_GRUPO) botaoRodadaGrupo();

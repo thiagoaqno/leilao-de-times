@@ -86,7 +86,9 @@
   }
   // o rendimento na vaga: a nota, o encaixe da posicao dele na vaga fina (lateral na zaga, ponta de centroavante...) e o cansaco
   const slotPadrao = (slot) => ({ GK: "GOL", DEF: "ZAG", MID: "MC", ATT: "ATA" })[slot] || "MC";
-  const valorNa = (p, slot, fino) => (p.nota + ajusteDePerfil(p, fino || slotPadrao(slot)) - Taticas.penalidadeSequencia(p.seguidos || 0)) * Taticas.afinidade(p.pos, fino || slotPadrao(slot));
+  // o cansaço tira da nota: os jogos seguidos (a sequência) e a energia de agora (cada 10 pontos abaixo de 90 tiram 1)
+  const cansaco = (p) => Taticas.penalidadeSequencia(p.seguidos || 0) + Taticas.penalidadeEnergia(p.energia);
+  const valorNa = (p, slot, fino) => (p.nota + ajusteDePerfil(p, fino || slotPadrao(slot)) - cansaco(p)) * Taticas.afinidade(p.pos, fino || slotPadrao(slot));
   // as vagas da formação, na ordem do campinho: o goleiro, a defesa, o meio e o ataque
   const vagasDe = (formacao) => Taticas.vagasDe(formacao).map((v) => v.g);
   // a nota que a escalação automática usa para escolher: o rendimento na vaga, menos FUNCAO por ponto de encaixe (além do que a
@@ -164,7 +166,7 @@
   function recalcular(time) {
     // cada titular leva o encaixe da vaga em que esta (p.fit) e o grupo em que atua (p.efGrp)
     for (const v of time.campo) if (v.p) {
-      v.p.fit = Taticas.afinidade(v.p.pos, v.fino) * ((v.p.nota - Taticas.penalidadeSequencia(v.p.seguidos || 0)) / v.p.nota);
+      v.p.fit = Taticas.afinidade(v.p.pos, v.fino) * ((v.p.nota - cansaco(v.p)) / v.p.nota);
       v.p.efGrp = v.slot === "DEF" ? "DEF" : v.slot === "ATT" ? "ATT" : v.slot === "GK" ? "GK" : ["MEI", "VOL", "MID"].includes(v.p.grp) ? v.p.grp : "MID";
     }
     const xi = time.campo.map((v) => ({ slot: v.slot, eff: v.p && !v.p.fora ? valorNa(v.p, v.slot, v.fino) : 0, cm: 1 }));
@@ -203,6 +205,46 @@
     const lista = opcoesBase(tipo, at, df, quem, goleiro), aj = at.est ? at.est.lance : {};
     return lista.map((o) => (aj[o.id] ? { ...o, chance: pct(o.chance + aj[o.id]) } : o));
   }
+  // ---------- a leitura do lance ----------
+  // Cada lance decisivo de ataque acontece numa situação (a zaga sem fôlego, o goleiro adiantado, o zagueiro pendurado...). Os números
+  // das opções mostram só a força de quem está no lance (`chance`); a situação mexe na chance de verdade (`real`) e aparece no texto, com
+  // uma seta nas opções que ela favorece (▲) ou atrapalha (▼). Quem lê o lance escolhe melhor do que quem só olha o maior número.
+  const mediaEnergia = (lista) => (lista.length ? lista.reduce((s, p) => s + p.energia, 0) / lista.length : 100);
+  function situacoesDoLance(qual, at, df, quem, goleiro, rng) {
+    const l = [];
+    if (qual === "ataque_favor") {
+      const dfs = doGrupo(df, ["DEF", "VOL", "MID"]), en = mediaEnergia(dfs.filter((p) => p.grp !== "GK"));
+      if (en < 68) l.push({ id: "zaga_cansada", peso: 3, texto: `A zaga deles está sem fôlego (${Math.round(en)}% de energia): dá para ganhar na velocidade.`, ajuste: { driblar: 0.1, tocar: 0.05, cruzar: 0.02 } });
+      const pend = dfs.filter((p) => p.amarelos >= 1).sort((a, b) => b.amarelos - a.amarelos)[0];
+      if (pend) l.push({ id: "pendurado", peso: 2, texto: `${pend.nome} está de amarelo e vai com cuidado no desarme: o drible tem espaço.`, ajuste: { driblar: 0.09, chutar: 0.02 } });
+      if (quem.energia < 62) l.push({ id: "sem_folego", peso: 3, texto: `${quem.nome} está esgotado (${Math.round(quem.energia)}% de energia): melhor acertar o passe do que o chute ou o drible.`, ajuste: { chutar: -0.07, driblar: -0.09, tocar: 0.05 } });
+      if (df.tatica.linha >= 2) l.push({ id: "linha_alta", peso: 3, texto: "A linha deles está alta, com espaço nas costas: o passe em profundidade é o caminho.", ajuste: { tocar: 0.12, cruzar: -0.03 } });
+      if (goleiro && rng() < 0.22) l.push({ id: "goleiro_adiantado", peso: 2, texto: `${goleiro.nome} saiu da meta: um chute de primeira pode encobri-lo.`, ajuste: { chutar: 0.14 } });
+      if (rng() < 0.2) l.push({ id: "area_cheia", peso: 1, texto: "A área está cheia de camisas do seu time: a bola alta tem para quem.", ajuste: { cruzar: 0.1, driblar: -0.05 } });
+    } else if (qual === "ataque_contra") {
+      const meus = doGrupo(at, ["DEF", "VOL", "MID"]).filter((p) => p.grp !== "GK"), eles = doGrupo(df, ["ATT", "MEI", "MID"]);
+      const en = mediaEnergia(meus);
+      if (en < 66) l.push({ id: "zaga_cansada", peso: 3, texto: `A sua zaga está sem fôlego (${Math.round(en)}% de energia): o mano a mano e a linha de impedimento são arriscados.`, ajuste: { mano: -0.08, impedimento: -0.06, bloco: 0.05 } });
+      if (quem.energia < 60) l.push({ id: "atacante_cansado", peso: 3, texto: `${quem.nome} chegou esgotado (${Math.round(quem.energia)}% de energia): é a hora de partir para cima dele.`, ajuste: { mano: 0.1, impedimento: 0.04 } });
+      if (media(eles, "rit") - media(meus, "rit") > 6) l.push({ id: "rival_veloz", peso: 2, texto: "O ataque deles é muito mais rápido que a sua defesa: a linha de impedimento não segura.", ajuste: { impedimento: -0.1, mano: -0.06, bloco: 0.06 } });
+    }
+    return l;
+  }
+  // sorteia a situação do lance (as ligadas ao cansaço pesam mais) e devolve { id, texto, ajuste } ou null
+  function situacaoDoLance(qual, at, df, quem, goleiro, rng) {
+    const l = situacoesDoLance(qual, at, df, quem, goleiro, rng);
+    if (!l.length) return null;
+    const s = sortearPeso(rng, l, (x) => x.peso);
+    return { id: s.id, texto: s.texto, ajuste: s.ajuste };
+  }
+  // põe a situação nas opções: `chance` fica a mostrada; `real` é a que vale; `marca` é 1 (favorece) ou -1 (atrapalha)
+  const comSituacao = (opcoes, sit) => opcoes.map((o) => {
+    const d = sit && sit.ajuste[o.id];
+    return d ? { ...o, real: pct(o.chance + d), marca: d > 0 ? 1 : -1 } : o;
+  });
+  // o que vai para a tela (sem a chance real)
+  const paraTela = (lista) => lista.map(({ id, nome, chance, bonus, marca }) => ({ id, nome, chance, ...(bonus ? { bonus } : {}), ...(marca ? { marca } : {}) }));
+
   function opcoesBase(tipo, at, df, quem, goleiro) {
     const atq = doGrupo(at, ["ATT", "MEI", "MID"]), dfs = doGrupo(df, ["DEF", "VOL", "MID"]);
     const gk = goleiro ? goleiro.atr.gol : 45, defesa = media(dfs, "def"), fisD = media(dfs, "fis");
@@ -273,6 +315,8 @@
         titulares: titulares(time).map((p) => ({ id: p.id, nome: p.nome, pos: p.grp, nota: p.nota, energia: Math.round(p.energia), amarelos: p.amarelos })),
         campo: time.campo.map((v) => ({ slot: v.slot, fino: v.fino, id: v.p && !v.p.fora ? v.p.id : null })), // o lugar de cada um, para o campinho
         estiloF: time.estF,
+        rival: { id: times[1 - time.lado].id, formacao: times[1 - time.lado].formacao, estilo: times[1 - time.lado].tatica.estilo }, // a parada mostra o que o outro técnico montou
+        confronto: (({ criar, finalizar, razoes }) => ({ criar, finalizar, razoes }))(confrontoDe(time, times[1 - time.lado])),
         estatisticas: est.map((x) => ({ ...x })), // os números do jogo até aqui (a tela do intervalo mostra)
         banco: banco(time).map((p) => ({ id: p.id, nome: p.nome, pos: p.grp, nota: p.nota })),
       };
@@ -369,7 +413,7 @@
       const decisivo = modo === 3 && (controla != null || ambos) && perigosa && decisivos < AJUSTE.MAX_DECISIVOS && rng() < AJUSTE.DECISIVO;
       if (decisivo) return ambos ? lanceDosDois(at, df, tipo, autor, gk) : lanceDecisivo(at, df, tipo, autor, gk);
       let conv = tipo === "penalti" ? AJUSTE.CONV_PENALTI : tipo === "falta" ? AJUSTE.CONV_FALTA : perigosa ? AJUSTE.CONV_PERIGOSA : AJUSTE.CONV_COMUM;
-      if (tipo !== "penalti") conv = Math.min(0.95, conv * Math.exp(AJUSTE.FIN * (autor.atr.fin - 75) - AJUSTE.GOL * (gkNota - 75)) * (1 + 0.1 * (df.tatica.linha - 1)) * at.est.conv + imp);
+      if (tipo !== "penalti") conv = Math.min(0.95, conv * Math.exp(AJUSTE.FIN * (autor.atr.fin - 75) - AJUSTE.GOL * (gkNota - 75)) * (1 + 0.1 * (df.tatica.linha - 1)) * at.est.conv * (1 + confrontoDe(at, df).finalizar) + imp);
       est[at.lado].chutes++;
       if (tipo === "penalti") ev({ tipo: "penalti", lado: at.lado, jogador: autor.id });
       if (rng() < conv) { est[at.lado].noAlvo++; return gol(at, autor, tipo === "jogada" ? garcom(at, autor) : null, tipo); }
@@ -395,9 +439,11 @@
       const qual = tipo === "falta" ? (aFavor ? "falta_favor" : "falta_contra") : aFavor ? "ataque_favor" : "ataque_contra";
       let opcoes = opcoesDoLance(qual, euDecido, aFavor ? df : at, autor, aFavor ? gk : euDecido.gk);
       if (aFavor && impAtual) opcoes = opcoes.map((o) => ({ ...o, chance: pct(o.chance + impAtual) }));
-      const dec = decidir(id, { tipo: "lance", lance: qual, lado: euDecido.lado, jogador: autor.id, adversario: aFavor ? null : at.id, ...(aFavor && impAtual ? { impulso: impAtual } : {}), opcoes: opcoes.map(({ id: oid, nome, chance, bonus }) => ({ id: oid, nome, chance, ...(bonus ? { bonus } : {}) })) });
+      const sit = situacaoDoLance(qual, euDecido, aFavor ? df : at, autor, aFavor ? gk : euDecido.gk, rng);
+      opcoes = comSituacao(opcoes, sit);
+      const dec = decidir(id, { tipo: "lance", lance: qual, lado: euDecido.lado, jogador: autor.id, adversario: aFavor ? null : at.id, ...(aFavor && impAtual ? { impulso: impAtual } : {}), ...(sit ? { situacao: sit.texto } : {}), opcoes: paraTela(opcoes) });
       const op = opcoes.find((o) => o.id === (dec && dec.opcao ? dec.opcao : dec)) || opcoes[0];
-      const certo = rng() < op.chance;
+      const certo = rng() < (op.real ?? op.chance);
       ev({ tipo: "lance", lado: at.lado, lance: qual, opcao: op.id, certo, jogador: autor.id, decisivo: id });
       if (aFavor) {
         if (certo) { est[at.lado].noAlvo++; return gol(at, autor, op.id === "tocar" || op.id === "cruzar" || op.id === "ensaiada" ? garcom(at, autor) : null, tipo); }
@@ -428,14 +474,15 @@
         return ev({ tipo: foraDoGol ? "perdeu" : "defesa", lado: at.lado, jogador: autor.id, ...(gk && !foraDoGol ? { goleiro: gk.id } : {}), como: "penalti" });
       }
       const favor = tipo === "falta" ? "falta_favor" : "ataque_favor", contra = tipo === "falta" ? "falta_contra" : "ataque_contra";
-      const opA = opcoesDoLance(favor, at, df, autor, gk).map((o) => (impAtual ? { ...o, chance: pct(o.chance + impAtual) } : o)), opD = opcoesDoLance(contra, df, at, autor, df.gk);
-      const so = (l) => l.map(({ id: oid, nome, chance, bonus }) => ({ id: oid, nome, chance, ...(bonus ? { bonus } : {}) }));
-      const dec = decidir(id, { tipo: "lance", ambos: true, pedidos: { [at.lado]: { tipo: "lance", lance: favor, lado: at.lado, jogador: autor.id, opcoes: so(opA) },
-        [df.lado]: { tipo: "lance", lance: contra, lado: df.lado, jogador: autor.id, adversario: at.id, opcoes: so(opD) } } }) || {};
+      const sitA = situacaoDoLance(favor, at, df, autor, gk, rng), sitD = situacaoDoLance(contra, df, at, autor, df.gk, rng);
+      const opA = comSituacao(opcoesDoLance(favor, at, df, autor, gk).map((o) => (impAtual ? { ...o, chance: pct(o.chance + impAtual) } : o)), sitA), opD = comSituacao(opcoesDoLance(contra, df, at, autor, df.gk), sitD);
+      const so = paraTela;
+      const dec = decidir(id, { tipo: "lance", ambos: true, pedidos: { [at.lado]: { tipo: "lance", lance: favor, lado: at.lado, jogador: autor.id, ...(sitA ? { situacao: sitA.texto } : {}), opcoes: so(opA) },
+        [df.lado]: { tipo: "lance", lance: contra, lado: df.lado, jogador: autor.id, adversario: at.id, ...(sitD ? { situacao: sitD.texto } : {}), opcoes: so(opD) } } }) || {};
       const escolha = (lista, x) => lista.find((o) => o.id === (x && x.opcao ? x.opcao : x)) || lista[0];
       const a = escolha(opA, dec[at.lado]), d = escolha(opD, dec[df.lado]);
       // a jogada dá certo pela chance dela, descontada a da defesa escolhida
-      const certo = rng() < clamp(a.chance * (1.45 - d.chance), 0.05, 0.9);
+      const certo = rng() < clamp((a.real ?? a.chance) * (1.45 - (d.real ?? d.chance)), 0.05, 0.9);
       ev({ tipo: "lance", lado: at.lado, lance: favor, opcao: a.id, defesa: d.id, certo, jogador: autor.id, decisivo: id });
       if (certo) { est[at.lado].noAlvo++; return gol(at, autor, a.id === "tocar" || a.id === "cruzar" || a.id === "ensaiada" ? garcom(at, autor) : null, tipo); }
       if (d.bonus) df.impulso = { v: d.bonus, ate: minuto + AJUSTE.IMPULSO_MIN };
@@ -474,6 +521,8 @@
       const subst = banco(time).filter((x) => (vaga.slot === "GK") === (x.grp === "GK")).sort((a, b) => valorNa(b, vaga.slot, vaga.fino) - valorNa(a, vaga.slot, vaga.fino))[0];
       if (!subst || !substituir(time, p.id, subst.id)) { vaga.p = null; time.emCampo.delete(p.id); recalcular(time); }
     }
+    // o confronto de formação e estilo (taticas.js): o que `a` ganha ou perde contra `b`; muda quando um dos dois muda de formação ou de estilo
+    const confrontoDe = (a, b) => Taticas.confronto({ formacao: a.formacao, estilo: a.tatica.estilo }, { formacao: b.formacao, estilo: b.tatica.estilo });
     function cansar(time) {
       const gasto = (0.24 + 0.1 * time.tatica.pressao) * time.est.cansaco;
       for (const p of titulares(time)) p.energia = Math.max(30, p.energia - gasto * (1.15 - p.atr.fis / 400) * (p.grp === "GK" ? 0.3 : 1));
@@ -486,7 +535,7 @@
         const mando = neutro ? 1 : a === 0 ? AJUSTE.MANDO : AJUSTE.VISITANTE;
         const taxa = AJUSTE.CHANCE * Math.exp(AJUSTE.K * (at.att - df.def)) * mando
           * (1 + 0.12 * at.tatica.mentalidade) * (1 + 0.08 * df.tatica.mentalidade) * (1 - 0.06 * (df.tatica.pressao - 1)) * (1 - 0.04 * (df.tatica.linha - 1))
-          * at.est.chance * df.est.cede;
+          * at.est.chance * df.est.cede * (1 + confrontoDe(at, df).criar);
         if (rng() < taxa) lance(at, df);
       }
       if (ambos && modo >= 2) {

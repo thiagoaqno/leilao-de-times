@@ -52,7 +52,7 @@ function campinho(detalhe, formacao, opcoes = {}) {
     const l = lugarNoCampo(s), estilo = `left:${l.x.toFixed(2)}%;top:${l.y.toFixed(2)}%;--e:${l.e.toFixed(3)}`;
     if (!v.id) return `<button class="peca vazia" data-i="${i}" style="${estilo}"><span class="cam"><span class="sem">?</span></span><small>${NOME_VAGA[v.fino] || v.fino}</small></button>`;
     const j = JOGADORES[v.id], fit = encaixe(j.pos, v.fino), energia = opcoes.energia ? opcoes.energia[v.id] : null;
-    const nota = notaDe(j), cansaco = opcoes.energia ? penalidadeSequencia(v.id) : 0, rendimento = Math.round((nota - cansaco) * fit);
+    const nota = notaDe(j), cansaco = opcoes.energia ? penalidadeCansaco(v.id) : 0, rendimento = Math.round((nota - cansaco) * fit);
     const sel = opcoes.selecionado === i;
     return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="${estilo}" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""} · energia ${energia ?? 100}% · ${sequenciaDe(v.id)} jogos seguidos${cansaco ? ` · over -${cansaco}` : ""}">
       ${cansaco ? `<span class="cansaco-canto" title="${sequenciaDe(v.id)} jogos seguidos: over -${cansaco}">-${cansaco}</span>` : ""}
@@ -94,10 +94,10 @@ document.addEventListener("pointerover", (e) => {
 });
 // o cartão de um reserva: a posição, a foto, a nota, o nome e a energia (attrs: o que o chamador precisa, como data-reserva)
 function reservaHTML(pid, { sel = false, attrs = "" } = {}) {
-  const j = JOGADORES[pid], nota = notaDe(j), cans = penalidadeSequencia(pid), energia = energiaDe(pid), fr = fora(pid);
+  const j = JOGADORES[pid], nota = notaDe(j), cans = penalidadeCansaco(pid), energia = energiaDe(pid), fr = fora(pid);
   return `<button class="carta-reserva ${faixa(nota)}${sel ? " sel" : ""}${fr ? " indisponivel" : ""}" data-jogador="${pid}" ${attrs} title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos} · energia ${energia}%${fr ? ` · ${fr === "lesao" ? "lesionado" : "suspenso"}` : ""}">
     <span class="res-pos">${marcaPos(j.pos)}${j.pos}</span>${fotoHTML(pid)}<b class="res-nota">${nota}</b>
-    ${cans ? `<span class="cansaco-canto" title="${sequenciaDe(pid)} jogos seguidos: over -${cans}">-${cans}</span>` : ""}
+    ${cans ? `<span class="cansaco-canto" title="${sequenciaDe(pid)} jogos seguidos, ${energia}% de energia: over -${cans}">-${cans}</span>` : ""}
     <span class="res-marcas">${situacao(pid, true)}</span><span class="energia ${nivelEnergia(energia)}"><i style="--v:${energia}%"></i></span><span class="res-nome">${h(sobrenome(j.nome))}</span></button>`;
 }
 
@@ -109,7 +109,7 @@ function telaElenco() {
   $("eCampo").innerHTML = campinho(det, t.formacao, { selecionado: selecionado?.onde === "campo" ? selecionado.i : null, energia: E.energia });
   for (const id of ["eCampo", "eBanco"]) { $(id).classList.toggle("com-selecao", !!selecionado && !E.partida); $(id).style.setProperty("--fase", `${-(performance.now() % 1400).toFixed(0)}ms`); }
   const comJogador = det.filter((v) => v.id), media = comJogador.reduce((s, v) => s + notaDe(JOGADORES[v.id]), 0) / Math.max(1, titulares.size);
-  const mediaPosicao = comJogador.reduce((s, v) => s + (notaDe(JOGADORES[v.id]) - penalidadeSequencia(v.id)) * encaixe(JOGADORES[v.id].pos, v.fino), 0) / Math.max(1, titulares.size);
+  const mediaPosicao = comJogador.reduce((s, v) => s + (notaDe(JOGADORES[v.id]) - penalidadeCansaco(v.id)) * encaixe(JOGADORES[v.id].pos, v.fino), 0) / Math.max(1, titulares.size);
   const energiaMedia = comJogador.reduce((s, v) => s + energiaDe(v.id), 0) / Math.max(1, comJogador.length);
   const improvisados = det.filter((v) => v.id && encaixe(JOGADORES[v.id].pos, v.fino) < 1).length;
   $("eDica").innerHTML = E.partida ? `${ic("cadeado")} A partida está em andamento: a prancheta volta depois do apito final.`

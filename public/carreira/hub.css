@@ -385,3 +385,16 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .guia-corpo{max-height:min(54dvh,420px);overflow:auto;font-size:14.5px;line-height:1.5}
 .guia-corpo p{margin:0 0 10px}.guia-corpo ul,.guia-corpo ol{margin:0 0 10px;padding-left:20px}.guia-corpo li{margin-bottom:5px}
 .guia .linha.fim{margin-top:12px}
+
+/* a leitura do rival, na prévia da Central */
+.leitura-rival{display:grid;gap:6px;font-size:12px;border-left:3px solid var(--fx-teal,#0a7);padding:8px 10px;background:#0000000a;border-radius:2px}
+.leitura-rival.bom{border-left-color:#1a8a4a}.leitura-rival.ruim{border-left-color:#c42b2b}
+.leitura-rival p{margin:0}.leitura-rival ul{margin:0;padding:0;list-style:none;display:grid;gap:2px}
+.leitura-rival li.bom small{color:#1a8a4a}.leitura-rival li.ruim small{color:#c42b2b}
+.lr-resp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lr-resp button{font-size:12px;padding:4px 8px;border-radius:2px;border:1px solid #00000033;background:#fff;cursor:pointer}
+.lr-resp button b{color:#1a8a4a}
+.rival-parada{margin:0;font-size:12px;line-height:1.4}
+.situacao-lance{margin:0 0 8px;font-size:13px;border-left:3px solid var(--fx-teal,#0a7);padding:6px 10px;background:#0000000a}
+.opcao .marca{font-style:normal;font-size:11px;margin-left:6px}.opcao .marca.favor{color:#1a8a4a}.opcao .marca.contra{color:#c42b2b}
+.leitura-rival .sobre svg{width:14px;height:14px;margin-right:5px;vertical-align:-2px}
