@@ -80,7 +80,7 @@ function painelSetores() {
       ${setorAberto === s.id ? `<div class="setor-jogadores">${s.js.map((j) => linhaJogador(j.id)).join("")}</div>` : ""}`).join("")}
     <p class="suave">Média dos titulares de cada setor na formação ${h(E.escalacao.formacao)}. Toque num setor para ver quem joga.</p></div>`;
 }
-const linhaJogador = (pid) => { const j = JOGADORES[pid], n = notaDe(j); return `<button class="linha-jogador ${faixa(n)}" data-ficha="${pid}"><img class="pix" src="${retrato(pid)}" alt=""><span><b>${h(j.nome)}</b><small>${POS_NOME[j.pos] || j.pos} · ${Evolucao.idadeNa(j, E.temporada)} anos</small></span><em class="nota-chip ${faixa(n)}">${n}</em><small class="valor">${dinheiro(valorAtual(pid))}</small></button>`; };
+const linhaJogador = (pid) => { const j = JOGADORES[pid], n = notaDe(j); return `<button class="linha-jogador ${faixa(n)}" data-ficha="${pid}">${fotoHTML(pid)}<span><b>${h(j.nome)}</b><small>${POS_NOME[j.pos] || j.pos} · ${Evolucao.idadeNa(j, E.temporada)} anos</small></span><em class="nota-chip ${faixa(n)}">${n}</em><small class="valor">${dinheiro(valorAtual(pid))}</small></button>`; };
 // ---------- elenco: os melhores, por nota, valor ou idade ----------
 function painelElenco() {
   const ordens = { nota: (a, b) => notaDe(b) - notaDe(a), valor: (a, b) => valorAtual(b.id) - valorAtual(a.id), idade: (a, b) => Evolucao.idadeNa(a, E.temporada) - Evolucao.idadeNa(b, E.temporada) };

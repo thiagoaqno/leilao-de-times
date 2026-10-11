@@ -2,6 +2,51 @@
 // clube de agora), a figurinha (o card: faixa pela nota, posição, atributos, valor e situação) e a ficha aberta, com
 // as ações: proposta (jogador de outro clube) ou pôr à venda / vender na hora (jogador seu).
 const retratos = new Map();
+// As fotos reais entram quando a carta aparece na tela. O retrato desenhado continua visível
+// enquanto a imagem carrega e quando a API não encontra um recorte do jogador.
+const fotos = new Map(), fotosPendentes = new Map();
+function fotoHTML(pid) { return `<img class="pix" src="${retrato(pid)}" data-foto-jogador="${h(pid)}" alt="">`; }
+function trocarFoto(img, url) {
+  if (!url || !img.isConnected || img.dataset.fotoPronta) return;
+  const pronta = new Image();
+  pronta.onload = () => {
+    if (!img.isConnected) return;
+    img.src = url;
+    img.classList.remove("pix");
+    img.classList.add("foto-real");
+    img.dataset.fotoPronta = "1";
+  };
+  pronta.onerror = () => { fotos.set(img.dataset.fotoJogador, null); };
+  pronta.src = url;
+}
+function carregarFoto(img) {
+  const pid = img.dataset.fotoJogador;
+  if (fotos.has(pid)) return trocarFoto(img, fotos.get(pid));
+  if (!fotosPendentes.has(pid)) {
+    fotosPendentes.set(pid, fetch(`/api/foto-jogador/${encodeURIComponent(pid)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((r) => {
+        if (r) fotos.set(pid, r.url || null);
+        for (const outro of document.querySelectorAll("[data-foto-jogador]")) if (outro.dataset.fotoJogador === pid) trocarFoto(outro, r?.url);
+      })
+      .catch(() => {})
+      .finally(() => fotosPendentes.delete(pid)));
+  }
+}
+const observadorFotos = new IntersectionObserver((entradas) => {
+  for (const entrada of entradas) if (entrada.isIntersecting) {
+    observadorFotos.unobserve(entrada.target);
+    carregarFoto(entrada.target);
+  }
+}, { rootMargin: "120px" });
+function observarFotos(no) {
+  if (no.nodeType !== 1) return;
+  if (no.matches("[data-foto-jogador]")) observadorFotos.observe(no);
+  for (const img of no.querySelectorAll("[data-foto-jogador]")) observadorFotos.observe(img);
+}
+new MutationObserver((mudancas) => {
+  for (const m of mudancas) for (const no of m.addedNodes) observarFotos(no);
+}).observe(document.body, { childList: true, subtree: true });
 // a camisa de verdade do clube (camisas.js): [cor, detalhe, desenho, calção]
 const camisaDoClube = (clube) => Camisas.de(CLUBES[clube]);
 function retrato(pid) {
@@ -53,7 +98,7 @@ function figurinha(pid, tamanho = "mini") {
   }).join("");
   return `<article class="figurinha ${tamanho} ${faixa(n)}" style="${coresClube(clube)}" data-jogador="${pid}">
     <header><span class="nota">${n}</span><span class="pos">${j.pos}</span>${seloMudancaNota(pid, "na-figurinha")}${escudo(clube, tamanho === "grande" ? 2 : 1)}</header>
-    <div class="foto"><img class="pix" src="${retrato(pid)}" alt=""></div>
+    <div class="foto">${fotoHTML(pid)}</div>
     <h4>${h(tamanho === "grande" ? j.nome : sobrenome(j.nome))}</h4>
     ${tamanho === "grande" ? `<p class="sub">${h(POS_NOME[j.pos] || j.pos)} · ${h(j.nat || "")} · ${Evolucao.idadeNa(j, E ? E.temporada : 1)} anos${j.idade ? "" : " (estimada)"}</p><ul class="atributos">${atr}</ul>` : ""}
     <footer><span>${dinheiro(valor)}${forma !== 1 ? `<i class="seta ${forma > 1 ? "sobe" : "desce"}" title="Momento: ${Math.round((forma - 1) * 100)}%">${ic(forma > 1 ? "sobe" : "baixo")}</i>` : ""}</span><span class="marcas">${situacao(pid, true)}</span></footer>

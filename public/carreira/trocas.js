@@ -3,7 +3,7 @@
 // se os jogadores ainda são de quem disse e o tamanho dos elencos (carreira-online.js: trocaPropor e trocaResponder).
 const TR = { para: null, dou: new Set(), recebo: new Set(), dinheiro: 0, paga: true };
 
-const listaTroca = (ids) => (ids.length ? ids.map((pid) => `<span class="troca-jog"><img class="pix" src="${retrato(pid)}" alt=""><b>${h(sobrenome(nomeJogador(pid)))}</b><small>${JOGADORES[pid] ? notaDe(JOGADORES[pid]) : ""}</small></span>`).join("") : `<span class="suave">ninguém</span>`);
+const listaTroca = (ids) => (ids.length ? ids.map((pid) => `<span class="troca-jog">${fotoHTML(pid)}<b>${h(sobrenome(nomeJogador(pid)))}</b><small>${JOGADORES[pid] ? notaDe(JOGADORES[pid]) : ""}</small></span>`).join("") : `<span class="suave">ninguém</span>`);
 const textoDinheiro = (t, eu) => {
   if (!t.dinheiro) return "";
   const pagaEu = (t.dinheiro > 0) === (t.de === eu);
@@ -22,7 +22,7 @@ function propostaTrocaHTML(t, deMim) {
 function elencoTrocaHTML(clube, lado) {
   const sel = lado === "dou" ? TR.dou : TR.recebo;
   const jogadores = elencoDe(clube).sort((a, b) => notaDe(b) - notaDe(a));
-  return `<div class="troca-elenco">${jogadores.map((j) => `<label class="troca-linha${sel.has(j.id) ? " marcado" : ""}"><input type="checkbox" data-troca="${lado}" value="${j.id}" ${sel.has(j.id) ? "checked" : ""}><img class="pix" src="${retrato(j.id)}" alt=""><span><b>${h(j.nome)}</b><small>${h(j.pos || "")}</small></span><em class="nota-troca">${notaDe(j)}</em></label>`).join("")}</div>`;
+  return `<div class="troca-elenco">${jogadores.map((j) => `<label class="troca-linha${sel.has(j.id) ? " marcado" : ""}"><input type="checkbox" data-troca="${lado}" value="${j.id}" ${sel.has(j.id) ? "checked" : ""}>${fotoHTML(j.id)}<span><b>${h(j.nome)}</b><small>${h(j.pos || "")}</small></span><em class="nota-troca">${notaDe(j)}</em></label>`).join("")}</div>`;
 }
 function telaTrocas() {
   const corpo = $("trocasCorpo");

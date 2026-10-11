@@ -79,7 +79,7 @@ function radarSVG(j, pid) {
 function destaqueHTML(pid) {
   const j = pid && JOGADORES[pid]; if (!j) return `<p class="suave dest-vazio">Toque num jogador para ver o cartão dele.</p>`;
   const nota = notaDe(j), energia = energiaDe(pid), clube = donoDe(pid);
-  return `<div class="cartao-jog ${faixa(nota)}"><div class="dest-foto"><span class="dest-pos">${marcaPos(j.pos)}${j.pos}</span><img class="pix" src="${retrato(pid)}" alt=""><b class="dest-nota">${nota}</b></div>
+  return `<div class="cartao-jog ${faixa(nota)}"><div class="dest-foto"><span class="dest-pos">${marcaPos(j.pos)}${j.pos}</span>${fotoHTML(pid)}<b class="dest-nota">${nota}</b></div>
     <div class="dest-nome"><strong>${h(sobrenome(j.nome))}</strong><small>${h(POS_NOME[j.pos] || j.pos)} · ${Evolucao.idadeNa(j, E.temporada)} anos · ${h((CLUBES[clube] || {}).nome || "")}</small>
     <span class="energia ${nivelEnergia(energia)}" title="Energia ${energia}%"><i style="--v:${energia}%"></i></span></div>
     <div class="dest-radar">${radarSVG(j, pid)}</div></div>`;
@@ -96,7 +96,7 @@ document.addEventListener("pointerover", (e) => {
 function reservaHTML(pid, { sel = false, attrs = "" } = {}) {
   const j = JOGADORES[pid], nota = notaDe(j), cans = penalidadeSequencia(pid), energia = energiaDe(pid), fr = fora(pid);
   return `<button class="carta-reserva ${faixa(nota)}${sel ? " sel" : ""}${fr ? " indisponivel" : ""}" data-jogador="${pid}" ${attrs} title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos} · energia ${energia}%${fr ? ` · ${fr === "lesao" ? "lesionado" : "suspenso"}` : ""}">
-    <span class="res-pos">${marcaPos(j.pos)}${j.pos}</span><img class="pix" src="${retrato(pid)}" alt=""><b class="res-nota">${nota}</b>
+    <span class="res-pos">${marcaPos(j.pos)}${j.pos}</span>${fotoHTML(pid)}<b class="res-nota">${nota}</b>
     ${cans ? `<span class="cansaco-canto" title="${sequenciaDe(pid)} jogos seguidos: over -${cans}">-${cans}</span>` : ""}
     <span class="res-marcas">${situacao(pid, true)}</span><span class="energia ${nivelEnergia(energia)}"><i style="--v:${energia}%"></i></span><span class="res-nome">${h(sobrenome(j.nome))}</span></button>`;
 }

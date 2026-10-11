@@ -403,7 +403,7 @@ function menuIntervalo(p, d, { sobra, banco, campo, energia, irPara }) {
   $("dTitulo").textContent = "Intervalo"; $("dTexto").textContent = "";
   const ev = J.eventos.slice(0, J.i), golsEv = ev.filter((e) => e.tipo === "gol"), ultimo = golsEv.at(-1);
   const cansados = campo.filter((v) => v.id && energia[v.id] != null).sort((a, b) => energia[a.id] - energia[b.id]).slice(0, 2);
-  const rostos = (ids) => `<span class="int-rostos">${ids.map((pid) => `<img class="pix" src="${retrato(pid)}" alt="">`).join("")}</span>`;
+  const rostos = (ids) => `<span class="int-rostos">${ids.map((pid) => fotoHTML(pid)).join("")}</span>`;
   const est = Taticas.ESTILOS && Taticas.ESTILOS[d.tatica.estilo];
   const tile = (id, titulo, info, arte, cls = "") => `<button class="int-tile ${cls}" data-ir-int="${id}"><span class="int-tile-txt"><b>${titulo}</b><small>${info}</small></span><span class="int-arte" aria-hidden="true">${arte}</span></button>`;
   $("dCorpo").innerHTML = `<div class="int-grade">

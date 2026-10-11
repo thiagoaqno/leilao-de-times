@@ -51,6 +51,15 @@ function abrir(caminho = process.env.DB_PATH || path.join(__dirname, "dados", "g
 function fechar() { if (banco) { banco.close(); banco = null; } }
 const bd = () => banco || abrir();
 
+// Fotos recortadas da Carreira. URL nula guarda uma busca sem resultado para não repetir a cada visita.
+function fotoJogador(id) {
+  return bd().prepare("SELECT url, consultado_em FROM fotos_jogadores WHERE jogador = ?").get(id) || null;
+}
+function guardarFotoJogador(id, url) {
+  bd().prepare("INSERT INTO fotos_jogadores (jogador, url, consultado_em) VALUES (?, ?, ?) ON CONFLICT(jogador) DO UPDATE SET url = excluded.url, consultado_em = excluded.consultado_em")
+    .run(id, url, Date.now());
+}
+
 // ---------- carreiras ----------
 const hash = (txt) => crypto.createHash("sha256").update(String(txt)).digest("hex");
 const novoToken = () => crypto.randomBytes(24).toString("hex");
@@ -160,4 +169,4 @@ function estante({ limite = 50, recentes = 24 } = {}) {
   return { ranking, ultimas, total: linhas.filter((l) => l.colocacao === 1).length };
 }
 
-module.exports = { abrir, fechar, migrar, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

@@ -61,7 +61,7 @@ function desenvolvimentoNaSede() {
   box.innerHTML = `<div class="dev-topo"><h3 class="fx-titulo">Desenvolvimento do jogador</h3>
       <span class="dev-nav"><button class="dev-seta" data-dev="-1" aria-label="Jogador anterior">‹</button><small>${devSede + 1} de ${lista.length}</small><button class="dev-seta" data-dev="1" aria-label="Próximo jogador">›</button></span></div>
     <button class="dev-corpo" data-ficha="${pid}" aria-label="Abrir a ficha de ${h(j.nome)}">
-      <span class="dev-foto"><img class="pix" src="${retrato(pid)}" alt=""></span>
+      <span class="dev-foto">${fotoHTML(pid)}</span>
       <span class="dev-nome"><b>${h(sobrenome(j.nome))}</b>
         <span class="dev-nota"><strong>${nota}</strong>${delta ? `<em class="${delta > 0 ? "sobe" : "cai"}">${ic(delta > 0 ? "sobe" : "baixo")}${Math.abs(delta)}</em>` : ""}<i>geral</i><span class="dev-pos">${marcaPos(j.pos)}${h(j.pos)}</span></span></span>
       <span class="dev-info"><small>${Evolucao.idadeNa(j, E.temporada)} anos${gols ? ` · ${gols.gols} gol${gols.gols > 1 ? "s" : ""}` : ""}</small><small>Valor estimado</small><b>${dinheiro(valorAtual(pid))}</b>

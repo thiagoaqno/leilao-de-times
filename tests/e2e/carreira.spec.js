@@ -12,6 +12,27 @@ const semAvisos = (page) => page.addLocatorHandler(page.locator("dialog.popup-av
 const voltarSede = async (page) => { const livre = () => page.waitForFunction(() => !Zoom.ocupado()); await livre(); await page.click("#barra .voltar"); await livre(); };
 const vigiar = (page) => { const erros = []; page.on("pageerror", (e) => erros.push(String(e))); semAvisos(page); return erros; };
 
+test("carreira: foto recortada entra na carta e o retrato fica quando não há foto", async ({ page }) => {
+  const erros = vigiar(page);
+  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==";
+  await page.route("**/api/foto-jogador/*", (r) => {
+    const id = r.request().url().split("/").pop();
+    return r.fulfill({ contentType: "application/json", body: JSON.stringify({ url: id === "flamengo-10" ? png : null }) });
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/carreira/#debug");
+  await page.fill("#cNome", "Fotos");
+  await page.click('[data-clube="flamengo"]');
+  await page.click("#btnCriar");
+  await page.click("#btnAnotei");
+  await page.click('#sede [data-ir="elenco"]');
+  await page.evaluate(() => abrirFicha("flamengo-10"));
+  await expect(page.locator("#ficha .figurinha .foto img")).toHaveClass(/foto-real/);
+  await page.evaluate(() => abrirFicha("flamengo-11"));
+  await expect(page.locator("#ficha .figurinha .foto img")).toHaveClass(/pix/);
+  expect(erros).toEqual([]);
+});
+
 test("carreira: a prancheta mostra evolução e perda por posição", async ({ page }) => {
   const erros = vigiar(page);
   await page.setViewportSize({ width: 1280, height: 800 });
