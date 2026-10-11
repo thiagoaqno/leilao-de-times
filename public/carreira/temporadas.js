@@ -56,7 +56,7 @@ function tabelaArquivoHTML(a, id) {
   const c = a.competicoes[id]; if (!c) return "";
   const rows = (tab) => tab.map((l) => ({ ...l, ultimos: [] }));
   const corpo = c.tipo === "liga" ? tabelaHTML(rows(c.tabela)) : `${(c.grupos || []).map((g) => `<section class="grupo-copa"><h3>Grupo ${g.id}</h3>${tabelaHTML(rows(g.tabela))}</section>`).join("")}${chaveHTML(c)}`;
-  const artilharia = c.artilharia && c.artilharia.length ? `<h3>Artilharia · ${h(c.nome)}</h3><ol class="artilharia">${c.artilharia.map((x) => `<li class="${x.clube === E.clube ? "meu" : ""}"><img class="pix" src="${retrato(x.id)}" alt=""><span>${h(x.nome)}<small>${h(nomeClube(x.clube))}</small></span><b>${x.gols}</b></li>`).join("")}</ol>` : "";
+  const artilharia = c.artilharia && c.artilharia.length ? `<h3>Artilharia · ${h(c.nome)}</h3><ol class="artilharia">${c.artilharia.map((x) => `<li class="${x.clube === E.clube ? "meu" : ""}">${fotoHTML(x.id)}<span>${h(x.nome)}<small>${h(nomeClube(x.clube))}</small></span><b>${x.gols}</b></li>`).join("")}</ol>` : "";
   return `<div class="abas-competicoes">${Object.keys(a.competicoes).sort((x, y) => ordemComp(x, a.competicoes[x]) - ordemComp(y, a.competicoes[y])).map((k) => `<button class="${k === id ? "ativa" : ""}" data-temp-comp="${k}">${h(a.competicoes[k].nome)}</button>`).join("")}</div>${corpo}${artilharia}`;
 }
 function telaTemporadas() {

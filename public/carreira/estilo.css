@@ -357,6 +357,7 @@ td.pos.campeao{box-shadow:inset 2px 0 var(--ouro2)}td.pos.libertadores{box-shado
 .figurinha header .escudo{margin-left:auto;filter:drop-shadow(0 2px 3px #0005)}
 .figurinha .foto{position:relative;z-index:3;display:grid;place-items:center;padding:6px 0 2px}
 .figurinha .foto img{width:64px;height:64px;filter:drop-shadow(0 6px 6px #0004)}
+.figurinha .foto img.foto-real,.dest-foto img.foto-real,.carta-reserva img.foto-real{object-fit:contain;background:transparent;border-radius:0;image-rendering:auto}
 .figurinha h4{position:relative;z-index:3;font-size:14px;font-weight:700;letter-spacing:-.02em;text-align:center;padding:2px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .figurinha footer{position:relative;z-index:3;display:flex;justify-content:space-between;align-items:center;gap:4px;margin-top:auto;padding:6px 9px 8px;font:600 11px var(--mono);opacity:.85;
   border-top:1px solid color-mix(in srgb,var(--tinta-carta) 14%,transparent);box-shadow:inset 0 -3px 0 var(--clube)}
