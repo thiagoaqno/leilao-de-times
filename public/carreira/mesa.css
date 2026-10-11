@@ -1,0 +1,22 @@
+/* a mesa de botão (mesa.js): o campo visto de cima, com os jogadores viram botões nas cores dos clubes */
+.mesa-caixa{display:flex;justify-content:center}
+.mesa{width:100%;max-width:780px;border-radius:6px;overflow:hidden;background:#2f8a43;box-shadow:0 0 0 4px #5b3a1f,0 0 0 5px #0006,0 14px 30px -16px #000;line-height:0}
+.mesa.hidden,.mesa-caixa.hidden{display:none}
+.mesa svg{display:block;width:100%;height:auto;aspect-ratio:105/68}
+.mesa .bt,.mesa .bt-bola{transition-property:transform;transition-timing-function:cubic-bezier(.3,.7,.3,1);transition-duration:0ms;will-change:transform}
+.mesa .bt-bola{transition-timing-function:cubic-bezier(.2,.8,.4,1)}
+.mesa .bt-in{transform-box:fill-box;transform-origin:center}
+.mesa .bt text{pointer-events:none;font-family:var(--fx-cond,inherit)}
+.mesa .bt.festa .bt-in{animation:mesa-pula .5s ease-in-out 3}
+.mesa .bt.pop .bt-in{animation:mesa-pop .6s ease-out}
+.mesa .bt.ferido .bt-in{opacity:.55}
+.mesa .bt.saiu{opacity:0;transition:opacity .6s}
+.mesa .m-leg text{fill:#fff;stroke:#0b1a10;stroke-width:.55;paint-order:stroke;font-weight:700;animation:mesa-leg 1.8s ease-out both}
+.mesa .m-gol{animation:mesa-gol 1.6s ease-out both;transform-box:fill-box;transform-origin:center}
+.mesa .m-cartao{animation:mesa-leg 2.4s ease-out both}
+@keyframes mesa-pula{50%{transform:translateY(-1.2px) scale(1.12)}}
+@keyframes mesa-pop{0%{transform:scale(1.7)}100%{transform:scale(1)}}
+@keyframes mesa-leg{0%{opacity:0}12%{opacity:1}80%{opacity:1}100%{opacity:0}}
+@keyframes mesa-gol{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1.12)}30%{transform:scale(1)}85%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.mesa .bt.festa .bt-in,.mesa .bt.pop .bt-in,.mesa .m-gol,.mesa .m-leg text,.mesa .m-cartao{animation:none}}
+@media (max-width:520px){.mesa .bt text{display:none}}
