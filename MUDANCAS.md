@@ -1,13 +1,15 @@
-# Carreira: voltar sem se perder (menu do intervalo e botão do topo)
+# Carreira: o prêmio de campeão vira contratação paga de até 82, uma por título, e a cota de compras zera na virada
 
-- **No intervalo**, depois de abrir Tática, Substituições ou Formação, o botão "← Menu do intervalo" agora fica preso no alto da prancheta, numa faixa na cor do clube, e continua lá enquanto você rola a tela até o banco ou as formações. Antes ele era um botão pequeno e cinza, que sumia ao rolar.
-- O mesmo botão também aparece embaixo, logo acima do "Voltar ao jogo", para não precisar subir a tela inteira.
-- **O botão de voltar do topo** virou uma placa no tema: nas telas de gestão (Elenco e tática, Mercado, Tabela...) o "← Sede" fica maior e na cor do clube; na Sede, o "← Vila" é uma placa clara, menor.
-- **Sem sair sem querer:** o "← Vila" aparece no mesmo lugar do "← Sede" assim que você volta à Sede, e o segundo toque rápido levava à Vila. Agora um toque logo depois de voltar (menos de 1 s) é ignorado.
+- **Antes**, ganhar qualquer campeonato dava o **vale de campeão**: um jogador de até 87, de graça, na temporada seguinte (só um vale, mesmo com dois ou três títulos), na carreira solo e na sala. Na sala, além do vale, a janela do começo ganhava vagas a mais na cota de compras, pagas, mas só para três títulos: Libertadores (até 85), Sul-Americana (até 83) e Brasileirão (até 82). Copa do Brasil, Champions, as ligas de fora e o Super Mundial não davam vaga.
+- **Agora** não tem mais jogador de graça. Cada título da temporada anterior, de qualquer competição (liga ou copa), dá **uma contratação a mais na janela do começo, paga como qualquer outra, de um jogador de até 82**. Ganhou duas competições, leva duas a mais.
+- Isso vale para a cota de compras da carreira em grupo. A carreira solo não tem cota (compra quantos couber no caixa), então lá o título continua rendendo o bônus em dinheiro, a reputação e a confiança, mas não uma vaga.
+- **A cota zera na virada da temporada.** Na sala, a opção usada numa janela (3 de até 80, 2 de até 82 ou 1 de até 85) continua proibida na janela seguinte, mas só do começo para o meio. Antes, o que você usou no meio também ficava proibido no começo da temporada seguinte; agora o começo de cada temporada sempre tem as três opções.
+- Quem já tinha um vale guardado perde o vale na próxima virada de temporada. Quem já trouxe jogador pelo vale continua sem poder vendê-lo nesta temporada.
 
 ## Como
 
-- `public/carreira/partida.js`: na prancheta do intervalo, o "← Menu do intervalo" entra no alto e também antes do `#dVoltar`.
-- `public/carreira/hub.css`: o botão de cima fica `position: sticky` na cor do time (`--fx-teal`); o de baixo, na faixa clara das abas.
-- `public/carreira/zoom.js`: o botão do cabeçalho ganha a classe `para-sede` nas telas de gestão, e o clique no "← Vila" é ignorado por 900 ms depois de voltar à Sede.
-- `public/carreira/hub.css`: o estilo do `#barra .voltar` (placa clara; `para-sede` na cor do time).
+- `carreira.js`: `PREMIOS_CAMPEAO` saiu; `premiosDaOrdem` dá um prêmio de `PREMIO_MAX` (82) para cada competição do `save.arquivo` em que o clube foi campeão. `usarVale` saiu.
+- `carreira-clube.js`: `fechouTemporada` não cria mais o vale nem o aviso; a ação `vale` saiu; `virada` esvazia `gestao.vales`; o estado não manda mais `vales`.
+- `public/carreira/cartas.js` e `tela-mercado.js`: saíram o botão "Usar o vale" da ficha e o aviso do vale no mercado.
+- `carreira.js`: `proibidaNa` diz a opção proibida de uma janela; no começo da temporada (ordem par, e a entrada que vale no lugar dele) é sempre nenhuma.
+- Testes: `tests/carreira-entrada-meio.test.js` (uma vaga de até 82 por título, de qualquer competição; a virada zera a opção proibida) e `tests/carreira-premios.test.js` (título não dá mais jogador de graça).

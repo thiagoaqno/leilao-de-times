@@ -65,7 +65,7 @@ test("em cada janela: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85",
   assert.strictEqual(G.erroDeCompra(misto, "flamengo", jogador(81, 82).id), null, "um de 80 e um de 82 cabem nos 2 de até 82");
 });
 
-test("a opção usada numa janela não vale na janela seguinte (inclusive do meio para o começo da temporada seguinte)", () => {
+test("a opção usada no começo não vale no meio, e a virada de temporada zera", () => {
   const save = grupo();
   comprar(save, "flamengo", jogador(83, 85)); // o começo: 1 de 85
   naRodada(save, "flamengo", 17); // a janela do meio
@@ -76,45 +76,42 @@ test("a opção usada numa janela não vale na janela seguinte (inclusive do mei
   assert.deepStrictEqual(meio.ainda, ["3 jogadores de até 80", "2 jogadores de até 82"]);
   assert.match(meio.texto, /não vale a de 1 jogador de até 85/);
   comprar(save, "flamengo", jogador(70, 78)); // um de até 80 sozinho gasta a opção mais baixa: a de 80
-  // a temporada seguinte: o começo proíbe a opção usada no meio (a de 80), e o de 85 volta a valer
+  // a temporada seguinte: o meio usou a de 80, mas a virada zera e as três opções voltam
   save.temporada = 2; naRodada(save, "flamengo", 0);
   const comeco = regra(save);
   assert.strictEqual(comeco.tipo, "inicio");
-  assert.strictEqual(comeco.proibida, "80");
-  assert.ok(comeco.ok[85] && comeco.ok[82], "volta a valer o de 85");
-  assert.deepStrictEqual(comeco.ainda, ["2 jogadores de até 82", "1 jogador de até 85"]);
+  assert.strictEqual(comeco.proibida, "");
+  assert.ok(comeco.ok[85] && comeco.ok[82] && comeco.ok[80], "volta tudo");
+  assert.deepStrictEqual(comeco.ainda, ["3 jogadores de até 80", "2 jogadores de até 82", "1 jogador de até 85"]);
   // quem não compra nada numa janela não proíbe nada na seguinte
   naRodada(save, "flamengo", 17);
   assert.strictEqual(regra(save).proibida, "", "o começo da temporada 2 ficou sem compra: o meio vale inteiro");
 });
 
-test("os campeões ganham prêmios na janela do começo: Libertadores 1 de até 85, Sul-Americana 1 de até 83, Brasileirão 1 de até 82", () => {
+test("os campeões ganham, na janela do começo, uma contratação paga de até 82 por título (qualquer competição)", () => {
   const save = grupo(["flamengo", "palmeiras"]);
   // a temporada anterior (o arquivo): o Flamengo levou a Libertadores e o Brasileirão; o Palmeiras, a Sul-Americana
-  save.arquivo = [{ temporada: 0, competicoes: { libertadores: { campeao: "flamengo" }, "brasileirao-2026": { campeao: "flamengo" }, sulamericana: { campeao: "palmeiras" } } }];
+  save.arquivo = [{ temporada: 0, competicoes: { libertadores: { nome: "Libertadores", campeao: "flamengo" }, "brasileirao-2026": { nome: "Brasileirão", campeao: "flamengo" }, sulamericana: { nome: "Sul-Americana", campeao: "palmeiras" } } }];
   const r = regra(save);
-  assert.deepStrictEqual(r.premios.map((p) => [p.nome, p.max]), [["Libertadores", 85], ["Brasileirão", 82]]);
-  assert.match(r.texto, /Prêmio de campeão nesta janela/);
-  // a opção da janela (1 de 85) e os dois prêmios (85 e 82): três jogadores, em qualquer ordem
+  assert.deepStrictEqual(r.premios.map((p) => [p.nome, p.max]), [["Libertadores", 82], ["Brasileirão", 82]], "dois títulos, duas contratações de até 82");
+  assert.match(r.texto, /Prêmio de campeão nesta janela, a mais \(pago normalmente\)/);
+  // a opção da janela (1 de 85) e os dois prêmios (82 e 82): três jogadores, em qualquer ordem
   comprar(save, "flamengo", jogador(78, 80)); comprar(save, "flamengo", jogador(81, 82));
-  assert.strictEqual(G.erroDeCompra(save, "flamengo", jogador(83, 85).id), null, "o de 85 entra (na opção ou no prêmio)");
+  assert.strictEqual(G.erroDeCompra(save, "flamengo", jogador(83, 85).id), null, "o de 85 entra na opção da janela");
   comprar(save, "flamengo", jogador(83, 85));
-  assert.strictEqual(G.erroDeCompra(save, "flamengo", jogador(60, 80).id), null, "ainda cabe: 2 de até 80 na opção e os prêmios com o 82 e o 85");
-  comprar(save, "flamengo", jogador(60, 80));
-  const quase = regra(save);
-  assert.ok(quase.ok[80] && !quase.ok[81], "ainda cabe o terceiro de até 80 (os prêmios ficaram com o 85 e o 82)");
-  comprar(save, "flamengo", jogador(60, 80));
-  assert.ok(regra(save).ok.every((x) => !x), "opção e prêmios usados: 5 jogadores");
+  assert.ok(G.erroDeCompra(save, "flamengo", jogador(83, 85).id), "o segundo de 85 não cabe: o prêmio vai só até 82");
+  assert.ok(regra(save).ok.every((x) => !x), "opção (85) e prêmios (80 e 82) usados: 3 jogadores");
   const pal = G.regraDeCompras(G.vistaDe(save, "palmeiras"));
-  assert.deepStrictEqual(pal.premios.map((p) => [p.nome, p.max]), [["Sul-Americana", 83]]);
+  assert.deepStrictEqual(pal.premios.map((p) => [p.nome, p.max]), [["Sul-Americana", 82]]);
   // o prêmio é só da janela do começo
   naRodada(save, "palmeiras", 17);
   assert.deepStrictEqual(G.regraDeCompras(G.vistaDe(save, "palmeiras")).premios, []);
-  // quem usou o prêmio para o de 85 não gasta a opção da janela: nada fica proibido no meio
-  const outro = grupo(); outro.arquivo = [{ temporada: 0, competicoes: { libertadores: { campeao: "flamengo" } } }];
-  comprar(outro, "flamengo", jogador(83, 85));
+  // quem usou o prêmio para o de 82 não gasta a opção da janela: nada fica proibido no meio
+  const outro = grupo(); outro.arquivo = [{ temporada: 0, competicoes: { "copa-do-brasil": { nome: "Copa do Brasil", campeao: "flamengo" } } }];
+  assert.ok(G.erroDeCompra(outro, "flamengo", jogador(83, 85).id) === null, "o de 85 cabe na opção");
+  comprar(outro, "flamengo", jogador(81, 82));
   naRodada(outro, "flamengo", 17);
-  assert.strictEqual(regra(outro).proibida, "", "o de 85 foi o prêmio");
+  assert.strictEqual(regra(outro).proibida, "", "o de 82 foi o prêmio");
 });
 
 test("o lance respeita a regra de quem dá o lance, e cada técnico tem a sua cota", () => {
