@@ -23,7 +23,7 @@ $("abasSede").addEventListener("keydown", (e) => { // as setas andam entre as ab
 });
 mostrarAbaSede(abaSede);
 
-// a faixa "Avançar": o último jogo e os próximos, um por quadradinho (como os dias do calendário); o próximo em laranja
+// a faixa do calendário, na prévia do jogo: o último jogo e os próximos, um por quadradinho (como os dias do calendário); o próximo em laranja
 const curtoDe = (id) => (CLUBES[id] && CLUBES[id].curto) || nomeClube(id).slice(0, 3).toUpperCase();
 function faixaAvancarHTML() {
   const jogos = [...E.meus].sort((a, b) => (a.semana ?? a.rodada) - (b.semana ?? b.rodada));
@@ -37,8 +37,8 @@ function faixaAvancarHTML() {
       <span class="av-adv">${escudo(adv, 2)}<b>${h(curtoDe(adv))}</b><i>${j.casa === E.clube ? "casa" : "fora"}</i></span>
       ${j.placar ? `<span class="av-res ${r}">${j.casa === E.clube ? placarTxt(j.placar) : placarTxt([j.placar[1], j.placar[0]])}</span>` : atual ? `<span class="av-res prox">${ic("apito")}</span>` : ""}</li>`;
   };
-  return `<div class="av-topo"><h3 class="fx-titulo">Avançar</h3><span class="av-ano">Temporada ${E.ano}</span></div>
-    ${lista.length ? `<ol class="av-faixa" aria-label="Próximos compromissos">${lista.map(cel).join("")}</ol>` : ""}`;
+  return lista.length ? `<div class="av-topo"><small>Calendário</small><small class="av-ano">Temporada ${E.ano}</small></div>
+    <ol class="av-faixa" aria-label="Próximos compromissos">${lista.map(cel).join("")}</ol>` : "";
 }
 
 // o painel "Desenvolvimento do jogador": a foto, a nota com a evolução da carreira, a idade, o valor e os seis atributos

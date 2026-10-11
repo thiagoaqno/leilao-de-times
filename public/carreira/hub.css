@@ -94,27 +94,83 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 #sede[data-aba="time"] [data-na-aba]:not([data-na-aba~="time"]),
 #sede[data-aba="temporada"] [data-na-aba]:not([data-na-aba~="temporada"]){display:none!important}
 
-/* ---------- a grade: três colunas no PC; a do lado desce abaixo das outras em telas médias ---------- */
+/* ---------- a barra: as abas e, à direita, os atalhos da gestão (como as abas Plantel e Transferências do FIFA 16) ---------- */
+#sede .hub-barra{display:flex;align-items:flex-end;gap:3px 12px;margin:14px 0 10px;flex-wrap:wrap}
+#sede .hub-barra .hub-abas{margin:0}
+#sede .hub-tiles{display:flex;gap:3px;margin-left:auto;max-width:100%;overflow-x:auto;scrollbar-width:none}
+#sede .hub-tiles::-webkit-scrollbar{display:none}
+#sede .tile{display:flex;align-items:center;gap:7px;flex:none;min-height:34px;height:34px;padding:0 13px 0 9px;border:0;border-radius:0;background:#d7e0e8e6;box-shadow:none;color:#24323e}
+#sede .tile-ic{position:relative;width:22px;height:22px;border-radius:2px;background:var(--fx-teal);border:0;color:var(--fx-tinta);box-shadow:none}
+#sede .tile-ic .ic{width:14px;height:14px}
+#sede .tile-txt{display:block;align-self:center}
+#sede .tile-txt b{font:600 15px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+#sede .tile-txt small,#sede .tile-dado{display:none}
+#sede .tile-mercado.aberta .tile-ic::after{margin:0;top:-4px;right:-4px;box-shadow:0 0 0 2px #d7e0e8}
+#sede .tile:last-child{clip-path:polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%);padding-right:20px}
+@media (hover:hover) and (pointer:fine){#sede .tile:hover{transform:none;background:#eef3f7;box-shadow:inset 0 -3px 0 var(--fx-teal)}#sede .tile:hover .tile-ic{transform:none}}
+
+/* ---------- a grade: na Central, a do FIFA 16 (jogar, como jogar e a prévia em cima; o desenvolvimento, as notícias e a tabela
+   embaixo, da mesma altura; depois a caixa de entrada, o último jogo e a turma). As colunas da grade somem (display:contents)
+   e cada painel vai para a sua área. Meu time e Temporada continuam em três colunas. ---------- */
 #sede .hub-grade{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(260px,.82fr);gap:8px}
 #sede .hub-principal,#sede .hub-centro,#sede .hub-lado{gap:8px}
 #sede .hub-lado{position:static;max-height:none;overflow:visible;border-radius:0}
 #sede[data-aba="time"] .hub-grade{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(260px,.82fr)}
+#sede[data-aba="central"] :is(.hub-principal,.hub-centro,.hub-lado){display:contents}
+#sede[data-aba="central"] .hub-grade{align-items:stretch;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr) minmax(0,.95fr);
+  grid-template-areas:"jogo jogo jogo" "vivo vivo vivo" "dev noticias tabela" "entrada entrada ultimo" "entrada entrada turma"}
+#sede #cartaoJogo{grid-area:jogo}#sede #cartaoAoVivo{grid-area:vivo}#sede #cartaoDesenvolvimento{grid-area:dev}#sede #cartaoFeed{grid-area:noticias}
+#sede #cartaoTabela{grid-area:tabela}#sede #cartaoEntrada{grid-area:entrada;align-self:start}#sede #cartaoUltimo{grid-area:ultimo;align-self:start}#sede #cartaoTurma{grid-area:turma;align-self:start}
 @media (max-width:1240px){
   #sede .hub-grade{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
   #sede .hub-lado{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  #sede[data-aba="central"] .hub-grade{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"jogo jogo" "vivo vivo" "dev dev" "noticias tabela" "entrada ultimo" "entrada turma"}
 }
-@media (max-width:860px){#sede .hub-grade,#sede[data-aba="time"] .hub-grade,#sede .hub-lado{grid-template-columns:1fr}}
+@media (max-width:860px){
+  #sede .hub-grade,#sede[data-aba="time"] .hub-grade,#sede .hub-lado{grid-template-columns:1fr}
+  #sede[data-aba="central"] .hub-grade{grid-template-columns:1fr;grid-template-areas:"jogo" "vivo" "dev" "noticias" "tabela" "entrada" "ultimo" "turma"}
+  #sede .hub-barra{flex-wrap:nowrap;flex-direction:column;align-items:stretch}
+  #sede .hub-tiles{margin-left:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible}
+  #sede .tile:last-child{clip-path:none;padding-right:13px}
+}
 
-/* ---------- Avançar: a faixa dos compromissos e o próximo jogo ---------- */
+/* ---------- em cima: Jogar a próxima partida (o bloco inteiro é o botão, na cor do clube), Como jogar e a prévia ---------- */
 #sede .hub-jogo{container-type:inline-size;gap:10px}
 #sede .hub-jogo::before{display:none}
+#sede #cartaoJogo:has(>.cj){padding:0;background:none;box-shadow:none;border:0;overflow:visible}
+.cj{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2.3fr);gap:8px}
+.cj-tile{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0;padding:14px 16px;background:var(--fx-painel);box-shadow:var(--fx-sombra);overflow:hidden}
+.cj>.prontos{grid-column:1/-1;margin:0;padding:8px 12px;background:var(--fx-painel)}
+#sede .cj .cj-jogar{align-items:flex-start;justify-content:flex-start;gap:2px;height:auto;min-height:150px;padding:14px 16px;border:0;border-radius:0;text-align:left;font:400 13px var(--fonte);text-transform:none;letter-spacing:0;
+  background:linear-gradient(160deg,var(--fx-claro),var(--fx-teal) 45%,var(--fx-teal2));color:var(--fx-tinta);box-shadow:var(--fx-sombra),0 14px 30px -18px var(--fx-teal)}
+#sede .hub-jogo[data-peso] .cj .cj-jogar{background:linear-gradient(160deg,var(--peso2,var(--peso)),var(--peso) 55%)}
+.cj-jogar>span{font:500 26px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.02em;margin-bottom:8px;max-width:100%}
+.cj-jogar>small{font-size:13px;opacity:.9}
+.cj-escudo{position:absolute;right:12px;bottom:10px;font-style:normal;filter:drop-shadow(0 6px 10px #0005)}
+.cj-apito{position:absolute;left:16px;bottom:14px;width:30px;height:30px;display:grid;place-items:center;font-style:normal;background:#ffffff2e;border-radius:2px}.cj-apito .ic{width:18px;height:18px}
+#sede .cj .cj-jogar:disabled{opacity:.75;filter:none}
+@media (hover:hover) and (pointer:fine){#sede .cj .cj-jogar:not(:disabled):hover{box-shadow:var(--fx-sombra),inset 0 -4px 0 #fff9}}
+.cj-modos .fx-titulo{margin:0}
+#sede .cj-modos .modos{display:flex;flex-direction:column;gap:3px;padding:0;background:none;border:0;border-radius:0}
+#sede .cj-modos .modos button{flex-direction:row;justify-content:flex-start;gap:8px;min-height:32px;padding:4px 10px;border-radius:0;background:#15212c0f;color:var(--t2);text-align:left}
+#sede .cj-modos .modos button b{font:600 14px/1.1 var(--fx-cond);text-transform:uppercase;letter-spacing:.04em}
+#sede .cj-modos .modos button[aria-pressed=true]{background:var(--fx-teal);color:var(--fx-tinta);box-shadow:none}
+.cj-previa .jogo-info{display:grid;grid-template-columns:minmax(0,1fr) 36%;align-content:start;gap:4px 14px}
+.cj-previa .jogo-info>:not(.confronto){grid-column:1}
+.cj-previa .jogo-info .fx-titulo{margin:0;font-size:22px;line-height:1.05}
+.cj-previa .estadio{margin:0;justify-content:flex-start;text-align:left}
+.cj-previa .confronto{grid-column:2;grid-row:1/span 3;margin:-14px -16px 0 0;min-height:104px;grid-template-columns:1fr auto 1fr;padding:0 10px;clip-path:polygon(16% 0,100% 0,100% 100%,0 100%);
+  background:linear-gradient(0deg,#0b141c99,#0b141c22),var(--foto,linear-gradient(135deg,var(--fx-teal),var(--fx-teal2))) center/cover}
+.cj-previa .confronto>div{gap:2px;padding-left:14px}.cj-previa .confronto small{color:#fff;font-weight:600}.cj-previa .confronto .x{color:#fff;padding-left:14px}
+.cj-previa .confronto .escudo{filter:drop-shadow(0 4px 8px #0008)}
+.cj-previa :is(.peso-jogo,.desfalques,.pendente){margin:0}
+.cj-previa .av-topo{margin-top:auto;padding-top:4px}
 .av-topo{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.av-topo .fx-titulo{margin:0}
-.av-ano{font:600 15px var(--fx-cond);text-transform:uppercase;letter-spacing:.05em;color:var(--t2)}
+.av-topo small{font:600 13px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;color:var(--t3)}
 .av-faixa{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
-.av-dia{display:flex;flex-direction:column;gap:6px;min-height:92px;padding:7px 8px;background:#15212c12;border-top:3px solid transparent;min-width:0}
+.av-dia{display:flex;flex-direction:column;gap:4px;min-height:72px;padding:6px 8px;background:#15212c12;border-top:3px solid transparent;min-width:0}
 .av-dia.jogado{background:#15212c0a;opacity:.82}
-.av-quando{display:flex;flex-direction:column;font:600 14px/1.1 var(--fx-cond);text-transform:uppercase;letter-spacing:.03em;color:var(--t2)}
+.av-quando{display:flex;flex-direction:column;font:600 13px/1.1 var(--fx-cond);text-transform:uppercase;letter-spacing:.03em;color:var(--t2)}
 .av-quando small{font:500 11px/1.2 var(--fonte);text-transform:none;letter-spacing:0;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .av-adv{display:flex;align-items:center;gap:5px;margin-top:auto;min-width:0}
 .av-adv b{font:600 15px var(--fx-cond);letter-spacing:.03em}.av-adv i{font-style:normal;font-size:10px;color:var(--t3);margin-left:auto}
@@ -123,34 +179,26 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .av-res.prox{background:none;padding:0}.av-res .ic{width:16px;height:16px}
 .av-dia.hoje{--t2:color-mix(in srgb,var(--fx-tinta) 82%,transparent);--t3:color-mix(in srgb,var(--fx-tinta) 66%,transparent);background:var(--fx-laranja);color:var(--fx-tinta);opacity:1;border-top-color:var(--time2,#ffd3a1);box-shadow:0 10px 24px -14px var(--fx-laranja)}
 .av-dia.hoje[data-peso]{background:var(--peso);border-top-color:var(--peso2)}
-.jogo-corpo{display:grid;gap:12px}
-.jogo-info,.jogo-acao{display:flex;flex-direction:column;gap:10px;min-width:0}
-.jogo-acao{justify-content:flex-end}
-@container (min-width:520px){.jogo-corpo{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:end}}
-@container (max-width:420px){.av-faixa{grid-template-columns:repeat(4,minmax(0,1fr))}.av-faixa .av-dia:nth-child(n+5),.av-adv i{display:none}}
-#sede .hub-jogo .confronto b{font:600 19px var(--fx-cond);letter-spacing:.02em}
-#sede .hub-jogo .cta{background:var(--fx-laranja);color:var(--fx-tinta);border-radius:2px;box-shadow:0 12px 26px -14px var(--fx-laranja);font:600 18px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em}
-#sede .hub-jogo[data-peso] .cta{background:var(--peso);box-shadow:0 12px 26px -14px var(--peso)}
-#sede .hub-jogo .modos{border-radius:2px}#sede .hub-jogo .modos button{border-radius:2px}
+.jogo-info{display:flex;flex-direction:column;gap:10px;min-width:0}
 #sede .desfalques{color:#8a1c1c;background:#c42b2b14;border-color:#c42b2b33;border-radius:2px}
+@container (max-width:1000px){.cj{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cj-previa{grid-column:1/-1}}
+@container (max-width:520px){
+  .cj{grid-template-columns:1fr}.cj-previa .jogo-info{grid-template-columns:1fr}
+  .cj-previa .confronto{grid-column:1;grid-row:auto;min-height:96px;margin:-14px -16px 4px;clip-path:none;order:-1}
+  .av-faixa{grid-template-columns:repeat(4,minmax(0,1fr))}.av-faixa .av-dia:nth-child(n+5),.av-adv i{display:none}
+  #sede .cj .cj-jogar{min-height:118px;padding-right:96px}.cj-apito{display:none}
+}
 
-/* ---------- a gestão: os blocos menores, no jeito dos atalhos ---------- */
-#sede .hub-tiles{gap:6px}
-#sede .tile{min-height:96px;padding:12px;gap:8px}
-#sede .tile-ic{border-radius:2px;background:var(--fx-teal);border:0;color:var(--fx-tinta);box-shadow:none;width:30px;height:30px}
-#sede .tile-txt b{font:600 17px/1.05 var(--fx-cond);text-transform:uppercase;letter-spacing:.03em}
-#sede .tile-dado b{font-family:var(--fx-cond)}
-#sede .tile-mercado.aberta .tile-ic::after{box-shadow:0 0 0 3px #eef3f7}
-@media (hover:hover) and (pointer:fine){#sede .tile:hover{background:linear-gradient(180deg,#fff,#e5ecf1);box-shadow:var(--fx-sombra),inset 0 -3px 0 var(--fx-teal)}}
-
-/* ---------- Desenvolvimento do jogador: o painel turquesa ---------- */
-#sede .hub-dev{--t1:var(--fx-tinta);--t2:color-mix(in srgb,var(--fx-tinta) 84%,transparent);--t3:color-mix(in srgb,var(--fx-tinta) 66%,transparent);background:linear-gradient(160deg,var(--fx-claro),var(--fx-teal) 45%,var(--fx-teal2));color:var(--fx-tinta);padding:16px 18px 0;overflow:hidden}
-#sede .hub-dev .fx-titulo{color:var(--fx-tinta);margin:0}
+/* ---------- Desenvolvimento do jogador: o painel claro, com a cor do clube nos destaques ---------- */
+#sede .hub-dev{padding:16px 18px 0;overflow:hidden;display:flex;flex-direction:column}
+#sede .hub-dev .fx-titulo{margin:0}
+#sede .hub-dev .dev-atributos{margin-top:auto}
+#sede .hub-dev .dev-barra{margin-bottom:12px}
 .dev-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .dev-nav{display:flex;align-items:center;gap:6px}.dev-nav small{font:600 13px var(--fx-cond);letter-spacing:.04em;color:var(--t2);min-width:52px;text-align:center}
-.dev-seta{min-height:30px;width:30px;padding:0;border-radius:2px;background:#ffffff26;border:0;color:var(--fx-tinta);font-size:20px}
+.dev-seta{min-height:30px;width:30px;padding:0;border-radius:2px;background:var(--fx-teal);border:0;color:var(--fx-tinta);font-size:20px}
 .dev-corpo{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:end;width:100%;height:auto;padding:0;background:none;border:0;border-radius:0;text-align:left;color:inherit;font-weight:400}
-.dev-foto{width:96px;height:96px;display:block;background:linear-gradient(180deg,#ffffff2e,#ffffff08);overflow:hidden}
+.dev-foto{width:96px;height:96px;display:block;background:linear-gradient(180deg,#15212c14,#15212c05);overflow:hidden}
 .dev-foto img{width:100%;height:100%;display:block}
 .dev-nome{display:flex;flex-direction:column;gap:2px;min-width:0}
 .dev-nome>b{font:500 24px/1 var(--fx-cond);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -162,26 +210,39 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .dev-pos{display:inline-flex;align-items:center;gap:4px;font:600 22px var(--fx-cond);letter-spacing:.03em}
 .dev-info{display:flex;flex-direction:column;align-items:flex-end;text-align:right;gap:1px}
 .dev-info small{font-size:12px;color:var(--t2)}.dev-info b{font:600 20px var(--fx-cond);letter-spacing:.02em}
-.dev-carreira{margin-top:4px;font:600 13px var(--fx-cond);font-style:normal;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;background:#ffffff26;border-radius:2px}
+.dev-carreira{margin-top:4px;font:600 13px var(--fx-cond);font-style:normal;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;background:#15212c14;border-radius:2px}
 .dev-carreira.sobe{background:#13894a;color:#fff}.dev-carreira.cai{background:#c42b2b;color:#fff}
 .dev-barra{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin:12px 0 0;font:600 12px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;color:var(--t2)}
-.dev-barra i{display:block;height:6px;background:linear-gradient(90deg,var(--fx-tinta) var(--v),color-mix(in srgb,var(--fx-teal2) 70%,#000) var(--v))}
-.dev-atributos{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin:12px -18px 0;background:color-mix(in srgb,var(--fx-teal2) 80%,#000a)}
-.dev-atributos div{padding:10px 6px 12px;text-align:center;border-left:1px solid #ffffff1f}.dev-atributos div:first-child{border-left:0}
+.dev-barra i{display:block;height:6px;background:linear-gradient(90deg,var(--fx-teal) var(--v),#15212c1f var(--v))}
+.dev-atributos{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin:12px -18px 0;background:#15212c12;border-top:3px solid var(--fx-teal)}
+.dev-atributos div{padding:10px 6px 12px;text-align:center;border-left:1px solid #15212c1a}.dev-atributos div:first-child{border-left:0}
 .dev-atributos dt{font:600 11px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dev-atributos dd{margin:2px 0 0;font:500 32px/1 var(--fx-cond)}.dev-atributos small{font-size:13px;margin-left:2px}
-@media (hover:hover) and (pointer:fine){.dev-seta:hover{background:#ffffff40}.dev-corpo:hover .dev-foto{box-shadow:inset 0 0 0 2px #fff8}}
+@media (hover:hover) and (pointer:fine){.dev-seta:hover{background:var(--fx-teal2)}.dev-corpo:hover .dev-foto{box-shadow:inset 0 0 0 2px var(--fx-teal)}}
 @media (max-width:520px){
   .dev-corpo{grid-template-columns:auto minmax(0,1fr)}.dev-info{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:baseline;justify-content:flex-start;text-align:left;gap:4px 10px}
   .dev-foto{width:76px;height:76px}.dev-nota strong{font-size:52px}
-  .dev-atributos{grid-template-columns:repeat(3,minmax(0,1fr))}.dev-atributos div:nth-child(4){border-left:0}.dev-atributos div:nth-child(n+4){border-top:1px solid #ffffff1f}
+  .dev-atributos{grid-template-columns:repeat(3,minmax(0,1fr))}.dev-atributos div:nth-child(4){border-left:0}.dev-atributos div:nth-child(n+4){border-top:1px solid #15212c1a}
 }
 
 /* ---------- notícias, caixa de entrada, tabela e o resto nos painéis claros ---------- */
 #sede .entrada li{background:#ffffff80;border-radius:2px}
 #sede .entrada li.novo{border-color:color-mix(in srgb,var(--fx-teal) 45%,transparent);box-shadow:inset 3px 0 0 var(--fx-laranja)}
 #sede .ic-evento{color:var(--fx-teal2)}
-#sede .mini-tabela tr.meu td{background:#1592a91f}
+#sede .mini-tabela th{padding:0 4px 6px;font:600 12px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;color:var(--t3);text-align:right}#sede .mini-tabela th:first-child{text-align:left}
+#sede .mini-tabela td{padding:5px 4px}#sede .mini-tabela td:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums}
+#sede .mini-tabela tr.meu td{background:var(--fx-teal);color:var(--fx-tinta);font-weight:600}#sede .mini-tabela tr.meu td.pos{box-shadow:none}
+.manchetes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.manchete{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;align-items:center;width:100%;height:auto;min-height:0;padding:6px 10px 6px 6px;border:0;border-left:3px solid var(--fx-teal);border-radius:0;background:#ffffff80;color:var(--t1);text-align:left;font-weight:400}
+.manchete img{width:52px;height:52px;display:block}
+.manchete>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.manchete small{font:600 12px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;color:var(--fx-teal2)}
+.manchete b{font-size:13px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media (hover:hover) and (pointer:fine){.manchete:hover{background:#fff;transform:none}}
+#sede .hub-noticias,#sede #cartaoTabela{display:flex;flex-direction:column}
+.pontos-hub{display:flex;justify-content:center;gap:6px;margin-top:auto;padding-top:10px}
+.pontos-hub button{width:9px;height:9px;min-height:0;padding:0;border:0;border-radius:50%;background:#15212c33}
+.pontos-hub button[aria-current=true]{background:var(--fx-teal)}
 #sede .efeitos li.bom{color:var(--ok)}#sede .efeitos li.ruim{color:var(--erro)}
 #sede .botoes-carreira button.discreto{color:#c9d3db}
 #sede .tv-painel{--t1:#f4f4f5;--t2:#a1a1aa;--t3:#71717a;background:#0d1b26e6;color:var(--t1)}
