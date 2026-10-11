@@ -19,6 +19,7 @@ function carreiraNoMeio(clube = "flamengo", rodadas = 6) {
   save.caixaEntrada = [];
   const reserva = ajudas.elencoDe(save, save.clube).find((j) => !save.lesoes[j.id]);
   save.lesoes[reserva.id] = 2;
+  save.suspensos[reserva.id] = 1;
   save.moral = 60;
   return save;
 }
@@ -44,6 +45,7 @@ test("catálogo: todo evento, com toda escolha, roda e mexe em alguma coisa do j
       const r = Motor.sorteDe(`teste:${d.id}`);
       const meu = ajudas.elencoDe(save, save.clube);
       const j = !d.alvo ? null : d.alvo === "lesionado" ? meu.find((p) => save.lesoes[p.id])
+        : d.alvo === "suspenso" ? meu.find((p) => save.suspensos[p.id])
         : d.alvo === "outro" ? ajudas.elencoDe(save, "palmeiras")[0] : d.alvo === "goleiro" ? meu.find((p) => p.pos === "GOL") : meu.find((p) => !save.lesoes[p.id]);
       const antes = JSON.stringify(save);
       let fala = "";
@@ -61,6 +63,7 @@ test("catálogo: todo evento, com toda escolha, roda e mexe em alguma coisa do j
   }
   // só as respostas "neutras" podem não mexer em nada
   assert.ok(semEfeito.length <= 25, `escolhas sem efeito demais: ${semEfeito.join(", ")}`);
+  assert.ok(!semEfeito.some((id) => id.startsWith("imersao-")), `acontecimento novo sem efeito: ${semEfeito.join(", ")}`);
 });
 
 test("efeitos: a nota do time, de um jogador e do adversário entram no jogo e somem depois", () => {
@@ -110,4 +113,20 @@ test("catálogo: os 100 eventos novos (carreira-catalogo-novos.js) entram no sor
   assert.ok(NOVOS.every((d) => ids.has(d.id)));
   assert.ok(Eventos.CATALOGO.length >= 300);
   assert.ok(new Set(NOVOS.map((d) => d.grupo)).size >= 8);
+});
+
+test("imersão: 300 eventos inéditos entram no catálogo e a multa do clássico afeta o caixa", () => {
+  const { IMERSAO } = require("../carreira-catalogo-imersao.js");
+  assert.strictEqual(IMERSAO.length, 300);
+  assert.strictEqual(new Set(IMERSAO.map((d) => d.id)).size, 300);
+  assert.strictEqual(new Set(IMERSAO.map((d) => d.grupo)).size, 15);
+  assert.ok(IMERSAO.every((d) => Eventos.CATALOGO.includes(d)));
+  const multa = IMERSAO.find((d) => d.id === "imersao-briga-classico");
+  assert.strictEqual(multa.quando({ classico: null }), false);
+  assert.strictEqual(multa.quando({ classico: "Fla-Flu" }), true);
+  const save = carreiraNoMeio(), antes = save.caixa;
+  const aviso = Eventos.criarDoCatalogo(save, ajudas, Motor.sorteDe("briga-classico"), multa, null);
+  assert.strictEqual(save.caixa, antes - 100000);
+  assert.match(aviso.resultado, /100 mil/);
+  assert.ok(save.financas[0].itens.some(([nome, valor]) => nome === multa.titulo && valor === -100000));
 });

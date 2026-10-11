@@ -12,6 +12,27 @@ const semAvisos = (page) => page.addLocatorHandler(page.locator("dialog.popup-av
 const voltarSede = async (page) => { const livre = () => page.waitForFunction(() => !Zoom.ocupado()); await livre(); await page.click("#barra .voltar"); await livre(); };
 const vigiar = (page) => { const erros = []; page.on("pageerror", (e) => erros.push(String(e))); semAvisos(page); return erros; };
 
+test("carreira: acontecimento automático mostra multa e impacto na caixa de entrada", async ({ page }) => {
+  const erros = vigiar(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/carreira/#debug");
+  await page.fill("#cNome", "Acontecimentos");
+  await page.click('[data-clube="flamengo"]');
+  await page.click("#btnCriar");
+  await page.click("#btnAnotei");
+  await page.evaluate(() => {
+    __carreira.E.caixaEntrada.unshift({ id: "exemplo-briga", tipo: "cat", def: "imersao-briga-classico", grupo: "torcida", icone: "galera", rodada: 0,
+      resolvido: true, titulo: "Briga de torcida no clássico", texto: "Uma confusão na chegada das torcidas ao estádio terminou com punição ao clube.",
+      resultado: "Despesa: R$ 100 mil. Moral -2." });
+    telaEntrada();
+  });
+  const aviso = page.locator("#cartaoEntrada .entrada li").filter({ hasText: "Briga de torcida no clássico" });
+  await aviso.locator("summary").click();
+  await expect(aviso).toContainText("Despesa: R$ 100 mil. Moral -2.");
+  await fotografar(page, "carreira-evento-briga-classico");
+  expect(erros).toEqual([]);
+});
+
 test("carreira: foto recortada entra na carta e o retrato fica quando não há foto", async ({ page }) => {
   const erros = vigiar(page);
   const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==";
