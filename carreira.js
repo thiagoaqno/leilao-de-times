@@ -735,7 +735,7 @@ function timeDe(save, id) {
     : rival ? (save.provocado && save.provocado.rodada === R ? save.provocado.nota : 0) + somaEfeitos(ativos, "rival") : 0;
   return {
     id: c.id, nome: c.nome,
-    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0) + (meu && save.jogador && j.id === save.jogador.id ? save.jogador.ajuste || 0 : 0), 40, 97) })),
+    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
     formacao: meu ? save.escalacao.formacao : c.formacao,
     tatica: meu ? save.escalacao.tatica : { mentalidade: 0, pressao: 1, linha: 1, estilo: "auto" }, // o computador escolhe o estilo que combina com o elenco
     titulares: meu && save.escalacao.titulares ? save.escalacao.titulares : undefined,
@@ -1616,24 +1616,6 @@ function eventoAcao(save, d) {
   return { mensagem: Eventos.responder(save, e, d.opcao, ajudas) };
 }
 
-// começa a partida da rodada (a carreira solo e o modo jogador) e devolve null, ou o texto do erro
-function jogarProximo(save, d = {}) {
-  if (save.demitido) return "Você foi demitido: a carreira acabou.";
-  if (save.partida) return null;
-  if (save.base === BASE_PADRAO) {
-    const jogo = proximoJogoMundo(save); if (!jogo) return "A temporada acabou.";
-    resolverPendentes(save);
-    save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, agregado: agregadoDe(save, jogo), casa: jogo.casa, fora: jogo.fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
-    const r = simularMinha(save); if (r.completo) fecharRodada(save, r); return null;
-  }
-  if (save.rodada >= save.calendario.length) return "A temporada acabou.";
-  resolverPendentes(save);
-  const [casa, fora] = Temporada.jogoDoClube(save.calendario, save.rodada, save.clube);
-  save.partida = { rodada: save.rodada, casa, fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, save.rodada, casa, fora), decisoes: {} };
-  const r = simularMinha(save);
-  if (r.completo) fecharRodada(save, r);
-  return null;
-}
 module.exports = function ligarCarreira(io) {
   const nsp = io.of("/carreira");
   nsp.on("connection", (socket) => {
@@ -1687,7 +1669,23 @@ module.exports = function ligarCarreira(io) {
       return { paralelos: paralelosDaPartida(save, { jogoId: id }) };
     }));
     // começa a partida da rodada (ou devolve a que já estava em andamento)
-    socket.on("jogar", (d = {}, cb) => comCarreira(cb, (save) => jogarProximo(save, d)));
+    socket.on("jogar", (d = {}, cb) => comCarreira(cb, (save) => {
+      if (save.demitido) return "Você foi demitido: a carreira acabou.";
+      if (save.partida) return null;
+      if (save.base === BASE_PADRAO) {
+        const jogo = proximoJogoMundo(save); if (!jogo) return "A temporada acabou.";
+        resolverPendentes(save);
+        save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, agregado: agregadoDe(save, jogo), casa: jogo.casa, fora: jogo.fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
+        const r = simularMinha(save); if (r.completo) fecharRodada(save, r); return null;
+      }
+      if (save.rodada >= save.calendario.length) return "A temporada acabou.";
+      resolverPendentes(save);
+      const [casa, fora] = Temporada.jogoDoClube(save.calendario, save.rodada, save.clube);
+      save.partida = { rodada: save.rodada, casa, fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, save.rodada, casa, fora), decisoes: {} };
+      const r = simularMinha(save);
+      if (r.completo) fecharRodada(save, r);
+      return null;
+    }));
     socket.on("decidir", (d = {}, cb) => comCarreira(cb, (save) => {
       if (!save.partida) return "Nenhuma partida em andamento.";
       const r = simularMinha(save);
@@ -1737,5 +1735,24 @@ module.exports.paraTestes = { trocarDivisoes, ligaDoClube, clubesDaLiga, definir
 module.exports.grupo = { rodadaDaSemana, estanteDaSala, Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
   fichaDoTime, infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };
-// para o modo jogador (jogador.js): o mesmo mundo da carreira solo, com o jogador do usuário num clube
-module.exports.jogador = { clubesDaLiga, recalcularMundo, salarioDe, golsDoMundo, clubeDeLiga: ligaDoClube, Clube, caixaInicial, novaCarreira, completar, jogarProximo, novaTemporada, proximoJogoMundo, temporadaAcabou, clubeDe, jogadorDe, notaDe, elencoDe, titularesDe, estadoMundo, registrarTemporada, VERSAO, antiga, ANTIGA, ligaDoClube, Evolucao, Motor, BASES, BASE_PADRAO };
+
+// ---------- para o modo jogador (jogador.js) ----------
+// Só acrescenta: nada da carreira de treinador muda por causa dele. É o mesmo mundo, calendário e motor, com um jogador no clube.
+function jogarProximoDoJogador(save, d = {}) {
+  if (save.demitido) return "Você foi demitido: a carreira acabou.";
+  if (save.partida) return null;
+  if (save.base === BASE_PADRAO) {
+    const jogo = proximoJogoMundo(save); if (!jogo) return "A temporada acabou.";
+    resolverPendentes(save);
+    save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, agregado: agregadoDe(save, jogo), casa: jogo.casa, fora: jogo.fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
+    const r = simularMinha(save); if (r.completo) fecharRodada(save, r); return null;
+  }
+  if (save.rodada >= save.calendario.length) return "A temporada acabou.";
+  resolverPendentes(save);
+  const [casa, fora] = Temporada.jogoDoClube(save.calendario, save.rodada, save.clube);
+  save.partida = { rodada: save.rodada, casa, fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, save.rodada, casa, fora), decisoes: {} };
+  const r = simularMinha(save);
+  if (r.completo) fecharRodada(save, r);
+  return null;
+}
+module.exports.jogador = { clubesDaLiga, recalcularMundo, salarioDe, golsDoMundo, clubeDeLiga: ligaDoClube, Clube, caixaInicial, novaCarreira, completar, jogarProximo: jogarProximoDoJogador, novaTemporada, proximoJogoMundo, temporadaAcabou, clubeDe, jogadorDe, notaDe, elencoDe, titularesDe, estadoMundo, registrarTemporada, VERSAO, antiga, ANTIGA, ligaDoClube, Evolucao, Motor, BASES, BASE_PADRAO };

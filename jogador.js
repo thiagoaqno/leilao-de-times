@@ -74,6 +74,10 @@ const ajusteDe = (conf) => clamp(Math.round((conf - 50) / 8), -4, 6);
 function prepararAjuste(save) {
   const j = save.jogador, prox = C.proximoJogoMundo(save), comp = prox && save.competicoes[prox.competicao];
   j.ajuste = ajusteDe(j.confianca) + (comp && comp.tipo !== "liga" && !prox.mataMata ? 3 : 0);
+  // a confiança entra na escalação como um efeito de nota só para este jogo (o mesmo mecanismo dos eventos da carreira),
+  // sem mexer no código do time: o efeito some sozinho quando a rodada passa
+  save.efeitos = (save.efeitos || []).filter((e) => e.alvo !== ID);
+  if (j.ajuste) save.efeitos.push({ alvo: ID, nota: j.ajuste, de: save.rodada, ate: save.rodada, titulo: "Confiança do treinador" });
 }
 function papelDe(save) {
   const j = save.jogador;
