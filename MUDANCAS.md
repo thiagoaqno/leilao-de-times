@@ -1,20 +1,16 @@
-# Carreira: a memória do clube (efeito dominó nas escolhas)
+# Carreira: preparadores técnicos
 
 ## O que muda no jogo
 
-Antes, cada acontecimento da caixa de entrada era um efeito solto: acontecia, passava e o jogo esquecia. Agora o clube lembra do que você fez, e isso volta.
+Na tela Clube, aba **Técnico**, agora existe a **Comissão técnica**: dá para contratar até 3 preparadores (um de cada perfil) que mexem na velocidade com que os jogadores sobem ou caem de overall na virada de temporada.
 
-- **Relações:** a torcida, a imprensa e o vestiário têm uma nota de 0 a 100 (a diretoria continua sendo a confiança). Resultados, clássicos, goleadas, títulos, rebaixamento, a venda de um craque e cada escolha da caixa de entrada mexem nelas. E elas mexem no jogo: a torcida muda a bilheteria (de -12% a +12%), o vestiário unido segura a moral depois da derrota (rachado, piora) e a imprensa amiga segura a diretoria (hostil, pressiona).
-- **Perfil do técnico:** sai do que as suas escolhas fizeram, não de uma pergunta. Punir e cobrar deixa você linha-dura; acolher deixa você paizão; abrir a carteira, mão-aberta; segurar o dinheiro, pão-duro.
-- **Laços com os jogadores:** cada decisão que atinge um jogador vira gratidão ou mágoa. Os acontecimentos seguintes preferem quem já tem história, então o mesmo jogador vira personagem.
-- **Ecos:** 13 acontecimentos novos que só existem por causa do passado, com a lembrança do que os causou: a mágoa que volta (e pode virar pedido de saída), a gratidão que se paga em campo ou no contrato, o vestiário reclamando do pulso firme, o treino relaxado de quem é paizão demais, a diretoria cobrando a conta, a faixa ou o mosaico da torcida, a coletiva hostil ou o jornalista que sopra a tática do adversário, o rival pedindo revanche, a torcida cobrando a venda do ídolo, o peso da faixa de campeão e a ferida do rebaixamento. As respostas dos ecos também ficam na memória: o dominó continua.
-- **Na tela:** cada resposta mostra o que andou nas relações (ex.: "Torcida +2 · Vestiário −3"). O painel **A história do clube** (Sede, abas Meu time e Temporada) mostra o perfil, as relações, quem guarda mágoa ou gratidão e o diário das últimas decisões e marcas.
-- Com o tempo a memória esfria: na virada as relações voltam um pouco ao meio e os laços perdem força.
+- **Especialista em jovens:** garotos de até 24 anos têm 30% de chance de ganhar +1 a mais.
+- **Fisiologista de veteranos:** quem tem 30 anos ou mais tem 30% de chance de perder 1 ponto a menos.
+- **Preparador geral:** o elenco inteiro tem 15% de chance de ganhar +1 a mais (ou perder 1 a menos).
+- **Gestor de carga:** o contrário, segura os garotos de até 24 anos (30% de chance de evoluir 1 a menos), barato, para quem quer ritmo lento.
+
+Cada um cobra um salário anual (proporcional ao tamanho do clube) descontado do caixa na virada, junto da manutenção. Dá para dispensar a qualquer momento. A contratação vale a partir da próxima virada, e nada passa de 95.
 
 ## Como
 
-- `carreira-memoria.js` é o módulo novo: o estado em `save.memoria` (campo do clube, entra em `CAMPOS_CLUBE`; saves antigos criam na hora), `aprender` (lê o rastro das ajudas que a escolha chamou), `aposJogo`, `fimDeTemporada`, `vendeu`, `fatorTorcida`, `estado` e o catálogo `ECOS` (mesma forma do catálogo de eventos).
-- `carreira-eventos.js`: o contexto das ajudas grava o rastro e ganhou `x.torcida`, `x.imprensa`, `x.vestiario`, `x.confianca`, `x.perdoar` e `x.retribuir`; os alvos `magoado` e `grato`; no máximo um eco a cada 3 rodadas, cada um uma vez por temporada.
-- `carreira.js` chama a memória depois de cada jogo, no fim da temporada, na venda e na bilheteria, e manda `estado().memoria`.
-- `public/carreira/telas.js` (`memoriaNaSede`, a lembrança na caixa de entrada), `index.html` (`#cartaoMemoria`) e `hub.css`.
-- Testes em `tests/carreira-memoria.test.js`.
+`clube-regras.js` tem `PREPARADORES` e `ajustePreparadores`; `carreira-clube.js` guarda `gestao.preparadores`, a ação `preparador` (`contratar`/`demitir`) e cobra a folha; `virarTemporada` (`carreira.js`) aplica o ajuste depois do bônus do CT. Vale para o solo e a sala em grupo. Testes em `tests/carreira-clube.test.js`.

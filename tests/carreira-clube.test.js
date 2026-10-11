@@ -399,3 +399,29 @@ test("treino de posição: só posições parecidas, jovem aprende mais rápido,
   assert.ok(elenco(v).some((x) => x.id === j.id && x.pos === alvo));
   assert.ok(!v.gestao.treinos[j.id]);
 });
+
+test("preparadores: até 3, um de cada perfil, e a nota sobe mais (ou menos) na virada", () => {
+  const v = nova();
+  const ag = (id, op = "contratar") => Clube.acao(v, ajudas, { acao: "preparador", id, op });
+  assert.ok(ag("jovens").mensagem);
+  assert.equal(typeof ag("jovens"), "string", "não contrata o mesmo duas vezes");
+  assert.ok(ag("veteranos").mensagem); assert.ok(ag("geral").mensagem);
+  assert.equal(typeof ag("freio"), "string", "comissão cheia");
+  assert.deepEqual(Clube.estado(v, ajudas).preparadores, ["jovens", "veteranos", "geral"]);
+  assert.ok(ag("geral", "demitir").mensagem); assert.equal(Clube.estado(v, ajudas).preparadores.length, 2);
+  // as contas: contra uma sorte sempre baixa, o especialista em jovens soma 1 e o gestor de carga tira 1
+  const baixo = () => 0;
+  assert.equal(R.ajustePreparadores(["jovens"], { idade: 20, nota: 70, delta: 2, sorte: baixo }), 3);
+  assert.equal(R.ajustePreparadores(["jovens"], { idade: 30, nota: 70, delta: 2, sorte: baixo }), 2);
+  assert.equal(R.ajustePreparadores(["veteranos"], { idade: 33, nota: 80, delta: -2, sorte: baixo }), -1);
+  assert.equal(R.ajustePreparadores(["freio"], { idade: 19, nota: 70, delta: 3, sorte: baixo }), 2);
+  assert.equal(R.ajustePreparadores(["geral"], { idade: 27, nota: 94, delta: 1, sorte: baixo }), 1, "não passa de 95");
+  assert.equal(R.ajustePreparadores(["jovens", "geral"], { idade: 20, nota: 70, delta: 2, sorte: () => 0.99 }), 2, "sem sorte, nada muda");
+});
+test("preparadores: a folha sai do caixa na virada e a virada de temporada continua rodando", () => {
+  const v = nova();
+  Clube.acao(v, ajudas, { acao: "preparador", id: "jovens", op: "contratar" });
+  const e = Clube.estado(v, ajudas); assert.ok(e.custoPreparadores > 0);
+  jogarTemporada(v); novaTemporada(v);
+  assert.equal(v.temporada, 2);
+});
