@@ -1,20 +1,17 @@
-# Carreira: a memória do clube (efeito dominó nas escolhas)
+# Carreira: os atributos passam a contar nas partidas
 
 ## O que muda no jogo
 
-Antes, cada acontecimento da caixa de entrada era um efeito solto: acontecia, passava e o jogo esquecia. Agora o clube lembra do que você fez, e isso volta.
+Antes, só a nota e a finalização mexiam no resultado: ritmo, drible, passe, marcação e físico ficavam de enfeite. Um ponta de ritmo saía prejudicado frente a um ponta de finalização e físico de mesma nota, porque a finalização pesava duas vezes e o ritmo, nenhuma. Agora cada função tem o seu perfil de atributos e o jogador rende pelo que a vaga pede.
 
-- **Relações:** a torcida, a imprensa e o vestiário têm uma nota de 0 a 100 (a diretoria continua sendo a confiança). Resultados, clássicos, goleadas, títulos, rebaixamento, a venda de um craque e cada escolha da caixa de entrada mexem nelas. E elas mexem no jogo: a torcida muda a bilheteria (de -12% a +12%), o vestiário unido segura a moral depois da derrota (rachado, piora) e a imprensa amiga segura a diretoria (hostil, pressiona).
-- **Perfil do técnico:** sai do que as suas escolhas fizeram, não de uma pergunta. Punir e cobrar deixa você linha-dura; acolher deixa você paizão; abrir a carteira, mão-aberta; segurar o dinheiro, pão-duro.
-- **Laços com os jogadores:** cada decisão que atinge um jogador vira gratidão ou mágoa. Os acontecimentos seguintes preferem quem já tem história, então o mesmo jogador vira personagem.
-- **Ecos:** 13 acontecimentos novos que só existem por causa do passado, com a lembrança do que os causou: a mágoa que volta (e pode virar pedido de saída), a gratidão que se paga em campo ou no contrato, o vestiário reclamando do pulso firme, o treino relaxado de quem é paizão demais, a diretoria cobrando a conta, a faixa ou o mosaico da torcida, a coletiva hostil ou o jornalista que sopra a tática do adversário, o rival pedindo revanche, a torcida cobrando a venda do ídolo, o peso da faixa de campeão e a ferida do rebaixamento. As respostas dos ecos também ficam na memória: o dominó continua.
-- **Na tela:** cada resposta mostra o que andou nas relações (ex.: "Torcida +2 · Vestiário −3"). O painel **A história do clube** (Sede, abas Meu time e Temporada) mostra o perfil, as relações, quem guarda mágoa ou gratidão e o diário das últimas decisões e marcas.
-- Com o tempo a memória esfria: na virada as relações voltam um pouco ao meio e os laços perdem força.
+- **Medido antes (6 mil jogos por teste, nota igual, +15 em cada atributo dos titulares):** nos atacantes, só a finalização mudava o saldo (+0,5 gol por jogo); ritmo, drible, passe, defesa e físico davam 0,00. No meio e na defesa, igual: a defesa dos zagueiros e laterais não tinha efeito algum. O ponta de ritmo perdia por cerca de 0,4 gol por jogo para o ponta de finalização e físico (nota igual e perfis de mesmo valor na função).
+- **Rendimento por função:** a nota do jogador na vaga ganha ou perde até 8 pontos (60% do desvio) conforme o perfil da função: ponta = drible, ritmo e finalização; centroavante = finalização, físico, ritmo e drible; meia = passe, drible e finalização; volante = marcação, físico e passe; zagueiro = marcação e físico; lateral = marcação, ritmo e drible; goleiro = luvas. A escalação automática, o olheiro e a prancheta usam esse rendimento.
+- **Finalização e luvas na conversão** bem mais leves (0,03 para 0,006 e 0,012 por ponto), porque já entram no rendimento: antes a finalização contava em dobro.
+- **Depois:** o ponta de ritmo contra o de finalização e físico fica em 0,08 gol por jogo de diferença (era cerca de 0,4); +15 de ritmo nos atacantes vale +0,10 gol por jogo, +15 de marcação nos defensores +0,18, +15 de finalização +0,20 (era +0,5), goleiro +15 em luvas +0,29. A calibragem geral (2,5 gols, mandante 46%) não muda.
+- **As porcentagens dos lances decisivos conferem:** medi cada opção em 2 mil jogos e a chance mostrada bate com a que sai (ex.: driblar 23,4% mostrado, 23,1% real). Agora há um teste que garante isso.
 
 ## Como
 
-- `carreira-memoria.js` é o módulo novo: o estado em `save.memoria` (campo do clube, entra em `CAMPOS_CLUBE`; saves antigos criam na hora), `aprender` (lê o rastro das ajudas que a escolha chamou), `aposJogo`, `fimDeTemporada`, `vendeu`, `fatorTorcida`, `estado` e o catálogo `ECOS` (mesma forma do catálogo de eventos).
-- `carreira-eventos.js`: o contexto das ajudas grava o rastro e ganhou `x.torcida`, `x.imprensa`, `x.vestiario`, `x.confianca`, `x.perdoar` e `x.retribuir`; os alvos `magoado` e `grato`; no máximo um eco a cada 3 rodadas, cada um uma vez por temporada.
-- `carreira.js` chama a memória depois de cada jogo, no fim da temporada, na venda e na bilheteria, e manda `estado().memoria`.
-- `public/carreira/telas.js` (`memoriaNaSede`, a lembrança na caixa de entrada), `index.html` (`#cartaoMemoria`) e `hub.css`.
-- Testes em `tests/carreira-memoria.test.js`.
+- `public/carreira/motor.js`: `PERFIL_VAGA`, `DESVIO` e `ajusteDePerfil` (usado em `valorNa`), `AJUSTE.PERFIL`, `AJUSTE.FIN` e `AJUSTE.GOL`; `prepararJogador` guarda `base` (a nota da base, sem evolução nem efeitos) e `temAtr`; sem atributos, o jogador rende só a nota.
+- `carreira.js`: `comNota` e `timeDe` mandam `base` (a evolução e os efeitos continuam valendo inteiros, só o perfil muda o rendimento).
+- Testes novos em `tests/carreira-motor.test.js` (atributos contam, ritmo contra finalização e físico, peso da finalização e as chances mostradas).

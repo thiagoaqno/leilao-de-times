@@ -24,6 +24,8 @@
     PENALTI: 0.013, FALTA_PERIGOSA: 0.07, // parte dos lances que vira pênalti ou falta perto da área
     FALTA: 0.13, AMARELO: 0.14, VERMELHO: 0.004, LESAO: 0.0009,
     DECISIVO: 0.5, MAX_DECISIVOS: 6, SUBS: 5, IMPULSO_MIN: 10,
+    FIN: 0.006, GOL: 0.012, // o peso da finalização do chutador e das luvas do goleiro na conversão (o resto do jogador já está no rendimento)
+    PERFIL: 0.6, // quanto o perfil de atributos da função muda o rendimento (ver PERFIL_VAGA)
   };
 
   function sorteDe(txt) { // o mesmo sorteio com semente do simulador do Leilão
@@ -47,15 +49,44 @@
   // o grupo em que o jogador atua de verdade (pela vaga em que esta) e o quanto rende ali: valem nos lances e nos pesos
   const efG = (p) => p.efGrp || p.grp;
 
+  // ---------- o perfil de atributos de cada função ----------
+  // O que cada atributo vale em cada vaga (a soma de cada linha é 1): é o que o rendimento do jogador na vaga usa, além da nota. Um
+  // ponta vale pelo drible, pelo ritmo e pela finalização; um zagueiro pela marcação e pelo físico; um volante pela marcação e pelo passe.
+  // Quem tem o perfil da função rende acima da nota, quem tem o perfil de outra rende abaixo, e dois de mesma nota e perfis
+  // diferentes (o ponta de ritmo e o de finalização com físico) rendem parecido. DESVIO é o quanto os jogadores da base ficam, em média,
+  // abaixo da nota nessa conta (a nota do jogo inclui atributos que ela não pesa): tira-se para o jogador médio não ganhar nem perder.
+  const PERFIL_VAGA = {
+    GOL: { gol: 1 },
+    ZAG: { def: 0.5, fis: 0.28, rit: 0.1, pas: 0.06, dri: 0.06 },
+    LAT: { def: 0.3, rit: 0.25, dri: 0.18, fis: 0.15, pas: 0.12 },
+    VOL: { def: 0.38, fis: 0.22, pas: 0.22, dri: 0.12, rit: 0.06 },
+    MC: { pas: 0.3, def: 0.18, dri: 0.17, fis: 0.13, rit: 0.12, fin: 0.1 },
+    MEI: { pas: 0.3, dri: 0.28, fin: 0.17, rit: 0.13, fis: 0.07, def: 0.05 },
+    PONTA: { dri: 0.28, rit: 0.25, fin: 0.22, pas: 0.13, fis: 0.08, def: 0.04 },
+    ATA: { fin: 0.4, fis: 0.17, rit: 0.15, dri: 0.15, pas: 0.1, def: 0.03 },
+  };
+  const VAGA_PERFIL = { LE: "LAT", LD: "LAT", PE: "PONTA", PD: "PONTA" };
+  const DESVIO = { GOL: 0.5, ZAG: -1.5, LAT: -1.95, VOL: -2.6, MC: -3.2, MEI: -2.1, PONTA: -1.2, ATA: -2.1 };
+  // quanto o perfil de atributos do jogador vale, em pontos de nota, na vaga `fino` (0 sem atributos: ele rende a nota)
+  function ajusteDePerfil(p, fino) {
+    if (!p.temAtr) return 0;
+    const v = VAGA_PERFIL[fino] || fino, w = PERFIL_VAGA[v];
+    if (!w) return 0;
+    let imp = 0;
+    for (const k in w) imp += w[k] * p.atr[k];
+    return AJUSTE.PERFIL * clamp(imp - p.base - DESVIO[v], -8, 8);
+  }
+
   // ---------- os times ----------
   function prepararJogador(j) {
     const nota = clamp(Number(j.nota) || 60, 30, 99), atr = {};
     for (const k of ATRIBUTOS) atr[k] = clamp(Number(j.atr && j.atr[k]) || nota, 20, 99);
-    return { id: String(j.id ?? j.nome), nome: j.nome || String(j.id), grp: grupoDe(j.pos), pos: Taticas.posDe(j.pos), nota, atr, mania: j.mania || null, energia: 100, amarelos: 0, fora: false, lesionado: false };
+    // base: a nota da base (sem evolução, bônus nem efeitos do jogo), com que os atributos foram lidos; sem ela vale a nota
+    return { id: String(j.id ?? j.nome), nome: j.nome || String(j.id), grp: grupoDe(j.pos), pos: Taticas.posDe(j.pos), nota, atr, temAtr: !!(j.atr && typeof j.atr === "object"), base: clamp(Number(j.base) || nota, 30, 99), mania: j.mania || null, energia: 100, amarelos: 0, fora: false, lesionado: false };
   }
   // o rendimento na vaga: a nota, o encaixe da posicao dele na vaga fina (lateral na zaga, ponta de centroavante...) e o cansaco
   const slotPadrao = (slot) => ({ GK: "GOL", DEF: "ZAG", MID: "MC", ATT: "ATA" })[slot] || "MC";
-  const valorNa = (p, slot, fino) => (p.nota - Taticas.penalidadeSequencia(p.seguidos || 0)) * Taticas.afinidade(p.pos, fino || slotPadrao(slot));
+  const valorNa = (p, slot, fino) => (p.nota + ajusteDePerfil(p, fino || slotPadrao(slot)) - Taticas.penalidadeSequencia(p.seguidos || 0)) * Taticas.afinidade(p.pos, fino || slotPadrao(slot));
   // as vagas da formação, na ordem do campinho: o goleiro, a defesa, o meio e o ataque
   const vagasDe = (formacao) => Taticas.vagasDe(formacao).map((v) => v.g);
   // a nota que a escalação automática usa para escolher: o rendimento na vaga, menos FUNCAO por ponto de encaixe (além do que a
@@ -338,7 +369,7 @@
       const decisivo = modo === 3 && (controla != null || ambos) && perigosa && decisivos < AJUSTE.MAX_DECISIVOS && rng() < AJUSTE.DECISIVO;
       if (decisivo) return ambos ? lanceDosDois(at, df, tipo, autor, gk) : lanceDecisivo(at, df, tipo, autor, gk);
       let conv = tipo === "penalti" ? AJUSTE.CONV_PENALTI : tipo === "falta" ? AJUSTE.CONV_FALTA : perigosa ? AJUSTE.CONV_PERIGOSA : AJUSTE.CONV_COMUM;
-      if (tipo !== "penalti") conv = Math.min(0.95, conv * Math.exp(0.03 * (autor.atr.fin - gkNota)) * (1 + 0.1 * (df.tatica.linha - 1)) * at.est.conv + imp);
+      if (tipo !== "penalti") conv = Math.min(0.95, conv * Math.exp(AJUSTE.FIN * (autor.atr.fin - 75) - AJUSTE.GOL * (gkNota - 75)) * (1 + 0.1 * (df.tatica.linha - 1)) * at.est.conv + imp);
       est[at.lado].chutes++;
       if (tipo === "penalti") ev({ tipo: "penalti", lado: at.lado, jogador: autor.id });
       if (rng() < conv) { est[at.lado].noAlvo++; return gol(at, autor, tipo === "jogada" ? garcom(at, autor) : null, tipo); }
