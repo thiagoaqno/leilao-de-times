@@ -93,6 +93,7 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 @media (hover:hover) and (pointer:fine){.hub-abas button:hover:not([aria-selected=true]){background:#eef3f7}}
 #sede[data-aba="central"] [data-na-aba]:not([data-na-aba~="central"]),
 #sede[data-aba="time"] [data-na-aba]:not([data-na-aba~="time"]),
+#sede[data-aba="rival"] [data-na-aba]:not([data-na-aba~="rival"]),
 #sede[data-aba="temporada"] [data-na-aba]:not([data-na-aba~="temporada"]){display:none!important}
 
 /* ---------- a barra: as abas e, na mesma faixa, os atalhos da gestão (como Central, Plantel e Transferências no FIFA 16).
@@ -409,3 +410,10 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .hub-vagas .vaga span{color:var(--t2);font-size:13px}
 .hub-vagas .link.ativo{font-weight:700}
 .aviso-vagas{margin:8px 0;font-size:13px;color:var(--t2)}
+
+/* a aba Rival: o próximo adversário e a leitura da formação dele, sozinhos na tela */
+#sede[data-aba="rival"] :is(.hub-principal,.hub-centro,.hub-lado){display:contents}
+#sede[data-aba="rival"] .hub-grade{grid-template-columns:minmax(0,760px)}
+.hub-rival .rival-topo{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.hub-rival .rival-topo h3{margin:2px 0}
+.hub-rival .leitura-rival{font-size:14px;padding:12px 14px}

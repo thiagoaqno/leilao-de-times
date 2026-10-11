@@ -37,8 +37,10 @@ const Guia = (() => {
         <li><b>Olheiro:</b> sugere quem melhora o time e cabe no caixa pelo preço que o clube realmente pede (e avisa quando o jogador está desvalorizado).</li>
         <li><b>Vender:</b> ponha na lista de vendas ou venda na hora.</li>
         <li><b>Propostas:</b> outros clubes mandam ofertas pelos seus jogadores na caixa de entrada.</li>
+        <li><b>Aba Rival:</b> na Sede, a aba Rival mostra o próximo adversário: como ele joga, quem é o perigo e o que a sua formação rende contra a dele, com botões para trocar de formação na hora.</li>
         <li><b>Coletiva e torcida:</b> depois de jogos marcantes (goleada, derrota, clássico, sequência) chega uma coletiva, ou a torcida cobra ou abraça. O que você responde mexe com imprensa, torcida, vestiário e diretoria, e a torcida muda o clima do estádio: cheia e animada, vale +1 na nota em casa; irritada, vale -1. Fora, clube grande e clássico pressionam.</li>
         <li><b>Mercado de técnicos:</b> no fim de cada temporada (menos a última), outros clubes sondam você. Quanto mais reputação, meta cumprida e títulos, maiores os convites. As propostas ficam na aba Temporada da Sede: aceite e a troca vale na virada. Você leva a reputação; estádio, contratos e diretoria são os do clube novo.</li>
+        <li><b>Personalidade:</b> todo jogador tem um jeito (líder, profissional, pavio curto, vaidoso, festeiro, guerreiro ou reservado), que você vê na ficha. O líder entre os titulares segura o time quando a moral está baixa (+1 na nota), o pavio curto é suspenso no 2º amarelo, e cada jeito abre eventos próprios na caixa de entrada, com escolhas que mexem na moral, no vestiário e no rendimento dele.</li>
       </ul>
       <p>Contratos acabam: renove os importantes na tela <b>Clube</b>, antes de perdê-los de graça.</p>`],
     ["temporada", "Temporada e copas", `

@@ -1,16 +1,15 @@
-# Carreira: a mesa de botão na partida
+# Carreira: personalidade dos jogadores
 
 ## O que muda no jogo
 
-- **Os jogadores viram botões.** Na tela da partida, acima da narração, aparece um campo visto de cima, como no futebol de botão: 11 botões de cada time, nas cores da camisa de cada clube (o visitante troca de cor se for parecida com a do mandante), com o número em cima, o goleiro em amarelo ou verde-água e uma bolinha. O mandante ataca para a direita.
-- **Eles andam com os lances do jogo.** Cada lance que o motor já sorteia vira movimento: o gol (o passe do assistente, o botão do artilheiro na área, o chute, o goleiro caindo, o letreiro GOL! e o time pulando), a defesa, a chance perdida (a bola passa ao lado), o pênalti (a bola na marca e o canto escolhido, também na disputa), o contra-ataque, o amarelo e o vermelho (o botão sai e o time joga com 10), a lesão, as substituições, as mudanças de posição e de formação. O nome de quem faz o lance aparece por uns segundos.
-- **Entre um lance e outro**, os botões trocam passes de enfeite, com o time todo andando na direção da bola. Isso é só desenho: o resultado do jogo vem do motor, igual a antes.
-- **Botão Mesa** na faixa do jogo (liga e desliga; fica guardado no navegador). Respeita o 1×/3×, o Pular e o "menos movimento" do sistema.
+- **Cada jogador tem um jeito.** Sete personalidades: líder, profissional, pavio curto, vaidoso, festeiro, guerreiro e reservado. O jeito sai do próprio jogador (não muda no meio da carreira), a posição inclina o sorteio (atacante é mais vaidoso, zagueiro mais líder, goleiro mais reservado ou profissional) e aparece na ficha.
+- **O jeito vale em campo.** O líder entre os titulares segura o time quando a moral está baixa (+1 na nota). O pavio curto é suspenso no 2º amarelo, e não no 3º.
+- **Cada jeito abre histórias.** 14 eventos novos na caixa de entrada, dois por personalidade, com escolhas que mexem em moral, vestiário, imprensa, caixa, rendimento do jogador e até na evolução de um reserva (o profissional que apadrinha a base, o líder que pede a palavra, o pavio curto que perde a cabeça depois da derrota, o vaidoso que exige status, o festeiro que faz aniversário, o guerreiro que quer jogar com dor, o reservado que precisa de atenção). No máximo um a cada 3 rodadas, cada um uma vez por temporada, e entra no sistema de memória do clube como os outros eventos.
 
 ## Como
 
-`public/carreira/mesa.js` (`window.Mesa`, SVG, sem dependência) e `mesa.css`. `Mesa.montar` usa `partida.times` (formação e titulares que o motor já devolve; desfaz as trocas já feitas para achar o time do começo) e, sem isso (jogo já acabado ou em grupo), formação do clube com botões sem nome. `partida.js` chama `Mesa.evento(e)` em `mostrarEvento`. As posições vêm de `Taticas.spots`. Teste: `tests/e2e/carreira-mesa.spec.js`.
+`public/carreira/personalidade.js` (UMD: `tipoDe`, `de`, `bonusDoLider`, `limiteDeAmarelos`), `carreira-personalidades.js` (os eventos, `alvo: "p:<tipo>"`), `carreira-eventos.js` sorteia e acha o alvo pelo tipo, `carreira.js` soma o líder em `timeDe` (`titularesAprox`) e usa o limite de amarelos em `cartoesELesoes`; a ficha (`cartas.js`) e o guia mostram. Testes em `tests/carreira-personalidade.test.js`.
 
-## Limites desta primeira versão
+## Também neste PR: aba Rival na Sede
 
-O motor não guarda posição nem posse de bola, então só os lances importantes são do jogo de verdade; os passes entre eles são enfeite e não são iguais para todo mundo na sala em grupo.
+- A **Leitura do rival** saiu da prévia do jogo (que ficou limpa de novo) e ganhou uma aba própria na Sede, entre Meu time e Temporada: o escudo do adversário, onde é o jogo, a leitura da formação e do estilo dele contra os seus, e os botões de resposta (trocam a formação na hora). `rivalNaSede` em `sede-hub.js`, `#cartaoRival`; teste no navegador em `tests/e2e/carreira-rival.spec.js`.
