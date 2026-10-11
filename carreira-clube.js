@@ -27,7 +27,7 @@ function padrao() {
     prospectos: [], blindados: {}, // a base: os garotos que ainda não subiram (com o potencial escondido)
     capitao: null,
     confianca: 70, ultimato: null, recentes: [], jogos: 0, intervencoes: 0,
-    reputacao: 10, pontos: 1, habilidades: {},
+    reputacao: 10, pontos: 1, habilidades: {}, preparadores: [], // os perfis dos preparadores técnicos contratados
     treinos: {}, // { pid: { para, restam, total } }: jogadores aprendendo outra posição
     depois: [], visto: {}, // as consequências que chegam depois e os dilemas já vistos na temporada
     vales: [], bloqueados: {}, // o antigo vale de campeão (não existe mais) e os jogadores que chegaram por ele (não podem ser vendidos na temporada)
@@ -560,6 +560,8 @@ function virada(v, c) {
   if (g.obra) { g.infra[g.obra.tipo] = g.obra.para; const nome = Regras.INFRA[g.obra.tipo].nome; partes.push(`Obra pronta: ${nome} nível ${g.obra.para}.`); marco(v, "obra", `${nome} chega ao nível ${g.obra.para}.`); g.obra = null; }
   const manut = Regras.manutencao(g.infra, tamanhoDe(v, c));
   if (manut) c.movimentar(v, "Manutenção da estrutura", -manut);
+  const folha = Regras.custoPreparadores(g.preparadores, tamanhoDe(v, c));
+  if (folha) c.movimentar(v, "Salário dos preparadores técnicos", -folha);
   // o prestígio do técnico atrai patrocínio
   const patrocinio = arred(g.reputacao * 0.05e6 * tamanhoDe(v, c));
   if (patrocinio >= 1e5) { c.movimentar(v, "Patrocínios pelo prestígio do técnico", patrocinio); partes.push(`Patrocínios pelo seu prestígio: ${dinheiro(patrocinio)}.`); }
@@ -632,6 +634,15 @@ function acao(v, c, d) {
     g.pontos--; g.habilidades[id] = (g.habilidades[id] || 0) + 1;
     return { mensagem: `${h.nome} nível ${g.habilidades[id]}: ${h.texto(g.habilidades[id])}.` };
   }
+  if (tipo === "preparador") {
+    const id = String(d.id || ""), p = Object.hasOwn(Regras.PREPARADORES, id) ? Regras.PREPARADORES[id] : null; if (!p) return "Escolha um preparador.";
+    const tem = g.preparadores.includes(id);
+    if (d.op === "demitir") { if (!tem) return "Esse preparador não está na comissão."; g.preparadores = g.preparadores.filter((x) => x !== id); return { mensagem: `${p.nome} deixou a comissão técnica.` }; }
+    if (tem) return "Esse preparador já está na comissão.";
+    if (g.preparadores.length >= Regras.PREPARADORES_MAX) return `A comissão já tem ${Regras.PREPARADORES_MAX} preparadores.`;
+    g.preparadores.push(id);
+    return { mensagem: `${p.nome} contratado (${dinheiro(Regras.custoPreparadores([id], tamanhoDe(v, c)))} por temporada). Passa a valer na próxima virada de temporada.` };
+  }
   if (tipo === "treinar") return treinar(v, c, g, d);
   if (tipo === "parar-treino") { const pid = String(d.jogador || ""); if (!g.treinos[pid]) return "Ele não está em treino."; delete g.treinos[pid]; return { mensagem: "Treino cancelado." }; }
   if (tipo === "camisa") { const r = aposentarCamisa(v, c, String(d.jogador || "")); return typeof r === "string" ? r : { mensagem: r.texto }; }
@@ -654,6 +665,7 @@ function estado(v, c) {
   if (g.pontos > 0) alertas.push({ tipo: "pontos", texto: `${g.pontos} ponto${g.pontos > 1 ? "s" : ""} de habilidade para gastar.` });
   const hall = Object.entries(g.legado.hall).map(([pid, h]) => ({ pid, ...h, camisa: (g.legado.camisas.find((x) => x.pid === pid) || {}).numero || null }));
   return {
+    preparadores: g.preparadores, custoPreparadores: Regras.custoPreparadores(g.preparadores, T), custosPreparadores: Object.fromEntries(Object.keys(Regras.PREPARADORES).map((id) => [id, Regras.custoPreparadores([id], T)])),
     confianca: Math.round(g.confianca), reputacao: Math.round(g.reputacao), pontos: g.pontos, habilidades: g.habilidades,
     ultimato: g.ultimato && (() => { const restam = Math.max(0, g.ultimato.ate - g.jogos), feitos = 4 - restam; return { restam, min: g.ultimato.min, pontos: feitos > 0 ? pontosDe(g.recentes.slice(-feitos)) : 0 }; })(),
     recentes: g.recentes.slice(-5), alertas,
@@ -674,9 +686,10 @@ function estado(v, c) {
 const semVenda = (v, clube, pid) => { const g = gestaoDoClube(v, clube); return !!(g && g.bloqueados && g.bloqueados[pid] >= v.temporada); };
 const infraDe = (v, id) => { const g = gestaoDoClube(v, id); return g ? g.infra : null; };
 const habilidadeDe = (v, id, h) => { const g = gestaoDoClube(v, id); return g ? g.habilidades[h] || 0 : 0; };
+const preparadoresDe = (v, id) => { const g = gestaoDoClube(v, id); return g ? g.preparadores || [] : []; };
 const fatorBilheteria = (v) => Regras.fatorBilheteria(infraDe(v, v.clube));
 const bonusRecupera = (v) => Regras.bonusRecupera(infraDe(v, v.clube), habilidadeDe(v, v.clube, "preparador"));
 const fatorLesao = (v, id) => Regras.fatorLesao(infraDe(v, id));
 
 module.exports = { semVenda, padrao, gestaoDe, garantir, contratar, acao, estado, aposJogo, responder, virada, fechouTemporada, registrarConfronto, provocacao, rivaisDe, classicoCom, classicosDe, nomeDoClassico,
-  fatorBilheteria, bonusRecupera, fatorLesao, infraDe, habilidadeDe, gestaoDoClube, novosProspectos, criarDilema, DILEMAS, Regras, demitir };
+  fatorBilheteria, bonusRecupera, fatorLesao, infraDe, preparadoresDe, habilidadeDe, gestaoDoClube, novosProspectos, criarDilema, DILEMAS, Regras, demitir };

@@ -41,6 +41,32 @@
   const bonusRecupera = (infra, preparador = 0) => 3 * ((infra && infra.medico) || 0) + 2 * preparador;
   const fatorLesao = (infra) => 1 - 0.15 * ((infra && infra.medico) || 0);
 
+  // ---------- os preparadores técnicos ----------
+  // até 3 por clube, um de cada perfil; cada um mexe na chance de a nota subir (ou cair) na virada de temporada.
+  // custo: salário anual por tamanho do clube, cobrado na virada junto da manutenção (contratado agora, vale a partir da próxima virada)
+  const PREPARADORES_MAX = 3;
+  const PREPARADORES = {
+    jovens: { nome: "Especialista em jovens", icone: "campo", chance: 0.3, sal: 0.5, texto: "Garotos de até 24 anos têm 30% de chance de ganhar +1 a mais na evolução" },
+    veteranos: { nome: "Fisiologista de veteranos", icone: "alerta", chance: 0.3, sal: 0.5, texto: "Quem tem 30 anos ou mais tem 30% de chance de perder 1 ponto a menos na queda" },
+    geral: { nome: "Preparador geral", icone: "estrela", chance: 0.15, sal: 0.6, texto: "Todo o elenco tem 15% de chance de ganhar +1 a mais (ou perder 1 a menos)" },
+    freio: { nome: "Gestor de carga", icone: "relogio", chance: 0.3, sal: 0.1, texto: "Segura os garotos de até 24 anos: 30% de chance de evoluir 1 ponto a menos (barato, para quem quer ritmo lento)" },
+  };
+  const custoPreparadores = (lista, tamanho) => arred((lista || []).reduce((s, id) => s + ((PREPARADORES[id] || {}).sal || 0), 0) * (tamanho || 3) * 1e6, 1e5);
+  // `sorte` devolve um número de 0 a 1 por chamada; cada preparador usa um sorteio, na ordem em que foi contratado
+  function ajustePreparadores(lista, { idade, nota, delta, sorte }) {
+    let d = delta;
+    for (const id of lista || []) {
+      const p = PREPARADORES[id]; if (!p) continue;
+      const r = sorte();
+      if (r >= p.chance) continue;
+      if (id === "jovens" && idade <= 24 && delta >= 0) d++;
+      else if (id === "veteranos" && idade >= 30 && delta < 0) d++;
+      else if (id === "geral") d++;
+      else if (id === "freio" && idade <= 24 && delta > 0) d--;
+    }
+    return Math.min(d, 95 - nota);
+  }
+
   // ---------- a base ----------
   const IDADE_BASE_MAX = 20, BASE_MAX = 8;
   // o que a pessoa enxerga do potencial do garoto: depende da rede de olheiros (null: nada além de uma impressão)
@@ -83,5 +109,5 @@
   const jogosDeTreino = ({ pontos, idade, formador = 0 }) => Math.max(3, Math.round((4 + 2 * pontos) * fatorIdadeTreino(idade) * (1 - 0.1 * formador)));
 
   return { MULTAS, termos, LINHAS_TREINO, TREINOS_MAX, alvosDeTreino, fatorIdadeTreino, jogosDeTreino, INFRA, INFRA_MAX, custoObra, manutencao, fatorBilheteria, bonusRecupera, fatorLesao, IDADE_BASE_MAX, BASE_MAX, potVisivel, impressao,
-    HABILIDADES, HAB_MAX, nivelReputacao, nivelConfianca, lideranca, restamNaJanela, clamp };
+    PREPARADORES, PREPARADORES_MAX, custoPreparadores, ajustePreparadores, HABILIDADES, HAB_MAX, nivelReputacao, nivelConfianca, lideranca, restamNaJanela, clamp };
 });

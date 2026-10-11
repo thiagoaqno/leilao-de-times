@@ -64,7 +64,7 @@ function todosJogadores(save) {
 }
 const elencoDe = (save, clube) => todosJogadores(save).filter((j) => donoDe(save, j.id) === clube);
 const notaDe = (save, j) => clamp(j.nota + (save.bonusNota[j.id] || 0), 40, 95);
-const comNota = (save, j) => ({ ...j, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
+const comNota = (save, j) => ({ ...j, base: j.nota, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
 // a premiação do campeonato até o G6 (do 1º ao 6º lugar da liga), paga no fim da temporada; no meio da liga (19 jogos), quem está no G6 já recebe 25% do prêmio
 // da posição em que está. Vale o fator da liga (a Premier League paga mais que a Argentina) e vem junto com a premiação por posição e o bônus de campeão.
 // o bônus de campeão de cada competição (R$ 15 mi para todas as outras): a Libertadores, a Copa do Brasil e a Sul-Americana pagam mais
@@ -766,7 +766,7 @@ function timeDe(save, id) {
     : rival ? (save.provocado && save.provocado.rodada === R ? save.provocado.nota : 0) + somaEfeitos(ativos, "rival") : 0;
   return {
     id: c.id, nome: c.nome,
-    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
+    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, base: j.nota, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
     formacao: meu ? save.escalacao.formacao : c.formacao,
     tatica: meu ? save.escalacao.tatica : { mentalidade: 0, pressao: 1, linha: 1, estilo: "auto" }, // o computador escolhe o estilo que combina com o elenco
     titulares: meu && save.escalacao.titulares ? save.escalacao.titulares : undefined,
@@ -1294,6 +1294,8 @@ function virarTemporada(save, humanos = { [save.clube]: save.jogosTemporada }) {
     let delta = clamp(Evolucao.evolucaoDe({ idade, nota, jogos: d ? d[0] : 0, jogosTime: humanos[dono] || 0, media: d ? d[1] / d[0] : null, semente: `${semente}:${j.id}` }), 40 - nota, 95 - nota);
     const ct = (Clube.infraDe(save, dono) || {}).ct || 0;
     if (ct && delta + nota < 95 && Motor.sorteDe(`ct:${semente}:${j.id}`)() < 0.2 * ct && ((delta >= 0 && idade <= 24) || (delta < 0 && idade >= 30))) delta++;
+    const preps = Clube.preparadoresDe(save, dono);
+    if (preps.length) delta = Clube.Regras.ajustePreparadores(preps, { idade, nota, delta, sorte: Motor.sorteDe(`prep:${semente}:${j.id}`) });
     if (delta) { save.bonusNota[j.id] = (save.bonusNota[j.id] || 0) + delta; save.evolucao[j.id] = (save.evolucao[j.id] || 0) + delta; }
     if (meus[dono] && delta) (delta > 0 ? meus[dono].subiram : meus[dono].cairam).push([j.id, delta]);
     if (!porClube.has(dono)) porClube.set(dono, []);
