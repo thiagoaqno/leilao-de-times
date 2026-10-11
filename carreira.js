@@ -461,15 +461,16 @@ function novaTemporadaGrupo(save) {
 // Para ninguém ficar "roubado", cada técnico leva reforço por janela (o começo da temporada, até a rodada 4 da liga, e o meio, rodadas 17 a 21):
 //  - em cada janela, UMA destas opções: 3 jogadores de até 80, OU 2 de até 82, OU 1 de até 85;
 //  - a opção usada numa janela não vale na janela seguinte (pegou o de 85 no começo: no meio, 3 de até 80 ou 2 de até 82). A opção usada é a
-//    mais baixa em que as compras cabem (um de 78 sozinho gasta a de 80; com 82 no meio, a de 82);
-//  - os campeões da temporada anterior ganham, a mais, na janela do começo, um prêmio por título: Libertadores 1 jogador de até 85,
-//    Sul-Americana 1 de até 83 e Brasileirão 1 de até 82 (cada prêmio leva um jogador, fora da opção da janela);
+//    mais baixa em que as compras cabem (um de 78 sozinho gasta a de 80; com 82 no meio, a de 82). A virada de temporada zera: o começo
+//    de cada temporada (e a entrada que vale no lugar dele) tem as três opções, não importa o que foi usado no meio;
+//  - os campeões da temporada anterior ganham, a mais, na janela do começo, uma contratação por título (qualquer competição: liga ou copa),
+//    paga como qualquer outra, de até 82 (PREMIO_MAX; cada título leva um jogador, fora da opção da janela). Dois títulos, duas contratações;
 //  - quem entra na carreira com a janela fechada ganha uma janela de entrada (as mesmas opções), até a próxima janela abrir.
 // Vale para o leilão da turma (a carreira solo e as trocas entre técnicos não têm essa regra). A nota é a de agora (com o que o jogador evoluiu).
 const PACOTES = [{ id: "80", n: 3, max: 80 }, { id: "82", n: 2, max: 82 }, { id: "85", n: 1, max: 85 }];
 const ORDEM_PACOTE = { "": 0, 80: 1, 82: 2, 85: 3 };
 const NOME_PACOTE = { 80: "3 jogadores de até 80", 82: "2 jogadores de até 82", 85: "1 jogador de até 85" };
-const PREMIOS_CAMPEAO = [["libertadores", 85, "Libertadores"], ["sulamericana", 83, "Sul-Americana"], ["brasileirao-2026", 82, "Brasileirão"]];
+const PREMIO_MAX = 82;
 const OPCOES_TEXTO = "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85";
 // a janela de agora: o id (temporada:tipo) e a ordem na carreira (o começo da temporada T é 2(T-1), o meio é 2(T-1)+1; a entrada vale pela janela
 // em que o técnico entrou: antes do meio, no lugar do começo; depois, no lugar do meio). null: a janela está fechada e ele não tem entrada
@@ -493,12 +494,12 @@ function comprasDaOrdem(v, ordem) {
   const w = todas.find((x) => (x.ordem ?? ordemDoId(v, x.id)) === ordem);
   return w ? w.notas : [];
 }
-// os prêmios de campeão de uma janela: só a do começo da temporada (ordem par), pelos títulos do clube na temporada anterior (o arquivo)
+// os prêmios de campeão de uma janela: só a do começo da temporada (ordem par), um por título do clube na temporada anterior (o arquivo)
 function premiosDaOrdem(v, ordem) {
   if (ordem % 2) return [];
   const T = ordem / 2 + 1, a = (v.arquivo || []).find((x) => x.temporada === T - 1);
   if (!a || !a.competicoes) return [];
-  return PREMIOS_CAMPEAO.filter(([comp]) => a.competicoes[comp] && a.competicoes[comp].campeao === v.clube).map(([comp, max, nome]) => ({ comp, max, nome }));
+  return Object.entries(a.competicoes).filter(([, c]) => c.campeao === v.clube).map(([comp, c]) => ({ comp, max: PREMIO_MAX, nome: c.nome || comp }));
 }
 // cada prêmio leva um jogador de até a nota dele: os maiores com os maiores
 const cabeNosPremios = (resto, premios) => {
@@ -523,23 +524,25 @@ function dividir(notas, permitidos, premios) {
   }
   return melhor;
 }
-// a opção usada numa janela (a que fica proibida na janela seguinte); olha até 4 janelas para trás para saber o que estava proibido em cada uma
+// a opção proibida numa janela: a usada na janela anterior, menos no começo da temporada (ordem par), que zera
+const proibidaNa = (v, ordem, fundo = 0) => (ordem % 2 === 0 || fundo >= 4 ? "" : opcaoUsada(v, ordem - 1, fundo));
+// a opção usada numa janela (a que fica proibida na janela seguinte); olha para trás para saber o que estava proibido em cada uma
 function opcaoUsada(v, ordem, fundo = 0) {
   const notas = comprasDaOrdem(v, ordem);
   if (!notas.length) return "";
-  const proibida = fundo < 4 ? opcaoUsada(v, ordem - 1, fundo + 1) : "";
+  const proibida = proibidaNa(v, ordem, fundo + 1);
   const div = dividir(notas, PACOTES.filter((p) => p.id !== proibida), premiosDaOrdem(v, ordem));
   return div ? div.pacote : "";
 }
 // o que vale na janela de agora: as opções (sem a proibida), os prêmios e o que já foi comprado nela
 function contaDaJanela(v, jan) {
-  const proibida = opcaoUsada(v, jan.ordem - 1);
+  const proibida = proibidaNa(v, jan.ordem);
   return { proibida, permitidos: PACOTES.filter((p) => p.id !== proibida), premios: premiosDaOrdem(v, jan.ordem), usadas: comprasDaOrdem(v, jan.ordem) };
 }
 const quadroDaRegra = (tipo, conta) => {
-  const base = tipo === "entrada" ? `Quem entra no meio da carreira tem uma janela de entrada: ${OPCOES_TEXTO}.` : `Em cada janela, cada técnico leva ${OPCOES_TEXTO}. A opção usada numa janela não vale na seguinte.`;
+  const base = tipo === "entrada" ? `Quem entra no meio da carreira tem uma janela de entrada: ${OPCOES_TEXTO}.` : `Em cada janela, cada técnico leva ${OPCOES_TEXTO}. A opção usada no começo da temporada não vale no meio; a virada de temporada zera.`;
   const proibida = conta && conta.proibida ? ` Nesta janela não vale a de ${NOME_PACOTE[conta.proibida]} (você usou na janela anterior).` : "";
-  const premios = conta && conta.premios.length ? ` Prêmio de campeão nesta janela, a mais: ${conta.premios.map((p) => `1 jogador de até ${p.max} (${p.nome})`).join(", ")}.` : "";
+  const premios = conta && conta.premios.length ? ` Prêmio de campeão nesta janela, a mais (pago normalmente): ${conta.premios.map((p) => `1 jogador de até ${p.max} (${p.nome})`).join(", ")}.` : "";
   return base + proibida + premios;
 };
 function erroDeRegra(v, nota) {
@@ -761,30 +764,6 @@ function ultimosResultados(save, n) {
   return out;
 }
 const lesionado = (save, pid) => !!save.lesoes[pid];
-// o vale de campeão (gestao.vales, em carreira-clube.js): quem ganhou algum campeonato leva, de graça, 1 jogador de até 87 de nota de um clube do computador, em qualquer
-// janela da temporada seguinte. Não conta na cota de compras da turma, e o jogador não pode ser vendido nem trocado na temporada em que chega.
-function usarVale(v, pid) {
-  const g = Clube.gestaoDe(v), vale = (g.vales || []).find((x) => x.ate >= v.temporada);
-  if (!vale) return "Você não tem um vale de campeão para usar.";
-  if (v.partida) return "Termine a partida primeiro.";
-  if (!Mercado.janelaAberta(rodadaDaJanela(v)) && !(v.entrada && v.entrada.temporada === v.temporada)) return "A janela de transferências está fechada: o vale só vale nas janelas.";
-  const j = jogadorDe(v, pid), dono = j && donoDe(v, pid);
-  if (!j || !dono || dono === v.clube || dono === APOSENTADO || !clubeDe(v, dono)) return "Esse jogador não está disponível.";
-  if (typeof v.humanoDe === "function" && v.humanoDe(dono)) return "Esse jogador é de outro técnico: use o leilão.";
-  if (notaDe(v, j) > vale.max) return `O vale vale para jogadores de até ${vale.max} de nota (${j.nome} tem ${notaDe(v, j)}).`;
-  if (elencoDe(v, v.clube).length >= Mercado.ELENCO_MAX) return `O elenco já tem ${Mercado.ELENCO_MAX} jogadores. Venda alguém antes.`;
-  g.vales.splice(g.vales.indexOf(vale), 1);
-  v.donos[pid] = v.clube; delete v.pedidos[pid]; delete v.indicacoes[pid]; v.aVenda = v.aVenda.filter((x) => x !== pid);
-  v.salarios[pid] = Math.round(Mercado.salarioDe(comNota(v, j)) * (FATOR_LIGA[ligaDoClube(v.clube, v)] || 1) / 1e3) * 1e3;
-  v.compras[pid] = { valor: 0, rodada: v.rodada, temporada: v.temporada, vale: true };
-  v.valores[pid] = [valorAtual(v, j)];
-  g.bloqueados[pid] = v.temporada;
-  Clube.contratar(v, ajudas, pid);
-  v.transferencias.unshift({ rodada: v.rodada, ...carimbo(v), temporada: v.temporada, jogador: pid, de: dono, para: v.clube, valor: 0, vale: true });
-  Feed.transferencia(v, v.transferencias[0], ajudas);
-  avisar(v, { tipo: "contratacao", icone: "taca", titulo: `${j.nome} chegou de graça!`, texto: `Vale de campeão (${vale.motivo}): ${j.nome} (${j.pos}, ${notaDe(v, j)}) veio do ${clubeDe(v, dono).nome} sem custo, com salário de ${dinheiro(v.salarios[pid])} por mês. Ele não pode ser vendido nem trocado nesta temporada.` });
-  return { mensagem: `${j.nome} chegou de graça pelo vale de campeão.` };
-}
 // o bônus de título da competição pelo nome (as ligas e as outras copas: R$ 15 mi)
 const premioDoTitulo = (save, nome) => { const c = Object.values(save.competicoes || {}).find((x) => x.nome === nome); return (c && PREMIO_TITULO[c.id]) || 15e6; };
 // o prêmio do G6 para a posição (0 fora dele); parcela: 1 no fim da temporada, 0,25 no meio
@@ -806,7 +785,7 @@ function premioDoTurno(save) {
 // técnico, então a mesma transferência aparecia como "rodada 27" para quem tinha mais copas e a outra pessoa, na rodada 23, via notícia do futuro.
 const semanaDe = (save) => (save.ultimo && save.ultimo.semana) || 0;
 const carimbo = (save) => ({ semana: semanaDe(save), rl: rodadaDaJanela(save) });
-const ajudas = { usarVale, semVenda: (save, pid) => Clube.semVenda(save, save.clube, pid), semanaDe, carimbo, avisar, ligaDoClube, clubesDaLiga, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
+const ajudas = { semVenda: (save, pid) => Clube.semVenda(save, save.clube, pid), semanaDe, carimbo, avisar, ligaDoClube, clubesDaLiga, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
 
 // lesões, cartões e suspensões de todos os jogos da rodada
 function cartoesELesoes(save, r, semente) {
