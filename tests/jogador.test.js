@@ -52,3 +52,42 @@ test("o treino só aceita foco da posição e a última temporada fecha a carrei
   assert.equal((await chamar("proxima")).ok, false);
   assert.equal(e.historico.length, 1);
 });
+
+test("fim de temporada: o balanço traz propostas e o futuro precisa ser escolhido se o contrato acabou", async () => {
+  await nova({ clube: "palmeiras", idade: 19, temporadas: 3 });
+  assert.equal((await chamar("empresario", { nivel: 1 })).ok, false); // sem fama, sem empresário
+  assert.equal((await chamar("decidir", { tipo: "ficar" })).ok, false); // ainda não é hora
+  let e;
+  for (;;) { const r = await chamar("jogar"); assert.equal(r.ok, true, r.error); e = r.estado; if (e.acabou) break; }
+  assert.ok(e.balanco && e.balanco.objetivos.length === 3);
+  assert.ok(e.mercado.ofertas.length >= 1 && e.mercado.renovacao.length === 2);
+  assert.equal(e.mercado.precisaEscolher, false); // o contrato inicial tem 3 temporadas
+  const o = e.mercado.ofertas[0];
+  const d = await chamar("decidir", { tipo: "oferta", id: o.id }); assert.equal(d.ok, true, d.error);
+  assert.equal((await chamar("decidir", { tipo: "oferta", id: "nao-existe" })).ok, false);
+  const p = await chamar("proxima"); assert.equal(p.ok, true, p.error);
+  assert.equal(p.estado.clube.id, o.clube);
+  assert.equal(p.estado.emprestimo !== null, o.tipo === "emprestimo");
+  assert.equal(p.estado.mercado, null);
+  assert.equal(p.estado.confianca, { titular: 62, "rodízio": 50, reserva: 36 }[o.papel]);
+  // joga a temporada no clube novo sem erro: o calendário e o elenco foram refeitos
+  let n = 0;
+  for (;;) { const r = await chamar("jogar"); assert.equal(r.ok, true, r.error); n++; if (r.estado.acabou) { e = r.estado; break; } }
+  assert.ok(n >= 30);
+  assert.equal(e.historico.length, 2);
+  assert.equal(e.historico[1].clube, o.clube);
+});
+
+test("contrato vencido bloqueia a próxima temporada até renovar ou aceitar proposta", async () => {
+  await nova({ clube: "palmeiras", idade: 19, temporadas: 2 });
+  const { visao } = Jogador.paraTestes; assert.ok(visao);
+  let e;
+  for (;;) { const r = await chamar("jogar"); e = r.estado; if (e.acabou) break; }
+  // com 2 temporadas o contrato inicial é de 2: no fim da primeira ainda vale, então força o vencimento pelo banco
+  assert.equal(e.mercado.precisaEscolher, false);
+  const r = await chamar("decidir", { tipo: "renovar", id: e.mercado.renovacao[0].id });
+  assert.equal(r.ok, true, r.error);
+  assert.equal(r.estado.mercado.escolha.tipo, "renovar");
+  const p = await chamar("proxima"); assert.equal(p.ok, true, p.error);
+  assert.equal(p.estado.contrato.anos, 2);
+});
