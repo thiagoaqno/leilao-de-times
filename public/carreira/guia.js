@@ -38,6 +38,7 @@ const Guia = (() => {
         <li><b>Vender:</b> ponha na lista de vendas ou venda na hora.</li>
         <li><b>Propostas:</b> outros clubes mandam ofertas pelos seus jogadores na caixa de entrada.</li>
         <li><b>Coletiva e torcida:</b> depois de jogos marcantes (goleada, derrota, clássico, sequência) chega uma coletiva, ou a torcida cobra ou abraça. O que você responde mexe com imprensa, torcida, vestiário e diretoria, e a torcida muda o clima do estádio: cheia e animada, vale +1 na nota em casa; irritada, vale -1. Fora, clube grande e clássico pressionam.</li>
+        <li><b>Mercado de técnicos:</b> no fim de cada temporada (menos a última), outros clubes sondam você. Quanto mais reputação, meta cumprida e títulos, maiores os convites. As propostas ficam na aba Temporada da Sede: aceite e a troca vale na virada. Você leva a reputação; estádio, contratos e diretoria são os do clube novo.</li>
       </ul>
       <p>Contratos acabam: renove os importantes na tela <b>Clube</b>, antes de perdê-los de graça.</p>`],
     ["temporada", "Temporada e copas", `
