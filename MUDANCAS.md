@@ -1,19 +1,13 @@
-# Carreira: música com botão de volume na barra
+# Carreira: o Guia ("como jogar") na barra de cima
 
 ## O que muda no jogo
 
-Na página da Carreira (só nela; a Vila fica sem música) aparece um botão ♪ Música na barra de cima. Ele abre um mini-tocador com tocar/pausar, música anterior e próxima, nome da faixa e volume. A música segue em ordem e recomeça a lista no fim. O volume e se estava ligada ficam guardados no navegador. O botão só aparece se houver músicas.
+Antes, o "Como jogar" da Sede só escolhia o modo da partida, e não havia explicação do resto da carreira. Quem chegava não sabia o que fazer entre as rodadas.
 
-## Como adicionar músicas
-
-Ponha os arquivos (`.mp3`, `.ogg`, `.m4a`, `.wav`) em `public/musica/` e faça o deploy. A lista sai da pasta sozinha, em ordem alfabética (use `01 - nome.mp3` para ordenar; o número não aparece). Ver `public/musica/LEIAME.md`. Com `MUSICA_DIR` a pasta pode ser outra (um volume do Fly, por exemplo).
-
-## Decisões
-
-- Nada de vídeo do YouTube: é áudio direto, e o arquivo só baixa quando toca (`preload="none"`), então quem não liga não gasta dados. Um mp3 a 128 kbps pesa uns 1 MB por minuto.
-- Cada pessoa ouve a sua música, sem sincronizar.
-- Celular e navegadores bloqueiam som antes de um toque: quem deixou ligada volta a ouvir no primeiro toque na página.
+Agora a barra de cima tem o botão **Guia** (só o "?" no celular), em qualquer tela. Ele abre uma janela por cima, sem mexer em nada da tela de trás, com um assunto por aba: O básico, A partida, Elenco e tática, Mercado, Temporada e copas, Clube e Em grupo. A janela abre no assunto da tela em que você está (no Mercado, abre em Mercado) e fecha com "Entendi", fora dela ou com Esc.
 
 ## Como
 
-`GET /api/musicas` (`server.js`) lista a pasta; `public/carreira/musica.js` faz o tocador; o botão e o painel são criados na barra de `public/carreira/index.html`. Teste: `tests/musica.test.js`.
+- `public/carreira/guia.js` é o módulo novo (os textos ficam nele, um por assunto).
+- `index.html` ganha o botão `#btnGuia` na barra e o script; `hub.css` o estilo (abas que rolam de lado no celular).
+- Teste: `tests/e2e/carreira-guia.spec.js` (abre, troca de assunto, cabe na tela sem rolagem de lado, no PC e no celular).
