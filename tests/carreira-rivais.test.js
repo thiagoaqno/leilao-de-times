@@ -121,6 +121,29 @@ test("estante: a sala carregada do banco manda as conquistas dos técnicos, sem 
   assert.deepStrictEqual(linhas.map((l) => [l.competicao, l.clube, l.tecnico, l.modo]), [["mundial", "vasco", "Thiago", "grupo"], ["supermundial", "vasco", "Thiago", "grupo"]]);
 });
 
+test("Nesta carreira: o arquivo da temporada ganha as taças que só o histórico do técnico tinha (Mundial e Super Mundial)", () => {
+  const save = G.novaCarreiraGrupo([{ clube: "vasco", nome: "Thiago" }, { clube: "flamengo", nome: "Ana" }], { temporadas: 2, aporte: 0 });
+  save.humanos.vasco.estado.historico = [{ ano: 2026, temporada: 1, clube: "vasco", posicao: 5, titulos: ["Mundial de Clubes", "Super Mundial de Clubes"], vices: [] }];
+  save.arquivo = [{ ano: 2026, temporada: 1, competicoes: { libertadores: { nome: "Libertadores", tipo: "copa", campeao: "flamengo", vice: "palmeiras" } },
+    tecnicos: [{ clube: "vasco", tecnico: "Thiago", posicao: 5, titulos: [], vices: [], pontos: 3 }, { clube: "flamengo", tecnico: "Ana", posicao: 1, titulos: ["Libertadores"], vices: [], pontos: 18 }] }];
+  G.estanteDaSala(save);
+  const a = save.arquivo[0];
+  assert.strictEqual(a.competicoes.mundial.campeao, "vasco");
+  assert.strictEqual(a.competicoes.supermundial.campeao, "vasco");
+  assert.strictEqual(a.competicoes.libertadores.campeao, "flamengo", "o que já estava no arquivo fica");
+  const vasco = a.tecnicos.find((t) => t.clube === "vasco");
+  assert.deepStrictEqual(vasco.titulos, ["Mundial de Clubes", "Super Mundial de Clubes"]);
+  assert.strictEqual(vasco.pontos, 3 + 8 + 8);
+  G.estanteDaSala(save);
+  assert.strictEqual(vasco.pontos, 19, "não conta duas vezes");
+  // na carreira solo, completar remenda
+  const solo = completar(novaCarreira("Vascaíno", "vasco", "", 3));
+  solo.historico.push({ ano: 2026, temporada: 1, posicao: 2, titulos: ["Mundial de Clubes"], vices: [] });
+  solo.arquivo = [{ ano: 2026, temporada: 1, competicoes: {}, tecnicos: [{ clube: "vasco", tecnico: "Vascaíno", posicao: 2, titulos: [], vices: [], pontos: 6 }] }];
+  completar(solo);
+  assert.strictEqual(solo.arquivo[0].competicoes.mundial.campeao, "vasco");
+});
+
 test("Mundial: a carreira nova só tem o Super Mundial; a temporada que já tinha o Mundial segue com ele até a virada", () => {
   const nova = completar(novaCarreira("Teste", "flamengo", "", 2));
   assert.ok(nova.semMundial && nova.competicoes.supermundial && !nova.competicoes.mundial);
