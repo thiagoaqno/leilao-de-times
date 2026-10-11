@@ -41,7 +41,7 @@ const elencoDe = (clube) => Object.values(JOGADORES).filter((j) => donoDe(j.id) 
 const notaDe = (j) => Math.max(40, Math.min(95, j.nota + ((E && E.bonusNota[j.id]) || 0)));
 const sequenciaDe = (pid) => (E?.sequencia?.[pid] || 0);
 const penalidadeSequencia = (pid) => Taticas.penalidadeSequencia(sequenciaDe(pid));
-const comNota = (j) => ({ ...j, nota: notaDe(j) });
+const comNota = (j) => ({ ...j, nota: notaDe(j), idade: Evolucao.idadeNa(j, E ? E.temporada : 1) });
 const fora = (pid) => (E.lesoes[pid] ? "lesao" : E.suspensos[pid] ? "suspenso" : null);
 const salarioDe = (j) => E.salarios[j.id] || Mercado.salarioDe(comNota(j));
 // o valor de agora: a nota e o momento do jogador (gols, fase, à venda), igual ao servidor

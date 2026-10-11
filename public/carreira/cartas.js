@@ -125,6 +125,11 @@ function treinoHTML(pid) {
   return `<div class="treino"><p>${ic("bola")} Treinar para outra posição${cheio ? ` <small>(já são ${ClubeRegras.TREINOS_MAX} em treino)</small>` : ""}${j.posOriginal ? ` <small>(nasceu ${h(j.posOriginal)})</small>` : ""}</p>
     <div class="linha">${alvos.map((p) => `<button class="secundario" data-treinar="${p}" ${cheio ? "disabled" : ""}>${h(POS_NOME[p] || p)} · ${ClubeRegras.jogosDeTreino({ pontos: Taticas.pontosDeEncaixe(j.pos, p), idade, formador })} jogos</button>`).join("")}</div></div>`;
 }
+// por que o preço está fora do normal (idade, fase): "34 anos: 56% a menos"
+function motivosPreco(pid) {
+  const m = Mercado.motivosDoValor({ idade: comNota(JOGADORES[pid]).idade, fator: formaDe(pid) });
+  return m.length ? `<small class="${Mercado.desvalorizado({ idade: comNota(JOGADORES[pid]).idade, fator: formaDe(pid) }) ? "positivo" : ""}">${h(m.join(" · "))}</small>` : "";
+}
 function desenharFicha(resposta) {
   const pid = fichaAberta; if (!pid) return;
   const j = JOGADORES[pid], clube = donoDe(pid), meu = clube === E.clube, valor = valorAtual(pid), sal = meu ? salarioDe(j) : Mercado.salarioDe(comNota(j));
@@ -133,6 +138,7 @@ function desenharFicha(resposta) {
   const info = `<dl class="dados">
     <div><dt>Clube</dt><dd>${escudo(clube, 1)} ${h(nomeClube(clube))}</dd></div>
     <div><dt>Valor</dt><dd>${dinheiro(valor)}${forma !== 1 ? ` <small class="${forma > 1 ? "positivo" : "neg"}">${forma > 1 ? "em alta" : "em baixa"} (${forma > 1 ? "+" : ""}${Math.round((forma - 1) * 100)}%)</small>` : ""}</dd></div>
+    ${motivosPreco(pid) ? `<div><dt>Preço</dt><dd>${motivosPreco(pid)}</dd></div>` : ""}
     <div><dt>Salário</dt><dd>${dinheiro(sal)}/mês</dd></div>
     <div><dt>Gols na temporada</dt><dd>${gols}</dd></div>
     ${compra ? `<div class="lucro"><dt>Comprado na R${compra.rodada + 1}${compra.temporada !== E.temporada ? " (temporada passada)" : ""}</dt><dd>${dinheiro(compra.valor)} <b class="${lucro >= 0 ? "positivo" : "neg"}">${lucro >= 0 ? "lucro" : "prejuízo"} ${dinheiro(Math.abs(lucro))}</b></dd></div>` : ""}
@@ -161,6 +167,7 @@ function desenharFicha(resposta) {
     const tent = E.tentativas[pid] || 0, desconto = E.indicacoes[pid] ? 0.85 : 1;
     const sugerido = Math.round(valor * desconto * 1.15 / 1e5) * 1e5;
     acoes = `<form class="proposta" id="fProposta">
+      <div class="pedido-clube" id="fPedidoClube"><p class="suave">Perguntando ao ${h(nomeClube(clube))} quanto pede...</p></div>
       <h3>Fazer proposta ${tent ? `<small>(${3 - tent} tentativa${3 - tent === 1 ? "" : "s"} nesta rodada)</small>` : ""}</h3>
       <label>Valor da transferência<div class="valor"><button type="button" data-passo="-1">${ic("menos")}</button><input id="fValor" inputmode="numeric" value="${(resposta?.pedido || sugerido) / 1e6}"><span>mi</span><button type="button" data-passo="1">${ic("mais")}</button></div></label>
       <label>Salário por mês<div class="valor"><button type="button" data-passo-s="-1">${ic("menos")}</button><input id="fSalario" inputmode="numeric" value="${Math.round((resposta?.salarioPedido || sal) / 1e3)}"><span>mil</span><button type="button" data-passo-s="1">${ic("mais")}</button></div></label>
@@ -202,6 +209,23 @@ function desenharFicha(resposta) {
       const parcela = parc ? Math.ceil((din - agora) * (1 + Mercado.JUROS) / Mercado.PARCELAS / 1e4) * 1e4 : 0;
       $("fPagamento").innerHTML = `Sai do caixa agora: <b class="${agora > E.caixa ? "neg" : ""}">${dinheiro(agora)}</b>${parc ? ` + ${Mercado.PARCELAS}× ${dinheiro(parcela)}` : ""}${t ? ` · ${h(JOGADORES[t].nome)} vai para o ${h(nomeClube(clube))}` : ""}`;
     };
+    // o que o clube pede: o preço fica à vista e dá para fechar na hora, sem conversa
+    const pidDaFicha = pid;
+    pedir("pedido", { jogador: pid }).then((r) => {
+      if (fichaAberta !== pidDaFicha || !$("fPedidoClube")) return;
+      if (!r.ok) { $("fPedidoClube").innerHTML = ""; return; }
+      const p = r.pedido, pct = Math.round(p.pedido / Math.max(1, p.valor) * 100);
+      $("fPedidoClube").innerHTML = `<p>O ${h(nomeClube(clube))} pede <b>${dinheiro(p.pedido)}</b> <small>(${pct}% do valor de mercado)</small> e ${h(j.nome)} quer <b>${dinheiro(p.salario)}</b> por mês.</p>
+        <button type="button" id="fComprarJa" class="primario largo" ${E.janela.aberta ? "" : "disabled"}>${ic("aperto")} Comprar pelo preço pedido</button>`;
+      if (!resposta) { $("fValor").value = p.pedido / 1e6; $("fSalario").value = Math.round(p.salario / 1e3); pagamento(); }
+      $("fComprarJa").onclick = async () => {
+        const r2 = await pedir("proposta", { jogador: pid, direto: true, parcelas: $("fParcelas").checked, troca: $("fTroca").value || null });
+        if (!r2.ok) return toast(r2.error);
+        receber(r2.estado);
+        if (r2.resposta.resultado === "aceita") { $("ficha").close(); toast(r2.resposta.motivo); festa(); AnimacoesCarreira.animarTransferencia({ jogador: pid, de: clube, para: E.clube, valor: p.pedido }); return; }
+        desenharFicha(r2.resposta);
+      };
+    });
     for (const id of ["fValor", "fParcelas", "fTroca"]) $(id).addEventListener("input", pagamento);
     for (const b of $("fichaCorpo").querySelectorAll("[data-passo]")) b.addEventListener("click", pagamento);
     pagamento();

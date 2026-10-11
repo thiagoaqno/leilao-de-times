@@ -12,7 +12,7 @@ $("mOlheiro").onclick = async () => {
   if (!r.ok) return toast(r.error);
   $("mOlheiroLista").innerHTML = r.sugestoes.length ? r.sugestoes.map((s, i) => { const j = JOGADORES[s.jogador]; return `<article class="dica-olheiro" style="--ordem:${i}">
       <header><span>${ic("olho")} Relatório ${String(i + 1).padStart(2, "0")}</span><b>${i === 0 ? "Reforço ideal" : "Boa opção"}</b></header>
-      <div class="dica-corpo">${figurinha(s.jogador)}<div><strong>${h(j.nome)}</strong><small>${h(POS_NOME[j.pos] || j.pos)} · ${notaDe(j)} GER · ${dinheiro(valorAtual(j.id))}</small><p>${h(s.motivo)}</p></div></div>
+      <div class="dica-corpo">${figurinha(s.jogador)}<div><strong>${h(j.nome)}</strong><small>${h(POS_NOME[j.pos] || j.pos)} · ${notaDe(j)} GER · pede ${dinheiro(s.preco)}${s.baixa ? ` · <b class="positivo">desvalorizado</b>` : ""}</small><p>${h(s.motivo)}</p></div></div>
     </article>`; }).join("")
     : `<p class="suave">O olheiro não achou ninguém que melhore o time e caiba no caixa.</p>`;
 };
@@ -37,11 +37,12 @@ function telaMercado() {
   else listaNoticias();
 }
 function listaCompra() {
-  const busca = $("mBusca").value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""), notaMin = +$("mNota").value, max = precoMax(), cabe = $("mCabe").checked;
+  const busca = $("mBusca").value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""), notaMin = +$("mNota").value, max = precoMax(), cabe = $("mCabe").checked, soBaixa = $("mBaixa").checked;
   const lista = Object.values(JOGADORES).filter((j) => {
     if (donoDe(j.id) === E.clube || !CLUBES[donoDe(j.id)]) return false; // os aposentados não têm clube
     const n = notaDe(j), v = valorAtual(j.id) * (E.indicacoes[j.id] ? 0.85 : 1);
     if (n < notaMin || v > max || (cabe && v > E.caixa)) return false;
+    if (soBaixa && !Mercado.desvalorizado({ idade: comNota(j).idade, fator: formaDe(j.id) })) return false;
     if (posMercado !== "todas" && GRUPO_TELA[j.pos] !== posMercado) return false;
     return !busca || j.nome.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(busca);
   }).sort((a, b) => (E.indicacoes[b.id] ? 1 : 0) - (E.indicacoes[a.id] ? 1 : 0) || notaDe(b) - notaDe(a));
@@ -64,5 +65,5 @@ function listaNoticias() {
 }
 $("mModo").addEventListener("click", (e) => { const b = e.target.closest("[data-modo]"); if (!b) return; modoMercado = b.dataset.modo; mostrar = 24; telaMercado(); });
 $("mPos").addEventListener("click", (e) => { const b = e.target.closest("[data-posm]"); if (!b) return; posMercado = b.dataset.posm; mostrar = 24; telaMercado(); });
-for (const id of ["mBusca", "mNota", "mPreco", "mCabe"]) $(id).addEventListener("input", () => { mostrar = 24; telaMercado(); });
+for (const id of ["mBusca", "mNota", "mPreco", "mCabe", "mBaixa"]) $(id).addEventListener("input", () => { mostrar = 24; telaMercado(); });
 $("mMais").onclick = () => { mostrar += 24; telaMercado(); };

@@ -1,17 +1,16 @@
-# Carreira: os atributos passam a contar nas partidas
+# Carreira: mercado sem leilão, jogadores desvalorizados e o olheiro acertando o preço
 
 ## O que muda no jogo
 
-Antes, só a nota e a finalização mexiam no resultado: ritmo, drible, passe, marcação e físico ficavam de enfeite. Um ponta de ritmo saía prejudicado frente a um ponta de finalização e físico de mesma nota, porque a finalização pesava duas vezes e o ritmo, nenhuma. Agora cada função tem o seu perfil de atributos e o jogador rende pelo que a vaga pede.
+Antes, comprar de outro clube era um vai e volta de propostas e o olheiro indicava jogadores pelo valor de mercado, mas o clube sempre pedia mais do que isso: a dica "cabia no caixa" e na hora de comprar não cabia. Agora:
 
-- **Medido antes (6 mil jogos por teste, nota igual, +15 em cada atributo dos titulares):** nos atacantes, só a finalização mudava o saldo (+0,5 gol por jogo); ritmo, drible, passe, defesa e físico davam 0,00. No meio e na defesa, igual: a defesa dos zagueiros e laterais não tinha efeito algum. O ponta de ritmo perdia por cerca de 0,4 gol por jogo para o ponta de finalização e físico (nota igual e perfis de mesmo valor na função).
-- **Rendimento por função:** a nota do jogador na vaga ganha ou perde até 8 pontos (60% do desvio) conforme o perfil da função: ponta = drible, ritmo e finalização; centroavante = finalização, físico, ritmo e drible; meia = passe, drible e finalização; volante = marcação, físico e passe; zagueiro = marcação e físico; lateral = marcação, ritmo e drible; goleiro = luvas. A escalação automática, o olheiro e a prancheta usam esse rendimento.
-- **Finalização e luvas na conversão** bem mais leves (0,03 para 0,006 e 0,012 por ponto), porque já entram no rendimento: antes a finalização contava em dobro.
-- **Depois:** o ponta de ritmo contra o de finalização e físico fica em 0,08 gol por jogo de diferença (era cerca de 0,4); +15 de ritmo nos atacantes vale +0,10 gol por jogo, +15 de marcação nos defensores +0,18, +15 de finalização +0,20 (era +0,5), goleiro +15 em luvas +0,29. A calibragem geral (2,5 gols, mandante 46%) não muda.
-- **As porcentagens dos lances decisivos conferem:** medi cada opção em 2 mil jogos e a chance mostrada bate com a que sai (ex.: driblar 23,4% mostrado, 23,1% real). Agora há um teste que garante isso.
+- **O clube diz o que pede.** Na ficha de um jogador de outro clube aparece "o clube pede R$ X (N% do valor de mercado) e o jogador quer R$ Y por mês", e o botão **Comprar pelo preço pedido** fecha na hora, sem conversa nem limite de tentativas (dá para parcelar e para dar um jogador na troca como antes). A proposta livre continua existindo, já com o preço pedido preenchido.
+- **Jogadores desvalorizados.** O valor agora considera a idade (a partir dos 29 vale menos a cada ano, aos 34 menos da metade; promessas até 21 anos valem um pouco mais) e a fase (a nota média nos jogos da temporada: abaixo de 6,1 desvaloriza, acima de 6,6 valoriza), além dos gols, eventos e de estar à venda. A ficha explica o porquê ("34 anos: 44% a menos") e o Mercado tem o filtro **Só desvalorizados**. O salário acompanha o valor.
+- **Olheiro reajustado.** Ele escolhe quem melhora o time e cabe no caixa pelo preço que o clube de fato pede (o mesmo da compra), mostra esse preço e o salário, e dá preferência a quem está desvalorizado (avisa o motivo). Vale na carreira solo e na em grupo.
 
 ## Como
 
-- `public/carreira/motor.js`: `PERFIL_VAGA`, `DESVIO` e `ajusteDePerfil` (usado em `valorNa`), `AJUSTE.PERFIL`, `AJUSTE.FIN` e `AJUSTE.GOL`; `prepararJogador` guarda `base` (a nota da base, sem evolução nem efeitos) e `temAtr`; sem atributos, o jogador rende só a nota.
-- `carreira.js`: `comNota` e `timeDe` mandam `base` (a evolução e os efeitos continuam valendo inteiros, só o perfil muda o rendimento).
-- Testes novos em `tests/carreira-motor.test.js` (atributos contam, ritmo contra finalização e físico, peso da finalização e as chances mostradas).
+- `public/carreira/mercado.js`: `fatorIdade`, `valorDe` com a idade, `fatorForma` com a fase (`media`), `motivosDoValor`, `desvalorizado` e `pedidoDe` (o preço e o salário que o clube e o jogador pedem; `avaliarProposta` e `precoMinimo` usam a mesma conta).
+- `carreira.js`: `fatorDe` lê `save.desempenho`; `pedidoDoClube`, `consultarPedido` (canal `pedido`, só leitura) e `propor` com `direto: true`; o `olheiro` pelo preço pedido.
+- Navegador: `cartas.js` (pedido do clube e motivos do preço), `tela-mercado.js` (filtro e relatório do olheiro), `inicio.js` (a idade entra no `comNota`).
+- Testes em `tests/carreira-mercado.test.js`.

@@ -32,8 +32,9 @@ const Guia = (() => {
     ["mercado", "Mercado", `
       <p>Contratar e vender jogadores só vale nas <b>janelas</b>: o começo da temporada e o meio dela. O relógio da janela aparece no topo do Mercado.</p>
       <ul>
-        <li><b>Contratar:</b> filtre por posição, nota e preço, e veja o que cabe no caixa.</li>
-        <li><b>Olheiro:</b> sugere jogadores para o seu momento. Confira sempre o preço pedido.</li>
+        <li><b>Contratar:</b> filtre por posição, nota e preço, e veja o que cabe no caixa. Na ficha, o clube diz quanto pede: \"Comprar pelo preço pedido\" fecha na hora (na carreira em grupo a compra é por leilão).</li>
+        <li><b>Desvalorizados:</b> veteranos (a partir dos 29 anos) e jogadores em fase ruim valem menos; use o filtro \"Só desvalorizados\" para caçar pechinchas.</li>
+        <li><b>Olheiro:</b> sugere quem melhora o time e cabe no caixa pelo preço que o clube realmente pede (e avisa quando o jogador está desvalorizado).</li>
         <li><b>Vender:</b> ponha na lista de vendas ou venda na hora.</li>
         <li><b>Propostas:</b> outros clubes mandam ofertas pelos seus jogadores na caixa de entrada.</li>
       </ul>
