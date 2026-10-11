@@ -42,6 +42,15 @@ button{font:inherit;cursor:pointer}
 .tools{display:flex;gap:8px;pointer-events:auto}
 .tbtn{background:#0a1233cc;color:#fff;border:2px solid #ffffff22;border-radius:12px;padding:8px 12px;font-weight:700;backdrop-filter:blur(4px)}
 .tbtn:hover{border-color:#ffffff55}
+.tbtn[hidden]{display:none}
+.musica{position:fixed;right:14px;top:64px;z-index:30;display:none;flex-direction:column;gap:8px;min-width:230px;max-width:calc(100% - 28px);padding:12px;background:#0a1233ee;color:#fff;border:2px solid #ffffff33;border-radius:12px;pointer-events:auto}
+.musica.on{display:flex}
+.musica b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.musica .lin{display:flex;align-items:center;gap:8px}
+.musica button{background:#ffffff1a;color:#fff;border:1px solid #ffffff33;border-radius:8px;min-width:40px;min-height:36px;font-weight:700}
+.musica input[type=range]{flex:1;min-width:0}
+.tbtn.tocando{border-color:#7dffa0}
+@media (max-width:560px){.musica{top:max(112px,calc(env(safe-area-inset-top) + 104px));left:12px;right:12px}}
 
 .hint{position:fixed;left:14px;bottom:14px;font:500 14px "Pixelify Sans",monospace;background:#0a1233bb;border-radius:10px;padding:6px 10px;color:#dfe7fb;pointer-events:none}
 .hint kbd{display:inline-block;background:#fff;color:var(--ink);border-radius:4px;padding:0 5px;margin:0 1px;box-shadow:0 2px 0 #8e9cc4;font:700 12px "Pixelify Sans",monospace}
@@ -225,6 +234,7 @@ canvas.mini.off{display:none}
     <button class="tbtn battle" id="bTeam" title="Batalhas de Galeramon, Pokémon ou Naruto Shippuden">⚔️<span class="tx keep"> Batalha</span></button>
     <button class="tbtn" id="bLook" title="Trocar a roupa do boneco">👕<span class="tx"> Roupa</span></button>
     <button class="tbtn" id="bMapa" title="Mostrar ou esconder o mapa">🗺️<span class="tx"> Mapa</span></button>
+    <button class="tbtn" id="bMusica" title="Música da Vila" hidden>🎵<span class="tx"> Música</span></button>
     <button class="tbtn" id="bMenu" title="Lista de jogos">☰<span class="tx"> Jogos</span></button>
   </div>
 </header>
@@ -255,6 +265,7 @@ canvas.mini.off{display:none}
   <div class="bpanel"><div class="bmsg" id="bmsg" aria-live="polite"></div><div id="bctl"></div></div>
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="musica" id="musica" role="group" aria-label="Música da Vila"><b id="mNome">—</b><div class="lin"><button id="mAnt" aria-label="Anterior">⏮</button><button id="mTocar" aria-label="Tocar ou pausar">▶</button><button id="mProx" aria-label="Próxima">⏭</button></div><div class="lin"><span aria-hidden="true">🔊</span><input type="range" id="mVol" min="0" max="100" aria-label="Volume"></div></div>
 <div class="fade" id="fade"></div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="/galeramon/dados.js"></script>
@@ -264,6 +275,7 @@ canvas.mini.off{display:none}
 <script src="/galeramon/naruto.js"></script>
 <script src="/galeramon/lideres.js"></script>
 <script src="/comum.js"></script>
+<script src="/vila/musica.js"></script>
 <script src="/vila/estadios.js"></script>
 
 <script>
