@@ -266,3 +266,23 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 #narracao li.apito{background:#ffffff1a;border-color:#ffffff40;color:#c9d3db}
 #aoVivo .av-bloco h4{font:600 14px var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;color:#c9d3db}
 #partida .replays:empty::before{border-radius:2px}
+
+/* ---------- o elenco de outro clube (ver-time.js): a janela nas cores DELE (o style do diálogo troca --time) ---------- */
+.dialogo.ver-time{--fx-teal:var(--time,#1592a9);--fx-teal2:var(--time-escuro,#0d6f82);--fx-claro:var(--time-claro,#1fa6be);--fx-tinta:var(--time-tinta,#fff);
+  --acento:var(--fx-teal);--acento2:var(--fx-teal2);--acento-tinta:var(--fx-tinta);width:min(1080px,calc(100vw - 24px));padding:0;overflow-x:hidden}
+.ver-time .vt-topo{display:flex;align-items:center;gap:16px;padding:18px 60px 16px 22px;background:linear-gradient(160deg,var(--fx-claro),var(--fx-teal) 55%,var(--fx-teal2));color:var(--fx-tinta)}
+.ver-time .vt-topo h2{color:var(--fx-tinta);margin:2px 0 6px}
+.ver-time .vt-topo .sobre{font:600 14px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.08em;color:var(--fx-tinta);opacity:.9}
+.ver-time .vt-numeros{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0}
+.ver-time .vt-numeros span{display:flex;flex-direction:column;font:500 12px/1.1 var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;opacity:.9}
+.ver-time .vt-numeros b{font:600 20px/1 var(--fx-cond);letter-spacing:.02em}
+.ver-time>#vtCorpo>.suave{padding:22px}
+.ver-time .vt-grade{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;padding:18px 22px 22px;align-items:start}
+.ver-time .vt-grade h3{margin:0 0 10px}
+.ver-time .vt-banco{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px;max-height:min(62dvh,560px);overflow:auto;padding:2px}
+.ver-time .peca{cursor:pointer}
+.ver-time .fechar{background:#ffffffd9;color:#15212c}
+@media (max-width:760px){.ver-time .vt-grade{grid-template-columns:1fr;padding:14px}.ver-time .vt-banco{max-height:none}.ver-time .vt-topo{padding:14px 54px 14px 14px;gap:10px}}
+/* os clubes que abrem o elenco */
+[data-time]{cursor:pointer}
+@media (hover:hover) and (pointer:fine){tr[data-time]:hover td,li[data-time]:hover{background:color-mix(in srgb,var(--fx-teal) 10%,transparent)}}

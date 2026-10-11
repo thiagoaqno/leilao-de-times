@@ -49,12 +49,12 @@ function telaSede() {
   desenvolvimentoNaSede();
   // o último jogo
   const u = E.ultimo;
-  $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div>${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}${linhaPenaltis(u.penaltis)}</span><div>${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>
+  $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div data-time="${u.casa}">${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}${linhaPenaltis(u.penaltis)}</span><div data-time="${u.fora}">${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>
     <ul class="gols">${u.eventos.filter((e) => e.tipo === "gol").map((e) => `<li class="${(e.lado === 0 ? u.casa : u.fora) === E.clube ? "nosso" : ""}">${ic("bola")} ${h(nomeJogador(e.jogador))} <span>${e.min}'${e.acr ? "+" + e.acr : ""}</span></li>`).join("") || "<li class='suave'>Sem gols.</li>"}</ul>`
     : `<h3>Último jogo</h3><p class="suave">A estreia é na rodada 1.</p>`;
   // a tabela resumida: o seu lugar e os vizinhos
   const ini = Math.max(0, Math.min(E.tabela.length - 5, pos - 3));
-  $("cartaoTabela").innerHTML = `<div class="linha-titulo"><h3>Tabela</h3><button class="link" data-ir="tabela">Ver tudo</button></div><table class="mini-tabela">${E.tabela.slice(ini, ini + 5).map((l, i) => `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(ini + i + 1, E.tabela.length, E.liga)}">${ini + i + 1}</td><td>${escudo(l.id, 1)}</td><td class="nome">${h(nomeClube(l.id))}</td><td><b>${l.p}</b></td></tr>`).join("")}</table>`;
+  $("cartaoTabela").innerHTML = `<div class="linha-titulo"><h3>Tabela</h3><button class="link" data-ir="tabela">Ver tudo</button></div><table class="mini-tabela">${E.tabela.slice(ini, ini + 5).map((l, i) => `<tr class="${l.id === E.clube ? "meu" : ""}" data-time="${l.id}"><td class="pos ${Temporada.zona(ini + i + 1, E.tabela.length, E.liga)}">${ini + i + 1}</td><td>${escudo(l.id, 1)}</td><td class="nome">${h(nomeClube(l.id))}</td><td><b>${l.p}</b></td></tr>`).join("")}</table>`;
   // o dinheiro: caixa, folha e o extrato da última rodada
   const f = E.financas[0];
   $("cartaoFinancas").innerHTML = `<h3>Finanças</h3><div class="numeros-fin"><div><small>Caixa</small><b>${dinheiro(E.caixa)}</b></div><div><small>Folha por mês</small><b>${dinheiro(E.folha)}</b></div></div>
@@ -136,7 +136,7 @@ function telaJogo(pos) {
   const peso = pesoDe(prox || { casa, fora });
   if (peso) $("cartaoJogo").dataset.peso = peso.tema; else delete $("cartaoJogo").dataset.peso;
   $("cartaoJogo").innerHTML = `${faixaAvancarHTML()}${faixaPesoHTML(peso, casa, visitante)}<div class="jogo-corpo"><div class="jogo-info"><span class="sobre">${E.partida ? "Partida em andamento" : `Próxima partida · ${onde}`}</span>
-    <div class="confronto"><div style="${coresClube(casa)}">${escudo(casa, 4)}<b>${h(nomeClube(casa))}</b><small>${posicaoDe(casa) && E.rodada ? posicaoDe(casa) + "º" : ""}</small></div><span class="x">×</span><div style="${coresClube(visitante)}">${escudo(visitante, 4)}<b>${h(nomeClube(visitante))}</b><small>${posicaoDe(visitante) && E.rodada ? posicaoDe(visitante) + "º" : ""}</small></div></div>
+    <div class="confronto"><div style="${coresClube(casa)}" data-time="${casa}" title="Ver o elenco">${escudo(casa, 4)}<b>${h(nomeClube(casa))}</b><small>${posicaoDe(casa) && E.rodada ? posicaoDe(casa) + "º" : ""}</small></div><span class="x">×</span><div style="${coresClube(visitante)}" data-time="${visitante}" title="Ver o elenco">${escudo(visitante, 4)}<b>${h(nomeClube(visitante))}</b><small>${posicaoDe(visitante) && E.rodada ? posicaoDe(visitante) + "º" : ""}</small></div></div>
     <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p>
     ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}</div>
     <div class="jogo-acao">${E.partida ? "" : `<div class="modos" role="group" aria-label="Como jogar">${MODOS.map(([m, t, d]) => `<button data-modo="${m}" aria-pressed="${m === modoEscolhido}" title="${h(d)}"><b>${t}</b><small>${d}</small></button>`).join("")}</div>`}
@@ -204,7 +204,7 @@ async function jogar() {
 // ---------- tabela e calendário ----------
 let competicaoTabela = null;
 const tabelaHTML = (tab, liga = "") => `<table class="tabela-cheia"><thead><tr><th>#</th><th>Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Últimos</th></tr></thead><tbody>${tab.map((l, i) =>
-  `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(i + 1, tab.length, liga)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
+  `<tr class="${l.id === E.clube ? "meu" : ""}" data-time="${l.id}"><td class="pos ${Temporada.zona(i + 1, tab.length, liga)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
 // os nomes das fases do mata-mata
 const NOME_FASE = { preliminar: "Fase preliminar", oitavas: "Oitavas de final", quartas: "Quartas de final", semifinal: "Semifinais", final: "Final" };
 // a chave do mata-mata de uma copa, fase por fase (a coluna de cada fase só aparece quando a anterior acabou): cada confronto
@@ -215,7 +215,7 @@ function confrontoCopaHTML(t) {
     const placares = t.jogos.map((j) => (j.placar ? (j.casa === id ? j.placar[0] : j.placar[1]) : "·"));
     const total = t.agregado ? t.agregado[id === a ? 0 : 1] : "";
     const pen = jogoDePenaltis ? (jogoDePenaltis.casa === id ? jogoDePenaltis.penaltis[0] : jogoDePenaltis.penaltis[1]) : null;
-    return `<div class="cc-time ${t.vencedor === id ? "passou" : t.vencedor ? "caiu" : ""}">${escudo(id, 1)}<b>${h(CLUBES[id].curto)}</b><span class="cc-pernas">${t.jogos.length > 1 ? placares.join(" · ") : ""}</span><strong>${total}${pen != null && t.vencedor ? ` <small>(${pen})</small>` : ""}</strong></div>`;
+    return `<div data-time="${id}" class="cc-time ${t.vencedor === id ? "passou" : t.vencedor ? "caiu" : ""}">${escudo(id, 1)}<b>${h(CLUBES[id].curto)}</b><span class="cc-pernas">${t.jogos.length > 1 ? placares.join(" · ") : ""}</span><strong>${total}${pen != null && t.vencedor ? ` <small>(${pen})</small>` : ""}</strong></div>`;
   };
   return `<div class="confronto-copa${a === E.clube || b === E.clube ? " meu" : ""}">${linha(a)}${linha(b)}</div>`;
 }
@@ -238,7 +238,7 @@ function telaTabela() {
   $("tituloRodada").textContent = E.rodadaAnterior ? `Rodada ${E.rodada}` : "Última rodada";
   $("tRodada").innerHTML = E.rodadaAnterior ? E.rodadaAnterior.map(([c, f, a, b]) => linhaJogo(c, f, [a, b])).join("") : `<p class="suave">Nenhuma rodada jogada.</p>`;
 }
-const linhaJogo = (c, f, p) => `<div class="jogo-linha ${c === E.clube || f === E.clube ? "meu" : ""}"><span class="c">${h(nomeClube(c))}${escudo(c, 1)}</span><span class="r">${placarTxt(p)}</span><span class="f">${escudo(f, 1)}${h(nomeClube(f))}</span></div>`;
+const linhaJogo = (c, f, p) => `<div class="jogo-linha ${c === E.clube || f === E.clube ? "meu" : ""}"><span class="c" data-time="${c}">${h(nomeClube(c))}${escudo(c, 1)}</span><span class="r">${placarTxt(p)}</span><span class="f" data-time="${f}">${escudo(f, 1)}${h(nomeClube(f))}</span></div>`;
 // o nome de cada fase do mata-mata e dos grupos
 const nomeFase = (f) => (String(f).startsWith("grupo-") ? `Grupo ${String(f).slice(6)}` : String(f) === "liga" ? "" : NOME_FASE[f] || f);
 function linhaTba(t) {
@@ -251,7 +251,7 @@ function telaCalendario() {
   $("cLista").innerHTML = `<ol class="linha-tempo">${jogos.map((x) => { if (x.t) return linhaTba(x.t); const j = x.j;
     const r = resultadoMeu(j), adv = j.casa === E.clube ? j.fora : j.casa, janela = j.janela ?? Mercado.janelaAberta(j.rodada); // j.janela: pela rodada do Brasileirão da semana do jogo
     const atual = E.proximoJogo && j.id === E.proximoJogo.id;
-    return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h([nomeFase(j.fase), `S${j.semana}`].filter(Boolean).join(" · "))}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === E.clube ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}${linhaPenaltis(j.penaltis)}</span><span class="res ${r}">${r}</span></li>`;
+    return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}" data-time="${adv}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h([nomeFase(j.fase), `S${j.semana}`].filter(Boolean).join(" · "))}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === E.clube ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}${linhaPenaltis(j.penaltis)}</span><span class="res ${r}">${r}</span></li>`;
   }).join("")}</ol>`;
   $("cLista").querySelector(".proxima")?.scrollIntoView({ block: "center" });
 }

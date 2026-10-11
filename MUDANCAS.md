@@ -1,15 +1,15 @@
-# Carreira: o prêmio de campeão vira contratação paga de até 82, uma por título, e a cota de compras zera na virada
+# Carreira: ver o elenco e a escalação de qualquer clube, inclusive o dos amigos da sala
 
-- **Antes**, ganhar qualquer campeonato dava o **vale de campeão**: um jogador de até 87, de graça, na temporada seguinte (só um vale, mesmo com dois ou três títulos), na carreira solo e na sala. Na sala, além do vale, a janela do começo ganhava vagas a mais na cota de compras, pagas, mas só para três títulos: Libertadores (até 85), Sul-Americana (até 83) e Brasileirão (até 82). Copa do Brasil, Champions, as ligas de fora e o Super Mundial não davam vaga.
-- **Agora** não tem mais jogador de graça. Cada título da temporada anterior, de qualquer competição (liga ou copa), dá **uma contratação a mais na janela do começo, paga como qualquer outra, de um jogador de até 82**. Ganhou duas competições, leva duas a mais.
-- Isso vale para a cota de compras da carreira em grupo. A carreira solo não tem cota (compra quantos couber no caixa), então lá o título continua rendendo o bônus em dinheiro, a reputação e a confiança, mas não uma vaga.
-- **A cota zera na virada da temporada.** Na sala, a opção usada numa janela (3 de até 80, 2 de até 82 ou 1 de até 85) continua proibida na janela seguinte, mas só do começo para o meio. Antes, o que você usou no meio também ficava proibido no começo da temporada seguinte; agora o começo de cada temporada sempre tem as três opções.
-- Quem já tinha um vale guardado perde o vale na próxima virada de temporada. Quem já trouxe jogador pelo vale continua sem poder vendê-lo nesta temporada.
+- **Antes**, só dava para ver o seu próprio time. O elenco de um amigo da sala ou de qualquer outro clube não aparecia em lugar nenhum, a não ser jogador por jogador no mercado.
+- **Agora**, tocar num clube abre uma janela com o elenco dele, nas cores do clube: o campinho com os 11 que entrariam em campo agora (na formação e no estilo de jogo dele, com a nota e quem está improvisado), a força, o técnico e o banco com o resto do elenco em figurinhas. Tocar num jogador abre a ficha dele por cima, com a proposta, como no mercado.
+- O time de um amigo da sala aparece com a escalação que **ele** deixou salva. O de um clube do computador é o time provável, a mesma escalação automática que o jogo usa.
+- Abre pela turma da sala (o painel "Turma" na sede), pela tabela (a cheia e a mini da sede, as copas e as temporadas anteriores), pelo calendário, pelo próximo jogo e pelo último jogo. Quem só está assistindo a sala também consegue ver.
+- É só para ver: nada muda no save e ninguém fica sabendo que você olhou.
 
 ## Como
 
-- `carreira.js`: `PREMIOS_CAMPEAO` saiu; `premiosDaOrdem` dá um prêmio de `PREMIO_MAX` (82) para cada competição do `save.arquivo` em que o clube foi campeão. `usarVale` saiu.
-- `carreira-clube.js`: `fechouTemporada` não cria mais o vale nem o aviso; a ação `vale` saiu; `virada` esvazia `gestao.vales`; o estado não manda mais `vales`.
-- `public/carreira/cartas.js` e `tela-mercado.js`: saíram o botão "Usar o vale" da ficha e o aviso do vale no mercado.
-- `carreira.js`: `proibidaNa` diz a opção proibida de uma janela; no começo da temporada (ordem par, e a entrada que vale no lugar dele) é sempre nenhuma.
-- Testes: `tests/carreira-entrada-meio.test.js` (uma vaga de até 82 por título, de qualquer competição; a virada zera a opção proibida) e `tests/carreira-premios.test.js` (título não dá mais jogador de graça).
+- `carreira.js`: `fichaDoTime(save, id)` monta o elenco (ordenado pela nota), a escalação (`Motor.escalacaoDetalhada`), a formação, o estilo (o `auto` do computador vira o que mais combina, `Taticas.estiloIdeal`), a força, quem está fora e os jovens da base daquele clube (o navegador só conhecia os que já tinham aparecido). Na sala, o técnico humano sai da visão do clube dele (`vistaDe`). Evento `verTime` no canal `/carreira`, só de leitura (não salva e não manda o estado).
+- `carreira-online.js`: o mesmo evento `verTime` na sala, para qualquer pessoa da sala depois do começo, com ou sem clube.
+- `public/carreira/ver-time.js` (novo, `window.VerTime`) e o diálogo `#verTime` em `index.html`: qualquer elemento com `data-time="<clube>"` abre a janela; usa o `campinho` da prancheta e a `figurinha` do mercado. O tema do clube visto vem de `temaClube`, e `hub.css` refaz as cores do painel dentro da janela.
+- `telas.js` e `grupo.js`: `data-time` nas linhas das tabelas, no calendário, nos confrontos do próximo e do último jogo, nas chaves das copas e na turma.
+- Testes: `tests/carreira-ver-time.test.js` (computador, o seu time, o amigo com a escalação dele e o evento nos dois canais) e `tests/e2e/carreira-ver-time.spec.js` (a turma, a tabela, a ficha por cima e o celular).
