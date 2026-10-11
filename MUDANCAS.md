@@ -9,3 +9,7 @@
 ## Como
 
 `public/carreira/personalidade.js` (UMD: `tipoDe`, `de`, `bonusDoLider`, `limiteDeAmarelos`), `carreira-personalidades.js` (os eventos, `alvo: "p:<tipo>"`), `carreira-eventos.js` sorteia e acha o alvo pelo tipo, `carreira.js` soma o líder em `timeDe` (`titularesAprox`) e usa o limite de amarelos em `cartoesELesoes`; a ficha (`cartas.js`) e o guia mostram. Testes em `tests/carreira-personalidade.test.js`.
+
+## Também neste PR: aba Rival na Sede
+
+- A **Leitura do rival** saiu da prévia do jogo (que ficou limpa de novo) e ganhou uma aba própria na Sede, entre Meu time e Temporada: o escudo do adversário, onde é o jogo, a leitura da formação e do estilo dele contra os seus, e os botões de resposta (trocam a formação na hora). `rivalNaSede` em `sede-hub.js`, `#cartaoRival`; teste no navegador em `tests/e2e/carreira-rival.spec.js`.

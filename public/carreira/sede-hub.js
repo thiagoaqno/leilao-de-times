@@ -1,8 +1,8 @@
-// Carreira de Treinador: a sede no jeito da central de carreira dos jogos de futebol. As abas (Central, Meu time e
+// Carreira de Treinador: a sede no jeito da central de carreira dos jogos de futebol. As abas (Central, Meu time, Rival e
 // Temporada: cada painel diz em quais aparece, data-na-aba), a faixa "Avançar" com os próximos compromissos (o dia do
 // jogo em destaque, com as cores do jogo grande de rivais.js) e o painel "Desenvolvimento do jogador", que passa pelos
 // jogadores do elenco (os que mais evoluíram primeiro). telaSede (telas.js) chama tudo daqui; os dados são os do estado.
-const ABAS_SEDE = ["central", "time", "temporada"];
+const ABAS_SEDE = ["central", "time", "rival", "temporada"];
 let abaSede = ABAS_SEDE.includes(store.get("carreira:aba")) ? store.get("carreira:aba") : "central";
 let devSede = 0; // o jogador do painel de desenvolvimento (a posição na lista)
 
@@ -40,6 +40,18 @@ function leituraRivalHTML() {
     <p class="lr-saldo">Com o seu ${h(Taticas.baseDe(esc.formacao))}: <b>${sinalPct(c.criar)}</b> nos seus lances, <b>${sinalPct(c.sofrer)}</b> nos dele.</p>
     ${razoes.length ? `<ul>${razoes.map(([t, v]) => `<li class="${v > 0 ? "bom" : "ruim"}">${h(t)} <small>${v > 0 ? "▲" : "▼"}</small></li>`).join("")}</ul>` : ""}
     ${melhores.length ? `<div class="lr-resp"><small>Respostas melhores:</small>${melhores.map((m) => `<button data-usar-formacao="${h(m.formacao)}" title="${h(Taticas.ROTULO_FORMACAO[m.formacao])}">${h(m.formacao)} <b>${sinalPct(m.saldo)}</b></button>`).join("")}</div>` : `<p class="suave">Sua formação já é uma boa resposta a ele.</p>`}</div>`;
+}
+// a aba Rival da Sede: o próximo adversário com a leitura inteira (antes ficava na prévia do jogo, que ficou carregada)
+function rivalNaSede() {
+  const el = $("cartaoRival"), r = E.rival;
+  if (!r || E.encerrada || E.fim) { el.innerHTML = `<h3>Rival</h3><p class="suave">${E.fim ? "A temporada acabou: o próximo rival aparece quando ela começar." : "Sem jogo à vista."}</p>`; return; }
+  const [casa, fora] = E.proximo || [E.clube, r.clube];
+  el.innerHTML = `<div class="rival-topo"><div style="${coresClube(r.clube)}" data-time="${r.clube}" title="Ver o elenco">${escudo(r.clube, 4)}</div>
+      <div><span class="sobre">Próximo adversário${E.partida ? " (jogo em andamento)" : ""}</span><h3 class="fx-titulo">${h(nomeClube(r.clube))}</h3>
+      <p class="suave">${casa === E.clube ? "Em casa" : "Fora de casa"} · ${h(CLUBES[casa].estadio)}</p></div></div>
+    ${leituraRivalHTML()}
+    <p class="suave">A formação e o estilo dele contra os seus mudam os lances do jogo. Escolha a resposta aqui, ajuste os detalhes na prancheta.</p>`;
+  ligarLeituraRival(el);
 }
 function ligarLeituraRival(raiz) {
   for (const b of raiz.querySelectorAll("[data-usar-formacao]")) b.onclick = async () => {

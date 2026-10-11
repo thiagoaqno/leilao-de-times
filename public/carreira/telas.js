@@ -62,6 +62,7 @@ function telaSede() {
     ${f ? `<ul class="extrato">${f.itens.slice(-6).map(([n, v]) => `<li><span>${h(n)}</span><b class="${v < 0 ? "neg" : "positivo"}">${v > 0 ? "+" : ""}${dinheiro(v)}</b></li>`).join("")}</ul>` : `<p class="suave">O extrato aparece depois do primeiro jogo.</p>`}`;
   memoriaNaSede();
   vagasNaSede();
+  rivalNaSede();
   // o histórico fica no resumo final quando a carreira acabou
   $("cartaoHistorico").classList.toggle("hidden", !E.historico.length || E.encerrada);
   $("cartaoHistorico").innerHTML = `<h3>Histórico</h3>${E.historico.map((x) => `<p class="hist"><b>${x.ano}</b> ${x.posicao}º lugar, ${x.pontos} pts.${x.titulos && x.titulos.length ? ` Títulos: ${h(x.titulos.join(", "))}.` : ` Campeão: ${h(nomeClube(x.campeao))}.`}${x.artilheiro ? ` Artilheiro: ${h(nomeJogador(x.artilheiro.id))} (${x.artilheiro.gols})` : ""}${x.meta ? ` Meta da diretoria (${x.meta.alvo}º): <b class="${x.meta.cumprida ? "positivo" : "neg"}">${x.meta.cumprida ? "cumprida" : "não cumprida"}</b>.` : ""}</p>`).join("")}`;
@@ -156,11 +157,9 @@ function telaJogo(pos) {
       ${E.clima && E.clima.texto ? `<p class="clima-jogo ${E.clima.nota > 0 ? "bom" : E.clima.nota < 0 ? "ruim" : ""}">${h(E.clima.texto)}</p>` : ""}</div>
       ${faixaPesoHTML(peso, casa, visitante)}
       ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}
-      ${E.partida ? "" : leituraRivalHTML()}
       ${pendentes && !E.partida ? `<p class="pendente">${ic("sino")} ${pendentes} aviso${pendentes > 1 ? "s" : ""} esperando resposta. Se jogar agora, vale a opção padrão.</p>` : ""}
       ${faixaAvancarHTML()}</div></div>`;
   for (const b of $("cartaoJogo").querySelectorAll("[data-modo]")) b.onclick = () => { modoEscolhido = +b.dataset.modo; pedir("modo", { modo: modoEscolhido }); for (const x of $("cartaoJogo").querySelectorAll("[data-modo]")) x.setAttribute("aria-pressed", String(+x.dataset.modo === modoEscolhido)); };
-  ligarLeituraRival($("cartaoJogo"));
   $("btnJogar").onclick = jogar;
   // na carreira em grupo, a rodada é de todos ao mesmo tempo: quem começa é o anfitrião (grupo.js)
   if (EM_GRUPO) botaoRodadaGrupo();
