@@ -1078,6 +1078,7 @@ body[data-tela="sede"] .credito-estadio:not(:empty){opacity:.85}
 .gc-linha{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto auto;gap:10px 14px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--s1);border:1px solid var(--b1)}
 .gc-linha.urgente{border-color:color-mix(in srgb,var(--alerta) 55%,transparent);background:color-mix(in srgb,var(--alerta) 8%,var(--s1))}
 .gc-linha.estrutura{grid-template-columns:auto minmax(0,1fr) auto}
+.gc-linha.preparador{grid-template-columns:minmax(0,1fr) auto}
 .gc-linha>.gc-renovar{grid-column:1/-1}
 .gc-jogador{display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;box-shadow:none;background:none;border:0;padding:0;color:inherit;text-align:left;min-width:0}.gc-jogador b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gc-nota{display:inline-grid;place-items:center;min-width:34px;height:26px;border-radius:7px;font:700 13px/1 var(--fonte);background:var(--s3);color:var(--t1)}
@@ -1120,6 +1121,7 @@ body[data-tela="sede"] .credito-estadio:not(:empty){opacity:.85}
 .demissao h2{color:var(--erro)}
 @media (max-width:720px){
   .gc-resumo{grid-template-columns:1fr 1fr}.gc-linha{grid-template-columns:1fr auto}.gc-linha .gc-contrato,.gc-linha .gc-salario{grid-column:1}.gc-linha:not(.estrutura)>button:last-of-type{grid-column:2;grid-row:1/3}.gc-linha.estrutura>button{grid-row:auto}
+  .gc-linha.preparador{grid-template-columns:1fr}.gc-linha.preparador>button:last-of-type{grid-column:1;grid-row:auto}
   .gc-linha.estrutura{grid-template-columns:auto 1fr}.gc-linha.estrutura>button,.gc-linha.estrutura>.gc-obra{grid-column:1/-1}.gc-duplo{grid-template-columns:1fr}.gc-hall{grid-template-columns:auto 1fr}.gc-hall>button,.gc-hall>.gc-obra{grid-column:1/-1}
 }
 @media (prefers-reduced-motion:reduce){#mJanela.urgente{animation:none}}
