@@ -236,3 +236,23 @@ test("improvisar dentro da mesma linha custa pouco: 1 ou 2 pontos; mudar de linh
   assert.ok(80 * (1 - Taticas.afinidade("PE", "PD")) < 1.1 && 80 * (1 - Taticas.afinidade("ATA", "PD")) < 2.1);
   assert.strictEqual(Taticas.afinidade("ATA", "GOL"), 0.5);
 });
+
+test("a escalação automática respeita a função: cada um na sua vaga, e o craque não vira lateral", () => {
+  const nome = (d, jog) => d.map((v) => [v.fino, jog.find((j) => String(j.id) === v.id).pos]);
+  // o Flamengo de verdade: antes, Arrascaeta e Paquetá (meias) iam para as laterais e Pedro (centroavante) para a ponta
+  const fla = require("../public/carreira/base/brasileirao-2026.js").clubes.find((c) => c.id === "flamengo");
+  for (const formacao of ["4-3-3", "4-3-3 O", "4-3-3 G", "4-2-3-1"]) {
+    const d = nome(Motor.escalacaoDetalhada({ jogadores: fla.jogadores, formacao }), fla.jogadores);
+    for (const [vaga, pos] of d) if (["GOL", "ZAG", "LE", "LD", "ATA"].includes(vaga)) assert.strictEqual(pos, vaga, `${formacao}: ${vaga} com ${pos}`);
+  }
+  // elenco igual em nota: todo mundo na posição de origem, em todas as formações que o elenco cobre
+  const jog = ["GOL", "ZAG", "ZAG", "ZAG", "LE", "LD", "VOL", "VOL", "MC", "MC", "MEI", "MEI", "PE", "PD", "ATA", "ATA"].map((pos, i) => ({ id: `j${i}`, nome: `j${i}`, pos, nota: 75 }));
+  for (const formacao of ["4-3-3", "4-3-3 M", "4-3-3 V", "4-3-3 O", "4-3-3 G", "4-2-3-1", "4-4-2 L", "3-5-2 V", "5-3-2"]) {
+    for (const [vaga, pos] of nome(Motor.escalacaoDetalhada({ jogadores: jog, formacao }), jog)) assert.strictEqual(pos, vaga, `${formacao}: ${vaga} com ${pos}`);
+  }
+  // com força parecida, entra o da função; muito mais forte, o craque joga fora dela
+  const meio = (nMc) => [{ id: "v", pos: "VOL", nota: 76 }, { id: "c", pos: "MC", nota: nMc }, { id: "m", pos: "MEI", nota: 76 }];
+  const mei = (jogs) => Motor.escalacaoDetalhada({ jogadores: [...jog.filter((j) => !["VOL", "MC", "MEI"].includes(j.pos)), ...jogs], formacao: "4-3-3 G" }).find((v) => v.fino === "MEI").id;
+  assert.strictEqual(mei([...meio(77), { id: "c2", pos: "MC", nota: 70 }]), "m", "meia 76 na vaga de meia, não o meio-campista 77");
+  assert.notStrictEqual(mei([{ id: "v", pos: "VOL", nota: 76 }, { id: "c", pos: "MC", nota: 84 }, { id: "c2", pos: "MC", nota: 82 }, { id: "m", pos: "MEI", nota: 70 }]), "m", "um meio-campista 82 joga de meia no lugar do meia 70");
+});

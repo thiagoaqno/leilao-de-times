@@ -1,7 +1,15 @@
-# Carreira: a Série B também entra nas carreiras que já estavam rolando
+# Carreira: a escalação automática respeita a função de cada vaga
 
-**Antes:** uma carreira criada antes da Série B só ganhava a tabela da Série B depois de jogar mais um jogo. Se ela fosse aberta pela primeira vez com a temporada já encerrada e o técnico passasse direto para a temporada seguinte, a virada acontecia sem ninguém subir ou cair.
+## O que muda no jogo
 
-**Agora:** a virada confere se a tabela da Série B existe. Se não existir, refaz o mundo primeiro, com os mesmos placares, e os 4 últimos da Série A caem e os 4 primeiros da Série B sobem já nessa virada. Vale para a carreira solo e para a carreira em grupo. Ninguém precisa criar outra carreira, e os resultados já jogados continuam iguais.
+- **Antes**, a escalação automática enchia as vagas uma por uma, na ordem do campinho (o gol, a defesa, o meio e o ataque), e cada vaga levava quem rendia mais nela naquele momento. Como sair da posição custa pouco no encaixe, o resultado era estranho: no 4-3-3 do Flamengo, Arrascaeta (MEI 83) ia de lateral esquerdo e Paquetá (MEI 82) de lateral direito, porque as laterais vinham antes do meio; Pedro (ATA 80) ia para a ponta esquerda, a primeira vaga do ataque, e Samuel Lino (PE 78) acabava de centroavante.
+- **Agora**, o time inteiro é montado de uma vez, com a distribuição que dá a maior soma. E, além do que o encaixe já tira no jogo, a escolha conta mais 1 ponto por ponto de encaixe: com força parecida, entra quem é da função (o volante no volante, o meia na vaga de meia, o ponta esquerda na esquerda). Um craque bem melhor continua jogando fora da posição quando compensa.
+- O mesmo Flamengo no 4-3-3 agora sai com Alex Sandro e Emerson Royal nas laterais, Jorginho de volante, Arrascaeta e Paquetá no meio, Samuel Lino na ponta esquerda, Pedro de centroavante e Plata na direita.
+- Nas seis ligas e na Série B, em todas as formações (incluindo o 4-3-3 O e o 4-3-3 G): os titulares na posição de origem passaram de 6,5 para 9,4 de 11 em média, e a soma das notas na vaga ficou maior em 90% das escalações.
+- Vale para todo lugar que usa a automática: os times do computador, a escalação automática do seu time, a troca de formação no meio do jogo e quem entra no lugar de um lesionado ou suspenso na escalação fixa. Na escalação fixa, quem você pôs em cada vaga continua onde está.
+- Os jogos do computador são simulados de novo a cada vez a partir da semente, então numa carreira em andamento os placares já jogados entre times do computador podem mudar depois deste PR (os jogos com humanos ficam como estão).
 
-**Como:** `garantirSerieB` (`carreira.js`) chama `recalcularMundo` quando o save do calendário mundial não tem `competicoes["serieb-2026"]`. `novaTemporada` e `novaTemporadaGrupo` a chamam antes de registrar a temporada e trocar as divisões. Dois testes novos em `tests/carreira-serieb.test.js` cobrem um save antigo no fim da temporada, solo e em grupo, e falham sem a correção.
+## Como
+
+- `public/carreira/motor.js`: `escalar` deixou de escolher vaga por vaga. `preencher` monta a tabela de notas (vagas × jogadores) e `distribuir` (o método húngaro) acha a distribuição de maior soma; a nota usada para escolher é `notaNaVaga` = `valorNa` − `FUNCAO` × `Taticas.pontosDeEncaixe` (`FUNCAO` = 1). Os escolhidos sem escalação fixa entram primeiro, cada um na vaga que mais combina; o resto do elenco preenche as vagas que sobraram. As contas do jogo (`valorNa`, `afinidade`, força do time) não mudaram.
+- Testes: `tests/carreira-taticas.test.js` ganhou o Flamengo real (goleiro, zagueiros, laterais e centroavante na posição em quatro formações), um elenco de notas iguais com todo mundo na posição em nove formações e os dois lados da regra da função (o meia 76 ganha do meio-campista 77; o meio-campista 82 ganha do meia 70).
