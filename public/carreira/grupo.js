@@ -50,6 +50,8 @@ async function conectarGrupo() {
 socket.on("state", (st) => {
   if (!EM_GRUPO) return;
   const comecou = st.fase === "carreira" && (!SALA || SALA.fase !== "carreira");
+  // o cargo de anfitrião chegou em mim (o anfitrião passou ou ficou fora da sala tempo demais)
+  if (SALA && SALA.host !== st.host && st.host === MEU_ID) toast("Agora você é o anfitrião da sala: você começa as rodadas.");
   SALA = st;
   if (st.now) DESVIO = st.now - Date.now(); // o relógio do servidor (a contagem da pausa e a rodada ao vivo)
   if (typeof TurmaAoVivo !== "undefined") TurmaAoVivo.sala(st);
@@ -94,7 +96,7 @@ function desenharSala() {
   const faltam = st.players.filter((p) => !p.clube);
   $("gStatus").textContent = faltam.length ? `Esperando ${faltam.map((p) => p.name).join(", ")} escolher o clube.` : anfitriao ? "Todo mundo tem clube. Pode começar!" : "Todo mundo tem clube. Esperando o anfitrião começar.";
   $("gPessoas").innerHTML = st.players.map((p) => `<li class="${p.online ? "" : "fora"}">${p.clube ? escudo(p.clube, 2) : `<span class="sem-clube">${ic("campo")}</span>`}
-    <span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "escolhendo..."}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${p.online ? "" : `<i class="tag">fora</i>`}${anfitriao && !p.host ? `<button class="discreto perigo dispensar" data-dispensar="${p.id}" title="Tirar da sala">Dispensar</button>` : ""}</li>`).join("");
+    <span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "escolhendo..."}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${p.online ? "" : `<i class="tag">fora</i>`}${anfitriao && !p.host ? botoesDoAnfitriao(p) : ""}</li>`).join("");
   $("gOpcoes").innerHTML = OPCOES_SALA.map(([k, nome, lista]) => `<div class="controle"><span class="rotulo">${nome}</span><div class="segmentos">${lista.map(([v, t]) =>
     `<button data-opcao-sala="${k}" data-valor="${v}" aria-pressed="${st.opcoes[k] === v}" ${anfitriao ? "" : "disabled"}>${t}</button>`).join("")}</div></div>`).join("")
     + (anfitriao ? "" : `<p class="suave">Só o anfitrião muda as regras.</p>`);
@@ -110,13 +112,15 @@ function desenharSala() {
   $("btnComecar").classList.toggle("hidden", !anfitriao);
   $("btnComecar").disabled = !!faltam.length;
 }
+// o que o anfitrião faz com cada técnico da lista: passar o cargo para ele ou tirá-lo da sala
+const botoesDoAnfitriao = (p) => `<div class="acoes-pessoa"><button class="discreto passar" data-passar="${p.id}" title="Passar o cargo de anfitrião">Tornar anfitrião</button><button class="discreto perigo dispensar" data-dispensar="${p.id}" title="Tirar da sala">Dispensar</button></div>`;
 // a turma na sede: quem está no ar e, para o anfitrião, o botão de dispensar (quem sai no meio joga no automático até lá)
 function desenharTurma(st) {
   const el = $("cartaoTurma"); if (!el) return;
   const anfitriao = MEU_ID === st.host, algumFora = st.players.some((p) => !p.online);
   el.classList.remove("hidden");
-  el.innerHTML = `<h3>Turma</h3><ul class="pessoas turma">${st.players.map((p) => `<li class="${p.online ? "" : "fora"}"${p.clube ? ` data-time="${p.clube}" title="Ver o elenco do ${h(nomeClube(p.clube))}"` : ""}>${p.clube ? escudo(p.clube, 2) : ""}<span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "sem clube"} · ${p.online ? "no ar" : "fora do ar"}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${anfitriao && !p.host ? `<button class="discreto perigo dispensar" data-dispensar="${p.id}">Dispensar</button>` : ""}</li>`).join("")}</ul>
-    ${algumFora ? `<p class="suave">Quem sai da sala joga no automático, sem segurar a rodada. ${anfitriao ? "Dispensar passa o clube para o computador." : ""}</p>` : ""}
+  el.innerHTML = `<h3>Turma</h3><ul class="pessoas turma">${st.players.map((p) => `<li class="${p.online ? "" : "fora"}"${p.clube ? ` data-time="${p.clube}" title="Ver o elenco do ${h(nomeClube(p.clube))}"` : ""}>${p.clube ? escudo(p.clube, 2) : ""}<span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "sem clube"} · ${p.online ? "no ar" : "fora do ar"}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${anfitriao && !p.host ? botoesDoAnfitriao(p) : ""}</li>`).join("")}</ul>
+    ${algumFora ? `<p class="suave">Quem sai da sala joga no automático, sem segurar a rodada. ${anfitriao ? "Dispensar passa o clube para o computador." : "Se o anfitrião ficar fora por 2 minutos, o cargo passa para o próximo da turma."}</p>` : ""}
     <div class="convite-sala"><span>Código da sala <b>${h(st.code)}</b></span><button class="discreto" data-copiar-convite>Copiar convite</button></div>
     <p class="suave">Quem entrar pelo código assume um clube livre, mesmo com a carreira rolando.</p>`;
 }
@@ -135,6 +139,12 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-copiar-convite]")) { const url = `${location.origin}/carreira/?sala=${SALA.code}`; navigator.clipboard?.writeText(url).then(() => toast("Convite copiado.")).catch(() => toast(url)); return; }
   const entrar = e.target.closest("[data-entrar-clube]");
   if (entrar) { const id = entrar.dataset.entrarClube; if (confirm(`Assumir o ${nomeClube(id)} agora? Depois de entrar não dá para trocar de clube.`)) agir({ type: "clube", clube: id }); return; }
+  const pas = e.target.closest("[data-passar]");
+  if (pas) {
+    const p = SALA && SALA.players.find((x) => x.id === pas.dataset.passar);
+    if (p && confirm(`Passar o cargo de anfitrião para ${p.name}? Quem começa as rodadas e muda as regras passa a ser ele.`)) agir({ type: "anfitriao", pessoa: p.id }).then((r) => { if (r.ok) toast(`${p.name} agora é o anfitrião.`); });
+    return;
+  }
   const dsp = e.target.closest("[data-dispensar]");
   if (dsp) {
     const p = SALA && SALA.players.find((x) => x.id === dsp.dataset.dispensar);
