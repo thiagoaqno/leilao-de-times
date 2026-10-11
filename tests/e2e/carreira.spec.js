@@ -87,6 +87,33 @@ test("carreira: arrastar um jogador até outro troca os dois, e soltar no vazio 
   expect(erros).toEqual([]);
 });
 
+test("carreira: a arte das notícias usa o escudo da API, pelo nosso endereço", async ({ page, request }) => {
+  const erros = vigiar(page);
+  expect((await request.get("/api/escudo/clube-que-nao-existe")).status()).toBe(404);
+  // o escudo da TheSportsDB de mentira (um pixel vermelho), entregue com atraso: a arte sai com o desenhado e é refeita
+  const vermelho = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
+  const pedidos = [];
+  await page.route("**/api/escudo/*", (r) => { pedidos.push(new URL(r.request().url()).pathname); setTimeout(() => r.fulfill({ body: vermelho, contentType: "image/png" }), 400); });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/carreira/#debug");
+  await page.fill("#cNome", "Escudos");
+  await page.click('[data-clube="flamengo"]');
+  await page.click("#btnCriar");
+  await page.click("#btnAnotei");
+  await expect.poll(() => pedidos).toContain("/api/escudo/flamengo");
+  // a apresentação do técnico tem o painel de escudos: o vermelho (clareado pelo véu branco da cena) tem de aparecer
+  const vermelhos = () => page.evaluate(async () => {
+    const im = document.querySelector("img[data-arte]"); if (!im) return 0;
+    const i = new Image(); i.src = im.src; await i.decode();
+    const c = document.createElement("canvas"); c.width = i.width; c.height = i.height; const g = c.getContext("2d"); g.drawImage(i, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data; let n = 0;
+    for (let k = 0; k < d.length; k += 4) if (d[k] > 240 && d[k + 1] > 150 && d[k + 1] < 190 && d[k + 2] > 150 && d[k + 2] < 190) n++;
+    return n;
+  });
+  await expect.poll(vermelhos).toBeGreaterThan(500);
+  expect(erros).toEqual([]);
+});
+
 test("carreira: um empate eliminatório mostra os pênaltis", async ({ page }) => {
   const erros = vigiar(page);
   await page.setViewportSize({ width: 1280, height: 800 });

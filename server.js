@@ -41,6 +41,48 @@ require("./rumi.js")(io); // Rumi da Galera: o jogo de peças numeradas clássic
 app.use(express.static(path.join(__dirname, "public")));
 // a estante de troféus da Carreira (todas as carreiras, solo e em grupo): o ranking dos técnicos e as últimas conquistas
 app.get("/api/estante", (req, res) => { try { res.json(require("./bd.js").estante()); } catch (e) { res.status(500).json({ erro: "A estante não abriu." }); } });
+// o escudo da TheSportsDB de um clube da Carreira, servido pelo nosso endereço: a arte das notícias desenha o escudo num canvas,
+// e uma imagem de outro site sem CORS bloquearia o canvas (a arte caía no escudo desenhado). Baixa uma vez e guarda na memória.
+// Os clubes que não estão em escudos-api.json (a Série B) são procurados pelo nome (escudos-busca.js) entre os times do Brasil.
+const escudosApi = (() => { try { return require("./public/carreira/escudos-api.json"); } catch { return {}; } })();
+const escudosBusca = require("./public/carreira/escudos-busca.js");
+const escudosBaixados = new Map(); // id do clube -> Promise<{ tipo, dados } | null>
+const semAcentoEscudo = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+let filaBusca = Promise.resolve(); // a chave gratuita aceita ~30 pedidos por minuto: uma busca por vez, com folga
+const buscarTime = (nome) => {
+  const vez = filaBusca.then(async () => {
+    try {
+      const r = await fetch(`https://www.thesportsdb.com/api/v1/json/${process.env.THESPORTSDB_KEY || "123"}/searchteams.php?t=${encodeURIComponent(nome)}`, { signal: AbortSignal.timeout(8000) });
+      return r.ok ? ((await r.json()).teams || []) : [];
+    } catch { return []; }
+  });
+  filaBusca = vez.then(() => new Promise((ok) => setTimeout(ok, 2100)));
+  return vez;
+};
+async function urlDoEscudo(id) {
+  if (Object.hasOwn(escudosApi, id)) return escudosApi[id].url;
+  for (const nome of escudosBusca[id]) {
+    const times = (await buscarTime(nome)).filter((t) => t.strSport === "Soccer" && t.strCountry === "Brazil" && t.strBadge);
+    const alvo = semAcentoEscudo(nome), igual = (t) => [t.strTeam, ...String(t.strTeamAlternate || "").split(",")].some((n) => semAcentoEscudo(n) === alvo);
+    const t = times.find(igual) || times[0];
+    if (t) return t.strBadge;
+  }
+  return null;
+}
+app.get("/api/escudo/:id", async (req, res) => {
+  const id = req.params.id;
+  if (!Object.hasOwn(escudosApi, id) && !Object.hasOwn(escudosBusca, id)) return res.status(404).end();
+  if (!escudosBaixados.has(id)) {
+    escudosBaixados.set(id, urlDoEscudo(id)
+      .then((url) => (url ? fetch(`${url}/small`, { signal: AbortSignal.timeout(8000) }) : null))
+      .then(async (r) => (r && r.ok ? { tipo: r.headers.get("content-type") || "image/png", dados: Buffer.from(await r.arrayBuffer()) } : null))
+      .catch(() => null)
+      .then((x) => { if (!x) setTimeout(() => escudosBaixados.delete(id), 60000); return x; })); // se falhou, tenta de novo daqui a um minuto
+  }
+  const x = await escudosBaixados.get(id);
+  if (!x) return res.status(502).end();
+  res.set("Cache-Control", "public, max-age=604800").type(x.tipo).send(x.dados);
+});
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
 app.get("/uno", (req, res) => res.redirect("/uno/"));

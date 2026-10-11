@@ -72,13 +72,15 @@ const faixa = (n) => (n >= 90 ? "elite" : n >= 85 ? "ouro" : n >= 80 ? "prata" :
 const POS_NOME = { GOL: "Goleiro", ZAG: "Zagueiro", LD: "Lateral-direito", LE: "Lateral-esquerdo", VOL: "Volante", MC: "Meio-campista", MEI: "Meia", PE: "Ponta-esquerda", PD: "Ponta-direita", ATA: "Atacante" };
 const GRUPO_TELA = { GOL: "GOL", ZAG: "DEF", LD: "DEF", LE: "DEF", VOL: "MEI", MC: "MEI", MEI: "MEI", PE: "ATA", PD: "ATA", ATA: "ATA" };
 
-// o escudo: a imagem da TheSportsDB (escudos-api.js, gerado por tools/baixar-escudos.js) por cima do escudo desenhado em SVG (escudos.js),
-// que aparece enquanto a imagem carrega e fica no lugar dela quando o clube não está no arquivo ou a imagem não abre (sem internet).
+// o escudo: a imagem da TheSportsDB por cima do escudo desenhado em SVG (escudos.js), que aparece enquanto a imagem carrega e fica
+// no lugar dela quando o clube não tem escudo na API ou a imagem não abre (sem internet). A imagem vem pelo nosso servidor
+// (/api/escudo/<id>): os clubes de escudos-api.js (gerado por tools/baixar-escudos.js) e os de escudos-busca.js (a Série B).
 // A escala é o tamanho em múltiplos de 16x18 pixels (a proporção é 8:9)
+const escudoDaApi = (id) => ((window.ESCUDOS_API && window.ESCUDOS_API[id]) || (window.ESCUDOS_BUSCA && Object.hasOwn(window.ESCUDOS_BUSCA, id)) ? `/api/escudo/${encodeURIComponent(id)}` : null);
 function escudo(id, escala = 2) {
   const c = CLUBES[id]; if (!c) return "";
-  const api = window.ESCUDOS_API && window.ESCUDOS_API[id];
-  const img = api ? `<img class="escudo-img" src="${h(api.url)}/small" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add('img-ok')" onerror="this.remove()">` : "";
+  const api = escudoDaApi(id);
+  const img = api ? `<img class="escudo-img" src="${h(api)}" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add('img-ok')" onerror="this.remove()">` : "";
   return `<span class="escudo" style="--e:${escala}" title="${h(c.nome)}"><span class="escudo-svg">${Escudos.svg(c)}</span>${img}</span>`;
 }
 // a letra em cima da cor do clube: a segunda cor, se der para ler; senão, branco ou preto (o que contrastar mais)

@@ -94,3 +94,12 @@ test("os escudos da API: o arquivo existe, cada clube tem um endereço da TheSpo
   assert.ok(fs.readFileSync(path.join(raiz, "index.html"), "utf8").includes('src="escudos-api.js"'));
   assert.ok(fs.readFileSync(path.join(raiz, "inicio.js"), "utf8").includes("ESCUDOS_API"));
 });
+
+test("os escudos da Série B: cada clube da Série B é procurado na API e a página carrega a lista", () => {
+  const raiz = path.join(__dirname, "..", "public", "carreira");
+  const busca = require(path.join(raiz, "escudos-busca.js")), serieB = require(path.join(raiz, "base", "serieb-2026.js"));
+  const clubes = (serieB.clubes || Object.values(serieB)[0].clubes).map((c) => c.id);
+  assert.deepEqual(Object.keys(busca).sort(), [...clubes].sort());
+  assert.ok(Object.values(busca).every((nomes) => Array.isArray(nomes) && nomes.length && nomes.every((n) => typeof n === "string" && n)));
+  assert.ok(fs.readFileSync(path.join(raiz, "index.html"), "utf8").includes('src="escudos-busca.js"'));
+});
