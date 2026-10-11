@@ -461,7 +461,8 @@ function novaTemporadaGrupo(save) {
 // Para ninguém ficar "roubado", cada técnico leva reforço por janela (o começo da temporada, até a rodada 4 da liga, e o meio, rodadas 17 a 21):
 //  - em cada janela, UMA destas opções: 3 jogadores de até 80, OU 2 de até 82, OU 1 de até 85;
 //  - a opção usada numa janela não vale na janela seguinte (pegou o de 85 no começo: no meio, 3 de até 80 ou 2 de até 82). A opção usada é a
-//    mais baixa em que as compras cabem (um de 78 sozinho gasta a de 80; com 82 no meio, a de 82);
+//    mais baixa em que as compras cabem (um de 78 sozinho gasta a de 80; com 82 no meio, a de 82). A virada de temporada zera: o começo
+//    de cada temporada (e a entrada que vale no lugar dele) tem as três opções, não importa o que foi usado no meio;
 //  - os campeões da temporada anterior ganham, a mais, na janela do começo, uma contratação por título (qualquer competição: liga ou copa),
 //    paga como qualquer outra, de até 82 (PREMIO_MAX; cada título leva um jogador, fora da opção da janela). Dois títulos, duas contratações;
 //  - quem entra na carreira com a janela fechada ganha uma janela de entrada (as mesmas opções), até a próxima janela abrir.
@@ -523,21 +524,23 @@ function dividir(notas, permitidos, premios) {
   }
   return melhor;
 }
-// a opção usada numa janela (a que fica proibida na janela seguinte); olha até 4 janelas para trás para saber o que estava proibido em cada uma
+// a opção proibida numa janela: a usada na janela anterior, menos no começo da temporada (ordem par), que zera
+const proibidaNa = (v, ordem, fundo = 0) => (ordem % 2 === 0 || fundo >= 4 ? "" : opcaoUsada(v, ordem - 1, fundo));
+// a opção usada numa janela (a que fica proibida na janela seguinte); olha para trás para saber o que estava proibido em cada uma
 function opcaoUsada(v, ordem, fundo = 0) {
   const notas = comprasDaOrdem(v, ordem);
   if (!notas.length) return "";
-  const proibida = fundo < 4 ? opcaoUsada(v, ordem - 1, fundo + 1) : "";
+  const proibida = proibidaNa(v, ordem, fundo + 1);
   const div = dividir(notas, PACOTES.filter((p) => p.id !== proibida), premiosDaOrdem(v, ordem));
   return div ? div.pacote : "";
 }
 // o que vale na janela de agora: as opções (sem a proibida), os prêmios e o que já foi comprado nela
 function contaDaJanela(v, jan) {
-  const proibida = opcaoUsada(v, jan.ordem - 1);
+  const proibida = proibidaNa(v, jan.ordem);
   return { proibida, permitidos: PACOTES.filter((p) => p.id !== proibida), premios: premiosDaOrdem(v, jan.ordem), usadas: comprasDaOrdem(v, jan.ordem) };
 }
 const quadroDaRegra = (tipo, conta) => {
-  const base = tipo === "entrada" ? `Quem entra no meio da carreira tem uma janela de entrada: ${OPCOES_TEXTO}.` : `Em cada janela, cada técnico leva ${OPCOES_TEXTO}. A opção usada numa janela não vale na seguinte.`;
+  const base = tipo === "entrada" ? `Quem entra no meio da carreira tem uma janela de entrada: ${OPCOES_TEXTO}.` : `Em cada janela, cada técnico leva ${OPCOES_TEXTO}. A opção usada no começo da temporada não vale no meio; a virada de temporada zera.`;
   const proibida = conta && conta.proibida ? ` Nesta janela não vale a de ${NOME_PACOTE[conta.proibida]} (você usou na janela anterior).` : "";
   const premios = conta && conta.premios.length ? ` Prêmio de campeão nesta janela, a mais (pago normalmente): ${conta.premios.map((p) => `1 jogador de até ${p.max} (${p.nome})`).join(", ")}.` : "";
   return base + proibida + premios;

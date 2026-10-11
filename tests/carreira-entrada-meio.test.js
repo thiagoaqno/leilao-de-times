@@ -65,7 +65,7 @@ test("em cada janela: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85",
   assert.strictEqual(G.erroDeCompra(misto, "flamengo", jogador(81, 82).id), null, "um de 80 e um de 82 cabem nos 2 de até 82");
 });
 
-test("a opção usada numa janela não vale na janela seguinte (inclusive do meio para o começo da temporada seguinte)", () => {
+test("a opção usada no começo não vale no meio, e a virada de temporada zera", () => {
   const save = grupo();
   comprar(save, "flamengo", jogador(83, 85)); // o começo: 1 de 85
   naRodada(save, "flamengo", 17); // a janela do meio
@@ -76,13 +76,13 @@ test("a opção usada numa janela não vale na janela seguinte (inclusive do mei
   assert.deepStrictEqual(meio.ainda, ["3 jogadores de até 80", "2 jogadores de até 82"]);
   assert.match(meio.texto, /não vale a de 1 jogador de até 85/);
   comprar(save, "flamengo", jogador(70, 78)); // um de até 80 sozinho gasta a opção mais baixa: a de 80
-  // a temporada seguinte: o começo proíbe a opção usada no meio (a de 80), e o de 85 volta a valer
+  // a temporada seguinte: o meio usou a de 80, mas a virada zera e as três opções voltam
   save.temporada = 2; naRodada(save, "flamengo", 0);
   const comeco = regra(save);
   assert.strictEqual(comeco.tipo, "inicio");
-  assert.strictEqual(comeco.proibida, "80");
-  assert.ok(comeco.ok[85] && comeco.ok[82], "volta a valer o de 85");
-  assert.deepStrictEqual(comeco.ainda, ["2 jogadores de até 82", "1 jogador de até 85"]);
+  assert.strictEqual(comeco.proibida, "");
+  assert.ok(comeco.ok[85] && comeco.ok[82] && comeco.ok[80], "volta tudo");
+  assert.deepStrictEqual(comeco.ainda, ["3 jogadores de até 80", "2 jogadores de até 82", "1 jogador de até 85"]);
   // quem não compra nada numa janela não proíbe nada na seguinte
   naRodada(save, "flamengo", 17);
   assert.strictEqual(regra(save).proibida, "", "o começo da temporada 2 ficou sem compra: o meio vale inteiro");
