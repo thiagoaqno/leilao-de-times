@@ -238,7 +238,7 @@ const proximoJogoMundo = (save) => (save.calendarioMundo || []).find((j) => (j.c
 function mundoNovo(temporadas = Evolucao.TEMPORADAS.padrao, caixaIgual = 0) {
   const base = BASES[BASE_PADRAO];
   const save = { v: VERSAO, base: base.id, ano: base.ano, temporada: 1, semente: crypto.randomBytes(6).toString("hex"), formatoCopas: 2, semMundial: true, caixaIgual: CAIXAS_IGUAIS.includes(Number(caixaIgual)) ? Number(caixaIgual) : 0,
-    temporadasMax: inteiro(temporadas, Evolucao.TEMPORADAS.min, Evolucao.TEMPORADAS.max, Evolucao.TEMPORADAS.padrao), resultadosFixos: {}, resultados: [], gols: {}, divisoes: divisoesIniciais() };
+    temporadasMax: inteiro(temporadas, Evolucao.TEMPORADAS.min, Evolucao.TEMPORADAS.max, Evolucao.TEMPORADAS.padrao), resultadosFixos: {}, resultados: [], gols: {}, golsComp: {}, divisoes: divisoesIniciais() };
   recalcularMundo(save);
   return save;
 }
@@ -432,7 +432,7 @@ function novaTemporadaGrupo(save) {
   const v0 = vistaDe(save, clubes[0]), classificados = classificadosDe(v0), troca = trocarDivisoes(v0);
   const meus = virarTemporada(v0, Object.fromEntries(clubes.map((c) => [c, save.humanos[c].estado.jogosTemporada || 0])));
   guardarVista(save, v0);
-  Object.assign(save, { temporada: save.temporada + 1, ano: save.ano + 1, gols: {}, amarelos: {}, lesoes: {}, suspensos: {}, desempenho: {}, classificados, divisoes: troca.divisoes, formatoCopas: 2, semMundial: true, resultadosFixos: {}, donosInicio: { ...save.donos } });
+  Object.assign(save, { temporada: save.temporada + 1, ano: save.ano + 1, gols: {}, golsComp: {}, amarelos: {}, lesoes: {}, suspensos: {}, desempenho: {}, classificados, divisoes: troca.divisoes, formatoCopas: 2, semMundial: true, resultadosFixos: {}, donosInicio: { ...save.donos } });
   recalcularMundo(save);
   for (const c of clubes) {
     const v = vistaDe(save, c), m = meus[c];
@@ -722,7 +722,11 @@ function simularMinha(save) {
   const p = save.partida;
   return Motor.simularPartida({ casa: timeDe(save, p.casa), fora: timeDe(save, p.fora), semente: p.semente, modo: p.modo, controla: p.casa === save.clube ? 0 : 1, decisoes: p.decisoes, desempate: desempateDe(p) });
 }
-function contarGols(save, r) { for (const e of r.eventos) if (e.tipo === "gol") save.gols[e.jogador] = (save.gols[e.jogador] || 0) + 1; }
+// os gols de um jogo de humanos: no total da temporada (save.gols) e na competição do jogo (save.golsComp), para a artilharia de cada uma
+function contarGols(save, r, comp = null) {
+  const daComp = comp ? ((save.golsComp ||= {})[comp] ||= {}) : null;
+  for (const e of r.eventos) if (e.tipo === "gol") { save.gols[e.jogador] = (save.gols[e.jogador] || 0) + 1; if (daComp) daComp[e.jogador] = (daComp[e.jogador] || 0) + 1; }
+}
 // a nota de cada um no seu jogo (dos dois times): save.desempenho[pid] = [jogos, soma das notas], para a evolução
 function anotarDesempenho(save, r, jogoDoClube = true) {
   for (const [pid, nota] of Object.entries(Evolucao.notasDaPartida(r))) {
@@ -928,13 +932,14 @@ function festaDaCompeticao(save, c, visivel, gols) {
   return { campeao, vice, nome: c.nome, tipo: c.tipo, ano: save.ano, campanha: camp, ...(pontos != null && { pontos, pontosVice: segundo }), final, artilheiros };
 }
 // a artilharia da temporada: os gols dos jogos de humanos (save.gols) e os dos jogos do computador (todos que já aconteceram:
-// os da semana limite para trás). Os jogos de humanos não se contam duas vezes (já estão em save.gols).
-function golsDoMundo(save, limite = Infinity) {
-  const gols = { ...save.gols };
+// os da semana limite para trás). Os jogos de humanos não se contam duas vezes (já estão em save.gols). Com `comp`, só os gols
+// daquela competição (os dos humanos em save.golsComp).
+function golsDoMundo(save, limite = Infinity, comp = null) {
+  const gols = { ...(comp ? (save.golsComp || {})[comp] : save.gols) };
   if (!save.calendarioMundo) return gols;
   const fixos = save.resultadosFixos || {};
   for (const j of save.calendarioMundo) {
-    if (j.semana >= limite || fixos[j.id] || j.aoVivo) continue;
+    if (j.semana >= limite || fixos[j.id] || j.aoVivo || (comp && j.competicao !== comp)) continue;
     for (const pid of golsDeJogo(save, j)) gols[pid] = (gols[pid] || 0) + 1;
   }
   return gols;
@@ -979,7 +984,7 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   const [nos, eles] = emCasa ? r.placar : [r.placar[1], r.placar[0]];
   // quem cumpriu suspensão ou estava machucado neste jogo tem um jogo a menos para voltar (antes dos cartões novos)
   if (cumprir) cumprirRodada(save);
-  if (comum) { contarGols(save, r); cartoesELesoes(save, r, p.semente); anotarDesempenho(save, r); }
+  if (comum) { contarGols(save, r, p.competicao); cartoesELesoes(save, r, p.semente); anotarDesempenho(save, r); }
   else save.jogosTemporada++; // o outro lado já anotou o que é de todos
   aplicarFadiga(save, r);
   save.resultadosFixos[p.jogoId] = { placar: [...r.placar], ...(r.penaltis && { penaltis: [...r.penaltis] }) };
@@ -1124,7 +1129,7 @@ function arquivarTemporada(save) {
     const elenco = elencoDe(save, c.campeao).sort((a, b) => notaDe(save, b) - notaDe(save, a)).slice(0, 20).map((j) => j.id);
     competicoes[id] = { nome: c.nome, tipo: c.tipo, campeao: c.campeao, vice: c.vice, ...(c.tabela && { tabela: limpa(c.tabela) }),
       ...(c.grupos && c.grupos.length && { grupos: c.grupos.map((g) => ({ id: g.id, tabela: limpa(g.tabela) })) }), ...(c.chave && c.chave.length && { chave: c.chave }),
-      ...(c.festa && { festa: { ...c.festa, elenco } }) };
+      ...(c.festa && { festa: { ...c.festa, elenco } }), artilharia: Object.entries(golsDoMundo(save, Infinity, id)).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([pid, gols]) => ({ id: pid, nome: (jogadorDe(save, pid) || {}).nome || pid, clube: donoDe(save, pid), gols })) };
     for (const j of save.competicoes[id].jogos) {
       if (!j.placar) continue;
       const dif = Math.abs(j.placar[0] - j.placar[1]), total = j.placar[0] + j.placar[1];
@@ -1392,7 +1397,7 @@ function estadoMundo(save) {
     const grupos = c.grupos.map((g) => { const r = jogos.filter((j) => j.fase === `grupo-${g.id}`).reduce((a, j) => { (a[j.rodada] ||= []).push([j.casa, j.fora, ...j.placar]); return a; }, []); return { id: g.id, clubes: g.clubes, tabela: Temporada.tabela(g.clubes, r) }; });
     const futuro = c.jogos.find((j) => !jogos.some((x) => x.id === j.id));
     const visivel = (j) => j.semana < limite || save.jogosJogados.includes(j.id);
-    return [id, { ...c, chave: c.tipo === "copa" ? chaveDaCopa(c, visivel) : undefined, fase: futuro ? futuro.fase : "encerrada", grupos, jogos, resultados, tabela: c.tipo === "liga" ? Temporada.tabela(ids, resultados) : undefined, campeao: futuro ? null : c.campeao, vice: futuro ? null : c.vice, festa: futuro || !c.campeao || !jaAconteceu(c) ? undefined : festaDaCompeticao(save, c, visivel, golsTodos) }];
+    return [id, { ...c, chave: c.tipo === "copa" ? chaveDaCopa(c, visivel) : undefined, fase: futuro ? futuro.fase : "encerrada", grupos, jogos, resultados, tabela: c.tipo === "liga" ? Temporada.tabela(ids, resultados) : undefined, campeao: futuro ? null : c.campeao, vice: futuro ? null : c.vice, festa: futuro || !c.campeao || !jaAconteceu(c) ? undefined : festaDaCompeticao(save, c, visivel, golsDoMundo(save, limite, id)) }];
   }));
   const liga = ligaDoClube(save.clube, save), tabela = competicoes[liga].tabela;
   // Liga e grupos têm tabela definida desde o começo. No mata-mata, só aparece o que já foi jogado ou o próximo jogo:
@@ -1403,8 +1408,11 @@ function estadoMundo(save) {
     .map((j) => ({ ...j, placar: save.jogosJogados.includes(j.id) ? j.placar : null, janela: Mercado.janelaAberta(rodadasAntes(save, j.semana)) }));
   let partida = null;
   if (save.partida) { const r = simularMinha(save); partida = { ...save.partida, placar: r.placar, eventos: r.eventos, parado: r.parado, completo: r.completo, times: r.times, paralelos: paralelosDaPartida(save, save.partida) }; }
-  const elenco = elencoDe(save, save.clube), artilharia = Object.entries(golsTodos).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, gols]) => ({ id, gols }));
-  return { meta: save.meta, liga, divisoes: save.divisoes, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
+  const topo = (gols, n = 10) => Object.entries(gols).sort((a, b) => b[1] - a[1]).slice(0, n).map(([id, g]) => ({ id, gols: g }));
+  const elenco = elencoDe(save, save.clube), artilharia = topo(golsTodos);
+  // a artilharia de cada competição (a tela Tabela e o painel da Sede escolhem qual mostrar)
+  const artilharias = Object.fromEntries(Object.keys(save.competicoes).map((id) => [id, topo(golsDoMundo(save, limite, id))]).filter(([, l]) => l.length));
+  return { meta: save.meta, liga, divisoes: save.divisoes, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, artilharias, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo,
     caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.filter((t) => t.semana == null || t.semana < semanaPropria).slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), rodadasLiga: semanasDaRodada(save.calendarioMundo).length, tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.filter((f) => f.semana == null || f.semana < semanaPropria).slice(0, 30), posJogo: save.posJogo };
 }
 
@@ -1502,7 +1510,7 @@ function novaTemporada(save) {
   const meus = virarTemporada(save)[save.clube];
   save.energia = {}; save.sequencia = {}; // férias: energia cheia e sequência zerada
   save.temporada++; save.ano++;
-  Object.assign(save, { rodada: 0, resultados: [], gols: {}, partida: null, ultimo: null, amarelos: {}, lesoes: {}, suspensos: {}, bonusVitoria: 0, provocado: null, efeitos: [], posJogo: null,
+  Object.assign(save, { rodada: 0, resultados: [], gols: {}, golsComp: {}, partida: null, ultimo: null, amarelos: {}, lesoes: {}, suspensos: {}, bonusVitoria: 0, provocado: null, efeitos: [], posJogo: null,
     desempenho: {}, jogosTemporada: 0, tentativas: { rodada: -1, por: {} }, indicacoes: {} });
   const gestaoTexto = Clube.virada(save, ajudas); // contratos, multas, obras, patrocínio e a base nova
   // a escalação salva com alguém que se aposentou volta para a automática

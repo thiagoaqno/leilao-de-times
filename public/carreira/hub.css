@@ -94,20 +94,21 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 #sede[data-aba="time"] [data-na-aba]:not([data-na-aba~="time"]),
 #sede[data-aba="temporada"] [data-na-aba]:not([data-na-aba~="temporada"]){display:none!important}
 
-/* ---------- a barra: as abas e, à direita, os atalhos da gestão (como as abas Plantel e Transferências do FIFA 16) ---------- */
-#sede .hub-barra{display:flex;align-items:flex-end;gap:3px 12px;margin:14px 0 10px;flex-wrap:wrap}
-#sede .hub-barra .hub-abas{margin:0}
-#sede .hub-tiles{display:flex;gap:3px;margin-left:auto;max-width:100%;overflow-x:auto;scrollbar-width:none}
-#sede .hub-tiles::-webkit-scrollbar{display:none}
-#sede .tile{display:flex;align-items:center;gap:7px;flex:none;min-height:34px;height:34px;padding:0 13px 0 9px;border:0;border-radius:0;background:#d7e0e8e6;box-shadow:none;color:#24323e}
+/* ---------- a barra: as abas e, na mesma faixa, os atalhos da gestão (como Central, Plantel e Transferências no FIFA 16).
+   As duas listas somem (display:contents) e os botões correm numa faixa só, que quebra a linha quando não cabe ---------- */
+#sede .hub-barra{display:flex;flex-wrap:wrap;gap:3px;margin:14px 0 10px}
+#sede .hub-barra>.hub-abas,#sede .hub-barra>.hub-tiles{display:contents}
+#sede .hub-abas button:last-child{clip-path:none}
+#sede .tile{display:flex;align-items:center;justify-content:center;gap:7px;flex:none;min-height:34px;height:34px;padding:0 14px 0 9px;border:0;border-radius:0;background:#d7e0e8e6;box-shadow:none;color:#24323e}
 #sede .tile-ic{position:relative;width:22px;height:22px;border-radius:2px;background:var(--fx-teal);border:0;color:var(--fx-tinta);box-shadow:none}
 #sede .tile-ic .ic{width:14px;height:14px}
 #sede .tile-txt{display:block;align-self:center}
 #sede .tile-txt b{font:600 15px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 #sede .tile-txt small,#sede .tile-dado{display:none}
 #sede .tile-mercado.aberta .tile-ic::after{margin:0;top:-4px;right:-4px;box-shadow:0 0 0 2px #d7e0e8}
-#sede .tile:last-child{clip-path:polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%);padding-right:20px}
+#sede .hub-tiles .tile:last-child{clip-path:polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%);padding-right:22px}
 @media (hover:hover) and (pointer:fine){#sede .tile:hover{transform:none;background:#eef3f7;box-shadow:inset 0 -3px 0 var(--fx-teal)}#sede .tile:hover .tile-ic{transform:none}}
+@media (max-width:860px){#sede .hub-barra>*>button{flex:1 1 auto}#sede .hub-tiles .tile:last-child{clip-path:none;padding-right:14px}}
 
 /* ---------- a grade: na Central, a do FIFA 16 (jogar, como jogar e a prévia em cima; o desenvolvimento, as notícias e a tabela
    embaixo, da mesma altura; depois a caixa de entrada, o último jogo e a turma). As colunas da grade somem (display:contents)
@@ -129,9 +130,6 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 @media (max-width:860px){
   #sede .hub-grade,#sede[data-aba="time"] .hub-grade,#sede .hub-lado{grid-template-columns:1fr}
   #sede[data-aba="central"] .hub-grade{grid-template-columns:1fr;grid-template-areas:"jogo" "vivo" "dev" "noticias" "tabela" "entrada" "ultimo" "turma"}
-  #sede .hub-barra{flex-wrap:nowrap;flex-direction:column;align-items:stretch}
-  #sede .hub-tiles{margin-left:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible}
-  #sede .tile:last-child{clip-path:none;padding-right:13px}
 }
 
 /* ---------- em cima: Jogar a próxima partida (o bloco inteiro é o botão, na cor do clube), Como jogar e a prévia ---------- */

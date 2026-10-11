@@ -47,6 +47,7 @@ function telaSede() {
   feedNaSede();
   painelTime();
   desenvolvimentoNaSede();
+  artilhariaNaSede();
   // o último jogo
   const u = E.ultimo;
   $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div>${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}${linhaPenaltis(u.penaltis)}</span><div>${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>
@@ -212,6 +213,8 @@ async function jogar() {
 }
 
 // ---------- tabela e calendário ----------
+// a lista dos artilheiros (de uma competição): a foto, o nome, o clube e os gols; o seu clube em destaque
+const artilhariaHTML = (lista) => (lista.length ? `<ol class="artilharia">${lista.map((a) => `<li class="${donoDe(a.id) === E.clube ? "meu" : ""}"><img class="pix" src="${retrato(a.id)}" alt=""><span>${h(nomeJogador(a.id))}<small>${h(nomeClube(donoDe(a.id)))}</small></span><b>${a.gols}</b></li>`).join("")}</ol>` : `<p class="suave">Ninguém marcou ainda.</p>`);
 let competicaoTabela = null;
 const tabelaHTML = (tab, liga = "") => `<table class="tabela-cheia"><thead><tr><th>#</th><th>Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Últimos</th></tr></thead><tbody>${tab.map((l, i) =>
   `<tr class="${l.id === E.clube ? "meu" : ""}"><td class="pos ${Temporada.zona(i + 1, tab.length, liga)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
@@ -244,7 +247,10 @@ function telaTabela() {
     $("tTabela").querySelectorAll("[data-rever-festa]").forEach((b) => b.onclick = () => Campeoes.rever(b.dataset.reverFesta));
     $("tTabela").querySelectorAll("[data-competicao]").forEach((b) => b.onclick = () => { competicaoTabela = b.dataset.competicao; telaTabela(); });
   } else $("tTabela").innerHTML = tabelaHTML(E.tabela, E.liga);
-  $("tArtilharia").innerHTML = E.artilharia.length ? `<ol class="artilharia">${E.artilharia.map((a) => `<li class="${donoDe(a.id) === E.clube ? "meu" : ""}"><img class="pix" src="${retrato(a.id)}" alt=""><span>${h(nomeJogador(a.id))}<small>${h(nomeClube(donoDe(a.id)))}</small></span><b>${a.gols}</b></li>`).join("")}</ol>` : `<p class="suave">Ninguém marcou ainda.</p>`;
+  // a artilharia da competição aberta (cada liga e cada copa tem a sua); a base antiga só tem o Brasileirão
+  const comp = E.competicoes && E.competicoes[competicaoTabela];
+  $("tituloArtilharia").textContent = comp ? `Artilharia · ${comp.nome}` : "Artilharia";
+  $("tArtilharia").innerHTML = artilhariaHTML(comp ? (E.artilharias || {})[competicaoTabela] || [] : E.artilharia);
   $("tituloRodada").textContent = E.rodadaAnterior ? `Rodada ${E.rodada}` : "Última rodada";
   $("tRodada").innerHTML = E.rodadaAnterior ? E.rodadaAnterior.map(([c, f, a, b]) => linhaJogo(c, f, [a, b])).join("") : `<p class="suave">Nenhuma rodada jogada.</p>`;
 }

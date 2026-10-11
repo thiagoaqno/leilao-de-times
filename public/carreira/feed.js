@@ -321,7 +321,8 @@ function artePost(post) {
 }
 // quando um escudo chega, as artes que saíram com o brasão em pixel são refeitas e trocadas na tela
 function refazerArtes() {
-  for (const p of E && E.feed ? E.feed : []) if (!artes.has(p.id)) artePost(p);
+  if (!E || !E.feed) return; // saiu da carreira: as manchetes que ficaram na página não têm mais de onde vir
+  for (const p of E.feed) if (!artes.has(p.id)) artePost(p);
   for (const img of document.querySelectorAll("img[data-arte]")) { const p = (E.feed || []).find((x) => x.id === img.dataset.arte); if (p) { const u = artePost(p); if (img.src !== u) img.src = u; } }
 }
 

@@ -70,3 +70,19 @@ function desenvolvimentoNaSede() {
   for (const b of box.querySelectorAll("[data-dev]")) b.onclick = () => { devSede += +b.dataset.dev; desenvolvimentoNaSede(); box.querySelector(`[data-dev="${b.dataset.dev}"]`).focus(); };
   box.querySelector("[data-ficha]").onclick = () => abrirFicha(pid);
 }
+
+// o painel Artilharia (aba Temporada): os artilheiros de uma competição por vez, escolhida nas abinhas (as do seu clube primeiro;
+// começa na liga). Cada competição tem a sua lista (estado().artilharias); sem o calendário mundial, só a lista da liga.
+let compArtilharia = null;
+function artilhariaNaSede() {
+  const box = $("cartaoArtilharia"); if (!box) return;
+  const todas = E.artilharias || {}, minhas = new Set([E.liga, ...E.meus.map((j) => j.competicao)].filter(Boolean));
+  const ids = E.competicoes ? Object.keys(E.competicoes).filter((id) => minhas.has(id) || todas[id]).sort((a, b) => minhas.has(b) - minhas.has(a)) : [];
+  if (!ids.includes(compArtilharia)) compArtilharia = ids.includes(E.liga) ? E.liga : ids[0] || null;
+  const lista = compArtilharia ? todas[compArtilharia] || [] : E.artilharia;
+  box.innerHTML = `<div class="linha-titulo"><h3>Artilharia</h3><button class="link" data-ir="tabela">Ver tabela</button></div>
+    ${ids.length > 1 ? `<div class="abas-competicoes" role="group" aria-label="Competição">${ids.map((id) => `<button class="${id === compArtilharia ? "ativa" : ""}" data-art-comp="${id}" aria-pressed="${id === compArtilharia}">${h(E.competicoes[id].nome)}</button>`).join("")}</div>` : ""}
+    ${artilhariaHTML(lista)}`;
+  box.querySelector("[data-ir]").addEventListener("click", () => { if (compArtilharia) competicaoTabela = compArtilharia; }); // a Tabela abre na mesma competição
+  for (const b of box.querySelectorAll("[data-art-comp]")) b.onclick = () => { compArtilharia = b.dataset.artComp; artilhariaNaSede(); box.querySelector(`[data-art-comp="${compArtilharia}"]`).focus(); };
+}
