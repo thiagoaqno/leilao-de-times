@@ -630,16 +630,29 @@ function drawMat(c, x, y) {
   px(c, "#7a2e2a", X + 2, Y + 3, 12, 7); px(c, "#a8443d", X + 3, Y + 4, 10, 5); px(c, "#7a2e2a", X + 3, Y + 6, 10, 1);
 }
 
+// mistura de duas cores em hex (t = quanto da segunda): o estilo "arena" tira todas as cores do telhado de cada prédio
+function mistura(a, b, t) {
+  const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16), m = (s) => Math.round(((A >> s) & 255) * (1 - t) + ((B >> s) & 255) * t);
+  return "#" + ((1 << 24) | (m(16) << 16) | (m(8) << 8) | m(0)).toString(16).slice(1);
+}
+// estilo "arena" (a cara da central do FIFA): fachada escura com a cor do prédio de acento, vidro azulado, faixa de LED
+// no beiral, marquise sobre a porta e telhado de painéis; os telhados temáticos de cada jogo continuam por cima
+function acentoDe(g) { // a cor de destaque do prédio: a do telhado, clareada (mais quando o telhado é escuro)
+  if (g.casino) return "#ffc83d";
+  const n = parseInt(g.roof.slice(1), 16), lum = ((n >> 16) & 255) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11;
+  return mistura(g.roof, "#ffffff", lum < 70 ? 0.6 : lum < 110 ? 0.35 : 0.2);
+}
 function drawBuilding(c, g) {
   if (g.npc) { drawChar(c, { fx: g.x, fy: g.y, dir: "down" }, g.npc.look); px(c, g.npc.cor, g.x * TS + 11, g.y * TS - 2, 4, 4); px(c, "#ffffff", g.x * TS + 12, g.y * TS - 1, 2, 2); return; } // o treinador, com o selo do tipo
   const X = g.x * TS, Y = g.y * TS, W = g.w * TS, H = g.h * TS, roofH = (g.h - 2) * TS, wallY = Y + roofH;
   // sombra no chão
   px(c, "#00000030", X + 3, Y + H, W - 2, 3);
   // parede
-  px(c, g.wall, X, wallY, W, H - roofH);
-  if (g.planks) for (let yy = wallY + 4; yy < Y + H; yy += 5) px(c, g.wall2, X, yy, W, 1);
-  else for (let xx = X + 7; xx < X + W; xx += 16) px(c, g.wall2, xx, wallY + 2, 1, H - roofH - 4);
-  px(c, g.wall2, X, Y + H - 3, W, 3);
+  const acento = acentoDe(g), fachada = mistura(g.roof, "#0e1430", 0.8), vinco = mistura(fachada, "#ffffff", 0.1);
+  px(c, fachada, X, wallY, W, H - roofH);
+  for (let xx = X + 8; xx < X + W; xx += 16) px(c, vinco, xx, wallY + 3, 1, H - roofH - 6); // os painéis da fachada
+  px(c, mistura(fachada, "#000000", 0.35), X, Y + H - 4, W, 4); // o rodapé escuro
+  px(c, acento, X, Y + H - 4, W, 1);
   px(c, "#00000055", X, Y + H - 1, W, 1);
   // telhado
   const rx = X - 3, rw = W + 6;
@@ -681,11 +694,10 @@ function drawBuilding(c, g) {
     for (let yy = Y + 5; yy < wallY - 3; yy += 6) cols.forEach(([, b], i) => px(c, b, Math.round(rx + i * band), yy, Math.ceil(band), 1));
   } else {
     px(c, g.roof, rx, Y, rw, roofH);
-    for (let yy = Y + 5; yy < wallY - 3; yy += 6) {
-      px(c, g.roof2, rx, yy, rw, 1);
-      const off = ((yy - Y) / 6 % 2) * 4;
-      for (let xx = rx + off; xx < rx + rw; xx += 8) px(c, g.roof2, xx, yy - 5, 1, 5);
-    }
+    for (let yy = Y + 8; yy < wallY - 3; yy += 8) px(c, g.roof2, rx, yy, rw, 1); // os painéis do telhado
+    for (let xx = rx + 16; xx < rx + rw; xx += 24) px(c, g.roof2, xx, Y + 2, 1, roofH - 5);
+    px(c, mistura(g.roof, "#ffffff", 0.3), rx, Y, rw, 2); px(c, mistura(g.roof, "#ffffff", 0.14), rx, Y + 2, rw, 1);
+    px(c, "#0b1022", rx + 6, Y + 6, 12, 7); px(c, "#58bde0", rx + 7, Y + 7, 10, 5); px(c, "#a7e6f6", rx + 7, Y + 7, 10, 1); px(c, "#ffffff90", rx + 9, Y + 8, 2, 3); // a claraboia
   }
   if (g.ludo) { // telhado como o centro do tabuleiro: quatro triângulos coloridos
     const cx = rx + rw / 2, cy = Y + roofH / 2, tri = (col, a, b) => { c.fillStyle = col; c.beginPath(); c.moveTo(cx, cy); c.lineTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.closePath(); c.fill(); };
@@ -788,7 +800,8 @@ function drawBuilding(c, g) {
   }
   if (!g.ginasio) px(c, "#ffffff40", rx, Y, rw, 1);
   px(c, g.casino ? "#ffc83d" : "#00000055", rx, wallY - 3, rw, 3);
-  px(c, "#00000030", X, wallY, W, 2);
+  if (!g.casino) px(c, acento, X, wallY, W, 2); // a faixa de LED no beiral
+  px(c, "#00000030", X, wallY + 2, W, 2);
   // janelas
   const dL = g.doors[0] * TS, dR = (g.doors[g.doors.length - 1] + 1) * TS;
   const wins = [];
@@ -797,11 +810,11 @@ function drawBuilding(c, g) {
   g.windows = [];
   for (const wx of wins) {
     const wy = wallY + 6;
-    px(c, "#3b2a1c", wx - 1, wy - 1, 14, 12);
-    px(c, "#ffd978", wx, wy, 12, 10);
-    px(c, "#fff1c2", wx + 1, wy + 1, 4, 3);
-    px(c, "#3b2a1c", wx + 5, wy, 2, 10); px(c, "#3b2a1c", wx, wy + 4, 12, 1);
-    if (g.id === "sinuca" || g.id === "leilao") px(c, "#00000030", wx, wy + 8, 12, 2);
+    px(c, "#080d1f", wx - 1, wy - 1, 14, 12); // o caixilho de aço
+    px(c, "#2f9fc9", wx, wy, 12, 10); px(c, "#58bde0", wx, wy, 12, 4); px(c, "#a7e6f6", wx, wy, 12, 1); // o vidro, claro em cima
+    px(c, "#ffffff90", wx + 2, wy + 2, 2, 5); px(c, "#ffffff60", wx + 5, wy + 1, 1, 4); // o reflexo na diagonal
+    px(c, "#080d1f", wx + 5, wy, 1, 10);
+    px(c, "#ffffff22", wx - 1, wy + 11, 14, 1); // o peitoril
     g.windows.push([wx + 6, wy + 5]);
   }
   // porta
@@ -809,10 +822,15 @@ function drawBuilding(c, g) {
     const dx = d * TS;
     const single = g.doors.length === 1;
     const x0 = single ? dx + 2 : dx + (d === g.doors[0] ? 2 : 0), w0 = single ? 12 : 14;
-    px(c, "#2a1a10", x0 - 1, Y + H - 21, w0 + 2, 21);
-    px(c, g.casino ? "#c9a23a" : g.domino ? "#2b2b33" : "#6b4323", x0, Y + H - 20, w0, 19);
-    px(c, "#00000033", x0 + (single ? 5 : d === g.doors[0] ? w0 - 1 : 0), Y + H - 20, 1, 19);
-    px(c, "#ffe08a", single ? x0 + 9 : d === g.doors[0] ? x0 + w0 - 3 : x0 + 2, Y + H - 11, 2, 2);
+    px(c, "#080d1f", x0 - 1, Y + H - 21, w0 + 2, 21);
+    px(c, g.casino ? "#c9a23a" : "#2f9fc9", x0, Y + H - 20, w0, 19); px(c, g.casino ? "#e8c75a" : "#58bde0", x0, Y + H - 20, w0, 7); // a porta de vidro
+    px(c, "#ffffff70", x0 + 2, Y + H - 18, 2, 8);
+    px(c, "#080d1f", x0 + (single ? 5 : d === g.doors[0] ? w0 - 1 : 0), Y + H - 20, 1, 19);
+    px(c, "#ffffff", single ? x0 + 9 : d === g.doors[0] ? x0 + w0 - 3 : x0 + 2, Y + H - 11, 2, 4);
+  }
+  { // a marquise sobre a porta, na cor do prédio
+    const mx = dL - 1, mw = dR - dL + 2;
+    px(c, "#00000040", mx, Y + H - 21, mw, 3); px(c, acento, mx - 1, Y + H - 24, mw + 2, 3); px(c, mistura(acento, "#000000", 0.35), mx - 1, Y + H - 21, mw + 2, 1);
   }
   if (g.awning) { // toldo listrado do boteco
     const ax = dL - 10, aw = dR - dL + 20, ay = wallY + 2;
@@ -1794,15 +1812,17 @@ function drawSign(c, g, t) {
   const cx = (g.doors[0] + g.doors.length / 2) * TS, y = g.y * TS + (g.h - 2) * TS - (g.casino ? 17 : 13);
   c.font = `700 ${g.casino ? 9 : 7}px "Pixelify Sans", monospace`;
   const tw = c.measureText(g.sign).width, ew = g.casino ? 10 : 8, w = Math.ceil(tw + ew + 8), h = g.casino ? 13 : 10, x = Math.round(cx - w / 2);
-  px(c, "#2a1a10", x - 1, y - 1, w + 2, h + 2);
-  px(c, g.casino ? "#1a0b33" : "#f7f0dc", x, y, w, h);
+  const acento = acentoDe(g);
+  px(c, "#060a1c", x - 1, y - 1, w + 2, h + 2);
+  px(c, g.casino ? "#1a0b33" : "#0f1733", x, y, w, h);
+  if (!g.casino) { px(c, acento, x, y, 2, h); px(c, acento, x, y + h - 1, w, 1); } // a plaquinha com o acento do prédio
   if (g.casino) { const on = Math.floor(t / 400) % 2; px(c, on ? "#ff4fb0" : "#9b2a70", x, y, w, 1); px(c, on ? "#ff4fb0" : "#9b2a70", x, y + h - 1, w, 1); }
   c.textBaseline = "middle"; c.textAlign = "left";
   c.font = `${g.casino ? 8 : 6.5}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
-  c.fillText(g.icon, x + 3, y + h / 2 + 0.5);
+  c.fillText(g.icon, x + 4, y + h / 2 + 0.5);
   c.font = `700 ${g.casino ? 9 : 7}px "Pixelify Sans", monospace`;
-  c.fillStyle = g.casino ? "#ffe066" : "#10183d";
-  c.fillText(g.sign, x + 3 + ew, y + h / 2 + 0.5);
+  c.fillStyle = g.casino ? "#ffe066" : "#f4f7ff";
+  c.fillText(g.sign, x + 4 + ew, y + h / 2 + 0.5);
 }
 function drawPlaca(c, b) {
   const [tx, ty] = b.placa, cx = tx * TS + 8;
