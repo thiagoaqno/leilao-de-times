@@ -74,8 +74,9 @@ function aprender(save, { titulo, opcao, j, rastro }) {
 const fatorTorcida = (save) => 0.88 + de(save).rel.torcida / 100 * 0.24; // 0,88 a 1,12 na bilheteria
 
 // depois de cada jogo: o resultado anda as relações, e elas devolvem um pouco (moral e paciência da diretoria)
-function aposJogo(save, c, { nos, eles, emCasa, classico }) {
+function aposJogo(save, c, { nos, eles, emCasa, classico, adv }) {
   const m = de(save), res = nos > eles ? "V" : nos === eles ? "E" : "D", g = save.gestao;
+  m.ultimoJogo = { res, nos, eles, emCasa, classico: !!classico, adv: adv && c.clubeDe ? (c.clubeDe(save, adv) || {}).nome || "rival" : "rival", rodada: save.rodada }; // a coletiva e a torcida (carreira-pressao.js) falam deste jogo
   if (res === "V") { mudar(save, "torcida", emCasa ? 2 : 1); mudar(save, "imprensa", 1); }
   else if (res === "D") { mudar(save, "torcida", -2); mudar(save, "imprensa", eles - nos >= 3 ? -3 : -1); }
   if (eles - nos >= 4) { mudar(save, "vestiario", -3); m.marcas.goleadasSofridas = (m.marcas.goleadasSofridas || 0) + 1; registrar(save, `Goleada sofrida: ${nos} × ${eles}.`, "marca"); }

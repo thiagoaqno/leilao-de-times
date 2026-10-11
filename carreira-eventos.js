@@ -10,7 +10,8 @@ const Temporada = require("./public/carreira/temporada.js");
 const Rivais = require("./public/carreira/rivais.js");
 const { CATALOGO } = require("./carreira-catalogo.js");
 const Memoria = require("./carreira-memoria.js");
-const POR_ID = Object.fromEntries([...CATALOGO, ...Memoria.ECOS].map((d) => [d.id, d]));
+const Pressao = require("./carreira-pressao.js");
+const POR_ID = Object.fromEntries([...CATALOGO, ...Memoria.ECOS, ...Pressao.TODAS].map((d) => [d.id, d]));
 
 const { dinheiro } = Mercado;
 const sorteio = (r, lista) => lista[Math.floor(r() * lista.length)];
@@ -177,6 +178,12 @@ function gerarEventos(save, c) {
       add({ ...criarDoCatalogo(save, c, r, d, j), eco: true });
       break;
     }
+  }
+  // a coletiva e a torcida: nascem do jogo que acabou (carreira-pressao.js), no máximo uma a cada 2 rodadas
+  const pressao = Pressao.escolher(save, x, mem, r);
+  if (pressao) {
+    const j = pressao.alvo ? alvoDe(save, c, r, pressao.alvo) : null;
+    if (!pressao.alvo || j) { vistos[pressao.id] = save.temporada; mem.ultimaPressao = save.rodada; add({ ...criarDoCatalogo(save, c, r, pressao, j), pressao: true }); }
   }
   const quantos = (r() < 0.8 ? 1 : 0) + (r() < 0.35 ? 1 : 0);
   for (let i = 0; i < quantos; i++) {

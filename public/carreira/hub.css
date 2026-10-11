@@ -398,3 +398,4 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .situacao-lance{margin:0 0 8px;font-size:13px;border-left:3px solid var(--fx-teal,#0a7);padding:6px 10px;background:#0000000a}
 .opcao .marca{font-style:normal;font-size:11px;margin-left:6px}.opcao .marca.favor{color:#1a8a4a}.opcao .marca.contra{color:#c42b2b}
 .leitura-rival .sobre svg{width:14px;height:14px;margin-right:5px;vertical-align:-2px}
+.clima-jogo{margin:0;font-size:12px}.clima-jogo.bom{color:#1a8a4a}.clima-jogo.ruim{color:#c42b2b}

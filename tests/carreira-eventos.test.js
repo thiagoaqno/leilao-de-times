@@ -72,8 +72,8 @@ test("efeitos: a nota do time, de um jogador e do adversário entram no jogo e s
   const R = save.rodada, [casa, fora] = save.calendario[R].find((m) => m.includes(save.clube));
   const rival = casa === save.clube ? fora : casa;
   const media = (t) => t.jogadores.reduce((s, j) => s + j.nota, 0) / t.jogadores.length;
+  save.partida = { rodada: R, casa, fora, modo: 1, semente: "x", decisoes: {} }; // (com a partida na mão: o clima do estádio, que também mexe na nota, já entra nas duas contas)
   const antes = media(timeDe(save, save.clube));
-  save.partida = { rodada: R, casa, fora, modo: 1, semente: "x", decisoes: {} };
   const rivalAntes = media(timeDe(save, rival));
   save.efeitos = [{ alvo: "time", nota: 2, de: R, ate: R }, { alvo: "rival", nota: -2, de: R, ate: R }];
   assert.ok(Math.abs(media(timeDe(save, save.clube)) - antes - 2) < 0.2, "o time ganhou 2");
