@@ -136,7 +136,7 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 #sede #cartaoJogo:has(>.cj){padding:0;background:none;box-shadow:none;border:0;overflow:visible}
 .cj{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2.3fr);gap:8px}
 .cj-tile{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0;padding:14px 16px;background:var(--fx-painel);box-shadow:var(--fx-sombra);overflow:hidden}
-.cj>.prontos{grid-column:1/-1;margin:0;padding:8px 12px;background:var(--fx-painel)}
+.cj>.prontos{grid-column:1/-1;order:1;margin:0;padding:8px 12px;background:var(--fx-painel)}
 #sede .cj .cj-jogar{align-items:flex-start;justify-content:flex-start;gap:2px;height:auto;min-height:150px;padding:14px 16px;border:0;border-radius:0;text-align:left;font:400 13px var(--fonte);text-transform:none;letter-spacing:0;
   background:linear-gradient(160deg,var(--fx-claro),var(--fx-teal) 45%,var(--fx-teal2));color:var(--fx-tinta);box-shadow:var(--fx-sombra),0 14px 30px -18px var(--fx-teal)}
 #sede .hub-jogo[data-peso] .cj .cj-jogar{background:linear-gradient(160deg,var(--peso2,var(--peso)),var(--peso) 55%)}
