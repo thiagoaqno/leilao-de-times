@@ -104,21 +104,17 @@ function desenhar() {
   $("jConfTxt").textContent = `${e.confianca}/100`; $("jConfBarra").style.width = `${e.confianca}%`;
   $("jFala").textContent = `“${e.fala}”`;
   $("jXpTxt").textContent = e.noTeto ? "No teto do potencial" : `${e.xp}/${e.xpPara}`; $("jXpBarra").style.width = `${e.noTeto ? 100 : Math.min(100, e.xp / e.xpPara * 100)}%`;
-  desenharJogo(); desenharTreino(); desenharUltimo(); desenharObjetivos(); desenharTemp(); desenharRivais(); desenharDiario();
+  desenharJogo(); desenharContrato(); desenharTrofeus(); desenharTreino(); desenharUltimo(); desenharObjetivos(); desenharTemp(); desenharRivais(); desenharDiario();
 }
 function desenharJogo() {
   const e = E, p = e.proximo;
   if (e.fim) {
     const tot = e.carreira, melhor = [...e.historico].sort((a, b) => b.nota - a.nota)[0];
     const titulo = e.eu.nota >= 90 ? "Lenda do futebol" : e.eu.nota >= 85 ? "Craque mundial" : e.eu.nota >= 80 ? "Estrela da liga" : e.eu.nota >= 72 ? "Jogador de elite nacional" : "Profissional de carreira honesta";
-    $("jJogo").innerHTML = `<h3>Fim da carreira</h3><h2>${titulo}</h2><p class="suave">${tot.jogos} jogos, ${tot.gols} gols e ${tot.assist} assistências em ${e.historico.length} temporada${e.historico.length > 1 ? "s" : ""}. Nota final ${e.eu.nota}${melhor ? ` (pico aos ${melhor.idade} anos)` : ""}.</p><button id="btnNovo" class="primario cta">Começar outra carreira</button>`;
+    $("jJogo").innerHTML = `<h3>Fim da carreira</h3><h2>${titulo}</h2><p class="suave">${tot.jogos} jogos, ${tot.gols} gols e ${tot.assist} assistências em ${e.historico.length} temporada${e.historico.length > 1 ? "s" : ""}. Nota final ${e.eu.nota}${melhor ? ` (pico aos ${melhor.idade} anos)` : ""}.</p>${balancoHTML()}<button id="btnNovo" class="primario cta">Começar outra carreira</button>`;
     $("btnNovo").onclick = sair; return;
   }
-  if (e.acabou) {
-    $("jJogo").innerHTML = `<h3>Temporada ${e.temporada} encerrada</h3><h2>Férias e renovação</h2><p class="suave">O balanço do ano está nos objetivos. A evolução natural da idade entra na virada.</p><button id="btnProxima" class="primario cta">Começar a temporada ${e.temporada + 1}</button>`;
-    $("btnProxima").onclick = async () => { const r = await pedir("proxima"); if (!r.ok) return toast(r.error); receber(r.estado); };
-    return;
-  }
+  if (e.acabou) { desenharFimDeTemporada(); return; }
   const mando = p.casa === e.clube.id ? "em casa" : "fora";
   const adv = p.casa === e.clube.id ? p.fora : p.casa;
   const chance = e.papel === "titular" ? "Você começa jogando." : e.papel === "banco" ? "Você começa no banco: a vaga aparece se o treino e a nota convencerem." : "Você não joga este jogo.";
@@ -126,6 +122,54 @@ function desenharJogo() {
     <h2>${h(CLUBES[e.clube.id].nome)} ${mando === "em casa" ? "×" : "visita"} ${h(CLUBES[adv] ? CLUBES[adv].nome : adv)}</h2><p class="suave">${chance}</p>
     <button id="btnJogar" class="primario cta">Jogar a próxima partida</button>`;
   $("btnJogar").onclick = jogar;
+}
+const nomeClube = (id) => (CLUBES[id] ? CLUBES[id].nome : id);
+const { dinheiro } = Mercado;
+function balancoHTML() {
+  const b = E.balanco; if (!b) return "";
+  const linhas = [
+    ...b.objetivos.map((o) => `<li class="${o.cumprido ? "feito" : ""}"><span>${o.cumprido ? "✓" : "✗"}</span>${h(o.texto)} <small>(${num1(o.progresso)}/${num1(o.alvo)})</small></li>`),
+    ...b.premios.map((p) => `<li class="premio"><span>🏆</span><b>${h(p.nome)}</b> <small>${h(p.texto)}</small></li>`),
+    b.selecao && b.selecao.convocado ? `<li class="premio"><span>🌍</span><b>Seleção (${h(E.nacao)})</b> <small>${b.selecao.torneio ? `${h(b.selecao.torneio)}: ${h(b.selecao.fase)} · ` : ""}${b.selecao.jogos} jogos, ${b.selecao.gols} gols</small></li>` : `<li><span>—</span>Não foi convocado para a seleção <small>(precisa de pontuação ${b.selecao ? b.selecao.limiar : "?"}, você fez ${b.selecao ? b.selecao.score : "?"})</small></li>`,
+  ];
+  return `<ul class="j-balanco">${linhas.join("")}</ul>`;
+}
+const PAPEL_TXT = { titular: "Titular garantido", "rodízio": "Rodízio", reserva: "Reserva de luxo" };
+function opcaoMercado(o, tipo, escolhida) {
+  const clube = nomeClube(o.clube), emp = o.tipo === "emprestimo";
+  const titulo = tipo === "renovar" ? `Renovar com o ${clube}` : emp ? `Empréstimo ao ${clube}` : `Transferência para o ${clube}`;
+  const detalhe = tipo === "renovar" ? `${o.anos} anos` : emp ? `1 temporada, volta ao clube de origem` : `${o.anos} anos`;
+  return `<button type="button" class="j-opcao ${escolhida ? "marcada" : ""}" data-tipo="${tipo}" data-id="${h(o.id)}">${escudo(o.clube, 2)}<span><b>${titulo}</b><small>${detalhe} · ${dinheiro(o.salario)}/mês${o.papel ? ` · <i class="papel-${o.papel}">${PAPEL_TXT[o.papel]}</i> (titular: nota ${o.corte})` : ""}</small></span></button>`;
+}
+function desenharFimDeTemporada() {
+  const e = E, m = e.mercado, esc = m && m.escolha;
+  const ficar = m && !m.precisaEscolher ? `<button type="button" class="j-opcao ${!esc ? "marcada" : ""}" data-tipo="ficar">${escudo(m.noEmprestimo ? m.pai : e.clube.id, 2)}<span><b>${m.noEmprestimo ? `Voltar ao ${h(nomeClube(m.pai))}` : `Ficar no ${h(nomeClube(e.clube.id))}`}</b><small>Seguir com o contrato atual</small></span></button>` : "";
+  const podeSeguir = !m || !m.precisaEscolher || esc;
+  $("jJogo").innerHTML = `<h3>Temporada ${e.temporada} encerrada</h3><h2>Balanço do ano</h2>${balancoHTML()}
+    ${m ? `<h3 class="j-sub">Seu futuro${m.precisaEscolher ? " · o contrato acabou" : ""}</h3><div class="j-opcoes">${ficar}${m.renovacao.map((r) => opcaoMercado(r, "renovar", esc && esc.id === r.id)).join("")}${m.ofertas.map((o) => opcaoMercado(o, "oferta", esc && esc.id === o.id)).join("")}</div>
+    <p class="suave">Empréstimo é a saída para quem está preso no banco de um clube grande. Um empresário melhor traz mais propostas e salários maiores.</p>` : ""}
+    <button id="btnProxima" class="primario cta" ${podeSeguir ? "" : "disabled"}>${podeSeguir ? `Começar a temporada ${e.temporada + 1}` : "Escolha o seu futuro"}</button>`;
+  $("jJogo").onclick = async (ev) => {
+    const b = ev.target.closest(".j-opcao"); if (!b) return;
+    const r = await pedir("decidir", { tipo: b.dataset.tipo, id: b.dataset.id }); if (!r.ok) return toast(r.error);
+    E = r.estado; desenharFimDeTemporada();
+  };
+  $("btnProxima").onclick = async () => { const r = await pedir("proxima"); if (!r.ok) return toast(r.error); $("jJogo").onclick = null; receber(r.estado); };
+}
+function desenharContrato() {
+  const e = E, c = e.contrato, emp = e.empresario;
+  $("jContrato").innerHTML = `<h3>Contrato e carreira</h3><div class="j-numeros j-tres"><span><b>${c ? dinheiro(c.salario) : "—"}</b>por mês</span><span><b>${c ? c.anos : "—"}</b>${c && c.anos === 1 ? "ano" : "anos"} de contrato</span><span><b>${dinheiro(e.patrimonio)}</b>patrimônio</span></div>
+    ${e.emprestimo ? `<p class="suave">Emprestado: o contrato é do ${h(nomeClube(e.emprestimo.de))}.</p>` : ""}
+    <div class="j-rotulo"><span>Fama</span><b>${e.fama}/100</b></div><div class="barra fina"><i style="width:${e.fama}%"></i></div>
+    <h3 class="j-sub">Empresário</h3><div class="segmentos largos" role="group" aria-label="Empresário">${emp.niveis.map((n) => `<button type="button" data-emp="${n.nivel}" aria-pressed="${n.nivel === emp.nivel}" ${n.liberado ? "" : "disabled"} title="${n.liberado ? "" : `Precisa de fama ${n.fama}`}">${h(n.nome)}</button>`).join("")}</div>
+    <p class="suave">${emp.nivel ? `Fica com ${Math.round(emp.comissao * 100)}% do salário e traz salários ${Math.round(emp.salario * 100)}% maiores e ${emp.extras} proposta${emp.extras > 1 ? "s" : ""} a mais.` : "Sem empresário você recebe poucas propostas. A fama destrava os melhores."}</p>`;
+  $("jContrato").onclick = async (ev) => { const b = ev.target.closest("[data-emp]"); if (!b || b.disabled) return; const r = await pedir("empresario", { nivel: b.dataset.emp }); if (!r.ok) return toast(r.error); E = r.estado; desenharContrato(); desenharDiario(); };
+}
+function desenharTrofeus() {
+  const e = E, s = e.selecao;
+  $("jTrofeus").innerHTML = `<h3>Troféus e seleção</h3>${e.premios.length ? `<ul class="j-balanco">${e.premios.slice().reverse().map((p) => `<li class="premio"><span>🏆</span><b>${h(p.nome)}</b> <small>${p.ano} · ${h(nomeClube(p.clube))}</small></li>`).join("")}</ul>` : `<p class="suave">Nenhum prêmio ainda. Eles saem no fim da temporada: seleção do campeonato, revelação, artilheiro, títulos e a Bola de Ouro.</p>`}
+    <div class="j-numeros j-tres"><span><b>${s ? s.jogos : 0}</b>jogos pela seleção</span><span><b>${s ? s.gols : 0}</b>gols</span><span><b>${s ? s.titulos : 0}</b>títulos</span></div>
+    <p class="suave">Seleção: ${h(e.nacao)}. A convocação vem com nota alta, boa média e fama; em ano par tem Copa do Mundo ou Eurocopa e Copa América.</p>`;
 }
 async function jogar() {
   const b = $("btnJogar"); b.disabled = true;
