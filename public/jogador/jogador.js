@@ -9,7 +9,7 @@ const ATR = [["rit", "RIT"], ["fin", "FIN"], ["pas", "PAS"], ["dri", "DRI"], ["d
 const LIGAS_JOGAVEIS = new Set(["brasileirao-2026", "serieb-2026", "inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
 const BASE = { clubes: MundoCarreira.ligas.flatMap((l) => window.BasesCarreira[l.id].clubes.map((c) => ({ ...c, ligaId: l.id }))) };
 const CLUBES = Object.fromEntries(BASE.clubes.map((c) => [c.id, c]));
-let E = null, escolha = { pos: "ATA", pe: "D", idade: 18, nat: "Brasil", temporadas: 3, clube: null };
+let E = null, RESULTADO = null, escolha = { pos: "ATA", pe: "D", idade: 18, nat: "Brasil", temporadas: 3, nota: 68, modo: "classico", clube: null };
 
 const pedir = (evento, dados = {}) => new Promise((res) => socket.emit(evento, dados, (r) => res(r || { ok: false, error: "Sem conexão." })));
 const faixa = (n) => (n >= 90 ? "elite" : n >= 85 ? "ouro" : n >= 80 ? "prata" : "bronze");
@@ -38,14 +38,13 @@ function escudo(id, escala = 2) {
 }
 
 // ---------- criar ----------
-const notaInicial = (idade) => Math.round(75 + (idade - 17) * 0.8);
 const segmentos = (id, itens, atual, quando) => {
   $(id).innerHTML = itens.map(([v, t]) => `<button type="button" data-v="${h(v)}" aria-pressed="${String(v) === String(atual)}">${h(t)}</button>`).join("");
   $(id).onclick = (e) => { const b = e.target.closest("button"); if (!b) return; quando(b.dataset.v); segmentos(id, itens, b.dataset.v, quando); };
 };
 // a concorrência na posição: quantos do clube estão acima de você (e o quanto) para dizer se dá para jogar
 function concorrencia(c) {
-  const mine = notaInicial(escolha.idade), notas = c.jogadores.filter((j) => j.pos === escolha.pos).map((j) => j.nota).sort((a, b) => b - a);
+  const mine = escolha.nota, notas = c.jogadores.filter((j) => j.pos === escolha.pos).map((j) => j.nota).sort((a, b) => b - a);
   const vagas = escolha.pos === "GOL" ? 1 : ({ ZAG: 2, MC: 2, VOL: 1, MEI: 1, PE: 1, PD: 1, ATA: 1, LD: 1, LE: 1 }[escolha.pos] || 1);
   const corte = notas[vagas - 1] || 55, falta = corte - mine;
   return { corte, falta, nivel: falta <= 0 ? "alta" : falta <= 4 ? "boa" : falta <= 8 ? "média" : "baixa" };
@@ -55,12 +54,20 @@ function telaInicio() {
   mostrar("inicio");
   segmentos("jPos", Object.keys(POS_NOME).map((p) => [p, p]), escolha.pos, (v) => { escolha.pos = v; desenharClubes(); });
   segmentos("jPe", [["D", "Direita"], ["E", "Esquerda"]], escolha.pe, (v) => { escolha.pe = v; });
-  segmentos("jIdade", [17, 18, 19, 20, 21, 22, 23].map((i) => [i, `${i}`]), escolha.idade, (v) => { escolha.idade = Number(v); dicaIdade(); desenharClubes(); });
+  segmentos("jIdade", [17, 18, 19, 20, 21, 22, 23].map((i) => [i, `${i}`]), escolha.idade, (v) => { escolha.idade = Number(v); });
+  segmentos("jNota", [65, 66, 67, 68, 69, 70].map((n) => [n, `${n}`]), escolha.nota, (v) => { escolha.nota = Number(v); dicaNota(); desenharClubes(); });
+  desenharModos();
   segmentos("jNat", NACOES.map((n) => [n, n]), escolha.nat, (v) => { escolha.nat = v; });
   segmentos("jTemporadas", [1, 2, 3, 5, 8, 10, 15].map((t) => [t, `${t}`]), escolha.temporadas, (v) => { escolha.temporadas = Number(v); });
-  dicaIdade(); desenharClubes();
+  dicaNota(); desenharClubes();
 }
-function dicaIdade() { $("jIdadeDica").textContent = `Você começa com nota geral ${notaInicial(escolha.idade)}. Quem começa mais velho já chega mais pronto, mas tem menos tempo para crescer.`; }
+function dicaNota() { $("jNotaDica").textContent = `Você escolhe de 65 a 70. Quanto mais baixa, mais você tem a crescer (e mais tempo no banco); quanto mais alta, mais cedo você ganha uma chance.`; }
+const MODOS = [["classico", "Clássico", "A carreira de jogador, com eventos de vez em quando: entrevistas, convites, lesões escondidas. Você decide e a vida segue."],
+  ["historia", "História do Estrelato", "Cada temporada abre com um capítulo. Suas escolhas moldam o personagem (disciplina, carisma, ambição...), mudam o que acontece depois e escrevem o epílogo da carreira."]];
+function desenharModos() {
+  $("jModo").innerHTML = MODOS.map(([v, t, d]) => `<button type="button" class="j-modo" data-v="${v}" aria-pressed="${v === escolha.modo}"><b>${t}</b><small>${d}</small></button>`).join("");
+  $("jModo").onclick = (e) => { const b = e.target.closest(".j-modo"); if (!b) return; escolha.modo = b.dataset.v; desenharModos(); };
+}
 function desenharClubes() {
   const lista = BASE.clubes.filter((c) => LIGAS_JOGAVEIS.has(c.ligaId)).map((c) => ({ c, k: concorrencia(c) })).sort((a, b) => a.k.falta - b.k.falta);
   const NOME_LIGA = Object.fromEntries(MundoCarreira.ligas.map((l) => [l.id, l.nome]));
@@ -104,14 +111,16 @@ function desenhar() {
   $("jConfTxt").textContent = `${e.confianca}/100`; $("jConfBarra").style.width = `${e.confianca}%`;
   $("jFala").textContent = `“${e.fala}”`;
   $("jXpTxt").textContent = e.noTeto ? "No teto do potencial" : `${e.xp}/${e.xpPara}`; $("jXpBarra").style.width = `${e.noTeto ? 100 : Math.min(100, e.xp / e.xpPara * 100)}%`;
-  desenharJogo(); desenharContrato(); desenharTrofeus(); desenharTreino(); desenharUltimo(); desenharObjetivos(); desenharTemp(); desenharRivais(); desenharDiario();
+  desenharJogo(); desenharHistoria(); desenharContrato(); desenharTrofeus(); desenharTreino(); desenharUltimo(); desenharObjetivos(); desenharTemp(); desenharRivais(); desenharDiario();
 }
 function desenharJogo() {
   const e = E, p = e.proximo;
+  if (RESULTADO) { desenharResultado(); return; }
+  if (e.evento) { desenharEvento(); return; }
   if (e.fim) {
     const tot = e.carreira, melhor = [...e.historico].sort((a, b) => b.nota - a.nota)[0];
     const titulo = e.eu.nota >= 90 ? "Lenda do futebol" : e.eu.nota >= 85 ? "Craque mundial" : e.eu.nota >= 80 ? "Estrela da liga" : e.eu.nota >= 72 ? "Jogador de elite nacional" : "Profissional de carreira honesta";
-    $("jJogo").innerHTML = `<h3>Fim da carreira</h3><h2>${titulo}</h2><p class="suave">${tot.jogos} jogos, ${tot.gols} gols e ${tot.assist} assistências em ${e.historico.length} temporada${e.historico.length > 1 ? "s" : ""}. Nota final ${e.eu.nota}${melhor ? ` (pico aos ${melhor.idade} anos)` : ""}.</p>${balancoHTML()}<button id="btnNovo" class="primario cta">Começar outra carreira</button>`;
+    $("jJogo").innerHTML = `<h3>Fim da carreira</h3><h2>${titulo}</h2><p class="suave">${tot.jogos} jogos, ${tot.gols} gols e ${tot.assist} assistências em ${e.historico.length} temporada${e.historico.length > 1 ? "s" : ""}. Nota final ${e.eu.nota}${melhor ? ` (pico aos ${melhor.idade} anos)` : ""}.</p>${epilogoHTML()}${balancoHTML()}<button id="btnNovo" class="primario cta">Começar outra carreira</button>`;
     $("btnNovo").onclick = sair; return;
   }
   if (e.acabou) { desenharFimDeTemporada(); return; }
@@ -122,6 +131,40 @@ function desenharJogo() {
     <h2>${h(CLUBES[e.clube.id].nome)} ${mando === "em casa" ? "×" : "visita"} ${h(CLUBES[adv] ? CLUBES[adv].nome : adv)}</h2><p class="suave">${chance}</p>
     <button id="btnJogar" class="primario cta">Jogar a próxima partida</button>`;
   $("btnJogar").onclick = jogar;
+}
+// ---------- eventos com decisão ----------
+function desenharEvento() {
+  const ev = E.evento;
+  $("jJogo").innerHTML = `<h3>${ev.inicio ? "Novo capítulo" : "Aconteceu"}</h3><h2>${h(ev.titulo)}</h2><p class="j-historia">${h(ev.texto)}</p>
+    <div class="j-opcoes j-escolhas">${ev.escolhas.map((x, i) => `<button type="button" class="j-opcao" data-escolha="${i}"><span><b>${h(x.texto)}</b>${x.dica ? `<small>${h(x.dica)}</small>` : ""}</span></button>`).join("")}</div>
+    <p class="suave">O jogo espera a sua decisão.</p>`;
+  $("jJogo").onclick = async (ev2) => {
+    const b = ev2.target.closest("[data-escolha]"); if (!b) return;
+    for (const x of $("jJogo").querySelectorAll("button")) x.disabled = true;
+    const r = await pedir("evento", { escolha: Number(b.dataset.escolha) });
+    if (!r.ok) { toast(r.error); for (const x of $("jJogo").querySelectorAll("button")) x.disabled = false; return; }
+    RESULTADO = r.resultado; $("jJogo").onclick = null; receber(r.estado);
+  };
+}
+function desenharResultado() {
+  const r = RESULTADO;
+  $("jJogo").innerHTML = `<h3>${h(r.titulo)}</h3><p class="j-escolheu">Você: ${h(r.escolha)}</p><h2>${r.sorte === true ? "Deu certo" : r.sorte === false ? "Deu errado" : "E então…"}</h2><p class="j-historia">${h(r.texto)}</p>
+    ${r.chips.length ? `<div class="j-chips">${r.chips.map((c) => `<span class="${c.bom ? "bom" : "mau"}">${h(c.texto)}</span>`).join("")}</div>` : ""}
+    <button id="btnSegue" class="primario cta">Continuar</button>`;
+  $("btnSegue").onclick = () => { RESULTADO = null; desenhar(); };
+}
+function desenharHistoria() {
+  const e = E, painel = $("jHistoria");
+  if (!e.perfil && !e.livro.length) { painel.classList.add("hidden"); return; }
+  painel.classList.remove("hidden");
+  const barras = e.perfil ? `<div class="j-tracos">${e.perfil.map((t) => `<div><div class="j-rotulo"><span>${h(t.nome)}</span><b>${t.valor}</b></div><div class="barra fina"><i style="width:${t.valor * 10}%"></i></div></div>`).join("")}</div>
+    ${e.pacto ? `<p class="suave">Meta do ano: <b>${e.pacto === "ousada" ? "ousada (cumprir os 3 objetivos)" : "segura"}</b>.</p>` : ""}` : "";
+  painel.innerHTML = `<h3>${e.perfil ? "Seu personagem" : "Decisões recentes"}</h3>${barras}
+    ${e.livro.length ? `<ul class="j-livro">${e.livro.slice(0, 5).map((l) => `<li><small>T${l.temporada}</small><span><b>${h(l.titulo)}</b> ${h(l.escolha)}</span></li>`).join("")}</ul>` : `<p class="suave">As escolhas que você fizer aparecem aqui.</p>`}`;
+}
+function epilogoHTML() {
+  const p = E.epilogo; if (!p) return "";
+  return `<div class="j-epilogo"><h3>Epílogo</h3><h2>${h(p.titulo)}</h2><ul>${p.linhas.map((l) => `<li>${h(l)}</li>`).join("")}</ul></div>`;
 }
 const nomeClube = (id) => (CLUBES[id] ? CLUBES[id].nome : id);
 const { dinheiro } = Mercado;

@@ -6,9 +6,20 @@ const bd = require("../bd.js");
 bd.abrir();
 const Jogador = require("../jogador.js");
 const handlers = {};
-Jogador({ of: () => ({ on: (e, f) => f({ on: (n, h) => { handlers[n] = h; } }) }) });
-const chamar = (n, d) => new Promise((res) => handlers[n](d, res));
-const nova = (extra = {}) => chamar("criar", { nome: "Gabi Gol", pos: "ATA", clube: "remo", idade: 20, temporadas: 2, ...extra });
+let ligar;
+Jogador({ of: () => ({ on: (e, f) => { ligar = f; } }) });
+const conectar = () => ligar({ on: (n, h) => { handlers[n] = h; } }); // cada carreira nova é uma conexão nova (há um limite por conexão)
+conectar();
+const bruto = (n, d) => new Promise((res) => handlers[n](d, res));
+// os eventos travam o jogo até serem respondidos: quem só quer jogar responde a primeira opção sozinho
+let ultimo = null;
+async function chamar(n, d) {
+  if ((n === "jogar" || n === "proxima") && ultimo && ultimo.evento) await bruto("evento", { escolha: 0 });
+  const r = await bruto(n, d);
+  if (r.estado) ultimo = r.estado;
+  return r;
+}
+const nova = (extra = {}) => { conectar(); ultimo = null; return chamar("criar", { nome: "Gabi Gol", pos: "ATA", clube: "remo", idade: 20, temporadas: 2, ...extra }); };
 
 test("criar valida nome, posição e clube", async () => {
   assert.equal((await chamar("criar", { nome: "", pos: "ATA", clube: "remo" })).ok, false);
@@ -16,11 +27,11 @@ test("criar valida nome, posição e clube", async () => {
   assert.equal((await chamar("criar", { nome: "A", pos: "ATA", clube: "nao-existe" })).ok, false);
 });
 
-test("o jogador nasce no elenco do clube, com nota pela idade e papel de reserva ou titular", async () => {
+test("o jogador nasce no elenco do clube, com a nota escolhida e papel de reserva ou titular", async () => {
   const r = await nova();
   assert.equal(r.ok, true, r.error);
   const e = r.estado;
-  assert.equal(e.eu.nota, 77); assert.ok(e.eu.nota >= 75); assert.equal(e.eu.pos, "ATA"); assert.equal(e.clube.id, "remo");
+  assert.equal(e.eu.nota, 68); assert.equal(e.eu.pos, "ATA"); assert.equal(e.clube.id, "remo");
   assert.ok(["titular", "banco"].includes(e.papel));
   assert.equal(e.objetivos.length, 3);
 });
@@ -90,4 +101,57 @@ test("contrato vencido bloqueia a próxima temporada até renovar ou aceitar pro
   assert.equal(r.estado.mercado.escolha.tipo, "renovar");
   const p = await chamar("proxima"); assert.equal(p.ok, true, p.error);
   assert.equal(p.estado.contrato.anos, 2);
+});
+
+test("a nota inicial é escolhida entre 65 e 70", async () => {
+  assert.equal((await nova({ nota: 65 })).estado.eu.nota, 65);
+  assert.equal((await nova({ nota: 70 })).estado.eu.nota, 70);
+  assert.equal((await nova({ nota: 99 })).estado.eu.nota, 70);
+  assert.equal((await nova({ nota: 10 })).estado.eu.nota, 65);
+  assert.equal((await nova({ nota: "x" })).estado.eu.nota, 68);
+});
+
+test("eventos com decisão: travam o jogo, mexem no jogador e entram no livro", async () => {
+  await nova({ temporadas: 2 });
+  let ev = null;
+  for (let i = 0; i < 80 && !ev; i++) { const r = await bruto("jogar"); assert.equal(r.ok, true, r.error); ultimo = r.estado; ev = r.estado.evento; if (r.estado.acabou) break; }
+  assert.ok(ev, "em 80 jogos tem de aparecer um evento");
+  assert.ok(ev.titulo && ev.texto && ev.escolhas.length >= 2);
+  assert.equal((await bruto("jogar")).ok, false); // o jogo espera a resposta
+  assert.equal((await bruto("evento", { escolha: 9 })).ok, false);
+  const r = await bruto("evento", { escolha: 0 });
+  assert.equal(r.ok, true, r.error);
+  assert.ok(r.resultado.texto && Array.isArray(r.resultado.chips));
+  assert.equal(r.estado.evento, null);
+  assert.equal(r.estado.livro[0].titulo, ev.titulo);
+  assert.equal((await bruto("evento", { escolha: 0 })).ok, false); // já respondido
+  assert.equal((await bruto("jogar")).ok, true);
+});
+
+test("modo História: abre com o capítulo da chegada, mostra o perfil e fecha com o epílogo", async () => {
+  const r0 = await nova({ modo: "historia", temporadas: 2 });
+  assert.equal(r0.estado.modo, "historia");
+  assert.equal(r0.estado.evento.id, "chegada");
+  assert.equal(r0.estado.perfil.length, 6);
+  assert.equal((await bruto("jogar")).ok, false);
+  const r1 = await bruto("evento", { escolha: 0 });
+  assert.equal(r1.ok, true, r1.error);
+  assert.equal(r1.estado.perfil.find((t) => t.id === "humildade").valor, 1);
+  assert.ok(r1.estado.marcas.includes("humilde"));
+  // a segunda temporada abre com outro capítulo
+  let e = r1.estado, abriu = null;
+  while (!e.fim) {
+    const era = e.temporada, r = await chamar(e.acabou ? "proxima" : "jogar"); assert.equal(r.ok, true, r.error); e = r.estado;
+    if (e.temporada > era) abriu = e.evento && e.evento.inicio;
+  }
+  assert.equal(abriu, true, "a temporada 2 abre com um capítulo");
+  assert.ok(e.epilogo && e.epilogo.titulo && e.epilogo.linhas.length >= 1);
+});
+
+test("modo clássico: sem perfil nem epílogo, mas com eventos", async () => {
+  const r = await nova({ temporadas: 1 });
+  assert.equal(r.estado.modo, "classico"); assert.equal(r.estado.perfil, null); assert.equal(r.estado.evento, null);
+  let e = r.estado;
+  while (!e.fim) { const x = await chamar("jogar"); assert.equal(x.ok, true, x.error); e = x.estado; }
+  assert.equal(e.epilogo, null);
 });
