@@ -6,6 +6,7 @@
 const bd = require("./bd.js");
 const C = require("./carreira.js").jogador;
 const M = require("./jogador-mercado.js");
+const H = require("./jogador-historia.js");
 const Mercado = require("./public/carreira/mercado.js");
 const { Motor, Evolucao } = C;
 const ID = "eu";
@@ -37,10 +38,10 @@ const falha = (cb, error) => typeof cb === "function" && cb({ ok: false, error }
 const arred = (v) => Math.round(v * 10) / 10;
 
 // ---------- o jogador ----------
-// a nota do começo pela idade: quem entra mais velho já chega mais pronto
-const notaInicial = (idade) => Math.round(75 + (idade - 17) * 0.8);
-function criarJogador({ nome, pos, nat, idade, pe, semente }) {
-  const nota = notaInicial(idade), r = Motor.sorteDe(`atr:${semente}`);
+// a nota do começo é escolhida pelo jogador, entre 65 e 70: o resto é crescer
+const NOTA_MIN = 65, NOTA_MAX = 70;
+function criarJogador({ nome, pos, nat, idade, pe, nota, semente }) {
+  const r = Motor.sorteDe(`atr:${semente}`);
   const a = PERFIL[pos].map((v) => clamp(Math.round(nota + v + (r() - 0.5) * 6), 20, 95));
   return { id: ID, nome, pos, nat, idade, desde: 1, nota, est: false, base: true, pe, eu: true, atr: Object.fromEntries(ATRIBUTOS.map((k, i) => [k, a[i]])) };
 }
@@ -112,6 +113,12 @@ function subirNivel(save, quantos) {
   return sobe;
 }
 
+// carreiras salvas antes dos eventos ganham os campos novos
+function garantir(j) {
+  j.modo = j.modo || "classico"; j.tracos = j.tracos || H.tracosVazios(); j.marcas = j.marcas || []; j.livro = j.livro || []; j.vistos = j.vistos || [];
+  if (j.ultimoEvento === undefined) j.ultimoEvento = -9;
+  if (j.evento === undefined) j.evento = null;
+}
 function diario(save, texto) {
   const j = save.jogador;
   j.diario.unshift({ temporada: save.temporada, rodada: save.rodada, texto });
@@ -132,8 +139,8 @@ function aposJogo(save, antes) {
   const t = j.temp, confAntes = j.confianca;
   // o treino da semana: uma nota (de 4 a 9) que sobe com o nível do jogador e o ritmo de evolução; treino bom convence o treinador
   const rt = Motor.sorteDe(`treino:${save.semente}:${save.temporada}:${save.rodada}`);
-  const treino = arred(clamp(6 + (C.notaDe(save, e) - 60) / 12 + (rt() - 0.45) * 2.6, 4, 9));
-  let delta = treino >= 8 ? 4 : treino >= 7 ? 2 : treino < 5.5 ? -1 : 0, xp = 4 + (j.foco === "equilibrado" ? 0 : 1);
+  const treino = arred(clamp(6 + (C.notaDe(save, e) - 60) / 12 + (rt() - 0.45) * 2.6 + H.bonusDeTreino(j), 4, 9));
+  let delta = treino >= 8 ? 4 : treino >= 7 ? 2 : treino < 5.5 ? -1 : 0, xp = 4 + (j.foco === "equilibrado" ? 0 : 1) + H.bonusDeXp(j);
   const linhas = [];
   if (jogou) {
     t.jogos++; t.soma = arred(t.soma + nota); t.gols += gols; t.assist += assist; t.cs += cs; if (titular) t.titular++; t.melhor = Math.max(t.melhor, nota);
@@ -178,15 +185,16 @@ function fecharTemporada(save) {
   const objetivos = j.objetivos.map((o) => { const p = progressoDe(t, o), cumprido = p >= o.alvo; if (cumprido) bonus++; return { ...o, progresso: p, cumprido, feito: true }; });
   j.xp += bonus * 100;
   j.confianca = clamp(Math.round(j.confianca + bonus * 4), 5, 100);
+  const pacto = H.fecharPacto(save, bonus, objetivos.length, diario);
   // fora de campo: prêmios, seleção e a fama que sobe com tudo isso
   const premios = M.premiosDaTemporada(save), selecao = M.chamadaDaSelecao(save);
   for (const p of premios) { j.premios.push({ ...p, temporada: save.temporada, ano: save.ano, clube: save.clube }); j.xp += 60; j.patrimonio += 250000; M.ganharFama(j, p.id.startsWith("bola-ouro") ? 12 : 5); diario(save, `Prêmio: ${p.nome}.`); }
   if (selecao.convocado) { j.xp += selecao.fase ? 50 : 20; M.ganharFama(j, selecao.fase === "Campeão" ? 15 : 4); diario(save, selecao.torneio ? `${selecao.torneio} pela seleção: ${selecao.fase}.` : "Convocado para a seleção."); }
-  M.ganharFama(j, (media ? (media - 6.5) * 2 : 0) + t.gols * 0.2 + (C.notaDe(save, e) - 65) / 10);
+  M.ganharFama(j, (media ? (media - 6.5) * 2 : 0) + t.gols * 0.2 + (C.notaDe(save, e) - 65) / 10 + H.bonusDeFama(j));
   j.papelFinal = t.titular / Math.max(1, save.calendario.length) >= 0.35 ? "titular" : "banco";
   j.historico.push({ temporada: save.temporada, ano: save.ano, clube: save.clube, idade: Evolucao.idadeNa(e, save.temporada), nota: C.notaDe(save, e), jogos: t.jogos, titular: t.titular, gols: t.gols, assist: t.assist, media, cs: t.cs, craque: t.craque,
     objetivos: objetivos.map((o) => [o.texto, o.cumprido]), premios: premios.map((p) => p.nome), selecao: selecao.convocado ? (selecao.fase || "convocado") : null });
-  j.balanco = { objetivos, premios, selecao };
+  j.balanco = { objetivos, premios, selecao, pacto };
   diario(save, `Fim da temporada ${save.ano}: ${t.jogos} jogos, ${t.gols} gols, ${bonus} de ${objetivos.length} objetivos cumpridos.`);
   j.mercado = save.temporada >= save.temporadasMax ? null : M.mercadoDoFim(save);
   return bonus;
@@ -203,6 +211,7 @@ function mudarDeClube(save, novo) {
 const comissaoDe = (j) => M.EMPRESARIOS[j.empresario || 0];
 function proximaTemporada(save) {
   const e = save.jovens[ID], j = save.jogador, m = j.mercado, esc = m && m.escolha;
+  if (j.evento) return "Responda ao evento antes de seguir.";
   if (m && m.precisaEscolher && !esc) return "Seu contrato acabou: renove ou escolha uma proposta antes de seguir.";
   // quem decide ficar com o contrato valendo volta do empréstimo para o clube de origem
   let destino = save.clube, tipo = "ficar", novoContrato = j.contrato;
@@ -231,6 +240,7 @@ function proximaTemporada(save) {
   if (mudou) diario(save, tipo === "emprestimo" ? `Emprestado ao ${C.clubeDe(save, destino).nome} por uma temporada.` : `Transferido para o ${C.clubeDe(save, destino).nome}.`);
   else if (tipo === "renovar") diario(save, `Renovou o contrato com o ${C.clubeDe(save, destino).nome} por ${novoContrato.fim - save.temporada + 1} anos.`);
   diario(save, `Começa a temporada ${save.ano}: ${Evolucao.idadeNa(e, save.temporada)} anos, nota ${nota}.`);
+  H.abrirTemporada(save);
   return null;
 }
 
@@ -252,7 +262,7 @@ function visao(save) {
     relatorio: j.relatorio, temp: { ...t, media: t.jogos ? arred(t.soma / t.jogos) : null },
     objetivos: j.objetivos.map((o) => ({ ...o, progresso: progressoDe(t, o) })),
     carreira: j.carreira, historico: j.historico, diario: j.diario.slice(0, 12),
-    acabou, fim,
+    acabou, fim, ...H.visao(save), epilogo: fim && H.historia(j) ? H.epilogo(save) : null,
     contrato: j.contrato ? { ...j.contrato, anos: j.contrato.fim - save.temporada + 1 } : null, emprestimo: j.emprestimo ? { de: j.emprestimo.de } : null,
     patrimonio: j.patrimonio, fama: j.fama, empresario: { nivel: j.empresario, ...M.EMPRESARIOS[j.empresario], niveis: M.EMPRESARIOS.map((x, i) => ({ nivel: i, nome: x.nome, comissao: x.comissao, salario: x.salario, extras: x.extras, liberado: j.fama >= x.fama, fama: x.fama })) },
     premios: j.premios, selecao: j.selecao ? { jogos: j.selecao.jogos, gols: j.selecao.gols, titulos: j.selecao.titulos, historico: j.selecao.historico.slice(-5) } : null, nacao: j.nat,
@@ -269,7 +279,7 @@ module.exports = function ligarJogador(io) {
       if (!c || !c.dados.jogador) return falha(cb, "Carreira não encontrada. Entre de novo.");
       const save = c.dados;
       if (C.antiga(save)) return falha(cb, C.ANTIGA);
-      C.completar(save);
+      C.completar(save); garantir(save.jogador);
       const r = acao(save);
       if (typeof r === "string") return falha(cb, r);
       bd.salvarCarreira(c.id, save);
@@ -278,7 +288,7 @@ module.exports = function ligarJogador(io) {
     function abrir(c, cb, extra = {}) {
       if (!c || !c.dados.jogador) return falha(cb, "Carreira de jogador não encontrada.");
       if (C.antiga(c.dados)) return falha(cb, C.ANTIGA);
-      C.completar(c.dados);
+      C.completar(c.dados); garantir(c.dados.jogador);
       token = c.token;
       ok(cb, { token: c.token, estado: visao(c.dados), ...extra });
     }
@@ -288,17 +298,19 @@ module.exports = function ligarJogador(io) {
       if (!POSICOES.includes(d.pos)) return falha(cb, "Escolha a posição.");
       if (!base.clubes.some((c) => c.id === d.clube)) return falha(cb, "Escolha um clube.");
       if (++criadas > 5) return falha(cb, "Calma: já foram várias carreiras criadas daqui.");
-      const idade = inteiro(d.idade, 17, 23, 18), nat = NACOES.includes(d.nat) ? d.nat : "Brasil", pe = d.pe === "E" ? "E" : "D";
+      const idade = inteiro(d.idade, 17, 23, 18), notaDoInicio = inteiro(d.nota, NOTA_MIN, NOTA_MAX, 68), modo = d.modo === "historia" ? "historia" : "classico", nat = NACOES.includes(d.nat) ? d.nat : "Brasil", pe = d.pe === "E" ? "E" : "D";
       try {
         const save = C.novaCarreira(nome, d.clube, "", inteiro(d.temporadas, 1, 5, 3), 0);
         save.temporadasMax = inteiro(d.temporadas, 1, 15, 3); // a carreira do técnico para em 5; a do jogador vai até 15
-        const eu = criarJogador({ nome, pos: d.pos, nat, idade, pe, semente: save.semente });
+        const eu = criarJogador({ nome, pos: d.pos, nat, idade, pe, nota: notaDoInicio, semente: save.semente });
         save.jovens[ID] = eu; save.donos[ID] = d.clube;
         save.jogador = { id: ID, nome, pos: d.pos, nat, pe, teto: tetoDe(save.semente), confianca: 45, ajuste: ajusteDe(45), foco: "equilibrado", xp: 0, niveis: 0, forma: [], relatorio: null, temp: tempVazia(), objetivos: [],
-          carreira: { jogos: 0, gols: 0, assist: 0 }, historico: [], diario: [], fama: 0, empresario: 0, patrimonio: 0, premios: [], selecao: null, emprestimo: null, mercado: null, balanco: null, papelFinal: "banco" };
+          carreira: { jogos: 0, gols: 0, assist: 0 }, historico: [], diario: [], fama: 0, empresario: 0, patrimonio: 0, premios: [], selecao: null, emprestimo: null, mercado: null, balanco: null, papelFinal: "banco",
+          modo, tracos: H.tracosVazios(), marcas: [], evento: null, livro: [], vistos: [], pacto: null, ultimoEvento: -9 };
         save.jogador.objetivos = objetivosDe(save);
         save.jogador.contrato = M.contratoInicial(save, d.clube, Math.min(3, save.temporadasMax));
         diario(save, `Assinou o primeiro contrato profissional com o ${C.clubeDe(save, d.clube).nome}.`);
+        H.abrirTemporada(save); // no modo História o primeiro capítulo já espera na chegada ao clube
         const c = bd.criarCarreira(nome, save);
         token = c.token;
         ok(cb, { token: c.token, recuperacao: c.recuperacao, estado: visao(save) });
@@ -312,11 +324,13 @@ module.exports = function ligarJogador(io) {
     }));
     socket.on("jogar", (d, cb) => comJogador(cb, (save) => {
       if (C.temporadaAcabou(save)) return "A temporada acabou.";
+      if (save.jogador.evento) return "Responda ao evento antes de jogar.";
       const antes = { papel: papelDe(save), jogos: (save.desempenho[ID] || [0, 0])[0], soma: (save.desempenho[ID] || [0, 0])[1] };
       const erro = C.jogarProximo(save, { modo: 1 });
       if (erro) return erro;
       aposJogo(save, antes);
       if (C.temporadaAcabou(save)) fecharTemporada(save); // o balanço do ano já fica no histórico, mesmo no fim da carreira
+      else H.talvezEvento(save);
     }));
     socket.on("proxima", (d, cb) => comJogador(cb, (save) => {
       if (!C.temporadaAcabou(save)) return "A temporada ainda não acabou.";
@@ -339,6 +353,8 @@ module.exports = function ligarJogador(io) {
       if (d.tipo === "oferta" && m.ofertas.some((x) => x.id === d.id)) { m.escolha = { tipo: "oferta", id: d.id }; return; }
       return "Essa opção não existe.";
     }));
+    // a resposta a um evento: o índice da escolha
+    socket.on("evento", (d = {}, cb) => comJogador(cb, (save) => H.responder(save, inteiro(d.escolha, 0, 9, -1), diario)));
     socket.on("codigo", (d, cb) => {
       const c = token && bd.carreiraPorToken(token);
       if (!c) return falha(cb, "Carreira não encontrada. Entre de novo.");
