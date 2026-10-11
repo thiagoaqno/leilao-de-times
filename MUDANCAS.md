@@ -1,8 +1,8 @@
-# Vila: música com botão de volume na header
+# Carreira: música com botão de volume na barra
 
 ## O que muda no jogo
 
-Na Vila aparece um botão 🎵 na header. Ele abre um mini-tocador com tocar/pausar, música anterior e próxima, nome da faixa e volume. A música segue em ordem e recomeça a lista no fim. O volume e se estava ligada ficam guardados no navegador. O botão só aparece se houver músicas.
+Na página da Carreira (só nela; a Vila fica sem música) aparece um botão ♪ Música na barra de cima. Ele abre um mini-tocador com tocar/pausar, música anterior e próxima, nome da faixa e volume. A música segue em ordem e recomeça a lista no fim. O volume e se estava ligada ficam guardados no navegador. O botão só aparece se houver músicas.
 
 ## Como adicionar músicas
 
@@ -16,4 +16,4 @@ Ponha os arquivos (`.mp3`, `.ogg`, `.m4a`, `.wav`) em `public/musica/` e faça o
 
 ## Como
 
-`GET /api/musicas` (`server.js`) lista a pasta; `public/vila/musica.js` faz o tocador; o botão e o painel ficam em `public/index.html`. Teste: `tests/musica.test.js`.
+`GET /api/musicas` (`server.js`) lista a pasta; `public/carreira/musica.js` faz o tocador; o botão e o painel são criados na barra de `public/carreira/index.html`. Teste: `tests/musica.test.js`.
