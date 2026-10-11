@@ -15,11 +15,13 @@ function mostrarAbaSede(aba) {
     b.setAttribute("aria-selected", String(ativa)); b.tabIndex = ativa ? 0 : -1;
   }
 }
-for (const b of document.querySelectorAll("#abasSede [data-aba]")) b.onclick = () => mostrarAbaSede(b.dataset.aba);
+// a troca desliza para o lado (zoom.js); sem ele, troca na hora
+const irParaAba = (aba, dir) => (typeof Zoom !== "undefined" ? Zoom.aba(aba, dir) : mostrarAbaSede(aba));
+for (const b of document.querySelectorAll("#abasSede [data-aba]")) b.onclick = () => irParaAba(b.dataset.aba);
 $("abasSede").addEventListener("keydown", (e) => { // as setas andam entre as abas
   const k = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!k) return;
   const i = (ABAS_SEDE.indexOf(abaSede) + k + ABAS_SEDE.length) % ABAS_SEDE.length;
-  mostrarAbaSede(ABAS_SEDE[i]); $("abasSede").querySelector(`[data-aba="${abaSede}"]`).focus();
+  irParaAba(ABAS_SEDE[i], k); $("abasSede").querySelector(`[data-aba="${ABAS_SEDE[i]}"]`).focus();
 });
 mostrarAbaSede(abaSede);
 
