@@ -371,3 +371,16 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .hub-memoria .diario li.marca{color:var(--t1);font-weight:600}
 .hub-memoria .diario small{color:var(--t3);margin-right:4px}
 .entrada .lembranca{font-size:12px;font-style:italic;color:var(--t2);border-left:3px solid var(--fx-teal);padding-left:8px;margin:4px 0}
+
+/* ---------- o guia (guia.js): o botão na barra e a janela com o "como jogar" por assunto ---------- */
+#barra .guia-btn{display:inline-flex;align-items:center;gap:6px;height:34px;min-height:34px;padding:0 12px;border-radius:2px;background:#d7e0e8e6;color:#24323e;font:600 15px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.06em}
+#barra .guia-ic{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--fx-teal);color:var(--fx-tinta);font:700 13px/1 var(--fx-cond)}
+@media (hover:hover) and (pointer:fine){#barra .guia-btn:hover{background:#eef3f7}}
+@media (max-width:480px){#barra .guia-txt{display:none}#barra .guia-btn{padding:0 8px}}
+.guia{width:min(640px,calc(100vw - 24px))}
+.guia-abas{display:flex;gap:6px;overflow-x:auto;margin:10px 0 12px;padding-bottom:4px;scrollbar-width:thin}
+.guia-abas button{flex:none;min-height:34px;padding:0 12px;border-radius:2px;font:600 14px/1 var(--fx-cond);text-transform:uppercase;letter-spacing:.05em}
+.guia-abas button[aria-selected="true"]{background:var(--fx-teal);color:var(--fx-tinta)}
+.guia-corpo{max-height:min(54dvh,420px);overflow:auto;font-size:14.5px;line-height:1.5}
+.guia-corpo p{margin:0 0 10px}.guia-corpo ul,.guia-corpo ol{margin:0 0 10px;padding-left:20px}.guia-corpo li{margin-bottom:5px}
+.guia .linha.fim{margin-top:12px}
