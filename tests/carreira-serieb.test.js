@@ -105,6 +105,25 @@ test("as carreiras de antes da Série B ganham as divisões ao abrir", () => {
   assert.ok(serieB.clubes.every((c) => save.caixaIA[c.id] > 0), "a IA da Série B tem caixa para comprar");
 });
 
+test("a carreira de antes da Série B que chega à virada sem jogar depois da atualização também tem acesso e rebaixamento", () => {
+  const save = novaCarreira("Teste", "flamengo", "x", 3);
+  terminar(save);
+  delete save.divisoes; delete save.competicoes["serieb-2026"]; for (const c of serieB.clubes) delete save.caixaIA[c.id];
+  completar(save);
+  assert.strictEqual(novaTemporada(save), null);
+  assert.strictEqual(save.temporada, 2);
+  assert.strictEqual(save.divisoes["serieb-2026"].filter((id) => serieA.clubes.some((c) => c.id === id)).length, 4, "4 da Série A caíram");
+  assert.strictEqual(save.divisoes["brasileirao-2026"].filter((id) => serieB.clubes.some((c) => c.id === id)).length, 4, "4 da Série B subiram");
+});
+
+test("carreira em grupo de antes da Série B: a virada também troca as divisões", () => {
+  const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "Host" }, { clube: "palmeiras", nome: "Amigo" }], { temporadas: 2 });
+  for (const c of ["flamengo", "palmeiras"]) save.humanos[c].estado.jogosJogados = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, c).map((j) => j.id);
+  delete save.divisoes; delete save.competicoes["serieb-2026"];
+  assert.strictEqual(G.novaTemporadaGrupo(save), null);
+  assert.strictEqual(save.divisoes["brasileirao-2026"].filter((id) => serieB.clubes.some((c) => c.id === id)).length, 4);
+});
+
 test("carreira em grupo: dá para escolher clube da Série B e a virada troca as divisões para todos", () => {
   assert.ok(G.clubesEscolhiveis("brasil").some((c) => c.liga === "serieb-2026"));
   const save = G.novaCarreiraGrupo([{ clube: "flamengo", nome: "Host" }, { clube: "ceara", nome: "Amigo" }], { temporadas: 2 });
