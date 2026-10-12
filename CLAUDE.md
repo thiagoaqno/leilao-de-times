@@ -107,6 +107,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Banco (Banco Imobiliário) | `banco.js` | `tabuleiro.js` (as casas e regras), e 5 scripts que rodam em ordem e **dividem as variáveis globais**. Ver a lista logo abaixo. |
 | Bloqueio (Quoridor: peões e paredes, 2 ou 4 jogadores, robôs completam) | `bloqueio.js` (canal `/bloqueio`; sala por código como o Dominó, `act`: `move`, `wall`, `addBot`, `start`, `again`; o relógio joga por quem demora) | `index.html` (tudo inline, tabuleiro em SVG), `regras.js` (UMD `window.Bloqueio`: `movimentos`, `erroDaParede`, `mover`, `parede`, `jogadaDoRobo`). Prédio na Rua das Cartas (terreno que era vazio). Testes: `tests/bloqueio.test.js` |
 | Uno | `uno.js` | `index.html` (tudo inline), `regras.js` |
+| Gatinhos Explosivos (Exploding Kittens) | `kittens.js` (canal `/kittens`, 2 a 5 jogadores; `KITTENS_*_MS` aceleram os tempos nos testes; a função devolve `{ rooms }` para os testes) | `index.html` (tudo inline; fase 1: só a estrutura, sem o estilo final), `regras.js` (`window.Gatinhos`: `TIPOS`, `montarMesa`). Ações: `play` (`ids`, `target`, `named`), `nope`, `draw`, `give`, `place` (`pos`). Toda jogada fica pendente por `NOPE_MS` (`g.pending`) para o Nem Pensar; `g.step` zera o relógio. Testes: `tests/kittens.test.js` |
 | Truco | `truco.js` | `index.html` (tudo inline), `regras.js` |
 | Dominó | `domino.js` | `index.html`, `regras.js` |
 | Ludo | `ludo.js` | `index.html`, `regras.js` |

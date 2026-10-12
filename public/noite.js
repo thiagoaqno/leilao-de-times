@@ -9,7 +9,7 @@
   const JOGO = location.pathname.split("/").filter(Boolean)[0] || "";
   const URLS = { rocket: "/rocket/" };
   // como cada página guarda o código da sala no endereço e quais campos ela usa (o padrão: hName, hCode, btnCreate, btnJoin)
-  const MESA = ["banco", "uno", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao"];
+  const MESA = ["banco", "uno", "kittens", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao"];
   const CAMPOS = { leilao: { nomeCriar: "cName", nome: "jName", codigo: "jCode" } };
   const param = (j) => (MESA.includes(j) ? "mesa" : "sala");
   const campos = { nome: "hName", nomeCriar: "hName", codigo: "hCode", criar: "btnCreate", entrar: "btnJoin", ...(CAMPOS[JOGO] || {}) };
