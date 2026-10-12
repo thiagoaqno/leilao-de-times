@@ -121,8 +121,93 @@ function ingrediente(skin, item) {
   return { name, cat, nota: row ? row[1] : 7, tags: row ? row[2].split(" ").filter(Boolean) : [] };
 }
 
+// ---------------------------------------------------------------------------------
+// PEDIDO DO CLIENTE e RECEITA SECRETA (valem para a partida inteira; sorteados quando o leilão começa)
+//   PEDIDOS: cada partida tem um cliente que gosta de uns jeitos e desgosta de outros. `peso` soma por ingrediente
+//     que tem a característica (as mesmas tags de NOTAS); o efeito no prato fica entre -2 e +2.
+//   RECEITAS: cada jogador recebe uma receita só dele. `precisa`: cada item é um ingrediente (alternativas com "|");
+//     prato com todos ganha RECEITA_BONUS. Os outros só descobrem a receita quando o resultado sai.
+const RECEITA_BONUS = 1.2;
+const PEDIDO_TETO = 2;
+const PEDIDOS = {
+  salgado: [
+    { id: "madrugada", nome: "Madrugada pós-rolê", texto: "O cliente saiu do rolê às 4h e quer comida de verdade, sem frescura.", peso: { raiz: 0.6, gordo: 0.5, crocante: 0.4, chique: -0.5, fresco: -0.2 } },
+    { id: "chef", nome: "Chef francês exigente", texto: "Tem toalha na mesa e paladar treinado: quer técnica, nada de exagero.", peso: { chique: 0.7, fresco: 0.3, gordo: -0.5, raiz: -0.3 } },
+    { id: "frio", nome: "Noite de frio", texto: "Está um gelo lá fora: o cliente quer algo que esquente e abrace.", peso: { gordo: 0.4, forte: 0.3, picante: 0.4, fresco: -0.4 } },
+    { id: "leve", nome: "Calor de rachar", texto: "Ninguém aguenta comida pesada hoje: o cliente quer leve e fresco.", peso: { fresco: 0.7, gordo: -0.6, picante: 0.1, forte: -0.2 } },
+    { id: "ousado", nome: "Crítico aventureiro", texto: "O crítico enjoou do básico e quer ser surpreendido.", peso: { ousado: 0.8, picante: 0.3, raiz: -0.5 } },
+    { id: "tradicional", nome: "Vovó tradicional", texto: "A vovó só come o que conhece. Invenção não entra.", peso: { raiz: 0.7, ousado: -0.6, chique: -0.2 } },
+  ],
+  drink: [
+    { id: "festa", nome: "Festa na laje", texto: "A pista está cheia: o cliente quer algo doce e refrescante.", peso: { doce: 0.5, fresco: 0.5, amargo: -0.4, forte: -0.2 } },
+    { id: "bar", nome: "Bar de hotel chique", texto: "Ambiente sofisticado: o cliente quer classe e um toque amargo.", peso: { chique: 0.7, amargo: 0.4, doce: -0.4, raiz: -0.2 } },
+    { id: "calor", nome: "Tarde de verão", texto: "Calor de 40 graus: tem que ser azedinho e gelado.", peso: { azedo: 0.6, fresco: 0.6, forte: -0.4, gordo: -0.3 } },
+    { id: "ousado", nome: "Coquetelaria autoral", texto: "O barman convidado quer ver coragem no copo.", peso: { ousado: 0.8, picante: 0.3, raiz: -0.4 } },
+    { id: "boteco", nome: "Boteco raiz", texto: "Mesa de plástico, saideira e nada de frescura.", peso: { raiz: 0.7, forte: 0.3, chique: -0.5 } },
+  ],
+  sobremesa: [
+    { id: "crianca", nome: "Festa de criança", texto: "A garotada manda: quanto mais doce, melhor, e nada de gosto estranho.", peso: { doce: 0.6, gordo: 0.3, raiz: 0.2, ousado: -0.6, azedo: -0.3 } },
+    { id: "chef", nome: "Jantar de degustação", texto: "Fecha um menu longo: o cliente quer elegância e equilíbrio.", peso: { chique: 0.7, fresco: 0.4, azedo: 0.2, gordo: -0.5 } },
+    { id: "chocolatra", nome: "Chocólatra assumido", texto: "Chocolate, doce e gordura: a dieta começa segunda.", peso: { doce: 0.5, gordo: 0.5, fresco: -0.3 } },
+    { id: "leve", nome: "Fim de almoço leve", texto: "Quem almoçou muito quer algo fresco para fechar.", peso: { fresco: 0.7, azedo: 0.3, gordo: -0.6, doce: -0.2 } },
+    { id: "ousado", nome: "Confeiteiro de vanguarda", texto: "O jurado quer sabor que ninguém esperava.", peso: { ousado: 0.8, azedo: 0.2, raiz: -0.5 } },
+  ],
+};
+const RECEITAS = {
+  hamburguer: [
+    { id: "xbacon", nome: "X-Bacon clássico", precisa: ["bacon", "cheddar"] },
+    { id: "casa", nome: "O smash da casa", precisa: ["smash", "cheddar", "picles"] },
+    { id: "gourmet", nome: "Gourmet de domingo", precisa: ["wagyu|picanha", "brie|gorgonzola", "cebola caramelizada"] },
+    { id: "frango", nome: "Frango crocante", precisa: ["frango empanado", "maionese de alho", "alface|rucula"] },
+    { id: "doce-picante", nome: "Doce e picante", precisa: ["geleia de pimenta|chipotle", "bacon"] },
+    { id: "sulista", nome: "Pulled pork americano", precisa: ["pulled pork", "coleslaw", "barbecue"] },
+  ],
+  pizza: [
+    { id: "margherita", nome: "Margherita de verdade", precisa: ["san marzano", "bufala", "manjericao"] },
+    { id: "calabresa", nome: "Calabresa com cebola", precisa: ["calabresa", "cebola"] },
+    { id: "frango", nome: "Frango com catupiry", precisa: ["frango", "catupiry"] },
+    { id: "parma", nome: "Parma com rúcula", precisa: ["parma", "rucula"] },
+    { id: "pepperoni", nome: "Pepperoni com mel", precisa: ["pepperoni", "mel com pimenta"] },
+    { id: "nordestina", nome: "Carne seca com catupiry", precisa: ["carne seca", "catupiry"] },
+  ],
+  drink: [
+    { id: "caipirinha", nome: "Caipirinha raiz", precisa: ["cachaca", "limao"] },
+    { id: "gintonica", nome: "Gin tônica", precisa: ["gin", "tonica"] },
+    { id: "spritz", nome: "Spritz", precisa: ["aperol", "espumante"] },
+    { id: "mojito", nome: "Mojito", precisa: ["rum", "hortela"] },
+    { id: "oldfashioned", nome: "Old Fashioned", precisa: ["whisky", "angostura"] },
+    { id: "negroni", nome: "Quase um Negroni", precisa: ["campari", "vermute", "gin"] },
+  ],
+  sobremesa: [
+    { id: "petit", nome: "Petit gâteau vermelho", precisa: ["petit gateau", "frutas vermelhas"] },
+    { id: "romeu", nome: "Romeu e Julieta", precisa: ["cheesecake", "goiabada"] },
+    { id: "banoffee", nome: "Banana com doce de leite", precisa: ["banana", "doce de leite"] },
+    { id: "pudim", nome: "Pudim de caramelo", precisa: ["pudim", "caramelo"] },
+    { id: "brownie", nome: "Brownie com morango", precisa: ["brownie", "morango"] },
+    { id: "cookie", nome: "Gelato com paçoca", precisa: ["pistache", "pacoca"] },
+  ],
+};
+const familiaDe = (skin) => (skin === "hamburguer" || skin === "pizza" ? "salgado" : skin);
+function sortearComida(skin, capIds) {
+  const ped = PEDIDOS[familiaDe(skin)], rec = (RECEITAS[skin] || []).slice().sort(() => rnd() - 0.5);
+  if (!ped || !rec.length) return null;
+  const receitas = {};
+  capIds.forEach((id, i) => { receitas[id] = rec[i % rec.length].id; });
+  return { pedido: pick(ped).id, receitas };
+}
+const pedidoDe = (skin, id) => (PEDIDOS[familiaDe(skin)] || []).find((p) => p.id === id) || null;
+const receitaDe = (skin, id) => (RECEITAS[skin] || []).find((r) => r.id === id) || null;
+// a receita está no prato? (devolve quais itens já tem)
+function cumpre(receita, nomes) {
+  const itens = receita.precisa.map((alt) => ({ alt, ok: alt.split("|").some((k) => tem(nomes, k)) }));
+  return { itens, ok: itens.every((i) => i.ok) };
+}
+// as características de um ingrediente e as combinações que dão bônus: o navegador mostra no leilão
+const tagsDe = (skin, item) => ingrediente(skin, item).tags;
+const combosVisiveis = (skin) => (COMBOS[skin] || []).filter(([, b]) => b > 0).map(([keys, bonus, frase]) => ({ keys, bonus, frase }));
+
 // análise do prato: nota comum + tudo que os jurados podem comentar
-function analisar(skin, team, perTeam) {
+function analisar(skin, team, perTeam, comida = {}) {
   const ing = team.map((t) => ingrediente(skin, t.player));
   const nomes = ing.map((i) => low(i.name)).join(" | ");
   const conta = (tag) => ing.filter((i) => i.tags.includes(tag)).length;
@@ -150,7 +235,21 @@ function analisar(skin, team, perTeam) {
   if (flags.equilibrado) nota += 0.5;
   if (flags.doisDestilados) nota -= 0.8;
   nota -= faltaCat.length * 2 + vagas * 0.4;
-  return { ing, combos, brigas, faltaCat, vagas, flags, nota };
+  // o pedido do cliente (o mesmo para todos) e a receita secreta de quem montou o prato
+  const pedido = comida.pedido || null, receita = comida.receita || null;
+  let pedidoEf = 0, pedidoGostou = [], pedidoDesgostou = [];
+  if (pedido) {
+    for (const i of ing) {
+      const v = i.tags.reduce((a, t) => a + (pedido.peso[t] || 0), 0);
+      pedidoEf += v;
+      if (v > 0.25) pedidoGostou.push(i.name); else if (v < -0.25) pedidoDesgostou.push(i.name);
+    }
+    pedidoEf = clamp(pedidoEf * 0.6, -PEDIDO_TETO, PEDIDO_TETO);
+    nota += pedidoEf;
+  }
+  const cumprida = receita ? cumpre(receita, nomes) : null;
+  if (cumprida && cumprida.ok) nota += RECEITA_BONUS;
+  return { ing, combos, brigas, faltaCat, vagas, flags, nota, pedido, pedidoEf, pedidoGostou, pedidoDesgostou, receita, receitaOk: !!(cumprida && cumprida.ok), receitaItens: cumprida ? cumprida.itens : [] };
 }
 
 // ---------------- jurados ----------------
@@ -214,10 +313,11 @@ function julgar(room) {
   const caps = room.order.map((id) => ({ id, ...room.captains[id] })).filter((c) => c.team.length);
   if (caps.length < 2) throw new Error("Precisa de pelo menos 2 pratos para ter batalha.");
   const votes = (room.judge && room.judge.votes) || {};
+  const com = room.comida || {}, pedido = pedidoDe(skin, com.pedido);
   const nomeDe = (id) => room.captains[id].name, prato = (c) => c.teamName || `${terms.prefix || NOME[skin]} ${c.name}`; // o nome que a pessoa deu, se deu
 
   const pratos = caps.map((c) => {
-    const a = analisar(skin, c.team, room.config.perTeam);
+    const a = analisar(skin, c.team, room.config.perTeam, { pedido, receita: receitaDe(skin, (com.receitas || {})[c.id]) });
     const jurados = JURADOS.map((j) => {
       // o gosto pessoal do jurado mexe no máximo 1,5 para cima ou para baixo
       const n = Math.round(clamp(a.nota + clamp(j.nota(a) - a.nota, -1.5, 1.5) + (rnd() - 0.5) * 1.0, 0, 10) * 10) / 10;
@@ -233,12 +333,18 @@ function julgar(room) {
   const sections = [], E = EMOJI[skin], titulo = `${E} Batalha de ${NOME[skin]} da Galera`;
   // 1. apresentação
   sections.push([`# ${titulo}`, "", `A nota final é **metade júri, metade galera**. O júri de hoje:`, "",
-    ...JURADOS.map((j) => `- **${j.nome}**, ${j.desc}`), "", `## ${E} Os pratos`, "",
+    ...JURADOS.map((j) => `- **${j.nome}**, ${j.desc}`), "",
+    ...(pedido ? [`## 📋 O pedido do cliente: ${pedido.nome}`, "", `*${pedido.texto}*`, ""] : []), `## ${E} Os pratos`, "",
     ...pratos.map((p) => `- **${prato(p.c)}**: ${p.a.ing.map((i) => i.name).join(", ")}`)].join("\n"));
   // 2. um prato por vez, só com o júri
   for (const p of pratos.slice().sort(() => rnd() - 0.5)) {
     const s = [`## 🔔 ${prato(p.c)}`, "", `*${p.a.ing.map((i) => i.name).join(" · ")}*`, ""];
     for (const j of p.jurados) s.push(`**${j.nome}: ${fmt(j.nota)}**`, "", ...j.falas.map((l) => `> ${l}`), "");
+    if (p.a.pedido) {
+      const ef = p.a.pedidoEf, bom = joinE(p.a.pedidoGostou), mau = joinE(p.a.pedidoDesgostou);
+      s.push(`📋 ${p.a.pedido.nome}: ${ef > 0.2 ? `o cliente gostou do pedido atendido (+${fmt(ef)})` : ef < -0.2 ? `o cliente torceu o nariz (${fmt(ef)})` : "nem lá, nem cá"}.${bom ? ` Ajudaram: ${bom}.` : ""}${mau ? ` Atrapalharam: ${mau}.` : ""}`);
+    }
+    if (p.a.receita) s.push(p.a.receitaOk ? `🎯 Receita secreta cumprida: **${p.a.receita.nome}** (+${fmt(RECEITA_BONUS)}).` : `🎯 A receita secreta era **${p.a.receita.nome}**, mas o prato não fechou (faltou ${joinE(p.a.receitaItens.filter((i) => !i.ok).map((i) => i.alt.split("|")[0]))}).`);
     if (p.a.combos.length) s.push(`✨ Combinação: ${joinE(p.a.combos.map((c) => c.frase))}.`);
     if (p.a.brigas.length) s.push(`💥 Briga no prato: ${joinE(p.a.brigas.map((c) => c.frase))}.`);
     s.push("", `**Nota do júri: ${fmt(p.juri)}**`);
@@ -273,4 +379,4 @@ function julgar(room) {
   return { sections, summary: null };
 }
 
-module.exports = { julgar, analisar, NOTAS, COMBOS, JURADOS, SKINS: Object.keys(NOTAS) };
+module.exports = { julgar, analisar, NOTAS, COMBOS, JURADOS, PEDIDOS, RECEITAS, RECEITA_BONUS, sortearComida, pedidoDe, receitaDe, cumpre, tagsDe, combosVisiveis, SKINS: Object.keys(NOTAS) };

@@ -918,3 +918,24 @@ dialog.festa::backdrop{background:#000d;backdrop-filter:blur(4px)}
 .fsJog b{font-weight:700}.fsJog.reserva{opacity:.75}
 .fsJog i{display:inline-flex;align-items:center;gap:2px;font-style:normal;font-weight:800;color:var(--acc)}.fsJog i .ic{width:13px;height:13px}
 @media (prefers-reduced-motion:reduce){dialog.festa *,dialog.festa{animation-delay:0s!important}}
+
+/* temas de comida: pedido do cliente, características dos ingredientes, combos e receita secreta */
+.comida{display:grid;gap:8px;font-size:13.5px}
+.comida p{margin:2px 0 6px;color:var(--muted)}
+.comida .ctit{display:flex;gap:8px;align-items:center;font-family:var(--display);font-size:17px}
+.comida .ctit .ic{width:18px;height:18px;color:var(--gold)}
+.cpedido,.cvez,.crec{padding:10px 14px;border-radius:14px;background:var(--pane2);border:1px solid var(--line2)}
+.cpedido{border-color:#f6c64e55}
+.crec{border-color:#56c8ff55}
+.crec.ok{border-color:#3ee49c88;background:#3ee49c14}
+.cpesos{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.clbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-right:2px}
+.clbl2{font-size:12px}
+.ctag{padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#ffffff0d;border:1px solid var(--line2);color:var(--muted)}
+.ctag.bom{background:#3ee49c1f;border-color:#3ee49c66;color:var(--green)}
+.ctag.mau{background:#ff4f5e1f;border-color:#ff4f5e66;color:var(--red)}
+.cdicas,.citens{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:3px}
+.cdicas .dica-bom{color:var(--green)}
+.citens li{color:var(--muted)}
+.citens li.ok{color:var(--green);font-weight:700}
+.citens small{color:var(--dim);font-weight:400}
