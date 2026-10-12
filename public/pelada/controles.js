@@ -249,7 +249,7 @@ export const curveNow = () => (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1
 // sai quando o jogador alcança a bola (tentarFila, a cada quadro).
 export function doKick(kind, power, o = {}) {
   const me = G.me, t = now();
-  if (!canPlay() || t - me.lastKick < C.KICK_CD || me.downT > 0) return;
+  if (!canPlay() || t - me.lastKick < C.KICK_CD || me.downT > 0 || me.caidoT > 0) return;
   const ball = bolaAqui();
   const body = { ...me, id: E.ME && G.mode === "online" ? E.ME.id : "eu" };
   const facingAntes = me.facing, costasPara = (y) => Math.abs(Math.atan2(Math.sin(y - facingAntes), Math.cos(y - facingAntes))) > 1.9;
@@ -274,7 +274,7 @@ export function doKick(kind, power, o = {}) {
   if (!opt && kind === "chute") opt = { costas: costasPara(yaw) }; // a bicicleta: de costas para onde chuta
   const golpe = C.acrobacia(body, ball, kind, yaw, offline() ? 0 : 0.2, opt) || how;
   me.st.golpe = { how: golpe, kind };
-  if (golpe === "bicicleta") me.caidoT = 1.2; // caiu de costas: fica parado enquanto levanta (a animação dura o mesmo)
+  if (golpe === "bicicleta") me.caidoT = C.CAIDO_BICICLETA; // caiu de costas: fica parado enquanto levanta (a animação dura o mesmo)
   me.facing = yaw;
   Sound.kick(opt && opt.vel ? 0.35 : power);
   if (offline()) { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve, G.F, opt); trocaNoPasse(receptor); G.tKicks = (G.tKicks || 0) + 1; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }

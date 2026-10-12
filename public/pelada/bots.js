@@ -148,7 +148,7 @@ function botsKickoff(kicking) {
   for (const team of ["A", "B"]) {
     const list = [...(team === "A" ? [G.me] : []), ...G.bots.filter((x) => x.team === team)];
     const sp = C.spawns(G.F.id, team, list.map(() => ({})), kicking === team);
-    list.forEach((p, i) => Object.assign(p, { x: sp[i][0], y: 0, z: sp[i][2], vx: 0, vy: 0, vz: 0, onGround: true, facing: sp[i][3], yaw: sp[i][3], slideT: 0, downT: 0, sprint: false }));
+    list.forEach((p, i) => Object.assign(p, { x: sp[i][0], y: 0, z: sp[i][2], vx: 0, vy: 0, vz: 0, onGround: true, facing: sp[i][3], yaw: sp[i][3], slideT: 0, downT: 0, levantaT: 0, sprint: false }));
   }
   for (const k of G.keepers) Object.assign(k, { z: 0, vx: 0, vy: 0, vz: 0, y: 0, onGround: true, diveT: 0, holdT: 0 });
   G.camYaw = G.me.facing; G.camPitch = 0.05;
@@ -220,8 +220,9 @@ function botDecide(bot, t, d, s) {
 }
 function stepBot(bot, dt, t, live) {
   const F = G.F, b = local.ball, d = BOT_DIF[G.bm.dif], s = bot.team === "A" ? 1 : -1;
-  bot.slideT = Math.max(0, bot.slideT - dt); bot.downT = Math.max(0, bot.downT - dt); bot.slideCd = Math.max(0, bot.slideCd - dt);
-  const busy = bot.slideT > 0 || bot.downT > 0;
+  if (bot.downT > 0 && bot.downT <= dt) bot.levantaT = C.LEVANTANDO; // acabou de cair: fica parado enquanto levanta
+  bot.slideT = Math.max(0, bot.slideT - dt); bot.downT = Math.max(0, bot.downT - dt); bot.slideCd = Math.max(0, bot.slideCd - dt); bot.levantaT = Math.max(0, (bot.levantaT || 0) - dt);
+  const busy = bot.slideT > 0 || bot.downT > 0 || bot.levantaT > 0;
   let wx = 0, wz = 0, speed = 0, sprint = false, olha = null;
   if (live && !busy) {
     const tem = b.dono === bot.id, donoT = b.dono ? timeDe(b.dono) : null, dB = Math.hypot(b.x - bot.x, b.z - bot.z);
@@ -265,7 +266,7 @@ function stepBot(bot, dt, t, live) {
     }
   }
   bot.sprint = sprint && speed > 0;
-  if (busy) { const k = Math.exp(-dt * (bot.downT > 0 ? 6 : 1.6)); bot.vx *= k; bot.vz *= k; }
+  if (busy) { const k = Math.exp(-dt * (bot.downT > 0 || bot.levantaT > 0 ? 6 : 1.6)); bot.vx *= k; bot.vz *= k; }
   C.movePlayer(bot, { x: wx, z: wz, speed, jump: false, free: busy, molinho: molinhoLigado(), suave: true }, dt, F);
   const outros = [{ x: G.me.x, z: G.me.z, y: G.me.y, vx: G.me.vx, vz: G.me.vz, sprint: G.me.sprint, caido: G.me.slideT > 0 || G.me.downT > 0 }];
   for (const o of G.bots) if (o !== bot) outros.push({ x: o.x, z: o.z, y: o.y, vx: o.vx, vz: o.vz, sprint: o.sprint, caido: o.slideT > 0 || o.downT > 0 });
@@ -290,13 +291,13 @@ function carrinhosLocais() {
   }
 }
 function derrubar(o, a) {
-  const e = o.e; e.downT = 1.4; e.slideT = 0;
+  const e = o.e; e.downT = C.DERRUBADO; e.slideT = 0;
   if (local.ball.dono === o.id) local.ball.dono = null;
   Sound.fall();
   const model = o.eu ? G.meModel : e.model;
   if (model && !(o.eu && G.view === "primeira")) {
     const dx = e.x - a.e.x, dz = e.z - a.e.z, l = Math.hypot(dx, dz) || 1, k = SKINS_CONFIG[model.userData.skin]?.queda?.push || 1;
-    addRag(model, e.x, e.y || 0, e.z, e.facing, { x: e.vx || 0, y: 0, z: e.vz || 0 }, { x: (dx / l) * 3.5 * k, y: 2.2 * k, z: (dz / l) * 3.5 * k }, 1.15);
+    addRag(model, e.x, e.y || 0, e.z, e.facing, { x: e.vx || 0, y: 0, z: e.vz || 0 }, { x: (dx / l) * 3.5 * k, y: 2.2 * k, z: (dz / l) * 3.5 * k }, C.DERRUBADO - 0.05);
   }
   if (o.eu) E.charge = null;
   const nome = (x) => (x.eu ? "Você" : `${x.team === "A" ? "Seu" : "Bot"} ${x.e.name}`);
