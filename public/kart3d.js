@@ -4,6 +4,7 @@
 import * as THREE from "three";
 import { makePlayer, descartarJogador } from "/pelada/bonecos.js";
 import { liberar } from "/pelada/tex.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const C = window.Campo;
 // variações por modelo (a Corrida tem 5 "carros"; a Batalha usa o padrão): bico, laterais, roda traseira e asa
@@ -21,6 +22,50 @@ function kitParecido(cor) {
   return best;
 }
 const SENTA = { z: 0.18, quadril: 0.3 }; // onde fica o quadril do piloto
+
+// O corpo do kart é o carro de corrida do Racing Kit do Kenney (CC0, public/corrida/kenney/). O modelo abre pela rede; até
+// ele chegar, o kart de caixinhas de baixo aparece e é trocado na hora. Os materiais são sempre os mesmos do kart
+// (tinta, pneu, aro...), então a cor, o fantasma e o piscar de quem chama continuam valendo depois da troca.
+const MODELO = { cena: null, falhou: false, espera: [] };
+export const kartPronto = new GLTFLoader().loadAsync("/corrida/kenney/raceCarRed.glb").then((g) => {
+  MODELO.cena = g.scene; for (const k of MODELO.espera.splice(0)) trocarCorpo(k);
+}).catch(() => { MODELO.falhou = true; }); // kartPronto: quem desenha uma vez só (a capa da Corrida) espera por ele
+const TAM = 2.4; // o comprimento do kart, em metros (o do kart de caixinhas)
+function trocarCorpo(k) {
+  if (k.solto) return;
+  const { T, mat, ajuda } = k.troca, kart = k.kart;
+  for (const c of [...kart.children]) if (c !== k.volante && c !== ajuda.col) { kart.remove(c); liberar(c); }
+  k.rodas.length = 0; k.frente.length = 0;
+  const m = MODELO.cena.clone(true); m.updateMatrixWorld(true);
+  const caixa = new THREE.Box3().setFromObject(m), e = caixa.getSize(new THREE.Vector3()), c0 = caixa.getCenter(new THREE.Vector3());
+  const S = TAM / e.z, raiz = new THREE.Group(); // a frente do modelo é +z, a do kart é −z
+  const fe = new THREE.Group(); fe.position.set(-c0.x, -caixa.min.y, -c0.z); fe.add(m); raiz.add(fe);
+  raiz.rotation.y = Math.PI; raiz.scale.set(S * (T.lat > 1 ? 1.2 : T.lat < 0.9 ? 0.95 : 1), S * (T.bico < 0.9 ? 0.92 : 1), S * (T.ponta ? 1.1 : T.bico < 0.9 ? 0.92 : 1));
+  kart.add(raiz); raiz.updateMatrixWorld(true);
+  const rodas = []; let vidro = null;
+  m.traverse((o) => {
+    if (!o.isMesh) return;
+    o.geometry = o.geometry.clone(); o.castShadow = true;
+    const nome = o.material.name; // tinta no que é vermelho, pneu escuro, branco nas peças claras e o aro na cor do aro
+    o.material = nome === "red" ? mat.tinta : nome === "carTire" ? mat.preto : nome === "glass" ? mat.vidro : mat.branco;
+    if (nome === "glass") vidro = o;
+    if (/^wheel/.test(o.parent.name) && nome === "grey") o.material = mat.aro;
+    if (/^wheel/.test(o.parent.name) && !rodas.includes(o.parent)) rodas.push(o.parent);
+  });
+  // cada roda ganha um pivô no centro dela: "gira" para rodar e, nas da frente, o pivô esterça
+  for (const w of rodas) {
+    const cx = new THREE.Box3().setFromObject(w), ctr = cx.getCenter(new THREE.Vector3()), r = (cx.max.y - cx.min.y) / 2;
+    const piv = new THREE.Group(); kart.add(piv); piv.position.copy(kart.worldToLocal(ctr.clone())); piv.updateMatrixWorld(true);
+    const gira = new THREE.Group(); piv.add(gira); gira.updateMatrixWorld(true); gira.attach(w);
+    k.rodas.push({ gira, r }); if (/Front/.test(w.name)) k.frente.push(piv);
+  }
+  if (vidro) vidro.visible = false;
+  // o piloto no cockpit (onde ficava o vidro) e as extras escolhidas
+  const cv = vidro ? kart.worldToLocal(new THREE.Box3().setFromObject(vidro).getCenter(new THREE.Vector3())) : new THREE.Vector3(0, 0.3, 0.1);
+  k.piloto.position.set(0, SENTA.quadril - 0.85, cv.z);
+  k.volante.position.z = cv.z - 0.48; ajuda.col.position.z = cv.z - 0.63;
+  ajuda.volta(cv.z);
+}
 
 export function montarKart({ cor = "#e63946", skin = "padrao", aro = "#c3c7cf", aero = "nenhum", faixa = "nenhuma", tipo = "equilibrado", num = 10 } = {}) {
   const T = TIPOS[tipo] || TIPOS.equilibrado, g = new THREE.Group();
@@ -69,8 +114,20 @@ export function montarKart({ cor = "#e63946", skin = "padrao", aro = "#c3c7cf", 
   for (const m of piloto.userData.marca || []) piloto.remove(m); // o marcador de time da Pelada não serve aqui
   piloto.position.set(0, SENTA.quadril - 0.85, SENTA.z); g.add(piloto);
   sentar(piloto, 0);
+  const branco = M(0xf2f2f2, { roughness: 0.45 }), vidro = M(0x6f93b8, { roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6 });
   const mats = new Set(); g.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) mats.add(m); });
-  return { g, kart, piloto, rodas, frente: frenteP, volante, pintura: tinta, mats: [...mats], olho: { z: SENTA.z - 0.05, y: SENTA.quadril + 0.95 } };
+  for (const m of [branco, vidro, aroM, tinta, preto]) mats.add(m);
+  const k = { g, kart, piloto, rodas, frente: frenteP, volante, pintura: tinta, mats: [...mats], olho: { z: SENTA.z - 0.05, y: SENTA.quadril + 0.95 } };
+  // as extras escolhidas (asa alta, faixas) voltam por cima do corpo novo
+  const ajuda = { col, volta: (zc) => {
+    const topo = 0.42;
+    if (aero === "alto") { box(1.2, 0.05, 0.3, 0, 0.95, 1.0, preto); for (const s of [-1, 1]) { box(0.05, 0.5, 0.06, s * 0.3, 0.7, 1.0, preto); box(0.04, 0.2, 0.36, s * 0.6, 0.95, 1.0, tinta); } }
+    if (faixa === "dupla") for (const s of [-1, 1]) box(0.08, 0.012, 0.8, s * 0.1, topo, -0.75, faixaM);
+    if (faixa === "lateral") for (const s of [-1, 1]) box(0.012, 0.05, 0.7, s * 0.25, 0.22, 0.2, faixaM);
+  } };
+  k.troca = { T, mat: { tinta, preto, branco, vidro, aro: aroM }, ajuda };
+  if (MODELO.cena) trocarCorpo(k); else if (!MODELO.falhou) MODELO.espera.push(k);
+  return k;
 }
 function sentar(p, virar) {
   const u = p.userData; if (!u.legs) return; // modelo 3D sem esqueleto de caixinhas: fica como veio
@@ -89,6 +146,6 @@ export function animarKart(k, dist, virar) {
 }
 export function soltarKart(k) {
   if (!k) return;
-  k.g.remove(k.piloto); descartarJogador(k.piloto);
+  k.solto = true; k.g.remove(k.piloto); descartarJogador(k.piloto);
   liberar(k.g);
 }
