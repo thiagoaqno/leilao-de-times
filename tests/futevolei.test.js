@@ -67,6 +67,26 @@ test("futevolei: apertar sem parar não salva (o armado não renova e esfria) e 
   assert.ok(F.alcanca(m, eu, 0.4));
 });
 
+test("futevolei: o golpe combinado antes do toque vale no toque (a animação não troca no meio)", () => {
+  const m = F.novaPartida([{ id: "eu", team: "A", slot: 0, bot: false }, { id: "b0", team: "B", slot: 0, bot: true }], { pontos: 15 }, 0);
+  m.fase = "jogo"; m.t = 10000;
+  const eu = m.jogadores.find((j) => j.id === "eu");
+  Object.assign(eu, { x: 0, z: 3, vx: 0, vz: 0 });
+  // a bola cai atrás do corpo, na altura da cabeça: com o ataque armado, é bicicleta
+  m.bola = bolaEm(0, 2.2, 3.4); Object.assign(m.bola, { vx: 0, vy: -0.5, vz: 0, time: "A", toques: 1 });
+  F.armar(m, eu, "ataque", m.t);
+  F.passo(m, 1 / 60, m.t + 16);
+  assert.ok(eu.plano, "combinou o golpe");
+  const combinado = eu.plano.golpe;
+  // o jogador dá um passo para trás antes do toque: pela posição de agora seria outro golpe, mas vale o combinado
+  eu.z = 3.6;
+  assert.notStrictEqual(F.golpeDe(eu, m.bola, "ataque"), combinado);
+  let toque = null;
+  for (let i = 0; i < 60 && !toque; i++) { F.passo(m, 1 / 60, m.t + 16); toque = m.ev.find((e) => e.tipo === "toque"); }
+  assert.ok(toque, "tocou");
+  assert.strictEqual(toque.golpe, combinado);
+});
+
 test("futevolei: o passe vai para o parceiro sem passar a rede; o ataque passa por cima da rede", () => {
   const m = F.novaPartida(jogadores(true), { duplas: true, pontos: 15 }, 0);
   m.fase = "jogo"; m.t = 5000;

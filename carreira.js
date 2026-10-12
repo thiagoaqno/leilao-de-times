@@ -1121,14 +1121,19 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
 }
 // Quem descansa uma partida recupera 80 pontos de energia e zera a sequência. Quem entra em campo
 // acumula jogos seguidos; o desconto temporário de over começa no terceiro jogo. As férias zeram ambos.
-const RECUPERA = 16;
+// Quem joga como titular leva para o jogo seguinte só um pedaço do desgaste: 0,25 de over por jogo até os 29 anos e
+// 0,40 de 30 em diante (10 pontos de energia = 1 de over). O desgaste do jogo em si (ritmo e pressão da tática)
+// ainda pesa um pouco: ele varia de 0,7 a 1,4 vez esse valor, e o departamento médico abate.
+const PERDA_JOVEM = 2.5, PERDA_VETERANO = 4, IDADE_VETERANO = 30, GASTO_TIPICO = 16;
 function aplicarFadiga(save, r) {
   const e = save.energia || (save.energia = {});
   const sequencia = save.sequencia || (save.sequencia = {});
   const jogaram = new Set(r.jogaram?.[save.clube] || []);
   for (const j of elencoDe(save, save.clube)) {
     if (jogaram.has(j.id)) {
-      e[j.id] = clamp((r.energia?.[j.id] ?? e[j.id] ?? 100) + RECUPERA + Clube.bonusRecupera(save), 20, 100);
+      const antes = e[j.id] ?? 100, gasto = Math.max(0, antes - (r.energia?.[j.id] ?? antes));
+      const base = Evolucao.idadeNa(j, save.temporada) >= IDADE_VETERANO ? PERDA_VETERANO : PERDA_JOVEM;
+      e[j.id] = clamp(antes - Math.max(0, base * clamp(gasto / GASTO_TIPICO, 0.7, 1.4) - Clube.bonusRecupera(save)), 20, 100);
       sequencia[j.id] = (sequencia[j.id] || 0) + 1;
     } else {
       e[j.id] = clamp((e[j.id] ?? 100) + 80 + Clube.bonusRecupera(save), 20, 100);

@@ -458,6 +458,8 @@ function entrada() {
   const s = F.sinal(G.myTeam || "A");
   return { dir: { x: s * r, z: -s * f }, mira: { x: s * r, z: f } }; // mira: lado no mundo (x) e funda (+) / curta (−)
 }
+// o golpe combinado que vem no pacote: "cabeca", "shark+" (o Shark de bicicleta) ou 0
+const planoDoPacote = (v) => (v ? { golpe: v.replace("+", ""), estilo: v.endsWith("+") ? "bicicleta" : v === "shark" ? "voleio" : undefined } : null);
 // apertou passar ou atacar: no treino, direto nas regras; online, avisa o servidor (e já mostra aqui)
 function toque(tipo) {
   const me = G.me; if (!me) return;
@@ -615,9 +617,12 @@ function frame() {
     const local = me && j.id === me.id && !G.offline ? me : j;
     a.pronto = !!local.armado || (estado.fase === "jogo" && F.ladoDe(bolaV.z) === a.team);
     // com o toque armado, prevê quando vai pegar na bola e começa o golpe antes, para o pé chegar junto com ela
-    if (local.armado && estado.fase === "jogo" && !G.pausa && !a.golpeNoAr) {
-      const p = F.previsaoToque(bolaV, { ...local, team: a.team }, local.armado.intencao, 0.6, j.bot ? 0 : 0.4);
-      if (p && p.t <= ateImpacto(p.golpe, p)) a.antecipar(p.golpe, p, p.t);
+    // O golpe é o que as regras combinaram (j.plano: o mesmo do toque); sem plano ainda, o da previsão daqui.
+    if (local.armado && estado.fase === "jogo" && !G.pausa) {
+      const p = F.previsaoToque(bolaV, { ...local, team: a.team }, local.armado.intencao, 0.8, j.bot ? 0 : 0.4);
+      if (p && j.plano) Object.assign(p, j.plano, { pulo: j.plano.golpe === "shark" || j.plano.golpe === "bicicleta" || p.h > F.ALTURA_PULO });
+      // no treino as regras estão aqui: espera o plano. Online, até o plano chegar no pacote, vale a previsão daqui
+      if (p && (j.plano || !G.offline) && p.t <= ateImpacto(p.golpe, p) && (!a.golpeNoAr || j.plano)) a.antecipar(p.golpe, p, p.t); // com plano, corrige o golpe (o mesmo não recomeça)
     }
     const perto = F.ladoDe(bolaV.z) === a.team && Math.hypot(bolaV.x - local.x, bolaV.z - local.z) < 9;
     a.atualizar(local, perto ? bolaV : null, dt);
@@ -644,7 +649,7 @@ function interpolar(t) {
   let i = q.length - 1; while (i > 0 && q[i - 1].t > t) i--;
   const B = q[i], A = q[Math.max(0, i - 1)], k = B.t === A.t ? 1 : Math.max(0, Math.min(1, (t - A.t) / (B.t - A.t)));
   const L = (a, b) => a + (b - a) * k;
-  const j = B.j.map((e) => { const a = A.j.find((x) => x[0] === e[0]) || e; return { id: e[0], x: L(a[1], e[1]), z: L(a[2], e[2]), vx: e[3], vz: e[4], armado: e[5] ? { intencao: e[5] === 2 ? "ataque" : "passe" } : null }; });
+  const j = B.j.map((e) => { const a = A.j.find((x) => x[0] === e[0]) || e; return { id: e[0], x: L(a[1], e[1]), z: L(a[2], e[2]), vx: e[3], vz: e[4], armado: e[5] ? { intencao: e[5] === 2 ? "ataque" : "passe" } : null, plano: planoDoPacote(e[6]) }; });
   const b = { x: L(A.b[0], B.b[0]), y: L(A.b[1], B.b[1]), z: L(A.b[2], B.b[2]), vx: B.b[3], vy: B.b[4], vz: B.b[5], efeito: B.b[6] };
   return { j, b };
 }

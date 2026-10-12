@@ -191,11 +191,18 @@ export class AnimadorMixamo {
     }
     const nome = nomeDoGolpe(gatilho, o), C = GOLPES_M[nome]; if (!C) return;
     const dur = Math.abs(C.f - C.i), salto = C.salto && (o.pulo || nome === "shark") ? clamp((o.h || 1.6) - 1.15, 0.15, 0.6) : 0;
-    this.clip = { nome, C, t: t0, escala: C.vel || 1, m: o.lado < 0 ? -1 : 1, bola: C.imp != null && nome !== "mergulho", confirmado: false, impT: C.imp != null ? C.imp - C.i : 0, dur, salto, depois: C.depois || null, entra: C.entra || 0.07 };
+    // trocou um golpe que estava na tela por outro: o antigo fica parado no quadro em que estava e sai aos poucos
+    // (o novo entra no lugar dele, sem passar pela pose de base)
+    const cruza = atual && this.gUlt > 0.05 && atual.C.c !== C.c;
+    if (cruza) this.saida = { n: atual.C.c, tempo: this.tempoNoClipe(atual), t: 0, g0: this.gUlt, dur: 0.22, salto: this.saltoUlt || 0 };
+    this.clip = { nome, gatilho, C, t: t0, escala: C.vel || 1, m: o.lado < 0 ? -1 : 1, bola: C.imp != null && nome !== "mergulho", confirmado: false, impT: C.imp != null ? C.imp - C.i : 0, dur, salto, depois: C.depois || null, entra: cruza ? 0.0001 : C.entra || 0.12 };
   }
+  // o mesmo golpe na tela não recomeça: o mesmo clipe do Mixamo (bicicleta e Shark de bicicleta, os passes de pé) ou a
+  // cabeçada (de pé ou pulando)
+  mesmoGolpe(c, gatilho, nome) { return c && c.bola && !c.confirmado && (c.C.c === GOLPES_M[nome].c || (gatilho === "cabeca" && c.gatilho === "cabeca")); }
   antecipar(gatilho, o, falta) {
     const nome = nomeDoGolpe(gatilho, o), C = GOLPES_M[nome]; if (!C || C.imp == null) return;
-    if (this.clip && this.clip.bola && !this.clip.confirmado && this.clip.nome === nome) return;
+    if (this.mesmoGolpe(this.clip, gatilho, nome)) return;
     this.disparar(gatilho, o, 0);
     const c = this.clip, esc = clamp(c.impT / Math.max(0.05, falta), 1, C.acel || ESCALA_MAX);
     c.escala = esc; c.t = Math.min(0, esc * (c.impT / esc - falta)); // longe da bola: espera parado até a hora de começar
@@ -203,7 +210,7 @@ export class AnimadorMixamo {
   confirmar(gatilho, o) {
     const nome = nomeDoGolpe(gatilho, o), C = GOLPES_M[nome]; if (!C) return;
     const c = this.clip;
-    if (c && c.nome === nome && !c.confirmado && c.t <= c.impT + 0.08) c.t = Math.max(c.t, c.impT - 0.02);
+    if (this.mesmoGolpe(c, gatilho, nome) && c.t <= c.impT + 0.08) c.t = Math.max(c.t, c.impT - 0.02);
     else this.disparar(gatilho, o, (C.imp ?? C.i) - C.i - 0.03);
     this.clip.m = o.lado < 0 ? -1 : 1; this.clip.confirmado = true;
   }
@@ -247,11 +254,15 @@ export class AnimadorMixamo {
         if (depois) {
           this.disparar(depois, { lado: this.m }); c = this.clip;
           if (c && fim) c.depois = fim;
-          if (c && c.C.emenda) { this.saida = { n: ant.C.c, tempo: ant.C.f, t: 0 }; g = 1; } // o anterior sai aos poucos
+          if (c && c.C.emenda) { this.saida = { n: ant.C.c, tempo: ant.C.f, t: 0, g0: 1, dur: 0.25 }; g = 1; } // o anterior sai aos poucos
         }
       }
     }
-    const base = 1 - g, A = this.a;
+    // a saída do clipe anterior (troca de golpe ou emenda): parado no último quadro, o peso vai a zero em sd.dur
+    const A = this.a, sd = this.saida; let ws = 0;
+    if (sd) { sd.t += dt; ws = 1 - ease(sd.t, 0, sd.dur); if (ws <= 0 || !A[sd.n] || (c && sd.n === c.C.c)) { this.saida = null; ws = 0; } }
+    const gNovo = g * (1 - ws), gVelho = this.saida ? ws * sd.g0 : 0, base = 1 - gNovo - gVelho;
+    this.gUlt = gNovo;
     const loco = (n, w, fase) => { const ac = A[n]; if (!ac) return; ac.weight = w * base; if (fase != null) ac.time = fase * ac.getClip().duration; };
     loco("idleTransition", W.idle, 1.8 / A.idleTransition.getClip().duration);
     loco("goalkeeperSidestep", W.pr, (this.t / 0.5) % 1); // pronto: a base aberta, quicando
@@ -259,16 +270,15 @@ export class AnimadorMixamo {
     loco("walkStrafeLeft", W.wl, this.faseW); loco("walkStrafeRight", W.wr, this.faseW);
     for (const n of this.golpes) if (A[n] && !BASE.includes(n)) A[n].weight = 0;
     if (A.segura) { A.segura.weight = this.ws * base * 1000; A.segura.time = 0.35; } // os braços seguram a bola por cima de qualquer passada
-    // a emenda: o clipe anterior (parado no último quadro) passa para o novo em 0,25 s
-    const sd = this.saida; let ws = 0;
-    if (sd) { sd.t += dt; ws = 1 - ease(sd.t, 0, 0.25); if (ws <= 0 || !c || !A[sd.n] || sd.n === c.C.c) this.saida = null; else { A[sd.n].weight = ws * g; A[sd.n].time = sd.tempo; } }
+    if (this.saida) { A[sd.n].weight = gVelho; A[sd.n].time = sd.tempo; }
     if (c) {
       const ac = A[c.C.c];
-      if (ac) { ac.weight = Math.max(ac.weight, g * (1 - ws)); ac.time = this.tempoNoClipe(c); }
+      if (ac) { ac.weight = Math.max(ac.weight, gNovo); ac.time = this.tempoNoClipe(c); }
       this.m = c.m;
     } else this.m = 1;
     // o pulo dos toques no alto: sobe até o impacto e desce
-    const salto = c && c.salto ? c.salto * bump(Math.max(0, c.t), 0, Math.min(c.dur, c.impT * 1.9)) : 0;
+    const salto = (c && c.salto ? c.salto * bump(Math.max(0, c.t), 0, Math.min(c.dur, c.impT * 1.9)) : 0) + (this.saida ? ws * (this.saida.salto || 0) : 0);
+    this.saltoUlt = salto;
     this.mixer.update(0);
     if (this.caixas && u && u.legs) { this.espelho.scale.x = 1; this.caixas.copiar(u, this.m, salto); }
     else { this.espelho.scale.x = this.m; this.espelho.position.y = salto; }

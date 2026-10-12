@@ -237,7 +237,7 @@
     if (b.time !== j.team) { b.time = j.team; b.toques = 0; }
     b.toques++;
     if (intencao === "passe" && b.toques >= 3) intencao = "seguranca"; // 3º toque: o passe vira bola de segurança por cima
-    const golpe = golpeDe(j, b, intencao === "ataque" ? "ataque" : "passe");
+    const plano = planoValido(j, b, intencao === "ataque" ? "ataque" : "passe"), golpe = plano ? plano.golpe : golpeDe(j, b, intencao === "ataque" ? "ataque" : "passe");
     const Gp = GOLPES[golpe], d = Math.hypot(b.x - j.x, b.z - j.z), cedo = j.armado && !j.bot ? clamp((m.t - j.armado.t0) / 1000 - 0.45, 0, 0.65) : 0;
     const qualidade = clamp(d / ALCANCE + cedo, 0, 1.3); // longe do corpo, ou armado muito antes da bola chegar: pior
     const p = { x: b.x, y: b.y, z: b.z }, robo = j.bot ? DIF_ATUAL.erro : 1;
@@ -263,8 +263,8 @@
     Object.assign(b, { vx: v.vx, vy: v.vy, vz: v.vz, efeito, ultimo: j.team, por: j.id, tToque: m.t, golpe, viva: true });
     const pulo = b.y > ALTURA_PULO || golpe === "shark" || golpe === "bicicleta";
     // o Shark Attack é sempre de pé: de voleio (bola de lado ou na frente) ou de bicicleta (bola atrás do corpo)
-    const estilo = golpe === "shark" ? ((j.z - b.z) * s < -0.12 ? "bicicleta" : "voleio") : undefined;
-    j.armado = null; m.rally++;
+    const estilo = golpe === "shark" ? (plano ? plano.estilo : (j.z - b.z) * s < -0.12 ? "bicicleta" : "voleio") : undefined;
+    j.armado = null; j.plano = null; m.rally++;
     if (golpe === "bicicleta" || estilo === "bicicleta") j.caido = CAIDO_BICICLETA; // caiu de costas: fica parado enquanto levanta
     m.ev.push({ tipo: "toque", t: m.t, id: j.id, golpe, estilo, intencao, pulo, espirrou, h: Math.round(b.y * 100) / 100, lado: Math.sign(b.x - j.x) * sinal(j.team) || 1, toques: b.toques, time: j.team });
   }
@@ -284,6 +284,24 @@
     Object.assign(b, { vx: v.vx, vy: v.vy, vz: v.vz, efeito: v.efeito, viva: true, ultimo: j.team, por: j.id, time: j.team, toques: 3, tToque: m.t, golpe: "saque" });
     m.fase = "jogo"; m.rally = 0; j.armado = null;
     m.ev.push({ tipo: "toque", t: m.t, id: j.id, golpe: "saque", intencao: "ataque", pulo: false, h: b.y, lado: 1, toques: 0, time: j.team });
+  }
+  // O golpe combinado: pouco antes do toque (TRAVA s), a previsão escolhe o golpe e ele fica valendo até o toque, para a
+  // animação que já começou (no navegador, pelo mesmo plano) não virar outra no meio. Só cai se a bola chegar numa altura
+  // em que aquele golpe não dá (FAIXA, com folga), ou se a pessoa trocar passar por atacar.
+  const TRAVA = 0.7;
+  const FAIXA = { shark: [2.05, 9], bicicleta: [1.05, 2.85], cabeca: [1.35, 9], peito: [0.9, 1.95], voleio: [0.45, 1.55], frente: [0, 1.35], lado: [0, 1.35], letra: [0, 1.35], calcanhar: [0, 1.35] };
+  const categoria = (intencao) => (intencao === "ataque" ? "ataque" : "passe");
+  function planejar(m, j, agora) {
+    if (!j.armado || m.fase !== "jogo") { j.plano = null; return; }
+    const cat = categoria(j.armado.intencao);
+    if (j.plano && j.plano.intencao === cat) return; // vale até o toque (ou até desarmar)
+    j.plano = null;
+    const p = previsaoToque(m.bola, j, cat, TRAVA, j.bot ? 0 : 0.4);
+    if (p) j.plano = { golpe: p.golpe, estilo: p.estilo, intencao: cat };
+  }
+  function planoValido(j, b, cat) {
+    const p = j.plano, f = p && FAIXA[p.golpe];
+    return p && p.intencao === cat && f && b.y >= f[0] && b.y <= f[1] ? p : null;
   }
   // apertou um botão: arma o toque (ou saca, se é a vez dele)
   function armar(m, j, intencao, agora, mira, rnd) {
@@ -342,6 +360,7 @@
     }
     if (m.fase !== "jogo") return;
     const b = m.bola, n = Math.max(1, Math.ceil(dt / (1 / 120)));
+    for (const j of m.jogadores) planejar(m, j, agora);
     for (let k = 0; k < n && m.fase === "jogo"; k++) {
       const ev = passoBola(b, dt / n);
       if (ev === "areia") { caiu(m, agora); break; }
@@ -459,7 +478,7 @@
   const q2 = (v) => Math.round(v * 100) / 100;
   function pacote(m) {
     const b = m.bola;
-    return { j: m.jogadores.map((j) => [j.id, q2(j.x), q2(j.z), q2(j.vx), q2(j.vz), j.armado ? (j.armado.intencao === "ataque" ? 2 : 1) : 0]),
+    return { j: m.jogadores.map((j) => [j.id, q2(j.x), q2(j.z), q2(j.vx), q2(j.vz), j.armado ? (j.armado.intencao === "ataque" ? 2 : 1) : 0, j.plano ? j.plano.golpe + (j.plano.estilo === "bicicleta" ? "+" : "") : 0]),
       b: [q2(b.x), q2(b.y), q2(b.z), q2(b.vx), q2(b.vy), q2(b.vz), q2(b.efeito || 0)] };
   }
   function estado(m) {
@@ -468,7 +487,7 @@
       posse: b.viva && b.time ? { time: b.time, toques: b.toques } : null };
   }
 
-  const api = { Q, G, GOLPES, DIF, VEL, ALCANCE, ALTURA_PULO, ESFRIA, CAIDO_BICICLETA, alcanceNa, ARMADO_MAX, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, lancar, voar, queda,
+  const api = { Q, G, GOLPES, DIF, VEL, ALCANCE, ALTURA_PULO, ESFRIA, CAIDO_BICICLETA, TRAVA, alcanceNa, ARMADO_MAX, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, lancar, voar, queda,
     golpeDe, alcanca, previsaoToque, alvoAtaque, alvoPasse, tocar, sacar, armar, passo, pontoDeToque, pacote, estado, posicionar };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Futevolei = api;

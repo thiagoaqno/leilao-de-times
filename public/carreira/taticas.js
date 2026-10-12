@@ -116,8 +116,8 @@
     return Math.round(clamp(1 - pontosDeEncaixe(a, b) / 80, 0.6, 1) * 1000) / 1000;
   }
 
-  // A queda de over depende dos jogos seguidos, e uma partida de descanso zera a sequência.
-  const penalidadeSequencia = (n) => (n >= 7 ? 3 : n >= 5 ? 2 : n >= 3 ? 1 : 0);
+  // A sequência não tira mais over por conta própria: o desgaste de quem joga já mora na energia (carreira.js, aplicarFadiga).
+  const penalidadeSequencia = () => 0;
 
 
   // ---------- o cansaço: quanto a energia tira da nota ----------
