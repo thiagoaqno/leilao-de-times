@@ -77,7 +77,7 @@ for (let y0 = 1; y0 < VH + 2; y0 += 2) for (let x0 = 0; x0 < VW; x0 += 2) {
   else if (n === 3) { // T: a abertura que falta diz o giro
     const falta = !N ? "N" : !S ? "S" : !L ? "E" : "W";
     usa("road_tsplit", cx, cz, GIRO.T[falta]);
-  } else usa("road_straight", cx, cz, (N || S) && !(L || O) ? Math.PI / 2 + GIRO.reta : GIRO.reta);
+  } else usa("road_straight", cx, cz, (L || O) && !(N || S) ? Math.PI / 2 + GIRO.reta : GIRO.reta);
 }
 
 // ---------- os prédios: uma grade de módulos esticada para caber na planta ----------
