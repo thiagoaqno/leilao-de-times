@@ -43,6 +43,7 @@ require("./digita.js")(io); // Corrida de Digitação: quem digita a frase mais 
 require("./futevolei.js")(io); // Futevôlei da Galera: futevôlei 3D na areia, 1x1 ou duplas, com robôs, canal /futevolei
 require("./proibida.js")(io); // Palavra Proibida da Galera: explicar palavras em dois times, canal /proibida
 require("./rumi.js")(io); // Rumi da Galera: o jogo de peças numeradas clássico, 2 a 4 com robôs, canal /rumi
+require("./seo.js").ligar(app); // robots.txt, sitemap.xml e as tags de SEO das páginas (SITE_URL)
 app.use(express.static(path.join(__dirname, "public")));
 // as músicas da Vila: os arquivos de áudio da pasta public/musica (ou MUSICA_DIR), em ordem alfabética
 const PASTA_MUSICA = process.env.MUSICA_DIR || path.join(__dirname, "public", "musica");

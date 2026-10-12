@@ -155,3 +155,9 @@ fly ssh sftp get /data/galera.db galera.db
 - **"Could not find App"**: rode o passo 5 de novo.
 - **Site não abre / erro 502**: rode `fly logs` e veja a mensagem de erro.
 - **Jogadores na mesma sala não se veem**: rode `fly scale count 1`.
+
+## Domínio próprio e Google
+
+- Defina o endereço do site para o `sitemap.xml`, o `robots.txt` e as tags de compartilhamento saírem com ele:
+  `fly secrets set SITE_URL=https://seu-dominio.com.br` (sem barra no fim; sem isso, usam o endereço do pedido).
+- Depois de apontar o domínio, envie `https://seu-dominio.com.br/sitemap.xml` no Google Search Console.
