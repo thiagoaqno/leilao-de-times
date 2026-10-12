@@ -25,18 +25,36 @@ const reduzido = matchMedia("(prefers-reduced-motion: reduce)").matches;
 // ======================================================================
 const canvas = $("cv");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+// qualidade que se ajusta sozinha: se o quadro demora, baixa a resolução, a sombra e o céu animado (?leve=1 já começa no 2)
+const NIVEIS = [{ pr: 1.75, sombra: 2048 }, { pr: 1.25, sombra: 1024 }, { pr: 1, sombra: 1024 }, { pr: 0.75, sombra: 512 }];
+const Qual = { n: Math.min(NIVEIS.length - 1, Math.max(0, +store.get("futevolei:qualidade") || 0, /[?&]leve=1/.test(location.search) ? 2 : 0)), soma: 0, quadros: 0, desde: 0 };
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, NIVEIS[Qual.n].pr));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 const scene = new THREE.Scene();
 const cam = new THREE.PerspectiveCamera(52, 1, 0.1, 1200);
 configurarBonecos({ scene, limites: () => ({ L: Q.FX, W: Q.FZ, goalD: 0 }) });
+function aplicarQualidade() {
+  const nv = NIVEIS[Qual.n];
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, nv.pr)); resize();
+  scene.traverse((o) => { if (o.isLight && o.castShadow) { o.shadow.mapSize.set(nv.sombra, nv.sombra); if (o.shadow.map) { o.shadow.map.dispose(); o.shadow.map = null; } } });
+  if (G.cenario) G.cenario.qualidade(Qual.n);
+}
+// olha a média do tempo dos quadros a cada 2 s (sem contar os primeiros 3 s, a pausa e a aba escondida) e desce um nível se passar de ~38 fps
+function vigiarQuadro(dtReal, tp) {
+  if (G.pausa || document.hidden || dtReal > 0.25 || tp - Qual.desde < 3000) { Qual.soma = 0; Qual.quadros = 0; return; }
+  Qual.soma += dtReal; Qual.quadros++;
+  if (Qual.quadros < 90) return;
+  const media = Qual.soma / Qual.quadros; Qual.soma = 0; Qual.quadros = 0;
+  if (media > 0.026 && Qual.n < NIVEIS.length - 1) { Qual.n++; store.set("futevolei:qualidade", Qual.n); aplicarQualidade(); Qual.desde = tp; }
+}
 function resize() { renderer.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); }
 addEventListener("resize", resize);
 function lugar(tipo) {
   if (G.cenario && G.cenario.tipo === tipo) return;
   if (G.cenario) G.cenario.liberar();
   G.cenario = montarCenario(renderer, scene, tipo);
+  aplicarQualidade(); Qual.desde = performance.now();
   montarTorcida();
 }
 
@@ -144,7 +162,7 @@ function torcidaVibra(chance = 0.6) { for (const t of G.torcida) if (Math.random
 // Sons (sintetizados): o chute, o cabeceio, o peito, a areia, o apito, a torcida e o mar (ou o ginásio) ao fundo
 // ======================================================================
 const Som = (() => {
-  let ac = null, vol = store.get("futevolei:vol") ?? 0.7, master = null, fundo = null;
+  let ac = null, vol = store.get("futevolei:vol") ?? 0.7, master = null, fundo = null, gaivotas = 0;
   const ctx = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = vol; master.connect(ac.destination); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; };
   function tom(f0, f1, dur, ganho, tipo = "sine") { const c = ctx(); if (!c) return; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime; o.type = tipo; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur); g.gain.setValueAtTime(ganho, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02); }
   function ruido(dur, ganho, freq, q = 1) { const c = ctx(); if (!c) return; const n = c.createBuffer(1, c.sampleRate * dur, c.sampleRate), d = n.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length); const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = n; f.type = "bandpass"; f.frequency.value = freq; f.Q.value = q; g.gain.value = ganho; s.connect(f).connect(g).connect(master); s.start(); }
@@ -169,8 +187,13 @@ const Som = (() => {
       s.buffer = n; s.loop = true; f.type = "lowpass"; f.frequency.value = tipo === "arena" ? 900 : 500; g.gain.value = tipo === "arena" ? 0.08 : 0.12;
       lfo.frequency.value = tipo === "arena" ? 0.3 : 0.12; lg.gain.value = tipo === "arena" ? 0.02 : 0.08; lfo.connect(lg).connect(g.gain);
       s.connect(f).connect(g).connect(master); s.start(); lfo.start(); fundo = [s, lfo];
+      if (tipo !== "arena") { const gritar = () => { this.gaivota(); gaivotas = setTimeout(gritar, 12000 + Math.random() * 15000); }; gaivotas = setTimeout(gritar, 6000 + Math.random() * 6000); }
     },
-    semFundo() { if (fundo) { for (const n of fundo) try { n.stop(); } catch {} fundo = null; } },
+    gaivota() { // um grito de gaivota de vez em quando (praia)
+      const c = ctx(); if (!c) return; const t = c.currentTime, n = 2 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < n; i++) { const o = c.createOscillator(), g = c.createGain(), f = 1500 + Math.random() * 400; o.type = "triangle"; o.frequency.setValueAtTime(f, t + i * 0.32); o.frequency.exponentialRampToValueAtTime(f * 0.62, t + i * 0.32 + 0.26); g.gain.setValueAtTime(0.0001, t + i * 0.32); g.gain.exponentialRampToValueAtTime(0.05, t + i * 0.32 + 0.04); g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.32 + 0.28); o.connect(g).connect(master); o.start(t + i * 0.32); o.stop(t + i * 0.32 + 0.3); }
+    },
+    semFundo() { clearTimeout(gaivotas); if (fundo) { for (const n of fundo) try { n.stop(); } catch {} fundo = null; } },
   };
 })();
 $("vol").value = Som.vol; $("volV").textContent = Math.round(Som.vol * 100) + "%";
@@ -445,8 +468,9 @@ const _alvoCam = new THREE.Vector3(), _olhar = new THREE.Vector3(), _eixo = new 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function frame() {
   requestAnimationFrame(frame);
-  const tp = performance.now(), dt = Math.min(0.05, (tp - ultimo) / 1000); ultimo = tp;
+  const tp = performance.now(), dtReal = (tp - ultimo) / 1000, dt = Math.min(0.05, dtReal); ultimo = tp;
   if (!G.active) return;
+  vigiarQuadro(dtReal, tp);
   if (G.congelado) { renderer.render(scene, cam); return; } // #debug: a foto do quadro exato
   lerPad();
   const { mira } = entrada(), me = G.me;

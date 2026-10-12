@@ -107,12 +107,14 @@ function coqueiro(r) {
   const caminho = new THREE.CatmullRomCurve3(pts);
   const tronco = new THREE.Mesh(new THREE.TubeGeometry(caminho, 16, 0.2, 8), TRONCO); tronco.castShadow = true; g.add(tronco);
   const topo = pts[8];
+  const folhas = [];
   for (let i = 0; i < 9; i++) {
     const comp = 3 + r() * 1.2, geo = new THREE.PlaneGeometry(1.1, comp, 1, 8); geo.translate(0, comp / 2, 0);
     const pos = geo.attributes.position; for (let k = 0; k < pos.count; k++) { const y = pos.getY(k), t = y / comp; pos.setZ(k, t * t * comp * 0.75); } // a folha cai na ponta
     geo.computeVertexNormals();
-    const f = new THREE.Mesh(geo, FOLHA); f.position.copy(topo); f.rotation.order = "YXZ"; f.rotation.y = (i / 9) * Math.PI * 2 + r() * 0.3; f.rotation.x = -1.0 - r() * 0.5; f.castShadow = true; g.add(f);
+    const f = new THREE.Mesh(geo, FOLHA); f.position.copy(topo); f.rotation.order = "YXZ"; f.rotation.y = (i / 9) * Math.PI * 2 + r() * 0.3; f.rotation.x = -1.0 - r() * 0.5; f.castShadow = true; f.userData.rot0 = [f.rotation.x, f.rotation.z]; folhas.push(f); g.add(f);
   }
+  g.userData.folhas = folhas;
   for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), M(0x4a3a1e, { roughness: 0.7 })); c.position.set(topo.x + Math.cos(i * 2.1) * 0.25, topo.y - 0.25, Math.sin(i * 2.1) * 0.25); g.add(c); }
   g.rotation.y = giro;
   return g;
@@ -141,14 +143,14 @@ function praia(renderer, scene) {
   // o céu e o sol (de tarde, baixo, por cima do mar)
   const sol = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - 32), THREE.MathUtils.degToRad(35)); // atrás do time Amarelo, de lado
   const fazCeu = () => { const s = new Sky(); s.scale.setScalar(900); const u = s.material.uniforms; u.turbidity.value = 3; u.rayleigh.value = 2.4; u.mieCoefficient.value = 0.003; u.mieDirectionalG.value = 0.85; u.sunPosition.value.copy(sol); u.cloudCoverage.value = 0.35; u.cloudDensity.value = 0.45; return s; };
-  const ceu = fazCeu(); grupo.add(ceu); animar.push((dt, t) => (ceu.material.uniforms.time.value = t));
+  const ceu = fazCeu(); grupo.add(ceu); let ceuParado = false; animar.push((dt, t) => { if (!ceuParado) ceu.material.uniforms.time.value = t; });
   const pmrem = new THREE.PMREMGenerator(renderer), cenaCeu = new THREE.Scene(); cenaCeu.add(fazCeu());
   const env = pmrem.fromScene(cenaCeu, 0.03); scene.environment = env.texture; scene.environmentIntensity = 1.2; pmrem.dispose();
   scene.fog = new THREE.Fog(0xc4d6e2, 260, 1100);
   const luzSol = new THREE.DirectionalLight(0xffe2b8, 8); luzSol.position.copy(sol).multiplyScalar(60); luzSol.castShadow = true;
   luzSol.shadow.mapSize.set(2048, 2048); luzSol.shadow.bias = -0.0003; luzSol.shadow.normalBias = 0.03; luzSol.shadow.radius = 3;
   Object.assign(luzSol.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, near: 10, far: 140 });
-  grupo.add(luzSol, luzSol.target, new THREE.HemisphereLight(0xbfd8ff, 0xd9c08f, 1.6));
+  const hemi = new THREE.HemisphereLight(0xbfd8ff, 0xd9c08f, 1.6); grupo.add(luzSol, luzSol.target, hemi);
   // a areia (de -50 até a orla) e a areia molhada perto do mar
   const chao = new THREE.Mesh(new THREE.PlaneGeometry(400, 120, 80, 24), areia(5, 60, [218, 188, 138]));
   { const p = chao.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), longe = Math.max(0, Math.hypot(x / 1.6, y) - 18); p.setZ(i, Math.min(1.2, longe * 0.02) * (Math.sin(x * 0.11) * 0.5 + Math.cos(y * 0.17 + x * 0.05) * 0.5)); } chao.geometry.computeVertexNormals(); }
@@ -181,7 +183,8 @@ function praia(renderer, scene) {
   faixaPatro.position.set(-9.0, 0.45, 0); faixaPatro.rotation.y = Math.PI / 2; grupo.add(faixaPatro);
   // coqueiros (ao longo da orla e uns perto da quadra), guarda-sóis, o quiosque e a torre do salva-vidas
   for (let x = -120; x <= 120; x += 9 + r() * 5) { const c = coqueiro(r); c.position.set(x, 0, 44 + r() * 4); grupo.add(c); }
-  for (const [x, z] of [[14, 12], [17, -6], [-16, 15], [22, 20], [-24, -12], [28, -2], [-13, -17], [11, -20], [-21, -24], [19, -23], [3, -26]]) { const c = coqueiro(r); c.position.set(x, 0, z); grupo.add(c); }
+  const coqueirosPerto = [];
+  for (const [x, z] of [[14, 12], [17, -6], [-16, 15], [22, 20], [-24, -12], [28, -2], [-13, -17], [11, -20], [-21, -24], [19, -23], [3, -26]]) { const c = coqueiro(r); c.position.set(x, 0, z); grupo.add(c); coqueirosPerto.push(c); }
   for (let i = 0; i < 26; i++) { const x = (r() < 0.5 ? -1 : 1) * (14 + r() * 90), z = -24 + r() * 60; if (Math.abs(x) < 20 && Math.abs(z) < 18) continue; grupo.add(guardaSol(r, x, z)); }
   { // quiosque de palha
     const k = new THREE.Group(); k.position.set(22, 0, 26);
@@ -203,7 +206,8 @@ function praia(renderer, scene) {
     t.traverse((o) => { if (o.isMesh) o.castShadow = true; }); grupo.add(t);
   }
   // outra rede de futevôlei mais longe (tem sempre uma rodinha jogando)
-  { const g2 = new THREE.Group(); quadra(g2); g2.position.set(-45, 0, 8); g2.rotation.y = 0.15; grupo.add(g2); }
+  let g2Sombra = () => {};
+  { const g2 = new THREE.Group(); quadra(g2); g2.position.set(-45, 0, 8); g2.rotation.y = 0.15; grupo.add(g2); g2Sombra = (on) => g2.traverse((o) => { if (o.isMesh) o.castShadow = on; }); }
   // o calçadão em ondas (pedra portuguesa), a avenida e os prédios da orla
   const calcadao = canvasTex(512, 512, (x, w, hh) => { x.fillStyle = "#f2efe8"; x.fillRect(0, 0, w, hh); x.fillStyle = "#1c1c1c"; for (let y = -64; y < hh + 64; y += 64) { x.beginPath(); for (let i = 0; i <= w; i += 4) x.lineTo(i, y + Math.sin((i / w) * Math.PI * 4) * 18); for (let i = w; i >= 0; i -= 4) x.lineTo(i, y + 26 + Math.sin((i / w) * Math.PI * 4) * 18); x.closePath(); x.fill(); } }, true);
   calcadao.repeat.set(60, 2);
@@ -224,9 +228,32 @@ function praia(renderer, scene) {
   const asa = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.6, 0.1, 0), new THREE.Vector3(0, 0, 0.1), new THREE.Vector3(0, 0, -0.1), new THREE.Vector3(0.6, 0.1, 0)]); asa.setIndex([0, 1, 2, 1, 3, 2]); asa.computeVertexNormals();
   for (let i = 0; i < 7; i++) { const gv = new THREE.Mesh(asa, new THREE.MeshBasicMaterial({ color: 0xf4f4f4, side: THREE.DoubleSide })); gv.userData = { r: 30 + r() * 30, h: 18 + r() * 10, v: 0.08 + r() * 0.08, f: r() * 7, cz: -20 - r() * 20 }; grupo.add(gv); gaivotas.push(gv); }
   animar.push((dt, t) => { for (const gv of gaivotas) { const u = gv.userData, a = t * u.v + u.f; gv.position.set(Math.cos(a) * u.r, u.h + Math.sin(t * 0.7 + u.f) * 2, u.cz + Math.sin(a) * u.r * 0.4); gv.rotation.y = -a; gv.scale.y = 1 + Math.sin(t * 9 + u.f) * 0.8; } });
+  // o clima: o fim de tarde anda devagar durante a partida (o sol desce, a luz esquenta e o céu fica alaranjado) e o vento balança os coqueiros
+  const DIA_S = 600, corA = new THREE.Color(0xffe2b8), corB = new THREE.Color(0xff6a2a), nevoaA = new THREE.Color(0xc4d6e2), nevoaB = new THREE.Color(0xe39a76), tmp = new THREE.Color();
+  const hemiCeuA = new THREE.Color(0xbfd8ff), hemiCeuB = new THREE.Color(0xe89a78);
+  const u = ceu.material.uniforms;
+  const reduz = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let ultimoCeu = -1;
+  animar.push((dt, t) => {
+    const k = Math.min(1, t / DIA_S), e = k * k * (3 - 2 * k); // 0 = 15h, 1 = quase pôr do sol
+    if (Math.abs(e - ultimoCeu) > 0.002) { // o céu só muda de verdade a cada 0,2% do caminho
+      ultimoCeu = e;
+      sol.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - (32 - 24 * e)), THREE.MathUtils.degToRad(35 + 12 * e));
+      u.sunPosition.value.copy(sol); u.turbidity.value = 3 + 4 * e; u.rayleigh.value = 2.4 + 0.6 * e;
+      luzSol.position.copy(sol).multiplyScalar(60); luzSol.color.copy(tmp.copy(corA).lerp(corB, e)); luzSol.intensity = 8 - 3.2 * e;
+      hemi.color.copy(tmp.copy(hemiCeuA).lerp(hemiCeuB, e)); hemi.intensity = 1.6 - 0.8 * e;
+      scene.fog.color.copy(tmp.copy(nevoaA).lerp(nevoaB, e)); scene.environmentIntensity = 1.2 - 0.45 * e;
+    }
+    if (!reduz) for (const c of coqueirosPerto) { // o vento: cada folha balança um pouquinho, fora de fase
+      const fo = c.userData.folhas, base = c.position.x * 0.31 + c.position.z * 0.17;
+      for (let i = 0; i < fo.length; i++) { const f = fo[i]; f.rotation.x = f.userData.rot0[0] + Math.sin(t * 1.3 + base + i * 0.7) * 0.07; f.rotation.z = f.userData.rot0[1] + Math.sin(t * 0.9 + base * 1.3 + i) * 0.05; }
+    }
+  });
   scene.add(grupo);
   return {
     grupo, animar, ambiente: env,
+    // menos trabalho para a placa de vídeo: a segunda quadra sem sombra e o céu parado
+    qualidade(n) { g2Sombra(n < 1); ceuParado = n >= 2; },
     // em volta da quadra: quem fica olhando, em pé (x, z, para onde olha)
     lugaresTorcida: [[8.5, -7], [8.5, -4], [9, -1], [8.8, 2.5], [8.2, 6], [9.5, 8.5], [10.5, -9]].map(([x, z]) => ({ x, z, olha: Math.atan2(x, z) })),
     naAreia: () => true,
@@ -331,6 +358,7 @@ export function montarCenario(renderer, scene, tipo) {
   return {
     tipo, lugaresTorcida: c.lugaresTorcida, naAreia: c.naAreia,
     placar: c.placar || (() => {}),
+    qualidade: c.qualidade || (() => {}),
     atualizar(dt) { t += dt; for (const f of c.animar) f(dt, t); },
     liberar() {
       scene.remove(c.grupo);

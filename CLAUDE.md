@@ -120,7 +120,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Pelada (futsal 3D) e Rocket (futebol de carro) | `pelada.js` (+ `peladaBots.js`) | ver logo abaixo |
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
 | Pingue-Pongue | `pingpong.js` | `index.html`, `jogo.js`, `regras.js` (voo com efeito, juiz, placar, robô) |
-| Futevôlei | `futevolei.js` | `index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js` (ver logo abaixo) |
+| Futevôlei | `futevolei.js` | `index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js`, `musica.js` (ver logo abaixo) |
 | Vila (o mapa) + Galeramon/Pokémon/Naruto por turnos + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
 
 **Futevôlei:**
@@ -149,6 +149,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
   relevo, mar e espuma animados, coqueiros, guarda-sóis, quiosque, torre do salva-vidas, calçadão e prédios. A arena
   coberta: `RoomEnvironment`, tanque de areia, treliças com refletores, arquibancada, placas de LED e o telão com o
   placar (`placar(a, b, texto)`).
+- **Qualidade e clima:** `jogo.js` mede o tempo dos quadros e desce de nível (`NIVEIS`: resolução, sombra; do nível 2 o céu para) abaixo de ~38 fps, guardando em `futevolei:qualidade`; `?leve=1` começa no 2. Na praia o fim de tarde anda com o tempo da partida (`DIA_S`, em `cenarios.js`), o vento balança os coqueiros perto e `Som.gaivota` grita de tempos em tempos. `musica.js`: música da Vila (`/api/musicas`) na barra e na pausa.
 - **Câmera:** alta, atrás do meu time, vendo a quadra inteira, e acompanha o atleta (lados e profundidade).
 - `#debug` expõe `window.__futevolei` (`avancar(seg)`, `toque(tipo)` e `congelar()` para fotos do quadro exato).
 
