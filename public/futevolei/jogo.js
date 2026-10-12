@@ -437,7 +437,7 @@ function aoEvento(e) {
     const a = G.atletas.get(e.id);
     if (a) a.confirmar(e.golpe, { lado: e.lado, pulo: e.pulo, h: e.h, estilo: e.estilo }); // o golpe já vinha (antecipado): acerta o impacto
     Som.toque(e.golpe);
-    if (G.me && e.id === G.me.id) G.me.armado = null;
+    if (G.me && e.id === G.me.id) { G.me.armado = null; if (e.golpe === "bicicleta" || e.estilo === "bicicleta") G.me.caido = F.CAIDO_BICICLETA; } // no treino o eu é o mesmo das regras
     const p = posDe(e.id);
     if (p && (e.pulo || e.golpe === "saque")) poeira(p.x, p.z, 26, 0.8);
     const grandeNaTela = G.golpeGrande && performance.now() < G.golpeAte; // o Shark/bicicleta fica na tela, não é coberto pelo toque seguinte

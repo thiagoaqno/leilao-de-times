@@ -357,8 +357,8 @@ module.exports = function attachPelada(io) {
       }
       // passe planejado: o navegador planejou (velocidade, altura e quem recebe); aqui só confere os limites e o receptor
       const rec = passeS && typeof d.alvo === "string" && room.players[d.alvo], opt = passeS && fin(d.vel) ? { vel: clamp(d.vel, 3, 34), elev: fin(d.elev) ? clamp(d.elev, 0, 1.1) : 0.02,
-        alvo: rec && rec.id !== me.id && rec.team === me.team ? rec.id : null } : null;
-      const how = C.kick(room.ball, { ...me.pos, id: me.id }, kind, d.power, d.yaw, slack, opt ? 0 : fin(d.curve) ? d.curve : 0, F(room), opt);
+        alvo: rec && rec.id !== me.id && rec.team === me.team ? rec.id : null } : kind === "chute" ? { costas: d.costas === true } : null;
+      const how = C.kick(room.ball, { ...me.pos, id: me.id }, kind, d.power, d.yaw, slack, opt && opt.vel ? 0 : fin(d.curve) ? d.curve : 0, F(room), opt);
       if (!how) return;
       me.lastKick = now;
       if (how === "mao") me.noCatch = now + 800;

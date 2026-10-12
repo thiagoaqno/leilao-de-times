@@ -252,7 +252,8 @@ export function doKick(kind, power, o = {}) {
   if (!canPlay() || t - me.lastKick < C.KICK_CD || me.downT > 0) return;
   const ball = bolaAqui();
   const body = { ...me, id: E.ME && G.mode === "online" ? E.ME.id : "eu" };
-  const how = C.canKick(body, ball, offline() ? 0 : 0.2);
+  const facingAntes = me.facing, costasPara = (y) => Math.abs(Math.atan2(Math.sin(y - facingAntes), Math.cos(y - facingAntes))) > 1.9;
+  const how = (ball && !isCar() && C.acrobacia(body, ball, kind, aimYaw(), offline() ? 0 : 0.2, { costas: costasPara(aimYaw()) })) || C.canKick(body, ball, offline() ? 0 : 0.2);
   if (!how && souDono() && !o.daFila) { G.filaChute = { kind, power, o: { ...o, daFila: true }, ate: t + 0.5 }; return; }
   me.kickT = t; me.lastKick = t; me.st.kickT = t; // a perna balança mesmo se errar
   if (!how) return;
@@ -270,8 +271,12 @@ export function doKick(kind, power, o = {}) {
   else if (kind === "cruzamento") { kind = "cavadinha"; power = 0.7; } // de cabeça ou com a mão: vai alto
   const curve = opt ? 0 : o.colocado && kind === "chute" && how === "pe" ? curvaColocada() : curveNow();
   if (kind === "chute" && how === "pe" && !isCar()) yaw = C.assistShot(me, yaw, myAttackTeam() || "A", G.F, curve, ball); // assistência estilo FIFA (último terço)
+  if (!opt && kind === "chute") opt = { costas: costasPara(yaw) }; // a bicicleta: de costas para onde chuta
+  const golpe = C.acrobacia(body, ball, kind, yaw, offline() ? 0 : 0.2, opt) || how;
+  me.st.golpe = { how: golpe, kind };
+  if (golpe === "bicicleta") me.caidoT = 1.2; // caiu de costas: fica parado enquanto levanta (a animação dura o mesmo)
   me.facing = yaw;
-  Sound.kick(opt ? 0.35 : power);
+  Sound.kick(opt && opt.vel ? 0.35 : power);
   if (offline()) { C.kick(local.ball, { ...me, id: "eu" }, kind, power, yaw, 0, curve, G.F, opt); trocaNoPasse(receptor); G.tKicks = (G.tKicks || 0) + 1; if (G.falta && G.falta.state === "mirar") { G.falta.state = "voando"; G.falta.t0 = t; G.falta.touched = null; } return; }
   const mine = ballS.mine; ballS.mine = null;
   socket.emit("kick", { kind, power, yaw, curve, ...(opt || {}), ...(receptor ? { rec: receptor } : {}), ...(mine ? { bola: [mine.x, mine.y, mine.z] } : {}) }); // conduzindo: chuta a bola que eu vejo

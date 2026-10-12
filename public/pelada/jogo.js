@@ -13,7 +13,8 @@ import { makePlayer, mudarSkinJogador, descartarJogador, balaoPede, animate, mak
 import { Sound } from "./sons.js";
 import { renderer, scene, cam, ballMesh, aim, passMark, meMark, resize, medirQuadro } from "./cena.js";
 import { configurarBonecos } from "./bonecos.js";
-configurarBonecos({ scene, limites: () => G.F });
+import { animarComMixamo } from "./mixamo.js";
+configurarBonecos({ scene, limites: () => G.F, animar: animarComMixamo }); // os bonecos se mexem com as animações do Mixamo
 import { pads, ensureArena, updateGoalSigns } from "./arenas.js";
 import { updateBall } from "./bola.js";
 import { flashMsg, hud, renderPauseSb } from "./hud.js";
@@ -131,10 +132,10 @@ function stepFoot(dt, t, frozen) {
     wx = -Math.sin(yaw) * -PAD.ly + Math.cos(yaw) * PAD.lx; wz = -Math.cos(yaw) * -PAD.ly - Math.sin(yaw) * PAD.lx;
     const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l; len = 1;
   }
-  me.slideT = Math.max(0, me.slideT - dt); me.diveT = Math.max(0, me.diveT - dt); me.downT = Math.max(0, me.downT - dt); me.slideCd = Math.max(0, me.slideCd - dt);
+  me.slideT = Math.max(0, me.slideT - dt); me.diveT = Math.max(0, me.diveT - dt); me.downT = Math.max(0, me.downT - dt); me.caidoT = Math.max(0, (me.caidoT || 0) - dt); me.slideCd = Math.max(0, me.slideCd - dt);
   me.pedeT = Math.max(0, (me.pedeT || 0) - dt);
   if (!frozen) tentarFila(); // chute que esperava a bola (conduzindo com toques)
-  const busy = me.slideT > 0 || me.diveT > 0 || me.downT > 0;
+  const busy = me.slideT > 0 || me.diveT > 0 || me.downT > 0 || me.caidoT > 0; // caidoT: levantando depois da bicicleta
   const holding = ballS.snap && E.ME && ballS.snap.holder === E.ME.id;
   // carrinho (rodinha do mouse): desliza para onde está virado e derruba quem estiver na frente
   if (E.wheelQueued && !frozen && !busy && me.onGround && me.slideCd <= 0 && !holding && !souDono()) { // carrinho só sem a bola
@@ -171,7 +172,7 @@ function stepFoot(dt, t, frozen) {
   if (padMag > 0.15 && !me.sprint) speed *= clamp(padMag * 1.5, 0.35, 1); // empurrou pouco o analógico: anda devagar
   if (frozen || !len) speed = 0;
   if (frozen) { me.vx = 0; me.vz = 0; }
-  if (busy) { const k = Math.exp(-dt * (me.downT > 0 ? 6 : 1.6)); me.vx *= k; me.vz *= k; }
+  if (busy) { const k = Math.exp(-dt * (me.downT > 0 || me.caidoT > 0 ? 6 : 1.6)); me.vx *= k; me.vz *= k; }
   const jumping = E.jumpQueued && !frozen && !busy && me.onGround;
   C.movePlayer(me, { x: wx, z: wz, speed, jump: jumping, free: busy, molinho: molinhoLigado(), suave: true }, dt, F);
   if (jumping) Sound.jump();

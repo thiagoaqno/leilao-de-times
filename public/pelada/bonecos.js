@@ -13,7 +13,10 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + 
 const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128 }; // os mesmos bits de estado.js
 let scene = null, limitesRag = () => null;
 // scene: onde o boneco de pano aparece; limites(): o campo de agora ({ L, W, goalD }), para ele não sair da quadra
-export function configurarBonecos(o) { if (o.scene) scene = o.scene; if (o.limites) limitesRag = o.limites; }
+// o.animar: (model, speed, dt, st, f) => true quando o jogo anima o boneco de outro jeito (a Pelada usa as animações do
+// Mixamo, public/pelada/mixamo.js); false cai nas poses daqui
+let ganchoAnimar = null;
+export function configurarBonecos(o) { if (o.scene) scene = o.scene; if (o.limites) limitesRag = o.limites; if (o.animar !== undefined) ganchoAnimar = o.animar; }
 
 // ---------- desenhinho do carro (de lado, em pixel) para a escolha na sala ----------
 const CAR_SIDES = { // perfis em "pixels" de 4 px: [x, y, w, h] (corpo) e janelas; rodas e faróis por cima
@@ -405,6 +408,7 @@ export function balaoPede(model, on) {
 }
 // poses: correr, chutar, carrinho (deitado de costas), mergulho do goleiro (de lado), caído (de bruços), segurando a bola
 export function animate(model, speed, dt, st, f = 0) {
+  if (ganchoAnimar && ganchoAnimar(model, speed, dt, st, f)) return;
   const u = model.userData, t = performance.now() / 1000;
   if (!u.legs) return animarGLTF(model, speed, dt, st, f);
   st.anim = (st.anim || 0) + dt * speed * 1.7;

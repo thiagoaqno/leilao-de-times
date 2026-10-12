@@ -576,19 +576,34 @@
   }
   // curva: -1 (para a esquerda) a 1 (para a direita)
   // opt (passe planejado: curto, longo, enfiada): { vel, elev, alvo } = velocidade e ângulo de saída exatos e quem vai receber (trava)
+  // chute de primeira com a bola no ar (só o "chute"): na altura da coxa à do peito, voleio; na altura da cabeça, de costas
+  // para onde vai chutar, bicicleta. Alcança um pouco mais longe que a cabeçada. costas: opt.costas (o navegador sabe para
+  // onde o jogador estava virado antes de mirar) ou o p.yaw contra a direção do chute.
+  function acrobacia(p, b, kind, yaw, slack, opt) {
+    if (kind !== "chute" || b.holder || p.kind === "car") return null;
+    const rel = b.y - (p.y || 0), d = Math.hypot(b.x - p.x, b.z - p.z);
+    if (rel < 0.55 || rel > 2.2 || d > 1.3 + slack) return null;
+    const dif = p.yaw == null ? 0 : Math.abs(Math.atan2(Math.sin(yaw - p.yaw), Math.cos(yaw - p.yaw)));
+    const costas = opt && opt.costas != null ? !!opt.costas : dif > 1.9;
+    if (rel >= 1.15 && costas) return "bicicleta";
+    if (rel < 1.6) return "voleio";
+    return null;
+  }
   function kick(b, p, kind, power, yaw, slack = 0, curve = 0, F = MODES.pes, opt = null) {
-    const how = canKick(p, b, slack); if (!how) return null;
+    const how = acrobacia(p, b, kind, yaw, slack, opt) || canKick(p, b, slack); if (!how) return null;
     power = Math.max(0, Math.min(1, power));
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
     let speed, elev;
     if (how === "mao") { b.holder = null; b.x = p.x + fx * 0.6; b.z = p.z + fz * 0.6; b.y = 1.1; speed = kind === "passe" ? 6 + 10 * power : 14 + 12 * power; elev = kind === "passe" ? 0.05 : 0.45; }
     else if (how === "cabeca") { speed = 7 + 9 * power; elev = 0.12; }
+    else if (how === "voleio") { speed = 11 + 18 * power; elev = 0.04 + power * 0.08; } // de primeira: forte e baixo
+    else if (how === "bicicleta") { speed = 10 + 16 * power; elev = 0.06; }
     else if (kind === "passe") { speed = 4 + 22 * power; elev = 0.02; } // passe forte: o atrito do futsal segura
     else if (kind === "cavadinha") { speed = 7 + 13 * power; elev = 0.85; }
     else if (kind === "lancamento") { speed = 10 + 16 * power; elev = 0.38; } // passe longo pelo alto (assistência de passe)
     else if (kind === "cruzamento") { speed = 9 + 21 * power; elev = 0.6; } // cruzamento alto: sobe bem e cai na área
     else { speed = 9 + 20 * power; elev = 0.07 + power * 0.1; }
-    if (opt && opt.vel && how !== "mao") { speed = Math.max(3, Math.min(34, opt.vel)); elev = Math.max(0, Math.min(1.1, opt.elev ?? 0.02)); }
+    if (opt && opt.vel && how !== "mao" && how !== "voleio" && how !== "bicicleta") { speed = Math.max(3, Math.min(34, opt.vel)); elev = Math.max(0, Math.min(1.1, opt.elev ?? 0.02)); }
     const h = Math.cos(elev) * speed, sobe = Math.sqrt((F.gBola || 25) / 9.81); // mesma altura que antes, subindo mais rápido
     const herda = opt && opt.vel ? 0 : 0.3; // passe planejado: a velocidade já é a da bola (não soma a de quem passa)
     b.vx = fx * h + (p.vx || 0) * herda; b.vz = fz * h + (p.vz || 0) * herda; b.vy = Math.sin(elev) * speed * sobe;
@@ -880,7 +895,7 @@
   }
 
   const api = { MODES, campoDe, COND, COND_PADRAO, COND_FAIXA, limparCond, usarCond, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
-    movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, kick, assistPass, assistCross, arenaSDF, rampa };
+    movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, acrobacia, kick, assistPass, assistCross, arenaSDF, rampa };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;
 })(typeof window !== "undefined" ? window : globalThis);

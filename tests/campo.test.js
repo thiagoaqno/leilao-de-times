@@ -177,3 +177,17 @@ test("condução com toques: toques curtos e frequentes, a bola só muda de rumo
   assert.ok(pique.maxFrente > r.maxFrente, "no pique a bola vai mais longe");
   assert.strictEqual(corre(C.RUN, 0, Math.PI / 2).perdeu, 0, "curva de 90°");
 });
+
+test("chute de primeira: voleio com a bola no ar, bicicleta de costas, cabeçada e passe continuam", () => {
+  const F = C.MODES.pes;
+  const chuta = (alt, dist, yawCorpo, yawChute, kind = "chute") => {
+    const b = { x: 0, y: alt, z: -dist, vx: 0, vy: 0, vz: 0 }; // o jogador olha para −z (yaw 0)
+    return C.kick(b, { x: 0, y: 0, z: 0, yaw: yawCorpo, id: "a" }, kind, 1, yawChute, 0, 0, F, null);
+  };
+  assert.strictEqual(chuta(0.2, 0.8, 0, 0), "pe");
+  assert.strictEqual(chuta(0.8, 1.1, 0, 0), "voleio", "bola na coxa, um pouco longe: voleio");
+  assert.strictEqual(chuta(1.6, 1.0, 0, Math.PI), "bicicleta", "na altura da cabeça, chutando para trás");
+  assert.strictEqual(chuta(1.8, 0.8, 0, 0), "cabeca", "bola alta, de frente: cabeçada");
+  assert.strictEqual(chuta(0.8, 0.9, 0, 0, "passe"), "pe", "o passe não vira voleio");
+  assert.strictEqual(chuta(1.6, 1.0, 0, 0, "chute"), null, "de frente e longe para a cabeça: não alcança");
+});

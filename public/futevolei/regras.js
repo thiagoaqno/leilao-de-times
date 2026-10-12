@@ -28,7 +28,7 @@
     letra: { nome: "Letra", T: [1.4, 1.15], prof: [4, 7.8], efeito: 0, erro: 0.9 },
     calcanhar: { nome: "Pé para trás", T: [1.45, 1.2], prof: [3.5, 7], efeito: 0, erro: 0.95 },
     voleio: { nome: "Voleio", T: [0.8, 0.62], prof: [5, 8.4], efeito: 3, erro: 0.85, ataque: true },
-    bicicleta: { nome: "Bicicleta", T: [0.85, 0.65], prof: [4, 8.2], efeito: 4, erro: 0.9, ataque: true },
+    bicicleta: { nome: "Bicicleta", T: [0.75, 0.56], prof: [4, 8.2], efeito: 4, erro: 0.9, ataque: true },
     shark: { nome: "Shark Attack", T: [0.8, 0.64], prof: [3, 7], efeito: 4, erro: 0.75, ataque: true },
     saque: { nome: "Saque", T: [1.6, 1.3], prof: [4.5, 8.3], efeito: 1, erro: 0.6 },
   };
@@ -147,7 +147,10 @@
   }
 
   // ---------- jogador: anda (o navegador mexe o próprio; o servidor e o treino mexem os robôs) ----------
+  // depois da bicicleta o jogador cai na areia e levanta: esse tempo ele fica parado (a animação do navegador dura o mesmo)
+  const CAIDO_BICICLETA = 1.2;
   function mover(j, dir, dt, m = null) {
+    if (j.caido > 0) { j.caido -= dt; j.vx = j.vz = 0; return; }
     const vmax = VEL * (j.bot ? DIF_ATUAL.vel : 1);
     const l = Math.hypot(dir.x, dir.z), tx = (l > 1 ? dir.x / l : dir.x) * vmax, tz = (l > 1 ? dir.z / l : dir.z) * vmax;
     const dx = tx - j.vx, dz = tz - j.vz, d = Math.hypot(dx, dz), a = ACEL * dt;
@@ -256,6 +259,7 @@
     // o Shark Attack é sempre de pé: de voleio (bola de lado ou na frente) ou de bicicleta (bola atrás do corpo)
     const estilo = golpe === "shark" ? ((j.z - b.z) * s < -0.12 ? "bicicleta" : "voleio") : undefined;
     j.armado = null; m.rally++;
+    if (golpe === "bicicleta" || estilo === "bicicleta") j.caido = CAIDO_BICICLETA; // caiu de costas: fica parado enquanto levanta
     m.ev.push({ tipo: "toque", t: m.t, id: j.id, golpe, estilo, intencao, pulo, espirrou, h: Math.round(b.y * 100) / 100, lado: Math.sign(b.x - j.x) * sinal(j.team) || 1, toques: b.toques, time: j.team });
   }
   // saque: chute de trás da linha de fundo, por cima da rede, para o fundo do outro lado. Primeiro o balanço da perna
@@ -456,7 +460,7 @@
       posse: b.viva && b.time ? { time: b.time, toques: b.toques } : null };
   }
 
-  const api = { Q, G, GOLPES, DIF, VEL, ALCANCE, ALTURA_PULO, ARMADO_MAX, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, lancar, voar, queda,
+  const api = { Q, G, GOLPES, DIF, VEL, ALCANCE, ALTURA_PULO, CAIDO_BICICLETA, ARMADO_MAX, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, lancar, voar, queda,
     golpeDe, alcanca, previsaoToque, alvoAtaque, alvoPasse, tocar, sacar, armar, passo, pontoDeToque, pacote, estado, posicionar };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Futevolei = api;

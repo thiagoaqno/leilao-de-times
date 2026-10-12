@@ -31,7 +31,7 @@ function keeperBot(k, b, dt, t, ativo = true) {
   } else C.movePlayer(k, { x: 0, z: 0, speed: 0, free: true }, dt, F);
   k.x = gx;
   const near = Math.hypot(b.x - k.x, b.z - k.z) < 1.2 && Math.hypot(b.vx, b.vz) < 3 && b.y < 1;
-  if (near && !G.falta) { k.holdT += dt; if (k.holdT > 0.8) { k.holdT = 0; k.st.kickT = t; reposicao(k, b); Sound.kick(0.5, 0.6); } }
+  if (near && !G.falta) { k.holdT += dt; if (k.holdT > 0.8) { k.holdT = 0; k.st.kickT = t; k.st.golpe = { how: "mao", kind: "chute" }; reposicao(k, b); Sound.kick(0.5, 0.6); } }
   else k.holdT = 0;
   k.model.position.set(k.x, k.y, k.z); animate(k.model, Math.abs(k.vz), dt, k.st, k.diveT ? FL.dive : 0);
   return { ...k, kind: "pe", dive: k.diveT > 0 };
@@ -170,8 +170,8 @@ const doTime = (team, menos) => [...(team === "A" ? [{ id: "eu", x: G.me.x, z: G
 function botChute(bot, t, d, s, power) {
   const F = G.F, b = local.ball, alvoZ = (Math.random() * 2 - 1) * (F.goalW - 0.45);
   const yaw = Math.atan2(-(s * F.L - b.x), -(alvoZ - b.z)) + (Math.random() * 2 - 1) * d.erro;
-  if (!C.kick(b, botBody(bot), "chute", power, yaw, 0, 0, G.F)) return false;
-  bot.lastKick = t; bot.st.kickT = t; const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(power, k, pan); return true;
+  const how = C.kick(b, botBody(bot), "chute", power, yaw, 0, 0, G.F); if (!how) return false;
+  bot.lastKick = t; bot.st.kickT = t; bot.st.golpe = { how, kind: "chute" }; const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(power, k, pan); return true;
 }
 // passe do bot: escolhe o tipo como um jogador faria. Companheiro correndo para o ataque: bola enfiada (ele aposta
 // corrida); rival na linha do passe (a menos de 1,2 m do segmento) ou longe: longo, por cima; senão, curto.
@@ -186,7 +186,7 @@ function botPasse(bot, t, alvo) {
   const colado = rivais.some((o) => Math.hypot(o.x - bot.x, o.z - bot.z) < 1.6), forca = tipo === "profundidade" ? Math.random() * 0.4 : 0;
   const pl = C.planejarPasse(G.F, bot, Math.atan2(-dx, -dz), [alvo], tipo, forca, colado, s, Math.random, { assist: tipo !== "longo" });
   if (!C.kick(b, botBody(bot), pl.kind, 1, pl.yaw, 0, 0, G.F, { vel: pl.vel, elev: pl.elev, alvo: pl.alvo })) return false;
-  bot.facing = pl.yaw; bot.lastKick = t; bot.st.kickT = t; G.passeVoo = pl.alvo && bot.team === "A" ? { alvo: pl.alvo, ate: t + 3 } : null; // o anel só no meu time
+  bot.facing = pl.yaw; bot.lastKick = t; bot.st.kickT = t; bot.st.golpe = { how: "pe", kind: "passe" }; G.passeVoo = pl.alvo && bot.team === "A" ? { alvo: pl.alvo, ate: t + 3 } : null; // o anel só no meu time
   const [k, pan] = hearing([bot.x, 0.5, bot.z]); Sound.kick(0.35, k, pan); return true;
 }
 // pedi a bola: o bot do meu time que está com ela pensa logo (e toca para mim, se der)

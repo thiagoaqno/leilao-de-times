@@ -29,13 +29,20 @@ export const GOLPES_M = {
   cabecaChao: { c: "headerSoccerball", i: 0.3, imp: 0.68, f: 1.3 },              // cabeçada de pé
   voleio: { c: "strikeFowardJog", i: 0.03, imp: 0.6, f: 1.0, salto: 0.3, depois: "aterrissa" },
   shark: { c: "strikeFowardJog", i: 0.03, imp: 0.6, f: 1.0, salto: 0.35, depois: "aterrissa" },
-  bicicleta: { c: "scissorKick", i: 0.37, imp: 1.0, f: 2.77 }, sharkBicicleta: { c: "scissorKick", i: 0.37, imp: 1.0, f: 2.77 }, // cai e levanta
+  // cai e levanta: depois do impacto anda 1,5× (1,2 s, o tempo que o jogador fica parado: CAIDO_BICICLETA nas regras)
+  bicicleta: { c: "scissorKick", i: 0.37, imp: 1.0, f: 2.77, pos: 1.5 }, sharkBicicleta: { c: "scissorKick", i: 0.37, imp: 1.0, f: 2.77, pos: 1.5 },
   saque: { c: "goalkeeperDropKick", i: 1.45, imp: 2.2, f: 3.0, solta: 1.85 },    // a reposição do goleiro: solta a bola e chuta
   // sem bola
   pegaBola: { c: "goalkeeperPlacingBall", i: 1.0, f: 0 },                         // abaixa e pega a bola da areia (o "pôr a bola" ao contrário)
   aterrissa: { c: "fallingToLanding", i: 0.3, f: 1.07 },
   parada: { c: "runToStop", i: 0.25, f: 0.9 },                                    // a freada depois de correr
   mergulho: { c: "goalkeeperBodyBlock", i: 0.3, imp: 0.7, f: 2.47 },              // o peixinho atrás da bola que vai cair
+  // a Pelada (public/pelada/mixamo.js): o chute a pé e as coisas do goleiro, que lá pode usar a mão
+  chutePe: { c: "strikeFowardJog", i: 0.03, imp: 0.6, f: 1.0 },
+  arremesso: { c: "goalkeeperOverhandThrow", i: 0.3, imp: 1.15, f: 2.1 },
+  rolar: { c: "goalkeeperPass", i: 0.2, imp: 0.9, f: 2.4 },
+  defende: { c: "goalkeeperCatch", i: 0.15, imp: 0.55, f: 1.27 },
+  levanta: { c: "standingUp", i: 0.2, f: 1.67, entra: 0.2 },
   // comemorações, lamentos e manias (sorteados)
   comemora1: { c: "standingJump", i: 0.27, f: 1.83 }, comemora2: { c: "runningJump", i: 0, f: 0.9 }, comemora3: { c: "goalkeeperOverhandThrow", i: 0.3, f: 1.7 },
   lamenta1: { c: "standingUp", i: 0, f: 1.67, entra: 0.25 }, lamenta2: { c: "goalkeeperScoop", i: 0.37, f: 1.9 }, lamenta3: { c: "endBicycleSitUp", i: 1.31, f: 3.3, entra: 0.3 },
@@ -221,7 +228,7 @@ export class AnimadorMixamo {
     // o golpe por cima de tudo: entra rápido, sai no fim
     let g = 0, c = this.clip;
     if (c) {
-      c.t += dt * c.escala;
+      c.t += dt * (c.C.pos && c.t >= c.impT ? c.C.pos : c.escala);
       g = c.t < 0 ? 0 : Math.min(ease(c.t, 0, c.entra), 1 - ease(c.t, c.dur - 0.2, c.dur));
       if (c.t >= c.dur) {
         const depois = c.depois; this.clip = null; c = null; g = 0;
