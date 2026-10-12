@@ -19,6 +19,7 @@ require("./kittens.js")(io); // Gatinhos Explosivos da Galera: cartas de sobrevi
 require("./uno.js")(io); // Uno da Galera: jogo de cartas, canal /uno
 require("./sinuca.js")(io); // Sinuca da Galera: bola 8, canal /sinuca
 require("./truco.js")(io); // Truco da Galera: truco paulista, canal /truco
+require("./bloqueio.js")(io); // Bloqueio: corrida de peões com paredes (Quoridor), canal /bloqueio
 require("./domino.js")(io); // Dominó da Galera: dominó de dupla, canal /domino
 require("./ludo.js")(io); // Ludo da Galera: ludo de 2 a 4 jogadores, canal /ludo
 require("./botao.js")(io); // Futebol de Botão da Galera: x1, duplas ou rei do campo, canal /botao
@@ -116,6 +117,7 @@ app.get("/kittens", (req, res) => res.redirect("/kittens/"));
 app.get("/sinuca", (req, res) => res.redirect("/sinuca/"));
 app.get("/truco", (req, res) => res.redirect("/truco/"));
 app.get("/domino", (req, res) => res.redirect("/domino/"));
+app.get("/bloqueio", (req, res) => res.redirect("/bloqueio/"));
 app.get("/ludo", (req, res) => res.redirect("/ludo/"));
 app.get("/botao", (req, res) => res.redirect("/botao/"));
 app.get("/corrida", (req, res) => res.redirect("/corrida/"));

@@ -303,6 +303,8 @@ const GAMES = [
     x: 34, y: 2, w: 8, h: 5, doors: [37, 38], bairro: "cartas", roof: "#c4572e", roof2: "#93401f", wall: "#f3ead6", wall2: "#dccfae", awning: true },
   { id: "domino", url: "/domino/", icon: "🎲", sign: "DOMINÓ", name: "Praça do Dominó", desc: "Dominó de dupla com parceiro de frente. Carroça, lá-e-lô e cruzada.", meta: "Dominó da Galera · 4 jogadores",
     x: 12, y: 10, w: 7, h: 5, doors: [15], bairro: "cartas", roof: "#23232b", roof2: "#111117", wall: "#f6f3ea", wall2: "#dcd6c4", domino: true },
+  { id: "bloqueio", url: "/bloqueio/", icon: "🧱", sign: "BLOQUEIO", name: "Casa do Bloqueio", desc: "Cruze o tabuleiro primeiro e levante paredes para atrapalhar a galera. 2 ou 4 jogadores.", meta: "Bloqueio · 2 ou 4 jogadores",
+    x: 49, y: 10, w: 6, h: 5, doors: [52], bairro: "cartas", roof: "#c9a36b", roof2: "#8d6a3a", wall: "#f3ead6", wall2: "#d9c9a3", bloqueio: true },
   // quiosque na praça, com o telhado nas 4 cores do tabuleiro
   { id: "ludo", url: "/ludo/", icon: "🔴", sign: "LUDO", name: "Quiosque do Ludo", desc: "Tirou 6, sai da base. Comeu o peão do amigo, joga de novo.", meta: "Ludo da Galera · 2 a 4 jogadores",
     x: 4, y: 22, w: 5, h: 3, doors: [6], bairro: "praca", roof: "#fffaf0", roof2: "#d8c7a6", wall: "#f1e4cf", wall2: "#d6c3a2", ludo: true },
@@ -371,7 +373,7 @@ const FOUNTAIN = { x: 27, y: 21, w: 4, h: 3 };
 const TELAO = { x: 26, y: 17, w: 6 };
 // os terrenos prontos para as construções novas: cercados, com a placa "em breve"; quem para na frente lê a placa
 const TERRENOS = [
-  { x: 21, y: 10, w: 6, h: 5, bairro: "cartas" }, { x: 49, y: 10, w: 6, h: 5, bairro: "cartas" },
+  { x: 21, y: 10, w: 6, h: 5, bairro: "cartas" },
   { x: 51, y: 31, w: 5, h: 4, bairro: "autodromo" },
 ];
 const LAMPS = [[2, 9], [26, 9], [31, 9], [55, 9], [11, 17], [44, 17], [11, 27], [44, 27], [2, 37], [27, 37], [30, 37], [55, 37], [27, 45], [30, 45]];
@@ -813,6 +815,11 @@ function drawBuilding(c, g) {
     const cx = rx + rw / 2, cy = Y + roofH / 2;
     ["#f4f1e6", "#c8102e", "#f4f1e6", "#c8102e"].forEach((col, i) => { c.fillStyle = col; c.beginPath(); c.arc(cx, cy, 12 - i * 3, 0, 7); c.fill(); });
     for (let xx = X; xx < X + W; xx += 6) { px(c, "#cbb98a", xx, Y + H - 6, 5, 3); px(c, "#cbb98a", xx + 3, Y + H - 9, 5, 3); }
+  }
+  if (g.bloqueio) { // telhado de tabuleiro, com uma parede e dois peões
+    for (let i = 1; i < 4; i++) { px(c, "#8d6a3a", X + (W * i) / 4 - 1, Y + 2, 1, roofH - 5); px(c, "#8d6a3a", X + 3, Y + 2 + ((roofH - 5) * i) / 4, W - 6, 1); }
+    px(c, "#2a1d0e", X + W / 2 - 8, Y + roofH / 2 - 1, 16, 3);
+    px(c, "#ff8a3d", X + W / 4 - 3, Y + roofH - 7, 5, 5); px(c, "#4fb0ff", X + (3 * W) / 4 - 3, Y + 4, 5, 5);
   }
   if (g.domino) { // telhado de pedra de dominó
     px(c, "#f6f3ea", X + W / 2 - 1, Y + 3, 2, roofH - 7);

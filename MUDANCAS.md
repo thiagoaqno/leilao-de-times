@@ -1,14 +1,7 @@
-# Gatinhos Explosivos na Vila (fase 1)
+# Bloqueio: novo jogo na Vila (fase 1, o esquema geral)
 
-**Antes:** a Vila não tinha nenhum jogo no estilo Exploding Kittens; o terreno do canto da Rua das Cartas estava vazio, com a placa "EM BREVE".
+**Antes:** a Vila não tinha nenhum jogo de tabuleiro de bloquear caminho.
 
-**Depois:** a **Toca dos Gatinhos** ocupa esse terreno (telhado laranja com um gatinho-bomba) e abre o **Gatinhos Explosivos**, de 2 a 5 jogadores, com sala de código, convite, avatar, só assistir e reconexão como os outros jogos de cartas. Esta fase é só a estrutura e a jogabilidade: o visual está simples de propósito; cores, animações e efeitos vêm na próxima.
+**Depois:** a **Casa do Bloqueio** fica na Rua das Cartas (no terreno da direita, que era vazio). O jogo é o Quoridor: tabuleiro 9x9, cada peão tenta chegar ao lado oposto; na sua vez você anda uma casa (pulando o peão que está na frente, ou indo para o lado se a casa de trás está fechada) ou põe uma parede de duas casas (10 paredes em 2 jogadores, 5 em 4). Não vale parede que feche todo o caminho de alguém, nem que sobreponha ou cruze outra.
 
-**Regras (cartas e textos nossos):**
-- Cada um começa com 1 Desarmar e 7 cartas; o monte leva um Gatinho Explosivo a menos que o número de jogadores.
-- Na sua vez, jogue quantas cartas quiser e termine comprando. Gatinho sem Desarmar = explode; com Desarmar, você escolhe em segredo onde ele volta no monte.
-- Cartas: Ataque (o próximo joga 2x; ataques empilham), Pular, Favor (o alvo escolhe a carta que dá), Embaralhar, Espiar o Futuro (só você vê as 3 de cima), Nem Pensar e 5 gatos (par rouba uma carta, trio pede uma carta pelo nome).
-- Toda jogada abre uma janela curta para o Nem Pensar de qualquer pessoa viva; número ímpar cancela. Nem Pensar também pode ser cancelado.
-- Relógios: quem demora compra sozinho; favor e Desarmar se resolvem sozinhos; quem caiu da sala não segura a mesa. O vencedor entra no placar da Noite da Galera.
-
-**Onde:** `kittens.js` (servidor, canal `/kittens`), `public/kittens/` (página e `regras.js`), prédio em `public/index.html`/`vila.js`, `noite.js`, `tests/kittens.test.js` e `tests/salas.test.js`.
+**Como:** `public/bloqueio/regras.js` guarda as regras (as mesmas no servidor e no navegador, com o robô), `bloqueio.js` cuida da sala (código de 5 letras, convite, assistir, reconexão, robôs, relógio de 30/45/60 s em que quem demora anda um passo, placar da Noite), e `public/bloqueio/index.html` desenha o tabuleiro em SVG, simples e sem estilo (cores, animações e efeitos ficam para a fase 2). Testes em `tests/bloqueio.test.js`; `/bloqueio` entrou em `tests/salas.test.js`.
