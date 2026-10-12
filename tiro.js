@@ -25,6 +25,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 module.exports = function attachTiro(io) {
   const nsp = io.of("/tiro");
   const rooms = new Map();
+  require("./lobby.js").registrar("tiro", rooms, { max: 10 }); // aparece na lista de salas da Vila
 
   const cleanConfig = (c = {}) => ({
     size: int(c.size, 1) === 2 ? 2 : 1,

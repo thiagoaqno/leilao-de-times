@@ -18,6 +18,7 @@ const PAUSA_MS = 1300, SEM_RESPOSTA_MS = 9000;
 module.exports = function attachPingPong(io) {
   const nsp = io.of("/pingpong");
   const rooms = new Map();
+  require("./lobby.js").registrar("pingpong", rooms, { max: 10 }); // aparece na lista de salas da Vila
   const cleanConfig = (c = {}) => ({ pontos: int(c.pontos, 11) === 21 ? 21 : 11, games: int(c.games, 1) === 3 ? 3 : 1 });
   const ladoDe = (room, id) => room.lados.indexOf(id);
 

@@ -28,6 +28,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math
 module.exports = function attachBotao(io) {
   const nsp = io.of("/botao");
   const rooms = new Map();
+  require("./lobby.js").registrar("botao", rooms, { max: MAX_PLAYERS }); // aparece na lista de salas da Vila
 
   function cleanConfig(c = {}) {
     return {

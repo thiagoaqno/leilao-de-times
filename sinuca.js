@@ -20,6 +20,7 @@ const GROUP_NAME = { lisas: "lisas", listradas: "listradas" };
 module.exports = function attachSinuca(io) {
   const nsp = io.of("/sinuca");
   const rooms = new Map();
+  require("./lobby.js").registrar("sinuca", rooms, { max: MAX_PLAYERS }); // aparece na lista de salas da Vila
 
   function cleanConfig(c = {}) {
     return {

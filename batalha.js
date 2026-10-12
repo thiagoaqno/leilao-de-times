@@ -18,6 +18,7 @@ const BOT_SKINS = ["steve", "pikachu", "shrek", "naruto", "woody", "aranha", "cj
 module.exports = function attachBatalha(io) {
   const nsp = io.of("/batalha");
   const rooms = new Map();
+  require("./lobby.js").registrar("batalha", rooms, { max: MAX_KARTS }); // aparece na lista de salas da Vila
 
   const cleanConfig = (c = {}) => ({
     minutes: [2, 3, 5].includes(int(c.minutes, 3)) ? int(c.minutes, 3) : 3,

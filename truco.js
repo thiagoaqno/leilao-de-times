@@ -14,6 +14,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math
 module.exports = function attachTruco(io) {
   const nsp = io.of("/truco");
   const rooms = new Map();
+  require("./lobby.js").registrar("truco", rooms, { max: MAX_PLAYERS }); // aparece na lista de salas da Vila
 
   function cleanConfig(c = {}) {
     return {

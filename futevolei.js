@@ -19,6 +19,7 @@ const ARENAS = ["praia", "arena"];
 module.exports = function attachFutevolei(io) {
   const nsp = io.of("/futevolei");
   const rooms = new Map();
+  require("./lobby.js").registrar("futevolei", rooms, { max: MAX_SALA }); // aparece na lista de salas da Vila
 
   const cleanConfig = (c = {}) => ({
     duplas: c.duplas !== false, // futevôlei é em dupla; 1x1 é opção

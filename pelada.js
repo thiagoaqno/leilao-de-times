@@ -23,6 +23,7 @@ const q2 = (v) => Math.round(v * 100) / 100;
 module.exports = function attachPelada(io) {
   const nsp = io.of("/pelada");
   const rooms = new Map();
+  require("./lobby.js").registrar("pelada", rooms, { max: 14 }); // aparece na lista de salas da Vila
 
   const cleanConfig = (c = {}) => ({
     mode: c.mode === "carros" ? "carros" : "pes",
