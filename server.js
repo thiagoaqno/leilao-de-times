@@ -37,6 +37,7 @@ require("./carreira-online.js")(io); // Carreira em grupo: a sala com código, c
 const noite = require("./noite.js"); noite.attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
 require("./pingpong.js")(io); // Pingue-Pongue da Galera: tênis de mesa 1x1 no mouse, canal /pingpong
+require("./drag.js")(io); // Arrancada JDM: tuning e apostas numa corrida de arrancada, canal /drag
 require("./futevolei.js")(io); // Futevôlei da Galera: futevôlei 3D na areia, 1x1 ou duplas, com robôs, canal /futevolei
 require("./proibida.js")(io); // Palavra Proibida da Galera: explicar palavras em dois times, canal /proibida
 require("./rumi.js")(io); // Rumi da Galera: o jogo de peças numeradas clássico, 2 a 4 com robôs, canal /rumi
@@ -113,6 +114,8 @@ app.get("/carreira", (req, res) => res.redirect("/carreira/"));
 app.get("/tenis", (req, res) => res.redirect("/tenis/"));
 app.get("/pingpong", (req, res) => res.redirect("/pingpong/"));
 app.get("/futevolei", (req, res) => res.redirect("/futevolei/"));
+app.get("/drag", (req, res) => res.redirect("/drag/"));
+app.get("/api/drag/marca/:marca", async (req, res) => { const m = await require("./drag.js").modelosDaMarca(req.params.marca); if (!m) return res.status(404).json({ modelos: [] }); res.json({ modelos: m }); });
 app.get("/rumi", (req, res) => res.redirect("/rumi/"));
 app.get("/proibida", (req, res) => res.redirect("/proibida/"));
 // Rocket da Galera: a mesma página da Pelada, no modo carros (o Express trata "/rocket" e "/rocket/" como iguais)

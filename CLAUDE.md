@@ -120,6 +120,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Pelada (futsal 3D) e Rocket (futebol de carro) | `pelada.js` (+ `peladaBots.js`) | ver logo abaixo |
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
 | Pingue-Pongue | `pingpong.js` | `index.html`, `jogo.js`, `regras.js` (voo com efeito, juiz, placar, robô) |
+| Arrancada JDM (drag com tuning e apostas, Oficina JDM no Autódromo) | `drag.js` (canal `/drag`: fases `garage`, `bets`, `race`, `result`, `final`; a física roda no servidor; `GET /api/drag/marca/:marca` traz os modelos da NHTSA vPIC com cache) | `index.html`, `jogo.js` (telas e a pista em canvas), `regras.js` (UMD: `CARROS` com a ficha técnica local, `PECAS`, `ficha`, `passo`, `estimar`, `pagar`). O AutoHub pede chave, então não é usado; `DRAG_*_MS` aceleram os tempos nos testes. Testes: `tests/drag.test.js` |
 | Futevôlei | `futevolei.js` | `index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js`, `musica.js` (ver logo abaixo) |
 | Vila (o mapa) + Galeramon/Pokémon/Naruto por turnos + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
 
