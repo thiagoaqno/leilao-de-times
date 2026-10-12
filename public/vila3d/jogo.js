@@ -161,8 +161,8 @@ renderer.setAnimationLoop(() => {
 $("carregando").remove();
 window.__vila3d = { camera, ctl, scene, M, carros };
 
-// ---------- música ambiente (public/vila3d/musica/): 30% do volume, toca sozinha e passa para a próxima ----------
-const VOLUME = 0.3;
+// ---------- música ambiente (public/vila3d/musica/): 5% do volume, toca sozinha e passa para a próxima ----------
+const VOLUME = 0.05;
 let mudo = false;
 try { mudo = localStorage.getItem("vila3d:mudo") === "1"; } catch (e) { /* sem armazenamento */ }
 const botao = document.createElement("button");

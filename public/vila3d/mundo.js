@@ -22,9 +22,34 @@ export async function criar(W) {
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x86c6f0);
-  scene.fog = new THREE.Fog(0x86c6f0, 70, 150);
-  const camera = new THREE.PerspectiveCamera(42, 1, 0.5, 260);
+  const COR_HORIZONTE = 0xb4dcf5;
+  scene.background = new THREE.Color(COR_HORIZONTE);
+  scene.fog = new THREE.Fog(COR_HORIZONTE, 70, 150);
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.5, 700);
+  // o céu: uma cúpula com o degradê do horizonte ao azul, o sol com brilho e nuvens que andam devagar (feito aqui, sem imagem)
+  const ceu = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { tempo: { value: 0 }, sol: { value: new THREE.Vector3(-0.42, 0.62, 0.38).normalize() } },
+    vertexShader: "varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: `varying vec3 vP; uniform float tempo; uniform vec3 sol;
+      float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float rr(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1,0)), f.x), mix(h(i + vec2(0,1)), h(i + vec2(1,1)), f.x), f.y); }
+      float fbm(vec2 p){ float a = 0.5, v = 0.0; for (int i = 0; i < 5; i++){ v += a * rr(p); p *= 2.03; a *= 0.5; } return v; }
+      void main(){
+        vec3 d = normalize(vP); float y = max(d.y, 0.0);
+        vec3 hor = vec3(0.706, 0.863, 0.961), alto = vec3(0.16, 0.45, 0.85);
+        vec3 c = mix(hor, alto, pow(y, 0.55));
+        float s = max(dot(d, sol), 0.0);
+        c += vec3(1.0, 0.92, 0.72) * (pow(s, 600.0) * 2.0 + pow(s, 24.0) * 0.28);
+        vec2 uv = d.xz / (d.y + 0.2) * 1.3 + vec2(tempo * 0.004, tempo * 0.0015);
+        float n = fbm(uv * 1.4); float nuvem = smoothstep(0.52, 0.8, n) * smoothstep(0.02, 0.22, d.y);
+        c = mix(c, vec3(1.0), nuvem * 0.9);
+        c = mix(c, hor, smoothstep(0.0, -0.05, d.y)); // abaixo do horizonte, a cor da névoa
+        gl_FragColor = vec4(c, 1.0);
+        #include <colorspace_fragment>
+      }`,
+  }));
+  ceu.renderOrder = -10; ceu.frustumCulled = false; scene.add(ceu);
   scene.add(new THREE.HemisphereLight(0xdff1ff, 0x7a9a5a, 1.15));
   const sol = new THREE.DirectionalLight(0xfff1d6, 2.4);
   sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048);
@@ -218,13 +243,28 @@ export async function criar(W) {
   farol.visible = false; scene.add(farol);
   const balao = (() => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), mat(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.5 })); m.visible = false; scene.add(m); return m; })();
 
-  // ---------- a câmera: segue a pessoa, sempre olhando para o norte ----------
+  // ---------- a câmera: terceira pessoa (de cima, olhando para o norte) ou primeira pessoa (nos olhos do boneco) ----------
+  // Arrastar o dedo ou o mouse inclina a visão (na primeira pessoa também gira); a roda e a pinça afastam na terceira.
   let dist = innerWidth < 700 ? 20 : 16, pitch = 1.0, alvoX = 0, alvoZ = 0, iniciou = false;
-  addEventListener("wheel", (e) => { if (dom.style.display === "none") return; dist = Math.max(7, Math.min(32, dist * (1 + Math.sign(e.deltaY) * 0.08))); }, { passive: true });
-  { const ps = new Map(); let d0 = 0, z0 = 0; // pinça no celular
-    dom.addEventListener("pointerdown", (e) => { ps.set(e.pointerId, e); if (ps.size === 2) { const [a, b] = [...ps.values()]; d0 = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); z0 = dist; } });
-    dom.addEventListener("pointermove", (e) => { if (!ps.has(e.pointerId)) return; ps.set(e.pointerId, e); if (ps.size === 2 && d0) { const [a, b] = [...ps.values()]; dist = Math.max(7, Math.min(32, z0 * d0 / Math.max(20, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)))); } });
-    for (const t of ["pointerup", "pointercancel"]) dom.addEventListener(t, (e) => { ps.delete(e.pointerId); d0 = 0; }); }
+  let modo = "terceira"; try { if (localStorage.getItem("vila3d:camera") === "primeira") modo = "primeira"; } catch (e) { /* sem armazenamento */ }
+  let yawCorpo = 0, giro = 0, olhar = 0.04, arrastou = false; // giro/olhar: o quanto a pessoa virou a cabeça
+  const ANG = { up: 0, right: Math.PI / 2, down: Math.PI, left: -Math.PI / 2 };
+  const entre = (v, a, b) => Math.max(a, Math.min(b, v));
+  const mudaModo = (m) => { modo = m ?? (modo === "terceira" ? "primeira" : "terceira"); giro = 0; try { localStorage.setItem("vila3d:camera", modo); } catch (e) { /* sem armazenamento */ } return modo; };
+  addEventListener("wheel", (e) => { if (dom.style.display === "none" || modo !== "terceira") return; dist = entre(dist * (1 + Math.sign(e.deltaY) * 0.08), 7, 32); }, { passive: true });
+  { const ps = new Map(); let d0 = 0, z0 = 0, ini = null, ult = null; // pinça no celular e arrastar para olhar
+    dom.addEventListener("pointerdown", (e) => { ps.set(e.pointerId, e); ini = ult = { x: e.clientX, y: e.clientY }; arrastou = false; if (ps.size === 2) { const [a, b] = [...ps.values()]; d0 = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); z0 = dist; } });
+    dom.addEventListener("pointermove", (e) => {
+      if (!ps.has(e.pointerId)) return; ps.set(e.pointerId, e);
+      if (ps.size === 2 && d0) { arrastou = true; if (modo === "terceira") { const [a, b] = [...ps.values()]; dist = entre(z0 * d0 / Math.max(20, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)), 7, 32); } return; }
+      if (!ini) return;
+      if (!arrastou && Math.hypot(e.clientX - ini.x, e.clientY - ini.y) < 8) return; // até 8 px ainda é um toque
+      arrastou = true;
+      const dx = e.clientX - ult.x, dy = e.clientY - ult.y; ult = { x: e.clientX, y: e.clientY };
+      if (modo === "primeira") { giro = entre(giro - dx * 0.005, -1.6, 1.6); olhar = entre(olhar + dy * 0.005, -0.6, 1.25); }
+      else pitch = entre(pitch - dy * 0.005, 0.22, 1.25);
+    });
+    for (const t of ["pointerup", "pointercancel"]) dom.addEventListener(t, (e) => { ps.delete(e.pointerId); d0 = 0; ini = null; }); }
 
   function ajustar() { renderer.setSize(innerWidth, innerHeight, false); dom.style.width = innerWidth + "px"; dom.style.height = innerHeight + "px"; camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
   addEventListener("resize", ajustar); ajustar();
@@ -251,14 +291,22 @@ export async function criar(W) {
     soma += real ?? dt; if (++quadros >= 24) { if (soma / quadros > 70 && nivel < 2) { nivel++; aplicaNivel(); } soma = quadros = 0; }
     const P = W.player, tx = P.fx + 0.5, tz = P.fy + 0.5;
     if (!iniciou) { alvoX = tx; alvoZ = tz; iniciou = true; } else { const k = Math.min(1, dt / 120); alvoX += (tx - alvoX) * k; alvoZ += (tz - alvoZ) * k; }
-    camera.position.set(alvoX, Math.sin(pitch) * dist, alvoZ + Math.cos(pitch) * dist); camera.lookAt(alvoX, 0.3, alvoZ);
+    const prim = modo === "primeira";
+    if (prim) { // nos olhos: vira devagar para onde anda; arrastar vira a cabeça, e ela volta ao andar
+      let dif = (ANG[P.dir] ?? 0) - yawCorpo; dif = Math.atan2(Math.sin(dif), Math.cos(dif)); yawCorpo += dif * Math.min(1, dt / 160);
+      if (P.moving) { giro *= Math.max(0, 1 - dt / 500); olhar += (0.04 - olhar) * Math.min(1, dt / 600); }
+      const yaw = yawCorpo + giro;
+      camera.position.set(alvoX - Math.sin(yaw) * 0.12, P.car ? 1.5 : 1.28, alvoZ + Math.cos(yaw) * 0.12);
+      camera.rotation.set(olhar, -yaw, 0, "YXZ");
+    } else { camera.position.set(alvoX, Math.sin(pitch) * dist, alvoZ + Math.cos(pitch) * dist); camera.lookAt(alvoX, 0.3, alvoZ); }
+    ceu.position.copy(camera.position); ceu.material.uniforms.tempo.value = now / 1000;
     sol.position.set(alvoX - 18, 40, alvoZ + 16); sol.target.position.set(alvoX, 0, alvoZ);
     jato.scale.y = 1 + Math.sin(now / 300) * 0.15;
     pintaTelao(now);
     for (const im of pedacosArv) im.visible = Math.hypot(im.userData.c[0] - alvoX, im.userData.c[1] - alvoZ) < 62; // longe, a mata some na névoa
     // as pessoas: eu, os amigos da mesma zona
     vivos.clear();
-    { const a = avatar("eu", P, W.nome() || "Eu", W.look(), W.skin(), false); poe(a, P, dt); vivos.add("eu"); }
+    { const a = avatar("eu", P, W.nome() || "Eu", W.look(), W.skin(), false); poe(a, P, dt); vivos.add("eu"); if (prim) a.g.visible = a.carro.visible = false; }
     for (const o of W.others.values()) {
       if (!W.naMinhaZona(o)) continue;
       const a = avatar(o.id, o, o.name || "?", o.look || 0, o.skin || "padrao", o.busy); poe(a, o, dt); vivos.add(o.id);
@@ -277,5 +325,5 @@ export async function criar(W) {
   }
   // onde uma casa do mapa aparece na tela (em pixels da janela): os testes e o toque usam
   const tela2 = (x, z, y = 0.5) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; };
-  return { dom, render, pick, ajustar, info: () => ({ ...renderer.info.render, geos: renderer.info.memory.geometries, nivel }), tela: tela2, zoom: (d) => { dist = d; } };
+  return { dom, render, pick, ajustar, info: () => ({ ...renderer.info.render, geos: renderer.info.memory.geometries, nivel }), tela: tela2, zoom: (d) => { dist = d; }, camera: mudaModo, modo: () => modo, arrastou: () => arrastou };
 }

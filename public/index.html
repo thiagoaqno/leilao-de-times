@@ -225,6 +225,8 @@ canvas.mini.off{display:none}
     <button class="tbtn battle" id="bTeam" title="Batalhas de Galeramon, Pokémon ou Naruto Shippuden">⚔️<span class="tx keep"> Batalha</span></button>
     <button class="tbtn" id="bLook" title="Trocar a roupa do boneco">👕<span class="tx"> Roupa</span></button>
     <button class="tbtn" id="bSkin" title="Trocar o personagem (as skins da Pelada)">🎭<span class="tx"> Skin</span></button>
+    <button class="tbtn" id="bCam" style="display:none" title="Câmera: terceira ou primeira pessoa (tecla V)">👁️<span class="tx"> Câmera</span></button>
+    <button class="tbtn" id="bSom" style="display:none" title="Silenciar a música">🔊<span class="tx"> Música</span></button>
     <button class="tbtn" id="bMapa" title="Mostrar ou esconder o mapa">🗺️<span class="tx"> Mapa</span></button>
     <button class="tbtn" id="bMenu" title="Lista de jogos">☰<span class="tx"> Jogos</span></button>
   </div>
@@ -1046,6 +1048,7 @@ addEventListener("keydown", (e) => {
   const d = KEYS[e.code];
   if (d) { e.preventDefault(); hold(d); return; }
   if (e.key === "Shift" || e.code === "KeyX") running = true;
+  if (e.code === "KeyV" && V3) { camera3d(); return; }
   if (["Space", "Enter", "NumpadEnter", "KeyE", "KeyZ"].includes(e.code)) { e.preventDefault(); action(); }
 });
 addEventListener("keyup", (e) => {
@@ -1991,6 +1994,8 @@ GAMES.filter((g) => !g.npc).forEach((g) => drawBuilding(rascunho, g)); // só pa
 collectWindowLights();
 resize();
 $("mini").classList.toggle("off", !miniOn);
+function camera3d() { if (!V3) return; const m = V3.camera(); toast(m === "primeira" ? "Primeira pessoa: arraste para olhar em volta" : "Terceira pessoa: arraste para cima e para baixo para ver o céu"); $("bCam").blur(); }
+$("bCam").onclick = camera3d;
 $("bMapa").onclick = () => { miniOn = !miniOn; if (!INT) $("mini").classList.toggle("off", !miniOn); $("bMapa").blur(); };
 setHere(lugarEm(player.x, player.y));
 let V3 = null;
@@ -1998,7 +2003,7 @@ if (!/[?&]2d=1/.test(location.search) && window.Campo) { // ?2d=1 volta ao mapa 
   import("/vila3d/mundo.js").then((m) => m.criar({
     MW, MH, OX, OY, VW, VH, ground, rumo, GAMES, FOUNTAIN, TELAO, TERRENOS, LAMPS, BENCHES, TREES, POSTES, PREDIOS, PARADOS, ESTADIOS, OUTFITS,
     player, others, naMinhaZona, drawTelao, nome: () => myName, look: () => outfit, skin: mySkin, aqui: () => here, destino: () => destino,
-  })).then((v) => { V3 = v; V3.dom.addEventListener("pointerdown", (e) => { e.preventDefault(); tapAt(e.clientX, e.clientY); }); V3.dom.addEventListener("contextmenu", (e) => e.preventDefault()); })
+  })).then((v) => { V3 = v; V3.dom.addEventListener("click", (e) => { if (!V3.arrastou()) tapAt(e.clientX, e.clientY); }); $("bCam").style.display = ""; import("/vila3d/ambiente.js").then((a) => a.ligar($("bSom"))).catch(() => {}); V3.dom.addEventListener("contextmenu", (e) => e.preventDefault()); })
     .catch((e) => console.error("Vila 3D não abriu, ficou o mapa 2D:", e));
 }
 requestAnimationFrame(frame);
