@@ -4,6 +4,7 @@ import { PISTAS, sample, elevate, WORLD, rng } from "./estado.js";
 import { drawPreview } from "./menus.js";
 import { renderer, scene, hemi, sun, canvasTex, M, LOOK } from "./cena.js";
 import { nearest } from "./jogo.js";
+import { PROPS, aoCarregar } from "./props.js";
 
 // ---------- temas das pistas: cores, chão, enfeites e o horizonte ----------
 export const THEMES = {
@@ -39,7 +40,7 @@ export function buildTrack(id) {
     gd[j * (G + 1) + i] = Math.sqrt(bd); gh[j * (G + 1) + i] = bh;
   }
   tr.distAt = (x, y) => { const i = Math.max(0, Math.min(G, Math.round(x / cell))), j = Math.max(0, Math.min(G, Math.round(y / cell))); return gd[j * (G + 1) + i]; };
-  buildWorld(tr);
+  buildWorld(tr); tr.comProps = !!PROPS.pronto;
   return (TRACKS[id] = tr);
 }
 // altura do chão: em cima da pista e um pouco para os lados é a altura da pista; mais longe, desce até o nível 0
@@ -177,8 +178,9 @@ function buildWorld(tr) {
   if (id === "monaco") { for (let k = 0; k < 26; k++) { const a = r() * 6.28, rr2 = Math.sqrt(r()); yachts.push({ x: (800 + Math.cos(a) * 230 * rr2) * K, y: (1020 + Math.sin(a) * 40 * rr2) * K, h: hAt(800 * K, 1020 * K) + 1, s: 1, r: r() * 0.4 }); } for (let k = 0; k < 20; k++) yachts.push({ x: r() * WORLD, y: (1320 + r() * 500) * K, h: -6, s: 1.3, r: r() * 6 }); }
   if (id === "interlagos") for (let k = 0; k < 7; k++) { const p = pts[Math.floor(n * (0.015 + k * 0.025))], L = W / 2 + 70; stands.push({ x: p.x - p.nx * L, y: p.y - p.ny * L, h: p.h, s: 1, r: -Math.atan2(p.ny, p.nx) }); }
   // modelos
-  const leaf = new THREE.ConeGeometry(30, 70, 7); leaf.translate(0, 55, 0);
-  inst(leaf, M(0x2d7a33), trees); const trunk = new THREE.CylinderGeometry(4, 5, 30, 6); trunk.translate(0, 15, 0); inst(trunk, M(0x6b4423), trees);
+  if (PROPS.arvore) for (const { geo, mat } of PROPS.arvore.pecas) { const g = geo.clone(); g.scale(60, 60, 60); inst(g, mat, trees); } // a árvore do Kenney: 1,5 do modelo vira uns 9 m
+  else { const leaf = new THREE.ConeGeometry(30, 70, 7); leaf.translate(0, 55, 0);
+    inst(leaf, M(0x2d7a33), trees); const trunk = new THREE.CylinderGeometry(4, 5, 30, 6); trunk.translate(0, 15, 0); inst(trunk, M(0x6b4423), trees); }
   const pt = new THREE.CylinderGeometry(2, 3, 60, 6); pt.translate(0, 30, 0); inst(pt, M(0x8b5a2b), palms);
   const fronds = new THREE.ConeGeometry(22, 12, 6, 1, true); fronds.translate(0, 62, 0); inst(fronds, M(0x2f8f3a, { side: THREE.DoubleSide }), palms);
   const win = (base, lit) => canvasTex(64, 128, (x, w, hh, rr) => { x.fillStyle = lit ? "#1a1c2a" : "#fff"; x.fillRect(0, 0, w, hh); for (let yy = 6; yy < hh; yy += 10) for (let xx = 4; xx < w; xx += 10) { x.fillStyle = lit ? (rr() < 0.55 ? (rr() < 0.7 ? "#ffd86b" : "#9fe3ff") : "#0b0c14") : "#4d6f94"; x.fillRect(xx, yy, 6, 6); } });
@@ -191,6 +193,11 @@ function buildWorld(tr) {
   if (yachts.length) { const yg = new THREE.BoxGeometry(60, 10, 18); yg.translate(0, 5, 0); inst(yg, M(0xf7f7f7, { roughness: 0.4 }), yachts); const cab = new THREE.BoxGeometry(24, 8, 12); cab.translate(-4, 14, 0); inst(cab, M(0xdfe3ea), yachts); }
   for (const s0 of stands) { // arquibancadas da reta dos boxes
     const g = new THREE.Group(); g.position.set(s0.x, s0.h, s0.y); g.rotation.y = s0.r; add(g);
+    if (PROPS.arquibancada) { // a arquibancada coberta do Kenney, de frente para a pista (o modelo olha para +z, a pista fica em +x)
+      const { pecas, tam } = PROPS.arquibancada;
+      for (const { geo, mat } of pecas) { const gg = geo.clone(); gg.scale(150 / tam.x, 70 / tam.y, 80 / tam.z); gg.rotateY(Math.PI / 2); gg.translate(-40, 0, 0); const m = new THREE.Mesh(gg, mat); m.castShadow = m.receiveShadow = true; g.add(m); }
+      continue;
+    }
     const crowd = canvasTex(256, 32, (x, w, hh, rr) => { x.fillStyle = "#8a8f99"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 500; i++) { x.fillStyle = ["#ffdd00", "#009c3b", "#fff", "#e53935", "#1e5bc6"][(rr() * 5) | 0]; x.fillRect(rr() * w, rr() * hh, 2, 3); } });
     for (let k = 0; k < 5; k++) { const st = new THREE.Mesh(new THREE.BoxGeometry(14, 8, 140), [M(0x8a8f99), M(0x8a8f99), new THREE.MeshStandardMaterial({ map: crowd }), M(0x777), M(0x777), M(0x777)]); st.position.set(-k * 14, 4 + k * 8, 0); st.castShadow = true; g.add(st); }
     const roof = new THREE.Mesh(new THREE.BoxGeometry(80, 3, 150), M(0x555a66)); roof.position.set(-30, 64, 0); g.add(roof);
@@ -265,3 +272,6 @@ export function useTrack(tr) {
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2];
   sun.color.set(L.sun[0]); sun.intensity = L.sun[1];
 }
+
+// quando os enfeites do Kenney chegam, as pistas que já tinham sido montadas com formas simples são refeitas
+aoCarregar(() => { for (const tr of Object.values(TRACKS)) if (!tr.comProps) { for (const c of [...tr.grp.children]) { tr.grp.remove(c); c.traverse?.((o) => { o.geometry?.dispose?.(); }); } buildWorld(tr); tr.comProps = true; } });

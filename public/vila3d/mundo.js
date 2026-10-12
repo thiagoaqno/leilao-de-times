@@ -22,40 +22,55 @@ export async function criar(W) {
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
-  const COR_HORIZONTE = 0x86b5cc;
+  // os céus: um é sorteado a cada vez que a Vila abre (?ceu=<id> escolhe um). Cada um traz as cores do degradê, o sol, as
+  // nuvens e a luz da cena. "pintado" é o modelo SD_Sky (public/vila3d/ceu/), com a luz do dia.
+  const hex = (c) => new THREE.Color(c);
+  const CEUS = {
+    dia: { hor: 0xb4dcf5, alto: 0x2a73d9, sol: [-0.42, 0.62, 0.38], solCor: 0xffecb8, nu: [0.52, 0.8], nuCor: 0xffffff, nuOp: 0.9, estrelas: 0, fog: 0x9cc6e4, hemi: [0xdff1ff, 0x7a9a5a, 1.15], luz: [0xfff1d6, 2.4] },
+    pintado: { fog: 0x86b5cc, hemi: [0xdff1ff, 0x7a9a5a, 1.15], luz: [0xfff1d6, 2.4] },
+    entardecer: { hor: 0xffb070, alto: 0x4a5fb0, sol: [-0.8, 0.12, 0.3], solCor: 0xffa550, nu: [0.46, 0.74], nuCor: 0xffc9a0, nuOp: 0.85, estrelas: 0, fog: 0xe0a47c, hemi: [0xffd9b8, 0x6a6a4a, 0.95], luz: [0xffb877, 2.0] },
+    nublado: { hor: 0xc9d2d8, alto: 0x8d9aa6, sol: [-0.3, 0.7, 0.3], solCor: 0xffffff, nu: [0.3, 0.55], nuCor: 0xe8edf0, nuOp: 1, estrelas: 0, fog: 0xbcc6cc, hemi: [0xe6eef3, 0x71806a, 1.0], luz: [0xe8eef4, 1.2] },
+    tempestade: { hor: 0x6e7a85, alto: 0x2c343f, sol: [-0.3, 0.7, 0.3], solCor: 0x9aa4ad, nu: [0.22, 0.48], nuCor: 0x59636d, nuOp: 1, estrelas: 0, fog: 0x68727c, hemi: [0xb4c0cc, 0x4f5c4a, 0.75], luz: [0xb4c2d0, 0.8] },
+    noite: { hor: 0x24366b, alto: 0x050a1c, sol: [0.5, 0.55, -0.4], solCor: 0xcfdcff, nu: [0.6, 0.9], nuCor: 0x4a5a8a, nuOp: 0.5, estrelas: 1, fog: 0x1b2a55, hemi: [0x7f93d6, 0x2b3a4e, 0.7], luz: [0x9db4ff, 0.9] },
+  };
+  const ceuEscolhido = (() => { const q = /[?&]ceu=([a-z]+)/.exec(location.search); const ids = Object.keys(CEUS); return q && CEUS[q[1]] ? q[1] : ids[Math.floor(Math.random() * ids.length)]; })();
+  const COR_HORIZONTE = CEUS[ceuEscolhido].fog;
   scene.background = new THREE.Color(COR_HORIZONTE);
   scene.fog = new THREE.Fog(COR_HORIZONTE, 70, 150);
   const camera = new THREE.PerspectiveCamera(42, 1, 0.5, 700);
   // o céu: uma cúpula com o degradê do horizonte ao azul, o sol com brilho e nuvens que andam devagar (feito aqui, sem imagem)
   const ceu = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { tempo: { value: 0 }, sol: { value: new THREE.Vector3(-0.42, 0.62, 0.38).normalize() } },
+    uniforms: { tempo: { value: 0 }, sol: { value: new THREE.Vector3(-0.42, 0.62, 0.38).normalize() }, hor: { value: hex(0xb4dcf5) }, alto: { value: hex(0x2a73d9) }, solCor: { value: hex(0xffecb8) }, nuCor: { value: hex(0xffffff) }, nu: { value: new THREE.Vector2(0.52, 0.8) }, nuOp: { value: 0.9 }, estrelas: { value: 0 } },
     vertexShader: "varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-    fragmentShader: `varying vec3 vP; uniform float tempo; uniform vec3 sol;
+    fragmentShader: `varying vec3 vP; uniform float tempo, nuOp, estrelas; uniform vec3 sol, hor, alto, solCor, nuCor; uniform vec2 nu;
       float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float rr(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1,0)), f.x), mix(h(i + vec2(0,1)), h(i + vec2(1,1)), f.x), f.y); }
       float fbm(vec2 p){ float a = 0.5, v = 0.0; for (int i = 0; i < 5; i++){ v += a * rr(p); p *= 2.03; a *= 0.5; } return v; }
       void main(){
         vec3 d = normalize(vP); float y = max(d.y, 0.0);
-        vec3 hor = vec3(0.706, 0.863, 0.961), alto = vec3(0.16, 0.45, 0.85);
         vec3 c = mix(hor, alto, pow(y, 0.55));
         float s = max(dot(d, sol), 0.0);
-        c += vec3(1.0, 0.92, 0.72) * (pow(s, 600.0) * 2.0 + pow(s, 24.0) * 0.28);
+        c += solCor * (pow(s, 600.0) * 2.0 + pow(s, 24.0) * 0.28);
+        vec2 eu = d.xz / (d.y + 0.3) * 38.0; c += estrelas * step(0.9965, h(floor(eu))) * smoothstep(0.1, 0.5, d.y) * vec3(1.0);
         vec2 uv = d.xz / (d.y + 0.2) * 1.3 + vec2(tempo * 0.004, tempo * 0.0015);
-        float n = fbm(uv * 1.4); float nuvem = smoothstep(0.52, 0.8, n) * smoothstep(0.02, 0.22, d.y);
-        c = mix(c, vec3(1.0), nuvem * 0.9);
+        float n = fbm(uv * 1.4); float nuvem = smoothstep(nu.x, nu.y, n) * smoothstep(0.02, 0.22, d.y);
+        c = mix(c, nuCor, nuvem * nuOp);
         c = mix(c, hor, smoothstep(0.0, -0.05, d.y)); // abaixo do horizonte, a cor da névoa
         gl_FragColor = vec4(c, 1.0);
         #include <colorspace_fragment>
       }`,
   }));
   ceu.renderOrder = -10; ceu.frustumCulled = false; scene.add(ceu);
-  scene.add(new THREE.HemisphereLight(0xdff1ff, 0x7a9a5a, 1.15));
+  const hemi = new THREE.HemisphereLight(0xdff1ff, 0x7a9a5a, 1.15); scene.add(hemi);
   const sol = new THREE.DirectionalLight(0xfff1d6, 2.4);
   sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048);
   Object.assign(sol.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 5, far: 120 });
   sol.shadow.bias = -0.0005;
   scene.add(sol, sol.target);
+  { const C = CEUS[ceuEscolhido], u = ceu.material.uniforms; // veste a cena com o céu sorteado
+    hemi.color.set(C.hemi[0]); hemi.groundColor.set(C.hemi[1]); hemi.intensity = C.hemi[2]; sol.color.set(C.luz[0]); sol.intensity = C.luz[1];
+    if (C.hor !== undefined) { u.hor.value.set(C.hor); u.alto.value.set(C.alto); u.sol.value.set(...C.sol).normalize(); u.solCor.value.set(C.solCor); u.nu.value.set(...C.nu); u.nuCor.value.set(C.nuCor); u.nuOp.value = C.nuOp; u.estrelas.value = C.estrelas; } }
 
   const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, metalness: 0, ...o });
   const caixa = (w, h, d, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.castShadow = o.receiveShadow = true; return o; };
@@ -65,14 +80,14 @@ export async function criar(W) {
   const gl = new GLTFLoader();
   // o céu pintado (SD_Sky de ritsuka, CC BY 4.0, public/vila3d/ceu/): a esfera do modelo, sem o macaco que vem junto, seguindo a câmera
   let ceuImg = null;
-  gl.loadAsync("/vila3d/ceu/sd_sky_230315a.glb").then((g) => {
+  (ceuEscolhido === "pintado" ? gl.loadAsync("/vila3d/ceu/sd_sky_230315a.glb") : Promise.reject()).then((g) => {
     const lixo = []; g.scene.traverse((o) => { if (o.name === "Suzanne_2") lixo.push(o); });
     for (const o of lixo) o.parent.remove(o);
     g.scene.traverse((o) => { if (o.isMesh) { const t = o.material.emissiveMap; o.material = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide, fog: false, depthWrite: false, toneMapped: false }); o.frustumCulled = false; o.renderOrder = -9; } });
     g.scene.updateMatrixWorld(true);
     const r = new THREE.Box3().setFromObject(g.scene).getBoundingSphere(new THREE.Sphere()).radius;
     ceuImg = new THREE.Group(); ceuImg.add(g.scene); ceuImg.scale.setScalar(480 / r);
-    ceu.visible = false; scene.add(ceuImg);
+    if (ceuEscolhido === "pintado") { ceu.visible = false; scene.add(ceuImg); } else ceuImg = null;
   }).catch(() => { /* fica o céu de degradê */ });
   await Promise.all(NOMES.map((n) => gl.loadAsync("/vila3d/kaykit/" + n + ".gltf").then((g) => {
     g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (o.material.map) o.material.map.colorSpace = THREE.SRGBColorSpace; } });
@@ -336,5 +351,5 @@ export async function criar(W) {
   }
   // onde uma casa do mapa aparece na tela (em pixels da janela): os testes e o toque usam
   const tela2 = (x, z, y = 0.5) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; };
-  return { dom, render, pick, ajustar, info: () => ({ ...renderer.info.render, geos: renderer.info.memory.geometries, nivel }), tela: tela2, zoom: (d) => { dist = d; }, camera: mudaModo, modo: () => modo, arrastou: () => arrastou };
+  return { dom, render, pick, ajustar, ceu: ceuEscolhido, info: () => ({ ...renderer.info.render, geos: renderer.info.memory.geometries, nivel }), tela: tela2, zoom: (d) => { dist = d; }, camera: mudaModo, modo: () => modo, arrastou: () => arrastou };
 }
