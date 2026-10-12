@@ -11,6 +11,8 @@ import { camMode, pollPad } from "./controles.js";
 import { physics } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
 import { standings, hud } from "./hud.js";
+import { kartPronto } from "../kart3d.js";
+import { propsPronto } from "./props.js";
 
 // ---------- corrida ----------
 export let race = null, raf = 0;
@@ -133,5 +135,6 @@ function draw(dt) {
     ks.forEach(dropKart);
   };
   setTimeout(() => { try { paint(); } catch (e) { console.warn(e); } }, 60);
+  Promise.all([kartPronto, propsPronto]).then(() => { try { paint(); } catch (e) { console.warn(e); } }); // de novo, quando o kart e os enfeites do Kenney chegam
 })();
 if (location.hash === "#debug") window.__corrida = { get race() { return race; }, get S() { return E.S; }, keys, physics, groundH, buildTrack, act };
