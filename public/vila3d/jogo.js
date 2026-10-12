@@ -130,8 +130,9 @@ const carros = [];
 const tiposCarro = ["car_hatchback", "car_police", "car_sedan", "car_stationwagon", "car_taxi"];
 rotas.forEach(([x0, z0, x1, z1], i) => {
   for (let k = 0; k < 2; k++) {
-    const c = M[tiposCarro[(i + k) % 5]].clone(true); c.scale.setScalar(3.4); c.rotation.y = x1 > x0 ? Math.PI / 2 : -Math.PI / 2; scene.add(c);
-    carros.push({ c, x0, z0: z0 + 0.5, x1, v: 3 + (i % 3), t: k * 0.5 });
+    const c = M[tiposCarro[(i + k) % 5]].clone(true); c.scale.setScalar(3.4);
+    const base = -new THREE.Box3().setFromObject(c).min.y + 0.1; // o modelo tem a origem no meio: sobe até a pista (a pista tem 0,1 de espessura) c.rotation.y = x1 > x0 ? Math.PI / 2 : -Math.PI / 2; scene.add(c);
+    carros.push({ c, base, x0, z0: z0 + 0.5, x1, v: 3 + (i % 3), t: k * 0.5 });
   }
 });
 
@@ -153,9 +154,32 @@ addEventListener("resize", ajustar); ajustar();
 const relogio = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(relogio.getDelta(), 0.1), t = relogio.elapsedTime;
-  for (const c of carros) { c.t = (c.t + dt * c.v / Math.abs(c.x1 - c.x0)) % 1; c.c.position.set(c.x0 + (c.x1 - c.x0) * c.t, 0, c.z0); }
+  for (const c of carros) { c.t = (c.t + dt * c.v / Math.abs(c.x1 - c.x0)) % 1; c.c.position.set(c.x0 + (c.x1 - c.x0) * c.t, c.base, c.z0); }
   jato.scale.y = 1 + Math.sin(t * 3) * 0.15;
   ctl.update(); renderer.render(scene, camera);
 });
 $("carregando").remove();
-window.__vila3d = { camera, ctl, scene, M };
+window.__vila3d = { camera, ctl, scene, M, carros };
+
+// ---------- música ambiente (public/vila3d/musica/): 30% do volume, toca sozinha e passa para a próxima ----------
+const VOLUME = 0.3;
+let mudo = false;
+try { mudo = localStorage.getItem("vila3d:mudo") === "1"; } catch (e) { /* sem armazenamento */ }
+const botao = document.createElement("button");
+botao.id = "musica"; botao.type = "button";
+document.body.appendChild(botao);
+fetch("/api/musicas-vila3d").then((r) => r.json()).then((lista) => {
+  if (!lista.length) { botao.remove(); return; }
+  let i = 0;
+  const audio = new Audio(lista[0].url); audio.volume = VOLUME; audio.muted = mudo;
+  audio.addEventListener("ended", () => { i = (i + 1) % lista.length; audio.src = lista[i].url; audio.play().catch(() => {}); });
+  const pintar = () => { botao.textContent = mudo ? "🔇" : "🔊"; botao.title = mudo ? "Ligar a música" : "Silenciar a música"; };
+  const tocar = () => audio.play().then(() => { for (const ev of ["pointerdown", "keydown"]) removeEventListener(ev, tocar); }).catch(() => {}); // o navegador pode recusar sem toque na página: tenta de novo no primeiro toque
+  botao.addEventListener("click", (e) => {
+    e.stopPropagation(); mudo = !mudo; audio.muted = mudo; pintar();
+    try { localStorage.setItem("vila3d:mudo", mudo ? "1" : "0"); } catch (err) { /* sem armazenamento */ }
+    if (!mudo) audio.play().catch(() => {});
+  });
+  pintar(); tocar();
+  for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, tocar);
+}).catch(() => botao.remove());

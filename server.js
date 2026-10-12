@@ -53,6 +53,17 @@ app.get("/api/musicas", (req, res) => {
   } catch (e) { /* sem pasta, sem músicas */ }
   res.json(lista);
 });
+// a música ambiente da Vila 3D (public/vila3d/musica/, ou VILA3D_MUSICA_DIR): a mesma ideia de /api/musicas
+const PASTA_MUSICA_3D = process.env.VILA3D_MUSICA_DIR || path.join(__dirname, "public", "vila3d", "musica");
+if (process.env.VILA3D_MUSICA_DIR) app.use("/vila3d/musica", express.static(PASTA_MUSICA_3D));
+app.get("/api/musicas-vila3d", (req, res) => {
+  let lista = [];
+  try {
+    lista = require("fs").readdirSync(PASTA_MUSICA_3D).filter((f) => /\.(mp3|ogg|m4a|wav)$/i.test(f)).sort((a, b) => a.localeCompare(b, "pt", { numeric: true }))
+      .map((f) => ({ nome: f.replace(/\.[^.]+$/, "").replace(/^\s*\d+\s*[-._)]\s*/, ""), url: "/vila3d/musica/" + encodeURIComponent(f) }));
+  } catch (e) { /* sem pasta, sem músicas */ }
+  res.json(lista);
+});
 // a estante de troféus da Carreira (todas as carreiras, solo e em grupo): o ranking dos técnicos e as últimas conquistas
 app.get("/api/estante", (req, res) => { try { res.json(require("./bd.js").estante()); } catch (e) { res.status(500).json({ erro: "A estante não abriu." }); } });
 // o escudo da TheSportsDB de um clube da Carreira, servido pelo nosso endereço: a arte das notícias desenha o escudo num canvas,
