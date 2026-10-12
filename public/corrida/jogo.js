@@ -75,10 +75,10 @@ function draw(dt) {
     if (c.slip > 45 && Math.random() < 0.7) for (const s of [-1, 1]) puff(c.x - Math.cos(c.a) * 15 + -Math.sin(c.a) * s * 8, c.z + 2, c.y - Math.sin(c.a) * 15 + Math.cos(c.a) * s * 8, "#e6e6e6", 3.5);
     if (race.offroad && Math.random() < 0.5) puff(c.x - Math.cos(c.a) * 18, c.z + 2, c.y - Math.sin(c.a) * 18, tr.id === "interlagos" ? "#b39c66" : "#9a9a9a", 2.5);
   }
-  // fantasmas
+  // os outros pilotos (carros de verdade: dá para bater)
   for (const [id, gh] of race.ghosts) {
     const pl = P(id); if (!pl) continue;
-    const key = pl.color + pl.car + pl.skin + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, true, pl.name, pl.mods, undefined, pl.skin); gh.kartKey = key; }
+    const key = pl.color + pl.car + pl.skin + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, pl.skin); gh.kartKey = key; }
     poseKart(gh.kart, gh.x, gh.y, gh.z, gh.a, gh.v || 0, 0, groundH(tr, gh.x, gh.y, gh.idx || 0), dt);
   }
   drawBest(dt);

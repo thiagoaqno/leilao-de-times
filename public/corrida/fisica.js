@@ -1,9 +1,11 @@
 // Corrida da Galera — a física do kart (arcade com aderência e relevo).
-import { SECTORS, carOf, socket, sNow, me } from "./estado.js";
+import { SECTORS, carOf, socket, sNow, me, P } from "./estado.js";
 import { Sound } from "./sons.js";
 import { trackFrame, groundH } from "./pista.js";
 import { race, keys, nearest } from "./jogo.js";
 import { pad } from "./controles.js";
+import { baterNoOutro, MASSA } from "./colisao.js";
+import { CARS3, KS } from "./carros.js";
 
 // Física do kart (arcade com aderência): o carro tem inércia e os pneus só seguram uma certa força de lado.
 // Virar gira o bico, mas a velocidade continua indo para onde ia; os pneus puxam o carro para a nova direção até o
@@ -68,6 +70,19 @@ export function physics(dt, spec = carOf(me())) {
     if (hit > 60) { Sound.bump(); race.shake = 0.25; race.bumps = (race.bumps || 0) + 1; }
   }
   c.x = nx; c.y = ny;
+  // batida com os outros carros (cada um empurra o outro; quem está em outro nível, viaduto ou no ar, passa por cima)
+  if (!air) for (const [id, gh] of race.ghosts) {
+    if (Math.abs((gh.z || 0) - c.z) > 12 || !me()) continue;
+    const pl = P(id), outro = CARS3[pl && pl.car] || CARS3.equilibrado;
+    const eu = { x: c.x, y: c.y, a: c.a, vx: c.vx, vy: c.vy, L: (CARS3[me().car] || CARS3.equilibrado).L * KS, W: (CARS3[me().car] || CARS3.equilibrado).W * KS, massa: MASSA[me().car] || 1 };
+    const forca = baterNoOutro(eu, { x: gh.x, y: gh.y, a: gh.a, v: gh.v || 0, L: outro.L * KS, W: outro.W * KS, massa: MASSA[pl && pl.car] || 1 });
+    if (forca > 0 || eu.x !== c.x || eu.y !== c.y) {
+      c.x = eu.x; c.y = eu.y; c.vx = eu.vx; c.vy = eu.vy;
+      const f = Math.cos(c.a), g = Math.sin(c.a); c.v = c.vx * f + c.vy * g;
+      if (forca > 40 && (race.hitT || 0) <= 0) { Sound.crash(forca); race.shake = Math.max(race.shake, Math.min(0.3, forca / 500)); race.hitT = 0.25; }
+    }
+  }
+  race.hitT = Math.max(0, (race.hitT || 0) - dt);
   // altura: no chão acompanha o relevo; se o chão some (lombada rápida), voa e cai com a gravidade
   const gh = groundH(tr, c.x, c.y, race.idx);
   if (c.air) {

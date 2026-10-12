@@ -1,6 +1,6 @@
 // Corrida da Galera — corrida de kart (sem poderes) de 1 a 8 jogadores, em Mônaco, Interlagos ou Tóquio.
-// Os outros carros são "fantasmas": ninguém bate em ninguém, então cada navegador roda a física do próprio carro
-// e só manda a posição (o atraso da internet vira, no máximo, um fantasma um pouquinho atrasado).
+// Cada navegador roda a física do próprio carro e só manda a posição; os carros batem uns nos outros (cada navegador
+// resolve a sua metade da batida com a posição que recebeu, em `public/corrida/colisao.js`).
 // O servidor cuida da largada sincronizada, repassa as posições e conta as voltas pelos setores da pista,
 // na ordem (contra atalho e contramão), com um tempo mínimo de volta. Canal "/corrida" do Socket.io.
 const T = require("./public/corrida/pistas.js");
@@ -197,7 +197,7 @@ module.exports = function attachCorrida(io) {
       broadcast(room);
     });
 
-    // posição do meu carro (10 por segundo): vai para os outros como fantasma
+    // posição do meu carro (10 por segundo): vai para os outros
     socket.on("pos", (d = {}) => {
       const { room, me } = ctx();
       if (!room || !me || room.phase !== "race") return;
