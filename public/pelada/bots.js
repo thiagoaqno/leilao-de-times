@@ -31,7 +31,7 @@ function keeperBot(k, b, dt, t, ativo = true) {
   } else C.movePlayer(k, { x: 0, z: 0, speed: 0, free: true }, dt, F);
   k.x = gx;
   const near = Math.hypot(b.x - k.x, b.z - k.z) < 1.2 && Math.hypot(b.vx, b.vz) < 3 && b.y < 1;
-  if (near && !G.falta) { k.holdT += dt; if (k.holdT > 0.8) { k.holdT = 0; k.st.kickT = t; k.st.golpe = { how: "mao", kind: "chute" }; reposicao(k, b); Sound.kick(0.5, 0.6); } }
+  if (near && !G.falta) { k.holdT += dt; if (k.holdT > 0.8) { k.holdT = 0; k.st.kickT = t; k.st.golpe = { how: "mao", kind: "passe" }; reposicao(k, b); Sound.kick(0.5, 0.6); } }
   else k.holdT = 0;
   k.model.position.set(k.x, k.y, k.z); animate(k.model, Math.abs(k.vz), dt, k.st, k.diveT ? FL.dive : 0);
   return { ...k, kind: "pe", dive: k.diveT > 0 };
