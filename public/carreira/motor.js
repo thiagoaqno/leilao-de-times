@@ -25,6 +25,9 @@
     FALTA: 0.13, AMARELO: 0.14, VERMELHO: 0.004, LESAO: 0.0009,
     DECISIVO: 0.5, MAX_DECISIVOS: 6, SUBS: 5, IMPULSO_MIN: 10,
     FIN: 0.006, GOL: 0.012, // o peso da finalização do chutador e das luvas do goleiro na conversão (o resto do jogador já está no rendimento)
+    // linha alta: o rival cria menos (LINHA_CEDE) mas converte mais (LINHA_CONV); a linha baixa é o contrário. Iguais, para nenhuma das duas ser de graça.
+    // MENTAL: quanto cada passo de mentalidade dá de lances a quem ataca e cede a quem defende, iguais: ir pra cima não sai de graça.
+    LINHA_CEDE: 0.07, LINHA_CONV: 0.07, MENTAL: 0.12,
     PERFIL: 0.6, // quanto o perfil de atributos da função muda o rendimento (ver PERFIL_VAGA)
   };
 
@@ -413,7 +416,7 @@
       const decisivo = modo === 3 && (controla != null || ambos) && perigosa && decisivos < AJUSTE.MAX_DECISIVOS && rng() < AJUSTE.DECISIVO;
       if (decisivo) return ambos ? lanceDosDois(at, df, tipo, autor, gk) : lanceDecisivo(at, df, tipo, autor, gk);
       let conv = tipo === "penalti" ? AJUSTE.CONV_PENALTI : tipo === "falta" ? AJUSTE.CONV_FALTA : perigosa ? AJUSTE.CONV_PERIGOSA : AJUSTE.CONV_COMUM;
-      if (tipo !== "penalti") conv = Math.min(0.95, conv * Math.exp(AJUSTE.FIN * (autor.atr.fin - 75) - AJUSTE.GOL * (gkNota - 75)) * (1 + 0.1 * (df.tatica.linha - 1)) * at.est.conv * (1 + confrontoDe(at, df).finalizar) + imp);
+      if (tipo !== "penalti") conv = Math.min(0.95, conv * Math.exp(AJUSTE.FIN * (autor.atr.fin - 75) - AJUSTE.GOL * (gkNota - 75)) * (1 + AJUSTE.LINHA_CONV * (df.tatica.linha - 1)) * at.est.conv * (1 + confrontoDe(at, df).finalizar) + imp);
       est[at.lado].chutes++;
       if (tipo === "penalti") ev({ tipo: "penalti", lado: at.lado, jogador: autor.id });
       if (rng() < conv) { est[at.lado].noAlvo++; return gol(at, autor, tipo === "jogada" ? garcom(at, autor) : null, tipo); }
@@ -534,7 +537,7 @@
         const at = times[a], df = times[d];
         const mando = neutro ? 1 : a === 0 ? AJUSTE.MANDO : AJUSTE.VISITANTE;
         const taxa = AJUSTE.CHANCE * Math.exp(AJUSTE.K * (at.att - df.def)) * mando
-          * (1 + 0.12 * at.tatica.mentalidade) * (1 + 0.08 * df.tatica.mentalidade) * (1 - 0.06 * (df.tatica.pressao - 1)) * (1 - 0.04 * (df.tatica.linha - 1))
+          * (1 + AJUSTE.MENTAL * at.tatica.mentalidade) * (1 + AJUSTE.MENTAL * df.tatica.mentalidade) * (1 - 0.06 * (df.tatica.pressao - 1)) * (1 - AJUSTE.LINHA_CEDE * (df.tatica.linha - 1))
           * at.est.chance * df.est.cede * (1 + confrontoDe(at, df).criar);
         if (rng() < taxa) lance(at, df);
       }
