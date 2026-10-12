@@ -37,6 +37,7 @@ function render() {
   renderFalasPlacar();
   renderNome(); renderTrocas(); renderAcao(); renderDoca(); renderPos(); renderInfo();
   renderFc(); renderJudge(); renderFormation(); renderReveal();
+  if (typeof renderComida === "function") renderComida();
   tickTimer();
 }
 

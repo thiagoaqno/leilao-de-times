@@ -238,6 +238,8 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
     - Tudo vem do `summary` do simulador: `final` (o jogo que decidiu o título, igual ao de `lives`), `id` do campeão,
       `dono` e a `pos` dos titulares. Esses campos só copiam o que já saiu, sem sortear nada.
 
+**Leilão: temas de comida (hambúrguer, pizza, drink, sobremesa).** Ao começar, `server.js` sorteia `room.comida` (`Juri.sortearComida`): o **pedido do cliente** (`PEDIDOS` em `juri.js`, pesos por característica; `analisar` soma de -2 a +2) e uma **receita secreta** por jogador (`RECEITAS`, bônus `RECEITA_BONUS`). O estado traz `comida` (`comidaPublic`: pedido e combos públicos, receita só do dono, características só dos ingredientes à vista) e `public/leilao/comida.js` desenha o painel `#comidaBox`. `julgar` abre a batalha com o pedido e comenta pedido e receita em cada prato. Testes em `tests/leilao-comida.test.js`.
+
 **Leilão: pênaltis da galera.** Quem bate escolhe um dos 6 cantos e o outro dono escolhe o pulo do goleiro (opção
 `penaltis` da simulação, ligada por padrão).
 - `ritmo.js` tem os cantos (`ZONAS`) e os tempos do duelo (`DUELO`).

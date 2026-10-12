@@ -395,11 +395,25 @@ function view(room, forId) {
     now: Date.now(),
     reveal: revealPublic(room),
     judge: judgePublic(room, forId),
+    comida: comidaPublic(room, forId),
     // trocas depois do leilão: cada um vê só as propostas em que está (as que fez e as que recebeu)
     trocas: room.trocas ? { aberto: room.trocas.aberto, props: room.trocas.props.filter((p) => forId && (p.de === forId || p.para === forId)) } : null,
   };
 }
 
+// temas de comida: o pedido do cliente é público; a receita secreta só o dono vê (todas aparecem quando o leilão acaba);
+// as características só dos ingredientes que já estão à vista (o da vez e os dos pratos), para não entregar a roleta oculta
+function comidaPublic(room, forId) {
+  const c = room.comida, skin = room.config.terms.skin; if (!c) return null;
+  const ped = Juri.pedidoDe(skin, c.pedido); if (!ped) return null;
+  const vistos = new Set(room.order.flatMap((id) => room.captains[id].team.map((x) => x.player)));
+  if (room.current) vistos.add(room.current.player);
+  const tags = {}; for (const it of vistos) tags[it] = Juri.tagsDe(skin, it);
+  const fim = room.phase === "done", rec = (id) => { const r = Juri.receitaDe(skin, id); return r && { id: r.id, nome: r.nome, precisa: r.precisa.map((a) => a.split("|")) }; };
+  const receitas = {}; if (fim) for (const id of room.order) receitas[id] = rec(c.receitas[id]);
+  return { pedido: { id: ped.id, nome: ped.nome, texto: ped.texto, peso: ped.peso }, tags, combos: Juri.combosVisiveis(skin),
+    receita: forId && c.receitas[forId] ? rec(c.receitas[forId]) : null, receitas };
+}
 // votação dos pratos: cada um vê só os próprios votos; dos outros, só quantos pratos já votou
 function judgePublic(room, forId) {
   const j = room.judge; if (!j) return null;
@@ -614,6 +628,8 @@ io.on("connection", (socket) => {
       // shuffle order for display fairness
       room.order.sort(() => Math.random() - 0.5);
       room.phase = "idle";
+      // temas de comida: o pedido do cliente (de todos) e uma receita secreta para cada um
+      room.comida = Juri.SKINS.includes(room.config.terms.skin) ? Juri.sortearComida(room.config.terms.skin, room.order) : null;
       log(room, `Leilão começou com ${room.order.length} participantes e ${room.pool.length} ${room.config.terms.items}.`);
     } else if (a === "spin") {
       if (!["idle", "reveal"].includes(room.phase)) return fail(cb, "Espere a rodada atual terminar.");
@@ -731,7 +747,7 @@ io.on("connection", (socket) => {
       paraRelogios(room);
       room.reveal = { sections: [], shown: 0 };
       for (const id of room.order) { const c = room.captains[id]; c.coins = room.config.coins; c.skipsLeft = room.config.skips; c.team = []; c.pins = {}; }
-      room.judge = null; room.trocas = null;
+      room.judge = null; room.trocas = null; room.comida = null;
       room.phase = "lobby";
       log(room, "🔄 O organizador reiniciou o leilão. Moedas, pulos e times zerados; todos os itens voltaram para a roleta.");
     } else if (a === "finish") {
