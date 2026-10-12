@@ -77,6 +77,55 @@ sombra.rotation.x = -Math.PI / 2; scene.add(sombra);
 const anel = (r0, r1, cor, op, seg = 32) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, seg), new THREE.MeshBasicMaterial({ color: cor, transparent: true, opacity: op, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); return m; };
 const marca = anel(0.25, 0.36, 0xffb84d, 0.75), mira3d = anel(0.35, 0.5, 0xffffff, 0.8, 4), meuAnel = anel(0.55, 0.68, 0x4fc3f7, 0.7);
 
+// ---------- o rastro da bola e o estalo do toque (só visual) ----------
+// O rastro é uma fita virada para a câmera atrás da bola, que afina e some na ponta: branca no passe, dourada no ataque
+// e laranja-fogo no Shark, na bicicleta e no voleio. O estalo é um clarão que abre no ponto do toque.
+const RASTRO = 22, rastroPts = Array.from({ length: RASTRO }, () => new THREE.Vector3()), rastroGeo = new THREE.BufferGeometry();
+rastroGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(RASTRO * 2 * 3), 3).setUsage(THREE.DynamicDrawUsage));
+rastroGeo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(RASTRO * 2 * 4), 4).setUsage(THREE.DynamicDrawUsage));
+{ const idx = []; for (let i = 0; i < RASTRO - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } rastroGeo.setIndex(idx); }
+const rastro = new THREE.Mesh(rastroGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+rastro.frustumCulled = false; rastro.renderOrder = 3; scene.add(rastro);
+const RASTRO_COR = { passe: new THREE.Color(0xfff6dd), ataque: new THREE.Color(0xffc04d), forte: new THREE.Color(0xff6a2a) };
+const rastroEst = { n: 0, cor: RASTRO_COR.passe, forca: 0.5 };
+const _cam = new THREE.Vector3(), _seg = new THREE.Vector3(), _lado = new THREE.Vector3();
+function atualizarRastro(b, viva) {
+  const vel = Math.hypot(b.vx || 0, b.vy || 0, b.vz || 0);
+  if (viva && vel > 3.5) { // anda a fila: o ponto novo na frente
+    for (let i = RASTRO - 1; i > 0; i--) rastroPts[i].copy(rastroPts[i - 1]);
+    rastroPts[0].set(b.x, b.y, b.z); rastroEst.n = Math.min(RASTRO, rastroEst.n + 1);
+  } else rastroEst.n = Math.max(0, rastroEst.n - 2); // parada ou fora de jogo: o rastro se recolhe
+  const pos = rastroGeo.attributes.position.array, cor = rastroGeo.attributes.color.array, n = rastroEst.n, c = rastroEst.cor;
+  const largura = 0.07 + 0.06 * rastroEst.forca, brilho = (0.35 + 0.45 * rastroEst.forca) * clamp((vel - 3.5) / 8, 0.25, 1);
+  for (let i = 0; i < RASTRO; i++) {
+    const p = rastroPts[Math.min(i, Math.max(0, n - 1))], k = n > 1 ? Math.min(1, i / (n - 1)) : 1;
+    const q = rastroPts[Math.min(i + 1, Math.max(0, n - 1))];
+    _seg.subVectors(i + 1 < n ? p : rastroPts[Math.max(0, i - 1)], i + 1 < n ? q : p); if (_seg.lengthSq() < 1e-8) _seg.set(0, 0, 1);
+    _cam.subVectors(cam.position, p); _lado.crossVectors(_seg, _cam).normalize().multiplyScalar(largura * (1 - k) * (i < n ? 1 : 0));
+    pos.set([p.x + _lado.x, p.y + _lado.y, p.z + _lado.z, p.x - _lado.x, p.y - _lado.y, p.z - _lado.z], i * 6);
+    const a = i < n ? brilho * (1 - k) * (1 - k) : 0;
+    cor.set([c.r, c.g, c.b, a, c.r, c.g, c.b, a], i * 8);
+  }
+  rastroGeo.attributes.position.needsUpdate = true; rastroGeo.attributes.color.needsUpdate = true;
+  rastro.visible = n > 1;
+}
+const estaloTex = canvasTex(64, 64, (x, w, hh) => { const g = x.createRadialGradient(w / 2, hh / 2, 0, w / 2, hh / 2, w / 2); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.35, "rgba(255,240,200,0.7)"); g.addColorStop(1, "rgba(255,200,120,0)"); x.clearRect(0, 0, w, hh); x.fillStyle = g; x.fillRect(0, 0, w, hh); });
+const estalos = Array.from({ length: 4 }, () => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: estaloTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); sp.visible = false; sp.renderOrder = 4; scene.add(sp); return { sp, t: 1, tam: 1 }; });
+let estaloI = 0;
+// o toque: o clarão no ponto da bola e a cor do rastro do chute que sai
+function estalo(golpe, intencao) {
+  const forte = ["shark", "bicicleta", "voleio"].includes(golpe), ataque = intencao === "ataque" || golpe === "saque";
+  rastroEst.cor = forte ? RASTRO_COR.forte : ataque ? RASTRO_COR.ataque : RASTRO_COR.passe; rastroEst.forca = forte ? 1 : ataque ? 0.7 : 0.35;
+  const e = estalos[estaloI++ % estalos.length]; e.t = 0; e.tam = forte ? 1.5 : ataque ? 1.0 : 0.6; e.sp.position.copy(bola.position); e.sp.visible = true;
+}
+function atualizarEstalos(dt) {
+  for (const e of estalos) {
+    if (!e.sp.visible) continue;
+    e.t += dt / 0.28; if (e.t >= 1) { e.sp.visible = false; continue; }
+    e.sp.scale.setScalar(e.tam * (0.25 + 0.9 * Math.sqrt(e.t))); e.sp.material.opacity = (1 - e.t) * (1 - e.t);
+  }
+}
+
 // ---------- pegadas na areia (somem com o tempo) ----------
 const PEGADAS = 260;
 const pegadaTex = canvasTex(32, 64, (x, w, hh) => { x.clearRect(0, 0, w, hh); x.fillStyle = "rgba(60,40,15,0.55)"; x.beginPath(); x.ellipse(w / 2, hh * 0.62, w * 0.36, hh * 0.32, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(w / 2, hh * 0.2, w * 0.3, hh * 0.15, 0, 0, 7); x.fill(); });
@@ -412,14 +461,14 @@ function toque(tipo) {
   const { mira } = entrada(); me.mira = mira;
   if (G.offline) { F.armar(G.m, me, tipo, agoraTreino(), mira); return; }
   socket.emit("toque", { tipo, mx: mira.x, mz: mira.z });
-  if (G.fase === "jogo") me.armado = { intencao: tipo, t0: relogio.agora() };
+  if (G.fase === "jogo") { if (me.armado) me.armado.intencao = tipo; else if (relogio.agora() >= (me.esfriaAte || 0)) me.armado = { intencao: tipo, t0: relogio.agora() }; } // as mesmas contas de F.armar
 }
 // o "ímã": com o toque armado e a bola vindo, o jogador vai sozinho até o ponto bom (o direcional ainda manda)
 function ima(me, b, dir) {
   if (!me.armado || !b) return dir;
   const p = F.pontoDeToque(b, me, F.VEL, 2); if (!p) return dir;
   const s = F.sinal(me.team), dx = p.x - me.x, dz = p.z + s * 0.25 - me.z, d = Math.hypot(dx, dz);
-  if (d < 0.1) return dir;
+  if (d < 0.1 || d > 1.8) return dir; // só o ajuste fino: correr até a bola é com quem joga
   const k = Math.min(1, d / 0.6), forca = Math.hypot(dir.x, dir.z) > 0.1 ? 0.45 : 1;
   return { x: dir.x * (1 - forca * 0.5) + (dx / d) * k * forca, z: dir.z * (1 - forca * 0.5) + (dz / d) * k * forca };
 }
@@ -436,7 +485,7 @@ function aoEvento(e) {
   if (e.tipo === "toque") {
     const a = G.atletas.get(e.id);
     if (a) a.confirmar(e.golpe, { lado: e.lado, pulo: e.pulo, h: e.h, estilo: e.estilo }); // o golpe já vinha (antecipado): acerta o impacto
-    Som.toque(e.golpe);
+    Som.toque(e.golpe); estalo(e.estilo === "bicicleta" ? "bicicleta" : e.golpe, e.intencao);
     if (G.me && e.id === G.me.id) { G.me.armado = null; if (e.golpe === "bicicleta" || e.estilo === "bicicleta") G.me.caido = F.CAIDO_BICICLETA; } // no treino o eu é o mesmo das regras
     const p = posDe(e.id);
     if (p && (e.pulo || e.golpe === "saque")) poeira(p.x, p.z, 26, 0.8);
@@ -522,7 +571,7 @@ function frame() {
       const fake = { sacador: S.match.sacador, fase: G.fase };
       if (me.pronto && !G.pausa && (G.fase === "jogo" || G.fase === "saque")) { me.mira = mira; F.mover(me, G.fase === "jogo" ? ima(me, { ...bolaV, viva: true }, dir) : dir, dt, fake); }
       else if (eu) { me.x = eu.x; me.z = eu.z; me.vx = me.vz = 0; me.pronto = G.fase === "saque" || G.fase === "jogo"; }
-      if (me.armado && relogio.agora() - me.armado.t0 > F.ARMADO_MAX * 1000) me.armado = null;
+      if (me.armado && relogio.agora() - me.armado.t0 > F.ARMADO_MAX * 1000) { me.armado = null; me.esfriaAte = relogio.agora() + F.ESFRIA * 1000; }
       if (tp - G.lastSend > 33) { G.lastSend = tp; socket.volatile.emit("st", { x: me.x, z: me.z, vx: me.vx, vz: me.vz, mx: mira.x, mz: mira.z }); }
     }
   }
@@ -534,7 +583,9 @@ function frame() {
   if (sacador !== G.sacadorAnt) { if (G.sacadorAnt) G.sacadorAnt.segura = false; if (sacador) { sacador.segura = true; sacador.disparar("pegaBola"); } G.sacadorAnt = sacador; }
   if (sacador) { const p = sacador.bolaDoSaque(bolaV, _bolaSaque); if (p) bola.position.copy(p); }
   const vb = Math.hypot(bolaV.vx || 0, bolaV.vz || 0);
-  if (vb > 0.1) { _eixo.set(bolaV.vz, 0, -bolaV.vx).normalize(); bola.rotateOnWorldAxis(_eixo, (vb / Q.R) * dt * 0.5); }
+  if (vb > 0.1) { _eixo.set(bolaV.vz, 0, -bolaV.vx).normalize(); bola.rotateOnWorldAxis(_eixo, (vb / Q.R) * dt * (0.5 + 0.6 * rastroEst.forca)); } // o chute forte gira mais
+  atualizarRastro({ x: bola.position.x, y: bola.position.y, z: bola.position.z, vx: bolaV.vx, vy: bolaV.vy, vz: bolaV.vz }, estado.fase === "jogo" && !sacador);
+  atualizarEstalos(dt);
   sombra.position.set(bolaV.x, 0.015, bolaV.z); sombra.scale.setScalar(1 + bolaV.y * 0.12); sombra.material.opacity = Math.max(0.08, 0.32 - bolaV.y * 0.03);
   marca.visible = false;
   if (estado.fase === "jogo" && G.myTeam && bolaV.y > 0.2) {
@@ -547,8 +598,10 @@ function frame() {
   mira3d.visible = !!golpeMira;
   if (golpeMira) { const fake = { jogadores: jogadores.map((j) => ({ ...j, team: (G.atletas.get(j.id) || {}).team })) }; const a = F.alvoAtaque(fake, me, golpeMira, mira); mira3d.position.set(a.x, 0.03, a.z); mira3d.rotation.z += dt * 2; }
   // o meu anel: azul armado para passar, laranja para atacar
-  meuAnel.visible = !!(me && me.armado);
-  if (meuAnel.visible) { meuAnel.position.set(me.x, 0.025, me.z); meuAnel.material.color.set(me.armado.intencao === "ataque" ? 0xffb84d : 0x4fc3f7); meuAnel.scale.setScalar(1 + 0.08 * Math.sin(tp / 90)); }
+  // e vermelho, encolhendo, enquanto esfria (armou cedo demais e a bola não veio)
+  const esfria = me && !me.armado && (me.esfriaAte || 0) - (G.offline ? agoraTreino() : relogio.agora());
+  meuAnel.visible = !!(me && (me.armado || esfria > 0));
+  if (meuAnel.visible) { meuAnel.position.set(me.x, 0.025, me.z); meuAnel.material.color.set(!me.armado ? 0xff4d4d : me.armado.intencao === "ataque" ? 0xffb84d : 0x4fc3f7); meuAnel.scale.setScalar(me.armado ? 1 + 0.08 * Math.sin(tp / 90) : 0.5 + 0.5 * esfria / (F.ESFRIA * 1000)); }
   // os atletas: andam, olham para a bola (do lado deles) e animam
   for (const j of jogadores) {
     const a = G.atletas.get(j.id); if (!a) continue;

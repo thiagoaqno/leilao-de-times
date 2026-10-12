@@ -152,6 +152,8 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
   coberta: `RoomEnvironment`, tanque de areia, treliças com refletores, arquibancada, placas de LED e o telão com o
   placar (`placar(a, b, texto)`).
 - **Qualidade e clima:** `jogo.js` mede o tempo dos quadros e desce de nível (`NIVEIS`: resolução, sombra; do nível 2 o céu para) abaixo de ~38 fps, guardando em `futevolei:qualidade`; `?leve=1` começa no 2. Na praia o fim de tarde anda com o tempo da partida (`DIA_S`, em `cenarios.js`), o vento balança os coqueiros perto e `Som.gaivota` grita de tempos em tempos. `musica.js`: música da Vila (`/api/musicas`) na barra e na pausa.
+- **Tempo do toque:** o armado dura `ARMADO_MAX` (1,1 s), apertar de novo só muda a intenção (não renova), e se a bola não veio fica `ESFRIA` (0,6 s) sem armar (o anel fica vermelho); armar muito antes piora o toque (`cedo` em `tocar`). No alto o alcance diminui (`alcanceNa`: a bola que encobre quem está na rede não volta) e o "ímã" do `jogo.js` só ajusta até 1,8 m.
+- **Rastro e estalo (só visual, `jogo.js`):** a fita atrás da bola (`atualizarRastro`: branca no passe, dourada no ataque, laranja no Shark/bicicleta/voleio) e o clarão no toque (`estalo`).
 - **Câmera:** alta, atrás do meu time, vendo a quadra inteira, e acompanha o atleta (lados e profundidade).
 - `#debug` expõe `window.__futevolei` (`avancar(seg)`, `toque(tipo)` e `congelar()` para fotos do quadro exato).
 

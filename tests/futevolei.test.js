@@ -45,6 +45,28 @@ test("futevolei: no máximo 3 toques por time, ninguém toca duas vezes seguidas
   assert.ok(!F.alcanca(m, a1), "bola subindo no alto: espera descer");
 });
 
+test("futevolei: apertar sem parar não salva (o armado não renova e esfria) e a bola alta por cima não volta", () => {
+  const m = F.novaPartida([{ id: "eu", team: "A", slot: 0, bot: false }, { id: "b0", team: "B", slot: 0, bot: true }], { pontos: 15 }, 0);
+  m.fase = "jogo"; m.t = 10000;
+  const eu = m.jogadores.find((j) => j.id === "eu");
+  F.armar(m, eu, "passe", 10000);
+  F.armar(m, eu, "ataque", 10500);
+  assert.strictEqual(eu.armado.t0, 10000, "apertar de novo não renova o relógio");
+  assert.strictEqual(eu.armado.intencao, "ataque", "mas muda a intenção");
+  m.bola = bolaEm(0, 5, -4); // a bola longe, do outro lado
+  m.t = 10000 + F.ARMADO_MAX * 1000 + 50; F.passo(m, 1 / 60, m.t);
+  assert.strictEqual(eu.armado, null, "o tempo do armado acabou");
+  F.armar(m, eu, "passe", m.t + 100);
+  assert.strictEqual(eu.armado, null, "esfriando: não arma de novo logo em seguida");
+  F.armar(m, eu, "passe", m.t + F.ESFRIA * 1000 + 10);
+  assert.ok(eu.armado, "depois de esfriar, arma");
+  // a bola que passa alta (2,6 m) a 1 m de distância encobre quem está na rede; na altura do peito, a 1 m, pega
+  Object.assign(eu, { x: 0, z: 2 }); m.bola = bolaEm(1.0, 2.6, 2); m.bola.vy = -1;
+  assert.ok(!F.alcanca(m, eu, 0.4), "encobriu");
+  Object.assign(m.bola, { y: 1.3 });
+  assert.ok(F.alcanca(m, eu, 0.4));
+});
+
 test("futevolei: o passe vai para o parceiro sem passar a rede; o ataque passa por cima da rede", () => {
   const m = F.novaPartida(jogadores(true), { duplas: true, pontos: 15 }, 0);
   m.fase = "jogo"; m.t = 5000;
