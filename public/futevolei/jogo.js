@@ -13,7 +13,7 @@ import { montarCenario } from "/futevolei/cenarios.js";
 const F = window.Futevolei, C = window.Campo, Q = F.Q, { $, h, store } = Comum;
 const toast = Comum.criarToast(3000), socket = io("/futevolei"), relogio = Comum.relogio(), act = Comum.criarAct(socket, toast);
 const KIT = { A: "canarinho", B: "celeste" }, COR = { A: "#f5c400", B: "#5b9bff" }, NOME = { A: "Amarelo", B: "Azul" };
-const BOT_NOMES = ["Robozão", "Tchuco", "Parafuso"], BOT_SKINS = ["neymar", "cr7", "steve", "shrek", "naruto", "woody"];
+const BOT_NOMES = ["Robozão", "Tchuco", "Parafuso"], BOT_SKINS = ["neymar", "goku", "messi", "luffy", "mario", "batman"];
 const INTERP = 100;
 const agoraTreino = () => Date.now() + (G.adiant || 0); // no treino, o relógio é o daqui (os testes podem adiantar)
 let S = null, ME = null;
@@ -76,6 +76,10 @@ sombra.rotation.x = -Math.PI / 2; scene.add(sombra);
 // onde a bola vai cair (quando vem para o meu lado) e a mira do ataque (do outro lado)
 const anel = (r0, r1, cor, op, seg = 32) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, seg), new THREE.MeshBasicMaterial({ color: cor, transparent: true, opacity: op, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); return m; };
 const marca = anel(0.25, 0.36, 0xffb84d, 0.75), mira3d = anel(0.35, 0.5, 0xffffff, 0.8, 4), meuAnel = anel(0.55, 0.68, 0x4fc3f7, 0.7);
+// o X vermelho em cima da cabeça: o toque armado passou sem bola e, enquanto esfria, apertar não arma (pisca de novo)
+const xTex = canvasTex(64, 64, (x, w, hh) => { x.clearRect(0, 0, w, hh); x.lineCap = "round"; for (const [cor, lw] of [["#ffffff", 17], ["#e53935", 10]]) { x.strokeStyle = cor; x.lineWidth = lw; x.beginPath(); x.moveTo(w * 0.22, hh * 0.22); x.lineTo(w * 0.78, hh * 0.78); x.moveTo(w * 0.78, hh * 0.22); x.lineTo(w * 0.22, hh * 0.78); x.stroke(); } });
+const xEsfria = new THREE.Sprite(new THREE.SpriteMaterial({ map: xTex, transparent: true, depthTest: false, depthWrite: false }));
+xEsfria.visible = false; xEsfria.renderOrder = 6; scene.add(xEsfria);
 
 // ---------- o rastro da bola e o estalo do toque (só visual) ----------
 // O rastro é uma fita virada para a câmera atrás da bola, que afina e some na ponta: branca no passe, dourada no ataque
@@ -459,6 +463,7 @@ function toque(tipo) {
   const me = G.me; if (!me) return;
   Som.unlock();
   const { mira } = entrada(); me.mira = mira;
+  if ((G.offline ? G.m.fase : G.fase) === "jogo" && !me.armado && (G.offline ? agoraTreino() : relogio.agora()) < (me.esfriaAte || 0)) G.xPulso = performance.now(); // apertou esfriando: o X pisca
   if (G.offline) { F.armar(G.m, me, tipo, agoraTreino(), mira); return; }
   socket.emit("toque", { tipo, mx: mira.x, mz: mira.z });
   if (G.fase === "jogo") { if (me.armado) me.armado.intencao = tipo; else if (relogio.agora() >= (me.esfriaAte || 0)) me.armado = { intencao: tipo, t0: relogio.agora() }; } // as mesmas contas de F.armar
@@ -602,6 +607,8 @@ function frame() {
   const esfria = me && !me.armado && (me.esfriaAte || 0) - (G.offline ? agoraTreino() : relogio.agora());
   meuAnel.visible = !!(me && (me.armado || esfria > 0));
   if (meuAnel.visible) { meuAnel.position.set(me.x, 0.025, me.z); meuAnel.material.color.set(!me.armado ? 0xff4d4d : me.armado.intencao === "ataque" ? 0xffb84d : 0x4fc3f7); meuAnel.scale.setScalar(me.armado ? 1 + 0.08 * Math.sin(tp / 90) : 0.5 + 0.5 * esfria / (F.ESFRIA * 1000)); }
+  xEsfria.visible = !!(me && esfria > 0);
+  if (xEsfria.visible) { const pulso = Math.max(0, 1 - (performance.now() - (G.xPulso || 0)) / 250); xEsfria.position.set(me.x, (me.y || 0) + 2.85, me.z); xEsfria.scale.setScalar(0.6 * (1 + 0.45 * pulso)); xEsfria.material.opacity = Math.min(1, 0.35 + esfria / (F.ESFRIA * 1000)); }
   // os atletas: andam, olham para a bola (do lado deles) e animam
   for (const j of jogadores) {
     const a = G.atletas.get(j.id); if (!a) continue;

@@ -152,9 +152,9 @@ socket.on("caiu", (d) => {
   const tk = E.ME && d.by === E.ME.id ? G.me : G.remotes.get(d.by); // quem deu o carrinho
   if (vic && vic.model && !isCar() && !(vic.model === G.meModel && G.view === "primeira")) {
     const dx = tk ? vic.x - tk.x : 0, dz = tk ? vic.z - tk.z : 1, l = Math.hypot(dx, dz) || 1, k = SKINS_CONFIG[vic.model.userData.skin]?.queda?.push || 1;
-    addRag(vic.model, vic.x, vic.y || 0, vic.z, vic.yaw ?? vic.model.rotation.y, { x: vic.vx || 0, y: 0, z: vic.vz || 0 }, { x: (dx / l) * 3.5 * k, y: 2.2 * k, z: (dz / l) * 3.5 * k }, 1.15);
+    addRag(vic.model, vic.x, vic.y || 0, vic.z, vic.yaw ?? vic.model.rotation.y, { x: vic.vx || 0, y: 0, z: vic.vz || 0 }, { x: (dx / l) * 3.5 * k, y: 2.2 * k, z: (dz / l) * 3.5 * k }, C.DERRUBADO - 0.05);
   }
-  if (E.ME && d.id === E.ME.id) { G.me.downT = 1.4; E.charge = null; }
+  if (E.ME && d.id === E.ME.id) { G.me.downT = C.DERRUBADO; E.charge = null; }
   const by = P(d.by), to = P(d.id);
   if (by && to) pushFeed(`🦵 ${h(by.name)} derrubou ${h(to.name)}`);
 });

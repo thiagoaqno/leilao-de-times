@@ -11,7 +11,7 @@ const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou
 const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
 const TICK = 1 / 60, SNAP_EVERY = 3, READY_MS = 3000, GOAL_MS = 4000, MAX_TEAM = 5;
-const HOLD_MS = 6000, DOWN_MS = 1400;
+const HOLD_MS = 6000, DOWN_MS = C.DERRUBADO * 1000;
 const SIDES = { A: "Mandante", B: "Visitante" };
 // bits do "f" (o que o jogador está fazendo), iguais aos do navegador
 const FL = { sprint: 1, charge: 2, slide: 4, dive: 8, flip: 16, down: 32, boost: 64, grab: 128, pede: 2048 }; // grab: segurando alguém · pede: pedindo a bola

@@ -150,7 +150,7 @@
 
   // ---------- jogador: anda (o navegador mexe o próprio; o servidor e o treino mexem os robôs) ----------
   // depois da bicicleta o jogador cai na areia e levanta: esse tempo ele fica parado (a animação do navegador dura o mesmo)
-  const CAIDO_BICICLETA = 1.2;
+  const CAIDO_BICICLETA = 1.5;
   function mover(j, dir, dt, m = null) {
     if (j.caido > 0) { j.caido -= dt; j.vx = j.vz = 0; return; }
     const vmax = VEL * (j.bot ? DIF_ATUAL.vel : 1);

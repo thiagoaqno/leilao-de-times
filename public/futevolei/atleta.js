@@ -357,9 +357,15 @@ export class Atleta {
     const rede = this.frente;
     let alvo = rede;
     if (olhar) { const dx = olhar.x - e.x, dz = olhar.z - e.z; if (dx * dx + dz * dz > 0.04) alvo = Math.atan2(-dx, -dz); }
-    // nunca fica de costas para a rede no meio do lance (o golpe para trás é animação, não giro)
+    // nunca fica de costas para a rede no meio do lance (o golpe para trás é animação, não giro)...
     let dif = Math.atan2(Math.sin(alvo - rede), Math.cos(alvo - rede)); dif = clamp(dif, -1.2, 1.2); alvo = rede + dif;
-    this.yaw += Math.atan2(Math.sin(alvo - this.yaw), Math.cos(alvo - this.yaw)) * Math.min(1, dt * 9);
+    // ...menos na bicicleta: vira de costas antes de subir (o chute vai por cima da cabeça, para a rede), pelo lado da
+    // bola, e depois de levantar volta a olhar para a rede
+    const costas = this.animador.deCostas;
+    if (costas) { if (!this.giro) this.giro = dif >= 0 ? 1 : -1; alvo = rede + Math.PI; } else this.giro = 0;
+    let falta = Math.atan2(Math.sin(alvo - this.yaw), Math.cos(alvo - this.yaw));
+    if (costas && Math.abs(falta) > 2.6) falta = this.giro * Math.abs(falta); // de frente para trás: gira pelo lado escolhido
+    this.yaw += falta * Math.min(1, dt * (costas ? 12 : 9));
     this.raiz.rotation.y = this.yaw;
     // a velocidade no referencial do atleta (para a frente e para o lado), para a passada certa
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);

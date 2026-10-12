@@ -132,10 +132,11 @@ function stepFoot(dt, t, frozen) {
     wx = -Math.sin(yaw) * -PAD.ly + Math.cos(yaw) * PAD.lx; wz = -Math.cos(yaw) * -PAD.ly - Math.sin(yaw) * PAD.lx;
     const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l; len = 1;
   }
+  if (me.downT > 0 && me.downT <= dt) me.caidoT = C.LEVANTANDO; // derrubado: fica parado enquanto levanta
   me.slideT = Math.max(0, me.slideT - dt); me.diveT = Math.max(0, me.diveT - dt); me.downT = Math.max(0, me.downT - dt); me.caidoT = Math.max(0, (me.caidoT || 0) - dt); me.slideCd = Math.max(0, me.slideCd - dt);
   me.pedeT = Math.max(0, (me.pedeT || 0) - dt);
   if (!frozen) tentarFila(); // chute que esperava a bola (conduzindo com toques)
-  const busy = me.slideT > 0 || me.diveT > 0 || me.downT > 0 || me.caidoT > 0; // caidoT: levantando depois da bicicleta
+  const busy = me.slideT > 0 || me.diveT > 0 || me.downT > 0 || me.caidoT > 0; // caidoT: levantando (do carrinho ou da bicicleta)
   const holding = ballS.snap && E.ME && ballS.snap.holder === E.ME.id;
   // carrinho (rodinha do mouse): desliza para onde está virado e derruba quem estiver na frente
   if (E.wheelQueued && !frozen && !busy && me.onGround && me.slideCd <= 0 && !holding && !souDono()) { // carrinho só sem a bola

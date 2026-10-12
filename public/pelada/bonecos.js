@@ -78,6 +78,8 @@ export const SKINS_CONFIG = {
     look: { esponja: true, altura: 0.92 } },
   levi: { arquivo: "/pelada/modelos/levi.glb", scale: 1, yOffset: 0, rotationOffset: Math.PI,
     look: { tom: 0xf3d3b0, cabelo: 0x111111, estilo: "franja", altura: 0.88, gravata: 0xf4f4f4, capa: 0x2f5233 } },
+  messi: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { tom: 0xe2b48c, cabelo: 0x4a2e1a, estilo: "lateral", barba: 0x4a2e1a, larg: 0.96, altura: 0.94, num: 10 } },
   // Personagens com roupa própria (sem a camisa do time): o time aparece no marcador colorido (anel no chão,
   // losango em cima da cabeça e braçadeira). look.roupa: cor de cada pedaço; tronco/rosto: desenho em canvas
   // (frente e costas); enfeites(): peças a mais (cabelo, chapéu, casco, rabo...). Tudo de caixinhas, no estilo do jogo.
@@ -148,6 +150,47 @@ export const SKINS_CONFIG = {
       tronco: (x, w, hh) => { x.fillStyle = "#5a3a22"; x.fillRect(0, 0, w, hh); x.fillStyle = "#f4f4f4"; x.fillRect(w * 0.14, hh * 0.12, w * 0.72, hh * 0.88); x.fillStyle = "#5a3a22"; x.beginPath(); x.ellipse(w / 2, hh * 0.1, w * 0.18, hh * 0.12, 0, 0, 7); x.fill(); },
       rosto: (x, w, hh) => { x.fillStyle = "#5a3a22"; x.fillRect(0, 0, w, hh); olhos(x, w, hh, "#2a1a0c"); x.fillStyle = "#151515"; x.fillRect(w * 0.36, hh * 0.68, w * 0.28, hh * 0.05); x.fillRect(w * 0.44, hh * 0.78, w * 0.12, hh * 0.12); },
       enfeites: (head, part, M) => { part(head, 0.27, 0.03, 0.27, M(0x151515), 0, 0.29, 0.005); } } }, // cabelo raspado
+  goku: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0xf47a1f, canela: 0xf47a1f, meia: 0x1e3f8f, bota: 0x1e3f8f, ombro: 0x1e3f8f, antebraco: 0xf1c79a, mao: 0x1e3f8f, pele: 0xf1c79a }, larg: 1.06, altura: 1.0,
+      tronco: (x, w, hh, costas) => { x.fillStyle = "#f47a1f"; x.fillRect(0, 0, w, hh); x.fillStyle = "#1e3f8f"; x.fillRect(0, hh * 0.84, w, hh * 0.16); // o gi laranja e a faixa azul
+        if (!costas) { x.beginPath(); x.moveTo(w * 0.3, 0); x.lineTo(w * 0.5, hh * 0.32); x.lineTo(w * 0.7, 0); x.fill(); x.fillStyle = "#f1c79a"; x.beginPath(); x.moveTo(w * 0.4, 0); x.lineTo(w * 0.5, hh * 0.16); x.lineTo(w * 0.6, 0); x.fill(); } // a gola em V com a camiseta azul por baixo
+        const cx = costas ? w * 0.5 : w * 0.3, cy = costas ? hh * 0.4 : hh * 0.5, r = costas ? w * 0.2 : w * 0.1; x.fillStyle = "#f4f4f4"; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); x.fillStyle = "#151515"; x.font = `bold ${r * 1.3}px serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("悟", cx, cy); },
+      rosto: (x, w, hh) => { x.fillStyle = "#f1c79a"; x.fillRect(0, 0, w, hh); olhos(x, w, hh, "#151515"); boca(x, w, hh, "#8a3a2a"); },
+      cabelo: "nenhum",
+      enfeites: (head, part, M) => { const preto = M(0x111114); part(head, 0.29, 0.08, 0.29, preto, 0, 0.31, 0.01); // o cabelo espetado, em todas as direções
+        for (const [sx, sy, sz, rz, rx] of [[-0.13, 0.36, -0.02, 0.9, 0], [0.13, 0.36, -0.02, -0.9, 0], [-0.1, 0.42, 0.05, 0.5, -0.3], [0.1, 0.42, 0.05, -0.5, -0.3], [0, 0.45, 0.06, 0, -0.4], [-0.05, 0.4, -0.1, 0.3, 0.6], [0.06, 0.41, -0.1, -0.35, 0.6], [0, 0.38, 0.14, 0, -1], [-0.16, 0.27, 0.06, 1.3, 0], [0.16, 0.27, 0.06, -1.3, 0]]) { const q = part(head, 0.08, 0.2, 0.08, preto, sx, sy, sz); q.rotation.z = rz; q.rotation.x = rx; }
+        for (const sx of [-0.06, 0.05]) { const f = part(head, 0.05, 0.1, 0.03, preto, sx, 0.26, -0.14); f.rotation.z = sx * 6; } } } }, // a franja
+  mario: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x1f4fbf, canela: 0x1f4fbf, meia: 0x1f4fbf, bota: 0x6b3f1d, ombro: 0xd62828, antebraco: 0xd62828, mao: 0xf4f4f4, pele: 0xf3c9a0 }, altura: 0.86, larg: 1.12, barriga: 1.22, cabecaGrande: 1.12,
+      tronco: (x, w, hh, costas) => { x.fillStyle = "#d62828"; x.fillRect(0, 0, w, hh); x.fillStyle = "#1f4fbf"; x.fillRect(0, hh * 0.5, w, hh * 0.5); // a camisa vermelha e o macacão azul
+        for (const sx of [0.22, 0.66]) x.fillRect(w * sx, 0, w * 0.12, hh * 0.5); // as alças
+        if (!costas) { x.fillStyle = "#f5c518"; for (const sx of [0.28, 0.72]) { x.beginPath(); x.arc(w * sx, hh * 0.52, w * 0.05, 0, 7); x.fill(); } } }, // os botões amarelos
+      rosto: (x, w, hh) => { x.fillStyle = "#f3c9a0"; x.fillRect(0, 0, w, hh); olhos(x, w, hh, "#2a6bd1", 0.38); x.fillStyle = "#e8a87c"; x.beginPath(); x.ellipse(w / 2, hh * 0.56, w * 0.11, hh * 0.09, 0, 0, 7); x.fill(); // o narigão
+        x.fillStyle = "#2a1a10"; x.beginPath(); x.ellipse(w * 0.36, hh * 0.68, w * 0.15, hh * 0.06, -0.2, 0, 7); x.ellipse(w * 0.64, hh * 0.68, w * 0.15, hh * 0.06, 0.2, 0, 7); x.fill(); }, // o bigode
+      cabelo: "nenhum",
+      enfeites: (head, part, M) => { const verm = M(0xd62828); part(head, 0.29, 0.1, 0.29, verm, 0, 0.33, 0.005); part(head, 0.29, 0.03, 0.13, verm, 0, 0.29, -0.19); // o boné e a aba
+        part(head, 0.1, 0.08, 0.01, M(0xf4f4f4), 0, 0.33, -0.146); part(head, 0.06, 0.05, 0.012, verm, 0, 0.33, -0.148); // o M no boné
+        part(head, 0.28, 0.07, 0.03, M(0x4a2e1a), 0, 0.22, 0.135); } } }, // o cabelo atrás
+  batman: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x3a3d45, canela: 0x3a3d45, meia: 0x15161a, bota: 0x15161a, ombro: 0x3a3d45, antebraco: 0x15161a, mao: 0x15161a, cabeca: 0x15161a, pele: 0xe2b48c }, larg: 1.14, altura: 1.04,
+      tronco: (x, w, hh) => { x.fillStyle = "#3a3d45"; x.fillRect(0, 0, w, hh); x.fillStyle = "#f2c230"; x.beginPath(); x.ellipse(w / 2, hh * 0.36, w * 0.3, hh * 0.15, 0, 0, 7); x.fill(); x.fillRect(0, hh * 0.86, w, hh * 0.1); // o símbolo e o cinto de utilidades
+        x.fillStyle = "#15161a"; x.beginPath(); x.moveTo(w * 0.22, hh * 0.32); x.quadraticCurveTo(w * 0.3, hh * 0.44, w * 0.38, hh * 0.38); x.lineTo(w * 0.46, hh * 0.46); x.lineTo(w * 0.5, hh * 0.4); x.lineTo(w * 0.54, hh * 0.46); x.lineTo(w * 0.62, hh * 0.38); x.quadraticCurveTo(w * 0.7, hh * 0.44, w * 0.78, hh * 0.32);
+        x.quadraticCurveTo(w * 0.6, hh * 0.3, w * 0.55, hh * 0.25); x.lineTo(w * 0.53, hh * 0.29); x.lineTo(w * 0.47, hh * 0.29); x.lineTo(w * 0.45, hh * 0.25); x.quadraticCurveTo(w * 0.4, hh * 0.3, w * 0.22, hh * 0.32); x.fill(); },
+      rosto: (x, w, hh) => { x.fillStyle = "#15161a"; x.fillRect(0, 0, w, hh); x.fillStyle = "#e2b48c"; x.fillRect(w * 0.18, hh * 0.6, w * 0.64, hh * 0.4); // a máscara e o queixo de fora
+        x.fillStyle = "#f4f4f4"; for (const s of [-1, 1]) { x.beginPath(); x.ellipse(w / 2 + s * w * 0.18, hh * 0.44, w * 0.1, hh * 0.04, s * 0.25, 0, 7); x.fill(); } x.fillStyle = "#7a3a2a"; x.fillRect(w * 0.38, hh * 0.78, w * 0.24, hh * 0.04); },
+      cabelo: "nenhum",
+      enfeites: (head, part, M, spine) => { const preto = M(0x15161a); for (const s of [-1, 1]) { const o = part(head, 0.05, 0.12, 0.05, preto, s * 0.09, 0.34, 0); o.rotation.z = -s * 0.15; } // as orelhas da máscara
+        const capa = part(spine, 0.62, 0.95, 0.03, preto, 0, 1.0 - SPINE_Y, 0.17); capa.rotation.x = -0.1; } } }, // a capa até o joelho
+  luffy: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
+    look: { roupa: { coxa: 0x2f5fa8, canela: 0xf1c79a, meia: 0xf1c79a, bota: 0x8b5a2b, ombro: 0xd62828, antebraco: 0xf1c79a, pele: 0xf1c79a }, larg: 0.96, altura: 0.96,
+      tronco: (x, w, hh, costas) => { x.fillStyle = "#d62828"; x.fillRect(0, 0, w, hh); if (!costas) { x.fillStyle = "#f1c79a"; x.fillRect(w * 0.36, 0, w * 0.28, hh * 0.82); x.strokeStyle = "#b06a4a"; x.lineWidth = 3; x.beginPath(); x.moveTo(w * 0.4, hh * 0.15); x.lineTo(w * 0.6, hh * 0.45); x.moveTo(w * 0.6, hh * 0.15); x.lineTo(w * 0.4, hh * 0.45); x.stroke(); } // o colete aberto e a cicatriz em X
+        x.fillStyle = "#f2c230"; x.fillRect(0, hh * 0.82, w, hh * 0.12); }, // a faixa amarela
+      rosto: (x, w, hh) => { x.fillStyle = "#f1c79a"; x.fillRect(0, 0, w, hh); olhos(x, w, hh, "#151515"); x.strokeStyle = "#a0574a"; x.lineWidth = 2; x.beginPath(); x.moveTo(w * 0.22, hh * 0.56); x.lineTo(w * 0.38, hh * 0.56); x.stroke(); // a cicatriz embaixo do olho
+        x.fillStyle = "#7a2e1f"; x.beginPath(); x.ellipse(w / 2, hh * 0.76, w * 0.2, hh * 0.07, 0, 0, Math.PI); x.fill(); }, // o sorrisão
+      cabelo: "nenhum",
+      enfeites: (head, part, M) => { const preto = M(0x111114), palha = M(0xe8c55a), fita = M(0xc8102e); part(head, 0.28, 0.07, 0.28, preto, 0, 0.29, 0.01); // o cabelo e o chapéu de palha
+        for (const [sx, sz] of [[-0.1, -0.13], [0, -0.14], [0.1, -0.13], [-0.14, 0.02], [0.14, 0.02]]) part(head, 0.06, 0.08, 0.04, preto, sx, 0.25, sz);
+        part(head, 0.54, 0.025, 0.54, palha, 0, 0.33, 0); part(head, 0.28, 0.1, 0.28, palha, 0, 0.39, 0); part(head, 0.29, 0.035, 0.29, fita, 0, 0.36, 0); } } },
   steve: { arquivo: null, scale: 1, yOffset: 0, rotationOffset: 0,
     look: { roupa: { coxa: 0x3b3bb3, canela: 0x3b3bb3, meia: 0x3b3bb3, bota: 0x6b6b6b, ombro: 0x22a6a6, antebraco: 0xc99a6c, pele: 0xc99a6c }, cabecaGrande: 1.15, pixel: true,
       tronco: (x, w, hh) => { x.fillStyle = "#22a6a6"; x.fillRect(0, 0, w, hh); x.fillStyle = "#1b8c8c"; x.fillRect(0, hh * 0.82, w, hh * 0.18); x.fillStyle = "#c99a6c"; x.fillRect(w * 0.375, 0, w * 0.25, hh * 0.125); },
@@ -333,9 +376,10 @@ function montarVoxel(g, id) {
     else if (e === "moicano") { part(head, 0.28, 0.04, 0.28, M(0x2a1b10), 0, 0.3, 0); part(head, 0.08, 0.13, 0.27, hair, 0, 0.36, 0); }
     else if (e === "calvo") { // careca em cima, cabelo branco dos lados e atrás, e a barba
       for (const sx of [-0.14, 0.14]) part(head, 0.02, 0.12, 0.2, hair, sx, 0.2, 0.02); part(head, 0.28, 0.12, 0.02, hair, 0, 0.2, 0.135);
-      const b = M(L.barba); part(head, 0.27, 0.11, 0.05, b, 0, 0.04, -0.12); for (const sx of [-0.135, 0.135]) part(head, 0.02, 0.16, 0.18, b, sx, 0.07, -0.03); part(head, 0.15, 0.03, 0.02, b, 0, 0.1, -0.135);
-    } else if (e === "franja") { part(head, 0.28, 0.07, 0.28, hair, 0, 0.31, 0.01); for (const sx of [-0.08, 0.08]) part(head, 0.09, 0.06, 0.03, hair, sx, 0.27, -0.135); } // franja repartida no meio
+    } else if (e === "lateral") { part(head, 0.28, 0.07, 0.28, hair, 0, 0.31, 0.01); const q = part(head, 0.2, 0.06, 0.1, hair, 0.03, 0.33, -0.09); q.rotation.z = -0.25; } // penteado de lado
+    else if (e === "franja") { part(head, 0.28, 0.07, 0.28, hair, 0, 0.31, 0.01); for (const sx of [-0.08, 0.08]) part(head, 0.09, 0.06, 0.03, hair, sx, 0.27, -0.135); } // franja repartida no meio
     else part(head, 0.28, 0.08, 0.28, hair, 0, 0.31, 0);
+    if (L.barba) { const b = M(L.barba); part(head, 0.27, 0.11, 0.05, b, 0, 0.04, -0.12); for (const sx of [-0.135, 0.135]) part(head, 0.02, 0.16, 0.18, b, sx, 0.07, -0.03); part(head, 0.15, 0.03, 0.02, b, 0, 0.1, -0.135); } // a barba (e o bigode)
   }
   let capa = null;
   if (L.capa) { capa = new THREE.Group(); capa.position.set(0, 1.44 - SPINE_Y, 0.15); part(capa, 0.5, 0.75, 0.03, M(L.capa), 0, -0.37, 0); spine.add(capa); }

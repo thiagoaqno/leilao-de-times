@@ -20,7 +20,9 @@ const sorteia = (l) => l[Math.floor(Math.random() * l.length)];
 
 // O recorte de cada golpe dentro da animação do Mixamo, em segundos do clipe: c clipe, i começo, imp impacto (o toque na
 // bola), f fim. Com f < i a animação roda de trás para a frente. salto: sobe o corpo (toque no alto); depois: o clipe que
-// vem em seguida; solta: no saque, quando a bola sai das mãos.
+// vem em seguida (emenda: entra no lugar do anterior sem passar pela base, como cair e levantar); solta: no saque, quando a
+// bola sai das mãos. vel: a velocidade do clipe; acel: o quanto o começo pode ser acelerado para o impacto cair na hora da
+// bola (o padrão é ESCALA_MAX); costas: o atleta vira de costas para a rede (a bicicleta chuta por cima da cabeça).
 export const GOLPES_M = {
   frente: { c: "soccerPass", i: 0.17, imp: 0.58, f: 1.1 }, lado: { c: "soccerPass", i: 0.17, imp: 0.58, f: 1.1 },
   letra: { c: "soccerPass", i: 0.17, imp: 0.58, f: 1.1 }, calcanhar: { c: "soccerPass", i: 0.17, imp: 0.58, f: 1.1 },
@@ -29,8 +31,11 @@ export const GOLPES_M = {
   cabecaChao: { c: "headerSoccerball", i: 0.3, imp: 0.68, f: 1.3 },              // cabeçada de pé
   voleio: { c: "strikeFowardJog", i: 0.03, imp: 0.6, f: 1.0, salto: 0.3, depois: "aterrissa" },
   shark: { c: "strikeFowardJog", i: 0.03, imp: 0.6, f: 1.0, salto: 0.35, depois: "aterrissa" },
-  // cai e levanta: depois do impacto anda 1,5× (1,2 s, o tempo que o jogador fica parado: CAIDO_BICICLETA nas regras)
-  bicicleta: { c: "scissorKick", i: 0.37, imp: 1.0, f: 2.77, pos: 1.5 }, sharkBicicleta: { c: "scissorKick", i: 0.37, imp: 1.0, f: 2.77, pos: 1.5 },
+  // de costas para a rede: sobe, chuta por cima da cabeça, cai deitado e senta e levanta (levantaBicicleta). Do impacto até
+  // ficar de pé é ~1,5 s, o tempo que o jogador fica parado (CAIDO_BICICLETA nas regras); o começo quase não é acelerado
+  bicicleta: { c: "scissorKick", i: 0.37, imp: 1.0, f: 1.45, acel: 1.15, costas: true, depois: "levantaBicicleta" },
+  sharkBicicleta: { c: "scissorKick", i: 0.37, imp: 1.0, f: 1.45, acel: 1.15, costas: true, depois: "levantaBicicleta" },
+  levantaBicicleta: { c: "endBicycleSitUp", i: 0.7, f: 2.9, vel: 2, emenda: true, costas: true },
   saque: { c: "goalkeeperDropKick", i: 1.45, imp: 2.2, f: 3.0, solta: 1.85 },    // a reposição do goleiro: solta a bola e chuta
   // sem bola
   pegaBola: { c: "goalkeeperPlacingBall", i: 1.0, f: 0 },                         // abaixa e pega a bola da areia (o "pôr a bola" ao contrário)
@@ -42,7 +47,7 @@ export const GOLPES_M = {
   arremesso: { c: "goalkeeperOverhandThrow", i: 0.3, imp: 1.15, f: 2.1 },
   rolar: { c: "goalkeeperPass", i: 0.2, imp: 0.9, f: 2.4 },
   defende: { c: "goalkeeperCatch", i: 0.15, imp: 0.55, f: 1.27 },
-  levanta: { c: "standingUp", i: 0.2, f: 1.67, entra: 0.2 },
+  levanta: { c: "standingUp", i: 0.2, f: 1.67, vel: 1.5, entra: 0.02 },     // a Pelada: derrubado, levanta (1 s, parado: LEVANTANDO)
   // comemorações, lamentos e manias (sorteados)
   comemora1: { c: "standingJump", i: 0.27, f: 1.83 }, comemora2: { c: "runningJump", i: 0, f: 0.9 }, comemora3: { c: "goalkeeperOverhandThrow", i: 0.3, f: 1.7 },
   lamenta1: { c: "standingUp", i: 0, f: 1.67, entra: 0.25 }, lamenta2: { c: "goalkeeperScoop", i: 0.37, f: 1.9 }, lamenta3: { c: "endBicycleSitUp", i: 1.31, f: 3.3, entra: 0.3 },
@@ -51,7 +56,7 @@ export const GOLPES_M = {
 const GRUPOS = { comemora: ["comemora1", "comemora2", "comemora3"], lamenta: ["lamenta1", "lamenta2", "lamenta3"], mania: ["mania1", "mania2"] };
 const ESCALA_MAX = 1.8; // o quanto o começo do golpe pode ser acelerado para o impacto cair na hora da bola
 const nomeDoGolpe = (g, o = {}) => (g === "shark" && o.estilo === "bicicleta" ? "sharkBicicleta" : g === "cabeca" && o.pulo === false ? "cabecaChao" : GRUPOS[g] ? sorteia(GRUPOS[g]) : g);
-export const ateImpactoM = (g, o) => { const c = GOLPES_M[nomeDoGolpe(g, o)]; return c && c.imp != null ? (c.imp - c.i) / ESCALA_MAX : 0; };
+export const ateImpactoM = (g, o) => { const c = GOLPES_M[nomeDoGolpe(g, o)]; return c && c.imp != null ? (c.imp - c.i) / (c.acel || ESCALA_MAX) : 0; };
 // os clipes da base (sem golpe)
 const BASE = ["idleTransition", "goalkeeperSidestep", "running", "runningBackward", "leftStrafe", "rightStrafe", "walkStrafeLeft", "walkStrafeRight"];
 
@@ -179,16 +184,20 @@ export class AnimadorMixamo {
   }
   disparar(gatilho, o = {}, t0 = 0) {
     // comemorar ou lamentar não corta o peixinho nem um golpe no meio
-    if (GRUPOS[gatilho] && this.clip && (this.clip.nome === "mergulho" || this.clip.bola)) { this.clip.depois = nomeDoGolpe(gatilho); return; }
+    const atual = this.clip;
+    if (GRUPOS[gatilho] && atual && (atual.nome === "mergulho" || atual.bola || atual.C.emenda)) { // (caído, comemora depois de levantar)
+      if (atual.depois && GOLPES_M[atual.depois].emenda) atual.depoisFinal = nomeDoGolpe(gatilho); else atual.depois = nomeDoGolpe(gatilho);
+      return;
+    }
     const nome = nomeDoGolpe(gatilho, o), C = GOLPES_M[nome]; if (!C) return;
     const dur = Math.abs(C.f - C.i), salto = C.salto && (o.pulo || nome === "shark") ? clamp((o.h || 1.6) - 1.15, 0.15, 0.6) : 0;
-    this.clip = { nome, C, t: t0, escala: 1, m: o.lado < 0 ? -1 : 1, bola: C.imp != null && nome !== "mergulho", confirmado: false, impT: C.imp != null ? C.imp - C.i : 0, dur, salto, depois: C.depois || null, entra: C.entra || 0.07 };
+    this.clip = { nome, C, t: t0, escala: C.vel || 1, m: o.lado < 0 ? -1 : 1, bola: C.imp != null && nome !== "mergulho", confirmado: false, impT: C.imp != null ? C.imp - C.i : 0, dur, salto, depois: C.depois || null, entra: C.entra || 0.07 };
   }
   antecipar(gatilho, o, falta) {
     const nome = nomeDoGolpe(gatilho, o), C = GOLPES_M[nome]; if (!C || C.imp == null) return;
     if (this.clip && this.clip.bola && !this.clip.confirmado && this.clip.nome === nome) return;
     this.disparar(gatilho, o, 0);
-    const c = this.clip, esc = clamp(c.impT / Math.max(0.05, falta), 1, ESCALA_MAX);
+    const c = this.clip, esc = clamp(c.impT / Math.max(0.05, falta), 1, C.acel || ESCALA_MAX);
     c.escala = esc; c.t = Math.min(0, esc * (c.impT / esc - falta)); // longe da bola: espera parado até a hora de começar
   }
   confirmar(gatilho, o) {
@@ -199,6 +208,8 @@ export class AnimadorMixamo {
     this.clip.m = o.lado < 0 ? -1 : 1; this.clip.confirmado = true;
   }
   get ocupado() { return !!this.clip; }
+  // o golpe é de costas para a rede (a bicicleta e o levantar dela): o atleta gira o corpo
+  get deCostas() { return !!(this.clip && this.clip.C.costas); }
   // o tempo do clipe em andamento (segundos da animação do Mixamo)
   tempoNoClipe(c = this.clip) { return c ? c.C.i + Math.sign(c.C.f - c.C.i) * Math.max(0, c.t) : 0; }
   // a bola do saque: "mao" (nas mãos), { cai: k } (solta, caindo até o pé; k de 0 a 1) ou null (a bola é a do jogo)
@@ -229,10 +240,15 @@ export class AnimadorMixamo {
     let g = 0, c = this.clip;
     if (c) {
       c.t += dt * (c.C.pos && c.t >= c.impT ? c.C.pos : c.escala);
-      g = c.t < 0 ? 0 : Math.min(ease(c.t, 0, c.entra), 1 - ease(c.t, c.dur - 0.2, c.dur));
+      const emenda = c.depois && GOLPES_M[c.depois].emenda; // o próximo entra no lugar: não volta para a base no fim
+      g = c.t < 0 ? 0 : Math.min(c.C.emenda ? 1 : ease(c.t, 0, c.entra), emenda ? 1 : 1 - ease(c.t, c.dur - 0.2, c.dur));
       if (c.t >= c.dur) {
-        const depois = c.depois; this.clip = null; c = null; g = 0;
-        if (depois) { this.disparar(depois, { lado: this.m }); c = this.clip; }
+        const depois = c.depois, fim = c.depoisFinal, ant = c; this.clip = null; c = null; g = 0;
+        if (depois) {
+          this.disparar(depois, { lado: this.m }); c = this.clip;
+          if (c && fim) c.depois = fim;
+          if (c && c.C.emenda) { this.saida = { n: ant.C.c, tempo: ant.C.f, t: 0 }; g = 1; } // o anterior sai aos poucos
+        }
       }
     }
     const base = 1 - g, A = this.a;
@@ -243,9 +259,12 @@ export class AnimadorMixamo {
     loco("walkStrafeLeft", W.wl, this.faseW); loco("walkStrafeRight", W.wr, this.faseW);
     for (const n of this.golpes) if (A[n] && !BASE.includes(n)) A[n].weight = 0;
     if (A.segura) { A.segura.weight = this.ws * base * 1000; A.segura.time = 0.35; } // os braços seguram a bola por cima de qualquer passada
+    // a emenda: o clipe anterior (parado no último quadro) passa para o novo em 0,25 s
+    const sd = this.saida; let ws = 0;
+    if (sd) { sd.t += dt; ws = 1 - ease(sd.t, 0, 0.25); if (ws <= 0 || !c || !A[sd.n] || sd.n === c.C.c) this.saida = null; else { A[sd.n].weight = ws * g; A[sd.n].time = sd.tempo; } }
     if (c) {
       const ac = A[c.C.c];
-      if (ac) { ac.weight = Math.max(ac.weight, g); ac.time = this.tempoNoClipe(c); }
+      if (ac) { ac.weight = Math.max(ac.weight, g * (1 - ws)); ac.time = this.tempoNoClipe(c); }
       this.m = c.m;
     } else this.m = 1;
     // o pulo dos toques no alto: sobe até o impacto e desce

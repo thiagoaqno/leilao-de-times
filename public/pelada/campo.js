@@ -86,6 +86,11 @@
     shrek: { name: "Shrek", emoji: "🧅" },
     cj: { name: "CJ", emoji: "🚲" },
     steve: { name: "Steve", emoji: "⛏️" },
+    messi: { name: "Messi", emoji: "🪄" },
+    goku: { name: "Goku", emoji: "🐉" },
+    mario: { name: "Mario", emoji: "🍄" },
+    batman: { name: "Batman", emoji: "🦇" },
+    luffy: { name: "Luffy", emoji: "👒" },
   };
   // quadras (só o visual muda: o tamanho e a física são os mesmos; detalhes em ARENAS_CONFIG no jogo.js)
   const ARENAS = {
@@ -567,6 +572,9 @@
   // tipo: "chute" (força pela barra), "passe" (rasteiro), "cavadinha" (alto). Cabeçada se a bola estiver alta.
   // Com a bola na mão, o goleiro solta: chute vira tiro de meta pelo alto, passe vira arremesso rasteiro.
   const KICK_RANGE = 1.35, KICK_CD = 0.3;
+  // derrubado no carrinho: fica DERRUBADO s no chão e depois LEVANTANDO s parado se levantando (a animação do Mixamo dura
+  // o mesmo); depois da bicicleta, CAIDO_BICICLETA s (cai, senta e levanta)
+  const DERRUBADO = 1.0, LEVANTANDO = 1.0, CAIDO_BICICLETA = 1.5;
   function canKick(p, b, slack = 0) {
     if (b.holder) return b.holder === p.id ? "mao" : null;
     const dx = b.x - p.x, dz = b.z - p.z, d = Math.hypot(dx, dz), rel = b.y - p.y;
@@ -894,7 +902,7 @@
     if (d < 1.4) { const rvx = b.vx - (r.vx || 0), rvz = b.vz - (r.vz || 0), rs = Math.hypot(rvx, rvz); if (rs > 5.5) { b.vx = (r.vx || 0) + rvx / rs * 5.5; b.vz = (r.vz || 0) + rvz / rs * 5.5; } }
   }
 
-  const api = { MODES, campoDe, COND, COND_PADRAO, COND_FAIXA, limparCond, usarCond, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
+  const api = { MODES, campoDe, COND, COND_PADRAO, COND_FAIXA, limparCond, usarCond, PASSE_S, planejarPasse, escolherReceptor, interceptar, velLongo, tRolando, v0Rolando, erroPasse, P_R, P_H, RUN, SPRINT, CHARGING, KICK_CD, DERRUBADO, LEVANTANDO, CAIDO_BICICLETA, CAR, KITS, CARS, SKINS, ARENAS, kitOf, kitColor, kitColor2, spawns, inArea,
     movePlayer, corpoACorpo, moveCar, newBall, stepBall, simulate, landing, assistShot, goalOf, canKick, acrobacia, kick, assistPass, assistCross, arenaSDF, rampa };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Campo = api;
