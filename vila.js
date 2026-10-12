@@ -21,11 +21,12 @@ const cleanToken = (t) => (typeof t === "string" && /^[a-f0-9]{16,64}$/.test(t) 
 
 module.exports = function attachVila(io, ginasio) {
   const nsp = io.of("/vila");
+  const cleanSkin = (s) => (/^[a-z0-9_-]{1,24}$/i.test(String(s || "")) ? String(s) : ""); // a skin da Pelada (o navegador cai no padrão se não conhecer)
   const players = new Map(); // id público -> { id, token, sock, name, look, x, y, dir, battle, offline, dropTimer }
   const byToken = new Map(); // token -> jogador
   const invites = new Map(); // id de quem foi desafiado -> { from, team, mode, timer }
 
-  const pub = (p) => ({ id: p.id, name: p.name, look: p.look, x: p.x, y: p.y, dir: p.dir, busy: !!(p.battle || p.ginasio), z: p.z || "", car: !!p.car });
+  const pub = (p) => ({ id: p.id, name: p.name, look: p.look, skin: p.skin || "", x: p.x, y: p.y, dir: p.dir, busy: !!(p.battle || p.ginasio), z: p.z || "", car: !!p.car });
   const to = (id) => { const p = players.get(id); return nsp.to(p ? p.sock : "-"); }; // manda só para essa pessoa
   // avisa os outros que alguém mudou. A própria pessoa não recebe, senão vira um "clone" dela na tela.
   const tellOthers = (p, ev = "update") => nsp.except(p.sock).emit(ev, pub(p));
@@ -103,12 +104,12 @@ module.exports = function attachVila(io, ginasio) {
       const name = cleanName(d.name);
       if (!name) return;
       const token = cleanToken(d.token) || rid();
-      const look = clamp(int(d.look, 0), 0, LOOKS - 1);
+      const look = clamp(int(d.look, 0), 0, LOOKS - 1), skin = cleanSkin(d.skin);
       const back = byToken.get(token);
       if (back && back !== me) { // voltou depois de cair: assume o mesmo jogador (e a batalha, se tiver)
         clearTimeout(back.dropTimer);
         const was = back.sock;
-        back.sock = socket.id; back.offline = false; back.name = name; back.look = look;
+        back.sock = socket.id; back.offline = false; back.name = name; back.look = look; back.skin = skin;
         me = back;
         if (was !== socket.id) nsp.sockets.get(was)?.disconnect(true); // a aba antiga, se ainda estiver aberta, perde a vez
         socket.emit("me", { id: me.id });
@@ -127,7 +128,7 @@ module.exports = function attachVila(io, ginasio) {
         me = { id: rid(6), token, sock: socket.id, battle: null, offline: false };
         players.set(me.id, me); byToken.set(token, me);
       }
-      Object.assign(me, { name, look, x: clamp(int(d.x, OX + 24), 0, MW - 1), y: clamp(int(d.y, OY + 26), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down", z: zonaDe(d.z), car: !!d.car });
+      Object.assign(me, { name, look, skin, x: clamp(int(d.x, OX + 24), 0, MW - 1), y: clamp(int(d.y, OY + 26), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down", z: zonaDe(d.z), car: !!d.car });
       socket.emit("me", { id: me.id, token });
       socket.emit("all", [...players.values()].filter((p) => p !== me && !p.offline).map(pub));
       tellOthers(me, fresh ? "join" : "update");
@@ -144,6 +145,7 @@ module.exports = function attachVila(io, ginasio) {
     socket.on("look", (d = {}) => {
       if (!mine() || !allow()) return;
       me.look = clamp(int(d.look, me.look), 0, LOOKS - 1);
+      if (d.skin !== undefined) me.skin = cleanSkin(d.skin);
       const name = cleanName(d.name); if (name) me.name = name;
       tellOthers(me);
     });

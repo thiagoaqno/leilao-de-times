@@ -224,6 +224,7 @@ canvas.mini.off{display:none}
     <button class="tbtn" id="bNick" title="Trocar o nick">👤 <span class="tx" id="bNickTx">Nick</span></button>
     <button class="tbtn battle" id="bTeam" title="Batalhas de Galeramon, Pokémon ou Naruto Shippuden">⚔️<span class="tx keep"> Batalha</span></button>
     <button class="tbtn" id="bLook" title="Trocar a roupa do boneco">👕<span class="tx"> Roupa</span></button>
+    <button class="tbtn" id="bSkin" title="Trocar o personagem (as skins da Pelada)">🎭<span class="tx"> Skin</span></button>
     <button class="tbtn" id="bMapa" title="Mostrar ou esconder o mapa">🗺️<span class="tx"> Mapa</span></button>
     <button class="tbtn" id="bMenu" title="Lista de jogos">☰<span class="tx"> Jogos</span></button>
   </div>
@@ -265,6 +266,8 @@ canvas.mini.off{display:none}
 <script src="/galeramon/lideres.js"></script>
 <script src="/comum.js"></script>
 <script src="/vila/estadios.js"></script>
+<script src="/pelada/campo.js"></script>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
 
 <script>
 "use strict";
@@ -998,6 +1001,7 @@ const LEGS = {
   side: [["...kpppk....", "..kbbbbk....", "..kkkkkk...."], ["..kpk.kpk...", ".kbbk.kbk...", ".kkk..kkk..."], ["...kpppk....", "..kbbbbk....", "..kkkkkk...."]],
 };
 let outfit = Math.abs(store.get("vila_look") | 0) % OUTFITS.length;
+const mySkin = () => { const k = store.get("galera:skin"); return typeof k === "string" && window.Campo.SKINS[k] ? k : "padrao"; }; // a skin da Pelada (a mesma de todos os jogos)
 const spriteCache = {};
 function shade(hex, f) { const n = parseInt(hex.slice(1), 16); const ch = (s) => Math.max(0, Math.min(255, Math.round(((n >> s) & 255) * f))); return `rgb(${ch(16)},${ch(8)},${ch(0)})`; }
 function spritesFor(look) {
@@ -1079,8 +1083,9 @@ function bfs(sx, sy, tx, ty, ok = podePassar) {
 }
 function tapAt(clientX, clientY) {
   if (player.entering) return;
-  const wx = (clientX * dpr) / scale + camX, wy = (clientY * dpr) / scale + camY;
-  const tx = Math.floor(wx / TS), ty = Math.floor(wy / TS);
+  let tx, ty;
+  if (V3 && !INT) { const t = V3.pick(clientX, clientY); if (!t) return; [tx, ty] = t; } // no 3D, o toque vira a casa do mapa
+  else { const wx = (clientX * dpr) / scale + camX, wy = (clientY * dpr) / scale + camY; tx = Math.floor(wx / TS); ty = Math.floor(wy / TS); }
   const o = otherAt(tx, ty) || otherAt(tx, ty + 1); // o boneco passa um pouco do tile de cima
   if (o) return openPlayer(o);
   const e = !INT && estadioAt(tx, ty);
@@ -1323,7 +1328,8 @@ function closeMenu() { $("menu").classList.remove("on"); $("bMenu").focus(); }
 $("bMenu").onclick = () => { $("menu").classList.add("on"); $("menuList").querySelector("a").focus(); };
 $("menuX").onclick = closeMenu;
 $("menu").addEventListener("click", (e) => { if (e.target.id === "menu") closeMenu(); });
-$("bLook").onclick = () => { outfit = (outfit + 1) % OUTFITS.length; store.set("vila_look", outfit); socket.emit("look", { look: outfit }); $("bLook").blur(); };
+$("bLook").onclick = () => { outfit = (outfit + 1) % OUTFITS.length; store.set("vila_look", outfit); socket.emit("look", { look: outfit, skin: mySkin() }); $("bLook").blur(); };
+$("bSkin").onclick = () => { const l = Object.keys(window.Campo.SKINS); store.set("galera:skin", l[(Math.max(0, l.indexOf(mySkin())) + 1) % l.length]); socket.emit("look", { look: outfit, skin: mySkin() }); toast("Personagem: " + mySkin()); $("bSkin").blur(); };
 
 // ---------- a galera na vila (Socket.io, canal /vila) ----------
 const cleanNick = (s) => Array.from(String(s || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
@@ -1341,7 +1347,7 @@ let myId = null, vilaToken = session.get("vila_token");
 function hello() {
   if (!myName || player.entering || !socket.connected) return;
   lastSent = player.x + "," + player.y + "," + player.dir + zona() + (player.car ? "c" : "");
-  socket.emit("hello", { name: myName, look: outfit, x: player.x, y: player.y, dir: player.dir, z: zona(), car: player.car, token: vilaToken });
+  socket.emit("hello", { name: myName, look: outfit, skin: mySkin(), x: player.x, y: player.y, dir: player.dir, z: zona(), car: player.car, token: vilaToken });
 }
 function sendPos(moved) {
   const key = player.x + "," + player.y + "," + player.dir + zona() + (player.car ? "c" : "");
@@ -1362,7 +1368,7 @@ function upsert(d, snap) {
   if (d.id === myId) return null; // nunca desenhar a si mesmo como outra pessoa
   let o = others.get(d.id);
   if (!o) { o = { id: d.id, x: d.x, y: d.y, fx: d.x, fy: d.y, dir: d.dir, moving: false, t: 0, steps: 0, q: [] }; others.set(d.id, o); snap = true; }
-  o.name = d.name; o.look = d.look; o.busy = !!d.busy; o.z = d.z || ""; o.car = !!d.car;
+  o.name = d.name; o.look = d.look; o.skin = d.skin || ""; o.busy = !!d.busy; o.z = d.z || ""; o.car = !!d.car;
   if (snap) { o.x = o.fx = d.x; o.y = o.fy = d.y; o.dir = d.dir; o.moving = false; o.q = []; }
   return o;
 }
@@ -1700,7 +1706,7 @@ $("nickF").onsubmit = (e) => {
   const first = !myName;
   myName = n; store.set("galera:name", n); setNickUI();
   $("nick").classList.remove("on"); $("bNick").blur();
-  if (first) hello(); else socket.emit("look", { look: outfit, name: n });
+  if (first) hello(); else socket.emit("look", { look: outfit, skin: mySkin(), name: n });
   onlineText();
 };
 $("nick").addEventListener("click", (e) => { if (e.target.id === "nick" && myName) $("nick").classList.remove("on"); });
@@ -1926,7 +1932,7 @@ function drawDoorArrows(c, t) {
 
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(50, now - last); last = now;
+  const dt = Math.min(50, now - last), lastRaw = now - last; last = now;
   update(dt);
   updateOthers(dt);
   const mw = (INT ? INT.W : MW) * TS, mh = (INT ? INT.H : MH) * TS;
@@ -1936,6 +1942,11 @@ function frame(now) {
   camX = Math.round(camX * scale) / scale; camY = Math.round(camY * scale) / scale;
   // durante a batalha a vila fica escondida: não desenha nada (poupa bateria e memória do celular)
   if (btOpen()) { requestAnimationFrame(frame); return; }
+  if (V3) { // a Vila em 3D (dentro do estádio, volta o 2D)
+    const em3d = !INT;
+    V3.dom.style.display = em3d ? "block" : "none"; cv.style.visibility = em3d ? "hidden" : "visible";
+    if (em3d) { player.name = myName; V3.render(now, dt, lastRaw); drawMini(now); requestAnimationFrame(frame); return; }
+  }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = "#12301c"; ctx.fillRect(0, 0, cv.width, cv.height);
@@ -1983,11 +1994,19 @@ resize();
 $("mini").classList.toggle("off", !miniOn);
 $("bMapa").onclick = () => { miniOn = !miniOn; if (!INT) $("mini").classList.toggle("off", !miniOn); $("bMapa").blur(); };
 setHere(lugarEm(player.x, player.y));
+let V3 = null;
+if (!/[?&]2d=1/.test(location.search) && window.Campo) { // ?2d=1 volta ao mapa antigo
+  import("/vila3d/mundo.js").then((m) => m.criar({
+    MW, MH, OX, OY, VW, VH, ground, rumo, GAMES, FOUNTAIN, TELAO, TERRENOS, LAMPS, BENCHES, TREES, POSTES, PREDIOS, PARADOS, ESTADIOS, OUTFITS,
+    player, others, naMinhaZona, drawTelao, nome: () => myName, look: () => outfit, skin: mySkin, aqui: () => here, destino: () => destino,
+  })).then((v) => { V3 = v; V3.dom.addEventListener("pointerdown", (e) => { e.preventDefault(); tapAt(e.clientX, e.clientY); }); V3.dom.addEventListener("contextmenu", (e) => e.preventDefault()); })
+    .catch((e) => console.error("Vila 3D não abriu, ficou o mapa 2D:", e));
+}
 requestAnimationFrame(frame);
 buscarEstante(); setInterval(buscarEstante, 60e3);
 if (location.hash === "#debug") window.__vila = {
   GAMES, player, others, ground, solid, walkable, bfs, TELAO, ESTANTE, TERRENOS,
-  get here() { return here; }, get myId() { return myId; },
+  get here() { return here; }, get myId() { return myId; }, get V3() { return V3; },
   get camera() { return { x: camX, y: camY, scale: scale / dpr, tile: TS }; },
 };
 document.fonts && document.fonts.load('700 10px "Pixelify Sans"');
