@@ -1,7 +1,9 @@
-# Futevôlei: impulso na corrida e no pulo
+# Futevôlei: atletas com esqueleto (Mixamo) e impulso na corrida e no pulo
 
-Antes: os atletas corriam e pulavam "de uma vez": o pulo começava no ar, sem agachar nem aterrissar, e arrancar ou frear não mudava o corpo.
+Antes: os atletas eram bonecos de caixas e as poses eram feitas à mão; corriam e pulavam "de uma vez", sem agachar, sem aterrissar e sem sentir arrancada ou freada.
 
-Depois: ao arrancar o corpo se joga para a frente e agacha um pouco; ao frear (correndo) ele vai para trás e dobra os joelhos; nas curvas inclina para dentro. O pulo (voleio, bicicleta, Shark Attack e toques no alto) agacha, leva os braços para trás, sobe em arco até o impacto e amortece na aterrissagem.
+Depois: a skin padrão (a do jogador) usa um esqueleto de verdade com as animações do Mixamo: corrida, corrida de costas, passos laterais, passe, cabeçada, voleio, bicicleta (Scissor Kick) e comemoração. As cores da pele e do time são pintadas por região. As outras skins (e os robôs) continuam de caixinhas, agora também com impulso: arrancar joga o corpo para a frente, frear inclina para trás e o pulo agacha, sobe em arco e amortece.
 
-Como: `Animador.atualizar` e o clipe com `salto` em `public/futevolei/atleta.js` (aceleração suavizada de `mov.fwd`/`mov.lat`). Só animação: a física e as regras não mudaram.
+Como: `ferramentas/animacoes-mixamo.mjs <pasta com .fbx>` converte os FBX em `public/futevolei/modelo/atleta.glb` e `clipes.json` (leves, ~2,6 MB). `public/futevolei/atleta-mixamo.js` carrega o modelo, mistura os clipes pela velocidade e dispara cada golpe no tempo do toque (`GOLPES_M`: clipe, início, impacto, fim). A física e as regras (`regras.js`) não mudaram; sem o modelo carregado, cai nas caixinhas. Testei só em imagens de capturas e `tests/futevolei.test.js`; vale jogar para acertar o tempo dos golpes.
+
+Falta: gestos de lamentar e manias, e skins de personagem com esqueleto.
