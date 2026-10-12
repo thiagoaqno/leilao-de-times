@@ -21,7 +21,7 @@
 // Opções: { lado: 1 (bola à direita) ou −1, pulo: true (toque no alto), h (altura da bola), estilo (no shark:
 // "voleio" ou "bicicleta") }.
 import * as THREE from "three";
-import { Modelo, ateImpactoM, AnimadorMixamo } from "/futevolei/atleta-mixamo.js";
+import { Modelo, ateImpactoM } from "/futevolei/atleta-mixamo.js";
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -158,7 +158,7 @@ const GOLPES_DE_BOLA = ["frente", "lado", "peito", "cabeca", "letra", "calcanhar
 export const GATILHOS = [...Object.keys(CLIPES), ...Object.keys(GRUPOS)];
 const nomeDoClipe = (g, o = {}) => (g === "shark" && o.estilo === "bicicleta" ? "sharkBicicleta" : g);
 // quanto tempo o golpe leva do começo até pegar na bola (s)
-export const ateImpacto = (g, o) => { if (Modelo.ativo && g !== "saque" && g !== "comemora") { const m = ateImpactoM(g, o); if (m) return m; } const c = CLIPES[nomeDoClipe(g, o)]; return c && c.impacto != null ? c.dur * c.impacto : 0; };
+export const ateImpacto = (g, o) => { if (Modelo.ativo) { const m = ateImpactoM(g, o); if (m) return m; } const c = CLIPES[nomeDoClipe(g, o)]; return c && c.impacto != null ? c.dur * c.impacto : 0; };
 
 // ----------------------------------------------------------------------
 // O animador: a base (respiração, peso trocando de perna, o quiquinho de quem espera a bola, a corrida de frente e de
@@ -295,6 +295,7 @@ function aplicarCorpo(b, c) {
 // ----------------------------------------------------------------------
 // O atleta
 // ----------------------------------------------------------------------
+const _tmp = new THREE.Vector3();
 export class Atleta {
   constructor({ id, team }) {
     this.id = id; this.team = team;
@@ -323,6 +324,29 @@ export class Atleta {
   disparar(gatilho, opcoes) { this.animador.disparar(gatilho, opcoes); }
   antecipar(golpe, opcoes, falta) { this.animador.antecipar(golpe, opcoes, falta); }
   confirmar(golpe, opcoes) { this.animador.confirmar(golpe, opcoes); }
+  // segurando a bola para sacar (só o animador do Mixamo sabe segurar)
+  set segura(v) { if (this.animador !== this.animadorCaixa) this.animador.segura = v; }
+  // onde desenhar a bola do saque: nas mãos, caindo das mãos até o pé (srv: a bola do jogo, no pé) ou null (a do jogo)
+  bolaDoSaque(srv, out) {
+    const est = this.animador.bolaDoSaque ? this.animador.bolaDoSaque() : null; if (!est) return null;
+    const mao = this.maos(out); if (!mao) return null;
+    if (est === "mao") { (this.solta ||= new THREE.Vector3()).copy(mao); return mao; }
+    const k = clamp(est.cai, 0, 1), s = this.solta || mao;
+    return out.set(lerp(s.x, srv.x, k), lerp(s.y, srv.y, k * k), lerp(s.z, srv.z, k)); // cai acelerando
+  }
+  // o meio das duas mãos (com a bola um pouco à frente), no mundo
+  maos(out) {
+    const v = this.visual; if (!v) return null;
+    const mx = v.userData.mixamo;
+    if (mx && !mx.caixas) {
+      const e = mx.modelo.getObjectByName("mixamorigLeftHand"), d = mx.modelo.getObjectByName("mixamorigRightHand"); if (!e || !d) return null;
+      e.getWorldPosition(out); d.getWorldPosition(_tmp); out.add(_tmp).multiplyScalar(0.5);
+    } else if (v.userData.elbows) {
+      v.userData.elbows[0].updateWorldMatrix(true, false); v.userData.elbows[1].updateWorldMatrix(true, false);
+      v.userData.elbows[0].localToWorld(out.set(0, -0.3, 0)); v.userData.elbows[1].localToWorld(_tmp.set(0, -0.3, 0)); out.add(_tmp).multiplyScalar(0.5);
+    } else return null;
+    return out.add(_tmp.set(-Math.sin(this.yaw) * 0.1, 0, -Math.cos(this.yaw) * 0.1));
+  }
   get golpeNoAr() { const c = this.animador.clip; return c && c.bola && !c.confirmado ? c.nome : null; }
   // ---------- a cada quadro ----------
   // e: { x, z, vx, vz } do jogador (das regras); olhar: { x, z } para onde virar (ou null: de frente para a rede)

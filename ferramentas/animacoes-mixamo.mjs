@@ -1,7 +1,7 @@
 // Converte as animações do Mixamo (FBX "with skin", todas com o mesmo personagem) para o que o Futevôlei carrega:
 //   public/futevolei/modelo/atleta.glb    o boneco (malha com ossos), do primeiro arquivo, sem textura
 //   public/futevolei/modelo/clipes.json   as animações (só rotação dos ossos, a posição só do quadril), valores arredondados
-// Uso: node ferramentas/animacoes-mixamo.mjs <pasta com os .fbx>
+// Uso: node ferramentas/animacoes-mixamo.mjs <pasta com os .fbx> [outras pastas...] (o mesmo nome em duas pastas vale o primeiro)
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -10,17 +10,18 @@ const raiz = path.dirname(require.resolve("three"));
 const THREE = await import(path.join(raiz, "../build/three.module.js").replace(/\\/g, "/").replace(/^/, "file://").replace("file:///", "file:///"));
 const { GLTFExporter } = await import("file://" + path.join(raiz, "../examples/jsm/exporters/GLTFExporter.js").replace(/\\/g, "/"));
 const { FBXLoader } = await import("file://" + path.join(raiz, "../examples/jsm/loaders/FBXLoader.js").replace(/\\/g, "/"));
-const pasta = process.argv[2], saida = "public/futevolei/modelo";
-if (!pasta) { console.error("Uso: node ferramentas/animacoes-mixamo.mjs <pasta>"); process.exit(1); }
+const pastas = process.argv.slice(2), saida = "public/futevolei/modelo";
+if (!pastas.length) { console.error("Uso: node ferramentas/animacoes-mixamo.mjs <pasta> [outras pastas...]"); process.exit(1); }
 fs.mkdirSync(saida, { recursive: true });
-const arq = fs.readdirSync(pasta).filter((f) => /\.fbx$/i.test(f)).sort();
+const vistos = new Set(), arq = [];
+for (const p of pastas) for (const f of fs.readdirSync(p).filter((f) => /\.fbx$/i.test(f)).sort()) if (!vistos.has(f)) { vistos.add(f); arq.push(path.join(p, f)); }
 // nome do clipe: minúsculo, sem espaços (Running Jump → runningJump)
 const nome = (f) => f.replace(/\.fbx$/i, "").split(/\s+/).map((p, i) => (i ? p[0].toUpperCase() + p.slice(1) : p[0].toLowerCase() + p.slice(1))).join("");
 const r = (v) => Math.round(v * 10000) / 10000;
 const clipes = {};
 let modelo = null;
-for (const f of arq) {
-  const buf = fs.readFileSync(path.join(pasta, f));
+for (let f of arq) {
+  const buf = fs.readFileSync(f); f = path.basename(f);
   const obj = new FBXLoader().parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), "");
   if (!modelo) modelo = obj;
   const clip = obj.animations[0]; if (!clip) { console.warn("sem animação:", f); continue; }
@@ -29,6 +30,7 @@ for (const f of arq) {
     const [osso, prop] = t.name.split(".");
     if (prop === "scale") continue;
     if (prop === "position" && !/Hips$/.test(osso)) continue;
+    if (/Hand(Thumb|Index|Middle|Ring|Pinky)|_End$|Toe_End|HeadTop_End/.test(osso)) continue; // os dedos não aparecem no futevôlei
     const esc = prop === "position" ? 0.01 : 1; // o Mixamo vem em centímetros
     tracks.push({ n: osso.replace("mixamorig", ""), p: prop === "position" ? "p" : "q", t: Array.from(t.times, r), v: Array.from(t.values, (x) => r(x * esc)) });
   }
