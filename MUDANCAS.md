@@ -1,9 +1,7 @@
-# Futevôlei: atletas com esqueleto (Mixamo) e impulso na corrida e no pulo
+# Corrida de Digitação no lugar da Arrancada JDM
 
-Antes: os atletas eram bonecos de caixas e as poses eram feitas à mão; corriam e pulavam "de uma vez", sem agachar, sem aterrissar e sem sentir arrancada ou freada.
+Antes: a Oficina JDM (Arrancada, no lote de baixo do Autódromo) era um jogo de tunar carro e apostar no drag, e os carros de verdade não apareciam.
 
-Depois: a skin padrão (a do jogador) usa um esqueleto de verdade com as animações do Mixamo: corrida, corrida de costas, passos laterais, passe, cabeçada, voleio, bicicleta (Scissor Kick) e comemoração. As cores da pele e do time são pintadas por região. As outras skins (e os robôs) continuam de caixinhas, agora também com impulso: arrancar joga o corpo para a frente, frear inclina para trás e o pulo agacha, sobe em arco e amortece.
+Depois: o mesmo prédio virou a **Arena de Digitação** (`/digita/`): todo mundo recebe a mesma frase aleatória em português (50 frases) depois de uma contagem 3-2-1, e quem digitar tudo certinho primeiro ganha a rodada. Acento e maiúscula contam, letra errada fica vermelha e colar não funciona. Cada piloto é um carro numa pista que anda a cada letra certa, com as palavras por minuto ao vivo. Pontos por lugar (10, 7, 5, 3, 2, 1), rodadas de 1, 3 ou 5, até 8 pilotos, robôs completam a pista até 4 e quem fechar com mais pontos ganha a noite (entra no placar da Noite da Galera). O tuning, as apostas e a NHTSA vPIC saíram.
 
-Como: `ferramentas/animacoes-mixamo.mjs <pasta com .fbx>` converte os FBX em `public/futevolei/modelo/atleta.glb` e `clipes.json` (leves, ~2,6 MB). `public/futevolei/atleta-mixamo.js` carrega o modelo, mistura os clipes pela velocidade e dispara cada golpe no tempo do toque (`GOLPES_M`: clipe, início, impacto, fim). A física e as regras (`regras.js`) não mudaram; sem o modelo carregado, cai nas caixinhas. Testei só em imagens de capturas e `tests/futevolei.test.js`; vale jogar para acertar o tempo dos golpes.
-
-Falta: gestos de lamentar e manias, e skins de personagem com esqueleto.
+Como: `digita.js` (canal `/digita`: o navegador manda o texto digitado em `digitou`, o servidor confere com a frase, anda os robôs pelo relógio e manda o progresso 4 vezes por segundo) e `public/digita/` (`frases.js` UMD com as frases e as contas, `index.html` e `jogo.js`). `vila.js`, `noite.js`, o prédio e o telhado de teclado em `public/index.html` e os testes (`tests/digita.test.js`, `salas` regravado, `paginas.spec`) acompanham.
