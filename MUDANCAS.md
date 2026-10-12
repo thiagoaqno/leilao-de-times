@@ -1,7 +1,7 @@
-# Bloqueio: novo jogo na Vila (fase 1, o esquema geral)
+# Bloqueio: visual novo (fase 2)
 
-**Antes:** a Vila não tinha nenhum jogo de tabuleiro de bloquear caminho.
+**Antes:** o Bloqueio funcionava, mas era um tabuleiro chapado em cinza e bege, sem animação nem som.
 
-**Depois:** a **Casa do Bloqueio** fica na Rua das Cartas (no terreno da direita, que era vazio). O jogo é o Quoridor: tabuleiro 9x9, cada peão tenta chegar ao lado oposto; na sua vez você anda uma casa (pulando o peão que está na frente, ou indo para o lado se a casa de trás está fechada) ou põe uma parede de duas casas (10 paredes em 2 jogadores, 5 em 4). Não vale parede que feche todo o caminho de alguém, nem que sobreponha ou cruze outra.
+**Depois:** a mesa virou madeira à noite: tabuleiro de nogueira com veios, casas de marfim, paredes de mogno com sombra, peões com brilho nas cores de cada lugar e faixas coloridas mostrando a meta de cada um. Os peões deslizam de uma casa para outra, o da vez balança de leve, a parede cai com um quique, as casas onde você pode ir pulsam e a última jogada deixa um rastro. Os cartões dos jogadores mostram as paredes que sobram como tábuas, o cartão da vez acende na cor dele, e o relógio de jogada virou uma barra. Tem sons (passo, parede, sua vez, vitória, ligar/desligar no topo) e confete na vitória. A entrada ganhou um logotipo.
 
-**Como:** `public/bloqueio/regras.js` guarda as regras (as mesmas no servidor e no navegador, com o robô), `bloqueio.js` cuida da sala (código de 5 letras, convite, assistir, reconexão, robôs, relógio de 30/45/60 s em que quem demora anda um passo, placar da Noite), e `public/bloqueio/index.html` desenha o tabuleiro em SVG, simples e sem estilo (cores, animações e efeitos ficam para a fase 2). Testes em `tests/bloqueio.test.js`; `/bloqueio` entrou em `tests/salas.test.js`.
+**Como:** só `public/bloqueio/index.html` mudou (as regras e o servidor continuam iguais). O SVG tem camadas fixas e só redesenha o que muda; os peões são elementos que persistem e animam por `transform` com transição de CSS (sem animar `filter`), e quem pede menos movimento no sistema fica sem as animações.
