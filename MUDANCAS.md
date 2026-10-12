@@ -1,7 +1,7 @@
-# Futevôlei: mais FPS, música e fim de tarde na praia
+# Futevôlei: impulso na corrida e no pulo
 
-Antes: o futevôlei rodava sempre na resolução e sombras máximas (travava em PC/celular fraco), não tinha música e a praia era sempre a mesma hora do dia.
+Antes: os atletas corriam e pulavam "de uma vez": o pulo começava no ar, sem agachar nem aterrissar, e arrancar ou frear não mudava o corpo.
 
-Depois: a qualidade baixa sozinha quando o jogo fica abaixo de ~38 fps (resolução, sombra e céu animado) e fica guardada; `?leve=1` já começa no modo leve. Tem música (a mesma lista da Vila) na barra e na pausa. Na praia o sol desce devagar durante a partida (luz e céu alaranjados, ~10 min), o vento balança os coqueiros perto da quadra e as gaivotas gritam de vez em quando.
+Depois: ao arrancar o corpo se joga para a frente e agacha um pouco; ao frear (correndo) ele vai para trás e dobra os joelhos; nas curvas inclina para dentro. O pulo (voleio, bicicleta, Shark Attack e toques no alto) agacha, leva os braços para trás, sobe em arco até o impacto e amortece na aterrissagem.
 
-Como: `jogo.js` (`NIVEIS`, `vigiarQuadro`, `aplicarQualidade`, `Som.gaivota`), `cenarios.js` (clima do `praia`, `qualidade(n)`), `musica.js` novo (usa `/api/musicas` e a chave `galera:musica`).
+Como: `Animador.atualizar` e o clipe com `salto` em `public/futevolei/atleta.js` (aceleração suavizada de `mov.fwd`/`mov.lat`). Só animação: a física e as regras não mudaram.

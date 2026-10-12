@@ -167,7 +167,7 @@ const neutra = () => ({ legK: { x: 0, y: 0, z: 0 }, legA: { x: 0, y: 0, z: 0 }, 
   elbowK: 0.35, elbowA: 0.35, spine: { x: 0, y: 0, z: 0 }, head: { x: 0, y: 0, z: 0 }, body: { x: 0, y: 0, z: 0 } });
 const PARTES = ["legK", "legA", "armK", "armA", "spine", "head", "body"];
 class Animador {
-  constructor() { this.clip = null; this.fase = 0; this.passoAnt = 0; this.t = Math.random() * 10; this.parado = 0; this.proxMania = 3 + Math.random() * 5; this.s = null; }
+  constructor() { this.clip = null; this.fase = 0; this.passoAnt = 0; this.t = Math.random() * 10; this.parado = 0; this.proxMania = 3 + Math.random() * 5; this.s = null; this.fwdAnt = 0; this.latAnt = 0; this.acc = 0; this.accLat = 0; }
   disparar(gatilho, o = {}, t0 = 0) {
     if (GRUPOS[gatilho]) gatilho = sorteia(GRUPOS[gatilho]);
     gatilho = nomeDoClipe(gatilho, o);
@@ -198,6 +198,14 @@ class Animador {
     const t = this.t, vel = mov.vel, run = Math.min(1, vel / 5.5), fk = vel > 0.2 ? mov.fwd / vel : 1, lk = vel > 0.2 ? mov.lat / vel : 0;
     this.fase += dt * (4.5 + vel * 1.7);
     const sf = Math.sin(this.fase), P = neutra();
+    // o impulso: a aceleração (suavizada) inclina o corpo para dentro dela; arrancar joga o peso para a frente e agacha um
+    // pouco, frear (correndo) joga para trás e dobra os joelhos
+    if (dt > 0) {
+      const k = 1 - Math.exp(-dt * 10);
+      this.acc = lerp(this.acc, clamp((mov.fwd - this.fwdAnt) / dt, -40, 40), k); this.accLat = lerp(this.accLat, clamp((mov.lat - this.latAnt) / dt, -40, 40), k);
+    }
+    this.fwdAnt = mov.fwd; this.latAnt = mov.lat;
+    const arranca = clamp(this.acc / 18, -1, 1), freia = clamp(-this.acc / 18, 0, 1) * Math.min(1, vel / 2.5), lat = clamp(this.accLat / 18, -1, 1);
     // ---------- a base ----------
     const resp = Math.sin(t * 2.1), lado = Math.abs(lk) > 0.6 && run > 0.15; // respirando · correndo de lado (passo cruzado)
     const quica = pronto ? Math.abs(Math.sin(t * 7.5)) : 0, peso = pronto ? 0 : Math.sin(t * 0.8);
@@ -217,8 +225,11 @@ class Animador {
     // tronco: inclina para a frente correndo (para trás, de costas), para dentro da curva de lado; respira parado
     P.spine.x = -(pronto ? 0.18 : 0.04) * parado - 0.22 * run * Math.max(0, fk) + 0.12 * run * Math.max(0, -fk) + 0.025 * resp;
     P.spine.y = -0.1 * swing;
-    P.body.z = -0.13 * run * lk + 0.03 * peso * parado;
+    P.body.z = -0.13 * run * lk + 0.03 * peso * parado - 0.12 * lat;
     P.body.y = Math.abs(sf) * 0.05 * run + 0.03 * quica * parado;
+    P.spine.x -= 0.2 * Math.max(0, arranca); P.spine.x += 0.3 * freia;
+    P.body.y -= 0.05 * Math.max(0, arranca) + 0.07 * freia; P.kneeK -= 0.35 * freia + 0.15 * Math.max(0, arranca); P.kneeA -= 0.35 * freia + 0.15 * Math.max(0, arranca);
+    P.legK.x += 0.25 * freia; P.legA.x += 0.25 * freia;
     P.head.x = (pronto ? 0.12 : 0.04) * parado + 0.1 * run; P.head.y = pronto ? 0 : 0.3 * Math.sin(t * 0.37) * parado;
     // ---------- o clipe por cima ----------
     let m = 1;
@@ -226,7 +237,13 @@ class Animador {
       const c = this.clip; c.t += dt; const k = clamp(c.t / c.C.dur, 0, 1); m = c.m;
       const q = neutra(); c.C.pose(k, q, m);
       // o pulo; em clipe de corpo inteiro (golpe), a base sai; em comemoração, as pernas da base continuam se não mexer
-      q.body.y = q.body.y + c.salto * Math.abs(Math.sin(k * (c.C.saltos || 1) * Math.PI));
+      if (c.C.saltos || !c.salto) q.body.y = q.body.y + c.salto * Math.abs(Math.sin(k * (c.C.saltos || 1) * Math.PI));
+      else { // o pulo de verdade: agacha e leva os braços para trás (impulso), sobe e desce em arco, e amortece na aterrissagem
+        q.body.y = q.body.y + c.salto * bump(k, 0.12, 0.88);
+        const g = Math.min(1, 0.55 + c.salto * 0.5), ag = Math.max(bump(k, 0, 0.2), 0.8 * bump(k, 0.8, 1)) * g, imp = bump(k, 0, 0.2) * g;
+        q.body.y -= 0.17 * ag; q.kneeK -= 0.7 * ag; q.kneeA -= 0.7 * ag; q.legK.x += 0.3 * ag; q.legA.x += 0.3 * ag; q.spine.x -= 0.2 * ag;
+        q.armK.x -= 0.9 * imp; q.armA.x -= 0.9 * imp;
+      }
       const w = Math.min(ease(k, 0, 0.08), 1 - ease(k, 0.9, 1));
       const mix = (a, b) => lerp(a, b, w);
       // o clipe é escrito com K = o lado m; a base está com K = direita: troca antes de misturar
