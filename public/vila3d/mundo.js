@@ -22,7 +22,7 @@ export async function criar(W) {
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
-  const COR_HORIZONTE = 0xb4dcf5;
+  const COR_HORIZONTE = 0x86b5cc;
   scene.background = new THREE.Color(COR_HORIZONTE);
   scene.fog = new THREE.Fog(COR_HORIZONTE, 70, 150);
   const camera = new THREE.PerspectiveCamera(42, 1, 0.5, 700);
@@ -63,6 +63,17 @@ export async function criar(W) {
   // ---------- os modelos ----------
   const M = {};
   const gl = new GLTFLoader();
+  // o céu pintado (SD_Sky de ritsuka, CC BY 4.0, public/vila3d/ceu/): a esfera do modelo, sem o macaco que vem junto, seguindo a câmera
+  let ceuImg = null;
+  gl.loadAsync("/vila3d/ceu/sd_sky_230315a.glb").then((g) => {
+    const lixo = []; g.scene.traverse((o) => { if (o.name === "Suzanne_2") lixo.push(o); });
+    for (const o of lixo) o.parent.remove(o);
+    g.scene.traverse((o) => { if (o.isMesh) { const t = o.material.emissiveMap; o.material = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide, fog: false, depthWrite: false, toneMapped: false }); o.frustumCulled = false; o.renderOrder = -9; } });
+    g.scene.updateMatrixWorld(true);
+    const r = new THREE.Box3().setFromObject(g.scene).getBoundingSphere(new THREE.Sphere()).radius;
+    ceuImg = new THREE.Group(); ceuImg.add(g.scene); ceuImg.scale.setScalar(480 / r);
+    ceu.visible = false; scene.add(ceuImg);
+  }).catch(() => { /* fica o céu de degradê */ });
   await Promise.all(NOMES.map((n) => gl.loadAsync("/vila3d/kaykit/" + n + ".gltf").then((g) => {
     g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (o.material.map) o.material.map.colorSpace = THREE.SRGBColorSpace; } });
     M[n] = g.scene;
@@ -299,7 +310,7 @@ export async function criar(W) {
       camera.position.set(alvoX - Math.sin(yaw) * 0.12, P.car ? 1.5 : 1.28, alvoZ + Math.cos(yaw) * 0.12);
       camera.rotation.set(olhar, -yaw, 0, "YXZ");
     } else { camera.position.set(alvoX, Math.sin(pitch) * dist, alvoZ + Math.cos(pitch) * dist); camera.lookAt(alvoX, 0.3, alvoZ); }
-    ceu.position.copy(camera.position); ceu.material.uniforms.tempo.value = now / 1000;
+    ceu.position.copy(camera.position); if (ceuImg) ceuImg.position.copy(camera.position); ceu.material.uniforms.tempo.value = now / 1000;
     sol.position.set(alvoX - 18, 40, alvoZ + 16); sol.target.position.set(alvoX, 0, alvoZ);
     jato.scale.y = 1 + Math.sin(now / 300) * 0.15;
     pintaTelao(now);
