@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <script src="/semzoom.js"></script>
-<title>Arrancada JDM da Galera</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>">
+<title>Corrida de Digitação da Galera</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⌨️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -56,51 +56,35 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 .pl{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:#0e0e18;margin:5px 0}
 .pl b{flex:1}.pl .off{opacity:.45}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--good)}.dot.off{background:#666}
-/* barra de status do jogo */
 .topo{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
 .chip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-weight:800}
 .chip.cash{color:var(--gold);font-family:var(--display);font-size:20px;letter-spacing:.04em;font-weight:400}
 .chip.tempo{color:var(--cyan);font-family:var(--display);font-size:20px;font-weight:400}
-.passos{display:flex;gap:6px;margin-left:auto}.passos span{padding:4px 10px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;font-weight:800;color:var(--muted);text-transform:uppercase}.passos span.on{color:#fff;background:var(--accent);border-color:var(--accent)}
-/* garagem */
-.carros{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
-.carro{background:#0e0e18;border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
-.carro .foto{min-height:62px;padding:4px 0;border-radius:8px;background:linear-gradient(#1c1c2c,#10101a);display:grid;place-items:center}
-.carro h3{font-size:18px}.carro small{color:var(--muted)}
-.ficha{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}.ficha div{background:#161626;border-radius:8px;padding:5px 2px}.ficha b{display:block;font-size:16px}.ficha span{font-size:11px;color:var(--muted);text-transform:uppercase}
 .preco{color:var(--gold);font-weight:800}
-.peca{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
-.peca:last-child{border-bottom:0}.peca b{font-size:16px}.peca p{grid-column:1;margin:0;color:var(--muted);font-size:13px}
-.pips{display:flex;gap:4px;margin-top:3px}.pips i{width:22px;height:8px;border-radius:3px;background:#2a2a40}.pips i.on{background:var(--cyan);box-shadow:0 0 8px #26d4ffaa}
-.vpic{font-size:12.5px;color:var(--muted);margin-top:10px}.vpic em{font-style:normal;background:#10101c;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin:2px 3px 0 0;display:inline-block}
-/* apostas */
-.pistas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.alvo{text-align:left;display:flex;flex-direction:column;gap:4px;padding:12px;background:#0e0e18;border:2px solid var(--line);box-shadow:none}
-.alvo.sel{border-color:var(--accent);background:#2a0f20}
-.alvo .t{font:26px var(--display);color:var(--cyan)}
-.apostaBox{margin-top:14px;display:grid;gap:10px}
 /* corrida */
-#pistaBox{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#000;margin-bottom:12px}
-#cv{display:block;width:100%;height:auto;touch-action:none}
-#semaforo{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:8px;background:#000c;border-radius:12px;padding:8px 12px}
-#semaforo i{width:22px;height:22px;border-radius:50%;background:#2a1a1a;border:2px solid #000}
-#semaforo i.a{background:#ffb020;box-shadow:0 0 14px #ffb020}#semaforo i.v{background:#34e27a;box-shadow:0 0 18px #34e27a}
-#aviso{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font:clamp(34px,7vw,64px) var(--display);text-transform:uppercase;text-shadow:0 4px 0 #000;pointer-events:none;text-align:center;white-space:nowrap}
-#aviso.pop{animation:pop .4s ease-out}
-@keyframes pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}70%{transform:translate(-50%,-50%) scale(1.12)}100%{transform:translate(-50%,-50%) scale(1)}}
-.botoes{display:grid;grid-template-columns:2fr 1fr;gap:10px}.botoes button{font-size:26px;padding:18px}
+.frase{font:600 clamp(20px,3.4vw,30px)/1.55 "Courier New",ui-monospace,monospace;background:#0a0a12;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0;word-break:break-word;user-select:none}
+.frase .ok{color:var(--good)}.frase .er{color:#fff;background:var(--bad);border-radius:3px}.frase .at{border-bottom:3px solid var(--cyan)}.frase .pe{color:var(--muted)}
+#entrada{font:600 clamp(18px,3vw,26px) "Courier New",ui-monospace,monospace;padding:14px 16px;border:2px solid var(--cyan)}
+#entrada:disabled{opacity:.5;border-color:var(--line)}
+.pista-d{display:grid;gap:8px;margin:12px 0}
+.faixa-d{position:relative;height:44px;border-radius:10px;background:repeating-linear-gradient(90deg,#1d1d2c 0 24px,#191926 24px 48px);border:1px solid var(--line);overflow:hidden}
+.faixa-d .chegada{position:absolute;right:0;top:0;bottom:0;width:14px;background:repeating-conic-gradient(#fff 0 25%,#111 0 50%) 0 0/14px 14px}
+.faixa-d .veiculo{position:absolute;top:4px;left:0;width:56px;height:34px;transition:left .22s linear}
+.faixa-d .nome{position:absolute;left:8px;top:11px;font-weight:800;font-size:13px;z-index:2;text-shadow:0 1px 2px #000}
+.faixa-d .wpm{position:absolute;right:24px;top:11px;font-weight:800;font-size:13px;color:var(--cyan);z-index:2}
+.faixa-d.eu{border-color:var(--gold)}
+.contagem{font:clamp(60px,14vw,120px) var(--display);text-align:center;color:var(--gold);text-shadow:0 5px 0 #000;min-height:.7em}
 .tabela{width:100%;border-collapse:collapse}.tabela td,.tabela th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}.tabela th{font-size:12px;color:var(--muted);text-transform:uppercase}
 .ganho{color:var(--good);font-weight:800}.perda{color:var(--bad);font-weight:800}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#000d;border:1px solid var(--line);border-radius:10px;padding:10px 16px;z-index:50;font-weight:700}
 @media(max-width:760px){.hero,.grid2{grid-template-columns:1fr}.passos{display:none}}
-@media(prefers-reduced-motion:reduce){#aviso.pop{animation:none}}
 </style>
 </head>
 <body>
 <header class="bar">
   <div class="bar-in">
     <a class="tovila" href="/" title="Voltar para a vila">← Vila</a>
-    <div class="brand"><h1>🏎️ Arrancada <span>JDM</span></h1></div>
+    <div class="brand"><h1>⌨️ Corrida de <span>Digitação</span></h1></div>
     <div class="roomtag hidden" id="roomTag"><span class="muted">Sala</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
   </div>
 </header>
@@ -110,9 +94,9 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
   <section id="home" class="hidden">
     <div class="hero">
       <div>
-        <h2>Tuna.<br>Aposta.<br><em>Acelera.</em></h2>
-        <p class="lead">Compre um carro japonês de respeito (Supra, GT-R, RX-7, NSX...), monte o tuning e aposte com a galera em quem cruza primeiro a linha do 1/4 de milha. Largue no verde e use o nitro na hora certa.</p>
-        <div class="feats"><span>🏎️ 12 JDM</span><span>🔧 5 peças de tuning</span><span>💰 apostas entre a galera</span><span>🚦 reação no verde</span><span>🤖 robôs completam a pista</span></div>
+        <h2>Digita.<br>Corre.<br><em>Vence.</em></h2>
+        <p class="lead">Todo mundo recebe a mesma frase ao mesmo tempo. Quem digitar tudo certinho primeiro ganha a rodada. Acento e maiúscula contam, e não vale colar. Dá para jogar com a galera ou contra robôs.</p>
+        <div class="feats"><span>⌨️ frases aleatórias</span><span>🏁 até 8 pilotos</span><span>📈 palavras por minuto</span><span>🤖 robôs completam a pista</span></div>
       </div>
       <div class="panel"><div class="faixa"></div><div class="in">
         <label for="hName">Seu nome</label>
@@ -129,15 +113,6 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 
   <section id="jogo" class="hidden">
     <div class="topo" id="topo"></div>
-    <div id="pistaBox" class="hidden">
-      <canvas id="cv" width="960" height="420"></canvas>
-      <div id="semaforo" class="hidden"><i></i><i></i><i></i><i></i></div>
-      <div id="aviso"></div>
-    </div>
-    <div id="comandos" class="botoes hidden">
-      <button class="primary" id="bLargar">LARGAR!</button>
-      <button class="nitro" id="bNos">NITRO</button>
-    </div>
     <div id="tela"></div>
   </section>
 </div>
@@ -146,7 +121,7 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 <script src="/socket.io/socket.io.js"></script>
 <script src="/noite.js"></script>
 <script src="/comum.js"></script>
-<script src="/drag/regras.js"></script>
-<script src="/drag/jogo.js"></script>
+<script src="/digita/frases.js"></script>
+<script src="/digita/jogo.js"></script>
 </body>
 </html>
