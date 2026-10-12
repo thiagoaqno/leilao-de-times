@@ -17,7 +17,9 @@
   const Q = { MX: 4.5, MZ: 9, REDE: 2.2, ANTENA: 4.6, R: 0.11, FX: 8.5, FZ: 13.5 }; // FX/FZ: até onde dá para correr
   const G = 9.81, ARRASTO = 0.013; // resistência do ar (quadrática): a bola de futebol freia de verdade no ar
   // jogador: na areia corre menos que na quadra
-  const VEL = 5.8, ACEL = 24, ALCANCE = 1.3, ALTURA_MAX = 3.0, ALTURA_PULO = 2.15, ARMADO_MAX = 1.6, INTERVALO = 0.28;
+  const VEL = 5.8, ACEL = 24, ALCANCE = 1.3, ALTURA_MAX = 2.75, ALTURA_PULO = 2.15, ARMADO_MAX = 1.1, INTERVALO = 0.28;
+  // armou e a bola não veio a tempo: fica um instante sem poder armar de novo (apertar sem parar não salva)
+  const ESFRIA = 0.6;
   // os golpes: tempo de voo (do mais fraco ao mais forte), profundidade do alvo (metros depois da rede), quanto a bola
   // "mergulha" (efeito para baixo, em m/s²) e o erro. ataque: só sai atacando.
   const GOLPES = {
@@ -194,8 +196,11 @@
     if (duplas && b.time === j.team && b.por === j.id) return false; // em duplas, ninguém toca duas vezes seguidas
     if (b.y < 0.12 || b.y > ALTURA_MAX + folga * 0.5) return false;
     if (b.vy > 1 && b.y > 1.2) return false; // ainda subindo: espera ela descer (ninguém toca a bola subindo lá no alto)
-    return Math.hypot(b.x - j.x, b.z - j.z) <= ALCANCE + folga;
+    return Math.hypot(b.x - j.x, b.z - j.z) <= alcanceNa(b.y, folga);
   }
+  // o alcance (de lado) na altura h: no pulo, quanto mais alta a bola, mais embaixo dela o jogador tem que estar (a bola
+  // que passa por cima, encobrindo quem está na rede, não volta)
+  function alcanceNa(h, folga = 0) { return h <= ALTURA_PULO ? ALCANCE + folga : (ALCANCE + folga) * lerp(1, 0.35, clamp((h - ALTURA_PULO) / (ALTURA_MAX - ALTURA_PULO), 0, 1)); }
   const gauss = (rnd) => (rnd() + rnd() + rnd() - 1.5) / 0.5;
   // o buraco do outro lado: o x mais longe dos rivais
   function buraco(m, j) {
@@ -233,7 +238,8 @@
     b.toques++;
     if (intencao === "passe" && b.toques >= 3) intencao = "seguranca"; // 3º toque: o passe vira bola de segurança por cima
     const golpe = golpeDe(j, b, intencao === "ataque" ? "ataque" : "passe");
-    const Gp = GOLPES[golpe], d = Math.hypot(b.x - j.x, b.z - j.z), qualidade = clamp(d / ALCANCE, 0, 1.3); // longe do corpo: pior
+    const Gp = GOLPES[golpe], d = Math.hypot(b.x - j.x, b.z - j.z), cedo = j.armado && !j.bot ? clamp((m.t - j.armado.t0) / 1000 - 0.45, 0, 0.65) : 0;
+    const qualidade = clamp(d / ALCANCE + cedo, 0, 1.3); // longe do corpo, ou armado muito antes da bola chegar: pior
     const p = { x: b.x, y: b.y, z: b.z }, robo = j.bot ? DIF_ATUAL.erro : 1;
     // a bola que chega forte (um ataque) é mais difícil de dominar: o primeiro toque sai pior
     const veloc = Math.hypot(b.vx, b.vy, b.vz), pancada = b.toques === 1 && b.time === j.team ? Math.max(0, veloc - 9) : 0;
@@ -287,6 +293,8 @@
       j.armado = { intencao, t0: agora, ate: m.ate + 1500 }; return;
     }
     if (m.fase !== "jogo") return;
+    if (j.armado) { j.armado.intencao = intencao; return; } // já armado: muda só a intenção, o relógio continua
+    if (agora < (j.esfriaAte || 0)) return; // errou o tempo há pouco
     j.armado = { intencao, t0: agora };
   }
   const prazoArmado = (j) => j.armado.ate ?? j.armado.t0 + ARMADO_MAX * 1000;
@@ -319,7 +327,7 @@
   function passo(m, dt, agora, rnd = Math.random) {
     m.t = agora; DIF_ATUAL = DIF[m.cfg.dif];
     if (m.fim) return;
-    for (const j of m.jogadores) if (j.armado && agora > prazoArmado(j)) j.armado = null; // não alcançou: desarma
+    for (const j of m.jogadores) if (j.armado && agora > prazoArmado(j)) { j.armado = null; if (!j.bot) j.esfriaAte = agora + ESFRIA * 1000; } // não alcançou: desarma (e esfria)
     robos(m, dt, agora, rnd);
     if (m.fase === "ponto") {
       if (m.bola.y > Q.R) passoBola(m.bola, dt); // a bola termina de cair
@@ -357,7 +365,7 @@
     for (let t = 0; t <= max; t += 1 / 60) {
       if (t > 0) { const ev = passoBola(c, 1 / 60); if (ev === "areia" || ev === "antena") return null; p.x = j.x + (j.vx || 0) * t; p.z = j.z + (j.vz || 0) * t; }
       if (ladoDe(c.z) !== j.team || c.y < 0.12 || c.y > ALTURA_MAX + folga * 0.5 || (c.vy > 1 && c.y > 1.2)) continue;
-      if (Math.hypot(c.x - p.x, c.z - p.z) > ALCANCE + folga) continue;
+      if (Math.hypot(c.x - p.x, c.z - p.z) > alcanceNa(c.y, folga)) continue;
       if (c.y > 1.9 && c.vy <= 0 && !(ataque && Math.abs(p.z) < 2.6)) { // espera descer (a mesma conta do toque)
         const fx = c.x + c.vx * 0.08, fz = c.z + c.vz * 0.08, fy = c.y + c.vy * 0.08;
         if (fy > 1.0 && Math.hypot(fx - p.x, fz - p.z) <= ALCANCE) continue;
@@ -460,7 +468,7 @@
       posse: b.viva && b.time ? { time: b.time, toques: b.toques } : null };
   }
 
-  const api = { Q, G, GOLPES, DIF, VEL, ALCANCE, ALTURA_PULO, CAIDO_BICICLETA, ARMADO_MAX, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, lancar, voar, queda,
+  const api = { Q, G, GOLPES, DIF, VEL, ALCANCE, ALTURA_PULO, ESFRIA, CAIDO_BICICLETA, alcanceNa, ARMADO_MAX, sinal, outro, ladoDe, novaPartida, mover, limitar, passoBola, lancar, voar, queda,
     golpeDe, alcanca, previsaoToque, alvoAtaque, alvoPasse, tocar, sacar, armar, passo, pontoDeToque, pacote, estado, posicionar };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Futevolei = api;
