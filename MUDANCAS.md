@@ -1,7 +1,5 @@
-# A Vila agora é em 3D
+Antes: a Arena de Futevôlei ficava na areia da praia de Santos, fora da vila, muito longe de tudo.
 
-Antes: a Vila era um mapa pixel-art visto de cima, e os amigos apareciam como bonequinhos de 12 pixels.
+Depois: a Arena de Futevôlei fica dentro da Vila, na Vila Esportiva, no lote que estava vazio. O terreno "em breve" desse lote deixou de existir.
 
-Depois: a Vila (`/`) é em 3D, com as peças do KayKit (CC0): prédios, ruas, Praça com chafariz, pista, terrenos, árvores e a cidade em volta. Você anda com a skin que escolheu (as mesmas da Pelada: botão 🎭 Skin; o 👕 Roupa continua trocando a cor da camisa) e os amigos aparecem com a skin deles e o nome em cima. O telão mostra o top 5 da estante, os 6 treinadores estão nas ruas, os 4 ginásios fora da cerca, os carros e as rodovias seguem como antes, e um facho de luz marca o estádio escolhido no menu. O interior dos estádios continua no 2D por enquanto, e `/?2d=1` abre o mapa antigo.
-
-Como: a lógica não mudou (andar em casas, entrar nos jogos, amigos, desafios, carro). Só o desenho é novo: `public/vila3d/mundo.js` lê os mesmos dados de `public/index.html` (`ground`, `GAMES`, `TELAO`...) e desenha tudo em Three.js, com a câmera sempre olhando para o norte para o teclado e o toque funcionarem igual; `frame()` chama `V3.render` fora dos estádios. O chão do mapa inteiro é uma textura só; os prédios são grades de módulos esticadas para a planta; o telão reaproveita o `drawTelao` como textura. A skin viaja no `hello` e no `look` (`vila.js`, `cleanSkin`). Os modelos estão em `public/vila3d/kaykit/` com a licença. Música ambiente: `public/vila3d/musica/`.
+Como: a entrada `futevolei` de `GAMES` em `public/index.html` mudou para `x: 21, y: 39, w: 6, h: 4, doors: [24], bairro: "esportes"` e saiu de `TERRENOS`; `public/vila3d/dados.js` foi regenerado com `node ferramentas/vila3d-dados.js`. O `vila.js` só guarda o id, então não mudou.
