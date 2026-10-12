@@ -146,14 +146,14 @@ test("na carreira, repetir os mesmos 11 derruba a energia e o banco descansa; as
   for (let i = 0; i < 8; i++) rodar();
   const e = estado(save).energia, media = (ids) => ids.reduce((s, id) => s + e[id], 0) / ids.length;
   const banco = Object.keys(e).filter((id) => !onze.includes(id));
-  assert.ok(media(onze) < 80, `os titulares cansam depois de 8 jogos seguidos (${media(onze).toFixed(0)}%)`);
-  assert.ok(media(banco) > media(onze) + 10, "o banco está bem mais descansado");
+  assert.ok(media(onze) < 90, `os titulares cansam aos poucos depois de 8 jogos seguidos (${media(onze).toFixed(0)}%)`);
+  assert.ok(media(banco) > media(onze) + 5, "o banco está bem mais descansado");
   assert.ok(Math.min(...onze.map((id) => e[id])) >= 20, "o piso é 20%");
 });
 
-test("o over cai em 3, 5 e 7 jogos seguidos", () => {
+test("a sequência de jogos não tira over além da energia", () => {
   const p = Taticas.penalidadeSequencia;
-  assert.deepStrictEqual([0, 1, 2, 3, 4, 5, 6, 7, 8].map(p), [0, 0, 0, 1, 1, 2, 2, 3, 3]);
+  assert.deepStrictEqual([0, 1, 2, 3, 4, 5, 6, 7, 8].map(p), [0, 0, 0, 0, 0, 0, 0, 0, 0]);
 });
 
 test("um jogo no banco recupera 80 pontos e zera a sequência", () => {
@@ -167,6 +167,19 @@ test("um jogo no banco recupera 80 pontos e zera a sequência", () => {
   assert.strictEqual(save.sequencia[pid], 0);
   aplicarFadiga(save, { jogaram: { [save.clube]: [pid] }, energia: { [pid]: 25 } });
   assert.strictEqual(save.sequencia[pid], 1);
+});
+
+test("o titular perde 0,25 de over por jogo até os 29 anos e 0,40 a partir dos 30", () => {
+  const { aplicarFadiga, timeDe } = require("../carreira.js").paraTestes;
+  const Evolucao = require("../public/carreira/evolucao.js");
+  const save = novaCarreira("Desgaste", "saopaulo", "x");
+  const el = timeDe(save, save.clube).jogadores;
+  const novo = el.find((j) => Evolucao.idadeNa(j, save.temporada) < 30), velho = el.find((j) => Evolucao.idadeNa(j, save.temporada) >= 30);
+  assert.ok(novo && velho, "o elenco tem jovem e veterano");
+  const gasto = 16; // o desgaste típico de um jogo inteiro
+  aplicarFadiga(save, { jogaram: { [save.clube]: [novo.id, velho.id] }, energia: { [novo.id]: 100 - gasto, [velho.id]: 100 - gasto } });
+  assert.ok(Math.abs((100 - save.energia[novo.id]) / 10 - 0.25) < 0.03, `jovem perde ~0,25 (${(100 - save.energia[novo.id]) / 10})`);
+  assert.ok(Math.abs((100 - save.energia[velho.id]) / 10 - 0.4) < 0.03, `veterano perde ~0,40 (${(100 - save.energia[velho.id]) / 10})`);
 });
 
 test("o campinho desenha a variação: volante recuado, meia avançado, falso 9 atrás e alas na linha", () => {

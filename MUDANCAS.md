@@ -1,5 +1,12 @@
-Antes: a Vila sorteava só um céu fixo, a cidade modular nova tinha 70 MB e a Corrida (e a Batalha) usavam um kart de caixinhas com árvores de cone e arquibancadas de blocos.
+# Carreira: desgaste suave e táticas sem "de graça"
 
-Depois: a Vila sorteia um de seis céus a cada abertura (dia, entardecer, nublado, tempestade, noite e o SD_Sky pintado; `?ceu=<nome>` escolhe um) e a luz e a névoa mudam junto. A cidade modular foi reduzida para 6,4 MB e fica guardada, sem uso por enquanto. Na Corrida e na Batalha o kart agora tem o corpo do carro de corrida do Racing Kit do Kenney (CC0): a tinta segue a cor do jogador, os aros a cor escolhida, as rodas giram e esterçam e o piloto com a skin senta no cockpit. Nas pistas, as árvores e a arquibancada coberta também são do Kenney, e a capa da Corrida é desenhada de novo quando eles chegam.
+**Antes:** quem jogava toda semana perdia cerca de 0,7 de over por jogo (5 a 6 de over em 8 jogos), por causa da energia e ainda da sequência de jogos. Linha baixa e mentalidade ofensiva eram de graça: a linha baixa melhorava a defesa sem custo e a mentalidade +2 dava mais gols do que cedia.
 
-Como: `public/vila3d/mundo.js` ganhou a tabela `CEUS` (cores, sol, nuvens e luz de cada um); `public/vila3d/cidade/` guarda o glb reduzido (@gltf-transform: WebP de 512 px e meshopt; o arquivo é um quarteirão só, não peças em grade). `public/kart3d.js` carrega `public/corrida/kenney/raceCarRed.glb` e troca o kart de caixinhas por ele assim que abre (os materiais são os mesmos de antes, então fantasma e piscar continuam valendo; `kartPronto`). `public/corrida/props.js` carrega a árvore e a arquibancada, `pista.js` as usa (e refaz as pistas já montadas quando chegam) e `jogo.js` repinta a capa. Os presets `.atm` da pasta FreePresets são do Vue e não abrem aqui; os céus novos são feitos por código.
+**Depois:** o titular perde 0,25 de over por jogo até os 29 anos e 0,40 a partir dos 30 (o desgaste do jogo e o departamento médico ainda mexem um pouco). A sequência de jogos não tira mais over por conta própria. Linha e mentalidade ficaram equilibradas (nenhuma é melhor sozinha).
+
+**Como:** `aplicarFadiga` (`carreira.js`) deixa de somar +16 de recuperação e aplica a perda por idade (10 de energia = 1 de over). `penalidadeSequencia` agora é 0. No motor, `LINHA_CEDE`/`LINHA_CONV` e `MENTAL` ficaram simétricos em `AJUSTE`.
+
+**Análise de meta (São Paulo, ~1.500 jogos por configuração, pontos por jogo, base 1,47):**
+- Formações melhores: 4-4-2 losango 1,56, 3-2-4-1 1,54, 5-3-2 V 1,54, 5-3-2 1,51. Piores: 3-4-3 (1,37) e 5-4-1 (1,42). O padrão se repete com Palmeiras e Corinthians. A causa é a média ponderada de `strength` (`escalacao.js`, compartilhada com o Leilão), por isso não mexi.
+- Estilos: catenaccio, funcional e contra 1,57; tikitaka, gegenpressing e posicional 1,50.
+- Antes: linha 0 = 1,54 e mentalidade +2 = 1,57. A combinação 4-4-2 L + funcional + mentalidade 2 + linha 0 chegava a 1,77. Depois do ajuste a mesma combinação dá cerca de 1,65.
