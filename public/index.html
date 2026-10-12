@@ -224,10 +224,6 @@ canvas.mini.off{display:none}
     <button class="tbtn" id="bNick" title="Trocar o nick">👤 <span class="tx" id="bNickTx">Nick</span></button>
     <button class="tbtn battle" id="bTeam" title="Batalhas de Galeramon, Pokémon ou Naruto Shippuden">⚔️<span class="tx keep"> Batalha</span></button>
     <button class="tbtn" id="bLook" title="Trocar a roupa do boneco">👕<span class="tx"> Roupa</span></button>
-    <button class="tbtn" id="bSkin" title="Trocar o personagem (as skins da Pelada)">🎭<span class="tx"> Skin</span></button>
-    <button class="tbtn" id="bCam" style="display:none" title="Câmera: terceira ou primeira pessoa (tecla V)">👁️<span class="tx"> Câmera</span></button>
-    <button class="tbtn" id="bSom" style="display:none" title="Silenciar a música">🔊<span class="tx"> Música</span></button>
-    <button class="tbtn" id="bModo" title="Trocar entre a Vila em 3D e a Vila em 2D">🧊<span class="tx"> 3D</span></button>
     <button class="tbtn" id="bMapa" title="Mostrar ou esconder o mapa">🗺️<span class="tx"> Mapa</span></button>
     <button class="tbtn" id="bMenu" title="Lista de jogos">☰<span class="tx"> Jogos</span></button>
   </div>
@@ -269,8 +265,6 @@ canvas.mini.off{display:none}
 <script src="/galeramon/lideres.js"></script>
 <script src="/comum.js"></script>
 <script src="/vila/estadios.js"></script>
-<script src="/pelada/campo.js"></script>
-<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
 
 <script>
 "use strict";
@@ -1003,7 +997,6 @@ const LEGS = {
   side: [["...kpppk....", "..kbbbbk....", "..kkkkkk...."], ["..kpk.kpk...", ".kbbk.kbk...", ".kkk..kkk..."], ["...kpppk....", "..kbbbbk....", "..kkkkkk...."]],
 };
 let outfit = Math.abs(store.get("vila_look") | 0) % OUTFITS.length;
-const mySkin = () => { const k = store.get("galera:skin"); return typeof k === "string" && window.Campo.SKINS[k] ? k : "padrao"; }; // a skin da Pelada (a mesma de todos os jogos)
 const spriteCache = {};
 function shade(hex, f) { const n = parseInt(hex.slice(1), 16); const ch = (s) => Math.max(0, Math.min(255, Math.round(((n >> s) & 255) * f))); return `rgb(${ch(16)},${ch(8)},${ch(0)})`; }
 function spritesFor(look) {
@@ -1049,7 +1042,6 @@ addEventListener("keydown", (e) => {
   const d = KEYS[e.code];
   if (d) { e.preventDefault(); hold(d); return; }
   if (e.key === "Shift" || e.code === "KeyX") running = true;
-  if (e.code === "KeyV" && V3) { camera3d(); return; }
   if (["Space", "Enter", "NumpadEnter", "KeyE", "KeyZ"].includes(e.code)) { e.preventDefault(); action(); }
 });
 addEventListener("keyup", (e) => {
@@ -1087,8 +1079,7 @@ function bfs(sx, sy, tx, ty, ok = podePassar) {
 function tapAt(clientX, clientY) {
   if (player.entering) return;
   let tx, ty;
-  if (V3 && !INT) { const t = V3.pick(clientX, clientY); if (!t) return; [tx, ty] = t; } // no 3D, o toque vira a casa do mapa
-  else { const wx = (clientX * dpr) / scale + camX, wy = (clientY * dpr) / scale + camY; tx = Math.floor(wx / TS); ty = Math.floor(wy / TS); }
+  { const wx = (clientX * dpr) / scale + camX, wy = (clientY * dpr) / scale + camY; tx = Math.floor(wx / TS); ty = Math.floor(wy / TS); }
   const o = otherAt(tx, ty) || otherAt(tx, ty + 1); // o boneco passa um pouco do tile de cima
   if (o) return openPlayer(o);
   const e = !INT && estadioAt(tx, ty);
@@ -1331,8 +1322,7 @@ function closeMenu() { $("menu").classList.remove("on"); $("bMenu").focus(); }
 $("bMenu").onclick = () => { $("menu").classList.add("on"); $("menuList").querySelector("a").focus(); };
 $("menuX").onclick = closeMenu;
 $("menu").addEventListener("click", (e) => { if (e.target.id === "menu") closeMenu(); });
-$("bLook").onclick = () => { outfit = (outfit + 1) % OUTFITS.length; store.set("vila_look", outfit); socket.emit("look", { look: outfit, skin: mySkin() }); $("bLook").blur(); };
-$("bSkin").onclick = () => { const l = Object.keys(window.Campo.SKINS); store.set("galera:skin", l[(Math.max(0, l.indexOf(mySkin())) + 1) % l.length]); socket.emit("look", { look: outfit, skin: mySkin() }); toast("Personagem: " + mySkin()); $("bSkin").blur(); };
+$("bLook").onclick = () => { outfit = (outfit + 1) % OUTFITS.length; store.set("vila_look", outfit); socket.emit("look", { look: outfit }); $("bLook").blur(); };
 
 // ---------- a galera na vila (Socket.io, canal /vila) ----------
 const cleanNick = (s) => Array.from(String(s || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
@@ -1350,7 +1340,7 @@ let myId = null, vilaToken = session.get("vila_token");
 function hello() {
   if (!myName || player.entering || !socket.connected) return;
   lastSent = player.x + "," + player.y + "," + player.dir + zona() + (player.car ? "c" : "");
-  socket.emit("hello", { name: myName, look: outfit, skin: mySkin(), x: player.x, y: player.y, dir: player.dir, z: zona(), car: player.car, token: vilaToken });
+  socket.emit("hello", { name: myName, look: outfit, x: player.x, y: player.y, dir: player.dir, z: zona(), car: player.car, token: vilaToken });
 }
 function sendPos(moved) {
   const key = player.x + "," + player.y + "," + player.dir + zona() + (player.car ? "c" : "");
@@ -1709,7 +1699,7 @@ $("nickF").onsubmit = (e) => {
   const first = !myName;
   myName = n; store.set("galera:name", n); setNickUI();
   $("nick").classList.remove("on"); $("bNick").blur();
-  if (first) hello(); else socket.emit("look", { look: outfit, skin: mySkin(), name: n });
+  if (first) hello(); else socket.emit("look", { look: outfit, name: n });
   onlineText();
 };
 $("nick").addEventListener("click", (e) => { if (e.target.id === "nick" && myName) $("nick").classList.remove("on"); });
@@ -1945,11 +1935,6 @@ function frame(now) {
   camX = Math.round(camX * scale) / scale; camY = Math.round(camY * scale) / scale;
   // durante a batalha a vila fica escondida: não desenha nada (poupa bateria e memória do celular)
   if (btOpen()) { requestAnimationFrame(frame); return; }
-  if (V3) { // a Vila em 3D (dentro do estádio, volta o 2D)
-    const em3d = !INT;
-    V3.dom.style.display = em3d ? "block" : "none"; cv.style.visibility = em3d ? "hidden" : "visible";
-    if (em3d) { player.name = myName; V3.render(now, dt, lastRaw); drawMini(now); requestAnimationFrame(frame); return; }
-  }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = "#12301c"; ctx.fillRect(0, 0, cv.width, cv.height);
@@ -1995,28 +1980,13 @@ GAMES.filter((g) => !g.npc).forEach((g) => drawBuilding(rascunho, g)); // só pa
 collectWindowLights();
 resize();
 $("mini").classList.toggle("off", !miniOn);
-function camera3d() { if (!V3) return; const m = V3.camera(); toast(m === "primeira" ? "Primeira pessoa: arraste para olhar em volta" : "Terceira pessoa: arraste para cima e para baixo para ver o céu"); $("bCam").blur(); }
-$("bCam").onclick = camera3d;
 $("bMapa").onclick = () => { miniOn = !miniOn; if (!INT) $("mini").classList.toggle("off", !miniOn); $("bMapa").blur(); };
 setHere(lugarEm(player.x, player.y));
-let V3 = null;
-// 3D ou 2D: o botão guarda a escolha (vila:modo); ?2d=1 e ?3d=1 valem só naquela visita
-const modoVila = (() => { if (/[?&]2d=1/.test(location.search)) return "2d"; if (/[?&]3d=1/.test(location.search)) return "3d"; try { return localStorage.getItem("vila:modo") === "2d" ? "2d" : "3d"; } catch (e) { return "3d"; } })();
-$("bModo").innerHTML = modoVila === "3d" ? '🗺️<span class="tx"> 2D</span>' : '🧊<span class="tx"> 3D</span>';
-$("bModo").title = modoVila === "3d" ? "Trocar para a Vila em 2D (mapa de cima)" : "Trocar para a Vila em 3D";
-$("bModo").onclick = () => { try { localStorage.setItem("vila:modo", modoVila === "3d" ? "2d" : "3d"); } catch (e) { /* sem armazenamento */ } if (location.search) location.replace(location.pathname + location.hash); else location.reload(); };
-if (modoVila === "3d" && window.Campo) {
-  import("/vila3d/mundo.js").then((m) => m.criar({
-    MW, MH, OX, OY, VW, VH, ground, rumo, GAMES, FOUNTAIN, TELAO, TERRENOS, LAMPS, BENCHES, TREES, POSTES, PREDIOS, PARADOS, ESTADIOS, OUTFITS,
-    player, others, naMinhaZona, drawTelao, nome: () => myName, look: () => outfit, skin: mySkin, aqui: () => here, destino: () => destino,
-  })).then((v) => { V3 = v; V3.dom.addEventListener("click", (e) => { if (!V3.arrastou()) tapAt(e.clientX, e.clientY); }); $("bCam").style.display = ""; import("/vila3d/ambiente.js").then((a) => a.ligar($("bSom"))).catch(() => {}); V3.dom.addEventListener("contextmenu", (e) => e.preventDefault()); })
-    .catch((e) => console.error("Vila 3D não abriu, ficou o mapa 2D:", e));
-}
 requestAnimationFrame(frame);
 buscarEstante(); setInterval(buscarEstante, 60e3);
 if (location.hash === "#debug") window.__vila = {
   GAMES, player, others, ground, solid, walkable, bfs, TELAO, ESTANTE, TERRENOS,
-  get here() { return here; }, get myId() { return myId; }, get V3() { return V3; },
+  get here() { return here; }, get myId() { return myId; },
   get camera() { return { x: camX, y: camY, scale: scale / dpr, tile: TS }; },
 };
 document.fonts && document.fonts.load('700 10px "Pixelify Sans"');

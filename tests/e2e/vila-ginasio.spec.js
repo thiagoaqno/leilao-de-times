@@ -19,7 +19,6 @@ async function ponto(page, alvo) {
     const p = alvo === "ginasio" ? v.GAMES.find((g) => g.id === alvo) : [...v.others.values()].find((o) => o.name === alvo);
     const x = alvo === "ginasio" ? p.x + p.w / 2 : p.fx + .5;
     const y = alvo === "ginasio" ? p.y + .6 : p.fy + .5;
-    if (v.V3) return alvo === "ginasio" ? v.V3.tela(p.x + p.w / 2, p.y + 0.1, 2.5) : v.V3.tela(x, y, 0.6); // a Vila em 3D: o telhado do prédio (o diálogo de baixo cobre a frente)
     return { x: (x * c.tile - c.x) * c.scale, y: (y * c.tile - c.y) * c.scale };
   }, alvo);
 }
@@ -81,8 +80,7 @@ for (const celular of [false, true]) {
       await page.waitForFunction(() => window.__vila.here?.id === "ginasio" && !window.__vila.player.moving);
       await expect(page.locator("#dlg")).toContainText("Ginásio");
       await expect(page.locator("#dlg")).toHaveCSS("opacity", "1");
-      if (await page.evaluate(() => !!window.__vila.V3)) await expect(page.locator("#cv3")).toBeVisible(); // na Vila 3D o desenho está no canvas WebGL
-      else {
+      {
       const cores = await page.locator("#cv").evaluate((cv) => {
         const v = window.__vila, c = v.camera, g = v.GAMES.find((g) => g.id === "ginasio");
         const pix = cv.getContext("2d").getImageData(Math.round((g.x * 16 - c.x) * c.scale * devicePixelRatio), Math.round((g.y * 16 - c.y) * c.scale * devicePixelRatio), 100, 50).data;
