@@ -140,7 +140,7 @@ socket.on("snap", (d) => {
 socket.on("kicked", (d) => {
   if (!G.active || G.mode !== "online") return;
   const rm = G.remotes.get(d.id);
-  if (rm) { rm.st.kickT = now(); const [k, pan] = hearing([rm.x, 0.5, rm.z]); Sound.kick(d.power, k, pan); }
+  if (rm) { rm.st.kickT = now(); rm.st.golpe = { how: d.how, kind: d.kind }; const [k, pan] = hearing([rm.x, 0.5, rm.z]); Sound.kick(d.power, k, pan); }
   if (E.ME && d.id === E.ME.id) ballS.ignoreUntil = 0;
 });
 socket.on("pegou", () => { if (G.active) Sound.catch(); });
