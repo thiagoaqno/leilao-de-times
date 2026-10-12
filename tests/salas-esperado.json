@@ -1363,7 +1363,7 @@
       true
     ]
   },
-  "/drag": {
+  "/digita": {
     "semNome": {
       "ok": false,
       "error": "Coloque o seu nome."
@@ -1418,19 +1418,20 @@
       "error": "Ação desconhecida."
     },
     "camposDoEstado": [
-      "apostas",
       "code",
       "config",
       "corredores",
       "deadline",
       "feed",
+      "frase",
       "historico",
       "host",
+      "inicio",
       "now",
       "phase",
-      "pista",
+      "placar",
       "players",
-      "pool",
+      "progresso",
       "resultado",
       "rodada"
     ],
