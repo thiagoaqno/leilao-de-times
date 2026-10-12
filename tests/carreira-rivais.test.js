@@ -68,9 +68,9 @@ test("jogo do título: só na reta final e com o clube brigando pelo topo", () =
 
 test("estante: guarda cada conquista uma vez e monta o ranking pelo nome do técnico (sem diferenciar acento e maiúscula)", () => {
   bd.fechar(); bd.abrir(":memory:");
-  const c = (o) => ({ carreira: "x1", modo: "solo", tecnico: "João", clube: "flamengo", competicao: "libertadores", nome: "Libertadores", colocacao: 1, pontos: 8, ano: 2026, temporada: 1, ...o });
+  const c = (o) => ({ carreira: "x1", modo: "grupo", tecnico: "João", clube: "flamengo", competicao: "libertadores", nome: "Libertadores", colocacao: 1, pontos: 8, ano: 2026, temporada: 1, ...o });
   assert.strictEqual(bd.guardarConquistas([c(), c()]), 1, "a mesma conquista não entra duas vezes");
-  bd.guardarConquistas([c({ carreira: "x2", tecnico: "joao ", competicao: "brasileirao-2026", nome: "Brasileirão", pontos: 10 }), c({ carreira: "x3", modo: "grupo", tecnico: "Bia", clube: "palmeiras", colocacao: 2, pontos: 4 })]);
+  bd.guardarConquistas([c({ carreira: "x2", modo: "grupo", tecnico: "joao ", competicao: "brasileirao-2026", nome: "Brasileirão", pontos: 10 }), c({ carreira: "x3", modo: "grupo", tecnico: "Bia", clube: "palmeiras", colocacao: 2, pontos: 4 })]);
   const e = bd.estante();
   assert.strictEqual(e.ranking[0].chave, "joao");
   assert.strictEqual(e.ranking[0].pontos, 18);
@@ -80,6 +80,14 @@ test("estante: guarda cada conquista uma vez e monta o ranking pelo nome do téc
   assert.strictEqual(e.ranking[1].vices, 1);
   assert.strictEqual(e.total, 2);
   assert.strictEqual(e.ultimas[0].competicao, "brasileirao-2026", "a mais nova primeiro");
+});
+
+test("estante: carreira solo fica guardada mas não aparece na estante da Vila", () => {
+  bd.fechar(); bd.abrir(":memory:");
+  bd.guardarConquistas([{ carreira: "s1", modo: "solo", tecnico: "Solo", clube: "flamengo", competicao: "libertadores", nome: "Libertadores", colocacao: 1, pontos: 8, ano: 2026, temporada: 1 }]);
+  assert.strictEqual(bd.abrir().prepare("SELECT COUNT(*) n FROM estante").get().n, 1);
+  assert.deepStrictEqual(bd.estante().ranking, []);
+  assert.strictEqual(bd.estante().total, 0);
 });
 
 test("estante: a temporada que acaba manda os títulos e os vices do técnico para a estante", () => {
@@ -107,7 +115,7 @@ test("estante: as conquistas vêm do histórico do técnico, inclusive Mundial e
   assert.deepStrictEqual(linhas.map((l) => [l.competicao, l.colocacao]), [["copadobrasil", 2], ["mundial", 1], ["supermundial", 1]]);
   assert.ok(linhas.every((l) => l.clube === "vasco" && l.tecnico === "Vascaíno"));
   completar(save);
-  assert.strictEqual(bd.estante().total, 2, "não entra duas vezes");
+  assert.strictEqual(bd.abrir().prepare("SELECT COUNT(*) n FROM estante WHERE colocacao = 1").get().n, 2, "não entra duas vezes");
 });
 
 test("estante: a sala carregada do banco manda as conquistas dos técnicos, sem ninguém mexer nela", () => {

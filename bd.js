@@ -147,10 +147,10 @@ function guardarConquistas(lista) {
   }
   return novas;
 }
-// a estante inteira: o ranking dos técnicos (pontos, títulos, vices, as taças de cada competição e o clube mais vitorioso) e as
+// a estante inteira (só carreiras em grupo; solo e Rumo ao Estrelato ficam guardados mas não entram): o ranking dos técnicos (pontos, títulos, vices, as taças de cada competição e o clube mais vitorioso) e as
 // últimas conquistas
 function estante({ limite = 50, recentes = 24 } = {}) {
-  const linhas = bd().prepare("SELECT * FROM estante ORDER BY criado_em ASC, id ASC").all();
+  const linhas = bd().prepare("SELECT * FROM estante WHERE modo = 'grupo' ORDER BY criado_em ASC, id ASC").all();
   const por = new Map();
   for (const l of linhas) {
     const t = por.get(l.chave) || { tecnico: l.tecnico, chave: l.chave, pontos: 0, titulos: 0, vices: 0, tacas: {}, clubes: {}, carreiras: new Set(), ultimo: 0 };
