@@ -21,6 +21,7 @@
 // Opções: { lado: 1 (bola à direita) ou −1, pulo: true (toque no alto), h (altura da bola), estilo (no shark:
 // "voleio" ou "bicicleta") }.
 import * as THREE from "three";
+import { Modelo, ateImpactoM, AnimadorMixamo } from "/futevolei/atleta-mixamo.js";
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -157,7 +158,7 @@ const GOLPES_DE_BOLA = ["frente", "lado", "peito", "cabeca", "letra", "calcanhar
 export const GATILHOS = [...Object.keys(CLIPES), ...Object.keys(GRUPOS)];
 const nomeDoClipe = (g, o = {}) => (g === "shark" && o.estilo === "bicicleta" ? "sharkBicicleta" : g);
 // quanto tempo o golpe leva do começo até pegar na bola (s)
-export const ateImpacto = (g, o) => { const c = CLIPES[nomeDoClipe(g, o)]; return c && c.impacto != null ? c.dur * c.impacto : 0; };
+export const ateImpacto = (g, o) => { if (Modelo.ativo && g !== "saque" && g !== "comemora") { const m = ateImpactoM(g, o); if (m) return m; } const c = CLIPES[nomeDoClipe(g, o)]; return c && c.impacto != null ? c.dur * c.impacto : 0; };
 
 // ----------------------------------------------------------------------
 // O animador: a base (respiração, peso trocando de perna, o quiquinho de quem espera a bola, a corrida de frente e de
@@ -302,7 +303,7 @@ export class Atleta {
     this.yaw = team === "A" ? 0 : Math.PI;
     this.frente = this.yaw; // para onde fica de frente (o jogador, para a rede; quem assiste, para a quadra)
     this.vel = 0; this.pronto = false;
-    this.animador = new Animador();
+    this.animadorCaixa = this.animador = new Animador();
     this.aoVestir = new Set(); // quem quer saber quando a skin mudou (ex.: a sombra, o marcador)
     this.aoPisar = null;       // (x, z, lado) => {}: cada passada na areia (a pegada)
   }
@@ -311,6 +312,7 @@ export class Atleta {
   vestir(visual) {
     const antigo = this.despir();
     this.visual = visual;
+    this.animador = (visual && visual.userData.mixamo && visual.userData.mixamo.animador) || this.animadorCaixa; // com esqueleto do Mixamo ou de caixinhas
     if (visual) { visual.position.set(0, 0, 0); visual.rotation.set(0, 0, 0); this.raiz.add(visual); }
     for (const f of this.aoVestir) f(visual, antigo);
     return antigo;
