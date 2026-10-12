@@ -19,6 +19,7 @@ const tn = (t) => `${t.a}|${t.b}`;
 module.exports = function attachDomino(io) {
   const nsp = io.of("/domino");
   const rooms = new Map();
+  require("./lobby.js").registrar("domino", rooms, { max: 6 }); // aparece na lista de salas da Vila
 
   function cleanConfig(c = {}) {
     return {

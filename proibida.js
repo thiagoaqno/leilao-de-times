@@ -16,6 +16,7 @@ const embaralhar = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = M
 module.exports = function attachProibida(io) {
   const nsp = io.of("/proibida");
   const rooms = new Map();
+  require("./lobby.js").registrar("proibida", rooms, { max: 16 }); // aparece na lista de salas da Vila
   const cleanConfig = (c = {}) => ({
     tempo: [45, 60, 90].includes(int(c.tempo, 60)) ? int(c.tempo, 60) : 60,
     meta: [10, 15, 20, 30].includes(int(c.meta, 15)) ? int(c.meta, 15) : 15,

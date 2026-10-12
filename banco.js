@@ -23,6 +23,7 @@ const die = () => 1 + Math.floor(Math.random() * 6);
 module.exports = function attachBanco(io) {
   const nsp = io.of("/banco");
   const rooms = new Map();
+  require("./lobby.js").registrar("banco", rooms, { max: MAX_PLAYERS }); // aparece na lista de salas da Vila
 
   function cleanConfig(c = {}) {
     return {

@@ -12,6 +12,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math
 module.exports = function attachBloqueio(io) {
   const nsp = io.of("/bloqueio");
   const rooms = new Map();
+  require("./lobby.js").registrar("bloqueio", rooms, { max: 4 }); // aparece na lista de salas da Vila
 
   const cleanConfig = (c = {}) => ({ timer: [30, 45, 60].includes(+c.timer) ? +c.timer : 45 });
   const nameOf = (room, id) => (room.players[id] ? room.players[id].name : "?");
