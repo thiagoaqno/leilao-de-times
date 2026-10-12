@@ -1,14 +1,14 @@
-# Vila volta a ser só 2D
+# Gatinhos Explosivos na Vila (fase 1)
 
-**Antes:** a Vila abria em 3D por padrão, com botões de câmera, música, 3D/2D e skin, e uma pasta `public/vila3d/` inteira só para isso. O pessoal não curtiu.
+**Antes:** a Vila não tinha nenhum jogo no estilo Exploding Kittens; o terreno do canto da Rua das Cartas estava vazio, com a placa "EM BREVE".
 
-**Depois:** a Vila é só o mapa 2D de pixel-art, como antes. Saíram os botões Câmera, Música, 3D/2D e Skin (a skin só aparecia no 3D), a tecla V e o carregamento do three.js na página.
+**Depois:** a **Toca dos Gatinhos** ocupa esse terreno (telhado laranja com um gatinho-bomba) e abre o **Gatinhos Explosivos**, de 2 a 5 jogadores, com sala de código, convite, avatar, só assistir e reconexão como os outros jogos de cartas. Esta fase é só a estrutura e a jogabilidade: o visual está simples de propósito; cores, animações e efeitos vêm na próxima.
 
-**O que ficou:**
-- Futevôlei dentro da Vila Esportiva (funciona igual no 2D).
-- Karts e cenário da Kenney na Corrida e na Batalha (não eram da Vila).
-- A pasta `public/vila3d/musica/` e o endereço `/api/musicas-vila3d`, sem tocar em lugar nenhum por enquanto.
+**Regras (cartas e textos nossos):**
+- Cada um começa com 1 Desarmar e 7 cartas; o monte leva um Gatinho Explosivo a menos que o número de jogadores.
+- Na sua vez, jogue quantas cartas quiser e termine comprando. Gatinho sem Desarmar = explode; com Desarmar, você escolhe em segredo onde ele volta no monte.
+- Cartas: Ataque (o próximo joga 2x; ataques empilham), Pular, Favor (o alvo escolhe a carta que dá), Embaralhar, Espiar o Futuro (só você vê as 3 de cima), Nem Pensar e 5 gatos (par rouba uma carta, trio pede uma carta pelo nome).
+- Toda jogada abre uma janela curta para o Nem Pensar de qualquer pessoa viva; número ímpar cancela. Nem Pensar também pode ser cancelado.
+- Relógios: quem demora compra sozinho; favor e Desarmar se resolvem sozinhos; quem caiu da sala não segura a mesa. O vencedor entra no placar da Noite da Galera.
 
-**O que saiu:** `public/vila3d/` (menos a pasta de música), com o céu, a cidade reduzida e os prédios KayKit, e `ferramentas/vila3d-dados.js`. O teste da Vila e do Ginásio voltou a olhar só o desenho 2D.
-
-**Como:** o resto do `public/index.html` já desenhava o 2D por baixo; só tirei a camada 3D e conferi no navegador que a Vila abre sem erros.
+**Onde:** `kittens.js` (servidor, canal `/kittens`), `public/kittens/` (página e `regras.js`), prédio em `public/index.html`/`vila.js`, `noite.js`, `tests/kittens.test.js` e `tests/salas.test.js`.

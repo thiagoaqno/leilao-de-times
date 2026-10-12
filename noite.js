@@ -8,7 +8,7 @@
 // Tudo fica na memória do servidor; uma noite parada por 12 horas é apagada.
 const { limparNome } = require("./salas.js");
 
-const JOGOS = { leilao: "Leilão", banco: "Banco", uno: "Uno", sinuca: "Sinuca", truco: "Truco", domino: "Dominó", ludo: "Ludo", botao: "Botão",
+const JOGOS = { leilao: "Leilão", banco: "Banco", uno: "Uno", kittens: "Gatinhos Explosivos", sinuca: "Sinuca", truco: "Truco", domino: "Dominó", ludo: "Ludo", botao: "Botão",
   corrida: "Corrida", tiro: "Tiro", pelada: "Pelada", rocket: "Rocket", batalha: "Batalha", tenis: "Tênis", rumi: "Rumi", proibida: "Palavra Proibida", pingpong: "Pingue-Pongue", ginasio: "Ginásio", futevolei: "Futevôlei", digita: "Digitação",
   carreira: "Carreira em grupo" };
 const noites = new Map(), porSala = new Map(); // id -> noite; "jogo:CÓDIGO" -> id da noite
