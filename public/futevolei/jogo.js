@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { makePlayer, descartarJogador, configurarBonecos } from "/pelada/bonecos.js";
 import { canvasTex } from "/pelada/tex.js";
 import { Atleta, ateImpacto } from "/futevolei/atleta.js";
+import { Modelo, criarMixamo, soltarMixamo } from "/futevolei/atleta-mixamo.js";
 import { montarCenario } from "/futevolei/cenarios.js";
 
 const F = window.Futevolei, C = window.Campo, Q = F.Q, { $, h, store } = Comum;
@@ -130,8 +131,15 @@ function atualizarGraos(dt) {
 // pendura no próprio transform. Quem jogava com esse visual antes devolve o antigo para ser liberado.
 function vestirSkin(atleta, j) {
   const visual = makePlayer(KIT[j.team], j.slot ? 7 : 10, j.nome || "", { skin: j.skin, praia: true });
+  atleta.dados = j;
+  // a skin padrão ganha o esqueleto do Mixamo (as outras seguem de caixinhas); camisa e bermuda nas cores do time
+  if ((!j.skin || j.skin === "padrao") && Modelo.ativo && visual.userData.body) {
+    const pele = [0xf1c27d, 0xc68642, 0x8d5524, 0xe0ac69][(j.slot || 0) + (j.team === "B" ? 2 : 0)] ?? 0xe0ac69;
+    const m = criarMixamo([pele, C.kitColor(KIT[j.team]), C.kitColor2(KIT[j.team])]);
+    visual.userData.body.visible = false; visual.add(m.raiz); visual.userData.mixamo = m;
+  }
   const antigo = atleta.vestir(visual);
-  if (antigo) descartarJogador(antigo);
+  if (antigo) { soltarMixamo(antigo.userData.mixamo); descartarJogador(antigo); }
 }
 function criarAtleta(j) {
   const a = new Atleta({ id: j.id, team: j.team });
@@ -141,8 +149,9 @@ function criarAtleta(j) {
   scene.add(a.raiz);
   return a;
 }
-function soltarAtleta(a) { scene.remove(a.raiz); const v = a.despir(); if (v) descartarJogador(v); }
+function soltarAtleta(a) { scene.remove(a.raiz); const v = a.despir(); if (v) { soltarMixamo(v.userData.mixamo); descartarJogador(v); } }
 function limparAtletas() { for (const a of G.atletas.values()) soltarAtleta(a); G.atletas.clear(); }
+Modelo.carregar().then(() => { for (const a of G.atletas.values()) if (a.dados && !a.visual?.userData.mixamo) vestirSkin(a, a.dados); });
 function montarAtletas(lista) { limparAtletas(); for (const j of lista) G.atletas.set(j.id, criarAtleta(j)); }
 // a torcida em volta da quadra: os mesmos bonecos e skins, sem nome nem marcador de time
 function montarTorcida() {

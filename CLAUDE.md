@@ -143,8 +143,9 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
   grupos `comemora`, `lamenta` e `mania` sorteiam uma versão). **O golpe começa antes do toque:** cada clipe tem o seu
   `impacto`; o `jogo.js` usa `F.previsaoToque` para `antecipar` o golpe e o evento do toque só `confirmar` (acerta o
   impacto). Online, os eventos levam a hora do servidor (`e.t`) e esperam a bola chegar na tela (`INTERP`). O saque tem
-  0,3 s de preparo (`PREPARO_SAQUE`, evento `preSaque`). Parado, o boneco respira, troca o peso de perna, quica na base
+  0,3 s de preparo (`PREPARO_SAQUE`, evento `preSaque`). O corpo reage ao impulso (aceleração suavizada: arrancar inclina para a frente, frear para trás; o pulo agacha, sobe em arco e amortece ao pousar). Parado, o boneco respira, troca o peso de perna, quica na base
   e, de vez em quando, faz uma mania; tudo passa por uma suavização (cada junta vai atrás do alvo).
+- **Esqueleto Mixamo (`atleta-mixamo.js`):** só a skin padrão. `Modelo.carregar()` lê `modelo/atleta.glb` + `clipes.json` (gerados por `ferramentas/animacoes-mixamo.mjs` a partir dos FBX do Mixamo); `criarMixamo(cores)` pinta pele e time por região; `AnimadorMixamo` mistura parado/corrida/lateral por velocidade e dispara os golpes por `GOLPES_M` (clipe, início, impacto, fim: o impacto cai no toque). Exceção à regra de bonecos da Pelada. Sem o modelo, as caixinhas.
 - **`cenarios.js`:** `montarCenario(renderer, scene, "praia" | "arena")`. A praia: céu `Sky` com nuvens (o sol fica
   atrás do time Amarelo; exposição baixa porque o céu é forte), o ambiente (reflexos) tirado do próprio céu, areia com
   relevo, mar e espuma animados, coqueiros, guarda-sóis, quiosque, torre do salva-vidas, calçadão e prédios. A arena
