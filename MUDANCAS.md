@@ -1,7 +1,9 @@
-# Bloqueio: novo jogo na Vila (fase 1, o esquema geral)
+# Gatinhos Explosivos: visual novo e animações
 
-**Antes:** a Vila não tinha nenhum jogo de tabuleiro de bloquear caminho.
+**Antes:** o jogo funcionava, mas com visual de protótipo: jogadores numa fila, cartas só com emoji e nome, nada se mexia e não tinha som.
 
-**Depois:** a **Casa do Bloqueio** fica na Rua das Cartas (no terreno da direita, que era vazio). O jogo é o Quoridor: tabuleiro 9x9, cada peão tenta chegar ao lado oposto; na sua vez você anda uma casa (pulando o peão que está na frente, ou indo para o lado se a casa de trás está fechada) ou põe uma parede de duas casas (10 paredes em 2 jogadores, 5 em 4). Não vale parede que feche todo o caminho de alguém, nem que sobreponha ou cruze outra.
+**Depois:** noite roxa com patinhas no fundo e uma mesa de feltro com borda de neon laranja, com cada jogador sentado em volta (você sempre embaixo, a vez brilha e o alvo de um Favor ou roubo pulsa). As cartas ficaram ilustradas, com gradiente por tipo, cantos e faixa de nome; o Gatinho Explosivo é preto com brilho vermelho e aparece grande na mesa enquanto alguém desarma. A mão se ajusta ao espaço (lado a lado, sobreposta ou em duas linhas no celular).
 
-**Como:** `public/bloqueio/regras.js` guarda as regras (as mesmas no servidor e no navegador, com o robô), `bloqueio.js` cuida da sala (código de 5 letras, convite, assistir, reconexão, robôs, relógio de 30/45/60 s em que quem demora anda um passo, placar da Noite), e `public/bloqueio/index.html` desenha o tabuleiro em SVG, simples e sem estilo (cores, animações e efeitos ficam para a fase 2). Testes em `tests/bloqueio.test.js`; `/bloqueio` entrou em `tests/salas.test.js`.
+**Animações e sons (feitos à mão, sem biblioteca nova):** cartas voam do monte para cada jogador ao dar as cartas e ao comprar, da mão para o descarte ao jogar, entre os jogadores em Favor e roubo, e o gatinho volta ao monte. Avisos grandes para Nem Pensar, Cancelada, Pular, Ataque (com tremida), Embaralhar, Desarmado e vitória (com confete). Explosão com clarão, fagulhas e tremida. A jogada pendente brilha no descarte e fica riscada se estiver cancelada, e o relógio do Nem Pensar tem cor própria. Sons sintetizados com botão de mudo, que fica guardado. Quem pede "menos movimento" no sistema fica sem voos, tremidas e confete.
+
+**Como:** `public/kittens/estilo.css` e `public/kittens/efeitos.js` novos; `index.html` ganhou a mesa em volta e o `rodarFx`, que anima só os eventos `fx` novos (ao entrar ou voltar para a sala não repete o passado). O servidor e as regras não mudaram.

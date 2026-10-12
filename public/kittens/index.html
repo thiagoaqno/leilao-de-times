@@ -6,105 +6,19 @@
 <script src="/semzoom.js"></script>
 <title>Gatinhos Explosivos da Galera</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😼</text></svg>">
-<style>
-/* fase 1: só a estrutura do jogo. Cores e animações vêm depois. */
-:root{--bg:#1b1410;--panel:#2a1f18;--line:#4a372a;--text:#fff4e6;--muted:#c3ab94;--orange:#ff8a1f;--red:#e5483a;--good:#6bd16b;--paper:#fff6e6;--ink:#2a1f18}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,sans-serif}
-body{min-height:100vh}
-h1,h2,h3{margin:0}
-button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;padding:9px 14px;background:#3d2c20;color:var(--text);border:1px solid var(--line)}
-button:hover:not(:disabled){filter:brightness(1.2)}
-button:disabled{opacity:.4;cursor:not-allowed}
-button.primary{background:var(--orange);color:#2a1500;border-color:#ffb066}
-button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
-button.small{padding:5px 10px;font-size:13px}
-input,select{font:inherit;color:var(--text);background:#120c08;border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
-label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px;font-weight:600}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.muted{color:var(--muted)}
-.hidden{display:none!important}
-.err{color:var(--red);min-height:20px;margin-top:8px;font-weight:600}
-.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
-.wrap{max-width:1180px;margin:0 auto;padding:14px 14px 50px}
-.bar{position:sticky;top:0;z-index:20;background:#1b1410ee;border-bottom:1px solid var(--line)}
-.bar-in{max-width:1180px;margin:0 auto;padding:8px 14px;display:flex;align-items:center;gap:10px}
-.bar a{color:var(--muted);text-decoration:none;font-weight:700}
-.bar h1{font-size:20px;margin-right:auto}
-.code{font:800 18px monospace;letter-spacing:.12em;color:var(--orange)}
-
-.home,.lobby{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;margin:18px auto 0}
-@media (max-width:760px){.home,.lobby{grid-template-columns:1fr}}
-.hero h2{font-size:clamp(30px,6vw,48px);line-height:1.05}
-.codein{text-transform:uppercase;letter-spacing:.3em;font-weight:800;font-size:22px;text-align:center}
-.seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
-.lseat{background:var(--paper);color:var(--ink);border-radius:12px;padding:8px;display:flex;align-items:center;gap:8px;position:relative}
-.lseat.empty{background:transparent;border:2px dashed var(--line);color:var(--muted);justify-content:center;min-height:54px}
-.lseat .av{font-size:26px}
-.lseat b{display:block;line-height:1.1}
-.lseat small{color:#7a6a5a}
-.lseat .x{position:absolute;top:0;right:2px;padding:0 6px;background:none;border:none;color:#7a6a5a}
-.picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.picker button{padding:0;width:40px;height:40px;font-size:22px}
-.picker button.on{outline:3px solid var(--orange)}
-.picker button.taken{opacity:.2}
-
-/* mesa */
-.game{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px;align-items:start}
-@media (max-width:980px){.game{grid-template-columns:1fr}}
-.players{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-.pl{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:7px 11px;display:flex;align-items:center;gap:8px;min-width:120px}
-.pl .av{font-size:24px}
-.pl b{display:block;line-height:1.1}
-.pl small{color:var(--muted)}
-.pl.turn{border-color:var(--orange);box-shadow:0 0 0 2px #ff8a1f55}
-.pl.dead{opacity:.45;text-decoration:line-through}
-.pl.me b::after{content:" (você)";color:var(--muted);font-weight:400}
-.pl.target{cursor:pointer;border-style:dashed}
-.center{display:flex;gap:26px;align-items:center;justify-content:center;padding:18px 0;flex-wrap:wrap}
-.pile{text-align:center;font-size:13px;color:var(--muted)}
-.discards{display:flex;min-height:150px;align-items:flex-end;justify-content:center}
-.discards .kc{margin-left:-48px}
-.discards .kc:first-child{margin-left:0}
-
-/* cartas */
-.kc{--w:92px;width:var(--w);height:calc(var(--w) * 1.45);border-radius:10px;background:var(--paper);color:var(--ink);border:3px solid var(--cc,#999);padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;flex:none;user-select:none;position:relative;box-shadow:0 3px 8px #0008}
-.kc .em{font-size:calc(var(--w) * .42);line-height:1;margin-top:8px}
-.kc .nm{font-weight:800;font-size:calc(var(--w) * .13);line-height:1.1;width:100%;background:var(--cc,#999);color:#fff;border-radius:5px;padding:3px 2px}
-.kc.back{background:#2a1f18;border-color:var(--orange);color:var(--orange)}
-.kc.back .em{margin-top:22px}
-.kc.back .nm{background:var(--orange);color:#2a1500}
-.hand .kc{cursor:pointer;transition:transform .1s}
-.hand .kc:hover{transform:translateY(-6px)}
-.hand .kc.sel{transform:translateY(-14px);outline:4px solid var(--orange)}
-.kc.small{--w:70px}
-.t-bomb{--cc:#222}.t-defuse{--cc:#2f9e5b}.t-nope{--cc:#c0392b}.t-attack{--cc:#e8590c}.t-skip{--cc:#3b82f6}.t-favor{--cc:#d6336c}.t-shuffle{--cc:#7c3aed}.t-peek{--cc:#0ea5a5}
-.t-cat1{--cc:#d9822b}.t-cat2{--cc:#6a8f2a}.t-cat3{--cc:#6b7280}.t-cat4{--cc:#c9a227}.t-cat5{--cc:#b8528a}
-.hand{display:flex;gap:8px;flex-wrap:wrap;padding:14px 4px 6px;min-height:150px}
-
-.actbar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin:6px 0}
-.actbar .st{font-weight:700;margin-bottom:8px}
-.timer{height:5px;background:#120c08;border-radius:3px;overflow:hidden;margin-bottom:8px}
-.timer i{display:block;height:100%;background:var(--orange)}
-.peek{display:flex;gap:6px;margin:8px 0;align-items:center;flex-wrap:wrap}
-.notes{margin-top:6px;font-size:13px;color:var(--muted)}
-.side .box{margin-bottom:12px;padding:12px}
-.log{max-height:300px;overflow:auto;font-size:13px;display:flex;flex-direction:column;gap:3px}
-.score div{display:flex;justify-content:space-between}
-.result{text-align:center;padding:16px}
-.result h2{font-size:30px}
-.modal{position:fixed;inset:0;background:#000a;display:grid;place-items:center;z-index:50;padding:14px}
-.modal .box{max-width:520px;max-height:90vh;overflow:auto}
-.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000d;color:#fff;padding:10px 16px;border-radius:12px;z-index:60;max-width:90vw}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/kittens/estilo.css">
 </head>
 <body>
 <header class="bar">
   <div class="bar-in">
     <a href="/" title="Voltar para a vila">← Vila</a>
     <h1>😼 Gatinhos Explosivos</h1>
-    <div class="row hidden" id="roomTag"><span class="muted">Mesa</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
-    <button class="ghost small" id="btnRules">Regras</button>
+    <div class="row hidden" id="roomTag"><span class="muted lbl">Mesa</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
+    <button class="ghost small" id="btnSound" title="Som">🔊</button>
+    <button class="ghost small" id="btnRules"><span class="lg">Regras</span><span class="sm">❔</span></button>
   </div>
 </header>
 
@@ -113,6 +27,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px;font-wei
     <div class="home">
       <div class="hero">
         <h2>Gatinhos<br>Explosivos</h2>
+        <div class="fan" id="heroFan"></div>
         <p class="muted">Compre uma carta por vez e torça para não tirar o gatinho que explode. Use Ataque, Pular, Favor e Nem Pensar para jogar a bomba nos amigos. De 2 a 5 jogadores.</p>
       </div>
       <div class="box">
@@ -146,10 +61,14 @@ label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px;font-wei
   <section id="game" class="hidden">
     <div class="game">
       <div>
-        <div class="players" id="players"></div>
-        <div class="center">
-          <div class="pile" id="drawPile"></div>
-          <div class="pile"><div class="discards" id="discards"></div><div id="discardInfo"></div></div>
+        <div class="table" id="table">
+          <div class="felt"></div><div class="turnglow" id="turnglow"></div>
+          <div id="assentos"></div>
+          <div class="center">
+            <div class="pile drawpile" id="drawPile"></div>
+            <div class="pile"><div class="discards" id="discards"></div><div class="cnt" id="discardInfo"></div></div>
+          </div>
+          <div class="bombstage hidden" id="bombstage"></div>
         </div>
         <div class="actbar" id="actbar"></div>
         <div class="hand" id="hand"></div>
@@ -169,11 +88,12 @@ label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px;font-wei
 <script src="/noite.js"></script>
 <script src="/comum.js"></script>
 <script src="/kittens/regras.js"></script>
+<script src="/kittens/efeitos.js"></script>
 <script>
 const R = window.Gatinhos, T = R.TIPOS;
 const socket = io("/kittens");
 const { $, h, store } = Comum;
-let S = null, ME = null, SEL = new Set(), lastNote = 0;
+let S = null, ME = null, SEL = new Set(), lastNote = 0, lastFx = null, prevHand = null;
 const relogio = Comum.relogio();
 const P = (id) => S && S.players.find((p) => p.id === id);
 const me = () => (ME && ME.id ? P(ME.id) : null);
@@ -182,8 +102,14 @@ const act = Comum.criarAct(socket, toast);
 const show = (id) => { for (const s of ["home", "lobby", "game"]) $(s).classList.toggle("hidden", s !== id); };
 
 // ---------- cartas ----------
-const cardHTML = (c, extra = "") => `<div class="kc t-${c.t} ${extra}" data-id="${c.id}" title="${h(T[c.t].desc)}"><span class="em">${T[c.t].emoji}</span><span class="nm">${h(T[c.t].nome)}</span></div>`;
-const backHTML = (extra = "") => `<div class="kc back ${extra}"><span class="em">😼</span><span class="nm">Monte</span></div>`;
+const cardHTML = (c, extra = "") => `<div class="kc t-${c.t} ${extra}" data-id="${c.id}" title="${h(T[c.t].desc)}"><div class="in"><span class="cn tl">${T[c.t].emoji}</span><span class="cn br">${T[c.t].emoji}</span><span class="em">${T[c.t].emoji}</span><span class="nm">${h(T[c.t].nome)}</span></div></div>`;
+const backHTML = (extra = "") => `<div class="kc back ${extra}"><div class="in"><span class="em">😼</span><span class="nm">Monte</span></div></div>`;
+$("heroFan").innerHTML = ["attack", "cat1", "defuse", "nope", "bomb"].map((t, i) => cardHTML({ t, id: i }, "").replace('class="kc', `style="transform:rotate(${(i - 2) * 9}deg) translateY(${Math.abs(i - 2) * 6}px)" class="kc`)).join("");
+// som e botão de mute
+const renderSom = () => { $("btnSound").textContent = Efeitos.Som.mudo ? "🔇" : "🔊"; };
+$("btnSound").onclick = () => { Efeitos.Som.alternar(); renderSom(); Efeitos.Som.tocar("pop"); };
+renderSom();
+document.addEventListener("pointerdown", () => Efeitos.Som.destravar(), { once: true });
 
 // ---------- entrar / criar ----------
 const urlCode = new URLSearchParams(location.search).get("mesa");
@@ -218,12 +144,13 @@ socket.on("state", (st) => { S = st; relogio.doEstado(st.now); render(); });
 
 function render() {
   if (!S) return;
-  if (S.phase === "lobby") { show("lobby"); renderLobby(); return; }
+  if (S.phase === "lobby") { show("lobby"); renderLobby(); lastFx = 0; prevHand = null; return; }
   show("game");
   const mine = new Set((S.hand || []).map((c) => c.id));
   SEL = new Set([...SEL].filter((id) => mine.has(id)));
   if (!(S.turn === (ME && ME.id)) || S.pending) SEL.clear();
   renderPlayers(); renderCenter(); renderBar(); renderHand(); renderSide(); notes();
+  rodarFx();
   tick();
 }
 
@@ -247,14 +174,27 @@ function renderLobby() {
 
 // ---------- mesa ----------
 function renderPlayers() {
-  const myId = ME && ME.id, targeting = targetMode();
-  $("players").innerHTML = S.players.map((p) => `<div class="pl ${p.id === S.turn ? "turn" : ""} ${p.alive ? "" : "dead"} ${p.id === myId ? "me" : ""} ${targeting && p.alive && p.id !== myId ? "target" : ""}" data-pl="${p.id}">
-    <span class="av">${p.alive ? p.pawn : "💥"}</span><div><b>${h(p.name)}</b><small>${p.alive ? p.count + " carta" + (p.count === 1 ? "" : "s") : "explodiu"}${p.id === S.turn && S.turnsLeft > 1 ? ` · ${S.turnsLeft} vezes!` : ""}${p.online ? "" : " · offline"}</small></div></div>`).join("");
+  const myId = ME && ME.id, targeting = targetMode(), n = S.players.length;
+  const i0 = Math.max(0, S.players.findIndex((p) => p.id === myId)); // eu embaixo; os outros em volta, no sentido da mesa
+  $("assentos").innerHTML = S.players.map((p, i) => {
+    const k = (i - i0 + n) % n, ang = (2 * Math.PI * k) / n;
+    const x = 50 - 43 * Math.sin(ang), y = 50 + 41 * Math.cos(ang);
+    return `<div class="seat ${p.id === S.turn ? "turn" : ""} ${p.alive ? "" : "dead"} ${p.id === myId ? "me" : ""} ${p.online ? "" : "off"} ${targeting && p.alive && p.id !== myId ? "target" : ""}" data-pl="${p.id}" style="left:${x}%;top:${y}%">
+      ${p.id === S.turn ? `<span class="tmark">🔻</span>` : ""}<div class="av">${p.alive ? p.pawn : "💥"}${p.alive ? `<span class="cnt">${p.count}</span>` : ""}</div>
+      <div class="nm">${h(p.name)}</div><div class="info">${p.alive ? (p.id === S.turn && S.turnsLeft > 1 ? `joga ${S.turnsLeft}x!` : p.online ? "" : "offline") : "explodiu"}</div></div>`;
+  }).join("");
+  $("turnglow").classList.toggle("on", S.phase === "playing" && S.turn === myId && !S.pending);
 }
 function renderCenter() {
-  $("drawPile").innerHTML = backHTML() + `<div>${S.drawCount} no monte</div>`;
-  $("discards").innerHTML = S.discard.length ? S.discard.map((c) => cardHTML(c, "small")).join("") : `<span class="muted">descarte vazio</span>`;
+  const pcs = S.pending ? new Set(S.pending.cards.map((c) => c.id)) : null, cancelada = S.pending && S.pending.nopes % 2;
+  const canDraw = S.phase === "playing" && S.turn === (ME && ME.id) && !S.pending && !S.defuse && !S.favor;
+  $("drawPile").className = "pile drawpile" + (canDraw ? " can" : "");
+  $("drawPile").innerHTML = `<div class="kc back"><div class="in"></div></div><div class="kc back"><div class="in"></div></div>` + backHTML() + `<div class="cnt">${S.drawCount} no monte</div>`;
+  $("discards").innerHTML = S.discard.length ? S.discard.map((c) => cardHTML(c, (pcs && pcs.has(c.id) ? "live " : "") + (pcs && pcs.has(c.id) && cancelada ? "noped" : ""))).join("") : `<div class="vazio">descarte</div>`;
   $("discardInfo").textContent = S.discardCount ? `${S.discardCount} no descarte` : "";
+  const d = S.defuse, bs = $("bombstage");
+  bs.classList.toggle("hidden", !d);
+  if (d) bs.innerHTML = `${cardHTML(d.bomb, "big")}<div class="lbl">${d.pid === (ME && ME.id) ? "Desarme!" : `${h(P(d.pid).name)} está desarmando…`}</div>`;
 }
 function renderSide() {
   $("score").innerHTML = S.players.map((p) => `<div><span>${p.pawn} ${h(p.name)}</span><b>${p.wins}</b></div>`).join("");
@@ -262,7 +202,10 @@ function renderSide() {
 }
 function renderHand() {
   const hand = S.hand || [];
-  $("hand").innerHTML = hand.map((c) => cardHTML(c, SEL.has(c.id) ? "sel" : "")).join("") || `<span class="muted">${me() ? "" : "Você está só assistindo."}</span>`;
+  const seen = prevHand; prevHand = new Set(hand.map((c) => c.id));
+  const cw = innerWidth <= 640 ? 78 : 98, avail = $("hand").clientWidth - 14, n = hand.length;
+  $("hand").style.setProperty("--ov", (n < 2 || innerWidth <= 640 ? 4 : n * cw <= avail - 6 * n ? 6 : -Math.min(cw - 28, (n * cw - avail) / (n - 1))) + "px"); // cabe: lado a lado; senão, sobrepõe só o preciso
+  $("hand").innerHTML = hand.map((c) => cardHTML(c, (SEL.has(c.id) ? "sel " : "") + (seen && !seen.has(c.id) ? "new" : ""))).join("") || `<span class="muted">${me() ? "" : "Você está só assistindo."}</span>`;
   $("hand").querySelectorAll(".kc").forEach((el) => (el.onclick = () => onCard(+el.dataset.id)));
 }
 function onCard(id) {
@@ -292,7 +235,7 @@ function alvos() { return S.players.filter((p) => p.alive && p.id !== ME.id); }
 
 function renderBar() {
   const el = $("actbar"), m = me(), myId = ME && ME.id;
-  const timer = S.deadline ? `<div class="timer"><i id="tbar"></i></div>` : "";
+  const timer = S.deadline ? `<div class="timer ${S.deadline.kind === "nope" ? "nope" : ""}"><i id="tbar"></i></div>` : "";
   let st = "", btns = "";
   if (S.phase === "ended") {
     const w = P(S.winner), isHost = m && S.host === m.id;
@@ -344,17 +287,31 @@ function renderBar() {
   const nl = (S.notes || []).slice(-3);
   if ($("notes")) $("notes").innerHTML = nl.map((n) => `<div>👁️ ${h(n.text)}</div>`).join("");
 }
-$("players").addEventListener("click", (e) => { // escolher o alvo tocando no jogador
+$("assentos").addEventListener("click", (e) => { // escolher o alvo tocando no jogador
   const el = e.target.closest("[data-pl]"); if (!el || !targetMode()) return;
   const b = document.querySelector(`[data-alvo="${el.dataset.pl}"]`); if (b && !b.disabled) b.click();
 });
+// os eventos do servidor viram animação; ao entrar (ou voltar) só marca onde está, sem repetir o passado
+function rodarFx() {
+  const fxs = S.fx || [];
+  if (lastFx === null) { lastFx = fxs.length ? fxs[fxs.length - 1].id : 0; return; }
+  const novos = fxs.filter((f) => f.id > lastFx);
+  if (!novos.length) return;
+  lastFx = novos[novos.length - 1].id;
+  const L = {
+    eu: ME && ME.id, jogadores: S.players.filter((p) => p.alive).map((p) => p.id), nome: (id) => (P(id) ? P(id).name : "?"),
+    lugar: (id) => document.querySelector(`[data-pl="${id}"] .av`), monte: $("drawPile"), descarte: $("discards"), mao: $("hand"), mesa: $("table"),
+    verso: () => backHTML(), frente: (c) => cardHTML(c, ""),
+  };
+  novos.forEach((f, i) => setTimeout(() => Efeitos.animar(f, L), i * 180));
+}
 function notes() { // avisos que só você recebe viram um toque na tela
   for (const n of S.notes || []) if (n.id > lastNote) { lastNote = n.id; toast(n.text); }
 }
 function tick() {
   const bar = $("tbar"); if (!bar || !S.deadline) return;
   const left = Math.max(0, S.deadline.at - relogio.agora());
-  bar.style.width = (100 * left / S.deadline.total) + "%";
+  bar.style.transform = `scaleX(${Math.min(1, left / S.deadline.total)})`;
 }
 setInterval(tick, 200);
 
