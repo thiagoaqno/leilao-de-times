@@ -260,7 +260,7 @@
   }
   // saque: chute de trás da linha de fundo, por cima da rede, para o fundo do outro lado. Primeiro o balanço da perna
   // (PREPARO_SAQUE: o navegador já começa a animação, evento "preSaque"), depois a bola sai.
-  const PREPARO_SAQUE = 300;
+  const PREPARO_SAQUE = 550;
   function sacar(m, j, mira) {
     if (m.fase !== "saque" || j.id !== m.sacador || m.t < m.ate || m.sacando) return;
     m.sacando = { mira: mira || j.mira, ate: m.t + PREPARO_SAQUE }; j.armado = null;

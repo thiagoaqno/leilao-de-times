@@ -85,6 +85,7 @@ pegadas.instanceMatrix.setUsage(THREE.DynamicDrawUsage); pegadas.frustumCulled =
 const pegadaVida = new Float32Array(PEGADAS), pegadaPos = Array.from({ length: PEGADAS }, () => ({ x: 0, z: 0, yaw: 0 }));
 let pegadaI = 0;
 const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _s = new THREE.Vector3();
+const _bolaSaque = new THREE.Vector3();
 function pisar(x, z, yaw, lado) {
   if (G.cenario && !G.cenario.naAreia(x, z)) return;
   const i = pegadaI++ % PEGADAS, d = lado > 0 ? 0.1 : -0.1;
@@ -132,11 +133,15 @@ function atualizarGraos(dt) {
 function vestirSkin(atleta, j) {
   const visual = makePlayer(KIT[j.team], j.slot ? 7 : 10, j.nome || "", { skin: j.skin, praia: true });
   atleta.dados = j;
-  // a skin padrão ganha o esqueleto do Mixamo (as outras seguem de caixinhas); camisa e bermuda nas cores do time
-  if ((!j.skin || j.skin === "padrao") && Modelo.ativo && visual.userData.body) {
-    const pele = [0xf1c27d, 0xc68642, 0x8d5524, 0xe0ac69][(j.slot || 0) + (j.team === "B" ? 2 : 0)] ?? 0xe0ac69;
-    const m = criarMixamo([pele, C.kitColor(KIT[j.team]), C.kitColor2(KIT[j.team])]);
-    visual.userData.body.visible = false; visual.add(m.raiz); visual.userData.mixamo = m;
+  // todas as skins usam as animações do Mixamo: a padrão mostra o boneco do Mixamo (camisa e bermuda nas cores do time);
+  // as de caixinhas ficam com o próprio visual e o esqueleto escondido passa a pose para as juntas
+  if (Modelo.ativo && visual.userData.body) {
+    const padrao = !j.skin || j.skin === "padrao", u = visual.userData;
+    if (padrao) {
+      const pele = [0xf1c27d, 0xc68642, 0x8d5524, 0xe0ac69][(j.slot || 0) + (j.team === "B" ? 2 : 0)] ?? 0xe0ac69;
+      const m = criarMixamo([pele, C.kitColor(KIT[j.team]), C.kitColor2(KIT[j.team])]);
+      u.body.visible = false; visual.add(m.raiz); u.mixamo = m;
+    } else if (u.legs) u.mixamo = criarMixamo(null, u);
   }
   const antigo = atleta.vestir(visual);
   if (antigo) { soltarMixamo(antigo.userData.mixamo); descartarJogador(antigo); }
@@ -442,7 +447,7 @@ function aoEvento(e) {
     if (e.espirrou && !grandeNaTela) golpeNaTela("Espirrou!", false);
   }
   else if (e.tipo === "preSaque") { const a = G.atletas.get(e.id); if (a) a.antecipar("saque", { lado: 1 }, e.falta); }
-  else if (e.tipo === "areia") { poeira(e.x, e.z, 70, 1.2); Som.areia(); }
+  else if (e.tipo === "areia") { poeira(e.x, e.z, 70, 1.2); Som.areia(); peixinho(e.x, e.z); }
   else if (e.tipo === "rede") Som.rede();
   else if (e.tipo === "ponto") {
     const meu = G.myTeam === e.time && G.me, motivo = MOTIVO[e.motivo];
@@ -454,6 +459,18 @@ function aoEvento(e) {
     if (G.cenario && G.cenario.tipo === "arena") { const cfg = G.offline ? G.m.cfg : S && S.match && S.match.cfg; G.cenario.placar(e.placar.A, e.placar.B, cfg ? `SET ATÉ ${cfg.pontos}` : ""); }
   }
   else if (e.tipo === "fim" && G.offline) mostrarFim(e.time);
+}
+// a bola caiu perto de alguém do lado dela: ele se joga (o peixinho), para o lado da bola
+function peixinho(x, z) {
+  let melhor = null, dm = 3;
+  for (const a of G.atletas.values()) {
+    if (F.ladoDe(z) !== a.team) continue;
+    const p = a.raiz.position, d = Math.hypot(x - p.x, z - p.z);
+    if (d > 0.7 && d < dm) { dm = d; melhor = a; }
+  }
+  if (!melhor) return;
+  const p = melhor.raiz.position, sy = Math.sin(melhor.yaw), cy = Math.cos(melhor.yaw), lat = (x - p.x) * cy - (z - p.z) * sy;
+  melhor.disparar("mergulho", { lado: Math.sign(lat) || 1 });
 }
 function mostrarFim(time) {
   if (!$("over").classList.contains("hidden")) return;
@@ -512,6 +529,10 @@ function frame() {
   if (G.cenario) G.cenario.atualizar(dt);
   // a bola girando, a sombra embaixo e onde ela vai cair (quando vem para o meu lado)
   bola.position.set(bolaV.x, bolaV.y, bolaV.z);
+  // o saque: quem saca pega a bola da areia, segura nas mãos e solta para chutar (a reposição do goleiro)
+  const sacador = estado.fase === "saque" ? G.atletas.get(estado.sacador) : null;
+  if (sacador !== G.sacadorAnt) { if (G.sacadorAnt) G.sacadorAnt.segura = false; if (sacador) { sacador.segura = true; sacador.disparar("pegaBola"); } G.sacadorAnt = sacador; }
+  if (sacador) { const p = sacador.bolaDoSaque(bolaV, _bolaSaque); if (p) bola.position.copy(p); }
   const vb = Math.hypot(bolaV.vx || 0, bolaV.vz || 0);
   if (vb > 0.1) { _eixo.set(bolaV.vz, 0, -bolaV.vx).normalize(); bola.rotateOnWorldAxis(_eixo, (vb / Q.R) * dt * 0.5); }
   sombra.position.set(bolaV.x, 0.015, bolaV.z); sombra.scale.setScalar(1 + bolaV.y * 0.12); sombra.material.opacity = Math.max(0.08, 0.32 - bolaV.y * 0.03);
