@@ -227,6 +227,7 @@ canvas.mini.off{display:none}
     <button class="tbtn" id="bSkin" title="Trocar o personagem (as skins da Pelada)">🎭<span class="tx"> Skin</span></button>
     <button class="tbtn" id="bCam" style="display:none" title="Câmera: terceira ou primeira pessoa (tecla V)">👁️<span class="tx"> Câmera</span></button>
     <button class="tbtn" id="bSom" style="display:none" title="Silenciar a música">🔊<span class="tx"> Música</span></button>
+    <button class="tbtn" id="bModo" title="Trocar entre a Vila em 3D e a Vila em 2D">🧊<span class="tx"> 3D</span></button>
     <button class="tbtn" id="bMapa" title="Mostrar ou esconder o mapa">🗺️<span class="tx"> Mapa</span></button>
     <button class="tbtn" id="bMenu" title="Lista de jogos">☰<span class="tx"> Jogos</span></button>
   </div>
@@ -1999,7 +2000,12 @@ $("bCam").onclick = camera3d;
 $("bMapa").onclick = () => { miniOn = !miniOn; if (!INT) $("mini").classList.toggle("off", !miniOn); $("bMapa").blur(); };
 setHere(lugarEm(player.x, player.y));
 let V3 = null;
-if (!/[?&]2d=1/.test(location.search) && window.Campo) { // ?2d=1 volta ao mapa antigo
+// 3D ou 2D: o botão guarda a escolha (vila:modo); ?2d=1 e ?3d=1 valem só naquela visita
+const modoVila = (() => { if (/[?&]2d=1/.test(location.search)) return "2d"; if (/[?&]3d=1/.test(location.search)) return "3d"; try { return localStorage.getItem("vila:modo") === "2d" ? "2d" : "3d"; } catch (e) { return "3d"; } })();
+$("bModo").innerHTML = modoVila === "3d" ? '🗺️<span class="tx"> 2D</span>' : '🧊<span class="tx"> 3D</span>';
+$("bModo").title = modoVila === "3d" ? "Trocar para a Vila em 2D (mapa de cima)" : "Trocar para a Vila em 3D";
+$("bModo").onclick = () => { try { localStorage.setItem("vila:modo", modoVila === "3d" ? "2d" : "3d"); } catch (e) { /* sem armazenamento */ } if (location.search) location.replace(location.pathname + location.hash); else location.reload(); };
+if (modoVila === "3d" && window.Campo) {
   import("/vila3d/mundo.js").then((m) => m.criar({
     MW, MH, OX, OY, VW, VH, ground, rumo, GAMES, FOUNTAIN, TELAO, TERRENOS, LAMPS, BENCHES, TREES, POSTES, PREDIOS, PARADOS, ESTADIOS, OUTFITS,
     player, others, naMinhaZona, drawTelao, nome: () => myName, look: () => outfit, skin: mySkin, aqui: () => here, destino: () => destino,
