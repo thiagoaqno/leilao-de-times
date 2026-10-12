@@ -85,6 +85,89 @@
       true
     ]
   },
+  "/bloqueio": {
+    "semNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "cria": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "actSemSala": {
+      "ok": false,
+      "error": "Você não está numa mesa."
+    },
+    "codigoErrado": {
+      "ok": false,
+      "error": "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu)."
+    },
+    "entraSemNome": {
+      "ok": false,
+      "error": "Coloque o seu nome."
+    },
+    "nomeRepetido": {
+      "ok": false,
+      "error": "Já tem alguém com esse nome na mesa."
+    },
+    "entra": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j1",
+      "token": "TOKEN"
+    },
+    "assiste": {
+      "ok": true,
+      "code": "CODE",
+      "id": null
+    },
+    "volta": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j0",
+      "token": "TOKEN"
+    },
+    "tokenErrado": {
+      "ok": true,
+      "code": "CODE",
+      "id": "j2",
+      "token": "TOKEN"
+    },
+    "acaoDesconhecida": {
+      "ok": false,
+      "error": "Ação desconhecida."
+    },
+    "camposDoEstado": [
+      "code",
+      "config",
+      "deadline",
+      "game",
+      "host",
+      "log",
+      "now",
+      "phase",
+      "players",
+      "winner",
+      "wins"
+    ],
+    "nomes": [
+      "Fulano d",
+      "Beltrano",
+      "Ciclano"
+    ],
+    "online": [
+      true,
+      true,
+      true
+    ],
+    "onlineDepoisDeCair": [
+      true,
+      false,
+      true
+    ]
+  },
   "/ludo": {
     "semNome": {
       "ok": false,

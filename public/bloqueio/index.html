@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<script src="/semzoom.js"></script>
+<title>Bloqueio</title>
+<style>
+:root{--bg:#14161c;--panel:#1d2029;--line:#323746;--text:#eef0f6;--muted:#9aa2b6;--gold:#f5b93c;--bad:#ff6b6b;--good:#6ee7a0;
+  --p0:#ff8a3d;--p1:#4fb0ff;--p2:#6ee7a0;--p3:#c58bff;--board:#c9a36b;--cell:#e4c791}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,sans-serif}
+body{min-height:100vh}
+.hidden{display:none!important}
+button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;padding:9px 14px;background:#2b3040;color:var(--text);border:1px solid #444b60}
+button.primary{background:var(--gold);color:#241a00;border-color:#b78113}
+button:disabled{opacity:.45;cursor:default}
+input,select{font:inherit;background:#101319;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%}
+.topo{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.topo a{color:var(--muted);text-decoration:none;font-weight:700}
+.topo h1{margin:0;font-size:18px}
+#roomTag{margin-left:auto;color:var(--muted)}
+#roomTag b{color:var(--gold);letter-spacing:2px}
+main{max-width:1000px;margin:0 auto;padding:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--muted)}
+.err{color:var(--bad);min-height:1.4em;margin-top:8px}
+.home{max-width:420px;margin:30px auto;display:grid;gap:10px}
+.home label{font-weight:700;font-size:13px;color:var(--muted)}
+#codein{text-transform:uppercase;letter-spacing:4px;text-align:center}
+.jog{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.jog:last-child{border:0}
+.jog .av{font-size:24px;width:34px;text-align:center}
+.jog .nm{flex:1;font-weight:700}
+.avs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.avs button{padding:4px 8px;font-size:20px}
+.avs button.on{border-color:var(--gold);background:#3a3320}
+.jogo{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px;align-items:start}
+@media(max-width:760px){.jogo{grid-template-columns:1fr}}
+#tab{width:100%;max-width:640px;aspect-ratio:1;display:block;margin:0 auto;touch-action:manipulation}
+.cards{display:grid;gap:8px}
+.pc{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;border:2px solid var(--line);background:var(--panel)}
+.pc.vez{border-color:var(--gold);box-shadow:0 0 0 3px #f5b93c33}
+.pc .cor{width:16px;height:16px;border-radius:50%}
+.pc .nm{flex:1;font-weight:700}
+.pc.off .nm{opacity:.5}
+.barra{height:6px;background:#0c0e13;border-radius:6px;overflow:hidden;margin:8px 0}
+.barra i{display:block;height:100%;background:var(--gold);width:100%}
+#log{font-size:13px;color:var(--muted);max-height:160px;overflow:auto;margin-top:10px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000c;border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:9}
+.modo{display:flex;gap:6px;margin-bottom:8px}
+.modo button.on{background:var(--gold);color:#241a00}
+.fim{text-align:center;padding:10px}
+</style>
+</head>
+<body>
+<div class="topo"><a href="/">← Vila</a><h1>🧱 Bloqueio</h1><span id="roomTag" class="hidden">Mesa <b id="rCode"></b></span></div>
+<main>
+  <section id="home" class="home card hidden">
+    <p class="muted" style="margin:0">Cruze o tabuleiro primeiro. Na sua vez, ande uma casa (pode pular o peão que está na frente) ou ponha uma parede para atrapalhar — mas nunca feche todo o caminho de alguém. 2 ou 4 jogadores, com robôs para completar.</p>
+    <div><label for="hName">Seu nome</label><input id="hName" maxlength="8" placeholder="Ex.: Kizzy" autocomplete="off"></div>
+    <div><label for="hCode">Código da mesa</label><input id="hCode" maxlength="5" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase;letter-spacing:4px;text-align:center"></div>
+    <div class="row"><button class="primary" id="btnJoin">Entrar</button><button id="btnWatch">Só assistir</button></div>
+    <button id="btnCreate">Criar mesa nova</button>
+    <div class="err" id="hErr"></div>
+  </section>
+
+  <section id="lobby" class="card hidden">
+    <h2 style="margin:0 0 8px">Sala de espera</h2>
+    <div id="lobbyJog"></div>
+    <div class="avs" id="avs"></div>
+    <div class="row" id="lobbyHost">
+      <label class="muted">Tempo por jogada <select id="cfgTimer" style="width:auto"><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select></label>
+      <button id="btnBot">+ Robô</button>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="primary" id="btnStart">Começar</button><button id="btnInvite">Copiar convite</button></div>
+    <p class="muted" id="lobbyMsg"></p>
+  </section>
+
+  <section id="jogo" class="hidden">
+    <div class="jogo">
+      <div class="card"><svg id="tab" viewBox="0 0 100 100"></svg></div>
+      <div>
+        <div class="cards" id="cards"></div>
+        <div class="barra"><i id="tempo"></i></div>
+        <div class="modo" id="modo"><button data-m="mover" class="on">Andar</button><button data-m="parede">Pôr parede</button></div>
+        <div id="fim" class="card fim hidden"></div>
+        <div id="log"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="toast" class="hidden"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/noite.js"></script>
+<script src="/comum.js"></script>
+<script src="/bloqueio/regras.js"></script>
+<script>
+const B = window.Bloqueio, socket = io("/bloqueio"), { $, h, store } = Comum;
+const relogio = Comum.relogio(), toast = Comum.criarToast(3000), act = Comum.criarAct(socket, toast);
+const CORES = ["var(--p0)", "var(--p1)", "var(--p2)", "var(--p3)"]; // por lugar: embaixo, esquerda, em cima, direita
+let S = null, ME = null, modo = "mover", hover = null;
+const eu = () => (S && ME && ME.id ? S.players.findIndex((p) => p.id === ME.id) : -1);
+const minhaVez = () => S && S.phase === "playing" && eu() >= 0 && S.game.vez === eu();
+const mostrar = (id) => ["home", "lobby", "jogo"].forEach((x) => $(x).classList.toggle("hidden", x !== id));
+
+// ---------- entrar ----------
+const urlCode = new URLSearchParams(location.search).get("mesa");
+$("hName").value = store.get("galera:name") || "";
+if (urlCode) $("hCode").value = urlCode.toUpperCase();
+function entrou(r) {
+  if (!r.ok) { $("hErr").textContent = r.error; return; }
+  ME = { code: r.code, id: r.id, token: r.token };
+  if (r.id) store.set("bloqueio:" + r.code, ME);
+  history.replaceState(null, "", "/bloqueio/?mesa=" + r.code);
+  $("roomTag").classList.remove("hidden"); $("rCode").textContent = r.code;
+}
+$("btnCreate").onclick = () => { const name = $("hName").value.trim(); store.set("galera:name", name); socket.emit("create", { name }, entrou); };
+$("btnJoin").onclick = () => {
+  const name = $("hName").value.trim(), code = $("hCode").value.trim().toUpperCase(); store.set("galera:name", name);
+  if (code.length !== 5) return ($("hErr").textContent = "O código tem 5 letras.");
+  const saved = store.get("bloqueio:" + code) || {};
+  socket.emit("join", { code, name, id: saved.id, token: saved.token }, entrou);
+};
+$("btnWatch").onclick = () => { const code = $("hCode").value.trim().toUpperCase(); if (code.length !== 5) return ($("hErr").textContent = "Coloque o código da mesa."); socket.emit("join", { code, watch: true }, entrou); };
+$("hCode").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnJoin").click(); });
+$("btnInvite").onclick = async () => { const link = location.origin + "/bloqueio/?mesa=" + ME.code; try { await navigator.clipboard.writeText(link); toast("Convite copiado! Manda no grupo."); } catch { prompt("Copie o convite:", link); } };
+socket.on("connect", () => {
+  const code = urlCode ? urlCode.toUpperCase() : ME && ME.code, saved = code && store.get("bloqueio:" + code);
+  if (saved && saved.id) socket.emit("join", { code, id: saved.id, token: saved.token }, (r) => { if (r.ok) entrou(r); else { mostrar("home"); $("hErr").textContent = r.error; } });
+  else if (ME) socket.emit("join", { code: ME.code, watch: !ME.id, id: ME.id, token: ME.token }, () => {});
+  else mostrar("home");
+});
+socket.on("kicked", () => { toast("O organizador tirou você da mesa."); ME = null; S = null; history.replaceState(null, "", "/bloqueio/"); $("roomTag").classList.add("hidden"); mostrar("home"); });
+
+// ---------- sala de espera ----------
+$("btnBot").onclick = () => act("addBot");
+$("btnStart").onclick = () => act("start");
+$("cfgTimer").onchange = () => act("config", { config: { timer: +$("cfgTimer").value } });
+function desenharLobby() {
+  const host = ME && S.host === ME.id;
+  $("lobbyJog").innerHTML = S.players.map((p) => `<div class="jog"><span class="av">${p.pawn}</span><span class="nm">${h(p.name)}${p.id === S.host ? " 👑" : ""}${p.bot ? " (robô)" : ""}</span>${host && p.id !== ME.id ? `<button data-kick="${p.id}">Tirar</button>` : ""}</div>`).join("");
+  $("lobbyJog").querySelectorAll("[data-kick]").forEach((b) => (b.onclick = () => act("kick", { id: b.dataset.kick })));
+  const meu = S.players.find((p) => ME && p.id === ME.id), usados = new Set(S.players.map((p) => p.pawn));
+  $("avs").innerHTML = meu ? B.AVATARES.map((a) => `<button class="${a === meu.pawn ? "on" : ""}" ${usados.has(a) && a !== meu.pawn ? "disabled" : ""} data-a="${a}">${a}</button>`).join("") : "";
+  $("avs").querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => act("pawn", { pawn: b.dataset.a })));
+  $("lobbyHost").classList.toggle("hidden", !host);
+  $("btnStart").classList.toggle("hidden", !host);
+  $("cfgTimer").value = S.config.timer;
+  const n = S.players.length;
+  $("lobbyMsg").textContent = n === 2 || n === 4 ? (host ? "Tudo pronto: pode começar." : "Esperando o organizador começar.") : "O jogo é de 2 ou 4 jogadores: chame mais gente ou ponha robôs.";
+}
+
+// ---------- tabuleiro ----------
+const SZ = 100 / 9, G = 1.6; // tamanho da casa e espessura da parede
+const NS = "http://www.w3.org/2000/svg";
+function jogoAtual() { const g = S.game; return { ...g, metas: B.lugaresDe(g.n).map((l) => B.LUGARES[l].meta) }; }
+function desenharTabuleiro() {
+  const g = jogoAtual(), svg = $("tab"), vez = minhaVez();
+  let s = `<rect x="0" y="0" width="100" height="100" rx="2" fill="var(--board)"/>`;
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) s += `<rect x="${c * SZ + 0.8}" y="${r * SZ + 0.8}" width="${SZ - 1.6}" height="${SZ - 1.6}" rx="1" fill="var(--cell)"/>`;
+  // as metas de cada um, em faixas coloridas
+  g.metas.forEach((m, i) => {
+    const cor = CORES[B.lugaresDe(g.n)[i]];
+    s += m.r != null ? `<rect x="0" y="${m.r === 0 ? 0 : 100 - 1.2}" width="100" height="1.2" fill="${cor}"/>` : `<rect x="${m.c === 0 ? 0 : 100 - 1.2}" y="0" width="1.2" height="100" fill="${cor}"/>`;
+  });
+  for (const w of g.paredes) s += paredeSVG(w, "var(--bg)", 1);
+  // casas para onde posso ir
+  if (vez && modo === "mover") for (const m of B.movimentos(g, eu())) s += `<circle style="pointer-events:none" cx="${m.c * SZ + SZ / 2}" cy="${m.r * SZ + SZ / 2}" r="${SZ * 0.2}" fill="#0a8a4c" opacity=".55"/><rect class="dest" data-r="${m.r}" data-c="${m.c}" x="${m.c * SZ}" y="${m.r * SZ}" width="${SZ}" height="${SZ}" fill="transparent" style="cursor:pointer"/>`;
+  // espaços para paredes
+  if (vez && modo === "parede" && g.sobram[eu()] > 0) {
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) for (const o of ["h", "v"]) {
+      const w = { r, c, o }, ok = !B.erroDaParede(g, w), alvo = false;
+      if (!ok) continue;
+      s += paredeSVG(w, alvo ? "var(--gold)" : "#0000", alvo ? 1 : 0, `class="slot" data-r="${r}" data-c="${c}" data-o="${o}" style="cursor:pointer"`, 3.4);
+    }
+  }
+  g.peoes.forEach((p, i) => {
+    const lug = B.lugaresDe(g.n)[i], jog = S.players[i], cor = CORES[lug], ultima = g.ultima && g.ultima.quem === jog.id && g.ultima.tipo === "mover";
+    s += `<g><circle cx="${p.c * SZ + SZ / 2}" cy="${p.r * SZ + SZ / 2}" r="${SZ * 0.36}" fill="${cor}" stroke="${g.vez === i && S.phase === "playing" ? "#fff" : "#000a"}" stroke-width="${g.vez === i ? 1 : 0.5}"/><text x="${p.c * SZ + SZ / 2}" y="${p.r * SZ + SZ / 2 + 2.2}" font-size="6" text-anchor="middle">${jog.pawn}</text></g>`;
+  });
+  svg.innerHTML = s;
+  svg.querySelectorAll(".dest").forEach((e) => (e.onclick = () => act("move", { r: +e.dataset.r, c: +e.dataset.c })));
+  svg.querySelectorAll(".slot").forEach((e) => {
+    const w = { r: +e.dataset.r, c: +e.dataset.c, o: e.dataset.o };
+    e.onmouseenter = () => { e.setAttribute("fill", "#f5b93c"); e.setAttribute("opacity", "1"); };
+    e.onmouseleave = () => { e.setAttribute("fill", "#0000"); };
+    e.onclick = () => { hover = null; act("wall", w); };
+  });
+}
+// a parede h fica embaixo da casa (r,c) e a v à direita dela; "esp" aumenta a área para o clique
+function paredeSVG(w, fill, op, attrs = "", esp = G) {
+  const x = w.o === "h" ? w.c * SZ + 0.8 : (w.c + 1) * SZ - esp / 2, y = w.o === "h" ? (w.r + 1) * SZ - esp / 2 : w.r * SZ + 0.8;
+  const ww = w.o === "h" ? 2 * SZ - 1.6 : esp, hh = w.o === "h" ? esp : 2 * SZ - 1.6;
+  return `<rect ${attrs} x="${x}" y="${y}" width="${ww}" height="${hh}" rx=".8" fill="${fill}" ${op === 0 ? "" : `opacity="${op}"`}/>`;
+}
+$("modo").querySelectorAll("button").forEach((b) => (b.onclick = () => { modo = b.dataset.m; hover = null; desenharJogo(); }));
+
+function desenharJogo() {
+  const g = S.game, vez = minhaVez();
+  $("modo").classList.toggle("hidden", !(S.phase === "playing" && eu() >= 0));
+  if (!vez) modo = "mover";
+  $("modo").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.m === modo));
+  $("modo").querySelector('[data-m="parede"]').disabled = !vez || g.sobram[eu()] <= 0;
+  $("cards").innerHTML = S.players.map((p, i) => `<div class="pc ${g.vez === i && S.phase === "playing" ? "vez" : ""} ${p.online ? "" : "off"}"><span class="cor" style="background:${CORES[B.lugaresDe(g.n)[i]]}"></span><span style="font-size:22px">${p.pawn}</span><span class="nm">${h(p.name)}${ME && p.id === ME.id ? " (você)" : ""}</span><span title="Paredes que sobram">🧱 ${g.sobram[i]}</span>${S.wins[p.id] ? `<span title="Vitórias">🏆${S.wins[p.id]}</span>` : ""}</div>`).join("");
+  $("log").innerHTML = S.log.slice().reverse().map((l) => `<div>${h(l.text)}</div>`).join("");
+  const fim = $("fim"), host = ME && S.host === ME.id;
+  fim.classList.toggle("hidden", S.phase !== "ended");
+  if (S.phase === "ended") {
+    const w = S.players.find((p) => p.id === S.winner);
+    fim.innerHTML = `<h2 style="margin:0 0 8px">👑 ${h(w ? w.name : "?")} ganhou!</h2>${host ? `<div class="row" style="justify-content:center"><button class="primary" id="bAgain">Jogar de novo</button><button id="bLobby">Sala de espera</button></div>` : `<p class="muted">Esperando o organizador…</p>`}`;
+    if (host) { $("bAgain").onclick = () => act("again"); $("bLobby").onclick = () => act("restart"); }
+  }
+  desenharTabuleiro();
+}
+function tique() {
+  const d = S && S.deadline;
+  $("tempo").style.width = d && S.phase === "playing" ? Math.max(0, Math.min(100, ((d.at - relogio.agora()) / d.total) * 100)) + "%" : "0";
+  requestAnimationFrame(tique);
+}
+tique();
+let vezAnterior = null;
+socket.on("state", (st) => {
+  relogio.doEstado(st.now); S = st;
+  if (st.phase === "lobby") { mostrar("lobby"); desenharLobby(); return; }
+  mostrar("jogo");
+  const chave = st.game.vez + "|" + st.game.paredes.length + "|" + st.game.peoes.map((p) => p.r + "," + p.c).join(";");
+  if (minhaVez() && chave !== vezAnterior) toast("Sua vez!", 1200);
+  vezAnterior = chave;
+  desenharJogo();
+});
+</script>
+</body>
+</html>

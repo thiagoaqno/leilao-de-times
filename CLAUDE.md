@@ -105,6 +105,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | --- | --- | --- |
 | Leilão (o primeiro jogo, montar times) | dentro de `server.js` (+ `simulador.js`, `juri.js`) | ver logo abaixo (+ `public/presets.js`, `prompts.js`, `ratings.js`, `escalacao.js`, `quimica.js`, `card.js`, `cozinha.js`, `bordoes.js`) |
 | Banco (Banco Imobiliário) | `banco.js` | `tabuleiro.js` (as casas e regras), e 5 scripts que rodam em ordem e **dividem as variáveis globais**. Ver a lista logo abaixo. |
+| Bloqueio (Quoridor: peões e paredes, 2 ou 4 jogadores, robôs completam) | `bloqueio.js` (canal `/bloqueio`; sala por código como o Dominó, `act`: `move`, `wall`, `addBot`, `start`, `again`; o relógio joga por quem demora) | `index.html` (tudo inline, tabuleiro em SVG), `regras.js` (UMD `window.Bloqueio`: `movimentos`, `erroDaParede`, `mover`, `parede`, `jogadaDoRobo`). Prédio na Rua das Cartas (terreno que era vazio). Testes: `tests/bloqueio.test.js` |
 | Uno | `uno.js` | `index.html` (tudo inline), `regras.js` |
 | Truco | `truco.js` | `index.html` (tudo inline), `regras.js` |
 | Dominó | `domino.js` | `index.html`, `regras.js` |
