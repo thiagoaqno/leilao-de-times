@@ -3,7 +3,7 @@
 // 1,5 s monta a lista e, se mudou, manda para quem está olhando (evento "salas"). Só entram salas com alguém online.
 const { JOGOS } = require("./noite.js");
 
-const MESA = ["banco", "uno", "kittens", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao"]; // o endereço usa ?mesa= em vez de ?sala=
+const MESA = ["banco", "uno", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao"]; // o endereço usa ?mesa= em vez de ?sala=
 const URLS = { rocket: "/rocket/", carreira: "/carreira/" };
 const registros = new Map(); // jogo -> { rooms, max, jogadores, config }
 

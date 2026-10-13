@@ -300,8 +300,6 @@ const GAMES = [
     x: 13, y: 2, w: 8, h: 5, doors: [16, 17], bairro: "cartas", roof: "#9b1b30", roof2: "#6d1020", wall: "#3d2170", wall2: "#2b1552", casino: true },
   { id: "uno", url: "/uno/", icon: "🃏", sign: "UNO", name: "Casa do Uno", desc: "Cartas coloridas, +4 na cara e grito de UNO! Regras oficiais.", meta: "Uno da Galera · 2 a 8 jogadores",
     x: 24, y: 2, w: 7, h: 5, doors: [27], bairro: "cartas", roof: "#e0352b", roof2: "#a82218", wall: "#fff6e0", wall2: "#e6d6b0", uno: true },
-  { id: "kittens", url: "/kittens/", icon: "😼", sign: "GATINHOS", name: "Toca dos Gatinhos", desc: "Compre cartas e torça para não tirar o gatinho que explode! Ataque, Pular, Favor e Nem Pensar.", meta: "Gatinhos Explosivos · 2 a 5 jogadores",
-    x: 45, y: 2, w: 8, h: 5, doors: [48, 49], bairro: "cartas", roof: "#f08a24", roof2: "#c46a12", wall: "#3a2a22", wall2: "#2a1d17", kittens: true },
   { id: "sinuca", url: "/sinuca/", icon: "🎱", sign: "SINUCA", name: "Bar da Sinuca", desc: "Bola 8 em duplas, rei da mesa ou mata-mata. Giz no taco!", meta: "Sinuca da Galera · 2 a 8 jogadores",
     x: 3, y: 10, w: 7, h: 5, doors: [6], bairro: "cartas", roof: "#1f7a45", roof2: "#135530", wall: "#8a5a34", wall2: "#6b4323", planks: true },
   { id: "truco", url: "/truco/", icon: "🍺", sign: "TRUCO", name: "Boteco do Truco", desc: "Truco paulista, manilha pela vira. TRUCO, ladrão!", meta: "Truco da Galera · 2, 4 ou 6 jogadores",
@@ -378,6 +376,7 @@ const FOUNTAIN = { x: 27, y: 21, w: 4, h: 3 };
 const TELAO = { x: 26, y: 17, w: 6 };
 // os terrenos prontos para as construções novas: cercados, com a placa "em breve"; quem para na frente lê a placa
 const TERRENOS = [
+  { x: 45, y: 2, w: 8, h: 5, bairro: "cartas" },
   { x: 21, y: 10, w: 6, h: 5, bairro: "cartas" },
   { x: 51, y: 31, w: 5, h: 4, bairro: "autodromo" },
 ];
@@ -698,16 +697,6 @@ function drawBuilding(c, g) {
     for (let a = 0; a < 11; a += 0.25) { const r = 0.6 + a * 0.52; c.lineTo(bx + Math.cos(a) * r, by + Math.sin(a) * r); }
     c.stroke();
     px(c, "#d03a2a", rx + 2, Y + 3, 2, 5); // a lanterna vermelha
-  } else if (g.kittens) { // telhado laranja com um gatinho-bomba preto: orelhas, olhos e o pavio aceso
-    px(c, g.roof, rx, Y, rw, roofH);
-    for (let yy = Y + 8; yy < wallY - 3; yy += 8) px(c, g.roof2, rx, yy, rw, 1);
-    const kx = Math.round(rx + rw / 2), ky = Y + Math.round(roofH / 2) + 1;
-    c.fillStyle = "#1a1210"; c.beginPath(); c.arc(kx, ky, 10, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.moveTo(kx - 10, ky - 3); c.lineTo(kx - 9, ky - 14); c.lineTo(kx - 2, ky - 9); c.closePath(); c.fill(); // orelhas
-    c.beginPath(); c.moveTo(kx + 10, ky - 3); c.lineTo(kx + 9, ky - 14); c.lineTo(kx + 2, ky - 9); c.closePath(); c.fill();
-    px(c, "#ffd24a", kx - 6, ky - 3, 3, 3); px(c, "#ffd24a", kx + 3, ky - 3, 3, 3); // olhos
-    px(c, "#e5483a", kx - 1, ky + 2, 2, 2); // focinho
-    px(c, "#8a6b4a", kx + 10, ky - 12, 1, 5); px(c, "#ff5a1f", kx + 9, ky - 14, 3, 3); px(c, "#ffe066", kx + 10, ky - 13, 1, 1); // o pavio e a faísca
   } else if (g.uno) {
     const cols = [["#e0352b", "#a82218"], ["#f4c20d", "#c49a08"], ["#1f9d55", "#157040"], ["#2f6fd6", "#1f4ea0"]];
     const band = rw / 4;

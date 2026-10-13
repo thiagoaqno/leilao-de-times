@@ -15,7 +15,6 @@ const server = http.createServer(app);
 // compressão das mensagens do WebSocket: os pacotes dos jogos em tempo real se repetem muito e encolhem bastante
 const io = new Server(server, { perMessageDeflate: { threshold: 128 } });
 require("./banco.js")(io); // Banco da Galera: jogo de tabuleiro, canal /banco
-require("./kittens.js")(io); // Gatinhos Explosivos da Galera: cartas de sobrevivência, canal /kittens
 require("./uno.js")(io); // Uno da Galera: jogo de cartas, canal /uno
 require("./sinuca.js")(io); // Sinuca da Galera: bola 8, canal /sinuca
 require("./truco.js")(io); // Truco da Galera: truco paulista, canal /truco
@@ -114,7 +113,6 @@ app.get("/api/escudo/:id", async (req, res) => {
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
 app.get("/uno", (req, res) => res.redirect("/uno/"));
-app.get("/kittens", (req, res) => res.redirect("/kittens/"));
 app.get("/sinuca", (req, res) => res.redirect("/sinuca/"));
 app.get("/truco", (req, res) => res.redirect("/truco/"));
 app.get("/domino", (req, res) => res.redirect("/domino/"));
