@@ -26,6 +26,7 @@ function cleanConfig(c = {}) {
 module.exports = function attachLudo(io) {
   const nsp = io.of("/ludo");
   const rooms = new Map();
+  require("./lobby.js").registrar("ludo", rooms, { max: 4 }); // aparece na lista de salas da Vila
 
   const byColor = (room, color) => Object.values(room.players).find((p) => p.color === color);
   const nameOf = (room, color) => { const p = byColor(room, color); return p ? p.name : R.NAMES[color]; };

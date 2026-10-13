@@ -14,6 +14,7 @@ const BOTS = ["Tofu", "Mestre Kenji", "Sakura"];
 module.exports = function attachDigita(io) {
   const nsp = io.of("/digita");
   const rooms = new Map();
+  require("./lobby.js").registrar("digita", rooms, { max: MAX_HUMANOS }); // aparece na lista de salas da Vila
 
   const cleanConfig = (c = {}) => ({ rodadas: [1, 3, 5].includes(int(c.rodadas, 3)) ? int(c.rodadas, 3) : 3, bots: c.bots !== false });
   const log = (room, text) => { room.feed.push({ t: Date.now(), text }); if (room.feed.length > 30) room.feed.splice(0, room.feed.length - 30); };

@@ -53,6 +53,7 @@ function limparOpcoes(atual, d = {}) {
 module.exports = function ligarCarreiraOnline(io) {
   const nsp = io.of("/carreira-online");
   const rooms = new Map();
+  require("./lobby.js").registrar("carreira", rooms, { max: MAX_PESSOAS }); // aparece na lista de salas da Vila
 
   // ---------- o banco: guardar e carregar as salas ----------
   const paraGuardar = (room) => ({ code: room.code, host: room.host, fase: room.fase, opcoes: room.opcoes, order: room.order, save: room.save, t: room.t,

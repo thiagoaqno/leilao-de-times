@@ -17,6 +17,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math
 module.exports = function attachKittens(io) {
   const nsp = io.of("/kittens");
   const rooms = new Map();
+  require("./lobby.js").registrar("kittens", rooms, { max: R.MAX_JOGADORES }); // aparece na lista de salas da Vila
 
   // ---------- estado ----------
   function publicState(room) {

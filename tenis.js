@@ -19,6 +19,7 @@ const BOT_SKINS = ["steve", "pikachu", "shrek", "naruto", "woody", "aranha"];
 module.exports = function attachTenis(io) {
   const nsp = io.of("/tenis");
   const rooms = new Map();
+  require("./lobby.js").registrar("tenis", rooms, { max: MAX_SALA }); // aparece na lista de salas da Vila
 
   const cleanConfig = (c = {}) => ({
     duplas: !!c.duplas,

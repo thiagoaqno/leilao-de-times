@@ -18,6 +18,7 @@ const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
 module.exports = function attachCorrida(io) {
   const nsp = io.of("/corrida");
   const rooms = new Map();
+  require("./lobby.js").registrar("corrida", rooms, { max: MAX_PLAYERS }); // aparece na lista de salas da Vila
 
   const cleanConfig = (c = {}) => ({
     pista: T.PISTAS[c.pista] ? c.pista : "interlagos",

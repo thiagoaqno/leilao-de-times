@@ -25,6 +25,7 @@ require("./ludo.js")(io); // Ludo da Galera: ludo de 2 a 4 jogadores, canal /lud
 require("./botao.js")(io); // Futebol de Botão da Galera: x1, duplas ou rei do campo, canal /botao
 require("./corrida.js")(io); // Corrida da Galera: kart com fantasmas em Mônaco, Interlagos e Tóquio, canal /corrida
 const ginasio = require("./ginasio.js")(io); // Ginasio: Galeramon e Pokemon em tempo real, canal /ginasio
+require("./lobby.js").attach(io); // lista de salas abertas de todos os jogos, canal /lobby
 require("./vila.js")(io, ginasio); // Vila da Galera: o lobby em mapinha, canal /vila
 require("./tiro.js")(io); // Tiro da Galera: FPS de arena x1 ou x2 com AK-47 e AWP, canal /tiro
 require("./pelada.js")(io); // Pelada da Galera: futsal 3D do 1x1 ao 5x5, canal /pelada (e o Rocket, de carro)
@@ -140,6 +141,7 @@ app.use("/vendor/three-addons", express.static(path.join(path.dirname(require.re
 app.get("/vendor/purify.js", (req, res) => res.sendFile(require.resolve("dompurify/dist/purify.min.js")));
 
 const rooms = new Map(); // code -> room
+require("./lobby.js").registrar("leilao", rooms, { max: 0, jogadores: (r) => Object.values(r.captains).map((c) => ({ nome: c.name, online: c.sockets.size > 0, host: r.captains[r.hostCap] === c })) }); // aparece na lista de salas da Vila
 
 // ---------- Resultado colado (modo suspense) ----------
 // Divide o texto da IA em partes pelos títulos Markdown (## …) para revelar uma de cada vez.
