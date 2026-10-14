@@ -227,7 +227,7 @@ function conectar(io){
     function autenticado(cb,fn) {
       const auth=sessoes.get(socket.id),s=auth&&get(auth.codigo),p=s&&s.jogadores.find(x=>x.id===auth.pid);
       if(!s||!p)return erro(cb,"Entre na campanha novamente.");
-      try{const extra=fn(s,p)||{};salvar(s);emitir(s.codigo);ok(cb,extra);}catch(e){erro(cb,e);}
+      try{const extra=fn(s,p)||{};salvar(s);emitir(s.codigo);ok(cb,{...extra,estado:estado(s,p)});}catch(e){erro(cb,e);}
     }
     function entrarNaSala(s,p,segredo,cb){
       sessoes.set(socket.id,{codigo:s.codigo,pid:p.id});
