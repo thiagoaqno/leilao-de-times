@@ -1,49 +1,41 @@
-# Road to Champions: dublagem das cenas, a Champions de 36, decisões no meio do jogo e o feed
+# Carreira: narrador e torcida na partida (ElevenLabs)
 
 ## O que muda
 
-- **As cenas ganham dublagem.** Os 43 MP3 do ElevenLabs (Eleven v4, 12 vozes secundárias, 3,4 MB) entram em
-  `public/jogador/dublagem/vo/<PERSONAGEM>/<ID>.mp3`, com os nomes originais. A cena abre por cima da central como uma
-  cutscene: a ilustração do evento escurecida, faixas de cinema, o nome de quem fala numa plaqueta e a legenda grande.
-  - **Uma fala por vez**, em ordem; a próxima só depois que a anterior termina. Na escolha a cena **para** e espera;
-    depois toca **só o ramo escolhido**. A resposta da cena vira a resposta da entrevista (o pré-jogo vem travado nela).
-  - **Controles:** voz liga/desliga, volume, legendas (CC), avançar a fala, pular a cena (até a escolha, que não se pula)
-    e "decidir depois". Pular ou trocar de cena **corta o áudio e cancela o download na hora**.
-  - **Legendas no tempo real:** 29 falas têm o alinhamento palavra a palavra do ElevenLabs, e a legenda troca de frase
-    no tempo certo; as outras 14 mostram a fala inteira enquanto o MP3 toca. Nenhum tempo inventado.
-  - **Protagonistas** (17 falas) ficam em legenda, com o **nome que o jogador deu**, sempre visíveis. As vozes fixas
-    nunca dizem esse nome.
-  - **Falhou o MP3?** A fala segue em legenda pelo tempo de leitura (erro, 404 ou conexão que não responde em 8 s).
-    Sem toque na página, a cena pede ▶ (política de autoplay).
-  - **As cenas:** cinco são a versão dublada de exclusivos que já existiam (aniversário, banco, despertador, coletiva,
-    protocolo). As opções do jogo ganharam o ramo (`voz`) e o que gravam na história (`narrativa`); três opções novas
-    do roteiro entraram ("Sair em silêncio", "Desligar e correr para o treino", "Ficar com os colegas até tarde").
-    **"Primeira noite"** é um prelúdio novo do Prodígio, com escolha própria antes da estreia. **"Pergunta
-    inconveniente"** é o callback: se o Último Romântico perde o jogo logo depois da festa, a repórter pergunta, numa
-    variante só (foi à festa, passou rápido, ficou em casa).
-  - **Condições sem eval:** `road-voz.js` lê `rom_festa == "integral" && resultado_ultimo_jogo == "derrota"` uma vez,
-    na ferramenta, e vira comparações; o resto é recusado.
-- **O formato novo da Champions.** 36 clubes numa fase de liga só: 8 jogos para cada um, dois adversários de cada pote
-  (um em casa, um fora), sorteados com a semente da sala. Do 1º ao 8º, direto às oitavas; do 9º ao 24º, playoff de
-  ida e volta; oitavas, quartas e semifinais de ida e volta (agregado, pênaltis no fim da volta); final única em campo
-  neutro. **17 rodadas** em vez de 5. As cinco entrevistas caem na estreia, na 4ª rodada (os exclusivos), na última da
-  liga, na semifinal de ida e na final; nas outras rodadas ninguém precisa decidir, e o pré-jogo muda só a estratégia.
-  Campanhas antigas seguem no formato de grupos.
-- **Decisões no meio do jogo.** Aos 25', no intervalo e aos 70', o jogo de quem tem protagonista **para** e ele decide
-  como joga: voltar para ajudar na marcação, economizar energia para o contra-ataque, pressionar a saída de bola, pedir
-  a bola e ditar o ritmo, partir para cima, manter o plano (as opções seguem o placar). A escolha vira **tática no
-  motor da Carreira** (mentalidade, pressão, linha e estilo) e **muda o resultado**: em 60 jogos iguais, "partir para
-  cima" deu mais gols que "voltar para marcar" e o placar mudou em boa parte deles. O técnico do computador segue
-  fazendo as trocas. Protagonista contra protagonista decidem ao mesmo tempo; quem não responde em 30 s mantém o plano.
-  As decisões entram na narração do jogo ao vivo e viram post.
-- **O feed no jeito do Instagram.** A aba Diário virou **Feed**: posts com avatar, @, foto (a arte do evento, o
-  placar sobre a foto do jogo), curtidas e legenda. Os **stories no alto filtram** por protagonista (Todos, Você, cada
-  um da sala, Imprensa): dá para ver as notícias dos outros. Curtir fica só no seu navegador.
+- **A partida tem som.** Um narrador brasileiro (a voz Andre H, criada na ElevenLabs) fala os lances e a torcida do
+  estádio reage, com os áudios gerados uma vez e guardados em `public/carreira/som/` (13 MB).
+  - **O narrador emenda os pedaços:** "GOOOOL!" + "Flamengo!" + "Pedro!" + "De pênalti!" e, depois, "Empatou o jogo!",
+    "Virou!", "É goleada!" ou o placar falado ("Dois a um."). Também fala a defesa, a chance perdida, o pênalti e a
+    cobrança, os cartões com o nome, a lesão, a substituição, o contra-ataque, o intervalo, o segundo tempo, os
+    acréscimos, o fim de jogo e a disputa de pênaltis (o batedor e o resultado de cada cobrança). Na abertura de
+    clássico, jogo decisivo ou final, a fala é outra ("É clássico! Casa cheia!").
+  - **Os nomes:** os 40 clubes do Brasileirão e da Série B e 1073 jogadores (789 nomes falados: "Paquetá", "De la
+    Cruz", "Léo Pereira"; dois do mesmo clube com o mesmo sobrenome ganham o nome inteiro). Quem não tem áudio (os
+    garotos da base, as outras ligas) fica sem o nome, e o narrador fala o lance assim mesmo.
+  - **Sem atropelo:** uma fala por vez, o gol passa na frente, nada fica acumulado atrás do jogo; o lance pulado ou
+    que já passou (quem chega com a rodada andando na sala) fica em silêncio, e no 3× só os lances grandes.
+  - **A torcida:** o burburinho do estádio e o canto com bateria em laço (o canto sobe no clássico, no decisivo e na
+    final), a explosão no gol do time da casa, o gol do visitante com a casa calada, o "uhh", o aplauso na defesa, a
+    vaia nos cartões do time da casa, a tensão antes do pênalti e os apitos. Abaixa enquanto o narrador fala, na
+    parada tática e depois do apito final.
+- **A música de fundo para quando a partida começa** e volta na sede (só se estava tocando). Tocar a música à mão no
+  meio do jogo continua valendo.
+- **O botão Som** na faixa da partida, ao lado de Mesa: narrador e torcida, só a torcida ou sem som (fica guardado).
+- **Gerar de novo ou mais nomes:** `GERAR_NARRACAO.bat` (na raiz) roda `ferramentas/gerar-narracao.js` com a chave da
+  ElevenLabs de quem roda (fica em `ferramentas/.elevenlabs-chave`, fora do git). `--estimar` mostra o custo, `--testar`
+  gera só uma amostra, `--ligas todas` gera os nomes das outras ligas, `--refazer <chave>` refaz um áudio. Nome errado:
+  `ferramentas/narracao-nomes.json`.
 
-## Para conferir
+## Arquivos
 
-- `node --test tests/road-dublagem.test.js tests/road-champions-liga.test.js tests/road-to-champions.test.js`
-- `npx playwright test road-dublagem road-champions`: a cena em ordem, pular, trocar de cena, MP3 com falha,
-  dois jogadores sem interferir, prelúdio, o momento do jogo, o feed com filtro e a rodada sem entrevista.
-- Importar de novo a pasta de produção: `node ferramentas/rtc-dublagem.js "<pasta Voz>"` (mede as durações com o
-  ffprobe; não renomeia nem converte nada).
+- Novo: `public/carreira/som-partida.js`, `public/carreira/som/` (os MP3 e o índice), `tests/e2e/carreira-som.spec.js`.
+- `public/carreira/partida.js` (os ganchos `SomPartida.abrir` e `SomPartida.evento`), `inicio.js` (`SomPartida.tela`),
+  `musica.js` (`MusicaCarreira.calar` e `voltar`), `index.html` (o botão e os dois scripts).
+- `ferramentas/gerar-narracao.js` e `GERAR_NARRACAO.bat`: a voz Andre H como padrão.
+
+## Testes
+
+- `tests/e2e/carreira-som.spec.js`: a música para e volta, a torcida e a abertura tocam, o gol emenda a fala, o clube
+  e o jogador, e o botão troca os três modos.
+- Rodados: `carreira.spec.js`, `carreira-mesa.spec.js`, `carreira-transicoes.spec.js` e o novo (16 testes, todos
+  passando).

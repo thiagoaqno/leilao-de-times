@@ -141,6 +141,7 @@ function mostrarTela(id) {
   telaAtual = id; document.body.dataset.tela = id; // a sede (o hub) usa a largura toda do PC
   for (const s of document.querySelectorAll(".tela")) s.classList.toggle("hidden", s.id !== id);
   if (typeof Zoom !== "undefined") Zoom.cabecalho(id); // "← Vila" na sede e "← Sede" nas outras telas
+  if (typeof SomPartida !== "undefined") SomPartida.tela(id); // na partida, a torcida no lugar da música
   if (id !== "partida") desenharTela(id);
   if (id === "sede" && window.Popups) setTimeout(Popups.verificar, 700);
   window.scrollTo({ top: 0 });

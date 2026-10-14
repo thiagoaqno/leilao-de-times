@@ -8,7 +8,7 @@
 //   node ferramentas/gerar-narracao.js --so falas      só uma parte: falas, torcida ou nomes (pode repetir)
 //   node ferramentas/gerar-narracao.js --ligas todas   nomes de todas as ligas (ou a lista: brasileirao,serieb,argentina...)
 //   node ferramentas/gerar-narracao.js --refazer gol   apaga e gera de novo uma fala ou um som (pela chave)
-//   node ferramentas/gerar-narracao.js --voz <id>      outra voz (padrão: Elvis, narrador brasileiro da biblioteca)
+//   node ferramentas/gerar-narracao.js --voz <id>      outra voz (padrão: Andre H, a voz criada na conta)
 //   node ferramentas/gerar-narracao.js --sim           não pergunta antes de gastar
 //
 // A chave: a variável ELEVENLABS_API_KEY, ou o arquivo ferramentas/.elevenlabs-chave (fora do git). Sem nenhuma das
@@ -29,7 +29,7 @@ const RAIZ = path.join(__dirname, "..");
 const SAIDA = path.join(RAIZ, "public", "carreira", "som");
 const ARQ_CHAVE = path.join(__dirname, ".elevenlabs-chave");
 const API = process.env.ELEVENLABS_URL || "https://api.elevenlabs.io";
-const VOZ_PADRAO = "zNEsdgTUa3ndwKry8Xcq"; // "Elvis": masculino, sotaque brasileiro, narração animada
+const VOZ_PADRAO = "WkY3MDzeJVzGO4FMHgo0"; // "Andre H": a voz criada na conta da ElevenLabs
 // o primeiro modelo que a conta aceitar; os dois primeiros entendem as marcas de emoção entre colchetes
 const MODELOS = ["eleven_v4", "eleven_v3", "eleven_multilingual_v2"];
 const COM_MARCAS = new Set(["eleven_v4", "eleven_v3"]);
@@ -296,7 +296,7 @@ async function main() {
       console.log(`${rot}  ERRO: ${e.message}`);
       if (e.status === 401 && /quota|credit/i.test(e.codigo + e.message)) { console.log("Os créditos da conta acabaram. O que já saiu fica; rode de novo quando tiver créditos."); break; }
       if (e.status === 401) { console.log(`A chave foi recusada. Confira a chave (ou apague ${path.relative(RAIZ, ARQ_CHAVE)} para colar outra).`); break; }
-      if (/voice/i.test(e.message) && t.tipo !== "som") { console.log("A voz não foi encontrada na conta: abra a voz na Biblioteca de vozes da ElevenLabs e toque em \"Adicionar às minhas vozes\", ou use --voz <id>."); break; }
+      if (/voice/i.test(e.message) && t.tipo !== "som") { console.log("A voz não foi encontrada na conta: confira o id da voz em \"My Voices\" da ElevenLabs e use --voz <id>."); break; }
       if (erros >= 10) { console.log("Erros demais seguidos; parando."); break; }
     }
     await espera(250); // sem pressa: a conta tem limite de pedidos ao mesmo tempo
