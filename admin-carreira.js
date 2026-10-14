@@ -23,6 +23,8 @@ function attach(app, carreira, opcoes = {}) {
   const callback = `${origem.origin}${PREFIXO}/callback`;
   const seguro = origem.protocol === "https:";
   const buscar = opcoes.fetch || fetch;
+  const solo = opcoes.solo || require("./carreira-solo-moderacao.js"); // as carreiras particulares (solo e Rumo ao Estrelato)
+  const historico = opcoes.historico || ((codigo) => { try { return require("./bd.js").historicoModeracao(codigo, 15); } catch { return []; } });
   const estados = new Map(), sessoes = new Map();
   const cookie = (nome, valor, maxAge, sameSite) =>
     `${nome}=${encodeURIComponent(valor)}; Path=${PREFIXO}; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}; ${seguro ? "Secure; " : ""}Priority=High`;
@@ -108,7 +110,31 @@ function attach(app, carreira, opcoes = {}) {
   app.get(`${PREFIXO}/api/inicio`, exigir, (req, res) => res.json({ csrf: req.moderador.csrf, salas: carreira.listar() }));
   app.get(`${PREFIXO}/api/salas/:codigo`, exigir, (req, res) => {
     const r = carreira.detalhar(req.params.codigo, String(req.query.clube || ""));
-    res.status(!r ? 404 : r.erro ? 400 : 200).json(r || { erro: "Sala não encontrada." });
+    res.status(!r ? 404 : r.erro ? 400 : 200).json(r && !r.erro ? { ...r, historico: historico(req.params.codigo) } : r || { erro: "Sala não encontrada." });
+  });
+  const corpoValido = (req) => req.is("application/json") && req.body && typeof req.body === "object" && !Array.isArray(req.body);
+  // os comandos do anfitrião (rodada, velocidade, temporada nova, passar o cargo, dispensar, leilão, troca)
+  app.post(`${PREFIXO}/api/salas/:codigo/comando`, express.json({ limit: "4kb" }), exigir, alterar, (req, res) => {
+    if (!corpoValido(req)) return res.status(400).json({ erro: "Comando inválido." });
+    const r = carreira.comandar ? carreira.comandar(req.params.codigo, req.body, req.moderador.ator) : { erro: "Comandos indisponíveis." };
+    res.status(r.erro ? 400 : 200).json(r);
+  });
+  // as carreiras particulares: a lista, a ficha de um clube, a edição e um código de recuperação novo
+  app.get(`${PREFIXO}/api/solo`, exigir, (req, res) => {
+    try { res.json({ carreiras: solo.listar() }); } catch { res.status(500).json({ erro: "O banco de dados não respondeu." }); }
+  });
+  app.get(`${PREFIXO}/api/solo/:id`, exigir, (req, res) => {
+    const r = solo.detalhar(req.params.id, String(req.query.clube || ""));
+    res.status(r.erro ? 400 : 200).json(r);
+  });
+  app.post(`${PREFIXO}/api/solo/:id`, express.json({ limit: "4kb" }), exigir, alterar, (req, res) => {
+    if (!corpoValido(req)) return res.status(400).json({ erro: "Edição inválida." });
+    const r = solo.editar(req.params.id, req.body, req.moderador.ator);
+    res.status(r.erro ? 400 : 200).json(r);
+  });
+  app.post(`${PREFIXO}/api/solo/:id/codigo`, exigir, alterar, (req, res) => {
+    const r = solo.novoCodigo(req.params.id, req.moderador.ator);
+    res.status(r.erro ? 400 : 200).json(r);
   });
   app.post(`${PREFIXO}/api/salas/:codigo`, express.json({ limit: "4kb" }), exigir, alterar, (req, res) => {
     if (!req.is("application/json") || !req.body || typeof req.body !== "object" || Array.isArray(req.body))
