@@ -28,9 +28,17 @@ const SomPartida = (() => {
     } catch (e) { ctx = null; }
     return ctx;
   }
-  // o navegador só deixa tocar depois de um toque ou tecla: o primeiro destrava (e os outros, se ele suspender de novo)
-  const destravar = () => { if (ctx && ctx.state === "suspended" && naPartida()) ctx.resume().catch(() => {}); };
-  addEventListener("pointerdown", destravar); addEventListener("keydown", destravar);
+  // o navegador só deixa tocar depois de um toque ou tecla, e o iPhone só destrava dentro do próprio toque (touchend,
+  // click): o som é ligado já no primeiro toque em qualquer tela (o "Jogar" da sede), antes de a partida abrir, e cada
+  // toque depois destrava de novo se ele suspender. No iPhone, "playback" faz tocar mesmo com a chave do silencioso.
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) { /* navegador sem a opção */ }
+  const destravar = () => {
+    if (!IDX || modo === "mudo" || !audio() || ctx.state !== "suspended") return;
+    ctx.resume().catch(() => {});
+    // um silêncio curtinho dentro do toque: o Safari antigo só libera o som depois de tocar alguma coisa
+    try { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0); } catch (e) { /* tanto faz */ }
+  };
+  for (const ev of ["pointerdown", "pointerup", "touchend", "click", "keydown"]) addEventListener(ev, destravar, { passive: true });
 
   const buffers = new Map();
   function carregar(rel) {
