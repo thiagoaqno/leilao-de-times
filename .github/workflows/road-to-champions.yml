@@ -30,4 +30,6 @@ jobs:
           node-version: "24"
           cache: "npm"
       - run: npm ci
+      - run: node --check road-to-champions.js && node --check public/jogador/road.js
+      - run: node --test tests/road-to-champions.test.js
       - run: npm test
