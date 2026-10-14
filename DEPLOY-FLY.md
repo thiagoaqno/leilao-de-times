@@ -84,6 +84,23 @@ fly deploy --ha=false
 
 ## Moderação de carreiras pelo GitHub
 
+### Painel visual privado
+
+O painel fica em `https://SEU-SITE/admin/carreira`. Ele não aparece nem tem link nas telas do jogo. Depois do login com a conta GitHub `thiagoaqno`, mostra as salas ativas, os clubes, jogadores e transferências. As alterações são feitas ali, sem procurar IDs nem abrir logs do Actions. A conta é conferida pelo ID do usuário no GitHub, e as ações continuam usando as regras de edição da sala e o registro no SQLite.
+
+Para ativar o login uma vez:
+
+1. Em [GitHub → Developer settings → OAuth Apps](https://github.com/settings/developers), crie uma **New OAuth App**. Use `https://leilao-de-times.fly.dev` como **Homepage URL** e `https://leilao-de-times.fly.dev/admin/carreira/callback` como **Authorization callback URL**. Se o site estiver em outro endereço, substitua a origem nas duas URLs.
+2. Copie o **Client ID** e gere um **Client secret** na página da OAuth App.
+3. Em Fly → `leilao-de-times` → Secrets, crie `MODERACAO_GITHUB_CLIENT_ID` (Client ID), `MODERACAO_GITHUB_CLIENT_SECRET` (Client secret) e `MODERACAO_BASE_URL` (`https://leilao-de-times.fly.dev`, sem barra final). Se usar outro domínio, coloque essa origem em `MODERACAO_BASE_URL`.
+4. Publique ou reinicie o servidor e abra o link do painel no `README.md`.
+
+O painel só é registrado quando as três configurações existem. A OAuth App identifica a conta pelo perfil público; não precisa dar acesso ao repositório.
+
+As sessões duram até 8 horas ou até usar **Sair**. Enquanto há jogo ao vivo, o painel mostra a sala, mas bloqueia as edições. O estorno automático continua limitado a transferências simples.
+
+### Formulários do GitHub Actions
+
 Os workflows **Moderar carreira em grupo** e **Desfazer transferência** aparecem em **GitHub → Actions → Run workflow** depois de entrar na `main`. Só a conta `thiagoaqno` pode executá-los na branch `main`. Eles não adicionam controles ao jogo. O servidor confere a assinatura e a origem do token temporário OIDC do GitHub; não há segredo novo para configurar.
 
 Se o site usar outro endereço, configure a variável de repositório `MODERACAO_URL` com a origem HTTPS do site. Sem ela, o workflow usa `https://leilao-de-times.fly.dev`.
