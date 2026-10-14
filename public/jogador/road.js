@@ -13,8 +13,9 @@ const num=x=>Number.isFinite(x)?x:0;
 const roundNames=["FASE DE GRUPOS · JORNADA 01","FASE DE GRUPOS · JORNADA 02","FASE DE GRUPOS · JORNADA 03","SEMIFINAIS","A GRANDE FINAL"];
 const attrNames={respeito:"Respeito",ambicao:"Ambição",disciplina:"Disciplina",prestigio:"Prestígio"};
 const R=window.RoadRegras;
-// o protagonista que está sendo montado (na entrada e no lobby): arquétipo, nome e aparência
-const rascunho={arquetipo:R.IDS[0],avatar:"",aparencia:{...R.PERSONAGENS[R.IDS[0]].aparencia},de:null};
+// o protagonista que está sendo montado (na entrada e no lobby): arquétipo, nome e figura (aparência, visual, expressão)
+const copiaFigura=f=>JSON.parse(JSON.stringify(f));
+const rascunho={arquetipo:R.IDS[0],avatar:"",figura:copiaFigura(R.PERSONAGENS[R.IDS[0]].figura),de:null,aba:"aparencia"};
 let ocupadosNaSala=[], timerCodigo=null;
 const tomNomes={respeito:"Respeito",provoca:"Provocação",neutro:"Neutro"};
 function toast(texto){
@@ -34,9 +35,9 @@ function tagClube(id,tam=""){
   return '<span class="rtc-crest '+safe(tam)+'" style="background:'+safe(fundo)+';border-color:'+safe(borda)+'" title="'+safe(nomeClube(id))+'">'+safe(c?.curto||String(id||"?").slice(0,3).toUpperCase())+'</span>';
 }
 function figura(p,tam=44){
-  if(!p.aparencia)return boneco(p);
+  if(!p.figura)return boneco(p);
   const c=clubes.get(p.clube);
-  return '<span class="rtc-fig">'+Aparencia.svg(p.aparencia,c?.cores||[],{tam,titulo:p.avatar})+'</span>';
+  return '<span class="rtc-fig">'+Aparencia.svg(p.figura,c?.cores||[],{tam,titulo:p.avatar})+'</span>';
 }
 function boneco(p){
   const c=clubes.get(p.clube),camisa=c?.cores?.[0]||"#245ba3",detalhe=c?.cores?.[1]||"#c8dcff";
@@ -44,13 +45,13 @@ function boneco(p){
     '<span class="rtc-cabelo"></span><span class="rtc-rosto"></span><span class="rtc-camisa"></span><span class="rtc-calcoes"></span></span>';
 }
 function escolherArquetipo(id){
-  rascunho.arquetipo=id;rascunho.aparencia={...R.PERSONAGENS[id].aparencia};
+  rascunho.arquetipo=id;rascunho.figura=copiaFigura(R.PERSONAGENS[id].figura);
 }
 function cartoesArquetipos(ocupados=[],meu=null){
   return '<div class="rtc-arqs" role="radiogroup" aria-label="Os seis protagonistas">'+R.IDS.map(id=>{
     const d=R.PERSONAGENS[id],c=clubes.get(d.clube),tomado=ocupados.includes(id)&&id!==meu,sel=rascunho.arquetipo===id;
     return '<button type="button" class="rtc-arq" role="radio" aria-checked="'+sel+'" data-arq="'+id+'"'+(tomado?' disabled':'')+'>'+
-      '<span class="rtc-arq-fig">'+Aparencia.svg(d.aparencia,c?.cores||[],{tam:52,titulo:d.titulo})+'</span>'+
+      '<span class="rtc-arq-fig">'+Aparencia.svg(d.figura,c?.cores||[],{tam:52,titulo:d.titulo})+'</span>'+
       '<b>'+safe(d.titulo)+'</b><small>'+safe(c?.nome||d.clube)+' · '+safe(d.pos)+' · '+d.idade+' anos</small>'+
       (tomado?'<i>JÁ ESCOLHIDO</i>':'')+'</button>';
   }).join('')+'</div>';
@@ -62,25 +63,38 @@ function barra(valor,min,max,nome){
 function eixosHTML(eixos){
   return Object.entries(R.EIXOS).map(([k,e])=>barra(eixos?.[k],e.min,e.max,e.nome)).join('');
 }
-function opcoesSelect(campo,lista,atual){
-  return '<select data-ap="'+campo+'" aria-label="'+campo+'">'+Object.entries(lista).map(([v,t])=>'<option value="'+safe(v)+'"'+(v===atual?' selected':'')+'>'+safe(t)+'</option>').join('')+'</select>';
+// `campo` é "parte.chave" (ex.: "aparencia.cabelo"); `lista` é { valor: rótulo }
+function opcoesSelect(campo,rotulo,lista,atual,sugestao){
+  return '<div><label>'+safe(rotulo)+'</label><select data-ap="'+campo+'" aria-label="'+safe(rotulo)+'">'+Object.entries(lista).map(([v,t])=>
+    '<option value="'+safe(v)+'"'+(v===atual?' selected':'')+'>'+safe(typeof t==="string"?t:t.nome)+(v===sugestao?' ★':'')+'</option>').join('')+'</select></div>';
 }
-function editorAparencia(){
-  const a=rascunho.aparencia,d=R.PERSONAGENS[rascunho.arquetipo];
-  return '<div class="rtc-editor"><span class="rtc-kicker">APARÊNCIA</span>'+
-    '<label>Tom de pele</label><div class="rtc-peles">'+Object.entries(R.PELES).map(([n,cor])=>
+const ABAS_FIGURA=[["aparencia","Aparência física"],["visual","Visual e acessórios"],["expressao","Expressão pessoal"]];
+const nomesCores=Object.fromEntries(Object.keys(R.CORES_CABELO).map(k=>[k,k[0].toUpperCase()+k.slice(1)]));
+// o editor da figura em três abas; a prévia ao lado muda na hora (atualizarPreview)
+function editorFigura(){
+  const {aparencia:a,visual:v,expressao:e}=rascunho.figura,sug=R.PERSONAGENS[rascunho.arquetipo].figura,ab=rascunho.aba;
+  let corpo="";
+  if(ab==="aparencia")corpo='<label>Tom de pele</label><div class="rtc-peles">'+Object.entries(R.PELES).map(([n,cor])=>
       '<button type="button" class="rtc-pele" data-pele="'+n+'" aria-pressed="'+(String(a.pele)===n)+'" aria-label="Tom '+n+'" style="background:'+cor+'"></button>').join('')+'</div>'+
-    '<div class="rtc-duas"><div><label>Cabelo</label>'+opcoesSelect("cabelo",R.CABELOS,a.cabelo)+'</div>'+
-    '<div><label>Cor do cabelo</label>'+opcoesSelect("corCabelo",Object.fromEntries(Object.keys(R.CORES_CABELO).map(k=>[k,k[0].toUpperCase()+k.slice(1)])),a.corCabelo)+'</div></div>'+
-    '<div class="rtc-duas"><div><label>Barba</label>'+opcoesSelect("barba",R.BARBAS,a.barba)+'</div>'+
-    '<div><label>Número</label><input data-ap="numero" type="number" min="1" max="99" value="'+num(a.numero)+'"></div></div>'+
-    '<div class="rtc-duas"><div><label>Altura</label><input data-ap="altura" type="range" min="0.9" max="1.1" step="0.05" value="'+a.altura+'"></div>'+
-    '<div><label>Porte</label><input data-ap="largura" type="range" min="0.9" max="1.1" step="0.05" value="'+a.largura+'"></div></div>'+
-    '<label class="rtc-check"><input data-ap="marca" type="checkbox"'+(a.marca?' checked':'')+'> Marca do personagem: '+safe(R.MARCAS[d.aparencia.marca])+'</label></div>';
+    '<div class="rtc-duas">'+opcoesSelect("aparencia.rosto","Rosto",R.ROSTOS,a.rosto,sug.aparencia.rosto)+opcoesSelect("aparencia.barba","Barba",R.BARBAS,a.barba,sug.aparencia.barba)+'</div>'+
+    '<div class="rtc-duas">'+opcoesSelect("aparencia.cabelo","Cabelo",R.CABELOS,a.cabelo,sug.aparencia.cabelo)+opcoesSelect("aparencia.corCabelo","Cor do cabelo",nomesCores,a.corCabelo,sug.aparencia.corCabelo)+'</div>'+
+    '<div class="rtc-duas"><div><label>Altura</label><input data-ap="aparencia.altura" type="range" min="0.9" max="1.1" step="0.05" value="'+a.altura+'"></div>'+
+    '<div><label>Porte</label><input data-ap="aparencia.largura" type="range" min="0.9" max="1.1" step="0.05" value="'+a.largura+'"></div></div>';
+  if(ab==="visual")corpo='<div class="rtc-duas"><div><label>Número da camisa</label><input data-ap="visual.numero" type="number" min="1" max="99" value="'+num(v.numero)+'"></div>'+
+    opcoesSelect("visual.chuteiras","Chuteiras",R.CHUTEIRAS,v.chuteiras,sug.visual.chuteiras)+'</div>'+
+    opcoesSelect("visual.acessorio","Acessório",R.ACESSORIOS,v.acessorio,sug.visual.acessorio);
+  if(ab==="expressao")corpo=opcoesSelect("expressao.semblante","Semblante",R.SEMBLANTES,e.semblante,sug.expressao.semblante)+
+    opcoesSelect("expressao.comemoracao","Comemoração de gol",R.COMEMORACOES,e.comemoracao,sug.expressao.comemoracao)+
+    opcoesSelect("expressao.postura","Postura nas entrevistas",R.POSTURAS,e.postura,sug.expressao.postura)+
+    '<p class="rtc-small">A comemoração vira notícia nas vitórias que todo mundo acompanha.</p>';
+  return '<div class="rtc-editor" id="rtc-editor"><span class="rtc-kicker">SUA FIGURA</span>'+
+    '<div class="rtc-subabas" role="tablist" aria-label="Partes da figura">'+ABAS_FIGURA.map(([id,t])=>
+      '<button type="button" role="tab" data-fig-aba="'+id+'" aria-selected="'+(ab===id)+'">'+safe(t)+'</button>').join('')+'</div>'+
+    corpo+'<p class="rtc-small rtc-nota">★ é a sugestão do personagem. Nada aqui muda força, forma ou lesões: em campo, todos têm as mesmas chances.</p></div>';
 }
 function previewHTML(){
   const d=R.PERSONAGENS[rascunho.arquetipo],c=clubes.get(d.clube);
-  return Aparencia.svg(rascunho.aparencia,c?.cores||[],{tam:120,titulo:d.titulo});
+  return Aparencia.svg(rascunho.figura,c?.cores||[],{tam:120,titulo:d.titulo});
 }
 function fichaArquetipo(){
   const d=R.PERSONAGENS[rascunho.arquetipo],c=clubes.get(d.clube);
@@ -104,7 +118,7 @@ function paginaInicial() {
     '<div class="rtc-stack"><section class="rtc-card"><span class="rtc-kicker">IDENTIDADE</span><h3>QUEM É VOCÊ</h3>'+
     '<label for="rtc-nome">Seu nome na sala</label><input id="rtc-nome" maxlength="24" placeholder="Seu nome" autocomplete="nickname">'+
     '<label for="rtc-avatar">Nome do jogador</label><input id="rtc-avatar" maxlength="24" placeholder="Ex.: '+safe(d.sugestao)+'" value="'+safe(rascunho.avatar)+'">'+
-    editorAparencia()+
+    editorFigura()+
     '<div class="rtc-row rtc-margin"><button class="rtc-button primary" data-acao="criar">CRIAR CAMPANHA</button></div></section>'+
     '<section class="rtc-card"><span class="rtc-kicker">JÁ EXISTE UMA HISTÓRIA?</span><h3>ENTRAR NA CHAMPIONS</h3>'+
     '<p>Digite o código da sala: os protagonistas que já têm dono ficam bloqueados.</p>'+
@@ -119,7 +133,7 @@ function jogadores(s) {
 function paginaLobby(s){
   const eu=s.jogadores.find(p=>p.id===s.eu),ocupados=s.jogadores.filter(p=>p.id!==s.eu).map(p=>p.arquetipo);
   if(rascunho.de!==eu.id+":"+eu.arquetipo&&eu.arquetipo){
-    rascunho.de=eu.id+":"+eu.arquetipo;rascunho.arquetipo=eu.arquetipo;rascunho.avatar=eu.avatar;rascunho.aparencia={...eu.aparencia};
+    rascunho.de=eu.id+":"+eu.arquetipo;rascunho.arquetipo=eu.arquetipo;rascunho.avatar=eu.avatar;rascunho.figura=copiaFigura(eu.figura);
   }
   app.innerHTML='<section class="rtc-hero"><span class="rtc-eyebrow">LOBBY · SUA HISTÓRIA COMEÇA AQUI</span>'+
     '<h1>A EUROPA <em>ESPERA.</em></h1><p>Convoque até cinco amigos. Cada um escolhe um protagonista, e o clube vem junto. Quando a sala começar, protagonista e aparência ficam fixos.</p></section>'+
@@ -129,7 +143,7 @@ function paginaLobby(s){
     '<p class="rtc-small">Trocar de protagonista troca o clube junto. Os que já têm dono ficam bloqueados.</p>'+
     cartoesArquetipos(ocupados,eu.arquetipo)+fichaArquetipo()+
     '<label for="rtc-avatar">Nome do jogador</label><input id="rtc-avatar" maxlength="24" value="'+safe(rascunho.avatar)+'">'+
-    editorAparencia()+
+    editorFigura()+
     '<div class="rtc-margin"><button class="rtc-button ghost" data-acao="mudar">SALVAR PROTAGONISTA</button></div></section>':'')+'</div>'+
     '<div class="rtc-stack"><section class="rtc-card"><span class="rtc-kicker">CONVITE DA SALA</span>'+
     '<div class="rtc-code">'+safe(s.codigo)+'</div><p>Compartilhe este código. O progresso é salvo no servidor e você poderá retomar com este navegador.</p>'+
@@ -155,9 +169,10 @@ function tabela(s,g) {
     linhas.map(t=>'<tr><td>'+safe(nomeClube(t.clube))+'</td><td>'+num(t.p)+'</td><td>'+num(t.j)+'</td><td>'+num(t.v)+'</td><td>'+num(t.sg)+'</td></tr>').join('')+
     '</tbody></table><p class="rtc-small">Os dois primeiros avançam às semifinais.</p></div>';
 }
+const TIPOS_FEED={decisao:'DECISÃO',manchete:'MANCHETE',repercussao:'REPERCUSSÃO',visual:'VISUAL NOVO',comemoracao:'COMEMORAÇÃO'};
 function feed(s){
   return '<section class="rtc-card"><div class="rtc-titleline"><div><span class="rtc-kicker">A IMPRENSA NÃO ESQUECE</span><h3>DIÁRIO DA CHAMPIONS</h3></div></div>'+
-    '<div class="rtc-feed">'+(s.historico.length?s.historico.map(x=>'<div class="rtc-news"><small>CAPÍTULO '+(num(x.rodada)+1)+' · '+(x.tipo==='decisao'?'DECISÃO':x.tipo==='manchete'?'MANCHETE':x.tipo==='repercussao'?'REPERCUSSÃO':'PLACAR')+'</small>'+
+    '<div class="rtc-feed">'+(s.historico.length?s.historico.map(x=>'<div class="rtc-news"><small>CAPÍTULO '+(num(x.rodada)+1)+' · '+(TIPOS_FEED[x.tipo]||'PLACAR')+'</small>'+
     (x.autor?'<b>'+safe(x.autor)+'</b> · ':'')+safe(x.texto)+'</div>').join(''):'<p>As primeiras manchetes ainda serão escritas.</p>')+
     '</div></section>';
 }
@@ -170,6 +185,8 @@ function atributos(s){
     '<small>'+safe(nomeClube(eu.clube))+' · '+safe(eu.pos)+(eu.idade?' · '+eu.idade+' anos':'')+'</small></span></div>'+
     '<div class="rtc-attributes rtc-margin">'+Object.entries(attrNames).map(([k,label])=>'<div class="rtc-attribute">'+
     '<small class="rtc-label">'+label+'</small><b>'+num(eu.atributos[k])+'</b></div>').join('')+'</div>'+
+    (eu.figura?'<p class="rtc-small rtc-margin"><b>Comemoração:</b> '+safe(R.COMEMORACOES[eu.figura.expressao.comemoracao]?.nome||"")+
+      ' · <b>Postura:</b> '+safe(R.POSTURAS[eu.figura.expressao.postura]||"")+'</p>':'')+
     (eu.eixos?'<h4 class="rtc-margin">ESTILO DE VIDA</h4>'+eixosHTML(eu.eixos):'')+
     (med?'<div class="rtc-medidor rtc-margin"><span class="rtc-label">'+safe(med.nome)+'</span><b>'+valorMed+'</b>'+
       '<div class="rtc-medidor-barra"><span style="width:'+valorMed+'%"></span></div><small>'+safe(med.texto)+'</small></div>':'')+
@@ -238,7 +255,7 @@ function final(s){
 }
 function desenhar(){if(!sala)paginaInicial();else if(sala.fase==="lobby")paginaLobby(sala);else if(sala.fase==="jogando")telaJogo(sala);else final(sala);}
 const identidade=()=>({nome:document.getElementById("rtc-nome")?.value,avatar:document.getElementById("rtc-avatar")?.value,
-  arquetipo:rascunho.arquetipo,aparencia:{...rascunho.aparencia,marca:rascunho.aparencia.marca?true:false}});
+  arquetipo:rascunho.arquetipo,figura:rascunho.figura});
 let ocupado=false;
 app.addEventListener("click",async e=>{
   const arq=e.target.closest("[data-arq]");
@@ -252,9 +269,15 @@ app.addEventListener("click",async e=>{
   }
   const pele=e.target.closest("[data-pele]");
   if(pele){
-    rascunho.aparencia.pele=Number(pele.dataset.pele);
+    rascunho.figura.aparencia.pele=Number(pele.dataset.pele);
     for(const b of app.querySelectorAll("[data-pele]"))b.setAttribute("aria-pressed",String(b===pele));
     atualizarPreview();return;
+  }
+  const abaFig=e.target.closest("[data-fig-aba]");
+  if(abaFig){
+    rascunho.aba=abaFig.dataset.figAba;
+    const box=document.getElementById("rtc-editor");if(box)box.outerHTML=editorFigura();
+    document.querySelector('[data-fig-aba="'+rascunho.aba+'"]')?.focus();return;
   }
   const tab=e.target.closest("[data-aba]");
   if(tab){aba=tab.dataset.aba;desenhar();return;}
@@ -269,7 +292,7 @@ app.addEventListener("click",async e=>{
   let evento=null,dados={};
   if(acao==="criar"){evento="criar";dados=identidade();}
   if(acao==="entrar"){evento="entrar";dados={...identidade(),codigo:document.getElementById("rtc-code")?.value};}
-  if(acao==="mudar"){evento="protagonista";const i=identidade();dados={arquetipo:i.arquetipo,aparencia:i.aparencia,avatar:i.avatar};}
+  if(acao==="mudar"){evento="protagonista";const i=identidade();dados={arquetipo:i.arquetipo,figura:i.figura,avatar:i.avatar};}
   if(acao==="iniciar")evento="iniciar";
   if(acao==="avancar")evento="avancar";
   if(acao==="decidir"){evento="decidir";dados={opcao:Number(botao.dataset.opcao),tatica:document.getElementById("rtc-tatica")?.value||"equilibrado"};}
@@ -285,11 +308,10 @@ function atualizarPreview(){const box=document.getElementById("rtc-preview");if(
 app.addEventListener("input",e=>{
   const campo=e.target.dataset?.ap;
   if(campo){
-    const a=rascunho.aparencia,base=R.PERSONAGENS[rascunho.arquetipo].aparencia;
-    if(campo==="marca")a.marca=e.target.checked?base.marca:"";
-    else if(campo==="numero")a.numero=Math.max(1,Math.min(99,Math.round(Number(e.target.value))||base.numero));
-    else if(campo==="altura"||campo==="largura")a[campo]=Number(e.target.value);
-    else a[campo]=e.target.value;
+    const [parte,chave]=campo.split("."),alvo=rascunho.figura[parte],base=R.PERSONAGENS[rascunho.arquetipo].figura[parte];
+    if(chave==="numero")alvo.numero=Math.max(1,Math.min(99,Math.round(Number(e.target.value))||base.numero));
+    else if(chave==="altura"||chave==="largura")alvo[chave]=Number(e.target.value);
+    else alvo[chave]=e.target.value;
     atualizarPreview();return;
   }
   if(e.target.id==="rtc-avatar")rascunho.avatar=e.target.value;

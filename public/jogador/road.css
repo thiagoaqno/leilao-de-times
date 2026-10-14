@@ -118,6 +118,11 @@ body.rtc:before{content:"";position:fixed;inset:0;pointer-events:none;background
 .rtc-pele{width:34px;height:34px;border-radius:50%;border:2px solid #ffffff33}
 .rtc-pele[aria-pressed=true]{border-color:#fff;box-shadow:0 0 0 2px #8bbfff}
 .rtc-duas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rtc-subabas{display:flex;gap:4px;margin:10px 0 12px;overflow-x:auto}
+.rtc-subabas button{flex:1 0 auto;border:1px solid #a9c9ff2a;background:#10244a;color:#acbee2;padding:9px 12px;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.rtc-subabas button[aria-selected=true]{background:#a4cfff;color:#041536}
+.rtc-subabas button:focus-visible{outline:3px solid #b6d8ff;outline-offset:2px}
+.rtc-nota{margin-top:12px;color:#9fb1d8}
 .rtc-card input[type=range]{padding:0;border:0;background:none;accent-color:#8bbfff;height:34px}
 .rtc-card .rtc-check{display:flex;align-items:center;gap:9px;font-weight:600}
 .rtc-card .rtc-check input{width:auto;display:inline-block;accent-color:#8bbfff}

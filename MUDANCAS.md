@@ -1,26 +1,35 @@
-# Road to Champions: os seis protagonistas
+# Road to Champions: a figura do protagonista em três partes
 
 ## O que muda
 
-- A criação agora é a escolha de um entre seis protagonistas, cada um preso ao seu clube, com posição, idade e jeito próprios. O jogador dá o nome:
-  - **O Último Romântico** (Arsenal, MEI, 34): festas e câmeras, a última dança;
-  - **O Prodígio** (Barcelona, PD, 18): a marra, o bairro e as causas;
-  - **O Resiliente** (Real Madrid, PE, 26): o banco de Ventura, a arquibancada e as finais;
-  - **O Imprevisível** (PSG, PD, 29): a Bola de Ouro, o caos e a fama de vidro;
-  - **O Enigma** (Bayern, PD, 24): sem câmeras, respostas que ninguém entende;
-  - **A Máquina** (City, ATA, 26): o protocolo e o fantasma dos jogos grandes.
-- **Estilo de vida:** três eixos (Rotina, Exposição, Grupo) começam no perfil de cada um e andam com as escolhas. Cada protagonista tem também um medidor próprio (relação com o técnico, fama de cai-cai, marra cumprida, decifrado, jogo grande, fama de vidro).
-- **Escolhas por personagem:** os capítulos 2 e 4 têm um evento exclusivo de cada protagonista. Os outros capítulos trazem opções que só alguns veem (bancar a marra, a resposta enigmática, “Ok.”). Algumas opções dependem do estilo de vida ou de quem está na sala.
-- **Consequências:** escolhas podem trazer risco de lesão, mexer na forma do clube na jornada (de -2 a +2 na força, nunca mais que isso), virar manchete, apostar (a marra é cobrada depois do jogo) ou dar certo ou errado na sorte. O epílogo ganha uma linha própria de cada protagonista.
-- **Laços prontos:** quem está na sala já começa ligado (ídolo e herdeiro, El Clásico, seleção, ex-Barça, os dois frios).
-- **Aparência como dados:** tom de pele, cabelo, cor, barba, altura, porte, número e a marca do personagem (faixa, fones, óculos âmbar...). Hoje o desenho é um SVG (`public/jogador/aparencia.js`); um estilo cartoon futuro só troca esse arquivo.
-- A repercussão na imprensa passa a usar o `tom` de cada opção, não o texto.
-- No lobby dá para trocar de protagonista (o clube vem junto) e ajustar a aparência. Quem entra com o código vê bloqueados os protagonistas que já têm dono.
-- Campanhas antigas, sem protagonista, continuam jogáveis com os eventos de antes.
+- **A personalização ficou dividida em três partes**, todas só dados e sem efeito em campo:
+  - **Aparência física:** tom de pele, formato do rosto (oval, redondo, quadrado, fino), cabelo, cor do cabelo, barba, altura e porte;
+  - **Visual e acessórios:** número da camisa, acessório e chuteiras (pretas, brancas, douradas ou uma de cada cor);
+  - **Expressão pessoal:** semblante (sério ou sorridente), comemoração de gol (8 opções) e postura nas entrevistas (6 opções).
+- **O acessório do personagem é só uma sugestão.** Antes ele vinha fixo e só dava para desligar. Agora o jogador escolhe qualquer acessório, ou nenhum. O editor marca com ★ o que o personagem sugere.
+- **Editor em três abas** na criação e no lobby, com a prévia mudando na hora. Trocar de aba não perde o que já foi escolhido.
+- **Evolução visual por escolha.** Quatro opções de evento mudam a figura, e a mudança entra no diário de todos como **VISUAL NOVO**:
+  - **O Último Romântico** pode aparecer sem a corrente e de cabelo curto (capítulo 3);
+  - **A Máquina** pode ir à coletiva sem os óculos âmbar (capítulo 3);
+  - **O Prodígio** pode descolorir o cabelo para a semifinal (capítulo 4);
+  - **O Enigma** pode avisar que vai comemorar de verdade na final (capítulo 5).
+
+  Cada opção só aparece quando faz sentido: quem já tirou os óculos não vê a opção de tirá-los.
+- **A comemoração vira notícia.** Nas vitórias de mata-mata e nos jogos entre protagonistas, o diário mostra como o vencedor comemorou.
+- **Versão nos dados:** `aparencia.versao` (hoje 1) permite que um desenho futuro, cartoon ou 3D, saiba de que formato os dados são.
+- **Campanhas já criadas** no formato anterior (tudo em `aparencia`, com `numero` e `marca`) são convertidas ao carregar do banco, sem perder nada.
+
+## As quatro exigências
+
+- **Aparência sem efeito esportivo:** um teste joga a mesma campanha duas vezes, com figuras diferentes, e confere que placares, campeão, atributos, eixos, medidores, forma e vitórias saem iguais.
+- **Personalização persistente:** um teste retoma a campanha num servidor novo, carregando do banco, e confere a figura igual.
+- **Identidade compartilhada:** o estado manda a figura de todos, e um teste confere que quem cria e quem entra veem a mesma.
+- **Desenhista independente:** `public/jogador/aparencia.js` lê só a figura e as cores do clube, sem regra de jogo dentro.
 
 ## Verificação
 
-- `tests/road-to-champions.test.js`: 9 testes (criação por arquétipo, aparência limpa, sem repetir, laços, evento exclusivo, opções próprias, eixos, forma, sorte, marra e campanha antiga).
+- `tests/road-to-champions.test.js`: 15 testes, 6 novos (sem efeito em campo, persistência e figura compartilhada, formato antigo, evolução visual no diário, comemoração no mata-mata e valores válidos em todas as opções).
 - `tests/salas.test.js`, `jogador.test.js`, `servidor.test.js` e `bd.test.js` passando.
-- 300 campanhas simuladas com os seis protagonistas, sem erro.
-- Fotos da criação, do lobby e do evento exclusivo no navegador, no computador e no celular.
+- 300 campanhas simuladas com figuras e escolhas sorteadas, sem erro.
+- O desenho das seis sugestões e das variações renderizado em PNG.
+- O editor e a tela de jogo rodados num DOM simulado (abas, prévia, envio da figura, ficha e diário). O navegador de testes não pôde ser baixado neste ambiente, então faltam as fotos da página real.

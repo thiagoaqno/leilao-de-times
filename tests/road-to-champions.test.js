@@ -80,13 +80,20 @@ test("escolhas mexem em atributos e relacionamento sem alterar confrontos já re
   assert.equal(r.estado.jogos.filter(j=>j.resultado).length,0);
   assert.equal((await b.call("decidir",{opcao:999,tatica:"equilibrado"})).ok,false);
 });
-test("o protagonista vem do arquétipo: clube, posição, aparência limpa e sem repetir",async()=>{
+test("o protagonista vem do arquétipo: clube, posição, figura limpa e sem repetir",async()=>{
   const conectar=simularServidor(),a=conectar(),b=conectar(),c=conectar();
-  const r=await a.call("criar",{...d(0,"prodigio"),aparencia:{pele:9,cabelo:"moicano",numero:"23",altura:5,marca:false}});
+  const r=await a.call("criar",{...d(0,"prodigio"),figura:{
+    aparencia:{pele:9,cabelo:"moicano",altura:5,rosto:"triangular"},
+    visual:{numero:"23",acessorio:"nenhum",chuteiras:"roxas"},
+    expressao:{comemoracao:"mortal",postura:"seca"}}});
   assert.equal(r.ok,true,r.error);
   const eu=r.estado.jogadores[0];
   assert.equal(eu.clube,"fc-barcelona");assert.equal(eu.pos,"PD");assert.equal(eu.idade,18);
-  assert.deepEqual(eu.aparencia,{pele:5,cabelo:"cacheado",corCabelo:"preto",barba:"nenhuma",altura:1.1,largura:0.9,numero:23,marca:""});
+  // o que vem errado fica com a sugestão do arquétipo; o acessório do personagem pode sair
+  assert.deepEqual(eu.figura,{
+    aparencia:{versao:1,pele:4,rosto:"fino",cabelo:"cacheado",corCabelo:"preto",barba:"nenhuma",altura:1.1,largura:0.9},
+    visual:{numero:23,acessorio:"nenhum",chuteiras:"brancas"},
+    expressao:{semblante:"sorriso",comemoracao:"joelhos",postura:"seca"}});
   assert.deepEqual(eu.eixos,R.PERSONAGENS.prodigio.eixos);
   assert.equal((await b.call("entrar",{...d(1,"prodigio"),codigo:r.codigo})).ok,false);
   assert.equal((await b.call("entrar",{...d(1,"nenhum"),codigo:r.codigo})).ok,false);
@@ -98,7 +105,12 @@ test("o protagonista vem do arquétipo: clube, posição, aparência limpa e sem
   const t=await a.call("protagonista",{arquetipo:"maquina"});
   assert.equal(t.ok,true,t.error);
   assert.equal(t.estado.jogadores[0].clube,"manchester-city");
-  assert.equal(t.estado.jogadores[0].aparencia.marca,"oculos");
+  assert.equal(t.estado.jogadores[0].figura.visual.acessorio,"oculos");
+  // ajustar só uma parte da figura no lobby mantém o resto
+  const ajuste=await a.call("protagonista",{figura:{visual:{numero:99}}});
+  assert.equal(ajuste.ok,true,ajuste.error);
+  assert.equal(ajuste.estado.jogadores[0].figura.visual.numero,99);
+  assert.equal(ajuste.estado.jogadores[0].figura.visual.acessorio,"oculos");
 });
 test("laços iniciais, evento exclusivo no capítulo 2 e opções próprias do arquétipo",async()=>{
   const conectar=simularServidor(),a=conectar(),b=conectar();
@@ -169,4 +181,117 @@ test("campanha antiga, sem arquétipo, continua jogável",()=>{
     decidir(s,velho,1,"equilibrado");avancar(s);
   }
   assert.equal(s.fase,"fim");assert.equal(velho.atributos.disciplina,81); // 0 + 10 + 7 + 14 + 0, as opções antigas
+});
+
+// ---------- a figura: aparência, visual e expressão ----------
+const {gruposIniciais,decidir,avancar,cena,estado,atualizarCampanha,jogar}=rtc.paraTestes;
+let n=0;
+// uma campanha montada à mão com os protagonistas dados (arquétipo e figura)
+function campanha(codigo,lista){
+  const jogadores=lista.map(([arq,figura],i)=>({id:"p"+i,segredo:"x",nome:"Amigo "+i,avatar:"Craque "+i,
+    ...R.novoProtagonista(arq,figura),relacoes:{},escolhas:[],vitorias:0}));
+  const s={codigo,criadaEm:0,fase:"lobby",dono:"p0",jogadores,equipes:[],jogos:[],capitulo:0,
+    entradas:[],resultados:[],campeao:null,epilogos:[],historico:[]};
+  gruposIniciais(s);return s;
+}
+const textoOpcao=(s,p,re)=>cena(s,p).opcoes.find(o=>re.test(o.texto));
+test("figura: a aparência não muda placar, forma, risco nem atributos",()=>{
+  const outra={aparencia:{pele:1,rosto:"redondo",cabelo:"longo",corCabelo:"ruivo",barba:"cheia",altura:0.9,largura:1.1},
+    visual:{numero:1,acessorio:"nenhum",chuteiras:"brancas"},expressao:{semblante:"serio",comemoracao:"discreta",postura:"humilde"}};
+  const codigo="FIG"+(++n);
+  const a=campanha(codigo,[["romantico"],["imprevisivel"],["maquina"]]);
+  const b=campanha(codigo,[["romantico",outra],["imprevisivel",outra],["maquina",outra]]);
+  for(let c=0;c<5;c++){
+    for(const s of [a,b]){for(const p of s.jogadores)decidir(s,p,0,"equilibrado");avancar(s);}
+  }
+  assert.deepEqual(b.resultados,a.resultados);assert.equal(b.campeao,a.campeao);
+  for(let i=0;i<3;i++){
+    const pa=a.jogadores[i],pb=b.jogadores[i];
+    for(const k of ["atributos","eixos","medidores","forma","vitorias"])assert.deepEqual(pb[k],pa[k],k);
+  }
+});
+test("figura: persiste ao reconectar e ao recarregar a campanha do banco, e todos veem a mesma",async()=>{
+  const conectar=simularServidor(),a=conectar(),b=conectar();
+  const r=await a.call("criar",{...d(0,"enigma"),figura:{aparencia:{cabelo:"trancas"},expressao:{comemoracao:"bracos"}}});
+  assert.equal(r.ok,true,r.error);
+  const rb=await b.call("entrar",{...d(1,"resiliente"),codigo:r.codigo});assert.equal(rb.ok,true,rb.error);
+  const minha=rb.estado.jogadores.find(x=>x.arquetipo==="enigma").figura;
+  assert.equal(minha.aparencia.cabelo,"trancas");
+  assert.deepEqual(minha,r.estado.jogadores[0].figura); // quem criou e quem entrou veem a mesma figura
+  assert.equal((await a.call("iniciar")).ok,true);
+  // outro servidor (cache vazio): a campanha vem do banco igual
+  const outro=simularServidor()();
+  const volta=await outro.call("retomar",{codigo:r.codigo,token:r.token});
+  assert.equal(volta.ok,true,volta.error);
+  assert.deepEqual(volta.estado.jogadores.find(x=>x.arquetipo==="enigma").figura,minha);
+  assert.deepEqual(volta.estado.jogadores.find(x=>x.arquetipo==="resiliente").figura,
+    rb.estado.jogadores.find(x=>x.arquetipo==="resiliente").figura);
+});
+test("figura: o formato antigo (tudo em `aparencia`) vira as três partes",async()=>{
+  const conectar=simularServidor(),a=conectar();
+  const r=await a.call("criar",{...d(0,"imprevisivel"),aparencia:{pele:2,cabelo:"black",numero:8,marca:false}});
+  assert.equal(r.ok,true,r.error);
+  const f=r.estado.jogadores[0].figura;
+  assert.equal(f.aparencia.pele,2);assert.equal(f.aparencia.cabelo,"black");
+  assert.equal(f.visual.numero,8);assert.equal(f.visual.chuteiras,"pretas"); // a marca desligada
+  // uma campanha salva no formato antigo
+  const p={id:"v",arquetipo:"resiliente",clube:"real-madrid",aparencia:{pele:5,cabelo:"trancas",corCabelo:"preto",barba:"nenhuma",
+    altura:1,largura:0.95,numero:11,marca:"sorriso"},atributos:{respeito:1,ambicao:2,disciplina:3,prestigio:4}};
+  atualizarCampanha({jogadores:[p]});
+  assert.equal("aparencia" in p,false);
+  assert.equal(p.figura.aparencia.versao,R.VERSAO_FIGURA);
+  assert.equal(p.figura.visual.numero,11);assert.equal(p.figura.expressao.semblante,"sorriso");
+  assert.deepEqual(p.atributos,{respeito:1,ambicao:2,disciplina:3,prestigio:4});
+});
+test("figura: escolhas mudam o visual e entram no diário de todos",()=>{
+  const s=campanha("EVO"+(++n),[["prodigio"],["romantico"],["enigma"],["maquina",{visual:{acessorio:"nenhum"}}]]);
+  const [pr,ro,en,ma]=s.jogadores;
+  // capítulo 3 (índice 2): o Romântico pode ficar discreto; a Máquina sem óculos já não vê a opção dos óculos
+  for(let c=0;c<2;c++){for(const p of s.jogadores)decidir(s,p,0,"equilibrado");avancar(s);}
+  assert.equal(textoOpcao(s,ma,/óculos/),undefined);
+  const disc=textoOpcao(s,ro,/sem a corrente/);assert.ok(disc);
+  const antes={...ro.atributos};
+  decidir(s,ro,disc.id,"equilibrado");
+  assert.equal(ro.figura.visual.acessorio,"nenhum");assert.equal(ro.figura.aparencia.cabelo,"curto");
+  assert.equal(ro.figura.aparencia.pele,R.PERSONAGENS.romantico.figura.aparencia.pele); // o resto fica
+  for(const k of ["respeito","ambicao","prestigio"])assert.equal(ro.atributos[k],antes[k],k); // só a disciplina da opção
+  const diario=estado(s,en).historico.find(x=>x.tipo==="visual");
+  assert.ok(diario&&/sem a corrente/.test(diario.texto)&&diario.texto.includes(ro.avatar));
+  for(const p of [pr,en,ma])decidir(s,p,0,"equilibrado");avancar(s);
+  // capítulo 4 (índice 3): o Prodígio descolore o cabelo na faixa da semifinal
+  const corte=textoOpcao(s,pr,/descolorir/);assert.ok(corte);
+  decidir(s,pr,corte.id,"equilibrado");
+  assert.equal(pr.figura.aparencia.corCabelo,"platinado");
+  for(const p of [ro,en,ma])decidir(s,p,0,"equilibrado");avancar(s);
+  assert.equal(textoOpcao(s,pr,/descolorir/),undefined);
+  // capítulo 5: o Enigma promete comemorar de verdade
+  const fest=textoOpcao(s,en,/comemorar de verdade/);assert.ok(fest);
+  decidir(s,en,fest.id,"equilibrado");
+  assert.equal(en.figura.expressao.comemoracao,"efusiva");
+});
+test("figura: a comemoração vira notícia na vitória de mata-mata",()=>{
+  const s=campanha("COM"+(++n),[["romantico"],["maquina"]]);
+  const [ro,ma]=s.jogadores;
+  const j={id:"final",etapa:"final",rodada:4,casa:ro.clube,fora:ma.clube,resultado:null};
+  jogar(s,j);
+  const venceu=s.jogadores.find(p=>p.clube===j.resultado.vencedor),perdeu=s.jogadores.find(p=>p!==venceu);
+  const nota=s.historico.find(x=>x.tipo==="comemoracao");
+  assert.ok(nota,"sem notícia da comemoração");
+  assert.equal(nota.autor,venceu.avatar);
+  assert.ok(nota.texto.includes(R.COMEMORACOES[venceu.figura.expressao.comemoracao].frase));
+  assert.ok(nota.texto.includes(perdeu.avatar));
+});
+test("figura: todas as opções que mudam a figura usam valores que existem",()=>{
+  const listas={aparencia:{rosto:R.ROSTOS,cabelo:R.CABELOS,corCabelo:R.CORES_CABELO,barba:R.BARBAS},
+    visual:{acessorio:R.ACESSORIOS,chuteiras:R.CHUTEIRAS},expressao:{semblante:R.SEMBLANTES,comemoracao:R.COMEMORACOES,postura:R.POSTURAS}};
+  let total=0;
+  for(const e of [...R.GERAIS,...Object.values(R.EXCLUSIVOS).flat()])for(const o of e.opcoes){
+    const f=o.ef.figura;if(!f)continue;total++;
+    assert.ok(f.texto,o.texto);
+    for(const parte of ["aparencia","visual","expressao"])for(const [k,v] of Object.entries(f[parte]||{}))
+      assert.ok(listas[parte][k]&&v in listas[parte][k],o.texto+": "+parte+"."+k+"="+v);
+  }
+  assert.equal(total,4);
+  for(const id of R.IDS)assert.deepEqual(R.limparFigura(id,R.PERSONAGENS[id].figura),
+    {...R.PERSONAGENS[id].figura,aparencia:{versao:R.VERSAO_FIGURA,...R.PERSONAGENS[id].figura.aparencia}},id);
 });
