@@ -1,5 +1,6 @@
-// Road to Champions: o DESENHO do protagonista. Lê só o objeto `aparencia` (road-regras.js) e as cores do clube, e
-// devolve um SVG. É a peça trocável: quando vier um estilo cartoon novo, ele substitui este arquivo e lê os mesmos dados.
+// Road to Champions: o DESENHO do protagonista. Lê só a `figura` (road-regras.js: aparencia, visual e expressao) e as
+// cores do clube, e devolve um SVG. É a peça trocável: quando vier um estilo cartoon novo (ou 3D), ele substitui este
+// arquivo e lê os mesmos dados (a `aparencia.versao` diz de que versão eles são). Nada aqui decide regra de jogo.
 (function () {
   "use strict";
   const R = window.RoadRegras;
@@ -39,16 +40,38 @@
     }
   }
 
-  // aparencia: o objeto de road-regras.js; cores: [camisa, detalhe] do clube
-  function svg(aparencia, cores = [], { tam = 64, titulo = "" } = {}) {
-    // o servidor já mandou limpo; os padrões só cobrem campanhas antigas (sem aparência)
-    const a = { pele: 3, cabelo: "curto", corCabelo: "preto", barba: "nenhuma", altura: 1, largura: 1, numero: 10, marca: "", ...(aparencia || {}) };
+  const CHUTEIRAS = { pretas: ["#121212", "#121212"], brancas: ["#efefef", "#efefef"], douradas: ["#d9b44a", "#d9b44a"], coloridas: ["#ff3b6b", "#35d0ff"] };
+  // o formato do rosto: a cabeça, onde ficam as orelhas e a sombra do queixo
+  function rosto(forma, pele, sombra) {
+    const orelhas = (dx) => `<circle cx="${32 - dx}" cy="23" r="2.4" fill="${sombra}"/><circle cx="${32 + dx}" cy="23" r="2.4" fill="${sombra}"/>`;
+    switch (forma) {
+      case "redondo": return orelhas(12) + `<ellipse cx="32" cy="22.3" rx="12.2" ry="11.6" fill="${pele}"/>`;
+      case "fino": return orelhas(10.2) + `<ellipse cx="32" cy="21.8" rx="9.8" ry="12.4" fill="${pele}"/>`;
+      case "quadrado": return orelhas(11.6) + `<rect x="21" y="10.4" width="22" height="23.2" rx="6.5" ry="7.5" fill="${pele}"/>`;
+      default: return orelhas(11.4) + `<ellipse cx="32" cy="22" rx="11" ry="12" fill="${pele}"/>`;
+    }
+  }
+  // figuras salvas antes das três partes (tudo num objeto só) ainda desenham
+  function partes(f) {
+    f = f && typeof f === "object" ? f : {};
+    if (f.aparencia) return f;
+    return { aparencia: f, visual: { numero: f.numero, acessorio: ["corrente", "faixa", "fones", "oculos"].includes(f.marca) ? f.marca : "nenhum",
+      chuteiras: f.marca === "chuteiras" ? "coloridas" : "pretas" }, expressao: { semblante: f.marca === "sorriso" ? "sorriso" : "serio" } };
+  }
+
+  // figura: { aparencia, visual, expressao } de road-regras.js; cores: [camisa, detalhe] do clube
+  function svg(figura, cores = [], { tam = 64, titulo = "" } = {}) {
+    const f = partes(figura);
+    // o servidor já mandou limpo; os padrões só cobrem campanhas sem figura
+    const a = { pele: 3, rosto: "oval", cabelo: "curto", corCabelo: "preto", barba: "nenhuma", altura: 1, largura: 1, ...(f.aparencia || {}) };
+    const v = { numero: 10, acessorio: "nenhum", chuteiras: "pretas", ...(f.visual || {}) };
+    const e = { semblante: "serio", ...(f.expressao || {}) };
     const pele = (R?.PELES || {})[a.pele] || "#c68b5e", sombraPele = escurecer(pele, 0.82);
     const corCabelo = (R?.CORES_CABELO || {})[a.corCabelo] || "#1c1410";
     const camisa = cores[0] || "#245ba3", detalhe = cores[1] || "#ffffff";
-    const marca = a.marca;
-    const chuteiras = marca === "chuteiras" ? ["#ff3b6b", "#35d0ff"] : ["#121212", "#121212"];
-    const boca = marca === "sorriso"
+    const marca = v.acessorio;
+    const chuteiras = CHUTEIRAS[v.chuteiras] || CHUTEIRAS.pretas;
+    const boca = e.semblante === "sorriso"
       ? `<path d="M27.5 28.5q4.5 4.5 9 0z" fill="#fff" stroke="#5a2a20" stroke-width=".8"/>`
       : `<path d="M29.5 29.5q2.5 1.4 5 0" stroke="#5a2a20" stroke-width="1" fill="none" stroke-linecap="round"/>`;
     const extras = {
@@ -66,7 +89,7 @@
       // pernas, meias e chuteiras
       `<rect x="24.5" y="66" width="6" height="19" rx="2" fill="${pele}"/><rect x="33.5" y="66" width="6" height="19" rx="2" fill="${pele}"/>` +
       `<rect x="24.5" y="76" width="6" height="11" fill="${detalhe}"/><rect x="33.5" y="76" width="6" height="11" fill="${detalhe}"/>` +
-      `<path d="M23 86h8.5v4.5h-10z" fill="${chuteiras[0]}"/><path d="M33 86h8.5l1.5 4.5h-10z" fill="${chuteiras[1]}"/>` +
+      `<path d="M23 86h8.5v4.5h-10z" fill="${chuteiras[0]}" stroke="#0007" stroke-width=".6"/><path d="M33 86h8.5l1.5 4.5h-10z" fill="${chuteiras[1]}" stroke="#0007" stroke-width=".6"/>` +
       // calção
       `<path d="M22.5 58h19l1.5 11h-8.5l-2.5-4-2.5 4h-8.5z" fill="${escurecer(detalhe, 0.9)}"/>` +
       // braços
@@ -76,11 +99,10 @@
       `<path d="M21 38l-7 5 3 6 4-2v12h22V47l4 2 3-6-7-5-6-1.5h-10z" fill="${camisa}"/>` +
       `<path d="M27 36.5q5 4 10 0" stroke="${detalhe}" stroke-width="1.6" fill="none"/>` +
       `<path d="M21 47v12h22V47" fill="${escurecer(camisa, 0.9)}" opacity=".35"/>` +
-      `<text x="32" y="54.5" text-anchor="middle" font-family="Barlow Condensed,Arial,sans-serif" font-weight="800" font-size="10" fill="${detalhe}">${esc(a.numero)}</text>` +
+      `<text x="32" y="54.5" text-anchor="middle" font-family="Barlow Condensed,Arial,sans-serif" font-weight="800" font-size="10" fill="${detalhe}">${esc(v.numero)}</text>` +
       // pescoço e cabeça
       `<rect x="28.5" y="31" width="7" height="7" fill="${sombraPele}"/>` + atras +
-      `<circle cx="20.6" cy="23" r="2.4" fill="${sombraPele}"/><circle cx="43.4" cy="23" r="2.4" fill="${sombraPele}"/>` +
-      `<ellipse cx="32" cy="22" rx="11" ry="12" fill="${pele}"/>` +
+      rosto(a.rosto, pele, sombraPele) +
       `<path d="M37 31c4-2 6-6 6-10" stroke="${sombraPele}" stroke-width="2" fill="none" opacity=".6"/>` +
       barba(a.barba, corCabelo) +
       `<ellipse cx="27.5" cy="22" rx="1.3" ry="1.6" fill="#1a1a1a"/><ellipse cx="36.5" cy="22" rx="1.3" ry="1.6" fill="#1a1a1a"/>` +

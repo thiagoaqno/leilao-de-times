@@ -1,6 +1,6 @@
 // Road to Champions: os PROTAGONISTAS. Seis arquétipos, cada um preso ao seu clube, com posição, idade, jeito,
-// estilo de vida (três eixos que andam com as escolhas), um medidor próprio, laços com os outros e a aparência guardada
-// como DADOS (quem desenha lê o objeto `aparencia`; o desenho de hoje é o SVG de aparencia.js e pode ser trocado).
+// estilo de vida (três eixos que andam com as escolhas), um medidor próprio, laços com os outros e a figura guardada
+// como DADOS (quem desenha lê o objeto `figura`; o desenho de hoje é o SVG de aparencia.js e pode ser trocado).
 // Também ficam aqui os eventos: cada capítulo tem um evento geral (com opções a mais para alguns arquétipos) e, nos
 // capítulos 2 e 4, um evento exclusivo de cada protagonista. Cada opção tem `tom` (respeito, provoca ou neutro), que
 // decide a repercussão na imprensa.
@@ -19,14 +19,35 @@
   };
   const ATRIBUTOS = ["respeito", "ambicao", "disciplina", "prestigio"];
 
-  // ---------- aparência ----------
+  // ---------- a figura do protagonista ----------
+  // Três partes, todas só DADOS e sem nenhum efeito esportivo (nada aqui entra em atributo, forma, risco ou placar):
+  //   aparencia: o corpo (pele, rosto, cabelo, barba, altura, porte), com `versao` para um desenho futuro migrar;
+  //   visual: o que ele veste (número, acessório, chuteiras);
+  //   expressao: o jeito de se mostrar (semblante, comemoração de gol, postura nas entrevistas).
+  // O arquétipo só SUGERE a figura inicial: o jogador pode trocar tudo, inclusive tirar o acessório do personagem.
+  const VERSAO_FIGURA = 1;
   const PELES = { 1: "#f6d3b5", 2: "#e6b48a", 3: "#c68b5e", 4: "#9c6640", 5: "#5f3a24" };
+  const ROSTOS = { oval: "Oval", redondo: "Redondo", quadrado: "Quadrado", fino: "Fino" };
   const CABELOS = { raspado: "Raspado", curto: "Curto", topete: "Topete", cacheado: "Cacheado", black: "Black", trancas: "Tranças", coque: "Coque", longo: "Longo" };
   const CORES_CABELO = { preto: "#1c1410", castanho: "#5a3820", loiro: "#e3c25c", ruivo: "#b4522a", grisalho: "#a3a3a3", platinado: "#efe3c0" };
   const BARBAS = { nenhuma: "Sem barba", rala: "Rala", cheia: "Cheia", cavanhaque: "Cavanhaque" };
-  const MARCAS = {
-    corrente: "Corrente de ouro", faixa: "Faixa na cabeça", sorriso: "Sorriso de comemoração",
-    chuteiras: "Chuteiras de cores diferentes", fones: "Fones no pescoço", oculos: "Óculos âmbar",
+  const ACESSORIOS = { nenhum: "Nenhum", corrente: "Corrente de ouro", faixa: "Faixa na cabeça", fones: "Fones no pescoço", oculos: "Óculos âmbar" };
+  const CHUTEIRAS = { pretas: "Pretas", brancas: "Brancas", douradas: "Douradas", coloridas: "Uma de cada cor" };
+  const SEMBLANTES = { serio: "Sério", sorriso: "Sorridente" };
+  // `frase` completa a manchete da vitória: "{nome} comemora <frase>."
+  const COMEMORACOES = {
+    discreta: { nome: "Discreta", frase: "com um aceno curto, sem festa" },
+    bracos: { nome: "Braços abertos", frase: "de braços abertos para a torcida" },
+    danca: { nome: "Dancinha", frase: "com a dancinha de sempre" },
+    joelhos: { nome: "Deslizar de joelhos", frase: "deslizando de joelhos até a bandeirinha" },
+    silencio: { nome: "Dedo nos lábios", frase: "com o dedo nos lábios, mandando a arquibancada rival calar" },
+    salto: { nome: "Salto com soco no ar", frase: "com o salto e o soco no ar" },
+    zen: { nome: "Pose de meditação", frase: "sentado de pernas cruzadas, olhos fechados" },
+    efusiva: { nome: "Efusiva", frase: "correndo, gritando e abraçando todo mundo" },
+  };
+  const POSTURAS = {
+    carismatica: "Carismática", provocadora: "Provocadora", firme: "Firme",
+    humilde: "Humilde", enigmatica: "Enigmática", seca: "Seca",
   };
 
   // ---------- os seis ----------
@@ -44,7 +65,12 @@
       atributos: { respeito: 55, ambicao: 60, disciplina: 35, prestigio: 80 },
       eixos: { rotina: 80, exposicao: 85, grupo: 30 },
       medidor: { chave: "caiCai", nome: "Fama de cai-cai", valor: 20, texto: "Quanto árbitros e imprensa desconfiam das quedas." },
-      aparencia: { pele: 3, cabelo: "topete", corCabelo: "platinado", barba: "rala", altura: 1, largura: 0.95, numero: 10, marca: "corrente" },
+      // a figura sugerida (o jogador muda o que quiser)
+      figura: {
+        aparencia: { pele: 3, rosto: "oval", cabelo: "topete", corCabelo: "platinado", barba: "rala", altura: 1, largura: 0.95 },
+        visual: { numero: 10, acessorio: "corrente", chuteiras: "douradas" },
+        expressao: { semblante: "sorriso", comemoracao: "bracos", postura: "carismatica" },
+      },
     },
     prodigio: {
       titulo: "O Prodígio", clube: "fc-barcelona", pos: "PD", idade: 18, jeito: "vaidoso",
@@ -59,7 +85,12 @@
       atributos: { respeito: 45, ambicao: 80, disciplina: 50, prestigio: 70 },
       eixos: { rotina: 60, exposicao: 80, grupo: 55 },
       medidor: { chave: "marra", nome: "Marra cumprida", valor: 50, texto: "O saldo das promessas: sobe quando cumpre, cai quando não." },
-      aparencia: { pele: 4, cabelo: "cacheado", corCabelo: "preto", barba: "nenhuma", altura: 0.97, largura: 0.9, numero: 19, marca: "faixa" },
+      // a figura sugerida (o jogador muda o que quiser)
+      figura: {
+        aparencia: { pele: 4, rosto: "fino", cabelo: "cacheado", corCabelo: "preto", barba: "nenhuma", altura: 0.95, largura: 0.9 },
+        visual: { numero: 19, acessorio: "faixa", chuteiras: "brancas" },
+        expressao: { semblante: "sorriso", comemoracao: "joelhos", postura: "provocadora" },
+      },
     },
     resiliente: {
       titulo: "O Resiliente", clube: "real-madrid", pos: "PE", idade: 26, jeito: "guerreiro",
@@ -74,7 +105,12 @@
       atributos: { respeito: 60, ambicao: 70, disciplina: 60, prestigio: 75 },
       eixos: { rotina: 35, exposicao: 70, grupo: 45 },
       medidor: { chave: "tecnico", nome: "Relação com Ventura", valor: 35, texto: "A confiança do técnico. Abaixo de 30, banco." },
-      aparencia: { pele: 5, cabelo: "trancas", corCabelo: "preto", barba: "nenhuma", altura: 1, largura: 0.95, numero: 7, marca: "sorriso" },
+      // a figura sugerida (o jogador muda o que quiser)
+      figura: {
+        aparencia: { pele: 5, rosto: "oval", cabelo: "trancas", corCabelo: "preto", barba: "nenhuma", altura: 1, largura: 0.95 },
+        visual: { numero: 7, acessorio: "nenhum", chuteiras: "pretas" },
+        expressao: { semblante: "sorriso", comemoracao: "danca", postura: "firme" },
+      },
     },
     imprevisivel: {
       titulo: "O Imprevisível", clube: "paris-saint-germain", pos: "PD", idade: 29, jeito: "festeiro",
@@ -89,7 +125,12 @@
       atributos: { respeito: 55, ambicao: 55, disciplina: 45, prestigio: 85 },
       eixos: { rotina: 55, exposicao: 40, grupo: 50 },
       medidor: { chave: "vidro", nome: "Fama de vidro", valor: 40, texto: "Quanto a imprensa ainda espera a próxima lesão." },
-      aparencia: { pele: 5, cabelo: "raspado", corCabelo: "preto", barba: "rala", altura: 0.95, largura: 0.95, numero: 10, marca: "chuteiras" },
+      // a figura sugerida (o jogador muda o que quiser)
+      figura: {
+        aparencia: { pele: 5, rosto: "quadrado", cabelo: "raspado", corCabelo: "preto", barba: "rala", altura: 0.95, largura: 0.95 },
+        visual: { numero: 10, acessorio: "nenhum", chuteiras: "coloridas" },
+        expressao: { semblante: "serio", comemoracao: "salto", postura: "humilde" },
+      },
     },
     enigma: {
       titulo: "O Enigma", clube: "fc-bayern-munchen", pos: "PD", idade: 24, jeito: "reservado",
@@ -104,7 +145,12 @@
       atributos: { respeito: 50, ambicao: 45, disciplina: 70, prestigio: 60 },
       eixos: { rotina: 20, exposicao: 10, grupo: 75 },
       medidor: { chave: "decifrado", nome: "Decifrado", valor: 0, texto: "Quanto a Europa já entendeu quem ele é." },
-      aparencia: { pele: 4, cabelo: "black", corCabelo: "preto", barba: "nenhuma", altura: 1, largura: 0.95, numero: 17, marca: "fones" },
+      // a figura sugerida (o jogador muda o que quiser)
+      figura: {
+        aparencia: { pele: 4, rosto: "redondo", cabelo: "black", corCabelo: "preto", barba: "nenhuma", altura: 1, largura: 0.95 },
+        visual: { numero: 17, acessorio: "fones", chuteiras: "pretas" },
+        expressao: { semblante: "serio", comemoracao: "discreta", postura: "enigmatica" },
+      },
     },
     maquina: {
       titulo: "A Máquina", clube: "manchester-city", pos: "ATA", idade: 26, jeito: "profissional",
@@ -119,7 +165,12 @@
       atributos: { respeito: 55, ambicao: 75, disciplina: 90, prestigio: 75 },
       eixos: { rotina: 5, exposicao: 45, grupo: 70 },
       medidor: { chave: "jogoGrande", nome: "Jogo grande", valor: 0, texto: "A confiança para aparecer quando vale a taça." },
-      aparencia: { pele: 1, cabelo: "coque", corCabelo: "loiro", barba: "nenhuma", altura: 1.1, largura: 1.1, numero: 9, marca: "oculos" },
+      // a figura sugerida (o jogador muda o que quiser)
+      figura: {
+        aparencia: { pele: 1, rosto: "quadrado", cabelo: "coque", corCabelo: "loiro", barba: "nenhuma", altura: 1.1, largura: 1.1 },
+        visual: { numero: 9, acessorio: "oculos", chuteiras: "brancas" },
+        expressao: { semblante: "serio", comemoracao: "zen", postura: "seca" },
+      },
     },
   };
   const IDS = Object.keys(PERSONAGENS);
@@ -134,26 +185,69 @@
     { a: "maquina", b: "enigma", valor: 0, texto: "Os dois frios" },
   ];
 
-  // ---------- validação da aparência ----------
-  function limparAparencia(arquetipo, a) {
-    const base = PERSONAGENS[arquetipo]?.aparencia || PERSONAGENS.romantico.aparencia;
-    a = a && typeof a === "object" ? a : {};
-    const num = (v, min, max, padrao, passo = 0.05) => {
-      const n = Number(v); if (!Number.isFinite(n)) return padrao;
-      return Math.round(clamp(n, min, max) / passo) * passo;
+  // ---------- validação da figura ----------
+  const tem = (lista, v) => typeof v === "string" && Object.prototype.hasOwnProperty.call(lista, v);
+  const de = (lista, v, padrao) => (tem(lista, v) ? v : padrao);
+  const objeto = (x) => (x && typeof x === "object" ? x : {});
+  // a marca única de cada arquétipo no formato antigo (um objeto só, com `numero` e `marca`)
+  const MARCA_ANTIGA = { romantico: "corrente", prodigio: "faixa", resiliente: "sorriso", imprevisivel: "chuteiras", enigma: "fones", maquina: "oculos" };
+  const ehFormatoAntigo = (f) => !f.aparencia && !f.visual && !f.expressao && ("numero" in f || "marca" in f || "pele" in f);
+  // converte o formato antigo para as três partes (as campanhas criadas antes desta versão)
+  function doFormatoAntigo(arquetipo, a) {
+    const { numero, marca, ...corpo } = a;
+    const visual = { numero }, expressao = {};
+    const desligada = marca === "" || marca === false, qual = desligada ? MARCA_ANTIGA[arquetipo] : marca;
+    if (qual === "chuteiras") visual.chuteiras = desligada ? "pretas" : "coloridas";
+    else if (qual === "sorriso") expressao.semblante = desligada ? "serio" : "sorriso";
+    else if (tem(ACESSORIOS, qual)) visual.acessorio = desligada ? "nenhum" : qual;
+    return { aparencia: corpo, visual, expressao };
+  }
+  // devolve a figura limpa. O que faltar ou vier errado fica como em `atual` (a figura de agora) ou, sem ela, como a
+  // sugestão do arquétipo. Aceita o formato antigo.
+  function limparFigura(arquetipo, entrada, atual) {
+    const def = PERSONAGENS[arquetipo] || PERSONAGENS.romantico;
+    const base = atual && atual.aparencia ? atual : def.figura;
+    let f = objeto(entrada);
+    if (ehFormatoAntigo(f)) f = doFormatoAntigo(arquetipo, f);
+    const a = objeto(f.aparencia), v = objeto(f.visual), e = objeto(f.expressao);
+    const ba = base.aparencia, bv = base.visual, be = base.expressao;
+    const escala = (x, padrao) => {
+      const n = Number(x); if (x === null || x === "" || !Number.isFinite(n)) return padrao;
+      return +(Math.round(clamp(n, 0.9, 1.1) / 0.05) * 0.05).toFixed(2);
     };
-    const de = (lista, v, padrao) => (Object.prototype.hasOwnProperty.call(lista, v) ? v : padrao);
+    const inteiro = (x, min, max, padrao) => { const n = Math.round(Number(x)); return Number.isFinite(n) && n >= min && n <= max ? n : padrao; };
     return {
-      pele: clamp(Math.round(Number(a.pele)) || base.pele, 1, 5),
-      cabelo: de(CABELOS, a.cabelo, base.cabelo),
-      corCabelo: de(CORES_CABELO, a.corCabelo, base.corCabelo),
-      barba: de(BARBAS, a.barba, base.barba),
-      altura: +num(a.altura, 0.9, 1.1, base.altura).toFixed(2),
-      largura: +num(a.largura, 0.9, 1.1, base.largura).toFixed(2),
-      numero: clamp(Math.round(Number(a.numero)) || base.numero, 1, 99),
-      // a marca do arquétipo vem ligada; o jogador pode desligar (false), não trocar
-      marca: a.marca === false || a.marca === "" ? "" : base.marca,
+      aparencia: {
+        versao: VERSAO_FIGURA,
+        pele: inteiro(a.pele, 1, 5, ba.pele),
+        rosto: de(ROSTOS, a.rosto, ba.rosto || "oval"),
+        cabelo: de(CABELOS, a.cabelo, ba.cabelo),
+        corCabelo: de(CORES_CABELO, a.corCabelo, ba.corCabelo),
+        barba: de(BARBAS, a.barba, ba.barba),
+        altura: escala(a.altura, ba.altura),
+        largura: escala(a.largura, ba.largura),
+      },
+      visual: {
+        numero: inteiro(v.numero, 1, 99, bv.numero),
+        acessorio: de(ACESSORIOS, v.acessorio, bv.acessorio),
+        chuteiras: de(CHUTEIRAS, v.chuteiras, bv.chuteiras),
+      },
+      expressao: {
+        semblante: de(SEMBLANTES, e.semblante, be.semblante),
+        comemoracao: de(COMEMORACOES, e.comemoracao, be.comemoracao),
+        postura: de(POSTURAS, e.postura, be.postura),
+      },
     };
+  }
+  // a mudança de figura no meio da campanha: só o que veio muda, o resto fica como está
+  function mudarFigura(p, mudanca) {
+    const m = objeto(mudanca), f = p.figura;
+    p.figura = limparFigura(p.arquetipo, {
+      aparencia: { ...f.aparencia, ...objeto(m.aparencia) },
+      visual: { ...f.visual, ...objeto(m.visual) },
+      expressao: { ...f.expressao, ...objeto(m.expressao) },
+    }, f);
+    return p.figura;
   }
 
   // ---------- protagonista ----------
@@ -166,22 +260,26 @@
     p.marcas = p.marcas || [];
     p.relacoes = p.relacoes || {};
     p.escolhas = p.escolhas || [];
+    // a aparência num objeto só (formato antigo) vira a figura em três partes
+    if (def && !p.figura) p.figura = limparFigura(p.arquetipo, p.aparencia);
+    if ("aparencia" in p) delete p.aparencia;
     return p;
   }
-  function novoProtagonista(arquetipo, aparencia) {
+  function novoProtagonista(arquetipo, figura) {
     const def = PERSONAGENS[arquetipo]; if (!def) return null;
     return garantir({
       arquetipo, clube: def.clube, pos: def.pos, idade: def.idade,
       atributos: { ...def.atributos }, eixos: { ...def.eixos },
       medidores: { [def.medidor.chave]: def.medidor.valor },
-      aparencia: limparAparencia(arquetipo, aparencia),
+      figura: limparFigura(arquetipo, figura),
     });
   }
 
   // ---------- eventos ----------
   // ef: atributos e eixos (soma), medidores (soma pela chave), rel (com o rival da jornada), relCom { arquétipo: n },
   // marca (fica no protagonista), risco (chance de lesão na jornada), forma (só nesta jornada), aposta (marra),
-  // sorte { chance, bom, ruim } (resolvida na hora) e manchete ({nome} vira o nome do protagonista).
+  // sorte { chance, bom, ruim } (resolvida na hora), manchete ({nome} vira o nome do protagonista) e figura (a evolução
+  // visual: { aparencia, visual, expressao, texto }; muda só o que vier, por escolha do jogador, e vai para o diário).
   const O = (texto, dica, tom, ef, extra = {}) => ({ texto, dica, tom, ef, ...extra });
   const so = (...ids) => ({ para: ids });
 
@@ -219,6 +317,15 @@
         O("Desafiar os rivais", "O futebol europeu escuta seu recado.", "provoca", { ambicao: 11, prestigio: 9, rel: -13 }),
         O("Dedicar a última dança à torcida", "Pode ser a última Champions. Você quer que ela lembre.", "respeito",
           { respeito: 10, prestigio: 10, manchete: "{nome} chama esta Champions de “a última dança”." }, so("romantico")),
+        O("Aparecer sem a corrente e de cabelo curto", "Menos festa, mais foco. A Europa nota a mudança.", "respeito",
+          { disciplina: 10, rotina: -10, exposicao: -6,
+            figura: { aparencia: { cabelo: "curto", corCabelo: "castanho" }, visual: { acessorio: "nenhum" },
+              texto: "{nome} aparece sem a corrente e de cabelo curto. A última dança pede outro homem." } },
+          { ...so("romantico"), requer: (p) => p.figura?.visual.acessorio === "corrente" }),
+        O("Ir à coletiva sem os óculos âmbar", "Os olhos à mostra, pela primeira vez. Ninguém esperava.", "neutro",
+          { exposicao: 6, jogoGrande: 8,
+            figura: { visual: { acessorio: "nenhum" }, texto: "{nome} chega à coletiva sem os óculos âmbar. O protocolo mudou." } },
+          { ...so("maquina"), requer: (p) => p.figura?.visual.acessorio === "oculos" }),
         O("“Final é comigo.”", "Uma frase que a imprensa vai guardar até maio.", "provoca",
           { ambicao: 14, prestigio: 6, tecnico: -5 }, so("resiliente")),
       ] },
@@ -237,6 +344,11 @@
         O("Exigir respeito", "Cada palavra pode reacender uma antiga rivalidade.", "provoca", { disciplina: 8, ambicao: 8, rel: -15 }),
         O("Chamar o grupo de fones na cabeça", "Ele fala pela primeira vez no vestiário.", "respeito",
           { respeito: 14, grupo: -12, decifrado: 15, manchete: "Pela primeira vez, {nome} fala no vestiário antes de um jogo." }, so("enigma")),
+        O("Avisar que, se marcar, vai comemorar de verdade", "Ninguém nunca o viu sorrir num gol.", "neutro",
+          { decifrado: 10, exposicao: 6,
+            figura: { expressao: { comemoracao: "efusiva", semblante: "sorriso" },
+              texto: "{nome} avisa: se marcar na final, a comemoração vai ser outra." } },
+          { ...so("enigma"), requer: (p) => p.figura?.expressao.comemoracao !== "efusiva" }),
         O("Pedir a bola ao meia na véspera", "Para a bola chegar limpa, ela precisa ser pedida.", "respeito",
           { grupo: -10, jogoGrande: 15, respeito: 6 }, so("maquina")),
       ] },
@@ -289,6 +401,11 @@
           O("“EGO”, e prometer dois gols", "Marra no limite. Se cumprir, ninguém mais segura.", "provoca",
             { ambicao: 12, exposicao: 8, aposta: true, manchete: "{nome} entra na semifinal com “EGO” na faixa e uma promessa." }),
           O("O nome do bairro", "Quem te criou vai junto.", "respeito", { respeito: 8, prestigio: 6 }),
+          O("Cortar e descolorir o cabelo para o jogo", "Visual novo para a noite que todo mundo vai ver.", "neutro",
+            { exposicao: 8, prestigio: 6,
+              figura: { aparencia: { cabelo: "topete", corCabelo: "platinado" },
+                texto: "{nome} chega à semifinal de cabelo novo, descolorido." } },
+            { requer: (p) => p.figura?.aparencia.corCabelo !== "platinado" }),
           O("Tirar a faixa e ligar para o seu ídolo", "Ele já jogou semifinais demais para não ter um conselho.", "respeito",
             { disciplina: 10, ambicao: -4, relCom: { romantico: 12 }, forma: 1,
               manchete: "Antes da semifinal, {nome} liga para o seu ídolo. A conversa vaza, e é bonita." },
@@ -409,7 +526,7 @@
 
   // ---------- efeitos ----------
   const ATRIB = new Set(ATRIBUTOS), EIXO = new Set(Object.keys(EIXOS));
-  const ESPECIAIS = new Set(["rel", "relCom", "marca", "risco", "forma", "aposta", "sorte", "manchete"]);
+  const ESPECIAIS = new Set(["rel", "relCom", "marca", "risco", "forma", "aposta", "sorte", "manchete", "figura"]);
   // aplica um efeito ao protagonista; devolve o que precisa de contexto (rel, relCom, risco, forma, aposta, manchete)
   function aplicar(p, ef) {
     garantir(p);
@@ -430,8 +547,10 @@
       }
     }
     if (ef?.marca && !p.marcas.includes(ef.marca)) p.marcas.push(ef.marca);
+    // a evolução visual: só a figura muda (nada de número), e o texto vai para o diário
+    if (ef?.figura && p.figura) mudarFigura(p, ef.figura);
     return { rel: ef?.rel || 0, relCom: ef?.relCom || null, risco: ef?.risco || 0, forma: ef?.forma || 0,
-      aposta: !!ef?.aposta, manchete: ef?.manchete || "" };
+      aposta: !!ef?.aposta, manchete: ef?.manchete || "", figura: ef?.figura && p.figura ? ef.figura.texto || "" : "" };
   }
   // a sorte (resposta enigmática, desculpa) já sai resolvida: devolve o efeito final
   function resolverSorte(ef, numero) {
@@ -510,9 +629,10 @@
   }
 
   return {
-    EIXOS, ATRIBUTOS, PELES, CABELOS, CORES_CABELO, BARBAS, MARCAS, PERSONAGENS, IDS, LACOS,
+    EIXOS, ATRIBUTOS, VERSAO_FIGURA, PELES, ROSTOS, CABELOS, CORES_CABELO, BARBAS, ACESSORIOS, CHUTEIRAS, SEMBLANTES,
+    COMEMORACOES, POSTURAS, PERSONAGENS, IDS, LACOS,
     GERAIS, EXCLUSIVOS, POR_ID, MARRA,
-    porClube, limparAparencia, garantir, novoProtagonista, eventoPara, opcoesPara, aplicar, resolverSorte,
+    porClube, limparFigura, mudarFigura, garantir, novoProtagonista, eventoPara, opcoesPara, aplicar, resolverSorte,
     formaDe, riscoDe, epilogoExtra,
   };
 });

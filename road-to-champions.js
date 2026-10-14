@@ -28,15 +28,19 @@ function salvar(s) {
   const db = bd.abrir(); const now = Date.now();
   db.prepare("INSERT INTO rtc_campanhas (codigo,dados,criada_em,atualizada_em) VALUES (?,?,?,?) ON CONFLICT(codigo) DO UPDATE SET dados=excluded.dados, atualizada_em=excluded.atualizada_em").run(s.codigo,JSON.stringify(s),s.criadaEm,now);
 }
+// a campanha salva num formato anterior (aparência num objeto só) passa para a figura em três partes
+function atualizarCampanha(s){for(const p of s.jogadores||[])if(p.arquetipo)R.garantir(p);return s;}
 function recuperar(codigo) {
   const row = bd.abrir().prepare("SELECT dados FROM rtc_campanhas WHERE codigo=?").get(codigo);
   if(!row) return null;
   try { return JSON.parse(row.dados); } catch { return null; }
 }
 // o protagonista vem do arquétipo: clube, posição, idade, atributos, estilo de vida e medidor. O jogador dá o nome e
-// ajusta a aparência (só dados; o desenho fica no navegador).
-function doArquetipo(arquetipo,aparencia){
-  const base=R.novoProtagonista(String(arquetipo||""),aparencia);
+// monta a figura (aparência, visual e expressão: só dados, sem efeito em campo; o desenho fica no navegador).
+// `figura` também aceita o formato antigo, em que tudo vinha em `aparencia`.
+const figuraDe=d=>d.figura||d.aparencia;
+function doArquetipo(arquetipo,figura){
+  const base=R.novoProtagonista(String(arquetipo||""),figura);
   if(!base) throw new Error("Escolha um dos seis protagonistas.");
   if(!MAP.has(base.clube)) throw new Error("O clube deste protagonista não está na base.");
   return base;
@@ -45,7 +49,7 @@ function participante(d) {
   const apelido=nome(d.nome), avatar=nome(d.avatar || d.nome);
   if(apelido.length<2 || avatar.length<2) throw new Error("Informe seu nome e o nome do protagonista.");
   return {id:crypto.randomUUID(),segredo:hash(d.token || tokenNovo()),nome:apelido,avatar,
-    ...doArquetipo(d.arquetipo,d.aparencia),relacoes:{},escolhas:[],vitorias:0};
+    ...doArquetipo(d.arquetipo,figuraDe(d)),relacoes:{},escolhas:[],vitorias:0};
 }
 const ctxDe=s=>({tem:arq=>s.jogadores.some(x=>x.arquetipo===arq)});
 // a criação dos personagens recebe o token gerado pelo servidor: ele não vai para os broadcasts.
@@ -121,7 +125,7 @@ function mudarRelacao(p,q,valor){
   // A opinião do protagonista é dele; o impacto público também atinge o outro lado.
   q.relacoes[p.id]=clamp((q.relacoes[p.id]||0)+Math.round(valor/2),-100,100);
 }
-const manchete=(s,p,texto)=>{if(texto)s.historico.push({tipo:"manchete",rodada:s.capitulo,autor:p.avatar,clube:p.clube,texto:texto.replaceAll("{nome}",p.avatar)});};
+const manchete=(s,p,texto,tipo="manchete")=>{if(texto)s.historico.push({tipo,rodada:s.capitulo,autor:p.avatar,clube:p.clube,texto:texto.replaceAll("{nome}",p.avatar)});};
 function decidir(s,p,opcao,tatica) {
   R.garantir(p);
   const {e,opcoes}=eventoDe(s,p);
@@ -138,6 +142,7 @@ function decidir(s,p,opcao,tatica) {
     risco:efeito.risco,forma:efeito.forma,aposta:efeito.aposta,rival:rival?.id||null};
   s.entradas.push(entrada);s.historico.push({tipo:"decisao",rodada:s.capitulo,autor:p.avatar,texto:item.texto,clube:p.clube});
   manchete(s,p,efeito.manchete);
+  manchete(s,p,efeito.figura,"visual"); // a evolução visual fica no diário, para todos verem
   return entrada;
 }
 function randGol(s,j,salt){return sorte(s.codigo+":"+j.id+":"+salt);}
@@ -162,9 +167,20 @@ function jogar(s,j,formas={}){
   j.resultado=resultado;
   s.resultados.push({id:j.id,rodada:j.rodada,etapa:j.etapa,casa:j.casa,fora:j.fora,...resultado});
   s.historico.push({tipo:"jogo",rodada:j.rodada,texto:a.nome+" "+casa+" × "+fora+" "+b.nome});
+  const vencedor=resultado.vencedor||(casa===fora?null:casa>fora?j.casa:j.fora);
   for(const p of s.jogadores){
     if(p.clube!==j.casa && p.clube!==j.fora)continue;
-    if((resultado.vencedor|| (casa===fora?null:casa>fora?j.casa:j.fora))===p.clube)p.vitorias++;
+    if(vencedor!==p.clube)continue;
+    p.vitorias++;
+    // a comemoração (só expressão, sem efeito) vira notícia nos jogos que todos acompanham: mata-mata e protagonista
+    // contra protagonista
+    const rival=s.jogadores.find(x=>x.clube===(p.clube===j.casa?j.fora:j.casa));
+    const com=p.figura&&R.COMEMORACOES[p.figura.expressao.comemoracao];
+    if(com&&(j.etapa!=="grupos"||rival)){
+      const curto=MAP.get(p.clube)?.nome||"clube";
+      s.historico.push({tipo:"comemoracao",rodada:j.rodada,autor:p.avatar,clube:p.clube,
+        texto:"Vitória do "+curto+(rival?" sobre "+rival.avatar:"")+": "+p.avatar+" comemora "+com.frase+"."});
+    }
   }
 }
 function epilogo(s,p) {
@@ -253,7 +269,7 @@ function avancar(s) {
 function estado(s,p) {
   return {codigo:s.codigo,fase:s.fase,dono:s.dono,eu:p.id,capitulo:s.capitulo,limite:6,
     jogadores:s.jogadores.map(x=>({id:x.id,nome:x.nome,avatar:x.avatar,clube:x.clube,pos:x.pos,
-      arquetipo:x.arquetipo||null,idade:x.idade||null,aparencia:x.aparencia||null,eixos:x.eixos||null,
+      arquetipo:x.arquetipo||null,idade:x.idade||null,figura:x.figura||null,eixos:x.eixos||null,
       medidores:x.medidores||{},forma:x.forma||null,marcas:x.marcas||[],
       atributos:x.atributos,relacoes:x.relacoes,escolhas:x.escolhas,vitorias:x.vitorias})),
     lacos:s.lacos||[],
@@ -264,7 +280,7 @@ function estado(s,p) {
 }
 function conectar(io){
   const nsp=io.of("/road-to-champions"), sessoes=new Map(), cache=new Map();
-  const get=c=>{let s=cache.get(c);if(!s){s=recuperar(c);if(s)cache.set(c,s);}return s;};
+  const get=c=>{let s=cache.get(c);if(!s){s=recuperar(c);if(s){atualizarCampanha(s);cache.set(c,s);}}return s;};
   const ok=(cb,data)=>typeof cb==="function"&&cb({ok:true,...data});
   const erro=(cb,e)=>typeof cb==="function"&&cb({ok:false,error:e instanceof Error?e.message:String(e)});
   function emitir(c){
@@ -325,8 +341,10 @@ function conectar(io){
       if(s.fase!=="lobby")throw Error("Campanha já começou.");
       const arq=d.arquetipo||p.arquetipo;
       if(s.jogadores.some(x=>x.id!==p.id&&x.arquetipo===arq))throw Error("Esse protagonista já foi escolhido por outra pessoa.");
-      const aparencia=arq===p.arquetipo&&!d.aparencia?p.aparencia:d.aparencia;
-      Object.assign(p,doArquetipo(arq,aparencia));
+      // mesmo protagonista: o que não veio fica como estava; outro protagonista: começa da figura sugerida dele
+      const veio=figuraDe(d), mesmo=arq===p.arquetipo;
+      const figura=mesmo?R.limparFigura(arq,veio||p.figura,p.figura):veio;
+      Object.assign(p,doArquetipo(arq,figura));
       if(d.avatar){const a=nome(d.avatar);if(a.length>=2)p.avatar=a;}
     }));
     socket.on("iniciar",(_d={},cb)=>autenticado(cb,(s,p)=>{
@@ -347,4 +365,4 @@ function conectar(io){
   return {get,clubes:CLUBES};
 }
 module.exports=conectar;
-module.exports.paraTestes={CLUBES,gruposIniciais,tabela,decidir,avancar,cena,estado,recuperar};
+module.exports.paraTestes={CLUBES,gruposIniciais,tabela,decidir,avancar,cena,estado,recuperar,atualizarCampanha,salvar,jogar};
