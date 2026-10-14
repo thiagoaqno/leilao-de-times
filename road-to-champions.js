@@ -1,21 +1,36 @@
 // Road to Champions — campanha narrativa online (1 a 6 protagonistas).
 // A lógica esportiva é um torneio reduzido de 8 clubes: 2 grupos, semifinais e final.
 // Os protagonistas são os seis arquétipos de public/jogador/road-regras.js, cada um preso ao seu clube.
-// O Carreira tradicional e seus saves permanecem separados.
+// O Carreira tradicional e seus saves permanecem separados, mas os jogos passam pelo MESMO motor da Carreira
+// (public/carreira/motor.js): os elencos da base, minuto a minuto, com semente. Os lances de cada jogo ficam em
+// s.partidas[id] e a página assiste ao vivo (road-partida.js) num relógio único para a sala (s.aoVivo).
 const crypto = require("node:crypto");
 const bd = require("./bd.js");
 const mundo = require("./public/carreira/base/mundo-2026.js");
+const Motor = require("./public/carreira/motor.js");
 const R = require("./public/jogador/road-regras.js"); // os protagonistas, o estilo de vida e os eventos
 const EUROPA = new Set(["inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
 const ligas = mundo.ligas.filter(l => EUROPA.has(l.id));
+const BASE = new Map(); // o clube inteiro da base (elenco e formação), para o motor
 const CLUBES = ligas.flatMap(l => require("./public/carreira/base/" + l.id + ".js").clubes.map(c => {
+  BASE.set(c.id, c);
   const melhores = [...c.jogadores].sort((a,b) => b.nota-a.nota).slice(0,11);
   const forca = Math.round(melhores.reduce((s,j)=>s+j.nota,0)/Math.max(1,melhores.length));
   return { id:c.id, nome:c.nome, curto:c.curto, liga:l.nome, cores:c.cores, forca,
-    escudo:c.escudo };
+    escudo:c.escudo, formacao:c.formacao, estadio:c.estadio };
 }));
 const MAP = new Map(CLUBES.map(c => [c.id,c]));
 const TATICAS = ["equilibrado", "pressionar", "recuar"];
+// a estratégia do pré-jogo vira a tática do motor (mentalidade, pressão e altura da linha); o estilo o motor escolhe
+// pelo elenco, como faz com os clubes do computador na Carreira
+const TATICA_MOTOR = {
+  equilibrado: { mentalidade: 0, pressao: 1, linha: 1 },
+  pressionar: { mentalidade: 1, pressao: 2, linha: 2 },
+  recuar: { mentalidade: -1, pressao: 0, linha: 0 },
+};
+// o relógio do jogo ao vivo: minutos de jogo por segundo (90 min ≈ 45 s) e a espera antes do apito
+const VEL = Number(process.env.RTC_VEL) || 2;
+const ESPERA_MS = process.env.RTC_ESPERA_MS != null ? Number(process.env.RTC_ESPERA_MS) : 4000;
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const hash = x => crypto.createHash("sha256").update(String(x)).digest("hex");
 const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
@@ -145,26 +160,39 @@ function decidir(s,p,opcao,tatica) {
   manchete(s,p,efeito.figura,"visual"); // a evolução visual fica no diário, para todos verem
   return entrada;
 }
-function randGol(s,j,salt){return sorte(s.codigo+":"+j.id+":"+salt);}
 function estrategia(s,clube){const p=s.jogadores.find(p=>p.clube===clube);return s.entradas.find(x=>x.rodada===s.capitulo && x.jogador===p?.id)?.tatica||"equilibrado";}
-// `formas`: o ajuste de força de cada clube com protagonista nesta jornada (de -2 a +2, R.formaDe)
+// o time que o motor da Carreira recebe: o elenco da base, a formação do clube e a tática da estratégia escolhida.
+// A forma do protagonista na jornada (de -2 a +2) vale na nota de todo o time, como a moral na Carreira.
+function timeDoMotor(s,clube,forma=0){
+  const c=BASE.get(clube),tatica=TATICA_MOTOR[estrategia(s,clube)]||TATICA_MOTOR.equilibrado;
+  return {id:c.id,nome:c.nome,formacao:c.formacao,tatica:{...tatica,estilo:"auto"},
+    jogadores:c.jogadores.map(j=>({...j,base:j.nota,nota:clamp(j.nota+forma,40,97)}))};
+}
+// os nomes de quem aparece na partida (titulares, quem entrou e quem está nos lances), para a narração e a mesa
+function nomesDaPartida(r,casa,fora){
+  const ids=new Set([...Object.values(r.jogaram||{}).flat(),...r.times.flatMap(t=>t.titulares)]);
+  for(const e of r.eventos)for(const k of ["jogador","assist","goleiro","sai","entra","a","b"])if(e[k])ids.add(String(e[k]));
+  const nomes={};
+  for(const c of [BASE.get(casa),BASE.get(fora)])for(const j of c.jogadores)if(ids.has(String(j.id)))nomes[j.id]=j.nome;
+  return nomes;
+}
+// `formas`: o ajuste de cada clube com protagonista nesta jornada (de -2 a +2, R.formaDe)
 function jogar(s,j,formas={}){
-  const a=MAP.get(j.casa),b=MAP.get(j.fora),ta=estrategia(s,j.casa),tb=estrategia(s,j.fora);
-  const fa=a.forca+(formas[j.casa]||0), fb=b.forca+(formas[j.fora]||0);
-  const vantagem={equilibrado:{equilibrado:0,pressionar:-1,recuar:1},
-    pressionar:{equilibrado:1,pressionar:0,recuar:-1},recuar:{equilibrado:-1,pressionar:1,recuar:0}};
-  const dif=clamp((fa-fb)/11 + vantagem[ta][tb]*0.3,-2,2);
-  const casa=clamp(Math.round(1.25+dif*0.48+(randGol(s,j,"c")-.5)*3.5),0,5);
-  const fora=clamp(Math.round(1.15-dif*0.48+(randGol(s,j,"f")-.5)*3.5),0,5);
+  const a=MAP.get(j.casa),b=MAP.get(j.fora),mata=j.etapa!=="grupos";
+  // o mesmo motor da Carreira: só o resultado (modo 1), com semente da campanha e do jogo; o mata-mata é jogo único,
+  // então empate vai para a disputa de pênaltis do motor; a final é em campo neutro
+  const r=Motor.simularPartida({casa:timeDoMotor(s,j.casa,formas[j.casa]||0),fora:timeDoMotor(s,j.fora,formas[j.fora]||0),
+    semente:s.codigo+":"+j.id,modo:1,neutro:j.etapa==="final",...(mata?{desempate:{agregado:[0,0]}}:{})});
+  const [casa,fora]=r.placar;
   const resultado={casa,fora,penaltis:null,vencedor:null};
-  if(j.etapa!=="grupos"){
-    if(casa===fora){
-      const pc=3+Math.floor(randGol(s,j,"pc")*3);
-      const pf=pc+(randGol(s,j,"pf")>.5?1:-1);
-      resultado.penaltis={casa:pc,fora:pf};resultado.vencedor=pc>pf?j.casa:j.fora;
-    } else resultado.vencedor=casa>fora?j.casa:j.fora;
+  if(mata){
+    if(r.penaltis){resultado.penaltis={casa:r.penaltis[0],fora:r.penaltis[1]};resultado.vencedor=r.penaltis[0]>r.penaltis[1]?j.casa:j.fora;}
+    else resultado.vencedor=casa>fora?j.casa:j.fora;
   }
   j.resultado=resultado;
+  // os lances ficam fora de s.jogos (o estado de todo mundo não carrega a narração): a página pede com `partida`
+  (s.partidas||={})[j.id]={eventos:r.eventos,times:r.times.map(t=>({id:t.id,formacao:t.formacao,titulares:t.titulares})),
+    estatisticas:r.estatisticas,nomes:nomesDaPartida(r,j.casa,j.fora)};
   s.resultados.push({id:j.id,rodada:j.rodada,etapa:j.etapa,casa:j.casa,fora:j.fora,...resultado});
   s.historico.push({tipo:"jogo",rodada:j.rodada,texto:a.nome+" "+casa+" × "+fora+" "+b.nome});
   const vencedor=resultado.vencedor||(casa===fora?null:casa>fora?j.casa:j.fora);
@@ -249,9 +277,12 @@ function avancar(s) {
     s.historico.push({tipo:"repercussao",rodada:s.capitulo,texto:noticia});
   }
   const formas=formasDaJornada(s,opinioes);
-  for(const j of jogosDaRodada(s)) jogar(s,j,formas);
+  const jogos=jogosDaRodada(s);
+  for(const j of jogos) jogar(s,j,formas);
   resolverApostas(s,opinioes);
   const n=s.capitulo;
+  // a jornada ao vivo: a página de cada um assiste aos jogos no mesmo relógio (o mesmo minuto para a sala inteira)
+  s.aoVivo={rodada:n,jogos:jogos.map(j=>j.id),inicio:Date.now()+ESPERA_MS,vel:VEL};
   if(n===2){
     const a=tabela(s,"A"),b=tabela(s,"B");
     s.jogos.push({id:"semi1",etapa:"semifinal",rodada:3,casa:a[0].clube,fora:b[1].clube,resultado:null},
@@ -276,7 +307,16 @@ function estado(s,p) {
     equipes:s.equipes,jogos:s.jogos,grupos:s.fase==="lobby"?null:{A:tabela(s,"A"),B:tabela(s,"B")},
     evento:s.fase==="jogando"&&!registrado(s,p.id)?cena(s,p):null,
     feito:!!registrado(s,p.id),prontos:s.jogadores.filter(x=>registrado(s,x.id)).length,
-    historico:s.historico.slice(-24).reverse(),campeao:s.campeao,epilogos:s.epilogos};
+    historico:s.historico.slice(-24).reverse(),campeao:s.campeao,epilogos:s.epilogos,
+    aoVivo:s.aoVivo||null,agora:Date.now()};
+}
+// os lances de um jogo já disputado (para assistir ao vivo ou rever): a narração, as escalações e os nomes
+function partidaDe(s,id){
+  const j=s.jogos.find(x=>x.id===id);
+  if(!j||!j.resultado)throw new Error("Esse jogo ainda não aconteceu.");
+  const p=s.partidas?.[id];
+  if(!p)throw new Error("Esse jogo foi disputado antes da mesa ao vivo e só tem o placar.");
+  return {id:j.id,etapa:j.etapa,rodada:j.rodada,casa:j.casa,fora:j.fora,resultado:j.resultado,...p};
 }
 function conectar(io){
   const nsp=io.of("/road-to-champions"), sessoes=new Map(), cache=new Map();
@@ -360,9 +400,15 @@ function conectar(io){
       if(p.id!==s.dono)throw Error("Apenas o anfitrião avança.");
       avancar(s);
     }));
+    // só leitura: os lances de um jogo da campanha (não salva nem avisa ninguém)
+    socket.on("partida",(d={},cb)=>{
+      const auth=sessoes.get(socket.id),s=auth&&get(auth.codigo);
+      if(!s)return erro(cb,"Entre na campanha novamente.");
+      try{ok(cb,{partida:partidaDe(s,String(d.id||""))});}catch(e){erro(cb,e);}
+    });
     socket.on("disconnect",()=>sessoes.delete(socket.id));
   });
   return {get,clubes:CLUBES};
 }
 module.exports=conectar;
-module.exports.paraTestes={CLUBES,gruposIniciais,tabela,decidir,avancar,cena,estado,recuperar,atualizarCampanha,salvar,jogar};
+module.exports.paraTestes={CLUBES,gruposIniciais,tabela,decidir,avancar,cena,estado,recuperar,atualizarCampanha,salvar,jogar,partidaDe,timeDoMotor,TATICA_MOTOR};

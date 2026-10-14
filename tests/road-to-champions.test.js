@@ -295,3 +295,60 @@ test("figura: todas as opções que mudam a figura usam valores que existem",()=
   for(const id of R.IDS)assert.deepEqual(R.limparFigura(id,R.PERSONAGENS[id].figura),
     {...R.PERSONAGENS[id].figura,aparencia:{versao:R.VERSAO_FIGURA,...R.PERSONAGENS[id].figura.aparencia}},id);
 });
+
+// ---------- os jogos pelo motor da Carreira e a jornada ao vivo ----------
+const Motor=require("../public/carreira/motor.js");
+const {partidaDe,timeDoMotor,TATICA_MOTOR}=rtc.paraTestes;
+test("motor: os jogos passam pelo motor da Carreira, com os lances guardados para assistir",async()=>{
+  const conectar=simularServidor(),a=conectar(),b=conectar();
+  const ca=await a.call("criar",d(0,"romantico"));await b.call("entrar",{...d(1,"prodigio"),codigo:ca.codigo});
+  await a.call("iniciar");
+  assert.equal((await a.call("partida",{id:"g0A0"})).ok,false,"o jogo ainda não aconteceu");
+  await a.call("decidir",{opcao:0,tatica:"pressionar"});await b.call("decidir",{opcao:0,tatica:"recuar"});
+  const r=await a.call("avancar");assert.equal(r.ok,true,r.error);
+  // a jornada ao vivo: os quatro jogos da rodada, no mesmo relógio para a sala
+  const av=r.estado.aoVivo;
+  assert.equal(av.rodada,0);assert.deepEqual(av.jogos.sort(),r.estado.jogos.filter(j=>j.rodada===0).map(j=>j.id).sort());
+  assert.ok(av.inicio>=r.estado.agora&&av.vel>0);
+  // o estado de todo mundo não carrega a narração; quem quer assistir pede o jogo
+  assert.ok(!JSON.stringify(r.estado.jogos).includes("eventos"));
+  for(const id of av.jogos){
+    const p=await b.call("partida",{id});assert.equal(p.ok,true,p.error);
+    const fim=p.partida.eventos.find(e=>e.tipo==="fim");
+    assert.deepEqual(fim.placar,[p.partida.resultado.casa,p.partida.resultado.fora],"o placar é o do último apito do motor");
+    assert.equal(p.partida.eventos.filter(e=>e.tipo==="gol").length,p.partida.resultado.casa+p.partida.resultado.fora);
+    assert.equal(p.partida.times.length,2);
+    // quem terminou em campo (expulsos e machucados sem troca saem; a mesa desfaz as trocas para montar o começo)
+    for(const t of p.partida.times)assert.ok(t.titulares.length>=7&&t.titulares.length<=11);
+    for(const e of p.partida.eventos.filter(e=>e.jogador))assert.ok(p.partida.nomes[e.jogador],"todo lance tem o nome de quem fez");
+  }
+});
+test("motor: a mesma campanha dá o mesmo jogo, e o mata-mata empatado vai para os pênaltis do motor",()=>{
+  const s={codigo:"TESTE",entradas:[],jogadores:[],capitulo:3,historico:[],resultados:[],jogos:[]};
+  const um=()=>{const j={id:"semi1",etapa:"semifinal",rodada:3,casa:"arsenal",fora:"manchester-city",resultado:null};const c={...s,historico:[],resultados:[],jogos:[j]};jogar(c,j);return {j,c};};
+  const x=um(),y=um();
+  assert.deepEqual(x.j.resultado,y.j.resultado);assert.deepEqual(x.c.partidas.semi1.eventos,y.c.partidas.semi1.eventos);
+  // procura uma semente que empate: o vencedor sai da disputa, com os números do motor
+  let achou=null;
+  for(let k=0;k<60&&!achou;k++){
+    const j={id:"semi"+k,etapa:"semifinal",rodada:3,casa:"arsenal",fora:"chelsea",resultado:null},c={...s,historico:[],resultados:[],jogos:[j]};
+    jogar(c,j);if(j.resultado.casa===j.resultado.fora)achou={j,c};
+  }
+  assert.ok(achou,"em 60 jogos algum empata");
+  const {j,c}=achou,pen=j.resultado.penaltis;
+  assert.ok(pen&&pen.casa!==pen.fora);assert.equal(j.resultado.vencedor,pen.casa>pen.fora?j.casa:j.fora);
+  assert.ok(c.partidas[j.id].eventos.some(e=>e.tipo==="disputa"));
+  assert.deepEqual(partidaDe(c,j.id).resultado,j.resultado);
+});
+test("motor: a estratégia vira a tática do motor e a forma mexe na nota do time",()=>{
+  const p={id:"p1",clube:"arsenal"},s={capitulo:0,jogadores:[p],entradas:[{rodada:0,jogador:"p1",tatica:"recuar"}]};
+  const t=timeDoMotor(s,"arsenal",2),base=timeDoMotor(s,"arsenal",0);
+  assert.deepEqual({...t.tatica,estilo:undefined},{...TATICA_MOTOR.recuar,estilo:undefined});
+  assert.equal(t.tatica.estilo,"auto");
+  t.jogadores.forEach((j,i)=>assert.equal(j.nota,Math.min(97,base.jogadores[i].nota+2)));
+  // o computador (sem protagonista) joga equilibrado
+  assert.deepEqual({...timeDoMotor(s,"chelsea").tatica,estilo:undefined},{...TATICA_MOTOR.equilibrado,estilo:undefined});
+  // e o motor aceita o time como o da Carreira
+  const r=Motor.simularPartida({casa:t,fora:timeDoMotor(s,"chelsea"),semente:"x"});
+  assert.equal(r.completo,true);
+});
