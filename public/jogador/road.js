@@ -28,6 +28,11 @@ function tagClube(id,tam=""){
   const fundo=c?.cores?.[0]||"#264ca0", borda=c?.cores?.[1]||"#bdd8ff";
   return '<span class="rtc-crest '+safe(tam)+'" style="background:'+safe(fundo)+';border-color:'+safe(borda)+'" title="'+safe(nomeClube(id))+'">'+safe(c?.curto||String(id||"?").slice(0,3).toUpperCase())+'</span>';
 }
+function boneco(p){
+  const c=clubes.get(p.clube),camisa=c?.cores?.[0]||"#245ba3",detalhe=c?.cores?.[1]||"#c8dcff";
+  return '<span class="rtc-boneco" style="--camisa:'+safe(camisa)+';--detalhe:'+safe(detalhe)+'" aria-hidden="true">'+
+    '<span class="rtc-cabelo"></span><span class="rtc-rosto"></span><span class="rtc-camisa"></span><span class="rtc-calcoes"></span></span>';
+}
 function comboClubes(id,selecionado,excluir=[]){
   const opt=catalogo.filter(c=>!excluir.includes(c.id)).map(c=>'<option value="'+safe(c.id)+'"'+(c.id===selecionado?' selected':'')+'>'+safe(c.nome)+' · '+safe(c.liga)+' · '+num(c.forca)+'</option>').join("");
   return '<select id="'+safe(id)+'" aria-label="Escolha o seu clube">'+opt+'</select>';
@@ -54,7 +59,7 @@ function paginaInicial() {
     '<p class="rtc-small">A versão inicial usa simulação tática, sem partidas 3D ou regulamento oficial de 36 clubes.</p></section></div></div>';
 }
 function jogadores(s) {
-  return s.jogadores.map(p=>'<div class="rtc-person">'+tagClube(p.clube)+'<span><strong>'+safe(p.avatar)+'</strong>'+
+  return s.jogadores.map(p=>'<div class="rtc-person">'+boneco(p)+tagClube(p.clube)+'<span><strong>'+safe(p.avatar)+'</strong>'+
     '<small>'+safe(p.nome)+' · '+safe(nomeClube(p.clube))+' · '+safe(p.pos)+'</small></span>'+
     '<i>'+ (p.id===s.dono?"ANFITRIÃO":p.id===s.eu?"VOCÊ":"PROTAGONISTA")+'</i></div>').join("");
 }
@@ -100,7 +105,7 @@ function feed(s){
 function atributos(s){
   const eu=s.jogadores.find(p=>p.id===s.eu);
   return '<section class="rtc-card"><span class="rtc-kicker">FICHA DO PROTAGONISTA</span><h3>'+safe(eu.avatar)+'</h3>'+
-    '<div class="rtc-person">'+tagClube(eu.clube)+'<span><b>'+safe(nomeClube(eu.clube))+'</b><small>'+safe(eu.pos)+'</small></span></div>'+
+    '<div class="rtc-person">'+boneco(eu)+tagClube(eu.clube)+'<span><b>'+safe(nomeClube(eu.clube))+'</b><small>'+safe(eu.pos)+'</small></span></div>'+
     '<div class="rtc-attributes rtc-margin">'+Object.entries(attrNames).map(([k,label])=>'<div class="rtc-attribute">'+
     '<small class="rtc-label">'+label+'</small><b>'+num(eu.atributos[k])+'</b></div>').join('')+'</div></section>';
 }
