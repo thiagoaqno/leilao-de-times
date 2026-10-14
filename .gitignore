@@ -4,3 +4,5 @@ dados/*.db-*
 test-results
 playwright-report
 ferramentas/.elencos.json
+ferramentas/.elevenlabs-chave
+public/carreira/som/teste/
