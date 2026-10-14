@@ -54,6 +54,7 @@ function abrirPartida(rodada) {
   Object.assign(J, { competicao: src.competicao || null, jogoId: src.jogoId || src.id || null, paralelos: src.paralelos || (J.casa === src.casa && J.rodada === src.rodada ? J.paralelos : []), rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, penaltis: src.penaltis || null, decidindo: false, grupo: !!meuGrupo });
   document.querySelector(".faixa-jogo .controles").classList.remove("hidden"); atualizarControlesVelocidade();
   if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
+  try { SomPartida.abrir(nova); } catch (err) { console.warn("som", err); } // o narrador e a torcida (som-partida.js)
   // a partida que acabou na hora (só o resultado) já não vem com os outros jogos da semana: pede à parte
   if (!meuGrupo && !src.paralelos && !J.paralelos.length && J.jogoId) buscarParalelos(J.jogoId);
   $("pEscudoCasa").innerHTML = escudo(J.casa, 3); $("pEscudoFora").innerHTML = escudo(J.fora, 3);
@@ -151,6 +152,7 @@ function mostrarEvento(e) {
   if (J.pulando || calmo()) li.classList.add("sem-entrada");
   $("narracao").prepend(li);
   Mesa.rapido = J.pulando; try { Mesa.evento(e); } catch (err) { console.warn("mesa", err); }
+  try { SomPartida.evento(e); } catch (err) { console.warn("som", err); }
   if (e.tipo === "gol") gol(e);
   else if (LANCES_COM_CENA.has(e.tipo) && !(e.tipo === "penalti" && e.chute)) lance(e);
 }
