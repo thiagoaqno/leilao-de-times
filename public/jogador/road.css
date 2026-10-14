@@ -83,3 +83,11 @@ body.rtc:before{content:"";position:fixed;inset:0;pointer-events:none;background
 .rtc-blip{width:8px;height:8px;border-radius:50%;display:inline-block;background:#92d5bd;margin-right:6px}
 @media(max-width:800px){.rtc-grid{grid-template-columns:1fr}.rtc-hero{padding:30px 22px;min-height:240px}.rtc-navbar{padding:14px 16px}.rtc-navbrand{font-size:15px}.rtc-main{padding:20px 12px 60px}.rtc-card{padding:17px}.rtc-hero:after{font-size:260px;top:-10px;right:-55px}.rtc-head{margin-top:12px}}
 @media(prefers-reduced-motion:no-preference){.rtc-card{animation:rtcIn .3s ease-out both}@keyframes rtcIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}}
+
+/* Boneco estilizado do protagonista: cores geradas do uniforme do clube. */
+.rtc-boneco{--camisa:#2b62c5;--detalhe:#fff;display:inline-block;width:43px;height:65px;position:relative;flex:none;margin-right:2px;filter:drop-shadow(0 5px 4px #0006)}
+.rtc-rosto{position:absolute;width:19px;height:23px;left:12px;top:8px;border-radius:9px 9px 10px 10px;background:#dbab86;z-index:2;box-shadow:inset -3px -3px 0 #0002}
+.rtc-cabelo{position:absolute;width:21px;height:12px;left:11px;top:4px;background:#22202a;border-radius:60% 50% 20% 20%;z-index:3}
+.rtc-camisa{position:absolute;width:34px;height:26px;left:4px;top:30px;background:linear-gradient(95deg,var(--detalhe) 0 10%,var(--camisa) 10% 90%,var(--detalhe) 90% 100%);border-radius:9px 9px 4px 4px;border:1px solid #ffffff45;transform:perspective(40px) rotateX(-5deg)}
+.rtc-calcoes{position:absolute;width:28px;height:10px;left:7px;top:54px;background:var(--detalhe);border-radius:1px 1px 4px 4px}
+.rtc-boneco:after{content:"";position:absolute;width:29px;height:2px;left:7px;bottom:-1px;background:#8bbef8aa}
