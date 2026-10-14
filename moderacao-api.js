@@ -61,7 +61,7 @@ function attach(app, carreira, verificar = verificarGitHub) {
       if (!/^[A-Z2-9]{5}$/.test(String(d.sala || ""))) return res.status(400).json({ erro: "Código de sala inválido." });
       if (d.tipo === "consultar") {
         const sala = carreira.detalhar(d.sala, String(d.clube || ""));
-        return sala ? res.json(sala) : res.status(404).json({ erro: "Sala não encontrada." });
+        return sala ? res.status(sala.erro ? 400 : 200).json(sala) : res.status(404).json({ erro: "Sala não encontrada." });
       }
       const r = carreira.editar(d.sala, d, ator);
       res.status(r.erro ? 400 : 200).json(r);

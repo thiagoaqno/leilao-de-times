@@ -43,6 +43,25 @@ test("moderação altera a sala viva, desfaz transferência e bloqueia edição 
   assert.equal(save.humanos.flamengo.estado.caixa, 123456);
 });
 
+test("moderação aceita nomes de clubes e jogadores sem escolher nomes ambíguos", () => {
+  const save = Carreira.novaCarreiraGrupo([{ clube: "flamengo", nome: "Ana" }, { clube: "palmeiras", nome: "Bia" }], { temporadas: 2 });
+  const room = { code: "ABCDE", fase: "carreira", opcoes: { ligas: "brasil" }, save,
+    players: { a: { name: "Ana", clube: "flamengo" } }, nRodada: 0 };
+  const arrascaeta = Carreira.elencoDe(save, "flamengo").find((j) => j.nome.includes("Arrascaeta"));
+  assert.equal(Moderacao.lista(new Map([[room.code, room]]))[0].tecnicos[0].nomeClube, "Flamengo");
+  assert.equal(Moderacao.detalhe(room, " FLAMENGO ").nomeClube, "Flamengo");
+  assert.match(Moderacao.detalhe(room, "clube inexistente").erro, /não encontrado/);
+  assert.equal(Moderacao.aplicar(room, { tipo: "caixa", clube: "FLAMENGO", valor: 4321 }).depois, 4321);
+  assert.equal(Moderacao.aplicar(room, { tipo: "energia", clube: "Flamengo", jogador: "arrascaeta", valor: 52 }).jogador, arrascaeta.id);
+  assert.equal(save.humanos.flamengo.estado.energia[arrascaeta.id], 52);
+  assert.match(Moderacao.aplicar(room, { tipo: "energia", clube: "Flamengo", jogador: "léo", valor: 1 }).erro, /ambíguo/);
+  assert.equal(save.humanos.flamengo.estado.energia[Carreira.elencoDe(save, "flamengo").find((j) => j.nome === "Léo Ortiz").id], undefined);
+  assert.equal(Moderacao.aplicar(room, { tipo: "transferir", clube: "Flamengo", jogador: "Giorgian de Arrascaeta", destino: "PALMEIRAS" }).depois, "palmeiras");
+  assert.equal(Moderacao.detalhe(room, "Palmeiras").transferencias[0].deNome, "Flamengo");
+  assert.equal(Moderacao.aplicar(room, { tipo: "desfazer_transferencia", clube: "Palmeiras", jogador: "Arrascaeta" }).depois.clube, "flamengo");
+  assert.equal(Carreira.donoDe(save, arrascaeta.id), "flamengo");
+});
+
 test("API da moderação exige identidade do workflow e não revela salas sem ela", async () => {
   const app = express();
   Api.attach(app, { listar: () => [{ codigo: "ABCDE" }], detalhar: () => null, editar: () => ({ ok: true }) }, async (token) => {
