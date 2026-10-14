@@ -82,6 +82,16 @@ Mudou o código? Na pasta do projeto:
 fly deploy --ha=false
 ```
 
+## Moderação de carreiras pelo GitHub
+
+Os workflows **Moderar carreira em grupo** e **Desfazer transferência** aparecem em **GitHub → Actions → Run workflow** depois de entrar na `main`. Só a conta `thiagoaqno` pode executá-los na branch `main`. Eles não adicionam controles ao jogo. O servidor confere a assinatura e a origem do token temporário OIDC do GitHub; não há segredo novo para configurar.
+
+Se o site usar outro endereço, configure a variável de repositório `MODERACAO_URL` com a origem HTTPS do site. Sem ela, o workflow usa `https://leilao-de-times.fly.dev`.
+
+No formulário, **listar** mostra as salas ativas. **consultar** mostra os clubes, os IDs dos jogadores e as últimas transferências de uma sala. As outras ações mudam caixa (reais), energia, overall, um atributo, transferem um jogador ou desfazem uma transferência. No workflow **Desfazer transferência**, informe a sala, o clube e o ID do jogador. O histórico da edição fica na tabela `moderacao_carreira` do SQLite. O workflow imprime o resultado no log do GitHub.
+
+As edições são bloqueadas enquanto há jogo ao vivo na sala. O desfazer devolve o jogador e estorna o valor de uma transferência simples; trocas entre técnicos e compras parceladas pedem ajustes manuais porque não há como reverter suas demais obrigações com segurança.
+
 ### (Opcional) Deploy automático pelo GitHub
 Assim, todo `git push` na branch `main` publica sozinho:
 

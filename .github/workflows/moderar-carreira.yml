@@ -1,0 +1,78 @@
+name: Moderar carreira em grupo
+
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: "Ação (use Listar/Consultar para descobrir clubes e jogadores)"
+        required: true
+        type: choice
+        options:
+          - listar
+          - consultar
+          - caixa
+          - energia
+          - overall
+          - atributo
+          - transferir
+          - desfazer_transferencia
+      sala:
+        description: "Código de 5 caracteres da sala (dispensável em listar)"
+        required: false
+        type: string
+      clube:
+        description: "ID do clube (dispensável em listar; consultar aceita vazio)"
+        required: false
+        type: string
+      jogador:
+        description: "ID do jogador (obrigatório para desfazer uma transferência)"
+        required: false
+        type: string
+      destino:
+        description: "ID do clube de destino (somente transferir)"
+        required: false
+        type: string
+      atributo:
+        description: "rit, fin, pas, dri, def, fis ou gol (somente atributo)"
+        required: false
+        type: choice
+        options:
+          - nenhum
+          - rit
+          - fin
+          - pas
+          - dri
+          - def
+          - fis
+          - gol
+      valor:
+        description: "Novo valor inteiro (caixa em reais, energia/overall/atributo em pontos)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: moderar-carreira
+  cancel-in-progress: false
+
+jobs:
+  moderar:
+    if: github.actor == 'thiagoaqno' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar no servidor
+        env:
+          MODERACAO_URL: ${{ vars.MODERACAO_URL || 'https://leilao-de-times.fly.dev' }}
+          MOD_ACAO: ${{ inputs.acao }}
+          MOD_SALA: ${{ inputs.sala }}
+          MOD_CLUBE: ${{ inputs.clube }}
+          MOD_JOGADOR: ${{ inputs.jogador }}
+          MOD_DESTINO: ${{ inputs.destino }}
+          MOD_ATRIBUTO: ${{ inputs.atributo }}
+          MOD_VALOR: ${{ inputs.valor }}
+          MOD_ATOR: ${{ github.actor }}
+        run: node .github/scripts/moderar-carreira.mjs

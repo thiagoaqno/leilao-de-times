@@ -1,12 +1,13 @@
-# Carreira: números inteiros na formação
+# Moderação da carreira em grupo pelo GitHub
 
 ## O que muda
 
-- O resumo da formação mostra a média dos titulares e o rendimento nas posições sem casas decimais.
-- As dicas de energia no campo, no banco, no cartão em destaque e no aviso antes do jogo mostram porcentagens inteiras.
-- O arredondamento afeta apenas a exibição. As contas de energia e desempenho continuam com a mesma precisão.
+- Workflows manuais na aba Actions do GitHub permitem listar e consultar salas, alterar caixa, energia, overall e atributos, transferir jogadores e usar um botão próprio para desfazer transferências simples.
+- A edição vai ao servidor da sala ativa, atualiza os jogadores conectados e é salva no SQLite com registro de quem executou, valor anterior e novo valor.
+- O workflow só roda para `thiagoaqno` na `main`; a API verifica a assinatura e a origem do token temporário OIDC do GitHub. Nenhum controle de moderação aparece no jogo e não há segredo novo para configurar.
+- Enquanto há partida ao vivo, a edição espera o jogo terminar. Trocas entre técnicos e compras parceladas não são desfeitas automaticamente.
+- As instruções de configuração estão em `DEPLOY-FLY.md`.
 
 ## Verificação
 
-- `node --test tests/carreira-leitura.test.js` passou.
-- O teste de navegador da prancheta confirmou médias e dicas de energia inteiras, além dos badges de perda de overall. A captura da página completa foi conferida em 1280 × 800.
+- Os testes de moderação, banco e carreira em grupo passaram. Um teste com servidor real confirmou a edição na sala conectada e a persistência após reiniciar.
