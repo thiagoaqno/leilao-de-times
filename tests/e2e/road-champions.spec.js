@@ -9,17 +9,18 @@ async function conectar(baseURL) {
   await new Promise((ok, erro) => { s.once("connect", ok); s.once("connect_error", erro); });
   return s;
 }
-async function entrar(page, { codigo, token }) {
+async function entrar(page, { codigo, token }, aoVivo = false) {
   await page.goto("/jogador/#debug");
-  await page.evaluate(([c, t]) => {
+  await page.evaluate(([c, t, vivo]) => {
     localStorage.setItem("rtc:codigo", c); localStorage.setItem("rtc:token", t);
-    for (let r = 0; r < 4; r++) sessionStorage.setItem("rtc:aovivo:" + c + ":" + r, "1");
+    if (!vivo) for (let r = 0; r < 4; r++) sessionStorage.setItem("rtc:aovivo:" + c + ":" + r, "1");
     sessionStorage.setItem("rtc:cena:" + c + ":0", "1"); // a entrevista da estreia já foi respondida pelo canal
-  }, [codigo, token]);
+  }, [codigo, token, aoVivo]);
   await page.reload();
 }
 
-test("o momento do jogo: o painel abre no meio da partida, a escolha vai ao servidor e entra na narração e no feed", async ({ browser, baseURL }) => {
+test("o momento do jogo: o jogo ao vivo para no minuto, a decisão abre dentro da partida e o jogo segue depois", async ({ browser, baseURL }) => {
+  test.setTimeout(240000);
   const A = await conectar(baseURL), B = await conectar(baseURL);
   const ctxA = await browser.newContext(), ctxB = await browser.newContext();
   try {
@@ -29,36 +30,42 @@ test("o momento do jogo: o painel abre no meio da partida, a escolha vai ao serv
     await pedir(A, "decidir", { opcao: 0, tatica: "equilibrado" });
     await pedir(B, "decidir", { opcao: 0, tatica: "equilibrado" });
     const pa = await ctxA.newPage(), pb = await ctxB.newPage();
-    await entrar(pa, { codigo: a.codigo, token: a.token });
-    await entrar(pb, { codigo: a.codigo, token: b.token });
+    await entrar(pa, { codigo: a.codigo, token: a.token }, true);
+    await entrar(pb, { codigo: a.codigo, token: b.token }, true);
     // a tabela da liga de 36 já aparece antes do primeiro jogo
     await pa.locator('.rtc-hub-aba[data-aba="tabela"]').click();
     await expect(pa.locator(".rtc-liga tbody tr:not(.pulo)")).toHaveCount(36);
     await pa.locator('.rtc-hub-aba[data-aba="central"]').click();
     await pedir(A, "avancar");
-    // cada um vê o próprio jogo parado aos 25'
-    for (const [p, quem] of [[pa, "Vini"], [pb, "Erling"]]) {
-      await expect(p.locator(".rtc-momento")).toBeVisible();
-      await expect(p.locator("#rtc-mom-titulo")).toContainText(quem);
-      await expect(p.locator(".rtc-mom-placar i")).toHaveText("25'");
-      await expect(p.locator(".rtc-mom-opcao").last()).toContainText("Manter o plano");
-    }
-    // a escolha de A: o jogo dele segue até o intervalo; o de B continua esperando aos 25'
-    const texto = await pa.locator(".rtc-mom-opcao").first().locator("b").textContent();
-    await pa.locator(".rtc-mom-opcao").first().click();
-    await expect(pa.locator(".rtc-mom-placar i")).toHaveText("Intervalo");
-    await expect(pb.locator(".rtc-mom-placar i")).toHaveText("25'");
-    await expect(pa.locator(".rtc-mom-sala")).toContainText("Erling");
-    // os dois respondem até o fim
-    for (let k = 0; k < 8; k++) {
-      for (const p of [pa, pb]) {
-        const op = p.locator(".rtc-mom-opcao").last();
-        if (await op.isVisible().catch(() => false)) await op.click().catch(() => {});
-      }
-      if (!(await pa.locator(".rtc-momento").isVisible()) && !(await pb.locator(".rtc-momento").isVisible())) break;
-      await pa.waitForTimeout(300);
-    }
+    // o jogo ao vivo abre na hora; a decisão ainda não (o jogo não chegou aos 25')
+    for (const p of [pa, pb]) await expect(p.locator("#rtc-partida")).toBeVisible();
+    await expect(pa.locator("#rtc-av-momento")).toBeHidden();
     await expect(pa.locator(".rtc-momento")).toHaveCount(0);
+    // aos 25' o relógio para e cada um decide dentro da partida
+    for (const p of [pa, pb]) {
+      await expect(p.locator("#rtc-av-momento .rtc-mom-opcao").last()).toContainText("Manter o plano", { timeout: 40000 });
+      await expect(p.locator("#rtc-av-relogio")).toHaveText("25' · parado");
+    }
+    const texto = await pa.locator("#rtc-av-momento .rtc-mom-opcao").first().locator("b").textContent();
+    await pa.locator("#rtc-av-momento .rtc-mom-opcao").first().click();
+    // A decidiu, mas a sala espera Erling: o relógio continua parado nos 25'
+    await expect(pa.locator("#rtc-av-momento")).toContainText("Erling");
+    await expect(pa.locator("#rtc-av-relogio")).toHaveText("25' · parado");
+    await pb.locator("#rtc-av-momento .rtc-mom-opcao").last().click();
+    // o jogo volta a andar e chega ao intervalo (o próximo momento)
+    await expect(pa.locator("#rtc-av-relogio")).not.toHaveText("25' · parado");
+    await expect(pa.locator("#rtc-av-momento")).toContainText("Intervalo", { timeout: 40000 });
+    // os dois respondem até o fim (o "Ir para o fim" ao vivo só vai até o próximo momento)
+    for (let k = 0; k < 40; k++) {
+      for (const p of [pa, pb]) {
+        const op = p.locator("#rtc-av-momento .rtc-mom-opcao").last();
+        if (await op.isVisible().catch(() => false)) await op.click().catch(() => {});
+        await p.locator('[data-acao-av="pular"]').click().catch(() => {});
+      }
+      const st = (await pedir(A, "retomar", { codigo: a.codigo, token: a.token })).estado;
+      if (!st.jornada) break;
+      await pa.waitForTimeout(500);
+    }
     const st = (await pedir(A, "retomar", { codigo: a.codigo, token: a.token })).estado;
     expect(st.capitulo).toBe(1);
     expect(st.jornada).toBe(null);
@@ -104,6 +111,7 @@ test("rodada sem entrevista: o pré-jogo muda só a estratégia e o anfitrião j
     expect((await pedir(A, "retomar", { codigo: a.codigo, token: a.token })).estado.tatica).toBe("recuar");
     await expect(page.locator(".rtc-hub-jogar")).toContainText("Jogar: Rodada 2");
     await page.locator(".rtc-hub-jogar").click();
-    await expect(page.locator(".rtc-momento")).toBeVisible();
+    // com o jogo ao vivo fechado, a decisão aparece na central quando o relógio chega nos 25'
+    await expect(page.locator(".rtc-momento")).toBeVisible({ timeout: 40000 });
   } finally { A.close(); }
 });

@@ -1,42 +1,40 @@
-# Painel de moderação: comandos do anfitrião e carreiras particulares
+# Road to Champions: decisão durante o jogo, fim da campanha de uma vez, narração e fotos
 
 ## O que muda
 
-O painel `/admin/carreira` ganhou duas abas na lateral: **Salas em grupo** e **Carreiras particulares**.
-
-- **Comandos da sala (o que o anfitrião faz no jogo, agora pelo painel):**
-  - **Rodada:** começar a rodada, começar sem esperar a pausa entre as rodadas, encerrar a pausa e trocar a velocidade
-    do jogo ao vivo (1× ou 3×) para todos.
-  - **Temporada nova:** aparece quando a temporada acaba, e não roda com rodada ou leilão abertos.
-  - **Técnicos:** quem está na sala, quem está fora, quem é o anfitrião e quem foi dispensado; botões **Tornar
-    anfitrião** e **Dispensar** (o clube volta para o computador; com a bola rolando, no fim da rodada). O anfitrião
-    só pode ser dispensado depois de passar o cargo.
-  - **Leilão e trocas:** o leilão aberto (jogador, dono, lances, maior lance) com **Cancelar o leilão**, e as propostas
-    de troca abertas com **Cancelar**.
-  - O painel confere a sala sozinho a cada 5 s (a rodada acaba, a pausa corre), sem atrapalhar quem está digitando.
-- **Carreiras particulares (solo e Rumo ao Estrelato):**
-  - A lista com técnico, clube, modo, temporada, rodada, "jogando agora", "base antiga" e a última mexida, com busca
-    por técnico ou clube.
-  - As mesmas edições das salas: caixa, energia, overall, atributo, transferir e desfazer transferência. Ficam
-    bloqueadas enquanto o técnico está no meio de uma partida.
-  - **Gerar novo código de recuperação**, para entregar ao técnico que perdeu o acesso (o antigo deixa de valer).
-  - O save é editado direto no banco: o jogo lê o save de novo a cada ação, então a mudança aparece na próxima.
-- **Últimas edições da moderação:** cada sala e cada carreira mostram as 15 últimas edições (quem, quando, antes e
-  depois), do registro `moderacao_carreira`.
+- **A decisão acontece durante o jogo.** Antes, a partida era simulada até cada momento antes de o jogo ao vivo
+  começar, então todas as decisões apareciam antes de a bola rolar. Agora a sala tem um relógio só, que para no minuto
+  do momento (25', intervalo, 70'). A decisão abre dentro do jogo ao vivo quando o relógio chega lá ("25' · parado"), e
+  o jogo continua depois que todos respondem ou que o prazo acaba. Os lances até a parada já aparecem, e os seguintes
+  chegam depois da resposta.
+- **Eliminado não precisa jogar rodada por rodada.** Quem caiu não segura mais a rodada. Quando todos os protagonistas
+  da sala estão fora, o anfitrião vê "Simular até o fim", e o resto da Champions é jogado de uma vez até o campeão.
+- **Narração nos jogos.** O jogo ao vivo usa o narrador e a torcida da Carreira, com o botão de som no placar. Os nomes
+  falados de clubes e jogadores só existem para o Brasileirão e a Série B. Para os clubes europeus, o narrador fala o
+  lance sem o nome, até rodar `GERAR_NARRACAO.bat --ligas todas` e mandar os áudios.
+- **O jogador aparece nos posts.** As fotos do feed são montadas com o protagonista na frente da arte, em seis
+  jeitos: capa de revista, entrevista com a faixa da TV, lance com adesivo, polaroide, citação (só nas respostas da
+  entrevista) e placar. O fundo também varia conforme o post e o resultado.
+- **Os personagens têm rosto.** Rafa, Marcelo, Bia, Ventura, Nando, Léo, Duval, Helena, Clara, Laura, André e o
+  repórter ganharam retratos ilustrados, cada um com a roupa do papel e o fundo do lugar. Nas cenas dubladas, quem fala
+  aparece à esquerda e o protagonista (a foto) à direita, aceso quando fala e na hora da escolha.
 
 ## Arquivos
 
-- `carreira-moderacao.js`: as edições num contexto comum para sala e solo (`ctxSala`, `ctxSolo`, `aplicarSolo`,
-  `detalheSolo`).
-- `carreira-online.js`: `comandar` (os comandos do anfitrião, registrados como `sala:<tipo>`) e `infoSala`.
-- `carreira-solo-moderacao.js` (novo): lista, detalhe, edição e código novo das carreiras particulares.
-- `bd.js`: `listarCarreiras`, `carreiraPorId`, `salvarEdicaoCarreira` e `historicoModeracao`.
-- `admin-carreira.js` e `admin-carreira.html`: as rotas e a página.
+- `road-to-champions.js`: o relógio (`minutoAoVivo`, `tetoDe`, `rebasear`, `ajustarPrazos`), os lances parciais
+  (`guardarLances`, `partidaDe`), `eliminado`, `todosEliminados`, `simularAteFim` e o canal `simularFim`.
+- `public/jogador/road-partida.js`: o relógio do servidor, a decisão dentro do jogo (`#rtc-av-momento`) e a narração.
+- `public/jogador/road.js`: "Simular até o fim", o momento só quando o relógio chega, a foto dos posts (`fotoDoPost`) e
+  a foto do protagonista nas cenas dubladas.
+- `public/jogador/retratos.js` (novo), `road-dublagem.js` e `road-dublagem.css`: os retratos em cena.
+- `public/carreira/som-partida.js`: `SomPartida.configurar` para usar fora da Carreira (a Carreira continua igual).
+- `public/jogador/road.css`, `road-feed.css`, `index.html` e `CLAUDE.md`.
 
 ## Testes
 
-- `tests/carreira-moderacao-painel.test.js` (novo): edição solo e bloqueio na partida, a carreira pelo banco com o
-  registro e o código novo, e os comandos do anfitrião numa sala carregada do banco.
-- `tests/admin-carreira.test.js`: as rotas novas exigem sessão e CSRF.
-- Rodados também: `bd`, `carreira-online`, `carreira-online-mercado`, `carreira-moderacao` e `salas` (23 testes,
-  todos passando), e o painel aberto no Chromium com uma sala e carreiras de teste (sem erros na página).
+- `tests/road-champions-liga.test.js`: o relógio parado no momento com os lances até ali, e a sala toda eliminada
+  simulando até o fim.
+- `tests/e2e/road-champions.spec.js`: a decisão abre no jogo ao vivo só aos 25' e o jogo segue depois das respostas.
+- `tests/e2e/road-dublagem.spec.js`: o retrato de quem fala e o protagonista aceso.
+- Passando também: `road-to-champions.test.js`, `road-dublagem.test.js`, `salas.test.js`, `carreira-som.spec.js` e
+  `carreira-mesa.spec.js`.

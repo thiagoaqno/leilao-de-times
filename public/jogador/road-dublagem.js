@@ -154,6 +154,8 @@
       '<div class="rtc-voz-fundo"><div class="rtc-voz-parede" aria-hidden="true"></div><img class="rtc-voz-arte" alt=""></div>' +
       '<div class="rtc-voz-faixa topo"><span class="rtc-voz-kicker"></span><h2 id="rtc-voz-titulo" tabindex="-1"></h2></div>' +
       '<div class="rtc-voz-palco"><div class="rtc-voz-inicio" hidden><button type="button" class="rtc-voz-play" data-voz="comecar">▶ Assistir a cena</button></div>' +
+      '<div class="rtc-voz-duo" aria-hidden="true"><figure class="rtc-voz-outro" hidden><span class="rtc-voz-quadro"></span><figcaption></figcaption></figure>' +
+      '<figure class="rtc-voz-eu" hidden><span class="rtc-voz-quadro"><img alt="" decoding="async"></span><figcaption>Você</figcaption></figure></div>' +
       '<div class="rtc-voz-fala" aria-live="polite"><span class="rtc-voz-quem"></span><p class="rtc-voz-legenda"></p></div>' +
       '<div class="rtc-voz-escolha" hidden><span class="rtc-voz-kicker">Sua resposta</span><div class="rtc-voz-opcoes"></div></div></div>' +
       '<div class="rtc-voz-faixa base"><div class="rtc-voz-controles">' +
@@ -212,9 +214,34 @@
     // o protagonista não tem voz fixa: a fala dele aparece sempre; sem voz e sem legenda, a legenda volta
     caixa.classList.toggle("forcada", !!protagonista || !prefs.voz || falhou || !f.audio);
     $(".rtc-voz-quem").textContent = quem;
+    mostrarQuem(f);
     const leg = $(".rtc-voz-legenda");
     if (leg.textContent !== texto) leg.textContent = texto;
     caixa.hidden = false;
+  }
+  // quem está em cena: o protagonista (a foto dele) à direita e o outro (o retrato de retratos.js) à esquerda; quem fala
+  // fica aceso e o outro escurece. O outro só entra quando fala pela primeira vez e fica até a cena acabar.
+  function mostrarQuem(f) {
+    const duo = $(".rtc-voz-duo"), outro = $(".rtc-voz-outro"), eu = $(".rtc-voz-eu");
+    if (!f.protagonista && window.Retratos && Retratos.tem(f.personagem) && outro.dataset.quem !== f.personagem) {
+      outro.dataset.quem = f.personagem;
+      outro.querySelector(".rtc-voz-quadro").innerHTML = Retratos.svg(f.personagem, { tam: 200, titulo: f.nome || "" });
+      outro.querySelector("figcaption").textContent = Retratos.papel(f.personagem);
+      outro.hidden = false;
+    }
+    const fala = f.protagonista ? "eu" : outro.dataset.quem === f.personagem ? "outro" : "";
+    duo.dataset.fala = fala;
+    eu.classList.toggle("falando", fala === "eu");
+    outro.classList.toggle("falando", fala === "outro");
+  }
+  function prepararDuo(cfg) {
+    const outro = $(".rtc-voz-outro"), eu = $(".rtc-voz-eu"), img = eu.querySelector("img");
+    outro.hidden = true; delete outro.dataset.quem; outro.querySelector(".rtc-voz-quadro").innerHTML = "";
+    eu.querySelector("figcaption").textContent = cfg.protagonista || "Você";
+    eu.style.setProperty("--foto-cor", cfg.cor || "#3d7ae0");
+    if (cfg.foto) { img.onload = () => { eu.hidden = false; }; img.onerror = () => { eu.hidden = true; }; img.src = cfg.foto; }
+    else { img.removeAttribute("src"); eu.hidden = true; }
+    $(".rtc-voz-duo").dataset.fala = "";
   }
   function mostrarEscolha(opcoes) {
     const box = $(".rtc-voz-escolha");
@@ -222,6 +249,9 @@
       '<button type="button" class="rtc-voz-opcao" data-opcao="' + o.id + '"><span class="n">' + (i + 1) + '</span><span><b>' + safe(o.texto) +
       '</b>' + (o.dica ? '<small>' + safe(o.dica) + '</small>' : "") + '</span></button>').join("");
     $(".rtc-voz-fala").hidden = true;
+    // a decisão é sua: o protagonista acende
+    $(".rtc-voz-duo").dataset.fala = "eu";
+    $(".rtc-voz-eu").classList.add("falando"); $(".rtc-voz-outro").classList.remove("falando");
     box.hidden = false;
     box.querySelector("button")?.focus();
   }
@@ -249,7 +279,7 @@
 
   // ---------- abrir, tocar e fechar ----------
   // cfg: { tipo: "evento"|"preludio"|"callback", id, ramo (callback), opcoes [{id,texto,dica,voz}], ctx (estado
-  //        narrativo), protagonista (nome dado pelo jogador), kicker, podeAdiar,
+  //        narrativo), protagonista (nome dado pelo jogador), foto (o recorte do protagonista), cor, kicker, podeAdiar,
   //        aoEscolher(opcao) → Promise<boolean> (false: a escolha não valeu, a cena continua na escolha),
   //        aoFechar({ opcao, pulou, adiou }) }
   async function tocar(cfg) {
@@ -271,6 +301,7 @@
     $("#rtc-voz-titulo").textContent = def.titulo;
     $(".rtc-voz-fala").hidden = true;
     $(".rtc-voz-escolha").hidden = true;
+    prepararDuo(cfg);
     avisar("");
     raiz.hidden = false;
     document.body.classList.add("rtc-voz-aberta");

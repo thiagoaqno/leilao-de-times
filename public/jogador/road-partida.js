@@ -3,6 +3,10 @@
 // aqui eles tocam num relógio único para a sala (sala.aoVivo: início e minutos por segundo), na mesma mesa de botão da
 // Carreira (public/carreira/mesa.js, com taticas.js e camisas.js) e com a narração no jeito de partida.js.
 // Quem chega depois do apito não abre sozinho; os jogos ficam para rever na Classificação (RoadPartida.rever).
+// Ao vivo, o relógio é o do servidor (aoVivo: base + (agora - desde) × vel, parado no `teto`): quando o jogo de um
+// protagonista chega num momento (25', intervalo, 70'), o relógio para ali, a decisão abre dentro da partida
+// (momentoHTML) e os lances seguintes chegam depois dela (aoVivo.versoes: a página pede o jogo de novo).
+// O narrador e a torcida são os da Carreira (public/carreira/som-partida.js, SomPartida.configurar).
 // Uso (road.js): RoadPartida.configurar(dependências), RoadPartida.verificar(sala) a cada estado, RoadPartida.rever(sala, id).
 window.RoadPartida=(()=>{
 "use strict";
@@ -16,7 +20,8 @@ const safe=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;
 const tempoDe=e=>e.min+(e.acr?e.acr/100:0);
 const minutoTexto=e=>e.min+"'"+(e.acr?"+"+e.acr:"");
 // V: o que está aberto. jogos: os da jornada (id, casa, fora e, depois do pedido, os lances); atual: o da mesa
-const V={aberta:false,chave:null,jogos:[],atual:null,eu:null,minuto:0,vel:2,mult:1,ultimo:0,timer:null,vivo:false,pulando:false,raiz:null};
+const V={aberta:false,chave:null,jogos:[],atual:null,eu:null,minuto:0,vel:2,mult:1,ultimo:0,timer:null,vivo:false,pulando:false,raiz:null,
+  rodada:null,inicio:0,base:null,desde:0,teto:null,offset:0,salto:0,momentoChave:""};
 
 // a mesa de botão escreve o número com `tintaSobre`, que na Carreira mora em inicio.js: a mesma conta de contraste, aqui
 if(typeof window.tintaSobre!=="function"){
@@ -67,13 +72,14 @@ function placarDe(g){
   for(let k=0;k<g.i;k++){const e=g.eventos[k];if(e.tipo==="gol")gols=e.placar;else if(e.tipo==="disputa")pen=e.placar;}
   return {gols,pen};
 }
-const acabou=g=>!!g.eventos&&g.i>=g.eventos.length;
+const acabou=g=>!!g.eventos&&!g.parcial&&g.i>=g.eventos.length; // o jogo parado num momento ainda não acabou
 function relogioTexto(g){
   const {pen}=placarDe(g);
   if(acabou(g))return g.resultado?.penaltis?"Pênaltis "+g.resultado.penaltis.casa+" × "+g.resultado.penaltis.fora:"Fim";
   if(pen||g.passouFim)return "Pênaltis";
   const r=V.minuto;
   if(r<0)return "Já começa";
+  if(parado())return Math.floor(r)+"' · parado";
   return r>=90?"90+'":r>45&&r<46?"45+'":Math.floor(r)+"'";
 }
 
@@ -86,24 +92,44 @@ function fora(){
 // sala.aoVivo chegou: abre sozinho uma vez por jornada, se o jogo ainda está rolando (quem chega no fim só vê na Classificação)
 function verificar(sala){
   const av=sala&&sala.aoVivo;
+  if(V.aberta&&V.vivo&&av&&av.rodada===V.rodada){sincronizar(sala);return;}
   if(!av||!av.jogos?.length||V.aberta)return;
   const chave="rtc:aovivo:"+sala.codigo+":"+av.rodada;
   try{if(sessionStorage.getItem(chave)==="1")return;}catch{}
   const offset=(sala.agora||Date.now())-Date.now(),agora=Date.now()+offset;
-  const fimEstimado=av.inicio+100/av.vel*1000+20000; // o apito final, com os acréscimos e uma possível disputa de pênaltis
-  if(agora>fimEstimado)return;
+  // o apito final, com os acréscimos e uma possível disputa de pênaltis (com um momento parado, o jogo ainda não acabou)
+  const fimEstimado=av.base!=null?av.desde+Math.max(0,100-av.base)/av.vel*1000+20000:av.inicio+100/av.vel*1000+20000;
+  if(av.teto==null&&agora>fimEstimado)return;
   try{sessionStorage.setItem(chave,"1");}catch{}
-  abrir(sala,av.jogos,{vivo:true,inicio:av.inicio,vel:av.vel,offset,chave});
+  abrir(sala,av.jogos,{vivo:true,inicio:av.inicio,vel:av.vel,offset,chave,av});
+}
+// o relógio do servidor (ao vivo): o minuto da sala, sem passar do momento parado
+function minutoServidor(){
+  const agora=Date.now()+V.offset;
+  return V.base!=null?V.base+(agora-V.desde)/1000*V.vel:(agora-V.inicio)/1000*V.vel;
+}
+function relogioDe(av,offset){Object.assign(V,{rodada:av.rodada,inicio:av.inicio,vel:av.vel,base:av.base??null,desde:av.desde||av.inicio,teto:av.teto??null,offset});}
+// chegou um estado novo com o jogo aberto: o relógio (a decisão soltou o momento), os lances novos e o momento
+async function sincronizar(sala){
+  V.sala=sala;
+  const av=sala.aoVivo;relogioDe(av,(sala.agora||Date.now())-Date.now());
+  const mudaram=V.jogos.filter(g=>(av.versoes?.[g.id]||0)!==(g.versao||0)&&!g.buscando);
+  for(const g of mudaram)g.buscando=true;
+  const respostas=await Promise.all(mudaram.map(g=>D.pedido("partida",{id:g.id})));
+  respostas.forEach((r,k)=>{const g=mudaram[k];g.buscando=false;if(!r.ok)return;
+    const i=g.i;Object.assign(g,r.partida);g.i=Math.min(i,g.eventos.length);}); // os lances que já passaram continuam iguais
+  if(V.aberta)atualizar();
 }
 // rever um jogo que já acabou: só ele, do começo, no ritmo de quem está vendo
 function rever(sala,id){abrir(sala,[id],{vivo:false,vel:2});}
 async function abrir(sala,ids,o){
   const eu=sala.jogadores.find(p=>p.id===sala.eu);
-  Object.assign(V,{aberta:true,chave:o.chave||null,vivo:o.vivo,vel:o.vel||2,mult:1,pulando:false,eu,sala,
+  if(o.av)relogioDe(o.av,o.offset);else Object.assign(V,{rodada:null,base:null,teto:null});
+  Object.assign(V,{aberta:true,chave:o.chave||null,vivo:o.vivo,vel:o.vel||2,mult:1,pulando:false,eu,sala,salto:0,momentoChave:"",
     jogos:ids.map(id=>({id,...(sala.jogos.find(j=>j.id===id)||{}),eventos:null,i:0,passouFim:false,proxPen:0}))});
   // o meu jogo vai para a mesa; quem está fora assiste ao primeiro (no mata-mata, ao de protagonistas)
   V.atual=V.jogos.find(g=>eu&&(g.casa===eu.clube||g.fora===eu.clube))||V.jogos.find(g=>sala.jogadores.some(p=>p.clube===g.casa||p.clube===g.fora))||V.jogos[0];
-  V.minuto=o.vivo?(Date.now()+o.offset-o.inicio)/1000*V.vel:-3*V.vel; // ao rever, 3 s de abertura
+  V.minuto=o.vivo?minutoAoVivo():-3*V.vel; // ao rever, 3 s de abertura
   V.ultimo=performance.now();
   const raiz=fora();raiz.hidden=false;document.body.classList.add("rtc-sem-rolagem");
   raiz.innerHTML='<div class="rtc-av-caixa"><p class="rtc-muted" style="padding:30px">Entrando no estádio…</p></div>';
@@ -113,6 +139,7 @@ async function abrir(sala,ids,o){
   if(V.atual.erro&&V.jogos.some(g=>!g.erro))V.atual=V.jogos.find(g=>!g.erro);
   // quem entrou com o jogo andando vê os lances que já passaram sem animação
   V.pulando=true;avancarLances();V.pulando=false;
+  somAbrir();
   clearInterval(V.timer);V.timer=setInterval(quadro,200);
   montar();quadro();
   raiz.querySelector("h2")?.focus();
@@ -120,6 +147,7 @@ async function abrir(sala,ids,o){
 function fechar(){
   if(!V.aberta)return;
   V.aberta=false;clearInterval(V.timer);
+  if(window.SomPartida)try{SomPartida.tela("central");}catch(err){console.warn("som",err);}
   if(mesa()){mesa().ativa=false;mesa().parar();}
   if(V.raiz){V.raiz.hidden=true;V.raiz.innerHTML="";}
   document.body.classList.remove("rtc-sem-rolagem");
@@ -143,13 +171,30 @@ function avancarLances(tudo=false){
   }
   return novos;
 }
+const parado=()=>V.vivo&&V.teto!=null&&V.minuto>=V.teto-1e-6;
+function minutoAoVivo(){const m=minutoServidor()+V.salto;return V.teto==null?m:Math.min(m,V.teto);}
 function quadro(){
   if(!V.aberta)return;
   const agora=performance.now(),dt=(agora-V.ultimo)/1000;V.ultimo=agora;
-  V.minuto+=dt*V.vel*V.mult;
+  if(V.vivo)V.minuto=Math.max(V.minuto,minutoAoVivo()); // o relógio da sala (nunca volta)
+  else V.minuto+=dt*V.vel*V.mult;
   const novos=avancarLances();
   for(const e of novos)mostrarLance(e);
   atualizar();
+}
+// ---------- o narrador e a torcida (os da Carreira) ----------
+function pesoDoJogo(g){
+  const dois=V.sala?.jogadores.some(p=>p.clube===g.casa)&&V.sala?.jogadores.some(p=>p.clube===g.fora);
+  return g.etapa==="final"?{tema:"final"}:dois?{tema:"classico"}:g.etapa&&!["grupos","liga"].includes(g.etapa)?{tema:"decisivo"}:null;
+}
+function somAbrir(){
+  if(!window.SomPartida)return;
+  try{
+    SomPartida.configurar({naPartida:()=>V.aberta,velocidade:()=>V.vivo?1:V.mult,
+      jogo:()=>{const g=V.atual;return g&&g.eventos?{casa:g.casa,fora:g.fora,eventos:g.eventos,i:g.i,relogio:V.minuto,pulando:V.pulando,
+        decidindo:parado(),completo:!g.parcial,peso:pesoDoJogo(g),vel:1}:null;}});
+    SomPartida.abrir(true);SomPartida.tela("partida");
+  }catch(err){console.warn("som",err);}
 }
 
 // ---------- o desenho ----------
@@ -167,14 +212,15 @@ function montar(){
   raiz.innerHTML='<div class="rtc-av-caixa" role="dialog" aria-modal="true" aria-labelledby="rtc-av-titulo">'+
     '<header class="rtc-av-topo"><span class="rtc-kicker">'+(V.vivo?'<i class="rtc-av-vivo">AO VIVO</i> ':'Replay · ')+safe(rotuloEtapa(g))+'</span>'+
       '<h2 id="rtc-av-titulo" tabindex="-1" class="rtc-sr">'+safe(D.nomeClube(g.casa))+' contra '+safe(D.nomeClube(g.fora))+'</h2>'+
-      '<div class="rtc-av-ritmo" role="group" aria-label="Velocidade">'+[1,3].map(m=>'<button type="button" data-mult="'+m+'" aria-pressed="'+(V.mult===m)+'">'+m+'×</button>').join("")+
+      '<div class="rtc-av-ritmo" role="group" aria-label="Velocidade">'+(V.vivo?"":[1,3].map(m=>'<button type="button" data-mult="'+m+'" aria-pressed="'+(V.mult===m)+'">'+m+'×</button>').join(""))+
+      (window.SomPartida&&window.SOM_PARTIDA?'<button type="button" data-acao-av="som" aria-pressed="'+(SomPartida.modo!=="mudo")+'">'+somRotulo()+'</button>':"")+
       '<button type="button" data-acao-av="pular">Ir para o fim</button><button type="button" data-acao-av="fechar" class="fechar">'+(V.vivo?"Ver na central":"Fechar")+'</button></div></header>'+
     '<div class="rtc-av-placar">'+ladoHTML(g.casa,"casa")+'<div class="rtc-av-centro"><strong id="rtc-av-gols" aria-live="polite">'+placarTexto(g)+'</strong><span id="rtc-av-relogio">'+relogioTexto(g)+'</span></div>'+ladoHTML(g.fora,"fora")+'</div>'+
     outros+
     '<div class="rtc-av-corpo"><div class="rtc-av-campo"><div class="mesa-caixa"><div class="mesa" id="rtc-mesa"></div></div>'+
       (g.erro?'<p class="rtc-av-aviso">'+safe(g.erro)+'</p>':'')+'</div>'+
       '<section class="rtc-av-narra" aria-label="Narração"><ol id="rtc-av-lances"></ol></section></div>'+
-    '<div id="rtc-av-abertura" class="rtc-av-abertura" hidden></div><div id="rtc-av-fim" class="rtc-av-fim" hidden></div></div>';
+    '<div id="rtc-av-abertura" class="rtc-av-abertura" hidden></div><div id="rtc-av-momento" class="rtc-av-momento" hidden></div><div id="rtc-av-fim" class="rtc-av-fim" hidden></div></div>';
   // a narração do que já passou, sem animação
   const ol=raiz.querySelector("#rtc-av-lances");
   for(let k=0;k<g.i;k++){const li=itemDeLance(g,g.eventos[k]);if(li){li.classList.add("sem-entrada");ol.prepend(li);}}
@@ -198,6 +244,7 @@ function itemDeLance(g,e){
 }
 function mostrarLance(e){
   const g=V.atual,ol=V.raiz?.querySelector("#rtc-av-lances");if(!ol)return;
+  if(window.SomPartida)try{SomPartida.evento(e);}catch(err){console.warn("som",err);}
   const li=itemDeLance(g,e);if(li)ol.prepend(li);
   if(mesa()){mesa().rapido=V.pulando;try{mesa().evento(e);}catch(err){console.warn("mesa",err);}}
   if(e.tipo==="gol"&&!V.pulando&&!calmo()){const p=V.raiz.querySelector(".rtc-av-placar");p.classList.remove("festa");void p.offsetWidth;p.classList.add("festa");}
@@ -227,6 +274,7 @@ function atualizar(){
     ab.hidden=!mostrar;
     const c=raiz.querySelector("#rtc-av-conta");if(c&&mostrar)c.textContent="Bola rolando em "+Math.max(1,Math.ceil(-V.minuto/V.vel/V.mult))+" s";
   }
+  pintarMomento();
   const fim=raiz.querySelector("#rtc-av-fim");
   if(fim&&acabou(g)&&fim.hidden&&!g.erro){fim.innerHTML=fimHTML(g);fim.classList.toggle("sem-arte",!fim.querySelector("img"));fim.hidden=false;}
 }
@@ -255,19 +303,60 @@ function fimHTML(g){
     '<button type="button" class="rtc-button primary" data-acao-av="fechar">Voltar à central</button></div></div>';
 }
 
+// ---------- o momento do jogo, dentro da partida ----------
+const somRotulo=()=>({tudo:"Som: narrador",torcida:"Som: torcida",mudo:"Sem som"})[window.SomPartida?.modo]||"Som";
+function momentoHTML(){
+  const s=V.sala,esperando=s?.jornada?.esperando||[];
+  // o meu próximo momento só conta quando o relógio chega nele (o jogo já pode estar simulado até o intervalo)
+  const m=s?.jornada?.momento&&s.jornada.momento.min<=V.minuto+0.01?s.jornada.momento:null;
+  if(m&&!m.respondido){
+    const meu=m.placar[m.lado],deles=m.placar[1-m.lado],rival=D.nomeClube(m.lado===0?m.fora:m.casa);
+    const rotulo=m.id==="intervalo"?"Intervalo":m.min+" minutos";
+    return {chave:"m:"+m.jogo+":"+m.id,html:'<div class="rtc-av-mom-caixa" role="dialog" aria-labelledby="rtc-av-mom-t"><span class="rtc-kicker">Momento do jogo · '+safe(rotulo)+'</span>'+
+      '<h3 id="rtc-av-mom-t" tabindex="-1">'+(meu>deles?"Vocês vencem":meu<deles?"Vocês perdem":"Empate")+' por '+meu+' a '+deles+' contra o '+safe(rival)+'. Como você joga agora?</h3>'+
+      (m.resumo?.length?'<p class="rtc-small">'+m.resumo.map(x=>safe(x.min+"' "+x.texto)).join(" · ")+'</p>':"")+
+      '<div class="rtc-av-mom-opcoes">'+m.opcoes.map((o,i)=>'<button type="button" class="rtc-mom-opcao" data-momento-av="'+safe(o.id)+'"><span class="n">'+(i+1)+'</span><span><b>'+safe(o.texto)+'</b>'+(o.dica?'<small>'+safe(o.dica)+'</small>':"")+'</span></button>').join("")+'</div>'+
+      '<p class="rtc-small" data-prazo-av="'+(m.prazo||0)+'"></p></div>'};
+  }
+  if(m&&m.respondido){const outros=esperando.filter(x=>x!==V.eu?.avatar);
+    return {chave:"r:"+m.jogo+":"+m.id+":"+outros.join(","),html:'<div class="rtc-av-mom-caixa curto"><b>Decisão enviada.</b> '+(outros.length?"Esperando "+safe(outros.join(", "))+" decidir.":"O jogo já volta.")+'</div>'};}
+  const outros=esperando.filter(x=>!m&&x!==V.eu?.avatar||m);
+  if(outros.length)return {chave:"e:"+outros.join(","),html:'<div class="rtc-av-mom-caixa curto"><b>Jogo parado.</b> '+safe(outros.join(", "))+(outros.length>1?" estão":" está")+' decidindo como jogar.</div>'};
+  return {chave:"",html:""};
+}
+function pintarMomento(){
+  const el=V.raiz?.querySelector("#rtc-av-momento");if(!el)return;
+  const x=parado()?momentoHTML():{chave:"",html:""};
+  if(x.chave!==V.momentoChave){V.momentoChave=x.chave;el.innerHTML=x.html;el.hidden=!x.html;if(x.chave.startsWith("m:"))el.querySelector("h3")?.focus();}
+  const prazo=el.querySelector("[data-prazo-av]");
+  if(prazo){const t=Number(prazo.dataset.prazoAv)-(Date.now()+V.offset);prazo.textContent=t>0?"Sem resposta em "+Math.ceil(t/1000)+" s, o time mantém o plano.":"Mantendo o plano…";}
+}
+async function escolherMomento(b,opcao){
+  for(const x of V.raiz.querySelectorAll("[data-momento-av]"))x.disabled=true;
+  b.classList.add("escolhida");
+  const r=await D.pedido("momento",{opcao});
+  if(!r.ok){for(const x of V.raiz.querySelectorAll("[data-momento-av]"))x.disabled=false;b.classList.remove("escolhida");}
+}
+
 // ---------- os botões ----------
 function trocarJogo(id){
   const g=V.jogos.find(x=>x.id===id);
   if(!g||g===V.atual||g.erro)return;
-  V.atual=g;montar();
+  V.atual=g;montar();somAbrir();
 }
 function clique(e){
   const b=e.target.closest("button");if(!b)return;
   if(b.dataset.ver){trocarJogo(b.dataset.ver);return;}
   if(b.dataset.mult){V.mult=Number(b.dataset.mult)||1;for(const x of V.raiz.querySelectorAll("[data-mult]"))x.setAttribute("aria-pressed",String(x===b));return;}
   const a=b.dataset.acaoAv;
+  if(b.dataset.momentoAv){escolherMomento(b,b.dataset.momentoAv);return;}
   if(a==="fechar")fechar();
-  else if(a==="pular"){V.pulando=true;V.minuto=Math.max(V.minuto,200);const novos=avancarLances(true);for(const ev of novos)mostrarLance(ev);V.pulando=false;atualizar();}
+  else if(a==="som"){SomPartida.alternar();b.textContent=somRotulo();b.setAttribute("aria-pressed",String(SomPartida.modo!=="mudo"));}
+  else if(a==="pular"){
+    // ao vivo, o salto para no momento parado (a decisão vem antes do resto do jogo)
+    if(V.vivo&&V.teto!=null){V.salto=Math.max(V.salto,V.teto-minutoServidor());V.pulando=true;V.minuto=minutoAoVivo();const novos=avancarLances();for(const ev of novos)mostrarLance(ev);V.pulando=false;atualizar();return;}
+    if(V.vivo)V.salto=1e6;
+    V.pulando=true;V.minuto=Math.max(V.minuto,200);const novos=avancarLances(true);for(const ev of novos)mostrarLance(ev);V.pulando=false;atualizar();}
   else if(a==="outro"){const i=V.jogos.indexOf(V.atual),prox=[...V.jogos.slice(i+1),...V.jogos.slice(0,i)].find(x=>!x.erro);if(prox)trocarJogo(prox.id);}
 }
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&V.aberta)fechar();});
