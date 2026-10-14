@@ -12,6 +12,7 @@ const NOME_VAGA = { GOL: "Gol", ZAG: "Zagueiro", LE: "Lat. esq.", LD: "Lat. dir.
 // a energia do jogador (0 a 100): o cansaço dos jogos anteriores; a barra muda de cor quando cai
 const nivelEnergia = (e) => (e < 45 ? "baixa" : e < 70 ? "media" : "");
 const energiaDe = (pid) => (E.energia && E.energia[pid] != null ? E.energia[pid] : 100);
+const energiaVisivel = (e) => Math.round(e ?? 100);
 // a camisa em SVG, com a cor e o desenho do clube (camisas.js); o goleiro joga de verde (ou de laranja se o clube já é verde)
 let camisaSeq = 0;
 const CORPO_CAMISA = "M20 7 L27 4 Q32 11 37 4 L44 7 L61 18 L54 30 L47 25 L47 59 L17 59 L17 25 L10 30 L3 18 Z";
@@ -52,13 +53,13 @@ function campinho(detalhe, formacao, opcoes = {}) {
     const l = lugarNoCampo(s), estilo = `left:${l.x.toFixed(2)}%;top:${l.y.toFixed(2)}%;--e:${l.e.toFixed(3)}`;
     if (!v.id) return `<button class="peca vazia" data-i="${i}" style="${estilo}"><span class="cam"><span class="sem">?</span></span><small>${NOME_VAGA[v.fino] || v.fino}</small></button>`;
     const j = JOGADORES[v.id], fit = encaixe(j.pos, v.fino), energia = opcoes.energia ? opcoes.energia[v.id] : null;
-    const nota = notaDe(j), cansaco = opcoes.energia ? penalidadeCansaco(v.id) : 0, perdaVisivel = opcoes.energia ? penalidadeCansacoVisivel(v.id) : 0, rendimento = Math.round((nota - cansaco) * fit);
+    const nota = notaDe(j), cansaco = opcoes.energia ? penalidadeCansaco(v.id) : 0, perdaVisivel = opcoes.energia ? penalidadeCansacoVisivel(v.id) : 0, rendimento = Math.round((nota - cansaco) * fit), energiaTexto = energiaVisivel(energia);
     const sel = opcoes.selecionado === i;
-    return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="${estilo}" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""} · energia ${energia ?? 100}%${perdaVisivel ? ` · over -${perdaVisivel}` : ""}">
-      ${perdaVisivel ? `<span class="cansaco-canto" title="${energia ?? 100}% de energia: over -${perdaVisivel}">-${perdaVisivel}</span>` : ""}
+    return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="${estilo}" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""} · energia ${energiaTexto}%${perdaVisivel ? ` · over -${perdaVisivel}` : ""}">
+      ${perdaVisivel ? `<span class="cansaco-canto" title="${energiaTexto}% de energia: over -${perdaVisivel}">-${perdaVisivel}</span>` : ""}
       <span class="peca-mudancas">${seloMudancaNota(v.id)}${seloEfeitoNota(v.id)}</span>
       <span class="cam">${camisaSVG(donoDe(v.id), v.fino === "GOL")}<span class="nota-em-campo"><b>${nota}</b>${rendimento !== nota ? `<em>→ ${rendimento}</em>` : ""}</span></span>
-      ${energia != null ? `<span class="energia ${nivelEnergia(energia)}" title="Energia ${energia}%"><i style="--v:${energia}%"></i></span>` : ""}<small>${h(sobrenome(j.nome))}</small></button>`;
+      ${energia != null ? `<span class="energia ${nivelEnergia(energia)}" title="Energia ${energiaTexto}%"><i style="--v:${energia}%"></i></span>` : ""}<small>${h(sobrenome(j.nome))}</small></button>`;
   }).join("")}</div>`;
 }
 
@@ -81,7 +82,7 @@ function destaqueHTML(pid) {
   const nota = notaDe(j), energia = energiaDe(pid), clube = donoDe(pid);
   return `<div class="cartao-jog ${faixa(nota)}"><div class="dest-foto"><span class="dest-pos">${marcaPos(j.pos)}${j.pos}</span>${fotoHTML(pid)}<b class="dest-nota">${nota}</b></div>
     <div class="dest-nome"><strong>${h(sobrenome(j.nome))}</strong><small>${h(POS_NOME[j.pos] || j.pos)} · ${Evolucao.idadeNa(j, E.temporada)} anos · ${h((CLUBES[clube] || {}).nome || "")}</small>
-    <span class="energia ${nivelEnergia(energia)}" title="Energia ${energia}%"><i style="--v:${energia}%"></i></span></div>
+    <span class="energia ${nivelEnergia(energia)}" title="Energia ${energiaVisivel(energia)}%"><i style="--v:${energia}%"></i></span></div>
     <div class="dest-radar">${radarSVG(j, pid)}</div></div>`;
 }
 // o jogador do cartão: o marcado, ou o último sob o mouse, ou o melhor titular
@@ -94,10 +95,10 @@ document.addEventListener("pointerover", (e) => {
 });
 // o cartão de um reserva: a posição, a foto, a nota, o nome e a energia (attrs: o que o chamador precisa, como data-reserva)
 function reservaHTML(pid, { sel = false, attrs = "" } = {}) {
-  const j = JOGADORES[pid], nota = notaDe(j), perdaVisivel = penalidadeCansacoVisivel(pid), energia = energiaDe(pid), fr = fora(pid);
-  return `<button class="carta-reserva ${faixa(nota)}${sel ? " sel" : ""}${fr ? " indisponivel" : ""}" data-jogador="${pid}" ${attrs} title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos} · energia ${energia}%${fr ? ` · ${fr === "lesao" ? "lesionado" : "suspenso"}` : ""}">
+  const j = JOGADORES[pid], nota = notaDe(j), perdaVisivel = penalidadeCansacoVisivel(pid), energia = energiaDe(pid), energiaTexto = energiaVisivel(energia), fr = fora(pid);
+  return `<button class="carta-reserva ${faixa(nota)}${sel ? " sel" : ""}${fr ? " indisponivel" : ""}" data-jogador="${pid}" ${attrs} title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos} · energia ${energiaTexto}%${fr ? ` · ${fr === "lesao" ? "lesionado" : "suspenso"}` : ""}">
     <span class="res-pos">${marcaPos(j.pos)}${j.pos}</span>${fotoHTML(pid)}<b class="res-nota">${nota}</b>
-    ${perdaVisivel ? `<span class="cansaco-canto" title="${energia}% de energia: over -${perdaVisivel}">-${perdaVisivel}</span>` : ""}
+    ${perdaVisivel ? `<span class="cansaco-canto" title="${energiaTexto}% de energia: over -${perdaVisivel}">-${perdaVisivel}</span>` : ""}
     <span class="res-marcas">${situacao(pid, true)}</span><span class="energia ${nivelEnergia(energia)}"><i style="--v:${energia}%"></i></span><span class="res-nome">${h(sobrenome(j.nome))}</span></button>`;
 }
 
@@ -115,7 +116,7 @@ function telaElenco() {
   $("eDica").innerHTML = E.partida ? `${ic("cadeado")} A partida está em andamento: a prancheta volta depois do apito final.`
     : selecionado ? `${ic("troca")} Agora toque em quem vai trocar de lugar com ${h(sobrenome(nomeJogador(selecionado.onde === "campo" ? det[selecionado.i].id : selecionado.pid)))}. Toque de novo para ver a ficha.`
     : `${ic("dedo")} Arraste um jogador até outro (ou toque num e depois no outro) para trocar os dois de lugar. Um jogo no banco recupera 80 de energia.`;
-  $("eForca").innerHTML = `Média dos titulares: <b>${media.toFixed(1)}</b> · energia: <b class="${energiaMedia < 70 ? "aviso-txt" : ""}">${Math.round(energiaMedia)}%</b> · rendimento nas posições: <b class="${mediaPosicao < media - 0.05 ? "aviso-txt" : ""}">${mediaPosicao.toFixed(1)}</b>${improvisados ? ` · <span class="aviso-txt">${improvisados} improvisado${improvisados > 1 ? "s" : ""}</span>` : ""}${efeitoDe("time") ? ` · time ${sinalDe(efeitoDe("time"))} no próximo jogo` : ""}${esc.fixo ? " · escalação sua" : " · escalação automática"}`;
+  $("eForca").innerHTML = `Média dos titulares: <b>${Math.round(media)}</b> · energia: <b class="${energiaMedia < 70 ? "aviso-txt" : ""}">${Math.round(energiaMedia)}%</b> · rendimento nas posições: <b class="${mediaPosicao < media - 0.05 ? "aviso-txt" : ""}">${Math.round(mediaPosicao)}</b>${improvisados ? ` · <span class="aviso-txt">${improvisados} improvisado${improvisados > 1 ? "s" : ""}</span>` : ""}${efeitoDe("time") ? ` · time ${sinalDe(efeitoDe("time"))} no próximo jogo` : ""}${esc.fixo ? " · escalação sua" : " · escalação automática"}`;
   // os controles
   const seg = (id, lista, atual, chave) => { $(id).innerHTML = lista.map(([v, t]) => `<button data-${chave}="${v}" aria-pressed="${String(v) === String(atual)}">${t}</button>`).join(""); };
   // o esquema (4-3-3, 4-2-3-1...) e, embaixo, as variações dele (1 volante e 2 meias, 2 volantes e 1 meia...)

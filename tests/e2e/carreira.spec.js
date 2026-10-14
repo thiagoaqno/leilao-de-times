@@ -108,16 +108,20 @@ test("carreira: desconto de over aparece inteiro e para em -3, sem multa por trÃ
   await page.evaluate((jogadores) => {
     __carreira.E.escalacao.titulares = jogadores;
     __carreira.E.escalacao.fixo = true;
-    [100, 75, 70, 65, 20].forEach((energia, i) => { __carreira.E.energia[jogadores[i]] = energia; });
+    [100, 75.5, 70.1, 70, 65.4, 20].forEach((energia, i) => { __carreira.E.energia[jogadores[i]] = energia; });
     __carreira.E.sequencia[jogadores[0]] = 3;
     __carreira.mostrarTela("elenco");
   }, ids);
-  for (const [i, texto] of [[0, null], [1, "-1"], [2, "-2"], [3, "-2"], [4, "-3"]]) {
+  for (const [i, texto] of [[0, null], [1, "-1"], [2, "-1"], [3, "-2"], [4, "-2"], [5, "-3"]]) {
     const badge = page.locator(`#eCampo [data-jogador="${ids[i]}"] .cansaco-canto`);
     if (texto) await expect(badge).toHaveText(texto);
     else await expect(badge).toHaveCount(0);
   }
+  await expect(page.locator("#eForca")).not.toContainText(/\d+[.,]\d+/);
+  await expect(page.locator(`#eCampo [data-jogador="${ids[1]}"]`)).toHaveAttribute("title", /energia 76%.*over -1/);
+  await expect(page.locator(`#eCampo [data-jogador="${ids[4]}"] .cansaco-canto`)).toHaveAttribute("title", "65% de energia: over -2");
   await fotografar(page, "carreira-over-inteiro");
+  if (fotos) await page.screenshot({ path: path.join(fotos, "carreira-over-formacao-inteira.png"), fullPage: true });
   expect(erros).toEqual([]);
 });
 
