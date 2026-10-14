@@ -17,6 +17,7 @@ const bd = require("./bd.js");
 const { rid, novoCodigo, limparNome, ok, falha, buscarSala, nomeEmUso, limparSalasParadas } = require("./salas.js");
 const Carreira = require("./carreira.js").grupo;
 const Rd = require("./carreira-rodada.js");
+const Moderacao = require("./carreira-moderacao.js");
 
 const MAX_PESSOAS = 8;
 const APORTES = [0, 250e6, 500e6, 1e9];
@@ -496,5 +497,25 @@ module.exports = function ligarCarreiraOnline(io) {
       if (room) broadcast(room);
     });
   });
+  return {
+    listar: () => Moderacao.lista(rooms),
+    detalhar: (codigo, clube) => Moderacao.detalhe(rooms.get(codigo), clube),
+    editar(codigo, dados, ator) {
+      const room = rooms.get(codigo);
+      if (!room) return { erro: "Sala não encontrada." };
+      const anterior = structuredClone({ save: room.save, trocas: room.trocas, t: room.t });
+      const resultado = Moderacao.aplicar(room, dados);
+      if (resultado.erro) return resultado;
+      room.t = Date.now();
+      try {
+        bd.salvarEdicaoModeracao(room.code, paraGuardar(room), ator, resultado);
+      } catch (e) {
+        Object.assign(room, anterior);
+        return { erro: "Não foi possível salvar a edição no banco." };
+      }
+      broadcast(room);
+      return resultado;
+    },
+  };
 };
 module.exports.HORAS_PARADA = HORAS_PARADA;

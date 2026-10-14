@@ -126,6 +126,17 @@ const salasCarreira = () => bd().prepare("SELECT * FROM carreiras_online").all()
   return { codigo: l.codigo, dados, atualizadaEm: Number(l.atualizada_em) };
 }).filter((s) => s.dados);
 const apagarSalaCarreira = (codigo) => bd().prepare("DELETE FROM carreiras_online WHERE codigo = ?").run(codigo).changes > 0;
+function salvarEdicaoModeracao(codigo, dados, ator, edicao) {
+  const db = bd(), agora = Date.now();
+  db.exec("BEGIN");
+  try {
+    const r = db.prepare("UPDATE carreiras_online SET dados = ?, atualizada_em = ? WHERE codigo = ?").run(JSON.stringify(dados), agora, codigo);
+    if (!r.changes) throw new Error("Sala não encontrada no banco.");
+    db.prepare("INSERT INTO moderacao_carreira (codigo, ator, tipo, clube, jogador, antes, depois, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(codigo, String(ator), edicao.tipo, edicao.clube, edicao.jogador, JSON.stringify(edicao.antes), JSON.stringify(edicao.depois), agora);
+    db.exec("COMMIT");
+  } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
 
 // ---------- cartas que já saíram (o monte dura entre reinícios do servidor) ----------
 const cartasSaidas = (jogo) => new Set(bd().prepare("SELECT carta FROM cartas_saidas WHERE jogo = ?").all(jogo).map((r) => r.carta));
@@ -169,4 +180,4 @@ function estante({ limite = 50, recentes = 24 } = {}) {
   return { ranking, ultimas, total: linhas.filter((l) => l.colocacao === 1).length };
 }
 
-module.exports = { abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

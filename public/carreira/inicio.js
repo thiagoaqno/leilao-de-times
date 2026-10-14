@@ -171,6 +171,7 @@ function receber(estado) {
   for (const [id, j] of Object.entries(E.jovens || {})) { JOGADORES[id] = { ...j, origem: id.replace(/-t\d+b\d+$/, "") }; registrarRosto(j); }
   // quem aprendeu outra posição no treino (o servidor manda o mapa; a posição de antes fica em posOriginal)
   for (const [id, pos] of Object.entries(E.posicoes || {})) if (JOGADORES[id] && JOGADORES[id].pos !== pos) { JOGADORES[id].posOriginal ??= JOGADORES[id].pos; JOGADORES[id].pos = pos; }
+  for (const [id, atr] of Object.entries(E.atributosModerados || {})) if (JOGADORES[id]) JOGADORES[id].atr = { ...JOGADORES[id].atr, ...atr };
   document.body.style.cssText = `${coresClube(E.clube)};${temaClube(E.clube)}`;
   marcaClube(E.clube);
   if (telaAtual && telaAtual !== "partida" && telaAtual !== "inicio") desenharTela(telaAtual);

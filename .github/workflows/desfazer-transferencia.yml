@@ -1,0 +1,41 @@
+name: Desfazer transferência
+
+on:
+  workflow_dispatch:
+    inputs:
+      sala:
+        description: "Código de 5 caracteres da sala"
+        required: true
+        type: string
+      clube:
+        description: "ID do clube envolvido na transferência"
+        required: true
+        type: string
+      jogador:
+        description: "ID do jogador da transferência a desfazer"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: moderar-carreira
+  cancel-in-progress: false
+
+jobs:
+  desfazer:
+    if: github.actor == 'thiagoaqno' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Desfazer no servidor
+        env:
+          MODERACAO_URL: ${{ vars.MODERACAO_URL || 'https://leilao-de-times.fly.dev' }}
+          MOD_ACAO: desfazer_transferencia
+          MOD_SALA: ${{ inputs.sala }}
+          MOD_CLUBE: ${{ inputs.clube }}
+          MOD_JOGADOR: ${{ inputs.jogador }}
+          MOD_ATOR: ${{ github.actor }}
+        run: node .github/scripts/moderar-carreira.mjs
