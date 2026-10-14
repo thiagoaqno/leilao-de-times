@@ -24,7 +24,7 @@ const sorte = key => parseInt(hash(key).slice(0,13),16)/0x10000000000000;
 const code = () => Array.from(crypto.randomBytes(5),n=>CHARS[n%CHARS.length]).join("");
 const tokenNovo = () => crypto.randomBytes(24).toString("hex");
 const eventos = [
-  { titulo:"A resposta inesperada", texto:"Seu rival elogiou seu talento diante da imprensa. O jornalista pede uma resposta.",
+  { titulo:"A resposta inesperada", texto:"Uma declaração provocativa sobre os protagonistas viraliza na imprensa. O jornalista pede sua reação.",
     opcoes:[["Retribuir o elogio","O respeito vem antes da rivalidade.",{respeito:16,prestigio:8,rel:16}],
             ["Responder com provocação","A guerra psicológica começa agora.",{ambicao:12,prestigio:5,rel:-20}],
             ["Não dar importância","Prefiro falar dentro de campo.",{disciplina:10,rel:0}]] },
@@ -53,14 +53,6 @@ function recuperar(codigo) {
   const row = bd.abrir().prepare("SELECT dados FROM rtc_campanhas WHERE codigo=?").get(codigo);
   if(!row) return null;
   try { return JSON.parse(row.dados); } catch { return null; }
-}
-function novaSala(d) {
-  let id=code(); for(let n=0;n<16 && recuperar(id);n++) id=code();
-  if(recuperar(id)) throw new Error("Não foi possível gerar o código.");
-  const p=participante(d);
-  const s={codigo:id,criadaEm:Date.now(),fase:"lobby",dono:p.id,jogadores:[p],equipes:[],jogos:[],capitulo:0,
-    entradas:[],resultados:[],campeao:null,epilogos:[],historico:[]};
-  salvar(s); return {s,p};
 }
 function participante(d) {
   const apelido=nome(d.nome), avatar=nome(d.avatar || d.nome), clube=String(d.clube||"");
@@ -110,7 +102,14 @@ function rivalDe(s,p) {
 }
 function cena(s,p) {
   const e=eventos[clamp(s.capitulo,0,4)],r=rivalDe(s,p);
-  return {titulo:e.titulo,texto:e.texto+(r?" O nome de "+r.avatar+" também aparece na conversa.":""),rival:r?{id:r.id,avatar:r.avatar}:null,
+  const rel=r?(p.relacoes[r.id]||0):0;
+  const anterior=r?.escolhas?.findLast(x=>x.capitulo<s.capitulo);
+  const vinculo=!r?"":rel>=18?" Vocês construíram um vínculo de respeito.":rel<=-18?" Há uma tensão crescente entre vocês.":" A relação entre vocês segue indefinida.";
+  const memoria=anterior?" A imprensa recorda a última declaração de "+r.avatar+": “"+anterior.texto+"”.":"";
+  const repercussao=s.historico.filter(x=>x.tipo==="repercussao").at(-1);
+  const eco=repercussao&&s.capitulo>0?" "+repercussao.texto:"";
+  return {titulo:e.titulo,texto:e.texto+(r?" O nome de "+r.avatar+" surge novamente.":"")+memoria+vinculo+eco,
+    rival:r?{id:r.id,avatar:r.avatar}:null,
     opcoes:e.opcoes.map((x,i)=>({id:i,texto:x[0],dica:x[1]}))};
 }
 function registrado(s,id) {return s.entradas.find(x=>x.rodada===s.capitulo && x.jogador===id);}
@@ -120,7 +119,11 @@ function decidir(s,p,opcao,tatica) {
   if(!TATICAS.includes(tatica)) throw new Error("Escolha uma estratégia válida.");
   const rival=rivalDe(s,p),item=e.opcoes[opcao],delta=item[2];
   for(const [k,v] of Object.entries(delta))if(k!=="rel") p.atributos[k]=clamp(p.atributos[k]+v,0,100);
-  if(rival && delta.rel) p.relacoes[rival.id]=clamp((p.relacoes[rival.id]||0)+delta.rel,-100,100);
+  if(rival && delta.rel){
+    p.relacoes[rival.id]=clamp((p.relacoes[rival.id]||0)+delta.rel,-100,100);
+    // A opinião do protagonista é dele; o impacto público também atinge o outro lado.
+    rival.relacoes[p.id]=clamp((rival.relacoes[p.id]||0)+Math.round(delta.rel/2),-100,100);
+  }
   p.escolhas.push({capitulo:s.capitulo,evento:e.titulo,opcao,texto:item[0],rival:rival?.id||null});
   const entrada={rodada:s.capitulo,jogador:p.id,avatar:p.avatar,clube:p.clube,tatica,escolha:item[0],rival:rival?.id||null};
   s.entradas.push(entrada);s.historico.push({tipo:"decisao",rodada:s.capitulo,autor:p.avatar,texto:item[0],clube:p.clube});
@@ -162,11 +165,25 @@ function epilogo(s,p) {
   else if(a.ambicao>=85 && a.respeito<50){titulo="O vilão da Europa";descricao="Sua ambição produziu manchetes e adversários para a próxima temporada.";}
   else if(a.disciplina>=75){titulo="O profissional exemplar";descricao="Mesmo fora da final, sua postura virou referência.";}
   else {titulo="O próximo capítulo";descricao="A eliminação encerrou a competição, mas não sua história.";}
+  const vinculos=Object.entries(p.relacoes||{}).map(([id,n])=>({p:s.jogadores.find(x=>x.id===id),n})).filter(x=>x.p);
+  const amigo=vinculos.filter(x=>x.n>=30).sort((x,y)=>y.n-x.n)[0];
+  const inimigo=vinculos.filter(x=>x.n<=-30).sort((x,y)=>x.n-y.n)[0];
+  if(amigo && amigo.p.relacoes[p.id]>=20) descricao+=" "+amigo.p.avatar+" aparece no epílogo como um rival que se tornou aliado.";
+  if(inimigo) descricao+=" Sua rivalidade com "+inimigo.p.avatar+" ainda é assunto na imprensa.";
   return {jogador:p.id,avatar:p.avatar,clube:p.clube,titulo,descricao,campeao};
 }
 function avancar(s) {
   if(s.fase!=="jogando")throw new Error("A campanha não está em andamento.");
   if(!s.jogadores.every(p=>registrado(s,p.id)))throw new Error("Aguarde as decisões dos outros protagonistas.");
+  const opinioes=s.entradas.filter(x=>x.rodada===s.capitulo);
+  const respeito=opinioes.filter(x=>/elogio|apoio|grupo|Agradecer|conversar|distrações/i.test(x.escolha)).length;
+  const provocacoes=opinioes.filter(x=>/provoca|desafiar|melhor|Vazar|taça|Exigir/i.test(x.escolha)).length;
+  if(s.jogadores.length>1){
+    const noticia=respeito>provocacoes?"A imprensa destaca a união inesperada entre os protagonistas.":
+      provocacoes>respeito?"As declarações dividem os protagonistas e alimentam novas rivalidades.":
+      "Os protagonistas seguem divididos entre o respeito e a ambição.";
+    s.historico.push({tipo:"repercussao",rodada:s.capitulo,texto:noticia});
+  }
   for(const j of jogosDaRodada(s)) jogar(s,j);
   const n=s.capitulo;
   if(n===2){
