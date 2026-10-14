@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cabine da carreira</title>
+<style>
+  :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#17312d;background:#f3f1e8;font-size:15px}
+  *{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}a{color:inherit}
+  :focus-visible{outline:3px solid #bb7e21;outline-offset:2px} .app{min-height:100vh;display:grid;grid-template-columns:300px minmax(0,1fr)}
+  aside{background:#153630;color:#f7f5e9;padding:30px 22px;display:flex;flex-direction:column;gap:24px}
+  .brand{font-family:Impact,'Arial Narrow',sans-serif;font-size:30px;letter-spacing:.02em;line-height:1}.brand small{display:block;font:600 12px system-ui;margin-top:8px;letter-spacing:.02em;color:#c2d3c9}
+  .side-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.side-head h2{font-size:15px;margin:0}.ghost{border:1px solid #78948a;background:transparent;color:inherit;border-radius:5px;padding:7px 10px}
+  .salas{display:grid;gap:8px}.sala{width:100%;text-align:left;border:1px solid #638278;background:#21473f;color:#f7f5e9;border-radius:7px;padding:13px;display:grid;gap:5px}.sala.ativa{border-color:#f0d486;box-shadow:inset 4px 0 #f0d486}.sala strong{font-size:19px;letter-spacing:.07em}.sala span{font-size:12px;color:#c9d9cd;line-height:1.35}.rodape{margin-top:auto;color:#bfd1c7;font-size:12px;line-height:1.5}.rodape button{margin-top:12px}
+  main{max-width:1300px;width:100%;padding:32px clamp(18px,3vw,52px) 70px;margin:0 auto}.topo{display:flex;justify-content:space-between;align-items:start;gap:20px;border-bottom:2px solid #c6cabe;padding-bottom:22px}.topo h1{font-family:Impact,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(32px,4vw,54px);line-height:1;margin:0}.topo p{margin:8px 0 0;color:#587066}.estado{display:inline-block;border:1px solid #8fa99d;border-radius:99px;padding:7px 12px;font-weight:650;font-size:12px;white-space:nowrap}
+  .vazio{padding:70px 0;color:#587066;max-width:44ch;font-size:18px}.aviso{margin:20px 0;padding:13px 16px;border-radius:5px;background:#e5eddf;color:#214d3c;font-weight:600}.aviso.erro{background:#f7e4d8;color:#8c3624}.oculto{display:none!important}
+  .secao{border-bottom:1px solid #c6cabe;padding:25px 0}.secao h2{font-family:Impact,'Arial Narrow',sans-serif;font-size:26px;font-weight:400;margin:0 0 16px}.linha{display:flex;gap:15px;align-items:end;flex-wrap:wrap}.campo{display:grid;gap:6px;min-width:180px}.campo label,.rotulo{font-size:13px;font-weight:700;color:#37594d}.campo input,.campo select,select,input[type=search]{background:#fff;border:1px solid #a8b6a8;border-radius:5px;min-height:42px;padding:8px 11px;color:#17312d;max-width:100%}
+  .principal{background:#1c5a47;color:#fff;border:1px solid #1c5a47;border-radius:5px;padding:10px 16px;min-height:42px;font-weight:700}.principal:hover{background:#114a39}.secundario{background:transparent;color:#1c5a47;border:1px solid #7e9c8c;border-radius:5px;padding:9px 14px;min-height:42px;font-weight:650}.perigo{color:#9f3b2a;border-color:#ba8b7e}.meta{color:#5b7168;font-size:13px;margin:8px 0 0}.dinheiro{font-family:Impact,'Arial Narrow',sans-serif;font-size:33px;line-height:1;margin:0 22px 0 0}
+  .duas{display:grid;grid-template-columns:minmax(220px,.9fr) minmax(320px,1.1fr);gap:28px}.lista-jogadores{height:320px;overflow:auto;border:1px solid #b9c4b6;background:#fff;border-radius:6px}.jogador{width:100%;border:0;border-bottom:1px solid #e0e5dd;background:transparent;text-align:left;padding:10px 13px;display:flex;justify-content:space-between;gap:8px}.jogador.ativo{background:#e3eddf;border-left:4px solid #1c5a47;padding-left:9px}.jogador small{color:#60746a}.ficha{min-height:300px}.ficha h3{margin:0 0 4px;font-size:24px}.ficha .linha{margin-top:18px}.ficha .campo{min-width:125px}.ficha input[type=number]{width:125px}.ficha select{min-width:125px}.valor-jogador{color:#5b7168;margin:0}.transferencias{display:grid;gap:0}.transferencia{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 0;border-top:1px solid #c6cabe}.transferencia strong{display:block}.transferencia small{display:block;color:#62786e;margin-top:4px}.transferencia button{white-space:nowrap}.ajuda{font-size:13px;color:#5b7168;max-width:70ch;line-height:1.5}
+  @media(max-width:850px){.app{display:block}aside{padding:17px;gap:12px}.brand{font-size:23px}.salas{display:flex;overflow:auto}.sala{min-width:170px}.rodape{font-size:0}.rodape button{font-size:13px;margin-top:0}main{padding:24px 17px 50px}.duas{grid-template-columns:1fr}.lista-jogadores{height:240px}.topo{display:block}.estado{margin-top:15px}}
+</style>
+<div class="app">
+  <aside>
+    <div class="brand">CABINE DA CARREIRA<small>Moderação privada</small></div>
+    <div class="side-head"><h2>Salas em andamento</h2><button class="ghost" id="atualizarSalas" type="button">Atualizar</button></div>
+    <div class="salas" id="salas"></div>
+    <div class="rodape">Acesso pela sua conta do GitHub.<br>As mudanças são salvas na carreira ao vivo.<br><button class="ghost" id="sair" type="button">Sair</button></div>
+  </aside>
+  <main>
+    <div class="topo"><div><h1>Controle da sala</h1><p>Escolha uma sala e faça a alteração.</p></div><span class="estado" id="estado">Carregando…</span></div>
+    <div class="aviso oculto" id="aviso" role="status" aria-live="polite"></div>
+    <div id="vazio" class="vazio">Selecione uma sala para começar.</div>
+    <div id="conteudo" class="oculto">
+      <section class="secao"><h2 id="tituloSala">Sala</h2><div class="linha"><div class="campo"><label for="clube">Clube</label><select id="clube"></select></div><div><span class="rotulo">Caixa atual</span><p class="dinheiro" id="caixaAtual">—</p></div><div class="campo"><label for="caixa">Novo caixa, em reais</label><input id="caixa" type="number" min="0" max="10000000000" step="1" inputmode="numeric"></div><button class="principal" id="salvarCaixa" type="button">Salvar caixa</button></div></section>
+      <section class="secao"><h2>Jogadores</h2><div class="duas"><div><div class="campo"><label for="busca">Buscar no elenco</label><input id="busca" type="search" placeholder="Digite o nome do jogador"></div><p class="meta" id="contagem"></p><div class="lista-jogadores" id="jogadores"></div></div><div class="ficha" id="ficha"><p class="ajuda">Escolha um jogador no elenco para editar energia, overall ou atributos, ou transferi-lo.</p></div></div></section>
+      <section class="secao"><h2>Transferências recentes</h2><p class="ajuda">Use “Desfazer” na transferência desejada. O jogador volta ao clube anterior e o valor é estornado. Operações especiais exigem ajuste manual.</p><div class="transferencias" id="transferencias"></div></section>
+    </div>
+  </main>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
+  const reais = (n) => new Intl.NumberFormat("pt-BR", { style:"currency", currency:"BRL", maximumFractionDigits:0 }).format(Number(n) || 0);
+  let csrf = "", salas = [], codigo = "", detalhe = null, jogador = "", filtro = "";
+  function aviso(texto, erro=false){$("aviso").textContent=texto;$("aviso").className=`aviso${erro?" erro":""}`;}
+  function limparAviso(){$("aviso").className="aviso oculto";}
+  async function api(caminho, opcoes={}){
+    const r=await fetch(`/admin/carreira/api/${caminho}`,{credentials:"same-origin",...opcoes});
+    if(r.status===401){location.href="/admin/carreira";throw Error("Sessão encerrada.");}
+    const d=await r.json();if(!r.ok)throw Error(d.erro||"Não foi possível carregar os dados.");return d;
+  }
+  async function carregarSalas(){
+    try{const d=await api("inicio");csrf=d.csrf;salas=d.salas;renderSalas();$("estado").textContent=`${salas.length} sala${salas.length===1?"":"s"} ativa${salas.length===1?"":"s"}`;
+      if(codigo&&!salas.some(s=>s.codigo===codigo)){codigo="";detalhe=null;$("conteudo").classList.add("oculto");$("vazio").classList.remove("oculto");}
+      if(codigo)await abrirSala(codigo,detalhe?.clube||"");
+      else if(salas.length)await abrirSala(salas[0].codigo);
+      if(!salas.length){$("vazio").textContent="Nenhuma carreira em grupo está ativa agora. Atualize quando uma sala começar.";$("vazio").classList.remove("oculto");}
+    }catch(e){aviso(e.message,true);}
+  }
+  function renderSalas(){
+    $("salas").innerHTML=salas.map(s=>`<button type="button" class="sala${s.codigo===codigo?" ativa":""}" data-sala="${esc(s.codigo)}"><strong>${esc(s.codigo)}</strong><span>Temporada ${esc(s.temporada)} · rodada ${esc(s.rodada)}${s.jogoAoVivo?" · jogo ao vivo":""}</span><span>${esc((s.tecnicos||[]).map(t=>t.nomeClube||t.clube).join(", ")||"Sem técnicos")}</span></button>`).join("");
+    $("salas").querySelectorAll("[data-sala]").forEach(b=>b.onclick=()=>abrirSala(b.dataset.sala));
+  }
+  async function abrirSala(c, clube=""){
+    codigo=c;limparAviso();renderSalas();$("estado").textContent="Carregando sala…";
+    try{detalhe=await api(`salas/${encodeURIComponent(c)}${clube?`?clube=${encodeURIComponent(clube)}`:""}`);
+      if(!clube)jogador="";renderDetalhe();$("estado").textContent=detalhe.jogoAoVivo?"Jogo ao vivo: edição pausada":"Pronta para editar";
+    }catch(e){aviso(e.message,true);$("estado").textContent="Erro ao carregar";}
+  }
+  function renderDetalhe(){
+    $("vazio").classList.add("oculto");$("conteudo").classList.remove("oculto");$("tituloSala").textContent=`${detalhe.nomeClube} · sala ${codigo}`;
+    $("clube").innerHTML=detalhe.clubes.map(c=>`<option value="${esc(c.id)}"${c.id===detalhe.clube?" selected":""}>${esc(c.nome)}${c.humano?" · técnico":""}</option>`).join("");
+    $("caixaAtual").textContent=reais(detalhe.caixa);$("caixa").value=detalhe.caixa??"";
+    $("salvarCaixa").disabled=detalhe.jogoAoVivo;renderJogadores();renderTransferencias();
+  }
+  function renderJogadores(){
+    const lista=detalhe.jogadores.filter(j=>j.nome.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").includes(filtro.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"")));
+    $("contagem").textContent=`${lista.length} de ${detalhe.jogadores.length} jogadores`;
+    $("jogadores").innerHTML=lista.map(j=>`<button class="jogador${j.id===jogador?" ativo":""}" type="button" data-jogador="${esc(j.id)}"><span>${esc(j.nome)}</span><small>${esc(j.pos)} · ${esc(j.overall)}</small></button>`).join("")||'<p class="meta" style="padding:12px">Nenhum jogador encontrado.</p>';
+    $("jogadores").querySelectorAll("[data-jogador]").forEach(b=>b.onclick=()=>{jogador=b.dataset.jogador;renderJogadores();});
+    const j=detalhe.jogadores.find(x=>x.id===jogador);
+    if(!j){$("ficha").innerHTML='<p class="ajuda">Escolha um jogador no elenco para editar energia, overall ou atributos, ou transferi-lo.</p>';return;}
+    $("ficha").innerHTML=`<h3>${esc(j.nome)}</h3><p class="valor-jogador">${esc(j.pos)} · overall ${esc(j.overall)}${j.energia==null?"":` · energia ${esc(j.energia)}`}</p>
+      <div class="linha"><div class="campo"><label for="energia">Energia</label><input id="energia" type="number" min="0" max="100" step="1" value="${esc(j.energia??100)}" ${j.energia==null?"disabled":""}></div><button class="secundario" id="salvarEnergia" ${j.energia==null||detalhe.jogoAoVivo?"disabled":""}>Salvar energia</button></div>
+      <div class="linha"><div class="campo"><label for="overall">Overall</label><input id="overall" type="number" min="40" max="95" step="1" value="${esc(j.overall)}"></div><button class="secundario" id="salvarOverall" ${detalhe.jogoAoVivo?"disabled":""}>Salvar overall</button></div>
+      <div class="linha"><div class="campo"><label for="atributo">Atributo</label><select id="atributo">${Object.entries({rit:"Ritmo",fin:"Finalização",pas:"Passe",dri:"Drible",def:"Defesa",fis:"Físico",gol:"Goleiro"}).filter(([k])=>k in j.atr).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}</select></div><div class="campo"><label for="valorAtributo">Novo valor</label><input id="valorAtributo" type="number" min="1" max="99" step="1"></div><button class="secundario" id="salvarAtributo" ${detalhe.jogoAoVivo?"disabled":""}>Salvar atributo</button></div>
+      <div class="linha"><div class="campo"><label for="destino">Transferir para</label><select id="destino"><option value="">Escolha um clube</option>${detalhe.clubes.filter(c=>c.id!==detalhe.clube).map(c=>`<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join("")}</select></div><button class="secundario" id="transferir" ${detalhe.jogoAoVivo?"disabled":""}>Transferir jogador</button></div>`;
+    $("atributo").onchange=()=>{$("valorAtributo").value=j.atr[$("atributo").value]??"";};$("atributo").dispatchEvent(new Event("change"));
+    $("salvarEnergia").onclick=()=>editar({tipo:"energia",jogador:j.id,valor:$("energia").value},`Energia de ${j.nome} atualizada.`);
+    $("salvarOverall").onclick=()=>editar({tipo:"overall",jogador:j.id,valor:$("overall").value},`Overall de ${j.nome} atualizado.`);
+    $("salvarAtributo").onclick=()=>editar({tipo:"atributo",jogador:j.id,atributo:$("atributo").value,valor:$("valorAtributo").value},`Atributo de ${j.nome} atualizado.`);
+    $("transferir").onclick=()=>{const destino=$("destino").value;if(!destino)return aviso("Escolha o clube de destino.",true);
+      const nome=detalhe.clubes.find(c=>c.id===destino)?.nome;if(confirm(`Transferir ${j.nome} de ${detalhe.nomeClube} para ${nome}?`))editar({tipo:"transferir",jogador:j.id,destino},`${j.nome} transferido para ${nome}.`);};
+  }
+  function renderTransferencias(){
+    const pendentes=new Set();
+    $("transferencias").innerHTML=detalhe.transferencias.map((t,i)=>{const recente=!pendentes.has(t.jogador);if(!t.revertida)pendentes.add(t.jogador);
+      return `<div class="transferencia"><div><strong>${esc(t.nome||t.jogador)}</strong><small>${esc(t.deNome)} → ${esc(t.paraNome)} · ${reais(t.valor)}${t.revertida?" · desfeita":t.especial?" · operação especial":!recente?" · há uma transferência posterior":""}</small></div><button class="secundario perigo" type="button" data-desfazer="${i}" ${t.revertida||t.especial||!recente||detalhe.jogoAoVivo?"disabled":""}>Desfazer</button></div>`;}).join("")||'<p class="meta">Nenhuma transferência recente para este clube.</p>';
+    $("transferencias").querySelectorAll("[data-desfazer]").forEach(b=>b.onclick=()=>{const t=detalhe.transferencias[Number(b.dataset.desfazer)];
+      if(t&&confirm(`Desfazer a transferência de ${t.nome||t.jogador} (${t.deNome} → ${t.paraNome})? O valor será estornado.`))editar({tipo:"desfazer_transferencia",jogador:t.jogador},`Transferência de ${t.nome||t.jogador} desfeita.`);});
+  }
+  async function editar(d,mensagem){
+    limparAviso();$("estado").textContent="Salvando…";
+    try{await api(`salas/${encodeURIComponent(codigo)}`,{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({...d,clube:detalhe.clube})});
+      const clube=detalhe.clube;detalhe=await api(`salas/${encodeURIComponent(codigo)}?clube=${encodeURIComponent(clube)}`);
+      if(!detalhe.jogadores.some(x=>x.id===jogador))jogador="";renderDetalhe();aviso(mensagem);$("estado").textContent="Alteração salva";
+    }catch(e){aviso(e.message,true);$("estado").textContent="Não foi possível salvar";}
+  }
+  $("clube").onchange=()=>{filtro="";$("busca").value="";jogador="";abrirSala(codigo,$("clube").value);};
+  $("busca").oninput=()=>{filtro=$("busca").value;renderJogadores();};
+  $("salvarCaixa").onclick=()=>editar({tipo:"caixa",valor:$("caixa").value},`Caixa de ${detalhe.nomeClube} atualizado.`);
+  $("atualizarSalas").onclick=carregarSalas;
+  $("sair").onclick=async()=>{await fetch("/admin/carreira/sair",{method:"POST",headers:{"X-CSRF-Token":csrf}});location.href="/admin/carreira";};
+  carregarSalas();
+</script>
+</html>
