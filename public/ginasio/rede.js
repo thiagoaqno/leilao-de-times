@@ -9,6 +9,9 @@ function entidadePrevista(e) {
   return {
     ...e, mira: { ...e.mira }, bicho: { id: e.bicho, as: e.forma !== e.bicho ? e.forma : null, hp: e.hp, max: e.max, st: { ...e.st }, cds: [...e.cds], chakra: e.chakra },
     jogador: { id: e.id, lado: e.lado, substitutes: e.substitutes }, impedido: e.impedido || 0,
+    kx: e.kx || 0, ky: e.ky || 0, atordoado: e.atordoado || 0, guarda: e.guarda ?? Ginasio.GUARDA_MAX, guardando: !!e.guardando, guardaSolta: e.guardaSolta || 0,
+    preparo: e.preparo && { ...e.preparo, mira: { ...e.preparo.mira } }, sequencia: e.sequencia && { ...e.sequencia },
+    salto: e.salto && { ...e.salto, de: { ...e.salto.de }, para: { ...e.salto.para }, hab: { raio: e.salto.r } },
     canal: e.canal && { ...e.canal }, dash: e.dash && { ...e.dash, hab: { velocidade: e.dash.velocidade, giro: e.dash.giro, tipo: e.dash.elemento }, hit: new Set() },
     oculto: e.oculto && { ...e.oculto, de: { ...e.oculto.de }, para: { ...e.oculto.para } },
   };
@@ -24,7 +27,7 @@ function receberPacote(sn) {
   if (mudou) N.historico.length = 0;
   N.historico = N.historico.filter((passo) => passo.seq > sn.seq);
   N.previsto = entidadePrevista(e);
-  N.mundo = { modo: modoAtual(), dex: dexAtual(), entidades: [], ev: [] };
+  N.mundo = { modo: modoAtual(), dex: dexAtual(), entidades: [], ev: [], t: sn.tempo || 0 };
   for (const passo of N.historico) Ginasio.preverMovimento(N.mundo, N.previsto, passo.dt, passo.c);
   const distancia = antigo ? Math.hypot(antigo.x - N.previsto.x, antigo.y - N.previsto.y) : 0;
   N.erro = mudou || distancia > 1.5 ? { x: 0, y: 0 } : { x: antigo.x - N.previsto.x, y: antigo.y - N.previsto.y };

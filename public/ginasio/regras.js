@@ -1,5 +1,10 @@
 // Ginásio da Galera — motor da batalha em tempo real.
 // Roda igual no servidor e no navegador: o servidor decide dano, acertos, desmaios e fim da partida.
+// A física: cada golpe empurra (pelo poder e pelo peso de quem apanha), o empurrão forte atordoa um instante e quem
+// bate na parede ou na pilastra com força leva um pouco mais. Para se defender há a esquiva (rolar; a esquiva no
+// último instante é "perfeita": adianta as recargas e deixa o próximo golpe mais forte) e a guarda (segurar: segura
+// o golpe de frente, mas gasta a barra; levantar a guarda bem na hora "apara": devolve o projétil e desequilibra quem
+// bateu). Agarrão passa pela guarda; golpe passa pelo agarrão (quem apanha durante o preparo perde o golpe).
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/dados.js"), require("../galeramon/pokemon.js"), require("../galeramon/naruto.js"), require("../galeramon/lideres.js"));
   else root.Ginasio = factory(root.Galeramon, root.PokeDex, root.NarutoDex, root.Lideres);
@@ -19,6 +24,15 @@
   const K_DANO = 0.48;
   const K_DANO_POKEMON = 0.18;
   const LEVEL_K = (2 * 50) / 5 + 2;
+  // física e defesa
+  const ATRITO = 7; // o empurrão perde força assim (por segundo)
+  const EMPURRAO_MAX = 14;
+  const BATIDA_MIN = 6.5; // velocidade de empurrão a partir da qual bater na parede machuca
+  const GUARDA_MAX = 100;
+  const JANELA_APARAR = 0.18; // levantar a guarda até isto antes do golpe chegar: apara
+  const JANELA_PERFEITA = 0.16; // esquivar até isto antes do golpe chegar: esquiva perfeita
+  const ESQUIVA_CD = 2.6;
+  const BUFFER = 0.4; // por quanto tempo um golpe apertado na hora errada espera para sair
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   const norm = (x, y, fallback = { x: 1, y: 0 }) => {
@@ -41,16 +55,38 @@
   const stageMult = (D, n) => (D.stageMult ? D.stageMult(n || 0) : n >= 0 ? (2 + n) / 2 : 2 / (2 - n));
   const spec = (p, bicho) => p.dex.MONS[bicho.as || bicho.id];
   const ativo = (j) => j.time[j.ativo];
-  const vivo = (m) => m.hp > 0;
   const emCampo = (e) => e.campo && e.bicho && e.bicho.hp > 0;
-  // quem está voando alto ou debaixo da terra não pode ser acertado
-  const alcancavel = (e) => emCampo(e) && !e.oculto;
+  // no alto do pulo (o meio do salto) ninguém acerta
+  const noAlto = (e) => !!e.salto && e.salto.t < e.salto.total - 0.1 && e.salto.t > 0.08;
+  // quem está voando alto, debaixo da terra ou no alto do pulo não pode ser acertado
+  const alcancavel = (e) => emCampo(e) && !e.oculto && !noAlto(e);
+  const ocupado = (e) => !!(e.canal || e.preparo || e.salto || e.sequencia || e.oculto || e.dash);
 
   // golpes que viram movimento: o bicho some (voando, cavando, mergulhando ou nas sombras) e cai em cima do alvo
   const SUMIR = { fly: "voo", bounce: "voo", dig: "cova", escavar: "cova", mergulho: "mergulho", shadowforce: "sombra" };
   const DURACAO_SUMIR = { voo: 1.1, cova: 1, mergulho: 1, sombra: 0.9 };
   // golpes de giro: viram investida, e o bicho gira no caminho
-  const GIROS = new Set(["gyroball", "flamewheel", "rolamento", "cambalhota"]);
+  const GIROS = new Set(["gyroball", "flamewheel", "rolamento", "cambalhota", "steamroller", "drillrun"]);
+  // o jeito de cada golpe (Pokémon e Galeramon; os jutsus do Naruto dizem o deles em `forma`)
+  const ESTILOS = {};
+  for (const [estilo, ids] of Object.entries({
+    feixe: "hyperbeam solarbeam icebeam aurorabeam psybeam signalbeam flashcannon chargebeam technoblast dragonpulse psychoboost roaroftime aeroblast triattack hydropump blueflare lusterpurge mare rosado olho",
+    cone: "flamethrower heatwave dragonbreath frostbreath powdersnow incinerate snarl blizzard silverwind acidspray chatter oleo cachimbo papagaiada",
+    anel: "earthquake bulldoze discharge lavaplume hypervoice bugbuzz relicsong searingshot nightdaze sludgewave dazzlinggleam petaldance darkpulse curto fofoca",
+    onda: "surf muddywater glaciate waterspout leafstorm gust ressaca rio desliza",
+    rajada: "bulletseed pinmissile rockblast iciclespear twineedle tailslap rockslide razorleaf swift limao acai gelo",
+    bumerangue: "bonemerang voltswitch uturn geargrind duzentos",
+    teleguiado: "shadowball aurasphere magicalleaf hex psyshock extrasensory ominouswind mistball assombra serpente encanto",
+    bomba: "sludgebomb mudbomb seedbomb octazooka weatherball sludge fusionflare fireblast",
+    salto: "bodyslam stomp hijumpkick jumpkick heavyslam heatcrash acrobatics mata pancada botemata",
+    zona: "whirlpool magmastorm inferno clearsmog hurricane leaftornado",
+    combo: "doublekick triplekick dualchop furycutter armthrust closecombat xscissor outrage britadeira unhada chicote",
+    arremesso: "stormthrow circlethrow dragontail crushgrip abraco rabada",
+    investida: "wildcharge flareblitz bravebird headcharge boltstrike takedown doubleedge headsmash vcreate fusionbolt steamroller drillrun flamecharge zenheadbutt ironhead megahorn hornattack juba",
+  })) for (const id of ids.split(/\s+/)) ESTILOS[id] = estilo;
+  const PUXA = new Set(["whirlpool", "magmastorm", "hurricane", "leaftornado"]); // a zona puxa para o meio
+  const TOMBO = new Set(["hijumpkick", "jumpkick"]); // errar o pulo machuca quem pulou
+  const ALCANCE_FEIXE = 7.5;
 
   function habilidadeDeGolpe(id, mv) {
     if (!mv) throw new Error(`Golpe desconhecido: ${id}`);
@@ -72,8 +108,9 @@
     if (mv.bellydrum) return { ...base, classe: "tambor", recarga: 12 };
     if (mv.heal && poder <= 0) return { ...base, classe: "cura", recarga: 8 };
     if (mv.halve) return { ...base, classe: "projetil", especial: "metade", poder: 1, recarga: 3.8, velocidade: 7.2, largura: 0.22 };
+    if (mv.armadilha) return { ...base, classe: "armadilha", raio: 0.6, alcance: 5, recarga: 6, empurra: 0.6 };
     if (mv.self && poder <= 0 && !mv.foe) return { ...base, classe: "reforco", recarga: 8 };
-    if (mv.foe && poder <= 0) return { ...base, classe: "debuff", recarga: 4.5, velocidade: 4.6, largura: 0.24 };
+    if (mv.foe && poder <= 0) return { ...base, classe: "debuff", recarga: mv.atordoa ? 7 : 4.5, velocidade: 4.6, largura: 0.24 };
     if (SUMIR[id] && poder > 0) {
       const jeito = SUMIR[id];
       return { ...base, classe: "sumir", jeito, duracao: DURACAO_SUMIR[jeito], raio: 1.3, alcance: 5.5, recarga: clamp(2.5 + poder / 40, 3, 6) };
@@ -89,6 +126,21 @@
         : { ...base, classe: "investida", alcance: 3.4, velocidade: 12.5, recarga: clamp(1.3 + poder / 50, 1, 3.8) };
     }
     if (poder > 0 && mv.pri > 0) return { ...base, classe: "investida", alcance: 3, velocidade: 13, recarga: clamp(1.1 + poder / 55, 1, 3.5) };
+    const estilo = poder > 0 && !mv.forma ? ESTILOS[id] : null;
+    const forte = poder >= 120;
+    if (estilo === "feixe") return { ...base, classe: "feixe", preparo: forte ? 0.75 : 0.35, alcance: ALCANCE_FEIXE, largura: forte ? 0.55 : 0.36, recarga: clamp(2.2 + poder / 40, 3, 7), quebraGuarda: forte, empurra: 1.1 };
+    if (estilo === "cone") return { ...base, classe: "cone", preparo: 0.12, alcance: forte || poder >= 110 ? 3.6 : 3, arco: (poder >= 95 ? 85 : 70) * Math.PI / 180, recarga: clamp(1.6 + poder / 40, 2, 5), empurra: 0.8 };
+    if (estilo === "anel") return { ...base, classe: "anel", raio: poder >= 95 ? 3.8 : 3.2, duracao: 0.55, recarga: clamp(2 + poder / 40, 2.5, 6), empurra: 1.2 };
+    if (estilo === "onda") return { ...base, classe: "onda", alcance: 7, largura: poder >= 90 ? 3.4 : 2.6, velocidade: 6.5, recarga: clamp(2 + poder / 40, 2.5, 6), empurra: 1.4 };
+    if (estilo === "rajada") return { ...base, classe: "rajada", tiros: poder >= 75 ? 4 : 3, intervalo: 0.1, velocidade: 10.5, largura: 0.13, recarga: clamp(1.6 + poder / 45, 2, 4.5), empurra: 0.45 };
+    if (estilo === "bumerangue") return { ...base, classe: "bumerangue", velocidade: 8, alcance: 5, largura: 0.24, recarga: clamp(1.8 + poder / 45, 2, 4.5), empurra: 0.7 };
+    if (estilo === "teleguiado") return { ...base, classe: "teleguiado", velocidade: 6.2, largura: 0.24, recarga: clamp(1.8 + poder / 40, 2, 4.5), empurra: 0.9 };
+    if (estilo === "bomba") return { ...base, classe: "bomba", raio: forte || poder >= 100 ? 1.5 : 1.15, alcance: 6, recarga: clamp(1.8 + poder / 40, 2, 5), empurra: 1.1 };
+    if (estilo === "salto") return { ...base, classe: "salto", duracao: 0.55, raio: 1.3, alcance: 4.6, recarga: clamp(2.2 + poder / 45, 2.5, 5.5), quebraGuarda: true, empurra: 1.4, tombo: TOMBO.has(id) };
+    if (estilo === "zona") return { ...base, classe: "zona", raio: 1.6, alcance: 5, duracao: 3, puxa: PUXA.has(id), recarga: clamp(3 + poder / 40, 4, 7), empurra: 0 };
+    if (estilo === "combo") return { ...base, classe: "combo", golpes: id === "triplekick" || poder >= 100 ? 3 : 2, intervalo: 0.17, alcance: 1.3, arco: Math.PI * 0.6, recarga: clamp(1.4 + poder / 45, 1.5, 4.5), empurra: 0.5 };
+    if (estilo === "arremesso") return { ...base, classe: "arremesso", preparo: 0.14, alcance: 1.25, recarga: clamp(2.5 + poder / 50, 3, 5.5), agarra: true, empurra: 2.4, atordoa: 0.35 };
+    if (estilo === "investida") return { ...base, classe: "investida", alcance: forte ? 4.2 : 3.6, velocidade: forte ? 13.5 : 12, recarga: clamp(1.6 + poder / 45, 1.5, 5), empurra: 1.3, quebraGuarda: forte };
     if (poder >= 100) return { ...base, classe: "area", aviso: 0.7, raio: 1.5, alcance: 5 };
     if (poder > 0 && !fisico) return { ...base, classe: "projetil" };
     if (poder > 0) return { ...base, classe: "corpo", alcance: 1.2, arco: Math.PI / 2 };
@@ -127,6 +179,8 @@
       modo, dex, formato, porLado,
       t: 0, seq: 1, fim: false, vencedor: null, empate: false,
       duracao: config.duracao || TEMPO_MAX,
+      // o robô dos líderes joga melhor (reage mais rápido, apara e pune)
+      nivel: config.lider ? 2 : config.nivel ?? 1,
       rng: sorteDe(config.seed || "ginasio"),
       lados: [{ jogadores: [] }, { jogadores: [] }],
       entidades: [], projeteis: [], areas: [], ev: [], arena: ARENA,
@@ -159,8 +213,12 @@
     return {
       id: j.id, lado: j.lado, slot: j.slot, jogador: j, bicho: ativo(j),
       x, y, vx: 0, vy: 0, mira: { x: j.lado === 0 ? 1 : -1, y: 0 },
-      campo: true, raio: RAIO_BICHO, invulneravel: 0, esquivaCd: 0, esquivaT: 0,
+      campo: true, raio: RAIO_BICHO, invulneravel: 0, esquivaCd: 0, esquivaT: 0, esquivaEm: -9,
       dash: null, canal: null, escudo: null, impedido: 0, oculto: null,
+      // física e defesa
+      kx: 0, ky: 0, atordoado: 0, cadeia: 0, atordoadoEm: -9,
+      guarda: GUARDA_MAX, guardando: false, guardaDesde: -9, guardaSolta: 0,
+      preparo: null, salto: null, sequencia: null, foco: false, combo: null, ia: null, buffer: null,
     };
   }
 
@@ -186,26 +244,41 @@
     return d.l > 1e-6 ? d : { ...e.mira, l: 1 };
   }
 
+  // o ponto mirado fica sempre dentro da quadra (quem pula ou cava não cai fora dela)
+  const naQuadra = (q) => ({ x: clamp(q.x, -ARENA.w / 2 + RAIO_BICHO, ARENA.w / 2 - RAIO_BICHO), y: clamp(q.y, -ARENA.h / 2 + RAIO_BICHO, ARENA.h / 2 - RAIO_BICHO) });
   function pontoMira(e, c, hab) {
     if (c.alvo) {
       const dx = Number(c.alvo.x) - e.x, dy = Number(c.alvo.y) - e.y;
       const d = norm(dx, dy, e.mira), l = Math.min(hab.alcance || 5, d.l || 0);
-      return { x: e.x + d.x * l, y: e.y + d.y * l };
+      return naQuadra({ x: e.x + d.x * l, y: e.y + d.y * l });
     }
     const m = c.mira || {};
     const raw = { x: Number(m.x ?? c.mx ?? c.miraX ?? e.mira.x), y: Number(m.y ?? c.my ?? c.miraY ?? e.mira.y) };
     const d = norm(raw.x, raw.y, e.mira);
     const l = clamp(d.l > 1.2 ? d.l : hab.alcance || 5, 0.8, hab.alcance || 5);
-    return { x: e.x + d.x * l, y: e.y + d.y * l };
+    return naQuadra({ x: e.x + d.x * l, y: e.y + d.y * l });
   }
 
   function velocidade(p, e) {
     const s = spec(p, e.bicho).spd || 80;
-    return clamp(2.5 + ((s - 30) / 120) * 2, 2.5, 4.5) * stageMult(p.dex, e.bicho.st.spd || 0);
+    let v = clamp(2.5 + ((s - 30) / 120) * 2, 2.5, 4.5) * stageMult(p.dex, e.bicho.st.spd || 0);
+    if (e.guardando) v *= 0.45;
+    if (e.sequencia && e.sequencia.tipo === "rajada") v *= 0.7;
+    return v;
   }
 
+  // o peso: bicho de muita vida e defesa voa menos com o golpe
+  function fatorPeso(p, e) {
+    const m = spec(p, e.bicho) || {};
+    return clamp(Math.sqrt(260 / Math.max(60, (m.hp || 130) + (m.def || 100))), 0.6, 1.45);
+  }
+
+  // devolve true se bateu na parede ou na pilastra
   function limitar(e) {
     const hx = ARENA.w / 2 - e.raio, hy = ARENA.h / 2 - e.raio;
+    let bateu = null;
+    if (e.x < -hx || e.x > hx) bateu = { x: e.x < 0 ? 1 : -1, y: 0 };
+    if (e.y < -hy || e.y > hy) bateu = { x: bateu ? bateu.x : 0, y: e.y < 0 ? 1 : -1 };
     e.x = clamp(e.x, -hx, hx);
     e.y = clamp(e.y, -hy, hy);
     for (const pilar of ARENA.pilares) {
@@ -214,8 +287,10 @@
         const n = norm(dx, dy, { x: 1, y: 0 });
         e.x = pilar.x + n.x * min;
         e.y = pilar.y + n.y * min;
+        bateu = { x: n.x, y: n.y };
       }
     }
+    return bateu;
   }
 
   function projetilBateParede(pr) {
@@ -251,17 +326,18 @@
     return { ...hab, tipo: opts[Math.floor(p.rng() * opts.length)] };
   }
 
-  function alvoMaisPerto(p, e) {
+  function alvoMaisPerto(p, e, de = e) {
     let best = null, bd = Infinity;
     for (const o of p.entidades) if (o.lado !== e.lado && emCampo(o)) {
-      const d = dist(e, o);
+      const d = dist(de, o);
       if (d < bd) { bd = d; best = o; }
     }
     return best;
   }
 
+  // ---------- usar um golpe ----------
   function usarGolpe(p, e, idx, c = {}) {
-    if (!emCampo(e) || e.canal || e.impedido > 0 || e.oculto) return false;
+    if (!emCampo(e) || e.impedido > 0 || e.atordoado > 0 || ocupado(e)) return false;
     const b = e.bicho, spc = spec(p, b), key = spc.moves[idx], mv = p.dex.MOVES[key];
     if (!mv || b.cds[idx] > 0 || (p.modo === "naruto" && b.chakra < (mv.custo || 0))) return false;
     let hab = prepararGolpe(p, habilidadeDeGolpe(key, mv));
@@ -280,58 +356,142 @@
     }
     b.cds[idx] = hab.recarga;
     if (p.modo === "naruto") b.chakra -= mv.custo || 0;
-    p.ev.push({ tipo: "golpe", id: e.id, golpe: key, classe: hab.classe, elemento: hab.tipo });
-
+    soltarGuarda(e);
     if (hab.classe === "metronomo") {
       const opts = Object.entries(p.dex.MOVES).filter(([, x]) => x.p > 0);
       const [mid, mmv] = opts[Math.floor(p.rng() * opts.length)];
       hab = prepararGolpe(p, habilidadeDeGolpe(mid, mmv));
     }
-    if (hab.classe === "nada") return true;
-    if (hab.classe === "escudo") { e.escudo = { t: 1, tipo: mv.counter }; return true; }
+    const mira = dirMira(e, c);
+    e.mira = { x: mira.x, y: mira.y };
+    const ponto = pontoMira(e, c, hab);
+    p.ev.push({ tipo: "golpe", id: e.id, golpe: key, classe: hab.classe, elemento: hab.tipo, ...(hab.preparo && { preparo: hab.preparo }) });
+    // golpes com preparo: o bicho fica parado mirando (dá para fugir, e quem acerta nele antes cancela o golpe)
+    if (hab.preparo) {
+      e.preparo = { t: hab.preparo, total: hab.preparo, hab, mira: { x: mira.x, y: mira.y }, ponto, golpe: key };
+      e.vx = 0; e.vy = 0;
+      return true;
+    }
+    executarGolpe(p, e, hab, mira, ponto, c);
+    return true;
+  }
+
+  function executarGolpe(p, e, hab, mira, ponto, c = {}) {
+    const b = e.bicho, mv = hab.mv;
+    if (hab.classe === "nada") return;
+    if (hab.classe === "escudo") { e.escudo = { t: 1, tipo: mv.counter }; return; }
     if (hab.classe === "tambor") {
       if (b.hp > Math.floor(b.max / 2) && b.st.atk < 3) {
         b.hp -= Math.floor(b.max / 2);
         b.st.atk = 3;
         p.ev.push({ tipo: "tambor", id: e.id, hp: b.hp });
       }
-      return true;
+      return;
     }
     if (hab.classe === "transformar") {
       const alvo = alvoMaisPerto(p, e);
       if (alvo && !alvo.oculto) { b.as = alvo.bicho.as || alvo.bicho.id; b.st = { ...alvo.bicho.st }; p.ev.push({ tipo: "transformar", id: e.id, alvo: alvo.id }); }
-      return true;
+      return;
     }
-    if (hab.classe === "cura") { e.canal = { t: 0.8, heal: mv.heal || 0.5 }; e.vx = 0; e.vy = 0; return true; }
-    if (hab.classe === "reforco") { aplicarMod(p, e, mv.self || {}); return true; }
+    if (hab.classe === "cura") { e.canal = { t: 0.8, heal: mv.heal || 0.5 }; e.vx = 0; e.vy = 0; return; }
+    if (hab.classe === "reforco") { aplicarMod(p, e, mv.self || {}); return; }
 
-    const mira = dirMira(e, c);
-    e.mira = { x: mira.x, y: mira.y };
-    if (hab.classe === "corpo") acertarCorpo(p, e, hab);
-    else if (hab.classe === "sumir") sumir(p, e, c, hab);
-    else if (hab.classe === "investida") e.dash = { x: mira.x, y: mira.y, falta: hab.alcance, hab, hit: new Set() };
-    else if (hab.classe === "area") p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: pontoMira(e, c, hab).x, y: pontoMira(e, c, hab).y, r: hab.raio, t: hab.aviso, hab });
-    else if (hab.classe === "projetil" || hab.classe === "debuff") p.projeteis.push({ id: p.seq++, lado: e.lado, dono: e.id, x: e.x + mira.x * 0.45, y: e.y + mira.y * 0.45, dx: mira.x, dy: mira.y, v: hab.velocidade, raio: hab.largura, vida: 1.8, hab });
+    const novoProjetil = (o) => p.projeteis.push({ id: p.seq++, lado: e.lado, dono: e.id, x: e.x + mira.x * 0.45, y: e.y + mira.y * 0.45, dx: mira.x, dy: mira.y, v: hab.velocidade, raio: hab.largura, vida: 1.8, hab, forma: "reto", ...o });
+    const novaArea = (o) => p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: ponto.x, y: ponto.y, r: hab.raio, t: hab.aviso || 0.7, hab, forma: "queda", ...o });
+    switch (hab.classe) {
+      case "corpo": acertarCorpo(p, e, hab, mira); break;
+      case "sumir": sumir(p, e, c, hab, ponto); break;
+      case "investida": e.dash = { x: mira.x, y: mira.y, falta: hab.alcance, hab, hit: new Set() }; break;
+      case "area": novaArea({}); break;
+      case "projetil": case "debuff": novoProjetil({}); break;
+      case "teleguiado": novoProjetil({ forma: "teleguiado", vida: 2.4 }); break;
+      case "bumerangue": novoProjetil({ forma: "bumerangue", vida: 3, ida: hab.alcance, hit: [] }); break;
+      case "rajada": e.sequencia = { tipo: "rajada", hab, falta: hab.tiros, prox: 0, n: 0 }; break;
+      case "combo": e.sequencia = { tipo: "combo", hab, falta: hab.golpes, prox: 0, n: 0 }; break;
+      case "bomba": {
+        const d = dist(e, ponto);
+        novaArea({ forma: "bomba", t: clamp(d / 9, 0.3, 0.75), aviso: clamp(d / 9, 0.3, 0.75), de: { x: e.x, y: e.y } });
+        break;
+      }
+      case "armadilha": {
+        const minhas = p.areas.filter((a) => a.forma === "armadilha" && a.dono === e.id);
+        if (minhas.length >= 3) p.areas.splice(p.areas.indexOf(minhas[0]), 1);
+        novaArea({ forma: "armadilha", t: 14, arma: 0.6, aviso: 0.6, de: { x: e.x, y: e.y } });
+        break;
+      }
+      case "zona": novaArea({ forma: "zona", t: hab.duracao, aviso: hab.duracao, tique: 0.25, hit: [] }); break;
+      case "anel": p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: e.x, y: e.y, r: hab.raio, t: hab.duracao, aviso: hab.duracao, hab, forma: "anel", hit: [] }); break;
+      case "onda": {
+        const meio = { x: e.x + mira.x * 0.6, y: e.y + mira.y * 0.6 };
+        p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: meio.x, y: meio.y, dx: mira.x, dy: mira.y, r: hab.largura / 2, t: hab.alcance / hab.velocidade, aviso: hab.alcance / hab.velocidade, v: hab.velocidade, hab, forma: "onda", hit: [] });
+        break;
+      }
+      case "feixe": dispararFeixe(p, e, hab, mira); break;
+      case "cone": soprarCone(p, e, hab, mira); break;
+      case "salto": {
+        e.salto = { t: hab.duracao, total: hab.duracao, de: { x: e.x, y: e.y }, para: ponto, hab };
+        e.vx = 0; e.vy = 0;
+        p.ev.push({ tipo: "pulou", id: e.id, de: { x: e.x, y: e.y }, para: { ...ponto }, elemento: hab.tipo });
+        break;
+      }
+      case "arremesso": agarrar(p, e, hab, mira); break;
+    }
     if (mv.self && hab.classe !== "reforco") aplicarMod(p, e, mv.self);
-    return true;
   }
 
   // some agora e volta no ponto mirado quando a área cair (os dois acabam no mesmo passo)
-  function sumir(p, e, c, hab) {
-    const para = pontoMira(e, c, hab);
+  function sumir(p, e, c, hab, para) {
     e.oculto = { jeito: hab.jeito, t: hab.duracao, total: hab.duracao, de: { x: e.x, y: e.y }, para };
     e.vx = 0; e.vy = 0;
-    p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: para.x, y: para.y, r: hab.raio, t: hab.duracao, hab });
+    p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: para.x, y: para.y, r: hab.raio, t: hab.duracao, aviso: hab.duracao, hab, forma: "queda" });
     p.ev.push({ tipo: "sumiu", id: e.id, jeito: hab.jeito, elemento: hab.tipo, de: { ...e.oculto.de }, para: { ...para } });
   }
 
-  function acertarCorpo(p, e, hab) {
-    for (const o of p.entidades) if (o.lado !== e.lado && alcancavel(o)) {
-      const dx = o.x - e.x, dy = o.y - e.y, d = Math.hypot(dx, dy);
-      if (d > hab.alcance + o.raio) continue;
-      const frente = (dx / (d || 1)) * e.mira.x + (dy / (d || 1)) * e.mira.y;
-      if (frente >= Math.cos((hab.arco || Math.PI / 2) / 2)) aplicarDano(p, e, o, hab);
+  function naFrente(e, o, mira, alcance, arco) {
+    const dx = o.x - e.x, dy = o.y - e.y, d = Math.hypot(dx, dy);
+    if (d > alcance + o.raio) return false;
+    const frente = (dx / (d || 1)) * mira.x + (dy / (d || 1)) * mira.y;
+    return d < 0.3 || frente >= Math.cos(arco / 2);
+  }
+
+  function acertarCorpo(p, e, hab, mira = e.mira, op = {}) {
+    let acertou = false;
+    for (const o of p.entidades) if (o.lado !== e.lado && alcancavel(o) && naFrente(e, o, mira, hab.alcance, hab.arco || Math.PI / 2)) {
+      if (aplicarDano(p, e, o, hab, { dir: { x: mira.x, y: mira.y }, ...op })) acertou = true;
     }
+    return acertou;
+  }
+
+  // o agarrão: passa pela guarda e arremessa longe
+  function agarrar(p, e, hab, mira) {
+    let pegou = null;
+    for (const o of p.entidades) if (o.lado !== e.lado && alcancavel(o) && naFrente(e, o, mira, hab.alcance, Math.PI * 0.7)) { pegou = o; break; }
+    if (!pegou) { p.ev.push({ tipo: "errou", id: e.id }); return; }
+    p.ev.push({ tipo: "agarrou", id: e.id, alvo: pegou.id });
+    aplicarDano(p, e, pegou, hab, { dir: { x: mira.x, y: mira.y } });
+  }
+
+  function dispararFeixe(p, e, hab, mira) {
+    const ox = e.x + mira.x * 0.35, oy = e.y + mira.y * 0.35;
+    let len = hab.alcance;
+    // a parede e as pilastras param o feixe
+    if (mira.x) len = Math.min(len, ((mira.x > 0 ? ARENA.w / 2 : -ARENA.w / 2) - ox) / mira.x);
+    if (mira.y) len = Math.min(len, ((mira.y > 0 ? ARENA.h / 2 : -ARENA.h / 2) - oy) / mira.y);
+    for (const pl of ARENA.pilares) {
+      const rx = pl.x - ox, ry = pl.y - oy, ao = rx * mira.x + ry * mira.y, lat = Math.abs(rx * mira.y - ry * mira.x);
+      if (ao > 0 && lat < pl.r) len = Math.min(len, ao - Math.sqrt(pl.r * pl.r - lat * lat));
+    }
+    len = Math.max(0.3, len);
+    for (const o of p.entidades) if (o.lado !== e.lado && alcancavel(o)) {
+      const rx = o.x - ox, ry = o.y - oy, ao = rx * mira.x + ry * mira.y, lat = Math.abs(rx * mira.y - ry * mira.x);
+      if (ao > -o.raio && ao < len + o.raio && lat < hab.largura + o.raio) aplicarDano(p, e, o, hab, { dir: { x: mira.x, y: mira.y }, distante: true });
+    }
+    p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: ox, y: oy, dx: mira.x, dy: mira.y, len, r: hab.largura, t: 0.28, aviso: 0.28, hab, forma: "feixe", feito: true });
+  }
+
+  function soprarCone(p, e, hab, mira) {
+    for (const o of p.entidades) if (o.lado !== e.lado && alcancavel(o) && naFrente(e, o, mira, hab.alcance, hab.arco)) aplicarDano(p, e, o, hab, { de: e });
+    p.areas.push({ id: p.seq++, lado: e.lado, dono: e.id, x: e.x, y: e.y, dx: mira.x, dy: mira.y, len: hab.alcance, arco: hab.arco, r: hab.alcance, t: 0.35, aviso: 0.35, hab, forma: "cone", feito: true });
   }
 
   function calcularDano(p, atacante, defensor, hab, op = {}) {
@@ -356,14 +516,89 @@
     return { dano: Math.max(1, Math.floor(dano)), eff, crit, especial };
   }
 
-  function aplicarDano(p, atacante, defensor, hab) {
-    if (!emCampo(defensor) || defensor.invulneravel > 0 || defensor.oculto) { p.ev.push({ tipo: "esquivou", id: defensor.id }); return false; }
+  // a guarda pega o que vem de frente (um pouco mais de meia volta)
+  function pegaNaGuarda(de, dir) {
+    return de.guardando && -(dir.x * de.mira.x + dir.y * de.mira.y) > -0.25;
+  }
+
+  function atordoar(p, e, t, motivo) {
+    if (!emCampo(e) || t <= 0) return;
+    // golpes seguidos atordoam cada vez menos: não dá para prender ninguém para sempre
+    e.cadeia = p.t - e.atordoadoEm < 1.6 ? e.cadeia + 1 : 0;
+    t *= Math.pow(0.55, e.cadeia);
+    if (t < 0.05) return;
+    e.atordoadoEm = p.t;
+    e.atordoado = Math.max(e.atordoado, t);
+    soltarGuarda(e);
+    e.dash = null; e.canal = null;
+    if (e.sequencia) e.sequencia = null;
+    if (e.preparo) { p.ev.push({ tipo: "interrompido", id: e.id, golpe: e.preparo.golpe }); e.preparo = null; }
+    p.ev.push({ tipo: "atordoado", id: e.id, t: e.atordoado, motivo });
+  }
+
+  function empurrar(e, dir, forca) {
+    e.kx += dir.x * forca; e.ky += dir.y * forca;
+    const l = Math.hypot(e.kx, e.ky);
+    if (l > EMPURRAO_MAX) { e.kx *= EMPURRAO_MAX / l; e.ky *= EMPURRAO_MAX / l; }
+  }
+
+  // op: dir (para onde empurra), de (ponto de onde vem), fator (parte do poder), empurra, projetil, distante
+  function aplicarDano(p, atacante, defensor, hab, op = {}) {
+    if (!emCampo(defensor) || defensor.oculto || noAlto(defensor)) { p.ev.push({ tipo: "esquivou", id: defensor.id }); return false; }
+    if (defensor.invulneravel > 0) {
+      p.ev.push({ tipo: "esquivou", id: defensor.id });
+      // a esquiva no último instante: recargas adiantadas e o próximo golpe mais forte (uma vez por esquiva)
+      if (!defensor.perfeitaUsada && p.t - defensor.esquivaEm <= JANELA_PERFEITA) {
+        defensor.perfeitaUsada = true; defensor.foco = true;
+        const cds = defensor.bicho.cds;
+        for (let i = 0; i < cds.length; i++) cds[i] = Math.max(0, cds[i] - 1.2);
+        defensor.esquivaCd = Math.max(0, defensor.esquivaCd - 1);
+        p.ev.push({ tipo: "perfeita", id: defensor.id, de: atacante.id });
+      }
+      return false;
+    }
+    const origem = op.de || atacante;
+    const dir = op.dir ? norm(op.dir.x, op.dir.y) : norm(defensor.x - origem.x, defensor.y - origem.y, atacante.mira);
+    let bloqueado = false;
+    if (!hab.agarra && pegaNaGuarda(defensor, dir)) {
+      if (p.t - defensor.guardaDesde <= JANELA_APARAR) {
+        p.ev.push({ tipo: "aparou", id: defensor.id, de: atacante.id, x: defensor.x, y: defensor.y });
+        defensor.guarda = Math.min(GUARDA_MAX, defensor.guarda + 15);
+        if (op.projetil) refletir(p, op.projetil, defensor, atacante);
+        else if (!op.distante && emCampo(atacante) && atacante !== defensor) { empurrar(atacante, { x: -dir.x, y: -dir.y }, 5); atordoar(p, atacante, 0.55, "aparado"); }
+        return "aparou";
+      }
+      bloqueado = true;
+    }
     const r = calcularDano(p, atacante, defensor, hab);
     if (r.dano <= 0) { p.ev.push({ tipo: "imune", id: defensor.id, eff: r.eff }); return true; }
+    let dano = r.dano * (op.fator ?? 1) * (atacante.foco ? 1.3 : 1);
+    if (atacante.foco) atacante.foco = false;
+    if (bloqueado) dano *= 0.3;
+    dano = Math.max(1, Math.floor(dano));
     const b = defensor.bicho, antes = b.hp;
-    b.hp = Math.max(0, b.hp - Math.min(b.hp, r.dano));
+    b.hp = Math.max(0, b.hp - Math.min(b.hp, dano));
     if (defensor.canal) defensor.canal = null;
-    p.ev.push({ tipo: "dano", de: atacante.id, em: defensor.id, dano: antes - b.hp, hp: b.hp, eff: r.eff, crit: r.crit });
+    // o combo de quem bate (só para mostrar)
+    const combo = atacante.combo && p.t - atacante.combo.em < 1.1 ? atacante.combo.n + 1 : 1;
+    atacante.combo = { n: combo, em: p.t };
+    p.ev.push({ tipo: "dano", de: atacante.id, em: defensor.id, dano: antes - b.hp, hp: b.hp, eff: r.eff, crit: r.crit, ...(bloqueado && { bloqueado: true }), ...(combo > 1 && { combo }) });
+    // o empurrão: pelo poder, pelo peso e pela guarda
+    const empurra = (hab.empurra ?? 1) * (op.empurra ?? 1);
+    if (empurra > 0 && b.hp > 0) {
+      const forca = (2.2 + (hab.poder || 40) / 30) * empurra * fatorPeso(p, defensor) * (r.crit ? 1.25 : 1) * (bloqueado ? 0.3 : 1) * (op.fator != null ? Math.max(0.5, op.fator) : 1);
+      empurrar(defensor, dir, forca);
+      if (!bloqueado) atordoar(p, defensor, clamp((forca - 3) * 0.06, 0, 0.45) + (hab.atordoa || 0), "golpe");
+    }
+    if (bloqueado) {
+      defensor.guarda -= 12 + (60 * (antes - b.hp)) / b.max + (hab.quebraGuarda ? 45 : 0);
+      if (defensor.guarda <= 0) {
+        defensor.guarda = 0;
+        p.ev.push({ tipo: "guardaQuebrou", id: defensor.id });
+        defensor.atordoadoEm = -9;
+        atordoar(p, defensor, 1.1, "guarda");
+      }
+    }
     if (hab.mv && hab.mv.foe && b.hp > 0 && p.rng() * 100 < (hab.mv.chance ?? 100)) aplicarMod(p, defensor, hab.mv.foe);
     if (hab.mv && hab.mv.drain && atacante.bicho.hp > 0) curar(p, atacante, (antes - b.hp) * hab.mv.drain, "drain");
     if (hab.mv && hab.mv.recoil && atacante.bicho.hp > 0) ferirRecuo(p, atacante, Math.max(1, Math.floor((antes - b.hp) * hab.mv.recoil)));
@@ -376,21 +611,29 @@
     return true;
   }
 
+  // aparado: o projétil volta contra quem atirou, mais rápido
+  function refletir(p, pr, defensor, atacante) {
+    const d = emCampo(atacante) ? norm(atacante.x - pr.x, atacante.y - pr.y, { x: -pr.dx, y: -pr.dy }) : { x: -pr.dx, y: -pr.dy };
+    Object.assign(pr, { lado: defensor.lado, dono: defensor.id, dx: d.x, dy: d.y, v: pr.v * 1.2, vida: 1.6, forma: pr.forma === "teleguiado" ? "teleguiado" : "reto", refletido: true, hit: [] });
+    p.ev.push({ tipo: "refletiu", id: defensor.id, projetil: pr.id });
+  }
+
   function curar(p, e, valor, motivo = "cura") {
     const b = e.bicho;
     const h = Math.min(b.max - b.hp, Math.max(1, Math.floor(valor)));
     if (h > 0) { b.hp += h; p.ev.push({ tipo: "cura", id: e.id, hp: b.hp, motivo }); }
   }
 
-  function ferirRecuo(p, e, dano) {
+  function ferirRecuo(p, e, dano, tipo = "recuo") {
     e.bicho.hp = Math.max(0, e.bicho.hp - Math.min(e.bicho.hp, dano));
-    p.ev.push({ tipo: "recuo", id: e.id, hp: e.bicho.hp });
+    p.ev.push({ tipo, id: e.id, hp: e.bicho.hp, dano });
     if (e.bicho.hp <= 0) desmaiar(p, e);
   }
 
   function desmaiar(p, e) {
     if (!e.campo) return;
     e.campo = false; e.dash = null; e.canal = null; e.escudo = null; e.oculto = null;
+    e.preparo = null; e.salto = null; e.sequencia = null; e.buffer = null; e.atordoado = 0; e.kx = 0; e.ky = 0; soltarGuarda(e);
     e.jogador.entradaEm = temReserva(e.jogador) ? ENTRADA_DESMAIO : 0;
     p.ev.push({ tipo: "desmaiou", id: e.id, bicho: e.bicho.id });
   }
@@ -402,13 +645,14 @@
   function trocar(p, e, idx, forcar = false) {
     const j = e.jogador, novo = j.time[idx];
     if (!novo || novo.hp <= 0 || idx === j.ativo) return false;
-    if (!forcar && (j.trocaCd > 0 || e.oculto)) return false;
+    if (!forcar && (j.trocaCd > 0 || e.oculto || e.salto || e.atordoado > 0)) return false;
     e.bicho.mods.length = 0;
     e.bicho.st = { atk: 0, def: 0, spd: 0 };
     e.bicho.as = null;
     j.ativo = idx;
     e.bicho = ativo(j);
     e.campo = true; e.invulneravel = Math.max(e.invulneravel, 0.45); e.canal = null; e.dash = null; e.oculto = null;
+    e.preparo = null; e.salto = null; e.sequencia = null; e.buffer = null; e.atordoado = 0; e.kx = 0; e.ky = 0; e.foco = false; soltarGuarda(e);
     if (!forcar) j.trocaCd = TROCA_RECARGA;
     const spawn = spawnDe(j.lado, j.slot);
     e.x = spawn.x; e.y = spawn.y; e.vx = 0; e.vy = 0;
@@ -430,22 +674,41 @@
     j.entradaEm = 0;
   }
 
+  // ---------- defesa ----------
+  function soltarGuarda(e) {
+    if (e.guardando) { e.guardando = false; e.guardaSolta = 0.5; }
+  }
+  // segurar a guarda (o comando vem a cada passo): sobe na hora em que começa
+  function guardar(p, e, quer) {
+    const pode = quer && emCampo(e) && !e.atordoado && !ocupado(e) && e.esquivaT <= 0 && e.guarda > 8;
+    if (pode && !e.guardando) {
+      e.guardando = true; e.guardaDesde = p.t;
+      p.ev.push({ tipo: "guarda", id: e.id });
+    } else if (!pode && e.guardando) soltarGuarda(e);
+  }
+
   function esquivar(p, e, c) {
-    if (!emCampo(e) || e.esquivaCd > 0 || e.oculto) return;
+    if (!emCampo(e) || e.esquivaCd > 0 || e.oculto || e.atordoado > 0 || e.salto || e.preparo) return;
     if (p.modo === "naruto") {
       if (e.jogador.substitutes <= 0 || e.bicho.chakra < 20) return;
       e.jogador.substitutes--;
       e.bicho.chakra -= 20;
     }
+    soltarGuarda(e);
+    if (e.sequencia) e.sequencia = null;
     const mov = dirMov(c), d = norm(mov.x, mov.y, e.mira);
     e.invulneravel = Math.max(e.invulneravel, 0.25);
-    e.esquivaCd = p.modo === "naruto" ? 5 : 3;
+    e.esquivaCd = p.modo === "naruto" ? 5 : ESQUIVA_CD;
     e.esquivaT = 0.18;
+    e.esquivaEm = p.t;
+    e.perfeitaUsada = false;
     e.vx = d.x * 8;
     e.vy = d.y * 8;
-    p.ev.push({ tipo: "esquiva", id: e.id });
+    e.kx *= 0.3; e.ky *= 0.3;
+    p.ev.push({ tipo: "esquiva", id: e.id, dx: d.x, dy: d.y });
   }
 
+  // ---------- movimento (o mesmo no servidor e na previsão da tela) ----------
   function mover(e, dt, c, p, previsao = false) {
     if (!emCampo(e)) return;
     if (e.oculto) {
@@ -459,73 +722,260 @@
       }
       return;
     }
+    if (e.salto) {
+      const s = e.salto;
+      s.t = Math.max(0, s.t - dt);
+      const k = 1 - s.t / s.total;
+      e.x = s.de.x + (s.para.x - s.de.x) * k; e.y = s.de.y + (s.para.y - s.de.y) * k;
+      if (s.t <= 0) { limitar(e); e.salto = null; if (!previsao) aterrissar(p, e, s.hab); }
+      return;
+    }
+    // o empurrão: escorrega, perde força e, forte, machuca na parede
+    const empurrado = Math.hypot(e.kx, e.ky);
+    if (empurrado > 0.05) {
+      e.x += e.kx * dt; e.y += e.ky * dt;
+      const f = Math.exp(-ATRITO * dt); e.kx *= f; e.ky *= f;
+    } else { e.kx = 0; e.ky = 0; }
     if (e.dash) {
       const d = Math.min(e.dash.falta, e.dash.hab.velocidade * dt);
       e.x += e.dash.x * d; e.y += e.dash.y * d; e.dash.falta -= d; limitar(e);
-      for (const o of previsao ? [] : p.entidades) if (o.lado !== e.lado && alcancavel(o) && !e.dash.hit.has(o.id) && dist(e, o) < e.raio + o.raio + 0.35) {
-        e.dash.hit.add(o.id); aplicarDano(p, e, o, e.dash.hab);
+      for (const o of previsao ? [] : p.entidades) {
+        if (!e.dash) break; // aparado: a investida acabou ali
+        if (o.lado !== e.lado && alcancavel(o) && !e.dash.hit.has(o.id) && dist(e, o) < e.raio + o.raio + 0.35) { e.dash.hit.add(o.id); aplicarDano(p, e, o, e.dash.hab, { dir: { x: e.dash.x, y: e.dash.y } }); }
       }
-      if (e.dash.falta <= 0) e.dash = null;
+      if (e.dash && e.dash.falta <= 0) e.dash = null;
       return;
     }
-    if (e.canal || e.impedido > 0) return;
-    if (e.esquivaT > 0) {
-      e.x += e.vx * dt; e.y += e.vy * dt; e.esquivaT -= dt; limitar(e); return;
+    let vx = 0, vy = 0;
+    if (!e.canal && !(e.impedido > 0) && !(e.atordoado > 0) && !e.preparo) {
+      if (e.esquivaT > 0) {
+        e.x += e.vx * dt; e.y += e.vy * dt; e.esquivaT -= dt; bater(p, e, limitar(e), empurrado, previsao); return;
+      }
+      const m = dirMov(c);
+      const d = norm(m.x, m.y, { x: 0, y: 0 });
+      // escorregando forte, o controle volta aos poucos
+      const controle = clamp(1 - empurrado / 7, 0, 1);
+      const v = d.l > 1e-6 ? velocidade(p, e) * controle : 0;
+      vx = d.x * v; vy = d.y * v;
     }
-    const m = dirMov(c);
-    const d = norm(m.x, m.y, { x: 0, y: 0 });
-    const v = d.l > 1e-6 ? velocidade(p, e) : 0;
-    e.vx = d.x * v; e.vy = d.y * v;
-    e.x += e.vx * dt; e.y += e.vy * dt;
-    limitar(e);
+    e.vx = vx; e.vy = vy;
+    e.x += vx * dt; e.y += vy * dt;
+    bater(p, e, limitar(e), empurrado, previsao);
+  }
+
+  // bateu na parede ou na pilastra escorregando forte: quica, leva um pouco e fica tonto
+  function bater(p, e, normal, forca, previsao) {
+    if (!normal) return;
+    const contra = e.kx * normal.x + e.ky * normal.y;
+    if (contra >= 0) return;
+    e.kx -= 1.6 * contra * normal.x; e.ky -= 1.6 * contra * normal.y; // quica (perde força)
+    e.kx *= 0.35; e.ky *= 0.35;
+    if (previsao || forca < BATIDA_MIN) return;
+    ferirRecuo(p, e, Math.max(1, Math.floor(e.bicho.max * 0.035 * (forca / BATIDA_MIN))), "batida");
+    if (emCampo(e)) { e.atordoadoEm = -9; atordoar(p, e, 0.4, "parede"); }
+  }
+
+  // o fim do salto: a pancada no chão em volta
+  function aterrissar(p, e, hab) {
+    let acertou = false;
+    for (const o of p.entidades) if (o.lado !== e.lado && alcancavel(o) && dist(e, o) <= hab.raio + o.raio) {
+      if (aplicarDano(p, e, o, hab, { de: e })) acertou = true;
+    }
+    p.ev.push({ tipo: "aterrissou", id: e.id, x: e.x, y: e.y, r: hab.raio, elemento: hab.tipo, acertou });
+    if (!acertou && hab.tombo) { ferirRecuo(p, e, Math.max(1, Math.floor(e.bicho.max / 5)), "tombo"); atordoar(p, e, 0.6, "tombo"); }
+  }
+
+  // rajada (vários tiros seguidos) e combo (vários golpes seguidos, avançando)
+  function atualizarSequencia(p, e, dt, c) {
+    const s = e.sequencia;
+    if (!s) return;
+    s.prox -= dt;
+    if (s.prox > 0) return;
+    const hab = s.hab, mira = e.mira;
+    if (s.tipo === "rajada") {
+      const abre = (s.n - (hab.tiros - 1) / 2) * 0.07;
+      const d = { x: mira.x * Math.cos(abre) - mira.y * Math.sin(abre), y: mira.x * Math.sin(abre) + mira.y * Math.cos(abre) };
+      p.projeteis.push({ id: p.seq++, lado: e.lado, dono: e.id, x: e.x + d.x * 0.45, y: e.y + d.y * 0.45, dx: d.x, dy: d.y, v: hab.velocidade, raio: hab.largura, vida: 0.75, hab, forma: "reto", fator: 1.25 / hab.tiros });
+      p.ev.push({ tipo: "tiro", id: e.id, n: s.n, elemento: hab.tipo });
+    } else {
+      const ultimo = s.falta === 1;
+      empurrar(e, mira, 2.2);
+      p.ev.push({ tipo: "combo", id: e.id, n: s.n, ultimo, elemento: hab.tipo, mira: { ...mira } });
+      acertarCorpo(p, e, ultimo ? { ...hab, empurra: 2, quebraGuarda: true } : hab, mira, { fator: ultimo ? 0.55 : 0.4 });
+    }
+    s.n++; s.falta--; s.prox = hab.intervalo;
+    if (s.falta <= 0) e.sequencia = null;
   }
 
   function atualizarProjetil(p, pr, dt) {
+    if (pr.forma === "teleguiado") {
+      // vira devagar para o inimigo mais perto
+      let alvo = null, bd = 6;
+      for (const o of p.entidades) if (o.lado !== pr.lado && alcancavel(o)) { const d = Math.hypot(o.x - pr.x, o.y - pr.y); if (d < bd) { bd = d; alvo = o; } }
+      if (alvo) {
+        const a = Math.atan2(pr.dy, pr.dx), b = Math.atan2(alvo.y - pr.y, alvo.x - pr.x);
+        let da = b - a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+        const na = a + clamp(da, -3.2 * dt, 3.2 * dt);
+        pr.dx = Math.cos(na); pr.dy = Math.sin(na);
+      }
+    } else if (pr.forma === "bumerangue") {
+      const dono = p.entidades.find((e) => e.id === pr.dono);
+      if (pr.ida > 0) {
+        pr.ida -= pr.v * dt;
+        if (pr.ida <= 0) { pr.hit = []; p.ev.push({ tipo: "volta", projetil: pr.id }); }
+      } else if (dono && emCampo(dono)) {
+        const d = norm(dono.x - pr.x, dono.y - pr.y, { x: -pr.dx, y: -pr.dy });
+        pr.dx = d.x; pr.dy = d.y; pr.v = Math.max(pr.v, 9.5);
+        if (d.l < 0.5) return false;
+      }
+    }
     pr.x += pr.dx * pr.v * dt; pr.y += pr.dy * pr.v * dt; pr.vida -= dt;
-    if (pr.vida <= 0 || projetilBateParede(pr)) return false;
+    if (pr.vida <= 0) return false;
+    if (projetilBateParede(pr)) {
+      if (pr.forma !== "bumerangue" || pr.ida <= 0) return false;
+      pr.ida = 0; pr.hit = []; // o bumerangue bate e volta
+    }
     const dono = p.entidades.find((e) => e.id === pr.dono);
     if (!dono) return false;
     for (const o of p.entidades) if (o.lado !== pr.lado && alcancavel(o) && Math.hypot(o.x - pr.x, o.y - pr.y) < o.raio + pr.raio) {
-      if (pr.hab.classe === "debuff") aplicarMod(p, o, pr.hab.mv.foe || {});
-      else aplicarDano(p, dono, o, pr.hab);
+      if (pr.hit && pr.hit.includes(o.id)) continue;
+      const dir = { x: pr.dx, y: pr.dy };
+      if (pr.hab.classe === "debuff") {
+        if (pegaNaGuarda(o, dir)) { p.ev.push({ tipo: "dano", de: dono.id, em: o.id, dano: 0, hp: o.bicho.hp, eff: 1, bloqueado: true }); return false; }
+        aplicarMod(p, o, pr.hab.mv.foe || {});
+        if (pr.hab.mv.atordoa) { o.atordoadoEm = -9; atordoar(p, o, pr.hab.mv.atordoa, "sono"); }
+        return false;
+      }
+      const r = aplicarDano(p, dono, o, pr.hab, { dir, projetil: pr, fator: pr.fator ?? (pr.forma === "bumerangue" ? 0.65 : 1) });
+      if (r === "aparou") return true; // voltou para o outro lado
+      if (pr.forma === "bumerangue") { pr.hit.push(o.id); continue; }
       return false;
     }
     return true;
   }
 
+  // cada área anda do seu jeito; devolve false quando acaba
   function atualizarArea(p, a, dt) {
     a.t -= dt;
-    if (a.t > 0) return true;
     const dono = p.entidades.find((e) => e.id === a.dono);
-    if (dono) for (const o of p.entidades) if (o.lado !== a.lado && alcancavel(o) && Math.hypot(o.x - a.x, o.y - a.y) <= a.r + o.raio) aplicarDano(p, dono, o, a.hab);
+    const inimigos = dono ? p.entidades.filter((o) => o.lado !== a.lado && alcancavel(o)) : [];
+    if (a.forma === "anel") {
+      const r = a.r * (1 - Math.max(0, a.t) / a.aviso);
+      for (const o of inimigos) if (!a.hit.includes(o.id) && Math.abs(Math.hypot(o.x - a.x, o.y - a.y) - r) < 0.45 + o.raio) {
+        a.hit.push(o.id); aplicarDano(p, dono, o, a.hab, { de: a });
+      }
+      return a.t > 0;
+    }
+    if (a.forma === "onda") {
+      a.x += a.dx * a.v * dt; a.y += a.dy * a.v * dt;
+      for (const o of inimigos) if (!a.hit.includes(o.id)) {
+        const rx = o.x - a.x, ry = o.y - a.y, ao = rx * a.dx + ry * a.dy, lat = Math.abs(rx * a.dy - ry * a.dx);
+        if (Math.abs(ao) < 0.45 + o.raio && lat < a.r + o.raio) { a.hit.push(o.id); aplicarDano(p, dono, o, a.hab, { dir: { x: a.dx, y: a.dy } }); }
+      }
+      return a.t > 0;
+    }
+    if (a.forma === "zona") {
+      for (const o of inimigos) {
+        const d = norm(a.x - o.x, a.y - o.y, { x: 0, y: 0 });
+        if (a.hab.puxa && d.l < a.r * 1.7 && d.l > 0.2) empurrar(o, d, 16 * dt); // o redemoinho puxa para o meio
+      }
+      a.tique -= dt;
+      if (a.tique <= 0) {
+        a.tique = 0.5;
+        for (const o of inimigos) if (Math.hypot(o.x - a.x, o.y - a.y) <= a.r + o.raio) aplicarDano(p, dono, o, a.hab, { de: a, fator: 0.24, empurra: 0 });
+      }
+      return a.t > 0;
+    }
+    if (a.forma === "armadilha") {
+      if (a.arma > 0) { a.arma -= dt; return a.t > 0; }
+      for (const o of inimigos) if (Math.hypot(o.x - a.x, o.y - a.y) <= a.r + o.raio && !(spec(p, o.bicho).types || []).includes("Voador")) {
+        a.estourou = true;
+        aplicarDano(p, dono, o, a.hab, { dir: { x: 0, y: 0 }, de: a });
+        atordoar(p, o, 0.35, "armadilha");
+        return false;
+      }
+      return a.t > 0;
+    }
+    if (a.forma === "feixe" || a.forma === "cone") return a.t > 0; // só para ver: o dano já saiu
+    // queda e bomba: cai tudo de uma vez quando o aviso acaba
+    if (a.t > 0) return true;
+    a.estourou = true;
+    for (const o of inimigos) if (Math.hypot(o.x - a.x, o.y - a.y) <= a.r + o.raio) aplicarDano(p, dono, o, a.hab, { de: a });
     return false;
   }
 
+  // ---------- robô ----------
+  // o robô lê o jogo: foge do aviso no chão, esquiva ou apara o que vem, pune quem está preparando ou tonto,
+  // agarra quem fica na guarda e mira à frente de quem anda
   function pensarRobo(p, e) {
     if (!emCampo(e)) return {};
     const alvo = alvoMaisPerto(p, e);
     if (!alvo) return {};
+    const ia = e.ia || (e.ia = { reage: 0, guarda: 0, lado: p.rng() < 0.5 ? 1 : -1, trocaLado: 0 });
+    const habil = p.nivel >= 2 ? 1 : 0.65; // reflexo
     const dx = alvo.x - e.x, dy = alvo.y - e.y, d = Math.hypot(dx, dy) || 1;
     let ideal = 3.2, golpe = null, valor = -Infinity;
     const moves = spec(p, e.bicho).moves || [];
+    const vulneravel = alvo.preparo || alvo.atordoado > 0.15 || alvo.salto || (alvo.sequencia && alvo.sequencia.tipo === "rajada");
     for (let i = 0; i < moves.length; i++) {
-      if (e.bicho.cds[i] > 0 || (p.modo === "naruto" && e.bicho.chakra < (p.dex.MOVES[moves[i]].custo || 0))) continue;
-      const hab = habilidadeDeGolpe(moves[i], p.dex.MOVES[moves[i]]);
-      const alcance = hab.classe === "corpo" ? 1.1 : hab.classe === "investida" ? 2.5 : 4.2;
+      const mv = p.dex.MOVES[moves[i]];
+      if (e.bicho.cds[i] > 0 || (p.modo === "naruto" && e.bicho.chakra < (mv.custo || 0)) || (mv.max && (e.bicho.usos[moves[i]] || 0) >= mv.max)) continue;
+      const hab = habilidadeDeGolpe(moves[i], mv);
+      const perto = ["corpo", "combo", "arremesso"].includes(hab.classe);
+      const alcance = perto ? 1.05 : ["investida", "cone"].includes(hab.classe) ? 2.3 : hab.classe === "anel" ? hab.raio * 0.6 : hab.classe === "feixe" ? 5 : 4.2;
       const eff = p.dex.effect(hab.tipo, spec(p, alvo.bicho).types || ["Normal"]);
-      const v = (hab.poder || 30) * Math.max(0.25, eff) / hab.recarga - Math.abs(d - alcance) * 4;
+      let v = (hab.poder || 30) * Math.max(0.25, eff) / hab.recarga - Math.abs(d - alcance) * 4;
+      if (hab.poder <= 0) v = hab.classe === "cura" ? (e.bicho.hp < e.bicho.max * 0.45 ? 40 : -50) : 6;
+      if (hab.classe === "arremesso" && alvo.guardando) v += 40; // agarrão contra guarda
+      if (vulneravel && hab.poder > 0) v += 15;
+      if (hab.preparo && d < 2) v -= 20; // preparar colado no outro é pedir para apanhar
       if (v > valor) { valor = v; golpe = i; ideal = alcance; }
     }
-    let mx = 0, my = 0;
-    if (d > ideal + 0.35) { mx = dx / d; my = dy / d; }
-    else if (d < ideal - 0.35) { mx = -dx / d; my = -dy / d; }
-    const perigo = p.projeteis.some((pr) => pr.lado !== e.lado && vindoNaDirecao(pr, e));
+    // andar: no alcance do golpe escolhido, rodando de lado para não ficar parado na mira
+    if ((ia.trocaLado -= 1 / 60) <= 0) { ia.trocaLado = 1 + p.rng() * 2; if (p.rng() < 0.4) ia.lado = -ia.lado; }
+    let mx = -dy / d * ia.lado * 0.6, my = dx / d * ia.lado * 0.6;
+    if (d > ideal + 0.35) { mx += dx / d; my += dy / d; }
+    else if (d < ideal - 0.35) { mx -= dx / d; my -= dy / d; }
+    // o aviso no chão de quem é do outro lado: sai de dentro
+    for (const a of p.areas) if (a.lado !== e.lado && ["queda", "bomba", "zona", "armadilha"].includes(a.forma)) {
+      const ex = e.x - a.x, ey = e.y - a.y, l = Math.hypot(ex, ey);
+      if (l < a.r + 0.7 && (a.forma !== "armadilha" || a.arma <= 0)) { mx = ex / (l || 1) * 1.5; my = ey / (l || 1) * 1.5; }
+    }
+    // o salto do outro vai cair aqui: sai
+    if (alvo.salto && Math.hypot(alvo.salto.para.x - e.x, alvo.salto.para.y - e.y) < alvo.salto.hab.raio + 0.6) { const ex = e.x - alvo.salto.para.x, ey = e.y - alvo.salto.para.y, l = Math.hypot(ex, ey) || 1; mx = ex / l * 1.5; my = ey / l * 1.5; }
+    // feixe sendo preparado mirando em mim: sai da linha
+    if (alvo.preparo && alvo.preparo.hab.classe === "feixe") {
+      const m = alvo.preparo.mira, lat = (e.x - alvo.x) * m.y - (e.y - alvo.y) * m.x;
+      if (Math.abs(lat) < 1.2) { const s = lat >= 0 ? 1 : -1; mx = m.y * s * 1.5; my = -m.x * s * 1.5; }
+    }
+    const lead = (hab) => { // mira à frente de quem anda
+      const v = hab && hab.velocidade ? hab.velocidade : 8, t = Math.min(0.6, d / v) * habil;
+      return { x: alvo.x + (alvo.vx || 0) * t - e.x, y: alvo.y + (alvo.vy || 0) * t - e.y };
+    };
     const cmd = { dx: mx, dy: my, mira: { x: dx, y: dy } };
-    if (perigo && e.esquivaCd <= 0 && (p.modo !== "naruto" || (e.jogador.substitutes > 0 && e.bicho.chakra >= 20))) { cmd.esquiva = true; cmd.dx = -dy / d; cmd.dy = dx / d; }
-    if (golpe != null && (d < 5 || valor > 4) && p.rng() < 0.18) {
+    // o que vem na minha direção
+    const vindo = p.projeteis.find((pr) => pr.lado !== e.lado && vindoNaDirecao(pr, e));
+    const pertoDeBater = p.entidades.some((o) => o.lado !== e.lado && emCampo(o) && ((o.dash && dist(o, e) < 2.4) || (o.sequencia && o.sequencia.tipo === "combo" && dist(o, e) < 1.8)));
+    const anel = p.areas.some((a) => a.lado !== e.lado && a.forma === "anel" && Math.abs(Math.hypot(e.x - a.x, e.y - a.y) - a.r * (1 - a.t / a.aviso)) < 0.9);
+    ia.reage -= 1 / 60;
+    if ((vindo || pertoDeBater || anel) && ia.reage <= 0 && !e.atordoado) {
+      ia.reage = 0.25 + (1 - habil) * 0.5;
+      const sorte = p.rng();
+      if (vindo && sorte < 0.35 * habil && e.guarda > 40) { ia.guarda = 0.35; cmd.mira = { x: -vindo.dx, y: -vindo.dy }; }
+      else if (sorte < 0.75 && e.esquivaCd <= 0 && (p.modo !== "naruto" || (e.jogador.substitutes > 0 && e.bicho.chakra >= 20))) {
+        cmd.esquiva = true;
+        const ref = vindo ? { x: vindo.dx, y: vindo.dy } : { x: dx / d, y: dy / d };
+        cmd.dx = -ref.y * ia.lado; cmd.dy = ref.x * ia.lado;
+      } else if (pertoDeBater && e.guarda > 30) ia.guarda = 0.4;
+    }
+    if (ia.guarda > 0) { ia.guarda -= 1 / 60; cmd.guarda = true; if (!vindo) cmd.mira = { x: dx, y: dy }; return cmd; }
+    const ataque = p.nivel >= 2 ? 0.24 : 0.17;
+    if (golpe != null && !ocupado(e) && (d < 5.5 || valor > 4) && p.rng() < (vulneravel ? ataque * 1.8 : ataque)) {
       cmd.golpe = golpe;
       const hab = habilidadeDeGolpe(moves[golpe], p.dex.MOVES[moves[golpe]]);
-      if (hab.classe === "area" || hab.classe === "sumir") cmd.alvo = { x: alvo.x, y: alvo.y };
+      const m = lead(hab);
+      cmd.mira = m;
+      if (["area", "sumir", "bomba", "salto", "zona", "armadilha"].includes(hab.classe)) cmd.alvo = { x: e.x + m.x, y: e.y + m.y };
     }
     if (e.bicho.hp < e.bicho.max * 0.18 && e.jogador.trocaCd <= 0) {
       const idx = e.jogador.time.findIndex((m, i) => i !== e.jogador.ativo && m.hp > m.max * 0.4);
@@ -566,6 +1016,17 @@
     }
   }
 
+  // os relógios de cada um (o servidor e a previsão da tela usam os mesmos)
+  function relogios(e, dt) {
+    e.invulneravel = Math.max(0, e.invulneravel - dt);
+    e.esquivaCd = Math.max(0, e.esquivaCd - dt);
+    e.impedido = Math.max(0, (e.impedido || 0) - dt);
+    e.atordoado = Math.max(0, (e.atordoado || 0) - dt);
+    // a guarda gasta enquanto segura e volta quando solta
+    if (e.guardando) e.guarda = Math.max(0, e.guarda - 14 * dt);
+    else if ((e.guardaSolta = Math.max(0, (e.guardaSolta || 0) - dt)) <= 0) e.guarda = Math.min(GUARDA_MAX, e.guarda + 24 * dt);
+  }
+
   function passo(p, dt, comandos = {}) {
     if (p.fim) return p.ev;
     dt = clamp(Number(dt) || 0, 0, 0.1);
@@ -576,9 +1037,7 @@
       for (let i = 0; i < b.cds.length; i++) b.cds[i] = Math.max(0, b.cds[i] - dt);
       if (p.modo === "naruto" && e.campo && b.hp > 0) b.chakra = Math.min(p.dex.CHAKRA_MAX, b.chakra + dt * 8);
       atualizarMods(b, dt);
-      e.invulneravel = Math.max(0, e.invulneravel - dt);
-      e.esquivaCd = Math.max(0, e.esquivaCd - dt);
-      e.impedido = Math.max(0, e.impedido - dt);
+      relogios(e, dt);
       if (e.escudo) { e.escudo.t -= dt; if (e.escudo.t <= 0) e.escudo = null; }
       e.jogador.trocaCd = Math.max(0, e.jogador.trocaCd - dt);
       if (e.canal) {
@@ -589,11 +1048,24 @@
     }
     for (const e of p.entidades) {
       const c = e.jogador.bot ? pensarRobo(p, e) : comandoDe(comandos, e);
-      const mira = dirMira(e, c);
-      e.mira = { x: mira.x, y: mira.y };
-      if (c.troca != null) trocar(p, e, Number(c.troca), false);
-      if (c.esquiva) esquivar(p, e, c);
-      if (c.golpe != null) usarGolpe(p, e, clamp(Number(c.golpe), 0, 3), c);
+      if (!e.preparo) { const mira = dirMira(e, c); e.mira = { x: mira.x, y: mira.y }; }
+      // o golpe apertado enquanto o bicho está ocupado (pulando, no combo, tonto) fica guardado um instante e sai
+      // assim que ele fica livre: o comando não se perde
+      if (c.golpe != null && e.campo) e.buffer = { idx: clamp(Number(c.golpe), 0, 3), c: { ...c, golpe: undefined }, ate: p.t + BUFFER };
+      if (!(e.atordoado > 0)) {
+        if (c.troca != null) trocar(p, e, Number(c.troca), false);
+        if (c.esquiva) { esquivar(p, e, c); e.buffer = null; }
+      }
+      if (e.buffer) {
+        if (p.t > e.buffer.ate || !emCampo(e)) e.buffer = null;
+        else if (!(e.atordoado > 0) && !ocupado(e) && e.bicho.cds[e.buffer.idx] <= 0) { const bf = e.buffer; e.buffer = null; usarGolpe(p, e, bf.idx, c.golpe != null ? c : { ...bf.c, mira: c.mira || bf.c.mira, alvo: c.alvo || bf.c.alvo }); }
+      }
+      guardar(p, e, !!c.guarda && c.golpe == null && !c.esquiva);
+      if (e.preparo && emCampo(e)) {
+        e.preparo.t -= dt;
+        if (e.preparo.t <= 0) { const pr = e.preparo; e.preparo = null; e.mira = { ...pr.mira }; executarGolpe(p, e, pr.hab, pr.mira, pr.ponto, c); }
+      }
+      if (emCampo(e)) atualizarSequencia(p, e, dt, c);
       mover(e, dt, c, p);
     }
     p.projeteis = p.projeteis.filter((pr) => atualizarProjetil(p, pr, dt));
@@ -605,27 +1077,30 @@
   function estado(p) {
     return {
       modo: p.modo, t: p.t, fim: p.fim, vencedor: p.vencedor, empate: p.empate,
-      entidades: p.entidades.map((e) => ({ id: e.id, lado: e.lado, x: e.x, y: e.y, campo: e.campo, bicho: e.bicho.id, hp: e.bicho.hp, max: e.bicho.max, ativo: e.jogador.ativo, ...(p.modo === "naruto" && { chakra: e.bicho.chakra, substitutes: e.jogador.substitutes }) })),
-      projeteis: p.projeteis.map((pr) => ({ id: pr.id, x: pr.x, y: pr.y, tipo: pr.hab.tipo })),
-      areas: p.areas.map((a) => ({ id: a.id, x: a.x, y: a.y, r: a.r, t: a.t, tipo: a.hab.tipo })),
+      entidades: p.entidades.map((e) => ({ id: e.id, lado: e.lado, x: e.x, y: e.y, campo: e.campo, bicho: e.bicho.id, hp: e.bicho.hp, max: e.bicho.max, ativo: e.jogador.ativo, guarda: e.guarda, atordoado: e.atordoado, ...(p.modo === "naruto" && { chakra: e.bicho.chakra, substitutes: e.jogador.substitutes }) })),
+      projeteis: p.projeteis.map((pr) => ({ id: pr.id, x: pr.x, y: pr.y, tipo: pr.hab.tipo, forma: pr.forma })),
+      areas: p.areas.map((a) => ({ id: a.id, x: a.x, y: a.y, r: a.r, t: a.t, tipo: a.hab.tipo, forma: a.forma })),
     };
   }
 
-  // A tela preve somente o movimento. Vida, acertos, golpes e trocas continuam no servidor.
+  // A tela prevê só o movimento (com o empurrão, a guarda, o salto e o tonto). Vida, acertos, golpes e trocas
+  // continuam no servidor.
   function preverMovimento(p, e, dt, c = {}) {
     dt = clamp(Number(dt) || 0, 0, 0.1);
-    e.invulneravel = Math.max(0, e.invulneravel - dt);
-    e.esquivaCd = Math.max(0, e.esquivaCd - dt);
-    e.impedido = Math.max(0, (e.impedido || 0) - dt);
+    p.t = (p.t || 0) + dt;
+    if (e.kx == null) { e.kx = 0; e.ky = 0; }
+    if (e.guarda == null) e.guarda = GUARDA_MAX;
+    relogios(e, dt);
     if (e.canal) { e.canal.t -= dt; if (e.canal.t <= 0) e.canal = null; }
-    if (e.oculto) { mover(e, dt, c, p, true); return e; }
-    const mira = dirMira(e, c);
-    e.mira = { x: mira.x, y: mira.y };
-    if (c.esquiva) esquivar(p, e, c);
+    if (e.preparo) { e.preparo.t -= dt; if (e.preparo.t <= 0) e.preparo = null; }
+    if (e.oculto || e.salto) { mover(e, dt, c, p, true); return e; }
+    if (!e.preparo) { const mira = dirMira(e, c); e.mira = { x: mira.x, y: mira.y }; }
+    if (c.esquiva && !(e.atordoado > 0)) esquivar(p, e, c);
+    guardar(p, e, !!c.guarda && !c.esquiva);
     mover(e, dt, c, p, true);
     return e;
   }
 
-  const api = { ARENA, TEMPO_MAX, K_DANO, K_DANO_POKEMON, sorteDe, criarPartida, passo, preverMovimento, pensarRobo, habilidadeDeGolpe, habilidadesDoDex, calcularDano, estado };
+  const api = { ARENA, TEMPO_MAX, K_DANO, K_DANO_POKEMON, GUARDA_MAX, ESQUIVA_CD, JANELA_APARAR, JANELA_PERFEITA, ESTILOS, sorteDe, criarPartida, passo, preverMovimento, pensarRobo, habilidadeDeGolpe, habilidadesDoDex, calcularDano, estado };
   return api;
 });

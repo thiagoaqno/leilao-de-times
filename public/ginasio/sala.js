@@ -135,15 +135,21 @@ $("bots").onchange = () => mudarConfig({ bots: $("bots").checked });
 $("btnInvite").onclick = async () => { try { await navigator.clipboard.writeText(`${location.origin}/ginasio/?sala=${S.code}`); toast("Convite copiado."); } catch { toast(`Código da sala: ${S.code}`); } };
 
 let slotDex = 0, paginaDex = 0;
+// as gerações dos Pokémon, pelo número da Pokédex
+const GERACOES = [{ nome: "Kanto", ate: 151 }, { nome: "Johto", ate: 251 }, { nome: "Hoenn", ate: 386 }, { nome: "Sinnoh", ate: 493 }, { nome: "Unova", ate: 649 }];
+const geracaoDe = (num) => GERACOES.findIndex((g) => num <= g.ate);
 function abrirDex(slot) {
   slotDex = slot; paginaDex = 0; $("dexBusca").value = "";
   $("dexTitulo").textContent = modoAtual() === "pokemon" ? "Escolher Pokémon" : modoAtual() === "naruto" ? "Escolher ninja" : "Escolher Galeramon";
   $("dexTipo").innerHTML = '<option value="">Todos os tipos</option>' + Object.keys(dexAtual().TYPES).map((t) => `<option>${h(t)}</option>`).join("");
+  $("dexGeracao").innerHTML = '<option value="">Todas as gerações</option>' + GERACOES.map((g, i) => `<option value="${i}">${i + 1}ª · ${h(g.nome)}</option>`).join("");
+  $("dexGeracao").classList.toggle("hidden", modoAtual() !== "pokemon"); $("dexGeracao").value = "";
   renderDex(); $("dex").showModal(); $("dexBusca").focus();
 }
 function renderDex() {
   const D = dexAtual(), busca = $("dexBusca").value.toLocaleLowerCase("pt-BR"), tipo = $("dexTipo").value;
-  const ids = D.IDS.filter((id) => (!busca || D.MONS[id].n.toLocaleLowerCase("pt-BR").includes(busca) || String(D.MONS[id].num || "").includes(busca)) && (!tipo || D.MONS[id].types.includes(tipo)));
+  const geracao = modoAtual() === "pokemon" && $("dexGeracao").value !== "" ? +$("dexGeracao").value : null;
+  const ids = D.IDS.filter((id) => (!busca || D.MONS[id].n.toLocaleLowerCase("pt-BR").includes(busca) || String(D.MONS[id].num || "").includes(busca)) && (!tipo || D.MONS[id].types.includes(tipo)) && (geracao == null || geracaoDe(D.MONS[id].num) === geracao));
   const paginas = Math.max(1, Math.ceil(ids.length / 24)); paginaDex = clamp(paginaDex, 0, paginas - 1);
   const time = timeAtual();
   $("dexLista").innerHTML = ids.slice(paginaDex * 24, paginaDex * 24 + 24).map((id) => `<button class="bicho ${time.includes(id) ? "selecionado" : ""}" data-bicho="${id}" title="${h(D.MONS[id].n)} · ${h(D.MONS[id].types.join(" / "))}${modoAtual() === "naruto" && D.ficha(id) ? ` · ${h(D.ficha(id))}` : ""}" ${time.includes(id) && time[slotDex] !== id ? "disabled" : ""}>${htmlBicho(id)}</button>`).join("");
@@ -152,7 +158,7 @@ function renderDex() {
 }
 $("dexFechar").innerHTML = ic("fechar"); $("dexAnterior").innerHTML = ic("esq"); $("dexProximo").innerHTML = ic("dir");
 $("dexFechar").onclick = () => $("dex").close();
-$("dexBusca").oninput = $("dexTipo").onchange = () => { paginaDex = 0; renderDex(); };
+$("dexBusca").oninput = $("dexTipo").onchange = $("dexGeracao").onchange = () => { paginaDex = 0; renderDex(); };
 $("dexAnterior").onclick = () => { paginaDex--; renderDex(); }; $("dexProximo").onclick = () => { paginaDex++; renderDex(); };
 $("dexLista").onclick = async (e) => {
   const b = e.target.closest("[data-bicho]"); if (!b || b.disabled) return;

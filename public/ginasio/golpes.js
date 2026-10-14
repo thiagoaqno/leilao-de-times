@@ -167,6 +167,13 @@ function desenharQuedaArea(a, falta) {
     ctx.restore();
   }
 }
+// a bomba em arco, sem a cena 3D: a bola subindo e descendo até o ponto
+function desenharBomba2d(a, falta) {
+  if (a.forma !== "bomba" || !a.de) return;
+  const k = clamp(1 - falta / (a.aviso || 0.5), 0, 1), P = paletaDe(a.elemento), s = camera.escala;
+  const p = pontoTela(a.de.x + (a.x - a.de.x) * k, a.de.y + (a.y - a.de.y) * k, 0.4 + 4 * k * (1 - k) * 2.6);
+  circulo(p.x, p.y, s * 0.3, P[2]); circulo(p.x - s * 0.08, p.y - s * 0.08, s * 0.14, P[0]);
+}
 function desenharGolpeArea(f, idade) {
   if (idade > 0.3) return;
   const fam = familiaDe(f.elemento), P = PALETA[fam], s = camera.escala, p = pontoTela(f.x, f.y), k = idade / 0.3;

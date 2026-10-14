@@ -37,6 +37,7 @@ function limparComando(d) {
   if (d.golpe != null && (!Number.isInteger(d.golpe) || d.golpe < 0 || d.golpe > 3)) return null;
   if (d.troca != null && (!Number.isInteger(d.troca) || d.troca < 0 || d.troca > 2)) return null;
   if (d.esquiva != null && typeof d.esquiva !== "boolean") return null;
+  if (d.guarda != null && typeof d.guarda !== "boolean") return null;
   if (d.alvo != null && (!objeto(d.alvo) || ![d.alvo.x, d.alvo.y].every(finito))) return null;
   const c = {
     seq: d.seq, dx: clamp(d.dx, -1, 1), dy: clamp(d.dy, -1, 1),
@@ -45,12 +46,18 @@ function limparComando(d) {
   if (d.golpe != null) c.golpe = d.golpe;
   if (d.troca != null) c.troca = d.troca;
   if (d.esquiva) c.esquiva = true;
+  if (d.guarda) c.guarda = true;
   if (d.alvo) c.alvo = { x: clamp(d.alvo.x, -G.ARENA.w / 2, G.ARENA.w / 2), y: clamp(d.alvo.y, -G.ARENA.h / 2, G.ARENA.h / 2) };
   return c;
 }
 
-const projetilDe = (pr) => ({ id: pr.id, lado: pr.lado, dono: pr.dono, x: pr.x, y: pr.y, dx: pr.dx, dy: pr.dy, v: pr.v, raio: pr.raio, vida: pr.vida, golpe: pr.hab.id, elemento: pr.hab.tipo, classe: pr.hab.classe });
-const areaDe = (a) => ({ id: a.id, lado: a.lado, dono: a.dono, x: a.x, y: a.y, r: a.r, falta: a.t, aviso: a.hab.aviso, golpe: a.hab.id, elemento: a.hab.tipo });
+const projetilDe = (pr) => ({ id: pr.id, lado: pr.lado, dono: pr.dono, x: pr.x, y: pr.y, dx: pr.dx, dy: pr.dy, v: pr.v, raio: pr.raio, vida: pr.vida, golpe: pr.hab.id, elemento: pr.hab.tipo, classe: pr.hab.classe, forma: pr.forma, ...(pr.refletido && { refletido: true }) });
+// a área diz o seu jeito: queda e bomba (caem no fim do aviso), anel, onda, zona, armadilha, feixe e cone
+const areaDe = (a) => ({
+  id: a.id, lado: a.lado, dono: a.dono, x: a.x, y: a.y, r: a.r, falta: a.t, aviso: a.aviso ?? a.hab.aviso, golpe: a.hab.id, elemento: a.hab.tipo, forma: a.forma || "queda",
+  ...(a.dx != null && { dx: a.dx, dy: a.dy }), ...(a.v && { v: a.v }), ...(a.len && { len: a.len }), ...(a.arco && { arco: a.arco }),
+  ...(a.de && { de: { ...a.de } }), ...(a.arma != null && { arma: Math.max(0, a.arma) }), ...(a.estourou && { estourou: true }), ...(a.hab.puxa && { puxa: true }),
+});
 
 module.exports = function ligarGinasio(io) {
   const nsp = io.of("/ginasio"), salas = new Map();
@@ -99,6 +106,10 @@ module.exports = function ligarGinasio(io) {
         hp: e.bicho.hp, max: e.bicho.max, cds: [...e.bicho.cds], st: { ...e.bicho.st },
         ...(m.modo === "naruto" && { chakra: e.bicho.chakra, substitutes: e.jogador.substitutes }),
         esquivaCd: e.esquivaCd, esquivaT: e.esquivaT, invulneravel: e.invulneravel,
+        kx: e.kx, ky: e.ky, atordoado: e.atordoado, guarda: e.guarda, guardando: e.guardando, guardaSolta: e.guardaSolta, foco: e.foco,
+        preparo: e.preparo && { t: e.preparo.t, total: e.preparo.total, classe: e.preparo.hab.classe, golpe: e.preparo.golpe, elemento: e.preparo.hab.tipo, mira: { ...e.preparo.mira }, alcance: e.preparo.hab.alcance, largura: e.preparo.hab.largura, arco: e.preparo.hab.arco },
+        salto: e.salto && { t: e.salto.t, total: e.salto.total, de: { ...e.salto.de }, para: { ...e.salto.para }, r: e.salto.hab.raio, elemento: e.salto.hab.tipo },
+        sequencia: e.sequencia && { tipo: e.sequencia.tipo, falta: e.sequencia.falta },
         canal: e.canal && { ...e.canal }, escudo: e.escudo && { ...e.escudo },
         dash: e.dash && { x: e.dash.x, y: e.dash.y, falta: e.dash.falta, velocidade: e.dash.hab.velocidade, giro: !!e.dash.hab.giro, elemento: e.dash.hab.tipo },
         oculto: e.oculto && { jeito: e.oculto.jeito, t: e.oculto.t, total: e.oculto.total, de: { ...e.oculto.de }, para: { ...e.oculto.para } },
@@ -180,7 +191,7 @@ module.exports = function ligarGinasio(io) {
     const c = p.comandos.shift();
     if (c) {
       p.processada = c.seq;
-      p.movimento = { dx: c.dx, dy: c.dy, mira: c.mira, ...(c.alvo && { alvo: c.alvo }) };
+      p.movimento = { dx: c.dx, dy: c.dy, mira: c.mira, ...(c.alvo && { alvo: c.alvo }), ...(c.guarda && { guarda: true }) };
       return c;
     }
     return p.movimento || {};
@@ -196,7 +207,7 @@ module.exports = function ligarGinasio(io) {
       for (const pr of m.projeteis) if (pr.id >= seq) ev.push({ tipo: "projetil", ...projetilDe(pr) });
       for (const a of m.areas) if (a.id >= seq) ev.push({ tipo: "area", ...areaDe(a) });
       for (const pr of projeteis) if (!m.projeteis.includes(pr)) ev.push({ tipo: "impacto", ...projetilDe(pr) });
-      for (const a of areas) if (!m.areas.includes(a)) ev.push({ tipo: "explosao", ...areaDe(a) });
+      for (const a of areas) if (!m.areas.includes(a)) ev.push({ tipo: a.estourou ? "explosao" : "fimArea", ...areaDe(a) });
       if (ev.length) nsp.to(sala.code).emit("ev", ev.map((e) => ({ ...e, t: now })));
       if (m.fim) { enviarPacote(sala, now); return terminar(sala); }
       if (ev.some((e) => e.tipo === "desmaiou" || e.tipo === "troca")) broadcast(sala);

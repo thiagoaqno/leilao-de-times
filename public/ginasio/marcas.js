@@ -42,6 +42,8 @@ function registrarMarca(ev) {
     const golpe = dexAtual().MOVES[ev.golpe], hab = golpe ? Ginasio.habilidadeDeGolpe(ev.golpe, golpe) : null;
     const jeito = hab && hab.classe === "sumir" ? MARCA_DO_SUMIR[hab.jeito] : MARCA_DA_FAMILIA[familiaDe(ev.elemento)];
     novaMarca(jeito || "cratera", ev.x, ev.y, ev.r, ev.elemento, `a${ev.id}`);
+  } else if (ev.tipo === "aterrissou") { // o salto afunda o chão onde cai
+    novaMarca("cratera", ev.x, ev.y, (ev.r || 1.3) * 0.7, ev.elemento, `p${ev.id}:${Math.round(ev.x * 10)}:${Math.round(ev.y * 10)}:${Math.round((ev.t || 0) / 100)}`);
   } else if (ev.tipo === "sumiu" && ev.de) { // por onde o bicho entrou: um buraquinho (ou poça)
     if (ev.jeito === "cova") novaMarca("buraco", ev.de.x, ev.de.y, 0.55, ev.elemento, `s${ev.id}:${Math.round(ev.de.x * 10)}:${Math.round(ev.de.y * 10)}:${Math.round((ev.t || 0) / 100)}`);
     else if (ev.jeito === "mergulho") novaMarca("poca", ev.de.x, ev.de.y, 0.5, ev.elemento, `s${ev.id}:${Math.round(ev.de.x * 10)}:${Math.round(ev.de.y * 10)}:${Math.round((ev.t || 0) / 100)}`);

@@ -165,6 +165,23 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 - `#debug` expõe `window.__futevolei` (`avancar(seg)`, `toque(tipo)` e `congelar()` para fotos do quadro exato).
 
 **Ginásio:**
+- **Jeitos de golpe e física (`regras.js`):** fora do Naruto (que diz o jeito em `forma`), o jeito de cada golpe vem
+  de `ESTILOS` (id → feixe, cone, anel, onda, rajada, bumerangue, teleguiado, bomba, salto, zona, combo, arremesso,
+  investida); golpe novo que não está lá cai na regra antiga (prioridade vira investida, poder 100+ vira área,
+  especial vira projétil, físico vira corpo). `armadilha: true` no golpe vira armadilha. As áreas têm `forma` (queda,
+  bomba, anel, onda, zona, armadilha, feixe, cone) e cada uma anda em `atualizarArea`; o servidor manda `explosao` só
+  para a que estoura (`a.estourou`) e `fimArea` para as outras. Golpes com `preparo` (feixe, sopro, agarrão) deixam o
+  bicho parado (`e.preparo`) e são cancelados por `atordoar`; rajada e combo andam em `e.sequencia`; o salto é
+  `e.salto` (no alto, `noAlto`, ninguém acerta). **Física:** `aplicarDano` empurra (`e.kx/ky`, pelo poder e por
+  `fatorPeso`) e atordoa (`e.atordoado`, decrescente com `e.cadeia`); `mover` escorrega e `bater` machuca na parede.
+  **Defesa:** a guarda é o comando `guarda` segurado (`guardar`, barra `e.guarda`, `JANELA_APARAR` apara e
+  `refletir` devolve o projétil; `hab.agarra` passa pela guarda), a esquiva perfeita é `JANELA_PERFEITA` (recargas e
+  `e.foco`). O golpe apertado com o bicho ocupado espera em `e.buffer` (`BUFFER`). O robô (`pensarRobo`, `e.ia`)
+  usa `p.nivel` (2 nos líderes). Testes: `tests/ginasio-fisica.test.js`.
+- **Na tela:** `desenharArea` (o chão de cada forma) e `desenharAvisos` (preparo e pouso) em `desenho.js`; as palavras
+  de `TEXTO_DO_EVENTO`; `golpes3d.js` tem `feixe3d`, `cone3d`, `anel3d`, `onda3d`, `zona3d`, `bombasVoando` e
+  `aparou3d` (os efeitos começam na hora do evento, `quando`); a bolha da guarda, as estrelinhas do tonto, o rolar e o
+  pulo ficam em `animacao.js`. Botão `#btnGuarda` (no `#defesa`, com `--guarda`) e o 6º botão do toque.
 - **Líderes e treinadores (`public/galeramon/lideres.js`):** 4 líderes de ginásio (fogo, água, grama, elétrico) e 6 treinadores (pedra, psíquico, fantasma, dragão, lutador, gelo), cada um com o time nos dois modos. `/ginasio/?lider=<id>` abre o desafio (1x1 contra o robô com o time dele; `config.lider`); vencer um líder guarda a insígnia no navegador (`ginasio:insignias`). Os robôs comuns ganham um dos times temáticos, sorteado. Na Vila, os ginásios ficam fora da cerca, em cima dos estacionamentos oeste e leste (`lider: l` em `GAMES`), e os treinadores são `GAMES` de 1x1 com `npc` (desenhados como bonecos). Cada tipo tem a sua quadra em `temas.js` (`TEMAS`: cores, `chao` e `clima`).
 - `/ginasio/` abre a sala e a arena 2D de pixel-art. O prédio fica na Vila Esportiva, ao lado do Pingue-Pongue, abaixo do Tênis: `ginasio: true` desenha o telhado arredondado com Pokébola.
 - Na Vila, clicar no amigo ou usar Batalha permite escolher turnos ou Ginásio. O convite `jogo: "ginasio"` reutiliza aceite/recusa; `vila.js` chama `ginasio.criarDesafio` só depois do aceite, reserva os dois lados de uma sala 1x1 sem robôs e envia `irGinasio` com credenciais privadas a cada participante.

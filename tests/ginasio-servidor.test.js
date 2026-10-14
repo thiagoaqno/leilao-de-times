@@ -287,9 +287,15 @@ test("ginásio/servidor: dois clientes e robôs jogam até o fim e pontuam na No
       e.jogador.ativo = dado.ativo;
       e.bicho = e.jogador.time[dado.ativo];
       for (let i = 0; i < dado.time.length; i++) e.jogador.time[i].hp = dado.time[i].hp;
-      Object.assign(e, { x: dado.x, y: dado.y, campo: dado.campo, esquivaCd: dado.esquivaCd });
+      Object.assign(e, { x: dado.x, y: dado.y, vx: dado.vx, vy: dado.vy, campo: dado.campo, esquivaCd: dado.esquivaCd, atordoado: dado.atordoado, guarda: dado.guarda, guardando: dado.guardando, kx: dado.kx, ky: dado.ky });
+      // o que o bicho está fazendo, para o robô dos clientes ler o jogo como o do servidor
+      e.preparo = dado.preparo && { ...dado.preparo, hab: { classe: dado.preparo.classe } };
+      e.salto = dado.salto && { ...dado.salto, hab: { raio: dado.salto.r } };
+      e.sequencia = dado.sequencia; e.dash = dado.dash;
       e.bicho.cds = dado.cds; e.bicho.st = dado.st; e.jogador.trocaCd = dado.trocaCd;
     }
+    sombra.projeteis = sn.projeteis; // o robô só olha posição, direção, velocidade e lado
+    sombra.areas = sn.areas.map((x) => ({ ...x, t: x.falta }));
     for (const s of [a, b]) {
       const e = sombra.entidades.find((p) => p.id === s.pid), c = G.pensarRobo(sombra, e);
       s.emit("cmd", envio(seq++, { ...c, dx: c.dx || 0, dy: c.dy || 0, mira: c.mira || e.mira }));
