@@ -51,7 +51,7 @@
       const id = chaveJogo(competicao, fase, rodada, casa, fora), fixo = fixos[id];
       const cache = `${semente}:${id}`;
       let sim = fixo || RESULTADOS_CPU.get(cache);
-      if (!sim) { sim = Motor.simularPartida({ casa: clubes[casa], fora: clubes[fora], semente: cache }); RESULTADOS_CPU.set(cache, { placar: [...sim.placar] }); }
+      if (!sim) { sim = Motor.simularPartida({ casa: clubes[casa], fora: clubes[fora], semente: cache, carreira: true }); RESULTADOS_CPU.set(cache, { placar: [...sim.placar] }); }
       return { id, competicao, fase, rodada, semana, periodo, casa, fora, placar: fixo ? [...fixo.placar] : [...sim.placar], mataMata,
         ...(fixo && { aoVivo: true }), ...(fixo && Array.isArray(fixo.penaltis) && { penaltis: [...fixo.penaltis] }) };
     };

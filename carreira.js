@@ -402,7 +402,7 @@ function simularJogoGrupo(save, j, { modo = 1, decisoes = {} } = {}) {
   const hc = !!save.humanos[j.casa], hf = !!save.humanos[j.fora];
   const vc = vistaDe(save, hc ? j.casa : j.fora), vf = vistaDe(save, hf ? j.fora : j.casa);
   vc.partida = partidaDoJogo(vc, j, modo, decisoes); vf.partida = partidaDoJogo(vf, j, modo, decisoes);
-  return Motor.simularPartida({ casa: timeDe(vc, j.casa), fora: timeDe(vf, j.fora), semente: vc.partida.semente, modo, controla: hc && hf ? 2 : hc ? 0 : 1, decisoes, desempate: desempateDe(vc.partida) });
+  return Motor.simularPartida({ casa: timeDe(vc, j.casa), fora: timeDe(vf, j.fora), semente: vc.partida.semente, modo, controla: hc && hf ? 2 : hc ? 0 : 1, decisoes, desempate: desempateDe(vc.partida), carreira: true });
 }
 // o jogo acabou: fecha para cada humano dele (o que é de todos, uma vez só)
 function fecharJogoGrupo(save, j, r, modo, decisoes) {
@@ -809,7 +809,7 @@ const titularesDe = (save, id) => Motor.escalacaoAutomatica(timeDe(save, id));
 const sementeDoJogo = (save, rodada, casa, fora) => `${save.semente}:${save.temporada}:${rodada}:${casa}-${fora}`;
 function simularMinha(save) {
   const p = save.partida;
-  return Motor.simularPartida({ casa: timeDe(save, p.casa), fora: timeDe(save, p.fora), semente: p.semente, modo: p.modo, controla: p.casa === save.clube ? 0 : 1, decisoes: p.decisoes, desempate: desempateDe(p) });
+  return Motor.simularPartida({ casa: timeDe(save, p.casa), fora: timeDe(save, p.fora), semente: p.semente, modo: p.modo, controla: p.casa === save.clube ? 0 : 1, decisoes: p.decisoes, desempate: desempateDe(p), carreira: true });
 }
 // os gols de um jogo de humanos: no total da temporada (save.gols) e na competição do jogo (save.golsComp), para a artilharia de cada uma
 function contarGols(save, r, comp = null) {
@@ -904,7 +904,7 @@ function fecharRodada(save, r) {
   for (const [c, f] of save.calendario[rodada]) {
     const semente = sementeDoJogo(save, rodada, c, f);
     if (c === save.partida.casa && f === save.partida.fora) { resultados.push([c, f, r.placar[0], r.placar[1]]); cartoesELesoes(save, r, semente); continue; }
-    const outro = Motor.simularPartida({ casa: timeDe(save, c), fora: timeDe(save, f), semente });
+    const outro = Motor.simularPartida({ casa: timeDe(save, c), fora: timeDe(save, f), semente, carreira: true });
     contarGols(save, outro); cartoesELesoes(save, outro, semente);
     resultados.push([c, f, outro.placar[0], outro.placar[1]]);
   }
@@ -975,7 +975,7 @@ function paralelosDaSemana(save, semana, excluir = []) {
   const lista = [];
   for (const j of save.calendarioMundo) {
     if (j.semana !== semana || excluir.includes(j.id) || j.aoVivo || (save.humanos && (save.humanos[j.casa] || save.humanos[j.fora])) || !clubes[j.casa] || !clubes[j.fora]) continue;
-    const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${semente}:${j.id}` });
+    const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${semente}:${j.id}`, carreira: true });
     const gols = r.placar[0] === j.placar[0] && r.placar[1] === j.placar[1] ? r.eventos.filter((e) => e.tipo === "gol").map((e) => ({ min: e.min, ...(e.acr && { acr: e.acr }), lado: e.lado, jogador: e.jogador })) : [];
     lista.push({ id: j.id, competicao: j.competicao, fase: j.fase, rodada: j.rodada, ...(j.perna && { perna: j.perna }), casa: j.casa, fora: j.fora, placar: [...j.placar], gols });
   }
@@ -993,7 +993,7 @@ function golsDetalhados(save, j) {
   for (const b of Object.values(bases)) for (const c of b.clubes) clubes[c.id] = c;
   let gols = [];
   if (clubes[j.casa] && clubes[j.fora]) {
-    const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${save.semente}:${save.temporada}:${j.id}` });
+    const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${save.semente}:${save.temporada}:${j.id}`, carreira: true });
     if (r.placar[0] === j.placar[0] && r.placar[1] === j.placar[1]) gols = r.eventos.filter((e) => e.tipo === "gol").map((e) => ({ min: e.min, ...(e.acr && { acr: e.acr }), lado: e.lado, jogador: e.jogador }));
   }
   if (golsDeJogoCache.size > 20000) golsDeJogoCache.delete(golsDeJogoCache.keys().next().value);
