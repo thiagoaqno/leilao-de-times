@@ -12,6 +12,15 @@ const SomPartida = (() => {
   const ROTULO = { tudo: "Som", torcida: "Torcida", mudo: "Sem som" };
   const DICA = { tudo: "Narrador e torcida (toque para só a torcida)", torcida: "Só a torcida (toque para tirar o som)", mudo: "Sem som (toque para o narrador e a torcida)" };
   let modo = (() => { try { const m = localStorage.getItem("carreira:somPartida"); return MODOS.includes(m) ? m : "tudo"; } catch (e) { return "tudo"; } })();
+  // Mesmo padrão do tocador de música: volume individual, salvo neste navegador.
+  const VOLUME_CHAVE = "carreira:volumeSom";
+  const limitarVolume = (v) => Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.35;
+  let volume = (() => {
+    try {
+      const salvo = localStorage.getItem(VOLUME_CHAVE);
+      return salvo === null ? 0.35 : limitarVolume(Number(salvo));
+    } catch (e) { return 0.35; }
+  })();
 
   // ---------- os áudios ----------
   let ctx = null, mestre = null, busVoz = null, busEfeito = null, busAmb = null;
@@ -21,7 +30,7 @@ const SomPartida = (() => {
     if (!AC) return null;
     try {
       ctx = new AC();
-      mestre = ctx.createGain(); mestre.gain.value = modo === "mudo" ? 0 : 1; mestre.connect(ctx.destination);
+      mestre = ctx.createGain(); mestre.gain.value = modo === "mudo" ? 0 : volume; mestre.connect(ctx.destination);
       busVoz = ctx.createGain(); busVoz.gain.value = modo === "tudo" ? 1 : 0; busVoz.connect(mestre);
       busEfeito = ctx.createGain(); busEfeito.gain.value = 0.8; busEfeito.connect(mestre);
       busAmb = ctx.createGain(); busAmb.gain.value = 0; busAmb.connect(mestre);
@@ -252,7 +261,7 @@ const SomPartida = (() => {
     if (b && !mostrandoBloqueio) { b.textContent = ROTULO[modo]; b.title = DICA[modo]; }
     if (b) { b.setAttribute("aria-pressed", String(modo !== "mudo")); b.hidden = !IDX; }
     if (!ctx) return;
-    rampa(mestre.gain, modo === "mudo" ? 0 : 1, 0.1);
+    rampa(mestre.gain, modo === "mudo" ? 0 : volume, 0.1);
     rampa(busVoz.gain, modo === "tudo" ? 1 : 0, 0.1);
     if (modo !== "tudo") fila.length = 0;
     if (modo === "mudo") desligarLacos(); else if (naPartida()) { ligarLaco("ambiente"); ligarLaco("canto"); preCarregar(); }
@@ -263,13 +272,73 @@ const SomPartida = (() => {
     if (modo !== "mudo" && audio() && ctx.state === "suspended") ctx.resume().catch(() => {});
     aplicar();
   }
+  // O slider fica na barra principal, ao lado do botão ♪ Música.
+  // Controla um único gain mestre: narrador, torcida e efeitos juntos, também durante a partida.
+  let controleVolume = null, indicadorVolume = null, abrirVolume = null, painelVolume = null;
+  function pintarVolume() {
+    if (controleVolume) controleVolume.value = String(Math.round(volume * 100));
+    if (indicadorVolume) indicadorVolume.textContent = Math.round(volume * 100) + "%";
+    if (abrirVolume) abrirVolume.setAttribute("aria-label", "Volume dos sons: " + Math.round(volume * 100) + "%");
+  }
+  function definirVolume(valor) {
+    volume = limitarVolume(Number(valor));
+    try { localStorage.setItem(VOLUME_CHAVE, String(volume)); } catch (e) { /* sem armazenamento */ }
+    if (mestre && ctx) rampa(mestre.gain, modo === "mudo" ? 0 : volume, 0.04);
+    pintarVolume();
+  }
+  const barra = document.getElementById("barra");
+  if (barra && IDX) {
+    abrirVolume = document.createElement("button");
+    abrirVolume.type = "button";
+    abrirVolume.className = "som-volume-bt";
+    abrirVolume.textContent = "🔊 Sons";
+    abrirVolume.setAttribute("aria-expanded", "false");
+    abrirVolume.setAttribute("aria-controls", "som-volume-painel");
+    painelVolume = document.createElement("div");
+    painelVolume.id = "som-volume-painel";
+    painelVolume.className = "som-volume-painel";
+    painelVolume.setAttribute("role", "group");
+    painelVolume.setAttribute("aria-label", "Volume dos sons da partida");
+    painelVolume.innerHTML = '<label for="som-volume-range">Volume dos sons</label>' +
+      '<div class="som-volume-linha"><span aria-hidden="true">🔈</span>' +
+      '<input id="som-volume-range" type="range" min="0" max="100" step="1" aria-label="Volume do narrador, torcida e efeitos">' +
+      '<output id="som-volume-numero" for="som-volume-range">35%</output></div>' +
+      '<small>Narração, torcida e efeitos. Independente da música.</small>';
+    controleVolume = painelVolume.querySelector("input");
+    indicadorVolume = painelVolume.querySelector("output");
+    barra.insertBefore(abrirVolume, document.getElementById("conexao"));
+    document.body.appendChild(painelVolume);
+    controleVolume.addEventListener("input", (e) => definirVolume(Number(e.target.value) / 100));
+    const abrirFechar = (mostrar) => {
+      painelVolume.classList.toggle("on", mostrar);
+      abrirVolume.setAttribute("aria-expanded", String(mostrar));
+    };
+    abrirVolume.addEventListener("click", () => abrirFechar(!painelVolume.classList.contains("on")));
+    document.addEventListener("pointerdown", (e) => {
+      if (!painelVolume.contains(e.target) && !abrirVolume.contains(e.target)) abrirFechar(false);
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") abrirFechar(false); });
+    pintarVolume();
+  }
   const bt = document.getElementById("btnSom");
   // com o som barrado, o toque no botão só libera (o modo continua o mesmo); depois, troca o modo
   if (bt) bt.onclick = () => { if (mostrandoBloqueio) { destravar(); setTimeout(avisarBloqueio, 150); } else alternar(); };
   const css = document.createElement("style");
-  css.textContent = "#btnSom.som-bloqueado{background:#ffd23f;color:#141414;border-color:#ffd23f;font-weight:700}";
+  css.textContent = `
+#btnSom.som-bloqueado{background:#ffd23f;color:#141414;border-color:#ffd23f;font-weight:700}
+.som-volume-bt{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--b1);background:transparent;color:var(--t2);font:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.som-volume-bt:hover,.som-volume-bt[aria-expanded="true"]{background:var(--s2);color:var(--t1)}
+.som-volume-painel{position:fixed;right:max(12px,env(safe-area-inset-right));top:58px;z-index:41;display:none;flex-direction:column;gap:9px;width:min(280px,calc(100% - 24px));padding:14px;background:var(--s2);color:var(--t1);border:1px solid var(--b1);border-radius:10px;box-shadow:0 12px 36px #0005}
+.som-volume-painel.on{display:flex}
+.som-volume-painel label{font-weight:700;font-size:13px}
+.som-volume-linha{display:flex;align-items:center;gap:8px}
+.som-volume-linha input{min-width:0;flex:1;accent-color:var(--t1)}
+.som-volume-linha output{min-width:38px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums}
+.som-volume-painel small{color:var(--t2);font-size:11px;line-height:1.4}
+@media(max-width:520px){.som-volume-bt{font-size:0;padding:0 9px}.som-volume-bt::first-letter{font-size:16px}}
+`;
   document.head.appendChild(css);
   aplicar();
 
-  return { abrir, evento, tela, alternar, historico, get modo() { return modo; }, get contexto() { return ctx; } };
+  return { abrir, evento, tela, alternar, definirVolume, historico, get volume() { return volume; }, get modo() { return modo; }, get contexto() { return ctx; } };
 })();
