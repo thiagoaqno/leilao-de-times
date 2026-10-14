@@ -304,6 +304,11 @@
     let decisivos = 0, golsContra = 0, minuto = 0, acrescimo = 0, parado = null, impAtual = 0;
     const ev = (e) => eventos.push({ min: minuto, ...(acrescimo ? { acr: acrescimo } : {}), ...e });
     const humano = (lado) => (ambos || controla === lado) && modo >= 2;
+    // cfg.paradas (opcional): quais paradas o humano tem, para quem não é o técnico (o Road to Champions: o protagonista
+    // decide como joga em minutos marcados e o técnico do computador segue fazendo as trocas). Sem ela, tudo como antes.
+    // { minutos: [25, 70], intervalo, gol, cansaco, vermelho, penaltis, robo } (o que não vier é falso)
+    const P = cfg.paradas || null;
+    const pode = (tipo) => !P || !!P[tipo];
 
     // pede (ou usa) a decisão do ponto `id`; sem resposta, para a partida aqui
     function decidir(id, pedido) {
@@ -381,7 +386,7 @@
     }
     // o técnico do computador: tira os mais cansados, arrisca quando perde e segura quando ganha
     function tecnicoRobo(time) {
-      if (humano(time.lado)) return;
+      if (humano(time.lado) && !(P && P.robo)) return;
       const dif = placar[time.lado] - placar[1 - time.lado];
       if (minuto >= 60 && time.subs > 0 && time.mexeu < 3 && minuto % 8 === 0) {
         const cansado = titulares(time).filter((p) => p.grp !== "GK").sort((a, b) => a.energia - b.energia)[0];
@@ -397,6 +402,7 @@
     function gol(at, autor, assist, como) {
       placar[at.lado]++;
       ev({ tipo: "gol", lado: at.lado, jogador: autor.id, ...(assist ? { assist: assist.id } : {}), como, placar: [...placar] });
+      if (!pode("gol")) return;
       if (controla === 1 - at.lado) { golsContra++; parada(times[controla], `gol${golsContra}`, "gol_sofrido"); }
       else if (ambos) { golsContra++; parada(times[1 - at.lado], `gol${golsContra}`, "gol_sofrido"); }
     }
@@ -511,7 +517,7 @@
         else if (sacrificado) { const v = time.campo.find((x) => x.p === sacrificado); v.p = null; time.campo[0].p = sacrificado; }
       }
       recalcular(time);
-      if (humano(time.lado)) parada(time, `vermelho${est[time.lado].vermelhos}`, "vermelho");
+      if (humano(time.lado) && pode("vermelho")) parada(time, `vermelho${est[time.lado].vermelhos}`, "vermelho");
     }
     function lesoes(time) {
       const tit = titulares(time), media = tit.length ? tit.reduce((s, p) => s + p.energia, 0) / tit.length : 100;
@@ -540,19 +546,20 @@
           * at.est.chance * df.est.cede * (1 + confrontoDe(at, df).criar);
         if (rng() < taxa) lance(at, df);
       }
+      const marcado = !acrescimo && (P ? (P.minutos || []).includes(minuto) : minuto === 70);
       if (ambos && modo >= 2) {
-        for (const t of times) {
+        if (pode("cansaco")) for (const t of times) {
           const linha = titulares(t).filter((p) => p.grp !== "GK");
           if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < Math.min(72, t.energiaInicial - 8)) { t.cansacoAvisado = true; parada(t, "cansaco", "cansaco"); }
         }
-        if (minuto === 70 && !acrescimo) paradaDosDois("m70", "minuto_70");
+        if (marcado) paradaDosDois("m" + minuto, "minuto_" + minuto);
       } else if (controla != null && modo >= 2) {
         const t = times[controla];
         const linha = titulares(t).filter((p) => p.grp !== "GK");
-        if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < Math.min(72, t.energiaInicial - 8)) {
+        if (pode("cansaco") && !t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < Math.min(72, t.energiaInicial - 8)) {
           t.cansacoAvisado = true; parada(t, "cansaco", "cansaco");
         }
-        if (minuto === 70 && !acrescimo) parada(t, "m70", "minuto_70");
+        if (marcado) parada(t, "m" + minuto, "minuto_" + minuto);
       }
     }
 
@@ -581,7 +588,8 @@
           const id = `pen${++n}`, base = { disputa: { n, gols: [...gols], cobradas: [...cobradas], lado }, batedor: bat.id, goleiro: gk ? gk.id : null };
           const pedido = (aFavor) => ({ tipo: "lance", lance: aFavor ? "penalti_favor" : "penalti_contra", lado: aFavor ? lado : 1 - lado, ...base, opcoes: opcoesDoPenalti(aFavor, bat, gk) });
           let chute, pulo;
-          if (ambos && modo >= 2) {
+          if (!pode("penaltis")) { chute = sorteio(bat); pulo = sorteio(gk); }
+          else if (ambos && modo >= 2) {
             const d = decidir(id, { tipo: "lance", ambos: true, ...base, pedidos: { [lado]: pedido(true), [1 - lado]: pedido(false) } }) || {};
             chute = zona(d[lado]); pulo = zona(d[1 - lado]);
           } else if (modo >= 2 && controla === lado) { chute = zona(decidir(id, pedido(true))); pulo = sorteio(gk); }
@@ -605,8 +613,8 @@
         if (tempo === 0) {
           ev({ tipo: "intervalo", placar: [...placar] });
           for (const t of times) t.jogadores.forEach((p) => { if (!p.fora) p.energia = Math.min(100, p.energia + 8); });
-          if (ambos && modo >= 2) paradaDosDois("intervalo", "intervalo");
-          else if (controla != null && modo >= 2) parada(times[controla], "intervalo", "intervalo");
+          if (pode("intervalo") && ambos && modo >= 2) paradaDosDois("intervalo", "intervalo");
+          else if (pode("intervalo") && controla != null && modo >= 2) parada(times[controla], "intervalo", "intervalo");
         }
       }
       minuto = 90;

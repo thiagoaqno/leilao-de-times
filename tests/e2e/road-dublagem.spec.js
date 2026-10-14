@@ -10,7 +10,8 @@ async function conectar(baseURL) {
   await new Promise((ok, erro) => { s.once("connect", ok); s.once("connect_error", erro); });
   return s;
 }
-// uma sala com estes protagonistas, já no capítulo 1 (cada um decidiu o capítulo 0 e o anfitrião jogou a jornada)
+// uma sala com estes protagonistas, já na rodada dos exclusivos (a 4ª da fase de liga: a entrevista da estreia, três
+// rodadas jogadas e os momentos de cada jogo respondidos com "manter o plano")
 async function salaNoCapitulo1(baseURL, arqs) {
   const sockets = [], entradas = [];
   for (const [i, arq] of arqs.entries()) {
@@ -21,7 +22,17 @@ async function salaNoCapitulo1(baseURL, arqs) {
   }
   await pedir(sockets[0], "iniciar");
   for (const s of sockets) await pedir(s, "decidir", { opcao: 0, tatica: "equilibrado" });
-  await pedir(sockets[0], "avancar");
+  for (let r = 0; r < 3; r++) {
+    await pedir(sockets[0], "avancar");
+    for (let volta = 0; volta < 8; volta++) {
+      let algum = false;
+      for (const [i, s] of sockets.entries()) {
+        const m = (await pedir(s, "retomar", entradas[i])).estado.jornada?.momento;
+        if (m && !m.respondido) { await pedir(s, "momento", { opcao: "manter" }); algum = true; }
+      }
+      if (!algum) break;
+    }
+  }
   return { sockets, entradas, fechar: () => sockets.forEach((s) => s.close()) };
 }
 // abre a página como esse jogador (sem o jogo ao vivo da jornada 1 por cima) e espera a cena dublada
@@ -29,7 +40,7 @@ async function abrirCena(page, { codigo, token }) {
   await page.goto("/jogador/#debug");
   await page.evaluate(([c, t]) => {
     localStorage.setItem("rtc:codigo", c); localStorage.setItem("rtc:token", t);
-    sessionStorage.setItem("rtc:aovivo:" + c + ":0", "1");
+    for (let r = 0; r < 4; r++) sessionStorage.setItem("rtc:aovivo:" + c + ":" + r, "1");
   }, [codigo, token]);
   await page.reload();
   await expect(page.locator(".rtc-voz")).toBeVisible();
@@ -188,7 +199,7 @@ test("dois jogadores na mesma sala: cada um ouve a própria cena, e pular ou des
     expect(estados).toBe(0);
     const st = (await pedir(sala.sockets[0], "retomar", sala.entradas[0])).estado;
     expect(st.prontos).toBe(0);
-    expect(st.capitulo).toBe(1);
+    expect(st.capitulo).toBe(3);
   } finally { await ctxA.close(); await ctxB.close(); sala.fechar(); }
 });
 

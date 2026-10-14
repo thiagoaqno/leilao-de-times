@@ -16,6 +16,11 @@ const nomeClube=id=>clubes.get(id)?.nome||id||"Clube";
 const coresDe=id=>clubes.get(id)?.cores||[];
 const copia=f=>JSON.parse(JSON.stringify(f));
 const CAPITULOS=[["Jornada 1","Fase de grupos · Jornada 1","J1"],["Jornada 2","Fase de grupos · Jornada 2","J2"],["Jornada 3","Fase de grupos · Jornada 3","J3"],["Semifinal","Semifinal","Semi"],["Final","A grande final","Final"]];
+// as rodadas: no formato novo (liga de 36 e mata-mata), as 17 de road-formato.js; nas campanhas antigas, os 5 capítulos
+const RF=window.RoadFormato;
+const ehLiga=s=>!!s&&s.formato==="liga";
+const rotulos=s=>ehLiga(s)?RF.RODADAS.map(r=>[r.titulo,r.nome,r.curto]):CAPITULOS;
+const rot=(s,i)=>rotulos(s)[i]||rotulos(s)[0];
 // o nome do capítulo, curto no celular
 const rotuloCap=i=>'<span class="longo">'+safe(CAPITULOS[i][0])+'</span><span class="curto">'+safe(CAPITULOS[i][2])+'</span>';
 const ETAPAS=[["protagonista","Protagonista"],["visual","Boneco (reserva)"],["sala","Sala"]];
@@ -42,7 +47,7 @@ function pedido(evento,dados={}){
 }
 function setSala(r){
   if(r.token){localStorage.setItem(storage.code,r.codigo);localStorage.setItem(storage.token,r.token);}
-  if(r.estado){sala=r.estado;RoadPartida.verificar(sala);desenhar();}
+  if(r.estado){sala=r.estado;relogio=(sala.agora||Date.now())-Date.now();RoadPartida.verificar(sala);desenhar();}
 }
 try{rascunho.nome=localStorage.getItem("galera:name")||"";rascunho.codigo=localStorage.getItem(storage.code)||"";}catch{}
 
@@ -292,6 +297,7 @@ const formaHTML=lista=>'<span class="rtc-hub-forma">'+(lista.length?lista.slice(
 // onde o clube está: a posição no grupo ou a fase do mata-mata
 function situacaoDe(s,clube){
   if(s.campeao===clube)return "Campeão";
+  if(ehLiga(s))return situacaoLiga(s,clube);
   const mata=s.jogos.filter(j=>j.etapa!=="grupos"&&(j.casa===clube||j.fora===clube));
   const ultimo=mata.at(-1);
   if(ultimo){if(ultimo.resultado&&ultimo.resultado.vencedor!==clube)return "Eliminado";return ultimo.etapa==="final"?"Na final":"Na semifinal";}
@@ -300,18 +306,33 @@ function situacaoDe(s,clube){
   if(s.capitulo>=3)return "Eliminado nos grupos";
   return (i+1)+"º lugar · grupo "+g;
 }
+// no formato novo: a posição na liga e, depois, a fase do mata-mata
+function situacaoLiga(s,clube){
+  const mata=s.jogos.filter(j=>j.etapa!=="liga"&&(j.casa===clube||j.fora===clube)).sort((a,b)=>a.rodada-b.rodada),ultimo=mata.at(-1);
+  if(ultimo){
+    const fora=ultimo.resultado&&(ultimo.perna===2||ultimo.etapa==="final")&&ultimo.resultado.classificado!==clube;
+    return fora?"Eliminado · "+RF.NOMES_ETAPA[ultimo.etapa]:ultimo.etapa==="final"?"Na final":RF.NOMES_ETAPA[ultimo.etapa];
+  }
+  const i=(s.liga||[]).findIndex(t=>t.clube===clube);
+  if(i<0)return "—";
+  if(s.capitulo>=RF.RODADAS_LIGA){const z=RF.zonaDe(i+1);if(z==="fora")return "Eliminado na liga · "+(i+1)+"º";}
+  return (i+1)+"º na fase de liga";
+}
 // o bloco grande: Jogar a jornada (o adversário, o mando, a posição e a forma dele) com o protagonista em preto e branco
 function tileJogar(s,eu){
-  const cap=s.capitulo,j=meuJogo(s,cap),c=CAPITULOS[cap]||CAPITULOS[0];
+  const cap=s.capitulo,j=meuJogo(s,cap),c=rot(s,cap);
+  // sem entrevista na rodada (liga), ninguém precisa decidir antes: o anfitrião já pode jogar
+  const precisa=s.entrevista!==false,todos=!precisa||s.prontos===s.jogadores.length;
   let acao,rotulo,dica="";
-  if(s.evento){acao="abrir-cena";rotulo="Abrir a cena";dica="Decisão pendente: "+s.evento.titulo;}
-  else if(s.dono===s.eu){acao="avancar";rotulo=s.prontos===s.jogadores.length?"Jogar a "+c[0]:"Esperando "+(s.jogadores.length-s.prontos)+" decisão(ões)";dica=s.prontos+" de "+s.jogadores.length+" protagonistas decidiram.";}
-  else{acao="";rotulo="Esperando o anfitrião";dica=s.prontos+" de "+s.jogadores.length+" decidiram.";}
-  const pronto=acao==="abrir-cena"||(acao==="avancar"&&s.prontos===s.jogadores.length);
+  if(s.jornada){acao="";rotulo="Rodada em andamento";dica=s.jornada.esperando.length?"Momento do jogo: esperando "+s.jornada.esperando.join(", ")+".":"Os jogos estão rolando.";}
+  else if(s.evento){acao="abrir-cena";rotulo="Abrir a cena";dica="Decisão pendente: "+s.evento.titulo;}
+  else if(s.dono===s.eu){acao="avancar";rotulo=todos?"Jogar: "+c[0]:"Esperando "+(s.jogadores.length-s.prontos)+" decisão(ões)";dica=precisa?s.prontos+" de "+s.jogadores.length+" protagonistas decidiram.":"Sem entrevista nesta rodada. Estratégia: "+(TATICAS.find(t=>t[0]===s.tatica)?.[1]||"Equilibrado")+".";}
+  else{acao="";rotulo="Esperando o anfitrião";dica=precisa?s.prontos+" de "+s.jogadores.length+" decidiram.":"Sem entrevista nesta rodada.";}
+  const pronto=acao==="abrir-cena"||(acao==="avancar"&&todos);
   let info;
   if(j){
     const outro=j.casa===eu.clube?j.fora:j.casa,dono=s.jogadores.find(p=>p.clube===outro),oc=clubes.get(j.casa);
-    const mando=j.etapa==="final"?"Campo neutro":j.casa===eu.clube?"Casa":"Fora";
+    const mando=(j.etapa==="final"?"Campo neutro":j.casa===eu.clube?"Casa":"Fora")+(j.perna?" · "+(j.perna===1?"ida":"volta"):"");
     info='<div class="rtc-hub-adv">'+escudo(outro,92)+'<div><p><b>'+safe(mando)+'</b>'+(oc?.estadio&&j.etapa!=="final"?' | '+safe(oc.estadio):"")+'</p>'+
       '<p>'+safe(nomeClube(outro))+(dono?' · <span class="rtc-hub-dono">'+safe(dono.avatar)+'</span>':'')+'</p>'+
       '<p>Situação: <em>'+safe(situacaoDe(s,outro))+'</em></p><p>Forma: '+formaHTML(formaDe(s,outro))+'</p><p class="rtc-hub-data">'+safe(c[1])+'</p></div></div>';
@@ -326,6 +347,12 @@ const SETAS_VAZADAS='<svg viewBox="0 0 100 60" aria-hidden="true"><path d="M10 7
 // os dois quadrados do meio: a entrevista (o "Sim match") e a mesa ao vivo (o "Visual sim")
 function tileDecidir(s){
   const ev=s.evento,feito=s.feito;
+  if(s.entrevista===false){
+    const t=TATICAS.find(x=>x[0]===s.tatica)||TATICAS[0],livre=!s.jornada&&s.fase==="jogando";
+    return '<button type="button" class="rtc-hub-tile rtc-hub-quad"'+(livre?' data-acao="abrir-tatica"':' aria-disabled="true"')+'>'+
+      '<span class="rtc-hub-titulo"><b>Pré-jogo</b></span><small>Sem entrevista nesta rodada. Estratégia: '+safe(t[1])+'</small>'+SETAS_CHEIAS+
+      '<span class="rtc-hub-estado">'+(livre?"Mudar":"Em jogo")+'</span></button>';
+  }
   return '<button type="button" class="rtc-hub-tile rtc-hub-quad"'+(ev?' data-acao="abrir-cena"':' aria-disabled="true"')+'>'+
     '<span class="rtc-hub-titulo"><b>Entrevista</b></span><small>'+(ev?safe(ev.titulo):feito?"Resposta dada neste capítulo":"Sem entrevista agora")+'</small>'+SETAS_CHEIAS+
     '<span class="rtc-hub-estado">'+(ev?"Decisão pendente":feito?"✓ Feito":"—")+'</span></button>';
@@ -381,8 +408,8 @@ function postHTML(x,s){
 }
 function tileSocial(s,limite=4){
   const itens=s.historico.slice(0,limite);
-  return '<section class="rtc-tile"><div class="rtc-tile-topo"><h3>Social</h3><small>'+s.historico.length+' posts</small></div><div class="rtc-tile-corpo"><div class="rtc-foto-faixa"><img src="/jogador/cenas/viral.webp" alt="" onerror="this.parentNode.remove()"></div><div class="rtc-posts">'+
-    (itens.length?itens.map(x=>postHTML(x,s)).join(""):'<p class="rtc-muted" style="margin:0">As primeiras manchetes saem depois das decisões.</p>')+'</div></div></section>';
+  return '<section class="rtc-tile"><div class="rtc-tile-topo"><h3>Feed</h3><button type="button" class="rtc-ig-ver" data-aba="diario">Ver tudo · '+s.historico.length+' posts</button></div><div class="rtc-tile-corpo rtc-ig-mini">'+
+    (itens.length?itens.map((x,k)=>postIG(x,s,"h"+k,true)).join(""):'<p class="rtc-muted" style="margin:0">As primeiras notícias saem depois das decisões.</p>')+'</div></section>';
 }
 function tabelaHTML(s,g,eu,compacta){
   const linhas=s.grupos?.[g]||[];
@@ -390,7 +417,22 @@ function tabelaHTML(s,g,eu,compacta){
     linhas.map((t,i)=>'<tr class="'+(t.clube===eu.clube?"meu ":"")+(i<2?"passa":"")+'"><td><span class="clube">'+escudo(t.clube,20)+'<span>'+safe(nomeClube(t.clube))+'</span></span></td><td>'+num(t.p)+'</td><td>'+num(t.j)+'</td>'+
       (compacta?'':'<td>'+num(t.v)+'</td><td>'+num(t.e)+'</td><td>'+num(t.d)+'</td>')+'<td>'+(t.sg>0?"+":"")+num(t.sg)+'</td></tr>').join("")+'</tbody></table>';
 }
+// a tabela da liga (36): as zonas do formato novo (1º-8º oitavas, 9º-24º playoff, o resto fora). Compacta: em volta do meu
+function tabelaLigaHTML(s,eu,compacta){
+  const linhas=s.liga||[],meu=linhas.findIndex(t=>t.clube===eu.clube);
+  const mostrar=compacta?linhas.map((t,i)=>[t,i]).filter(([,i])=>i<3||Math.abs(i-meu)<=2):linhas.map((t,i)=>[t,i]);
+  let ant=-1;
+  return '<table class="rtc-table rtc-liga"><thead><tr><th>#</th><th>Fase de liga</th><th>Pts</th><th>J</th>'+(compacta?'':'<th>V</th><th>E</th><th>D</th><th>GP</th>')+'<th>SG</th></tr></thead><tbody>'+
+    mostrar.map(([t,i])=>{
+      const pulo=ant>=0&&i>ant+1?'<tr class="pulo"><td colspan="'+(compacta?5:9)+'">…</td></tr>':"";ant=i;
+      const dono=s.jogadores.find(p=>p.clube===t.clube);
+      return pulo+'<tr class="'+(t.clube===eu.clube?"meu ":"")+'z-'+RF.zonaDe(i+1)+'"><td>'+(i+1)+'</td><td><span class="clube">'+escudo(t.clube,20)+'<span>'+safe(nomeClube(t.clube))+(dono?' <em class="rtc-dono">'+safe(dono.avatar)+'</em>':'')+'</span></span></td><td>'+num(t.p)+'</td><td>'+num(t.j)+'</td>'+
+        (compacta?'':'<td>'+num(t.v)+'</td><td>'+num(t.e)+'</td><td>'+num(t.d)+'</td><td>'+num(t.gp)+'</td>')+'<td>'+(t.sg>0?"+":"")+num(t.sg)+'</td></tr>';
+    }).join("")+'</tbody></table>'+
+    '<p class="rtc-zonas"><span class="z-oitavas">1º–8º oitavas</span><span class="z-playoff">9º–24º playoff</span><span class="z-fora">25º–36º fora</span></p>';
+}
 function tileTabela(s,eu){
+  if(ehLiga(s))return '<section class="rtc-tile"><div class="rtc-tile-topo"><h3>Classificação</h3><small>Liga de 36</small></div><div class="rtc-tile-corpo">'+tabelaLigaHTML(s,eu,true)+'</div></section>';
   const g=s.equipes?.find(e=>e.id===eu.clube)?.grupo||"A";
   return '<section class="rtc-tile"><div class="rtc-tile-topo"><h3>Classificação</h3><small>Os dois primeiros passam</small></div><div class="rtc-tile-corpo">'+tabelaHTML(s,g,eu,true)+'</div></section>';
 }
@@ -425,20 +467,36 @@ function centralHub(s){
 }
 // sozinho na sala, o lugar dos laços mostra a campanha (os cinco capítulos e os resultados)
 function tileLinha(s,eu){
-  return '<section class="rtc-tile"><div class="rtc-tile-topo"><h3>A campanha</h3><small>Cinco capítulos</small></div><div class="rtc-tile-corpo"><div class="rtc-cal">'+CAPITULOS.map(([curto],i)=>{
+  const R2=rotulos(s);
+  return '<section class="rtc-tile"><div class="rtc-tile-topo"><h3>A campanha</h3><small>'+(ehLiga(s)?"17 rodadas":"Cinco capítulos")+'</small></div><div class="rtc-tile-corpo"><div class="rtc-cal'+(ehLiga(s)?" liga":"")+'">'+R2.map((rr,i)=>{
     const jj=meuJogo(s,i),r=resultadoPara(jj,eu.clube);
-    return '<div class="rtc-cal-dia '+(i===s.capitulo?"agora ":"")+(r?r.cls:"")+'"><b>'+rotuloCap(i)+'</b><span>'+(r?safe(r.placar):i===s.capitulo?"Hoje":"·")+'</span></div>';
+    const nome=ehLiga(s)?'<span class="longo">'+safe(rr[2])+(RF.RODADAS[i].perna?RF.RODADAS[i].perna:"")+'</span>':rotuloCap(i);
+    return '<div class="rtc-cal-dia '+(i===s.capitulo?"agora ":"")+(r?r.cls:"")+'"><b>'+nome+'</b><span>'+(r?safe(r.placar):i===s.capitulo?"Hoje":"·")+'</span></div>';
   }).join("")+'</div></div></section>';
 }
 function jogoHTML(j,eu){
   const r=j.resultado,meu=j.casa===eu.clube||j.fora===eu.clube;
   const lado=id=>'<span class="lado'+(r&&r.vencedor===id?" venceu":"")+'">'+escudo(id,22)+'<span>'+safe(nomeClube(id))+'</span></span>';
   return '<div class="rtc-jogo'+(meu?" meu":"")+'">'+lado(j.casa)+'<strong>'+(r?num(r.casa)+" : "+num(r.fora):"×")+'</strong>'+lado(j.fora)+
-    (r&&r.penaltis?'<span class="pen">Pênaltis '+num(r.penaltis.casa)+' × '+num(r.penaltis.fora)+' · passou '+safe(nomeClube(r.vencedor))+'</span>':'')+
+    (j.perna?'<span class="perna">'+(j.perna===1?"Ida":"Volta")+'</span>':'')+
+    (r&&r.agregado?'<span class="pen">Agregado '+num(r.agregado.casa)+' × '+num(r.agregado.fora)+(r.penaltis?' · pênaltis '+num(r.penaltis.casa)+' × '+num(r.penaltis.fora):'')+' · passou '+safe(nomeClube(r.classificado))+'</span>':
+    r&&r.penaltis?'<span class="pen">Pênaltis '+num(r.penaltis.casa)+' × '+num(r.penaltis.fora)+' · passou '+safe(nomeClube(r.vencedor))+'</span>':'')+
     (r?'<button type="button" class="rtc-rever" data-rever="'+safe(j.id)+'" aria-label="Rever '+safe(nomeClube(j.casa))+' contra '+safe(nomeClube(j.fora))+'">▶ Rever</button>':'')+'</div>';
 }
 function abaClassificacao(s){
   const eu=euDe(s),etapa=(nome,lista)=>lista.length?'<section class="rtc-bloco rtc-escuro"><span class="rtc-kicker">'+safe(nome)+'</span>'+lista.map(j=>jogoHTML(j,eu)).join("")+'</section>':"";
+  if(ehLiga(s)){
+    // o mata-mata por fase (ida e volta lado a lado) e, embaixo, os jogos dos protagonistas na fase de liga
+    const fases=["final","semifinal","quartas","oitavas","playoff"].map(e=>{
+      const lista=s.jogos.filter(j=>j.etapa===e).sort((a,b)=>(a.chave||"").localeCompare(b.chave||"")||(a.perna||0)-(b.perna||0));
+      return etapa(RF.NOMES_ETAPA[e],lista);
+    }).join("");
+    const meus=s.jogos.filter(j=>j.etapa==="liga"&&s.jogadores.some(p=>p.clube===j.casa||p.clube===j.fora)).sort((a,b)=>a.rodada-b.rodada);
+    const porRodada=Array.from({length:RF.RODADAS_LIGA},(_,r)=>etapa("Rodada "+(r+1)+" · jogos dos protagonistas",meus.filter(j=>j.rodada===r))).join("");
+    return '<div class="rtc-duas-col"><section class="rtc-bloco rtc-escuro">'+tabelaLigaHTML(s,eu,false)+'</section>'+
+      '<div style="display:grid;gap:12px;align-content:start">'+(fases||'<section class="rtc-bloco rtc-escuro"><span class="rtc-kicker">Mata-mata</span><p class="rtc-small">Depois da 8ª rodada: do 1º ao 8º direto nas oitavas; do 9º ao 24º, o playoff de ida e volta.</p></section>')+'</div></div>'+
+      '<div class="rtc-duas-col" style="margin-top:16px">'+porRodada+'</div>';
+  }
   const grupos=[0,1,2].map(r=>etapa("Jornada "+(r+1),s.jogos.filter(j=>j.etapa==="grupos"&&j.rodada===r))).join("");
   return '<div class="rtc-duas-col"><section class="rtc-bloco rtc-escuro">'+tabelaHTML(s,"A",eu,false)+'</section><section class="rtc-bloco rtc-escuro">'+tabelaHTML(s,"B",eu,false)+'</section></div>'+
     '<div class="rtc-chave">'+etapa("Semifinais",s.jogos.filter(j=>j.etapa==="semifinal"))+etapa("Final",s.jogos.filter(j=>j.etapa==="final"))+'</div>'+
@@ -451,19 +509,94 @@ function abaDiario(s){
     (s.historico.length?s.historico.map(x=>postHTML(x,s)).join(""):'<p class="rtc-muted">As primeiras manchetes saem depois das decisões.</p>')+'</div></section>'+
     '<div style="display:grid;gap:10px;align-content:start">'+tileAtributos(eu)+tileEstilo(eu)+'</div></div>';
 }
+// ---------- o momento do jogo: o protagonista decide como joga (25', intervalo e 70') ----------
+// O jogo do jogador parou no motor; a sala espera a resposta de quem está em campo (ou o prazo vencer: mantém o plano).
+let relogio=0; // a diferença entre o relógio do servidor e o daqui
+function momentoHTML(s){
+  const m=s.jornada?.momento;if(!m)return "";
+  const eu=euDe(s),meu=m.placar[m.lado],deles=m.placar[1-m.lado];
+  const quando=m.id==="intervalo"?"Intervalo":m.min+"'";
+  const escolhida=m.escolha&&R.MOMENTOS[m.escolha];
+  const outros=s.jornada.esperando.filter(a=>a!==eu.avatar);
+  const situacao=meu>deles?"Vocês estão na frente.":meu<deles?"Vocês estão atrás no placar.":"O jogo está empatado.";
+  return '<div class="rtc-momento" role="dialog" aria-modal="true" aria-labelledby="rtc-mom-titulo"><div class="rtc-mom-caixa" style="--cor:'+safe(coresDe(eu.clube)[0]||"#3d7ae0")+'">'+
+    '<div class="rtc-mom-topo"><span class="rtc-mom-vivo">● AO VIVO</span><span>'+safe(rot(s,s.capitulo)[1]||"")+'</span></div>'+
+    '<div class="rtc-mom-placar"><span class="lado">'+escudo(m.casa,44)+'<b>'+safe(nomeClube(m.casa))+'</b></span><strong>'+num(m.placar[0])+' <i>'+safe(quando)+'</i> '+num(m.placar[1])+'</strong><span class="lado">'+escudo(m.fora,44)+'<b>'+safe(nomeClube(m.fora))+'</b></span></div>'+
+    (m.resumo?.length?'<ul class="rtc-mom-lances">'+m.resumo.map(x=>'<li><b>'+num(x.min)+"'</b> "+safe(x.texto)+'</li>').join("")+'</ul>':'<p class="rtc-mom-lances vazio">Nenhum gol até aqui.</p>')+
+    '<h2 id="rtc-mom-titulo" tabindex="-1">'+(m.respondido?"Escolha feita":safe(eu.avatar)+", como você joga agora?")+'</h2>'+
+    (m.respondido?'<p class="rtc-mom-feito">'+safe(escolhida?escolhida.texto:"")+'. '+(m.rival&&!m.rival.respondido?"Esperando "+safe(m.rival.avatar)+" decidir do outro lado.":"O jogo continua…")+'</p>':
+      '<p class="rtc-mom-sit">'+safe(situacao)+' A sua escolha puxa o time e muda o resto do jogo.</p>'+
+      '<div class="rtc-mom-opcoes">'+m.opcoes.map((o,i)=>'<button type="button" class="rtc-mom-opcao" data-momento="'+safe(o.id)+'"><span class="n">'+(i+1)+'</span><span><b>'+safe(o.texto)+'</b><small>'+safe(o.dica)+'</small></span></button>').join("")+'</div>'+
+      '<div class="rtc-mom-prazo" data-prazo="'+num(m.prazo)+'"><span></span><small></small></div>')+
+    (outros.length?'<p class="rtc-mom-sala">Na sala, esperando: '+outros.map(safe).join(", ")+'</p>':'')+
+    '</div></div>';
+}
+// o prazo do momento andando (sem redesenhar a tela inteira)
+setInterval(()=>{
+  const el=document.querySelector(".rtc-mom-prazo");if(!el)return;
+  const prazo=Number(el.dataset.prazo),resta=Math.max(0,prazo-(Date.now()+relogio));
+  el.querySelector("span").style.width=Math.min(100,resta/300)+"%";
+  el.querySelector("small").textContent=resta>0?Math.ceil(resta/1000)+" s para decidir (senão, você mantém o plano)":"Mantendo o plano…";
+},250);
+
+// ---------- o feed (no jeito do Instagram): as notícias de todos os protagonistas da sala ----------
+const slug=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9]/g,"").toLowerCase();
+const hashDe=t=>{let h=7;for(const c of String(t))h=(h*31+c.charCodeAt(0))>>>0;return h;};
+const milhar=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,".");
+let curtidas=new Set();try{curtidas=new Set(JSON.parse(localStorage.getItem("rtc:curtidas")||"[]"));}catch{}
+function imagemDoPost(x){
+  if(x.tipo==="decisao"&&x.evento)return "/jogador/popups/rtc-popup-"+x.evento+".webp";
+  if(x.tipo==="visual")return "/jogador/cenas/viral.webp";
+  if(x.tipo==="comemoracao")return "/jogador/cenas/comemoracao.webp";
+  if(x.tipo==="momento")return "/jogador/cenas/"+(/Vitória/.test(x.texto)?"gol-vitoria":/Derrota/.test(x.texto)?"gol-derrota":"rivalidade")+".webp";
+  if(x.tipo==="jogo")return "/jogador/cenas/"+(x.placar&&x.placar[0]!==x.placar[1]?"gol-vitoria":"rivalidade")+".webp";
+  return "/jogador/cenas/manchetes.webp";
+}
+const ROTULO_POST={decisao:"Entrevista",manchete:"Manchete",repercussao:"Repercussão",visual:"Visual novo",comemoracao:"Comemoração",jogo:"Resultado",momento:"Em campo",placar:"Resultado"};
+// quem postou: o protagonista (pelo nome) ou o perfil da imprensa
+function autorDoPost(x,s){
+  const p=x.autor&&s.jogadores.find(q=>q.avatar===x.autor);
+  if(p)return {p,nome:p.avatar,handle:slug(p.avatar)||"protagonista",av:rostoDe(p),sub:nomeClube(p.clube)};
+  return {p:null,nome:"Diário da Champions",handle:"diariodachampions",av:'<span class="rtc-ig-logo">✦</span>',sub:"Imprensa",verificado:true};
+}
+const filtroDoFeed=(x,s,f)=>f==="todos"?true:f==="imprensa"?!x.autor||!s.jogadores.some(p=>p.avatar===x.autor):f==="meus"?x.autor===euDe(s).avatar:x.autor===s.jogadores.find(p=>p.id===f)?.avatar;
+function postIG(x,s,k,compacto){
+  const a=autorDoPost(x,s),chave=slug(x.texto).slice(0,40)+":"+x.rodada+":"+k,h=hashDe(x.texto+x.rodada);
+  const amigos=s.jogadores.filter(p=>p.avatar!==x.autor),quem=amigos.length?amigos[h%amigos.length].avatar:"torcida_ucl";
+  const curtiu=curtidas.has(chave),likes=180+h%9800+(curtiu?1:0);
+  const placar=x.tipo==="jogo"&&x.casa&&x.placar?'<div class="rtc-ig-placar">'+escudo(x.casa,46)+'<b>'+num(x.placar[0])+' – '+num(x.placar[1])+'</b>'+escudo(x.fora,46)+'</div>':"";
+  return '<article class="rtc-ig-post'+(compacto?" compacto":"")+'">'+
+    '<header><span class="rtc-ig-av'+(a.p?" anel":"")+'">'+a.av+'</span><div><b>'+safe(a.handle)+(a.verificado?' <i class="rtc-ig-ok" title="Verificado">✓</i>':'')+'</b><small>'+safe(a.sub)+' · '+safe(rot(s,x.rodada||0)[0])+'</small></div><span class="rtc-ig-tipo">'+safe(ROTULO_POST[x.tipo]||"Notícia")+'</span></header>'+
+    '<div class="rtc-ig-foto"><img src="'+safe(imagemDoPost(x))+'" alt="" loading="lazy" onerror="this.remove()">'+placar+'</div>'+
+    '<div class="rtc-ig-acoes"><button type="button" data-curtir="'+safe(chave)+'" aria-pressed="'+curtiu+'" aria-label="Curtir">'+(curtiu?"♥":"♡")+'</button><span aria-hidden="true">💬</span><span aria-hidden="true">➤</span></div>'+
+    '<p class="rtc-ig-likes">Curtido por <b>'+safe(quem)+'</b> e outras <b>'+milhar(likes)+'</b> pessoas</p>'+
+    '<p class="rtc-ig-legenda"><b>'+safe(a.handle)+'</b> '+safe(x.texto)+'</p>'+
+    (compacto?'':'<p class="rtc-ig-coment">Ver todos os '+(12+h%340)+' comentários</p>')+'</article>';
+}
+function abaFeed(s){
+  const eu=euDe(s),f=tela.feed||"todos",lista=s.historico.filter(x=>filtroDoFeed(x,s,f));
+  const story=(id,av,nome,anel)=>'<button type="button" class="rtc-ig-story'+(f===id?" ativo":"")+'" data-feed="'+safe(id)+'" aria-pressed="'+(f===id)+'"><span class="rtc-ig-av'+(anel?" anel":"")+'">'+av+'</span><small>'+safe(nome)+'</small></button>';
+  return '<div class="rtc-ig"><div class="rtc-ig-coluna">'+
+    '<nav class="rtc-ig-stories" aria-label="Filtrar o feed">'+story("todos",'<span class="rtc-ig-logo">✦</span>',"Todos",false)+story("meus",rostoDe(eu),"Você",true)+
+      s.jogadores.filter(p=>p.id!==eu.id).map(p=>story(p.id,rostoDe(p),p.avatar,true)).join("")+story("imprensa",'<span class="rtc-ig-logo">📰</span>',"Imprensa",false)+'</nav>'+
+    (lista.length?lista.map((x,k)=>postIG(x,s,k)).join(""):'<p class="rtc-muted rtc-ig-vazio">Nada por aqui ainda. As notícias saem depois das entrevistas e dos jogos.</p>')+
+    '</div><aside class="rtc-ig-lado">'+(s.jogadores.length>1?tileLacos(s,eu):"")+tileAtributos(eu)+tileEstilo(eu)+'</aside></div>';
+}
 function telaJogo(s){
   const eu=euDe(s),cor=coresDe(eu.clube)[0]||"#3d7ae0";
   // os avisos nas abas, como a caixa de entrada do FIFA: a decisão pendente na Central e as notícias do último capítulo no Diário
   const novos=s.historico.filter(x=>x.rodada===Math.max(0,s.capitulo-1)&&x.tipo!=="decisao").length;
   const avisos={central:s.evento?1:0,diario:s.capitulo>0?novos:0};
   app.innerHTML='<div class="rtc-hub" style="--cor:'+safe(cor)+'"><div class="rtc-hub-topo">'+cartaoHub(s,eu)+
-    '<div class="rtc-hub-status"><span>CAP <b>'+(s.capitulo+1)+'/5</b></span><span>VITÓRIAS <b>'+num(eu.vitorias)+'</b></span><span>SALA <b>'+safe(s.codigo)+'</b></span>'+
+    '<div class="rtc-hub-status"><span>'+(ehLiga(s)?'RODADA <b>'+(s.capitulo+1)+'/17</b>':'CAP <b>'+(s.capitulo+1)+'/5</b>')+'</span><span>VITÓRIAS <b>'+num(eu.vitorias)+'</b></span><span>SALA <b>'+safe(s.codigo)+'</b></span>'+
     '<button type="button" class="rtc-hub-convite" data-acao="copiar" title="Copiar o código da sala">Convidar</button></div></div>'+
-    '<nav class="rtc-hub-abas" role="tablist" aria-label="Painéis">'+[["central","Central"],["tabela","Classificação"],["diario","Diário"]].map(([id,t])=>
+    '<nav class="rtc-hub-abas" role="tablist" aria-label="Painéis">'+[["central","Central"],["tabela","Classificação"],["diario","Feed"]].map(([id,t])=>
       '<button type="button" class="rtc-hub-aba" role="tab" data-aba="'+id+'" aria-selected="'+(tela.aba===id)+'"><span>'+t+(avisos[id]?'<i>'+avisos[id]+'</i>':'')+'</span></button>').join("")+'</nav>'+
-    '<h1 class="rtc-sr">'+safe(CAPITULOS[s.capitulo]?.[1]||"A Champions")+'</h1>'+
-    (tela.aba==="tabela"?abaClassificacao(s):tela.aba==="diario"?abaDiario(s):centralHub(s))+'</div>'+cenaHTML(s);
+    '<h1 class="rtc-sr">'+safe(rot(s,s.capitulo)[1]||"A Champions")+'</h1>'+
+    (tela.aba==="tabela"?abaClassificacao(s):tela.aba==="diario"?abaFeed(s):centralHub(s))+'</div>'+cenaHTML(s)+momentoHTML(s);
   const box=app.querySelector(".rtc-cena");if(box&&tela.cena?.foco){tela.cena.foco=false;box.querySelector("h2")?.focus();}
+  const mom=s.jornada?.momento,chaveMom=mom&&mom.jogo+":"+mom.id+":"+mom.respondido;
+  if(mom&&tela.momento!==chaveMom){tela.momento=chaveMom;app.querySelector("#rtc-mom-titulo")?.focus();}
 }
 
 // ---------- a cena da decisão (entrevista) e o pré-jogo ----------
@@ -472,8 +605,9 @@ function abrirCenaSePreciso(s){
   if(!s||s.fase!=="jogando"){if(tela.cena&&!s?.evento)tela.cena=null;return;}
   if(window.RoadPartida&&RoadPartida.aberta)return; // a cena do próximo capítulo espera o fim do jogo ao vivo
   if(window.RoadDublagem&&RoadDublagem.aberta)return; // a cena dublada está passando
+  if(s.jornada)return; // a rodada está rolando (os momentos do jogo vêm antes de tudo)
   if(abrirVozSePreciso(s))return;
-  if(!s.evento){if(tela.cena)tela.cena=null;return;}
+  if(!s.evento){if(tela.cena&&!tela.cena.soTatica)tela.cena=null;return;}
   if(tela.cena&&tela.cena.id===s.evento.id+":"+s.capitulo)return;
   let visto=false;try{visto=sessionStorage.getItem(chaveCena(s))==="1";}catch{}
   if(!visto)tela.cena={id:s.evento.id+":"+s.capitulo,passo:"cena",opcao:null,tatica:"equilibrado",foco:true};
@@ -490,13 +624,13 @@ function abrirVozSePreciso(s){
   const eu=euDe(s),v=s.voz||{},cor=coresDe(eu.clube)[0]||"#3d7ae0",base={protagonista:eu.avatar,cor,ctx:v.narrativa||{}};
   const cb=(v.cenas||[]).find(c=>!guardado("localStorage",chaveVoz(s,c.id)));
   if(cb&&D.cenaDe("callback",cb.id)){
-    D.tocar({...base,tipo:"callback",id:cb.id,ramo:cb.ramo,kicker:"Coletiva pós-jogo · "+(CAPITULOS[cb.rodada]?.[1]||""),
+    D.tocar({...base,tipo:"callback",id:cb.id,ramo:cb.ramo,kicker:"Coletiva pós-jogo · "+(rot(s,cb.rodada)[1]||""),
       aoFechar:()=>{guardar("localStorage",chaveVoz(s,cb.id));desenhar();}});
     return true;
   }
   const pre=v.preludio;
   if(pre&&!guardado("sessionStorage",chaveVoz(s,pre.id))&&D.cenaDe("preludio",pre.id)){
-    D.tocar({...base,tipo:"preludio",id:pre.id,opcoes:pre.opcoes,podeAdiar:true,kicker:"★ Só na sua história · Antes da "+CAPITULOS[s.capitulo][0],
+    D.tocar({...base,tipo:"preludio",id:pre.id,opcoes:pre.opcoes,podeAdiar:true,kicker:"★ Só na sua história · Antes da estreia",
       aoEscolher:async o=>{
         const r=await pedido("preludio",{id:pre.id,opcao:o.id});
         if(!r.ok){toast(r.error);return false;}
@@ -509,7 +643,7 @@ function abrirVozSePreciso(s){
   const ev=s.evento,id=ev&&ev.id+":"+s.capitulo;
   if(ev&&D.cenaDe("evento",ev.id)&&!guardado("sessionStorage",chaveCena(s))&&!guardado("sessionStorage",chaveVoz(s,id))&&!(tela.cena&&tela.cena.id===id)){
     D.tocar({...base,tipo:"evento",id:ev.id,opcoes:ev.opcoes,podeAdiar:true,
-      kicker:(ev.exclusivo?"★ Só na sua história":"Decisão que muda o seu legado")+" · "+(CAPITULOS[s.capitulo]?.[1]||""),
+      kicker:(ev.exclusivo?"★ Só na sua história":"Decisão que muda o seu legado")+" · "+(rot(s,s.capitulo)[1]||""),
       // a resposta da cena é a da entrevista: o pré-jogo vem em seguida e o "Confirmar" manda as duas ao servidor
       aoFechar:({opcao,adiou})=>{
         guardar("sessionStorage",chaveVoz(s,id));
@@ -532,7 +666,8 @@ const iconeTatica={
 };
 function cenaHTML(s){
   const c=tela.cena,ev=s.evento;
-  if(!c||!ev)return "";
+  if(!c||(!ev&&!c.soTatica))return "";
+  if(c.soTatica&&(s.jornada||s.evento)){tela.cena=null;return "";}
   const eu=euDe(s),cor=coresDe(eu.clube)[0]||"#3d7ae0";
   const fechar='<button class="rtc-button ghost rtc-cena-fechar" data-acao="fechar-cena">Decidir depois</button>';
   if(c.passo==="cena"){
@@ -542,7 +677,7 @@ function cenaHTML(s){
       (window.RoadDublagem&&RoadDublagem.cenaDe("evento",ev.id)?'<button class="rtc-button ghost rtc-cena-voz" data-acao="ver-cena-voz">▶ Ver a cena dublada</button>':'')+
       '<svg class="rtc-cena-mic" viewBox="0 0 46 120" aria-hidden="true"><rect x="12" y="2" width="22" height="34" rx="11" fill="#1c1c22" stroke="#555"/><rect x="21" y="36" width="4" height="84" fill="#111"/><rect x="8" y="40" width="30" height="14" fill="#7fb6ff" opacity=".8"/></svg>'+fechar+'</div>';
     return '<div class="rtc-cena" role="dialog" aria-modal="true" aria-labelledby="rtc-cena-titulo"><div class="rtc-cena-caixa">'+arte+
-      '<div class="rtc-cena-texto"><span class="rtc-kicker'+(ev.exclusivo?" exclusivo":"")+'">'+(ev.exclusivo?"★ Só na sua história":"Decisão que muda o seu legado")+' · '+safe(CAPITULOS[s.capitulo]?.[1]||"")+'</span>'+
+      '<div class="rtc-cena-texto"><span class="rtc-kicker'+(ev.exclusivo?" exclusivo":"")+'">'+(ev.exclusivo?"★ Só na sua história":"Decisão que muda o seu legado")+' · '+safe(rot(s,s.capitulo)[1]||"")+'</span>'+
       '<h2 id="rtc-cena-titulo" tabindex="-1">'+safe(ev.titulo)+'</h2><div class="rtc-legenda">'+safe(ev.texto)+'</div>'+
       '<div class="rtc-opcoes-cena">'+ev.opcoes.map((x,i)=>'<button type="button" class="rtc-escolha'+(x.propria?" propria":"")+'" data-escolha="'+x.id+'" aria-pressed="'+(c.opcao===x.id)+'">'+
         '<span class="rtc-escolha-n">'+(i+1)+'</span><span><b>'+safe(x.texto)+'</b><small>'+safe(x.dica)+'</small></span><span class="rtc-tom tom-'+safe(x.tom)+'">'+(x.propria?"★ Só sua · ":"")+safe(TOM[x.tom]||"")+'</span></button>').join("")+'</div>'+
@@ -550,16 +685,20 @@ function cenaHTML(s){
   }
   const j=meuJogo(s,s.capitulo);
   const lado=id=>{const c2=clubes.get(id),dono=s.jogadores.find(p=>p.clube===id);return '<div class="lado">'+escudo(id,52)+'<div><b>'+safe(nomeClube(id))+'</b><small>'+(dono?safe(dono.avatar):"Computador")+(c2?" · força "+num(c2.forca):"")+'</small></div></div>';};
-  const escolhida=ev.opcoes.find(x=>x.id===c.opcao);
+  const escolhida=ev?ev.opcoes.find(x=>x.id===c.opcao):null;
+  // no pré-jogo sozinho (rodada sem entrevista) só a estratégia; com a entrevista, a resposta e a estratégia vão juntas
+  const pe=c.soTatica?'<button class="rtc-button ghost" data-acao="fechar-tatica">Cancelar</button><button class="rtc-button ouro" data-acao="salvar-tatica">Salvar estratégia</button>':
+    (c.travada?'<span class="rtc-cena-resposta">Resposta: <b>'+safe(escolhida?escolhida.texto:"")+'</b></span>':
+      '<button class="rtc-button ghost" data-acao="cena-voltar">← Resposta: '+safe(escolhida?escolhida.texto:"")+'</button>')+
+    '<button class="rtc-button ouro" data-acao="decidir">Confirmar escolhas</button>';
   return '<div class="rtc-cena" role="dialog" aria-modal="true" aria-labelledby="rtc-cena-titulo"><div class="rtc-cena-caixa"><div class="rtc-gramado">'+
-    '<span class="rtc-kicker">Pré-jogo · '+safe(CAPITULOS[s.capitulo]?.[1]||"")+'</span><h2 id="rtc-cena-titulo" tabindex="-1">Como o clube entra em campo</h2>'+
-    (j?'<div class="rtc-prejogo-confronto">'+lado(j.casa)+'<em>×</em>'+lado(j.fora)+'</div>':'<p class="rtc-small">Seu clube não joga nesta jornada; a escolha vale para o registro da história.</p>')+
+    '<span class="rtc-kicker">Pré-jogo · '+safe(rot(s,s.capitulo)[1]||"")+'</span><h2 id="rtc-cena-titulo" tabindex="-1">Como o clube entra em campo</h2>'+
+    (j?'<div class="rtc-prejogo-confronto">'+lado(j.casa)+'<em>×</em>'+lado(j.fora)+'</div>':'<p class="rtc-small">Seu clube não joga nesta rodada; a escolha vale para o registro da história.</p>')+
     '<div class="rtc-taticas" role="radiogroup" aria-label="Estratégia">'+TATICAS.map(([id,nome,texto])=>'<button type="button" class="rtc-tatica" role="radio" data-tatica="'+id+'" aria-pressed="'+(c.tatica===id)+'" aria-checked="'+(c.tatica===id)+'">'+
       iconeTatica[id]+'<span><b>'+nome+'</b><br><small>'+texto+'</small></span></button>').join("")+'</div>'+
-    '<p class="rtc-aviso-jogo">O jogo passa pelo mesmo motor da Carreira, minuto a minuto, com o elenco do clube: a estratégia muda como o time joga, e a forma do protagonista mexe no time inteiro. A resposta na entrevista mexe na história, nos laços e na forma, não no placar direto. Depois do apito, a sala assiste junto.</p></div>'+
-    '<div class="rtc-cena-texto"><div class="rtc-cena-pe">'+(c.travada?'<span class="rtc-cena-resposta">Resposta: <b>'+safe(escolhida?escolhida.texto:"")+'</b></span>':
-      '<button class="rtc-button ghost" data-acao="cena-voltar">← Resposta: '+safe(escolhida?escolhida.texto:"")+'</button>')+
-    '<button class="rtc-button ouro" data-acao="decidir">Confirmar escolhas</button></div></div></div></div>';
+    '<p class="rtc-aviso-jogo">O jogo passa pelo mesmo motor da Carreira, minuto a minuto, com o elenco do clube: a estratégia muda como o time joga, e a forma do protagonista mexe no time inteiro. '+
+      'Aos 25\', no intervalo e aos 70\' o jogo para e você decide como joga: voltar para marcar, guardar fôlego para o contra-ataque, pressionar, pedir a bola. Isso muda o placar.</p></div>'+
+    '<div class="rtc-cena-texto"><div class="rtc-cena-pe">'+pe+'</div></div></div></div>';
 }
 
 // ---------- o epílogo ----------
@@ -614,6 +753,15 @@ app.addEventListener("click",async e=>{
   if(ds.aba){tela.aba=ds.aba;desenhar();return;}
   if(ds.noticia!=null){tela.noticia=Number(ds.noticia);desenhar();app.querySelector('[data-noticia="'+ds.noticia+'"]')?.focus();return;}
   if(ds.rever){RoadPartida.rever(sala,ds.rever);return;}
+  if(ds.feed){tela.feed=ds.feed;desenhar();app.querySelector('[data-feed="'+CSS.escape(ds.feed)+'"]')?.focus();return;}
+  if(ds.curtir){if(curtidas.has(ds.curtir))curtidas.delete(ds.curtir);else curtidas.add(ds.curtir);
+    try{localStorage.setItem("rtc:curtidas",JSON.stringify([...curtidas].slice(-400)));}catch{}desenhar();return;}
+  if(ds.momento){
+    if(ocupado)return;ocupado=true;alvo.disabled=true;
+    const r=await pedido("momento",{opcao:ds.momento});ocupado=false;
+    if(!r.ok){toast(r.error);alvo.disabled=false;return;}
+    if(r.estado)setSala(r);return;
+  }
   if(ds.escolha!=null){tela.cena.opcao=Number(ds.escolha);desenhar();app.querySelector('[data-escolha="'+ds.escolha+'"]')?.focus();return;}
   if(ds.tatica){tela.cena.tatica=ds.tatica;desenhar();app.querySelector('[data-tatica="'+ds.tatica+'"]')?.focus();return;}
   const acao=ds.acao;if(!acao||ocupado)return;
@@ -625,6 +773,8 @@ app.addEventListener("click",async e=>{
   }
   if(acao==="abrir-editor"){tela.editor=true;tela.cat="pele";desenhar();window.scrollTo({top:0});return;}
   if(acao==="fechar-editor"){tela.editor=false;rascunho.de=null;desenhar();return;}
+  if(acao==="abrir-tatica"){tela.cena={id:"tatica:"+sala.capitulo,passo:"jogo",soTatica:true,opcao:null,tatica:sala.tatica||"equilibrado",foco:true};desenhar();return;}
+  if(acao==="fechar-tatica"){tela.cena=null;desenhar();return;}
   if(acao==="abrir-cena"){tela.cena={id:sala.evento.id+":"+sala.capitulo,passo:"cena",opcao:null,tatica:"equilibrado",foco:true};desenhar();return;}
   if(acao==="fechar-cena"){try{sessionStorage.setItem(chaveCena(sala),"1");}catch{}tela.cena=null;desenhar();return;}
   if(acao==="cena-proximo"){tela.cena.passo="jogo";tela.cena.foco=true;desenhar();return;}
@@ -638,6 +788,7 @@ app.addEventListener("click",async e=>{
   if(acao==="iniciar")evento="iniciar";
   if(acao==="avancar")evento="avancar";
   if(acao==="decidir"){evento="decidir";dados={opcao:tela.cena.opcao,tatica:tela.cena.tatica};}
+  if(acao==="salvar-tatica"){evento="tatica";dados={tatica:tela.cena.tatica};}
   if(!evento)return;
   if((acao==="criar"||acao==="entrar")&&rascunho.nome)try{localStorage.setItem("galera:name",rascunho.nome);}catch{}
   ocupado=true;alvo.disabled=true;
@@ -645,6 +796,7 @@ app.addEventListener("click",async e=>{
   if(!r.ok){toast(r.error);alvo.disabled=false;return;}
   if(acao==="mudar"){tela.editor=false;rascunho.de=null;}
   if(acao==="decidir"){tela.cena=null;toast("Escolha registrada. A imprensa já está escrevendo.");}
+  if(acao==="salvar-tatica"){tela.cena=null;toast("Estratégia salva para os próximos jogos.");}
   if(acao==="avancar")tela.aba="central";
   if(r.estado)setSala(r);
 });
@@ -683,10 +835,10 @@ document.addEventListener("keydown",e=>{
 socket.on("catalogo",list=>{catalogo=Array.isArray(list)?list:[];clubes=new Map(catalogo.map(c=>[c.id,c]));desenhar();});
 socket.on("estado",data=>{
   // não redesenha o editor do vestiário no meio da edição
-  sala=data;RoadPartida.verificar(sala); // antes de desenhar: com o jogo ao vivo aberto, a cena do capítulo espera
+  sala=data;relogio=(data.agora||Date.now())-Date.now();RoadPartida.verificar(sala); // antes de desenhar: com o jogo ao vivo aberto, a cena do capítulo espera
   // a cena dublada não toca por cima do jogo ao vivo, e a da entrevista sai se a decisão já foi feita (outra aba)
   const D=window.RoadDublagem,at=D?.atual;
-  if(at&&(RoadPartida.aberta||(at.tipo==="evento"&&data.evento?.id!==at.id)))D.parar();
+  if(at&&(RoadPartida.aberta||data.jornada?.momento||(at.tipo==="evento"&&data.evento?.id!==at.id)))D.parar();
   if(!(data.fase==="lobby"&&tela.editor))desenhar();
 });
 socket.on("connect",async()=>{

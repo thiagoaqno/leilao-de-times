@@ -568,6 +568,46 @@
     { id: "pergunta-inconveniente", arquetipo: "romantico", depoisDe: "aniversario",
       quando: { chave: "resultado_ultimo_jogo", op: "==", valor: "derrota" } },
   ];
+  // ---------- os momentos do jogo (as decisões do protagonista no meio da partida) ----------
+  // Aos 25', no intervalo e aos 70', cada protagonista em campo escolhe como joga. É o jogador falando, não o técnico:
+  // a escolha dele arrasta o time e vira a tática do motor da Carreira (mentalidade, pressão, linha e estilo), que muda
+  // o resto do jogo. `tatica` soma no que o time já está fazendo; `estilo` troca o estilo. O técnico do computador
+  // segue fazendo as substituições.
+  const MOMENTOS = {
+    marcar: { texto: "Voltar para ajudar na marcação", dica: "Você recua, fecha o meio e o time segura o que tem.",
+      tatica: { mentalidade: -1, linha: -1 }, frase: "voltou para ajudar na marcação" },
+    contra: { texto: "Economizar energia para o contra-ataque", dica: "Guarda o fôlego e espera o espaço nas costas deles.",
+      tatica: { mentalidade: -1, pressao: -1 }, estilo: "contra", frase: "guardou energia para o contra-ataque" },
+    pressionar: { texto: "Pressionar a saída de bola", dica: "Morder lá na frente: cansa mais, mas rouba perto do gol.",
+      tatica: { pressao: 1, linha: 1 }, estilo: "gegenpressing", frase: "puxou a pressão na saída de bola" },
+    ritmo: { texto: "Pedir a bola e ditar o ritmo", dica: "A bola passa por você: o time troca passes e cansa o rival.",
+      tatica: { mentalidade: 0 }, estilo: "tikitaka", frase: "pediu a bola e ditou o ritmo" },
+    cima: { texto: "Partir para cima de vez", dica: "Todo mundo no ataque. Ou vira, ou leva mais.",
+      tatica: { mentalidade: 2, linha: 1 }, frase: "chamou o time para cima" },
+    manter: { texto: "Manter o plano", dica: "Do jeito que está, está bom.", tatica: {}, frase: "manteve o plano" },
+  };
+  const MOMENTOS_POR_PLACAR = {
+    perdendo: ["cima", "pressionar", "ritmo", "manter"],
+    empatando: ["pressionar", "ritmo", "contra", "marcar", "manter"],
+    ganhando: ["marcar", "contra", "ritmo", "manter"],
+  };
+  const MINUTOS_DE_MOMENTO = [25, 70]; // e o intervalo
+  // as opções do momento para quem está com `meu` gols contra `deles`
+  function opcoesDoMomento(meu, deles) {
+    const k = meu < deles ? "perdendo" : meu > deles ? "ganhando" : "empatando";
+    return MOMENTOS_POR_PLACAR[k].map((id) => ({ id, texto: MOMENTOS[id].texto, dica: MOMENTOS[id].dica }));
+  }
+  // a tática nova do time a partir da que ele tinha e da escolha do protagonista
+  function taticaDoMomento(atual, id) {
+    const m = MOMENTOS[id] || MOMENTOS.manter, t = { ...(atual || {}) };
+    for (const [k, v] of Object.entries(m.tatica)) {
+      const [min, max] = k === "mentalidade" ? [-2, 2] : [0, 2];
+      t[k] = clamp((Number(t[k]) || 0) + v, min, max);
+    }
+    if (m.estilo) t.estilo = m.estilo;
+    return t;
+  }
+
   // grava o que a escolha muda na história: valores substituem, os que terminam em _delta somam
   function gravarNarrativa(p, mudancas) {
     p.narrativa ||= {};
@@ -690,5 +730,6 @@
     porClube, limparFigura, mudarFigura, garantir, novoProtagonista, eventoPara, opcoesPara, aplicar, resolverSorte,
     formaDe, riscoDe, epilogoExtra,
     PRELUDIOS, CALLBACKS, preludioPara, gravarNarrativa,
+    MOMENTOS, MINUTOS_DE_MOMENTO, opcoesDoMomento, taticaDoMomento,
   };
 });
