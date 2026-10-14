@@ -112,6 +112,36 @@ app.get("/api/escudo/:id", async (req, res) => {
   if (!x) return res.status(502).end();
   res.set("Cache-Control", "public, max-age=604800").type(x.tipo).send(x.dados);
 });
+// Road to Champions: a foto de cada protagonista (public/jogador/road-fotos.js), baixada uma vez da TheSportsDB e servida
+// daqui, como os escudos. Se o endereço guardado falhar, procura o jogador de novo pelo nome.
+const RoadFotos = require("./public/jogador/road-fotos.js");
+const fotosRtc = new Map();
+async function baixarFotoRtc(arq, tipo) {
+  const f = RoadFotos.FOTOS[arq], campo = tipo === "foto" ? "strThumb" : "strCutout";
+  const pegar = async (url) => {
+    if (!url) return null;
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    return r.ok ? { tipo: r.headers.get("content-type") || "image/png", dados: Buffer.from(await r.arrayBuffer()) } : null;
+  };
+  const guardada = await pegar(f[tipo === "foto" ? "foto" : "recorte"]).catch(() => null);
+  if (guardada) return guardada;
+  const r = await fetch(`https://www.thesportsdb.com/api/v1/json/${process.env.THESPORTSDB_KEY || "123"}/searchplayers.php?p=${encodeURIComponent(f.busca)}`, { signal: AbortSignal.timeout(8000) });
+  const j = r.ok ? await r.json() : null;
+  const p = (j && j.player || []).find((x) => String(x.idPlayer) === f.id) || (j && j.player || [])[0];
+  return pegar(p && (p[campo] || p.strThumb));
+}
+app.get("/api/rtc-foto/:arq", async (req, res) => {
+  const arq = req.params.arq, tipo = req.query.tipo === "foto" ? "foto" : "recorte";
+  if (!Object.hasOwn(RoadFotos.FOTOS, arq)) return res.status(404).end();
+  const chave = arq + ":" + tipo;
+  if (!fotosRtc.has(chave)) {
+    fotosRtc.set(chave, baixarFotoRtc(arq, tipo).catch(() => null)
+      .then((x) => { if (!x) setTimeout(() => fotosRtc.delete(chave), 60000); return x; })); // se falhou, tenta de novo daqui a um minuto
+  }
+  const x = await fotosRtc.get(chave);
+  if (!x) return res.status(502).end();
+  res.set("Cache-Control", "public, max-age=604800").type(x.tipo).send(x.dados);
+});
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
 app.get("/uno", (req, res) => res.redirect("/uno/"));
