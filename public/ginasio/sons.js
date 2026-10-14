@@ -26,6 +26,20 @@ function tocarEvento(e) {
   else if (e.tipo === "troca") nota(320, 640, 0.12);
   else if (e.tipo === "sumiu") nota(e.jeito === "voo" ? 300 : 160, e.jeito === "voo" ? 900 : 60, 0.22, e.jeito === "voo" ? "sine" : "triangle");
   else if (e.tipo === "voltou") { nota(e.jeito === "voo" ? 700 : 110, 40, 0.18, "triangle"); nota(90, 30, 0.2, "square", 0.03); }
+  else if (e.tipo === "guarda") nota(220, 260, 0.06, "square");
+  else if (e.tipo === "aparou") { nota(1400, 900, 0.12, "triangle"); nota(2100, 1800, 0.08, "sine", 0.02); }
+  else if (e.tipo === "perfeita") { nota(660, 1320, 0.16); nota(990, 1980, 0.16, "sine", 0.06); }
+  else if (e.tipo === "guardaQuebrou") { nota(500, 80, 0.3, "sawtooth"); }
+  else if (e.tipo === "batida") { nota(90, 40, 0.18, "square"); }
+  else if (e.tipo === "atordoado" && e.motivo !== "golpe") nota(880, 660, 0.2, "sine");
+  else if (e.tipo === "interrompido") nota(300, 120, 0.15, "triangle");
+  else if (e.tipo === "pulou") nota(220, 700, 0.18);
+  else if (e.tipo === "aterrissou") { nota(120, 40, 0.22, "triangle"); nota(70, 30, 0.25, "square", 0.02); }
+  else if (e.tipo === "tiro") nota(520, 300, 0.05, "square");
+  else if (e.tipo === "combo") nota(e.ultimo ? 160 : 260, 80, 0.07, "triangle");
+  else if (e.tipo === "area" && e.forma === "feixe") { nota(900, 200, 0.3, "sawtooth"); }
+  else if (e.tipo === "area" && e.forma === "anel") nota(80, 35, 0.4, "triangle");
+  else if (e.tipo === "area" && e.forma === "onda") nota(300, 120, 0.5, "sine");
   else if (e.tipo === "fim") { for (let i = 0; i < 3; i++) nota([440, 550, 660][i], [440, 550, 660][i], 0.18, "triangle", i * 0.13); }
   else return;
   ultimoSom = agora;

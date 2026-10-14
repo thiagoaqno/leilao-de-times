@@ -38,6 +38,15 @@
       <div class="entrada"><label for="hCode">Código da sala</label><div class="linha"><input id="hCode" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go"><button id="btnJoin">Entrar</button><button id="btnWatch" class="icone" title="Assistir" aria-label="Assistir"></button></div></div>
       <p id="hErr" class="erro" role="alert"></p>
       <div id="insignias" class="insignias" aria-label="Insígnias dos ginásios"></div>
+      <details id="comoJogar" class="como-jogar"><summary>Como lutar</summary>
+        <dl>
+          <dt>Golpes</dt><dd>Clique, botão direito, Q e E. Cada golpe tem o seu jeito: feixe, sopro, onda, tremor, rajada, bumerangue, teleguiado, bomba, salto, redemoinho, combo, agarrão e armadilha.</dd>
+          <dt>Esquiva (Espaço)</dt><dd>Rola para o lado do movimento. Na hora certa é <b>perfeita</b>: as recargas adiantam e o próximo golpe sai mais forte.</dd>
+          <dt>Guarda (segure Shift ou F)</dt><dd>Segura o golpe de frente, mas gasta a barra; se ela acaba, fica tonto. Levantar bem na hora <b>apara</b>: o projétil volta e quem bateu cambaleia.</dd>
+          <dt>Agarrão</dt><dd>Passa pela guarda. Mas quem apanha enquanto prepara um golpe perde o golpe.</dd>
+          <dt>Empurrão</dt><dd>Golpe forte joga longe (bicho pesado voa menos). Bater na parede ou na pilastra machuca e deixa tonto.</dd>
+        </dl>
+      </details>
     </div>
     <fieldset id="opcoes"><legend>Partida</legend>
       <div class="segmentos" aria-label="Modo"><button data-modo="galeramon" aria-pressed="true">Galeramon</button><button data-modo="pokemon" aria-pressed="false">Pokémon</button><button data-modo="naruto" aria-pressed="false">Naruto</button></div>
@@ -58,11 +67,11 @@
   <div id="chakraHud" class="hidden" role="status"></div>
   <div id="reservas" aria-label="Time na batalha"></div>
   <div id="habilidades" aria-label="Golpes"></div>
-  <button id="btnEsquiva" class="habilidade esquiva" title="Esquiva" aria-label="Esquiva"></button>
+  <div id="defesa"><button id="btnEsquiva" class="habilidade esquiva" title="Esquiva (Espaço)" aria-label="Esquiva"></button><button id="btnGuarda" class="habilidade esquiva guarda" title="Guarda: segure (Shift ou F)" aria-label="Guarda: segure"></button></div>
 </footer>
 <dialog id="dex">
   <div class="dialogo-topo"><h2 id="dexTitulo">Escolher bicho</h2><button id="dexFechar" class="icone" title="Fechar" aria-label="Fechar"></button></div>
-  <div class="busca"><input id="dexBusca" type="search" placeholder="Buscar" aria-label="Buscar criatura" autocomplete="off"><select id="dexTipo" aria-label="Tipo"><option value="">Todos os tipos</option></select></div>
+  <div class="busca"><input id="dexBusca" type="search" placeholder="Buscar" aria-label="Buscar criatura" autocomplete="off"><select id="dexTipo" aria-label="Tipo"><option value="">Todos os tipos</option></select><select id="dexGeracao" aria-label="Geração" class="hidden"><option value="">Todas as gerações</option></select></div>
   <div id="dexLista"></div><p id="dexVazio" class="hidden">Nenhum bicho encontrado.</p>
   <div class="paginacao"><button id="dexAnterior" class="icone" title="Página anterior" aria-label="Página anterior"></button><span id="dexPagina"></span><button id="dexProximo" class="icone" title="Próxima página" aria-label="Próxima página"></button></div>
 </dialog>

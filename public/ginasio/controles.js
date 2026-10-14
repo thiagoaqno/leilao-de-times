@@ -1,20 +1,22 @@
 // Teclado, mouse e joystick usam o mesmo formato de comando.
 const toque = Toque.isTouch();
-const entrada = { teclas: new Set(), mouse: null, stick: { x: 0, y: 0 }, preparando: null, miraSolta: null, golpe: null, esquiva: false, esquivaLocal: false, troca: null };
+const entrada = { teclas: new Set(), mouse: null, stick: { x: 0, y: 0 }, preparando: null, miraSolta: null, golpe: null, esquiva: false, esquivaLocal: false, troca: null, guardaToque: false };
 const podeComandar = () => socket.connected && S?.phase === "play" && !salaVisivel && !!ME?.id && !document.querySelector("dialog[open]");
 function limparControles() {
   entrada.teclas.clear(); entrada.stick = { x: 0, y: 0 }; entrada.preparando = null; entrada.miraSolta = null;
-  entrada.golpe = null; entrada.esquiva = false; entrada.esquivaLocal = false; entrada.troca = null;
+  entrada.golpe = null; entrada.esquiva = false; entrada.esquivaLocal = false; entrada.troca = null; entrada.guardaToque = false;
 }
 function comandoAtual() {
   if (!podeComandar()) return { dx: 0, dy: 0, mira: { x: 1, y: 0 } };
   const k = entrada.teclas;
+  // a guarda vale enquanto segura (Shift, F ou o botão)
+  const guarda = k.has("ShiftLeft") || k.has("ShiftRight") || k.has("KeyF") || entrada.guardaToque;
   let dx = (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) - (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0);
   let dy = (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0) - (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0);
   if (Math.hypot(entrada.stick.x, entrada.stick.y) > 0.15) { dx = entrada.stick.x; dy = entrada.stick.y; }
   const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
   const e = N.previsto, pos = e || N.snap?.entidades.find((p) => p.id === ME.id);
-  if (!pos) return { dx, dy, mira: { x: 1, y: 0 } };
+  if (!pos) return { dx, dy, mira: { x: 1, y: 0 }, guarda };
   let alvo = entrada.mouse;
   if (toque || !alvo) {
     const inimigos = N.snap?.entidades.filter((o) => o.lado !== pos.lado && o.campo) || [];
@@ -24,14 +26,15 @@ function comandoAtual() {
   const direcaoManual = entrada.miraSolta || (entrada.preparando != null && l > 0.15 ? { x: dx, y: dy } : null);
   if (direcaoManual) alvo = { x: pos.x + direcaoManual.x * 5, y: pos.y + direcaoManual.y * 5 };
   const mx = alvo.x - pos.x, my = alvo.y - pos.y, d = Math.hypot(mx, my) || 1;
-  return { dx, dy, mira: { x: mx / d, y: my / d }, alvo: { x: alvo.x, y: alvo.y } };
+  return { dx, dy, mira: { x: mx / d, y: my / d }, alvo: { x: alvo.x, y: alvo.y }, guarda };
 }
 function mandarGolpe(i) { if (!podeComandar()) return; ativarSom(); entrada.golpe = i; }
 function mandarEsquiva() { if (!podeComandar()) return; ativarSom(); entrada.esquiva = entrada.esquivaLocal = true; }
 function mandarTroca(i) { if (podeComandar()) entrada.troca = i; }
 document.addEventListener("keydown", (e) => {
   if (!podeComandar() || e.target.closest?.("input,select,textarea,[contenteditable]")) return;
-  if (["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight", "Space", "KeyQ", "KeyE", "Digit1", "Digit2", "Digit3"].includes(e.code)) e.preventDefault();
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight", "Space", "KeyQ", "KeyE", "KeyF", "ShiftLeft", "ShiftRight", "Digit1", "Digit2", "Digit3"].includes(e.code)) e.preventDefault();
+  if (["ShiftLeft", "ShiftRight", "KeyF"].includes(e.code)) ativarSom();
   entrada.teclas.add(e.code);
   if (e.repeat) return;
   if (e.code === "KeyQ") mandarGolpe(2); if (e.code === "KeyE") mandarGolpe(3);
@@ -67,13 +70,14 @@ function configurarToque() {
         },
       })),
       { icon: ic("pular"), label: modoAtual() === "naruto" ? "Subst." : "Esquiva", down: mandarEsquiva },
+      { icon: ic("escudo"), label: "Guarda", down: () => { if (podeComandar()) { ativarSom(); entrada.guardaToque = true; } }, up: () => { entrada.guardaToque = false; } },
     ],
   });
   const el = $("toque");
   el.querySelectorAll(".btns button").forEach((b, i) => {
-    b.setAttribute("aria-label", i === 4 ? (modoAtual() === "naruto" ? "Substituição" : "Esquiva") : dexAtual().MOVES[mon.moves[i]].n);
+    b.setAttribute("aria-label", i === 5 ? "Guarda (segure)" : i === 4 ? (modoAtual() === "naruto" ? "Substituição" : "Esquiva") : dexAtual().MOVES[mon.moves[i]].n);
     b.title = b.getAttribute("aria-label"); b.dataset.habilidade = i;
     b.insertAdjacentHTML("beforeend", '<i class="recarga"></i><span class="segundos"></span>');
   });
-  if (!el._cancela) { el.addEventListener("pointercancel", () => { entrada.preparando = null; entrada.miraSolta = null; }, true); el._cancela = true; }
+  if (!el._cancela) { el.addEventListener("pointercancel", () => { entrada.preparando = null; entrada.miraSolta = null; entrada.guardaToque = false; }, true); el._cancela = true; }
 }

@@ -9,7 +9,7 @@
 // - A câmera reage: treme nos golpes fortes e dá um "soco" de aproximação nos críticos, desmaios e explosões. Com
 //   menos movimento no sistema, nada disso (e o clarão do raio também não).
 // Usa as peças de golpes.js (familiaDe, PALETA), de animacao.js (PARTICULAS, particula, espalhar) e de cena3d.js.
-const G3 = { ok: false, projeteis: new Map(), vivos: [], pedras: new Map(), luzes: [], sacudida: 0, soco: 0, clarao: 0, cores: new Map() };
+const G3 = { ok: false, projeteis: new Map(), vivos: [], pedras: new Map(), bombas: new Map(), luzes: [], sacudida: 0, soco: 0, clarao: 0, cores: new Map() };
 const BRILHAM = new Set(["fogo", "dragao", "raio", "psiquico", "fada", "fantasma", "gelo", "agua", "veneno"]);
 const corG3 = (hex) => { let c = G3.cores.get(hex); if (!c) G3.cores.set(hex, (c = new THREE.Color(hex))); return c; };
 
@@ -54,7 +54,7 @@ function brilhoG3(cor, tamanho, opacidade = 0.8) {
   s.scale.setScalar(tamanho); return s;
 }
 function soltarG3(obj) {
-  obj.traverse((o) => { if (o.material) o.material.dispose(); });
+  obj.traverse((o) => { if (o.material) o.material.dispose(); if (o.userData && o.userData.propria) o.geometry.dispose(); });
   obj.removeFromParent();
 }
 // uma luz por um tempo (ou por um quadro, para o que anda): fica com a que está mais perto de acabar
@@ -290,6 +290,110 @@ function pedrasCaindo(agora) {
   for (const [id, lista] of G3.pedras) if (!vistas.has(id)) { lista.forEach(soltarG3); G3.pedras.delete(id); }
 }
 
+
+// ---------- os jeitos novos de golpe ----------
+// geometria só deste efeito: some junto com ele (soltarG3)
+function propria(m) { m.userData.propria = true; return m; }
+// o feixe: um tubo de luz da boca até onde bateu, que engrossa e some
+function feixe3d(f, agora) {
+  const P = paletaDe(f.elemento), g = new THREE.Group(), len = f.len || 6, r = f.r || 0.35;
+  g.position.set(f.x, 0.5, f.y); g.rotation.y = -Math.atan2(f.dy, f.dx);
+  const fora = malhaG3(G3.geo.tubo, P[1], { somar: true, opacidade: 0.85, dupla: true }), miolo = malhaG3(G3.geo.tubo, P[0], { somar: true, opacidade: 1, dupla: true });
+  for (const m of [fora, miolo]) { m.rotation.z = -Math.PI / 2; m.position.x = len / 2; g.add(m); }
+  const boca = brilhoG3(P[1], r * 6, 1), fim = brilhoG3(P[0], r * 5, 0.9); fim.position.x = len; g.add(boca, fim);
+  vivo(g, 0.32, (k) => {
+    const larg = r * (k < 0.15 ? 0.4 + k * 4 : 1 - (k - 0.15) * 0.9);
+    fora.scale.set(larg * 1.1, len, larg * 1.1); miolo.scale.set(larg * 0.45, len, larg * 0.45);
+    fora.material.opacity = 0.85 * (1 - k); miolo.material.opacity = 1 - k; boca.material.opacity = fim.material.opacity = 1 - k;
+  }, agora);
+  for (let i = 0; i < 14; i++) { const d = Math.random() * len; particula(f.x + f.dx * d, f.y + f.dy * d, { z: 0.5, vx: (Math.random() - 0.5) * 1.5, vy: (Math.random() - 0.5) * 1.5, vz: 1, g: 1, vida: 0.4, cor: P[i % 2], tam: 0.08 }); }
+  pedirLuz(P[1], 10, f.x + f.dx * len / 2, f.y + f.dy * len / 2, 0.8, 300, agora);
+  sacudir(0.3, 0.15);
+}
+// o sopro: um leque transparente e as partículas indo para a frente
+function cone3d(f, agora) {
+  const P = paletaDe(f.elemento), len = f.len || 3, arco = f.arco || 1.2, ang = Math.atan2(f.dy, f.dx);
+  const geo = new THREE.CircleGeometry(len, 18, -arco / 2, arco); geo.rotateX(-Math.PI / 2);
+  const leque = propria(malhaG3(geo, P[1], { somar: true, opacidade: 0.5, dupla: true }));
+  leque.position.set(f.x, 0.35, f.y); leque.rotation.y = -ang;
+  vivo(leque, 0.35, (k) => { leque.scale.setScalar(0.4 + k * 0.6); leque.material.opacity = 0.5 * (1 - k); }, agora);
+  for (let i = 0; i < 26; i++) {
+    const a = ang + (Math.random() - 0.5) * arco, v = len * (1.6 + Math.random() * 1.4);
+    particula(f.x + Math.cos(a) * 0.3, f.y + Math.sin(a) * 0.3, { z: 0.4, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 0.3 + Math.random(), g: familiaDe(f.elemento) === "fogo" ? -1 : 2, vida: 0.4, cor: P[i % 3], tam: 0.1, atrito: 3 });
+  }
+  pedirLuz(P[1], 6, f.x + Math.cos(ang) * len / 2, f.y + Math.sin(ang) * len / 2, 0.7, 260, agora);
+}
+// o tremor: o anel que abre no chão levantando poeira (ou faísca, ou som)
+function anel3d(f, agora) {
+  const P = paletaDe(f.elemento), fam = familiaDe(f.elemento), r = f.r || 3, dur = f.aviso || 0.55;
+  const onda = malhaG3(G3.geo.toro, P[1], { opacidade: 0.9 }), luz = malhaG3(G3.geo.anel, P[0], { somar: true, opacidade: 0.6, dupla: true });
+  onda.rotation.x = Math.PI / 2; const g = new THREE.Group(); g.position.set(f.x, 0.15, f.y); g.add(onda, luz);
+  const poeira = fam === "terra" || fam === "pedra" || fam === "normal" ? ["#d8c8a0", P[1], P[2]] : [P[0], P[1]];
+  vivo(g, dur, (k) => {
+    const rr = Math.max(0.2, r * k); onda.scale.set(rr, rr, 3 + (1 - k) * 4); luz.scale.setScalar(rr);
+    onda.material.opacity = 0.9 * (1 - k * 0.6); luz.material.opacity = 0.6 * (1 - k);
+    if (Math.random() < 0.8) { const a = Math.random() * 6.28; particula(f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr, { z: 0.05, vz: 2.5 + Math.random() * 2, vx: Math.cos(a), vy: Math.sin(a), g: 9, vida: 0.4, cor: poeira[Math.floor(Math.random() * poeira.length)], tam: 0.12 }); }
+  }, agora);
+  sacudir(fam === "terra" ? 0.55 : 0.3, 0.1);
+  pedirLuz(P[1], 6, f.x, f.y, 0.5, dur * 1000, agora);
+}
+// a onda: uma parede que anda, com espuma em cima
+function onda3d(f, agora) {
+  const P = paletaDe(f.elemento), largura = (f.r || 1.5) * 2, dur = f.aviso || 1, v = f.v || 6.5, g = new THREE.Group();
+  g.rotation.y = -Math.atan2(f.dy, f.dx);
+  // a frente curvada da onda: meio cano deitado, aberto para a frente, e a crista de espuma em cima
+  const geo = new THREE.CylinderGeometry(0.62, 0.62, largura, 18, 1, true, 0, Math.PI); geo.rotateX(Math.PI / 2);
+  const parede = propria(malhaG3(geo, P[2], { opacidade: 0.75, dupla: true })), fundo = propria(malhaG3(geo, P[1], { somar: true, opacidade: 0.35, dupla: true }));
+  const crista = malhaG3(G3.geo.cubo, P[0], { opacidade: 0.95 });
+  fundo.scale.setScalar(0.8); crista.scale.set(0.22, 0.14, largura * 0.96);
+  g.add(parede, fundo, crista);
+  vivo(g, dur, (k, idade) => {
+    const d = idade * v; g.position.set(f.x + f.dx * d, 0, f.y + f.dy * d);
+    const sobe = Math.max(0.05, Math.min(1, k * 6) * (1 - Math.max(0, k - 0.8) * 5));
+    for (const m of [parede, fundo]) { m.scale.set(sobe, sobe, 1); m.position.y = 0.62 * sobe; }
+    crista.position.set(0.15 * sobe, 1.24 * sobe, 0); crista.scale.y = 0.14 * sobe;
+    parede.material.opacity = 0.75 * Math.min(1, (1 - k) * 4);
+    if (Math.random() < 0.9) { const lat = (Math.random() - 0.5) * largura; particula(f.x + f.dx * d - f.dy * lat, f.y + f.dy * d + f.dx * lat, { z: 1.2 * sobe, vz: 1.5, vx: f.dx * v * 0.6, vy: f.dy * v * 0.6, g: 9, vida: 0.4, cor: P[Math.floor(Math.random() * 2)], tam: 0.1, quica: 0 }); }
+  }, agora);
+}
+// o redemoinho (ou o chão em chamas, ou a fumaça): fitas girando por cima da zona enquanto ela dura
+function zona3d(f, agora) {
+  const P = paletaDe(f.elemento), r = f.r || 1.6, dur = Math.max(0.3, f.falta || 3), g = new THREE.Group(), fitas = [];
+  g.position.set(f.x, 0, f.y);
+  for (let i = 0; i < 4; i++) { const m = malhaG3(G3.geo.vento, P[i % 3], { somar: true, opacidade: 0.7, dupla: true }); m.rotation.x = Math.PI / 2; g.add(m); fitas.push(m); }
+  vivo(g, dur, (k, idade) => {
+    const some = Math.min(1, (1 - k) * 6, k * 8);
+    fitas.forEach((m, i) => { const alt = 0.2 + i * 0.35, raio = r * (f.puxa ? 1 - i * 0.18 : 0.6 + i * 0.12); m.position.y = alt; m.scale.setScalar(raio); m.rotation.z = idade * (f.puxa ? 7 : 2.5) * (i % 2 ? -1 : 1) + i; m.material.opacity = 0.7 * some; });
+    if (Math.random() < 0.6) { const a = Math.random() * 6.28, d = Math.random() * r; particula(f.x + Math.cos(a) * d, f.y + Math.sin(a) * d, { z: 0.1, vz: 1.2 + Math.random(), vx: f.puxa ? -Math.cos(a) * 1.5 : 0, vy: f.puxa ? -Math.sin(a) * 1.5 : 0, g: -0.5, vida: 0.6, cor: P[Math.floor(Math.random() * 3)], tam: 0.09 }); }
+  }, agora);
+}
+// a bomba: a bola em arco de quem atirou até o ponto (some quando a área estoura)
+function bombasVoando(agora) {
+  const vistas = new Set();
+  for (const a of areasVisuais.values()) {
+    if (a.forma !== "bomba" || !a.de) continue;
+    vistas.add(a.id);
+    let o = G3.bombas.get(a.id);
+    if (!o) {
+      const P = paletaDe(a.elemento), g = new THREE.Group(), bola = malhaG3(G3.geo.bola, P[1], { toon: true, escala: 0.26 });
+      bola.castShadow = true; g.add(bola, brilhoG3(P[0], 0.9, 0.7)); G3.cena.scene.add(g);
+      o = { g, bola, total: a.aviso || a.falta || 0.5 }; G3.bombas.set(a.id, o);
+    }
+    const k = clamp(1 - faltaDaArea(a, agora) / o.total, 0, 1);
+    o.g.position.set(a.de.x + (a.x - a.de.x) * k, 0.4 + 4 * k * (1 - k) * 2.6, a.de.y + (a.y - a.de.y) * k);
+    o.bola.rotation.set(k * 9, k * 7, 0);
+    if (Math.random() < 0.5) rastroDe(familiaDe(a.elemento), o.g.position.x, o.g.position.z, PALETA[familiaDe(a.elemento)]);
+  }
+  for (const [id, o] of G3.bombas) if (!vistas.has(id)) { soltarG3(o.g); G3.bombas.delete(id); }
+}
+// aparou: o clarão branco e azul na frente de quem segurou
+function aparou3d(f, agora) {
+  const g = new THREE.Group(); g.position.set(f.x, 0.55, f.y);
+  const flash = brilhoG3("#dff6ff", 2.6, 1), aro = malhaG3(G3.geo.toro, "#bfeaff", { somar: true, opacidade: 1 }); aro.rotation.x = Math.PI / 2; g.add(flash, aro);
+  vivo(g, 0.25, (k) => { aro.scale.setScalar(0.6 + k * 1.4); aro.material.opacity = 1 - k; flash.material.opacity = 1 - k; }, agora);
+  pedirLuz("#bfeaff", 8, f.x, f.y, 0.8, 200, agora);
+  sacudir(0.25, 0.3);
+}
 // ---------- o quadro ----------
 function atualizarGolpes3d(projeteis, agora, dt, poses = []) {
   if (!G3.ok) return;
@@ -299,14 +403,26 @@ function atualizarGolpes3d(projeteis, agora, dt, poses = []) {
   for (const f of efeitos) {
     if (f.g3 || agora < f.t) continue;
     f.g3 = true;
-    if (f.tipo === "estouro") { if (!(naruto && impactoNaruto(f, agora))) estouro3d(f, agora); }
-    else if (f.tipo === "golpe" && f.classe === "corpo") { if (!(naruto && corpoNaruto(f, agora))) corte3d(f, agora); }
+    const quando = f.t; // o efeito começa na hora do evento (mesmo que o quadro chegue atrasado)
+    if (f.tipo === "estouro") { if (!(naruto && impactoNaruto(f, quando))) estouro3d(f, quando); }
+    else if (f.tipo === "golpe" && f.classe === "corpo") { if (!(naruto && corpoNaruto(f, quando))) corte3d(f, quando); }
     else if (f.tipo === "golpe" && naruto) {
-      if (!efeitoNaruto(f, agora) && (f.classe === "projetil" || f.classe === "area")) anelNoChao(f.x, f.y, paletaDe(f.elemento)[1], 0.2, 0.7, 0.3, agora); // o chakra juntando nos pés
+      if (!efeitoNaruto(f, quando) && (f.classe === "projetil" || f.classe === "area")) anelNoChao(f.x, f.y, paletaDe(f.elemento)[1], 0.2, 0.7, 0.3, quando); // o chakra juntando nos pés
     }
-    else if (f.tipo === "explosao") { if (!(naruto && areaNaruto(f, agora))) area3d(f, agora); }
-    else if (f.tipo === "esquiva") anelNoChao(f.x, f.y, "#fef5aa", 0.4, 0.9, 0.25, agora);
-    else if (["cura", "atributo", "troca", "transformar"].includes(f.tipo)) anelSubindo(f.x, f.y, f.tipo === "cura" ? "#7be0a0" : "#68b987", agora);
+    else if (f.tipo === "explosao") { if (!(naruto && areaNaruto(f, quando))) area3d(f, quando); }
+    else if (f.tipo === "area" && f.forma === "feixe") feixe3d(f, quando);
+    else if (f.tipo === "area" && f.forma === "cone") cone3d(f, quando);
+    else if (f.tipo === "area" && f.forma === "anel") anel3d(f, quando);
+    else if (f.tipo === "area" && f.forma === "onda") onda3d(f, quando);
+    else if (f.tipo === "area" && f.forma === "zona") zona3d(f, quando);
+    else if (f.tipo === "aterrissou") { anelNoChao(f.x, f.y, paletaDe(f.elemento)[1], 0.3, (f.r || 1.3) * 1.3, 0.4, quando); sacudir(0.5, 0.3); }
+    else if (f.tipo === "aparou") aparou3d(f, quando);
+    else if (f.tipo === "guardaQuebrou") { anelSubindo(f.x, f.y, "#ef8a5a", quando); sacudir(0.4, 0.5); }
+    else if (f.tipo === "perfeita") { anelNoChao(f.x, f.y, "#ffd84a", 0.3, 1.4, 0.4, quando); anelSubindo(f.x, f.y, "#ffd84a", quando); }
+    else if (f.tipo === "batida") sacudir(0.55, 0.35);
+    else if (f.tipo === "combo" && f.ultimo) corte3d({ ...f, mira: f.mira || { x: 1, y: 0 } }, quando);
+    else if (f.tipo === "esquiva") anelNoChao(f.x, f.y, "#fef5aa", 0.4, 0.9, 0.25, quando);
+    else if (["cura", "atributo", "troca", "transformar"].includes(f.tipo)) anelSubindo(f.x, f.y, f.tipo === "cura" ? "#7be0a0" : "#68b987", quando);
     else if (f.tipo === "dano" && f.crit) sacudir(0.45, 0.6);
     else if (f.tipo === "dano" && f.em === ME?.id) sacudir(0.3);
     else if (f.tipo === "desmaiou") sacudir(0.4, 0.8);
@@ -314,6 +430,7 @@ function atualizarGolpes3d(projeteis, agora, dt, poses = []) {
   }
   atualizarProjeteis3d(projeteis, agora, dt);
   pedrasCaindo(agora);
+  bombasVoando(agora);
   for (let i = G3.vivos.length - 1; i >= 0; i--) {
     const o = G3.vivos[i], idade = (agora - o.t0) / 1000, k = idade / o.dur;
     if (k >= 1) { soltarG3(o.grupo); G3.vivos.splice(i, 1); continue; }
