@@ -119,15 +119,14 @@ test("equilíbrio dos estilos: com o perfil certo ajudam um pouco, com o perfil 
   }
 });
 
-test("o motor preserva a energia entre jogos e a sequência afeta o rendimento", () => {
+test("o motor preserva a energia entre jogos e o cansaço afeta o rendimento", () => {
   const fresco = time("a"), cansado = { ...time("a"), energia: Object.fromEntries(POSICOES.map((_, i) => [`a${i}`, 40])) };
   const r = Motor.simularPartida({ casa: cansado, fora: time("b"), semente: "e0" });
   assert.ok(r.energia.a1 < 40 + 1 && r.energia.a1 >= 20 && r.energia.b1 < 100, "o fim do jogo gasta mais energia");
   assert.ok(Object.keys(r.energia).length === 28, "a energia de todos os jogadores dos dois times");
   assert.ok(r.jogaram.a.length >= 11 && r.jogaram.a.length <= 14 && new Set(r.jogaram.a).size === r.jogaram.a.length, "o motor informa quem entrou em campo");
   const ppj = (casa) => { let p = 0; for (let k = 0; k < 800; k++) for (const inv of [false, true]) { const x = Motor.simularPartida({ casa: inv ? time("b") : casa, fora: inv ? casa : time("b"), semente: `c${k}` }), [g, s] = inv ? [x.placar[1], x.placar[0]] : x.placar; p += g > s ? 3 : g === s ? 1 : 0; } return p / 1600; };
-  const sequencia = { ...cansado, sequencia: Object.fromEntries(POSICOES.map((_, i) => [`a${i}`, 7])) };
-  assert.ok(ppj(fresco) > ppj(sequencia), "a sequência longa reduz o rendimento");
+  assert.ok(ppj(fresco) > ppj(cansado), "a energia baixa reduz o rendimento");
 });
 
 test("na carreira, repetir os mesmos 11 derruba a energia e o banco descansa; as férias devolvem tudo", () => {
@@ -152,8 +151,11 @@ test("na carreira, repetir os mesmos 11 derruba a energia e o banco descansa; as
 });
 
 test("a sequência de jogos não tira over além da energia", () => {
-  const p = Taticas.penalidadeSequencia;
-  assert.deepStrictEqual([0, 1, 2, 3, 4, 5, 6, 7, 8].map(p), [0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const casa = time("a"), fora = time("b");
+  const sequencia = Object.fromEntries(casa.jogadores.map((j) => [j.id, 8]));
+  const semSequencia = Motor.simularPartida({ casa, fora, semente: "sem-multa-de-sequencia", modo: 1 });
+  const comSequencia = Motor.simularPartida({ casa: { ...casa, sequencia }, fora, semente: "sem-multa-de-sequencia", modo: 1 });
+  assert.deepStrictEqual(comSequencia, semSequencia);
 });
 
 test("um jogo no banco recupera 80 pontos e zera a sequência", () => {

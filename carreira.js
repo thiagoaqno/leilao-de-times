@@ -798,7 +798,6 @@ function timeDe(save, id) {
     titulares: meu && save.escalacao.titulares ? save.escalacao.titulares : undefined,
     fixo: meu && !!save.escalacao.fixo,
     energia: meu ? save.energia : undefined, // o cansaço que vem dos jogos anteriores
-    sequencia: meu ? save.sequencia : undefined,
   };
 }
 const titularesDe = (save, id) => Motor.escalacaoAutomatica(timeDe(save, id));
@@ -1119,8 +1118,8 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   save.posJogo = { rodada: save.rodada - 1, jogoId: p.jogoId, rotulo, casa: p.casa, fora: p.fora, placar: r.placar, ...(penaltis && { penaltis }), resultado: resultadoFinal, moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: novos.filter((e) => !e.resolvido).map((e) => e.id), avisos: novos.filter((e) => e.resolvido && e.tipo !== "ia").map((e) => e.id) };
   if (recalcular) registrarTemporada(save);
 }
-// Quem descansa uma partida recupera 80 pontos de energia e zera a sequência. Quem entra em campo
-// acumula jogos seguidos; o desconto temporário de over começa no terceiro jogo. As férias zeram ambos.
+// Quem descansa uma partida recupera 80 pontos de energia e zera a sequência. Jogar várias vezes seguidas
+// só afeta o over pelo desgaste gradual de energia, sem penalidade fixa no terceiro jogo. As férias zeram ambos.
 // Quem joga como titular leva para o jogo seguinte só um pedaço do desgaste: 0,25 de over por jogo até os 29 anos e
 // 0,40 de 30 em diante (10 pontos de energia = 1 de over). O desgaste do jogo em si (ritmo e pressão da tática)
 // ainda pesa um pouco: ele varia de 0,7 a 1,4 vez esse valor, e o departamento médico abate.

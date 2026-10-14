@@ -95,6 +95,32 @@ test("carreira: a prancheta mostra evolução e perda por posição", async ({ p
   expect(erros).toEqual([]);
 });
 
+test("carreira: desconto de over aparece inteiro e para em -3, sem multa por três jogos", async ({ page }) => {
+  const erros = vigiar(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/carreira/#debug");
+  await page.fill("#cNome", "Cansaço");
+  await page.click('[data-clube="flamengo"]');
+  await page.click("#btnCriar");
+  await page.click("#btnAnotei");
+  await page.click('#sede [data-ir="elenco"]');
+  const ids = await page.locator("#eCampo .peca[data-jogador]").evaluateAll((pecas) => pecas.map((p) => p.dataset.jogador));
+  await page.evaluate((jogadores) => {
+    __carreira.E.escalacao.titulares = jogadores;
+    __carreira.E.escalacao.fixo = true;
+    [100, 75, 70, 65, 20].forEach((energia, i) => { __carreira.E.energia[jogadores[i]] = energia; });
+    __carreira.E.sequencia[jogadores[0]] = 3;
+    __carreira.mostrarTela("elenco");
+  }, ids);
+  for (const [i, texto] of [[0, null], [1, "-1"], [2, "-2"], [3, "-2"], [4, "-3"]]) {
+    const badge = page.locator(`#eCampo [data-jogador="${ids[i]}"] .cansaco-canto`);
+    if (texto) await expect(badge).toHaveText(texto);
+    else await expect(badge).toHaveCount(0);
+  }
+  await fotografar(page, "carreira-over-inteiro");
+  expect(erros).toEqual([]);
+});
+
 test("carreira: arrastar um jogador até outro troca os dois, e soltar no vazio devolve a peça", async ({ page }) => {
   const erros = vigiar(page);
   await page.setViewportSize({ width: 1280, height: 1500 });

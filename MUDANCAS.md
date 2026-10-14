@@ -1,9 +1,13 @@
-# Gatinhos Explosivos: visual novo e animações
+# Carreira: queda de overall limitada a 3 pontos
 
-**Antes:** o jogo funcionava, mas com visual de protótipo: jogadores numa fila, cartas só com emoji e nome, nada se mexia e não tinha som.
+## O que muda
 
-**Depois:** noite roxa com patinhas no fundo e uma mesa de feltro com borda de neon laranja, com cada jogador sentado em volta (você sempre embaixo, a vez brilha e o alvo de um Favor ou roubo pulsa). As cartas ficaram ilustradas, com gradiente por tipo, cantos e faixa de nome; o Gatinho Explosivo é preto com brilho vermelho e aparece grande na mesa enquanto alguém desarma. A mão se ajusta ao espaço (lado a lado, sobreposta ou em duas linhas no celular).
+- O desgaste por energia continua gradual, mas a perda efetiva de overall para em 3 pontos.
+- Na prancheta e no aviso antes do jogo, a perda aparece sempre arredondada para baixo: menos de 1 não mostra badge; de 1 a menos de 2 mostra −1; de 2 a menos de 3 mostra −2; a partir de 3 mostra −3.
+- Três jogos seguidos não aplicam uma penalidade extra. A sequência deixa de entrar no cálculo do motor; a energia continua caindo ao jogar e se recupera com descanso.
 
-**Animações e sons (feitos à mão, sem biblioteca nova):** cartas voam do monte para cada jogador ao dar as cartas e ao comprar, da mão para o descarte ao jogar, entre os jogadores em Favor e roubo, e o gatinho volta ao monte. Avisos grandes para Nem Pensar, Cancelada, Pular, Ataque (com tremida), Embaralhar, Desarmado e vitória (com confete). Explosão com clarão, fagulhas e tremida. A jogada pendente brilha no descarte e fica riscada se estiver cancelada, e o relógio do Nem Pensar tem cor própria. Sons sintetizados com botão de mudo, que fica guardado. Quem pede "menos movimento" no sistema fica sem voos, tremidas e confete.
+## Verificação
 
-**Como:** `public/kittens/estilo.css` e `public/kittens/efeitos.js` novos; `index.html` ganhou a mesa em volta e o `rodarFx`, que anima só os eventos `fx` novos (ao entrar ou voltar para a sala não repete o passado). O servidor e as regras não mudaram.
+- `node --test tests/carreira-leitura.test.js` passou.
+- Testes direcionados de energia, sequência e desgaste em `tests/carreira-taticas.test.js` passaram.
+- O teste de navegador da prancheta confirmou os badges −1, −2 e −3 e a ausência de desconto fixo no terceiro jogo. A captura foi conferida em 1280 × 800.
