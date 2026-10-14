@@ -28,9 +28,17 @@ const SomPartida = (() => {
     } catch (e) { ctx = null; }
     return ctx;
   }
-  // o navegador só deixa tocar depois de um toque ou tecla: o primeiro destrava (e os outros, se ele suspender de novo)
-  const destravar = () => { if (ctx && ctx.state === "suspended" && naPartida()) ctx.resume().catch(() => {}); };
-  addEventListener("pointerdown", destravar); addEventListener("keydown", destravar);
+  // o navegador só deixa tocar depois de um toque ou tecla, e o iPhone só destrava dentro do próprio toque (touchend,
+  // click): o som é ligado já no primeiro toque em qualquer tela (o "Jogar" da sede), antes de a partida abrir, e cada
+  // toque depois destrava de novo se ele suspender. No iPhone, "playback" faz tocar mesmo com a chave do silencioso.
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) { /* navegador sem a opção */ }
+  const destravar = () => {
+    if (!IDX || modo === "mudo" || !audio() || ctx.state === "running") return;
+    ctx.resume().catch(() => {});
+    // um silêncio curtinho dentro do toque: o Safari antigo só libera o som depois de tocar alguma coisa
+    try { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0); } catch (e) { /* tanto faz */ }
+  };
+  for (const ev of ["pointerdown", "pointerup", "touchend", "click", "keydown"]) addEventListener(ev, destravar, { passive: true });
 
   const buffers = new Map();
   function carregar(rel) {
@@ -197,7 +205,18 @@ const SomPartida = (() => {
     const tema = J.peso && J.peso.tema;
     return tema === "final" || tema === "classico" ? 0.55 : tema === "decisivo" ? 0.4 : 0.18;
   }
+  // o navegador barrou o som (Safari e iPhone sem um toque, aba que voltou): o botão vira "Ativar som" até liberar
+  const bloqueado = () => !!IDX && modo !== "mudo" && naPartida() && !document.hidden && (!ctx || ctx.state !== "running");
+  let mostrandoBloqueio = false;
+  function avisarBloqueio() {
+    const b = document.getElementById("btnSom"), agora = bloqueado();
+    if (!b || agora === mostrandoBloqueio) return;
+    mostrandoBloqueio = agora;
+    b.classList.toggle("som-bloqueado", agora);
+    if (agora) { b.textContent = "Ativar som"; b.title = "O navegador segurou o som: toque para ouvir o narrador e a torcida"; } else aplicar();
+  }
   setInterval(() => {
+    avisarBloqueio();
     if (!ctx || !naPartida() || typeof J === "undefined" || !S) return;
     if (document.hidden) { if (ctx.state === "running") ctx.suspend().catch(() => {}); return; }
     if (ctx.state === "suspended") ctx.resume().catch(() => {});
@@ -230,7 +249,8 @@ const SomPartida = (() => {
   }
   function aplicar() {
     const b = document.getElementById("btnSom");
-    if (b) { b.textContent = ROTULO[modo]; b.title = DICA[modo]; b.setAttribute("aria-pressed", String(modo !== "mudo")); b.hidden = !IDX; }
+    if (b && !mostrandoBloqueio) { b.textContent = ROTULO[modo]; b.title = DICA[modo]; }
+    if (b) { b.setAttribute("aria-pressed", String(modo !== "mudo")); b.hidden = !IDX; }
     if (!ctx) return;
     rampa(mestre.gain, modo === "mudo" ? 0 : 1, 0.1);
     rampa(busVoz.gain, modo === "tudo" ? 1 : 0, 0.1);
@@ -244,7 +264,11 @@ const SomPartida = (() => {
     aplicar();
   }
   const bt = document.getElementById("btnSom");
-  if (bt) bt.onclick = alternar;
+  // com o som barrado, o toque no botão só libera (o modo continua o mesmo); depois, troca o modo
+  if (bt) bt.onclick = () => { if (mostrandoBloqueio) { destravar(); setTimeout(avisarBloqueio, 150); } else alternar(); };
+  const css = document.createElement("style");
+  css.textContent = "#btnSom.som-bloqueado{background:#ffd23f;color:#141414;border-color:#ffd23f;font-weight:700}";
+  document.head.appendChild(css);
   aplicar();
 
   return { abrir, evento, tela, alternar, historico, get modo() { return modo; }, get contexto() { return ctx; } };

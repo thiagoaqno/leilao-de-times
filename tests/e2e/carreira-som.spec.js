@@ -47,6 +47,12 @@ test("carreira: narrador, torcida e a música calada na partida", async ({ page 
   expect(await page.evaluate(() => localStorage.getItem("carreira:somPartida"))).toBe("mudo");
   await page.evaluate(() => $("btnSom").click());
   await expect(page.locator("#btnSom")).toHaveText("Som");
+  // o navegador segura o som (Safari, iPhone): o botão vira "Ativar som" e um toque libera, sem trocar o modo
+  await page.evaluate(() => SomPartida.contexto.suspend());
+  await expect(page.locator("#btnSom")).toHaveText("Ativar som");
+  await page.click("#btnSom");
+  await expect(page.locator("#btnSom")).toHaveText("Som");
+  expect(await page.evaluate(() => [SomPartida.contexto.state, SomPartida.modo])).toEqual(["running", "tudo"]);
   // até o fim e de volta à sede: a música volta
   await page.evaluate(() => $("btnPular").click());
   await expect(page.locator("#btnVoltarSede")).toBeVisible({ timeout: 30000 });
