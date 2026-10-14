@@ -299,6 +299,10 @@
     const controla = ambos ? null : cfg.controla === 0 || cfg.controla === 1 ? cfg.controla : null;
     const decisoes = cfg.decisoes || {};
     const times = [prepararTime(cfg.casa || {}, 0), prepararTime(cfg.fora || {}, 1)];
+    // Ajuste opt-in da Carreira: valor inicial do confronto, sem amplificar expulsões ou lesões durante o jogo.
+    // O teto de lances evita que uma diferença grande de elencos vire placares de dois dígitos.
+    const carreira = cfg.carreira === true;
+    const diferencaForca = carreira ? (times[0].att + times[0].def - times[1].att - times[1].def) / 2 : 0;
     const neutro = !!cfg.neutro;
     const placar = [0, 0], eventos = [], est = [0, 1].map(() => ({ chutes: 0, noAlvo: 0, faltas: 0, amarelos: 0, vermelhos: 0, lances: 0 }));
     let decisivos = 0, golsContra = 0, minuto = 0, acrescimo = 0, parado = null, impAtual = 0;
@@ -541,9 +545,13 @@
       for (const [a, d] of [[0, 1], [1, 0]]) {
         const at = times[a], df = times[d];
         const mando = neutro ? 1 : a === 0 ? AJUSTE.MANDO : AJUSTE.VISITANTE;
-        const taxa = AJUSTE.CHANCE * Math.exp(AJUSTE.K * (at.att - df.def)) * mando
+        let taxa = AJUSTE.CHANCE * Math.exp(AJUSTE.K * (at.att - df.def)) * mando
           * (1 + AJUSTE.MENTAL * at.tatica.mentalidade) * (1 + AJUSTE.MENTAL * df.tatica.mentalidade) * (1 - 0.06 * (df.tatica.pressao - 1)) * (1 - AJUSTE.LINHA_CEDE * (df.tatica.linha - 1))
           * at.est.chance * df.est.cede * (1 + confrontoDe(at, df).criar);
+        if (carreira) {
+          taxa = Math.min(0.16, taxa * Math.exp(0.065 * clamp(a === 0 ? diferencaForca : -diferencaForca, -12, 12)));
+          if (placar[a] - placar[d] >= 3) taxa *= 0.65; // vantagem larga: o time administra o jogo
+        }
         if (rng() < taxa) lance(at, df);
       }
       const marcado = !acrescimo && (P ? (P.minutos || []).includes(minuto) : minuto === 70);

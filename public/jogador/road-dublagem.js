@@ -14,9 +14,38 @@
   const safe = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   let manifesto = null, carregando = null, falhouManifesto = false;
-  const prefs = { voz: true, legendas: true, volume: 0.9 };
+  // Novos jogadores começam em 35%; quem já escolheu um volume mantém sua preferência.
+  const prefs = { voz: true, legendas: true, volume: 0.35 };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREFS) || "{}")); } catch {}
+  prefs.volume = Number.isFinite(Number(prefs.volume)) ? Math.max(0, Math.min(1, Number(prefs.volume))) : 0.35;
   const guardarPrefs = () => { try { localStorage.setItem(PREFS, JSON.stringify(prefs)); } catch {} };
+
+  // Uma configuração única para o player e para o botão de volume no cabeçalho.
+  function atualizarVolumeNav() {
+    if (!painelNav) return;
+    const range = painelNav.querySelector("input");
+    range.value = String(Math.round(prefs.volume * 100));
+    painelNav.querySelector("output").textContent = Math.round(prefs.volume * 100) + "%";
+    const mute = painelNav.querySelector("button");
+    mute.textContent = prefs.voz ? "🔊 Dublagem ligada" : "🔇 Dublagem desligada";
+    mute.setAttribute("aria-pressed", String(prefs.voz));
+    range.disabled = !prefs.voz;
+    if (botaoNav) botaoNav.setAttribute("aria-label", "Áudio da dublagem: " + Math.round(prefs.volume * 100) + "%");
+  }
+  function definirVolume(valor) {
+    prefs.volume = Number.isFinite(Number(valor)) ? Math.max(0, Math.min(1, Number(valor))) : 0.35;
+    guardarPrefs();
+    for (const a of audios) a.volume = prefs.volume;
+    if (raiz) atualizarControles();
+    atualizarVolumeNav();
+  }
+  function alternarVoz() {
+    prefs.voz = !prefs.voz;
+    guardarPrefs();
+    if (atual) atual.muted = !prefs.voz;
+    if (raiz) atualizarControles();
+    atualizarVolumeNav();
+  }
 
   // ---------- estado da cena que está aberta ----------
   let cena = null;          // { def, cfg, fase, fala, i, ramo, escolhida }
@@ -27,6 +56,7 @@
   let pularFala = null;     // resolve a espera da fala atual
   const registro = [];      // falhas de carregamento e o que tocou (para os testes e para o console)
   let raiz = null;
+  let botaoNav = null, painelNav = null;
 
   function carregar() {
     if (manifesto) return Promise.resolve(manifesto);
@@ -59,6 +89,7 @@
   function novoAudio(url) {
     const a = new Audio();
     a.preload = "auto";
+    a.volume = prefs.volume;
     a.src = url;
     audios.add(a);
     return a;
@@ -127,7 +158,7 @@
       '<div class="rtc-voz-escolha" hidden><span class="rtc-voz-kicker">Sua resposta</span><div class="rtc-voz-opcoes"></div></div></div>' +
       '<div class="rtc-voz-faixa base"><div class="rtc-voz-controles">' +
       '<button type="button" data-voz="som" aria-pressed="true" title="Ligar ou desligar a dublagem">🔊 Voz</button>' +
-      '<label class="rtc-voz-volume" title="Volume das vozes"><span class="rtc-sr">Volume das vozes</span><input type="range" min="0" max="1" step="0.05" data-voz="volume"></label>' +
+      '<label class="rtc-voz-volume" title="Volume das vozes"><span>Voz</span><input type="range" min="0" max="1" step="0.01" data-voz="volume" aria-label="Volume das vozes"><output class="rtc-voz-percent">35%</output></label>' +
       '<button type="button" data-voz="legendas" aria-pressed="true" title="Mostrar ou esconder as legendas">CC</button>' +
       '<span class="rtc-voz-aviso" role="status"></span>' +
       '<button type="button" data-voz="fala" class="rtc-voz-pular">Avançar ›</button>' +
@@ -137,8 +168,7 @@
     raiz.addEventListener("click", aoClicar);
     raiz.addEventListener("input", (e) => {
       if (e.target.dataset.voz !== "volume") return;
-      prefs.volume = Number(e.target.value); guardarPrefs();
-      if (atual) atual.volume = prefs.volume;
+      definirVolume(e.target.value);
     });
     document.addEventListener("keydown", (e) => {
       if (!cena || raiz.hidden) return;
@@ -160,6 +190,7 @@
     $('[data-voz="legendas"]').setAttribute("aria-pressed", String(prefs.legendas));
     $('[data-voz="volume"]').value = String(prefs.volume);
     $('[data-voz="volume"]').disabled = !prefs.voz;
+    $('.rtc-voz-percent').textContent = Math.round(prefs.volume * 100) + "%";
     const falando = cena && cena.fase === "falando";
     $('[data-voz="fala"]').hidden = !falando;
     $('[data-voz="cena"]').hidden = !cena || cena.fase === "escolha" || cena.fase === "inicio";
@@ -200,7 +231,7 @@
     if (!b || !cena) return;
     const acao = b.dataset.voz;
     if (acao === "comecar") { cena.comecar && cena.comecar(); return; }
-    if (acao === "som") { prefs.voz = !prefs.voz; guardarPrefs(); if (atual) atual.muted = !prefs.voz; atualizarControles(); return; }
+    if (acao === "som") { alternarVoz(); return; }
     if (acao === "legendas") { prefs.legendas = !prefs.legendas; guardarPrefs(); atualizarControles(); return; }
     if (acao === "fala") { pularFala && pularFala(); return; }
     if (acao === "cena") { pularCena(); return; }
@@ -315,8 +346,46 @@
   // a parede de patrocínio da coletiva, quando a cena não tem ilustração: uma grade que se ajusta à largura da tela
   const paredeDePatrocinio = () => '<span>✦ ROAD TO CHAMPIONS</span>'.repeat(90);
 
+  // Botão fixo no cabeçalho, como o mini-tocador de música da Carreira.
+  // Fica fora do #app para sobreviver aos redesenhos multiplayer.
+  function montarVolumeNav() {
+    const nav = document.querySelector(".rtc-navbar");
+    if (!nav || botaoNav) return;
+    botaoNav = document.createElement("button");
+    botaoNav.type = "button";
+    botaoNav.className = "rtc-audio-bt";
+    botaoNav.innerHTML = '<span aria-hidden="true">🔊</span> <span class="rtc-audio-nome">Dublagem</span>';
+    botaoNav.setAttribute("aria-controls", "rtc-audio-painel");
+    botaoNav.setAttribute("aria-expanded", "false");
+    painelNav = document.createElement("div");
+    painelNav.id = "rtc-audio-painel";
+    painelNav.className = "rtc-audio-painel";
+    painelNav.setAttribute("role", "group");
+    painelNav.setAttribute("aria-label", "Configurações de dublagem");
+    painelNav.innerHTML = '<b>Volume das vozes</b>' +
+      '<div class="rtc-audio-linha"><input type="range" min="0" max="100" step="1" aria-label="Volume das dublagens">' +
+      '<output>35%</output></div>' +
+      '<button type="button" aria-pressed="true">🔊 Dublagem ligada</button>' +
+      '<small>O volume é só seu e fica salvo neste navegador.</small>';
+    nav.insertBefore(botaoNav, document.getElementById("conexao"));
+    document.body.appendChild(painelNav);
+    const abrir = (sim) => {
+      painelNav.classList.toggle("on", sim);
+      botaoNav.setAttribute("aria-expanded", String(sim));
+    };
+    botaoNav.addEventListener("click", () => abrir(!painelNav.classList.contains("on")));
+    painelNav.querySelector("input").addEventListener("input", (e) => definirVolume(Number(e.target.value) / 100));
+    painelNav.querySelector("button").addEventListener("click", alternarVoz);
+    document.addEventListener("pointerdown", (e) => {
+      if (!botaoNav.contains(e.target) && !painelNav.contains(e.target)) abrir(false);
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") abrir(false); });
+    atualizarVolumeNav();
+  }
+  montarVolumeNav();
+
   window.RoadDublagem = {
-    carregar, tocar, parar, cenaDe,
+    carregar, tocar, parar, cenaDe, definirVolume,
     get carregado() { return !!manifesto || falhouManifesto; },
     get aberta() { return !!cena; },
     get atual() { return cena ? { tipo: cena.cfg.tipo, id: cena.cfg.id, fase: cena.fase } : null; },

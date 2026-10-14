@@ -59,7 +59,20 @@ body.rtc-voz-aberta{overflow:hidden}
 .rtc-voz-controles button{padding:9px 12px;border:1px solid #ffffff33;background:#ffffff10;color:#fff;border-radius:2px;font-size:13px;font-weight:700;letter-spacing:.04em;min-height:40px}
 .rtc-voz-controles button:hover{background:#ffffff22}
 .rtc-voz-controles button[aria-pressed=false]{color:#9fb0d4;text-decoration:line-through}
+.rtc-voz-volume{display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap}
 .rtc-voz-volume input{width:110px;accent-color:#fff;vertical-align:middle}
+.rtc-voz-percent{min-width:34px;font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+/* O mini painel de dublagem fica no cabeçalho, como o volume da música na Carreira. */
+.rtc-audio-bt{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;min-height:34px;border:1px solid var(--linha2);border-radius:8px;background:transparent;color:var(--t2);font:inherit;font-size:12px;white-space:nowrap}
+.rtc-audio-bt:hover,.rtc-audio-bt[aria-expanded=true]{color:var(--t1);background:var(--painel2)}
+.rtc-audio-painel{display:none;position:fixed;top:calc(62px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right));z-index:45;width:min(270px,calc(100% - 24px));padding:14px;border:1px solid var(--linha2);border-radius:8px;background:#0d1a3b;box-shadow:0 16px 45px #0009;color:var(--t1);flex-direction:column;gap:10px}
+.rtc-audio-painel.on{display:flex}
+.rtc-audio-painel b{font-size:13px}
+.rtc-audio-linha{display:flex;align-items:center;gap:8px}
+.rtc-audio-linha input{width:100%;min-width:0;flex:1;accent-color:var(--azul)}
+.rtc-audio-linha output{font-size:12px;min-width:38px;text-align:right;font-variant-numeric:tabular-nums}
+.rtc-audio-painel button{border:1px solid var(--linha2);background:#132551;color:var(--t1);border-radius:6px;padding:10px;text-align:left;font-weight:600}
+.rtc-audio-painel small{color:var(--t2);line-height:1.4}
 .rtc-voz-aviso{flex:1;min-width:0;font-size:12.5px;color:#ffd99a}
 .rtc-voz-pular{font-family:var(--cond);font-size:15px!important;text-transform:uppercase;letter-spacing:.1em!important}
 .rtc-voz-depois{margin-left:auto}
@@ -74,7 +87,10 @@ body.rtc-voz-aberta{overflow:hidden}
 
 @media (max-width:640px){
   .rtc-voz-legenda{font-size:18px}
-  .rtc-voz-volume{display:none}
+  .rtc-voz-volume input{width:88px}
+  .rtc-voz-volume>span{display:none}
+  .rtc-audio-nome{display:none}
+  .rtc-audio-bt{padding:6px 8px;flex-shrink:0}
   .rtc-voz-controles{gap:6px}
   .rtc-voz-controles button{padding:8px 10px;font-size:12px}
   .rtc-voz-aviso{order:9;flex-basis:100%}
