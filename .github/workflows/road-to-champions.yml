@@ -21,6 +21,15 @@ on:
       - "migracoes/**"
       - "server.js"
 jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --check road-to-champions.js && node --check public/jogador/road.js
+      - run: node --test tests/road-to-champions.test.js
   node-tests:
     runs-on: ubuntu-latest
     steps:
