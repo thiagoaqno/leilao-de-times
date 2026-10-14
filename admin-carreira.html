@@ -16,23 +16,33 @@
   .secao{border-bottom:1px solid #c6cabe;padding:25px 0}.secao h2{font-family:Impact,'Arial Narrow',sans-serif;font-size:26px;font-weight:400;margin:0 0 16px}.linha{display:flex;gap:15px;align-items:end;flex-wrap:wrap}.campo{display:grid;gap:6px;min-width:180px}.campo label,.rotulo{font-size:13px;font-weight:700;color:#37594d}.campo input,.campo select,select,input[type=search]{background:#fff;border:1px solid #a8b6a8;border-radius:5px;min-height:42px;padding:8px 11px;color:#17312d;max-width:100%}
   .principal{background:#1c5a47;color:#fff;border:1px solid #1c5a47;border-radius:5px;padding:10px 16px;min-height:42px;font-weight:700}.principal:hover{background:#114a39}.secundario{background:transparent;color:#1c5a47;border:1px solid #7e9c8c;border-radius:5px;padding:9px 14px;min-height:42px;font-weight:650}.perigo{color:#9f3b2a;border-color:#ba8b7e}.meta{color:#5b7168;font-size:13px;margin:8px 0 0}.dinheiro{font-family:Impact,'Arial Narrow',sans-serif;font-size:33px;line-height:1;margin:0 22px 0 0}
   .duas{display:grid;grid-template-columns:minmax(220px,.9fr) minmax(320px,1.1fr);gap:28px}.lista-jogadores{height:320px;overflow:auto;border:1px solid #b9c4b6;background:#fff;border-radius:6px}.jogador{width:100%;border:0;border-bottom:1px solid #e0e5dd;background:transparent;text-align:left;padding:10px 13px;display:flex;justify-content:space-between;gap:8px}.jogador.ativo{background:#e3eddf;border-left:4px solid #1c5a47;padding-left:9px}.jogador small{color:#60746a}.ficha{min-height:300px}.ficha h3{margin:0 0 4px;font-size:24px}.ficha .linha{margin-top:18px}.ficha .campo{min-width:125px}.ficha input[type=number]{width:125px}.ficha select{min-width:125px}.valor-jogador{color:#5b7168;margin:0}.transferencias{display:grid;gap:0}.transferencia{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 0;border-top:1px solid #c6cabe}.transferencia strong{display:block}.transferencia small{display:block;color:#62786e;margin-top:4px}.transferencia button{white-space:nowrap}.ajuda{font-size:13px;color:#5b7168;max-width:70ch;line-height:1.5}
+  .abas{display:flex;gap:6px}.aba{flex:1;border:1px solid #638278;background:transparent;color:#f7f5e9;border-radius:6px;padding:8px 6px;font-weight:650;font-size:13px}.aba[aria-selected="true"]{background:#f0d486;color:#153630;border-color:#f0d486}
+  .busca-lateral{width:100%;background:#21473f;border:1px solid #638278;color:#f7f5e9;border-radius:6px;padding:8px 10px}.busca-lateral::placeholder{color:#a9c0b5}
+  .tecnicos{display:grid;gap:0;border:1px solid #c6cabe;border-radius:6px;background:#fff;overflow:hidden}.tecnico{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-bottom:1px solid #e0e5dd;flex-wrap:wrap}.tecnico:last-child{border-bottom:0}.tecnico small{display:block;color:#60746a;margin-top:3px}.selo{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:2px 8px;margin-left:6px;background:#e3eddf;color:#1c5a47}.selo.fora{background:#eee;color:#666}.selo.host{background:#f0d486;color:#5a4410}.selo.alerta{background:#f7e4d8;color:#8c3624}.acoes{display:flex;gap:8px;flex-wrap:wrap}
+  .painel-sala{display:grid;gap:14px}.cartao{border:1px solid #c6cabe;background:#fff;border-radius:6px;padding:14px 16px}.cartao h3{margin:0 0 8px;font-size:16px}.cartao p{margin:0 0 10px;color:#4f665c}.codigo-novo{font:700 22px ui-monospace,monospace;letter-spacing:.12em;background:#fff;border:2px dashed #1c5a47;border-radius:6px;padding:10px 14px;display:inline-block;margin-top:10px}
+  .historico{display:grid;gap:0}.historico div{padding:9px 0;border-top:1px solid #c6cabe;font-size:13px}.historico small{color:#62786e}
   @media(max-width:850px){.app{display:block}aside{padding:17px;gap:12px}.brand{font-size:23px}.salas{display:flex;overflow:auto}.sala{min-width:170px}.rodape{font-size:0}.rodape button{font-size:13px;margin-top:0}main{padding:24px 17px 50px}.duas{grid-template-columns:1fr}.lista-jogadores{height:240px}.topo{display:block}.estado{margin-top:15px}}
 </style>
 <div class="app">
   <aside>
     <div class="brand">CABINE DA CARREIRA<small>Moderação privada</small></div>
-    <div class="side-head"><h2>Salas em andamento</h2><button class="ghost" id="atualizarSalas" type="button">Atualizar</button></div>
+    <div class="abas" role="tablist"><button class="aba" type="button" role="tab" id="abaSalas" aria-selected="true">Salas em grupo</button><button class="aba" type="button" role="tab" id="abaSolo" aria-selected="false">Carreiras particulares</button></div>
+    <div class="side-head"><h2 id="tituloLista">Salas em andamento</h2><button class="ghost" id="atualizarSalas" type="button">Atualizar</button></div>
+    <input class="busca-lateral oculto" id="buscaSolo" type="search" placeholder="Técnico ou clube" aria-label="Buscar carreira particular">
     <div class="salas" id="salas"></div>
     <div class="rodape">Acesso pela sua conta do GitHub.<br>As mudanças são salvas na carreira ao vivo.<br><button class="ghost" id="sair" type="button">Sair</button></div>
   </aside>
   <main>
-    <div class="topo"><div><h1>Controle da sala</h1><p>Escolha uma sala e faça a alteração.</p></div><span class="estado" id="estado">Carregando…</span></div>
+    <div class="topo"><div><h1>Controle da carreira</h1><p>Escolha uma sala em grupo ou uma carreira particular.</p></div><span class="estado" id="estado">Carregando…</span></div>
     <div class="aviso oculto" id="aviso" role="status" aria-live="polite"></div>
     <div id="vazio" class="vazio">Selecione uma sala para começar.</div>
     <div id="conteudo" class="oculto">
+      <section class="secao" id="secaoSala"><h2>Comandos da sala</h2><div class="painel-sala"><p class="meta" id="resumoSala"></p><div class="acoes" id="comandos"></div><div id="leilao"></div><div id="trocas"></div><div class="tecnicos" id="tecnicos"></div></div></section>
+      <section class="secao oculto" id="secaoSolo"><h2>Carreira particular</h2><div class="painel-sala"><p class="meta" id="resumoSolo"></p><div class="cartao"><h3>Código de recuperação</h3><p>Gere um código novo para o técnico entrar de outro aparelho. O código antigo deixa de valer.</p><button class="secundario" id="novoCodigo" type="button">Gerar novo código</button><div id="codigoNovo"></div></div></div></section>
       <section class="secao"><h2 id="tituloSala">Sala</h2><div class="linha"><div class="campo"><label for="clube">Clube</label><select id="clube"></select></div><div><span class="rotulo">Caixa atual</span><p class="dinheiro" id="caixaAtual">—</p></div><div class="campo"><label for="caixa">Novo caixa, em reais</label><input id="caixa" type="number" min="0" max="10000000000" step="1" inputmode="numeric"></div><button class="principal" id="salvarCaixa" type="button">Salvar caixa</button></div></section>
       <section class="secao"><h2>Jogadores</h2><div class="duas"><div><div class="campo"><label for="busca">Buscar no elenco</label><input id="busca" type="search" placeholder="Digite o nome do jogador"></div><p class="meta" id="contagem"></p><div class="lista-jogadores" id="jogadores"></div></div><div class="ficha" id="ficha"><p class="ajuda">Escolha um jogador no elenco para editar energia, overall ou atributos, ou transferi-lo.</p></div></div></section>
       <section class="secao"><h2>Transferências recentes</h2><p class="ajuda">Use “Desfazer” na transferência desejada. O jogador volta ao clube anterior e o valor é estornado. Operações especiais exigem ajuste manual.</p><div class="transferencias" id="transferencias"></div></section>
+      <section class="secao"><h2>Últimas edições da moderação</h2><div class="historico" id="historico"></div></section>
     </div>
   </main>
 </div>
@@ -40,40 +50,122 @@
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
   const reais = (n) => new Intl.NumberFormat("pt-BR", { style:"currency", currency:"BRL", maximumFractionDigits:0 }).format(Number(n) || 0);
-  let csrf = "", salas = [], codigo = "", detalhe = null, jogador = "", filtro = "";
+  const quando = (t) => t ? new Date(t).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : "—";
+  const semAcento = (t) => String(t || "").toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[̀-ͯ]/g, "");
+  // o que está aberto: uma sala em grupo (pelo código) ou uma carreira particular (pelo id)
+  let csrf = "", aba = "salas", salas = [], solos = [], alvo = null, detalhe = null, jogador = "", filtro = "", filtroSolo = "";
+  const caminho = () => alvo.tipo === "sala" ? `salas/${encodeURIComponent(alvo.id)}` : `solo/${encodeURIComponent(alvo.id)}`;
   function aviso(texto, erro=false){$("aviso").textContent=texto;$("aviso").className=`aviso${erro?" erro":""}`;}
   function limparAviso(){$("aviso").className="aviso oculto";}
-  async function api(caminho, opcoes={}){
-    const r=await fetch(`/admin/carreira/api/${caminho}`,{credentials:"same-origin",...opcoes});
+  async function api(c, opcoes={}){
+    const r=await fetch(`/admin/carreira/api/${c}`,{credentials:"same-origin",...opcoes});
     if(r.status===401){location.href="/admin/carreira";throw Error("Sessão encerrada.");}
     const d=await r.json();if(!r.ok)throw Error(d.erro||"Não foi possível carregar os dados.");return d;
   }
-  async function carregarSalas(){
-    try{const d=await api("inicio");csrf=d.csrf;salas=d.salas;renderSalas();$("estado").textContent=`${salas.length} sala${salas.length===1?"":"s"} ativa${salas.length===1?"":"s"}`;
-      if(codigo&&!salas.some(s=>s.codigo===codigo)){codigo="";detalhe=null;$("conteudo").classList.add("oculto");$("vazio").classList.remove("oculto");}
-      if(codigo)await abrirSala(codigo,detalhe?.clube||"");
-      else if(salas.length)await abrirSala(salas[0].codigo);
-      if(!salas.length){$("vazio").textContent="Nenhuma carreira em grupo está ativa agora. Atualize quando uma sala começar.";$("vazio").classList.remove("oculto");}
+  const postar = (c, corpo) => api(c, { method:"POST", headers:{ "Content-Type":"application/json", "X-CSRF-Token":csrf }, body:JSON.stringify(corpo || {}) });
+
+  // ---------- a lista da lateral ----------
+  function trocarAba(nova){
+    aba=nova;$("abaSalas").setAttribute("aria-selected",String(aba==="salas"));$("abaSolo").setAttribute("aria-selected",String(aba==="solo"));
+    $("tituloLista").textContent=aba==="salas"?"Salas em andamento":"Carreiras particulares";$("buscaSolo").classList.toggle("oculto",aba!=="solo");
+    carregarLista();
+  }
+  async function carregarLista(){
+    try{
+      if(aba==="salas"){const d=await api("inicio");csrf=d.csrf;salas=d.salas;$("estado").textContent=`${salas.length} sala${salas.length===1?"":"s"} ativa${salas.length===1?"":"s"}`;}
+      else{if(!csrf)csrf=(await api("inicio")).csrf;solos=(await api("solo")).carreiras;$("estado").textContent=`${solos.length} carreira${solos.length===1?"":"s"} particular${solos.length===1?"":"es"}`;}
+      renderLista();
+      const lista=aba==="salas"?salas:solos, existe=alvo&&alvo.tipo===(aba==="salas"?"sala":"solo")&&lista.some(x=>String(x.codigo??x.id)===String(alvo.id));
+      if(existe)await abrir(alvo,detalhe?.clube||"");
+      else if(aba==="salas"&&salas.length)await abrir({tipo:"sala",id:salas[0].codigo});
+      else{alvo=null;detalhe=null;$("conteudo").classList.add("oculto");$("vazio").classList.remove("oculto");
+        $("vazio").textContent=aba==="salas"?"Nenhuma carreira em grupo está ativa agora. Atualize quando uma sala começar.":solos.length?"Escolha uma carreira na lista.":"Nenhuma carreira particular guardada.";}
     }catch(e){aviso(e.message,true);}
   }
-  function renderSalas(){
-    $("salas").innerHTML=salas.map(s=>`<button type="button" class="sala${s.codigo===codigo?" ativa":""}" data-sala="${esc(s.codigo)}"><strong>${esc(s.codigo)}</strong><span>Temporada ${esc(s.temporada)} · rodada ${esc(s.rodada)}${s.jogoAoVivo?" · jogo ao vivo":""}</span><span>${esc((s.tecnicos||[]).map(t=>t.nomeClube||t.clube).join(", ")||"Sem técnicos")}</span></button>`).join("");
-    $("salas").querySelectorAll("[data-sala]").forEach(b=>b.onclick=()=>abrirSala(b.dataset.sala));
+  function renderLista(){
+    if(aba==="salas"){
+      $("salas").innerHTML=salas.map(s=>`<button type="button" class="sala${alvo?.tipo==="sala"&&s.codigo===alvo.id?" ativa":""}" data-sala="${esc(s.codigo)}"><strong>${esc(s.codigo)}</strong><span>Temporada ${esc(s.temporada)} · rodada ${esc(s.rodada)}${s.jogoAoVivo?" · jogo ao vivo":""}</span><span>${esc((s.tecnicos||[]).map(t=>t.nomeClube||t.clube).join(", ")||"Sem técnicos")}</span></button>`).join("");
+      $("salas").querySelectorAll("[data-sala]").forEach(b=>b.onclick=()=>abrir({tipo:"sala",id:b.dataset.sala}));
+    }else{
+      const f=semAcento(filtroSolo), lista=solos.filter(c=>!f||semAcento(`${c.tecnico} ${c.nomeClube}`).includes(f)).slice(0,120);
+      $("salas").innerHTML=lista.map(c=>`<button type="button" class="sala${alvo?.tipo==="solo"&&String(c.id)===String(alvo.id)?" ativa":""}" data-solo="${esc(c.id)}"><strong>${esc(c.tecnico)}</strong><span>${esc(c.nomeClube)} · ${esc(c.modo)}</span><span>Temporada ${esc(c.temporada)}${c.temporadasMax?`/${esc(c.temporadasMax)}`:""} · rodada ${esc(c.rodada)}${c.partida?" · jogando agora":""}${c.antiga?" · base antiga":""}${c.demitido?" · demitido":""}</span><span>Mexida em ${esc(quando(c.atualizadaEm))}</span></button>`).join("")||'<p class="meta" style="color:#c9d9cd">Nenhuma carreira encontrada.</p>';
+      $("salas").querySelectorAll("[data-solo]").forEach(b=>b.onclick=()=>abrir({tipo:"solo",id:b.dataset.solo}));
+    }
   }
-  async function abrirSala(c, clube=""){
-    codigo=c;limparAviso();renderSalas();$("estado").textContent="Carregando sala…";
-    try{detalhe=await api(`salas/${encodeURIComponent(c)}${clube?`?clube=${encodeURIComponent(clube)}`:""}`);
-      if(!clube)jogador="";renderDetalhe();$("estado").textContent=detalhe.jogoAoVivo?"Jogo ao vivo: edição pausada":"Pronta para editar";
+
+  // ---------- abrir uma sala ou uma carreira particular ----------
+  async function abrir(a, clube=""){
+    const mesmo=alvo&&alvo.tipo===a.tipo&&String(alvo.id)===String(a.id);
+    alvo=a;limparAviso();renderLista();$("estado").textContent="Carregando…";$("codigoNovo").innerHTML="";
+    try{detalhe=await api(`${caminho()}${clube?`?clube=${encodeURIComponent(clube)}`:""}`);
+      if(!mesmo||!clube)jogador="";renderDetalhe();
+      $("estado").textContent=detalhe.jogoAoVivo?(a.tipo==="sala"?"Jogo ao vivo: edição de jogadores pausada":"Partida em andamento: edição pausada"):"Pronta para editar";
     }catch(e){aviso(e.message,true);$("estado").textContent="Erro ao carregar";}
   }
   function renderDetalhe(){
-    $("vazio").classList.add("oculto");$("conteudo").classList.remove("oculto");$("tituloSala").textContent=`${detalhe.nomeClube} · sala ${codigo}`;
+    $("vazio").classList.add("oculto");$("conteudo").classList.remove("oculto");
+    const sala=alvo.tipo==="sala";$("secaoSala").classList.toggle("oculto",!sala);$("secaoSolo").classList.toggle("oculto",sala);
+    $("tituloSala").textContent=sala?`${detalhe.nomeClube} · sala ${alvo.id}`:`${detalhe.nomeClube} · carreira de ${detalhe.carreira.tecnico}`;
+    if(sala)renderSala();else renderSolo();
     $("clube").innerHTML=detalhe.clubes.map(c=>`<option value="${esc(c.id)}"${c.id===detalhe.clube?" selected":""}>${esc(c.nome)}${c.humano?" · técnico":""}</option>`).join("");
     $("caixaAtual").textContent=reais(detalhe.caixa);$("caixa").value=detalhe.caixa??"";
-    $("salvarCaixa").disabled=detalhe.jogoAoVivo;renderJogadores();renderTransferencias();
+    $("salvarCaixa").disabled=detalhe.jogoAoVivo;renderJogadores();renderTransferencias();renderHistorico();
   }
+
+  // ---------- os comandos do anfitrião ----------
+  function renderSala(){
+    const s=detalhe.sala;
+    $("resumoSala").textContent=`Temporada ${s.temporada} de ${s.temporadasMax} · ${s.nRodada} rodada${s.nRodada===1?"":"s"} jogada${s.nRodada===1?"":"s"} · ritmo ${s.ritmo}${s.rodada?` · rodada ${s.rodada.n} ao vivo em ${s.rodada.velocidade}×`:""}${s.pausa?` · pausa: faltam ${s.pausa} s`:""}${s.carreiraAcabou?" · carreira encerrada":s.temporadaAcabou?" · temporada encerrada":""}`;
+    const b=[];
+    if(!s.rodada&&!s.temporadaAcabou){b.push(`<button class="principal" data-cmd="rodada">Começar a rodada</button>`);if(s.pausa)b.push(`<button class="secundario" data-cmd="rodadaSemPausa">Começar sem esperar a pausa</button><button class="secundario" data-cmd="pausa">Encerrar a pausa</button>`);}
+    if(s.rodada)b.push(`<button class="secundario" data-cmd="vel1" ${s.rodada.velocidade===1?"disabled":""}>Velocidade 1×</button><button class="secundario" data-cmd="vel3" ${s.rodada.velocidade===3?"disabled":""}>Velocidade 3×</button>`);
+    if(s.temporadaAcabou&&!s.carreiraAcabou)b.push(`<button class="principal" data-cmd="novaTemporada" ${s.rodada||s.leilao?"disabled":""}>Começar a temporada ${s.temporada+1}</button>`);
+    $("comandos").innerHTML=b.join("")||'<p class="meta">Nenhum comando de rodada disponível agora.</p>';
+    const acoes={rodada:()=>comando({tipo:"rodada"},"Rodada começou."),rodadaSemPausa:()=>comando({tipo:"rodada",semPausa:true},"Rodada começou sem a pausa."),pausa:()=>comando({tipo:"pausa"},"Pausa encerrada: a próxima rodada já pode sair."),
+      vel1:()=>comando({tipo:"velocidade",velocidade:1},"Velocidade 1× para todos."),vel3:()=>comando({tipo:"velocidade",velocidade:3},"Velocidade 3× para todos."),
+      novaTemporada:()=>{if(confirm(`Começar a temporada ${s.temporada+1} para toda a sala?`))comando({tipo:"novaTemporada"},`Temporada ${s.temporada+1} começou.`);}};
+    $("comandos").querySelectorAll("[data-cmd]").forEach(x=>x.onclick=acoes[x.dataset.cmd]);
+    $("leilao").innerHTML=s.leilao?`<div class="cartao"><h3>Leilão aberto: ${esc(s.leilao.nome)}</h3><p>Dono: ${esc(s.leilao.dono)} · ${s.leilao.lances} lance${s.leilao.lances===1?"":"s"}${s.leilao.maior?` · maior ${reais(s.leilao.maior)} (${esc(s.leilao.lider)})`:""} · ${s.leilao.estado==="martelo"?"esperando o martelo":"recebendo lances"}</p><button class="secundario perigo" id="cancelarLeilao" type="button">Cancelar o leilão</button></div>`:"";
+    if(s.leilao)$("cancelarLeilao").onclick=()=>{if(confirm(`Cancelar o leilão de ${s.leilao.nome}? Ninguém leva o jogador.`))comando({tipo:"cancelarLeilao"},"Leilão cancelado.");};
+    $("trocas").innerHTML=s.trocas.length?`<div class="cartao"><h3>Trocas abertas</h3>${s.trocas.map(t=>`<div class="transferencia"><div><strong>${esc(t.de)} → ${esc(t.para)}</strong><small>Dá: ${esc(t.dou.join(", ")||"—")} · Recebe: ${esc(t.recebo.join(", ")||"—")}${t.dinheiro?` · ${t.dinheiro>0?"paga":"recebe"} ${reais(Math.abs(t.dinheiro))}`:""}</small></div><button class="secundario perigo" type="button" data-troca="${esc(t.id)}">Cancelar</button></div>`).join("")}</div>`:"";
+    $("trocas").querySelectorAll("[data-troca]").forEach(x=>x.onclick=()=>{if(confirm("Cancelar esta proposta de troca?"))comando({tipo:"cancelarTroca",id:x.dataset.troca},"Troca cancelada.");});
+    $("tecnicos").innerHTML=s.tecnicos.map(t=>`<div class="tecnico"><div><strong>${esc(t.nome)}</strong>${t.host?'<span class="selo host">anfitrião</span>':""}<span class="selo${t.online?"":" fora"}">${t.online?"na sala":"fora"}</span>${t.dispensado?'<span class="selo alerta">dispensado</span>':""}<small>${esc(t.nomeClube||"Sem clube ainda")}</small></div><div class="acoes">${t.host||t.dispensado?"":`<button class="secundario" type="button" data-host="${esc(t.id)}">Tornar anfitrião</button><button class="secundario perigo" type="button" data-dispensar="${esc(t.id)}">Dispensar</button>`}</div></div>`).join("")||'<p class="meta" style="padding:12px">Ninguém na sala.</p>';
+    $("tecnicos").querySelectorAll("[data-host]").forEach(x=>x.onclick=()=>{const t=s.tecnicos.find(y=>y.id===x.dataset.host);if(confirm(`Passar o cargo de anfitrião para ${t.nome}?`))comando({tipo:"anfitriao",pessoa:t.id},`${t.nome} agora é o anfitrião.`);});
+    $("tecnicos").querySelectorAll("[data-dispensar]").forEach(x=>x.onclick=()=>{const t=s.tecnicos.find(y=>y.id===x.dataset.dispensar);if(confirm(`Dispensar ${t.nome}? ${t.clube?`O ${t.nomeClube} volta para o computador${s.rodada?" no fim da rodada":""}.`:""}`))comando({tipo:"dispensar",pessoa:t.id},`${t.nome} foi dispensado.`);});
+  }
+  let ocupado=false;
+  async function comando(d,mensagem){
+    limparAviso();$("estado").textContent="Enviando…";ocupado=true;
+    try{await postar(`${caminho()}/comando`,d);await abrir(alvo,detalhe.clube);aviso(mensagem);$("estado").textContent="Comando feito";carregarListaSemAbrir();}
+    catch(e){aviso(e.message,true);$("estado").textContent="Não foi possível";}
+    finally{ocupado=false;}
+  }
+  // a sala anda sozinha (a rodada acaba, a pausa corre, alguém entra ou sai): a cada 5 s o painel confere de novo,
+  // sem atrapalhar quem está digitando num campo
+  setInterval(async()=>{
+    if(!alvo||alvo.tipo!=="sala"||!detalhe||document.hidden||ocupado)return;
+    const foco=document.activeElement;if(foco&&$("conteudo").contains(foco)&&/^(INPUT|SELECT)$/.test(foco.tagName))return;
+    try{const d=await api(`${caminho()}?clube=${encodeURIComponent(detalhe.clube)}`);
+      if(!ocupado&&alvo.tipo==="sala"&&JSON.stringify([d.sala,d.jogoAoVivo,d.caixa])!==JSON.stringify([detalhe.sala,detalhe.jogoAoVivo,detalhe.caixa])){detalhe=d;renderDetalhe();
+        $("estado").textContent=detalhe.jogoAoVivo?"Jogo ao vivo: edição de jogadores pausada":"Pronta para editar";}
+    }catch{}
+  },5000);
+  async function carregarListaSemAbrir(){try{if(aba==="salas"){salas=(await api("inicio")).salas;}else solos=(await api("solo")).carreiras;renderLista();}catch{}}
+
+  // ---------- a carreira particular ----------
+  function renderSolo(){
+    const c=detalhe.carreira;
+    $("resumoSolo").textContent=`${c.tecnico} · ${c.nomeClube} · ${c.modo} · temporada ${c.temporada}${c.temporadasMax?` de ${c.temporadasMax}`:""} · rodada ${c.rodada} · moral ${c.moral ?? "—"}${c.partida?" · partida em andamento":""}${c.demitido?" · demitido":""} · mexida em ${quando(c.atualizadaEm)}`;
+  }
+  $("novoCodigo").onclick=async()=>{
+    if(!confirm(`Gerar um código novo para a carreira de ${detalhe.carreira.tecnico}? O código antigo deixa de valer.`))return;
+    try{const r=await postar(`${caminho()}/codigo`);$("codigoNovo").innerHTML=`<div class="codigo-novo">${esc(r.recuperacao.replace(/(.{4})(?=.)/g,"$1-"))}</div><p class="meta">Mande este código para o técnico. Ele entra em "Já tenho uma carreira" com ele.</p>`;aviso("Código novo gerado.");}
+    catch(e){aviso(e.message,true);}
+  };
+
+  // ---------- jogadores, transferências e histórico (sala ou carreira particular) ----------
   function renderJogadores(){
-    const lista=detalhe.jogadores.filter(j=>j.nome.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").includes(filtro.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"")));
+    const lista=detalhe.jogadores.filter(j=>semAcento(j.nome).includes(semAcento(filtro)));
     $("contagem").textContent=`${lista.length} de ${detalhe.jogadores.length} jogadores`;
     $("jogadores").innerHTML=lista.map(j=>`<button class="jogador${j.id===jogador?" ativo":""}" type="button" data-jogador="${esc(j.id)}"><span>${esc(j.nome)}</span><small>${esc(j.pos)} · ${esc(j.overall)}</small></button>`).join("")||'<p class="meta" style="padding:12px">Nenhum jogador encontrado.</p>';
     $("jogadores").querySelectorAll("[data-jogador]").forEach(b=>b.onclick=()=>{jogador=b.dataset.jogador;renderJogadores();});
@@ -98,18 +190,28 @@
     $("transferencias").querySelectorAll("[data-desfazer]").forEach(b=>b.onclick=()=>{const t=detalhe.transferencias[Number(b.dataset.desfazer)];
       if(t&&confirm(`Desfazer a transferência de ${t.nome||t.jogador} (${t.deNome} → ${t.paraNome})? O valor será estornado.`))editar({tipo:"desfazer_transferencia",jogador:t.jogador},`Transferência de ${t.nome||t.jogador} desfeita.`);});
   }
+  const NOME_TIPO={caixa:"Caixa",energia:"Energia",overall:"Overall",atributo:"Atributo",transferir:"Transferência",desfazer_transferencia:"Desfazer transferência",codigo:"Código de recuperação novo",
+    "sala:anfitriao":"Novo anfitrião","sala:dispensar":"Dispensa","sala:rodada":"Rodada começada","sala:pausa":"Pausa encerrada","sala:velocidade":"Velocidade","sala:novaTemporada":"Temporada nova","sala:cancelarLeilao":"Leilão cancelado","sala:cancelarTroca":"Troca cancelada"};
+  const curto=(v)=>v==null?"—":typeof v==="object"?Object.entries(v).map(([k,x])=>`${k}: ${Array.isArray(x)?x.join(", "):x}`).join(" · "):String(v);
+  function renderHistorico(){
+    const clube=(id)=>detalhe.clubes.find(c=>c.id===id)?.nome||id, nomeJogador=(id)=>detalhe.jogadores.find(j=>j.id===id)?.nome||id;
+    $("historico").innerHTML=(detalhe.historico||[]).map(h=>`<div><strong>${esc(NOME_TIPO[h.tipo]||h.tipo)}</strong>${h.clube?` · ${esc(clube(h.clube))}`:""}${h.jogador?` · ${esc(nomeJogador(h.jogador))}`:""}<br><small>${esc(quando(h.em))} · ${esc(h.ator)} · antes: ${esc(curto(h.antes))} · depois: ${esc(curto(h.depois))}</small></div>`).join("")||'<p class="meta">Nenhuma edição registrada ainda.</p>';
+  }
   async function editar(d,mensagem){
-    limparAviso();$("estado").textContent="Salvando…";
-    try{await api(`salas/${encodeURIComponent(codigo)}`,{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({...d,clube:detalhe.clube})});
-      const clube=detalhe.clube;detalhe=await api(`salas/${encodeURIComponent(codigo)}?clube=${encodeURIComponent(clube)}`);
+    limparAviso();$("estado").textContent="Salvando…";ocupado=true;
+    try{await postar(caminho(),{...d,clube:detalhe.clube});
+      const clube=detalhe.clube;detalhe=await api(`${caminho()}?clube=${encodeURIComponent(clube)}`);
       if(!detalhe.jogadores.some(x=>x.id===jogador))jogador="";renderDetalhe();aviso(mensagem);$("estado").textContent="Alteração salva";
     }catch(e){aviso(e.message,true);$("estado").textContent="Não foi possível salvar";}
+    finally{ocupado=false;}
   }
-  $("clube").onchange=()=>{filtro="";$("busca").value="";jogador="";abrirSala(codigo,$("clube").value);};
+  $("clube").onchange=()=>{filtro="";$("busca").value="";jogador="";abrir(alvo,$("clube").value);};
   $("busca").oninput=()=>{filtro=$("busca").value;renderJogadores();};
+  $("buscaSolo").oninput=()=>{filtroSolo=$("buscaSolo").value;renderLista();};
   $("salvarCaixa").onclick=()=>editar({tipo:"caixa",valor:$("caixa").value},`Caixa de ${detalhe.nomeClube} atualizado.`);
-  $("atualizarSalas").onclick=carregarSalas;
+  $("atualizarSalas").onclick=carregarLista;
+  $("abaSalas").onclick=()=>trocarAba("salas");$("abaSolo").onclick=()=>trocarAba("solo");
   $("sair").onclick=async()=>{await fetch("/admin/carreira/sair",{method:"POST",headers:{"X-CSRF-Token":csrf}});location.href="/admin/carreira";};
-  carregarSalas();
+  carregarLista();
 </script>
 </html>

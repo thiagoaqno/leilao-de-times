@@ -17,10 +17,18 @@ test("painel só abre para a conta GitHub permitida e exige CSRF para editar", a
     listar: () => [{ codigo: "ABCDE", tecnicos: [{ nome: "Ana", nomeClube: "Flamengo" }] }],
     detalhar: () => ({ codigo: "ABCDE", clube: "flamengo", jogadores: [] }),
     editar: (codigo, dados, ator) => { edicoes++; assert.equal(codigo, "ABCDE"); assert.equal(ator, "thiagoaqno"); return { tipo: dados.tipo, depois: 123 }; },
+    comandar: (codigo, dados, ator) => { comandos.push([codigo, dados.tipo, ator]); return { tipo: `sala:${dados.tipo}` }; },
+  };
+  const comandos = [], soloEdicoes = [];
+  const solo = {
+    listar: () => [{ id: 7, tecnico: "Bia", nomeClube: "Palmeiras" }],
+    detalhar: (id) => (id === "7" ? { clube: "palmeiras", jogadores: [], carreira: { id: 7 } } : { erro: "Carreira não encontrada." }),
+    editar: (id, dados, ator) => { soloEdicoes.push([id, dados.tipo, ator]); return { tipo: dados.tipo }; },
+    novoCodigo: () => ({ recuperacao: "ABCDEFGHJKLM" }),
   };
   const buscarGitHub = async (url) => url.includes("access_token") ? Response.json({ access_token: "token-de-teste" })
     : Response.json({ id, login: "thiagoaqno" });
-  Admin.attach(app, carreira, { clientId: "cliente", clientSecret: "segredo", baseUrl: base, fetch: buscarGitHub });
+  Admin.attach(app, carreira, { clientId: "cliente", clientSecret: "segredo", baseUrl: base, fetch: buscarGitHub, solo, historico: () => [] });
   const pedir = (url, opts = {}) => fetch(base + url, { redirect: "manual", ...opts });
   try {
     assert.equal((await pedir("/admin/carreira/api/inicio")).status, 401);
@@ -58,6 +66,19 @@ test("painel só abre para a conta GitHub permitida e exige CSRF para editar", a
     assert.equal((await editar({ Origin: base, "X-CSRF-Token": "errado" })).status, 403);
     assert.equal((await editar({ Origin: base, "X-CSRF-Token": dados.csrf })).status, 200);
     assert.equal(edicoes, 1);
+    // os comandos do anfitrião e as carreiras particulares exigem a mesma sessão e o mesmo CSRF
+    const postar = (url, corpo, csrf = dados.csrf) => pedir(url, { method: "POST", headers: { Cookie: sessao, Origin: base, "X-CSRF-Token": csrf, "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+    assert.equal((await postar("/admin/carreira/api/salas/ABCDE/comando", { tipo: "rodada" }, "errado")).status, 403);
+    assert.equal((await postar("/admin/carreira/api/salas/ABCDE/comando", { tipo: "rodada" })).status, 200);
+    assert.deepEqual(comandos, [["ABCDE", "rodada", "thiagoaqno"]]);
+    assert.equal((await pedir("/admin/carreira/api/solo")).status, 401);
+    assert.equal((await (await pedir("/admin/carreira/api/solo", { headers: { Cookie: sessao } })).json()).carreiras[0].tecnico, "Bia");
+    assert.equal((await pedir("/admin/carreira/api/solo/7", { headers: { Cookie: sessao } })).status, 200);
+    assert.equal((await pedir("/admin/carreira/api/solo/8", { headers: { Cookie: sessao } })).status, 400);
+    assert.equal((await postar("/admin/carreira/api/solo/7", { tipo: "caixa", valor: 1 }, "errado")).status, 403);
+    assert.equal((await postar("/admin/carreira/api/solo/7", { tipo: "caixa", valor: 1 })).status, 200);
+    assert.deepEqual(soloEdicoes, [["7", "caixa", "thiagoaqno"]]);
+    assert.equal((await (await postar("/admin/carreira/api/solo/7/codigo", {})).json()).recuperacao, "ABCDEFGHJKLM");
     assert.equal((await pedir("/admin/carreira/sair", { method: "POST", headers: { Cookie: sessao, Origin: base, "X-CSRF-Token": dados.csrf } })).status, 200);
     assert.equal((await pedir("/admin/carreira/api/inicio", { headers: { Cookie: sessao } })).status, 401);
   } finally {
