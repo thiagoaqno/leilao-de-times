@@ -21,15 +21,15 @@ on:
         required: false
         type: string
       clube:
-        description: "ID do clube (dispensável em listar; consultar aceita vazio)"
+        description: "Nome ou ID do clube (consultar aceita vazio)"
         required: false
         type: string
       jogador:
-        description: "ID do jogador (obrigatório para desfazer uma transferência)"
+        description: "Nome ou ID do jogador (obrigatório nas ações com jogador)"
         required: false
         type: string
       destino:
-        description: "ID do clube de destino (somente transferir)"
+        description: "Nome ou ID do clube de destino (somente transferir)"
         required: false
         type: string
       atributo:

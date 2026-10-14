@@ -8,11 +8,11 @@ on:
         required: true
         type: string
       clube:
-        description: "ID do clube envolvido na transferência"
+        description: "Nome ou ID do clube envolvido na transferência"
         required: true
         type: string
       jogador:
-        description: "ID do jogador da transferência a desfazer"
+        description: "Nome ou ID do jogador da transferência a desfazer"
         required: true
         type: string
 

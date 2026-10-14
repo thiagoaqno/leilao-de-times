@@ -1,13 +1,11 @@
-# Moderação da carreira em grupo pelo GitHub
+# Moderação da carreira por nomes
 
 ## O que muda
 
-- Workflows manuais na aba Actions do GitHub permitem listar e consultar salas, alterar caixa, energia, overall e atributos, transferir jogadores e usar um botão próprio para desfazer transferências simples.
-- A edição vai ao servidor da sala ativa, atualiza os jogadores conectados e é salva no SQLite com registro de quem executou, valor anterior e novo valor.
-- O workflow só roda para `thiagoaqno` na `main`; a API verifica a assinatura e a origem do token temporário OIDC do GitHub. Nenhum controle de moderação aparece no jogo e não há segredo novo para configurar.
-- Enquanto há partida ao vivo, a edição espera o jogo terminar. Trocas entre técnicos e compras parceladas não são desfeitas automaticamente.
-- As instruções de configuração estão em `DEPLOY-FLY.md`.
+- Os formulários do GitHub Actions aceitam nome ou ID do clube, do jogador e do clube de destino. Também funciona com nomes parciais únicos, sem exigir acentos ou maiúsculas iguais.
+- Ao listar salas, o resultado mostra os nomes dos clubes dos técnicos. Ao consultar uma sala, o clube pode ser informado por nome, e as transferências mostram os nomes dos clubes envolvidos.
+- Nomes ambíguos ou inexistentes dão erro com orientação e não alteram a carreira. A interface do jogo não muda.
 
 ## Verificação
 
-- Os testes de moderação, banco e carreira em grupo passaram. Um teste com servidor real confirmou a edição na sala conectada e a persistência após reiniciar.
+- Testes de moderação e carreira em grupo executados com sucesso.
