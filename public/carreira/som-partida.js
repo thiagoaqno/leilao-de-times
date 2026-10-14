@@ -291,7 +291,7 @@ const SomPartida = (() => {
     abrirVolume = document.createElement("button");
     abrirVolume.type = "button";
     abrirVolume.className = "som-volume-bt";
-    abrirVolume.textContent = "🔊 Sons";
+    abrirVolume.innerHTML = '<span aria-hidden="true">🔊</span><span class="som-volume-nome">Sons</span>';
     abrirVolume.setAttribute("aria-expanded", "false");
     abrirVolume.setAttribute("aria-controls", "som-volume-painel");
     painelVolume = document.createElement("div");
@@ -335,7 +335,7 @@ const SomPartida = (() => {
 .som-volume-linha input{min-width:0;flex:1;accent-color:var(--t1)}
 .som-volume-linha output{min-width:38px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums}
 .som-volume-painel small{color:var(--t2);font-size:11px;line-height:1.4}
-@media(max-width:520px){.som-volume-bt{font-size:0;padding:0 9px}.som-volume-bt::first-letter{font-size:16px}}
+@media(max-width:520px){.som-volume-bt{padding:0 9px}.som-volume-nome{display:none}}
 `;
   document.head.appendChild(css);
   aplicar();
