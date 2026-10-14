@@ -56,6 +56,7 @@ function narrar(g,e){
     case "disputa":{const lance=e.fora?"bate "+(ZONA[e.chute]||"")+"... e manda para fora!":e.entrou?"bate "+(ZONA[e.chute]||"")+". <b>Gol!</b>":"bate "+(ZONA[e.chute]||"")+" e o goleiro defende!";
       return [jog+" ("+clube+") "+lance+" Pênaltis: "+e.placar[0]+" × "+e.placar[1]+".",e.entrou?"gol":""];}
     case "intervalo":return ["Intervalo · "+e.placar[0]+" × "+e.placar[1],"apito"];
+    case "momento":return ["<b>"+safe(e.texto)+"</b>","momento"]; // a decisão do protagonista no meio do jogo
     case "fim":return ["Fim de jogo · "+e.placar[0]+" × "+e.placar[1],"apito"];
     default:return [null,""];
   }
@@ -152,7 +153,8 @@ function quadro(){
 }
 
 // ---------- o desenho ----------
-const rotuloEtapa=g=>(ETAPA[g.etapa]||ETAPA.grupos)(g.rodada||0);
+// no formato novo (liga de 36), o nome da rodada vem de road-formato.js
+const rotuloEtapa=g=>window.RoadFormato&&(g.etapa==="liga"||g.perna||g.rodada>4)?(RoadFormato.RODADAS[g.rodada]?.nome||""):(ETAPA[g.etapa]||ETAPA.grupos)(g.rodada||0);
 function ladoHTML(id,classe){
   const cab=D.cabecaDe(id);
   return '<div class="rtc-av-time '+classe+'">'+D.escudo(id,46)+'<div><b>'+safe(D.nomeClube(id))+'</b>'+(cab?'<small>'+cab+'</small>':'<small class="cpu">Computador</small>')+'</div></div>';

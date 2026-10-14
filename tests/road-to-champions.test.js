@@ -20,6 +20,21 @@ function simularServidor(){
   };
 }
 const d=(i,arquetipo)=>({nome:"Amigo "+(i+1),avatar:"Craque "+(i+1),arquetipo});
+// o anfitrião joga a rodada e cada protagonista responde aos momentos do próprio jogo (sempre a primeira opção, ou
+// "manter"), até a rodada fechar. Devolve o estado do anfitrião no fim.
+async function jogarRodada(host,clientes,chave,escolha=()=>null){
+  const r=await host.call("avancar");assert.equal(r.ok,true,r.error);
+  for(let volta=0;volta<10;volta++){
+    let algum=false;
+    for(const c of clientes){
+      const st=(await c.call("retomar",c.chave)).estado,m=st?.jornada?.momento;
+      if(!m||m.respondido)continue;
+      const x=await c.call("momento",{opcao:escolha(m)||"manter"});assert.equal(x.ok,true,x.error);algum=true;
+    }
+    if(!algum)break;
+  }
+  return (await host.call("retomar",chave)).estado;
+}
 test("um jogador pode criar, e salas aceitam até seis clubes exclusivos",async()=>{
   const conectar=simularServidor(),jogadores=[conectar()];
   const primeiro=await jogadores[0].call("criar",d(0,R.IDS[0]));
@@ -28,14 +43,14 @@ test("um jogador pode criar, e salas aceitam até seis clubes exclusivos",async(
   assert.equal((await jogadores[0].call("iniciar")).ok,true); // solo também é permitido
   assert.equal((await jogadores[0].call("entrar",{...d(1,R.IDS[1]),codigo:primeiro.codigo})).ok,false);
 });
-test("seis protagonistas decidem; anfitrião avança cinco capítulos e finais individuais",async()=>{
+test("seis protagonistas, a Champions de 36: fase de liga, mata-mata de ida e volta, momentos e finais individuais",async()=>{
   const conectar=simularServidor(),clients=[conectar()];
   const a=await clients[0].call("criar",d(0,R.IDS[0]));assert.equal(a.ok,true,a.error);
-  const keys=[a];
+  const keys=[a];clients[0].chave={codigo:a.codigo,token:a.token};
   for(let i=1;i<6;i++){
     const sk=conectar();clients.push(sk);
     const b=await sk.call("entrar",{...d(i,R.IDS[i]),codigo:a.codigo});
-    assert.equal(b.ok,true,b.error);keys.push(b);
+    assert.equal(b.ok,true,b.error);keys.push(b);sk.chave={codigo:a.codigo,token:b.token};
   }
   const septimo=conectar();
   assert.equal((await septimo.call("entrar",{...d(6,R.IDS[0]),codigo:a.codigo})).ok,false);
@@ -43,24 +58,34 @@ test("seis protagonistas decidem; anfitrião avança cinco capítulos e finais i
   assert.equal((await invadido.call("retomar",{codigo:a.codigo,token:"a".repeat(48)})).ok,false);
   assert.equal((await clients[1].call("iniciar")).ok,false);
   const inicio=await clients[0].call("iniciar");assert.equal(inicio.ok,true,inicio.error);
-  assert.equal(inicio.estado.equipes.length,8);
-  assert.equal(inicio.estado.jogos.length,12);
-  assert.equal((await clients[0].call("avancar")).ok,false);
-  for(let rodada=0;rodada<5;rodada++){
-    for(let i=0;i<6;i++){
-      const r=await clients[i].call("decidir",{opcao:i%3,tatica:["equilibrado","pressionar","recuar"][i%3]});
-      assert.equal(r.ok,true,r.error);
-      if(i===0)assert.equal((await clients[i].call("decidir",{opcao:2,tatica:"recuar"})).ok,false);
-    }
-    const r=await clients[0].call("avancar");assert.equal(r.ok,true,r.error);
-    if(rodada<4)assert.equal(r.estado.capitulo,rodada+1);
-    else{
-      assert.equal(r.estado.fase,"fim");
-      assert.equal(r.estado.epilogos.length,6);
-      assert.ok(r.estado.campeao);
-      assert.equal(r.estado.jogos.filter(j=>j.resultado!==null).length,15);
-    }
+  assert.equal(inicio.estado.formato,"liga");
+  assert.equal(inicio.estado.equipes.length,36);
+  assert.equal(inicio.estado.jogos.length,144);
+  assert.equal(inicio.estado.liga.length,36);
+  assert.equal((await clients[0].call("avancar")).ok,false,"rodada de entrevista: espera as decisões");
+  let st=inicio.estado,rodadas=0,entrevistas=0;
+  while(st.fase==="jogando"){
+    if(st.entrevista){
+      entrevistas++;
+      for(let i=0;i<6;i++){
+        const r=await clients[i].call("decidir",{opcao:i%3,tatica:["equilibrado","pressionar","recuar"][i%3]});
+        assert.equal(r.ok,true,r.error);
+        if(i===0)assert.equal((await clients[i].call("decidir",{opcao:2,tatica:"recuar"})).ok,false);
+      }
+    }else assert.equal((await clients[0].call("decidir",{opcao:0,tatica:"recuar"})).ok,false,"sem entrevista nesta rodada");
+    const antes=st.capitulo;
+    st=await jogarRodada(clients[0],clients,clients[0].chave);
+    assert.equal(st.jornada,null);
+    rodadas++;
+    if(st.fase==="jogando")assert.equal(st.capitulo,antes+1);
   }
+  assert.equal(rodadas,17);assert.equal(entrevistas,5);
+  assert.equal(st.fase,"fim");
+  assert.equal(st.epilogos.length,6);
+  assert.ok(st.campeao);
+  // 144 da liga + playoff 16 + oitavas 16 + quartas 8 + semis 4 + final 1
+  assert.equal(st.jogos.length,189);
+  assert.equal(st.jogos.filter(j=>j.resultado!==null).length,189);
   const recon=conectar();
   const restored=await recon.call("retomar",{codigo:a.codigo,token:keys[0].token});
   assert.equal(restored.ok,true,restored.error);
@@ -124,7 +149,12 @@ test("laços iniciais, evento exclusivo no capítulo 2 e opções próprias do a
   assert.ok(ini.estado.evento.opcoes.some(o=>o.propria&&/marra/i.test(o.texto)));
   assert.equal((await b.call("decidir",{opcao:0,tatica:"equilibrado"})).ok,true);
   await a.call("decidir",{opcao:0,tatica:"equilibrado"});
-  const av=await a.call("avancar");assert.equal(av.ok,true,av.error);
+  a.chave={codigo:r.codigo,token:r.token};b.chave={codigo:r.codigo,token:rb.token};
+  // as rodadas 2 e 3 da liga não têm entrevista; o capítulo 2 (os exclusivos) cai na rodada 4
+  let st;
+  for(let k=0;k<3;k++){st=await jogarRodada(a,[a,b],a.chave);assert.equal(st.evento,k<2?null:st.evento);}
+  const av={estado:st};
+  assert.equal(av.estado.capitulo,3);
   assert.equal(av.estado.evento.id,"bairro");assert.equal(av.estado.evento.exclusivo,true);
   const outro=await b.call("decidir",{opcao:0,tatica:"equilibrado"});
   assert.equal(outro.estado.jogadores.find(x=>x.id===outro.estado.eu).escolhas.at(-1).eventoId,"aniversario");
@@ -301,23 +331,34 @@ const Motor=require("../public/carreira/motor.js");
 const {partidaDe,timeDoMotor,TATICA_MOTOR}=rtc.paraTestes;
 test("motor: os jogos passam pelo motor da Carreira, com os lances guardados para assistir",async()=>{
   const conectar=simularServidor(),a=conectar(),b=conectar();
-  const ca=await a.call("criar",d(0,"romantico"));await b.call("entrar",{...d(1,"prodigio"),codigo:ca.codigo});
-  await a.call("iniciar");
-  assert.equal((await a.call("partida",{id:"g0A0"})).ok,false,"o jogo ainda não aconteceu");
+  const ca=await a.call("criar",d(0,"romantico"));const cb=await b.call("entrar",{...d(1,"prodigio"),codigo:ca.codigo});
+  a.chave={codigo:ca.codigo,token:ca.token};b.chave={codigo:ca.codigo,token:cb.token};
+  const ini=await a.call("iniciar");
+  const primeiro=ini.estado.jogos.find(j=>j.rodada===0).id;
+  assert.equal((await a.call("partida",{id:primeiro})).ok,false,"o jogo ainda não aconteceu");
   await a.call("decidir",{opcao:0,tatica:"pressionar"});await b.call("decidir",{opcao:0,tatica:"recuar"});
-  const r=await a.call("avancar");assert.equal(r.ok,true,r.error);
-  // a jornada ao vivo: os quatro jogos da rodada, no mesmo relógio para a sala
-  const av=r.estado.aoVivo;
-  assert.equal(av.rodada,0);assert.deepEqual(av.jogos.sort(),r.estado.jogos.filter(j=>j.rodada===0).map(j=>j.id).sort());
-  assert.ok(av.inicio>=r.estado.agora&&av.vel>0);
+  const st=await jogarRodada(a,[a,b],a.chave);
+  // a jornada ao vivo: os jogos dos protagonistas da rodada, no mesmo relógio para a sala
+  const av=st.aoVivo,clubes=st.jogadores.map(p=>p.clube);
+  assert.equal(av.rodada,0);
+  assert.deepEqual(av.jogos.sort(),st.jogos.filter(j=>j.rodada===0&&(clubes.includes(j.casa)||clubes.includes(j.fora))).map(j=>j.id).sort());
+  assert.ok(av.inicio>=st.agora-50&&av.vel>0);
   // o estado de todo mundo não carrega a narração; quem quer assistir pede o jogo
-  assert.ok(!JSON.stringify(r.estado.jogos).includes("eventos"));
+  assert.ok(!JSON.stringify(st.jogos).includes("eventos"));
+  // os outros jogos da rodada (sem protagonista) ficam só com o placar
+  const outro=st.jogos.find(j=>j.rodada===0&&!av.jogos.includes(j.id));
+  assert.ok(outro.resultado);assert.equal((await a.call("partida",{id:outro.id})).ok,false);
   for(const id of av.jogos){
     const p=await b.call("partida",{id});assert.equal(p.ok,true,p.error);
     const fim=p.partida.eventos.find(e=>e.tipo==="fim");
     assert.deepEqual(fim.placar,[p.partida.resultado.casa,p.partida.resultado.fora],"o placar é o do último apito do motor");
     assert.equal(p.partida.eventos.filter(e=>e.tipo==="gol").length,p.partida.resultado.casa+p.partida.resultado.fora);
     assert.equal(p.partida.times.length,2);
+    // os três momentos do protagonista estão na narração, em ordem de minuto
+    const mom=p.partida.eventos.filter(e=>e.tipo==="momento");
+    assert.ok(mom.length>=3,"momentos: "+mom.length);
+    assert.ok(mom.every(e=>/manteve o plano/.test(e.texto)));
+    const mins=p.partida.eventos.map(e=>e.min);assert.deepEqual(mins,[...mins].sort((x,y)=>x-y));
     // quem terminou em campo (expulsos e machucados sem troca saem; a mesa desfaz as trocas para montar o começo)
     for(const t of p.partida.times)assert.ok(t.titulares.length>=7&&t.titulares.length<=11);
     for(const e of p.partida.eventos.filter(e=>e.jogador))assert.ok(p.partida.nomes[e.jogador],"todo lance tem o nome de quem fez");

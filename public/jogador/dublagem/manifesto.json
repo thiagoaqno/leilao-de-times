@@ -1,0 +1,1896 @@
+{
+ "versao": 1,
+ "origem": "ElevenLabs, Road to Champions, lote piloto 1.0",
+ "modelo": "eleven_v4",
+ "formato": "mp3_44100_128",
+ "legendas": "por fala; com alinhamento do ElevenLabs, por frase no tempo real",
+ "personagens": {
+  "ROM_RAFA": {
+   "nome": "Rafa",
+   "campanha": "ROM",
+   "voiceId": "EjEUlDq63HF7ZjlmnqLG"
+  },
+  "ROM_MARCELO": {
+   "nome": "Marcelo",
+   "campanha": "ROM",
+   "voiceId": "m9lCNCaIaOFbhj6grweh"
+  },
+  "PRO_BIA": {
+   "nome": "Bia",
+   "campanha": "PRO",
+   "voiceId": "KOPnPMwI4fLfs8IbGV2B"
+  },
+  "RES_VENTURA": {
+   "nome": "Ventura",
+   "campanha": "RES",
+   "voiceId": "uV20blzYowTn3DN8xY6b"
+  },
+  "RES_NANDO": {
+   "nome": "Nando",
+   "campanha": "RES",
+   "voiceId": "x6FZJEGh2xuoGcHzFF0J"
+  },
+  "IMP_LEO": {
+   "nome": "Léo",
+   "campanha": "IMP",
+   "voiceId": "0nTmdmZnHGd59yiUx25v"
+  },
+  "IMP_DUVAL": {
+   "nome": "Duval",
+   "campanha": "IMP",
+   "voiceId": "QLFqAao4Kl8R1TBa02Rd"
+  },
+  "ENI_HELENA": {
+   "nome": "Helena",
+   "campanha": "ENI",
+   "voiceId": "8tT35CVcTDFan45lZOnP"
+  },
+  "ENI_CLARA": {
+   "nome": "Clara",
+   "campanha": "ENI",
+   "voiceId": "0yh8McxKc4DC79EELdCt"
+  },
+  "MAQ_LAURA": {
+   "nome": "Laura",
+   "campanha": "MAQ",
+   "voiceId": "qPFqNiFFvVZcqKiPZKE6"
+  },
+  "MAQ_ANDRE": {
+   "nome": "André",
+   "campanha": "MAQ",
+   "voiceId": "bOfmGBubwU6YlrKXeRkh"
+  },
+  "ROM_REP": {
+   "nome": "Repórter pós-jogo",
+   "campanha": "ROM",
+   "voiceId": "3ULAAai0IVN00DTWA6vF"
+  }
+ },
+ "cenas": {
+  "RTC_A1_E01": {
+   "id": "RTC_A1_E01",
+   "titulo": "Primeira noite",
+   "ato": 1,
+   "campanha": "PRO",
+   "arquetipo": "prodigio",
+   "gatilho": {
+    "tipo": "preludio",
+    "capitulo": 0,
+    "id": "primeira-noite"
+   },
+   "arte": "/jogador/cenas/hub-fundo.webp",
+   "arteReserva": true,
+   "ambiente": "Apartamento em Barcelona, noite; assessora em ligação telefônica",
+   "intro": [
+    "RTC_A1_E01_PRO_001",
+    "RTC_A1_E01_PRO_BIA_001",
+    "RTC_A1_E01_PRO_002",
+    "RTC_A1_E01_PRO_BIA_002"
+   ],
+   "escolha": {
+    "id": "choice_01",
+    "opcoes": [
+     {
+      "codigo": "A",
+      "rotulo": "Aceitar a festa"
+     },
+     {
+      "codigo": "B",
+      "rotulo": "Ficar em casa"
+     }
+    ]
+   },
+   "ramos": {
+    "A": [
+     "RTC_A1_E01_PRO_003_A",
+     "RTC_A1_E01_PRO_BIA_003_A"
+    ],
+    "B": [
+     "RTC_A1_E01_PRO_003_B",
+     "RTC_A1_E01_PRO_BIA_003_B",
+     "RTC_A1_E01_PRO_004_B"
+    ]
+   },
+   "condicao": {
+    "sempre": true
+   },
+   "estado": {
+    "A": {
+     "pro_festa_marca": true
+    },
+    "B": {
+     "pro_festa_marca": false
+    }
+   },
+   "sfx": [
+    "som de gravação de story",
+    "chamada telefônica",
+    "ramo A: buzina de carro distante"
+   ]
+  },
+  "RTC_A2_E02": {
+   "id": "RTC_A2_E02",
+   "titulo": "O aniversário do parça",
+   "ato": 2,
+   "campanha": "ROM",
+   "arquetipo": "romantico",
+   "gatilho": {
+    "tipo": "evento",
+    "evento": "aniversario"
+   },
+   "arte": "/jogador/popups/rtc-popup-aniversario.webp",
+   "arteReserva": false,
+   "ambiente": "Apartamento em Londres; ligações e mensagens",
+   "intro": [
+    "RTC_A2_E02_ROM_RAFA_001",
+    "RTC_A2_E02_ROM_001",
+    "RTC_A2_E02_ROM_RAFA_002",
+    "RTC_A2_E02_ROM_MARCELO_001"
+   ],
+   "escolha": {
+    "id": "choice_01",
+    "opcoes": [
+     {
+      "codigo": "A",
+      "rotulo": "Ir à festa e aproveitar a noite"
+     },
+     {
+      "codigo": "B",
+      "rotulo": "Passar rapidamente para cumprimentar"
+     },
+     {
+      "codigo": "C",
+      "rotulo": "Ficar em casa e descansar"
+     }
+    ]
+   },
+   "ramos": {
+    "A": [
+     "RTC_A2_E02_ROM_RAFA_003_A",
+     "RTC_A2_E02_ROM_MARCELO_002_A"
+    ],
+    "B": [
+     "RTC_A2_E02_ROM_RAFA_003_B",
+     "RTC_A2_E02_ROM_MARCELO_002_B"
+    ],
+    "C": [
+     "RTC_A2_E02_ROM_RAFA_003_C",
+     "RTC_A2_E02_ROM_MARCELO_002_C"
+    ]
+   },
+   "condicao": {
+    "sempre": true
+   },
+   "estado": {
+    "A": {
+     "rom_festa": "integral"
+    },
+    "B": {
+     "rom_festa": "breve"
+    },
+    "C": {
+     "rom_festa": "nao"
+    }
+   },
+   "sfx": [
+    "vibração do celular",
+    "música abafada em mensagem de áudio",
+    "desligamento da chamada"
+   ]
+  },
+  "RTC_A2_E03": {
+   "id": "RTC_A2_E03",
+   "titulo": "O banco de Ventura",
+   "ato": 2,
+   "campanha": "RES",
+   "arquetipo": "resiliente",
+   "gatilho": {
+    "tipo": "evento",
+    "evento": "banco"
+   },
+   "arte": "/jogador/popups/rtc-popup-banco.webp",
+   "arteReserva": false,
+   "ambiente": "Sala de análise técnica, portas fechadas",
+   "intro": [
+    "RTC_A2_E03_RES_VENTURA_001",
+    "RTC_A2_E03_RES_001",
+    "RTC_A2_E03_RES_VENTURA_002",
+    "RTC_A2_E03_RES_002",
+    "RTC_A2_E03_RES_VENTURA_003",
+    "RTC_A2_E03_RES_NANDO_001"
+   ],
+   "escolha": {
+    "id": "choice_01",
+    "opcoes": [
+     {
+      "codigo": "A",
+      "rotulo": "Confrontar Ventura"
+     },
+     {
+      "codigo": "B",
+      "rotulo": "Aceitar e pedir oportunidade"
+     },
+     {
+      "codigo": "C",
+      "rotulo": "Sair em silêncio"
+     }
+    ]
+   },
+   "ramos": {
+    "A": [
+     "RTC_A2_E03_RES_VENTURA_004_A"
+    ],
+    "B": [
+     "RTC_A2_E03_RES_NANDO_002_B"
+    ],
+    "C": [
+     "RTC_A2_E03_RES_VENTURA_004_C"
+    ]
+   },
+   "condicao": {
+    "sempre": true
+   },
+   "estado": {
+    "A": {
+     "res_reacao_banco": "A",
+     "res_relacao_ventura_delta": -1
+    },
+    "B": {
+     "res_reacao_banco": "B",
+     "res_relacao_ventura_delta": 1
+    },
+    "C": {
+     "res_reacao_banco": "C",
+     "res_relacao_ventura_delta": 0
+    }
+   },
+   "sfx": [
+    "porta fechando",
+    "ruído de ar-condicionado",
+    "cadeira sendo afastada"
+   ]
+  },
+  "RTC_A1_E04": {
+   "id": "RTC_A1_E04",
+   "titulo": "O despertador",
+   "ato": 1,
+   "campanha": "IMP",
+   "arquetipo": "imprevisivel",
+   "gatilho": {
+    "tipo": "evento",
+    "evento": "despertador"
+   },
+   "arte": "/jogador/popups/rtc-popup-despertador.webp",
+   "arteReserva": false,
+   "ambiente": "Apartamento em Paris; manhã após noite de jogos",
+   "intro": [
+    "RTC_A1_E04_IMP_LEO_001",
+    "RTC_A1_E04_IMP_001",
+    "RTC_A1_E04_IMP_LEO_002",
+    "RTC_A1_E04_IMP_DUVAL_001",
+    "RTC_A1_E04_IMP_002",
+    "RTC_A1_E04_IMP_DUVAL_002"
+   ],
+   "escolha": {
+    "id": "choice_01",
+    "opcoes": [
+     {
+      "codigo": "A",
+      "rotulo": "Inventar uma desculpa"
+     },
+     {
+      "codigo": "B",
+      "rotulo": "Admitir que passou a noite jogando"
+     },
+     {
+      "codigo": "C",
+      "rotulo": "Desligar e correr para o treinamento"
+     }
+    ]
+   },
+   "ramos": {
+    "A": [
+     "RTC_A1_E04_IMP_DUVAL_003_A"
+    ],
+    "B": [
+     "RTC_A1_E04_IMP_DUVAL_003_B"
+    ],
+    "C": [
+     "RTC_A1_E04_IMP_LEO_003_C"
+    ]
+   },
+   "condicao": {
+    "sempre": true
+   },
+   "estado": {
+    "A": {
+     "imp_sinceridade_duval": false,
+     "imp_disciplina_delta": -1
+    },
+    "B": {
+     "imp_sinceridade_duval": true,
+     "imp_disciplina_delta": 0
+    },
+    "C": {
+     "imp_disciplina_delta": 1
+    }
+   },
+   "sfx": [
+    "despertador insistente",
+    "ventilação de computador",
+    "chamada de celular"
+   ]
+  },
+  "RTC_A2_E05": {
+   "id": "RTC_A2_E05",
+   "titulo": "A coletiva obrigatória",
+   "ato": 2,
+   "campanha": "ENI",
+   "arquetipo": "enigma",
+   "gatilho": {
+    "tipo": "evento",
+    "evento": "coletiva"
+   },
+   "arte": "/jogador/popups/rtc-popup-coletiva.webp",
+   "arteReserva": false,
+   "ambiente": "Sala de imprensa em Munique; microfones próximos",
+   "intro": [
+    "RTC_A2_E05_ENI_HELENA_001",
+    "RTC_A2_E05_ENI_001",
+    "RTC_A2_E05_ENI_HELENA_002",
+    "RTC_A2_E05_ENI_CLARA_001",
+    "RTC_A2_E05_ENI_002",
+    "RTC_A2_E05_ENI_CLARA_002"
+   ],
+   "escolha": {
+    "id": "choice_01",
+    "opcoes": [
+     {
+      "codigo": "A",
+      "rotulo": "Resposta literal"
+     },
+     {
+      "codigo": "B",
+      "rotulo": "Resposta irônica"
+     },
+     {
+      "codigo": "C",
+      "rotulo": "Resposta sincera"
+     }
+    ]
+   },
+   "ramos": {
+    "A": [
+     "RTC_A2_E05_ENI_003_A",
+     "RTC_A2_E05_ENI_HELENA_003_A"
+    ],
+    "B": [
+     "RTC_A2_E05_ENI_003_B"
+    ],
+    "C": [
+     "RTC_A2_E05_ENI_003_C",
+     "RTC_A2_E05_ENI_CLARA_003_C"
+    ]
+   },
+   "condicao": {
+    "sempre": true
+   },
+   "estado": {
+    "A": {
+     "eni_abertura_imprensa": "literal"
+    },
+    "B": {
+     "eni_abertura_imprensa": "ironia"
+    },
+    "C": {
+     "eni_abertura_imprensa": "sincera"
+    }
+   },
+   "sfx": [
+    "flashes",
+    "murmúrio baixo de jornalistas",
+    "ruído de microfone"
+   ]
+  },
+  "RTC_A2_E06": {
+   "id": "RTC_A2_E06",
+   "titulo": "Protocolo noturno",
+   "ato": 2,
+   "campanha": "MAQ",
+   "arquetipo": "maquina",
+   "gatilho": {
+    "tipo": "evento",
+    "evento": "protocolo"
+   },
+   "arte": "/jogador/popups/rtc-popup-protocolo.webp",
+   "arteReserva": false,
+   "ambiente": "Quarto de hotel em Manchester; chamadas telefônicas",
+   "intro": [
+    "RTC_A2_E06_MAQ_LAURA_001",
+    "RTC_A2_E06_MAQ_001",
+    "RTC_A2_E06_MAQ_ANDRE_001",
+    "RTC_A2_E06_MAQ_002",
+    "RTC_A2_E06_MAQ_ANDRE_002",
+    "RTC_A2_E06_MAQ_LAURA_002"
+   ],
+   "escolha": {
+    "id": "choice_01",
+    "opcoes": [
+     {
+      "codigo": "A",
+      "rotulo": "Seguir integralmente o protocolo"
+     },
+     {
+      "codigo": "B",
+      "rotulo": "Descer por vinte minutos"
+     },
+     {
+      "codigo": "C",
+      "rotulo": "Ficar com os colegas até tarde"
+     }
+    ]
+   },
+   "ramos": {
+    "A": [
+     "RTC_A2_E06_MAQ_ANDRE_003_A"
+    ],
+    "B": [
+     "RTC_A2_E06_MAQ_ANDRE_003_B"
+    ],
+    "C": [
+     "RTC_A2_E06_MAQ_LAURA_003_C"
+    ]
+   },
+   "condicao": {
+    "sempre": true
+   },
+   "estado": {
+    "A": {
+     "maq_adesao_protocolo": "alta",
+     "maq_integracao_elenco": "baixa"
+    },
+    "B": {
+     "maq_adesao_protocolo": "moderada",
+     "maq_integracao_elenco": "media"
+    },
+    "C": {
+     "maq_adesao_protocolo": "baixa",
+     "maq_integracao_elenco": "alta"
+    }
+   },
+   "sfx": [
+    "notificações discretas",
+    "ambiente distante de restaurante",
+    "ar-condicionado"
+   ]
+  },
+  "RTC_A3_E07": {
+   "id": "RTC_A3_E07",
+   "titulo": "Pergunta inconveniente",
+   "ato": 3,
+   "campanha": "ROM",
+   "arquetipo": "romantico",
+   "gatilho": {
+    "tipo": "callback",
+    "id": "pergunta-inconveniente"
+   },
+   "arte": null,
+   "arteReserva": true,
+   "ambiente": "Coletiva pós-jogo",
+   "intro": [],
+   "escolha": null,
+   "ramos": {
+    "A": [
+     "RTC_A3_E07_ROM_REP_001_A"
+    ],
+    "B": [
+     "RTC_A3_E07_ROM_REP_001_B"
+    ],
+    "C": [
+     "RTC_A3_E07_ROM_REP_001_C"
+    ]
+   },
+   "condicao": {
+    "chave": "resultado_ultimo_jogo",
+    "op": "==",
+    "valor": "derrota"
+   },
+   "estado": {},
+   "sfx": []
+  }
+ },
+ "falas": {
+  "RTC_A1_E01_PRO_001": {
+   "id": "RTC_A1_E01_PRO_001",
+   "cena": "RTC_A1_E01",
+   "personagem": "PRO",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "E aí, galera! Olha essa vista... É, chegou a hora. Amanhã começa a era nova, tá ligado?",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A1_E01_PRO_BIA_001": {
+   "id": "RTC_A1_E01_PRO_BIA_001",
+   "cena": "RTC_A1_E01",
+   "personagem": "PRO_BIA",
+   "nome": "Bia",
+   "protagonista": false,
+   "legenda": "Garoto, larga esse celular. Quer dizer, não larga, que eu tô te ligando. A marca vai fazer uma festa hoje. Querem você lá.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/PRO_BIA/RTC_A1_E01_PRO_BIA_001.mp3",
+   "duracaoMs": 8281,
+   "trechos": null,
+   "voiceId": "KOPnPMwI4fLfs8IbGV2B"
+  },
+  "RTC_A1_E01_PRO_002": {
+   "id": "RTC_A1_E01_PRO_002",
+   "cena": "RTC_A1_E01",
+   "personagem": "PRO",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Hoje? Eu tenho treino às nove.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A1_E01_PRO_BIA_002": {
+   "id": "RTC_A1_E01_PRO_BIA_002",
+   "cena": "RTC_A1_E01",
+   "personagem": "PRO_BIA",
+   "nome": "Bia",
+   "protagonista": false,
+   "legenda": "Uma hora. Foto, sorriso, tchau. Imagem é contrato, contrato é futuro.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/PRO_BIA/RTC_A1_E01_PRO_BIA_002.mp3",
+   "duracaoMs": 6609,
+   "trechos": null,
+   "voiceId": "KOPnPMwI4fLfs8IbGV2B"
+  },
+  "RTC_A1_E01_PRO_003_A": {
+   "id": "RTC_A1_E01_PRO_003_A",
+   "cena": "RTC_A1_E01",
+   "personagem": "PRO",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Uma hora, hein? Normal, né? Me manda o endereço!",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "A"
+   },
+   "ramo": "A",
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A1_E01_PRO_BIA_003_A": {
+   "id": "RTC_A1_E01_PRO_BIA_003_A",
+   "cena": "RTC_A1_E01",
+   "personagem": "PRO_BIA",
+   "nome": "Bia",
+   "protagonista": false,
+   "legenda": "Esse é o meu menino. Carro passa aí em vinte minutos.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "A"
+   },
+   "ramo": "A",
+   "audio": "/jogador/dublagem/vo/PRO_BIA/RTC_A1_E01_PRO_BIA_003_A.mp3",
+   "duracaoMs": 4049,
+   "trechos": null,
+   "voiceId": "KOPnPMwI4fLfs8IbGV2B"
+  },
+  "RTC_A1_E01_PRO_003_B": {
+   "id": "RTC_A1_E01_PRO_003_B",
+   "cena": "RTC_A1_E01",
+   "personagem": "PRO",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Não. Primeiro dia é primeiro dia. Diz pra eles que eu vou na próxima.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "B"
+   },
+   "ramo": "B",
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A1_E01_PRO_BIA_003_B": {
+   "id": "RTC_A1_E01_PRO_BIA_003_B",
+   "cena": "RTC_A1_E01",
+   "personagem": "PRO_BIA",
+   "nome": "Bia",
+   "protagonista": false,
+   "legenda": "Tá bom, tá bom. Mas a próxima não tem desculpa.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "B"
+   },
+   "ramo": "B",
+   "audio": "/jogador/dublagem/vo/PRO_BIA/RTC_A1_E01_PRO_BIA_003_B.mp3",
+   "duracaoMs": 3631,
+   "trechos": null,
+   "voiceId": "KOPnPMwI4fLfs8IbGV2B"
+  },
+  "RTC_A1_E01_PRO_004_B": {
+   "id": "RTC_A1_E01_PRO_004_B",
+   "cena": "RTC_A1_E01",
+   "personagem": "PRO",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Melhor do mundo não começa numa festa. Começa às nove da manhã.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "B"
+   },
+   "ramo": "B",
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E02_ROM_RAFA_001": {
+   "id": "RTC_A2_E02_ROM_RAFA_001",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM_RAFA",
+   "nome": "Rafa",
+   "protagonista": false,
+   "legenda": "Meu querido! Hoje você não me escapa. A festa tá cheia, todo mundo perguntando de você. Só falta o artista!",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/ROM_RAFA/RTC_A2_E02_ROM_RAFA_001.mp3",
+   "duracaoMs": 9796,
+   "trechos": null,
+   "voiceId": "EjEUlDq63HF7ZjlmnqLG"
+  },
+  "RTC_A2_E02_ROM_001": {
+   "id": "RTC_A2_E02_ROM_001",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Meu querido, você sabe que quarta eu tenho jogo, né?",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E02_ROM_RAFA_002": {
+   "id": "RTC_A2_E02_ROM_RAFA_002",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM_RAFA",
+   "nome": "Rafa",
+   "protagonista": false,
+   "legenda": "Sei! E também sei que você prometeu não virar um velho chato!",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/ROM_RAFA/RTC_A2_E02_ROM_RAFA_002.mp3",
+   "duracaoMs": 5251,
+   "trechos": null,
+   "voiceId": "EjEUlDq63HF7ZjlmnqLG"
+  },
+  "RTC_A2_E02_ROM_MARCELO_001": {
+   "id": "RTC_A2_E02_ROM_MARCELO_001",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM_MARCELO",
+   "nome": "Marcelo",
+   "protagonista": false,
+   "legenda": "Antes de responder, pensa na semifinal. Uma foto errada e amanhã a manchete não vai falar de futebol.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/ROM_MARCELO/RTC_A2_E02_ROM_MARCELO_001.mp3",
+   "duracaoMs": 6844,
+   "trechos": [
+    {
+     "texto": "Antes de responder, pensa na semifinal.",
+     "inicioMs": 0,
+     "fimMs": 2840
+    },
+    {
+     "texto": "Uma foto errada e amanhã a manchete não vai falar de futebol.",
+     "inicioMs": 3120,
+     "fimMs": 6880
+    }
+   ],
+   "voiceId": "m9lCNCaIaOFbhj6grweh",
+   "alinhado": true
+  },
+  "RTC_A2_E02_ROM_RAFA_003_A": {
+   "id": "RTC_A2_E02_ROM_RAFA_003_A",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM_RAFA",
+   "nome": "Rafa",
+   "protagonista": false,
+   "legenda": "ESSE é o homem que eu conheço! Deixa que hoje eu cuido de tudo!",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "A"
+   },
+   "ramo": "A",
+   "audio": "/jogador/dublagem/vo/ROM_RAFA/RTC_A2_E02_ROM_RAFA_003_A.mp3",
+   "duracaoMs": 4049,
+   "trechos": null,
+   "voiceId": "EjEUlDq63HF7ZjlmnqLG"
+  },
+  "RTC_A2_E02_ROM_MARCELO_002_A": {
+   "id": "RTC_A2_E02_ROM_MARCELO_002_A",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM_MARCELO",
+   "nome": "Marcelo",
+   "protagonista": false,
+   "legenda": "Tá. Então pelo menos deixa o celular longe das câmeras.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "A"
+   },
+   "ramo": "A",
+   "audio": "/jogador/dublagem/vo/ROM_MARCELO/RTC_A2_E02_ROM_MARCELO_002_A.mp3",
+   "duracaoMs": 5329,
+   "trechos": [
+    {
+     "texto": "Tá.",
+     "inicioMs": 0,
+     "fimMs": 1360
+    },
+    {
+     "texto": "Então pelo menos deixa o celular longe das câmeras.",
+     "inicioMs": 1680,
+     "fimMs": 5280
+    }
+   ],
+   "voiceId": "m9lCNCaIaOFbhj6grweh",
+   "alinhado": true
+  },
+  "RTC_A2_E02_ROM_RAFA_003_B": {
+   "id": "RTC_A2_E02_ROM_RAFA_003_B",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM_RAFA",
+   "nome": "Rafa",
+   "protagonista": false,
+   "legenda": "Meia horinha já vale, meu irmão. Eu guardo um pedaço do bolo!",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "B"
+   },
+   "ramo": "B",
+   "audio": "/jogador/dublagem/vo/ROM_RAFA/RTC_A2_E02_ROM_RAFA_003_B.mp3",
+   "duracaoMs": 4676,
+   "trechos": null,
+   "voiceId": "EjEUlDq63HF7ZjlmnqLG"
+  },
+  "RTC_A2_E02_ROM_MARCELO_002_B": {
+   "id": "RTC_A2_E02_ROM_MARCELO_002_B",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM_MARCELO",
+   "nome": "Marcelo",
+   "protagonista": false,
+   "legenda": "Combinado. Mas meia hora não pode virar três.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "B"
+   },
+   "ramo": "B",
+   "audio": "/jogador/dublagem/vo/ROM_MARCELO/RTC_A2_E02_ROM_MARCELO_002_B.mp3",
+   "duracaoMs": 4049,
+   "trechos": [
+    {
+     "texto": "Combinado.",
+     "inicioMs": 0,
+     "fimMs": 1040
+    },
+    {
+     "texto": "Mas meia hora não pode virar três.",
+     "inicioMs": 1280,
+     "fimMs": 4080
+    }
+   ],
+   "voiceId": "m9lCNCaIaOFbhj6grweh",
+   "alinhado": true
+  },
+  "RTC_A2_E02_ROM_RAFA_003_C": {
+   "id": "RTC_A2_E02_ROM_RAFA_003_C",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM_RAFA",
+   "nome": "Rafa",
+   "protagonista": false,
+   "legenda": "Ah, meu irmão... Tá certo. Ganha esse jogo por nós, então.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "C"
+   },
+   "ramo": "C",
+   "audio": "/jogador/dublagem/vo/ROM_RAFA/RTC_A2_E02_ROM_RAFA_003_C.mp3",
+   "duracaoMs": 6687,
+   "trechos": null,
+   "voiceId": "EjEUlDq63HF7ZjlmnqLG"
+  },
+  "RTC_A2_E02_ROM_MARCELO_002_C": {
+   "id": "RTC_A2_E02_ROM_MARCELO_002_C",
+   "cena": "RTC_A2_E02",
+   "personagem": "ROM_MARCELO",
+   "nome": "Marcelo",
+   "protagonista": false,
+   "legenda": "Boa decisão. Amanhã a gente conversa sobre o jogo.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "C"
+   },
+   "ramo": "C",
+   "audio": "/jogador/dublagem/vo/ROM_MARCELO/RTC_A2_E02_ROM_MARCELO_002_C.mp3",
+   "duracaoMs": 3318,
+   "trechos": [
+    {
+     "texto": "Boa decisão.",
+     "inicioMs": 0,
+     "fimMs": 1280
+    },
+    {
+     "texto": "Amanhã a gente conversa sobre o jogo.",
+     "inicioMs": 1520,
+     "fimMs": 3360
+    }
+   ],
+   "voiceId": "m9lCNCaIaOFbhj6grweh",
+   "alinhado": true
+  },
+  "RTC_A2_E03_RES_VENTURA_001": {
+   "id": "RTC_A2_E03_RES_VENTURA_001",
+   "cena": "RTC_A2_E03",
+   "personagem": "RES_VENTURA",
+   "nome": "Ventura",
+   "protagonista": false,
+   "legenda": "Senta. Quero conversar sobre domingo.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/RES_VENTURA/RTC_A2_E03_RES_VENTURA_001.mp3",
+   "duracaoMs": 3082,
+   "trechos": null,
+   "voiceId": "uV20blzYowTn3DN8xY6b"
+  },
+  "RTC_A2_E03_RES_001": {
+   "id": "RTC_A2_E03_RES_001",
+   "cena": "RTC_A2_E03",
+   "personagem": "RES",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Eu vou jogar?",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E03_RES_VENTURA_002": {
+   "id": "RTC_A2_E03_RES_VENTURA_002",
+   "cena": "RTC_A2_E03",
+   "personagem": "RES_VENTURA",
+   "nome": "Ventura",
+   "protagonista": false,
+   "legenda": "Vai começar no banco.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/RES_VENTURA/RTC_A2_E03_RES_VENTURA_002.mp3",
+   "duracaoMs": 1646,
+   "trechos": null,
+   "voiceId": "uV20blzYowTn3DN8xY6b"
+  },
+  "RTC_A2_E03_RES_002": {
+   "id": "RTC_A2_E03_RES_002",
+   "cena": "RTC_A2_E03",
+   "personagem": "RES",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Eu fui o melhor do treino. E daí?",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E03_RES_VENTURA_003": {
+   "id": "RTC_A2_E03_RES_VENTURA_003",
+   "cena": "RTC_A2_E03",
+   "personagem": "RES_VENTURA",
+   "nome": "Ventura",
+   "protagonista": false,
+   "legenda": "Treino não é argumento suficiente. Eu preciso de onze jogadores que entendam o plano.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/RES_VENTURA/RTC_A2_E03_RES_VENTURA_003.mp3",
+   "duracaoMs": 6348,
+   "trechos": null,
+   "voiceId": "uV20blzYowTn3DN8xY6b"
+  },
+  "RTC_A2_E03_RES_NANDO_001": {
+   "id": "RTC_A2_E03_RES_NANDO_001",
+   "cena": "RTC_A2_E03",
+   "personagem": "RES_NANDO",
+   "nome": "Nando",
+   "protagonista": false,
+   "legenda": "Escuta o que ele tá dizendo. Você ainda pode decidir esse jogo.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/RES_NANDO/RTC_A2_E03_RES_NANDO_001.mp3",
+   "duracaoMs": 3971,
+   "trechos": [
+    {
+     "texto": "Escuta o que ele tá dizendo.",
+     "inicioMs": 0,
+     "fimMs": 1600
+    },
+    {
+     "texto": "Você ainda pode decidir esse jogo.",
+     "inicioMs": 1840,
+     "fimMs": 4000
+    }
+   ],
+   "voiceId": "x6FZJEGh2xuoGcHzFF0J",
+   "alinhado": true
+  },
+  "RTC_A2_E03_RES_VENTURA_004_A": {
+   "id": "RTC_A2_E03_RES_VENTURA_004_A",
+   "cena": "RTC_A2_E03",
+   "personagem": "RES_VENTURA",
+   "nome": "Ventura",
+   "protagonista": false,
+   "legenda": "Você quer provar que eu tô errado? Faça isso no campo. Não nesta sala.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "A"
+   },
+   "ramo": "A",
+   "audio": "/jogador/dublagem/vo/RES_VENTURA/RTC_A2_E03_RES_VENTURA_004_A.mp3",
+   "duracaoMs": 5146,
+   "trechos": null,
+   "voiceId": "uV20blzYowTn3DN8xY6b"
+  },
+  "RTC_A2_E03_RES_NANDO_002_B": {
+   "id": "RTC_A2_E03_RES_NANDO_002_B",
+   "cena": "RTC_A2_E03",
+   "personagem": "RES_NANDO",
+   "nome": "Nando",
+   "protagonista": false,
+   "legenda": "É assim que se responde. Fica pronto quando ele chamar.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "B"
+   },
+   "ramo": "B",
+   "audio": "/jogador/dublagem/vo/RES_NANDO/RTC_A2_E03_RES_NANDO_002_B.mp3",
+   "duracaoMs": 3396,
+   "trechos": [
+    {
+     "texto": "É assim que se responde.",
+     "inicioMs": 0,
+     "fimMs": 1560
+    },
+    {
+     "texto": "Fica pronto quando ele chamar.",
+     "inicioMs": 1760,
+     "fimMs": 3360
+    }
+   ],
+   "voiceId": "x6FZJEGh2xuoGcHzFF0J",
+   "alinhado": true
+  },
+  "RTC_A2_E03_RES_VENTURA_004_C": {
+   "id": "RTC_A2_E03_RES_VENTURA_004_C",
+   "cena": "RTC_A2_E03",
+   "personagem": "RES_VENTURA",
+   "nome": "Ventura",
+   "protagonista": false,
+   "legenda": "Silêncio também é uma resposta. Espero que seja a certa.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "C"
+   },
+   "ramo": "C",
+   "audio": "/jogador/dublagem/vo/RES_VENTURA/RTC_A2_E03_RES_VENTURA_004_C.mp3",
+   "duracaoMs": 4911,
+   "trechos": null,
+   "voiceId": "uV20blzYowTn3DN8xY6b"
+  },
+  "RTC_A1_E04_IMP_LEO_001": {
+   "id": "RTC_A1_E04_IMP_LEO_001",
+   "cena": "RTC_A1_E04",
+   "personagem": "IMP_LEO",
+   "nome": "Léo",
+   "protagonista": false,
+   "legenda": "Mano... Você ainda tá aí? A gente jogou até quase cinco.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/IMP_LEO/RTC_A1_E04_IMP_LEO_001.mp3",
+   "duracaoMs": 5878,
+   "trechos": [
+    {
+     "texto": "Mano...",
+     "inicioMs": 0,
+     "fimMs": 1200
+    },
+    {
+     "texto": "Você ainda tá aí?",
+     "inicioMs": 2240,
+     "fimMs": 3520
+    },
+    {
+     "texto": "A gente jogou até quase cinco.",
+     "inicioMs": 3760,
+     "fimMs": 5920
+    }
+   ],
+   "voiceId": "0nTmdmZnHGd59yiUx25v",
+   "alinhado": true
+  },
+  "RTC_A1_E04_IMP_001": {
+   "id": "RTC_A1_E04_IMP_001",
+   "cena": "RTC_A1_E04",
+   "personagem": "IMP",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Eu tava estudando estratégia.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A1_E04_IMP_LEO_002": {
+   "id": "RTC_A1_E04_IMP_LEO_002",
+   "cena": "RTC_A1_E04",
+   "personagem": "IMP_LEO",
+   "nome": "Léo",
+   "protagonista": false,
+   "legenda": "E perdeu sete partidas seguidas! Que estratégia é essa?",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/IMP_LEO/RTC_A1_E04_IMP_LEO_002.mp3",
+   "duracaoMs": 5407,
+   "trechos": [
+    {
+     "texto": "E perdeu sete partidas seguidas!",
+     "inicioMs": 0,
+     "fimMs": 2880
+    },
+    {
+     "texto": "Que estratégia é essa?",
+     "inicioMs": 3880,
+     "fimMs": 5200
+    }
+   ],
+   "voiceId": "0nTmdmZnHGd59yiUx25v",
+   "alinhado": true
+  },
+  "RTC_A1_E04_IMP_DUVAL_001": {
+   "id": "RTC_A1_E04_IMP_DUVAL_001",
+   "cena": "RTC_A1_E04",
+   "personagem": "IMP_DUVAL",
+   "nome": "Duval",
+   "protagonista": false,
+   "legenda": "Bom dia. O treino começa em quarenta minutos. Você já saiu de casa?",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/IMP_DUVAL/RTC_A1_E04_IMP_DUVAL_001.mp3",
+   "duracaoMs": 4598,
+   "trechos": [
+    {
+     "texto": "Bom dia.",
+     "inicioMs": 0,
+     "fimMs": 760
+    },
+    {
+     "texto": "O treino começa em quarenta minutos.",
+     "inicioMs": 960,
+     "fimMs": 3120
+    },
+    {
+     "texto": "Você já saiu de casa?",
+     "inicioMs": 3280,
+     "fimMs": 4640
+    }
+   ],
+   "voiceId": "QLFqAao4Kl8R1TBa02Rd",
+   "alinhado": true
+  },
+  "RTC_A1_E04_IMP_002": {
+   "id": "RTC_A1_E04_IMP_002",
+   "cena": "RTC_A1_E04",
+   "personagem": "IMP",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Depende do que você chama de sair.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A1_E04_IMP_DUVAL_002": {
+   "id": "RTC_A1_E04_IMP_DUVAL_002",
+   "cena": "RTC_A1_E04",
+   "personagem": "IMP_DUVAL",
+   "nome": "Duval",
+   "protagonista": false,
+   "legenda": "Não tenho tempo para enigmas. Preciso de uma resposta.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/IMP_DUVAL/RTC_A1_E04_IMP_DUVAL_002.mp3",
+   "duracaoMs": 3396,
+   "trechos": [
+    {
+     "texto": "Não tenho tempo para enigmas.",
+     "inicioMs": 0,
+     "fimMs": 1720
+    },
+    {
+     "texto": "Preciso de uma resposta.",
+     "inicioMs": 1840,
+     "fimMs": 3360
+    }
+   ],
+   "voiceId": "QLFqAao4Kl8R1TBa02Rd",
+   "alinhado": true
+  },
+  "RTC_A1_E04_IMP_DUVAL_003_A": {
+   "id": "RTC_A1_E04_IMP_DUVAL_003_A",
+   "cena": "RTC_A1_E04",
+   "personagem": "IMP_DUVAL",
+   "nome": "Duval",
+   "protagonista": false,
+   "legenda": "Interessante. Seu despertador tem apresentado muitas emergências.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "A"
+   },
+   "ramo": "A",
+   "audio": "/jogador/dublagem/vo/IMP_DUVAL/RTC_A1_E04_IMP_DUVAL_003_A.mp3",
+   "duracaoMs": 5407,
+   "trechos": [
+    {
+     "texto": "Interessante.",
+     "inicioMs": 0,
+     "fimMs": 1680
+    },
+    {
+     "texto": "Seu despertador tem apresentado muitas emergências.",
+     "inicioMs": 2000,
+     "fimMs": 5440
+    }
+   ],
+   "voiceId": "QLFqAao4Kl8R1TBa02Rd",
+   "alinhado": true
+  },
+  "RTC_A1_E04_IMP_DUVAL_003_B": {
+   "id": "RTC_A1_E04_IMP_DUVAL_003_B",
+   "cena": "RTC_A1_E04",
+   "personagem": "IMP_DUVAL",
+   "nome": "Duval",
+   "protagonista": false,
+   "legenda": "Obrigado pela sinceridade. Agora precisamos conversar sobre o que você realmente quer desta carreira.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "B"
+   },
+   "ramo": "B",
+   "audio": "/jogador/dublagem/vo/IMP_DUVAL/RTC_A1_E04_IMP_DUVAL_003_B.mp3",
+   "duracaoMs": 6426,
+   "trechos": [
+    {
+     "texto": "Obrigado pela sinceridade.",
+     "inicioMs": 0,
+     "fimMs": 2400
+    },
+    {
+     "texto": "Agora precisamos conversar sobre o que você realmente quer desta carreira.",
+     "inicioMs": 2480,
+     "fimMs": 6480
+    }
+   ],
+   "voiceId": "QLFqAao4Kl8R1TBa02Rd",
+   "alinhado": true
+  },
+  "RTC_A1_E04_IMP_LEO_003_C": {
+   "id": "RTC_A1_E04_IMP_LEO_003_C",
+   "cena": "RTC_A1_E04",
+   "personagem": "IMP_LEO",
+   "nome": "Léo",
+   "protagonista": false,
+   "legenda": "Ei! Cadê você? O cara desligou na minha cara!",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "C"
+   },
+   "ramo": "C",
+   "audio": "/jogador/dublagem/vo/IMP_LEO/RTC_A1_E04_IMP_LEO_003_C.mp3",
+   "duracaoMs": 4127,
+   "trechos": [
+    {
+     "texto": "Ei!",
+     "inicioMs": 0,
+     "fimMs": 480
+    },
+    {
+     "texto": "Cadê você?",
+     "inicioMs": 640,
+     "fimMs": 1380
+    },
+    {
+     "texto": "O cara desligou na minha cara!",
+     "inicioMs": 2080,
+     "fimMs": 4080
+    }
+   ],
+   "voiceId": "0nTmdmZnHGd59yiUx25v",
+   "alinhado": true
+  },
+  "RTC_A2_E05_ENI_HELENA_001": {
+   "id": "RTC_A2_E05_ENI_HELENA_001",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI_HELENA",
+   "nome": "Helena",
+   "protagonista": false,
+   "legenda": "Por favor, hoje tenta responder com mais de três palavras.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/ENI_HELENA/RTC_A2_E05_ENI_HELENA_001.mp3",
+   "duracaoMs": 4127,
+   "trechos": null,
+   "voiceId": "8tT35CVcTDFan45lZOnP",
+   "alinhado": true
+  },
+  "RTC_A2_E05_ENI_001": {
+   "id": "RTC_A2_E05_ENI_001",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Vou considerar.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E05_ENI_HELENA_002": {
+   "id": "RTC_A2_E05_ENI_HELENA_002",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI_HELENA",
+   "nome": "Helena",
+   "protagonista": false,
+   "legenda": "Isso foram duas.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/ENI_HELENA/RTC_A2_E05_ENI_HELENA_002.mp3",
+   "duracaoMs": 1802,
+   "trechos": null,
+   "voiceId": "8tT35CVcTDFan45lZOnP",
+   "alinhado": true
+  },
+  "RTC_A2_E05_ENI_CLARA_001": {
+   "id": "RTC_A2_E05_ENI_CLARA_001",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI_CLARA",
+   "nome": "Clara",
+   "protagonista": false,
+   "legenda": "Você tem sido decisivo, mas quase nunca comemora. Por que parece que nada te emociona?",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/ENI_CLARA/RTC_A2_E05_ENI_CLARA_001.mp3",
+   "duracaoMs": 5799,
+   "trechos": [
+    {
+     "texto": "Você tem sido decisivo, mas quase nunca comemora.",
+     "inicioMs": 0,
+     "fimMs": 3733
+    },
+    {
+     "texto": "Por que parece que nada te emociona?",
+     "inicioMs": 3787,
+     "fimMs": 5840
+    }
+   ],
+   "voiceId": "0yh8McxKc4DC79EELdCt",
+   "alinhado": true
+  },
+  "RTC_A2_E05_ENI_002": {
+   "id": "RTC_A2_E05_ENI_002",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Eu me emociono.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E05_ENI_CLARA_002": {
+   "id": "RTC_A2_E05_ENI_CLARA_002",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI_CLARA",
+   "nome": "Clara",
+   "protagonista": false,
+   "legenda": "Então por que nunca demonstra?",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/ENI_CLARA/RTC_A2_E05_ENI_CLARA_002.mp3",
+   "duracaoMs": 2273,
+   "trechos": null,
+   "voiceId": "0yh8McxKc4DC79EELdCt",
+   "alinhado": true
+  },
+  "RTC_A2_E05_ENI_003_A": {
+   "id": "RTC_A2_E05_ENI_003_A",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Porque demonstrar não é obrigatório.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "A"
+   },
+   "ramo": "A",
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E05_ENI_003_B": {
+   "id": "RTC_A2_E05_ENI_003_B",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Eu sorri na terça. Você perdeu.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "B"
+   },
+   "ramo": "B",
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E05_ENI_003_C": {
+   "id": "RTC_A2_E05_ENI_003_C",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Porque, quando fico feliz demais, começo a pensar no que posso perder.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "C"
+   },
+   "ramo": "C",
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E05_ENI_HELENA_003_A": {
+   "id": "RTC_A2_E05_ENI_HELENA_003_A",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI_HELENA",
+   "nome": "Helena",
+   "protagonista": false,
+   "legenda": "Obrigada. Vamos à próxima pergunta.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "A"
+   },
+   "ramo": "A",
+   "audio": "/jogador/dublagem/vo/ENI_HELENA/RTC_A2_E05_ENI_HELENA_003_A.mp3",
+   "duracaoMs": 3318,
+   "trechos": [
+    {
+     "texto": "Obrigada.",
+     "inicioMs": 0,
+     "fimMs": 1360
+    },
+    {
+     "texto": "Vamos à próxima pergunta.",
+     "inicioMs": 1680,
+     "fimMs": 3360
+    }
+   ],
+   "voiceId": "8tT35CVcTDFan45lZOnP",
+   "alinhado": true
+  },
+  "RTC_A2_E05_ENI_CLARA_003_C": {
+   "id": "RTC_A2_E05_ENI_CLARA_003_C",
+   "cena": "RTC_A2_E05",
+   "personagem": "ENI_CLARA",
+   "nome": "Clara",
+   "protagonista": false,
+   "legenda": "Acho que nunca tínhamos ouvido você falar assim.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "C"
+   },
+   "ramo": "C",
+   "audio": "/jogador/dublagem/vo/ENI_CLARA/RTC_A2_E05_ENI_CLARA_003_C.mp3",
+   "duracaoMs": 3631,
+   "trechos": null,
+   "voiceId": "0yh8McxKc4DC79EELdCt",
+   "alinhado": true
+  },
+  "RTC_A2_E06_MAQ_LAURA_001": {
+   "id": "RTC_A2_E06_MAQ_LAURA_001",
+   "cena": "RTC_A2_E06",
+   "personagem": "MAQ_LAURA",
+   "nome": "Laura",
+   "protagonista": false,
+   "legenda": "Conferindo a rotina: jantar concluído, hidratação adequada, telas desligadas em vinte minutos. Correto?",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/MAQ_LAURA/RTC_A2_E06_MAQ_LAURA_001.mp3",
+   "duracaoMs": 7706,
+   "trechos": [
+    {
+     "texto": "Conferindo a rotina: jantar concluído, hidratação adequada, telas desligadas em vinte minutos.",
+     "inicioMs": 0,
+     "fimMs": 6960
+    },
+    {
+     "texto": "Correto?",
+     "inicioMs": 7040,
+     "fimMs": 7760
+    }
+   ],
+   "voiceId": "qPFqNiFFvVZcqKiPZKE6",
+   "alinhado": true
+  },
+  "RTC_A2_E06_MAQ_001": {
+   "id": "RTC_A2_E06_MAQ_001",
+   "cena": "RTC_A2_E06",
+   "personagem": "MAQ",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Correto. Sete horas e quarenta minutos de sono planejadas.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E06_MAQ_ANDRE_001": {
+   "id": "RTC_A2_E06_MAQ_ANDRE_001",
+   "cena": "RTC_A2_E06",
+   "personagem": "MAQ_ANDRE",
+   "nome": "André",
+   "protagonista": false,
+   "legenda": "Meu irmão! A rapaziada tá jantando aqui embaixo. Desce um pouquinho!",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/MAQ_ANDRE/RTC_A2_E06_MAQ_ANDRE_001.mp3",
+   "duracaoMs": 4284,
+   "trechos": [
+    {
+     "texto": "Meu irmão!",
+     "inicioMs": 0,
+     "fimMs": 800
+    },
+    {
+     "texto": "A rapaziada tá jantando aqui embaixo.",
+     "inicioMs": 960,
+     "fimMs": 3000
+    },
+    {
+     "texto": "Desce um pouquinho!",
+     "inicioMs": 3120,
+     "fimMs": 4240
+    }
+   ],
+   "voiceId": "bOfmGBubwU6YlrKXeRkh",
+   "alinhado": true
+  },
+  "RTC_A2_E06_MAQ_002": {
+   "id": "RTC_A2_E06_MAQ_002",
+   "cena": "RTC_A2_E06",
+   "personagem": "MAQ",
+   "nome": null,
+   "protagonista": true,
+   "legenda": "Já completei minha ingestão calórica.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": null,
+   "duracaoMs": null,
+   "trechos": null,
+   "voiceId": null
+  },
+  "RTC_A2_E06_MAQ_ANDRE_002": {
+   "id": "RTC_A2_E06_MAQ_ANDRE_002",
+   "cena": "RTC_A2_E06",
+   "personagem": "MAQ_ANDRE",
+   "nome": "André",
+   "protagonista": false,
+   "legenda": "Eu não tô te convidando pra comer uma planilha! É pra conversar!",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/MAQ_ANDRE/RTC_A2_E06_MAQ_ANDRE_002.mp3",
+   "duracaoMs": 4362,
+   "trechos": [
+    {
+     "texto": "Eu não tô te convidando pra comer uma planilha!",
+     "inicioMs": 0,
+     "fimMs": 2840
+    },
+    {
+     "texto": "É pra conversar!",
+     "inicioMs": 3040,
+     "fimMs": 4320
+    }
+   ],
+   "voiceId": "bOfmGBubwU6YlrKXeRkh",
+   "alinhado": true
+  },
+  "RTC_A2_E06_MAQ_LAURA_002": {
+   "id": "RTC_A2_E06_MAQ_LAURA_002",
+   "cena": "RTC_A2_E06",
+   "personagem": "MAQ_LAURA",
+   "nome": "Laura",
+   "protagonista": false,
+   "legenda": "Convivência também importa. Só não comprometa o descanso.",
+   "condicao": {
+    "sempre": true
+   },
+   "ramo": null,
+   "audio": "/jogador/dublagem/vo/MAQ_LAURA/RTC_A2_E06_MAQ_LAURA_002.mp3",
+   "duracaoMs": 4127,
+   "trechos": [
+    {
+     "texto": "Convivência também importa.",
+     "inicioMs": 0,
+     "fimMs": 1920
+    },
+    {
+     "texto": "Só não comprometa o descanso.",
+     "inicioMs": 2320,
+     "fimMs": 4160
+    }
+   ],
+   "voiceId": "qPFqNiFFvVZcqKiPZKE6",
+   "alinhado": true
+  },
+  "RTC_A2_E06_MAQ_ANDRE_003_A": {
+   "id": "RTC_A2_E06_MAQ_ANDRE_003_A",
+   "cena": "RTC_A2_E06",
+   "personagem": "MAQ_ANDRE",
+   "nome": "André",
+   "protagonista": false,
+   "legenda": "Tá bom, professor. Amanhã eu te conto as histórias.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "A"
+   },
+   "ramo": "A",
+   "audio": "/jogador/dublagem/vo/MAQ_ANDRE/RTC_A2_E06_MAQ_ANDRE_003_A.mp3",
+   "duracaoMs": 3553,
+   "trechos": [
+    {
+     "texto": "Tá bom, professor.",
+     "inicioMs": 0,
+     "fimMs": 1440
+    },
+    {
+     "texto": "Amanhã eu te conto as histórias.",
+     "inicioMs": 1680,
+     "fimMs": 3600
+    }
+   ],
+   "voiceId": "bOfmGBubwU6YlrKXeRkh",
+   "alinhado": true
+  },
+  "RTC_A2_E06_MAQ_ANDRE_003_B": {
+   "id": "RTC_A2_E06_MAQ_ANDRE_003_B",
+   "cena": "RTC_A2_E06",
+   "personagem": "MAQ_ANDRE",
+   "nome": "André",
+   "protagonista": false,
+   "legenda": "Vinte minutos? Fechado! Vou colocar um cronômetro pra você!",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "B"
+   },
+   "ramo": "B",
+   "audio": "/jogador/dublagem/vo/MAQ_ANDRE/RTC_A2_E06_MAQ_ANDRE_003_B.mp3",
+   "duracaoMs": 4362,
+   "trechos": [
+    {
+     "texto": "Vinte minutos?",
+     "inicioMs": 0,
+     "fimMs": 1280
+    },
+    {
+     "texto": "Fechado!",
+     "inicioMs": 1440,
+     "fimMs": 2280
+    },
+    {
+     "texto": "Vou colocar um cronômetro pra você!",
+     "inicioMs": 2480,
+     "fimMs": 4400
+    }
+   ],
+   "voiceId": "bOfmGBubwU6YlrKXeRkh",
+   "alinhado": true
+  },
+  "RTC_A2_E06_MAQ_LAURA_003_C": {
+   "id": "RTC_A2_E06_MAQ_LAURA_003_C",
+   "cena": "RTC_A2_E06",
+   "personagem": "MAQ_LAURA",
+   "nome": "Laura",
+   "protagonista": false,
+   "legenda": "Eu respeito sua decisão. Mas amanhã vamos conversar sobre recuperação.",
+   "condicao": {
+    "chave": "choice_01",
+    "op": "==",
+    "valor": "C"
+   },
+   "ramo": "C",
+   "audio": "/jogador/dublagem/vo/MAQ_LAURA/RTC_A2_E06_MAQ_LAURA_003_C.mp3",
+   "duracaoMs": 5251,
+   "trechos": [
+    {
+     "texto": "Eu respeito sua decisão.",
+     "inicioMs": 0,
+     "fimMs": 2360
+    },
+    {
+     "texto": "Mas amanhã vamos conversar sobre recuperação.",
+     "inicioMs": 2400,
+     "fimMs": 5280
+    }
+   ],
+   "voiceId": "qPFqNiFFvVZcqKiPZKE6",
+   "alinhado": true
+  },
+  "RTC_A3_E07_ROM_REP_001_A": {
+   "id": "RTC_A3_E07_ROM_REP_001_A",
+   "cena": "RTC_A3_E07",
+   "personagem": "ROM_REP",
+   "nome": "Repórter pós-jogo",
+   "protagonista": false,
+   "legenda": "Você apareceu numa festa até tarde e hoje o time perdeu. Acha que suas prioridades estão no lugar certo?",
+   "condicao": {
+    "todas": [
+     {
+      "chave": "rom_festa",
+      "op": "==",
+      "valor": "integral"
+     },
+     {
+      "chave": "resultado_ultimo_jogo",
+      "op": "==",
+      "valor": "derrota"
+     }
+    ]
+   },
+   "ramo": "A",
+   "audio": "/jogador/dublagem/vo/ROM_REP/RTC_A3_E07_ROM_REP_001_A.mp3",
+   "duracaoMs": 6191,
+   "trechos": [
+    {
+     "texto": "Você apareceu numa festa até tarde e hoje o time perdeu.",
+     "inicioMs": 0,
+     "fimMs": 3720
+    },
+    {
+     "texto": "Acha que suas prioridades estão no lugar certo?",
+     "inicioMs": 3760,
+     "fimMs": 6160
+    }
+   ],
+   "voiceId": "3ULAAai0IVN00DTWA6vF",
+   "alinhado": true
+  },
+  "RTC_A3_E07_ROM_REP_001_B": {
+   "id": "RTC_A3_E07_ROM_REP_001_B",
+   "cena": "RTC_A3_E07",
+   "personagem": "ROM_REP",
+   "nome": "Repórter pós-jogo",
+   "protagonista": false,
+   "legenda": "Você compareceu a uma festa na semana do jogo. Isso prejudicou sua preparação?",
+   "condicao": {
+    "todas": [
+     {
+      "chave": "rom_festa",
+      "op": "==",
+      "valor": "breve"
+     },
+     {
+      "chave": "resultado_ultimo_jogo",
+      "op": "==",
+      "valor": "derrota"
+     }
+    ]
+   },
+   "ramo": "B",
+   "audio": "/jogador/dublagem/vo/ROM_REP/RTC_A3_E07_ROM_REP_001_B.mp3",
+   "duracaoMs": 4676,
+   "trechos": [
+    {
+     "texto": "Você compareceu a uma festa na semana do jogo.",
+     "inicioMs": 0,
+     "fimMs": 2840
+    },
+    {
+     "texto": "Isso prejudicou sua preparação?",
+     "inicioMs": 2880,
+     "fimMs": 4720
+    }
+   ],
+   "voiceId": "3ULAAai0IVN00DTWA6vF",
+   "alinhado": true
+  },
+  "RTC_A3_E07_ROM_REP_001_C": {
+   "id": "RTC_A3_E07_ROM_REP_001_C",
+   "cena": "RTC_A3_E07",
+   "personagem": "ROM_REP",
+   "nome": "Repórter pós-jogo",
+   "protagonista": false,
+   "legenda": "Você abriu mão de compromissos pessoais para se preparar. O que faltou em campo?",
+   "condicao": {
+    "todas": [
+     {
+      "chave": "rom_festa",
+      "op": "==",
+      "valor": "nao"
+     },
+     {
+      "chave": "resultado_ultimo_jogo",
+      "op": "==",
+      "valor": "derrota"
+     }
+    ]
+   },
+   "ramo": "C",
+   "audio": "/jogador/dublagem/vo/ROM_REP/RTC_A3_E07_ROM_REP_001_C.mp3",
+   "duracaoMs": 4833,
+   "trechos": [
+    {
+     "texto": "Você abriu mão de compromissos pessoais para se preparar.",
+     "inicioMs": 0,
+     "fimMs": 3480
+    },
+    {
+     "texto": "O que faltou em campo?",
+     "inicioMs": 3520,
+     "fimMs": 4880
+    }
+   ],
+   "voiceId": "3ULAAai0IVN00DTWA6vF",
+   "alinhado": true
+  }
+ }
+}
