@@ -6,6 +6,9 @@
 // SomPartida.tela (a cada troca de tela): na partida a música de fundo (musica.js) para e a torcida entra; fora dela,
 // tudo para e a música volta. O botão #btnSom troca entre tudo, só a torcida e sem som (carreira:somPartida).
 // Só enfeita: nada daqui muda o jogo nem vai para o servidor.
+// Outra página (o jogo ao vivo do Road to Champions, public/jogador/road-partida.js) usa o mesmo som com
+// SomPartida.configurar({ naPartida, jogo, velocidade }): `jogo()` devolve o jogo que está na tela no formato do `J` da
+// Carreira (casa, fora, eventos, i, relogio, pulando, decidindo, completo, peso). Os áudios moram em /carreira/som/.
 const SomPartida = (() => {
   const IDX = window.SOM_PARTIDA || null;
   const MODOS = ["tudo", "torcida", "mudo"];
@@ -53,7 +56,7 @@ const SomPartida = (() => {
   function carregar(rel) {
     if (!rel) return Promise.resolve(null);
     if (!buffers.has(rel)) {
-      buffers.set(rel, fetch(`som/${rel}`).then((r) => (r.ok ? r.arrayBuffer() : null))
+      buffers.set(rel, fetch(`/carreira/som/${rel}`).then((r) => (r.ok ? r.arrayBuffer() : null))
         .then((b) => (b && audio() ? new Promise((ok) => ctx.decodeAudioData(b, ok, () => ok(null))) : null)).catch(() => null));
     }
     return buffers.get(rel);
@@ -130,14 +133,21 @@ const SomPartida = (() => {
   function calarNarrador() { fila.length = 0; if (busVoz && ctx) { rampa(busVoz.gain, 0, 0.05); setTimeout(() => { if (modo === "tudo") rampa(busVoz.gain, 1, 0.05); }, 300); } }
 
   // ---------- o jogo ----------
-  const naPartida = () => typeof telaAtual !== "undefined" && telaAtual === "partida";
+  // de onde vem o jogo: na Carreira, as variáveis da página (telaAtual, J e Mesa); outra página troca por configurar()
+  const F = {
+    naPartida: () => typeof telaAtual !== "undefined" && telaAtual === "partida",
+    jogo: () => (typeof J === "undefined" ? null : J),
+    velocidade: () => { const j = F.jogo(); return !j ? 1 : j.grupo ? (typeof Mesa !== "undefined" && Mesa.vel) || 1 : j.vel || 1; },
+  };
+  const naPartida = () => F.naPartida();
   const tempo = (e) => e.min + (e.acr ? e.acr / 100 : 0);
-  const clubeDo = (lado) => (lado === 0 ? J.casa : J.fora);
-  const velocidade = () => (J.grupo ? (typeof Mesa !== "undefined" && Mesa.vel) || 1 : J.vel || 1);
+  const clubeDo = (lado) => { const j = F.jogo(); return j && (lado === 0 ? j.casa : j.fora); };
+  const velocidade = () => F.velocidade();
   // o estado do jogo para o narrador: quem já esteve atrás (para o "virou"), o que já foi dito
   let S = null;
   function abrir(nova) {
-    if (!IDX || typeof J === "undefined") return;
+    const J = F.jogo();
+    if (!IDX || !J) return;
     if (nova || !S) {
       S = { atras: [false, false], virou: false, goleada: false, inicio: true, segundo: false, acrescimos: false, intervalo: false, fim: false };
       fila.length = 0;
@@ -155,7 +165,8 @@ const SomPartida = (() => {
   }
 
   function evento(e) {
-    if (!IDX || !S || typeof J === "undefined") return;
+    const J = F.jogo();
+    if (!IDX || !S || !J) return;
     // o placar e a virada contam sempre (até no lance pulado), para o narrador não errar depois
     let contexto = null;
     if (e.tipo === "gol" && e.placar) {
@@ -211,7 +222,7 @@ const SomPartida = (() => {
 
   // ---------- o relógio do som: o volume da torcida, o apito do começo e do segundo tempo ----------
   function canto() {
-    const tema = J.peso && J.peso.tema;
+    const J = F.jogo(), tema = J && J.peso && J.peso.tema;
     return tema === "final" || tema === "classico" ? 0.55 : tema === "decisivo" ? 0.4 : 0.18;
   }
   // o navegador barrou o som (Safari e iPhone sem um toque, aba que voltou): o botão vira "Ativar som" até liberar
@@ -226,7 +237,8 @@ const SomPartida = (() => {
   }
   setInterval(() => {
     avisarBloqueio();
-    if (!ctx || !naPartida() || typeof J === "undefined" || !S) return;
+    const J = F.jogo();
+    if (!ctx || !naPartida() || !J || !S) return;
     if (document.hidden) { if (ctx.state === "running") ctx.suspend().catch(() => {}); return; }
     if (ctx.state === "suspended") ctx.resume().catch(() => {});
     const acabou = J.completo && J.i >= (J.eventos || []).length;
@@ -237,7 +249,7 @@ const SomPartida = (() => {
     if (ganhoLaco.ambiente) rampa(ganhoLaco.ambiente.gain, 1, 1);
     if (ganhoLaco.canto) rampa(ganhoLaco.canto.gain, S.fim || acabou ? 0.08 : canto(), 1.5);
     const r = J.relogio || 0;
-    if (S.inicio) { // o apito inicial, só para quem viu o jogo começar
+    if (S.inicio && r >= 0) { // o apito inicial, só para quem viu o jogo começar (o relógio negativo é a abertura)
       S.inicio = false;
       if (r < 2 && !J.pulando) { efeito("apito_inicio"); const t = J.peso && J.peso.tema; dizer([fala(["classico", "decisivo", "final"].includes(t) ? t : "inicio")], 2); }
     }
@@ -340,5 +352,6 @@ const SomPartida = (() => {
   document.head.appendChild(css);
   aplicar();
 
-  return { abrir, evento, tela, alternar, definirVolume, historico, get volume() { return volume; }, get modo() { return modo; }, get contexto() { return ctx; } };
+  const configurar = (o = {}) => { for (const k of ["naPartida", "jogo", "velocidade"]) if (typeof o[k] === "function") F[k] = o[k]; };
+  return { abrir, evento, tela, alternar, definirVolume, configurar, historico, get volume() { return volume; }, get modo() { return modo; }, get contexto() { return ctx; } };
 })();

@@ -40,6 +40,22 @@ body.rtc-voz-aberta{overflow:hidden}
 /* sem legenda: a voz continua, a plaqueta fica; protagonista e falas sem som aparecem sempre */
 .rtc-voz.sem-legenda .rtc-voz-fala:not(.forcada) .rtc-voz-legenda{visibility:hidden}
 
+/* quem está em cena: o outro (retrato ilustrado, retratos.js) à esquerda e o protagonista (a foto) à direita, como o
+   plano e contraplano das cutscenes. Quem fala fica aceso; o outro escurece e recua um pouco. */
+.rtc-voz-duo{width:min(900px,100%);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:-6px}
+.rtc-voz-duo figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px;opacity:.42;transform:scale(.92);transform-origin:50% 100%}
+.rtc-voz-duo figure.falando{opacity:1;transform:none}
+.rtc-voz-eu{margin-left:auto!important}
+.rtc-voz-quadro{position:relative;display:block;width:clamp(104px,17vw,184px);aspect-ratio:4/5;overflow:hidden;border-radius:4px;
+  border:1px solid #ffffff2e;box-shadow:0 14px 30px #000a}
+.rtc-voz-quadro svg{display:block;width:100%;height:100%}
+.rtc-voz-eu .rtc-voz-quadro{background:radial-gradient(ellipse 80% 70% at 50% 35%,var(--foto-cor,#3d7ae0),#081230 85%)}
+.rtc-voz-eu .rtc-voz-quadro img{position:absolute;left:50%;bottom:0;height:112%;transform:translateX(-50%);object-fit:contain;object-position:50% 100%}
+.rtc-voz-duo figure.falando .rtc-voz-quadro{border-color:#fff;box-shadow:0 0 0 2px var(--cor,#3d7ae0),0 14px 30px #000a}
+.rtc-voz-duo .rtc-voz-eu.falando .rtc-voz-quadro{box-shadow:0 0 0 2px var(--ouro,#ffd23f),0 14px 30px #000a}
+.rtc-voz-duo figcaption{font-family:var(--cond);font-weight:800;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#ffffffb3;
+  max-width:clamp(104px,17vw,184px);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* a escolha: a cena para aqui */
 .rtc-voz-escolha{width:min(760px,100%)}
 .rtc-voz-escolha .rtc-voz-kicker{text-align:center;margin-bottom:10px;color:var(--ouro,#ffd23f)}
@@ -81,12 +97,16 @@ body.rtc-voz-aberta{overflow:hidden}
   .rtc-voz:not([hidden]){animation:rtcVozEntra .35s ease-out}
   .rtc-voz-fala.entra{animation:rtcVozFala .28s ease-out}
   .rtc-voz-escolha:not([hidden]){animation:rtcVozFala .3s ease-out}
+  .rtc-voz-duo figure{transition:opacity .3s ease,transform .3s ease}
+  .rtc-voz-outro:not([hidden]){animation:rtcVozFala .35s ease-out}
 }
 @keyframes rtcVozEntra{from{opacity:0}to{opacity:1}}
 @keyframes rtcVozFala{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 @media (max-width:640px){
   .rtc-voz-legenda{font-size:18px}
+  .rtc-voz-quadro{width:92px}
+  .rtc-voz-duo figcaption{font-size:9.5px;max-width:92px}
   .rtc-voz-volume input{width:88px}
   .rtc-voz-volume>span{display:none}
   .rtc-audio-nome{display:none}

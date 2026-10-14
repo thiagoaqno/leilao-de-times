@@ -324,11 +324,12 @@ function tileJogar(s,eu){
   // sem entrevista na rodada (liga), ninguém precisa decidir antes: o anfitrião já pode jogar
   const precisa=s.entrevista!==false,todos=!precisa||s.prontos===s.jogadores.length;
   let acao,rotulo,dica="";
-  if(s.jornada){acao="";rotulo="Rodada em andamento";dica=s.jornada.esperando.length?"Momento do jogo: esperando "+s.jornada.esperando.join(", ")+".":"Os jogos estão rolando.";}
+  if(s.todosEliminados&&!s.jornada&&!s.evento){acao=s.dono===s.eu?"simularFim":"";rotulo=s.dono===s.eu?"Simular até o fim":"Esperando o anfitrião";dica="Nenhum protagonista segue vivo na Champions: as rodadas que faltam saem de uma vez, e a final passa ao vivo.";}
+  else if(s.jornada){acao="";rotulo="Rodada em andamento";dica=s.jornada.esperando.length?"Momento do jogo: esperando "+s.jornada.esperando.join(", ")+".":"Os jogos estão rolando.";}
   else if(s.evento){acao="abrir-cena";rotulo="Abrir a cena";dica="Decisão pendente: "+s.evento.titulo;}
   else if(s.dono===s.eu){acao="avancar";rotulo=todos?"Jogar: "+c[0]:"Esperando "+(s.jogadores.length-s.prontos)+" decisão(ões)";dica=precisa?s.prontos+" de "+s.jogadores.length+" protagonistas decidiram.":"Sem entrevista nesta rodada. Estratégia: "+(TATICAS.find(t=>t[0]===s.tatica)?.[1]||"Equilibrado")+".";}
   else{acao="";rotulo="Esperando o anfitrião";dica=precisa?s.prontos+" de "+s.jogadores.length+" decidiram.":"Sem entrevista nesta rodada.";}
-  const pronto=acao==="abrir-cena"||(acao==="avancar"&&todos);
+  const pronto=acao==="abrir-cena"||acao==="simularFim"||(acao==="avancar"&&todos);
   let info;
   if(j){
     const outro=j.casa===eu.clube?j.fora:j.casa,dono=s.jogadores.find(p=>p.clube===outro),oc=clubes.get(j.casa);
@@ -512,8 +513,12 @@ function abaDiario(s){
 // ---------- o momento do jogo: o protagonista decide como joga (25', intervalo e 70') ----------
 // O jogo do jogador parou no motor; a sala espera a resposta de quem está em campo (ou o prazo vencer: mantém o plano).
 let relogio=0; // a diferença entre o relógio do servidor e o daqui
+// o minuto da sala no relógio do servidor (o mesmo do jogo ao vivo): a decisão só aparece quando o jogo chega nela
+function minutoDaSala(s){const av=s.aoVivo;if(!av||av.base==null)return Infinity;const m=av.base+(Date.now()+relogio-av.desde)/1000*av.vel;return av.teto==null?m:Math.min(m,av.teto);}
 function momentoHTML(s){
   const m=s.jornada?.momento;if(!m)return "";
+  if(window.RoadPartida&&RoadPartida.aberta)return ""; // com o jogo ao vivo aberto, a decisão aparece lá dentro
+  if(!m.respondido&&minutoDaSala(s)<m.min-0.01)return ""; // o jogo ainda não chegou nesse minuto
   const eu=euDe(s),meu=m.placar[m.lado],deles=m.placar[1-m.lado];
   const quando=m.id==="intervalo"?"Intervalo":m.min+"'";
   const escolhida=m.escolha&&R.MOMENTOS[m.escolha];
@@ -531,6 +536,11 @@ function momentoHTML(s){
     (outros.length?'<p class="rtc-mom-sala">Na sala, esperando: '+outros.map(safe).join(", ")+'</p>':'')+
     '</div></div>';
 }
+// com o jogo ao vivo fechado, a decisão aparece na central quando o relógio chega no minuto dela
+setInterval(()=>{
+  const m=sala?.jornada?.momento;
+  if(m&&!m.respondido&&!(window.RoadPartida&&RoadPartida.aberta)&&!document.querySelector(".rtc-momento")&&minutoDaSala(sala)>=m.min-0.01)desenhar();
+},1000);
 // o prazo do momento andando (sem redesenhar a tela inteira)
 setInterval(()=>{
   const el=document.querySelector(".rtc-mom-prazo");if(!el)return;
@@ -544,13 +554,48 @@ const slug=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A
 const hashDe=t=>{let h=7;for(const c of String(t))h=(h*31+c.charCodeAt(0))>>>0;return h;};
 const milhar=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,".");
 let curtidas=new Set();try{curtidas=new Set(JSON.parse(localStorage.getItem("rtc:curtidas")||"[]"));}catch{}
-function imagemDoPost(x){
+// a foto do post: a arte da cena ao fundo e o protagonista na frente, num de vários jeitos sorteados pelo post (capa de
+// revista, entrevista com a faixa, lance com o adesivo, polaroide, citação e o placar). Post sem protagonista (a
+// repercussão da imprensa) fica só com a arte. A foto é a da TheSportsDB, com o boneco de reserva (corpoFoto).
+const ARTES_FEED=["manchetes","viral","vestiario","hub-fundo","amizade","rivalidade"];
+function arteDoPost(x,h){
   if(x.tipo==="decisao"&&x.evento)return "/jogador/popups/rtc-popup-"+x.evento+".webp";
   if(x.tipo==="visual")return "/jogador/cenas/viral.webp";
   if(x.tipo==="comemoracao")return "/jogador/cenas/comemoracao.webp";
-  if(x.tipo==="momento")return "/jogador/cenas/"+(/Vitória/.test(x.texto)?"gol-vitoria":/Derrota/.test(x.texto)?"gol-derrota":"rivalidade")+".webp";
-  if(x.tipo==="jogo")return "/jogador/cenas/"+(x.placar&&x.placar[0]!==x.placar[1]?"gol-vitoria":"rivalidade")+".webp";
-  return "/jogador/cenas/manchetes.webp";
+  if(x.tipo==="momento"){const r=resultadoDoPost(x),l=r==="vitoria"?["gol-vitoria","comemoracao","viral"]:r==="derrota"?["gol-derrota","vestiario","departamento-medico"]:["rivalidade","vestiario","hub-fundo"];return "/jogador/cenas/"+l[h%3]+".webp";}
+  if(x.tipo==="jogo")return "/jogador/cenas/"+(x.placar&&x.placar[0]!==x.placar[1]?["gol-vitoria","comemoracao"]:["rivalidade","hub-fundo"])[h%2]+".webp";
+  if(x.tipo==="repercussao")return "/jogador/cenas/"+(/uni[ãa]o|respeito|amizade/i.test(x.texto)?"amizade":/provoca|rival|farpa|tens/i.test(x.texto)?"rivalidade":"manchetes")+".webp";
+  return "/jogador/cenas/"+ARTES_FEED[h%ARTES_FEED.length]+".webp";
+}
+const protagonistaDoPost=(x,s)=>(x.autor&&s.jogadores.find(q=>q.avatar===x.autor))||(x.tipo==="jogo"&&s.jogadores.find(q=>q.clube===x.casa||q.clube===x.fora))||null;
+const resultadoDoPost=x=>/Vitória/.test(x.texto)?"vitoria":/Derrota/.test(x.texto)?"derrota":"";
+// a citação só nas respostas da entrevista (as únicas na primeira pessoa); as manchetes falam do jogador
+function jeitoDoPost(x,h){
+  if(x.tipo==="jogo")return "placar";
+  if(x.tipo==="decisao")return ["entrevista","citacao","polaroide"][h%3];
+  if(x.tipo==="momento"||x.tipo==="comemoracao")return ["lance","capa","polaroide"][h%3];
+  if(x.tipo==="visual")return "polaroide";
+  return ["capa","polaroide","lance"][h%3];
+}
+const curto=(t,n=96)=>{t=String(t||"");return t.length>n?t.slice(0,n-1).trimEnd()+"…":t;};
+const ADESIVO={momento:"Em campo",vitoria:"Vitória!",derrota:"Dói",comemoracao:"Festa!",manchete:"Exclusivo",visual:"Novo visual",decisao:"Ao vivo",repercussao:"Repercute"};
+function fotoDoPost(x,s,h){
+  const arte='<img class="rtc-ig-arte" src="'+safe(arteDoPost(x,h))+'" alt="" loading="lazy" onerror="this.remove()">';
+  const placar=x.tipo==="jogo"&&x.casa&&x.placar?'<div class="rtc-ig-placar">'+escudo(x.casa,46)+'<b>'+num(x.placar[0])+' – '+num(x.placar[1])+'</b>'+escudo(x.fora,46)+'</div>':"";
+  const p=protagonistaDoPost(x,s);
+  if(!p)return '<div class="rtc-ig-foto">'+arte+placar+'</div>';
+  const jeito=jeitoDoPost(x,h),[c1,c2]=coresDe(p.clube),giro=((h>>>3)%9)-4;
+  const corpo='<span class="rtc-ig-corpo">'+corpoFoto(p.arquetipo,p.figura,p.clube,200,p.avatar)+'</span>';
+  const marca='<span class="rtc-ig-marca" aria-hidden="true">'+escudo(p.clube,120)+'</span>';
+  const titulo=x.titulo||(x.tipo==="decisao"?"Entrevista":"");
+  let meio="";
+  if(jeito==="capa")meio=marca+'<b class="rtc-ig-revista" aria-hidden="true">'+safe(p.avatar)+'</b>'+corpo+'<p class="rtc-ig-chamada">'+safe(curto(x.texto,80))+'</p>';
+  else if(jeito==="entrevista")meio=arte+corpo+'<p class="rtc-ig-faixa"><small>● Ao vivo'+(titulo?' · '+safe(titulo):'')+'</small><b>'+safe(p.avatar)+'</b>'+safe(nomeClube(p.clube))+'</p>';
+  else if(jeito==="lance")meio=arte+corpo+'<b class="rtc-ig-adesivo" style="--giro:'+giro+'deg">'+safe(ADESIVO[x.tipo==="momento"&&resultadoDoPost(x)||x.tipo]||"Exclusivo")+'</b>';
+  else if(jeito==="polaroide")meio=arte+'<figure class="rtc-ig-polaroide" style="--giro:'+giro+'deg"><span>'+corpoFoto(p.arquetipo,p.figura,p.clube,200,p.avatar)+'</span><figcaption>'+safe(curto(x.texto,48))+'</figcaption></figure>';
+  else if(jeito==="citacao")meio=marca+corpo+'<blockquote class="rtc-ig-citacao">'+safe(curto(x.texto,110))+'<cite>'+safe(p.avatar)+'</cite></blockquote>';
+  else meio=arte+corpo+placar;
+  return '<div class="rtc-ig-foto jeito-'+jeito+'" style="--c1:'+safe(c1||"#3d7ae0")+';--c2:'+safe(c2||"#081230")+'">'+meio+'</div>';
 }
 const ROTULO_POST={decisao:"Entrevista",manchete:"Manchete",repercussao:"Repercussão",visual:"Visual novo",comemoracao:"Comemoração",jogo:"Resultado",momento:"Em campo",placar:"Resultado"};
 // quem postou: o protagonista (pelo nome) ou o perfil da imprensa
@@ -564,10 +609,9 @@ function postIG(x,s,k,compacto){
   const a=autorDoPost(x,s),chave=slug(x.texto).slice(0,40)+":"+x.rodada+":"+k,h=hashDe(x.texto+x.rodada);
   const amigos=s.jogadores.filter(p=>p.avatar!==x.autor),quem=amigos.length?amigos[h%amigos.length].avatar:"torcida_ucl";
   const curtiu=curtidas.has(chave),likes=180+h%9800+(curtiu?1:0);
-  const placar=x.tipo==="jogo"&&x.casa&&x.placar?'<div class="rtc-ig-placar">'+escudo(x.casa,46)+'<b>'+num(x.placar[0])+' – '+num(x.placar[1])+'</b>'+escudo(x.fora,46)+'</div>':"";
   return '<article class="rtc-ig-post'+(compacto?" compacto":"")+'">'+
     '<header><span class="rtc-ig-av'+(a.p?" anel":"")+'">'+a.av+'</span><div><b>'+safe(a.handle)+(a.verificado?' <i class="rtc-ig-ok" title="Verificado">✓</i>':'')+'</b><small>'+safe(a.sub)+' · '+safe(rot(s,x.rodada||0)[0])+'</small></div><span class="rtc-ig-tipo">'+safe(ROTULO_POST[x.tipo]||"Notícia")+'</span></header>'+
-    '<div class="rtc-ig-foto"><img src="'+safe(imagemDoPost(x))+'" alt="" loading="lazy" onerror="this.remove()">'+placar+'</div>'+
+    fotoDoPost(x,s,h)+
     '<div class="rtc-ig-acoes"><button type="button" data-curtir="'+safe(chave)+'" aria-pressed="'+curtiu+'" aria-label="Curtir">'+(curtiu?"♥":"♡")+'</button><span aria-hidden="true">💬</span><span aria-hidden="true">➤</span></div>'+
     '<p class="rtc-ig-likes">Curtido por <b>'+safe(quem)+'</b> e outras <b>'+milhar(likes)+'</b> pessoas</p>'+
     '<p class="rtc-ig-legenda"><b>'+safe(a.handle)+'</b> '+safe(x.texto)+'</p>'+
@@ -621,7 +665,7 @@ const guardar=(area,k)=>{try{window[area].setItem(k,"1");}catch{}};
 function abrirVozSePreciso(s){
   const D=window.RoadDublagem;if(!D)return false;
   if(!D.carregado){D.carregar().then(()=>{if(sala)desenhar();});return true;} // alguns KB; a cena espera por eles
-  const eu=euDe(s),v=s.voz||{},cor=coresDe(eu.clube)[0]||"#3d7ae0",base={protagonista:eu.avatar,cor,ctx:v.narrativa||{}};
+  const eu=euDe(s),v=s.voz||{},cor=coresDe(eu.clube)[0]||"#3d7ae0",base={protagonista:eu.avatar,cor,foto:urlFoto(eu.arquetipo,"recorte"),ctx:v.narrativa||{}};
   const cb=(v.cenas||[]).find(c=>!guardado("localStorage",chaveVoz(s,c.id)));
   if(cb&&D.cenaDe("callback",cb.id)){
     D.tocar({...base,tipo:"callback",id:cb.id,ramo:cb.ramo,kicker:"Coletiva pós-jogo · "+(rot(s,cb.rodada)[1]||""),
@@ -787,6 +831,7 @@ app.addEventListener("click",async e=>{
   if(acao==="mudar"){evento="protagonista";const i=identidade();dados={arquetipo:i.arquetipo,figura:i.figura,avatar:i.avatar};}
   if(acao==="iniciar")evento="iniciar";
   if(acao==="avancar")evento="avancar";
+  if(acao==="simularFim")evento="simularFim";
   if(acao==="decidir"){evento="decidir";dados={opcao:tela.cena.opcao,tatica:tela.cena.tatica};}
   if(acao==="salvar-tatica"){evento="tatica";dados={tatica:tela.cena.tatica};}
   if(!evento)return;
@@ -797,7 +842,7 @@ app.addEventListener("click",async e=>{
   if(acao==="mudar"){tela.editor=false;rascunho.de=null;}
   if(acao==="decidir"){tela.cena=null;toast("Escolha registrada. A imprensa já está escrevendo.");}
   if(acao==="salvar-tatica"){tela.cena=null;toast("Estratégia salva para os próximos jogos.");}
-  if(acao==="avancar")tela.aba="central";
+  if(acao==="avancar"||acao==="simularFim")tela.aba="central";
   if(r.estado)setSala(r);
 });
 // os campos de número e do corpo mudam só o rascunho e o desenho

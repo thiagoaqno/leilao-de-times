@@ -476,6 +476,14 @@ body.rtc{
 .rtc-av-ab-texto b{font-family:var(--cond);font-size:clamp(26px,4vw,44px);text-transform:uppercase;letter-spacing:.04em}
 .rtc-av-ab-texto small{color:var(--ouro);font-weight:700;letter-spacing:.08em}
 .rtc-av-fim{overflow-y:auto;align-items:end}
+/* o momento do jogo, dentro da partida ao vivo: o relógio parou e o protagonista decide (road-partida.js, pintarMomento) */
+.rtc-av-momento{position:absolute;left:0;right:0;bottom:0;z-index:6;display:grid;justify-items:center;padding:14px;background:linear-gradient(180deg,transparent,#040917f2 34%)}
+.rtc-av-mom-caixa{width:min(720px,100%);display:grid;gap:10px;padding:16px 18px;background:#0b1430;border:1px solid var(--linha2);border-top:3px solid var(--casa);box-shadow:0 20px 50px #000a}
+.rtc-av-mom-caixa h3{font-size:clamp(20px,2.6vw,28px);margin:0;outline:none}
+.rtc-av-mom-caixa.curto{display:block;font-size:15px}
+.rtc-av-mom-opcoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.rtc-av-mom-opcoes .rtc-mom-opcao.escolhida{outline:2px solid var(--casa)}
+
 .rtc-av-fim.sem-arte{align-items:center;background:radial-gradient(ellipse 60% 50% at 50% 30%,color-mix(in srgb,var(--casa) 22%,transparent),transparent 70%),#040917}
 .rtc-av-fim.sem-arte:after{display:none}
 .rtc-av-fim:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#04091733 0%,#040917f0 62%)}
