@@ -317,6 +317,8 @@ body.rtc{
 .rtc-cena-fig{position:absolute;z-index:2;left:4%;bottom:2%;filter:drop-shadow(0 14px 20px #000c)}
 .rtc-cena-mic{position:absolute;z-index:2;right:16%;bottom:8%;width:46px;height:120px}
 .rtc-cena-fechar{position:absolute;z-index:3;top:10px;right:10px;padding:8px 12px;font-size:13px}
+.rtc-cena-voz{position:absolute;z-index:3;top:10px;left:10px;padding:8px 12px;font-size:13px}
+.rtc-cena-resposta{color:var(--t2);font-size:14px}.rtc-cena-resposta b{color:var(--t1)}
 .rtc-cena-texto{padding:6px 26px 24px;position:relative;z-index:2}
 .rtc-cena-texto h2{font-size:clamp(30px,4.4vw,46px);margin:6px 0 12px}
 .rtc-cena-texto .exclusivo{color:var(--ouro)}

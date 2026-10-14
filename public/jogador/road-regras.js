@@ -282,6 +282,10 @@
   // visual: { aparencia, visual, expressao, texto }; muda só o que vier, por escolha do jogador, e vai para o diário).
   const O = (texto, dica, tom, ef, extra = {}) => ({ texto, dica, tom, ef, ...extra });
   const so = (...ids) => ({ para: ids });
+  // a cena dublada (road-voz.js + dublagem/manifesto.json): o ramo do roteiro que esta opção toca (A, B, C) e o que ela
+  // grava no estado narrativo do protagonista (`narrativa`), para as falas condicionais e os callbacks de depois.
+  // Opção sem `voz` também vale na cena dublada: só não tem fala depois da escolha.
+  const voz = (ramo, narrativa = {}) => ({ voz: ramo, narrativa });
 
   const GERAIS = [
     { id: "resposta", capitulo: 0, titulo: "A resposta inesperada",
@@ -362,14 +366,15 @@
         opcoes: [
           O("Ir e fechar a festa", "Ninguém vive só de futebol. Mas o corpo tem 34 anos.", "neutro",
             { rotina: 15, exposicao: 10, disciplina: -12, prestigio: 4, risco: 0.35, marca: "balada",
-              manchete: "Fotos de {nome} às 4h da manhã circulam a dois dias do jogo." }),
+              manchete: "Fotos de {nome} às 4h da manhã circulam a dois dias do jogo." }, voz("A", { rom_festa: "integral" })),
           O("Passar só para dar um abraço", "Uma hora, um parabéns e cama.", "neutro",
-            { rotina: 4, respeito: 4, risco: 0.1 }),
+            { rotina: 4, respeito: 4, risco: 0.1 }, voz("B", { rom_festa: "breve" })),
           O("Ficar em casa e cuidar do corpo", "Os parças vão reclamar. A coxa agradece.", "neutro",
-            { rotina: -14, disciplina: 12, exposicao: -4, forma: 1 }),
+            { rotina: -14, disciplina: 12, exposicao: -4, forma: 1 }, voz("C", { rom_festa: "nao" })),
           O("Levar os garotos da base num jantar, não na festa", "Você vira o irmão mais velho, não o rei da noite.", "respeito",
             { grupo: -12, respeito: 10, rotina: -6, relCom: { prodigio: 8 },
-              manchete: "{nome} troca o iate por um jantar com os garotos da base." }, { requer: (p) => p.eixos.grupo <= 45 }),
+              manchete: "{nome} troca o iate por um jantar com os garotos da base." },
+            { requer: (p) => p.eixos.grupo <= 45, ...voz("C", { rom_festa: "nao" }) }),
         ] },
       { id: "cai-cai", capitulo: 3, titulo: "O lance da semifinal",
         texto: "O zagueiro rival chega atrasado em todas. A área está logo ali, e o árbitro já marcou dois pênaltis nesta Champions.",
@@ -417,12 +422,15 @@
         texto: "Na véspera, Ventura anuncia a escalação: você começa no banco. Na coletiva, ele diz que “ninguém é maior que o clube”.",
         opcoes: [
           O("Aceitar e responder no treino", "Ventura respeita quem fecha a boca e corre.", "neutro",
-            { tecnico: 18, disciplina: 10, ambicao: -4 }),
+            { tecnico: 18, disciplina: 10, ambicao: -4 }, voz("B", { res_reacao_banco: "B", res_relacao_ventura_delta: 1 })),
           O("Cobrar publicamente", "A torcida está com você. O técnico, cada vez menos.", "provoca",
             { tecnico: -20, exposicao: 10, ambicao: 12, prestigio: 4,
-              manchete: "Crise em Madri: {nome} rebate Ventura publicamente." }),
+              manchete: "Crise em Madri: {nome} rebate Ventura publicamente." },
+            voz("A", { res_reacao_banco: "A", res_relacao_ventura_delta: -1 })),
           O("Pedir uma conversa a sós", "Sem câmeras, de homem para homem.", "respeito",
             { tecnico: 10, respeito: 6, grupo: -6 }),
+          O("Sair em silêncio", "Nenhuma palavra. A resposta fica para domingo.", "neutro",
+            { disciplina: 6, tecnico: 4, exposicao: -4 }, voz("C", { res_reacao_banco: "C", res_relacao_ventura_delta: 0 })),
         ] },
       { id: "arquibancada", capitulo: 3, titulo: "A arquibancada",
         texto: "No aquecimento da semifinal, parte da torcida adversária dirige ofensas racistas a você. O árbitro finge não ouvir.",
@@ -441,14 +449,17 @@
         texto: "A partida de videogame foi até as quatro. O despertador tocou, e você não ouviu. O treino começou há vinte minutos.",
         opcoes: [
           O("Assumir o atraso e pagar a multa", "Ninguém espera perfeição. Esperam verdade.", "neutro",
-            { disciplina: 8, respeito: 6, rotina: -4 }),
+            { disciplina: 8, respeito: 6, rotina: -4 }, voz("B", { imp_sinceridade_duval: true, imp_disciplina_delta: 0 })),
           O("Inventar um trânsito na ponte", "Talvez cole. Talvez alguém tenha visto você on-line.", "neutro",
             { disciplina: -6, sorte: { chance: 0.5,
               bom: { manchete: "" },
-              ruim: { respeito: -12, prestigio: -6, manchete: "Desculpa desmontada: {nome} estava on-line às quatro da manhã." } } }),
+              ruim: { respeito: -12, prestigio: -6, manchete: "Desculpa desmontada: {nome} estava on-line às quatro da manhã." } } },
+            voz("A", { imp_sinceridade_duval: false, imp_disciplina_delta: -1 })),
           O("Contratar um chef e um técnico de sono", "O Bola de Ouro decide crescer de vez.", "respeito",
             { rotina: -18, disciplina: 14, ambicao: 6, vidro: -15,
               manchete: "{nome} monta uma equipe pessoal de sono e nutrição." }),
+          O("Desligar e correr para o treino", "Sem explicação: o carro já está na rua.", "neutro",
+            { disciplina: 6, respeito: -2 }, voz("C", { imp_disciplina_delta: 1 })),
         ] },
       { id: "coxa", capitulo: 3, titulo: "A coxa avisou",
         texto: "No último treino antes da semifinal, a parte de trás da coxa repuxa no sprint. Ninguém viu.",
@@ -466,14 +477,16 @@
         texto: "A UEFA exige um jogador por clube na coletiva. O assessor escolhe você. Dez microfones, nenhum fone permitido.",
         opcoes: [
           O("Uma palavra por resposta", "Eles queriam um jogador. Não disseram quantas palavras.", "neutro",
-            { disciplina: 4, decifrado: -5, exposicao: -4 }),
+            { disciplina: 4, decifrado: -5, exposicao: -4 }, voz("A", { eni_abertura_imprensa: "literal" })),
           O("Falar só de torrada queimada", "A pergunta era sobre tática. A resposta, sobre café da manhã.", "neutro",
             { sorte: { chance: 0.55,
               bom: { prestigio: 14, decifrado: 8, manchete: "A torrada queimada de {nome} vira o assunto mais comentado da rodada." },
-              ruim: { respeito: -10, decifrado: 4, manchete: "Jornalistas reclamam da postura de {nome} na coletiva." } } }),
+              ruim: { respeito: -10, decifrado: 4, manchete: "Jornalistas reclamam da postura de {nome} na coletiva." } } },
+            voz("B", { eni_abertura_imprensa: "ironia" })),
           O("Falar de verdade, pela primeira vez", "Ninguém esperava. Talvez nem você.", "respeito",
             { decifrado: 22, exposicao: 12, respeito: 10,
-              manchete: "Quinze minutos de {nome} sem fones: a Europa descobre quem ele é." }),
+              manchete: "Quinze minutos de {nome} sem fones: a Europa descobre quem ele é." },
+            voz("C", { eni_abertura_imprensa: "sincera" })),
         ] },
       { id: "chuteira", capitulo: 3, titulo: "A chuteira da cor errada",
         texto: "Uma marca oferece um contrato milionário, com uma condição: usar a chuteira dela, que não combina com o uniforme da semifinal.",
@@ -490,12 +503,17 @@
       { id: "protocolo", capitulo: 1, titulo: "Protocolo noturno",
         texto: "O elenco marca um jantar depois do jogo. O seu protocolo diz cama às nove, com os óculos âmbar e o quarto a 18 graus.",
         opcoes: [
-          O("Seguir o protocolo", "O corpo é o trabalho.", "neutro", { disciplina: 8, grupo: 8, rotina: -4 }),
+          O("Seguir o protocolo", "O corpo é o trabalho.", "neutro", { disciplina: 8, grupo: 8, rotina: -4 },
+            voz("A", { maq_adesao_protocolo: "alta", maq_integracao_elenco: "baixa" })),
           O("Ir ao jantar de óculos âmbar", "Fica uma hora, pede fígado e vira lenda no grupo.", "respeito",
             { grupo: -12, respeito: 8, jogoGrande: 12,
-              manchete: "Foto de {nome} de óculos âmbar no jantar do elenco viraliza." }),
+              manchete: "Foto de {nome} de óculos âmbar no jantar do elenco viraliza." },
+            voz("B", { maq_adesao_protocolo: "moderada", maq_integracao_elenco: "media" })),
           O("Convidar o time para o seu ritual de sol às sete", "Metade aparece. A outra metade ri, mas aparece na semana seguinte.", "respeito",
             { grupo: -8, exposicao: 6, jogoGrande: 6, disciplina: 4 }),
+          O("Ficar com os colegas até tarde", "Hoje o protocolo dorme sozinho.", "respeito",
+            { grupo: -14, rotina: 8, respeito: 6, disciplina: -6 },
+            voz("C", { maq_adesao_protocolo: "baixa", maq_integracao_elenco: "alta" })),
         ] },
       { id: "fantasma", capitulo: 3, titulo: "O fantasma dos jogos grandes",
         texto: "Na coletiva da semifinal, a pergunta vem sem rodeio: “Você some em jogo grande?”",
@@ -522,6 +540,43 @@
   function opcoesPara(p, evento, ctx = {}) {
     const c = { tem: () => false, ...ctx };
     return evento.opcoes.filter((o) => (!o.para || o.para.includes(p.arquetipo)) && (!o.requer || o.requer(p, c)));
+  }
+
+  // ---------- a história fora da entrevista (as cenas dubladas) ----------
+  // prelúdio: uma cena com escolha própria antes da entrevista do capítulo, só de um protagonista. A escolha grava o
+  // estado narrativo (`narrativa`) e tem um efeito pequeno; não substitui a entrevista nem a estratégia.
+  const PRELUDIOS = {
+    prodigio: [
+      { id: "primeira-noite", capitulo: 0, titulo: "Primeira noite",
+        texto: "Véspera do primeiro treino em Barcelona. A assessora liga: a marca faz uma festa hoje e quer você lá.",
+        opcoes: [
+          O("Aceitar a festa", "Uma hora. Foto, sorriso, tchau.", "neutro",
+            { exposicao: 6, rotina: 6, disciplina: -4, prestigio: 3 }, voz("A", { pro_festa_marca: true })),
+          O("Ficar em casa", "Primeiro dia é primeiro dia.", "respeito",
+            { disciplina: 6, rotina: -4 }, voz("B", { pro_festa_marca: false })),
+        ] },
+    ],
+  };
+  function preludioPara(p, capitulo) {
+    const feitos = p.preludios || [];
+    return (PRELUDIOS[p.arquetipo] || []).find((x) => x.capitulo === capitulo && !feitos.includes(x.id)) || null;
+  }
+  // callback: uma cena que volta depois, por causa de uma escolha. Vale na jornada do evento `depoisDe` (o jogo logo
+  // depois da decisão) e só quando `quando` (road-voz.js) bate com o estado narrativo. A variante (qual pergunta o
+  // repórter faz) sai das condições das falas no manifesto, uma só.
+  const CALLBACKS = [
+    { id: "pergunta-inconveniente", arquetipo: "romantico", depoisDe: "aniversario",
+      quando: { chave: "resultado_ultimo_jogo", op: "==", valor: "derrota" } },
+  ];
+  // grava o que a escolha muda na história: valores substituem, os que terminam em _delta somam
+  function gravarNarrativa(p, mudancas) {
+    p.narrativa ||= {};
+    for (const [k, v] of Object.entries(mudancas || {})) {
+      if (!/^[a-z_][a-z0-9_]*$/.test(k)) continue;
+      if (k.endsWith("_delta") && typeof v === "number") p.narrativa[k] = (p.narrativa[k] || 0) + v;
+      else if (["string", "number", "boolean"].includes(typeof v)) p.narrativa[k] = v;
+    }
+    return p.narrativa;
   }
 
   // ---------- efeitos ----------
@@ -634,5 +689,6 @@
     GERAIS, EXCLUSIVOS, POR_ID, MARRA,
     porClube, limparFigura, mudarFigura, garantir, novoProtagonista, eventoPara, opcoesPara, aplicar, resolverSorte,
     formaDe, riscoDe, epilogoExtra,
+    PRELUDIOS, CALLBACKS, preludioPara, gravarNarrativa,
   };
 });

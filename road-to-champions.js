@@ -9,6 +9,11 @@ const bd = require("./bd.js");
 const mundo = require("./public/carreira/base/mundo-2026.js");
 const Motor = require("./public/carreira/motor.js");
 const R = require("./public/jogador/road-regras.js"); // os protagonistas, o estilo de vida e os eventos
+// a dublagem: as condições das falas (sem eval) e o manifesto das cenas. O servidor só decide QUAL cena e qual ramo
+// cada um vê (o estado narrativo é dele); o áudio toca no navegador de cada um (public/jogador/road-dublagem.js).
+const Voz = require("./public/jogador/road-voz.js");
+const DUBLAGEM = require("./public/jogador/dublagem/manifesto.json");
+const cenaDeVoz = (tipo, id) => Object.values(DUBLAGEM.cenas).find(c => c.gatilho.tipo === tipo && (c.gatilho.id === id || c.gatilho.evento === id)) || null;
 const EUROPA = new Set(["inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
 const ligas = mundo.ligas.filter(l => EUROPA.has(l.id));
 const BASE = new Map(); // o clube inteiro da base (elenco e formação), para o motor
@@ -131,7 +136,7 @@ function cena(s,p) {
   const texto=exclusivo?e.texto:e.texto+(r?" O nome de "+r.avatar+" surge novamente.":"")+memoria+vinculo+eco;
   return {id:e.id,titulo:e.titulo,texto,exclusivo,
     rival:r?{id:r.id,avatar:r.avatar}:null,
-    opcoes:opcoes.map((x,i)=>({id:i,texto:x.texto,dica:x.dica,tom:x.tom,propria:!!x.para}))};
+    opcoes:opcoes.map((x,i)=>({id:i,texto:x.texto,dica:x.dica,tom:x.tom,propria:!!x.para,voz:x.voz||null}))};
 }
 function registrado(s,id) {return s.entradas.find(x=>x.rodada===s.capitulo && x.jogador===id);}
 function mudarRelacao(p,q,valor){
@@ -152,13 +157,45 @@ function decidir(s,p,opcao,tatica) {
   const efeito=R.aplicar(p,ef);
   mudarRelacao(p,rival,efeito.rel);
   for(const [arq,v] of Object.entries(efeito.relCom||{})) mudarRelacao(p,s.jogadores.find(x=>x.arquetipo===arq),v);
-  p.escolhas.push({capitulo:s.capitulo,evento:e.titulo,eventoId:e.id,opcao,texto:item.texto,tom:item.tom,sorte:resultado,rival:rival?.id||null});
+  p.escolhas.push({capitulo:s.capitulo,evento:e.titulo,eventoId:e.id,opcao,texto:item.texto,tom:item.tom,sorte:resultado,rival:rival?.id||null,
+    ...(item.voz?{voz:item.voz}:{})});
+  if(item.narrativa)R.gravarNarrativa(p,item.narrativa); // o que a escolha deixa para as cenas de depois
   const entrada={rodada:s.capitulo,jogador:p.id,avatar:p.avatar,clube:p.clube,tatica,escolha:item.texto,tom:item.tom,
     risco:efeito.risco,forma:efeito.forma,aposta:efeito.aposta,rival:rival?.id||null};
   s.entradas.push(entrada);s.historico.push({tipo:"decisao",rodada:s.capitulo,autor:p.avatar,texto:item.texto,clube:p.clube});
   manchete(s,p,efeito.manchete);
   manchete(s,p,efeito.figura,"visual"); // a evolução visual fica no diário, para todos verem
   return entrada;
+}
+// o prelúdio (a cena dublada com escolha própria antes da entrevista): grava o estado narrativo e um efeito pequeno
+function preludio(s,p,id,opcao){
+  R.garantir(p);
+  const x=R.preludioPara(p,s.capitulo);
+  if(!x||x.id!==id)throw new Error("Essa cena não está disponível agora.");
+  const item=x.opcoes[opcao];
+  if(!Number.isInteger(opcao)||!item)throw new Error("Escolha narrativa inválida.");
+  const efeito=R.aplicar(p,item.ef);
+  R.gravarNarrativa(p,item.narrativa);
+  (p.preludios||=[]).push(x.id);
+  s.historico.push({tipo:"decisao",rodada:s.capitulo,autor:p.avatar,clube:p.clube,texto:x.titulo+": "+item.texto});
+  manchete(s,p,efeito.manchete);
+  return {voz:item.voz||null};
+}
+// depois dos jogos: o resultado de cada protagonista fica no estado narrativo, e os callbacks que valem entram na fila
+// de cenas dele (p.vozes). Cada callback toca uma vez, numa variante só; quem não joga não muda nada.
+function narrativaDaJornada(s){
+  for(const p of s.jogadores){
+    const j=jogoDe(s,p);if(!j||!j.resultado)continue;
+    const r=j.resultado,venc=r.vencedor||(r.casa===r.fora?null:r.casa>r.fora?j.casa:j.fora);
+    R.gravarNarrativa(p,{resultado_ultimo_jogo:venc===p.clube?"vitoria":venc?"derrota":"empate"});
+    for(const cb of R.CALLBACKS){
+      if(cb.arquetipo!==p.arquetipo||(p.vozes||[]).some(v=>v.id===cb.id))continue;
+      if(!p.escolhas.some(e=>e.eventoId===cb.depoisDe&&e.capitulo===s.capitulo))continue;
+      if(!Voz.avaliar(cb.quando,p.narrativa))continue;
+      const c=cenaDeVoz("callback",cb.id),ramo=c&&Voz.varianteDe(DUBLAGEM,c.id,p.narrativa);
+      if(ramo)(p.vozes||=[]).push({id:cb.id,cena:c.id,ramo,rodada:s.capitulo});
+    }
+  }
 }
 function estrategia(s,clube){const p=s.jogadores.find(p=>p.clube===clube);return s.entradas.find(x=>x.rodada===s.capitulo && x.jogador===p?.id)?.tatica||"equilibrado";}
 // o time que o motor da Carreira recebe: o elenco da base, a formação do clube e a tática da estratégia escolhida.
@@ -280,6 +317,7 @@ function avancar(s) {
   const jogos=jogosDaRodada(s);
   for(const j of jogos) jogar(s,j,formas);
   resolverApostas(s,opinioes);
+  narrativaDaJornada(s);
   const n=s.capitulo;
   // a jornada ao vivo: a página de cada um assiste aos jogos no mesmo relógio (o mesmo minuto para a sala inteira)
   s.aoVivo={rodada:n,jogos:jogos.map(j=>j.id),inicio:Date.now()+ESPERA_MS,vel:VEL};
@@ -308,7 +346,14 @@ function estado(s,p) {
     evento:s.fase==="jogando"&&!registrado(s,p.id)?cena(s,p):null,
     feito:!!registrado(s,p.id),prontos:s.jogadores.filter(x=>registrado(s,x.id)).length,
     historico:s.historico.slice(-24).reverse(),campeao:s.campeao,epilogos:s.epilogos,
-    aoVivo:s.aoVivo||null,agora:Date.now()};
+    aoVivo:s.aoVivo||null,agora:Date.now(),voz:vozDe(s,p)};
+}
+// a parte da dublagem que é só deste jogador: o estado narrativo, os callbacks dele e o prelúdio pendente
+function vozDe(s,p){
+  const x=s.fase==="jogando"&&p.arquetipo?R.preludioPara(p,s.capitulo):null,c=x&&cenaDeVoz("preludio",x.id);
+  return {narrativa:p.narrativa||{},cenas:p.vozes||[],
+    preludio:x&&c?{id:x.id,cena:c.id,titulo:x.titulo,texto:x.texto,
+      opcoes:x.opcoes.map((o,i)=>({id:i,texto:o.texto,dica:o.dica,tom:o.tom,voz:o.voz||null}))}:null};
 }
 // os lances de um jogo já disputado (para assistir ao vivo ou rever): a narração, as escalações e os nomes
 function partidaDe(s,id){
@@ -396,6 +441,11 @@ function conectar(io){
       if(s.fase!=="jogando")throw Error("A campanha foi encerrada.");
       decidir(s,p,d.opcao,d.tatica);
     }));
+    // a escolha do prelúdio dublado (só a do próprio jogador)
+    socket.on("preludio",(d={},cb)=>autenticado(cb,(s,p)=>{
+      if(s.fase!=="jogando")throw Error("A campanha não está em andamento.");
+      return preludio(s,p,String(d.id||""),d.opcao);
+    }));
     socket.on("avancar",(_d={},cb)=>autenticado(cb,(s,p)=>{
       if(p.id!==s.dono)throw Error("Apenas o anfitrião avança.");
       avancar(s);
@@ -411,4 +461,5 @@ function conectar(io){
   return {get,clubes:CLUBES};
 }
 module.exports=conectar;
-module.exports.paraTestes={CLUBES,gruposIniciais,tabela,decidir,avancar,cena,estado,recuperar,atualizarCampanha,salvar,jogar,partidaDe,timeDoMotor,TATICA_MOTOR};
+module.exports.paraTestes={CLUBES,gruposIniciais,tabela,decidir,avancar,cena,estado,recuperar,atualizarCampanha,salvar,jogar,partidaDe,timeDoMotor,TATICA_MOTOR,
+  preludio,narrativaDaJornada,DUBLAGEM};

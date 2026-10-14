@@ -469,11 +469,57 @@ function telaJogo(s){
 // ---------- a cena da decisão (entrevista) e o pré-jogo ----------
 const chaveCena=s=>"rtc:cena:"+s.codigo+":"+s.capitulo;
 function abrirCenaSePreciso(s){
-  if(!s||s.fase!=="jogando"||!s.evento){if(tela.cena&&!s?.evento)tela.cena=null;return;}
+  if(!s||s.fase!=="jogando"){if(tela.cena&&!s?.evento)tela.cena=null;return;}
   if(window.RoadPartida&&RoadPartida.aberta)return; // a cena do próximo capítulo espera o fim do jogo ao vivo
+  if(window.RoadDublagem&&RoadDublagem.aberta)return; // a cena dublada está passando
+  if(abrirVozSePreciso(s))return;
+  if(!s.evento){if(tela.cena)tela.cena=null;return;}
   if(tela.cena&&tela.cena.id===s.evento.id+":"+s.capitulo)return;
   let visto=false;try{visto=sessionStorage.getItem(chaveCena(s))==="1";}catch{}
   if(!visto)tela.cena={id:s.evento.id+":"+s.capitulo,passo:"cena",opcao:null,tatica:"equilibrado",foco:true};
+}
+// ---------- as cenas dubladas (road-dublagem.js) ----------
+// A ordem: o callback que voltou depois do jogo, o prelúdio do capítulo e a versão dublada da entrevista. Tudo só
+// neste navegador: o servidor manda em s.voz o que é deste jogador, e o áudio não passa pela sala.
+const chaveVoz=(s,id)=>"rtc:voz:"+s.codigo+":"+id;
+const guardado=(area,k)=>{try{return window[area].getItem(k)==="1";}catch{return false;}};
+const guardar=(area,k)=>{try{window[area].setItem(k,"1");}catch{}};
+function abrirVozSePreciso(s){
+  const D=window.RoadDublagem;if(!D)return false;
+  if(!D.carregado){D.carregar().then(()=>{if(sala)desenhar();});return true;} // alguns KB; a cena espera por eles
+  const eu=euDe(s),v=s.voz||{},cor=coresDe(eu.clube)[0]||"#3d7ae0",base={protagonista:eu.avatar,cor,ctx:v.narrativa||{}};
+  const cb=(v.cenas||[]).find(c=>!guardado("localStorage",chaveVoz(s,c.id)));
+  if(cb&&D.cenaDe("callback",cb.id)){
+    D.tocar({...base,tipo:"callback",id:cb.id,ramo:cb.ramo,kicker:"Coletiva pós-jogo · "+(CAPITULOS[cb.rodada]?.[1]||""),
+      aoFechar:()=>{guardar("localStorage",chaveVoz(s,cb.id));desenhar();}});
+    return true;
+  }
+  const pre=v.preludio;
+  if(pre&&!guardado("sessionStorage",chaveVoz(s,pre.id))&&D.cenaDe("preludio",pre.id)){
+    D.tocar({...base,tipo:"preludio",id:pre.id,opcoes:pre.opcoes,podeAdiar:true,kicker:"★ Só na sua história · Antes da "+CAPITULOS[s.capitulo][0],
+      aoEscolher:async o=>{
+        const r=await pedido("preludio",{id:pre.id,opcao:o.id});
+        if(!r.ok){toast(r.error);return false;}
+        if(r.estado)sala=r.estado; // sem redesenhar: a cena continua por cima
+        return true;
+      },
+      aoFechar:()=>{guardar("sessionStorage",chaveVoz(s,pre.id));desenhar();}});
+    return true;
+  }
+  const ev=s.evento,id=ev&&ev.id+":"+s.capitulo;
+  if(ev&&D.cenaDe("evento",ev.id)&&!guardado("sessionStorage",chaveCena(s))&&!guardado("sessionStorage",chaveVoz(s,id))&&!(tela.cena&&tela.cena.id===id)){
+    D.tocar({...base,tipo:"evento",id:ev.id,opcoes:ev.opcoes,podeAdiar:true,
+      kicker:(ev.exclusivo?"★ Só na sua história":"Decisão que muda o seu legado")+" · "+(CAPITULOS[s.capitulo]?.[1]||""),
+      // a resposta da cena é a da entrevista: o pré-jogo vem em seguida e o "Confirmar" manda as duas ao servidor
+      aoFechar:({opcao,adiou})=>{
+        guardar("sessionStorage",chaveVoz(s,id));
+        if(adiou){guardar("sessionStorage",chaveCena(s));tela.cena=null;}
+        else tela.cena={id,passo:opcao!=null?"jogo":"cena",opcao:opcao??null,tatica:"equilibrado",foco:true,travada:opcao!=null};
+        desenhar();
+      }});
+    return true;
+  }
+  return false;
 }
 function paredeDePatrocinio(){
   let s="";for(let y=0;y<8;y++)for(let x=0;x<6;x++)s+='<span style="left:'+(x*19-(y%2)*9)+'%;top:'+(y*14)+'%">✦ ROAD TO CHAMPIONS</span>';
@@ -493,6 +539,7 @@ function cenaHTML(s){
     const arte='<div class="rtc-cena-arte" style="--cor:'+safe(cor)+'"><div class="rtc-cena-parede">'+paredeDePatrocinio()+'</div>'+
       '<img src="/jogador/popups/rtc-popup-'+safe(ev.id)+'.webp" alt="" onerror="this.remove()">'+
       '<span class="rtc-cena-fig">'+figura(eu,190)+'</span>'+
+      (window.RoadDublagem&&RoadDublagem.cenaDe("evento",ev.id)?'<button class="rtc-button ghost rtc-cena-voz" data-acao="ver-cena-voz">▶ Ver a cena dublada</button>':'')+
       '<svg class="rtc-cena-mic" viewBox="0 0 46 120" aria-hidden="true"><rect x="12" y="2" width="22" height="34" rx="11" fill="#1c1c22" stroke="#555"/><rect x="21" y="36" width="4" height="84" fill="#111"/><rect x="8" y="40" width="30" height="14" fill="#7fb6ff" opacity=".8"/></svg>'+fechar+'</div>';
     return '<div class="rtc-cena" role="dialog" aria-modal="true" aria-labelledby="rtc-cena-titulo"><div class="rtc-cena-caixa">'+arte+
       '<div class="rtc-cena-texto"><span class="rtc-kicker'+(ev.exclusivo?" exclusivo":"")+'">'+(ev.exclusivo?"★ Só na sua história":"Decisão que muda o seu legado")+' · '+safe(CAPITULOS[s.capitulo]?.[1]||"")+'</span>'+
@@ -510,7 +557,8 @@ function cenaHTML(s){
     '<div class="rtc-taticas" role="radiogroup" aria-label="Estratégia">'+TATICAS.map(([id,nome,texto])=>'<button type="button" class="rtc-tatica" role="radio" data-tatica="'+id+'" aria-pressed="'+(c.tatica===id)+'" aria-checked="'+(c.tatica===id)+'">'+
       iconeTatica[id]+'<span><b>'+nome+'</b><br><small>'+texto+'</small></span></button>').join("")+'</div>'+
     '<p class="rtc-aviso-jogo">O jogo passa pelo mesmo motor da Carreira, minuto a minuto, com o elenco do clube: a estratégia muda como o time joga, e a forma do protagonista mexe no time inteiro. A resposta na entrevista mexe na história, nos laços e na forma, não no placar direto. Depois do apito, a sala assiste junto.</p></div>'+
-    '<div class="rtc-cena-texto"><div class="rtc-cena-pe"><button class="rtc-button ghost" data-acao="cena-voltar">← Resposta: '+safe(escolhida?escolhida.texto:"")+'</button>'+
+    '<div class="rtc-cena-texto"><div class="rtc-cena-pe">'+(c.travada?'<span class="rtc-cena-resposta">Resposta: <b>'+safe(escolhida?escolhida.texto:"")+'</b></span>':
+      '<button class="rtc-button ghost" data-acao="cena-voltar">← Resposta: '+safe(escolhida?escolhida.texto:"")+'</button>')+
     '<button class="rtc-button ouro" data-acao="decidir">Confirmar escolhas</button></div></div></div></div>';
 }
 
@@ -569,7 +617,7 @@ app.addEventListener("click",async e=>{
   if(ds.escolha!=null){tela.cena.opcao=Number(ds.escolha);desenhar();app.querySelector('[data-escolha="'+ds.escolha+'"]')?.focus();return;}
   if(ds.tatica){tela.cena.tatica=ds.tatica;desenhar();app.querySelector('[data-tatica="'+ds.tatica+'"]')?.focus();return;}
   const acao=ds.acao;if(!acao||ocupado)return;
-  if(acao==="sair"){localStorage.removeItem(storage.code);localStorage.removeItem(storage.token);location.reload();return;}
+  if(acao==="sair"){window.RoadDublagem?.parar();localStorage.removeItem(storage.code);localStorage.removeItem(storage.token);location.reload();return;}
   if(acao==="copiar"){
     const code=sala?.codigo||"";
     try{await navigator.clipboard.writeText(code);toast("Código copiado: "+code);}catch{toast("Código da campanha: "+code);}
@@ -581,6 +629,7 @@ app.addEventListener("click",async e=>{
   if(acao==="fechar-cena"){try{sessionStorage.setItem(chaveCena(sala),"1");}catch{}tela.cena=null;desenhar();return;}
   if(acao==="cena-proximo"){tela.cena.passo="jogo";tela.cena.foco=true;desenhar();return;}
   if(acao==="cena-voltar"){tela.cena.passo="cena";tela.cena.foco=true;desenhar();return;}
+  if(acao==="ver-cena-voz"){try{sessionStorage.removeItem(chaveVoz(sala,sala.evento.id+":"+sala.capitulo));sessionStorage.removeItem(chaveCena(sala));}catch{}tela.cena=null;desenhar();return;}
   lerCampos();
   let evento=null,dados={};
   if(acao==="criar"){evento="criar";dados=identidade();}
@@ -629,12 +678,15 @@ app.addEventListener("input",e=>{
   }
 });
 document.addEventListener("keydown",e=>{
-  if(e.key==="Escape"&&tela.cena&&sala&&!RoadPartida.aberta){try{sessionStorage.setItem(chaveCena(sala),"1");}catch{}tela.cena=null;desenhar();}
+  if(e.key==="Escape"&&tela.cena&&sala&&!RoadPartida.aberta&&!window.RoadDublagem?.aberta){try{sessionStorage.setItem(chaveCena(sala),"1");}catch{}tela.cena=null;desenhar();}
 });
 socket.on("catalogo",list=>{catalogo=Array.isArray(list)?list:[];clubes=new Map(catalogo.map(c=>[c.id,c]));desenhar();});
 socket.on("estado",data=>{
   // não redesenha o editor do vestiário no meio da edição
   sala=data;RoadPartida.verificar(sala); // antes de desenhar: com o jogo ao vivo aberto, a cena do capítulo espera
+  // a cena dublada não toca por cima do jogo ao vivo, e a da entrevista sai se a decisão já foi feita (outra aba)
+  const D=window.RoadDublagem,at=D?.atual;
+  if(at&&(RoadPartida.aberta||(at.tipo==="evento"&&data.evento?.id!==at.id)))D.parar();
   if(!(data.fase==="lobby"&&tela.editor))desenhar();
 });
 socket.on("connect",async()=>{
