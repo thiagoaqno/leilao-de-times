@@ -298,15 +298,7 @@ function fecharJogo(s,j,r,momentos=[]){
   const humano=ladosHumanos(s,j).length>0;
   // os lances ficam fora de s.jogos (o estado de todo mundo não carrega a narração): a página pede com `partida`.
   // Na liga, só os jogos com protagonista e os do mata-mata (os outros 18 por rodada ficam só com o placar).
-  if(!liga||humano||j.etapa!=="liga"){
-    const eventos=[...r.eventos];
-    for(const m of momentos){
-      const k=eventos.findIndex(e=>e.min>m.min||(e.min===m.min&&e.tipo==="intervalo"&&m.id!=="intervalo"));
-      eventos.splice(k<0?eventos.length:k,0,{min:m.min,tipo:"momento",lado:m.lado,texto:m.texto});
-    }
-    (s.partidas||={})[j.id]={eventos,times:r.times.map(t=>({id:t.id,formacao:t.formacao,titulares:t.titulares})),
-      estatisticas:r.estatisticas,nomes:nomesDaPartida(r,j.casa,j.fora)};
-  }
+  if(!liga||humano||j.etapa!=="liga")guardarLances(s,j,r,momentos);
   s.resultados.push({id:j.id,rodada:j.rodada,etapa:j.etapa,casa:j.casa,fora:j.fora,...resultado});
   if(!liga||humano||j.etapa!=="liga")s.historico.push({tipo:"jogo",rodada:j.rodada,texto:a.nome+" "+casa+" × "+fora+" "+b.nome,casa:j.casa,fora:j.fora,placar:[casa,fora]});
   const vencedor=resultado.vencedor||(casa===fora?null:casa>fora?j.casa:j.fora);
@@ -333,6 +325,41 @@ function fecharJogo(s,j,r,momentos=[]){
     }
   }
 }
+// os lances do jogo (com os momentos do protagonista no meio), fora de s.jogos. `parcial`: o jogo parou num momento e
+// os lances vão até ali; a versão (aoVivo.versoes) avisa a página de quem assiste que chegaram lances novos
+function guardarLances(s,j,r,momentos=[],parcial=false){
+  const eventos=[...r.eventos];
+  for(const m of momentos){
+    const k=eventos.findIndex(e=>e.min>m.min||(e.min===m.min&&e.tipo==="intervalo"&&m.id!=="intervalo"));
+    eventos.splice(k<0?eventos.length:k,0,{min:m.min,tipo:"momento",lado:m.lado,texto:m.texto});
+  }
+  (s.partidas||={})[j.id]={eventos,times:r.times.map(t=>({id:t.id,formacao:t.formacao,titulares:t.titulares})),
+    estatisticas:r.estatisticas,nomes:nomesDaPartida(r,j.casa,j.fora),...(parcial?{parcial:true}:{})};
+  if(s.aoVivo&&s.aoVivo.rodada===j.rodada){const v=(s.aoVivo.versoes||={});v[j.id]=(v[j.id]||0)+1;}
+}
+// ---------- o relógio ao vivo da rodada ----------
+// Todos assistem no mesmo relógio: minuto = base + (agora - desde) × vel. Quando o jogo de um protagonista para num
+// momento (25', intervalo, 70'), o relógio da sala inteira para nesse minuto (o teto) até a decisão; ao soltar, a
+// base passa a ser o minuto parado, e o tempo de espera não conta.
+const tetoDe=s=>{const p=s.jornada?Object.values(s.jornada.pendentes):[];return p.length?Math.min(...p.map(x=>x.min)):null;};
+function minutoAoVivo(s,agora=Date.now()){
+  const av=s.aoVivo;if(!av||av.base==null)return null;
+  const m=av.base+(agora-av.desde)/1000*av.vel,t=tetoDe(s);
+  return t==null?m:Math.min(m,t);
+}
+// antes de mudar os momentos parados: guarda o minuto de agora como base (o relógio continua dali)
+function rebasear(s,agora=Date.now()){
+  const av=s.aoVivo;if(!av||av.base==null||agora<av.desde)return;
+  av.base=minutoAoVivo(s,agora);av.desde=agora;
+}
+// o prazo de cada momento conta a partir de quando o relógio chega nele (não de quando o servidor simulou)
+function ajustarPrazos(s,agora=Date.now()){
+  const av=s.aoVivo;if(!s.jornada)return;
+  for(const pend of Object.values(s.jornada.pendentes)){
+    const chega=av&&av.base!=null?av.desde+Math.max(0,pend.min-av.base)/av.vel*1000:agora;
+    pend.prazo=Math.max(chega,agora)+MOMENTO_MS;
+  }
+}
 // sem momentos (campanhas antigas e jogos sem protagonista): roda e fecha de uma vez
 function jogar(s,j,formas={}){const r=rodar(s,j,formas);fecharJogo(s,j,r);return r;}
 function epilogo(s,p) {
@@ -355,6 +382,29 @@ function epilogo(s,p) {
   return {jogador:p.id,avatar:p.avatar,clube:p.clube,titulo,descricao,campeao};
 }
 const jogoDe=(s,p)=>jogosDaRodada(s).find(j=>j.casa===p.clube||j.fora===p.clube)||null;
+// o clube não joga mais nesta Champions: ficou fora dos 24 da liga ou perdeu um mata-mata (no formato antigo, ficou
+// fora das semifinais ou perdeu uma delas). O campeão nunca é eliminado.
+function eliminado(s,clube){
+  if(s.fase!=="jogando")return s.fase==="fim"&&s.campeao!==clube;
+  const dele=j=>j.casa===clube||j.fora===clube;
+  if(ehLiga(s)){
+    if(s.classificacaoFinal&&s.classificacaoFinal.indexOf(clube)>=24)return true;
+    return s.jogos.some(j=>dele(j)&&j.resultado&&(j.perna===2||j.etapa==="final")&&j.resultado.classificado&&j.resultado.classificado!==clube);
+  }
+  if(s.capitulo>=3&&!s.jogos.some(j=>j.etapa==="semifinal"&&dele(j)))return true;
+  return s.jogos.some(j=>j.etapa!=="grupos"&&dele(j)&&j.resultado&&j.resultado.vencedor&&j.resultado.vencedor!==clube);
+}
+const todosEliminados=s=>s.fase==="jogando"&&s.jogadores.length>0&&s.jogadores.every(p=>eliminado(s,p.clube));
+// ninguém da sala joga mais: as rodadas que faltam saem de uma vez (a última, a final, fica para assistir ao vivo)
+function simularAteFim(s){
+  if(s.fase!=="jogando")throw new Error("A campanha não está em andamento.");
+  if(s.jornada)throw new Error("Espere a rodada em andamento acabar.");
+  if(!todosEliminados(s))throw new Error("Ainda tem protagonista vivo na Champions.");
+  for(let k=0;k<40&&s.fase==="jogando";k++){
+    avancar(s);
+    if(s.jornada)throw new Error("Uma rodada ficou esperando um momento de jogo.");
+  }
+}
 // antes dos jogos: o risco de lesão de cada protagonista e a forma dele na jornada
 function formasDaJornada(s,opinioes){
   const formas={};
@@ -391,7 +441,7 @@ function resolverApostas(s,opinioes){
 function avancar(s) {
   if(s.fase!=="jogando")throw new Error("A campanha não está em andamento.");
   if(s.jornada)throw new Error("A rodada já está em andamento.");
-  if(capNarrativo(s)>=0&&!s.jogadores.every(p=>registrado(s,p.id)))throw new Error("Aguarde as decisões dos outros protagonistas.");
+  if(capNarrativo(s)>=0&&!s.jogadores.filter(p=>!eliminado(s,p.clube)).every(p=>registrado(s,p.id)))throw new Error("Aguarde as decisões dos outros protagonistas.");
   const opinioes=s.entradas.filter(x=>x.rodada===s.capitulo);
   // o tom de cada escolha decide a repercussão (as entradas de campanhas antigas, sem tom, ainda usam o texto)
   const tomDe=x=>x.tom||(/elogio|apoio|grupo|Agradecer|conversar|distrações/i.test(x.escolha)?"respeito":
@@ -404,9 +454,14 @@ function avancar(s) {
       "Os protagonistas seguem divididos entre o respeito e a ambição.";
     s.historico.push({tipo:"repercussao",rodada:s.capitulo,texto:noticia});
   }
-  const formas=formasDaJornada(s,opinioes);
+  const formas=formasDaJornada(s,opinioes),agora=Date.now();
   s.jornada={rodada:s.capitulo,formas,decisoes:{},momentos:{},pendentes:{}};
-  for(const j of jogosDaRodada(s))continuarJogo(s,j);
+  // a jornada ao vivo começa agora: a página de cada um assiste aos jogos no mesmo relógio e decide no minuto do
+  // momento, com o jogo parado. Na liga, só os jogos que guardam os lances (os dos protagonistas e os do mata-mata).
+  const vivos=jogosDaRodada(s).filter(j=>!ehLiga(s)||ladosHumanos(s,j).length||j.etapa!=="liga");
+  s.aoVivo={rodada:s.capitulo,jogos:vivos.map(j=>j.id),inicio:agora+ESPERA_MS,vel:VEL,base:0,desde:agora+ESPERA_MS,versoes:{}};
+  for(const j of jogosDaRodada(s))continuarJogo(s,j,agora);
+  ajustarPrazos(s,agora);
   if(!Object.keys(s.jornada.pendentes).length)concluirJornada(s);
 }
 // roda o jogo com as decisões que já vieram: ou fecha, ou fica esperando o próximo momento
@@ -421,6 +476,7 @@ function continuarJogo(s,j,agora=Date.now()){
     texto:(e.tipo==="gol"?"Gol do "+MAP.get(e.lado===0?j.casa:j.fora).nome:e.tipo==="vermelho"?"Expulso no "+MAP.get(e.lado===0?j.casa:j.fora).nome:"Pênalti para o "+MAP.get(e.lado===0?j.casa:j.fora).nome)+
       (nomes[e.jogador]?" · "+nomes[e.jogador]:"")}));
   J.pendentes[j.id]={jogo:j.id,id:par.id,min:par.min,placar:par.placar,lados,taticas,respostas:{},prazo:agora+MOMENTO_MS,resumo};
+  guardarLances(s,j,r,J.momentos[j.id]||[],true); // quem assiste vê o jogo até aqui; o resto chega depois da decisão
   return false;
 }
 // a resposta de um protagonista no momento do jogo dele
@@ -448,7 +504,9 @@ function responderSeCompleto(s,pend,agora){
     log.push({id:pend.id,min:pend.min,lado:l,jogador:p.id,opcao:pend.respostas[l],
       texto:p.avatar+" "+R.MOMENTOS[pend.respostas[l]].frase+"."});
   }
+  rebasear(s,agora);
   continuarJogo(s,j,agora);
+  ajustarPrazos(s,agora);
   if(!Object.keys(J.pendentes).length)concluirJornada(s);
   return true;
 }
@@ -473,8 +531,11 @@ function concluirJornada(s){
   const n=s.capitulo,jogos=jogosDaRodada(s);
   // a jornada ao vivo: a página de cada um assiste aos jogos no mesmo relógio (o mesmo minuto para a sala inteira).
   // Na liga, só os jogos que têm os lances guardados (os dos protagonistas e os do mata-mata).
-  const vivos=ehLiga(s)?jogos.filter(j=>s.partidas?.[j.id]):jogos;
-  s.aoVivo={rodada:n,jogos:vivos.map(j=>j.id),inicio:Date.now()+ESPERA_MS,vel:VEL};
+  // (campanha salva antes do relógio novo: o ao vivo nasce aqui, como antes)
+  if(!s.aoVivo||s.aoVivo.rodada!==n){
+    const vivos=ehLiga(s)?jogos.filter(j=>s.partidas?.[j.id]):jogos;
+    s.aoVivo={rodada:n,jogos:vivos.map(j=>j.id),inicio:Date.now()+ESPERA_MS,vel:VEL};
+  }
   if(ehLiga(s))proximaFaseLiga(s,n);
   else{
     if(n===2){
@@ -519,8 +580,9 @@ function estado(s,p) {
     tatica:s.taticas?.[p.id]||"equilibrado",jornada:jornadaDe(s,p),
     evento:s.fase==="jogando"&&!registrado(s,p.id)?cena(s,p):null,
     feito:!!registrado(s,p.id),prontos:s.jogadores.filter(x=>registrado(s,x.id)).length,
+    eliminado:s.fase!=="lobby"&&eliminado(s,p.clube),todosEliminados:todosEliminados(s),
     historico:s.historico.slice(-160).reverse(),campeao:s.campeao,epilogos:s.epilogos,
-    aoVivo:s.aoVivo||null,agora:Date.now(),voz:vozDe(s,p)};
+    aoVivo:s.aoVivo?{...s.aoVivo,teto:tetoDe(s)}:null,agora:Date.now(),voz:vozDe(s,p)};
 }
 // a rodada em andamento (os momentos do jogo): para todos, quem a sala está esperando; para este jogador, o momento dele
 function jornadaDe(s,p){
@@ -550,10 +612,10 @@ function vozDe(s,p){
 // os lances de um jogo já disputado (para assistir ao vivo ou rever): a narração, as escalações e os nomes
 function partidaDe(s,id){
   const j=s.jogos.find(x=>x.id===id);
-  if(!j||!j.resultado)throw new Error("Esse jogo ainda não aconteceu.");
   const p=s.partidas?.[id];
+  if(!j||(!j.resultado&&!p?.parcial))throw new Error("Esse jogo ainda não aconteceu.");
   if(!p)throw new Error("Esse jogo foi disputado antes da mesa ao vivo e só tem o placar.");
-  return {id:j.id,etapa:j.etapa,rodada:j.rodada,casa:j.casa,fora:j.fora,resultado:j.resultado,...p};
+  return {id:j.id,etapa:j.etapa,rodada:j.rodada,casa:j.casa,fora:j.fora,resultado:j.resultado||null,parcial:!!p.parcial,versao:s.aoVivo?.versoes?.[id]||0,...p};
 }
 function conectar(io){
   const nsp=io.of("/road-to-champions"), sessoes=new Map(), cache=new Map();
@@ -660,6 +722,11 @@ function conectar(io){
       if(p.id!==s.dono)throw Error("Apenas o anfitrião avança.");
       avancar(s);agendar(s);
     }));
+    // todos eliminados: as rodadas que faltam de uma vez, até a final
+    socket.on("simularFim",(_d={},cb)=>autenticado(cb,(s,p)=>{
+      if(p.id!==s.dono)throw Error("Apenas o anfitrião avança.");
+      simularAteFim(s);agendar(s);
+    }));
     // só leitura: os lances de um jogo da campanha (não salva nem avisa ninguém)
     socket.on("partida",(d={},cb)=>{
       const auth=sessoes.get(socket.id),s=auth&&get(auth.codigo);
@@ -672,4 +739,4 @@ function conectar(io){
 }
 module.exports=conectar;
 module.exports.paraTestes={CLUBES,gruposIniciais,tabela,decidir,avancar,cena,estado,recuperar,atualizarCampanha,salvar,jogar,partidaDe,timeDoMotor,TATICA_MOTOR,
-  preludio,narrativaDaJornada,DUBLAGEM,ligaInicial,tabelaLiga,momento,expirarMomentos,mudarTatica,capNarrativo};
+  preludio,narrativaDaJornada,DUBLAGEM,ligaInicial,tabelaLiga,momento,expirarMomentos,mudarTatica,capNarrativo,eliminado,todosEliminados,simularAteFim,minutoAoVivo,tetoDe};

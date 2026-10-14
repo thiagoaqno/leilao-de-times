@@ -238,3 +238,46 @@ test("motor: sem cfg.paradas tudo continua igual (a Carreira não muda)", () => 
     assert.deepEqual(com.eventos, sem.eventos.slice(0, com.eventos.length));
   }
 });
+
+test("jogo ao vivo: o relógio da sala para no momento, o jogo parado já tem os lances até ali e anda depois da resposta", () => {
+  const { partidaDe, minutoAoVivo, tetoDe } = rtc.paraTestes;
+  const s = campanha("VIVO1", ["maquina"]);
+  const [maq] = s.jogadores;
+  decidir(s, maq, 0, "equilibrado");
+  avancar(s);
+  // o relógio nasce antes dos jogos e trava no primeiro momento pendente
+  assert.ok(s.aoVivo && s.aoVivo.base === 0);
+  assert.equal(tetoDe(s), 25);
+  assert.equal(minutoAoVivo(s, s.aoVivo.desde + 3600e3), 25, "o relógio não passa do momento");
+  const pend = Object.values(s.jornada.pendentes)[0];
+  const p = partidaDe(s, pend.jogo);
+  assert.equal(p.parcial, true);
+  assert.ok(p.eventos.length > 0 && p.eventos.every((e) => (e.min ?? 0) <= 25), "só os lances até o minuto parado");
+  const versao = p.versao;
+  momento(s, maq, "manter");
+  assert.equal(tetoDe(s), 45, "agora espera o intervalo");
+  assert.ok(partidaDe(s, pend.jogo).versao > versao, "a versão muda para o navegador buscar os lances novos");
+  while (s.jornada) momento(s, maq, "manter");
+  assert.equal(tetoDe(s), null);
+  assert.equal(partidaDe(s, pend.jogo).parcial, false);
+});
+
+test("eliminado: com a sala toda fora o resto da Champions sai de uma vez", () => {
+  const { eliminado, todosEliminados, simularAteFim } = rtc.paraTestes;
+  const s = campanha("ELIM1", ["romantico"]);
+  const [p] = s.jogadores;
+  assert.throws(() => simularAteFim(s), /vivo/);
+  for (let r = 0; r < 8; r++) rodada(s);
+  assert.equal(s.classificacaoFinal.length, 36);
+  const fora = s.classificacaoFinal[30], dentro = s.classificacaoFinal[0];
+  assert.equal(eliminado(s, fora), true, "25º para baixo cai na fase de liga");
+  assert.equal(eliminado(s, dentro), false);
+  // o protagonista passa a ser de um clube que já caiu (o jeito de testar sem depender do sorteio dos jogos)
+  p.clube = fora;
+  assert.equal(todosEliminados(s), true);
+  assert.equal(estado(s, p).todosEliminados, true);
+  simularAteFim(s);
+  assert.equal(s.fase, "fim");
+  assert.ok(s.campeao && s.campeao !== fora);
+  assert.ok(s.jogos.every((j) => j.resultado), "todos os jogos disputados");
+});

@@ -59,9 +59,14 @@ test("cena do banco: em ordem, uma voz por vez, para na escolha e toca só o ram
     await tocandoAlgo(page, /RES_VENTURA_001\.mp3$/);
     await expect(page.locator(".rtc-voz-quem")).toHaveText("Ventura");
     await expect(page.locator(".rtc-voz-legenda")).toHaveText("Senta. Quero conversar sobre domingo.");
+    // quem fala aparece em cena: o retrato do Ventura (retratos.js) aceso, com o papel embaixo
+    await expect(page.locator(".rtc-voz-outro.falando svg")).toBeVisible();
+    await expect(page.locator(".rtc-voz-outro figcaption")).toHaveText("Técnico");
     // o protagonista: o nome que o jogador deu, só legenda (sem voz fixa)
     await expect(page.locator(".rtc-voz-quem")).toHaveText("Craque 0", { timeout: 15000 });
     await expect(page.locator(".rtc-voz-legenda")).toHaveText("Eu vou jogar?");
+    await expect(page.locator(".rtc-voz-duo")).toHaveAttribute("data-fala", "eu");
+    await expect(page.locator(".rtc-voz-outro")).not.toHaveClass(/falando/);
     expect((await diag(page)).tocando).toEqual([]);
     // nunca duas vozes ao mesmo tempo, e a escolha só aparece no fim da introdução
     for (let i = 0; i < 40 && (await diag(page)).fase !== "escolha"; i++) {

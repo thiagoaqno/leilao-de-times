@@ -84,7 +84,52 @@
 .rtc-ig-ok{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;background:#0095f6;color:#fff;font-style:normal;font-size:9px;vertical-align:1px}
 .rtc-ig-tipo{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#737373;white-space:nowrap}
 .rtc-ig-foto{position:relative;aspect-ratio:4/5;max-height:560px;background:linear-gradient(160deg,#0f2154,#081230);overflow:hidden}
-.rtc-ig-foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rtc-ig-foto>.rtc-ig-arte{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* os jeitos da foto com o protagonista (fotoDoPost em road.js); --c1/--c2 são as cores do clube */
+.rtc-ig-foto[class*=jeito-]{background:radial-gradient(ellipse 85% 70% at 50% 30%,var(--c1),#050a1c 88%)}
+.rtc-ig-foto[class*=jeito-]>.rtc-ig-arte{opacity:.82}
+.rtc-ig-foto[class*=jeito-]:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 45%,#040917cc)}
+.rtc-ig-corpo{position:absolute;z-index:1;left:50%;bottom:0;height:86%;aspect-ratio:2/3;transform:translateX(-50%);line-height:0}
+.rtc-ig-corpo .rtc-foto,.rtc-ig-polaroide .rtc-foto{width:100%;height:100%}
+.rtc-ig-corpo .rtc-foto>svg,.rtc-ig-polaroide .rtc-foto>svg{width:100%;height:100%}
+.rtc-ig-corpo img{filter:drop-shadow(0 10px 18px #000b)}
+.rtc-ig-marca{position:absolute;right:-6%;top:-4%;opacity:.16;transform:rotate(-12deg)}
+.rtc-ig-marca .rtc-escudo{--t:min(70cqw,260px)!important}
+.rtc-ig-foto{container-type:inline-size}
+.rtc-ig-foto>*:not(.rtc-ig-arte){z-index:2}
+.rtc-ig-foto .rtc-ig-corpo{z-index:1}
+/* capa de revista: o nome atrás, o jogador na frente e a chamada embaixo */
+.rtc-ig-revista{position:absolute;left:0;right:0;top:4%;text-align:center;font-family:var(--cond);font-weight:900;text-transform:uppercase;
+  font-size:min(22cqw,120px);line-height:.9;letter-spacing:-.01em;color:#fff;opacity:.92;white-space:nowrap;overflow:hidden}
+.jeito-capa .rtc-ig-corpo{height:80%}
+.rtc-ig-chamada{position:absolute;left:5%;right:5%;bottom:5%;margin:0;padding:8px 12px;background:var(--c1);color:#fff;font-family:var(--cond);font-weight:800;
+  font-size:min(5.4cqw,24px);line-height:1.12;text-transform:uppercase;box-shadow:6px 6px 0 #040917cc;text-shadow:0 1px 2px #0008}
+/* entrevista: a faixa da TV embaixo */
+.jeito-entrevista .rtc-ig-corpo{left:auto;right:-4%;transform:none;height:82%}
+.rtc-ig-faixa{position:absolute;left:0;right:22%;bottom:8%;margin:0;padding:8px 14px 9px;background:#fff;color:#0a1736;border-left:6px solid var(--c1);
+  font-size:min(3.6cqw,15px);line-height:1.2}
+.rtc-ig-faixa small{display:block;color:#e0263c;font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:.75em;margin-bottom:2px}
+.rtc-ig-faixa b{display:block;font-family:var(--cond);font-size:1.6em;text-transform:uppercase;line-height:1}
+/* lance: o adesivo torto */
+.jeito-lance .rtc-ig-corpo{height:92%}
+.rtc-ig-adesivo{position:absolute;left:6%;bottom:8%;padding:6px 14px;background:#ffd23f;color:#0a1736;font-family:var(--cond);font-weight:900;text-transform:uppercase;
+  font-size:min(8cqw,40px);transform:rotate(var(--giro));box-shadow:4px 4px 0 #040917}
+/* polaroide: a foto num quadrinho branco em cima da arte */
+.rtc-ig-polaroide{position:absolute;left:50%;top:50%;width:58%;margin:0;padding:3% 3% 0;background:#f7f5ef;box-shadow:0 18px 40px #000c;
+  transform:translate(-50%,-50%) rotate(var(--giro))}
+.rtc-ig-polaroide>span{display:block;aspect-ratio:4/5;overflow:hidden;line-height:0;background:radial-gradient(ellipse 85% 70% at 50% 30%,var(--c1),#050a1c 90%)}
+.rtc-ig-polaroide .rtc-foto{height:118%}
+.rtc-ig-polaroide figcaption{padding:8px 2px 10px;color:#1b1b1b;font-family:"Segoe Print","Comic Sans MS",cursive;font-size:min(3.6cqw,15px);line-height:1.25;text-align:center}
+/* citação: o jogador à esquerda e a frase grande */
+.jeito-citacao .rtc-ig-corpo{left:-6%;transform:none;height:84%}
+.rtc-ig-citacao{position:absolute;right:5%;top:12%;width:50%;margin:0;color:#fff;font-family:var(--cond);font-weight:800;font-size:min(5.6cqw,26px);line-height:1.12;
+  text-transform:uppercase;text-shadow:0 2px 6px #000a}
+.rtc-ig-citacao:before{content:"“";display:block;font-size:2.6em;line-height:.6;color:var(--c1);filter:brightness(1.5)}
+.rtc-ig-citacao cite{display:block;margin-top:10px;font-style:normal;font-size:.62em;letter-spacing:.14em;opacity:.8}
+.rtc-ig-citacao cite:before{content:"— "}
+/* placar: o jogador atrás do placar */
+.jeito-placar .rtc-ig-corpo{height:78%;bottom:12%}
+.jeito-placar .rtc-ig-placar{z-index:3}
 .rtc-ig-placar{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:10px 18px;background:#040917d9;border:1px solid #ffffff33;color:#fff}
 .rtc-ig-placar b{font-family:var(--cond);font-size:34px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .rtc-ig-acoes{display:flex;gap:14px;align-items:center;padding:8px 12px 2px;font-size:20px}
@@ -95,6 +140,11 @@
 .rtc-ig-coment{margin:6px 12px 12px;color:#737373;font-size:13.5px}
 .rtc-ig-post.compacto{border-radius:6px}
 .rtc-ig-post.compacto .rtc-ig-foto{aspect-ratio:16/9}
+.rtc-ig-post.compacto .rtc-ig-polaroide{width:34%}
+.rtc-ig-post.compacto .rtc-ig-revista{font-size:13cqw}
+.rtc-ig-post.compacto .rtc-ig-chamada,.rtc-ig-post.compacto .rtc-ig-citacao{font-size:min(3.6cqw,18px)}
+.rtc-ig-post.compacto .rtc-ig-citacao{width:56%;top:8%}
+.rtc-ig-post.compacto .rtc-ig-adesivo{font-size:5cqw}
 .rtc-ig-post.compacto .rtc-ig-legenda{margin-bottom:10px;font-size:13px}
 .rtc-ig-mini{display:grid;gap:10px}
 .rtc .rtc-ig-ver{background:none;border:0;color:#b9c6e6;font-size:11px;padding:0}
