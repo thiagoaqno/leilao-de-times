@@ -1,9 +1,11 @@
 // Road to Champions — campanha narrativa online (1 a 6 protagonistas).
 // A lógica esportiva é um torneio reduzido de 8 clubes: 2 grupos, semifinais e final.
+// Os protagonistas são os seis arquétipos de public/jogador/road-regras.js, cada um preso ao seu clube.
 // O Carreira tradicional e seus saves permanecem separados.
 const crypto = require("node:crypto");
 const bd = require("./bd.js");
 const mundo = require("./public/carreira/base/mundo-2026.js");
+const R = require("./public/jogador/road-regras.js"); // os protagonistas, o estilo de vida e os eventos
 const EUROPA = new Set(["inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
 const ligas = mundo.ligas.filter(l => EUROPA.has(l.id));
 const CLUBES = ligas.flatMap(l => require("./public/carreira/base/" + l.id + ".js").clubes.map(c => {
@@ -14,7 +16,6 @@ const CLUBES = ligas.flatMap(l => require("./public/carreira/base/" + l.id + ".j
 }));
 const MAP = new Map(CLUBES.map(c => [c.id,c]));
 const TATICAS = ["equilibrado", "pressionar", "recuar"];
-const POSICOES = ["GOL","ZAG","LD","LE","VOL","MC","MEI","PE","PD","ATA"];
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const hash = x => crypto.createHash("sha256").update(String(x)).digest("hex");
 const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
@@ -23,28 +24,6 @@ const codigoLimpo = x => String(x||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
 const sorte = key => parseInt(hash(key).slice(0,13),16)/0x10000000000000;
 const code = () => Array.from(crypto.randomBytes(5),n=>CHARS[n%CHARS.length]).join("");
 const tokenNovo = () => crypto.randomBytes(24).toString("hex");
-const eventos = [
-  { titulo:"A resposta inesperada", texto:"Uma declaração provocativa sobre os protagonistas viraliza na imprensa. O jornalista pede sua reação.",
-    opcoes:[["Retribuir o elogio","O respeito vem antes da rivalidade.",{respeito:16,prestigio:8,rel:16}],
-            ["Responder com provocação","A guerra psicológica começa agora.",{ambicao:12,prestigio:5,rel:-20}],
-            ["Não dar importância","Prefiro falar dentro de campo.",{disciplina:10,rel:0}]] },
-  { titulo:"O convite nos bastidores", texto:"Depois da última rodada, o protagonista rival sugere uma conversa fora das câmeras.",
-    opcoes:[["Aceitar e conversar","A rivalidade pode se transformar em amizade.",{respeito:12,rel:22}],
-            ["Recusar educadamente","A disputa fica restrita ao gramado.",{disciplina:10,rel:0}],
-            ["Vazar o convite","Uma manchete nasce de uma conversa privada.",{ambicao:12,prestigio:-8,rel:-24}]] },
-  { titulo:"Uma promessa para a Europa", texto:"Um repórter pergunta até onde seu clube pode chegar nesta Champions.",
-    opcoes:[["Prometer a taça","Uma promessa pública pode cobrar seu preço.",{ambicao:18,prestigio:5,rel:-4}],
-            ["Priorizar o grupo","Ninguém levanta a taça sozinho.",{respeito:12,disciplina:7,rel:9}],
-            ["Desafiar os rivais","O futebol europeu escuta seu recado.",{ambicao:11,prestigio:9,rel:-13}]] },
-  { titulo:"O peso da semifinal", texto:"O acesso ao vestiário é disputado pela imprensa. Seus rivais aguardam sua palavra.",
-    opcoes:[["Dar apoio aos eliminados","O respeito existe mesmo na derrota.",{respeito:18,rel:16}],
-            ["Evitar distrações","O trabalho em campo continua.",{disciplina:14,rel:0}],
-            ["Falar que será o melhor","Sua imagem fica ligada à vitória.",{ambicao:15,rel:-12}]] },
-  { titulo:"O último capítulo", texto:"A final se aproxima. O mundo inteiro acompanha os seis protagonistas.",
-    opcoes:[["Agradecer aos adversários","O legado está além da taça.",{respeito:20,prestigio:10,rel:15}],
-            ["Assumir o protagonismo","Você deseja escrever a última manchete.",{ambicao:17,prestigio:6,rel:-5}],
-            ["Exigir respeito","Cada palavra pode reacender uma antiga rivalidade.",{disciplina:8,ambicao:8,rel:-15}]] }
-];
 function salvar(s) {
   const db = bd.abrir(); const now = Date.now();
   db.prepare("INSERT INTO rtc_campanhas (codigo,dados,criada_em,atualizada_em) VALUES (?,?,?,?) ON CONFLICT(codigo) DO UPDATE SET dados=excluded.dados, atualizada_em=excluded.atualizada_em").run(s.codigo,JSON.stringify(s),s.criadaEm,now);
@@ -54,14 +33,21 @@ function recuperar(codigo) {
   if(!row) return null;
   try { return JSON.parse(row.dados); } catch { return null; }
 }
-function participante(d) {
-  const apelido=nome(d.nome), avatar=nome(d.avatar || d.nome), clube=String(d.clube||"");
-  if(apelido.length<2 || avatar.length<2) throw new Error("Informe seu nome e o nome do protagonista.");
-  if(!MAP.has(clube)) throw new Error("Escolha um clube europeu válido.");
-  const pos=POSICOES.includes(d.pos) ? d.pos : "ATA";
-  return {id:crypto.randomUUID(),segredo:hash(d.token || tokenNovo()),nome:apelido,avatar,clube,pos,
-    atributos:{respeito:50,ambicao:50,disciplina:50,prestigio:50},relacoes:{},escolhas:[],vitorias:0};
+// o protagonista vem do arquétipo: clube, posição, idade, atributos, estilo de vida e medidor. O jogador dá o nome e
+// ajusta a aparência (só dados; o desenho fica no navegador).
+function doArquetipo(arquetipo,aparencia){
+  const base=R.novoProtagonista(String(arquetipo||""),aparencia);
+  if(!base) throw new Error("Escolha um dos seis protagonistas.");
+  if(!MAP.has(base.clube)) throw new Error("O clube deste protagonista não está na base.");
+  return base;
 }
+function participante(d) {
+  const apelido=nome(d.nome), avatar=nome(d.avatar || d.nome);
+  if(apelido.length<2 || avatar.length<2) throw new Error("Informe seu nome e o nome do protagonista.");
+  return {id:crypto.randomUUID(),segredo:hash(d.token || tokenNovo()),nome:apelido,avatar,
+    ...doArquetipo(d.arquetipo,d.aparencia),relacoes:{},escolhas:[],vitorias:0};
+}
+const ctxDe=s=>({tem:arq=>s.jogadores.some(x=>x.arquetipo===arq)});
 // a criação dos personagens recebe o token gerado pelo servidor: ele não vai para os broadcasts.
 function novoParticipante(d) {
   const segredo=tokenNovo();
@@ -81,6 +67,15 @@ function gruposIniciais(s) {
     for(let i=0;i<4;i+=2) s.jogos.push({id:"g"+r+g+i,etapa:"grupos",rodada:r,casa:a[p[i]].id,fora:a[p[i+1]].id,resultado:null});
   }
   s.fase="jogando"; s.capitulo=0;
+  // os laços que já nascem prontos entre os arquétipos que estão na sala
+  for(const p of s.jogadores) R.garantir(p);
+  s.lacos=[];
+  for(const l of R.LACOS){
+    const a=s.jogadores.find(p=>p.arquetipo===l.a), b=s.jogadores.find(p=>p.arquetipo===l.b);
+    if(!a||!b) continue;
+    a.relacoes[b.id]=l.valor; b.relacoes[a.id]=l.valor;
+    s.lacos.push({a:a.id,b:b.id,texto:l.texto});
+  }
 }
 function tabela(s,grupo) {
   const rows=s.equipes.filter(t=>t.grupo===grupo).map(t=>({clube:t.id,p:0,j:0,v:0,e:0,d:0,gp:0,gc:0,sg:0}));
@@ -100,42 +95,60 @@ function rivalDe(s,p) {
   const id=j?(j.casa===p.clube?j.fora:j.casa):null;
   return s.jogadores.find(x=>x.clube===id) || s.jogadores.find(x=>x.id!==p.id) || null;
 }
+// o evento do capítulo deste protagonista (o exclusivo do arquétipo ou o geral) e as opções que ele vê
+function eventoDe(s,p){
+  const e=R.eventoPara(p,clamp(s.capitulo,0,4));
+  return {e,opcoes:e?R.opcoesPara(p,e,ctxDe(s)):[],exclusivo:!!e&&(R.EXCLUSIVOS[p.arquetipo]||[]).includes(e)};
+}
 function cena(s,p) {
-  const e=eventos[clamp(s.capitulo,0,4)],r=rivalDe(s,p);
+  const {e,opcoes,exclusivo}=eventoDe(s,p),r=rivalDe(s,p);
   const rel=r?(p.relacoes[r.id]||0):0;
   const anterior=r?.escolhas?.findLast(x=>x.capitulo<s.capitulo);
   const vinculo=!r?"":rel>=18?" Vocês construíram um vínculo de respeito.":rel<=-18?" Há uma tensão crescente entre vocês.":" A relação entre vocês segue indefinida.";
   const memoria=anterior?" A imprensa recorda a última declaração de "+r.avatar+": “"+anterior.texto+"”.":"";
   const repercussao=s.historico.filter(x=>x.tipo==="repercussao").at(-1);
   const eco=repercussao&&s.capitulo>0?" "+repercussao.texto:"";
-  return {titulo:e.titulo,texto:e.texto+(r?" O nome de "+r.avatar+" surge novamente.":"")+memoria+vinculo+eco,
+  // no evento exclusivo a história é do protagonista; o rival só aparece no rodapé
+  const texto=exclusivo?e.texto:e.texto+(r?" O nome de "+r.avatar+" surge novamente.":"")+memoria+vinculo+eco;
+  return {id:e.id,titulo:e.titulo,texto,exclusivo,
     rival:r?{id:r.id,avatar:r.avatar}:null,
-    opcoes:e.opcoes.map((x,i)=>({id:i,texto:x[0],dica:x[1]}))};
+    opcoes:opcoes.map((x,i)=>({id:i,texto:x.texto,dica:x.dica,tom:x.tom,propria:!!x.para}))};
 }
 function registrado(s,id) {return s.entradas.find(x=>x.rodada===s.capitulo && x.jogador===id);}
+function mudarRelacao(p,q,valor){
+  if(!q||q.id===p.id||!valor) return;
+  p.relacoes[q.id]=clamp((p.relacoes[q.id]||0)+valor,-100,100);
+  // A opinião do protagonista é dele; o impacto público também atinge o outro lado.
+  q.relacoes[p.id]=clamp((q.relacoes[p.id]||0)+Math.round(valor/2),-100,100);
+}
+const manchete=(s,p,texto)=>{if(texto)s.historico.push({tipo:"manchete",rodada:s.capitulo,autor:p.avatar,clube:p.clube,texto:texto.replaceAll("{nome}",p.avatar)});};
 function decidir(s,p,opcao,tatica) {
-  const e=eventos[s.capitulo];if(!e || !Number.isInteger(opcao) || !e.opcoes[opcao]) throw new Error("Escolha narrativa inválida.");
+  R.garantir(p);
+  const {e,opcoes}=eventoDe(s,p);
+  if(!e || !Number.isInteger(opcao) || !opcoes[opcao]) throw new Error("Escolha narrativa inválida.");
   if(registrado(s,p.id)) throw new Error("Você já decidiu neste capítulo.");
   if(!TATICAS.includes(tatica)) throw new Error("Escolha uma estratégia válida.");
-  const rival=rivalDe(s,p),item=e.opcoes[opcao],delta=item[2];
-  for(const [k,v] of Object.entries(delta))if(k!=="rel") p.atributos[k]=clamp(p.atributos[k]+v,0,100);
-  if(rival && delta.rel){
-    p.relacoes[rival.id]=clamp((p.relacoes[rival.id]||0)+delta.rel,-100,100);
-    // A opinião do protagonista é dele; o impacto público também atinge o outro lado.
-    rival.relacoes[p.id]=clamp((rival.relacoes[p.id]||0)+Math.round(delta.rel/2),-100,100);
-  }
-  p.escolhas.push({capitulo:s.capitulo,evento:e.titulo,opcao,texto:item[0],rival:rival?.id||null});
-  const entrada={rodada:s.capitulo,jogador:p.id,avatar:p.avatar,clube:p.clube,tatica,escolha:item[0],rival:rival?.id||null};
-  s.entradas.push(entrada);s.historico.push({tipo:"decisao",rodada:s.capitulo,autor:p.avatar,texto:item[0],clube:p.clube});
+  const rival=rivalDe(s,p),item=opcoes[opcao];
+  const {ef,resultado}=R.resolverSorte(item.ef,sorte(s.codigo+":sorte:"+p.id+":"+s.capitulo));
+  const efeito=R.aplicar(p,ef);
+  mudarRelacao(p,rival,efeito.rel);
+  for(const [arq,v] of Object.entries(efeito.relCom||{})) mudarRelacao(p,s.jogadores.find(x=>x.arquetipo===arq),v);
+  p.escolhas.push({capitulo:s.capitulo,evento:e.titulo,eventoId:e.id,opcao,texto:item.texto,tom:item.tom,sorte:resultado,rival:rival?.id||null});
+  const entrada={rodada:s.capitulo,jogador:p.id,avatar:p.avatar,clube:p.clube,tatica,escolha:item.texto,tom:item.tom,
+    risco:efeito.risco,forma:efeito.forma,aposta:efeito.aposta,rival:rival?.id||null};
+  s.entradas.push(entrada);s.historico.push({tipo:"decisao",rodada:s.capitulo,autor:p.avatar,texto:item.texto,clube:p.clube});
+  manchete(s,p,efeito.manchete);
   return entrada;
 }
 function randGol(s,j,salt){return sorte(s.codigo+":"+j.id+":"+salt);}
 function estrategia(s,clube){const p=s.jogadores.find(p=>p.clube===clube);return s.entradas.find(x=>x.rodada===s.capitulo && x.jogador===p?.id)?.tatica||"equilibrado";}
-function jogar(s,j){
+// `formas`: o ajuste de força de cada clube com protagonista nesta jornada (de -2 a +2, R.formaDe)
+function jogar(s,j,formas={}){
   const a=MAP.get(j.casa),b=MAP.get(j.fora),ta=estrategia(s,j.casa),tb=estrategia(s,j.fora);
+  const fa=a.forca+(formas[j.casa]||0), fb=b.forca+(formas[j.fora]||0);
   const vantagem={equilibrado:{equilibrado:0,pressionar:-1,recuar:1},
     pressionar:{equilibrado:1,pressionar:0,recuar:-1},recuar:{equilibrado:-1,pressionar:1,recuar:0}};
-  const dif=clamp((a.forca-b.forca)/11 + vantagem[ta][tb]*0.3,-2,2);
+  const dif=clamp((fa-fb)/11 + vantagem[ta][tb]*0.3,-2,2);
   const casa=clamp(Math.round(1.25+dif*0.48+(randGol(s,j,"c")-.5)*3.5),0,5);
   const fora=clamp(Math.round(1.15-dif*0.48+(randGol(s,j,"f")-.5)*3.5),0,5);
   const resultado={casa,fora,penaltis:null,vencedor:null};
@@ -170,21 +183,58 @@ function epilogo(s,p) {
   const inimigo=vinculos.filter(x=>x.n<=-30).sort((x,y)=>x.n-y.n)[0];
   if(amigo && amigo.p.relacoes[p.id]>=20) descricao+=" "+amigo.p.avatar+" aparece no epílogo como um rival que se tornou aliado.";
   if(inimigo) descricao+=" Sua rivalidade com "+inimigo.p.avatar+" ainda é assunto na imprensa.";
+  const extra=R.epilogoExtra(p,{campeao,finalista}); if(extra) descricao+=" "+extra;
   return {jogador:p.id,avatar:p.avatar,clube:p.clube,titulo,descricao,campeao};
+}
+const jogoDe=(s,p)=>jogosDaRodada(s).find(j=>j.casa===p.clube||j.fora===p.clube)||null;
+// antes dos jogos: o risco de lesão de cada protagonista e a forma dele na jornada
+function formasDaJornada(s,opinioes){
+  const formas={};
+  for(const p of s.jogadores){
+    R.garantir(p);
+    const ent=opinioes.find(x=>x.jogador===p.id)||{}, jogo=jogoDe(s,p);
+    if(!jogo){p.forma=null;continue;} // eliminado: a história segue, mas não há jogo
+    const chave=s.codigo+":"+p.id+":"+s.capitulo;
+    const lesionado=sorte("lesao:"+chave)<R.riscoDe(p,ent.risco);
+    if(lesionado){
+      if(p.arquetipo==="imprevisivel") R.aplicar(p,{vidro:15});
+      const noite=p.marcas.includes("balada")&&ent.risco>=0.3?" depois da noite agitada":"";
+      manchete(s,p,"{nome} sente a coxa"+noite+" e entra longe da forma ideal pelo "+(MAP.get(p.clube)?.nome||"clube")+".");
+    }
+    const f=R.formaDe(p,{etapa:jogo.etapa,escolhida:ent.forma||0,lesionado,numero:sorte("caos:"+chave)});
+    p.forma={...f,capitulo:s.capitulo,lesionado};
+    formas[p.clube]=(formas[p.clube]||0)+f.valor;
+  }
+  return formas;
+}
+// depois dos jogos: a marra (quem prometeu e cumpriu, ou não)
+function resolverApostas(s,opinioes){
+  for(const ent of opinioes.filter(x=>x.aposta)){
+    const p=s.jogadores.find(x=>x.id===ent.jogador), j=p&&jogoDe(s,p);
+    if(!j||!j.resultado) continue;
+    const r=j.resultado, venceu=(r.vencedor||(r.casa===r.fora?null:r.casa>r.fora?j.casa:j.fora))===p.clube;
+    const ef=venceu?R.MARRA.cumpriu:R.MARRA.falhou;
+    manchete(s,p,R.aplicar(p,ef).manchete);
+  }
 }
 function avancar(s) {
   if(s.fase!=="jogando")throw new Error("A campanha não está em andamento.");
   if(!s.jogadores.every(p=>registrado(s,p.id)))throw new Error("Aguarde as decisões dos outros protagonistas.");
   const opinioes=s.entradas.filter(x=>x.rodada===s.capitulo);
-  const respeito=opinioes.filter(x=>/elogio|apoio|grupo|Agradecer|conversar|distrações/i.test(x.escolha)).length;
-  const provocacoes=opinioes.filter(x=>/provoca|desafiar|melhor|Vazar|taça|Exigir/i.test(x.escolha)).length;
+  // o tom de cada escolha decide a repercussão (as entradas de campanhas antigas, sem tom, ainda usam o texto)
+  const tomDe=x=>x.tom||(/elogio|apoio|grupo|Agradecer|conversar|distrações/i.test(x.escolha)?"respeito":
+    /provoca|desafiar|melhor|Vazar|taça|Exigir/i.test(x.escolha)?"provoca":"neutro");
+  const respeito=opinioes.filter(x=>tomDe(x)==="respeito").length;
+  const provocacoes=opinioes.filter(x=>tomDe(x)==="provoca").length;
   if(s.jogadores.length>1){
     const noticia=respeito>provocacoes?"A imprensa destaca a união inesperada entre os protagonistas.":
       provocacoes>respeito?"As declarações dividem os protagonistas e alimentam novas rivalidades.":
       "Os protagonistas seguem divididos entre o respeito e a ambição.";
     s.historico.push({tipo:"repercussao",rodada:s.capitulo,texto:noticia});
   }
-  for(const j of jogosDaRodada(s)) jogar(s,j);
+  const formas=formasDaJornada(s,opinioes);
+  for(const j of jogosDaRodada(s)) jogar(s,j,formas);
+  resolverApostas(s,opinioes);
   const n=s.capitulo;
   if(n===2){
     const a=tabela(s,"A"),b=tabela(s,"B");
@@ -203,7 +253,10 @@ function avancar(s) {
 function estado(s,p) {
   return {codigo:s.codigo,fase:s.fase,dono:s.dono,eu:p.id,capitulo:s.capitulo,limite:6,
     jogadores:s.jogadores.map(x=>({id:x.id,nome:x.nome,avatar:x.avatar,clube:x.clube,pos:x.pos,
+      arquetipo:x.arquetipo||null,idade:x.idade||null,aparencia:x.aparencia||null,eixos:x.eixos||null,
+      medidores:x.medidores||{},forma:x.forma||null,marcas:x.marcas||[],
       atributos:x.atributos,relacoes:x.relacoes,escolhas:x.escolhas,vitorias:x.vitorias})),
+    lacos:s.lacos||[],
     equipes:s.equipes,jogos:s.jogos,grupos:s.fase==="lobby"?null:{A:tabela(s,"A"),B:tabela(s,"B")},
     evento:s.fase==="jogando"&&!registrado(s,p.id)?cena(s,p):null,
     feito:!!registrado(s,p.id),prontos:s.jogadores.filter(x=>registrado(s,x.id)).length,
@@ -250,7 +303,7 @@ function conectar(io){
         if(!s)throw Error("Campanha não encontrada.");
         if(s.fase!=="lobby")throw Error("Campanha iniciada. Entre com seu token para retomar.");
         if(s.jogadores.length>=6)throw Error("Os seis lugares já foram preenchidos.");
-        if(s.jogadores.some(p=>p.clube===d.clube))throw Error("Esse clube já tem protagonista.");
+        if(s.jogadores.some(p=>p.arquetipo===d.arquetipo))throw Error("Esse protagonista já foi escolhido por outra pessoa.");
         const {p,segredo}=novoParticipante(d);
         s.jogadores.push(p);salvar(s);entrarNaSala(s,p,segredo,cb);
       }catch(e){erro(cb,e);}
@@ -261,11 +314,20 @@ function conectar(io){
       if(!p)return erro(cb,"Sessão não localizada neste código.");
       entrarNaSala(s,p,segredo,cb);
     });
-    socket.on("clube",(d={},cb)=>autenticado(cb,(s,p)=>{
+    // quais protagonistas já têm dono numa sala (para a tela de entrada não oferecer os ocupados)
+    socket.on("ocupados",(d={},cb)=>{
+      const s=get(codigoLimpo(d.codigo));
+      if(!s)return erro(cb,"Campanha não encontrada.");
+      ok(cb,{fase:s.fase,ocupados:s.jogadores.map(p=>p.arquetipo).filter(Boolean)});
+    });
+    // trocar de protagonista (e, com ele, de clube) ou só ajustar a aparência, enquanto a sala espera
+    socket.on("protagonista",(d={},cb)=>autenticado(cb,(s,p)=>{
       if(s.fase!=="lobby")throw Error("Campanha já começou.");
-      if(!MAP.has(d.clube))throw Error("Clube inválido.");
-      if(s.jogadores.some(x=>x.id!==p.id&&x.clube===d.clube))throw Error("Clube já escolhido.");
-      p.clube=d.clube;
+      const arq=d.arquetipo||p.arquetipo;
+      if(s.jogadores.some(x=>x.id!==p.id&&x.arquetipo===arq))throw Error("Esse protagonista já foi escolhido por outra pessoa.");
+      const aparencia=arq===p.arquetipo&&!d.aparencia?p.aparencia:d.aparencia;
+      Object.assign(p,doArquetipo(arq,aparencia));
+      if(d.avatar){const a=nome(d.avatar);if(a.length>=2)p.avatar=a;}
     }));
     socket.on("iniciar",(_d={},cb)=>autenticado(cb,(s,p)=>{
       if(p.id!==s.dono)throw Error("Apenas o anfitrião inicia.");
