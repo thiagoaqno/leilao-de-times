@@ -67,7 +67,7 @@ function participante(d) {
   if(apelido.length<2 || avatar.length<2) throw new Error("Informe seu nome e o nome do protagonista.");
   if(!MAP.has(clube)) throw new Error("Escolha um clube europeu válido.");
   const pos=POSICOES.includes(d.pos) ? d.pos : "ATA";
-  return {id:crypto.randomUUID(),segredo:hash(token=d.token || tokenNovo()),nome:apelido,avatar,clube,pos,
+  return {id:crypto.randomUUID(),segredo:hash(d.token || tokenNovo()),nome:apelido,avatar,clube,pos,
     atributos:{respeito:50,ambicao:50,disciplina:50,prestigio:50},relacoes:{},escolhas:[],vitorias:0};
 }
 // a criação dos personagens recebe o token gerado pelo servidor: ele não vai para os broadcasts.
