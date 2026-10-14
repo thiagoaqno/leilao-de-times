@@ -9,12 +9,14 @@ const elenco = (nota, prefixo) => {
   return pos.map((p, i) => ({ id: `${prefixo}${i}`, nome: `${prefixo}${i}`, pos: p, nota }));
 };
 
-test("o cansaço tira 1 ponto de nota a cada 10 de energia abaixo de 90", () => {
+test("o cansaço chega a 3 pontos; a tela arredonda para baixo e só mostra -1, -2 ou -3", () => {
   assert.equal(Taticas.penalidadeEnergia(100), 0);
   assert.equal(Taticas.penalidadeEnergia(90), 0);
   assert.equal(Taticas.penalidadeEnergia(80), 1);
   assert.equal(Taticas.penalidadeEnergia(60), 3);
-  assert.equal(Taticas.penalidadeEnergia(20), 6);
+  assert.equal(Taticas.penalidadeEnergia(20), 3);
+  assert.equal(Taticas.penalidadeEnergia(75), 1.5, "o motor conserva a perda parcial");
+  assert.deepStrictEqual([90, 81, 80, 70.1, 70, 61, 60.1, 60, 20].map(Taticas.penalidadeVisivel), [0, 0, 1, 1, 2, 2, 2, 3, 3]);
 });
 
 test("o time cansado perde de verdade para o descansado, com o mesmo elenco", () => {
@@ -25,7 +27,7 @@ test("o time cansado perde de verdade para o descansado, com o mesmo elenco", ()
     pontosCansado += r.placar[0] > r.placar[1] ? 3 : r.placar[0] === r.placar[1] ? 1 : 0;
     pontosDescansado += r.placar[1] > r.placar[0] ? 3 : r.placar[0] === r.placar[1] ? 1 : 0;
   }
-  assert.ok(pontosDescansado > pontosCansado * 1.15, `cansado ${pontosCansado} × descansado ${pontosDescansado}`);
+  assert.ok(pontosDescansado > pontosCansado * 1.1, `cansado ${pontosCansado} × descansado ${pontosDescansado}`);
 });
 
 test("o confronto é simétrico no que importa e tem resposta melhor que a pior escolha", () => {
