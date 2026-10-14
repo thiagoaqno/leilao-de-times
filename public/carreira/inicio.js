@@ -39,10 +39,9 @@ const meuClube = () => CLUBES[E.clube];
 const donoDe = (pid) => (E && E.donos[pid]) || JOGADORES[pid]?.origem;
 const elencoDe = (clube) => Object.values(JOGADORES).filter((j) => donoDe(j.id) === clube);
 const notaDe = (j) => Math.max(40, Math.min(95, j.nota + ((E && E.bonusNota[j.id]) || 0)));
-const sequenciaDe = (pid) => (E?.sequencia?.[pid] || 0);
-const penalidadeSequencia = (pid) => Taticas.penalidadeSequencia(sequenciaDe(pid));
-// tudo o que o cansaço tira da nota: os jogos seguidos e a energia de agora (cada 10 pontos abaixo de 90 tiram 1)
-const penalidadeCansaco = (pid) => Math.round((penalidadeSequencia(pid) + Taticas.penalidadeEnergia(E?.energia?.[pid])) * 10) / 10;
+// O motor usa décimos de over; na tela aparecem só -1, -2 ou -3, arredondados para baixo.
+const penalidadeCansaco = (pid) => Taticas.penalidadeEnergia(E?.energia?.[pid]);
+const penalidadeCansacoVisivel = (pid) => Taticas.penalidadeVisivel(E?.energia?.[pid]);
 const comNota = (j) => ({ ...j, nota: notaDe(j), idade: Evolucao.idadeNa(j, E ? E.temporada : 1) });
 const fora = (pid) => (E.lesoes[pid] ? "lesao" : E.suspensos[pid] ? "suspenso" : null);
 const salarioDe = (j) => E.salarios[j.id] || Mercado.salarioDe(comNota(j));
@@ -67,7 +66,7 @@ function seloEfeitoNota(pid) {
 function meuTime(mudar = {}) {
   const esc = { ...E.escalacao, ...mudar }, extra = Math.round((E.moral - 60) / 12) + efeitoDe("time");
   return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: Math.min(97, notaDe(j) + extra + efeitoDe(j.id)) })),
-    formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo, energia: E.energia, sequencia: E.sequencia };
+    formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo, energia: E.energia };
 }
 // a faixa da carta pela nota: 90 ou mais é a elite (o ouro mais forte, com brilho), 85 a 89 ouro, 80 a 84 prata
 const faixa = (n) => (n >= 90 ? "elite" : n >= 85 ? "ouro" : n >= 80 ? "prata" : "bronze");

@@ -52,10 +52,10 @@ function campinho(detalhe, formacao, opcoes = {}) {
     const l = lugarNoCampo(s), estilo = `left:${l.x.toFixed(2)}%;top:${l.y.toFixed(2)}%;--e:${l.e.toFixed(3)}`;
     if (!v.id) return `<button class="peca vazia" data-i="${i}" style="${estilo}"><span class="cam"><span class="sem">?</span></span><small>${NOME_VAGA[v.fino] || v.fino}</small></button>`;
     const j = JOGADORES[v.id], fit = encaixe(j.pos, v.fino), energia = opcoes.energia ? opcoes.energia[v.id] : null;
-    const nota = notaDe(j), cansaco = opcoes.energia ? penalidadeCansaco(v.id) : 0, rendimento = Math.round((nota - cansaco) * fit);
+    const nota = notaDe(j), cansaco = opcoes.energia ? penalidadeCansaco(v.id) : 0, perdaVisivel = opcoes.energia ? penalidadeCansacoVisivel(v.id) : 0, rendimento = Math.round((nota - cansaco) * fit);
     const sel = opcoes.selecionado === i;
-    return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="${estilo}" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""} · energia ${energia ?? 100}% · ${sequenciaDe(v.id)} jogos seguidos${cansaco ? ` · over -${cansaco}` : ""}">
-      ${cansaco ? `<span class="cansaco-canto" title="${sequenciaDe(v.id)} jogos seguidos: over -${cansaco}">-${cansaco}</span>` : ""}
+    return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="${estilo}" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""} · energia ${energia ?? 100}%${perdaVisivel ? ` · over -${perdaVisivel}` : ""}">
+      ${perdaVisivel ? `<span class="cansaco-canto" title="${energia ?? 100}% de energia: over -${perdaVisivel}">-${perdaVisivel}</span>` : ""}
       <span class="peca-mudancas">${seloMudancaNota(v.id)}${seloEfeitoNota(v.id)}</span>
       <span class="cam">${camisaSVG(donoDe(v.id), v.fino === "GOL")}<span class="nota-em-campo"><b>${nota}</b>${rendimento !== nota ? `<em>→ ${rendimento}</em>` : ""}</span></span>
       ${energia != null ? `<span class="energia ${nivelEnergia(energia)}" title="Energia ${energia}%"><i style="--v:${energia}%"></i></span>` : ""}<small>${h(sobrenome(j.nome))}</small></button>`;
@@ -94,10 +94,10 @@ document.addEventListener("pointerover", (e) => {
 });
 // o cartão de um reserva: a posição, a foto, a nota, o nome e a energia (attrs: o que o chamador precisa, como data-reserva)
 function reservaHTML(pid, { sel = false, attrs = "" } = {}) {
-  const j = JOGADORES[pid], nota = notaDe(j), cans = penalidadeCansaco(pid), energia = energiaDe(pid), fr = fora(pid);
+  const j = JOGADORES[pid], nota = notaDe(j), perdaVisivel = penalidadeCansacoVisivel(pid), energia = energiaDe(pid), fr = fora(pid);
   return `<button class="carta-reserva ${faixa(nota)}${sel ? " sel" : ""}${fr ? " indisponivel" : ""}" data-jogador="${pid}" ${attrs} title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos} · energia ${energia}%${fr ? ` · ${fr === "lesao" ? "lesionado" : "suspenso"}` : ""}">
     <span class="res-pos">${marcaPos(j.pos)}${j.pos}</span>${fotoHTML(pid)}<b class="res-nota">${nota}</b>
-    ${cans ? `<span class="cansaco-canto" title="${sequenciaDe(pid)} jogos seguidos, ${energia}% de energia: over -${cans}">-${cans}</span>` : ""}
+    ${perdaVisivel ? `<span class="cansaco-canto" title="${energia}% de energia: over -${perdaVisivel}">-${perdaVisivel}</span>` : ""}
     <span class="res-marcas">${situacao(pid, true)}</span><span class="energia ${nivelEnergia(energia)}"><i style="--v:${energia}%"></i></span><span class="res-nome">${h(sobrenome(j.nome))}</span></button>`;
 }
 
@@ -114,7 +114,7 @@ function telaElenco() {
   const improvisados = det.filter((v) => v.id && encaixe(JOGADORES[v.id].pos, v.fino) < 1).length;
   $("eDica").innerHTML = E.partida ? `${ic("cadeado")} A partida está em andamento: a prancheta volta depois do apito final.`
     : selecionado ? `${ic("troca")} Agora toque em quem vai trocar de lugar com ${h(sobrenome(nomeJogador(selecionado.onde === "campo" ? det[selecionado.i].id : selecionado.pid)))}. Toque de novo para ver a ficha.`
-    : `${ic("dedo")} Arraste um jogador até outro (ou toque num e depois no outro) para trocar os dois de lugar. Um jogo no banco recupera 80 de energia e zera a sequência.`;
+    : `${ic("dedo")} Arraste um jogador até outro (ou toque num e depois no outro) para trocar os dois de lugar. Um jogo no banco recupera 80 de energia.`;
   $("eForca").innerHTML = `Média dos titulares: <b>${media.toFixed(1)}</b> · energia: <b class="${energiaMedia < 70 ? "aviso-txt" : ""}">${Math.round(energiaMedia)}%</b> · rendimento nas posições: <b class="${mediaPosicao < media - 0.05 ? "aviso-txt" : ""}">${mediaPosicao.toFixed(1)}</b>${improvisados ? ` · <span class="aviso-txt">${improvisados} improvisado${improvisados > 1 ? "s" : ""}</span>` : ""}${efeitoDe("time") ? ` · time ${sinalDe(efeitoDe("time"))} no próximo jogo` : ""}${esc.fixo ? " · escalação sua" : " · escalação automática"}`;
   // os controles
   const seg = (id, lista, atual, chave) => { $(id).innerHTML = lista.map(([v, t]) => `<button data-${chave}="${v}" aria-pressed="${String(v) === String(atual)}">${t}</button>`).join(""); };

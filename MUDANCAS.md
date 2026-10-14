@@ -1,7 +1,13 @@
-# Gatinhos Explosivos removido
+# Carreira: queda de overall limitada a 3 pontos
 
-**Antes:** a Vila tinha a Toca dos Gatinhos (Gatinhos Explosivos) na Rua das Cartas, com canal `/kittens`.
+## O que muda
 
-**Depois:** o jogo saiu por completo: o prédio some e o lote volta a ser terreno "em breve", o canal, a página e os testes são apagados, e ele deixa a Noite da Galera e a lista de salas.
+- O desgaste por energia continua gradual, mas a perda efetiva de overall para em 3 pontos.
+- Na prancheta e no aviso antes do jogo, a perda aparece sempre arredondada para baixo: menos de 1 não mostra badge; de 1 a menos de 2 mostra −1; de 2 a menos de 3 mostra −2; a partir de 3 mostra −3.
+- Três jogos seguidos não aplicam uma penalidade extra. A sequência deixa de entrar no cálculo do motor; a energia continua caindo ao jogar e se recupera com descanso.
 
-**Como:** apagados `kittens.js`, `public/kittens/` e `tests/kittens.test.js`; tirados os registros em `server.js`, `noite.js`, `public/noite.js`, `lobby.js`, `vila.js`, `public/index.html` (prédio e telhado), `tests/salas.test.js`, `tests/salas-esperado.json`, `package.json` e a linha do `CLAUDE.md`. O código continua no histórico do git (PRs #202, #205).
+## Verificação
+
+- `node --test tests/carreira-leitura.test.js` passou.
+- Testes direcionados de energia, sequência e desgaste em `tests/carreira-taticas.test.js` passaram.
+- O teste de navegador da prancheta confirmou os badges −1, −2 e −3 e a ausência de desconto fixo no terceiro jogo. A captura foi conferida em 1280 × 800.

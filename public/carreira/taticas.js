@@ -116,15 +116,13 @@
     return Math.round(clamp(1 - pontosDeEncaixe(a, b) / 80, 0.6, 1) * 1000) / 1000;
   }
 
-  // A sequência não tira mais over por conta própria: o desgaste de quem joga já mora na energia (carreira.js, aplicarFadiga).
-  const penalidadeSequencia = () => 0;
-
-
   // ---------- o cansaço: quanto a energia tira da nota ----------
-  // Até 90% de energia o jogador rende o que a nota diz; abaixo disso, cada 10 pontos de energia tiram 1 ponto de nota (no máximo 6).
+  // Até 90% de energia o jogador rende o que a nota diz; abaixo disso, cada 10 pontos de energia tiram 1 ponto de nota (no máximo 3).
   // Vale a energia de AGORA, jogo a jogo e minuto a minuto: quem chega a 80% já entra jogando 1 ponto abaixo, e no fim de um jogo
-  // puxado o time cansado rende bem menos que o descansado.
-  const penalidadeEnergia = (e) => Math.round(clamp((90 - (e == null ? 100 : e)) * 0.1, 0, 6) * 10) / 10;
+  // puxado o time cansado rende menos que o descansado. O motor conserva os décimos; a tela só mostra pontos inteiros.
+  const penalidadeEnergia = (e) => Math.round(clamp((90 - (e == null ? 100 : e)) * 0.1, 0, 3) * 10) / 10;
+  // Não use o valor arredondado a décimos aqui: 1,96 ainda deve aparecer como -1.
+  const penalidadeVisivel = (e) => Math.floor(clamp((90 - (e == null ? 100 : e)) * 0.1, 0, 3));
 
   // ---------- o confronto: formação e estilo contra formação e estilo do rival ----------
   // Cada regra é uma leitura de futebol de verdade e mexe pouco (de 3 a 5% nos lances que o time cria); somadas, uma boa resposta
@@ -242,5 +240,5 @@
       faltas: pc((1 + 0.15 * (p - 1)) * fat.faltas),
     };
   }
-  return { penalidadeEnergia, confronto, respostas, pontosDeEncaixe: (pos, vaga) => { const a = posDe(pos), b = posDe(vaga); return a === b ? 0 : a === "GOL" || b === "GOL" ? 40 : pontosDeEncaixe(a, b); }, penalidadeSequencia, FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
+  return { penalidadeEnergia, penalidadeVisivel, confronto, respostas, pontosDeEncaixe: (pos, vaga) => { const a = posDe(pos), b = posDe(vaga); return a === b ? 0 : a === "GOL" || b === "GOL" ? 40 : pontosDeEncaixe(a, b); }, FORMACOES, NOMES_FORMACOES, DESCRICAO_FORMACAO, ROTULO_FORMACAO, ESQUEMAS, baseDe, variacoesDe, vagasDe, spots, afinidade, posDe, ESTILOS, NOMES_ESTILOS, estiloValido, encaixe, perfilDe, estiloIdeal, fatores, efeitos };
 });

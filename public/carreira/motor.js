@@ -89,8 +89,8 @@
   }
   // o rendimento na vaga: a nota, o encaixe da posicao dele na vaga fina (lateral na zaga, ponta de centroavante...) e o cansaco
   const slotPadrao = (slot) => ({ GK: "GOL", DEF: "ZAG", MID: "MC", ATT: "ATA" })[slot] || "MC";
-  // o cansaço tira da nota: os jogos seguidos (a sequência) e a energia de agora (cada 10 pontos abaixo de 90 tiram 1)
-  const cansaco = (p) => Taticas.penalidadeSequencia(p.seguidos || 0) + Taticas.penalidadeEnergia(p.energia);
+  // Só a energia atual reduz o rendimento: jogar três vezes seguidas não aplica uma multa extra.
+  const cansaco = (p) => Taticas.penalidadeEnergia(p.energia);
   const valorNa = (p, slot, fino) => (p.nota + ajusteDePerfil(p, fino || slotPadrao(slot)) - cansaco(p)) * Taticas.afinidade(p.pos, fino || slotPadrao(slot));
   // as vagas da formação, na ordem do campinho: o goleiro, a defesa, o meio e o ataque
   const vagasDe = (formacao) => Taticas.vagasDe(formacao).map((v) => v.g);
@@ -153,7 +153,6 @@
     const jogadores = (t.jogadores || []).map(prepararJogador);
     // a energia com que cada um chega ao jogo: a que sobrou dos jogos anteriores (t.energia = { id: 0 a 100 }); sem registro, 100
     if (t.energia) for (const p of jogadores) if (t.energia[p.id] != null) p.energia = clamp(Number(t.energia[p.id]) || 0, 20, 100);
-    if (t.sequencia) for (const p of jogadores) p.seguidos = t.sequencia[p.id] || 0;
     const energiaInicial = jogadores.length ? jogadores.reduce((s, p) => s + p.energia, 0) / jogadores.length : 100;
     const formacao = Taticas.FORMACOES[t.formacao] ? t.formacao : "4-3-3";
     const estilo = Taticas.estiloValido(t.tatica && t.tatica.estilo);
