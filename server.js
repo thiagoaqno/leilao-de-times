@@ -34,7 +34,7 @@ const Ritmo = require("./public/leilao/ritmo.js"); // quanto dura cada parte do 
 try { require("./bd.js").abrir(); } catch (e) { console.warn("Banco de dados não abriu:", e.message); }
 require("./fotos-jogadores.js").attach(app);
 require("./carreira.js")(io); // Carreira de Treinador: a temporada contra o computador, salva no banco, canal /carreira
-require("./jogador.js")(io); // Modo Jogador (Rumo ao Estrelato): a mesma carreira, controlando um jogador, canal /jogador
+require("./road-to-champions.js")(io); // Road to Champions: até seis protagonistas, escolhas narrativas e torneio compartilhado
 const carreiraOnline = require("./carreira-online.js")(io); // Carreira em grupo: a sala com código, cada amigo num clube do mesmo mundo, canal /carreira-online
 require("./moderacao-api.js").attach(app, carreiraOnline); // o workflow manual do GitHub edita salas vivas
 require("./admin-carreira.js").attach(app, carreiraOnline); // painel privado em URL separada, com login pelo GitHub
@@ -127,6 +127,8 @@ app.get("/pelada", (req, res) => res.redirect("/pelada/"));
 app.get("/batalha", (req, res) => res.redirect("/batalha/"));
 app.get("/ginasio", (req, res) => res.redirect("/ginasio/"));
 app.get("/carreira", (req, res) => res.redirect("/carreira/"));
+app.get("/road-to-champions", (req, res) => res.redirect("/jogador/"));
+app.get("/road-to-champions/", (req, res) => res.redirect("/jogador/"));
 app.get("/tenis", (req, res) => res.redirect("/tenis/"));
 app.get("/pingpong", (req, res) => res.redirect("/pingpong/"));
 app.get("/futevolei", (req, res) => res.redirect("/futevolei/"));
