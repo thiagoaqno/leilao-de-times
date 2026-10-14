@@ -1,23 +1,42 @@
-# Carreira: o som da partida destrava em qualquer navegador
+# Painel de moderação: comandos do anfitrião e carreiras particulares
 
 ## O que muda
 
-- **O som liga no primeiro toque, em qualquer tela.** O Safari e o iPhone só deixam o som tocar se ele for ligado
-  dentro de um toque. Antes, o áudio só era destravado com um toque já durante a partida, então quem tocava em "Jogar"
-  e ficava assistindo não ouvia nada. Agora o primeiro toque ou tecla em qualquer tela da Carreira (o "Jogar" da sede,
-  por exemplo) já liga o som, e cada toque depois destrava de novo se o navegador segurar.
-- **iPhone no silencioso:** o som da partida passa a tocar mesmo com a chave do silencioso ligada
-  (`navigator.audioSession.type = "playback"`, Safari 16.4 ou mais novo), como a música de fundo já tocava.
-- **"Ativar som":** se mesmo assim o navegador segurar o som durante a partida, o botão Som fica amarelo e diz
-  "Ativar som". Um toque nele libera o narrador e a torcida, sem trocar o modo escolhido.
+O painel `/admin/carreira` ganhou duas abas na lateral: **Salas em grupo** e **Carreiras particulares**.
+
+- **Comandos da sala (o que o anfitrião faz no jogo, agora pelo painel):**
+  - **Rodada:** começar a rodada, começar sem esperar a pausa entre as rodadas, encerrar a pausa e trocar a velocidade
+    do jogo ao vivo (1× ou 3×) para todos.
+  - **Temporada nova:** aparece quando a temporada acaba, e não roda com rodada ou leilão abertos.
+  - **Técnicos:** quem está na sala, quem está fora, quem é o anfitrião e quem foi dispensado; botões **Tornar
+    anfitrião** e **Dispensar** (o clube volta para o computador; com a bola rolando, no fim da rodada). O anfitrião
+    só pode ser dispensado depois de passar o cargo.
+  - **Leilão e trocas:** o leilão aberto (jogador, dono, lances, maior lance) com **Cancelar o leilão**, e as propostas
+    de troca abertas com **Cancelar**.
+  - O painel confere a sala sozinho a cada 5 s (a rodada acaba, a pausa corre), sem atrapalhar quem está digitando.
+- **Carreiras particulares (solo e Rumo ao Estrelato):**
+  - A lista com técnico, clube, modo, temporada, rodada, "jogando agora", "base antiga" e a última mexida, com busca
+    por técnico ou clube.
+  - As mesmas edições das salas: caixa, energia, overall, atributo, transferir e desfazer transferência. Ficam
+    bloqueadas enquanto o técnico está no meio de uma partida.
+  - **Gerar novo código de recuperação**, para entregar ao técnico que perdeu o acesso (o antigo deixa de valer).
+  - O save é editado direto no banco: o jogo lê o save de novo a cada ação, então a mudança aparece na próxima.
+- **Últimas edições da moderação:** cada sala e cada carreira mostram as 15 últimas edições (quem, quando, antes e
+  depois), do registro `moderacao_carreira`.
 
 ## Arquivos
 
-- `public/carreira/som-partida.js` (`destravar`, `avisarBloqueio`), `tests/e2e/carreira-som.spec.js` (o som barrado e
-  o "Ativar som"), `CLAUDE.md`.
+- `carreira-moderacao.js`: as edições num contexto comum para sala e solo (`ctxSala`, `ctxSolo`, `aplicarSolo`,
+  `detalheSolo`).
+- `carreira-online.js`: `comandar` (os comandos do anfitrião, registrados como `sala:<tipo>`) e `infoSala`.
+- `carreira-solo-moderacao.js` (novo): lista, detalhe, edição e código novo das carreiras particulares.
+- `bd.js`: `listarCarreiras`, `carreiraPorId`, `salvarEdicaoCarreira` e `historicoModeracao`.
+- `admin-carreira.js` e `admin-carreira.html`: as rotas e a página.
 
 ## Testes
 
-- `tests/e2e/carreira-som.spec.js` e `tests/e2e/carreira-mesa.spec.js` passando.
-- No Chromium com a regra normal de autoplay (sem a liberação dos testes), o volume medido na saída fica entre 0,03 e
-  0,39 (RMS) durante a partida. Não deu para testar no Safari nem no iPhone daqui.
+- `tests/carreira-moderacao-painel.test.js` (novo): edição solo e bloqueio na partida, a carreira pelo banco com o
+  registro e o código novo, e os comandos do anfitrião numa sala carregada do banco.
+- `tests/admin-carreira.test.js`: as rotas novas exigem sessão e CSRF.
+- Rodados também: `bd`, `carreira-online`, `carreira-online-mercado`, `carreira-moderacao` e `salas` (23 testes,
+  todos passando), e o painel aberto no Chromium com uma sala e carreiras de teste (sem erros na página).

@@ -114,6 +114,35 @@ function excluirCarreira(id) {
   return bd().prepare("DELETE FROM carreiras WHERE id = ?").run(id).changes > 0;
 }
 
+// ---------- a moderação das carreiras solo (admin-carreira.js) ----------
+// a lista sem abrir o save inteiro de cada uma: só os campos que o painel mostra, tirados do JSON pelo próprio SQLite
+const listarCarreiras = (limite = 300) => bd().prepare(`SELECT id, nome, criada_em, atualizada_em,
+    json_extract(dados, '$.clube') AS clube, json_extract(dados, '$.temporada') AS temporada, json_extract(dados, '$.temporadasMax') AS temporadas_max,
+    json_extract(dados, '$.rodada') AS rodada, json_extract(dados, '$.v') AS v, json_type(dados, '$.partida') = 'object' AS partida,
+    json_type(dados, '$.jogador') = 'object' AS jogador, json_extract(dados, '$.demitido') AS demitido
+  FROM carreiras ORDER BY atualizada_em DESC LIMIT ?`).all(limite).map((l) => ({ id: Number(l.id), nome: l.nome, clube: l.clube, temporada: Number(l.temporada) || 1,
+  temporadasMax: Number(l.temporadas_max) || null, rodada: Number(l.rodada) || 0, v: Number(l.v) || 0, partida: !!l.partida, jogador: !!l.jogador, demitido: !!l.demitido,
+  criadaEm: Number(l.criada_em), atualizadaEm: Number(l.atualizada_em) }));
+const carreiraPorId = (id) => lerCarreira(bd().prepare("SELECT * FROM carreiras WHERE id = ?").get(Number(id)));
+// a edição e o registro dela juntos (o código no registro é "solo:<id>")
+function salvarEdicaoCarreira(id, dados, ator, edicao) {
+  const db = bd(), agora = Date.now();
+  db.exec("BEGIN");
+  try {
+    if (dados) {
+      const r = db.prepare("UPDATE carreiras SET dados = ?, atualizada_em = ? WHERE id = ?").run(JSON.stringify(dados), agora, id);
+      if (!r.changes) throw new Error("Carreira não encontrada no banco.");
+    }
+    db.prepare("INSERT INTO moderacao_carreira (codigo, ator, tipo, clube, jogador, antes, depois, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(`solo:${id}`, String(ator), edicao.tipo, edicao.clube || "", edicao.jogador || null, JSON.stringify(edicao.antes ?? null), JSON.stringify(edicao.depois ?? null), agora);
+    db.exec("COMMIT");
+  } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
+// as últimas edições da moderação (de uma sala, ou de uma carreira solo com "solo:<id>")
+const historicoModeracao = (codigo, limite = 20) => bd().prepare("SELECT ator, tipo, clube, jogador, antes, depois, criado_em FROM moderacao_carreira WHERE codigo = ? ORDER BY id DESC LIMIT ?")
+  .all(String(codigo), limite).map((l) => { const ler = (t) => { try { return JSON.parse(t); } catch { return null; } };
+    return { ator: l.ator, tipo: l.tipo, clube: l.clube, jogador: l.jogador, antes: ler(l.antes), depois: ler(l.depois), em: Number(l.criado_em) }; });
+
 // ---------- as salas da carreira em grupo (carreira-online.js) ----------
 function salvarSalaCarreira(codigo, dados) {
   const agora = Date.now();
@@ -180,4 +209,4 @@ function estante({ limite = 50, recentes = 24 } = {}) {
   return { ranking, ultimas, total: linhas.filter((l) => l.colocacao === 1).length };
 }
 
-module.exports = { abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

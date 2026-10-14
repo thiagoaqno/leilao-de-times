@@ -92,6 +92,22 @@ module.exports = function ligarCarreiraOnline(io) {
     temporadaAcabou: room.save ? !Carreira.proximaRodadaGrupo(room.save) : false,
     carreiraAcabou: room.save ? !Carreira.proximaRodadaGrupo(room.save) && room.save.temporada >= room.save.temporadasMax : false,
   });
+  // o que o painel de moderação mostra da sala: os técnicos, a rodada, a pausa, o leilão e as trocas abertas
+  const infoSala = (room) => {
+    const nomeClube = (id) => (id ? Carreira.clubeDe(id)?.nome || id : null), l = room.leilao, agora = Date.now();
+    return {
+      fase: room.fase, temporada: room.save.temporada, temporadasMax: room.save.temporadasMax, nRodada: room.nRodada || 0, ritmo: room.opcoes.ritmo || "normal",
+      tecnicos: room.order.map((id) => { const p = room.players[id]; return { id, nome: p.name, clube: p.clube || null, nomeClube: nomeClube(p.clube), online: p.sockets.size > 0, host: id === room.host, dispensado: !!p.dispensado }; }),
+      rodada: room.rodada ? { n: room.rodada.n, velocidade: room.rodada.multiplicador || 1 } : null,
+      pausa: room.liberaEm > agora ? Math.ceil((room.liberaEm - agora) / 1000) : 0,
+      leilao: l ? { jogador: l.jogador, nome: Carreira.jogadorDe(room.save, l.jogador)?.nome || l.jogador, dono: nomeClube(l.dono), estado: l.estado, lances: l.lances.length,
+        maior: l.lances.length ? l.lances[l.lances.length - 1].valor : null, lider: l.lances.length ? nomeClube(l.lances[l.lances.length - 1].clube) : null } : null,
+      trocas: (room.trocas || []).filter((x) => x.estado === "aberta").map((t) => ({ id: t.id, de: nomeClube(t.de), para: nomeClube(t.para), dinheiro: t.dinheiro,
+        dou: t.dou.map((pid) => Carreira.jogadorDe(room.save, pid)?.nome || pid), recebo: t.recebo.map((pid) => Carreira.jogadorDe(room.save, pid)?.nome || pid) })),
+      temporadaAcabou: !Carreira.proximaRodadaGrupo(room.save),
+      carreiraAcabou: !Carreira.proximaRodadaGrupo(room.save) && room.save.temporada >= room.save.temporadasMax,
+    };
+  };
   // a sede de cada pessoa (depois do começo): o estado da carreira visto pelo clube dela, com a rodada ao vivo
   const estadoDe = (room, p) => {
     if (!room.save || !p.clube || !room.save.humanos[p.clube]) return null;
@@ -499,7 +515,65 @@ module.exports = function ligarCarreiraOnline(io) {
   });
   return {
     listar: () => Moderacao.lista(rooms),
-    detalhar: (codigo, clube) => Moderacao.detalhe(rooms.get(codigo), clube),
+    detalhar(codigo, clube) {
+      const room = rooms.get(codigo), d = Moderacao.detalhe(room, clube);
+      return d && !d.erro ? { ...d, sala: infoSala(room) } : d;
+    },
+    // os comandos do anfitrião, pelo painel de moderação (admin-carreira.js): passar o cargo, dispensar, começar a
+    // rodada (com ou sem a pausa), a velocidade, a temporada nova, cancelar o leilão e cancelar uma troca
+    comandar(codigo, d = {}, ator) {
+      const room = rooms.get(codigo);
+      if (!room || room.fase !== "carreira" || !room.save) return { erro: "Sala não encontrada ou carreira ainda não iniciada." };
+      const agora = Date.now(), nomeDe = (id) => room.players[id]?.name || "?";
+      const anterior = structuredClone({ save: room.save, trocas: room.trocas, t: room.t, host: room.host, rodada: room.rodada, liberaEm: room.liberaEm,
+        leilao: room.leilao, ultimoLeilao: room.ultimoLeilao, nRodada: room.nRodada, ultimaRodada: room.ultimaRodada });
+      const tipo = String(d.tipo || ""), alvo = room.players[String(d.pessoa || "")];
+      let antes = null, depois = null;
+      if (tipo === "anfitriao") {
+        if (!alvo || alvo.dispensado) return { erro: "Essa pessoa não está mais na sala." };
+        if (alvo.id === room.host) return { erro: `${alvo.name} já é o anfitrião.` };
+        antes = nomeDe(room.host); room.host = alvo.id; depois = alvo.name;
+      } else if (tipo === "dispensar") {
+        if (!alvo) return { erro: "Essa pessoa não está mais na sala." };
+        if (alvo.id === room.host) return { erro: "Passe o cargo de anfitrião para outra pessoa antes de dispensar o anfitrião." };
+        antes = { nome: alvo.name, clube: alvo.clube }; alvo.dispensado = true; limparDispensados(room);
+        depois = { noFimDaRodada: !!room.players[alvo.id] };
+      } else if (tipo === "rodada") {
+        antes = { pausa: room.liberaEm > agora ? room.liberaEm - agora : 0 };
+        if (d.semPausa) room.liberaEm = 0;
+        const r = comecarRodada(room);
+        if (typeof r === "string") { room.liberaEm = anterior.liberaEm; return { erro: r }; }
+        depois = { rodada: room.nRodada, ...r };
+      } else if (tipo === "pausa") {
+        if (!(room.liberaEm > agora)) return { erro: "Não tem pausa correndo agora." };
+        antes = room.liberaEm - agora; room.liberaEm = 0; depois = 0;
+      } else if (tipo === "velocidade") {
+        if (!room.rodada) return { erro: "Não tem rodada ao vivo agora." };
+        const v = Number(d.velocidade);
+        if (![1, 3].includes(v)) return { erro: "Escolha 1× ou 3×." };
+        antes = room.rodada.multiplicador || 1; Rd.alterarVelocidade(room.rodada, v, agora); depois = v;
+      } else if (tipo === "novaTemporada") {
+        if (room.rodada || room.leilao) return { erro: "Espere a rodada e o leilão acabarem." };
+        antes = room.save.temporada;
+        const r = Carreira.novaTemporadaGrupo(room.save);
+        if (r) return { erro: r };
+        depois = room.save.temporada;
+      } else if (tipo === "cancelarLeilao") {
+        if (!room.leilao) return { erro: "Não tem leilão aberto." };
+        antes = { jogador: room.leilao.jogador, lances: room.leilao.lances.length }; fecharLeilao(room, agora, "cancelado"); depois = "cancelado";
+      } else if (tipo === "cancelarTroca") {
+        const t = (room.trocas || []).find((x) => x.id === String(d.id || "") && x.estado === "aberta");
+        if (!t) return { erro: "Essa proposta de troca não está mais aberta." };
+        antes = { de: t.de, para: t.para, dou: t.dou, recebo: t.recebo, dinheiro: t.dinheiro }; t.estado = "cancelada"; depois = "cancelada";
+      } else return { erro: "Comando inválido." };
+      room.t = agora;
+      const resultado = { tipo: `sala:${tipo}`, clube: "", jogador: null, antes, depois };
+      try { bd.salvarEdicaoModeracao(room.code, paraGuardar(room), ator, resultado); }
+      catch (e) { Object.assign(room, anterior); return { erro: "Não foi possível salvar o comando no banco." }; }
+      broadcast(room);
+      if (room.rodada) mandarRodada(room);
+      return resultado;
+    },
     editar(codigo, dados, ator) {
       const room = rooms.get(codigo);
       if (!room) return { erro: "Sala não encontrada." };
