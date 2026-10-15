@@ -188,6 +188,7 @@ function atualizarProjeteis3d(projeteis, agora, dt) {
     if (!o) {
       const r = Math.max(0.2, pr.raio * 1.7), fx = modoAtual() === "naruto" ? dexAtual().MOVES[pr.golpe]?.fx : null, doNaruto = fx && projetilNaruto(fx, r);
       o = { ...(doNaruto || montarProjetil(fam, r)), fam, fx, nasceu: agora, naruto: !!doNaruto };
+      nucleoDoProjetil(o, fam, r); // o 2º tempo: o miolo quente (encenacao.js)
       G3.projeteis.set(pr.id, o); G3.cena.scene.add(o.grupo);
     }
     o.grupo.position.set(j.x, 0.45, j.y); o.grupo.rotation.y = -Math.atan2(pr.dy, pr.dx);
@@ -214,6 +215,7 @@ function estouro3d(f, agora) {
   if (fam === "raio") for (let i = 0; i < 4; i++) { const m = malhaG3(G3.geo.cubo, P[1], { somar: true }); m.scale.set(0.9 * forca, 0.05, 0.05); m.rotation.set(0, i * 0.8, (fixo(f.t + i) - 0.5) * 1.5); g.add(m); }
   vivo(g, 0.32, (k) => { flash.scale.setScalar(0.3 * forca * (1 + k * 1.5)); flash.material.opacity = Math.max(0, 1 - k * 2.5); halo.material.opacity = 0.9 * (1 - k); g.children.slice(2).forEach((m) => { m.material.opacity = 1 - k; }); }, agora);
   anelNoChao(f.x, f.y, P[2], 0.35 * forca, 1.2 * (0.7 + forca * 0.3), 0.35, agora);
+  estouroDaFamilia(f, agora); // o 4º tempo, do jeito da família (encenacao.js)
   pedirLuz(P[1], 7 * forca, f.x, f.y, 0.8, 260, agora);
   if (forca >= 1) sacudir(0.25 * forca);
 }

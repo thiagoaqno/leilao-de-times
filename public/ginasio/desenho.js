@@ -294,10 +294,7 @@ function efeitoVisual(ev) {
     efeitos.push({ ...ev, t: agora, x: ev.x ?? e?.x ?? 0, y: ev.y ?? e?.y ?? 0, mira: e?.mira || { x: 1, y: 0 } });
     if (efeitos.length > 120) efeitos.splice(0, efeitos.length - 120);
   }
-  if (ev.tipo === "dano") { // o corpo a corpo e a investida não têm projétil: o estouro sai em quem apanhou
-    const g = visuais.get(ev.de)?.golpe, alvo = N.snap?.entidades.find((p) => p.id === ev.em);
-    if (g && alvo && ["corpo", "investida"].includes(g.classe) && agora - g.t < 600) estouro(g.elemento, alvo.x, alvo.y, ev.crit ? 1.2 : 0.7);
-  }
+  encenarEvento(ev, Math.min(agora, relogio.agora())); // os 8 tempos do golpe: carga, estouro, reação, som, rescaldo, números (encenacao.js)
   if (ev.tipo === "dano" && ev.em === ME?.id && !movimentoReduzido.matches) tremor = ev.bloqueado ? 0.06 : 0.14;
   if ((ev.tipo === "batida" || ev.tipo === "guardaQuebrou") && ev.id === ME?.id && !movimentoReduzido.matches) tremor = 0.22;
 }
@@ -313,16 +310,11 @@ function desenharEfeitos(agora) {
     const f = efeitos[i], idade = (agora - f.t) / 1000;
     if (idade > 0.8) { efeitos.splice(i, 1); continue; }
     if (idade < 0) continue;
-    const escrito = f.tipo === "dano" || f.tipo === "cura" || TEXTOS_EVENTO.includes(f.tipo);
+    const escrito = TEXTOS_EVENTO.includes(f.tipo); // os números de dano agora são de encenacao.js (desenharNumeros)
     if (cena3d.ok && !escrito) continue; // o resto é 3D (golpes3d.js)
     const s = (camera.escala = escalaEm(f.x, f.y)), meio = pontoTela(f.x, f.y, 0.5);
     ctx.save();
-    if (f.tipo === "dano" || f.tipo === "cura") {
-      const p = pontoTela(f.x, f.y, 1.7 + (movimentoReduzido.matches ? 0 : idade));
-      ctx.globalAlpha = Math.min(1, (0.8 - idade) * 3);
-      texto(f.tipo === "cura" ? "+" : String(f.dano), p.x, p.y, f.tipo === "cura" ? "#176c43" : f.bloqueado ? "#4d6b7a" : f.crit ? "#a9500f" : "#852c45", Math.max(7, s * (f.bloqueado ? 0.5 : 0.65)));
-      if (f.combo > 1) texto(`${f.combo} hits`, p.x, p.y - s * 0.55, "#d9822b", Math.max(6, s * 0.42));
-    } else if (TEXTOS_EVENTO.includes(f.tipo)) { // as palavras grandes: Perfeita!, Aparou!, Guarda quebrada...
+    if (TEXTOS_EVENTO.includes(f.tipo)) { // as palavras grandes: Perfeita!, Aparou!, Guarda quebrada...
       const [frase, cor] = TEXTO_DO_EVENTO[f.tipo], p = pontoTela(f.x, f.y, 2.3 + (movimentoReduzido.matches ? 0 : idade * 0.8));
       const pop = movimentoReduzido.matches ? 1 : 1 + Math.max(0, 0.12 - idade) * 3;
       ctx.globalAlpha = Math.min(1, (0.8 - idade) * 3);
@@ -360,6 +352,7 @@ function desenhar(agora = relogio.agora(), dt = 0) {
   const escalaTela = camera.escala;
   const poses = entidadesVisuais(agora).map((e) => poseBicho(e, agora, modoAtual())), projeteis = projeteisAgora(agora);
   atualizarParticulas(dt);
+  encenarQuadro(agora, poses, projeteis); // carga longa, rastros, efeito da reação e rescaldo (encenacao.js)
   pintarChao(agora, poses, projeteis);
   // com a cena 3D, os projéteis, estouros e partículas são de golpes3d.js; sem ela, ficam no atlas e na tela
   const cartazes = pintarAtlas(agora, poses, cena3d.ok ? [] : projeteis);
@@ -375,6 +368,7 @@ function desenhar(agora = relogio.agora(), dt = 0) {
   for (const p of poses) bichoInfo(p, agora);
   if (!cena3d.ok || temaAtual().clima === "faiscas") desenharClima(temaAtual(), agora); // o resto do clima é 3D (cenarios.js)
   desenharEfeitos(agora);
+  desenharNumeros(poses, agora);
   camera.escala = escalaTela;
   medirRitmo(dt);
 }

@@ -182,6 +182,17 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
   de `TEXTO_DO_EVENTO`; `golpes3d.js` tem `feixe3d`, `cone3d`, `anel3d`, `onda3d`, `zona3d`, `bombasVoando` e
   `aparou3d` (os efeitos começam na hora do evento, `quando`); a bolha da guarda, as estrelinhas do tonto, o rolar e o
   pulo ficam em `animacao.js`. Botão `#btnGuarda` (no `#defesa`, com `--guarda`) e o 6º botão do toque.
+- **Encenação dos golpes em 8 tempos (`encenacao.js`, carrega depois de `golpes-naruto.js`):** cada golpe tem carga
+  (`cargaInstantanea`, `cargasLongas` no preparo), núcleo (`nucleoDoProjetil`, chamado por `atualizarProjeteis3d`),
+  rastro (`rastros`: fita com alfa por vértice atrás do projétil e da investida), estouro (`estouroDaFamilia`, chamado
+  por `estouro3d`; `estouro()` agora leva `dir`), reação (`reagir`: `v.reacao` e o hit-stop `v.parado`, lidos em
+  `poseBicho` por `reacaoNaPose`; a silhueta na cor do golpe é `silhuetaColorida`), som (`somDoTempo` em `sons.js`:
+  `TIMBRE` por família com ruído filtrado e tons; carga, disparo, impacto, super, fraco e crítico), rescaldo
+  (`deixarRescaldo`/`rescaldos`, até 14) e números de dano (`novoNumero`, `jeitoDoNumero`, `desenharNumeros`: somam
+  em `JUNTA_MS`, cor e legenda pela efetividade). O jeito de cada família em cada tempo está em `TEMPOS` e `REACAO`.
+  Os ganchos: `encenarEvento` (em `efeitoVisual`), `encenarQuadro` e `desenharNumeros` (em `desenhar`) e
+  `limparEncenacao` (em `limparRede`). O evento `dano` leva `elemento` e `classe`. No Naruto valem só a reação, o som
+  e os números. Teste: `tests/ginasio-encenacao.test.js` (carrega o arquivo num `vm`).
 - **Líderes e treinadores (`public/galeramon/lideres.js`):** 4 líderes de ginásio (fogo, água, grama, elétrico) e 6 treinadores (pedra, psíquico, fantasma, dragão, lutador, gelo), cada um com o time nos dois modos. `/ginasio/?lider=<id>` abre o desafio (1x1 contra o robô com o time dele; `config.lider`); vencer um líder guarda a insígnia no navegador (`ginasio:insignias`). Os robôs comuns ganham um dos times temáticos, sorteado. Na Vila, os ginásios ficam fora da cerca, em cima dos estacionamentos oeste e leste (`lider: l` em `GAMES`), e os treinadores são `GAMES` de 1x1 com `npc` (desenhados como bonecos). Cada tipo tem a sua quadra em `temas.js` (`TEMAS`: cores, `chao` e `clima`).
 - `/ginasio/` abre a sala e a arena 2D de pixel-art. O prédio fica na Vila Esportiva, ao lado do Pingue-Pongue, abaixo do Tênis: `ginasio: true` desenha o telhado arredondado com Pokébola.
 - Na Vila, clicar no amigo ou usar Batalha permite escolher turnos ou Ginásio. O convite `jogo: "ginasio"` reutiliza aceite/recusa; `vila.js` chama `ginasio.criarDesafio` só depois do aceite, reserva os dois lados de uma sala 1x1 sem robôs e envia `irGinasio` com credenciais privadas a cada participante.
