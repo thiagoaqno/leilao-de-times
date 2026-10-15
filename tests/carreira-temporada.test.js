@@ -6,6 +6,20 @@ const indice = require("../public/carreira/base/mundo-2026.js");
 const bases = Object.fromEntries(["brasileirao", "inglaterra", "espanha", "italia", "alemanha", "franca", "argentina", "sulamericanos"]
   .map((id) => { const b = require(`../public/carreira/base/${id}-2026.js`); return [b.id, b]; }));
 
+test("tabela da carreira desempata por saldo antes de vitórias", () => {
+  const resultados = [
+    [["a", "c", 1, 0], ["b", "c", 5, 0]],
+    [["a", "c", 1, 0], ["b", "c", 0, 0]],
+    [["a", "c", 0, 5], ["b", "c", 0, 0]],
+    [["b", "c", 0, 0]],
+  ];
+  const tab = Temporada.tabela(["a", "b", "c"], resultados);
+  const a = tab.find((x) => x.id === "a"), b = tab.find((x) => x.id === "b");
+  assert.ok(tab.indexOf(b) < tab.indexOf(a));
+  assert.strictEqual(a.p, b.p);
+  assert.ok(b.sg > a.sg && b.v < a.v);
+});
+
 test("temporada mundial termina com campeões determinísticos", () => {
   const a = Temporada.simularMundo({ bases, indice, semente: "temporada-completa" });
   const b = Temporada.simularMundo({ bases, indice, semente: "temporada-completa" });

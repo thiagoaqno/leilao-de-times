@@ -27,7 +27,7 @@
       if (res === "V") { l.v++; l.p += 3; } else if (res === "E") { l.e++; l.p++; } else l.d++;
       l.ultimos.push(res); if (l.ultimos.length > 5) l.ultimos.shift();
     }
-    return Object.values(t).map((l) => ({ ...l, sg: l.gp - l.gc })).sort((a, b) => b.p - a.p || b.v - a.v || b.sg - a.sg || b.gp - a.gp || a.id.localeCompare(b.id));
+    return Object.values(t).map((l) => ({ ...l, sg: l.gp - l.gc })).sort((a, b) => b.p - a.p || b.sg - a.sg || b.v - a.v || b.gp - a.gp || a.id.localeCompare(b.id));
   }
   // a faixa da posição na tabela; na Série B, os 4 primeiros sobem (e não há rebaixamento: não existe Série C)
   function zona(pos, total = 20, liga = "") { if (liga === "serieb-2026") return pos === 1 ? "campeao" : pos <= 4 ? "acesso" : ""; if (pos === 1) return "campeao"; if (pos <= 6) return "libertadores"; if (pos <= 12) return "sulamericana"; if (pos > total - 4) return "rebaixamento"; return ""; }
