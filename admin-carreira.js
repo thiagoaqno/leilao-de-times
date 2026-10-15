@@ -67,7 +67,7 @@ function attach(app, carreira, opcoes = {}) {
     if (estados.size > 1000) return res.status(429).send("Tente novamente em alguns minutos.");
     const estado = aleatorio(), verificador = aleatorio();
     estados.set(estado, { ate: Date.now() + ESTADO_MS, verificador,
-      destino: req.query.destino === "/admin/pokemon" ? "/admin/pokemon" : PREFIXO });
+      destino: ["/admin/pokemon", "/admin/pokedex"].includes(req.query.destino) ? req.query.destino : PREFIXO });
     res.set("Set-Cookie", cookie("mod_estado", estado, 600, "Lax"));
     const url = new URL("https://github.com/login/oauth/authorize");
     url.searchParams.set("client_id", clientId);

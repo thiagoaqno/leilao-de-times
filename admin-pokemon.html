@@ -16,7 +16,7 @@ main{max-width:1260px;margin:auto;padding:clamp(20px,4vw,52px)}h1{font-size:clam
 </style>
 </head>
 <body>
-<header><div class="marca">GALERA / GINÁSIO / ADMIN</div><a href="/ginasio/?modo=pokemon">Ver Ginásio ↗</a></header>
+<header><div class="marca">GALERA / GINÁSIO / ADMIN</div><nav style="display:flex;gap:16px"><a href="/admin/pokedex">Pokédex dos treinadores</a><a href="/ginasio/?modo=pokemon">Ver Ginásio ↗</a></nav></header>
 <main><div class="marca">CONTROLE DOS TREINADORES</div><h1>Times Pokémon</h1><p class="lead">Escolha três Pokémon para cada líder ou treinador. A mudança é salva no banco e vale para as próximas batalhas.</p>
 <div class="layout"><nav class="lista" aria-label="Treinadores"><h2>Personagens</h2><div id="lista"></div></nav>
 <section class="editor" aria-live="polite"><div class="tipo" id="tipo">Carregando…</div><h2 id="nome">Ginásio</h2><p class="intro" id="intro">Buscando os times atuais.</p><div class="slots" id="slots"></div><div class="acoes"><button class="salvar" id="salvar" disabled>Salvar time</button><button class="repor" id="repor" disabled>Usar time original</button><span class="estado" id="estado" role="status"></span></div><p class="nota" id="nota"></p></section></div>
