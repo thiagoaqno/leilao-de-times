@@ -70,7 +70,7 @@ perto acertam. O piso do teste de duração foi de 1,5 para 0,8 min.
   - o bote: avança, acerta e fica firme; sem bote de longe demais ou de costas;
   - as três dificuldades e o líder no difícil;
   - os duelos medidos: o de perto entre 30% e 75%; o robô fácil > normal > difícil.
-- `tests/ginasio-fisica.test.js`: o bote não vai atrás de quem está no ar ou sumido.
+- `tests/ginasio-fisica.test.js` (sem mudança) segue passando: o bote não vai atrás de quem está no ar ou sumido.
 - `tests/ginasio-servidor.test.js`: os dois clientes jogam no difícil, com o relógio da sombra acertado a cada pacote.
 - `tests/ginasio.test.js`: o piso de duração do robô contra robô foi de 1,5 para 0,8 min.
 - `npm test`: só falham "carreira: comprar na janela…" e o formato de `/carreira-online` em `salas.test.js`, que já
