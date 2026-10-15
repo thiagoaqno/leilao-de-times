@@ -1139,6 +1139,12 @@ html:has(body.deslizando),body.deslizando{overflow-x:clip}
 
 /* a rodada da turma ao vivo, para quem não está jogando (turma-ao-vivo.js): na sede e na tela da sala */
 .tv-painel h3{display:flex;align-items:center;gap:8px}.tv-painel h3 small{font-weight:500;font-size:12px;color:var(--t3)}
+.tv-painel .linha-titulo{flex-wrap:wrap}
+.tv-velocidade{display:flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--b1);border-radius:11px;background:var(--s1)}
+.tv-velocidade span{padding:0 7px;color:var(--t3);font-size:11px}
+.tv-velocidade button{min-height:30px;padding:0 11px;border:0;background:transparent;color:var(--t2);font:500 12px var(--mono)}
+.tv-velocidade button[aria-pressed=true]{background:var(--acento);color:var(--acento-tinta);border-radius:8px;opacity:1}
+.tv-velocidade button:disabled{cursor:default}
 .tv-ponto{width:8px;height:8px;border-radius:50%;background:var(--erro);box-shadow:0 0 0 3px color-mix(in srgb,var(--erro) 25%,transparent);animation:av-pisca 1.4s ease-in-out infinite}
 .tv-encerrada .tv-ponto{background:var(--t3);box-shadow:none;animation:none}
 .tv-corpo{display:flex;flex-direction:column;gap:8px;margin-top:10px}

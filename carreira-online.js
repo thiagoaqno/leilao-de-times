@@ -364,7 +364,7 @@ module.exports = function ligarCarreiraOnline(io) {
         if (alvo.id === me.id) return falha(cb, "Você já é o anfitrião.");
         room.host = alvo.id;
         extra = { anfitriao: alvo.name };
-      } else if (room.fase !== "carreira" || !me.clube) return falha(cb, "Agora não.");
+      } else if (room.fase !== "carreira" || (!me.clube && d.type !== "velocidade")) return falha(cb, "Agora não.");
       else if (d.type === "rodada") {
         if (me.id !== room.host) return falha(cb, "Quem começa a rodada é o anfitrião.");
         const r = comecarRodada(room);

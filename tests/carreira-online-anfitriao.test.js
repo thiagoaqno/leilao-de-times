@@ -40,3 +40,21 @@ test("o anfitrião fora da sala por tempo demais: o cargo vai para o próximo qu
   assert.ok(st.players.find((p) => p.id === cb.id).host);
   b.close(); c.close();
 });
+
+test("o anfitrião sem clube controla a velocidade dos jogos dos outros", async () => {
+  const { ss: [a, b], creds: [ca] } = await sala(2);
+  await agir(a, { type: "clube", clube: "flamengo" });
+  await agir(b, { type: "clube", clube: "liverpool" });
+  await agir(a, { type: "comecar" });
+  await agir(a, { type: "rodada" });
+  const c = await canal(), cc = await pedir(c, "join", { code: ca.code, name: "P2" });
+  await agir(a, { type: "anfitriao", pessoa: cc.id });
+  await assert.rejects(agir(a, { type: "velocidade", velocidade: 3 }), /Só o anfitrião/);
+  await assert.rejects(agir(c, { type: "velocidade", velocidade: 2 }), /Escolha 1× ou 3×/);
+  await agir(c, { type: "velocidade", velocidade: 3 });
+  const st = await esperarEstado(b, (s) => s.rodada && s.rodada.velocidade === 3);
+  assert.strictEqual(st.host, cc.id);
+  await agir(c, { type: "velocidade", velocidade: 1 });
+  await esperarEstado(b, (s) => s.rodada && s.rodada.velocidade === 1);
+  a.close(); b.close(); c.close();
+});

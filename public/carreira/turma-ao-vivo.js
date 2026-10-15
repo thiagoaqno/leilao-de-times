@@ -37,9 +37,13 @@ const TurmaAoVivo = (() => {
     };
     const secao = (titulo, itens, aberta, id) => `<details class="tv-secao" data-sec="${h(id)}"${aberta ? " open" : ""}><summary>${h(titulo)} <small>${itens.length} jogo${itens.length === 1 ? "" : "s"}</small></summary><ul class="av-lista">${itens.map(linha).join("")}</ul></details>`;
     const comps = [...porComp.entries()].sort((a, b) => (compsTurma.has(b[0]) - compsTurma.has(a[0])) || b[1].length - a[1].length);
-    el.innerHTML = `<div class="linha-titulo"><h3><span class="tv-ponto" aria-hidden="true"></span>${v.rl ? `Rodada ${v.rl} da turma` : "Jogos de copa da turma"} <small class="tv-estado"></small></h3></div>
+    el.innerHTML = `<div class="linha-titulo"><h3><span class="tv-ponto" aria-hidden="true"></span>${v.rl ? `Rodada ${v.rl} da turma` : "Jogos de copa da turma"} <small class="tv-estado"></small></h3>
+      <div class="tv-velocidade" role="group" aria-label="Velocidade da rodada"><span>Velocidade</span><button type="button" data-tv-vel="1" aria-pressed="true">1×</button><button type="button" data-tv-vel="3" aria-pressed="false">3×</button></div></div>
       <div class="tv-corpo">${turma.length ? `<ul class="av-lista tv-lista-turma">${turma.map(linha).join("")}</ul>` : ""}
       ${comps.map(([id, itens]) => secao(nomeComp(id), itens, TV.abertos.has(id), id)).join("")}</div>`;
+    for (const b of el.querySelectorAll("[data-tv-vel]")) b.onclick = () => {
+      if (MEU_ID && SALA && SALA.host === MEU_ID && SALA.rodada) agirGrupo({ type: "velocidade", velocidade: Number(b.dataset.tvVel) });
+    };
     for (const d of el.querySelectorAll(".tv-secao")) d.addEventListener("toggle", () => { if (d.open) TV.abertos.add(d.dataset.sec); else TV.abertos.delete(d.dataset.sec); });
     const fontes = new Map([...turma, ...(v.paralelos || [])].map((x) => [x.id, x]));
     TV.linhas = [...el.querySelectorAll(".av-jogo")].map((li) => ({ id: li.dataset.id, turma: !!li.dataset.turma, x: fontes.get(li.dataset.id), li, placar: li.querySelector(".av-placar"), min: li.querySelector(".av-min"), txt: "", minTxt: "" }));
@@ -67,6 +71,12 @@ const TurmaAoVivo = (() => {
     }
     const estado = el.querySelector(".tv-estado"), txt = fimRodada ? `encerrada${pausaRestante() > 0 ? ` · próxima em ${mmss(pausaRestante())}` : ""}` : "ao vivo";
     if (estado && estado.textContent !== txt) estado.textContent = txt;
+    const velocidade = (SALA && SALA.rodada && SALA.rodada.velocidade) || v.velocidade || 1;
+    const anfitriao = !!(MEU_ID && SALA && SALA.host === MEU_ID && SALA.rodada && !fimRodada);
+    for (const b of el.querySelectorAll("[data-tv-vel]")) {
+      b.disabled = !anfitriao;
+      b.setAttribute("aria-pressed", String(Number(b.dataset.tvVel) === velocidade));
+    }
     el.classList.toggle("tv-encerrada", fimRodada);
   }
 
