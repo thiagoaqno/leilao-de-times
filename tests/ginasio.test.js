@@ -115,6 +115,7 @@ test("ginásio: robô contra robô termina e a duração média fica boa", () =>
 test("ginásio: previsão repete movimento, pilastras, paredes e esquiva sem mudar vida", () => {
   for (const modo of ["galeramon", "pokemon"]) {
     const p = G.criarPartida({ seed: "previsao", modo, bots: false }, [[{ id: "a" }], [{ id: "b" }]]);
+    p.terreno = []; // a previsão com o terreno fica em ginasio-terreno.test.js
     const a = p.entidades[0], e = structuredClone(a);
     const mundo = { dex: p.dex, entidades: [], ev: [] };
     for (let i = 0; i < 720; i++) {

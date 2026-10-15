@@ -18,6 +18,65 @@
     ],
   };
   const RAIO_BICHO = 0.34;
+
+  // ---------- o terreno de cada lugar (modo Pokémon, biomas.js desenha) ----------
+  // Cada zona é uma elipse { tipo, x, y, rx, ry }, em pares espelhados pelo meio (os dois lados ganham o mesmo).
+  // - agua: quem anda fica lento; o tipo Água nada, mais rápido e batendo mais forte;
+  // - funda: a água funda, só passa quem nada (Água) ou voa; para os outros é parede, como a pedra;
+  // - lava: queima quem anda (QUEIMA da vida por segundo) e pesa um pouco; o tipo Fogo fica à vontade;
+  // - gelo: escorrega (o empurrão demora a parar); o tipo Gelo desliza rápido;
+  // - areia: fofa, quem anda fica lento; Terrestre e Pedra ficam à vontade;
+  // - mato: o mato alto pesa um pouco; o tipo Grama corre nele.
+  // Quem voa (tipo Voador, de asa) passa por cima de tudo: das pedras, da água, da lava, sem bônus e sem castigo.
+  const BIOMAS = ["floresta", "vulcao", "lagoa", "neve", "ruinas"];
+  const espelho = (z) => [z, { ...z, x: -z.x, y: -z.y }];
+  const TERRENOS = {
+    floresta: [{ tipo: "agua", x: 0, y: 0, rx: 1.3, ry: 0.95 }, ...espelho({ tipo: "mato", x: -5.6, y: -4.1, rx: 2.2, ry: 1.15 }), ...espelho({ tipo: "mato", x: 1.2, y: -4.6, rx: 1.5, ry: 0.9 })],
+    lagoa: [{ tipo: "funda", x: 0, y: 0, rx: 2.1, ry: 1.45 }, { tipo: "agua", x: 0, y: 0, rx: 3.3, ry: 2.35 }, ...espelho({ tipo: "agua", x: -6.4, y: 4.3, rx: 1.6, ry: 0.85 })],
+    vulcao: [{ tipo: "lava", x: 0, y: 0, rx: 1.5, ry: 1.05 }, ...espelho({ tipo: "lava", x: -6.2, y: 4.3, rx: 1.5, ry: 0.75 }), ...espelho({ tipo: "areia", x: 2.4, y: 4.4, rx: 1.4, ry: 0.8 })],
+    neve: [{ tipo: "gelo", x: 0, y: 0, rx: 3, ry: 2 }, ...espelho({ tipo: "gelo", x: -6.4, y: -4.2, rx: 1.7, ry: 0.95 })],
+    ruinas: [{ tipo: "areia", x: 0, y: 0, rx: 2.4, ry: 1.6 }, ...espelho({ tipo: "areia", x: -6.4, y: 4.2, rx: 1.6, ry: 0.85 }), ...espelho({ tipo: "mato", x: 2.6, y: -4.5, rx: 1.5, ry: 0.8 })],
+  };
+  // o tipo que fica à vontade em cada terreno, quanto a velocidade muda para os outros e para ele
+  const TERRENO = {
+    agua: { casa: ["Água"], lento: 0.62 }, funda: { casa: ["Água"], lento: 0.62 }, lava: { casa: ["Fogo"], lento: 0.85 },
+    gelo: { casa: ["Gelo"], lento: 0.9 }, areia: { casa: ["Terrestre", "Pedra"], lento: 0.7 }, mato: { casa: ["Grama"], lento: 0.85 },
+  };
+  const VEL_CASA = 1.22, DANO_CASA = 1.15, QUEIMA = 0.045, ATRITO_GELO = 0.3;
+  const terrenoDe = (bioma) => TERRENOS[bioma] || [];
+  // o lugar da partida: o escolhido na sala; senão, o do tipo do líder; senão, sorteado (a floresta sai mais)
+  const BIOMA_DO_TIPO = { "Fogo": "vulcao", "Dragão": "vulcao", "Água": "lagoa", "Gelo": "neve", "Pedra": "ruinas", "Lutador": "ruinas", "Psíquico": "ruinas", "Fantasma": "ruinas", "Grama": "floresta", "Elétrico": "floresta" };
+  const ORDEM_BIOMAS = ["floresta", "floresta", "lagoa", "vulcao", "neve", "ruinas"];
+  function escolherBioma(config = {}) {
+    if (BIOMAS.includes(config.arena)) return config.arena;
+    const lider = Lideres && Lideres.de(config.lider);
+    if (lider && BIOMA_DO_TIPO[lider.tipo]) return BIOMA_DO_TIPO[lider.tipo];
+    return ORDEM_BIOMAS[Math.floor(sorteDe(`${config.seed || "ginasio"}:lugar`)() * ORDEM_BIOMAS.length)];
+  }
+  const dentro = (z, x, y, folga = 0) => ((x - z.x) / (z.rx + folga)) ** 2 + ((y - z.y) / (z.ry + folga)) ** 2 < 1;
+  // a zona em que o ponto está (a funda ganha da rasa em volta)
+  function zonaEm(terreno, x, y) {
+    let achou = null;
+    for (const z of terreno || []) if (dentro(z, x, y)) { if (z.tipo === "funda") return z; achou = achou || z; }
+    return achou;
+  }
+  // como o terreno trata o bicho agora: { voa, nada, zona, casa (o tipo dele é o do terreno), vel, dano }
+  function noTerreno(p, e) {
+    const tipos = (spec(p, e.bicho) || {}).types || [];
+    const voa = tipos.includes("Voador");
+    const zona = !voa && p.terreno && p.terreno.length ? zonaEm(p.terreno, e.x, e.y) : null;
+    const regra = zona && TERRENO[zona.tipo], casa = !!regra && regra.casa.some((t) => tipos.includes(t));
+    return { voa, nada: tipos.includes("Água"), zona, casa, vel: !regra ? 1 : casa ? VEL_CASA : regra.lento, dano: casa ? DANO_CASA : 1 };
+  }
+  // a lava queima quem anda nela (só no servidor)
+  function queimarNaLava(p, e, dt) {
+    if (!emCampo(e) || e.oculto || e.salto || !p.terreno || !p.terreno.length) return;
+    const t = noTerreno(p, e);
+    if (!t.zona || t.zona.tipo !== "lava" || t.casa) { e.queima = 0; return; }
+    e.queima = (e.queima || 0) + e.bicho.max * QUEIMA * dt;
+    // em pedaços de 1,5% (uns três por segundo), para não mandar um evento por quadro
+    if (e.queima >= Math.max(1, e.bicho.max * 0.015)) { const n = Math.floor(e.queima); e.queima -= n; ferirRecuo(p, e, n, "lava"); }
+  }
   const TEMPO_MAX = 240;
   const TROCA_RECARGA = 10;
   const ENTRADA_DESMAIO = 2;
@@ -184,7 +243,10 @@
       rng: sorteDe(config.seed || "ginasio"),
       lados: [{ jogadores: [] }, { jogadores: [] }],
       entidades: [], projeteis: [], areas: [], ev: [], arena: ARENA,
+      // o lugar (só no modo Pokémon): o terreno que muda o jogo de cada tipo
+      bioma: modo === "pokemon" ? escolherBioma(config) : null,
     };
+    p.terreno = terrenoDe(p.bioma);
     for (let lado = 0; lado < 2; lado++) {
       const lista = jogadoresDoLado(lados, lado);
       for (let slot = 0; slot < porLado; slot++) {
@@ -262,6 +324,7 @@
   function velocidade(p, e) {
     const s = spec(p, e.bicho).spd || 80;
     let v = clamp(2.5 + ((s - 30) / 120) * 2, 2.5, 4.5) * stageMult(p.dex, e.bicho.st.spd || 0);
+    if (p.terreno && p.terreno.length) v *= noTerreno(p, e).vel;
     if (e.guardando) v *= 0.45;
     if (e.sequencia && e.sequencia.tipo === "rajada") v *= 0.7;
     return v;
@@ -273,15 +336,17 @@
     return clamp(Math.sqrt(260 / Math.max(60, (m.hp || 130) + (m.def || 100))), 0.6, 1.45);
   }
 
-  // devolve true se bateu na parede ou na pilastra
-  function limitar(e) {
+  // devolve true se bateu na parede ou na pilastra (quem voa passa por cima das pilastras; a água funda é parede para
+  // quem não nada nem voa)
+  function limitar(e, p) {
+    const t = p && p.terreno && p.terreno.length ? noTerreno(p, e) : null;
     const hx = ARENA.w / 2 - e.raio, hy = ARENA.h / 2 - e.raio;
     let bateu = null;
     if (e.x < -hx || e.x > hx) bateu = { x: e.x < 0 ? 1 : -1, y: 0 };
     if (e.y < -hy || e.y > hy) bateu = { x: bateu ? bateu.x : 0, y: e.y < 0 ? 1 : -1 };
     e.x = clamp(e.x, -hx, hx);
     e.y = clamp(e.y, -hy, hy);
-    for (const pilar of ARENA.pilares) {
+    for (const pilar of t && t.voa ? [] : ARENA.pilares) {
       const dx = e.x - pilar.x, dy = e.y - pilar.y, d = Math.hypot(dx, dy), min = e.raio + pilar.r;
       if (d < min) {
         const n = norm(dx, dy, { x: 1, y: 0 });
@@ -289,6 +354,16 @@
         e.y = pilar.y + n.y * min;
         bateu = { x: n.x, y: n.y };
       }
+    }
+    if (t && !t.voa && !t.nada) for (const z of p.terreno) {
+      if (z.tipo !== "funda") continue;
+      const a = z.rx + e.raio, b = z.ry + e.raio, dx = e.x - z.x, dy = e.y - z.y, k = Math.sqrt((dx / a) ** 2 + (dy / b) ** 2);
+      if (k >= 1) continue;
+      // empurra para a beira da elipse, na direção do centro para fora (no meio exato, para o lado do time)
+      const ux = k > 1e-6 ? dx / k : (e.lado ? a : -a), uy = k > 1e-6 ? dy / k : 0;
+      e.x = z.x + ux * 1.0005; e.y = z.y + uy * 1.0005;
+      const n = norm(ux / (a * a), uy / (b * b), { x: 1, y: 0 });
+      bateu = { x: n.x, y: n.y };
     }
     return bateu;
   }
@@ -572,7 +647,9 @@
     }
     const r = calcularDano(p, atacante, defensor, hab);
     if (r.dano <= 0) { p.ev.push({ tipo: "imune", id: defensor.id, eff: r.eff }); return true; }
-    let dano = r.dano * (op.fator ?? 1) * (atacante.foco ? 1.3 : 1);
+    // em casa no terreno (o de Água na água, o de Fogo na lava...), bate mais forte
+    const casa = p.terreno && p.terreno.length && emCampo(atacante) && noTerreno(p, atacante).casa;
+    let dano = r.dano * (op.fator ?? 1) * (atacante.foco ? 1.3 : 1) * (casa ? DANO_CASA : 1);
     if (atacante.foco) atacante.foco = false;
     if (bloqueado) dano *= 0.3;
     dano = Math.max(1, Math.floor(dano));
@@ -582,7 +659,7 @@
     // o combo de quem bate (só para mostrar)
     const combo = atacante.combo && p.t - atacante.combo.em < 1.1 ? atacante.combo.n + 1 : 1;
     atacante.combo = { n: combo, em: p.t };
-    p.ev.push({ tipo: "dano", de: atacante.id, em: defensor.id, dano: antes - b.hp, hp: b.hp, eff: r.eff, crit: r.crit, elemento: hab.tipo, classe: hab.classe, ...(bloqueado && { bloqueado: true }), ...(combo > 1 && { combo }) });
+    p.ev.push({ tipo: "dano", de: atacante.id, em: defensor.id, dano: antes - b.hp, hp: b.hp, eff: r.eff, crit: r.crit, elemento: hab.tipo, classe: hab.classe, ...(bloqueado && { bloqueado: true }), ...(combo > 1 && { combo }), ...(casa && { terreno: true }) });
     // o empurrão: pelo poder, pelo peso e pela guarda
     const empurra = (hab.empurra ?? 1) * (op.empurra ?? 1);
     if (empurra > 0 && b.hp > 0) {
@@ -717,7 +794,7 @@
       const k = 1 - o.t / o.total;
       e.x = o.de.x + (o.para.x - o.de.x) * k; e.y = o.de.y + (o.para.y - o.de.y) * k;
       if (o.t <= 0) {
-        limitar(e); e.oculto = null; e.invulneravel = Math.max(e.invulneravel, 0.1);
+        limitar(e, p); e.oculto = null; e.invulneravel = Math.max(e.invulneravel, 0.1);
         p.ev.push({ tipo: "voltou", id: e.id, jeito: o.jeito, x: e.x, y: e.y });
       }
       return;
@@ -727,18 +804,20 @@
       s.t = Math.max(0, s.t - dt);
       const k = 1 - s.t / s.total;
       e.x = s.de.x + (s.para.x - s.de.x) * k; e.y = s.de.y + (s.para.y - s.de.y) * k;
-      if (s.t <= 0) { limitar(e); e.salto = null; if (!previsao) aterrissar(p, e, s.hab); }
+      if (s.t <= 0) { limitar(e, p); e.salto = null; if (!previsao) aterrissar(p, e, s.hab); }
       return;
     }
     // o empurrão: escorrega, perde força e, forte, machuca na parede
     const empurrado = Math.hypot(e.kx, e.ky);
     if (empurrado > 0.05) {
       e.x += e.kx * dt; e.y += e.ky * dt;
-      const f = Math.exp(-ATRITO * dt); e.kx *= f; e.ky *= f;
+      // no gelo, quem não é do gelo escorrega mais longe
+      const gelo = p && p.terreno && p.terreno.length ? noTerreno(p, e) : null;
+      const f = Math.exp(-ATRITO * (gelo && gelo.zona && gelo.zona.tipo === "gelo" && !gelo.casa ? ATRITO_GELO : 1) * dt); e.kx *= f; e.ky *= f;
     } else { e.kx = 0; e.ky = 0; }
     if (e.dash) {
       const d = Math.min(e.dash.falta, e.dash.hab.velocidade * dt);
-      e.x += e.dash.x * d; e.y += e.dash.y * d; e.dash.falta -= d; limitar(e);
+      e.x += e.dash.x * d; e.y += e.dash.y * d; e.dash.falta -= d; limitar(e, p);
       for (const o of previsao ? [] : p.entidades) {
         if (!e.dash) break; // aparado: a investida acabou ali
         if (o.lado !== e.lado && alcancavel(o) && !e.dash.hit.has(o.id) && dist(e, o) < e.raio + o.raio + 0.35) { e.dash.hit.add(o.id); aplicarDano(p, e, o, e.dash.hab, { dir: { x: e.dash.x, y: e.dash.y } }); }
@@ -749,7 +828,7 @@
     let vx = 0, vy = 0;
     if (!e.canal && !(e.impedido > 0) && !(e.atordoado > 0) && !e.preparo) {
       if (e.esquivaT > 0) {
-        e.x += e.vx * dt; e.y += e.vy * dt; e.esquivaT -= dt; bater(p, e, limitar(e), empurrado, previsao); return;
+        e.x += e.vx * dt; e.y += e.vy * dt; e.esquivaT -= dt; bater(p, e, limitar(e, p), empurrado, previsao); return;
       }
       const m = dirMov(c);
       const d = norm(m.x, m.y, { x: 0, y: 0 });
@@ -760,7 +839,7 @@
     }
     e.vx = vx; e.vy = vy;
     e.x += vx * dt; e.y += vy * dt;
-    bater(p, e, limitar(e), empurrado, previsao);
+    bater(p, e, limitar(e, p), empurrado, previsao);
   }
 
   // bateu na parede ou na pilastra escorregando forte: quica, leva um pouco e fica tonto
@@ -936,6 +1015,11 @@
     let mx = -dy / d * ia.lado * 0.6, my = dx / d * ia.lado * 0.6;
     if (d > ideal + 0.35) { mx += dx / d; my += dy / d; }
     else if (d < ideal - 0.35) { mx -= dx / d; my -= dy / d; }
+    // o terreno: sai do que atrapalha (a lava, a água para quem não nada) e fica no que é de casa
+    if (p.terreno && p.terreno.length) {
+      const t = noTerreno(p, e);
+      if (t.zona && !t.casa && t.vel < 1) { const fx = e.x - t.zona.x, fy = e.y - t.zona.y, l = Math.hypot(fx, fy) || 1; mx += fx / l * (t.zona.tipo === "lava" ? 1.6 : 0.8); my += fy / l * (t.zona.tipo === "lava" ? 1.6 : 0.8); }
+    }
     // o aviso no chão de quem é do outro lado: sai de dentro
     for (const a of p.areas) if (a.lado !== e.lado && ["queda", "bomba", "zona", "armadilha"].includes(a.forma)) {
       const ex = e.x - a.x, ey = e.y - a.y, l = Math.hypot(ex, ey);
@@ -1045,6 +1129,7 @@
         if (e.canal.t <= 0) { curar(p, e, e.bicho.max * e.canal.heal); e.canal = null; }
       }
       atualizarEntrada(p, e, dt);
+      queimarNaLava(p, e, dt);
     }
     for (const e of p.entidades) {
       const c = e.jogador.bot ? pensarRobo(p, e) : comandoDe(comandos, e);
@@ -1101,6 +1186,6 @@
     return e;
   }
 
-  const api = { ARENA, TEMPO_MAX, K_DANO, K_DANO_POKEMON, GUARDA_MAX, ESQUIVA_CD, JANELA_APARAR, JANELA_PERFEITA, ESTILOS, sorteDe, criarPartida, passo, preverMovimento, pensarRobo, habilidadeDeGolpe, habilidadesDoDex, calcularDano, estado };
+  const api = { ARENA, BIOMAS, BIOMA_DO_TIPO, TERRENOS, TERRENO, escolherBioma, VEL_CASA, DANO_CASA, QUEIMA, terrenoDe, zonaEm, noTerreno, TEMPO_MAX, K_DANO, K_DANO_POKEMON, GUARDA_MAX, ESQUIVA_CD, JANELA_APARAR, JANELA_PERFEITA, ESTILOS, sorteDe, criarPartida, passo, preverMovimento, pensarRobo, habilidadeDeGolpe, habilidadesDoDex, calcularDano, estado };
   return api;
 });

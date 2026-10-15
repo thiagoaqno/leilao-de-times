@@ -209,4 +209,23 @@ function estante({ limite = 50, recentes = 24 } = {}) {
   return { ranking, ultimas, total: linhas.filter((l) => l.colocacao === 1).length };
 }
 
-module.exports = { abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+// Os Pokémon capturados na grama alta da Vila (vila-mato.js). O treinador chega aqui já como hash.
+function guardarCaptura(treinador, nome, bicho, raridade, brilhante) {
+  const r = bd().prepare("INSERT INTO capturas (treinador, nome, bicho, raridade, brilhante, capturado_em) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(treinador, nome, bicho, raridade, brilhante ? 1 : 0, Date.now());
+  return Number(r.lastInsertRowid);
+}
+// a coleção: uma linha por espécie, com quantas vezes saiu, se já veio brilhante e a primeira captura
+function capturasDe(treinador) {
+  return bd().prepare(`SELECT bicho, raridade, COUNT(*) AS vezes, MAX(brilhante) AS brilhante, MIN(capturado_em) AS primeira
+    FROM capturas WHERE treinador = ? GROUP BY bicho, raridade ORDER BY primeira`).all(treinador)
+    .map((c) => ({ bicho: c.bicho, raridade: c.raridade, vezes: Number(c.vezes), brilhante: !!c.brilhante, primeira: Number(c.primeira) }));
+}
+// os maiores colecionadores (espécies diferentes), pelo nome mais recente de cada treinador
+function rankingCapturas(limite = 10) {
+  return bd().prepare(`SELECT (SELECT nome FROM capturas d WHERE d.treinador = c.treinador ORDER BY capturado_em DESC LIMIT 1) AS nome,
+    COUNT(DISTINCT bicho) AS especies, COUNT(*) AS total FROM capturas c GROUP BY treinador ORDER BY especies DESC, total DESC LIMIT ?`).all(limite)
+    .map((r) => ({ nome: r.nome, especies: Number(r.especies), total: Number(r.total) }));
+}
+
+module.exports = { guardarCaptura, capturasDe, rankingCapturas, abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

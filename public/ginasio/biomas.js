@@ -34,18 +34,23 @@ const BIOMAS = {
     grama: ["#8a8578", "#948f82", "#7f7a6e", "#9b968a", "#868174"], trilha: ["#6a8a4a", "#5f7f42", "#749552", "#55743c"], fora: ["#5a6a46", "#62724c", "#526240"],
     sol: ["#e8e0ff", "#b8b0d8", 0.55], ceu: "#2c2a3a" },
 };
-// o tipo do líder escolhe o lugar
-const BIOMA_DO_TIPO = { "Fogo": "vulcao", "Dragão": "vulcao", "Água": "lagoa", "Gelo": "neve", "Pedra": "ruinas", "Lutador": "ruinas", "Psíquico": "ruinas", "Fantasma": "ruinas", "Grama": "floresta", "Elétrico": "floresta" };
-const ORDEM_BIOMAS = ["floresta", "floresta", "lagoa", "vulcao", "neve", "ruinas"]; // a floresta sai mais
-// o lugar desta partida: o do líder, ou um sorteado pelo começo da partida (o mesmo número para toda a sala)
+// o lugar da partida vem do servidor (S.match.bioma, escolhido por Ginasio.escolherBioma: o da sala, o do tipo do
+// líder ou sorteado); antes da partida, o escolhido na sala, o do líder ou a floresta
 function biomaDaPartida(lider) {
-  if (lider && BIOMA_DO_TIPO[lider.tipo]) return BIOMAS[BIOMA_DO_TIPO[lider.tipo]];
-  const semente = S?.match?.start;
-  if (!semente) return BIOMAS.floresta;
-  return BIOMAS[ORDEM_BIOMAS[Math.floor(fixo(semente % 100003) * ORDEM_BIOMAS.length)]];
+  const id = S?.match?.bioma || (Ginasio.BIOMAS.includes(S?.config?.arena || configLocal.arena) ? S?.config?.arena || configLocal.arena : null) || (lider && Ginasio.BIOMA_DO_TIPO[lider.tipo]);
+  return BIOMAS[id] || BIOMAS.floresta;
 }
 
 // ---------- o chão da arena (pintado uma vez) ----------
+// as cores do terreno no chão: a beira, o meio (perto da beira) e o miolo
+const PINTURA_TERRENO = {
+  agua: { beira: "#e8f6ff", meio: ["#7cc6e0", "#86cde4"], miolo: ["#4fa8d0", "#56aed4", "#4aa0c8"] },
+  funda: { beira: "#6fb6d6", meio: ["#2f7fb0", "#3586b6"], miolo: ["#1f5f90", "#235f8c", "#1c5684"] },
+  lava: { beira: "#1f1715", meio: ["#c8380f", "#d24a14"], miolo: ["#ff7a2e", "#ffb04a", "#ff8a36"] },
+  gelo: { beira: "#9fd0e4", meio: ["#cfeaf5", "#d8eef8"], miolo: ["#e3f4fb", "#eef9fd", "#d6edf7", "#ffffff"] },
+  areia: { beira: "#a88a52", meio: ["#cdb27a", "#d4b880"], miolo: ["#e0c994", "#d9c08a", "#e6d09e"] },
+  mato: { beira: "#24461a", meio: ["#2f5a1e", "#355f20"], miolo: ["#3a6a26", "#4a7f30", "#2f5a1e", "#5a8f3a"] },
+};
 const chaoBioma = new Map();
 const PX_BIOMA = 48; // o mesmo PX_CHAO de desenho.js
 function pintarChaoBioma(B) {
@@ -53,7 +58,7 @@ function pintarChaoBioma(B) {
   if (cv) return cv;
   const W = Math.round(18.5 * PX_BIOMA), H = Math.round(12.5 * PX_BIOMA), q = 4; // q: o tamanho do "pixel"
   cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-  const c = cv.getContext("2d"), r = (i) => fixo(i * 1.618 + B.bioma.length * 7.7);
+  const c = cv.getContext("2d", { willReadFrequently: true }), r = (i) => fixo(i * 1.618 + B.bioma.length * 7.7);
   const casa = (x, y) => [x / PX_BIOMA - 9.25, y / PX_BIOMA - 6.25]; // pixel → arena
   // a trilha: uma faixa que serpenteia de cima a baixo pelo meio (a divisa dos dois lados)
   const trilhaX = (z) => Math.sin(z * 0.55 + 0.7) * 0.9 + Math.sin(z * 1.3) * 0.25;
@@ -104,12 +109,18 @@ function pintarChaoBioma(B) {
       else if (k < 0.4) ponto(ax, az, 4, 4, "#b8b2a4");
     }
   }
-  // poças na lagoa (nos cantos de fora da trilha) e a água rasa entrando por cima
-  if (B.bioma === "lagoa") {
-    for (const [cx, cz, rr] of [[-7.3, -4.6, 1.3], [7.4, 4.5, 1.2], [6.8, -4.9, 0.8], [-7.0, 4.8, 0.7]]) {
-      for (let y = 0; y < H; y += q) for (let x = 0; x < W; x += q) {
-        const [ax, az] = casa(x, y), d = Math.hypot((ax - cx) / rr, (az - cz) / (rr * 0.75));
-        if (d < 1) { c.fillStyle = d > 0.82 ? "#e8f6ff" : d > 0.6 ? "#7cc6e0" : "#4fa8d0"; c.fillRect(x, y, q, q); }
+  // o terreno que muda o jogo (regras.js, TERRENOS): a água, a funda, a lava, o gelo, a areia e o mato alto, com a beira
+  // marcada para dar para ver onde começa
+  const zonas = [...Ginasio.terrenoDe(B.bioma)].sort((a, b) => (a.tipo === "funda") - (b.tipo === "funda"));
+  for (const z of zonas) {
+    const cor = PINTURA_TERRENO[z.tipo];
+    for (let y = Math.max(0, Math.floor((z.y - z.ry + 6.25) * PX_BIOMA / q) * q); y < Math.min(H, (z.y + z.ry + 6.25) * PX_BIOMA + q); y += q) {
+      for (let x = Math.max(0, Math.floor((z.x - z.rx + 9.25) * PX_BIOMA / q) * q); x < Math.min(W, (z.x + z.rx + 9.25) * PX_BIOMA + q); x += q) {
+        const [ax, az] = casa(x + q / 2, y + q / 2), d = Math.hypot((ax - z.x) / z.rx, (az - z.y) / z.ry);
+        if (d >= 1) continue;
+        const k = r(x * 3.1 + y * 7.7 + 11);
+        c.fillStyle = d > 0.9 ? cor.beira : d > 0.72 && cor.meio ? cor.meio[Math.floor(k * cor.meio.length)] : cor.miolo[Math.floor(k * cor.miolo.length)];
+        c.fillRect(x, y, q, q);
       }
     }
   }
@@ -131,6 +142,31 @@ function desenharChaoBioma(B) {
 }
 
 // ---------- o lugar em 3D ----------
+// junta as peças paradas do cenário numa malha só por material: cada árvore tinha 5 a 8 peças e o lugar inteiro passava
+// de 600 chamadas para a placa por quadro (e outras tantas na sombra). Fica de fora o que se mexe (userData.vivo), o
+// transparente e o que tem textura.
+function fundirEstaticos(grupo) {
+  grupo.updateMatrixWorld(true);
+  const porMaterial = new Map();
+  grupo.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || o.userData.vivo || Array.isArray(o.material) || o.material.map || o.material.transparent) return;
+    let l = porMaterial.get(o.material); if (!l) porMaterial.set(o.material, (l = [])); l.push(o);
+  });
+  for (const [material, pecas] of porMaterial) {
+    if (pecas.length < 2) continue;
+    const partes = pecas.map((o) => { const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld); return g; });
+    const total = partes.reduce((n, g) => n + g.attributes.position.count, 0), pos = new Float32Array(total * 3), nor = new Float32Array(total * 3);
+    let i = 0;
+    for (const g of partes) { pos.set(g.attributes.position.array, i * 3); nor.set(g.attributes.normal.array, i * 3); i += g.attributes.position.count; g.dispose(); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("normal", new THREE.BufferAttribute(nor, 3));
+    geo.computeBoundingSphere();
+    const malha = new THREE.Mesh(geo, material);
+    malha.castShadow = pecas.some((o) => o.castShadow); malha.receiveShadow = true;
+    for (const o of pecas) o.removeFromParent();
+    grupo.add(malha);
+  }
+}
 function montarBioma(B, grupo, toon) {
   const leve = cena3d.leve, calmo = () => movimentoReduzido.matches, animados = [];
   const cache = new Map(), mat = (hex) => { let m = cache.get(hex); if (!m) cache.set(hex, (m = toon(hex))); return m; };
@@ -165,7 +201,6 @@ function montarBioma(B, grupo, toon) {
       const cores = [["#3f7a2e", "#4f8f36", "#2f6424"], ["#d98a2b", "#e8a83a", "#c0661f"], ["#e8e4dc", "#f4f1ea", "#d2ccc0"], ["#6a9a40", "#7fb04a", "#55803a"]][Math.floor(fixo(x * 3 + z) * 4)];
       const copa = new THREE.Group(); copa.position.set(x, 1.5 * e, z); grupo.add(copa);
       for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(geo.copa, mat(cores[i % 3])); m.position.set((fixo(i + x) - 0.5) * 0.9 * e, i * 0.35 * e, (fixo(i + z) - 0.5) * 0.9 * e); m.scale.setScalar((0.85 - i * 0.12) * e); m.rotation.set(i, i * 2, 0); m.castShadow = !leve; copa.add(m); }
-      animados.push((t) => { if (!calmo()) copa.rotation.z = Math.sin(t * 0.8 + x) * 0.03; });
     } else if (jeito === "pinheiro") {
       peca(geo.tronco, mat("#4a3423"), x, 0.4 * e, z, e, 0.8 * e, e);
       for (let i = 0; i < 3; i++) {
@@ -230,7 +265,7 @@ function montarBioma(B, grupo, toon) {
       for (let i = 0; i < 3; i++) peca(geo.coluna, mat("#e8a090"), p.x + (i - 1) * 0.25, 1, p.y, 0.07, 0.6 + i * 0.1, 0.07);
     } else if (B.bioma === "vulcao") { // basalto com o veio de lava
       peca(geo.pedra, mat("#3b2a24"), p.x, 0.5, p.y, p.r, 0.75, p.r);
-      const veio = peca(geo.caixa, basico("#ff7a2e"), p.x, 0.55, p.y, p.r * 1.6, 0.06, 0.08, false); veio.rotation.y = 0.6;
+      const veio = peca(geo.caixa, basico("#ff7a2e"), p.x, 0.55, p.y, p.r * 1.6, 0.06, 0.08, false); veio.rotation.y = 0.6; veio.userData.vivo = true;
       animados.push((t) => { if (!calmo()) veio.material.color.setHSL(0.06, 1, 0.5 + Math.sin(t * 2 + p.x) * 0.1); });
     } else { // a pedra com musgo da floresta
       peca(geo.pedra, mat("#7d847a"), p.x, 0.48, p.y, p.r, 0.72, p.r);
@@ -238,11 +273,32 @@ function montarBioma(B, grupo, toon) {
     }
   }
 
+  // ---- o terreno da regra (regras.js): o mato alto em pé, a água e a lava que brilham ----
+  for (const z of Ginasio.terrenoDe(B.bioma)) {
+    const elipse = (cor, op, y) => {
+      const m = new THREE.Mesh(new THREE.CircleGeometry(1, 28), basico(cor, op)); m.rotation.x = -Math.PI / 2; m.scale.set(z.rx, z.ry, 1); m.position.set(z.x, y, z.y); m.userData.vivo = true; grupo.add(m); return m;
+    };
+    if (z.tipo === "mato") { // as folhas do capim alto, baixinhas (não tapam o bicho)
+      const n = Math.round(z.rx * z.ry * (leve ? 7 : 14));
+      for (let i = 0; i < n; i++) {
+        const ang = fixo(i * 3.7 + z.x) * Math.PI * 2, d = Math.sqrt(fixo(i * 5.3 + z.y)) * 0.92, k = fixo(i * 7.1 + z.x * z.y);
+        const folha = peca(geo.cone, mat(k < 0.33 ? "#3a6a26" : k < 0.66 ? "#4f8f36" : "#5f9f3e"), z.x + Math.cos(ang) * d * z.rx, 0.18 + k * 0.08, z.y + Math.sin(ang) * d * z.ry, 0.06, 0.36 + k * 0.16, 0.06, false);
+        folha.rotation.set((k - 0.5) * 0.5, 0, (fixo(i + 9) - 0.5) * 0.5);
+      }
+    } else if (z.tipo === "agua" || z.tipo === "funda") { // o brilho por cima da água pintada
+      const brilho = elipse("#bfe8ff", z.tipo === "funda" ? 0.22 : 0.14, z.tipo === "funda" ? 0.006 : 0.004);
+      animados.push((t) => { if (!calmo()) brilho.material.opacity = (z.tipo === "funda" ? 0.22 : 0.14) + Math.sin(t * 1.6 + z.x) * 0.05; });
+    } else if (z.tipo === "lava") { // a lava acende sozinha (sem a sombra do sol) e pulsa
+      const brilho = elipse("#ff7a2e", 0.5, 0.005);
+      animados.push((t) => { if (!calmo()) brilho.material.opacity = 0.42 + Math.sin(t * 2.2 + z.x) * 0.12; });
+    }
+  }
+
   // ---- as bandeiras dos dois lados (no fundo, perto dos cantos) ----
   for (const [lado, cor] of [[-1, "#237dcd"], [1, "#df515a"]]) for (const dz of [-1, 1]) {
     const x = lado * 9.6, z = dz < 0 ? -6.9 : 6.7;
     peca(geo.coluna, mat("#3a2c1c"), x, 1.3, z, 0.05, 2.6, 0.05);
-    const pano = peca(geo.caixa, mat(cor), x - lado * 0.38, 2.15, z, 0.72, 1, 0.03);
+    const pano = peca(geo.caixa, mat(cor), x - lado * 0.38, 2.15, z, 0.72, 1, 0.03); pano.userData.vivo = true;
     peca(geo.caixa, mat("#f2e7c8"), x - lado * 0.38, 2.62, z, 0.76, 0.06, 0.04, false);
     animados.push((t) => { if (!calmo()) pano.rotation.y = Math.sin(t * 1.8 + x + z) * 0.18; });
   }
@@ -267,6 +323,7 @@ function montarBioma(B, grupo, toon) {
     peca(geo.caixa, mat("#9a9488"), -1.2, 3.4, -10.5, 4.2, 0.6, 0.9);
   }
 
+  fundirEstaticos(grupo); // o que não se mexe vira uma malha por material (centenas de peças em poucas chamadas)
   const clima = montarClima3d(B, grupo);
   return (agora) => { const t = agora / 1000; for (const a of animados) a(t); clima?.(t); };
 }

@@ -51,6 +51,8 @@
     <fieldset id="opcoes"><legend>Partida</legend>
       <div class="segmentos" aria-label="Modo"><button data-modo="galeramon" aria-pressed="true">Galeramon</button><button data-modo="pokemon" aria-pressed="false">Pokémon</button><button data-modo="naruto" aria-pressed="false">Naruto</button></div>
       <div class="linha opcoes-linha"><div class="segmentos formato" aria-label="Formato"><button data-formato="1x1" aria-pressed="true">1x1</button><button data-formato="2x2" aria-pressed="false">2x2</button></div><label class="check"><input id="bots" type="checkbox" checked>Robôs</label></div>
+      <div id="escolhaPokemons" class="hidden"><span class="rotulo-arena">Pokémon da sala</span><div class="segmentos" aria-label="Pokémon da sala"><button data-pokemons="todos" aria-pressed="true">Todos liberados</button><button data-pokemons="capturados" aria-pressed="false">Só os capturados</button></div><p id="dicaPokemons"></p></div>
+      <div id="escolhaArena" class="hidden"><span class="rotulo-arena">Lugar da luta</span><div class="segmentos arenas" aria-label="Lugar da luta"><button data-arena="sortear" aria-pressed="true">Sortear</button><button data-arena="floresta" aria-pressed="false">Floresta</button><button data-arena="lagoa" aria-pressed="false">Lagoa</button><button data-arena="vulcao" aria-pressed="false">Vulcão</button><button data-arena="neve" aria-pressed="false">Neve</button><button data-arena="ruinas" aria-pressed="false">Ruínas</button></div><p id="dicaArena"></p></div>
     </fieldset>
     <section id="escolha"><h2>Seu time</h2><div id="meuTime" class="time-escolha"></div></section>
     <section id="sala" class="hidden">
@@ -72,7 +74,7 @@
 <dialog id="dex">
   <div class="dialogo-topo"><h2 id="dexTitulo">Escolher bicho</h2><button id="dexFechar" class="icone" title="Fechar" aria-label="Fechar"></button></div>
   <div class="busca"><input id="dexBusca" type="search" placeholder="Buscar" aria-label="Buscar criatura" autocomplete="off"><select id="dexTipo" aria-label="Tipo"><option value="">Todos os tipos</option></select><select id="dexGeracao" aria-label="Geração" class="hidden"><option value="">Todas as gerações</option></select></div>
-  <div id="dexLista"></div><p id="dexVazio" class="hidden">Nenhum bicho encontrado.</p>
+  <p id="dexAviso" class="hidden"></p><div id="dexLista"></div><p id="dexVazio" class="hidden">Nenhum bicho encontrado.</p>
   <div class="paginacao"><button id="dexAnterior" class="icone" title="Página anterior" aria-label="Página anterior"></button><span id="dexPagina"></span><button id="dexProximo" class="icone" title="Próxima página" aria-label="Próxima página"></button></div>
 </dialog>
 <dialog id="resultado">

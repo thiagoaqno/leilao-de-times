@@ -6,11 +6,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-function carregar(S = null) {
-  const ctx = { Math, Map, Object, S, fixo: (i) => { const v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); } };
+const Ginasio = require("../public/ginasio/regras.js");
+
+function carregar(S = null, configLocal = {}) {
+  const ctx = { Math, Map, Object, S, Ginasio, configLocal, fixo: (i) => { const v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); } };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../public/ginasio/biomas.js"), "utf8"), ctx, { filename: "biomas.js" });
-  return vm.runInContext("({ BIOMAS, BIOMA_DO_TIPO, biomaDaPartida })", ctx);
+  return vm.runInContext("({ BIOMAS, biomaDaPartida })", ctx);
 }
 const COR = /^#[0-9a-f]{6}$/i;
 
@@ -30,19 +32,16 @@ test("biomas: cada lugar tem os campos de um tema e as cores certas", () => {
   }
 });
 
-test("biomas: o líder escolhe o lugar; sem líder, a partida sorteia o mesmo para a sala inteira", () => {
-  const { biomaDaPartida, BIOMAS } = carregar();
-  assert.strictEqual(biomaDaPartida({ tipo: "Fogo" }).bioma, "vulcao");
-  assert.strictEqual(biomaDaPartida({ tipo: "Água" }).bioma, "lagoa");
-  assert.strictEqual(biomaDaPartida({ tipo: "Gelo" }).bioma, "neve");
-  assert.strictEqual(biomaDaPartida({ tipo: "Fantasma" }).bioma, "ruinas");
-  assert.strictEqual(biomaDaPartida(null), BIOMAS.floresta, "na sala, antes da partida, a floresta");
-  const vistos = new Set();
-  for (let i = 0; i < 40; i++) {
-    const um = carregar({ match: { start: 1_700_000_000_000 + i * 7919 } }), outro = carregar({ match: { start: 1_700_000_000_000 + i * 7919 } });
-    const a = um.biomaDaPartida(null).bioma;
-    assert.strictEqual(a, outro.biomaDaPartida(null).bioma, "o mesmo começo dá o mesmo lugar");
-    vistos.add(a);
-  }
-  assert.ok(vistos.size >= 4, `sorteia lugares diferentes (${[...vistos]})`);
+test("biomas: a tela usa o lugar da partida; antes dela, o da sala, o do líder ou a floresta", () => {
+  assert.strictEqual(carregar({ match: { bioma: "neve" }, config: { arena: "vulcao" } }).biomaDaPartida({ tipo: "Fogo" }).bioma, "neve", "na partida, o que o servidor escolheu");
+  assert.strictEqual(carregar({ config: { arena: "lagoa" } }).biomaDaPartida(null).bioma, "lagoa", "na sala, o escolhido");
+  assert.strictEqual(carregar(null, { arena: "ruinas" }).biomaDaPartida(null).bioma, "ruinas", "sem sala, o guardado");
+  assert.strictEqual(carregar({ config: { arena: "sortear" } }).biomaDaPartida({ tipo: "Fogo" }).bioma, "vulcao", "o do líder");
+  assert.strictEqual(carregar({ config: { arena: "sortear" } }).biomaDaPartida(null).bioma, "floresta");
+});
+
+test("biomas: todo lugar do motor tem desenho e todo tipo de líder cai num lugar que existe", () => {
+  const { BIOMAS } = carregar();
+  assert.deepStrictEqual([...Ginasio.BIOMAS].sort(), Object.keys(BIOMAS).sort());
+  for (const b of Object.values(Ginasio.BIOMA_DO_TIPO)) assert.ok(BIOMAS[b], b);
 });
