@@ -582,7 +582,7 @@
     // o combo de quem bate (só para mostrar)
     const combo = atacante.combo && p.t - atacante.combo.em < 1.1 ? atacante.combo.n + 1 : 1;
     atacante.combo = { n: combo, em: p.t };
-    p.ev.push({ tipo: "dano", de: atacante.id, em: defensor.id, dano: antes - b.hp, hp: b.hp, eff: r.eff, crit: r.crit, ...(bloqueado && { bloqueado: true }), ...(combo > 1 && { combo }) });
+    p.ev.push({ tipo: "dano", de: atacante.id, em: defensor.id, dano: antes - b.hp, hp: b.hp, eff: r.eff, crit: r.crit, elemento: hab.tipo, classe: hab.classe, ...(bloqueado && { bloqueado: true }), ...(combo > 1 && { combo }) });
     // o empurrão: pelo poder, pelo peso e pela guarda
     const empurra = (hab.empurra ?? 1) * (op.empurra ?? 1);
     if (empurra > 0 && b.hp > 0) {

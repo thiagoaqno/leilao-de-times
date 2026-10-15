@@ -69,7 +69,7 @@ const pedrinhas = (m, n, cor, de, ate, tam) => { // pedacinhos no chão em volta
 
 function desenharMarca(a, m, agora) {
   const s = camera.escala, p = pontoTela(m.x, m.y), parado = movimentoReduzido.matches;
-  const cresce = parado ? 1 : Math.min(1, 0.45 + ((agora - m.nasceu) / 260) * 0.55); // estoura e abre
+  const cresce = parado ? 1 : Math.min(1, Math.max(0.45, 0.45 + ((agora - m.nasceu) / 260) * 0.55)); // estoura e abre (o relógio da tela pode voltar um pouco ao sincronizar)
   const rx = m.r * s * cresce, ry = rx * 0.82, idade = (agora - m.nasceu) / 1000, pal = paletaDe(m.elemento);
   const f = { sem: m.sem, px: p.x, py: p.y, rx, ry }, lw = Math.max(1, s * 0.07), tam = Math.max(1, Math.round(s * 0.1));
   ctx.save(); ctx.globalAlpha = a;

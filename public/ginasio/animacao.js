@@ -187,6 +187,19 @@ function silhuetaBranca(a, cv) {
   a.brancos.set(cv, b);
   return b;
 }
+// a silhueta pintada de uma cor: a reação de quem apanha na cor do golpe (encenacao.js)
+function silhuetaColorida(a, cv, cor) {
+  const porCor = a.tintas || (a.tintas = new Map());
+  let mapa = porCor.get(cor);
+  if (!mapa) porCor.set(cor, (mapa = new Map()));
+  let b = mapa.get(cv);
+  if (b) return b;
+  b = document.createElement("canvas"); b.width = cv.width; b.height = cv.height;
+  const c = b.getContext("2d", { willReadFrequently: true });
+  c.drawImage(cv, 0, 0); c.globalCompositeOperation = "source-atop"; c.fillStyle = cor; c.fillRect(0, 0, b.width, b.height);
+  mapa.set(cv, b);
+  return b;
+}
 function flutua(id, modo) {
   if (modo !== "pokemon") return FLUTUAM_GALERAMON.has(id);
   const m = PokeDex.MONS[id];
@@ -195,7 +208,7 @@ function flutua(id, modo) {
 const semente = (txt) => { let h = 7; for (const ch of String(txt)) h = (h * 31 + ch.charCodeAt(0)) % 9973; return h; };
 
 // ---------- partículas ----------
-const PARTICULAS = Array.from({ length: 260 }, () => ({ vida: 0 }));
+const PARTICULAS = Array.from({ length: 420 }, () => ({ vida: 0 }));
 function particula(x, y, o) {
   if (movimentoReduzido.matches) return;
   const p = PARTICULAS.find((q) => q.vida <= 0);
@@ -324,6 +337,7 @@ function pintarQuadro(a, q, x, chao, o) {
   ctx.scale((o.lado || 1) * a.olha * (o.sx || 1) * k, (o.sy || 1) * k);
   ctx.imageSmoothingEnabled = k < 0.95; // reduzido demais, o pixel puro some; aí vale suavizar
   ctx.drawImage(o.branco ? silhuetaBranca(a, q.cv) : q.cv, -m.cx, -m.pe);
+  if (o.tinta && !o.branco) { ctx.globalAlpha *= o.tinta.alfa; ctx.drawImage(silhuetaColorida(a, q.cv, o.tinta.cor), -m.cx, -m.pe); }
   ctx.restore();
   ctx.imageSmoothingEnabled = false;
   return altura * (o.sy || 1);
@@ -340,7 +354,9 @@ function poseBicho(e, agora, modo) {
   const pose = { e, v, modo, visivel: false };
   if (!e.campo && !desm) { v.rastro.length = 0; return pose; }
   const id = e.forma || e.bicho, a = animacaoDe(id, modo);
-  const dt = v.ultimo == null ? 0 : clamp(agora - v.ultimo, 0, 100); v.ultimo = agora;
+  // no hit-stop (encenacao.js) o quadro do GIF não anda: o bicho congela um instante no acerto
+  const congelado = v.parado != null && agora < v.parado;
+  const dt = v.ultimo == null || congelado ? 0 : clamp(agora - v.ultimo, 0, 100); v.ultimo = agora;
   const o = e.oculto, andando = Math.hypot(e.vx || 0, e.vy || 0) > 0.1 && !e.dash && !o;
   v.tempo += dt * (andando ? 1.7 : 1) * (o?.jeito === "voo" ? 2.5 : 1);
   const lado = e.mira.x < -0.05 ? -1 : e.mira.x > 0.05 ? 1 : v.lado;
@@ -376,7 +392,11 @@ function poseBicho(e, agora, modo) {
   }
   // apanhando: pisca branco e é empurrado
   const d = v.dano, idn = d ? agora - d.t : 1e9;
-  if (idn < 170) { const k = 1 - idn / 170; ox += d.dir.x * (d.crit ? 0.4 : 0.26) * k; oy += d.dir.y * (d.crit ? 0.4 : 0.26) * k; if (idn < 75) f.branco = true; }
+  if (idn < 170) { const k = 1 - idn / 170; ox += d.dir.x * (d.crit ? 0.4 : 0.26) * k; oy += d.dir.y * (d.crit ? 0.4 : 0.26) * k; }
+  // a reação: pisca branco e depois na cor do golpe, tremendo (encenacao.js)
+  const reacao = reacaoNaPose(v, agora);
+  if (reacao) { f.tinta = { cor: reacao.cor, alfa: reacao.alfa }; ox += reacao.treme; if (reacao.cor === "#ffffff" && reacao.alfa >= 1) f.branco = true; }
+  else if (idn < 75) f.branco = true;
   if (modo === "naruto" && !calmo) {
     const dano = idn < 170 || desm;
     const tipo = dano ? "dano" : g && ig >= 0 && ig < 320 && !o
