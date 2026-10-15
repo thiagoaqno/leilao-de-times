@@ -12,7 +12,7 @@ function entidadePrevista(e) {
     kx: e.kx || 0, ky: e.ky || 0, atordoado: e.atordoado || 0, guarda: e.guarda ?? Ginasio.GUARDA_MAX, guardando: !!e.guardando, guardaSolta: e.guardaSolta || 0,
     preparo: e.preparo && { ...e.preparo, mira: { ...e.preparo.mira } }, sequencia: e.sequencia && { ...e.sequencia },
     salto: e.salto && { ...e.salto, de: { ...e.salto.de }, para: { ...e.salto.para }, hab: { raio: e.salto.r } },
-    canal: e.canal && { ...e.canal }, dash: e.dash && { ...e.dash, hab: { velocidade: e.dash.velocidade, giro: e.dash.giro, tipo: e.dash.elemento }, hit: new Set() },
+    canal: e.canal && { ...e.canal }, bote: e.bote && { ...e.bote }, dash: e.dash && { ...e.dash, hab: { velocidade: e.dash.velocidade, giro: e.dash.giro, tipo: e.dash.elemento }, hit: new Set() },
     oculto: e.oculto && { ...e.oculto, de: { ...e.oculto.de }, para: { ...e.oculto.para } },
   };
 }

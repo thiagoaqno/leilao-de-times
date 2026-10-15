@@ -92,6 +92,7 @@ function tocarEvento(e) {
   else if (e.tipo === "perfeita") { nota(660, 1320, 0.16); nota(990, 1980, 0.16, "sine", 0.06); }
   else if (e.tipo === "guardaQuebrou") { nota(500, 80, 0.3, "sawtooth"); }
   else if (e.tipo === "batida") { nota(90, 40, 0.18, "square"); }
+  else if (e.tipo === "bote") { nota(220, 520, 0.08, "triangle"); } // o arranque do bote
   else if (e.tipo === "atordoado" && e.motivo !== "golpe") nota(880, 660, 0.2, "sine");
   else if (e.tipo === "interrompido") nota(300, 120, 0.15, "triangle");
   else if (e.tipo === "pulou") nota(220, 700, 0.18);

@@ -18,6 +18,20 @@
     ],
   };
   const RAIO_BICHO = 0.34;
+  // o robô em cada dificuldade: quanto demora para reagir ao perigo (s), a chance de esquivar e de levantar a guarda
+  // quando reage, o erro da mira (radianos), a pausa depois de bater (s), quanto mira à frente de quem anda e a chance
+  // de punir quem ficou vulnerável na hora
+  const DIFICULDADES = ["facil", "normal", "dificil"];
+  const PERFIL_ROBO = [
+    { reacao: [0.45, 0.75], foge: 0.3, guarda: 0.12, erro: 0.32, pausa: [0.7, 1.3], lead: 0.3, pune: 0.25 },
+    { reacao: [0.32, 0.6], foge: 0.35, guarda: 0.18, erro: 0.2, pausa: [0.5, 1], lead: 0.6, pune: 0.5 },
+    { reacao: [0.18, 0.3], foge: 0.72, guarda: 0.3, erro: 0.04, pausa: [0.08, 0.25], lead: 1, pune: 1 },
+  ];
+  const VEL_MIN = 2.2, VEL_MAX = 5.2; // casas por segundo (velocidade)
+  const RE = 0.6; // andando de ré, a fração da velocidade
+  // o bote dos golpes de perto: com o alvo na frente, a até BOTE_MAX casas além do alcance, o bicho avança antes de
+  // bater (BOTE_VEL casas por segundo); durante o bote e o combo, golpe não empurra nem atordoa (só tira vida)
+  const BOTE_MAX = 2.2, BOTE_VEL = 12, BOTE_ARCO = 0.85, BOTE_RECUPERA = 0.25, PERTO = ["corpo", "combo", "arremesso"];
 
   // ---------- o terreno de cada lugar (modo Pokémon, biomas.js desenha) ----------
   // Cada zona é uma elipse { tipo, x, y, rx, ry }, em pares espelhados pelo meio (os dois lados ganham o mesmo).
@@ -122,7 +136,7 @@
   const noAlto = (e) => !!e.salto && e.salto.t < e.salto.total - 0.1 && e.salto.t > 0.08;
   // quem está voando alto, debaixo da terra ou no alto do pulo não pode ser acertado
   const alcancavel = (e) => emCampo(e) && !e.oculto && !noAlto(e);
-  const ocupado = (e) => !!(e.canal || e.preparo || e.salto || e.sequencia || e.oculto || e.dash);
+  const ocupado = (e) => !!(e.canal || e.preparo || e.salto || e.sequencia || e.oculto || e.dash || e.bote);
 
   // golpes que viram movimento: o bicho some (voando, cavando, mergulhando ou nas sombras) e cai em cima do alvo
   const SUMIR = { fly: "voo", bounce: "voo", dig: "cova", escavar: "cova", mergulho: "mergulho", shadowforce: "sombra" };
@@ -247,7 +261,8 @@
       t: 0, seq: 1, fim: false, vencedor: null, empate: false,
       duracao: config.duracao || TEMPO_MAX,
       // o robô dos líderes joga melhor (reage mais rápido, apara e pune)
-      nivel: config.lider ? 2 : config.nivel ?? 1,
+      // 0 fácil, 1 normal, 2 difícil (os líderes; PERFIL_ROBO)
+      nivel: config.lider ? 2 : DIFICULDADES.includes(config.robo) ? DIFICULDADES.indexOf(config.robo) : config.nivel ?? 1,
       rng: sorteDe(config.seed || "ginasio"),
       lados: [{ jogadores: [] }, { jogadores: [] }],
       entidades: [], projeteis: [], areas: [], ev: [], arena: ARENA,
@@ -296,7 +311,7 @@
       id: j.id, lado: j.lado, slot: j.slot, jogador: j, bicho: ativo(j),
       x, y, vx: 0, vy: 0, mira: { x: j.lado === 0 ? 1 : -1, y: 0 },
       campo: true, raio: RAIO_BICHO, invulneravel: 0, esquivaCd: 0, esquivaT: 0, esquivaEm: -9,
-      dash: null, canal: null, escudo: null, impedido: 0, oculto: null,
+      dash: null, bote: null, canal: null, escudo: null, impedido: 0, oculto: null,
       // física e defesa
       kx: 0, ky: 0, atordoado: 0, cadeia: 0, atordoadoEm: -9,
       guarda: GUARDA_MAX, guardando: false, guardaDesde: -9, guardaSolta: 0,
@@ -341,13 +356,20 @@
     return naQuadra({ x: e.x + d.x * l, y: e.y + d.y * l });
   }
 
+  // a velocidade de andar sai do atributo (o do nível 50): de VEL_MIN (Shuckle, Snorlax) a VEL_MAX (Ninjask, Jolteon)
   function velocidade(p, e) {
     const s = base(p, e.bicho).spd || 80;
-    let v = clamp(2.5 + ((s - 30) / 120) * 2, 2.5, 4.5) * stageMult(p.dex, e.bicho.st.spd || 0);
+    let v = (VEL_MIN + (VEL_MAX - VEL_MIN) * clamp((s - 25) / 160, 0, 1)) * stageMult(p.dex, e.bicho.st.spd || 0);
     if (p.terreno && p.terreno.length) v *= noTerreno(p, e).vel;
     if (e.guardando) v *= 0.45;
     if (e.sequencia && e.sequencia.tipo === "rajada") v *= 0.7;
     return v;
+  }
+
+  // andar para longe de onde mira custa: de frente, 100%; de lado, 90%; de ré, 60% (fugir atirando fica difícil)
+  function fatorDaRe(d, mira) {
+    const m = norm(mira.x, mira.y, { x: 1, y: 0 }), k = d.x * m.x + d.y * m.y;
+    return k >= 0 ? 0.9 + 0.1 * k : 0.9 + (0.9 - RE) * k;
   }
 
   // o peso: bicho de muita vida e defesa voa menos com o golpe
@@ -471,7 +493,29 @@
     return true;
   }
 
+  // o alvo do bote: o outro mais perto na frente da mira, longe demais para o golpe mas a menos de BOTE_MAX além dele
+  function boteDe(p, e, hab, mira) {
+    let melhor = null;
+    for (const o of p.entidades) {
+      if (o.lado === e.lado || !alcancavel(o) || o.salto || o.oculto) continue; // no alto ou sumido, não dá para ir atrás
+      const dx = o.x - e.x, dy = o.y - e.y, d = Math.hypot(dx, dy), alcance = hab.alcance + o.raio;
+      if (d <= alcance * 0.95 || d > alcance + BOTE_MAX) continue;
+      if (Math.acos(clamp((dx * mira.x + dy * mira.y) / (d || 1), -1, 1)) > BOTE_ARCO) continue;
+      if (!melhor || d < melhor.d) melhor = { d, x: dx / d, y: dy / d, falta: d - alcance * 0.7 };
+    }
+    return melhor;
+  }
   function executarGolpe(p, e, hab, mira, ponto, c = {}) {
+    if (PERTO.includes(hab.classe) && !c.semBote) {
+      const b = boteDe(p, e, hab, mira);
+      if (b) {
+        const m = { x: b.x, y: b.y };
+        e.mira = { ...m };
+        e.bote = { x: b.x, y: b.y, falta: b.falta, hab, mira: m, ponto, c };
+        p.ev.push({ tipo: "bote", id: e.id, dx: b.x, dy: b.y, falta: b.falta, elemento: hab.tipo });
+        return;
+      }
+    }
     const b = e.bicho, mv = hab.mv;
     if (hab.classe === "nada") return;
     if (hab.classe === "escudo") { e.escudo = { t: 1, tipo: mv.counter }; return; }
@@ -626,7 +670,7 @@
     e.atordoadoEm = p.t;
     e.atordoado = Math.max(e.atordoado, t);
     soltarGuarda(e);
-    e.dash = null; e.canal = null;
+    e.dash = null; e.bote = null; e.canal = null;
     if (e.sequencia) e.sequencia = null;
     if (e.preparo) { p.ev.push({ tipo: "interrompido", id: e.id, golpe: e.preparo.golpe }); e.preparo = null; }
     p.ev.push({ tipo: "atordoado", id: e.id, t: e.atordoado, motivo });
@@ -681,8 +725,9 @@
     const combo = atacante.combo && p.t - atacante.combo.em < 1.1 ? atacante.combo.n + 1 : 1;
     atacante.combo = { n: combo, em: p.t };
     p.ev.push({ tipo: "dano", de: atacante.id, em: defensor.id, dano: antes - b.hp, hp: b.hp, eff: r.eff, crit: r.crit, elemento: hab.tipo, classe: hab.classe, ...(bloqueado && { bloqueado: true }), ...(combo > 1 && { combo }), ...(casa && { terreno: true }) });
-    // o empurrão: pelo poder, pelo peso e pela guarda
-    const empurra = (hab.empurra ?? 1) * (op.empurra ?? 1);
+    // o empurrão: pelo poder, pelo peso e pela guarda; quem está no bote ou no combo fica firme (só perde vida)
+    const firme = !!(defensor.bote || (defensor.sequencia && defensor.sequencia.tipo === "combo"));
+    const empurra = firme ? 0 : (hab.empurra ?? 1) * (op.empurra ?? 1);
     if (empurra > 0 && b.hp > 0) {
       const forca = (2.2 + (hab.poder || 40) / 30) * empurra * fatorPeso(p, defensor) * (r.crit ? 1.25 : 1) * (bloqueado ? 0.3 : 1) * (op.fator != null ? Math.max(0.5, op.fator) : 1);
       empurrar(defensor, dir, forca);
@@ -730,7 +775,7 @@
 
   function desmaiar(p, e) {
     if (!e.campo) return;
-    e.campo = false; e.dash = null; e.canal = null; e.escudo = null; e.oculto = null;
+    e.campo = false; e.dash = null; e.bote = null; e.canal = null; e.escudo = null; e.oculto = null;
     e.preparo = null; e.salto = null; e.sequencia = null; e.buffer = null; e.atordoado = 0; e.kx = 0; e.ky = 0; soltarGuarda(e);
     e.jogador.entradaEm = temReserva(e.jogador) ? ENTRADA_DESMAIO : 0;
     p.ev.push({ tipo: "desmaiou", id: e.id, bicho: e.bicho.id });
@@ -749,7 +794,7 @@
     e.bicho.as = null;
     j.ativo = idx;
     e.bicho = ativo(j);
-    e.campo = true; e.invulneravel = Math.max(e.invulneravel, 0.45); e.canal = null; e.dash = null; e.oculto = null;
+    e.campo = true; e.invulneravel = Math.max(e.invulneravel, 0.45); e.canal = null; e.dash = null; e.bote = null; e.oculto = null;
     e.preparo = null; e.salto = null; e.sequencia = null; e.buffer = null; e.atordoado = 0; e.kx = 0; e.ky = 0; e.foco = false; soltarGuarda(e);
     if (!forcar) j.trocaCd = TROCA_RECARGA;
     const spawn = spawnDe(j.lado, j.slot);
@@ -836,6 +881,13 @@
       const gelo = p && p.terreno && p.terreno.length ? noTerreno(p, e) : null;
       const f = Math.exp(-ATRITO * (gelo && gelo.zona && gelo.zona.tipo === "gelo" && !gelo.casa ? ATRITO_GELO : 1) * dt); e.kx *= f; e.ky *= f;
     } else { e.kx = 0; e.ky = 0; }
+    if (e.bote) { // o bote: avança reto até o alcance e só então bate (na previsão da tela, só anda)
+      const b = e.bote, passo = Math.min(b.falta, BOTE_VEL * dt);
+      e.x += b.x * passo; e.y += b.y * passo; b.falta -= passo; e.vx = b.x * BOTE_VEL; e.vy = b.y * BOTE_VEL; limitar(e, p);
+      // chegou: bate e fica um instante parado se recuperando do bote (a brecha de quem apanhou)
+      if (b.falta <= 1e-6) { e.bote = null; e.impedido = Math.max(e.impedido || 0, BOTE_RECUPERA); if (!previsao && b.hab) executarGolpe(p, e, b.hab, b.mira, b.ponto, { ...b.c, semBote: true }); }
+      return;
+    }
     if (e.dash) {
       const d = Math.min(e.dash.falta, e.dash.hab.velocidade * dt);
       e.x += e.dash.x * d; e.y += e.dash.y * d; e.dash.falta -= d; limitar(e, p);
@@ -855,7 +907,7 @@
       const d = norm(m.x, m.y, { x: 0, y: 0 });
       // escorregando forte, o controle volta aos poucos
       const controle = clamp(1 - empurrado / 7, 0, 1);
-      const v = d.l > 1e-6 ? velocidade(p, e) * controle : 0;
+      const v = d.l > 1e-6 ? velocidade(p, e) * controle * fatorDaRe(d, e.mira) : 0;
       vx = d.x * v; vy = d.y * v;
     }
     e.vx = vx; e.vy = vy;
@@ -1011,8 +1063,10 @@
     if (!emCampo(e)) return {};
     const alvo = alvoMaisPerto(p, e);
     if (!alvo) return {};
-    const ia = e.ia || (e.ia = { reage: 0, guarda: 0, lado: p.rng() < 0.5 ? 1 : -1, trocaLado: 0 });
-    const habil = p.nivel >= 2 ? 1 : 0.65; // reflexo
+    const ia = e.ia || (e.ia = { guarda: 0, lado: p.rng() < 0.5 ? 1 : -1, trocaLado: 0, pausa: 0, ameaca: null, reageEm: 0, decidiu: true });
+    const perf = PERFIL_ROBO[clamp(Math.round(p.nivel ?? 1), 0, 2)], entre = ([a, b]) => a + p.rng() * (b - a);
+    // o tempo que passou desde a última vez (o servidor chama a cada passo; quem usa o robô fora dele, a cada pacote)
+    const dt = clamp(p.t - (ia.t ?? p.t - 1 / 60), 0, 0.25); ia.t = p.t;
     const dx = alvo.x - e.x, dy = alvo.y - e.y, d = Math.hypot(dx, dy) || 1;
     let ideal = 3.2, golpe = null, valor = -Infinity;
     const moves = spec(p, e.bicho).moves || [];
@@ -1021,8 +1075,8 @@
       const mv = p.dex.MOVES[moves[i]];
       if (e.bicho.cds[i] > 0 || (p.modo === "naruto" && e.bicho.chakra < (mv.custo || 0)) || (mv.max && (e.bicho.usos[moves[i]] || 0) >= mv.max)) continue;
       const hab = habilidadeDeGolpe(moves[i], mv);
-      const perto = ["corpo", "combo", "arremesso"].includes(hab.classe);
-      const alcance = perto ? 1.05 : ["investida", "cone"].includes(hab.classe) ? 2.3 : hab.classe === "anel" ? hab.raio * 0.6 : hab.classe === "feixe" ? 5 : 4.2;
+      const perto = PERTO.includes(hab.classe);
+      const alcance = perto ? 1.05 + BOTE_MAX * 0.7 : ["investida", "cone"].includes(hab.classe) ? 2.3 : hab.classe === "anel" ? hab.raio * 0.6 : hab.classe === "feixe" ? 5 : 4.2;
       const eff = p.dex.effect(hab.tipo, spec(p, alvo.bicho).types || ["Normal"]);
       let v = (hab.poder || 30) * Math.max(0.25, eff) / hab.recarga - Math.abs(d - alcance) * 4;
       if (hab.poder <= 0) v = hab.classe === "cura" ? (e.bicho.hp < e.bicho.max * 0.45 ? 40 : -50) : 6;
@@ -1032,7 +1086,7 @@
       if (v > valor) { valor = v; golpe = i; ideal = alcance; }
     }
     // andar: no alcance do golpe escolhido, rodando de lado para não ficar parado na mira
-    if ((ia.trocaLado -= 1 / 60) <= 0) { ia.trocaLado = 1 + p.rng() * 2; if (p.rng() < 0.4) ia.lado = -ia.lado; }
+    if ((ia.trocaLado -= dt) <= 0) { ia.trocaLado = 1 + p.rng() * 2; if (p.rng() < 0.4) ia.lado = -ia.lado; }
     let mx = -dy / d * ia.lado * 0.6, my = dx / d * ia.lado * 0.6;
     if (d > ideal + 0.35) { mx += dx / d; my += dy / d; }
     else if (d < ideal - 0.35) { mx -= dx / d; my -= dy / d; }
@@ -1054,29 +1108,34 @@
       if (Math.abs(lat) < 1.2) { const s = lat >= 0 ? 1 : -1; mx = m.y * s * 1.5; my = -m.x * s * 1.5; }
     }
     const lead = (hab) => { // mira à frente de quem anda
-      const v = hab && hab.velocidade ? hab.velocidade : 8, t = Math.min(0.6, d / v) * habil;
-      return { x: alvo.x + (alvo.vx || 0) * t - e.x, y: alvo.y + (alvo.vy || 0) * t - e.y };
+      const v = hab && hab.velocidade ? hab.velocidade : 8, t = Math.min(0.6, d / v) * perf.lead;
+      const mx = alvo.x + (alvo.vx || 0) * t - e.x, my = alvo.y + (alvo.vy || 0) * t - e.y, erro = (p.rng() * 2 - 1) * perf.erro;
+      return { x: mx * Math.cos(erro) - my * Math.sin(erro), y: mx * Math.sin(erro) + my * Math.cos(erro) }; // e erra um pouco
     };
     const cmd = { dx: mx, dy: my, mira: { x: dx, y: dy } };
     // o que vem na minha direção
     const vindo = p.projeteis.find((pr) => pr.lado !== e.lado && vindoNaDirecao(pr, e));
     const pertoDeBater = p.entidades.some((o) => o.lado !== e.lado && emCampo(o) && ((o.dash && dist(o, e) < 2.4) || (o.sequencia && o.sequencia.tipo === "combo" && dist(o, e) < 1.8)));
     const anel = p.areas.some((a) => a.lado !== e.lado && a.forma === "anel" && Math.abs(Math.hypot(e.x - a.x, e.y - a.y) - a.r * (1 - a.t / a.aviso)) < 0.9);
-    ia.reage -= 1 / 60;
-    if ((vindo || pertoDeBater || anel) && ia.reage <= 0 && !e.atordoado) {
-      ia.reage = 0.25 + (1 - habil) * 0.5;
+    // o perigo: o robô vê na hora, mas só reage depois do tempo de reação (uma decisão por perigo)
+    const ameaca = vindo ? `p${vindo.id}` : pertoDeBater ? "perto" : anel ? "anel" : null;
+    if (ameaca !== ia.ameaca) { ia.ameaca = ameaca; ia.reageEm = p.t + entre(perf.reacao); ia.decidiu = !ameaca; }
+    if (ameaca && !ia.decidiu && p.t >= ia.reageEm && !e.atordoado) {
+      ia.decidiu = true;
       const sorte = p.rng();
-      if (vindo && sorte < 0.35 * habil && e.guarda > 40) { ia.guarda = 0.35; cmd.mira = { x: -vindo.dx, y: -vindo.dy }; }
-      else if (sorte < 0.75 && e.esquivaCd <= 0 && (p.modo !== "naruto" || (e.jogador.substitutes > 0 && e.bicho.chakra >= 20))) {
+      if (vindo && sorte < perf.guarda && e.guarda > 40) { ia.guarda = 0.35; cmd.mira = { x: -vindo.dx, y: -vindo.dy }; }
+      else if (sorte < perf.guarda + perf.foge && e.esquivaCd <= 0 && (p.modo !== "naruto" || (e.jogador.substitutes > 0 && e.bicho.chakra >= 20))) {
         cmd.esquiva = true;
         const ref = vindo ? { x: vindo.dx, y: vindo.dy } : { x: dx / d, y: dy / d };
         cmd.dx = -ref.y * ia.lado; cmd.dy = ref.x * ia.lado;
-      } else if (pertoDeBater && e.guarda > 30) ia.guarda = 0.4;
+      } else if (pertoDeBater && e.guarda > 30 && sorte < perf.guarda + perf.foge + 0.2) ia.guarda = 0.4;
     }
-    if (ia.guarda > 0) { ia.guarda -= 1 / 60; cmd.guarda = true; if (!vindo) cmd.mira = { x: dx, y: dy }; return cmd; }
-    const ataque = p.nivel >= 2 ? 0.24 : 0.17;
-    if (golpe != null && !ocupado(e) && (d < 5.5 || valor > 4) && p.rng() < (vulneravel ? ataque * 1.8 : ataque)) {
-      cmd.golpe = golpe;
+    if (ia.guarda > 0) { ia.guarda -= dt; cmd.guarda = true; if (!vindo) cmd.mira = { x: dx, y: dy }; return cmd; }
+    // atacar: depois de cada golpe o robô respira um pouco (perf.pausa); quem ficou vulnerável ele pune (perf.pune)
+    ia.pausa -= dt;
+    const pode = ia.pausa <= 0 || (vulneravel && p.rng() < perf.pune * 0.05);
+    if (golpe != null && !ocupado(e) && pode && (d < 5.5 || valor > 4) && p.rng() < 0.3) {
+      cmd.golpe = golpe; ia.pausa = entre(perf.pausa);
       const hab = habilidadeDeGolpe(moves[golpe], p.dex.MOVES[moves[golpe]]);
       const m = lead(hab);
       cmd.mira = m;
@@ -1207,6 +1266,6 @@
     return e;
   }
 
-  const api = { ARENA, BIOMAS, BIOMA_DO_TIPO, TERRENOS, TERRENO, escolherBioma, VEL_CASA, DANO_CASA, QUEIMA, terrenoDe, zonaEm, noTerreno, TEMPO_MAX, K_DANO, K_DANO_POKEMON, GUARDA_MAX, ESQUIVA_CD, JANELA_APARAR, JANELA_PERFEITA, ESTILOS, sorteDe, criarPartida, passo, preverMovimento, pensarRobo, habilidadeDeGolpe, habilidadesDoDex, calcularDano, estado };
+  const api = { DIFICULDADES, PERFIL_ROBO, VEL_MIN, VEL_MAX, RE, BOTE_MAX, BOTE_VEL, velocidade, fatorDaRe, ARENA, BIOMAS, BIOMA_DO_TIPO, TERRENOS, TERRENO, escolherBioma, VEL_CASA, DANO_CASA, QUEIMA, terrenoDe, zonaEm, noTerreno, TEMPO_MAX, K_DANO, K_DANO_POKEMON, GUARDA_MAX, ESQUIVA_CD, JANELA_APARAR, JANELA_PERFEITA, ESTILOS, sorteDe, criarPartida, passo, preverMovimento, pensarRobo, habilidadeDeGolpe, habilidadesDoDex, calcularDano, estado };
   return api;
 });

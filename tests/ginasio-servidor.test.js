@@ -274,7 +274,8 @@ test("ginásio/servidor: dois clientes e robôs jogam até o fim e pontuam na No
   assert.equal(st.match.jogadores.length, 4);
   assert.equal(st.match.jogadores.filter((p) => p.bot).length, 2);
   const lados = [0, 1].map((lado) => st.match.jogadores.filter((p) => p.lado === lado));
-  const sombra = G.criarPartida({ modo: "pokemon", formato: "2x2", seed: "clientes" }, lados);
+  // os clientes jogam com o robô difícil (o tempo de reação conta no relógio da sombra, acertado a cada pacote)
+  const sombra = G.criarPartida({ modo: "pokemon", formato: "2x2", seed: "clientes", robo: "dificil" }, lados);
   sombra.rng = () => 0; // os clientes apertam assim que um golpe fica disponivel
   sombra.terreno = G.terrenoDe(st.match.bioma); // o mesmo lugar do servidor (o robô dos clientes foge da lava e da água)
   let seq = 0, danos = 0, desmaios = 0;
@@ -283,6 +284,7 @@ test("ginásio/servidor: dois clientes e robôs jogam até o fim e pontuam na No
     desmaios += lista.filter((e) => e.tipo === "desmaiou").length;
   });
   const jogar = (sn) => {
+    sombra.t = sn.tempo;
     for (const e of sombra.entidades) {
       const dado = sn.entidades.find((p) => p.id === e.id);
       e.jogador.ativo = dado.ativo;
