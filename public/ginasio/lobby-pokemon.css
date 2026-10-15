@@ -45,8 +45,20 @@ body.pokemon-lobby:not(.jogando) .participante.vermelho{background:#e6548030}
 body.pokemon-lobby:not(.jogando) .como-jogar{background:#ffffff0d;border-color:#ffffff40;color:#f8f3ff}
 body.pokemon-lobby:not(.jogando) .desafio-lider{background:color-mix(in srgb,var(--cor) 18%,#21192f);color:#fff}
 body.pokemon-lobby:not(.jogando) .desafio-lider p{color:#dfd5e8}
+body.pokemon-lobby:not(.jogando) .desafio-lider .time-lider{display:none}
 body.pokemon-lobby:not(.jogando) .insignias{border-top-color:#ffffff24}
 body.pokemon-lobby:not(.jogando) .dica-insignias,body.pokemon-lobby:not(.jogando) #dicaArena,body.pokemon-lobby:not(.jogando) #dicaPokemons{color:#c0b4d4}
+.pre-luta{margin:14px 0 18px;padding:14px;border:1px solid #c7a46c7a;border-radius:14px;color:#f9f4ff;background:radial-gradient(circle at 50% 53%,#ac59c063,transparent 45%),linear-gradient(135deg,#303052,#22142f 60%,#263a63);box-shadow:inset 0 1px #ffffff2a,0 10px 30px #09051650}
+.vs-topo{display:flex;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid #ffffff38;color:#f8c86c;font:800 9px ui-monospace,monospace;letter-spacing:.12em}
+.vs-topo span:last-child{color:#cab8e5;text-align:right}
+.vs-corpos{display:grid;grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr);align-items:center;gap:5px;padding-top:13px}
+.vs-time{min-width:0}.vs-time>strong{display:block;min-height:28px;color:#f8f4ff;font-size:10px;line-height:1.15;text-transform:uppercase;letter-spacing:.07em;overflow-wrap:anywhere}
+.vs-mons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;align-items:end}.vs-mons.um-so{grid-template-columns:1fr}
+.vs-mon{min-width:0;text-align:center}.vs-mon img{display:block;width:100%;height:50px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 7px 7px #0009)}.vs-mon span{display:block;font-size:8px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e4dbf2}
+.vs-mons.um-so .vs-mon img{height:68px}.vs-mons.um-so .vs-mon span{font-size:11px}
+.vs-sinal{font:900 19px/1 system-ui,sans-serif;letter-spacing:-.1em;color:#f8c86c;text-align:center;text-shadow:0 0 18px #f5a65e}
+.pre-luta p{margin:9px 0 0;font-size:11px;color:#e7d8ed}
+body.pokemon-lobby:not(.jogando) #versusSala{margin-top:12px}
 @keyframes heroRaio{to{transform:rotate(360deg)}}@keyframes heroRespira{to{opacity:.65;scale:1.08}}@keyframes heroFlutua{to{translate:0 -12px}}
 @media(max-width:800px){body.pokemon-lobby:not(.jogando){height:auto;min-height:100dvh}body.pokemon-lobby:not(.jogando) #principal{display:block}body.pokemon-lobby:not(.jogando) #quadra{height:clamp(360px,56vw,490px)}body.pokemon-lobby:not(.jogando) #painel{border-left:0;border-top:1px solid #af91c75c;overflow:visible}.hero-texto{bottom:64px}.hero-texto strong{font-size:clamp(55px,9vw,82px)}.hero-rodape{bottom:20px}.hero-energia{width:430px;height:430px}.hero-mon-esq{width:35%;top:8%}.hero-mon-dir{width:35%;top:8%}.hero-mon-centro{top:42%}}
 @media(max-width:480px){body.pokemon-lobby:not(.jogando) #quadra{height:400px}.hero-topo{top:19px}.hero-mon-esq{left:-7%;width:49%;height:42%;top:12%}.hero-mon-dir{right:-7%;width:49%;height:42%;top:12%}.hero-mon-centro{top:45%;width:26%;left:37%}.hero-selo{top:31%;width:90px}.hero-energia{top:31%}.hero-texto{left:20px;bottom:61px}.hero-texto>span{font-size:9px;margin-bottom:8px}.hero-texto strong{font-size:54px}.hero-texto p{font-size:12px;margin-top:12px}.hero-rodape{left:20px;right:20px;font-size:8px}.hero-rodape span:nth-child(2){display:none}}

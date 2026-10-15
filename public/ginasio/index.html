@@ -44,6 +44,7 @@
     <div id="inicio">
       <label for="hName">Seu nome</label><input id="hName" maxlength="16" autocomplete="nickname" enterkeyhint="done">
       <div id="desafioLider" class="desafio-lider hidden"></div>
+      <section id="versusInicio" class="pre-luta hidden" aria-label="Prévia do confronto"></section>
       <button id="btnRobo" class="primario largo">Jogar contra robô</button>
       <div class="acoes"><button id="btnCreate">Criar sala</button></div>
       <div class="entrada"><label for="hCode">Código da sala</label><div class="linha"><input id="hCode" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go"><button id="btnJoin">Entrar</button><button id="btnWatch" class="icone" title="Assistir" aria-label="Assistir"></button></div></div>
@@ -71,6 +72,7 @@
     <section id="sala" class="hidden">
       <div class="linha"><h2>Na arena</h2><button id="btnInvite" class="icone" title="Copiar convite" aria-label="Copiar convite"></button></div>
       <div id="participantes"></div>
+      <section id="versusSala" class="pre-luta hidden" aria-label="Prévia do confronto"></section>
       <div class="segmentos lados"><button data-lado="0">Lado azul</button><button data-lado="1">Lado vermelho</button><button data-lado="null" title="Ficar de fora" aria-label="Ficar de fora"></button></div>
       <button id="btnStart" class="primario largo">Começar batalha</button>
       <button id="btnLeave" class="discreto largo">Sair da sala</button>

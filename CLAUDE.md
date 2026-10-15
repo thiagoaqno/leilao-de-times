@@ -177,6 +177,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 - `#debug` expõe `window.__futevolei` (`avancar(seg)`, `toque(tipo)` e `congelar()` para fotos do quadro exato).
 
 **Ginásio:**
+- **Prévia Pokémon antes da luta:** `sala.js` monta `#versusInicio` e `#versusSala` com o trio do jogador e o time do líder ou Pokémon selvagem; `lobby-pokemon.css` desenha o cartão VS. Na Vila, `public/index.html` pede `pokedex` antes de "Lutar" e mostra em `#capTime` o trio que `ginasio.js:timeDaColecao` escolherá; o visual fica em `public/vila/versus.css`.
 - **Jeitos de golpe e física (`regras.js`):** fora do Naruto (que diz o jeito em `forma`), o jeito de cada golpe vem
   de `ESTILOS` (id → feixe, cone, anel, onda, rajada, bumerangue, teleguiado, bomba, salto, zona, combo, arremesso,
   investida); golpe novo que não está lá cai na regra antiga (prioridade vira investida, poder 100+ vira área,

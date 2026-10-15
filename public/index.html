@@ -240,6 +240,7 @@ canvas.mini.off{display:none}
 }
 @media (prefers-reduced-motion:reduce){.dlg,.fade{transition:none}}
 </style>
+<link rel="stylesheet" href="/vila/versus.css">
 </head>
 <body>
 <canvas id="cv" aria-hidden="true"></canvas>
@@ -283,6 +284,8 @@ canvas.mini.off{display:none}
 </div>
 <div class="bt cap" id="cap" role="dialog" aria-modal="true" aria-label="Pokémon selvagem">
   <div class="arena">
+    <div class="cap-confronto" aria-label="Prévia do confronto"><div class="cap-eyebrow">ENCONTRO NA GRAMA ALTA</div><h2>SEU TIME</h2><div id="capTime" class="cap-time"></div></div>
+    <div class="cap-vs" aria-hidden="true">VS</div>
     <div class="ibox foe" id="capInfo"></div>
     <div class="spot foe"><img class="mon" id="capMon" alt=""><div class="plat"></div></div>
   </div>
@@ -1452,6 +1455,19 @@ function pisouNoMato() {
 }
 const spriteSelvagem = (e) => { const u = PokeDex.sprite(e.bicho); return e.brilhante ? u.replace(/\/(\d+)\.png$/, "/shiny/$1.png") : u; };
 const nomeDoSelvagem = (e) => `${e.nome}${e.brilhante ? " brilhante" : ""}`;
+// Espelha a escolha do servidor: trio selecionado se for todo da coleção; senão, os três de nível mais alto.
+function timeParaEncontro(individuos) {
+  const melhores = new Map();
+  for (const p of individuos || []) if (!melhores.has(p.bicho)) melhores.set(p.bicho, p);
+  const pedido = store.get("pokemon_time");
+  const ids = Array.isArray(pedido) && pedido.length === 3 && new Set(pedido).size === 3 && pedido.every((id) => melhores.has(id))
+    ? pedido : [...melhores.values()].sort((a, b) => b.nivel - a.nivel || b.xp - a.xp).slice(0, 3).map((p) => p.bicho);
+  return ids.map((id) => melhores.get(id)).filter(Boolean);
+}
+function mostrarTimeDoEncontro(individuos) {
+  const time = timeParaEncontro(individuos);
+  $("capTime").innerHTML = time.map((p, i) => `<div class="cap-aliado"><span class="cap-num">0${i + 1}</span><img src="${esc(PokeDex.sprite(p.bicho))}" alt="" width="60" height="60"><span><b>${esc(PokeDex.MONS[p.bicho].n)}</b><small>NÍVEL ${p.nivel}</small></span></div>`).join("");
+}
 // o encontro: o Pokémon com o nível, a vida e a chance da Pokébola (a da PokéAPI: vida cheia é difícil; enfraqueça
 // lutando no Ginásio, "Lutar", que lá a chance sobe)
 function abrirEncontro(e) {
@@ -1461,6 +1477,12 @@ function abrirEncontro(e) {
   $("capInfo").innerHTML = `<div class="ihead">${esc(e.nome)}${e.brilhante ? " ✨" : ""}<small>Nv ${e.nivel}</small></div><div class="hp">PS<div class="bar"><i></i></div>${e.hp}/${e.max}</div><div class="sub"><span class="selo" style="--r:${R.cor}">${R.nome}</span><span>Nº ${e.num}</span></div>`;
   $("capChance").textContent = `chance ${Niveis.porcento(e.chance)} · Espaço`;
   $("capMsg").textContent = `Um ${nomeDoSelvagem(e)} selvagem (nível ${e.nivel}) apareceu! Lutando, ele enfraquece e a Pokébola pega mais fácil.`;
+  $("capTime").innerHTML = '<p>Preparando seu time…</p>';
+  socket.emit("pokedex", { codigo: treinador }, (r) => {
+    if (encontroAgora !== e) return;
+    if (r?.ok) mostrarTimeDoEncontro(r.pokemons);
+    else $("capTime").innerHTML = "<p>Seu time aparece ao iniciar a luta.</p>";
+  });
   $("cap").classList.add("on"); botoesDoEncontro(true); $("capLutar").focus();
 }
 function botoesDoEncontro(on) { $("capBola").disabled = $("capFugir").disabled = $("capLutar").disabled = !on; }
