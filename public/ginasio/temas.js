@@ -40,6 +40,7 @@ const TEMAS = {
 // o líder da partida (ou o do convite, ainda na sala)
 function temaAtual() {
   const l = (S?.config?.lider && Lideres.de(S.config.lider)) || (typeof LIDER !== "undefined" && LIDER);
+  if (modoAtual() === "pokemon") return biomaDaPartida(l); // o modo Pokémon luta ao ar livre (biomas.js)
   return (l && TEMAS[l.tipo]) || TEMAS.padrao;
 }
 // um número "aleatório" fixo para cada i (o desenho não pisca de um quadro para o outro)

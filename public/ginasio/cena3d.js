@@ -151,6 +151,10 @@ function montarTema(T) {
   if (cena3d.grupo) liberarGrupo(cena3d.grupo);
   const grupo = new THREE.Group(); cena3d.grupo = grupo; scene.add(grupo);
   const toon = (hex) => new THREE.MeshToonMaterial({ color: cor3(hex), gradientMap: degrade });
+  if (T.bioma) { // o modo Pokémon: o lugar aberto, sem arquibancada (biomas.js)
+    cena3d.torcida = null; cena3d.cenario = montarBioma(T, grupo, toon); cena3d.temaFeito = T;
+    return;
+  }
   const caixa = (w, h, d, mat, x, y, z, sombra = true) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z);
     m.castShadow = sombra; m.receiveShadow = true; grupo.add(m); return m;

@@ -534,6 +534,24 @@ function bichoNoQuadro(pose, agora, x, chao) {
   return s * 1.2;
 }
 // a vida em cima da cabeça (ou no chão, enquanto o bicho está no alto ou debaixo da terra) e o resto, na tela
+// o modo Pokémon: a barra de cima no jeito de MOBA (hud-pokemon.js): o nome de quem joga, o nível na caixinha, a vida
+// riscada de 100 em 100 (verde eu, azul quem joga comigo, vermelho o outro lado)
+function barraDoHeroi(e, x, y, largura, u, s) {
+  const w = Math.max(largura, 26 * u), alt = Math.max(3 * u, s * 0.13), x0 = x - w / 2, meuLado = meuJogador()?.lado ?? 0;
+  const cor = e.id === ME?.id ? "#5bd35b" : e.lado === meuLado ? "#3f9cff" : "#e0443a";
+  ret(x0 - u, y - u, w + 2 * u, alt + 2 * u, "#0b0f12");
+  ret(x0, y, w, alt, "#26302f");
+  ret(x0, y, w * Math.max(0, e.hp / e.max), alt, cor);
+  ret(x0, y, w * Math.max(0, e.hp / e.max), Math.max(1, alt * 0.3), "#ffffff40"); // o brilho de cima
+  for (let k = 100; k < e.max; k += 100) ret(x0 + w * k / e.max, y, Math.max(1, u * 0.6), alt, "#0b0f12aa");
+  const caixa = Math.max(8 * u, alt * 2.2), nome = S.match.jogadores.find((j) => j.id === e.id)?.nome || "";
+  ret(x0 - caixa - u, y + alt / 2 - caixa / 2, caixa, caixa, "#1c2328"); ctx.strokeStyle = "#f0c24a"; ctx.lineWidth = u; ctx.strokeRect(Math.round(x0 - caixa - u), Math.round(y + alt / 2 - caixa / 2), Math.round(caixa), Math.round(caixa));
+  texto("50", x0 - caixa / 2 - u, y + alt / 2 + caixa * 0.28, "#f2e7c8", Math.max(5 * u, caixa * 0.62));
+  if (nome) {
+    ctx.save(); ctx.font = `700 ${Math.max(6 * u, Math.round(s * 0.32))}px system-ui,sans-serif`; ctx.textAlign = "left"; ctx.lineWidth = 2 * u; ctx.strokeStyle = "#0b0f12";
+    ctx.strokeText(nome, Math.round(x0), Math.round(y - 2 * u)); ctx.fillStyle = cor; ctx.fillText(nome, Math.round(x0), Math.round(y - 2 * u)); ctx.restore();
+  }
+}
 function bichoInfo(pose, agora) {
   const { e } = pose;
   if (!pose.visivel || !e.campo) return;
@@ -543,8 +561,11 @@ function bichoInfo(pose, agora) {
   const topo = pontoTela(pose.wx, pose.wy - h * Math.sin(deita), (alto ? 0 : pose.altura) + h * Math.cos(deita));
   const u = Math.max(1, camera.traco / 2); // um pixel de meia tela
   const largura = Math.max(15 * u, s * 1.5), x = topo.x, topoVida = Math.max(6 * u, topo.y);
-  ret(x - largura / 2 - u, topoVida - u, largura + 2 * u, 4 * u, "#334d3b");
-  ret(x - largura / 2, topoVida, largura * Math.max(0, e.hp / e.max), 2 * u, e.lado ? "#ec828b" : "#55b49c");
+  if (modoAtual() === "pokemon" && S?.match) barraDoHeroi(e, x, topoVida, largura, u, s);
+  else {
+    ret(x - largura / 2 - u, topoVida - u, largura + 2 * u, 4 * u, "#334d3b");
+    ret(x - largura / 2, topoVida, largura * Math.max(0, e.hp / e.max), 2 * u, e.lado ? "#ec828b" : "#55b49c");
+  }
   if (e.canal) {
     const pe = pontoTela(pose.wx, pose.wy);
     ret(x - largura / 2, pe.y + 2 * u, largura, 2 * u, "#315747"); ret(x - largura / 2, pe.y + 2 * u, largura * (1 - e.canal.t / 0.8), 2 * u, "#b7f59b");

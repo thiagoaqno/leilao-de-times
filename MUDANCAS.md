@@ -1,43 +1,52 @@
-# Futevôlei: o toque ganha animação em 8 tempos
+# Ginásio, modo Pokémon: HUD de MOBA e cenários ao ar livre
 
 ## O que muda
 
-O mesmo conceito dos golpes do Ginásio, agora no toque do futevôlei. Tudo é só visual e som: as regras, o servidor e o
-tempo do toque não mudam.
+**A HUD inteira do modo Pokémon foi refeita no jeito das partidas de MOBA vistas de cima** (como a referência):
 
-1. **Carga:** com o toque armado e a bola chegando, a energia junta no ponto do contato: azul fraquinho no passe,
-   laranja no ataque e vermelho-fogo, com faíscas chegando de fora e um chiado subindo, no Shark, na bicicleta e no
-   voleio. O saque carrega no preparo.
-2. **Núcleo:** a bola chutada forte fica com uma aura na cor do golpe e um aro pulsando, que somem quando ela perde
-   velocidade.
-3. **Rastro:** a fita que já existia ganhou brasas no golpe forte e um fiapo de areia no ataque.
-4. **Estouro:** no toque, uma onda de choque no ar e traços de velocidade saindo da bola; no golpe forte, um jorro de
-   faíscas. O ataque e o golpe forte têm um congelamento curtíssimo (35 e 60 ms, só no desenho: a bola continua no
-   tempo do jogo) e um tranco na câmera.
-5. **Reação:** quem defende um ataque do outro time ganha "Defendeu!" (com a velocidade da bola, se ela vinha forte)
-   e um anel azul; a bola do ataque que crava na areia do outro lado faz uma onda no chão e treme a câmera.
-6. **Som:** cada golpe tem o seu timbre (peito abafado, cabeça seca, letra e calcanhar estalados, o saque, o
-   ataque e o estalo forte do Shark/bicicleta/voleio), mais o chiado da carga, o vento da bola forte, o baque da defesa
-   e a areia pela força da queda.
-7. **Rescaldo:** a bola deixa a marca na areia onde caiu (some devagar), a nuvem de areia sobe e assenta, e a rede
-   balança quando a bola bate nela (uma onda que sai do ponto e morre).
-8. **Números:** a velocidade do ataque em km/h salta perto da bola (amarelo, laranja com "Pancada!" a partir de 75 e
-   vermelho com "Bomba!" a partir de 95), o rally conta ao vivo embaixo do placar (esquenta a partir de 10 toques) e a
-   mensagem do ponto diz a velocidade do ataque que fez o ponto.
+- **Em cima:** os dois times lado a lado, com o retrato de cada Pokémon e a vida embaixo (o que está em campo acende
+  em dourado, o desmaiado fica cinza e riscado), o placar de nocautes de cada lado e o relógio no meio.
+- **Embaixo, o painel do meu Pokémon:** o retrato grande com o nível, o nome e os tipos; os atributos (ATQ, DEF, VEL)
+  com a seta do que subiu ou caiu; a barra de vida riscada de 100 em 100 com os números e a barra de guarda; as quatro
+  habilidades quadradas, com a moldura na cor do tipo, a tecla no canto (M1, M2, Q, E) e a recarga girando em leque;
+  esquiva (Espaço) e guarda (Shift); as reservas para trocar (1, 2 e 3) e os efeitos em cima de mim (tonto, golpe
+  forte guardado, guarda, atributos).
+- **O minimapa** no canto: o chão do lugar, as pedras, os bichos dos dois lados (eu com o anel amarelo), os avisos no
+  chão e os projéteis.
+- **O feed de nocautes** no canto de cima: quem nocauteou quem, com os retratos, e some sozinho.
+- **Em cima de cada bicho:** o nome de quem joga, o nível na caixinha e a vida riscada (verde eu, azul quem joga
+  comigo, vermelho o outro lado).
+- Em telas menores o painel encolhe (some o retrato e o minimapa); no celular, os botões de toque continuam os de
+  sempre, com a barra dos times em cima.
 
-Com menos movimento no sistema, nada treme, congela ou salta.
+**Os cenários do modo Pokémon saíram do ginásio e foram para o ar livre**, visto de cima como na referência:
+
+- **Clareira da floresta** (o padrão): grama com manchas, a trilha de terra serpenteando pelo meio, capim, flores e
+  folhas secas no chão, árvores verdes, outonais e brancas em volta, arbustos, pedras, um tronco caído e cogumelos.
+- **Cratera do vulcão:** basalto com rachaduras de lava, árvores queimadas com brasa nos galhos, poças de lava com
+  crosta e o miolo pulsando.
+- **Lagoa:** areia com conchas e poças, palmeiras, juncos e a água no fundo.
+- **Pico nevado:** neve com pegadas na trilha e gelo, pinheiros com neve em cima e montes de neve.
+- **Ruínas:** lajotas com musgo nas juntas e rachaduras, colunas quebradas no meio do mato e o arco caído ao fundo.
+- As pilastras da regra (no mesmo lugar e do mesmo tamanho) viram a pedra com musgo, o basalto com veio de lava, a
+  rocha de coral, os cristais de gelo ou a coluna quebrada. Cada lado tem a sua bandeira (azul e vermelha).
+- O lugar sai do tipo do líder (fogo e dragão no vulcão, água na lagoa, gelo na neve, pedra, lutador, psíquico e
+  fantasma nas ruínas, grama e elétrico na floresta); sem líder, a partida sorteia (a floresta sai mais), e a sala
+  inteira vê o mesmo.
+
+Galeramon e Naruto continuam com o ginásio e a HUD de antes.
 
 ## Arquivos
 
-- `public/futevolei/encenacao.js` (novo): `criarEncenacao` e as contas (`pesoDoToque`, `kmh`, `jeitoDaVelocidade`,
-  `PAUSA`).
-- `public/futevolei/jogo.js`: os ganchos (`Enc`), o hit-stop no laço e os sons novos do `Som`.
-- `public/futevolei/cenarios.js`: a rede com malha que balança (`balancarRede`).
-- `public/futevolei/index.html`: `#hVel` e `#hRally` e o estilo deles.
-- `tests/futevolei-encenacao.test.js` (novo), `CLAUDE.md`.
+- `public/ginasio/biomas.js` (novo): `BIOMAS`, `biomaDaPartida`, o chão pintado e `montarBioma`.
+- `public/ginasio/hud-pokemon.js` (novo): a barra dos times, o painel, o minimapa e o feed.
+- `public/ginasio/temas.js`, `cena3d.js`, `desenho.js` (o chão, a cena e a reserva de espaço da câmera), `animacao.js`
+  (`barraDoHeroi`), `hud.js` (as teclas e a recarga em leque), `estilo.css`, `index.html`.
+- `tests/ginasio-biomas.test.js` (novo), `CLAUDE.md`.
 
 ## Testes
 
-- `tests/futevolei-encenacao.test.js` e `tests/futevolei.test.js` passando.
-- Conferido no navegador num treino contra robôs: a velocidade (42 a 57 km/h nos ataques dos robôs), o rally, a aura,
-  a onda de choque e a marca na areia aparecem, sem erro novo na página. O E2E não foi rodado.
+- `tests/ginasio-biomas.test.js` (cada lugar com os campos de um tema; o líder escolhe; sem líder, a mesma partida dá
+  o mesmo lugar e as partidas variam) e os outros testes do Ginásio passando.
+- Conferido no navegador nos cinco lugares (1100×640), em 700×420 e 480×270, e no celular em pé e deitado, sem erro
+  na página. O E2E não foi rodado.
