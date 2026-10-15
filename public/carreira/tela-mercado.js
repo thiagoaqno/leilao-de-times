@@ -19,6 +19,15 @@ $("mOlheiro").onclick = async () => {
 // a regra de compra da turma (carreira em grupo): a nota que não cabe na cota de agora fica apagada na lista
 const foraDaRegra = (j) => EM_GRUPO && E.regraCompras && E.regraCompras.tipo && !E.regraCompras.ok[Math.min(99, notaDe(j))];
 function telaMercado() {
+  const convocacao = modoMercado === "selecao" && !!E.selecao;
+  if (modoMercado === "selecao" && !E.selecao) modoMercado = "comprar";
+  $("mModo").querySelector('[data-modo="selecao"]').classList.toggle("hidden", !E.selecao);
+  $("mCaixa").classList.toggle("hidden", convocacao);
+  $("mJanela").classList.toggle("hidden", convocacao);
+  $("mRegra").classList.toggle("hidden", convocacao);
+  $("mFiltros").classList.toggle("hidden", convocacao || modoMercado !== "comprar");
+  $("mOlheiro").closest(".olheiro").classList.toggle("hidden", convocacao);
+  if (convocacao) { for (const b of $("mModo").children) b.setAttribute("aria-pressed", String(b.dataset.modo === modoMercado)); listaConvocacao(); return; }
   $("mCaixa").innerHTML = `${ic("moeda")} ${dinheiro(E.caixa)}`;
   const regra = EM_GRUPO && E.regraCompras && E.regraCompras.tipo ? E.regraCompras : null;
   $("mRegra").classList.toggle("hidden", !regra);
@@ -39,7 +48,7 @@ function telaMercado() {
 function listaCompra() {
   const busca = $("mBusca").value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""), notaMin = +$("mNota").value, max = precoMax(), cabe = $("mCabe").checked, soBaixa = $("mBaixa").checked;
   const lista = Object.values(JOGADORES).filter((j) => {
-    if (donoDe(j.id) === E.clube || !CLUBES[donoDe(j.id)]) return false; // os aposentados não têm clube
+    if (j.id.startsWith("copa-") || donoDe(j.id) === E.clube || !CLUBES[donoDe(j.id)]) return false; // seleção não entra no mercado de clubes
     const n = notaDe(j), v = valorAtual(j.id) * (E.indicacoes[j.id] ? 0.85 : 1);
     if (n < notaMin || v > max || (cabe && v > E.caixa)) return false;
     if (soBaixa && !Mercado.desvalorizado({ idade: comNota(j).idade, fator: formaDe(j.id) })) return false;
@@ -49,10 +58,27 @@ function listaCompra() {
   $("mLista").innerHTML = lista.length ? lista.slice(0, mostrar).map((j) => (foraDaRegra(j) ? figurinha(j.id).replace('class="figurinha ', 'class="figurinha fora-regra ') : figurinha(j.id))).join("") : `<p class="suave vazio">Ninguém com esses filtros.</p>`;
   $("mMais").classList.toggle("hidden", lista.length <= mostrar);
 }
+let saidaConvocacao = null;
+function listaConvocacao() {
+  const ids = E.candidatosSelecao || [], atual = new Set(E.convocadosSelecao || []);
+  const linha = (id) => { const j = JOGADORES[id]; if (!j) return ""; const dentro = atual.has(id), marcado = saidaConvocacao === id;
+    return `<button class="copa-atleta ${dentro ? "convocado" : "reserva"} ${marcado ? "marcado" : ""}" data-copa-atleta="${h(id)}" ${E.convocacaoAberta ? "" : "disabled"}><b>${h(j.nome)}</b><span>${h(j.pos)} · ${notaDe(j)} GER</span><small>${dentro ? marcado ? "Sai nesta troca" : "Convocado · escolher para retirar" : "Disponível · escolher para entrar"}</small></button>`; };
+  $("mLista").innerHTML = `<div class="copa-convocacao"><div class="copa-convocacao-topo"><span class="sobre">${h(nomeClube(E.selecao))} · Copa do Mundo</span><h3>Seus 26 convocados</h3><p>${E.convocacaoAberta ? "Escolha um convocado para sair e depois um atleta da mesma seleção para entrar. A lista fecha na estreia." : "A convocação está fechada desde a estreia."}</p></div><div class="copa-atletas">${ids.filter((id) => atual.has(id)).map(linha).join("")}</div><h3>Outros atletas da seleção</h3><div class="copa-atletas">${ids.filter((id) => !atual.has(id)).map(linha).join("")}</div></div>`;
+  $("mMais").classList.add("hidden");
+}
+$("mLista").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-copa-atleta]"); if (!b || !E.convocacaoAberta) return;
+  const id = b.dataset.copaAtleta, dentro = (E.convocadosSelecao || []).includes(id);
+  if (dentro) { saidaConvocacao = saidaConvocacao === id ? null : id; listaConvocacao(); return; }
+  if (!saidaConvocacao) return toast("Escolha primeiro quem sai da convocação.");
+  b.disabled = true; const r = await pedir("convocar", { entra: id, sai: saidaConvocacao });
+  if (!r.ok) { b.disabled = false; return toast(r.error); }
+  saidaConvocacao = null; receber(r.estado); toast("Convocação atualizada.");
+});
 function listaVenda() {
   const ordem = ["GOL", "ZAG", "LD", "LE", "VOL", "MC", "MEI", "PE", "PD", "ATA"];
-  const meus = [...E.elenco].sort((a, b) => (E.aVenda.includes(b) ? 1 : 0) - (E.aVenda.includes(a) ? 1 : 0) || ordem.indexOf(JOGADORES[a].pos) - ordem.indexOf(JOGADORES[b].pos));
-  $("mLista").innerHTML = `<p class="suave cheio">${E.elenco.length} jogadores (mínimo ${Mercado.ELENCO_MIN}, máximo ${Mercado.ELENCO_MAX}). Toque num jogador para pôr à venda ou vender.</p>` + meus.map((pid) => figurinha(pid)).join("");
+  const meus = elencoDe(E.clube).map((j) => j.id).sort((a, b) => (E.aVenda.includes(b) ? 1 : 0) - (E.aVenda.includes(a) ? 1 : 0) || ordem.indexOf(JOGADORES[a].pos) - ordem.indexOf(JOGADORES[b].pos));
+  $("mLista").innerHTML = `<p class="suave cheio">${meus.length} jogadores (mínimo ${Mercado.ELENCO_MIN}, máximo ${Mercado.ELENCO_MAX}). Toque num jogador para pôr à venda ou vender.</p>` + meus.map((pid) => figurinha(pid)).join("");
   $("mMais").classList.add("hidden");
 }
 // as movimentações: os posts de mercado do feed (com a arte) e, embaixo, a lista de todas as transferências

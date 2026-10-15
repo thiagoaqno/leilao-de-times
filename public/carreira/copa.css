@@ -1,0 +1,16 @@
+.copa-ofertas { border: 1px solid rgba(255, 198, 73, .35); background: linear-gradient(135deg, rgba(84, 44, 126, .35), rgba(15, 47, 74, .5)); }
+.copa-ofertas h3 { display: flex; align-items: center; gap: .55rem; }
+.copa-ofertas p { line-height: 1.5; }
+.copa-ofertas-lista { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .7rem; margin: 1rem 0; }
+.copa-oferta { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .2rem .6rem; text-align: left; padding: .9rem; border: 1px solid rgba(255, 255, 255, .24); border-radius: 12px; background: rgba(255, 255, 255, .07); color: inherit; cursor: pointer; }
+.copa-oferta:hover, .copa-oferta:focus-visible { border-color: #ffc649; background: rgba(255, 198, 73, .13); }
+.copa-oferta small { grid-column: 2; opacity: .7; }
+.copa-convocacao { grid-column: 1 / -1; width: 100%; }
+.copa-convocacao-topo { padding: 1.2rem; margin-bottom: 1rem; border-radius: 14px; background: linear-gradient(120deg, rgba(91, 49, 142, .55), rgba(19, 47, 83, .6)); }
+.copa-convocacao-topo p { max-width: 60ch; line-height: 1.5; }
+.copa-atletas { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .5rem; margin: .7rem 0 1.4rem; }
+.copa-atleta { display: flex; flex-direction: column; gap: .2rem; min-height: 92px; padding: .75rem; text-align: left; border: 1px solid rgba(255, 255, 255, .18); border-radius: 10px; background: rgba(255, 255, 255, .055); color: inherit; cursor: pointer; }
+.copa-atleta.convocado { border-left: 3px solid #ffc649; }
+.copa-atleta.marcado { outline: 2px solid #ffc649; }
+.copa-atleta small { opacity: .65; }
+.copa-atleta:disabled { cursor: default; }

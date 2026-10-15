@@ -23,7 +23,8 @@ function desenharTela(id) {
 }
 const posicaoDe = (id) => E.tabela.findIndex((l) => l.id === id) + 1;
 const placarTxt = (p) => (p ? `${p[0]} × ${p[1]}` : "×");
-const resultadoMeu = (j) => { if (!j.placar) return ""; const decisivo = j.penaltis || j.placar, [a, b] = j.casa === E.clube ? decisivo : [decisivo[1], decisivo[0]]; return a > b ? "V" : a === b ? "E" : "D"; };
+const equipeDoJogo = (j) => j?.competicao === "copadomundo" ? E.selecao : E.clube;
+const resultadoMeu = (j) => { if (!j.placar) return ""; const decisivo = j.penaltis || j.placar, [a, b] = j.casa === equipeDoJogo(j) ? decisivo : [decisivo[1], decisivo[0]]; return a > b ? "V" : a === b ? "E" : "D"; };
 const linhaPenaltis = (p) => p ? `<small class="placar-penaltis">Pên. ${p[0]} × ${p[1]}</small>` : "";
 const humor = (m) => (m >= 80 ? "Embalado" : m >= 65 ? "Confiante" : m >= 50 ? "Normal" : m >= 35 ? "Cabisbaixo" : "Em crise");
 
@@ -44,6 +45,7 @@ function telaSede() {
   telaJogo(pos);
   telaTiles(pos);
   telaEntrada();
+  selecoesNaSede();
   feedNaSede();
   painelTime();
   desenvolvimentoNaSede();
@@ -67,6 +69,17 @@ function telaSede() {
   $("cartaoHistorico").classList.toggle("hidden", !E.historico.length || E.encerrada);
   $("cartaoHistorico").innerHTML = `<h3>Histórico</h3>${E.historico.map((x) => `<p class="hist"><b>${x.ano}</b> ${x.posicao}º lugar, ${x.pontos} pts.${x.titulos && x.titulos.length ? ` Títulos: ${h(x.titulos.join(", "))}.` : ` Campeão: ${h(nomeClube(x.campeao))}.`}${x.artilheiro ? ` Artilheiro: ${h(nomeJogador(x.artilheiro.id))} (${x.artilheiro.gols})` : ""}${x.meta ? ` Meta da diretoria (${x.meta.alvo}º): <b class="${x.meta.cumprida ? "positivo" : "neg"}">${x.meta.cumprida ? "cumprida" : "não cumprida"}</b>.` : ""}</p>`).join("")}`;
 }
+function selecoesNaSede() {
+  const el = $("cartaoSelecao"), propostas = E.ofertasSelecao?.ofertas || [];
+  el.classList.toggle("hidden", !propostas.length && !E.selecao);
+  if (E.selecao) {
+    el.innerHTML = `<span class="sobre">Copa do Mundo · temporada 2</span><h3>${escudo(E.selecao, 2)} ${h(nomeClube(E.selecao))}</h3><p>Você comanda o clube e a seleção. A Copa entra no calendário da próxima temporada${E.copaAtiva ? " e pausa os jogos de clubes por oito semanas" : ""}.</p><p>${(E.convocadosSelecao || []).length} convocados${E.copaAtiva ? E.convocacaoAberta ? " · lista aberta até a estreia" : " · lista fechada" : ""}.</p><button class="secundario" data-ir="mercado" data-abrir-convocacao="1">Ver convocação</button>`;
+  } else if (E.temporada === 1 && E.fim && propostas.length) {
+    el.innerHTML = `<span class="sobre">Convites para a Copa do Mundo</span><h3>Seleções interessadas no seu trabalho</h3><p>Seu desempenho na primeira temporada trouxe estas propostas. Você pode aceitar uma para comandá-la na segunda temporada, junto com o clube.</p><div class="copa-ofertas-lista">${propostas.map((o) => `<button class="copa-oferta" data-aceitar-selecao="${h(o.id)}">${escudo(o.id, 2)}<b>${h(o.nome)}</b><small>Grupo ${h(o.grupo)} · força ${o.forca}</small></button>`).join("")}</div><button class="link" data-aceitar-selecao="recusar">Recusar convites</button>`;
+  } else { el.classList.add("hidden"); return; }
+  for (const b of el.querySelectorAll("[data-aceitar-selecao]")) b.onclick = async () => { b.disabled = true; const r = await pedir("selecao", { id: b.dataset.aceitarSelecao }); if (!r.ok) { b.disabled = false; return toast(r.error); } receber(r.estado); toast(b.dataset.aceitarSelecao === "recusar" ? "Convites recusados." : "Oferta aceita. A Copa será na 2ª temporada."); };
+  const abrir = el.querySelector("[data-abrir-convocacao]"); if (abrir) abrir.addEventListener("click", () => { modoMercado = "selecao"; });
+}
 // os blocos da gestão: o número de agora de cada um (a força do time, o caixa, a posição, o próximo compromisso)
 function telaTiles(pos) {
   const elenco = elencoDe(E.clube), notas = elenco.filter((j) => !fora(j.id)).map(notaDe).sort((a, b) => b - a).slice(0, 11);
@@ -82,7 +95,7 @@ function telaTiles(pos) {
   $("dadoClube").innerHTML = `<b>${E.gestao.confianca}%</b><small>diretoria${noUltimoAno ? ` · ${noUltimoAno} contrato${noUltimoAno > 1 ? "s" : ""} no fim` : ""}</small>`;
   $("tileTabela").innerHTML = `<b>${E.rodada > 0 ? pos + "º" : "—"}</b><small>${E.rodada > 0 ? `${E.tabela[pos - 1].p} ponto${E.tabela[pos - 1].p === 1 ? "" : "s"}` : "sem jogos ainda"}</small>`;
   const prox = E.proximoJogo, comp = prox && E.competicoes && E.competicoes[prox.competicao];
-  $("tileCalendario").innerHTML = prox ? `<b>${escudo(prox.casa === E.clube ? prox.fora : prox.casa, 1)}</b><small>${h(comp ? comp.nome : "Liga")}</small>` : `<b>—</b><small>fim da temporada</small>`;
+  $("tileCalendario").innerHTML = prox ? `<b>${escudo(prox.casa === equipeDoJogo(prox) ? prox.fora : prox.casa, 1)}</b><small>${h(comp ? comp.nome : "Liga")}</small>` : `<b>—</b><small>fim da temporada</small>`;
 }
 // a diretoria perdeu a paciência: a carreira solo acaba aqui, com o que ficou da passagem pelo clube
 function resumoDemissao() {
@@ -138,16 +151,16 @@ function telaJogo(pos) {
   const desfalques = E.elenco.filter((pid) => fora(pid));
   const pendentes = E.caixaEntrada.filter((e) => !e.resolvido).length;
   const prox = E.proximoJogo, comp = prox && E.competicoes && E.competicoes[prox.competicao];
-  const onde = `${comp ? h(comp.nome) : `Rodada ${E.rodada + 1}`}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""} · ${casa === E.clube ? "em casa" : "fora"}`;
+  const onde = `${comp ? h(comp.nome) : `Rodada ${E.rodada + 1}`}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""} · ${casa === equipeDoJogo(prox) ? "em casa" : "fora"}`;
   const peso = pesoDe(prox || { casa, fora });
   if (peso) $("cartaoJogo").dataset.peso = peso.tema; else delete $("cartaoJogo").dataset.peso;
   // no jeito da central do FIFA 16: o bloco "Jogar partida" (na cor do clube, o botão inteiro), o "Como jogar" (os modos) e a prévia
   // do jogo (o confronto, o estádio, o peso do jogo, os desfalques e os próximos compromissos), lado a lado
-  const adv = casa === E.clube ? visitante : casa, quando = prox && prox.semana != null ? `Semana ${prox.semana}` : `Rodada ${E.rodada + 1}`;
+  const adv = casa === equipeDoJogo(prox) ? visitante : casa, quando = prox && prox.semana != null ? `Semana ${prox.semana}` : `Rodada ${E.rodada + 1}`;
   const foto = window.ESTADIOS_API && window.ESTADIOS_API[casa];
   $("cartaoJogo").innerHTML = `<div class="cj">
     <button id="btnJogar" class="cj-tile cj-jogar cta"><span>${E.partida ? "Voltar para a partida" : "Jogar a próxima partida"}</span>
-      <small>${quando} · ${casa === E.clube ? "em casa" : "fora"}</small><small>${comp ? h(comp.nome) : "Liga"}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""}</small>
+      <small>${quando} · ${casa === equipeDoJogo(prox) ? "em casa" : "fora"}</small><small>${comp ? h(comp.nome) : "Liga"}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""}</small>
       <i class="cj-escudo">${escudo(adv, 4)}</i><i class="cj-apito">${ic("apito")}</i></button>
     ${E.partida ? "" : `<div class="cj-tile cj-modos"><h3 class="fx-titulo">Como jogar</h3><div class="modos" role="group" aria-label="Como jogar">${MODOS.map(([m, t, d]) => `<button data-modo="${m}" aria-pressed="${m === modoEscolhido}" title="${h(d)}"><b>${t}</b><small>${d}</small></button>`).join("")}</div></div>`}
     <div class="cj-tile cj-previa"${foto ? ` style="--foto:url('${h(foto.url)}')"` : ""}><div class="jogo-info"><span class="sobre">${E.partida ? "Partida em andamento" : `Prévia · ${onde}`}</span>
@@ -313,9 +326,9 @@ function telaCalendario() {
   const jogos = E.meus.map((j) => ({ semana: j.semana ?? -1, j })).concat((E.tba || []).map((t) => ({ semana: t.semana, t })));
   jogos.sort((a, b) => a.semana - b.semana);
   $("cLista").innerHTML = `<ol class="linha-tempo">${jogos.map((x) => { if (x.t) return linhaTba(x.t); const j = x.j;
-    const r = resultadoMeu(j), adv = j.casa === E.clube ? j.fora : j.casa, janela = j.janela ?? Mercado.janelaAberta(j.rodada); // j.janela: pela rodada do Brasileirão da semana do jogo
+    const r = resultadoMeu(j), adv = j.casa === equipeDoJogo(j) ? j.fora : j.casa, janela = j.janela ?? Mercado.janelaAberta(j.rodada); // j.janela: pela rodada do Brasileirão da semana do jogo
     const atual = E.proximoJogo && j.id === E.proximoJogo.id;
-    return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}" data-time="${adv}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h([nomeFase(j.fase), `S${j.semana}`].filter(Boolean).join(" · "))}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === E.clube ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}${linhaPenaltis(j.penaltis)}</span><span class="res ${r}">${r}</span></li>`;
+    return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}" data-time="${adv}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h([nomeFase(j.fase), `S${j.semana}`].filter(Boolean).join(" · "))}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === equipeDoJogo(j) ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}${linhaPenaltis(j.penaltis)}</span><span class="res ${r}">${r}</span></li>`;
   }).join("")}</ol>`;
   $("cLista").querySelector(".proxima")?.scrollIntoView({ block: "center" });
 }

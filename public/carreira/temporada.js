@@ -34,13 +34,14 @@
 
   const EUROPA = ["inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"];
   const NOMES = { "brasileirao-2026": "Brasileirão Série A", "serieb-2026": "Brasileirão Série B", "inglaterra-2026": "Premier League", "espanha-2026": "La Liga", "italia-2026": "Serie A", "alemanha-2026": "Bundesliga", "franca-2026": "Ligue 1", libertadores: "Libertadores", champions: "Champions League", mundial: "Mundial de Clubes",
-    copadobrasil: "Copa do Brasil", sulamericana: "Sul-Americana", supermundial: "Super Mundial de Clubes" };
+    copadobrasil: "Copa do Brasil", sulamericana: "Sul-Americana", supermundial: "Super Mundial de Clubes", copadomundo: "Copa do Mundo 2026" };
   // as copas no masculino (o Mundial, o Super Mundial): para as frases "campeão do", "eliminado do"
-  const MASCULINAS = ["mundial", "supermundial"];
+  const MASCULINAS = ["mundial", "supermundial", "copadomundo"];
   const masculina = (comp) => MASCULINAS.includes(comp && comp.id);
   const FORCA = (c) => [...c.jogadores].sort((a, b) => b.nota - a.nota).slice(0, 11).reduce((s, j) => s + j.nota, 0) / 11;
   const chaveJogo = (competicao, fase, rodada, casa, fora) => `${competicao}:${fase}:${rodada}:${casa}:${fora}`;
   const RESULTADOS_CPU = new Map();
+  function invalidarResultados(semente) { for (const chave of RESULTADOS_CPU.keys()) if (chave.startsWith(`${semente}:`)) RESULTADOS_CPU.delete(chave); }
   function normalizarBases(bases) {
     const mapa = {}, clubes = {};
     for (const b of Object.values(bases || {})) if (b && Array.isArray(b.clubes)) { mapa[b.id] = b; for (const c of b.clubes) clubes[c.id] = c; }
@@ -139,7 +140,7 @@
   // copasNovas: a Copa do Brasil, a Sul-Americana e o Super Mundial (as carreiras que já estavam no meio da temporada ficam sem elas)
   // semMundial: sem o Mundial de Clubes (o Super Mundial fica sendo o torneio mundial); só vale junto com copasNovas, e as
   // temporadas que já estavam rolando com o Mundial continuam com ele até a virada
-  function simularMundo({ bases, indice, semente, resultadosFixos = {}, classificados = null, copasNovas = false, semMundial = false }) {
+  function simularMundo({ bases, indice, semente, resultadosFixos = {}, classificados = null, copasNovas = false, semMundial = false, copa = null }) {
     const mundo = indice, normal = normalizarBases(bases), clubes = normal.clubes, jogar = simuladorDoMundo(clubes, semente, resultadosFixos), competicoes = {}, todosJogos = [];
     const semanasLiga = Array.from({ length: 38 }, (_, i) => i * 2 + 1);
     for (const liga of mundo.ligas.filter((l) => normal.bases[l.id] && !["argentina-2026", "sulamericanos-2026"].includes(l.id))) {
@@ -176,10 +177,66 @@
       const finalistas = semi.map((j) => vencedorJogo(j, semente, clubes)), final = jogar("mundial", "final", 0, finalistas[0], finalistas[1], semanasMundial[1], "fim", true), campeao = vencedorJogo(final, semente, clubes), jogos = [...semi, final];
       competicoes.mundial = { id: "mundial", nome: NOMES.mundial, tipo: "copa", fase: "encerrada", grupos: [], jogos, resultados: jogos.map((j) => [j.casa, j.fora, ...j.placar]), participantes: semifinalistas, campeao, vice: finalistas.find((id) => id !== campeao) }; todosJogos.push(...jogos);
     }
+    if (copa) {
+      // O calendário de clubes faz uma pausa de oito semanas. As rodadas do Brasileirão mantêm a ordem
+      // e as janelas continuam ligadas às rodadas da liga, mesmo com a Copa no meio.
+      for (const j of todosJogos) if (j.semana >= 40) j.semana += 8;
+      const mundial = simularCopaMundo({ base: copa, semente, resultadosFixos });
+      for (const j of mundial.jogos) j.semana += 39;
+      competicoes.copadomundo = mundial.competicoes.copadomundo;
+      todosJogos.push(...mundial.jogos);
+    }
     todosJogos.sort((a, b) => a.semana - b.semana || a.periodo.localeCompare(b.periodo) || a.id.localeCompare(b.id));
     return { competicoes, jogos: todosJogos, campeoes: Object.fromEntries(Object.entries(competicoes).map(([id, c]) => [id, c.campeao])) };
   }
+  // Copa 2026: 12 grupos de quatro, 24 primeiros/segundos e os oito melhores terceiros.
+  // A chave é refeita com a mesma semente e os resultados humanos fixados, como no mundo da Carreira.
+  function simularCopaMundo({ base, semente, resultadosFixos = {} }) {
+    const clubes = Object.fromEntries(base.clubes.map((c) => [c.id, c]));
+    const jogar = simuladorDoMundo(clubes, semente, resultadosFixos), grupos = [], jogos = [];
+    for (const grupo of base.grupos) {
+      const g = { id: grupo.id, clubes: [...grupo.clubes] };
+      const calendario = gerarCalendario(g.clubes, `${semente}:copa:${g.id}`).slice(0, 3);
+      calendario.forEach((rodada, r) => rodada.forEach(([c, f]) => jogos.push(jogar("copadomundo", `grupo-${g.id}`, r, c, f, r + 1, "fim"))));
+      const resultados = jogos.filter((j) => j.fase === `grupo-${g.id}`).reduce((a, j) => { (a[j.rodada] ||= []).push([j.casa, j.fora, ...j.placar]); return a; }, []);
+      g.tabela = tabela(g.clubes, resultados); grupos.push(g);
+    }
+    const terceiros = grupos.map((g) => ({ ...g.tabela[2], grupo: g.id }))
+      .sort((a, b) => b.p - a.p || b.sg - a.sg || b.v - a.v || b.gp - a.gp || a.id.localeCompare(b.id)).slice(0, 8);
+    const classificados = [...grupos.flatMap((g) => g.tabela.slice(0, 2).map((x) => ({ id: x.id, grupo: g.id }))), ...terceiros];
+    // Os primeiros de grupo enfrentam terceiros ou segundos de outro grupo; os demais segundos formam os outros duelos.
+    const primeiros = grupos.map((g) => ({ id: g.tabela[0].id, grupo: g.id }));
+    const restantes = classificados.filter((x) => !primeiros.some((p) => p.id === x.id));
+    const chave = [];
+    for (const a of primeiros) {
+      let i = restantes.findIndex((b) => b.grupo !== a.grupo && terceiros.some((t) => t.id === b.id));
+      if (i < 0) i = restantes.findIndex((b) => b.grupo !== a.grupo);
+      chave.push(a.id, restantes.splice(i, 1)[0].id);
+    }
+    while (restantes.length) {
+      const a = restantes.shift(), i = restantes.findIndex((b) => b.grupo !== a.grupo);
+      chave.push(a.id, restantes.splice(i < 0 ? 0 : i, 1)[0].id);
+    }
+    let atuais = chave, vice = null, semifinalistas = [];
+    for (const [fase, semana] of [["fase-32", 4], ["oitavas", 5], ["quartas", 6], ["semifinal", 7], ["final", 8]]) {
+      if (fase === "semifinal") semifinalistas = [...atuais];
+      const proximos = [];
+      for (let i = 0; i < atuais.length; i += 2) {
+        const j = jogar("copadomundo", fase, i / 2, atuais[i], atuais[i + 1], semana, "fim", true);
+        jogos.push(j); const vencedor = vencedorJogo(j, semente, clubes); proximos.push(vencedor);
+        if (fase === "final") vice = vencedor === atuais[i] ? atuais[i + 1] : atuais[i];
+      }
+      atuais = proximos;
+    }
+    const perdedoresSemi = semifinalistas.filter((id) => ![atuais[0], vice].includes(id));
+    const terceiro = jogar("copadomundo", "terceiro-lugar", 0, perdedoresSemi[0], perdedoresSemi[1], 8, "meio", true);
+    jogos.push(terceiro); vencedorJogo(terceiro, semente, clubes);
+    jogos.sort((a, b) => a.semana - b.semana || a.periodo.localeCompare(b.periodo) || a.id.localeCompare(b.id));
+    const comp = { id: "copadomundo", nome: NOMES.copadomundo, tipo: "copa", fase: "encerrada", grupos, rodadasGrupo: 3, jogos,
+      resultados: jogos.map((j) => [j.casa, j.fora, ...j.placar]), campeao: atuais[0], vice, participantes: base.clubes.map((c) => c.id) };
+    return { competicoes: { copadomundo: comp }, jogos, campeoes: { copadomundo: atuais[0] } };
+  }
   function jogosDoClube(mundo, clube) { return mundo.jogos.filter((j) => j.casa === clube || j.fora === clube); }
   function conflitoDeCalendario(jogos) { const vistos = new Set(); for (const j of jogos) for (const clube of [j.casa, j.fora]) { const k = `${j.semana}:${clube}`; if (vistos.has(k)) return { semana: j.semana, clube }; vistos.add(k); } return null; }
-  return { gerarCalendario, jogoDoClube, tabela, zona, simularMundo, jogosDoClube, conflitoDeCalendario, EUROPA, NOMES, masculina };
+  return { gerarCalendario, jogoDoClube, tabela, zona, simularMundo, simularCopaMundo, invalidarResultados, jogosDoClube, conflitoDeCalendario, EUROPA, NOMES, masculina };
 });

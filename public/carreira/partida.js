@@ -16,7 +16,8 @@ const calmo = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const tempoDe = (e) => e.min + (e.acr ? e.acr / 100 : 0);
 const minutoTexto = (e) => `${e.min}'${e.acr ? "+" + e.acr : ""}`;
-const meuLado = () => (J.casa === E.clube ? 0 : 1);
+const equipeDaPartida = () => J.competicao === "copadomundo" ? E.selecao : E.clube;
+const meuLado = () => (J.casa === equipeDaPartida() ? 0 : 1);
 const clubeDoLado = (lado) => (lado === 0 ? J.casa : J.fora);
 // até onde o relógio pode andar: a parada (os acréscimos antes dela também aparecem) ou o fim
 const limite = () => (J.parado ? Math.max(tempoDe(J.parado), ...J.eventos.map(tempoDe)) : 96);
@@ -82,7 +83,7 @@ function abrirPartida(rodada) {
 // segurar o relógio nem os cliques. Na carreira em grupo, os técnicos dos dois lados aparecem embaixo dos escudos.
 let timerAbertura = null;
 function abertura(p) {
-  const el = $("pAbertura"), tec = (id) => (EM_GRUPO && SALA ? (SALA.players.find((x) => x.clube === id) || {}).name : null);
+  const el = $("pAbertura"), tec = (id) => (EM_GRUPO && SALA ? (SALA.players.find((x) => x.clube === id || x.selecao === id) || {}).name : null);
   const lado = (id) => `<div class="ab-time" style="${coresClube(id)}">${escudo(id, 5)}<b>${h(nomeClube(id))}</b>${tec(id) ? `<small>${h(tec(id))}</small>` : ""}</div>`;
   el.className = `abertura peso-${p.tema}`;
   el.innerHTML = `<div class="ab-caixa"><span class="ab-titulo">${ic(ICONE_PESO[p.tema])} ${h(p.titulo)}</span><h2>${h(p.nome || p.titulo)}</h2>
@@ -185,7 +186,7 @@ function lance(e) {
     outro: e.tipo === "defesa" ? (e.goleiro ? nomeJogador(e.goleiro) : null) : e.tipo === "sub" ? sobrenome(nomeJogador(e.entra)) : null,
     numeros: e.tipo === "sub" ? [numero(e.sai), numero(e.entra)] : null };
   d.curto = sobrenome(j.nome);
-  try { const el = Lances.criarLance(e.tipo, d, { auto: !J.pulando }); if (el) poeTelao(el, e, clube === E.clube); } catch (err) { console.warn("lance", err); }
+  try { const el = Lances.criarLance(e.tipo, d, { auto: !J.pulando }); if (el) poeTelao(el, e, clube === equipeDaPartida()); } catch (err) { console.warn("lance", err); }
 }
 // o gol: o replay em pixel-art com a camisa do clube e, se foi seu, a festa
 // o telão de um gol (o replay em pixel-art); o intervalo usa de novo para o replay instantâneo
@@ -197,11 +198,11 @@ function telaoDoGol(e, auto) {
 }
 function gol(e) {
   const clube = clubeDoLado(e.lado);
-  try { poeTelao(telaoDoGol(e, !J.pulando), e, clube === E.clube); } catch (err) { console.warn("replay", err); }
+  try { poeTelao(telaoDoGol(e, !J.pulando), e, clube === equipeDaPartida()); } catch (err) { console.warn("replay", err); }
   if (J.pulando) return;
   const placar = $("pGols");
   placar.classList.remove("pulso"); void placar.offsetWidth; placar.classList.add("pulso");
-  if (clube === E.clube) festa();
+  if (clube === equipeDaPartida()) festa();
 }
 
 // o relógio da partida: 2 minutos de jogo por segundo (6 no 3x) até a próxima parada ou o fim

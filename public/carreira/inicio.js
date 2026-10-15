@@ -12,7 +12,7 @@ const BASE_PADRAO = "mundo-2026"; // as antigas seguem na base em que nasceram
 const LIGAS_JOGAVEIS = new Set(["brasileirao-2026", "serieb-2026", "inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"]);
 window.BasesCarreira[BASE_PADRAO] = {
   id: BASE_PADRAO, ano: MundoCarreira.ano, nome: "Temporada Mundial", fonte: "EA FC 27 + base brasileira",
-  clubes: MundoCarreira.ligas.flatMap((l) => window.BasesCarreira[l.id].clubes),
+  clubes: [...MundoCarreira.ligas.flatMap((l) => window.BasesCarreira[l.id].clubes), ...window.BasesCarreira["copa-do-mundo-2026"].clubes],
 };
 let BASE = null, CLUBES = {}, JOGADORES = {}, E = null, telaAtual = null, clubeEscolhido = null, temporadasEscolhidas = Evolucao.TEMPORADAS.padrao, dinheiroIgual = 0;
 // o caixa de um clube no começo: o orçamento dele, ou o valor igual para todos (a opção "dinheiro igual")
@@ -36,8 +36,8 @@ const nomeJogador = (id) => JOGADORES[id]?.nome || "alguém";
 const sobrenome = (nome) => { const p = String(nome).split(" "); return p.length > 1 && p.at(-1).length > 2 ? p.at(-1) : nome; };
 const meuClube = () => CLUBES[E.clube];
 // as contas do elenco de agora (a base mais as transferências da carreira)
-const donoDe = (pid) => (E && E.donos[pid]) || JOGADORES[pid]?.origem;
-const elencoDe = (clube) => Object.values(JOGADORES).filter((j) => donoDe(j.id) === clube);
+const donoDe = (pid) => pid.startsWith("copa-") ? (E && E.donos[pid]) || "disponivel" : (E && E.donos[pid]) || JOGADORES[pid]?.origem;
+const elencoDe = (clube) => E && clube === E.selecao ? (E.convocadosSelecao || []).map((id) => JOGADORES[id]).filter(Boolean) : Object.values(JOGADORES).filter((j) => donoDe(j.id) === clube);
 const notaDe = (j) => Math.max(40, Math.min(95, j.nota + ((E && E.bonusNota[j.id]) || 0)));
 // O motor usa décimos de over; na tela aparecem só -1, -2 ou -3, arredondados para baixo.
 const penalidadeCansaco = (pid) => Taticas.penalidadeEnergia(E?.energia?.[pid]);
@@ -64,8 +64,9 @@ function seloEfeitoNota(pid) {
   return `<span class="delta-nota temporario ${n > 0 ? "subiu" : "caiu"}" title="Efeito temporário no próximo jogo: ${sinalDe(n)}">${ic(n > 0 ? "sobe" : "baixo")}<span>${sinalDe(n)}</span></span>`;
 }
 function meuTime(mudar = {}) {
-  const esc = { ...E.escalacao, ...mudar }, extra = Math.round((E.moral - 60) / 12) + efeitoDe("time");
-  return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: Math.min(97, notaDe(j) + extra + efeitoDe(j.id)) })),
+  const esc = { ...E.escalacao, ...mudar }, extra = E.emSelecao ? 0 : Math.round((E.moral - 60) / 12) + efeitoDe("time");
+  const equipe = E.emSelecao ? E.selecao : E.clube;
+  return { id: equipe, jogadores: elencoDe(equipe).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: Math.min(97, notaDe(j) + extra + (E.emSelecao ? 0 : efeitoDe(j.id))) })),
     formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo, energia: E.energia };
 }
 // a faixa da carta pela nota: 90 ou mais é a elite (o ouro mais forte, com brilho), 85 a 89 ouro, 80 a 84 prata

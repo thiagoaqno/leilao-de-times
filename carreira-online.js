@@ -79,7 +79,7 @@ module.exports = function ligarCarreiraOnline(io) {
   // o que todo mundo da sala vê: as pessoas (com o clube de cada uma), as opções, a fase, a rodada e o leilão
   const publicState = (room) => ({
     code: room.code, fase: room.fase, host: room.host, opcoes: room.opcoes, max: MAX_PESSOAS, now: Date.now(),
-    players: room.order.map((id) => { const p = room.players[id]; return { id, name: p.name, clube: p.clube || null, online: p.sockets.size > 0, host: id === room.host, pronto: !!(p.clube && room.prontos && room.prontos[p.clube] === (room.nRodada || 0)) }; }),
+    players: room.order.map((id) => { const p = room.players[id]; return { id, name: p.name, clube: p.clube || null, selecao: p.clube && room.save?.humanos?.[p.clube]?.estado?.selecao || null, online: p.sockets.size > 0, host: id === room.host, pronto: !!(p.clube && room.prontos && room.prontos[p.clube] === (room.nRodada || 0)) }; }),
     ocupados: Object.fromEntries(room.order.filter((id) => room.players[id].clube).map((id) => [room.players[id].clube, id])),
     clubes: Carreira.clubesEscolhiveis(room.opcoes.ligas).map((c) => c.id),
     nRodada: room.nRodada || 0,
@@ -436,6 +436,7 @@ module.exports = function ligarCarreiraOnline(io) {
       const r = acao(v, room, me);
       if (typeof r === "string") return falha(cb, r);
       Carreira.guardarVista(room.save, v);
+      if (r && r.atualizarCopa) Carreira.atualizarSimulacao(room.save);
       Carreira.estanteDaSala(room.save);
       guardar(room);
       ok(cb, { ...(r || {}), estado: estadoDe(room, me) });
@@ -449,6 +450,16 @@ module.exports = function ligarCarreiraOnline(io) {
       return null;
     }));
     socket.on("modo", (d = {}, cb) => comClube(cb, (v) => { const m = Math.round(Number(d.modo)); v.modo = m >= 1 && m <= 3 ? m : 1; }));
+    socket.on("selecao", (d = {}, cb) => comClube(cb, (v, room) => {
+      const id = String(d.id || "");
+      if (id !== "recusar" && Object.entries(room.save.humanos).some(([clube, hm]) => clube !== v.clube && hm.estado?.selecao === id)) return "Outra pessoa da sala já aceitou essa seleção.";
+      return Carreira.Selecoes.aceitar(v, id);
+    }));
+    socket.on("convocar", (d = {}, cb) => comClube(cb, (v, room) => {
+      if (room.rodada) return "Espere a rodada terminar para ajustar a convocação.";
+      const erro = Carreira.Selecoes.convocar(v, String(d.entra || ""), String(d.sai || ""));
+      return erro || { atualizarCopa: true };
+    }));
     socket.on("vender", (d = {}, cb) => comClube(cb, (v, room) => semRodada(room) || (room.leilao && room.leilao.jogador === String(d.jogador) ? "Ele está em leilão agora." : Carreira.venderAcao(v, d))));
     // trocas entre técnicos: sem limite de nota nem de janela. A proposta fica aberta até o outro responder (ou quem propôs cancelar).
     const lista = (x) => (Array.isArray(x) ? [...new Set(x.map(String))] : []);

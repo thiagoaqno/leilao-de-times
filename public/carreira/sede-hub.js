@@ -48,7 +48,7 @@ function rivalNaSede() {
   const [casa, fora] = E.proximo || [E.clube, r.clube];
   el.innerHTML = `<div class="rival-topo"><div style="${coresClube(r.clube)}" data-time="${r.clube}" title="Ver o elenco">${escudo(r.clube, 4)}</div>
       <div><span class="sobre">Próximo adversário${E.partida ? " (jogo em andamento)" : ""}</span><h3 class="fx-titulo">${h(nomeClube(r.clube))}</h3>
-      <p class="suave">${casa === E.clube ? "Em casa" : "Fora de casa"} · ${h(CLUBES[casa].estadio)}</p></div></div>
+      <p class="suave">${casa === equipeDoJogo(E.proximoJogo) ? "Em casa" : "Fora de casa"} · ${h(CLUBES[casa].estadio || "Estádio da Copa")}</p></div></div>
     ${leituraRivalHTML()}
     <p class="suave">A formação e o estilo dele contra os seus mudam os lances do jogo. Escolha a resposta aqui, ajuste os detalhes na prancheta.</p>`;
   ligarLeituraRival(el);
@@ -70,11 +70,11 @@ function faixaAvancarHTML() {
   const ini = prox < 0 ? Math.max(0, jogos.length - 6) : Math.max(0, prox - 1), lista = jogos.slice(ini, ini + 6);
   const nomeComp = (j) => { const c = j.competicao && E.competicoes && E.competicoes[j.competicao]; return c ? c.nome : "Liga"; };
   const cel = (j) => {
-    const adv = j.casa === E.clube ? j.fora : j.casa, r = resultadoMeu(j), atual = prox >= 0 && j === jogos[prox], peso = atual ? pesoDe(j) : null;
-    return `<li class="av-dia ${atual ? "hoje" : ""} ${j.placar ? "jogado" : ""}" ${peso ? `data-peso="${peso.tema}"` : ""} title="${h(nomeComp(j))}: ${j.casa === E.clube ? "em casa" : "fora"} contra ${h(nomeClube(adv))}">
+    const equipe = equipeDoJogo(j), adv = j.casa === equipe ? j.fora : j.casa, r = resultadoMeu(j), atual = prox >= 0 && j === jogos[prox], peso = atual ? pesoDe(j) : null;
+    return `<li class="av-dia ${atual ? "hoje" : ""} ${j.placar ? "jogado" : ""}" ${peso ? `data-peso="${peso.tema}"` : ""} title="${h(nomeComp(j))}: ${j.casa === equipe ? "em casa" : "fora"} contra ${h(nomeClube(adv))}">
       <span class="av-quando">${j.semana != null ? `Sem. ${j.semana}` : `R${j.rodada + 1}`}<small>${h(nomeComp(j))}</small></span>
-      <span class="av-adv">${escudo(adv, 2)}<b>${h(curtoDe(adv))}</b><i>${j.casa === E.clube ? "casa" : "fora"}</i></span>
-      ${j.placar ? `<span class="av-res ${r}">${j.casa === E.clube ? placarTxt(j.placar) : placarTxt([j.placar[1], j.placar[0]])}</span>` : atual ? `<span class="av-res prox">${ic("apito")}</span>` : ""}</li>`;
+      <span class="av-adv">${escudo(adv, 2)}<b>${h(curtoDe(adv))}</b><i>${j.casa === equipe ? "casa" : "fora"}</i></span>
+      ${j.placar ? `<span class="av-res ${r}">${j.casa === equipe ? placarTxt(j.placar) : placarTxt([j.placar[1], j.placar[0]])}</span>` : atual ? `<span class="av-res prox">${ic("apito")}</span>` : ""}</li>`;
   };
   return lista.length ? `<div class="av-topo"><small>Calendário</small><small class="av-ano">Temporada ${E.ano}</small></div>
     <ol class="av-faixa" aria-label="Próximos compromissos">${lista.map(cel).join("")}</ol>` : "";

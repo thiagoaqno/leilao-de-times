@@ -141,6 +141,7 @@ function aplicarCtx(x, d) {
     t.revertida = true; t.revertidaEm = Date.now();
     depois = { jogador: t.jogador, clube: t.de, estorno: valor };
   } else return { erro: "Tipo de edição inválido." };
+  if (d.tipo === "atributo" || d.tipo === "overall") Carreira.atualizarSimulacao(save);
   return { antes, depois, tipo: d.tipo, clube, nomeClube: clubeResolvido.item.nome,
     jogador: pid || depois?.jogador || null, nomeJogador: j?.nome || null };
 }

@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="estilo.css">
 <link rel="stylesheet" href="hub.css">
 <link rel="stylesheet" href="mesa.css">
+<link rel="stylesheet" href="copa.css">
 </head>
 <body>
 <header id="barra">
@@ -122,6 +123,7 @@
     <div class="hub-grade">
       <div class="hub-principal">
         <section class="quadro hub-vagas hidden" id="cartaoVagas" data-na-aba="temporada" aria-label="Propostas de outros clubes"></section>
+        <section class="quadro copa-ofertas hidden" id="cartaoSelecao" data-na-aba="temporada" aria-label="Ofertas de seleções"></section>
         <section class="quadro destaque hub-jogo" id="cartaoJogo" data-na-aba="central" aria-label="Avançar: próxima partida"></section>
         <section class="quadro tv-painel hidden" id="cartaoAoVivo" data-na-aba="central" aria-label="Rodada da turma ao vivo" aria-live="off"></section>
         <section class="quadro hub-dev" id="cartaoDesenvolvimento" data-na-aba="central" aria-label="Desenvolvimento do jogador"></section>
@@ -199,7 +201,7 @@
     <p id="mJanela" class="aviso"></p>
     <p id="mRegra" class="aviso regra-compras hidden"></p>
     <div class="segmentos grande" id="mModo" role="group" aria-label="Lado do mercado">
-      <button data-modo="comprar" aria-pressed="true">Contratar</button><button data-modo="vender" aria-pressed="false">Meu elenco</button><button data-modo="noticias" aria-pressed="false">Movimentações</button>
+      <button data-modo="comprar" aria-pressed="true">Contratar</button><button data-modo="vender" aria-pressed="false">Meu elenco</button><button data-modo="noticias" aria-pressed="false">Movimentações</button><button data-modo="selecao" aria-pressed="false" class="hidden">Convocação</button>
     </div>
     <div class="quadro filtros" id="mFiltros">
       <input id="mBusca" type="search" placeholder="Buscar jogador" aria-label="Buscar jogador">
@@ -341,6 +343,7 @@
 <script src="base/argentina-2026.js"></script>
 <script src="base/sulamericanos-2026.js"></script>
 <script src="base/mundo-2026.js"></script>
+<script src="base/copa-do-mundo-2026.js"></script>
 <script src="inicio.js"></script>
 <script src="grupo.js"></script>
 <script src="turma-ao-vivo.js"></script>
