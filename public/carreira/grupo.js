@@ -74,9 +74,10 @@ function entradaNoMeio(st, eu) {
   const forca = (id) => { const n = elencoDe(id).map(notaDe).sort((a, b) => b - a).slice(0, 11); return n.length ? Math.round(n.reduce((s, x) => s + x, 0) / n.length) : 0; };
   const livres = st.clubes.filter((id) => !st.ocupados[id] && CLUBES[id]).map((id) => CLUBES[id]);
   const ordemLiga = (c) => ["brasileirao-2026", "serieb-2026", ...Temporada.EUROPA].indexOf(c.liga);
+  const regraEntrada = `Quem entra no meio ganha uma janela de entrada: ${st.temporada >= 3 ? "1 jogador de qualquer nota (inclusive 90+), ou 2 de até 87, ou 3 de até 84" : "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85"} (com a janela aberta, vale a da janela).`;
   $("gStatus").textContent = !eu ? "Você está só assistindo. Para assumir um clube, entre na sala pelo código, com um nome."
-    : st.rodada ? "A rodada está rolando: escolha o clube e entre quando ela acabar. Quem entra no meio ganha uma janela de entrada: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85 (com a janela aberta, vale a da janela)."
-    : "A carreira já começou. Escolha um clube livre para assumir agora. Quem entra no meio ganha uma janela de entrada: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85 (com a janela aberta, vale a da janela).";
+    : st.rodada ? `A rodada está rolando: escolha o clube e entre quando ela acabar. ${regraEntrada}`
+    : `A carreira já começou. Escolha um clube livre para assumir agora. ${regraEntrada}`;
   $("gMeuClube").textContent = livres.length ? `${livres.length} clube${livres.length === 1 ? "" : "s"} livre${livres.length === 1 ? "" : "s"}` : "Não tem clube livre";
   $("btnComecar").classList.add("hidden");
   $("gClubes").innerHTML = eu ? livres.sort((a, b) => ordemLiga(a) - ordemLiga(b) || forca(b.id) - forca(a.id)).map((c) => {
