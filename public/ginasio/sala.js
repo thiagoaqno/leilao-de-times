@@ -113,16 +113,39 @@ function renderSala() {
   $("btnStart").classList.toggle("hidden", !organizador); $("btnStart").disabled = S.phase === "play";
   preencher("feed", S.feed.slice(-4).map((f) => `<li>${h(f.text)}</li>`).join(""));
 }
+// a prévia do confronto no modo Pokémon, contra um líder ou um selvagem: a arena grande da esquerda (#heroVersus, no lugar da
+// arte do lobby) vira o "versus": o seu time de um lado, o adversário do outro (lobby-pokemon.css). O resumo pequeno do painel
+// (#versusInicio, #versusSala) fica só para leitores de tela.
+const RARIDADE_VS = { comum: ["Comum", "#9aa8a3"], incomum: ["Incomum", "#4fbf6a"], raro: ["Raro", "#3f8fe0"], epico: ["Épico", "#b45cf0"], lendario: ["Lendário", "#f0b429"] };
+const tiposVs = (id) => (PokeDex.MONS[id].types || []).map((t) => `<i style="--t:${PokeDex.TYPES[t] || "#888"}">${h(t)}</i>`).join("");
+const spriteVs = (id, brilhante) => { const u = PokeDex.sprite(id); return brilhante ? u.replace(/\/(\d+)\.png$/, "/shiny/$1.png") : u; };
+function cartaVs(id, i, { nivel, brilhante, grande } = {}) {
+  const m = PokeDex.MONS[id], t = PokeDex.TYPES[m.types[0]] || "#7a5cc9";
+  return `<article class="vs-carta${grande ? " grande" : ""}" style="--i:${i};--t:${t}"><div class="vs-foto"><img src="${h(spriteVs(id, brilhante))}" alt=""></div>
+    <div class="vs-dados"><b>${h(m.n)}${brilhante ? " ✨" : ""}</b>${nivel ? `<span class="vs-nv">Nv ${nivel}</span>` : ""}<span class="vs-tipos">${tiposVs(id)}</span></div></article>`;
+}
 function mostrarVersus() {
   const modo = modoAtual(), lider = S ? Lideres.de(S.config.lider) : LIDER;
-  const selvagem = S?.selvagem, alvo = S ? $("versusSala") : $("versusInicio");
+  const selvagem = S?.selvagem, alvo = S ? $("versusSala") : $("versusInicio"), hero = $("heroVersus");
   $("versusInicio").classList.add("hidden"); $("versusSala").classList.add("hidden");
-  if (modo !== "pokemon" || (!lider && !selvagem)) return;
+  const tem = modo === "pokemon" && (lider || selvagem) && (!S || S.phase !== "play");
+  document.body.classList.toggle("com-versus", !!tem);
+  if (hero) { hero.classList.toggle("hidden", !tem); $("pokemonHero").setAttribute("aria-hidden", tem ? "false" : "true"); }
+  if (!tem) return;
   const inimigos = lider ? lider.times.pokemon : [selvagem.bicho];
   const nome = lider ? lider.nome : `${PokeDex.MONS[selvagem.bicho].n} selvagem`;
-  const cartas = (ids) => ids.map((id) => `<div class="vs-mon"><img src="${h(PokeDex.sprite(id, false))}" alt="" loading="lazy"><span>${h(PokeDex.MONS[id].n)}</span></div>`).join("");
-  preencher(alvo.id, `<div class="vs-topo"><span>PRÉVIA DO CONFRONTO</span><span>${selvagem ? "ENCONTRO SELVAGEM" : "DESAFIO DO GINÁSIO"}</span></div><div class="vs-corpos"><div class="vs-time"><strong>SEU TIME</strong><div class="vs-mons">${cartas(timeAtual())}</div></div><b class="vs-sinal">VS</b><div class="vs-time"><strong>${h(nome)}</strong><div class="vs-mons ${selvagem ? "um-so" : ""}">${cartas(inimigos)}</div></div></div>${selvagem ? `<p>Pokémon selvagem · nível ${Number(selvagem.nivel) || 5}</p>` : ""}`);
-  alvo.classList.remove("hidden");
+  const comNivel = soCapturados() || !!selvagem, meus = timeAtual();
+  const rar = selvagem && RARIDADE_VS[selvagem.raridade];
+  // o resumo do painel, para leitores de tela (a arena mostra o mesmo, grande)
+  preencher(alvo.id, `<p>Prévia do confronto: seu time (${meus.map((id) => PokeDex.MONS[id].n).join(", ")}) contra ${h(nome)}${selvagem ? `, nível ${Number(selvagem.nivel) || 5}` : ` (${inimigos.map((id) => PokeDex.MONS[id].n).join(", ")})`}.</p>`);
+  alvo.classList.remove("hidden"); alvo.classList.add("so-leitor");
+  if (!hero) return;
+  hero.style.cssText = `--cor:${lider ? lider.cor : rar ? rar[1] : "#f0b429"};--t:${PokeDex.TYPES[PokeDex.MONS[inimigos[0]].types[0]] || "#b45cf0"}`;
+  preencher("heroVersus", `<header class="vs-cabeca"><span>${selvagem ? "Encontro selvagem" : lider.onde === "ginasio" ? `Desafio do ginásio · ${h(lider.tipo)}` : `Treinador · ${h(lider.tipo)}`}</span><span>${S ? `Sala ${h(S.code)}` : "Prévia do confronto"}</span></header>
+    <section class="vs-lado vs-meu"><h2>Seu time</h2><div class="vs-cartas">${meus.map((id, i) => cartaVs(id, i, { nivel: comNivel ? meusNiveis[id] || 5 : null })).join("")}</div></section>
+    <div class="vs-emblema" aria-hidden="true"><span>VS</span></div>
+    <section class="vs-lado vs-deles${selvagem ? " selvagem" : ""}"><h2>${h(nome)}</h2>${lider ? `<p class="vs-frase">“${h(lider.frase)}”</p>` : `<p class="vs-frase"><span class="vs-raridade">${h(rar ? rar[0] : "")}</span> Nível ${Number(selvagem.nivel) || 5}</p>`}
+      <div class="vs-cartas">${inimigos.map((id, i) => cartaVs(id, i, { nivel: selvagem ? Number(selvagem.nivel) || 5 : null, brilhante: selvagem && selvagem.brilhante, grande: !!selvagem })).join("")}</div></section>`);
 }
 async function mudarConfig(patch) {
   if (S) { if (await act("config", { config: patch })) guardarConfig(); }

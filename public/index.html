@@ -192,18 +192,8 @@ button{font:inherit;cursor:pointer}
 .bt.pk .spot.me .mon.in{animation:pin .35s ease-out}
 @keyframes lungePk{50%{transform:translate(18px,-10px)}}
 /* a grama alta (public/vila/mato.js): o encontro com o Pokémon selvagem, a Pokébola e a Pokédex */
-.cap .arena{background:linear-gradient(#8fd3f7 0,#cdeeff 38%,#5fae45 38%,#4f9a3a 100%)}
-.cap .arena::before{top:38%;background:#3f8530}
-.cap .arena::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34%;background:repeating-linear-gradient(90deg,#2f7a2a 0 6px,#3f9a36 6px 12px,#56b048 12px 16px);clip-path:polygon(0 30%,3% 0,6% 30%,9% 0,12% 30%,15% 0,18% 30%,21% 0,24% 30%,27% 0,30% 30%,33% 0,36% 30%,39% 0,42% 30%,45% 0,48% 30%,51% 0,54% 30%,57% 0,60% 30%,63% 0,66% 30%,69% 0,72% 30%,75% 0,78% 30%,81% 0,84% 30%,87% 0,90% 30%,93% 0,96% 30%,100% 0,100% 100%,0 100%);pointer-events:none}
-.cap .spot.foe{right:12%;top:14%}
-.cap .spot .mon.dentro{transform:scale(.1);opacity:0;transition:transform .25s ease-in,opacity .25s}
-.cap .spot .mon.foge{animation:foge .6s forwards}
-@keyframes foge{to{transform:translateX(120%);opacity:0}}
-.cap .spot .mon.brilha{filter:drop-shadow(0 0 10px #fff6a0)}
 .selo{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--r);color:#fff;font:700 12px "Pixelify Sans",monospace;text-shadow:0 1px 0 #0006}
 .bmoves .bola{background:#e8483b}.bmoves .fuga{background:#6a7690}.bmoves .dex{background:#2f6fd6}.bmoves .luta{background:#2f9a4a}
-.cap .bmoves{grid-template-columns:1fr 1fr 1fr}
-.cap .ibox .bar i{width:100%}
 .dexgrid .xpbar{display:block;height:4px;margin:2px 4px 0;background:#d9def0;border-radius:2px;overflow:hidden}.dexgrid .xpbar i{display:block;height:100%;background:#3f8fe0}
 .dexgrid .nv{position:absolute;top:2px;left:4px;font-size:10px;color:#4a5690}
 .dexgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:6px;max-height:min(52vh,420px);overflow:auto;padding:2px}
@@ -212,7 +202,7 @@ button{font:inherit;cursor:pointer}
 .dexgrid small{display:block;font-weight:500;color:#4a5690}.dexgrid b{position:absolute;top:2px;right:4px;font-size:11px}
 .dexresumo{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;font:500 13px "Pixelify Sans",monospace}
 .dexrank{margin:10px 0 0;padding-left:22px;font:500 14px "Pixelify Sans",monospace}
-@media (prefers-reduced-motion:reduce){.cap .spot .mon.foge{animation:none}}
+
 .fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .4s}
 /* o minimapa: a vila no meio, as rodovias e os estádios; o ponto amarelo é você */
 canvas.mini{position:fixed;inset:auto;right:14px;top:max(64px,calc(env(safe-area-inset-top) + 54px));width:168px;height:137px;border:2px solid #ffffff33;border-radius:10px;image-rendering:pixelated;background:#0a1233;pointer-events:none;z-index:2;box-shadow:0 6px 16px #0006}
@@ -241,6 +231,7 @@ canvas.mini.off{display:none}
 @media (prefers-reduced-motion:reduce){.dlg,.fade{transition:none}}
 </style>
 <link rel="stylesheet" href="/vila/versus.css">
+<link rel="stylesheet" href="/vila/pokedex.css">
 </head>
 <body>
 <canvas id="cv" aria-hidden="true"></canvas>
@@ -282,16 +273,31 @@ canvas.mini.off{display:none}
   </div>
   <div class="bpanel"><div class="bmsg" id="bmsg" aria-live="polite"></div><div id="bctl"></div></div>
 </div>
-<div class="bt cap" id="cap" role="dialog" aria-modal="true" aria-label="Pokémon selvagem">
-  <div class="arena">
-    <div class="cap-confronto" aria-label="Prévia do confronto"><div class="cap-eyebrow">ENCONTRO NA GRAMA ALTA</div><h2>SEU TIME</h2><div id="capTime" class="cap-time"></div></div>
-    <div class="cap-vs" aria-hidden="true">VS</div>
-    <div class="ibox foe" id="capInfo"></div>
-    <div class="spot foe"><img class="mon" id="capMon" alt=""><div class="plat"></div></div>
+<!-- o encontro na grama alta (public/vila/versus.css): o seu time de um lado, o Pokémon selvagem do outro, e as três ações -->
+<div class="cap" id="cap" role="dialog" aria-modal="true" aria-label="Pokémon selvagem">
+  <div class="cap-palco">
+    <header class="cap-topo"><span class="cap-eyebrow">Encontro na grama alta</span><span id="capRaridade" class="cap-raridade"></span></header>
+    <section class="cap-lado cap-meu" aria-label="Seu time"><h2 class="cap-titulo">Seu time</h2><div id="capTime" class="cap-time"></div></section>
+    <div class="cap-vs" aria-hidden="true"><span>VS</span></div>
+    <section class="cap-lado cap-selvagem" aria-label="Pokémon selvagem">
+      <div class="cap-holofote"><img class="cap-mon" id="capMon" alt=""><i class="cap-base"></i></div>
+      <div class="cap-ficha" id="capInfo"></div>
+    </section>
   </div>
-  <div class="bpanel"><div class="bmsg" id="capMsg" aria-live="polite"></div><div class="bmoves"><button class="luta" id="capLutar">Lutar<small>no Ginásio · L</small></button><button class="bola" id="capBola">Pokébola<small id="capChance">infinitas · Espaço</small></button><button class="fuga" id="capFugir">Fugir<small>Esc</small></button></div></div>
+  <footer class="cap-acoes">
+    <p class="cap-msg" id="capMsg" aria-live="polite"></p>
+    <div class="cap-botoes">
+      <button class="cap-bt luta" id="capLutar"><b>Lutar</b><small>no Ginásio · L</small></button>
+      <button class="cap-bt bola" id="capBola"><b>Pokébola</b><small id="capChance">infinitas · Espaço</small></button>
+      <button class="cap-bt fuga" id="capFugir"><b>Fugir</b><small>Esc</small></button>
+    </div>
+  </footer>
 </div>
-<div class="menu" id="pokedex" role="dialog" aria-modal="true" aria-labelledby="dexT"><div class="box wide"><h2 id="dexT">🎒 Minha Pokédex</h2><div id="dexBox"></div><button class="x" id="dexX">Fechar</button></div></div>
+<!-- a Pokédex (public/vila/versus.css): o aparelho vermelho com a coleção, as raridades, a busca e o ranking -->
+<div class="menu dex-tela" id="pokedex" role="dialog" aria-modal="true" aria-labelledby="dexT"><div class="dex-aparelho">
+  <header class="dex-topo"><span class="dex-luz" aria-hidden="true"></span><span class="dex-leds" aria-hidden="true"><i></i><i></i><i></i></span><h2 id="dexT">Minha Pokédex</h2><button class="dex-fechar" id="dexX" aria-label="Fechar">✕</button></header>
+  <div id="dexBox" class="dex-corpo"></div>
+</div></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="fade" id="fade"></div>
 <script src="/socket.io/socket.io.js"></script>
@@ -1464,24 +1470,38 @@ function timeParaEncontro(individuos) {
     ? pedido : [...melhores.values()].sort((a, b) => b.nivel - a.nivel || b.xp - a.xp).slice(0, 3).map((p) => p.bicho);
   return ids.map((id) => melhores.get(id)).filter(Boolean);
 }
+// os tipos de um Pokémon em fichinhas coloridas (as cores da Pokédex)
+const tiposHTML = (id) => `<span class="cap-tipos">${(PokeDex.MONS[id].types || []).map((t) => `<i style="--t:${PokeDex.TYPES[t] || "#888"}">${esc(t)}</i>`).join("")}</span>`;
 function mostrarTimeDoEncontro(individuos) {
   const time = timeParaEncontro(individuos);
-  $("capTime").innerHTML = time.map((p, i) => `<div class="cap-aliado"><span class="cap-num">0${i + 1}</span><img src="${esc(PokeDex.sprite(p.bicho))}" alt="" width="60" height="60"><span><b>${esc(PokeDex.MONS[p.bicho].n)}</b><small>NÍVEL ${p.nivel}</small></span></div>`).join("");
+  $("capTime").innerHTML = time.map((p, i) => {
+    const m = PokeDex.MONS[p.bicho], falta = Number.isFinite(p.falta) && p.falta > 0 ? p.falta : 0;
+    return `<article class="cap-carta" style="--i:${i};--t:${PokeDex.TYPES[m.types[0]] || "#5b6bd6"}">
+      <span class="cap-num">${i + 1}</span><div class="cap-foto"><img src="${esc(spriteSelvagem({ bicho: p.bicho, brilhante: p.brilhante }))}" alt=""></div>
+      <div class="cap-dados"><b>${esc(m.n)}${p.brilhante ? " ✨" : ""}</b><span class="cap-nv">Nv ${p.nivel}</span>${tiposHTML(p.bicho)}
+        <span class="cap-xp" title="Experiência do nível"><i style="width:${falta ? Math.round((p.xp / falta) * 100) : 100}%"></i></span></div></article>`;
+  }).join("") || `<p class="cap-vazio">Seu time aparece ao iniciar a luta.</p>`;
 }
 // o encontro: o Pokémon com o nível, a vida e a chance da Pokébola (a da PokéAPI: vida cheia é difícil; enfraqueça
 // lutando no Ginásio, "Lutar", que lá a chance sobe)
 function abrirEncontro(e) {
   held.length = 0; path = null; running = false; encontroAgora = e;
   const R = MatoAlto.RARIDADES[e.raridade];
-  $("capMon").src = spriteSelvagem(e); $("capMon").className = "mon in" + (e.brilhante ? " brilha" : ""); $("capMon").style.visibility = "";
-  $("capInfo").innerHTML = `<div class="ihead">${esc(e.nome)}${e.brilhante ? " ✨" : ""}<small>Nv ${e.nivel}</small></div><div class="hp">PS<div class="bar"><i></i></div>${e.hp}/${e.max}</div><div class="sub"><span class="selo" style="--r:${R.cor}">${R.nome}</span><span>Nº ${e.num}</span></div>`;
+  $("capMon").src = spriteSelvagem(e); $("capMon").className = "cap-mon in" + (e.brilhante ? " brilha" : ""); $("capMon").style.visibility = "";
+  $("cap").style.setProperty("--r", R.cor);
+  $("cap").style.setProperty("--t", PokeDex.TYPES[(PokeDex.MONS[e.bicho].types || [])[0]] || R.cor);
+  $("capRaridade").textContent = `${R.nome}${e.brilhante ? " · brilhante" : ""}`;
+  const vida = Math.round((e.hp / e.max) * 100), chance = Math.round(e.chance * 100);
+  $("capInfo").innerHTML = `<div class="cap-nome"><span class="cap-numero">Nº ${String(e.num).padStart(3, "0")}</span><h2>${esc(e.nome)}${e.brilhante ? " ✨" : ""}</h2><span class="cap-nv">Nv ${e.nivel}</span></div>${tiposHTML(e.bicho)}
+    <div class="cap-ps"><span>PS</span><span class="cap-barra"><i style="width:${vida}%" class="${vida <= 25 ? "low" : vida <= 50 ? "mid" : ""}"></i></span><b>${e.hp}/${e.max}</b></div>
+    <div class="cap-chance" title="Chance de a Pokébola pegar agora"><span>Captura</span><span class="cap-medidor"><i style="width:${Math.max(3, chance)}%"></i></span><b>${Niveis.porcento(e.chance)}</b></div>`;
   $("capChance").textContent = `chance ${Niveis.porcento(e.chance)} · Espaço`;
   $("capMsg").textContent = `Um ${nomeDoSelvagem(e)} selvagem (nível ${e.nivel}) apareceu! Lutando, ele enfraquece e a Pokébola pega mais fácil.`;
-  $("capTime").innerHTML = '<p>Preparando seu time…</p>';
+  $("capTime").innerHTML = '<p class="cap-vazio">Preparando seu time…</p>';
   socket.emit("pokedex", { codigo: treinador }, (r) => {
     if (encontroAgora !== e) return;
     if (r?.ok) mostrarTimeDoEncontro(r.pokemons);
-    else $("capTime").innerHTML = "<p>Seu time aparece ao iniciar a luta.</p>";
+    else $("capTime").innerHTML = '<p class="cap-vazio">Seu time aparece ao iniciar a luta.</p>';
   });
   $("cap").classList.add("on"); botoesDoEncontro(true); $("capLutar").focus();
 }
@@ -1495,7 +1515,7 @@ function jogarPokebola() {
   $("capMsg").textContent = "Vai, Pokébola!";
   socket.emit("pokebola", { codigo: treinador }, async (r) => {
     if (!r?.ok) { fecharEncontro(); toast(r?.error || "O Pokémon sumiu no mato."); return; }
-    const mon = $("capMon"), caixa = mon.getBoundingClientRect(), arena = $("cap").querySelector(".arena").getBoundingClientRect();
+    const mon = $("capMon"), caixa = mon.getBoundingClientRect(), arena = $("cap").querySelector(".cap-palco").getBoundingClientRect();
     await Captura2D.tocar({
       de: { x: arena.left + arena.width * 0.12, y: arena.top + arena.height * 0.82 }, alvo: { x: caixa.left + caixa.width / 2, y: caixa.top + caixa.height / 2 },
       tamanho: caixa.width, sprite: mon.src, cor: MatoAlto.RARIDADES[r.encontro.raridade].cor, balancos: r.balancos, pegou: r.resultado === "pegou",
@@ -1531,24 +1551,44 @@ $("capBola").onclick = jogarPokebola;
 $("capFugir").onclick = fugirDoEncontro;
 // a Pokédex: o que você já pegou (com quantas vezes e se veio brilhante) e os maiores colecionadores
 // a Pokédex: os seus Pokémon (nível, experiência e a próxima evolução), as espécies que já teve e os maiores colecionadores
+let dexFiltro = "todos", dexBusca = "", dexDados = null;
 function abrirPokedex() {
   if ($("menu").classList.contains("on")) $("menu").classList.remove("on");
-  $("dexBox").innerHTML = "<p>Abrindo a mochila…</p>";
+  $("dexBox").innerHTML = '<p class="dex-msg">Abrindo a mochila…</p>';
   $("pokedex").classList.add("on");
   socket.emit("pokedex", { codigo: treinador }, (r) => {
-    if (!r?.ok) { $("dexBox").innerHTML = "<p>Sem conexão.</p>"; return; }
-    const ordem = MatoAlto.ORDEM, vistas = new Set(r.especies);
-    const conta = (rar) => MatoAlto.POR_RARIDADE[rar].filter((id) => vistas.has(id)).length;
-    const resumo = `<p class="dexresumo"><b>${vistas.size} de ${r.total} espécies</b>${ordem.map((rar) => `<span class="selo" style="--r:${MatoAlto.RARIDADES[rar].cor}">${MatoAlto.RARIDADES[rar].nome} ${conta(rar)}/${MatoAlto.POR_RARIDADE[rar].length}</span>`).join("")}</p>`;
-    const cartao = (c) => {
-      const m = PokeDex.MONS[c.bicho], R = MatoAlto.RARIDADES[c.raridade] || MatoAlto.RARIDADES.comum, falta = Number.isFinite(c.falta) ? c.falta : 0;
-      const ev = c.evolui ? `${PokeDex.MONS[c.evolui.para].n} no nível ${c.evolui.nivel}${c.evolui.como !== "nível" ? ` (no jogo: ${c.evolui.como})` : ""}` : "não evolui";
-      return `<div style="--r:${R.cor}" title="${esc(m.n)} · nível ${c.nivel} · ${c.xp}/${falta || "—"} de experiência · evolui: ${esc(ev)}">${c.brilhante ? "<b>✨</b>" : ""}<span class="nv">Nv ${c.nivel}</span><img src="${esc(spriteSelvagem({ bicho: c.bicho, brilhante: c.brilhante }))}" alt="" loading="lazy">${esc(m.n)}<small>${c.origem === "inicial" ? "inicial" : R.nome}</small><span class="xpbar"><i style="width:${falta ? Math.round((c.xp / falta) * 100) : 100}%"></i></span></div>`;
-    };
-    const grade = `<div class="dexgrid">${r.pokemons.map(cartao).join("")}</div><p class="dexresumo">Ganhe experiência vencendo os selvagens no Ginásio ("Lutar" no encontro): quem luta sobe de nível e evolui no nível da PokéAPI.</p>`;
-    const rank = r.ranking.length ? `<h3>Maiores colecionadores</h3><ol class="dexrank">${r.ranking.map((x) => `<li>${esc(x.nome)}: ${x.especies} ${x.especies === 1 ? "espécie" : "espécies"} (${x.total} ${x.total === 1 ? "captura" : "capturas"})</li>`).join("")}</ol>` : "";
-    $("dexBox").innerHTML = resumo + grade + rank;
+    if (!r?.ok) { $("dexBox").innerHTML = '<p class="dex-msg">Sem conexão.</p>'; return; }
+    dexDados = r; desenharPokedex();
   });
+}
+function desenharPokedex(soGrade) {
+  const r = dexDados; if (!r) return;
+  const ordem = MatoAlto.ORDEM, vistas = new Set(r.especies), norm = (x) => String(x).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const conta = (rar) => MatoAlto.POR_RARIDADE[rar].filter((id) => vistas.has(id)).length;
+  const pct = Math.round((vistas.size / Math.max(1, r.total)) * 100);
+  const cartao = (c, i) => {
+    const m = PokeDex.MONS[c.bicho], R = MatoAlto.RARIDADES[c.raridade] || MatoAlto.RARIDADES.comum, falta = Number.isFinite(c.falta) ? c.falta : 0;
+    const ev = c.evolui ? `${PokeDex.MONS[c.evolui.para].n} no Nv ${c.evolui.nivel}${c.evolui.como !== "nível" ? ` (${c.evolui.como})` : ""}` : "Não evolui";
+    return `<article class="dex-carta${c.brilhante ? " brilhante" : ""}" style="--r:${R.cor};--t:${PokeDex.TYPES[m.types[0]] || "#888"};--i:${Math.min(i, 20)}" title="${esc(m.n)} · nível ${c.nivel} · ${c.xp}/${falta || "—"} de experiência · ${esc(ev)}">
+      <header><span class="dex-num">Nº ${String(m.num).padStart(3, "0")}</span><span class="dex-nv">Nv ${c.nivel}</span></header>
+      <div class="dex-foto"><img src="${esc(spriteSelvagem({ bicho: c.bicho, brilhante: c.brilhante }))}" alt=""></div>
+      <b>${esc(m.n)}${c.brilhante ? " ✨" : ""}</b><span class="cap-tipos">${(m.types || []).map((t) => `<i style="--t:${PokeDex.TYPES[t] || "#888"}">${esc(t)}</i>`).join("")}</span>
+      <span class="dex-xp"><i style="width:${falta ? Math.round((c.xp / falta) * 100) : 100}%"></i></span><small>${c.origem === "inicial" ? "Inicial" : R.nome} · ${esc(ev)}</small></article>`;
+  };
+  const lista = r.pokemons.filter((c) => (dexFiltro === "todos" || c.raridade === dexFiltro || (dexFiltro === "brilhante" && c.brilhante)) && (!dexBusca || norm(PokeDex.MONS[c.bicho].n).includes(norm(dexBusca))));
+  const grade = `<div class="dex-grade">${lista.map(cartao).join("") || '<p class="dex-msg">Nenhum Pokémon com esse filtro.</p>'}</div>`;
+  if (soGrade && $("dexGrade")) { $("dexGrade").innerHTML = grade; return; }
+  const filtros = [["todos", "Todos", "#e8ecf8"], ...ordem.map((rar) => [rar, MatoAlto.RARIDADES[rar].nome, MatoAlto.RARIDADES[rar].cor]), ["brilhante", "✨ Brilhantes", "#ffe27a"]];
+  $("dexBox").innerHTML = `<aside class="dex-lado">
+      <div class="dex-anel" style="--p:${pct}"><b>${vistas.size}</b><small>de ${r.total}<br>espécies</small></div>
+      <ul class="dex-raridades">${ordem.map((rar) => { const n = conta(rar), tot = MatoAlto.POR_RARIDADE[rar].length; return `<li style="--r:${MatoAlto.RARIDADES[rar].cor}"><span>${MatoAlto.RARIDADES[rar].nome}</span><i><em style="width:${Math.round((n / tot) * 100)}%"></em></i><b>${n}/${tot}</b></li>`; }).join("")}</ul>
+      ${r.ranking.length ? `<h3>Maiores colecionadores</h3><ol class="dex-rank">${r.ranking.map((x) => `<li><span>${esc(x.nome)}</span><b>${x.especies}</b></li>`).join("")}</ol>` : ""}
+      <p class="dex-dica">Vença os selvagens no Ginásio ("Lutar" no encontro): quem luta sobe de nível e evolui no nível da PokéAPI.</p>
+    </aside>
+    <section class="dex-principal"><div class="dex-busca"><input type="search" id="dexBuscaV" placeholder="Buscar na sua coleção" value="${esc(dexBusca)}" aria-label="Buscar"><div class="dex-filtros">${filtros.map(([k, t, c]) => `<button data-dexf="${k}" style="--r:${c}" aria-pressed="${k === dexFiltro}">${t}</button>`).join("")}</div></div>
+      <p class="dex-conta">${r.pokemons.length} Pokémon na mochila</p><div id="dexGrade">${grade}</div></section>`;
+  $("dexBuscaV").oninput = (e) => { dexBusca = e.target.value; desenharPokedex(true); };
+  for (const b of $("dexBox").querySelectorAll("[data-dexf]")) b.onclick = () => { dexFiltro = b.dataset.dexf; desenharPokedex(); };
 }
 $("menuDex").onclick = abrirPokedex;
 $("dexX").onclick = () => $("pokedex").classList.remove("on");
