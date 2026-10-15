@@ -155,7 +155,7 @@ module.exports = function ligarGinasio(io) {
         return { id, name: p.name, lado: p.lado, time: p.times[sala.config.modo], online: p.sockets.size > 0, ping: p.rtt == null ? null : Math.round(p.rtt) };
       }),
       match: m ? {
-        start: sala.inicio, end: sala.inicio + m.duracao * 1000, modo: m.modo, formato: m.formato, duracao: m.duracao, bioma: m.bioma,
+        id: sala.partidaId, comeco: sala.comeco, start: sala.inicio, end: sala.inicio + m.duracao * 1000, modo: m.modo, formato: m.formato, duracao: m.duracao, bioma: m.bioma,
         jogadores: m.lados.flatMap((l) => l.jogadores.map((p) => ({ id: p.id, nome: p.nome, lado: p.lado, slot: p.slot, bot: !!p.bot, time: p.time.map((b) => b.id) }))),
         ...pacote(sala),
       } : null,
@@ -202,6 +202,9 @@ module.exports = function ligarGinasio(io) {
     for (const l of sala.match.lados) for (const p of l.jogadores) if (p.bot && !p.selvagem) p.nome = lider && p.lado === 1 ? lider.nome : BOT_NOMES[b++];
     for (const p of Object.values(sala.players)) limparEntrada(p);
     sala.inicio = Date.now() + PRONTO_MS; sala.frame = 0; sala.results = null; sala.phase = "play";
+    // a identidade da partida para o navegador: o "start" anda a cada Pokébola (o relógio para na cena), e o navegador que
+    // tomava o start por identidade zerava a sequência dos comandos, que o servidor recusava (o Pokémon ficava parado)
+    sala.partidaId = (sala.partidaId || 0) + 1; sala.comeco = sala.inicio;
     log(sala, `Valendo: ${sala.config.formato}, modo ${{ pokemon: "Pokémon", naruto: "Naruto Shippuden" }[sala.config.modo] || "Galeramon"}.`);
     clearInterval(sala.loop);
     sala.loop = setInterval(() => tick(sala), TICK_MS);

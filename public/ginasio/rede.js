@@ -81,11 +81,13 @@ socket.on("state", (st) => {
   } else if (mine && !timeInicial && !(st.config.modo === "pokemon" && st.config.pokemons === "capturados")) guardarTime(st.config.modo, mine.time); // o time da sala "só capturados" não substitui o guardado
   if (st.phase !== "play") timeInicial = false;
   guardarConfig();
-  if (st.match && N.inicio !== st.match.start) { limparRede(); N.inicio = st.match.start; receberPacote({ ...st.match, t: st.now, seq: -1 }); }
+  // uma partida nova (pelo id: o start anda a cada Pokébola e não pode zerar a sequência dos comandos no meio da luta)
+  const idPartida = st.match && (st.match.id ?? st.match.start);
+  if (st.match && N.inicio !== idPartida) { limparRede(); N.inicio = idPartida; receberPacote({ ...st.match, t: st.now, seq: -1 }); }
   if (st.phase === "lobby") { limparRede(); salaVisivel = true; $("resultado").close(); }
   if (st.phase === "play" && faseAntes !== "play") salaVisivel = false;
   renderSala(); montarHud(); mostrarJogo(!!st.match && !salaVisivel);
-  if (st.phase === "over" && resultadoVisto !== st.match.start) { resultadoVisto = st.match.start; mostrarResultado(); }
+  if (st.phase === "over" && resultadoVisto !== idPartida) { resultadoVisto = idPartida; mostrarResultado(); }
 });
 socket.on("snap", receberPacote);
 socket.on("ev", (lista) => { for (const e of lista) { efeitoVisual(e); tocarEvento(e); } });

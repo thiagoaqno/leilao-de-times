@@ -107,6 +107,23 @@ test("robô: as três dificuldades e o líder no difícil", () => {
   assert.ok(f.foge < n.foge && n.foge < d.foge && f.erro > n.erro && n.erro > d.erro);
 });
 
+test("robô: não fica preso na parede recuando (desliza e volta para o meio)", () => {
+  // o jogador vai atrás do robô encostado na parede, sem atacar: antes, o robô recuava contra a borda e ficava ali
+  let colado = 0, n = 0;
+  for (let k = 0; k < 8; k++) for (const [x, y] of [[0, 5.66], [8.66, 0], [-8.66, -5.66], [8.66, 5.66]]) {
+    const { p, a, b } = partida(com("pikachu"), com("pikachu"), { seed: "parede" + k }, false, true);
+    Object.assign(b, { x, y }); Object.assign(a, { x: x * 0.8, y: y * 0.75 });
+    const hx = G.ARENA.w / 2 - b.raio, hy = G.ARENA.h / 2 - b.raio;
+    for (let i = 0; i < 240; i++) {
+      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, f = d > 2 ? 1 : 0;
+      G.passo(p, DT, { a: { seq: i, dx: dx / d * f, dy: dy / d * f, mira: { x: dx, y: dy } } });
+      if (Math.abs(b.x) >= hx - 0.01 || Math.abs(b.y) >= hy - 0.01) colado++;
+    }
+    n++;
+  }
+  assert.ok(colado / n < 5, `colado na parede em ${(colado / n).toFixed(1)} de 240 quadros`);
+});
+
 test("equilíbrio medido: o de perto tem chance contra quem recua, e o robô fica mais difícil a cada nível", () => {
   const N = 40, time = ["pikachu", "charizard", "blastoise"];
   const perto = taxa(N, (k) => duelo(T("t_perto"), T("t_longe"), perseguidor, recuador, {}, "m" + k));

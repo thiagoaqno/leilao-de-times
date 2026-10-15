@@ -1,4 +1,4 @@
-# Copa do Mundo na Carreira, painel com os atributos certos, telas Pokémon novas e a Pokédex no admin
+# Copa do Mundo na Carreira, painel com os atributos certos, telas Pokémon novas, a Pokédex no admin e o Pokémon que parava no Ginásio
 
 ## Copa do Mundo na Carreira (solo e sala)
 
@@ -36,6 +36,12 @@
 ## Admin da Pokédex
 
 - `/admin/pokedex` (mesmo login do GitHub e CSRF do painel da carreira): todos os treinadores, com busca. Para cada Pokémon: nível, experiência, espécie, brilhante e "evoluir pelo nível"; dar e tirar Pokémon; pôr todos de um treinador num nível. Vale na hora (a Vila e o Ginásio leem o banco). Cada edição fica registrada (`moderacao_pokemon`, migração 011) e aparece em "Últimas edições".
+
+## Ginásio: o Pokémon que parava
+
+- **Depois da Pokébola:** a cena da bola pausa a luta e empurra o relógio (`start`) para a frente. O navegador usava o `start` como a identidade da partida, então achava que era uma luta nova, limpava a rede e voltava a contar os comandos do zero; o servidor recusa sequência repetida, e o Pokémon ficava parado até o fim. Agora a partida tem um `id` (e o `comeco`, para a contagem do início), que a Pokébola não muda.
+- **Na parede:** o robô recuava direto contra a borda e ficava ali, apanhando sem reagir (7 vezes em 40 lutas de teste). Perto da parede ele não empurra mais para fora: desliza ao longo dela e volta para o meio (`longeDaParede` em `regras.js`). Sem o travamento o robô ficou mais forte; o fácil e o normal ganharam um pouco mais de pausa e de erro na mira para voltar ao nível medido de antes (quem recua atirando ganha 95% do fácil e ~43% do normal).
+- Testes: a luta segue com o mesmo `id` e o Pokémon anda depois da bola que escapou (`tests/ginasio-selvagem.test.js`), e o robô não fica colado na parede (`tests/ginasio-equilibrio.test.js`).
 
 ## Verificação
 

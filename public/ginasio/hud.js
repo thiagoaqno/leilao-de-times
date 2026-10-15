@@ -41,7 +41,7 @@ function atualizarHud(agora) {
     const vida = es.reduce((total, e) => total + e.time.reduce((v, b) => v + b.hp / b.max, 0), 0) / (js.length * 3);
     $(lado ? "vidaVermelha" : "vidaAzul").style.transform = `scaleX(${clamp(vida, 0, 1)})`;
   }
-  const contagem = S.phase === "play" ? Math.ceil((S.match.start - agora) / 1000) : 0;
+  const contagem = S.phase === "play" ? Math.ceil(((S.match.comeco ?? S.match.start) - agora) / 1000) : 0; // a contagem do começo (a Pokébola não refaz)
   $("contagem").classList.toggle("hidden", contagem <= 0); if (contagem > 0) $("contagem").textContent = contagem;
   const e = sn.entidades.find((p) => p.id === ME?.id); if (!e) return;
   const naruto = modoAtual() === "naruto";
