@@ -21,6 +21,11 @@ function resolver(opcoes, entrada, tipo) {
   const opcoesTexto = encontrados.slice(0, 8).map((o) => `${o.nome} (${o.id})`).join(", ");
   return { erro: `${tipo} “${termo}” é ambíguo. Escolha um nome mais completo ou use o ID: ${opcoesTexto}${encontrados.length > 8 ? ", …" : ""}.` };
 }
+// o atributo como o jogo mostra: na Carreira, a figurinha soma a evolução da nota (bonusNota) a cada atributo; no Rumo ao
+// Estrelato, o atleta (save.jogador) mostra o atributo cru, que o treino sobe direto. O painel lê e grava nessa mesma escala,
+// senão o técnico vê outro número do que o moderador salvou.
+const somaNoAtributo = (save, pid) => (save.jogador && pid === "eu" ? 0 : (save.bonusNota || {})[pid] || 0);
+const atributosNoJogo = (save, j) => Object.fromEntries(Object.entries(j.atr || {}).map(([k, v]) => [k, Math.max(1, Math.min(99, v + somaNoAtributo(save, j.id)))]));
 const clubesDe = (room) => Carreira.clubesEscolhiveis(room.opcoes.ligas).map((c) => ({ id: c.id, nome: c.nome }));
 const ctxSala = (room) => ({
   save: room.save, clubes: clubesDe(room).map((c) => ({ ...c, humano: !!room.save.humanos[c.id] })), estadoDe: (c) => room.save.humanos[c]?.estado || null,
@@ -49,7 +54,7 @@ function detalheCtx(x, clube, extra = {}) {
   } else clube = clubes.find((c) => c.humano)?.id || clubes[0]?.id;
   const est = x.estadoDe(clube);
   const jogadores = Carreira.elencoDe(save, clube).map((j) => ({ id: j.id, nome: j.nome, pos: j.pos,
-    overall: Math.max(40, Math.min(95, j.nota + (save.bonusNota[j.id] || 0))), atr: j.atr,
+    overall: Math.max(40, Math.min(95, j.nota + (save.bonusNota[j.id] || 0))), atr: atributosNoJogo(save, j),
     energia: est ? (est.energia || {})[j.id] ?? 100 : null }));
   const transferencias = (save.transferencias || []).filter((t) => t.de === clube || t.para === clube).slice(0, 15)
     .map((t) => ({ jogador: t.jogador, nome: Carreira.jogadorDe(save, t.jogador)?.nome, de: t.de, para: t.para,
@@ -112,7 +117,15 @@ function aplicarCtx(x, d) {
     const n = valorDe(d.valor), atributo = String(d.atributo || "");
     if (!ATRIBUTOS.has(atributo) || !(atributo in j.atr)) return { erro: "Atributo inválido." };
     if (!inteiro(n, 1, 99)) return { erro: "O atributo deve ser inteiro entre 1 e 99." };
-    antes = j.atr[atributo]; (save.atributosModerados ||= {})[pid] ||= {}; save.atributosModerados[pid][atributo] = n; depois = n;
+    antes = atributosNoJogo(save, j)[atributo];
+    const cru = Math.max(1, Math.min(99, n - somaNoAtributo(save, pid)));
+    // o jogador criado na carreira (base, Rumo ao Estrelato) mora no save: o atributo muda nele mesmo, e o treino continua dali
+    if (save.jovens && save.jovens[pid]) {
+      const jovem = save.jovens[pid];
+      jovem.atr = { ...jovem.atr, ...((save.atributosModerados || {})[pid] || {}), [atributo]: cru };
+      if (save.atributosModerados) delete save.atributosModerados[pid];
+    } else { (save.atributosModerados ||= {})[pid] ||= {}; save.atributosModerados[pid][atributo] = cru; }
+    depois = n;
   } else if (d.tipo === "transferir") {
     const destinoResolvido = resolver(clubes, d.destino, "clube de destino");
     if (destinoResolvido.erro) return destinoResolvido;

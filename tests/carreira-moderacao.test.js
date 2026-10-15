@@ -18,7 +18,9 @@ test("moderação altera a sala viva, desfaz transferência e bloqueia edição 
   assert.equal(Moderacao.aplicar(room, { tipo: "overall", clube: "flamengo", jogador: pid, valor: 90 }).depois, 90);
   assert.equal(save.bonusNota[pid], 90 - nota);
   assert.equal(Moderacao.aplicar(room, { tipo: "atributo", clube: "flamengo", jogador: pid, atributo: "rit", valor: 91 }).depois, 91);
-  assert.equal(Carreira.jogadorDe(save, pid).atr.rit, 91);
+  // o painel grava na escala do jogo: a figurinha soma a evolução da nota (bonusNota) a cada atributo
+  assert.equal(Carreira.jogadorDe(save, pid).atr.rit + save.bonusNota[pid], 91);
+  assert.equal(Moderacao.detalhe(room, "flamengo").jogadores.find((j) => j.id === pid).atr.rit, 91, "o painel mostra o número da figurinha");
   assert.ok(Moderacao.aplicar(room, { tipo: "atributo", clube: "flamengo", jogador: pid, atributo: "gol", valor: -5 }).erro);
   assert.equal(Moderacao.aplicar(room, { tipo: "transferir", clube: "flamengo", jogador: pid, destino: "palmeiras" }).depois, "palmeiras");
   assert.equal(Carreira.donoDe(save, pid), "palmeiras");
@@ -79,4 +81,14 @@ test("API da moderação exige identidade do workflow e não revela salas sem el
   } finally {
     server.close();
   }
+});
+
+test("moderação: o atributo de quem mora no save (jovem da base, atleta do Rumo ao Estrelato) muda nele mesmo", () => {
+  const save = Carreira.novaCarreiraGrupo([{ clube: "flamengo", nome: "Ana" }], { temporadas: 2 });
+  const room = { code: "ABCDE", fase: "carreira", opcoes: { ligas: "brasil" }, save, players: {}, nRodada: 0 };
+  save.jovens = { ...(save.jovens || {}), "flamengo-t1b9": { id: "flamengo-t1b9", nome: "Garoto Teste", pos: "ATA", nat: "Brasil", idade: 17, desde: 1, nota: 60, base: true, atr: { rit: 60, fin: 61, pas: 55, dri: 58, def: 30, fis: 50, gol: 10 } } };
+  save.donos["flamengo-t1b9"] = "flamengo";
+  assert.equal(Moderacao.aplicar(room, { tipo: "atributo", clube: "flamengo", jogador: "flamengo-t1b9", atributo: "fin", valor: 80 }).depois, 80);
+  assert.equal(save.jovens["flamengo-t1b9"].atr.fin, 80);
+  assert.ok(!(save.atributosModerados || {})["flamengo-t1b9"], "sem camada por cima: a evolução continua do valor novo");
 });

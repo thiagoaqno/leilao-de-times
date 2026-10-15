@@ -72,7 +72,7 @@ function todosJogadores(save) {
 }
 const elencoDe = (save, clube) => todosJogadores(save).filter((j) => donoDe(save, j.id) === clube);
 const notaDe = (save, j) => clamp(j.nota + (save.bonusNota[j.id] || 0), 40, 95);
-const comNota = (save, j) => ({ ...j, base: j.nota, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
+const comNota = (save, j) => ({ ...j, notaBase: j.nota, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
 // a premiação do campeonato até o G6 (do 1º ao 6º lugar da liga), paga no fim da temporada; no meio da liga (19 jogos), quem está no G6 já recebe 25% do prêmio
 // da posição em que está. Vale o fator da liga (a Premier League paga mais que a Argentina) e vem junto com a premiação por posição e o bônus de campeão.
 // o bônus de campeão de cada competição (R$ 15 mi para todas as outras): a Libertadores, a Copa do Brasil e a Sul-Americana pagam mais
@@ -800,7 +800,7 @@ function timeDe(save, id) {
     : rival ? (save.provocado && save.provocado.rodada === R ? save.provocado.nota : 0) + somaEfeitos(ativos, "rival") : 0;
   return {
     id: c.id, nome: c.nome,
-    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, base: j.nota, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
+    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, notaBase: j.nota, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
     formacao: meu ? save.escalacao.formacao : c.formacao,
     tatica: meu ? save.escalacao.tatica : { mentalidade: 0, pressao: 1, linha: 1, estilo: "auto" }, // o computador escolhe o estilo que combina com o elenco
     titulares: meu && save.escalacao.titulares ? save.escalacao.titulares : undefined,
