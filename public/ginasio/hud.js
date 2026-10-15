@@ -14,9 +14,9 @@ function montarHud() {
   preencher("habilidades", mon.moves.map((id, i) => {
     const mv = D.MOVES[id], hab = Ginasio.habilidadeDeGolpe(id, mv);
     const custo = (modoAtual() === "naruto" ? ` · ${mv.custo || 0} chakra` : "") + (NOME_DA_CLASSE[hab.classe] ? ` · ${NOME_DA_CLASSE[hab.classe]}` : "");
-    return `<button class="habilidade" data-golpe="${i}" style="--tipo:${D.TYPES[mv.t]}" title="${h(mv.n + custo)}" aria-label="${h(mv.n + custo)}">${ic(iconeHabilidade(hab))}<span class="nome">${h(mv.n)}</span><i class="recarga"></i><span class="segundos"></span></button>`;
+    return `<button class="habilidade" data-golpe="${i}" style="--tipo:${D.TYPES[mv.t]}" title="${h(mv.n + custo)}" aria-label="${h(mv.n + custo)}">${ic(iconeHabilidade(hab))}<span class="nome">${h(mv.n)}</span><kbd>${TECLAS_GOLPE[i]}</kbd><i class="recarga"></i><span class="segundos"></span></button>`;
   }).join(""));
-  preencher("reservas", e.time.map((b, i) => `<button data-troca="${i}" title="${h(D.MONS[b.id].n)}" aria-label="${h(D.MONS[b.id].n)}"><img src="${h(spriteUrl(b.id))}" alt=""><span class="mini-vida"><i></i></span></button>`).join(""));
+  preencher("reservas", e.time.map((b, i) => `<button data-troca="${i}" title="${h(D.MONS[b.id].n)}" aria-label="${h(D.MONS[b.id].n)}"><img src="${h(spriteUrl(b.id))}" alt=""><span class="mini-vida"><i></i></span><kbd>${i + 1}</kbd></button>`).join(""));
   configurarToque();
 }
 function recargaBotao(b, falta, total) {
@@ -25,6 +25,7 @@ function recargaBotao(b, falta, total) {
   if (pronto && b.dataset.recarregando === "1") { b.classList.add("pronta"); clearTimeout(b._pronta); b._pronta = setTimeout(() => b.classList.remove("pronta"), 220); }
   b.dataset.recarregando = pronto ? "0" : "1";
   b.querySelector(".recarga").style.transform = `scaleY(${clamp(falta / total, 0, 1)})`;
+  b.style.setProperty("--cd", clamp(falta / total, 0, 1).toFixed(3)); // a recarga em leque do modo Pokémon (hud-pokemon.js)
   b.querySelector(".segundos").textContent = falta > 0.05 ? falta.toFixed(1) : "";
   b.setAttribute("aria-disabled", falta > 0.05 ? "true" : "false");
 }
@@ -85,9 +86,9 @@ function mostrarResultado() {
   $("resultadoLados").innerHTML = r.lados.map((l) => `<div class="resultado-lado"><i class="cor ${l.lado ? "vermelho" : ""}"></i><span>${l.jogadores.map((p) => h(p.nome)).join(" + ")}</span><strong>${Math.round(l.vida / (l.jogadores.length * 3) * 100)}%</strong></div>`).join("");
   $("btnRevanche").classList.toggle("hidden", S.host !== ME?.id); $("resultado").showModal();
 }
-$("btnEsquiva").innerHTML = `${ic("pular")}<span class="nome">Esquiva</span><i class="recarga"></i><span class="segundos"></span>`;
+$("btnEsquiva").innerHTML = `${ic("pular")}<span class="nome">Esquiva</span><kbd>Espaço</kbd><i class="recarga"></i><span class="segundos"></span>`;
 $("btnEsquiva").onclick = mandarEsquiva;
-$("btnGuarda").innerHTML = `${ic("escudo")}<span class="nome">Guarda</span><i class="carga"></i>`;
+$("btnGuarda").innerHTML = `${ic("escudo")}<span class="nome">Guarda</span><kbd>Shift</kbd><i class="carga"></i>`;
 // a guarda vale enquanto o dedo (ou o mouse) segura o botão
 $("btnGuarda").addEventListener("pointerdown", (ev) => { if (!podeComandar()) return; ev.preventDefault(); ativarSom(); entrada.guardaToque = true; $("btnGuarda").setPointerCapture?.(ev.pointerId); });
 for (const fim of ["pointerup", "pointercancel", "lostpointercapture"]) $("btnGuarda").addEventListener(fim, () => { entrada.guardaToque = false; });
@@ -100,7 +101,7 @@ $("btnRevanche").onclick = async () => { $("resultado").close(); if (await act("
 function quadro(agora) {
   const dt = Math.min(0.05, Math.max(0, (agora - ultimoQuadro) / 1000)); ultimoQuadro = agora;
   if (!document.hidden) {
-    prever(dt); desenhar(relogio.agora(), dt); atualizarHud(relogio.agora());
+    prever(dt); desenhar(relogio.agora(), dt); atualizarHud(relogio.agora()); atualizarHudPokemon(relogio.agora());
   }
   requestAnimationFrame(quadro);
 }

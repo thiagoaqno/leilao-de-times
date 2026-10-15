@@ -73,7 +73,9 @@ function ajustarCanvas() {
   if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; }
   camera.largura = w; camera.altura = hh;
   const paisagemToque = toque && r.height < 320 && r.width > r.height && document.body.classList.contains("jogando");
-  const cima = S?.phase === "play" ? 22 : 6, baixo = paisagemToque ? 52 : 6; // pixels da página livres em cima e embaixo
+  // pixels da página livres em cima e embaixo; no modo Pokémon, a barra dos times em cima e o painel embaixo (hud-pokemon.js)
+  const pk = document.body.classList.contains("pk") && document.body.classList.contains("jogando"), painel = pk && !toque ? ($("hud").offsetHeight || 0) : 0;
+  const cima = S?.phase === "play" ? (pk ? 50 : 22) : 6, baixo = paisagemToque ? 52 : painel ? painel + 4 : 6;
   if (usar3d()) {
     enquadrar3d(w, hh, 1 - 2 * cima / Math.max(1, r.height), -1 + 2 * baixo / Math.max(1, r.height));
     Object.assign(camera, { x: w / 2, y: hh / 2, escala: escalaEm(0, 0), projetar: projetar3d, traco: 2 / fator });
@@ -98,6 +100,7 @@ function texto(t, x, y, cor = "#fff", tam = 6, alinhamento = "center") {
 // o piso com o tema do ginásio (temas.js): borda, faixas, o desenho do chão, as laterais e as linhas
 function desenharPiso(agora) {
   const s = camera.escala, x = camera.x, y = camera.y, T = temaAtual(), lw = Math.max(2, s * 0.11);
+  if (T.bioma) { ret(0, 0, chaoCv.width, chaoCv.height, T.fora[0]); desenharChaoBioma(T); return; } // o modo Pokémon luta ao ar livre (biomas.js)
   ret(0, 0, chaoCv.width, chaoCv.height, T.borda);
   ret(x - 9 * s, y - 6 * s, 18 * s, 12 * s, T.piso[1]);
   for (let faixa = 0; faixa < 18; faixa++) ret(x + (-9 + faixa) * s, y - 6 * s, s - 0.2, 12 * s, faixa % 2 ? T.piso[0] : T.piso[1]);

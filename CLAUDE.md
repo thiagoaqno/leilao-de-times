@@ -191,6 +191,20 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
   de `TEXTO_DO_EVENTO`; `golpes3d.js` tem `feixe3d`, `cone3d`, `anel3d`, `onda3d`, `zona3d`, `bombasVoando` e
   `aparou3d` (os efeitos começam na hora do evento, `quando`); a bolha da guarda, as estrelinhas do tonto, o rolar e o
   pulo ficam em `animacao.js`. Botão `#btnGuarda` (no `#defesa`, com `--guarda`) e o 6º botão do toque.
+- **Modo Pokémon: os cenários ao ar livre (`biomas.js`, carrega depois de `temas.js`).** No modo Pokémon,
+  `temaAtual()` devolve um bioma (`BIOMAS`: floresta, vulcão, lagoa, neve e ruínas, cada um um tema completo mais
+  `bioma`, `grama`, `trilha`, `fora`, `sol` e `ceu`), escolhido por `biomaDaPartida`: o tipo do líder
+  (`BIOMA_DO_TIPO`) ou, sem líder, `S.match.start` (o mesmo para a sala inteira; na sala, a floresta). O chão é pintado
+  uma vez (`pintarChaoBioma`, com a trilha no meio) e desenhado por `desenharPiso` (`desenharChaoBioma`); em 3D,
+  `montarTema` chama `montarBioma` no lugar da arquibancada (árvores, arbustos, pedras, as pilastras da regra viradas
+  pedra, coluna, cristal ou coral, as bandeiras azul e vermelha, lava, lagoa, o clima de `montarClima3d`). Teste:
+  `tests/ginasio-biomas.test.js`.
+- **Modo Pokémon: a HUD de MOBA (`hud-pokemon.js`, carrega antes de `hud.js`; `body.pk`).** Em cima, `#topoPk` (os
+  retratos dos dois times, os nocautes e o relógio); embaixo, o `#hud` vira o painel (`#retratoPk`, `#barrasPk` com a
+  vida riscada e a guarda, os botões de `hud.js` com `<kbd>` e a recarga em leque pelo `--cd`, `#reservas`,
+  `#efeitosPk`); `#mapaPk` (o minimapa) e `#feedPk` (os nocautes: quem bateu por último). A cada quadro,
+  `atualizarHudPokemon` (chamada pelo `quadro` de `hud.js`). Em cima de cada bicho, `barraDoHeroi` (`animacao.js`).
+  `ajustarCanvas` reserva o topo e a altura do painel para a câmera. No toque, o painel continua o de sempre.
 - **Encenação dos golpes em 8 tempos (`encenacao.js`, carrega depois de `golpes-naruto.js`):** cada golpe tem carga
   (`cargaInstantanea`, `cargasLongas` no preparo), núcleo (`nucleoDoProjetil`, chamado por `atualizarProjeteis3d`),
   rastro (`rastros`: fita com alfa por vértice atrás do projétil e da investida), estouro (`estouroDaFamilia`, chamado
