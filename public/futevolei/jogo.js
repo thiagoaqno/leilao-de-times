@@ -9,6 +9,7 @@ import { canvasTex } from "/pelada/tex.js";
 import { Atleta, ateImpacto } from "/futevolei/atleta.js";
 import { Modelo, criarMixamo, soltarMixamo } from "/futevolei/atleta-mixamo.js";
 import { montarCenario } from "/futevolei/cenarios.js";
+import { criarEncenacao } from "/futevolei/encenacao.js";
 
 const F = window.Futevolei, C = window.Campo, Q = F.Q, { $, h, store } = Comum;
 const toast = Comum.criarToast(3000), socket = io("/futevolei"), relogio = Comum.relogio(), act = Comum.criarAct(socket, toast);
@@ -138,7 +139,7 @@ pegadas.instanceMatrix.setUsage(THREE.DynamicDrawUsage); pegadas.frustumCulled =
 const pegadaVida = new Float32Array(PEGADAS), pegadaPos = Array.from({ length: PEGADAS }, () => ({ x: 0, z: 0, yaw: 0 }));
 let pegadaI = 0;
 const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _s = new THREE.Vector3();
-const _bolaSaque = new THREE.Vector3();
+const _bolaSaque = new THREE.Vector3(), _contato = new THREE.Vector3();
 function pisar(x, z, yaw, lado) {
   if (G.cenario && !G.cenario.naAreia(x, z)) return;
   const i = pegadaI++ % PEGADAS, d = lado > 0 ? 0.1 : -0.1;
@@ -241,6 +242,25 @@ const Som = (() => {
       else { const forte = ["shark", "bicicleta", "voleio", "saque"].includes(golpe); tom(forte ? 190 : 160, 55, 0.1, forte ? 0.75 : 0.55, "triangle"); ruido(0.06, forte ? 0.55 : 0.35, 1400); }
     },
     areia() { ruido(0.25, 0.6, 350, 0.6); tom(90, 40, 0.12, 0.3); },
+    // a encenação do toque (encenacao.js): cada golpe com o seu timbre, e o peso (0 passe, 1 ataque, 2 forte)
+    golpe(golpe, peso = 0) {
+      if (golpe === "cabeca") { tom(260, 95, 0.09, 0.5, "triangle"); ruido(0.05, 0.3, 1000); }
+      else if (golpe === "peito") { tom(120, 55, 0.14, 0.6); ruido(0.08, 0.3, 420, 0.7); }
+      else if (golpe === "letra" || golpe === "calcanhar") { tom(210, 80, 0.08, 0.5, "triangle"); ruido(0.04, 0.35, 1800); }
+      else if (golpe === "saque") { tom(150, 50, 0.13, 0.75, "triangle"); ruido(0.08, 0.5, 1200); }
+      else if (peso === 2) { tom(200, 45, 0.16, 0.9, "triangle"); ruido(0.1, 0.8, 1600, 0.6); tom(900, 300, 0.12, 0.08, "sawtooth"); } // o estalo do Shark, da bicicleta e do voleio
+      else if (peso === 1) { tom(175, 50, 0.11, 0.75, "triangle"); ruido(0.07, 0.55, 1400); }
+      else { tom(160, 60, 0.09, 0.5, "triangle"); ruido(0.05, 0.3, 1300); }
+    },
+    carga() { // a energia juntando antes do golpe forte: um chiado que sobe
+      const c = ctx(); if (!c) return; const t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(880, t + 0.35);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 0.25); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4); o.connect(g).connect(master); o.start(t); o.stop(t + 0.42);
+      ruido(0.35, 0.12, 2400, 2);
+    },
+    vento() { ruido(0.3, 0.35, 900, 0.8); }, // a bola passando forte
+    defesa() { tom(110, 60, 0.15, 0.45); ruido(0.08, 0.3, 600); },
+    areiaForca(forca) { ruido(0.2 + forca * 0.15, 0.4 + forca * 0.35, 320 - forca * 60, 0.6); tom(95 - forca * 20, 35, 0.12 + forca * 0.08, 0.25 + forca * 0.2); },
     rede() { ruido(0.25, 0.4, 700); },
     apito() { tom(2300, 2250, 0.18, 0.12, "square"); setTimeout(() => tom(2300, 2250, 0.3, 0.12, "square"), 220); },
     torcida() { ruido(1.4, 0.4, 900, 0.5); },
@@ -263,6 +283,8 @@ const Som = (() => {
     semFundo() { clearTimeout(gaivotas); if (fundo) { for (const n of fundo) try { n.stop(); } catch {} fundo = null; } },
   };
 })();
+// a encenação do toque em 8 tempos: carga, aura, rastro, estouro, reação, som, rescaldo e números (encenacao.js)
+const Enc = criarEncenacao({ scene, cam, F, Som, reduzido, naAreia: (x, z) => !G.cenario || G.cenario.naAreia(x, z), msgVelocidade: (t) => golpeNaTela(t, false) });
 $("vol").value = Som.vol; $("volV").textContent = Math.round(Som.vol * 100) + "%";
 $("vol").oninput = (e) => { Som.setVol(+e.target.value); $("volV").textContent = Math.round(Som.vol * 100) + "%"; };
 
@@ -413,7 +435,7 @@ function iniciar() {
   Som.unlock(); Som.apito(); Som.fundo(G.cenario.tipo);
 }
 function pararJogo() {
-  G.active = false; limparAtletas(); G.m = null; G.me = null; G.buf = []; G.matchKey = null; marca.visible = mira3d.visible = meuAnel.visible = false;
+  G.active = false; limparAtletas(); Enc.limpar(); G.m = null; G.me = null; G.buf = []; G.matchKey = null; marca.visible = mira3d.visible = meuAnel.visible = false;
   if (window.Toque) Toque.show(false);
   Som.semFundo();
   $("over").classList.add("hidden"); $("pause").classList.add("hidden");
@@ -492,7 +514,7 @@ function aoEvento(e) {
   if (e.tipo === "toque") {
     const a = G.atletas.get(e.id);
     if (a) a.confirmar(e.golpe, { lado: e.lado, pulo: e.pulo, h: e.h, estilo: e.estilo }); // o golpe já vinha (antecipado): acerta o impacto
-    Som.toque(e.golpe); estalo(e.estilo === "bicicleta" ? "bicicleta" : e.golpe, e.intencao);
+    estalo(e.estilo === "bicicleta" ? "bicicleta" : e.golpe, e.intencao);
     if (G.me && e.id === G.me.id) { G.me.armado = null; if (e.golpe === "bicicleta" || e.estilo === "bicicleta") G.me.caido = F.CAIDO_BICICLETA; } // no treino o eu é o mesmo das regras
     const p = posDe(e.id);
     if (p && (e.pulo || e.golpe === "saque")) poeira(p.x, p.z, 26, 0.8);
@@ -501,14 +523,16 @@ function aoEvento(e) {
     else if (ESPECIAIS[e.golpe]) { if (!grandeNaTela) golpeNaTela(ESPECIAIS[e.golpe], e.golpe === "bicicleta"); if (e.golpe === "bicicleta") torcidaVibra(0.4); }
     else if (e.golpe !== "saque" && !grandeNaTela) golpeNaTela((F.GOLPES[e.golpe] || {}).nome || "", false);
     if (e.espirrou && !grandeNaTela) golpeNaTela("Espirrou!", false);
+    // o ponto do contato: onde o atleta está, na altura do toque (online a bola na tela está 100 ms atrás)
+    Enc.toque(e, p ? _contato.set(p.x, e.h || bola.position.y, p.z) : bola.position, e.time);
   }
-  else if (e.tipo === "preSaque") { const a = G.atletas.get(e.id); if (a) a.antecipar("saque", { lado: 1 }, e.falta); }
-  else if (e.tipo === "areia") { poeira(e.x, e.z, 70, 1.2); Som.areia(); peixinho(e.x, e.z); }
-  else if (e.tipo === "rede") Som.rede();
+  else if (e.tipo === "preSaque") { const a = G.atletas.get(e.id); if (a) a.antecipar("saque", { lado: 1 }, e.falta); Enc.preSaque(a, e.falta); }
+  else if (e.tipo === "areia") { poeira(e.x, e.z, 70, 1.2); Enc.areia(e, G.velBola); peixinho(e.x, e.z); }
+  else if (e.tipo === "rede") { Som.rede(); if (G.cenario) G.cenario.balancarRede(Enc.rede(e, bola.position, G.velBola), bola.position.x); }
   else if (e.tipo === "ponto") {
-    const meu = G.myTeam === e.time && G.me, motivo = MOTIVO[e.motivo];
+    const meu = G.myTeam === e.time && G.me, motivo = MOTIVO[e.motivo], veloz = Enc.ponto(e);
     if (motivo) { $("hGolpe").classList.remove("on"); G.golpeAte = 0; } // a mensagem do ponto já diz o golpe
-    msg(motivo || `Ponto do ${NOME[e.time]}`, motivo ? `ponto do ${NOME[e.time]}` : e.rally > 6 ? `que rally! (${e.rally} toques)` : "", 1600, COR[e.time]);
+    msg(motivo || `Ponto do ${NOME[e.time]}`, [motivo ? `ponto do ${NOME[e.time]}` : e.rally > 6 ? `que rally! (${e.rally} toques)` : "", veloz].filter(Boolean).join(" · "), 1600, COR[e.time]);
     if (meu || !G.me) Som.torcida(); else Som.ooh();
     torcidaVibra(0.5);
     for (const [id, a] of G.atletas) { const ganhou = a.team === e.time; setTimeout(() => a.disparar(ganhou ? "comemora" : "lamenta"), 350 + (id.length % 3) * 80); }
@@ -589,10 +613,15 @@ function frame() {
   const sacador = estado.fase === "saque" ? G.atletas.get(estado.sacador) : null;
   if (sacador !== G.sacadorAnt) { if (G.sacadorAnt) G.sacadorAnt.segura = false; if (sacador) { sacador.segura = true; sacador.disparar("pegaBola"); } G.sacadorAnt = sacador; }
   if (sacador) { const p = sacador.bolaDoSaque(bolaV, _bolaSaque); if (p) bola.position.copy(p); }
+  // o hit-stop do toque forte (encenacao.js): a bola e quem tocou congelam um instante no desenho
+  const segura = Enc.segurando(tp);
+  if (segura) bola.position.copy(segura.ponto);
+  G.velBola = Math.hypot(bolaV.vx || 0, bolaV.vy || 0, bolaV.vz || 0);
   const vb = Math.hypot(bolaV.vx || 0, bolaV.vz || 0);
   if (vb > 0.1) { _eixo.set(bolaV.vz, 0, -bolaV.vx).normalize(); bola.rotateOnWorldAxis(_eixo, (vb / Q.R) * dt * (0.5 + 0.6 * rastroEst.forca)); } // o chute forte gira mais
   atualizarRastro({ x: bola.position.x, y: bola.position.y, z: bola.position.z, vx: bolaV.vx, vy: bolaV.vy, vz: bolaV.vz }, estado.fase === "jogo" && !sacador);
   atualizarEstalos(dt);
+  const tranco = Enc.quadro(dt, { bola, bolaV, tp, fase: estado.fase });
   sombra.position.set(bolaV.x, 0.015, bolaV.z); sombra.scale.setScalar(1 + bolaV.y * 0.12); sombra.material.opacity = Math.max(0.08, 0.32 - bolaV.y * 0.03);
   marca.visible = false;
   if (estado.fase === "jogo" && G.myTeam && bolaV.y > 0.2) {
@@ -623,9 +652,10 @@ function frame() {
       if (p && j.plano) Object.assign(p, j.plano, { pulo: j.plano.golpe === "shark" || j.plano.golpe === "bicicleta" || p.h > F.ALTURA_PULO });
       // no treino as regras estão aqui: espera o plano. Online, até o plano chegar no pacote, vale a previsão daqui
       if (p && (j.plano || !G.offline) && p.t <= ateImpacto(p.golpe, p) && (!a.golpeNoAr || j.plano)) a.antecipar(p.golpe, p, p.t); // com plano, corrige o golpe (o mesmo não recomeça)
+      if (p) Enc.carga(a, p, local.armado.intencao); // a energia juntando no ponto do contato
     }
     const perto = F.ladoDe(bolaV.z) === a.team && Math.hypot(bolaV.x - local.x, bolaV.z - local.z) < 9;
-    a.atualizar(local, perto ? bolaV : null, dt);
+    a.atualizar(local, perto ? bolaV : null, segura && segura.id === j.id ? 0 : dt);
   }
   for (const t of G.torcida) { t.fase += dt; t.a.atualizar({ x: t.l.x, y: t.l.y || 0, z: t.l.z, vx: 0, vz: 0 }, { x: bolaV.x, z: bolaV.z }, dt); }
   atualizarPegadas(dt); atualizarGraos(dt);
@@ -640,6 +670,7 @@ function frame() {
     _olhar.set(me.x * 0.55 + bolaV.x * 0.1, 0.6, fundo * 0.35 - s * 2.2);
     G.camOlhar.lerp(_olhar, Math.min(1, dt * 5)); cam.lookAt(G.camOlhar);
   } else { cam.position.lerp(_alvoCam.set(20, 11, bolaV.z * 0.35), Math.min(1, dt * 2)); cam.lookAt(0, 1.2, bolaV.z * 0.35); }
+  cam.position.add(tranco); // o tranco do toque forte e da bola cravando
   hud(estado, me);
   renderer.render(scene, cam);
 }
