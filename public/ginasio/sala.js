@@ -30,6 +30,18 @@ const dexAtual = () => dexDe(modoAtual());
 const meuJogador = () => S?.players.find((p) => p.id === ME?.id);
 const timeAtual = () => meuJogador()?.time || times[modoAtual()];
 const imagens = new Map();
+document.querySelector(".hero-mon-esq").src = PokeDex.sprite("charizard", false);
+document.querySelector(".hero-mon-dir").src = PokeDex.sprite("lucario", false);
+document.querySelector(".hero-mon-centro").src = PokeDex.sprite("gengar", false);
+
+// A moderação pode mudar o time Pokémon dos líderes sem publicar uma nova versão do jogo.
+fetch("/api/ginasio/treinadores-pokemon", { cache: "no-store" }).then((r) => r.ok ? r.json() : []).then((lista) => {
+  for (const { id, time } of lista) {
+    const lider = Lideres.de(id);
+    if (lider && Array.isArray(time) && time.length === 3 && time.every((p) => PokeDex.MONS[p])) lider.times.pokemon = time;
+  }
+  renderSala();
+}).catch(() => {});
 
 function spriteUrl(id, modo = modoAtual()) { return modo === "pokemon" ? PokeDex.sprite(id, false) : modo === "naruto" ? NarutoDex.sprite(id) : GaleramonSprite(id); }
 function imagemDe(id, modo = modoAtual()) {
@@ -61,6 +73,7 @@ const DICA_ARENA = {
 function guardarConfig() { if (S) Object.assign(configLocal, S.config); store.set("ginasio:config", configLocal); }
 function atualizarOpcoes() {
   const c = S?.config || configLocal, pode = !S || (S.host === ME?.id && S.phase !== "play");
+  document.body.classList.toggle("pokemon-lobby", c.modo === "pokemon");
   document.querySelectorAll("[data-modo]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.modo === c.modo); b.disabled = !pode; });
   document.querySelectorAll("[data-formato]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.formato === c.formato); b.disabled = !pode; });
   $("bots").checked = c.bots; $("bots").disabled = !pode;

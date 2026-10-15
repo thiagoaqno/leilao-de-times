@@ -51,6 +51,15 @@ function abrir(caminho = process.env.DB_PATH || path.join(__dirname, "dados", "g
 function fechar() { if (banco) { banco.close(); banco = null; } }
 const bd = () => banco || abrir();
 
+// Times Pokémon dos personagens do Ginásio. O código base é o padrão; o banco guarda só edições.
+const timesPokemonGinasio = () => bd().prepare("SELECT treinador, time_json, ator, atualizado_em FROM ginasio_times_pokemon").all();
+function salvarTimePokemonGinasio(treinador, time, ator) {
+  bd().prepare(`INSERT INTO ginasio_times_pokemon (treinador, time_json, ator, atualizado_em) VALUES (?, ?, ?, ?)
+    ON CONFLICT(treinador) DO UPDATE SET time_json=excluded.time_json, ator=excluded.ator, atualizado_em=excluded.atualizado_em`)
+    .run(treinador, JSON.stringify(time), ator, Date.now());
+}
+const reporTimePokemonGinasio = (treinador) => bd().prepare("DELETE FROM ginasio_times_pokemon WHERE treinador = ?").run(treinador);
+
 // Fotos recortadas da Carreira. URL nula guarda uma busca sem resultado para não repetir a cada visita.
 function fotoJogador(id) {
   return bd().prepare("SELECT url, consultado_em FROM fotos_jogadores WHERE jogador = ?").get(id) || null;
@@ -256,4 +265,4 @@ function rankingCapturas(limite = 10) {
     .map((r) => ({ nome: r.nome, especies: Number(r.especies), total: Number(r.total) }));
 }
 
-module.exports = { guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

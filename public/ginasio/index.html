@@ -7,6 +7,7 @@
 <script src="/semzoom.js"></script>
 <title>Ginásio da Galera</title>
 <link rel="stylesheet" href="estilo.css">
+<link rel="stylesheet" href="lobby-pokemon.css">
 </head>
 <body>
 <header id="barra">
@@ -19,6 +20,16 @@
 <main id="principal">
   <section id="quadra" aria-label="Arena do Ginásio">
     <canvas id="cv" aria-label="Batalha em tempo real"></canvas>
+    <div id="pokemonHero" aria-hidden="true">
+      <div class="hero-topo"><span>GINÁSIO POKÉMON</span><span>01 / ARENA</span></div>
+      <div class="hero-energia"></div>
+      <div class="hero-selo"><span></span></div>
+      <img class="hero-mon hero-mon-esq" src="" alt="">
+      <img class="hero-mon hero-mon-dir" src="" alt="">
+      <img class="hero-mon hero-mon-centro" src="" alt="">
+      <div class="hero-texto"><span>SEU PRÓXIMO DESAFIO COMEÇA AQUI</span><strong>ENTRE NA<br>ARENA.</strong><p>Monte seu trio. Escolha o campo. Vença a batalha.</p></div>
+      <div class="hero-rodape"><span>3 POKÉMON POR TIME</span><span>1×1 &nbsp; / &nbsp; 2×2</span><span>AO VIVO</span></div>
+    </div>
     <div id="placar" class="hidden">
       <div class="lado azul"><span id="nomeAzul"></span><div class="vida"><i id="vidaAzul"></i></div></div>
       <time id="relogio">4:00</time>

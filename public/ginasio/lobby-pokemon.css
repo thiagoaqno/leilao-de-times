@@ -1,0 +1,50 @@
+/* Lobby Pokémon: inspirado na energia e no contraste da referência, sem afetar a luta. */
+#pokemonHero{display:none}
+body.pokemon-lobby:not(.jogando){--papel:#171629;--tinta:#f7f2ff;--suave:#b4aeca;--linha:#514765;--verde:#f4bd61;background:#100e20}
+body.pokemon-lobby:not(.jogando) #barra{height:56px;min-height:56px;background:#110d20;border-bottom-color:#ffffff26;padding-inline:clamp(16px,2.3vw,32px)}
+body.pokemon-lobby:not(.jogando) #barra .voltar{color:#fff;font-size:13px;letter-spacing:.04em}
+body.pokemon-lobby:not(.jogando) #principal{grid-template-columns:minmax(0,1fr) minmax(340px,390px)}
+body.pokemon-lobby:not(.jogando) #quadra{background:#190d2e}
+body.pokemon-lobby:not(.jogando) #cv{opacity:.08}
+body.pokemon-lobby:not(.jogando) #pokemonHero{display:block;position:absolute;inset:0;overflow:hidden;pointer-events:none;background:
+  radial-gradient(ellipse at 50% 38%,#fffde7 0,#fff2cf 2%,#fbbff8 8%,#ba60dc 18%,transparent 34%),
+  radial-gradient(ellipse at 5% 78%,#fe994fbb,transparent 40%),radial-gradient(ellipse at 96% 55%,#338de2a8,transparent 42%),
+  radial-gradient(ellipse at 70% 5%,#b34faf,transparent 44%),linear-gradient(135deg,#1b102e,#31145e 52%,#0d1b46)}
+#pokemonHero::before{content:"";position:absolute;inset:-20%;opacity:.36;background:repeating-conic-gradient(from 0deg at 50% 38%,transparent 0deg 13deg,#fce3ff2b 15deg 16deg,transparent 18deg 30deg);mix-blend-mode:screen;animation:heroRaio 32s linear infinite}
+#pokemonHero::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 15%,#080b2199 87%),linear-gradient(0deg,#100e20 0,transparent 45%)}
+.hero-topo,.hero-rodape,.hero-texto{position:absolute;z-index:4;color:#fff}
+.hero-topo{top:28px;left:clamp(24px,4vw,60px);right:clamp(24px,4vw,60px);display:flex;justify-content:space-between;font:800 11px/1.2 ui-monospace,monospace;letter-spacing:.2em;color:#fce7ff}
+.hero-topo span:first-child{color:#ffd56f}
+.hero-energia{position:absolute;z-index:1;left:50%;top:36%;width:min(58vw,540px);height:min(58vw,540px);transform:translate(-50%,-50%);border:1px solid #fff8;border-radius:50%;box-shadow:0 0 0 28px #e6b9ff0d,0 0 0 68px #fff2,0 0 0 110px #cea5ff0b,inset 0 0 55px #fff9,0 0 90px #eba8ff9e;animation:heroRespira 6s ease-in-out infinite alternate}
+.hero-selo{position:absolute;z-index:3;left:50%;top:36%;width:clamp(88px,11vw,146px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:8px solid #f9c35b;background:radial-gradient(circle,#fff 0 26%,#fff8d5 65%,#f8c357);box-shadow:0 0 0 5px #fff6,0 0 55px 25px #fff9,0 0 110px #f7c46e;display:grid;place-items:center}
+.hero-selo span{width:56%;aspect-ratio:1;display:block;border:6px solid #f1a62e;border-radius:50%;background:linear-gradient(#f1b347 0 44%,#bd7929 44% 56%,#fff2c2 56%);box-shadow:inset 0 0 12px #fff}
+.hero-selo span::after{content:"";display:block;width:22%;height:22%;border:4px solid #db962b;border-radius:50%;background:#fff;position:relative;left:50%;top:50%;transform:translate(-50%,-50%)}
+.hero-mon{position:absolute;z-index:2;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 24px 18px #0a0925) drop-shadow(0 0 28px #e8a8ff);animation:heroFlutua 5s ease-in-out infinite alternate}
+.hero-mon-esq{left:2%;top:13%;width:38%;height:43%;transform:rotate(-13deg)}
+.hero-mon-dir{right:0;top:10%;width:38%;height:47%;transform:rotate(12deg);animation-delay:-2s}
+.hero-mon-centro{left:41%;top:51%;width:20%;height:25%;filter:drop-shadow(0 18px 14px #0a0925) drop-shadow(0 0 25px #63ceff);animation-delay:-3s}
+.hero-texto{left:clamp(24px,4vw,60px);right:24px;bottom:clamp(76px,12vh,140px);text-shadow:0 4px 20px #0c0827aa}
+.hero-texto>span{display:block;margin-bottom:12px;font:800 11px ui-monospace,monospace;letter-spacing:.18em;color:#ffd56f}
+.hero-texto strong{display:block;font:900 clamp(52px,7vw,112px)/.83 system-ui,sans-serif;letter-spacing:-.08em}
+.hero-texto p{font-size:clamp(13px,1.45vw,18px);font-weight:600;margin-top:20px;color:#eee3ff}
+.hero-rodape{left:clamp(24px,4vw,60px);right:clamp(24px,4vw,60px);bottom:28px;display:flex;justify-content:space-between;gap:10px;padding-top:15px;border-top:1px solid #ffffff70;font:700 10px ui-monospace,monospace;letter-spacing:.12em;color:#fce7ff}
+body.pokemon-lobby:not(.jogando) #painel{background:linear-gradient(160deg,#25203c,#151525 55%,#101422);border-left:1px solid #af91c75c;padding:clamp(20px,2.2vw,34px);color:#fff;scrollbar-color:#746589 transparent}
+body.pokemon-lobby:not(.jogando) .titulo{padding-bottom:26px;border-bottom:1px solid #ffffff2b;margin-bottom:22px}
+body.pokemon-lobby:not(.jogando) .titulo .marca{color:#f8c566;letter-spacing:.18em;font-size:10px}
+body.pokemon-lobby:not(.jogando) .titulo h1{font-size:clamp(32px,3vw,42px);letter-spacing:-.05em}
+body.pokemon-lobby:not(.jogando) label,body.pokemon-lobby:not(.jogando) legend{color:#dbd1ed}
+body.pokemon-lobby:not(.jogando) input:not([type=checkbox]){background:#ffffff10;color:#fff;border:1px solid #ab99be;border-radius:9px}
+body.pokemon-lobby:not(.jogando) input::placeholder{color:#b2a5c9}
+body.pokemon-lobby:not(.jogando) #painel button:not(.bicho){border-radius:9px;background:#ffffff10;color:#f8f3ff;border-color:#887ba1}
+body.pokemon-lobby:not(.jogando) #painel button.primario{background:linear-gradient(120deg,#f7cd6c,#f09a56);color:#281b30;border:0;font-weight:850;box-shadow:0 6px 24px #eaa84a36}
+body.pokemon-lobby:not(.jogando) #painel button[aria-pressed=true]{background:#8652b3;color:#fff;box-shadow:inset 0 -3px 0 #f9d074}
+body.pokemon-lobby:not(.jogando) #painel button.bicho{background:#ffffff12;border:1px solid #a48cb9;color:#fff;border-radius:12px;min-height:110px}
+body.pokemon-lobby:not(.jogando) #painel button.bicho:hover{border-color:#f9d074;background:#ffffff20}
+body.pokemon-lobby:not(.jogando) .participante{background:#ffffff12;color:#fff}
+body.pokemon-lobby:not(.jogando) .participante.vermelho{background:#e6548030}
+body.pokemon-lobby:not(.jogando) .insignias{border-top-color:#ffffff24}
+body.pokemon-lobby:not(.jogando) .dica-insignias,body.pokemon-lobby:not(.jogando) #dicaArena,body.pokemon-lobby:not(.jogando) #dicaPokemons{color:#c0b4d4}
+@keyframes heroRaio{to{transform:rotate(360deg)}}@keyframes heroRespira{to{opacity:.65;scale:1.08}}@keyframes heroFlutua{to{translate:0 -12px}}
+@media(max-width:800px){body.pokemon-lobby:not(.jogando){height:auto;min-height:100dvh}body.pokemon-lobby:not(.jogando) #principal{display:block}body.pokemon-lobby:not(.jogando) #quadra{height:clamp(360px,56vw,490px)}body.pokemon-lobby:not(.jogando) #painel{border-left:0;border-top:1px solid #af91c75c;overflow:visible}.hero-texto{bottom:64px}.hero-texto strong{font-size:clamp(55px,9vw,82px)}.hero-rodape{bottom:20px}.hero-energia{width:430px;height:430px}.hero-mon-esq{width:35%;top:8%}.hero-mon-dir{width:35%;top:8%}.hero-mon-centro{top:42%}}
+@media(max-width:480px){body.pokemon-lobby:not(.jogando) #quadra{height:400px}.hero-topo{top:19px}.hero-mon-esq{left:-7%;width:49%;height:42%;top:12%}.hero-mon-dir{right:-7%;width:49%;height:42%;top:12%}.hero-mon-centro{top:45%;width:26%;left:37%}.hero-selo{top:31%;width:90px}.hero-energia{top:31%}.hero-texto{left:20px;bottom:61px}.hero-texto>span{font-size:9px;margin-bottom:8px}.hero-texto strong{font-size:54px}.hero-texto p{font-size:12px;margin-top:12px}.hero-rodape{left:20px;right:20px;font-size:8px}.hero-rodape span:nth-child(2){display:none}}
+@media(prefers-reduced-motion:reduce){#pokemonHero::before,.hero-energia,.hero-mon{animation:none}}
