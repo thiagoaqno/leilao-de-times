@@ -8,7 +8,10 @@ const Lideres = require("./public/galeramon/lideres.js"); // os líderes e trein
 const { rid, novoCodigo, limparNome, ok, falha, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js");
 const noite = require("./noite.js");
 const Mato = require("./public/vila/mato.js"); // os três iniciais
-const { hashDe, colecaoDe } = require("./vila-mato.js"); // a coleção da grama alta da Vila (bd.js)
+const { hashDe, colecaoDe, darXp, anunciar, INICIAIS } = require("./vila-mato.js"); // a coleção da grama alta da Vila (bd.js)
+const Niveis = require("./public/galeramon/niveis.js"); // nível, experiência, evolução e a Pokébola (PokéAPI)
+const bd = require("./bd.js");
+const BOLA_RECARGA_MS = 1500; // entre uma Pokébola e outra, depois que a cena acaba
 
 const TICK = 1 / 60, SNAP_EVERY = 3, MAX_SALA = 8, COMANDO_MS = 250;
 // Os testes aceleram o relogio sem mudar o passo, o dano ou a duracao da partida.
@@ -71,11 +74,17 @@ module.exports = function ligarGinasio(io) {
 
   // a sala "só capturados": cada um joga só com os Pokémon que tem (os iniciais e os da grama alta da Vila)
   const soCapturados = (sala) => sala.config.modo === "pokemon" && sala.config.pokemons === "capturados";
-  const foraDaColecao = (sala, p, time) => (soCapturados(sala) ? time.find((id) => !colecaoDe(p.treinador).has(id)) || null : null);
+  const foraDaColecao = (sala, p, time) => (soCapturados(sala) ? time.find((id) => !colecaoDe(p.treinador, p.name).has(id)) || null : null);
+  // o time de quem só joga com os seus: o pedido, se é todo dele; senão, os três de nível mais alto
+  function timeDaColecao(p, pedido) {
+    const c = colecaoDe(p.treinador, p.name);
+    if (Array.isArray(pedido) && pedido.length === 3 && new Set(pedido).size === 3 && pedido.every((id) => c.has(id))) return pedido.slice();
+    return [...c.values()].sort((a, b) => b.nivel - a.nivel || b.xp - a.xp).slice(0, 3).map((x) => x.bicho);
+  }
   // quem está com um time que não tem volta para os iniciais (ao ligar a regra, ao entrar e ao começar)
   function ajustarAColecao(sala, p) {
     if (!foraDaColecao(sala, p, p.times.pokemon)) return false;
-    p.times.pokemon = Mato.INICIAIS.slice();
+    p.times.pokemon = sala.selvagem ? timeDaColecao(p) : Mato.INICIAIS.slice();
     log(sala, `${p.name} ainda não tem todos os Pokémon do time: voltou para os iniciais.`);
     return true;
   }
@@ -117,7 +126,7 @@ module.exports = function ligarGinasio(io) {
       tempo: m.t, fim: m.fim, vencedor: m.vencedor, empate: m.empate,
       entidades: m.entidades.map((e) => ({
         id: e.id, lado: e.lado, slot: e.slot, x: e.x, y: e.y, vx: e.vx, vy: e.vy, mira: { ...e.mira },
-        campo: e.campo, bicho: e.bicho.id, forma: e.bicho.as || e.bicho.id, raio: e.raio,
+        campo: e.campo, bicho: e.bicho.id, forma: e.bicho.as || e.bicho.id, raio: e.raio, ...(e.bicho.nivel && { nivel: e.bicho.nivel }),
         hp: e.bicho.hp, max: e.bicho.max, cds: [...e.bicho.cds], st: { ...e.bicho.st },
         ...(m.modo === "naruto" && { chakra: e.bicho.chakra, substitutes: e.jogador.substitutes }),
         esquivaCd: e.esquivaCd, esquivaT: e.esquivaT, invulneravel: e.invulneravel,
@@ -129,7 +138,7 @@ module.exports = function ligarGinasio(io) {
         dash: e.dash && { x: e.dash.x, y: e.dash.y, falta: e.dash.falta, velocidade: e.dash.hab.velocidade, giro: !!e.dash.hab.giro, elemento: e.dash.hab.tipo },
         oculto: e.oculto && { jeito: e.oculto.jeito, t: e.oculto.t, total: e.oculto.total, de: { ...e.oculto.de }, para: { ...e.oculto.para } },
         ativo: e.jogador.ativo, trocaCd: e.jogador.trocaCd, entradaEm: e.jogador.entradaEm,
-        time: e.jogador.time.map((b) => ({ id: b.id, hp: b.hp, max: b.max })),
+        time: e.jogador.time.map((b) => ({ id: b.id, hp: b.hp, max: b.max, ...(b.nivel && { nivel: b.nivel }) })),
       })),
       projeteis: m.projeteis.map(projetilDe), areas: m.areas.map(areaDe),
     };
@@ -138,6 +147,7 @@ module.exports = function ligarGinasio(io) {
     const m = sala.match;
     return {
       code: sala.code, host: sala.host, phase: sala.phase, config: sala.config,
+      ...(sala.selvagem && { selvagem: { bicho: sala.selvagem.bicho, nivel: sala.selvagem.nivel, raridade: sala.selvagem.raridade, brilhante: sala.selvagem.brilhante, usado: !!sala.selvagem.usado } }),
       players: sala.order.map((id) => {
         const p = sala.players[id];
         return { id, name: p.name, lado: p.lado, time: p.times[sala.config.modo], online: p.sockets.size > 0, ping: p.rtt == null ? null : Math.round(p.rtt) };
@@ -171,10 +181,23 @@ module.exports = function ligarGinasio(io) {
   }
   function comecar(sala) {
     const lados = [0, 1].map((lado) => doLado(sala, lado).map((p) => ({ id: p.id, nome: p.name, bot: false, time: p.times[sala.config.modo] })));
-    sala.match = G.criarPartida({ ...sala.config, seed: rid(16) }, lados);
+    // na sala "só capturados" (e na luta com o selvagem), cada um joga com o nível dos seus Pokémon; o robô, com a média
+    let nivelRobo = null;
+    if (soCapturados(sala)) {
+      const niveis = [];
+      for (const l of lados) for (const j of l) {
+        const p = sala.players[j.id], c = colecaoDe(p.treinador, p.name);
+        p.inds = j.time.map((id) => c.get(id) || null);
+        j.niveis = p.inds.map((x) => (x ? x.nivel : Niveis.NIVEL_INICIAL));
+        niveis.push(...j.niveis);
+      }
+      if (niveis.length) nivelRobo = Math.round(niveis.reduce((a, b) => a + b, 0) / niveis.length);
+    }
+    sala.match = G.criarPartida({ ...sala.config, seed: rid(16), ...(nivelRobo && { nivelRobo }), ...(sala.selvagem && { selvagem: sala.selvagem }) }, lados);
+    sala.pausaAte = 0; sala.proximaBola = 0; sala.capturou = null; sala.participantes = new Set();
     let b = 0;
     const lider = Lideres.de(sala.config.lider);
-    for (const l of sala.match.lados) for (const p of l.jogadores) if (p.bot) p.nome = lider && p.lado === 1 ? lider.nome : BOT_NOMES[b++];
+    for (const l of sala.match.lados) for (const p of l.jogadores) if (p.bot && !p.selvagem) p.nome = lider && p.lado === 1 ? lider.nome : BOT_NOMES[b++];
     for (const p of Object.values(sala.players)) limparEntrada(p);
     sala.inicio = Date.now() + PRONTO_MS; sala.frame = 0; sala.results = null; sala.phase = "play";
     log(sala, `Valendo: ${sala.config.formato}, modo ${{ pokemon: "Pokémon", naruto: "Naruto Shippuden" }[sala.config.modo] || "Galeramon"}.`);
@@ -191,13 +214,73 @@ module.exports = function ligarGinasio(io) {
         jogadores: l.jogadores.map((p) => ({ id: p.id, nome: p.nome, bot: !!p.bot })),
       })),
     };
-    if (!m.empate) {
+    if (sala.selvagem) sala.results.selvagem = fimDaLutaSelvagem(sala);
+    if (!m.empate && !sala.selvagem) {
       const humanos = (lado) => m.lados[lado].jogadores.filter((p) => !p.bot).map((p) => p.nome);
       noite.vitoria("ginasio", sala.code, humanos(m.vencedor), humanos(1 - m.vencedor));
     }
     log(sala, m.empate ? "A batalha terminou empatada." : `O lado ${m.vencedor + 1} venceu a batalha.`);
     broadcast(sala);
   }
+  // ---------- a luta com o Pokémon selvagem (a grama alta da Vila) ----------
+  // A Vila leva o encontro para cá (criarSelvagem): uma sala 1x1 com o treinador de um lado e o selvagem, sozinho, do
+  // outro. Dá para jogar a Pokébola a qualquer hora (act "pokebola": a chance sobe com a vida baixa e com o Pokémon
+  // tonto); a luta para durante a cena. Pegou ou venceu: quem lutou ganha experiência (Niveis.xpDaVitoria, dividida
+  // entre os que entraram em campo), sobe de nível e evolui no banco.
+  function criarSelvagem({ nome, treinador, time, encontro }) {
+    if (!treinador || !encontro || !PokeDex.MONS[encontro.bicho]) return null;
+    const tipo = PokeDex.MONS[encontro.bicho].types[0];
+    const sala = novaSala(limparConfig({ modo: "pokemon", formato: "1x1", bots: true, pokemons: "capturados", arena: G.BIOMA_DO_TIPO[tipo] || "floresta" }));
+    sala.selvagem = { bicho: encontro.bicho, nivel: encontro.nivel, raridade: encontro.raridade, brilhante: !!encontro.brilhante, hp: encontro.hp, max: encontro.max };
+    const p = adicionar(sala, limparNome(nome) || "Treinador", null, treinador);
+    p.times.pokemon = timeDaColecao(p, time);
+    sala.host = p.id;
+    log(sala, `Um ${PokeDex.MONS[encontro.bicho].n} selvagem (nível ${encontro.nivel}) apareceu!`);
+    return { code: sala.code, id: p.id, token: p.token };
+  }
+  const selvagemEm = (m) => m.entidades.find((e) => e.lado === 1);
+  function jogarPokebola(sala, me) {
+    const m = sala.match, now = Date.now(), alvo = m && selvagemEm(m);
+    if (!sala.selvagem || sala.phase !== "play" || !m || m.fim) return "Não tem Pokémon para capturar agora.";
+    if (me.lado !== 0) return "Só quem está lutando joga a Pokébola.";
+    if (now < sala.inicio || (sala.pausaAte && now < sala.pausaAte) || sala.capturou) return "Espere um instante.";
+    if (now < sala.proximaBola) return "Ainda pegando outra Pokébola.";
+    if (!alvo || !alvo.campo || alvo.bicho.hp <= 0) return "Ele já desmaiou: não dá mais para capturar.";
+    if (alvo.oculto || (alvo.salto && alvo.salto.t > 0)) return "Ele está fora de alcance.";
+    const chance = Niveis.chanceDeCaptura({ bicho: alvo.bicho.id, hp: alvo.bicho.hp, max: alvo.bicho.max, tonto: alvo.atordoado > 0 });
+    // nos testes a cena passa 20 vezes mais rápido (o navegador toca no tempo de verdade)
+    const jogada = Niveis.jogarPokebola(chance), dur = Math.round(Niveis.duracaoDaCaptura(jogada.balancos, jogada.pegou) * (TESTE ? 0.05 : 1));
+    sala.pausaAte = now + dur; sala.inicio += dur; sala.proximaBola = now + dur + BOLA_RECARGA_MS; sala.bolas = (sala.bolas || 0) + 1;
+    const eu = m.entidades.find((e) => e.id === me.id);
+    if (jogada.pegou) {
+      const s = sala.selvagem;
+      sala.capturou = { bicho: s.bicho, nivel: s.nivel };
+      bd.garantirIniciais(me.treinador, me.name, INICIAIS());
+      bd.guardarCaptura(me.treinador, me.name, s.bicho, s.raridade, s.brilhante, s.nivel);
+      anunciar((text) => io.of("/vila").emit("news", { text }), me.name, s);
+    }
+    nsp.to(sala.code).emit("ev", [{ tipo: "pokebola", de: me.id, em: alvo.id, chance, balancos: jogada.balancos, pegou: jogada.pegou, dur, x: alvo.x, y: alvo.y, ...(eu && { dx: eu.x, dy: eu.y }), t: now }]);
+    log(sala, jogada.pegou ? `${me.name} capturou ${PokeDex.MONS[alvo.bicho.id].n}!` : `${PokeDex.MONS[alvo.bicho.id].n} escapou da Pokébola (${Niveis.porcento(chance)}).`);
+  }
+  // pegou ou venceu: a experiência de quem lutou
+  function fimDaLutaSelvagem(sala) {
+    const m = sala.match, s = sala.selvagem, alvo = selvagemEm(m), capturado = !!sala.capturou;
+    const venceu = capturado || (m.vencedor === 0 && !m.empate && alvo && alvo.bicho.hp <= 0);
+    const r = { bicho: s.bicho, nivel: s.nivel, capturado, derrotado: venceu && !capturado, bolas: sala.bolas || 0, xp: [] };
+    s.usado = true;
+    const humano = m.lados[0].jogadores.find((j) => !j.bot), p = humano && sala.players[humano.id];
+    if (!venceu || !p || !p.treinador || !p.inds) return r;
+    const quem = [...sala.participantes].filter((i) => p.inds[i]);
+    for (const i of quem) {
+      const ind = p.inds[i], ganho = Niveis.xpDaVitoria(s.bicho, s.nivel, ind.nivel) / quem.length;
+      const d = darXp(p.treinador, ind, ganho);
+      if (d) r.xp.push({ bicho: d.antes.bicho, para: d.bicho, ganho: d.ganho, nivelAntes: d.antes.nivel, nivel: d.nivel, xp: d.xp, falta: Niveis.faltaParaSubir(d.bicho, d.nivel), evolucoes: d.evolucoes });
+    }
+    // quem evoluiu entra no time guardado da sala com o nome novo
+    p.times.pokemon = p.times.pokemon.map((id, i) => { const x = r.xp.find((y) => y.bicho === id && p.inds[i] && y.para); return x ? x.para : id; });
+    return r;
+  }
+
   function comandoDe(p, now) {
     if (!p || !p.sockets.size || now - p.ultComando > COMANDO_MS) {
       if (p) { p.comandos.length = 0; p.movimento = null; }
@@ -214,6 +297,10 @@ module.exports = function ligarGinasio(io) {
   function tick(sala) {
     const m = sala.match, now = Date.now();
     if (!m || sala.phase !== "play") return;
+    // a cena da Pokébola: a luta para; quando acaba, se pegou, a partida termina
+    if (sala.pausaAte && now < sala.pausaAte) { sala.frame++; if (sala.frame % SNAP_EVERY === 0) enviarPacote(sala, now); return; }
+    if (sala.capturou && !m.fim) { m.fim = true; m.vencedor = 0; m.empate = false; enviarPacote(sala, now); return terminar(sala); }
+    if (sala.selvagem) for (const e of m.entidades) if (e.lado === 0 && e.campo && !e.jogador.bot) sala.participantes.add(e.jogador.ativo);
     if (now >= sala.inicio) {
       const comandos = Object.fromEntries(sala.order.map((id) => [id, comandoDe(sala.players[id], now)]));
       const seq = m.seq, projeteis = m.projeteis.slice(), areas = m.areas.slice();
@@ -262,7 +349,7 @@ module.exports = function ligarGinasio(io) {
       if (sala.order.length >= MAX_SALA) return falha(cb, "A sala está cheia. Você pode entrar para assistir.");
       if (data.time != null && !timeValido(sala.config.modo, data.time)) return falha(cb, "Escolha 3 bichos diferentes desse modo.");
       const p = adicionar(sala, name, data.time, hashDe(data.treinador));
-      if (sala.phase === "play") p.lado = null;
+      if (sala.phase === "play" || sala.selvagem) p.lado = null; // na luta com o selvagem, quem chega só assiste
       bind(sala, p.id); log(sala, `${name} chegou no ginásio.`);
       ok(cb, { code: sala.code, id: p.id, token: p.token }); broadcast(sala);
     });
@@ -271,7 +358,8 @@ module.exports = function ligarGinasio(io) {
     socket.on("colecao", (data, cb) => {
       if (typeof cb !== "function") return;
       const t = hashDe(objeto(data) ? data.codigo : null);
-      cb({ ok: true, ids: [...colecaoDe(t)] });
+      const c = colecaoDe(t);
+      cb({ ok: true, ids: [...c.keys()], niveis: Object.fromEntries([...c].map(([id, x]) => [id, x.nivel])) });
     });
     socket.on("act", (data, cb) => {
       data = objeto(data) ? data : {};
@@ -289,11 +377,14 @@ module.exports = function ligarGinasio(io) {
         if (data.type === "lado") {
           if (!me || jogando) return "Só dá para trocar de lado fora do jogo.";
           if (![0, 1, null].includes(data.lado)) return "Lado inválido.";
+          if (sala.selvagem && data.lado !== null && me.id !== sala.host) return "Essa luta é de quem achou o Pokémon.";
+          if (sala.selvagem && data.lado === 1) return "Do lado de lá só fica o Pokémon selvagem.";
           if (data.lado != null && data.lado !== me.lado && doLado(sala, data.lado).length >= tamanho(sala)) return "Esse lado está cheio.";
           me.lado = data.lado; return;
         }
         if (data.type === "config") {
           if (!organizador || jogando) return "Só o organizador muda, fora do jogo.";
+          if (sala.selvagem) return "A luta com o selvagem não muda de regra.";
           if (!objeto(data.config)) return "Configuração inválida.";
           sala.config = limparConfig({ ...sala.config, ...data.config });
           for (const id of sala.order) ajustarAColecao(sala, sala.players[id]);
@@ -314,12 +405,17 @@ module.exports = function ligarGinasio(io) {
         }
         if (data.type === "start") {
           if (!organizador || jogando) return "Só o organizador começa a batalha.";
+          if (sala.selvagem?.usado) return "Essa luta já acabou: volte para a grama alta para achar outro.";
           const n = tamanho(sala), humanos = sala.order.map((id) => sala.players[id]).filter((p) => p.lado != null);
           if (!humanos.length) return "Entre num lado para jogar.";
           if (humanos.some((p) => !p.sockets.size)) return "Há jogador desconectado: espere voltar ou retire da sala.";
           if (!sala.config.bots && [0, 1].some((lado) => doLado(sala, lado).length < n)) return `Faltam jogadores: cada lado precisa de ${n} (ou ligue os robôs).`;
           for (const id of sala.order) ajustarAColecao(sala, sala.players[id]); // pode ter mudado o banco
           comecar(sala); return;
+        }
+        if (data.type === "pokebola") {
+          if (!me) return "Só quem está lutando joga a Pokébola.";
+          return jogarPokebola(sala, me);
         }
         if (data.type === "lobby") {
           if (!organizador) return "Só o organizador.";
@@ -356,5 +452,5 @@ module.exports = function ligarGinasio(io) {
     },
     aoApagar: (sala) => clearInterval(sala.loop),
   });
-  return { timeValido, criarDesafio };
+  return { timeValido, criarDesafio, criarSelvagem };
 };

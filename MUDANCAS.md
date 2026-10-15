@@ -1,119 +1,146 @@
-# Ginásio, modo Pokémon: HUD à esquerda, mais leve, escolha do lugar, terreno que reage ao tipo, a grama alta da Vila e a sala "só capturados"
+# Pokémon: nível e evolução da PokéAPI, luta com o selvagem no Ginásio e a cena da Pokébola em 8 tempos
 
 ## O que muda
 
-**A HUD saiu de baixo e foi para o alto, à esquerda.** O painel do meu Pokémon (retrato, vida, guarda, as quatro
-habilidades, esquiva, guarda, reservas e efeitos) agora é uma coluna estreita no canto de cima, com o minimapa embaixo
-dela. A câmera anda para a direita para a quadra caber inteira no espaço livre: nada mais tapa a luta. Em tela pequena
-o painel volta para baixo, compacto, como antes.
+**Nível, experiência e evolução, com os dados da PokéAPI.** Cada Pokémon da coleção agora é um indivíduo, com nível e
+experiência:
 
-**O jogo ficou bem mais leve.** O que travava:
+- A ferramenta nova `ferramentas/base-pokeapi.js` gera os dados a partir dos arquivos oficiais da PokéAPI no GitHub.
+  Para cada um dos 649 Pokémon, ela traz:
+  - o ritmo de crescimento (a tabela de experiência de cada nível);
+  - a experiência base;
+  - a taxa de captura;
+  - as evoluções.
+- **Atributos pelo nível:** a vida, o ataque e a defesa saem da conta dos jogos. No nível 50 dá exatamente o que o
+  Ginásio sempre usou, então as salas liberadas não mudam nada. O dano também leva o nível de quem bate.
+- **Experiência:** vencer ou capturar um selvagem dá a experiência da conta da 5ª geração, dividida entre os seus
+  Pokémon que entraram em campo. Vencer um mais forte rende mais.
+- **Evolução no nível da PokéAPI:** Charmander vira Charmeleon no 16 e Charizard no 36, e passa as duas de uma vez se
+  ganhar experiência suficiente.
+  - Quem no jogo evolui por pedra, troca ou amizade evolui aqui num nível de reserva:
+    - Pikachu vira Raichu no 30 (no jogo, pela Pedra do Trovão);
+    - Kadabra vira Alakazam no 36 (troca);
+    - Golbat vira Crobat no 28 (amizade).
+  - A Pokédex mostra como é no jogo original.
+  - Com mais de um caminho, como o Eevee, cada indivíduo segue o seu, sempre o mesmo.
+- **Os três iniciais viraram Pokémon de verdade:** Bulbasaur, Charmander e Squirtle, nível 5, que sobem de nível e
+  evoluem como os outros.
+- **Na sala "só capturados" do Ginásio o nível vale:** cada um joga com o nível dos seus, e o robô fica com a média da
+  sala. Nas salas liberadas continua tudo no nível 50.
 
-- **O chão do lugar era lido de volta da placa de vídeo a cada quadro.** O desenho do chão (pintado uma vez) morava num
-  canvas da placa de vídeo e era copiado, a cada quadro, para o canvas na memória que a cena 3D compara. Isso fazia o
-  processador esperar a placa. Agora ele mora na memória também: no teste, essa parte caiu de ~309 ms para ~6 ms por
-  quadro.
-- **O cenário tinha mais de 600 peças** (cada árvore com 5 a 8), cada uma uma chamada para a placa, duas vezes por
-  quadro (uma para a sombra). Agora as peças paradas viram uma malha por material: ~85 chamadas.
-- O painel e o minimapa mudam 15 vezes por segundo, não a cada quadro, e os atributos só são reescritos quando mudam.
+**A captura ficou do jeito dos jogos: quanto menos vida, mais fácil.**
+- **A fórmula:** a chance da Pokébola usa a taxa de captura da PokéAPI e a vida do Pokémon:
+  (3·máx − 2·vida)·taxa / (3·máx·255), vezes 1,5 com ele tonto.
+- **Exemplos:**
+  - Pidgey de vida cheia, 33%; quase desmaiado, 99%.
+  - Charmander de vida cheia, 5,9%.
+  - Mewtwo, 0,4%.
+- **A bola:** são quatro checagens. Ela balança uma vez por checagem que passou (no máximo três) e, se passar nas
+  quatro, pega.
 
-**Dá para escolher o lugar da luta.** Na sala, no modo Pokémon, a linha "Lugar da luta": Sortear, Floresta, Lagoa,
-Vulcão, Neve ou Ruínas, com uma dica do que cada um muda. Quem escolhe é o servidor, que manda o lugar para todos. Sem
-escolha, o desafio de líder usa o lugar do tipo dele, e a sala sorteia.
+**Lutar contra o selvagem, em troca de nível ou de captura.**
+- **O encontro na grama alta da Vila** mostra o nível, a vida e a chance, com três botões:
+  - **Lutar** (L);
+  - **Pokébola**, com a chance;
+  - **Fugir**.
+- **Lutar** leva para uma luta no Ginásio (3D), do jeito das outras batalhas:
+  - o seu time contra o selvagem, sozinho, do outro lado;
+  - o seu time é o que você montou, se for todo seu; senão, os três de nível mais alto;
+  - o lugar segue o tipo dele.
+- **Pokébola no meio da luta:** o botão no painel (tecla B; no celular, flutuando na arena) mostra a chance ao vivo,
+  subindo conforme ele perde vida ou fica tonto.
+  - A luta para durante a cena.
+  - Escapou, a luta continua.
+  - Pegou, ele vai para a coleção com o nível que tinha.
+- **No fim:**
+  - **capturou ou venceu:** cada Pokémon que lutou ganha a experiência, sobe de nível e evolui;
+  - **perdeu, ou o tempo acabou:** nada.
+  - A tela final mostra a experiência de cada um, o nível que subiu e a evolução, com o botão "Voltar para a grama
+    alta".
+- **Regras da sala da luta:** quem entra só assiste, a regra não muda e a mesma luta não recomeça.
 
-**O lugar reage ao tipo de cada Pokémon:**
+**A cena da Pokébola, em 2D, em 8 tempos** (a mesma na Vila e por cima da arena 3D do Ginásio):
 
-- **Água:** quem anda nela fica lento. O tipo Água nada, mais rápido e batendo mais forte (+15%).
-- **Água funda (o meio da Lagoa):** é parede para quem não nada nem voa. Água atravessa nadando.
-- **Lava (Vulcão):** queima quem anda nela. O tipo Fogo fica à vontade, mais rápido e mais forte.
-- **Gelo (Neve):** quem não é de Gelo escorrega longe quando leva um golpe. Gelo desliza rápido.
-- **Areia (Ruínas e Vulcão):** fofa, lenta para todos, menos Terrestre e Pedra.
-- **Mato alto (Floresta e Ruínas):** pesa um pouco. Grama corre nele.
-- **Quem voa (tipo Voador) passa por cima de tudo:** da água, da lava, do mato e até das pedras. Quem não tem asa não
-  passa.
+1. **Carga:** a bola nasce na mão, o anel da cor da raridade fecha em volta e as faíscas vêm para ela.
+2. **Núcleo:** a Pokébola em pixel art, girando, com o botão aceso.
+3. **Rastro:** o arco do arremesso, com a fita e as faíscas caindo.
+4. **Estouro:** a bola abre no Pokémon com o clarão e os raios. Ele vira luz vermelha e é puxado para dentro, e a bola
+   cai e quica.
+5. **Reação:** os balanços, com o botão piscando e a poeira. Escapando, a bola estoura e ele volta.
+6. **Som:** o zumbido da carga, o assobio, o estalo, o "tuc" de cada balanço, o clique e a musiquinha (ou o estouro).
+   Tudo sintetizado, sem arquivo de áudio.
+7. **Rescaldo:** pegou, as três estrelas, a bola apaga e o brilho assenta. Escapou, as metades voam e sobe a fumaça.
+8. **Números:** a chance antes de jogar, o 1, 2, 3 de cada balanço e o "Capturado!" ou "Escapou!".
 
-Cada lado ganha o mesmo terreno (as zonas são espelhadas pelo meio) e nada fica em cima de onde os bichos entram. O
-terreno aparece pintado no chão e no minimapa, com o capim em pé, o brilho da água e a lava pulsando. Quem está na água
-faz marola. A previsão do movimento na tela usa as mesmas regras, e o robô sai do terreno que o atrapalha.
+A cena dura exatamente o que o servidor pausa (2,7 s a 5,2 s, conforme os balanços). Com "menos movimento" no sistema,
+ficam só a bola, os balanços e o texto.
 
-**A grama alta da Vila.** Em frente ao Ginásio, do outro lado da pista da Vila Esportiva, tem um campo de grama alta.
-Andando nele aparecem Pokémon selvagens:
+**A Pokédex da Vila** mostra cada Pokémon com:
+- o nível;
+- a barra de experiência;
+- a próxima evolução;
+- as espécies que já passaram pela coleção.
 
-- **Cinco raridades:** comum, incomum, raro, épico e lendário. A raridade sai da soma dos atributos base; os lendários
-  e míticos são à parte. Quanto mais raro, menos aparece, mais difícil de pegar e mais fácil de fugir.
-- De vez em quando o Pokémon vem **brilhante** (1 em 80).
-- A cena do encontro mostra o Pokémon na grama com o selo da raridade. **A Pokébola é infinita:** ela voa, balança
-  (mais vezes quando foi por pouco) e pega, ou ele escapa (dá para jogar outra) ou foge.
-- **Tudo fica no banco:** cada navegador tem um código de treinador, e só o hash dele vai para o banco.
-- **Minha Pokédex** (no menu ☰ Jogos): as espécies que você já pegou, quantas de cada raridade, quantas vezes cada uma
-  e se já veio brilhante, mais o ranking dos maiores colecionadores.
-- Pegar um épico, um lendário ou um brilhante vira notícia para a vila inteira.
-- O servidor confere se a pessoa está mesmo na grama, o tempo entre os passos e faz todos os sorteios.
-
-**Capturar vale no Ginásio.** Na sala do Ginásio, no modo Pokémon, o anfitrião escolhe "Pokémon da sala":
-
-- **Todos liberados:** qualquer Pokémon, como antes.
-- **Só os capturados:** cada um joga só com os Pokémon que tem.
-  - Todo mundo começa com os três iniciais: Bulbasaur, Charmander e Squirtle.
-  - O resto vem da grama alta da Vila.
-  - A escolha do bicho mostra só o que é seu, com o aviso de quantos você tem.
-  - O servidor confere no banco: recusa o que você não pegou e põe os iniciais em quem entra, ou estava, com um time
-    que não tem (ao ligar a regra, ao entrar e ao começar).
-  - Capturou na Vila? Já vale na sala.
-  - Os robôs continuam com qualquer time.
-  - O time da sala "só capturados" não apaga o seu time guardado para as salas liberadas.
-
-A Pokédex da Vila também mostra os três iniciais.
+As fases do meio de uma evolução também contam. O ranking conta as espécies; os iniciais não contam.
 
 ## Arquivos
 
-- `public/ginasio/estilo.css`, `hud-pokemon.js`, `desenho.js` (`ajustarCanvas`) e `cena3d.js` (`enquadrar3d` com a
-  beira esquerda): a HUD no alto, à esquerda.
-- `public/ginasio/biomas.js`: o chão na memória, `fundirEstaticos`, o terreno pintado (`PINTURA_TERRENO`) e em 3D, e
-  `biomaDaPartida` lendo o lugar da partida.
-- `public/ginasio/regras.js`: `TERRENOS`, `TERRENO`, `noTerreno`, `zonaEm`, `queimarNaLava`, `escolherBioma`; o
-  terreno na velocidade, em `limitar`, no atrito, no dano e no robô.
-- `ginasio.js`: a opção `arena` e o `bioma` da partida no estado.
-- `public/ginasio/sala.js` e `index.html`: a escolha do lugar.
-- `public/ginasio/rede.js`: a previsão com o terreno.
-- `public/ginasio/animacao.js`: as marolas e as faíscas da lava.
-- `public/vila/mato.js` (novo), `vila-mato.js` (novo), `vila.js`, `public/index.html`, `bd.js` e
-  `migracoes/008-capturas.sql` (novo): a grama alta, os encontros, a Pokébola, a Pokédex e as capturas no banco.
-- `ginasio.js` (`pokemons`, `foraDaColecao`, `ajustarAColecao`, evento `colecao`), `public/ginasio/sala.js`, `rede.js`,
-  `index.html` e `estilo.css`: a sala "só capturados"; `public/vila/mato.js` (`INICIAIS`) e `vila-mato.js`
-  (`colecaoDe`, os iniciais na Pokédex).
+- `ferramentas/base-pokeapi.js` (novo) gera `public/galeramon/pokeapi-dados.js` (novo).
+- `public/galeramon/niveis.js` (novo): atributos por nível, experiência, evolução, a chance e a jogada da Pokébola, e o
+  tempo da cena.
+- `public/galeramon/captura2d.js` (novo): a cena da Pokébola em 8 tempos, com som.
+- `migracoes/009-pokemon-nivel.sql` (novo):
+  - nível, experiência e origem em cada captura;
+  - a tabela `pokedex`.
+- `bd.js`: `garantirIniciais`, `pokemonsDe`, `atualizarPokemon`, `registrarNaPokedex` e `pokedexDe`.
+- `vila-mato.js` e `public/vila/mato.js`:
+  - o encontro com nível e vida, e a Pokébola da PokéAPI;
+  - o `lutar`;
+  - `colecaoDe` com o melhor de cada espécie;
+  - `darXp`;
+  - a Pokédex com nível.
+- `public/ginasio/regras.js`:
+  - `novoBicho` com nível e ficha;
+  - o dano pelo nível;
+  - o selvagem sozinho;
+  - o nível do robô.
+- `ginasio.js`:
+  - `criarSelvagem`;
+  - `act` `pokebola`, com a pausa;
+  - a experiência no fim;
+  - o nível na sala "só capturados".
+- `public/ginasio/selvagem.js` (novo): o quadro do selvagem, o botão da Pokébola, a cena por cima da arena e o
+  resultado com a experiência.
+- `public/ginasio/sala.js`, `controles.js`, `animacao.js`, `hud-pokemon.js`, `index.html` e `estilo.css`:
+  - o nível na escolha e no painel;
+  - os comandos parados durante a cena;
+  - o selvagem escondido na bola.
+- `public/index.html` (a Vila): o encontro com Lutar, Pokébola com a chance e Fugir, a cena 2D e a Pokédex com nível e
+  experiência.
 - `CLAUDE.md`: o mapa atualizado.
 
 ## Testes
 
-- `tests/ginasio-terreno.test.js` (novo):
-  - a escolha do lugar e as zonas (dentro da quadra, longe da entrada, espelhadas);
-  - a água: Água mais rápido e mais forte;
-  - a funda: parede para quem anda, Água e Voador atravessam;
-  - quem voa passa por cima das pedras;
-  - a lava queima (menos Fogo e Voador);
-  - o gelo escorrega;
-  - a previsão da tela igual ao servidor no terreno.
-- `tests/vila-mato.test.js` (novo):
-  - as raridades e o sorteio pelo peso;
-  - a Pokébola;
-  - o encontro só na grama;
-  - a Pokébola infinita até pegar;
-  - a captura no banco e na Pokédex;
-  - a notícia do lendário;
-  - a fuga e o "fugir";
-  - as capturas agrupadas por treinador.
-- `tests/ginasio-capturados.test.js` (novo; sobe o canal `/ginasio` com o banco em memória):
-  - os iniciais valem para todos, e o resto só para quem pegou;
-  - ligar a regra devolve os iniciais;
-  - quem entra com time que não tem fica com os iniciais;
-  - capturou, já vale;
-  - desligar libera tudo;
-  - a regra só vale no modo Pokémon.
-- `tests/ginasio-biomas.test.js`: a tela usa o lugar que o servidor escolheu.
-- Os testes de física pura (`ginasio-fisica`, a previsão de `ginasio.test.js`) rodam sem terreno.
-- Os dois clientes de `ginasio-servidor` usam o mesmo lugar do servidor.
-- Os testes novos entraram no `npm test`.
-- `npm test`: 390 de 392. As duas falhas já existiam na `main`: o formato de `/carreira-online` em `salas.test.js` e
-  "carreira: comprar na janela…".
+- `tests/pokemon-niveis.test.js` (novo):
+  - os dados da PokéAPI;
+  - os atributos do nível 50 iguais aos da Pokédex;
+  - subir de nível e evoluir (até duas fases; os caminhos do Eevee);
+  - a chance pela vida e pelo tonto, e as quatro checagens (com a taxa medida em 20 mil jogadas);
+  - a cena com o mesmo tempo da pausa;
+  - o motor com nível e o selvagem sozinho.
+- `tests/ginasio-selvagem.test.js` (novo; sobe o canal `/ginasio` com o banco em memória):
+  - a luta abre com o meu time e o selvagem sozinho;
+  - quem chega só assiste e a regra não muda;
+  - a Pokébola pausa a luta, pega, guarda com o nível e dá experiência no banco;
+  - escapou, a luta segue e a próxima bola espera.
+- `tests/vila-mato.test.js`:
+  - o encontro com nível e a Pokébola da PokéAPI;
+  - os iniciais no banco;
+  - evoluir no banco e a Pokédex com as fases do meio.
+- Os testes novos entraram no `npm test`: 400 de 402. As duas falhas já existiam na `main`: o formato de
+  `/carreira-online` em `salas.test.js` e "carreira: comprar na janela…".
 - E2E não rodado, como combinado.
+- Conferido no navegador:
+  - o encontro na Vila e a cena (carga, voo, estouro, balanço, escapou);
+  - a luta no Ginásio com o botão da Pokébola;
+  - a captura na 2ª bola, com o Bulbasaur subindo do nível 5 ao 8.

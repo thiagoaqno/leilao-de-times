@@ -1,23 +1,25 @@
 // A grama alta da Vila, em frente ao Ginásio: andando nela aparecem Pokémon selvagens, e a Pokébola é infinita.
 // UMD: o servidor (vila-mato.js) sorteia e decide; a página (public/index.html) desenha a grama e a cena do encontro.
 // - GRAMA: o retângulo da grama alta, em coordenadas da vila (somar OX e OY para o mapa grande);
-// - RARIDADES: o peso no sorteio do encontro, a chance de a Pokébola pegar, a de o Pokémon fugir depois de escapar
-//   e a cor do selo. A raridade de cada Pokémon sai da soma dos atributos base (os lendários e míticos à parte).
+// - RARIDADES: o peso no sorteio do encontro, a chance de o Pokémon fugir depois de escapar da Pokébola e a cor do
+//   selo. A raridade de cada Pokémon sai da soma dos atributos base (os lendários e míticos à parte); o nível de quem
+//   aparece, da raridade (Niveis.nivelSelvagem). A chance da Pokébola é a da PokéAPI (Niveis.chanceDeCaptura): quanto
+//   menos vida, mais fácil.
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/pokemon.js"));
-  else root.MatoAlto = factory(root.PokeDex);
-})(typeof self !== "undefined" ? self : this, function (PokeDex) {
+  if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/pokemon.js"), require("../galeramon/niveis.js"));
+  else root.MatoAlto = factory(root.PokeDex, root.Niveis);
+})(typeof self !== "undefined" ? self : this, function (PokeDex, Niveis) {
   const GRAMA = { x: 10, y: 46, w: 11, h: 4 };
   // todo treinador já começa com os três iniciais (a sala do Ginásio com "só capturados" aceita eles sempre)
   const INICIAIS = ["bulbasaur", "charmander", "squirtle"];
   const CHANCE_ENCONTRO = 0.16; // por passo na grama
   const CHANCE_BRILHANTE = 1 / 80;
   const RARIDADES = {
-    comum: { nome: "Comum", peso: 55, pega: 0.75, foge: 0.05, cor: "#9aa8a3" },
-    incomum: { nome: "Incomum", peso: 28, pega: 0.55, foge: 0.1, cor: "#4fbf6a" },
-    raro: { nome: "Raro", peso: 12, pega: 0.38, foge: 0.15, cor: "#3f8fe0" },
-    epico: { nome: "Épico", peso: 4, pega: 0.22, foge: 0.25, cor: "#b45cf0" },
-    lendario: { nome: "Lendário", peso: 1, pega: 0.1, foge: 0.35, cor: "#f0b429" },
+    comum: { nome: "Comum", peso: 55, foge: 0.05, cor: "#9aa8a3" },
+    incomum: { nome: "Incomum", peso: 28, foge: 0.1, cor: "#4fbf6a" },
+    raro: { nome: "Raro", peso: 12, foge: 0.15, cor: "#3f8fe0" },
+    epico: { nome: "Épico", peso: 4, foge: 0.25, cor: "#b45cf0" },
+    lendario: { nome: "Lendário", peso: 1, foge: 0.35, cor: "#f0b429" },
   };
   const ORDEM = ["comum", "incomum", "raro", "epico", "lendario"];
   // lendários e míticos, pelo número da Pokédex
@@ -39,15 +41,15 @@
     let n = sorte() * ORDEM.reduce((s, r) => s + RARIDADES[r].peso, 0), raridade = ORDEM[0];
     for (const r of ORDEM) { n -= RARIDADES[r].peso; if (n < 0) { raridade = r; break; } }
     const lista = POR_RARIDADE[raridade];
-    return { bicho: lista[Math.floor(sorte() * lista.length)], raridade, brilhante: sorte() < CHANCE_BRILHANTE };
+    const bicho = lista[Math.floor(sorte() * lista.length)], brilhante = sorte() < CHANCE_BRILHANTE, nivel = Niveis.nivelSelvagem(raridade, sorte);
+    const max = Niveis.atributos(bicho, nivel).hp;
+    return { bicho, raridade, brilhante, nivel, hp: max, max };
   }
-  // a Pokébola: "pegou", "escapou" (dá para jogar outra) ou "fugiu"; balancos: quantas vezes a bola balança (1 a 3)
-  function jogarPokebola(raridade, sorte = Math.random) {
-    const R = RARIDADES[raridade] || RARIDADES.comum, n = sorte();
-    if (n < R.pega) return { resultado: "pegou", balancos: 3 };
-    // quase pegou (n logo acima da chance) balança mais
-    const perto = 1 - (n - R.pega) / (1 - R.pega), balancos = 1 + Math.min(2, Math.floor(perto * 3));
-    return { resultado: sorte() < R.foge ? "fugiu" : "escapou", balancos };
+  // a Pokébola na grama (fora da luta): pega pela chance da PokéAPI; escapando, o Pokémon pode fugir (pela raridade)
+  function jogarPokebola(encontro, sorte = Math.random) {
+    const chance = Niveis.chanceDeCaptura(encontro), j = Niveis.jogarPokebola(chance, sorte);
+    const resultado = j.pegou ? "pegou" : sorte() < (RARIDADES[encontro.raridade] || RARIDADES.comum).foge ? "fugiu" : "escapou";
+    return { resultado, balancos: j.balancos, chance };
   }
   return { GRAMA, INICIAIS, CHANCE_ENCONTRO, CHANCE_BRILHANTE, RARIDADES, ORDEM, LENDARIOS, POR_RARIDADE, raridadeDe, naGrama, sortearEncontro, jogarPokebola, totalBase };
 });

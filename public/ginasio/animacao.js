@@ -485,7 +485,7 @@ function poseBicho(e, agora, modo) {
     v.rastro.length = Math.min(v.rastro.length, 4);
   }
   for (let i = v.rastro.length - 1; i >= 0; i--) if (agora - v.rastro[i].t > 180) v.rastro.splice(i, 1);
-  return Object.assign(pose, { visivel: true, a, anim, q, f, o, desm, ie, sombra, carga, escondido, wx, wy, altura, alturaSprite: 1.2 });
+  return Object.assign(pose, { visivel: !v.naBola, a, anim, q, f, o, desm, ie, sombra, carga, escondido, wx, wy, altura, alturaSprite: 1.2 });
 }
 // quem voa (tipo Voador) passa por cima do terreno
 function voaNoTerreno(e) { return (dexAtual().MONS[e.forma || e.bicho]?.types || []).includes("Voador"); }
@@ -559,7 +559,7 @@ function barraDoHeroi(e, x, y, largura, u, s) {
   for (let k = 100; k < e.max; k += 100) ret(x0 + w * k / e.max, y, Math.max(1, u * 0.6), alt, "#0b0f12aa");
   const caixa = Math.max(8 * u, alt * 2.2), nome = S.match.jogadores.find((j) => j.id === e.id)?.nome || "";
   ret(x0 - caixa - u, y + alt / 2 - caixa / 2, caixa, caixa, "#1c2328"); ctx.strokeStyle = "#f0c24a"; ctx.lineWidth = u; ctx.strokeRect(Math.round(x0 - caixa - u), Math.round(y + alt / 2 - caixa / 2), Math.round(caixa), Math.round(caixa));
-  texto("50", x0 - caixa / 2 - u, y + alt / 2 + caixa * 0.28, "#f2e7c8", Math.max(5 * u, caixa * 0.62));
+  texto(String(e.nivel || 50), x0 - caixa / 2 - u, y + alt / 2 + caixa * 0.28, "#f2e7c8", Math.max(5 * u, caixa * 0.62));
   if (nome) {
     ctx.save(); ctx.font = `700 ${Math.max(6 * u, Math.round(s * 0.32))}px system-ui,sans-serif`; ctx.textAlign = "left"; ctx.lineWidth = 2 * u; ctx.strokeStyle = "#0b0f12";
     ctx.strokeText(nome, Math.round(x0), Math.round(y - 2 * u)); ctx.fillStyle = cor; ctx.fillText(nome, Math.round(x0), Math.round(y - 2 * u)); ctx.restore();

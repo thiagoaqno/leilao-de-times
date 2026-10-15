@@ -16,9 +16,11 @@ const treinador = (() => {
   return c;
 })();
 const INICIAIS = ["bulbasaur", "charmander", "squirtle"];
-let minhaColecao = new Set(INICIAIS);
+let minhaColecao = new Set(INICIAIS), meusNiveis = {};
+// o nível do meu Pokémon (só na sala "só capturados" e na luta com o selvagem, onde o nível vale)
+const nivelHtml = (id) => (soCapturados() && modoAtual() === "pokemon" ? `<small class="nv-bicho">Nv ${meusNiveis[id] || 5}</small>` : "");
 function buscarColecao() {
-  socket.timeout(7000).emit("colecao", { codigo: treinador }, (err, r) => { if (!err && r?.ok) { minhaColecao = new Set(r.ids); if ($("dex").open) renderDex(); renderSala(); } });
+  socket.timeout(7000).emit("colecao", { codigo: treinador }, (err, r) => { if (!err && r?.ok) { minhaColecao = new Set(r.ids); meusNiveis = r.niveis || {}; if ($("dex").open) renderDex(); renderSala(); } });
 }
 const soCapturados = () => (S?.config || configLocal).modo === "pokemon" && (S?.config || configLocal).pokemons === "capturados";
 const times = { galeramon: Galeramon.cleanTeam(store.get("galeramon_time")), pokemon: PokeDex.cleanTeam(store.get("pokemon_time")), naruto: NarutoDex.cleanTeam(store.get("naruto_time")) };
@@ -82,13 +84,13 @@ function renderSala() {
   $("rCode").classList.toggle("hidden", !S); $("salaCodigo").classList.toggle("hidden", !S);
   $("btnSala").classList.toggle("hidden", !S);
   if (S) { $("rCode").textContent = S.code; $("salaCodigo").textContent = S.code; }
-  preencher("meuTime", timeAtual().map((id, i) => `<button class="bicho" data-escolher="${i}" title="${h(dexAtual().MONS[id].n)}" ${S && (!ME?.id || S.phase === "play") ? "disabled" : ""}>${htmlBicho(id)}</button>`).join(""));
+  preencher("meuTime", timeAtual().map((id, i) => `<button class="bicho" data-escolher="${i}" title="${h(dexAtual().MONS[id].n)}" ${S && (!ME?.id || S.phase === "play") ? "disabled" : ""}>${htmlBicho(id)}${nivelHtml(id)}</button>`).join(""));
   timeAtual().forEach((id) => imagemDe(id));
   if (typeof animacaoDe === "function") for (const id of [...timeAtual(), ...(S?.players || []).flatMap((p) => p.time || [])]) animacaoDe(id); // os GIFs chegam antes da partida
   if (!S) return;
   const organizador = S.host === ME?.id, n = S.config.formato === "2x2" ? 2 : 1;
   let lista = S.players.map((p) => `<div class="participante ${p.lado === 1 ? "vermelho" : p.lado == null ? "fora" : ""} ${p.online ? "" : "offline"}"><span class="nome">${h(p.name)}${p.id === ME?.id ? " · você" : ""}</span>${p.ping == null ? "" : `<span class="ping">${p.ping} ms</span>`}${organizador && p.id !== ME.id && S.phase !== "play" ? `<button class="icone" data-kick="${p.id}" title="Retirar ${h(p.name)}" aria-label="Retirar ${h(p.name)}">${ic("fechar")}</button>` : ""}</div>`).join("");
-  if (S.config.bots) for (const lado of [0, 1]) for (let i = S.players.filter((p) => p.lado === lado).length; i < n; i++) lista += `<div class="participante ${lado ? "vermelho" : ""}"><span class="nome">Robô</span></div>`;
+  if (S.config.bots) for (const lado of [0, 1]) for (let i = S.players.filter((p) => p.lado === lado).length; i < n; i++) lista += `<div class="participante ${lado ? "vermelho" : ""}"><span class="nome">${lado && S.selvagem ? `${h(dexDe("pokemon").MONS[S.selvagem.bicho].n)} selvagem · Nv ${S.selvagem.nivel}` : "Robô"}</span></div>`;
   preencher("participantes", lista);
   document.querySelectorAll("[data-lado]").forEach((b) => { const lado = b.dataset.lado === "null" ? null : +b.dataset.lado; b.disabled = !ME?.id || S.phase === "play"; b.setAttribute("aria-pressed", meuJogador()?.lado === lado); });
   $("btnStart").classList.toggle("hidden", !organizador); $("btnStart").disabled = S.phase === "play";
@@ -193,7 +195,7 @@ function renderDex() {
   const ids = D.IDS.filter((id) => (!meus || minhaColecao.has(id)) && (!busca || D.MONS[id].n.toLocaleLowerCase("pt-BR").includes(busca) || String(D.MONS[id].num || "").includes(busca)) && (!tipo || D.MONS[id].types.includes(tipo)) && (geracao == null || geracaoDe(D.MONS[id].num) === geracao));
   const paginas = Math.max(1, Math.ceil(ids.length / 24)); paginaDex = clamp(paginaDex, 0, paginas - 1);
   const time = timeAtual();
-  $("dexLista").innerHTML = ids.slice(paginaDex * 24, paginaDex * 24 + 24).map((id) => `<button class="bicho ${time.includes(id) ? "selecionado" : ""}" data-bicho="${id}" title="${h(D.MONS[id].n)} · ${h(D.MONS[id].types.join(" / "))}${modoAtual() === "naruto" && D.ficha(id) ? ` · ${h(D.ficha(id))}` : ""}" ${time.includes(id) && time[slotDex] !== id ? "disabled" : ""}>${htmlBicho(id)}</button>`).join("");
+  $("dexLista").innerHTML = ids.slice(paginaDex * 24, paginaDex * 24 + 24).map((id) => `<button class="bicho ${time.includes(id) ? "selecionado" : ""}" data-bicho="${id}" title="${h(D.MONS[id].n)} · ${h(D.MONS[id].types.join(" / "))}${modoAtual() === "naruto" && D.ficha(id) ? ` · ${h(D.ficha(id))}` : ""}" ${time.includes(id) && time[slotDex] !== id ? "disabled" : ""}>${htmlBicho(id)}${nivelHtml(id)}</button>`).join("");
   $("dexVazio").classList.toggle("hidden", ids.length > 0); $("dexPagina").textContent = `${paginaDex + 1} / ${paginas}`;
   $("dexAnterior").disabled = paginaDex === 0; $("dexProximo").disabled = paginaDex === paginas - 1;
 }

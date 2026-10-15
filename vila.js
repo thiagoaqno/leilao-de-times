@@ -101,7 +101,7 @@ module.exports = function attachVila(io, ginasio) {
     };
     const mine = () => me && me.sock === socket.id; // esta conexão ainda é a "dona" do jogador?
     // a grama alta em frente ao Ginásio: Pokémon selvagens e a Pokébola infinita (vila-mato.js)
-    ligarMato(socket, { eu: () => (mine() && !me.battle && !me.car ? me : null), noticia: (text) => nsp.emit("news", { text }), OX, OY });
+    ligarMato(socket, { eu: () => (mine() && !me.battle && !me.car ? me : null), noticia: (text) => nsp.emit("news", { text }), OX, OY, ginasio });
 
     socket.on("hello", (d = {}) => {
       const name = cleanName(d.name);

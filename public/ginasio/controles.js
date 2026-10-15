@@ -1,7 +1,8 @@
 // Teclado, mouse e joystick usam o mesmo formato de comando.
 const toque = Toque.isTouch();
 const entrada = { teclas: new Set(), mouse: null, stick: { x: 0, y: 0 }, preparando: null, miraSolta: null, golpe: null, esquiva: false, esquivaLocal: false, troca: null, guardaToque: false };
-const podeComandar = () => socket.connected && S?.phase === "play" && !salaVisivel && !!ME?.id && !document.querySelector("dialog[open]");
+let capturaAte = 0; // a cena da Pokébola (selvagem.js): a luta para e os comandos também
+const podeComandar = () => socket.connected && S?.phase === "play" && !salaVisivel && !!ME?.id && !document.querySelector("dialog[open]") && performance.now() >= capturaAte;
 function limparControles() {
   entrada.teclas.clear(); entrada.stick = { x: 0, y: 0 }; entrada.preparando = null; entrada.miraSolta = null;
   entrada.golpe = null; entrada.esquiva = false; entrada.esquivaLocal = false; entrada.troca = null; entrada.guardaToque = false;

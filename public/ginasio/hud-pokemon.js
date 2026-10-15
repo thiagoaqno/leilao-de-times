@@ -93,6 +93,7 @@ function desenharRetratoPk(e) {
   if (chave !== PK.chaveRetrato) {
     PK.chaveRetrato = chave;
     $("retratoImg").src = retratoDe(id);
+    $("nivelPk").textContent = e.nivel || 50;
     $("nomePk").textContent = mon.n;
     $("tiposPk").innerHTML = (mon.types || []).map((t) => `<em style="--tipo:${D.TYPES[t]}">${h(t)}</em>`).join("");
   }
