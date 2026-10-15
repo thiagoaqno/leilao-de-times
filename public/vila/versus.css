@@ -1,0 +1,25 @@
+/* Prévia do time contra o Pokémon selvagem, antes de "Lutar". */
+.cap .arena{background:radial-gradient(circle at 56% 42%,#bc72d2 0,#623680 22%,transparent 51%),radial-gradient(circle at 88% 60%,#3795ba70,transparent 43%),linear-gradient(140deg,#111832,#272051 58%,#12284d)}
+.cap .arena::before{inset:0;height:auto;background:repeating-conic-gradient(from 0deg at 56% 42%,transparent 0deg 14deg,#f3d6ff16 15deg 16deg,transparent 18deg 30deg);pointer-events:none}
+.cap .arena::after{height:16%;opacity:.27;background:#44915c;z-index:0}
+.cap .ibox.foe{left:auto;right:4%;top:8%;width:min(39vw,320px);background:#fffcf7;border-color:#eac071;box-shadow:0 0 0 4px #ffffff16,0 15px 40px #100c2790}
+.cap .spot.foe{right:6%;top:34%;z-index:2}
+.cap .spot.foe .mon{width:min(31vw,37vh,240px);filter:drop-shadow(0 15px 14px #12102e) drop-shadow(0 0 18px #e1a0e8)}
+.cap .spot.foe .plat{background:#7186c3;box-shadow:inset 0 -6px 0 #466295,0 0 22px #8fb8f9}
+.cap-confronto{position:absolute;z-index:2;left:clamp(16px,4vw,56px);top:clamp(24px,8%,70px);width:min(38%,400px);color:#fff}
+.cap-eyebrow{font:800 clamp(10px,1.3vw,15px)/1.2 "Pixelify Sans",monospace;letter-spacing:.14em;color:#f9d17a}
+.cap-confronto h2{font:900 clamp(26px,4vw,54px)/.95 "Lilita One",sans-serif;letter-spacing:-.02em;margin:12px 0 20px;text-shadow:0 5px 16px #0b092e}
+.cap-time{display:grid;gap:9px}
+.cap-time>p{margin:0;color:#f8e6ff;font:700 15px "Pixelify Sans",monospace}
+.cap-aliado{display:grid;grid-template-columns:25px 62px minmax(0,1fr);align-items:center;gap:8px;min-height:72px;padding:5px 10px;background:linear-gradient(90deg,#2b2f5de8,#353968a8);border:1px solid #b0a1e0;border-left:4px solid #f8c96e;border-radius:12px;box-shadow:0 9px 22px #0b092b62}
+.cap-aliado img{width:60px;height:60px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 5px 7px #0c0b25)}
+.cap-num{font:900 13px "Pixelify Sans",monospace;color:#f8c96e}.cap-aliado b{display:block;font:800 clamp(14px,1.5vw,19px)/1 "Pixelify Sans",monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cap-aliado small{display:block;margin-top:4px;font:800 10px "Pixelify Sans",monospace;letter-spacing:.1em;color:#c3b7e3}
+.cap-vs{position:absolute;z-index:2;left:53%;top:54%;transform:translate(-50%,-50%) rotate(-10deg);font:900 clamp(48px,9vw,125px)/1 "Lilita One",sans-serif;color:#f9c866;letter-spacing:-.1em;text-shadow:0 4px #612e62,0 0 30px #fff4,0 0 70px #f3a5e3;pointer-events:none}
+.cap .bpanel{background:#15172e;border-top:2px solid #ab8ec8;color:#fff}
+.cap .bmsg{background:#252747;border:1px solid #8e83b2;color:#f9f3ff;box-shadow:none}
+.cap .bmoves button{border:1px solid #ffffff64;text-align:center;box-shadow:0 5px 0 #0a0d1d;font-family:"Pixelify Sans",monospace}
+.cap .bmoves .luta{background:linear-gradient(115deg,#f7cb6b,#f0a05a);color:#2c2140;text-shadow:none;box-shadow:0 5px 0 #aa663b}
+.cap .bmoves .bola{background:#cc555a}.cap .bmoves .fuga{background:#50566f}
+@media(max-width:700px){.cap-confronto{top:18%;left:16px;width:47%}.cap-confronto h2{font-size:30px;margin:8px 0 13px}.cap-aliado{grid-template-columns:18px 46px minmax(0,1fr);gap:2px;min-height:53px;padding:3px 5px;border-radius:8px}.cap-aliado img{width:45px;height:45px}.cap-aliado b{font-size:12px}.cap-aliado small{font-size:9px}.cap-num{font-size:10px}.cap-vs{left:53%;top:61%;font-size:55px}.cap .spot.foe{right:5%;top:34%}.cap .spot.foe .mon{width:min(38vw,25vh,150px)}}
+@media(max-height:620px){.cap-confronto{top:8%}.cap-confronto h2{font-size:24px;margin:5px 0}.cap-time{gap:4px}.cap-aliado{min-height:45px;grid-template-columns:18px 38px minmax(0,1fr)}.cap-aliado img{width:38px;height:38px}.cap-vs{font-size:52px;top:62%}.cap .spot.foe{top:29%}.cap .spot.foe .mon{width:min(25vw,27vh,140px)}}
+@media(prefers-reduced-motion:reduce){.cap .spot.foe .mon{animation:none}}

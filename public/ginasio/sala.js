@@ -30,6 +30,18 @@ const dexAtual = () => dexDe(modoAtual());
 const meuJogador = () => S?.players.find((p) => p.id === ME?.id);
 const timeAtual = () => meuJogador()?.time || times[modoAtual()];
 const imagens = new Map();
+document.querySelector(".hero-mon-esq").src = PokeDex.sprite("charizard", false);
+document.querySelector(".hero-mon-dir").src = PokeDex.sprite("lucario", false);
+document.querySelector(".hero-mon-centro").src = PokeDex.sprite("gengar", false);
+
+// A moderação pode mudar o time Pokémon dos líderes sem publicar uma nova versão do jogo.
+fetch("/api/ginasio/treinadores-pokemon", { cache: "no-store" }).then((r) => r.ok ? r.json() : []).then((lista) => {
+  for (const { id, time } of lista) {
+    const lider = Lideres.de(id);
+    if (lider && Array.isArray(time) && time.length === 3 && time.every((p) => PokeDex.MONS[p])) lider.times.pokemon = time;
+  }
+  renderSala();
+}).catch(() => {});
 
 function spriteUrl(id, modo = modoAtual()) { return modo === "pokemon" ? PokeDex.sprite(id, false) : modo === "naruto" ? NarutoDex.sprite(id) : GaleramonSprite(id); }
 function imagemDe(id, modo = modoAtual()) {
@@ -61,6 +73,7 @@ const DICA_ARENA = {
 function guardarConfig() { if (S) Object.assign(configLocal, S.config); store.set("ginasio:config", configLocal); }
 function atualizarOpcoes() {
   const c = S?.config || configLocal, pode = !S || (S.host === ME?.id && S.phase !== "play");
+  document.body.classList.toggle("pokemon-lobby", c.modo === "pokemon");
   document.querySelectorAll("[data-modo]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.modo === c.modo); b.disabled = !pode; });
   document.querySelectorAll("[data-formato]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.formato === c.formato); b.disabled = !pode; });
   $("bots").checked = c.bots; $("bots").disabled = !pode;
@@ -88,6 +101,7 @@ function renderSala() {
   $("btnSala").classList.toggle("hidden", !S);
   if (S) { $("rCode").textContent = S.code; $("salaCodigo").textContent = S.code; }
   preencher("meuTime", timeAtual().map((id, i) => `<button class="bicho" data-escolher="${i}" title="${h(dexAtual().MONS[id].n)}" ${S && (!ME?.id || S.phase === "play") ? "disabled" : ""}>${htmlBicho(id)}${nivelHtml(id)}</button>`).join(""));
+  mostrarVersus();
   timeAtual().forEach((id) => imagemDe(id));
   if (typeof animacaoDe === "function") for (const id of [...timeAtual(), ...(S?.players || []).flatMap((p) => p.time || [])]) animacaoDe(id); // os GIFs chegam antes da partida
   if (!S) return;
@@ -98,6 +112,17 @@ function renderSala() {
   document.querySelectorAll("[data-lado]").forEach((b) => { const lado = b.dataset.lado === "null" ? null : +b.dataset.lado; b.disabled = !ME?.id || S.phase === "play"; b.setAttribute("aria-pressed", meuJogador()?.lado === lado); });
   $("btnStart").classList.toggle("hidden", !organizador); $("btnStart").disabled = S.phase === "play";
   preencher("feed", S.feed.slice(-4).map((f) => `<li>${h(f.text)}</li>`).join(""));
+}
+function mostrarVersus() {
+  const modo = modoAtual(), lider = S ? Lideres.de(S.config.lider) : LIDER;
+  const selvagem = S?.selvagem, alvo = S ? $("versusSala") : $("versusInicio");
+  $("versusInicio").classList.add("hidden"); $("versusSala").classList.add("hidden");
+  if (modo !== "pokemon" || (!lider && !selvagem)) return;
+  const inimigos = lider ? lider.times.pokemon : [selvagem.bicho];
+  const nome = lider ? lider.nome : `${PokeDex.MONS[selvagem.bicho].n} selvagem`;
+  const cartas = (ids) => ids.map((id) => `<div class="vs-mon"><img src="${h(PokeDex.sprite(id, false))}" alt="" loading="lazy"><span>${h(PokeDex.MONS[id].n)}</span></div>`).join("");
+  preencher(alvo.id, `<div class="vs-topo"><span>PRÉVIA DO CONFRONTO</span><span>${selvagem ? "ENCONTRO SELVAGEM" : "DESAFIO DO GINÁSIO"}</span></div><div class="vs-corpos"><div class="vs-time"><strong>SEU TIME</strong><div class="vs-mons">${cartas(timeAtual())}</div></div><b class="vs-sinal">VS</b><div class="vs-time"><strong>${h(nome)}</strong><div class="vs-mons ${selvagem ? "um-so" : ""}">${cartas(inimigos)}</div></div></div>${selvagem ? `<p>Pokémon selvagem · nível ${Number(selvagem.nivel) || 5}</p>` : ""}`);
+  alvo.classList.remove("hidden");
 }
 async function mudarConfig(patch) {
   if (S) { if (await act("config", { config: patch })) guardarConfig(); }

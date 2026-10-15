@@ -7,6 +7,7 @@
 <script src="/semzoom.js"></script>
 <title>Ginásio da Galera</title>
 <link rel="stylesheet" href="estilo.css">
+<link rel="stylesheet" href="lobby-pokemon.css">
 </head>
 <body>
 <header id="barra">
@@ -19,6 +20,16 @@
 <main id="principal">
   <section id="quadra" aria-label="Arena do Ginásio">
     <canvas id="cv" aria-label="Batalha em tempo real"></canvas>
+    <div id="pokemonHero" aria-hidden="true">
+      <div class="hero-topo"><span>GINÁSIO POKÉMON</span><span>01 / ARENA</span></div>
+      <div class="hero-energia"></div>
+      <div class="hero-selo"><span></span></div>
+      <img class="hero-mon hero-mon-esq" src="" alt="">
+      <img class="hero-mon hero-mon-dir" src="" alt="">
+      <img class="hero-mon hero-mon-centro" src="" alt="">
+      <div class="hero-texto"><span>SEU PRÓXIMO DESAFIO COMEÇA AQUI</span><strong>ENTRE NA<br>ARENA.</strong><p>Monte seu trio. Escolha o campo. Vença a batalha.</p></div>
+      <div class="hero-rodape"><span>3 POKÉMON POR TIME</span><span>1×1 &nbsp; / &nbsp; 2×2</span><span>AO VIVO</span></div>
+    </div>
     <div id="placar" class="hidden">
       <div class="lado azul"><span id="nomeAzul"></span><div class="vida"><i id="vidaAzul"></i></div></div>
       <time id="relogio">4:00</time>
@@ -33,6 +44,7 @@
     <div id="inicio">
       <label for="hName">Seu nome</label><input id="hName" maxlength="16" autocomplete="nickname" enterkeyhint="done">
       <div id="desafioLider" class="desafio-lider hidden"></div>
+      <section id="versusInicio" class="pre-luta hidden" aria-label="Prévia do confronto"></section>
       <button id="btnRobo" class="primario largo">Jogar contra robô</button>
       <div class="acoes"><button id="btnCreate">Criar sala</button></div>
       <div class="entrada"><label for="hCode">Código da sala</label><div class="linha"><input id="hCode" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go"><button id="btnJoin">Entrar</button><button id="btnWatch" class="icone" title="Assistir" aria-label="Assistir"></button></div></div>
@@ -60,6 +72,7 @@
     <section id="sala" class="hidden">
       <div class="linha"><h2>Na arena</h2><button id="btnInvite" class="icone" title="Copiar convite" aria-label="Copiar convite"></button></div>
       <div id="participantes"></div>
+      <section id="versusSala" class="pre-luta hidden" aria-label="Prévia do confronto"></section>
       <div class="segmentos lados"><button data-lado="0">Lado azul</button><button data-lado="1">Lado vermelho</button><button data-lado="null" title="Ficar de fora" aria-label="Ficar de fora"></button></div>
       <button id="btnStart" class="primario largo">Começar batalha</button>
       <button id="btnLeave" class="discreto largo">Sair da sala</button>

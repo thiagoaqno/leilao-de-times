@@ -9,6 +9,7 @@ const PREFIXO = "/admin/carreira";
 const SESSAO_MS = 8 * 60 * 60 * 1000;
 const ESTADO_MS = 10 * 60 * 1000;
 const aleatorio = () => crypto.randomBytes(32).toString("base64url");
+let autenticacao = null;
 
 function attach(app, carreira, opcoes = {}) {
   const clientId = opcoes.clientId ?? process.env.MODERACAO_GITHUB_CLIENT_ID;
@@ -27,7 +28,7 @@ function attach(app, carreira, opcoes = {}) {
   const historico = opcoes.historico || ((codigo) => { try { return require("./bd.js").historicoModeracao(codigo, 15); } catch { return []; } });
   const estados = new Map(), sessoes = new Map();
   const cookie = (nome, valor, maxAge, sameSite) =>
-    `${nome}=${encodeURIComponent(valor)}; Path=${PREFIXO}; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}; ${seguro ? "Secure; " : ""}Priority=High`;
+    `${nome}=${encodeURIComponent(valor)}; Path=/admin; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}; ${seguro ? "Secure; " : ""}Priority=High`;
   const cookies = (req) => Object.fromEntries(String(req.headers.cookie || "").split(";").map((p) => {
     const i = p.indexOf("=");
     if (i < 0) return ["", ""];
@@ -39,7 +40,7 @@ function attach(app, carreira, opcoes = {}) {
     for (const [k, v] of sessoes) if (v.ate < agora) sessoes.delete(k);
   };
   const headers = (res) => res.set({ "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
-    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" });
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src https://raw.githubusercontent.com; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" });
   const sessaoDe = (req) => { limpar(); return sessoes.get(cookies(req).mod_sessao); };
   const exigir = (req, res, next) => {
     headers(res);
@@ -53,6 +54,7 @@ function attach(app, carreira, opcoes = {}) {
       return res.status(403).json({ erro: "Sessão inválida. Recarregue o painel." });
     next();
   };
+  autenticacao = { exigir, alterar, sessaoDe, headers };
 
   app.get(PREFIXO, (req, res) => {
     headers(res);
@@ -64,7 +66,8 @@ function attach(app, carreira, opcoes = {}) {
     limpar();
     if (estados.size > 1000) return res.status(429).send("Tente novamente em alguns minutos.");
     const estado = aleatorio(), verificador = aleatorio();
-    estados.set(estado, { ate: Date.now() + ESTADO_MS, verificador });
+    estados.set(estado, { ate: Date.now() + ESTADO_MS, verificador,
+      destino: req.query.destino === "/admin/pokemon" ? "/admin/pokemon" : PREFIXO });
     res.set("Set-Cookie", cookie("mod_estado", estado, 600, "Lax"));
     const url = new URL("https://github.com/login/oauth/authorize");
     url.searchParams.set("client_id", clientId);
@@ -104,7 +107,7 @@ function attach(app, carreira, opcoes = {}) {
       const sid = aleatorio();
       sessoes.set(sid, { ator: usuario.login, csrf: aleatorio(), ate: Date.now() + SESSAO_MS });
       res.set("Set-Cookie", [cookie("mod_estado", "", 0, "Lax"), cookie("mod_sessao", sid, SESSAO_MS / 1000, "Lax")]);
-      res.redirect(PREFIXO);
+      res.redirect(estadoSalvo.destino);
     } catch { res.status(502).send("Não foi possível entrar pelo GitHub. Tente novamente."); }
   });
   app.get(`${PREFIXO}/api/inicio`, exigir, (req, res) => res.json({ csrf: req.moderador.csrf, salas: carreira.listar() }));
@@ -149,4 +152,4 @@ function attach(app, carreira, opcoes = {}) {
   });
   return true;
 }
-module.exports = { attach };
+module.exports = { attach, auth: () => autenticacao };
