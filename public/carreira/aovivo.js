@@ -43,7 +43,7 @@ function tabelaAntesDoJogo(tab) {
     if (pro > contra) { l.v--; l.p -= 3; } else if (pro === contra) { l.e--; l.p--; } else l.d--;
   };
   desfaz(u.casa, u.placar[0], u.placar[1]); desfaz(u.fora, u.placar[1], u.placar[0]);
-  return t.sort((a, b) => b.p - a.p || b.v - a.v || b.sg - a.sg || b.gp - a.gp || a.id.localeCompare(b.id));
+  return t.sort((a, b) => b.p - a.p || b.sg - a.sg || b.v - a.v || b.gp - a.gp || a.id.localeCompare(b.id));
 }
 const tabelaDaCompeticao = (comp, jg) => {
   if (comp.tipo === "liga") return tabelaAntesDoJogo(comp.tabela);
