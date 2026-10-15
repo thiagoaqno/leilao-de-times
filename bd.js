@@ -209,23 +209,51 @@ function estante({ limite = 50, recentes = 24 } = {}) {
   return { ranking, ultimas, total: linhas.filter((l) => l.colocacao === 1).length };
 }
 
-// Os Pokémon capturados na grama alta da Vila (vila-mato.js). O treinador chega aqui já como hash.
-function guardarCaptura(treinador, nome, bicho, raridade, brilhante) {
-  const r = bd().prepare("INSERT INTO capturas (treinador, nome, bicho, raridade, brilhante, capturado_em) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(treinador, nome, bicho, raridade, brilhante ? 1 : 0, Date.now());
+// Os Pokémon da grama alta da Vila (vila-mato.js): cada linha de "capturas" é um indivíduo com nível e experiência.
+// O treinador chega aqui já como hash. A Pokédex ("pokedex") guarda toda espécie que o treinador já teve.
+function registrarNaPokedex(treinador, bicho) {
+  bd().prepare("INSERT OR IGNORE INTO pokedex (treinador, bicho, primeiro_em) VALUES (?, ?, ?)").run(treinador, bicho, Date.now());
+}
+function guardarCaptura(treinador, nome, bicho, raridade, brilhante, nivel = 5, origem = "captura") {
+  const r = bd().prepare("INSERT INTO capturas (treinador, nome, bicho, raridade, brilhante, capturado_em, nivel, xp, origem) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)")
+    .run(treinador, nome, bicho, raridade, brilhante ? 1 : 0, Date.now(), nivel, origem);
+  registrarNaPokedex(treinador, bicho);
   return Number(r.lastInsertRowid);
 }
-// a coleção: uma linha por espécie, com quantas vezes saiu, se já veio brilhante e a primeira captura
-function capturasDe(treinador) {
-  return bd().prepare(`SELECT bicho, raridade, COUNT(*) AS vezes, MAX(brilhante) AS brilhante, MIN(capturado_em) AS primeira
-    FROM capturas WHERE treinador = ? GROUP BY bicho, raridade ORDER BY primeira`).all(treinador)
-    .map((c) => ({ bicho: c.bicho, raridade: c.raridade, vezes: Number(c.vezes), brilhante: !!c.brilhante, primeira: Number(c.primeira) }));
+// os três iniciais entram uma vez por treinador (no nível 5), como Pokémon de verdade: sobem de nível e evoluem
+function garantirIniciais(treinador, nome, iniciais) {
+  const tem = bd().prepare("SELECT COUNT(*) AS n FROM capturas WHERE treinador = ? AND origem = 'inicial'").get(treinador);
+  if (Number(tem.n)) return false;
+  for (const [bicho, raridade] of iniciais) guardarCaptura(treinador, nome || "", bicho, raridade, false, 5, "inicial");
+  return true;
 }
-// os maiores colecionadores (espécies diferentes), pelo nome mais recente de cada treinador
+const individuo = (c) => ({ id: Number(c.id), bicho: c.bicho, raridade: c.raridade, brilhante: !!c.brilhante, nivel: Number(c.nivel), xp: Number(c.xp), origem: c.origem, capturado_em: Number(c.capturado_em) });
+// os Pokémon do treinador, um por linha (do nível mais alto para o mais baixo)
+function pokemonsDe(treinador) {
+  return bd().prepare("SELECT id, bicho, raridade, brilhante, nivel, xp, origem, capturado_em FROM capturas WHERE treinador = ? ORDER BY nivel DESC, xp DESC, id")
+    .all(treinador).map(individuo);
+}
+// sobe o nível, a experiência e (na evolução) a espécie de um Pokémon do treinador
+function atualizarPokemon(treinador, id, { bicho, nivel, xp }) {
+  bd().prepare("UPDATE capturas SET bicho = ?, nivel = ?, xp = ? WHERE id = ? AND treinador = ?").run(bicho, nivel, xp, id, treinador);
+  registrarNaPokedex(treinador, bicho);
+}
+// a Pokédex: as espécies que o treinador já teve
+function pokedexDe(treinador) {
+  return bd().prepare("SELECT bicho FROM pokedex WHERE treinador = ? ORDER BY primeiro_em").all(treinador).map((r) => r.bicho);
+}
+// a coleção para a Pokédex da Vila: uma linha por espécie que tem agora, com quantos, o melhor nível e se já veio brilhante
+function capturasDe(treinador) {
+  return bd().prepare(`SELECT bicho, raridade, COUNT(*) AS vezes, MAX(brilhante) AS brilhante, MIN(capturado_em) AS primeira, MAX(nivel) AS nivel, MAX(origem = 'inicial') AS inicial
+    FROM capturas WHERE treinador = ? GROUP BY bicho ORDER BY primeira`).all(treinador)
+    .map((c) => ({ bicho: c.bicho, raridade: c.raridade, vezes: Number(c.vezes), brilhante: !!c.brilhante, primeira: Number(c.primeira), nivel: Number(c.nivel), inicial: !!c.inicial }));
+}
+// os maiores colecionadores (espécies na Pokédex), pelo nome mais recente de cada treinador; os iniciais não contam
 function rankingCapturas(limite = 10) {
   return bd().prepare(`SELECT (SELECT nome FROM capturas d WHERE d.treinador = c.treinador ORDER BY capturado_em DESC LIMIT 1) AS nome,
-    COUNT(DISTINCT bicho) AS especies, COUNT(*) AS total FROM capturas c GROUP BY treinador ORDER BY especies DESC, total DESC LIMIT ?`).all(limite)
+    (SELECT COUNT(*) FROM pokedex x WHERE x.treinador = c.treinador) AS especies, COUNT(*) AS total
+    FROM capturas c WHERE origem = 'captura' GROUP BY treinador ORDER BY especies DESC, total DESC LIMIT ?`).all(limite)
     .map((r) => ({ nome: r.nome, especies: Number(r.especies), total: Number(r.total) }));
 }
 
-module.exports = { guardarCaptura, capturasDe, rankingCapturas, abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

@@ -6,9 +6,9 @@
 // o golpe de frente, mas gasta a barra; levantar a guarda bem na hora "apara": devolve o projétil e desequilibra quem
 // bateu). Agarrão passa pela guarda; golpe passa pelo agarrão (quem apanha durante o preparo perde o golpe).
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/dados.js"), require("../galeramon/pokemon.js"), require("../galeramon/naruto.js"), require("../galeramon/lideres.js"));
-  else root.Ginasio = factory(root.Galeramon, root.PokeDex, root.NarutoDex, root.Lideres);
-})(typeof self !== "undefined" ? self : this, function (Galeramon, PokeDex, NarutoDex, Lideres) {
+  if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/dados.js"), require("../galeramon/pokemon.js"), require("../galeramon/naruto.js"), require("../galeramon/lideres.js"), require("../galeramon/niveis.js"));
+  else root.Ginasio = factory(root.Galeramon, root.PokeDex, root.NarutoDex, root.Lideres, root.Niveis);
+})(typeof self !== "undefined" ? self : this, function (Galeramon, PokeDex, NarutoDex, Lideres, Niveis) {
   const DEX = { galeramon: Galeramon, pokemon: PokeDex, naruto: NarutoDex };
   const ARENA = {
     w: 18, h: 12,
@@ -112,7 +112,10 @@
   }
 
   const stageMult = (D, n) => (D.stageMult ? D.stageMult(n || 0) : n >= 0 ? (2 + n) / 2 : 2 / (2 - n));
-  const spec = (p, bicho) => p.dex.MONS[bicho.as || bicho.id];
+  // a ficha do bicho: a do nível dele (sem transformação) ou a da Pokédex
+  const spec = (p, bicho) => (bicho.ficha && !bicho.as ? bicho.ficha : p.dex.MONS[bicho.as || bicho.id]);
+  // a da Pokédex, sem o nível: a velocidade e o peso não mudam com o nível (a previsão da tela anda igual ao servidor)
+  const base = (p, bicho) => p.dex.MONS[bicho.as || bicho.id];
   const ativo = (j) => j.time[j.ativo];
   const emCampo = (e) => e.campo && e.bicho && e.bicho.hp > 0;
   // no alto do pulo (o meio do salto) ninguém acerta
@@ -211,9 +214,14 @@
     return Object.fromEntries(Object.entries(D.MOVES).map(([id, mv]) => [id, habilidadeDeGolpe(id, mv)]));
   }
 
-  function novoBicho(D, id) {
+  // nivel: só no modo Pokémon (a sala "só capturados" e a luta com o selvagem); sem ele, o bicho é o da Pokédex, que tem
+  // os atributos do nível 50. Com ele, a ficha leva os atributos do nível (Niveis.atributos) e o dano usa o nível.
+  function novoBicho(D, id, nivel = null) {
     const m = D.MONS[id];
-    return { id, hp: m.hp, max: m.hp, st: { atk: 0, def: 0, spd: 0 }, usos: {}, mods: [], cds: [0, 0, 0, 0], as: null, folga: false, ...(D.CHAKRA_MAX && { chakra: D.CHAKRA_START }) };
+    const at = nivel && D === PokeDex && Niveis && m.base ? Niveis.atributos(id, nivel) : null;
+    const ficha = at ? { ...m, ...at } : null;
+    const hp = ficha ? ficha.hp : m.hp;
+    return { id, hp, max: hp, st: { atk: 0, def: 0, spd: 0 }, usos: {}, mods: [], cds: [0, 0, 0, 0], as: null, folga: false, ...(ficha && { nivel: Math.round(nivel), ficha }), ...(D.CHAKRA_MAX && { chakra: D.CHAKRA_START }) };
   }
 
   function timePadrao(D, lado, slot) {
@@ -260,8 +268,14 @@
           nome: raw.nome || raw.name || `Robô ${lado + 1}-${slot + 1}`,
           bot: raw.bot !== false && (raw.bot || !lista[slot]),
           lado, slot, ativo: 0, trocaCd: 0, entradaEm: 0, ...(modo === "naruto" && { substitutes: 2 }),
-          time: team.map((id) => novoBicho(dex, id)),
+          time: team.map((id, i) => novoBicho(dex, id, nivelDe(raw, i, config, lado))),
         };
+        // o Pokémon selvagem (a luta da grama alta): sozinho do lado de lá, com o nível e a vida que tinha no encontro
+        if (lado === 1 && config.selvagem && PokeDex.MONS[config.selvagem.bicho]) {
+          const s = config.selvagem, b = novoBicho(dex, s.bicho, s.nivel);
+          if (s.hp != null) b.hp = clamp(Math.round(s.hp), 1, b.max);
+          j.time = [b]; j.nome = PokeDex.MONS[s.bicho].n; j.selvagem = true;
+        }
         p.lados[lado].jogadores.push(j);
         p.entidades.push(criarEntidade(p, j));
       }
@@ -269,6 +283,12 @@
     return p;
   }
 
+  // o nível de cada bicho do time: o que veio com o jogador (raw.niveis) ou, para o robô, o da sala (config.nivelRobo)
+  function nivelDe(raw, i, config, lado) {
+    if (config.modo !== "pokemon") return null;
+    if (Array.isArray(raw.niveis) && raw.niveis[i]) return raw.niveis[i];
+    return (!raw.id || raw.bot) && config.nivelRobo && !(lado === 1 && config.selvagem) ? config.nivelRobo : null;
+  }
   function criarEntidade(p, j) {
     const x = j.lado === 0 ? -6 : 6;
     const y = (j.slot ? 2 : -2) * (j.lado === 0 ? 1 : -1);
@@ -322,7 +342,7 @@
   }
 
   function velocidade(p, e) {
-    const s = spec(p, e.bicho).spd || 80;
+    const s = base(p, e.bicho).spd || 80;
     let v = clamp(2.5 + ((s - 30) / 120) * 2, 2.5, 4.5) * stageMult(p.dex, e.bicho.st.spd || 0);
     if (p.terreno && p.terreno.length) v *= noTerreno(p, e).vel;
     if (e.guardando) v *= 0.45;
@@ -332,7 +352,7 @@
 
   // o peso: bicho de muita vida e defesa voa menos com o golpe
   function fatorPeso(p, e) {
-    const m = spec(p, e.bicho) || {};
+    const m = base(p, e.bicho) || {};
     return clamp(Math.sqrt(260 / Math.max(60, (m.hp || 130) + (m.def || 100))), 0.6, 1.45);
   }
 
@@ -587,7 +607,8 @@
     const stab = (as.types || []).includes(tipo) ? 1.5 : 1;
     const variacao = op.variacao != null ? op.variacao : 0.9 + p.rng() * 0.1;
     const escala = p.modo === "pokemon" ? K_DANO_POKEMON : K_DANO;
-    let dano = ((LEVEL_K * poder * (A / Df)) / 50 + 2) * stab * eff * (crit ? 1.5 : 1) * variacao * escala;
+    const nivelK = me.nivel ? (2 * me.nivel) / 5 + 2 : LEVEL_K; // o nível de quem bate (a conta dos jogos)
+    let dano = ((nivelK * poder * (A / Df)) / 50 + 2) * stab * eff * (crit ? 1.5 : 1) * variacao * escala;
     return { dano: Math.max(1, Math.floor(dano)), eff, crit, especial };
   }
 

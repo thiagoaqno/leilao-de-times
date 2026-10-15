@@ -113,3 +113,27 @@ body.toque-jogo #mapaPk{display:none}
 #escolhaPokemons{display:flex;flex-direction:column;gap:6px;margin-top:10px}#escolhaPokemons.hidden{display:none}#dicaPokemons{margin:0;font-size:12px;line-height:1.35;color:var(--suave,#9aa8a3)}
 #dexAviso{margin:0 0 8px;font-size:13px;line-height:1.35;padding:6px 10px;border-left:3px solid #4fbf6a;background:#4fbf6a1a}
 #dicaArena{margin:0;font-size:12px;line-height:1.35;color:var(--suave,#9aa8a3);min-height:2.7em}
+/* a luta com o Pokémon selvagem (selvagem.js): o quadro na sala, a Pokébola e a experiência no fim */
+.selvagem-cartao{display:flex;gap:12px;align-items:center;padding:10px;border:2px solid var(--r);border-radius:6px;background:color-mix(in srgb,var(--r) 10%,#fff);margin-bottom:12px}
+.selvagem-cartao img{image-rendering:pixelated;flex:none}.selvagem-cartao h2{margin:2px 0;font-size:20px}.selvagem-cartao h2 small{font-size:13px;color:var(--suave)}.selvagem-cartao p{margin:0;font-size:13px;line-height:1.35}
+#btnPokebola .ic.bola{display:block;width:22px;height:22px;border-radius:50%;border:2px solid #1b1b1b;background:linear-gradient(#e8483b 0 44%,#1b1b1b 44% 56%,#f4f4f4 56%);position:relative}
+#btnPokebola .ic.bola::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;transform:translate(-50%,-50%);border-radius:50%;background:#fff;border:2px solid #1b1b1b}
+#btnPokebola{background:linear-gradient(0deg,color-mix(in srgb,#e8483b 45%,transparent) calc(var(--chance,0) * 100%),transparent 0) !important}
+body.pk.jogando:not(.toque-jogo) .habilidade.esquiva.pokebola{width:auto;min-width:64px;padding-inline:6px}
+#btnPokebola.flutuante{position:absolute;right:12px;top:58px;z-index:6;min-width:96px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:8px;border:2px solid #1b1b1b;background-color:#fff;font:700 12px system-ui}
+#btnPokebola.flutuante kbd{display:none}
+#btnPokebola.hidden{display:none !important}
+#resultadoSelvagem p{margin:8px 0;font-size:14px}
+.xp-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.xp-lista li{display:flex;gap:8px;align-items:center;font-size:14px}.xp-lista img{image-rendering:pixelated;flex:none}
+.xp-lista .evoluiu{color:#b5651d;display:block}
+.xpbarra{display:block;height:5px;margin-top:4px;background:#dde5e1;border-radius:3px;overflow:hidden}.xpbarra i{display:block;height:100%;background:#3f8fe0;transition:width .6s ease-out}
+a.botao{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border-radius:4px;text-decoration:none;font-weight:700}
+a.botao.primario{background:var(--verde);color:#fff}a.botao.hidden{display:none}
+.bicho{position:relative}.nv-bicho{position:absolute;top:3px;left:4px;font:700 10px ui-monospace,monospace;color:#3f6a5a;background:#ffffffcc;padding:0 3px;border-radius:2px}
+.selvagem-cartao .tipo-lider{color:color-mix(in srgb,var(--r) 70%,#000);font:800 11px system-ui;text-transform:uppercase;letter-spacing:.04em}
+body.pk.jogando:not(.toque-jogo) #hud:has(#btnPokebola:not(.hidden)){grid-template-areas:"ret ret" "barras barras" "hab hab" "def res" "bola bola" "ef ef"}
+body.pk.jogando:not(.toque-jogo) #btnPokebola{grid-area:bola;width:100%;min-width:0;height:44px;flex-direction:row;justify-content:center;gap:8px}
+body.pk.jogando:not(.toque-jogo) #btnPokebola .ic{margin:0 !important}
+body.pk.jogando:not(.toque-jogo) #btnPokebola .nome{font-size:12px;max-height:none}
+#hud > #btnPokebola:not(.flutuante){position:relative}
