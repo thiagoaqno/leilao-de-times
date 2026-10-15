@@ -78,8 +78,10 @@ test("mato: o encontro só sai na grama e com o passo; a Pokébola é infinita e
   const dex = await s.pedir("pokedex", { codigo: CODIGO });
   assert.strictEqual(dex.total, PokeDex.IDS.length);
   assert.deepStrictEqual(dex.ranking, [{ nome: "Ash", especies: 1, total: 1 }]);
-  // outro treinador não vê a coleção de ninguém
-  assert.deepStrictEqual((await s.pedir("pokedex", { codigo: "f".repeat(32) })).colecao, []);
+  assert.deepStrictEqual(dex.colecao.filter((c) => c.inicial).map((c) => c.bicho).sort(), Mato.INICIAIS.slice().sort(), "os iniciais vêm de graça");
+  // outro treinador não vê a coleção de ninguém: só os iniciais
+  assert.deepStrictEqual((await s.pedir("pokedex", { codigo: "f".repeat(32) })).colecao.map((c) => c.bicho).sort(), Mato.INICIAIS.slice().sort());
+  assert.deepStrictEqual([...ligarMato.colecaoDe(null)].sort(), Mato.INICIAIS.slice().sort());
 });
 
 test("mato: o Pokémon pode fugir, e fugir fecha o encontro", async () => {

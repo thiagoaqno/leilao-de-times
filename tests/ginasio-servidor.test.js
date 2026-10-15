@@ -276,6 +276,7 @@ test("ginásio/servidor: dois clientes e robôs jogam até o fim e pontuam na No
   const lados = [0, 1].map((lado) => st.match.jogadores.filter((p) => p.lado === lado));
   const sombra = G.criarPartida({ modo: "pokemon", formato: "2x2", seed: "clientes" }, lados);
   sombra.rng = () => 0; // os clientes apertam assim que um golpe fica disponivel
+  sombra.terreno = G.terrenoDe(st.match.bioma); // o mesmo lugar do servidor (o robô dos clientes foge da lava e da água)
   let seq = 0, danos = 0, desmaios = 0;
   a.on("ev", (lista) => {
     danos += lista.filter((e) => e.tipo === "dano").length;

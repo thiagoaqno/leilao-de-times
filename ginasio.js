@@ -7,6 +7,8 @@ const NarutoDex = require("./public/galeramon/naruto.js");
 const Lideres = require("./public/galeramon/lideres.js"); // os líderes e treinadores da Vila (o time dos robôs)
 const { rid, novoCodigo, limparNome, ok, falha, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js");
 const noite = require("./noite.js");
+const Mato = require("./public/vila/mato.js"); // os três iniciais
+const { hashDe, colecaoDe } = require("./vila-mato.js"); // a coleção da grama alta da Vila (bd.js)
 
 const TICK = 1 / 60, SNAP_EVERY = 3, MAX_SALA = 8, COMANDO_MS = 250;
 // Os testes aceleram o relogio sem mudar o passo, o dano ou a duracao da partida.
@@ -24,7 +26,8 @@ function limparConfig(c) {
   // lider: o desafio a um líder ou treinador da Vila (1x1 contra o robô com o time dele)
   const lider = Lideres.de(c.lider) ? c.lider : null;
   // arena: o lugar da luta no modo Pokémon (sortear, ou um dos lugares de regras.js)
-  return { modo: ["galeramon", "pokemon", "naruto"].includes(c.modo) ? c.modo : "galeramon", formato: lider ? "1x1" : c.formato === "2x2" ? "2x2" : "1x1", bots: lider ? true : c.bots !== false, arena: G.BIOMAS.includes(c.arena) ? c.arena : "sortear", ...(lider && { lider }) };
+  // pokemons: "todos" (qualquer um) ou "capturados" (só os iniciais e os que cada um pegou na grama alta da Vila)
+  return { modo: ["galeramon", "pokemon", "naruto"].includes(c.modo) ? c.modo : "galeramon", formato: lider ? "1x1" : c.formato === "2x2" ? "2x2" : "1x1", bots: lider ? true : c.bots !== false, arena: G.BIOMAS.includes(c.arena) ? c.arena : "sortear", pokemons: c.pokemons === "capturados" ? "capturados" : "todos", ...(lider && { lider }) };
 }
 
 function timeValido(modo, time) {
@@ -66,6 +69,16 @@ module.exports = function ligarGinasio(io) {
   const doLado = (sala, lado) => sala.order.map((id) => sala.players[id]).filter((p) => p.lado === lado);
   const emCampo = (sala, p) => sala.match && sala.match.entidades.find((e) => e.id === p?.id);
 
+  // a sala "só capturados": cada um joga só com os Pokémon que tem (os iniciais e os da grama alta da Vila)
+  const soCapturados = (sala) => sala.config.modo === "pokemon" && sala.config.pokemons === "capturados";
+  const foraDaColecao = (sala, p, time) => (soCapturados(sala) ? time.find((id) => !colecaoDe(p.treinador).has(id)) || null : null);
+  // quem está com um time que não tem volta para os iniciais (ao ligar a regra, ao entrar e ao começar)
+  function ajustarAColecao(sala, p) {
+    if (!foraDaColecao(sala, p, p.times.pokemon)) return false;
+    p.times.pokemon = Mato.INICIAIS.slice();
+    log(sala, `${p.name} ainda não tem todos os Pokémon do time: voltou para os iniciais.`);
+    return true;
+  }
   function limparEntrada(p) {
     p.recebida = -1; p.processada = -1; p.comandos = []; p.movimento = null; p.ultComando = 0;
   }
@@ -74,12 +87,13 @@ module.exports = function ligarGinasio(io) {
     salas.set(sala.code, sala);
     return sala;
   }
-  function adicionar(sala, name, time) {
+  function adicionar(sala, name, time, treinador = null) {
     const id = rid(6), n = tamanho(sala), a = doLado(sala, 0).length, b = doLado(sala, 1).length;
     const lado = a <= b && a < n ? 0 : b < n ? 1 : null;
-    const p = { id, token: rid(12), name, lado, rtt: null, sockets: new Set(), times: { galeramon: Galeramon.DEFAULT_TEAM.slice(), pokemon: PokeDex.DEFAULT_TEAM.slice(), naruto: NarutoDex.DEFAULT_TEAM.slice() } };
+    const p = { id, token: rid(12), name, lado, treinador, rtt: null, sockets: new Set(), times: { galeramon: Galeramon.DEFAULT_TEAM.slice(), pokemon: PokeDex.DEFAULT_TEAM.slice(), naruto: NarutoDex.DEFAULT_TEAM.slice() } };
     if (time) p.times[sala.config.modo] = time.slice();
     sala.players[id] = p; sala.order.push(id); limparEntrada(p);
+    ajustarAColecao(sala, p);
     return p;
   }
   // A Vila reserva os dois lados; cada pessoa assume seu lugar com o proprio token.
@@ -230,7 +244,7 @@ module.exports = function ligarGinasio(io) {
       if (!name) return falha(cb, "Coloque o seu nome.");
       if (data.time != null && !timeValido(config.modo, data.time)) return falha(cb, "Escolha 3 bichos diferentes desse modo.");
       const sala = novaSala(config);
-      const p = adicionar(sala, name, data.time);
+      const p = adicionar(sala, name, data.time, hashDe(data.treinador));
       sala.host = p.id; bind(sala, p.id);
       log(sala, `Ginásio aberto por ${name}.`);
       ok(cb, { code: sala.code, id: p.id, token: p.token }); broadcast(sala);
@@ -240,19 +254,25 @@ module.exports = function ligarGinasio(io) {
       const sala = buscarSala(salas, typeof data.code === "string" ? data.code : "");
       if (!sala) return falha(cb, "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu).");
       const volta = typeof data.id === "string" && typeof data.token === "string" && quemVolta(sala, data);
-      if (volta) { bind(sala, volta.id); ok(cb, { code: sala.code, id: volta.id, token: volta.token }); return broadcast(sala); }
+      if (volta) { if (hashDe(data.treinador)) volta.treinador = hashDe(data.treinador); bind(sala, volta.id); ok(cb, { code: sala.code, id: volta.id, token: volta.token }); return broadcast(sala); }
       if (data.watch) { bind(sala, null); ok(cb, { code: sala.code, id: null }); return broadcast(sala); }
       const name = limparNome(typeof data.name === "string" ? data.name : "");
       if (!name) return falha(cb, "Coloque o seu nome.");
       if (nomeEmUso(sala, name)) return falha(cb, "Já tem alguém com esse nome na sala.");
       if (sala.order.length >= MAX_SALA) return falha(cb, "A sala está cheia. Você pode entrar para assistir.");
       if (data.time != null && !timeValido(sala.config.modo, data.time)) return falha(cb, "Escolha 3 bichos diferentes desse modo.");
-      const p = adicionar(sala, name, data.time);
+      const p = adicionar(sala, name, data.time, hashDe(data.treinador));
       if (sala.phase === "play") p.lado = null;
       bind(sala, p.id); log(sala, `${name} chegou no ginásio.`);
       ok(cb, { code: sala.code, id: p.id, token: p.token }); broadcast(sala);
     });
     socket.on("clock", (cb) => typeof cb === "function" && cb(Date.now()));
+    // os Pokémon que o treinador tem (para a escolha da sala "só capturados")
+    socket.on("colecao", (data, cb) => {
+      if (typeof cb !== "function") return;
+      const t = hashDe(objeto(data) ? data.codigo : null);
+      cb({ ok: true, ids: [...colecaoDe(t)] });
+    });
     socket.on("act", (data, cb) => {
       data = objeto(data) ? data : {};
       const { room: sala, me } = ctx();
@@ -262,6 +282,8 @@ module.exports = function ligarGinasio(io) {
         if (data.type === "time") {
           if (!me || jogando) return "Só dá para trocar os bichos fora do jogo.";
           if (!timeValido(sala.config.modo, data.time)) return "Escolha 3 bichos diferentes desse modo.";
+          const falta = foraDaColecao(sala, me, data.time);
+          if (falta) return `Você ainda não tem ${PokeDex.MONS[falta].n}: capture na grama alta da Vila (em frente ao Ginásio).`;
           me.times[sala.config.modo] = data.time.slice(); return;
         }
         if (data.type === "lado") {
@@ -274,6 +296,7 @@ module.exports = function ligarGinasio(io) {
           if (!organizador || jogando) return "Só o organizador muda, fora do jogo.";
           if (!objeto(data.config)) return "Configuração inválida.";
           sala.config = limparConfig({ ...sala.config, ...data.config });
+          for (const id of sala.order) ajustarAColecao(sala, sala.players[id]);
           for (const lado of [0, 1]) doLado(sala, lado).slice(tamanho(sala)).forEach((p) => { p.lado = null; });
           sala.match = null; sala.results = null; sala.phase = "lobby"; return;
         }
@@ -295,6 +318,7 @@ module.exports = function ligarGinasio(io) {
           if (!humanos.length) return "Entre num lado para jogar.";
           if (humanos.some((p) => !p.sockets.size)) return "Há jogador desconectado: espere voltar ou retire da sala.";
           if (!sala.config.bots && [0, 1].some((lado) => doLado(sala, lado).length < n)) return `Faltam jogadores: cada lado precisa de ${n} (ou ligue os robôs).`;
+          for (const id of sala.order) ajustarAColecao(sala, sala.players[id]); // pode ter mudado o banco
           comecar(sala); return;
         }
         if (data.type === "lobby") {

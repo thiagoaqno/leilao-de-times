@@ -8,6 +8,8 @@
   else root.MatoAlto = factory(root.PokeDex);
 })(typeof self !== "undefined" ? self : this, function (PokeDex) {
   const GRAMA = { x: 10, y: 46, w: 11, h: 4 };
+  // todo treinador já começa com os três iniciais (a sala do Ginásio com "só capturados" aceita eles sempre)
+  const INICIAIS = ["bulbasaur", "charmander", "squirtle"];
   const CHANCE_ENCONTRO = 0.16; // por passo na grama
   const CHANCE_BRILHANTE = 1 / 80;
   const RARIDADES = {
@@ -47,5 +49,5 @@
     const perto = 1 - (n - R.pega) / (1 - R.pega), balancos = 1 + Math.min(2, Math.floor(perto * 3));
     return { resultado: sorte() < R.foge ? "fugiu" : "escapou", balancos };
   }
-  return { GRAMA, CHANCE_ENCONTRO, CHANCE_BRILHANTE, RARIDADES, ORDEM, LENDARIOS, POR_RARIDADE, raridadeDe, naGrama, sortearEncontro, jogarPokebola, totalBase };
+  return { GRAMA, INICIAIS, CHANCE_ENCONTRO, CHANCE_BRILHANTE, RARIDADES, ORDEM, LENDARIOS, POR_RARIDADE, raridadeDe, naGrama, sortearEncontro, jogarPokebola, totalBase };
 });

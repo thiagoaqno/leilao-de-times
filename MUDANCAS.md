@@ -1,4 +1,4 @@
-# Ginásio, modo Pokémon: HUD à esquerda, mais leve, escolha do lugar, terreno que reage ao tipo e a grama alta da Vila
+# Ginásio, modo Pokémon: HUD à esquerda, mais leve, escolha do lugar, terreno que reage ao tipo, a grama alta da Vila e a sala "só capturados"
 
 ## O que muda
 
@@ -50,6 +50,21 @@ Andando nele aparecem Pokémon selvagens:
 - Pegar um épico, um lendário ou um brilhante vira notícia para a vila inteira.
 - O servidor confere se a pessoa está mesmo na grama, o tempo entre os passos e faz todos os sorteios.
 
+**Capturar vale no Ginásio.** Na sala do Ginásio, no modo Pokémon, o anfitrião escolhe "Pokémon da sala":
+
+- **Todos liberados:** qualquer Pokémon, como antes.
+- **Só os capturados:** cada um joga só com os Pokémon que tem.
+  - Todo mundo começa com os três iniciais: Bulbasaur, Charmander e Squirtle.
+  - O resto vem da grama alta da Vila.
+  - A escolha do bicho mostra só o que é seu, com o aviso de quantos você tem.
+  - O servidor confere no banco: recusa o que você não pegou e põe os iniciais em quem entra, ou estava, com um time
+    que não tem (ao ligar a regra, ao entrar e ao começar).
+  - Capturou na Vila? Já vale na sala.
+  - Os robôs continuam com qualquer time.
+  - O time da sala "só capturados" não apaga o seu time guardado para as salas liberadas.
+
+A Pokédex da Vila também mostra os três iniciais.
+
 ## Arquivos
 
 - `public/ginasio/estilo.css`, `hud-pokemon.js`, `desenho.js` (`ajustarCanvas`) e `cena3d.js` (`enquadrar3d` com a
@@ -64,6 +79,9 @@ Andando nele aparecem Pokémon selvagens:
 - `public/ginasio/animacao.js`: as marolas e as faíscas da lava.
 - `public/vila/mato.js` (novo), `vila-mato.js` (novo), `vila.js`, `public/index.html`, `bd.js` e
   `migracoes/008-capturas.sql` (novo): a grama alta, os encontros, a Pokébola, a Pokédex e as capturas no banco.
+- `ginasio.js` (`pokemons`, `foraDaColecao`, `ajustarAColecao`, evento `colecao`), `public/ginasio/sala.js`, `rede.js`,
+  `index.html` e `estilo.css`: a sala "só capturados"; `public/vila/mato.js` (`INICIAIS`) e `vila-mato.js`
+  (`colecaoDe`, os iniciais na Pokédex).
 - `CLAUDE.md`: o mapa atualizado.
 
 ## Testes
@@ -85,8 +103,17 @@ Andando nele aparecem Pokémon selvagens:
   - a notícia do lendário;
   - a fuga e o "fugir";
   - as capturas agrupadas por treinador.
+- `tests/ginasio-capturados.test.js` (novo; sobe o canal `/ginasio` com o banco em memória):
+  - os iniciais valem para todos, e o resto só para quem pegou;
+  - ligar a regra devolve os iniciais;
+  - quem entra com time que não tem fica com os iniciais;
+  - capturou, já vale;
+  - desligar libera tudo;
+  - a regra só vale no modo Pokémon.
 - `tests/ginasio-biomas.test.js`: a tela usa o lugar que o servidor escolheu.
 - Os testes de física pura (`ginasio-fisica`, a previsão de `ginasio.test.js`) rodam sem terreno.
-- `npm test`: 374 de 376. As duas falhas já existiam na `main`: o formato de `/carreira-online` em `salas.test.js` e
+- Os dois clientes de `ginasio-servidor` usam o mesmo lugar do servidor.
+- Os testes novos entraram no `npm test`.
+- `npm test`: 390 de 392. As duas falhas já existiam na `main`: o formato de `/carreira-online` em `salas.test.js` e
   "carreira: comprar na janela…".
 - E2E não rodado, como combinado.

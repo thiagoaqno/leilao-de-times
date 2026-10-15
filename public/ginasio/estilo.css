@@ -110,4 +110,6 @@ body.toque-jogo #mapaPk{display:none}
 #escolhaArena{display:flex;flex-direction:column;gap:6px;margin-top:10px}#escolhaArena.hidden{display:none}
 .rotulo-arena{font:700 12px system-ui;color:var(--suave,#9aa8a3);text-transform:uppercase;letter-spacing:.04em}
 .segmentos.arenas{display:flex;flex-wrap:wrap;gap:4px}.segmentos.arenas button{flex:1 1 30%;min-width:0;border-radius:4px!important;border-left:1px solid var(--linha)!important}
+#escolhaPokemons{display:flex;flex-direction:column;gap:6px;margin-top:10px}#escolhaPokemons.hidden{display:none}#dicaPokemons{margin:0;font-size:12px;line-height:1.35;color:var(--suave,#9aa8a3)}
+#dexAviso{margin:0 0 8px;font-size:13px;line-height:1.35;padding:6px 10px;border-left:3px solid #4fbf6a;background:#4fbf6a1a}
 #dicaArena{margin:0;font-size:12px;line-height:1.35;color:var(--suave,#9aa8a3);min-height:2.7em}

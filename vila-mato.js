@@ -56,8 +56,14 @@ function ligarMato(socket, { eu, noticia, OX, OY }) {
   socket.on("pokedex", (d = {}, cb) => {
     const r = responder(cb), treinador = hashDe(d.codigo);
     if (!treinador) return r({ ok: false });
-    r({ ok: true, colecao: bd.capturasDe(treinador), ranking: bd.rankingCapturas(10), total: PokeDex.IDS.length });
+    // os três iniciais entram na coleção de todo mundo, mesmo sem captura
+    const colecao = bd.capturasDe(treinador);
+    for (const id of Mato.INICIAIS) if (!colecao.some((c) => c.bicho === id)) colecao.unshift({ bicho: id, raridade: Mato.raridadeDe(id), vezes: 0, brilhante: false, inicial: true });
+    r({ ok: true, colecao, ranking: bd.rankingCapturas(10), total: PokeDex.IDS.length });
   });
 }
 ligarMato.trocarSorte = (f) => { sorte = f || Math.random; };
+ligarMato.hashDe = hashDe;
+// os Pokémon de um treinador (pelo hash): os iniciais e tudo o que ele já capturou (o Ginásio usa na sala "só capturados")
+ligarMato.colecaoDe = (treinador) => new Set([...Mato.INICIAIS, ...(treinador ? bd.capturasDe(treinador).map((c) => c.bicho) : [])]);
 module.exports = ligarMato;
