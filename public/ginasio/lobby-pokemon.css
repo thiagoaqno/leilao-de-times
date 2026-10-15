@@ -42,6 +42,9 @@ body.pokemon-lobby:not(.jogando) #painel button.bicho{background:#ffffff12;borde
 body.pokemon-lobby:not(.jogando) #painel button.bicho:hover{border-color:#f9d074;background:#ffffff20}
 body.pokemon-lobby:not(.jogando) .participante{background:#ffffff12;color:#fff}
 body.pokemon-lobby:not(.jogando) .participante.vermelho{background:#e6548030}
+body.pokemon-lobby:not(.jogando) .como-jogar{background:#ffffff0d;border-color:#ffffff40;color:#f8f3ff}
+body.pokemon-lobby:not(.jogando) .desafio-lider{background:color-mix(in srgb,var(--cor) 18%,#21192f);color:#fff}
+body.pokemon-lobby:not(.jogando) .desafio-lider p{color:#dfd5e8}
 body.pokemon-lobby:not(.jogando) .insignias{border-top-color:#ffffff24}
 body.pokemon-lobby:not(.jogando) .dica-insignias,body.pokemon-lobby:not(.jogando) #dicaArena,body.pokemon-lobby:not(.jogando) #dicaPokemons{color:#c0b4d4}
 @keyframes heroRaio{to{transform:rotate(360deg)}}@keyframes heroRespira{to{opacity:.65;scale:1.08}}@keyframes heroFlutua{to{translate:0 -12px}}
