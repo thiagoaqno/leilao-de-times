@@ -56,3 +56,21 @@ test("editar atributo no painel altera o jogador usado pelo motor", () => {
   assert.equal(Object.values(base).flatMap((b) => b.clubes).flatMap((c) => c.jogadores).find((j) => j.id === pid).atr.fin, 99,
     "a projeção dos próximos jogos também precisa receber o atributo salvo");
 });
+
+test("sala mantém os clubes e insere a Copa após aceitar oferta", () => {
+  const g = Carreira.grupo, save = g.novaCarreiraGrupo([{ clube: "flamengo", nome: "Ana" }, { clube: "palmeiras", nome: "Bia" }], { temporadas: 2 });
+  for (const clube of ["flamengo", "palmeiras"]) {
+    const v = g.vistaDe(save, clube);
+    v.jogosJogados = save.calendarioMundo.filter((j) => j.casa === clube || j.fora === clube).map((j) => j.id);
+    Carreira.paraTestes.registrarTemporada(v);
+    if (clube === "flamengo") assert.equal(Selecoes.aceitar(v, v.ofertasSelecao.ofertas[0].id), null);
+    g.guardarVista(save, v);
+  }
+  assert.equal(g.novaTemporadaGrupo(save), null);
+  assert.equal(save.copaAtiva, true);
+  assert.equal(save.competicoes.copadomundo.jogos.length, 104);
+  const ana = g.vistaDe(save, "flamengo"), bia = g.vistaDe(save, "palmeiras");
+  assert.ok(ana.selecao && !bia.selecao);
+  assert.ok(ana.calendarioMundo.some((j) => j.casa === ana.clube || j.fora === ana.clube));
+  assert.ok(ana.calendarioMundo.some((j) => j.casa === ana.selecao || j.fora === ana.selecao));
+});
