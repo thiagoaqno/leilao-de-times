@@ -267,6 +267,7 @@ function animarEvento(ev, agora) {
   else if (ev.tipo === "combo") visualDe(ev.id).golpe = { t: agora, classe: "corpo", elemento: ev.elemento, combo: ev.n };
   else if (ev.tipo === "tiro") visualDe(ev.id).golpe = { t: agora - 120, classe: "projetil", elemento: ev.elemento };
   else if (ev.tipo === "batida") { const e = N.snap?.entidades.find((p) => p.id === ev.id); if (e) espalhar(e.x, e.y, 12, POEIRA, { vel: 2.4, sobe: 2.4, vida: 0.5, tam: 0.14, atrito: 2 }); visualDe(ev.id).batida = agora; }
+  else if (ev.tipo === "lava") { const e = N.snap?.entidades.find((p) => p.id === ev.id); if (e) espalhar(e.x, e.y, 5, ["#ff7a2e", "#ffb04a", "#ffd84a"], { vel: 1.2, sobe: 2.4, vida: 0.45, tam: 0.08 }); }
   else if (ev.tipo === "aterrissou") { espalhar(ev.x, ev.y, 18, POEIRA, { vel: 3.2, sobe: 1.8, vida: 0.55, tam: 0.15, atrito: 3, raio: 0.4 }); visualDe(ev.id).pouso = agora; }
   else if (ev.tipo === "troca") { const v = visualDe(ev.id); v.entrada = agora; v.desmaio = null; v.rastro.length = 0; }
   else if (ev.tipo === "desmaiou") visualDe(ev.id).desmaio = { t: agora, bicho: ev.bicho };
@@ -486,6 +487,8 @@ function poseBicho(e, agora, modo) {
   for (let i = v.rastro.length - 1; i >= 0; i--) if (agora - v.rastro[i].t > 180) v.rastro.splice(i, 1);
   return Object.assign(pose, { visivel: true, a, anim, q, f, o, desm, ie, sombra, carga, escondido, wx, wy, altura, alturaSprite: 1.2 });
 }
+// quem voa (tipo Voador) passa por cima do terreno
+function voaNoTerreno(e) { return (dexAtual().MONS[e.forma || e.bicho]?.types || []).includes("Voador"); }
 function bichoNoChao(pose, agora) {
   const { e, v } = pose, s = camera.escala;
   desenharBuraco(v, agora);
@@ -497,6 +500,16 @@ function bichoNoChao(pose, agora) {
     const k = pose.sombra * clamp(1 - pose.altura / 12, 0.3, 1);
     ctx.fillStyle = cena3d.ok && !cena3d.leve ? "#00000030" : "#0000004c"; ctx.beginPath();
     ctx.ellipse(p.x, p.y, s * 0.62 * k, s * 0.42 * k, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // na água (o terreno de regras.js), as marolas em volta de quem nada ou anda nela; quem voa passa por cima
+  const zona = e.campo && !pose.escondido && pose.altura < 0.3 && S?.match?.bioma ? Ginasio.zonaEm(Ginasio.terrenoDe(S.match.bioma), pose.wx, pose.wy) : null;
+  if (zona && (zona.tipo === "agua" || zona.tipo === "funda") && !voaNoTerreno(e)) {
+    ctx.strokeStyle = "#e8f6ffcc"; ctx.lineWidth = Math.max(1, s * 0.05);
+    for (let i = 0; i < 2; i++) {
+      const k = movimentoReduzido.matches ? 0.5 : ((agora / 900 + i / 2) % 1);
+      ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.ellipse(p.x, p.y, s * (0.5 + k * 0.5), s * (0.32 + k * 0.32), 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
   if (e.campo && !pose.escondido) {
     ctx.strokeStyle = e.id === ME?.id ? "#ffe56a" : coresLados[e.lado]; ctx.lineWidth = Math.max(2, s * 0.1);

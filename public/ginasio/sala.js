@@ -7,7 +7,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dexDe = (modo) => ({ galeramon: Galeramon, pokemon: PokeDex, naruto: NarutoDex })[modo] || Galeramon;
 const salvo = store.get("ginasio:config") || {};
 const modoDoEndereco = new URLSearchParams(location.search).get("modo"); // a casa do Naruto, na Vila, abre direto no modo Naruto
-const configLocal = { modo: ["galeramon", "pokemon", "naruto"].includes(modoDoEndereco) ? modoDoEndereco : ["galeramon", "pokemon", "naruto"].includes(salvo.modo) ? salvo.modo : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false };
+const configLocal = { modo: ["galeramon", "pokemon", "naruto"].includes(modoDoEndereco) ? modoDoEndereco : ["galeramon", "pokemon", "naruto"].includes(salvo.modo) ? salvo.modo : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false, arena: Ginasio.BIOMAS.includes(salvo.arena) ? salvo.arena : "sortear" };
 const times = { galeramon: Galeramon.cleanTeam(store.get("galeramon_time")), pokemon: PokeDex.cleanTeam(store.get("pokemon_time")), naruto: NarutoDex.cleanTeam(store.get("naruto_time")) };
 let S = null, ME = null, salaVisivel = true, timeInicial = false, modoAnterior = null, ocupado = false;
 const modoAtual = () => S?.config.modo || configLocal.modo;
@@ -34,12 +34,26 @@ function htmlBicho(id, modo = modoAtual()) {
 }
 function preencher(id, html) { const el = $(id); if (el._html !== html) { el._html = html; el.innerHTML = html; } }
 function guardarTime(modo, time) { times[modo] = [...time]; store.set(`${modo}_time`, time); }
+// o que cada lugar muda na luta (o terreno de regras.js)
+const DICA_ARENA = {
+  sortear: "Um lugar diferente a cada partida.",
+  floresta: "Mato alto dos lados: Grama corre nele. A poça do meio é do tipo Água.",
+  lagoa: "A lagoa funda no meio só deixa passar quem nada (Água) ou voa (Voador). Na rasa, Água é mais rápido e bate mais forte.",
+  vulcao: "A lava queima quem anda nela, menos Fogo, que fica mais rápido e mais forte. Voador passa por cima.",
+  neve: "No gelo, quem não é Gelo escorrega longe. Gelo desliza rápido.",
+  ruinas: "Areia fofa: lenta para todos, menos Terrestre e Pedra.",
+};
 function guardarConfig() { if (S) Object.assign(configLocal, S.config); store.set("ginasio:config", configLocal); }
 function atualizarOpcoes() {
   const c = S?.config || configLocal, pode = !S || (S.host === ME?.id && S.phase !== "play");
   document.querySelectorAll("[data-modo]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.modo === c.modo); b.disabled = !pode; });
   document.querySelectorAll("[data-formato]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.formato === c.formato); b.disabled = !pode; });
   $("bots").checked = c.bots; $("bots").disabled = !pode;
+  // o lugar da luta (só no modo Pokémon, que luta ao ar livre: biomas.js); o desafio de líder usa o lugar do líder
+  const arena = c.arena || "sortear";
+  $("escolhaArena").classList.toggle("hidden", c.modo !== "pokemon" || !!c.lider);
+  document.querySelectorAll("[data-arena]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.arena === arena); b.disabled = !pode; });
+  $("dicaArena").textContent = DICA_ARENA[arena] || "";
 }
 function renderSala() {
   if (LIDER) mostrarDesafio();
@@ -132,6 +146,7 @@ document.querySelectorAll("[data-lado]").forEach((b) => { b.onclick = () => act(
 document.querySelectorAll("[data-modo]").forEach((b) => { b.onclick = () => mudarConfig({ modo: b.dataset.modo }); });
 document.querySelectorAll("[data-formato]").forEach((b) => { b.onclick = () => mudarConfig({ formato: b.dataset.formato }); });
 $("bots").onchange = () => mudarConfig({ bots: $("bots").checked });
+document.querySelectorAll("[data-arena]").forEach((b) => { b.onclick = () => mudarConfig({ arena: b.dataset.arena }); });
 $("btnInvite").onclick = async () => { try { await navigator.clipboard.writeText(`${location.origin}/ginasio/?sala=${S.code}`); toast("Convite copiado."); } catch { toast(`Código da sala: ${S.code}`); } };
 
 let slotDex = 0, paginaDex = 0;

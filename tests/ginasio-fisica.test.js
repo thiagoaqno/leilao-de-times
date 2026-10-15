@@ -14,6 +14,7 @@ function duelo(golpes, { b = ["tackle", "tackle", "tackle", "tackle"], tiposB = 
   PokeDex.MONS.teste_a = { ...PokeDex.MONS[base], n: "A", moves: golpes };
   PokeDex.MONS.teste_b = { ...PokeDex.MONS[baseB], n: "B", types: tiposB, moves: b };
   const p = G.criarPartida({ seed, modo: "pokemon" }, [[{ id: "a", bot: false, team: ["teste_a", "pikachu", "eevee"] }], [{ id: "b", bot: false, team: ["teste_b", "pikachu", "eevee"] }]]);
+  p.terreno = []; // a física pura, sem o terreno do lugar (ginasio-terreno.test.js)
   const [a, bb] = p.entidades;
   Object.assign(a, { x: -2, y: 0, mira: { x: 1, y: 0 } }); Object.assign(bb, { x: 2, y: 0, mira: { x: -1, y: 0 } });
   return { p, a, b: bb };

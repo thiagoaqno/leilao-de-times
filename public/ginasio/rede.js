@@ -27,7 +27,7 @@ function receberPacote(sn) {
   if (mudou) N.historico.length = 0;
   N.historico = N.historico.filter((passo) => passo.seq > sn.seq);
   N.previsto = entidadePrevista(e);
-  N.mundo = { modo: modoAtual(), dex: dexAtual(), entidades: [], ev: [], t: sn.tempo || 0 };
+  N.mundo = { modo: modoAtual(), dex: dexAtual(), entidades: [], ev: [], t: sn.tempo || 0, terreno: Ginasio.terrenoDe(S.match.bioma) }; // o terreno muda a velocidade e a água funda é parede
   for (const passo of N.historico) Ginasio.preverMovimento(N.mundo, N.previsto, passo.dt, passo.c);
   const distancia = antigo ? Math.hypot(antigo.x - N.previsto.x, antigo.y - N.previsto.y) : 0;
   N.erro = mudou || distancia > 1.5 ? { x: 0, y: 0 } : { x: antigo.x - N.previsto.x, y: antigo.y - N.previsto.y };

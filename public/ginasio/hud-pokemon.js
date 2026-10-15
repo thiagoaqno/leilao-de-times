@@ -9,7 +9,7 @@
 //   canto de cima.
 // Os botões continuam sendo os de hud.js (#habilidades, #reservas, #defesa): aqui eles ganham o lugar e o jeito do
 // painel pelo CSS (body.pk). As barras em cima de cada bicho, no mesmo jeito, ficam em animacao.js (bichoInfoPk).
-const PK = { montado: false, chaveTopo: "", chaveRetrato: "", feed: [], ultimoDano: new Map(), kos: [0, 0], visto: new Set() };
+const PK = { montado: false, chaveTopo: "", chaveRetrato: "", feed: [], ultimoDano: new Map(), kos: [0, 0], visto: new Set(), ultimo: -1e9 };
 const TECLAS_GOLPE = ["M1", "M2", "Q", "E"];
 const ROTULO_STAT = { atk: "ATQ", def: "DEF", spd: "VEL" };
 const pkAtivo = () => modoAtual() === "pokemon";
@@ -97,10 +97,11 @@ function desenharRetratoPk(e) {
     $("tiposPk").innerHTML = (mon.types || []).map((t) => `<em style="--tipo:${D.TYPES[t]}">${h(t)}</em>`).join("");
   }
   // os atributos: o valor do jogo e a seta do que mudou (a cor diz se subiu ou caiu)
-  $("statsPk").innerHTML = ["atk", "def", "spd"].map((k) => {
+  const stats = ["atk", "def", "spd"].map((k) => {
     const n = e.st?.[k] || 0, base = mon[k] || 0;
     return `<span class="${n > 0 ? "sobe" : n < 0 ? "cai" : ""}">${ROTULO_STAT[k]} <b>${base}</b>${n ? `<small>${n > 0 ? "▲" : "▼"}${Math.abs(n)}</small>` : ""}</span>`;
   }).join("");
+  if ($("statsPk")._h !== stats) { $("statsPk")._h = stats; $("statsPk").innerHTML = stats; }
   const eu = N.previsto || e, guarda = Math.max(0, Math.round(eu.guarda ?? 100));
   $("vidaPkBarra").style.transform = `scaleX(${Math.max(0, e.hp / e.max)})`;
   $("vidaPkTxt").textContent = `${Math.max(0, Math.round(e.hp))} / ${e.max}`;
@@ -149,6 +150,9 @@ function atualizarHudPokemon(agora) {
   $("mapaPk").classList.toggle("hidden", !pk || !jogando);
   $("feedPk").classList.toggle("hidden", !pk || !jogando || !PK.feed.length);
   if (!pk || !jogando || !N.snap) return;
+  // o painel e o minimapa mudam 15 vezes por segundo (mexer na página a cada quadro pesava; as barras deslizam pelo CSS)
+  if (agora >= PK.ultimo && agora - PK.ultimo < 66) return;
+  PK.ultimo = agora;
   if (S.match.start !== PK.partida) { PK.partida = S.match.start; PK.feed.length = 0; PK.chaveTopo = ""; }
   const sn = N.snap;
   desenharTopoPk(sn);

@@ -23,7 +23,8 @@ function limparConfig(c) {
   c = objeto(c) ? c : {};
   // lider: o desafio a um líder ou treinador da Vila (1x1 contra o robô com o time dele)
   const lider = Lideres.de(c.lider) ? c.lider : null;
-  return { modo: ["galeramon", "pokemon", "naruto"].includes(c.modo) ? c.modo : "galeramon", formato: lider ? "1x1" : c.formato === "2x2" ? "2x2" : "1x1", bots: lider ? true : c.bots !== false, ...(lider && { lider }) };
+  // arena: o lugar da luta no modo Pokémon (sortear, ou um dos lugares de regras.js)
+  return { modo: ["galeramon", "pokemon", "naruto"].includes(c.modo) ? c.modo : "galeramon", formato: lider ? "1x1" : c.formato === "2x2" ? "2x2" : "1x1", bots: lider ? true : c.bots !== false, arena: G.BIOMAS.includes(c.arena) ? c.arena : "sortear", ...(lider && { lider }) };
 }
 
 function timeValido(modo, time) {
@@ -128,7 +129,7 @@ module.exports = function ligarGinasio(io) {
         return { id, name: p.name, lado: p.lado, time: p.times[sala.config.modo], online: p.sockets.size > 0, ping: p.rtt == null ? null : Math.round(p.rtt) };
       }),
       match: m ? {
-        start: sala.inicio, end: sala.inicio + m.duracao * 1000, modo: m.modo, formato: m.formato, duracao: m.duracao,
+        start: sala.inicio, end: sala.inicio + m.duracao * 1000, modo: m.modo, formato: m.formato, duracao: m.duracao, bioma: m.bioma,
         jogadores: m.lados.flatMap((l) => l.jogadores.map((p) => ({ id: p.id, nome: p.nome, lado: p.lado, slot: p.slot, bot: !!p.bot, time: p.time.map((b) => b.id) }))),
         ...pacote(sala),
       } : null,

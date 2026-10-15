@@ -73,16 +73,19 @@ function ajustarCanvas() {
   if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; }
   camera.largura = w; camera.altura = hh;
   const paisagemToque = toque && r.height < 320 && r.width > r.height && document.body.classList.contains("jogando");
-  // pixels da página livres em cima e embaixo; no modo Pokémon, a barra dos times em cima e o painel embaixo (hud-pokemon.js)
-  const pk = document.body.classList.contains("pk") && document.body.classList.contains("jogando"), painel = pk && !toque ? ($("hud").offsetHeight || 0) : 0;
-  const cima = S?.phase === "play" ? (pk ? 50 : 22) : 6, baixo = paisagemToque ? 52 : painel ? painel + 4 : 6;
+  // pixels da página livres em cima, embaixo e à esquerda; no modo Pokémon, a barra dos times em cima e o painel do meu
+  // Pokémon (hud-pokemon.js) no alto, à esquerda (na tela pequena, embaixo)
+  const pk = document.body.classList.contains("pk") && document.body.classList.contains("jogando"), painel = pk && !toque ? $("hud").getBoundingClientRect() : null;
+  const doLado = painel && painel.width > 0 && painel.left < 40 && painel.width < r.width * 0.4;
+  const cima = S?.phase === "play" ? (pk ? 50 : 22) : 6, baixo = paisagemToque ? 52 : painel && !doLado && painel.height ? painel.height + 4 : 6;
+  const esquerda = doLado ? Math.max(0, painel.right - r.left + 6) : 0;
   if (usar3d()) {
-    enquadrar3d(w, hh, 1 - 2 * cima / Math.max(1, r.height), -1 + 2 * baixo / Math.max(1, r.height));
+    enquadrar3d(w, hh, 1 - 2 * cima / Math.max(1, r.height), -1 + 2 * baixo / Math.max(1, r.height), -1 + 2 * esquerda / Math.max(1, r.width));
     Object.assign(camera, { x: w / 2, y: hh / 2, escala: escalaEm(0, 0), projetar: projetar3d, traco: 2 / fator });
   } else {
-    const fundo = baixo / fator;
-    tela.escala = Math.max(1, Math.min((w - 8) / 19, (hh - fundo - 8) / 13));
-    tela.x = w / 2; tela.y = (hh - fundo) / 2 + (S?.phase === "play" ? cima / fator / 2 : 0);
+    const fundo = baixo / fator, lado = esquerda / fator;
+    tela.escala = Math.max(1, Math.min((w - lado - 8) / 19, (hh - fundo - 8) / 13));
+    tela.x = lado + (w - lado) / 2; tela.y = (hh - fundo) / 2 + (S?.phase === "play" ? cima / fator / 2 : 0);
     Object.assign(camera, { ...tela, projetar: projetarReto, traco: 2 / fator });
   }
   ctx.imageSmoothingEnabled = false;

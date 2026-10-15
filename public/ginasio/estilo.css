@@ -50,52 +50,55 @@ body.pk.jogando #placar{display:none}
 /* o minimapa */
 #mapaPk{position:absolute;left:8px;bottom:8px;width:180px;height:122px;border:2px solid #6a5a36;border-radius:4px;box-shadow:0 4px 14px #000b;image-rendering:auto;background:#1b2226;pointer-events:none}
 /* embaixo: o painel do meu Pokémon */
-body.pk.jogando:not(.toque-jogo) #hud{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:auto;max-width:calc(100vw - 8px);height:auto;min-height:0;padding:8px 10px 8px;
-  display:grid;grid-template-columns:auto auto auto auto;grid-template-areas:"ret barras barras res" "ret hab def ef";column-gap:10px;row-gap:6px;align-items:start;
-  background:linear-gradient(#1e262b,#0e1316);border:1px solid #6a5a36;border-bottom:0;border-radius:12px 12px 0 0;box-shadow:0 -6px 24px #000a,inset 0 1px 0 #8a7a52;z-index:5}
+/* o painel do meu Pokémon fica no alto, à esquerda (embaixo e no meio, tapava a luta); a cena 3D anda para a direita
+   (ajustarCanvas, desenho.js) */
+body.pk.jogando:not(.toque-jogo) #hud{position:fixed;left:6px;top:52px;width:236px;max-height:calc(100dvh - 60px);overflow:auto;height:auto;min-height:0;padding:8px;
+  display:grid;grid-template-columns:auto 1fr;grid-template-areas:"ret ret" "barras barras" "hab hab" "def res" "ef ef";column-gap:8px;row-gap:6px;align-items:start;justify-content:stretch;
+  background:linear-gradient(#1e262bf2,#0e1316f2);border:1px solid #6a5a36;border-radius:8px;box-shadow:0 6px 24px #000a,inset 0 1px 0 #8a7a52;z-index:5;scrollbar-width:none}
 body.pk.jogando:not(.toque-jogo) .pk-so{display:flex}
 body.pk.jogando:not(.toque-jogo) #hud kbd{display:block;position:absolute;top:2px;left:3px;z-index:4;font:800 9px/1 ui-monospace,monospace;color:#f2e7c8;background:#0b0f12cc;padding:2px 3px;border-radius:2px;pointer-events:none}
 body.pk.jogando:not(.toque-jogo) #reservas kbd{top:auto;bottom:6px;left:2px}
 #retratoPk{grid-area:ret;gap:8px;align-items:stretch}
-#retratoPk .moldura{position:relative;width:96px;height:104px;border:2px solid #8a7a52;border-radius:6px;background:radial-gradient(circle at 50% 60%,#46545c,#141a1e);overflow:hidden}
+#retratoPk .moldura{position:relative;flex:none;width:64px;height:68px;border:2px solid #8a7a52;border-radius:6px;background:radial-gradient(circle at 50% 60%,#46545c,#141a1e);overflow:hidden}
 #retratoImg{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;transform:scale(1.35) translateY(4%)}
 #nivelPk{position:absolute;left:3px;bottom:3px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:#1c2328;border:2px solid #f0c24a;color:#f2e7c8;font:800 11px ui-monospace,monospace}
-#retratoPk .ficha{display:flex;flex-direction:column;gap:4px;min-width:96px;color:#f2e7c8}
-#nomePk{font:800 14px system-ui;letter-spacing:.02em;text-transform:uppercase}
+#retratoPk .ficha{display:flex;flex-direction:column;gap:3px;min-width:0;color:#f2e7c8}
+#nomePk{font:800 13px system-ui;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.02em;text-transform:uppercase}
 #tiposPk{display:flex;gap:3px;flex-wrap:wrap}#tiposPk em{font:800 9px system-ui;font-style:normal;text-transform:uppercase;padding:2px 5px;border-radius:2px;background:var(--tipo);color:#fff;text-shadow:0 1px 0 #0006}
-#statsPk{display:flex;flex-direction:column;gap:2px;font:700 11px ui-monospace,monospace;color:#b9c4c0}
+#statsPk{display:flex;flex-wrap:wrap;gap:2px 6px;font:700 11px ui-monospace,monospace;color:#b9c4c0}
 #statsPk b{color:#fff;margin-left:4px}#statsPk small{margin-left:4px}#statsPk .sobe small{color:#7ee07e}#statsPk .cai small{color:#ff8a80}
-#barrasPk{grid-area:barras;flex-direction:column;gap:3px;min-width:300px}
+#barrasPk{grid-area:barras;flex-direction:column;gap:3px;min-width:0}
 .barraPk{position:relative;height:18px;background:#0b0f12;border:1px solid #2b3438;overflow:hidden}
 .barraPk i{position:absolute;inset:0;transform-origin:left;transition:transform .12s ease-out}
 .vidaPk i{background:linear-gradient(#6fe06f,#2f9a3a)}
 .vidaPk::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(var(--riscos,10%) - 1px),#0b0f1299 calc(var(--riscos,10%) - 1px) var(--riscos,10%));pointer-events:none}
 .guardaPk{height:12px}.guardaPk i{background:linear-gradient(#7fd4ff,#2f78b8)}
 .barraPk span{position:absolute;inset:0;display:grid;place-items:center;font:800 11px ui-monospace,monospace;color:#fff;text-shadow:0 1px 2px #000;z-index:2}.guardaPk span{font-size:9px}
-body.pk.jogando:not(.toque-jogo) #habilidades{grid-area:hab;gap:5px}
+body.pk.jogando:not(.toque-jogo) #habilidades{grid-area:hab;gap:4px;justify-content:space-between}
 body.pk.jogando:not(.toque-jogo) #defesa{grid-area:def;gap:5px}
-body.pk.jogando:not(.toque-jogo) #reservas{grid-area:res;gap:4px}
-#efeitosPk{grid-area:ef;gap:3px;flex-wrap:wrap;max-width:150px;align-content:flex-start}
+body.pk.jogando:not(.toque-jogo) #reservas{grid-area:res;gap:4px;justify-content:flex-end}
+#efeitosPk{grid-area:ef;gap:3px;flex-wrap:wrap;min-height:0;align-content:flex-start}#efeitosPk:empty{display:none}
 #efeitosPk .ef{position:relative;width:26px;height:26px;display:grid;place-items:center;border-radius:3px;font:800 9px ui-monospace,monospace;color:#fff;background:#2b3438;border:1px solid #556}
 #efeitosPk .ef small{position:absolute;bottom:-2px;right:-2px;font-size:8px;background:#000c;padding:0 2px}
 #efeitosPk .tonto{background:#8a6a12;border-color:#f0c24a}#efeitosPk .foco{background:#a07a10;border-color:#ffd84a}#efeitosPk .guarda{background:#2f5a78;border-color:#7fd4ff}
 #efeitosPk .sobe{background:#2f6a36;border-color:#7ee07e}#efeitosPk .cai{background:#7a2a2a;border-color:#ff8a80}
 /* as habilidades: quadradas, com a moldura na cor do tipo e a recarga em leque */
-body.pk.jogando:not(.toque-jogo) .habilidade{width:64px;min-width:64px;height:64px;padding:4px 2px 3px;border-radius:4px;background:radial-gradient(circle at 50% 35%,#34424a,#151b1f);border:2px solid color-mix(in srgb,var(--tipo,#e9dd84) 70%,#000);color:#f2e7c8;gap:3px;justify-content:flex-end}
-body.pk.jogando:not(.toque-jogo) .habilidade .ic{width:26px;height:26px;margin-bottom:auto;margin-top:8px;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--tipo,#e9dd84) 60%,transparent))}
-body.pk.jogando:not(.toque-jogo) .habilidade .nome{font-size:8.5px;line-height:1.05;max-height:2.1em;overflow:hidden}
+body.pk.jogando:not(.toque-jogo) .habilidade{width:52px;min-width:52px;height:56px;padding:4px 2px 3px;border-radius:4px;background:radial-gradient(circle at 50% 35%,#34424a,#151b1f);border:2px solid color-mix(in srgb,var(--tipo,#e9dd84) 70%,#000);color:#f2e7c8;gap:3px;justify-content:flex-end}
+body.pk.jogando:not(.toque-jogo) .habilidade .ic{width:22px;height:22px;margin-bottom:auto;margin-top:8px;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--tipo,#e9dd84) 60%,transparent))}
+body.pk.jogando:not(.toque-jogo) .habilidade .nome{font-size:7.5px;line-height:1.1;max-width:100%;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
 body.pk.jogando:not(.toque-jogo) .habilidade .recarga{transform:none!important;background:conic-gradient(from 0deg,#05090bd0 calc(var(--cd,0) * 360deg),transparent 0)}
 body.pk.jogando:not(.toque-jogo) .habilidade[aria-disabled="true"] .ic{filter:grayscale(.7)}
 body.pk.jogando:not(.toque-jogo) .habilidade.pronta{border-color:var(--tipo,#e9dd84);box-shadow:0 0 12px var(--tipo,#e9dd84)}
-body.pk.jogando:not(.toque-jogo) .habilidade.esquiva{width:56px;min-width:56px}
+body.pk.jogando:not(.toque-jogo) .habilidade.esquiva{width:46px;min-width:46px}
 body.pk.jogando:not(.toque-jogo) .habilidade.guarda .carga{height:4px}
-body.pk.jogando:not(.toque-jogo) #reservas button{width:46px;min-width:46px;height:60px;border:2px solid #4a4232;background:radial-gradient(#34424a,#151b1f)}
-body.pk.jogando:not(.toque-jogo) #reservas img{width:40px;height:40px}
+body.pk.jogando:not(.toque-jogo) #reservas button{width:36px;min-width:36px;height:56px;border:2px solid #4a4232;background:radial-gradient(#34424a,#151b1f)}
+body.pk.jogando:not(.toque-jogo) #reservas img{width:32px;height:32px}
 body.pk.jogando:not(.toque-jogo) #reservas button.ativo{border-color:#f0c24a}
 body.pk.jogando:not(.toque-jogo) #chakraHud{display:none}
 @media(max-width:1100px){#mapaPk{width:140px;height:95px}}
-@media(max-width:900px){#mapaPk{display:none}#retratoPk .ficha{display:none}#barrasPk{min-width:220px}}
-@media(max-width:700px),(max-height:440px){body.pk.jogando:not(.toque-jogo) #hud{grid-template-columns:auto auto auto;grid-template-areas:"barras barras barras" "hab def res";column-gap:6px;row-gap:4px;padding:4px 6px}
+@media(max-height:620px){#mapaPk{display:none}}
+@media(max-width:900px){#mapaPk{display:none}}
+@media(max-width:700px),(max-height:440px){body.pk.jogando:not(.toque-jogo) #hud{left:50%;top:auto;bottom:0;transform:translateX(-50%);width:auto;max-width:calc(100vw - 8px);border-radius:12px 12px 0 0;grid-template-columns:auto auto auto;grid-template-areas:"barras barras barras" "hab def res";column-gap:6px;row-gap:4px;padding:4px 6px}
   #retratoPk,#efeitosPk,#mapaPk{display:none!important}#barrasPk{min-width:0}.barraPk{height:12px}.barraPk span{font-size:9px}#barrasPk .guardaPk{height:6px}#barrasPk .guardaPk span{display:none}
   body.pk.jogando:not(.toque-jogo) .habilidade{width:46px;min-width:46px;height:46px}body.pk.jogando:not(.toque-jogo) .habilidade .nome{display:none}body.pk.jogando:not(.toque-jogo) .habilidade .ic{margin-top:10px;width:22px;height:22px}
   body.pk.jogando:not(.toque-jogo) .habilidade.esquiva{width:42px;min-width:42px}
@@ -103,3 +106,8 @@ body.pk.jogando:not(.toque-jogo) #chakraHud{display:none}
   .retPk{width:24px;height:24px}.meioPk b{font-size:15px}#relogioPk{font-size:13px}#feedPk{top:36px}#feedPk img{width:18px;height:18px}}
 body.toque-jogo #mapaPk{display:none}
 @media(prefers-reduced-motion:reduce){#feedPk li{animation:none}.barraPk i{transition:none}}
+/* o lugar da luta (modo Pokémon) */
+#escolhaArena{display:flex;flex-direction:column;gap:6px;margin-top:10px}#escolhaArena.hidden{display:none}
+.rotulo-arena{font:700 12px system-ui;color:var(--suave,#9aa8a3);text-transform:uppercase;letter-spacing:.04em}
+.segmentos.arenas{display:flex;flex-wrap:wrap;gap:4px}.segmentos.arenas button{flex:1 1 30%;min-width:0;border-radius:4px!important;border-left:1px solid var(--linha)!important}
+#dicaArena{margin:0;font-size:12px;line-height:1.35;color:var(--suave,#9aa8a3);min-height:2.7em}
