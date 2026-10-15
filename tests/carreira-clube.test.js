@@ -10,8 +10,10 @@ const Carreira = require("../carreira.js");
 const { novaCarreira, fecharRodada, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, estado, ajudas, completar } = Carreira.paraTestes;
 const G = Carreira.grupo;
 
+// a semente da carreira é sorteada: numa temporada ruim a diretoria demitia o técnico no meio do teste (e a virada não acontecia).
+// Os testes daqui não são sobre a demissão (ela tem o teste dela): a confiança fica sempre acima da linha do ultimato.
 function jogarTemporada(save) {
-  for (let jogo; (jogo = proximoJogoMundo(save));) {
+  for (let jogo; (save.gestao && (save.gestao.confianca = Math.max(save.gestao.confianca, 60)), save.gestao && (save.gestao.ultimato = null), jogo = proximoJogoMundo(save));) {
     save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, casa: jogo.casa, fora: jogo.fora, modo: 1, semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
     fecharRodada(save, simularMinha(save));
   }

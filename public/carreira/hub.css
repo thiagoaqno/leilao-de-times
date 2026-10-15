@@ -122,21 +122,21 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
    espaço entre elas), assim Jogar + Como jogar ficam em cima do Desenvolvimento e a Prévia, em cima de Notícias + Tabela.
    Não dá para usar subgrid: o container-type do #cartaoJogo isola a grade */
 #sede[data-aba="central"] .hub-grade{align-items:stretch;grid-template-columns:minmax(0,.725fr) minmax(0,.725fr) minmax(0,1fr) minmax(0,.95fr);
-  grid-template-areas:"jogo jogo jogo jogo" "vivo vivo vivo vivo" "dev dev noticias tabela" "entrada entrada entrada ultimo" "entrada entrada entrada turma"}
+  grid-template-areas:"jogo jogo jogo jogo" "sel sel sel sel" "vivo vivo vivo vivo" "dev dev noticias tabela" "entrada entrada entrada ultimo" "entrada entrada entrada turma"}
 @media (min-width:1241px){
   #sede[data-aba="central"] #cartaoJogo .cj{grid-template-columns:minmax(0,.725fr) minmax(0,.725fr) minmax(0,1fr) minmax(0,.95fr)}
   #sede[data-aba="central"] #cartaoJogo .cj-previa{grid-column:3/-1}
 }
-#sede #cartaoJogo{grid-area:jogo}#sede #cartaoAoVivo{grid-area:vivo}#sede #cartaoDesenvolvimento{grid-area:dev}#sede #cartaoFeed{grid-area:noticias}
+#sede #cartaoJogo{grid-area:jogo}#sede[data-aba="central"] #cartaoSelecao{grid-area:sel}#sede #cartaoAoVivo{grid-area:vivo}#sede #cartaoDesenvolvimento{grid-area:dev}#sede #cartaoFeed{grid-area:noticias}
 #sede #cartaoTabela{grid-area:tabela}#sede #cartaoEntrada{grid-area:entrada;align-self:start}#sede #cartaoUltimo{grid-area:ultimo;align-self:start}#sede #cartaoTurma{grid-area:turma;align-self:start}
 @media (max-width:1240px){
   #sede .hub-grade{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
   #sede .hub-lado{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-  #sede[data-aba="central"] .hub-grade{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"jogo jogo" "vivo vivo" "dev dev" "noticias tabela" "entrada ultimo" "entrada turma"}
+  #sede[data-aba="central"] .hub-grade{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"jogo jogo" "sel sel" "vivo vivo" "dev dev" "noticias tabela" "entrada ultimo" "entrada turma"}
 }
 @media (max-width:860px){
   #sede .hub-grade,#sede[data-aba="time"] .hub-grade,#sede .hub-lado{grid-template-columns:1fr}
-  #sede[data-aba="central"] .hub-grade{grid-template-columns:1fr;grid-template-areas:"jogo" "vivo" "dev" "noticias" "tabela" "entrada" "ultimo" "turma"}
+  #sede[data-aba="central"] .hub-grade{grid-template-columns:1fr;grid-template-areas:"jogo" "sel" "vivo" "dev" "noticias" "tabela" "entrada" "ultimo" "turma"}
 }
 
 /* ---------- em cima: Jogar a próxima partida (o bloco inteiro é o botão, na cor do clube), Como jogar e a prévia ---------- */
@@ -421,3 +421,34 @@ button.primario{background:var(--fx-teal);color:var(--fx-tinta);border-radius:2p
 .hub-vagas .vaga.cand{grid-template-columns:auto 1fr auto;padding:6px 10px}
 .hub-vagas .vaga.cand>div>b{font-size:15px}
 .hub-vagas .vaga button:disabled{opacity:.5}
+
+/* ---------- a Copa do Mundo (selecao.js): a bandeira no lugar do escudo, o painel da proposta, a tela da seleção ---------- */
+.escudo-bandeira{display:inline-flex;align-items:center;justify-content:center}
+.escudo-bandeira .escudo-svg{display:flex;align-items:center;height:auto}
+.escudo-bandeira .bandeira{width:100%;height:auto;aspect-ratio:3/2;filter:drop-shadow(0 1px 2px #0004)}
+.tela #cartaoSelecao{box-shadow:var(--fx-sombra),inset 5px 0 0 var(--sel,var(--fx-teal));background:linear-gradient(100deg,color-mix(in srgb,var(--sel,#888) 16%,transparent),transparent 55%),var(--fx-painel)}
+.sel-topo{display:flex;align-items:center;gap:12px;margin-bottom:6px}.sel-topo h3{margin:2px 0 0;font-family:var(--fx-cond);font-size:22px}
+.sel-motivo{font-weight:600}
+.sel-acoes{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.sel-conta{display:flex;align-items:center;gap:6px;margin:6px 0;font-size:14px}.sel-conta.ok{color:var(--ok,#1b8a4b)}.sel-conta.falta{color:var(--aviso,#b8620a)}
+.tela .quadro.sel-cab{display:flex;align-items:center;gap:18px;background:linear-gradient(110deg,var(--sel) 0%,color-mix(in srgb,var(--sel) 55%,#0c1824) 60%,#0c1824);color:#fff;border:0}
+.sel-cab h2{margin:2px 0;font-family:var(--fx-cond);font-size:34px;letter-spacing:.5px}.sel-cab .sobre{color:#ffffffcc}.sel-cab p{margin:0;color:#ffffffe0}
+.sel-abas{margin:10px 0}
+.sel-duas{align-items:start;gap:14px}.sel-duas h3 small{font-weight:400;font-size:12px;margin-left:6px}
+.sel-filtros{display:grid;gap:8px;margin-bottom:8px}.sel-filtros input{width:100%}
+.sel-lista{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:62vh;overflow:auto}
+.sel-linha{display:grid;grid-template-columns:34px minmax(0,1fr) 40px 40px auto;align-items:center;gap:8px;padding:5px 8px;border:1px solid var(--b1);border-radius:6px;background:var(--p1,transparent)}
+.sel-linha.convocado{box-shadow:inset 3px 0 0 var(--sel,var(--fx-teal))}
+.sel-linha .pix,.sel-linha .foto-real{width:34px;height:34px;object-fit:cover;border-radius:50%;image-rendering:pixelated;background:#0001}
+.sel-nome{min-width:0}.sel-nome b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sel-nome small{display:flex;align-items:center;gap:4px;color:var(--t3);font-size:12px;white-space:nowrap;overflow:hidden}
+.sel-pos{font:600 12px/1 var(--mono);color:var(--t3);text-align:center}
+.sel-nota{font:700 15px/1 var(--fx-cond);text-align:center;padding:4px 0;border-radius:4px;background:#c08a4a;color:#1b1206}
+.sel-nota.prata{background:#c9ced6}.sel-nota.ouro{background:#e8c25a}.sel-nota.elite{background:linear-gradient(135deg,#f7e08a,#c9962b);color:#000}
+button.mini{padding:4px 10px;font-size:12px;min-height:0}
+.sel-onze{list-style:none;padding:0;margin:6px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px}
+.sel-onze li{display:grid;grid-template-columns:40px 1fr 36px;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--b1);border-radius:6px}
+.sel-jogos{list-style:none;padding:0;margin:6px 0;display:grid;gap:4px}.sel-jogos li{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.sel-jogos small{color:var(--t3)}
+.sel-mercado .sel-lista{max-height:none}
+.cj-copa{background:linear-gradient(135deg,#0f3d2e,#1a6b4c 60%,#d4af37)!important}
+@media (max-width:860px){.sel-duas{grid-template-columns:1fr}.sel-cab{flex-direction:column;text-align:center}.sel-linha{grid-template-columns:30px minmax(0,1fr) 34px 36px auto}}
+.pa-selecao{display:flex;gap:14px;align-items:center;margin-bottom:8px}.pa-selecao .escudo{flex:none}

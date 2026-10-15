@@ -70,7 +70,7 @@
       ...resto.slice(0, 8).map((j) => ({ id: j.id, nome: j.nome, vaga: vaga(j), titular: false }))].map((p) => ({ ...p, gols: gols[p.id] || 0 }));
     const figura = (p) => K.figura(p.nome, p.vaga === "GK" ? luva : u, p.vaga === "GK" ? { goleiro: true } : {});
     const artilharia = (f.artilheiros || []).map((a) => ({ id: a.id, nome: nomeDe(a.id), gols: a.gols }));
-    return { f, camp, vice, u, uVice, elenco, figura, artilharia, semente: `${f.nome}:${f.ano}:${camp}`, copa: f.tipo === "copa" && !!f.final, eu: camp === E.clube };
+    return { f, camp, vice, u, uVice, elenco, figura, artilharia, semente: `${f.nome}:${f.ano}:${camp}`, copa: f.tipo === "copa" && !!f.final, eu: souEu(camp) };
   }
 
   // ---------- o desenho do telão (pixel-art 160x90) ----------
@@ -245,8 +245,8 @@
   // a ordem: o título do seu clube, depois a sua liga, depois as finais que ele jogou, depois a importância
   const IMPORTANCIA = ["champions", "libertadores", "supermundial", "mundial", "copadobrasil", "sulamericana"];
   function ordem(id, f) {
-    const meu = f.campeao === E.clube ? 0 : 1, liga = id === (typeof ligaDoClube === "function" ? ligaDoClube(E.clube) : "") ? 0 : 1;
-    const jogou = f.final && (f.final.casa === E.clube || f.final.fora === E.clube) ? 0 : 1, imp = IMPORTANCIA.indexOf(id);
+    const meu = souEu(f.campeao) ? 0 : 1, liga = id === (typeof ligaDoClube === "function" ? ligaDoClube(E.clube) : "") ? 0 : 1;
+    const jogou = f.final && (souEu(f.final.casa) || souEu(f.final.fora)) ? 0 : 1, imp = IMPORTANCIA.indexOf(id);
     return [meu, liga, jogou, imp < 0 ? 9 : imp];
   }
   const cmp = (a, b) => { for (let k = 0; k < a.length; k++) if (a[k] !== b[k]) return a[k] - b[k]; return 0; };

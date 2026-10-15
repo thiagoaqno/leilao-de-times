@@ -16,7 +16,7 @@ const calmo = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const tempoDe = (e) => e.min + (e.acr ? e.acr / 100 : 0);
 const minutoTexto = (e) => `${e.min}'${e.acr ? "+" + e.acr : ""}`;
-const meuLado = () => (J.casa === E.clube ? 0 : 1);
+const meuLado = () => (souEu(J.casa) ? 0 : 1);
 const clubeDoLado = (lado) => (lado === 0 ? J.casa : J.fora);
 // até onde o relógio pode andar: a parada (os acréscimos antes dela também aparecem) ou o fim
 const limite = () => (J.parado ? Math.max(tempoDe(J.parado), ...J.eventos.map(tempoDe)) : 96);
@@ -51,7 +51,7 @@ function abrirPartida(rodada) {
   const src = meuGrupo ? { ...meuGrupo, rodada: meuGrupo.id } : E.partida || (E.ultimo && (rodada == null || E.ultimo.rodada === rodada) ? E.ultimo : null);
   if (!src) return mostrarTela("sede");
   const nova = J.rodada !== src.rodada || J.casa !== src.casa;
-  Object.assign(J, { competicao: src.competicao || null, jogoId: src.jogoId || src.id || null, paralelos: src.paralelos || (J.casa === src.casa && J.rodada === src.rodada ? J.paralelos : []), rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, penaltis: src.penaltis || null, decidindo: false, grupo: !!meuGrupo });
+  Object.assign(J, { selecao: !!(CLUBES[src.casa] && CLUBES[src.casa].selecao), competicao: src.competicao || null, jogoId: src.jogoId || src.id || null, paralelos: src.paralelos || (J.casa === src.casa && J.rodada === src.rodada ? J.paralelos : []), rodada: src.rodada, casa: src.casa, fora: src.fora, eventos: src.eventos, parado: src.parado || null, completo: meuGrupo ? !!src.completo : !E.partida, penaltis: src.penaltis || null, decidindo: false, grupo: !!meuGrupo });
   document.querySelector(".faixa-jogo .controles").classList.remove("hidden"); atualizarControlesVelocidade();
   if (nova) { J.i = 0; J.relogio = 0; $("narracao").innerHTML = ""; $("replays").innerHTML = ""; }
   try { SomPartida.abrir(nova); } catch (err) { console.warn("som", err); } // o narrador e a torcida (som-partida.js)
@@ -185,7 +185,7 @@ function lance(e) {
     outro: e.tipo === "defesa" ? (e.goleiro ? nomeJogador(e.goleiro) : null) : e.tipo === "sub" ? sobrenome(nomeJogador(e.entra)) : null,
     numeros: e.tipo === "sub" ? [numero(e.sai), numero(e.entra)] : null };
   d.curto = sobrenome(j.nome);
-  try { const el = Lances.criarLance(e.tipo, d, { auto: !J.pulando }); if (el) poeTelao(el, e, clube === E.clube); } catch (err) { console.warn("lance", err); }
+  try { const el = Lances.criarLance(e.tipo, d, { auto: !J.pulando }); if (el) poeTelao(el, e, souEu(clube)); } catch (err) { console.warn("lance", err); }
 }
 // o gol: o replay em pixel-art com a camisa do clube e, se foi seu, a festa
 // o telão de um gol (o replay em pixel-art); o intervalo usa de novo para o replay instantâneo
@@ -197,11 +197,11 @@ function telaoDoGol(e, auto) {
 }
 function gol(e) {
   const clube = clubeDoLado(e.lado);
-  try { poeTelao(telaoDoGol(e, !J.pulando), e, clube === E.clube); } catch (err) { console.warn("replay", err); }
+  try { poeTelao(telaoDoGol(e, !J.pulando), e, souEu(clube)); } catch (err) { console.warn("replay", err); }
   if (J.pulando) return;
   const placar = $("pGols");
   placar.classList.remove("pulso"); void placar.offsetWidth; placar.classList.add("pulso");
-  if (clube === E.clube) festa();
+  if (souEu(clube)) festa();
 }
 
 // o relógio da partida: 2 minutos de jogo por segundo (6 no 3x) até a próxima parada ou o fim

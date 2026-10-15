@@ -52,6 +52,18 @@ const Guia = (() => {
         <li><b>Meta da diretoria:</b> definida pela força do seu elenco contra a da sua liga. Cumprir rende bônus e confiança; falhar custa pressão.</li>
         <li><b>Estante:</b> troféus, campeões de cada ano e o ranking dos técnicos.</li>
       </ul>`],
+    ["copa", "Copa do Mundo", `
+      <p>De 2 em 2 temporadas (na 2ª, na 4ª...) tem <b>Copa do Mundo</b>. O futebol de clubes para no meio da temporada (na semana 39, depois da rodada 19 do Brasileirão) e as 48 seleções jogam no formato novo:</p>
+      <ul>
+        <li><b>12 grupos de 4</b>, em turno único. Os 2 primeiros de cada grupo e os <b>8 melhores terceiros</b> vão aos 16 avos de final.</li>
+        <li>Depois, mata-mata em <b>jogo único</b> (16 avos, oitavas, quartas, semifinal, 3º lugar e final), em campo neutro, com pênaltis no empate.</li>
+      </ul>
+      <p>Você não escolhe a seleção: no começo da temporada da Copa chega <b>uma proposta</b>, pela campanha da temporada anterior (posição na liga, títulos e a meta da diretoria). Quanto melhor a campanha, mais forte a seleção. Na sala, cada técnico recebe uma seleção diferente.</p>
+      <ul>
+        <li><b>Aceitar:</b> você continua no clube e treina a seleção na pausa. Sem resposta até a pausa, você assume com a convocação automática.</li>
+        <li><b>Convocação:</b> é o mercado da seleção. Só aparecem jogadores do país (os da carreira, com a nota de agora, e os de outras ligas do EA FC 27). São 26 nomes, com pelo menos 3 goleiros; vale até a estreia.</li>
+        <li><b>Jogos:</b> o mesmo motor e as mesmas decisões da carreira (tática no intervalo, lances decisivos, pênaltis). Cartão: 2 amarelos ou 1 vermelho suspendem um jogo; a lesão na Copa vale no clube.</li>
+      </ul>`],
     ["clube", "Clube", `
       <p>A tela <b>Clube</b> cuida do que vai além do campo:</p>
       <ul>
@@ -72,7 +84,7 @@ const Guia = (() => {
         <li><b>Entrar no meio:</b> quem chega depois assume um clube livre.</li>
       </ul>`],
   ];
-  const TELA = { inicio: "visao", sede: "visao", feed: "visao", partida: "partida", elenco: "elenco", mercado: "mercado", tabela: "temporada", calendario: "temporada", temporadas: "temporada", clube: "clube", grupo: "grupo", trocas: "grupo" };
+  const TELA = { inicio: "visao", sede: "visao", feed: "visao", partida: "partida", elenco: "elenco", mercado: "mercado", tabela: "temporada", calendario: "temporada", temporadas: "temporada", clube: "clube", grupo: "grupo", trocas: "grupo", selecao: "copa" };
   let dlg = null, atual = "visao";
 
   function montar() {

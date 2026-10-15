@@ -194,17 +194,19 @@ module.exports = function ligarCarreiraOnline(io) {
     if (room.liberaEm > Date.now()) return `Espere mais ${Math.ceil((room.liberaEm - Date.now()) / 1000)} s: a turma ainda está mexendo no time.`;
     limparDispensados(room);
     if (room.leilao) return "Espere o leilão acabar.";
+    Carreira.prazosDaCopa(save); // a Copa do Mundo: a proposta sem resposta vale na pausa e a lista incompleta se completa na estreia
     let p = Carreira.proximaRodadaGrupo(save), pulou = 0;
     if (!p) return "A temporada acabou. Comece a próxima.";
     // turbo: as rodadas sem humano contra humano e sem final saem na hora
     if (room.opcoes.ritmo === "turbo") {
-      const especial = (x) => x.jogos.some((j) => (save.humanos[j.casa] && save.humanos[j.fora]) || j.fase === "final");
+      const especial = (x) => x.jogos.some((j) => (Carreira.humanoDoTime(save, j.casa) && Carreira.humanoDoTime(save, j.fora)) || j.fase === "final");
       while (p && !especial(p)) {
         Carreira.comecarRodadaGrupo(save);
         const jogos = p.jogos.map((j) => ({ casa: j.casa, fora: j.fora, placar: Carreira.jogarNaHora(save, j).placar }));
         Carreira.fecharRodadaGrupo(save);
         room.nRodada = (room.nRodada || 0) + 1; pulou++;
         room.ultimaRodada = { n: room.nRodada, jogos };
+        Carreira.prazosDaCopa(save);
         p = Carreira.proximaRodadaGrupo(save);
       }
       if (!p) return { pulou };
@@ -448,6 +450,7 @@ module.exports = function ligarCarreiraOnline(io) {
       setImmediate(() => nsp.to(room.code).emit("state", publicState(room)));
       return null;
     }));
+    socket.on("selecao", (d = {}, cb) => comClube(cb, (v, room) => (room.rodada ? "Com a bola rolando, espere o fim da rodada." : Carreira.selecaoAcao(v, d))));
     socket.on("modo", (d = {}, cb) => comClube(cb, (v) => { const m = Math.round(Number(d.modo)); v.modo = m >= 1 && m <= 3 ? m : 1; }));
     socket.on("vender", (d = {}, cb) => comClube(cb, (v, room) => semRodada(room) || (room.leilao && room.leilao.jogador === String(d.jogador) ? "Ele está em leilão agora." : Carreira.venderAcao(v, d))));
     // trocas entre técnicos: sem limite de nota nem de janela. A proposta fica aberta até o outro responder (ou quem propôs cancelar).

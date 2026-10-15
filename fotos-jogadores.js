@@ -8,9 +8,11 @@ const jogadores = new Map();
 const pasta = path.join(__dirname, "public", "carreira", "base");
 for (const arquivo of fs.readdirSync(pasta).filter((f) => /-2026\.js$/.test(f) && f !== "mundo-2026.js")) {
   const base = require(path.join(pasta, arquivo));
-  for (const clube of base.clubes) for (const jogador of clube.jogadores) {
+  for (const clube of base.clubes || []) for (const jogador of clube.jogadores) {
     jogadores.set(jogador.id, { nome: jogador.nome, clube: clube.nome });
   }
+  // a base das seleções (Copa do Mundo): os convocados de fora da Carreira, com o clube de verdade de cada um
+  for (const s of base.selecoes || []) for (const jogador of s.jogadores) if (!jogador.ficticio) jogadores.set(jogador.id, { nome: jogador.nome, clube: jogador.clubeReal || s.nome });
 }
 
 const normalizar = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")

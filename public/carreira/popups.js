@@ -57,6 +57,7 @@ function avisosAntesDoJogo() {
 // devolve true se pode jogar (sem aviso, ou o técnico decidiu seguir); false se ele foi ajustar a escalação ou fechou
 async function confirmarAntesDoJogo() {
   if (!E || E.partida) return true;
+  if (E.proximo && CLUBES[E.proximo[0]] && CLUBES[E.proximo[0]].selecao) return true; // o jogo da seleção: a escalação é a da Copa
   const itens = avisosAntesDoJogo();
   if (!itens.length) return true;
   const corpo = `<ul class="pa-lista">${itens.map((i) => `<li class="${i.cls}"><span class="pa-ic">${ic(i.ic)}</span><div><b>${i.titulo}</b><small>${i.texto}</small></div></li>`).join("")}</ul>
@@ -102,6 +103,25 @@ function popupRisco() {
   return null;
 }
 
+// ---------- 3. a proposta da seleção (Copa do Mundo, selecao.js): uma vez por temporada ----------
+function popupSelecao() {
+  const s = E.selecao;
+  if (!E.copa || !s || s.status !== "pendente" || visto(`selecao:${E.temporada}:${s.id}`)) return null;
+  marcarVisto(`selecao:${E.temporada}:${s.id}`);
+  somDeAviso();
+  const corpo = `<div class="pa-selecao">${escudo(s.id, 5)}<div><p class="pa-lead">A federação de <b>${h(s.nome)}</b> quer você no comando para a <b>${h(E.copa.nome)}</b>${E.copa.sede ? ` (${h(E.copa.sede)})` : ""}.</p><p>${h(s.motivo || "")}</p></div></div>
+    <p>Você continua no ${h(nomeClube(E.clube))}: o futebol de clubes para no meio da temporada (semana ${E.copa.semana}) e a seleção joga a Copa. A convocação é o mercado da seleção, só com jogadores de ${h(s.nome)}.</p>
+    <p class="suave">Sem resposta até a pausa, você assume a seleção com a convocação automática.</p>`;
+  return popup({ classe: "proposta-selecao", titulo: "Proposta de seleção", icone: "taca", corpo, botoes: [
+    { texto: "Responder depois", valor: "depois" }, { texto: "Recusar", valor: "recusar", classe: "discreto" }, { texto: `Aceitar ${s.nome}`, valor: "aceitar", classe: "primario" }] })
+    .then(async (r) => {
+      if (r !== "aceitar" && r !== "recusar") return;
+      const x = await pedir("selecao", { acao: r });
+      if (!x.ok) return toast(x.error);
+      receber(x.estado); toast(r === "aceitar" ? `Você é o técnico da seleção: ${s.nome}. Convoque na tela Seleção.` : "Proposta recusada.");
+    });
+}
+
 // ---------- 4. na sala: a proposta de troca que chegou ----------
 function popupTroca() {
   if (!EM_GRUPO || typeof SALA === "undefined" || !SALA || !E) return null;
@@ -128,7 +148,7 @@ async function verificar() {
   if (verificando || !E || outroAberto() || typeof telaAtual === "undefined" || telaAtual === "partida" || telaAtual === "inicio" || !telaAtual) return;
   if (E.partida || (typeof posJogoEsperado !== "undefined" && posJogoEsperado)) return;
   verificando = true;
-  try { await (popupTroca() || (telaAtual === "sede" && (popupMeta() || popupRisco())) || null); } finally { verificando = false; }
+  try { await (popupTroca() || (telaAtual === "sede" && (popupMeta() || popupSelecao() || popupRisco())) || null); } finally { verificando = false; }
 }
 window.Popups = { verificar, confirmarAntesDoJogo };
 // quando um pop-up fecha, olha se tem outro esperando (sem fila: um depois do outro, só quando o anterior fechou)
