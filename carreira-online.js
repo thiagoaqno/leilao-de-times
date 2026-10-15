@@ -83,6 +83,7 @@ module.exports = function ligarCarreiraOnline(io) {
     ocupados: Object.fromEntries(room.order.filter((id) => room.players[id].clube).map((id) => [room.players[id].clube, id])),
     clubes: Carreira.clubesEscolhiveis(room.opcoes.ligas).map((c) => c.id),
     nRodada: room.nRodada || 0,
+    temporada: room.save ? room.save.temporada : null,
     liberaEm: room.liberaEm > Date.now() ? room.liberaEm : null, // a próxima rodada só sai depois disso (a pausa para mexer no time)
     caixas: room.fase === "carreira" && room.save && room.save.caixaIA ? Object.fromEntries(Carreira.clubesEscolhiveis(room.opcoes.ligas).filter((c) => c.id in room.save.caixaIA).map((c) => [c.id, Math.round(room.save.caixaIA[c.id] / 1e5) * 1e5])) : null,
     rodada: room.rodada ? { n: room.rodada.n, semana: room.rodada.semana, inicio: room.rodada.inicio, velocidade: room.rodada.multiplicador || 1, jogos: room.rodada.jogos.map((j) => ({ casa: j.casa, fora: j.fora, fim: j.fim })) } : null,

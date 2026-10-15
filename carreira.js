@@ -358,7 +358,7 @@ function entrarNaCarreira(save, { clube, nome, skin }, { aporte = 0 } = {}) {
   const rodadaLiga = rodadaDaJanela(v), janelaAberta = Mercado.janelaAberta(rodadaLiga);
   v.entrada = janelaAberta ? null : { temporada: v.temporada, antesDoMeio: rodadaLiga < 16 }; // antes do meio, a entrada vale até a janela do meio abrir
   const boasVindas = v.caixaEntrada.find((e) => e.id === "boas-vindas");
-  if (boasVindas) boasVindas.texto = `A diretoria apresentou ${nome} como novo técnico, com a carreira já rolando (temporada ${v.temporada} de ${v.temporadasMax}, ${v.jogosJogados.length} jogo${v.jogosJogados.length === 1 ? "" : "s"} do clube já feito${v.jogosJogados.length === 1 ? "" : "s"}). Caixa: ${dinheiro(v.caixa)}. ${janelaAberta ? "A janela de transferências está aberta." : "A janela está fechada, mas você tem uma janela de entrada."} ${quadroDaRegra(janelaDeCompras(v)?.tipo || "entrada")}`;
+  if (boasVindas) boasVindas.texto = `A diretoria apresentou ${nome} como novo técnico, com a carreira já rolando (temporada ${v.temporada} de ${v.temporadasMax}, ${v.jogosJogados.length} jogo${v.jogosJogados.length === 1 ? "" : "s"} do clube já feito${v.jogosJogados.length === 1 ? "" : "s"}). Caixa: ${dinheiro(v.caixa)}. ${janelaAberta ? "A janela de transferências está aberta." : "A janela está fechada, mas você tem uma janela de entrada."} ${quadroDaRegra(v, janelaDeCompras(v)?.tipo || "entrada")}`;
   if (aporte > 0) {
     movimentar(v, "Aporte do investidor", aporte);
     avisar(v, { tipo: "aporte", icone: "maleta", titulo: "Aporte do investidor", texto: `O investidor da galera pôs ${dinheiro(aporte)} no caixa. Caixa agora: ${dinheiro(v.caixa)}.` });
@@ -476,7 +476,8 @@ function novaTemporadaGrupo(save) {
 // pode abrir o leilão desse jogador? Devolve o erro (texto) ou { tipo: "cpu" | "humano", dono, minimo, teto }
 // ---------- as regras de compra da turma ----------
 // Para ninguém ficar "roubado", cada técnico leva reforço por janela (o começo da temporada, até a rodada 4 da liga, e o meio, rodadas 17 a 21):
-//  - em cada janela, UMA destas opções: 3 jogadores de até 80, OU 2 de até 82, OU 1 de até 85;
+//  - nas duas primeiras temporadas: 3 jogadores de até 80, OU 2 de até 82, OU 1 de até 85;
+//    a partir da terceira: 3 de até 84, OU 2 de até 87, OU 1 de qualquer nota (inclusive 90+);
 //  - a opção usada numa janela não vale na janela seguinte (pegou o de 85 no começo: no meio, 3 de até 80 ou 2 de até 82). A opção usada é a
 //    mais baixa em que as compras cabem (um de 78 sozinho gasta a de 80; com 82 no meio, a de 82). A virada de temporada zera: o começo
 //    de cada temporada (e a entrada que vale no lugar dele) tem as três opções, não importa o que foi usado no meio;
@@ -484,11 +485,13 @@ function novaTemporadaGrupo(save) {
 //    paga como qualquer outra, de até 82 (PREMIO_MAX; cada título leva um jogador, fora da opção da janela). Dois títulos, duas contratações;
 //  - quem entra na carreira com a janela fechada ganha uma janela de entrada (as mesmas opções), até a próxima janela abrir.
 // Vale para o leilão da turma (a carreira solo e as trocas entre técnicos não têm essa regra). A nota é a de agora (com o que o jogador evoluiu).
-const PACOTES = [{ id: "80", n: 3, max: 80 }, { id: "82", n: 2, max: 82 }, { id: "85", n: 1, max: 85 }];
-const ORDEM_PACOTE = { "": 0, 80: 1, 82: 2, 85: 3 };
-const NOME_PACOTE = { 80: "3 jogadores de até 80", 82: "2 jogadores de até 82", 85: "1 jogador de até 85" };
+const PACOTES_INICIAIS = [{ id: "80", n: 3, max: 80 }, { id: "82", n: 2, max: 82 }, { id: "85", n: 1, max: 85 }];
+const PACOTES_AVANCADOS = [{ id: "84", n: 3, max: 84 }, { id: "87", n: 2, max: 87 }, { id: "90", n: 1, max: Infinity }];
+const pacotesDaOrdem = (ordem) => ordem >= 4 ? PACOTES_AVANCADOS : PACOTES_INICIAIS;
+const ORDEM_PACOTE = { "": 0, 80: 1, 82: 2, 85: 3, 84: 1, 87: 2, 90: 3 };
+const NOME_PACOTE = { 80: "3 jogadores de até 80", 82: "2 jogadores de até 82", 85: "1 jogador de até 85", 84: "3 jogadores de até 84", 87: "2 jogadores de até 87", 90: "1 jogador de qualquer nota (inclusive 90+)" };
 const PREMIO_MAX = 82;
-const OPCOES_TEXTO = "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85";
+const opcoesTexto = (v) => v.temporada >= 3 ? "1 jogador de qualquer nota (inclusive 90+), ou 2 de até 87, ou 3 de até 84" : "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85";
 // a janela de agora: o id (temporada:tipo) e a ordem na carreira (o começo da temporada T é 2(T-1), o meio é 2(T-1)+1; a entrada vale pela janela
 // em que o técnico entrou: antes do meio, no lugar do começo; depois, no lugar do meio). null: a janela está fechada e ele não tem entrada
 function janelaDeCompras(v) {
@@ -548,16 +551,16 @@ function opcaoUsada(v, ordem, fundo = 0) {
   const notas = comprasDaOrdem(v, ordem);
   if (!notas.length) return "";
   const proibida = proibidaNa(v, ordem, fundo + 1);
-  const div = dividir(notas, PACOTES.filter((p) => p.id !== proibida), premiosDaOrdem(v, ordem));
+  const div = dividir(notas, pacotesDaOrdem(ordem).filter((p) => p.id !== proibida), premiosDaOrdem(v, ordem));
   return div ? div.pacote : "";
 }
 // o que vale na janela de agora: as opções (sem a proibida), os prêmios e o que já foi comprado nela
 function contaDaJanela(v, jan) {
   const proibida = proibidaNa(v, jan.ordem);
-  return { proibida, permitidos: PACOTES.filter((p) => p.id !== proibida), premios: premiosDaOrdem(v, jan.ordem), usadas: comprasDaOrdem(v, jan.ordem) };
+  return { proibida, permitidos: pacotesDaOrdem(jan.ordem).filter((p) => p.id !== proibida), premios: premiosDaOrdem(v, jan.ordem), usadas: comprasDaOrdem(v, jan.ordem) };
 }
-const quadroDaRegra = (tipo, conta) => {
-  const base = tipo === "entrada" ? `Quem entra no meio da carreira tem uma janela de entrada: ${OPCOES_TEXTO}.` : `Em cada janela, cada técnico leva ${OPCOES_TEXTO}. A opção usada no começo da temporada não vale no meio; a virada de temporada zera.`;
+const quadroDaRegra = (v, tipo, conta) => {
+  const base = tipo === "entrada" ? `Quem entra no meio da carreira tem uma janela de entrada: ${opcoesTexto(v)}.` : `Em cada janela, cada técnico leva ${opcoesTexto(v)}. A opção usada no começo da temporada não vale no meio; a virada de temporada zera.`;
   const proibida = conta && conta.proibida ? ` Nesta janela não vale a de ${NOME_PACOTE[conta.proibida]} (você usou na janela anterior).` : "";
   const premios = conta && conta.premios.length ? ` Prêmio de campeão nesta janela, a mais (pago normalmente): ${conta.premios.map((p) => `1 jogador de até ${p.max} (${p.nome})`).join(", ")}.` : "";
   return base + proibida + premios;
@@ -566,7 +569,7 @@ function erroDeRegra(v, nota) {
   const jan = janelaDeCompras(v); if (!jan) return "A janela de transferências está fechada.";
   const conta = contaDaJanela(v, jan);
   if (dividir([...conta.usadas, nota], conta.permitidos, conta.premios)) return null;
-  return `${quadroDaRegra(jan.tipo, conta)}${conta.usadas.length ? ` Você já levou ${conta.usadas.length === 1 ? "um de" : "jogadores de"} ${conta.usadas.join(", ")}.` : ""} Um jogador de ${nota} não entra nessa conta.`;
+  return `${quadroDaRegra(v, jan.tipo, conta)}${conta.usadas.length ? ` Você já levou ${conta.usadas.length === 1 ? "um de" : "jogadores de"} ${conta.usadas.join(", ")}.` : ""} Um jogador de ${nota} não entra nessa conta.`;
 }
 const erroDeCompra = (save, clube, pid) => { const v = vistaDe(save, clube), j = jogadorDe(v, pid); return j ? erroDeRegra(v, notaDe(v, j)) : "Esse jogador não está disponível."; };
 function registrarCompraDaJanela(v, nota) {
@@ -587,9 +590,9 @@ function regraDeCompras(v) {
   const ainda = conta.permitidos.map((p) => {
     let k = 0;
     for (let c = 1; c <= p.n; c++) if (dividir([...usadas, ...Array(c).fill(p.max)], [p], premios)) k = c;
-    return k ? `${k} jogador${k === 1 ? "" : "es"} de até ${p.max}` : null;
+    return k ? `${k} jogador${k === 1 ? "" : "es"} ${Number.isFinite(p.max) ? `de até ${p.max}` : "de qualquer nota (inclusive 90+)"}` : null;
   }).filter(Boolean);
-  return { tipo: jan.tipo, titulo: jan.tipo === "inicio" ? "Começo da temporada" : jan.tipo === "meio" ? "Meio da temporada" : "Entrada na carreira", texto: quadroDaRegra(jan.tipo, conta), usadas, ainda,
+  return { tipo: jan.tipo, titulo: jan.tipo === "inicio" ? "Começo da temporada" : jan.tipo === "meio" ? "Meio da temporada" : "Entrada na carreira", texto: quadroDaRegra(v, jan.tipo, conta), usadas, ainda,
     proibida: conta.proibida, premios, ok: Array.from({ length: 100 }, (_, n) => !!dividir([...usadas, n], conta.permitidos, premios)) };
 }
 
