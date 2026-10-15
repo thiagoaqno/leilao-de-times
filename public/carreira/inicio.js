@@ -24,6 +24,12 @@ function usarBase(id) {
   BASE = b;
   CLUBES = Object.fromEntries(BASE.clubes.map((c) => [c.id, c]));
   JOGADORES = Object.fromEntries(BASE.clubes.flatMap((c) => c.jogadores.map((j) => [j.id, { ...j, origem: c.id }])));
+  // as seleções da Copa do Mundo (selecoes.js): elas entram como "clubes" (nome, cores, a bandeira no lugar do escudo) e os
+  // convocáveis de fora da carreira entram sem clube (não aparecem no mercado dos clubes)
+  for (const s of (window.SelecoesCarreira && window.SelecoesCarreira.selecoes) || []) {
+    CLUBES[s.id] = { id: s.id, nome: s.nome, curto: s.sigla, sigla: s.sigla, cores: s.cores, bandeira: s.bandeira, formacao: s.formacao, conf: s.conf, nat: s.nat, estadio: "Estádio da Copa", tamanho: 5, liga: "copadomundo", selecao: true, jogadores: [] };
+    for (const j of s.jogadores) JOGADORES[j.id] = { ...j, origem: null };
+  }
   for (const j of Object.values(JOGADORES)) registrarRosto(j);
 }
 // o rosto em pixel-art de quem não está na tabela do Leilão sai do país e da idade do jogador (rostos.js)
@@ -35,6 +41,9 @@ const nomeClube = (id) => CLUBES[id]?.nome || id;
 const nomeJogador = (id) => JOGADORES[id]?.nome || "alguém";
 const sobrenome = (nome) => { const p = String(nome).split(" "); return p.length > 1 && p.at(-1).length > 2 ? p.at(-1) : nome; };
 const meuClube = () => CLUBES[E.clube];
+// a seleção que o técnico treina nesta temporada (Copa do Mundo), ou nada; e os "meus" times de um jogo: o clube ou a seleção
+const minhaSelecao = () => (E && E.selecao && E.selecao.status === "aceita" ? E.selecao.id : null);
+const souEu = (id) => !!E && (id === E.clube || (id != null && id === minhaSelecao()));
 // as contas do elenco de agora (a base mais as transferências da carreira)
 const donoDe = (pid) => (E && E.donos[pid]) || JOGADORES[pid]?.origem;
 const elencoDe = (clube) => Object.values(JOGADORES).filter((j) => donoDe(j.id) === clube);
@@ -64,6 +73,12 @@ function seloEfeitoNota(pid) {
   return `<span class="delta-nota temporario ${n > 0 ? "subiu" : "caiu"}" title="Efeito temporário no próximo jogo: ${sinalDe(n)}">${ic(n > 0 ? "sobe" : "baixo")}<span>${sinalDe(n)}</span></span>`;
 }
 function meuTime(mudar = {}) {
+  // na partida da seleção (Copa do Mundo), o time é a convocação, com a escalação da seleção e o cansaço da Copa
+  if (typeof J !== "undefined" && J.selecao && E.selecao && E.selecao.convocados) {
+    const s = E.selecao, esc = { ...s.escalacao, ...mudar };
+    return { id: s.id, jogadores: s.convocados.filter((pid) => JOGADORES[pid] && !(s.fora || {})[pid]).map((pid) => ({ ...JOGADORES[pid], nota: Math.min(97, notaDe(JOGADORES[pid])) })),
+      formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo, energia: s.energia || {} };
+  }
   const esc = { ...E.escalacao, ...mudar }, extra = Math.round((E.moral - 60) / 12) + efeitoDe("time");
   return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: Math.min(97, notaDe(j) + extra + efeitoDe(j.id)) })),
     formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo, energia: E.energia };
@@ -80,6 +95,7 @@ const GRUPO_TELA = { GOL: "GOL", ZAG: "DEF", LD: "DEF", LE: "DEF", VOL: "MEI", M
 const escudoDaApi = (id) => ((window.ESCUDOS_API && window.ESCUDOS_API[id]) || (window.ESCUDOS_BUSCA && Object.hasOwn(window.ESCUDOS_BUSCA, id)) ? `/api/escudo/${encodeURIComponent(id)}` : null);
 function escudo(id, escala = 2) {
   const c = CLUBES[id]; if (!c) return "";
+  if (c.selecao) return `<span class="escudo escudo-bandeira" style="--e:${escala}" title="${h(c.nome)}"><span class="escudo-svg">${Bandeiras.svg(c)}</span></span>`;
   const api = escudoDaApi(id);
   const img = api ? `<img class="escudo-img" src="${h(api)}" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add('img-ok')" onerror="this.remove()">` : "";
   return `<span class="escudo" style="--e:${escala}" title="${h(c.nome)}"><span class="escudo-svg">${Escudos.svg(c)}</span>${img}</span>`;

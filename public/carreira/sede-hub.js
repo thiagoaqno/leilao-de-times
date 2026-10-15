@@ -48,7 +48,7 @@ function rivalNaSede() {
   const [casa, fora] = E.proximo || [E.clube, r.clube];
   el.innerHTML = `<div class="rival-topo"><div style="${coresClube(r.clube)}" data-time="${r.clube}" title="Ver o elenco">${escudo(r.clube, 4)}</div>
       <div><span class="sobre">Próximo adversário${E.partida ? " (jogo em andamento)" : ""}</span><h3 class="fx-titulo">${h(nomeClube(r.clube))}</h3>
-      <p class="suave">${casa === E.clube ? "Em casa" : "Fora de casa"} · ${h(CLUBES[casa].estadio)}</p></div></div>
+      <p class="suave">${CLUBES[casa] && CLUBES[casa].selecao ? `Copa do Mundo · campo neutro` : `${casa === E.clube ? "Em casa" : "Fora de casa"} · ${h(CLUBES[casa].estadio)}`}</p></div></div>
     ${leituraRivalHTML()}
     <p class="suave">A formação e o estilo dele contra os seus mudam os lances do jogo. Escolha a resposta aqui, ajuste os detalhes na prancheta.</p>`;
   ligarLeituraRival(el);
@@ -56,7 +56,9 @@ function rivalNaSede() {
 function ligarLeituraRival(raiz) {
   for (const b of raiz.querySelectorAll("[data-usar-formacao]")) b.onclick = async () => {
     b.disabled = true;
-    const r = await pedir("escalacao", { formacao: b.dataset.usarFormacao });
+    // o jogo da seleção (Copa do Mundo): a formação vai para a escalação da seleção
+    const daCopa = E.proximo && CLUBES[E.proximo[0]] && CLUBES[E.proximo[0]].selecao;
+    const r = await pedir(daCopa ? "selecao" : "escalacao", daCopa ? { acao: "escalacao", formacao: b.dataset.usarFormacao } : { formacao: b.dataset.usarFormacao });
     if (!r.ok) { b.disabled = false; return toast(r.error); }
     receber(r.estado); toast(`Formação: ${b.dataset.usarFormacao}. Confira o elenco na prancheta.`);
   };
@@ -70,11 +72,11 @@ function faixaAvancarHTML() {
   const ini = prox < 0 ? Math.max(0, jogos.length - 6) : Math.max(0, prox - 1), lista = jogos.slice(ini, ini + 6);
   const nomeComp = (j) => { const c = j.competicao && E.competicoes && E.competicoes[j.competicao]; return c ? c.nome : "Liga"; };
   const cel = (j) => {
-    const adv = j.casa === E.clube ? j.fora : j.casa, r = resultadoMeu(j), atual = prox >= 0 && j === jogos[prox], peso = atual ? pesoDe(j) : null;
-    return `<li class="av-dia ${atual ? "hoje" : ""} ${j.placar ? "jogado" : ""}" ${peso ? `data-peso="${peso.tema}"` : ""} title="${h(nomeComp(j))}: ${j.casa === E.clube ? "em casa" : "fora"} contra ${h(nomeClube(adv))}">
+    const adv = souEu(j.casa) ? j.fora : j.casa, r = resultadoMeu(j), atual = prox >= 0 && j === jogos[prox], peso = atual ? pesoDe(j) : null;
+    return `<li class="av-dia ${atual ? "hoje" : ""} ${j.placar ? "jogado" : ""}" ${peso ? `data-peso="${peso.tema}"` : ""} title="${h(nomeComp(j))}: ${souEu(j.casa) ? "em casa" : "fora"} contra ${h(nomeClube(adv))}">
       <span class="av-quando">${j.semana != null ? `Sem. ${j.semana}` : `R${j.rodada + 1}`}<small>${h(nomeComp(j))}</small></span>
-      <span class="av-adv">${escudo(adv, 2)}<b>${h(curtoDe(adv))}</b><i>${j.casa === E.clube ? "casa" : "fora"}</i></span>
-      ${j.placar ? `<span class="av-res ${r}">${j.casa === E.clube ? placarTxt(j.placar) : placarTxt([j.placar[1], j.placar[0]])}</span>` : atual ? `<span class="av-res prox">${ic("apito")}</span>` : ""}</li>`;
+      <span class="av-adv">${escudo(adv, 2)}<b>${h(curtoDe(adv))}</b><i>${CLUBES[j.casa] && CLUBES[j.casa].selecao ? "Copa" : j.casa === E.clube ? "casa" : "fora"}</i></span>
+      ${j.placar ? `<span class="av-res ${r}">${souEu(j.casa) ? placarTxt(j.placar) : placarTxt([j.placar[1], j.placar[0]])}</span>` : atual ? `<span class="av-res prox">${ic("apito")}</span>` : ""}</li>`;
   };
   return lista.length ? `<div class="av-topo"><small>Calendário</small><small class="av-ano">Temporada ${E.ano}</small></div>
     <ol class="av-faixa" aria-label="Próximos compromissos">${lista.map(cel).join("")}</ol>` : "";
@@ -121,7 +123,7 @@ function artilhariaNaSede() {
   const lista = compArtilharia ? todas[compArtilharia] || [] : E.artilharia;
   box.innerHTML = `<div class="linha-titulo"><h3>Artilharia</h3><button class="link" data-ir="tabela">Ver tabela</button></div>
     ${ids.length > 1 ? `<div class="abas-competicoes" role="group" aria-label="Competição">${ids.map((id) => `<button class="${id === compArtilharia ? "ativa" : ""}" data-art-comp="${id}" aria-pressed="${id === compArtilharia}">${h(E.competicoes[id].nome)}</button>`).join("")}</div>` : ""}
-    ${artilhariaHTML(lista)}`;
+    ${artilhariaHTML(lista, compArtilharia)}`;
   box.querySelector("[data-ir]").addEventListener("click", () => { if (compArtilharia) competicaoTabela = compArtilharia; }); // a Tabela abre na mesma competição
   for (const b of box.querySelectorAll("[data-art-comp]")) b.onclick = () => { compArtilharia = b.dataset.artComp; artilhariaNaSede(); box.querySelector(`[data-art-comp="${compArtilharia}"]`).focus(); };
 }

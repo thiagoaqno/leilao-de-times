@@ -93,7 +93,7 @@ function situacao(pid, curto) {
 function figurinha(pid, tamanho = "mini") {
   const j = JOGADORES[pid], n = notaDe(j), clube = donoDe(pid), valor = valorAtual(pid), forma = formaDe(pid);
   const atr = ATRIBUTOS.filter(([k]) => j.pos === "GOL" ? ["def", "fis"].includes(k) || k === "pas" : true).map(([k, nome]) => {
-    const v = k === "def" && j.pos === "GOL" ? j.atr.gol : Math.max(20, Math.min(99, j.atr[k] + ((E && E.bonusNota[pid]) || 0)));
+    const v = Math.max(20, Math.min(99, (k === "def" && j.pos === "GOL" ? j.atr.gol : j.atr[k]) + ((E && E.bonusNota[pid]) || 0)));
     return `<li><span>${k === "def" && j.pos === "GOL" ? "Goleiro" : nome}</span><b>${v}</b><i style="--v:${v}%"></i></li>`;
   }).join("");
   return `<article class="figurinha ${tamanho} ${faixa(n)}" style="${coresClube(clube)}" data-jogador="${pid}">

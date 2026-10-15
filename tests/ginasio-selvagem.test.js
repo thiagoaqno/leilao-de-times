@@ -95,5 +95,18 @@ test("selvagem: escapou, a luta continua; a chance aparece no evento e a próxim
   assert.ok(!(await pedir(s, "act", { type: "pokebola" })).ok, "uma de cada vez");
   await new Promise((ok) => setTimeout(ok, bola.dur + 100));
   assert.strictEqual(s.ultimo.phase, "play", "a luta segue");
+  // o relógio andou com a cena, mas a partida é a mesma: o navegador não zera a sequência e o Pokémon continua andando
+  const depois = await esperar(s, (x) => x.match && x.match.start > jogo.match.start);
+  assert.ok(Number.isInteger(jogo.match.id));
+  assert.strictEqual(depois.match.id, jogo.match.id);
+  assert.strictEqual(depois.match.comeco, jogo.match.comeco);
+  let snap = depois.match;
+  s.on("snap", (x) => { snap = x; });
+  const meu = () => snap.entidades.find((e) => e.lado === 0 && e.campo);
+  const x0 = meu().x;
+  const lado = x0 > 0 ? -1 : 1;
+  for (let i = 0; i < 25; i++) { s.emit("cmd", { seq: 1000 + i, dx: lado, dy: 0, mira: { x: lado, y: 0 } }); await new Promise((ok) => setTimeout(ok, 20)); }
+  const andou = Math.abs(meu().x - x0);
   s.close();
+  assert.ok(andou > 0.3, `andou depois da Pokébola (${andou.toFixed(2)})`);
 });

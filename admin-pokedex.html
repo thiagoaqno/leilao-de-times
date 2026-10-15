@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Pokédex · Galera</title>
+<style>
+:root{font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#f4f0ff;background:#101322}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 80% 8%,#5a2333 0,transparent 36%),#101322}
+button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:wait}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px clamp(18px,4vw,54px);border-bottom:1px solid #ffffff25;background:#101322cc;flex-wrap:wrap}
+header nav{display:flex;gap:16px}header a{color:#d5c5ff;text-decoration:none;font-weight:700}.marca{color:#ffcf68;font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase}
+main{max-width:1320px;margin:auto;padding:clamp(18px,3.5vw,46px)}h1{font-size:clamp(28px,4vw,52px);line-height:1.04;letter-spacing:-.05em;margin:8px 0 10px}p{color:#bcb9d0}.lead{max-width:62ch;margin-bottom:26px}
+.layout{display:grid;grid-template-columns:minmax(260px,330px) minmax(0,1fr);gap:20px;align-items:start}
+.painel{border:1px solid #ffffff20;background:#181b30db;border-radius:18px;overflow:hidden}
+.lista{position:sticky;top:12px;max-height:calc(100vh - 24px);display:grid;grid-template-rows:auto minmax(0,1fr)}
+.lista .busca{padding:16px;border-bottom:1px solid #ffffff18}.lista .busca input{width:100%}
+.lista ol{list-style:none;margin:0;padding:0;overflow:auto}
+.lista button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;width:100%;padding:12px 18px;background:transparent;border:0;border-left:3px solid transparent;color:#f4f0ff;text-align:left}
+.lista button:hover,.lista button[aria-current=true]{background:#ffffff0c;border-left-color:#ff6b6b}
+.lista b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lista small{color:#a9a6bf;font-size:12px}.lista .nv{grid-row:1/3;grid-column:2;align-self:center;padding:2px 8px;border-radius:8px;background:#2a2e4c;color:#ffcf68;font-weight:800;font-size:13px}
+input,select{background:#13162a;border:1px solid #6c668b;border-radius:8px;color:#fff;padding:8px 10px;min-width:0}input:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid #ffcf68;outline-offset:2px}
+.editor{padding:clamp(16px,2.6vw,30px)}
+.topo{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px}
+.topo h2{margin:2px 0;font-size:clamp(24px,3vw,38px);letter-spacing:-.04em}.hash{font:12px ui-monospace,monospace;color:#928da9;word-break:break-all}
+.numeros{display:flex;gap:10px;flex-wrap:wrap}.numeros div{padding:8px 12px;border-radius:12px;background:#242640;text-align:center}.numeros b{display:block;font-size:20px;color:#ffcf68}.numeros small{color:#bcb9d0;font-size:11px;text-transform:uppercase;letter-spacing:.1em}
+.ferramentas{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:18px}
+.ferramenta{padding:14px;border-radius:14px;background:#20233d;border:1px solid #ffffff1a}.ferramenta h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#ffcf68}
+.ferramenta .linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.ferramenta .linha input[type=number]{width:90px}.ferramenta .linha input[list]{flex:1;min-width:150px}
+.botao{border:0;border-radius:10px;background:#ff6b6b;color:#20192d;padding:9px 16px;font-weight:850}.botao.claro{background:#f7ca69}.botao.discreto{background:transparent;border:1px solid #716c8b;color:#eee7ff;font-weight:600}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.mon{display:grid;gap:8px;padding:12px;border-radius:16px;background:#242640;border:1px solid #ffffff24}
+.mon.mudou{border-color:#f7ca69;box-shadow:0 0 0 2px #f7ca6955}
+.mon header{all:unset;display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:center}
+.mon img{width:72px;height:72px;object-fit:contain;image-rendering:pixelated;background:radial-gradient(circle,#ffffff1a,transparent 70%);border-radius:50%}
+.mon h4{margin:0;font-size:17px}.mon .sub{font-size:12px;color:#a9a6bf}
+.mon .campos{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}.mon label{display:grid;gap:3px;font-size:11px;color:#c9c4dd;text-transform:uppercase;letter-spacing:.08em}
+.mon label.cheio{grid-column:1/-1}.mon .checks{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:#e9e4ff}.mon .checks label{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-size:13px}
+.mon .acoes{display:flex;gap:8px;justify-content:space-between}
+.xpbar{height:6px;border-radius:3px;background:#13162a;overflow:hidden}.xpbar i{display:block;height:100%;background:linear-gradient(90deg,#6fd3ff,#3f8fe0)}
+.estado{min-height:24px;color:#a8e5c7}.estado.erro{color:#ff9aa2}
+.historico{margin-top:22px}.historico h3{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#bcb9d0}.historico ol{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px;color:#d5d0ea}.historico small{color:#928da9}
+.vazio{padding:30px;color:#bcb9d0}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.lista{position:static;max-height:46vh}}
+</style>
+</head>
+<body>
+<header><div class="marca">GALERA / POKÉMON / ADMIN</div><nav><a href="/admin/pokemon">Times do Ginásio</a><a href="/">Ver a Vila ↗</a></nav></header>
+<main><div class="marca">POKÉDEX DOS TREINADORES</div><h1>Pokédex de todos</h1>
+<p class="lead">Cada treinador é o código guardado no navegador de cada pessoa (aqui aparece só o começo do hash). Mude o nível, a experiência, a espécie e o brilhante de qualquer Pokémon, dê ou tire Pokémon, ou ponha todos de um treinador no mesmo nível. Vale na hora: a Pokédex da Vila e o Ginásio leem o banco a cada vez.</p>
+<div class="layout">
+  <nav class="painel lista" aria-label="Treinadores"><div class="busca"><input id="busca" type="search" placeholder="Buscar pelo nome ou hash" aria-label="Buscar treinador"></div><ol id="lista"></ol></nav>
+  <section class="painel editor" id="editor" aria-live="polite"><p class="vazio">Escolha um treinador na lista.</p></section>
+</div>
+<datalist id="especies"></datalist></main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const quando = (t) => (t ? new Date(t).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—");
+let base = null, atual = null, porNome = new Map();
+async function api(url, opcoes = {}) {
+  const r = await fetch(url, { credentials: "same-origin", ...opcoes, headers: { "Content-Type": "application/json", ...(base && { "X-CSRF-Token": base.csrf }), ...(opcoes.headers || {}) } });
+  const d = await r.json().catch(() => ({}));
+  if (r.status === 401) { location.href = "/admin/carreira/entrar?destino=/admin/pokedex"; throw new Error("sessão"); }
+  if (!r.ok) throw new Error(d.erro || "Falhou.");
+  return d;
+}
+async function carregar(busca = "") {
+  base = await api(`/admin/pokedex/api?busca=${encodeURIComponent(busca)}`);
+  porNome = new Map(base.pokemon.map((p) => [p.nome.toLowerCase(), p.id]));
+  $("especies").innerHTML = base.pokemon.map((p) => `<option value="${esc(p.nome)}">Nº ${p.num}</option>`).join("");
+  desenharLista();
+}
+function desenharLista() {
+  $("lista").innerHTML = base.treinadores.map((t) => `<li><button data-t="${esc(t.treinador)}" aria-current="${atual && atual.treinador === t.treinador}"><b>${esc(t.nome || "(sem nome)")}</b><span class="nv">Nv ${t.maior}</span><small>${esc(t.treinador.slice(0, 10))}… · ${t.total} Pokémon · ${t.especies} espécies · ${quando(t.ultima)}</small></button></li>`).join("") || '<li class="vazio">Ninguém com Pokémon ainda.</li>';
+}
+const especieDe = (texto) => porNome.get(String(texto || "").trim().toLowerCase()) || null;
+function estado(msg, erro) { const e = $("estado"); if (e) { e.textContent = msg; e.className = `estado${erro ? " erro" : ""}`; } }
+async function abrir(t) {
+  try { atual = await api(`/admin/pokedex/api/${t}`); desenhar(); desenharLista(); } catch (e) { $("editor").innerHTML = `<p class="vazio">${esc(e.message)}</p>`; }
+}
+function desenhar(msg, erro) {
+  const d = atual, max = base.nivelMax;
+  const maior = d.pokemons.reduce((m, p) => Math.max(m, p.nivel), 0);
+  $("editor").innerHTML = `<div class="topo"><div><div class="marca">Treinador</div><h2>${esc(d.nome || "(sem nome)")}</h2><div class="hash">${esc(d.treinador)}</div></div>
+      <div class="numeros"><div><b>${d.pokemons.length}</b><small>Pokémon</small></div><div><b>${d.especies.length}</b><small>Espécies</small></div><div><b>${maior}</b><small>Maior nível</small></div></div></div>
+    <div class="ferramentas">
+      <div class="ferramenta"><h3>Nível de todos</h3><div class="linha"><input id="nivelTodos" type="number" min="1" max="${max}" value="${maior || 5}" aria-label="Nível"><button class="botao" id="btnTodos">Pôr todos neste nível</button></div><p class="nota">A experiência de cada um volta ao começo do nível. Não evolui ninguém.</p></div>
+      <div class="ferramenta"><h3>Dar um Pokémon</h3><div class="linha"><input id="novoBicho" list="especies" placeholder="Espécie" aria-label="Espécie"><input id="novoNivel" type="number" min="1" max="${max}" value="5" aria-label="Nível"><label><input id="novoBrilha" type="checkbox"> ✨</label><button class="botao claro" id="btnDar">Dar</button></div></div>
+    </div>
+    <p class="estado" id="estado" role="status"></p>
+    <div class="grade">${d.pokemons.map(cartao).join("") || '<p class="vazio">Sem Pokémon.</p>'}</div>
+    <div class="historico"><h3>Últimas edições</h3><ol>${d.historico.map((h) => `<li>${esc(h.ator)} · ${esc(rotulo(h))} <small>${quando(h.em)}</small></li>`).join("") || "<li><small>Nenhuma edição ainda.</small></li>"}</ol></div>`;
+  if (msg) estado(msg, erro);
+  $("btnTodos").onclick = () => enviar(`/admin/pokedex/api/${d.treinador}/nivel`, { method: "POST", body: JSON.stringify({ nivel: +$("nivelTodos").value }) }, (r) => `${r.alterados} Pokémon no nível ${$("nivelTodos").value}.`, `Pôr todos os Pokémon de ${d.nome || "este treinador"} no nível ${$("nivelTodos").value}?`);
+  $("btnDar").onclick = () => { const b = especieDe($("novoBicho").value); if (!b) return estado("Escolha uma espécie da lista.", true);
+    enviar(`/admin/pokedex/api/${d.treinador}/pokemon`, { method: "POST", body: JSON.stringify({ bicho: b, nivel: +$("novoNivel").value, brilhante: $("novoBrilha").checked }) }, (r) => `${r.pokemon.nome} entrou na Pokédex.`); };
+  for (const el of $("editor").querySelectorAll(".mon")) {
+    const id = el.dataset.id, p = d.pokemons.find((x) => String(x.id) === id);
+    el.oninput = () => el.classList.add("mudou");
+    el.querySelector("[data-salvar]").onclick = () => {
+      const bicho = especieDe(el.querySelector("[name=bicho]").value); if (!bicho) return estado("Espécie desconhecida.", true);
+      const corpo = { nivel: +el.querySelector("[name=nivel]").value, xp: +el.querySelector("[name=xp]").value, bicho, brilhante: el.querySelector("[name=brilhante]").checked, evoluir: el.querySelector("[name=evoluir]").checked };
+      if (corpo.nivel !== p.nivel && corpo.xp === p.xp) delete corpo.xp; // mudou o nível: a experiência recomeça
+      enviar(`/admin/pokedex/api/${d.treinador}/pokemon/${id}`, { method: "POST", body: JSON.stringify(corpo) }, (r) => `${r.pokemon.nome} salvo: nível ${r.pokemon.nivel}.`);
+    };
+    el.querySelector("[data-tirar]").onclick = () => enviar(`/admin/pokedex/api/${d.treinador}/pokemon/${id}`, { method: "DELETE" }, () => `${p.nome} saiu da coleção.`, `Tirar ${p.nome} (nível ${p.nivel}) deste treinador? Não dá para desfazer.`);
+  }
+}
+function cartao(p) {
+  return `<article class="mon" data-id="${p.id}"><header><img src="${esc(p.sprite)}" alt=""><div><h4>${esc(p.nome)}${p.brilhante ? " ✨" : ""}</h4><div class="sub">Nº ${p.num} · ${esc(p.origem === "inicial" ? "inicial" : p.raridade)} · id ${p.id}</div>
+      <div class="sub">${p.evolui ? `Evolui para ${esc(p.evolui.nome)} no Nv ${p.evolui.nivel}${p.evolui.como !== "nível" ? ` (${esc(p.evolui.como)})` : ""}` : "Não evolui"}</div></div></header>
+    <div class="xpbar" title="${p.xp}/${p.falta || "—"} de experiência"><i style="width:${p.falta ? Math.round((p.xp / p.falta) * 100) : 100}%"></i></div>
+    <div class="campos"><label>Nível<input name="nivel" type="number" min="1" max="${base.nivelMax}" value="${p.nivel}"></label><label>Experiência<input name="xp" type="number" min="0" max="${Math.max(0, p.falta - 1)}" value="${p.xp}"></label>
+      <label class="cheio">Espécie<input name="bicho" list="especies" value="${esc(p.nome)}"></label></div>
+    <div class="checks"><label><input name="brilhante" type="checkbox" ${p.brilhante ? "checked" : ""}> Brilhante</label><label title="Se o nível novo passar do nível da evolução, a espécie evolui"><input name="evoluir" type="checkbox"> Evoluir pelo nível</label></div>
+    <div class="acoes"><button class="botao claro" data-salvar>Salvar</button><button class="botao discreto" data-tirar>Tirar</button></div></article>`;
+}
+const rotulo = (h) => h.tipo === "nivel-todos" ? `todos no nível ${h.depois && h.depois.nivel}` : h.tipo === "dar" ? `deu ${h.depois && h.depois.bicho} (Nv ${h.depois && h.depois.nivel})`
+  : h.tipo === "tirar" ? `tirou ${h.antes && h.antes.bicho} (Nv ${h.antes && h.antes.nivel})` : `${h.antes && h.antes.bicho} Nv ${h.antes && h.antes.nivel} → ${h.depois && h.depois.bicho} Nv ${h.depois && h.depois.nivel}`;
+async function enviar(url, opcoes, msg, confirmar) {
+  if (confirmar && !confirm(confirmar)) return;
+  for (const b of $("editor").querySelectorAll("button")) b.disabled = true;
+  try { const r = await api(url, opcoes); atual = { ...atual, ...r }; desenhar(msg(r)); carregar($("busca").value).catch(() => {}); }
+  catch (e) { estado(e.message, true); for (const b of $("editor").querySelectorAll("button")) b.disabled = false; }
+}
+$("lista").onclick = (e) => { const b = e.target.closest("[data-t]"); if (b) abrir(b.dataset.t); };
+let espera; $("busca").oninput = () => { clearTimeout(espera); espera = setTimeout(() => carregar($("busca").value).catch(() => {}), 250); };
+carregar().catch((e) => { $("editor").innerHTML = `<p class="vazio">${esc(e.message)}</p>`; });
+</script>
+</body>
+</html>

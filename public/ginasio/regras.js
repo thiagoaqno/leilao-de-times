@@ -23,8 +23,8 @@
   // de punir quem ficou vulnerável na hora
   const DIFICULDADES = ["facil", "normal", "dificil"];
   const PERFIL_ROBO = [
-    { reacao: [0.45, 0.75], foge: 0.3, guarda: 0.12, erro: 0.32, pausa: [0.7, 1.3], lead: 0.3, pune: 0.25 },
-    { reacao: [0.32, 0.6], foge: 0.35, guarda: 0.18, erro: 0.2, pausa: [0.5, 1], lead: 0.6, pune: 0.5 },
+    { reacao: [0.45, 0.75], foge: 0.3, guarda: 0.12, erro: 0.38, pausa: [0.9, 1.6], lead: 0.3, pune: 0.25 },
+    { reacao: [0.32, 0.6], foge: 0.35, guarda: 0.18, erro: 0.23, pausa: [0.6, 1.15], lead: 0.6, pune: 0.5 },
     { reacao: [0.18, 0.3], foge: 0.72, guarda: 0.3, erro: 0.04, pausa: [0.08, 0.25], lead: 1, pune: 1 },
   ];
   const VEL_MIN = 2.2, VEL_MAX = 5.2; // casas por segundo (velocidade)
@@ -1107,6 +1107,7 @@
       const m = alvo.preparo.mira, lat = (e.x - alvo.x) * m.y - (e.y - alvo.y) * m.x;
       if (Math.abs(lat) < 1.2) { const s = lat >= 0 ? 1 : -1; mx = m.y * s * 1.5; my = -m.x * s * 1.5; }
     }
+    ({ x: mx, y: my } = longeDaParede(e, mx, my, dx / d, dy / d, ia));
     const lead = (hab) => { // mira à frente de quem anda
       const v = hab && hab.velocidade ? hab.velocidade : 8, t = Math.min(0.6, d / v) * perf.lead;
       const mx = alvo.x + (alvo.vx || 0) * t - e.x, my = alvo.y + (alvo.vy || 0) * t - e.y, erro = (p.rng() * 2 - 1) * perf.erro;
@@ -1146,6 +1147,28 @@
       if (idx >= 0) cmd.troca = idx;
     }
     return cmd;
+  }
+
+  // a parede: recuar contra ela deixava o robô parado na borda, apanhando sem reagir. Perto da borda ele não empurra
+  // mais para fora, volta aos poucos para o meio e, se não sobra para onde andar, desliza ao longo dela (para o lado
+  // que não é o canto)
+  const MARGEM_ROBO = 1.3;
+  function longeDaParede(e, mx, my, ax, ay, ia) {
+    const hx = ARENA.w / 2 - e.raio, hy = ARENA.h / 2 - e.raio;
+    const perto = (v, h) => (v > h - MARGEM_ROBO ? -1 : v < -h + MARGEM_ROBO ? 1 : 0); // para onde fica o meio
+    const px = perto(e.x, hx), py = perto(e.y, hy);
+    if (!px && !py) return { x: mx, y: my };
+    const forca = (v, h) => clamp(1 - (h - Math.abs(v)) / MARGEM_ROBO, 0, 1);
+    if (px && mx * px < 0) mx = 0;
+    if (py && my * py < 0) my = 0;
+    mx += px * forca(e.x, hx) * 0.9; my += py * forca(e.y, hy) * 0.9;
+    if (Math.hypot(mx, my) < 0.5) {
+      // de lado em relação ao outro, escolhendo o sentido que leva para o meio
+      let tx = -ay * ia.lado, ty = ax * ia.lado;
+      if (tx * (px || -Math.sign(e.x)) + ty * (py || -Math.sign(e.y)) < 0) { ia.lado = -ia.lado; tx = -tx; ty = -ty; }
+      mx += tx; my += ty;
+    }
+    return { x: mx, y: my };
   }
 
   function vindoNaDirecao(pr, e) {

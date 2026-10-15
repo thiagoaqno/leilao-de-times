@@ -154,7 +154,7 @@ function atualizarHudPokemon(agora) {
   // o painel e o minimapa mudam 15 vezes por segundo (mexer na página a cada quadro pesava; as barras deslizam pelo CSS)
   if (agora >= PK.ultimo && agora - PK.ultimo < 66) return;
   PK.ultimo = agora;
-  if (S.match.start !== PK.partida) { PK.partida = S.match.start; PK.feed.length = 0; PK.chaveTopo = ""; }
+  if ((S.match.id ?? S.match.start) !== PK.partida) { PK.partida = S.match.id ?? S.match.start; PK.feed.length = 0; PK.chaveTopo = ""; }
   const sn = N.snap;
   desenharTopoPk(sn);
   // nocautes: os desmaiados do outro lado

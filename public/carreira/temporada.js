@@ -34,9 +34,14 @@
 
   const EUROPA = ["inglaterra-2026", "espanha-2026", "italia-2026", "alemanha-2026", "franca-2026"];
   const NOMES = { "brasileirao-2026": "Brasileirão Série A", "serieb-2026": "Brasileirão Série B", "inglaterra-2026": "Premier League", "espanha-2026": "La Liga", "italia-2026": "Serie A", "alemanha-2026": "Bundesliga", "franca-2026": "Ligue 1", libertadores: "Libertadores", champions: "Champions League", mundial: "Mundial de Clubes",
-    copadobrasil: "Copa do Brasil", sulamericana: "Sul-Americana", supermundial: "Super Mundial de Clubes" };
+    copadobrasil: "Copa do Brasil", sulamericana: "Sul-Americana", supermundial: "Super Mundial de Clubes", copadomundo: "Copa do Mundo" };
   // as copas no masculino (o Mundial, o Super Mundial): para as frases "campeão do", "eliminado do"
   const MASCULINAS = ["mundial", "supermundial"];
+  // a Copa do Mundo (de 2 em 2 temporadas, carreira-copa.js): 48 seleções, 12 grupos de 4 em turno único, os 2 primeiros de cada
+  // grupo e os 8 melhores terceiros vão aos 16 avos de final; tudo em jogo único e em campo neutro, com disputa de 3º lugar.
+  // Ela para o futebol de clubes: as semanas da Copa entram na temporada e tudo o que vinha depois anda SEMANAS_COPA semanas.
+  const COPA = "copadomundo", SEMANAS_COPA = 8;
+  const FASES_COPA = [{ nome: "dezesseis", idaVolta: false }, { nome: "oitavas", idaVolta: false }, { nome: "quartas", idaVolta: false }, { nome: "semifinal", idaVolta: false }, { nome: "final", idaVolta: false }];
   const masculina = (comp) => MASCULINAS.includes(comp && comp.id);
   const FORCA = (c) => [...c.jogadores].sort((a, b) => b.nota - a.nota).slice(0, 11).reduce((s, j) => s + j.nota, 0) / 11;
   const chaveJogo = (competicao, fase, rodada, casa, fora) => `${competicao}:${fase}:${rodada}:${casa}:${fora}`;
@@ -51,7 +56,7 @@
       const id = chaveJogo(competicao, fase, rodada, casa, fora), fixo = fixos[id];
       const cache = `${semente}:${id}`;
       let sim = fixo || RESULTADOS_CPU.get(cache);
-      if (!sim) { sim = Motor.simularPartida({ casa: clubes[casa], fora: clubes[fora], semente: cache, carreira: true }); RESULTADOS_CPU.set(cache, { placar: [...sim.placar] }); }
+      if (!sim) { sim = Motor.simularPartida({ casa: clubes[casa], fora: clubes[fora], semente: cache, carreira: true, ...(competicao === COPA && { neutro: true }) }); RESULTADOS_CPU.set(cache, { placar: [...sim.placar] }); }
       return { id, competicao, fase, rodada, semana, periodo, casa, fora, placar: fixo ? [...fixo.placar] : [...sim.placar], mataMata,
         ...(fixo && { aoVivo: true }), ...(fixo && Array.isArray(fixo.penaltis) && { penaltis: [...fixo.penaltis] }) };
     };
@@ -135,11 +140,41 @@
     const m = mataMata("supermundial", quartas, semente, jogar, clubes, [76, 78, 80], FASES_COMPLETAS.slice(1).map((f) => ({ ...f, idaVolta: false }))), jogos = [...g.jogos, ...m.jogos];
     return { id: "supermundial", nome: NOMES.supermundial, tipo: "copa", fase: "encerrada", grupos: g.grupos, rodadasGrupo: 3, jogos, resultados: jogos.map((j) => [j.casa, j.fora, ...j.placar]), campeao: m.campeao, vice: m.vice, participantes };
   }
+  // a ordem do chaveamento de n cabeças de chave (1 contra n, e os dois melhores só se cruzam na final): [1, n, n/2, n/2+1, ...]
+  function ordemDaChave(n) {
+    let ordem = [1, 2];
+    while (ordem.length < n) { const m = ordem.length * 2; ordem = ordem.flatMap((x) => [x, m + 1 - x]); }
+    return ordem;
+  }
+  // a Copa do Mundo. copa: { selecoes: [times com jogadores], semana: a primeira semana dela }. Os potes saem da força; o sorteio,
+  // da semente da temporada (um de cada pote por grupo).
+  function copaDoMundo(copa, clubes, semente, jogar) {
+    const P = copa.semana, forca = (a, b) => FORCA(clubes[b]) - FORCA(clubes[a]) || a.localeCompare(b);
+    const ids = copa.selecoes.map((s) => s.id).sort(forca), potes = [0, 1, 2, 3].map((k) => embaralhar(ids.slice(k * 12, k * 12 + 12), `${semente}:${COPA}:pote${k}`));
+    const grupos = [], jogos = [];
+    for (let i = 0; i < 12; i++) grupos.push({ id: String.fromCharCode(65 + i), clubes: potes.map((p) => p[i]) });
+    for (const g of grupos) gerarCalendario(g.clubes, `${semente}:${COPA}:grupo:${g.id}`).slice(0, 3).forEach((rodada, r) => rodada.forEach(([c, f]) => jogos.push(jogar(COPA, `grupo-${g.id}`, r, c, f, P + r, "meio"))));
+    for (const g of grupos) { const res = jogos.filter((j) => j.fase === `grupo-${g.id}`).reduce((a, j) => { (a[j.rodada] ||= []).push([j.casa, j.fora, ...j.placar]); return a; }, []); g.tabela = tabela(g.clubes, res); }
+    // os 32: os primeiros (do melhor para o pior), os segundos e os 8 melhores terceiros; 1 contra 32, 2 contra 31...
+    const ordenar = (linhas) => [...linhas].sort((a, b) => b.p - a.p || b.sg - a.sg || b.gp - a.gp || forca(a.id, b.id));
+    const cabecas = [...ordenar(grupos.map((g) => g.tabela[0])), ...ordenar(grupos.map((g) => g.tabela[1])), ...ordenar(grupos.map((g) => g.tabela[2])).slice(0, 8)].map((l) => l.id);
+    const grupoDe = Object.fromEntries(grupos.flatMap((g) => g.clubes.map((id) => [id, g.id])));
+    const chave = ordemDaChave(32).map((n) => cabecas[n - 1]);
+    // quem é do mesmo grupo não se cruza nos 16 avos: troca o de baixo com o do confronto seguinte
+    for (let i = 0; i < 32; i += 2) if (grupoDe[chave[i]] === grupoDe[chave[i + 1]]) { const k = (i + 3) % 32; [chave[i + 1], chave[k]] = [chave[k], chave[i + 1]]; }
+    const m = mataMata(COPA, chave, semente, jogar, clubes, [P + 3, P + 4, P + 5, P + 6, P + 7], FASES_COPA);
+    // a disputa do 3º lugar: os que perderam as semifinais, na semana da final
+    const perdedores = m.jogos.filter((j) => j.fase === "semifinal").map((j) => (vencedorJogo(j, semente, clubes) === j.casa ? j.fora : j.casa));
+    const terceiro = jogar(COPA, "terceiro", 0, perdedores[0], perdedores[1], P + 7, "meio", true), terceiroLugar = vencedorJogo(terceiro, semente, clubes);
+    const todos = [...jogos, ...m.jogos.filter((j) => j.fase !== "final"), terceiro, ...m.jogos.filter((j) => j.fase === "final")];
+    return { id: COPA, nome: copa.nome || NOMES[COPA], tipo: "copa", fase: "encerrada", grupos, rodadasGrupo: 3, jogos: todos, resultados: todos.map((j) => [j.casa, j.fora, ...j.placar]), campeao: m.campeao, vice: m.vice, terceiro: terceiroLugar, participantes: ids, selecoes: true };
+  }
   // classificados (da segunda temporada em diante): { libertadores: [32 ids], europa: { [liga]: [4 ids] }, brasileiros: [ids na ordem da tabela] }
   // copasNovas: a Copa do Brasil, a Sul-Americana e o Super Mundial (as carreiras que já estavam no meio da temporada ficam sem elas)
   // semMundial: sem o Mundial de Clubes (o Super Mundial fica sendo o torneio mundial); só vale junto com copasNovas, e as
   // temporadas que já estavam rolando com o Mundial continuam com ele até a virada
-  function simularMundo({ bases, indice, semente, resultadosFixos = {}, classificados = null, copasNovas = false, semMundial = false }) {
+  // copa: a Copa do Mundo desta temporada ({ selecoes, semana }), ou nada
+  function simularMundo({ bases, indice, semente, resultadosFixos = {}, classificados = null, copasNovas = false, semMundial = false, copa = null }) {
     const mundo = indice, normal = normalizarBases(bases), clubes = normal.clubes, jogar = simuladorDoMundo(clubes, semente, resultadosFixos), competicoes = {}, todosJogos = [];
     const semanasLiga = Array.from({ length: 38 }, (_, i) => i * 2 + 1);
     for (const liga of mundo.ligas.filter((l) => normal.bases[l.id] && !["argentina-2026", "sulamericanos-2026"].includes(l.id))) {
@@ -176,10 +211,16 @@
       const finalistas = semi.map((j) => vencedorJogo(j, semente, clubes)), final = jogar("mundial", "final", 0, finalistas[0], finalistas[1], semanasMundial[1], "fim", true), campeao = vencedorJogo(final, semente, clubes), jogos = [...semi, final];
       competicoes.mundial = { id: "mundial", nome: NOMES.mundial, tipo: "copa", fase: "encerrada", grupos: [], jogos, resultados: jogos.map((j) => [j.casa, j.fora, ...j.placar]), participantes: semifinalistas, campeao, vice: finalistas.find((id) => id !== campeao) }; todosJogos.push(...jogos);
     }
+    if (copa && copa.selecoes && copa.selecoes.length === 48) {
+      // a pausa: o futebol de clubes para nas semanas da Copa (o que vinha depois anda junto, na mesma ordem)
+      for (const j of todosJogos) if (j.semana >= copa.semana) j.semana += SEMANAS_COPA;
+      for (const s of copa.selecoes) clubes[s.id] = s;
+      competicoes[COPA] = copaDoMundo(copa, clubes, semente, jogar); todosJogos.push(...competicoes[COPA].jogos);
+    }
     todosJogos.sort((a, b) => a.semana - b.semana || a.periodo.localeCompare(b.periodo) || a.id.localeCompare(b.id));
     return { competicoes, jogos: todosJogos, campeoes: Object.fromEntries(Object.entries(competicoes).map(([id, c]) => [id, c.campeao])) };
   }
   function jogosDoClube(mundo, clube) { return mundo.jogos.filter((j) => j.casa === clube || j.fora === clube); }
   function conflitoDeCalendario(jogos) { const vistos = new Set(); for (const j of jogos) for (const clube of [j.casa, j.fora]) { const k = `${j.semana}:${clube}`; if (vistos.has(k)) return { semana: j.semana, clube }; vistos.add(k); } return null; }
-  return { gerarCalendario, jogoDoClube, tabela, zona, simularMundo, jogosDoClube, conflitoDeCalendario, EUROPA, NOMES, masculina };
+  return { gerarCalendario, jogoDoClube, tabela, zona, simularMundo, jogosDoClube, conflitoDeCalendario, EUROPA, NOMES, masculina, COPA, SEMANAS_COPA, ordemDaChave };
 });

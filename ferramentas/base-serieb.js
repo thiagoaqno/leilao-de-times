@@ -141,7 +141,7 @@ async function gerar() {
   const elencos = process.argv.includes("--ficticio") ? {} : process.argv.includes("--cache") && fs.existsSync(cache) ? JSON.parse(fs.readFileSync(cache, "utf8")) : await baixar();
   if (Object.keys(elencos).length) fs.writeFileSync(cache, JSON.stringify(elencos));
   // nenhum nome inventado repete o de um jogador das outras bases
-  const usados = new Set(fs.readdirSync(path.join(__dirname, "..", "public", "carreira", "base")).filter((f) => /-2026\.js$/.test(f) && f !== "serieb-2026.js" && f !== "mundo-2026.js")
+  const usados = new Set(fs.readdirSync(path.join(__dirname, "..", "public", "carreira", "base")).filter((f) => /-2026\.js$/.test(f) && f !== "serieb-2026.js" && f !== "mundo-2026.js" && f !== "selecoes-2026.js")
     .flatMap((f) => require(`../public/carreira/base/${f}`).clubes.flatMap((c) => c.jogadores.map((j) => j.nome))));
   const clubes = CLUBES.map(([id, nome, curto, cidade, cores, estadio, tamanho, nota, formacao, , escudo]) => {
     const jogadores = elencos[id] ? elencoReal(id, nota, elencos[id]) : elencoFicticio(id, nota, usados);

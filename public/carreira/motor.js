@@ -85,7 +85,7 @@
     const nota = clamp(Number(j.nota) || 60, 30, 99), atr = {};
     for (const k of ATRIBUTOS) atr[k] = clamp(Number(j.atr && j.atr[k]) || nota, 20, 99);
     // base: a nota da base (sem evolução, bônus nem efeitos do jogo), com que os atributos foram lidos; sem ela vale a nota
-    return { id: String(j.id ?? j.nome), nome: j.nome || String(j.id), grp: grupoDe(j.pos), pos: Taticas.posDe(j.pos), nota, atr, temAtr: !!(j.atr && typeof j.atr === "object"), base: clamp(Number(j.base) || nota, 30, 99), mania: j.mania || null, energia: 100, amarelos: 0, fora: false, lesionado: false };
+    return { id: String(j.id ?? j.nome), nome: j.nome || String(j.id), grp: grupoDe(j.pos), pos: Taticas.posDe(j.pos), nota, atr, temAtr: !!(j.atr && typeof j.atr === "object"), base: clamp(typeof j.notaBase === "number" ? j.notaBase : typeof j.base === "number" ? j.base : nota, 30, 99), mania: j.mania || null, energia: 100, amarelos: 0, fora: false, lesionado: false };
   }
   // o rendimento na vaga: a nota, o encaixe da posicao dele na vaga fina (lateral na zaga, ponta de centroavante...) e o cansaco
   const slotPadrao = (slot) => ({ GK: "GOL", DEF: "ZAG", MID: "MC", ATT: "ATA" })[slot] || "MC";

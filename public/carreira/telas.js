@@ -20,15 +20,16 @@ function desenharTela(id) {
   else if (id === "trocas") telaTrocas();
   else if (id === "temporadas") telaTemporadas();
   else if (id === "clube") telaClube();
+  else if (id === "selecao") telaSelecao();
 }
 const posicaoDe = (id) => E.tabela.findIndex((l) => l.id === id) + 1;
 const placarTxt = (p) => (p ? `${p[0]} × ${p[1]}` : "×");
-const resultadoMeu = (j) => { if (!j.placar) return ""; const decisivo = j.penaltis || j.placar, [a, b] = j.casa === E.clube ? decisivo : [decisivo[1], decisivo[0]]; return a > b ? "V" : a === b ? "E" : "D"; };
+const resultadoMeu = (j) => { if (!j.placar) return ""; const decisivo = j.penaltis || j.placar, [a, b] = souEu(j.casa) ? decisivo : [decisivo[1], decisivo[0]]; return a > b ? "V" : a === b ? "E" : "D"; };
 const linhaPenaltis = (p) => p ? `<small class="placar-penaltis">Pên. ${p[0]} × ${p[1]}</small>` : "";
 const humor = (m) => (m >= 80 ? "Embalado" : m >= 65 ? "Confiante" : m >= 50 ? "Normal" : m >= 35 ? "Cabisbaixo" : "Em crise");
 
 function telaSede() {
-  const c = meuClube(), pos = posicaoDe(E.clube), forma = E.meus.filter((j) => j.placar).slice(-5).map(resultadoMeu);
+  const c = meuClube(), pos = posicaoDe(E.clube), forma = E.meus.filter((j) => j.placar && j.competicao !== "copadomundo").slice(-5).map(resultadoMeu);
   $("cabecalho").innerHTML = `<div class="hub-clube">${escudo(E.clube, 4)}
     <div class="cab-nome"><span class="sobre">Técnico ${h(E.tecnico.nome)} · ${h(Temporada.NOMES[E.liga || c.liga] || "Temporada")} ${E.ano}${E.temporadasMax ? ` · temporada ${E.temporada} de ${E.temporadasMax}` : ""}</span><h1>${h(c.nome)}</h1>
       <span class="forma" aria-label="Últimos resultados">${forma.map((r) => `<i class="res ${r}">${r}</i>`).join("") || "<small>A temporada ainda não começou</small>"}</span></div></div>
@@ -51,7 +52,7 @@ function telaSede() {
   // o último jogo
   const u = E.ultimo;
   $("cartaoUltimo").innerHTML = u ? `<h3>Último jogo</h3><div class="confronto pequeno"><div data-time="${u.casa}">${escudo(u.casa, 2)}<b>${h(nomeClube(u.casa))}</b></div><span class="x">${u.placar[0]} × ${u.placar[1]}${linhaPenaltis(u.penaltis)}</span><div data-time="${u.fora}">${escudo(u.fora, 2)}<b>${h(nomeClube(u.fora))}</b></div></div>
-    <ul class="gols">${u.eventos.filter((e) => e.tipo === "gol").map((e) => `<li class="${(e.lado === 0 ? u.casa : u.fora) === E.clube ? "nosso" : ""}">${ic("bola")} ${h(nomeJogador(e.jogador))} <span>${e.min}'${e.acr ? "+" + e.acr : ""}</span></li>`).join("") || "<li class='suave'>Sem gols.</li>"}</ul>`
+    <ul class="gols">${u.eventos.filter((e) => e.tipo === "gol").map((e) => `<li class="${souEu(e.lado === 0 ? u.casa : u.fora) ? "nosso" : ""}">${ic("bola")} ${h(nomeJogador(e.jogador))} <span>${e.min}'${e.acr ? "+" + e.acr : ""}</span></li>`).join("") || "<li class='suave'>Sem gols.</li>"}</ul>`
     : `<h3>Último jogo</h3><p class="suave">A estreia é na rodada 1.</p>`;
   // a tabela resumida (como a "Tabelas" do FIFA 16): o seu lugar e os vizinhos, com os jogos e os pontos
   const ini = Math.max(0, Math.min(E.tabela.length - 7, pos - 4));
@@ -62,6 +63,7 @@ function telaSede() {
     ${f ? `<ul class="extrato">${f.itens.slice(-6).map(([n, v]) => `<li><span>${h(n)}</span><b class="${v < 0 ? "neg" : "positivo"}">${v > 0 ? "+" : ""}${dinheiro(v)}</b></li>`).join("")}</ul>` : `<p class="suave">O extrato aparece depois do primeiro jogo.</p>`}`;
   memoriaNaSede();
   vagasNaSede();
+  selecaoNaSede();
   rivalNaSede();
   // o histórico fica no resumo final quando a carreira acabou
   $("cartaoHistorico").classList.toggle("hidden", !E.historico.length || E.encerrada);
@@ -82,7 +84,7 @@ function telaTiles(pos) {
   $("dadoClube").innerHTML = `<b>${E.gestao.confianca}%</b><small>diretoria${noUltimoAno ? ` · ${noUltimoAno} contrato${noUltimoAno > 1 ? "s" : ""} no fim` : ""}</small>`;
   $("tileTabela").innerHTML = `<b>${E.rodada > 0 ? pos + "º" : "—"}</b><small>${E.rodada > 0 ? `${E.tabela[pos - 1].p} ponto${E.tabela[pos - 1].p === 1 ? "" : "s"}` : "sem jogos ainda"}</small>`;
   const prox = E.proximoJogo, comp = prox && E.competicoes && E.competicoes[prox.competicao];
-  $("tileCalendario").innerHTML = prox ? `<b>${escudo(prox.casa === E.clube ? prox.fora : prox.casa, 1)}</b><small>${h(comp ? comp.nome : "Liga")}</small>` : `<b>—</b><small>fim da temporada</small>`;
+  $("tileCalendario").innerHTML = prox ? `<b>${escudo(souEu(prox.casa) ? prox.fora : prox.casa, 1)}</b><small>${h(comp ? comp.nome : "Liga")}</small>` : `<b>—</b><small>fim da temporada</small>`;
 }
 // a diretoria perdeu a paciência: a carreira solo acaba aqui, com o que ficou da passagem pelo clube
 function resumoDemissao() {
@@ -135,28 +137,31 @@ function telaJogo(pos) {
   }
   const [casa, visitante] = E.proximo;
   if (modoEscolhido == null) modoEscolhido = E.modo;
-  const desfalques = E.elenco.filter((pid) => fora(pid));
+  const desfalques = CLUBES[E.proximo[0]] && CLUBES[E.proximo[0]].selecao && E.selecao && E.selecao.convocados ? E.selecao.convocados.filter((pid) => (E.selecao.fora || {})[pid]) : E.elenco.filter((pid) => fora(pid));
   const pendentes = E.caixaEntrada.filter((e) => !e.resolvido).length;
   const prox = E.proximoJogo, comp = prox && E.competicoes && E.competicoes[prox.competicao];
-  const onde = `${comp ? h(comp.nome) : `Rodada ${E.rodada + 1}`}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""} · ${casa === E.clube ? "em casa" : "fora"}`;
+  // na Copa do Mundo, o jogo é da seleção que você treina, em campo neutro
+  const daCopa = !!(CLUBES[casa] && CLUBES[casa].selecao), mando = daCopa ? "campo neutro" : casa === E.clube ? "em casa" : "fora";
+  const faseTxt = prox && prox.fase && prox.fase !== "liga" ? (NOME_FASE[prox.fase] || prox.fase.replace("grupo-", "grupo ")) : "";
+  const onde = `${comp ? h(comp.nome) : `Rodada ${E.rodada + 1}`}${faseTxt ? ` · ${h(faseTxt)}` : ""} · ${mando}`;
   const peso = pesoDe(prox || { casa, fora });
   if (peso) $("cartaoJogo").dataset.peso = peso.tema; else delete $("cartaoJogo").dataset.peso;
   // no jeito da central do FIFA 16: o bloco "Jogar partida" (na cor do clube, o botão inteiro), o "Como jogar" (os modos) e a prévia
   // do jogo (o confronto, o estádio, o peso do jogo, os desfalques e os próximos compromissos), lado a lado
-  const adv = casa === E.clube ? visitante : casa, quando = prox && prox.semana != null ? `Semana ${prox.semana}` : `Rodada ${E.rodada + 1}`;
+  const adv = souEu(casa) ? visitante : casa, quando = prox && prox.semana != null ? `Semana ${prox.semana}` : `Rodada ${E.rodada + 1}`;
   const foto = window.ESTADIOS_API && window.ESTADIOS_API[casa];
   $("cartaoJogo").innerHTML = `<div class="cj">
-    <button id="btnJogar" class="cj-tile cj-jogar cta"><span>${E.partida ? "Voltar para a partida" : "Jogar a próxima partida"}</span>
-      <small>${quando} · ${casa === E.clube ? "em casa" : "fora"}</small><small>${comp ? h(comp.nome) : "Liga"}${prox && prox.fase && prox.fase !== "liga" ? ` · ${h(prox.fase.replace("grupo-", "grupo "))}` : ""}</small>
+    <button id="btnJogar" class="cj-tile cj-jogar cta${daCopa ? " cj-copa" : ""}"><span>${E.partida ? "Voltar para a partida" : daCopa ? "Jogar pela seleção" : "Jogar a próxima partida"}</span>
+      <small>${quando} · ${mando}</small><small>${comp ? h(comp.nome) : "Liga"}${faseTxt ? ` · ${h(faseTxt)}` : ""}</small>
       <i class="cj-escudo">${escudo(adv, 4)}</i><i class="cj-apito">${ic("apito")}</i></button>
     ${E.partida ? "" : `<div class="cj-tile cj-modos"><h3 class="fx-titulo">Como jogar</h3><div class="modos" role="group" aria-label="Como jogar">${MODOS.map(([m, t, d]) => `<button data-modo="${m}" aria-pressed="${m === modoEscolhido}" title="${h(d)}"><b>${t}</b><small>${d}</small></button>`).join("")}</div></div>`}
     <div class="cj-tile cj-previa"${foto ? ` style="--foto:url('${h(foto.url)}')"` : ""}><div class="jogo-info"><span class="sobre">${E.partida ? "Partida em andamento" : `Prévia · ${onde}`}</span>
       <h3 class="fx-titulo">${h(nomeClube(casa))} × ${h(nomeClube(visitante))}</h3>
       <div class="confronto"><div style="${coresClube(casa)}" data-time="${casa}" title="Ver o elenco">${escudo(casa, 3)}<small>${posicaoDe(casa) && E.rodada ? posicaoDe(casa) + "º" : ""}</small></div><span class="x">×</span><div style="${coresClube(visitante)}" data-time="${visitante}" title="Ver o elenco">${escudo(visitante, 3)}<small>${posicaoDe(visitante) && E.rodada ? posicaoDe(visitante) + "º" : ""}</small></div></div>
-      <p class="estadio">${ic("estadio")} ${h(CLUBES[casa].estadio)}</p>
+      <p class="estadio">${ic("estadio")} ${h(daCopa && E.copa && E.copa.sede ? `Copa do Mundo · ${E.copa.sede}` : CLUBES[casa].estadio)}</p>
       ${E.clima && E.clima.texto ? `<p class="clima-jogo ${E.clima.nota > 0 ? "bom" : E.clima.nota < 0 ? "ruim" : ""}">${h(E.clima.texto)}</p>` : ""}</div>
       ${faixaPesoHTML(peso, casa, visitante)}
-      ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${fora(pid) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}
+      ${desfalques.length ? `<p class="desfalques">${ic("alerta")} Desfalques: ${desfalques.map((pid) => `${h(sobrenome(nomeJogador(pid)))} (${(fora(pid) || (E.selecao && E.selecao.fora || {})[pid]) === "lesao" ? "lesão" : "suspenso"})`).join(", ")}</p>` : ""}
       ${E.vagas && E.vagas.momento === "comeco" && !E.partida ? `<p class="pendente">${ic("coroa")} Mercado de técnicos aberto até o primeiro jogo: veja as propostas na aba Temporada.</p>` : ""}
       ${pendentes && !E.partida ? `<p class="pendente">${ic("sino")} ${pendentes} aviso${pendentes > 1 ? "s" : ""} esperando resposta. Se jogar agora, vale a opção padrão.</p>` : ""}
       ${faixaAvancarHTML()}</div></div>`;
@@ -262,12 +267,14 @@ async function jogar() {
 
 // ---------- tabela e calendário ----------
 // a lista dos artilheiros (de uma competição): a foto, o nome, o clube e os gols; o seu clube em destaque
-const artilhariaHTML = (lista) => (lista.length ? `<ol class="artilharia">${lista.map((a) => `<li class="${donoDe(a.id) === E.clube ? "meu" : ""}">${fotoHTML(a.id)}<span>${h(nomeJogador(a.id))}<small>${h(nomeClube(donoDe(a.id)))}</small></span><b>${a.gols}</b></li>`).join("")}</ol>` : `<p class="suave">Ninguém marcou ainda.</p>`);
+// na Copa do Mundo, o "clube" de cada artilheiro é a seleção dele (pelo país)
+const selecaoDoJogador = (pid) => { const nat = (JOGADORES[pid] || {}).nat; return (Object.values(CLUBES).find((c) => c.selecao && c.nat === nat) || {}).id; };
+const artilhariaHTML = (lista, comp) => (lista.length ? `<ol class="artilharia">${lista.map((a) => { const time = comp === "copadomundo" ? selecaoDoJogador(a.id) : donoDe(a.id); return `<li class="${souEu(time) ? "meu" : ""}">${fotoHTML(a.id)}<span>${h(nomeJogador(a.id))}<small>${time ? `${comp === "copadomundo" ? escudo(time, 1) + " " : ""}${h(nomeClube(time))}` : ""}</small></span><b>${a.gols}</b></li>`; }).join("")}</ol>` : `<p class="suave">Ninguém marcou ainda.</p>`);
 let competicaoTabela = null;
 const tabelaHTML = (tab, liga = "") => `<table class="tabela-cheia"><thead><tr><th>#</th><th>Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Últimos</th></tr></thead><tbody>${tab.map((l, i) =>
-  `<tr class="${l.id === E.clube ? "meu" : ""}" data-time="${l.id}"><td class="pos ${Temporada.zona(i + 1, tab.length, liga)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
+  `<tr class="${souEu(l.id) ? "meu" : ""}" data-time="${l.id}"><td class="pos ${Temporada.zona(i + 1, tab.length, liga)}">${i + 1}</td><td class="nome">${escudo(l.id, 1)}<span>${h(nomeClube(l.id))}</span></td><td><b>${l.p}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg}</td><td><span class="ultimos">${l.ultimos.map((r) => `<i class="res ${r}" title="${r}"></i>`).join("")}</span></td></tr>`).join("")}</tbody></table>`;
 // os nomes das fases do mata-mata
-const NOME_FASE = { preliminar: "Fase preliminar", oitavas: "Oitavas de final", quartas: "Quartas de final", semifinal: "Semifinais", final: "Final" };
+const NOME_FASE = { preliminar: "Fase preliminar", dezesseis: "16 avos de final", terceiro: "Disputa do 3º lugar", oitavas: "Oitavas de final", quartas: "Quartas de final", semifinal: "Semifinais", final: "Final" };
 // a chave do mata-mata de uma copa, fase por fase (a coluna de cada fase só aparece quando a anterior acabou): cada confronto
 // com os clubes, o resultado de cada jogo (ida e volta), o agregado, os pênaltis e quem passou
 function confrontoCopaHTML(t) {
@@ -278,7 +285,7 @@ function confrontoCopaHTML(t) {
     const pen = jogoDePenaltis ? (jogoDePenaltis.casa === id ? jogoDePenaltis.penaltis[0] : jogoDePenaltis.penaltis[1]) : null;
     return `<div data-time="${id}" class="cc-time ${t.vencedor === id ? "passou" : t.vencedor ? "caiu" : ""}">${escudo(id, 1)}<b>${h(CLUBES[id].curto)}</b><span class="cc-pernas">${t.jogos.length > 1 ? placares.join(" · ") : ""}</span><strong>${total}${pen != null && t.vencedor ? ` <small>(${pen})</small>` : ""}</strong></div>`;
   };
-  return `<div class="confronto-copa${a === E.clube || b === E.clube ? " meu" : ""}">${linha(a)}${linha(b)}</div>`;
+  return `<div class="confronto-copa${souEu(a) || souEu(b) ? " meu" : ""}">${linha(a)}${linha(b)}</div>`;
 }
 function chaveHTML(c) {
   if (!c.chave || !c.chave.length) return "";
@@ -298,11 +305,11 @@ function telaTabela() {
   // a artilharia da competição aberta (cada liga e cada copa tem a sua); a base antiga só tem o Brasileirão
   const comp = E.competicoes && E.competicoes[competicaoTabela];
   $("tituloArtilharia").textContent = comp ? `Artilharia · ${comp.nome}` : "Artilharia";
-  $("tArtilharia").innerHTML = artilhariaHTML(comp ? (E.artilharias || {})[competicaoTabela] || [] : E.artilharia);
+  $("tArtilharia").innerHTML = artilhariaHTML(comp ? (E.artilharias || {})[competicaoTabela] || [] : E.artilharia, comp ? competicaoTabela : null);
   $("tituloRodada").textContent = E.rodadaAnterior ? `Rodada ${E.rodada}` : "Última rodada";
   $("tRodada").innerHTML = E.rodadaAnterior ? E.rodadaAnterior.map(([c, f, a, b]) => linhaJogo(c, f, [a, b])).join("") : `<p class="suave">Nenhuma rodada jogada.</p>`;
 }
-const linhaJogo = (c, f, p) => `<div class="jogo-linha ${c === E.clube || f === E.clube ? "meu" : ""}"><span class="c" data-time="${c}">${h(nomeClube(c))}${escudo(c, 1)}</span><span class="r">${placarTxt(p)}</span><span class="f" data-time="${f}">${escudo(f, 1)}${h(nomeClube(f))}</span></div>`;
+const linhaJogo = (c, f, p) => `<div class="jogo-linha ${souEu(c) || souEu(f) ? "meu" : ""}"><span class="c" data-time="${c}">${h(nomeClube(c))}${escudo(c, 1)}</span><span class="r">${placarTxt(p)}</span><span class="f" data-time="${f}">${escudo(f, 1)}${h(nomeClube(f))}</span></div>`;
 // o nome de cada fase do mata-mata e dos grupos
 const nomeFase = (f) => (String(f).startsWith("grupo-") ? `Grupo ${String(f).slice(6)}` : String(f) === "liga" ? "" : NOME_FASE[f] || f);
 function linhaTba(t) {
@@ -313,7 +320,7 @@ function telaCalendario() {
   const jogos = E.meus.map((j) => ({ semana: j.semana ?? -1, j })).concat((E.tba || []).map((t) => ({ semana: t.semana, t })));
   jogos.sort((a, b) => a.semana - b.semana);
   $("cLista").innerHTML = `<ol class="linha-tempo">${jogos.map((x) => { if (x.t) return linhaTba(x.t); const j = x.j;
-    const r = resultadoMeu(j), adv = j.casa === E.clube ? j.fora : j.casa, janela = j.janela ?? Mercado.janelaAberta(j.rodada); // j.janela: pela rodada do Brasileirão da semana do jogo
+    const r = resultadoMeu(j), adv = souEu(j.casa) ? j.fora : j.casa, janela = j.janela ?? Mercado.janelaAberta(j.rodada); // j.janela: pela rodada do Brasileirão da semana do jogo
     const atual = E.proximoJogo && j.id === E.proximoJogo.id;
     return `<li class="${atual ? "proxima" : ""} ${j.placar ? "jogado" : ""}" data-time="${adv}"><span class="rd">${j.competicao ? `${h(E.competicoes[j.competicao].nome)}<small>${h([nomeFase(j.fase), `S${j.semana}`].filter(Boolean).join(" · "))}</small>` : `R${j.rodada + 1}`}${janela ? `<i title="Janela aberta">${ic("maleta")}</i>` : ""}</span>${escudo(adv, 2)}<span class="adv">${j.casa === E.clube ? "×" : "@"} ${h(nomeClube(adv))}</span><span class="r">${placarTxt(j.placar)}${linhaPenaltis(j.penaltis)}</span><span class="res ${r}">${r}</span></li>`;
   }).join("")}</ol>`;
