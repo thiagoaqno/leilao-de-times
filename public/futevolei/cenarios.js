@@ -68,7 +68,7 @@ function areia(seed, rep, cor = [226, 200, 150], ondinhas = true) {
 }
 
 // ---------- peças da quadra (iguais nos dois lugares) ----------
-function quadra(grupo) {
+function quadra(grupo, animar = null) {
   // fitas azuis da linha (presas por estacas nos cantos)
   const fita = M(0x1e5bc6, { roughness: 0.5 });
   const linha = (w, d, x, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.012, d), fita); m.position.set(x, 0.006, z); m.receiveShadow = true; grupo.add(m); };
@@ -84,8 +84,27 @@ function quadra(grupo) {
   }
   const tela = canvasTex(64, 64, (x, w) => { x.fillStyle = "rgba(20,20,20,0.28)"; x.fillRect(0, 0, w, w); x.strokeStyle = "#111"; x.lineWidth = 6; x.strokeRect(0, 0, w, w); }, true); // de longe, a malha vira um cinza transparente
   tela.repeat.set(LARG / 0.1, 1 / 0.1);
-  const rede = new THREE.Mesh(new THREE.PlaneGeometry(LARG, 1), new THREE.MeshStandardMaterial({ map: tela, transparent: true, alphaTest: 0.05, depthWrite: false, side: THREE.DoubleSide, color: 0x222222, roughness: 0.9 }));
+  const rede = new THREE.Mesh(new THREE.PlaneGeometry(LARG, 1, animar ? 36 : 1, animar ? 6 : 1), new THREE.MeshStandardMaterial({ map: tela, transparent: true, alphaTest: 0.05, depthWrite: false, side: THREE.DoubleSide, color: 0x222222, roughness: 0.9 }));
   rede.position.y = Q.REDE - 0.5; rede.castShadow = true; grupo.add(rede);
+  // a rede balança quando a bola bate nela (encenacao.js): uma onda que sai do ponto e morre, presa nas faixas
+  const balanco = [];
+  if (animar) {
+    const pos = rede.geometry.attributes.position;
+    animar.push((dt) => {
+      if (!balanco.length) return;
+      for (const b of balanco) b.t += dt;
+      while (balanco.length && balanco[0].t > 1.6) balanco.shift();
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i), prende = Math.cos(y * Math.PI); // 0 nas faixas de cima e de baixo
+        let z = 0;
+        for (const b of balanco) { const d = Math.abs(x - b.x); z += b.forca * Math.exp(-d * d / 2.2) * Math.sin(b.t * 22 - d * 3) * Math.exp(-b.t * 3.2); }
+        pos.setZ(i, z * prende * 0.22);
+      }
+      pos.needsUpdate = true;
+      if (!balanco.length) { for (let i = 0; i < pos.count; i++) pos.setZ(i, 0); pos.needsUpdate = true; }
+    });
+  }
+  return { balancarRede(forca, x) { if (animar) { balanco.push({ forca: Math.min(1.5, forca), x, t: 0 }); if (balanco.length > 4) balanco.shift(); } } };
   const faixa = (y, h) => { const f = new THREE.Mesh(new THREE.BoxGeometry(LARG, h, 0.02), M(0xf4f4f0, { roughness: 0.6 })); f.position.y = y; f.castShadow = true; grupo.add(f); };
   faixa(Q.REDE - 0.035, 0.07); faixa(Q.REDE - 1, 0.05);
   const listra = canvasTex(8, 64, (x, w, hh) => { for (let i = 0; i < 8; i++) { x.fillStyle = i % 2 ? "#f4f4f4" : "#d32f2f"; x.fillRect(0, i * hh / 8, w, hh / 8); } });
@@ -171,7 +190,7 @@ function praia(renderer, scene) {
     nAgua.offset.set(t * 0.004, t * 0.012); nAgua2.offset.set(-t * 0.01, t * 0.02);
     espumas.forEach((m, i) => { const fase = t * 0.35 + i * 2.1, ida = Math.sin(fase); m.position.z = -34 - i * 7 + ida * 2.4; m.material.opacity = 0.55 + 0.4 * Math.max(0, -Math.cos(fase)); espTex.offset.x = t * 0.003; });
   });
-  quadra(grupo);
+  const aQuadra = quadra(grupo, animar);
   // arquibancada tubular de um lado (com a torcida pintada) e bancos de madeira do outro
   const torcida = canvasTex(1024, 128, (x, w, hh, rr) => { x.fillStyle = "#3a4048"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 520; i++) { const cx = rr() * w, cy = 30 + rr() * 80; x.fillStyle = ["#e53935", "#1e88e5", "#fdd835", "#43a047", "#fafafa", "#ff7043", "#8e24aa", "#26c6da"][Math.floor(rr() * 8)]; x.fillRect(cx - 5, cy, 10, 22); x.fillStyle = ["#f1c27d", "#c68642", "#8d5524", "#e0ac69"][Math.floor(rr() * 4)]; x.beginPath(); x.arc(cx, cy - 4, 5, 0, 7); x.fill(); } }, true);
   for (let i = 0; i < 5; i++) {
@@ -256,7 +275,7 @@ function praia(renderer, scene) {
     qualidade(n) { g2Sombra(n < 1); ceuParado = n >= 2; },
     // em volta da quadra: quem fica olhando, em pé (x, z, para onde olha)
     lugaresTorcida: [[8.5, -7], [8.5, -4], [9, -1], [8.8, 2.5], [8.2, 6], [9.5, 8.5], [10.5, -9]].map(([x, z]) => ({ x, z, olha: Math.atan2(x, z) })),
-    naAreia: () => true,
+    naAreia: () => true, balancarRede: aQuadra.balancarRede,
   };
 }
 
@@ -282,7 +301,7 @@ function arena(renderer, scene) {
     const t = madeira.clone(); t.repeat.set(Math.max(w, d) / 4, 1); t.needsUpdate = true;
     const b = new THREE.Mesh(new THREE.BoxGeometry(w, 0.32, d), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 })); b.position.set(x, 0.14, z); b.castShadow = b.receiveShadow = true; grupo.add(b);
   }
-  quadra(grupo);
+  const aQuadra = quadra(grupo, animar);
   // paredes: painéis escuros com faixas e o grafite da galera; o fundo com o telão
   const parede = canvasTex(1024, 512, (x, w, hh, rr) => {
     const g = x.createLinearGradient(0, 0, 0, hh); g.addColorStop(0, "#1b2433"); g.addColorStop(1, "#283548"); x.fillStyle = g; x.fillRect(0, 0, w, hh);
@@ -347,7 +366,7 @@ function arena(renderer, scene) {
   return {
     grupo, animar, ambiente: env, placar,
     lugaresTorcida: [[-11.2, -9], [-11.2, -3], [-11.2, 4], [11.2, -6], [11.2, 1], [11.2, 8], [-11.2, 10]].map(([x, z]) => ({ x, z, olha: x > 0 ? Math.PI / 2 : -Math.PI / 2, y: 0.6 })),
-    naAreia: (x, z) => Math.abs(x) < AX && Math.abs(z) < AZ,
+    naAreia: (x, z) => Math.abs(x) < AX && Math.abs(z) < AZ, balancarRede: aQuadra.balancarRede,
   };
 }
 
@@ -359,6 +378,7 @@ export function montarCenario(renderer, scene, tipo) {
     tipo, lugaresTorcida: c.lugaresTorcida, naAreia: c.naAreia,
     placar: c.placar || (() => {}),
     qualidade: c.qualidade || (() => {}),
+    balancarRede: c.balancarRede || (() => {}),
     atualizar(dt) { t += dt; for (const f of c.animar) f(dt, t); },
     liberar() {
       scene.remove(c.grupo);
