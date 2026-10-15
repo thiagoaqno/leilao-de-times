@@ -137,3 +137,4 @@ body.pk.jogando:not(.toque-jogo) #btnPokebola{grid-area:bola;width:100%;min-widt
 body.pk.jogando:not(.toque-jogo) #btnPokebola .ic{margin:0 !important}
 body.pk.jogando:not(.toque-jogo) #btnPokebola .nome{font-size:12px;max-height:none}
 #hud > #btnPokebola:not(.flutuante){position:relative}
+#escolhaRobo{display:flex;flex-direction:column;gap:6px;margin-top:10px}#escolhaRobo.hidden{display:none}

@@ -7,7 +7,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dexDe = (modo) => ({ galeramon: Galeramon, pokemon: PokeDex, naruto: NarutoDex })[modo] || Galeramon;
 const salvo = store.get("ginasio:config") || {};
 const modoDoEndereco = new URLSearchParams(location.search).get("modo"); // a casa do Naruto, na Vila, abre direto no modo Naruto
-const configLocal = { modo: ["galeramon", "pokemon", "naruto"].includes(modoDoEndereco) ? modoDoEndereco : ["galeramon", "pokemon", "naruto"].includes(salvo.modo) ? salvo.modo : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false, arena: Ginasio.BIOMAS.includes(salvo.arena) ? salvo.arena : "sortear", pokemons: salvo.pokemons === "capturados" ? "capturados" : "todos" };
+const configLocal = { modo: ["galeramon", "pokemon", "naruto"].includes(modoDoEndereco) ? modoDoEndereco : ["galeramon", "pokemon", "naruto"].includes(salvo.modo) ? salvo.modo : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false, arena: Ginasio.BIOMAS.includes(salvo.arena) ? salvo.arena : "sortear", pokemons: salvo.pokemons === "capturados" ? "capturados" : "todos", robo: Ginasio.DIFICULDADES.includes(salvo.robo) ? salvo.robo : "normal" };
 // o treinador da grama alta da Vila (o mesmo código do navegador, galera:treinador): na sala "só capturados", cada um
 // joga com os iniciais e os Pokémon que já pegou
 const treinador = (() => {
@@ -64,6 +64,9 @@ function atualizarOpcoes() {
   document.querySelectorAll("[data-modo]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.modo === c.modo); b.disabled = !pode; });
   document.querySelectorAll("[data-formato]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.formato === c.formato); b.disabled = !pode; });
   $("bots").checked = c.bots; $("bots").disabled = !pode;
+  // a dificuldade do robô (o líder é sempre difícil)
+  $("escolhaRobo").classList.toggle("hidden", !c.bots || !!c.lider);
+  document.querySelectorAll("[data-robo]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.robo === (c.robo || "normal")); b.disabled = !pode; });
   // o lugar da luta (só no modo Pokémon, que luta ao ar livre: biomas.js); o desafio de líder usa o lugar do líder
   const arena = c.arena || "sortear";
   $("escolhaArena").classList.toggle("hidden", c.modo !== "pokemon" || !!c.lider);
@@ -168,6 +171,7 @@ document.querySelectorAll("[data-lado]").forEach((b) => { b.onclick = () => act(
 document.querySelectorAll("[data-modo]").forEach((b) => { b.onclick = () => mudarConfig({ modo: b.dataset.modo }); });
 document.querySelectorAll("[data-formato]").forEach((b) => { b.onclick = () => mudarConfig({ formato: b.dataset.formato }); });
 $("bots").onchange = () => mudarConfig({ bots: $("bots").checked });
+document.querySelectorAll("[data-robo]").forEach((b) => { b.onclick = () => mudarConfig({ robo: b.dataset.robo }); });
 document.querySelectorAll("[data-pokemons]").forEach((b) => { b.onclick = () => mudarConfig({ pokemons: b.dataset.pokemons }); });
 document.querySelectorAll("[data-arena]").forEach((b) => { b.onclick = () => mudarConfig({ arena: b.dataset.arena }); });
 $("btnInvite").onclick = async () => { try { await navigator.clipboard.writeText(`${location.origin}/ginasio/?sala=${S.code}`); toast("Convite copiado."); } catch { toast(`Código da sala: ${S.code}`); } };

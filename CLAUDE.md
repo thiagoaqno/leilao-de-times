@@ -187,8 +187,19 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
   `fatorPeso`) e atordoa (`e.atordoado`, decrescente com `e.cadeia`); `mover` escorrega e `bater` machuca na parede.
   **Defesa:** a guarda é o comando `guarda` segurado (`guardar`, barra `e.guarda`, `JANELA_APARAR` apara e
   `refletir` devolve o projétil; `hab.agarra` passa pela guarda), a esquiva perfeita é `JANELA_PERFEITA` (recargas e
-  `e.foco`). O golpe apertado com o bicho ocupado espera em `e.buffer` (`BUFFER`). O robô (`pensarRobo`, `e.ia`)
-  usa `p.nivel` (2 nos líderes). **Nível do bicho** (só no modo Pokémon, com `niveis` do jogador, `config.nivelRobo` ou `config.selvagem`): `novoBicho(D, id, nivel)` guarda `nivel` e `ficha` (os atributos do nível, `Niveis.atributos`); `spec` usa a ficha e o dano usa o nível (`2·nível/5 + 2`), mas a velocidade e o peso usam sempre a Pokédex (`base`), para a previsão da tela andar igual. O pacote leva `nivel`. Testes: `tests/ginasio-fisica.test.js`.
+  `e.foco`). O golpe apertado com o bicho ocupado espera em `e.buffer` (`BUFFER`). **Equilíbrio:** a velocidade de
+  andar sai do atributo de velocidade, de `VEL_MIN` (2,2) a `VEL_MAX` (5,2) casas por segundo (`velocidade`, sempre
+  da Pokédex, sem o nível); andar para longe de onde mira custa (`fatorDaRe`: de lado 90%, de ré `RE`, 60%). Os golpes
+  de perto (`PERTO`: corpo, combo, arremesso) dão o **bote**: com o alvo na frente (`BOTE_ARCO`) a até `BOTE_MAX`
+  casas além do alcance, `executarGolpe` põe `e.bote` (evento `bote`), `mover` avança a `BOTE_VEL` e só então bate
+  (`semBote`), e fica `BOTE_RECUPERA` parado; no bote e no combo o bicho fica **firme** (golpe só tira vida, não
+  empurra nem atordoa). O pacote leva `bote` e a previsão da tela anda junto. **O robô** (`pensarRobo`, `e.ia`) tem três
+  dificuldades (`DIFICULDADES` = fácil, normal, difícil → `p.nivel` 0, 1, 2; `config.robo`, escolhida na sala em
+  `#escolhaRobo`; o líder é sempre difícil; o selvagem vai pela raridade): `PERFIL_ROBO` diz o tempo de reação ao
+  perigo (ele vê na hora mas só decide depois: `ia.ameaca`, `ia.reageEm`), a chance de esquivar e de levantar a
+  guarda, o erro da mira, a pausa depois de bater e o quanto mira à frente. Os tempos do robô contam pelo relógio da
+  partida (`ia.t`), então dá para chamá-lo em qualquer ritmo. Medido em `tests/ginasio-equilibrio.test.js` (duelos no
+  motor: o de perto contra quem recua atirando, e quem recua atirando contra cada dificuldade). **Nível do bicho** (só no modo Pokémon, com `niveis` do jogador, `config.nivelRobo` ou `config.selvagem`): `novoBicho(D, id, nivel)` guarda `nivel` e `ficha` (os atributos do nível, `Niveis.atributos`); `spec` usa a ficha e o dano usa o nível (`2·nível/5 + 2`), mas a velocidade e o peso usam sempre a Pokédex (`base`), para a previsão da tela andar igual. O pacote leva `nivel`. Testes: `tests/ginasio-fisica.test.js`.
 - **Na tela:** `desenharArea` (o chão de cada forma) e `desenharAvisos` (preparo e pouso) em `desenho.js`; as palavras
   de `TEXTO_DO_EVENTO`; `golpes3d.js` tem `feixe3d`, `cone3d`, `anel3d`, `onda3d`, `zona3d`, `bombasVoando` e
   `aparou3d` (os efeitos começam na hora do evento, `quando`); a bolha da guarda, as estrelinhas do tonto, o rolar e o

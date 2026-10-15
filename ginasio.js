@@ -29,8 +29,9 @@ function limparConfig(c) {
   // lider: o desafio a um líder ou treinador da Vila (1x1 contra o robô com o time dele)
   const lider = Lideres.de(c.lider) ? c.lider : null;
   // arena: o lugar da luta no modo Pokémon (sortear, ou um dos lugares de regras.js)
+  // robo: a dificuldade dos robôs (fácil, normal ou difícil; o líder é sempre difícil)
   // pokemons: "todos" (qualquer um) ou "capturados" (só os iniciais e os que cada um pegou na grama alta da Vila)
-  return { modo: ["galeramon", "pokemon", "naruto"].includes(c.modo) ? c.modo : "galeramon", formato: lider ? "1x1" : c.formato === "2x2" ? "2x2" : "1x1", bots: lider ? true : c.bots !== false, arena: G.BIOMAS.includes(c.arena) ? c.arena : "sortear", pokemons: c.pokemons === "capturados" ? "capturados" : "todos", ...(lider && { lider }) };
+  return { modo: ["galeramon", "pokemon", "naruto"].includes(c.modo) ? c.modo : "galeramon", formato: lider ? "1x1" : c.formato === "2x2" ? "2x2" : "1x1", bots: lider ? true : c.bots !== false, robo: lider ? "dificil" : G.DIFICULDADES.includes(c.robo) ? c.robo : "normal", arena: G.BIOMAS.includes(c.arena) ? c.arena : "sortear", pokemons: c.pokemons === "capturados" ? "capturados" : "todos", ...(lider && { lider }) };
 }
 
 function timeValido(modo, time) {
@@ -135,6 +136,7 @@ module.exports = function ligarGinasio(io) {
         salto: e.salto && { t: e.salto.t, total: e.salto.total, de: { ...e.salto.de }, para: { ...e.salto.para }, r: e.salto.hab.raio, elemento: e.salto.hab.tipo },
         sequencia: e.sequencia && { tipo: e.sequencia.tipo, falta: e.sequencia.falta },
         canal: e.canal && { ...e.canal }, escudo: e.escudo && { ...e.escudo },
+        bote: e.bote && { x: e.bote.x, y: e.bote.y, falta: e.bote.falta },
         dash: e.dash && { x: e.dash.x, y: e.dash.y, falta: e.dash.falta, velocidade: e.dash.hab.velocidade, giro: !!e.dash.hab.giro, elemento: e.dash.hab.tipo },
         oculto: e.oculto && { jeito: e.oculto.jeito, t: e.oculto.t, total: e.oculto.total, de: { ...e.oculto.de }, para: { ...e.oculto.para } },
         ativo: e.jogador.ativo, trocaCd: e.jogador.trocaCd, entradaEm: e.jogador.entradaEm,
@@ -230,7 +232,9 @@ module.exports = function ligarGinasio(io) {
   function criarSelvagem({ nome, treinador, time, encontro }) {
     if (!treinador || !encontro || !PokeDex.MONS[encontro.bicho]) return null;
     const tipo = PokeDex.MONS[encontro.bicho].types[0];
-    const sala = novaSala(limparConfig({ modo: "pokemon", formato: "1x1", bots: true, pokemons: "capturados", arena: G.BIOMA_DO_TIPO[tipo] || "floresta" }));
+    // o selvagem luta pela raridade: o comum é fácil, o épico e o lendário são difíceis
+    const robo = { comum: "facil", incomum: "normal", raro: "normal", epico: "dificil", lendario: "dificil" }[encontro.raridade] || "normal";
+    const sala = novaSala(limparConfig({ modo: "pokemon", formato: "1x1", bots: true, robo, pokemons: "capturados", arena: G.BIOMA_DO_TIPO[tipo] || "floresta" }));
     sala.selvagem = { bicho: encontro.bicho, nivel: encontro.nivel, raridade: encontro.raridade, brilhante: !!encontro.brilhante, hp: encontro.hp, max: encontro.max };
     const p = adicionar(sala, limparNome(nome) || "Treinador", null, treinador);
     p.times.pokemon = timeDaColecao(p, time);

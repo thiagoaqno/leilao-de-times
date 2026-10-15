@@ -267,6 +267,11 @@ function animarEvento(ev, agora) {
   else if (ev.tipo === "combo") visualDe(ev.id).golpe = { t: agora, classe: "corpo", elemento: ev.elemento, combo: ev.n };
   else if (ev.tipo === "tiro") visualDe(ev.id).golpe = { t: agora - 120, classe: "projetil", elemento: ev.elemento };
   else if (ev.tipo === "batida") { const e = N.snap?.entidades.find((p) => p.id === ev.id); if (e) espalhar(e.x, e.y, 12, POEIRA, { vel: 2.4, sobe: 2.4, vida: 0.5, tam: 0.14, atrito: 2 }); visualDe(ev.id).batida = agora; }
+  else if (ev.tipo === "bote") { // o bote do golpe de perto: o corpo já vai inclinado e levanta poeira para trás
+    visualDe(ev.id).golpe = { t: agora, classe: "investida", elemento: ev.elemento };
+    const e = N.snap?.entidades.find((p) => p.id === ev.id);
+    if (e) espalhar(e.x - ev.dx * 0.3, e.y - ev.dy * 0.3, 8, POEIRA, { vel: 2, sobe: 1.2, vida: 0.4, tam: 0.12, atrito: 3 });
+  }
   else if (ev.tipo === "lava") { const e = N.snap?.entidades.find((p) => p.id === ev.id); if (e) espalhar(e.x, e.y, 5, ["#ff7a2e", "#ffb04a", "#ffd84a"], { vel: 1.2, sobe: 2.4, vida: 0.45, tam: 0.08 }); }
   else if (ev.tipo === "aterrissou") { espalhar(ev.x, ev.y, 18, POEIRA, { vel: 3.2, sobe: 1.8, vida: 0.55, tam: 0.15, atrito: 3, raio: 0.4 }); visualDe(ev.id).pouso = agora; }
   else if (ev.tipo === "troca") { const v = visualDe(ev.id); v.entrada = agora; v.desmaio = null; v.rastro.length = 0; }
@@ -358,7 +363,7 @@ function poseBicho(e, agora, modo) {
   // no hit-stop (encenacao.js) o quadro do GIF não anda: o bicho congela um instante no acerto
   const congelado = v.parado != null && agora < v.parado;
   const dt = v.ultimo == null || congelado ? 0 : clamp(agora - v.ultimo, 0, 100); v.ultimo = agora;
-  const o = e.oculto, andando = Math.hypot(e.vx || 0, e.vy || 0) > 0.1 && !e.dash && !o;
+  const o = e.oculto, andando = Math.hypot(e.vx || 0, e.vy || 0) > 0.1 && !e.dash && !e.bote && !o;
   v.tempo += dt * (andando ? 1.7 : 1) * (o?.jeito === "voo" ? 2.5 : 1);
   const lado = e.mira.x < -0.05 ? -1 : e.mira.x > 0.05 ? 1 : v.lado;
   if (lado !== v.lado) { v.lado = lado; v.viradaEm = agora; }
@@ -440,6 +445,7 @@ function poseBicho(e, agora, modo) {
   const ipo = v.pouso != null ? agora - v.pouso : 1e9;
   if (ipo < 180) { const k = 1 - ipo / 180; f.sy *= 1 - 0.3 * k; f.sx *= 1 + 0.3 * k; }
   // investida e giro
+  if (e.bote) { f.estica = Math.max(f.estica, 0.22); f.anguloEstica = Math.atan2(e.bote.y, e.bote.x); } // o bote do golpe de perto
   if (e.dash) {
     f.estica = Math.max(f.estica, 0.28); f.anguloEstica = Math.atan2(e.dash.y, e.dash.x);
     if (e.dash.giro || e.dash.hab?.giro) { f.giro = (agora / 1000) * 22 * v.lado; f.estica = 0.08; }
@@ -478,7 +484,7 @@ function poseBicho(e, agora, modo) {
   const wx = e.x + ox, wy = e.y + oy, altura = f.altura;
   // o rastro (investida, esquiva, velocidade em alta): os quadros de antes, onde o bicho estava
   const perfeita = v.perfeita != null && agora - v.perfeita < 450;
-  const rapido = e.dash || ie < 250 || perfeita || empurrao > 4 || (andando && (e.st?.spd || 0) > 0);
+  const rapido = e.dash || e.bote || ie < 250 || perfeita || empurrao > 4 || (andando && (e.st?.spd || 0) > 0);
   if (!calmo && rapido && !escondido && q && agora - v.rastroEm > 35) {
     v.rastroEm = agora;
     v.rastro.unshift({ wx, wy, altura, f: { ...f, branco: false }, q, a: anim, t: agora });
