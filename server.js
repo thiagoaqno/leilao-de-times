@@ -71,17 +71,6 @@ app.get("/api/musicas-vila3d", (req, res) => {
 });
 // a estante de troféus da Carreira (todas as carreiras, solo e em grupo): o ranking dos técnicos e as últimas conquistas
 app.get("/api/estante", (req, res) => { try { res.json(require("./bd.js").estante()); } catch (e) { res.status(500).json({ erro: "A estante não abriu." }); } });
-// Foto da taça original, quando a liga a cadastrou na TheSportsDB. Um redirecionamento
-// permite ao navegador carregar a imagem da API; o SVG local fica como reserva.
-const TrofeusCarreira = require("./trofeus-carreira.js"), cacheTrofeus = new Map();
-app.get("/api/carreira/trofeu/:id", async (req, res) => {
-  const id = req.params.id;
-  if (!Object.hasOwn(TrofeusCarreira.LIGAS, id)) return res.status(404).end();
-  if (!cacheTrofeus.has(id)) cacheTrofeus.set(id, TrofeusCarreira.buscarTrofeu(id).catch(() => null));
-  const url = await cacheTrofeus.get(id);
-  if (!url) { setTimeout(() => cacheTrofeus.delete(id), 60000); return res.status(404).end(); }
-  res.set("Cache-Control", "public, max-age=86400").redirect(302, url);
-});
 // Escudos da Carreira guardados no Git. O mesmo endereço serve a tela e o canvas das notícias, sem chamar a API em jogo.
 const escudosApi = (() => { try { return require("./public/carreira/escudos-api.json"); } catch { return {}; } })();
 app.get("/api/escudo/:id", (req, res) => {

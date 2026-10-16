@@ -1,11 +1,10 @@
-# Estante de troféus por clube na Carreira
+# Taças da Estante salvas no Git
 
-- A tela **Estante** agora mostra uma vitrine de cada clube, com busca, total de títulos e uma prateleira para as taças conquistadas. Inclui clubes controlados pelo computador e seleções da Copa, além do clube do técnico.
-- Títulos já concluídos na temporada atual aparecem sem esperar o arquivamento. Ao arquivar a temporada, cada título continua contado uma só vez; resultados futuros não aparecem.
-- As fotos das taças vêm do campo `strTrophy` da API da [TheSportsDB](https://www.thesportsdb.com/docs_artwork). O servidor consulta a liga correspondente e guarda o endereço em cache; se a imagem não existir ou falhar, a vitrine usa uma ilustração local. A fonte aparece na própria tela.
-- O ranking dos técnicos e as páginas de temporadas anteriores continuam abaixo da vitrine.
+- Corrige as imagens ausentes da Estante do PR #241. O endpoint `www.thesportsdb.com` não entregava as fotos de forma estável; a consulta passa a usar `api.thesportsdb.com` e normaliza os arquivos para o domínio de mídia `r2.thesportsdb.com`.
+- As 14 imagens de `strTrophy` da [TheSportsDB](https://www.thesportsdb.com/docs_artwork) foram baixadas e salvas no Git. A Estante agora carrega os PNGs locais, sem depender da API durante o jogo; se um arquivo faltar, mantém a ilustração de reserva.
+- Se o clube do jogador ainda não tiver taças, a Estante abre no primeiro campeão para mostrar a vitrine preenchida. O clube do jogador continua disponível na lista.
 
 ## Verificação
 
-- Testes determinísticos de agregação por clube, títulos atuais, ausência de spoilers e não duplicação.
-- Testes do mapeamento das competições e validação dos endereços das imagens da API.
+- Cinco testes direcionados passaram, incluindo a validação dos 14 PNGs locais.
+- Os arquivos foram inspecionados visualmente em uma montagem; cada imagem corresponde à competição esperada.
