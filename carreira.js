@@ -364,10 +364,16 @@ function entrarNaCarreira(save, { clube, nome, skin }, { aporte = 0 } = {}) {
   if (caixaDoClube != null) v.caixa = caixaDoClube;
   if (save.caixaIA) delete save.caixaIA[clube];
   const rodadaLiga = rodadaDaJanela(v), janelaAberta = Mercado.janelaAberta(rodadaLiga);
-  v.entrada = janelaAberta ? null : { temporada: v.temporada, antesDoMeio: rodadaLiga < 16 }; // antes do meio, a entrada vale até a janela do meio abrir
+  const retorno = save.historicoClubes?.[clube];
+  if (retorno) {
+    // Voltar ao mesmo clube não reinicia a cota de compras nem paga o aporte uma segunda vez.
+    v.comprasJanela = retorno.comprasJanela;
+    v.janelasAnteriores = retorno.janelasAnteriores;
+    v.entrada = retorno.entrada;
+  } else v.entrada = janelaAberta ? null : { temporada: v.temporada, antesDoMeio: rodadaLiga < 16 }; // antes do meio, a entrada vale até a janela do meio abrir
   const boasVindas = v.caixaEntrada.find((e) => e.id === "boas-vindas");
-  if (boasVindas) boasVindas.texto = `A diretoria apresentou ${nome} como novo técnico, com a carreira já rolando (temporada ${v.temporada} de ${v.temporadasMax}, ${v.jogosJogados.length} jogo${v.jogosJogados.length === 1 ? "" : "s"} do clube já feito${v.jogosJogados.length === 1 ? "" : "s"}). Caixa: ${dinheiro(v.caixa)}. ${janelaAberta ? "A janela de transferências está aberta." : "A janela está fechada, mas você tem uma janela de entrada."} ${quadroDaRegra(v, janelaDeCompras(v)?.tipo || "entrada")}`;
-  if (aporte > 0) {
+  if (boasVindas) boasVindas.texto = `A diretoria apresentou ${nome} como novo técnico, com a carreira já rolando (temporada ${v.temporada} de ${v.temporadasMax}, ${v.jogosJogados.length} jogo${v.jogosJogados.length === 1 ? "" : "s"} do clube já feito${v.jogosJogados.length === 1 ? "" : "s"}). Caixa: ${dinheiro(v.caixa)}. ${janelaAberta ? "A janela de transferências está aberta." : janelaDeCompras(v) ? "A janela está fechada, mas você tem uma janela de entrada." : "A janela de transferências está fechada."} ${janelaDeCompras(v) ? quadroDaRegra(v, janelaDeCompras(v).tipo) : ""}`;
+  if (aporte > 0 && !retorno) {
     movimentar(v, "Aporte do investidor", aporte);
     avisar(v, { tipo: "aporte", icone: "maleta", titulo: "Aporte do investidor", texto: `O investidor da galera pôs ${dinheiro(aporte)} no caixa. Caixa agora: ${dinheiro(v.caixa)}.` });
   }
