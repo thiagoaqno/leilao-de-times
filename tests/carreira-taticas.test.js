@@ -171,7 +171,7 @@ test("um jogo no banco recupera 80 pontos e zera a sequência", () => {
   assert.strictEqual(save.sequencia[pid], 1);
 });
 
-test("o titular perde 0,25 de over por jogo até os 29 anos e 0,40 a partir dos 30", () => {
+test("o titular perde energia por jogo, mais depois dos 30 anos", () => {
   const { aplicarFadiga, timeDe } = require("../carreira.js").paraTestes;
   const Evolucao = require("../public/carreira/evolucao.js");
   const save = novaCarreira("Desgaste", "saopaulo", "x");
@@ -180,8 +180,13 @@ test("o titular perde 0,25 de over por jogo até os 29 anos e 0,40 a partir dos 
   assert.ok(novo && velho, "o elenco tem jovem e veterano");
   const gasto = 16; // o desgaste típico de um jogo inteiro
   aplicarFadiga(save, { jogaram: { [save.clube]: [novo.id, velho.id] }, energia: { [novo.id]: 100 - gasto, [velho.id]: 100 - gasto } });
-  assert.ok(Math.abs((100 - save.energia[novo.id]) / 10 - 0.25) < 0.03, `jovem perde ~0,25 (${(100 - save.energia[novo.id]) / 10})`);
-  assert.ok(Math.abs((100 - save.energia[velho.id]) / 10 - 0.4) < 0.03, `veterano perde ~0,40 (${(100 - save.energia[velho.id]) / 10})`);
+  assert.ok(Math.abs((100 - save.energia[novo.id]) / 10 - 0.35) < 0.03, `jovem perde ~0,35 (${(100 - save.energia[novo.id]) / 10})`);
+  assert.ok(Math.abs((100 - save.energia[velho.id]) / 10 - 0.5) < 0.03, `veterano perde ~0,50 (${(100 - save.energia[velho.id]) / 10})`);
+  save.gestao.infra.medico = 3;
+  save.gestao.habilidades.preparador = 3;
+  for (let i = 0; i < 10; i++) aplicarFadiga(save, { jogaram: { [save.clube]: [novo.id, velho.id] }, energia: { [novo.id]: save.energia[novo.id] - gasto, [velho.id]: save.energia[velho.id] - gasto } });
+  assert.ok(save.energia[novo.id] < 80, `com todas as melhorias, o jovem também cansa (${save.energia[novo.id]}%)`);
+  assert.ok(save.energia[velho.id] < save.energia[novo.id], "o veterano cansa mais");
 });
 
 test("o campinho desenha a variação: volante recuado, meia avançado, falso 9 atrás e alas na linha", () => {
