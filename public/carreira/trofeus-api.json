@@ -1,0 +1,72 @@
+{
+  "brasileirao-2026": {
+    "liga": 4351,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/02ftjh1684945323.png",
+    "pagina": "https://www.thesportsdb.com/league/4351"
+  },
+  "inglaterra-2026": {
+    "liga": 4328,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/9a6kw51689108793.png",
+    "pagina": "https://www.thesportsdb.com/league/4328"
+  },
+  "espanha-2026": {
+    "liga": 4335,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/vc2z6q1684416521.png",
+    "pagina": "https://www.thesportsdb.com/league/4335"
+  },
+  "italia-2026": {
+    "liga": 4332,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/83l94y1684416466.png",
+    "pagina": "https://www.thesportsdb.com/league/4332"
+  },
+  "alemanha-2026": {
+    "liga": 4331,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/0o56hs1684416407.png",
+    "pagina": "https://www.thesportsdb.com/league/4331"
+  },
+  "franca-2026": {
+    "liga": 4334,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/ygfgeq1684416349.png",
+    "pagina": "https://www.thesportsdb.com/league/4334"
+  },
+  "champions": {
+    "liga": 4480,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/31y13d1747884950.png",
+    "pagina": "https://www.thesportsdb.com/league/4480"
+  },
+  "libertadores": {
+    "liga": 4501,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/oev42h1696615691.png",
+    "pagina": "https://www.thesportsdb.com/league/4501"
+  },
+  "sulamericana": {
+    "liga": 4724,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/rt0th41696615897.png",
+    "pagina": "https://www.thesportsdb.com/league/4724"
+  },
+  "supermundial": {
+    "liga": 4503,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/j4j1kb1750014290.png",
+    "pagina": "https://www.thesportsdb.com/league/4503"
+  },
+  "copadomundo": {
+    "liga": 4429,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/mmyv4f1724782185.png",
+    "pagina": "https://www.thesportsdb.com/league/4429"
+  },
+  "serieb-2026": {
+    "liga": 4404,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/s6a14o1778446984.png",
+    "pagina": "https://www.thesportsdb.com/league/4404"
+  },
+  "copadobrasil": {
+    "liga": 4725,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/jv27c41776553182.png",
+    "pagina": "https://www.thesportsdb.com/league/4725"
+  },
+  "mundial": {
+    "liga": 5696,
+    "url": "https://r2.thesportsdb.com/images/media/league/trophy/9h941q1782271287.png",
+    "pagina": "https://www.thesportsdb.com/league/5696"
+  }
+}
