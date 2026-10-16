@@ -1225,10 +1225,10 @@ function prazosDaCopa(save) {
 }
 // Quem descansa uma partida recupera 80 pontos de energia e zera a sequência. Jogar várias vezes seguidas
 // só afeta o over pelo desgaste gradual de energia, sem penalidade fixa no terceiro jogo. As férias zeram ambos.
-// Quem joga como titular leva para o jogo seguinte só um pedaço do desgaste: 0,25 de over por jogo até os 29 anos e
-// 0,40 de 30 em diante (10 pontos de energia = 1 de over). O desgaste do jogo em si (ritmo e pressão da tática)
-// ainda pesa um pouco: ele varia de 0,7 a 1,4 vez esse valor, e o departamento médico abate.
-const PERDA_JOVEM = 2.5, PERDA_VETERANO = 4, IDADE_VETERANO = 30, GASTO_TIPICO = 16;
+// Quem joga leva para o jogo seguinte parte do desgaste: 3,5 pontos de energia até os 29 anos e 5 a partir dos 30
+// num jogo típico (10 pontos de energia = 1 de over). A estrutura física reduz no máximo 40% dessa perda:
+// mesmo com todas as melhorias, repetir os titulares precisa acabar afetando o rendimento.
+const PERDA_JOVEM = 3.5, PERDA_VETERANO = 5, IDADE_VETERANO = 30, GASTO_TIPICO = 16;
 function aplicarFadiga(save, r) {
   const e = save.energia || (save.energia = {});
   const sequencia = save.sequencia || (save.sequencia = {});
@@ -1237,7 +1237,8 @@ function aplicarFadiga(save, r) {
     if (jogaram.has(j.id)) {
       const antes = e[j.id] ?? 100, gasto = Math.max(0, antes - (r.energia?.[j.id] ?? antes));
       const base = Evolucao.idadeNa(j, save.temporada) >= IDADE_VETERANO ? PERDA_VETERANO : PERDA_JOVEM;
-      e[j.id] = clamp(antes - Math.max(0, base * clamp(gasto / GASTO_TIPICO, 0.7, 1.4) - Clube.bonusRecupera(save)), 20, 100);
+      const perda = base * clamp(gasto / GASTO_TIPICO, 0.7, 1.4);
+      e[j.id] = clamp(antes - (perda - Math.min(Clube.bonusRecupera(save), perda * 0.4)), 20, 100);
       sequencia[j.id] = (sequencia[j.id] || 0) + 1;
     } else {
       e[j.id] = clamp((e[j.id] ?? 100) + 80 + Clube.bonusRecupera(save), 20, 100);
