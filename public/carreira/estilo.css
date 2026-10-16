@@ -1235,8 +1235,7 @@ html:has(body.deslizando),body.deslizando{overflow-x:clip}
 .taca-ic .ic{width:26px;height:26px}
 .taca-est small{font:600 9px/1.2 var(--mono);color:var(--t2);white-space:nowrap;letter-spacing:.02em}
 .taca-est i{position:absolute;top:-4px;right:0;font:700 9.5px/1 var(--mono);font-style:normal;padding:2px 4px;border-radius:99px;background:var(--cor);color:#111}
-.ranking-tecnicos li{grid-template-columns:auto auto 1fr auto auto auto}
-.ranking-tecnicos .prateleira{min-height:40px}
+.ranking-tecnicos li{grid-template-columns:auto auto 1fr auto auto}
 .est-ultimas{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px}
 .est-ultimas li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r3);background:var(--s2)}
 .est-ultimas span{display:flex;flex-direction:column;min-width:0}.est-ultimas small{color:var(--t3);font-size:11px}
@@ -1245,5 +1244,39 @@ html:has(body.deslizando),body.deslizando{overflow-x:clip}
 .estante-inicio .est-linha{grid-template-columns:auto auto 1fr auto}
 @media (max-width:640px){
   .est-linha{grid-template-columns:auto auto 1fr auto}.est-linha .prateleira{grid-column:1/-1;order:5}
-  .ranking-tecnicos li{grid-template-columns:auto auto 1fr auto auto}.ranking-tecnicos .prateleira{grid-column:1/-1;order:5}
+  .ranking-tecnicos li{grid-template-columns:auto auto 1fr auto auto}
 }
+
+/* A vitrine apresenta as conquistas de qualquer clube da carreira, inclusive os da IA. */
+.estante-clubes{overflow:hidden}
+.estante-cabecalho{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.estante-cabecalho h3{margin:2px 0 5px;font-size:22px}
+.estante-cabecalho p{margin:0}
+.estante-kicker,.estante-vitrine-topo small{font:700 10px var(--mono);letter-spacing:.14em;color:var(--ouro2)}
+.estante-contador{border:1px solid var(--b2);border-radius:99px;padding:7px 12px;color:var(--ouro2);font:700 12px var(--mono)}
+.estante-layout{display:grid;grid-template-columns:minmax(190px,245px) minmax(0,1fr);gap:16px}
+.estante-seletor{display:flex;flex-direction:column;min-width:0;gap:8px}
+.estante-seletor label{font-size:12px;font-weight:700;color:var(--t2)}
+.estante-seletor input{width:100%;min-width:0;padding:10px 12px;border-radius:var(--r3);border:1px solid var(--b2);background:var(--s2);color:var(--t1);font:inherit}
+.estante-lista{display:flex;flex-direction:column;gap:4px;max-height:310px;overflow:auto;padding:2px}
+.estante-clube{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid transparent;border-radius:var(--r3);padding:7px;background:transparent;color:var(--t1);font:inherit;cursor:pointer}
+.estante-clube:hover,.estante-clube.ativo{background:var(--s2);border-color:var(--b2)}
+.estante-clube.ativo{outline:1px solid var(--ouro2)}
+.estante-clube span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.estante-clube b{font:700 11px var(--mono);color:var(--ouro2)}
+.estante-todos{align-self:flex-start;font-size:12px}
+.estante-vitrine{--fundo-taca:#202734;min-width:0;border:1px solid color-mix(in srgb,var(--ouro2) 42%,var(--b2));border-radius:var(--r2);background:linear-gradient(145deg,#202734,#10151e 72%);box-shadow:inset 0 0 45px #e5bd3420,0 12px 28px #0003;color:#f6f0df}
+.estante-vitrine-topo{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #ffffff20}
+.estante-vitrine-topo>span:not(.escudo){flex:1;min-width:0}.estante-vitrine-topo h4{margin:3px 0 0;font-size:19px;color:#fff}
+.estante-vitrine-topo strong{text-align:right;font:800 22px var(--mono);color:#f4d478;white-space:nowrap}.estante-vitrine-topo strong small{display:block;color:#b8b4aa;font-size:10px;letter-spacing:0}
+.estante-prateleira{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));grid-auto-rows:140px;align-items:end;gap:0 10px;min-height:210px;padding:22px 18px 28px;position:relative;background-image:repeating-linear-gradient(to bottom,transparent 0 125px,#d2a25a 125px,#76502c 129px,#2c1b15 136px,transparent 136px 140px);background-origin:content-box;background-clip:content-box}
+.trofeu-est{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;text-align:center;gap:3px;position:relative;z-index:1}
+.trofeu-arte{position:relative;display:grid;place-items:center;width:76px;height:100px;color:var(--cor);filter:drop-shadow(0 4px 8px #0008)}
+.trofeu-silhueta{width:76px;height:88px;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--cor) 32%,transparent))}
+.trofeu-foto{position:absolute;inset:0;width:76px;height:100px;object-fit:contain;filter:drop-shadow(0 4px 8px #0009)}
+.trofeu-est>b{font-size:11px;line-height:1.2;max-width:100%;overflow-wrap:anywhere;color:#f8eccb}.trofeu-est>small{font:10px var(--mono);color:#c0b9a9}
+.trofeu-qtd{position:absolute;top:1px;right:-4px;padding:4px 5px;border-radius:99px;background:#f5d478;color:#211a10;font:800 10px var(--mono)}
+.estante-vazia{grid-column:1/-1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;color:#b8b4aa;font-size:13px}
+.estante-vazia .ic{width:48px;height:48px;opacity:.24}
+.estante-fonte{margin:0 18px 14px;color:#aaa99f;font-size:10px}.estante-fonte a{color:#f4d478}
+@media(max-width:640px){.estante-layout{grid-template-columns:1fr}.estante-lista{flex-direction:row;max-height:none;overflow:auto}.estante-clube{flex:0 0 auto;width:auto;max-width:175px}.estante-clube span{max-width:112px}.estante-prateleira{grid-template-columns:repeat(auto-fill,minmax(90px,1fr))}}

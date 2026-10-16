@@ -1,10 +1,11 @@
-# Ausência temporária na Carreira em grupo
+# Estante de troféus por clube na Carreira
 
-- O painel `/admin/carreira` agora permite **Pôr no automático** um técnico que deixou a aba aberta. O clube continua reservado para ele e o jogo resolve as decisões sem esperar sua resposta. O administrador pode usar **Devolver controle**, ou o próprio técnico pode apertar **Voltar a jogar** quando retornar.
-- Se o anfitrião for colocado no automático, o cargo passa a outro técnico ativo. A sala mostra quem está no automático mesmo que o celular continue conectado.
-- **Dispensar** continua disponível para quem saiu de vez. Se alguém assumir novamente o mesmo clube, as compras da janela anterior seguem contando e o aporte do investidor não é pago pela segunda vez. A correção vale nas próximas dispensas, inclusive em carreiras existentes.
+- A tela **Estante** agora mostra uma vitrine de cada clube, com busca, total de títulos e uma prateleira para as taças conquistadas. Inclui clubes controlados pelo computador e seleções da Copa, além do clube do técnico.
+- Títulos já concluídos na temporada atual aparecem sem esperar o arquivamento. Ao arquivar a temporada, cada título continua contado uma só vez; resultados futuros não aparecem.
+- As fotos das taças vêm do campo `strTrophy` da API da [TheSportsDB](https://www.thesportsdb.com/docs_artwork). O servidor consulta a liga correspondente e guarda o endereço em cache; se a imagem não existir ou falhar, a vitrine usa uma ilustração local. A fonte aparece na própria tela.
+- O ranking dos técnicos e as páginas de temporadas anteriores continuam abaixo da vitrine.
 
 ## Verificação
 
-- Teste com servidor e sockets reais: ativar o automático, concluir a rodada sem esperar o técnico, devolver o controle e passar o anfitrião.
-- Testes direcionados: retorno ao clube sem nova cota ou aporte; autenticação do painel e sintaxe da página administrativa.
+- Testes determinísticos de agregação por clube, títulos atuais, ausência de spoilers e não duplicação.
+- Testes do mapeamento das competições e validação dos endereços das imagens da API.
