@@ -1,3 +1,5 @@
+// Ferramenta antiga para atualizar os endereços de origem. Depois de usá-la, rode
+// tools/baixar-escudos-locais.js --refresh para salvar os PNGs no Git e validar o manifesto.
 // Baixa o endereço do escudo de cada clube da carreira na API TheSportsDB (chave gratuita de teste) e grava em
 // public/carreira/escudos-api.json e escudos-api.js ({ idDoClube: { url, nome } }; a página carrega o .js). Roda uma vez (node tools/baixar-escudos.js): a página usa o
 // arquivo, sem chamar a API a cada abertura, e cai no escudo desenhado (escudos.js) quando o clube não está no arquivo ou a imagem não carrega.

@@ -159,10 +159,14 @@ test("carreira: arrastar um jogador até outro troca os dois, e soltar no vazio 
   expect(erros).toEqual([]);
 });
 
-test("carreira: a arte das notícias usa o escudo da API, pelo nosso endereço", async ({ page, request }) => {
+test("carreira: a arte das notícias usa o PNG local, pelo nosso endereço", async ({ page, request }) => {
   const erros = vigiar(page);
   expect((await request.get("/api/escudo/clube-que-nao-existe")).status()).toBe(404);
-  // o escudo da TheSportsDB de mentira (um pixel vermelho), entregue com atraso: a arte sai com o desenhado e é refeita
+  const local = await request.get("/api/escudo/flamengo");
+  expect(local.status()).toBe(200);
+  expect(local.headers()["content-type"]).toContain("image/png");
+  expect((await local.body()).subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  // PNG local de mentira (um pixel vermelho), entregue com atraso: a arte sai com o desenhado e é refeita
   const vermelho = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
   const pedidos = [];
   await page.route("**/api/escudo/*", (r) => { pedidos.push(new URL(r.request().url()).pathname); setTimeout(() => r.fulfill({ body: vermelho, contentType: "image/png" }), 400); });
