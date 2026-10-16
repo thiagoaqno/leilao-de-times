@@ -1,5 +1,5 @@
-// IDs das competições da Carreira na TheSportsDB. A API devolve strTrophy,
-// a foto da taça (quando cadastrada), e o navegador usa o SVG local se faltar.
+// IDs das competições da Carreira na TheSportsDB. O downloader guarda strTrophy
+// no Git; a tela usa somente os PNGs locais e recorre ao SVG se faltar.
 const LIGAS = Object.freeze({
   'brasileirao-2026': 4351,
   'serieb-2026': 4404,
@@ -23,6 +23,8 @@ function urlDeTrofeu(valor) {
     const url = new URL(valor);
     if (url.protocol !== 'https:' || !/(^|\.)thesportsdb\.com$/i.test(url.hostname)) return null;
     if (!/^\/images\/media\/league\/trophy\//i.test(url.pathname)) return null;
+    // Algumas ligas ainda devolvem www, que não serve as imagens de forma estável.
+    url.hostname = 'r2.thesportsdb.com';
     return url.href;
   } catch { return null; }
 }
@@ -30,7 +32,7 @@ function urlDeTrofeu(valor) {
 async function buscarTrofeu(id, buscar = fetch) {
   const liga = LIGAS[id];
   if (!liga) return null;
-  const resposta = await buscar(`https://www.thesportsdb.com/api/v1/json/${process.env.THESPORTSDB_KEY || '123'}/lookupleague.php?id=${liga}`, { signal: AbortSignal.timeout(8000) });
+  const resposta = await buscar(`https://api.thesportsdb.com/api/v1/json/${process.env.THESPORTSDB_KEY || '123'}/lookupleague.php?id=${liga}`, { signal: AbortSignal.timeout(15000) });
   if (!resposta.ok) return null;
   const dados = await resposta.json();
   return urlDeTrofeu(dados.leagues?.[0]?.strTrophy);
