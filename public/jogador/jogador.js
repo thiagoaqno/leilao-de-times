@@ -29,7 +29,7 @@ function temaClube(id) {
   const tinta = contraste(acento, "#ffffff") >= contraste(acento, "#111111") ? "#ffffff" : "#111111";
   return `--acento:${acento};--acento2:${c.cores.find((x) => x !== base) || "#ffffff"};--acento-tinta:${tinta};--clube:${c.cores[0]};--clube2:${c.cores[1] || c.cores[0]}`;
 }
-const escudoDaApi = (id) => ((window.ESCUDOS_API && window.ESCUDOS_API[id]) || (window.ESCUDOS_BUSCA && Object.hasOwn(window.ESCUDOS_BUSCA, id)) ? `/api/escudo/${encodeURIComponent(id)}` : null);
+const escudoDaApi = (id) => (window.ESCUDOS_API && Object.hasOwn(window.ESCUDOS_API, id) ? `/api/escudo/${encodeURIComponent(id)}` : null);
 function escudo(id, escala = 2) {
   const c = CLUBES[id]; if (!c) return "";
   const api = escudoDaApi(id);

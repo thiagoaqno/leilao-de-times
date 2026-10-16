@@ -28,8 +28,8 @@ function letras(g, txt, x, y, c, esc = 1) {
   K.escreve(g, String(txt).toUpperCase().normalize("NFD").replace(/[^A-Z0-9]/g, ""), 0, 0, false); g.restore();
 }
 const larguraTexto = (txt, esc = 1) => String(txt).replace(/[^A-Za-z0-9]/g, "").length * 4 * esc - esc;
-// o escudo das notícias: o MESMO escudo do resto da carreira (a imagem da API TheSportsDB, ou Escudos.svg, desenhado à mão,
-// para os clubes que não estão nela). A imagem da API vem pelo nosso servidor (/api/escudo/<id>, server.js), do mesmo endereço
+// o escudo das notícias: o MESMO escudo do resto da carreira (PNG local salvo no Git, ou Escudos.svg, desenhado à mão,
+// para os clubes sem PNG). A imagem vem pelo nosso servidor (/api/escudo/<id>, server.js), do mesmo endereço
 // da página, para o canvas não ficar bloqueado. Enquanto ela não chega, a arte sai com o escudo desenhado e NÃO é guardada:
 // é refeita quando a imagem da API fica pronta (refazerArtes); se ela não abrir, fica o desenhado.
 const escudosArte = new Map(); // clube -> { img, api, esperando }

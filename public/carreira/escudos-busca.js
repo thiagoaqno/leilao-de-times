@@ -1,6 +1,5 @@
-// Os clubes que ainda não estão em escudos-api.js (a Série B): o nome com que cada um é procurado na TheSportsDB (um ou mais,
-// tentados em ordem). O servidor procura na primeira vez que alguém pede o escudo (GET /api/escudo/:id, server.js), só entre os
-// times do Brasil, e guarda na memória; a página, quando o clube está aqui, pede o escudo ao servidor como os outros.
+// Nomes alternativos dos clubes da Série B para atualizar os PNGs com tools/baixar-escudos-locais.js.
+// O jogo não carrega este arquivo nem consulta a TheSportsDB durante a partida.
 (function (root, fabrica) {
   const m = fabrica();
   if (typeof module === "object" && module.exports) module.exports = m; else root.ESCUDOS_BUSCA = m;
