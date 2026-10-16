@@ -1,11 +1,10 @@
-# Escudos da Carreira salvos no repositório
+# Ausência temporária na Carreira em grupo
 
-- Salva 158 escudos de clubes em `public/carreira/escudos-locais/` (cerca de 5 MB). A Carreira, o Rumo ao Estrelato e o Road to Champions carregam esses PNGs pelo nosso servidor, sem consultar a TheSportsDB durante o jogo.
-- Corrige seis endereços antigos que apontavam para equipes femininas ou de base. Para clubes sem imagem confiável (Botafogo-SP, Athletic-MG e Deportivo La Coruña), permanece o escudo SVG desenhado pelo jogo.
-- `GET /api/escudo/:id` agora entrega apenas um arquivo local previsto no catálogo. A imagem SVG continua visível enquanto o PNG carrega e se ele falhar.
-- `node tools/baixar-escudos-locais.js` permite buscar os escudos faltantes e baixar os arquivos ao preparar uma atualização. Use `--refresh` para baixar novamente os escudos existentes. A rede só é necessária nesse processo de manutenção.
+- O painel `/admin/carreira` agora permite **Pôr no automático** um técnico que deixou a aba aberta. O clube continua reservado para ele e o jogo resolve as decisões sem esperar sua resposta. O administrador pode usar **Devolver controle**, ou o próprio técnico pode apertar **Voltar a jogar** quando retornar.
+- Se o anfitrião for colocado no automático, o cargo passa a outro técnico ativo. A sala mostra quem está no automático mesmo que o celular continue conectado.
+- **Dispensar** continua disponível para quem saiu de vez. Se alguém assumir novamente o mesmo clube, as compras da janela anterior seguem contando e o aporte do investidor não é pago pela segunda vez. A correção vale nas próximas dispensas, inclusive em carreiras existentes.
 
 ## Verificação
 
-- `node --test tests/carreira-ajustes.test.js`: 6 testes passaram, incluindo presença e assinatura PNG de todos os 158 arquivos.
-- `npx playwright test tests/e2e/carreira.spec.js --grep "arte das notícias usa o PNG local"`: endpoint e arte das notícias passaram.
+- Teste com servidor e sockets reais: ativar o automático, concluir a rodada sem esperar o técnico, devolver o controle e passar o anfitrião.
+- Testes direcionados: retorno ao clube sem nova cota ou aporte; autenticação do painel e sintaxe da página administrativa.

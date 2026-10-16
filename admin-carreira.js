@@ -116,7 +116,7 @@ function attach(app, carreira, opcoes = {}) {
     res.status(!r ? 404 : r.erro ? 400 : 200).json(r && !r.erro ? { ...r, historico: historico(req.params.codigo) } : r || { erro: "Sala não encontrada." });
   });
   const corpoValido = (req) => req.is("application/json") && req.body && typeof req.body === "object" && !Array.isArray(req.body);
-  // os comandos do anfitrião (rodada, velocidade, temporada nova, passar o cargo, dispensar, leilão, troca)
+  // comandos da sala (inclusive pôr temporariamente um técnico no automático sem dispensá-lo)
   app.post(`${PREFIXO}/api/salas/:codigo/comando`, express.json({ limit: "4kb" }), exigir, alterar, (req, res) => {
     if (!corpoValido(req)) return res.status(400).json({ erro: "Comando inválido." });
     const r = carreira.comandar ? carreira.comandar(req.params.codigo, req.body, req.moderador.ator) : { erro: "Comandos indisponíveis." };
