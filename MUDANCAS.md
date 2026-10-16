@@ -1,11 +1,9 @@
-# Escudos da Carreira salvos no repositório
+# Cansaço acumulado na Carreira
 
-- Salva 158 escudos de clubes em `public/carreira/escudos-locais/` (cerca de 5 MB). A Carreira, o Rumo ao Estrelato e o Road to Champions carregam esses PNGs pelo nosso servidor, sem consultar a TheSportsDB durante o jogo.
-- Corrige seis endereços antigos que apontavam para equipes femininas ou de base. Para clubes sem imagem confiável (Botafogo-SP, Athletic-MG e Deportivo La Coruña), permanece o escudo SVG desenhado pelo jogo.
-- `GET /api/escudo/:id` agora entrega apenas um arquivo local previsto no catálogo. A imagem SVG continua visível enquanto o PNG carrega e se ele falhar.
-- `node tools/baixar-escudos-locais.js` permite buscar os escudos faltantes e baixar os arquivos ao preparar uma atualização. Use `--refresh` para baixar novamente os escudos existentes. A rede só é necessária nesse processo de manutenção.
+- Corrige o caso em que departamento médico e preparador físico podiam anular totalmente a perda de energia de quem jogava. A recuperação desses recursos agora abate no máximo 40% do desgaste da partida.
+- Ajusta o desgaste de um jogo típico para cerca de 3,5 pontos de energia até os 29 anos e 5 pontos a partir dos 30. O rendimento em campo cai conforme a energia, limitado a 3 pontos de overall temporário; a nota permanente do atleta não muda.
+- Um jogador que descansa uma partida continua recuperando 80 pontos de energia. A regra vale para a Carreira solo e em grupo, inclusive carreiras já existentes na próxima partida.
 
 ## Verificação
 
-- `node --test tests/carreira-ajustes.test.js`: 6 testes passaram, incluindo presença e assinatura PNG de todos os 158 arquivos.
-- `npx playwright test tests/e2e/carreira.spec.js --grep "arte das notícias usa o PNG local"`: endpoint e arte das notícias passaram.
+- Quatro testes direcionados de energia e cansaço passaram, incluindo titulares repetidos, descanso do banco e clube com médico e preparador no máximo.
