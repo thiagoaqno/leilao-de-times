@@ -52,12 +52,12 @@ function setSala(r){
 try{rascunho.nome=localStorage.getItem("galera:name")||"";rascunho.codigo=localStorage.getItem(storage.code)||"";}catch{}
 
 // ---------- desenhos que se repetem ----------
-// o escudo da Carreira (escudos.js) e, por cima, a imagem da API quando ela existe e carrega
+// O escudo da Carreira (escudos.js) e, por cima, o PNG salvo no repositório.
 function escudo(id,t=34){
   const c=clubes.get(id);
   if(!c)return '<span class="rtc-escudo" style="--t:'+t+'px"></span>';
   const svg=window.Escudos?Escudos.svg(c):'<svg viewBox="0 0 80 90"><path d="M4 4h72v44c0 22-18 34-36 38C22 82 4 70 4 48z" fill="'+safe(c.cores?.[0]||"#345")+'"/></svg>';
-  const api=(window.ESCUDOS_API&&window.ESCUDOS_API[id])||(window.ESCUDOS_BUSCA&&Object.hasOwn(window.ESCUDOS_BUSCA,id))?"/api/escudo/"+encodeURIComponent(id):"";
+  const api=window.ESCUDOS_API&&Object.hasOwn(window.ESCUDOS_API,id)?"/api/escudo/"+encodeURIComponent(id):"";
   const img=api?'<img src="'+safe(api)+'" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add(\'img-ok\')" onerror="this.remove()">':"";
   return '<span class="rtc-escudo" style="--t:'+t+'px" title="'+safe(c.nome)+'">'+svg+img+'</span>';
 }

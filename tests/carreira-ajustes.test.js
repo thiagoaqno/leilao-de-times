@@ -83,7 +83,7 @@ test("o pós-jogo diz de que jogo é (a competição e a rodada ou a fase) e é 
   assert.ok(vistos.every((x) => x.includes(" · ")));
 });
 
-test("os escudos da API: o arquivo existe, cada clube tem um endereço da TheSportsDB e a página carrega o arquivo", () => {
+test("os escudos oficiais ficam no Git e cada entrada carrega um PNG local válido", () => {
   const raiz = path.join(__dirname, "..", "public", "carreira");
   const js = fs.readFileSync(path.join(raiz, "escudos-api.js"), "utf8");
   const api = JSON.parse(js.slice(js.indexOf("{"), js.lastIndexOf("}") + 1));
@@ -91,15 +91,22 @@ test("os escudos da API: o arquivo existe, cada clube tem um endereço da TheSpo
   assert.ok(ids.length >= 120, `a maioria dos clubes tem escudo da API (${ids.length})`);
   assert.ok(ids.every((id) => /^https:\/\/(r2\.)?thesportsdb\.com\/images\/media\/team\/badge\//.test(api[id].url)), "só endereços de escudo da TheSportsDB");
   for (const id of ["flamengo", "palmeiras", "real-madrid", "manchester-city"]) assert.ok(api[id], id);
+  const pasta = path.join(raiz, "escudos-locais");
+  assert.deepEqual(fs.readdirSync(pasta).sort(), ids.map((id) => `${id}.png`).sort());
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  for (const id of ids) assert.ok(fs.readFileSync(path.join(pasta, `${id}.png`)).subarray(0, 8).equals(png), id);
+  assert.ok(!ids.includes("deportivo-la-coruna"), "não usar o escudo de uma equipe de base no time principal");
   assert.ok(fs.readFileSync(path.join(raiz, "index.html"), "utf8").includes('src="escudos-api.js"'));
   assert.ok(fs.readFileSync(path.join(raiz, "inicio.js"), "utf8").includes("ESCUDOS_API"));
 });
 
-test("os escudos da Série B: cada clube da Série B é procurado na API e a página carrega a lista", () => {
+test("a Série B usa PNG local quando disponível e SVG nos demais clubes", () => {
   const raiz = path.join(__dirname, "..", "public", "carreira");
   const busca = require(path.join(raiz, "escudos-busca.js")), serieB = require(path.join(raiz, "base", "serieb-2026.js"));
   const clubes = (serieB.clubes || Object.values(serieB)[0].clubes).map((c) => c.id);
   assert.deepEqual(Object.keys(busca).sort(), [...clubes].sort());
   assert.ok(Object.values(busca).every((nomes) => Array.isArray(nomes) && nomes.length && nomes.every((n) => typeof n === "string" && n)));
-  assert.ok(fs.readFileSync(path.join(raiz, "index.html"), "utf8").includes('src="escudos-busca.js"'));
+  const api = require(path.join(raiz, "escudos-api.json"));
+  assert.ok(clubes.filter((id) => api[id]).length >= 18);
+  assert.ok(!fs.readFileSync(path.join(raiz, "index.html"), "utf8").includes('src="escudos-busca.js"'));
 });
