@@ -3,7 +3,7 @@
 ## O que muda
 
 - O prédio Tênis de Mesa da Vila abre o Table Tennis Pro original dentro de uma página da Vila, usando o jogo hospedado pela GameDistribution.
-- A página oferece tela cheia, retorno à Vila e abertura direta em outra aba caso o jogo externo não carregue no iframe.
+- A página oferece tela cheia, retorno à Vila e abertura direta em outra aba caso o jogo externo não carregue no iframe. Ela avisa que o provedor pode exibir anúncios.
 - O placar da Noite da Galera não recebe resultados do jogo externo. O modo anterior da Galera continua disponível em `/pingpong/` para as salas antigas.
 
 ## Verificação
