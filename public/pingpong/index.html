@@ -158,7 +158,7 @@ input{background:#081d3b;border-color:#71a8d9}
       <div>
         <div class="game-logo">ARCADE · CAMPEONATO · 1 X 1</div>
         <h2>Tênis<br>de <em>mesa</em></h2>
-        <p class="lead">Arraste a raquete com o mouse ou o dedo e passe por cima da bola para bater. Arraste rápido para a frente para um golpe forte, para o lado para mirar. Escolha seu país e dispute o topo do mundo.</p>
+        <p class="lead">A raquete vai para onde está o mouse (ou o dedo), sem clicar. Fique no caminho da bola e mexa a raquete para a frente na hora para bater forte, para o lado para mirar e dar efeito. Escolha seu país e dispute o topo do mundo.</p>
         <div class="menu-grid">
           <button class="mode-card" data-mode="amistoso"><span class="ico">🏓</span><span>Amistoso<small>Uma partida rápida contra o computador</small></span></button>
           <button class="mode-card" data-mode="torneio"><span class="ico">🏆</span><span>Torneio<small>Quatro partidas até a taça</small></span></button>
@@ -185,7 +185,7 @@ input{background:#081d3b;border-color:#71a8d9}
           <div class="or">ou</div><button id="btnCreate" style="width:100%">Abrir sala nova</button>
           <div class="err" id="hErr"></div>
         </div></div>
-        <div class="panel setup" id="homeHelp"><div class="lines"></div><div class="in"><h2 style="font-size:28px">Como jogar</h2><p class="lead" style="font-size:14px;margin-bottom:0">Segure e arraste a raquete (mouse ou dedo). Para sacar, arraste a raquete para a frente passando pela bola. Na troca de bola, a raquete bate sozinha quando a bola chega: arraste para a frente na hora para bater forte, para o lado para mirar. Soltou o mouse, a raquete vai atrás da bola sozinha. Forte demais, a bola sai.</p></div></div>
+        <div class="panel setup" id="homeHelp"><div class="lines"></div><div class="in"><h2 style="font-size:28px">Como jogar</h2><p class="lead" style="font-size:14px;margin-bottom:0">A raquete vai para onde está o mouse (ou o dedo), sem precisar clicar, e a altura vai sozinha. Para sacar, passe a raquete pela bola para a frente (ou clique). Na troca de bola, fique no caminho dela: parada, a raquete devolve alto e devagar; mexendo para a frente na hora, bate forte; para o lado, mira e faz a curva. Forte demais ou de lado demais, a bola sai.</p></div></div>
       </div>
     </div>
   </section>
@@ -208,10 +208,10 @@ input{background:#081d3b;border-color:#71a8d9}
         <button id="btnPractice2" style="width:100%;margin-top:10px">🤖 Treinar enquanto espera</button>
         <label style="margin-top:18px">Como jogar</label>
         <ul class="keys">
-          <li>Segure o botão do mouse (ou o dedo) e arraste: a raquete vai junto.</li>
-          <li>Saque: arraste a raquete para a frente passando pela bola (ou dê um toque).</li>
-          <li>A raquete bate sozinha quando a bola chega. Arraste rápido para a frente para bater forte; para o lado, para mirar.</li>
-          <li>Soltou, a raquete vai atrás da bola sozinha.</li>
+          <li>A raquete vai para onde está o mouse (no celular, o dedo), sem clicar. A altura vai sozinha.</li>
+          <li>Saque: passe a raquete pela bola, para a frente (ou clique).</li>
+          <li>A raquete só bate se estiver no caminho da bola. Parada, devolve alto e devagar.</li>
+          <li>Mexa para a frente na hora para bater forte; para o lado, para mirar e dar efeito (a bola faz a curva).</li>
           <li>Forte demais ou de lado demais, a bola sai. Esc pausa.</li>
         </ul>
       </div></div>
@@ -232,6 +232,7 @@ input{background:#081d3b;border-color:#71a8d9}
     <label style="margin-top:16px">Volume: <span id="volV"></span></label>
     <input type="range" id="vol" min="0" max="1" step="0.05">
     <div class="row" style="margin-top:14px;justify-content:space-between"><button class="ghost" id="btnLeave">Sair da mesa</button></div>
+    <p class="muted" style="font-size:12px;margin:12px 0 0">Raquete 3D: <a href="https://sketchfab.com/3d-models/ping-pong-paddle-339267841abb419fb6c649f36b5e6f31" target="_blank" rel="noopener" style="color:inherit">“Ping Pong Paddle”</a>, de ethan_garden (licença <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" style="color:inherit">CC BY 4.0</a>, texturas reduzidas).</p>
   </div></div>
   <div class="overlay hidden" id="over"><div class="box" id="overBox"></div></div>
 </section>
