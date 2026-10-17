@@ -1,25 +1,27 @@
 // Tênis de Mesa da Galera — o jogo no navegador: telas, a mesa em 3D (Three.js), as raquetes, o robô, os sons e a
 // rede. As regras (o voo da bola, o juiz, a raquetada, o placar e o robô) ficam em regras.js (window.PingPong), as
 // mesmas do servidor.
-// É o Table Tennis Pro: a câmera fica atrás da mesa, no alto, e vira um pouco atrás da minha raquete; as duas
-// raquetes flutuam (sem jogador). Segurando o mouse (ou o dedo), arrasto a raquete pelo meu lado da mesa; a altura vai
-// sozinha atrás da bola, e ela bate quando a bola (já quicada do meu lado) chega nela. O arrasto nessa hora decide o
-// golpe: para a frente é força, para o lado é mira. Soltou, a raquete vai atrás da bola sozinha. O saque: a bola fica
-// parada na frente da raquete e eu arrasto a raquete para a frente passando por ela (ou dou um toque).
+// É o Table Tennis Pro (o PaddleController de lá): a câmera fica atrás da mesa, no alto, e vira um pouco atrás da
+// minha raquete; as duas raquetes flutuam (sem jogador). A raquete vai para onde o mouse aponta (sem segurar nada; no
+// celular, o dedo), pelo meu lado da mesa, e a altura vai sozinha atrás da bola. Ela só bate se estiver no caminho da
+// bola (já quicada do meu lado): o movimento da raquete nessa hora decide o golpe (para a frente é força, para o lado
+// é mira e efeito; parada, devolve alto e devagar). O saque: a bola fica parada em cima da mesa, na frente da raquete,
+// e eu passo a raquete por ela para a frente (ou clico).
 // Online, quem bate manda a batida e quem recebe decide o ponto (ver pingpong.js). No treino, tudo roda aqui.
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { canvasTex, M } from "/pelada/tex.js";
 
 const P = window.PingPong, { MESA } = P, { $, h, store } = Comum;
 const toast = Comum.criarToast(3000), socket = io("/pingpong"), relogio = Comum.relogio(), act = Comum.criarAct(socket, toast);
 const DIFS = [["facil", "😌 Fácil"], ["medio", "🙂 Médio"], ["dificil", "😤 Difícil"]];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + (b - a) * k;
-// a raquete alcança a bola até ALCANCE para o lado e ALTURA para cima ou para baixo; o ponteiro anda num plano a
-// PLANO_Y; solta, a raquete vai atrás da bola a AUTO m/s
-const ALCANCE = 0.26, ALTURA = 0.34, PLANO_Y = MESA.H + 0.15, REPOUSO_Y = MESA.H + 0.2, AUTO = 3.2;
+// a raquete pega a bola até ALCANCE para o lado (meia lâmina mais a bola) e ALTURA para cima ou para baixo; o
+// ponteiro anda num plano a PLANO_Y
+const ALCANCE = 0.15, ALTURA = 0.2, PLANO_Y = MESA.H + 0.15, REPOUSO_Y = MESA.H + 0.2;
 let S = null, ME = null, urlCode = new URLSearchParams(location.search).get("sala");
 // G: a partida que está na tela. est: placar/fase (no online é o do servidor; no treino, montado aqui)
-const G = { active: false, offline: false, pausa: false, lado: 0, eu: -1, est: null, bola: null, rally: null, julgou: false, raq: [null, null], hist: [], tj: 0, batidas: 0, ultMsg: 0, ultEnvio: 0, bot: null, dif: "medio", arrasta: false };
+const G = { active: false, offline: false, pausa: false, lado: 0, eu: -1, est: null, bola: null, rally: null, julgou: false, raq: [null, null], hist: [], tj: 0, batidas: 0, ultMsg: 0, ultEnvio: 0, bot: null, dif: "medio" };
 const agora = () => (G.offline ? Date.now() + (G.adiant || 0) : relogio.agora()); // no treino, o relógio é o daqui (os testes adiantam)
 
 // ======================================================================
@@ -93,18 +95,33 @@ const bola = new THREE.Mesh(new THREE.SphereGeometry(0.034, 20, 14), new THREE.M
 scene.add(bola);
 const sombra = new THREE.Mesh(new THREE.CircleGeometry(0.03, 16), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.35, depthWrite: false }));
 sombra.rotation.x = -Math.PI / 2; scene.add(sombra);
+// o rastro atrás da bola (o TrailRenderer de lá)
+const RASTRO = 10, rastroGeo = new THREE.BufferGeometry(); rastroGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(RASTRO * 3), 3));
+const rastro = new THREE.Line(rastroGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false })); rastro.frustumCulled = false; scene.add(rastro);
+const pontosRastro = [];
 
-// ---------- a raquete flutuando: borracha vermelha dos dois lados, borda escura e o cabo de madeira ----------
-// No grupo: o centro da lâmina na origem, o cabo para −y e a borracha virada para ±z.
+// ---------- a raquete flutuando ----------
+// O modelo é o "Ping Pong Paddle" de ethan_garden (Sketchfab, CC BY 4.0), em raquete.glb (texturas reduzidas). Até
+// ele chegar (ou se não abrir), fica a raquete desenhada aqui. No grupo: o centro da lâmina na origem, o cabo para −y
+// e a borracha virada para ±z.
 function raquete() {
-  const g = new THREE.Group();
-  const lam = (cor, z, r, alt) => { const d = new THREE.Mesh(new THREE.CylinderGeometry(r, r, alt, 32), M(cor, { roughness: 0.75 })); d.rotation.x = Math.PI / 2; d.position.z = z; d.scale.z = 1.07; d.castShadow = true; g.add(d); return d; };
+  const g = new THREE.Group(), desenho = new THREE.Group(); g.add(desenho);
+  const lam = (cor, z, r, alt) => { const d = new THREE.Mesh(new THREE.CylinderGeometry(r, r, alt, 32), M(cor, { roughness: 0.75 })); d.rotation.x = Math.PI / 2; d.position.z = z; d.scale.z = 1.07; d.castShadow = true; desenho.add(d); return d; };
   lam(0x3a2414, 0, 0.078, 0.008); lam(0xf01f1f, 0.0045, 0.076, 0.002); lam(0xf01f1f, -0.0045, 0.076, 0.002);
-  const cabo = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.016, 0.1, 10), M(0xc8924f, { roughness: 0.6 })); cabo.position.y = -0.125; cabo.castShadow = true; g.add(cabo);
-  const ponta = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.012, 10), M(0x444444)); ponta.position.y = -0.18; g.add(ponta);
-  g.scale.setScalar(1.25); scene.add(g); return g;
+  const cabo = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.016, 0.1, 10), M(0xc8924f, { roughness: 0.6 })); cabo.position.y = -0.125; cabo.castShadow = true; desenho.add(cabo);
+  const ponta = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.012, 10), M(0x444444)); ponta.position.y = -0.18; desenho.add(ponta);
+  g.userData.desenho = desenho; g.scale.setScalar(1.25); scene.add(g); return g;
 }
 const raqMesh = [raquete(), raquete()];
+// o modelo vem em unidades de 1/39 m, com a lâmina de 5,84 de largura e o meio dela em y = 2,11
+new GLTFLoader().load("/pingpong/raquete.glb", (gltf) => {
+  for (const m of raqMesh) {
+    const mod = gltf.scene.clone(true), k = 0.152 / 5.84;
+    mod.scale.setScalar(k); mod.position.y = -2.11 * k;
+    mod.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    m.remove(m.userData.desenho); m.add(mod);
+  }
+}, undefined, () => {});
 // o estado de cada raquete: onde está (x, z no chão do meu lado; y sozinha), a velocidade (o arrasto) e o golpe
 const novaRaq = (lado) => ({ x: 0, y: REPOUSO_Y, z: P.S(lado) * (MESA.L / 2 + 0.3), vx: 0, vz: 0, yAlvo: REPOUSO_Y, tc: -1, preverEm: 0, golpe: null, alvo: null });
 
@@ -259,12 +276,12 @@ function comecarOnline() {
   iniciar();
 }
 function iniciar() {
-  Object.assign(G, { active: true, pausa: false, bola: null, rally: null, julgou: false, hist: [], arrasta: false, sacadorVisto: null }); acumulado = 0;
+  Object.assign(G, { active: true, pausa: false, bola: null, rally: null, julgou: false, hist: [], sacadorVisto: null }); acumulado = 0;
   G.raq = [novaRaq(0), novaRaq(1)];
   show("game"); resize(); $("over").classList.add("hidden"); $("pause").classList.add("hidden");
   camAlvo(1); Som.unlock(); last = performance.now();
 }
-function pararJogo() { G.active = false; G.arrasta = false; $("game").classList.remove("arrastando"); }
+function pararJogo() { G.active = false; }
 function sair() {
   pararJogo();
   if (G.offline || !S) { show("home"); telaInicial(); return; }
@@ -337,30 +354,20 @@ function mostrarFim() {
 }
 
 // ======================================================================
-// Controles: segurar e arrastar leva a raquete; o toque saca
+// Controles: a raquete vai para onde o mouse (ou o dedo) aponta; o clique também saca
 // ======================================================================
 const ray = new THREE.Raycaster(), plano = new THREE.Plane(new THREE.Vector3(0, 1, 0), -PLANO_Y), ponto = new THREE.Vector3(), ndc = new THREE.Vector2(0, -0.6);
-let toqueIni = null; // onde e quando o dedo (ou o botão) desceu: um toque rápido, sem arrastar, saca
 const lerPonteiro = (e) => ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
 const jogo = $("game");
+jogo.addEventListener("pointermove", lerPonteiro);
 jogo.addEventListener("pointerdown", (e) => {
   if (e.target.closest("button, .overlay")) return;
-  lerPonteiro(e); G.arrasta = true; G.hist = []; jogo.classList.add("arrastando");
-  toqueIni = { x: e.clientX, y: e.clientY, t: performance.now() };
-  try { jogo.setPointerCapture(e.pointerId); } catch {}
+  lerPonteiro(e);
+  if (e.pointerType === "mouse" && G.active && !G.pausa && G.eu >= 0 && podeSacar(G.eu)) sacar({ frente: 1.5, lat: 0 });
 });
-jogo.addEventListener("pointermove", (e) => { if (G.arrasta) lerPonteiro(e); });
-function soltar(e) {
-  if (!G.arrasta) return;
-  G.arrasta = false; jogo.classList.remove("arrastando");
-  const t = toqueIni; toqueIni = null;
-  if (t && e && performance.now() - t.t < 300 && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 12 && G.active && !G.pausa && G.eu >= 0 && podeSacar(G.eu)) sacar({ frente: 2.5, lat: 0 });
-}
-jogo.addEventListener("pointerup", soltar);
-jogo.addEventListener("pointercancel", soltar);
 addEventListener("keydown", (e) => {
   if (e.key === "Escape" && G.active) pausar(!G.pausa);
-  if ((e.key === " " || e.key === "Enter") && G.active && !G.pausa && G.eu >= 0 && podeSacar(G.eu)) { e.preventDefault(); sacar({ frente: 2.5, lat: 0 }); }
+  if ((e.key === " " || e.key === "Enter") && G.active && !G.pausa && G.eu >= 0 && podeSacar(G.eu)) { e.preventDefault(); sacar({ frente: 1.5, lat: 0 }); }
 });
 $("hSair").onclick = () => pausar(true);
 $("btnResume").onclick = () => pausar(false);
@@ -369,36 +376,26 @@ $("vol").value = Som.vol; $("volV").textContent = Math.round(Som.vol * 100) + "%
 $("vol").oninput = (e) => { Som.setVol(+e.target.value); $("volV").textContent = Math.round(Som.vol * 100) + "%"; };
 function pausar(on) { G.pausa = on && G.offline; $("pause").classList.toggle("hidden", !on); } // online o jogo não para: só abre o menu
 
-// o saque: a bola parada na frente da raquete de quem saca sai com o arrasto do momento
-const bolaDoSaque = (r, lado) => [clamp(r.x, -0.6, 0.6) * 0.8, MESA.H + 0.2, P.S(lado) * P.SAQUE_Z];
+// o saque: a bola parada em cima da mesa, na frente da raquete de quem saca, sai com o movimento do momento
+const bolaDoSaque = (r, lado) => [clamp(r.x, -0.6, 0.6) * 0.8, MESA.H + P.SAQUE_Y, P.S(lado) * P.SAQUE_Z];
 function sacar(golpe) { const r = G.raq[G.eu]; euBato(P.sacar(G.eu, r.x, golpe, P.SAQUE_Z), true); }
 
-// a minha raquete: arrastando, vai para onde o ponteiro aponta, presa ao meu lado da mesa; solta, vai atrás da bola
-// sozinha. A altura vai sempre sozinha até onde a bola vai passar.
+// a minha raquete: onde o ponteiro aponta, presa ao meu lado da mesa; a altura vai sozinha até onde a bola vai passar
 function moverMinhaRaq(dt) {
-  const r = G.raq[G.eu], s = P.S(G.eu);
-  if (G.arrasta) {
-    ray.setFromCamera(ndc, camRef);
-    if (ray.ray.intersectPlane(plano, ponto)) { r.x = clamp(ponto.x, -1.4, 1.4); r.z = s * clamp(s * ponto.z, 0.25, MESA.L / 2 + 1.0); }
-  } else { // solta: vai até onde a bola vai estar boa para bater (a curta, em cima da mesa)
-    if ((G.autoEm = (G.autoEm || 0) - dt) <= 0) {
-      G.autoEm = 0.06;
-      const pv = G.bola && G.bola.viva && G.rally && G.rally.quem !== G.eu ? P.prever(G.bola, G.rally, G.eu) : null;
-      G.autoAlvo = pv ? { x: pv.x, z: pv.z + s * 0.05 } : { x: 0, z: s * (MESA.L / 2 + 0.3) };
-    }
-    const a = G.autoAlvo || { x: 0, z: r.z };
-    r.x += clamp(a.x - r.x, -AUTO * dt, AUTO * dt);
-    r.z = s * clamp(s * (r.z + clamp(a.z - r.z, -AUTO * dt, AUTO * dt)), 0.25, MESA.L / 2 + 1.0);
-  }
-  // o arrasto: a velocidade da raquete nos últimos ~90 ms (para a frente, pelo movimento na tela, que não satura perto
-  // da rede); solta, a raquete devolve macio
+  const r = G.raq[G.eu], s = P.S(G.eu), z0 = r.z;
+  ray.setFromCamera(ndc, camRef);
+  if (ray.ray.intersectPlane(plano, ponto)) { r.x = clamp(ponto.x, -1.4, 1.4); r.z = s * clamp(s * ponto.z, 0.25, MESA.L / 2 + 1.0); }
+  // o movimento: a velocidade da raquete nos últimos ~90 ms (para a frente, pelo movimento na tela, que não satura
+  // perto da rede)
   const t = G.tj * 1000; G.hist.push({ t, x: r.x, ny: ndc.y }); while (G.hist.length > 2 && t - G.hist[0].t > 90) G.hist.shift();
   const h0 = G.hist[0], d = Math.max(0.016, (t - h0.t) / 1000);
-  if (G.arrasta) { r.vx = clamp((r.x - h0.x) / d, -8, 8); r.vz = clamp(-s * (ndc.y - h0.ny) * 1.3 / d, -11, 11); }
-  else { r.vx = 0; r.vz = -s * 2; }
+  r.vx = clamp((r.x - h0.x) / d, -8, 8); r.vz = clamp(-s * (ndc.y - h0.ny) * 1.3 / d, -11, 11);
   alturaSozinha(r, G.eu, dt);
-  // o saque: arrastando a raquete para a frente com força
-  if (G.arrasta && podeSacar(G.eu) && -s * r.vz > 3) sacar({ frente: -s * r.vz, lat: r.vx });
+  // o saque: a raquete passa pela bola, de trás para a frente
+  if (podeSacar(G.eu)) {
+    const bs = bolaDoSaque(r, G.eu);
+    if (s * z0 >= s * bs[2] && s * r.z < s * bs[2] && -s * r.vz > 0.3) sacar({ frente: -s * r.vz, lat: r.vx });
+  }
 }
 // a altura da raquete (minha e do robô): de tempos em tempos prevê onde a bola cruza o plano dela e vai para lá
 function alturaSozinha(r, lado, dt) {
@@ -487,13 +484,18 @@ function posarRaquete(m, r, lado) {
   let frente = 0;
   if (g) { const k = (G.tj - g.t0) / 0.25; if (k >= 1) r.golpe = null; else frente = Math.sin(k * Math.PI) * (0.4 + 0.6 * g.forca); }
   m.position.set(r.x, r.y - frente * 0.02, r.z - s * frente * 0.12);
-  m.rotation.set(-s * (0.35 + frente * 0.5), lado ? Math.PI : 0, clamp(-(r.vx || 0) * 0.05, -0.5, 0.5) * s);
+  // nos lados, a raquete deita o cabo para o meio, como no original
+  m.rotation.set(-s * (0.35 + frente * 0.5), lado ? Math.PI : 0, clamp(r.x * 0.55 - (r.vx || 0) * 0.04, -0.7, 0.7) * s);
 }
 function desenhar(dt) {
   const est = estado(), b = G.bola;
   // a bola: voando, morta no chão, ou parada na frente da raquete de quem vai sacar
   if (b && (G.rally || agora() < (est.prontoEm || 0) - 300)) bola.position.set(b.p[0], b.p[1], b.p[2]);
   else if (est.phase === "jogo") { const l = sacador(), p = bolaDoSaque(G.raq[l], l); bola.position.set(p[0], p[1] + Math.sin(performance.now() / 260) * 0.015, p[2]); }
+  if (b && b.viva && G.rally) { pontosRastro.unshift(bola.position.clone()); if (pontosRastro.length > RASTRO) pontosRastro.pop(); } else pontosRastro.length = 0;
+  const pr = rastroGeo.attributes.position;
+  for (let i = 0; i < RASTRO; i++) { const q = pontosRastro[Math.min(i, pontosRastro.length - 1)] || bola.position; pr.setXYZ(i, q.x, q.y, q.z); }
+  pr.needsUpdate = true;
   const naMesa = Math.abs(bola.position.x) <= MESA.W / 2 && Math.abs(bola.position.z) <= MESA.L / 2 && bola.position.y > MESA.H;
   sombra.position.set(bola.position.x, naMesa ? MESA.H + 0.002 : 0.004, bola.position.z);
   const alt = Math.max(0, bola.position.y - (naMesa ? MESA.H : 0)); sombra.scale.setScalar(1 + alt * 1.2); sombra.material.opacity = 0.4 / (1 + alt * 2.5);
@@ -515,7 +517,7 @@ function desenhar(dt) {
     G.sacadorVisto = pl.sacador;
   }
   let dica = "";
-  if (est.phase === "jogo" && !G.rally && agora() >= (est.prontoEm || 0) && sacador() === G.eu) dica = "Arraste a raquete para a frente passando pela bola para sacar";
+  if (est.phase === "jogo" && !G.rally && agora() >= (est.prontoEm || 0) && sacador() === G.eu) dica = "Passe a raquete pela bola, para a frente, para sacar (ou clique)";
   if (dica !== G.dica) { G.dica = dica; $("hHint").innerHTML = dica; $("hHint").classList.toggle("hidden", !dica); }
   if (performance.now() > G.ultMsg) $("hMsg").innerHTML = "";
 }
