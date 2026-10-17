@@ -187,6 +187,19 @@ function silhuetaBranca(a, cv) {
   a.brancos.set(cv, b);
   return b;
 }
+// a silhueta pintada de uma cor: a reação de quem apanha na cor do golpe (encenacao.js)
+function silhuetaColorida(a, cv, cor) {
+  const porCor = a.tintas || (a.tintas = new Map());
+  let mapa = porCor.get(cor);
+  if (!mapa) porCor.set(cor, (mapa = new Map()));
+  let b = mapa.get(cv);
+  if (b) return b;
+  b = document.createElement("canvas"); b.width = cv.width; b.height = cv.height;
+  const c = b.getContext("2d", { willReadFrequently: true });
+  c.drawImage(cv, 0, 0); c.globalCompositeOperation = "source-atop"; c.fillStyle = cor; c.fillRect(0, 0, b.width, b.height);
+  mapa.set(cv, b);
+  return b;
+}
 function flutua(id, modo) {
   if (modo !== "pokemon") return FLUTUAM_GALERAMON.has(id);
   const m = PokeDex.MONS[id];
@@ -195,7 +208,7 @@ function flutua(id, modo) {
 const semente = (txt) => { let h = 7; for (const ch of String(txt)) h = (h * 31 + ch.charCodeAt(0)) % 9973; return h; };
 
 // ---------- partículas ----------
-const PARTICULAS = Array.from({ length: 260 }, () => ({ vida: 0 }));
+const PARTICULAS = Array.from({ length: 420 }, () => ({ vida: 0 }));
 function particula(x, y, o) {
   if (movimentoReduzido.matches) return;
   const p = PARTICULAS.find((q) => q.vida <= 0);
@@ -247,7 +260,20 @@ function direcaoDe(de, para) {
 function animarEvento(ev, agora) {
   if (ev.tipo === "golpe") visualDe(ev.id).golpe = { t: agora, classe: ev.classe, elemento: ev.elemento || dexAtual().MOVES[ev.golpe]?.t };
   else if (ev.tipo === "dano") visualDe(ev.em).dano = { t: agora, dir: direcaoDe(ev.de, ev.em), crit: ev.crit };
-  else if (ev.tipo === "esquiva") visualDe(ev.id).esquiva = agora;
+  else if (ev.tipo === "esquiva") { const v = visualDe(ev.id); v.esquiva = agora; v.rola = ev.dx < -0.1 ? -1 : ev.dx > 0.1 ? 1 : v.lado; }
+  else if (ev.tipo === "perfeita") { visualDe(ev.id).perfeita = agora; const e = N.snap?.entidades.find((p) => p.id === ev.id); if (e) espalhar(e.x, e.y, 14, ["#fff3a0", "#ffd84a", "#ffffff"], { vel: 2.4, sobe: 2, g: 1, vida: 0.6, tam: 0.1 }); }
+  else if (ev.tipo === "aparou") { visualDe(ev.id).aparou = agora; espalhar(ev.x, ev.y, 12, ["#ffffff", "#bfeaff", "#7fd4ff"], { vel: 3.2, sobe: 1.5, g: 4, vida: 0.35, tam: 0.08, z: 0.5 }); }
+  else if (ev.tipo === "guardaQuebrou") { visualDe(ev.id).quebrou = agora; const e = N.snap?.entidades.find((p) => p.id === ev.id); if (e) espalhar(e.x, e.y, 16, ["#bfeaff", "#7fd4ff", "#ffffff"], { vel: 3, sobe: 3, g: 9, vida: 0.6, tam: 0.12, z: 0.6 }); }
+  else if (ev.tipo === "combo") visualDe(ev.id).golpe = { t: agora, classe: "corpo", elemento: ev.elemento, combo: ev.n };
+  else if (ev.tipo === "tiro") visualDe(ev.id).golpe = { t: agora - 120, classe: "projetil", elemento: ev.elemento };
+  else if (ev.tipo === "batida") { const e = N.snap?.entidades.find((p) => p.id === ev.id); if (e) espalhar(e.x, e.y, 12, POEIRA, { vel: 2.4, sobe: 2.4, vida: 0.5, tam: 0.14, atrito: 2 }); visualDe(ev.id).batida = agora; }
+  else if (ev.tipo === "bote") { // o bote do golpe de perto: o corpo já vai inclinado e levanta poeira para trás
+    visualDe(ev.id).golpe = { t: agora, classe: "investida", elemento: ev.elemento };
+    const e = N.snap?.entidades.find((p) => p.id === ev.id);
+    if (e) espalhar(e.x - ev.dx * 0.3, e.y - ev.dy * 0.3, 8, POEIRA, { vel: 2, sobe: 1.2, vida: 0.4, tam: 0.12, atrito: 3 });
+  }
+  else if (ev.tipo === "lava") { const e = N.snap?.entidades.find((p) => p.id === ev.id); if (e) espalhar(e.x, e.y, 5, ["#ff7a2e", "#ffb04a", "#ffd84a"], { vel: 1.2, sobe: 2.4, vida: 0.45, tam: 0.08 }); }
+  else if (ev.tipo === "aterrissou") { espalhar(ev.x, ev.y, 18, POEIRA, { vel: 3.2, sobe: 1.8, vida: 0.55, tam: 0.15, atrito: 3, raio: 0.4 }); visualDe(ev.id).pouso = agora; }
   else if (ev.tipo === "troca") { const v = visualDe(ev.id); v.entrada = agora; v.desmaio = null; v.rastro.length = 0; }
   else if (ev.tipo === "desmaiou") visualDe(ev.id).desmaio = { t: agora, bicho: ev.bicho };
   else if (ev.tipo === "sumiu") {
@@ -317,6 +343,7 @@ function pintarQuadro(a, q, x, chao, o) {
   ctx.scale((o.lado || 1) * a.olha * (o.sx || 1) * k, (o.sy || 1) * k);
   ctx.imageSmoothingEnabled = k < 0.95; // reduzido demais, o pixel puro some; aí vale suavizar
   ctx.drawImage(o.branco ? silhuetaBranca(a, q.cv) : q.cv, -m.cx, -m.pe);
+  if (o.tinta && !o.branco) { ctx.globalAlpha *= o.tinta.alfa; ctx.drawImage(silhuetaColorida(a, q.cv, o.tinta.cor), -m.cx, -m.pe); }
   ctx.restore();
   ctx.imageSmoothingEnabled = false;
   return altura * (o.sy || 1);
@@ -333,8 +360,10 @@ function poseBicho(e, agora, modo) {
   const pose = { e, v, modo, visivel: false };
   if (!e.campo && !desm) { v.rastro.length = 0; return pose; }
   const id = e.forma || e.bicho, a = animacaoDe(id, modo);
-  const dt = v.ultimo == null ? 0 : clamp(agora - v.ultimo, 0, 100); v.ultimo = agora;
-  const o = e.oculto, andando = Math.hypot(e.vx || 0, e.vy || 0) > 0.1 && !e.dash && !o;
+  // no hit-stop (encenacao.js) o quadro do GIF não anda: o bicho congela um instante no acerto
+  const congelado = v.parado != null && agora < v.parado;
+  const dt = v.ultimo == null || congelado ? 0 : clamp(agora - v.ultimo, 0, 100); v.ultimo = agora;
+  const o = e.oculto, andando = Math.hypot(e.vx || 0, e.vy || 0) > 0.1 && !e.dash && !e.bote && !o;
   v.tempo += dt * (andando ? 1.7 : 1) * (o?.jeito === "voo" ? 2.5 : 1);
   const lado = e.mira.x < -0.05 ? -1 : e.mira.x > 0.05 ? 1 : v.lado;
   if (lado !== v.lado) { v.lado = lado; v.viradaEm = agora; }
@@ -369,7 +398,11 @@ function poseBicho(e, agora, modo) {
   }
   // apanhando: pisca branco e é empurrado
   const d = v.dano, idn = d ? agora - d.t : 1e9;
-  if (idn < 170) { const k = 1 - idn / 170; ox += d.dir.x * (d.crit ? 0.4 : 0.26) * k; oy += d.dir.y * (d.crit ? 0.4 : 0.26) * k; if (idn < 75) f.branco = true; }
+  if (idn < 170) { const k = 1 - idn / 170; ox += d.dir.x * (d.crit ? 0.4 : 0.26) * k; oy += d.dir.y * (d.crit ? 0.4 : 0.26) * k; }
+  // a reação: pisca branco e depois na cor do golpe, tremendo (encenacao.js)
+  const reacao = reacaoNaPose(v, agora);
+  if (reacao) { f.tinta = { cor: reacao.cor, alfa: reacao.alfa }; ox += reacao.treme; if (reacao.cor === "#ffffff" && reacao.alfa >= 1) f.branco = true; }
+  else if (idn < 75) f.branco = true;
   if (modo === "naruto" && !calmo) {
     const dano = idn < 170 || desm;
     const tipo = dano ? "dano" : g && ig >= 0 && ig < 320 && !o
@@ -378,11 +411,41 @@ function poseBicho(e, agora, modo) {
       || (tipo === "lance" && quadroAcaoNaruto(a, "ataque", ig, 320)));
     if (acao) { q = acao; anim = a; }
   }
-  // esquiva: um pulinho e o achatado ao cair
+  // esquiva: rola para o lado do movimento (um pulinho baixo dando uma volta) e o achatado ao cair
   const ie = v.esquiva != null ? agora - v.esquiva : 1e9;
-  if (ie < 250) f.altura += Math.sin((ie / 250) * Math.PI) * 0.45;
+  if (ie < 250) { const k = ie / 250; f.altura += Math.sin(k * Math.PI) * 0.3; if (!calmo && modo !== "naruto") f.giro = (v.rola || v.lado) * k * Math.PI * 2; }
   else if (ie < 330) { f.sy *= 0.84; f.sx *= 1.14; }
+  // preparando (feixe, sopro, agarrão): treme e junta energia do tipo
+  if (e.preparo && !calmo) {
+    const k = clamp(1 - e.preparo.t / e.preparo.total, 0, 1);
+    ox += Math.sin(agora / 18) * 0.03 * (0.4 + k); f.sy *= 1 - 0.08 * k; f.sx *= 1 + 0.05 * k;
+    carga = { k: 0.5 + 0.5 * k, elemento: e.preparo.elemento };
+  }
+  // tonto: balança e as estrelinhas rodam (bichoInfo)
+  if (e.atordoado > 0 && !calmo) { f.tombo = (f.tombo || 0) + Math.sin(agora / 90) * 0.16; f.sy *= 0.96; }
+  // na guarda: abaixa e se fecha
+  if (e.guardando) { f.sy *= 0.9; f.sx *= 1.05; }
+  // empurrado: inclina para trás e levanta poeira
+  const empurrao = Math.hypot(e.kx || 0, e.ky || 0);
+  if (empurrao > 1.5 && !calmo) {
+    f.tombo = (f.tombo || 0) - Math.sign(e.kx || 0.001) * v.lado * Math.min(0.4, empurrao * 0.035);
+    if (Math.random() < Math.min(0.8, empurrao / 10)) particula(e.x + (Math.random() - 0.5) * 0.4, e.y, { vx: -(e.kx || 0) * 0.15, vy: -(e.ky || 0) * 0.15, vz: 1.2, cor: POEIRA[Math.floor(Math.random() * 3)], vida: 0.4, tam: 0.11 });
+  }
+  // bateu na parede: achata
+  const ib = v.batida != null ? agora - v.batida : 1e9;
+  if (ib < 160) { const k = 1 - ib / 160; f.sx *= 1 - 0.25 * k; f.sy *= 1 + 0.15 * k; }
+  // o pulo: sobe em arco até o alvo, encolhe para tomar impulso e achata ao cair
+  if (e.salto && e.salto.para) {
+    const sd = e.salto.de, sp = e.salto.para, l2 = (sp.x - sd.x) ** 2 + (sp.y - sd.y) ** 2;
+    const k = l2 > 0.04 ? clamp(((e.x - sd.x) * (sp.x - sd.x) + (e.y - sd.y) * (sp.y - sd.y)) / l2, 0, 1) : clamp(1 - e.salto.t / e.salto.total, 0, 1);
+    f.altura += 4 * k * (1 - k) * 2.8;
+    if (k < 0.15) { f.sy *= 1 + k; f.sx *= 1 - k * 0.5; } else { f.sy *= 1.1; f.sx *= 0.92; }
+    sombra = 0.5 + 0.5 * (1 - 4 * k * (1 - k));
+  }
+  const ipo = v.pouso != null ? agora - v.pouso : 1e9;
+  if (ipo < 180) { const k = 1 - ipo / 180; f.sy *= 1 - 0.3 * k; f.sx *= 1 + 0.3 * k; }
   // investida e giro
+  if (e.bote) { f.estica = Math.max(f.estica, 0.22); f.anguloEstica = Math.atan2(e.bote.y, e.bote.x); } // o bote do golpe de perto
   if (e.dash) {
     f.estica = Math.max(f.estica, 0.28); f.anguloEstica = Math.atan2(e.dash.y, e.dash.x);
     if (e.dash.giro || e.dash.hab?.giro) { f.giro = (agora / 1000) * 22 * v.lado; f.estica = 0.08; }
@@ -420,15 +483,18 @@ function poseBicho(e, agora, modo) {
 
   const wx = e.x + ox, wy = e.y + oy, altura = f.altura;
   // o rastro (investida, esquiva, velocidade em alta): os quadros de antes, onde o bicho estava
-  const rapido = e.dash || ie < 250 || (andando && (e.st?.spd || 0) > 0);
+  const perfeita = v.perfeita != null && agora - v.perfeita < 450;
+  const rapido = e.dash || e.bote || ie < 250 || perfeita || empurrao > 4 || (andando && (e.st?.spd || 0) > 0);
   if (!calmo && rapido && !escondido && q && agora - v.rastroEm > 35) {
     v.rastroEm = agora;
     v.rastro.unshift({ wx, wy, altura, f: { ...f, branco: false }, q, a: anim, t: agora });
     v.rastro.length = Math.min(v.rastro.length, 4);
   }
   for (let i = v.rastro.length - 1; i >= 0; i--) if (agora - v.rastro[i].t > 180) v.rastro.splice(i, 1);
-  return Object.assign(pose, { visivel: true, a, anim, q, f, o, desm, ie, sombra, carga, escondido, wx, wy, altura, alturaSprite: 1.2 });
+  return Object.assign(pose, { visivel: !v.naBola, a, anim, q, f, o, desm, ie, sombra, carga, escondido, wx, wy, altura, alturaSprite: 1.2 });
 }
+// quem voa (tipo Voador) passa por cima do terreno
+function voaNoTerreno(e) { return (dexAtual().MONS[e.forma || e.bicho]?.types || []).includes("Voador"); }
 function bichoNoChao(pose, agora) {
   const { e, v } = pose, s = camera.escala;
   desenharBuraco(v, agora);
@@ -440,6 +506,16 @@ function bichoNoChao(pose, agora) {
     const k = pose.sombra * clamp(1 - pose.altura / 12, 0.3, 1);
     ctx.fillStyle = cena3d.ok && !cena3d.leve ? "#00000030" : "#0000004c"; ctx.beginPath();
     ctx.ellipse(p.x, p.y, s * 0.62 * k, s * 0.42 * k, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // na água (o terreno de regras.js), as marolas em volta de quem nada ou anda nela; quem voa passa por cima
+  const zona = e.campo && !pose.escondido && pose.altura < 0.3 && S?.match?.bioma ? Ginasio.zonaEm(Ginasio.terrenoDe(S.match.bioma), pose.wx, pose.wy) : null;
+  if (zona && (zona.tipo === "agua" || zona.tipo === "funda") && !voaNoTerreno(e)) {
+    ctx.strokeStyle = "#e8f6ffcc"; ctx.lineWidth = Math.max(1, s * 0.05);
+    for (let i = 0; i < 2; i++) {
+      const k = movimentoReduzido.matches ? 0.5 : ((agora / 900 + i / 2) % 1);
+      ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.ellipse(p.x, p.y, s * (0.5 + k * 0.5), s * (0.32 + k * 0.32), 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
   if (e.campo && !pose.escondido) {
     ctx.strokeStyle = e.id === ME?.id ? "#ffe56a" : coresLados[e.lado]; ctx.lineWidth = Math.max(2, s * 0.1);
@@ -458,12 +534,43 @@ function bichoNoQuadro(pose, agora, x, chao) {
   if (pose.carga && !calmo) { // brilho do tipo carregando o golpe
     ctx.save(); ctx.globalAlpha = 0.35 * pose.carga.k; circulo(x, chao - s * 0.6, s * (0.5 + pose.carga.k * 0.35), corTipo(pose.carga.elemento)); ctx.restore();
   }
+  // a bolha da guarda (acende ao aparar, racha ao quebrar)
+  const ia = v.aparou != null ? agora - v.aparou : 1e9, iq = v.quebrou != null ? agora - v.quebrou : 1e9;
+  if (e.guardando || ia < 220 || iq < 300) {
+    ctx.save();
+    const r = s * (0.95 + (ia < 220 ? (1 - ia / 220) * 0.25 : 0)), cy = chao - s * 0.6;
+    ctx.globalAlpha = iq < 300 ? 1 - iq / 300 : ia < 220 ? 0.55 : 0.22 + 0.2 * ((e.guarda ?? 100) / 100);
+    circulo(x, cy, r, ia < 220 ? "#ffffff" : iq < 300 ? "#ef8a5a" : "#7fd4ff");
+    ctx.globalAlpha = Math.min(1, ctx.globalAlpha * 2.4); ctx.strokeStyle = ia < 220 ? "#ffffff" : "#bfeaff"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  // o brilho dourado de quem está com o golpe forte guardado (depois da esquiva perfeita)
+  if (e.foco && !calmo) { ctx.save(); ctx.globalAlpha = 0.28 + 0.12 * Math.sin(agora / 90); circulo(x, chao - s * 0.6, s * 0.75, "#ffd84a"); ctx.restore(); }
   if (e.escudo) { ctx.strokeStyle = "#75c8c3"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, chao - s * 0.5, s * (0.9 + Math.sin(agora / 80) * 0.05), 0, Math.PI * 2); ctx.stroke(); }
   if (q) return pintarQuadro(anim, q, x, chao, { ...f, altura: 0 });
   ret(x - s * 0.4, chao - s * 0.9, s * 0.8, s * 0.9, corTipo(dexDe(pose.modo).MONS[e.bicho]?.types[0])); texto(a.erro ? "?" : "·", x, chao - s * 0.4, "#fff", Math.max(6, s * 0.7));
   return s * 1.2;
 }
 // a vida em cima da cabeça (ou no chão, enquanto o bicho está no alto ou debaixo da terra) e o resto, na tela
+// o modo Pokémon: a barra de cima no jeito de MOBA (hud-pokemon.js): o nome de quem joga, o nível na caixinha, a vida
+// riscada de 100 em 100 (verde eu, azul quem joga comigo, vermelho o outro lado)
+function barraDoHeroi(e, x, y, largura, u, s) {
+  const w = Math.max(largura, 26 * u), alt = Math.max(3 * u, s * 0.13), x0 = x - w / 2, meuLado = meuJogador()?.lado ?? 0;
+  const cor = e.id === ME?.id ? "#5bd35b" : e.lado === meuLado ? "#3f9cff" : "#e0443a";
+  ret(x0 - u, y - u, w + 2 * u, alt + 2 * u, "#0b0f12");
+  ret(x0, y, w, alt, "#26302f");
+  ret(x0, y, w * Math.max(0, e.hp / e.max), alt, cor);
+  ret(x0, y, w * Math.max(0, e.hp / e.max), Math.max(1, alt * 0.3), "#ffffff40"); // o brilho de cima
+  for (let k = 100; k < e.max; k += 100) ret(x0 + w * k / e.max, y, Math.max(1, u * 0.6), alt, "#0b0f12aa");
+  const caixa = Math.max(8 * u, alt * 2.2), nome = S.match.jogadores.find((j) => j.id === e.id)?.nome || "";
+  ret(x0 - caixa - u, y + alt / 2 - caixa / 2, caixa, caixa, "#1c2328"); ctx.strokeStyle = "#f0c24a"; ctx.lineWidth = u; ctx.strokeRect(Math.round(x0 - caixa - u), Math.round(y + alt / 2 - caixa / 2), Math.round(caixa), Math.round(caixa));
+  texto(String(e.nivel || 50), x0 - caixa / 2 - u, y + alt / 2 + caixa * 0.28, "#f2e7c8", Math.max(5 * u, caixa * 0.62));
+  if (nome) {
+    ctx.save(); ctx.font = `700 ${Math.max(6 * u, Math.round(s * 0.32))}px system-ui,sans-serif`; ctx.textAlign = "left"; ctx.lineWidth = 2 * u; ctx.strokeStyle = "#0b0f12";
+    ctx.strokeText(nome, Math.round(x0), Math.round(y - 2 * u)); ctx.fillStyle = cor; ctx.fillText(nome, Math.round(x0), Math.round(y - 2 * u)); ctx.restore();
+  }
+}
 function bichoInfo(pose, agora) {
   const { e } = pose;
   if (!pose.visivel || !e.campo) return;
@@ -473,12 +580,22 @@ function bichoInfo(pose, agora) {
   const topo = pontoTela(pose.wx, pose.wy - h * Math.sin(deita), (alto ? 0 : pose.altura) + h * Math.cos(deita));
   const u = Math.max(1, camera.traco / 2); // um pixel de meia tela
   const largura = Math.max(15 * u, s * 1.5), x = topo.x, topoVida = Math.max(6 * u, topo.y);
-  ret(x - largura / 2 - u, topoVida - u, largura + 2 * u, 4 * u, "#334d3b");
-  ret(x - largura / 2, topoVida, largura * Math.max(0, e.hp / e.max), 2 * u, e.lado ? "#ec828b" : "#55b49c");
+  if (modoAtual() === "pokemon" && S?.match) barraDoHeroi(e, x, topoVida, largura, u, s);
+  else {
+    ret(x - largura / 2 - u, topoVida - u, largura + 2 * u, 4 * u, "#334d3b");
+    ret(x - largura / 2, topoVida, largura * Math.max(0, e.hp / e.max), 2 * u, e.lado ? "#ec828b" : "#55b49c");
+  }
   if (e.canal) {
     const pe = pontoTela(pose.wx, pose.wy);
     ret(x - largura / 2, pe.y + 2 * u, largura, 2 * u, "#315747"); ret(x - largura / 2, pe.y + 2 * u, largura * (1 - e.canal.t / 0.8), 2 * u, "#b7f59b");
     if (Math.random() < 0.25) particula(e.x + (Math.random() - 0.5) * 0.7, e.y, { vz: 1.4, g: -0.5, cor: "#b7f59b", vida: 0.6, tam: 0.09 });
+  }
+  // a barra da guarda, embaixo da vida (só quando não está cheia)
+  if ((e.guarda ?? 100) < 99) { ret(x - largura / 2, topoVida + 3 * u, largura, u, "#21323a"); ret(x - largura / 2, topoVida + 3 * u, largura * (e.guarda / 100), u, e.guarda < 30 ? "#ef8a5a" : "#7fd4ff"); }
+  // tonto: as estrelinhas rodando em cima da cabeça
+  if (e.atordoado > 0) for (let i = 0; i < 3; i++) {
+    const g = agora / 160 + (i * Math.PI * 2) / 3, sx = x + Math.cos(g) * largura * 0.45, sy = topoVida - 5 * u + Math.sin(g) * 2 * u;
+    texto("★", sx, sy, i % 2 ? "#ffe56a" : "#fff7c0", 7 * u);
   }
   if (Object.values(e.st || {}).some((n) => n > 0)) texto("+", x + largura / 2 + 3 * u, topoVida + 6 * u, "#167247", 8 * u);
   if (Object.values(e.st || {}).some((n) => n < 0)) texto("−", x - largura / 2 - 3 * u, topoVida + 6 * u, "#9f3254", 8 * u);

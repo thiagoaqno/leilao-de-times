@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Pokémon · Ginásio</title>
+<style>
+:root{font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#f4f0ff;background:#101322}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 72% 12%,#423570 0,transparent 37%),#101322}
+button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:wait}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px clamp(18px,4vw,54px);border-bottom:1px solid #ffffff25;background:#101322cc}
+header a{color:#d5c5ff;text-decoration:none;font-weight:700}.marca{color:#ffcf68;font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase}
+main{max-width:1260px;margin:auto;padding:clamp(20px,4vw,52px)}h1{font-size:clamp(30px,4vw,56px);line-height:1.04;letter-spacing:-.055em;margin:8px 0 12px}p{color:#bcb9d0} .lead{max-width:55ch;margin-bottom:32px}
+.layout{display:grid;grid-template-columns:minmax(240px,310px) minmax(0,1fr);gap:22px}.lista,.editor{border:1px solid #ffffff20;background:#181b30db;border-radius:20px;overflow:hidden}
+.lista h2{margin:0;padding:20px 22px 10px;font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:#bcb9d0}.lista button{display:flex;width:100%;align-items:center;gap:12px;padding:14px 20px;background:transparent;border:0;border-left:3px solid transparent;color:#f4f0ff;text-align:left}.lista button:hover,.lista button[aria-current=true]{background:#ffffff0c;border-left-color:#f7ca69}.ponto{width:11px;height:11px;border-radius:50%;background:var(--cor);box-shadow:0 0 16px var(--cor);flex:none}.lista small{display:block;color:#a9a6bf}.editor{padding:clamp(20px,3vw,36px)}.tipo{color:#f7ca69;text-transform:uppercase;font-size:12px;font-weight:850;letter-spacing:.15em}.editor h2{font-size:clamp(27px,3vw,42px);letter-spacing:-.04em;margin:6px 0}.editor .intro{margin:0 0 26px}.slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.slot{min-width:0;background:#242640;border:1px solid #ffffff24;border-radius:16px;padding:16px}.slot span{font-size:11px;font-weight:850;color:#bcb9d0;text-transform:uppercase;letter-spacing:.12em}.slot img{display:block;width:105px;height:105px;object-fit:contain;image-rendering:pixelated;margin:12px auto;filter:drop-shadow(0 12px 14px #0008)}.slot label{font-size:12px;color:#c9c4dd;display:block;margin:4px 0 5px}.slot input{width:100%;min-width:0;background:#13162a;border:1px solid #6c668b;border-radius:8px;color:#fff;padding:10px}.slot input:focus-visible,button:focus-visible{outline:3px solid #ffcf68;outline-offset:2px}.acoes{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:24px}.salvar{border:0;border-radius:10px;background:#f7ca69;color:#20192d;padding:12px 22px;font-weight:850}.repor{border:1px solid #716c8b;border-radius:10px;background:transparent;color:#eee7ff;padding:11px 16px}.estado{color:#a8e5c7;min-height:24px}.estado.erro{color:#ff9aa2}.nota{font-size:12px;color:#928da9}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.lista>div{display:flex;overflow-x:auto}.lista button{min-width:155px}.slots{grid-template-columns:1fr}.slot{display:grid;grid-template-columns:52px 70px minmax(0,1fr);align-items:center;gap:8px}.slot img{width:64px;height:64px;margin:0}.slot label{display:none}.slot input{grid-column:3}.editor{padding:20px}}
+</style>
+</head>
+<body>
+<header><div class="marca">GALERA / GINÁSIO / ADMIN</div><nav style="display:flex;gap:16px"><a href="/admin/pokedex">Pokédex dos treinadores</a><a href="/ginasio/?modo=pokemon">Ver Ginásio ↗</a></nav></header>
+<main><div class="marca">CONTROLE DOS TREINADORES</div><h1>Times Pokémon</h1><p class="lead">Escolha três Pokémon para cada líder ou treinador. A mudança é salva no banco e vale para as próximas batalhas.</p>
+<div class="layout"><nav class="lista" aria-label="Treinadores"><h2>Personagens</h2><div id="lista"></div></nav>
+<section class="editor" aria-live="polite"><div class="tipo" id="tipo">Carregando…</div><h2 id="nome">Ginásio</h2><p class="intro" id="intro">Buscando os times atuais.</p><div class="slots" id="slots"></div><div class="acoes"><button class="salvar" id="salvar" disabled>Salvar time</button><button class="repor" id="repor" disabled>Usar time original</button><span class="estado" id="estado" role="status"></span></div><p class="nota" id="nota"></p></section></div>
+<datalist id="pokemon"></datalist></main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
+let dados, escolhido, porNome;
+const pokemon = (id) => dados.pokemon.find((p) => p.id === id);
+function mostrar(id) {
+  escolhido = dados.treinadores.find((t) => t.id === id); if (!escolhido) return;
+  $("lista").innerHTML = dados.treinadores.map((t) => `<button data-id="${esc(t.id)}" aria-current="${t.id === id}"><i class="ponto" style="--cor:${esc(t.cor)}"></i><span>${esc(t.nome)}<small>${esc(t.onde === "ginasio" ? "Líder" : "Treinador")} · ${esc(t.tipo)}</small></span></button>`).join("");
+  $("tipo").textContent = `${escolhido.onde === "ginasio" ? "Líder de ginásio" : "Treinador da Vila"} · ${escolhido.tipo}`;
+  $("nome").textContent = escolhido.nome;
+  $("intro").textContent = "Monte o trio que enfrentará os jogadores no modo Pokémon.";
+  $("slots").innerHTML = escolhido.time.map((pid, i) => { const p = pokemon(pid); return `<div class="slot"><span>Pokémon ${i + 1}</span><img alt="" src="${esc(p.sprite)}"><label for="slot${i}">Espécie</label><input id="slot${i}" list="pokemon" value="${esc(p.nome)}" autocomplete="off" data-slot="${i}"></div>`; }).join("");
+  $("salvar").disabled = $("repor").disabled = false;
+  $("nota").textContent = escolhido.editadoEm ? `Editado em ${new Date(escolhido.editadoEm).toLocaleString("pt-BR")}.` : "Usando o time original do jogo.";
+  $("estado").textContent = ""; $("estado").className = "estado";
+}
+function idsDosCampos() { return [0,1,2].map((i) => porNome.get($("slot" + i).value.trim().toLocaleLowerCase("pt-BR"))); }
+async function salvar(time) {
+  if (time.length !== 3 || time.some((x) => !x) || new Set(time).size !== 3) { $("estado").textContent = "Escolha três Pokémon diferentes da lista."; $("estado").className = "estado erro"; return; }
+  $("salvar").disabled = true; $("estado").textContent = "Salvando…";
+  try {
+    const r = await fetch(`/admin/pokemon/api/${encodeURIComponent(escolhido.id)}`, { method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json","X-CSRF-Token":dados.csrf}, body:JSON.stringify({time}) });
+    const out = await r.json(); if (!r.ok) throw new Error(out.erro || "Falha ao salvar.");
+    escolhido.time = out.time; escolhido.editadoEm = Date.now(); mostrar(escolhido.id); $("estado").textContent = "Time salvo no banco.";
+  } catch (e) { $("estado").textContent = e.message; $("estado").className = "estado erro"; } finally { $("salvar").disabled = false; }
+}
+$("lista").onclick = (e) => { const b = e.target.closest("button[data-id]"); if (b) mostrar(b.dataset.id); };
+$("slots").oninput = (e) => { if (e.target.dataset.slot == null) return; const p = pokemon(porNome.get(e.target.value.trim().toLocaleLowerCase("pt-BR"))); if (p) e.target.closest(".slot").querySelector("img").src = p.sprite; };
+$("salvar").onclick = () => salvar(idsDosCampos());
+$("repor").onclick = async () => {
+  $("repor").disabled = true;
+  try {
+    const r = await fetch(`/admin/pokemon/api/${encodeURIComponent(escolhido.id)}`, { method:"DELETE", credentials:"same-origin", headers:{"X-CSRF-Token":dados.csrf} });
+    const out = await r.json(); if (!r.ok) throw Error(out.erro || "Falha ao restaurar.");
+    escolhido.time = out.time; escolhido.editadoEm = null; mostrar(escolhido.id); $("estado").textContent = "Time original restaurado.";
+  } catch(e) { $("estado").textContent = e.message; $("estado").className = "estado erro"; } finally { $("repor").disabled = false; }
+};
+fetch("/admin/pokemon/api", { credentials:"same-origin" }).then(async (r) => { const d = await r.json(); if (!r.ok) throw Error(d.erro); return d; }).then((d) => {
+  dados = d; porNome = new Map(d.pokemon.map((p) => [p.nome.toLocaleLowerCase("pt-BR"), p.id]));
+  $("pokemon").innerHTML = d.pokemon.map((p) => `<option value="${esc(p.nome)}"></option>`).join("");
+  mostrar(d.treinadores[0]?.id);
+}).catch((e) => { $("intro").textContent = e.message || "Não foi possível abrir o painel."; });
+</script>
+</body></html>

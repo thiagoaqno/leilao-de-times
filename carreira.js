@@ -19,6 +19,7 @@ const Tecnicos = require("./carreira-tecnicos.js");
 const Personalidade = require("./public/carreira/personalidade.js");
 const Clube = require("./carreira-clube.js");
 const Memoria = require("./carreira-memoria.js");
+const Copa = require("./carreira-copa.js");
 const crypto = require("crypto");
 
 // As carreiras antigas continuam na base em que nasceram; as novas enxergam o mundo inteiro.
@@ -43,7 +44,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const { dinheiro } = Mercado;
 
 const baseDe = (save) => BASES[save.base] || BASES[BASE_PADRAO];
-const clubeDe = (save, id) => baseDe(save).clubes.find((c) => c.id === id);
+// as seleções da Copa do Mundo (carreira-copa.js) também são "clubes": o nome, as cores e a formação delas
+const clubeDe = (save, id) => baseDe(save).clubes.find((c) => c.id === id) || (Copa.ehSelecao(id) ? Copa.meta(id) : undefined);
 const idsDosClubes = (save) => baseDe(save).clubes.map((c) => c.id);
 // o índice de cada base: jogador -> { jogador, clube de origem }
 const indices = new Map();
@@ -63,7 +65,8 @@ const comPosicao = (save, j) => {
   const pos = save.posicoes && save.posicoes[j.id];
   return atr || pos ? { ...j, ...(atr && { atr: { ...j.atr, ...atr } }), ...(pos && { pos, posOriginal: j.pos }) } : j;
 };
-const jogadorDe = (save, pid) => comPosicao(save, indice(save).get(pid)?.j || (save.jovens && save.jovens[pid]) || null);
+// os convocados de fora da carreira (os que jogam fora das ligas da base) só existem na Copa: Copa.extra
+const jogadorDe = (save, pid) => comPosicao(save, indice(save).get(pid)?.j || (save.jovens && save.jovens[pid]) || Copa.extra(pid) || null);
 const donoDe = (save, pid) => save.donos[pid] || indice(save).get(pid)?.clube || null;
 function todosJogadores(save) {
   const base = [...indice(save).values()].map(({ j }) => j);
@@ -72,7 +75,7 @@ function todosJogadores(save) {
 }
 const elencoDe = (save, clube) => todosJogadores(save).filter((j) => donoDe(save, j.id) === clube);
 const notaDe = (save, j) => clamp(j.nota + (save.bonusNota[j.id] || 0), 40, 95);
-const comNota = (save, j) => ({ ...j, base: j.nota, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
+const comNota = (save, j) => ({ ...j, notaBase: j.nota, nota: notaDe(save, j), idade: Evolucao.idadeNa(j, save.temporada) });
 // a premiação do campeonato até o G6 (do 1º ao 6º lugar da liga), paga no fim da temporada; no meio da liga (19 jogos), quem está no G6 já recebe 25% do prêmio
 // da posição em que está. Vale o fator da liga (a Premier League paga mais que a Argentina) e vem junto com a premiação por posição e o bônus de campeão.
 // o bônus de campeão de cada competição (R$ 15 mi para todas as outras): a Libertadores, a Copa do Brasil e a Sul-Americana pagam mais
@@ -195,6 +198,7 @@ function completar(save) {
   guardarNaEstante(save); // as conquistas das temporadas de antes da estante (ou de antes deste conserto)
   if (!save.humanosLista) remendarArquivo(save); // na sala, quem remenda é estanteDaSala (precisa do histórico de todos)
   Clube.garantir(save, ajudas);
+  if (save.base === BASE_PADRAO && save.calendarioMundo && save.clube) Copa.prazo(save, cx); // a proposta da seleção vence quando a Copa chega
   if (save.base === BASE_PADRAO && save.calendarioMundo) Tecnicos.visao(save, ctxTecnicos(), resDaTemporada(save)); // as propostas existem para quem terminou a temporada
   return save;
 }
@@ -216,7 +220,8 @@ function basesDaTemporada(save) {
   return bases;
 }
 function recalcularMundo(save) {
-  const mundo = Temporada.simularMundo({ bases: basesDaTemporada(save), indice: indiceDe(save), semente: `${save.semente}:${save.temporada}`, resultadosFixos: save.resultadosFixos || {}, classificados: save.classificados, copasNovas: save.formatoCopas === 2, semMundial: !!save.semMundial });
+  const mundo = Temporada.simularMundo({ bases: basesDaTemporada(save), indice: indiceDe(save), semente: `${save.semente}:${save.temporada}`, resultadosFixos: save.resultadosFixos || {}, classificados: save.classificados, copasNovas: save.formatoCopas === 2, semMundial: !!save.semMundial,
+    copa: Copa.opcaoDoMundo(save, cx) });
   save.competicoes = mundo.competicoes; save.calendarioMundo = mundo.jogos;
   return mundo;
 }
@@ -249,7 +254,10 @@ function semanaFeita(save) {
 const rodadaDaSemana = (save, s) => { const k = semanasDaRodada(save.calendarioMundo || []).indexOf(s); return k < 0 ? null : k + 1; };
 const rodadaDaJanela = (save) => (save.base === BASE_PADRAO && save.calendarioMundo ? rodadasAntes(save, semanaFeita(save) + 1) : save.rodada);
 Feed.rodadaDe = rodadaDaJanela;
-const proximoJogoMundo = (save) => (save.calendarioMundo || []).find((j) => (j.casa === save.clube || j.fora === save.clube) && !(save.jogosJogados || []).includes(j.id)) || null;
+// o próximo jogo do técnico: o do clube ou, na pausa da Copa do Mundo, o da seleção que ele treina (Copa.ativa)
+const proximoJogoMundo = (save) => { const sel = Copa.ativa(save), meu = (id) => id === save.clube || (sel && id === sel); return (save.calendarioMundo || []).find((j) => (meu(j.casa) || meu(j.fora)) && !(save.jogosJogados || []).includes(j.id)) || null; };
+// o time humano de um jogo da sala: o clube de um técnico, ou a seleção que ele treina (devolve o clube do técnico)
+const humanoDoTime = (save, id) => (!save.humanos ? null : save.humanos[id] ? id : Copa.humanoDaSelecao(save, id));
 // o mundo de uma carreira nova, ainda sem técnico: a carreira solo assume um clube, e a carreira em grupo, um por pessoa
 function mundoNovo(temporadas = Evolucao.TEMPORADAS.padrao, caixaIgual = 0) {
   const base = BASES[BASE_PADRAO];
@@ -283,7 +291,7 @@ function assumirClube(save, clube, nome, skin) {
 // (vistaDe: o save com os campos dele por cima, e save.clube = ele) e, depois, guarda-se de volta (guardarVista).
 const CAMPOS_CLUBE = ["clube", "tecnico", "caixa", "moral", "situacao", "escalacao", "caixaEntrada", "financas", "feed", "posJogo", "compras", "valores", "pedidos",
   "parcelas", "aVenda", "indicacoes", "tentativas", "bonusVitoria", "provocado", "efeitos", "eventosVistos", "segredos", "jogosJogados", "calendario", "rodada",
-  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "janelasAnteriores", "entrada", "energia", "sequencia", "meta", "gestao", "memoria"];
+  "partida", "ultimo", "modo", "historico", "jogosTemporada", "comprasJanela", "janelasAnteriores", "entrada", "energia", "sequencia", "meta", "gestao", "memoria", "selecao"];
 function vistaDe(save, clube) {
   const v = { ...save, ...save.humanos[clube].estado };
   delete v.humanos;
@@ -356,10 +364,16 @@ function entrarNaCarreira(save, { clube, nome, skin }, { aporte = 0 } = {}) {
   if (caixaDoClube != null) v.caixa = caixaDoClube;
   if (save.caixaIA) delete save.caixaIA[clube];
   const rodadaLiga = rodadaDaJanela(v), janelaAberta = Mercado.janelaAberta(rodadaLiga);
-  v.entrada = janelaAberta ? null : { temporada: v.temporada, antesDoMeio: rodadaLiga < 16 }; // antes do meio, a entrada vale até a janela do meio abrir
+  const retorno = save.historicoClubes?.[clube];
+  if (retorno) {
+    // Voltar ao mesmo clube não reinicia a cota de compras nem paga o aporte uma segunda vez.
+    v.comprasJanela = retorno.comprasJanela;
+    v.janelasAnteriores = retorno.janelasAnteriores;
+    v.entrada = retorno.entrada;
+  } else v.entrada = janelaAberta ? null : { temporada: v.temporada, antesDoMeio: rodadaLiga < 16 }; // antes do meio, a entrada vale até a janela do meio abrir
   const boasVindas = v.caixaEntrada.find((e) => e.id === "boas-vindas");
-  if (boasVindas) boasVindas.texto = `A diretoria apresentou ${nome} como novo técnico, com a carreira já rolando (temporada ${v.temporada} de ${v.temporadasMax}, ${v.jogosJogados.length} jogo${v.jogosJogados.length === 1 ? "" : "s"} do clube já feito${v.jogosJogados.length === 1 ? "" : "s"}). Caixa: ${dinheiro(v.caixa)}. ${janelaAberta ? "A janela de transferências está aberta." : "A janela está fechada, mas você tem uma janela de entrada."} ${quadroDaRegra(janelaDeCompras(v)?.tipo || "entrada")}`;
-  if (aporte > 0) {
+  if (boasVindas) boasVindas.texto = `A diretoria apresentou ${nome} como novo técnico, com a carreira já rolando (temporada ${v.temporada} de ${v.temporadasMax}, ${v.jogosJogados.length} jogo${v.jogosJogados.length === 1 ? "" : "s"} do clube já feito${v.jogosJogados.length === 1 ? "" : "s"}). Caixa: ${dinheiro(v.caixa)}. ${janelaAberta ? "A janela de transferências está aberta." : janelaDeCompras(v) ? "A janela está fechada, mas você tem uma janela de entrada." : "A janela de transferências está fechada."} ${janelaDeCompras(v) ? quadroDaRegra(v, janelaDeCompras(v).tipo) : ""}`;
+  if (aporte > 0 && !retorno) {
     movimentar(v, "Aporte do investidor", aporte);
     avisar(v, { tipo: "aporte", icone: "maleta", titulo: "Aporte do investidor", texto: `O investidor da galera pôs ${dinheiro(aporte)} no caixa. Caixa agora: ${dinheiro(v.caixa)}.` });
   }
@@ -399,10 +413,10 @@ const partidaDoJogo = (v, j, modo, decisoes) => ({ agregado: agregadoDe(v, j), r
   modo, semente: sementeDoJogo(v, j.semana, j.casa, j.fora), decisoes: decisoes || {} });
 // o jogo de humanos com o motor: um humano (controla 0 ou 1) ou os dois (controla 2)
 function simularJogoGrupo(save, j, { modo = 1, decisoes = {} } = {}) {
-  const hc = !!save.humanos[j.casa], hf = !!save.humanos[j.fora];
-  const vc = vistaDe(save, hc ? j.casa : j.fora), vf = vistaDe(save, hf ? j.fora : j.casa);
+  const hc = humanoDoTime(save, j.casa), hf = humanoDoTime(save, j.fora);
+  const vc = vistaDe(save, hc || hf), vf = vistaDe(save, hf || hc);
   vc.partida = partidaDoJogo(vc, j, modo, decisoes); vf.partida = partidaDoJogo(vf, j, modo, decisoes);
-  return Motor.simularPartida({ casa: timeDe(vc, j.casa), fora: timeDe(vf, j.fora), semente: vc.partida.semente, modo, controla: hc && hf ? 2 : hc ? 0 : 1, decisoes, desempate: desempateDe(vc.partida) });
+  return Motor.simularPartida({ casa: timeDe(vc, j.casa), fora: timeDe(vf, j.fora), semente: vc.partida.semente, modo, controla: hc && hf ? 2 : hc ? 0 : 1, decisoes, desempate: desempateDe(vc.partida), carreira: true, ...(j.competicao === Copa.ID && { neutro: true }) });
 }
 // o jogo acabou: fecha para cada humano dele (o que é de todos, uma vez só)
 function fecharJogoGrupo(save, j, r, modo, decisoes) {
@@ -412,7 +426,7 @@ function fecharJogoGrupo(save, j, r, modo, decisoes) {
   recalcularMundo(save);
   if (save.humanos[j.casa] && save.humanos[j.fora]) Clube.registrarConfronto(save, j, r);
   let primeiro = true, penaltis = null;
-  for (const c of [j.casa, j.fora].filter((x) => save.humanos[x])) {
+  for (const c of [j.casa, j.fora].map((x) => humanoDoTime(save, x)).filter(Boolean)) {
     const v = vistaDe(save, c);
     v.partida = partidaDoJogo(v, j, modo, decisoes);
     fecharJogoMundo(v, r, { comum: primeiro, cumprir: false, recalcular: false });
@@ -450,6 +464,7 @@ function novaTemporadaGrupo(save) {
   const meus = virarTemporada(v0, Object.fromEntries(clubes.map((c) => [c, save.humanos[c].estado.jogosTemporada || 0])));
   guardarVista(save, v0);
   Object.assign(save, { temporada: save.temporada + 1, ano: save.ano + 1, gols: {}, golsComp: {}, amarelos: {}, lesoes: {}, suspensos: {}, desempenho: {}, classificados, divisoes: troca.divisoes, formatoCopas: 2, semMundial: true, resultadosFixos: {}, donosInicio: { ...save.donos } });
+  if (!Copa.abrir(save, cx)) delete save.copa;
   recalcularMundo(save);
   for (const c of clubes) {
     const v = vistaDe(save, c), m = meus[c];
@@ -469,14 +484,28 @@ function novaTemporadaGrupo(save) {
     avisar(v, { tipo: "temporada", icone: "taca", titulo: `Começa a temporada ${v.ano} (${v.temporada} de ${v.temporadasMax})`, texto: `A janela está aberta. Caixa: ${dinheiro(v.caixa)}. ${partes.join(" ")} ${gestaoTexto}`.trim() });
     guardarVista(save, v);
   }
+  // as propostas das seleções: a melhor campanha escolhe primeiro (ninguém recebe a mesma seleção)
+  const vistas2 = clubes.map((c) => vistaDe(save, c));
+  ofertarSelecoes(save, vistas2);
+  for (const v of vistas2) guardarVista(save, v);
   return null;
+}
+// a temporada da Copa: uma proposta de seleção para cada técnico, pela campanha da temporada anterior (a melhor campanha leva a seleção
+// mais forte da faixa dela; na sala, cada seleção vai para um técnico só)
+function ofertarSelecoes(save, vistas) {
+  if (!Copa.edicao(save)) return;
+  const dados = vistas.map((v) => { const h = (v.historico || []).find((x) => x.temporada === save.temporada - 1), fator = h ? FATOR_LIGA[ligaDoClube(h.clube, v)] || 1 : 1; return { v, h, fator, pontos: Copa.pontuacao(h, fator) }; })
+    .sort((a, b) => b.pontos - a.pontos || String(a.v.clube).localeCompare(String(b.v.clube)));
+  const ocupadas = new Set();
+  for (const x of dados) { const id = Copa.ofertar(x.v, cx, x.h, x.fator, ocupadas); if (id) ocupadas.add(id); }
 }
 
 // ---------- o mercado disputado (PR 6): o leilão entre os humanos e o olheiro ----------
 // pode abrir o leilão desse jogador? Devolve o erro (texto) ou { tipo: "cpu" | "humano", dono, minimo, teto }
 // ---------- as regras de compra da turma ----------
 // Para ninguém ficar "roubado", cada técnico leva reforço por janela (o começo da temporada, até a rodada 4 da liga, e o meio, rodadas 17 a 21):
-//  - em cada janela, UMA destas opções: 3 jogadores de até 80, OU 2 de até 82, OU 1 de até 85;
+//  - nas duas primeiras temporadas: 3 jogadores de até 80, OU 2 de até 82, OU 1 de até 85;
+//    a partir da terceira: 3 de até 84, OU 2 de até 87, OU 1 de qualquer nota (inclusive 90+);
 //  - a opção usada numa janela não vale na janela seguinte (pegou o de 85 no começo: no meio, 3 de até 80 ou 2 de até 82). A opção usada é a
 //    mais baixa em que as compras cabem (um de 78 sozinho gasta a de 80; com 82 no meio, a de 82). A virada de temporada zera: o começo
 //    de cada temporada (e a entrada que vale no lugar dele) tem as três opções, não importa o que foi usado no meio;
@@ -484,11 +513,13 @@ function novaTemporadaGrupo(save) {
 //    paga como qualquer outra, de até 82 (PREMIO_MAX; cada título leva um jogador, fora da opção da janela). Dois títulos, duas contratações;
 //  - quem entra na carreira com a janela fechada ganha uma janela de entrada (as mesmas opções), até a próxima janela abrir.
 // Vale para o leilão da turma (a carreira solo e as trocas entre técnicos não têm essa regra). A nota é a de agora (com o que o jogador evoluiu).
-const PACOTES = [{ id: "80", n: 3, max: 80 }, { id: "82", n: 2, max: 82 }, { id: "85", n: 1, max: 85 }];
-const ORDEM_PACOTE = { "": 0, 80: 1, 82: 2, 85: 3 };
-const NOME_PACOTE = { 80: "3 jogadores de até 80", 82: "2 jogadores de até 82", 85: "1 jogador de até 85" };
+const PACOTES_INICIAIS = [{ id: "80", n: 3, max: 80 }, { id: "82", n: 2, max: 82 }, { id: "85", n: 1, max: 85 }];
+const PACOTES_AVANCADOS = [{ id: "84", n: 3, max: 84 }, { id: "87", n: 2, max: 87 }, { id: "90", n: 1, max: Infinity }];
+const pacotesDaOrdem = (ordem) => ordem >= 4 ? PACOTES_AVANCADOS : PACOTES_INICIAIS;
+const ORDEM_PACOTE = { "": 0, 80: 1, 82: 2, 85: 3, 84: 1, 87: 2, 90: 3 };
+const NOME_PACOTE = { 80: "3 jogadores de até 80", 82: "2 jogadores de até 82", 85: "1 jogador de até 85", 84: "3 jogadores de até 84", 87: "2 jogadores de até 87", 90: "1 jogador de qualquer nota (inclusive 90+)" };
 const PREMIO_MAX = 82;
-const OPCOES_TEXTO = "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85";
+const opcoesTexto = (v) => v.temporada >= 3 ? "1 jogador de qualquer nota (inclusive 90+), ou 2 de até 87, ou 3 de até 84" : "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85";
 // a janela de agora: o id (temporada:tipo) e a ordem na carreira (o começo da temporada T é 2(T-1), o meio é 2(T-1)+1; a entrada vale pela janela
 // em que o técnico entrou: antes do meio, no lugar do começo; depois, no lugar do meio). null: a janela está fechada e ele não tem entrada
 function janelaDeCompras(v) {
@@ -548,16 +579,16 @@ function opcaoUsada(v, ordem, fundo = 0) {
   const notas = comprasDaOrdem(v, ordem);
   if (!notas.length) return "";
   const proibida = proibidaNa(v, ordem, fundo + 1);
-  const div = dividir(notas, PACOTES.filter((p) => p.id !== proibida), premiosDaOrdem(v, ordem));
+  const div = dividir(notas, pacotesDaOrdem(ordem).filter((p) => p.id !== proibida), premiosDaOrdem(v, ordem));
   return div ? div.pacote : "";
 }
 // o que vale na janela de agora: as opções (sem a proibida), os prêmios e o que já foi comprado nela
 function contaDaJanela(v, jan) {
   const proibida = proibidaNa(v, jan.ordem);
-  return { proibida, permitidos: PACOTES.filter((p) => p.id !== proibida), premios: premiosDaOrdem(v, jan.ordem), usadas: comprasDaOrdem(v, jan.ordem) };
+  return { proibida, permitidos: pacotesDaOrdem(jan.ordem).filter((p) => p.id !== proibida), premios: premiosDaOrdem(v, jan.ordem), usadas: comprasDaOrdem(v, jan.ordem) };
 }
-const quadroDaRegra = (tipo, conta) => {
-  const base = tipo === "entrada" ? `Quem entra no meio da carreira tem uma janela de entrada: ${OPCOES_TEXTO}.` : `Em cada janela, cada técnico leva ${OPCOES_TEXTO}. A opção usada no começo da temporada não vale no meio; a virada de temporada zera.`;
+const quadroDaRegra = (v, tipo, conta) => {
+  const base = tipo === "entrada" ? `Quem entra no meio da carreira tem uma janela de entrada: ${opcoesTexto(v)}.` : `Em cada janela, cada técnico leva ${opcoesTexto(v)}. A opção usada no começo da temporada não vale no meio; a virada de temporada zera.`;
   const proibida = conta && conta.proibida ? ` Nesta janela não vale a de ${NOME_PACOTE[conta.proibida]} (você usou na janela anterior).` : "";
   const premios = conta && conta.premios.length ? ` Prêmio de campeão nesta janela, a mais (pago normalmente): ${conta.premios.map((p) => `1 jogador de até ${p.max} (${p.nome})`).join(", ")}.` : "";
   return base + proibida + premios;
@@ -566,7 +597,7 @@ function erroDeRegra(v, nota) {
   const jan = janelaDeCompras(v); if (!jan) return "A janela de transferências está fechada.";
   const conta = contaDaJanela(v, jan);
   if (dividir([...conta.usadas, nota], conta.permitidos, conta.premios)) return null;
-  return `${quadroDaRegra(jan.tipo, conta)}${conta.usadas.length ? ` Você já levou ${conta.usadas.length === 1 ? "um de" : "jogadores de"} ${conta.usadas.join(", ")}.` : ""} Um jogador de ${nota} não entra nessa conta.`;
+  return `${quadroDaRegra(v, jan.tipo, conta)}${conta.usadas.length ? ` Você já levou ${conta.usadas.length === 1 ? "um de" : "jogadores de"} ${conta.usadas.join(", ")}.` : ""} Um jogador de ${nota} não entra nessa conta.`;
 }
 const erroDeCompra = (save, clube, pid) => { const v = vistaDe(save, clube), j = jogadorDe(v, pid); return j ? erroDeRegra(v, notaDe(v, j)) : "Esse jogador não está disponível."; };
 function registrarCompraDaJanela(v, nota) {
@@ -587,9 +618,9 @@ function regraDeCompras(v) {
   const ainda = conta.permitidos.map((p) => {
     let k = 0;
     for (let c = 1; c <= p.n; c++) if (dividir([...usadas, ...Array(c).fill(p.max)], [p], premios)) k = c;
-    return k ? `${k} jogador${k === 1 ? "" : "es"} de até ${p.max}` : null;
+    return k ? `${k} jogador${k === 1 ? "" : "es"} ${Number.isFinite(p.max) ? `de até ${p.max}` : "de qualquer nota (inclusive 90+)"}` : null;
   }).filter(Boolean);
-  return { tipo: jan.tipo, titulo: jan.tipo === "inicio" ? "Começo da temporada" : jan.tipo === "meio" ? "Meio da temporada" : "Entrada na carreira", texto: quadroDaRegra(jan.tipo, conta), usadas, ainda,
+  return { tipo: jan.tipo, titulo: jan.tipo === "inicio" ? "Começo da temporada" : jan.tipo === "meio" ? "Meio da temporada" : "Entrada na carreira", texto: quadroDaRegra(v, jan.tipo, conta), usadas, ainda,
     proibida: conta.proibida, premios, ok: Array.from({ length: 100 }, (_, n) => !!dividir([...usadas, n], conta.permitidos, premios)) };
 }
 
@@ -691,6 +722,7 @@ function executarTroca(save, t) {
 // daquele clube vão junto, porque o navegador só conhece os que já apareceram no estado.
 function fichaDoTime(save, id) {
   const c = clubeDe(save, id); if (!c) return "Clube não encontrado.";
+  if (Copa.ehSelecao(id)) return fichaDaSelecao(save, id);
   const humano = !!(save.humanos && save.humanos[id] && save.humanos[id].estado);
   const meu = humano || (!save.humanos && id === save.clube);
   const v = humano ? vistaDe(save, id) : save;
@@ -708,19 +740,32 @@ function fichaDoTime(save, id) {
     formacao: Taticas.FORMACOES[time.formacao] ? time.formacao : "4-3-3", estilo, campo, elenco: elenco.map((j) => j.id), jovens,
     fora: Object.fromEntries(elenco.filter((j) => !disponivel(save, j.id)).map((j) => [j.id, save.lesoes[j.id] ? "lesao" : "suspenso"])), forca: Math.round(forcaDoClube(save, id)) };
 }
+// a ficha de uma seleção da Copa: a convocação dela (a do técnico, se for de um técnico da sala) e a escalação que vai a campo
+function fichaDaSelecao(save, id) {
+  const dono = humanoDoTime(save, id), v = dono ? vistaDe(save, dono) : save, time = Copa.timeDaSelecao(v, cx, id), campo = Motor.escalacaoDetalhada(time);
+  let estilo = Taticas.estiloValido(time.tatica && time.tatica.estilo);
+  if (!time.tatica || time.tatica.estilo === "auto") { const jog = Object.fromEntries(time.jogadores.map((j) => [j.id, j])); estilo = Taticas.estiloIdeal(campo.filter((x) => x.id).map((x) => ({ grp: Motor.grupoDe(jog[x.id].pos), atr: jog[x.id].atr }))); }
+  const convocados = Copa.convocadosDe(save, id).map((pid) => jogadorDe(save, pid)).filter(Boolean).sort((a, b) => notaDe(save, b) - notaDe(save, a));
+  const notas = convocados.map((j) => notaDe(save, j)).slice(0, 11);
+  const tecnico = dono ? (v.tecnico && v.tecnico.nome) || save.humanos[dono].nome : id === Copa.ativa(save) ? save.tecnico && save.tecnico.nome : null;
+  return { clube: id, selecao: true, humano: !!dono || id === Copa.ativa(save), tecnico: tecnico || null, formacao: Taticas.FORMACOES[time.formacao] ? time.formacao : "4-3-3", estilo, campo, elenco: convocados.map((j) => j.id), jovens: {},
+    fora: Object.fromEntries(convocados.filter((j) => Copa.fora(save, j.id)).map((j) => [j.id, Copa.fora(save, j.id)])), forca: Math.round(notas.reduce((a, b) => a + b, 0) / Math.max(1, notas.length)) };
+}
 // a leitura do próximo adversário para a prévia do jogo: como ele joga (formação e estilo), a força, os craques, e o que cada formação
 // sua rende contra ele (Taticas.respostas). O estilo e a formação de um técnico da sala são os que ele montou.
 function leituraDoRival(save, proximo) {
   if (!proximo) return null;
-  const adv = proximo.casa === save.clube ? proximo.fora : proximo.casa;
+  const sel = Copa.ativa(save), adv = proximo.casa === save.clube || (sel && proximo.casa === sel) ? proximo.fora : proximo.casa;
   const ficha = fichaDoTime(save, adv);
   if (typeof ficha === "string") return null;
-  const meu = { formacao: save.escalacao.formacao, estilo: save.escalacao.tatica.estilo === "auto" ? "equilibrado" : save.escalacao.tatica.estilo };
+  const daCopa = proximo.competicao === Copa.ID && Copa.ativa(save), esc = daCopa ? save.selecao.escalacao : save.escalacao;
+  const meu = { formacao: esc.formacao, estilo: esc.tatica.estilo === "auto" ? "equilibrado" : esc.tatica.estilo };
   const rival = { formacao: ficha.formacao, estilo: ficha.estilo };
   const atual = Taticas.confronto(meu, rival), dele = Taticas.confronto(rival, meu);
   const melhores = Taticas.respostas(rival, meu.estilo, Taticas.NOMES_FORMACOES).slice(0, 3);
   const destaques = ficha.elenco.filter((pid) => !ficha.fora[pid]).slice(0, 3);
-  return { clube: adv, humano: ficha.humano, formacao: ficha.formacao, estilo: ficha.estilo, forca: ficha.forca, minhaForca: Math.round(forcaDoClube(save, save.clube)), destaques,
+  const minhaForca = proximo.competicao === Copa.ID && sel ? (fichaDaSelecao(save, sel).forca) : Math.round(forcaDoClube(save, save.clube));
+  return { clube: adv, humano: ficha.humano, formacao: ficha.formacao, estilo: ficha.estilo, forca: ficha.forca, minhaForca, destaques,
     confronto: { criar: Math.round(atual.criar * 100), sofrer: Math.round(dele.criar * 100), razoes: atual.razoes, deles: dele.razoes }, melhores };
 }
 // o que o clube pede por um jogador agora (preço e salário do jogador) e o que a dica do olheiro já abate. Pagar isso fecha na hora.
@@ -789,6 +834,7 @@ function titularesAprox(save) {
   return elencoDe(save, save.clube).filter((j) => disponivel(save, j.id)).sort((a, b) => notaDe(save, b) - notaDe(save, a)).slice(0, 11);
 }
 function timeDe(save, id) {
+  if (Copa.ehSelecao(id)) return Copa.timeDaSelecao(save, cx, id);
   const c = clubeDe(save, id), meu = id === save.clube, R = save.partida ? save.partida.rodada : save.rodada;
   const rival = !meu && save.partida && (save.partida.casa === id || save.partida.fora === id);
   const ativos = meu || rival ? efeitosAtivos(save, R) : [];
@@ -797,7 +843,7 @@ function timeDe(save, id) {
     : rival ? (save.provocado && save.provocado.rodada === R ? save.provocado.nota : 0) + somaEfeitos(ativos, "rival") : 0;
   return {
     id: c.id, nome: c.nome,
-    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, base: j.nota, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
+    jogadores: elencoDe(save, id).filter((j) => disponivel(save, j.id)).map((j) => ({ ...j, notaBase: j.nota, nota: clamp(notaDe(save, j) + extra + (meu ? somaEfeitos(ativos, j.id) : 0), 40, 97) })),
     formacao: meu ? save.escalacao.formacao : c.formacao,
     tatica: meu ? save.escalacao.tatica : { mentalidade: 0, pressao: 1, linha: 1, estilo: "auto" }, // o computador escolhe o estilo que combina com o elenco
     titulares: meu && save.escalacao.titulares ? save.escalacao.titulares : undefined,
@@ -809,12 +855,14 @@ const titularesDe = (save, id) => Motor.escalacaoAutomatica(timeDe(save, id));
 const sementeDoJogo = (save, rodada, casa, fora) => `${save.semente}:${save.temporada}:${rodada}:${casa}-${fora}`;
 function simularMinha(save) {
   const p = save.partida;
-  return Motor.simularPartida({ casa: timeDe(save, p.casa), fora: timeDe(save, p.fora), semente: p.semente, modo: p.modo, controla: p.casa === save.clube ? 0 : 1, decisoes: p.decisoes, desempate: desempateDe(p) });
+  const meu = p.casa === save.clube || p.casa === Copa.ativa(save);
+  return Motor.simularPartida({ casa: timeDe(save, p.casa), fora: timeDe(save, p.fora), semente: p.semente, modo: p.modo, controla: meu ? 0 : 1, decisoes: p.decisoes, desempate: desempateDe(p), carreira: true, ...(p.competicao === Copa.ID && { neutro: true }) });
 }
 // os gols de um jogo de humanos: no total da temporada (save.gols) e na competição do jogo (save.golsComp), para a artilharia de cada uma
+// os gols da Copa do Mundo ficam só na artilharia dela (não somam na temporada dos clubes)
 function contarGols(save, r, comp = null) {
-  const daComp = comp ? ((save.golsComp ||= {})[comp] ||= {}) : null;
-  for (const e of r.eventos) if (e.tipo === "gol") { save.gols[e.jogador] = (save.gols[e.jogador] || 0) + 1; if (daComp) daComp[e.jogador] = (daComp[e.jogador] || 0) + 1; }
+  const daComp = comp ? ((save.golsComp ||= {})[comp] ||= {}) : null, doClube = comp !== Copa.ID;
+  for (const e of r.eventos) if (e.tipo === "gol") { if (doClube) save.gols[e.jogador] = (save.gols[e.jogador] || 0) + 1; if (daComp) daComp[e.jogador] = (daComp[e.jogador] || 0) + 1; }
 }
 // a nota de cada um no seu jogo (dos dois times): save.desempenho[pid] = [jogos, soma das notas], para a evolução
 function anotarDesempenho(save, r, jogoDoClube = true) {
@@ -879,6 +927,9 @@ function premioDoTurno(save) {
 // técnico, então a mesma transferência aparecia como "rodada 27" para quem tinha mais copas e a outra pessoa, na rodada 23, via notícia do futuro.
 const semanaDe = (save) => (save.ultimo && save.ultimo.semana) || 0;
 const carimbo = (save) => ({ semana: semanaDe(save), rl: rodadaDaJanela(save) });
+// o que a Copa do Mundo (carreira-copa.js) usa da carreira
+const cx = { BASE_PADRAO, APOSENTADO: "aposentado", todosJogadores: (save) => todosJogadores(save), jogadorDe: (save, pid) => jogadorDe(save, pid), notaDe: (save, j) => notaDe(save, j), donoDe: (save, pid) => donoDe(save, pid),
+  clubeDe: (save, id) => clubeDe(save, id), avisar: (save, e) => avisar(save, e), postar: (save, p) => Feed.postar(save, p) };
 const ajudas = { proximoJogoMundo, semVenda: (save, pid) => Clube.semVenda(save, save.clube, pid), semanaDe, carimbo, avisar, ligaDoClube, clubesDaLiga, lesionado, clubeResponder: (save, e, opcao) => Clube.responder(save, ajudas, e, opcao), rodadaDaJanela, elencoDe, clubeDe, idsDosClubes, jogadorDe, donoDe, notaDe, comNota, salarioDe, titularesDe, mudarMoral, movimentar, vender, ultimosResultados, fatorDe, valorAtual, tetoVenda };
 
 // lesões, cartões e suspensões de todos os jogos da rodada
@@ -904,7 +955,7 @@ function fecharRodada(save, r) {
   for (const [c, f] of save.calendario[rodada]) {
     const semente = sementeDoJogo(save, rodada, c, f);
     if (c === save.partida.casa && f === save.partida.fora) { resultados.push([c, f, r.placar[0], r.placar[1]]); cartoesELesoes(save, r, semente); continue; }
-    const outro = Motor.simularPartida({ casa: timeDe(save, c), fora: timeDe(save, f), semente });
+    const outro = Motor.simularPartida({ casa: timeDe(save, c), fora: timeDe(save, f), semente, carreira: true });
     contarGols(save, outro); cartoesELesoes(save, outro, semente);
     resultados.push([c, f, outro.placar[0], outro.placar[1]]);
   }
@@ -966,16 +1017,29 @@ function fecharRodada(save, r) {
 // da partida mostrar os resultados andando junto com o relógio. É o mesmo jogo da simulação do mundo (a mesma semente de
 // simuladorDoMundo), então o placar final bate com a tabela. Ficam de fora os jogos de humanos (esses têm o relógio deles).
 const paralelosCache = new Map();
+// os times da simulação do mundo (os clubes como estavam no começo da temporada e, na temporada da Copa, as seleções): os mesmos
+// de recalcularMundo, para o jogo refeito aqui bater com o placar da tabela
+const timesCache = new Map();
+function clubesDoMundo(save) {
+  // (as seleções dos técnicos mudam com a convocação, mas os jogos delas não são refeitos aqui: são jogos de humanos)
+  const chave = `${save.semente}:${save.temporada}:${Copa.edicao(save) ? "copa" : ""}`;
+  if (timesCache.has(chave)) return timesCache.get(chave);
+  const clubes = {};
+  for (const b of Object.values(basesDaTemporada(save))) for (const c of b.clubes) clubes[c.id] = c;
+  for (const s of Copa.timesDoMundo(save, cx) || []) clubes[s.id] = s;
+  if (timesCache.size > 20) timesCache.delete(timesCache.keys().next().value);
+  timesCache.set(chave, clubes);
+  return clubes;
+}
 function paralelosDaSemana(save, semana, excluir = []) {
   if (!save.calendarioMundo || semana == null) return [];
   const chave = `${save.semente}:${save.temporada}:${semana}:${excluir.join(",")}`;
   if (paralelosCache.has(chave)) return paralelosCache.get(chave);
-  const clubes = {}, semente = `${save.semente}:${save.temporada}`;
-  for (const b of Object.values(basesDaTemporada(save))) for (const c of b.clubes) clubes[c.id] = c;
+  const clubes = clubesDoMundo(save), semente = `${save.semente}:${save.temporada}`;
   const lista = [];
   for (const j of save.calendarioMundo) {
-    if (j.semana !== semana || excluir.includes(j.id) || j.aoVivo || (save.humanos && (save.humanos[j.casa] || save.humanos[j.fora])) || !clubes[j.casa] || !clubes[j.fora]) continue;
-    const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${semente}:${j.id}` });
+    if (j.semana !== semana || excluir.includes(j.id) || j.aoVivo || (save.humanos && (humanoDoTime(save, j.casa) || humanoDoTime(save, j.fora))) || !clubes[j.casa] || !clubes[j.fora]) continue;
+    const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${semente}:${j.id}`, carreira: true, ...(j.competicao === Copa.ID && { neutro: true }) });
     const gols = r.placar[0] === j.placar[0] && r.placar[1] === j.placar[1] ? r.eventos.filter((e) => e.tipo === "gol").map((e) => ({ min: e.min, ...(e.acr && { acr: e.acr }), lado: e.lado, jogador: e.jogador })) : [];
     lista.push({ id: j.id, competicao: j.competicao, fase: j.fase, rodada: j.rodada, ...(j.perna && { perna: j.perna }), casa: j.casa, fora: j.fora, placar: [...j.placar], gols });
   }
@@ -989,11 +1053,10 @@ const golsDeJogoCache = new Map();
 function golsDetalhados(save, j) {
   const chave = `${save.semente}:${save.temporada}:${j.id}`;
   if (golsDeJogoCache.has(chave)) return golsDeJogoCache.get(chave);
-  const bases = basesDaTemporada(save), clubes = {};
-  for (const b of Object.values(bases)) for (const c of b.clubes) clubes[c.id] = c;
+  const clubes = clubesDoMundo(save);
   let gols = [];
   if (clubes[j.casa] && clubes[j.fora]) {
-    const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${save.semente}:${save.temporada}:${j.id}` });
+    const r = Motor.simularPartida({ casa: clubes[j.casa], fora: clubes[j.fora], semente: `${save.semente}:${save.temporada}:${j.id}`, carreira: true, ...(j.competicao === Copa.ID && { neutro: true }) });
     if (r.placar[0] === j.placar[0] && r.placar[1] === j.placar[1]) gols = r.eventos.filter((e) => e.tipo === "gol").map((e) => ({ min: e.min, ...(e.acr && { acr: e.acr }), lado: e.lado, jogador: e.jogador }));
   }
   if (golsDeJogoCache.size > 20000) golsDeJogoCache.delete(golsDeJogoCache.keys().next().value);
@@ -1018,8 +1081,8 @@ function festaDaCompeticao(save, c, visivel, gols) {
     const eventos = meu ? (u.eventos || []).filter((e) => e.tipo === "gol").map((e) => ({ min: e.min, ...(e.acr && { acr: e.acr }), lado: e.lado, jogador: e.jogador })) : golsDetalhados(save, fj);
     final = { id: fj.id, casa: fj.casa, fora: fj.fora, placar: [...fj.placar], ...(fj.penaltis && { penaltis: [...fj.penaltis] }), gols: eventos };
   }
-  const artilheiros = Object.entries(gols).filter(([pid]) => save.donos[pid] === campeao).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id, n]) => ({ id, gols: n }));
-  return { campeao, vice, nome: c.nome, tipo: c.tipo, ano: save.ano, campanha: camp, ...(pontos != null && { pontos, pontosVice: segundo }), final, artilheiros };
+  const artilheiros = Object.entries(gols).filter(([pid]) => (c.id === Copa.ID ? Copa.convocadosDe(save, campeao).includes(pid) : save.donos[pid] === campeao)).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id, n]) => ({ id, gols: n }));
+  return { campeao, vice, nome: c.nome, tipo: c.tipo, ano: save.ano, campanha: camp, ...(pontos != null && { pontos, pontosVice: segundo }), final, artilheiros, ...(c.id === Copa.ID && { elenco: Copa.convocadosDe(save, campeao) }) };
 }
 // a artilharia da temporada: os gols dos jogos de humanos (save.gols) e os dos jogos do computador (todos que já aconteceram:
 // os da semana limite para trás). Os jogos de humanos não se contam duas vezes (já estão em save.gols). Com `comp`, só os gols
@@ -1029,7 +1092,7 @@ function golsDoMundo(save, limite = Infinity, comp = null) {
   if (!save.calendarioMundo) return gols;
   const fixos = save.resultadosFixos || {};
   for (const j of save.calendarioMundo) {
-    if (j.semana >= limite || fixos[j.id] || j.aoVivo || (comp && j.competicao !== comp)) continue;
+    if (j.semana >= limite || fixos[j.id] || j.aoVivo || (comp ? j.competicao !== comp : j.competicao === Copa.ID)) continue;
     for (const pid of golsDeJogo(save, j)) gols[pid] = (gols[pid] || 0) + 1;
   }
   return gols;
@@ -1068,7 +1131,9 @@ const paralelosDaPartida = (save, p) => (save.base === BASE_PADRAO && save.calen
 // fecha o jogo do clube (save.clube) no calendário mundial. Na carreira em grupo, o jogo de dois humanos fecha uma vez
 // para cada um: o que é de todos (gols, cartões, desempenho, o resultado) só na primeira (comum), a rodada cumprida
 // pelos machucados e suspensos uma vez por rodada (cumprir), e o mundo é recalculado no fim da rodada (recalcular).
-function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = true } = {}) {
+function fecharJogoMundo(save, r, opcoes = {}) {
+  if (save.partida.competicao === Copa.ID) return fecharJogoSelecao(save, r, opcoes);
+  const { comum = true, cumprir = true, recalcular = true } = opcoes;
   const p = save.partida, clube = clubeDe(save, save.clube), emCasa = p.casa === save.clube;
   const moralAntes = save.moral, caixaAntes = save.caixa, entradaAntes = new Set(save.caixaEntrada.map((e) => e.id)), transfAntes = save.transferencias.length;
   const [nos, eles] = emCasa ? r.placar : [r.placar[1], r.placar[0]];
@@ -1123,12 +1188,53 @@ function fecharJogoMundo(save, r, { comum = true, cumprir = true, recalcular = t
   save.posJogo = { rodada: save.rodada - 1, jogoId: p.jogoId, rotulo, casa: p.casa, fora: p.fora, placar: r.placar, ...(penaltis && { penaltis }), resultado: resultadoFinal, moral: [moralAntes, save.moral], caixa: [caixaAntes, save.caixa], financas: f, lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: novos.filter((e) => !e.resolvido).map((e) => e.id), avisos: novos.filter((e) => e.resolvido && e.tipo !== "ia").map((e) => e.id) };
   if (recalcular) registrarTemporada(save);
 }
+// o jogo da seleção (na pausa da Copa): sem bilheteria, salário nem moral do clube. O resultado entra no mundo, os gols na
+// artilharia da Copa, os cartões na Copa (as lesões valem no clube) e o pós-jogo conta como foi
+function fecharJogoSelecao(save, r, { comum = true, cumprir = true, recalcular = true } = {}) {
+  const p = save.partida, sel = Copa.ativa(save) || p.casa, emCasa = p.casa === sel;
+  const [nos, eles] = emCasa ? r.placar : [r.placar[1], r.placar[0]];
+  if (cumprir) cumprirRodada(save);
+  if (comum) { contarGols(save, r, Copa.ID); Copa.cartoes(save, cx, r, p); anotarDesempenho(save, r, false); }
+  Copa.cansaco(save, r);
+  save.resultadosFixos[p.jogoId] = { placar: [...r.placar], ...(r.penaltis && { penaltis: [...r.penaltis] }) };
+  save.jogosJogados.push(p.jogoId);
+  save.ultimo = { rodada: save.rodada, semana: ((save.calendarioMundo || []).find((x) => x.id === p.jogoId) || {}).semana || 0, jogoId: p.jogoId, competicao: p.competicao, fase: p.fase, casa: p.casa, fora: p.fora, placar: r.placar, eventos: r.eventos, modo: p.modo, selecao: sel };
+  save.partida = null; save.rodada++; if (recalcular) recalcularMundo(save);
+  const comp = save.competicoes[Copa.ID], jogo = comp.jogos.find((j) => j.id === p.jogoId);
+  const penaltis = jogo && Array.isArray(jogo.penaltis) ? [...jogo.penaltis] : null;
+  if (penaltis) { save.resultadosFixos[p.jogoId].penaltis = [...penaltis]; save.ultimo.penaltis = [...penaltis]; }
+  const [nosF, elesF] = penaltis ? (emCasa ? penaltis : [penaltis[1], penaltis[0]]) : [nos, eles];
+  const resultado = nosF > elesF ? "V" : nosF < elesF ? "D" : "E", tipo = resultado === "V" ? "vitoria" : resultado === "D" ? "derrota" : "empate";
+  const nome = Copa.nomeDe(sel), rotulo = `${comp.nome} · ${jogo ? Copa.rotulo(jogo) : ""}`;
+  Feed.postar(save, { tipo, perfil: sel, humor: resultado === "V" ? "bom" : resultado === "D" ? "ruim" : "neutro", arte: { cena: tipo, casa: p.casa, fora: p.fora, placar: r.placar },
+    texto: `${rotulo} · ${clubeDe(save, p.casa).nome} ${r.placar[0]} × ${r.placar[1]} ${clubeDe(save, p.fora).nome}.${penaltis ? ` Pênaltis: ${penaltis[0]} × ${penaltis[1]}.` : ""}` });
+  const ainda = comp.jogos.some((j) => (j.casa === sel || j.fora === sel) && !save.jogosJogados.includes(j.id));
+  if (p.fase === "final") Feed.postar(save, { tipo: comp.campeao === sel ? "campeao" : "eliminado", perfil: "galeranews", galeranews: true, peso: 3, humor: comp.campeao === sel ? "bom" : "ruim", arte: { cena: "trofeu", clube: comp.campeao },
+    texto: comp.campeao === sel ? `${nome.toUpperCase()} CAMPEÃ DO MUNDO! ${save.tecnico && save.tecnico.nome ? `${save.tecnico.nome} leva a seleção ao título da ${comp.nome}.` : ""}` : `${nome} perde a final e fica com o vice da ${comp.nome}.` });
+  else if (!ainda && p.fase !== "terceiro") Feed.postar(save, { tipo: "eliminado", perfil: "galeranews", galeranews: true, humor: "ruim", arte: { cena: "derrota", clube: sel }, texto: `${nome} está fora da ${comp.nome} (${String(p.fase).startsWith("grupo-") ? "fase de grupos" : (Copa.FASES[p.fase] || p.fase).toLowerCase()}).` });
+  else if (String(p.fase).startsWith("grupo-") && jogo && jogo.rodada === 2 && ainda) Feed.postar(save, { tipo: "classificado", perfil: "galeranews", galeranews: true, humor: "bom", arte: { cena: "festa", clube: sel }, texto: `${nome} está nos 16 avos de final da ${comp.nome}!` });
+  if (!ainda) avisar(save, { tipo: "selecao", icone: "taca", titulo: `A Copa acabou para ${nome}`, texto: `${(Copa.campanha(save, sel) || {}).lugar || "Fim da campanha"}. O futebol de clubes volta na semana seguinte.` });
+  save.posJogo = { rodada: save.rodada - 1, jogoId: p.jogoId, rotulo, selecao: sel, casa: p.casa, fora: p.fora, placar: r.placar, ...(penaltis && { penaltis }), resultado, moral: [save.moral, save.moral], caixa: [save.caixa, save.caixa], financas: [], lesoes: [], suspensos: [], pendurados: [], efeitos: [], eventos: [], avisos: [] };
+  if (recalcular) registrarTemporada(save);
+}
+// a Copa antes de cada jogo: a proposta sem resposta é aceita quando a pausa chega, e a lista incompleta é completada na estreia
+function prepararCopa(save) {
+  if (!Copa.edicao(save)) return;
+  Copa.prazo(save, cx);
+  const prox = proximoJogoMundo(save);
+  if (prox && prox.competicao === Copa.ID) Copa.garantirLista(save, cx);
+}
+// na sala: a mesma coisa para cada técnico, antes de montar a rodada
+function prazosDaCopa(save) {
+  if (!Copa.edicao(save)) return;
+  for (const c of humanosDe(save)) { const v = vistaDe(save, c); prepararCopa(v); guardarVista(save, v); }
+}
 // Quem descansa uma partida recupera 80 pontos de energia e zera a sequência. Jogar várias vezes seguidas
 // só afeta o over pelo desgaste gradual de energia, sem penalidade fixa no terceiro jogo. As férias zeram ambos.
-// Quem joga como titular leva para o jogo seguinte só um pedaço do desgaste: 0,25 de over por jogo até os 29 anos e
-// 0,40 de 30 em diante (10 pontos de energia = 1 de over). O desgaste do jogo em si (ritmo e pressão da tática)
-// ainda pesa um pouco: ele varia de 0,7 a 1,4 vez esse valor, e o departamento médico abate.
-const PERDA_JOVEM = 2.5, PERDA_VETERANO = 4, IDADE_VETERANO = 30, GASTO_TIPICO = 16;
+// Quem joga leva para o jogo seguinte parte do desgaste: 3,5 pontos de energia até os 29 anos e 5 a partir dos 30
+// num jogo típico (10 pontos de energia = 1 de over). A estrutura física reduz no máximo 40% dessa perda:
+// mesmo com todas as melhorias, repetir os titulares precisa acabar afetando o rendimento.
+const PERDA_JOVEM = 3.5, PERDA_VETERANO = 5, IDADE_VETERANO = 30, GASTO_TIPICO = 16;
 function aplicarFadiga(save, r) {
   const e = save.energia || (save.energia = {});
   const sequencia = save.sequencia || (save.sequencia = {});
@@ -1137,7 +1243,8 @@ function aplicarFadiga(save, r) {
     if (jogaram.has(j.id)) {
       const antes = e[j.id] ?? 100, gasto = Math.max(0, antes - (r.energia?.[j.id] ?? antes));
       const base = Evolucao.idadeNa(j, save.temporada) >= IDADE_VETERANO ? PERDA_VETERANO : PERDA_JOVEM;
-      e[j.id] = clamp(antes - Math.max(0, base * clamp(gasto / GASTO_TIPICO, 0.7, 1.4) - Clube.bonusRecupera(save)), 20, 100);
+      const perda = base * clamp(gasto / GASTO_TIPICO, 0.7, 1.4);
+      e[j.id] = clamp(antes - (perda - Math.min(Clube.bonusRecupera(save), perda * 0.4)), 20, 100);
       sequencia[j.id] = (sequencia[j.id] || 0) + 1;
     } else {
       e[j.id] = clamp((e[j.id] ?? 100) + 80 + Clube.bonusRecupera(save), 20, 100);
@@ -1173,7 +1280,7 @@ function registrarTemporada(save) {
   const divisao = ligaId === "brasileirao-2026" && pos > tabela.length - TROCAM ? "rebaixado" : ligaId === "serieb-2026" && pos <= TROCAM ? "acesso" : null;
   save.historico.push({ ...(meta && { meta: { alvo: meta.alvo, texto: meta.texto, cumprida: meta.cumprida, rank: meta.rank } }), ano: save.ano, temporada: save.temporada, clube: save.clube, posicao: pos, pontos: tabela[pos - 1].p, liga: nomeLiga, campeao: tabela[0].id, titulos, vices,
     artilheiro: artilheiro ? { id: artilheiro[0], gols: artilheiro[1] } : null, negocio: negocios[0] ? { jogador: negocios[0].jogador, lucro: negocios[0].lucro, para: negocios[0].para } : null,
-    forca: forcaDoElenco(save), ...(divisao && { divisao }) });
+    forca: forcaDoElenco(save), ...(divisao && { divisao }), ...(Copa.ativa(save) && { selecao: Copa.campanha(save, Copa.ativa(save)) }) });
   if (save.base === BASE_PADRAO && save.calendarioMundo) arquivarTemporada(save);
   guardarNaEstante(save);
   if (meta) {
@@ -1224,7 +1331,7 @@ function arquivarTemporada(save) {
   for (const [id, c] of Object.entries(mundo.competicoes)) {
     if (!c.campeao) continue;
     const limpa = (tab) => tab.map(({ ultimos, ...l }) => l);
-    const elenco = elencoDe(save, c.campeao).sort((a, b) => notaDe(save, b) - notaDe(save, a)).slice(0, 20).map((j) => j.id);
+    const elenco = id === Copa.ID ? Copa.convocadosDe(save, c.campeao) : elencoDe(save, c.campeao).sort((a, b) => notaDe(save, b) - notaDe(save, a)).slice(0, 20).map((j) => j.id);
     competicoes[id] = { nome: c.nome, tipo: c.tipo, campeao: c.campeao, vice: c.vice, ...(c.tabela && { tabela: limpa(c.tabela) }),
       ...(c.grupos && c.grupos.length && { grupos: c.grupos.map((g) => ({ id: g.id, tabela: limpa(g.tabela) })) }), ...(c.chave && c.chave.length && { chave: c.chave }),
       ...(c.festa && { festa: { ...c.festa, elenco } }), artilharia: Object.entries(golsDoMundo(save, Infinity, id)).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([pid, gols]) => ({ id: pid, nome: (jogadorDe(save, pid) || {}).nome || pid, clube: donoDe(save, pid), gols })) };
@@ -1438,6 +1545,7 @@ function estado(save) {
   e.vagas = save.base === BASE_PADRAO ? Tecnicos.visao(save, ctxTecnicos(), resDaTemporada(save)) : null;
   e.posicoes = save.posicoes || {}; // quem já mudou de posição pelo treino (o navegador troca a posição da base)
   e.atributosModerados = save.atributosModerados || {};
+  if (save.base === BASE_PADRAO) Object.assign(e, Copa.estado(save, cx)); // a Copa do Mundo da temporada e a seleção do técnico
   if (save.demitido) { e.encerrada = true; e.demitido = save.demitido; }
   e.jovens = jovensDoEstado(save, e);
   return e;
@@ -1540,7 +1648,7 @@ function estadoMundo(save) {
   // Liga e grupos têm tabela definida desde o começo. No mata-mata, só aparece o que já foi jogado ou o próximo jogo:
   // mandar as fases posteriores entregava antecipadamente classificação, eliminação e adversários.
   const visivelAgora = (j) => j.semana < limite || save.jogosJogados.includes(j.id);
-  const meus = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, save.clube)
+  const sel = Copa.ativa(save), meus = save.calendarioMundo.filter((j) => j.casa === save.clube || j.fora === save.clube || (sel && (j.casa === sel || j.fora === sel)))
     .filter((j) => save.jogosJogados.includes(j.id) || (proximo && j.id === proximo.id) || jogoDefinido(save, j, visivelAgora))
     .map((j) => ({ ...j, placar: save.jogosJogados.includes(j.id) ? j.placar : null, janela: Mercado.janelaAberta(rodadasAntes(save, j.semana)) }));
   let partida = null;
@@ -1549,7 +1657,7 @@ function estadoMundo(save) {
   const elenco = elencoDe(save, save.clube), artilharia = topo(golsTodos);
   // a artilharia de cada competição (a tela Tabela e o painel da Sede escolhem qual mostrar)
   const artilharias = Object.fromEntries(Object.keys(save.competicoes).map((id) => [id, topo(golsDoMundo(save, limite, id))]).filter(([, l]) => l.length));
-  return { meta: save.meta, liga, divisoes: save.divisoes, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, artilharias, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo, rival: partida ? null : leituraDoRival(save, proximo), clima: proximo ? Pressao.climaDoJogo(save, ajudas, proximo.casa, proximo.fora) : null,
+  return { meta: save.meta, liga, divisoes: save.divisoes, base: save.base, ano: save.ano, temporada: save.temporada, clube: save.clube, tecnico: save.tecnico, modo: save.modo, rodada: save.rodada, total: meus.length, fim: !proximo, escalacao: save.escalacao, tabela, tabelas: Object.fromEntries(Object.entries(competicoes).filter(([, c]) => c.tabela).map(([id, c]) => [id, c.tabela])), competicoes, meus, tba: calendarioTba(save, visivelAgora), artilharia, artilharias, partida, ultimo: save.ultimo, historico: save.historico, energia: Object.fromEntries(elenco.map((j) => [j.id, (save.energia || {})[j.id] ?? 100])), sequencia: save.sequencia, rodadaAnterior: save.ultimo ? [[save.ultimo.casa, save.ultimo.fora, ...save.ultimo.placar]] : null, proximo: proximo ? [proximo.casa, proximo.fora] : null, proximoJogo: proximo, rival: partida ? null : leituraDoRival(save, proximo), clima: proximo && proximo.competicao !== Copa.ID ? Pressao.climaDoJogo(save, ajudas, proximo.casa, proximo.fora) : null,
     caixa: save.caixa, moral: save.moral, folha: folhaDe(save), financas: save.financas.slice(0, 4), elenco: elenco.map((j) => j.id), donos: save.donos, aVenda: save.aVenda, lesoes: save.lesoes, suspensos: save.suspensos, amarelos: save.amarelos, bonusNota: save.bonusNota, salarios: Object.fromEntries(elenco.map((j) => [j.id, salarioDe(save, j)])), indicacoes: save.indicacoes, transferencias: save.transferencias.filter((t) => !t.moderacao && !t.revertida && (t.semana == null || t.semana < semanaPropria)).slice(0, 20), caixaEntrada: save.caixaEntrada.slice(0, 25), janela: { aberta: Mercado.janelaAberta(rodadaDaJanela(save)), proxima: Mercado.proximaJanela(rodadaDaJanela(save)) }, rodadaLiga: rodadaDaJanela(save), rodadasLiga: semanasDaRodada(save.calendarioMundo).length, tentativas: save.tentativas.rodada === save.rodada ? save.tentativas.por : {}, efeitos: [], situacao: save.situacao, forma: formaDe(save), compras: save.compras, valores: save.valores, pedidos: save.pedidos, parcelas: save.parcelas, feed: save.feed.filter((f) => f.semana == null || f.semana < semanaPropria).slice(0, 30), posJogo: save.posJogo };
 }
 
@@ -1659,8 +1767,10 @@ function novaTemporada(save) {
   if (save.escalacao.titulares && !save.escalacao.titulares.every((id) => elenco.has(id))) Object.assign(save.escalacao, { titulares: null, fixo: false });
   if (mundo) {
     Object.assign(save, { classificados, divisoes: troca.divisoes, formatoCopas: 2, semMundial: true, resultadosFixos: {}, jogosJogados: [], donosInicio: { ...save.donos } });
+    if (!Copa.abrir(save, cx)) delete save.copa; // de 2 em 2 temporadas, a Copa do Mundo (a pausa no meio da temporada)
     recalcularMundo(save);
     save.calendario = Temporada.jogosDoClube({ jogos: save.calendarioMundo }, save.clube).map((j) => [[j.casa, j.fora]]);
+    ofertarSelecoes(save, [save]);
   } else save.calendario = Temporada.gerarCalendario(idsDosClubes(save), `${save.semente}:${save.temporada}`);
   const nomes = (lista) => lista.slice(0, 4).map(([pid, d]) => `${jogadorDe(save, pid).nome} (${d > 0 ? "+" : ""}${d})`).join(", ");
   const partes = [mundo && noticiaDasDivisoes(save, troca), meus.subiram.length && `Subiram: ${nomes(meus.subiram)}.`, meus.cairam.length && `Caíram: ${nomes(meus.cairam)}.`,
@@ -1694,6 +1804,15 @@ function venderAcao(save, d) {
   return { mensagem: vender(save, pid, outros[Math.floor(r() * outros.length)], tetoVenda(save, pid, Mercado.vendaRapida(comNota(save, j), fatorDe(save, pid)))) };
 }
 // a resposta a um aviso da caixa de entrada
+// a seleção (Copa do Mundo): responder à proposta, convocar (só jogadores do país), a escalação
+function selecaoAcao(save, d = {}) {
+  if (save.partida) return "Termine a partida primeiro.";
+  const acao = String(d.acao || "");
+  if (acao === "aceitar" || acao === "recusar") return Copa.responder(save, cx, acao === "aceitar");
+  if (acao === "escalacao") return Copa.escalacao(save, cx, d);
+  if (["convocar", "tirar", "auto", "limpar"].includes(acao)) return Copa.convocar(save, cx, { jogador: d.jogador, acao: acao === "convocar" ? "por" : acao });
+  return "Ação inválida.";
+}
 function eventoAcao(save, d) {
   if (save.partida) return "Termine a partida primeiro.";
   const e = save.caixaEntrada.find((x) => x.id === d.id);
@@ -1759,6 +1878,7 @@ module.exports = function ligarCarreira(io) {
       if (save.demitido) return "Você foi demitido: a carreira acabou.";
       if (save.partida) return null;
       if (save.base === BASE_PADRAO) {
+        prepararCopa(save);
         const jogo = proximoJogoMundo(save); if (!jogo) return "A temporada acabou.";
         resolverPendentes(save);
         save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, agregado: agregadoDe(save, jogo), casa: jogo.casa, fora: jogo.fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
@@ -1787,6 +1907,7 @@ module.exports = function ligarCarreira(io) {
     socket.on("proposta", (d = {}, cb) => comCarreira(cb, (save) => propor(save, d)));
     socket.on("vender", (d = {}, cb) => comCarreira(cb, (save) => venderAcao(save, d)));
     socket.on("evento", (d = {}, cb) => comCarreira(cb, (save) => eventoAcao(save, d)));
+    socket.on("selecao", (d = {}, cb) => comCarreira(cb, (save) => selecaoAcao(save, d)));
     socket.on("olheiro", (d, cb) => comCarreira(cb, (save) => ({ sugestoes: olheiro(save) })));
     // a ficha de outro clube (só leitura: não salva nada nem manda o estado de novo)
     socket.on("verTime", (d = {}, cb) => {
@@ -1831,9 +1952,9 @@ module.exports = function ligarCarreira(io) {
   });
 };
 // para os testes: montar uma carreira e mexer nela sem o socket
-module.exports.paraTestes = { forcaDoClube, caixaInicial, temporadaAcabou, trocarDivisoes, ligaDoClube, clubesDaLiga, definirMeta, registrarTemporada, PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO, olheiro, consultarPedido };
+module.exports.paraTestes = { Copa, cx, prepararCopa, selecaoAcao, recalcularMundo, rodadaDaJanela, forcaDoClube, caixaInicial, temporadaAcabou, trocarDivisoes, ligaDoClube, clubesDaLiga, definirMeta, registrarTemporada, PREMIO_TITULO, premioDoTitulo, PREMIOS_G6, premioG6, novaCarreira, classificadosDe, ajudas, timeDe, fecharRodada, propor, estado, proximoJogoMundo, simularMinha, sementeDoJogo, novaTemporada, completar, aplicarFadiga, APOSENTADO, olheiro, consultarPedido };
 // para a carreira em grupo (carreira-online.js): o mundo com vários clubes humanos e as funções que ela usa
-module.exports.grupo = { rodadaDaSemana, estanteDaSala, Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
+module.exports.grupo = { Copa, humanoDoTime, prazosDaCopa, selecaoAcao, rodadaDaSemana, estanteDaSala, Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
   fichaDoTime, infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };
 

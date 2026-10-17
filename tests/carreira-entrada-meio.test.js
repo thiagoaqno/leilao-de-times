@@ -179,6 +179,16 @@ test("entrar com a janela aberta (começo da temporada) vale a regra normal da j
   assert.strictEqual(v.jogosJogados.length, 0);
 });
 
+test("voltar a um clube dispensado preserva as compras e não repete o aporte", () => {
+  const save = grupo(["flamengo"], { aporte: 250e6 });
+  const caixa = save.caixaIA.palmeiras;
+  save.historicoClubes = { palmeiras: { comprasJanela: { id: "1:inicio", ordem: 0, notas: [80] }, janelasAnteriores: [], entrada: null } };
+  assert.strictEqual(G.entrarNaCarreira(save, { clube: "palmeiras", nome: "Beto" }, { aporte: 250e6 }), null);
+  const v = G.vistaDe(save, "palmeiras");
+  assert.strictEqual(v.caixa, caixa, "o clube não recebe outro aporte");
+  assert.deepStrictEqual(G.regraDeCompras(v).usadas, [80], "a compra anterior continua na cota da janela");
+});
+
 test("jogos ao vivo: com o mata-mata e com o nome de quem fez o gol", () => {
   const save = novaCarreira("Teste", "flamengo", "x");
   assert.ok(G.paralelosDaSemana(save, 10).length > 0, "a semana das oitavas de ida da Copa do Brasil aparece");

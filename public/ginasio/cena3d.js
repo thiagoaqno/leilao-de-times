@@ -151,6 +151,10 @@ function montarTema(T) {
   if (cena3d.grupo) liberarGrupo(cena3d.grupo);
   const grupo = new THREE.Group(); cena3d.grupo = grupo; scene.add(grupo);
   const toon = (hex) => new THREE.MeshToonMaterial({ color: cor3(hex), gradientMap: degrade });
+  if (T.bioma) { // o modo Pokémon: o lugar aberto, sem arquibancada (biomas.js)
+    cena3d.torcida = null; cena3d.cenario = montarBioma(T, grupo, toon); cena3d.temaFeito = T;
+    return;
+  }
   const caixa = (w, h, d, mat, x, y, z, sombra = true) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z);
     m.castShadow = sombra; m.receiveShadow = true; grupo.add(m); return m;
@@ -230,9 +234,9 @@ function mexerTorcida(agora, forcar = false) {
 
 // ---------- câmera ----------
 // põe a câmera a uma distância em que a quadra inteira cabe na tela, e centraliza a quadra entre o topo e o fundo
-// livres (em coordenadas da tela, de -1 a 1)
-function enquadrar3d(w, h, topo, baixo) {
-  const { cam, renderer } = cena3d, chave = `${w}x${h}:${topo}:${baixo}`;
+// livres (em coordenadas da tela, de -1 a 1), e entre a beira esquerda livre e a direita
+function enquadrar3d(w, h, topo, baixo, esquerda = -1) {
+  const { cam, renderer } = cena3d, chave = `${w}x${h}:${topo}:${baixo}:${esquerda}`, meiaLargura = (1 - esquerda) / 2;
   if (cena3d.enquadre === chave) return;
   cena3d.enquadre = chave;
   renderer.setSize(w, h, false);
@@ -248,10 +252,10 @@ function enquadrar3d(w, h, topo, baixo) {
   let perto = 4, longe = 200;
   for (let i = 0; i < 40; i++) {
     const d = (perto + longe) / 2, m = medir(d);
-    if (m.x <= 0.97 && m.y1 - m.y0 <= topo - baixo) longe = d; else perto = d;
+    if (m.x <= 0.97 * meiaLargura && m.y1 - m.y0 <= topo - baixo) longe = d; else perto = d;
   }
   const m = medir(longe), sobe = (topo + baixo) / 2 - (m.y1 + m.y0) / 2;
-  cam.setViewOffset(w, h, 0, -sobe * h / 2, w, h);
+  cam.setViewOffset(w, h, -(1 + esquerda) / 2 * w / 2, -sobe * h / 2, w, h);
   cena3d.base = cam.position.clone();
   cena3d.distancia = longe; // a névoa começa depois da quadra, por mais longe que a câmera fique (celular em pé)
   if (cena3d.scene.fog) { cena3d.scene.fog.near = longe + 8; cena3d.scene.fog.far = longe + 40; }

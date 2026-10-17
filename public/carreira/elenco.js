@@ -58,7 +58,7 @@ function campinho(detalhe, formacao, opcoes = {}) {
     return `<button class="peca ${faixa(nota)}${sel ? " sel" : ""}${fit < 1 ? " improvisado" : ""}" data-i="${i}" data-jogador="${v.id}" data-nota="${nota}" data-rendimento="${rendimento}" data-fit="${fit}" style="${estilo}" title="${h(j.nome)} · ${POS_NOME[j.pos] || j.pos}${fit < 1 ? ` · rende ${rendimento} nesta faixa do campo` : ""} · energia ${energiaTexto}%${perdaVisivel ? ` · over -${perdaVisivel}` : ""}">
       ${perdaVisivel ? `<span class="cansaco-canto" title="${energiaTexto}% de energia: over -${perdaVisivel}">-${perdaVisivel}</span>` : ""}
       <span class="peca-mudancas">${seloMudancaNota(v.id)}${seloEfeitoNota(v.id)}</span>
-      <span class="cam">${camisaSVG(donoDe(v.id), v.fino === "GOL")}<span class="nota-em-campo"><b>${nota}</b>${rendimento !== nota ? `<em>→ ${rendimento}</em>` : ""}</span></span>
+      <span class="cam">${camisaSVG(typeof J !== "undefined" && J.selecao && telaAtual === "partida" && minhaSelecao() ? minhaSelecao() : donoDe(v.id), v.fino === "GOL")}<span class="nota-em-campo"><b>${nota}</b>${rendimento !== nota ? `<em>→ ${rendimento}</em>` : ""}</span></span>
       ${energia != null ? `<span class="energia ${nivelEnergia(energia)}" title="Energia ${energiaTexto}%"><i style="--v:${energia}%"></i></span>` : ""}<small>${h(sobrenome(j.nome))}</small></button>`;
   }).join("")}</div>`;
 }

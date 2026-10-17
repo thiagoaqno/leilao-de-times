@@ -6,6 +6,7 @@
 // Se a conexão cair no meio de uma batalha (celular bloqueou, trocou de rede, a aba recarregou…),
 // a pessoa tem RECONNECT_MS para voltar com o mesmo token e a batalha continua de onde parou.
 const G = require("./galeramon.js");
+const ligarMato = require("./vila-mato.js");
 const { rid, limparNome: cleanName } = require("./salas.js");
 const MW = 320, MH = 260, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
 const OX = 131, OY = 100; // onde fica a vila dentro do mapa grande
@@ -99,6 +100,8 @@ module.exports = function attachVila(io, ginasio) {
       budget--; return true;
     };
     const mine = () => me && me.sock === socket.id; // esta conexão ainda é a "dona" do jogador?
+    // a grama alta em frente ao Ginásio: Pokémon selvagens e a Pokébola infinita (vila-mato.js)
+    ligarMato(socket, { eu: () => (mine() && !me.battle && !me.car ? me : null), noticia: (text) => nsp.emit("news", { text }), OX, OY, ginasio });
 
     socket.on("hello", (d = {}) => {
       const name = cleanName(d.name);

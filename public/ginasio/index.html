@@ -7,6 +7,7 @@
 <script src="/semzoom.js"></script>
 <title>Ginásio da Galera</title>
 <link rel="stylesheet" href="estilo.css">
+<link rel="stylesheet" href="lobby-pokemon.css">
 </head>
 <body>
 <header id="barra">
@@ -19,6 +20,17 @@
 <main id="principal">
   <section id="quadra" aria-label="Arena do Ginásio">
     <canvas id="cv" aria-label="Batalha em tempo real"></canvas>
+    <div id="pokemonHero" aria-hidden="true">
+      <div class="hero-topo"><span>GINÁSIO POKÉMON</span><span>01 / ARENA</span></div>
+      <div class="hero-energia"></div>
+      <div class="hero-selo"><span></span></div>
+      <img class="hero-mon hero-mon-esq" src="" alt="">
+      <img class="hero-mon hero-mon-dir" src="" alt="">
+      <img class="hero-mon hero-mon-centro" src="" alt="">
+      <div class="hero-texto"><span>SEU PRÓXIMO DESAFIO COMEÇA AQUI</span><strong>ENTRE NA<br>ARENA.</strong><p>Monte seu trio. Escolha o campo. Vença a batalha.</p></div>
+      <div class="hero-rodape"><span>3 POKÉMON POR TIME</span><span>1×1 &nbsp; / &nbsp; 2×2</span><span>AO VIVO</span></div>
+      <div id="heroVersus" class="hero-versus hidden"></div>
+    </div>
     <div id="placar" class="hidden">
       <div class="lado azul"><span id="nomeAzul"></span><div class="vida"><i id="vidaAzul"></i></div></div>
       <time id="relogio">4:00</time>
@@ -33,20 +45,35 @@
     <div id="inicio">
       <label for="hName">Seu nome</label><input id="hName" maxlength="16" autocomplete="nickname" enterkeyhint="done">
       <div id="desafioLider" class="desafio-lider hidden"></div>
+      <section id="versusInicio" class="pre-luta hidden" aria-label="Prévia do confronto"></section>
       <button id="btnRobo" class="primario largo">Jogar contra robô</button>
       <div class="acoes"><button id="btnCreate">Criar sala</button></div>
       <div class="entrada"><label for="hCode">Código da sala</label><div class="linha"><input id="hCode" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go"><button id="btnJoin">Entrar</button><button id="btnWatch" class="icone" title="Assistir" aria-label="Assistir"></button></div></div>
       <p id="hErr" class="erro" role="alert"></p>
       <div id="insignias" class="insignias" aria-label="Insígnias dos ginásios"></div>
+      <details id="comoJogar" class="como-jogar"><summary>Como lutar</summary>
+        <dl>
+          <dt>Golpes</dt><dd>Clique, botão direito, Q e E. Cada golpe tem o seu jeito: feixe, sopro, onda, tremor, rajada, bumerangue, teleguiado, bomba, salto, redemoinho, combo, agarrão e armadilha.</dd>
+          <dt>Esquiva (Espaço)</dt><dd>Rola para o lado do movimento. Na hora certa é <b>perfeita</b>: as recargas adiantam e o próximo golpe sai mais forte.</dd>
+          <dt>Guarda (segure Shift ou F)</dt><dd>Segura o golpe de frente, mas gasta a barra; se ela acaba, fica tonto. Levantar bem na hora <b>apara</b>: o projétil volta e quem bateu cambaleia.</dd>
+          <dt>Agarrão</dt><dd>Passa pela guarda. Mas quem apanha enquanto prepara um golpe perde o golpe.</dd>
+          <dt>Empurrão</dt><dd>Golpe forte joga longe (bicho pesado voa menos). Bater na parede ou na pilastra machuca e deixa tonto.</dd>
+        </dl>
+      </details>
     </div>
+    <section id="selvagemBox" class="hidden" aria-live="polite"></section>
     <fieldset id="opcoes"><legend>Partida</legend>
       <div class="segmentos" aria-label="Modo"><button data-modo="galeramon" aria-pressed="true">Galeramon</button><button data-modo="pokemon" aria-pressed="false">Pokémon</button><button data-modo="naruto" aria-pressed="false">Naruto</button></div>
       <div class="linha opcoes-linha"><div class="segmentos formato" aria-label="Formato"><button data-formato="1x1" aria-pressed="true">1x1</button><button data-formato="2x2" aria-pressed="false">2x2</button></div><label class="check"><input id="bots" type="checkbox" checked>Robôs</label></div>
+      <div id="escolhaRobo"><span class="rotulo-arena">Robô</span><div class="segmentos" aria-label="Dificuldade do robô"><button data-robo="facil" aria-pressed="false">Fácil</button><button data-robo="normal" aria-pressed="true">Normal</button><button data-robo="dificil" aria-pressed="false">Difícil</button></div></div>
+      <div id="escolhaPokemons" class="hidden"><span class="rotulo-arena">Pokémon da sala</span><div class="segmentos" aria-label="Pokémon da sala"><button data-pokemons="todos" aria-pressed="true">Todos liberados</button><button data-pokemons="capturados" aria-pressed="false">Só os capturados</button></div><p id="dicaPokemons"></p></div>
+      <div id="escolhaArena" class="hidden"><span class="rotulo-arena">Lugar da luta</span><div class="segmentos arenas" aria-label="Lugar da luta"><button data-arena="sortear" aria-pressed="true">Sortear</button><button data-arena="floresta" aria-pressed="false">Floresta</button><button data-arena="lagoa" aria-pressed="false">Lagoa</button><button data-arena="vulcao" aria-pressed="false">Vulcão</button><button data-arena="neve" aria-pressed="false">Neve</button><button data-arena="ruinas" aria-pressed="false">Ruínas</button></div><p id="dicaArena"></p></div>
     </fieldset>
     <section id="escolha"><h2>Seu time</h2><div id="meuTime" class="time-escolha"></div></section>
     <section id="sala" class="hidden">
       <div class="linha"><h2>Na arena</h2><button id="btnInvite" class="icone" title="Copiar convite" aria-label="Copiar convite"></button></div>
       <div id="participantes"></div>
+      <section id="versusSala" class="pre-luta hidden" aria-label="Prévia do confronto"></section>
       <div class="segmentos lados"><button data-lado="0">Lado azul</button><button data-lado="1">Lado vermelho</button><button data-lado="null" title="Ficar de fora" aria-label="Ficar de fora"></button></div>
       <button id="btnStart" class="primario largo">Começar batalha</button>
       <button id="btnLeave" class="discreto largo">Sair da sala</button>
@@ -58,18 +85,19 @@
   <div id="chakraHud" class="hidden" role="status"></div>
   <div id="reservas" aria-label="Time na batalha"></div>
   <div id="habilidades" aria-label="Golpes"></div>
-  <button id="btnEsquiva" class="habilidade esquiva" title="Esquiva" aria-label="Esquiva"></button>
+  <div id="defesa"><button id="btnEsquiva" class="habilidade esquiva" title="Esquiva (Espaço)" aria-label="Esquiva"></button><button id="btnGuarda" class="habilidade esquiva guarda" title="Guarda: segure (Shift ou F)" aria-label="Guarda: segure"></button></div>
 </footer>
 <dialog id="dex">
   <div class="dialogo-topo"><h2 id="dexTitulo">Escolher bicho</h2><button id="dexFechar" class="icone" title="Fechar" aria-label="Fechar"></button></div>
-  <div class="busca"><input id="dexBusca" type="search" placeholder="Buscar" aria-label="Buscar criatura" autocomplete="off"><select id="dexTipo" aria-label="Tipo"><option value="">Todos os tipos</option></select></div>
-  <div id="dexLista"></div><p id="dexVazio" class="hidden">Nenhum bicho encontrado.</p>
+  <div class="busca"><input id="dexBusca" type="search" placeholder="Buscar" aria-label="Buscar criatura" autocomplete="off"><select id="dexTipo" aria-label="Tipo"><option value="">Todos os tipos</option></select><select id="dexGeracao" aria-label="Geração" class="hidden"><option value="">Todas as gerações</option></select></div>
+  <p id="dexAviso" class="hidden"></p><div id="dexLista"></div><p id="dexVazio" class="hidden">Nenhum bicho encontrado.</p>
   <div class="paginacao"><button id="dexAnterior" class="icone" title="Página anterior" aria-label="Página anterior"></button><span id="dexPagina"></span><button id="dexProximo" class="icone" title="Próxima página" aria-label="Próxima página"></button></div>
 </dialog>
 <dialog id="resultado">
   <div class="dialogo-topo"><h2 id="resultadoTitulo"></h2><button id="resultadoFechar" class="icone" title="Fechar" aria-label="Fechar"></button></div>
   <div id="resultadoLados"></div>
-  <div class="linha resultado-acoes"><button id="btnRevanche" class="primario">Revanche</button><button id="btnLobby">Voltar à sala</button></div>
+  <div id="resultadoSelvagem" class="hidden"></div>
+  <div class="linha resultado-acoes"><button id="btnRevanche" class="primario">Revanche</button><button id="btnLobby">Voltar à sala</button><a id="btnVila" class="botao primario hidden" href="/">Voltar para a grama alta</a></div>
 </dialog>
 <div id="toast" class="hidden" role="status"></div>
 <script src="/socket.io/socket.io.js"></script>
@@ -83,6 +111,9 @@
 <script src="/galeramon/naruto.js"></script>
 <script src="/galeramon/sprites.js"></script>
 <script src="/galeramon/lideres.js"></script>
+<script src="/galeramon/pokeapi-dados.js"></script>
+<script src="/galeramon/niveis.js"></script>
+<script src="/galeramon/captura2d.js"></script>
 <script src="regras.js"></script>
 <script src="gif.js"></script>
 <script src="sala.js"></script>
@@ -91,15 +122,19 @@
 <script src="cenarios.js"></script>
 <script src="desenho.js"></script>
 <script src="temas.js"></script>
+<script src="biomas.js"></script>
 <script src="animacao.js"></script>
 <script src="golpes.js"></script>
 <script src="golpes3d.js"></script>
 <script src="golpes-naruto.js"></script>
+<script src="encenacao.js"></script>
 <script src="marcas.js"></script>
 <script src="controles.js"></script>
 <script src="rede.js"></script>
 <script src="sons.js"></script>
+<script src="hud-pokemon.js"></script>
 <script src="hud.js"></script>
+<script src="selvagem.js"></script>
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
 <script type="module">import * as THREE from "three"; window.THREE = THREE; // a cena 3D (cena3d.js) começa no próximo quadro</script>
 </body>

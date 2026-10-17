@@ -9,6 +9,7 @@ const PREFIXO = "/admin/carreira";
 const SESSAO_MS = 8 * 60 * 60 * 1000;
 const ESTADO_MS = 10 * 60 * 1000;
 const aleatorio = () => crypto.randomBytes(32).toString("base64url");
+let autenticacao = null;
 
 function attach(app, carreira, opcoes = {}) {
   const clientId = opcoes.clientId ?? process.env.MODERACAO_GITHUB_CLIENT_ID;
@@ -23,9 +24,11 @@ function attach(app, carreira, opcoes = {}) {
   const callback = `${origem.origin}${PREFIXO}/callback`;
   const seguro = origem.protocol === "https:";
   const buscar = opcoes.fetch || fetch;
+  const solo = opcoes.solo || require("./carreira-solo-moderacao.js"); // as carreiras particulares (solo e Rumo ao Estrelato)
+  const historico = opcoes.historico || ((codigo) => { try { return require("./bd.js").historicoModeracao(codigo, 15); } catch { return []; } });
   const estados = new Map(), sessoes = new Map();
   const cookie = (nome, valor, maxAge, sameSite) =>
-    `${nome}=${encodeURIComponent(valor)}; Path=${PREFIXO}; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}; ${seguro ? "Secure; " : ""}Priority=High`;
+    `${nome}=${encodeURIComponent(valor)}; Path=/admin; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}; ${seguro ? "Secure; " : ""}Priority=High`;
   const cookies = (req) => Object.fromEntries(String(req.headers.cookie || "").split(";").map((p) => {
     const i = p.indexOf("=");
     if (i < 0) return ["", ""];
@@ -37,7 +40,7 @@ function attach(app, carreira, opcoes = {}) {
     for (const [k, v] of sessoes) if (v.ate < agora) sessoes.delete(k);
   };
   const headers = (res) => res.set({ "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
-    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" });
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src https://raw.githubusercontent.com; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" });
   const sessaoDe = (req) => { limpar(); return sessoes.get(cookies(req).mod_sessao); };
   const exigir = (req, res, next) => {
     headers(res);
@@ -51,6 +54,7 @@ function attach(app, carreira, opcoes = {}) {
       return res.status(403).json({ erro: "Sessão inválida. Recarregue o painel." });
     next();
   };
+  autenticacao = { exigir, alterar, sessaoDe, headers };
 
   app.get(PREFIXO, (req, res) => {
     headers(res);
@@ -62,7 +66,8 @@ function attach(app, carreira, opcoes = {}) {
     limpar();
     if (estados.size > 1000) return res.status(429).send("Tente novamente em alguns minutos.");
     const estado = aleatorio(), verificador = aleatorio();
-    estados.set(estado, { ate: Date.now() + ESTADO_MS, verificador });
+    estados.set(estado, { ate: Date.now() + ESTADO_MS, verificador,
+      destino: ["/admin/pokemon", "/admin/pokedex"].includes(req.query.destino) ? req.query.destino : PREFIXO });
     res.set("Set-Cookie", cookie("mod_estado", estado, 600, "Lax"));
     const url = new URL("https://github.com/login/oauth/authorize");
     url.searchParams.set("client_id", clientId);
@@ -102,13 +107,37 @@ function attach(app, carreira, opcoes = {}) {
       const sid = aleatorio();
       sessoes.set(sid, { ator: usuario.login, csrf: aleatorio(), ate: Date.now() + SESSAO_MS });
       res.set("Set-Cookie", [cookie("mod_estado", "", 0, "Lax"), cookie("mod_sessao", sid, SESSAO_MS / 1000, "Lax")]);
-      res.redirect(PREFIXO);
+      res.redirect(estadoSalvo.destino);
     } catch { res.status(502).send("Não foi possível entrar pelo GitHub. Tente novamente."); }
   });
   app.get(`${PREFIXO}/api/inicio`, exigir, (req, res) => res.json({ csrf: req.moderador.csrf, salas: carreira.listar() }));
   app.get(`${PREFIXO}/api/salas/:codigo`, exigir, (req, res) => {
     const r = carreira.detalhar(req.params.codigo, String(req.query.clube || ""));
-    res.status(!r ? 404 : r.erro ? 400 : 200).json(r || { erro: "Sala não encontrada." });
+    res.status(!r ? 404 : r.erro ? 400 : 200).json(r && !r.erro ? { ...r, historico: historico(req.params.codigo) } : r || { erro: "Sala não encontrada." });
+  });
+  const corpoValido = (req) => req.is("application/json") && req.body && typeof req.body === "object" && !Array.isArray(req.body);
+  // comandos da sala (inclusive pôr temporariamente um técnico no automático sem dispensá-lo)
+  app.post(`${PREFIXO}/api/salas/:codigo/comando`, express.json({ limit: "4kb" }), exigir, alterar, (req, res) => {
+    if (!corpoValido(req)) return res.status(400).json({ erro: "Comando inválido." });
+    const r = carreira.comandar ? carreira.comandar(req.params.codigo, req.body, req.moderador.ator) : { erro: "Comandos indisponíveis." };
+    res.status(r.erro ? 400 : 200).json(r);
+  });
+  // as carreiras particulares: a lista, a ficha de um clube, a edição e um código de recuperação novo
+  app.get(`${PREFIXO}/api/solo`, exigir, (req, res) => {
+    try { res.json({ carreiras: solo.listar() }); } catch { res.status(500).json({ erro: "O banco de dados não respondeu." }); }
+  });
+  app.get(`${PREFIXO}/api/solo/:id`, exigir, (req, res) => {
+    const r = solo.detalhar(req.params.id, String(req.query.clube || ""));
+    res.status(r.erro ? 400 : 200).json(r);
+  });
+  app.post(`${PREFIXO}/api/solo/:id`, express.json({ limit: "4kb" }), exigir, alterar, (req, res) => {
+    if (!corpoValido(req)) return res.status(400).json({ erro: "Edição inválida." });
+    const r = solo.editar(req.params.id, req.body, req.moderador.ator);
+    res.status(r.erro ? 400 : 200).json(r);
+  });
+  app.post(`${PREFIXO}/api/solo/:id/codigo`, exigir, alterar, (req, res) => {
+    const r = solo.novoCodigo(req.params.id, req.moderador.ator);
+    res.status(r.erro ? 400 : 200).json(r);
   });
   app.post(`${PREFIXO}/api/salas/:codigo`, express.json({ limit: "4kb" }), exigir, alterar, (req, res) => {
     if (!req.is("application/json") || !req.body || typeof req.body !== "object" || Array.isArray(req.body))
@@ -123,4 +152,4 @@ function attach(app, carreira, opcoes = {}) {
   });
   return true;
 }
-module.exports = { attach };
+module.exports = { attach, auth: () => autenticacao };

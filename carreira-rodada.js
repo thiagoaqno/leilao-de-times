@@ -14,10 +14,11 @@ const { Motor } = G;
 const tempoDe = (e) => e.min + (e.acr ? e.acr / 100 : 0);
 // até onde o relógio do jogo pode andar: a parada (os lances antes dela também) ou o último lance
 const limiteDe = (r) => Math.max(r.parado ? tempoDe(r.parado) : 0, ...r.eventos.map(tempoDe), r.parado ? 0 : 90);
-const ladoDe = (jg, clube) => (jg.casa === clube ? 0 : jg.fora === clube ? 1 : null);
+// o lado do técnico (pelo clube dele) no jogo: o time dele é o clube ou, na Copa do Mundo, a seleção que ele treina
+const ladoDe = (save, jg, clube) => (G.humanoDoTime(save, jg.casa) === clube ? 0 : G.humanoDoTime(save, jg.fora) === clube ? 1 : null);
 
 function criarRodada(save, proxima, agora, { vel = 1.5, decisaoMs = 20000, espera = 3000, n = 1 } = {}) {
-  const modoDe = (c) => (save.humanos[c] ? save.humanos[c].estado.modo || 1 : 0);
+  const modoDe = (c) => { const h = G.humanoDoTime(save, c); return h ? save.humanos[h].estado.modo || 1 : 0; };
   const inicio = agora + espera;
   return {
     n, semana: proxima.semana, inicio, vel, velBase: vel, multiplicador: 1, ritmos: [{ desde: inicio, vel }], decisaoMs,
@@ -69,7 +70,7 @@ function alterarVelocidade(rod, multiplicador, agora) {
 }
 // quem precisa decidir esta parada: os lados humanos do pedido que quiseram decidir (tática no modo 2+, lance no 3)
 function pendentesDe(jg, parado) {
-  const lados = parado.ambos ? Object.keys(parado.pedidos).map(Number) : [parado.lado ?? ladoDe(jg, jg.casa)];
+  const lados = parado.ambos ? Object.keys(parado.pedidos).map(Number) : [parado.lado ?? 0];
   return lados.filter((l) => { const m = jg.modos[l], p = parado.ambos ? parado.pedidos[l] : parado; return m >= (p.tipo === "lance" ? 3 : 2); });
 }
 const automatica = (parado, lado) => Motor.decisaoAutomatica(parado.ambos ? parado.pedidos[lado] : parado);
@@ -89,9 +90,9 @@ function tick(save, rod, agora, ausentes = new Set()) {
   let mudou = false;
   for (const jg of rod.jogos) {
     if (jg.fim) continue;
-    const humanos = [jg.casa, jg.fora].filter((c) => save.humanos[c]), rapido = humanos.length > 0 && humanos.every((c) => ausentes.has(c));
+    const humanos = [jg.casa, jg.fora].map((c) => G.humanoDoTime(save, c)).filter(Boolean), rapido = humanos.length > 0 && humanos.every((c) => ausentes.has(c));
     const minuto = () => (rapido ? Infinity : minutoDe(rod, jg, agora)); // o jogo só de ausentes anda na hora
-    const presente = (lado) => !ausentes.has(lado === 0 ? jg.casa : jg.fora);
+    const presente = (lado) => !ausentes.has(G.humanoDoTime(save, lado === 0 ? jg.casa : jg.fora));
     for (let volta = 0; volta < 20; volta++) {
       const r = simular(save, jg);
       if (r.parado) {
@@ -120,9 +121,9 @@ function tick(save, rod, agora, ausentes = new Set()) {
 }
 // a resposta de um humano à parada do jogo dele
 function decidir(save, rod, clube, id, resposta, agora) {
-  const jg = rod.jogos.find((x) => !x.fim && ladoDe(x, clube) != null);
+  const jg = rod.jogos.find((x) => !x.fim && ladoDe(save, x, clube) != null);
   if (!jg) return "Você não tem jogo nesta rodada.";
-  const lado = ladoDe(jg, clube), r = simular(save, jg);
+  const lado = ladoDe(save, jg, clube), r = simular(save, jg);
   if (!jg.parado || !r.parado || r.parado.id !== id) return "Essa decisão não é a de agora.";
   if (!jg.parado.pendentes.includes(lado)) return "Você já decidiu. Esperando o outro técnico.";
   const pedido = r.parado.ambos ? r.parado.pedidos[lado] : r.parado;
@@ -141,10 +142,10 @@ function relogioDe(rod, jg, agora, r) {
 }
 function visao(save, rod, clube, agora) {
   if (!rod) return null;
-  const meu = rod.jogos.find((x) => ladoDe(x, clube) != null);
+  const meu = clube ? rod.jogos.find((x) => ladoDe(save, x, clube) != null) : null;
   const ver = (jg) => {
-    const r = simular(save, jg), lado = ladoDe(jg, clube);
-    const base = { id: jg.id, casa: jg.casa, fora: jg.fora, competicao: jg.j.competicao, fase: jg.j.fase, fim: jg.fim, relogio: relogioDe(rod, jg, agora, r), humanos: [jg.casa, jg.fora].filter((c) => save.humanos[c]) };
+    const r = simular(save, jg), lado = clube ? ladoDe(save, jg, clube) : null;
+    const base = { id: jg.id, casa: jg.casa, fora: jg.fora, competicao: jg.j.competicao, fase: jg.j.fase, fim: jg.fim, relogio: relogioDe(rod, jg, agora, r), humanos: [jg.casa, jg.fora].filter((c) => G.humanoDoTime(save, c)) };
     if (lado == null) return { ...base, gols: r.eventos.filter((e) => e.tipo === "gol").map((e) => ({ min: e.min, acr: e.acr, lado: e.lado })) };
     let parado = null;
     if (jg.parado && r.parado) {

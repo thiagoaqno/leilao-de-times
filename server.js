@@ -34,10 +34,11 @@ const Ritmo = require("./public/leilao/ritmo.js"); // quanto dura cada parte do 
 try { require("./bd.js").abrir(); } catch (e) { console.warn("Banco de dados não abriu:", e.message); }
 require("./fotos-jogadores.js").attach(app);
 require("./carreira.js")(io); // Carreira de Treinador: a temporada contra o computador, salva no banco, canal /carreira
-require("./jogador.js")(io); // Modo Jogador (Rumo ao Estrelato): a mesma carreira, controlando um jogador, canal /jogador
+require("./road-to-champions.js")(io); // Road to Champions: até seis protagonistas, escolhas narrativas e torneio compartilhado
 const carreiraOnline = require("./carreira-online.js")(io); // Carreira em grupo: a sala com código, cada amigo num clube do mesmo mundo, canal /carreira-online
 require("./moderacao-api.js").attach(app, carreiraOnline); // o workflow manual do GitHub edita salas vivas
 require("./admin-carreira.js").attach(app, carreiraOnline); // painel privado em URL separada, com login pelo GitHub
+require("./admin-pokemon.js").attach(app); // edição dos times Pokémon dos líderes e treinadores
 const noite = require("./noite.js"); noite.attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
 require("./pingpong.js")(io); // Pingue-Pongue da Galera: tênis de mesa 1x1 no mouse, canal /pingpong
@@ -70,45 +71,43 @@ app.get("/api/musicas-vila3d", (req, res) => {
 });
 // a estante de troféus da Carreira (todas as carreiras, solo e em grupo): o ranking dos técnicos e as últimas conquistas
 app.get("/api/estante", (req, res) => { try { res.json(require("./bd.js").estante()); } catch (e) { res.status(500).json({ erro: "A estante não abriu." }); } });
-// o escudo da TheSportsDB de um clube da Carreira, servido pelo nosso endereço: a arte das notícias desenha o escudo num canvas,
-// e uma imagem de outro site sem CORS bloquearia o canvas (a arte caía no escudo desenhado). Baixa uma vez e guarda na memória.
-// Os clubes que não estão em escudos-api.json (a Série B) são procurados pelo nome (escudos-busca.js) entre os times do Brasil.
+// Escudos da Carreira guardados no Git. O mesmo endereço serve a tela e o canvas das notícias, sem chamar a API em jogo.
 const escudosApi = (() => { try { return require("./public/carreira/escudos-api.json"); } catch { return {}; } })();
-const escudosBusca = require("./public/carreira/escudos-busca.js");
-const escudosBaixados = new Map(); // id do clube -> Promise<{ tipo, dados } | null>
-const semAcentoEscudo = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-let filaBusca = Promise.resolve(); // a chave gratuita aceita ~30 pedidos por minuto: uma busca por vez, com folga
-const buscarTime = (nome) => {
-  const vez = filaBusca.then(async () => {
-    try {
-      const r = await fetch(`https://www.thesportsdb.com/api/v1/json/${process.env.THESPORTSDB_KEY || "123"}/searchteams.php?t=${encodeURIComponent(nome)}`, { signal: AbortSignal.timeout(8000) });
-      return r.ok ? ((await r.json()).teams || []) : [];
-    } catch { return []; }
-  });
-  filaBusca = vez.then(() => new Promise((ok) => setTimeout(ok, 2100)));
-  return vez;
-};
-async function urlDoEscudo(id) {
-  if (Object.hasOwn(escudosApi, id)) return escudosApi[id].url;
-  for (const nome of escudosBusca[id]) {
-    const times = (await buscarTime(nome)).filter((t) => t.strSport === "Soccer" && t.strCountry === "Brazil" && t.strBadge);
-    const alvo = semAcentoEscudo(nome), igual = (t) => [t.strTeam, ...String(t.strTeamAlternate || "").split(",")].some((n) => semAcentoEscudo(n) === alvo);
-    const t = times.find(igual) || times[0];
-    if (t) return t.strBadge;
-  }
-  return null;
-}
-app.get("/api/escudo/:id", async (req, res) => {
+app.get("/api/escudo/:id", (req, res) => {
   const id = req.params.id;
-  if (!Object.hasOwn(escudosApi, id) && !Object.hasOwn(escudosBusca, id)) return res.status(404).end();
-  if (!escudosBaixados.has(id)) {
-    escudosBaixados.set(id, urlDoEscudo(id)
-      .then((url) => (url ? fetch(`${url}/small`, { signal: AbortSignal.timeout(8000) }) : null))
-      .then(async (r) => (r && r.ok ? { tipo: r.headers.get("content-type") || "image/png", dados: Buffer.from(await r.arrayBuffer()) } : null))
-      .catch(() => null)
-      .then((x) => { if (!x) setTimeout(() => escudosBaixados.delete(id), 60000); return x; })); // se falhou, tenta de novo daqui a um minuto
+  if (!/^[a-z0-9-]+$/.test(id) || !Object.hasOwn(escudosApi, id)) return res.status(404).end();
+  res.set("Cache-Control", "public, max-age=604800");
+  res.sendFile(path.join(__dirname, "public", "carreira", "escudos-locais", `${id}.png`), (erro) => {
+    if (erro && !res.headersSent) res.status(404).end();
+  });
+});
+// Road to Champions: a foto de cada protagonista (public/jogador/road-fotos.js), baixada uma vez da TheSportsDB e servida
+// daqui, como os escudos. Se o endereço guardado falhar, procura o jogador de novo pelo nome.
+const RoadFotos = require("./public/jogador/road-fotos.js");
+const fotosRtc = new Map();
+async function baixarFotoRtc(arq, tipo) {
+  const f = RoadFotos.FOTOS[arq], campo = tipo === "foto" ? "strThumb" : "strCutout";
+  const pegar = async (url) => {
+    if (!url) return null;
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    return r.ok ? { tipo: r.headers.get("content-type") || "image/png", dados: Buffer.from(await r.arrayBuffer()) } : null;
+  };
+  const guardada = await pegar(f[tipo === "foto" ? "foto" : "recorte"]).catch(() => null);
+  if (guardada) return guardada;
+  const r = await fetch(`https://www.thesportsdb.com/api/v1/json/${process.env.THESPORTSDB_KEY || "123"}/searchplayers.php?p=${encodeURIComponent(f.busca)}`, { signal: AbortSignal.timeout(8000) });
+  const j = r.ok ? await r.json() : null;
+  const p = (j && j.player || []).find((x) => String(x.idPlayer) === f.id) || (j && j.player || [])[0];
+  return pegar(p && (p[campo] || p.strThumb));
+}
+app.get("/api/rtc-foto/:arq", async (req, res) => {
+  const arq = req.params.arq, tipo = req.query.tipo === "foto" ? "foto" : "recorte";
+  if (!Object.hasOwn(RoadFotos.FOTOS, arq)) return res.status(404).end();
+  const chave = arq + ":" + tipo;
+  if (!fotosRtc.has(chave)) {
+    fotosRtc.set(chave, baixarFotoRtc(arq, tipo).catch(() => null)
+      .then((x) => { if (!x) setTimeout(() => fotosRtc.delete(chave), 60000); return x; })); // se falhou, tenta de novo daqui a um minuto
   }
-  const x = await escudosBaixados.get(id);
+  const x = await fotosRtc.get(chave);
   if (!x) return res.status(502).end();
   res.set("Cache-Control", "public, max-age=604800").type(x.tipo).send(x.dados);
 });
@@ -127,6 +126,8 @@ app.get("/pelada", (req, res) => res.redirect("/pelada/"));
 app.get("/batalha", (req, res) => res.redirect("/batalha/"));
 app.get("/ginasio", (req, res) => res.redirect("/ginasio/"));
 app.get("/carreira", (req, res) => res.redirect("/carreira/"));
+app.get("/road-to-champions", (req, res) => res.redirect("/jogador/"));
+app.get("/road-to-champions/", (req, res) => res.redirect("/jogador/"));
 app.get("/tenis", (req, res) => res.redirect("/tenis/"));
 app.get("/pingpong", (req, res) => res.redirect("/pingpong/"));
 app.get("/futevolei", (req, res) => res.redirect("/futevolei/"));

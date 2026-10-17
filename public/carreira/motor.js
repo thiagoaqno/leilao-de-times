@@ -85,7 +85,7 @@
     const nota = clamp(Number(j.nota) || 60, 30, 99), atr = {};
     for (const k of ATRIBUTOS) atr[k] = clamp(Number(j.atr && j.atr[k]) || nota, 20, 99);
     // base: a nota da base (sem evolução, bônus nem efeitos do jogo), com que os atributos foram lidos; sem ela vale a nota
-    return { id: String(j.id ?? j.nome), nome: j.nome || String(j.id), grp: grupoDe(j.pos), pos: Taticas.posDe(j.pos), nota, atr, temAtr: !!(j.atr && typeof j.atr === "object"), base: clamp(Number(j.base) || nota, 30, 99), mania: j.mania || null, energia: 100, amarelos: 0, fora: false, lesionado: false };
+    return { id: String(j.id ?? j.nome), nome: j.nome || String(j.id), grp: grupoDe(j.pos), pos: Taticas.posDe(j.pos), nota, atr, temAtr: !!(j.atr && typeof j.atr === "object"), base: clamp(typeof j.notaBase === "number" ? j.notaBase : typeof j.base === "number" ? j.base : nota, 30, 99), mania: j.mania || null, energia: 100, amarelos: 0, fora: false, lesionado: false };
   }
   // o rendimento na vaga: a nota, o encaixe da posicao dele na vaga fina (lateral na zaga, ponta de centroavante...) e o cansaco
   const slotPadrao = (slot) => ({ GK: "GOL", DEF: "ZAG", MID: "MC", ATT: "ATA" })[slot] || "MC";
@@ -299,11 +299,20 @@
     const controla = ambos ? null : cfg.controla === 0 || cfg.controla === 1 ? cfg.controla : null;
     const decisoes = cfg.decisoes || {};
     const times = [prepararTime(cfg.casa || {}, 0), prepararTime(cfg.fora || {}, 1)];
+    // Ajuste opt-in da Carreira: valor inicial do confronto, sem amplificar expulsões ou lesões durante o jogo.
+    // O teto de lances evita que uma diferença grande de elencos vire placares de dois dígitos.
+    const carreira = cfg.carreira === true;
+    const diferencaForca = carreira ? (times[0].att + times[0].def - times[1].att - times[1].def) / 2 : 0;
     const neutro = !!cfg.neutro;
     const placar = [0, 0], eventos = [], est = [0, 1].map(() => ({ chutes: 0, noAlvo: 0, faltas: 0, amarelos: 0, vermelhos: 0, lances: 0 }));
     let decisivos = 0, golsContra = 0, minuto = 0, acrescimo = 0, parado = null, impAtual = 0;
     const ev = (e) => eventos.push({ min: minuto, ...(acrescimo ? { acr: acrescimo } : {}), ...e });
     const humano = (lado) => (ambos || controla === lado) && modo >= 2;
+    // cfg.paradas (opcional): quais paradas o humano tem, para quem não é o técnico (o Road to Champions: o protagonista
+    // decide como joga em minutos marcados e o técnico do computador segue fazendo as trocas). Sem ela, tudo como antes.
+    // { minutos: [25, 70], intervalo, gol, cansaco, vermelho, penaltis, robo } (o que não vier é falso)
+    const P = cfg.paradas || null;
+    const pode = (tipo) => !P || !!P[tipo];
 
     // pede (ou usa) a decisão do ponto `id`; sem resposta, para a partida aqui
     function decidir(id, pedido) {
@@ -381,7 +390,7 @@
     }
     // o técnico do computador: tira os mais cansados, arrisca quando perde e segura quando ganha
     function tecnicoRobo(time) {
-      if (humano(time.lado)) return;
+      if (humano(time.lado) && !(P && P.robo)) return;
       const dif = placar[time.lado] - placar[1 - time.lado];
       if (minuto >= 60 && time.subs > 0 && time.mexeu < 3 && minuto % 8 === 0) {
         const cansado = titulares(time).filter((p) => p.grp !== "GK").sort((a, b) => a.energia - b.energia)[0];
@@ -397,6 +406,7 @@
     function gol(at, autor, assist, como) {
       placar[at.lado]++;
       ev({ tipo: "gol", lado: at.lado, jogador: autor.id, ...(assist ? { assist: assist.id } : {}), como, placar: [...placar] });
+      if (!pode("gol")) return;
       if (controla === 1 - at.lado) { golsContra++; parada(times[controla], `gol${golsContra}`, "gol_sofrido"); }
       else if (ambos) { golsContra++; parada(times[1 - at.lado], `gol${golsContra}`, "gol_sofrido"); }
     }
@@ -511,7 +521,7 @@
         else if (sacrificado) { const v = time.campo.find((x) => x.p === sacrificado); v.p = null; time.campo[0].p = sacrificado; }
       }
       recalcular(time);
-      if (humano(time.lado)) parada(time, `vermelho${est[time.lado].vermelhos}`, "vermelho");
+      if (humano(time.lado) && pode("vermelho")) parada(time, `vermelho${est[time.lado].vermelhos}`, "vermelho");
     }
     function lesoes(time) {
       const tit = titulares(time), media = tit.length ? tit.reduce((s, p) => s + p.energia, 0) / tit.length : 100;
@@ -535,24 +545,29 @@
       for (const [a, d] of [[0, 1], [1, 0]]) {
         const at = times[a], df = times[d];
         const mando = neutro ? 1 : a === 0 ? AJUSTE.MANDO : AJUSTE.VISITANTE;
-        const taxa = AJUSTE.CHANCE * Math.exp(AJUSTE.K * (at.att - df.def)) * mando
+        let taxa = AJUSTE.CHANCE * Math.exp(AJUSTE.K * (at.att - df.def)) * mando
           * (1 + AJUSTE.MENTAL * at.tatica.mentalidade) * (1 + AJUSTE.MENTAL * df.tatica.mentalidade) * (1 - 0.06 * (df.tatica.pressao - 1)) * (1 - AJUSTE.LINHA_CEDE * (df.tatica.linha - 1))
           * at.est.chance * df.est.cede * (1 + confrontoDe(at, df).criar);
+        if (carreira) {
+          taxa = Math.min(0.16, taxa * Math.exp(0.065 * clamp(a === 0 ? diferencaForca : -diferencaForca, -12, 12)));
+          if (placar[a] - placar[d] >= 3) taxa *= 0.65; // vantagem larga: o time administra o jogo
+        }
         if (rng() < taxa) lance(at, df);
       }
+      const marcado = !acrescimo && (P ? (P.minutos || []).includes(minuto) : minuto === 70);
       if (ambos && modo >= 2) {
-        for (const t of times) {
+        if (pode("cansaco")) for (const t of times) {
           const linha = titulares(t).filter((p) => p.grp !== "GK");
           if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < Math.min(72, t.energiaInicial - 8)) { t.cansacoAvisado = true; parada(t, "cansaco", "cansaco"); }
         }
-        if (minuto === 70 && !acrescimo) paradaDosDois("m70", "minuto_70");
+        if (marcado) paradaDosDois("m" + minuto, "minuto_" + minuto);
       } else if (controla != null && modo >= 2) {
         const t = times[controla];
         const linha = titulares(t).filter((p) => p.grp !== "GK");
-        if (!t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < Math.min(72, t.energiaInicial - 8)) {
+        if (pode("cansaco") && !t.cansacoAvisado && linha.length && linha.reduce((soma, p) => soma + p.energia, 0) / linha.length < Math.min(72, t.energiaInicial - 8)) {
           t.cansacoAvisado = true; parada(t, "cansaco", "cansaco");
         }
-        if (minuto === 70 && !acrescimo) parada(t, "m70", "minuto_70");
+        if (marcado) parada(t, "m" + minuto, "minuto_" + minuto);
       }
     }
 
@@ -581,7 +596,8 @@
           const id = `pen${++n}`, base = { disputa: { n, gols: [...gols], cobradas: [...cobradas], lado }, batedor: bat.id, goleiro: gk ? gk.id : null };
           const pedido = (aFavor) => ({ tipo: "lance", lance: aFavor ? "penalti_favor" : "penalti_contra", lado: aFavor ? lado : 1 - lado, ...base, opcoes: opcoesDoPenalti(aFavor, bat, gk) });
           let chute, pulo;
-          if (ambos && modo >= 2) {
+          if (!pode("penaltis")) { chute = sorteio(bat); pulo = sorteio(gk); }
+          else if (ambos && modo >= 2) {
             const d = decidir(id, { tipo: "lance", ambos: true, ...base, pedidos: { [lado]: pedido(true), [1 - lado]: pedido(false) } }) || {};
             chute = zona(d[lado]); pulo = zona(d[1 - lado]);
           } else if (modo >= 2 && controla === lado) { chute = zona(decidir(id, pedido(true))); pulo = sorteio(gk); }
@@ -605,8 +621,8 @@
         if (tempo === 0) {
           ev({ tipo: "intervalo", placar: [...placar] });
           for (const t of times) t.jogadores.forEach((p) => { if (!p.fora) p.energia = Math.min(100, p.energia + 8); });
-          if (ambos && modo >= 2) paradaDosDois("intervalo", "intervalo");
-          else if (controla != null && modo >= 2) parada(times[controla], "intervalo", "intervalo");
+          if (pode("intervalo") && ambos && modo >= 2) paradaDosDois("intervalo", "intervalo");
+          else if (pode("intervalo") && controla != null && modo >= 2) parada(times[controla], "intervalo", "intervalo");
         }
       }
       minuto = 90;

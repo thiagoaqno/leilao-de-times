@@ -74,9 +74,10 @@ function entradaNoMeio(st, eu) {
   const forca = (id) => { const n = elencoDe(id).map(notaDe).sort((a, b) => b - a).slice(0, 11); return n.length ? Math.round(n.reduce((s, x) => s + x, 0) / n.length) : 0; };
   const livres = st.clubes.filter((id) => !st.ocupados[id] && CLUBES[id]).map((id) => CLUBES[id]);
   const ordemLiga = (c) => ["brasileirao-2026", "serieb-2026", ...Temporada.EUROPA].indexOf(c.liga);
+  const regraEntrada = `Quem entra no meio ganha uma janela de entrada: ${st.temporada >= 3 ? "1 jogador de qualquer nota (inclusive 90+), ou 2 de até 87, ou 3 de até 84" : "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85"} (com a janela aberta, vale a da janela).`;
   $("gStatus").textContent = !eu ? "Você está só assistindo. Para assumir um clube, entre na sala pelo código, com um nome."
-    : st.rodada ? "A rodada está rolando: escolha o clube e entre quando ela acabar. Quem entra no meio ganha uma janela de entrada: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85 (com a janela aberta, vale a da janela)."
-    : "A carreira já começou. Escolha um clube livre para assumir agora. Quem entra no meio ganha uma janela de entrada: 3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85 (com a janela aberta, vale a da janela).";
+    : st.rodada ? `A rodada está rolando: escolha o clube e entre quando ela acabar. ${regraEntrada}`
+    : `A carreira já começou. Escolha um clube livre para assumir agora. ${regraEntrada}`;
   $("gMeuClube").textContent = livres.length ? `${livres.length} clube${livres.length === 1 ? "" : "s"} livre${livres.length === 1 ? "" : "s"}` : "Não tem clube livre";
   $("btnComecar").classList.add("hidden");
   $("gClubes").innerHTML = eu ? livres.sort((a, b) => ordemLiga(a) - ordemLiga(b) || forca(b.id) - forca(a.id)).map((c) => {
@@ -95,8 +96,8 @@ function desenharSala() {
   $("gCodigo").textContent = st.code;
   const faltam = st.players.filter((p) => !p.clube);
   $("gStatus").textContent = faltam.length ? `Esperando ${faltam.map((p) => p.name).join(", ")} escolher o clube.` : anfitriao ? "Todo mundo tem clube. Pode começar!" : "Todo mundo tem clube. Esperando o anfitrião começar.";
-  $("gPessoas").innerHTML = st.players.map((p) => `<li class="${p.online ? "" : "fora"}">${p.clube ? escudo(p.clube, 2) : `<span class="sem-clube">${ic("campo")}</span>`}
-    <span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "escolhendo..."}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${p.online ? "" : `<i class="tag">fora</i>`}${anfitriao && !p.host ? botoesDoAnfitriao(p) : ""}</li>`).join("");
+  $("gPessoas").innerHTML = st.players.map((p) => `<li class="${p.online && !p.auto ? "" : "fora"}">${p.clube ? escudo(p.clube, 2) : `<span class="sem-clube">${ic("campo")}</span>`}
+    <span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "escolhendo..."}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${p.auto ? `<i class="tag">automático</i>` : p.online ? "" : `<i class="tag">fora</i>`}${anfitriao && !p.host ? botoesDoAnfitriao(p) : ""}</li>`).join("");
   $("gOpcoes").innerHTML = OPCOES_SALA.map(([k, nome, lista]) => `<div class="controle"><span class="rotulo">${nome}</span><div class="segmentos">${lista.map(([v, t]) =>
     `<button data-opcao-sala="${k}" data-valor="${v}" aria-pressed="${st.opcoes[k] === v}" ${anfitriao ? "" : "disabled"}>${t}</button>`).join("")}</div></div>`).join("")
     + (anfitriao ? "" : `<p class="suave">Só o anfitrião muda as regras.</p>`);
@@ -117,10 +118,11 @@ const botoesDoAnfitriao = (p) => `<div class="acoes-pessoa"><button class="discr
 // a turma na sede: quem está no ar e, para o anfitrião, o botão de dispensar (quem sai no meio joga no automático até lá)
 function desenharTurma(st) {
   const el = $("cartaoTurma"); if (!el) return;
-  const anfitriao = MEU_ID === st.host, algumFora = st.players.some((p) => !p.online);
+  const anfitriao = MEU_ID === st.host, algumFora = st.players.some((p) => !p.online || p.auto), meuAuto = st.players.some((p) => p.id === MEU_ID && p.auto);
   el.classList.remove("hidden");
-  el.innerHTML = `<h3>Turma</h3><ul class="pessoas turma">${st.players.map((p) => `<li class="${p.online ? "" : "fora"}"${p.clube ? ` data-time="${p.clube}" title="Ver o elenco do ${h(nomeClube(p.clube))}"` : ""}>${p.clube ? escudo(p.clube, 2) : ""}<span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "sem clube"} · ${p.online ? "no ar" : "fora do ar"}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${anfitriao && !p.host ? botoesDoAnfitriao(p) : ""}</li>`).join("")}</ul>
+  el.innerHTML = `<h3>Turma</h3><ul class="pessoas turma">${st.players.map((p) => `<li class="${p.online && !p.auto ? "" : "fora"}"${p.clube ? ` data-time="${p.clube}" title="Ver o elenco do ${h(nomeClube(p.clube))}"` : ""}>${p.clube ? escudo(p.clube, 2) : ""}<span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "sem clube"} · ${p.auto ? "no automático" : p.online ? "no ar" : "fora do ar"}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${anfitriao && !p.host ? botoesDoAnfitriao(p) : ""}</li>`).join("")}</ul>
     ${algumFora ? `<p class="suave">Quem sai da sala joga no automático, sem segurar a rodada. ${anfitriao ? "Dispensar passa o clube para o computador." : "Se o anfitrião ficar fora por 2 minutos, o cargo passa para o próximo da turma."}</p>` : ""}
+    ${meuAuto ? `<p class="suave">Seu clube está no automático. Quando voltar a jogar, retome o controle.</p><button class="discreto" data-retomar-clube>Voltar a jogar</button>` : ""}
     <div class="convite-sala"><span>Código da sala <b>${h(st.code)}</b></span><button class="discreto" data-copiar-convite>Copiar convite</button></div>
     <p class="suave">Quem entrar pelo código assume um clube livre, mesmo com a carreira rolando.</p>`;
 }
@@ -136,6 +138,7 @@ const agir = async (dados) => {
   return r;
 };
 document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-retomar-clube]")) { agir({ type: "retomar" }).then((r) => { if (r.ok) toast("Você voltou a controlar o clube."); }); return; }
   if (e.target.closest("[data-copiar-convite]")) { const url = `${location.origin}/carreira/?sala=${SALA.code}`; navigator.clipboard?.writeText(url).then(() => toast("Convite copiado.")).catch(() => toast(url)); return; }
   const entrar = e.target.closest("[data-entrar-clube]");
   if (entrar) { const id = entrar.dataset.entrarClube; if (confirm(`Assumir o ${nomeClube(id)} agora? Depois de entrar não dá para trocar de clube.`)) agir({ type: "clube", clube: id }); return; }

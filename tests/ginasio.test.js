@@ -109,12 +109,14 @@ test("ginásio: robô contra robô termina e a duração média fica boa", () =>
   for (let i = 0; i < 12; i++) tempos.push(simular(`galeramon-${i}`, "galeramon"));
   for (let i = 0; i < 12; i++) tempos.push(simular(`pokemon-${i}`, "pokemon"));
   const media = tempos.reduce((a, b) => a + b, 0) / tempos.length;
-  assert.ok(media >= 90 && media <= 210, `média ${(media / 60).toFixed(2)} min`);
+  // desde o bote dos golpes de perto, o robô acerta de perto e as lutas de robô contra robô ficaram mais curtas (~1,1 min)
+  assert.ok(media >= 50 && media <= 210, `média ${(media / 60).toFixed(2)} min`);
 });
 
 test("ginásio: previsão repete movimento, pilastras, paredes e esquiva sem mudar vida", () => {
   for (const modo of ["galeramon", "pokemon"]) {
     const p = G.criarPartida({ seed: "previsao", modo, bots: false }, [[{ id: "a" }], [{ id: "b" }]]);
+    p.terreno = []; // a previsão com o terreno fica em ginasio-terreno.test.js
     const a = p.entidades[0], e = structuredClone(a);
     const mundo = { dex: p.dex, entidades: [], ev: [] };
     for (let i = 0; i < 720; i++) {

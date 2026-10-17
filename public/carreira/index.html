@@ -116,12 +116,14 @@
         <button class="tile" data-ir="calendario"><span class="tile-txt"><b>Calendário</b><small>Ligas e copas</small></span><span class="tile-dado" id="tileCalendario"></span></button>
         <button class="tile" id="tileTrocas" data-ir="trocas"><span class="tile-txt"><b>Trocas</b><small>Entre técnicos da sala</small></span><span class="tile-dado" id="dadoTrocas"></span></button>
         <button class="tile tile-clube" id="tileClube" data-ir="clube"><span class="tile-txt"><b>Clube</b><small id="atalhoClube">Contratos, base, estrutura e legado</small></span><span class="tile-dado" id="dadoClube"></span></button>
+        <button class="tile tile-selecao hidden" id="tileSelecao" data-ir="selecao" hidden><span class="tile-txt"><b>Seleção</b><small>Copa do Mundo: convocação e escalação</small></span><span class="tile-dado" id="dadoSelecao"></span></button>
         <button class="tile" data-ir="temporadas"><span class="tile-txt"><b>Estante</b><small>Troféus, campeões e ranking</small></span><span class="tile-dado" id="dadoTemporadas"></span></button>
       </nav>
     </div>
     <div class="hub-grade">
       <div class="hub-principal">
         <section class="quadro hub-vagas hidden" id="cartaoVagas" data-na-aba="temporada" aria-label="Propostas de outros clubes"></section>
+        <section class="quadro hub-selecao hidden" id="cartaoSelecao" data-na-aba="central temporada" aria-label="Seleção: Copa do Mundo"></section>
         <section class="quadro destaque hub-jogo" id="cartaoJogo" data-na-aba="central" aria-label="Avançar: próxima partida"></section>
         <section class="quadro tv-painel hidden" id="cartaoAoVivo" data-na-aba="central" aria-label="Rodada da turma ao vivo" aria-live="off"></section>
         <section class="quadro hub-dev" id="cartaoDesenvolvimento" data-na-aba="central" aria-label="Desenvolvimento do jogador"></section>
@@ -153,6 +155,12 @@
   <section id="trocas" class="tela hidden hub">
     <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2>Trocas entre técnicos</h2></div>
     <div id="trocasCorpo"></div>
+  </section>
+
+  <!-- a seleção (Copa do Mundo, de 2 em 2 temporadas): a convocação (só jogadores do país), a escalação e a Copa (selecao.js) -->
+  <section id="selecao" class="tela hidden hub">
+    <div class="topo-tela"><button class="volta" data-ir="sede">← Sede</button><h2>Seleção</h2></div>
+    <div id="selecaoCorpo"></div>
   </section>
 
   <!-- o clube: contratos, base, estrutura, vestiário, técnico, legado e rivais -->
@@ -199,7 +207,7 @@
     <p id="mJanela" class="aviso"></p>
     <p id="mRegra" class="aviso regra-compras hidden"></p>
     <div class="segmentos grande" id="mModo" role="group" aria-label="Lado do mercado">
-      <button data-modo="comprar" aria-pressed="true">Contratar</button><button data-modo="vender" aria-pressed="false">Meu elenco</button><button data-modo="noticias" aria-pressed="false">Movimentações</button>
+      <button data-modo="comprar" aria-pressed="true">Contratar</button><button data-modo="vender" aria-pressed="false">Meu elenco</button><button data-modo="noticias" aria-pressed="false">Movimentações</button><button data-modo="selecao" id="mModoSelecao" class="hidden" aria-pressed="false">Seleção</button>
     </div>
     <div class="quadro filtros" id="mFiltros">
       <input id="mBusca" type="search" placeholder="Buscar jogador" aria-label="Buscar jogador">
@@ -244,7 +252,7 @@
     </div>
     <div id="pPeso" class="p-peso"></div>
     <div id="pAbertura" class="abertura hidden" aria-hidden="true"></div>
-    <div class="faixa-jogo"><span id="pLocal"></span><span class="controles"><small id="pVelDono" class="hidden"></small><button data-vel="1" aria-pressed="true">1×</button><button data-vel="3" aria-pressed="false">3×</button><button id="btnMesa" aria-pressed="true" title="Mostrar ou esconder a mesa de botão">Mesa</button><button id="btnPular">Pular</button></span></div>
+    <div class="faixa-jogo"><span id="pLocal"></span><span class="controles"><small id="pVelDono" class="hidden"></small><button data-vel="1" aria-pressed="true">1×</button><button data-vel="3" aria-pressed="false">3×</button><button id="btnMesa" aria-pressed="true" title="Mostrar ou esconder a mesa de botão">Mesa</button><button id="btnSom" aria-pressed="true" hidden>Som</button><button id="btnPular">Pular</button></span></div>
     <div id="mesaCaixa" class="mesa-caixa"><div id="mesa" class="mesa"></div></div>
     <div class="partida-grade">
       <div id="replays" class="replays"></div>
@@ -328,8 +336,8 @@
 <script src="orcamentos.js"></script>
 <script src="escudos.js"></script>
 <script src="escudos-api.js"></script>
-<script src="escudos-busca.js"></script>
 <script src="camisas.js"></script>
+<script src="bandeiras.js"></script>
 <script src="base/teste.js"></script>
 <script src="base/brasileirao-2026.js"></script>
 <script src="base/serieb-2026.js"></script>
@@ -341,6 +349,7 @@
 <script src="base/argentina-2026.js"></script>
 <script src="base/sulamericanos-2026.js"></script>
 <script src="base/mundo-2026.js"></script>
+<script src="base/selecoes-2026.js"></script>
 <script src="inicio.js"></script>
 <script src="grupo.js"></script>
 <script src="turma-ao-vivo.js"></script>
@@ -351,6 +360,7 @@
 <script src="elenco.js"></script>
 <script src="ver-time.js"></script>
 <script src="tela-mercado.js"></script>
+<script src="selecao.js"></script>
 <script src="feed.js"></script>
 <script src="posjogo.js"></script>
 <script src="painel.js"></script>
@@ -362,6 +372,8 @@
 <script src="/card.js"></script>
 <script src="campeoes.js"></script>
 <script src="trocas.js"></script>
+<script src="estante.js"></script>
+<script src="trofeus-api.js"></script>
 <script src="temporadas.js"></script>
 <script src="clube.js"></script>
 <script src="estadios-api.js"></script>
@@ -370,6 +382,8 @@
 <script src="popups.js"></script>
 <script src="guia.js"></script>
 <script src="mesa.js"></script>
+<script src="som/indice.js"></script>
+<script src="som-partida.js"></script>
 <script src="partida.js"></script>
 </body>
 </html>

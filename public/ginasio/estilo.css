@@ -16,3 +16,130 @@ body.toque-jogo #hud{position:relative;height:206px;min-height:206px;padding:8px
 @media(max-height:420px) and (orientation:landscape){#barra .icone{height:28px;min-height:28px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}.habilidade,#reservas button{transition:border-color 150ms ease}.habilidade:active:not(:disabled),#reservas button:active:not(:disabled){transform:none}}
 .desafio-lider{border:2px solid var(--cor);border-radius:8px;padding:12px;margin-bottom:10px;background:color-mix(in srgb,var(--cor) 12%,#fff)}.desafio-lider h2{font-size:20px;margin:2px 0 4px}.desafio-lider p{font-size:13px;color:var(--suave);font-style:italic}.tipo-lider{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#fff;background:var(--cor);padding:2px 8px;border-radius:4px}.time-lider{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px}.time-lider .bicho{min-height:84px;pointer-events:none}.ja-tem{font-style:normal!important;color:var(--verde)!important;font-weight:700;margin-top:6px}.insignias{margin-top:18px}.insignias h2{font-size:14px;margin-bottom:6px}.lista-insignias{display:flex;gap:8px}.insignia{display:flex;flex-direction:column;align-items:center;gap:2px;width:58px;padding:8px 2px;border-radius:50% 50% 8px 8px;border:2px dashed #b9c7c0;color:#9aa9a2;font-size:10px;font-weight:700}.insignia .ic{width:22px;height:22px}.insignia.ganha{border:2px solid var(--cor);background:color-mix(in srgb,var(--cor) 18%,#fff);color:var(--cor)}.dica-insignias{font-size:11px;color:var(--suave);margin-top:6px}
+/* as defesas: esquiva e guarda (a barra da guarda sobe por dentro do botão) */
+#defesa{display:flex;gap:5px}.habilidade.guarda .carga,#toque button.guarda::after{position:absolute;left:0;right:0;bottom:0;height:5px;background:#7fd4ff;transform-origin:left;transform:scaleX(var(--guarda,1));transition:background 150ms ease}#toque button.guarda::after{content:"";z-index:2}.habilidade.guarda.baixa .carga,#toque button.guarda.baixa::after{background:#ef8a5a}.habilidade.guarda.ativa,#toque button.guarda.ativa{border-color:#7fd4ff;background:#2c4a5a;box-shadow:inset 0 0 0 2px #7fd4ff66}.habilidade.guarda .ic{color:#9fdcff}
+body.toque-jogo #defesa{display:none}
+@media(max-width:700px){#defesa{gap:3px}}
+@media(max-width:440px) and (pointer:fine){#defesa{grid-column:2;grid-row:1;justify-self:end}#defesa .habilidade{height:52px}}
+.busca:has(#dexGeracao:not(.hidden)){grid-template-columns:minmax(0,1fr) 130px 150px}
+@media(max-width:560px){.busca:has(#dexGeracao:not(.hidden)){grid-template-columns:1fr 1fr}.busca:has(#dexGeracao:not(.hidden)) input{grid-column:1/-1}}
+.como-jogar{margin-top:12px;border:1px solid var(--linha);border-radius:6px;padding:8px 10px;font-size:13px;background:#fff}.como-jogar summary{cursor:pointer;font-weight:700}.como-jogar dl{margin:8px 0 0}.como-jogar dt{font-weight:700;margin-top:6px}.como-jogar dd{margin:2px 0 0;color:var(--suave);line-height:1.35}
+/* ===== a HUD do modo Pokémon (hud-pokemon.js): o jeito das partidas de MOBA vistas de cima ===== */
+.pk-so,#hud kbd{display:none}
+body.pk.jogando #placar{display:none}
+/* em cima: os times, os nocautes e o relógio */
+#topoPk{position:absolute;top:6px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;gap:0;pointer-events:none;filter:drop-shadow(0 4px 10px #000a);max-width:calc(100% - 12px)}
+.timePk{display:flex;gap:2px;padding:3px;background:linear-gradient(#1c2328,#11161a);border:1px solid #4a4232;min-width:0;overflow:hidden}
+.timePk.azul{border-right:0;border-radius:6px 0 0 6px;box-shadow:inset 0 -3px 0 #237dcd}.timePk.vermelho{border-left:0;border-radius:0 6px 6px 0;box-shadow:inset 0 -3px 0 #df515a}
+.retPk{position:relative;width:34px;height:34px;flex:none;background:radial-gradient(#3a454c,#1b2226);border:1px solid #2e3a40;overflow:hidden}
+.retPk img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;transform:scale(1.25)}
+.retPk i{position:absolute;left:0;right:0;bottom:0;height:3px;background:#5bd35b;transform-origin:left}
+.timePk.vermelho .retPk i{background:#e0443a}
+.retPk.ativo{border-color:#f0c24a;box-shadow:inset 0 0 0 1px #f0c24a}.retPk.meu.ativo{border-color:#ffe56a}
+.retPk.caiu{filter:grayscale(1) brightness(.45)}.retPk.caiu::after{content:"";position:absolute;inset:0;background:linear-gradient(45deg,transparent 46%,#d9433a 46% 54%,transparent 54%)}
+.sepPk{width:6px;flex:none}
+.meioPk{display:flex;align-items:center;gap:8px;padding:0 10px;background:linear-gradient(#262f35,#151b1f);border:1px solid #6a5a36;border-radius:0 0 8px 8px;margin-top:-1px;color:#f2e7c8}
+.meioPk b{font:800 20px ui-monospace,monospace;min-width:18px;text-align:center}#koPk0{color:#7fc0ff}#koPk1{color:#ff8a80}
+#relogioPk{font:800 15px ui-monospace,monospace;color:#fff;padding:2px 6px;background:#0c1013;border-radius:3px}
+/* o feed de nocautes */
+#feedPk{position:absolute;top:52px;right:8px;margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+#feedPk li{display:flex;align-items:center;gap:6px;padding:3px 8px;background:#0d1216d9;border-left:3px solid #f0c24a;color:#f2e7c8;font:700 12px system-ui;animation:entraPk .25s ease-out}
+#feedPk li span{display:flex;align-items:center;gap:3px}#feedPk li .lado0{color:#7fc0ff}#feedPk li .lado1{color:#ff8a80}
+#feedPk img{width:24px;height:24px;object-fit:contain;image-rendering:pixelated}#feedPk b{color:#f0c24a}
+@keyframes entraPk{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+/* o minimapa */
+#mapaPk{position:absolute;left:8px;bottom:8px;width:180px;height:122px;border:2px solid #6a5a36;border-radius:4px;box-shadow:0 4px 14px #000b;image-rendering:auto;background:#1b2226;pointer-events:none}
+/* embaixo: o painel do meu Pokémon */
+/* o painel do meu Pokémon fica no alto, à esquerda (embaixo e no meio, tapava a luta); a cena 3D anda para a direita
+   (ajustarCanvas, desenho.js) */
+body.pk.jogando:not(.toque-jogo) #hud{position:fixed;left:6px;top:52px;width:236px;max-height:calc(100dvh - 60px);overflow:auto;height:auto;min-height:0;padding:8px;
+  display:grid;grid-template-columns:auto 1fr;grid-template-areas:"ret ret" "barras barras" "hab hab" "def res" "ef ef";column-gap:8px;row-gap:6px;align-items:start;justify-content:stretch;
+  background:linear-gradient(#1e262bf2,#0e1316f2);border:1px solid #6a5a36;border-radius:8px;box-shadow:0 6px 24px #000a,inset 0 1px 0 #8a7a52;z-index:5;scrollbar-width:none}
+body.pk.jogando:not(.toque-jogo) .pk-so{display:flex}
+body.pk.jogando:not(.toque-jogo) #hud kbd{display:block;position:absolute;top:2px;left:3px;z-index:4;font:800 9px/1 ui-monospace,monospace;color:#f2e7c8;background:#0b0f12cc;padding:2px 3px;border-radius:2px;pointer-events:none}
+body.pk.jogando:not(.toque-jogo) #reservas kbd{top:auto;bottom:6px;left:2px}
+#retratoPk{grid-area:ret;gap:8px;align-items:stretch}
+#retratoPk .moldura{position:relative;flex:none;width:64px;height:68px;border:2px solid #8a7a52;border-radius:6px;background:radial-gradient(circle at 50% 60%,#46545c,#141a1e);overflow:hidden}
+#retratoImg{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;transform:scale(1.35) translateY(4%)}
+#nivelPk{position:absolute;left:3px;bottom:3px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:#1c2328;border:2px solid #f0c24a;color:#f2e7c8;font:800 11px ui-monospace,monospace}
+#retratoPk .ficha{display:flex;flex-direction:column;gap:3px;min-width:0;color:#f2e7c8}
+#nomePk{font:800 13px system-ui;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.02em;text-transform:uppercase}
+#tiposPk{display:flex;gap:3px;flex-wrap:wrap}#tiposPk em{font:800 9px system-ui;font-style:normal;text-transform:uppercase;padding:2px 5px;border-radius:2px;background:var(--tipo);color:#fff;text-shadow:0 1px 0 #0006}
+#statsPk{display:flex;flex-wrap:wrap;gap:2px 6px;font:700 11px ui-monospace,monospace;color:#b9c4c0}
+#statsPk b{color:#fff;margin-left:4px}#statsPk small{margin-left:4px}#statsPk .sobe small{color:#7ee07e}#statsPk .cai small{color:#ff8a80}
+#barrasPk{grid-area:barras;flex-direction:column;gap:3px;min-width:0}
+.barraPk{position:relative;height:18px;background:#0b0f12;border:1px solid #2b3438;overflow:hidden}
+.barraPk i{position:absolute;inset:0;transform-origin:left;transition:transform .12s ease-out}
+.vidaPk i{background:linear-gradient(#6fe06f,#2f9a3a)}
+.vidaPk::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(var(--riscos,10%) - 1px),#0b0f1299 calc(var(--riscos,10%) - 1px) var(--riscos,10%));pointer-events:none}
+.guardaPk{height:12px}.guardaPk i{background:linear-gradient(#7fd4ff,#2f78b8)}
+.barraPk span{position:absolute;inset:0;display:grid;place-items:center;font:800 11px ui-monospace,monospace;color:#fff;text-shadow:0 1px 2px #000;z-index:2}.guardaPk span{font-size:9px}
+body.pk.jogando:not(.toque-jogo) #habilidades{grid-area:hab;gap:4px;justify-content:space-between}
+body.pk.jogando:not(.toque-jogo) #defesa{grid-area:def;gap:5px}
+body.pk.jogando:not(.toque-jogo) #reservas{grid-area:res;gap:4px;justify-content:flex-end}
+#efeitosPk{grid-area:ef;gap:3px;flex-wrap:wrap;min-height:0;align-content:flex-start}#efeitosPk:empty{display:none}
+#efeitosPk .ef{position:relative;width:26px;height:26px;display:grid;place-items:center;border-radius:3px;font:800 9px ui-monospace,monospace;color:#fff;background:#2b3438;border:1px solid #556}
+#efeitosPk .ef small{position:absolute;bottom:-2px;right:-2px;font-size:8px;background:#000c;padding:0 2px}
+#efeitosPk .tonto{background:#8a6a12;border-color:#f0c24a}#efeitosPk .foco{background:#a07a10;border-color:#ffd84a}#efeitosPk .guarda{background:#2f5a78;border-color:#7fd4ff}
+#efeitosPk .sobe{background:#2f6a36;border-color:#7ee07e}#efeitosPk .cai{background:#7a2a2a;border-color:#ff8a80}
+/* as habilidades: quadradas, com a moldura na cor do tipo e a recarga em leque */
+body.pk.jogando:not(.toque-jogo) .habilidade{width:52px;min-width:52px;height:56px;padding:4px 2px 3px;border-radius:4px;background:radial-gradient(circle at 50% 35%,#34424a,#151b1f);border:2px solid color-mix(in srgb,var(--tipo,#e9dd84) 70%,#000);color:#f2e7c8;gap:3px;justify-content:flex-end}
+body.pk.jogando:not(.toque-jogo) .habilidade .ic{width:22px;height:22px;margin-bottom:auto;margin-top:8px;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--tipo,#e9dd84) 60%,transparent))}
+body.pk.jogando:not(.toque-jogo) .habilidade .nome{font-size:7.5px;line-height:1.1;max-width:100%;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+body.pk.jogando:not(.toque-jogo) .habilidade .recarga{transform:none!important;background:conic-gradient(from 0deg,#05090bd0 calc(var(--cd,0) * 360deg),transparent 0)}
+body.pk.jogando:not(.toque-jogo) .habilidade[aria-disabled="true"] .ic{filter:grayscale(.7)}
+body.pk.jogando:not(.toque-jogo) .habilidade.pronta{border-color:var(--tipo,#e9dd84);box-shadow:0 0 12px var(--tipo,#e9dd84)}
+body.pk.jogando:not(.toque-jogo) .habilidade.esquiva{width:46px;min-width:46px}
+body.pk.jogando:not(.toque-jogo) .habilidade.guarda .carga{height:4px}
+body.pk.jogando:not(.toque-jogo) #reservas button{width:36px;min-width:36px;height:56px;border:2px solid #4a4232;background:radial-gradient(#34424a,#151b1f)}
+body.pk.jogando:not(.toque-jogo) #reservas img{width:32px;height:32px}
+body.pk.jogando:not(.toque-jogo) #reservas button.ativo{border-color:#f0c24a}
+body.pk.jogando:not(.toque-jogo) #chakraHud{display:none}
+@media(max-width:1100px){#mapaPk{width:140px;height:95px}}
+@media(max-height:620px){#mapaPk{display:none}}
+@media(max-width:900px){#mapaPk{display:none}}
+@media(max-width:700px),(max-height:440px){body.pk.jogando:not(.toque-jogo) #hud{left:50%;top:auto;bottom:0;transform:translateX(-50%);width:auto;max-width:calc(100vw - 8px);border-radius:12px 12px 0 0;grid-template-columns:auto auto auto;grid-template-areas:"barras barras barras" "hab def res";column-gap:6px;row-gap:4px;padding:4px 6px}
+  #retratoPk,#efeitosPk,#mapaPk{display:none!important}#barrasPk{min-width:0}.barraPk{height:12px}.barraPk span{font-size:9px}#barrasPk .guardaPk{height:6px}#barrasPk .guardaPk span{display:none}
+  body.pk.jogando:not(.toque-jogo) .habilidade{width:46px;min-width:46px;height:46px}body.pk.jogando:not(.toque-jogo) .habilidade .nome{display:none}body.pk.jogando:not(.toque-jogo) .habilidade .ic{margin-top:10px;width:22px;height:22px}
+  body.pk.jogando:not(.toque-jogo) .habilidade.esquiva{width:42px;min-width:42px}
+  body.pk.jogando:not(.toque-jogo) #reservas button{height:46px;width:36px;min-width:36px}body.pk.jogando:not(.toque-jogo) #reservas img{width:28px;height:28px}
+  .retPk{width:24px;height:24px}.meioPk b{font-size:15px}#relogioPk{font-size:13px}#feedPk{top:36px}#feedPk img{width:18px;height:18px}}
+body.toque-jogo #mapaPk{display:none}
+@media(prefers-reduced-motion:reduce){#feedPk li{animation:none}.barraPk i{transition:none}}
+/* o lugar da luta (modo Pokémon) */
+#escolhaArena{display:flex;flex-direction:column;gap:6px;margin-top:10px}#escolhaArena.hidden{display:none}
+.rotulo-arena{font:700 12px system-ui;color:var(--suave,#9aa8a3);text-transform:uppercase;letter-spacing:.04em}
+.segmentos.arenas{display:flex;flex-wrap:wrap;gap:4px}.segmentos.arenas button{flex:1 1 30%;min-width:0;border-radius:4px!important;border-left:1px solid var(--linha)!important}
+#escolhaPokemons{display:flex;flex-direction:column;gap:6px;margin-top:10px}#escolhaPokemons.hidden{display:none}#dicaPokemons{margin:0;font-size:12px;line-height:1.35;color:var(--suave,#9aa8a3)}
+#dexAviso{margin:0 0 8px;font-size:13px;line-height:1.35;padding:6px 10px;border-left:3px solid #4fbf6a;background:#4fbf6a1a}
+#dicaArena{margin:0;font-size:12px;line-height:1.35;color:var(--suave,#9aa8a3);min-height:2.7em}
+/* a luta com o Pokémon selvagem (selvagem.js): o quadro na sala, a Pokébola e a experiência no fim */
+.selvagem-cartao{display:flex;gap:12px;align-items:center;padding:10px;border:2px solid var(--r);border-radius:6px;background:color-mix(in srgb,var(--r) 10%,#fff);margin-bottom:12px}
+.selvagem-cartao img{image-rendering:pixelated;flex:none}.selvagem-cartao h2{margin:2px 0;font-size:20px}.selvagem-cartao h2 small{font-size:13px;color:var(--suave)}.selvagem-cartao p{margin:0;font-size:13px;line-height:1.35}
+#btnPokebola .ic.bola{display:block;width:22px;height:22px;border-radius:50%;border:2px solid #1b1b1b;background:linear-gradient(#e8483b 0 44%,#1b1b1b 44% 56%,#f4f4f4 56%);position:relative}
+#btnPokebola .ic.bola::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;transform:translate(-50%,-50%);border-radius:50%;background:#fff;border:2px solid #1b1b1b}
+#btnPokebola{background:linear-gradient(0deg,color-mix(in srgb,#e8483b 45%,transparent) calc(var(--chance,0) * 100%),transparent 0) !important}
+body.pk.jogando:not(.toque-jogo) .habilidade.esquiva.pokebola{width:auto;min-width:64px;padding-inline:6px}
+#btnPokebola.flutuante{position:absolute;right:12px;top:58px;z-index:6;min-width:96px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:8px;border:2px solid #1b1b1b;background-color:#fff;font:700 12px system-ui}
+#btnPokebola.flutuante kbd{display:none}
+#btnPokebola.hidden{display:none !important}
+#resultadoSelvagem p{margin:8px 0;font-size:14px}
+.xp-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.xp-lista li{display:flex;gap:8px;align-items:center;font-size:14px}.xp-lista img{image-rendering:pixelated;flex:none}
+.xp-lista .evoluiu{color:#b5651d;display:block}
+.xpbarra{display:block;height:5px;margin-top:4px;background:#dde5e1;border-radius:3px;overflow:hidden}.xpbarra i{display:block;height:100%;background:#3f8fe0;transition:width .6s ease-out}
+a.botao{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border-radius:4px;text-decoration:none;font-weight:700}
+a.botao.primario{background:var(--verde);color:#fff}a.botao.hidden{display:none}
+.bicho{position:relative}.nv-bicho{position:absolute;top:3px;left:4px;font:700 10px ui-monospace,monospace;color:#3f6a5a;background:#ffffffcc;padding:0 3px;border-radius:2px}
+.selvagem-cartao .tipo-lider{color:color-mix(in srgb,var(--r) 70%,#000);font:800 11px system-ui;text-transform:uppercase;letter-spacing:.04em}
+body.pk.jogando:not(.toque-jogo) #hud:has(#btnPokebola:not(.hidden)){grid-template-areas:"ret ret" "barras barras" "hab hab" "def res" "bola bola" "ef ef"}
+body.pk.jogando:not(.toque-jogo) #btnPokebola{grid-area:bola;width:100%;min-width:0;height:44px;flex-direction:row;justify-content:center;gap:8px}
+body.pk.jogando:not(.toque-jogo) #btnPokebola .ic{margin:0 !important}
+body.pk.jogando:not(.toque-jogo) #btnPokebola .nome{font-size:12px;max-height:none}
+#hud > #btnPokebola:not(.flutuante){position:relative}
+#escolhaRobo{display:flex;flex-direction:column;gap:6px;margin-top:10px}#escolhaRobo.hidden{display:none}
+/* no PC a HUD do modo Pokémon cresce com a tela (o painel, os retratos de cima, o feed e o minimapa); ajustarCanvas mede o
+   painel já ampliado e afasta a cena 3D do mesmo jeito */
+@media (min-width:1280px) and (min-height:700px){body.pk.jogando:not(.toque-jogo) :is(#hud,#topoPk,#feedPk,#mapaPk){zoom:1.3}}
+@media (min-width:1700px) and (min-height:900px){body.pk.jogando:not(.toque-jogo) :is(#hud,#topoPk,#feedPk,#mapaPk){zoom:1.5}}
+@media (min-width:2300px) and (min-height:1200px){body.pk.jogando:not(.toque-jogo) :is(#hud,#topoPk,#feedPk,#mapaPk){zoom:1.8}}

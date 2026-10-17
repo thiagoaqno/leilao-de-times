@@ -44,3 +44,22 @@ test("torneio guarda país e etapa, e o menu online continua acessível", async 
   await expect(page.locator("#hCode")).toHaveValue("ABCDE");
   await expect(page.locator("#btnJoin")).toBeVisible();
 });
+
+test("raquete acompanha o mouse da borda até perto da rede", async ({ page }) => {
+  await page.goto("/pingpong/#debug");
+  await page.click('[data-mode="amistoso"]');
+  await page.click("#btnPractice");
+  await page.waitForFunction(() => window.__pingpong && __pingpong.G.active);
+  const posicoes = await page.evaluate(() => {
+    const t = __pingpong, jogo = document.getElementById("game");
+    const mover = (z) => {
+      const p = t.tela(0, z);
+      jogo.dispatchEvent(new PointerEvent("pointermove", { clientX: p.x, clientY: p.y, bubbles: true }));
+      t.avancar(1 / 30);
+      return t.G.raq[0].z;
+    };
+    return [mover(1.6), mover(0.25)];
+  });
+  expect(posicoes[0]).toBeGreaterThan(1.4);
+  expect(posicoes[1]).toBeLessThan(0.4);
+});

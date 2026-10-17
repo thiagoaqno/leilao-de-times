@@ -54,8 +54,14 @@ test("ginasio: computador 480x270 move, ataca, esquiva, troca e reconecta", asyn
   await expect.poll(async () => (await meuEstado(page)).cds[0]).toBeGreaterThan(0);
   await page.mouse.click(cv.x + cv.width * 0.7, cv.y + cv.height * 0.5, { button: "right" });
   await expect.poll(async () => (await meuEstado(page)).cds[1]).toBeGreaterThan(0);
-  await page.keyboard.press("q"); await expect.poll(async () => (await meuEstado(page)).cds[2]).toBeGreaterThan(0);
-  await page.keyboard.press("e"); await expect.poll(async () => (await meuEstado(page)).cds[3]).toBeGreaterThan(0);
+  // o golpe pode cair com o bicho ocupado (pulando, tonto): aperta de novo até sair
+  const apertar = async (tecla, i) => expect.poll(async () => { const e = await meuEstado(page); if (!(e.cds[i] > 0)) await page.keyboard.press(tecla); return e.cds[i]; }, { intervals: [250] }).toBeGreaterThan(0);
+  await apertar("q", 2); await apertar("e", 3);
+  // a guarda: vale enquanto segura o Shift, e a barra gasta
+  await page.keyboard.down("Shift"); await expect.poll(async () => (await meuEstado(page)).guardando).toBe(true);
+  await expect(page.locator("#btnGuarda")).toHaveClass(/ativa/);
+  await expect.poll(async () => (await meuEstado(page)).guarda).toBeLessThan(95);
+  await page.keyboard.up("Shift"); await expect.poll(async () => (await meuEstado(page)).guardando).toBe(false);
   await page.keyboard.press("Space"); await expect.poll(async () => (await meuEstado(page)).esquivaCd).toBeGreaterThan(0);
   await conferirTela(page, "ginasio-fase-3-computador");
   await page.keyboard.press("2"); await expect.poll(async () => (await meuEstado(page)).ativo).toBe(1);
@@ -72,12 +78,16 @@ test("ginasio: computador 480x270 move, ataca, esquiva, troca e reconecta", asyn
   expect(erros).toEqual([]);
 });
 
-test("ginasio: seletor dos 493 Pokemon e sprites carregados em partida", async ({ page }) => {
+test("ginasio: seletor dos 649 Pokemon (com Unova) e sprites carregados em partida", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const erros = []; page.on("pageerror", (e) => erros.push(e.message));
   await abrir(page, "pokemon");
   await page.locator('#meuTime [data-escolher="0"]').click();
-  await expect(page.locator("#dexPagina")).toHaveText("1 / 21");
+  await expect(page.locator("#dexPagina")).toHaveText("1 / 28");
+  await expect(page.locator("#dexGeracao")).toBeVisible();
+  await page.locator("#dexGeracao").selectOption("4"); await expect(page.locator("#dexPagina")).toHaveText("1 / 7");
+  await expect(page.locator('#dexLista [data-bicho="victini"]')).toBeVisible();
+  await page.locator("#dexGeracao").selectOption("");
   await page.locator("#dexBusca").fill("Garchomp"); await page.locator('#dexLista [data-bicho="garchomp"]').click();
   await expect(page.locator("#meuTime")).toContainText("Garchomp");
   await page.locator('#meuTime [data-escolher="0"]').click();
@@ -97,7 +107,7 @@ for (const [nome, viewport] of [["celular", { width: 375, height: 812 }], ["pais
     const page = await context.newPage(), erros = []; page.on("pageerror", (e) => erros.push(e.message));
     try {
       await abrir(page); await jogar(page);
-      await expect(page.locator("#toque")).toBeVisible(); await expect(page.locator("#toque .btns button")).toHaveCount(5);
+      await expect(page.locator("#toque")).toBeVisible(); await expect(page.locator("#toque .btns button")).toHaveCount(6);
       const antes = await meuEstado(page), stick = await page.locator("#toque .stick").boundingBox();
       const cdp = await context.newCDPSession(page);
       const dedo = { x: stick.x + stick.width * 0.85, y: stick.y + stick.height / 2, id: 1 };

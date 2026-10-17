@@ -101,6 +101,8 @@ function falaDoTreinador(conf, papel) {
 // 1 nível = +1 na nota e +1 num atributo do treino
 function subirNivel(save, quantos) {
   const j = save.jogador, e = save.jovens[ID], foco = FOCOS[j.foco] || FOCOS.equilibrado, sobe = [];
+  // o atributo que a moderação mudou (num save de antes, ficava por cima do atleta) passa a ser do atleta, e o treino sobe dali
+  if (save.atributosModerados && save.atributosModerados[ID]) { e.atr = { ...e.atr, ...save.atributosModerados[ID] }; delete save.atributosModerados[ID]; }
   const principais = ATRIBUTOS.map((k, i) => [k, PERFIL[j.pos][i]]).sort((a, b) => b[1] - a[1]).slice(0, 3).map((x) => x[0]);
   for (let i = 0; i < quantos; i++) {
     if (C.notaDe(save, e) >= Math.min(95, j.teto)) break;
@@ -252,7 +254,7 @@ function visao(save) {
   const nota = C.notaDe(save, e);
   const rivais = C.elencoDe(save, save.clube).filter((x) => x.id !== ID && x.pos === j.pos).sort((a, b) => C.notaDe(save, b) - C.notaDe(save, a)).slice(0, 3).map((x) => ({ nome: x.nome, nota: C.notaDe(save, x), idade: Evolucao.idadeNa(x, save.temporada) }));
   return {
-    eu: { nome: j.nome, pos: j.pos, nat: j.nat, pe: j.pe, idade: Evolucao.idadeNa(e, save.temporada), nota, atr: e.atr, estrelas: estrelas(j.teto), niveis: j.niveis },
+    eu: { nome: j.nome, pos: j.pos, nat: j.nat, pe: j.pe, idade: Evolucao.idadeNa(e, save.temporada), nota, atr: (C.jogadorDe(save, ID) || e).atr, estrelas: estrelas(j.teto), niveis: j.niveis },
     clube: { id: clube.id, nome: clube.nome, cidade: clube.cidade, liga: C.ligaDoClube(clube.id, save) },
     temporada: save.temporada, ano: save.ano, temporadasMax: save.temporadasMax, rodada: save.rodada, totalJogos: save.calendario.length,
     confianca: j.confianca, papel, fala: falaDoTreinador(j.confianca, papel), lesao: save.lesoes[ID] || 0, suspenso: save.suspensos[ID] || 0,

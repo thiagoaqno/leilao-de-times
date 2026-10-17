@@ -6,7 +6,7 @@
 // Também troca o "← Vila" do cabeçalho por "← Sede" nas telas de gestão (um botão só para voltar, no mesmo lugar).
 // (O arquivo e o nome Zoom ficaram do zoom antigo, que abria a tela a partir do bloco.)
 const Zoom = (() => {
-  const TELAS_DE_GESTAO = new Set(["elenco", "mercado", "tabela", "calendario", "feed", "trocas", "temporadas", "clube"]);
+  const TELAS_DE_GESTAO = new Set(["elenco", "mercado", "tabela", "calendario", "feed", "trocas", "temporadas", "clube", "selecao"]);
   const ANDA = { duration: 380, easing: "cubic-bezier(.22,1,.36,1)" };
   const SAI_ABA = { duration: 140, easing: "cubic-bezier(.55,0,1,.45)", fill: "forwards" }, ENTRA_ABA = { duration: 280, easing: "cubic-bezier(.22,1,.36,1)" };
   let ocupado = false, rolagemDaSede = 0, voltouEm = 0, abaPedida = null;

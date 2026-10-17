@@ -3,13 +3,16 @@ const N = { snap: null, buf: [], previsto: null, mundo: null, seq: 0, historico:
 let resultadoVisto = null;
 function limparRede() {
   Object.assign(N, { snap: null, buf: [], previsto: null, mundo: null, seq: 0, historico: [], erro: { x: 0, y: 0 }, inicio: null });
-  projeteisVisuais.clear(); areasVisuais.clear(); efeitos.length = 0; marcas.length = 0; ataques.clear(); limparControles();
+  projeteisVisuais.clear(); areasVisuais.clear(); efeitos.length = 0; marcas.length = 0; ataques.clear(); limparControles(); limparEncenacao();
 }
 function entidadePrevista(e) {
   return {
     ...e, mira: { ...e.mira }, bicho: { id: e.bicho, as: e.forma !== e.bicho ? e.forma : null, hp: e.hp, max: e.max, st: { ...e.st }, cds: [...e.cds], chakra: e.chakra },
     jogador: { id: e.id, lado: e.lado, substitutes: e.substitutes }, impedido: e.impedido || 0,
-    canal: e.canal && { ...e.canal }, dash: e.dash && { ...e.dash, hab: { velocidade: e.dash.velocidade, giro: e.dash.giro, tipo: e.dash.elemento }, hit: new Set() },
+    kx: e.kx || 0, ky: e.ky || 0, atordoado: e.atordoado || 0, guarda: e.guarda ?? Ginasio.GUARDA_MAX, guardando: !!e.guardando, guardaSolta: e.guardaSolta || 0,
+    preparo: e.preparo && { ...e.preparo, mira: { ...e.preparo.mira } }, sequencia: e.sequencia && { ...e.sequencia },
+    salto: e.salto && { ...e.salto, de: { ...e.salto.de }, para: { ...e.salto.para }, hab: { raio: e.salto.r } },
+    canal: e.canal && { ...e.canal }, bote: e.bote && { ...e.bote }, dash: e.dash && { ...e.dash, hab: { velocidade: e.dash.velocidade, giro: e.dash.giro, tipo: e.dash.elemento }, hit: new Set() },
     oculto: e.oculto && { ...e.oculto, de: { ...e.oculto.de }, para: { ...e.oculto.para } },
   };
 }
@@ -24,7 +27,7 @@ function receberPacote(sn) {
   if (mudou) N.historico.length = 0;
   N.historico = N.historico.filter((passo) => passo.seq > sn.seq);
   N.previsto = entidadePrevista(e);
-  N.mundo = { modo: modoAtual(), dex: dexAtual(), entidades: [], ev: [] };
+  N.mundo = { modo: modoAtual(), dex: dexAtual(), entidades: [], ev: [], t: sn.tempo || 0, terreno: Ginasio.terrenoDe(S.match.bioma) }; // o terreno muda a velocidade e a água funda é parede
   for (const passo of N.historico) Ginasio.preverMovimento(N.mundo, N.previsto, passo.dt, passo.c);
   const distancia = antigo ? Math.hypot(antigo.x - N.previsto.x, antigo.y - N.previsto.y) : 0;
   N.erro = mudou || distancia > 1.5 ? { x: 0, y: 0 } : { x: antigo.x - N.previsto.x, y: antigo.y - N.previsto.y };
@@ -71,16 +74,20 @@ socket.on("state", (st) => {
   const faseAntes = S?.phase; S = st;
   const mine = meuJogador(), mudouModo = modoAnterior !== st.config.modo;
   modoAnterior = st.config.modo;
-  if (mine && st.phase !== "play" && (timeInicial || mudouModo) && mine.time.join() !== times[st.config.modo].join()) {
+  // na sala "só capturados", o time guardado só vai se for todo meu (senão fica o que o servidor deu)
+  const guardadoVale = !(st.config.modo === "pokemon" && st.config.pokemons === "capturados") || times.pokemon.every((id) => minhaColecao.has(id));
+  if (mine && st.phase !== "play" && (timeInicial || mudouModo) && guardadoVale && mine.time.join() !== times[st.config.modo].join()) {
     timeInicial = false; act("time", { time: times[st.config.modo] });
-  } else if (mine && !timeInicial) guardarTime(st.config.modo, mine.time);
+  } else if (mine && !timeInicial && !(st.config.modo === "pokemon" && st.config.pokemons === "capturados")) guardarTime(st.config.modo, mine.time); // o time da sala "só capturados" não substitui o guardado
   if (st.phase !== "play") timeInicial = false;
   guardarConfig();
-  if (st.match && N.inicio !== st.match.start) { limparRede(); N.inicio = st.match.start; receberPacote({ ...st.match, t: st.now, seq: -1 }); }
+  // uma partida nova (pelo id: o start anda a cada Pokébola e não pode zerar a sequência dos comandos no meio da luta)
+  const idPartida = st.match && (st.match.id ?? st.match.start);
+  if (st.match && N.inicio !== idPartida) { limparRede(); N.inicio = idPartida; receberPacote({ ...st.match, t: st.now, seq: -1 }); }
   if (st.phase === "lobby") { limparRede(); salaVisivel = true; $("resultado").close(); }
   if (st.phase === "play" && faseAntes !== "play") salaVisivel = false;
   renderSala(); montarHud(); mostrarJogo(!!st.match && !salaVisivel);
-  if (st.phase === "over" && resultadoVisto !== st.match.start) { resultadoVisto = st.match.start; mostrarResultado(); }
+  if (st.phase === "over" && resultadoVisto !== idPartida) { resultadoVisto = idPartida; mostrarResultado(); }
 });
 socket.on("snap", receberPacote);
 socket.on("ev", (lista) => { for (const e of lista) { efeitoVisual(e); tocarEvento(e); } });
@@ -97,10 +104,11 @@ async function reconectar() {
   const code = new URLSearchParams(location.search).get("sala"), saved = ME || (code && store.get("ginasio:" + code));
   if (!saved) return;
   limparRede();
-  const r = await pedirSala("join", { code: saved.code || code, id: saved.id, token: saved.token, watch: !saved.id });
+  const r = await pedirSala("join", { code: saved.code || code, id: saved.id, token: saved.token, watch: !saved.id, treinador });
   if (!entrar(r)) { ME = null; S = null; renderSala(); mostrarJogo(false); }
 }
 socket.on("connect", reconectar);
+socket.on("connect", buscarColecao); // os Pokémon que tenho (a sala "só capturados")
 if (socket.connected) reconectar();
 setInterval(enviarComando, 1000 / 30);
 setInterval(() => { if (socket.connected) relogio.sincronizar(socket, 2); }, 15000);

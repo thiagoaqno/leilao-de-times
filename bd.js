@@ -51,6 +51,15 @@ function abrir(caminho = process.env.DB_PATH || path.join(__dirname, "dados", "g
 function fechar() { if (banco) { banco.close(); banco = null; } }
 const bd = () => banco || abrir();
 
+// Times Pokémon dos personagens do Ginásio. O código base é o padrão; o banco guarda só edições.
+const timesPokemonGinasio = () => bd().prepare("SELECT treinador, time_json, ator, atualizado_em FROM ginasio_times_pokemon").all();
+function salvarTimePokemonGinasio(treinador, time, ator) {
+  bd().prepare(`INSERT INTO ginasio_times_pokemon (treinador, time_json, ator, atualizado_em) VALUES (?, ?, ?, ?)
+    ON CONFLICT(treinador) DO UPDATE SET time_json=excluded.time_json, ator=excluded.ator, atualizado_em=excluded.atualizado_em`)
+    .run(treinador, JSON.stringify(time), ator, Date.now());
+}
+const reporTimePokemonGinasio = (treinador) => bd().prepare("DELETE FROM ginasio_times_pokemon WHERE treinador = ?").run(treinador);
+
 // Fotos recortadas da Carreira. URL nula guarda uma busca sem resultado para não repetir a cada visita.
 function fotoJogador(id) {
   return bd().prepare("SELECT url, consultado_em FROM fotos_jogadores WHERE jogador = ?").get(id) || null;
@@ -113,6 +122,35 @@ function novoCodigoDe(id) {
 function excluirCarreira(id) {
   return bd().prepare("DELETE FROM carreiras WHERE id = ?").run(id).changes > 0;
 }
+
+// ---------- a moderação das carreiras solo (admin-carreira.js) ----------
+// a lista sem abrir o save inteiro de cada uma: só os campos que o painel mostra, tirados do JSON pelo próprio SQLite
+const listarCarreiras = (limite = 300) => bd().prepare(`SELECT id, nome, criada_em, atualizada_em,
+    json_extract(dados, '$.clube') AS clube, json_extract(dados, '$.temporada') AS temporada, json_extract(dados, '$.temporadasMax') AS temporadas_max,
+    json_extract(dados, '$.rodada') AS rodada, json_extract(dados, '$.v') AS v, json_type(dados, '$.partida') = 'object' AS partida,
+    json_type(dados, '$.jogador') = 'object' AS jogador, json_extract(dados, '$.demitido') AS demitido
+  FROM carreiras ORDER BY atualizada_em DESC LIMIT ?`).all(limite).map((l) => ({ id: Number(l.id), nome: l.nome, clube: l.clube, temporada: Number(l.temporada) || 1,
+  temporadasMax: Number(l.temporadas_max) || null, rodada: Number(l.rodada) || 0, v: Number(l.v) || 0, partida: !!l.partida, jogador: !!l.jogador, demitido: !!l.demitido,
+  criadaEm: Number(l.criada_em), atualizadaEm: Number(l.atualizada_em) }));
+const carreiraPorId = (id) => lerCarreira(bd().prepare("SELECT * FROM carreiras WHERE id = ?").get(Number(id)));
+// a edição e o registro dela juntos (o código no registro é "solo:<id>")
+function salvarEdicaoCarreira(id, dados, ator, edicao) {
+  const db = bd(), agora = Date.now();
+  db.exec("BEGIN");
+  try {
+    if (dados) {
+      const r = db.prepare("UPDATE carreiras SET dados = ?, atualizada_em = ? WHERE id = ?").run(JSON.stringify(dados), agora, id);
+      if (!r.changes) throw new Error("Carreira não encontrada no banco.");
+    }
+    db.prepare("INSERT INTO moderacao_carreira (codigo, ator, tipo, clube, jogador, antes, depois, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(`solo:${id}`, String(ator), edicao.tipo, edicao.clube || "", edicao.jogador || null, JSON.stringify(edicao.antes ?? null), JSON.stringify(edicao.depois ?? null), agora);
+    db.exec("COMMIT");
+  } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
+// as últimas edições da moderação (de uma sala, ou de uma carreira solo com "solo:<id>")
+const historicoModeracao = (codigo, limite = 20) => bd().prepare("SELECT ator, tipo, clube, jogador, antes, depois, criado_em FROM moderacao_carreira WHERE codigo = ? ORDER BY id DESC LIMIT ?")
+  .all(String(codigo), limite).map((l) => { const ler = (t) => { try { return JSON.parse(t); } catch { return null; } };
+    return { ator: l.ator, tipo: l.tipo, clube: l.clube, jogador: l.jogador, antes: ler(l.antes), depois: ler(l.depois), em: Number(l.criado_em) }; });
 
 // ---------- as salas da carreira em grupo (carreira-online.js) ----------
 function salvarSalaCarreira(codigo, dados) {
@@ -180,4 +218,108 @@ function estante({ limite = 50, recentes = 24 } = {}) {
   return { ranking, ultimas, total: linhas.filter((l) => l.colocacao === 1).length };
 }
 
-module.exports = { abrir, fechar, migrar, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+// Os Pokémon da grama alta da Vila (vila-mato.js): cada linha de "capturas" é um indivíduo com nível e experiência.
+// O treinador chega aqui já como hash. A Pokédex ("pokedex") guarda toda espécie que o treinador já teve.
+function registrarNaPokedex(treinador, bicho) {
+  bd().prepare("INSERT OR IGNORE INTO pokedex (treinador, bicho, primeiro_em) VALUES (?, ?, ?)").run(treinador, bicho, Date.now());
+}
+function guardarCaptura(treinador, nome, bicho, raridade, brilhante, nivel = 5, origem = "captura") {
+  const r = bd().prepare("INSERT INTO capturas (treinador, nome, bicho, raridade, brilhante, capturado_em, nivel, xp, origem) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)")
+    .run(treinador, nome, bicho, raridade, brilhante ? 1 : 0, Date.now(), nivel, origem);
+  registrarNaPokedex(treinador, bicho);
+  return Number(r.lastInsertRowid);
+}
+// os três iniciais entram uma vez por treinador (no nível 5), como Pokémon de verdade: sobem de nível e evoluem
+function garantirIniciais(treinador, nome, iniciais) {
+  const tem = bd().prepare("SELECT COUNT(*) AS n FROM capturas WHERE treinador = ? AND origem = 'inicial'").get(treinador);
+  if (Number(tem.n)) return false;
+  for (const [bicho, raridade] of iniciais) guardarCaptura(treinador, nome || "", bicho, raridade, false, 5, "inicial");
+  return true;
+}
+const individuo = (c) => ({ id: Number(c.id), bicho: c.bicho, raridade: c.raridade, brilhante: !!c.brilhante, nivel: Number(c.nivel), xp: Number(c.xp), origem: c.origem, capturado_em: Number(c.capturado_em) });
+// os Pokémon do treinador, um por linha (do nível mais alto para o mais baixo)
+function pokemonsDe(treinador) {
+  return bd().prepare("SELECT id, bicho, raridade, brilhante, nivel, xp, origem, capturado_em FROM capturas WHERE treinador = ? ORDER BY nivel DESC, xp DESC, id")
+    .all(treinador).map(individuo);
+}
+// sobe o nível, a experiência e (na evolução) a espécie de um Pokémon do treinador
+function atualizarPokemon(treinador, id, { bicho, nivel, xp }) {
+  bd().prepare("UPDATE capturas SET bicho = ?, nivel = ?, xp = ? WHERE id = ? AND treinador = ?").run(bicho, nivel, xp, id, treinador);
+  registrarNaPokedex(treinador, bicho);
+}
+// a Pokédex: as espécies que o treinador já teve
+function pokedexDe(treinador) {
+  return bd().prepare("SELECT bicho FROM pokedex WHERE treinador = ? ORDER BY primeiro_em").all(treinador).map((r) => r.bicho);
+}
+// a coleção para a Pokédex da Vila: uma linha por espécie que tem agora, com quantos, o melhor nível e se já veio brilhante
+function capturasDe(treinador) {
+  return bd().prepare(`SELECT bicho, raridade, COUNT(*) AS vezes, MAX(brilhante) AS brilhante, MIN(capturado_em) AS primeira, MAX(nivel) AS nivel, MAX(origem = 'inicial') AS inicial
+    FROM capturas WHERE treinador = ? GROUP BY bicho ORDER BY primeira`).all(treinador)
+    .map((c) => ({ bicho: c.bicho, raridade: c.raridade, vezes: Number(c.vezes), brilhante: !!c.brilhante, primeira: Number(c.primeira), nivel: Number(c.nivel), inicial: !!c.inicial }));
+}
+// os maiores colecionadores (espécies na Pokédex), pelo nome mais recente de cada treinador; os iniciais não contam
+function rankingCapturas(limite = 10) {
+  return bd().prepare(`SELECT (SELECT nome FROM capturas d WHERE d.treinador = c.treinador ORDER BY capturado_em DESC LIMIT 1) AS nome,
+    (SELECT COUNT(*) FROM pokedex x WHERE x.treinador = c.treinador) AS especies, COUNT(*) AS total
+    FROM capturas c WHERE origem = 'captura' GROUP BY treinador ORDER BY especies DESC, total DESC LIMIT ?`).all(limite)
+    .map((r) => ({ nome: r.nome, especies: Number(r.especies), total: Number(r.total) }));
+}
+
+// ---------- o painel da Pokédex (admin-pokemon.js, /admin/pokedex) ----------
+// os treinadores com Pokémon: o nome mais recente, quantos tem, as espécies da Pokédex, o maior nível e a última captura
+function treinadoresPokemon(busca = "", limite = 300) {
+  const termo = String(busca || "").trim().toLowerCase();
+  return bd().prepare(`SELECT treinador, (SELECT nome FROM capturas d WHERE d.treinador = c.treinador AND nome <> '' ORDER BY capturado_em DESC LIMIT 1) AS nome,
+    COUNT(*) AS total, SUM(origem = 'captura') AS capturas, MAX(nivel) AS maior, MAX(capturado_em) AS ultima,
+    (SELECT COUNT(*) FROM pokedex x WHERE x.treinador = c.treinador) AS especies
+    FROM capturas c GROUP BY treinador ORDER BY ultima DESC LIMIT ?`).all(limite)
+    .map((r) => ({ treinador: r.treinador, nome: r.nome || "", total: Number(r.total), capturas: Number(r.capturas || 0), maior: Number(r.maior), ultima: Number(r.ultima), especies: Number(r.especies) }))
+    .filter((r) => !termo || r.nome.toLowerCase().includes(termo) || r.treinador.startsWith(termo));
+}
+const capturaPorId = (treinador, id) => { const c = bd().prepare("SELECT id, bicho, raridade, brilhante, nivel, xp, origem, capturado_em FROM capturas WHERE id = ? AND treinador = ?").get(id, treinador); return c ? individuo(c) : null; };
+const nomeDoTreinador = (treinador) => (bd().prepare("SELECT nome FROM capturas WHERE treinador = ? AND nome <> '' ORDER BY capturado_em DESC LIMIT 1").get(treinador) || {}).nome || "";
+// uma alteração do painel e o registro dela, juntos (ou nenhuma das duas)
+function moderarPokemon(treinador, ator, tipo, captura, antes, depois, alterar) {
+  const db = bd();
+  db.exec("BEGIN");
+  try {
+    alterar(db);
+    db.prepare("INSERT INTO moderacao_pokemon (treinador, ator, tipo, captura, antes, depois, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .run(treinador, String(ator), tipo, captura ?? null, JSON.stringify(antes ?? null), JSON.stringify(depois ?? null), Date.now());
+    db.exec("COMMIT");
+  } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
+function editarCapturaAdmin(treinador, id, campos, ator) {
+  const antes = capturaPorId(treinador, id); if (!antes) return null;
+  const depois = { ...antes, ...campos };
+  moderarPokemon(treinador, ator, "editar", id, antes, depois, (db) => {
+    db.prepare("UPDATE capturas SET bicho = ?, raridade = ?, nivel = ?, xp = ?, brilhante = ? WHERE id = ? AND treinador = ?").run(depois.bicho, depois.raridade, depois.nivel, depois.xp, depois.brilhante ? 1 : 0, id, treinador);
+    db.prepare("INSERT OR IGNORE INTO pokedex (treinador, bicho, primeiro_em) VALUES (?, ?, ?)").run(treinador, depois.bicho, Date.now());
+  });
+  return capturaPorId(treinador, id);
+}
+function darPokemonAdmin(treinador, { bicho, raridade, nivel, brilhante }, ator) {
+  let id = null;
+  moderarPokemon(treinador, ator, "dar", null, null, { bicho, nivel, brilhante: !!brilhante }, (db) => {
+    id = Number(db.prepare("INSERT INTO capturas (treinador, nome, bicho, raridade, brilhante, capturado_em, nivel, xp, origem) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'captura')")
+      .run(treinador, nomeDoTreinador(treinador), bicho, raridade, brilhante ? 1 : 0, Date.now(), nivel).lastInsertRowid);
+    db.prepare("INSERT OR IGNORE INTO pokedex (treinador, bicho, primeiro_em) VALUES (?, ?, ?)").run(treinador, bicho, Date.now());
+  });
+  return capturaPorId(treinador, id);
+}
+function tirarPokemonAdmin(treinador, id, ator) {
+  const antes = capturaPorId(treinador, id); if (!antes) return false;
+  moderarPokemon(treinador, ator, "tirar", id, antes, null, (db) => db.prepare("DELETE FROM capturas WHERE id = ? AND treinador = ?").run(id, treinador));
+  return true;
+}
+// todos os Pokémon do treinador num nível (a experiência do nível volta a zero)
+function nivelDeTodosAdmin(treinador, nivel, ator) {
+  const antes = pokemonsDe(treinador).map((p) => ({ id: p.id, nivel: p.nivel }));
+  if (!antes.length) return 0;
+  moderarPokemon(treinador, ator, "nivel-todos", null, antes, { nivel }, (db) => db.prepare("UPDATE capturas SET nivel = ?, xp = 0 WHERE treinador = ?").run(nivel, treinador));
+  return antes.length;
+}
+const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, tipo, captura, antes, depois, criado_em FROM moderacao_pokemon WHERE treinador = ? ORDER BY id DESC LIMIT ?").all(treinador, limite)
+  .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
+
+module.exports = { treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

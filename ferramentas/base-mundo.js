@@ -440,4 +440,4 @@ function gerar() {
 }
 
 if (require.main === module) gerar();
-module.exports = { lerCSV, jogadoresDoCSV, dataDe, idadeEm, chaveClube, fecharElenco, calibrarBrasil, gerar };
+module.exports = { PAISES, lerCSV, jogadoresDoCSV, dataDe, idadeEm, chaveClube, fecharElenco, calibrarBrasil, gerar };

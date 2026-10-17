@@ -241,7 +241,7 @@ function comecarOnline() {
   iniciar();
 }
 function iniciar() {
-  G.active = true; G.pausa = false; G.bola = null; G.rally = null; G.julgou = false; G.hist = [];
+  G.active = true; G.pausa = false; G.bola = null; G.rally = null; G.julgou = false; G.hist = []; acumulado = 0;
   G.raq = [novaRaq(0), novaRaq(1)];
   // a minha raquete fica meio transparente (ela está bem na frente da câmera)
   raqMesh.forEach((m, l) => m.traverse((o) => { if (o.material) { o.material.transparent = l === G.eu; o.material.opacity = l === G.eu ? 0.6 : 1; } }));
@@ -264,6 +264,7 @@ const sacador = () => (estado().placar ? estado().placar.sacador : 0);
 const podeSacar = (lado) => estado().phase === "jogo" && !G.rally && sacador() === lado && agora() >= (estado().prontoEm || 0);
 function novaBatida(b, quem, saque) {
   G.bola = b; G.rally = { quem, saque, quiques: [] }; G.julgou = false; Som.raquete(); pontosRastro.length = 0;
+  if (G.raq[quem]) G.raq[quem].golpeT = G.tj;
   const nome = P.nomeEfeito(b.w); // o nome do efeito aparece embaixo, rapidinho
   if (nome) { const e = $("hEfeito"); e.textContent = "🌀 " + nome; e.classList.remove("pop"); void e.offsetWidth; e.classList.add("pop"); G.efeitoAte = performance.now() + 900; }
 }
@@ -296,7 +297,7 @@ function marcarPonto(vence, motivo) {
   const est = G.est, r = P.marcar(est.placar, vence);
   G.rally = null;
   est.ultimo = { lado: vence, motivo, nome: G.nomes[vence], t: agora() };
-  est.prontoEm = agora() + (r.fimGame ? 2600 : 1300);
+  est.prontoEm = agora() + (r.fimGame ? 1600 : 750);
   if (r.fim) est.phase = "fim";
   aoPonto(est.ultimo);
   if (r.fim) mostrarFim();
@@ -347,19 +348,23 @@ function pausar(on) { G.pausa = on && G.offline; $("pause").classList.toggle("hi
 function moverMinhaRaq(dt) {
   const r = G.raq[G.eu], s = P.S(G.eu);
   ray.setFromCamera(ndc, cam);
-  if (ray.ray.intersectPlane(plano, ponto)) { r.x = clamp(ponto.x, -1.4, 1.4); r.z = s * clamp(s * ponto.z, MESA.L / 2 - 0.1, MESA.L / 2 + 1.1); }
+  if (ray.ray.intersectPlane(plano, ponto)) { r.x = clamp(ponto.x, -1.4, 1.4); r.z = s * clamp(s * ponto.z, 0.14, MESA.L / 2 + 1.1); }
   const b = G.bola, vem = b && b.viva && G.rally && G.rally.quem !== G.eu && Math.abs(b.p[2] - r.z) < 1.2;
-  r.y = lerp(r.y, vem ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.95) : MESA.H + 0.18, 1 - Math.exp(-dt * 14));
+  r.y = lerp(r.y, vem ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.95) : MESA.H + 0.18, 1 - Math.exp(-dt * 20));
   // velocidade: média dos últimos ~80 ms
-  const t = G.tj * 1000; G.hist.push({ t, x: r.x, z: r.z }); while (G.hist.length > 2 && t - G.hist[0].t > 80) G.hist.shift();
-  const h0 = G.hist[0], d = Math.max(0.016, (t - h0.t) / 1000); r.vx = (r.x - h0.x) / d; r.vz = (r.z - h0.z) / d;
+  const t = G.tj * 1000; G.hist.push({ t, x: r.x, z: r.z, ny: ndc.y }); while (G.hist.length > 2 && t - G.hist[0].t > 80) G.hist.shift();
+  const h0 = G.hist[0], d = Math.max(0.016, (t - h0.t) / 1000);
+  r.vx = clamp((r.x - h0.x) / d, -8, 8);
+  // A profundidade chega ao limite perto da rede. O gesto vertical na tela
+  // continua gerando impulso mesmo quando a posição da raquete satura ali.
+  r.vz = clamp(-s * (ndc.y - h0.ny) * 1.75 / d, -8, 8);
 }
 // a bola passou pela minha raquete (do jeito certo)? então eu rebato
 function tentarRebater(lado, raq, bAntes, rAntesZ, batida) {
   const b = G.bola, s = P.S(lado);
   if (!b || !b.viva || !P.podeRebater(G.rally, lado)) return false;
   const antes = (bAntes - rAntesZ) * s, depois = (b.p[2] - raq.z) * s;
-  if (!(antes < 0.02 && depois >= -0.02) || Math.abs(b.p[0] - raq.x) > 0.3 || b.p[1] > MESA.H + 1.05) return false; // alcança até ~1 m acima da mesa (o braço esticado)
+  if (!(antes < 0.04 && depois >= -0.04) || Math.abs(b.p[0] - raq.x) > 0.32 || b.p[1] > MESA.H + 1.05) return false; // a raquete alcança a bola mesmo entre dois quadros
   b.p[2] = raq.z - s * 0.01;
   P.rebater(b, batida || raq, lado);
   return true;
@@ -368,12 +373,16 @@ function tentarRebater(lado, raq, bAntes, rAntesZ, batida) {
 // ======================================================================
 // Laço do jogo
 // ======================================================================
-let last = performance.now();
+let last = performance.now(), acumulado = 0;
 function loop(t) {
   requestAnimationFrame(loop);
-  const dt = Math.min(0.05, (t - last) / 1000); last = t;
+  const dt = Math.min(0.13, (t - last) / 1000); last = t;
   if (!G.active) return;
-  if (!G.pausa) passo(dt);
+  if (!G.pausa) {
+    acumulado += dt;
+    for (let i = 0; acumulado >= 1 / 60 && i < 8; i++) { passo(1 / 60); acumulado -= 1 / 60; }
+    if (acumulado > 1 / 60) acumulado = 0;
+  } else acumulado = 0;
   desenhar(dt);
   renderer.render(scene, cam);
 }
@@ -382,12 +391,16 @@ requestAnimationFrame(loop);
 function passo(dt) {
   G.tj += dt; // relógio do jogo (a velocidade da raquete é medida nele)
   const b = G.bola, bz = b ? b.p[2] : 0, rz = [G.raq[0].z, G.raq[1].z];
-  if (G.eu >= 0) moverMinhaRaq(dt);
+  if (G.eu >= 0) {
+    moverMinhaRaq(dt);
+    const r = G.raq[G.eu], frente = -P.S(G.eu) * r.vz;
+    if (podeSacar(G.eu) && frente > 2.4) euBato(P.sacar(G.eu, r.x, clamp(r.vx / 4, -1, 1)), true);
+  }
   if (G.bot) {
     P.robo(G.bot, b, G.rally, dt, G.dif);
     Object.assign(G.raq[1], { x: G.bot.x, z: G.bot.z, vx: G.bot.vx });
     G.raq[1].y = lerp(G.raq[1].y, b && G.rally && G.rally.quem === 0 ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.95) : MESA.H + 0.18, 1 - Math.exp(-dt * 10));
-    if (podeSacar(1) && agora() > estado().prontoEm + 700) novaBatida(P.sacar(1, G.bot.x, (Math.random() - 0.5) * 1.6), 1, true);
+    if (podeSacar(1) && agora() > estado().prontoEm + 250) novaBatida(P.sacar(1, G.bot.x, (Math.random() - 0.5) * 1.6), 1, true);
   }
   // a raquete do outro (online): vai até onde ele mandou
   for (const l of [0, 1]) { const r = G.raq[l]; if (l !== G.eu && r.alvo) { const k = 1 - Math.exp(-dt * 18); r.x = lerp(r.x, r.alvo.x, k); r.y = lerp(r.y, r.alvo.y, k); r.z = lerp(r.z, r.alvo.z, k); } }
@@ -423,7 +436,9 @@ function desenhar(dt) {
   for (const l of [0, 1]) {
     const r = G.raq[l], m = raqMesh[l], s = P.S(l), tem = G.offline || (est.lados && est.lados[l]);
     m.visible = !!tem; if (!tem) continue;
-    m.position.set(r.x, r.y, r.z); m.rotation.set(-0.25 * s, Math.PI, clamp(-r.vx * 0.08, -0.6, 0.6));
+    const golpe = Math.max(0, 1 - (G.tj - (r.golpeT ?? -1)) / 0.18);
+    m.position.set(r.x, r.y, r.z); m.rotation.set(-0.25 * s - golpe * 0.4, Math.PI, clamp(-r.vx * 0.08, -0.6, 0.6));
+    m.scale.setScalar(1.5 * (1 + golpe * 0.07));
     const c = G.corpos[l];
     if (c) {
       const x0 = c.model.position.x, alvoX = r.x - s * 0.32; c.model.position.set(alvoX, 0, r.z + s * 0.38);

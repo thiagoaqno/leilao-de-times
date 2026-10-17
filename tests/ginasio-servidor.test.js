@@ -274,22 +274,31 @@ test("ginásio/servidor: dois clientes e robôs jogam até o fim e pontuam na No
   assert.equal(st.match.jogadores.length, 4);
   assert.equal(st.match.jogadores.filter((p) => p.bot).length, 2);
   const lados = [0, 1].map((lado) => st.match.jogadores.filter((p) => p.lado === lado));
-  const sombra = G.criarPartida({ modo: "pokemon", formato: "2x2", seed: "clientes" }, lados);
+  // os clientes jogam com o robô difícil (o tempo de reação conta no relógio da sombra, acertado a cada pacote)
+  const sombra = G.criarPartida({ modo: "pokemon", formato: "2x2", seed: "clientes", robo: "dificil" }, lados);
   sombra.rng = () => 0; // os clientes apertam assim que um golpe fica disponivel
+  sombra.terreno = G.terrenoDe(st.match.bioma); // o mesmo lugar do servidor (o robô dos clientes foge da lava e da água)
   let seq = 0, danos = 0, desmaios = 0;
   a.on("ev", (lista) => {
     danos += lista.filter((e) => e.tipo === "dano").length;
     desmaios += lista.filter((e) => e.tipo === "desmaiou").length;
   });
   const jogar = (sn) => {
+    sombra.t = sn.tempo;
     for (const e of sombra.entidades) {
       const dado = sn.entidades.find((p) => p.id === e.id);
       e.jogador.ativo = dado.ativo;
       e.bicho = e.jogador.time[dado.ativo];
       for (let i = 0; i < dado.time.length; i++) e.jogador.time[i].hp = dado.time[i].hp;
-      Object.assign(e, { x: dado.x, y: dado.y, campo: dado.campo, esquivaCd: dado.esquivaCd });
+      Object.assign(e, { x: dado.x, y: dado.y, vx: dado.vx, vy: dado.vy, campo: dado.campo, esquivaCd: dado.esquivaCd, atordoado: dado.atordoado, guarda: dado.guarda, guardando: dado.guardando, kx: dado.kx, ky: dado.ky });
+      // o que o bicho está fazendo, para o robô dos clientes ler o jogo como o do servidor
+      e.preparo = dado.preparo && { ...dado.preparo, hab: { classe: dado.preparo.classe } };
+      e.salto = dado.salto && { ...dado.salto, hab: { raio: dado.salto.r } };
+      e.sequencia = dado.sequencia; e.dash = dado.dash;
       e.bicho.cds = dado.cds; e.bicho.st = dado.st; e.jogador.trocaCd = dado.trocaCd;
     }
+    sombra.projeteis = sn.projeteis; // o robô só olha posição, direção, velocidade e lado
+    sombra.areas = sn.areas.map((x) => ({ ...x, t: x.falta }));
     for (const s of [a, b]) {
       const e = sombra.entidades.find((p) => p.id === s.pid), c = G.pensarRobo(sombra, e);
       s.emit("cmd", envio(seq++, { ...c, dx: c.dx || 0, dy: c.dy || 0, mira: c.mira || e.mira }));

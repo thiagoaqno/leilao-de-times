@@ -27,12 +27,18 @@ function telaMercado() {
     : `${ic("cadeado")} Janela fechada${E.janela.proxima != null ? `: abre na rodada ${E.janela.proxima + 1}` : " até a próxima temporada"}. Dá para olhar e pôr jogadores na lista de venda.`;
   $("mJanela").classList.toggle("fechada", !E.janela.aberta);
   $("mJanela").classList.toggle("urgente", E.janela.aberta && E.gestao.janela.restam != null && E.gestao.janela.restam <= 2);
+  // na temporada da Copa, quem treina uma seleção tem o "mercado" dela: a convocação, só com os jogadores do país (selecao.js)
+  const sel = typeof minhaSel === "function" && minhaSel();
+  $("mModoSelecao").classList.toggle("hidden", !sel);
+  if (sel) $("mModoSelecao").textContent = `Seleção: ${sel.nome}`;
+  if (!sel && modoMercado === "selecao") modoMercado = "comprar";
   for (const b of $("mModo").children) b.setAttribute("aria-pressed", String(b.dataset.modo === modoMercado));
   $("mFiltros").classList.toggle("hidden", modoMercado !== "comprar");
   $("mPos").innerHTML = POS_FILTRO.map(([v, t]) => `<button data-posm="${v}" aria-pressed="${v === posMercado}">${t}</button>`).join("");
   $("mNotaTxt").textContent = $("mNota").value;
   $("mPrecoTxt").textContent = precoMax() === Infinity ? "qualquer valor" : dinheiro(precoMax());
-  if (modoMercado === "comprar") listaCompra();
+  if (modoMercado === "selecao") listaSelecao();
+  else if (modoMercado === "comprar") listaCompra();
   else if (modoMercado === "vender") listaVenda();
   else listaNoticias();
 }
@@ -48,6 +54,13 @@ function listaCompra() {
   }).sort((a, b) => (E.indicacoes[b.id] ? 1 : 0) - (E.indicacoes[a.id] ? 1 : 0) || notaDe(b) - notaDe(a));
   $("mLista").innerHTML = lista.length ? lista.slice(0, mostrar).map((j) => (foraDaRegra(j) ? figurinha(j.id).replace('class="figurinha ', 'class="figurinha fora-regra ') : figurinha(j.id))).join("") : `<p class="suave vazio">Ninguém com esses filtros.</p>`;
   $("mMais").classList.toggle("hidden", lista.length <= mostrar);
+}
+// a convocação no mercado: só os jogadores do país da seleção (a janela de transferências não vale aqui: é convocação, não compra)
+function listaSelecao() {
+  const s = minhaSel();
+  $("mLista").innerHTML = `<div class="sel-mercado"><p class="suave cheio">${ic("taca")} Mercado da seleção: só jogadores de <b>${h(s.nome)}</b>. Convocar não custa nada e não mexe no clube deles.${s.fechada ? " A Copa começou: a lista está fechada." : ""}</p>${contagemSel(s)}${listaDoMercadoDaSelecao()}<p><button class="link" data-ir="selecao">Ver os convocados e a escalação</button></p></div>`;
+  ligarSelecao($("mLista"));
+  $("mMais").classList.add("hidden");
 }
 function listaVenda() {
   const ordem = ["GOL", "ZAG", "LD", "LE", "VOL", "MC", "MEI", "PE", "PD", "ATA"];

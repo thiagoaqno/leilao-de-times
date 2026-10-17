@@ -7,7 +7,22 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dexDe = (modo) => ({ galeramon: Galeramon, pokemon: PokeDex, naruto: NarutoDex })[modo] || Galeramon;
 const salvo = store.get("ginasio:config") || {};
 const modoDoEndereco = new URLSearchParams(location.search).get("modo"); // a casa do Naruto, na Vila, abre direto no modo Naruto
-const configLocal = { modo: ["galeramon", "pokemon", "naruto"].includes(modoDoEndereco) ? modoDoEndereco : ["galeramon", "pokemon", "naruto"].includes(salvo.modo) ? salvo.modo : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false };
+const configLocal = { modo: ["galeramon", "pokemon", "naruto"].includes(modoDoEndereco) ? modoDoEndereco : ["galeramon", "pokemon", "naruto"].includes(salvo.modo) ? salvo.modo : "galeramon", formato: salvo.formato === "2x2" ? "2x2" : "1x1", bots: salvo.bots !== false, arena: Ginasio.BIOMAS.includes(salvo.arena) ? salvo.arena : "sortear", pokemons: salvo.pokemons === "capturados" ? "capturados" : "todos", robo: Ginasio.DIFICULDADES.includes(salvo.robo) ? salvo.robo : "normal" };
+// o treinador da grama alta da Vila (o mesmo código do navegador, galera:treinador): na sala "só capturados", cada um
+// joga com os iniciais e os Pokémon que já pegou
+const treinador = (() => {
+  let c = store.get("galera:treinador");
+  if (!/^[a-f0-9]{32}$/.test(c || "")) { c = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join(""); store.set("galera:treinador", c); }
+  return c;
+})();
+const INICIAIS = ["bulbasaur", "charmander", "squirtle"];
+let minhaColecao = new Set(INICIAIS), meusNiveis = {};
+// o nível do meu Pokémon (só na sala "só capturados" e na luta com o selvagem, onde o nível vale)
+const nivelHtml = (id) => (soCapturados() && modoAtual() === "pokemon" ? `<small class="nv-bicho">Nv ${meusNiveis[id] || 5}</small>` : "");
+function buscarColecao() {
+  socket.timeout(7000).emit("colecao", { codigo: treinador }, (err, r) => { if (!err && r?.ok) { minhaColecao = new Set(r.ids); meusNiveis = r.niveis || {}; if ($("dex").open) renderDex(); renderSala(); } });
+}
+const soCapturados = () => (S?.config || configLocal).modo === "pokemon" && (S?.config || configLocal).pokemons === "capturados";
 const times = { galeramon: Galeramon.cleanTeam(store.get("galeramon_time")), pokemon: PokeDex.cleanTeam(store.get("pokemon_time")), naruto: NarutoDex.cleanTeam(store.get("naruto_time")) };
 let S = null, ME = null, salaVisivel = true, timeInicial = false, modoAnterior = null, ocupado = false;
 const modoAtual = () => S?.config.modo || configLocal.modo;
@@ -15,6 +30,18 @@ const dexAtual = () => dexDe(modoAtual());
 const meuJogador = () => S?.players.find((p) => p.id === ME?.id);
 const timeAtual = () => meuJogador()?.time || times[modoAtual()];
 const imagens = new Map();
+document.querySelector(".hero-mon-esq").src = PokeDex.sprite("charizard", false);
+document.querySelector(".hero-mon-dir").src = PokeDex.sprite("lucario", false);
+document.querySelector(".hero-mon-centro").src = PokeDex.sprite("gengar", false);
+
+// A moderação pode mudar o time Pokémon dos líderes sem publicar uma nova versão do jogo.
+fetch("/api/ginasio/treinadores-pokemon", { cache: "no-store" }).then((r) => r.ok ? r.json() : []).then((lista) => {
+  for (const { id, time } of lista) {
+    const lider = Lideres.de(id);
+    if (lider && Array.isArray(time) && time.length === 3 && time.every((p) => PokeDex.MONS[p])) lider.times.pokemon = time;
+  }
+  renderSala();
+}).catch(() => {});
 
 function spriteUrl(id, modo = modoAtual()) { return modo === "pokemon" ? PokeDex.sprite(id, false) : modo === "naruto" ? NarutoDex.sprite(id) : GaleramonSprite(id); }
 function imagemDe(id, modo = modoAtual()) {
@@ -34,12 +61,37 @@ function htmlBicho(id, modo = modoAtual()) {
 }
 function preencher(id, html) { const el = $(id); if (el._html !== html) { el._html = html; el.innerHTML = html; } }
 function guardarTime(modo, time) { times[modo] = [...time]; store.set(`${modo}_time`, time); }
+// o que cada lugar muda na luta (o terreno de regras.js)
+const DICA_ARENA = {
+  sortear: "Um lugar diferente a cada partida.",
+  floresta: "Mato alto dos lados: Grama corre nele. A poça do meio é do tipo Água.",
+  lagoa: "A lagoa funda no meio só deixa passar quem nada (Água) ou voa (Voador). Na rasa, Água é mais rápido e bate mais forte.",
+  vulcao: "A lava queima quem anda nela, menos Fogo, que fica mais rápido e mais forte. Voador passa por cima.",
+  neve: "No gelo, quem não é Gelo escorrega longe. Gelo desliza rápido.",
+  ruinas: "Areia fofa: lenta para todos, menos Terrestre e Pedra.",
+};
 function guardarConfig() { if (S) Object.assign(configLocal, S.config); store.set("ginasio:config", configLocal); }
 function atualizarOpcoes() {
   const c = S?.config || configLocal, pode = !S || (S.host === ME?.id && S.phase !== "play");
+  document.body.classList.toggle("pokemon-lobby", c.modo === "pokemon");
   document.querySelectorAll("[data-modo]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.modo === c.modo); b.disabled = !pode; });
   document.querySelectorAll("[data-formato]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.formato === c.formato); b.disabled = !pode; });
   $("bots").checked = c.bots; $("bots").disabled = !pode;
+  // a dificuldade do robô (o líder é sempre difícil)
+  $("escolhaRobo").classList.toggle("hidden", !c.bots || !!c.lider);
+  document.querySelectorAll("[data-robo]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.robo === (c.robo || "normal")); b.disabled = !pode; });
+  // o lugar da luta (só no modo Pokémon, que luta ao ar livre: biomas.js); o desafio de líder usa o lugar do líder
+  const arena = c.arena || "sortear";
+  $("escolhaArena").classList.toggle("hidden", c.modo !== "pokemon" || !!c.lider);
+  document.querySelectorAll("[data-arena]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.arena === arena); b.disabled = !pode; });
+  $("dicaArena").textContent = DICA_ARENA[arena] || "";
+  // quais Pokémon valem na sala (só no modo Pokémon)
+  const pokemons = c.pokemons || "todos";
+  $("escolhaPokemons").classList.toggle("hidden", c.modo !== "pokemon");
+  document.querySelectorAll("[data-pokemons]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.pokemons === pokemons); b.disabled = !pode; });
+  $("dicaPokemons").textContent = pokemons === "capturados"
+    ? `Cada um joga só com os Pokémon que tem: Bulbasaur, Charmander e Squirtle, mais os que pegou na grama alta da Vila. Você tem ${minhaColecao.size}.`
+    : "Qualquer Pokémon vale.";
 }
 function renderSala() {
   if (LIDER) mostrarDesafio();
@@ -48,17 +100,52 @@ function renderSala() {
   $("rCode").classList.toggle("hidden", !S); $("salaCodigo").classList.toggle("hidden", !S);
   $("btnSala").classList.toggle("hidden", !S);
   if (S) { $("rCode").textContent = S.code; $("salaCodigo").textContent = S.code; }
-  preencher("meuTime", timeAtual().map((id, i) => `<button class="bicho" data-escolher="${i}" title="${h(dexAtual().MONS[id].n)}" ${S && (!ME?.id || S.phase === "play") ? "disabled" : ""}>${htmlBicho(id)}</button>`).join(""));
+  preencher("meuTime", timeAtual().map((id, i) => `<button class="bicho" data-escolher="${i}" title="${h(dexAtual().MONS[id].n)}" ${S && (!ME?.id || S.phase === "play") ? "disabled" : ""}>${htmlBicho(id)}${nivelHtml(id)}</button>`).join(""));
+  mostrarVersus();
   timeAtual().forEach((id) => imagemDe(id));
   if (typeof animacaoDe === "function") for (const id of [...timeAtual(), ...(S?.players || []).flatMap((p) => p.time || [])]) animacaoDe(id); // os GIFs chegam antes da partida
   if (!S) return;
   const organizador = S.host === ME?.id, n = S.config.formato === "2x2" ? 2 : 1;
   let lista = S.players.map((p) => `<div class="participante ${p.lado === 1 ? "vermelho" : p.lado == null ? "fora" : ""} ${p.online ? "" : "offline"}"><span class="nome">${h(p.name)}${p.id === ME?.id ? " · você" : ""}</span>${p.ping == null ? "" : `<span class="ping">${p.ping} ms</span>`}${organizador && p.id !== ME.id && S.phase !== "play" ? `<button class="icone" data-kick="${p.id}" title="Retirar ${h(p.name)}" aria-label="Retirar ${h(p.name)}">${ic("fechar")}</button>` : ""}</div>`).join("");
-  if (S.config.bots) for (const lado of [0, 1]) for (let i = S.players.filter((p) => p.lado === lado).length; i < n; i++) lista += `<div class="participante ${lado ? "vermelho" : ""}"><span class="nome">Robô</span></div>`;
+  if (S.config.bots) for (const lado of [0, 1]) for (let i = S.players.filter((p) => p.lado === lado).length; i < n; i++) lista += `<div class="participante ${lado ? "vermelho" : ""}"><span class="nome">${lado && S.selvagem ? `${h(dexDe("pokemon").MONS[S.selvagem.bicho].n)} selvagem · Nv ${S.selvagem.nivel}` : "Robô"}</span></div>`;
   preencher("participantes", lista);
   document.querySelectorAll("[data-lado]").forEach((b) => { const lado = b.dataset.lado === "null" ? null : +b.dataset.lado; b.disabled = !ME?.id || S.phase === "play"; b.setAttribute("aria-pressed", meuJogador()?.lado === lado); });
   $("btnStart").classList.toggle("hidden", !organizador); $("btnStart").disabled = S.phase === "play";
   preencher("feed", S.feed.slice(-4).map((f) => `<li>${h(f.text)}</li>`).join(""));
+}
+// a prévia do confronto no modo Pokémon, contra um líder ou um selvagem: a arena grande da esquerda (#heroVersus, no lugar da
+// arte do lobby) vira o "versus": o seu time de um lado, o adversário do outro (lobby-pokemon.css). O resumo pequeno do painel
+// (#versusInicio, #versusSala) fica só para leitores de tela.
+const RARIDADE_VS = { comum: ["Comum", "#9aa8a3"], incomum: ["Incomum", "#4fbf6a"], raro: ["Raro", "#3f8fe0"], epico: ["Épico", "#b45cf0"], lendario: ["Lendário", "#f0b429"] };
+const tiposVs = (id) => (PokeDex.MONS[id].types || []).map((t) => `<i style="--t:${PokeDex.TYPES[t] || "#888"}">${h(t)}</i>`).join("");
+const spriteVs = (id, brilhante) => { const u = PokeDex.sprite(id); return brilhante ? u.replace(/\/(\d+)\.png$/, "/shiny/$1.png") : u; };
+function cartaVs(id, i, { nivel, brilhante, grande } = {}) {
+  const m = PokeDex.MONS[id], t = PokeDex.TYPES[m.types[0]] || "#7a5cc9";
+  return `<article class="vs-carta${grande ? " grande" : ""}" style="--i:${i};--t:${t}"><div class="vs-foto"><img src="${h(spriteVs(id, brilhante))}" alt=""></div>
+    <div class="vs-dados"><b>${h(m.n)}${brilhante ? " ✨" : ""}</b>${nivel ? `<span class="vs-nv">Nv ${nivel}</span>` : ""}<span class="vs-tipos">${tiposVs(id)}</span></div></article>`;
+}
+function mostrarVersus() {
+  const modo = modoAtual(), lider = S ? Lideres.de(S.config.lider) : LIDER;
+  const selvagem = S?.selvagem, alvo = S ? $("versusSala") : $("versusInicio"), hero = $("heroVersus");
+  $("versusInicio").classList.add("hidden"); $("versusSala").classList.add("hidden");
+  const tem = modo === "pokemon" && (lider || selvagem) && (!S || S.phase !== "play");
+  document.body.classList.toggle("com-versus", !!tem);
+  if (hero) { hero.classList.toggle("hidden", !tem); $("pokemonHero").setAttribute("aria-hidden", tem ? "false" : "true"); }
+  if (!tem) return;
+  const inimigos = lider ? lider.times.pokemon : [selvagem.bicho];
+  const nome = lider ? lider.nome : `${PokeDex.MONS[selvagem.bicho].n} selvagem`;
+  const comNivel = soCapturados() || !!selvagem, meus = timeAtual();
+  const rar = selvagem && RARIDADE_VS[selvagem.raridade];
+  // o resumo do painel, para leitores de tela (a arena mostra o mesmo, grande)
+  preencher(alvo.id, `<p>Prévia do confronto: seu time (${meus.map((id) => PokeDex.MONS[id].n).join(", ")}) contra ${h(nome)}${selvagem ? `, nível ${Number(selvagem.nivel) || 5}` : ` (${inimigos.map((id) => PokeDex.MONS[id].n).join(", ")})`}.</p>`);
+  alvo.classList.remove("hidden"); alvo.classList.add("so-leitor");
+  if (!hero) return;
+  hero.style.cssText = `--cor:${lider ? lider.cor : rar ? rar[1] : "#f0b429"};--t:${PokeDex.TYPES[PokeDex.MONS[inimigos[0]].types[0]] || "#b45cf0"}`;
+  preencher("heroVersus", `<header class="vs-cabeca"><span>${selvagem ? "Encontro selvagem" : lider.onde === "ginasio" ? `Desafio do ginásio · ${h(lider.tipo)}` : `Treinador · ${h(lider.tipo)}`}</span><span>${S ? `Sala ${h(S.code)}` : "Prévia do confronto"}</span></header>
+    <section class="vs-lado vs-meu"><h2>Seu time</h2><div class="vs-cartas">${meus.map((id, i) => cartaVs(id, i, { nivel: comNivel ? meusNiveis[id] || 5 : null })).join("")}</div></section>
+    <div class="vs-emblema" aria-hidden="true"><span>VS</span></div>
+    <section class="vs-lado vs-deles${selvagem ? " selvagem" : ""}"><h2>${h(nome)}</h2>${lider ? `<p class="vs-frase">“${h(lider.frase)}”</p>` : `<p class="vs-frase"><span class="vs-raridade">${h(rar ? rar[0] : "")}</span> Nível ${Number(selvagem.nivel) || 5}</p>`}
+      <div class="vs-cartas">${inimigos.map((id, i) => cartaVs(id, i, { nivel: selvagem ? Number(selvagem.nivel) || 5 : null, brilhante: selvagem && selvagem.brilhante, grande: !!selvagem })).join("")}</div></section>`);
 }
 async function mudarConfig(patch) {
   if (S) { if (await act("config", { config: patch })) guardarConfig(); }
@@ -97,7 +184,7 @@ async function criarSala(rapido = false) {
   if (!name && rapido) { name = "Você"; $("hName").value = name; }
   store.set("galera:name", name); ocupado = true; $("hErr").textContent = ""; $("btnRobo").disabled = true;
   const config = { ...configLocal, ...(rapido && { formato: "1x1", bots: true }), ...(rapido && LIDER && { lider: LIDER.id }) };
-  const r = await pedirSala("create", { name, config, time: times[config.modo] });
+  const r = await pedirSala("create", { name, config, time: times[config.modo], treinador });
   if (entrar(r) && rapido) { salaVisivel = false; await act("start"); }
 }
 async function juntar(assistir = false) {
@@ -108,7 +195,7 @@ async function juntar(assistir = false) {
   if (!socket.connected) return ($("hErr").textContent = "Aguarde a conexão.");
   store.set("galera:name", name); ocupado = true;
   const saved = store.get("ginasio:" + code) || {};
-  const r = await pedirSala("join", { code, name, ...(assistir ? { watch: true } : { id: saved.id, token: saved.token }) });
+  const r = await pedirSala("join", { code, name, treinador, ...(assistir ? { watch: true } : { id: saved.id, token: saved.token }) });
   entrar(r, !assistir && r?.id !== saved.id);
 }
 function sairSala() {
@@ -132,27 +219,41 @@ document.querySelectorAll("[data-lado]").forEach((b) => { b.onclick = () => act(
 document.querySelectorAll("[data-modo]").forEach((b) => { b.onclick = () => mudarConfig({ modo: b.dataset.modo }); });
 document.querySelectorAll("[data-formato]").forEach((b) => { b.onclick = () => mudarConfig({ formato: b.dataset.formato }); });
 $("bots").onchange = () => mudarConfig({ bots: $("bots").checked });
+document.querySelectorAll("[data-robo]").forEach((b) => { b.onclick = () => mudarConfig({ robo: b.dataset.robo }); });
+document.querySelectorAll("[data-pokemons]").forEach((b) => { b.onclick = () => mudarConfig({ pokemons: b.dataset.pokemons }); });
+document.querySelectorAll("[data-arena]").forEach((b) => { b.onclick = () => mudarConfig({ arena: b.dataset.arena }); });
 $("btnInvite").onclick = async () => { try { await navigator.clipboard.writeText(`${location.origin}/ginasio/?sala=${S.code}`); toast("Convite copiado."); } catch { toast(`Código da sala: ${S.code}`); } };
 
 let slotDex = 0, paginaDex = 0;
+// as gerações dos Pokémon, pelo número da Pokédex
+const GERACOES = [{ nome: "Kanto", ate: 151 }, { nome: "Johto", ate: 251 }, { nome: "Hoenn", ate: 386 }, { nome: "Sinnoh", ate: 493 }, { nome: "Unova", ate: 649 }];
+const geracaoDe = (num) => GERACOES.findIndex((g) => num <= g.ate);
 function abrirDex(slot) {
   slotDex = slot; paginaDex = 0; $("dexBusca").value = "";
   $("dexTitulo").textContent = modoAtual() === "pokemon" ? "Escolher Pokémon" : modoAtual() === "naruto" ? "Escolher ninja" : "Escolher Galeramon";
   $("dexTipo").innerHTML = '<option value="">Todos os tipos</option>' + Object.keys(dexAtual().TYPES).map((t) => `<option>${h(t)}</option>`).join("");
+  $("dexGeracao").innerHTML = '<option value="">Todas as gerações</option>' + GERACOES.map((g, i) => `<option value="${i}">${i + 1}ª · ${h(g.nome)}</option>`).join("");
+  $("dexGeracao").classList.toggle("hidden", modoAtual() !== "pokemon"); $("dexGeracao").value = "";
   renderDex(); $("dex").showModal(); $("dexBusca").focus();
+  if (modoAtual() === "pokemon") buscarColecao();
 }
 function renderDex() {
   const D = dexAtual(), busca = $("dexBusca").value.toLocaleLowerCase("pt-BR"), tipo = $("dexTipo").value;
-  const ids = D.IDS.filter((id) => (!busca || D.MONS[id].n.toLocaleLowerCase("pt-BR").includes(busca) || String(D.MONS[id].num || "").includes(busca)) && (!tipo || D.MONS[id].types.includes(tipo)));
+  const geracao = modoAtual() === "pokemon" && $("dexGeracao").value !== "" ? +$("dexGeracao").value : null;
+  // na sala "só capturados", só aparece o que é seu
+  const meus = modoAtual() === "pokemon" && soCapturados();
+  $("dexAviso").classList.toggle("hidden", !meus);
+  if (meus) $("dexAviso").textContent = `Sala só com os capturados: você tem ${minhaColecao.size} Pokémon. Pegue mais na grama alta da Vila, em frente ao Ginásio.`;
+  const ids = D.IDS.filter((id) => (!meus || minhaColecao.has(id)) && (!busca || D.MONS[id].n.toLocaleLowerCase("pt-BR").includes(busca) || String(D.MONS[id].num || "").includes(busca)) && (!tipo || D.MONS[id].types.includes(tipo)) && (geracao == null || geracaoDe(D.MONS[id].num) === geracao));
   const paginas = Math.max(1, Math.ceil(ids.length / 24)); paginaDex = clamp(paginaDex, 0, paginas - 1);
   const time = timeAtual();
-  $("dexLista").innerHTML = ids.slice(paginaDex * 24, paginaDex * 24 + 24).map((id) => `<button class="bicho ${time.includes(id) ? "selecionado" : ""}" data-bicho="${id}" title="${h(D.MONS[id].n)} · ${h(D.MONS[id].types.join(" / "))}${modoAtual() === "naruto" && D.ficha(id) ? ` · ${h(D.ficha(id))}` : ""}" ${time.includes(id) && time[slotDex] !== id ? "disabled" : ""}>${htmlBicho(id)}</button>`).join("");
+  $("dexLista").innerHTML = ids.slice(paginaDex * 24, paginaDex * 24 + 24).map((id) => `<button class="bicho ${time.includes(id) ? "selecionado" : ""}" data-bicho="${id}" title="${h(D.MONS[id].n)} · ${h(D.MONS[id].types.join(" / "))}${modoAtual() === "naruto" && D.ficha(id) ? ` · ${h(D.ficha(id))}` : ""}" ${time.includes(id) && time[slotDex] !== id ? "disabled" : ""}>${htmlBicho(id)}${nivelHtml(id)}</button>`).join("");
   $("dexVazio").classList.toggle("hidden", ids.length > 0); $("dexPagina").textContent = `${paginaDex + 1} / ${paginas}`;
   $("dexAnterior").disabled = paginaDex === 0; $("dexProximo").disabled = paginaDex === paginas - 1;
 }
 $("dexFechar").innerHTML = ic("fechar"); $("dexAnterior").innerHTML = ic("esq"); $("dexProximo").innerHTML = ic("dir");
 $("dexFechar").onclick = () => $("dex").close();
-$("dexBusca").oninput = $("dexTipo").onchange = () => { paginaDex = 0; renderDex(); };
+$("dexBusca").oninput = $("dexTipo").onchange = $("dexGeracao").onchange = () => { paginaDex = 0; renderDex(); };
 $("dexAnterior").onclick = () => { paginaDex--; renderDex(); }; $("dexProximo").onclick = () => { paginaDex++; renderDex(); };
 $("dexLista").onclick = async (e) => {
   const b = e.target.closest("[data-bicho]"); if (!b || b.disabled) return;

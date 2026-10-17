@@ -24,6 +24,12 @@ function usarBase(id) {
   BASE = b;
   CLUBES = Object.fromEntries(BASE.clubes.map((c) => [c.id, c]));
   JOGADORES = Object.fromEntries(BASE.clubes.flatMap((c) => c.jogadores.map((j) => [j.id, { ...j, origem: c.id }])));
+  // as seleções da Copa do Mundo (selecoes.js): elas entram como "clubes" (nome, cores, a bandeira no lugar do escudo) e os
+  // convocáveis de fora da carreira entram sem clube (não aparecem no mercado dos clubes)
+  for (const s of (window.SelecoesCarreira && window.SelecoesCarreira.selecoes) || []) {
+    CLUBES[s.id] = { id: s.id, nome: s.nome, curto: s.sigla, sigla: s.sigla, cores: s.cores, bandeira: s.bandeira, formacao: s.formacao, conf: s.conf, nat: s.nat, estadio: "Estádio da Copa", tamanho: 5, liga: "copadomundo", selecao: true, jogadores: [] };
+    for (const j of s.jogadores) JOGADORES[j.id] = { ...j, origem: null };
+  }
   for (const j of Object.values(JOGADORES)) registrarRosto(j);
 }
 // o rosto em pixel-art de quem não está na tabela do Leilão sai do país e da idade do jogador (rostos.js)
@@ -35,6 +41,9 @@ const nomeClube = (id) => CLUBES[id]?.nome || id;
 const nomeJogador = (id) => JOGADORES[id]?.nome || "alguém";
 const sobrenome = (nome) => { const p = String(nome).split(" "); return p.length > 1 && p.at(-1).length > 2 ? p.at(-1) : nome; };
 const meuClube = () => CLUBES[E.clube];
+// a seleção que o técnico treina nesta temporada (Copa do Mundo), ou nada; e os "meus" times de um jogo: o clube ou a seleção
+const minhaSelecao = () => (E && E.selecao && E.selecao.status === "aceita" ? E.selecao.id : null);
+const souEu = (id) => !!E && (id === E.clube || (id != null && id === minhaSelecao()));
 // as contas do elenco de agora (a base mais as transferências da carreira)
 const donoDe = (pid) => (E && E.donos[pid]) || JOGADORES[pid]?.origem;
 const elencoDe = (clube) => Object.values(JOGADORES).filter((j) => donoDe(j.id) === clube);
@@ -64,6 +73,12 @@ function seloEfeitoNota(pid) {
   return `<span class="delta-nota temporario ${n > 0 ? "subiu" : "caiu"}" title="Efeito temporário no próximo jogo: ${sinalDe(n)}">${ic(n > 0 ? "sobe" : "baixo")}<span>${sinalDe(n)}</span></span>`;
 }
 function meuTime(mudar = {}) {
+  // na partida da seleção (Copa do Mundo), o time é a convocação, com a escalação da seleção e o cansaço da Copa
+  if (typeof J !== "undefined" && J.selecao && E.selecao && E.selecao.convocados) {
+    const s = E.selecao, esc = { ...s.escalacao, ...mudar };
+    return { id: s.id, jogadores: s.convocados.filter((pid) => JOGADORES[pid] && !(s.fora || {})[pid]).map((pid) => ({ ...JOGADORES[pid], nota: Math.min(97, notaDe(JOGADORES[pid])) })),
+      formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo, energia: s.energia || {} };
+  }
   const esc = { ...E.escalacao, ...mudar }, extra = Math.round((E.moral - 60) / 12) + efeitoDe("time");
   return { id: E.clube, jogadores: elencoDe(E.clube).filter((j) => !fora(j.id)).map((j) => ({ ...j, nota: Math.min(97, notaDe(j) + extra + efeitoDe(j.id)) })),
     formacao: esc.formacao, tatica: esc.tatica, titulares: esc.titulares || undefined, fixo: !!esc.fixo, energia: E.energia };
@@ -73,13 +88,13 @@ const faixa = (n) => (n >= 90 ? "elite" : n >= 85 ? "ouro" : n >= 80 ? "prata" :
 const POS_NOME = { GOL: "Goleiro", ZAG: "Zagueiro", LD: "Lateral-direito", LE: "Lateral-esquerdo", VOL: "Volante", MC: "Meio-campista", MEI: "Meia", PE: "Ponta-esquerda", PD: "Ponta-direita", ATA: "Atacante" };
 const GRUPO_TELA = { GOL: "GOL", ZAG: "DEF", LD: "DEF", LE: "DEF", VOL: "MEI", MC: "MEI", MEI: "MEI", PE: "ATA", PD: "ATA", ATA: "ATA" };
 
-// o escudo: a imagem da TheSportsDB por cima do escudo desenhado em SVG (escudos.js), que aparece enquanto a imagem carrega e fica
-// no lugar dela quando o clube não tem escudo na API ou a imagem não abre (sem internet). A imagem vem pelo nosso servidor
-// (/api/escudo/<id>): os clubes de escudos-api.js (gerado por tools/baixar-escudos.js) e os de escudos-busca.js (a Série B).
+// O PNG salvo no Git cobre o escudo desenhado em SVG. Se o arquivo local faltar, o desenho continua visível.
+// /api/escudo/<id> serve o arquivo local para a tela e para as artes desenhadas em canvas.
 // A escala é o tamanho em múltiplos de 16x18 pixels (a proporção é 8:9)
-const escudoDaApi = (id) => ((window.ESCUDOS_API && window.ESCUDOS_API[id]) || (window.ESCUDOS_BUSCA && Object.hasOwn(window.ESCUDOS_BUSCA, id)) ? `/api/escudo/${encodeURIComponent(id)}` : null);
+const escudoDaApi = (id) => (window.ESCUDOS_API && Object.hasOwn(window.ESCUDOS_API, id) ? `/api/escudo/${encodeURIComponent(id)}` : null);
 function escudo(id, escala = 2) {
   const c = CLUBES[id]; if (!c) return "";
+  if (c.selecao) return `<span class="escudo escudo-bandeira" style="--e:${escala}" title="${h(c.nome)}"><span class="escudo-svg">${Bandeiras.svg(c)}</span></span>`;
   const api = escudoDaApi(id);
   const img = api ? `<img class="escudo-img" src="${h(api)}" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add('img-ok')" onerror="this.remove()">` : "";
   return `<span class="escudo" style="--e:${escala}" title="${h(c.nome)}"><span class="escudo-svg">${Escudos.svg(c)}</span>${img}</span>`;
@@ -141,6 +156,7 @@ function mostrarTela(id) {
   telaAtual = id; document.body.dataset.tela = id; // a sede (o hub) usa a largura toda do PC
   for (const s of document.querySelectorAll(".tela")) s.classList.toggle("hidden", s.id !== id);
   if (typeof Zoom !== "undefined") Zoom.cabecalho(id); // "← Vila" na sede e "← Sede" nas outras telas
+  if (typeof SomPartida !== "undefined") SomPartida.tela(id); // na partida, a torcida no lugar da música
   if (id !== "partida") desenharTela(id);
   if (id === "sede" && window.Popups) setTimeout(Popups.verificar, 700);
   window.scrollTo({ top: 0 });

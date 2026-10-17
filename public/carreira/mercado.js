@@ -18,7 +18,7 @@
   }
   // o valor de mercado (R$): cresce rápido com a nota; os da base valem menos. fator: o momento (0,5 a 1,5); a idade (j.idade) entra sozinha
   function valorDe(j, fator = 1) {
-    const v = Math.pow(1.18, j.nota - 60) * 1e6 * (j.base ? 0.4 : 1) * clamp(fator, 0.5, 1.5) * fatorIdade(j.idade);
+    const v = Math.pow(1.18, j.nota - 60) * 1e6 * (j.base === true ? 0.4 : 1) * clamp(fator, 0.5, 1.5) * fatorIdade(j.idade);
     return arred(v, v > 1e7 ? 5e5 : 1e5);
   }
   // o momento do jogador: gols na temporada, os efeitos dos eventos (fase boa ou ruim) e estar à venda (desvaloriza)
