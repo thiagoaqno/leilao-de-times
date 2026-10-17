@@ -217,9 +217,9 @@ test("pingpong: dois na mesa, o saque chega no outro e só quem recebe marca o p
     await new Promise((ok) => setTimeout(ok, Math.max(0, st.prontoEm - st.now) + 50));
     const chegou = new Promise((ok) => rec.once("bola", ok));
     const bola = P.sacar(st.placar.sacador, 0, 0);
-    sac.emit("bola", { p: bola.p, v: bola.v, saque: true, t: Date.now(), w: [0.5, 9] }); // efeito: o servidor limita
+    sac.emit("bola", { p: bola.p, v: bola.v, saque: true, t: Date.now(), w: [120, 5000, -5000] }); // o giro: o servidor limita
     const d = await chegou;
-    assert.strictEqual(d.quem, st.placar.sacador); assert.strictEqual(d.saque, true); assert.deepStrictEqual(d.w, [0.5, 1.2]);
+    assert.strictEqual(d.quem, st.placar.sacador); assert.strictEqual(d.saque, true); assert.deepStrictEqual(d.w, [120, 1000, -1000]);
     sac.emit("ponto", { vence: st.placar.sacador, motivo: "trapaça" }); // quem sacou não decide
     rec.emit("ponto", { vence: st.placar.sacador, motivo: "não devolveu" });
     const depois = await esperarEstado(a, (s) => s.ultimo && s.ultimo.motivo === "não devolveu");

@@ -1,7 +1,9 @@
-// Pingue-Pongue: regras do saque, do juiz e do placar, e uma partida inteira de robô contra robô.
+// Tênis de mesa: a física (ar, giro e quique), o saque, o juiz, o placar, a raquetada e uma partida inteira de robô
+// contra robô.
 const test = require("node:test");
 const assert = require("node:assert");
 const P = require("../public/pingpong/regras.js");
+const H = P.MESA.H;
 
 // voa a bola até alguém poder rebater ou o juiz marcar o ponto
 function ateDecidir(b, r, outro) {
@@ -11,13 +13,50 @@ function ateDecidir(b, r, outro) {
   }
   return null;
 }
-
-test("pingpong: o saque quica do lado de quem saca e depois do outro, em qualquer mira", () => {
-  for (const lado of [0, 1]) for (const x of [-0.6, 0, 0.6]) for (const ax of [-1, 0, 1]) {
-    const b = P.sacar(lado, x, ax), r = { quem: lado, saque: true, quiques: [] };
-    assert.strictEqual(ateDecidir(b, r, 1 - lado), "rebate", `saque ${lado} ${x} ${ax}`);
-    assert.deepStrictEqual(r.quiques, [lado, 1 - lado]);
+// a bola batida pelo lado 0, do fundo da mesa, com o gesto dado; devolve o primeiro quique (z e tempo) e a bola
+function batida(frente, { lat = 0, y = 0.95, w = [0, 0, 0], v = [0, 0, 8] } = {}) {
+  const b = { p: [0, y, 1.5], v: v.slice(), w: w.slice(), viva: true };
+  P.bater(b, { frente, lat, off: 0 }, 0);
+  const saiu = { v: b.v.slice(), w: b.w.slice(), nome: P.nomeEfeito(b), kmh: P.kmh(b) };
+  let t = 0, quique = null, rede = false;
+  for (let i = 0; i < 720 && b.viva && !quique; i++) {
+    t += 1 / 240;
+    for (const e of P.voar(b, 1 / 240)) { if (e.tipo === "quique") quique = { x: b.p[0], z: b.p[2], t, lado: e.lado, vz: b.v[2] }; if (e.tipo === "rede") rede = true; }
   }
+  return { ...saiu, quique, rede, fim: b.p.slice() };
+}
+
+test("pingpong: o ar freia a bola e o giro faz a curva (Magnus)", () => {
+  const voo = (w) => { const b = { p: [0, 1.2, 1.4], v: [0, 0, -12], w, viva: true }; P.voar(b, 0.2); return b; };
+  const liso = voo([0, 0, 0]), top = voo([-500, 0, 0]), corte = voo([500, 0, 0]), lado = voo([0, 300, 0]);
+  assert.ok(Math.abs(liso.v[2]) < 11.5, `o ar freou: ${liso.v[2].toFixed(2)}`);
+  assert.ok(top.p[1] < liso.p[1] - 0.05, "o top spin mergulha");
+  assert.ok(corte.p[1] > liso.p[1] + 0.05, "a cortada flutua");
+  assert.ok(Math.abs(lado.p[0]) > 0.04, "o lateral faz a curva");
+});
+
+test("pingpong: no quique, o top spin acelera e a cortada freia (o atrito troca velocidade por giro)", () => {
+  const quique = (w) => { const v = [0, -3, -3.5]; const b = { p: [0, H + 0.1, -0.3], v, w, viva: true }; let vz = null; for (let i = 0; i < 200 && vz == null; i++) for (const e of P.voar(b, 1 / 240)) if (e.tipo === "quique") vz = b.v[2]; return vz; };
+  const liso = quique([0, 0, 0]), top = quique([-600, 0, 0]), corte = quique([600, 0, 0]);
+  assert.ok(Math.abs(top) > Math.abs(liso), `top ${top.toFixed(2)} x liso ${liso.toFixed(2)}`);
+  assert.ok(Math.abs(corte) < Math.abs(liso) * 0.92, `corte ${corte.toFixed(2)} x liso ${liso.toFixed(2)}`);
+  // a bola que cai de 30 cm sobe uns 23 cm (a regra da ITTF)
+  const b = { p: [0, H + 0.3 + P.R, 0.5], v: [0, 0, 0], w: [0, 0, 0], viva: true };
+  let subiu = 0, quicou = false;
+  for (let i = 0; i < 400; i++) { for (const e of P.voar(b, 1 / 240)) if (e.tipo === "quique") quicou = true; if (quicou) subiu = Math.max(subiu, b.p[1] - H - P.R); }
+  assert.ok(subiu > 0.2 && subiu < 0.26, `subiu ${subiu.toFixed(3)} m`);
+});
+
+test("pingpong: o saque quica do lado de quem saca e depois do outro, com qualquer gesto", () => {
+  for (const lado of [0, 1]) for (const x of [-0.6, 0, 0.6]) for (const frente of [-6, -2, 0, 3, 6]) for (const lat of [-6, 0, 6]) {
+    const b = P.sacar(lado, x, { frente, lat }), r = { quem: lado, saque: true, quiques: [] };
+    assert.strictEqual(ateDecidir(b, r, 1 - lado), "rebate", `saque ${lado} ${x} ${frente} ${lat}`);
+    assert.deepStrictEqual(r.quiques, [lado, 1 - lado]);
+    assert.ok(b.p[1] - H < 0.7, "saque baixo o bastante para devolver");
+  }
+  // a mira antiga (um número de −1 a 1) continua valendo
+  const b = P.sacar(0, 0, 1), r = { quem: 0, saque: true, quiques: [] };
+  assert.strictEqual(ateDecidir(b, r, 1), "rebate");
 });
 
 test("pingpong: o juiz (rede, fora, dois quiques, quicar do próprio lado)", () => {
@@ -28,6 +67,7 @@ test("pingpong: o juiz (rede, fora, dois quiques, quicar do próprio lado)", () 
   const r2 = r(); assert.strictEqual(P.julgar(r2, { tipo: "quique", lado: 1 }), null);
   assert.strictEqual(P.julgar(r2, { tipo: "quique", lado: 1 }).vence, 0); // dois quiques do lado de quem recebe
   const r3 = r(); P.julgar(r3, { tipo: "quique", lado: 1 }); assert.strictEqual(P.julgar(r3, { tipo: "chao" }).vence, 0); // não devolveu
+  const r4 = r(); P.julgar(r4, { tipo: "quique", lado: 1 }); assert.strictEqual(P.julgar(r4, { tipo: "rede" }).vence, 0); // a cortada voltou sozinha
 });
 
 test("pingpong: placar até 11 com 2 de vantagem e o saque trocando a cada 2 (no 10 a 10, a cada 1)", () => {
@@ -42,20 +82,56 @@ test("pingpong: placar até 11 com 2 de vantagem e o saque trocando a cada 2 (no
   assert.deepStrictEqual(m3.games, [0, 1]); assert.deepStrictEqual(m3.pts, [0, 0]); assert.strictEqual(m3.vencedor, null); assert.strictEqual(m3.sacador, 1);
 });
 
+test("pingpong: o gesto decide o golpe — top spin, bloqueio, cortada, smash e o forte demais que sai longo", () => {
+  const top = batida(6), bloq = batida(0), corte = batida(-5), smash = batida(7, { y: 1.3 }), longo = batida(10.5);
+  for (const g of [top, bloq, corte, smash]) assert.ok(g.quique && g.quique.lado === 1 && !g.rede, `caiu do outro lado: ${g.nome}`);
+  assert.ok(P.topDe(top.w, top.v) > 300 && top.nome.startsWith("Top spin"));
+  assert.ok(P.topDe(corte.w, corte.v) < -150 && ["Cortada", "Chop"].includes(corte.nome));
+  assert.strictEqual(smash.nome, "Smash");
+  assert.ok(smash.kmh > top.kmh && top.kmh > bloq.kmh && bloq.kmh > corte.kmh, `velocidades ${smash.kmh} ${top.kmh} ${bloq.kmh} ${corte.kmh}`);
+  assert.ok(smash.quique.t < top.quique.t && top.quique.t < corte.quique.t, "o gesto controla o tempo da bola");
+  assert.ok(bloq.quique.t > 0.25 && bloq.quique.t < 0.7, `o bloqueio tem tempo de leitura: ${bloq.quique.t.toFixed(2)} s`);
+  assert.ok(!longo.quique || longo.quique.lado !== 1, "forte demais: saiu longo");
+  const fora = batida(3, { lat: 8 }); assert.ok(!fora.quique || fora.quique.lado !== 1, "de lado demais: saiu pela lateral");
+  const mira = batida(3, { lat: 3 }); assert.ok(mira.quique.lado === 1 && mira.quique.x > 0.2, "o gesto para o lado mira");
+});
+
+test("pingpong: ler o giro — cortada devolvida sem cortar cai na rede; cortando ou levantando, passa", () => {
+  const corte = [-450, 0, 0]; // bola vindo para o lado 0 (+z) com giro para trás
+  assert.ok(batida(1, { w: corte }).rede, "sem ler a cortada: rede");
+  for (const g of [batida(-5, { w: corte }), batida(6, { w: corte })]) assert.ok(g.quique && g.quique.lado === 1, "cortando de volta ou no top spin: passa");
+  const top = [500, 0, 0];
+  const bloq = batida(0, { w: top }), fechado = batida(5, { w: top }), semGiro = batida(0);
+  assert.ok(bloq.v[1] > semGiro.v[1] + 0.3, "o top spin que veio faz o bloqueio subir");
+  assert.ok(fechado.quique && fechado.quique.lado === 1);
+});
+
+test("pingpong: a bola nunca sobe fora do alcance de quem recebe", () => {
+  for (const y0 of [0.8, 0.95, 1.2, 1.45]) for (const frente of [-6, -2, 0, 3, 7]) for (const lat of [-3, 0, 3]) {
+    const b = { p: [0, y0, 1.6], v: [0, 0, 6], w: [0, 0, 0], viva: true }; P.bater(b, { frente, lat, off: 0 }, 0);
+    let quicou = false, altura = null;
+    for (let i = 0; i < 1200 && b.viva && altura == null; i++) {
+      for (const e of P.voar(b, 1 / 240)) if (e.tipo === "quique" && b.p[2] < 0) quicou = true;
+      if (quicou && b.p[2] < -(P.MESA.L / 2 + 0.3)) altura = b.p[1];
+    }
+    if (altura != null) assert.ok(altura - H < 0.85, `de ${y0} m com ${frente}/${lat}: chegou a ${(altura - H).toFixed(2)} m acima da mesa`);
+  }
+});
+
 test("pingpong: robô contra robô joga uma partida inteira, com trocas de bola", () => {
   const pl = P.novoPlacar({ pontos: 11, games: 1 }, 0);
-  const bots = [0, 1].map((lado) => ({ lado, x: 0, z: P.S(lado) * (P.MESA.L / 2 + 0.3), vx: 0, vz: 0, desvio: 0 }));
+  const bots = [0, 1].map((lado) => ({ lado, x: 0, z: P.S(lado) * (P.MESA.L / 2 + 0.5), y: H + 0.2, vx: 0, vz: 0 }));
   let batidas = 0, pontos = 0, b = null, r = null, espera = 0.5;
   for (let passo = 0; passo < 60 * 60 * 20 && pl.vencedor == null; passo++) {
     const dt = 1 / 60;
     for (const bot of bots) P.robo(bot, b, r, dt, "medio");
-    if (!r) { espera -= dt; if (espera <= 0) { const s = bots[pl.sacador]; b = P.sacar(s.lado, s.x, Math.random() * 2 - 1); r = { quem: s.lado, saque: true, quiques: [] }; batidas++; } continue; }
-    const z0 = b.p[2];
+    if (!r) { espera -= dt; if (espera <= 0) { const s = bots[pl.sacador]; b = P.sacar(s.lado, s.x, { frente: Math.random() * 8 - 4, lat: Math.random() * 6 - 3 }); r = { quem: s.lado, saque: true, quiques: [] }; batidas++; } continue; }
+    const z0 = b.p[2], rz = bots.map((x) => x.z);
     let fim = null;
     for (const e of P.voar(b, dt)) { const j = P.julgar(r, e); if (j) { fim = j; break; } }
     if (!fim) for (const bot of bots) {
       const s = P.S(bot.lado);
-      if (P.podeRebater(r, bot.lado) && (z0 - bot.z) * s < 0.02 && (b.p[2] - bot.z) * s >= -0.02 && Math.abs(b.p[0] - bot.x) < 0.3) {
+      if (P.podeRebater(r, bot.lado) && (z0 - rz[bot.lado]) * s < 0.03 && (b.p[2] - bot.z) * s >= -0.03 && Math.abs(b.p[0] - bot.x) < 0.24 && Math.abs(b.p[1] - bot.y) < 0.32) {
         P.rebater(b, P.batidaRobo(bot, b, "medio"), bot.lado); r = { quem: bot.lado, saque: false, quiques: [] }; batidas++;
       }
     }
@@ -63,47 +139,4 @@ test("pingpong: robô contra robô joga uma partida inteira, com trocas de bola"
   }
   assert.notStrictEqual(pl.vencedor, null, "a partida terminou");
   assert.ok(batidas > pontos * 2, `teve troca de bola (${batidas} batidas em ${pontos} pontos)`);
-});
-
-test("pingpong: efeito — a bola cai no alvo mesmo com curva, o top spin acelera no quique e a cortada freia", () => {
-  const bater = (vx, vz) => { const b = { p: [0, 0.95, 1.55], v: [0, 0, 0], viva: true }; P.rebater(b, { x: 0, z: 1.55, vx, vz }, 0); return b; };
-  const quique = (b) => { for (let i = 0; i < 600 && b.viva; i++) for (const e of P.voar(b, 1 / 240)) if (e.tipo === "quique") return { p: b.p.slice(), vz: b.v[2] }; return null; };
-  const top = bater(0, -3.5), corte = bater(0, 1.5), curva = bater(2, -2.5);
-  assert.ok(top.w[1] > 0.5 && P.nomeEfeito(top.w).startsWith("Top spin"));
-  assert.ok(corte.w[1] < -0.3 && P.nomeEfeito(corte.w) === "Cortada");
-  assert.ok(curva.w[0] > 0.25);
-  const vzTop = top.v[2], vzCorte = corte.v[2], qt = quique(top), qc = quique(corte), qv = quique(curva);
-  for (const q of [qt, qc, qv]) assert.ok(q && q.p[2] < 0 && Math.abs(q.p[0]) < P.MESA.W / 2, "caiu na mesa do outro lado");
-  assert.ok(Math.abs(qt.vz) > Math.abs(vzTop) * 0.98, "top spin acelerou no quique");
-  assert.ok(Math.abs(qc.vz) < Math.abs(vzCorte) * 0.98, "cortada freou no quique");
-});
-
-test("pingpong: empurrar acelera a devolução e puxar desacelera sem perder a mesa", () => {
-  const bater = (vz) => {
-    const b = { p: [0, 0.95, 1.55], v: [0, 0, 0], viva: true };
-    P.rebater(b, { x: 0, z: 1.55, vx: 0, vz }, 0);
-    let tempo = 0, quique = null;
-    for (let i = 0; i < 240 && b.viva && !quique; i++) {
-      tempo += 1 / 240;
-      for (const e of P.voar(b, 1 / 240)) if (e.tipo === "quique") quique = { z: b.p[2], tempo };
-    }
-    return quique;
-  };
-  const rapido = bater(-5), neutro = bater(0), cortada = bater(1.5);
-  for (const q of [rapido, neutro, cortada]) assert.ok(q && q.z < 0 && q.z > -P.MESA.L / 2);
-  assert.ok(rapido.tempo < neutro.tempo && neutro.tempo < cortada.tempo, "o gesto controla a velocidade da bola");
-  assert.ok(neutro.tempo > 0.55 && neutro.tempo < 0.85, "a devolução neutra tem tempo de leitura");
-});
-
-test("pingpong: a bola nunca sobe fora do alcance de quem recebe (nem bloqueando, nem de bola alta)", () => {
-  const H = P.MESA.H;
-  for (const y0 of [0.8, 0.95, 1.2, 1.45]) for (const vz of [-6, -3, 0, 1, 2]) for (const vx of [-3, 0, 3]) {
-    const b = { p: [0, y0, 1.6], v: [0, 0, 0], viva: true }; P.rebater(b, { x: 0, z: 1.6, vx, vz }, 0);
-    let quicou = false, alturaNaRaquete = null;
-    for (let i = 0; i < 1200 && b.viva && alturaNaRaquete == null; i++) {
-      for (const e of P.voar(b, 1 / 240)) if (e.tipo === "quique" && b.p[2] < 0) quicou = true;
-      if (quicou && b.p[2] < -(P.MESA.L / 2 + 0.3)) alturaNaRaquete = b.p[1];
-    }
-    if (alturaNaRaquete != null) assert.ok(alturaNaRaquete - H < 0.8, `de ${y0} m com vz ${vz}: chegou a ${(alturaNaRaquete - H).toFixed(2)} m acima da mesa`);
-  }
 });

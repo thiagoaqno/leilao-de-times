@@ -1,6 +1,6 @@
 // Pingue-Pongue da Galera — tênis de mesa 1x1 pela internet. Canal "/pingpong" do Socket.io.
-// "Quem rebate manda": quem bate na bola manda a batida (posição, velocidade, efeito e a hora no relógio do servidor) e o
-// servidor repassa. Como a bola só tem gravidade, efeito e quique (tudo conta fechada), os dois navegadores calculam o mesmo voo. Quem decide o
+// "Quem rebate manda": quem bate na bola manda a batida (posição, velocidade, giro e a hora no relógio do servidor) e o
+// servidor repassa. O voo (gravidade, ar, giro e quique) é o mesmo passo a passo nos dois navegadores, então eles calculam o mesmo voo. Quem decide o
 // ponto é quem está recebendo a bola (é na tela dele que ela chega ou não na raquete). As raquetes vão e voltam
 // ~30x por segundo só para aparecer na tela do outro.
 const P = require("./public/pingpong/regras.js");
@@ -11,8 +11,10 @@ const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[
 
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
-const efeito = (w) => (Array.isArray(w) && w.length === 2 && w.every(fin) ? w.map((v) => Math.max(-1.2, Math.min(1.2, v))) : null);
+// o giro (rad/s, ~160 voltas por segundo no máximo), a posição (perto da mesa) e a velocidade (até ~144 km/h)
+const efeito = (w) => (Array.isArray(w) && w.length === 3 && w.every(fin) ? w.map((v) => Math.max(-1000, Math.min(1000, v))) : null);
 const vec = (a) => Array.isArray(a) && a.length === 3 && a.every(fin) && Math.abs(a[0]) < 8 && a[1] > -1 && a[1] < 8 && Math.abs(a[2]) < 10;
+const vel = (a) => Array.isArray(a) && a.length === 3 && a.every(fin) && a.every((v) => Math.abs(v) < 40);
 const PAUSA_MS = 1300, SEM_RESPOSTA_MS = 9000;
 
 module.exports = function attachPingPong(io) {
@@ -96,7 +98,7 @@ module.exports = function attachPingPong(io) {
     });
     // a batida (ou o saque) de quem está na mesa
     socket.on("bola", (d = {}) => {
-      const { room, me } = ctx(); if (!room || !me || room.phase !== "jogo" || !vec(d.p) || !vec(d.v)) return;
+      const { room, me } = ctx(); if (!room || !me || room.phase !== "jogo" || !vec(d.p) || !vel(d.v)) return;
       const lado = ladoDe(room, me.id), now = Date.now(); if (lado < 0) return;
       if (d.saque) { if (room.rally || lado !== room.placar.sacador || now < room.prontoEm - 200) return; }
       else if (!room.rally || room.rally.quem === lado) return;
@@ -104,6 +106,12 @@ module.exports = function attachPingPong(io) {
       room.rally = { quem: lado, saque: !!d.saque, t };
       socket.to(room.code).emit("bola", { p: d.p, v: d.v, quem: lado, saque: !!d.saque, t, w: efeito(d.w) });
       clearTimeout(room.timer); room.timer = setTimeout(() => room.rally && room.rally.t === t && ponto(room, lado, "sem resposta"), SEM_RESPOSTA_MS);
+    });
+    // o lance do saque (a bola subindo da mão): só para o outro ver; a batida vem depois, em "bola"
+    socket.on("lance", (d = {}) => {
+      const { room, me } = ctx(); if (!room || !me || room.phase !== "jogo" || room.rally || !fin(d.x)) return;
+      const lado = ladoDe(room, me.id); if (lado < 0 || lado !== room.placar.sacador) return;
+      socket.to(room.code).emit("lance", { lado, x: Math.max(-0.6, Math.min(0.6, d.x)) });
     });
     // o ponto: quem decide é quem está recebendo a bola
     socket.on("ponto", (d = {}) => {
@@ -115,7 +123,7 @@ module.exports = function attachPingPong(io) {
     socket.on("raq", (d = {}) => {
       const { room, me } = ctx(); if (!room || !me || !fin(d.x) || !fin(d.z) || !fin(d.y)) return;
       const lado = ladoDe(room, me.id); if (lado < 0) return;
-      socket.to(room.code).volatile.emit("raq", { lado, x: d.x, y: d.y, z: d.z });
+      socket.to(room.code).volatile.emit("raq", { lado, x: d.x, y: d.y, z: d.z, f: d.f ? 1 : 0 });
     });
     socket.on("disconnect", () => { const { room, me } = ctx(); if (!room) return; if (me) me.sockets.delete(socket.id); broadcast(room); });
   });
