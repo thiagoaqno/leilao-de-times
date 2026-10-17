@@ -80,17 +80,20 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 #game{position:fixed;inset:0;background:#000;z-index:30;cursor:none;touch-action:none}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .hud{position:absolute;pointer-events:none;color:#fff;text-shadow:0 2px 0 #000a,0 0 8px #0008}
-#hTop{top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;border-radius:8px;overflow:hidden;box-shadow:0 6px 20px #0008}
-#hTop .t{display:flex;align-items:center;gap:8px;padding:4px 12px;background:#0b1612dd;font:700 15px var(--body)}
-#hTop .t i{width:12px;height:12px;border-radius:50%;display:block}
-#hTop .t b{color:var(--accent);font-size:13px}
-#hTop .g{font:26px var(--display);padding:2px 12px;background:#000d;color:var(--accent);min-width:44px;text-align:center}
-#hTop .s{font:15px var(--display);padding:6px 10px;background:#1c4a3ae8;color:#cfe;letter-spacing:.04em}
+#hTop{top:10px;left:10px;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 6px 20px #0009;min-width:190px}
+#hTop .lin{display:flex;align-items:center;gap:8px;background:#0b1424e8;font:700 15px var(--body);height:30px}
+#hTop .lin+.lin{border-top:1px solid #ffffff22}
+#hTop .lin i{width:6px;align-self:stretch;display:block}
+#hTop .nm{flex:1;max-width:30vw;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#hTop .sq{color:var(--accent);font-size:11px;width:10px}
+#hTop .gm{font:18px var(--display);background:#1d3f8f;color:#fff;align-self:stretch;display:grid;place-items:center;min-width:28px}
+#hTop .pt{font:22px var(--display);background:#f2f2ee;color:#0b1424;align-self:stretch;display:grid;place-items:center;min-width:40px}
 #hMsg{top:22%;left:50%;transform:translateX(-50%);text-align:center;font:46px var(--display);white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
 #hMsg small{display:block;font:700 18px var(--body);opacity:.95;text-transform:none;letter-spacing:0}
 #hMsg.pop{animation:pop .45s ease-out}
 @keyframes pop{0%{transform:translateX(-50%) scale(.4);opacity:0}70%{transform:translateX(-50%) scale(1.12)}100%{transform:translateX(-50%) scale(1)}}
-#hEfeito{left:50%;bottom:52px;transform:translateX(-50%);font:22px var(--display);letter-spacing:.04em;color:#ffd0a0;text-transform:uppercase}
+#hEfeito{left:50%;bottom:56px;transform:translateX(-50%);font:24px var(--display);letter-spacing:.04em;color:#fff;text-transform:uppercase;white-space:nowrap}
+#hEfeito b{font-weight:400;color:var(--accent);margin-left:6px}
 #hEfeito.pop{animation:pop .35s ease-out}
 #hHint{left:50%;bottom:18px;transform:translateX(-50%);font:700 15px var(--body);text-align:center;opacity:.9}
 #hSair{position:absolute;top:10px;right:10px;z-index:4;cursor:pointer}
@@ -135,12 +138,10 @@ input{background:#081d3b;border-color:#71a8d9}
 .country-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 16px}.country-grid button{padding:8px 4px;font-size:12px}.country-grid b{display:block;font-size:23px}
 .match-preview{background:#071e3c;border:1px solid #548dc6;border-radius:11px;padding:10px 12px;margin:12px 0;color:#dcecff;font-weight:700}
 .progress{display:flex;gap:5px;margin:12px 0}.progress span{flex:1;text-align:center;padding:6px 2px;border-radius:5px;background:#071e3c;font-size:11px;color:#abc9e9}.progress .done{background:#2f8e64;color:#fff}.progress .current{background:#f5b52d;color:#3c2505}
-#hTop{border:2px solid #e6f4ff;border-radius:4px}#hTop .t{background:#0b2852ed}#hTop .g{background:#102e59;color:#fff}#hTop .s{background:#e5684e;color:#fff}
-#hTop .t{max-width:28vw;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 #hMsg{color:#ffdf55;text-shadow:0 5px 0 #153566,0 8px 20px #000}
 #hHint{background:#0b2852d9;padding:6px 14px;border:1px solid #88b7e7;border-radius:99px}
 .overlay .box{background:#0d315eee;border:2px solid #8cbbe8}
-@media(max-width:760px){.hero{grid-template-columns:1fr}.home-art{min-height:180px}.menu-grid{gap:7px}.mode-card{min-height:85px;font-size:20px;padding:9px}.mode-card .ico{font-size:30px}.country-grid{grid-template-columns:repeat(4,1fr)}#hTop .t{font-size:11px;padding:3px 5px}#hTop .g{font-size:20px;min-width:30px;padding:3px}}
+@media(max-width:760px){.hero{grid-template-columns:1fr}.home-art{min-height:180px}.menu-grid{gap:7px}.mode-card{min-height:85px;font-size:20px;padding:9px}.mode-card .ico{font-size:30px}.country-grid{grid-template-columns:repeat(4,1fr)}#hTop{min-width:150px}#hTop .lin{font-size:12px;height:24px}#hTop .pt{font-size:17px;min-width:30px}#hEfeito{font-size:18px}}
 @media(max-width:440px){.wrap{padding:10px 10px 40px}.brand h1{font-size:15px}.mode-card{font-size:17px}.mode-card small{font-size:10px}}
 </style>
 </head>
@@ -160,7 +161,7 @@ input{background:#081d3b;border-color:#71a8d9}
       <div>
         <div class="game-logo">ARCADE · CAMPEONATO · 1 X 1</div>
         <h2>Tênis<br>de <em>mesa</em></h2>
-        <p class="lead">Mova a raquete com o mouse ou o dedo. Bata forte, coloque efeito e vença por dois pontos de diferença. Escolha seu país e dispute o topo do mundo.</p>
+        <p class="lead">Mesa oficial, bola de 40 mm com ar e giro de verdade. Leve a raquete com o mouse ou o dedo: ela bate sozinha quando a bola chega, e o seu gesto decide o golpe. Escolha seu país e dispute o topo do mundo.</p>
         <div class="menu-grid">
           <button class="mode-card" data-mode="amistoso"><span class="ico">🏓</span><span>Amistoso<small>Uma partida rápida contra o computador</small></span></button>
           <button class="mode-card" data-mode="torneio"><span class="ico">🏆</span><span>Torneio<small>Quatro partidas até a taça</small></span></button>
@@ -188,7 +189,7 @@ input{background:#081d3b;border-color:#71a8d9}
           <div class="or">ou</div><button id="btnCreate" style="width:100%">Abrir sala nova</button>
           <div class="err" id="hErr"></div>
         </div></div>
-        <div class="panel setup" id="homeHelp"><div class="lines"></div><div class="in"><h2 style="font-size:28px">Como jogar</h2><p class="lead" style="font-size:14px;margin-bottom:0">A raquete acompanha o mouse ou o dedo. Clique para sacar. Empurre para a frente na batida para acelerar, puxe para cortar e mova para os lados para mirar. A bola precisa quicar no seu lado antes da devolução.</p></div></div>
+        <div class="panel setup" id="homeHelp"><div class="lines"></div><div class="in"><h2 style="font-size:28px">Como jogar</h2><p class="lead" style="font-size:14px;margin-bottom:0">A raquete acompanha o mouse ou o dedo (a altura vai sozinha) e bate quando a bola, já quicada do seu lado, chega nela. Na hora da batida: empurre para a frente para o top spin (forte demais sai longo), fique parado para bloquear, puxe para trás para cortar e mova para o lado para mirar e dar curva. Clique para jogar a bola e sacar. Leia o giro que vem: top spin sobe se você só bloquear, cortada cai na rede se você não abrir a raquete.</p></div></div>
       </div>
     </div>
   </section>
@@ -213,12 +214,14 @@ input{background:#081d3b;border-color:#71a8d9}
         <button id="btnPractice2" style="width:100%;margin-top:10px">🤖 Treinar enquanto espera</button>
         <label style="margin-top:18px">Como jogar</label>
         <ul class="keys">
-          <li>A raquete vai para onde está o mouse (no celular, o dedo).</li>
-          <li>A bola tem que quicar do seu lado antes de você bater.</li>
-          <li>Na hora da batida, empurre o mouse para a frente para bater forte; puxe para trás para um balão.</li>
-          <li>Mexer para o lado (ou pegar a bola com a ponta da raquete) manda a bola para o canto.</li>
-          <li><b>Efeito:</b> empurrando forte sai top spin (a bola cai rápido e acelera no quique); puxando para trás sai cortada (ela flutua e freia); batendo de lado ela faz a curva e espirra no quique.</li>
-          <li>Clique para sacar. Esc pausa.</li>
+          <li>A raquete vai para onde está o mouse (no celular, o dedo): para os lados e para a frente ou para trás. A altura vai sozinha atrás da bola.</li>
+          <li>A bola tem que quicar do seu lado antes de você bater. Perto da mesa você pega a bola subindo; mais atrás, você ganha tempo.</li>
+          <li><b>Top spin:</b> empurre o mouse para a frente na batida. A bola mergulha e acelera no quique. Forte demais, sai longa.</li>
+          <li><b>Bloqueio:</b> raquete parada. <b>Cortada:</b> puxe para trás: a bola flutua, freia e fica curta.</li>
+          <li><b>Mira e curva:</b> mexa para o lado (ou pegue a bola com a ponta da raquete).</li>
+          <li><b>Smash:</b> bola alta e gesto forte: reto e rápido.</li>
+          <li><b>Leia o giro:</b> devolver top spin sem empurrar sobe; devolver cortada sem cortar ou levantar cai na rede.</li>
+          <li>Saque: clique (ou espaço) para jogar a bola; a raquete bate na descida com o gesto do momento. Esc pausa.</li>
         </ul>
       </div></div>
     </div>

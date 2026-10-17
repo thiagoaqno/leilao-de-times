@@ -68,3 +68,25 @@ test("raquete acompanha o mouse da borda até perto da rede", async ({ page }) =
   expect(posicoes[0]).toBeGreaterThan(1.4);
   expect(posicoes[1]).toBeLessThan(0.4);
 });
+
+test("o saque: a bola sobe da mão e a raquete bate na descida; a raquete troca de forehand para backhand", async ({ page }) => {
+  await page.goto("/pingpong/#debug");
+  await page.click('[data-mode="amistoso"]');
+  await page.click("#btnPractice");
+  await page.waitForFunction(() => window.__pingpong && __pingpong.G.active);
+  const r = await page.evaluate(() => {
+    const t = __pingpong, G = t.G, jogo = document.getElementById("game");
+    const mouse = (tipo, x, z) => { const p = t.tela(x, z); jogo.dispatchEvent(new PointerEvent(tipo, { clientX: p.x, clientY: p.y, bubbles: true })); };
+    G.est.placar.sacador = 0; G.est.prontoEm = 0;
+    mouse("pointerdown", 0, 1.6);
+    const subiu = !!G.lance && !G.rally;
+    t.avancar(0.25); const noAr = !!G.lance && !G.rally;
+    t.avancar(0.4); const sacou = !G.lance && G.rally && G.rally.saque && G.rally.quem === 0;
+    // forehand à direita do corpo, backhand quando a raquete cruza para a esquerda
+    mouse("pointermove", 0.6, 1.6); for (let i = 0; i < 40; i++) { t.avancar(1 / 30); t.quadro(1 / 30); }
+    const fh = G.raq[0].fh;
+    mouse("pointermove", -0.9, 1.6); for (let i = 0; i < 40; i++) { t.avancar(1 / 30); t.quadro(1 / 30); }
+    return { subiu, noAr, sacou, fh, bh: !G.raq[0].fh };
+  });
+  expect(r).toEqual({ subiu: true, noAr: true, sacou: true, fh: true, bh: true });
+});
