@@ -131,6 +131,7 @@ app.get("/road-to-champions", (req, res) => res.redirect("/jogador/"));
 app.get("/road-to-champions/", (req, res) => res.redirect("/jogador/"));
 app.get("/tenis", (req, res) => res.redirect("/tenis/"));
 app.get("/pingpong", (req, res) => res.redirect("/pingpong/"));
+app.get("/table-tennis-pro", (req, res) => res.redirect("/table-tennis-pro/"));
 app.get("/futevolei", (req, res) => res.redirect("/futevolei/"));
 app.get("/haxball", (req, res) => res.redirect("/haxball/"));
 app.get("/digita", (req, res) => res.redirect("/digita/"));

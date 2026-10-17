@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Table Tennis Pro · Vila da Galera</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#f1f7f5;background:#091a1b}*{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 50% -20%,#174d43 0,transparent 55%),#091a1b}header{height:64px;display:flex;align-items:center;gap:18px;max-width:1220px;margin:auto;padding:0 18px}header a{color:#b9d5c9;text-decoration:none;font-weight:700}header a:hover{text-decoration:underline}header h1{font-size:18px;margin:0;letter-spacing:.025em}header h1 span{color:#ffbe69}header .acoes{margin-left:auto;display:flex;gap:8px}button,.botao{font:inherit;cursor:pointer;border:1px solid #496f69;border-radius:9px;background:#183d3b;color:#e8f5ee;padding:9px 13px;font-weight:700;text-decoration:none}button:hover,.botao:hover{background:#23544d}main{max-width:1220px;margin:auto;padding:0 18px 25px}.intro{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:4px auto 12px;max-width:980px;color:#b5d0c4;font-size:13px}.intro p{margin:0}.intro strong{color:#ffbe69}.jogo{position:relative;margin:auto;width:min(100%,980px);aspect-ratio:900/642;background:#071213;border:2px solid #416a5e;border-radius:12px;overflow:hidden;box-shadow:0 24px 70px #0009}.jogo iframe{width:100%;height:100%;border:0;display:block;background:#071213}.alternativa{max-width:980px;margin:11px auto 0;color:#8eada1;font-size:12px;text-align:center}.alternativa a{color:#ffbe69}.externo{display:none}@media(max-width:680px){header{height:58px;padding:0 12px;gap:8px}header h1{font-size:14px}header .acoes{gap:4px}header .acoes button{display:none}header .acoes .botao{font-size:12px;padding:7px 9px}main{padding:0 8px 16px}.intro{padding:0 5px;font-size:11px;display:block}.intro p+p{margin-top:3px}.jogo{border-radius:6px;min-height:300px;aspect-ratio:900/642}}
+</style>
+</head>
+<body>
+<header><a href="/" aria-label="Voltar à Vila">← Vila</a><h1>🏓 TABLE TENNIS <span>PRO</span></h1><div class="acoes"><button id="telaCheia" type="button">Tela cheia</button><a id="abrirFora" class="botao" href="https://html5.gamedistribution.com/45aade9b6c15481ab6c0e449b4440f40/" target="_blank" rel="noopener noreferrer">Abrir fora ↗</a></div></header>
+<main><div class="intro"><p>O jogo original, hospedado pela GameDistribution.</p><p><strong>Partidas aqui não entram no placar da Noite da Galera.</strong></p></div><div class="jogo" id="jogo"><iframe id="tableTennisPro" title="Table Tennis Pro" allow="autoplay *; fullscreen *" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><p class="alternativa">Se o jogo não abrir nesta página, use <a id="abrirForaTexto" href="https://html5.gamedistribution.com/45aade9b6c15481ab6c0e449b4440f40/" target="_blank" rel="noopener noreferrer">Abrir fora</a>.</p></main>
+<script>
+(() => {
+  const jogo = document.getElementById("jogo");
+  const endereco = new URL("https://html5.gamedistribution.com/45aade9b6c15481ab6c0e449b4440f40/");
+  endereco.searchParams.set("gd_sdk_referrer_url", location.href);
+  document.getElementById("tableTennisPro").src = endereco.href;
+  document.getElementById("abrirFora").href = endereco.href;
+  document.getElementById("abrirForaTexto").href = endereco.href;
+  document.getElementById("telaCheia").addEventListener("click", async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else if (jogo.requestFullscreen) await jogo.requestFullscreen();
+  });
+})();
+</script>
+</body>
+</html>
