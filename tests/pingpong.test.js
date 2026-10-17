@@ -54,6 +54,11 @@ test("pingpong: o saque quica do lado de quem saca e depois do outro, com qualqu
     assert.deepStrictEqual(r.quiques, [lado, 1 - lado]);
     assert.ok(b.p[1] - H < 0.7, "saque baixo o bastante para devolver");
   }
+  // o saque do Table Tennis Pro: a bola parada em cima da mesa, na frente da raquete
+  for (const lado of [0, 1]) for (const x of [-0.6, 0, 0.6]) for (const frente of [-6, 0, 3, 6]) for (const lat of [-6, 0, 6]) {
+    const b = P.sacar(lado, x, { frente, lat }, P.SAQUE_Z), r = { quem: lado, saque: true, quiques: [] };
+    assert.strictEqual(ateDecidir(b, r, 1 - lado), "rebate", `saque de cima da mesa ${lado} ${x} ${frente} ${lat}`);
+  }
   // a mira antiga (um número de −1 a 1) continua valendo
   const b = P.sacar(0, 0, 1), r = { quem: 0, saque: true, quiques: [] };
   assert.strictEqual(ateDecidir(b, r, 1), "rebate");
@@ -96,14 +101,11 @@ test("pingpong: o gesto decide o golpe — top spin, bloqueio, cortada, smash e 
   const mira = batida(3, { lat: 3 }); assert.ok(mira.quique.lado === 1 && mira.quique.x > 0.2, "o gesto para o lado mira");
 });
 
-test("pingpong: ler o giro — cortada devolvida sem cortar cai na rede; cortando ou levantando, passa", () => {
-  const corte = [-450, 0, 0]; // bola vindo para o lado 0 (+z) com giro para trás
-  assert.ok(batida(1, { w: corte }).rede, "sem ler a cortada: rede");
-  for (const g of [batida(-5, { w: corte }), batida(6, { w: corte })]) assert.ok(g.quique && g.quique.lado === 1, "cortando de volta ou no top spin: passa");
-  const top = [500, 0, 0];
-  const bloq = batida(0, { w: top }), fechado = batida(5, { w: top }), semGiro = batida(0);
-  assert.ok(bloq.v[1] > semGiro.v[1] + 0.3, "o top spin que veio faz o bloqueio subir");
-  assert.ok(fechado.quique && fechado.quique.lado === 1);
+test("pingpong: como no Table Tennis Pro, o giro que veio não atrapalha a devolução", () => {
+  for (const w of [[-450, 0, 0], [500, 0, 0], [0, 300, 0]]) for (const frente of [-4, 0, 1, 4]) {
+    const g = batida(frente, { w });
+    assert.ok(g.quique && g.quique.lado === 1 && !g.rede, `giro ${w} com ${frente}: caiu do outro lado`);
+  }
 });
 
 test("pingpong: a bola nunca sobe fora do alcance de quem recebe", () => {

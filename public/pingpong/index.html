@@ -77,26 +77,23 @@ label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weig
 .bench{margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:10px}
 .keys{font-size:13.5px;color:#d2e5dc;margin:8px 0 0;padding-left:18px}
 /* ---------- jogo ---------- */
-#game{position:fixed;inset:0;background:#000;z-index:30;cursor:none;touch-action:none}
+#game{position:fixed;inset:0;background:#000;z-index:30;cursor:grab;touch-action:none}#game.arrastando{cursor:grabbing}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .hud{position:absolute;pointer-events:none;color:#fff;text-shadow:0 2px 0 #000a,0 0 8px #0008}
-#hTop{top:10px;left:10px;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 6px 20px #0009;min-width:190px}
-#hTop .lin{display:flex;align-items:center;gap:8px;background:#0b1424e8;font:700 15px var(--body);height:30px}
-#hTop .lin+.lin{border-top:1px solid #ffffff22}
-#hTop .lin i{width:6px;align-self:stretch;display:block}
-#hTop .nm{flex:1;max-width:30vw;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-#hTop .sq{color:var(--accent);font-size:11px;width:10px}
-#hTop .gm{font:18px var(--display);background:#1d3f8f;color:#fff;align-self:stretch;display:grid;place-items:center;min-width:28px}
-#hTop .pt{font:22px var(--display);background:#f2f2ee;color:#0b1424;align-self:stretch;display:grid;place-items:center;min-width:40px}
-#hMsg{top:22%;left:50%;transform:translateX(-50%);text-align:center;font:46px var(--display);white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+/* o placar do Table Tennis Pro: a bandeira e o número grande em cada canto de cima */
+.lado-pl{position:absolute;top:12px;display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none;color:#fff}
+.lado-pl.l0{left:16px}.lado-pl.l1{right:16px}
+.lado-pl .fl{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;font-size:42px;line-height:1;background:#fff;box-shadow:inset 0 -6px 10px #0003,0 4px 10px #0005;overflow:hidden}
+.lado-pl .nm{font:800 13px var(--body);text-shadow:0 2px 3px #000a;max-width:120px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.lado-pl .pt{font:58px/1 var(--display);color:#fff;-webkit-text-stroke:3px #222;paint-order:stroke;text-shadow:0 4px 0 #0005}
+.lado-pl .gm{font:700 13px var(--body);background:#0008;border-radius:99px;padding:1px 8px}
+.lado-pl.saca .fl{outline:4px solid #ffe14a}
+#hMsg{top:6%;left:50%;transform:translateX(-50%);text-align:center;font:34px var(--display);white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
 #hMsg small{display:block;font:700 18px var(--body);opacity:.95;text-transform:none;letter-spacing:0}
 #hMsg.pop{animation:pop .45s ease-out}
 @keyframes pop{0%{transform:translateX(-50%) scale(.4);opacity:0}70%{transform:translateX(-50%) scale(1.12)}100%{transform:translateX(-50%) scale(1)}}
-#hEfeito{left:50%;bottom:56px;transform:translateX(-50%);font:24px var(--display);letter-spacing:.04em;color:#fff;text-transform:uppercase;white-space:nowrap}
-#hEfeito b{font-weight:400;color:var(--accent);margin-left:6px}
-#hEfeito.pop{animation:pop .35s ease-out}
 #hHint{left:50%;bottom:18px;transform:translateX(-50%);font:700 15px var(--body);text-align:center;opacity:.9}
-#hSair{position:absolute;top:10px;right:10px;z-index:4;cursor:pointer}
+#hSair{position:absolute;bottom:10px;right:10px;z-index:4;cursor:pointer}
 .overlay{position:absolute;inset:0;display:grid;place-items:center;background:#000a;padding:16px;z-index:5;cursor:auto}
 .overlay .box{background:#0f2c23f2;border:1px solid #2f6a54;border-radius:14px;padding:20px;width:min(520px,100%);max-height:100%;overflow:auto}
 .overlay h2{font-size:30px;margin-bottom:6px}
@@ -138,10 +135,10 @@ input{background:#081d3b;border-color:#71a8d9}
 .country-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 16px}.country-grid button{padding:8px 4px;font-size:12px}.country-grid b{display:block;font-size:23px}
 .match-preview{background:#071e3c;border:1px solid #548dc6;border-radius:11px;padding:10px 12px;margin:12px 0;color:#dcecff;font-weight:700}
 .progress{display:flex;gap:5px;margin:12px 0}.progress span{flex:1;text-align:center;padding:6px 2px;border-radius:5px;background:#071e3c;font-size:11px;color:#abc9e9}.progress .done{background:#2f8e64;color:#fff}.progress .current{background:#f5b52d;color:#3c2505}
-#hMsg{color:#ffdf55;text-shadow:0 5px 0 #153566,0 8px 20px #000}
+#hMsg{color:#ffe14a;-webkit-text-stroke:2px #3a2a00;paint-order:stroke;text-shadow:0 3px 0 #0006;text-transform:none;font-style:italic}
 #hHint{background:#0b2852d9;padding:6px 14px;border:1px solid #88b7e7;border-radius:99px}
 .overlay .box{background:#0d315eee;border:2px solid #8cbbe8}
-@media(max-width:760px){.hero{grid-template-columns:1fr}.home-art{min-height:180px}.menu-grid{gap:7px}.mode-card{min-height:85px;font-size:20px;padding:9px}.mode-card .ico{font-size:30px}.country-grid{grid-template-columns:repeat(4,1fr)}#hTop{min-width:150px}#hTop .lin{font-size:12px;height:24px}#hTop .pt{font-size:17px;min-width:30px}#hEfeito{font-size:18px}}
+@media(max-width:760px){.hero{grid-template-columns:1fr}.home-art{min-height:180px}.menu-grid{gap:7px}.mode-card{min-height:85px;font-size:20px;padding:9px}.mode-card .ico{font-size:30px}.country-grid{grid-template-columns:repeat(4,1fr)}.lado-pl .fl{width:40px;height:40px;font-size:28px}.lado-pl .pt{font-size:38px}#hMsg{font-size:24px}}
 @media(max-width:440px){.wrap{padding:10px 10px 40px}.brand h1{font-size:15px}.mode-card{font-size:17px}.mode-card small{font-size:10px}}
 </style>
 </head>
@@ -161,7 +158,7 @@ input{background:#081d3b;border-color:#71a8d9}
       <div>
         <div class="game-logo">ARCADE · CAMPEONATO · 1 X 1</div>
         <h2>Tênis<br>de <em>mesa</em></h2>
-        <p class="lead">Mesa oficial, bola de 40 mm com ar e giro de verdade. Leve a raquete com o mouse ou o dedo: ela bate sozinha quando a bola chega, e o seu gesto decide o golpe. Escolha seu país e dispute o topo do mundo.</p>
+        <p class="lead">Arraste a raquete com o mouse ou o dedo e passe por cima da bola para bater. Arraste rápido para a frente para um golpe forte, para o lado para mirar. Escolha seu país e dispute o topo do mundo.</p>
         <div class="menu-grid">
           <button class="mode-card" data-mode="amistoso"><span class="ico">🏓</span><span>Amistoso<small>Uma partida rápida contra o computador</small></span></button>
           <button class="mode-card" data-mode="torneio"><span class="ico">🏆</span><span>Torneio<small>Quatro partidas até a taça</small></span></button>
@@ -179,7 +176,6 @@ input{background:#081d3b;border-color:#71a8d9}
           <div class="progress hidden" id="soloProgress"></div>
           <div class="match-preview" id="soloPreview"></div>
           <button class="primary" id="btnPractice" style="width:100%">Entrar na mesa</button>
-          <label style="margin-top:14px">Sua skin</label><div class="skins" id="hSkins"></div>
         </div></div>
         <div class="panel setup hidden" id="onlineSetup"><div class="lines"></div><div class="in">
           <div class="setup-head"><h2>Com amigos</h2><button class="small ghost" id="btnBackOnline">← Modos</button></div>
@@ -189,7 +185,7 @@ input{background:#081d3b;border-color:#71a8d9}
           <div class="or">ou</div><button id="btnCreate" style="width:100%">Abrir sala nova</button>
           <div class="err" id="hErr"></div>
         </div></div>
-        <div class="panel setup" id="homeHelp"><div class="lines"></div><div class="in"><h2 style="font-size:28px">Como jogar</h2><p class="lead" style="font-size:14px;margin-bottom:0">A raquete acompanha o mouse ou o dedo (a altura vai sozinha) e bate quando a bola, já quicada do seu lado, chega nela. Na hora da batida: empurre para a frente para o top spin (forte demais sai longo), fique parado para bloquear, puxe para trás para cortar e mova para o lado para mirar e dar curva. Clique para jogar a bola e sacar. Leia o giro que vem: top spin sobe se você só bloquear, cortada cai na rede se você não abrir a raquete.</p></div></div>
+        <div class="panel setup" id="homeHelp"><div class="lines"></div><div class="in"><h2 style="font-size:28px">Como jogar</h2><p class="lead" style="font-size:14px;margin-bottom:0">Segure e arraste a raquete (mouse ou dedo). Para sacar, arraste a raquete para a frente passando pela bola. Na troca de bola, a raquete bate sozinha quando a bola chega: arraste para a frente na hora para bater forte, para o lado para mirar. Soltou o mouse, a raquete vai atrás da bola sozinha. Forte demais, a bola sai.</p></div></div>
       </div>
     </div>
   </section>
@@ -203,8 +199,6 @@ input{background:#081d3b;border-color:#71a8d9}
           <div class="lado l1"><h3 style="color:var(--verm)">Lado vermelho</h3><div id="l1"></div><button class="small" data-lado="1">Jogar aqui</button></div>
         </div>
         <div class="bench"><div class="row" style="justify-content:space-between"><b>Na torcida</b><button class="small ghost" data-lado="-1">Sair da mesa</button></div><div id="lN" class="muted" style="margin-top:6px"></div></div>
-        <label style="margin-top:16px">Sua skin</label>
-        <div class="skins" id="lSkins"></div>
       </div></div>
       <div class="panel"><div class="in">
         <h2 style="font-size:26px;margin-bottom:12px">Partida</h2>
@@ -214,14 +208,11 @@ input{background:#081d3b;border-color:#71a8d9}
         <button id="btnPractice2" style="width:100%;margin-top:10px">🤖 Treinar enquanto espera</button>
         <label style="margin-top:18px">Como jogar</label>
         <ul class="keys">
-          <li>A raquete vai para onde está o mouse (no celular, o dedo): para os lados e para a frente ou para trás. A altura vai sozinha atrás da bola.</li>
-          <li>A bola tem que quicar do seu lado antes de você bater. Perto da mesa você pega a bola subindo; mais atrás, você ganha tempo.</li>
-          <li><b>Top spin:</b> empurre o mouse para a frente na batida. A bola mergulha e acelera no quique. Forte demais, sai longa.</li>
-          <li><b>Bloqueio:</b> raquete parada. <b>Cortada:</b> puxe para trás: a bola flutua, freia e fica curta.</li>
-          <li><b>Mira e curva:</b> mexa para o lado (ou pegue a bola com a ponta da raquete).</li>
-          <li><b>Smash:</b> bola alta e gesto forte: reto e rápido.</li>
-          <li><b>Leia o giro:</b> devolver top spin sem empurrar sobe; devolver cortada sem cortar ou levantar cai na rede.</li>
-          <li>Saque: clique (ou espaço) para jogar a bola; a raquete bate na descida com o gesto do momento. Esc pausa.</li>
+          <li>Segure o botão do mouse (ou o dedo) e arraste: a raquete vai junto.</li>
+          <li>Saque: arraste a raquete para a frente passando pela bola (ou dê um toque).</li>
+          <li>A raquete bate sozinha quando a bola chega. Arraste rápido para a frente para bater forte; para o lado, para mirar.</li>
+          <li>Soltou, a raquete vai atrás da bola sozinha.</li>
+          <li>Forte demais ou de lado demais, a bola sai. Esc pausa.</li>
         </ul>
       </div></div>
     </div>
@@ -230,9 +221,9 @@ input{background:#081d3b;border-color:#71a8d9}
 
 <section id="game" class="hidden">
   <canvas id="cv"></canvas>
-  <div class="hud" id="hTop"></div>
+  <div class="lado-pl l0" id="pl0"></div>
+  <div class="lado-pl l1" id="pl1"></div>
   <div class="hud" id="hMsg"></div>
-  <div class="hud" id="hEfeito"></div>
   <div class="hud" id="hHint"></div>
   <button class="small" id="hSair" title="Pausar">⏸</button>
   <div class="overlay hidden" id="pause"><div class="box">
@@ -250,7 +241,6 @@ input{background:#081d3b;border-color:#71a8d9}
 <script src="/socket.io/socket.io.js"></script>
 <script src="/noite.js"></script>
 <script src="/comum.js"></script>
-<script src="/pelada/campo.js"></script>
 <script src="/pingpong/regras.js"></script>
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
 <script type="module" src="/pingpong/jogo.js"></script>

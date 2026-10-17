@@ -6,10 +6,9 @@
 // da mesa, o atrito entre a borracha da bola e o tampo troca velocidade por giro (o top spin acelera e baixa, a
 // cortada freia e chega a voltar). Quem recebe o pacote da batida (posição, velocidade, giro e a hora) calcula o
 // mesmo voo, passo a passo.
-// A raquetada é assistida (como no Table Tennis Pro): o gesto do mouse na hora da batida vira força, efeito e mira, e
-// daí sai o alvo na mesa do outro lado; um resolvedor acha a velocidade que leva a bola até lá com o ar e o giro. O
-// erro vem do próprio gesto (forte demais sai longo, de lado demais sai pela lateral) e do giro de quem mandou a bola
-// (devolver um top spin sem fechar a raquete sobe; uma cortada sem abrir cai na rede).
+// A raquetada é assistida (como no Table Tennis Pro): o arrasto da raquete na hora da batida vira força, efeito e
+// mira, e daí sai o alvo na mesa do outro lado; um resolvedor acha a velocidade que leva a bola até lá com o ar e o
+// giro. O erro vem do próprio arrasto: forte demais sai longo, de lado demais sai pela lateral.
 (function (root) {
   const MESA = { L: 2.74, W: 1.525, H: 0.76, REDE: 0.1525, POSTE: 0.1525 };
   const G = 9.81, R = 0.02, PASSO = 1 / 240;
@@ -152,27 +151,20 @@
 
   // ---------- a raquetada ----------
   // golpe = { frente (m/s da raquete rumo à rede; para trás é negativo), lat (m/s para o lado), off (onde a bola pegou
-  // na raquete, em x) }. frente ~7 é o golpe cheio; acima disso a bola sai longa.
-  //   para a frente: drive e top spin (a raquete fecha e escova a bola); com a bola alta, smash (reto e rápido)
-  //   parado: bloqueio (devolve com o giro que veio, mais fraco)
-  //   para trás: cortada / chop (raquete aberta, a bola sai com giro para trás, mais lenta e curta)
-  //   para o lado: mira e efeito lateral (a bola faz a curva)
+  // na raquete, em x) }. Como no Table Tennis Pro: o arrasto para a frente dá força (e top spin), parado devolve
+  // macio, puxar dá a cortada, para o lado mira e faz a curva; com a bola alta, o arrasto forte é o smash. frente ~7 é o
+  // golpe cheio; acima disso a bola sai longa.
   const FORTE = 7;
   function bater(b, g, lado) {
     const s = S(lado), f = clamp((g.frente || 0) / FORTE, -1, 1.45), fp = clamp(f, 0, 1), fn = clamp(-f, 0, 1), extra = Math.max(0, f - 1);
     const lat = clamp(g.lat || 0, -8, 8), off = g.off || 0;
     const alto = clamp((b.p[1] - MESA.H - 0.18) / 0.32, 0, 1); // bola alta: dá para matar
-    const topIn = topDe(b.w, b.v), ladoIn = b.w ? b.w[1] : 0;
-    const vh = f >= 0 ? 7 + fp * (6.5 + 6 * alto) + extra * 4 : 7 - fn * 3;
-    const top = f >= 0 ? 90 + 470 * fp * (1 - 0.6 * alto * fp) - Math.max(0, -topIn) * 0.15 * (1 - fp) : -(140 + 340 * fn);
-    const tx = b.p[0] * 0.2 + lat * 0.1 + off * 1.05 + ladoIn * 0.0007 * s;
-    const tz = f >= 0 ? -s * (0.5 + 0.72 * fp + 0.55 * extra) : -s * (0.42 + 0.32 * (1 - fn));
-    const w = giroPara(b.p[0], b.p[2], tx, tz, top, -s * clamp(lat / 6, -1, 1) * 240);
-    lancar(b, tx, tz, vh, w);
-    // a leitura do giro que veio: o top spin faz a bola subir (se a raquete não fechou), a cortada derruba (se não abriu)
-    const k = topIn > 0 ? 1 - 1.4 * fp : 1 - 1.6 * fn - 0.6 * fp;
-    b.v[1] += 0.0012 * topIn * Math.max(0, k);
-    return b;
+    const vh = f >= 0 ? 5.2 + fp * (4.4 + 5 * alto) + extra * 3 : 5.2 - fn * 1.8;
+    const top = f >= 0 ? 60 + 300 * fp * (1 - 0.6 * alto * fp) : -(100 + 220 * fn);
+    const tx = b.p[0] * 0.2 + lat * 0.1 + off * 1.05;
+    const tz = f >= 0 ? -s * (0.5 + 0.72 * fp + 0.55 * extra) : -s * (0.45 + 0.3 * (1 - fn));
+    const w = giroPara(b.p[0], b.p[2], tx, tz, top, -s * clamp(lat / 6, -1, 1) * 160);
+    return lancar(b, tx, tz, vh, w);
   }
   // compatível com a raquete: { x, z, vx, vz } (posição e velocidade dela)
   function rebater(b, raq, lado) {
@@ -197,14 +189,17 @@
   // para o outro. golpe = { frente, lat } (ou um número: a mira para os lados, de −1 a 1). Para a frente: saque longo
   // com top; para trás: curto e cortado; para o lado: mira e efeito. Procura a primeira quicada que leva a bola ao
   // alvo do outro lado, baixinha sobre a rede.
-  function sacar(lado, x, golpe = 0) {
+  // z0: de onde a bola sai (distância da rede); o Table Tennis Pro deixa a bola parada em cima da mesa, na frente da
+  // raquete (SAQUE_Z)
+  function sacar(lado, x, golpe = 0, z0 = MESA.L / 2 + 0.1) {
     const g = typeof golpe === "number" ? { frente: 0, lat: golpe * 4 } : golpe || {};
     const s = S(lado), f = clamp((g.frente || 0) / 6, -1, 1), fp = clamp(f, 0, 1), fn = clamp(-f, 0, 1), lat = clamp(g.lat || 0, -8, 8);
-    const p0 = [clamp(x, -0.6, 0.6) * 0.8, MESA.H + 0.2, s * (MESA.L / 2 + 0.1)];
-    const x2 = clamp(p0[0] * 0.3 + lat * 0.14, -0.66, 0.66), z2 = -s * (0.42 + 0.8 * fp);
-    const w = giroPara(p0[0], p0[2], x2, z2, f >= 0 ? 60 + 300 * fp : -(120 + 300 * fn), -s * clamp(lat / 6, -1, 1) * 200);
+    const p0 = [clamp(x, -0.6, 0.6) * 0.8, MESA.H + 0.2, s * z0];
+    const x2 = clamp(p0[0] * 0.3 + lat * 0.14, -0.66, 0.66), z2 = -s * (0.6 + 0.6 * fp);
+    const w = giroPara(p0[0], p0[2], x2, z2, f >= 0 ? 60 + 220 * fp : -(80 + 150 * fn), -s * clamp(lat / 6, -1, 1) * 150);
     let melhor = null;
-    for (const fz of [0.82, 0.7, 0.58, 0.46, 0.34]) for (const T of [0.13, 0.16, 0.2, 0.24, 0.29, 0.35]) {
+    for (const fz of [0.82, 0.7, 0.58, 0.46, 0.34, 0.24]) for (const T of [0.13, 0.16, 0.2, 0.24, 0.29, 0.35]) {
+      if (fz * MESA.L / 2 > z0 - 0.12) continue; // a primeira quicada fica entre a bola e a rede
       const z1 = s * fz * MESA.L / 2, x1 = p0[0] + (x2 - p0[0]) * 0.35;
       const b = { p: p0.slice(), v: resolver(p0, w, [x1, MESA.H + R, z1], T), w: w.slice(), viva: true };
       const r = ensaiar(b, 2, 2.5), [e1, e2] = r.ev;
@@ -215,7 +210,7 @@
     }
     if (melhor) return melhor.b;
     // sem saída (não deve acontecer): o saque reto, sem efeito
-    return sacar(lado, 0, { frente: 0, lat: 0 });
+    return z0 === MESA.L / 2 + 0.1 ? sacar(lado, 0, { frente: 0, lat: 0 }) : sacar(lado, x, golpe);
   }
 
   // ---------- placar ----------
@@ -259,12 +254,11 @@
 
   // ---------- o robô ----------
   // Espera o tempo de reação, prevê onde vai bater (x, altura e o quanto recua), vai até lá (com velocidade máxima e
-  // o erro da dificuldade) e, na hora, escolhe o golpe: a força, a mira e a resposta ao giro que veio (ler o giro é o
-  // que separa o fácil do difícil).
+  // o erro da dificuldade) e, na hora, escolhe o golpe: a força e a mira.
   const DIF = {
-    facil: { vel: 3.2, acel: 22, erro: 0.13, falha: 0.1, forca: [0.5, 4.2], leitura: 0.4, reacao: 0.2, mata: 0.15 },
-    medio: { vel: 4.2, acel: 32, erro: 0.07, falha: 0.05, forca: [1.5, 6], leitura: 0.72, reacao: 0.13, mata: 0.45 },
-    dificil: { vel: 5.5, acel: 45, erro: 0.03, falha: 0.03, forca: [4, 8.2], leitura: 0.95, reacao: 0.07, mata: 0.85 },
+    facil: { vel: 2.6, acel: 18, erro: 0.14, falha: 0.14, forca: [0, 3.5], reacao: 0.24, mata: 0.1 },
+    medio: { vel: 3.6, acel: 28, erro: 0.07, falha: 0.08, forca: [1, 5.5], reacao: 0.15, mata: 0.4 },
+    dificil: { vel: 4.8, acel: 40, erro: 0.03, falha: 0.05, forca: [3, 7.6], reacao: 0.08, mata: 0.8 },
   };
   const casaDo = (lado) => ({ x: 0, z: S(lado) * (MESA.L / 2 + 0.5), y: MESA.H + 0.2 });
   function robo(bot, b, rally, dt, dif = "medio") {
@@ -288,23 +282,21 @@
     bot.z = s * clamp(s * bot.z, 0.3, MESA.L / 2 + 1.5);
     bot.y += (clamp(alvo.y, MESA.H + 0.03, MESA.H + 0.9) - bot.y) * (1 - Math.exp(-dt * 14));
   }
-  // a raquetada do robô: escolhe o golpe e devolve a raquete ({ x, z, vx, vz }) que faz esse golpe
+  // a raquetada do robô: escolhe a força e a mira e devolve a raquete ({ x, z, vx, vz }) que faz esse golpe
   function batidaRobo(bot, b, dif = "medio") {
-    const d = DIF[dif] || DIF.medio, s = S(bot.lado), topIn = topDe(b.w, b.v), alto = b.p[1] - MESA.H > 0.4;
+    const d = DIF[dif] || DIF.medio, s = S(bot.lado), alto = b.p[1] - MESA.H > 0.4;
     let frente = d.forca[0] + Math.random() * (d.forca[1] - d.forca[0]);
-    const le = Math.random() < d.leitura;
     if (alto && Math.random() < d.mata) frente = FORTE * (0.95 + Math.random() * 0.12); // smash
-    else if (topIn < -150) frente = le ? (Math.random() < 0.5 ? -(1.5 + Math.random() * 3) : 4 + Math.random() * 2.5) : Math.random() * 1.2; // cortada: corta de volta ou levanta no top; sem ler, cai
-    else if (topIn > 250 && !le) frente = Math.random() * 0.8; // top spin sem fechar: sobe
-    else if (topIn > 250) frente = Math.max(frente, 2.6);
-    // a bola rápida ou muito girada aperta: mais chance de errar
-    const vel = Math.sqrt(b.v[0] ** 2 + b.v[1] ** 2 + b.v[2] ** 2), pressao = clamp((vel - 9) / 8, 0, 1) + Math.min(1, Math.abs(topIn) / 700);
-    const erra = Math.random() < d.falha + 0.1 * pressao * (1.3 - d.leitura), tx = erra ? (Math.random() < 0.5 ? -1 : 1) * (0.85 + Math.random() * 0.3) : (Math.random() - 0.5) * 1.3;
+    else if (Math.random() < 0.15) frente = -(1 + Math.random() * 3); // de vez em quando, uma cortada
+    // a bola rápida aperta: mais chance de errar
+    const vel = Math.sqrt(b.v[0] ** 2 + b.v[1] ** 2 + b.v[2] ** 2), pressao = clamp((vel - 8) / 7, 0, 1);
+    const erra = Math.random() < d.falha + 0.08 * pressao, tx = erra ? (Math.random() < 0.5 ? -1 : 1) * (0.85 + Math.random() * 0.3) : (Math.random() - 0.5) * 1.3;
     const off = b.p[0] - bot.x, lat = clamp((tx - b.p[0] * 0.2 - off * 1.05) / 0.1, -8, 8);
     return { x: bot.x, z: bot.z, vx: lat, vz: -s * frente };
   }
 
-  const api = { MESA, G, R, AR, QUIQUE, S, FORTE, ARCO, nomeEfeito, kmh, topDe, voar, rolar, julgar, precisa, podeRebater, resolver, ensaiar, lancar, bater, rebater, sacar, novoPlacar, marcar, prever, robo, batidaRobo, casaDo, DIF };
+  const SAQUE_Z = MESA.L / 2 - 0.4;
+  const api = { MESA, SAQUE_Z, G, R, AR, QUIQUE, S, FORTE, ARCO, nomeEfeito, kmh, topDe, voar, rolar, julgar, precisa, podeRebater, resolver, ensaiar, lancar, bater, rebater, sacar, novoPlacar, marcar, prever, robo, batidaRobo, casaDo, DIF };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.PingPong = api;
 })(typeof window !== "undefined" ? window : globalThis);
