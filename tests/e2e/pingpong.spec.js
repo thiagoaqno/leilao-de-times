@@ -21,10 +21,15 @@ test("treino contra o robô: saca pelo clique, rebate com o mouse e o placar and
       else if (b && G.rally && G.rally.quem === 1) mouse("pointermove", b.p[0], 1.62 - (i % 6) * 0.03); // vai até a bola e empurra para a frente
       t.avancar(1 / 30);
     }
-    return { batidas: G.batidas, pts: G.est.placar.pts };
+    const pontosAntes = G.est.placar.pts[0] + G.est.placar.pts[1];
+    for (let i = 0; i < 400 && G.est.placar.pts[0] + G.est.placar.pts[1] === pontosAntes; i++) {
+      if (G.rally && G.rally.quem === 1 && G.bola) mouse("pointermove", G.bola.p[0] >= 0 ? -1.4 : 1.4, 1.6);
+      t.avancar(1 / 30);
+    }
+    return { batidas: G.batidas, pts: G.est.placar.pts, pontosAntes };
   });
   expect(fim.batidas).toBeGreaterThan(2);
-  expect(fim.pts[0] + fim.pts[1]).toBeGreaterThan(2);
+  expect(fim.pts[0] + fim.pts[1]).toBeGreaterThan(fim.pontosAntes);
   expect(erros).toEqual([]);
 });
 

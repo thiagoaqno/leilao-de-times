@@ -8,7 +8,7 @@
   const MESA = { L: 2.74, W: 1.525, H: 0.76, REDE: 0.1525 };
   const G = 9.8, E = 0.86, R = 0.02, PASSO = 1 / 240;
   // efeito w = [lado, top] (de −1 a 1): aceleração que ele dá no ar (m/s²) e o pulo no quique
-  const EF = { lado: 2.6, top: 3, quiqueTop: 1.1, quiqueLado: 0.6 };
+  const EF = { lado: 1.2, top: 1.5, quiqueTop: 0.4, quiqueLado: 0.22 };
   const acel = (w) => [w ? w[0] * EF.lado : 0, w ? -w[1] * EF.top : 0];
   const S = (lado) => (lado ? -1 : 1);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -62,20 +62,20 @@
   // curva do efeito, então ela cai no alvo; o efeito aparece no caminho e no quique).
   function rebater(b, raq, lado) {
     const s = S(lado), frente = Math.max(-2, -s * (raq.vz || 0)), f = Math.tanh(Math.max(0, frente) / 3);
-    const tx = b.p[0] * 0.25 + (raq.vx || 0) * 0.16 + (b.p[0] - raq.x) * 1.25;
-    const tz = -s * (0.75 + 0.38 * f);
-    // O ritmo vem da distância até o alvo e do gesto da raquete. Uma batida neutra
-    // já é rápida; empurrar para a rede encurta o voo, puxar faz a cortada flutuar.
+    const tx = b.p[0] * 0.25 + (raq.vx || 0) * 0.12 + (b.p[0] - raq.x) * 0.9;
+    const tz = -s * (0.7 + 0.25 * f);
+    // A batida comum dá tempo de acompanhar a bola. O gesto ainda muda o ritmo,
+    // mas sem transformar cada devolução num disparo difícil de ler.
     const distancia = Math.hypot(tx - b.p[0], tz - b.p[2]);
-    const velocidade = frente >= 0 ? 4.7 + 1.8 * f : Math.max(3.2, 4.7 + frente * 0.55);
-    const T = clamp(distancia / velocidade, 0.38, 0.78);
-    const w = [clamp((raq.vx || 0) / 3.2, -1, 1) * 0.85, frente > 0 ? f : clamp(frente / 2, -0.8, 0)];
+    const velocidade = frente >= 0 ? 3.6 + 0.9 * f : Math.max(2.9, 3.6 + frente * 0.35);
+    const T = clamp(distancia / velocidade, 0.54, 0.9);
+    const w = [clamp((raq.vx || 0) / 4, -1, 1) * 0.65, frente > 0 ? f * 0.65 : clamp(frente / 2.8, -0.55, 0)];
     return lancar(b, tx, tz, T, w);
   }
   // velocidade para sair de b.p e cair em (tx, tz) em T segundos, com a aceleração do efeito w. A bola não sobe mais
   // que ARCO acima da mesa (senão ela quica alto demais e sai do alcance de quem recebe): encurta o voo (bola mais
   // rápida e reta) até caber, sem deixar ela bater na rede.
-  const ARCO = 0.45;
+  const ARCO = 0.6;
   function lancar(b, tx, tz, T, w = null) {
     const [x, y, z] = b.p, [ax, ay] = acel(w), g = G - ay;
     const vel = (t) => [(tx - x) / t - 0.5 * ax * t, (MESA.H + R - y) / t + 0.5 * g * t, (tz - z) / t];
@@ -93,14 +93,14 @@
   function nomeEfeito(w) {
     if (!w) return "";
     const [l, t] = w;
-    if (t > 0.55) return Math.abs(l) > 0.5 ? "Top spin com curva" : "Top spin";
+    if (t > 0.4) return Math.abs(l) > 0.3 ? "Top spin com curva" : "Top spin";
     if (t < -0.3) return "Cortada";
-    if (Math.abs(l) > 0.5) return "Efeito lateral";
+    if (Math.abs(l) > 0.3) return "Efeito lateral";
     return "";
   }
   // saque: a bola sai da raquete, quica do próprio lado e passa para o outro. ax = mira para os lados (−1 a 1).
   function sacar(lado, x, ax = 0) {
-    const s = S(lado), T2 = 0.47, z1 = s * 0.75, x1 = clamp(x, -0.6, 0.6) * 0.7, x2 = clamp(x1 * 0.3 + ax * 0.55, -0.68, 0.68), z2 = -s * 0.85;
+    const s = S(lado), T2 = 0.54, z1 = s * 0.75, x1 = clamp(x, -0.6, 0.6) * 0.7, x2 = clamp(x1 * 0.3 + ax * 0.55, -0.68, 0.68), z2 = -s * 0.85;
     const vx = (x2 - x1) / T2, vz = (z2 - z1) / T2, vy2 = 0.5 * G * T2, vy1 = -vy2 / E; // depois do quique sobe com vy2
     const z0 = s * (MESA.L / 2 + 0.15), T1 = (z1 - z0) / vz, vy0 = vy1 + G * T1, y0 = MESA.H + R - vy0 * T1 + 0.5 * G * T1 * T1;
     // o quique tira 2% da velocidade horizontal: compensa antes
@@ -155,7 +155,7 @@
   // e manda para fora, pelo lado: quanto mais fácil o robô, mais vezes)
   function batidaRobo(bot, b, dif = "medio") {
     const d = DIF[dif] || DIF.medio, erra = Math.random() < d.falha, tx = erra ? (Math.random() < 0.5 ? -1 : 1) * (0.85 + Math.random() * 0.3) : (Math.random() - 0.5) * 1.1, frente = d.forca[0] + Math.random() * (d.forca[1] - d.forca[0]);
-    return { x: bot.x, z: bot.z, vx: (tx - b.p[0] * 0.25 - (b.p[0] - bot.x) * 1.25) / 0.16, vz: -S(bot.lado) * frente };
+    return { x: bot.x, z: bot.z, vx: (tx - b.p[0] * 0.25 - (b.p[0] - bot.x) * 0.9) / 0.12, vz: -S(bot.lado) * frente };
   }
 
   const api = { MESA, G, R, S, EF, nomeEfeito, voar, julgar, precisa, podeRebater, rebater, lancar, sacar, novoPlacar, marcar, robo, batidaRobo, DIF };

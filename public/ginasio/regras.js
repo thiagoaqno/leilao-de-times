@@ -24,7 +24,7 @@
   const DIFICULDADES = ["facil", "normal", "dificil"];
   const PERFIL_ROBO = [
     { reacao: [0.45, 0.75], foge: 0.3, guarda: 0.12, erro: 0.38, pausa: [0.9, 1.6], lead: 0.3, pune: 0.25 },
-    { reacao: [0.32, 0.6], foge: 0.35, guarda: 0.18, erro: 0.23, pausa: [0.6, 1.15], lead: 0.6, pune: 0.5 },
+    { reacao: [0.42, 0.72], foge: 0.31, guarda: 0.12, erro: 0.3, pausa: [0.85, 1.45], lead: 0.4, pune: 0.3 },
     { reacao: [0.18, 0.3], foge: 0.72, guarda: 0.3, erro: 0.04, pausa: [0.08, 0.25], lead: 1, pune: 1 },
   ];
   const VEL_MIN = 2.2, VEL_MAX = 5.2; // casas por segundo (velocidade)

@@ -349,9 +349,9 @@ function entidadesVisuais(agora) {
 function medirRitmo(dt) {
   if (ritmo.decidido || S?.phase !== "play" || !cena3d.ok || dt <= 0) return;
   ritmo.n++; ritmo.soma += dt;
-  if (ritmo.n < 150) return;
+  if (ritmo.n < 60) return;
   ritmo.decidido = true;
-  if (ritmo.soma / ritmo.n > 0.045) definirLeve(true);
+  if (ritmo.soma / ritmo.n > 0.028) definirLeve(true);
 }
 function desenhar(agora = relogio.agora(), dt = 0) {
   ajustarCanvas();

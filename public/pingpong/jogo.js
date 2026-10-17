@@ -297,7 +297,7 @@ function marcarPonto(vence, motivo) {
   const est = G.est, r = P.marcar(est.placar, vence);
   G.rally = null;
   est.ultimo = { lado: vence, motivo, nome: G.nomes[vence], t: agora() };
-  est.prontoEm = agora() + (r.fimGame ? 1600 : 750);
+  est.prontoEm = agora() + (r.fimGame ? 1800 : 1000);
   if (r.fim) est.phase = "fim";
   aoPonto(est.ultimo);
   if (r.fim) mostrarFim();
@@ -400,7 +400,7 @@ function passo(dt) {
     P.robo(G.bot, b, G.rally, dt, G.dif);
     Object.assign(G.raq[1], { x: G.bot.x, z: G.bot.z, vx: G.bot.vx });
     G.raq[1].y = lerp(G.raq[1].y, b && G.rally && G.rally.quem === 0 ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.95) : MESA.H + 0.18, 1 - Math.exp(-dt * 10));
-    if (podeSacar(1) && agora() > estado().prontoEm + 250) novaBatida(P.sacar(1, G.bot.x, (Math.random() - 0.5) * 1.6), 1, true);
+    if (podeSacar(1) && agora() > estado().prontoEm + 400) novaBatida(P.sacar(1, G.bot.x, (Math.random() - 0.5) * 1.6), 1, true);
   }
   // a raquete do outro (online): vai até onde ele mandou
   for (const l of [0, 1]) { const r = G.raq[l]; if (l !== G.eu && r.alvo) { const k = 1 - Math.exp(-dt * 18); r.x = lerp(r.x, r.alvo.x, k); r.y = lerp(r.y, r.alvo.y, k); r.z = lerp(r.z, r.alvo.z, k); } }
