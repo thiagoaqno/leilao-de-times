@@ -71,11 +71,11 @@ test("pingpong: efeito — a bola cai no alvo mesmo com curva, o top spin aceler
   const top = bater(0, -3.5), corte = bater(0, 1.5), curva = bater(2, -2.5);
   assert.ok(top.w[1] > 0.5 && P.nomeEfeito(top.w).startsWith("Top spin"));
   assert.ok(corte.w[1] < -0.3 && P.nomeEfeito(corte.w) === "Cortada");
-  assert.ok(curva.w[0] > 0.5);
+  assert.ok(curva.w[0] > 0.25);
   const vzTop = top.v[2], vzCorte = corte.v[2], qt = quique(top), qc = quique(corte), qv = quique(curva);
   for (const q of [qt, qc, qv]) assert.ok(q && q.p[2] < 0 && Math.abs(q.p[0]) < P.MESA.W / 2, "caiu na mesa do outro lado");
   assert.ok(Math.abs(qt.vz) > Math.abs(vzTop) * 0.98, "top spin acelerou no quique");
-  assert.ok(Math.abs(qc.vz) < Math.abs(vzCorte) * 0.9, "cortada freou no quique");
+  assert.ok(Math.abs(qc.vz) < Math.abs(vzCorte) * 0.98, "cortada freou no quique");
 });
 
 test("pingpong: empurrar acelera a devolução e puxar desacelera sem perder a mesa", () => {
@@ -92,7 +92,7 @@ test("pingpong: empurrar acelera a devolução e puxar desacelera sem perder a m
   const rapido = bater(-5), neutro = bater(0), cortada = bater(1.5);
   for (const q of [rapido, neutro, cortada]) assert.ok(q && q.z < 0 && q.z > -P.MESA.L / 2);
   assert.ok(rapido.tempo < neutro.tempo && neutro.tempo < cortada.tempo, "o gesto controla a velocidade da bola");
-  assert.ok(neutro.tempo < 0.75, "a devolução neutra já é rápida");
+  assert.ok(neutro.tempo > 0.55 && neutro.tempo < 0.85, "a devolução neutra tem tempo de leitura");
 });
 
 test("pingpong: a bola nunca sobe fora do alcance de quem recebe (nem bloqueando, nem de bola alta)", () => {

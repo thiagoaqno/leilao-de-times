@@ -96,7 +96,7 @@ function iniciarCena3d() {
     const sol = new THREE.DirectionalLight(0xffffff, 0.43 * Math.PI / 0.89);
     sol.position.set(-4, 10, -2.5); sol.target.position.set(0, 0, 0);
     Object.assign(sol.shadow.camera, { left: -12, right: 12, top: 10, bottom: -10, near: 1, far: 30 });
-    sol.shadow.camera.updateProjectionMatrix(); sol.shadow.mapSize.set(2048, 2048); sol.shadow.bias = -0.002;
+    sol.shadow.camera.updateProjectionMatrix(); sol.shadow.mapSize.set(1024, 1024); sol.shadow.bias = -0.002;
     scene.add(ambiente, sol, sol.target);
     // o degradê do sombreado chapado: três tons, sem passagem suave
     const degrade = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);

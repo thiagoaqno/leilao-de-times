@@ -83,6 +83,13 @@ test("ginasio: seletor dos 649 Pokemon (com Unova) e sprites carregados em parti
   const erros = []; page.on("pageerror", (e) => erros.push(e.message));
   await abrir(page, "pokemon");
   await page.locator('#meuTime [data-escolher="0"]').click();
+  const cartao = page.locator('#dexLista [data-bicho="bulbasaur"]');
+  await expect(cartao).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const el = document.querySelector('#dexLista [data-bicho="bulbasaur"]');
+    return el && el.isConnected ? getComputedStyle(el).backgroundColor : null;
+  })).toBe("rgb(41, 35, 61)");
+  await expect(cartao).toHaveCSS("color", "rgb(248, 243, 255)");
   await expect(page.locator("#dexPagina")).toHaveText("1 / 28");
   await expect(page.locator("#dexGeracao")).toBeVisible();
   await page.locator("#dexGeracao").selectOption("4"); await expect(page.locator("#dexPagina")).toHaveText("1 / 7");

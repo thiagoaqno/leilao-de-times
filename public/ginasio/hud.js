@@ -101,7 +101,12 @@ $("btnRevanche").onclick = async () => { $("resultado").close(); if (await act("
 function quadro(agora) {
   const dt = Math.min(0.05, Math.max(0, (agora - ultimoQuadro) / 1000)); ultimoQuadro = agora;
   if (!document.hidden) {
-    prever(dt); desenhar(relogio.agora(), dt); atualizarHud(relogio.agora()); atualizarHudPokemon(relogio.agora());
+    prever(dt);
+    const t = relogio.agora();
+    if (S?.phase === "play" || !document.body.classList.contains("pokemon-lobby") || agora - (quadro.ultimoLobby || 0) >= 66) {
+      quadro.ultimoLobby = agora;
+      desenhar(t, dt); atualizarHud(t); atualizarHudPokemon(t);
+    }
   }
   requestAnimationFrame(quadro);
 }
