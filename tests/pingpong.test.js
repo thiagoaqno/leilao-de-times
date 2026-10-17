@@ -78,6 +78,23 @@ test("pingpong: efeito — a bola cai no alvo mesmo com curva, o top spin aceler
   assert.ok(Math.abs(qc.vz) < Math.abs(vzCorte) * 0.9, "cortada freou no quique");
 });
 
+test("pingpong: empurrar acelera a devolução e puxar desacelera sem perder a mesa", () => {
+  const bater = (vz) => {
+    const b = { p: [0, 0.95, 1.55], v: [0, 0, 0], viva: true };
+    P.rebater(b, { x: 0, z: 1.55, vx: 0, vz }, 0);
+    let tempo = 0, quique = null;
+    for (let i = 0; i < 240 && b.viva && !quique; i++) {
+      tempo += 1 / 240;
+      for (const e of P.voar(b, 1 / 240)) if (e.tipo === "quique") quique = { z: b.p[2], tempo };
+    }
+    return quique;
+  };
+  const rapido = bater(-5), neutro = bater(0), cortada = bater(1.5);
+  for (const q of [rapido, neutro, cortada]) assert.ok(q && q.z < 0 && q.z > -P.MESA.L / 2);
+  assert.ok(rapido.tempo < neutro.tempo && neutro.tempo < cortada.tempo, "o gesto controla a velocidade da bola");
+  assert.ok(neutro.tempo < 0.75, "a devolução neutra já é rápida");
+});
+
 test("pingpong: a bola nunca sobe fora do alcance de quem recebe (nem bloqueando, nem de bola alta)", () => {
   const H = P.MESA.H;
   for (const y0 of [0.8, 0.95, 1.2, 1.45]) for (const vz of [-6, -3, 0, 1, 2]) for (const vx of [-3, 0, 3]) {

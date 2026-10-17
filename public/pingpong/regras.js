@@ -62,10 +62,14 @@
   // curva do efeito, então ela cai no alvo; o efeito aparece no caminho e no quique).
   function rebater(b, raq, lado) {
     const s = S(lado), frente = Math.max(-2, -s * (raq.vz || 0)), f = Math.tanh(Math.max(0, frente) / 3);
-    const tx = b.p[0] * 0.3 + (raq.vx || 0) * 0.2 + (b.p[0] - raq.x) * 1.6;
-    const tz = -s * (0.5 + 0.8 * f);
-    const T = frente < 0 ? 1.05 : 0.9 - 0.42 * f; // puxando para trás: balão devagar; empurrando forte: bola rápida
-    const w = [clamp((raq.vx || 0) / 2.5, -1, 1) * 0.9, frente > 0 ? f : clamp(frente / 2, -0.8, 0)];
+    const tx = b.p[0] * 0.25 + (raq.vx || 0) * 0.16 + (b.p[0] - raq.x) * 1.25;
+    const tz = -s * (0.75 + 0.38 * f);
+    // O ritmo vem da distância até o alvo e do gesto da raquete. Uma batida neutra
+    // já é rápida; empurrar para a rede encurta o voo, puxar faz a cortada flutuar.
+    const distancia = Math.hypot(tx - b.p[0], tz - b.p[2]);
+    const velocidade = frente >= 0 ? 4.7 + 1.8 * f : Math.max(3.2, 4.7 + frente * 0.55);
+    const T = clamp(distancia / velocidade, 0.38, 0.78);
+    const w = [clamp((raq.vx || 0) / 3.2, -1, 1) * 0.85, frente > 0 ? f : clamp(frente / 2, -0.8, 0)];
     return lancar(b, tx, tz, T, w);
   }
   // velocidade para sair de b.p e cair em (tx, tz) em T segundos, com a aceleração do efeito w. A bola não sobe mais
@@ -78,6 +82,9 @@
     const apice = (v) => (v[1] > 0 ? y + (v[1] * v[1]) / (2 * g) : y) - MESA.H;
     const passaRede = (v) => { const tn = -z / v[2]; return !(tn > 0) || y + v[1] * tn - 0.5 * g * tn * tn > MESA.H + MESA.REDE + 0.04; };
     let v = vel(T);
+    // Um gesto rápido pode produzir um voo baixo demais para a rede. Alongamos
+    // só o necessário, antes de limitar o arco para a bola continuar alcançável.
+    for (let k = 0; k < 20 && !passaRede(v) && T < 0.95; k++) { T *= 1.035; v = vel(T); }
     for (let k = 0; k < 20 && apice(v) > ARCO && T > 0.3; k++) { const n = vel(T * 0.93); if (!passaRede(n)) break; T *= 0.93; v = n; }
     b.v = v; b.w = w; b.viva = true;
     return b;
@@ -93,7 +100,7 @@
   }
   // saque: a bola sai da raquete, quica do próprio lado e passa para o outro. ax = mira para os lados (−1 a 1).
   function sacar(lado, x, ax = 0) {
-    const s = S(lado), T2 = 0.55, z1 = s * 0.75, x1 = clamp(x, -0.6, 0.6) * 0.7, x2 = clamp(x1 * 0.3 + ax * 0.55, -0.68, 0.68), z2 = -s * 0.85;
+    const s = S(lado), T2 = 0.47, z1 = s * 0.75, x1 = clamp(x, -0.6, 0.6) * 0.7, x2 = clamp(x1 * 0.3 + ax * 0.55, -0.68, 0.68), z2 = -s * 0.85;
     const vx = (x2 - x1) / T2, vz = (z2 - z1) / T2, vy2 = 0.5 * G * T2, vy1 = -vy2 / E; // depois do quique sobe com vy2
     const z0 = s * (MESA.L / 2 + 0.15), T1 = (z1 - z0) / vz, vy0 = vy1 + G * T1, y0 = MESA.H + R - vy0 * T1 + 0.5 * G * T1 * T1;
     // o quique tira 2% da velocidade horizontal: compensa antes
@@ -121,7 +128,7 @@
   // ---------- o robô ----------
   // Prevê onde a bola cruza a linha dele, vai até lá (com velocidade máxima e erro da dificuldade) e, na hora,
   // escolhe um alvo no lado de lá e mexe a raquete do jeito que manda a bola para lá.
-  const DIF = { facil: { vel: 2.2, erro: 0.16, forca: [0.8, 2.2], falha: 0.2 }, medio: { vel: 3.2, erro: 0.08, forca: [1.4, 3.2], falha: 0.11 }, dificil: { vel: 4.5, erro: 0.035, forca: [2, 4.5], falha: 0.05 } };
+  const DIF = { facil: { vel: 2.8, acel: 20, erro: 0.16, forca: [0.8, 2.2], falha: 0.12 }, medio: { vel: 4.0, acel: 30, erro: 0.08, forca: [1.4, 3.2], falha: 0.06 }, dificil: { vel: 5.2, acel: 42, erro: 0.035, forca: [2, 4.5], falha: 0.025 } };
   function prever(b, rally, lado, zLinha) {
     const c = { p: b.p.slice(), v: b.v.slice(), w: b.w && b.w.slice(), viva: true }, r = { ...rally, quiques: rally.quiques.slice() };
     for (let i = 0; i < 400 && c.viva; i++) {
@@ -133,17 +140,22 @@
   }
   function robo(bot, b, rally, dt, dif = "medio") {
     const d = DIF[dif] || DIF.medio, s = S(bot.lado), zLinha = s * (MESA.L / 2 + 0.3);
-    let alvoX = 0;
-    if (b && b.viva && rally && rally.quem !== bot.lado) { const pv = prever(b, rally, bot.lado, zLinha); if (pv) alvoX = pv.x + bot.desvio; }
-    else bot.desvio = (Math.random() - 0.5) * 2 * d.erro * 3;
-    const dx = clamp(alvoX - bot.x, -d.vel * dt, d.vel * dt);
-    bot.vx = dx / Math.max(dt, 1e-3); bot.x += dx; bot.z = zLinha; bot.vz = 0;
+    if (bot.rallyVisto !== rally) { bot.rallyVisto = rally; bot.desvio = (Math.random() - 0.5) * 2 * d.erro * 3; bot.preverEm = 0; }
+    bot.preverEm = (bot.preverEm || 0) - dt;
+    if (bot.preverEm <= 0) {
+      bot.preverEm = 0.055; // não simular o voo inteiro a cada quadro
+      const pv = b && b.viva && rally && rally.quem !== bot.lado ? prever(b, rally, bot.lado, zLinha) : null;
+      bot.alvoX = pv ? clamp(pv.x + bot.desvio, -1.25, 1.25) : 0;
+    }
+    const alvoX = bot.alvoX || 0, desejoV = clamp((alvoX - bot.x) * 9, -d.vel, d.vel);
+    bot.vx += clamp(desejoV - bot.vx, -d.acel * dt, d.acel * dt);
+    bot.x = clamp(bot.x + bot.vx * dt, -1.25, 1.25); bot.z = zLinha; bot.vz = 0;
   }
   // a raquetada do robô: escolhe um alvo e devolve a velocidade de raquete que leva a bola até ele (às vezes ele erra
   // e manda para fora, pelo lado: quanto mais fácil o robô, mais vezes)
   function batidaRobo(bot, b, dif = "medio") {
     const d = DIF[dif] || DIF.medio, erra = Math.random() < d.falha, tx = erra ? (Math.random() < 0.5 ? -1 : 1) * (0.85 + Math.random() * 0.3) : (Math.random() - 0.5) * 1.1, frente = d.forca[0] + Math.random() * (d.forca[1] - d.forca[0]);
-    return { x: bot.x, z: bot.z, vx: (tx - b.p[0] * 0.3 - (b.p[0] - bot.x) * 1.6) / 0.2, vz: -S(bot.lado) * frente };
+    return { x: bot.x, z: bot.z, vx: (tx - b.p[0] * 0.25 - (b.p[0] - bot.x) * 1.25) / 0.16, vz: -S(bot.lado) * frente };
   }
 
   const api = { MESA, G, R, S, EF, nomeEfeito, voar, julgar, precisa, podeRebater, rebater, lancar, sacar, novoPlacar, marcar, robo, batidaRobo, DIF };

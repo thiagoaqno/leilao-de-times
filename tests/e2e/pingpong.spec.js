@@ -9,6 +9,7 @@ test.setTimeout(120000);
 test("treino contra o robô: saca pelo clique, rebate com o mouse e o placar anda", async ({ page }) => {
   const erros = []; page.on("pageerror", (e) => erros.push(String(e)));
   await page.goto("/pingpong/#debug");
+  await page.click('[data-mode="amistoso"]');
   await page.click("#btnPractice");
   await page.waitForFunction(() => window.__pingpong && __pingpong.G.active);
   const fim = await page.evaluate(() => {
@@ -25,4 +26,40 @@ test("treino contra o robô: saca pelo clique, rebate com o mouse e o placar and
   expect(fim.batidas).toBeGreaterThan(2);
   expect(fim.pts[0] + fim.pts[1]).toBeGreaterThan(2);
   expect(erros).toEqual([]);
+});
+
+test("torneio guarda país e etapa, e o menu online continua acessível", async ({ page }) => {
+  await page.goto("/pingpong/");
+  await page.click('[data-mode="torneio"]');
+  await page.click('[data-country="jp"]');
+  await page.evaluate(() => localStorage.setItem("pingpong:campanha:torneio:jp", JSON.stringify(2)));
+  await page.reload();
+  await page.click('[data-mode="torneio"]');
+  await expect(page.locator("#soloPreview")).toContainText("Japão");
+  await expect(page.locator("#soloProgress .done")).toHaveCount(2);
+  await page.click('[data-mode="online"]');
+  await expect(page.locator("#btnCreate")).toBeVisible();
+  await expect(page.locator("#btnJoin")).toBeVisible();
+  await page.goto("/pingpong/?sala=ABCDE");
+  await expect(page.locator("#hCode")).toHaveValue("ABCDE");
+  await expect(page.locator("#btnJoin")).toBeVisible();
+});
+
+test("raquete acompanha o mouse da borda até perto da rede", async ({ page }) => {
+  await page.goto("/pingpong/#debug");
+  await page.click('[data-mode="amistoso"]');
+  await page.click("#btnPractice");
+  await page.waitForFunction(() => window.__pingpong && __pingpong.G.active);
+  const posicoes = await page.evaluate(() => {
+    const t = __pingpong, jogo = document.getElementById("game");
+    const mover = (z) => {
+      const p = t.tela(0, z);
+      jogo.dispatchEvent(new PointerEvent("pointermove", { clientX: p.x, clientY: p.y, bubbles: true }));
+      t.avancar(1 / 30);
+      return t.G.raq[0].z;
+    };
+    return [mover(1.6), mover(0.25)];
+  });
+  expect(posicoes[0]).toBeGreaterThan(1.4);
+  expect(posicoes[1]).toBeLessThan(0.4);
 });

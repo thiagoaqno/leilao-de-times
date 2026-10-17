@@ -9,7 +9,7 @@ import { canvasTex, M } from "/pelada/tex.js";
 
 const P = window.PingPong, C = window.Campo, { MESA } = P, { $, h, store } = Comum;
 const toast = Comum.criarToast(3000), socket = io("/pingpong"), relogio = Comum.relogio(), act = Comum.criarAct(socket, toast);
-const COR = ["#2f80ed", "#e0322f"], KIT = ["celeste", "rubronegro"], NOME_LADO = ["azul", "vermelho"];
+const COR = ["#398ef0", "#ee4c4f"], KIT = ["celeste", "rubronegro"], NOME_LADO = ["azul", "vermelho"];
 const DIFS = [["facil", "😌 Fácil"], ["medio", "🙂 Médio"], ["dificil", "😤 Difícil"]], BOT_SKINS = ["steve", "pikachu", "shrek", "naruto", "woody"];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + (b - a) * k;
 let S = null, ME = null, urlCode = new URLSearchParams(location.search).get("sala");
@@ -25,10 +25,10 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
-const scene = new THREE.Scene(); scene.background = new THREE.Color(0x10151c); scene.fog = new THREE.Fog(0x10151c, 12, 30);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x152847); scene.fog = new THREE.Fog(0x152847, 13, 32);
 const cam = new THREE.PerspectiveCamera(50, 1, 0.05, 80);
 configurarBonecos({ scene });
-scene.add(new THREE.HemisphereLight(0xe8eef8, 0x3a2a1a, 1.1));
+scene.add(new THREE.HemisphereLight(0xe8f4ff, 0x9e4640, 1.3));
 const luz = new THREE.SpotLight(0xfff4e0, 60, 14, 0.75, 0.45); luz.position.set(0, 6, 0); luz.target.position.set(0, 0, 0); luz.castShadow = true;
 luz.shadow.mapSize.set(1024, 1024); luz.shadow.bias = -0.0005; scene.add(luz, luz.target);
 function resize() { renderer.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); }
@@ -36,20 +36,18 @@ addEventListener("resize", resize);
 
 (function ginasio() {
   const add = (o) => (scene.add(o), o);
-  // piso de taco, as placas azuis em volta da área de jogo e as paredes escuras
-  const taco = canvasTex(256, 256, (x, w, hh, r) => { for (let j = 0; j < 8; j++) for (let i = 0; i < 2; i++) { x.fillStyle = `hsl(${28 + r() * 6},${45 + r() * 10}%,${36 + r() * 8}%)`; x.fillRect(i * 128 + (j % 2) * 64, j * 32, 128, 31); } }, true);
-  taco.repeat.set(10, 10);
-  const chao = add(new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ map: taco, roughness: 0.55 }))); chao.rotation.x = -Math.PI / 2; chao.receiveShadow = true;
-  const quadra = add(new THREE.Mesh(new THREE.PlaneGeometry(7, 12), M(0xa8452e, { roughness: 0.8 }))); quadra.rotation.x = -Math.PI / 2; quadra.position.y = 0.003; quadra.receiveShadow = true;
-  const placa = canvasTex(256, 64, (x, w, hh) => { x.fillStyle = "#1d3f8c"; x.fillRect(0, 0, w, hh); x.fillStyle = "#fff"; x.font = "bold 28px Figtree, Arial"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("GALERA 🏓", w / 2, hh / 2); });
+  // Arena clara: piso coral, barreiras azuis e mesa azul em primeiro plano.
+  const chao = add(new THREE.Mesh(new THREE.PlaneGeometry(30, 30), M(0xe66550, { roughness: 0.82 }))); chao.rotation.x = -Math.PI / 2; chao.receiveShadow = true;
+  const quadra = add(new THREE.Mesh(new THREE.PlaneGeometry(7, 12), M(0xf0785c, { roughness: 0.84 }))); quadra.rotation.x = -Math.PI / 2; quadra.position.y = 0.003; quadra.receiveShadow = true;
+  const placa = canvasTex(256, 64, (x, w, hh) => { x.fillStyle = "#1655a0"; x.fillRect(0, 0, w, hh); x.fillStyle = "#e8f4ff"; x.font = "bold 27px Figtree, Arial"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("GALERA  ★  40", w / 2, hh / 2); });
   const mPlaca = new THREE.MeshStandardMaterial({ map: placa });
   for (let i = -3; i <= 3; i++) for (const [x, z, ry] of [[i * 1.0, 6, 0], [i * 1.0, -6, Math.PI], [3.5, i * 1.7, -Math.PI / 2], [-3.5, i * 1.7, Math.PI / 2]]) {
     const p = add(new THREE.Mesh(new THREE.BoxGeometry(i === 0 && Math.abs(z) < 1 ? 0 : 0.98, 0.7, 0.03), mPlaca)); p.position.set(x, 0.35, z); p.rotation.y = ry;
   }
-  for (const [x, z, ry] of [[0, -12, 0], [0, 12, Math.PI], [-12, 0, Math.PI / 2], [12, 0, -Math.PI / 2]]) { const w = add(new THREE.Mesh(new THREE.PlaneGeometry(24, 9), M(0x1b2430, { roughness: 0.9 }))); w.position.set(x, 4.5, z); w.rotation.y = ry; }
-  // a mesa: tampo verde com as linhas brancas, pés e a rede com os postes
-  const tampo = canvasTex(256, 460, (x, w, hh) => { x.fillStyle = "#1f5c48"; x.fillRect(0, 0, w, hh); x.strokeStyle = "#f6f6f2"; x.lineWidth = 6; x.strokeRect(3, 3, w - 6, hh - 6); x.lineWidth = 2; x.beginPath(); x.moveTo(w / 2, 0); x.lineTo(w / 2, hh); x.stroke(); });
-  const mesa = add(new THREE.Mesh(new THREE.BoxGeometry(MESA.W, 0.03, MESA.L), [M(0x173f32), M(0x173f32), new THREE.MeshStandardMaterial({ map: tampo, roughness: 0.45 }), M(0x173f32), M(0xf6f6f2), M(0xf6f6f2)]));
+  for (const [x, z, ry] of [[0, -12, 0], [0, 12, Math.PI], [-12, 0, Math.PI / 2], [12, 0, -Math.PI / 2]]) { const w = add(new THREE.Mesh(new THREE.PlaneGeometry(24, 9), M(0x192c4e, { roughness: 0.9 }))); w.position.set(x, 4.5, z); w.rotation.y = ry; }
+  // Mesa azul com linhas brancas e rede preta.
+  const tampo = canvasTex(256, 460, (x, w, hh) => { x.fillStyle = "#3766aa"; x.fillRect(0, 0, w, hh); x.strokeStyle = "#ffffff"; x.lineWidth = 6; x.strokeRect(3, 3, w - 6, hh - 6); x.lineWidth = 2; x.beginPath(); x.moveTo(w / 2, 0); x.lineTo(w / 2, hh); x.stroke(); });
+  const mesa = add(new THREE.Mesh(new THREE.BoxGeometry(MESA.W, 0.03, MESA.L), [M(0x143c76), M(0x143c76), new THREE.MeshStandardMaterial({ map: tampo, roughness: 0.48 }), M(0x143c76), M(0xffffff), M(0xffffff)]));
   mesa.position.y = MESA.H - 0.015; mesa.receiveShadow = mesa.castShadow = true;
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const pe = add(new THREE.Mesh(new THREE.BoxGeometry(0.05, MESA.H - 0.03, 0.05), M(0x22262c, { metalness: 0.5 }))); pe.position.set(sx * (MESA.W / 2 - 0.15), (MESA.H - 0.03) / 2, sz * (MESA.L / 2 - 0.3)); pe.castShadow = true; }
   const telaT = canvasTex(32, 32, (x, w) => { x.strokeStyle = "#e8e8e8"; x.lineWidth = 2; x.strokeRect(0, 0, w, w); }, true); telaT.repeat.set((MESA.W + 0.3) / 0.02, MESA.REDE / 0.02);
@@ -61,8 +59,8 @@ addEventListener("resize", resize);
 
 const BOLA_R = 0.028; // um pouco maior que a de verdade (2 cm), para dar para ver
 // a bola tem uma faixa branca, para dar para ver ela girando com o efeito
-const bolaTex = canvasTex(64, 32, (x, w, hh) => { x.fillStyle = "#ff8a1f"; x.fillRect(0, 0, w, hh); x.fillStyle = "#fff3e0"; x.fillRect(0, hh * 0.42, w, hh * 0.16); x.fillRect(w * 0.47, 0, w * 0.06, hh); });
-const bola = new THREE.Mesh(new THREE.SphereGeometry(BOLA_R, 16, 12), new THREE.MeshStandardMaterial({ map: bolaTex, roughness: 0.4, emissive: 0x3a1500 }));
+const bolaTex = canvasTex(64, 32, (x, w, hh) => { x.fillStyle = "#fff8e8"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ffcb8b"; x.fillRect(0, hh * 0.42, w, hh * 0.09); });
+const bola = new THREE.Mesh(new THREE.SphereGeometry(BOLA_R, 16, 12), new THREE.MeshStandardMaterial({ map: bolaTex, roughness: 0.4, emissive: 0x2a1a09 }));
 bola.castShadow = true; scene.add(bola);
 // rastro da bola com efeito: vermelho no top spin, azul na cortada, roxo no lateral (mais forte, mais visível)
 const RASTRO = 14, rastroGeo = new THREE.BufferGeometry(); rastroGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(RASTRO * 3), 3));
@@ -74,7 +72,7 @@ sombra.rotation.x = -Math.PI / 2; scene.add(sombra);
 function raquete() {
   const g = new THREE.Group(), lamina = new THREE.Group(); g.add(lamina);
   const disco = (cor, z) => { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.004, 24), M(cor, { roughness: 0.7 })); d.rotation.x = Math.PI / 2; d.position.z = z; d.castShadow = true; lamina.add(d); };
-  disco(0xc62828, -0.004); disco(0x151515, 0.004);
+  disco(0xe72d35, -0.004); disco(0x151515, 0.004);
   const madeira = new THREE.Mesh(new THREE.CylinderGeometry(0.081, 0.081, 0.005, 24), M(0xc89a5a)); madeira.rotation.x = Math.PI / 2; lamina.add(madeira);
   const cabo = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.1, 0.022), M(0x8a5a2b)); cabo.position.y = -0.12; lamina.add(cabo);
   g.scale.setScalar(1.5); scene.add(g); return g;
@@ -114,10 +112,43 @@ const Som = (() => {
 function show(id) { for (const s of ["home", "lobby"]) $(s).classList.toggle("hidden", s !== id); $("game").classList.toggle("hidden", id !== "game"); $("bar").classList.toggle("hidden", id === "game"); }
 const seg = (el, ops, atual, attr, dis = "") => ($(el).innerHTML = ops.map(([v, t]) => `<button ${attr}="${v}" class="${String(atual) === String(v) ? "on" : ""}" ${dis}>${t}</button>`).join(""));
 const skinBotoes = (atual) => Object.entries(C.SKINS).map(([k, s]) => `<button data-skin="${k}" class="${k === (atual || "padrao") ? "on" : ""}"><i>${s.emoji}</i>${h(s.name)}</button>`).join("");
-function telaInicial() { seg("hDif", DIFS, store.get("pingpong:dif") || "medio", "data-hdif"); $("hSkins").innerHTML = skinBotoes(store.get("galera:skin")); }
+const PAISES = [["br", "🇧🇷", "Brasil"], ["ar", "🇦🇷", "Argentina"], ["us", "🇺🇸", "Estados Unidos"], ["ca", "🇨🇦", "Canadá"], ["jp", "🇯🇵", "Japão"], ["cn", "🇨🇳", "China"], ["kr", "🇰🇷", "Coreia do Sul"], ["in", "🇮🇳", "Índia"], ["de", "🇩🇪", "Alemanha"], ["fr", "🇫🇷", "França"], ["gb", "🇬🇧", "Reino Unido"], ["se", "🇸🇪", "Suécia"], ["es", "🇪🇸", "Espanha"], ["it", "🇮🇹", "Itália"], ["au", "🇦🇺", "Austrália"], ["ng", "🇳🇬", "Nigéria"]];
+const RODADAS = { amistoso: 1, torneio: 4, mundial: 8 }, TITULOS = { amistoso: "Amistoso", torneio: "Torneio", mundial: "Campeonato Mundial" };
+let modoSolo = "amistoso";
+const pais = (id) => PAISES.find((p) => p[0] === id) || PAISES[0];
+const paisEscolhido = () => store.get("pingpong:pais") || "br";
+const chaveCampanha = (modo) => `pingpong:campanha:${modo}:${paisEscolhido()}`;
+const etapa = (modo) => Math.max(0, Math.min(RODADAS[modo] - 1, +(store.get(chaveCampanha(modo)) || 0)));
+function adversario(modo, rodada) {
+  const outros = PAISES.filter((p) => p[0] !== paisEscolhido());
+  const indice = (PAISES.findIndex((p) => p[0] === paisEscolhido()) * 3 + rodada * 5 + (modo === "mundial" ? 7 : 0)) % outros.length;
+  return outros[indice];
+}
+function atualizarSolo() {
+  $("soloTitle").textContent = TITULOS[modoSolo];
+  $("hCountries").innerHTML = PAISES.map(([id, bandeira, nome]) => `<button data-country="${id}" class="${paisEscolhido() === id ? "on" : ""}" aria-pressed="${paisEscolhido() === id}" title="${nome}"><b>${bandeira}</b>${nome}</button>`).join("");
+  const rodada = etapa(modoSolo), total = RODADAS[modoSolo], rival = adversario(modoSolo, rodada);
+  $("soloProgress").classList.toggle("hidden", total === 1);
+  $("soloProgress").innerHTML = Array.from({ length: total }, (_, i) => `<span class="${i < rodada ? "done" : i === rodada ? "current" : ""}">${i < rodada ? "✓" : i === rodada ? "●" : "○"}<br>${modoSolo === "mundial" && i === 7 ? "Final" : modoSolo === "torneio" && i === 3 ? "Final" : `Jogo ${i + 1}`}</span>`).join("");
+  $("soloPreview").textContent = `${pais(paisEscolhido())[1]} ${pais(paisEscolhido())[2]}  ×  ${rival[1]} ${rival[2]} · 11 pontos`;
+  $("btnPractice").textContent = rodada ? "Continuar campeonato" : "Entrar na mesa";
+}
+function abrirModo(modo) {
+  if (modo === "online") { $("soloSetup").classList.add("hidden"); $("onlineSetup").classList.remove("hidden"); }
+  else { modoSolo = modo; $("onlineSetup").classList.add("hidden"); $("soloSetup").classList.remove("hidden"); atualizarSolo(); }
+  $("homeHelp").classList.add("hidden");
+}
+function fecharModo() { $("soloSetup").classList.add("hidden"); $("onlineSetup").classList.add("hidden"); $("homeHelp").classList.remove("hidden"); }
+function telaInicial() { seg("hDif", DIFS, store.get("pingpong:dif") || "medio", "data-hdif"); $("hSkins").innerHTML = skinBotoes(store.get("galera:skin")); atualizarSolo(); }
+$("btnBackMode").onclick = fecharModo;
+$("btnBackOnline").onclick = fecharModo;
+$("hOnlineName").oninput = () => { $("hName").value = $("hOnlineName").value; };
+$("hName").oninput = () => { $("hOnlineName").value = $("hName").value; };
 document.addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
-  if (b.dataset.hdif) { store.set("pingpong:dif", b.dataset.hdif); telaInicial(); }
+  if (b.dataset.mode) abrirModo(b.dataset.mode);
+  else if (b.dataset.country) { store.set("pingpong:pais", b.dataset.country); atualizarSolo(); }
+  else if (b.dataset.hdif) { store.set("pingpong:dif", b.dataset.hdif); telaInicial(); }
   else if (b.dataset.skin) { store.set("galera:skin", b.dataset.skin); if (ME && ME.id && S) act("skin", { skin: b.dataset.skin }); telaInicial(); if (S && S.phase === "lobby") renderLobby(); }
   else if (b.dataset.lado != null && S) act("lado", { lado: +b.dataset.lado });
   else if (b.dataset.cpontos && S) act("config", { config: { ...S.config, pontos: +b.dataset.cpontos } });
@@ -141,13 +172,14 @@ function renderLobby() {
   $("startBox").innerHTML = isHost ? `<button class="primary" id="btnStart" style="width:100%">🏓 Começar</button>` : `<p class="muted">Esperando o organizador começar…</p>`;
   if ($("btnStart")) $("btnStart").onclick = () => act("start");
 }
-$("btnPractice").onclick = () => comecarTreino();
-$("btnPractice2").onclick = () => comecarTreino();
+$("btnPractice").onclick = () => comecarTreino(modoSolo);
+$("btnPractice2").onclick = () => comecarTreino("treino");
 
 // ======================================================================
 // Rede: entrar, criar, estado, batidas e raquetes
 // ======================================================================
 $("hName").value = store.get("galera:name") || "";
+$("hOnlineName").value = $("hName").value;
 if (urlCode) $("hCode").value = urlCode.toUpperCase();
 function enter(r) {
   if (!r.ok) { $("hErr").textContent = r.error; return; }
@@ -187,11 +219,15 @@ socket.on("raq", (d) => { if (G.active && !G.offline && d.lado !== G.eu && G.raq
 // ======================================================================
 // Começar e parar
 // ======================================================================
-function comecarTreino() {
+function comecarTreino(modo = "amistoso") {
   if (G.active) pararJogo();
-  const dif = store.get("pingpong:dif") || "medio", skin = BOT_SKINS[Math.floor(Math.random() * BOT_SKINS.length)];
-  Object.assign(G, { offline: true, eu: 0, lado: 0, dif, bot: { lado: 1, x: 0, z: -(MESA.L / 2 + 0.3), vx: 0, vz: 0, desvio: 0 } });
-  G.nomes = [$("hName").value.trim() || "Você", "🤖 Robô"];
+  const rodada = RODADAS[modo] ? etapa(modo) : 0;
+  const escolhido = store.get("pingpong:dif") || "medio";
+  const dif = modo === "mundial" && rodada >= 5 ? "dificil" : modo === "torneio" && rodada >= 3 && escolhido === "facil" ? "medio" : escolhido;
+  const skin = BOT_SKINS[(rodada + paisEscolhido().charCodeAt(0)) % BOT_SKINS.length];
+  Object.assign(G, { offline: true, soloMode: modo, rodada, eu: 0, lado: 0, dif, bot: { lado: 1, x: 0, z: -(MESA.L / 2 + 0.3), vx: 0, vz: 0, desvio: 0 } });
+  const rival = adversario(modo === "treino" ? "amistoso" : modo, rodada);
+  G.nomes = [modo === "treino" ? "Você" : `${pais(paisEscolhido())[1]} ${$("hName").value.trim() || pais(paisEscolhido())[2]}`, modo === "treino" ? "🤖 Robô" : `${rival[1]} ${rival[2]}`];
   G.est = { phase: "jogo", placar: P.novoPlacar({ pontos: 11, games: 1 }, Math.random() < 0.5 ? 0 : 1), prontoEm: agora() + 1500, ultimo: null };
   montarCorpos([{ skin: store.get("galera:skin") }, { skin }]);
   iniciar();
@@ -205,7 +241,7 @@ function comecarOnline() {
   iniciar();
 }
 function iniciar() {
-  G.active = true; G.pausa = false; G.bola = null; G.rally = null; G.julgou = false; G.hist = [];
+  G.active = true; G.pausa = false; G.bola = null; G.rally = null; G.julgou = false; G.hist = []; acumulado = 0;
   G.raq = [novaRaq(0), novaRaq(1)];
   // a minha raquete fica meio transparente (ela está bem na frente da câmera)
   raqMesh.forEach((m, l) => m.traverse((o) => { if (o.material) { o.material.transparent = l === G.eu; o.material.opacity = l === G.eu ? 0.6 : 1; } }));
@@ -228,6 +264,7 @@ const sacador = () => (estado().placar ? estado().placar.sacador : 0);
 const podeSacar = (lado) => estado().phase === "jogo" && !G.rally && sacador() === lado && agora() >= (estado().prontoEm || 0);
 function novaBatida(b, quem, saque) {
   G.bola = b; G.rally = { quem, saque, quiques: [] }; G.julgou = false; Som.raquete(); pontosRastro.length = 0;
+  if (G.raq[quem]) G.raq[quem].golpeT = G.tj;
   const nome = P.nomeEfeito(b.w); // o nome do efeito aparece embaixo, rapidinho
   if (nome) { const e = $("hEfeito"); e.textContent = "🌀 " + nome; e.classList.remove("pop"); void e.offsetWidth; e.classList.add("pop"); G.efeitoAte = performance.now() + 900; }
 }
@@ -260,7 +297,7 @@ function marcarPonto(vence, motivo) {
   const est = G.est, r = P.marcar(est.placar, vence);
   G.rally = null;
   est.ultimo = { lado: vence, motivo, nome: G.nomes[vence], t: agora() };
-  est.prontoEm = agora() + (r.fimGame ? 2600 : 1300);
+  est.prontoEm = agora() + (r.fimGame ? 1600 : 750);
   if (r.fim) est.phase = "fim";
   aoPonto(est.ultimo);
   if (r.fim) mostrarFim();
@@ -277,12 +314,14 @@ function mostrarFim() {
   const ganhei = pl.vencedor === G.eu, nome = G.nomes[pl.vencedor] || "?";
   if (ganhei) Comum.confetti();
   const isHost = !G.offline && ME && S && S.host === ME.id;
-  $("overBox").innerHTML = `<h2>${ganhei ? "🏆 Você venceu!" : `🏓 ${h(nome)} venceu`}</h2>
-    <p class="muted">Placar: ${pl.games[0] > 0 || pl.games[1] > 0 ? `games ${pl.games[0]} x ${pl.games[1]}` : `${pl.pts[0]} x ${pl.pts[1]}`}</p>
-    <div class="row" style="margin-top:14px">${G.offline ? `<button class="primary" id="bDeNovo">Jogar de novo</button>` : isHost ? `<button class="primary" id="bDeNovo">Voltar para a sala</button>` : `<span class="muted">Esperando o organizador…</span>`}<button class="ghost" id="bSair">Sair</button></div>`;
+  const modo = G.soloMode, total = RODADAS[modo] || 1, campeao = G.offline && ganhei && G.rodada + 1 >= total;
+  if (G.offline && ganhei && total > 1) store.set(chaveCampanha(modo), campeao ? 0 : G.rodada + 1);
+  $("overBox").innerHTML = `<h2>${campeao && modo !== "amistoso" ? "🏆 Você é campeão!" : ganhei ? "🏓 Você venceu!" : `🏓 ${h(nome)} venceu`}</h2>
+    <p class="muted">Placar: ${pl.config.games > 1 ? `games ${pl.games[0]} x ${pl.games[1]}` : `${pl.pts[0]} x ${pl.pts[1]}`}</p>
+    <div class="row" style="margin-top:14px">${G.offline ? `<button class="primary" id="bDeNovo">${ganhei && !campeao && total > 1 ? "Próxima partida" : "Jogar de novo"}</button>` : isHost ? `<button class="primary" id="bDeNovo">Voltar para a sala</button>` : `<span class="muted">Esperando o organizador…</span>`}<button class="ghost" id="bSair">Sair</button></div>`;
   $("over").classList.remove("hidden");
   $("bSair").onclick = () => { $("over").classList.add("hidden"); if (!G.offline && S) act("lado", { lado: -1 }); sair(); };
-  if ($("bDeNovo")) $("bDeNovo").onclick = () => { $("over").classList.add("hidden"); if (G.offline) comecarTreino(); else act("lobby"); };
+  if ($("bDeNovo")) $("bDeNovo").onclick = () => { $("over").classList.add("hidden"); if (G.offline) comecarTreino(modo); else act("lobby"); };
 }
 
 // ======================================================================
@@ -309,19 +348,23 @@ function pausar(on) { G.pausa = on && G.offline; $("pause").classList.toggle("hi
 function moverMinhaRaq(dt) {
   const r = G.raq[G.eu], s = P.S(G.eu);
   ray.setFromCamera(ndc, cam);
-  if (ray.ray.intersectPlane(plano, ponto)) { r.x = clamp(ponto.x, -1.4, 1.4); r.z = s * clamp(s * ponto.z, MESA.L / 2 - 0.1, MESA.L / 2 + 1.1); }
+  if (ray.ray.intersectPlane(plano, ponto)) { r.x = clamp(ponto.x, -1.4, 1.4); r.z = s * clamp(s * ponto.z, 0.14, MESA.L / 2 + 1.1); }
   const b = G.bola, vem = b && b.viva && G.rally && G.rally.quem !== G.eu && Math.abs(b.p[2] - r.z) < 1.2;
-  r.y = lerp(r.y, vem ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.95) : MESA.H + 0.18, 1 - Math.exp(-dt * 14));
+  r.y = lerp(r.y, vem ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.95) : MESA.H + 0.18, 1 - Math.exp(-dt * 20));
   // velocidade: média dos últimos ~80 ms
-  const t = G.tj * 1000; G.hist.push({ t, x: r.x, z: r.z }); while (G.hist.length > 2 && t - G.hist[0].t > 80) G.hist.shift();
-  const h0 = G.hist[0], d = Math.max(0.016, (t - h0.t) / 1000); r.vx = (r.x - h0.x) / d; r.vz = (r.z - h0.z) / d;
+  const t = G.tj * 1000; G.hist.push({ t, x: r.x, z: r.z, ny: ndc.y }); while (G.hist.length > 2 && t - G.hist[0].t > 80) G.hist.shift();
+  const h0 = G.hist[0], d = Math.max(0.016, (t - h0.t) / 1000);
+  r.vx = clamp((r.x - h0.x) / d, -8, 8);
+  // A profundidade chega ao limite perto da rede. O gesto vertical na tela
+  // continua gerando impulso mesmo quando a posição da raquete satura ali.
+  r.vz = clamp(-s * (ndc.y - h0.ny) * 1.75 / d, -8, 8);
 }
 // a bola passou pela minha raquete (do jeito certo)? então eu rebato
 function tentarRebater(lado, raq, bAntes, rAntesZ, batida) {
   const b = G.bola, s = P.S(lado);
   if (!b || !b.viva || !P.podeRebater(G.rally, lado)) return false;
   const antes = (bAntes - rAntesZ) * s, depois = (b.p[2] - raq.z) * s;
-  if (!(antes < 0.02 && depois >= -0.02) || Math.abs(b.p[0] - raq.x) > 0.3 || b.p[1] > MESA.H + 1.05) return false; // alcança até ~1 m acima da mesa (o braço esticado)
+  if (!(antes < 0.04 && depois >= -0.04) || Math.abs(b.p[0] - raq.x) > 0.32 || b.p[1] > MESA.H + 1.05) return false; // a raquete alcança a bola mesmo entre dois quadros
   b.p[2] = raq.z - s * 0.01;
   P.rebater(b, batida || raq, lado);
   return true;
@@ -330,12 +373,16 @@ function tentarRebater(lado, raq, bAntes, rAntesZ, batida) {
 // ======================================================================
 // Laço do jogo
 // ======================================================================
-let last = performance.now();
+let last = performance.now(), acumulado = 0;
 function loop(t) {
   requestAnimationFrame(loop);
-  const dt = Math.min(0.05, (t - last) / 1000); last = t;
+  const dt = Math.min(0.13, (t - last) / 1000); last = t;
   if (!G.active) return;
-  if (!G.pausa) passo(dt);
+  if (!G.pausa) {
+    acumulado += dt;
+    for (let i = 0; acumulado >= 1 / 60 && i < 8; i++) { passo(1 / 60); acumulado -= 1 / 60; }
+    if (acumulado > 1 / 60) acumulado = 0;
+  } else acumulado = 0;
   desenhar(dt);
   renderer.render(scene, cam);
 }
@@ -344,12 +391,16 @@ requestAnimationFrame(loop);
 function passo(dt) {
   G.tj += dt; // relógio do jogo (a velocidade da raquete é medida nele)
   const b = G.bola, bz = b ? b.p[2] : 0, rz = [G.raq[0].z, G.raq[1].z];
-  if (G.eu >= 0) moverMinhaRaq(dt);
+  if (G.eu >= 0) {
+    moverMinhaRaq(dt);
+    const r = G.raq[G.eu], frente = -P.S(G.eu) * r.vz;
+    if (podeSacar(G.eu) && frente > 2.4) euBato(P.sacar(G.eu, r.x, clamp(r.vx / 4, -1, 1)), true);
+  }
   if (G.bot) {
     P.robo(G.bot, b, G.rally, dt, G.dif);
     Object.assign(G.raq[1], { x: G.bot.x, z: G.bot.z, vx: G.bot.vx });
     G.raq[1].y = lerp(G.raq[1].y, b && G.rally && G.rally.quem === 0 ? clamp(b.p[1], MESA.H + 0.03, MESA.H + 0.95) : MESA.H + 0.18, 1 - Math.exp(-dt * 10));
-    if (podeSacar(1) && agora() > estado().prontoEm + 700) novaBatida(P.sacar(1, G.bot.x, (Math.random() - 0.5) * 1.6), 1, true);
+    if (podeSacar(1) && agora() > estado().prontoEm + 250) novaBatida(P.sacar(1, G.bot.x, (Math.random() - 0.5) * 1.6), 1, true);
   }
   // a raquete do outro (online): vai até onde ele mandou
   for (const l of [0, 1]) { const r = G.raq[l]; if (l !== G.eu && r.alvo) { const k = 1 - Math.exp(-dt * 18); r.x = lerp(r.x, r.alvo.x, k); r.y = lerp(r.y, r.alvo.y, k); r.z = lerp(r.z, r.alvo.z, k); } }
@@ -385,7 +436,9 @@ function desenhar(dt) {
   for (const l of [0, 1]) {
     const r = G.raq[l], m = raqMesh[l], s = P.S(l), tem = G.offline || (est.lados && est.lados[l]);
     m.visible = !!tem; if (!tem) continue;
-    m.position.set(r.x, r.y, r.z); m.rotation.set(-0.25 * s, l ? Math.PI : 0, clamp(-r.vx * 0.08, -0.6, 0.6));
+    const golpe = Math.max(0, 1 - (G.tj - (r.golpeT ?? -1)) / 0.18);
+    m.position.set(r.x, r.y, r.z); m.rotation.set(-0.25 * s - golpe * 0.4, Math.PI, clamp(-r.vx * 0.08, -0.6, 0.6));
+    m.scale.setScalar(1.5 * (1 + golpe * 0.07));
     const c = G.corpos[l];
     if (c) {
       const x0 = c.model.position.x, alvoX = r.x - s * 0.32; c.model.position.set(alvoX, 0, r.z + s * 0.38);
@@ -407,6 +460,7 @@ function desenhar(dt) {
 }
 
 telaInicial();
+if (urlCode) abrirModo("online");
 // para os testes automáticos (#debug): o estado do jogo
 if (location.hash === "#debug") window.__pingpong = {
   G, P, podeSacar, avancar: (s) => { for (let t = 0; t < s; t += 1 / 60) { passo(1 / 60); G.adiant = (G.adiant || 0) + 1000 / 60; } },
