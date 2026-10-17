@@ -1,15 +1,15 @@
-# Tênis de Mesa recriado no jeito do Table Tennis Pro
+# Tênis de Mesa: clone do Table Tennis Pro
+
+O tênis de mesa anterior ficou difícil e tinha coisas que não estavam no jogo de referência. Esta versão copia o Table Tennis Pro (jogado e medido quadro a quadro) e tira o resto.
 
 ## O que muda
 
-- **Física de verdade.** Mesa (2,74 x 1,525 m a 76 cm, rede de 15,25 cm) e bola (40 mm) nas medidas oficiais. A bola voa com gravidade, arrasto do ar e efeito Magnus do giro (um vetor em rad/s): o top spin mergulha, a cortada flutua, o lateral faz a curva. No quique, o atrito troca velocidade por giro: o top spin acelera e a cortada freia (e uma cortada pesada chega a voltar para a rede sozinha). A bola de 30 cm sobe uns 23 cm, como manda a regra.
-- **Jeito de jogar do Table Tennis Pro.** A câmera fica atrás e acima do jogador, vendo a mesa inteira. O mouse (ou o dedo) leva a raquete para os lados e para a frente ou para trás; a altura vai sozinha atrás da bola, e a batida é automática quando a bola chega. O gesto na hora decide o golpe: empurrar é o top spin (forte demais sai longo), parado é o bloqueio, puxar é a cortada, para o lado é a mira e a curva, e bola alta com gesto forte é o smash. Na tela aparecem o nome do golpe e a velocidade em km/h.
-- **Ler o giro.** Devolver um top spin só bloqueando faz a bola subir; devolver uma cortada sem cortar ou levantar cai na rede.
-- **A raquete na mão.** Empunhadura clássica (polegar na borracha vermelha, indicador na preta), forehand à direita do corpo e backhand quando a raquete cruza para a esquerda, com a preparação antes da bola chegar e a terminação depois do golpe (para cima no top, para baixo no corte). O meu braço aparece na frente da câmera; o adversário é o boneco da skin com o braço da raquete.
-- **Saque como na mesa.** Clique (ou espaço) joga a bola para cima e a raquete bate na descida, com o gesto do momento: para a frente sai longo com top, para trás sai curto e cortado, para o lado mira e dá efeito. O saque sempre quica dos dois lados.
-- **Robô novo.** Ele espera o tempo de reação, prevê onde vai bater (avança para a bola curta e recua para a longa), lê o giro (o fácil erra a leitura, o difícil quase nunca) e erra mais contra bola rápida ou muito girada.
-- **Ginásio.** Piso esportivo, barreiras com os anúncios da Vila, arquibancada com torcida, luzes do teto, a mesa oficial com rede e postes e a mesa do juiz com o marcador de virar.
-- **Online.** O pacote da batida leva o giro em 3D; o servidor repassa também o lance do saque (`lance`) e se a raquete está de forehand ou backhand. A cortada que volta sozinha para a rede depois de quicar certo é ponto de quem bateu.
+- **Tela igual à do original.** Piso coral, paredes azuis acolchoadas com estrelas e o 40, mesa azul com bordas brancas e pés pretos, bola amarela e as duas raquetes vermelhas flutuando, sem jogador. A câmera fica atrás da mesa, no alto, na mesma posição do original (a mesa ocupa o mesmo lugar na tela), e vira um pouco para o lado da sua raquete.
+- **Controle do original.** Segure o botão do mouse (ou o dedo) e arraste: a raquete vai junto pelo seu lado da mesa, e a altura vai sozinha. Ela bate quando a bola chega; arrastar rápido para a frente na hora bate forte, para o lado mira. Soltou o mouse, a raquete vai atrás da bola sozinha e devolve macio.
+- **Saque do original.** A bola fica parada em cima da mesa, na frente da raquete. Arraste a raquete para a frente passando por ela (ou dê um toque) para sacar.
+- **Placar do original.** A bandeira e o número grande em cada canto de cima, e "Troca de saque" quando o saque muda de lado.
+- **Saiu o que não era do original:** o braço e o corpo do jogador, forehand e backhand, a bola jogada para cima no saque, a leitura do giro (devolver top spin ou cortada não atrapalha mais) e as skins.
+- **Mais calmo.** A bola anda mais devagar e o saque é menos curto e com menos efeito. O robô ficou um pouco mais fácil de passar.
 
 ## Verificação
 

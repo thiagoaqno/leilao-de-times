@@ -107,12 +107,6 @@ module.exports = function attachPingPong(io) {
       socket.to(room.code).emit("bola", { p: d.p, v: d.v, quem: lado, saque: !!d.saque, t, w: efeito(d.w) });
       clearTimeout(room.timer); room.timer = setTimeout(() => room.rally && room.rally.t === t && ponto(room, lado, "sem resposta"), SEM_RESPOSTA_MS);
     });
-    // o lance do saque (a bola subindo da mão): só para o outro ver; a batida vem depois, em "bola"
-    socket.on("lance", (d = {}) => {
-      const { room, me } = ctx(); if (!room || !me || room.phase !== "jogo" || room.rally || !fin(d.x)) return;
-      const lado = ladoDe(room, me.id); if (lado < 0 || lado !== room.placar.sacador) return;
-      socket.to(room.code).emit("lance", { lado, x: Math.max(-0.6, Math.min(0.6, d.x)) });
-    });
     // o ponto: quem decide é quem está recebendo a bola
     socket.on("ponto", (d = {}) => {
       const { room, me } = ctx(); if (!room || !me || room.phase !== "jogo" || !room.rally) return;
@@ -123,7 +117,7 @@ module.exports = function attachPingPong(io) {
     socket.on("raq", (d = {}) => {
       const { room, me } = ctx(); if (!room || !me || !fin(d.x) || !fin(d.z) || !fin(d.y)) return;
       const lado = ladoDe(room, me.id); if (lado < 0) return;
-      socket.to(room.code).volatile.emit("raq", { lado, x: d.x, y: d.y, z: d.z, f: d.f ? 1 : 0 });
+      socket.to(room.code).volatile.emit("raq", { lado, x: d.x, y: d.y, z: d.z });
     });
     socket.on("disconnect", () => { const { room, me } = ctx(); if (!room) return; if (me) me.sockets.delete(socket.id); broadcast(room); });
   });
