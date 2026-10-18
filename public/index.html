@@ -375,9 +375,6 @@ const GAMES = [
   // no meio da rua nova, entre a garagem e a arena: o clube de tênis, com o telhado pintado como uma quadra azul
   { id: "tenis", url: "/tenis/", icon: "🎾", sign: "TÊNIS", name: "Clube de Tênis", desc: "Tênis arcade em 3D, simples ou duplas, contra a galera ou contra robôs: top spin, cortada, balão, curtinha e smash.", meta: "Tênis da Galera · 1x1 ou 2x2",
     x: 12, y: 31, w: 7, h: 4, doors: [15], bairro: "esportes", roof: "#2f6aa8", roof2: "#24578c", wall: "#f2f4f0", wall2: "#d4dad0", tenis: true },
-  // ruazinha que desce da rua nova, entre o tênis e a batalha: o Clube do Rumi, com telhado de feltro e peças
-  { id: "pingpong", url: "/table-tennis-pro/", icon: "🏓", sign: "TÊNIS DE MESA", name: "Table Tennis Pro", desc: "O Table Tennis Pro original dentro da Vila: amistoso, torneio e mundial. Hospedado pela GameDistribution; as partidas não contam para a Noite da Galera.", meta: "Table Tennis Pro · jogo original",
-    x: 3, y: 39, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#7a3b1e", roof2: "#5e2c15", wall: "#f2efe6", wall2: "#d8d2c2", pingpong: true },
   // o lote de baixo do Autódromo: a arena de digitação, com o telhado de teclado
   { id: "digita", url: "/digita/", icon: "⌨️", sign: "DIGITAÇÃO", name: "Arena de Digitação", desc: "Todo mundo recebe a mesma frase: quem digitar certinho e mais rápido ganha a rodada. Dá para jogar com robôs.", meta: "Corrida de Digitação · 1 a 8 pilotos",
     x: 50, y: 39, w: 6, h: 4, doors: [53], bairro: "autodromo", roof: "#1a1a22", roof2: "#2c2c3a", wall: "#3a3f4d", wall2: "#262a35", digita: true },
@@ -852,12 +849,6 @@ function drawBuilding(c, g) {
     for (let k = 0; k < 10; k++) { const r = k % 2 ? 2.2 : 5, a = -Math.PI / 2 + k * Math.PI / 5; c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
     c.closePath(); c.fill();
     px(c, "#7a5ad0", qx, qy + qh - 2, qw, 2);
-  }
-  if (g.pingpong) { // telhado: a mesa azul da arena, com linhas brancas, rede e bolinha
-    const qx = rx + 6, qy = Y + 4, qw = rw - 12, qh = roofH - 8;
-    px(c, "#3766aa", qx, qy, qw, qh); c.strokeStyle = "#f6f6f2"; c.lineWidth = 1; c.strokeRect(qx + 0.5, qy + 0.5, qw - 1, qh - 1);
-    px(c, "#f6f6f2", qx, qy + qh / 2, qw, 1); px(c, "#222", qx + qw / 2 - 1, qy - 2, 2, qh + 4);
-    c.fillStyle = "#fff8e8"; c.beginPath(); c.arc(qx + qw * 0.25, qy + qh * 0.3, 2, 0, 7); c.fill();
   }
   if (g.rumi) { // telhado de feltro verde com umas peças creme (7-8-9 vermelho e o coringa)
     const by = Y + roofH / 2 - 6;
