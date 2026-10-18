@@ -133,7 +133,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
 | Corrida de Digitação (Arena de Digitação no Autódromo) | `digita.js` (canal `/digita`: fases `run`, `result`, `final`; todos recebem a mesma frase, o navegador manda o texto em `digitou` e o servidor confere e anda os robôs pelo relógio; pontos por lugar) | `index.html`, `jogo.js` (frase pintada letra por letra e a pista com os carros), `frases.js` (UMD: `FRASES`, `prefixoCerto`, `wpm`, `pontosDoLugar`). `DIGITA_*_MS` aceleram os tempos nos testes. Testes: `tests/digita.test.js` |
 | Futevôlei | `futevolei.js` | `index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js`, `musica.js` (ver logo abaixo) |
-| Vila (o mapa) + Galeramon/Pokémon/Naruto por turnos + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
+| Vila (o mapa) + Galeramon/Pokémon/Naruto por turnos | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline) e `public/galeramon/` |
 
 **Futevôlei:**
 - 1x1 ou duplas (2x2), robôs completando, set de 10, 15 ou 18 pontos com 2 de vantagem, ponto corrido. Na Vila, a **Arena
@@ -248,7 +248,7 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
   Os ganchos: `encenarEvento` (em `efeitoVisual`), `encenarQuadro` e `desenharNumeros` (em `desenhar`) e
   `limparEncenacao` (em `limparRede`). O evento `dano` leva `elemento` e `classe`. No Naruto valem só a reação, o som
   e os números. Teste: `tests/ginasio-encenacao.test.js` (carrega o arquivo num `vm`).
-- **Líderes e treinadores (`public/galeramon/lideres.js`):** 4 líderes de ginásio (fogo, água, grama, elétrico) e 6 treinadores (pedra, psíquico, fantasma, dragão, lutador, gelo), cada um com o time nos dois modos. `/ginasio/?lider=<id>` abre o desafio (1x1 contra o robô com o time dele; `config.lider`); vencer um líder guarda a insígnia no navegador (`ginasio:insignias`). Os robôs comuns ganham um dos times temáticos, sorteado. Na Vila, os ginásios ficam fora da cerca, em cima dos estacionamentos oeste e leste (`lider: l` em `GAMES`), e os treinadores são `GAMES` de 1x1 com `npc` (desenhados como bonecos). Cada tipo tem a sua quadra em `temas.js` (`TEMAS`: cores, `chao` e `clima`).
+- **Líderes e treinadores (`public/galeramon/lideres.js`):** 4 líderes de ginásio (fogo, água, grama, elétrico) e 6 treinadores (pedra, psíquico, fantasma, dragão, lutador, gelo), cada um com o time nos dois modos. `/ginasio/?lider=<id>` abre o desafio (1x1 contra o robô com o time dele; `config.lider`); vencer um líder guarda a insígnia no navegador (`ginasio:insignias`). Os robôs comuns ganham um dos times temáticos, sorteado. Na Vila, os quatro ginásios ficam na Alameda dos Líderes, dentro do bairro (`lider: l` em `GAMES`), e os treinadores são `GAMES` de 1x1 com `npc` (desenhados como bonecos). Cada tipo tem a sua quadra em `temas.js` (`TEMAS`: cores, `chao` e `clima`).
 - `/ginasio/` abre a sala e a arena 2D de pixel-art. O prédio fica na Vila Esportiva, abaixo do Tênis: `ginasio: true` desenha o telhado arredondado com Pokébola.
 - Na Vila, clicar no amigo ou usar Batalha permite escolher turnos ou Ginásio. O convite `jogo: "ginasio"` reutiliza aceite/recusa; `vila.js` chama `ginasio.criarDesafio` só depois do aceite, reserva os dois lados de uma sala 1x1 sem robôs e envia `irGinasio` com credenciais privadas a cada participante.
 - **Naruto Shippuden** é o terceiro modo, nas batalhas por turnos da Vila e no Ginásio em tempo real.
@@ -392,22 +392,16 @@ Para achar algo dentro de um jogo:
   - `TELAO` é o telão da estante da galera, no alto da Praça (`drawTelao`, `TELAO_LUGAR`, `/api/estante`).
 - `drawBuilding` desenha os prédios, e cada jogo tem o seu `if (g.<sinal>)` para o telhado.
 - **Grama alta e Pokédex:** o encontro (`#cap`, `abrirEncontro`, `mostrarTimeDoEncontro`) é uma tela de "versus" em `public/vila/versus.css` (o seu time à esquerda, o selvagem no holofote à direita com a ficha, as ações embaixo; `--t` o tipo, `--r` a raridade); a Pokédex (`#pokedex`, `abrirPokedex`/`desenharPokedex`, com busca e filtros) em `public/vila/pokedex.css`.
-- **Tamanho do mapa:** `MW` x `MH` (320x260). A vila (58x52, `VW` x `VH`) fica no meio, deslocada por `OX`, `OY` (131, 100): as
-  coordenadas da vila em `GAMES`, `LAMPS`, `TERRENOS`... são escritas de 0 a 57 / 0 a 51 e deslocadas no carregamento.
-  As ruas: Rua das Cartas nas linhas 7-8 e 15-16, a Praça de 17 a 27, a avenida do meio nas colunas 28-29, e as
-  ruas da Vila Esportiva (à esquerda) e do Autódromo (à direita) nas linhas 35-36 e 43-44. Os treinadores
-  (`Lideres.TREINADORES`, em `public/galeramon/lideres.js`) também usam essas coordenadas.
-  O `vila.js` repete `MW`, `MH`, `OX`, `OY`, a lista `GAMES` e as zonas dos estádios: precisam bater.
-- **O mundo em volta (`montaMundo`):** `rodovia()` (trechos retos de duas faixas; passa por cima da água como ponte),
-  `lote()` (estacionamento, com carros parados), `PREDIOS` (a cidade de enfeite), o Pinheiros, o Tietê, a Serra do Mar e
-  Santos (praia). Fora da vila o pedestre não passa (`solid`): só de carro (`carOk`), que se pega num estacionamento.
-- **O mapa é desenhado em pedaços** de 32x32 casas (`pedaco(cx, cy)`), só os que aparecem, e a luz da noite é do tamanho
-  da tela. Coisa nova no mapa precisa ser desenhada dentro de `pedaco`.
-- **Estádios (`public/vila/estadios.js`):** `LISTA` (onde fica cada um, a praça, o estacionamento e o portão), `fachada`
-  (o lado de fora) e `interior` (o lado de dentro: gramado, arquibancada com torcida, túnel, gols). Na página, `INT` é o
-  estádio em que a pessoa está, e a bola (`bola`, `chuta`, `gol`) só existe lá dentro.
-- **Quem aparece para quem:** cada pessoa manda `z` (a zona: `""` na rua ou o id do estádio) e `car`; só se vê quem
-  está na mesma zona.
+- **Tamanho do mapa:** `MW` x `MH` (64x64). O bairro (58x58, `VW` x `VH`) começa em `OX`, `OY` (3, 3). As coordenadas
+  de `GAMES`, `LAMPS`, `TERRENOS` e dos treinadores são locais e deslocadas ao carregar. A Rua das Cartas fica nas
+  linhas 7-8 e 15-16; a praça tem gramados e caminhos nas linhas 17-27; a avenida central passa nas colunas 28-29;
+  os jogos esportivos ficam nas linhas 31-44, e os quatro líderes estão alinhados na Alameda dos Líderes (linha 48).
+  O Haxball ocupa o antigo lote do tênis de mesa em `(3,39)`, com 7x4 casas. `vila.js` repete `MW`, `MH`, `OX`, `OY`
+  e os IDs de jogos: precisam bater.
+- **Desenho:** `pedaco(cx, cy)` desenha o mapa em blocos de 32x32 casas. O chão usa grama clara, ruas de paralelepípedo
+  e caminhos de pedra na praça e na alameda. As fachadas são claras com telhados temáticos. A cidade é caminhável;
+  o minimapa mostra as 64x64 casas. Não há rodovias, estacionamentos ou estádios externos na Vila.
+- **Quem aparece para quem:** o servidor usa somente a zona da rua (`z: ""`) e limita posições ao mapa compacto.
 
 ## Testes
 

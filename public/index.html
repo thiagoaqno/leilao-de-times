@@ -204,10 +204,10 @@ button{font:inherit;cursor:pointer}
 .dexrank{margin:10px 0 0;padding-left:22px;font:500 14px "Pixelify Sans",monospace}
 
 .fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .4s}
-/* o minimapa: a vila no meio, as rodovias e os estádios; o ponto amarelo é você */
-canvas.mini{position:fixed;inset:auto;right:14px;top:max(64px,calc(env(safe-area-inset-top) + 54px));width:168px;height:137px;border:2px solid #ffffff33;border-radius:10px;image-rendering:pixelated;background:#0a1233;pointer-events:none;z-index:2;box-shadow:0 6px 16px #0006}
+/* O bairro inteiro cabe no minimapa. */
+canvas.mini{position:fixed;inset:auto;right:14px;top:max(64px,calc(env(safe-area-inset-top) + 54px));width:144px;height:144px;border:3px solid #f8efdc;border-radius:12px;image-rendering:pixelated;background:#9fc486;pointer-events:none;z-index:2;box-shadow:0 5px 0 #375c56,0 10px 22px #15392b55}
 canvas.mini.off{display:none}
-@media (max-width:560px){canvas.mini{width:118px;height:96px}}
+@media (max-width:560px){canvas.mini{width:100px;height:100px}}
 .fade.on{opacity:1}
 /* central de batalha: os dois times lado a lado e quem está na vila para desafiar */
 .tbtn.battle{background:linear-gradient(180deg,#ffcf3d,#f2a20c);color:#2a1a00;border-color:#fff3}
@@ -229,13 +229,32 @@ canvas.mini.off{display:none}
   .toast{white-space:normal;text-align:center;max-width:100%}
 }
 @media (prefers-reduced-motion:reduce){.dlg,.fade{transition:none}}
+/* Vila de bairro: superfícies claras, placas simples e controles discretos. */
+:root{--ink:#23423f;--paper:#fff9ea;--line:#557b6a;--gold:#f1bc59;--night:#23423f}
+html,body{background:#7fae79;color:var(--ink)}
+.brand,.tbtn,.hint,.toast{background:#fff9eaf0;color:#23423f;border:2px solid #d6c9a9;box-shadow:0 4px 0 #416959,0 8px 20px #1c473744;backdrop-filter:none}
+.brand{padding:6px 14px 6px 8px}
+.brand h1 span{color:#b87329}
+.brand small,.brand small b{color:#4f7a67}
+.tbtn:hover{border-color:#6a9e8c;background:#ffffff}
+.hint{font-size:13px;color:#385e51;bottom:18px}
+.hint kbd{background:#e6efe5;color:#23423f;box-shadow:0 2px 0 #a7c4a8}
+.nick,.menu{background:#193c35a8}
+.nick form,.menu .box,.dlg{border:3px solid #38685c;border-radius:14px;box-shadow:inset 0 0 0 3px #fff,0 8px 0 #294f45,0 18px 38px #1b423d55}
+.nick p,.dlg .meta,.dlg .go span,.menu a small{color:#627e71}
+.menu h3{background:#427869;box-shadow:none;border-radius:6px}
+.menu a:hover,.menu a:focus-visible{background:#e7f0df}
+.tbtn.battle{background:#efc46b;color:#3c4b39;border-color:#e5b451}
+.dir button{background:#fff9eadf;border-color:#8aa99a;color:#23423f}
+.ab button{background:#c56d50e8}.ab .b{background:#4e8b76e8}
+@media(max-width:560px){canvas.mini{top:max(128px,calc(env(safe-area-inset-top) + 118px))}}
 </style>
 <link rel="stylesheet" href="/vila/versus.css">
 <link rel="stylesheet" href="/vila/pokedex.css">
 </head>
 <body>
 <canvas id="cv" aria-hidden="true"></canvas>
-<canvas id="mini" class="mini" width="320" height="260" aria-hidden="true"></canvas>
+<canvas id="mini" class="mini" width="64" height="64" aria-hidden="true"></canvas>
 
 <header class="top">
   <div class="brand"><img src="/emblema.svg" alt=""><div><h1>Vila da <span>Galera</span></h1><small id="online">conectando…</small></div></div>
@@ -248,7 +267,7 @@ canvas.mini.off{display:none}
   </div>
 </header>
 
-<div class="hint"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> andar · <kbd>Shift</kbd> correr · <kbd>Espaço</kbd> entrar ou pegar o carro · clique numa casinha, ou num amigo para desafiar no Galeramon</div>
+<div class="hint"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> andar · <kbd>Shift</kbd> correr · <kbd>Espaço</kbd> entrar · clique em uma casinha ou em um amigo</div>
 
 <div class="dlg" id="dlg" role="status" aria-live="polite"></div>
 
@@ -312,29 +331,21 @@ canvas.mini.off{display:none}
 <script src="/galeramon/naruto.js"></script>
 <script src="/galeramon/lideres.js"></script>
 <script src="/comum.js"></script>
-<script src="/vila/estadios.js"></script>
 
 <script>
 "use strict";
 const { $, store } = Comum;
 
 // ---------- o mapa ----------
-const TS = 16, MW = 320, MH = 260; // tamanho do tile e do mapa (em tiles)
-// A vila (58 x 52 casas) fica no meio de um mapa bem maior; em volta, as rodovias que levam aos estádios, cada um no
-// seu canto (como em São Paulo). As coordenadas da vila abaixo são escritas de 0 a 57 e de 0 a 51 e
-// depois deslocadas por OX, OY. Fora da vila é rodovia: pedestre não passa, só de carro (pega no estacionamento).
-const VW = 58, VH = 52, OX = 131, OY = 100;
-// A vila é dividida em bairros, e o chão de cada um é do material do tema: a Rua das Cartas (jogos de mesa) tem
-// paralelepípedo; a Praça, pedra portuguesa em ondas (como o calçadão de Copacabana); a Vila Esportiva, a pista de
-// atletismo; o Autódromo, asfalto com a faixa amarela. Uma avenida no meio liga tudo, e a placa azul de rua (com o
-// nome do bairro) fica na entrada de cada um.
+const TS = 16, MW = 64, MH = 64; // bairro compacto, inteiramente caminhável
+const VW = 58, VH = 58, OX = 3, OY = 3;
+// Ruas de paralelepípedo unem os quarteirões; a praça e a alameda têm caminhos claros entre gramados.
 const BAIRROS = [
   { id: "cartas", nome: "Rua das Cartas", placa: [9, 9] },
   { id: "praca", nome: "Praça da Galera", placa: [3, 17] },
   { id: "esportes", nome: "Vila Esportiva", placa: [22, 37] },
   { id: "autodromo", nome: "Autódromo", placa: [35, 37] },
-  { id: "ginasios", nome: "Ginásios", placa: [-11, 4] }, // fora da vila, ao lado do estacionamento oeste
-  { id: "praia", nome: "Praia de Santos", placa: [101, 132] }, // lá embaixo, na areia de Santos (de carro, pela Imigrantes)
+  { id: "ginasios", nome: "Alameda dos Líderes", placa: [3, 52] },
 ];
 const GAMES = [
   { id: "leilao", url: "/leilao/", icon: "🔨", sign: "LEILÃO", name: "Casa de Leilão", desc: "Roleta, lances e moedas: monte o seu time (ou hambúrguer, pizza, drink…) e vença no fim.", meta: "Leilão da Galera",
@@ -397,16 +408,15 @@ const GAMES = [
   { id: "futevolei", url: "/futevolei/", icon: "🏐", sign: "FUTEVÔLEI", name: "Arena de Futevôlei", desc: "Futevôlei 3D na areia da praia ou na arena coberta. Só dois botões, passar e atacar: o golpe sai sozinho (cabeceio, peito, letra, voleio, bicicleta e o Shark Attack).", meta: "Futevôlei da Galera · 2x2 ou 1x1",
     x: 21, y: 39, w: 6, h: 4, doors: [24], bairro: "esportes", roof: "#e6cf9f", roof2: "#c9ac72", wall: "#f6f1e4", wall2: "#d9cfb6", futevolei: true },
   { id: "haxball", url: "/haxball/", icon: "⚽", sign: "HAXBALL", name: "Haxball da Galera", desc: "Futebol de discos 2D em tempo real. Crie uma sala e jogue com os amigos de 1x1 até 5x5.", meta: "Haxball da Galera · 1x1 a 5x5",
-    x: 28, y: 39, w: 3, h: 4, doors: [29], bairro: "esportes", roof: "#2c774a", roof2: "#1c5635", wall: "#e8eee4", wall2: "#c3d3c5", haxball: true },
+    x: 3, y: 39, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#2c774a", roof2: "#1c5635", wall: "#e8eee4", wall2: "#c3d3c5", haxball: true },
 ];
-// os ginásios dos líderes (Lideres.GINASIOS): dois em cima do estacionamento oeste e dois em cima do leste, fora da
-// cerca. Dá para ir a pé: a rua de saída leva ao estacionamento, e a porta abre para ele. Cada um desafia o seu líder.
+// Os quatro líderes formam uma única alameda ao sul, com acesso pela rua central.
 const escurece = (hex, f = 0.72) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * f).toString(16).padStart(2, "0")).join("");
 Lideres.GINASIOS.forEach((l, i) => {
-  const x = [-10, -5, VW, VW + 5][i];
+  const x = [3, 16, 36, 49][i];
   GAMES.push({ id: "lider-" + l.id, url: "/ginasio/?lider=" + l.id, icon: "🏅", sign: l.tipo.toUpperCase(), name: "Ginásio " + l.tipo, verbo: "desafiar o líder", textoBotao: "Desafiar",
     desc: l.nome + ": “" + l.frase + "” Vença no Ginásio em tempo real para ganhar a insígnia.", meta: "Ginásio de " + l.tipo + " · desafio de líder",
-    x, y: 0, w: 5, h: 4, doors: [x + 2], bairro: "ginasios", roof: l.cor, roof2: escurece(l.cor), wall: "#efe9dc", wall2: "#d6cdb8", lider: l });
+    x, y: 48, w: 8, h: 4, doors: [x + 4], bairro: "ginasios", roof: l.cor, roof2: escurece(l.cor), wall: "#efe9dc", wall2: "#d6cdb8", lider: l });
 });
 // os treinadores (Lideres.TREINADORES): parados pelas ruas e pela praça; de frente para eles, dá para desafiar
 Lideres.TREINADORES.forEach((l) => GAMES.push({ id: "lider-" + l.id, url: "/ginasio/?lider=" + l.id, icon: "⚔️", name: l.nome, verbo: "desafiar", textoBotao: "Desafiar",
@@ -422,12 +432,11 @@ const TERRENOS = [
   { x: 21, y: 10, w: 6, h: 5, bairro: "cartas" },
   { x: 51, y: 31, w: 5, h: 4, bairro: "autodromo" },
 ];
-const LAMPS = [[2, 9], [26, 9], [31, 9], [55, 9], [11, 17], [44, 17], [11, 27], [44, 27], [2, 37], [27, 37], [30, 37], [55, 37], [27, 45], [30, 45]];
+const LAMPS = [[2, 9], [26, 9], [31, 9], [55, 9], [11, 17], [44, 17], [11, 27], [44, 27], [2, 37], [27, 37], [30, 37], [55, 37], [27, 46], [30, 46]];
 const BENCHES = [[20, 26], [37, 26]];
 const TREES = [[2, 29], [9, 29], [15, 29], [20, 29], [25, 29], [33, 29], [43, 29], [50, 29], [55, 29], [2, 38], [10, 38], [19, 38], [25, 38],
-  [33, 38], [40, 38], [49, 38], [55, 38], [3, 46], [8, 46], [13, 46], [18, 46], [23, 46], [34, 46], [39, 46], [45, 46], [50, 46], [54, 46],
-  [5, 47], [16, 47], [37, 47], [48, 47], [12, 9], [41, 9]];
-// leva a vila para o meio do mapa grande
+  [33, 38], [40, 38], [49, 38], [55, 38], [3, 46], [13, 46], [23, 46], [39, 46], [52, 46], [12, 9], [41, 9]];
+// aplica a margem de três casas ao bairro
 const noMapa = (lista) => lista.splice(0, lista.length, ...lista.map(([x, y]) => [x + OX, y + OY]));
 BAIRROS.forEach((b) => { b.placa = [b.placa[0] + OX, b.placa[1] + OY]; });
 GAMES.forEach((g) => { g.x += OX; g.y += OY; g.doors = g.doors.map((d) => d + OX); g.doorY = g.y + g.h - 1; g.mats = g.doors.map((x) => [x, g.doorY + 1]); });
@@ -436,21 +445,25 @@ TELAO.x += OX; TELAO.y += OY;
 TERRENOS.forEach((t) => { t.x += OX; t.y += OY; });
 [LAMPS, BENCHES, TREES].forEach(noMapa);
 
-// tipos de chão: g grama, r paralelepípedo, p pedra portuguesa, q pista de atletismo, a asfalto, f flores, t árvore, m capacho,
-// e rodovia (só carro), E estacionamento, c calçada (a praça dos estádios), w água, s areia, j jardim da orla
+// tipos de chão: g grama, r paralelepípedo, p pedra clara, f flores, t árvore, m capacho, h grama alta, l terreno
 const ground = Array.from({ length: MH }, () => Array(MW).fill("g"));
-const solid = Array.from({ length: MH }, () => Array(MW).fill(true)); // fora da vila, pedestre não passa
+const solid = Array.from({ length: MH }, () => Array(MW).fill(true));
 const set = (x, y, t, s) => { if (x >= 0 && y >= 0 && x < MW && y < MH) { ground[y][x] = t; if (s != null) solid[y][x] = s; } };
 const faixa = (x0, x1, y0, y1, t, s) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, t, s); };
 const vfaixa = (x0, x1, y0, y1, t, s) => faixa(x0 + OX, x1 + OX, y0 + OY, y1 + OY, t, s); // em coordenadas da vila
 for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) { const cerca = x < 2 || y < 2 || x >= VW - 2 || y >= VH - 2; set(x + OX, y + OY, cerca ? "t" : "g", cerca); }
 vfaixa(2, VW - 3, 7, 8, "r"); vfaixa(2, VW - 3, 15, 16, "r"); // Rua das Cartas: as duas ruas
-vfaixa(2, VW - 3, 17, 27, "p"); // a Praça
+vfaixa(2, VW - 3, 17, 27, "g"); // praça verde com caminhos definidos
+vfaixa(2, VW - 3, 17, 18, "p");
+vfaixa(2, VW - 3, 26, 27, "p");
+vfaixa(10, 11, 18, 26, "p"); vfaixa(26, 31, 18, 26, "p"); vfaixa(43, 44, 18, 26, "p");
 vfaixa(28, 29, 9, 14, "r"); vfaixa(28, 29, 28, VH - 3, "r"); // a avenida do meio
-vfaixa(2, 27, 35, 36, "q"); vfaixa(2, 27, 43, 44, "q"); // Vila Esportiva: a pista
-vfaixa(30, VW - 3, 35, 36, "a"); vfaixa(30, VW - 3, 43, 44, "a"); // Autódromo: o asfalto
-// as saídas da vila: a rua atravessa a cerca a oeste e a leste (Rua das Cartas) e ao sul (a avenida do meio)
-vfaixa(0, 1, 7, 8, "r", false); vfaixa(VW - 2, VW - 1, 7, 8, "r", false); vfaixa(28, 29, VH - 3, VH - 1, "r", false);
+vfaixa(2, 27, 35, 36, "r"); vfaixa(2, 27, 43, 44, "r");
+vfaixa(30, VW - 3, 35, 36, "r"); vfaixa(30, VW - 3, 43, 44, "r");
+vfaixa(2, VW - 3, 45, 47, "p");
+vfaixa(2, VW - 3, 52, 54, "p");
+// a avenida central chega à Alameda dos Líderes
+vfaixa(28, 29, 45, 54, "p");
 // os terrenos: terra batida e cerca (sólidos); a casa de baixo do meio é onde se lê a placa
 for (const t of TERRENOS) { faixa(t.x, t.x + t.w - 1, t.y, t.y + t.h - 1, "l", true); t.placa = [t.x + (t.w >> 1), t.y + t.h]; }
 for (const g of GAMES) {
@@ -464,95 +477,12 @@ for (const y of [9, 29, 38, 46]) for (let x = 3; x < VW - 3; x++) if (ground[y +
 for (let y = FOUNTAIN.y; y < FOUNTAIN.y + FOUNTAIN.h; y++) for (let x = FOUNTAIN.x; x < FOUNTAIN.x + FOUNTAIN.w; x++) solid[y][x] = true;
 for (let x = TELAO.x; x < TELAO.x + TELAO.w; x++) solid[TELAO.y][x] = true;
 for (const [x, y] of [...LAMPS, ...BENCHES, ...BAIRROS.map((b) => b.placa)]) solid[y][x] = true;
-for (const [x, y] of TREES) if (!GAMES.some((g) => g.mats.some(([mx, my]) => Math.abs(mx - x) + Math.abs(my - y) < 2))) set(x, y, "t", true);
+for (const [x, y] of TREES) if (!GAMES.some((g) => x >= g.x - 1 && x <= g.x + g.w && y >= g.y - 1 && y <= g.y + g.h) && !GAMES.some((g) => g.mats.some(([mx, my]) => Math.abs(mx - x) + Math.abs(my - y) < 2))) set(x, y, "t", true);
 // a grama alta em frente ao Ginásio (public/vila/mato.js): h, dá para andar; tira as árvores e as flores de dentro
 vfaixa(MatoAlto.GRAMA.x, MatoAlto.GRAMA.x + MatoAlto.GRAMA.w - 1, MatoAlto.GRAMA.y, MatoAlto.GRAMA.y + MatoAlto.GRAMA.h - 1, "h", false);
 
-// ---------- o mundo em volta da vila ----------
-// Rodovias de duas faixas (só carro), um estacionamento em cada saída da vila e um em cada estádio, a cidade (prédios
-// de enfeite), o Rio Pinheiros e o Tietê (as rodovias passam por pontes), a Serra do Mar (mata fechada) e, lá embaixo,
-// Santos: a praia, o jardim da orla e o mar.
+// O mapa termina na cerca do bairro.
 const hash = (x, y, i = 0) => { let n = (x * 374761393 + y * 668265263 + i * 1274126177) | 0; n = (n ^ (n >>> 13)) * 1274126177; return ((n ^ (n >>> 16)) >>> 0); };
-const ESTADIOS = Estadios.LISTA;
-const rumo = Array.from({ length: MH }, () => Array(MW).fill("")); // a direção de cada pedaço de rodovia: h, v ou x (cruzamento)
-const PONTES = new Set(), PARADOS = new Map(), LOTES = [], PREDIOS = [], POSTES = [], PLACAS_VERDES = [];
-const CORES_CARRO = ["#e0352b", "#2f6fd6", "#f4c20d", "#f4f4f4", "#1b1b1b", "#1f9d55", "#ff7a2f", "#8a8f99"];
-const k = (x, y) => y * MW + x;
-function rodovia(x0, y0, x1, y1) { // um trecho reto, de duas faixas
-  const h = y0 === y1, [a, b] = h ? [Math.min(x0, x1), Math.max(x0, x1)] : [Math.min(y0, y1), Math.max(y0, y1)];
-  for (let i = a; i <= b; i++) for (let d = 0; d < 2; d++) {
-    const x = h ? i : x0 + d, y = h ? y0 + d : i;
-    if (ground[y][x] === "w") PONTES.add(k(x, y));
-    rumo[y][x] = rumo[y][x] && rumo[y][x] !== (h ? "h" : "v") ? "x" : h ? "h" : "v";
-    set(x, y, "e", true);
-    if (i % 14 === 0 && d === 0) POSTES.push(h ? [x, y - 1] : [x - 1, y]);
-  }
-}
-function lote(x0, y0, x1, y1, nome) { // estacionamento: chão de pedestre e de carro, com uns carros parados em cima
-  faixa(x0, x1, y0, y1, "E", false);
-  LOTES.push({ x0, y0, x1, y1, nome });
-  for (let x = x0 + 1; x < x1; x += 2) if (hash(x, y0, 7) % 3 && !(ground[y0 - 1] && "er".includes(ground[y0 - 1][x]))) { PARADOS.set(k(x, y0), CORES_CARRO[hash(x, y0) % CORES_CARRO.length]); solid[y0][x] = true; }
-}
-function montaMundo() {
-  // o mato em volta, com árvore aqui e ali
-  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
-    if (x >= OX && x < OX + VW && y >= OY && y < OY + VH) continue;
-    const serra = x > 86 && x < 214 && y > 166 && y < 238; // a Serra do Mar: mata fechada
-    if (hash(x, y, 3) % 100 < (serra ? 70 : 7)) set(x, y, "t", true);
-  }
-  faixa(0, MW - 1, 66, 69, "w", true); // o Tietê
-  faixa(96, 99, 40, 245, "w", true); // o Pinheiros
-  faixa(0, MW - 1, 238, 245, "s", true); faixa(0, MW - 1, 246, MH - 1, "w", true); // a praia e o mar
-  // Santos: os quarteirões de grama com as ruas de calçada, o jardim da orla e a areia (aqui dá para andar)
-  faixa(200, 260, 204, 229, "g", false);
-  for (const y of [204, 210, 216, 222, 228]) faixa(200, 260, y, y + 1, "c", false);
-  for (let x = 200; x <= 260; x += 8) faixa(x, x + 1, 204, 229, "c", false);
-  faixa(196, 264, 230, 231, "j", false); faixa(196, 264, 232, 245, "s", false);
-  // os estádios: a praça em volta (de pedestre), o estacionamento e o estádio (sólido)
-  for (const e of ESTADIOS) {
-    const p = e.praca; faixa(p.x0, p.x1, p.y0, p.y1, "c", false);
-    const r = e.ret; faixa(r.x, r.x + r.w - 1, r.y, r.y + r.h - 1, "c", true);
-    // árvores na beirada da praça (menos na frente do portão e do estacionamento)
-    const perto = (x, y) => e.portao.some(([gx, gy]) => Math.abs(gx - x) + Math.abs(gy - y) < 5) || (x >= e.lote.x0 - 2 && x <= e.lote.x1 + 2 && y >= e.lote.y0 - 2 && y <= e.lote.y1 + 2);
-    for (let x = p.x0; x <= p.x1; x += 3) for (const y of [p.y0, p.y1]) if (!perto(x, y)) set(x, y, "t", true);
-    for (let y = p.y0 + 3; y < p.y1; y += 3) for (const x of [p.x0, p.x1]) if (!perto(x, y)) set(x, y, "t", true);
-    POSTES.push([p.x0, p.y0], [p.x1, p.y0], [p.x0, p.y1], [p.x1, p.y1]);
-  }
-  // os estacionamentos: um em cada saída da vila e um em cada estádio
-  lote(OX - 10, OY + 4, OX - 1, OY + 11, "oeste"); lote(OX + VW, OY + 4, OX + VW + 9, OY + 11, "leste"); lote(OX + 23, OY + VH, OX + 34, OY + VH + 6, "sul");
-  for (const e of ESTADIOS) { const l = e.lote; lote(l.x0, l.y0, l.x1, l.y1, e.nome); }
-  // as rodovias
-  rodovia(50, 107, OX - 11, 107); rodovia(50, 54, 50, 108); // oeste: Av. Sumaré até o Nubank Parque
-  rodovia(OX + VW + 10, 107, 267, 107); rodovia(266, 107, 266, 121); // leste: Radial Leste até Itaquera
-  rodovia(OX + 28, OY + VH + 7, OX + 28, 191); rodovia(62, 160, 158, 160); rodovia(62, 160, 62, 163); // sul: até o Morumbis
-  rodovia(159, 190, 228, 190); rodovia(227, 190, 227, 195); // e descendo a serra (Imigrantes) até Santos
-  PLACAS_VERDES.push([OX - 13, 105, "Perdizes · Nubank Parque"], [OX + VW + 11, 105, "Radial Leste · Itaquera"], [OX + 31, OY + VH + 8, "Morumbis · Santos"], [156, 162, "Morumbis"], [162, 188, "Imigrantes · Santos"]);
-  for (const [x, y] of PLACAS_VERDES) set(x, y, ground[y][x] === "t" ? "g" : ground[y][x], true);
-  // a cidade: prédios de enfeite onde sobrou grama (longe das rodovias, do rio, da vila e das praças)
-  const livre = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { if (x < 0 || y < 0 || x >= MW || y >= MH || !"gt".includes(ground[y][x])) return false; if (x >= OX - 2 && x < OX + VW + 2 && y >= OY - 2 && y < OY + VH + 2) return false; if (GAMES.some((g) => x >= g.x - 1 && x <= g.x + g.w && y >= g.y - 1 && y <= g.y + g.h)) return false; } return true; };
-  for (let by = 14; by < 166; by += 7) for (let bx = 8; bx < MW - 10; bx += 7) {
-    const h = hash(bx, by, 11); if (h % 10 < 3) continue;
-    const w = 3 + (h % 3), hh = 3 + ((h >>> 4) % 3), x = bx + ((h >>> 8) % 2), y = by + ((h >>> 10) % 2);
-    if (!livre(x - 1, y - 1, x + w, y + hh)) continue;
-    PREDIOS.push({ x, y, w, h: hh, cor: ["#9aa0a8", "#c9c2b2", "#b8a99a", "#8f9db0", "#d8d2c4", "#a7b0a0"][(h >>> 12) % 6], alto: (h >>> 15) % 3 });
-    faixa(x, x + w - 1, y, y + hh - 1, "g", true);
-  }
-  // as casinhas de Santos, uma em cada quarteirão (fora da praça do estádio)
-  for (let y = 206; y < 228; y += 6) for (let x = 202; x < 258; x += 8) {
-    if (x + 6 >= 212 && x <= 243) continue;
-    PREDIOS.push({ x: x + 1, y, w: 4, h: 3, cor: ["#f2e3c8", "#e8c9a0", "#cfe0e8", "#f0d0d0"][hash(x, y) % 4], casa: true }); faixa(x + 1, x + 4, y, y + 2, "g", true);
-  }
-}
-montaMundo();
-// os ginásios fora da cerca: o capacho da porta (em cima do estacionamento) fica livre para quem chega a pé
-for (const g of GAMES) for (const [mx, my] of g.mats) if (mx < OX || mx >= OX + VW || my < OY || my >= OY + VH) { PARADOS.delete(k(mx, my)); set(mx, my, "m", false); }
-// a Arena de Futevôlei fica na areia de Santos, que o montaMundo desenhou por cima: o prédio volta a ser sólido
-for (const g of GAMES) if (g.bairro === "praia") for (let y = g.y; y < g.y + g.h; y++) for (let x = g.x; x < g.x + g.w; x++) solid[y][x] = true;
-{ const [x, y] = BAIRROS.find((b) => b.id === "praia").placa; solid[y][x] = true; } // e a placa da rua também
-const carOk = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH && (ground[y][x] === "e" || ground[y][x] === "E") && !PARADOS.has(k(x, y));
-const estadioAt = (x, y) => ESTADIOS.find((e) => x >= e.ret.x && x < e.ret.x + e.ret.w && y >= e.ret.y && y < e.ret.y + e.ret.h);
-const portaoAt = (x, y) => ESTADIOS.find((e) => e.portao.some(([px, py]) => px === x && py === y));
-const loteAt = (x, y) => ground[y] && ground[y][x] === "E";
 const matAt = (x, y) => GAMES.find((g) => g.mats.some(([mx, my]) => mx === x && my === y));
 const buildingAt = (x, y) => GAMES.find((g) => x >= g.x && x < g.x + g.w && y >= g.y && y < g.y + g.h);
 const walkable = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH && !solid[y][x];
@@ -562,17 +492,17 @@ function px(c, col, x, y, w = 1, h = 1) { c.fillStyle = col; c.fillRect(x, y, w,
 
 function drawGrass(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#63b24b", X, Y, TS, TS);
-  for (let i = 0; i < 5; i++) { const r = hash(x, y, i); px(c, "#4c963a", X + (r % 15), Y + ((r >> 5) % 14), 1, 2); }
-  for (let i = 0; i < 2; i++) { const r = hash(x, y, i + 9); px(c, "#83cf66", X + (r % 15), Y + ((r >> 6) % 15)); }
+  px(c, "#9fc486", X, Y, TS, TS);
+  for (let i = 0; i < 4; i++) { const r = hash(x, y, i); px(c, "#88b777", X + (r % 15), Y + ((r >> 5) % 14), 1, 2); }
+  for (let i = 0; i < 2; i++) { const r = hash(x, y, i + 9); px(c, "#b8d29a", X + (r % 15), Y + ((r >> 6) % 15)); }
 }
 function drawRoad(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#d8cba9", X, Y, TS, TS);
+  px(c, "#eadbb8", X, Y, TS, TS);
   for (let r = 0; r < 2; r++) {
-    px(c, "#b9aa86", X, Y + r * 8 + 7, TS, 1);
+    px(c, "#d1bf9a", X, Y + r * 8 + 7, TS, 1);
     const off = ((y * 2 + r) % 2) * 4;
-    for (let k = off; k < TS; k += 8) px(c, "#b9aa86", X + k, Y + r * 8, 1, 7);
+    for (let k = off; k < TS; k += 8) px(c, "#d1bf9a", X + k, Y + r * 8, 1, 7);
   }
   const h = hash(x, y, 3); if (h % 4 === 0) px(c, "#c8ba95", X + (h >> 4) % 13 + 1, Y + (h >> 9) % 5 + 1, 2, 1);
   bordas(c, x, y, "#a8987a"); // borda com a grama
@@ -620,78 +550,12 @@ function bordas(c, x, y, cor) {
 // Praça: pedra portuguesa em ondas pretas e brancas (o calçadão de Copacabana), contínuas de um ladrilho para o outro
 function drawPraca(c, x, y) {
   const X = x * TS, Y = y * TS;
-  for (let j = 0; j < TS; j++) for (let i = 0; i < TS; i++) {
-    const wx = X + i, wy = Y + j, v = wy + 6 * Math.sin((wx / 56) * Math.PI * 2);
-    px(c, Math.floor(v / 9) % 2 ? "#3b3a42" : "#ece6d8", wx, wy);
-  }
-  for (let k = 0; k < 3; k++) { const h = hash(x, y, k + 40); px(c, "#0000001a", X + (h % 15), Y + ((h >> 5) % 15)); } // pedrinhas
-  bordas(c, x, y, "#8f8a7d");
+  px(c, "#f2e8d1", X, Y, TS, TS);
+  px(c, "#e4d4b5", X, Y, TS, 1); px(c, "#e4d4b5", X, Y, 1, TS);
+  if ((x + y) % 3 === 0) px(c, "#d8c7a6", X + 10, Y + 10, 2, 1);
+  bordas(c, x, y, "#c3ac85");
 }
-// Vila Esportiva: pista de atletismo cor de tijolo, com as linhas brancas das raias
-function drawPista(c, x, y) {
-  const X = x * TS, Y = y * TS;
-  px(c, "#b4523a", X, Y, TS, TS);
-  for (let k = 0; k < 6; k++) { const h = hash(x, y, k + 60); px(c, (h >> 3) % 2 ? "#a3472f" : "#c25f45", X + (h % 16), Y + ((h >> 6) % 16)); }
-  px(c, "#f3e7dc", X, Y + 7, TS, 1);
-  if (ground[y + 1] && ground[y + 1][x] !== "q") px(c, "#f3e7dc", X, Y + TS - 2, TS, 1);
-  if (ground[y - 1] && ground[y - 1][x] !== "q") px(c, "#f3e7dc", X, Y + 1, TS, 1);
-  bordas(c, x, y, "#7f3524");
-}
-// Autódromo: asfalto com a faixa amarela tracejada no meio da pista e a linha branca da beirada
-function drawAsfalto(c, x, y) {
-  const X = x * TS, Y = y * TS;
-  px(c, "#4a4e57", X, Y, TS, TS);
-  for (let k = 0; k < 7; k++) { const h = hash(x, y, k + 80); px(c, (h >> 3) % 2 ? "#40444c" : "#575b64", X + (h % 16), Y + ((h >> 6) % 16)); }
-  const cima = ground[y - 1] && ground[y - 1][x] === "a", baixo = ground[y + 1] && ground[y + 1][x] === "a";
-  if (!cima && baixo) for (let k = 0; k < TS; k++) if ((X + k) % 12 < 7) px(c, "#f2c230", X + k, Y + TS - 1, 1, 2); // a faixa do meio
-  if (!cima) px(c, "#d8dade", X, Y + 1, TS, 1);
-  if (!baixo) px(c, "#d8dade", X, Y + TS - 2, TS, 1);
-  bordas(c, x, y, "#2c2f35");
-}
-// Rodovia: asfalto escuro, a linha branca da beirada e a faixa amarela tracejada entre as duas faixas; na ponte, a mureta
-const ehEstrada = (x, y) => ground[y] && ground[y][x] === "e";
-function drawEstrada(c, x, y) {
-  const X = x * TS, Y = y * TS, r = rumo[y][x];
-  px(c, "#3d4048", X, Y, TS, TS);
-  for (let i = 0; i < 6; i++) { const h = hash(x, y, i + 90); px(c, (h >> 3) % 2 ? "#353840" : "#474a53", X + (h % 16), Y + ((h >> 6) % 16)); }
-  const tracejado = (horiz, pos) => { for (let i = 0; i < TS; i++) if (((horiz ? X : Y) + i) % 16 < 9) horiz ? px(c, "#f2c230", X + i, pos) : px(c, "#f2c230", pos, Y + i); };
-  if (r === "h") { if (!ehEstrada(x, y - 1)) { px(c, "#e8e8e2", X, Y + 1, TS, 1); tracejado(true, Y + TS - 1); } else { px(c, "#e8e8e2", X, Y + TS - 2, TS, 1); tracejado(true, Y); } }
-  else if (r === "v") { if (!ehEstrada(x - 1, y)) { px(c, "#e8e8e2", X + 1, Y, 1, TS); tracejado(false, X + TS - 1); } else { px(c, "#e8e8e2", X + TS - 2, Y, 1, TS); tracejado(false, X); } }
-  if (PONTES.has(k(x, y))) {
-    if (r === "h") { if (!ehEstrada(x, y - 1)) px(c, "#b9b5ac", X, Y, TS, 2); if (!ehEstrada(x, y + 1)) px(c, "#b9b5ac", X, Y + TS - 2, TS, 2); }
-    else { if (!ehEstrada(x - 1, y)) px(c, "#b9b5ac", X, Y, 2, TS); if (!ehEstrada(x + 1, y)) px(c, "#b9b5ac", X + TS - 2, Y, 2, TS); }
-  }
-}
-// estacionamento: asfalto mais claro com as vagas pintadas
-function drawLote(c, x, y) {
-  const X = x * TS, Y = y * TS;
-  px(c, "#55585f", X, Y, TS, TS);
-  for (let i = 0; i < 4; i++) { const h = hash(x, y, i + 120); px(c, "#4c4f56", X + (h % 16), Y + ((h >> 6) % 16)); }
-  const L = LOTES.find((l) => x >= l.x0 && x <= l.x1 && y >= l.y0 && y <= l.y1);
-  if (L && y === L.y0) { if ((x - L.x0) % 2 === 0) px(c, "#e8e8e2", X, Y + 2, 1, TS - 3); px(c, "#e8e8e2", X, Y + TS - 1, TS, 1); }
-  bordas(c, x, y, "#2c2f35");
-}
-// calçada das praças dos estádios e de Santos
-function drawCalcada(c, x, y) {
-  const X = x * TS, Y = y * TS;
-  px(c, "#cdc7bb", X, Y, TS, TS); px(c, "#b8b1a4", X, Y, TS, 1); px(c, "#b8b1a4", X, Y, 1, TS); px(c, "#c2bcb0", X + 8, Y + 1, 1, TS - 1);
-  const h = hash(x, y, 130); if (h % 5 === 0) px(c, "#bfb8ab", X + (h >> 4) % 12 + 2, Y + (h >> 8) % 12 + 2, 2, 1);
-  bordas(c, x, y, "#8f8a7d");
-}
-// água (o rio e o mar), areia da praia
-function drawAgua(c, x, y) {
-  const X = x * TS, Y = y * TS;
-  px(c, "#2a64b8", X, Y, TS, TS);
-  for (let i = 0; i < 3; i++) { const h = hash(x, y, i + 140); px(c, "#4a86d6", X + (h % 12), Y + ((h >> 6) % 15), 4, 1); }
-  bordas(c, x, y, "#1f4d8f");
-}
-function drawAreia(c, x, y) {
-  const X = x * TS, Y = y * TS;
-  px(c, "#ecd9a0", X, Y, TS, TS);
-  for (let i = 0; i < 6; i++) { const h = hash(x, y, i + 150); px(c, (h >> 3) % 2 ? "#d9c387" : "#f6e8bd", X + (h % 16), Y + ((h >> 6) % 16)); }
-  if (ground[y + 1] && ground[y + 1][x] === "w") { px(c, "#ffffff", X, Y + TS - 3, TS, 1); px(c, "#cfe6ff", X, Y + TS - 2, TS, 2); } // a espuma da onda
-}
-const CHAO = { h: drawMatoAlto, r: drawRoad, p: drawPraca, q: drawPista, a: drawAsfalto, e: drawEstrada, E: drawLote, c: drawCalcada, w: drawAgua, s: drawAreia, j: drawFlowers };
+const CHAO = { h: drawMatoAlto, r: drawRoad, p: drawPraca };
 function drawMat(c, x, y) {
   (CHAO[ground[y + 1] && ground[y + 1][x]] || drawRoad)(c, x, y);
   const X = x * TS, Y = y * TS;
@@ -716,10 +580,10 @@ function drawBuilding(c, g) {
   // sombra no chão
   px(c, "#00000030", X + 3, Y + H, W - 2, 3);
   // parede
-  const acento = acentoDe(g), fachada = mistura(g.roof, "#0e1430", 0.8), vinco = mistura(fachada, "#ffffff", 0.1);
+  const acento = acentoDe(g), fachada = g.wall || "#f4ead6", vinco = mistura(fachada, "#ffffff", 0.35);
   px(c, fachada, X, wallY, W, H - roofH);
   for (let xx = X + 8; xx < X + W; xx += 16) px(c, vinco, xx, wallY + 3, 1, H - roofH - 6); // os painéis da fachada
-  px(c, mistura(fachada, "#000000", 0.35), X, Y + H - 4, W, 4); // o rodapé escuro
+  px(c, g.wall2 || "#c8b99d", X, Y + H - 4, W, 4);
   px(c, acento, X, Y + H - 4, W, 1);
   px(c, "#00000055", X, Y + H - 1, W, 1);
   // telhado
@@ -818,6 +682,17 @@ function drawBuilding(c, g) {
       c.fillStyle = col; c.beginPath(); c.ellipse(bx + dx + 0.5, by + dy, 3.5, 4.5, 0, 0, 7); c.fill();
     });
   }
+  if (g.haxball) { // quadra de discos no antigo lote do tênis de mesa
+    const qx = rx + 7, qy = Y + 4, qw = rw - 14, qh = roofH - 9;
+    px(c, "#277449", qx, qy, qw, qh);
+    c.strokeStyle = "#eff9e9"; c.lineWidth = 1;
+    c.strokeRect(qx + .5, qy + .5, qw - 1, qh - 1);
+    px(c, "#eff9e9", qx + qw / 2, qy, 1, qh);
+    c.beginPath(); c.arc(qx + qw / 2, qy + qh / 2, 5, 0, Math.PI * 2); c.stroke();
+    px(c, "#df6056", qx + 17, qy + 12, 7, 7);
+    px(c, "#4a8cde", qx + qw - 24, qy + 6, 7, 7);
+    px(c, "#ffffff", qx + qw / 2 - 2, qy + qh / 2 - 2, 4, 4);
+  }
   if (g.tenis) { // telhado: uma quadra azul com as linhas brancas, a rede e uma bolinha amarela
     const qx = rx + 4, qy = Y + 3, qw = rw - 8, qh = roofH - 6;
     c.strokeStyle = "#f4f7fa"; c.lineWidth = 1; c.strokeRect(qx + 0.5, qy + 0.5, qw - 1, qh - 1); c.strokeRect(qx + qw * 0.12 + 0.5, qy + 0.5, qw * 0.76 - 1, qh - 1);
@@ -874,7 +749,7 @@ function drawBuilding(c, g) {
   }
   if (!g.ginasio) px(c, "#ffffff40", rx, Y, rw, 1);
   px(c, g.casino ? "#ffc83d" : "#00000055", rx, wallY - 3, rw, 3);
-  if (!g.casino) px(c, acento, X, wallY, W, 2); // a faixa de LED no beiral
+  if (!g.casino) px(c, "#fff6e7", X, wallY, W, 2);
   px(c, "#00000030", X, wallY + 2, W, 2);
   // janelas
   const dL = g.doors[0] * TS, dR = (g.doors[g.doors.length - 1] + 1) * TS;
@@ -884,10 +759,10 @@ function drawBuilding(c, g) {
   g.windows = [];
   for (const wx of wins) {
     const wy = wallY + 6;
-    px(c, "#080d1f", wx - 1, wy - 1, 14, 12); // o caixilho de aço
-    px(c, "#2f9fc9", wx, wy, 12, 10); px(c, "#58bde0", wx, wy, 12, 4); px(c, "#a7e6f6", wx, wy, 12, 1); // o vidro, claro em cima
+    px(c, "#8d7862", wx - 1, wy - 1, 14, 12);
+    px(c, "#75b9c2", wx, wy, 12, 10); px(c, "#9ed4d6", wx, wy, 12, 4); px(c, "#d5eeea", wx, wy, 12, 1);
     px(c, "#ffffff90", wx + 2, wy + 2, 2, 5); px(c, "#ffffff60", wx + 5, wy + 1, 1, 4); // o reflexo na diagonal
-    px(c, "#080d1f", wx + 5, wy, 1, 10);
+    px(c, "#8d7862", wx + 5, wy, 1, 10);
     px(c, "#ffffff22", wx - 1, wy + 11, 14, 1); // o peitoril
     g.windows.push([wx + 6, wy + 5]);
   }
@@ -896,10 +771,10 @@ function drawBuilding(c, g) {
     const dx = d * TS;
     const single = g.doors.length === 1;
     const x0 = single ? dx + 2 : dx + (d === g.doors[0] ? 2 : 0), w0 = single ? 12 : 14;
-    px(c, "#080d1f", x0 - 1, Y + H - 21, w0 + 2, 21);
-    px(c, g.casino ? "#c9a23a" : "#2f9fc9", x0, Y + H - 20, w0, 19); px(c, g.casino ? "#e8c75a" : "#58bde0", x0, Y + H - 20, w0, 7); // a porta de vidro
+    px(c, "#64513f", x0 - 1, Y + H - 21, w0 + 2, 21);
+    px(c, g.casino ? "#c9a23a" : "#558d89", x0, Y + H - 20, w0, 19); px(c, g.casino ? "#e8c75a" : "#8cc5bd", x0, Y + H - 20, w0, 7);
     px(c, "#ffffff70", x0 + 2, Y + H - 18, 2, 8);
-    px(c, "#080d1f", x0 + (single ? 5 : d === g.doors[0] ? w0 - 1 : 0), Y + H - 20, 1, 19);
+    px(c, "#64513f", x0 + (single ? 5 : d === g.doors[0] ? w0 - 1 : 0), Y + H - 20, 1, 19);
     px(c, "#ffffff", single ? x0 + 9 : d === g.doors[0] ? x0 + w0 - 3 : x0 + 2, Y + H - 11, 2, 4);
   }
   { // a marquise sobre a porta, na cor do prédio
@@ -937,48 +812,6 @@ function drawBench(c, x, y) {
   px(c, "#3a2a1c", X + 2, Y + 11, 2, 3); px(c, "#3a2a1c", X + 12, Y + 11, 2, 3);
 }
 
-// os prédios da cidade (vistos de cima: a laje, a caixa d'água e a fachada com as janelas acesas) e as casinhas de Santos
-function drawPredio(c, p) {
-  const X = p.x * TS, Y = p.y * TS, W = p.w * TS, H = p.h * TS;
-  px(c, "#00000038", X + 4, Y + H, W - 2, 4); px(c, "#00000038", X + W, Y + 4, 4, H);
-  if (p.casa) {
-    px(c, p.cor, X, Y + H - 14, W, 14); px(c, "#b4552e", X - 2, Y, W + 4, H - 12);
-    for (let yy = Y + 4; yy < Y + H - 12; yy += 4) px(c, "#93401f", X - 2, yy, W + 4, 1);
-    px(c, "#5a3a22", X + W / 2 - 3, Y + H - 11, 6, 11); px(c, "#ffd978", X + 4, Y + H - 10, 5, 5); px(c, "#ffd978", X + W - 9, Y + H - 10, 5, 5);
-    return;
-  }
-  px(c, shade(p.cor, 0.75), X, Y + H - 10, W, 10);
-  for (let xx = X + 3; xx < X + W - 3; xx += 5) for (let yy = Y + H - 8; yy < Y + H - 1; yy += 4) px(c, hash(xx, yy) % 3 ? "#ffd978" : "#2f3440", xx, yy, 3, 2);
-  px(c, p.cor, X, Y, W, H - 10); px(c, "#00000030", X, Y + H - 11, W, 1); px(c, "#ffffff40", X, Y, W, 1);
-  c.strokeStyle = "#00000030"; c.lineWidth = 1; c.strokeRect(X + 2.5, Y + 2.5, W - 5, H - 15);
-  px(c, "#7d8590", X + 6, Y + 6, 10, 8); px(c, "#9aa2ad", X + 7, Y + 7, 8, 3);
-  if (p.alto) for (let i = 0; i < 3; i++) px(c, "#6b7280", X + W - 12 - i * 7, Y + 6, 5, 4);
-}
-// o carro visto de cima (16 x 16), na cor que for; desenhado apontando para cima e girado para os outros lados
-const CARRO = [
-  "......kkkk......", ".....kLccLk.....", "....kccccccK....", "...tkwwwwwwkt...", "...tkwwwwwwkt...", "....kccccccK....", "....kcCCCCcK....", "....kcCCCCcK....",
-  "....kcCCCCcK....", "....kccccccK....", "...tkwwwwwwkt...", "...tkccccccKt...", "....kccccccK....", "....kRccccRk....", ".....kkkkkk.....", "................",
-];
-const carroCache = {};
-function spriteCarro(cor, dir) {
-  const chave = cor + dir; if (carroCache[chave]) return carroCache[chave];
-  const base = document.createElement("canvas"); base.width = base.height = 16;
-  const b = base.getContext("2d"), pal = { k: "#15151c", c: cor, C: shade(cor, 1.15), K: shade(cor, 0.7), w: "#2a3f5f", L: "#fff3b0", R: "#ff3b3b", t: "#111111" };
-  CARRO.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ".") px(b, pal[ch], x, y); }));
-  const cv = document.createElement("canvas"); cv.width = cv.height = 16;
-  const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
-  c.translate(8, 8); c.rotate({ up: 0, right: Math.PI / 2, down: Math.PI, left: -Math.PI / 2 }[dir] || 0); c.drawImage(base, -8, -8);
-  return (carroCache[chave] = cv);
-}
-function drawPlacaVerde(c, [tx, ty, nome]) { // placa verde de rodovia
-  const cx = tx * TS + 8;
-  px(c, "#00000030", cx - 3, ty * TS + 14, 7, 2); px(c, "#3a3d48", cx - 1, ty * TS - 2, 2, 17);
-  c.font = '700 7px "Pixelify Sans", monospace';
-  const w = Math.ceil(c.measureText(nome).width) + 10, h = 11, x = Math.round(cx - w / 2), y = ty * TS - 12;
-  px(c, "#0d4a2a", x - 1, y - 1, w + 2, h + 2); px(c, "#1d7a46", x, y, w, h);
-  c.strokeStyle = "#f4f6fb"; c.lineWidth = 1; c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
-  c.fillStyle = "#f4f6fb"; c.textBaseline = "middle"; c.textAlign = "center"; c.fillText(nome, cx, y + h / 2 + 0.5); c.textAlign = "left";
-}
 // os terrenos à espera de um jogo novo: terra batida com marcas de pneu, a cerca de madeira, as estacas da obra e a
 // placa "em breve" na frente
 function drawTerra(c, x, y) {
@@ -1020,15 +853,11 @@ function pedaco(cx, cy) {
     if (CHAO[t]) CHAO[t](c, x, y); else if (t === "l") drawTerra(c, x, y); else if (t === "m") drawMat(c, x, y); else if (t === "f") drawFlowers(c, x, y); else drawGrass(c, x, y);
   }
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (ground[y][x] === "t") drawTree(c, x, y);
-  PREDIOS.forEach((p) => { if (toca(p.x, p.y, p.w, p.h, cx, cy)) drawPredio(c, p); });
-  ESTADIOS.forEach((e) => { if (toca(e.ret.x, e.ret.y, e.ret.w, e.ret.h, cx, cy, 2)) Estadios.fachada(c, e); });
   GAMES.forEach((g) => { if (toca(g.x, g.y, g.w, g.h, cx, cy)) drawBuilding(c, g); });
   TERRENOS.forEach((t) => { if (toca(t.x, t.y, t.w, t.h, cx, cy)) drawTerreno(c, t); });
   if (toca(FOUNTAIN.x, FOUNTAIN.y, FOUNTAIN.w, FOUNTAIN.h, cx, cy)) drawFountainBase(c);
-  [...LAMPS, ...POSTES].forEach(([x, y]) => { if (toca(x, y, 1, 1, cx, cy)) drawLampPost(c, x, y); });
+  LAMPS.forEach(([x, y]) => { if (toca(x, y, 1, 1, cx, cy)) drawLampPost(c, x, y); });
   BENCHES.forEach(([x, y]) => { if (toca(x, y, 1, 1, cx, cy)) drawBench(c, x, y); });
-  PARADOS.forEach((cor, kk) => { const x = kk % MW, y = (kk / MW) | 0; if (toca(x, y, 1, 1, cx, cy)) c.drawImage(spriteCarro(cor, "down"), x * TS, y * TS); });
-  PLACAS_VERDES.forEach((p) => { if (toca(p[0] - 4, p[1] - 1, 9, 2, cx, cy)) drawPlacaVerde(c, p); });
   pedacos.set(chave, cv);
   if (pedacos.size > 40) pedacos.delete(pedacos.keys().next().value);
   return cv;
@@ -1080,12 +909,9 @@ function spritesFor(look) {
 }
 
 const player = { x: OX + 24, y: OY + 26, dir: "up", moving: false, fx: OX + 24, fy: OY + 26, t: 0, from: null, steps: 0, entering: null, car: false };
-let INT = null, bola = null, golAte = 0, destino = null, voltaFora = null; // INT: o estádio em que a pessoa está (o lado de dentro)
-const interiores = {};
-const zona = () => (INT ? INT.e.id : "");
+const zona = () => "";
 const naMinhaZona = (o) => (o.z || "") === zona();
-// por onde dá para passar agora: dentro do estádio, o mapa dele; de carro, só rodovia e estacionamento; a pé, o resto
-const podePassar = (x, y) => INT ? x >= 0 && y >= 0 && x < INT.W && y < INT.H && !INT.solido[y][x] : player.car ? carOk(x, y) : walkable(x, y);
+const podePassar = walkable;
 const spawn = GAMES.find((g) => g.id === store.get("vila_spawn"));
 if (spawn) { [player.x, player.y] = spawn.mats[0]; player.dir = "down"; }
 player.fx = player.x; player.fy = player.y;
@@ -1126,7 +952,7 @@ function action() {
 
 function bfs(sx, sy, tx, ty, ok = podePassar) {
   if (!ok(tx, ty)) return null;
-  const W = INT ? INT.W : MW, prev = new Map(), key = (x, y) => y * W + x, q = [[sx, sy]];
+  const W = MW, prev = new Map(), key = (x, y) => y * W + x, q = [[sx, sy]];
   let qi = 0;
   prev.set(key(sx, sy), null);
   while (qi < q.length) {
@@ -1149,16 +975,7 @@ function tapAt(clientX, clientY) {
   { const wx = (clientX * dpr) / scale + camX, wy = (clientY * dpr) / scale + camY; tx = Math.floor(wx / TS); ty = Math.floor(wy / TS); }
   const o = otherAt(tx, ty) || otherAt(tx, ty + 1); // o boneco passa um pouco do tile de cima
   if (o) return openPlayer(o);
-  const e = !INT && estadioAt(tx, ty);
-  if (e) { // clicou num estádio: de carro, vai para o estacionamento dele; a pé, para o portão
-    if (player.car) { const l = e.lote, p = bfs(player.x, player.y, Math.round((l.x0 + l.x1) / 2), l.y1); if (p) { path = p; pathGoal = null; } return; }
-    if (here === e && !player.moving) return enter(e);
-    const g = e.portao.reduce((a, b) => (Math.abs(b[0] - player.x) + Math.abs(b[1] - player.y) < Math.abs(a[0] - player.x) + Math.abs(a[1] - player.y) ? b : a));
-    const p = bfs(player.x, player.y, g[0], g[1]);
-    if (p) { path = p; pathGoal = null; } else toast(`Até o ${e.nome}, só de carro: pegue um no estacionamento.`);
-    return;
-  }
-  const b = !INT && !player.car && buildingAt(tx, ty);
+  const b = buildingAt(tx, ty);
   if (b) {
     if (here === b && !player.moving) return enter(b);
     const mat = b.mats.reduce((best, m) => (Math.abs(m[0] - player.x) < Math.abs(best[0] - player.x) ? m : best));
@@ -1168,7 +985,6 @@ function tapAt(clientX, clientY) {
   }
   const p = bfs(player.x, player.y, tx, ty);
   if (p) { path = p; pathGoal = null; }
-  else if (!INT && !player.car && ground[ty] && ground[ty][tx] === "e") toast("Rodovia é só de carro: pegue um no estacionamento.");
 }
 const cv = $("cv");
 cv.addEventListener("pointerdown", (e) => { e.preventDefault(); tapAt(e.clientX, e.clientY); });
@@ -1192,7 +1008,6 @@ function tryMove(dir) {
   player.dir = dir;
   const [dx, dy] = DIRS[dir], nx = player.x + dx, ny = player.y + dy;
   if (!podePassar(nx, ny)) { sendPos(); return false; }
-  if (bola && Math.floor(bola.x) === nx && Math.floor(bola.y) === ny) chuta(dx, dy);
   player.from = [player.x, player.y]; player.x = nx; player.y = ny; player.moving = true; player.t = 0;
   setHere(null);
   sendPos(true);
@@ -1202,16 +1017,15 @@ function arrive() {
   player.moving = false; player.steps++;
   if (path && !path.length) { path = null; if (pathGoal) { player.dir = "up"; sendPos(); } pathGoal = null; }
   setHere(lugarEm(player.x, player.y));
-  if (!INT && !player.car && ground[player.y][player.x] === "h") pisouNoMato();
+  if (ground[player.y][player.x] === "h") pisouNoMato();
 }
 function update(dt) {
-  if (INT) atualizaBola(dt);
   if (player.entering) {
     player.t = Math.min(1, player.t + dt / 260);
     return;
   }
   if (player.moving) {
-    player.t += dt / (player.car ? 45 : running ? 80 : 150);
+    player.t += dt / (running ? 80 : 150);
     if (player.t >= 1) { player.t = 1; arrive(); }
   }
   if (!player.moving) {
@@ -1244,116 +1058,31 @@ function setHere(g) {
   el.classList.add("on");
 }
 
-// o que tem na casa em que a pessoa está: a porta de uma casinha, o portão de um estádio, o estacionamento ou o túnel
-const LOTE_A_PE = { tipo: "lote", name: "Estacionamento", desc: "Pegue um carro para ir aos estádios: fora da vila é rodovia, e rodovia é só de carro.", verbo: "pegar o carro", botao: "Pegar carro" };
-const LOTE_CARRO = { tipo: "lote", name: "Estacionamento", desc: "Aqui dá para descer e seguir a pé.", verbo: "descer do carro", botao: "Descer" };
-const SAIDA = { tipo: "saida", name: "Túnel", desc: "Voltar para a rua, na frente do estádio.", verbo: "sair", botao: "Sair" };
-ESTADIOS.forEach((e) => { e.name = e.nome; e.botao = "Entrar"; });
+// Uma porta, o telão ou um terreno podem abrir o diálogo da Vila.
 const naFrenteDoTelao = (x, y) => y === TELAO.y + 1 && x >= TELAO.x && x < TELAO.x + TELAO.w;
 const TERRENO_LUGAR = { tipo: "terreno", icon: "🚧", name: "Terreno", desc: "Reservado para um jogo novo da galera. Em breve tem construção aqui.", verbo: "seguir", botao: "Beleza" };
 const terrenoEm = (x, y) => TERRENOS.find((t) => t.placa[0] === x && t.placa[1] === y);
 function lugarEm(x, y) {
-  if (INT) return INT.g[y] && INT.g[y][x] === "S" ? SAIDA : null;
-  if (player.car) return loteAt(x, y) ? LOTE_CARRO : null;
-  return matAt(x, y) || portaoAt(x, y) || (loteAt(x, y) ? LOTE_A_PE : null) || (naFrenteDoTelao(x, y) ? TELAO_LUGAR : null) || (terrenoEm(x, y) ? TERRENO_LUGAR : null);
+  return matAt(x, y) || (naFrenteDoTelao(x, y) ? TELAO_LUGAR : null) || (terrenoEm(x, y) ? TERRENO_LUGAR : null);
 }
-function trocaCarro() { // entra no carro (ou desce dele) no estacionamento
-  if (player.moving) return;
-  player.car = !player.car; path = null; here = null;
-  toast(player.car ? (destino ? `Partiu ${destino.nome}! Siga a seta.` : "Partiu! Siga as placas verdes até um estádio.") : "Carro estacionado. Agora é a pé.");
-  setHere(lugarEm(player.x, player.y)); sendPos();
-}
-function entraEstadio(e) {
-  path = null; held.length = 0; setHere(null);
-  $("fade").classList.add("on");
-  setTimeout(() => {
-    INT = interiores[e.id] || (interiores[e.id] = Estadios.interior(e));
-    voltaFora = e; if (destino === e) destino = null;
-    [player.x, player.y] = INT.spawn; player.fx = player.x; player.fy = player.y; player.dir = "up"; player.moving = false;
-    bola = { x: (INT.campo.x0 + INT.campo.x1 + 1) / 2, y: (INT.campo.y0 + INT.campo.y1 + 1) / 2, vx: 0, vy: 0 };
-    $("mini").classList.add("off"); $("fade").classList.remove("on");
-    toast(`Bem-vindo ao ${e.nome}! Encoste na bola para chutar.`); sendPos(); setHere(null);
-  }, 380);
-}
-function saiEstadio() {
-  const e = voltaFora; path = null; held.length = 0; setHere(null);
-  $("fade").classList.add("on");
-  setTimeout(() => {
-    INT = null; bola = null; golAte = 0;
-    [player.x, player.y] = e.portao[0]; player.fx = player.x; player.fy = player.y; player.dir = "down"; player.moving = false;
-    $("mini").classList.toggle("off", !miniOn); $("fade").classList.remove("on");
-    sendPos(); setHere(lugarEm(player.x, player.y));
-  }, 380);
-}
-// a bola do estádio: rola com atrito, bate na arquibancada e volta; entrou na rede, é gol (e o telão comemora)
-const BOLA_ROLA = "GMR";
-function chuta(dx, dy) { const f = running ? 15 : 11; bola.vx = dx * f + (dy ? (Math.random() - 0.5) * 2.5 : 0); bola.vy = dy * f + (dx ? (Math.random() - 0.5) * 2.5 : 0); }
-function atualizaBola(dt) {
-  if (!bola || golAte) return;
-  const s = dt / 1000;
-  for (const eixo of ["x", "y"]) {
-    const v = eixo === "x" ? bola.vx : bola.vy; if (!v) continue;
-    const nx = eixo === "x" ? bola.x + v * s : bola.x, ny = eixo === "y" ? bola.y + v * s : bola.y, tt = INT.g[Math.floor(ny)] && INT.g[Math.floor(ny)][Math.floor(nx)];
-    if (tt && BOLA_ROLA.includes(tt)) { bola.x = nx; bola.y = ny; } else if (eixo === "x") bola.vx *= -0.55; else bola.vy *= -0.55;
-  }
-  const atrito = Math.pow(0.25, s); bola.vx *= atrito; bola.vy *= atrito;
-  if (Math.abs(bola.vx) < 0.08) bola.vx = 0; if (Math.abs(bola.vy) < 0.08) bola.vy = 0;
-  const tx = Math.floor(bola.x), ty = Math.floor(bola.y);
-  if (INT.g[ty] && INT.g[ty][tx] === "R") gol(tx > INT.campo.x1 ? 0 : 1);
-}
-function gol(lado) {
-  INT.placar[lado]++; golAte = performance.now() + 2600; bola.vx = bola.vy = 0;
-  toast(lado === 0 ? `GOOOL do ${INT.e.casa}!` : "GOOOL do visitante!");
-  const it = INT;
-  setTimeout(() => { golAte = 0; if (bola && INT === it) Object.assign(bola, { x: (it.campo.x0 + it.campo.x1 + 1) / 2, y: (it.campo.y0 + it.campo.y1 + 1) / 2, vx: 0, vy: 0 }); }, 2600);
-}
-function drawBola(c) {
-  if (!bola) return;
-  const X = bola.x * TS, Y = bola.y * TS;
-  px(c, "#00000045", X - 3, Y + 2, 7, 2);
-  c.fillStyle = "#ffffff"; c.beginPath(); c.arc(X, Y - 1, 3.2, 0, 7); c.fill();
-  px(c, "#1b1b1b", X - 1, Y - 2, 2, 2);
-}
-function drawGol(c, t) { // "GOOOL!" piscando no meio do campo
-  if (!golAte || !INT) return;
-  const cx = ((INT.campo.x0 + INT.campo.x1 + 1) / 2) * TS, cy = ((INT.campo.y0 + INT.campo.y1 + 1) / 2) * TS;
-  c.font = '700 26px "Pixelify Sans", monospace'; c.textAlign = "center"; c.textBaseline = "middle";
-  c.fillStyle = "#000000aa"; c.fillText("GOOOL!", cx + 2, cy + 2);
-  c.fillStyle = Math.floor(t / 150) % 2 ? "#ffe066" : "#ffffff"; c.fillText("GOOOL!", cx, cy); c.textAlign = "left";
-}
-// a seta do destino: aponta para o estádio escolhido no menu
-function drawSeta(c, t) {
-  if (!destino || INT) return;
-  const [gx, gy] = destino.portao[0], dx = gx - player.fx, dy = gy - player.fy, d = Math.hypot(dx, dy);
-  if (d < 10) return;
-  const ux = dx / d, uy = dy / d, cx = player.fx * TS + 8 + ux * 24, cy = player.fy * TS + 8 + uy * 24;
-  c.fillStyle = "#1b1b2f"; c.beginPath(); c.moveTo(cx + ux * 8, cy + uy * 8); c.lineTo(cx - uy * 6 - ux * 4, cy + ux * 6 - uy * 4); c.lineTo(cx + uy * 6 - ux * 4, cy - ux * 6 - uy * 4); c.closePath(); c.fill();
-  c.fillStyle = Math.floor(t / 300) % 2 ? "#ffe066" : "#ffcf3d"; c.beginPath(); c.moveTo(cx + ux * 6, cy + uy * 6); c.lineTo(cx - uy * 4 - ux * 3, cy + ux * 4 - uy * 3); c.lineTo(cx + uy * 4 - ux * 3, cy - ux * 4 - uy * 3); c.closePath(); c.fill();
-}
-// o minimapa: o mapa todo, uma casa por pixel, com você (amarelo), os estádios e o destino piscando
+// O minimapa cabe inteiro em 64 x 64 casas; o ponto amarelo é você.
 let miniOn = !matchMedia("(max-width: 560px)").matches;
 const miniBase = document.createElement("canvas"); miniBase.width = MW; miniBase.height = MH;
 (() => {
   const c = miniBase.getContext("2d"), COR = { g: "#3f7d36", t: "#2a5a2c", f: "#3f7d36", e: "#9aa0a8", E: "#c9ccd1", c: "#d9d2c2", w: "#2a64b8", s: "#ecd9a0", j: "#4f9a44", r: "#d8cba9", p: "#ece6d8", q: "#b4523a", a: "#4a4e57", m: "#a8443d" };
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { c.fillStyle = COR[ground[y][x]] || "#3f7d36"; c.fillRect(x, y, 1, 1); }
-  c.fillStyle = "#8a8f99"; PREDIOS.forEach((p) => c.fillRect(p.x, p.y, p.w, p.h));
   c.fillStyle = "#e9dcc4"; GAMES.forEach((g) => c.fillRect(g.x, g.y, g.w, g.h));
-  ESTADIOS.forEach((e) => { c.fillStyle = e.cadeiras[0] === "#f4f4f2" ? "#ffffff" : e.cadeiras[0]; c.fillRect(e.ret.x, e.ret.y, e.ret.w, e.ret.h); c.fillStyle = e.gramado[0]; c.fillRect(e.ret.x + 4, e.ret.y + 4, e.ret.w - 8, e.ret.h - 8); });
 })();
 function drawMini(t) {
   const m = $("mini"); if (m.classList.contains("off")) return;
   const c = m.getContext("2d");
   c.drawImage(miniBase, 0, 0);
-  if (destino && Math.floor(t / 400) % 2) { c.strokeStyle = "#ffe066"; c.lineWidth = 3; const r = destino.ret; c.strokeRect(r.x - 3, r.y - 3, r.w + 6, r.h + 6); }
   for (const o of others.values()) if (!o.z) { c.fillStyle = "#ffffff"; c.fillRect(Math.round(o.fx) - 1, Math.round(o.fy) - 1, 3, 3); }
   c.fillStyle = "#1b1b2f"; c.fillRect(Math.round(player.fx) - 4, Math.round(player.fy) - 4, 9, 9);
   c.fillStyle = "#ffe066"; c.fillRect(Math.round(player.fx) - 3, Math.round(player.fy) - 3, 7, 7);
 }
 function enter(g) {
   if (player.entering) return;
-  if (g.tipo === "lote") return trocaCarro();
-  if (g.tipo === "estadio") return entraEstadio(g);
-  if (g.tipo === "saida") return saiEstadio();
   if (g.tipo === "terreno") return setHere(null);
   if (g.tipo === "telao") { // vai para a Sede da Carreira (a estante de cada carreira fica lá)
     setHere(null); store.set("vila_spawn", "sede");
@@ -1380,12 +1109,7 @@ addEventListener("pageshow", (e) => {
 
 // ---------- menu de atalho ----------
 $("menuList").innerHTML = BAIRROS.map((b) => `<h3>${esc(b.nome)}</h3>` + GAMES.filter((g) => g.bairro === b.id).map((g) => `<a href="${g.url}" data-id="${g.id}"><span>${g.icon}</span>${esc(g.name)}<small>${esc(g.meta.split(" · ")[0])}</small></a>`).join("")).join("");
-$("menuList").insertAdjacentHTML("beforeend", `<h3>Estádios (de carro)</h3>` + ESTADIOS.map((e) => `<a href="#" data-est="${e.id}"><span>⚽</span>${esc(e.nome)}<small>${esc(e.bairro)}</small></a>`).join(""));
 $("menuList").querySelectorAll("a[data-id]").forEach((a) => a.addEventListener("click", () => store.set("vila_spawn", a.dataset.id)));
-$("menuList").querySelectorAll("a[data-est]").forEach((a) => a.addEventListener("click", (ev) => {
-  ev.preventDefault(); destino = ESTADIOS.find((e) => e.id === a.dataset.est); closeMenu();
-  toast(INT ? `Destino: ${destino.nome}.` : player.car ? `Destino: ${destino.nome}. Siga a seta!` : `Destino: ${destino.nome}. Pegue um carro no estacionamento e siga a seta.`);
-}));
 // salas abertas de todos os jogos (canal /lobby): quem está no menu vê e entra com um toque
 const lobby = io("/lobby");
 const SALA_TAG = { aberta: "aberta", cheia: "cheia", jogando: "em jogo" };
@@ -1936,35 +1660,17 @@ if (!myName) askNick();
 
 // ---------- tela ----------
 const ctx = cv.getContext("2d");
-const lightCv = document.createElement("canvas"); // a luz da noite: do tamanho da tela, com as luzes que aparecem nela
-const lctx = lightCv.getContext("2d");
 let dpr = 1, scale = 3, viewW = 0, viewH = 0, camX = 0, camY = 0;
 function resize() {
   dpr = Math.min(2, window.devicePixelRatio || 1); // celular com tela 3x: desenha em 2x (pixel art não perde nada e gasta menos memória)
   const w = innerWidth, h = innerHeight;
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   cv.style.width = w + "px"; cv.style.height = h + "px";
-  const sCss = Math.max(2, Math.floor(Math.min(w / 320, h / 224)));
+  const sCss = Math.max(2, Math.floor(Math.min(w / 440, h / 320)));
   scale = Math.max(1, Math.round(sCss * dpr));
   viewW = cv.width / scale; viewH = cv.height / scale;
-  lightCv.width = Math.ceil(viewW) + 2; lightCv.height = Math.ceil(viewH) + 2;
 }
 addEventListener("resize", resize);
-
-const LIGHTS = [];
-LAMPS.forEach(([x, y]) => LIGHTS.push({ x: x * TS + 8, y: y * TS + 4, r: 46, warm: 0.22 }));
-function collectWindowLights() {
-  GAMES.forEach((g) => {
-    (g.windows || []).forEach(([x, y]) => LIGHTS.push({ x, y, r: 20, warm: 0.12 }));
-    g.doors.forEach((d) => LIGHTS.push({ x: d * TS + (g.doors.length > 1 ? 16 : 8), y: g.doorY * TS + 8, r: g.casino ? 40 : 26, warm: g.casino ? 0.2 : 0.1 }));
-  });
-  LIGHTS.push({ x: (FOUNTAIN.x + FOUNTAIN.w / 2) * TS, y: (FOUNTAIN.y + FOUNTAIN.h / 2) * TS, r: 44, warm: 0, cool: 0.12 });
-  LIGHTS.push({ x: (TELAO.x + TELAO.w / 2) * TS, y: TELAO.y * TS - 24, r: 70, warm: 0, cool: 0.16 }); // o brilho do telão
-  POSTES.forEach(([x, y]) => LIGHTS.push({ x: x * TS + 8, y: y * TS + 4, r: 54, warm: 0.2 }));
-  // os refletores dos estádios iluminam a praça toda
-  ESTADIOS.forEach((e) => { const r = e.ret; LIGHTS.push({ x: (r.x + r.w / 2) * TS, y: (r.y + r.h / 2) * TS, r: Math.max(r.w, r.h) * TS * 0.85, warm: 0, cool: 0.1 }); });
-  PREDIOS.forEach((p) => { if (!p.casa && hash(p.x, p.y, 5) % 2) LIGHTS.push({ x: (p.x + p.w / 2) * TS, y: (p.y + p.h) * TS - 4, r: 22, warm: 0.12 }); });
-}
 
 function drawFountainWater(c, t) {
   const f = FOUNTAIN, X = f.x * TS + 5, Y = f.y * TS + 7, W = f.w * TS - 10, H = f.h * TS - 12;
@@ -2006,11 +1712,11 @@ function drawTelao(c, t) {
   px(c, "#00000040", x0 + 6, base + 13, TELAO.w * TS - 12, 3);
   for (const dx of [12, TELAO.w * TS - 16]) { px(c, "#2b2f3a", x0 + dx, Y + H, 4, base + 14 - Y - H); px(c, "#4a5060", x0 + dx, Y + H, 1, base + 14 - Y - H); px(c, "#6b6f7c", x0 + dx - 2, base + 11, 8, 4); }
   // a moldura e a tela
-  px(c, "#14161d", X - 2, Y - 2, W + 4, H + 4);
-  px(c, "#3a3f4d", X - 1, Y - 1, W + 2, 1);
-  px(c, "#04060c", X, Y, W, H);
+  px(c, "#557565", X - 2, Y - 2, W + 4, H + 4);
+  px(c, "#d4bd8d", X - 1, Y - 1, W + 2, 1);
+  px(c, "#315f58", X, Y, W, H);
   // a faixa de cima: ESTANTE DA GALERA com as lâmpadas correndo
-  px(c, "#1a1405", X + 1, Y + 1, W - 2, 9);
+  px(c, "#244e48", X + 1, Y + 1, W - 2, 9);
   const passo = Math.floor(t / 220);
   for (let i = 0, xx = X + 2; xx < X + W - 2; xx += 4, i++) px(c, (i + passo) % 4 ? "#5a4210" : "#ffd34d", xx, Y + 1, 2, 1);
   c.textBaseline = "middle"; c.textAlign = "center";
@@ -2050,15 +1756,15 @@ function drawSign(c, g, t) {
   c.font = `700 ${g.casino ? 9 : 7}px "Pixelify Sans", monospace`;
   const tw = c.measureText(g.sign).width, ew = g.casino ? 10 : 8, w = Math.ceil(tw + ew + 8), h = g.casino ? 13 : 10, x = Math.round(cx - w / 2);
   const acento = acentoDe(g);
-  px(c, "#060a1c", x - 1, y - 1, w + 2, h + 2);
-  px(c, g.casino ? "#1a0b33" : "#0f1733", x, y, w, h);
+  px(c, "#3c5b4f", x - 1, y - 1, w + 2, h + 2);
+  px(c, g.casino ? "#634d63" : "#f8efda", x, y, w, h);
   if (!g.casino) { px(c, acento, x, y, 2, h); px(c, acento, x, y + h - 1, w, 1); } // a plaquinha com o acento do prédio
   if (g.casino) { const on = Math.floor(t / 400) % 2; px(c, on ? "#ff4fb0" : "#9b2a70", x, y, w, 1); px(c, on ? "#ff4fb0" : "#9b2a70", x, y + h - 1, w, 1); }
   c.textBaseline = "middle"; c.textAlign = "left";
   c.font = `${g.casino ? 8 : 6.5}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
   c.fillText(g.icon, x + 4, y + h / 2 + 0.5);
   c.font = `700 ${g.casino ? 9 : 7}px "Pixelify Sans", monospace`;
-  c.fillStyle = g.casino ? "#ffe066" : "#f4f7ff";
+  c.fillStyle = g.casino ? "#ffe066" : "#24443d";
   c.fillText(g.sign, x + 4 + ew, y + h / 2 + 0.5);
 }
 function drawPlaca(c, b) {
@@ -2067,8 +1773,8 @@ function drawPlaca(c, b) {
   px(c, "#3a3d48", cx - 1, ty * TS - 2, 2, 17); // o poste
   c.font = '700 7px "Pixelify Sans", monospace';
   const w = Math.ceil(c.measureText(b.nome).width) + 10, h = 11, x = Math.round(cx - w / 2), y = ty * TS - 12;
-  px(c, "#0e2a5c", x - 1, y - 1, w + 2, h + 2);
-  px(c, "#1f4fa3", x, y, w, h);
+  px(c, "#315d50", x - 1, y - 1, w + 2, h + 2);
+  px(c, "#548575", x, y, w, h);
   c.strokeStyle = "#f4f6fb"; c.lineWidth = 1; c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3); // o filete branco da placa esmaltada
   c.fillStyle = "#f4f6fb"; c.textBaseline = "middle"; c.textAlign = "center";
   c.fillText(b.nome, cx, y + h / 2 + 0.5);
@@ -2077,40 +1783,8 @@ function drawPlaca(c, b) {
 function drawLampFlames(c, t) {
   LAMPS.forEach(([x, y], i) => { const fl = (Math.sin(t / 120 + i * 2) + 1) / 2; px(c, fl > 0.5 ? "#ffe9a0" : "#ffd35e", x * TS + 5, y * TS + 3, 6, 3); });
 }
-function drawLighting(t) {
-  const c = lctx, ox = Math.floor(camX), oy = Math.floor(camY), W = lightCv.width, H = lightCv.height;
-  c.setTransform(1, 0, 0, 1, 0, 0);
-  c.globalCompositeOperation = "source-over";
-  c.clearRect(0, 0, W, H);
-  c.fillStyle = INT ? "rgba(14,20,64,0.1)" : "rgba(14,20,64,0.42)"; // dentro do estádio, os refletores clareiam tudo
-  c.fillRect(0, 0, W, H);
-  c.setTransform(1, 0, 0, 1, -ox, -oy);
-  c.globalCompositeOperation = "destination-out";
-  const pl = { x: player.fx * TS + 8, y: player.fy * TS + 8, r: player.car ? 44 : 34 };
-  const extra = [pl];
-  if (player.car && !INT) { const [dx, dy] = DIRS[player.dir]; extra.push({ x: pl.x + dx * 40, y: pl.y + dy * 40, r: 40, warm: 0.12 }); } // o farol
-  const naTela = (L) => L.x + L.r > ox && L.x - L.r < ox + W && L.y + L.r > oy && L.y - L.r < oy + H;
-  const luzes = (INT ? [] : LIGHTS).filter(naTela).concat(extra);
-  for (const L of luzes) {
-    const r = L.r * (L.warm ? 1 + Math.sin(t / 300 + L.x) * 0.03 : 1);
-    const gr = c.createRadialGradient(L.x, L.y, 0, L.x, L.y, r);
-    gr.addColorStop(0, "rgba(0,0,0,0.95)"); gr.addColorStop(0.6, "rgba(0,0,0,0.5)"); gr.addColorStop(1, "rgba(0,0,0,0)");
-    c.fillStyle = gr; c.fillRect(L.x - r, L.y - r, r * 2, r * 2);
-  }
-  c.globalCompositeOperation = "lighter";
-  for (const L of luzes) {
-    const a = L.warm || L.cool; if (!a) continue;
-    const gr = c.createRadialGradient(L.x, L.y, 0, L.x, L.y, L.r);
-    gr.addColorStop(0, L.cool ? `rgba(80,170,255,${a})` : `rgba(255,180,80,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)");
-    c.fillStyle = gr; c.fillRect(L.x - L.r, L.y - L.r, L.r * 2, L.r * 2);
-  }
-  c.globalCompositeOperation = "source-over";
-  c.setTransform(1, 0, 0, 1, 0, 0);
-}
-
 function drawChar(c, p, look) {
   let X = p.fx * TS, Y = p.fy * TS, alpha = 1;
-  if (p.car) { px(c, "#00000040", Math.round(X) + 2, Math.round(Y) + 13, 12, 3); c.drawImage(spriteCarro((OUTFITS[look] || OUTFITS[0]).shirt, p.dir), Math.round(X), Math.round(Y)); return; }
   if (p.entering) { Y -= p.t * 10; alpha = 1 - p.t; }
   const walkF = p.moving ? (p.t < 0.5 ? 0 : 1 + (p.steps % 2)) : 0;
   const dir = p.dir === "right" ? "left" : p.dir;
@@ -2156,7 +1830,7 @@ function frame(now) {
   const dt = Math.min(50, now - last), lastRaw = now - last; last = now;
   update(dt);
   updateOthers(dt);
-  const mw = (INT ? INT.W : MW) * TS, mh = (INT ? INT.H : MH) * TS;
+  const mw = MW * TS, mh = MH * TS;
   const tx = player.fx * TS + 8 - viewW / 2, ty = player.fy * TS + 8 - viewH / 2;
   camX = mw > viewW ? Math.max(0, Math.min(mw - viewW, tx)) : (mw - viewW) / 2;
   camY = mh > viewH ? Math.max(0, Math.min(mh - viewH, ty)) : (mh - viewH) / 2;
@@ -2165,39 +1839,28 @@ function frame(now) {
   if (btOpen()) { requestAnimationFrame(frame); return; }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = "#12301c"; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = "#7fae79"; ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.setTransform(scale, 0, 0, scale, -camX * scale, -camY * scale);
   ctx.imageSmoothingEnabled = false;
-  if (INT) { // dentro do estádio: o desenho dele, a torcida pulando, o telão e a bola
-    ctx.drawImage(INT.cv, 0, 0); ctx.drawImage(INT.torcida[Math.floor(now / 280) % 2], 0, 0);
-    Estadios.desenhaTelao(ctx, INT, now, golAte > now);
-    drawBola(ctx);
-  } else {
-    for (let cy = Math.floor(camY / CHP); cy <= Math.floor((camY + viewH) / CHP); cy++) for (let cx = Math.floor(camX / CHP); cx <= Math.floor((camX + viewW) / CHP); cx++)
-      if (cx >= 0 && cy >= 0 && cx * CH < MW && cy * CH < MH) ctx.drawImage(pedaco(cx, cy), cx * CHP, cy * CHP);
-    drawFountainWater(ctx, now);
-    drawTelao(ctx, now);
-    GAMES.forEach((g) => { if (g.casino) drawCasinoBulbs(ctx, g, now); });
-  }
+  for (let cy = Math.floor(camY / CHP); cy <= Math.floor((camY + viewH) / CHP); cy++) for (let cx = Math.floor(camX / CHP); cx <= Math.floor((camX + viewW) / CHP); cx++)
+    if (cx >= 0 && cy >= 0 && cx * CH < MW && cy * CH < MH) ctx.drawImage(pedaco(cx, cy), cx * CHP, cy * CHP);
+  drawFountainWater(ctx, now);
+  drawTelao(ctx, now);
+  GAMES.forEach((g) => { if (g.casino) drawCasinoBulbs(ctx, g, now); });
   if (player.entering) { // a porta abre
     const g = player.entering;
     for (const d of g.doors) px(ctx, "#140c06", d * TS + (g.doors.length > 1 ? (d === g.doors[0] ? 2 : 0) : 2), g.doorY * TS + TS - 20, g.doors.length > 1 ? 14 : 12, 19);
   }
-  if (!INT) drawDoorArrows(ctx, now);
+  drawDoorArrows(ctx, now);
   player.name = myName;
   const chars = [...others.values()].filter(naMinhaZona).map((o) => [o, o.look]);
   chars.push([player, outfit]);
   chars.sort((a, b) => a[0].fy - b[0].fy);
-  chars.forEach(([p, look]) => { drawChar(ctx, p, look); if (!INT && !p.car && ground[Math.round(p.fy)]?.[Math.round(p.fx)] === "h") drawMatoPorCima(ctx, p); });
-  drawLighting(now);
-  ctx.drawImage(lightCv, Math.floor(camX), Math.floor(camY));
-  if (!INT) {
-    drawLampFlames(ctx, now);
-    GAMES.forEach((g) => drawSign(ctx, g, now));
-    BAIRROS.forEach((b) => drawPlaca(ctx, b));
-  }
-  drawGol(ctx, now);
-  drawSeta(ctx, now);
+  chars.forEach(([p, look]) => { drawChar(ctx, p, look); if (ground[Math.round(p.fy)]?.[Math.round(p.fx)] === "h") drawMatoPorCima(ctx, p); });
+  // Luz diurna deixa os caminhos e as cores das fachadas legíveis em toda a cidade.
+  drawLampFlames(ctx, now);
+  GAMES.forEach((g) => drawSign(ctx, g, now));
+  BAIRROS.forEach((b) => drawPlaca(ctx, b));
   chars.forEach(([p]) => drawTag(ctx, p, p === player));
   drawBubble(ctx, now);
   drawMini(now);
@@ -2205,10 +1868,9 @@ function frame(now) {
 }
 
 GAMES.filter((g) => !g.npc).forEach((g) => drawBuilding(rascunho, g)); // só para saber onde ficam as janelas (as luzes da noite)
-collectWindowLights();
 resize();
 $("mini").classList.toggle("off", !miniOn);
-$("bMapa").onclick = () => { miniOn = !miniOn; if (!INT) $("mini").classList.toggle("off", !miniOn); $("bMapa").blur(); };
+$("bMapa").onclick = () => { miniOn = !miniOn; $("mini").classList.toggle("off", !miniOn); $("bMapa").blur(); };
 setHere(lugarEm(player.x, player.y));
 requestAnimationFrame(frame);
 buscarEstante(); setInterval(buscarEstante, 60e3);
