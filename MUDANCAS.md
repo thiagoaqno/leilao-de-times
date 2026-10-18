@@ -1,13 +1,16 @@
-# Remoção do tênis de mesa
+# Vila compacta com Haxball no antigo lote do tênis de mesa
 
 ## O que muda
 
-- Remove o prédio de tênis de mesa da Vila e as páginas `/pingpong/` e `/table-tennis-pro/`.
-- Remove o canal online `/pingpong`, a implementação do jogo, seus recursos 3D e as referências na Noite da Galera.
-- Atualiza a documentação e os testes. O teste da Noite usa Truco e Uno para conferir sala compartilhada e convite entre jogos.
+- Remove o jogo de tênis de mesa e coloca o prédio do Haxball no lote de 7 × 4 casas que ele ocupava, com uma quadra de discos no telhado.
+- Reduz o mapa de 320 × 260 para 64 × 64 casas. Todos os jogos e os quatro ginásios dos líderes ficam em um único bairro caminhável.
+- Retira os estádios, rodovias, estacionamentos, carros e a navegação entre zonas. O minimapa agora mostra toda a Vila.
+- Reorganiza os caminhos da praça e a Alameda dos Líderes. Renova gramados, calçamento, fachadas, placas e painéis com uma paleta clara de bairro.
+- Atualiza o servidor, a documentação e os testes para o novo mapa.
 
 ## Verificação
 
-- `node --test tests/servidor.test.js tests/salas.test.js`
-- `npx playwright test tests/e2e/paginas.spec.js --grep "tênis de mesa removido|a página / abre sem erro"`
-- As duas URLs removidas retornam 404.
+- `node --test tests/servidor.test.js tests/vila-mato.test.js`
+- `npx playwright test tests/e2e/vila-ginasio.spec.js --grep "caminha ate a porta"`
+- `npx playwright test tests/e2e/vila-layout.spec.js`
+- Conferência visual em navegador nas resoluções 1365 × 768 e 390 × 844, sem erros de JavaScript; todas as portas alcançáveis a partir do Haxball.

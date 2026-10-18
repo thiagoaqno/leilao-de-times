@@ -145,7 +145,7 @@ test("vila: chega com nome de até 8 letras, recebe id e token, e outra aba com 
   [a, a2, b].forEach((s) => s.close());
 });
 
-test("vila: quem está de carro ou dentro de um estádio chega assim para os outros (estádio desconhecido vira a rua)", async () => {
+test("vila: posições ficam no bairro e zonas antigas não são aceitas", async () => {
   const a = await conectar(srv.url, "/vila");
   const me = new Promise((ok) => a.once("me", ok));
   a.emit("hello", { name: "Motora", x: 250, y: 107, z: "", car: true });
@@ -154,12 +154,12 @@ test("vila: quem está de carro ou dentro de um estádio chega assim para os out
   const visto = new Promise((ok) => b.once("all", ok));
   b.emit("hello", { name: "Torcedor" });
   const outro = (await visto).find((p) => p.name === "Motora");
-  assert.strictEqual(outro.car, true);
-  assert.strictEqual(outro.x, 250, "o mapa grande aceita posições fora da vila");
+  assert.strictEqual(outro.car, false);
+  assert.strictEqual(outro.x, 63, "o mapa compacto limita posições antigas");
   const andou = new Promise((ok) => b.once("move", ok));
   a.emit("move", { x: 24, y: 29, dir: "up", z: "morumbis", car: false });
   const m = await andou;
-  assert.strictEqual(m.z, "morumbis"); assert.strictEqual(m.car, false);
+  assert.strictEqual(m.z, ""); assert.strictEqual(m.car, false);
   const andou2 = new Promise((ok) => b.once("move", ok));
   a.emit("move", { x: 24, y: 28, dir: "up", z: "maracana" });
   assert.strictEqual((await andou2).z, "");
