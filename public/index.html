@@ -12,7 +12,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Pixelify+Sans:wght@500;700&family=Figtree:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Pixelify+Sans:wght@500;700&family=Figtree:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#10183d;--paper:#fffdf5;--line:#2b3a7a;--gold:#ffc83d;--night:#0a1233}
 *{box-sizing:border-box}
@@ -229,39 +229,37 @@ canvas.mini.off{display:none}
   .toast{white-space:normal;text-align:center;max-width:100%}
 }
 @media (prefers-reduced-motion:reduce){.dlg,.fade{transition:none}}
-/* Identidade da avenida: sinalização urbana, concreto, vidro e vermelho cultural. */
-:root{--ink:#26353a;--paper:#f1f0e9;--line:#536269;--gold:#f0cc62;--night:#26353a}
-html,body{background:#536c68;color:var(--ink)}
-.brand,.tbtn,.hint,.toast{backdrop-filter:none;border-radius:3px}
-.brand{background:#26353af2;color:#fff;border:2px solid #d4ded8;border-left:6px solid #cc4544;box-shadow:0 5px 0 #182629,0 10px 24px #101d2455;padding:5px 16px 5px 9px;gap:9px}
+/* Paulista Aberta: um parque de jogos e passeio, com interface leve sobre a cena. */
+:root{--ink:#203a37;--paper:#fff9e9;--line:#3a7c75;--gold:#ffd561;--night:#203a37}
+html,body{background:#80b795;color:var(--ink)}
+.top{align-items:flex-start;padding:max(12px,env(safe-area-inset-top)) 14px 0}
+.brand{background:#fff9e9f5;color:#203a37;border:2px solid #ffffff;border-radius:18px;box-shadow:0 5px 0 #28675966,0 9px 25px #17453a22;padding:8px 14px 8px 9px;gap:9px;backdrop-filter:none}
 .brand img{width:30px;height:34px}
-.avenida-label{display:block;color:#f0cc62;font:800 11px/1 "Barlow Condensed",sans-serif;letter-spacing:.13em;text-transform:uppercase}
-.brand h1{font:800 26px/.95 "Barlow Condensed",sans-serif;letter-spacing:.015em;text-transform:uppercase;margin:2px 0 0}
-.brand h1 span{color:#fff}
-.brand small{color:#c6d2ce;font-size:11px;margin-top:3px}
-.brand small b{color:#f0cc62}
-.tools{gap:5px}
-.tbtn{background:#26353aee;color:#f1f0e9;border:2px solid #d4ded8;box-shadow:0 4px 0 #172427,0 8px 20px #10202755;font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.015em;border-radius:3px;padding:8px 12px}
-.tbtn:hover{background:#405258;border-color:#fff}
-.tbtn.battle{background:#c74746;color:#fff;border-color:#f4d2c2}
-.hint{background:#f1f0e9eb;color:#344345;border:0;border-left:5px solid #c74746;box-shadow:0 4px 0 #26353a;padding:7px 12px;bottom:16px}
-.hint kbd{background:#344345;color:#fff;box-shadow:0 2px 0 #1d282b;border-radius:2px}
-.toast{background:#26353af0;color:#fff;border:1px solid #d4ded8;box-shadow:0 4px 0 #182629}
-.nick,.menu{background:#1a292bc7}
-.nick form,.menu .box,.dlg{background:#f1f0e9;color:#26353a;border:2px solid #26353a;border-top:6px solid #c74746;border-radius:3px;box-shadow:5px 7px 0 #172629,0 18px 35px #11202377}
-.nick p,.dlg .meta,.dlg .go span,.menu a small{color:#586769}
-.nick input{border-radius:2px;border-color:#3e5255}
-.nick button,.dlg button,.menu .x{border-radius:2px;background:#26353a;box-shadow:0 3px 0 #111e21}
-.menu h3{background:#c74746;border-radius:2px;box-shadow:none;font-family:"Barlow Condensed",sans-serif;font-size:15px}
-.menu a{border-radius:2px}
-.menu a:hover,.menu a:focus-visible{background:#dce1db}
-canvas.mini{width:144px;height:144px;background:#344246;border:3px solid #eff0e8;border-radius:3px;box-shadow:0 5px 0 #1c2b2d,0 10px 22px #14262966}
-.dir button{background:#26353ae8;border:2px solid #b5c8c3;color:#fff;border-radius:3px}
-.ab button{background:#c74746e8;border-color:#f2c6bd}.ab .b{background:#394e53e8;border-color:#bfcdca}
+.avenida-label{display:block;color:#d85649;font:800 11px/1 "Bricolage Grotesque",sans-serif;letter-spacing:.025em}
+.brand h1{font:800 22px/.98 "Bricolage Grotesque",sans-serif;letter-spacing:-.045em;margin:3px 0 0}
+.brand h1 span{color:#203a37}
+.brand small{color:#53746c;font-size:10px;margin-top:3px}.brand small b{color:#177a66}
+.tools{gap:0;background:#fff9e9f5;border:2px solid #fff;border-radius:15px;box-shadow:0 5px 0 #28675966,0 9px 25px #17453a22;padding:3px}
+.tbtn{background:transparent;color:#294842;border:0;border-radius:10px;box-shadow:none;font:700 14px Figtree,sans-serif;padding:9px 12px;min-height:37px;backdrop-filter:none}
+.tbtn:hover{background:#e6f2dc;border:0}.tbtn.battle{background:#ffd561;color:#59421f;border:0;box-shadow:none}.tbtn.battle:hover{background:#ffe39b}
+.hint{background:#fff9e9ed;color:#48625b;border:1px solid #fff;border-radius:11px;box-shadow:0 4px 0 #28675966;padding:5px 10px;bottom:14px;font:500 12px "Pixelify Sans",monospace}
+.hint kbd{background:#d6e9dd;color:#284c42;box-shadow:none;border-radius:4px}
+.toast{background:#fff9e9f2;color:#203a37;border:2px solid #fff;border-radius:9px;box-shadow:0 4px 0 #28675966}
+.nick,.menu{background:#173e36b5}
+.nick form,.menu .box,.dlg{background:#fff9e9;color:#203a37;border:3px solid #285d51;border-radius:16px;box-shadow:0 7px 0 #173d35,0 18px 42px #163d3566}
+.nick p,.dlg .meta,.dlg .go span,.menu a small{color:#647f72}
+.nick input{border-color:#3e7f70}.nick button,.dlg button,.menu .x{background:#287464;border-radius:8px;box-shadow:0 3px 0 #184a3d}
+.menu h3{background:#277765;border-radius:6px;box-shadow:none;font-family:"Bricolage Grotesque",sans-serif;font-size:13px}
+.menu a:hover,.menu a:focus-visible{background:#e2f2dd}
+canvas.mini{width:132px;height:132px;background:#76ac83;border:3px solid #fff9e9;border-radius:13px;box-shadow:0 5px 0 #28675966,0 9px 25px #17453a22}
+.dir button{background:#fff9e9eb;border:2px solid #66a185;color:#1d604e;border-radius:11px}
+.ab button{background:#e66b55ef;border-color:#fff4d9}.ab .b{background:#438978ef;border-color:#fff4d9}
 @media(max-width:560px){
-  .brand{padding:5px 10px 5px 7px}.brand img{width:24px;height:28px}.brand h1{font-size:23px}
-  .avenida-label{font-size:10px}.tbtn{font-size:15px;padding:8px 5px}
-  canvas.mini{width:100px;height:100px;top:max(128px,calc(env(safe-area-inset-top) + 118px))}
+  .top{flex-wrap:nowrap;align-items:flex-start;gap:6px;padding:8px 7px 0}
+  .brand{flex:0 0 auto;min-width:0;padding:5px 7px 5px 5px;gap:5px;border-radius:12px}.brand img{width:21px;height:25px}.brand h1{font-size:15px;letter-spacing:-.06em}.brand small{font-size:9px;margin-top:1px}
+  .avenida-label{font-size:8px}.tools{width:auto;flex:1;min-width:0;padding:2px;border-radius:11px}.tbtn{flex:1;min-width:0;min-height:39px;padding:4px 2px;font-size:16px}.tbtn .tx,.tbtn .tx.keep{display:none}
+  canvas.mini{width:94px;height:94px;top:max(64px,calc(env(safe-area-inset-top) + 54px))}
+  .toasts{top:63px}
 }
 </style>
 <link rel="stylesheet" href="/vila/versus.css">
@@ -356,11 +354,11 @@ const TS = 16, MW = 64, MH = 64; // bairro compacto, inteiramente caminhável
 const VW = 58, VH = 58, OX = 3, OY = 3;
 // A avenida cruza a praça, enquanto ruas secundárias ligam os demais quarteirões.
 const BAIRROS = [
-  { id: "cartas", nome: "Rua das Cartas", placa: [9, 9] },
-  { id: "praca", nome: "Av. Paulista", placa: [3, 17] },
-  { id: "esportes", nome: "Vila Esportiva", placa: [22, 37] },
-  { id: "autodromo", nome: "Autódromo", placa: [35, 37] },
-  { id: "ginasios", nome: "Alameda dos Líderes", placa: [3, 52] },
+  { id: "cartas", nome: "Jogos de mesa", placa: [9, 9] },
+  { id: "praca", nome: "Praça da Galera", placa: [3, 17] },
+  { id: "esportes", nome: "Quadras", placa: [22, 37] },
+  { id: "autodromo", nome: "Velocidade", placa: [35, 37] },
+  { id: "ginasios", nome: "Desafios", placa: [3, 52] },
 ];
 const GAMES = [
   { id: "leilao", url: "/leilao/", icon: "🔨", sign: "LEILÃO", name: "Casa de Leilão", desc: "Roleta, lances e moedas: monte o seu time (ou hambúrguer, pizza, drink…) e vença no fim.", meta: "Leilão da Galera",
@@ -425,6 +423,18 @@ const GAMES = [
   { id: "haxball", url: "/haxball/", icon: "⚽", sign: "HAXBALL", name: "Haxball da Galera", desc: "Futebol de discos 2D em tempo real. Crie uma sala e jogue com os amigos de 1x1 até 5x5.", meta: "Haxball da Galera · 1x1 a 5x5",
     x: 3, y: 39, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#2c774a", roof2: "#1c5635", wall: "#e8eee4", wall2: "#c3d3c5", haxball: true },
 ];
+// Fachadas em alturas diferentes tiram os jogos das fileiras rígidas e formam pequenos quarteirões.
+const POSICOES = {
+  banco: [14, 3], uno: [25, 2], truco: [35, 3], sinuca: [4, 11], domino: [13, 10],
+  rumi: [32, 11], proibida: [42, 10], bloqueio: [50, 11], ludo: [4, 21], naruto: [13, 21],
+  carreira: [34, 20], botao: [46, 21], pelada: [4, 32], tenis: [13, 31], jogador: [22, 32],
+  corrida: [32, 32], tiro: [44, 32], ginasio: [13, 40], futevolei: [22, 40],
+  rocket: [32, 40], batalha: [42, 40], digita: [50, 40],
+};
+for (const g of GAMES) if (POSICOES[g.id]) {
+  const [x, y] = POSICOES[g.id], dx = x - g.x;
+  g.x = x; g.y = y; g.doors = g.doors.map((d) => d + dx);
+}
 // Os quatro líderes formam uma única alameda ao sul, com acesso pela rua central.
 const escurece = (hex, f = 0.72) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * f).toString(16).padStart(2, "0")).join("");
 Lideres.GINASIOS.forEach((l, i) => {
@@ -443,13 +453,13 @@ const FOUNTAIN = { x: 27, y: 21, w: 4, h: 3 };
 const TELAO = { x: 26, y: 17, w: 6 };
 // os terrenos prontos para as construções novas: cercados, com a placa "em breve"; quem para na frente lê a placa
 const TERRENOS = [
-  { x: 45, y: 2, w: 8, h: 5, bairro: "cartas" },
-  { x: 21, y: 10, w: 6, h: 5, bairro: "cartas" },
-  { x: 51, y: 31, w: 5, h: 4, bairro: "autodromo" },
+  { x: 46, y: 3, w: 8, h: 4, bairro: "cartas" },
+  { x: 22, y: 10, w: 6, h: 5, bairro: "cartas" },
+  { x: 51, y: 32, w: 5, h: 4, bairro: "autodromo" },
 ];
-const LAMPS = [[2, 9], [26, 9], [31, 9], [55, 9], [11, 17], [44, 17], [11, 25], [44, 25], [2, 37], [27, 37], [30, 37], [55, 37], [27, 46], [30, 46]];
-const BENCHES = [[20, 24], [41, 24]];
-const TREES = [[2, 24], [10, 24], [20, 24], [25, 24], [42, 24], [53, 24], [2, 30], [10, 30], [19, 30], [27, 30], [43, 30], [53, 30], [2, 38], [10, 38], [19, 38], [25, 38],
+const LAMPS = [[2, 9], [24, 9], [31, 9], [55, 9], [10, 18], [45, 18], [11, 26], [44, 26], [2, 38], [27, 38], [30, 38], [55, 38], [27, 46], [30, 46]];
+const BENCHES = [[20, 25], [41, 25]];
+const TREES = [[2, 19], [10, 19], [18, 20], [40, 20], [53, 19], [2, 25], [11, 25], [19, 25], [24, 25], [42, 25], [53, 25], [2, 31], [11, 31], [20, 31], [29, 31], [43, 31], [54, 31], [2, 38], [10, 38], [19, 38], [25, 38],
   [33, 38], [40, 38], [49, 38], [55, 38], [3, 46], [13, 46], [23, 46], [39, 46], [52, 46], [12, 9], [41, 9]];
 // aplica a margem de três casas ao bairro
 const noMapa = (lista) => lista.splice(0, lista.length, ...lista.map(([x, y]) => [x + OX, y + OY]));
@@ -460,31 +470,31 @@ TELAO.x += OX; TELAO.y += OY;
 TERRENOS.forEach((t) => { t.x += OX; t.y += OY; });
 [LAMPS, BENCHES, TREES].forEach(noMapa);
 
-// tipos de chão: c concreto, p mosaico, r rua, a avenida, b ciclovia, z faixa de pedestres, g jardim, t árvore
+// Tipos de chão: g gramado, c pedra clara, p ladrilho, o praça circular, r alameda,
+// a passeio principal, b ciclovia e z travessia.
 const ground = Array.from({ length: MH }, () => Array(MW).fill("g"));
 const solid = Array.from({ length: MH }, () => Array(MW).fill(true));
 const set = (x, y, t, s) => { if (x >= 0 && y >= 0 && x < MW && y < MH) { ground[y][x] = t; if (s != null) solid[y][x] = s; } };
 const faixa = (x0, x1, y0, y1, t, s) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, t, s); };
 const vfaixa = (x0, x1, y0, y1, t, s) => faixa(x0 + OX, x1 + OX, y0 + OY, y1 + OY, t, s); // em coordenadas da vila
-for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) { const cerca = x < 2 || y < 2 || x >= VW - 2 || y >= VH - 2; set(x + OX, y + OY, cerca ? "t" : "c", cerca); }
-vfaixa(2, VW - 3, 7, 8, "r"); vfaixa(2, VW - 3, 15, 16, "r"); // Rua das Cartas: as duas ruas
-vfaixa(2, VW - 3, 17, 25, "c");
-vfaixa(2, VW - 3, 25, 25, "p");
-vfaixa(10, 11, 17, 25, "p"); vfaixa(26, 31, 17, 25, "p"); vfaixa(43, 44, 17, 25, "p");
-vfaixa(19, 25, 19, 23, "g"); vfaixa(32, 42, 19, 23, "g");
-vfaixa(2, VW - 3, 26, 27, "a");
-vfaixa(2, VW - 3, 28, 28, "b");
-vfaixa(2, VW - 3, 29, 29, "a");
-vfaixa(2, VW - 3, 30, 30, "p");
-for (const x of [10, 28, 44]) vfaixa(x, x + 1, 26, 29, "z");
-vfaixa(28, 29, 9, 14, "r"); vfaixa(28, 29, 28, VH - 3, "r"); // a avenida do meio
-vfaixa(2, 27, 35, 36, "r"); vfaixa(2, 27, 43, 44, "r");
-vfaixa(30, VW - 3, 35, 36, "r"); vfaixa(30, VW - 3, 43, 44, "r");
-vfaixa(2, VW - 3, 45, 47, "p");
+for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) { const cerca = x < 2 || y < 2 || x >= VW - 2 || y >= VH - 2; set(x + OX, y + OY, cerca ? "t" : "g", cerca); }
+vfaixa(2, 22, 7, 9, "r"); vfaixa(32, VW - 3, 8, 9, "r");
+vfaixa(2, 20, 15, 17, "r"); vfaixa(32, VW - 3, 15, 17, "r");
+vfaixa(27, 30, 7, 17, "p");
+vfaixa(18, 40, 18, 25, "c");
+vfaixa(2, 17, 24, 25, "p"); vfaixa(40, VW - 3, 24, 25, "p");
+vfaixa(10, 11, 17, 25, "p"); vfaixa(26, 31, 17, 25, "p"); vfaixa(44, 45, 17, 25, "p");
+for (let y = 18; y <= 25; y++) for (let x = 20; x <= 38; x++) {
+  const dx = (x - 29) / 9.5, dy = (y - 22) / 4.6;
+  if (dx * dx + dy * dy < 1) set(x + OX, y + OY, "o");
+}
+vfaixa(2, VW - 3, 26, 27, "a"); vfaixa(2, VW - 3, 28, 28, "b");
+vfaixa(2, VW - 3, 29, 30, "a");
+for (const x of [10, 28, 44]) vfaixa(x, x + 1, 26, 30, "z");
+vfaixa(27, 30, 30, 54, "p");
+vfaixa(2, 27, 35, 37, "r"); vfaixa(31, VW - 3, 35, 37, "r");
+vfaixa(2, 27, 43, 46, "r"); vfaixa(31, VW - 3, 43, 46, "r");
 vfaixa(2, VW - 3, 52, 54, "p");
-// a avenida central chega à Alameda dos Líderes
-vfaixa(28, 29, 45, 54, "p");
-vfaixa(28, 29, 26, 29, "z"); vfaixa(28, 29, 30, 30, "p");
 // Os terrenos em obra são sólidos; a casa de baixo do meio é onde se lê a placa.
 for (const t of TERRENOS) { faixa(t.x, t.x + t.w - 1, t.y, t.y + t.h - 1, "l", true); t.placa = [t.x + (t.w >> 1), t.y + t.h]; }
 for (const g of GAMES) {
@@ -513,42 +523,39 @@ function px(c, col, x, y, w = 1, h = 1) { c.fillStyle = col; c.fillRect(x, y, w,
 
 function drawGrass(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#618e67", X, Y, TS, TS);
-  for (let i = 0; i < 4; i++) { const r = hash(x, y, i); px(c, "#4f7c59", X + (r % 15), Y + ((r >> 5) % 14), 1, 2); }
-  for (let i = 0; i < 2; i++) { const r = hash(x, y, i + 9); px(c, "#87a676", X + (r % 15), Y + ((r >> 6) % 15)); }
+  px(c, "#78b58b", X, Y, TS, TS);
+  for (let i = 0; i < 3; i++) { const r = hash(x, y, i); px(c, "#68a77e", X + r % 15, Y + (r >> 5) % 14, 1, 2); }
+  if (hash(x, y, 9) % 5 === 0) px(c, "#a9d0a0", X + 3, Y + 6, 2, 2);
 }
 function drawRoad(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#404b4e", X, Y, TS, TS);
-  for (let i = 0; i < 5; i++) { const h = hash(x, y, i); px(c, "#536063", X + h % 16, Y + (h >> 6) % 16); }
-  const horizontal = ground[y]?.[x - 1] === "r" || ground[y]?.[x + 1] === "r";
-  if (horizontal && ground[y - 1]?.[x] !== "r") px(c, "#afb5ae", X, Y + 1, TS, 1);
-  if (horizontal && ground[y + 1]?.[x] !== "r") px(c, "#afb5ae", X, Y + TS - 2, TS, 1);
-  if ((horizontal ? x : y) % 3 !== 0) horizontal ? px(c, "#d6c590", X + 4, Y + 8, 8, 1) : px(c, "#d6c590", X + 8, Y + 4, 1, 8);
+  px(c, "#dda975", X, Y, TS, TS);
+  px(c, "#f3c994", X, Y, TS, 2); px(c, "#bd855c", X, Y + 14, TS, 2);
+  for (let yy = 4; yy < 14; yy += 5) px(c, "#f4cf9a", X, Y + yy, TS, 1);
+  for (let xx = (y % 2) * 7; xx < TS; xx += 14) px(c, "#c88f63", X + xx, Y + 4, 1, 5);
 }
 function drawConcrete(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#b9beb9", X, Y, TS, TS);
-  px(c, "#a5aba7", X, Y, TS, 1); px(c, "#a5aba7", X, Y, 1, TS);
-  const h = hash(x, y, 9); if (h % 3 === 0) px(c, "#cbd0c9", X + (h >> 4) % 12 + 2, Y + (h >> 8) % 12 + 2, 2, 1);
+  px(c, "#f1ddaf", X, Y, TS, TS);
+  px(c, "#e3ca9e", X, Y, TS, 1); px(c, "#e3ca9e", X, Y, 1, TS);
+  const h = hash(x, y, 9); if (h % 4 === 0) px(c, "#fff0c8", X + (h >> 4) % 12 + 2, Y + (h >> 8) % 12 + 2, 2, 1);
 }
 function drawAvenida(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#303b40", X, Y, TS, TS);
-  for (let i = 0; i < 6; i++) { const h = hash(x, y, i + 11); px(c, "#46545a", X + h % 16, Y + (h >> 6) % 16); }
-  if (y === OY + 26 || y === OY + 29) px(c, "#abb8b7", X, Y + (y === OY + 26 ? 1 : 14), TS, 1);
-  if (y === OY + 27 && x % 3 !== 0) px(c, "#efeee5", X + 2, Y + 11, 11, 2);
+  px(c, "#f8e4b9", X, Y, TS, TS);
+  px(c, "#e5cc9d", X, Y, TS, 1); px(c, "#e5cc9d", X, Y, 1, TS);
+  if ((x + y) % 4 === 0) px(c, "#f2d8aa", X + 5, Y + 7, 6, 1);
 }
 function drawCiclovia(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#bd4444", X, Y, TS, TS);
-  px(c, "#f4ded6", X, Y, TS, 1); px(c, "#f4ded6", X, Y + TS - 1, TS, 1);
-  if (x % 5 === 0) { px(c, "#f6eae4", X + 5, Y + 7, 7, 1); px(c, "#f6eae4", X + 9, Y + 5, 1, 5); }
+  px(c, "#e87966", X, Y, TS, TS);
+  px(c, "#ffe5b7", X, Y, TS, 2); px(c, "#ffe5b7", X, Y + TS - 2, TS, 2);
+  if (x % 5 === 0) { px(c, "#fff7df", X + 5, Y + 7, 7, 1); px(c, "#fff7df", X + 9, Y + 5, 1, 5); }
 }
 function drawFaixa(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#3a4448", X, Y, TS, TS);
-  for (let j = 1; j < TS; j += 5) px(c, "#f2f0e8", X + 2, Y + j, TS - 4, 3);
+  drawAvenida(c, x, y);
+  for (let j = 1; j < TS; j += 5) px(c, "#fff9e3", X + 2, Y + j, TS - 4, 3);
 }
 function drawFlowers(c, x, y) {
   drawGrass(c, x, y);
@@ -574,12 +581,12 @@ function drawMatoPorCima(c, p) {
 }
 function drawTree(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#26383b55", X + 1, Y + 13, 14, 3);
-  px(c, "#665a4d", X + 7, Y + 9, 3, 7);
-  const flor = hash(x, y) % 4 === 0;
-  c.fillStyle = flor ? "#6e6893" : "#2e6355"; c.beginPath(); c.arc(X + 8, Y + 7, 7, 0, 7); c.fill();
-  c.fillStyle = flor ? "#a395bc" : "#47816b"; c.beginPath(); c.arc(X + 7, Y + 5, 5, 0, 7); c.fill();
-  px(c, flor ? "#d2bfd4" : "#75a88c", X + 5, Y + 3, 3, 1);
+  px(c, "#224d4266", X + 2, Y + 14, 13, 3);
+  px(c, "#80583d", X + 7, Y + 9, 3, 7);
+  const flor = hash(x, y) % 5 === 0;
+  c.fillStyle = flor ? "#a778b2" : "#257e5c"; c.beginPath(); c.arc(X + 9, Y + 8, 7, 0, 7); c.fill();
+  c.fillStyle = flor ? "#d8a6c8" : "#43a978"; c.beginPath(); c.arc(X + 6, Y + 5, 6, 0, 7); c.fill();
+  px(c, flor ? "#f6c7dc" : "#8cce8e", X + 5, Y + 3, 3, 2);
 }
 // borda escura onde o calçamento encontra a grama
 const naGrama = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH && "gft".includes(ground[y][x]);
@@ -593,12 +600,17 @@ function bordas(c, x, y, cor) {
 // Mosaico geométrico preto e branco das calçadas largas da avenida.
 function drawPraca(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#e8e7df", X, Y, TS, TS);
-  px(c, "#bfc4be", X, Y, TS, 1); px(c, "#bfc4be", X, Y, 1, TS);
-  if ((x + y) % 2 === 0) px(c, "#697676", X + 5, Y + 5, 3, 3);
-  else px(c, "#697676", X + 9, Y + 9, 3, 3);
+  px(c, "#fff1c9", X, Y, TS, TS);
+  px(c, "#e4cba5", X, Y, TS, 1); px(c, "#e4cba5", X, Y, 1, TS);
+  if ((x + y) % 3 === 0) px(c, "#e69b81", X + 6, Y + 6, 4, 4);
 }
-const CHAO = { h: drawMatoAlto, r: drawRoad, p: drawPraca, c: drawConcrete, a: drawAvenida, b: drawCiclovia, z: drawFaixa };
+function drawCirculo(c, x, y) {
+  const X = x * TS, Y = y * TS, dx = (x - OX - 29) / 9.5, dy = (y - OY - 22) / 4.6, d = dx * dx + dy * dy;
+  px(c, d > .72 ? "#348f7c" : d > .52 ? "#9dd5b6" : "#fff0c6", X, Y, TS, TS);
+  if (d < .72) { px(c, d > .52 ? "#c7e5c5" : "#f4d9aa", X, Y, TS, 1); px(c, d > .52 ? "#c7e5c5" : "#f4d9aa", X, Y, 1, TS); }
+  if (d < .52 && (x + y) % 4 === 0) { px(c, "#ed967b", X + 5, Y + 5, 6, 6); px(c, "#fff0c6", X + 7, Y + 7, 2, 2); }
+}
+const CHAO = { h: drawMatoAlto, r: drawRoad, p: drawPraca, o: drawCirculo, c: drawConcrete, a: drawAvenida, b: drawCiclovia, z: drawFaixa };
 function drawMat(c, x, y) {
   (CHAO[ground[y + 1] && ground[y + 1][x]] || drawConcrete)(c, x, y);
   const X = x * TS, Y = y * TS;
@@ -622,12 +634,12 @@ function drawBuilding(c, g) {
   // sombra no chão
   px(c, "#00000030", X + 3, Y + H, W - 2, 3);
   // parede
-  const acento = acentoDe(g), fachada = mistura(g.wall || "#f4ead6", "#94acb1", 0.72), vinco = "#d1dcda";
+  const acento = acentoDe(g), fachada = mistura(g.wall || "#f4ead6", "#fff0d2", 0.6), vinco = mistura(fachada, "#9b7768", .2);
   px(c, fachada, X, wallY, W, H - roofH);
-  for (let xx = X + 8; xx < X + W; xx += 16) px(c, vinco, xx, wallY + 2, 2, H - roofH - 5);
-  px(c, "#506268", X, Y + H - 4, W, 4);
+  for (let xx = X + 8; xx < X + W; xx += 16) px(c, vinco, xx, wallY + 3, 1, H - roofH - 7);
+  px(c, "#7b7660", X, Y + H - 4, W, 4);
   px(c, acento, X, Y + H - 4, W, 1);
-  px(c, "#24383e", X, Y + H - 1, W, 1);
+  px(c, "#416154", X, Y + H - 1, W, 1);
   // telhado
   const rx = X - 3, rw = W + 6;
   if (g.lider) { // ginásio de líder: telhado na cor do tipo, com a faixa clara e o emblema redondo com a inicial
@@ -789,11 +801,11 @@ function drawBuilding(c, g) {
     const pips = (cx, cy) => { for (const [dx, dy] of [[-6, -6], [6, -6], [0, 0], [-6, 6], [6, 6]]) px(c, "#f6f3ea", cx + dx - 1, cy + dy - 1, 3, 3); };
     pips(X + W / 4, Y + roofH / 2 - 1); pips(X + (3 * W) / 4, Y + roofH / 2 - 1);
   }
-  if (!g.ginasio) px(c, "#c1d2d0", rx, Y, rw, 1);
-  px(c, "#354b51", rx, wallY - 4, rw, 4);
-  px(c, g.casino ? "#ffc83d" : acento, rx, wallY - 4, rw, 1);
-  px(c, "#dae3df", X, wallY, W, 2);
-  px(c, "#566d70", X, wallY + 2, W, 1);
+  if (!g.ginasio) px(c, "#fff7df", rx, Y, rw, 1);
+  px(c, mistura(g.roof, "#262a3d", .38), rx, wallY - 4, rw, 4);
+  px(c, "#ffe6a3", rx, wallY - 4, rw, 1);
+  px(c, "#fff8df", X, wallY, W, 2);
+  px(c, "#e8b58d", X, wallY + 2, W, 1);
   // janelas
   const dL = g.doors[0] * TS, dR = (g.doors[g.doors.length - 1] + 1) * TS;
   const wins = [];
@@ -802,10 +814,10 @@ function drawBuilding(c, g) {
   g.windows = [];
   for (const wx of wins) {
     const wy = wallY + 6;
-    px(c, "#294349", wx - 1, wy - 1, 14, 12);
-    px(c, "#528997", wx, wy, 12, 10); px(c, "#90b9bd", wx, wy, 12, 4); px(c, "#d5e7e4", wx, wy, 12, 1);
+    px(c, "#536e5d", wx - 1, wy - 1, 14, 12);
+    px(c, "#55aeb5", wx, wy, 12, 10); px(c, "#a6dadd", wx, wy, 12, 4); px(c, "#e5f5e9", wx, wy, 12, 1);
     px(c, "#ffffff90", wx + 2, wy + 2, 2, 5); px(c, "#ffffff60", wx + 5, wy + 1, 1, 4); // o reflexo na diagonal
-    px(c, "#294349", wx + 5, wy, 1, 10);
+    px(c, "#536e5d", wx + 5, wy, 1, 10);
     px(c, "#ffffff22", wx - 1, wy + 11, 14, 1); // o peitoril
     g.windows.push([wx + 6, wy + 5]);
   }
@@ -814,10 +826,10 @@ function drawBuilding(c, g) {
     const dx = d * TS;
     const single = g.doors.length === 1;
     const x0 = single ? dx + 2 : dx + (d === g.doors[0] ? 2 : 0), w0 = single ? 12 : 14;
-    px(c, "#263a3f", x0 - 1, Y + H - 21, w0 + 2, 21);
-    px(c, g.casino ? "#c9a23a" : "#436d76", x0, Y + H - 20, w0, 19); px(c, g.casino ? "#e8c75a" : "#89b5bd", x0, Y + H - 20, w0, 7);
+    px(c, "#385b52", x0 - 1, Y + H - 21, w0 + 2, 21);
+    px(c, g.casino ? "#c9a23a" : "#3c8e84", x0, Y + H - 20, w0, 19); px(c, g.casino ? "#e8c75a" : "#a6dfcb", x0, Y + H - 20, w0, 7);
     px(c, "#ffffff70", x0 + 2, Y + H - 18, 2, 8);
-    px(c, "#263a3f", x0 + (single ? 5 : d === g.doors[0] ? w0 - 1 : 0), Y + H - 20, 1, 19);
+    px(c, "#385b52", x0 + (single ? 5 : d === g.doors[0] ? w0 - 1 : 0), Y + H - 20, 1, 19);
     px(c, "#ffffff", single ? x0 + 9 : d === g.doors[0] ? x0 + w0 - 3 : x0 + 2, Y + H - 11, 2, 4);
   }
   { // a marquise sobre a porta, na cor do prédio
@@ -837,43 +849,44 @@ function drawBuilding(c, g) {
 
 function drawFountainBase(c) {
   const f = FOUNTAIN, X = f.x * TS, Y = f.y * TS, W = f.w * TS, H = f.h * TS;
-  px(c, "#00000030", X + 2, Y + H - 1, W - 2, 3);
-  px(c, "#45585d", X, Y + 2, W, H - 2); px(c, "#9aaba8", X + 1, Y + 3, W - 2, H - 4);
-  px(c, "#293e43", X, Y + H - 3, W, 2);
-  px(c, "#4c929b", X + 5, Y + 7, W - 10, H - 12);
+  const cx = X + W / 2, cy = Y + H / 2;
+  c.fillStyle = "#27675555"; c.beginPath(); c.ellipse(cx + 2, cy + 4, W / 2 + 2, H / 2, 0, 0, 7); c.fill();
+  c.fillStyle = "#d99b5f"; c.beginPath(); c.ellipse(cx, cy + 2, W / 2, H / 2, 0, 0, 7); c.fill();
+  c.fillStyle = "#fff2c7"; c.beginPath(); c.ellipse(cx, cy - 1, W / 2, H / 2 - 2, 0, 0, 7); c.fill();
+  c.fillStyle = "#3199a2"; c.beginPath(); c.ellipse(cx, cy, W / 2 - 6, H / 2 - 7, 0, 0, 7); c.fill();
 }
 function drawLampPost(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#00000030", X + 5, Y + 14, 7, 2);
-  px(c, "#26383d", X + 7, Y + 3, 2, 12); px(c, "#26383d", X + 5, Y + 14, 6, 2);
-  px(c, "#26383d", X + 5, Y + 2, 7, 2); px(c, "#f0d18a", X + 10, Y + 3, 3, 2);
+  px(c, "#28645355", X + 5, Y + 14, 7, 2);
+  px(c, "#315f52", X + 7, Y + 3, 2, 12); px(c, "#315f52", X + 5, Y + 14, 6, 2);
+  px(c, "#315f52", X + 5, Y + 2, 7, 2); px(c, "#ffda73", X + 10, Y + 3, 3, 2);
 }
 function drawBench(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#00000030", X + 1, Y + 12, 14, 2);
-  px(c, "#304247", X + 1, Y + 4, 14, 2); px(c, "#61787a", X + 1, Y + 8, 14, 2);
-  px(c, "#26383d", X + 2, Y + 10, 2, 4); px(c, "#26383d", X + 12, Y + 10, 2, 4);
+  px(c, "#28645355", X + 1, Y + 12, 14, 2);
+  px(c, "#ac6b43", X + 1, Y + 4, 14, 2); px(c, "#d9925b", X + 1, Y + 8, 14, 2);
+  px(c, "#386d5c", X + 2, Y + 10, 2, 4); px(c, "#386d5c", X + 12, Y + 10, 2, 4);
 }
 
 // Obras da avenida: tapumes metálicos e placa de futura ocupação.
 function drawTerra(c, x, y) {
   const X = x * TS, Y = y * TS;
-  px(c, "#8e9996", X, Y, TS, TS);
-  px(c, "#7b8785", X, Y, TS, 1);
-  for (let i = 0; i < 3; i++) { const r = hash(x, y, i + 40); px(c, "#667673", X + r % 14, Y + (r >> 5) % 14, 2, 1); }
+  px(c, "#d9bb86", X, Y, TS, TS);
+  px(c, "#c89f6d", X, Y, TS, 1);
+  for (let i = 0; i < 3; i++) { const r = hash(x, y, i + 40); px(c, "#a87d52", X + r % 14, Y + (r >> 5) % 14, 2, 1); }
 }
 function drawTerreno(c, t) {
   const X = t.x * TS, Y = t.y * TS, W = t.w * TS, H = t.h * TS;
-  px(c, "#506166", X, Y, W, 2); px(c, "#506166", X, Y + H - 3, W, 3);
-  px(c, "#506166", X, Y, 2, H); px(c, "#506166", X + W - 2, Y, 2, H);
-  for (let xx = X + 8; xx < X + W - 4; xx += 10) { px(c, "#d3ddd8", xx, Y + H - 3, 5, 2); px(c, "#c94c48", xx + 5, Y + H - 3, 5, 2); }
-  for (const [ex, ey] of [[0.25, 0.35], [0.68, 0.42]]) { const sx = X + Math.round(W * ex), sy = Y + Math.round(H * ey); px(c, "#617371", sx, sy, 15, 10); px(c, "#aebcba", sx + 2, sy + 2, 11, 6); }
+  px(c, "#3c8f76", X, Y, W, 2); px(c, "#3c8f76", X, Y + H - 3, W, 3);
+  px(c, "#3c8f76", X, Y, 2, H); px(c, "#3c8f76", X + W - 2, Y, 2, H);
+  for (let xx = X + 8; xx < X + W - 4; xx += 10) { px(c, "#fff1c8", xx, Y + H - 3, 5, 2); px(c, "#e9745e", xx + 5, Y + H - 3, 5, 2); }
+  for (const [ex, ey] of [[0.25, 0.35], [0.68, 0.42]]) { const sx = X + Math.round(W * ex), sy = Y + Math.round(H * ey); px(c, "#a37850", sx, sy, 15, 10); px(c, "#e7c791", sx + 2, sy + 2, 11, 6); }
   const cx = X + (t.w >> 1) * TS + 8, py = Y + H - 26;
-  px(c, "#26383d", cx - 7, py + 10, 2, 14); px(c, "#26383d", cx + 5, py + 10, 2, 14);
+  px(c, "#386b59", cx - 7, py + 10, 2, 14); px(c, "#386b59", cx + 5, py + 10, 2, 14);
   c.font = '700 7px "Pixelify Sans", monospace';
   const w = 40, h = 13, x = cx - w / 2;
-  px(c, "#26383d", x - 1, py - 1, w + 2, h + 2); px(c, "#eff1e9", x, py, w, h); px(c, "#c94c48", x, py, w, 3);
-  c.fillStyle = "#26383d"; c.textBaseline = "middle"; c.textAlign = "center"; c.fillText("EM BREVE", cx, py + h / 2 + 1); c.textAlign = "left";
+  px(c, "#386b59", x - 1, py - 1, w + 2, h + 2); px(c, "#fff4ce", x, py, w, h); px(c, "#ee765e", x, py, w, 3);
+  c.fillStyle = "#285648"; c.textBaseline = "middle"; c.textAlign = "center"; c.fillText("EM BREVE", cx, py + h / 2 + 1); c.textAlign = "left";
 }
 // O mapa é grande demais para um desenho só: ele é desenhado em pedaços de 32 x 32 casas, na hora em que aparecem na
 // tela, e os pedaços que ficam muito tempo sem aparecer saem da memória.
@@ -946,7 +959,7 @@ function spritesFor(look) {
   return sprites;
 }
 
-const player = { x: OX + 24, y: OY + 21, dir: "down", moving: false, fx: OX + 24, fy: OY + 21, t: 0, from: null, steps: 0, entering: null, car: false };
+const player = { x: OX + 29, y: OY + 25, dir: "up", moving: false, fx: OX + 29, fy: OY + 25, t: 0, from: null, steps: 0, entering: null, car: false };
 const zona = () => "";
 const naMinhaZona = (o) => (o.z || "") === zona();
 const podePassar = walkable;
@@ -1104,12 +1117,12 @@ function lugarEm(x, y) {
   return matAt(x, y) || (naFrenteDoTelao(x, y) ? TELAO_LUGAR : null) || (terrenoEm(x, y) ? TERRENO_LUGAR : null);
 }
 // O minimapa cabe inteiro em 64 x 64 casas; o ponto amarelo é você.
-let miniOn = !matchMedia("(max-width: 560px)").matches;
+let miniOn = false;
 const miniBase = document.createElement("canvas"); miniBase.width = MW; miniBase.height = MH;
 (() => {
-  const c = miniBase.getContext("2d"), COR = { g: "#618e67", t: "#2e6355", f: "#618e67", c: "#b9beb9", r: "#404b4e", p: "#e8e7df", a: "#303b40", b: "#bd4444", z: "#eff0e8", m: "#bd4444", h: "#3f9a36" };
-  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { c.fillStyle = COR[ground[y][x]] || "#b9beb9"; c.fillRect(x, y, 1, 1); }
-  c.fillStyle = "#587984"; GAMES.forEach((g) => c.fillRect(g.x, g.y, g.w, g.h));
+  const c = miniBase.getContext("2d"), COR = { g: "#78b58b", t: "#257e5c", f: "#78b58b", c: "#f1ddaf", r: "#dda975", p: "#fff1c9", o: "#54aa91", a: "#f8e4b9", b: "#e87966", z: "#fff9e3", m: "#e87966", h: "#3f9a36" };
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { c.fillStyle = COR[ground[y][x]] || "#78b58b"; c.fillRect(x, y, 1, 1); }
+  c.fillStyle = "#315f64"; GAMES.forEach((g) => c.fillRect(g.x, g.y, g.w, g.h));
 })();
 function drawMini(t) {
   const m = $("mini"); if (m.classList.contains("off")) return;
@@ -1711,20 +1724,17 @@ function resize() {
 addEventListener("resize", resize);
 
 function drawFountainWater(c, t) {
-  const f = FOUNTAIN, X = f.x * TS + 5, Y = f.y * TS + 7, W = f.w * TS - 10, H = f.h * TS - 12;
-  px(c, "#2f7fc6", X, Y, W, H);
-  for (let i = 0; i < 6; i++) {
-    const yy = Y + ((i * 5 + Math.floor(t / 180)) % H);
-    px(c, "#5fb0ee", X + ((i * 13 + Math.floor(t / 90)) % (W - 6)), yy, 6, 1);
-  }
-  const cx = f.x * TS + (f.w * TS) / 2, cy = f.y * TS + 12;
-  px(c, "#b7b4c6", cx - 3, cy + 4, 6, 12); px(c, "#8d8a9e", cx - 5, cy + 14, 10, 3);
+  const f = FOUNTAIN, cx = f.x * TS + f.w * TS / 2, cy = f.y * TS + f.h * TS / 2;
+  const pulse = (t % 1500) / 1500;
+  c.strokeStyle = "#a9ecdf"; c.lineWidth = 1; c.beginPath(); c.ellipse(cx, cy + 2, 7 + pulse * 14, 3 + pulse * 7, 0, 0, 7); c.stroke();
+  c.beginPath(); c.ellipse(cx, cy + 2, 7 + ((pulse + .5) % 1) * 14, 3 + ((pulse + .5) % 1) * 7, 0, 0, 7); c.stroke();
+  px(c, "#fff0c5", cx - 3, cy - 5, 6, 12); px(c, "#d7b97e", cx - 5, cy + 5, 10, 3);
   for (let i = 0; i < 8; i++) { // jato d'água
     const ph = ((t / 700 + i / 8) % 1), side = i % 2 ? 1 : -1;
     const dx = side * ph * 14, dy = -10 * Math.sin(ph * Math.PI) + ph * 14;
-    px(c, "#cfeaff", Math.round(cx + dx - 1), Math.round(cy + dy), 2, 2);
+    px(c, "#e1fff2", Math.round(cx + dx - 1), Math.round(cy - 9 + dy), 2, 2);
   }
-  px(c, "#e8f6ff", cx - 1, cy - 2, 2, 5);
+  px(c, "#e1fff2", cx - 1, cy - 12, 2, 5);
 }
 // ---------- o telão da estante da galera ----------
 // o top 5 de GET /api/estante (bd.estante: os técnicos com mais taças em todas as carreiras, solo e em grupo)
@@ -1746,30 +1756,34 @@ function buscarEstante() {
 const CORES_PODIO = ["#ffd34d", "#d6dde8", "#e09a5a"];
 function drawTelao(c, t) {
   const x0 = TELAO.x * TS, base = TELAO.y * TS, W = TELAO.w * TS + 8, H = 54, X = x0 - 4, Y = base - H - 2;
-  // Estrutura suspensa vermelha e vão livre, referência urbana ao MASP.
-  px(c, "#1d292c66", X - 7, base + 14, W + 14, 4);
-  px(c, "#9f3033", X - 8, Y - 8, 7, H + 25); px(c, "#9f3033", X + W + 1, Y - 8, 7, H + 25);
-  px(c, "#d34b48", X - 8, Y - 8, W + 16, 7);
-  px(c, "#ef7164", X - 8, Y - 8, W + 16, 1);
-  px(c, "#c74746", X - 3, Y - 2, W + 6, H + 4);
-  px(c, "#253b43", X, Y, W, H);
-  px(c, "#314e58", X + 1, Y + 1, W - 2, 9);
+  // Painel da praça como um pavilhão de festa: teto de lona e luminárias.
+  px(c, "#285c4c55", X - 5, base + 14, W + 10, 4);
+  px(c, "#316f60", X, Y + H, 4, base + 15 - Y - H); px(c, "#316f60", X + W - 4, Y + H, 4, base + 15 - Y - H);
+  px(c, "#fff0bb", X - 4, Y - 8, W + 8, 9);
+  for (let i = 0; i < 8; i++) { const xx = X - 4 + i * (W + 8) / 8; px(c, i % 2 ? "#f7bd63" : "#ed765c", xx, Y - 8, (W + 8) / 8, 8); px(c, i % 2 ? "#db9254" : "#d3534e", xx, Y, (W + 8) / 8, 2); }
+  px(c, "#fff6d6", X - 2, Y + 2, W + 4, H + 2);
+  px(c, "#225d58", X, Y + 4, W, H - 2);
+  px(c, "#347d71", X + 1, Y + 5, W - 2, 8);
   const passo = Math.floor(t / 220);
-  for (let i = 0, xx = X + 2; xx < X + W - 2; xx += 4, i++) px(c, (i + passo) % 4 ? "#617e82" : "#ffd34d", xx, Y + 1, 2, 1);
+  for (let i = 0, xx = X + 2; xx < X + W - 2; xx += 4, i++) px(c, (i + passo) % 4 ? "#4e9b84" : "#ffde76", xx, Y + 5, 2, 1);
   c.textBaseline = "middle"; c.textAlign = "center";
-  c.font = '700 7px "Pixelify Sans", monospace'; c.fillStyle = "#ffd34d";
-  c.fillText("ESTANTE DA GALERA", X + W / 2, Y + 6.5);
+  c.font = '700 7px "Pixelify Sans", monospace'; c.fillStyle = "#fff1bb";
+  c.fillText("ESTANTE DA GALERA", X + W / 2, Y + 10.5);
   const top = ESTANTE.top;
   c.font = '700 6px "Pixelify Sans", monospace';
   if (!top || !top.length) {
-    c.fillStyle = "#8fa3c8";
-    c.fillText(!top ? (ESTANTE.erro ? "SEM SINAL" : "LIGANDO...") : "NENHUMA TAÇA AINDA", X + W / 2, Y + 30);
+    const cx = X + W / 2;
+    px(c, "#ffd874", cx - 5, Y + 22, 10, 6); px(c, "#e9b558", cx - 3, Y + 28, 6, 3);
+    px(c, "#ffd874", cx - 1, Y + 31, 2, 4); px(c, "#e9b558", cx - 5, Y + 35, 10, 2);
+    px(c, "#ffd874", cx - 8, Y + 22, 3, 2); px(c, "#ffd874", cx + 5, Y + 22, 3, 2);
+    c.fillStyle = "#d7ecd2";
+    c.fillText(ESTANTE.erro ? "SEM SINAL" : "JOGUE E APAREÇA AQUI", cx, Y + 44);
   } else top.forEach((r, i) => {
-    const yy = Y + 16 + i * 8;
-    if (i % 2) px(c, "#0b1020", X + 2, yy - 4, W - 4, 8);
+    const yy = Y + 19 + i * 7;
+    if (i % 2) px(c, "#1b524e", X + 2, yy - 4, W - 4, 7);
     c.textAlign = "left"; c.fillStyle = CORES_PODIO[i] || "#8fa3c8";
     c.fillText(`${i + 1}`, X + 4, yy);
-    c.fillStyle = i < 3 ? "#f4f6fb" : "#c3cde0";
+    c.fillStyle = i < 3 ? "#fff9df" : "#c7e0cf";
     c.fillText(nomeTelao(r.tecnico), X + 12, yy);
     // a tacinha e o número de títulos
     const tx = X + W - 22;
@@ -1780,7 +1794,7 @@ function drawTelao(c, t) {
   c.textAlign = "left";
   // o reflexo que passa pela tela de vez em quando
   const fase = (t % 6000) / 6000;
-  if (fase < 0.25) { const rx = X + Math.round(fase * 4 * (W + 20)) - 10; px(c, "#ffffff0d", Math.max(X, rx), Y + 10, Math.min(6, X + W - Math.max(X, rx)), H - 10); }
+  if (fase < 0.25) { const rx = X + Math.round(fase * 4 * (W + 20)) - 10; px(c, "#ffffff0d", Math.max(X, rx), Y + 13, Math.min(6, X + W - Math.max(X, rx)), H - 13); }
 }
 function drawCasinoBulbs(c, g, t) {
   const Y = g.y * TS + (g.h - 2) * TS - 2, X = g.x * TS - 3, W = g.w * TS + 6;
@@ -1793,15 +1807,15 @@ function drawSign(c, g, t) {
   c.font = `700 ${g.casino ? 9 : 7}px "Pixelify Sans", monospace`;
   const tw = c.measureText(g.sign).width, ew = g.casino ? 10 : 8, w = Math.ceil(tw + ew + 8), h = g.casino ? 13 : 10, x = Math.round(cx - w / 2);
   const acento = acentoDe(g);
-  px(c, "#bfc9c4", x - 1, y - 1, w + 2, h + 2);
-  px(c, "#253a40", x, y, w, h);
+  px(c, "#295e50", x - 1, y - 1, w + 2, h + 2);
+  px(c, "#fff7d8", x, y, w, h);
   if (!g.casino) { px(c, acento, x, y, 2, h); px(c, acento, x, y + h - 1, w, 1); }
   if (g.casino) { const on = Math.floor(t / 400) % 2; px(c, on ? "#ff4fb0" : "#9b2a70", x, y, w, 1); px(c, on ? "#ff4fb0" : "#9b2a70", x, y + h - 1, w, 1); }
   c.textBaseline = "middle"; c.textAlign = "left";
   c.font = `${g.casino ? 8 : 6.5}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
   c.fillText(g.icon, x + 4, y + h / 2 + 0.5);
   c.font = `700 ${g.casino ? 9 : 7}px "Pixelify Sans", monospace`;
-  c.fillStyle = g.casino ? "#ffe066" : "#f0f2eb";
+  c.fillStyle = g.casino ? "#814c31" : "#285648";
   c.fillText(g.sign, x + 4 + ew, y + h / 2 + 0.5);
 }
 function drawPlaca(c, b) {
@@ -1810,9 +1824,9 @@ function drawPlaca(c, b) {
   px(c, "#3a3d48", cx - 1, ty * TS - 2, 2, 17); // o poste
   c.font = '700 7px "Pixelify Sans", monospace';
   const w = Math.ceil(c.measureText(b.nome).width) + 10, h = 11, x = Math.round(cx - w / 2), y = ty * TS - 12;
-  px(c, "#e9eee8", x - 1, y - 1, w + 2, h + 2);
-  px(c, "#334a50", x, y, w, h);
-  px(c, "#ca4846", x, y, 3, h);
+  px(c, "#285f50", x - 1, y - 1, w + 2, h + 2);
+  px(c, "#3d947b", x, y, w, h);
+  px(c, "#ffcf6b", x, y, 3, h);
   c.strokeStyle = "#f4f6fb"; c.lineWidth = 1; c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3); // o filete branco da placa esmaltada
   c.fillStyle = "#f4f6fb"; c.textBaseline = "middle"; c.textAlign = "center";
   c.fillText(b.nome, cx, y + h / 2 + 0.5);
@@ -1869,7 +1883,10 @@ function frame(now) {
   update(dt);
   updateOthers(dt);
   const mw = MW * TS, mh = MH * TS;
-  const tx = player.fx * TS + 8 - viewW / 2, ty = player.fy * TS + 8 - viewH / 2;
+  const tx = player.fx * TS + 8 - viewW / 2;
+  const mobileFocus = Math.max(.5, .63 - Math.max(0, player.fy - (OY + 25)) * .013);
+  const desktopFocus = Math.max(.5, .56 - Math.max(0, player.fy - (OY + 25)) * .006);
+  const ty = player.fy * TS + 8 - viewH * (innerWidth <= 560 ? mobileFocus : desktopFocus);
   camX = mw > viewW ? Math.max(0, Math.min(mw - viewW, tx)) : (mw - viewW) / 2;
   camY = mh > viewH ? Math.max(0, Math.min(mh - viewH, ty)) : (mh - viewH) / 2;
   camX = Math.round(camX * scale) / scale; camY = Math.round(camY * scale) / scale;
@@ -1877,7 +1894,7 @@ function frame(now) {
   if (btOpen()) { requestAnimationFrame(frame); return; }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = "#7fae79"; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = "#78b58b"; ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.setTransform(scale, 0, 0, scale, -camX * scale, -camY * scale);
   ctx.imageSmoothingEnabled = false;
   for (let cy = Math.floor(camY / CHP); cy <= Math.floor((camY + viewH) / CHP); cy++) for (let cx = Math.floor(camX / CHP); cx <= Math.floor((camX + viewW) / CHP); cx++)
