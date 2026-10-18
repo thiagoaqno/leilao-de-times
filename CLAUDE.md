@@ -8,7 +8,6 @@ decisões dos primeiros dias estão em `PROJETO.md`, e o que mudou em cada PR fi
 - Site de jogos para jogar com os amigos, tudo em português.
   - A página inicial (`/`) é a **Vila**: um mapinha pixel-art em que cada prédio leva a um jogo.
 - **Servidor:** Node + Express 5 + Socket.io 4, em `server.js`.
-  - O prédio de Tênis de Mesa na Vila abre `/table-tennis-pro/`, uma página com o Table Tennis Pro original da GameDistribution em iframe. O jogo externo não envia resultados à Noite da Galera. O modo local anterior continua em `/pingpong/`; teste da nova entrada: `tests/e2e/table-tennis-pro.spec.js`.
   - `haxball.js` atende `/haxball`: futebol de discos 2D de 1x1 a 5x5. O servidor roda a física de `public/haxball/regras.js` a 60 Hz e envia quadros a 20 Hz; `public/haxball/jogo.js` desenha o canvas e envia movimento/chute. Salas por código, espectador, times, revanche e controles de toque. Teste: `tests/haxball.test.js`.
   - Cada jogo é um módulo `<jogo>.js` na raiz, com o seu canal (namespace) `/<jogo>`.
   - `npm start` sobe em `localhost:3000`.
@@ -77,7 +76,7 @@ segmentos de ritmo em `rod.ritmos`, para trocar a velocidade sem saltar o minuto
 | `public/icones.js` | `window.Icones`: os ícones SVG do site (Leilão e Banco), no lugar dos emojis. `ic(nome)`, `iconizar(html)`, `peao(emoji)` (o símbolo de cada peão do Banco) e `observar(raiz)`, que troca sozinho por ícone todo emoji que aparecer na página. |
 | `public/toque.js` | Controles de toque no celular: `Toque.setup({ buttons, top, look, onStick })` e `Toque.show(bool)`. Os botões disparam teclas de mentira. |
 | `public/semzoom.js` | Impede o zoom do toque duplo (vai no `<head>` de toda página). |
-| `public/pelada/bonecos.js` | **Os bonecos e as skins** (Pelada, Tênis, Corrida, Batalha, Pingue-Pongue). Ver a lista de funções logo abaixo. |
+| `public/pelada/bonecos.js` | **Os bonecos e as skins** (Pelada, Tênis, Corrida, Batalha). Ver a lista de funções logo abaixo. |
 | `public/pelada/campo.js` | Física/listas da Pelada, mas também a lista de **SKINS** e as camisas (**KITS**, `kitOf`, `kitColor`), usadas fora da Pelada. Precisa estar carregado (`window.Campo`) antes dos bonecos. |
 | `public/pelada/tex.js` | `canvasTex` (textura desenhada em canvas), `M(cor)` (material) e `liberar(obj)` (solta a memória). |
 | `public/kart3d.js` | O kart com o piloto sentado (skin), usado na Corrida e na Batalha: `montarKart`, `animarKart` e `soltarKart`. |
@@ -132,10 +131,9 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Tiro (FPS) | `tiro.js` | `arena.js`, `bonecos.js`, `bots.js`, `cena.js`, `controles.js`, `efeitos.js`, `estado.js`, `hud.js`, `menus.js`, `rede.js`, `sons.js`, `jogo.js` |
 | Pelada (futsal 3D) e Rocket (futebol de carro) | `pelada.js` (+ `peladaBots.js`) | ver logo abaixo |
 | Tênis | `tenis.js` | `index.html`, `jogo.js`, `regras.js` (golpes, robôs; `ARMADO_MAX` = espera do golpe) |
-| Pingue-Pongue (Tênis de Mesa, clone do Table Tennis Pro) | `pingpong.js` (repassa `bola` e `raq`; quem recebe decide o `ponto`) | `index.html`, `jogo.js` (a cena do Table Tennis Pro: piso coral, paredes azuis com o 40, mesa azul, bola amarela com rastro e as duas raquetes flutuando, sem jogador; a raquete é o modelo `raquete.glb` ("Ping Pong Paddle" de ethan_garden, CC BY 4.0, crédito no menu de pausa e no README), com a desenhada de reserva; a câmera `CAM` foi medida para a mesa ficar no mesmo lugar da tela do original e vira atrás da raquete, e o ponteiro é lido pela `camRef` parada; a raquete vai para onde o mouse aponta, sem clicar (`moverMinhaRaq`), e só bate se estiver no caminho da bola (`tentarRebater`, `ALCANCE`); a altura é sozinha (`alturaSozinha`); o saque é passar a raquete pela bola parada em cima da mesa (`bolaDoSaque`, `SAQUE_Z`/`SAQUE_Y`) ou clicar; o placar é a bandeira e o número em cada canto, com "Troca de saque"), `regras.js` (UMD `window.PingPong`: a física lida do próprio Table Tennis Pro (Unity: mundo 10× maior, gravidade 9,81 e tempo 2× → `G` ≈ 3,9 m/s² em metros, sem ar, quique de 0,6); o efeito `w` = [curva para o lado, 0, 0]; `chutar` é o KickBallNetHeight de lá (a parábola até o alvo com a altura sobre a rede); `bater` é o KickBallFromMovement (o movimento da raquete vira altura, fundura, mira e curva); `sacar(lado, x, golpe, z0)` procura o saque legal; `prever`, `robo`, `batidaRobo` e `DIF`) |
 | Corrida de Digitação (Arena de Digitação no Autódromo) | `digita.js` (canal `/digita`: fases `run`, `result`, `final`; todos recebem a mesma frase, o navegador manda o texto em `digitou` e o servidor confere e anda os robôs pelo relógio; pontos por lugar) | `index.html`, `jogo.js` (frase pintada letra por letra e a pista com os carros), `frases.js` (UMD: `FRASES`, `prefixoCerto`, `wpm`, `pontosDoLugar`). `DIGITA_*_MS` aceleram os tempos nos testes. Testes: `tests/digita.test.js` |
 | Futevôlei | `futevolei.js` | `index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js`, `musica.js` (ver logo abaixo) |
-| Vila (o mapa) + Galeramon/Pokémon/Naruto por turnos + estádios | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline), `public/vila/estadios.js` e `public/galeramon/` |
+| Vila (o mapa) + Galeramon/Pokémon/Naruto por turnos | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline) e `public/galeramon/` |
 
 **Futevôlei:**
 - 1x1 ou duplas (2x2), robôs completando, set de 10, 15 ou 18 pontos com 2 de vantagem, ponto corrido. Na Vila, a **Arena
@@ -250,8 +248,8 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
   Os ganchos: `encenarEvento` (em `efeitoVisual`), `encenarQuadro` e `desenharNumeros` (em `desenhar`) e
   `limparEncenacao` (em `limparRede`). O evento `dano` leva `elemento` e `classe`. No Naruto valem só a reação, o som
   e os números. Teste: `tests/ginasio-encenacao.test.js` (carrega o arquivo num `vm`).
-- **Líderes e treinadores (`public/galeramon/lideres.js`):** 4 líderes de ginásio (fogo, água, grama, elétrico) e 6 treinadores (pedra, psíquico, fantasma, dragão, lutador, gelo), cada um com o time nos dois modos. `/ginasio/?lider=<id>` abre o desafio (1x1 contra o robô com o time dele; `config.lider`); vencer um líder guarda a insígnia no navegador (`ginasio:insignias`). Os robôs comuns ganham um dos times temáticos, sorteado. Na Vila, os ginásios ficam fora da cerca, em cima dos estacionamentos oeste e leste (`lider: l` em `GAMES`), e os treinadores são `GAMES` de 1x1 com `npc` (desenhados como bonecos). Cada tipo tem a sua quadra em `temas.js` (`TEMAS`: cores, `chao` e `clima`).
-- `/ginasio/` abre a sala e a arena 2D de pixel-art. O prédio fica na Vila Esportiva, ao lado do Pingue-Pongue, abaixo do Tênis: `ginasio: true` desenha o telhado arredondado com Pokébola.
+- **Líderes e treinadores (`public/galeramon/lideres.js`):** 4 líderes de ginásio (fogo, água, grama, elétrico) e 6 treinadores (pedra, psíquico, fantasma, dragão, lutador, gelo), cada um com o time nos dois modos. `/ginasio/?lider=<id>` abre o desafio (1x1 contra o robô com o time dele; `config.lider`); vencer um líder guarda a insígnia no navegador (`ginasio:insignias`). Os robôs comuns ganham um dos times temáticos, sorteado. Na Vila, os quatro ginásios ficam na Alameda dos Líderes, dentro do bairro (`lider: l` em `GAMES`), e os treinadores são `GAMES` de 1x1 com `npc` (desenhados como bonecos). Cada tipo tem a sua quadra em `temas.js` (`TEMAS`: cores, `chao` e `clima`).
+- `/ginasio/` abre a sala e a arena 2D de pixel-art. O prédio fica na Vila Esportiva, abaixo do Tênis: `ginasio: true` desenha o telhado arredondado com Pokébola.
 - Na Vila, clicar no amigo ou usar Batalha permite escolher turnos ou Ginásio. O convite `jogo: "ginasio"` reutiliza aceite/recusa; `vila.js` chama `ginasio.criarDesafio` só depois do aceite, reserva os dois lados de uma sala 1x1 sem robôs e envia `irGinasio` com credenciais privadas a cada participante.
 - **Naruto Shippuden** é o terceiro modo, nas batalhas por turnos da Vila e no Ginásio em tempo real.
   - `public/galeramon/naruto.js`: 30 ninjas (`MONS`) e 71 jutsus (`MOVES`); `galeramon.js` resolve chakra, Concentrar e Substituição no servidor. Cada golpe tem `forma` (como sai no Ginásio: `corpo`, `projetil`, `area` ou `investida`; `habilidadeDeGolpe` em `regras.js` obedece), `fx` (o desenho em `golpes-naruto.js`) e, nas áreas, `raio`. Cada ninja tem `quadros` (parado), `quadrosAtaque`, `quadrosLance`, `quadrosDano` quando há essas poses, `altura` (em casas da arena) e `imagem`.
@@ -384,32 +382,28 @@ Para achar algo dentro de um jogo:
   - `GAMES` lista os prédios: `x`, `y`, `w`, `h`, `doors`, `bairro`, cores do telhado e um sinal para o desenho do
     telhado (`casino`, `uno`, `tenis`...);
   - `BAIRROS` traz o nome de cada bairro e a posição da placa azul de rua;
-  - o chão é feito de tipos de casa: `g` grama, `r` paralelepípedo, `p` pedra portuguesa, `q` pista de atletismo,
-    `a` asfalto, `f` flores, `t` árvore, `m` capacho da porta, `h` grama alta (Pokémon selvagens, `vila-mato.js`); fora da vila, `e` rodovia (só carro), `E`
-    estacionamento, `c` calçada, `w` água, `s` areia, `j` jardim da orla;
+  - o chão é feito de tipos de casa: `c` concreto, `p` mosaico geométrico da calçada, `r` rua secundária,
+    `a` pista da avenida, `b` ciclovia vermelha, `z` faixa de pedestres, `g` jardim, `f` flores, `t` árvore,
+    `m` capacho da porta e `h` grama alta (Pokémon selvagens, `vila-mato.js`);
   - `TREES`, `LAMPS`, `BENCHES` e `FOUNTAIN` são a decoração;
-  - `TERRENOS` são os lotes vazios para os jogos novos (chão `l`, terra batida, sólido; `drawTerreno` desenha a cerca e
+  - `TERRENOS` são os lotes vazios para os jogos novos (chão `l`, obra em concreto, sólido; `drawTerreno` desenha o tapume metálico e
     a placa "EM BREVE", e a casa logo abaixo do meio, `t.placa`, abre o aviso `TERRENO_LUGAR`). Jogo novo: tire o
     terreno da lista e ponha o prédio em `GAMES` no mesmo lugar;
-  - `TELAO` é o telão da estante da galera, no alto da Praça (`drawTelao`, `TELAO_LUGAR`, `/api/estante`).
+  - `TELAO` é o telão da estante da galera, suspenso num pórtico vermelho sobre a praça (`drawTelao`, `TELAO_LUGAR`, `/api/estante`).
 - `drawBuilding` desenha os prédios, e cada jogo tem o seu `if (g.<sinal>)` para o telhado.
 - **Grama alta e Pokédex:** o encontro (`#cap`, `abrirEncontro`, `mostrarTimeDoEncontro`) é uma tela de "versus" em `public/vila/versus.css` (o seu time à esquerda, o selvagem no holofote à direita com a ficha, as ações embaixo; `--t` o tipo, `--r` a raridade); a Pokédex (`#pokedex`, `abrirPokedex`/`desenharPokedex`, com busca e filtros) em `public/vila/pokedex.css`.
-- **Tamanho do mapa:** `MW` x `MH` (320x260). A vila (58x52, `VW` x `VH`) fica no meio, deslocada por `OX`, `OY` (131, 100): as
-  coordenadas da vila em `GAMES`, `LAMPS`, `TERRENOS`... são escritas de 0 a 57 / 0 a 51 e deslocadas no carregamento.
-  As ruas: Rua das Cartas nas linhas 7-8 e 15-16, a Praça de 17 a 27, a avenida do meio nas colunas 28-29, e as
-  ruas da Vila Esportiva (à esquerda) e do Autódromo (à direita) nas linhas 35-36 e 43-44. Os treinadores
-  (`Lideres.TREINADORES`, em `public/galeramon/lideres.js`) também usam essas coordenadas.
-  O `vila.js` repete `MW`, `MH`, `OX`, `OY`, a lista `GAMES` e as zonas dos estádios: precisam bater.
-- **O mundo em volta (`montaMundo`):** `rodovia()` (trechos retos de duas faixas; passa por cima da água como ponte),
-  `lote()` (estacionamento, com carros parados), `PREDIOS` (a cidade de enfeite), o Pinheiros, o Tietê, a Serra do Mar e
-  Santos (praia). Fora da vila o pedestre não passa (`solid`): só de carro (`carOk`), que se pega num estacionamento.
-- **O mapa é desenhado em pedaços** de 32x32 casas (`pedaco(cx, cy)`), só os que aparecem, e a luz da noite é do tamanho
-  da tela. Coisa nova no mapa precisa ser desenhada dentro de `pedaco`.
-- **Estádios (`public/vila/estadios.js`):** `LISTA` (onde fica cada um, a praça, o estacionamento e o portão), `fachada`
-  (o lado de fora) e `interior` (o lado de dentro: gramado, arquibancada com torcida, túnel, gols). Na página, `INT` é o
-  estádio em que a pessoa está, e a bola (`bola`, `chuta`, `gol`) só existe lá dentro.
-- **Quem aparece para quem:** cada pessoa manda `z` (a zona: `""` na rua ou o id do estádio) e `car`; só se vê quem
-  está na mesma zona.
+- **Tamanho do mapa:** `MW` x `MH` (64x64). O bairro (58x58, `VW` x `VH`) começa em `OX`, `OY` (3, 3). As coordenadas
+  de `GAMES`, `LAMPS`, `TERRENOS` e dos treinadores são locais e deslocadas ao carregar. A Rua das Cartas fica nas
+  linhas 7-8 e 15-16; a praça tem jardins e caminhos nas linhas 17-25; a Avenida Paulista atravessa as linhas
+  26-29 (pista, ciclovia na linha 28 e travessias); a via norte-sul passa nas colunas 28-29;
+  os jogos esportivos ficam nas linhas 31-44, e os quatro líderes estão alinhados na Alameda dos Líderes (linha 48).
+  O Haxball ocupa o antigo lote do tênis de mesa em `(3,39)`, com 7x4 casas. `vila.js` repete `MW`, `MH`, `OX`, `OY`
+  e os IDs de jogos: precisam bater.
+- **Desenho:** `pedaco(cx, cy)` desenha o mapa em blocos de 32x32 casas. A Avenida Paulista usa asfalto grafite,
+  ciclovia vermelha, travessias e calçadas de mosaico; o entorno usa concreto, jardins e árvores urbanas.
+  As fachadas têm vidro azulado e os telhados temáticos continuam identificando cada jogo. O jogador começa na praça;
+  o minimapa mostra as 64x64 casas. Não há rodovias, estacionamentos ou estádios externos na Vila.
+- **Quem aparece para quem:** o servidor usa somente a zona da rua (`z: ""`) e limita posições ao mapa compacto.
 
 ## Testes
 
@@ -425,8 +419,8 @@ Para achar algo dentro de um jogo:
     entrou o que devia.
   - Jogo novo entra na lista `CANAIS`.
 - **`npm run test:e2e`:** Playwright em `tests/e2e`, usando o Chrome do sistema na tela de 480x270.
-  - As páginas abrem com `#debug` e expõem `window.__<jogo>` (por exemplo `__pelada`, `__tenis`, `__rumi`,
-    `__pingpong`) para o teste mexer no jogo.
+  - As páginas abrem com `#debug` e expõem `window.__<jogo>` (por exemplo `__pelada`, `__tenis`, `__rumi`)
+    para o teste mexer no jogo.
   - Jogo novo entra na lista de `tests/e2e/paginas.spec.js`.
 - **Futevôlei:** `tests/futevolei.test.js` (o golpe de cada posição da bola, os 3 toques, passe e ataque passando a rede,
   o juiz da areia, robô contra robô e uma partida pelo servidor).

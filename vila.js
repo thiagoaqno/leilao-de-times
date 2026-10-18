@@ -8,13 +8,13 @@
 const G = require("./galeramon.js");
 const ligarMato = require("./vila-mato.js");
 const { rid, limparNome: cleanName } = require("./salas.js");
-const MW = 320, MH = 260, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
-const OX = 131, OY = 100; // onde fica a vila dentro do mapa grande
-const ZONAS = ["", "nubank", "neoquimica", "morumbis", "belmiro"]; // na rua ("") ou dentro de um estádio
+const MW = 64, MH = 64, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
+const OX = 3, OY = 3; // margem do bairro compacto
+const ZONAS = [""];
 const zonaDe = (z) => (ZONAS.includes(z) ? z : "");
 const INVITE_MS = 20000, CHOICE_MS = 45000, RECONNECT_MS = +process.env.VILA_RECONNECT_MS || 45000;
 const POKEMON_ON = process.env.POKEMON !== "0"; // modo Pokémon (sprites do PokeAPI). POKEMON=0 desliga.
-const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao", "corrida", "tiro", "pelada", "rocket", "batalha", "tenis", "rumi", "proibida", "pingpong", "ginasio", "carreira", "jogador", "naruto", "futevolei", "digita", ...require("./public/galeramon/lideres.js").LISTA.map((l) => "lider-" + l.id)]; // e os ginásios e treinadores dos líderes
+const GAMES = ["leilao", "banco", "uno", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao", "corrida", "tiro", "pelada", "rocket", "batalha", "tenis", "rumi", "proibida", "ginasio", "carreira", "jogador", "naruto", "futevolei", "digita", ...require("./public/galeramon/lideres.js").LISTA.map((l) => "lider-" + l.id)]; // e os ginásios e treinadores dos líderes
 const DIRS = ["up", "down", "left", "right"];
 const int = (v, d) => { const n = parseInt(v); return Number.isFinite(n) ? n : d; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -131,7 +131,7 @@ module.exports = function attachVila(io, ginasio) {
         me = { id: rid(6), token, sock: socket.id, battle: null, offline: false };
         players.set(me.id, me); byToken.set(token, me);
       }
-      Object.assign(me, { name, look, skin, x: clamp(int(d.x, OX + 24), 0, MW - 1), y: clamp(int(d.y, OY + 26), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down", z: zonaDe(d.z), car: !!d.car });
+      Object.assign(me, { name, look, skin, x: clamp(int(d.x, OX + 24), 0, MW - 1), y: clamp(int(d.y, OY + 21), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down", z: zonaDe(d.z), car: false });
       socket.emit("me", { id: me.id, token });
       socket.emit("all", [...players.values()].filter((p) => p !== me && !p.offline).map(pub));
       tellOthers(me, fresh ? "join" : "update");
@@ -141,7 +141,7 @@ module.exports = function attachVila(io, ginasio) {
       if (!mine() || !allow()) return;
       me.x = clamp(int(d.x, me.x), 0, MW - 1); me.y = clamp(int(d.y, me.y), 0, MH - 1);
       if (DIRS.includes(d.dir)) me.dir = d.dir;
-      me.z = zonaDe(d.z); me.car = !!d.car;
+      me.z = zonaDe(d.z); me.car = false;
       nsp.except(me.sock).emit("move", { id: me.id, x: me.x, y: me.y, dir: me.dir, run: !!d.run, z: me.z, car: me.car });
     });
 

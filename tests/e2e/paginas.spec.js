@@ -1,7 +1,15 @@
 // Cada página abre sem erro de JavaScript, e no celular o toque duplo não dá zoom.
 const { test, expect, devices } = require("@playwright/test");
 
-const PAGINAS = ["/", "/leilao/", "/banco/", "/uno/", "/sinuca/", "/truco/", "/domino/", "/ludo/", "/botao/", "/corrida/", "/tiro/", "/pelada/", "/rocket/", "/batalha/", "/tenis/", "/rumi/", "/proibida/", "/pingpong/", "/table-tennis-pro/", "/futevolei/", "/haxball/", "/digita/", "/ginasio/", "/carreira/"];
+const PAGINAS = ["/", "/leilao/", "/banco/", "/uno/", "/sinuca/", "/truco/", "/domino/", "/ludo/", "/botao/", "/corrida/", "/tiro/", "/pelada/", "/rocket/", "/batalha/", "/tenis/", "/rumi/", "/proibida/", "/futevolei/", "/haxball/", "/digita/", "/ginasio/", "/carreira/"];
+
+test("tênis de mesa removido da Vila e das rotas", async ({ page, request }) => {
+  await page.goto("/");
+  await expect(page.locator('a[href="/pingpong/"], a[href="/table-tennis-pro/"]')).toHaveCount(0);
+  for (const rota of ["/pingpong/", "/table-tennis-pro/"]) {
+    expect((await request.get(rota)).status()).toBe(404);
+  }
+});
 
 for (const url of PAGINAS) {
   test(`a página ${url} abre sem erro`, async ({ page }) => {
