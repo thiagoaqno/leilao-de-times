@@ -382,24 +382,26 @@ Para achar algo dentro de um jogo:
   - `GAMES` lista os prédios: `x`, `y`, `w`, `h`, `doors`, `bairro`, cores do telhado e um sinal para o desenho do
     telhado (`casino`, `uno`, `tenis`...);
   - `BAIRROS` traz o nome de cada bairro e a posição da placa azul de rua;
-  - o chão é feito de tipos de casa: `g` grama, `r` paralelepípedo, `p` pedra portuguesa, `q` pista de atletismo,
-    `a` asfalto, `f` flores, `t` árvore, `m` capacho da porta, `h` grama alta (Pokémon selvagens, `vila-mato.js`); fora da vila, `e` rodovia (só carro), `E`
-    estacionamento, `c` calçada, `w` água, `s` areia, `j` jardim da orla;
+  - o chão é feito de tipos de casa: `c` concreto, `p` mosaico geométrico da calçada, `r` rua secundária,
+    `a` pista da avenida, `b` ciclovia vermelha, `z` faixa de pedestres, `g` jardim, `f` flores, `t` árvore,
+    `m` capacho da porta e `h` grama alta (Pokémon selvagens, `vila-mato.js`);
   - `TREES`, `LAMPS`, `BENCHES` e `FOUNTAIN` são a decoração;
-  - `TERRENOS` são os lotes vazios para os jogos novos (chão `l`, terra batida, sólido; `drawTerreno` desenha a cerca e
+  - `TERRENOS` são os lotes vazios para os jogos novos (chão `l`, obra em concreto, sólido; `drawTerreno` desenha o tapume metálico e
     a placa "EM BREVE", e a casa logo abaixo do meio, `t.placa`, abre o aviso `TERRENO_LUGAR`). Jogo novo: tire o
     terreno da lista e ponha o prédio em `GAMES` no mesmo lugar;
-  - `TELAO` é o telão da estante da galera, no alto da Praça (`drawTelao`, `TELAO_LUGAR`, `/api/estante`).
+  - `TELAO` é o telão da estante da galera, suspenso num pórtico vermelho sobre a praça (`drawTelao`, `TELAO_LUGAR`, `/api/estante`).
 - `drawBuilding` desenha os prédios, e cada jogo tem o seu `if (g.<sinal>)` para o telhado.
 - **Grama alta e Pokédex:** o encontro (`#cap`, `abrirEncontro`, `mostrarTimeDoEncontro`) é uma tela de "versus" em `public/vila/versus.css` (o seu time à esquerda, o selvagem no holofote à direita com a ficha, as ações embaixo; `--t` o tipo, `--r` a raridade); a Pokédex (`#pokedex`, `abrirPokedex`/`desenharPokedex`, com busca e filtros) em `public/vila/pokedex.css`.
 - **Tamanho do mapa:** `MW` x `MH` (64x64). O bairro (58x58, `VW` x `VH`) começa em `OX`, `OY` (3, 3). As coordenadas
   de `GAMES`, `LAMPS`, `TERRENOS` e dos treinadores são locais e deslocadas ao carregar. A Rua das Cartas fica nas
-  linhas 7-8 e 15-16; a praça tem gramados e caminhos nas linhas 17-27; a avenida central passa nas colunas 28-29;
+  linhas 7-8 e 15-16; a praça tem jardins e caminhos nas linhas 17-25; a Avenida Paulista atravessa as linhas
+  26-29 (pista, ciclovia na linha 28 e travessias); a via norte-sul passa nas colunas 28-29;
   os jogos esportivos ficam nas linhas 31-44, e os quatro líderes estão alinhados na Alameda dos Líderes (linha 48).
   O Haxball ocupa o antigo lote do tênis de mesa em `(3,39)`, com 7x4 casas. `vila.js` repete `MW`, `MH`, `OX`, `OY`
   e os IDs de jogos: precisam bater.
-- **Desenho:** `pedaco(cx, cy)` desenha o mapa em blocos de 32x32 casas. O chão usa grama clara, ruas de paralelepípedo
-  e caminhos de pedra na praça e na alameda. As fachadas são claras com telhados temáticos. A cidade é caminhável;
+- **Desenho:** `pedaco(cx, cy)` desenha o mapa em blocos de 32x32 casas. A Avenida Paulista usa asfalto grafite,
+  ciclovia vermelha, travessias e calçadas de mosaico; o entorno usa concreto, jardins e árvores urbanas.
+  As fachadas têm vidro azulado e os telhados temáticos continuam identificando cada jogo. O jogador começa na praça;
   o minimapa mostra as 64x64 casas. Não há rodovias, estacionamentos ou estádios externos na Vila.
 - **Quem aparece para quem:** o servidor usa somente a zona da rua (`z: ""`) e limita posições ao mapa compacto.
 

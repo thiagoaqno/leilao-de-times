@@ -131,7 +131,7 @@ module.exports = function attachVila(io, ginasio) {
         me = { id: rid(6), token, sock: socket.id, battle: null, offline: false };
         players.set(me.id, me); byToken.set(token, me);
       }
-      Object.assign(me, { name, look, skin, x: clamp(int(d.x, OX + 24), 0, MW - 1), y: clamp(int(d.y, OY + 26), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down", z: zonaDe(d.z), car: false });
+      Object.assign(me, { name, look, skin, x: clamp(int(d.x, OX + 24), 0, MW - 1), y: clamp(int(d.y, OY + 21), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "down", z: zonaDe(d.z), car: false });
       socket.emit("me", { id: me.id, token });
       socket.emit("all", [...players.values()].filter((p) => p !== me && !p.offline).map(pub));
       tellOthers(me, fresh ? "join" : "update");
