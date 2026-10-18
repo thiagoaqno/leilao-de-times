@@ -41,7 +41,6 @@ require("./admin-carreira.js").attach(app, carreiraOnline); // painel privado em
 require("./admin-pokemon.js").attach(app); // edição dos times Pokémon dos líderes e treinadores
 const noite = require("./noite.js"); noite.attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
-require("./pingpong.js")(io); // Pingue-Pongue da Galera: tênis de mesa 1x1 no mouse, canal /pingpong
 require("./digita.js")(io); // Corrida de Digitação: quem digita a frase mais rápido, canal /digita
 require("./futevolei.js")(io); // Futevôlei da Galera: futevôlei 3D na areia, 1x1 ou duplas, com robôs, canal /futevolei
 require("./haxball.js")(io); // Haxball da Galera: futebol de discos 2D, de 1x1 a 5x5, canal /haxball
@@ -130,8 +129,6 @@ app.get("/carreira", (req, res) => res.redirect("/carreira/"));
 app.get("/road-to-champions", (req, res) => res.redirect("/jogador/"));
 app.get("/road-to-champions/", (req, res) => res.redirect("/jogador/"));
 app.get("/tenis", (req, res) => res.redirect("/tenis/"));
-app.get("/pingpong", (req, res) => res.redirect("/pingpong/"));
-app.get("/table-tennis-pro", (req, res) => res.redirect("/table-tennis-pro/"));
 app.get("/futevolei", (req, res) => res.redirect("/futevolei/"));
 app.get("/haxball", (req, res) => res.redirect("/haxball/"));
 app.get("/digita", (req, res) => res.redirect("/digita/"));

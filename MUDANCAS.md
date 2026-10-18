@@ -1,12 +1,13 @@
-# Table Tennis Pro original na Vila
+# Remoção do tênis de mesa
 
 ## O que muda
 
-- O prédio Tênis de Mesa da Vila abre o Table Tennis Pro original dentro de uma página da Vila, usando o jogo hospedado pela GameDistribution.
-- A página oferece tela cheia, retorno à Vila e abertura direta em outra aba caso o jogo externo não carregue no iframe. Ela avisa que o provedor pode exibir anúncios.
-- O placar da Noite da Galera não recebe resultados do jogo externo. O modo anterior da Galera continua disponível em `/pingpong/` para as salas antigas.
+- Remove o prédio de tênis de mesa da Vila e as páginas `/pingpong/` e `/table-tennis-pro/`.
+- Remove o canal online `/pingpong`, a implementação do jogo, seus recursos 3D e as referências na Noite da Galera.
+- Atualiza a documentação e os testes. O teste da Noite usa Truco e Uno para conferir sala compartilhada e convite entre jogos.
 
 ## Verificação
 
-- O iframe carregou a tela inicial do Table Tennis Pro no navegador.
-- `npx playwright test tests/e2e/table-tennis-pro.spec.js tests/e2e/paginas.spec.js --grep 'Table Tennis Pro|table-tennis-pro'`
+- `node --test tests/servidor.test.js tests/salas.test.js`
+- `npx playwright test tests/e2e/paginas.spec.js --grep "tênis de mesa removido|a página / abre sem erro"`
+- As duas URLs removidas retornam 404.
