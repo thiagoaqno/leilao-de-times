@@ -1,9 +1,11 @@
-# Cozinha: música e controles de áudio
+# Corrida: câmera de cima
 
 ## O que muda
-- Música sintetizada durante a partida, com andamento que sobe ao longo do último minuto.
-- Faca, fritura e água acompanham o preparo. A entrega toca um sino; novos pedidos têm um chamado próprio; os últimos 10 segundos têm tic-tac.
-- A pausa oferece volume e botão de silêncio separados para efeitos e música. As duas preferências ficam salvas no navegador.
+- Nova câmera **de cima** (top down), a quarta da lista. Ela entra no ciclo do C, do botão 🎥 e do Y do controle, e o jogo lembra a escolha como nas outras.
+- Ela é como a do Hades: fica no alto, inclinada uns 55°, num ângulo fixo na diagonal (não gira com o kart), e só segue o carro. A lente fechada deixa pouca perspectiva, com cara de jogo isométrico.
+- Ela mira um pouco à frente de para onde o kart vai, para sobrar pista à vista, e se afasta quando ele corre.
+- Nessa câmera não tem desfoque de velocidade, porque o chão inteiro borrado atrapalha a ver a pista.
+- O "Como jogar" lista as quatro câmeras.
 
 ## Testes
-- `npx playwright test tests/e2e/cozinha-som.spec.js`: verificou os controles independentes, a persistência após recarregar e a ausência de erros no navegador.
+- Conferido no navegador numa corrida em Interlagos.
