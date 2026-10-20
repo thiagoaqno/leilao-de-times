@@ -76,17 +76,26 @@ export function estacao(t) {
   if (tipo === "tabua") {
     g.add(caixa(T * 0.72, 0.05, T * 0.5, mMadeira, 0, ALTURA + 0.025, 0));
     const faca = new THREE.Group(); faca.add(caixa(0.36, 0.015, 0.07, "#dfe6ea", 0.12, 0, 0, { metalness: 0.8, roughness: 0.25 })); faca.add(caixa(0.16, 0.03, 0.05, "#2b2b2b", -0.13, 0, 0));
-    faca.position.set(T * 0.22, ALTURA + 0.06, T * 0.32); faca.rotation.y = 0.5; g.add(faca);
+    faca.position.set(T * 0.22, ALTURA + 0.06, T * 0.32); faca.rotation.y = 0.5; g.add(faca); g.userData.faca = faca;
   }
   if (tipo === "fogao") {
     const anel = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.035, 8, 28), new THREE.MeshStandardMaterial({ color: 0x1c1c1c, emissive: 0xff4a1a, emissiveIntensity: 0 }));
     anel.rotation.x = Math.PI / 2; anel.position.y = ALTURA + 0.01; g.add(anel); g.userData.chama = anel;
+    const fogo = new THREE.Group();
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4, p = bola(0.055, k % 2 ? "#ff9c28" : "#3caeff", Math.cos(a) * 0.27, ALTURA + 0.09, Math.sin(a) * 0.27, 0.65, 1.7, 0.65);
+      fogo.add(p);
+    }
+    fogo.visible = false; g.add(fogo); g.userData.fogo = fogo;
     for (const s of [-1, 1]) g.add(cil(0.05, 0.06, "#c8ccd2", s * 0.3, 0.6, T / 2 + 0.02)); // os botões
   }
   if (tipo === "pia") {
     g.add(caixa(T * 0.7, 0.04, T * 0.6, "#5b8db0", 0, ALTURA - 0.04, 0, { metalness: 0.2, roughness: 0.15 }));
     g.add(cil(0.04, 0.4, "#c8ccd2", 0, ALTURA + 0.2, -T * 0.38, { metalness: 0.8, roughness: 0.2 }));
     g.add(caixa(0.05, 0.05, 0.28, "#c8ccd2", 0, ALTURA + 0.38, -T * 0.26, { metalness: 0.8, roughness: 0.2 }));
+    const agua = new THREE.Group();
+    for (let k = 0; k < 5; k++) agua.add(bola(0.025, "#a8e5ff", 0, ALTURA + 0.31 - k * 0.07, -T * 0.12));
+    agua.visible = false; g.add(agua); g.userData.agua = agua;
   }
   if (tipo === "escorredor") { g.add(caixa(T * 0.8, 0.03, T * 0.5, "#c8ccd2", 0, ALTURA + 0.015, 0)); for (const s of [-1, 1]) g.add(caixa(T * 0.8, 0.12, 0.02, "#c8ccd2", 0, ALTURA + 0.06, s * T * 0.25)); }
   if (tipo === "entrega") {
@@ -149,7 +158,7 @@ function frigideira(o) {
   const g = new THREE.Group();
   g.add(cil(0.27, 0.06, "#4a4a52", 0, 0.03, 0, { metalness: 0.2, roughness: 0.5 }));
   g.add(caixa(0.36, 0.04, 0.07, "#1a1a1a", 0.43, 0.06, 0));
-  for (const i of o.c) { const b = ingInteiro(i.t, i.e === "picado" ? "cru" : i.e); b.position.y = 0.05; g.add(b); }
+  for (const i of o.c) { const b = ingInteiro(i.t, i.e === "picado" ? "cru" : i.e); b.position.y = 0.05; g.add(b); if (i.t === "carne" && b.children[0]?.material) { b.children[0].material = b.children[0].material.clone(); g.userData.carne = b.children[0]; } }
   return g;
 }
 function prato(o) {
@@ -215,6 +224,10 @@ export function aviso() {
   const tex = canvasTex(64, 64, (x) => { x.fillStyle = "#ffcc00"; x.beginPath(); x.moveTo(32, 4); x.lineTo(60, 58); x.lineTo(4, 58); x.closePath(); x.fill(); x.strokeStyle = "#1b1b1b"; x.lineWidth = 4; x.stroke(); x.fillStyle = "#1b1b1b"; x.fillRect(29, 20, 6, 22); x.fillRect(29, 46, 6, 6); });
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false })); s.scale.set(0.55, 0.55, 1); s.renderOrder = 22;
   return s;
+}
+export function numero(n) {
+  const tex = canvasTex(64, 64, (x) => { x.fillStyle = "#fff8ea"; x.beginPath(); x.arc(32, 32, 27, 0, Math.PI * 2); x.fill(); x.strokeStyle = "#59402c"; x.lineWidth = 5; x.stroke(); x.fillStyle = "#2a1d17"; x.font = "bold 34px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(String(n), 32, 35); });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false })); s.scale.set(0.42, 0.42, 1); s.renderOrder = 22; return s;
 }
 
 // ---------- ícones 2D (pedidos e caixas) ----------
