@@ -79,7 +79,7 @@ export function onUse(e, race) {
     const m = modeloItem(e.type); m.scale.setScalar(0.01); m.position.set(e.x, (e.z || 0) + 20, e.y); scene.add(m); pops.push({ m, t: 0, y0: e.z || 0 });
   }
   if (!race || e.id !== E.ME?.id) return;
-  if (e.type === "cogumelo") { race.boostUntil = sNow() + 1500; Sound.sling(); }
+  if (e.type === "cogumelo") { race.boostUntil = sNow() + window.Pistas.TURBO_MS; Sound.sling(); }
   else if (e.type === "estrela") Sound.lap();
   else Sound.pop();
 }

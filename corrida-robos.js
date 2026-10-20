@@ -147,10 +147,12 @@ function passo(room, dt, setor, emit) {
       const i = Math.floor(ia.s) % pf.n;
       let alvo = Math.min(pf.lim[i], pf.lim[(i + 3) % pf.n]) * ia.nivel * el * (1 - Math.min(1, Math.abs(ia.desvio) / 40) * 0.06);
       alvo = Math.min(alvo, c.vmax); // nunca passa da velocidade final do carro (a mesma de quem joga)
-      if (p.boostUntil > now) alvo *= 1.18; if (p.starUntil > now) alvo *= 1.12;
+      // turbo e estrela: as mesmas contas do carro de quem joga (fisica.js): mais velocidade final e mais força para chegar nela
+      const turbo = p.boostUntil > now, estrela = p.starUntil > now, bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0), ak = 1 + (turbo ? 0.8 : 0) + (estrela ? 0.4 : 0);
+      alvo *= bk;
       if (p.spinUntil > now) ia.v *= Math.exp(-dt * 2.2);
-      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / c.vmax, 1.6)) * dt); // a mesma arrancada do carro de quem joga (fisica.js)
-      else ia.v = Math.max(alvo, ia.v - c.brake * dt);
+      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * ak * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / (c.vmax * bk), 1.6)) * dt); // a mesma arrancada do carro de quem joga
+      else ia.v = Math.max(alvo, ia.v - (ia.v > c.vmax && alvo >= c.vmax * 0.98 ? T.TURBO_SOLTA : c.brake) * dt); // fim do turbo na reta: solta aos poucos, como quem joga
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
       // segue o traçado de corrida; se tem outro robô logo à frente na mesma linha, desvia para o lado para passar
       let desvio = 0;

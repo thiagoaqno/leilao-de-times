@@ -38,7 +38,7 @@ function use(room, p, back, emit) {
   const type = p.item; p.item = null;
   if (type === "banana" || type === "bomba") back = true; // banana e bomba sempre ficam para trás, no caminho de quem vem atrás
   const pos = p.pos, fx = Math.cos(pos.a), fy = Math.sin(pos.a), dir = back ? -1 : 1;
-  if (type === "cogumelo") p.boostUntil = now + 1500;
+  if (type === "cogumelo") p.boostUntil = now + Pistas.TURBO_MS;
   else if (type === "estrela") p.starUntil = now + 6000;
   else {
     const d = type === "banana" ? -36 : type === "bomba" ? -70 : 32 * dir;
