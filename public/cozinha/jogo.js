@@ -224,6 +224,71 @@ function cartaoCozinha(id, atual, pode) {
   return `<button class="coz ${id === atual ? "on" : ""}" data-coz="${id}" ${pode ? "" : "disabled"}><span class="num">${id}</span><span><b>${h(c.nome)}</b><small>${h(c.desc)}</small>
     <span class="rec">${c.receitas.map((r) => `<img src="${Mod.figuraReceita(r)}" alt="${h(K.RECEITAS[r].nome)}" title="${h(K.RECEITAS[r].nome)}">`).join("")}</span></span></button>`;
 }
+function fichasHTML(cozId) {
+  return `<div class="ficha-grid">${K.COZINHAS[cozId].receitas.map((id) => {
+    const R = K.RECEITAS[id], ing = [...new Set(R.itens.map((k) => k.split(":")[0]))];
+    const passos = [...new Set(ing.flatMap((t) => K.INGREDIENTES[t].passos))];
+    return `<div class="ficha"><img src="${Mod.figuraReceita(id)}" alt=""><strong>${h(R.nome)}</strong><div class="ingredientes">${R.itens.map((k) => { const [t, e] = k.split(":"); return `<img src="${Mod.iconeIng(t, e)}" title="${h(K.INGREDIENTES[t].nome)}" alt="${h(K.INGREDIENTES[t].nome)}">`; }).join("")}</div><div class="passos">Caixa → ${passos.map((p) => h(K.PROCESSOS[p].nome)).join(" → ")}${passos.length ? " → " : ""}Prato → Entrega</div></div>`;
+  }).join("")}</div>`;
+}
+function mostrarFichas(ms) {
+  const fichas = fichasHTML(ms.coz);
+  $("receitasBox").innerHTML = `<h2>Receitas desta cozinha</h2><p class="muted">O expediente começa em <b id="contaFichas"></b> s.</p>${fichas}<p class="ficha-meta">Metas: ${ms.meta.map((p, k) => `${k + 1}★ ${p} pontos`).join(" · ")}</p>`;
+  $("receitasPausa").innerHTML = `<h3>Receitas e metas</h3>${fichas}<p>${ms.meta.map((p, k) => `${k + 1}★ ${p}`).join(" · ")}</p>`;
+}
+function metas(ms) {
+  const chave = ms.meta.join(","); if (G.metaChave !== chave) {
+    G.metaChave = chave;
+    $("hMetas").querySelectorAll(".marca").forEach((e) => e.remove());
+    ms.meta.forEach((p, k) => {
+      const e = document.createElement("span"); e.className = "marca"; e.style.left = Math.min(96, 100 * p / ms.meta[2]) + "%";
+      e.innerHTML = `★<b>${p}</b>`; $("hMetas").appendChild(e);
+    });
+  }
+  $("hMetasCheio").style.width = Math.min(100, 100 * ms.pontos / ms.meta[2]) + "%";
+}
+function tutorialEtapas(cozId) {
+  const mapa = G.mapa, R = K.RECEITAS[K.COZINHAS[cozId].receitas[0]], ing = R.itens[0].split(":")[0];
+  const caixa = mapa.tiles.find((t) => t.tipo === "caixa" && t.ing === ing);
+  const etapas = [[caixa, `Pegue ${K.INGREDIENTES[ing].nome.toLowerCase()} aqui`, "pegou"]];
+  if (K.INGREDIENTES[ing].passos.includes("picar")) etapas.push([mapa.tiles.find((t) => t.tipo === "tabua"), "Pique na tábua", "picou"]);
+  const processo = K.INGREDIENTES[ing].passos.find((p) => p === "cozinhar" || p === "fritar");
+  if (processo) etapas.push([mapa.tiles.find((t) => t.tipo === "fogao" && t.rec === (processo === "fritar" ? "frigideira" : "panela")), processo === "fritar" ? "Frite aqui" : "Cozinhe na panela", "pronto"]);
+  etapas.push([mapa.tiles.find((t) => t.tipo === "escorredor"), "Pegue um prato", "pegou"]);
+  etapas.push([mapa.tiles.find((t) => t.tipo === "entrega"), "Entregue o prato", "entregou"]);
+  return etapas.filter(([t]) => !!t);
+}
+function orientar(e) {
+  if (!G.tutorial) return;
+  if (e.tipo === "entregou") {
+    const vistos = store.get("cozinha:visto") || {}; vistos[G.coz] = true; store.set("cozinha:visto", vistos); G.tutorial = null; $("guia").classList.add("hidden"); return;
+  }
+  const [t, , tipo] = G.tutorial.etapas[G.tutorial.passo] || [];
+  if (tipo === "pronto") return; // a panela só libera o próximo passo quando tem a receita inteira
+  if (t && e.tipo === tipo && e.i === t.i) G.tutorial.passo = Math.min(G.tutorial.passo + 1, G.tutorial.etapas.length - 1);
+}
+function desenharGuia() {
+  const ms = G.mesa, guia = $("guia"); if (!ms || ms.fase !== "jogo" || !G.me || G.pausa) { guia.classList.add("hidden"); return; }
+  if (G.tutorial) {
+    const [fogao, , tipo] = G.tutorial.etapas[G.tutorial.passo] || [];
+    const item = fogao && ms.lugares[fogao.i]?.[0];
+    if (tipo === "pronto" && item && item.c.length >= G.tutorial.precisa && K.pronto(item)) G.tutorial.passo++;
+  }
+  let t, texto, dica = false;
+  if (G.tutorial && ms.entregues === 0) [t, texto] = G.tutorial.etapas[G.tutorial.passo] || [];
+  else {
+    const mao = ms.maos[G.myId];
+    if (mao?.k === "ing" && K.proximoPasso(mao) === "picar") { t = G.mapa.tiles.find((x) => x.tipo === "tabua"); texto = "Pique aqui"; dica = true; }
+    if (mao?.k === "prato" && !mao.c.length) {
+      t = G.mapa.tiles.find((x) => x.tipo === "fogao" && K.pronto(ms.lugares[x.i][0]));
+      if (t) { texto = "Sirva o prato"; dica = true; }
+    }
+  }
+  if (!t) { guia.classList.add("hidden"); return; }
+  const v = new THREE.Vector3((t.c + 0.5) * T, 2.2, (t.r + 0.5) * T).project(cam);
+  guia.textContent = texto; guia.style.left = (v.x * 0.5 + 0.5) * innerWidth + "px"; guia.style.top = (-v.y * 0.5 + 0.5) * innerHeight + "px";
+  guia.classList.toggle("dica", dica); guia.classList.remove("hidden");
+}
 function renderLobby() {
   const mine = myP(), isHost = ME && S.host === ME.id;
   const linha = (p) => `<div class="pl ${ME && p.id === ME.id ? "me" : ""}"><i class="dot ${p.online ? "on" : ""}"></i>${h(p.name)}<span class="tag">${p.id === S.host ? "organizador · " : ""}${h((CP.SKINS[p.skin] || {}).name || "")}</span>${isHost && p.id !== ME.id ? `<button class="x" data-kick="${p.id}" title="Tirar da sala">✕</button>` : ""}</div>`;
@@ -278,6 +343,9 @@ function desenharPedidos() {
 }
 function hud(tJogo) {
   const ms = G.mesa; if (!ms) return;
+  metas(ms);
+  $("receitas").classList.toggle("hidden", ms.fase !== "conta");
+  if (ms.fase === "conta" && $("contaFichas")) $("contaFichas").textContent = Math.max(0, Math.ceil(-tJogo));
   for (const p of ms.pedidos) {
     const el = $("hPed").querySelector(`[data-id="${p.id}"]`); if (!el) continue;
     const f = Math.max(0, Math.min(1, (p.ate - tJogo) / (p.ate - p.ini))), bar = el.firstChild.firstChild;
@@ -373,7 +441,7 @@ socket.on("mesa", (ms) => {
   if (!G.active || ms.coz !== G.coz) { G.mesaPendente = ms; return; }
   const nova = !G.mesa || ms.t < G.mesa.t - 1; // partida nova (de novo): zera o fim
   G.mesa = ms; G.mesaEm = performance.now();
-  if (nova) { G.fimTocado = false; $("over").classList.add("hidden"); $("hPed").innerHTML = ""; reposicionar(); }
+  if (nova) { G.fimTocado = false; $("over").classList.add("hidden"); $("hPed").innerHTML = ""; reposicionar(); mostrarFichas(ms); }
   aplicarMesa(); desenharPedidos();
   if (ms.fase === "fim") mostrarFim();
 });
@@ -381,6 +449,7 @@ socket.on("snap", (d) => { if (!G.active) return; G.buf.push(d); if (G.buf.lengt
 socket.on("ev", (lista) => { if (G.active) for (const e of lista) aoEvento(e); });
 function aoEvento(e) {
   const meu = e.j && e.j === G.myId;
+  orientar(e);
   switch (e.tipo) {
     case "abriu": Som.apito(); break;
     case "pegou": if (meu) Som.pegar(); break;
@@ -409,6 +478,8 @@ function comecar(chave) {
   S.match.jogadores.forEach((j, k) => G.corpos.set(j.id, criarCorpo(j, k)));
   const eu = ME && S.match.jogadores.find((j) => j.id === ME.id);
   G.myId = eu ? eu.id : null; G.me = eu ? G.corpos.get(eu.id) : null;
+  G.tutorial = G.me && !(store.get("cozinha:visto") || {})[G.coz] ? { etapas: tutorialEtapas(G.coz), passo: 0,
+    precisa: K.RECEITAS[K.COZINHAS[G.coz].receitas[0]].itens.length } : null;
   G.buf = []; G.mesa = null; G.fimTocado = false; $("hPed").innerHTML = ""; $("hMsg").textContent = "";
   show("game"); resize(); G.active = true; pausar(false);
   $("hHint").innerHTML = G.me ? `<kbd>Espaço</kbd> pegar/soltar · <kbd>F</kbd> picar/lavar · <kbd>Shift</kbd> impulso · <kbd>Esc</kbd> menu` : "Assistindo";
@@ -418,7 +489,7 @@ function comecar(chave) {
     onStick: (x, y) => { G.stick = [x, y]; },
   });
   if (window.Toque) Toque.show(!!G.me);
-  if (G.mesaPendente && G.mesaPendente.coz === G.coz) { const ms = G.mesaPendente; G.mesaPendente = null; G.mesa = ms; G.mesaEm = performance.now(); aplicarMesa(); desenharPedidos(); if (ms.fase === "fim") mostrarFim(); }
+  if (G.mesaPendente && G.mesaPendente.coz === G.coz) { const ms = G.mesaPendente; G.mesaPendente = null; G.mesa = ms; G.mesaEm = performance.now(); mostrarFichas(ms); aplicarMesa(); desenharPedidos(); if (ms.fase === "fim") mostrarFim(); }
 }
 // os desenhos dos botões de toque
 const svg = (d) => `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
@@ -432,6 +503,7 @@ const ICONE = {
 function reposicionar() { S.match.jogadores.forEach((j, k) => { const c = G.corpos.get(j.id); if (c) { [c.x, c.z] = G.mapa.inicio[k]; c.vx = c.vz = 0; c.d = Math.PI; } }); G.buf = []; }
 function pararJogo() {
   G.active = false; limparCorpos(); limparCozinha(); G.mesa = null; G.me = null; G.myId = null; G.buf = []; G.matchKey = null;
+  $("receitas").classList.add("hidden"); $("guia").classList.add("hidden");
   if (window.Toque) Toque.show(false);
   $("over").classList.add("hidden"); $("pause").classList.add("hidden"); $("hPed").innerHTML = "";
 }
@@ -538,7 +610,7 @@ function desenhar(agora) {
   }
   for (const L of G.lugares) if (L.faca) L.faca.visible = !Object.values(trab).includes(L.t.i);
   for (const L of G.lugares) if (L.obj && L.soltouEm) { const f = Math.min(1, (agora - L.soltouEm) / 180); L.obj.position.y = Mod.ALTURA + Math.sin(f * Math.PI) * 0.16; if (f === 1) L.soltouEm = 0; }
-  barras(tJogo); hud(tJogo); fumaca(dt); animarEfeitos(dt);
+  barras(tJogo); hud(tJogo); fumaca(dt); animarEfeitos(dt); desenharGuia();
   renderer.render(scene, cam);
 }
 requestAnimationFrame(quadro);
