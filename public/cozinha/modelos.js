@@ -315,6 +315,39 @@ export function numero(n) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false })); s.scale.set(0.42, 0.42, 1); s.renderOrder = 22; return s;
 }
 
+// o nome do que o cozinheiro está segurando, pequeno, em cima da cabeça (para quem está aprendendo)
+export function rotulo(texto) {
+  const cv = document.createElement("canvas"), x = cv.getContext("2d"), fonte = "bold 26px sans-serif";
+  x.font = fonte; const w = Math.ceil(x.measureText(texto).width) + 24; cv.width = w; cv.height = 40;
+  x.fillStyle = "#2a1d17d9"; x.beginPath(); x.roundRect(0, 2, w, 36, 12); x.fill();
+  x.font = fonte; x.fillStyle = "#fff8ea"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(texto, w / 2, 21);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true })); s.scale.set(0.3 * w / 40, 0.3, 1); s.renderOrder = 23;
+  return s;
+}
+// as bolinhas em cima da panela e do prato, como no Overcooked: cada ingrediente que está dentro (cheio) e, no prato
+// montando, o que ainda falta da receita mais perto (tracejado e apagado)
+const texBolinha = new Map();
+function bolinhaTex(t, e, falta) {
+  const chave = t + ":" + e + (falta ? ":f" : "");
+  if (!texBolinha.has(chave)) {
+    const cv = document.createElement("canvas"); cv.width = cv.height = 48; const x = cv.getContext("2d");
+    x.fillStyle = e === "queimado" ? "#4a4440" : "#fff8ea"; x.beginPath(); x.arc(24, 24, 21, 0, 7); x.fill();
+    x.strokeStyle = falta ? "#2a1d17" : "#59402c"; x.lineWidth = 3; if (falta) x.setLineDash([5, 4]); x.stroke();
+    pintarIng(x, t, e === "picado" ? "picado" : "cru", 24, 24, 13);
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; texBolinha.set(chave, tex);
+  }
+  return texBolinha.get(chave);
+}
+export function bolinhas(tem, falta = []) {
+  const g = new THREE.Group(), todos = [...tem.map((i) => [...i, false]), ...falta.map((i) => [...i, true])];
+  todos.forEach(([t, e, f], k) => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: bolinhaTex(t, e, f), depthTest: false, transparent: true, opacity: f ? 0.6 : 1 }));
+    s.scale.set(0.42, 0.42, 1); s.position.set((k - (todos.length - 1) / 2) * 0.44, 0, 0); s.renderOrder = 22; s.userData.falta = f; g.add(s);
+  });
+  return g;
+}
+
 // ---------- ícones 2D (pedidos e caixas) ----------
 // desenha o ingrediente num canvas 2D: a bolinha na cor dele, com o jeito do estado
 export function pintarIng(x, t, e, cx, cy, r) {

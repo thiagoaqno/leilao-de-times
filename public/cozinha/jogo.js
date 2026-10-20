@@ -69,6 +69,28 @@ function limparCozinha() {
   for (const f of efeitos.splice(0)) { scene.remove(f.m); f.m.material.dispose(); }
   G.soltos.clear(); G.lugares = []; G.mapa = null; G.luz = null; G.mira = null;
 }
+// o que falta no prato para a receita do cardápio mais perto de ficar pronta (a que pede menos coisas a mais)
+function faltam(c) {
+  const card = K.COZINHAS[G.coz].receitas;
+  if (!c.length || K.receitaDe(c, card)) return [];
+  const tem = c.map((i) => i.t + ":" + i.e);
+  let melhor = null;
+  for (const id of card) {
+    const precisa = K.RECEITAS[id].itens;
+    if (!tem.every((k) => precisa.includes(k))) continue;
+    const resto = precisa.filter((k) => !tem.includes(k));
+    if (!melhor || resto.length < melhor.length) melhor = resto;
+  }
+  return (melhor || []).map((k) => k.split(":"));
+}
+// em cima da panela, da frigideira, da assadeira e do prato: as bolinhas do que tem dentro e, no prato, do que falta
+function comFantasmas(obj, item) {
+  if (!obj || !item || !Array.isArray(item.c)) return obj;
+  const tem = item.c.map((i) => [i.t, i.e]), falta = item.k === "prato" ? faltam(item.c) : [];
+  if (!tem.length && !falta.length) return obj;
+  const b = Mod.bolinhas(tem, falta); b.position.y = 0.6; b.userData.bolinhas = true; obj.add(b);
+  return obj;
+}
 // a mesa nova do servidor: troca o modelo só do que mudou
 function aplicarMesa() {
   const ms = G.mesa; if (!ms || !G.mapa) return;
@@ -79,7 +101,7 @@ function aplicarMesa() {
     if (chave === L.chave) return;
     L.chave = chave; if (L.obj) cozinha3d.remove(L.obj);
     if (L.numero) { cozinha3d.remove(L.numero); L.numero.material.map.dispose(); L.numero.material.dispose(); L.numero = null; }
-    L.obj = item ? Mod.item(item) : pilhaN ? Mod.pilha(pilhaN) : null;
+    L.obj = item ? comFantasmas(Mod.item(item), item) : pilhaN ? Mod.pilha(pilhaN) : null;
     if (L.t.tipo === "pia" && n) L.obj = Mod.item({ k: "sujos", n }); // os pratos sujos dentro da pia
     if (L.obj) { L.obj.position.set(L.g.position.x, L.t.tipo === "pia" ? Mod.ALTURA - 0.12 : L.t.tipo === "lixo" ? 0.9 : Mod.ALTURA, L.g.position.z); cozinha3d.add(L.obj); }
     if (item?.k === "sujos" && item.n > 3) { L.numero = Mod.numero(item.n); L.numero.position.set(L.g.position.x, Mod.ALTURA + 0.65, L.g.position.z); cozinha3d.add(L.numero); }
@@ -89,8 +111,10 @@ function aplicarMesa() {
     const item = ms.maos[id] || null, chave = JSON.stringify(item && { ...item, p: 0 });
     if (chave === c.maoChave) continue;
     c.maoChave = chave; if (c.mao) c.model.remove(c.mao);
-    c.mao = item ? Mod.item(item) : null; c.st.holding = !!item;
+    if (c.rotulo) { c.model.remove(c.rotulo); c.rotulo.material.map.dispose(); c.rotulo.material.dispose(); c.rotulo = null; }
+    c.mao = item ? comFantasmas(Mod.item(item), item) : null; c.st.holding = !!item;
     if (c.mao) { c.mao.position.set(0, 0.95, -0.62); c.model.add(c.mao); c.pegoEm = performance.now(); }
+    if (item) { c.rotulo = Mod.rotulo(K.nomeItem(item)); c.rotulo.position.set(0, 2.55, 0); c.model.add(c.rotulo); } // o nome do que está na mão
   }
   const soltos = [...(ms.voando || []).map((o) => ["v" + o.id, o]), ...(ms.caidos || []).map((o) => ["c" + o.id, o])];
   const ids = new Set(soltos.map(([id]) => id));
