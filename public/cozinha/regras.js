@@ -96,7 +96,7 @@
   // mapa: "." chão, "#" bancada, "=" tábua, "F" fogão com panela, "f" fogão com frigideira, "P" pia, "E" escorredor
   // (os pratos limpos), "S" entrega, "R" volta dos pratos sujos, "L" lixo, "W" parede, " " nada; "1" a "4" onde cada
   // cozinheiro começa; as letras da legenda são as caixas de ingrediente.
-  // estrelas: os pontos de 1, 2 e 3 estrelas com 2 cozinheiros (metaDe ajusta para quantos estão jogando)
+  // as metas das estrelas são calculadas por metaDe para cada número de cozinheiros
   const COZINHAS = {
     "1-1": {
       nome: "Sopa de cebola", desc: "A primeira cozinha: pique a cebola, três na panela, sirva no prato e lave a louça.",
@@ -110,7 +110,7 @@
         "#R#==##oo##",
       ],
       legenda: { o: "cebola" }, receitas: ["sopa_cebola"], tempo: 180, pratos: 3,
-      pedidos: { max: 4, inicio: 2, intervalo: [16, 24] }, estrelas: [40, 80, 120],
+      pedidos: { max: 4, inicio: 2, intervalo: [16, 24] },
     },
     "1-2": {
       nome: "Sopas da casa", desc: "Cebola e tomate, cada sopa na sua panela. A bancada do meio divide a cozinha.",
@@ -124,7 +124,7 @@
         "#PR###=##=##",
       ],
       legenda: { o: "cebola", t: "tomate" }, receitas: ["sopa_cebola", "sopa_tomate"], tempo: 210, pratos: 4,
-      pedidos: { max: 4, inicio: 2, intervalo: [14, 22] }, estrelas: [60, 120, 180],
+      pedidos: { max: 4, inicio: 2, intervalo: [14, 22] },
     },
     "1-3": {
       nome: "Lanchonete", desc: "Saladas e hambúrguer: pique a alface e o tomate, frite a carne e monte o lanche.",
@@ -139,12 +139,69 @@
         "#PE#R#==#####",
       ],
       legenda: { a: "alface", t: "tomate", c: "carne", p: "pao" }, receitas: ["salada", "salada_tomate", "hamburguer", "hamburguer_alface"], tempo: 240, pratos: 4,
-      pedidos: { max: 5, inicio: 2, intervalo: [12, 20] }, estrelas: [80, 160, 240],
+      pedidos: { max: 5, inicio: 2, intervalo: [12, 20] },
     },
   };
-  // com mais gente a meta sobe um pouco; sozinho, desce
-  const FATOR_META = [1, 0.6, 1, 1.25, 1.45];
-  const metaDe = (coz, n) => coz.estrelas.map((p) => Math.round(p * FATOR_META[Math.max(1, Math.min(4, n))] / 5) * 5);
+  // Planejador compartilhado: caminho mais curto pelo chão até uma bancada. O robô pode seguir estes mesmos pontos.
+  function rota(mapa, origem, bancada) {
+    const c0 = Math.floor(origem[0] / TILE), r0 = Math.floor(origem[1] / TILE), chave = (c, r) => c + "," + r;
+    const livres = new Set([[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dc, dr]) => chave(bancada.c + dc, bancada.r + dr)));
+    const fila = [[c0, r0]], anterior = new Map([[chave(c0, r0), null]]);
+    for (let k = 0; k < fila.length; k++) {
+      const [c, r] = fila[k], id = chave(c, r);
+      if (livres.has(id)) { const caminho = []; let atual = id; while (atual) { const [x, z] = atual.split(",").map(Number); caminho.push([(x + 0.5) * TILE, (z + 0.5) * TILE]); atual = anterior.get(atual); } return caminho.reverse(); }
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nc = c + dc, nr = r + dr, nid = chave(nc, nr);
+        if (nc < 0 || nr < 0 || nc >= mapa.w || nr >= mapa.h || solido(mapa, nc, nr) || anterior.has(nid)) continue;
+        anterior.set(nid, id); fila.push([nc, nr]);
+      }
+    }
+    return [];
+  }
+  function tempoEntre(mapa, a, b) {
+    if (!a || !b) return 0;
+    const vizinhos = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dc, dr]) => [a.c + dc, a.r + dr]).filter(([c, r]) => !solido(mapa, c, r));
+    return Math.min(...vizinhos.map(([c, r]) => {
+      const pontos = rota(mapa, [(c + 0.5) * TILE, (r + 0.5) * TILE], b);
+      return pontos.length ? (pontos.length - 1) * TILE / MOV.vel : Infinity;
+    }));
+  }
+  // Uma cozinha sem erros, sem espera por pedidos e com as distâncias reais do mapa. Trabalho independente é dividido
+  // entre os cozinheiros; a tábua, o fogão e a travessia final continuam limitando o tempo de cada prato.
+  function simularPerfeito(coz, n) {
+    const mapa = montarMapa(coz), tiles = mapa.tiles, de = (tipo, f = () => true) => tiles.filter((t) => t.tipo === tipo && f(t));
+    const maisPerto = (a, candidatos) => candidatos.reduce((melhor, t) => !melhor || tempoEntre(mapa, a, t) < tempoEntre(mapa, a, melhor) ? t : melhor, null);
+    const esc = de("escorredor")[0], ent = de("entrega")[0], ret = de("retorno")[0], pia = de("pia")[0];
+    const duracoes = coz.receitas.map((id) => {
+      const R = RECEITAS[id], tabuas = de("tabua"), fogoes = de("fogao"), trabalhos = [];
+      let cozimento = 0, usado = null;
+      for (const chaveIng of R.itens) {
+        const [tipo, estado] = chaveIng.split(":"), ing = INGREDIENTES[tipo], caixa = de("caixa", (t) => t.ing === tipo)[0];
+        let ultimo = caixa, dur = 0.55, passos = ing.passos.slice(0, estadosDe(tipo).indexOf(estado));
+        for (const passo of passos) {
+          if (passo === "picar") { const tab = maisPerto(ultimo, tabuas); dur += tempoEntre(mapa, ultimo, tab) + ing.picar + 0.4; ultimo = tab; }
+          else { const fog = maisPerto(ultimo, fogoes.filter((t) => t.rec === (passo === "fritar" ? "frigideira" : "panela"))); dur += tempoEntre(mapa, ultimo, fog) + 0.35; usado = fog; cozimento += RECIPIENTES[fog.rec].tempo; ultimo = fog; }
+        }
+        if (!passos.some((p) => p === "cozinhar" || p === "fritar")) dur += tempoEntre(mapa, ultimo, esc) + 0.35;
+        trabalhos.push(dur);
+      }
+      const preparo = trabalhos.reduce((a, b) => a + b, 0) / Math.min(n, Math.max(1, de("tabua").length));
+      const base = usado || esc, servir = tempoEntre(mapa, esc, base) + tempoEntre(mapa, base, ent) + 1.3;
+      const lavar = ret && pia ? (tempoEntre(mapa, ret, pia) + tempoEntre(mapa, pia, esc) + TEMPOS.lavar) / Math.max(1, coz.pratos) : 0;
+      return Math.max(Math.max(...trabalhos), preparo) + cozimento + servir + lavar;
+    });
+    let tempo = 0, pontos = 0, combo = 0, pratos = 0;
+    while (pratos < 100) {
+      const idx = pratos % coz.receitas.length, dur = duracoes[idx];
+      tempo += dur; if (tempo > coz.tempo) break;
+      combo = Math.min(4, combo + 1); pontos += (RECEITAS[coz.receitas[idx]].pontos + TEMPOS.gorjeta) * combo; pratos++;
+    }
+    return { pontos, pratos, duracoes, tempo };
+  }
+  const metaDe = (coz, n) => {
+    const maximo = simularPerfeito(coz, Math.max(1, Math.min(4, n))).pontos;
+    return [0.35, 0.60, 0.85].map((f) => Math.max(5, Math.round(maximo * f / 5) * 5));
+  };
 
   // ---------- o mapa ----------
   const SIMBOLOS = { "#": "balcao", "=": "tabua", F: "fogao", f: "fogao", P: "pia", E: "escorredor", S: "entrega", R: "retorno", L: "lixo", W: "parede", " ": "vazio" };
@@ -283,7 +340,7 @@
     const coz = COZINHAS[cozId] || COZINHAS["1-1"], mapa = montarMapa(coz);
     const m = {
       coz: COZINHAS[cozId] ? cozId : "1-1", mapa, fase: "conta", t: -TEMPOS.conta, resta: coz.tempo, pontos: 0,
-      meta: metaDe(coz, jogadores.length), estrelas: 0, entregues: 0, perdidos: 0, gorjetas: 0,
+      meta: metaDe(coz, jogadores.length), estrelas: 0, entregues: 0, perdidos: 0, gorjetas: 0, combo: 0,
       pedidos: [], seqPedido: 0, proxPedido: 0, voltando: [], ev: [], versao: 1,
       rng: opcoes.rng || Math.random,
       estado: mapa.tiles.map((t) => ({ item: t.rec ? novoRec(t.rec) : null, n: 0, p: 0 })),
@@ -371,13 +428,15 @@
     if (!r) { evento(m, { tipo: "errou", j: j.id, msg: j.mao.c.length ? "Isso não é nenhum prato do cardápio." : "O prato está vazio." }); return false; }
     const k = m.pedidos.findIndex((p) => p.r === r);
     if (k < 0) { evento(m, { tipo: "errou", j: j.id, msg: "Ninguém pediu " + RECEITAS[r].nome.toLowerCase() + " agora." }); return false; }
-    const p = m.pedidos[k], frac = clamp((p.ate - m.t) / (p.ate - p.ini), 0, 1), gorjeta = Math.ceil(TEMPOS.gorjeta * frac * (k === 0 ? 1 : 0.5));
+    const p = m.pedidos[k], frac = clamp((p.ate - m.t) / (p.ate - p.ini), 0, 1), gorjeta = Math.ceil(TEMPOS.gorjeta * frac);
     m.pedidos.splice(k, 1);
-    m.pontos += RECEITAS[r].pontos + gorjeta; m.gorjetas += gorjeta; m.entregues++;
+    m.combo = k === 0 ? Math.min(4, m.combo + 1) : 0;
+    const multiplicador = Math.max(1, m.combo), ganhos = (RECEITAS[r].pontos + gorjeta) * multiplicador;
+    m.pontos += ganhos; m.gorjetas += gorjeta * multiplicador; m.entregues++;
     j.mao = null; j.trab = null;
     m.voltando.push({ em: m.t + TEMPOS.voltaPrato });
-    if (!m.pedidos.length) m.proxPedido = Math.min(m.proxPedido, m.t + 2); // a fila zerou: chega outro logo
-    evento(m, { tipo: "entregou", j: j.id, i: t.i, r, pontos: RECEITAS[r].pontos, gorjeta }); mudou(m);
+    m.proxPedido = Math.min(m.proxPedido, m.t + 1 + m.rng() * 2);
+    evento(m, { tipo: "entregou", j: j.id, i: t.i, r, pontos: RECEITAS[r].pontos * multiplicador, gorjeta: gorjeta * multiplicador, multiplicador }); mudou(m);
     return true;
   }
 
@@ -389,7 +448,7 @@
       if (m.t < 0) return;
       m.fase = "jogo"; evento(m, { tipo: "abriu" }); mudou(m);
       for (let k = 0; k < cozDe(m).pedidos.inicio; k++) novoPedido(m);
-      m.proxPedido = m.t + intervalo(m);
+      m.proxPedido = Infinity;
     }
     const coz = cozDe(m);
     m.resta = Math.max(0, coz.tempo - m.t);
@@ -427,11 +486,12 @@
     // os pedidos: vencem (multa) e chegam novos
     for (let k = m.pedidos.length - 1; k >= 0; k--) {
       const p = m.pedidos[k];
-      if (m.t >= p.ate) { m.pedidos.splice(k, 1); m.pontos = Math.max(0, m.pontos - TEMPOS.multa); m.perdidos++; evento(m, { tipo: "perdeu", r: p.r }); mudou(m); }
+      if (m.t >= p.ate) { m.pedidos.splice(k, 1); m.pontos = Math.max(0, m.pontos - TEMPOS.multa); m.perdidos++; m.combo = 0; evento(m, { tipo: "perdeu", r: p.r }); mudou(m); }
     }
+    if (m.pedidos.length < coz.pedidos.inicio && m.proxPedido === Infinity) m.proxPedido = m.t + intervalo(m);
     if (m.t >= m.proxPedido) {
       if (m.pedidos.length < coz.pedidos.max) novoPedido(m);
-      m.proxPedido = m.t + intervalo(m);
+      m.proxPedido = m.pedidos.length < coz.pedidos.inicio ? m.t + intervalo(m) : Infinity;
     }
     // os pratos sujos voltam (empilhados no retorno; sem retorno, limpos no escorredor)
     for (let k = m.voltando.length - 1; k >= 0; k--) {
@@ -453,7 +513,7 @@
   // o que vai para o navegador quando a cozinha muda (as posições vão à parte, no pacote rápido)
   function mesa(m) {
     return {
-      v: m.versao, coz: m.coz, fase: m.fase, t: m.t, pontos: m.pontos, meta: m.meta, estrelas: m.estrelas,
+      v: m.versao, coz: m.coz, fase: m.fase, t: m.t, pontos: m.pontos, meta: m.meta, estrelas: m.estrelas, combo: m.combo,
       entregues: m.entregues, perdidos: m.perdidos, gorjetas: m.gorjetas,
       pedidos: m.pedidos.map((p) => ({ id: p.id, r: p.r, ini: p.ini, ate: p.ate })),
       lugares: m.estado.map((s) => [s.item, s.n, Math.round(s.p * 100) / 100]),
@@ -475,7 +535,7 @@
 
   return {
     TILE, RAIO, MOV, TEMPOS, PROCESSOS, INGREDIENTES, RECIPIENTES, RECEITAS, COZINHAS, SIMBOLOS,
-    estadosDe, proximoPasso, cabe, receitaDe, metaDe, montarMapa, tileEm, solido, frente, colidir, mover, afastar, alvo,
+    estadosDe, proximoPasso, cabe, receitaDe, rota, simularPerfeito, metaDe, montarMapa, tileEm, solido, frente, colidir, mover, afastar, alvo,
     novoIng, novoRec, novoPrato, pronto, tempoRec, colocar, juntar, aceita, novaPartida, interagir, usar, podeUsar, passo,
     mesa, andando, nomeItem,
   };
