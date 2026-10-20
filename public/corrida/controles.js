@@ -18,8 +18,8 @@ export function trocarMarcha(d) {
 // teclado e botões na tela
 const KEYMAP = { ArrowUp: "gas", w: "gas", W: "gas", ArrowDown: "brake", s: "brake", S: "brake", ArrowLeft: "left", a: "left", A: "left", ArrowRight: "right", d: "right", D: "right" };
 document.addEventListener("keydown", (e) => { if (!race || e.target.tagName === "INPUT") return; if (!e.repeat && (e.code === "ShiftLeft" || e.code === "ShiftRight")) { e.preventDefault(); trocarMarcha(1); } if (!e.repeat && e.code === "ControlRight") { e.preventDefault(); trocarMarcha(-1); } const k = KEYMAP[e.key]; if (k) { keys[k] = true; e.preventDefault(); } if (e.key === "r" || e.key === "R") respawn(); if ((e.key === "c" || e.key === "C") && !e.repeat) nextCam(); if ((e.code === "Space" || e.code === "KeyE") && !e.repeat) { e.preventDefault(); useItem(keys.brake); } });
-// câmeras: perto do carro (padrão), primeira pessoa e longe. C (ou o botão 🎥) troca, e o jogo lembra a escolha.
-const CAMS = { perto: "🎥 Câmera perto", cockpit: "🎥 Primeira pessoa", longe: "🎥 Câmera longe" };
+// câmeras: perto do carro (padrão), primeira pessoa, longe e de cima (top down). C (ou o botão 🎥) troca, e o jogo lembra a escolha.
+const CAMS = { perto: "🎥 Câmera perto", cockpit: "🎥 Primeira pessoa", longe: "🎥 Câmera longe", cima: "🎥 Câmera de cima" };
 export let camMode = CAMS[store.get("corrida:cam")] ? store.get("corrida:cam") : "perto";
 function nextCam() { const ks = Object.keys(CAMS); camMode = ks[(ks.indexOf(camMode) + 1) % ks.length]; store.set("corrida:cam", camMode); if (race) race.cam.pos = null; toast(CAMS[camMode], 1400); }
 document.addEventListener("keyup", (e) => { const k = KEYMAP[e.key]; if (k) keys[k] = false; });

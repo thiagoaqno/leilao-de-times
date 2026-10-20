@@ -141,7 +141,19 @@ function draw(dt) {
   C.surge = (C.surge || 0) + ((reduceMotion ? 0 : surge) - (C.surge || 0)) * (1 - Math.exp(-dt * 5));
   const fovStep = 1 - Math.exp(-dt * 5);
   if (race.kart) { const out = mode !== "cockpit"; race.kart.roof.visible = race.kart.cabin.visible = out; for (const b of race.kart.roofBits) b.visible = out; } // de dentro, cabine, teto e faixa do teto tapariam a vista
-  if (mode === "cockpit") {
+  cam.up.set(0, 1, 0);
+  if (mode === "cima") {
+    // de cima (top down): bem alto, olhando para baixo, com a frente do kart sempre para cima na tela; sobe mais quanto
+    // mais rápido, e mira à frente do kart, que fica na parte de baixo da tela e sobra pista para ver o que vem
+    const fx = Math.cos(C.a), fy = Math.sin(C.a), alto = 260 + speedK * (reduceMotion ? 30 : 90), frente = 55 + speedK * 45;
+    const want = V3(src.x + fx * frente, (src.z || 0) + alto, src.y + fy * frente);
+    if (!C.pos) C.pos = want.clone(); else C.pos.lerp(want, 1 - Math.exp(-dt * 8));
+    cam.position.copy(C.pos);
+    if (race.shake > 0) { race.shake -= dt; if (!reduceMotion) { cam.position.x += (Math.random() - 0.5) * 3; cam.position.z += (Math.random() - 0.5) * 3; } }
+    cam.up.set(fx, 0, fy);
+    cam.lookAt(C.pos.x + fx * 0.01, src.z || 0, C.pos.z + fy * 0.01);
+    cam.fov += (55 - cam.fov) * fovStep; cam.updateProjectionMatrix();
+  } else if (mode === "cockpit") {
     // primeira pessoa: no lugar do piloto, olhando por cima do volante (o bico do kart aparece embaixo)
     const spec = CARS3[me().car] || CARS3.equilibrado, eyeU = race.kart.eye.u, eyeH = race.kart.eye.h;
     const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = (eyeU - spec.L / 2) * KS, eh = eyeH * KS;
@@ -183,7 +195,8 @@ function draw(dt) {
   // no equilibrado), fica inteiro a 90% e o turbo e o estilingue borram ainda mais
   const turbo = src === c && (race.boostUntil > now || race.sling > 0 || (me() && me().boostUntil > now));
   const vref = (CARROS[src === c ? me()?.car : null] || CARROS.equilibrado).vmax;
-  desenhar(Math.min(1, Math.max(0, (Math.abs(src.v || 0) / vref - 0.4) / 0.5)) + (turbo ? 0.4 : 0));
+  // (de cima não tem desfoque: o chão inteiro borrado só atrapalha a ver a pista)
+  desenhar(mode === "cima" ? 0 : Math.min(1, Math.max(0, (Math.abs(src.v || 0) / vref - 0.4) / 0.5)) + (turbo ? 0.4 : 0));
 }
 // ---------- capa: a largada de Interlagos em 3D (o mesmo desenho da corrida) ----------
 (function heroArt() {
