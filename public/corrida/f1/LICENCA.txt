@@ -1,0 +1,4 @@
+f1.glb: modelo de um carro de Fórmula 1 dos anos 1980 (CC0, domínio público), trazido pelo dono do projeto.
+Mudanças feitas aqui: a pintura original foi trocada por uma máscara de cores (vermelho = cor principal, verde = cor
+secundária, azul = preto), sem nenhum logotipo; as letras dos pneus e o desenho do vidro foram apagados; a malha foi
+simplificada (de ~330 mil para ~75 mil triângulos) e as texturas reduzidas para 1024 px em WebP, com compressão meshopt.

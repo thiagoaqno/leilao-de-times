@@ -51,6 +51,18 @@ function abrir(caminho = process.env.DB_PATH || path.join(__dirname, "dados", "g
 function fechar() { if (banco) { banco.close(); banco = null; } }
 const bd = () => banco || abrir();
 
+// Corrida: a melhor volta de cada pista (os robôs aprendem com ela). Só troca se a nova for mais rápida.
+function melhorVoltaCorrida(pista) {
+  const v = bd().prepare("SELECT tempo, carro, piloto, dados FROM corrida_voltas WHERE pista = ?").get(pista);
+  return v ? { tempo: v.tempo, carro: v.carro, piloto: v.piloto, s: JSON.parse(v.dados) } : null;
+}
+function salvarVoltaCorrida(pista, tempo, carro, piloto, amostras) {
+  const r = bd().prepare(`INSERT INTO corrida_voltas (pista, tempo, carro, piloto, dados, feita_em) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(pista) DO UPDATE SET tempo=excluded.tempo, carro=excluded.carro, piloto=excluded.piloto, dados=excluded.dados, feita_em=excluded.feita_em
+    WHERE excluded.tempo < corrida_voltas.tempo`).run(pista, tempo, carro, piloto, JSON.stringify(amostras), Date.now());
+  return r.changes > 0;
+}
+
 // Times Pokémon dos personagens do Ginásio. O código base é o padrão; o banco guarda só edições.
 const timesPokemonGinasio = () => bd().prepare("SELECT treinador, time_json, ator, atualizado_em FROM ginasio_times_pokemon").all();
 function salvarTimePokemonGinasio(treinador, time, ator) {
@@ -322,4 +334,4 @@ function nivelDeTodosAdmin(treinador, nivel, ator) {
 const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, tipo, captura, antes, depois, criado_em FROM moderacao_pokemon WHERE treinador = ? ORDER BY id DESC LIMIT ?").all(treinador, limite)
   .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
 
-module.exports = { treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { melhorVoltaCorrida, salvarVoltaCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

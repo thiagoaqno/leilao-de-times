@@ -8,6 +8,7 @@ import { baterNoOutro, MASSA } from "./colisao.js";
 import { CARS3, KS } from "./carros.js";
 import { myProg } from "./fantasma.js";
 import { ajudaDePelotao } from "./equilibrio.js";
+import { marchaAuto, rotacao, torque, topo } from "./cambio.js";
 
 // Física do kart (arcade com aderência): o carro tem inércia e os pneus só seguram uma certa força de lado.
 // Virar gira o bico, mas a velocidade continua indo para onde ia; os pneus puxam o carro para a nova direção até o
@@ -41,11 +42,17 @@ export function physics(dt, spec = carOf(me())) {
   const estrelaAtiva = m && m.starUntil > sNow();
   const boostK = 1 + 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0) + catchup + (boostAtivo ? 0.18 : 0) + (estrelaAtiva ? 0.12 : 0);
   const vmax = (road ? spec.vmax : spec.offMax) * boostK;
+  // câmbio: no automático a marcha só acompanha (som e painel); no manual ela manda na força e no corte de giro
+  const manual = E.S && E.S.config.cambio === "manual", vmaxF1 = spec.vmax * boostK;
+  race.marcha = manual ? Math.max(1, Math.min(8, race.marcha || 1)) : marchaAuto(vf, vmaxF1, race.marcha);
+  race.rpm = rotacao(vf, vmaxF1, race.marcha);
+  const forca = manual ? torque(race.rpm) : 1;
   if (!air) {
-    if (keys.gas) vf += (vf < 0 ? spec.brake : spec.acc * (1 + race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
+    if (keys.gas) vf += (vf < 0 ? spec.brake : forca * spec.acc * (1 + race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0)) * Math.max(0.04, 1 - Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 2.5))) * dt; // arranca forte, demora a chegar no topo
     else if (keys.brake) vf -= (vf > 0 ? spec.brake : 120) * dt;
-    else vf -= Math.sign(vf) * Math.min(Math.abs(vf), 70 * dt);
+    else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (70 + (manual && vf > 0 ? (9 - race.marcha) * 12 : 0)) * dt); // no manual, marcha baixa segura o carro (freio-motor)
     if (vf > vmax) vf = Math.max(vmax, vf - (road ? 300 : 700) * dt);
+    if (manual && vf > topo(race.marcha, vmaxF1)) vf = Math.max(topo(race.marcha, vmaxF1), vf - 260 * dt); // corte de giro
     // ladeira: a gravidade puxa para baixo da pista
     const h1 = groundH(tr, c.x + fx * 10, c.y + fy * 10, race.idx), h0 = groundH(tr, c.x, c.y, race.idx);
     vf -= ((h1 - h0) / 10) * GRAV * 0.55 * dt;
