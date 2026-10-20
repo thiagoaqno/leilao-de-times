@@ -139,6 +139,10 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 #hDelta{font-size:14px;margin-top:2px}#hDelta.ahead{color:#2ecc71}#hDelta.behind{color:#ff6b6b}
 #hDraft{left:50%;bottom:26px;transform:translateX(-50%);font-size:22px;text-align:center;opacity:0;transition:opacity .2s;min-width:150px}
 #hDraft i{display:block;height:6px;margin-top:4px;background:linear-gradient(90deg,#7fe3ff,#fff);border-radius:3px;box-shadow:0 0 8px #7fe3ff}
+.itemButton{position:absolute;left:16px;bottom:18px;z-index:4;min-width:112px;min-height:60px;background:#6543b9dd;border:2px solid #d4c3ff;color:#fff;font-size:19px;box-shadow:0 4px 0 #211044,0 0 18px #8d60e088}
+.itemButton.ready{background:#7046df;border-color:#fff;box-shadow:0 4px 0 #211044,0 0 25px #a074f0}
+@media (pointer:coarse){.itemButton{left:50%;bottom:14px;transform:translateX(-50%);min-width:86px;min-height:70px;font-size:15px}}
+@media (prefers-reduced-motion:reduce){#wind{animation:none;opacity:0!important}#hDraft{transition:none}}
 #wind{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:repeating-conic-gradient(from 0deg at 50% 58%,#ffffff00 0deg 2.6deg,#ffffff70 2.6deg 3deg);-webkit-mask-image:radial-gradient(circle at 50% 58%,transparent 34%,#000 80%);mask-image:radial-gradient(circle at 50% 58%,transparent 34%,#000 80%);animation:windspin 0.35s linear infinite}
 @keyframes windspin{from{transform:rotate(0)}to{transform:rotate(3deg)}}
 .track .rec{color:var(--yellow);font-weight:800}
@@ -231,6 +235,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
   <div class="hud br num" id="hSpeed"></div>
   <div class="hud bc" id="hBig"></div>
   <div class="hud" id="hDraft"></div>
+  <button id="hItem" class="itemButton hidden" aria-label="Usar item">🎁</button>
   <div id="wind"></div>
   <div class="hud msg" id="hMsg"></div>
   <div class="topbtns"><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>

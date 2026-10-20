@@ -13,6 +13,8 @@ import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
 import { standings, hud } from "./hud.js";
 import { kartPronto } from "../kart3d.js";
 import { propsPronto } from "./props.js";
+import { startItems, stopItems, stepItems } from "./itens.js";
+const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
 // ---------- corrida ----------
 export let race = null, raf = 0;
@@ -24,11 +26,12 @@ export function startRace(st) {
   if (race) clearRace();
   race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
     kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods, undefined, mine.skin) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0 };
+  startItems(tr, st.config.caixas);
   $("results").classList.add("hidden");
   resize();
   if (!raf) raf = requestAnimationFrame(loop);
 }
-function clearRace() { if (!race) return; dropKart(race.kart); dropKart(race.bestKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
+function clearRace() { if (!race) return; stopItems(); dropKart(race.kart); dropKart(race.bestKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
 export function stopRace() { clearRace(); race = null; Sound.engine(0, false); }
 function resize() {
   const w = window.innerWidth, hh = window.innerHeight;
@@ -85,11 +88,22 @@ function draw(dt) {
   }
   drawBest(dt);
   stepPuffs(dt);
+  stepItems(race, dt);
+  for (const cone of tr.cones || []) if (cone.hit > 0) {
+    cone.hit = Math.max(0, cone.hit - dt * 0.85);
+    cone.mesh.rotation.x = Math.sin(cone.dir) * cone.hit * 0.9;
+    cone.mesh.rotation.z = -Math.cos(cone.dir) * cone.hit * 0.9;
+  }
   let src = c;
   if (!me()) { const lead = standings()[0]; const gh = lead && race.ghosts.get(lead.id); if (gh) src = gh; }
   const C = race.cam, k = 1 - Math.exp(-dt * 6), mode = src === c && race.kart ? camMode : "longe";
   let da = src.a - C.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; C.a += da * (1 - Math.exp(-dt * (mode === "perto" ? 7 : 5)));
+  const reduceMotion = motionPreference.matches;
   const speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
+  const surge = Math.max(0, Math.min(1, ((src.v || 0) - (C.lastV || 0)) / Math.max(dt, 0.01) / 90));
+  C.lastV = src.v || 0;
+  C.surge = (C.surge || 0) + ((reduceMotion ? 0 : surge) - (C.surge || 0)) * (1 - Math.exp(-dt * 5));
+  const fovStep = 1 - Math.exp(-dt * 5);
   if (race.kart) { const out = mode !== "cockpit"; race.kart.roof.visible = race.kart.cabin.visible = out; for (const b of race.kart.roofBits) b.visible = out; } // de dentro, cabine, teto e faixa do teto tapariam a vista
   if (mode === "cockpit") {
     // primeira pessoa: no lugar do piloto, olhando por cima do volante (o bico do kart aparece embaixo)
@@ -99,21 +113,21 @@ function draw(dt) {
     C.lookY = C.lookY == null ? ahead : C.lookY + (ahead - C.lookY) * (1 - Math.exp(-dt * 6));
     cam.position.set(c.x + fx * fo, c.z + eh + 3, c.y + fy * fo); C.pos = null; // um pouco acima dos olhos, olhando para baixo
     cam.lookAt(c.x + fx * (fo + 70), C.lookY + eh * 0.5, c.y + fy * (fo + 70));
-    if (race.shake > 0) { race.shake -= dt; cam.position.y += (Math.random() - 0.5) * 1.2; }
-    if (race.offroad) cam.position.y += (Math.random() - 0.5) * 0.6;
-    cam.fov += ((74 + speedK * 12) - cam.fov) * 0.08; cam.updateProjectionMatrix();
+    if (race.shake > 0) { race.shake -= dt; if (!reduceMotion) cam.position.y += (Math.random() - 0.5) * 1.2; }
+    if (race.offroad && !reduceMotion) cam.position.y += (Math.random() - 0.5) * 0.6;
+    cam.fov += ((74 + speedK * (reduceMotion ? 5 : 14) + C.surge * 2) - cam.fov) * fovStep; cam.updateProjectionMatrix();
   } else {
     // atrás do carro: perto (padrão) ou longe; alta e olhando um pouco para baixo, para ver o que vem na frente do kart
-    const near = mode === "perto", back = near ? 50 + speedK * 8 : 88 + speedK * 16, up = near ? 34 + speedK * 2 : 52 + speedK * 4;
+    const near = mode === "perto", back = near ? 50 + speedK * (reduceMotion ? 5 : 20) + C.surge * 5 : 88 + speedK * (reduceMotion ? 8 : 27) + C.surge * 6, up = near ? 34 + speedK * 2 : 52 + speedK * 4;
     const fx = Math.cos(C.a), fy = Math.sin(C.a);
     const want = V3(src.x - fx * back, (src.z || 0) + up, src.y - fy * back);
     want.y = Math.max(want.y, groundH(tr, want.x, want.z, nearest(tr, want.x, want.z, race.idx)) + 6);
     if (!C.pos) C.pos = want.clone(); else C.pos.lerp(want, near ? 1 - Math.exp(-dt * 9) : k);
     cam.position.copy(C.pos);
-    if (race.shake > 0) { race.shake -= dt; cam.position.x += (Math.random() - 0.5) * 3; cam.position.y += (Math.random() - 0.5) * 3; }
-    if (race.offroad) cam.position.y += (Math.random() - 0.5) * 1.2;
+    if (race.shake > 0) { race.shake -= dt; if (!reduceMotion) { cam.position.x += (Math.random() - 0.5) * 3; cam.position.y += (Math.random() - 0.5) * 3; } }
+    if (race.offroad && !reduceMotion) cam.position.y += (Math.random() - 0.5) * 1.2;
     cam.lookAt(src.x + fx * (near ? 55 : 70), (src.z || 0) + 4, src.y + fy * (near ? 55 : 70));
-    cam.fov += ((near ? 70 : 68) + speedK * 10 - cam.fov) * 0.08; cam.updateProjectionMatrix();
+    cam.fov += ((near ? 70 : 68) + speedK * (reduceMotion ? 4 : 15) + C.surge * 2 - cam.fov) * fovStep; cam.updateProjectionMatrix();
   }
   // sol e sombras acompanham o carro
   sun.position.set(src.x - 300, (src.z || 0) + 700, src.y + 260); sun.target.position.set(src.x, src.z || 0, src.y);

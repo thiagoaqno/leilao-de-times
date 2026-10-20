@@ -1,4 +1,4 @@
-// Corrida da Galera — as três pistas e os cinco carros.
+// Corrida da Galera — pistas e carros compartilhados pelo servidor e navegador.
 // Cada pista é um polígono fechado de vértices [x, y, raio]: entre os vértices a pista é reta, e em cada vértice
 // vira uma curva com aquele raio exato (raio 0 = só um ponto de passagem numa reta). Assim dá para desenhar reta
 // longa seguida de grampo, curva de 90° e chicane, e saber em que velocidade cada curva obriga a frear.
@@ -74,8 +74,7 @@ const PISTAS = {
       [220, 1320, 70],
     ],
   },
-  // As duas abaixo vieram de um traçado em curva suave (Catmull-Rom, em metros) feito por outra IA, convertido para
-  // este mapa: amostrado a cada ~20 m, encaixado no quadrado de 1600 e com as subidas um pouco exageradas.
+  // Circuitos de longa distância. Os raios são ajustados pelo amostrador para preservar curvas dirigíveis.
   losangeles: {
     name: "Los Angeles", sub: "Pôr do sol no centro: sobe para o viaduto da freeway, desce a alça e passa pela chicane",
     width: 88, minLap: 10, walls: true, wall: 10, flat: 20, fall: 60,
@@ -98,24 +97,42 @@ const PISTAS = {
     ],
   },
   rio: {
-    name: "Rio de Janeiro", sub: "Reta da orla de Copacabana, subida pela mata até o mirante e descida pelos Arcos da Lapa",
-    width: 80, minLap: 10, walls: true, wall: 10, flat: 30, fall: 120,
-    hills: [[0, 0], [0.067, 0], [0.144, 2], [0.211, 4], [0.263, 7], [0.314, 12], [0.371, 17], [0.428, 26], [0.49, 38], [0.546, 55], [0.603, 70], [0.66, 75], [0.711, 61], [0.758, 41], [0.804, 24], [0.845, 12], [0.892, 6], [0.928, 3], [0.959, 0], [1, 0]],
+    name: "Rio de Janeiro", sub: "Orla de Copacabana, curvas da mata, mirante e descida pelos Arcos da Lapa",
+    scale: 1.8, width: 104, minLap: 24, walls: true, wall: 12, flat: 32, fall: 140,
+    // Uma volta nova: reta da orla ao sul, retorno pelo vale e uma sequência técnica na serra.
+    hills: [[0, 3], [0.19, 3], [0.31, 7], [0.43, 18], [0.51, 45], [0.6, 82],
+      [0.66, 94], [0.73, 72], [0.82, 30], [0.91, 8], [1, 3]],
     points: [
-      [347, 530, 0], [358, 548, 0], [367, 568, 0], [374, 588, 0], [380, 608, 0], [386, 629, 0], [391, 650, 0], [396, 670, 0], [401, 691, 0], [406, 712, 0], [411, 733, 0], [417, 753, 0], [423, 774, 0], [429, 794, 0],
-      [436, 814, 0], [443, 834, 0], [450, 854, 0], [457, 875, 0], [465, 895, 0], [472, 915, 0], [479, 935, 0], [487, 955, 0], [494, 975, 0], [502, 995, 0], [510, 1014, 0], [518, 1034, 0], [527, 1054, 0], [536, 1073, 0],
-      [545, 1092, 0], [554, 1112, 0], [564, 1130, 0], [574, 1149, 0], [585, 1168, 0], [595, 1186, 0], [606, 1205, 0], [618, 1223, 0], [629, 1241, 0], [641, 1258, 0], [654, 1276, 0], [666, 1293, 0], [680, 1310, 0], [694, 1326, 0],
-      [708, 1342, 0], [723, 1357, 0], [739, 1371, 0], [755, 1385, 0], [772, 1398, 0], [790, 1410, 0], [808, 1421, 0], [827, 1431, 0], [846, 1439, 0], [867, 1447, 0], [887, 1453, 0], [908, 1458, 0], [928, 1463, 0], [950, 1466, 0],
-      [971, 1468, 0], [992, 1470, 0], [1013, 1470, 0], [1035, 1469, 0], [1056, 1466, 0], [1077, 1462, 0], [1098, 1457, 0], [1118, 1450, 0], [1137, 1442, 0], [1157, 1432, 0], [1175, 1422, 0], [1194, 1411, 0], [1212, 1400, 0], [1229, 1387, 0],
-      [1246, 1374, 0], [1262, 1360, 0], [1278, 1346, 0], [1293, 1331, 0], [1307, 1315, 0], [1321, 1299, 0], [1334, 1282, 0], [1346, 1264, 0], [1358, 1247, 0], [1369, 1228, 0], [1380, 1210, 0], [1390, 1191, 0], [1400, 1172, 0], [1409, 1153, 0],
-      [1417, 1133, 0], [1425, 1113, 0], [1433, 1094, 0], [1440, 1073, 0], [1447, 1053, 0], [1453, 1033, 0], [1458, 1012, 0], [1462, 991, 0], [1466, 970, 0], [1468, 949, 0], [1470, 927, 0], [1470, 906, 0], [1469, 885, 0], [1467, 864, 0],
-      [1464, 843, 0], [1460, 822, 0], [1455, 801, 0], [1449, 780, 0], [1443, 760, 0], [1436, 740, 0], [1428, 720, 0], [1420, 700, 0], [1412, 680, 0], [1403, 661, 0], [1393, 642, 0], [1383, 623, 0], [1372, 605, 0], [1360, 587, 0],
-      [1348, 570, 0], [1336, 552, 0], [1323, 535, 0], [1310, 518, 0], [1297, 502, 0], [1283, 485, 0], [1269, 469, 0], [1255, 453, 0], [1240, 438, 0], [1224, 423, 0], [1209, 409, 0], [1193, 395, 0], [1176, 381, 0], [1160, 367, 0],
-      [1143, 354, 0], [1126, 341, 0], [1109, 328, 0], [1092, 315, 0], [1075, 303, 0], [1057, 291, 0], [1040, 279, 0], [1022, 267, 0], [1004, 256, 0], [985, 245, 0], [967, 234, 0], [948, 224, 0], [929, 214, 0], [910, 205, 0],
-      [891, 196, 0], [871, 187, 0], [851, 180, 0], [831, 172, 0], [811, 165, 0], [791, 159, 0], [770, 153, 0], [750, 148, 0], [729, 144, 0], [708, 140, 0], [687, 137, 0], [666, 134, 0], [644, 132, 0], [623, 131, 0],
-      [602, 130, 0], [581, 130, 0], [559, 131, 0], [538, 132, 0], [517, 135, 0], [496, 138, 0], [475, 142, 0], [454, 147, 0], [433, 152, 0], [413, 159, 0], [393, 165, 0], [373, 173, 0], [353, 180, 0], [333, 189, 0],
-      [314, 197, 0], [294, 207, 0], [276, 217, 0], [257, 228, 0], [240, 240, 0], [223, 253, 0], [207, 268, 0], [192, 283, 0], [178, 298, 0], [164, 315, 0], [152, 332, 0], [141, 351, 0], [133, 370, 0], [130, 391, 0],
-      [135, 412, 0], [145, 431, 0], [158, 447, 0], [174, 462, 0], [190, 475, 0], [209, 486, 0], [230, 491, 0], [251, 493, 0], [272, 495, 0], [293, 498, 0], [314, 504, 0], [332, 515, 0],
+      [390, 335, 0], [382, 540, 110], [385, 930, 130], [430, 1260, 100],
+      [610, 1390, 90], [930, 1370, 125], [1210, 1250, 100], [1380, 1080, 75],
+      [1310, 915, 65], [1070, 945, 60], [965, 800, 55], [1020, 635, 85],
+      [1320, 580, 65], [1380, 340, 95], [1160, 185, 110], [850, 205, 65],
+      [760, 390, 65], [625, 455, 60], [565, 270, 80], [465, 205, 75],
+    ],
+  },
+  serra: {
+    name: "Serra Verde", sub: "Circuito longo de montanha: subida em zigue-zague e descida veloz",
+    scale: 2.1, width: 108, minLap: 27, walls: true, wall: 10, flat: 30, fall: 170,
+    hills: [[0, 12], [0.12, 26], [0.25, 68], [0.37, 110], [0.49, 132],
+      [0.57, 120], [0.7, 72], [0.83, 34], [0.94, 14], [1, 12]],
+    points: [
+      [275, 1120, 0], [250, 730, 125], [370, 350, 105], [650, 185, 85],
+      [950, 210, 85], [1200, 340, 80], [1280, 590, 55], [1100, 675, 45],
+      [890, 600, 50], [750, 720, 45], [820, 900, 65], [1090, 865, 55],
+      [1330, 990, 85], [1320, 1280, 95], [1050, 1430, 95], [680, 1390, 100],
+      [435, 1290, 85],
+    ],
+  },
+  deserto: {
+    name: "Deserto Dourado", sub: "Retas extensas entre dunas e cânions, com duas chicanes técnicas",
+    scale: 2.15, width: 116, minLap: 26, walls: false, flat: 42, fall: 230,
+    hills: [[0, 10], [0.18, 16], [0.3, 39], [0.42, 16], [0.55, 4],
+      [0.68, 32], [0.77, 56], [0.88, 20], [1, 10]],
+    points: [
+      [300, 1200, 0], [240, 470, 160], [480, 190, 120], [950, 170, 155],
+      [1340, 320, 105], [1360, 620, 95], [1150, 690, 65], [1050, 530, 45],
+      [820, 570, 60], [730, 840, 70], [920, 1000, 65], [1160, 930, 55],
+      [1360, 1140, 95], [1190, 1400, 125], [720, 1420, 130], [420, 1360, 100],
     ],
   },
   // As três abaixo são inspiradas em pistas do Mario Kart 64: o traçado foi tirado da planta (vista de cima) dos
@@ -251,8 +268,18 @@ const MODS = {
 const MODS_PADRAO = { rodas: "prata", aero: "nenhum", faixa: "nenhuma" };
 
 const SECTORS = 4; // a volta só conta passando pelos 4 setores na ordem (contra atalho e contramão)
+// Três caixas por conjunto, espaçadas na volta. A mesma posição é calculada no servidor e no navegador.
+function boxesFor(id) {
+  const t = PISTAS[id], pts = elevate(sample(t.points, 6), t.hills);
+  const out = [];
+  for (const f of [0.12, 0.27, 0.43, 0.59, 0.75, 0.9]) {
+    const p = pts[Math.floor(pts.length * f)], sideX = -p.ty, sideY = p.tx;
+    for (const lane of [-0.25, 0, 0.25]) out.push({ x: p.x + sideX * lane * t.width, y: p.y + sideY * lane * t.width, h: p.h, i: out.length });
+  }
+  return out;
+}
 
-const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, SECTORS };
+const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, boxesFor, SECTORS };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pistas = api;
 })(typeof window !== "undefined" ? window : globalThis);

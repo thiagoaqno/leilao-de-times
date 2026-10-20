@@ -1,11 +1,13 @@
 // Corrida da Galera — a física do kart (arcade com aderência e relevo).
-import { SECTORS, carOf, socket, sNow, me, P } from "./estado.js";
+import { SECTORS, E, carOf, socket, sNow, me, P } from "./estado.js";
 import { Sound } from "./sons.js";
 import { trackFrame, groundH } from "./pista.js";
 import { race, keys, nearest } from "./jogo.js";
 import { pad } from "./controles.js";
 import { baterNoOutro, MASSA } from "./colisao.js";
 import { CARS3, KS } from "./carros.js";
+import { myProg } from "./fantasma.js";
+import { ajudaDePelotao } from "./equilibrio.js";
 
 // Física do kart (arcade com aderência): o carro tem inércia e os pneus só seguram uma certa força de lado.
 // Virar gira o bico, mas a velocidade continua indo para onde ia; os pneus puxam o carro para a nova direção até o
@@ -30,10 +32,17 @@ export function physics(dt, spec = carOf(me())) {
   race.draft += (draft - race.draft) * Math.min(1, dt * 4);
   if (race.draft > 0.35) race.draftT += dt; else { if (race.draftT > 1 && race.draft < 0.2) { race.sling = 1.2; Sound.sling(); } race.draftT = 0; }
   race.sling = Math.max(0, race.sling - dt);
-  const boostK = 1 + 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
+  const outros = [...race.ghosts.values()].filter((gh) => Number.isFinite(gh.prog));
+  const lider = Math.max(myProg(), ...outros.map((gh) => gh.prog));
+  const m = me(), ultima = m && E.S && m.laps >= E.S.config.voltas - 1;
+  const catchup = outros.length ? ajudaDePelotao(myProg() / tr.n, lider / tr.n, ultima ? race.idx / tr.n : 0, E.S.config.equilibrio !== false) : 0;
+  race.catchup = catchup;
+  const boostAtivo = (m && m.boostUntil > sNow()) || race.boostUntil > sNow();
+  const estrelaAtiva = m && m.starUntil > sNow();
+  const boostK = 1 + 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0) + catchup + (boostAtivo ? 0.18 : 0) + (estrelaAtiva ? 0.12 : 0);
   const vmax = (road ? spec.vmax : spec.offMax) * boostK;
   if (!air) {
-    if (keys.gas) vf += (vf < 0 ? spec.brake : spec.acc * (1 + race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
+    if (keys.gas) vf += (vf < 0 ? spec.brake : spec.acc * (1 + race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
     else if (keys.brake) vf -= (vf > 0 ? spec.brake : 120) * dt;
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), 70 * dt);
     if (vf > vmax) vf = Math.max(vmax, vf - (road ? 300 : 700) * dt);
@@ -42,8 +51,9 @@ export function physics(dt, spec = carOf(me())) {
     vf -= ((h1 - h0) / 10) * GRAV * 0.55 * dt;
   }
   vf = Math.max(-70, vf);
+  if (race.spinUntil > sNow() || (m && m.spinUntil > sNow())) vf *= Math.exp(-dt * 2.2);
   // volante: gira o bico (só andando); a velocidade fica no mundo e é medida de novo no eixo novo do carro
-  const steer = pad.on && pad.steer ? pad.steer : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  const steer = race.spinUntil > sNow() || (m && m.spinUntil > sNow()) ? 0 : pad.on && pad.steer ? pad.steer : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
   c.steer += (steer - c.steer) * Math.min(1, dt * 10);
   const wx = fx * vf - fy * vl, wy = fy * vf + fx * vl;
   c.a += c.steer * spec.turn * Math.min(1, Math.abs(vf) / 90) * Math.sign(vf || 1) * dt * (air ? 0.35 : 1);
@@ -70,6 +80,11 @@ export function physics(dt, spec = carOf(me())) {
     if (hit > 60) { Sound.bump(); race.shake = 0.25; race.bumps = (race.bumps || 0) + 1; }
   }
   c.x = nx; c.y = ny;
+  // Balizadores flexíveis reagem ao toque e voltam sozinhos; não bloqueiam o carro.
+  if (tr.cones && Math.abs(c.v) > 25) for (const cone of tr.cones) {
+    if (cone.cooldown > sNow() || Math.hypot(c.x - cone.x, c.y - cone.y) > 16 || Math.abs(c.z - cone.h) > 14) continue;
+    cone.hit = 1; cone.dir = c.a; cone.cooldown = sNow() + 3000; Sound.pop();
+  }
   // batida com os outros carros (cada um empurra o outro; quem está em outro nível, viaduto ou no ar, passa por cima)
   if (!air) for (const [id, gh] of race.ghosts) {
     if (Math.abs((gh.z || 0) - c.z) > 12 || !me()) continue;

@@ -3,6 +3,7 @@ import { E, PISTAS, $, h, sNow, me, act, fmt } from "./estado.js";
 import { Sound } from "./sons.js";
 import { race } from "./jogo.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
+import { drawItemHud } from "./itens.js";
 
 // ---------- placar da corrida ----------
 export function standings() {
@@ -15,6 +16,7 @@ export function standings() {
 }
 export function hud() {
   if (!E.S) return;
+  drawItemHud();
   const m = me(), st = standings(), now = sNow(), cfg = E.S.config, tr = race.tr;
   const left = (race.startAt - now) / 1000;
   // contagem 3, 2, 1, VAI!
@@ -39,16 +41,19 @@ export function hud() {
   $("hBoard").innerHTML = st.slice(0, 8).map((r, i) => `<div><span>${i + 1}.</span><i style="background:${r.p.color}"></i>${h(r.p.name)}${r.done != null ? " 🏁" : ""}</div>`).join("");
   // avisos
   let msg = "";
-  if (race.wrong > 1) msg = "⚠️ CONTRAMÃO! (aperte ↺)";
+  if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
+  else if (race.wrong > 1) msg = "⚠️ CONTRAMÃO! (aperte ↺)";
   else if (m && m.finish == null && m.started && m.laps === cfg.voltas - 1 && cfg.voltas > 1 && race.lastLapMsg > now - 2500) msg = "ÚLTIMA VOLTA!";
   else if (E.S.endAt && m && m.finish == null) msg = `⏱️ ${Math.max(0, Math.ceil((E.S.endAt - now) / 1000))} s para cruzar`;
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
   $("hMsg").textContent = msg;
   // vácuo e estilingue
   const dr = race.sling > 0 ? 1 : race.draft;
-  $("wind").style.opacity = Math.min(0.85, dr * 1.1).toFixed(2);
-  const hd = $("hDraft"); hd.style.opacity = dr > 0.15 ? 1 : 0;
-  hd.innerHTML = race.sling > 0 ? "🚀 ESTILINGUE!" : `💨 VÁCUO<i style="width:${Math.round(race.draft * 100)}%"></i>`;
+  $("wind").style.opacity = Math.min(0.65, Math.max(dr * 0.7, Math.max(0, Math.abs(race.car.v) - 150) / 550)).toFixed(2);
+  const hd = $("hDraft");
+  const star = m && m.starUntil > now;
+  hd.innerHTML = star ? "⭐ ESTRELA!" : race.sling > 0 ? "🚀 ESTILINGUE!" : race.draft > 0.15 ? `💨 VÁCUO<i style="width:${Math.round(race.draft * 100)}%"></i>` : race.catchup > 0.025 ? "⚡ PELOTÃO À VISTA" : "";
+  hd.style.opacity = star || race.sling > 0 || race.draft > 0.15 || race.catchup > 0.025 ? 1 : 0;
   // minimapa
   const mc = $("mini").getContext("2d"), k = 240 / race.tr.t.world;
   mc.drawImage(tr.mini, 0, 0);
