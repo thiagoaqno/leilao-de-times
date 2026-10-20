@@ -29,6 +29,7 @@
     picar: { onde: "tabua", para: "picado", nome: "Picar" },
     cozinhar: { onde: "panela", para: "cozido", nome: "Cozinhar" },
     fritar: { onde: "frigideira", para: "frito", nome: "Fritar" },
+    assar: { onde: "assadeira", para: "assado", nome: "Assar" },
   };
   // passos: a cadeia do ingrediente (cru → ...); picar: segundos na tábua; cor e forma: o desenho
   const INGREDIENTES = {
@@ -42,8 +43,11 @@
     peixe: { nome: "Peixe", passos: ["picar"], picar: 2.6, cor: "#f08a5a", cor2: "#ffe0cc", forma: "peixe" },
     arroz: { nome: "Arroz", passos: ["cozinhar"], cor: "#f4f1e6", cor2: "#d8d2bc", forma: "saco" },
     alga: { nome: "Alga", fem: true, passos: [], cor: "#1f3a2a", cor2: "#2f5a3e", forma: "folha" },
+    tortilha: { nome: "Tortilha", fem: true, passos: [], cor: "#efd49a", cor2: "#c99a52", forma: "disco" },
+    massa: { nome: "Massa", fem: true, passos: ["assar"], cor: "#f3dfb4", cor2: "#d9b77a", forma: "disco" },
+    queijo: { nome: "Queijo", passos: ["picar"], picar: 2.2, cor: "#f7c843", cor2: "#e9a92a", forma: "queijo" },
   };
-  const NOME_ESTADO = { cru: "", picado: "picad", cozido: "cozid", frito: "frit", queimado: "queimad" }; // + "a" ou "o"
+  const NOME_ESTADO = { cru: "", picado: "picad", cozido: "cozid", frito: "frit", assado: "assad", queimado: "queimad" }; // + "a" ou "o"
   // os estados de um ingrediente, em ordem (cru primeiro)
   const estadosDe = (t) => ["cru", ...INGREDIENTES[t].passos.map((p) => PROCESSOS[p].para)];
   // o próximo processo do ingrediente (null se já está no fim da cadeia ou queimou)
@@ -54,10 +58,13 @@
   }
 
   // ---------- recipientes ----------
-  // tempo: segundos por ingrediente dentro; queima: segundos depois de pronto até queimar
+  // tempo: segundos por ingrediente dentro (fixo: o tempo é o mesmo, com 1 ou 3 coisas); queima: segundos depois de
+  // pronto até queimar; junto: o que também entra, sem passar pelo processo (a cobertura vai crua por cima da massa);
+  // onde: a bancada em que ele cozinha
   const RECIPIENTES = {
-    panela: { nome: "Panela", cap: 3, processo: "cozinhar", tempo: 4.5, queima: 11 },
-    frigideira: { nome: "Frigideira", cap: 1, processo: "fritar", tempo: 6, queima: 9 },
+    panela: { nome: "Panela", cap: 3, processo: "cozinhar", tempo: 4.5, queima: 11, onde: "fogao" },
+    frigideira: { nome: "Frigideira", cap: 1, processo: "fritar", tempo: 6, queima: 9, onde: "fogao" },
+    assadeira: { nome: "Assadeira", fem: true, cap: 3, processo: "assar", tempo: 9, fixo: true, queima: 10, onde: "forno", junto: ["tomate:picado", "queijo:picado"] },
   };
 
   // ---------- receitas (as do Overcooked) ----------
@@ -72,7 +79,13 @@
     hamburguer: { nome: "Hambúrguer", itens: ["pao:cru", "carne:frito"], pontos: 20, tempo: 75 },
     hamburguer_alface: { nome: "Hambúrguer com alface", itens: ["pao:cru", "carne:frito", "alface:picado"], pontos: 25, tempo: 85 },
     hamburguer_completo: { nome: "Hambúrguer completo", itens: ["pao:cru", "carne:frito", "alface:picado", "tomate:picado"], pontos: 30, tempo: 95 },
-    sushi_peixe: { nome: "Sushi de peixe", itens: ["peixe:picado", "arroz:cozido", "alga:cru"], pontos: 25, tempo: 85 },
+    sushi_peixe: { nome: "Sushi de peixe", itens: ["peixe:picado", "arroz:cozido", "alga:cru"], pontos: 25, tempo: 85, figura: "sushi" },
+    sushi_pepino: { nome: "Sushi de pepino", itens: ["pepino:picado", "arroz:cozido", "alga:cru"], pontos: 25, tempo: 85, figura: "sushi" },
+    sashimi: { nome: "Sashimi", itens: ["peixe:picado"], pontos: 15, tempo: 60, figura: "sashimi" },
+    burrito: { nome: "Burrito", itens: ["tortilha:cru", "arroz:cozido", "carne:frito"], pontos: 30, tempo: 95, figura: "burrito" },
+    burrito_simples: { nome: "Burrito de arroz", itens: ["tortilha:cru", "arroz:cozido"], pontos: 20, tempo: 80, figura: "burrito" },
+    pizza: { nome: "Pizza", itens: ["massa:assado", "tomate:picado", "queijo:picado"], pontos: 30, tempo: 100, figura: "pizza" },
+    pizza_queijo: { nome: "Pizza de queijo", itens: ["massa:assado", "queijo:picado"], pontos: 20, tempo: 85, figura: "pizza" },
   };
   const chaveIng = (ing) => ing.t + ":" + ing.e;
   function contagem(lista) { const m = new Map(); for (const k of lista) m.set(k, (m.get(k) || 0) + 1); return m; }
@@ -141,6 +154,51 @@
       legenda: { a: "alface", t: "tomate", c: "carne", p: "pao" }, receitas: ["salada", "salada_tomate", "hamburguer", "hamburguer_alface"], tempo: 240, pratos: 4,
       pedidos: { max: 5, inicio: 2, intervalo: [12, 20] },
     },
+    // segundo mundo: receitas novas, cada cozinha com a sua cara (tema) e uma que mexe no meio do expediente
+    "2-1": {
+      nome: "Balcão de sushi", tema: "sushi", desc: "Peixe na tábua, arroz na panela e a alga por cima. O sashimi é só o peixe picado.",
+      mapa: [
+        "#pp#gg#SS#aa#",
+        "#...........F",
+        "=....1......F",
+        "=...........#",
+        "#...#####...#",
+        "E.......2...L",
+        "P...........#",
+        "#R#cc##==####",
+      ],
+      legenda: { p: "peixe", g: "alga", a: "arroz", c: "pepino" }, receitas: ["sashimi", "sushi_peixe", "sushi_pepino"], tempo: 240, pratos: 4,
+      pedidos: { max: 5, inicio: 2, intervalo: [12, 20] },
+    },
+    "2-2": {
+      nome: "Food truck de burrito", tema: "foodtruck", desc: "A divisória do meio desce e sobe sozinha: quando ela abaixa, dá para cortar caminho.",
+      mapa: [
+        "#tt#aa##SS##",
+        "#.....x....F",
+        "=..1..x.2..f",
+        "=.....x....f",
+        "#.....x....#",
+        "#..........#",
+        "#PER##cc#L##",
+      ],
+      legenda: { t: "tortilha", a: "arroz", c: "carne" }, receitas: ["burrito_simples", "burrito"], tempo: 240, pratos: 4,
+      pedidos: { max: 4, inicio: 2, intervalo: [14, 22] }, mexe: { periodo: 25 },
+    },
+    "2-3": {
+      nome: "Pizzaria", tema: "pizzaria", desc: "Massa, molho de tomate e queijo na assadeira, e o forno faz o resto. Não deixe queimar!",
+      mapa: [
+        "#mm#tt#qq#SS#",
+        "#...........O",
+        "=...1.......O",
+        "=...........#",
+        "#....###....#",
+        "E.......2...L",
+        "P...........#",
+        "#R##==#######",
+      ],
+      legenda: { m: "massa", t: "tomate", q: "queijo" }, receitas: ["pizza_queijo", "pizza"], tempo: 240, pratos: 4,
+      pedidos: { max: 4, inicio: 2, intervalo: [14, 22] },
+    },
   };
   // Planejador compartilhado: caminho mais curto pelo chão até uma bancada. O robô pode seguir estes mesmos pontos.
   function rota(mapa, origem, bancada) {
@@ -173,16 +231,20 @@
     const maisPerto = (a, candidatos) => candidatos.reduce((melhor, t) => !melhor || tempoEntre(mapa, a, t) < tempoEntre(mapa, a, melhor) ? t : melhor, null);
     const esc = de("escorredor")[0], ent = de("entrega")[0], ret = de("retorno")[0], pia = de("pia")[0];
     const duracoes = coz.receitas.map((id) => {
-      const R = RECEITAS[id], tabuas = de("tabua"), fogoes = de("fogao"), trabalhos = [];
+      const R = RECEITAS[id], tabuas = de("tabua"), fogoes = tiles.filter((t) => t.rec), trabalhos = [], fixos = new Set();
       let cozimento = 0, usado = null;
       for (const chaveIng of R.itens) {
         const [tipo, estado] = chaveIng.split(":"), ing = INGREDIENTES[tipo], caixa = de("caixa", (t) => t.ing === tipo)[0];
         let ultimo = caixa, dur = 0.55, passos = ing.passos.slice(0, estadosDe(tipo).indexOf(estado));
         for (const passo of passos) {
           if (passo === "picar") { const tab = maisPerto(ultimo, tabuas); dur += tempoEntre(mapa, ultimo, tab) + ing.picar + 0.4; ultimo = tab; }
-          else { const fog = maisPerto(ultimo, fogoes.filter((t) => t.rec === (passo === "fritar" ? "frigideira" : "panela"))); dur += tempoEntre(mapa, ultimo, fog) + 0.35; usado = fog; cozimento += RECIPIENTES[fog.rec].tempo; ultimo = fog; }
+          else {
+            const rec = Object.keys(RECIPIENTES).find((k) => RECIPIENTES[k].processo === passo), fog = maisPerto(ultimo, fogoes.filter((t) => t.rec === rec)), Rr = RECIPIENTES[rec];
+            dur += tempoEntre(mapa, ultimo, fog) + 0.35; usado = fog; ultimo = fog;
+            if (!Rr.fixo) cozimento += Rr.tempo; else if (!fixos.has(rec)) { fixos.add(rec); cozimento += Rr.tempo; } // o forno assa tudo junto
+          }
         }
-        if (!passos.some((p) => p === "cozinhar" || p === "fritar")) dur += tempoEntre(mapa, ultimo, esc) + 0.35;
+        if (!passos.some((p) => p !== "picar")) dur += tempoEntre(mapa, ultimo, esc) + 0.35;
         trabalhos.push(dur);
       }
       const preparo = trabalhos.reduce((a, b) => a + b, 0) / Math.min(n, Math.max(1, de("tabua").length));
@@ -204,9 +266,10 @@
   };
 
   // ---------- o mapa ----------
-  const SIMBOLOS = { "#": "balcao", "=": "tabua", F: "fogao", f: "fogao", P: "pia", E: "escorredor", S: "entrega", R: "retorno", L: "lixo", W: "parede", " ": "vazio" };
+  // "O" é o forno (com a assadeira) e "x" a divisória que desce e sobe (cozinhas com "mexe")
+  const SIMBOLOS = { "#": "balcao", "=": "tabua", F: "fogao", f: "fogao", O: "forno", x: "divisoria", P: "pia", E: "escorredor", S: "entrega", R: "retorno", L: "lixo", W: "parede", " ": "vazio" };
   const CHAO = new Set([".", "1", "2", "3", "4"]);
-  const USAVEL = new Set(["balcao", "tabua", "fogao", "pia", "escorredor", "entrega", "retorno", "lixo", "caixa"]);
+  const USAVEL = new Set(["balcao", "tabua", "fogao", "forno", "pia", "escorredor", "entrega", "retorno", "lixo", "caixa"]);
   // monta a grade: tiles (só as bancadas, com índice), o chão e onde cada um começa. Não guarda estado de jogo.
   function montarMapa(coz) {
     const h = coz.mapa.length, w = Math.max(...coz.mapa.map((l) => l.length));
@@ -221,15 +284,18 @@
         if (tipo === "caixa") t.ing = coz.legenda[ch];
         if (ch === "F") t.rec = "panela";
         if (ch === "f") t.rec = "frigideira";
+        if (ch === "O") t.rec = "assadeira";
+        if (tipo === "divisoria") t.movel = true;
         tiles.push(t); grade[r].push(t);
       }
     }
     // quem não tem lugar marcado começa perto do primeiro
     for (let k = 0; k < 4; k++) if (!inicio[k]) { const b = inicio[0] || [w * TILE / 2, h * TILE / 2]; inicio[k] = [b[0] + (k % 2 ? 1 : -1) * TILE * 0.8, b[1] + (k > 1 ? TILE * 0.8 : 0)]; }
-    return { w, h, W: w * TILE, H: h * TILE, grade, tiles, inicio };
+    return { w, h, W: w * TILE, H: h * TILE, grade, tiles, inicio, baixo: false };
   }
   const tileEm = (mapa, c, r) => (r < 0 || c < 0 || r >= mapa.h || c >= mapa.w ? { tipo: "vazio" } : mapa.grade[r][c]);
-  const solido = (mapa, c, r) => !!tileEm(mapa, c, r);
+  // a divisória abaixada vira chão (mapa.baixo muda com o tempo: ver "mexe" no passo)
+  const solido = (mapa, c, r) => { const t = tileEm(mapa, c, r); return !!t && !(t.movel && mapa.baixo); };
 
   // ---------- movimento (o navegador roda; o servidor confere) ----------
   const frente = (d) => [-Math.sin(d), -Math.cos(d)]; // o boneco olha para -z quando d = 0
@@ -299,7 +365,9 @@
   const novoRec = (k) => ({ k, c: [], p: 0, q: false });
   const novoPrato = () => ({ k: "prato", c: [] });
   const ehRec = (o) => o && RECIPIENTES[o.k];
-  const tempoRec = (o) => RECIPIENTES[o.k].tempo * o.c.length;
+  const tempoRec = (o) => RECIPIENTES[o.k].tempo * (RECIPIENTES[o.k].fixo ? 1 : o.c.length);
+  // a assadeira só com a cobertura não assa nada (fica parada no forno esperando a massa)
+  const esquenta = (o) => !RECIPIENTES[o.k].fixo || o.c.some((i) => proximoPasso(i) === RECIPIENTES[o.k].processo || i.e === PROCESSOS[RECIPIENTES[o.k].processo].para);
   const pronto = (o) => ehRec(o) && o.c.length > 0 && !o.q && o.p >= tempoRec(o);
 
   // põe "orig" dentro de "dest" (mexe nos dois). Devolve true se coube.
@@ -307,8 +375,10 @@
     if (!dest || !orig || dest === orig) return false;
     if (ehRec(dest)) {
       const R = RECIPIENTES[dest.k];
-      if (orig.k !== "ing" || dest.q || dest.c.length >= R.cap || dest.c.some((i) => i.t === orig.t) || proximoPasso(orig) !== R.processo) return false;
-      dest.p = Math.min(dest.p, R.tempo * dest.c.length); // o que já estava pronto espera o novo cozinhar (e o queimar recomeça)
+      const processa = orig.k === "ing" && proximoPasso(orig) === R.processo;
+      if (orig.k !== "ing" || dest.q || dest.c.length >= R.cap || dest.c.some((i) => i.t === orig.t) || (!processa && !(R.junto || []).includes(chaveIng(orig)))) return false;
+      // o que já estava pronto espera o novo cozinhar (e o queimar recomeça); no forno, só a massa crua faz recomeçar
+      dest.p = R.fixo ? (processa ? 0 : dest.p) : Math.min(dest.p, R.tempo * dest.c.length);
       dest.c.push({ t: orig.t, e: orig.e }); return true;
     }
     if (dest.k === "prato") {
@@ -332,7 +402,7 @@
   }
   // o que cada bancada aceita em cima
   function aceita(t, o) {
-    if (t.tipo === "fogao") return !!ehRec(o);
+    if (t.tipo === "fogao" || t.tipo === "forno") return !!ehRec(o) && RECIPIENTES[o.k].onde === t.tipo;
     return t.tipo === "balcao" || t.tipo === "tabua" || t.tipo === "caixa";
   }
 
@@ -446,14 +516,32 @@
       if (s.item && colocar(s.item, o.item, cozDe(m).receitas)) { evento(m, { tipo: "caiu", i: t.i }); mudou(m); return; }
       if (!s.item && aceita(t, o.item)) { s.item = o.item; evento(m, { tipo: "caiu", i: t.i }); mudou(m); return; }
     }
-    let chao = null, distancia = Infinity;
-    for (let r = 0; r < m.mapa.h; r++) for (let c = 0; c < m.mapa.w; c++) {
-      if (solido(m.mapa, c, r)) continue;
-      const x = (c + 0.5) * TILE, z = (r + 0.5) * TILE, d = Math.hypot(x - o.x, z - o.z);
-      if (d < distancia) { distancia = d; chao = [x, z]; }
-    }
+    const chao = chaoPerto(m.mapa, o.x, o.z);
     m.caidos.push({ id: o.id, item: o.item, x: chao[0], z: chao[1] });
     evento(m, { tipo: "caiu" }); mudou(m);
+  }
+
+  // o centro da casa de chão mais perto do ponto
+  function chaoPerto(mapa, px, pz) {
+    let chao = null, distancia = Infinity;
+    for (let r = 0; r < mapa.h; r++) for (let c = 0; c < mapa.w; c++) {
+      if (solido(mapa, c, r)) continue;
+      const x = (c + 0.5) * TILE, z = (r + 0.5) * TILE, d = Math.hypot(x - px, z - pz);
+      if (d < distancia) { distancia = d; chao = [x, z]; }
+    }
+    return chao;
+  }
+  // a divisória da cozinha que mexe: fica em pé no primeiro período, abaixa no segundo, e assim por diante
+  const divisoriaBaixa = (coz, t) => !!coz.mexe && t >= 0 && Math.floor(t / coz.mexe.periodo) % 2 === 1;
+  function mexer(m) {
+    const baixo = divisoriaBaixa(cozDe(m), m.t);
+    if (baixo === m.mapa.baixo) return;
+    m.mapa.baixo = baixo;
+    if (!baixo) { // subiu: quem estava em cima é empurrado para o lado, e o que estava caído ali vai para o chão do lado
+      for (const j of m.jogadores) { if (solido(m.mapa, Math.floor(j.x / TILE), Math.floor(j.z / TILE))) [j.x, j.z] = chaoPerto(m.mapa, j.x, j.z); colidir(m.mapa, j); }
+      for (const o of m.caidos) if (solido(m.mapa, Math.floor(o.x / TILE), Math.floor(o.z / TILE))) [o.x, o.z] = chaoPerto(m.mapa, o.x, o.z);
+    }
+    evento(m, { tipo: "mexeu", baixo }); mudou(m);
   }
 
   function entregar(m, j, t) {
@@ -486,6 +574,7 @@
     }
     const coz = cozDe(m);
     m.resta = Math.max(0, coz.tempo - m.t);
+    if (coz.mexe) mexer(m);
     for (let k = m.voando.length - 1; k >= 0; k--) {
       const o = m.voando[k]; o.idade += dt; o.x += o.vx * dt; o.z += o.vz * dt; o.y += o.vy * dt; o.vy -= 15 * dt;
       const receptor = m.jogadores.find((j) => (!j.mao && (j.id !== o.dono || o.idade > 0.25) && Math.hypot(j.x - o.x, j.z - o.z) < 0.53 && o.y > 0.7 && o.y < 1.65));
@@ -514,14 +603,14 @@
         }
       }
     }
-    // o fogo: panela e frigideira no fogão cozinham; passou muito do ponto, queima
+    // o fogo: panela e frigideira no fogão, a assadeira no forno; passou muito do ponto, queima
     for (const t of m.mapa.tiles) {
-      if (t.tipo !== "fogao") continue;
+      if (t.tipo !== "fogao" && t.tipo !== "forno") continue;
       const o = m.estado[t.i].item;
-      if (!ehRec(o) || !o.c.length || o.q) continue;
+      if (!ehRec(o) || !o.c.length || o.q || !esquenta(o)) continue;
       const R = RECIPIENTES[o.k], antes = o.p, prec = tempoRec(o);
       o.p += dt;
-      if (antes < prec && o.p >= prec) { for (const i of o.c) i.e = PROCESSOS[R.processo].para; evento(m, { tipo: "pronto", i: t.i }); mudou(m); }
+      if (antes < prec && o.p >= prec) { for (const i of o.c) if (proximoPasso(i) === R.processo) i.e = PROCESSOS[R.processo].para; evento(m, { tipo: "pronto", i: t.i }); mudou(m); }
       if (antes < prec + R.queima * TEMPOS.alerta && o.p >= prec + R.queima * TEMPOS.alerta) { evento(m, { tipo: "alerta", i: t.i }); mudou(m); }
       if (o.p >= prec + R.queima) { o.q = true; for (const i of o.c) i.e = "queimado"; evento(m, { tipo: "queimou", i: t.i }); mudou(m); }
     }
@@ -556,7 +645,7 @@
   function mesa(m) {
     return {
       v: m.versao, coz: m.coz, fase: m.fase, t: m.t, pontos: m.pontos, meta: m.meta, estrelas: m.estrelas, combo: m.combo,
-      entregues: m.entregues, perdidos: m.perdidos, gorjetas: m.gorjetas,
+      entregues: m.entregues, perdidos: m.perdidos, gorjetas: m.gorjetas, baixo: !!m.mapa.baixo,
       pedidos: m.pedidos.map((p) => ({ id: p.id, r: p.r, ini: p.ini, ate: p.ate })),
       lugares: m.estado.map((s) => [s.item, s.n, Math.round(s.p * 100) / 100]),
       maos: Object.fromEntries(m.jogadores.map((j) => [j.id, j.mao])),
@@ -566,7 +655,7 @@
     };
   }
   // tem coisa andando sozinha (picar, lavar, fogão): o servidor manda a mesa mais vezes para a barra andar
-  const andando = (m) => m.fase === "jogo" && (m.voando.length > 0 || m.jogadores.some((j) => j.trab != null) || m.mapa.tiles.some((t) => t.tipo === "fogao" && ehRec(m.estado[t.i].item) && m.estado[t.i].item.c.length && !m.estado[t.i].item.q));
+  const andando = (m) => m.fase === "jogo" && (m.voando.length > 0 || m.jogadores.some((j) => j.trab != null) || m.mapa.tiles.some((t) => t.rec && ehRec(m.estado[t.i].item) && m.estado[t.i].item.c.length && !m.estado[t.i].item.q));
 
   // o nome de um item para os avisos e a tela
   function nomeItem(o) {
@@ -579,8 +668,8 @@
 
   return {
     TILE, RAIO, MOV, TEMPOS, PROCESSOS, INGREDIENTES, RECIPIENTES, RECEITAS, COZINHAS, SIMBOLOS,
-    estadosDe, proximoPasso, cabe, receitaDe, rota, simularPerfeito, metaDe, montarMapa, tileEm, solido, frente, colidir, mover, afastar, alvo,
-    novoIng, novoRec, novoPrato, pronto, tempoRec, colocar, juntar, aceita, novaPartida, interagir, usar, arremessar, soltarNoChao, podeUsar, passo,
+    estadosDe, proximoPasso, cabe, receitaDe, rota, simularPerfeito, metaDe, montarMapa, tileEm, solido, divisoriaBaixa, frente, colidir, mover, afastar, alvo,
+    novoIng, novoRec, novoPrato, pronto, esquenta, tempoRec, colocar, juntar, aceita, novaPartida, interagir, usar, arremessar, soltarNoChao, podeUsar, passo,
     mesa, andando, nomeItem,
   };
 });
