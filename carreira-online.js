@@ -22,7 +22,7 @@ const Moderacao = require("./carreira-moderacao.js");
 const MAX_PESSOAS = 8;
 const APORTES = [0, 250e6, 500e6, 1e9];
 const CAIXAS_IGUAIS = [0, 100e6, 300e6]; // 0: cada clube com o seu orçamento
-const OPCOES_PADRAO = { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal", caixaIgual: 0 };
+const OPCOES_PADRAO = { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal", caixaIgual: 0, limitarContratacoesPorOverall: true };
 const HORAS_PARADA = 48; // a sala (e a carreira) só expira depois de 48 horas sem ninguém mexer
 // os tempos (os testes aceleram pelo ambiente): o relógio do jogo (minutos de jogo por segundo), a decisão, o lance do
 // leilão (cada lance reinicia), a primeira janela do leilão, o martelo do dono e a contagem antes da rodada
@@ -66,7 +66,7 @@ module.exports = function ligarCarreiraOnline(io) {
       if (Date.now() - atualizadaEm > HORAS_PARADA * 3600e3) { bd.apagarSalaCarreira(codigo); continue; }
       if (dados.save && dados.save.v !== Carreira.VERSAO) { bd.apagarSalaCarreira(codigo); continue; } // mundo da base antiga (EA FC 26)
       const players = Object.fromEntries(Object.entries(dados.players || {}).map(([id, p]) => [id, { ...p, sockets: new Set(), saiuEm: Date.now() }]));
-      rooms.set(codigo, { ...dados, code: codigo, players, t: atualizadaEm });
+      rooms.set(codigo, { ...dados, code: codigo, opcoes: { ...OPCOES_PADRAO, ...dados.opcoes }, players, t: atualizadaEm });
       if (dados.fase === "carreira") try { Carreira.estanteDaSala(dados.save); } catch (e) { console.warn("carreira-online: estante da sala", codigo, e.message); }
     }
   } catch (e) { console.warn("carreira-online: o banco não abriu; as salas ficam só na memória.", e.message); }
@@ -297,7 +297,7 @@ module.exports = function ligarCarreiraOnline(io) {
       const name = limparNome(d.name);
       if (!name) return falha(cb, "Coloque o seu nome.");
       const code = novoCodigo(rooms);
-      const room = { code, host: null, fase: "espera", opcoes: { ...OPCOES_PADRAO }, players: {}, order: [], save: null, t: Date.now() };
+      const room = { code, host: null, fase: "espera", opcoes: { ...OPCOES_PADRAO, limitarContratacoesPorOverall: d.limitarContratacoesPorOverall !== false }, players: {}, order: [], save: null, t: Date.now() };
       rooms.set(code, room);
       const { id, token } = novaPessoa(room, name, d.skin);
       room.host = id;
@@ -367,7 +367,7 @@ module.exports = function ligarCarreiraOnline(io) {
         if (sem.length) return falha(cb, `Falta escolher o clube: ${sem.join(", ")}.`);
         try {
           room.save = Carreira.novaCarreiraGrupo(room.order.map((id) => ({ clube: room.players[id].clube, nome: room.players[id].name, skin: room.players[id].skin })),
-            { temporadas: room.opcoes.temporadas, aporte: room.opcoes.aporte, caixaIgual: room.opcoes.caixaIgual || 0 });
+            { temporadas: room.opcoes.temporadas, aporte: room.opcoes.aporte, caixaIgual: room.opcoes.caixaIgual || 0, limitarContratacoesPorOverall: room.opcoes.limitarContratacoesPorOverall });
         } catch (e) { console.warn("carreira-online: não começou", e); return falha(cb, "Não deu para montar a carreira. Tente de novo."); }
         room.fase = "carreira"; room.nRodada = 0; room.prontos = {};
       } else if (d.type === "dispensar") {

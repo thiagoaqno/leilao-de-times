@@ -5,6 +5,8 @@
   let room = null, me = null, frame = null, frameAt = 0, touch = { x: 0, y: 0 }, kickQueued = false;
   const held = new Set(), params = new URLSearchParams(location.search);
   const canvas = $("field"), ctx = canvas.getContext("2d");
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  let lastFxSeq = 0, liveFx = [];
   $("name").value = localStorage.getItem("haxball:nome") || "";
   $("code").value = (params.get("sala") || "").toUpperCase().slice(0, 5);
   const say = (id, message) => { $(id).textContent = message || ""; };
@@ -43,8 +45,21 @@
   });
   socket.on("disconnect", () => { say("connection", "● Reconectando…"); held.clear(); touch = { x: 0, y: 0 }; });
   socket.on("removed", () => { sessionStorage.removeItem(sessionKey); me = null; say("roomError", "Você foi removido da sala."); });
-  socket.on("frame", (data) => { frame = data; frameAt = performance.now(); updateScore(); });
-  socket.on("state", (data) => { room = data; frame = data.match; frameAt = performance.now(); renderRoom(); });
+  function receiveFrame(data) {
+    const now = performance.now();
+    if (!data) { frame = null; liveFx = []; lastFxSeq = 0; return; }
+    if (data.fxSeq < lastFxSeq) { lastFxSeq = 0; liveFx = []; }
+    for (const e of data.fx || []) if (e.seq > lastFxSeq) liveFx.push({ ...e, at: now });
+    lastFxSeq = data.fxSeq || 0;
+    if (liveFx.length > 28) liveFx = liveFx.slice(-28);
+    frame = data; frameAt = now;
+  }
+  socket.on("frame", (data) => { receiveFrame(data); updateScore(); });
+  socket.on("state", (data) => {
+    room = data;
+    if (!frame && data.match) lastFxSeq = data.match.fxSeq || 0; // quem entra no meio não vê efeitos antigos
+    receiveFrame(data.match); renderRoom();
+  });
   function renderPlayers(target, players, host) {
     target.replaceChildren();
     if (!players.length) { const p = document.createElement("p"); p.textContent = "Aguardando jogador…"; p.style.color = "#749d93"; target.append(p); }
@@ -114,11 +129,42 @@
   const release = () => { touch = { x: 0, y: 0 }; nub.style.transform = ""; };
   stick.onpointerup = release; stick.onpointercancel = release;
   $("kick").onpointerdown = (e) => { e.preventDefault(); kickQueued = true; };
+  function drawEffects(now) {
+    liveFx = liveFx.filter((e) => now - e.at < (e.kind === "goal" ? 680 : 300));
+    for (const e of liveFx) {
+      const duration = e.kind === "goal" ? 680 : e.kind === "kick" ? 300 : 230;
+      const t = Math.min(1, (now - e.at) / duration), fade = 1 - t;
+      const color = e.team === 0 ? "#a9deff" : e.team === 1 ? "#ffc0c4" : "#f7ffe8";
+      ctx.save();
+      if (e.kind === "goal") {
+        ctx.fillStyle = e.team === 0 ? `rgba(77,168,250,${(fade * 0.33).toFixed(3)})` : `rgba(251,94,105,${(fade * 0.33).toFixed(3)})`;
+        ctx.fillRect(e.x < H.W / 2 ? 12 : H.RIGHT, H.GOAL_TOP, H.LEFT - 12, H.GOAL_BOTTOM - H.GOAL_TOP);
+      }
+      if (!reducedMotion.matches) {
+        const max = e.kind === "goal" ? 88 : e.kind === "kick" ? 42 : 24;
+        ctx.globalAlpha = fade * (e.kind === "touch" ? 0.55 : 0.9);
+        ctx.strokeStyle = color; ctx.lineWidth = e.kind === "goal" ? 5 : 3;
+        ctx.beginPath(); ctx.arc(e.x, e.y, 12 + max * (1 - (1 - t) * (1 - t)), 0, Math.PI * 2); ctx.stroke();
+        if (e.kind === "kick" || e.kind === "goal") {
+          const count = e.kind === "goal" ? 12 : 7;
+          for (let i = 0; i < count; i++) {
+            const angle = i * Math.PI * 2 / count + e.seq * 0.7, inner = 17 + t * max * 0.45, outer = inner + (e.kind === "goal" ? 18 : 11) * fade;
+            ctx.beginPath(); ctx.moveTo(e.x + Math.cos(angle) * inner, e.y + Math.sin(angle) * inner);
+            ctx.lineTo(e.x + Math.cos(angle) * outer, e.y + Math.sin(angle) * outer); ctx.stroke();
+          }
+        }
+      } else {
+        ctx.globalAlpha = fade * 0.55; ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.kind === "goal" ? 24 : 15, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
   // Campo inteiro é desenhado no canvas. As posições chegam do servidor 20 vezes por segundo.
   function draw() {
     requestAnimationFrame(draw);
     if (!frame || $("game").hidden) return;
-    const extrapolate = Math.min(0.045, (performance.now() - frameAt) / 1000);
+    const now = performance.now(), extrapolate = Math.min(0.045, (now - frameAt) / 1000);
     ctx.fillStyle = "#246c46"; ctx.fillRect(0, 0, H.W, H.H);
     for (let i = 0; i < 12; i++) { ctx.fillStyle = i % 2 ? "#ffffff08" : "#00000006"; ctx.fillRect(H.LEFT + i * (H.RIGHT - H.LEFT) / 12, H.TOP, (H.RIGHT - H.LEFT) / 12, H.BOTTOM - H.TOP); }
     ctx.strokeStyle = "#e8ffecaa"; ctx.lineWidth = 3;
@@ -137,7 +183,17 @@
       ctx.fillStyle = "#fff"; ctx.font = "bold 13px system-ui"; ctx.textAlign = "center"; ctx.fillText(p.name, x, y - 27);
     }
     const b = frame.ball, bx = b.x + b.vx * extrapolate, by = b.y + b.vy * extrapolate;
+    const ballSpeed = Math.hypot(b.vx, b.vy);
+    if (!reducedMotion.matches && ballSpeed > 260 && frame.phase === "play") {
+      ctx.save(); ctx.fillStyle = "#e7fff2";
+      for (let i = 4; i >= 1; i--) {
+        ctx.globalAlpha = (1 - i / 5) * Math.min(0.35, ballSpeed / 1500);
+        ctx.beginPath(); ctx.arc(bx - b.vx * i * 0.014, by - b.vy * i * 0.014, H.BR * (1 - i * 0.13), 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
     ctx.beginPath(); ctx.arc(bx, by, H.BR, 0, Math.PI * 2); ctx.fillStyle = "#fffefa"; ctx.fill(); ctx.strokeStyle = "#25363b"; ctx.lineWidth = 3; ctx.stroke();
+    drawEffects(now);
     const msg = frame.phase === "ready" ? frame.lastEvent : frame.phase === "over" ? frame.lastEvent : "";
     $("banner").textContent = msg; $("banner").classList.toggle("visible", !!msg);
   }

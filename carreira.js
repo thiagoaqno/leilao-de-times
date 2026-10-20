@@ -328,8 +328,9 @@ function guardarVista(save, v) {
 }
 // o mundo da sala: cada humano assume o seu clube; o aporte do investidor entra no caixa de cada um. Os clubes humanos
 // saem da lista dos clubes do computador (caixaIA).
-function novaCarreiraGrupo(humanos, { temporadas, aporte = 0, caixaIgual = 0 } = {}) {
+function novaCarreiraGrupo(humanos, { temporadas, aporte = 0, caixaIgual = 0, limitarContratacoesPorOverall = true } = {}) {
   const save = mundoNovo(temporadas, caixaIgual);
+  save.limitarContratacoesPorOverall = limitarContratacoesPorOverall !== false;
   save.humanos = {};
   for (const hm of humanos) {
     const v = { ...save };
@@ -595,6 +596,7 @@ const quadroDaRegra = (v, tipo, conta) => {
 };
 function erroDeRegra(v, nota) {
   const jan = janelaDeCompras(v); if (!jan) return "A janela de transferências está fechada.";
+  if (v.limitarContratacoesPorOverall === false) return null;
   const conta = contaDaJanela(v, jan);
   if (dividir([...conta.usadas, nota], conta.permitidos, conta.premios)) return null;
   return `${quadroDaRegra(v, jan.tipo, conta)}${conta.usadas.length ? ` Você já levou ${conta.usadas.length === 1 ? "um de" : "jogadores de"} ${conta.usadas.join(", ")}.` : ""} Um jogador de ${nota} não entra nessa conta.`;
@@ -613,6 +615,7 @@ function registrarCompraDaJanela(v, nota) {
 function regraDeCompras(v) {
   const jan = janelaDeCompras(v);
   if (!jan) return { tipo: null, titulo: "", texto: "", usadas: [], ainda: [], proibida: "", premios: [], ok: Array(100).fill(false) };
+  if (v.limitarContratacoesPorOverall === false) return { tipo: jan.tipo, titulo: "Contratações livres por over", texto: "Esta sala não limita contratações pela nota do jogador. A janela de transferências, o orçamento e o tamanho do elenco continuam valendo.", usadas: comprasDaOrdem(v, jan.ordem), ainda: ["Sem limite por over"], proibida: "", premios: [], ok: Array(100).fill(true) };
   const conta = contaDaJanela(v, jan), { usadas, premios } = conta;
   // quantos ainda cabem em cada opção permitida (contando com os prêmios)
   const ainda = conta.permitidos.map((p) => {

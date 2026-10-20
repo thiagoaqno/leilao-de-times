@@ -22,14 +22,14 @@ test("carreira em grupo: criar, entrar, opções do anfitrião e escolher clube 
   const entra = await pedir(b, "join", { code: sala.code, name: "Kizzy" });
   let st = await esperarEstado(a, (s) => s.players.length === 2);
   assert.strictEqual(st.host, sala.id);
-  assert.deepStrictEqual(st.opcoes, { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal", caixaIgual: 0 });
+  assert.deepStrictEqual(st.opcoes, { temporadas: 2, aporte: 1e9, ligas: "mundo", ritmo: "normal", caixaIgual: 0, limitarContratacoesPorOverall: true });
   assert.ok(st.clubes.includes("liverpool") && st.clubes.includes("flamengo"));
   // só o anfitrião mexe nas regras, e fora do permitido não vale
   await assert.rejects(agir(b, { type: "opcoes", temporadas: 4 }), /anfitrião/);
   await agir(a, { type: "opcoes", temporadas: 9, aporte: 123, caixaIgual: 42 });
   await agir(a, { type: "opcoes", temporadas: 3, aporte: 500e6, ligas: "brasil" });
   st = await esperarEstado(a, (s) => s.opcoes.temporadas === 3);
-  assert.deepStrictEqual(st.opcoes, { temporadas: 3, aporte: 500e6, ligas: "brasil", ritmo: "normal", caixaIgual: 0 });
+  assert.deepStrictEqual(st.opcoes, { temporadas: 3, aporte: 500e6, ligas: "brasil", ritmo: "normal", caixaIgual: 0, limitarContratacoesPorOverall: true });
   assert.ok(!st.clubes.includes("liverpool"), "só o Brasileirão");
   // cada um no seu clube: dois humanos nunca no mesmo
   await assert.rejects(agir(a, { type: "clube", clube: "liverpool" }), /ligas/);
@@ -41,6 +41,22 @@ test("carreira em grupo: criar, entrar, opções do anfitrião e escolher clube 
   st = await esperarEstado(b, (s) => s.ocupados.palmeiras === entra.id);
   assert.strictEqual(st.ocupados.flamengo, sala.id);
   a.close(); b.close();
+});
+
+test("carreira em grupo: limite de over só é escolhido ao criar a sala", async () => {
+  const a = await canal();
+  const criada = await pedir(a, "create", { name: "Livre", limitarContratacoesPorOverall: false });
+  let st = await esperarEstado(a, (s) => s.code === criada.code);
+  assert.strictEqual(st.opcoes.limitarContratacoesPorOverall, false);
+  await agir(a, { type: "opcoes", limitarContratacoesPorOverall: true });
+  st = await esperarEstado(a, (s) => s.code === criada.code);
+  assert.strictEqual(st.opcoes.limitarContratacoesPorOverall, false);
+  await agir(a, { type: "clube", clube: "flamengo" });
+  await agir(a, { type: "comecar" });
+  const estado = (await pedir(a, "entrar")).estado;
+  assert.strictEqual(estado.regraCompras.ok[95], true);
+  assert.match(estado.regraCompras.texto, /não limita contratações/);
+  a.close();
 });
 
 test("carreira em grupo: começa um mundo só, com o aporte no caixa de cada um, e a sala volta pelo token", async () => {
