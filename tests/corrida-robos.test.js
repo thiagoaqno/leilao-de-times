@@ -26,12 +26,12 @@ function correr(pista, nivel = "medio", caixas = false, robos = 3) {
     let k = 0; Robos.preparar(room, ["#a", "#b", "#c", "#d"], () => "x" + k++);
     room.order.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null }));
     Itens.start(room); Robos.largar(room);
-    const eventos = [], lats = [], setor = (p, s) => { if (s !== (p.sector + 1) % T.SECTORS) p.foraDeOrdem = true; p.sector = s; if (s === 0) { if (!p.started) { p.started = true; p.ini = relogio; } else { p.laps++; p.volta = (relogio - p.ini) / 1000; } } };
+    const eventos = [], lats = [], vs = [], setor = (p, s) => { if (s !== (p.sector + 1) % T.SECTORS) p.foraDeOrdem = true; p.sector = s; if (s === 0) { if (!p.started) { p.started = true; p.ini = relogio; } else { p.laps++; p.volta = (relogio - p.ini) / 1000; } } };
     for (let t = 0; t < 240 && room.order.some((id) => !room.players[id].laps); t += 0.05) {
       relogio += 50; Robos.passo(room, 0.05, setor, (e) => eventos.push(e)); Itens.tick(room, (e) => eventos.push(e));
-      lats.push(room.players[room.order[0]].ia.lat);
+      lats.push(room.players[room.order[0]].ia.lat); vs.push(room.players[room.order[0]].ia.v);
     }
-    return { room, eventos, lats };
+    return { room, eventos, lats, vs };
   } finally { Date.now = agora; }
 }
 test("robôs seguem o traçado de corrida: usam a pista toda, sem sair dela, e fecham a volta", () => {
@@ -72,6 +72,17 @@ test("robôs aprendem a volta gravada: passam pelo lado e na velocidade de quem 
   const jeito = room.players[room.order[0]].ia.jeito; // cada robô passa um pouco para um lado da linha (de propósito)
   assert.ok(Math.abs(media - 25 - jeito) < 8, `linha média ${media.toFixed(1)} (jeito ${jeito.toFixed(1)})`);
   assert.ok(room.order.every((id) => room.players[id].laps === 1));
+});
+test("robôs não têm vantagem: copiando uma volta feita no vácuo, não passam da velocidade final nem arrancam mais forte", () => {
+  const pista = "interlagos", pts = T.pontos(T.PISTAS[pista], 6), n = pts.length, s = [];
+  // a volta gravada a ~1,4x a velocidade final do carro (como se quem gravou ficasse no vácuo e no estilingue o tempo todo)
+  let ms = 0; for (let i = 0; i < n; i += 7) { s.push([ms, pts[i].x, pts[i].y, pts[i].h, 0, i]); ms += 100; }
+  assert.equal(Robos.aprender(pista, { s, carro: "equilibrado", tempo: ms / 1000, piloto: "Vacuo" }), true);
+  const { room, vs } = correr(pista, "dificil", false, 1), p = room.players[room.order[0]], c = T.CARROS[p.car];
+  assert.ok(Math.max(...vs) <= c.vmax + 1e-6, `${p.car}: chegou a ${Math.max(...vs).toFixed(0)} (final ${c.vmax})`);
+  // a arrancada: em cada instante, no máximo o que o carro de quem joga faz acelerando o tempo todo (fisica.js)
+  let v = 0; for (let k = 0; k < 60; k++) { v += c.acc * (1 - 0.8 * Math.pow(v / c.vmax, 1.6)) * 0.05; assert.ok(vs[k] <= v + 1e-6, `${p.car} em ${((k + 1) * 0.05).toFixed(2)} s: ${vs[k].toFixed(0)} contra ${v.toFixed(0)}`); }
+  Robos.usarFonte(() => null); // as outras provas não usam essa volta
 });
 test("todas as pistas: robôs largam no reto, passam pelos 12 checkpoints em ordem e fecham a volta sem sair da pista", () => {
   for (const [id, t] of Object.entries(T.PISTAS)) {
