@@ -18,7 +18,11 @@
     });
     return { discs, ball: { x: W / 2, y: H / 2, vx: 0, vy: 0 }, score: [0, 0],
       phase: "ready", resumeAt: now + 2200, remaining: config.minutes * 60, limit: config.goals,
-      lastEvent: "A partida vai começar!", winner: null };
+      lastEvent: "A partida vai começar!", winner: null, fxSeq: 0, fx: [] };
+  }
+  function effect(m, kind, x, y, team = null, id = null) {
+    m.fx.push({ seq: ++m.fxSeq, kind, x, y, team, id });
+    if (m.fx.length > 12) m.fx.shift();
   }
   function reset(m, now) {
     m.ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
@@ -56,6 +60,16 @@
       if (d >= PR * 2) continue;
       if (d < 0.01) { dx = 1; dy = 0; d = 1; }
       const push = (PR * 2 - d) / 2, nx = dx / d, ny = dy / d;
+      const closing = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
+      if (closing > 45) {
+        const impulse = closing * 0.22;
+        a.vx -= nx * impulse; a.vy -= ny * impulse;
+        b.vx += nx * impulse; b.vy += ny * impulse;
+        if (closing > 100 && now - (a.lastBump?.[b.id] || 0) > 180) {
+          (a.lastBump ||= {})[b.id] = now;
+          effect(m, "bump", (a.x + b.x) / 2, (a.y + b.y) / 2);
+        }
+      }
       a.x = clamp(a.x - nx * push, LEFT + PR, RIGHT - PR);
       a.y = clamp(a.y - ny * push, TOP + PR, BOTTOM - PR);
       b.x = clamp(b.x + nx * push, LEFT + PR, RIGHT - PR);
@@ -69,13 +83,17 @@
       if (d < PR + BR) {
         ball.x = p.x + nx * (PR + BR); ball.y = p.y + ny * (PR + BR);
         const closing = (p.vx - ball.vx) * nx + (p.vy - ball.vy) * ny;
-        if (closing > 0) { ball.vx += nx * closing * 1.12; ball.vy += ny * closing * 1.12; }
+        if (closing > 0) {
+          ball.vx += nx * closing * 1.12; ball.vy += ny * closing * 1.12;
+          if (closing > 85 && now - (p.lastTouch || 0) > 160) { p.lastTouch = now; effect(m, "touch", ball.x, ball.y, p.team, p.id); }
+        }
       }
       if (p.kick && now - p.lastKick >= 230) {
         p.lastKick = now;
         if (d < PR + BR + 29) {
           ball.vx = nx * 615 + p.vx * 0.25;
           ball.vy = ny * 615 + p.vy * 0.25;
+          effect(m, "kick", ball.x, ball.y, p.team, p.id);
         }
       }
       p.kick = false;
@@ -83,24 +101,25 @@
     ball.x += ball.vx * dt; ball.y += ball.vy * dt;
     const friction = Math.exp(-1.15 * dt);
     ball.vx *= friction; ball.vy *= friction;
-    if (ball.y < TOP + BR) { ball.y = TOP + BR; ball.vy = Math.abs(ball.vy) * 0.84; }
-    if (ball.y > BOTTOM - BR) { ball.y = BOTTOM - BR; ball.vy = -Math.abs(ball.vy) * 0.84; }
+    if (ball.y < TOP + BR) { ball.y = TOP + BR; if (ball.vy < -150) effect(m, "wall", ball.x, ball.y); ball.vy = Math.abs(ball.vy) * 0.84; }
+    if (ball.y > BOTTOM - BR) { ball.y = BOTTOM - BR; if (ball.vy > 150) effect(m, "wall", ball.x, ball.y); ball.vy = -Math.abs(ball.vy) * 0.84; }
     const inGoal = ball.y > GOAL_TOP + BR && ball.y < GOAL_BOTTOM - BR;
     if (inGoal && (ball.x < LEFT - BR || ball.x > RIGHT + BR)) {
       const team = ball.x < LEFT ? 1 : 0;
+      effect(m, "goal", ball.x, ball.y, team);
       m.score[team]++;
       m.lastEvent = `Gol do time ${team === 0 ? "azul" : "vermelho"}!`;
       if (m.score[team] >= m.limit) { m.phase = "over"; m.winner = team; return "over"; }
       reset(m, now); return "goal";
     }
-    if (ball.x < LEFT + BR && !inGoal) { ball.x = LEFT + BR; ball.vx = Math.abs(ball.vx) * 0.84; }
-    if (ball.x > RIGHT - BR && !inGoal) { ball.x = RIGHT - BR; ball.vx = -Math.abs(ball.vx) * 0.84; }
+    if (ball.x < LEFT + BR && !inGoal) { ball.x = LEFT + BR; if (ball.vx < -150) effect(m, "wall", ball.x, ball.y); ball.vx = Math.abs(ball.vx) * 0.84; }
+    if (ball.x > RIGHT - BR && !inGoal) { ball.x = RIGHT - BR; if (ball.vx > 150) effect(m, "wall", ball.x, ball.y); ball.vx = -Math.abs(ball.vx) * 0.84; }
     return null;
   }
   function snapshot(m) {
     return { discs: m.discs.map(({ id, name, team, x, y, vx, vy }) => ({ id, name, team, x, y, vx, vy })),
       ball: { ...m.ball }, score: [...m.score], phase: m.phase, remaining: m.remaining,
-      resumeAt: m.resumeAt, lastEvent: m.lastEvent, winner: m.winner };
+      resumeAt: m.resumeAt, lastEvent: m.lastEvent, winner: m.winner, fxSeq: m.fxSeq, fx: m.fx.map((e) => ({ ...e })) };
   }
   return { W, H, LEFT, RIGHT, TOP, BOTTOM, GOAL_TOP, GOAL_BOTTOM, PR, BR, nova, step, snapshot };
 });

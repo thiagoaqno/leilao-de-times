@@ -141,6 +141,8 @@ body:is([data-tela=elenco],[data-tela=mercado],[data-tela=tabela],[data-tela=cal
 
 /* ---------- a sala em grupo ---------- */
 #grupo .duas{align-items:start}#grupo label{margin:12px 0 6px}#grupo #btnCreate{margin-top:14px}
+#grupo .opcao-criacao{display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer}
+#grupo .opcao-criacao input{flex:none;margin:0}
 .sala-topo{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
 .codigo-sala{display:block;font:600 44px/1 var(--mono);letter-spacing:.14em;color:var(--t1)}
 .sala-topo #gStatus{flex:1 1 220px;text-align:right}

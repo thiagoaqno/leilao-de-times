@@ -30,7 +30,7 @@ async function entrarNaSala(dados) {
 $("btnCreate").onclick = () => {
   const name = $("hName").value.trim(); if (!name) { $("gErro").textContent = "Coloque o seu nome."; return; }
   store.set("galera:name", name);
-  entrarNaSala({ name, skin: store.get("galera:skin") });
+  entrarNaSala({ name, skin: store.get("galera:skin"), limitarContratacoesPorOverall: $("hLimiteOver").checked });
 };
 $("btnJoin").onclick = () => {
   const name = $("hName").value.trim(), code = $("hCode").value.trim().toUpperCase();
@@ -74,7 +74,7 @@ function entradaNoMeio(st, eu) {
   const forca = (id) => { const n = elencoDe(id).map(notaDe).sort((a, b) => b - a).slice(0, 11); return n.length ? Math.round(n.reduce((s, x) => s + x, 0) / n.length) : 0; };
   const livres = st.clubes.filter((id) => !st.ocupados[id] && CLUBES[id]).map((id) => CLUBES[id]);
   const ordemLiga = (c) => ["brasileirao-2026", "serieb-2026", ...Temporada.EUROPA].indexOf(c.liga);
-  const regraEntrada = `Quem entra no meio ganha uma janela de entrada: ${st.temporada >= 3 ? "1 jogador de qualquer nota (inclusive 90+), ou 2 de até 87, ou 3 de até 84" : "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85"} (com a janela aberta, vale a da janela).`;
+  const regraEntrada = st.opcoes.limitarContratacoesPorOverall === false ? "Contratações sem limite por over; a janela de transferências continua valendo." : `Quem entra no meio ganha uma janela de entrada: ${st.temporada >= 3 ? "1 jogador de qualquer nota (inclusive 90+), ou 2 de até 87, ou 3 de até 84" : "3 jogadores de até 80, ou 2 de até 82, ou 1 de até 85"} (com a janela aberta, vale a da janela).`;
   $("gStatus").textContent = !eu ? "Você está só assistindo. Para assumir um clube, entre na sala pelo código, com um nome."
     : st.rodada ? `A rodada está rolando: escolha o clube e entre quando ela acabar. ${regraEntrada}`
     : `A carreira já começou. Escolha um clube livre para assumir agora. ${regraEntrada}`;
@@ -100,7 +100,8 @@ function desenharSala() {
     <span><b>${h(p.name)}</b><small>${p.clube ? h(nomeClube(p.clube)) : "escolhendo..."}</small></span>${p.host ? `<i class="tag">Anfitrião</i>` : ""}${p.auto ? `<i class="tag">automático</i>` : p.online ? "" : `<i class="tag">fora</i>`}${anfitriao && !p.host ? botoesDoAnfitriao(p) : ""}</li>`).join("");
   $("gOpcoes").innerHTML = OPCOES_SALA.map(([k, nome, lista]) => `<div class="controle"><span class="rotulo">${nome}</span><div class="segmentos">${lista.map(([v, t]) =>
     `<button data-opcao-sala="${k}" data-valor="${v}" aria-pressed="${st.opcoes[k] === v}" ${anfitriao ? "" : "disabled"}>${t}</button>`).join("")}</div></div>`).join("")
-    + (anfitriao ? "" : `<p class="suave">Só o anfitrião muda as regras.</p>`);
+    + `<p class="suave">Contratações por over: ${st.opcoes.limitarContratacoesPorOverall === false ? "sem limite" : "limitadas"}. Definido na criação da sala.</p>`
+    + (anfitriao ? "" : `<p class="suave">Só o anfitrião muda as demais regras.</p>`);
   $("gMeuClube").textContent = eu && eu.clube ? `Você: ${nomeClube(eu.clube)}` : "";
   document.body.style.cssText = eu && eu.clube ? `${coresClube(eu.clube)};${temaClube(eu.clube)}` : ""; // a sala já ganha a cor do clube escolhido
   marcaClube(eu && eu.clube);

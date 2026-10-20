@@ -14,11 +14,24 @@ test("haxball: movimento, chute, gol e fim da partida são calculados no servido
   a.x = 450; a.y = 270; m.ball.x = 478; m.ball.y = 270; m.ball.vx = 0; m.ball.vy = 0;
   a.kick = true; H.step(m, 1 / 60, 4000);
   assert.ok(m.ball.vx > 500);
+  assert.equal(H.snapshot(m).fx.at(-1).kind, "kick");
   m.ball.x = H.RIGHT + H.BR + 1; m.ball.y = 270;
   assert.equal(H.step(m, 1 / 60, 4100), "goal");
   assert.deepEqual(m.score, [1, 0]);
+  assert.equal(H.snapshot(m).fx.at(-1).kind, "goal");
   m.remaining = 0.001; H.step(m, 1 / 60, 6500); H.step(m, 1 / 60, 6520);
   assert.equal(m.phase, "over"); assert.equal(m.winner, 0);
+});
+
+test("haxball: impacto entre discos gera reação física e visual", () => {
+  const m = H.nova([{ id: "a", name: "A", team: 0 }, { id: "b", name: "B", team: 1 }], { size: 1, minutes: 3, goals: 3 }, 0);
+  H.step(m, 1 / 60, 2300);
+  const [a, b] = m.discs;
+  a.x = 450; b.x = 480; a.y = b.y = 270;
+  a.vx = 220; b.vx = -220;
+  H.step(m, 1 / 60, 2400);
+  assert.ok(a.vx < 220 && b.vx > -220);
+  assert.ok(H.snapshot(m).fx.some((e) => e.kind === "bump"));
 });
 
 test("haxball: sala real suporta 1x1 e 5x5, limita times e protege início", async (t) => {
