@@ -1,4 +1,4 @@
-// A grama alta da Vila, em frente ao Ginásio: andando nela aparecem Pokémon selvagens, e a Pokébola é infinita.
+// A grama alta da Vila, no Parque Trianon: andando nela aparecem Pokémon selvagens, e a Pokébola é infinita.
 // UMD: o servidor (vila-mato.js) sorteia e decide; a página (public/index.html) desenha a grama e a cena do encontro.
 // - GRAMA: o retângulo da grama alta, em coordenadas da vila (somar OX e OY para o mapa grande);
 // - RARIDADES: o peso no sorteio do encontro, a chance de o Pokémon fugir depois de escapar da Pokébola e a cor do
@@ -9,7 +9,7 @@
   if (typeof module === "object" && module.exports) module.exports = factory(require("../galeramon/pokemon.js"), require("../galeramon/niveis.js"));
   else root.MatoAlto = factory(root.PokeDex, root.Niveis);
 })(typeof self !== "undefined" ? self : this, function (PokeDex, Niveis) {
-  const GRAMA = { x: 10, y: 46, w: 11, h: 4 };
+  const GRAMA = { x: 27, y: 11, w: 16, h: 4 };
   // todo treinador já começa com os três iniciais (a sala do Ginásio com "só capturados" aceita eles sempre)
   const INICIAIS = ["bulbasaur", "charmander", "squirtle"];
   const CHANCE_ENCONTRO = 0.16; // por passo na grama

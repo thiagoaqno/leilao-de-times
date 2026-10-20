@@ -384,7 +384,7 @@ Para achar algo dentro de um jogo:
   - `POSICOES` escalona os prédios em quarteirões; ao movê-los, ajusta as portas antes da conversão para coordenadas do mapa;
   - `BAIRROS` traz o nome de cada grupo e a posição da placa de orientação;
   - o chão é feito de tipos de casa: `c` pedra clara, `p` ladrilho de ligação, `o` praça circular,
-    `r` alameda de tijolos, `a` passeio principal, `b` ciclovia coral, `z` travessia, `g` gramado, `f` flores, `t` árvore,
+    `r` alameda de tijolos, `a` calçada da Paulista, `v` asfalto, `b` ciclovia, `z` faixa de pedestre, `g` gramado, `f` flores, `t` árvore,
     `m` capacho da porta e `h` grama alta (Pokémon selvagens, `vila-mato.js`);
   - `TREES`, `LAMPS`, `BENCHES` e `FOUNTAIN` são a decoração;
   - `TERRENOS` são os lotes vazios para os jogos novos (chão `l`, obra, sólido; `drawTerreno` desenha o tapume e
@@ -393,18 +393,23 @@ Para achar algo dentro de um jogo:
   - `TELAO` é o painel da estante da galera sob uma cobertura de lona colorida na praça (`drawTelao`, `TELAO_LUGAR`, `/api/estante`).
 - `drawBuilding` desenha os prédios, e cada jogo tem o seu `if (g.<sinal>)` para o telhado.
 - **Grama alta e Pokédex:** o encontro (`#cap`, `abrirEncontro`, `mostrarTimeDoEncontro`) é uma tela de "versus" em `public/vila/versus.css` (o seu time à esquerda, o selvagem no holofote à direita com a ficha, as ações embaixo; `--t` o tipo, `--r` a raridade); a Pokédex (`#pokedex`, `abrirPokedex`/`desenharPokedex`, com busca e filtros) em `public/vila/pokedex.css`.
-- **Tamanho do mapa:** `MW` x `MH` (64x64). O bairro (58x58, `VW` x `VH`) começa em `OX`, `OY` (3, 3). As coordenadas
-  de `GAMES`, `LAMPS`, `TERRENOS` e dos treinadores são locais e deslocadas ao carregar. Os jogos de mesa ficam ao
-  norte, com acessos entre as linhas 7-17; a praça circular e os quiosques ocupam as linhas 18-25; o passeio
-  atravessa as linhas 26-30 (ciclovia na linha 28 e travessias), ligado a um eixo norte-sul nas colunas 27-30;
-  os esportes e a velocidade ficam nas linhas 31-46, e os quatro líderes ficam ao sul (linha 48).
-  O Haxball ocupa o antigo lote do tênis de mesa em `(3,39)`, com 7x4 casas. `vila.js` repete `MW`, `MH`, `OX`, `OY`
+- **Tamanho do mapa:** `MW` x `MH` (96x60). A vila (90x54, `VW` x `VH`) começa em `OX`, `OY` (3, 3). As coordenadas
+  de `GAMES`, `LAMPS`, `TERRENOS` e do resto são locais e deslocadas ao carregar. `vila.js` repete `MW`, `MH`, `OX`, `OY`
   e os IDs de jogos: precisam bater.
-- **Desenho:** `pedaco(cx, cy)` desenha o mapa em blocos de 32x32 casas. A Paulista Aberta é um parque de jogos:
-  alamedas de tijolos, passeios de pedra clara, ciclovia coral, gramados e uma praça circular com fonte.
-  Os prédios têm fachadas em tons quentes e os telhados temáticos continuam identificando cada jogo.
-  O jogador começa diante da fonte; o minimapa mostra as 64x64 casas quando acionado. No celular, a câmera
-  deixa mais espaço acima do personagem para mostrar o painel e a praça. Não há carros nem estádios externos.
+- **A Avenida Paulista (tudo em `POSICOES`, linhas locais):** os jogos de mesa na primeira fileira (linha 3), a alameda
+  (8-9), a segunda fileira com o Conjunto Nacional (a Sede da Carreira, com o letreiro `drawLetreiro`), o Ginásio e o
+  Parque Trianon (a grama alta, `GRAMA` em `vila/mato.js`); o calçadão (15-17) e a avenida (18-27: calçada `a`,
+  asfalto `v`, ciclovia vermelha `b` no canteiro, faixas `z` nas ruas cruzadas `RUAS_X`, com `SEMAFOROS`); depois os
+  esportes, com o Leilão no **MASP** (`masp: true`, `drawMasp`: as vigas vermelhas e o vão livre), a praça com a fonte, o
+  `TELAO`, os `FOODTRUCKS`, a antena da Gazeta (`ANTENA`) e o painel de LED (`PAINEL`); ao sul, a fileira dos ginásios:
+  os 4 líderes e os **6 treinadores, cada um no seu prédio** (`lider`, e `treinador` nos treinadores; ninguém fica na rua).
+- **A vida da avenida (`passoVida(dt)`, `drawVida`, `drawVidaChao`):** pedestres (`PEDESTRES`), ciclistas na ciclovia,
+  artistas de rua (música, bolhas, balões), os líderes e treinadores na porta (`DONOS`), pombos que voam quando alguém
+  chega, sombras de nuvem, o texto correndo no painel, a luz da antena piscando, o vapor dos food trucks e o ciclo do
+  semáforo. As pessoas entram na mesma ordem de profundidade dos jogadores. Coisa parada (chão, prédios, marcos) vai em
+  `pedaco`; o que mexe vai em `drawVida`.
+- **Desenho:** `pedaco(cx, cy)` desenha o mapa em blocos de 32x32 casas. O jogador começa no calçadão, diante do MASP;
+  o minimapa mostra o mapa todo quando acionado.
 - **Quem aparece para quem:** o servidor usa somente a zona da rua (`z: ""`) e limita posições ao mapa compacto.
 
 ## Testes

@@ -7,7 +7,7 @@ const fotos = process.env.GINASIO_FOTOS;
 async function abrirVila(page, nome, time) {
   await page.addInitScript(({ nome, time }) => {
     localStorage.setItem("galera:name", JSON.stringify(nome));
-    if (!localStorage.getItem("vila_spawn")) localStorage.setItem("vila_spawn", JSON.stringify("tenis"));
+    if (!localStorage.getItem("vila_spawn")) localStorage.setItem("vila_spawn", JSON.stringify("carreira")); // a Sede fica ao lado do Ginásio
     if (time) localStorage.setItem("pokemon_time", JSON.stringify(time));
   }, { nome, time });
   await page.goto("/#debug");
@@ -17,7 +17,7 @@ async function ponto(page, alvo) {
   return page.evaluate((alvo) => {
     const v = window.__vila, c = v.camera;
     const p = alvo === "ginasio" ? v.GAMES.find((g) => g.id === alvo) : [...v.others.values()].find((o) => o.name === alvo);
-    const x = alvo === "ginasio" ? p.x + p.w / 2 : p.fx + .5;
+    const x = alvo === "ginasio" ? p.x + 1 : p.fx + .5; // a beirada esquerda do prédio: no celular o meio fica fora da tela
     const y = alvo === "ginasio" ? p.y + .6 : p.fy + .5;
     return { x: (x * c.tile - c.x) * c.scale, y: (y * c.tile - c.y) * c.scale };
   }, alvo);
@@ -70,7 +70,7 @@ for (const celular of [false, true]) {
         await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
         await page.waitForFunction(() => !window.__vila.here && !window.__vila.player.moving);
       }
-      else { // sai da porta do Tênis (o diálogo dela cobre parte da tela na Vila 3D)
+      else { // sai da porta da Sede (o diálogo dela cobre parte da tela)
         const y0 = await page.evaluate(() => window.__vila.player.y);
         await page.keyboard.down("ArrowDown"); await page.waitForFunction((y) => window.__vila.player.y > y || window.__vila.player.moving, y0); await page.keyboard.up("ArrowDown"); // o navegador de teste é lento: espera o primeiro passo
         await page.waitForFunction(() => !window.__vila.here && !window.__vila.player.moving);

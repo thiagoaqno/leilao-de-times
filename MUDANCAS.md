@@ -1,24 +1,23 @@
-# Corrida: de volta ao kart, checkpoints, som de novo, e Nürburgring e Laguna Seca
+# A Vila vira a Avenida Paulista
 
 O PR #257 foi mesclado antes do segundo commit dele entrar. Este PR traz esse commit e as duas pistas novas.
 
-## O que muda
+### Um mapa novo, com cara de Paulista
+- O mapa cresceu para 96x60 e foi todo reposicionado ao longo da avenida: os jogos de mesa na primeira fileira, a
+  alameda, a segunda fileira (Conjunto Nacional com o letreiro, Ginásio, Parque Trianon com a grama alta), o calçadão e a
+  avenida com calçadas, asfalto, a ciclovia vermelha no canteiro, faixas de pedestre e semáforos nas ruas que cruzam.
+- O Leilão mora no **MASP**: as vigas vermelhas, a caixa de vidro com as faixas de exposição e o vão livre embaixo.
+- A praça com a fonte, o telão, food trucks, a antena da Gazeta e um painel de LED com o texto correndo.
 
-- **Pilotagem e som de kart de volta**: a física e o motor sintetizado de antes. O carro de F1 fica só no visual. O câmbio manual (opção da sala) continua, com 5 marchas.
-- **Pistas voltam a ~13 mil por volta** (os traçados novos, no tamanho certo para a velocidade de kart).
-- **Robôs sem "derrapar"**: o bico aponta para onde eles estão andando, não para a linha lá na frente.
-- **Mais leve**:
-  - os carros dos outros usam uma versão do F1 com ~1/5 dos triângulos (`f1/f1-leve.glb`) e sem sombra projetada (a sombra redonda no chão fica);
-  - minimapa, bandeiras e torcida trabalham menos a cada quadro;
-  - a resolução começa um pouco menor;
-  - abaixo de ~50 quadros por segundo, a qualidade cai sozinha, até tirar sombras e desfoque.
-- **Nürburgring** (inspirado na Nordschleife, ~17,5 mil, a pista mais longa): floresta fechada, neblina, guard-rail de aço, o salto do Flugplatz, a descida da Fuchsröhre, o Karussell, o Hohe Acht (ponto mais alto) e o salto do Pflanzgarten, terminando na reta Döttinger Höhe.
-- **Laguna Seca** (~12,5 mil): morros dourados com poucos carvalhos, fim de tarde, brita nas áreas de escape. Tem a reta, o grampo Andretti, a subida pela Rahal até o Corkscrew (o S que despenca morro abaixo) e a curva longa Rainey.
-- O número do velocímetro ficou mais legível.
+### Ginásios para todos os treinadores
+- Os 6 treinadores que ficavam soltos na rua ganharam um prédio cada, na fileira dos ginásios, ao lado dos 4 líderes.
 
-## Verificação
+### Uma avenida viva
+- Pedestres andando, ciclistas na ciclovia, artistas de rua (música, bolhas de sabão, balões), os líderes e treinadores
+  na porta dos ginásios olhando em volta, pombos que voam quando alguém chega perto, sombras de nuvem passando, a luz da
+  antena piscando, vapor dos food trucks e o semáforo trocando de cor.
 
-- `node --test tests/corrida-robos.test.js tests/corrida-experiencia.test.js tests/corrida-colisao.test.js`: 11 passaram. Um teste novo dá uma volta com 3 robôs em **cada uma das 12 pistas** e confere que o grid está no reto, que os 12 checkpoints vêm em ordem, que todos fecham a volta e que ninguém sai da pista.
-- No navegador: as 12 pistas montam sem erro; uma volta inteira em Interlagos passou pelos 12 checkpoints em ordem, a volta contou no servidor e na tela, e a posição se manteve.
-- No navegador, com 8 carros: ~57 quadros por segundo e ~10 ms de JavaScript por quadro. Os robôs andam alinhados.
-- Conferido o Nürburgring rodando e Laguna Seca no grid.
+## Testes
+- `tests/e2e/vila-layout.spec.js` reescrito: tamanho do mapa, nenhum jogo isolado, nenhum prédio em cima de outro, 10
+  ginásios em prédios, o MASP, a grama do Trianon e as casas da avenida.
+- `tests/e2e/vila-ginasio.spec.js` começa na Sede (ao lado do Ginásio); `tests/servidor.test.js` com o novo limite do mapa.

@@ -155,7 +155,7 @@ test("vila: posições ficam no bairro e zonas antigas não são aceitas", async
   b.emit("hello", { name: "Torcedor" });
   const outro = (await visto).find((p) => p.name === "Motora");
   assert.strictEqual(outro.car, false);
-  assert.strictEqual(outro.x, 63, "o mapa compacto limita posições antigas");
+  assert.strictEqual(outro.x, 95, "o mapa da Paulista (96 de largura) limita posições antigas");
   const andou = new Promise((ok) => b.once("move", ok));
   a.emit("move", { x: 24, y: 29, dir: "up", z: "morumbis", car: false });
   const m = await andou;
