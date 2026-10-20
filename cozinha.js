@@ -95,6 +95,16 @@ module.exports = function attachCozinha(io) {
       if (fin(d.vx) && fin(d.vz)) { j.vx = clamp(d.vx, -K.MOV.dash, K.MOV.dash); j.vz = clamp(d.vz, -K.MOV.dash, K.MOV.dash); }
       if (fin(d.d)) j.d = d.d;
       K.colidir(m.mapa, j); j.ultSt = now;
+      if (Math.hypot(j.vx, j.vz) > K.MOV.vel * 1.5 && now - (j.ultEmpurra || 0) > 140) {
+        for (const outro of m.jogadores) {
+          if (outro === j) continue;
+          const dx = outro.x - j.x, dz = outro.z - j.z, dist = Math.hypot(dx, dz);
+          if (dist > K.RAIO * 2 + 0.25 || dist < 0.01) continue;
+          const fx = dx / dist * 0.36, fz = dz / dist * 0.36;
+          outro.x += fx; outro.z += fz; K.colidir(m.mapa, outro);
+          m.ev.push({ tipo: "empurrou", j: outro.id, x: outro.x, z: outro.z }); j.ultEmpurra = now;
+        }
+      }
     }
 
     socket.on("create", (data = {}, cb) => {
@@ -189,6 +199,12 @@ module.exports = function attachCozinha(io) {
       if (!j || room.phase !== "play") return;
       acertarPosicao(room, j, d);
       if (K.usar(room.match, j)) tick0(room);
+    });
+    socket.on("arremessar", (d = {}) => {
+      const { room, me } = ctx(), j = jogadorDe(room, me);
+      if (!j || room.phase !== "play") return;
+      acertarPosicao(room, j, d);
+      if (K.arremessar(room.match, j, fin(d.forca) ? clamp(d.forca, 0, 1) : 0)) tick0(room);
     });
     // manda na hora o que mudou (sem esperar o próximo passo)
     function tick0(room) {

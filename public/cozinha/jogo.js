@@ -13,7 +13,7 @@ const INTERP = 90, ENVIO = 33;
 let S = null, ME = null;
 const urlCode = new URLSearchParams(location.search).get("sala");
 // G: o que está na tela agora. mesa: a última cozinha do servidor (com a hora em que chegou)
-const G = { active: false, coz: null, mapa: null, me: null, myId: null, corpos: new Map(), buf: [], mesa: null, mesaEm: 0, lugares: [], pausa: false, ultEnvio: 0, matchKey: null, alvo: null, tChop: 0, pedidosVistos: new Set() };
+const G = { active: false, coz: null, mapa: null, me: null, myId: null, corpos: new Map(), buf: [], mesa: null, mesaEm: 0, lugares: [], soltos: new Map(), pausa: false, ultEnvio: 0, matchKey: null, alvo: null, tChop: 0, pedidosVistos: new Set() };
 
 // ======================================================================
 // 3D: renderizador, câmera de cima (de lado, como no Overcooked) e luz
@@ -57,14 +57,16 @@ function montarCozinha(cozId) {
     return { t, g, barra: b, aviso: av, chave: "", obj: null, chama: g.userData.chama || null, fogo: g.userData.fogo || null, agua: g.userData.agua || null, faca: g.userData.faca || null };
   });
   // o anel de luz da bancada da frente (a que o meu cozinheiro vai usar)
-  G.luz = new THREE.Mesh(new THREE.BoxGeometry(T * 1.04, 0.06, T * 1.04), new THREE.MeshBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.45, depthWrite: false }));
+  G.luz = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(T * 1.04, 0.04, T * 1.04)), new THREE.LineBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.9, depthTest: false }));
   G.luz.visible = false; cozinha3d.add(G.luz);
+  G.mira = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffe58a, transparent: true, opacity: 0.8, depthTest: false }));
+  G.mira.visible = false; cozinha3d.add(G.mira);
   enquadrar();
 }
 function limparCozinha() {
   for (const o of [...cozinha3d.children]) cozinha3d.remove(o);
   for (const f of efeitos.splice(0)) { scene.remove(f.m); f.m.material.dispose(); }
-  G.lugares = []; G.mapa = null; G.luz = null;
+  G.soltos.clear(); G.lugares = []; G.mapa = null; G.luz = null; G.mira = null;
 }
 // a mesa nova do servidor: troca o modelo só do que mudou
 function aplicarMesa() {
@@ -88,6 +90,10 @@ function aplicarMesa() {
     c.mao = item ? Mod.item(item) : null; c.st.holding = !!item;
     if (c.mao) { c.mao.position.set(0, 0.95, -0.62); c.model.add(c.mao); c.pegoEm = performance.now(); }
   }
+  const soltos = [...(ms.voando || []).map((o) => ["v" + o.id, o]), ...(ms.caidos || []).map((o) => ["c" + o.id, o])];
+  const ids = new Set(soltos.map(([id]) => id));
+  for (const [id, obj] of G.soltos) if (!ids.has(id)) { cozinha3d.remove(obj); G.soltos.delete(id); }
+  for (const [id, o] of soltos) if (!G.soltos.has(id)) { const obj = Mod.item(o.item); cozinha3d.add(obj); G.soltos.set(id, obj); }
 }
 // as barras (picar, lavar, cozinhar), o fogo aceso e o aviso de queimar: a cada quadro, com o tempo andando aqui
 function barras(tJogo) {
@@ -469,6 +475,9 @@ function aoEvento(e) {
     case "errou": if (meu) { Som.errou(); toast(e.msg); const ent = G.lugares.find((L) => L.t.tipo === "entrega"); if (ent) flutuar(ent.t.i, "✕ NÃO"); } break;
     case "voltou": { const ret = G.lugares.find((L) => L.t.tipo === "retorno"); if (ret) { Som.juntar(); const n = G.mesa?.lugares[ret.t.i]?.[0]?.n || 1; flutuar(ret.t.i, `plim!${n > 3 ? `<small>${n} pratos sujos</small>` : ""}`); } break; }
     case "lixo": Som.lixo(); break;
+    case "arremessou": Som.soltar(); break;
+    case "pegouAr": Som.pegar(); break;
+    case "empurrou": { const c = G.corpos.get(e.j); if (c) { c.x = e.x; c.z = e.z; } break; }
   }
 }
 
@@ -486,8 +495,9 @@ function comecar(chave) {
     precisa: K.RECEITAS[K.COZINHAS[G.coz].receitas[0]].itens.length } : null;
   G.buf = []; G.mesa = null; G.fimTocado = false; $("hPed").innerHTML = ""; $("hMsg").textContent = "";
   show("game"); resize(); G.active = true; pausar(false);
-  $("hHint").innerHTML = G.me ? `<kbd>Espaço</kbd> pegar/soltar · <kbd>F</kbd> picar/lavar · <kbd>Q</kbd> trocar cozinheiro · <kbd>Shift</kbd> impulso · <kbd>Esc</kbd> menu` : "Assistindo";
+  $("hHint").innerHTML = G.me ? `<kbd>Espaço</kbd> pegar/soltar · <kbd>F</kbd> picar/lavar ou segurar para arremessar · <kbd>Q</kbd> trocar cozinheiro · <kbd>Shift</kbd> impulso · <kbd>Esc</kbd> menu` : "Assistindo";
   if (window.Toque && Toque.isTouch()) Toque.setup({
+    portrait: true,
     buttons: [{ icon: ICONE.impulso, label: "impulso", code: "ShiftLeft" }, { icon: ICONE.mao, label: "pegar", code: "Space", big: true }, { icon: ICONE.faca, label: "picar", code: "KeyF" }, { icon: ICONE.trocar, label: "trocar", down: () => trocar() }],
     top: [{ icon: ICONE.menu, down: () => pausar(true) }],
     onStick: (x, y) => { G.stick = [x, y]; },
@@ -517,29 +527,29 @@ function sair() {
   socket.disconnect(); ME = null; S = null; pararJogo(); history.replaceState(null, "", "/cozinha/"); $("roomTag").classList.add("hidden"); show("home"); socket.connect();
 }
 $("btnLeave").onclick = sair;
-function pausar(on) { G.pausa = on; $("pause").classList.toggle("hidden", !on); if (window.Toque) Toque.show(!on && !!G.me && G.active); }
-$("btnResume").onclick = () => { Som.unlock(); pausar(false); if (window.Toque && Toque.isTouch()) Toque.fullscreen(); };
+function pausar(on) { G.pausa = on; if (on) G.carregaEm = null; $("pause").classList.toggle("hidden", !on); if (window.Toque) Toque.show(!on && !!G.me && G.active); }
+$("btnResume").onclick = () => { Som.unlock(); pausar(false); if (window.Toque && Toque.isTouch()) Toque.fullscreen("any"); };
 
 // ======================================================================
 // Controles: teclado, controle e toque (os botões da tela apertam as mesmas teclas)
 // ======================================================================
 const keys = new Set();
 const PEGAR = new Set(["Space", "KeyJ", "KeyE"]), USAR = new Set(["KeyF", "KeyK", "ControlLeft", "ControlRight"]), IMPULSO = new Set(["ShiftLeft", "ShiftRight", "KeyL"]);
-function trocar() { if (G.active && G.me && !G.pausa) act("trocar"); }
+function trocar() { if (G.active && G.me && !G.pausa) { G.carregaEm = null; act("trocar"); } }
 addEventListener("keydown", (e) => {
   if (!G.active) return;
   if (e.code === "Escape") { pausar(!G.pausa); return; }
   if (e.code.startsWith("Arrow") || e.code === "Space" || (e.ctrlKey && e.code !== "ControlLeft" && e.code !== "ControlRight")) e.preventDefault();
-  if (!e.repeat && !G.pausa) { if (PEGAR.has(e.code)) pegar(); if (USAR.has(e.code)) usar(); if (IMPULSO.has(e.code)) G.dash = true; if (e.code === "KeyQ") trocar(); }
+  if (!e.repeat && !G.pausa) { if (PEGAR.has(e.code)) pegar(); if (USAR.has(e.code)) iniciarUso(); if (IMPULSO.has(e.code)) G.dash = true; if (e.code === "KeyQ") trocar(); }
   keys.add(e.code);
 });
-addEventListener("keyup", (e) => keys.delete(e.code));
-addEventListener("blur", () => keys.clear());
+addEventListener("keyup", (e) => { keys.delete(e.code); if (USAR.has(e.code)) terminarUso(); });
+addEventListener("blur", () => { keys.clear(); G.carregaEm = null; });
 const PAD = { prev: [], lx: 0, ly: 0 };
 function lerPad() {
   const gp = [...(navigator.getGamepads?.() || [])].find((g) => g && g.connected); if (!gp) { PAD.lx = PAD.ly = 0; return; }
   const dz = (v) => (Math.abs(v || 0) < 0.2 ? 0 : v); PAD.lx = dz(gp.axes[0]); PAD.ly = dz(gp.axes[1]);
-  gp.buttons.forEach((b, i) => { const v = b.pressed, era = !!PAD.prev[i]; PAD.prev[i] = v; if (!v || era) return; if (i === 9) pausar(!G.pausa); else if (G.pausa) return; else if (i === 0) pegar(); else if (i === 2 || i === 1) usar(); else if (i === 3) trocar(); else if (i === 5 || i === 7) G.dash = true; });
+  gp.buttons.forEach((b, i) => { const v = b.pressed, era = !!PAD.prev[i]; PAD.prev[i] = v; if (!v && era && (i === 2 || i === 1)) terminarUso(); if (!v || era) return; if (i === 9) pausar(!G.pausa); else if (G.pausa) return; else if (i === 0) pegar(); else if (i === 2 || i === 1) iniciarUso(); else if (i === 3) trocar(); else if (i === 5 || i === 7) G.dash = true; });
 }
 function entrada() {
   let x = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0);
@@ -552,6 +562,18 @@ function entrada() {
 const pos = () => { const m = G.me; return { x: m.x, z: m.z, vx: m.vx, vz: m.vz, d: m.d }; };
 function pegar() { if (!G.me || !G.mesa || G.mesa.fase !== "jogo") return; Som.unlock(); socket.emit("pegar", pos()); }
 function usar() { if (!G.me || !G.mesa || G.mesa.fase !== "jogo") return; Som.unlock(); socket.emit("usar", pos()); }
+function iniciarUso() {
+  if (G.mesa?.maos[G.myId]?.k === "ing") G.carregaEm = performance.now();
+  else usar();
+}
+function terminarUso() {
+  if (G.carregaEm == null) return;
+  const duracao = performance.now() - G.carregaEm; G.carregaEm = null;
+  if (G.pausa || !G.me || G.mesa?.fase !== "jogo") return;
+  if (duracao < 240) { usar(); return; }
+  const forca = Math.max(0.15, Math.min(1, duracao / 850));
+  socket.emit("arremessar", { ...pos(), forca });
+}
 
 // ======================================================================
 // O laço: meu cozinheiro (aqui), os outros (interpolados), a cozinha e o HUD
@@ -594,6 +616,32 @@ function desenhar(agora) {
   // a bancada da frente acende
   const alvo = G.me && ms && ms.fase === "jogo" ? K.alvo(G.mapa, G.me) : null;
   if (G.luz) { G.luz.visible = !!alvo; if (alvo) G.luz.position.set((alvo.c + 0.5) * T, alvo.tipo === "lixo" ? 0.92 : Mod.ALTURA + 0.01, (alvo.r + 0.5) * T); }
+  for (const L of G.lugares) if (L.obj) L.obj.scale.setScalar(alvo?.i === L.t.i && ms?.fase === "jogo" ? 1 + 0.06 * Math.sin(agora / 120) : 1);
+  if (G.mira) {
+    G.mira.visible = G.carregaEm != null && !!G.me;
+    if (G.mira.visible) {
+      const carga = Math.min(1, (agora - G.carregaEm) / 850), v = 3 + 6 * carga, [fx, fz] = K.frente(G.me.d);
+      const pts = Array.from({ length: 13 }, (_, k) => { const t = k / 12 * 0.65; return new THREE.Vector3(G.me.x + fx * (0.45 + v * t), 1.1 + 3.5 * t - 7.5 * t * t, G.me.z + fz * (0.45 + v * t)); });
+      G.mira.geometry.dispose(); G.mira.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+    }
+  }
+  if (ms) {
+    const atraso = Math.min(0.15, Math.max(0, (agora - G.mesaEm) / 1000));
+    for (const o of ms.voando || []) {
+      const obj = G.soltos.get("v" + o.id); if (!obj) continue;
+      obj.position.set(o.x + o.vx * atraso, o.y + o.vy * atraso - 7.5 * atraso * atraso, o.z + o.vz * atraso);
+    }
+    for (const o of ms.caidos || []) { const obj = G.soltos.get("c" + o.id); if (obj) obj.position.set(o.x, 0.02, o.z); }
+  }
+  if (innerHeight > innerWidth && G.me) {
+    const grupo = [...G.corpos.values()], mediaX = grupo.reduce((s, c) => s + c.x, 0) / grupo.length, mediaZ = grupo.reduce((s, c) => s + c.z, 0) / grupo.length;
+    const alvoX = Math.max(3, Math.min(G.mapa.W - 3, G.me.x * 0.65 + mediaX * 0.35));
+    const alvoZ = Math.max(3, Math.min(G.mapa.H - 3, G.me.z * 0.65 + mediaZ * 0.35));
+    const centro = new THREE.Vector3(alvoX, 0.2, alvoZ);
+    const d = Math.max(8, 3.2 / Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)));
+    const desejada = new THREE.Vector3(alvoX, Math.sin(0.98) * d + 0.6, alvoZ + Math.cos(0.98) * d);
+    cam.position.lerp(desejada, Math.min(1, dt * 3)); cam.lookAt(centro);
+  }
   // os bonecos
   const trab = ms ? ms.trab || {} : {};
   for (const c of G.corpos.values()) {

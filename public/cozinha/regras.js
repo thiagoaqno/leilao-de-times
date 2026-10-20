@@ -267,8 +267,9 @@
       const dvx = tx - j.vx, dvz = tz - j.vz, dv = Math.hypot(dvx, dvz);
       if (dv <= a || dv < 1e-9) { j.vx = tx; j.vz = tz; } else { j.vx += (dvx / dv) * a; j.vz += (dvz / dv) * a; }
     }
-    j.x += j.vx * dt; j.z += j.vz * dt;
-    colidir(mapa, j);
+    // resolve cada eixo separadamente para deslizar pela quina em vez de travar a diagonal inteira
+    j.x += j.vx * dt; colidir(mapa, j);
+    j.z += j.vz * dt; colidir(mapa, j);
   }
   // os cozinheiros não se atravessam: cada um se afasta do outro (o navegador faz com os outros que ele vê)
   function afastar(j, outro) {
@@ -341,7 +342,7 @@
     const m = {
       coz: COZINHAS[cozId] ? cozId : "1-1", mapa, fase: "conta", t: -TEMPOS.conta, resta: coz.tempo, pontos: 0,
       meta: metaDe(coz, jogadores.length), estrelas: 0, entregues: 0, perdidos: 0, gorjetas: 0, combo: 0,
-      pedidos: [], seqPedido: 0, proxPedido: 0, voltando: [], ev: [], versao: 1,
+      pedidos: [], seqPedido: 0, proxPedido: 0, voltando: [], voando: [], caidos: [], seqVoo: 0, ev: [], versao: 1,
       rng: opcoes.rng || Math.random,
       estado: mapa.tiles.map((t) => ({ item: t.rec ? novoRec(t.rec) : null, n: 0, p: 0 })),
       jogadores: jogadores.map((jg, k) => ({ id: jg.id, nome: jg.nome, skin: jg.skin, x: mapa.inicio[k][0], z: mapa.inicio[k][1], vx: 0, vz: 0, d: Math.PI, mao: null, trab: null })),
@@ -365,6 +366,10 @@
   // pegar / soltar / juntar na bancada da frente
   function interagir(m, j) {
     if (m.fase !== "jogo") return false;
+    if (!j.mao) {
+      const k = m.caidos.findIndex((o) => Math.hypot(j.x - o.x, j.z - o.z) < 0.9);
+      if (k >= 0) { j.mao = m.caidos.splice(k, 1)[0].item; evento(m, { tipo: "pegou", j: j.id }); mudou(m); return true; }
+    }
     const t = alvo(m.mapa, j); if (!t) return false;
     const s = m.estado[t.i], mao = j.mao, card = cozDe(m).receitas;
     const feito = (tipo, extra) => { j.trab = null; evento(m, { tipo, j: j.id, i: t.i, ...extra }); mudou(m); return true; };
@@ -422,6 +427,29 @@
     if (!podeUsar(m, j, t)) return false;
     j.trab = t.i; mudou(m); return true;
   }
+  function arremessar(m, j, forca = 0) {
+    if (m.fase !== "jogo" || j.mao?.k !== "ing") return false;
+    const [fx, fz] = frente(j.d || 0), v = 3 + 6 * clamp(forca, 0, 1);
+    m.voando.push({ id: ++m.seqVoo, item: j.mao, dono: j.id, idade: 0, x: j.x + fx * 0.45, z: j.z + fz * 0.45,
+      y: 1.1, vx: fx * v, vz: fz * v, vy: 3.5 });
+    j.mao = null; j.trab = null; evento(m, { tipo: "arremessou", j: j.id }); mudou(m); return true;
+  }
+  function pousar(m, o) {
+    const c = Math.floor(o.x / TILE), r = Math.floor(o.z / TILE), t = tileEm(m.mapa, c, r);
+    if (t?.i != null) {
+      const s = m.estado[t.i];
+      if (s.item && colocar(s.item, o.item, cozDe(m).receitas)) { evento(m, { tipo: "caiu", i: t.i }); mudou(m); return; }
+      if (!s.item && aceita(t, o.item)) { s.item = o.item; evento(m, { tipo: "caiu", i: t.i }); mudou(m); return; }
+    }
+    let chao = null, distancia = Infinity;
+    for (let r = 0; r < m.mapa.h; r++) for (let c = 0; c < m.mapa.w; c++) {
+      if (solido(m.mapa, c, r)) continue;
+      const x = (c + 0.5) * TILE, z = (r + 0.5) * TILE, d = Math.hypot(x - o.x, z - o.z);
+      if (d < distancia) { distancia = d; chao = [x, z]; }
+    }
+    m.caidos.push({ id: o.id, item: o.item, x: chao[0], z: chao[1] });
+    evento(m, { tipo: "caiu" }); mudou(m);
+  }
 
   function entregar(m, j, t) {
     const coz = cozDe(m), r = receitaDe(j.mao.c, coz.receitas);
@@ -452,6 +480,14 @@
     }
     const coz = cozDe(m);
     m.resta = Math.max(0, coz.tempo - m.t);
+    for (let k = m.voando.length - 1; k >= 0; k--) {
+      const o = m.voando[k]; o.idade += dt; o.x += o.vx * dt; o.z += o.vz * dt; o.y += o.vy * dt; o.vy -= 15 * dt;
+      const receptor = m.jogadores.find((j) => (!j.mao && (j.id !== o.dono || o.idade > 0.25) && Math.hypot(j.x - o.x, j.z - o.z) < 0.53 && o.y > 0.7 && o.y < 1.65));
+      if (receptor) { receptor.mao = o.item; m.voando.splice(k, 1); evento(m, { tipo: "pegouAr", j: receptor.id }); mudou(m); continue; }
+      const t = tileEm(m.mapa, Math.floor(o.x / TILE), Math.floor(o.z / TILE));
+      if (o.y > (t?.i != null ? 1.08 : 0.15) && o.idade < 2) continue;
+      m.voando.splice(k, 1); pousar(m, o);
+    }
     // picar e lavar: quem está trabalhando continua enquanto estiver de frente e de mãos livres
     for (const j of m.jogadores) {
       if (j.trab == null) continue;
@@ -518,11 +554,13 @@
       pedidos: m.pedidos.map((p) => ({ id: p.id, r: p.r, ini: p.ini, ate: p.ate })),
       lugares: m.estado.map((s) => [s.item, s.n, Math.round(s.p * 100) / 100]),
       maos: Object.fromEntries(m.jogadores.map((j) => [j.id, j.mao])),
+      voando: m.voando.map((o) => ({ id: o.id, item: o.item, x: o.x, z: o.z, y: o.y, vx: o.vx, vz: o.vz, vy: o.vy })),
+      caidos: m.caidos.map((o) => ({ id: o.id, item: o.item, x: o.x, z: o.z })),
       trab: Object.fromEntries(m.jogadores.filter((j) => j.trab != null).map((j) => [j.id, j.trab])),
     };
   }
   // tem coisa andando sozinha (picar, lavar, fogão): o servidor manda a mesa mais vezes para a barra andar
-  const andando = (m) => m.fase === "jogo" && (m.jogadores.some((j) => j.trab != null) || m.mapa.tiles.some((t) => t.tipo === "fogao" && ehRec(m.estado[t.i].item) && m.estado[t.i].item.c.length && !m.estado[t.i].item.q));
+  const andando = (m) => m.fase === "jogo" && (m.voando.length > 0 || m.jogadores.some((j) => j.trab != null) || m.mapa.tiles.some((t) => t.tipo === "fogao" && ehRec(m.estado[t.i].item) && m.estado[t.i].item.c.length && !m.estado[t.i].item.q));
 
   // o nome de um item para os avisos e a tela
   function nomeItem(o) {
@@ -536,7 +574,7 @@
   return {
     TILE, RAIO, MOV, TEMPOS, PROCESSOS, INGREDIENTES, RECIPIENTES, RECEITAS, COZINHAS, SIMBOLOS,
     estadosDe, proximoPasso, cabe, receitaDe, rota, simularPerfeito, metaDe, montarMapa, tileEm, solido, frente, colidir, mover, afastar, alvo,
-    novoIng, novoRec, novoPrato, pronto, tempoRec, colocar, juntar, aceita, novaPartida, interagir, usar, podeUsar, passo,
+    novoIng, novoRec, novoPrato, pronto, tempoRec, colocar, juntar, aceita, novaPartida, interagir, usar, arremessar, podeUsar, passo,
     mesa, andando, nomeItem,
   };
 });

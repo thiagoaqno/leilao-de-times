@@ -13,6 +13,9 @@
   #toque .stick{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:22px;width:136px;height:136px;border-radius:50%;background:#ffffff14;border:2px solid #ffffff40;pointer-events:auto;touch-action:none;backdrop-filter:blur(2px)}
   #toque .stick i{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:#ffffff55;border:2px solid #fffa;box-shadow:0 4px 12px #0006}
   #toque .btns{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:16px;display:grid;grid-template-columns:repeat(3,64px);gap:10px;justify-items:center;align-items:end;pointer-events:none}
+  #toque.four-actions .btns{right:max(8px,env(safe-area-inset-right));grid-template-columns:repeat(4,52px);gap:4px}
+  #toque.four-actions .btns button{width:52px;height:52px;font-size:18px}
+  #toque.four-actions .btns button.big{width:62px;height:62px}
   #toque .top{position:absolute;right:max(10px,env(safe-area-inset-right));top:62px;display:flex;flex-direction:column;gap:8px;pointer-events:none}
   #toque button{pointer-events:auto;touch-action:none;width:64px;height:64px;border-radius:50%;border:2px solid #ffffff66;background:#0007;color:#fff;font:700 22px/1 system-ui;display:grid;place-items:center;padding:0;box-shadow:0 4px 12px #0006;backdrop-filter:blur(2px)}
   #toque button small{display:block;font:700 9.5px/1.1 Figtree,system-ui,sans-serif;margin-top:2px;opacity:.9}
@@ -21,6 +24,7 @@
   #toque .top button{width:46px;height:46px;font-size:18px}
   #toque .turn{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);background:#000c;color:#fff;padding:12px 18px;border-radius:12px;font:700 15px Figtree,system-ui;display:none;text-align:center}
   @media (orientation:portrait){#toque .turn{display:block}}
+  @media (orientation:portrait){#toque.portrait-ok .turn{display:none}}
   `;
   let el = null, cfg = null, stickId = null, lookId = null, lookLast = null, held = new Set(), on = false;
   function setKeys(x, y) { // joystick -> W/A/S/D (com uma folga no meio)
@@ -70,6 +74,8 @@
       if (!isTouch()) return false;
       if (!el) build();
       cfg = { keys: { up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD" }, ...c };
+      el.classList.toggle("portrait-ok", !!cfg.portrait);
+      el.classList.toggle("four-actions", (cfg.buttons || []).length === 4);
       const bs = el.querySelector(".btns"), tp = el.querySelector(".top"); bs.innerHTML = ""; tp.innerHTML = "";
       for (const b of cfg.buttons || []) addButton(bs, b);
       for (const b of cfg.top || []) addButton(tp, b);
@@ -83,7 +89,7 @@
     },
     get on() { return on; },
     // tela cheia (no celular ajuda muito)
-    fullscreen() { const d = document.documentElement; try { if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: "hide" }).catch(() => {}); screen.orientation?.lock?.("landscape").catch(() => {}); } catch {} },
+    fullscreen(orientation = "landscape") { const d = document.documentElement; try { if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: "hide" }).catch(() => {}); if (orientation !== "any") screen.orientation?.lock?.(orientation).catch(() => {}); } catch {} },
   };
   root.Toque = api;
 })(window);
