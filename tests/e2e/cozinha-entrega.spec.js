@@ -1,17 +1,24 @@
 const { test, expect } = require("@playwright/test");
 
 // Uma sopa de cebola inteira só com o teclado: anda até cada bancada (pelo mesmo caminho do planejador, K.rota),
-// pega, pica segurando F, põe na panela, serve e entrega. O teste sem tela desenha devagar (o cozinheiro anda pouco por
-// segundo), então nada aqui depende de pressa: o prato fica esperando num balcão perto do fogão, e a panela pronta
-// sai do fogo antes de servir (fora do fogo ela não queima). Também confere o nome do item na mão.
+// pega, pica segurando F, enche a panela, cozinha, serve e entrega. O teste sem tela desenha devagar (o cozinheiro anda
+// pouco por segundo), então nada aqui depende de pressa: como no Overcooked, a panela enche fora do fogo, o prato
+// espera num balcão perto do fogão e a panela pronta sai do fogo antes de servir. Também confere o nome do item na mão.
 const SETAS = { x: ["ArrowLeft", "ArrowRight"], z: ["ArrowUp", "ArrowDown"] };
 
-// a bancada de destino: "tipo" ou "tipo:qual" (fogao:cheio = o fogão com comida; balcao:perto = o balcão vazio
-// alcançável mais perto do primeiro fogão)
+// a bancada de destino: "tipo" ou "tipo:qual". fogao:cheio = o fogão com comida; fogao:vazio = o fogão sem panela;
+// balcao:perto = o balcão alcançável mais perto do primeiro fogão (onde o prato espera); balcao:tabua = o balcão com a
+// panela ou, sem ela, o vazio mais perto da tábua (onde a panela enche fora do fogo)
 function acharBancada(sel) {
   const { G, K } = window.__cozinha, [tipo, qual] = sel.split(":"), L = (x) => G.mesa.lugares[x.i][0];
   const livre = (x) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => !K.solido(G.mapa, x.c + dc, x.r + dr));
   if (qual === "cheio") return G.mapa.tiles.find((x) => x.tipo === tipo && L(x)?.c?.length > 0);
+  if (qual === "vazio") return G.mapa.tiles.find((x) => x.tipo === tipo && !L(x));
+  if (qual === "tabua") {
+    const com = G.mapa.tiles.find((x) => x.tipo === "balcao" && L(x)?.k === "panela"); if (com) return com;
+    const tb = G.mapa.tiles.find((x) => x.tipo === "tabua"), d = (x) => Math.abs(x.c - tb.c) + Math.abs(x.r - tb.r);
+    return G.mapa.tiles.filter((x) => x.tipo === "balcao" && livre(x) && !L(x)).sort((a, b) => d(a) - d(b))[0];
+  }
   if (qual === "perto") {
     const f = G.mapa.tiles.find((x) => x.tipo === "fogao"), d = (x) => Math.abs(x.c - f.c) + Math.abs(x.r - f.r);
     return G.mapa.tiles.filter((x) => x.tipo === tipo && livre(x) && (!L(x) || L(x).k === "prato")).sort((a, b) => d(a) - d(b))[0];
@@ -66,6 +73,11 @@ test("pega, pica, cozinha, serve e entrega uma sopa só com o teclado", async ({
   await irAte(page, "balcao:perto"); await page.keyboard.press("Space");
   await expect.poll(() => mao(page)).toBe("");
 
+  // a panela sai do fogão e vai para um balcão perto da tábua: enche fora do fogo (lá ela não cozinha nem queima)
+  await irAte(page, "fogao"); await page.keyboard.press("Space");
+  await expect.poll(() => mao(page)).toBe("Panela");
+  await irAte(page, "balcao:tabua"); await page.keyboard.press("Space");
+  await expect.poll(() => mao(page)).toBe("");
   // cada cebola que a receita pede (no Overcooked, a sopa leva 3): da caixa para a tábua, picada, e na panela
   const cebolas = await page.evaluate(() => window.__cozinha.K.RECEITAS.sopa_cebola.itens.filter((k) => k.startsWith("cebola:")).length);
   for (let n = 0; n < cebolas; n++) {
@@ -80,17 +92,21 @@ test("pega, pica, cozinha, serve e entrega uma sopa só com o teclado", async ({
     await page.keyboard.up("KeyF");
     await page.keyboard.press("Space");
     await expect.poll(() => mao(page)).toBe("Cebola picada");
-    await irAte(page, n ? "fogao:cheio" : "fogao"); await page.keyboard.press("Space");
+    await irAte(page, "balcao:tabua"); await page.keyboard.press("Space");
     await expect.poll(() => mao(page)).toBe("");
   }
-  // espera a sopa na frente do fogão e tira a panela do fogo
+  // a panela cheia vai para o fogo; espera a sopa na frente do fogão e tira a panela de novo
+  await irAte(page, "balcao:tabua"); await page.keyboard.press("Space");
+  await expect.poll(() => mao(page)).toBe("Panela");
+  await irAte(page, "fogao:vazio"); await page.keyboard.press("Space");
+  await expect.poll(() => mao(page)).toBe("");
   await expect.poll(() => page.evaluate(() => { const { G, K } = window.__cozinha; return G.mapa.tiles.some((x) => x.tipo === "fogao" && K.pronto(G.mesa.lugares[x.i][0])); }), { timeout: 30000 }).toBe(true);
   await irAte(page, "fogao:cheio"); await page.keyboard.press("Space");
   await expect.poll(() => mao(page)).toBe("Panela");
   // a sopa vai para o prato que estava esperando; a panela volta para o fogão e o prato vai para a entrega
   await irAte(page, "balcao:perto"); await page.keyboard.press("Space");
   await expect.poll(() => page.evaluate(() => { const { G, K } = window.__cozinha; return G.mesa.lugares.some(([o]) => o?.k === "prato" && K.nomeItem(o) === "Sopa de cebola"); })).toBe(true);
-  await irAte(page, "fogao"); await page.keyboard.press("Space");
+  await irAte(page, "fogao:vazio"); await page.keyboard.press("Space");
   await expect.poll(() => mao(page)).toBe("");
   await irAte(page, "balcao:perto"); await page.keyboard.press("Space");
   await expect.poll(() => mao(page)).toBe("Sopa de cebola");
