@@ -1,17 +1,11 @@
-# Corrida: batidas menos punitivas e qualidade gráfica que não cai à toa
+# Cozinha: acabamento (bloco 8 do plano)
 
-## Batidas
-- **Muro:** antes, enquanto o carro encostava no muro, a velocidade era multiplicada por 0,82 (no Turbo 88) **a cada quadro**. Raspar o muro por um sexto de segundo tirava quase 90% da velocidade. Agora a batida tira a velocidade que ia contra o muro (com um quiquezinho) e, do que sobra, perde mais quanto mais de frente bateu: de raspão segue quase igual. Encostado, só sobra um atrito leve por segundo. O `wall` de cada carro continua valendo (o Blindado sofre menos).
-- **Carro com carro:** o quique caiu de 0,35 para 0,2. A batida empurra, mas não joga o carro longe.
-
-## Gráficos que baixavam sozinhos
-O ajuste automático de qualidade baixava a resolução e tirava as sombras em computadores que estavam bem:
-- Ele media desde o carregamento da pista, quando todo computador engasga montando shaders e texturas. Agora ignora os primeiros 6 s de cada corrida e trechos em que a aba ficou escondida.
-- Ele exigia 50 qps fixos. Numa tela de 50 Hz, ou com o navegador economizando bateria (preso em 30 qps), ele baixava sempre, e baixar não muda nada nesses casos. Agora compara com o melhor que a própria tela já fez.
-- Depois de baixar, ele confere: se os quadros não melhoraram pelo menos 10%, o limite era da tela e não da placa. Aí ele volta o nível e para de mexer.
-- Dá para fixar pelo console: `localStorage["corrida:qualidade"] = "alta"` (ou `"baixa"`).
-- O renderer não guarda mais a tela a cada quadro (`preserveDrawingBuffer`), o que custava desempenho sem ninguém usar.
+## O que muda
+- **Bolinhas em cima da panela e do prato**, como no Overcooked: cada ingrediente que está dentro aparece numa bolinha em cima da panela, da frigideira e do prato.
+- **O que falta no prato montando:** depois do que já tem, aparecem tracejados e apagados os ingredientes que faltam para a receita do cardápio mais perto de ficar pronta (a que pede menos coisas a mais).
+- **O nome do item na mão:** uma plaquinha pequena em cima do cozinheiro diz o que ele está segurando ("Cebola picada", "Sopa de cebola"...), para quem está aprendendo.
+- **Teste E2E de verdade:** entra, abre a cozinha e faz uma sopa inteira só com o teclado. Anda até cada bancada pelo mesmo caminho do planejador (`K.rota`), pega, pica segurando F, põe na panela (quantas cebolas a receita pedir), serve e entrega. Outro teste confere as bolinhas do prato montando.
 
 ## Testes
-- `node --test tests/corrida-colisao.test.js tests/corrida-experiencia.test.js tests/corrida-robos.test.js`: tudo passa, menos "turbo do cogumelo", que já falha no `main` sem esta mudança.
-- Conferido no navegador: corrida em Interlagos, encostando no muro, sem erro no console e sem baixar a qualidade no começo.
+- `npx playwright test tests/e2e/cozinha-entrega.spec.js tests/e2e/cozinha.spec.js tests/e2e/cozinha-tutorial.spec.js`: os 4 passaram.
+- Conferido no navegador: a plaquinha "Tomate picado" e as bolinhas do prato com pão e alface (a carne frita aparece tracejada).
