@@ -178,7 +178,8 @@ export function animarVida(tr, dt, foco) {
   // torcida: só mexe quem está perto da câmera (a de longe fica parada; ninguém vê a diferença)
   for (const T of [V.torcida, ...(V.torcidas || [])]) {
     if (!T || parado) continue;
-    if (foco && !T.primeira && (T.x - foco.x) ** 2 + (T.z - foco.y) ** 2 > 1600 ** 2) continue;
+    if (foco && !T.primeira && (T.x - foco.x) ** 2 + (T.z - foco.y) ** 2 > 1000 ** 2) continue;
+    if (!T.primeira && (V.vezT = (V.vezT || 0) + 1) % 2) continue; // longe da vista o pulo não precisa de 60 quadros
     T.primeira = false;
     const { gente, corpo, cabeca, bracos } = T;
     gente.forEach((o, k) => {

@@ -3,13 +3,13 @@ import { $, store, toast } from "./estado.js";
 import { race, keys, respawn } from "./jogo.js";
 import { useItem } from "./itens.js";
 import { E, carOf, me } from "./estado.js";
-import { rotacao } from "./cambio.js";
+import { rotacao, NUM } from "./cambio.js";
 import { Sound } from "./sons.js";
 
 // câmbio manual: Shift sobe, Ctrl direito desce (redução que estouraria o giro não entra)
 export function trocarMarcha(d) {
   if (!race || !E.S || E.S.config.cambio !== "manual" || !me()) return;
-  const g = Math.max(1, Math.min(8, (race.marcha || 1) + d));
+  const g = Math.max(1, Math.min(NUM, (race.marcha || 1) + d));
   if (g === race.marcha) return;
   if (d < 0 && rotacao(race.car.v, carOf(me()).vmax, g) > 1.04) { Sound.pop(); return; }
   race.marcha = g; Sound.troca(d);

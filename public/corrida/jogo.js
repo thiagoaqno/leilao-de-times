@@ -36,7 +36,7 @@ export function startRace(st) {
   if (!raf) raf = requestAnimationFrame(loop);
 }
 function clearRace() { if (!race) return; stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
-export function stopRace() { clearRace(); race = null; Sound.engine(0, false); Sound.rivais([]); }
+export function stopRace() { clearRace(); race = null; Sound.engine(0, false); }
 function resize() {
   const w = window.innerWidth, hh = window.innerHeight;
   renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); ajustarTela(w, hh);
@@ -70,7 +70,6 @@ function loop(t) {
   recordLap();
   if (me() && E.S.phase === "race" && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
   Sound.engine(race.car.v, E.S && E.S.phase === "race" && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0);
-  Sound.rivais([...race.ghosts.values()].map((g) => ({ d: Math.hypot(g.x - race.car.x, g.y - race.car.y), v: g.v || 0 })));
   Sound.skid(me() && E.S.phase === "race" && race.car.slip > 45 ? race.car.slip : 0);
   draw(dt);
   medirQuadro();
@@ -103,7 +102,7 @@ function draw(dt) {
   // os outros pilotos (carros de verdade: dá para bater)
   for (const [id, gh] of race.ghosts) {
     const pl = P(id); if (!pl) continue;
-    const key = pl.color + pl.car + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods); gh.kartKey = key; }
+    const key = pl.color + pl.car + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, true); gh.kartKey = key; }
     const spec = CARS3[pl.car] || CARS3.equilibrado, gz = groundH(tr, gh.x, gh.y, gh.idx || 0), noAr = gh.z > gz + 3;
     gh.vz = ((gh.z - (gh.zAnt ?? gh.z)) / Math.max(dt, 1e-3)) * 0.3 + (gh.vz || 0) * 0.7; gh.zAnt = gh.z;
     const inc = inclinacao(tr, gh.x, gh.y, gh.a, gh.idx || 0, spec.L * KS, spec.W * KS, gh.vz, noAr, gh.v || 0);
@@ -127,7 +126,7 @@ function draw(dt) {
   const C = race.cam, k = 1 - Math.exp(-dt * 6), mode = src === c && race.kart ? camMode : "longe";
   let da = src.a - C.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; C.a += da * (1 - Math.exp(-dt * (mode === "perto" ? 7 : 5)));
   const reduceMotion = motionPreference.matches;
-  const speedK = Math.min(1.2, Math.abs(src.v || 0) / 440);
+  const speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
   const surge = Math.max(0, Math.min(1, ((src.v || 0) - (C.lastV || 0)) / Math.max(dt, 0.01) / 90));
   C.lastV = src.v || 0;
   C.surge = (C.surge || 0) + ((reduceMotion ? 0 : surge) - (C.surge || 0)) * (1 - Math.exp(-dt * 5));
@@ -173,7 +172,7 @@ function draw(dt) {
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
   // desfoque de velocidade: começa perto de 110 km/h e fica forte no fim de reta, no turbo e no estilingue
   const turbo = src === c && (race.boostUntil > now || race.sling > 0 || (me() && me().boostUntil > now));
-  desenhar(Math.max(0, (Math.abs(src.v || 0) - 220) / 230) + (turbo ? 0.45 : 0));
+  desenhar(Math.max(0, (Math.abs(src.v || 0) - 160) / 180) + (turbo ? 0.45 : 0));
 }
 // ---------- capa: a largada de Interlagos em 3D (o mesmo desenho da corrida) ----------
 (function heroArt() {

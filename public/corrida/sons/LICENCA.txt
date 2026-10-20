@@ -1,4 +1,0 @@
-f1-motor.mp3: "F-1raceCar-IdleAndRaceStartDemo.wav", de Ears68 no Freesound (https://freesound.org/s/181187/), licença CC0.
-Um F1 V8 de 2012 gravado em Sydney: marcha lenta a ~6.700 rpm e a largada subindo até 17-18 mil rpm. Aqui é a prévia
-em MP3 do Freesound; o jogo recorta a marcha lenta (1 a 4 s) e um trecho em rotação alta (10,75 a 11,75 s) e repete
-cada um em loop, mudando o tom conforme a rotação.
