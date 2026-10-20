@@ -110,7 +110,7 @@ function barras(tJogo) {
       if (trabalhando.has(i) && agora - (L.cortou || 0) > 0.22) { L.cortou = agora; particulas(L.g.position, K.INGREDIENTES[item.t].cor, 4, "lasca"); }
     }
     if (L.t.tipo === "pia" && n && (p > 0 || trabalhando.has(i))) v = (p + (trabalhando.has(i) ? passou : 0)) / K.TEMPOS.lavar;
-    if (item && K.RECIPIENTES[item.k] && item.c.length && !item.q) {
+    if (L.t.tipo === "fogao" && item && K.RECIPIENTES[item.k] && item.c.length && !item.q) {
       const R = K.RECIPIENTES[item.k], prec = R.tempo * item.c.length, pp = item.p + (L.t.tipo === "fogao" && ms.fase === "jogo" ? passou : 0);
       if (pp < prec) v = pp / prec;
       else if (pp >= prec + R.queima * K.TEMPOS.alerta) alerta = true;
@@ -130,7 +130,7 @@ function barras(tJogo) {
       carne.material.color.copy(new THREE.Color("#b64d48").lerp(new THREE.Color(item.q ? "#17120f" : "#714020"), item.q ? 1 : progresso));
     }
     L.barra.visible = v != null && v < 1; if (L.barra.visible) { L.barra.userData.set(v, cor); L.barra.quaternion.copy(cam.quaternion); }
-    const urgencia = item && K.RECIPIENTES[item.k] ? Math.max(0, (item.p + passou - K.tempoRec(item)) / K.RECIPIENTES[item.k].queima) : 0;
+    const urgencia = L.t.tipo === "fogao" && item && K.RECIPIENTES[item.k] ? Math.max(0, (item.p + passou - K.tempoRec(item)) / K.RECIPIENTES[item.k].queima) : 0;
     const pulso = Math.max(0.12, 0.48 - urgencia * 0.32);
     L.aviso.visible = alerta && Math.floor(agora / pulso) % 2 === 0;
     if (alerta && performance.now() - (L.bip || 0) > pulso * 1700) { L.bip = performance.now(); Som.bip(); }
@@ -160,7 +160,7 @@ function fumaca(dt) {
   const agora = performance.now();
   for (const L of G.lugares) {
     const it = G.mesa && G.mesa.lugares[L.t.i] && G.mesa.lugares[L.t.i][0];
-    if (!it || !K.RECIPIENTES[it.k] || !it.c.length || agora - (L.fumou || 0) < 220 || fumacas.length > 60) continue;
+    if (!it || !K.RECIPIENTES[it.k] || !it.c.length || (L.t.tipo !== "fogao" && !it.q) || agora - (L.fumou || 0) < 220 || fumacas.length > 60) continue;
     const perto = (it.p - K.tempoRec(it)) / K.RECIPIENTES[it.k].queima;
     if (!it.q && perto < 0.4) continue;
     L.fumou = agora;
@@ -476,6 +476,7 @@ function aoEvento(e) {
     case "voltou": { const ret = G.lugares.find((L) => L.t.tipo === "retorno"); if (ret) { Som.juntar(); const n = G.mesa?.lugares[ret.t.i]?.[0]?.n || 1; flutuar(ret.t.i, `plim!${n > 3 ? `<small>${n} pratos sujos</small>` : ""}`); } break; }
     case "lixo": Som.lixo(); break;
     case "arremessou": Som.soltar(); break;
+    case "soltouChao": if (meu) Som.soltar(); break;
     case "pegouAr": Som.pegar(); break;
     case "empurrou": { const c = G.corpos.get(e.j); if (c) { c.x = e.x; c.z = e.z; } break; }
   }
@@ -495,11 +496,11 @@ function comecar(chave) {
     precisa: K.RECEITAS[K.COZINHAS[G.coz].receitas[0]].itens.length } : null;
   G.buf = []; G.mesa = null; G.fimTocado = false; $("hPed").innerHTML = ""; $("hMsg").textContent = "";
   show("game"); resize(); G.active = true; pausar(false);
-  $("hHint").innerHTML = G.me ? `<kbd>Espaço</kbd> pegar/soltar · <kbd>F</kbd> picar/lavar ou segurar para arremessar · <kbd>Q</kbd> trocar cozinheiro · <kbd>Shift</kbd> impulso · <kbd>Esc</kbd> menu` : "Assistindo";
+  $("hHint").innerHTML = G.me ? `<kbd>Espaço</kbd> pegar/soltar · <kbd>F</kbd> picar/lavar ou segurar para arremessar · <kbd>G</kbd> largar ingrediente no chão · <kbd>Q</kbd> trocar cozinheiro · <kbd>Shift</kbd> impulso · <kbd>Esc</kbd> menu` : "Assistindo";
   if (window.Toque && Toque.isTouch()) Toque.setup({
     portrait: true,
     buttons: [{ icon: ICONE.impulso, label: "impulso", code: "ShiftLeft" }, { icon: ICONE.mao, label: "pegar", code: "Space", big: true }, { icon: ICONE.faca, label: "picar", code: "KeyF" }, { icon: ICONE.trocar, label: "trocar", down: () => trocar() }],
-    top: [{ icon: ICONE.menu, down: () => pausar(true) }],
+    top: [{ icon: ICONE.menu, down: () => pausar(true) }, { icon: ICONE.chao, label: "chão", down: () => soltarChao() }],
     onStick: (x, y) => { G.stick = [x, y]; },
   });
   if (window.Toque) Toque.show(!!G.me);
@@ -513,6 +514,7 @@ const ICONE = {
   impulso: svg('<path d="M4 12h11M11 6l6 6-6 6M19 6v12"/>'),
   trocar: svg('<path d="M4 8h14l-3-3M18 16H4l3 3M18 8l-3 3M4 16l3-3"/>'),
   menu: svg('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+  chao: svg('<path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/>'),
 };
 // partida nova na mesma cozinha: cada um volta para o seu lugar
 function reposicionar() { S.match.jogadores.forEach((j, k) => { const c = G.corpos.get(j.id); if (c) { [c.x, c.z] = G.mapa.inicio[k]; c.vx = c.vz = 0; c.d = Math.PI; } }); G.buf = []; }
@@ -540,7 +542,7 @@ addEventListener("keydown", (e) => {
   if (!G.active) return;
   if (e.code === "Escape") { pausar(!G.pausa); return; }
   if (e.code.startsWith("Arrow") || e.code === "Space" || (e.ctrlKey && e.code !== "ControlLeft" && e.code !== "ControlRight")) e.preventDefault();
-  if (!e.repeat && !G.pausa) { if (PEGAR.has(e.code)) pegar(); if (USAR.has(e.code)) iniciarUso(); if (IMPULSO.has(e.code)) G.dash = true; if (e.code === "KeyQ") trocar(); }
+  if (!e.repeat && !G.pausa) { if (PEGAR.has(e.code)) pegar(); if (USAR.has(e.code)) iniciarUso(); if (IMPULSO.has(e.code)) G.dash = true; if (e.code === "KeyQ") trocar(); if (e.code === "KeyG") soltarChao(); }
   keys.add(e.code);
 });
 addEventListener("keyup", (e) => { keys.delete(e.code); if (USAR.has(e.code)) terminarUso(); });
@@ -549,7 +551,7 @@ const PAD = { prev: [], lx: 0, ly: 0 };
 function lerPad() {
   const gp = [...(navigator.getGamepads?.() || [])].find((g) => g && g.connected); if (!gp) { PAD.lx = PAD.ly = 0; return; }
   const dz = (v) => (Math.abs(v || 0) < 0.2 ? 0 : v); PAD.lx = dz(gp.axes[0]); PAD.ly = dz(gp.axes[1]);
-  gp.buttons.forEach((b, i) => { const v = b.pressed, era = !!PAD.prev[i]; PAD.prev[i] = v; if (!v && era && (i === 2 || i === 1)) terminarUso(); if (!v || era) return; if (i === 9) pausar(!G.pausa); else if (G.pausa) return; else if (i === 0) pegar(); else if (i === 2 || i === 1) iniciarUso(); else if (i === 3) trocar(); else if (i === 5 || i === 7) G.dash = true; });
+  gp.buttons.forEach((b, i) => { const v = b.pressed, era = !!PAD.prev[i]; PAD.prev[i] = v; if (!v && era && (i === 2 || i === 1)) terminarUso(); if (!v || era) return; if (i === 9) pausar(!G.pausa); else if (G.pausa) return; else if (i === 0) pegar(); else if (i === 2 || i === 1) iniciarUso(); else if (i === 3) trocar(); else if (i === 4) soltarChao(); else if (i === 5 || i === 7) G.dash = true; });
 }
 function entrada() {
   let x = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0);
@@ -562,6 +564,7 @@ function entrada() {
 const pos = () => { const m = G.me; return { x: m.x, z: m.z, vx: m.vx, vz: m.vz, d: m.d }; };
 function pegar() { if (!G.me || !G.mesa || G.mesa.fase !== "jogo") return; Som.unlock(); socket.emit("pegar", pos()); }
 function usar() { if (!G.me || !G.mesa || G.mesa.fase !== "jogo") return; Som.unlock(); socket.emit("usar", pos()); }
+function soltarChao() { if (!G.me || G.pausa || G.mesa?.fase !== "jogo" || G.mesa.maos[G.myId]?.k !== "ing") return; G.carregaEm = null; socket.emit("soltarChao", pos()); }
 function iniciarUso() {
   if (G.mesa?.maos[G.myId]?.k === "ing") G.carregaEm = performance.now();
   else usar();

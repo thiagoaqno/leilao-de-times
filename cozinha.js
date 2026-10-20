@@ -206,6 +206,12 @@ module.exports = function attachCozinha(io) {
       acertarPosicao(room, j, d);
       if (K.arremessar(room.match, j, fin(d.forca) ? clamp(d.forca, 0, 1) : 0)) tick0(room);
     });
+    socket.on("soltarChao", (d = {}) => {
+      const { room, me } = ctx(), j = jogadorDe(room, me);
+      if (!j || room.phase !== "play") return;
+      acertarPosicao(room, j, d);
+      if (K.soltarNoChao(room.match, j)) tick0(room);
+    });
     // manda na hora o que mudou (sem esperar o próximo passo)
     function tick0(room) {
       const m = room.match;
