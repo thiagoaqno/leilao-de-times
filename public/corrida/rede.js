@@ -4,7 +4,7 @@ import { Sound } from "./sons.js";
 import { show, renderLobby } from "./menus.js";
 import { race, startRace, stopRace, nearest } from "./jogo.js";
 import { checkMyLap, renderResults } from "./hud.js";
-import { onBox, onUse, onHit, setHazards } from "./itens.js";
+import { onBox, onUse, onHit, onBoom, setHazards } from "./itens.js";
 
 // ---------- entrar / criar ----------
 const urlCode = new URLSearchParams(location.search).get("sala");
@@ -48,17 +48,19 @@ socket.on("state", (st) => {
 });
 
 // fantasmas: posição recebida, suavizada e empurrada um pouquinho pela velocidade
-socket.on("ghost", (d) => {
+socket.on("ghosts", (lista) => { if (Array.isArray(lista)) lista.forEach(receberFantasma); }); // os robôs, todos juntos
+socket.on("ghost", receberFantasma);
+function receberFantasma(d) {
   if (!race) return;
   let gh = race.ghosts.get(d.id);
   if (!gh) { gh = { x: d.x, y: d.y, z: d.z || 0, a: d.a, idx: nearest(race.tr, d.x, d.y, 0) }; race.ghosts.set(d.id, gh); }
   Object.assign(gh, { tx: d.x, ty: d.y, tz: d.z || 0, ta: d.a, v: d.v, prog: d.prog, at: performance.now() });
-});
+}
 socket.on("item:box", onBox);
 socket.on("item:use", (e) => onUse(e, race));
 socket.on("item:hit", (e) => onHit(e, race));
 socket.on("item:hazards", setHazards);
-socket.on("item:boom", () => Sound.crash(110));
+socket.on("item:boom", (e) => { Sound.crash(110); onBoom(e); });
 export function updateGhosts(dt) {
   const k = 1 - Math.exp(-dt * 10);
   for (const gh of race.ghosts.values()) {

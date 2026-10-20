@@ -37,14 +37,14 @@ test("caixa exige opção, posição recente e respeita recarga; item só pode s
   assert.ok(events.some((e) => e.type === "item:use"));
 });
 
-test("banana acerta rival próximo, estrela protege e bomba expira", () => {
+test("banana fica para trás e acerta quem vem atrás, estrela protege e bomba expira", () => {
   const now = Date.now(), p = { id: "a", finish: null, pos: { x: 500, y: 500, z: 0, a: 0, v: 0, prog: 5, at: now } },
-    q = { id: "b", finish: null, pos: { x: 565, y: 500, z: 0, a: 0, v: 0, prog: 6, at: now } };
+    q = { id: "b", finish: null, pos: { x: 470, y: 500, z: 0, a: 0, v: 0, prog: 4, at: now } };
   const room = { config: { pista: "rio", caixas: true }, phase: "race", startAt: now - 5000,
     order: ["a", "b"], players: { a: p, b: q } };
   const events = [], emit = (type) => events.push(type); Itens.start(room);
   p.pos = { x: 500, y: 500, z: 0, a: 0, v: 0, prog: 5, at: Date.now() };
-  q.pos = { x: 565, y: 500, z: 0, a: 0, v: 0, prog: 6, at: Date.now() };
+  q.pos = { x: 470, y: 500, z: 0, a: 0, v: 0, prog: 4, at: Date.now() };
   p.item = "banana"; assert.equal(Itens.use(room, p, false, emit), true);
   Itens.tick(room, emit); assert.ok(q.spinUntil > Date.now());
   q.spinUntil = 0; q.safeUntil = 0; q.starUntil = Date.now() + 6000;

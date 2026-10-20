@@ -122,39 +122,113 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 .field{margin-top:14px}
 .hint{font-size:13px;color:var(--muted);margin:6px 0 0}
 
+.pinturas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pint{display:flex;flex-direction:column;gap:5px;text-align:left;padding:8px;background:#101116;border:2px solid var(--line);box-shadow:none}
+.pint canvas{width:100%;height:auto;border-radius:6px}.pint.on{border-color:var(--yellow);background:#1a1810}.pint b{font-size:14px}
+.faixas{display:inline-flex;gap:3px;vertical-align:middle;margin-right:6px}.faixas i{width:18px;height:10px;border-radius:2px;display:inline-block;border:1px solid #0004}
+/* o box: menu em blocos coloridos (rosa, ciano, verde-água, branco listrado), com o carro e o piloto no topo */
+.hubtopo{display:flex;align-items:center;gap:14px;padding:6px 4px 10px}
+#hubCarro{width:150px;height:auto;aspect-ratio:16/9;filter:drop-shadow(0 6px 8px #000a)}
+.hubcarro{display:flex;flex-direction:column;min-width:0}
+.hubcarro small{color:#ffd23f;font-weight:700;font-size:12.5px}
+.hubcarro b{font:22px var(--display);line-height:1.1}
+.hubeu{margin-left:auto;display:flex;align-items:center;gap:10px;text-align:right}
+.hubeu b{display:block;font-size:17px}
+.hubeu small{color:var(--muted);font-size:12.5px}
+.hubpawn{font-size:30px;width:52px;height:52px;display:grid;place-items:center;background:linear-gradient(135deg,#3a3f4b,#1b1d24);border:2px solid #ffffff33;border-radius:8px}
+.hubabas{display:flex;align-items:stretch;background:#e9edf1;border-radius:4px;padding:3px;gap:2px;margin-bottom:10px;overflow-x:auto}
+.hubabas button{flex:1;min-width:max-content;background:transparent;border:0;box-shadow:none;border-radius:3px;color:#1b1d24;font:800 13px var(--body);letter-spacing:.06em;text-transform:uppercase;padding:7px 12px}
+.hubabas button.on{background:#14161c;color:#fff}
+.hubabas .seta{flex:0 0 auto;background:#1b1d24;color:#fff;padding:7px 10px}
+.hubgrid{display:grid;grid-template-columns:1fr 1.45fr 1fr 1fr;grid-template-rows:repeat(3,minmax(110px,auto));gap:8px}
+.tile{position:relative;overflow:hidden;text-align:left;border-radius:3px;border:0;box-shadow:none;padding:14px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;font-weight:600;color:#fff;transition:transform .12s,outline-color .12s;outline:4px solid transparent;outline-offset:-4px}
+.tile:hover:not(:disabled),.tile:focus-visible{transform:scale(1.015);outline-color:#ffd23f;filter:none}
+.tile:disabled{opacity:1;cursor:default}
+.tile h3{font:800 clamp(20px,2.4vw,30px) var(--body);letter-spacing:-.01em;color:inherit;text-shadow:none;line-height:1}
+.tile p{margin:0;font-size:13px;line-height:1.35;opacity:.92}
+.t-garagem{grid-column:1;grid-row:1/4;background:radial-gradient(circle at 30% 20%,#ff6fbd,transparent 60%),#ff2d95;justify-content:space-between}
+.t-garagem canvas{width:100%;height:auto;filter:drop-shadow(0 10px 10px #0008);transform:scale(1.15)}
+.t-mapa{grid-column:2/4;grid-row:1;background:#202a22;min-height:180px}
+.t-mapa canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.75}
+.t-mapa h3{position:absolute;left:14px;top:12px;font-size:clamp(26px,3.2vw,42px);text-shadow:0 2px 8px #000a}
+.t-mapa .tag{position:relative;align-self:flex-start;display:flex;flex-direction:column;background:#ffd23f;color:#1b1500;padding:5px 10px;border-radius:2px;max-width:80%}
+.t-mapa .tag b{font-size:14px}.t-mapa .tag small{font-size:11.5px;font-weight:600;line-height:1.25}
+.t-largar{grid-column:2;grid-row:2/4;background:linear-gradient(135deg,#5ef0ff,#16c2e6);color:#06202a;outline:4px solid #ffd23f;outline-offset:-4px;min-height:200px}
+.t-largar h3{position:absolute;left:14px;top:12px;font-size:clamp(28px,3.6vw,46px)}
+.t-largar .setas{position:absolute;right:7%;top:24%;width:48%;height:52%}
+.t-largar .setas::before,.t-largar .setas::after{content:"";position:absolute;top:0;width:56%;height:100%;background:#ff6fbd;clip-path:polygon(0 0,42% 0,100% 50%,42% 100%,0 100%,58% 50%)}
+.t-largar .setas::after{left:44%;background:#ff2d95}
+.t-largar:disabled{outline-color:transparent;background:linear-gradient(135deg,#9fdbe6,#5fb3c4)}
+.t-regras,.t-piloto{grid-column:3;color:#1b1d24;background:repeating-linear-gradient(135deg,#ffffff 0 14px,#eef1f4 14px 28px)}
+.t-regras{grid-row:2}.t-piloto{grid-row:3}
+.t-pilotos{grid-column:4;grid-row:1/4;background:linear-gradient(180deg,#2aa39b,#1b6e6a);justify-content:flex-start;cursor:default}
+.t-pilotos .pilot{background:#00000033;margin-bottom:6px}
+.t-pilotos .pilot small{color:#d8f3f0}
+.t-pilotos .hint{color:#d8f3f0}
+.hubpainel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;animation:painelEntra .18s ease-out}
+.hubpainel h2{font-size:24px;margin-bottom:12px;color:var(--yellow)}
+@keyframes painelEntra{from{opacity:0;transform:translateY(6px)}}
+@media (prefers-reduced-motion:reduce){.hubpainel{animation:none}.tile{transition:none}}
+.hubdica{display:flex;gap:18px;margin-top:10px;color:var(--muted);font-size:12.5px;font-weight:600}
+.hubdica kbd{font:800 11px var(--body);background:#e9edf1;color:#1b1d24;border-radius:3px;padding:1px 6px;margin-right:5px}
+@media (max-width:700px){.hubgrid{grid-template-columns:1fr 1fr;grid-template-rows:auto;grid-template-areas:"largar largar" "mapa mapa" "garagem regras" "garagem piloto" "pilotos pilotos"}.t-garagem{grid-area:garagem}.t-mapa{grid-area:mapa}.t-largar{grid-area:largar;min-height:150px}.t-regras{grid-area:regras}.t-piloto{grid-area:piloto}.t-pilotos{grid-area:pilotos}.hubdica{display:none}}
+@media (max-width:520px){.hubtopo{flex-wrap:wrap}#hubCarro{width:110px}}
+
 /* corrida */
 #race{position:fixed;inset:0;background:#000;z-index:30;touch-action:none;user-select:none;-webkit-user-select:none}
 #screen{position:absolute;inset:0;width:100%;height:100%;display:block}
-.hud{position:absolute;pointer-events:none;font-family:var(--display);color:#fff;text-shadow:2px 2px 0 #000,-1px -1px 0 #000}
-.hud.tl{left:12px;top:10px}
-.hud .pos{font-size:44px;line-height:1;color:var(--yellow)}
-.hud .pos small{font-size:20px;color:#fff}
-.hud .lap{font-size:18px}
-.hud .time{font-size:16px;font-family:var(--body);font-weight:800}
+/* HUD de corrida de mundo aberto: letra fina e limpa, sombra leve, sem caixas pesadas */
+.hud{position:absolute;pointer-events:none;font-family:var(--body);color:#fff;text-shadow:0 1px 3px #000c}
+.hud.tl{left:18px;top:12px;min-width:230px}
+.hud .prog{display:flex;align-items:baseline;gap:8px}
+.hud .prog b{font-size:44px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.hud .prog span{font-size:16px;font-weight:600;opacity:.92}
+.hud .barra{height:4px;background:#ffffff40;border-radius:2px;margin:6px 0 7px;overflow:hidden;box-shadow:0 1px 3px #0006}
+.hud .barra i{display:block;height:100%;width:0;background:#fff;border-radius:2px;transition:width .3s}
+.hud .linha{display:flex;gap:10px;align-items:baseline;font-size:13px;font-weight:700;background:linear-gradient(90deg,#0b1016aa,#0b101600);padding:3px 10px 3px 6px;border-radius:4px}
+.hud .linha .pos{font-size:22px;font-weight:800;color:#fff}
+.hud .linha .pos small{font-size:13px;opacity:.75}
+#hDelta{font-size:13px;font-weight:700;margin-top:4px}
+.hud.bl{left:16px;bottom:14px;display:flex;flex-direction:column;align-items:center;gap:6px}
+#mini{width:150px;height:150px;filter:drop-shadow(0 3px 8px #0008)}
+.hud .chip{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;background:#0b1016cc;border-radius:999px;padding:3px 10px 3px 4px}
+.hud .chip i{width:16px;height:16px;border-radius:50%;border:2px solid #fff}
+.hud .chip span{opacity:.7;font-weight:600;padding-left:6px;border-left:1px solid #ffffff55}
+.hud.br{right:8px;bottom:4px}
+#velo{width:260px;height:200px;display:block}
 .hud.tr{right:10px;top:10px;text-align:right}
-#mini{width:120px;height:120px;background:#0008;border-radius:10px;border:2px solid #fff4}
-.hud.br{right:12px;bottom:12px;font-size:22px}
 .hud.bc{left:50%;top:38%;transform:translate(-50%,-50%);text-align:center;font-size:clamp(40px,10vw,110px);white-space:nowrap}
 .hud.msg{left:50%;top:20%;transform:translateX(-50%);font-size:clamp(20px,4.5vw,40px);white-space:nowrap;color:var(--yellow)}
 #hDelta{font-size:14px;margin-top:2px}#hDelta.ahead{color:#2ecc71}#hDelta.behind{color:#ff6b6b}
 #hDraft{left:50%;bottom:26px;transform:translateX(-50%);font-size:22px;text-align:center;opacity:0;transition:opacity .2s;min-width:150px}
 #hDraft i{display:block;height:6px;margin-top:4px;background:linear-gradient(90deg,#7fe3ff,#fff);border-radius:3px;box-shadow:0 0 8px #7fe3ff}
-.itemButton{position:absolute;left:16px;bottom:18px;z-index:4;min-width:112px;min-height:60px;background:#6543b9dd;border:2px solid #d4c3ff;color:#fff;font-size:19px;box-shadow:0 4px 0 #211044,0 0 18px #8d60e088}
-.itemButton.ready{background:#7046df;border-color:#fff;box-shadow:0 4px 0 #211044,0 0 25px #a074f0}
-@media (pointer:coarse){.itemButton{left:50%;bottom:14px;transform:translateX(-50%);min-width:86px;min-height:70px;font-size:15px}}
-@media (prefers-reduced-motion:reduce){#wind{animation:none;opacity:0!important}#hDraft{transition:none}}
-#wind{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:repeating-conic-gradient(from 0deg at 50% 58%,#ffffff00 0deg 2.6deg,#ffffff70 2.6deg 3deg);-webkit-mask-image:radial-gradient(circle at 50% 58%,transparent 34%,#000 80%);mask-image:radial-gradient(circle at 50% 58%,transparent 34%,#000 80%);animation:windspin 0.35s linear infinite}
-@keyframes windspin{from{transform:rotate(0)}to{transform:rotate(3deg)}}
+/* o item: a foto 3D do poder num quadro de vidro, como a caixa da pista */
+.itemButton{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:4;min-width:76px;min-height:76px;display:flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;background:linear-gradient(135deg,#ff5f9e55,#5fc8ff55),#1b1440cc;border:3px solid #ffffffcc;border-radius:16px;color:#fff;font-family:var(--display);font-size:15px;line-height:1.1;text-align:left;box-shadow:0 4px 0 #0b0820,0 0 18px #8d60e066}
+.itemButton img{width:58px;height:58px;display:block;filter:drop-shadow(0 3px 2px #0008)}
+.itemButton span{display:flex;flex-direction:column;gap:2px}.itemButton small{font:800 11px var(--body);letter-spacing:.08em;color:#ffd23f}
+.itemButton.ready{border-color:#fff;box-shadow:0 4px 0 #0b0820,0 0 28px #c9a4ff;animation:itemPronto 1.2s ease-in-out infinite}
+.itemButton.rolling img{animation:itemGira .16s linear infinite}
+@keyframes itemPronto{50%{box-shadow:0 4px 0 #0b0820,0 0 40px #ffe28a}}
+@keyframes itemGira{50%{transform:scale(.88)}}
+@media (prefers-reduced-motion:reduce){.itemButton.ready,.itemButton.rolling img{animation:none}}
+@media (pointer:coarse){.itemButton{left:50%;bottom:14px;transform:translateX(-50%);min-width:76px;min-height:76px;font-size:13px}.itemButton small{display:none}}
+@media (prefers-reduced-motion:reduce){#hDraft{transition:none}}
 .track .rec{color:var(--yellow);font-weight:800}
-.hud .board{font-family:var(--body);font-size:13px;font-weight:800;margin-top:6px;text-shadow:1px 1px 0 #000}
-.hud .board div{display:flex;gap:6px;align-items:center}
-.hud .board i{width:10px;height:10px;border-radius:2px;display:inline-block}
-.topbtns{position:absolute;right:140px;top:10px;display:flex;gap:6px;z-index:3}
+.hud .board{font-size:12.5px;font-weight:700;margin-top:8px}
+.hud .board div{display:flex;gap:7px;align-items:center;padding:1px 8px 1px 2px;border-radius:3px}
+.hud .board div.eu{background:linear-gradient(90deg,#ffffff38,#ffffff00)}
+.hud .board span{width:14px;text-align:right;opacity:.75}
+.hud .board i{width:4px;height:13px;border-radius:2px;display:inline-block}
+.hud .board em{font-style:normal;font-size:9.5px;font-weight:800;opacity:.6;letter-spacing:.06em}
+.topbtns{position:absolute;right:12px;top:10px;display:flex;gap:6px;z-index:3}
+.vol{width:90px;padding:0;accent-color:var(--yellow);background:transparent;border:0}.topbtns .vol{align-self:center;filter:drop-shadow(0 1px 2px #000)}
+@media (max-width:640px){.vol{width:60px}}
 .topbtns button{padding:6px 10px;font-size:14px;background:#000a}
-@media (max-width:640px){.topbtns{right:10px;top:110px}#mini{width:90px;height:90px}.hud .pos{font-size:34px}}
+@media (max-width:640px){.hud .prog b{font-size:32px}#mini{width:104px;height:104px}#velo{width:190px;height:146px}.hud .chip{display:none}}
+@media (pointer:coarse){.hud.bl{bottom:112px}.hud.br{bottom:104px}}
 /* controles na tela (celular) */
 .pad{position:absolute;bottom:14px;display:flex;gap:12px;z-index:3}
-.pad.l{left:14px}.pad.r{right:14px}
+.pad.l{left:14px}.pad.r{right:14px}.pad.m{right:14px;bottom:112px}.pad.m button{width:56px;height:56px;font-size:26px}
 .pad button{width:78px;height:78px;border-radius:50%;font-size:30px;background:#ffffff1f;border:2px solid #ffffff55;color:#fff;box-shadow:none;backdrop-filter:blur(3px)}
 .pad button.on{background:#ffd23f99}
 .pad button.gas{width:92px;height:92px;background:#2ecc7144}
@@ -179,7 +253,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
     <a class="tovila" href="/" title="Voltar para a vila">← Vila</a>
     <div class="brand"><h1>🏁 Corrida da <span>Galera</span></h1></div>
     <div class="roomtag hidden" id="roomTag"><span class="lbl muted">Sala</span><span class="code" id="rCode"></span><button class="small" id="btnInvite" title="Copiar convite"><span class="lg">Convidar</span><span class="sm">🔗</span></button></div>
-    <button class="ghost small" id="btnSound" title="Som">🔊</button>
+    <button class="ghost small" id="btnSound" title="Som">🔊</button><input type="range" class="vol" id="volume" min="0" max="100" aria-label="Volume do som" title="Volume">
     <button class="ghost small" id="btnRules" title="Como jogar"><span class="lg">Como jogar</span><span class="sm">❔</span></button>
   </div>
 </header>
@@ -189,7 +263,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
     <div class="hero">
       <div>
         <h2>Racha na<br><em>Galera</em></h2>
-        <p class="lead">Carros esportivos em 3D em Mônaco, Interlagos, Tóquio, Los Angeles e Rio de Janeiro, com subidas, descidas e lombadas para voar. Sem casca de banana: só pé no fundo. Os amigos correm junto como fantasmas, então ninguém bate em ninguém e a internet lenta não atrapalha.</p>
+        <p class="lead">Karts em 3D em Mônaco, Interlagos, Tóquio, Los Angeles, Rio e mais cinco pistas longas, com subidas, descidas e lombadas para voar, céu de verdade e torcida na reta. Ligue as caixas para disputar com banana, casco e estrela, ou desligue e vá só no pé.</p>
         <div class="art"><canvas id="heroArt" width="320" height="180"></canvas></div>
       </div>
       <div class="placa"><div class="chk"></div><div class="in">
@@ -207,39 +281,48 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
   </section>
 
   <section id="lobby" class="hidden">
-    <div class="lobby">
-      <div class="placa"><div class="chk"></div><div class="in">
-        <h2>Pilotos</h2>
-        <div id="pilots"></div>
-        <div id="myPick" class="hidden" style="margin-top:16px">
-          <label>Cor do kart</label><div class="colors" id="colorPick"></div>
-          <label style="margin-top:14px">Seu piloto</label><div class="skins" id="skinPick"></div>
-          <label style="margin-top:14px">Seu kart</label><div class="cars" id="carPick"></div>
-          <label style="margin-top:14px">Personalizar</label><div id="modPick"></div>
-          <label style="margin-top:14px">Seu avatar</label><div class="picker" id="pawnPick"></div>
-        </div>
-      </div></div>
-      <div class="placa"><div class="chk"></div><div class="in">
-        <h2>Pista</h2>
-        <div id="cfg"></div>
-        <div id="startBox" style="margin-top:18px"></div>
-      </div></div>
+    <div class="hubtopo">
+      <canvas id="hubCarro" width="240" height="135"></canvas>
+      <div class="hubcarro"><small id="hubClasse"></small><b id="hubCarNome"></b></div>
+      <div class="hubeu"><span class="hubpawn" id="hubPawn"></span><div><b id="hubNome"></b><small id="hubSala"></small></div></div>
     </div>
+    <nav class="hubabas" id="hubAbas" aria-label="Seções do box">
+      <button class="seta" id="hubAnt" title="Aba anterior (Q)">◀</button>
+      <button data-aba="box" class="on">Box</button><button data-aba="pista">Pistas</button><button data-aba="garagem">Garagem</button><button data-aba="pintura">Pintura</button><button data-aba="regras">Regras</button>
+      <button class="seta" id="hubProx" title="Próxima aba (E)">▶</button>
+    </nav>
+    <div id="hub" class="hubgrid">
+      <button class="tile t-garagem" data-aba="garagem"><h3>Garagem</h3><canvas id="tileCarro" width="240" height="135"></canvas><p id="tileCarroTxt">Carro, cor e avatar</p></button>
+      <button class="tile t-mapa" data-aba="pista"><canvas id="tileMapa" width="320" height="320"></canvas><h3>Mapa das<br>pistas</h3><span class="tag"><b id="tileMapaTxt"></b><small id="tileMapaSub"></small></span></button>
+      <button class="tile t-largar" id="btnStart"><h3 id="tLargarTit">Largar</h3><i class="setas" aria-hidden="true"></i><p id="tLargarTxt"></p></button>
+      <button class="tile t-regras" data-aba="regras"><h3>Regras</h3><p id="tileRegrasTxt"></p></button>
+      <button class="tile t-piloto" data-aba="pintura"><h3>Pintura</h3><p id="tilePilotoTxt"></p></button>
+      <div class="tile t-pilotos"><h3>Na sala</h3><div id="pilots"></div></div>
+    </div>
+    <div class="hubpainel hidden" data-painel="pista"><h2>Pistas</h2><div id="cfgPistas"></div></div>
+    <div class="hubpainel hidden" data-painel="garagem"><h2>Garagem</h2>
+      <label>Seu carro</label><div class="cars" id="carPick"></div>
+      <label style="margin-top:14px">Sua cor (no placar, no mapa e na pintura "Sua cor")</label><div class="colors" id="colorPick"></div>
+      <label style="margin-top:14px">Seu avatar</label><div class="picker" id="pawnPick"></div></div>
+    <div class="hubpainel hidden" data-painel="pintura"><h2>Pintura</h2><p class="hint" style="margin:0 0 10px">As cores das equipes de Fórmula 1, ou a sua cor com branco.</p><div class="pinturas" id="modPick"></div></div>
+    <div class="hubpainel hidden" data-painel="regras"><h2>Regras da corrida</h2><div id="cfg"></div></div>
+    <div class="hubdica"><span><kbd>Clique</kbd> abrir</span><span><kbd>Esc</kbd> voltar ao box</span><span><kbd>Q</kbd><kbd>E</kbd> trocar de aba</span></div>
   </section>
 </div>
 
 <section id="race" class="hidden">
   <canvas id="screen"></canvas>
-  <div class="hud tl"><div class="pos" id="hPos"></div><div class="lap" id="hLap"></div><div class="time num" id="hTime"></div><div class="time num" id="hDelta"></div><div class="board" id="hBoard"></div></div>
-  <div class="hud tr"><canvas id="mini" width="240" height="240"></canvas></div>
-  <div class="hud br num" id="hSpeed"></div>
+  <div class="hud tl"><div class="prog"><b id="hProg" class="num">0%</b><span>Progresso</span></div><div class="barra"><i id="hBarra"></i></div>
+    <div class="linha num"><span class="pos" id="hPos"></span><span id="hLap"></span><span id="hTime"></span></div><div class="num" id="hDelta"></div><div class="board" id="hBoard"></div></div>
+  <div class="hud bl"><canvas id="mini" width="220" height="220"></canvas><div class="chip" id="hChip"></div></div>
+  <div class="hud br"><canvas id="velo" width="260" height="200"></canvas></div>
   <div class="hud bc" id="hBig"></div>
   <div class="hud" id="hDraft"></div>
   <button id="hItem" class="itemButton hidden" aria-label="Usar item">🎁</button>
-  <div id="wind"></div>
   <div class="hud msg" id="hMsg"></div>
-  <div class="topbtns"><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>
+  <div class="topbtns"><input type="range" class="vol" id="volCorrida" min="0" max="100" aria-label="Volume do som" title="Volume"><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>
   <div class="pad l hidden" id="padL"><button data-k="left" aria-label="Esquerda">◀</button><button data-k="right" aria-label="Direita">▶</button></div>
+  <div class="pad m hidden" id="padM"><button data-marcha="-1" aria-label="Reduzir marcha">−</button><button data-marcha="1" aria-label="Subir marcha">+</button></div>
   <div class="pad r hidden" id="padR"><button data-k="brake" aria-label="Frear">▼</button><button class="gas" data-k="gas" aria-label="Acelerar">▲</button></div>
   <div id="results" class="results hidden"></div>
 </section>
