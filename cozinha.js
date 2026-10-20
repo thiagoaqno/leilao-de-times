@@ -48,7 +48,7 @@ module.exports = function attachCozinha(io) {
       room.grupos[dono.id].push(id);
     }
     room.controles = Object.fromEntries(Object.keys(room.grupos).map((id) => [id, id]));
-    room.match = K.novaPartida(room.config.cozinha, lista);
+    room.match = K.novaPartida(room.config.cozinha, lista, { pessoas: humanos.length }); // a meta é pelas pessoas, não pelos cozinheiros extras
     room.phase = "play"; room.frame = 0; room.acum = 0; room.ultTick = Date.now();
     log(room, `Cozinha aberta: ${K.COZINHAS[room.match.coz].nome}.`);
     clearInterval(room.loop);

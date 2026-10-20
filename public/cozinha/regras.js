@@ -56,16 +56,17 @@
   // ---------- recipientes ----------
   // tempo: segundos por ingrediente dentro; queima: segundos depois de pronto até queimar
   const RECIPIENTES = {
-    panela: { nome: "Panela", cap: 3, processo: "cozinhar", tempo: 4.5, queima: 11 },
+    panela: { nome: "Panela", cap: 3, processo: "cozinhar", tempo: 4.5, queima: 11, repete: true }, // até 3 de qualquer coisa, repetida ou não (a mistura só não é pedido de ninguém)
     frigideira: { nome: "Frigideira", cap: 1, processo: "fritar", tempo: 6, queima: 9 },
   };
 
   // ---------- receitas (as do Overcooked) ----------
-  // itens: "ingrediente:estado", cada tipo uma vez; pontos: o valor do pedido; tempo: a paciência do cliente
+  // itens: "ingrediente:estado", com repetição; pontos: o valor do pedido; tempo: a paciência do cliente.
+  // Como no Overcooked: a sopa leva 3 do mesmo ingrediente na panela; salada, lanche e sushi levam um de cada.
   const RECEITAS = {
-    sopa_cebola: { nome: "Sopa de cebola", itens: ["cebola:cozido"], pontos: 20, tempo: 75, sopa: true },
-    sopa_tomate: { nome: "Sopa de tomate", itens: ["tomate:cozido"], pontos: 20, tempo: 75, sopa: true },
-    sopa_cogumelo: { nome: "Sopa de cogumelo", itens: ["cogumelo:cozido"], pontos: 20, tempo: 75, sopa: true },
+    sopa_cebola: { nome: "Sopa de cebola", itens: ["cebola:cozido", "cebola:cozido", "cebola:cozido"], pontos: 20, tempo: 75, sopa: true },
+    sopa_tomate: { nome: "Sopa de tomate", itens: ["tomate:cozido", "tomate:cozido", "tomate:cozido"], pontos: 20, tempo: 75, sopa: true },
+    sopa_cogumelo: { nome: "Sopa de cogumelo", itens: ["cogumelo:cozido", "cogumelo:cozido", "cogumelo:cozido"], pontos: 20, tempo: 75, sopa: true },
     salada: { nome: "Salada", itens: ["alface:picado"], pontos: 10, tempo: 55 },
     salada_tomate: { nome: "Salada com tomate", itens: ["alface:picado", "tomate:picado"], pontos: 15, tempo: 65 },
     salada_completa: { nome: "Salada completa", itens: ["alface:picado", "tomate:picado", "pepino:picado"], pontos: 20, tempo: 75 },
@@ -99,7 +100,7 @@
   // as metas das estrelas são calculadas por metaDe para cada número de cozinheiros
   const COZINHAS = {
     "1-1": {
-      nome: "Sopa de cebola", desc: "A primeira cozinha: pique a cebola, coloque-a na panela, sirva no prato e lave a louça.",
+      nome: "Sopa de cebola", desc: "A primeira cozinha: pique três cebolas, todas na panela, sirva no prato e lave a louça.",
       mapa: [
         "#oo#==#SS##",
         "#.........F",
@@ -198,9 +199,14 @@
     }
     return { pontos, pratos, duracoes, tempo };
   }
+  // as frações do ótimo para 1, 2 e 3 estrelas, pelo número de PESSOAS (não de cozinheiros: sozinho, você tem dois
+  // cozinheiros, mas troca entre eles e não divide o trabalho de verdade). Sozinho é mais difícil, como no Overcooked,
+  // então a meta é uma parte menor do ótimo.
+  const FRACOES = { 1: [0.3, 0.5, 0.7], 2: [0.35, 0.6, 0.85] };
   const metaDe = (coz, n) => {
-    const maximo = simularPerfeito(coz, Math.max(1, Math.min(4, n))).pontos;
-    return [0.35, 0.60, 0.85].map((f) => Math.max(5, Math.round(maximo * f / 5) * 5));
+    n = Math.max(1, Math.min(4, n));
+    const maximo = simularPerfeito(coz, n).pontos;
+    return (FRACOES[n] || FRACOES[2]).map((f) => Math.max(5, Math.round(maximo * f / 5) * 5));
   };
 
   // ---------- o mapa ----------
@@ -307,7 +313,7 @@
     if (!dest || !orig || dest === orig) return false;
     if (ehRec(dest)) {
       const R = RECIPIENTES[dest.k];
-      if (orig.k !== "ing" || dest.q || dest.c.length >= R.cap || dest.c.some((i) => i.t === orig.t) || proximoPasso(orig) !== R.processo) return false;
+      if (orig.k !== "ing" || dest.q || dest.c.length >= R.cap || (!R.repete && dest.c.some((i) => i.t === orig.t)) || proximoPasso(orig) !== R.processo) return false;
       dest.p = Math.min(dest.p, R.tempo * dest.c.length); // o que já estava pronto espera o novo cozinhar (e o queimar recomeça)
       dest.c.push({ t: orig.t, e: orig.e }); return true;
     }
@@ -341,7 +347,7 @@
     const coz = COZINHAS[cozId] || COZINHAS["1-1"], mapa = montarMapa(coz);
     const m = {
       coz: COZINHAS[cozId] ? cozId : "1-1", mapa, fase: "conta", t: -TEMPOS.conta, resta: coz.tempo, pontos: 0,
-      meta: metaDe(coz, jogadores.length), estrelas: 0, entregues: 0, perdidos: 0, gorjetas: 0, combo: 0,
+      meta: metaDe(coz, opcoes.pessoas || jogadores.length), estrelas: 0, entregues: 0, perdidos: 0, gorjetas: 0, combo: 0,
       pedidos: [], seqPedido: 0, proxPedido: 0, voltando: [], voando: [], caidos: [], seqVoo: 0, ev: [], versao: 1,
       rng: opcoes.rng || Math.random,
       estado: mapa.tiles.map((t) => ({ item: t.rec ? novoRec(t.rec) : null, n: 0, p: 0 })),
@@ -578,7 +584,7 @@
   }
 
   return {
-    TILE, RAIO, MOV, TEMPOS, PROCESSOS, INGREDIENTES, RECIPIENTES, RECEITAS, COZINHAS, SIMBOLOS,
+    TILE, RAIO, MOV, TEMPOS, FRACOES, PROCESSOS, INGREDIENTES, RECIPIENTES, RECEITAS, COZINHAS, SIMBOLOS,
     estadosDe, proximoPasso, cabe, receitaDe, rota, simularPerfeito, metaDe, montarMapa, tileEm, solido, frente, colidir, mover, afastar, alvo,
     novoIng, novoRec, novoPrato, pronto, tempoRec, colocar, juntar, aceita, novaPartida, interagir, usar, arremessar, soltarNoChao, podeUsar, passo,
     mesa, andando, nomeItem,
