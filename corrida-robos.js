@@ -53,8 +53,9 @@ function processar(pista, volta) {
     const a = s[k], b = s[k + 1], dt = (b[0] - a[0]) / 1000; if (!(dt > 0.02 && dt < 0.5)) continue;
     const i = ((Math.round(a[5]) % n) + n) % n, p = pts[i];
     const lat = (a[1] - p.x) * -p.ty + (a[2] - p.y) * p.tx, v = Math.hypot(b[1] - a[1], b[2] - a[2]) / dt;
-    if (Math.abs(lat) > t.width / 2 + 30 || v > vmax * 1.4) continue; // fora da pista ou pulo de posição: não serve
-    somaL[i] += lat; somaV[i] += v / vmax; cont[i]++;
+    if (Math.abs(lat) > t.width / 2 + 30 || v > vmax * 1.6) continue; // fora da pista ou pulo de posição: não serve
+    // acima da velocidade final era vácuo, estilingue ou turbo de quem gravou: o robô não tem isso, então conta só o topo
+    somaL[i] += lat; somaV[i] += Math.min(1, v / vmax); cont[i]++;
   }
   const tem = cont.reduce((q, c) => q + (c ? 1 : 0), 0); if (tem < n * 0.12) return null; // volta incompleta
   const lat = new Float64Array(n), vel = new Float64Array(n);
@@ -145,10 +146,13 @@ function passo(room, dt, setor, emit) {
       let el = 1; if (lider != null && p.pos) { const dif = (p.pos.prog - lider) / pf.n; el = dif > 0.08 ? 0.93 : dif < -0.25 ? 1.05 : 1; }
       const i = Math.floor(ia.s) % pf.n;
       let alvo = Math.min(pf.lim[i], pf.lim[(i + 3) % pf.n]) * ia.nivel * el * (1 - Math.min(1, Math.abs(ia.desvio) / 40) * 0.06);
-      if (p.boostUntil > now) alvo *= 1.18; if (p.starUntil > now) alvo *= 1.12;
+      alvo = Math.min(alvo, c.vmax); // nunca passa da velocidade final do carro (a mesma de quem joga)
+      // turbo e estrela: as mesmas contas do carro de quem joga (fisica.js): mais velocidade final e mais força para chegar nela
+      const turbo = p.boostUntil > now, estrela = p.starUntil > now, bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0), ak = 1 + (turbo ? 0.8 : 0) + (estrela ? 0.4 : 0);
+      alvo *= bk;
       if (p.spinUntil > now) ia.v *= Math.exp(-dt * 2.2);
-      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / c.vmax, 1.6)) * dt * (pf.aprendeu ? 2.2 : 1.5)); // copiando alguém, acompanha a aceleração dele
-      else ia.v = Math.max(alvo, ia.v - c.brake * dt);
+      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * ak * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / (c.vmax * bk), 1.6)) * dt); // a mesma arrancada do carro de quem joga
+      else ia.v = Math.max(alvo, ia.v - (ia.v > c.vmax && alvo >= c.vmax * 0.98 ? T.TURBO_SOLTA : c.brake) * dt); // fim do turbo na reta: solta aos poucos, como quem joga
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
       // segue o traçado de corrida; se tem outro robô logo à frente na mesma linha, desvia para o lado para passar
       let desvio = 0;

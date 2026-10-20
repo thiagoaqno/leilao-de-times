@@ -51,7 +51,7 @@ export function physics(dt, spec = carOf(me())) {
     if (keys.gas) vf += (vf < 0 ? spec.brake : forca * spec.acc * (1 + race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
     else if (keys.brake) vf -= (vf > 0 ? spec.brake : 120) * dt;
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (70 + (manual && vf > 0 ? (NUM + 1 - race.marcha) * 18 : 0)) * dt); // no manual, marcha baixa segura o carro (freio-motor)
-    if (vf > vmax) vf = Math.max(vmax, vf - (road ? 300 : 700) * dt);
+    if (vf > vmax) vf = Math.max(vmax, vf - (road ? window.Pistas.TURBO_SOLTA : 700) * dt); // acabou o turbo: solta aos poucos (fora da pista, na hora)
     if (manual && vf > topo(race.marcha, vmaxF1)) vf = Math.max(topo(race.marcha, vmaxF1), vf - 260 * dt); // corte de giro
     // ladeira: a gravidade puxa para baixo da pista
     const h1 = groundH(tr, c.x + fx * 10, c.y + fy * 10, race.idx), h0 = groundH(tr, c.x, c.y, race.idx);

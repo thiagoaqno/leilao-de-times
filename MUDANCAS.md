@@ -1,36 +1,25 @@
-# Cozinha da Galera: o Overcooked da galera
+# Corrida: robôs sem vantagem de velocidade, turbo mais longo e desfoque mais forte
 
-Jogo novo e o primeiro **cooperativo** da Vila: de 1 a 4 cozinheiros na mesma cozinha, contra o relógio. Pique, cozinhe,
-monte o prato, entregue antes de o cliente desistir e lave a louça. O plano das próximas fases está em
-`planos/cozinha.md`.
-
-### A base paramétrica (`public/cozinha/regras.js`, a mesma no servidor e no navegador)
-- Tudo o que é comida é dado: **ingredientes** (a cadeia de estados de cada um: cru → picado → cozido/frito),
-  **processos** (picar na tábua, cozinhar na panela, fritar na frigideira), **recipientes**, **receitas** (as do
-  Overcooked: sopas de cebola, tomate e cogumelo, saladas, hambúrgueres e sushi) e **cozinhas** (um desenho de texto
-  com a legenda). Cozinha ou receita nova não mexe no motor.
-- A regra de "encostar uma coisa na outra" do Overcooked (`juntar`): ingrediente na panela, panela pronta no prato,
-  prato na panela, ingrediente no prato... O prato só aceita o que é de alguma receita do cardápio.
-- Panela esquecida no fogo apita e queima (vai para o lixo). Ingrediente novo numa panela pronta faz ela voltar a
-  cozinhar.
-- Pedidos com paciência, gorjeta por entregar rápido, multa no pedido perdido, pratos sujos que voltam para a pia e
-  1 a 3 estrelas no fim (a meta muda com o número de cozinheiros).
-
-### O jogo
-- Servidor `cozinha.js` (canal `/cozinha`): cada navegador mexe o próprio cozinheiro e o servidor confere; pegar,
-  soltar, picar, lavar, o fogão e os pedidos são do servidor, que manda a cozinha na hora em que ela muda. O relógio
-  do jogo anda com o relógio de verdade (o `setInterval` do Windows atrasava).
-- Página 3D com os bonecos e skins da Pelada de chapéu de cozinheiro, a bancada da frente acesa, barras de progresso,
-  o aviso de queimar, fumaça, as comandas dos pedidos com o desenho do prato e os ingredientes, moedas, relógio, sons
-  sintetizados, toque no celular e controle.
-- Três cozinhas: **1-1 Sopa de cebola**, **1-2 Sopas da casa** (com a bancada do meio dividindo a cozinha) e
-  **1-3 Lanchonete** (saladas e hambúrguer).
-- Na Vila, o restaurante fica na praça, no lugar dos três food trucks do lado oeste (toldo listrado, telhado de telha e
-  a chaminé soltando fumaça). Entra na Noite da Galera (com estrela, todos ganham) e na lista de salas.
+## O que muda
+- **Velocidade final dos robôs:** eles copiam a melhor volta gravada da pista, e essa volta trazia os trechos em que a
+  pessoa estava no vácuo, no estilingue ou com turbo (o filtro aceitava até 1,4x a velocidade final). O robô andava "no
+  vácuo" a volta inteira. Agora cada amostra da volta conta no máximo a velocidade final do carro, e o robô nunca passa
+  dela fora do turbo e da estrela. Vale também para as voltas que já estão guardadas no banco.
+- **Arrancada dos robôs:** acelerava 1,5x (ou 2,2x copiando uma volta gravada) mais forte que o carro de quem joga. Agora
+  usa a mesma conta do `fisica.js`, inclusive com turbo e estrela.
+- Os robôs não têm vácuo (ele só existe no carro de quem joga), então não era um empurrando o outro.
+- **Turbo do cogumelo mais longo:** 3,5 s acima da velocidade final (era 1,5 s) e, quando acaba, o excesso some aos
+  poucos (`TURBO_SOLTA`, uns 90 km/h por segundo; era quase na hora). Fora da pista continua cortando na hora. O vácuo e
+  o estilingue também terminam assim, sem tranco. Os valores ficam em `pistas.js` (`TURBO_MS`, `TURBO_SOLTA`), usados
+  pelo servidor, pelos robôs e pelo navegador.
+- **Desfoque de velocidade mais forte:** a força ainda era a da época do F1 (começava em 160 e só enchia em 340), então com o
+  kart nunca passava de uns 75% (e uns 50% nos carros mais lentos). Agora vai pela fração da velocidade final de cada carro:
+  começa em 40% (uns 90 km/h no equilibrado), fica inteiro a 90%, e o turbo e o estilingue borram ainda mais (até 1,4). O
+  passe também puxa um pouco mais (`0.09`, era `0.075`). E o ajuste de qualidade agora tira as sombras antes e o
+  desfoque só por último (nível 3), em vez de tirar os dois juntos.
 
 ## Testes
-- `tests/cozinha.test.js`: confere toda cozinha do catálogo (lugares no chão, bancadas alcançáveis, todas as receitas
-  possíveis com as caixas e bancadas que ela tem), o `juntar`, uma sopa inteira da caixa à pia, queimar e o lixo, a
-  panela que volta a cozinhar, pedido perdido e estrelas, colisão e impulso, e uma sopa entregue pelo servidor com o
-  relógio acelerado (`COZINHA_VEL`).
-- `/cozinha` em `tests/salas.test.js` (regravado) e em `tests/e2e/paginas.spec.js`.
+- `tests/corrida-robos.test.js`:
+  - um robô copiando uma volta gravada a ~1,4x a velocidade final não passa da final do carro e, em cada instante da
+    largada, não está mais rápido que o carro de quem joga acelerando o tempo todo (falha sem a correção);
+  - o cogumelo dura `TURBO_MS`, o robô com turbo passa da velocidade final e, logo depois que acaba, ainda está acima dela.

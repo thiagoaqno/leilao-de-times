@@ -1,7 +1,7 @@
 // Corrida da Galera — o jogo no navegador: sala, garagem, e a corrida em 3D (Three.js).
 // Este é o módulo de entrada: começa e para a corrida, o laço e o desenho, e a capa da página. O resto fica nos
 // outros módulos desta pasta (estado, sons, rede, menus, cena, pista, carros, controles, fisica, fantasma e hud).
-import { E, SECTORS, COLORS, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
+import { E, SECTORS, COLORS, CARROS, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
@@ -179,9 +179,11 @@ function draw(dt) {
   const sd = tr.sol; if (sd) sun.position.set(src.x + sd.x * 800, (src.z || 0) + sd.y * 800, src.y + sd.z * 800); else sun.position.set(src.x - 300, (src.z || 0) + 700, src.y + 260);
   sun.target.position.set(src.x, src.z || 0, src.y);
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
-  // desfoque de velocidade: começa perto de 110 km/h e fica forte no fim de reta, no turbo e no estilingue
+  // desfoque de velocidade, pela fração da velocidade final do carro (vale igual para os cinco): começa em 40% (uns 90 km/h
+  // no equilibrado), fica inteiro a 90% e o turbo e o estilingue borram ainda mais
   const turbo = src === c && (race.boostUntil > now || race.sling > 0 || (me() && me().boostUntil > now));
-  desenhar(Math.max(0, (Math.abs(src.v || 0) - 160) / 180) + (turbo ? 0.45 : 0));
+  const vref = (CARROS[src === c ? me()?.car : null] || CARROS.equilibrado).vmax;
+  desenhar(Math.min(1, Math.max(0, (Math.abs(src.v || 0) / vref - 0.4) / 0.5)) + (turbo ? 0.4 : 0));
 }
 // ---------- capa: a largada de Interlagos em 3D (o mesmo desenho da corrida) ----------
 (function heroArt() {

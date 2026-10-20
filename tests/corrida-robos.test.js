@@ -18,7 +18,7 @@ test("pistas refeitas: voltas longas sem trechos encostando um no outro", () => 
 });
 
 // uma corrida só de robôs, no tempo de mentira (o relógio anda junto com a simulação)
-function correr(pista, nivel = "medio", caixas = false, robos = 3) {
+function correr(pista, nivel = "medio", caixas = false, robos = 3, aCada = null) {
   const agora = Date.now; let relogio = agora();
   Date.now = () => relogio;
   try {
@@ -26,12 +26,12 @@ function correr(pista, nivel = "medio", caixas = false, robos = 3) {
     let k = 0; Robos.preparar(room, ["#a", "#b", "#c", "#d"], () => "x" + k++);
     room.order.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null }));
     Itens.start(room); Robos.largar(room);
-    const eventos = [], lats = [], setor = (p, s) => { if (s !== (p.sector + 1) % T.SECTORS) p.foraDeOrdem = true; p.sector = s; if (s === 0) { if (!p.started) { p.started = true; p.ini = relogio; } else { p.laps++; p.volta = (relogio - p.ini) / 1000; } } };
+    const eventos = [], lats = [], vs = [], setor = (p, s) => { if (s !== (p.sector + 1) % T.SECTORS) p.foraDeOrdem = true; p.sector = s; if (s === 0) { if (!p.started) { p.started = true; p.ini = relogio; } else { p.laps++; p.volta = (relogio - p.ini) / 1000; } } };
     for (let t = 0; t < 240 && room.order.some((id) => !room.players[id].laps); t += 0.05) {
-      relogio += 50; Robos.passo(room, 0.05, setor, (e) => eventos.push(e)); Itens.tick(room, (e) => eventos.push(e));
-      lats.push(room.players[room.order[0]].ia.lat);
+      relogio += 50; if (aCada) aCada(room, t, relogio); Robos.passo(room, 0.05, setor, (e) => eventos.push(e)); Itens.tick(room, (e) => eventos.push(e));
+      lats.push(room.players[room.order[0]].ia.lat); vs.push(room.players[room.order[0]].ia.v);
     }
-    return { room, eventos, lats };
+    return { room, eventos, lats, vs };
   } finally { Date.now = agora; }
 }
 test("robôs seguem o traçado de corrida: usam a pista toda, sem sair dela, e fecham a volta", () => {
@@ -72,6 +72,30 @@ test("robôs aprendem a volta gravada: passam pelo lado e na velocidade de quem 
   const jeito = room.players[room.order[0]].ia.jeito; // cada robô passa um pouco para um lado da linha (de propósito)
   assert.ok(Math.abs(media - 25 - jeito) < 8, `linha média ${media.toFixed(1)} (jeito ${jeito.toFixed(1)})`);
   assert.ok(room.order.every((id) => room.players[id].laps === 1));
+});
+test("robôs não têm vantagem: copiando uma volta feita no vácuo, não passam da velocidade final nem arrancam mais forte", () => {
+  const pista = "interlagos", pts = T.pontos(T.PISTAS[pista], 6), n = pts.length, s = [];
+  // a volta gravada a ~1,4x a velocidade final do carro (como se quem gravou ficasse no vácuo e no estilingue o tempo todo)
+  let ms = 0; for (let i = 0; i < n; i += 7) { s.push([ms, pts[i].x, pts[i].y, pts[i].h, 0, i]); ms += 100; }
+  assert.equal(Robos.aprender(pista, { s, carro: "equilibrado", tempo: ms / 1000, piloto: "Vacuo" }), true);
+  const { room, vs } = correr(pista, "dificil", false, 1), p = room.players[room.order[0]], c = T.CARROS[p.car];
+  assert.ok(Math.max(...vs) <= c.vmax + 1e-6, `${p.car}: chegou a ${Math.max(...vs).toFixed(0)} (final ${c.vmax})`);
+  // a arrancada: em cada instante, no máximo o que o carro de quem joga faz acelerando o tempo todo (fisica.js)
+  let v = 0; for (let k = 0; k < 60; k++) { v += c.acc * (1 - 0.8 * Math.pow(v / c.vmax, 1.6)) * 0.05; assert.ok(vs[k] <= v + 1e-6, `${p.car} em ${((k + 1) * 0.05).toFixed(2)} s: ${vs[k].toFixed(0)} contra ${v.toFixed(0)}`); }
+  Robos.usarFonte(() => null); // as outras provas não usam essa volta
+});
+test("turbo do cogumelo: dura TURBO_MS acima da velocidade final e, quando acaba, solta aos poucos", () => {
+  const now = Date.now(), p = { id: "a", car: "equilibrado", finish: null, item: "cogumelo", rolling: 0, spinUntil: 0 };
+  const room = { config: { pista: "interlagos", caixas: true }, phase: "race", startAt: now - 5000, order: ["a"], players: { a: p } };
+  Itens.start(room); p.item = "cogumelo"; p.pos = { x: 0, y: 0, z: 0, a: 0, v: 0, prog: 0, at: now };
+  assert.equal(Itens.use(room, p, false, () => {}), true);
+  assert.ok(Math.abs(p.boostUntil - now - T.TURBO_MS) < 50 && T.TURBO_MS >= 3000);
+  // um robô na reta, já no topo, pega o turbo: passa da final durante o turbo e continua acima dela logo depois que acaba
+  let fim = 0;
+  const { room: r, vs } = correr("interlagos", "dificil", false, 1, (room, t, agora) => { if (Math.abs(t - 6) < 0.01) { room.players[room.order[0]].boostUntil = agora + T.TURBO_MS; fim = t + T.TURBO_MS / 1000; } });
+  const c = T.CARROS[r.players[r.order[0]].car], em = (t) => vs[Math.round(t / 0.05)];
+  assert.ok(Math.max(...vs) > c.vmax * 1.1, "o turbo passa da velocidade final");
+  assert.ok(em(fim + 0.3) > c.vmax * 1.03 || em(fim + 0.3) < c.vmax * 0.98, `logo depois do turbo: ${em(fim + 0.3).toFixed(0)}`); // ainda solta (ou já está freando para uma curva)
 });
 test("todas as pistas: robôs largam no reto, passam pelos 12 checkpoints em ordem e fecham a volta sem sair da pista", () => {
   for (const [id, t] of Object.entries(T.PISTAS)) {

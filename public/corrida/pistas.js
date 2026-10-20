@@ -498,7 +498,10 @@ function boxesFor(id) {
   return out;
 }
 
-const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, boxesFor, SECTORS };
+// o turbo do cogumelo: quanto tempo fica acima da velocidade final, e quanto do excesso perde por segundo quando acaba
+// (aos poucos, para não cortar seco; o vácuo e o estilingue também acabam assim)
+const TURBO_MS = 3500, TURBO_SOLTA = 90;
+const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, boxesFor, SECTORS, TURBO_MS, TURBO_SOLTA };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pistas = api;
 })(typeof window !== "undefined" ? window : globalThis);
