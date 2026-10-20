@@ -119,8 +119,10 @@ function barras(tJogo) {
     if (L.chama) L.chama.material.emissiveIntensity = aceso ? 1.1 + Math.sin(agora * 17 + i) * 0.35 : 0;
     if (L.fogo) { L.fogo.visible = !!(aceso || item?.q); if (L.fogo.visible) L.fogo.children.forEach((f, k) => { f.scale.y = (item.q ? 0.2 : 0.08) + 0.05 * (1 + Math.sin(agora * 14 + k)); }); }
     if (L.agua) L.agua.visible = trabalhando.has(i);
+    if (L.t.tipo === "pia" && trabalhando.has(i) && agora - (L.molhou || 0) > 0.28) { L.molhou = agora; Som.agua(); }
     if (L.t.tipo === "pia" && trabalhando.has(i) && agora - (L.bolhou || 0) > 0.13) { L.bolhou = agora; particulas(L.g.position, "#d9f6ff", 2, "bolha"); }
     if (aceso && agora - (L.vaporizou || 0) > (item.k === "frigideira" ? 0.13 : 0.2)) { L.vaporizou = agora; particulas(L.g.position, item.k === "frigideira" ? "#eac59a" : "#e4eef2", 2, "vapor"); }
+    if (aceso && item.k === "frigideira" && agora - (L.chiou || 0) > 0.22) { L.chiou = agora; Som.fritar(); }
     if (aceso && item.k === "panela" && L.obj) {
       const caldo = L.obj.children.find((c) => c.geometry && c.geometry.type === "CylinderGeometry" && c.position.y > 0.06);
       if (caldo) caldo.scale.y = 0.02 + 0.009 * Math.sin(agora * 10 + i);
@@ -190,22 +192,38 @@ function limparCorpos() { for (const c of G.corpos.values()) descartarJogador(c.
 // Sons (sintetizados)
 // ======================================================================
 const Som = (() => {
-  let ac = null, vol = store.get("cozinha:vol") ?? 0.7, master = null;
-  const ctx = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = vol; master.connect(ac.destination); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; };
-  function tom(f0, f1, dur, ganho, tipo = "sine", atraso = 0) { const c = ctx(); if (!c) return; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + atraso; o.type = tipo; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur); g.gain.setValueAtTime(ganho, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02); }
-  function ruido(dur, ganho, freq, tipo = "bandpass") { const c = ctx(); if (!c) return; const n = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate), d = n.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length); const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = n; f.type = tipo; f.frequency.value = freq; g.gain.value = ganho; s.connect(f).connect(g).connect(master); s.start(); }
+  let ac = null, vol = store.get("cozinha:vol") ?? 0.7, volMus = store.get("cozinha:musica") ?? 0.35, master = null, music = null;
+  let proximaNota = 0, passoMus = 0;
+  const ctx = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = vol; master.connect(ac.destination); music = ac.createGain(); music.gain.value = volMus; music.connect(ac.destination); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; };
+  function tom(f0, f1, dur, ganho, tipo = "sine", atraso = 0, saida = master) { const c = ctx(); if (!c) return; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + atraso; o.type = tipo; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur); g.gain.setValueAtTime(ganho, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g).connect(saida || master); o.start(t); o.stop(t + dur + 0.02); }
+  function ruido(dur, ganho, freq, tipo = "bandpass", saida = master) { const c = ctx(); if (!c) return; const n = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate), d = n.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length); const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = n; f.type = tipo; f.frequency.value = freq; g.gain.value = ganho; s.connect(f).connect(g).connect(saida || master); s.start(); }
+  function musica(resta, tocando) {
+    if (!tocando || volMus <= 0 || !ac || ac.state !== "running") { proximaNota = 0; return; }
+    if (ac.currentTime < proximaNota) return;
+    const bpm = resta <= 60 ? 118 + 46 * (1 - Math.max(0, resta) / 60) : 118;
+    const pulso = 30 / bpm, melodia = [392, 0, 523, 0, 440, 0, 587, 0, 523, 0, 659, 0, 440, 0, 392, 0];
+    const nota = melodia[passoMus % melodia.length];
+    if (nota) tom(nota, nota * 0.997, pulso * 0.8, 0.11, "triangle", 0, music);
+    if (passoMus % 4 === 0) { tom([196, 174.6, 220, 196][Math.floor(passoMus / 4) % 4], 150, pulso * 1.5, 0.12, "sine", 0, music); ruido(0.035, 0.08, 700, "lowpass", music); }
+    if (passoMus % 4 === 2) ruido(0.025, 0.06, 3500, "highpass", music);
+    passoMus++; proximaNota = ac.currentTime + pulso;
+  }
   return {
-    get vol() { return vol; }, setVol(v) { vol = v; store.set("cozinha:vol", v); if (master) master.gain.value = v; }, unlock: ctx,
+    get vol() { return vol; }, setVol(v) { vol = v; store.set("cozinha:vol", v); if (master) master.gain.value = v; },
+    get volMus() { return volMus; }, setMus(v) { volMus = v; store.set("cozinha:musica", v); if (music) music.gain.value = v; proximaNota = 0; }, unlock: ctx, musica,
     pegar() { tom(500, 760, 0.07, 0.18, "triangle"); },
     soltar() { tom(420, 260, 0.08, 0.2, "triangle"); },
     juntar() { tom(600, 900, 0.06, 0.15, "triangle"); tom(900, 1200, 0.06, 0.12, "triangle", 0.05); },
     picar() { ruido(0.05, 0.6, 2600); tom(180, 120, 0.04, 0.2, "square"); },
     lavar() { ruido(0.25, 0.35, 900, "lowpass"); },
+    agua() { ruido(0.18, 0.12, 1400, "lowpass"); },
+    fritar() { ruido(0.14, 0.12, 2800, "highpass"); },
     pronto() { tom(1320, 1300, 0.18, 0.18); tom(1760, 1740, 0.25, 0.15, "sine", 0.12); },
     bip() { tom(1900, 1900, 0.08, 0.1, "square"); },
     queimou() { ruido(0.8, 0.5, 400, "lowpass"); tom(220, 90, 0.5, 0.2, "sawtooth"); },
-    entregou() { [880, 1108, 1318].forEach((f, i) => tom(f, f, 0.16, 0.16, "triangle", i * 0.07)); ruido(0.12, 0.25, 5000); },
-    pedido() { tom(1046, 1040, 0.12, 0.12, "sine"); tom(1318, 1310, 0.14, 0.1, "sine", 0.1); },
+    entregou() { [880, 1760, 2640].forEach((f, i) => tom(f, f * 0.995, 0.55 - i * 0.1, 0.14 / (i + 1), "sine", 0)); },
+    pedido() { tom(740, 510, 0.16, 0.14, "sawtooth"); tom(680, 440, 0.18, 0.14, "sawtooth", 0.2); tom(1050, 1310, 0.12, 0.08, "sine", 0.35); },
+    relogio() { tom(1450, 1100, 0.045, 0.14, "square"); },
     perdeu() { tom(300, 140, 0.45, 0.22, "sawtooth"); },
     errou() { tom(200, 180, 0.15, 0.2, "square"); },
     lixo() { ruido(0.2, 0.4, 700); },
@@ -213,8 +231,18 @@ const Som = (() => {
     fim() { [523, 659, 784, 1046].forEach((f, i) => tom(f, f, 0.3, 0.15, "triangle", i * 0.14)); },
   };
 })();
-$("vol").value = Som.vol; $("volV").textContent = Math.round(Som.vol * 100) + "%";
-$("vol").oninput = (e) => { Som.setVol(+e.target.value); $("volV").textContent = Math.round(Som.vol * 100) + "%"; };
+let ultimoFx = Som.vol || 0.7, ultimoMus = Som.volMus || 0.35;
+function controlesSom() {
+  $("vol").value = Som.vol; $("volV").textContent = Math.round(Som.vol * 100) + "%";
+  $("mus").value = Som.volMus; $("musV").textContent = Math.round(Som.volMus * 100) + "%";
+  $("btnFx").textContent = Som.vol ? "Silenciar efeitos" : "Ativar efeitos";
+  $("btnMus").textContent = Som.volMus ? "Silenciar música" : "Ativar música";
+}
+$("vol").oninput = (e) => { const v = +e.target.value; if (v) ultimoFx = v; Som.setVol(v); controlesSom(); };
+$("mus").oninput = (e) => { const v = +e.target.value; if (v) ultimoMus = v; Som.setMus(v); Som.unlock(); controlesSom(); };
+$("btnFx").onclick = () => { Som.setVol(Som.vol ? 0 : ultimoFx); Som.unlock(); controlesSom(); };
+$("btnMus").onclick = () => { Som.setMus(Som.volMus ? 0 : ultimoMus); Som.unlock(); controlesSom(); };
+controlesSom();
 
 // ======================================================================
 // Telas: inicial, brigada (a sala de espera) e o fim do expediente
@@ -361,6 +389,11 @@ function hud(tJogo) {
     el.classList.toggle("urgente", f < 0.2);
   }
   const resta = ms.fase === "conta" ? K.COZINHAS[ms.coz].tempo : Math.max(0, K.COZINHAS[ms.coz].tempo - tJogo);
+  Som.musica(resta, ms.fase === "jogo");
+  if (ms.fase === "jogo" && resta > 0 && resta <= 10) {
+    const segundo = Math.ceil(resta);
+    if (G.ultimoTic !== segundo) { G.ultimoTic = segundo; Som.relogio(); }
+  } else G.ultimoTic = null;
   $("hRel").textContent = mmss(resta); $("hRel").classList.toggle("pouco", ms.fase === "jogo" && resta <= 30);
   $("hPtsN").textContent = ms.pontos;
   $("hCombo").classList.toggle("hidden", (ms.combo || 0) < 2);
@@ -519,6 +552,7 @@ const ICONE = {
 // partida nova na mesma cozinha: cada um volta para o seu lugar
 function reposicionar() { S.match.jogadores.forEach((j, k) => { const c = G.corpos.get(j.id); if (c) { [c.x, c.z] = G.mapa.inicio[k]; c.vx = c.vz = 0; c.d = Math.PI; } }); G.buf = []; }
 function pararJogo() {
+  Som.musica(0, false);
   G.active = false; limparCorpos(); limparCozinha(); G.mesa = null; G.me = null; G.myId = null; G.buf = []; G.matchKey = null;
   $("receitas").classList.add("hidden"); $("guia").classList.add("hidden");
   if (window.Toque) Toque.show(false);

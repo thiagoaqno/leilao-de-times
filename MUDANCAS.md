@@ -1,9 +1,9 @@
-# Haxball: cantos chanfrados
+# Cozinha: música e controles de áudio
 
 ## O que muda
-- Os quatro cantos do campo viraram uma mureta em diagonal (chanfro de 58 px em cada lado). A bola quica nela com a mesma perda das outras paredes e não fica mais presa na quina.
-- Os discos escorregam pelo chanfro, então ninguém prende a bola no canto.
-- O desenho do campo acompanha: o contorno corta os cantos e a mureta aparece escura, com listras.
+- Música sintetizada durante a partida, com andamento que sobe ao longo do último minuto.
+- Faca, fritura e água acompanham o preparo. A entrega toca um sino; novos pedidos têm um chamado próprio; os últimos 10 segundos têm tic-tac.
+- A pausa oferece volume e botão de silêncio separados para efeitos e música. As duas preferências ficam salvas no navegador.
 
 ## Testes
-- `node --test tests/haxball.test.js`: teste novo com a bola chegando em diagonal ao canto e um disco empurrando a bola contra outro canto.
+- `npx playwright test tests/e2e/cozinha-som.spec.js`: verificou os controles independentes, a persistência após recarregar e a ausência de erros no navegador.
