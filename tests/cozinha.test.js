@@ -156,6 +156,9 @@ test("o cozinheiro não atravessa bancada e o impulso tem recarga", () => {
   const m = K.novaPartida("1-1", [{ id: "a", nome: "Ana" }]), j = m.jogadores[0];
   for (let i = 0; i < 240; i++) K.mover(m.mapa, j, { x: 0, z: -1 }, 1 / 60); // para cima, contra a fileira de bancadas
   assert.ok(j.z >= T + K.RAIO - 1e-6, "parou encostado na bancada");
+  const xQuina = j.x;
+  for (let i = 0; i < 30; i++) K.mover(m.mapa, j, { x: 1, z: -1 }, 1 / 60);
+  assert.ok(j.x > xQuina + 0.2, "escorrega ao andar na diagonal junto à bancada");
   const x0 = j.x; K.mover(m.mapa, j, { x: 1, z: 0, dash: true }, 1 / 60); assert.ok(j.dashT > 0);
   for (let i = 0; i < 10; i++) K.mover(m.mapa, j, { x: 1, z: 0 }, 1 / 60);
   assert.ok(j.x - x0 > 1.5, "o impulso anda mais que o passo");
@@ -196,6 +199,29 @@ test("com cozinheiros extras ligados, as vagas livres entram no ciclo de troca",
     const fim = await esperarEstado(a, (s) => s.match?.controles[r.id] === r.id);
     assert.strictEqual(fim.match.controles[r.id], r.id);
   } finally { a.close(); await srv.parar(); }
+});
+
+test("ingrediente arremessado pousa na bancada ou no chão e pode ser recuperado", () => {
+  const m = K.novaPartida("1-1", [{ id: "a" }]), j = m.jogadores[0];
+  passar(m, K.TEMPOS.conta + 0.1);
+  const tab = achar(m, "tabua"); deFrente(m, j, tab.c, tab.r);
+  j.mao = ing("cebola"); assert.ok(K.arremessar(m, j, 0.15)); assert.strictEqual(j.mao, null);
+  passar(m, 1.5);
+  const total = m.caidos.length + m.voando.length + m.estado.filter((s) => s.item?.k === "ing").length + m.jogadores.filter((p) => p.mao?.k === "ing").length;
+  assert.strictEqual(total, 1, "o ingrediente não some ao arremessar");
+  if (m.caidos.length) {
+    j.x = m.caidos[0].x; j.z = m.caidos[0].z; assert.ok(K.interagir(m, j)); assert.strictEqual(j.mao.t, "cebola");
+  }
+});
+
+test("colega pega ingrediente no ar", () => {
+  const m = K.novaPartida("1-1", [{ id: "a" }, { id: "b" }]), [a, b] = m.jogadores;
+  passar(m, K.TEMPOS.conta + 0.1);
+  a.x = 4.5; a.z = 4.5; a.d = -Math.PI / 2; b.x = 6; b.z = 4.5;
+  a.mao = ing("cebola"); assert.ok(K.arremessar(m, a, 0.15));
+  passar(m, 0.2);
+  assert.strictEqual(b.mao?.t, "cebola");
+  assert.strictEqual(m.voando.length, 0);
 });
 
 test("servidor: abre a cozinha, pega, pica e entrega uma sopa (tempo acelerado)", async () => {
