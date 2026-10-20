@@ -124,10 +124,32 @@ test("pedido que vence dá multa; o fim conta as estrelas pela meta de quem est�
   passar(m, K.TEMPOS.conta + 0.1); m.pontos = 15;
   passar(m, K.RECEITAS.sopa_cebola.tempo + 0.1);
   assert.ok(m.perdidos >= 2); assert.strictEqual(m.pontos, 0, "a multa não deixa negativo");
-  assert.deepStrictEqual(m.meta, K.COZINHAS["1-1"].estrelas);
+  assert.deepStrictEqual(m.meta, K.metaDe(K.COZINHAS["1-1"], 2));
   assert.ok(K.metaDe(K.COZINHAS["1-1"], 1)[0] < m.meta[0], "sozinho a meta é menor");
-  m.pedidos = []; m.proxPedido = Infinity; m.pontos = m.meta[1] + 1; passar(m, K.COZINHAS["1-1"].tempo);
+  m.pedidos = []; m.proxPedido = Infinity; m.pontos = m.meta[1] + 1; m.t = K.COZINHAS["1-1"].tempo - 0.1; passar(m, 0.2);
   assert.strictEqual(m.fase, "fim"); assert.strictEqual(m.estrelas, 2);
+});
+
+test("a fila repõe pedidos após entregas e o combo sobe só na ordem", () => {
+  const m = K.novaPartida("1-1", [{ id: "a", nome: "Ana" }], { rng: () => 0 });
+  passar(m, K.TEMPOS.conta + 0.1);
+  const j = m.jogadores[0], ent = achar(m, "entrega");
+  const servir = () => { j.mao = K.novoPrato(); j.mao.c = K.RECEITAS.sopa_cebola.itens.map((v) => ({ t: v.split(":")[0], e: "cozido" })); deFrente(m, j, ent.c, ent.r); return K.interagir(m, j); };
+  assert.ok(servir()); assert.strictEqual(m.combo, 1); assert.strictEqual(m.pedidos.length, 1);
+  passar(m, 1.2); assert.strictEqual(m.pedidos.length, 2, "a fila foi reposta em até 3 s");
+  assert.ok(servir()); assert.strictEqual(m.combo, 2);
+  m.pedidos.unshift({ id: ++m.seqPedido, r: "sopa_tomate", ini: m.t, ate: m.t + 75 });
+  assert.ok(servir()); assert.strictEqual(m.combo, 0, "servir fora da ordem zera o combo");
+});
+
+test("as metas vêm do planejador com distância real e terceira estrela acima de 80% do ótimo", () => {
+  for (const [id, coz] of Object.entries(K.COZINHAS)) for (let n = 1; n <= 4; n++) {
+    const perfeito = K.simularPerfeito(coz, n), meta = K.metaDe(coz, n);
+    assert.ok(perfeito.pratos > 0, `${id}/${n}: nenhum prato possível`);
+    assert.ok(perfeito.duracoes.every((d) => d > 0 && Number.isFinite(d)), `${id}/${n}: rota impossível`);
+    assert.ok(meta[2] <= perfeito.pontos && meta[2] >= perfeito.pontos * 0.8, `${id}/${n}: terceira estrela fora da faixa`);
+    assert.ok(meta[0] < meta[1] && meta[1] < meta[2]);
+  }
 });
 
 test("o cozinheiro não atravessa bancada e o impulso tem recarga", () => {

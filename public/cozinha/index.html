@@ -110,13 +110,14 @@ kbd{display:inline-block;background:#fff;border:1.5px solid var(--ink);border-bo
 /* o placar (moedas) embaixo à esquerda, o relógio embaixo à direita */
 #hPts{left:14px;bottom:14px;display:flex;align-items:center;gap:8px;background:#2a1d17e8;border:3px solid var(--accent2);border-radius:999px;padding:4px 16px 4px 6px;color:#fff8ea;font:30px var(--display)}
 #hPts i{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffe58a,#e0a21a);border:2px solid #9a6a10;display:block}
+#hCombo{left:112px;bottom:20px;background:#fff8ea;color:#7e4217;border:2px solid #f2b632;border-radius:999px;padding:4px 9px;font:700 15px var(--body)}
 #hRel{right:14px;bottom:14px;background:#2a1d17e8;border:3px solid #fff8ea;border-radius:999px;padding:4px 18px;color:#fff8ea;font:32px var(--display);min-width:118px;text-align:center}
 #hRel.pouco{border-color:var(--bad);color:#ffb3a6;animation:treme .6s infinite}
 #hMsg{top:38%;left:50%;transform:translate(-50%,-50%);text-align:center;font:64px var(--display);color:#fff8ea;text-shadow:0 5px 0 #2a1d17,0 0 24px #000a;white-space:nowrap}
 #hMsg.pop{animation:pop .45s ease-out}
 @keyframes pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}70%{transform:translate(-50%,-50%) scale(1.12)}100%{transform:translate(-50%,-50%) scale(1)}}
 #hHint{right:16px;top:12px;font:600 12.5px var(--body);text-align:right;line-height:1.7;color:#fff8eacc;text-shadow:0 1px 0 #000}
-@media (pointer:coarse){#hHint{display:none!important}#hPts{bottom:auto;top:auto;left:50%;transform:translateX(-50%);bottom:10px;font-size:22px}#hRel{top:10px;bottom:auto;font-size:24px;min-width:90px}#hPed{right:120px}.ped{width:96px}.ped .fig{width:54px;height:54px}}
+@media (pointer:coarse){#hHint{display:none!important}#hPts{bottom:auto;top:auto;left:50%;transform:translateX(-50%);bottom:10px;font-size:22px}#hCombo{left:8px;bottom:10px}#hRel{top:10px;bottom:auto;font-size:24px;min-width:90px}#hPed{right:120px}.ped{width:96px}.ped .fig{width:54px;height:54px}}
 .flutua{position:absolute;font:28px var(--display);color:#ffe58a;text-shadow:0 3px 0 #2a1d17;pointer-events:none;animation:sobe 1.3s ease-out forwards;white-space:nowrap;transform:translate(-50%,-50%)}
 .flutua small{display:block;font-size:17px;color:#bff5c9;text-align:center}
 .flutua .carimbo{display:block;background:#fff8ea;color:#367c4b;border:3px solid #367c4b;border-radius:4px;padding:2px 8px;font:700 15px var(--body);transform:rotate(-8deg)}
@@ -204,6 +205,7 @@ kbd{display:inline-block;background:#fff;border:1.5px solid var(--ink);border-bo
   <canvas id="cv"></canvas>
   <div class="hud" id="hPed"></div>
   <div class="hud" id="hPts"><i></i><span id="hPtsN">0</span></div>
+  <div class="hud hidden" id="hCombo"></div>
   <div class="hud" id="hRel">3:00</div>
   <div class="hud" id="hMsg"></div>
   <div class="hud" id="hHint"><kbd>Espaço</kbd> pegar/soltar · <kbd>F</kbd> picar/lavar · <kbd>Shift</kbd> impulso · <kbd>Esc</kbd> menu</div>

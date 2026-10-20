@@ -287,6 +287,8 @@ function hud(tJogo) {
   const resta = ms.fase === "conta" ? K.COZINHAS[ms.coz].tempo : Math.max(0, K.COZINHAS[ms.coz].tempo - tJogo);
   $("hRel").textContent = mmss(resta); $("hRel").classList.toggle("pouco", ms.fase === "jogo" && resta <= 30);
   $("hPtsN").textContent = ms.pontos;
+  $("hCombo").classList.toggle("hidden", (ms.combo || 0) < 2);
+  $("hCombo").textContent = `Sequência ×${ms.combo || 1}`;
   const msg = $("hMsg");
   if (ms.fase === "conta") { const n = Math.ceil(-tJogo); const txt = n > 0 ? String(n) : "Valendo!"; if (msg.textContent !== txt) { msg.textContent = txt; msg.classList.remove("pop"); void msg.offsetWidth; msg.classList.add("pop"); } }
   else if (ms.fase === "jogo" && tJogo < 1.2) { if (msg.textContent !== "Valendo!") msg.textContent = "Valendo!"; }

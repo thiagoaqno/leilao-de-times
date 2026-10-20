@@ -1,14 +1,11 @@
-# Cozinha: bancadas e entregas com animação
+# Cozinha: pedidos contínuos, sequência e metas por mapa
 
 ## O que muda
-- A faca acompanha a mão enquanto o cozinheiro pica. O ingrediente passa por quatro tamanhos e solta lascas a cada corte.
-- O fogão acende somente com comida no recipiente. A chama oscila, a panela borbulha, o vapor sobe e a carne da frigideira muda de cor durante o preparo.
-- A pia mostra água e bolhas ao lavar. O escorredor ganha um brilho ao receber um prato limpo.
-- A fumaça escurece perto de queimar, o aviso e o apito aceleram, e a panela queimada fica em chamas.
-- A entrega leva o prato pela esteira, carimba a comanda e leva moedas ao placar. Erros mostram a recusa; o retorno avisa e conta pilhas grandes de pratos sujos.
-- Itens pulam ao pegar e soltar; o cozinheiro segura a faca durante o trabalho e deixa poeira ao dar impulso.
-- Inclui `planos/cozinha-melhorias.md`, vindo da branch `cozinha`, para orientar os próximos PRs na ordem definida no plano.
+- A cozinha começa com dois pedidos. Cada entrega agenda outro em 1 a 3 s, respeitando o limite da fila; pedidos vencidos mantêm o intervalo da cozinha quando a fila cai abaixo do mínimo. Quem cozinha rápido deixa de esperar o próximo pedido.
+- Entregas na ordem da fila sobem o multiplicador de pontos de ×1 até ×4. Entregar fora da ordem ou perder um pedido zera a sequência. O multiplicador aparece ao lado do placar.
+- As metas deixam de usar valores fixos e `FATOR_META`. `simularPerfeito` estima a pontuação ótima para 1 a 4 cozinheiros com caminhos alcançáveis do mapa, tempo de deslocamento, preparo, cocção, montagem e lavagem. A primeira, segunda e terceira estrela ficam em aproximadamente 35%, 60% e 85% desse resultado.
+- O planejador expõe `rota` para uso posterior pelo ajudante. Mantive a paciência e o tempo de queimar após conferir que duas sopas solo cabem na paciência atual com margem curta, enquanto o tempo de queimar deixa a travessia até o fogão possível.
 
 ## Testes
-- `node --test tests/cozinha.test.js`: 8 testes passaram.
-- `npx playwright test tests/e2e/cozinha.spec.js`: abre a cozinha, renderiza pedidos e confirma movimento pelo teclado sem erros no navegador.
+- `node --test tests/cozinha.test.js`: 10 testes passaram, incluindo fila, combo e as metas das três cozinhas de 1 a 4 cozinheiros.
+- `npx playwright test tests/e2e/cozinha-ritmo.spec.js`: conferiu os pedidos iniciais e a meta calculada na página, sem erros no navegador.
