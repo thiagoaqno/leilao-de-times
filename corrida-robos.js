@@ -18,7 +18,7 @@ const CACHE = new Map();
 const LINHAS = new Map();
 function tracado(pista) {
   if (LINHAS.has(pista)) return LINHAS.get(pista);
-  const t = T.PISTAS[pista], pts = T.elevate(T.sample(t.points, STEP), t.hills), n = pts.length, max = t.width / 2 - 16;
+  const t = T.PISTAS[pista], pts = T.pontos(t, STEP), n = pts.length, max = t.width / 2 - 16;
   const lat = new Float64Array(n), X = new Float64Array(n), Y = new Float64Array(n);
   const pos = () => { for (let i = 0; i < n; i++) { X[i] = pts[i].x - pts[i].ty * lat[i]; Y[i] = pts[i].y + pts[i].tx * lat[i]; } };
   for (const k of [12, 8, 5, 3]) for (let it = 0; it < 60; it++) {
@@ -115,7 +115,9 @@ function largar(room) {
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot) continue;
     const pf = perfil(room.config.pista, p.car), g = largada(pf.pts, p.grid, t.width);
-    p.ia = { s: g.idx, lat: g.lat, desvio: 0, v: 0, nivel: (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.97, 1.02), jeito: rnd(-6, 6), usaEm: 0 };
+    p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
+    // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
+    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel: (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.97, 1.02), jeito: rnd(-11, 11), reacao: rnd(0, 450), usaEm: 0 };
     posicionar(p, pf, 0);
   }
 }
@@ -123,9 +125,11 @@ function posicionar(p, pf, laps) {
   const { pts, n } = pf, i = Math.floor(p.ia.s) % n, j = (i + 1) % n, f = p.ia.s - Math.floor(p.ia.s), a = pts[i], b = pts[j];
   const x = a.x + (b.x - a.x) * f - a.ty * p.ia.lat, y = a.y + (b.y - a.y) * f + a.tx * p.ia.lat, z = a.h + (b.h - a.h) * f;
   const prog = p.started ? laps * n + i : i - n;
-  // o bico aponta para onde o carro está indo (a linha seguida, um pouco à frente)
-  const k = (i + 3) % n, xk = pts[k].x - pts[k].ty * pf.lat[k], yk = pts[k].y + pts[k].tx * pf.lat[k], dir = Math.atan2(yk - y, xk - x);
-  p.pos = { x, y, z, a: Number.isFinite(dir) ? dir : Math.atan2(a.ty, a.tx), v: p.ia.v, prog, at: Date.now() };
+  // o bico aponta para onde o carro está andando de verdade (sem isso, trocando de lado ele parecia derrapar)
+  const ant = p.pos, mov = ant ? Math.hypot(x - ant.x, y - ant.y) : 0;
+  let dir = mov > 0.4 ? Math.atan2(y - ant.y, x - ant.x) : ant ? ant.a : Math.atan2(a.ty, a.tx);
+  if (ant && mov > 0.4) { const d = Math.atan2(Math.sin(dir - ant.a), Math.cos(dir - ant.a)); dir = ant.a + d * 0.6; } // suaviza
+  p.pos = { x, y, z, a: dir, v: p.ia.v, prog, at: Date.now() };
   return i;
 }
 // um passo (dt em segundos). setor(p, s) é o mesmo onSector dos humanos; emit manda eventos para a sala
@@ -136,22 +140,26 @@ function passo(room, dt, setor, emit) {
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot || !p.ia) continue;
     const pf = perfil(room.config.pista, p.car), ia = p.ia, c = pf.c;
-    if (corrida && p.finish == null) {
+    if (corrida && p.finish == null && now >= room.startAt + ia.reacao) {
       // elástico: quem dispara na frente dos humanos alivia; quem fica muito para trás aperta um pouco
       let el = 1; if (lider != null && p.pos) { const dif = (p.pos.prog - lider) / pf.n; el = dif > 0.08 ? 0.93 : dif < -0.25 ? 1.05 : 1; }
       const i = Math.floor(ia.s) % pf.n;
       let alvo = Math.min(pf.lim[i], pf.lim[(i + 3) % pf.n]) * ia.nivel * el * (1 - Math.min(1, Math.abs(ia.desvio) / 40) * 0.06);
       if (p.boostUntil > now) alvo *= 1.18; if (p.starUntil > now) alvo *= 1.12;
       if (p.spinUntil > now) ia.v *= Math.exp(-dt * 2.2);
-      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * Math.max(0.04, 1 - Math.pow(Math.max(0, ia.v) / c.vmax, 2.5)) * dt * (pf.aprendeu ? 2.2 : 1.5)); // copiando alguém, acompanha a aceleração dele
+      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / c.vmax, 1.6)) * dt * (pf.aprendeu ? 2.2 : 1.5)); // copiando alguém, acompanha a aceleração dele
       else ia.v = Math.max(alvo, ia.v - c.brake * dt);
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
       // segue o traçado de corrida; se tem outro robô logo à frente na mesma linha, desvia para o lado para passar
       let desvio = 0;
       for (const oid of room.order) { const o = room.players[oid]; if (o === p || !o.bot || !o.ia) continue;
         const ds = (o.ia.s - ia.s + pf.n) % pf.n; if (ds > 0 && ds < 9 && Math.abs(o.ia.lat - ia.lat) < 26) desvio = (o.ia.lat > pf.lat[i] ? -1 : 1) * 34; }
+      // depois da largada (~600 de reta), sai da faixa do grid e vai aos poucos para o traçado; antes disso, não desvia de ninguém
+      const saida = Math.min(1, ((ia.s - ia.s0 + pf.n) % pf.n) / 100), largando = saida < 1;
+      if (largando) desvio = 0;
       ia.desvio += (desvio - ia.desvio) * Math.min(1, dt * 1.5);
-      const max = t.width / 2 - 10, quer = Math.max(-max, Math.min(max, pf.lat[(i + 2) % pf.n] + ia.jeito + ia.desvio));
+      const linha = pf.lat[(i + 2) % pf.n] + ia.jeito, alvoLat = largando ? ia.lat0 * (1 - saida) + linha * saida : linha + ia.desvio;
+      const max = t.width / 2 - 10, quer = Math.max(-max, Math.min(max, alvoLat));
       ia.lat += (quer - ia.lat) * Math.min(1, dt * 4);
     }
     const i = posicionar(p, pf, p.laps);

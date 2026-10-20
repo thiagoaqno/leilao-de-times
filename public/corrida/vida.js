@@ -143,7 +143,7 @@ export function enfeitar(tr, add, r, alturaEm) {
     for (const [ry, rz] of [[0, 0], [0, Math.PI / 2]]) { const aleta = new THREE.Mesh(new THREE.BoxGeometry(1.2, 26, 16), M(0xe63946)); aleta.rotation.set(rz, ry, 0); aleta.position.z = -64; g.add(aleta); }
     V.dirigivel = { g, raio: t.world * 0.36, alto: topo + 330, vel: 0.022, fase: r() * 6.3 };
   }
-  if ({ serra: 1, deserto: 1, luigi: 1, interlagos: 1, sorvete: 1 }[id]) for (let b = 0; b < 6; b++) {
+  if ({ serra: 1, deserto: 1, luigi: 1, interlagos: 1, sorvete: 1, laguna: 1 }[id]) for (let b = 0; b < 6; b++) {
     const listras = ["#e63946", "#ffd23f", "#1e88e5", "#43a047", "#ff7ad9", "#fb8c00"], c1 = listras[b % 6], c2 = listras[(b + 2) % 6];
     const tex = canvasTex(256, 64, (x, w, hh) => { for (let k = 0; k < 12; k++) { x.fillStyle = k % 2 ? c1 : c2; x.fillRect((k * w) / 12, 0, w / 12 + 1, hh); } });
     const g = add(new THREE.Group()), bolao = new THREE.Mesh(new THREE.SphereGeometry(26, 20, 14), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }));
@@ -178,7 +178,8 @@ export function animarVida(tr, dt, foco) {
   // torcida: só mexe quem está perto da câmera (a de longe fica parada; ninguém vê a diferença)
   for (const T of [V.torcida, ...(V.torcidas || [])]) {
     if (!T || parado) continue;
-    if (foco && !T.primeira && (T.x - foco.x) ** 2 + (T.z - foco.y) ** 2 > 1600 ** 2) continue;
+    if (foco && !T.primeira && (T.x - foco.x) ** 2 + (T.z - foco.y) ** 2 > 1000 ** 2) continue;
+    if (!T.primeira && (V.vezT = (V.vezT || 0) + 1) % 2) continue; // longe da vista o pulo não precisa de 60 quadros
     T.primeira = false;
     const { gente, corpo, cabeca, bracos } = T;
     gente.forEach((o, k) => {

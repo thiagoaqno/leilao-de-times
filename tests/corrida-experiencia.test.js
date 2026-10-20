@@ -5,7 +5,7 @@ const Itens = require("../corrida-itens.js");
 
 test("Rio refeito e circuitos longos têm volta, relevo e caixas válidos", () => {
   for (const id of ["rio", "serra", "deserto"]) {
-    const pista = T.PISTAS[id], pts = T.elevate(T.sample(pista.points), pista.hills);
+    const pista = T.PISTAS[id], pts = T.pontos(pista);
     assert.ok(pts.length * 6 > 8000, `${id} deve ser uma volta longa`);
     assert.ok(pts.every((p) => Number.isFinite(p.h) && p.x > 0 && p.y > 0 && p.x < pista.world && p.y < pista.world));
     const boxes = T.boxesFor(id);

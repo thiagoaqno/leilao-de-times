@@ -94,13 +94,13 @@ export function renderLobby() {
 }
 // ficha do carro (de 1 a 10 LEDs): velocidade final, aceleração, aderência na curva e resistência (muro e grama)
 const lerp10 = (v, a, b) => Math.max(1, Math.min(10, Math.round(1 + ((v - a) / (b - a)) * 9)));
-const specRows = (k) => [["Velocidade", lerp10(k.vmax, 390, 475)], ["Aceleração", lerp10(k.acc, 44, 76)], ["Aderência", lerp10(k.grip, 700, 960)], ["Resistência", lerp10(k.wall * 100 + k.offMax * 0.4, 85, 150)]];
+const specRows = (k) => [["Velocidade", lerp10(k.vmax, 245, 355)], ["Aceleração", lerp10(k.acc, 52, 115)], ["Aderência", lerp10(k.grip, 350, 570)], ["Resistência", lerp10(k.wall * 100 + k.offMax * 0.4, 85, 150)]];
 const leds = (n) => `<span class="leds" role="img" aria-label="${n} de 10">${Array.from({ length: 10 }, (_, i) => `<i class="${i < n ? (i < 6 ? "g" : i < 8 ? "y" : "r") : ""}"></i>`).join("")}</span>`;
 // traçado em miniatura (cartões da sala e minimapa)
 export function drawPreview(cv, id) {
   const t = PISTAS[id], c = cv.getContext("2d"), s = cv.width / t.world, th = THEMES[id];
   c.fillStyle = th.preview; c.fillRect(0, 0, cv.width, cv.height);
-  const pts = sample(t.points, 12);
+  const pts = window.Pistas.pontos(t, 12); // começa na largada (o quadradinho xadrez)
   c.lineJoin = c.lineCap = "round";
   for (const [w, col] of [[t.width * 1.3, "#0006"], [t.width, "#d9dbe0"], [t.width * 0.6, "#3a3d46"]]) {
     c.beginPath(); pts.forEach((p, i) => (i ? c.lineTo(p.x * s, p.y * s) : c.moveTo(p.x * s, p.y * s))); c.closePath(); c.lineWidth = Math.max(2, w * s); c.strokeStyle = col; c.stroke();

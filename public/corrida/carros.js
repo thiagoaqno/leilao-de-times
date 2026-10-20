@@ -17,11 +17,12 @@ export const CARS3 = {
 };
 export const KS = 10; // metros do modelo -> unidades da pista
 export const MODS3 = window.Pistas.MODS, MODS_PADRAO = window.Pistas.MODS_PADRAO;
-export function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene) {
+// leve: o modelo com menos triângulos e sem sombra projetada (os carros dos outros; a sombra redonda no chão fica)
+export function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene, leve = false) {
   const tipo = CARS3[model] ? model : "equilibrado", spec = CARS3[tipo], md = { ...MODS_PADRAO, ...(mods || {}) };
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   const [cor1, cor2] = coresDa(md.pintura, color);
-  const kt = montarF1({ cor: ghost ? "#ffd23f" : cor1, cor2: ghost ? "#ffffff" : cor2 });
+  const kt = montarF1({ cor: ghost ? "#ffd23f" : cor1, cor2: ghost ? "#ffffff" : cor2, leve: leve || ghost });
   const sc = spec.L / TAM; kt.g.scale.setScalar(sc * KS); body.add(kt.g);
   if (name) {
     const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
@@ -52,7 +53,7 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   const pronto = () => {
     k.mats = kt.mats; k.eye.u = spec.L / 2 - kt.olho.z * sc; k.eye.h = kt.olho.y * sc;
     for (const f of chamas) f.position.z = kt.escapamento.z;
-    kt.g.traverse((o) => { if (o.isMesh) o.castShadow = !ghost; });
+    kt.g.traverse((o) => { if (o.isMesh) o.castShadow = !ghost && !leve; });
     if (ghost) for (const m of kt.mats) { m.transparent = true; m.opacity = 0.5; m.depthWrite = false; }
   };
   kt.aoMontar = pronto; pronto();

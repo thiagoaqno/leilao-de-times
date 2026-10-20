@@ -1,6 +1,6 @@
 # A Vila vira a Avenida Paulista
 
-## O que muda
+O PR #257 foi mesclado antes do segundo commit dele entrar. Este PR traz esse commit e as duas pistas novas.
 
 ### Um mapa novo, com cara de Paulista
 - O mapa cresceu para 96x60 e foi todo reposicionado ao longo da avenida: os jogos de mesa na primeira fileira, a

@@ -10,10 +10,11 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 export const PINTURAS = window.Pistas.MODS.pintura;
 export const TAM = 4.35; // comprimento do modelo, em metros
 
-const MODELO = { cena: null, falhou: false, espera: [] };
+// dois modelos: o completo (o seu carro e a garagem) e um leve, com ~1/5 dos triângulos (os carros dos outros)
 const gl = new GLTFLoader(); gl.setMeshoptDecoder(MeshoptDecoder);
-export const f1Pronto = gl.loadAsync("/corrida/f1/f1.glb").then((g) => { MODELO.cena = g.scene; for (const k of MODELO.espera.splice(0)) montarCorpo(k); })
-  .catch((e) => { MODELO.falhou = true; console.warn("Corrida: o carro de F1 não carregou", e); });
+const carregar = (arq) => { const M = { cena: null, falhou: false, espera: [] }; M.pronto = gl.loadAsync(arq).then((g) => { M.cena = g.scene; for (const k of M.espera.splice(0)) montarCorpo(k); }).catch((e) => { M.falhou = true; console.warn("Corrida: o carro não carregou", arq, e); }); return M; };
+const MODELOS = { completo: carregar("/corrida/f1/f1.glb"), leve: carregar("/corrida/f1/f1-leve.glb") };
+export const f1Pronto = Promise.all([MODELOS.completo.pronto, MODELOS.leve.pronto]);
 
 // a pintura: troca a cor que vem da máscara (mapa) pelas duas cores do carro
 function pintura(base, cor1, cor2) {
@@ -29,19 +30,20 @@ function pintura(base, cor1, cor2) {
 }
 export function coresDa(pint, corPiloto) { const p = PINTURAS[pint] || PINTURAS.propria; return [p.c || corPiloto, p.c2]; }
 
-export function montarF1({ cor = "#e63946", cor2 = "#f4f4f4" } = {}) {
+export function montarF1({ cor = "#e63946", cor2 = "#f4f4f4", leve = false } = {}) {
   const g = new THREE.Group(), carro = new THREE.Group(); g.add(carro);
   const k = { g, carro, rodas: [], volante: null, mats: [], pintura: null, piloto: new THREE.Object3D(), olho: { z: 0.3, y: 0.95 }, cores: [cor, cor2], escapamento: { z: 2.2, y: 0.42 } };
   // enquanto o modelo não chega, uma silhueta simples no lugar
   const prov = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, TAM), new THREE.MeshStandardMaterial({ color: cor, roughness: 0.5 })); prov.position.y = 0.35; prov.castShadow = true; carro.add(prov);
   k.prov = prov; k.mats.push(prov.material); k.pintura = prov.material;
-  if (MODELO.cena) montarCorpo(k); else if (!MODELO.falhou) MODELO.espera.push(k);
+  const M = k.modelo = leve ? MODELOS.leve : MODELOS.completo;
+  if (M.cena) montarCorpo(k); else if (!M.falhou) M.espera.push(k);
   return k;
 }
 function montarCorpo(k) {
   if (k.solto) return;
   k.carro.remove(k.prov); k.prov.geometry.dispose();
-  const m = MODELO.cena.clone(true); m.updateMatrixWorld(true);
+  const m = k.modelo.cena.clone(true); m.updateMatrixWorld(true);
   const caixa = new THREE.Box3().setFromObject(m), c0 = caixa.getCenter(new THREE.Vector3());
   // descobre para que lado é a frente (as rodas da frente) e vira o carro para a frente ficar em −z
   const centro = (nome) => { const o = m.getObjectByName(nome); return o ? new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()) : null; };

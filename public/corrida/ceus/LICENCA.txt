@@ -11,3 +11,5 @@ luigi.jpg       kloppenheim_07_puresky
 sorvete.jpg     snow_field_puresky
 tokyo.jpg       qwantani_night_puresky
 arcoiris.jpg    kloppenheim_02_puresky
+nurburgring.jpg kloofendal_28d_misty_puresky
+laguna.jpg      belfast_sunset_puresky
