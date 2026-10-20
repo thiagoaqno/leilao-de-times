@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { canvasTex, M } from "./cena.js";
 
 const reduz = matchMedia("(prefers-reduced-motion: reduce)");
-const RURAL = { interlagos: 1, serra: 1, deserto: 1, luigi: 1, sorvete: 1 }, CIDADE = { monaco: 1, rio: 1, losangeles: 1, tokyo: 1, luigi: 1 };
+const RURAL = { interlagos: 1, serra: 1, deserto: 1, luigi: 1, sorvete: 1, nurburgring: 1, laguna: 1 }, CIDADE = { monaco: 1, rio: 1, losangeles: 1, tokyo: 1, luigi: 1 };
 const PELE = ["#f1c7a5", "#d9a37a", "#a8714a", "#7a4a2a", "#5a3520"], CAMISA = ["#ffd23f", "#e63946", "#1e88e5", "#43a047", "#ffffff", "#fb8c00", "#8e24aa", "#111111"];
 
 export function enfeitarMais(tr, add, r, alturaEm, V) {
@@ -141,10 +141,10 @@ function enfeitarEspaco(tr, add, r, V) { // Arco-íris: asteroides girando em vo
 const d = new THREE.Object3D(), v3 = new THREE.Vector3();
 export function animarMais(tr, V, t, dt, foco) {
   const parado = reduz.matches, C = tr.t.world / 2;
-  for (const p of V.panos || []) { // a bandeira ondula (mais na ponta solta)
+  if ((V.vez = (V.vez || 0) + 1) % 2 === 0) for (const p of V.panos || []) { // a bandeira ondula (mais na ponta solta), a cada 2 quadros
     const pos = p.pano.geometry.attributes.position, b = p.base;
     for (let k = 0; k < pos.count; k++) { const x = b[k * 3], y = b[k * 3 + 1]; pos.setZ(k, parado ? 0 : Math.sin(x * 0.28 - t * 6 + p.fase) * x * 0.12 + Math.sin(y * 0.4 + t * 3) * x * 0.03); }
-    pos.needsUpdate = true; p.pano.geometry.computeVertexNormals();
+    pos.needsUpdate = true;
   }
   if (!parado) for (const h of V.helices || []) h.helice.rotation.z -= dt * h.vel;
   for (const w of V.rodas || []) { if (!parado) w.roda.rotation.z += dt * 0.06; for (const c of w.cabines) c.rotation.z = -w.roda.rotation.z; }

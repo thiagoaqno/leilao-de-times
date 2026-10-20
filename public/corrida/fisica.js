@@ -1,5 +1,5 @@
 // Corrida da Galera — a física do kart (arcade com aderência e relevo).
-import { SECTORS, E, carOf, socket, sNow, me, P } from "./estado.js";
+import { SECTORS, E, carOf, socket, sNow, me, P, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { trackFrame, groundH } from "./pista.js";
 import { race, keys, nearest } from "./jogo.js";
@@ -8,7 +8,7 @@ import { baterNoOutro, MASSA } from "./colisao.js";
 import { CARS3, KS } from "./carros.js";
 import { myProg } from "./fantasma.js";
 import { ajudaDePelotao } from "./equilibrio.js";
-import { marchaAuto, rotacao, torque, topo } from "./cambio.js";
+import { marchaAuto, rotacao, torque, topo, NUM } from "./cambio.js";
 
 // Física do kart (arcade com aderência): o carro tem inércia e os pneus só seguram uma certa força de lado.
 // Virar gira o bico, mas a velocidade continua indo para onde ia; os pneus puxam o carro para a nova direção até o
@@ -44,13 +44,13 @@ export function physics(dt, spec = carOf(me())) {
   const vmax = (road ? spec.vmax : spec.offMax) * boostK;
   // câmbio: no automático a marcha só acompanha (som e painel); no manual ela manda na força e no corte de giro
   const manual = E.S && E.S.config.cambio === "manual", vmaxF1 = spec.vmax * boostK;
-  race.marcha = manual ? Math.max(1, Math.min(8, race.marcha || 1)) : marchaAuto(vf, vmaxF1, race.marcha);
+  race.marcha = manual ? Math.max(1, Math.min(NUM, race.marcha || 1)) : marchaAuto(vf, vmaxF1, race.marcha);
   race.rpm = rotacao(vf, vmaxF1, race.marcha);
   const forca = manual ? torque(race.rpm) : 1;
   if (!air) {
-    if (keys.gas) vf += (vf < 0 ? spec.brake : forca * spec.acc * (1 + race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0)) * Math.max(0.04, 1 - Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 2.5))) * dt; // arranca forte, demora a chegar no topo
+    if (keys.gas) vf += (vf < 0 ? spec.brake : forca * spec.acc * (1 + race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
     else if (keys.brake) vf -= (vf > 0 ? spec.brake : 120) * dt;
-    else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (70 + (manual && vf > 0 ? (9 - race.marcha) * 12 : 0)) * dt); // no manual, marcha baixa segura o carro (freio-motor)
+    else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (70 + (manual && vf > 0 ? (NUM + 1 - race.marcha) * 18 : 0)) * dt); // no manual, marcha baixa segura o carro (freio-motor)
     if (vf > vmax) vf = Math.max(vmax, vf - (road ? 300 : 700) * dt);
     if (manual && vf > topo(race.marcha, vmaxF1)) vf = Math.max(topo(race.marcha, vmaxF1), vf - 260 * dt); // corte de giro
     // ladeira: a gravidade puxa para baixo da pista
@@ -77,8 +77,10 @@ export function physics(dt, spec = carOf(me())) {
   let nx = c.x + c.vx * dt, ny = c.y + c.vy * dt;
   race.idx = nearest(tr, nx, ny, race.idx);
   const fr = trackFrame(tr, nx, ny, race.idx), lim = tr.wallLat - 8;
-  if (Math.abs(fr.lat) > lim || nx < 2 || ny < 2 || nx > tr.t.world - 2 || ny > tr.t.world - 2) {
-    const p = tr.pts[race.idx], s = Math.sign(fr.lat) || 1, over = Math.abs(fr.lat) - lim;
+  // barreira de pneus: só do lado de fora das curvas fechadas (tr.pneus diz o lado de cada ponto)
+  const pneu = tr.pneus && tr.pneus[race.idx], limite = pneu && Math.sign(fr.lat) === pneu ? tr.W / 2 + 26 : lim;
+  if (Math.abs(fr.lat) > limite || nx < 2 || ny < 2 || nx > tr.t.world - 2 || ny > tr.t.world - 2) {
+    const p = tr.pts[race.idx], s = Math.sign(fr.lat) || 1, over = Math.abs(fr.lat) - limite;
     if (over > 0) { nx -= p.nx * s * over; ny -= p.ny * s * over; }
     nx = Math.max(2, Math.min(tr.t.world - 2, nx)); ny = Math.max(2, Math.min(tr.t.world - 2, ny));
     const vn = c.vx * p.nx * s + c.vy * p.ny * s, hit = Math.abs(vn);
@@ -113,9 +115,14 @@ export function physics(dt, spec = carOf(me())) {
   } else if (gh < c.z - 2.5) { c.air = true; c.vz = Math.max(0, c.gvz || 0); c.z += c.vz * dt; }
   else { c.gvz = Math.max(-400, Math.min(400, (gh - c.z) / Math.max(dt, 1e-3))); c.z = gh; }
   race.offroad = !road && !c.air && Math.abs(vf) > 30;
-  // progresso na pista, setores e contramão
-  const sec = Math.floor(race.idx / (tr.n / SECTORS));
-  if (sec === (race.sector + 1) % SECTORS) { race.sector = sec; act2("sector", { s: sec }); }
+  // checkpoints (como no Forza): o próximo só vale passando por ele, perto da pista e na ordem. Passou direto (cortou
+  // caminho)? Fica "perdido" até voltar nele, e o "↺ Pista" leva de volta para ele.
+  const prox = (race.sector + 1) % SECTORS, gi = checkpoint(prox, tr.n), depois = (race.idx - gi + tr.n) % tr.n;
+  if (depois < 30 && Math.abs(fr.lat) < tr.W / 2 + 70) {
+    race.sector = prox; race.cpT = sNow(); act2("sector", { s: prox });
+    if (prox === 0) { if (race.largou) race.voltaLocal = (race.voltaLocal || 0) + 1; race.largou = true; } // a volta já conta aqui (o servidor confirma depois)
+  }
+  race.perdeu = depois >= 30 && depois < tr.n / 3 ? prox : -1;
   const p = tr.pts[race.idx], dot = Math.cos(c.a) * p.tx + Math.sin(c.a) * p.ty;
   race.wrong = dot < -0.3 && c.v > 40 ? race.wrong + dt : 0;
 }

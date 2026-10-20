@@ -15,6 +15,8 @@ export const CEUS = {
   deserto: { brilho: 1, luz: 0.5 },
   luigi: { brilho: 1, luz: 0.55 },
   sorvete: { brilho: 1.05, luz: 0.6 },
+  nurburgring: { brilho: 0.95, luz: 0.5 },
+  laguna: { brilho: 1, luz: 0.6 },
   tokyo: { brilho: 0.32, luz: 0.25, noite: true },
   arcoiris: { brilho: 0.16, luz: 0.2, noite: true },
 };

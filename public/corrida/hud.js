@@ -1,5 +1,5 @@
 // Corrida da Galera — o placar da corrida e o resultado.
-import { E, PISTAS, $, h, sNow, me, act, fmt } from "./estado.js";
+import { E, PISTAS, $, h, sNow, me, act, fmt, SECTORS, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { race } from "./jogo.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
@@ -49,6 +49,8 @@ export function hud() {
   let msg = "";
   if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
   else if (race.wrong > 1) msg = "⚠️ CONTRAMÃO! (aperte ↺)";
+  else if (race.perdeu >= 0 && m && m.finish == null) msg = "⟲ CHECKPOINT PERDIDO: volte nele ou aperte ↺";
+  else if (race.cpT > now - 900 && race.sector > 0) msg = `✓ CHECKPOINT ${race.sector}/${SECTORS}`;
   else if (m && m.finish == null && m.started && m.laps === cfg.voltas - 1 && cfg.voltas > 1 && race.lastLapMsg > now - 2500) msg = "ÚLTIMA VOLTA!";
   else if (E.S.endAt && m && m.finish == null) msg = `⏱️ ${Math.max(0, Math.ceil((E.S.endAt - now) / 1000))} s para cruzar`;
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
@@ -59,7 +61,7 @@ export function hud() {
   const star = m && m.starUntil > now;
   hd.innerHTML = star ? "⭐ ESTRELA!" : race.sling > 0 ? "🚀 ESTILINGUE!" : race.draft > 0.15 ? `💨 VÁCUO<i style="width:${Math.round(race.draft * 100)}%"></i>` : race.catchup > 0.025 ? "⚡ PELOTÃO À VISTA" : "";
   hd.style.opacity = star || race.sling > 0 || race.draft > 0.15 || race.catchup > 0.025 ? 1 : 0;
-  minimapa(st, m);
+  if ((race.hudVez = (race.hudVez || 0) + 1) % 2 === 0) minimapa(st, m); // o minimapa a cada 2 quadros já basta
 }
 // minimapa redondo que gira com o carro (a frente é para cima): a pista em cinza e o caminho à frente em azul-claro
 function minimapa(st, m) {
@@ -72,7 +74,7 @@ function minimapa(st, m) {
   c.beginPath(); for (let i = 0; i <= tr.n; i += 3) { const p = tr.pts[i % tr.n]; i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y); }
   c.strokeStyle = "#5d6673"; c.lineWidth = 34 / esc / 6; c.stroke();
   c.beginPath(); for (let k = 0; k <= 260; k += 2) { const p = tr.pts[(idx + k) % tr.n]; k ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y); }
-  c.strokeStyle = "#5fe6ff"; c.lineWidth = 34 / esc / 6; c.shadowColor = "#5fe6ff"; c.shadowBlur = 10; c.stroke(); c.shadowBlur = 0;
+  c.strokeStyle = "#5fe6ff"; c.lineWidth = 34 / esc / 6; c.stroke();
   for (const r of st) {
     if (m && r.id === m.id) continue; const gh = race.ghosts.get(r.id); if (!gh) continue;
     c.beginPath(); c.arc(gh.x, gh.y, 7 / esc / 1.4, 0, 7); c.fillStyle = r.p.color; c.fill(); c.lineWidth = 2 / esc; c.strokeStyle = "#000"; c.stroke();
@@ -88,19 +90,19 @@ function minimapa(st, m) {
 function velocimetro(v) {
   const cv = $("velo"), c = cv.getContext("2d"), W = cv.width, H = cv.height, kmh = Math.round(v * 0.75);
   const marcha = race.marcha || 1, manual = E.S.config.cambio === "manual", chave = kmh + ":" + marcha; if (race.hudVelo === chave) return; race.hudVelo = chave;
-  const cx = W * 0.56, cy = H * 0.5, r = H * 0.4, a0 = Math.PI * 0.8, a1 = Math.PI * 2.2, max = 360, ang = (k) => a0 + (a1 - a0) * Math.min(1, k / max);
+  const cx = W * 0.56, cy = H * 0.5, r = H * 0.4, a0 = Math.PI * 0.8, a1 = Math.PI * 2.2, max = 300, ang = (k) => a0 + (a1 - a0) * Math.min(1, k / max);
   c.clearRect(0, 0, W, H); c.lineCap = "round";
   c.beginPath(); c.arc(cx, cy, r, a0, a1); c.lineWidth = 3; c.strokeStyle = "#ffffff55"; c.stroke();
-  c.beginPath(); c.arc(cx, cy, r, ang(300), a1); c.lineWidth = 6; c.strokeStyle = "#ff3d6e"; c.stroke();
+  c.beginPath(); c.arc(cx, cy, r, ang(250), a1); c.lineWidth = 6; c.strokeStyle = "#ff3d6e"; c.stroke();
   for (let k = 0; k <= max; k += 20) { const a = ang(k), big = k % 60 === 0; c.beginPath(); c.moveTo(cx + Math.cos(a) * (r - (big ? 14 : 8)), cy + Math.sin(a) * (r - (big ? 14 : 8))); c.lineTo(cx + Math.cos(a) * (r - 2), cy + Math.sin(a) * (r - 2)); c.lineWidth = big ? 3 : 1.5; c.strokeStyle = "#ffffffcc"; c.stroke(); }
-  c.beginPath(); c.arc(cx, cy, r - 6, a0, ang(kmh)); c.lineWidth = 5; c.strokeStyle = kmh > 300 ? "#ff3d6e" : "#ffffff"; c.shadowColor = "#fff"; c.shadowBlur = 8; c.stroke(); c.shadowBlur = 0;
+  c.beginPath(); c.arc(cx, cy, r - 6, a0, ang(kmh)); c.lineWidth = 5; c.strokeStyle = kmh > 250 ? "#ff3d6e" : "#ffffff"; c.shadowColor = "#fff"; c.shadowBlur = 8; c.stroke(); c.shadowBlur = 0;
   // a marcha num círculo no meio do arco, e embaixo (no vão do arco) a velocidade grande e "KM/H"
   c.beginPath(); c.arc(cx, cy - 4, 17, 0, 7); c.fillStyle = "#0b1016aa"; c.fill(); c.lineWidth = 2; c.strokeStyle = "#ffffff99"; c.stroke();
   c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle"; c.font = "800 20px Figtree, sans-serif"; c.fillText(String(marcha), cx, cy - 3);
   if (manual) { c.font = "800 9px Figtree, sans-serif"; c.fillStyle = "#ffd23f"; c.fillText("MANUAL", cx, cy + 22); }
   { const rpm = Math.min(1, race.rpm || 0); for (let k = 0; k < 10; k++) { c.fillStyle = k / 10 < rpm ? (k < 6 ? "#2ecc71" : k < 8 ? "#ff3d6e" : "#5fc8ff") : "#ffffff22"; c.fillRect(cx - 50 + k * 10.4, cy - r - 12, 8, 5); } } // luzes de troca, como no volante do F1
   c.shadowColor = "#000a"; c.shadowBlur = 6;
-  c.font = "300 58px Figtree, sans-serif"; c.textBaseline = "alphabetic"; c.fillText(String(kmh), cx, cy + r + 18);
+  c.fillStyle = "#fff"; c.font = "500 58px Figtree, sans-serif"; c.textBaseline = "alphabetic"; c.fillText(String(kmh), cx, cy + r + 18);
   c.font = "800 12px Figtree, sans-serif"; c.fillStyle = "#ffffffcc"; c.textAlign = "left"; c.fillText("KM/H", cx + r * 0.78, cy + r + 16); c.shadowBlur = 0;
 }
 // volta nova: bipe e "última volta"

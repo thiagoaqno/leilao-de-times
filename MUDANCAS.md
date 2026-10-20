@@ -1,25 +1,24 @@
-# Haxball com robôs e visual novo
+# Corrida: de volta ao kart, checkpoints, som de novo, e Nürburgring e Laguna Seca
+
+O PR #257 foi mesclado antes do segundo commit dele entrar. Este PR traz esse commit e as duas pistas novas.
 
 ## O que muda
 
-### Robôs
-- O anfitrião pode pôr **robôs** em qualquer time ("+ Robô") ou **completar os dois times** de uma vez, e escolher o nível: fácil, médio ou difícil.
-- Na entrada, **"Treinar contra robôs"** cria a sala no formato escolhido, completa com robôs e já começa.
-- Como eles jogam (`H.robo` em `public/haxball/regras.js`, rodando no servidor a cada passo): os papéis são divididos só entre os robôs. O mais perto da bola contorna por trás dela (sem empurrá-la para o próprio gol) e só chuta com o gol adversário na frente. Se sobra mais de um, o mais recuado fica de goleiro e os outros guardam posição. Quando trava colado na bola, chuta e recua para destravar.
-- Robôs aparecem como "robô" na lista e "CPU" no campo, e não entram no placar da Noite.
-- Regra nova, que vale para todos: **bola presa** encostada na parede por 4 s (num canto, entre dois discos) volta um pouco para dentro do campo.
-
-### Visual
-- Campo com faixas de grama cortada e linhas com brilho, arquibancada em volta com a torcida nas cores dos times, gols com rede (que estufa no gol) e traves redondas.
-- Discos com sombra e relevo, a inicial do jogador e o nome numa plaquinha; o anel branco do chute (e no seu disco enquanto você segura o espaço, como no Haxball).
-- Bola com gomos que giram conforme ela anda.
-- **Movimento liso**: o desenho fica 70 ms atrás do servidor e mistura os dois últimos pacotes, em vez de empurrar pela velocidade.
-- **Gol**: "GOL!" grande na cor do time, confete, tremida e o número do placar pulando.
-- Tela nítida em monitores de alta densidade. Quem pede menos movimento no sistema fica sem tremida e sem confete.
+- **Pilotagem e som de kart de volta**: a física e o motor sintetizado de antes. O carro de F1 fica só no visual. O câmbio manual (opção da sala) continua, com 5 marchas.
+- **Pistas voltam a ~13 mil por volta** (os traçados novos, no tamanho certo para a velocidade de kart).
+- **Robôs sem "derrapar"**: o bico aponta para onde eles estão andando, não para a linha lá na frente.
+- **Mais leve**:
+  - os carros dos outros usam uma versão do F1 com ~1/5 dos triângulos (`f1/f1-leve.glb`) e sem sombra projetada (a sombra redonda no chão fica);
+  - minimapa, bandeiras e torcida trabalham menos a cada quadro;
+  - a resolução começa um pouco menor;
+  - abaixo de ~50 quadros por segundo, a qualidade cai sozinha, até tirar sombras e desfoque.
+- **Nürburgring** (inspirado na Nordschleife, ~17,5 mil, a pista mais longa): floresta fechada, neblina, guard-rail de aço, o salto do Flugplatz, a descida da Fuchsröhre, o Karussell, o Hohe Acht (ponto mais alto) e o salto do Pflanzgarten, terminando na reta Döttinger Höhe.
+- **Laguna Seca** (~12,5 mil): morros dourados com poucos carvalhos, fim de tarde, brita nas áreas de escape. Tem a reta, o grampo Andretti, a subida pela Rahal até o Corkscrew (o S que despenca morro abaixo) e a curva longa Rainey.
+- O número do velocímetro ficou mais legível.
 
 ## Verificação
 
-- `node --test tests/haxball.test.js`: 6 testes passaram. Os novos cobrem robôs jogando sozinhos e marcando em 1x1, 2x2 e 3x3 (inclusive com uma pessoa parada no time), a bola presa e as ações `bot`/`completar` com o início da partida.
-- `node --test tests/salas.test.js`: passou. O formato regravado só ganhou a linha `boxReady` da Corrida, que estava desatualizada no `main` (a mesma mudança do PR da Corrida).
-- `npx playwright test tests/e2e/haxball.spec.js`: passou.
-- Conferido no navegador: treino 2x2 contra robôs, gol com comemoração.
+- `node --test tests/corrida-robos.test.js tests/corrida-experiencia.test.js tests/corrida-colisao.test.js`: 11 passaram. Um teste novo dá uma volta com 3 robôs em **cada uma das 12 pistas** e confere que o grid está no reto, que os 12 checkpoints vêm em ordem, que todos fecham a volta e que ninguém sai da pista.
+- No navegador: as 12 pistas montam sem erro; uma volta inteira em Interlagos passou pelos 12 checkpoints em ordem, a volta contou no servidor e na tela, e a posição se manteve.
+- No navegador, com 8 carros: ~57 quadros por segundo e ~10 ms de JavaScript por quadro. Os robôs andam alinhados.
+- Conferido o Nürburgring rodando e Laguna Seca no grid.

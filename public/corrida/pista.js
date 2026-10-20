@@ -16,6 +16,8 @@ export const THEMES = {
   rio: { preview: "#1f8a8a", sky: ["#3f97e0", "#d6f1ff"], fog: "#cfeaf2", oob: 0xff2a7a3a, roadCol: "#4a4a50" },
   serra: { preview: "#4d8854", sky: ["#6eb9f0", "#e4f6ff"], fog: "#cde6dd", oob: 0xff467b45, roadCol: "#51545a" },
   deserto: { preview: "#cca96e", sky: ["#63b0e5", "#fce0aa"], fog: "#e9cc9d", oob: 0xffcaab72, roadCol: "#55565a" },
+  nurburgring: { preview: "#2f6a32", sky: ["#7d94a8", "#d9e2e6"], fog: "#c8d2d4", oob: 0xff2f6a32, roadCol: "#4a4c52" },
+  laguna: { preview: "#b39352", sky: ["#5a7fbf", "#f7c99a"], fog: "#e8c9a6", oob: 0xffc2a35e, roadCol: "#4f5056" },
   luigi: { preview: "#3f8f3a", sky: ["#3f97e0", "#eaf4ff"], fog: "#dfeee0", oob: 0xff3a9a3f, roadCol: "#55555c" },
   sorvete: { preview: "#8fb8d8", sky: ["#8fc6f2", "#f2f8ff"], fog: "#e8f2fa", oob: 0xffe4edf5, roadCol: "#9fc3dd" },
   arcoiris: { preview: "#0b0a1a", sky: ["#02020a", "#1a0b3a"], fog: "#0a0618", oob: 0xff05040c, roadCol: "#ffffff" },
@@ -32,7 +34,7 @@ export function gridSpot(pts, g, W) {
 const TRACKS = {};
 export function buildTrack(id) {
   if (TRACKS[id]) return TRACKS[id];
-  const t = PISTAS[id], pts = elevate(sample(t.points, 6), t.hills), n = pts.length, W = t.width;
+  const t = PISTAS[id], pts = window.Pistas.pontos(t, 6), n = pts.length, W = t.width;
   for (const p of pts) { p.nx = -p.ty; p.ny = p.tx; }
   const mini = document.createElement("canvas"); mini.width = mini.height = 240; drawPreview(mini, id);
   const tr = { id, t, pts, n, W, look: LOOK[id], theme: THEMES[id], mini, wallLat: t.walls ? W / 2 + t.wall : Infinity, grp: new THREE.Group() };
@@ -100,7 +102,7 @@ function buildWorld(tr) {
   function ribbon(l0, l1, y0, mat, vLen, y1 = y0, uSpan = 1, i0 = 0, i1 = n) { // de i0 a i1: só um trecho da volta
     const vs = [], uv = [], idx = [];
     for (let i = i0; i <= i1; i++) {
-      const p = pts[i % n], d = i * 6;
+      const p = pts[((i % n) + n) % n], d = i * 6;
       for (const [l, yy, u] of [[l0, y0, 0], [l1, y1, uSpan]]) { vs.push(p.x + p.nx * l, p.h * falloff(tr, l) + yy, p.y + p.ny * l); uv.push(u, d / vLen); }
       if (i < i1) { const a = (i - i0) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
     }
@@ -127,7 +129,7 @@ function buildWorld(tr) {
   const kerbT = canvasTex(32, 64, (x, w, hh) => { x.fillStyle = look.kerb[0]; x.fillRect(0, 0, w, hh / 2); x.fillStyle = look.kerb[1]; x.fillRect(0, hh / 2, w, hh / 2); });
   const kerbM = new THREE.MeshStandardMaterial({ map: kerbT, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x0a3a44 : 0 });
   ribbon(W / 2, W / 2 + 7, 0.6, kerbM, 28); ribbon(-W / 2 - 7, -W / 2, 0.6, kerbM, 28);
-  if (id === "interlagos") { // área de escape de brita
+  if (id === "interlagos" || id === "laguna") { // área de escape de brita
     const brita = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#c9b37a"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 600; i++) { x.fillStyle = rr() < 0.5 ? "#b39c66" : "#ddc893"; x.fillRect(rr() * w, rr() * hh, 2, 2); } }), roughness: 1, side: THREE.DoubleSide });
     ribbon(W / 2 + 7, W / 2 + 30, 0.3, brita, 64, 0.2); ribbon(-W / 2 - 30, -W / 2 - 7, 0.2, brita, 64, 0.3);
   } else { // calçada até o muro
@@ -137,6 +139,7 @@ function buildWorld(tr) {
     const wt = id === "monaco" ? canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#f4f4f4"; x.fillRect(0, 0, w, hh); x.fillStyle = "#d62828"; x.fillRect(0, 0, w / 2, hh); x.fillStyle = "#9aa"; x.fillRect(0, hh - 3, w, 3); })
       : id === "losangeles" ? canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#c9c2b4"; x.fillRect(0, 0, w, hh); x.fillStyle = "#e8b83a"; x.fillRect(0, 3, w, 2); x.fillStyle = "#0002"; x.fillRect(w - 2, 0, 2, hh); })
       : id === "rio" ? canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#f4f4f4"; x.fillRect(0, 0, w, hh); x.fillStyle = "#1f8a3a"; x.fillRect(0, 0, w / 2, hh); x.fillStyle = "#ffd23f"; x.fillRect(w / 2, 0, w / 2, 4); })
+      : id !== "tokyo" ? canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#aeb4ba"; x.fillRect(0, 0, w, hh); x.fillStyle = "#d9dee2"; x.fillRect(0, 4, w, 3); x.fillRect(0, 10, w, 2); x.fillStyle = "#5d6268"; x.fillRect(w - 3, 0, 3, hh); }) // guard-rail de aço
       : canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#6c6f80"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ff4fd8"; x.fillRect(0, 2, w, 3); });
     const wm = new THREE.MeshStandardMaterial({ map: wt, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x220a22 : 0 });
     if (L < 1e9) for (const s of [1, -1]) { const m = ribbon(s * L, s * L, 0.5, wm, 32, 12, 1); m.castShadow = true; }
@@ -166,6 +169,43 @@ function buildWorld(tr) {
     list.forEach((o, i) => { d.position.set(o.x, o.h + (o.dy || 0) * sc(o), o.y); d.rotation.set(0, o.r || 0, 0); const s = sc(o); d.scale.set(o.sx || s, o.sy || s, o.sz || s); d.updateMatrix(); m.setMatrixAt(i, d.matrix); if (o.c != null && m.setColorAt) m.setColorAt(i, new THREE.Color(o.c)); });
     m.castShadow = true; m.receiveShadow = true; return m;
   };
+  // barreiras de pneus: do lado de fora das curvas fechadas (a física bate nelas: tr.pneus guarda o lado de cada ponto)
+  tr.pneus = new Int8Array(n);
+  if (!t.espaco) {
+    const pilhas = [], topos = [];
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 170)) continue;
+      const fora = p.tx * q.ty - p.ty * q.tx > 0 ? -1 : 1;
+      for (let j = i - 4; j <= i + 4; j++) tr.pneus[(j + n) % n] = fora;
+      if (i % 3) continue;
+      const x = p.x + p.nx * fora * (W / 2 + 30), y = p.y + p.ny * fora * (W / 2 + 30), h = groundH(tr, x, y, i);
+      for (let k = 0; k < 3; k++) (k === 2 ? topos : pilhas).push({ x, y, h: h + 1.1 + k * 2.2, s: 1, r: 0, c: k === 2 ? ((i / 3) % 2 ? "#e53935" : "#f4f4f4") : undefined });
+    }
+    const pneuGeo = new THREE.CylinderGeometry(3, 3, 2.1, 10);
+    inst(pneuGeo, M(0x1d1e22, { roughness: 0.9 }), pilhas);
+    inst(pneuGeo, M(0xffffff, { roughness: 0.7 }), topos);
+  }
+  // os checkpoints (como no Forza): duas bandeiras altas verde-limão, uma de cada lado, com "CHECKPOINT." na vertical.
+  // Só aparecem o próximo e o seguinte (jogo.js acende, balança e pinta de vermelho o perdido).
+  tr.portais = [];
+  const bandeira = canvasTex(128, 512, (x, w, hh) => {
+    x.fillStyle = "#d9f02e"; x.fillRect(0, 0, w, hh); x.fillStyle = "#c2d81f"; x.fillRect(0, 0, 8, hh);
+    x.save(); x.translate(w / 2 + 6, hh * 0.42); x.rotate(-Math.PI / 2); x.fillStyle = "#121212"; x.font = "900 74px Bungee, Impact, Arial Black, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("CHECKPOINT.", 0, 0, hh * 0.78); x.restore();
+    x.fillStyle = "#121212"; x.fillRect(w / 2 - 22, hh - 92, 44, 44); x.fillStyle = "#d9f02e"; x.font = "900 34px Arial Black, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("G", w / 2, hh - 69);
+  }, false);
+  const panoGeo = new THREE.PlaneGeometry(10, 40), mastroGeo = new THREE.CylinderGeometry(0.5, 0.6, 50, 6), mastroMat = M(0xe8e8e8, { metalness: 0.4, roughness: 0.4 });
+  for (let k = 1; k < window.Pistas.SECTORS; k++) {
+    const i = window.Pistas.checkpoint(k, n), p = pts[i], g = new THREE.Group(); add(g);
+    const mat = new THREE.MeshBasicMaterial({ map: bandeira, side: THREE.DoubleSide, transparent: true }), panos = [];
+    for (const sd of [-1, 1]) {
+      const x = p.x + p.nx * sd * (W / 2 + 14), y = p.y + p.ny * sd * (W / 2 + 14), h = groundH(tr, x, y, i);
+      const m = new THREE.Mesh(mastroGeo, mastroMat); m.position.set(x, h + 25, y); g.add(m);
+      const pano = new THREE.Group(); pano.position.set(x, h + 27, y); pano.rotation.y = Math.atan2(-p.tx, -p.ty); g.add(pano); // virada para quem chega
+      const pm = new THREE.Mesh(panoGeo, mat); pm.position.x = -5.4 * sd; pano.add(pm); panos.push(pano);
+    }
+    tr.portais.push({ k, g, mat, panos, base: panos.map((q) => q.rotation.y) });
+  }
+
   const trees = [], palms = [], blds = [], towers = [], stands = [], yachts = [], neons = [], glass = [], jungle = [], houses = [];
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
     const p = pts[i];
@@ -174,14 +214,14 @@ function buildWorld(tr) {
       if (!free(x, y, 20)) continue;
       const k = r();
       if (id === "monaco") { if (k < 0.3) palms.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.5, r: r() * 6 }); else if (k < 0.75) { const sx = 50 + r() * 40, sz = 50 + r() * 40, far = near + 40 + r() * 80, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 25)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 60 + r() * 90, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f3e0c0"][(r() * 5) | 0] }); } }
-      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra") { if (k < 0.52) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
+      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : 0.52)) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
       else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
       else if (id === "losangeles") { // palmeiras altas na beira e prédios de vidro mais para trás
         if (k < 0.35) palms.push({ x, y, h: hAt(x, y), s: 1.6 + r() * 0.5, r: r() * 6 });
         else if (k < 0.7) { const sx = 60 + r() * 50, sz = 60 + r() * 50, far = near + 60 + r() * 120, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 25)) glass.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 140 + r() * 360, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); }
       }
       else if (id === "rio") { // orla com palmeiras; na subida, mata fechada e casinhas coloridas
-        const beach = i < n * 0.2 && side > 0;
+        const beach = p.x < 470 * K && side > 0; // a orla de Copacabana: o lado do mar
         if (beach) { if (k < 0.6) palms.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 0.4, r: r() * 6 }); }
         else if (p.h > 18) { if (k < 0.75) jungle.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.9 }); else houses.push({ x, y, h: hAt(x, y), s: 1, sx: 18 + r() * 14, sy: 14 + r() * 10, sz: 18 + r() * 14, dy: 0.5, r: r() * 3, c: ["#f2c14e", "#e86a5a", "#5fb3e8", "#7ed07a", "#f29ad8", "#fff3d6"][(r() * 6) | 0] }); }
         else if (k < 0.5) { const sx = 50 + r() * 40, sz = 50 + r() * 40, far = near + 50 + r() * 100, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (!rioSea(bx, by) && free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 25)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 70 + r() * 110, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f4f1e6", "#e8e0cf", "#d9e6ef", "#f2dfc8"][(r() * 4) | 0] }); }
@@ -199,14 +239,14 @@ function buildWorld(tr) {
     const x = -pad + 100 + r() * (WORLD + 2 * pad - 200), y = -pad + 100 + r() * (WORLD + 2 * pad - 200);
     if (!free(x, y, 160)) continue;
     if (id === "monaco") { if (y > 1260 * K) continue; blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 60, sy: 80 + r() * 140, sz: 60 + r() * 60, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f"][(r() * 4) | 0] }); }
-    else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra") trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 });
+    else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (id !== "laguna" || r() < 0.3) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
     else if (id === "deserto") { if (r() < 0.07) palms.push({ x, y, h: hAt(x, y), s: 1.2, r: r() * 6 }); }
     else if (id === "losangeles") { if (r() < 0.5) glass.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 120 + r() * 420, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); else palms.push({ x, y, h: hAt(x, y), s: 1.8, r: r() * 6 }); }
     else if (id === "rio") { if (rioSea(x, y)) continue; if (hAt(x, y) > 15 || r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.3 + r() * 1.2 }); else blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 50, sy: 70 + r() * 120, sz: 60 + r() * 50, dy: 0.5, r: r() * 3, c: ["#f4f1e6", "#e8e0cf", "#d9e6ef"][(r() * 3) | 0] }); }
     else towers.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 150 + r() * 500, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#1d2033", "#242842", "#191b2b", "#2a2340"][(r() * 4) | 0] });
   }
   if (id === "monaco") { for (let k = 0; k < 26; k++) { const a = r() * 6.28, rr2 = Math.sqrt(r()); yachts.push({ x: (800 + Math.cos(a) * 230 * rr2) * K, y: (1020 + Math.sin(a) * 40 * rr2) * K, h: hAt(800 * K, 1020 * K) + 1, s: 1, r: r() * 0.4 }); } for (let k = 0; k < 20; k++) yachts.push({ x: r() * WORLD, y: (1320 + r() * 500) * K, h: -6, s: 1.3, r: r() * 6 }); }
-  if (id === "interlagos") for (let k = 0; k < 7; k++) { const p = pts[Math.floor(n * (0.015 + k * 0.013))], L = W / 2 + 70; stands.push({ x: p.x - p.nx * L, y: p.y - p.ny * L, h: p.h, s: 1, r: -Math.atan2(p.ny, p.nx) }); }
+  if (id === "interlagos" || id === "laguna" || id === "nurburgring") for (let k = 0; k < 7; k++) { const p = pts[Math.floor(n * (0.015 + k * 0.013))], L = W / 2 + 70; stands.push({ x: p.x - p.nx * L, y: p.y - p.ny * L, h: p.h, s: 1, r: -Math.atan2(p.ny, p.nx) }); }
   // modelos
   if (PROPS.arvore) for (const { geo, mat } of PROPS.arvore.pecas) { const g = geo.clone(); g.scale(60, 60, 60); inst(g, mat, trees); } // a árvore do Kenney: 1,5 do modelo vira uns 9 m
   else { const leaf = new THREE.ConeGeometry(30, 70, 7); leaf.translate(0, 55, 0);
@@ -266,16 +306,20 @@ function landmarksLA(tr, add, r) {
 }
 // Rio: calçadão de Copacabana com as ondas pretas e brancas, areia, Pão de Açúcar, Cristo no morro e os Arcos da Lapa
 function landmarksRio(tr, add, r, size, ribbon) {
-  const { pts, n, W } = tr, L = tr.wallLat, i1 = Math.floor(n * 0.2);
+  const { pts, n, W } = tr, L0 = tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 20, L = L0;
+  // o trecho da orla: os pontos perto do mar (com a largada girada, ele pode passar pelo índice 0)
+  const naOrla = (i) => pts[(i + n) % n].x < 470 * tr.t.scale;
+  let i0 = 0; while (i0 < n && !naOrla(i0)) i0++; while (i0 > -n && naOrla(i0 - 1)) i0--; // volta até o começo da orla
+  let i1 = i0; while (i1 < i0 + n - 1 && naOrla(i1 + 1)) i1++; // e vai até o fim dela (i1 pode passar de n: a fita usa i % n)
   const waves = canvasTex(128, 128, (x, w, hh) => { x.fillStyle = "#f4f1e6"; x.fillRect(0, 0, w, hh); x.strokeStyle = "#1a1a1a"; x.lineWidth = 14; for (let k = -1; k < 3; k++) { x.beginPath(); for (let yy = 0; yy <= hh; yy += 4) { const xx = w / 2 + Math.sin((yy / hh) * Math.PI * 2) * 30 + k * 0; yy ? x.lineTo(xx + (k - 0.5) * 64, yy) : x.moveTo(xx + (k - 0.5) * 64, yy); } x.stroke(); } });
-  ribbon(L, L + 34, 0.5, new THREE.MeshStandardMaterial({ map: waves, roughness: 0.8, side: THREE.DoubleSide }), 40, 0.5, 1, 0, i1);
+  ribbon(L, L + 34, 0.5, new THREE.MeshStandardMaterial({ map: waves, roughness: 0.8, side: THREE.DoubleSide }), 40, 0.5, 1, i0, i1);
   const sand = canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#e8d6a8"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 500; i++) { x.fillStyle = rr() < 0.5 ? "#dcc995" : "#f2e3bb"; x.fillRect(rr() * w, rr() * hh, 2, 2); } });
-  ribbon(L + 34, L + 190, 0.6, new THREE.MeshStandardMaterial({ map: sand, roughness: 1, side: THREE.DoubleSide }), 64, 0.6, 4, 0, i1);
+  ribbon(L + 34, L + 190, 0.6, new THREE.MeshStandardMaterial({ map: sand, roughness: 1, side: THREE.DoubleSide }), 64, 0.6, 4, i0, i1);
   const world = tr.t.world, K = tr.t.scale;
   const seaM = new THREE.MeshStandardMaterial({ map: aguaTex("#1f8ab0"), roughness: 0.15, metalness: 0.25 }); seaM.map.repeat.set(size / 220, size / 220); tr.agua.push(seaM);
   const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(size, size), seaM)); sea.rotation.x = -Math.PI / 2; sea.position.set(world / 2, -6, world / 2);
   // guarda-sóis coloridos na areia
-  for (let i = 4; i < i1; i += 6) { const p = pts[i], d = L + 60 + r() * 90, x = p.x + p.nx * d, y = p.y + p.ny * d, col = [0xff5a5a, 0xffd23f, 0x3fa9f5, 0x7ed07a][(r() * 4) | 0];
+  for (let i = i0 + 4; i < i1; i += 6) { const p = pts[(i + n) % n], d = L + 60 + r() * 90, x = p.x + p.nx * d, y = p.y + p.ny * d, col = [0xff5a5a, 0xffd23f, 0x3fa9f5, 0x7ed07a][(r() * 4) | 0];
     const um = add(new THREE.Mesh(new THREE.ConeGeometry(12, 5, 8), M(col))); um.position.set(x, 13, y); const st = add(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 12), M(0xdddddd))); st.position.set(x, 6, y); }
   // Pão de Açúcar (dois morros no mar)
   for (const [x, y, s] of [[-420, 1650, 1], [-180, 1820, 0.6]]) { const m = add(new THREE.Mesh(new THREE.SphereGeometry(200, 24, 16), M(0x4a5a46))); m.scale.set(s * K, s * K * 1.9, s * K * 0.9); m.position.set(x * K, 0, y * K); }

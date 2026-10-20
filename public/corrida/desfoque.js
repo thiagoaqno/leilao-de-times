@@ -2,7 +2,7 @@
 // Desfoque: depois de desenhar a cena, um passe na placa de vídeo puxa cada ponto da tela para fora, a partir do centro
 // (como uma foto tirada em movimento). O centro, para onde se olha, e o carro, embaixo no meio, ficam nítidos; o cenário
 // dos lados borra mais quanto mais rápido. Parado (ou com "menos movimento" no sistema), a cena vai direto para a tela.
-// Qualidade: se o jogo fica abaixo de ~45 quadros por segundo, baixa a resolução, depois as sombras e o desfoque.
+// Qualidade: se o jogo fica abaixo de ~50 quadros por segundo, baixa a resolução, depois tira as sombras e o desfoque.
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -41,16 +41,16 @@ export function desenhar(forca) {
   radial.uniforms.forca.value = Math.min(1, forca);
   composer.render();
 }
-// mede os quadros por segundo; a cada 2 s abaixo de 45, desce um nível (nunca volta: evita ficar pulando)
+// mede os quadros por segundo; dois trechos de 2 s abaixo de 50, desce um nível (nunca volta: evita ficar pulando)
 let quadros = 0, desde = performance.now(), ruins = 0;
 export function medirQuadro() {
   quadros++; const agora = performance.now(), dt = agora - desde;
   if (dt < 2000) return;
   const fps = (quadros * 1000) / dt; quadros = 0; desde = agora;
-  if (document.hidden || fps > 45) { ruins = 0; return; }
+  if (document.hidden || fps > 50) { ruins = 0; return; }
   if (++ruins < 2 || nivel >= 2) return;
   ruins = 0; nivel++;
-  if (nivel === 1) { renderer.setPixelRatio(1); const s = renderer.getSize(new THREE.Vector2()); ajustarTela(s.x, s.y); }
-  if (nivel === 2) { sun.shadow.mapSize.set(1024, 1024); sun.shadow.map?.dispose(); sun.shadow.map = null; }
+  if (nivel === 1) { renderer.setPixelRatio(0.85); const s = renderer.getSize(new THREE.Vector2()); ajustarTela(s.x, s.y); }
+  if (nivel === 2) { renderer.shadowMap.enabled = false; scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; }); } // sem sombras
   console.info("Corrida: qualidade reduzida para manter a fluidez (nível " + nivel + ", " + fps.toFixed(0) + " qps)");
 }

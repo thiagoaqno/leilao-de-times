@@ -1,7 +1,7 @@
 // Corrida da Galera — o jogo no navegador: sala, garagem, e a corrida em 3D (Three.js).
 // Este é o módulo de entrada: começa e para a corrida, o laço e o desenho, e a capa da página. O resto fica nos
 // outros módulos desta pasta (estado, sons, rede, menus, cena, pista, carros, controles, fisica, fantasma e hud).
-import { E, SECTORS, COLORS, socket, $, sNow, me, P, act } from "./estado.js";
+import { E, SECTORS, COLORS, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
@@ -36,7 +36,7 @@ export function startRace(st) {
   if (!raf) raf = requestAnimationFrame(loop);
 }
 function clearRace() { if (!race) return; stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
-export function stopRace() { clearRace(); race = null; Sound.engine(0, false); Sound.rivais([]); }
+export function stopRace() { clearRace(); race = null; Sound.engine(0, false); }
 function resize() {
   const w = window.innerWidth, hh = window.innerHeight;
   renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); ajustarTela(w, hh);
@@ -56,6 +56,7 @@ export function nearest(tr, x, y, from) {
 export function respawn() {
   if (!race || sNow() < race.startAt) return;
   race.sujou = true; // volta com "↺ Pista" não serve de exemplo para os robôs
+  if (race.perdeu >= 0) race.idx = (checkpoint(race.perdeu, race.tr.n) - 5 + race.tr.n) % race.tr.n; // perdeu o checkpoint: volta para antes dele
   const p = race.tr.pts[race.idx]; Object.assign(race.car, { x: p.x, y: p.y, z: p.h, vz: 0, air: false, a: Math.atan2(p.ty, p.tx), v: 0, vx: 0, vy: 0, slip: 0 }); Sound.pop();
 }
 
@@ -70,7 +71,6 @@ function loop(t) {
   recordLap();
   if (me() && E.S.phase === "race" && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
   Sound.engine(race.car.v, E.S && E.S.phase === "race" && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0);
-  Sound.rivais([...race.ghosts.values()].map((g) => ({ d: Math.hypot(g.x - race.car.x, g.y - race.car.y), v: g.v || 0 })));
   Sound.skid(me() && E.S.phase === "race" && race.car.slip > 45 ? race.car.slip : 0);
   draw(dt);
   medirQuadro();
@@ -103,7 +103,7 @@ function draw(dt) {
   // os outros pilotos (carros de verdade: dá para bater)
   for (const [id, gh] of race.ghosts) {
     const pl = P(id); if (!pl) continue;
-    const key = pl.color + pl.car + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods); gh.kartKey = key; }
+    const key = pl.color + pl.car + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, true); gh.kartKey = key; }
     const spec = CARS3[pl.car] || CARS3.equilibrado, gz = groundH(tr, gh.x, gh.y, gh.idx || 0), noAr = gh.z > gz + 3;
     gh.vz = ((gh.z - (gh.zAnt ?? gh.z)) / Math.max(dt, 1e-3)) * 0.3 + (gh.vz || 0) * 0.7; gh.zAnt = gh.z;
     const inc = inclinacao(tr, gh.x, gh.y, gh.a, gh.idx || 0, spec.L * KS, spec.W * KS, gh.vz, noAr, gh.v || 0);
@@ -111,6 +111,14 @@ function draw(dt) {
     let da = gh.a - (gh.aAnt ?? gh.a); da = Math.atan2(Math.sin(da), Math.cos(da)); gh.aAnt = gh.a;
     gh.vira = (gh.vira || 0) + (Math.max(-1, Math.min(1, da / Math.max(dt, 1e-3) / 2.4)) - (gh.vira || 0)) * Math.min(1, dt * 8);
     poseKart(gh.kart, gh.x, gh.y, gh.z, gh.a, gh.v || 0, gh.vira, gz, dt, inc.roll, inc.pitch, fxDe(pl, now));
+  }
+  // o próximo checkpoint acende e pulsa; o perdido fica vermelho; os outros, apagadinhos
+  for (const pt of tr.portais || []) {
+    const prox = (race.sector + 1) % SECTORS, seguinte = (race.sector + 2) % SECTORS, perdido = race.perdeu === pt.k;
+    pt.g.visible = pt.k === prox || pt.k === seguinte || perdido;
+    if (!pt.g.visible) continue;
+    pt.mat.color.setHex(perdido ? 0xff5050 : 0xffffff); pt.mat.opacity = pt.k === prox || perdido ? 1 : 0.55;
+    pt.panos.forEach((q, j) => { q.rotation.y = pt.base[j] + Math.sin(now / 420 + j * 1.7 + pt.k) * 0.12; }); // balança no vento
   }
   drawBest(dt);
   stepPuffs(dt);
@@ -127,7 +135,7 @@ function draw(dt) {
   const C = race.cam, k = 1 - Math.exp(-dt * 6), mode = src === c && race.kart ? camMode : "longe";
   let da = src.a - C.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; C.a += da * (1 - Math.exp(-dt * (mode === "perto" ? 7 : 5)));
   const reduceMotion = motionPreference.matches;
-  const speedK = Math.min(1.2, Math.abs(src.v || 0) / 440);
+  const speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
   const surge = Math.max(0, Math.min(1, ((src.v || 0) - (C.lastV || 0)) / Math.max(dt, 0.01) / 90));
   C.lastV = src.v || 0;
   C.surge = (C.surge || 0) + ((reduceMotion ? 0 : surge) - (C.surge || 0)) * (1 - Math.exp(-dt * 5));
@@ -173,7 +181,7 @@ function draw(dt) {
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
   // desfoque de velocidade: começa perto de 110 km/h e fica forte no fim de reta, no turbo e no estilingue
   const turbo = src === c && (race.boostUntil > now || race.sling > 0 || (me() && me().boostUntil > now));
-  desenhar(Math.max(0, (Math.abs(src.v || 0) - 220) / 230) + (turbo ? 0.45 : 0));
+  desenhar(Math.max(0, (Math.abs(src.v || 0) - 160) / 180) + (turbo ? 0.45 : 0));
 }
 // ---------- capa: a largada de Interlagos em 3D (o mesmo desenho da corrida) ----------
 (function heroArt() {
