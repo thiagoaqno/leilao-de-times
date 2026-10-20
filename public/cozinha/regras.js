@@ -15,7 +15,7 @@
   const RAIO = 0.42;           // o cozinheiro é um círculo no chão
   const MOV = { vel: 6.2, acel: 55, freio: 45, dash: 17, dashT: 0.13, dashRec: 0.5 };
   const TEMPOS = {
-    conta: 3,         // a contagem antes de abrir a cozinha
+    conta: 7,         // tempo para ler as fichas das receitas antes de abrir a cozinha
     lavar: 2.2,       // cada prato na pia
     voltaPrato: 9,    // o prato sujo volta este tempo depois da entrega
     gorjeta: 8,       // a gorjeta máxima (entregando o pedido logo que ele chega)
