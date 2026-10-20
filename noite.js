@@ -9,7 +9,7 @@
 const { limparNome } = require("./salas.js");
 
 const JOGOS = { leilao: "Leilão", banco: "Banco", uno: "Uno", sinuca: "Sinuca", truco: "Truco", domino: "Dominó", bloqueio: "Bloqueio", ludo: "Ludo", botao: "Botão",
-  corrida: "Corrida", tiro: "Tiro", pelada: "Pelada", rocket: "Rocket", batalha: "Batalha", tenis: "Tênis", rumi: "Rumi", proibida: "Palavra Proibida", ginasio: "Ginásio", futevolei: "Futevôlei", haxball: "Haxball", digita: "Digitação",
+  corrida: "Corrida", tiro: "Tiro", pelada: "Pelada", rocket: "Rocket", batalha: "Batalha", tenis: "Tênis", rumi: "Rumi", proibida: "Palavra Proibida", ginasio: "Ginásio", futevolei: "Futevôlei", haxball: "Haxball", digita: "Digitação", cozinha: "Cozinha",
   carreira: "Carreira em grupo" };
 const noites = new Map(), porSala = new Map(); // id -> noite; "jogo:CÓDIGO" -> id da noite
 const CHAMADO_MS = 90000, PARADA_MS = 12 * 3600 * 1000;

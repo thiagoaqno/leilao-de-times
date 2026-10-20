@@ -422,6 +422,9 @@ const GAMES = [
     x: 21, y: 39, w: 6, h: 4, doors: [24], bairro: "esportes", roof: "#e6cf9f", roof2: "#c9ac72", wall: "#f6f1e4", wall2: "#d9cfb6", futevolei: true },
   { id: "haxball", url: "/haxball/", icon: "⚽", sign: "HAXBALL", name: "Haxball da Galera", desc: "Futebol de discos 2D em tempo real. Crie uma sala e jogue com os amigos de 1x1 até 5x5.", meta: "Haxball da Galera · 1x1 a 5x5",
     x: 3, y: 39, w: 7, h: 4, doors: [6], bairro: "esportes", roof: "#2c774a", roof2: "#1c5635", wall: "#e8eee4", wall2: "#c3d3c5", haxball: true },
+  // na praça, onde ficavam os food trucks do lado oeste: o restaurante, com o toldo listrado e a chaminé soltando fumaça
+  { id: "cozinha", url: "/cozinha/", icon: "🍲", sign: "COZINHA", name: "Cozinha da Galera", desc: "Cozinha cooperativa no jeito do Overcooked: pique, cozinhe, monte o prato e entregue antes de o cliente desistir. E lave a louça!", meta: "Cozinha da Galera · 1 a 4 cozinheiros",
+    x: 5, y: 37, w: 11, h: 4, doors: [10], bairro: "praca", roof: "#b5523a", roof2: "#8e3d2a", wall: "#f6efe0", wall2: "#ddd0b4", restaurante: true },
 ];
 // Onde fica cada jogo, em coordenadas da vila: [x, y, largura, altura]. Ao norte da avenida, os jogos de mesa em dois
 // quarteirões (o do meio, embaixo, é o Parque Trianon); ao sul, a Velocidade, o MASP (a Casa de Leilão) com a praça na
@@ -430,7 +433,7 @@ const POSICOES = {
   banco: [3, 3, 8, 5], uno: [13, 3, 7, 5], truco: [25, 3, 8, 5], sinuca: [35, 3, 7, 5], domino: [49, 3, 7, 5], rumi: [58, 3, 7, 5], proibida: [71, 3, 7, 5], bloqueio: [80, 3, 6, 5],
   digita: [3, 11, 6, 4], tenis: [12, 11, 7, 4], carreira: [49, 11, 6, 4], ginasio: [57, 11, 7, 4], futevolei: [71, 11, 6, 4], haxball: [79, 11, 7, 4],
   corrida: [3, 29, 10, 5], tiro: [15, 30, 5, 4], leilao: [27, 29, 13, 5], rocket: [49, 30, 8, 4], batalha: [59, 30, 7, 4], pelada: [71, 30, 7, 4], jogador: [80, 30, 6, 4],
-  ludo: [25, 38, 5, 3], naruto: [40, 38, 5, 3], botao: [58, 38, 5, 3],
+  ludo: [25, 38, 5, 3], naruto: [40, 38, 5, 3], botao: [58, 38, 5, 3], cozinha: [5, 37, 11, 4],
 };
 const portas = (x, w) => (w >= 8 ? [x + (w >> 1) - 1, x + (w >> 1)] : [x + (w >> 1)]);
 for (const g of GAMES) if (POSICOES[g.id]) { const [x, y, w, h] = POSICOES[g.id]; Object.assign(g, { x, y, w, h, doors: portas(x, w) }); }
@@ -455,8 +458,8 @@ const FOUNTAIN = { x: 33, y: 38, w: 4, h: 3 };
 // o telão da estante da galera: na praça ao lado do MASP (a tela sobe por cima da alameda)
 const TELAO = { x: 50, y: 38, w: 6 };
 const TERRENOS = [];
-// food trucks da feirinha (sólidos): dois grupos, um de cada lado da praça
-const FOODTRUCKS = [[5, 38, "#ff7a3d", "PASTEL"], [11, 38, "#2fa8e0", "AÇAÍ"], [17, 38, "#ffcc2e", "CHURROS"], [72, 38, "#e8445a", "HOT DOG"], [78, 38, "#43a047", "TAPIOCA"], [84, 38, "#8e5ad8", "CALDO"]];
+// food trucks da feirinha (sólidos), do lado leste da praça (no lado oeste agora fica a Cozinha da Galera)
+const FOODTRUCKS = [[72, 38, "#e8445a", "HOT DOG"], [78, 38, "#43a047", "TAPIOCA"], [84, 38, "#8e5ad8", "CALDO"]];
 const ANTENA = { x: 66, y: 13 }; // a antena da Gazeta, ao lado do Ginásio
 const PAINEL = { x: 56, y: 16, w: 6 }; // o painel de LED em cima da calçada norte
 const RUAS_X = [22, 46, 68]; // Augusta, Consolação e Brigadeiro (duas casas de largura cada)
@@ -746,6 +749,13 @@ function drawBuilding(c, g) {
       px(c, "#f4f4f4", bx + dx, by + dy + 5, 1, 6);
       c.fillStyle = col; c.beginPath(); c.ellipse(bx + dx + 0.5, by + dy, 3.5, 4.5, 0, 0, 7); c.fill();
     });
+  }
+  if (g.restaurante) { // telhado de telha com a chaminé e o toldo listrado em cima da porta
+    for (let yy = Y + 3; yy < wallY - 2; yy += 4) for (let xx = rx + ((yy / 4) % 2 ? 2 : 0); xx < rx + rw; xx += 6) px(c, g.roof2, xx, yy, 4, 1);
+    const cx = Math.round(rx + rw * 0.8);
+    px(c, "#5b4136", cx, Y - 6, 8, 12); px(c, "#3a2a22", cx - 1, Y - 7, 10, 3); // a chaminé
+    for (let i = 0; i < W; i += 6) px(c, (i / 6) % 2 ? "#ffffff" : "#d63a2a", X + i, wallY, Math.min(6, W - i), 5); // o toldo
+    for (let i = 0; i < W; i += 6) px(c, (i / 6) % 2 ? "#e9e2d2" : "#a82a1e", X + i + 1, wallY + 5, 4, 2);
   }
   if (g.haxball) { // quadra de discos no antigo lote do tênis de mesa
     const qx = rx + 7, qy = Y + 4, qw = rw - 14, qh = roofH - 9;
@@ -2069,7 +2079,9 @@ function drawVida(c, t) {
     if (p.voo > 0) { const asa = Math.sin(t / 60 + p.fase) > 0 ? -2 : 1; px(c, "#8a8f99", X - 3, Y + asa, 3, 1); px(c, "#8a8f99", X + 2, Y + asa, 3, 1); px(c, "#6d727c", X - 1, Y, 3, 2); }
     else { px(c, "#00000025", X - 2, Y + 3, 5, 1); px(c, "#8a8f99", X - 2, Y, 4, 3); px(c, "#5d6b82", X + (bica ? 2 : 1), Y - 1 + bica, 2, 2); px(c, "#e2a24a", X + (bica ? 4 : 3), Y + bica, 1, 1); }
   }
-  // fumaça dos food trucks
+  // fumaça dos food trucks e da chaminé da Cozinha
+  const coz = GAMES.find((g) => g.restaurante);
+  if (!parado && coz) for (let k = 0; k < 4; k++) { const f = ((t / 2200 + k / 4) % 1), X = (coz.x * TS - 3) + Math.round((coz.w * TS + 6) * 0.8) + 4 + Math.sin(f * 5 + k) * 4, Y = coz.y * TS - 8 - f * 26; c.fillStyle = `rgba(235,235,235,${0.5 * (1 - f)})`; c.beginPath(); c.arc(X, Y, 2.5 + f * 5, 0, 7); c.fill(); }
   if (!parado) for (const [x, y] of FOODTRUCKS) for (let k = 0; k < 3; k++) { const f = ((t / 1800 + k / 3 + x * 0.1) % 1), X = x * TS + 34 + Math.sin(f * 6 + k) * 3, Y = y * TS + 2 - f * 18; c.fillStyle = `rgba(240,240,240,${0.45 * (1 - f)})`; c.beginPath(); c.arc(X, Y, 2 + f * 4, 0, 7); c.fill(); }
   // semáforos: verde para o pedestre por 4 s, piscando vermelho por 1 s e vermelho por 3 s
   const ciclo = (t / 1000) % 8, verde = ciclo < 4, pisca = ciclo >= 4 && ciclo < 5;

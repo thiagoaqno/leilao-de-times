@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<script src="/semzoom.js"></script>
+<title>Cozinha da Galera</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='22' y='46' width='56' height='40' rx='6' fill='%23f4f4f4'/><circle cx='30' cy='38' r='16' fill='%23f4f4f4'/><circle cx='50' cy='28' r='18' fill='%23f4f4f4'/><circle cx='70' cy='38' r='16' fill='%23f4f4f4'/><rect x='22' y='72' width='56' height='6' fill='%23c95f4a'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* cozinha de restaurante: azulejo creme, aço, madeira da tábua, o vermelho do tomate e o amarelo da comanda */
+  --bg:#2a1d17;--panel:#fff8ea;--panel2:#f3e6cc;--line:#d9c7a3;--ink:#2b211b;
+  --text:#2b211b;--muted:#7d6a58;--accent:#e2553d;--accent2:#f2b632;--good:#3aa65b;--bad:#d9412b;
+  --aco:#c9d0d6;--madeira:#a8743f;
+  --display:"Lilita One",Impact,system-ui,sans-serif;
+  --body:Figtree,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;color:var(--text);font:15px/1.5 var(--body)}
+body{min-height:100vh;background:
+  linear-gradient(45deg,#ffffff0a 25%,transparent 25% 75%,#ffffff0a 75%) 0 0/48px 48px,
+  linear-gradient(45deg,#ffffff0a 25%,transparent 25% 75%,#ffffff0a 75%) 24px 24px/48px 48px,
+  radial-gradient(900px 500px at 50% -10%,#e2553d33,transparent),var(--bg)}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:1.05;margin:0;letter-spacing:.01em}
+:focus-visible{outline:3px solid var(--accent2);outline-offset:2px}
+button{font:inherit;font-weight:700;cursor:pointer;border-radius:12px;padding:10px 16px;background:#fff;color:var(--ink);border:2px solid var(--ink);box-shadow:0 4px 0 var(--ink);transition:transform .08s,box-shadow .08s,filter .15s}
+button:hover:not(:disabled){filter:brightness(1.05)}
+button:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.ghost{background:transparent;box-shadow:none;border-color:transparent;color:var(--muted)}
+button.small{padding:6px 11px;font-size:13px;box-shadow:0 3px 0 var(--ink)}
+button.primary{background:var(--accent);color:#fff;font-family:var(--display);font-weight:400;font-size:18px;letter-spacing:.03em}
+button.on{background:var(--accent2)}
+input{font:inherit;color:var(--ink);background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input:focus{outline:none;border-color:var(--accent)}
+input[type=range]{padding:0;accent-color:var(--accent)}
+label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 6px;font-weight:800;text-transform:uppercase;letter-spacing:.07em}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.err{color:var(--bad);font-size:14px;min-height:20px;margin-top:10px;font-weight:700}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 16px 60px}
+.bar{position:sticky;top:0;z-index:20;background:#2a1d17f0;border-bottom:3px solid var(--accent)}
+.bar-in{max-width:1100px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;gap:10px;color:#fff8ea}
+.brand{margin-right:auto;min-width:0}
+.brand h1{font-size:24px;white-space:nowrap}
+.brand h1 span{color:var(--accent2)}
+.tovila{color:#d9c7a3;text-decoration:none;font-weight:700;font-size:14px;padding:6px 10px 6px 4px;white-space:nowrap}
+.tovila:hover{color:#fff}
+.roomtag{display:flex;align-items:center;gap:8px}
+.roomtag .code{font:24px var(--display);letter-spacing:.14em;color:var(--accent2)}
+.roomtag button{background:#fff8ea}
+/* a comanda: papel creme com a borda picotada */
+.panel{background:var(--panel);border-radius:6px;box-shadow:0 18px 40px #0009;position:relative}
+.panel::before{content:"";position:absolute;left:0;right:0;top:-8px;height:8px;background:radial-gradient(circle at 8px 8px,transparent 6px,var(--panel) 6.5px) -8px 0/16px 8px repeat-x}
+.panel .in{padding:20px}
+.hero{display:grid;grid-template-columns:1.15fr 1fr;gap:28px;align-items:center;margin-top:28px;color:#fff8ea}
+.hero h2{font-size:clamp(46px,7vw,82px)}
+.hero h2 em{font-style:normal;color:var(--accent2)}
+.lead{font-size:17px;color:#f0e2c8;max-width:520px}
+.feats{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.feats span{background:#ffffff14;border:1px solid #ffffff2a;border-radius:999px;padding:4px 12px;font-size:13.5px;font-weight:700}
+.or{text-align:center;color:var(--muted);margin:12px 0;font-size:13px}
+@media (max-width:760px){.hero{grid-template-columns:1fr}}
+.skins{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.skins button{padding:7px 4px;font-size:12px;line-height:1.2;text-align:center;box-shadow:0 2px 0 var(--ink);border-width:1.5px}
+.lobby{display:grid;grid-template-columns:1fr 1.25fr;gap:22px;margin-top:22px}
+@media (max-width:860px){.lobby{grid-template-columns:1fr}}
+.chefs{display:grid;gap:6px}
+.pl{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--panel2);font-weight:700}
+.pl .dot{width:9px;height:9px;border-radius:50%;background:#b9a98c}.pl .dot.on{background:var(--good)}
+.pl.me{outline:2px solid var(--accent)}
+.pl .tag{margin-left:auto;font-size:12px;color:var(--muted)}
+.pl .x{padding:2px 8px;font-size:12px;box-shadow:none;border-width:1px}
+.cozinhas{display:grid;gap:10px}
+.coz{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;text-align:left;padding:10px 12px;font-weight:500;box-shadow:0 3px 0 var(--ink)}
+.coz b{font:20px var(--display);display:block}
+.coz small{display:block;color:var(--muted);font-size:13px;line-height:1.35}
+.coz .num{font:28px var(--display);color:var(--accent);min-width:44px;text-align:center}
+.coz .rec{display:flex;gap:4px;margin-top:4px}
+.coz .rec img{width:30px;height:30px}
+.coz.on{background:#ffe9b8;outline:3px solid var(--accent2)}
+.coz:disabled{opacity:1;cursor:default}
+.keys{font-size:14px;margin:6px 0 0;padding-left:18px}
+kbd{display:inline-block;background:#fff;border:1.5px solid var(--ink);border-bottom-width:3px;border-radius:5px;padding:0 6px;font:700 12px var(--body);min-width:20px;text-align:center}
+/* ---------- jogo ---------- */
+#game{position:fixed;inset:0;background:#1b120e;z-index:30}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;pointer-events:none}
+/* os pedidos: comandas penduradas no alto, a mais antiga à esquerda */
+#hPed{top:10px;left:10px;right:150px;display:flex;gap:8px;align-items:flex-start}
+.ped{width:118px;background:var(--panel);border-radius:6px;box-shadow:0 6px 16px #0008;overflow:hidden;transform-origin:top center;animation:chega .35s ease-out}
+.ped .tempo{height:7px;background:#00000022}
+.ped .tempo i{display:block;height:100%;background:var(--good)}
+.ped .fig{display:block;width:72px;height:72px;margin:2px auto -4px}
+.ped .nome{font:13px var(--display);text-align:center;color:var(--ink);padding:0 4px;line-height:1.1}
+.ped .ings{display:flex;justify-content:center;gap:2px;padding:4px 4px 6px;flex-wrap:wrap}
+.ped .ing{position:relative;width:26px;height:30px}
+.ped .ing img{width:26px;height:26px;display:block}
+.ped .ing em{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);width:16px;height:9px;border-radius:3px}
+.ped .ing em.picar{background:#a8743f}.ped .ing em.cozinhar{background:#5d6670}.ped .ing em.fritar{background:#2b2b2b}
+.ped.urgente{animation:treme .5s infinite}
+.ped.sai{animation:sai .4s forwards}
+@keyframes chega{from{transform:translateY(-120%)}to{transform:none}}
+@keyframes treme{0%,100%{transform:rotate(0)}25%{transform:rotate(-2deg)}75%{transform:rotate(2deg)}}
+@keyframes sai{to{transform:translateY(-130%);opacity:0}}
+/* o placar (moedas) embaixo à esquerda, o relógio embaixo à direita */
+#hPts{left:14px;bottom:14px;display:flex;align-items:center;gap:8px;background:#2a1d17e8;border:3px solid var(--accent2);border-radius:999px;padding:4px 16px 4px 6px;color:#fff8ea;font:30px var(--display)}
+#hPts i{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffe58a,#e0a21a);border:2px solid #9a6a10;display:block}
+#hRel{right:14px;bottom:14px;background:#2a1d17e8;border:3px solid #fff8ea;border-radius:999px;padding:4px 18px;color:#fff8ea;font:32px var(--display);min-width:118px;text-align:center}
+#hRel.pouco{border-color:var(--bad);color:#ffb3a6;animation:treme .6s infinite}
+#hMsg{top:38%;left:50%;transform:translate(-50%,-50%);text-align:center;font:64px var(--display);color:#fff8ea;text-shadow:0 5px 0 #2a1d17,0 0 24px #000a;white-space:nowrap}
+#hMsg.pop{animation:pop .45s ease-out}
+@keyframes pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}70%{transform:translate(-50%,-50%) scale(1.12)}100%{transform:translate(-50%,-50%) scale(1)}}
+#hHint{right:16px;top:12px;font:600 12.5px var(--body);text-align:right;line-height:1.7;color:#fff8eacc;text-shadow:0 1px 0 #000}
+@media (pointer:coarse){#hHint{display:none!important}#hPts{bottom:auto;top:auto;left:50%;transform:translateX(-50%);bottom:10px;font-size:22px}#hRel{top:10px;bottom:auto;font-size:24px;min-width:90px}#hPed{right:120px}.ped{width:96px}.ped .fig{width:54px;height:54px}}
+.flutua{position:absolute;font:28px var(--display);color:#ffe58a;text-shadow:0 3px 0 #2a1d17;pointer-events:none;animation:sobe 1.3s ease-out forwards;white-space:nowrap;transform:translate(-50%,-50%)}
+.flutua small{display:block;font-size:17px;color:#bff5c9;text-align:center}
+@keyframes sobe{to{transform:translate(-50%,-160%);opacity:0}}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#000a;padding:16px;z-index:5}
+.overlay .box{background:var(--panel);border-radius:8px;padding:22px;width:min(560px,100%);max-height:100%;overflow:auto;box-shadow:0 20px 50px #000}
+.overlay h2{font-size:34px;margin-bottom:6px}
+/* as estrelas do fim */
+.estrelas{display:flex;justify-content:center;gap:10px;margin:8px 0 12px}
+.estrelas svg{width:76px;height:76px;filter:drop-shadow(0 4px 0 #2a1d17)}
+.estrelas .sim{animation:estrela .5s ease-out both}
+.estrelas .sim:nth-child(2){animation-delay:.35s}.estrelas .sim:nth-child(3){animation-delay:.7s}
+@keyframes estrela{0%{transform:scale(0) rotate(-40deg)}70%{transform:scale(1.25)}100%{transform:none}}
+.conta{display:grid;grid-template-columns:1fr auto;gap:2px 16px;font-size:15px;margin:10px 0}
+.conta b{text-align:right}
+.conta .tot{font:24px var(--display);border-top:2px dashed var(--line);padding-top:6px;margin-top:4px}
+.metas{display:flex;gap:6px;justify-content:center;font-size:13px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:var(--panel);color:var(--ink);border:2px solid var(--ink);border-radius:10px;padding:10px 16px;font-weight:700;z-index:60;box-shadow:0 10px 30px #000a;max-width:90vw;text-align:center}
+.confetti{position:fixed;top:-12px;width:9px;height:14px;z-index:70;animation:fall linear forwards;pointer-events:none}
+@keyframes fall{to{transform:translateY(105vh) rotate(720deg)}}
+@media (prefers-reduced-motion:reduce){.ped,.ped.urgente,#hRel.pouco,#hMsg.pop,.estrelas .sim,.flutua{animation:none!important}.ped.sai{display:none}}
+</style>
+</head>
+<body>
+<header class="bar" id="bar">
+  <div class="bar-in">
+    <a class="tovila" href="/" title="Voltar para a vila">← Vila</a>
+    <div class="brand"><h1>Cozinha da <span>Galera</span></h1></div>
+    <div class="roomtag hidden" id="roomTag"><span style="color:#d9c7a3">Sala</span><span class="code" id="rCode"></span><button class="small" id="btnInvite">Convidar</button></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section id="home" class="hidden">
+    <div class="hero">
+      <div>
+        <h2>A cozinha<br>vai <em>pegar fogo</em></h2>
+        <p class="lead">Pique, cozinhe, monte o prato e entregue antes de o cliente desistir. E não esqueça de lavar a louça. De 1 a 4 cozinheiros na mesma cozinha, contra o relógio.</p>
+        <div class="feats"><span>1 a 4 cozinheiros</span><span>cooperativo</span><span>sopas, saladas e lanches</span><span>as skins da Pelada</span></div>
+      </div>
+      <div class="panel"><div class="in">
+        <div class="err hidden" id="mobileWarn" style="color:var(--accent)">No celular aparecem botões na tela: deite o celular.</div>
+        <label for="hName">Seu nome</label>
+        <input id="hName" maxlength="8" placeholder="Ex.: Jacquin" autocomplete="off">
+        <label for="hCode" style="margin-top:14px">Código da sala</label>
+        <input id="hCode" maxlength="5" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em">
+        <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
+        <div class="or">ou</div>
+        <button id="btnCreate" style="width:100%">Abrir uma cozinha nova</button>
+        <label style="margin-top:16px">Sua skin</label>
+        <div class="skins" id="hSkins"></div>
+        <div class="err" id="hErr"></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section id="lobby" class="hidden">
+    <div class="lobby">
+      <div class="panel"><div class="in">
+        <h2 style="font-size:28px;margin-bottom:12px">Brigada</h2>
+        <div class="chefs" id="lChefs"></div>
+        <div class="row" style="margin-top:10px"><button class="small" id="btnChef"></button></div>
+        <div id="lFora" class="muted" style="margin-top:8px;font-size:13.5px"></div>
+        <label style="margin-top:16px">Sua skin</label>
+        <div class="skins" id="lSkins"></div>
+        <label style="margin-top:16px">Controles</label>
+        <ul class="keys">
+          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou as setas: andar</li>
+          <li><kbd>Espaço</kbd> ou <kbd>J</kbd>: pegar, soltar e juntar</li>
+          <li><kbd>F</kbd> ou <kbd>K</kbd>: picar e lavar</li>
+          <li><kbd>Shift</kbd> ou <kbd>L</kbd>: impulso</li>
+        </ul>
+      </div></div>
+      <div class="panel"><div class="in">
+        <h2 style="font-size:28px;margin-bottom:12px">Cozinha</h2>
+        <div class="cozinhas" id="lCoz"></div>
+        <div id="startBox" style="margin-top:18px"></div>
+      </div></div>
+    </div>
+  </section>
+</div>
+
+<section id="game" class="hidden">
+  <canvas id="cv"></canvas>
+  <div class="hud" id="hPed"></div>
+  <div class="hud" id="hPts"><i></i><span id="hPtsN">0</span></div>
+  <div class="hud" id="hRel">3:00</div>
+  <div class="hud" id="hMsg"></div>
+  <div class="hud" id="hHint"><kbd>Espaço</kbd> pegar/soltar · <kbd>F</kbd> picar/lavar · <kbd>Shift</kbd> impulso · <kbd>Esc</kbd> menu</div>
+  <div class="overlay hidden" id="pause"><div class="box">
+    <h2>Pausa no expediente</h2>
+    <p class="muted" style="margin:0 0 10px">A cozinha continua andando para os outros.</p>
+    <button class="primary" id="btnResume" style="width:100%;margin-top:8px">Voltar para a cozinha</button>
+    <label style="margin-top:16px">Volume: <span id="volV"></span></label>
+    <input type="range" id="vol" min="0" max="1" step="0.05">
+    <div class="row" style="margin-top:14px;justify-content:space-between"><button class="ghost" id="btnLeave">Sair da cozinha</button></div>
+  </div></div>
+  <div class="overlay hidden" id="over"><div class="box" id="overBox"></div></div>
+</section>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/noite.js"></script>
+<script src="/comum.js"></script>
+<script src="/pelada/campo.js"></script>
+<script src="/cozinha/regras.js"></script>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
+<script src="/toque.js"></script>
+<script type="module" src="/cozinha/jogo.js"></script>
+</body>
+</html>
