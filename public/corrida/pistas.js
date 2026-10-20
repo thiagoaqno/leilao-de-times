@@ -230,6 +230,70 @@ const PISTAS = {
       [480, 1420, 60],
     ],
   },
+  // Inspiradas no Nürburgring (a Nordschleife) e em Laguna Seca: o traçado foi redesenhado com as curvas famosas de cada
+  // uma, não copiado.
+  nurburgring: {
+    name: "Nürburgring", sub: "O Inferno Verde: floresta, o salto do Flugplatz, a descida da Fuchsröhre, o Karussell e a reta Döttinger Höhe",
+    scale: 3.06, width: 96, minLap: 35, walls: true, wall: 10, flat: 25, fall: 150,
+    // relevo: a reta no planalto, a ondulação do Hatzenbach, o salto do Flugplatz, a Fuchsröhre despencando, o Karussell,
+    // o ponto mais alto (Hohe Acht) e o salto do Pflanzgarten
+    hills: [[0, 40], [0.14, 35], [0.22, 50], [0.3, 62], [0.35, 70], [0.38, 64], [0.405, 70], [0.412, 94], [0.418, 62], [0.45, 55], [0.49, 50], [0.515, 30], [0.54, 12], [0.56, 30], [0.6, 48], [0.645, 56], [0.67, 66], [0.695, 40], [0.72, 55], [0.76, 72], [0.79, 112], [0.82, 96], [0.845, 90], [0.852, 106], [0.858, 72], [0.875, 64], [0.93, 48], [1, 40]],
+    points: [
+      [300, 1420, 0], // Döttinger Höhe (a reta longa, para a direita)
+      [1100, 1430, 0],
+      [1340, 1390, 120], // Tiergarten
+      [1450, 1220, 60],
+      [1370, 1080, 50], // Hohenrain
+      [1460, 930, 70],
+      [1310, 790, 80], // Hatzenbach
+      [1200, 850, 40],
+      [1100, 730, 40],
+      [1000, 810, 40],
+      [900, 690, 45],
+      [790, 540, 0], // Flugplatz (salto)
+      [720, 410, 90], // Schwedenkreuz
+      [540, 330, 60], // Aremberg
+      [420, 230, 70],
+      [260, 330, 80], // Fuchsröhre
+      [380, 470, 120],
+      [300, 640, 45], // Adenauer Forst
+      [430, 720, 45],
+      [290, 840, 80], // Metzgesfeld
+      [420, 960, 60], // Kallenhard
+      [250, 1070, 50], // Wehrseifen
+      [400, 1170, 70], // Bergwerk
+      [600, 1060, 38], // Karussell
+      [740, 1170, 80], // Hohe Acht
+      [880, 1060, 60], // Brünnchen
+      [1000, 1210, 90], // Pflanzgarten (salto)
+      [810, 1300, 60], // Schwalbenschwanz
+      [170, 1310, 90], // Galgenkopf
+    ],
+  },
+  laguna: {
+    name: "Laguna Seca", sub: "A reta, o grampo Andretti, a subida até o Corkscrew (o S que despenca morro abaixo) e a curva longa Rainey",
+    scale: 3.04, width: 104, minLap: 25, walls: false, flat: 35, fall: 200,
+    // relevo: tudo baixo até o Andretti, sobe pelo Rahal até o alto do Corkscrew e despenca no S, depois a Rainey descendo
+    hills: [[0, 35], [0.17, 30], [0.24, 20], [0.33, 25], [0.43, 42], [0.48, 66], [0.54, 104], [0.565, 114], [0.58, 92], [0.6, 58], [0.66, 40], [0.73, 30], [0.81, 25], [0.92, 35], [1, 35]],
+    points: [
+      [290, 1250, 0], // reta de chegada (para cima)
+      [290, 560, 0],
+      [320, 400, 120], // curva 1
+      [380, 250, 55], // grampo Andretti
+      [540, 240, 55],
+      [690, 380, 80], // curva 3
+      [760, 560, 70], // curva 4
+      [950, 610, 60], // curva 5
+      [1090, 440, 90], // curva 6
+      [1330, 330, 0], // reta Rahal (subindo)
+      [1420, 290, 40], // Corkscrew
+      [1460, 420, 32],
+      [1390, 690, 170], // Rainey (descendo)
+      [1210, 900, 90], // curva 10
+      [1060, 1190, 60], // curva 11
+      [600, 1310, 0],
+    ],
+  },
   // As três abaixo lembram pistas do Mario Kart 64 (nenhum arquivo do jogo vem junto). O Arco-íris foi seguido pelo
   // meio da pista original, com a altura de cada ponto; Luigi e Sorvete foram redesenhados com mais curvas.
   luigi: {

@@ -100,7 +100,7 @@ function velocimetro(v) {
   if (manual) { c.font = "800 9px Figtree, sans-serif"; c.fillStyle = "#ffd23f"; c.fillText("MANUAL", cx, cy + 22); }
   { const rpm = Math.min(1, race.rpm || 0); for (let k = 0; k < 10; k++) { c.fillStyle = k / 10 < rpm ? (k < 6 ? "#2ecc71" : k < 8 ? "#ff3d6e" : "#5fc8ff") : "#ffffff22"; c.fillRect(cx - 50 + k * 10.4, cy - r - 12, 8, 5); } } // luzes de troca, como no volante do F1
   c.shadowColor = "#000a"; c.shadowBlur = 6;
-  c.font = "300 58px Figtree, sans-serif"; c.textBaseline = "alphabetic"; c.fillText(String(kmh), cx, cy + r + 18);
+  c.fillStyle = "#fff"; c.font = "500 58px Figtree, sans-serif"; c.textBaseline = "alphabetic"; c.fillText(String(kmh), cx, cy + r + 18);
   c.font = "800 12px Figtree, sans-serif"; c.fillStyle = "#ffffffcc"; c.textAlign = "left"; c.fillText("KM/H", cx + r * 0.78, cy + r + 16); c.shadowBlur = 0;
 }
 // volta nova: bipe e "última volta"

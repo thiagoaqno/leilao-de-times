@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { canvasTex, M } from "./cena.js";
 
 const reduz = matchMedia("(prefers-reduced-motion: reduce)");
-const RURAL = { interlagos: 1, serra: 1, deserto: 1, luigi: 1, sorvete: 1 }, CIDADE = { monaco: 1, rio: 1, losangeles: 1, tokyo: 1, luigi: 1 };
+const RURAL = { interlagos: 1, serra: 1, deserto: 1, luigi: 1, sorvete: 1, nurburgring: 1, laguna: 1 }, CIDADE = { monaco: 1, rio: 1, losangeles: 1, tokyo: 1, luigi: 1 };
 const PELE = ["#f1c7a5", "#d9a37a", "#a8714a", "#7a4a2a", "#5a3520"], CAMISA = ["#ffd23f", "#e63946", "#1e88e5", "#43a047", "#ffffff", "#fb8c00", "#8e24aa", "#111111"];
 
 export function enfeitarMais(tr, add, r, alturaEm, V) {
