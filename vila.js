@@ -8,7 +8,7 @@
 const G = require("./galeramon.js");
 const ligarMato = require("./vila-mato.js");
 const { rid, limparNome: cleanName } = require("./salas.js");
-const MW = 64, MH = 64, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
+const MW = 96, MH = 60, LOOKS = 6, MAX = 80; // o mesmo tamanho do mapa da página (public/index.html)
 const OX = 3, OY = 3; // margem do bairro compacto
 const ZONAS = [""];
 const zonaDe = (z) => (ZONAS.includes(z) ? z : "");
@@ -131,7 +131,7 @@ module.exports = function attachVila(io, ginasio) {
         me = { id: rid(6), token, sock: socket.id, battle: null, offline: false };
         players.set(me.id, me); byToken.set(token, me);
       }
-      Object.assign(me, { name, look, skin, x: clamp(int(d.x, OX + 29), 0, MW - 1), y: clamp(int(d.y, OY + 25), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "up", z: zonaDe(d.z), car: false });
+      Object.assign(me, { name, look, skin, x: clamp(int(d.x, OX + 34), 0, MW - 1), y: clamp(int(d.y, OY + 27), 0, MH - 1), dir: DIRS.includes(d.dir) ? d.dir : "up", z: zonaDe(d.z), car: false });
       socket.emit("me", { id: me.id, token });
       socket.emit("all", [...players.values()].filter((p) => p !== me && !p.offline).map(pub));
       tellOthers(me, fresh ? "join" : "update");
