@@ -743,6 +743,7 @@
       "error": "Ação desconhecida."
     },
     "camposDoEstado": [
+      "boxReady",
       "code",
       "config",
       "endAt",

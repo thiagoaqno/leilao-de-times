@@ -9,158 +9,283 @@ const WORLD = 1600;
 
 const PISTAS = {
   monaco: {
-    name: "Mônaco", sub: "Estreita e travada: Sainte Dévote, o grampo do Grand Hotel, a chicane do porto e a piscina",
-    scale: 1.5, width: 104, minLap: 14, walls: true, wall: 9, flat: 12, fall: 70,
-    // relevo [fração da volta, altura]: sobe a Beau Rivage até o Cassino e desce até o túnel, à beira do mar
-    hills: [[0, 10], [0.1, 10], [0.16, 30], [0.21, 55], [0.25, 62], [0.29, 52], [0.34, 38], [0.41, 22], [0.46, 12], [0.56, 8], [0.6, 6], [0.72, 4], [0.8, 5], [0.92, 8], [1, 10]],
+    name: "Mônaco", sub: "Estreita e travada: Sainte Dévote, a subida até o Cassino, dois grampos, o túnel, a chicane do porto, a piscina e a Rascasse",
+    scale: 3.6, relevo: 1.5, width: 104, minLap: 30, walls: true, wall: 9, flat: 12, fall: 70,
+    // relevo: sobe a Beau Rivage até o Cassino, desce pelos grampos até o túnel e fica à beira do mar até a Rascasse
+    hills: [[0, 10], [0.1, 10], [0.14, 30], [0.2, 62], [0.25, 85], [0.29, 88], [0.33, 74], [0.38, 58], [0.42, 38], [0.47, 24], [0.53, 12], [0.57, 8], [0.61, 6], [0.7, 4], [0.8, 4], [0.9, 6], [1, 10]],
     points: [
-      [700, 700, 0],                         // reta dos boxes (para a direita), com o porto embaixo
-      [1200, 700, 55],                       // Sainte Dévote
-      [1260, 400, 160],                      // subida da Beau Rivage
-      [1050, 260, 90],                       // Massenet
-      [860, 270, 70],                        // Cassino
-      [760, 420, 45],                        // Mirabeau
-      [740, 560, 32], [620, 560, 32],        // grampo do Grand Hotel
-      [600, 440, 60],
-      [380, 330, 70],                        // Portier
-      [270, 560, 200], [290, 1050, 150],     // túnel, colado no mar
-      [450, 1170, 60], [600, 1175, 0], [680, 1120, 30], [760, 1175, 30], // chicane do porto
-      [1000, 1180, 80],                      // Tabac
-      [1130, 1060, 40], [1080, 960, 40],     // piscina
-      [1100, 880, 45], [480, 880, 60],       // Rascasse
-      [460, 700, 55],                        // Anthony Noghes
+      [620, 700, 0], // reta dos boxes (para a direita), com o porto embaixo
+      [1180, 700, 50], // Sainte Dévote
+      [1230, 560, 0],
+      [1330, 330, 150], // subida da Beau Rivage
+      [1240, 170, 80], // Massenet
+      [1050, 140, 60],
+      [930, 230, 45], // Cassino
+      [1000, 330, 40],
+      [880, 420, 35], // Mirabeau
+      [760, 380, 30],
+      [700, 470, 28], // grampo do Grand Hotel
+      [600, 500, 28],
+      [560, 380, 40], // segundo grampo
+      [430, 330, 60], // Portier
+      [300, 420, 90],
+      [200, 620, 150], // túnel, colado no mar
+      [230, 1050, 180],
+      [380, 1190, 60], // saída do túnel
+      [520, 1170, 0],
+      [580, 1215, 25], // chicane do porto
+      [650, 1165, 25],
+      [900, 1175, 0],
+      [1080, 1180, 70], // Tabac
+      [1200, 1100, 40],
+      [1160, 1000, 35], // piscina
+      [1240, 930, 35],
+      [1180, 860, 40],
+      [700, 860, 0],
+      [470, 860, 55], // Rascasse
+      [440, 760, 45], // Anthony Noghes
+      [520, 700, 40],
     ],
   },
   interlagos: {
-    name: "Interlagos", sub: "Reta dos boxes longa, S do Senna fechado, Reta Oposta e o Bico de Pato",
-    scale: 1.5, width: 124, minLap: 13, walls: false, flat: 40, fall: 220,
-    // morro da reta dos boxes, descida até o Lago, lombada na Reta Oposta (dá para voar!), o Mergulho e a subida dos boxes
-    // (a lombada e a rampa de Tóquio ocupam uma fração menor da volta desde que a pista cresceu 1,5×, para o pulo continuar igual)
-    hills: [[0, 70], [0.08, 66], [0.14, 42], [0.2, 30], [0.27, 25], [0.33, 14], [0.34, 30], [0.346, 10], [0.39, 0], [0.45, 0], [0.5, 5], [0.57, 25], [0.62, 35], [0.68, 35], [0.715, 30], [0.735, 30], [0.765, 4], [0.8, 0], [0.84, 6], [0.9, 40], [0.95, 63], [1, 70]],
+    name: "Interlagos", sub: "Reta dos boxes no morro, S do Senna, Curva do Sol, Reta Oposta com lombada, Lago, Ferradura, Pinheirinho, Bico de Pato e Mergulho",
+    scale: 4.08, relevo: 1.5, width: 124, minLap: 30, walls: false, flat: 40, fall: 220,
+    // relevo: morro da reta dos boxes, descida até o Lago com a lombada na Reta Oposta (dá para voar!), sobe até o Pinheirinho, o Mergulho e a subida dos boxes
+    hills: [[0, 95], [0.08, 92], [0.14, 70], [0.2, 55], [0.26, 45], [0.3, 30], [0.307, 52], [0.313, 22], [0.36, 10], [0.4, 0], [0.47, 4], [0.53, 22], [0.59, 34], [0.66, 46], [0.73, 42], [0.77, 38], [0.82, 12], [0.86, 15], [0.93, 60], [1, 95]],
     points: [
-      [820, 1285, 0],                        // reta dos boxes (para a esquerda)
-      [380, 1270, 55], [330, 1080, 45],      // S do Senna
-      [430, 960, 50],
-      [380, 700, 140],                       // Curva do Sol
-      [560, 280, 120],                       // fim da Reta Oposta: Descida do Lago
-      [800, 200, 70],
-      [930, 420, 60],                        // Ferradura
-      [760, 600, 50],                        // Laranjinha
-      [600, 610, 40], [640, 800, 35],        // Pinheirinho
-      [880, 820, 30],                        // Bico de Pato
-      [1000, 680, 60],                       // Mergulho
-      [1180, 880, 120],                      // Junção
-      [1260, 1150, 140],                     // subida dos boxes
+      [900, 1300, 0], // reta dos boxes (para a esquerda)
+      [380, 1300, 60], // S do Senna
+      [300, 1150, 45],
+      [420, 1040, 45],
+      [350, 900, 70],
+      [300, 640, 160], // Curva do Sol e Reta Oposta
+      [520, 180, 90], // Descida do Lago
+      [700, 120, 60],
+      [860, 230, 55],
+      [1000, 180, 50],
+      [1180, 300, 70],
+      [1120, 480, 50], // Ferradura
+      [960, 520, 45],
+      [900, 640, 40], // Laranjinha
+      [700, 620, 40],
+      [620, 760, 35], // Pinheirinho
+      [760, 880, 35],
+      [900, 800, 30], // Bico de Pato
+      [1040, 900, 50],
+      [1000, 1050, 45], // Mergulho
+      [1220, 1060, 90], // Junção
+      [1350, 1200, 140], // subida dos boxes
+      [1250, 1300, 100],
     ],
   },
   tokyo: {
-    name: "Tóquio", sub: "Quarteirões de neon com esquinas de 90°: freia, vira, acelera",
-    scale: 1.5, width: 112, minLap: 14, walls: true, wall: 23, flat: 25, fall: 50,
-    // via expressa elevada (sobe na avenida, passa lá em cima e desce), uma rampa de pulo e outro viaduto
-    hills: [[0, 0], [0.03, 0], [0.12, 60], [0.135, 62], [0.27, 62], [0.33, 30], [0.38, 0], [0.5, 0], [0.525, 0], [0.535, 22], [0.5403, 0], [0.62, 0], [0.7, 0], [0.745, 36], [0.79, 36], [0.86, 0], [1, 0]],
+    name: "Tóquio", sub: "Doze quarteirões de neon com esquinas de 90°, via expressa elevada, rampa de pulo e viaduto",
+    scale: 3.01, relevo: 1.5, width: 112, minLap: 30, walls: true, wall: 23, flat: 25, fall: 50,
+    // relevo: via expressa elevada (sobe na avenida, passa lá em cima e desce), uma rampa de pulo e outro viaduto
+    hills: [[0, 0], [0.04, 0], [0.12, 40], [0.16, 70], [0.33, 70], [0.4, 0], [0.43, 0], [0.44, 26], [0.4455, 0], [0.6, 0], [0.65, 40], [0.73, 40], [0.8, 0], [1, 0]],
     points: [
-      [700, 1320, 0],                        // avenida principal (para a direita)
-      [1340, 1320, 60],
-      [1340, 880, 55],
-      [1060, 880, 45],
-      [1060, 560, 45],
-      [1380, 560, 40],
-      [1380, 230, 70],
-      [720, 230, 50],
-      [720, 420, 40],                        // Shibuya
-      [460, 420, 45],
-      [460, 700, 35],
-      [220, 700, 60],
-      [220, 1320, 70],
+      [700, 1360, 0], // avenida principal (para a direita)
+      [1360, 1360, 60],
+      [1360, 1080, 50],
+      [1160, 1080, 45],
+      [1160, 900, 45],
+      [1420, 900, 50],
+      [1420, 560, 60],
+      [1200, 560, 45],
+      [1200, 380, 45],
+      [1440, 380, 55],
+      [1440, 160, 60],
+      [1000, 160, 50],
+      [1000, 330, 40],
+      [760, 330, 40],
+      [760, 160, 45],
+      [420, 160, 55],
+      [420, 420, 40], // Shibuya
+      [600, 420, 35],
+      [600, 640, 40],
+      [300, 640, 45],
+      [300, 860, 40],
+      [560, 860, 40],
+      [560, 1080, 45],
+      [180, 1080, 60],
+      [180, 1360, 70],
     ],
   },
-  // Circuitos de longa distância. Os raios são ajustados pelo amostrador para preservar curvas dirigíveis.
   losangeles: {
-    name: "Los Angeles", sub: "Pôr do sol no centro: sobe para o viaduto da freeway, desce a alça e passa pela chicane",
-    width: 88, minLap: 10, walls: true, wall: 10, flat: 20, fall: 60,
-    hills: [[0, 0], [0.046, 6], [0.097, 14], [0.138, 23], [0.179, 29], [0.224, 34], [0.27, 46], [0.321, 57], [0.367, 63], [0.423, 51], [0.48, 40], [0.536, 23], [0.587, 11], [0.638, 6], [0.699, 0], [0.75, 3], [0.791, 9], [0.837, 17], [0.883, 26], [0.929, 17], [0.959, 6], [1, 0]],
+    name: "Los Angeles", sub: "Freeway larga ao pôr do sol subindo para o viaduto, a alça de saída, os quarteirões do centro e a chicane",
+    scale: 4.05, relevo: 1.5, width: 88, minLap: 30, walls: true, wall: 10, flat: 20, fall: 60,
+    // relevo: a freeway sobe até o viaduto, desce na alça para o centro e a chicane fecha a volta lá embaixo
+    hills: [[0, 0], [0.06, 8], [0.14, 30], [0.22, 62], [0.3, 80], [0.36, 70], [0.44, 12], [0.5, 8], [0.6, 14], [0.7, 8], [0.76, 20], [0.82, 34], [0.88, 22], [0.95, 6], [1, 0]],
     points: [
-      [529, 876, 0], [543, 892, 0], [549, 913, 0], [553, 935, 0], [556, 957, 0], [558, 978, 0], [561, 1000, 0], [563, 1022, 0], [567, 1044, 0], [572, 1065, 0], [577, 1086, 0], [581, 1108, 0], [586, 1129, 0], [591, 1151, 0],
-      [595, 1172, 0], [601, 1193, 0], [606, 1215, 0], [613, 1235, 0], [621, 1256, 0], [630, 1276, 0], [640, 1295, 0], [652, 1314, 0], [664, 1332, 0], [678, 1349, 0], [692, 1366, 0], [707, 1382, 0], [724, 1396, 0], [741, 1410, 0],
-      [759, 1422, 0], [778, 1433, 0], [797, 1443, 0], [818, 1452, 0], [839, 1458, 0], [860, 1464, 0], [882, 1467, 0], [903, 1469, 0], [925, 1470, 0], [947, 1469, 0], [969, 1467, 0], [991, 1464, 0], [1012, 1460, 0], [1034, 1455, 0],
-      [1055, 1449, 0], [1076, 1442, 0], [1096, 1433, 0], [1116, 1424, 0], [1135, 1414, 0], [1154, 1403, 0], [1172, 1391, 0], [1190, 1378, 0], [1207, 1364, 0], [1224, 1350, 0], [1240, 1335, 0], [1255, 1319, 0], [1270, 1303, 0], [1284, 1286, 0],
-      [1297, 1268, 0], [1309, 1250, 0], [1320, 1231, 0], [1332, 1212, 0], [1342, 1193, 0], [1352, 1174, 0], [1362, 1154, 0], [1372, 1134, 0], [1381, 1115, 0], [1391, 1095, 0], [1400, 1075, 0], [1408, 1055, 0], [1416, 1034, 0], [1423, 1013, 0],
-      [1428, 992, 0], [1432, 970, 0], [1435, 949, 0], [1436, 927, 0], [1436, 905, 0], [1434, 883, 0], [1431, 861, 0], [1428, 839, 0], [1424, 818, 0], [1419, 796, 0], [1414, 775, 0], [1408, 754, 0], [1401, 733, 0], [1395, 712, 0],
-      [1387, 691, 0], [1379, 671, 0], [1371, 651, 0], [1362, 631, 0], [1352, 611, 0], [1343, 591, 0], [1332, 572, 0], [1321, 553, 0], [1310, 534, 0], [1299, 515, 0], [1287, 497, 0], [1275, 478, 0], [1263, 460, 0], [1250, 442, 0],
-      [1237, 425, 0], [1224, 407, 0], [1210, 390, 0], [1196, 374, 0], [1181, 357, 0], [1166, 341, 0], [1150, 326, 0], [1134, 311, 0], [1117, 297, 0], [1100, 283, 0], [1083, 270, 0], [1064, 258, 0], [1046, 246, 0], [1027, 235, 0],
-      [1008, 224, 0], [988, 214, 0], [969, 205, 0], [949, 196, 0], [928, 187, 0], [908, 179, 0], [887, 171, 0], [867, 164, 0], [846, 157, 0], [825, 151, 0], [804, 146, 0], [782, 141, 0], [760, 137, 0], [739, 134, 0],
-      [717, 132, 0], [695, 131, 0], [673, 130, 0], [651, 130, 0], [629, 130, 0], [607, 131, 0], [585, 133, 0], [564, 136, 0], [542, 139, 0], [520, 143, 0], [499, 147, 0], [478, 153, 0], [457, 160, 0], [437, 168, 0],
-      [417, 177, 0], [397, 187, 0], [378, 198, 0], [359, 210, 0], [341, 222, 0], [324, 235, 0], [307, 249, 0], [291, 265, 0], [277, 281, 0], [264, 299, 0], [254, 319, 0], [244, 338, 0], [236, 359, 0], [228, 379, 0],
-      [221, 400, 0], [213, 420, 0], [206, 441, 0], [199, 462, 0], [192, 483, 0], [186, 504, 0], [181, 525, 0], [176, 547, 0], [172, 568, 0], [169, 590, 0], [166, 612, 0], [165, 634, 0], [164, 655, 0], [164, 677, 0],
-      [165, 699, 0], [167, 721, 0], [169, 743, 0], [173, 765, 0], [177, 786, 0], [182, 808, 0], [188, 829, 0], [194, 850, 0], [201, 871, 0], [208, 891, 0], [216, 912, 0], [225, 932, 0], [235, 951, 0], [246, 970, 0],
-      [260, 987, 0], [279, 998, 0], [301, 998, 0], [321, 990, 0], [340, 980, 0], [359, 969, 0], [379, 959, 0], [398, 948, 0], [416, 936, 0], [434, 923, 0], [451, 909, 0], [469, 897, 0], [487, 885, 0], [507, 876, 0],
+      [500, 900, 0],
+      [560, 1300, 150], // freeway
+      [900, 1460, 200],
+      [1300, 1380, 180],
+      [1460, 1000, 160],
+      [1380, 640, 120],
+      [1180, 560, 60], // alça de saída
+      [1180, 420, 50], // centro
+      [1400, 420, 50],
+      [1400, 200, 60],
+      [1000, 180, 60],
+      [1000, 380, 45],
+      [800, 380, 45],
+      [800, 180, 55],
+      [420, 180, 90],
+      [260, 380, 90],
+      [400, 560, 60], // chicane
+      [300, 680, 50],
+      [420, 780, 50],
     ],
   },
   rio: {
-    name: "Rio de Janeiro", sub: "Orla de Copacabana, curvas da mata, mirante e descida pelos Arcos da Lapa",
-    scale: 1.8, width: 104, minLap: 24, walls: true, wall: 12, flat: 32, fall: 140,
-    // Uma volta nova: reta da orla ao sul, retorno pelo vale e uma sequência técnica na serra.
-    hills: [[0, 3], [0.19, 3], [0.31, 7], [0.43, 18], [0.51, 45], [0.6, 82],
-      [0.66, 94], [0.73, 72], [0.82, 30], [0.91, 8], [1, 3]],
+    name: "Rio de Janeiro", sub: "Orla de Copacabana, o vale, as curvas da mata até o mirante e a descida pelos Arcos da Lapa",
+    scale: 3.72, relevo: 1.5, width: 104, minLap: 30, walls: true, wall: 12, flat: 32, fall: 140,
+    // relevo: orla no nível do mar, sobe pela mata até o mirante e desce pela Lapa
+    hills: [[0, 3], [0.19, 3], [0.25, 6], [0.33, 10], [0.4, 30], [0.47, 52], [0.54, 75], [0.6, 100], [0.66, 112], [0.72, 90], [0.79, 60], [0.86, 34], [0.92, 12], [0.97, 3], [1, 3]],
     points: [
-      [390, 335, 0], [382, 540, 110], [385, 930, 130], [430, 1260, 100],
-      [610, 1390, 90], [930, 1370, 125], [1210, 1250, 100], [1380, 1080, 75],
-      [1310, 915, 65], [1070, 945, 60], [965, 800, 55], [1020, 635, 85],
-      [1320, 580, 65], [1380, 340, 95], [1160, 185, 110], [850, 205, 65],
-      [760, 390, 65], [625, 455, 60], [565, 270, 80], [465, 205, 75],
+      [390, 300, 0], // orla de Copacabana (para baixo)
+      [385, 700, 0],
+      [390, 1100, 0],
+      [420, 1320, 100], // fim da orla
+      [640, 1440, 90],
+      [900, 1400, 80],
+      [1000, 1250, 60], // vale
+      [1180, 1300, 60],
+      [1380, 1180, 90],
+      [1300, 980, 60], // mata
+      [1120, 1020, 45],
+      [1020, 880, 45],
+      [1120, 740, 45],
+      [1340, 760, 55],
+      [1440, 560, 80], // mirante
+      [1300, 360, 70],
+      [1420, 200, 70],
+      [1180, 120, 80],
+      [960, 240, 60],
+      [1000, 440, 45],
+      [820, 560, 50],
+      [640, 480, 50], // Lapa
+      [700, 300, 60],
+      [540, 160, 70],
     ],
   },
   serra: {
-    name: "Serra Verde", sub: "Circuito longo de montanha: subida em zigue-zague e descida veloz",
-    scale: 2.1, width: 108, minLap: 27, walls: true, wall: 10, flat: 30, fall: 170,
-    hills: [[0, 12], [0.12, 26], [0.25, 68], [0.37, 110], [0.49, 132],
-      [0.57, 120], [0.7, 72], [0.83, 34], [0.94, 14], [1, 12]],
+    name: "Serra Verde", sub: "Montanha: subida em zigue-zague com grampos, o cume e uma descida longa e veloz",
+    scale: 3.46, relevo: 1.5, width: 108, minLap: 30, walls: true, wall: 10, flat: 30, fall: 170,
+    // relevo: sobe em zigue-zague até o cume, um platô e a descida longa
+    hills: [[0, 15], [0.06, 25], [0.14, 55], [0.22, 85], [0.31, 112], [0.38, 138], [0.43, 155], [0.5, 148], [0.58, 132], [0.64, 120], [0.72, 90], [0.8, 60], [0.88, 35], [0.95, 18], [1, 15]],
     points: [
-      [275, 1120, 0], [250, 730, 125], [370, 350, 105], [650, 185, 85],
-      [950, 210, 85], [1200, 340, 80], [1280, 590, 55], [1100, 675, 45],
-      [890, 600, 50], [750, 720, 45], [820, 900, 65], [1090, 865, 55],
-      [1330, 990, 85], [1320, 1280, 95], [1050, 1430, 95], [680, 1390, 100],
-      [435, 1290, 85],
+      [260, 1150, 0],
+      [230, 800, 120],
+      [330, 560, 60], // grampo
+      [200, 420, 50],
+      [340, 260, 50],
+      [560, 180, 80],
+      [700, 330, 45], // zigue-zague
+      [600, 460, 40],
+      [820, 520, 50],
+      [960, 380, 45],
+      [880, 220, 50],
+      [1100, 130, 90], // cume
+      [1380, 260, 110],
+      [1420, 560, 80],
+      [1240, 640, 50],
+      [1100, 560, 40],
+      [960, 700, 45],
+      [1100, 860, 60],
+      [1380, 880, 90], // descida
+      [1440, 1150, 140],
+      [1200, 1420, 150],
+      [820, 1440, 120],
+      [600, 1300, 80],
+      [480, 1420, 70],
     ],
   },
   deserto: {
-    name: "Deserto Dourado", sub: "Retas extensas entre dunas e cânions, com duas chicanes técnicas",
-    scale: 2.15, width: 116, minLap: 26, walls: false, flat: 42, fall: 230,
-    hills: [[0, 10], [0.18, 16], [0.3, 39], [0.42, 16], [0.55, 4],
-      [0.68, 32], [0.77, 56], [0.88, 20], [1, 10]],
+    name: "Deserto Dourado", sub: "Retas extensas sobre as dunas, duas chicanes, o cânion e uma lombada para voar",
+    scale: 3.82, relevo: 1.5, width: 116, minLap: 30, walls: false, flat: 42, fall: 230,
+    // relevo: dunas na reta da largada, sobe até a primeira chicane, desce, o cânion e a lombada (dá para voar!)
+    hills: [[0, 10], [0.03, 24], [0.05, 8], [0.075, 26], [0.1, 10], [0.19, 18], [0.28, 42], [0.37, 40], [0.48, 5], [0.56, 12], [0.63, 40], [0.7, 60], [0.74, 32], [0.747, 54], [0.753, 22], [0.8, 20], [0.88, 14], [1, 10]],
     points: [
-      [300, 1200, 0], [240, 470, 160], [480, 190, 120], [950, 170, 155],
-      [1340, 320, 105], [1360, 620, 95], [1150, 690, 65], [1050, 530, 45],
-      [820, 570, 60], [730, 840, 70], [920, 1000, 65], [1160, 930, 55],
-      [1360, 1140, 95], [1190, 1400, 125], [720, 1420, 130], [420, 1360, 100],
+      [300, 1250, 0], // dunas
+      [220, 700, 150],
+      [300, 300, 140],
+      [600, 160, 120],
+      [1000, 140, 0],
+      [1080, 200, 30], // chicane
+      [1160, 140, 30],
+      [1400, 240, 110],
+      [1440, 560, 100],
+      [1250, 650, 60],
+      [1100, 560, 45],
+      [960, 700, 50],
+      [1100, 860, 55],
+      [1380, 920, 90],
+      [1420, 1180, 110],
+      [1250, 1420, 120],
+      [900, 1300, 70], // cânion
+      [760, 1440, 70],
+      [560, 1300, 40], // segunda chicane
+      [480, 1420, 60],
     ],
   },
-  // As três abaixo são inspiradas em pistas do Mario Kart 64: o traçado foi tirado da planta (vista de cima) dos
-  // modelos das pistas e refeito aqui com as nossas peças (nenhum arquivo do jogo vem junto). O Arco-íris foi
-  // seguido automaticamente pelo meio da pista, com a altura de cada ponto; Luigi e Sorvete, desenhados por cima da planta.
+  // As três abaixo lembram pistas do Mario Kart 64 (nenhum arquivo do jogo vem junto). O Arco-íris foi seguido pelo
+  // meio da pista original, com a altura de cada ponto; Luigi e Sorvete foram redesenhados com mais curvas.
   luigi: {
-    name: "Circuito do Luigi", sub: "Retona dos boxes, dois grampos redondos e o S pelo meio, passando pelo túnel",
-    width: 104, minLap: 12, walls: true, wall: 12, flat: 30, fall: 120,
-    hills: [[0, 8], [0.2, 8], [0.33, 20], [0.48, 6], [0.6, 0], [0.75, 14], [0.9, 8], [1, 8]],
+    name: "Circuito do Luigi", sub: "Retona dos boxes, grampos redondos, o S pelo meio e a curva do túnel",
+    scale: 3.58, relevo: 1.5, width: 104, minLap: 30, walls: true, wall: 12, flat: 30, fall: 120,
+    hills: [[0, 8], [0.12, 8], [0.2, 20], [0.3, 30], [0.39, 14], [0.47, 2], [0.56, 0], [0.67, 16], [0.77, 28], [0.85, 12], [1, 8]],
     points: [
-      [300, 792, 0], [300, 1528, 99], [1110, 1528, 111], [1110, 1160, 99], [486, 959, 74],
-      [460, 582, 74], [966, 311, 87], [966, 75, 111], [300, 75, 99]
+      [300, 800, 0],
+      [300, 1450, 120],
+      [700, 1500, 0],
+      [1000, 1380, 80],
+      [1250, 1500, 90],
+      [1420, 1250, 110],
+      [1250, 1050, 90],
+      [800, 1000, 70],
+      [600, 850, 60],
+      [800, 700, 60],
+      [1150, 650, 80],
+      [1350, 450, 100],
+      [1200, 150, 120],
+      [800, 120, 0],
+      [600, 300, 70],
+      [400, 150, 100],
     ],
   },
   sorvete: {
-    name: "Terra do Sorvete", sub: "Volta em torno do lago congelado e a subida pela caverna de gelo, em forma de gancho",
-    width: 100, minLap: 12, walls: true, wall: 10, flat: 30, fall: 120,
-    hills: [[0, 0], [0.38, 0], [0.48, 24], [0.56, 36], [0.64, 26], [0.74, 0], [1, 0]],
+    name: "Terra do Sorvete", sub: "Volta pelo lago congelado, os ganchos de gelo e a subida pela caverna",
+    scale: 3.71, relevo: 1.5, width: 100, minLap: 30, walls: true, wall: 10, flat: 30, fall: 120,
+    hills: [[0, 0], [0.3, 0], [0.38, 10], [0.46, 30], [0.55, 48], [0.62, 52], [0.7, 34], [0.78, 10], [0.85, 0], [1, 0]],
     points: [
-      [491, 1517, 0], [218, 1303, 98], [140, 1010, 88], [257, 815, 78], [276, 445, 88],
-      [452, 367, 78], [647, 464, 68], [842, 640, 68], [1076, 620, 58], [1177, 406, 58],
-      [1099, 191, 58], [1252, 90, 58], [1431, 152, 58], [1431, 328, 58], [1314, 542, 58],
-      [1242, 737, 68], [1197, 1049, 88], [1076, 1225, 88], [822, 1400, 88], [608, 1508, 0]
+      [500, 1500, 0],
+      [200, 1300, 100],
+      [150, 950, 90],
+      [300, 750, 70],
+      [220, 450, 80],
+      [450, 280, 80],
+      [680, 420, 60],
+      [880, 620, 60],
+      [1100, 600, 50],
+      [1180, 380, 50],
+      [1060, 200, 55],
+      [1260, 80, 55],
+      [1460, 180, 60],
+      [1440, 420, 55],
+      [1300, 560, 55],
+      [1440, 760, 70],
+      [1300, 1000, 80],
+      [1100, 1100, 60],
+      [1200, 1300, 70],
+      [900, 1440, 80],
+      [700, 1350, 50],
     ],
   },
   arcoiris: {
     name: "Estrada Arco-íris", sub: "No espaço: descidas enormes, viadutos que se cruzam e o laço — sem chão em volta",
-    width: 88, minLap: 22, walls: true, wall: 6, flat: 10, fall: 1, espaco: true, // flat: o muro acompanha a altura da pista (com 0, ele ficava no chão, embaixo dos viadutos)
+    scale: 3.45, relevo: 3, width: 88, minLap: 50, walls: true, wall: 6, flat: 10, fall: 1, espaco: true, // flat: o muro acompanha a altura da pista (com 0, ele ficava no chão, embaixo dos viadutos)
     hills: [[0, 28], [0.025, 40], [0.05, 81], [0.075, 86], [0.1, 83], [0.125, 74], [0.15, 68], [0.175, 60], [0.2, 50], [0.225, 45], [0.25, 39], [0.275, 36], [0.3, 31], [0.325, 28], [0.35, 26], [0.375, 25], [0.4, 22], [0.425, 21], [0.45, 21], [0.475, 21], [0.5, 21], [0.525, 21], [0.55, 21], [0.575, 21], [0.6, 18], [0.625, 20], [0.65, 22], [0.675, 9], [0.7, 5], [0.725, 2], [0.75, 0], [0.775, 16], [0.8, 18], [0.825, 22], [0.85, 43], [0.875, 43], [0.9, 43], [0.925, 43], [0.95, 40], [0.975, 37], [1, 28]],
     points: [
       [889, 524, 0], [884, 548, 0], [883, 568, 0], [883, 593, 0], [883, 618, 0], [883, 638, 0], [883, 663, 0], [883, 688, 0], [883, 714, 0], [883, 739, 0], [883, 765, 0], [883, 790, 0], [883, 816, 0], [883, 841, 0],
@@ -184,24 +309,26 @@ const PISTAS = {
 };
 
 // Pistas ampliadas: os vértices (e os raios) foram desenhados no quadrado de 1600 e são multiplicados por `scale`,
-// e o mundo dessa pista cresce junto (t.world). Los Angeles e Rio continuam do tamanho original.
+// e o mundo dessa pista cresce junto (t.world). Todas as voltas têm uns 19 mil (perto de 1 min com o carro de F1). `relevo`
+// multiplica as alturas e o barranco junto com a escala, para as rampas continuarem com a mesma inclinação.
 for (const t of Object.values(PISTAS)) {
   const s = t.scale || 1;
   t.scale = s; t.world = WORLD * s;
   if (s !== 1) t.points = t.points.map(([x, y, r]) => [x * s, y * s, (r || 0) * s]);
+  if (t.relevo) { t.hills = t.hills.map(([f, h]) => [f, h * t.relevo]); t.fall *= t.relevo; }
 }
 
-// Os cinco carros esportivos (os ids continuam os antigos, para as salas e o servidor). vmax: velocidade final no asfalto · acc: aceleração na arrancada (ela cai perto da velocidade
-// final: a = acc·(1 − 0,8·(v/vmax)^1,6), então leva de 4 a 8 segundos para chegar no topo) · brake: freio · grip: quanto o pneu segura
+// Os cinco acertos do carro de F1 (os ids continuam os antigos, para as salas e o servidor). vmax: velocidade final no asfalto · acc: aceleração na arrancada (ela cai perto da velocidade
+// final: a = acc·(1 − (v/vmax)^2,5), como num F1: 0 a 100 km/h em ~2,3 s, 0 a 200 em ~5 s e 0 a 300 em ~9,5 s; no velocímetro, km/h = v·0,75) · brake: freio · grip: quanto o pneu segura
 // de lado (acima disso o carro escorrega para fora da curva) · turn: quanto o volante gira · scrub: quanto perde de
 // velocidade escorregando · kin: quanto do grip sobra depois que começa a escorregar (pneu saturado) · offMax: velocidade máxima fora do asfalto · wall: quanto da velocidade sobra numa batida.
 // Em todos, o "limite de curva" (grip ÷ turn) fica abaixo da velocidade final: em curva fechada, tem que frear.
 const CARROS = {
-  equilibrado: { name: "Samurai GT", inspo: "inspirado no Skyline GT-R R34", desc: "Cupê japonês de tração integral: faz tudo direitinho. Bom para começar.", vmax: 295, acc: 82, brake: 470, grip: 470, kin: 0.7, turn: 2.4, scrub: 0.9, offMax: 95, wall: 0.55 },
-  foguete: { name: "Raio V12", inspo: "superesportivo italiano em cunha", desc: "O mais rápido na reta, mas chega embalado demais nas curvas.", vmax: 360, acc: 74, brake: 430, grip: 420, kin: 0.65, turn: 2.2, scrub: 1.1, offMax: 85, wall: 0.45 },
-  formiga: { name: "Pimentinha", inspo: "hatch esportivo tipo Golf GTI e Mini", desc: "Arranca forte e vira em qualquer canto. Na reta, fica para trás.", vmax: 236, acc: 110, brake: 520, grip: 490, kin: 0.68, turn: 2.75, scrub: 0.8, offMax: 100, wall: 0.6 },
-  drifteiro: { name: "Oito-Seis", inspo: "o AE86 dos filmes de drift", desc: "Escorrega fácil, mas quase não perde velocidade de lado. Para quem gosta de derrapar.", vmax: 305, acc: 85, brake: 450, grip: 380, kin: 0.88, turn: 3.0, scrub: 0.35, offMax: 90, wall: 0.5 },
-  tanque: { name: "Muscle 69", inspo: "muscle car americano tipo Mustang e Charger", desc: "Pesado: demora a embalar, mas bate no muro e passa pela grama sem sofrer tanto.", vmax: 315, acc: 58, brake: 400, grip: 500, kin: 0.7, turn: 2.0, scrub: 0.9, offMax: 140, wall: 0.8 },
+  equilibrado: { name: "Turbo 88", inspo: "acerto equilibrado", desc: "Faz tudo direitinho: bom de reta e de curva. Bom para começar.", vmax: 440, acc: 60, brake: 940, grip: 900, kin: 0.7, turn: 3.25, scrub: 0.9, offMax: 115, wall: 0.55 },
+  foguete: { name: "Reta V12", inspo: "asa baixa, motor forte", desc: "O mais rápido na reta, mas chega embalado demais nas curvas.", vmax: 470, acc: 54, brake: 860, grip: 800, kin: 0.65, turn: 3.0, scrub: 1.1, offMax: 100, wall: 0.45 },
+  formiga: { name: "Pimentinha", inspo: "asa alta, carro leve", desc: "Arranca forte e vira em qualquer canto. Na reta, fica para trás.", vmax: 400, acc: 72, brake: 1040, grip: 940, kin: 0.68, turn: 3.7, scrub: 0.8, offMax: 120, wall: 0.6 },
+  drifteiro: { name: "Escorrega", inspo: "traseira solta", desc: "Escorrega fácil, mas quase não perde velocidade de lado. Para quem gosta de derrapar.", vmax: 445, acc: 60, brake: 900, grip: 730, kin: 0.88, turn: 4.05, scrub: 0.35, offMax: 110, wall: 0.5 },
+  tanque: { name: "Blindado", inspo: "chassi pesado e reforçado", desc: "Pesado: demora a embalar, mas bate no muro e passa pela grama sem sofrer tanto.", vmax: 450, acc: 48, brake: 800, grip: 950, kin: 0.7, turn: 2.7, scrub: 0.9, offMax: 165, wall: 0.8 },
 };
 
 // Pista a partir dos vértices: retas + curvas de raio fixo, amostrada a cada `step` unidades.
@@ -260,12 +387,22 @@ function elevate(pts, hills, step = 6) {
 }
 
 // personalização leve: cor das rodas, aerofólio e faixas
+// a pintura do F1: as combinações de cor das equipes (só as cores, sem nome nem marca) ou a cor do piloto com branco
 const MODS = {
-  rodas: { prata: { name: "Prata", c: "#c3c7cf" }, preta: { name: "Pretas", c: "#1f2026" }, ouro: { name: "Douradas", c: "#d4a017" }, bronze: { name: "Bronze", c: "#9a5a2a" } },
-  aero: { nenhum: "Sem", baixo: "Baixo", alto: "Alto" },
-  faixa: { nenhuma: "Sem", dupla: "Dupla", lateral: "Lateral" },
+  pintura: {
+    propria: { name: "Sua cor", c: null, c2: "#f4f4f4" },
+    classico: { name: "Clássico 88", c: "#d8101c", c2: "#f4f4f4" },
+    rosso: { name: "Rosso", c: "#c8000a", c2: "#f2c300" },
+    papaia: { name: "Papaia", c: "#ff7a00", c2: "#1e5bd8" },
+    flecha: { name: "Flecha de Prata", c: "#b9bec4", c2: "#00c2b2" },
+    touro: { name: "Touro Azul", c: "#1b2a5c", c2: "#e8202a" },
+    ingles: { name: "Verde Inglês", c: "#005c4b", c2: "#c8e000" },
+    frances: { name: "Azul Francês", c: "#0a5bc8", c2: "#ff7ab8" },
+    ouro: { name: "Preto e Ouro", c: "#141414", c2: "#c9a64a" },
+    marinho: { name: "Azul Marinho", c: "#0b2147", c2: "#3ab0e8" },
+  },
 };
-const MODS_PADRAO = { rodas: "prata", aero: "nenhum", faixa: "nenhuma" };
+const MODS_PADRAO = { pintura: "propria" };
 
 const SECTORS = 4; // a volta só conta passando pelos 4 setores na ordem (contra atalho e contramão)
 // Três caixas por conjunto, espaçadas na volta. A mesma posição é calculada no servidor e no navegador.

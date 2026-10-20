@@ -11,7 +11,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 export const scene = new THREE.Scene();
-export const cam = new THREE.PerspectiveCamera(68, 16 / 9, 2, 9000);
+export const cam = new THREE.PerspectiveCamera(68, 16 / 9, 2, 16000);
 export const hemi = new THREE.HemisphereLight(0xdfeaff, 0x4a5a3a, 1.3); scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xfff1dc, 2.2);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.5;

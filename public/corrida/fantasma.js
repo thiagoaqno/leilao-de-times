@@ -1,5 +1,5 @@
 // Corrida da Galera — o fantasma do recorde (a sua melhor volta, salva neste navegador).
-import { E, PISTAS, store, sNow, me } from "./estado.js";
+import { E, PISTAS, store, sNow, me, socket } from "./estado.js";
 import { groundH } from "./pista.js";
 import { makeKart, poseKart, dropKart } from "./carros.js";
 import { race } from "./jogo.js";
@@ -8,7 +8,7 @@ import { race } from "./jogo.js";
 // A volta mais rápida que você já fez em cada pista fica salva neste navegador (posição a cada 0,1 s). Nas próximas
 // corridas, um carro dourado transparente refaz essa volta junto com você, e o placar mostra quanto você está
 // na frente (verde) ou atrás (vermelho) dele naquele ponto da pista.
-const REC_KEY = (id) => "corrida:recorde:" + id + (PISTAS[id] && PISTAS[id].scale !== 1 ? ":x" + PISTAS[id].scale : ""); // pista ampliada: recorde novo
+const REC_KEY = (id) => "corrida:recorde:" + id + (PISTAS[id] && PISTAS[id].scale !== 1 ? ":x" + PISTAS[id].scale : "") + ":f1"; // pista ampliada ou carro novo: recorde novo
 export function loadBest(id) { const b = store.get(REC_KEY(id)); return b && Array.isArray(b.s) && b.s.length > 20 && b.t > 0 ? b : null; }
 const progOf = (idx, tl) => (idx > race.tr.n * 0.75 && tl < 8000 ? idx - race.tr.n : idx); // antes de cruzar a linha conta negativo
 export function recordLap() {
@@ -24,6 +24,9 @@ export function lapDone(m) {
     race.best = { t: lt, car: m.car, mods: m.mods, s: race.rec }; store.set(REC_KEY(E.S.config.pista), race.best);
     dropKart(race.bestKart); race.bestKart = null; race.newRecord = sNow();
   }
+  // a volta limpa (sem "↺ Pista") vai para o servidor: se for a mais rápida da pista, os robôs aprendem com ela
+  if (!race.sujou && race.rec.length > 100) socket.emit("volta", { s: race.rec });
+  race.sujou = false;
   race.lapT0 += lt * 1000; race.rec = []; race.recLast = -1e9; race.bptr = 0;
 }
 export function drawBest(dt) {

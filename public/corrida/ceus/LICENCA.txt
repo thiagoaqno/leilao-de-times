@@ -1,0 +1,13 @@
+Céus da Corrida: HDRIs "pure sky" do Poly Haven (https://polyhaven.com), licença CC0 (domínio público).
+Versões "tonemapped" reduzidas para 3072 × 1536.
+
+monaco.jpg      kloofendal_48d_partly_cloudy_puresky (Greg Zaal, Jarod Guest)
+interlagos.jpg  sunflowers_puresky
+losangeles.jpg  industrial_sunset_02_puresky
+rio.jpg         kloofendal_43d_clear_puresky
+serra.jpg       kloppenheim_05_puresky
+deserto.jpg     qwantani_noon_puresky
+luigi.jpg       kloppenheim_07_puresky
+sorvete.jpg     snow_field_puresky
+tokyo.jpg       qwantani_night_puresky
+arcoiris.jpg    kloppenheim_02_puresky
