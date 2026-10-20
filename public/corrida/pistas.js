@@ -10,7 +10,7 @@ const WORLD = 1600;
 const PISTAS = {
   monaco: {
     name: "Mônaco", sub: "Estreita e travada: Sainte Dévote, a subida até o Cassino, dois grampos, o túnel, a chicane do porto, a piscina e a Rascasse",
-    scale: 3.6, relevo: 1.5, width: 104, minLap: 30, walls: true, wall: 9, flat: 12, fall: 70,
+    scale: 2.4, width: 104, minLap: 25, walls: true, wall: 9, flat: 12, fall: 70,
     // relevo: sobe a Beau Rivage até o Cassino, desce pelos grampos até o túnel e fica à beira do mar até a Rascasse
     hills: [[0, 10], [0.1, 10], [0.14, 30], [0.2, 62], [0.25, 85], [0.29, 88], [0.33, 74], [0.38, 58], [0.42, 38], [0.47, 24], [0.53, 12], [0.57, 8], [0.61, 6], [0.7, 4], [0.8, 4], [0.9, 6], [1, 10]],
     points: [
@@ -49,7 +49,7 @@ const PISTAS = {
   },
   interlagos: {
     name: "Interlagos", sub: "Reta dos boxes no morro, S do Senna, Curva do Sol, Reta Oposta com lombada, Lago, Ferradura, Pinheirinho, Bico de Pato e Mergulho",
-    scale: 4.08, relevo: 1.5, width: 124, minLap: 30, walls: false, flat: 40, fall: 220,
+    scale: 2.72, width: 124, minLap: 25, walls: false, flat: 40, fall: 220,
     // relevo: morro da reta dos boxes, descida até o Lago com a lombada na Reta Oposta (dá para voar!), sobe até o Pinheirinho, o Mergulho e a subida dos boxes
     hills: [[0, 95], [0.08, 92], [0.14, 70], [0.2, 55], [0.26, 45], [0.3, 30], [0.307, 52], [0.313, 22], [0.36, 10], [0.4, 0], [0.47, 4], [0.53, 22], [0.59, 34], [0.66, 46], [0.73, 42], [0.77, 38], [0.82, 12], [0.86, 15], [0.93, 60], [1, 95]],
     points: [
@@ -80,7 +80,7 @@ const PISTAS = {
   },
   tokyo: {
     name: "Tóquio", sub: "Doze quarteirões de neon com esquinas de 90°, via expressa elevada, rampa de pulo e viaduto",
-    scale: 3.01, relevo: 1.5, width: 112, minLap: 30, walls: true, wall: 23, flat: 25, fall: 50,
+    scale: 2.01, width: 112, minLap: 25, walls: true, wall: 23, flat: 25, fall: 50,
     // relevo: via expressa elevada (sobe na avenida, passa lá em cima e desce), uma rampa de pulo e outro viaduto
     hills: [[0, 0], [0.04, 0], [0.12, 40], [0.16, 70], [0.33, 70], [0.4, 0], [0.43, 0], [0.44, 26], [0.4455, 0], [0.6, 0], [0.65, 40], [0.73, 40], [0.8, 0], [1, 0]],
     points: [
@@ -113,7 +113,7 @@ const PISTAS = {
   },
   losangeles: {
     name: "Los Angeles", sub: "Freeway larga ao pôr do sol subindo para o viaduto, a alça de saída, os quarteirões do centro e a chicane",
-    scale: 4.05, relevo: 1.5, width: 88, minLap: 30, walls: true, wall: 10, flat: 20, fall: 60,
+    scale: 2.7, width: 88, minLap: 25, walls: true, wall: 10, flat: 20, fall: 60,
     // relevo: a freeway sobe até o viaduto, desce na alça para o centro e a chicane fecha a volta lá embaixo
     hills: [[0, 0], [0.06, 8], [0.14, 30], [0.22, 62], [0.3, 80], [0.36, 70], [0.44, 12], [0.5, 8], [0.6, 14], [0.7, 8], [0.76, 20], [0.82, 34], [0.88, 22], [0.95, 6], [1, 0]],
     points: [
@@ -140,7 +140,7 @@ const PISTAS = {
   },
   rio: {
     name: "Rio de Janeiro", sub: "Orla de Copacabana, o vale, as curvas da mata até o mirante e a descida pelos Arcos da Lapa",
-    scale: 3.72, relevo: 1.5, width: 104, minLap: 30, walls: true, wall: 12, flat: 32, fall: 140,
+    scale: 2.48, width: 104, minLap: 25, walls: true, wall: 12, flat: 32, fall: 140,
     // relevo: orla no nível do mar, sobe pela mata até o mirante e desce pela Lapa
     hills: [[0, 3], [0.19, 3], [0.25, 6], [0.33, 10], [0.4, 30], [0.47, 52], [0.54, 75], [0.6, 100], [0.66, 112], [0.72, 90], [0.79, 60], [0.86, 34], [0.92, 12], [0.97, 3], [1, 3]],
     points: [
@@ -172,7 +172,7 @@ const PISTAS = {
   },
   serra: {
     name: "Serra Verde", sub: "Montanha: subida em zigue-zague com grampos, o cume e uma descida longa e veloz",
-    scale: 3.46, relevo: 1.5, width: 108, minLap: 30, walls: true, wall: 10, flat: 30, fall: 170,
+    scale: 2.31, width: 108, minLap: 25, walls: true, wall: 10, flat: 30, fall: 170,
     // relevo: sobe em zigue-zague até o cume, um platô e a descida longa
     hills: [[0, 15], [0.06, 25], [0.14, 55], [0.22, 85], [0.31, 112], [0.38, 138], [0.43, 155], [0.5, 148], [0.58, 132], [0.64, 120], [0.72, 90], [0.8, 60], [0.88, 35], [0.95, 18], [1, 15]],
     points: [
@@ -204,7 +204,7 @@ const PISTAS = {
   },
   deserto: {
     name: "Deserto Dourado", sub: "Retas extensas sobre as dunas, duas chicanes, o cânion e uma lombada para voar",
-    scale: 3.82, relevo: 1.5, width: 116, minLap: 30, walls: false, flat: 42, fall: 230,
+    scale: 2.55, width: 116, minLap: 25, walls: false, flat: 42, fall: 230,
     // relevo: dunas na reta da largada, sobe até a primeira chicane, desce, o cânion e a lombada (dá para voar!)
     hills: [[0, 10], [0.03, 24], [0.05, 8], [0.075, 26], [0.1, 10], [0.19, 18], [0.28, 42], [0.37, 40], [0.48, 5], [0.56, 12], [0.63, 40], [0.7, 60], [0.74, 32], [0.747, 54], [0.753, 22], [0.8, 20], [0.88, 14], [1, 10]],
     points: [
@@ -234,7 +234,7 @@ const PISTAS = {
   // meio da pista original, com a altura de cada ponto; Luigi e Sorvete foram redesenhados com mais curvas.
   luigi: {
     name: "Circuito do Luigi", sub: "Retona dos boxes, grampos redondos, o S pelo meio e a curva do túnel",
-    scale: 3.58, relevo: 1.5, width: 104, minLap: 30, walls: true, wall: 12, flat: 30, fall: 120,
+    scale: 2.39, width: 104, minLap: 25, walls: true, wall: 12, flat: 30, fall: 120,
     hills: [[0, 8], [0.12, 8], [0.2, 20], [0.3, 30], [0.39, 14], [0.47, 2], [0.56, 0], [0.67, 16], [0.77, 28], [0.85, 12], [1, 8]],
     points: [
       [300, 800, 0],
@@ -257,7 +257,7 @@ const PISTAS = {
   },
   sorvete: {
     name: "Terra do Sorvete", sub: "Volta pelo lago congelado, os ganchos de gelo e a subida pela caverna",
-    scale: 3.71, relevo: 1.5, width: 100, minLap: 30, walls: true, wall: 10, flat: 30, fall: 120,
+    scale: 2.47, width: 100, minLap: 25, walls: true, wall: 10, flat: 30, fall: 120,
     hills: [[0, 0], [0.3, 0], [0.38, 10], [0.46, 30], [0.55, 48], [0.62, 52], [0.7, 34], [0.78, 10], [0.85, 0], [1, 0]],
     points: [
       [500, 1500, 0],
@@ -285,7 +285,7 @@ const PISTAS = {
   },
   arcoiris: {
     name: "Estrada Arco-íris", sub: "No espaço: descidas enormes, viadutos que se cruzam e o laço — sem chão em volta",
-    scale: 3.45, relevo: 3, width: 88, minLap: 50, walls: true, wall: 6, flat: 10, fall: 1, espaco: true, // flat: o muro acompanha a altura da pista (com 0, ele ficava no chão, embaixo dos viadutos)
+    scale: 2.3, relevo: 2, width: 88, minLap: 40, walls: true, wall: 6, flat: 10, fall: 1, espaco: true, // flat: o muro acompanha a altura da pista (com 0, ele ficava no chão, embaixo dos viadutos)
     hills: [[0, 28], [0.025, 40], [0.05, 81], [0.075, 86], [0.1, 83], [0.125, 74], [0.15, 68], [0.175, 60], [0.2, 50], [0.225, 45], [0.25, 39], [0.275, 36], [0.3, 31], [0.325, 28], [0.35, 26], [0.375, 25], [0.4, 22], [0.425, 21], [0.45, 21], [0.475, 21], [0.5, 21], [0.525, 21], [0.55, 21], [0.575, 21], [0.6, 18], [0.625, 20], [0.65, 22], [0.675, 9], [0.7, 5], [0.725, 2], [0.75, 0], [0.775, 16], [0.8, 18], [0.825, 22], [0.85, 43], [0.875, 43], [0.9, 43], [0.925, 43], [0.95, 40], [0.975, 37], [1, 28]],
     points: [
       [889, 524, 0], [884, 548, 0], [883, 568, 0], [883, 593, 0], [883, 618, 0], [883, 638, 0], [883, 663, 0], [883, 688, 0], [883, 714, 0], [883, 739, 0], [883, 765, 0], [883, 790, 0], [883, 816, 0], [883, 841, 0],
@@ -309,7 +309,7 @@ const PISTAS = {
 };
 
 // Pistas ampliadas: os vértices (e os raios) foram desenhados no quadrado de 1600 e são multiplicados por `scale`,
-// e o mundo dessa pista cresce junto (t.world). Todas as voltas têm uns 19 mil (perto de 1 min com o carro de F1). `relevo`
+// e o mundo dessa pista cresce junto (t.world). Todas as voltas têm uns 13 mil (pouco mais de 1 min de kart). `relevo`
 // multiplica as alturas e o barranco junto com a escala, para as rampas continuarem com a mesma inclinação.
 for (const t of Object.values(PISTAS)) {
   const s = t.scale || 1;
@@ -319,16 +319,16 @@ for (const t of Object.values(PISTAS)) {
 }
 
 // Os cinco acertos do carro de F1 (os ids continuam os antigos, para as salas e o servidor). vmax: velocidade final no asfalto · acc: aceleração na arrancada (ela cai perto da velocidade
-// final: a = acc·(1 − (v/vmax)^2,5), como num F1: 0 a 100 km/h em ~2,3 s, 0 a 200 em ~5 s e 0 a 300 em ~9,5 s; no velocímetro, km/h = v·0,75) · brake: freio · grip: quanto o pneu segura
+// final: a = acc·(1 − 0,8·(v/vmax)^1,6), então leva de 4 a 8 segundos para chegar no topo; a pilotagem é a de kart) · brake: freio · grip: quanto o pneu segura
 // de lado (acima disso o carro escorrega para fora da curva) · turn: quanto o volante gira · scrub: quanto perde de
 // velocidade escorregando · kin: quanto do grip sobra depois que começa a escorregar (pneu saturado) · offMax: velocidade máxima fora do asfalto · wall: quanto da velocidade sobra numa batida.
 // Em todos, o "limite de curva" (grip ÷ turn) fica abaixo da velocidade final: em curva fechada, tem que frear.
 const CARROS = {
-  equilibrado: { name: "Turbo 88", inspo: "acerto equilibrado", desc: "Faz tudo direitinho: bom de reta e de curva. Bom para começar.", vmax: 440, acc: 60, brake: 940, grip: 900, kin: 0.7, turn: 3.25, scrub: 0.9, offMax: 115, wall: 0.55 },
-  foguete: { name: "Reta V12", inspo: "asa baixa, motor forte", desc: "O mais rápido na reta, mas chega embalado demais nas curvas.", vmax: 470, acc: 54, brake: 860, grip: 800, kin: 0.65, turn: 3.0, scrub: 1.1, offMax: 100, wall: 0.45 },
-  formiga: { name: "Pimentinha", inspo: "asa alta, carro leve", desc: "Arranca forte e vira em qualquer canto. Na reta, fica para trás.", vmax: 400, acc: 72, brake: 1040, grip: 940, kin: 0.68, turn: 3.7, scrub: 0.8, offMax: 120, wall: 0.6 },
-  drifteiro: { name: "Escorrega", inspo: "traseira solta", desc: "Escorrega fácil, mas quase não perde velocidade de lado. Para quem gosta de derrapar.", vmax: 445, acc: 60, brake: 900, grip: 730, kin: 0.88, turn: 4.05, scrub: 0.35, offMax: 110, wall: 0.5 },
-  tanque: { name: "Blindado", inspo: "chassi pesado e reforçado", desc: "Pesado: demora a embalar, mas bate no muro e passa pela grama sem sofrer tanto.", vmax: 450, acc: 48, brake: 800, grip: 950, kin: 0.7, turn: 2.7, scrub: 0.9, offMax: 165, wall: 0.8 },
+  equilibrado: { name: "Turbo 88", inspo: "acerto equilibrado", desc: "Faz tudo direitinho: bom de reta e de curva. Bom para começar.", vmax: 295, acc: 82, brake: 470, grip: 470, kin: 0.7, turn: 2.4, scrub: 0.9, offMax: 95, wall: 0.55 },
+  foguete: { name: "Reta V12", inspo: "asa baixa, motor forte", desc: "O mais rápido na reta, mas chega embalado demais nas curvas.", vmax: 360, acc: 74, brake: 430, grip: 420, kin: 0.65, turn: 2.2, scrub: 1.1, offMax: 85, wall: 0.45 },
+  formiga: { name: "Pimentinha", inspo: "asa alta, carro leve", desc: "Arranca forte e vira em qualquer canto. Na reta, fica para trás.", vmax: 236, acc: 110, brake: 520, grip: 490, kin: 0.68, turn: 2.75, scrub: 0.8, offMax: 100, wall: 0.6 },
+  drifteiro: { name: "Escorrega", inspo: "traseira solta", desc: "Escorrega fácil, mas quase não perde velocidade de lado. Para quem gosta de derrapar.", vmax: 305, acc: 85, brake: 450, grip: 380, kin: 0.88, turn: 3.0, scrub: 0.35, offMax: 90, wall: 0.5 },
+  tanque: { name: "Blindado", inspo: "chassi pesado e reforçado", desc: "Pesado: demora a embalar, mas bate no muro e passa pela grama sem sofrer tanto.", vmax: 315, acc: 58, brake: 400, grip: 500, kin: 0.7, turn: 2.0, scrub: 0.9, offMax: 140, wall: 0.8 },
 };
 
 // Pista a partir dos vértices: retas + curvas de raio fixo, amostrada a cada `step` unidades.

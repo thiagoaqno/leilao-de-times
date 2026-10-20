@@ -7,7 +7,7 @@ import { $, rng } from "./estado.js";
 // No 3D, o "y" do traçado vira o z, e a altura vira o y. 1 unidade ≈ 10 cm (um kart tem ~18 de largura).
 const cv = $("screen");
 export const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 export const scene = new THREE.Scene();

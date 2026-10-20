@@ -141,10 +141,10 @@ function enfeitarEspaco(tr, add, r, V) { // Arco-íris: asteroides girando em vo
 const d = new THREE.Object3D(), v3 = new THREE.Vector3();
 export function animarMais(tr, V, t, dt, foco) {
   const parado = reduz.matches, C = tr.t.world / 2;
-  for (const p of V.panos || []) { // a bandeira ondula (mais na ponta solta)
+  if ((V.vez = (V.vez || 0) + 1) % 2 === 0) for (const p of V.panos || []) { // a bandeira ondula (mais na ponta solta), a cada 2 quadros
     const pos = p.pano.geometry.attributes.position, b = p.base;
     for (let k = 0; k < pos.count; k++) { const x = b[k * 3], y = b[k * 3 + 1]; pos.setZ(k, parado ? 0 : Math.sin(x * 0.28 - t * 6 + p.fase) * x * 0.12 + Math.sin(y * 0.4 + t * 3) * x * 0.03); }
-    pos.needsUpdate = true; p.pano.geometry.computeVertexNormals();
+    pos.needsUpdate = true;
   }
   if (!parado) for (const h of V.helices || []) h.helice.rotation.z -= dt * h.vel;
   for (const w of V.rodas || []) { if (!parado) w.roda.rotation.z += dt * 0.06; for (const c of w.cabines) c.rotation.z = -w.roda.rotation.z; }

@@ -8,7 +8,7 @@ import { race } from "./jogo.js";
 // A volta mais rápida que você já fez em cada pista fica salva neste navegador (posição a cada 0,1 s). Nas próximas
 // corridas, um carro dourado transparente refaz essa volta junto com você, e o placar mostra quanto você está
 // na frente (verde) ou atrás (vermelho) dele naquele ponto da pista.
-const REC_KEY = (id) => "corrida:recorde:" + id + (PISTAS[id] && PISTAS[id].scale !== 1 ? ":x" + PISTAS[id].scale : "") + ":f1"; // pista ampliada ou carro novo: recorde novo
+const REC_KEY = (id) => "corrida:recorde:" + id + (PISTAS[id] && PISTAS[id].scale !== 1 ? ":x" + PISTAS[id].scale : "") + ":v2"; // pista ampliada ou traçado novo: recorde novo
 export function loadBest(id) { const b = store.get(REC_KEY(id)); return b && Array.isArray(b.s) && b.s.length > 20 && b.t > 0 ? b : null; }
 const progOf = (idx, tl) => (idx > race.tr.n * 0.75 && tl < 8000 ? idx - race.tr.n : idx); // antes de cruzar a linha conta negativo
 export function recordLap() {

@@ -115,6 +115,7 @@ function largar(room) {
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot) continue;
     const pf = perfil(room.config.pista, p.car), g = largada(pf.pts, p.grid, t.width);
+    p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
     p.ia = { s: g.idx, lat: g.lat, desvio: 0, v: 0, nivel: (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.97, 1.02), jeito: rnd(-6, 6), usaEm: 0 };
     posicionar(p, pf, 0);
   }
@@ -123,9 +124,11 @@ function posicionar(p, pf, laps) {
   const { pts, n } = pf, i = Math.floor(p.ia.s) % n, j = (i + 1) % n, f = p.ia.s - Math.floor(p.ia.s), a = pts[i], b = pts[j];
   const x = a.x + (b.x - a.x) * f - a.ty * p.ia.lat, y = a.y + (b.y - a.y) * f + a.tx * p.ia.lat, z = a.h + (b.h - a.h) * f;
   const prog = p.started ? laps * n + i : i - n;
-  // o bico aponta para onde o carro está indo (a linha seguida, um pouco à frente)
-  const k = (i + 3) % n, xk = pts[k].x - pts[k].ty * pf.lat[k], yk = pts[k].y + pts[k].tx * pf.lat[k], dir = Math.atan2(yk - y, xk - x);
-  p.pos = { x, y, z, a: Number.isFinite(dir) ? dir : Math.atan2(a.ty, a.tx), v: p.ia.v, prog, at: Date.now() };
+  // o bico aponta para onde o carro está andando de verdade (sem isso, trocando de lado ele parecia derrapar)
+  const ant = p.pos, mov = ant ? Math.hypot(x - ant.x, y - ant.y) : 0;
+  let dir = mov > 0.4 ? Math.atan2(y - ant.y, x - ant.x) : ant ? ant.a : Math.atan2(a.ty, a.tx);
+  if (ant && mov > 0.4) { const d = Math.atan2(Math.sin(dir - ant.a), Math.cos(dir - ant.a)); dir = ant.a + d * 0.6; } // suaviza
+  p.pos = { x, y, z, a: dir, v: p.ia.v, prog, at: Date.now() };
   return i;
 }
 // um passo (dt em segundos). setor(p, s) é o mesmo onSector dos humanos; emit manda eventos para a sala
@@ -143,7 +146,7 @@ function passo(room, dt, setor, emit) {
       let alvo = Math.min(pf.lim[i], pf.lim[(i + 3) % pf.n]) * ia.nivel * el * (1 - Math.min(1, Math.abs(ia.desvio) / 40) * 0.06);
       if (p.boostUntil > now) alvo *= 1.18; if (p.starUntil > now) alvo *= 1.12;
       if (p.spinUntil > now) ia.v *= Math.exp(-dt * 2.2);
-      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * Math.max(0.04, 1 - Math.pow(Math.max(0, ia.v) / c.vmax, 2.5)) * dt * (pf.aprendeu ? 2.2 : 1.5)); // copiando alguém, acompanha a aceleração dele
+      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / c.vmax, 1.6)) * dt * (pf.aprendeu ? 2.2 : 1.5)); // copiando alguém, acompanha a aceleração dele
       else ia.v = Math.max(alvo, ia.v - c.brake * dt);
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
       // segue o traçado de corrida; se tem outro robô logo à frente na mesma linha, desvia para o lado para passar

@@ -12,7 +12,7 @@
 - O kart inclina com o relevo (sobe o bico na subida, desce na descida) e a câmera acompanha.
 
 ### Pistas
-- **Os nove traçados foram redesenhados** com mais curvas: grampos, chicanes, esses e retas longas. Agora todos têm ~19,5 mil de volta (cerca de 1 min no F1). O relevo foi refeito em cada um, com lombadas para voar em Interlagos, Tóquio e no Deserto, e dunas na reta do Deserto. O Arco-íris manteve o traçado e ficou mais longo.
+- **Os nove traçados foram redesenhados** com mais curvas: grampos, chicanes, esses e retas longas. Agora todos têm ~13 mil de volta (cerca de 1 min de kart). O relevo foi refeito em cada um, com lombadas para voar em Interlagos, Tóquio e no Deserto, e dunas na reta do Deserto. O Arco-íris manteve o traçado e ficou mais longo.
 - **Céus de verdade**: fotos de céu do Poly Haven (CC0), uma por pista. A foto também ilumina e reflete nos carros, a neblina pega a cor do horizonte e o sol fica onde está na foto.
 - **Cenário vivo pela volta inteira**: torcida pulando na reta e nas curvas, bandeirolas, mastros com bandeiras balançando, balizas e setas nas curvas, postes, outdoors, cata-ventos, roda-gigante, trem, barcos, pássaros, dirigível, balões, helicóptero de TV seguindo a corrida, avião com rastro, água mexendo, neve, bolas de feno, fogos e holofotes em Tóquio.
 
@@ -21,6 +21,7 @@
 - **Caixas e poderes em 3D**: cubo de vidro furta-cor com "?", banana, cascos, cogumelo, estrela e bomba. O botão do item mostra a foto 3D do poder e a roleta gira as fotos.
 - Banana e bomba vão sempre para trás. Os cascos perseguem a 1,7× a velocidade máxima do carro alvo.
 - Quem é atingido dá um pulo, gira e fica com estrelinhas na cabeça, com um "POW!". Derrapagem solta fumaça dos pneus. Turbo e estrela têm chama e arco-íris.
+- **Mais leve**: os carros dos outros usam uma versão do F1 com ~1/5 dos triângulos e sem sombra projetada; minimapa, bandeiras e torcida trabalham menos por quadro; a resolução começa um pouco menor.
 - **Sensação de velocidade**: desfoque radial na placa de vídeo (o centro e o carro ficam nítidos), faixa tracejada no asfalto e câmera que treme no fim de reta. Se o computador ficar abaixo de ~45 quadros por segundo, a qualidade baixa sozinha.
 - **HUD novo**: progresso em %, posição e tempo, minimapa redondo que gira com o carro e mostra o caminho à frente, velocímetro em arco com a marcha e etiquetas de nome nos carros.
 - **A sala virou um menu de blocos coloridos**: Garagem, Mapa das pistas, Largar, Regras, Pintura e Na sala, com abas (Q/E) e Esc para voltar.
