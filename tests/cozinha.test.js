@@ -162,6 +162,42 @@ test("o cozinheiro não atravessa bancada e o impulso tem recarga", () => {
   K.mover(m.mapa, j, { x: 1, z: 0, dash: true }, 1 / 60); assert.ok(j.dashT <= 0, "na recarga não sai outro impulso");
 });
 
+test("o cozinheiro deixado na tábua termina de picar enquanto o outro é controlado", () => {
+  const m = K.novaPartida("1-1", [{ id: "a" }, { id: "b" }], { rng: () => 0 });
+  passar(m, K.TEMPOS.conta + 0.1);
+  const tab = achar(m, "tabua"), j = m.jogadores[0];
+  m.estado[tab.i].item = ing("cebola"); deFrente(m, j, tab.c, tab.r);
+  assert.ok(K.usar(m, j));
+  passar(m, K.INGREDIENTES.cebola.picar + 0.1);
+  assert.strictEqual(m.estado[tab.i].item.e, "picado");
+});
+
+test("servidor: sozinho recebe dois cozinheiros e Q troca o controle", async () => {
+  const srv = await subirServidor(); const a = await conectar(srv.url, "/cozinha");
+  try {
+    const r = await pedir(a, "create", { name: "Ana" });
+    await pedir(a, "act", { type: "start" });
+    const antes = await esperarEstado(a, (s) => s.phase === "play" && s.match?.jogadores.length === 2);
+    assert.strictEqual(antes.match.controles[r.id], r.id);
+    await pedir(a, "act", { type: "trocar" });
+    const depois = await esperarEstado(a, (s) => s.match?.controles[r.id] !== r.id);
+    assert.ok(depois.match.jogadores.some((j) => j.id === depois.match.controles[r.id]));
+  } finally { a.close(); await srv.parar(); }
+});
+
+test("com cozinheiros extras ligados, as vagas livres entram no ciclo de troca", async () => {
+  const srv = await subirServidor(); const a = await conectar(srv.url, "/cozinha");
+  try {
+    const r = await pedir(a, "create", { name: "Ana", config: { robos: true } });
+    await pedir(a, "act", { type: "start" });
+    const st = await esperarEstado(a, (s) => s.phase === "play" && s.match?.jogadores.length === 4);
+    assert.strictEqual(st.match.grupos[r.id].length, 4);
+    for (let k = 0; k < 4; k++) await pedir(a, "act", { type: "trocar" });
+    const fim = await esperarEstado(a, (s) => s.match?.controles[r.id] === r.id);
+    assert.strictEqual(fim.match.controles[r.id], r.id);
+  } finally { a.close(); await srv.parar(); }
+});
+
 test("servidor: abre a cozinha, pega, pica e entrega uma sopa (tempo acelerado)", async () => {
   const srv = await subirServidor({ COZINHA_VEL: "4" });
   const a = await conectar(srv.url, "/cozinha");

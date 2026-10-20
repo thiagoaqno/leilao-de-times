@@ -298,13 +298,15 @@ function renderLobby() {
   $("btnChef").classList.toggle("hidden", !mine); if (mine) $("btnChef").textContent = mine.chef ? "Só olhar" : "Entrar na cozinha";
   $("lSkins").innerHTML = skinBotoes(mine && mine.skin);
   $("lCoz").innerHTML = Object.keys(K.COZINHAS).map((id) => cartaoCozinha(id, S.config.cozinha, isHost)).join("");
+  $("lRobos").innerHTML = isHost ? `<button class="ghost" data-robos="1">Cozinheiros extras: ${S.config.robos ? "ligados" : "desligados"}</button><p class="muted">As vagas livres viram cozinheiros que você troca com Q.</p>` : `<p class="muted">Cozinheiros extras: ${S.config.robos ? "ligados" : "desligados"}</p>`;
   $("startBox").innerHTML = isHost ? `<button class="primary" id="btnStart" style="width:100%">Abrir a cozinha</button>` : `<p class="muted">Esperando o organizador abrir a cozinha…</p>`;
   if ($("btnStart")) $("btnStart").onclick = () => { Som.unlock(); act("start"); };
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
   if (b.dataset.skin) { store.set("galera:skin", b.dataset.skin); if (ME && ME.id && S) act("skin", { skin: b.dataset.skin }); telaInicial(); if (S && S.phase === "lobby") renderLobby(); }
-  else if (b.dataset.coz && S) { store.set("cozinha:cfg", { cozinha: b.dataset.coz }); act("config", { config: { cozinha: b.dataset.coz } }); }
+  else if (b.dataset.coz && S) { const config = { ...S.config, cozinha: b.dataset.coz }; store.set("cozinha:cfg", config); act("config", { config }); }
+  else if (b.dataset.robos && S) { const config = { ...S.config, robos: !S.config.robos }; store.set("cozinha:cfg", config); act("config", { config }); }
   else if (b.dataset.kick) act("kick", { id: b.dataset.kick });
 });
 $("btnChef").onclick = () => { const p = myP(); if (p) act("chef", { on: !p.chef }); };
@@ -435,6 +437,8 @@ socket.on("state", (st) => {
   if (st.phase === "lobby") { if (G.active) pararJogo(); show("lobby"); renderLobby(); return; }
   const chave = st.match.coz + "|" + st.match.jogadores.map((j) => j.id + ":" + j.skin).join();
   if (!G.active || G.matchKey !== chave) comecar(chave);
+  const ativo = ME && st.match.controles?.[ME.id];
+  if (ativo && G.corpos.has(ativo)) { G.myId = ativo; G.me = G.corpos.get(ativo); }
   if (st.phase !== "over") $("over").classList.add("hidden");
 });
 socket.on("mesa", (ms) => {
@@ -482,9 +486,9 @@ function comecar(chave) {
     precisa: K.RECEITAS[K.COZINHAS[G.coz].receitas[0]].itens.length } : null;
   G.buf = []; G.mesa = null; G.fimTocado = false; $("hPed").innerHTML = ""; $("hMsg").textContent = "";
   show("game"); resize(); G.active = true; pausar(false);
-  $("hHint").innerHTML = G.me ? `<kbd>Espaço</kbd> pegar/soltar · <kbd>F</kbd> picar/lavar · <kbd>Shift</kbd> impulso · <kbd>Esc</kbd> menu` : "Assistindo";
+  $("hHint").innerHTML = G.me ? `<kbd>Espaço</kbd> pegar/soltar · <kbd>F</kbd> picar/lavar · <kbd>Q</kbd> trocar cozinheiro · <kbd>Shift</kbd> impulso · <kbd>Esc</kbd> menu` : "Assistindo";
   if (window.Toque && Toque.isTouch()) Toque.setup({
-    buttons: [{ icon: ICONE.impulso, label: "impulso", code: "ShiftLeft" }, { icon: ICONE.mao, label: "pegar", code: "Space", big: true }, { icon: ICONE.faca, label: "picar", code: "KeyF" }],
+    buttons: [{ icon: ICONE.impulso, label: "impulso", code: "ShiftLeft" }, { icon: ICONE.mao, label: "pegar", code: "Space", big: true }, { icon: ICONE.faca, label: "picar", code: "KeyF" }, { icon: ICONE.trocar, label: "trocar", down: () => trocar() }],
     top: [{ icon: ICONE.menu, down: () => pausar(true) }],
     onStick: (x, y) => { G.stick = [x, y]; },
   });
@@ -497,6 +501,7 @@ const ICONE = {
   mao: svg('<path d="M7 12V6.5a1.5 1.5 0 0 1 3 0V11M10 10.5V4.5a1.5 1.5 0 0 1 3 0V11M13 10.5V5.5a1.5 1.5 0 0 1 3 0V12M16 11V8.5a1.5 1.5 0 0 1 3 0V14c0 4-3 7-7 7h-1c-3 0-4.5-1.5-6-4l-2-3.5a1.5 1.5 0 0 1 2.6-1.5L7 14"/>'),
   faca: svg('<path d="M3 21l9-9M12 12l7.5-7.5a2.1 2.1 0 0 1 3 3L15 15z"/><path d="M5 19l-2 2"/>'),
   impulso: svg('<path d="M4 12h11M11 6l6 6-6 6M19 6v12"/>'),
+  trocar: svg('<path d="M4 8h14l-3-3M18 16H4l3 3M18 8l-3 3M4 16l3-3"/>'),
   menu: svg('<path d="M4 7h16M4 12h16M4 17h16"/>'),
 };
 // partida nova na mesma cozinha: cada um volta para o seu lugar
@@ -520,11 +525,12 @@ $("btnResume").onclick = () => { Som.unlock(); pausar(false); if (window.Toque &
 // ======================================================================
 const keys = new Set();
 const PEGAR = new Set(["Space", "KeyJ", "KeyE"]), USAR = new Set(["KeyF", "KeyK", "ControlLeft", "ControlRight"]), IMPULSO = new Set(["ShiftLeft", "ShiftRight", "KeyL"]);
+function trocar() { if (G.active && G.me && !G.pausa) act("trocar"); }
 addEventListener("keydown", (e) => {
   if (!G.active) return;
   if (e.code === "Escape") { pausar(!G.pausa); return; }
   if (e.code.startsWith("Arrow") || e.code === "Space" || (e.ctrlKey && e.code !== "ControlLeft" && e.code !== "ControlRight")) e.preventDefault();
-  if (!e.repeat && !G.pausa) { if (PEGAR.has(e.code)) pegar(); if (USAR.has(e.code)) usar(); if (IMPULSO.has(e.code)) G.dash = true; }
+  if (!e.repeat && !G.pausa) { if (PEGAR.has(e.code)) pegar(); if (USAR.has(e.code)) usar(); if (IMPULSO.has(e.code)) G.dash = true; if (e.code === "KeyQ") trocar(); }
   keys.add(e.code);
 });
 addEventListener("keyup", (e) => keys.delete(e.code));
@@ -533,7 +539,7 @@ const PAD = { prev: [], lx: 0, ly: 0 };
 function lerPad() {
   const gp = [...(navigator.getGamepads?.() || [])].find((g) => g && g.connected); if (!gp) { PAD.lx = PAD.ly = 0; return; }
   const dz = (v) => (Math.abs(v || 0) < 0.2 ? 0 : v); PAD.lx = dz(gp.axes[0]); PAD.ly = dz(gp.axes[1]);
-  gp.buttons.forEach((b, i) => { const v = b.pressed, era = !!PAD.prev[i]; PAD.prev[i] = v; if (!v || era) return; if (i === 9) pausar(!G.pausa); else if (G.pausa) return; else if (i === 0) pegar(); else if (i === 2 || i === 1) usar(); else if (i === 5 || i === 7 || i === 3) G.dash = true; });
+  gp.buttons.forEach((b, i) => { const v = b.pressed, era = !!PAD.prev[i]; PAD.prev[i] = v; if (!v || era) return; if (i === 9) pausar(!G.pausa); else if (G.pausa) return; else if (i === 0) pegar(); else if (i === 2 || i === 1) usar(); else if (i === 3) trocar(); else if (i === 5 || i === 7) G.dash = true; });
 }
 function entrada() {
   let x = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0);
