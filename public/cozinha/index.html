@@ -139,6 +139,10 @@ kbd{display:inline-block;background:#fff;border:1.5px solid var(--ink);border-bo
 @keyframes sobe{to{transform:translate(-50%,-160%);opacity:0}}
 .overlay{position:absolute;inset:0;display:grid;place-items:center;background:#000a;padding:16px;z-index:5}
 .overlay .box{background:var(--panel);border-radius:8px;padding:22px;width:min(560px,100%);max-height:100%;overflow:auto;box-shadow:0 20px 50px #000}
+#pause .audio-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+#pause .audio-grid label{display:block}
+#pause .audio-grid input{width:100%}
+@media (max-width:600px){#pause .audio-grid{grid-template-columns:1fr}}
 .overlay h2{font-size:34px;margin-bottom:6px}
 /* as estrelas do fim */
 .estrelas{display:flex;justify-content:center;gap:10px;margin:8px 0 12px}
@@ -233,8 +237,10 @@ kbd{display:inline-block;background:#fff;border:1.5px solid var(--ink);border-bo
     <p class="muted" style="margin:0 0 10px">A cozinha continua andando para os outros.</p>
     <div id="receitasPausa"></div>
     <button class="primary" id="btnResume" style="width:100%;margin-top:8px">Voltar para a cozinha</button>
-    <label style="margin-top:16px">Volume: <span id="volV"></span></label>
-    <input type="range" id="vol" min="0" max="1" step="0.05">
+    <div class="audio-grid">
+      <div><label for="vol">Efeitos: <span id="volV"></span></label><input type="range" id="vol" min="0" max="1" step="0.05"><button class="ghost" id="btnFx" type="button">Silenciar efeitos</button></div>
+      <div><label for="mus">Música: <span id="musV"></span></label><input type="range" id="mus" min="0" max="1" step="0.05"><button class="ghost" id="btnMus" type="button">Silenciar música</button></div>
+    </div>
     <div class="row" style="margin-top:14px;justify-content:space-between"><button class="ghost" id="btnLeave">Sair da cozinha</button></div>
   </div></div>
   <div class="overlay hidden" id="over"><div class="box" id="overBox"></div></div>
