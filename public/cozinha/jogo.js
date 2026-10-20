@@ -54,7 +54,7 @@ function montarCozinha(cozId) {
     const g = Mod.estacao(t); g.position.set((t.c + 0.5) * T, 0, (t.r + 0.5) * T); cozinha3d.add(g);
     const b = Mod.barra(); b.visible = false; b.position.set(g.position.x, 2.1, g.position.z); cozinha3d.add(b);
     const av = Mod.aviso(); av.visible = false; av.position.set(g.position.x, 2.5, g.position.z); cozinha3d.add(av);
-    return { t, g, barra: b, aviso: av, chave: "", obj: null, chama: g.userData.chama || null };
+    return { t, g, barra: b, aviso: av, chave: "", obj: null, chama: g.userData.chama || null, fogo: g.userData.fogo || null, agua: g.userData.agua || null, faca: g.userData.faca || null };
   });
   // o anel de luz da bancada da frente (a que o meu cozinheiro vai usar)
   G.luz = new THREE.Mesh(new THREE.BoxGeometry(T * 1.04, 0.06, T * 1.04), new THREE.MeshBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.45, depthWrite: false }));
@@ -63,6 +63,7 @@ function montarCozinha(cozId) {
 }
 function limparCozinha() {
   for (const o of [...cozinha3d.children]) cozinha3d.remove(o);
+  for (const f of efeitos.splice(0)) { scene.remove(f.m); f.m.material.dispose(); }
   G.lugares = []; G.mapa = null; G.luz = null;
 }
 // a mesa nova do servidor: troca o modelo só do que mudou
@@ -70,12 +71,14 @@ function aplicarMesa() {
   const ms = G.mesa; if (!ms || !G.mapa) return;
   ms.lugares.forEach(([item, n], i) => {
     const L = G.lugares[i]; if (!L) return;
-    const pilhaN = L.t.tipo === "escorredor" ? n : 0, chave = JSON.stringify([item && { ...item, p: 0 }, pilhaN]);
+    const pilhaN = L.t.tipo === "escorredor" || L.t.tipo === "pia" ? n : 0, chave = JSON.stringify([item && { ...item, p: 0 }, pilhaN]);
     if (chave === L.chave) return;
     L.chave = chave; if (L.obj) cozinha3d.remove(L.obj);
+    if (L.numero) { cozinha3d.remove(L.numero); L.numero.material.map.dispose(); L.numero.material.dispose(); L.numero = null; }
     L.obj = item ? Mod.item(item) : pilhaN ? Mod.pilha(pilhaN) : null;
     if (L.t.tipo === "pia" && n) L.obj = Mod.item({ k: "sujos", n }); // os pratos sujos dentro da pia
     if (L.obj) { L.obj.position.set(L.g.position.x, L.t.tipo === "pia" ? Mod.ALTURA - 0.12 : L.t.tipo === "lixo" ? 0.9 : Mod.ALTURA, L.g.position.z); cozinha3d.add(L.obj); }
+    if (item?.k === "sujos" && item.n > 3) { L.numero = Mod.numero(item.n); L.numero.position.set(L.g.position.x, Mod.ALTURA + 0.65, L.g.position.z); cozinha3d.add(L.numero); }
   });
   // o que cada um tem na mão
   for (const [id, c] of G.corpos) {
@@ -83,39 +86,79 @@ function aplicarMesa() {
     if (chave === c.maoChave) continue;
     c.maoChave = chave; if (c.mao) c.model.remove(c.mao);
     c.mao = item ? Mod.item(item) : null; c.st.holding = !!item;
-    if (c.mao) { c.mao.position.set(0, 0.95, -0.62); c.model.add(c.mao); }
+    if (c.mao) { c.mao.position.set(0, 0.95, -0.62); c.model.add(c.mao); c.pegoEm = performance.now(); }
   }
 }
 // as barras (picar, lavar, cozinhar), o fogo aceso e o aviso de queimar: a cada quadro, com o tempo andando aqui
 function barras(tJogo) {
   const ms = G.mesa; if (!ms) return;
   const trabalhando = new Set(Object.values(ms.trab || {})), passou = Math.max(0, tJogo - ms.t);
+  const agora = performance.now() / 1000;
   ms.lugares.forEach(([item, n, p], i) => {
     const L = G.lugares[i]; if (!L) return;
     let v = null, cor = 0x4cd964, alerta = false;
     if (L.t.tipo === "tabua" && item && item.k === "ing" && K.proximoPasso(item) === "picar" && item.p > 0) v = (item.p + (trabalhando.has(i) ? passou : 0)) / K.INGREDIENTES[item.t].picar;
+    if (L.obj && L.t.tipo === "tabua") {
+      const etapa = v == null ? 0 : Math.min(3, Math.floor(v * 4));
+      L.obj.scale.setScalar(item && item.k === "ing" && etapa ? 1 - etapa * 0.16 : 1);
+      if (trabalhando.has(i) && agora - (L.cortou || 0) > 0.22) { L.cortou = agora; particulas(L.g.position, K.INGREDIENTES[item.t].cor, 4, "lasca"); }
+    }
     if (L.t.tipo === "pia" && n && (p > 0 || trabalhando.has(i))) v = (p + (trabalhando.has(i) ? passou : 0)) / K.TEMPOS.lavar;
     if (item && K.RECIPIENTES[item.k] && item.c.length && !item.q) {
       const R = K.RECIPIENTES[item.k], prec = R.tempo * item.c.length, pp = item.p + (L.t.tipo === "fogao" && ms.fase === "jogo" ? passou : 0);
       if (pp < prec) v = pp / prec;
       else if (pp >= prec + R.queima * K.TEMPOS.alerta) alerta = true;
-      if (L.chama) L.chama.material.emissiveIntensity = L.t.tipo === "fogao" ? 1.4 : 0;
-    } else if (L.chama) L.chama.material.emissiveIntensity = 0;
+    }
+    const aceso = L.t.tipo === "fogao" && item && K.RECIPIENTES[item.k] && item.c.length && !item.q;
+    if (L.chama) L.chama.material.emissiveIntensity = aceso ? 1.1 + Math.sin(agora * 17 + i) * 0.35 : 0;
+    if (L.fogo) { L.fogo.visible = !!(aceso || item?.q); if (L.fogo.visible) L.fogo.children.forEach((f, k) => { f.scale.y = (item.q ? 0.2 : 0.08) + 0.05 * (1 + Math.sin(agora * 14 + k)); }); }
+    if (L.agua) L.agua.visible = trabalhando.has(i);
+    if (L.t.tipo === "pia" && trabalhando.has(i) && agora - (L.bolhou || 0) > 0.13) { L.bolhou = agora; particulas(L.g.position, "#d9f6ff", 2, "bolha"); }
+    if (aceso && agora - (L.vaporizou || 0) > (item.k === "frigideira" ? 0.13 : 0.2)) { L.vaporizou = agora; particulas(L.g.position, item.k === "frigideira" ? "#eac59a" : "#e4eef2", 2, "vapor"); }
+    if (aceso && item.k === "panela" && L.obj) {
+      const caldo = L.obj.children.find((c) => c.geometry && c.geometry.type === "CylinderGeometry" && c.position.y > 0.06);
+      if (caldo) caldo.scale.y = 0.02 + 0.009 * Math.sin(agora * 10 + i);
+    }
+    if (item?.k === "frigideira" && L.obj?.userData.carne) {
+      const carne = L.obj.userData.carne, progresso = Math.min(1, (item.p + (aceso ? passou : 0)) / K.tempoRec(item));
+      carne.material.color.copy(new THREE.Color("#b64d48").lerp(new THREE.Color(item.q ? "#17120f" : "#714020"), item.q ? 1 : progresso));
+    }
     L.barra.visible = v != null && v < 1; if (L.barra.visible) { L.barra.userData.set(v, cor); L.barra.quaternion.copy(cam.quaternion); }
-    L.aviso.visible = alerta && Math.floor(performance.now() / 250) % 2 === 0;
-    if (alerta && performance.now() - (L.bip || 0) > 700) { L.bip = performance.now(); Som.bip(); }
+    const urgencia = item && K.RECIPIENTES[item.k] ? Math.max(0, (item.p + passou - K.tempoRec(item)) / K.RECIPIENTES[item.k].queima) : 0;
+    const pulso = Math.max(0.12, 0.48 - urgencia * 0.32);
+    L.aviso.visible = alerta && Math.floor(agora / pulso) % 2 === 0;
+    if (alerta && performance.now() - (L.bip || 0) > pulso * 1700) { L.bip = performance.now(); Som.bip(); }
   });
 }
 
 // ---------- a fumaça da panela queimada ----------
-const geoFumaca = new THREE.SphereGeometry(1, 8, 6), fumacas = [];
+const geoFumaca = new THREE.SphereGeometry(1, 8, 6), fumacas = [], efeitos = [];
+function particulas(pos, cor, n, tipo) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || efeitos.length > 90) return;
+  for (let k = 0; k < n; k++) {
+    const m = new THREE.Mesh(geoFumaca, new THREE.MeshBasicMaterial({ color: cor, transparent: true, opacity: tipo === "vapor" ? 0.35 : 0.85, depthWrite: false }));
+    m.position.set(pos.x + (Math.random() - 0.5) * 0.3, Mod.ALTURA + (tipo === "bolha" ? 0.13 : 0.27), pos.z + (Math.random() - 0.5) * 0.3);
+    m.scale.setScalar(tipo === "lasca" ? 0.035 : 0.045);
+    scene.add(m); efeitos.push({ m, tipo, vida: 0, vx: (Math.random() - 0.5) * 0.7, vz: (Math.random() - 0.5) * 0.7 });
+  }
+}
+function animarEfeitos(dt) {
+  for (let k = efeitos.length - 1; k >= 0; k--) {
+    const f = efeitos[k]; f.vida += dt; f.m.position.x += f.vx * dt; f.m.position.z += f.vz * dt;
+    f.m.position.y += (f.tipo === "lasca" ? 0.6 - f.vida * 2.5 : 0.45) * dt;
+    f.m.material.opacity = Math.max(0, (f.tipo === "vapor" ? 0.35 : 0.85) * (1 - f.vida / 0.8));
+    if (f.vida > 0.8) { scene.remove(f.m); f.m.material.dispose(); efeitos.splice(k, 1); }
+  }
+}
 function fumaca(dt) {
   const agora = performance.now();
   for (const L of G.lugares) {
     const it = G.mesa && G.mesa.lugares[L.t.i] && G.mesa.lugares[L.t.i][0];
-    if (!it || !it.q || agora - (L.fumou || 0) < 220 || fumacas.length > 60) continue;
+    if (!it || !K.RECIPIENTES[it.k] || !it.c.length || agora - (L.fumou || 0) < 220 || fumacas.length > 60) continue;
+    const perto = (it.p - K.tempoRec(it)) / K.RECIPIENTES[it.k].queima;
+    if (!it.q && perto < 0.4) continue;
     L.fumou = agora;
-    const m = new THREE.Mesh(geoFumaca, new THREE.MeshBasicMaterial({ color: 0x3a3a3a, transparent: true, opacity: 0.6, depthWrite: false }));
+    const m = new THREE.Mesh(geoFumaca, new THREE.MeshBasicMaterial({ color: perto > 0.8 || it.q ? 0x303030 : 0xb0a9a1, transparent: true, opacity: Math.min(0.65, 0.2 + Math.max(0, perto) * 0.45), depthWrite: false }));
     m.position.set(L.g.position.x + (Math.random() - 0.5) * 0.3, Mod.ALTURA + 0.35, L.g.position.z + (Math.random() - 0.5) * 0.3); m.scale.setScalar(0.12);
     cozinha3d.add(m); fumacas.push({ m, vida: 0 });
   }
@@ -130,9 +173,10 @@ function fumaca(dt) {
 function criarCorpo(j, k) {
   const model = makePlayer(KITS[k % KITS.length], k + 1, j.nome || "", { skin: j.skin });
   const chapeu = Mod.chapeu(); chapeu.position.y = 1.86; model.add(chapeu);
+  const faca = Mod.estacao({ tipo: "tabua" }).userData.faca.clone(); faca.position.set(0.36, 1.04, -0.47); faca.rotation.set(0.3, 0.5, -0.5); faca.visible = false; model.add(faca);
   scene.add(model);
   const [x, z] = G.mapa.inicio[k];
-  return { id: j.id, model, st: {}, x, z, vx: 0, vz: 0, d: Math.PI, mao: null, maoChave: "null" };
+  return { id: j.id, model, st: {}, x, z, vx: 0, vz: 0, d: Math.PI, mao: null, maoChave: "null", faca };
 }
 function limparCorpos() { for (const c of G.corpos.values()) descartarJogador(c.model); G.corpos.clear(); }
 
@@ -259,6 +303,31 @@ function flutuar(i, html) {
   el.style.left = (v.x * 0.5 + 0.5) * innerWidth + "px"; el.style.top = (-v.y * 0.5 + 0.5) * innerHeight + "px";
   $("game").appendChild(el); setTimeout(() => el.remove(), 1400);
 }
+function entregaVisual(e) {
+  const L = G.lugares[e.i]; if (!L) return;
+  const prato = Mod.item({ k: "prato", c: K.RECEITAS[e.r].itens.map((v) => { const [t, estado] = v.split(":"); return { t, e: estado }; }) });
+  prato.position.set(L.g.position.x, Mod.ALTURA + 0.05, L.g.position.z); cozinha3d.add(prato);
+  const inicio = performance.now();
+  function andar(agora) {
+    if (!G.active || !prato.parent) return;
+    const v = Math.min(1, (agora - inicio) / 300);
+    prato.position.z -= v * 0.9; prato.position.y += v * 0.2; prato.scale.setScalar(1 - v * 0.7);
+    if (v < 1) requestAnimationFrame(andar); else cozinha3d.remove(prato);
+  }
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) requestAnimationFrame(andar);
+  else cozinha3d.remove(prato);
+  flutuar(e.i, `<span class="carimbo">✓ ${K.RECEITAS[e.r].nome}</span>`);
+  for (let k = 0; k < Math.min(5, Math.ceil((e.pontos + e.gorjeta) / 12)); k++) {
+    setTimeout(() => {
+      const moeda = document.createElement("span"); moeda.className = "moeda-voa"; moeda.textContent = "●";
+      const v = L.g.position.clone(); v.y = 1.5; v.project(cam);
+      moeda.style.left = (v.x * 0.5 + 0.5) * innerWidth + "px"; moeda.style.top = (-v.y * 0.5 + 0.5) * innerHeight + "px";
+      $("game").appendChild(moeda);
+      const alvo = $("hPts").getBoundingClientRect();
+      moeda.animate([{ transform: "translate(0,0) scale(1)" }, { transform: `translate(${alvo.left - parseFloat(moeda.style.left)}px, ${alvo.top - parseFloat(moeda.style.top)}px) scale(.7)` }], { duration: 500, easing: "cubic-bezier(0.23, 1, 0.32, 1)" }).onfinish = () => moeda.remove();
+    }, k * 60);
+  }
+}
 
 // ======================================================================
 // Rede: entrar, criar, estado, mesa, pacotes e eventos
@@ -315,16 +384,17 @@ function aoEvento(e) {
   switch (e.tipo) {
     case "abriu": Som.apito(); break;
     case "pegou": if (meu) Som.pegar(); break;
-    case "soltou": if (meu) Som.soltar(); break;
+    case "soltou": if (meu) Som.soltar(); if (G.lugares[e.i]) G.lugares[e.i].soltouEm = performance.now(); break;
     case "juntou": Som.juntar(); break;
     case "picou": Som.picar(); break;
-    case "lavou": Som.lavar(); break;
+    case "lavou": Som.lavar(); { const esc = G.lugares.find((L) => L.t.tipo === "escorredor"); if (esc) flutuar(esc.t.i, "✦"); } break;
     case "pronto": Som.pronto(); break;
     case "queimou": Som.queimou(); toast("Queimou! Jogue no lixo e comece de novo."); break;
-    case "entregou": Som.entregou(); flutuar(e.i, `+${e.pontos}${e.gorjeta ? `<small>+${e.gorjeta} de gorjeta</small>` : ""}`); break;
+    case "entregou": Som.entregou(); entregaVisual(e); flutuar(e.i, `+${e.pontos}${e.gorjeta ? `<small>+${e.gorjeta} de gorjeta</small>` : ""}`); break;
     case "pedido": Som.pedido(); break;
     case "perdeu": Som.perdeu(); toast(`Um cliente desistiu: ${K.RECEITAS[e.r].nome.toLowerCase()} (-${K.TEMPOS.multa}).`); break;
-    case "errou": if (meu) { Som.errou(); toast(e.msg); } break;
+    case "errou": if (meu) { Som.errou(); toast(e.msg); const ent = G.lugares.find((L) => L.t.tipo === "entrega"); if (ent) flutuar(ent.t.i, "✕ NÃO"); } break;
+    case "voltou": { const ret = G.lugares.find((L) => L.t.tipo === "retorno"); if (ret) { Som.juntar(); const n = G.mesa?.lugares[ret.t.i]?.[0]?.n || 1; flutuar(ret.t.i, `plim!${n > 3 ? `<small>${n} pratos sujos</small>` : ""}`); } break; }
     case "lixo": Som.lixo(); break;
   }
 }
@@ -458,10 +528,17 @@ function desenhar(agora) {
       const tt = performance.now() / 1000, L = G.lugares[trab[c.id]];
       u.arms[1].rotation.x = 1.3 + Math.sin(tt * (L && L.t.tipo === "pia" ? 10 : 18)) * 0.45;
       u.arms[0].rotation.x = 1.1;
+      c.faca.visible = !!(L && L.t.tipo === "tabua");
+      if (c.faca.visible) { c.faca.position.y = 1.02 + Math.max(0, Math.sin(tt * 18)) * 0.22; if (L.faca) L.faca.visible = false; }
+      if (L && L.t.tipo === "pia" && c.mao) c.mao.rotation.y = tt * 4;
       if (c === G.me && L && L.t.tipo === "tabua" && tt - G.tChop > 0.22) { G.tChop = tt; Som.picar(); }
-    }
+    } else { c.faca.visible = false; if (c.mao) c.mao.rotation.y = 0; }
+    if (c.mao && c.pegoEm) { const f = Math.min(1, (performance.now() - c.pegoEm) / 180); c.mao.position.y = 0.95 + Math.sin(f * Math.PI) * 0.2; if (f === 1) c.pegoEm = 0; }
+    if (c.dashT > 0 && Math.random() < 0.15) particulas(c.model.position, "#ded2b5", 2, "lasca");
   }
-  barras(tJogo); hud(tJogo); fumaca(dt);
+  for (const L of G.lugares) if (L.faca) L.faca.visible = !Object.values(trab).includes(L.t.i);
+  for (const L of G.lugares) if (L.obj && L.soltouEm) { const f = Math.min(1, (agora - L.soltouEm) / 180); L.obj.position.y = Mod.ALTURA + Math.sin(f * Math.PI) * 0.16; if (f === 1) L.soltouEm = 0; }
+  barras(tJogo); hud(tJogo); fumaca(dt); animarEfeitos(dt);
   renderer.render(scene, cam);
 }
 requestAnimationFrame(quadro);
