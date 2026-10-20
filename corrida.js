@@ -1,9 +1,10 @@
-// Corrida da Galera — corrida de kart (sem poderes) de 1 a 8 jogadores, em Mônaco, Interlagos ou Tóquio.
+// Corrida da Galera — corrida de kart de 1 a 8 jogadores, com caixas opcionais.
 // Cada navegador roda a física do próprio carro e só manda a posição; os carros batem uns nos outros (cada navegador
 // resolve a sua metade da batida com a posição que recebeu, em `public/corrida/colisao.js`).
 // O servidor cuida da largada sincronizada, repassa as posições e conta as voltas pelos setores da pista,
 // na ordem (contra atalho e contramão), com um tempo mínimo de volta. Canal "/corrida" do Socket.io.
 const T = require("./public/corrida/pistas.js");
+const Itens = require("./corrida-itens.js");
 const { SKINS } = require("./public/pelada/campo.js"); // o piloto do kart usa as skins da Pelada
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
@@ -23,6 +24,8 @@ module.exports = function attachCorrida(io) {
   const cleanConfig = (c = {}) => ({
     pista: T.PISTAS[c.pista] ? c.pista : "interlagos",
     voltas: [1, 2, 3, 5].includes(int(c.voltas, 3)) ? int(c.voltas, 3) : 3,
+    caixas: c.caixas === true,
+    equilibrio: c.equilibrio !== false,
   });
   const nameOf = (room, id) => (room.players[id] ? room.players[id].name : "?");
   function log(room, text) { room.log.push({ t: Date.now(), text }); if (room.log.length > 80) room.log.splice(0, room.log.length - 80); }
@@ -30,9 +33,11 @@ module.exports = function attachCorrida(io) {
   function publicState(room) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null,
+      boxReady: Itens.publicBoxes(room),
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, name: p.name, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last };
+        return { id, name: p.name, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
+          item: p.item || null, rolling: p.rolling || 0, boostUntil: p.boostUntil || 0, starUntil: p.starUntil || 0, spinUntil: p.spinUntil || 0 };
       }),
       finishOrder: room.finishOrder, log: room.log.slice(-20), now: Date.now(),
     };
@@ -42,6 +47,7 @@ module.exports = function attachCorrida(io) {
   // ---------- corrida ----------
   function startRace(room) {
     clearTimeout(room.endTimer);
+    clearInterval(room.itemTimer);
     room.phase = "race";
     room.startAt = Date.now() + COUNTDOWN_MS;
     room.endAt = null;
@@ -49,12 +55,19 @@ module.exports = function attachCorrida(io) {
     // grid: ordem de chegada da sala, embaralhada a cada corrida
     const ids = [...room.order].sort(() => Math.random() - 0.5);
     ids.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, lapStart: null, lastPos: 0 }));
+    Itens.start(room);
+    if (room.config.caixas) {
+      let frame = 0;
+      room.itemTimer = setInterval(() => { Itens.tick(room, (event, data) => nsp.to(room.code).emit(event, data));
+        if (++frame % 2 === 0) nsp.to(room.code).volatile.emit("item:hazards", Itens.publicHazards(room)); }, 50);
+    }
     room.endTimer = setTimeout(() => endRace(room), COUNTDOWN_MS + MAX_RACE_MS);
     log(room, `🏁 Largada em ${T.PISTAS[room.config.pista].name}, ${room.config.voltas} volta${room.config.voltas > 1 ? "s" : ""}.`);
   }
   function endRace(room) {
     if (room.phase !== "race") return;
     clearTimeout(room.endTimer);
+    clearInterval(room.itemTimer);
     room.phase = "results";
     if (room.finishOrder.length) noite.vitoria("corrida", room.code, nomesDe(room, room.finishOrder.slice(0, 1)), nomesDe(room, room.order.filter((id) => id !== room.finishOrder[0])));
     log(room, "🏆 Fim de corrida!");
@@ -179,7 +192,7 @@ module.exports = function attachCorrida(io) {
         }
         if (type === "lobby") {
           if (!isHost) return "Só o organizador.";
-          clearTimeout(room.endTimer); room.phase = "lobby"; room.startAt = null; room.endAt = null; return;
+          clearTimeout(room.endTimer); clearInterval(room.itemTimer); room.phase = "lobby"; room.startAt = null; room.endAt = null; return;
         }
         if (type === "end") {
           if (!isHost || room.phase !== "race") return "Só o organizador encerra a corrida.";
@@ -198,6 +211,15 @@ module.exports = function attachCorrida(io) {
       broadcast(room);
     });
 
+    socket.on("item:pick", (d = {}) => {
+      const { room, me } = ctx(); if (!room || !me) return;
+      if (Itens.pick(room, me, int(d.i, -1), (event, data) => nsp.to(room.code).emit(event, data))) broadcast(room);
+    });
+    socket.on("item:use", (d = {}) => {
+      const { room, me } = ctx(); if (!room || !me) return;
+      if (Itens.use(room, me, d.back === true, (event, data) => nsp.to(room.code).emit(event, data))) broadcast(room);
+    });
+
     // posição do meu carro (10 por segundo): vai para os outros
     socket.on("pos", (d = {}) => {
       const { room, me } = ctx();
@@ -208,6 +230,9 @@ module.exports = function attachCorrida(io) {
       const x = num(d.x), y = num(d.y), a = num(d.a), v = num(d.v), prog = num(d.prog);
       if (![x, y, a].every(Number.isFinite)) return;
       const z = num(d.z);
+      const world = T.PISTAS[room.config.pista].world;
+      if (x < 0 || y < 0 || x > world || y > world) return;
+      me.pos = { x, y, z: Number.isFinite(z) ? z : 0, a, v: Number.isFinite(v) ? v : 0, prog: Number.isFinite(prog) ? prog : 0, at: now };
       socket.to(room.code).volatile.emit("ghost", { id: me.id, x, y, z: Number.isFinite(z) ? Math.max(-50, Math.min(400, z)) : 0, a, v: Number.isFinite(v) ? v : 0, prog: Number.isFinite(prog) ? prog : 0, laps: me.laps, t: now });
     });
 
@@ -221,7 +246,7 @@ module.exports = function attachCorrida(io) {
   });
 
   // salas paradas há mais de 12 horas somem
-  limparSalasParadas(rooms, { aoApagar: (r) => { clearTimeout(r.endTimer); } });
+  limparSalasParadas(rooms, { aoApagar: (r) => { clearTimeout(r.endTimer); clearInterval(r.itemTimer); } });
 };
 module.exports.COLORS = COLORS;
 module.exports.PAWNS = PAWNS;

@@ -12,6 +12,8 @@ export const THEMES = {
   interlagos: { preview: "#2f7d33", sky: ["#4aa3e8", "#f3e6c8"], fog: "#dfe7d8", oob: 0xff3a9a3f, roadCol: "#4b4b50" },
   losangeles: { preview: "#7a4a6a", sky: ["#3b2a6b", "#ff9a5a"], fog: "#e8a07a", oob: 0xff6a8aa0, roadCol: "#3f3f46" },
   rio: { preview: "#1f8a8a", sky: ["#3f97e0", "#d6f1ff"], fog: "#cfeaf2", oob: 0xff2a7a3a, roadCol: "#4a4a50" },
+  serra: { preview: "#4d8854", sky: ["#6eb9f0", "#e4f6ff"], fog: "#cde6dd", oob: 0xff467b45, roadCol: "#51545a" },
+  deserto: { preview: "#cca96e", sky: ["#63b0e5", "#fce0aa"], fog: "#e9cc9d", oob: 0xffcaab72, roadCol: "#55565a" },
   luigi: { preview: "#3f8f3a", sky: ["#3f97e0", "#eaf4ff"], fog: "#dfeee0", oob: 0xff3a9a3f, roadCol: "#55555c" },
   sorvete: { preview: "#8fb8d8", sky: ["#8fc6f2", "#f2f8ff"], fog: "#e8f2fa", oob: 0xffe4edf5, roadCol: "#9fc3dd" },
   arcoiris: { preview: "#0b0a1a", sky: ["#02020a", "#1a0b3a"], fog: "#0a0618", oob: 0xff05040c, roadCol: "#ffffff" },
@@ -55,8 +57,8 @@ export function trackFrame(tr, x, y, idx) { // ponto da pista mais perto (já sa
 export function groundH(tr, x, y, idx) { const f = trackFrame(tr, x, y, idx); return f.h * falloff(tr, f.lat); }
 
 // Rio: o mar fica do lado de fora da reta da orla (Copacabana)
-const rioShore = (y) => 347 + (y - 530) * 0.4163 - 150;
-const rioSea = (x, y) => x < rioShore(y) && y < 1700;
+const rioShore = (y) => 230 * 1.8 + (y - 335 * 1.8) * 0.04;
+const rioSea = (x, y) => x < rioShore(y) && y < 1450 * 1.8;
 function buildWorld(tr) {
   const { pts, n, W, look, id, grp } = tr, t = tr.t, add = (o) => (grp.add(o), o), r = rng(id.length * 977);
   const WORLD = t.world, K = t.scale; // pistas ampliadas: o mundo cresce junto e as coordenadas fixas (mar, porto) vão × K
@@ -96,6 +98,19 @@ function buildWorld(tr) {
   const asphalt = canvasTex(128, 256, (x, w, hh, rr) => { x.fillStyle = look.road; x.fillRect(0, 0, w, hh); for (let i = 0; i < 3000; i++) { x.fillStyle = rr() < 0.5 ? "#00000018" : "#ffffff10"; x.fillRect(rr() * w, rr() * hh, 2, 2); } x.fillStyle = "#e8e8e8"; x.fillRect(2, 0, 3, hh); x.fillRect(w - 5, 0, 3, hh); if (id === "tokyo") { x.fillStyle = "#f2c94c"; x.fillRect(w / 2 - 1.5, 0, 3, hh * 0.55); } });
   const arco = id === "arcoiris" ? canvasTex(128, 32, (x, w, hh) => { ["#ff3b3b", "#ff9a2e", "#ffe14a", "#3ee07a", "#3aa0ff", "#8a5bff", "#ff5fd2"].forEach((c, i) => { x.fillStyle = c; x.fillRect((i * w) / 7, 0, w / 7 + 1, hh); }); x.fillStyle = "#ffffff55"; x.fillRect(0, 0, w, 3); }) : null;
   ribbon(-W / 2, W / 2, 0.4, arco ? new THREE.MeshStandardMaterial({ map: arco, emissive: 0xffffff, emissiveMap: arco, emissiveIntensity: 0.55, roughness: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }) : new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, side: THREE.DoubleSide }), 256);
+  // Balizadores leves nas saídas de curva: o carro pode tocá-los e eles se inclinam.
+  tr.cones = [];
+  if (!t.espaco) {
+    const orange = M(0xff792d), white = M(0xf7f1df), base = M(0x34383a);
+    for (let i = 28; i < n; i += Math.max(45, Math.floor(n / 42))) {
+      const p = pts[i], side = i % 2 ? -1 : 1, lat = side * (W / 2 - 3);
+      const cone = new THREE.Group(); cone.position.set(p.x + p.nx * lat, p.h + 0.5, p.y + p.ny * lat);
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(9, 1.5, 9), base); cone.add(foot);
+      const body = new THREE.Mesh(new THREE.ConeGeometry(3.2, 10, 6), orange); body.position.y = 5; cone.add(body);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 2.1, 1.8, 6), white); band.position.y = 6.5; cone.add(band);
+      add(cone); tr.cones.push({ mesh: cone, x: cone.position.x, y: cone.position.z, h: p.h, hit: 0, dir: 0 });
+    }
+  }
   const kerbT = canvasTex(32, 64, (x, w, hh) => { x.fillStyle = look.kerb[0]; x.fillRect(0, 0, w, hh / 2); x.fillStyle = look.kerb[1]; x.fillRect(0, hh / 2, w, hh / 2); });
   const kerbM = new THREE.MeshStandardMaterial({ map: kerbT, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x0a3a44 : 0 });
   ribbon(W / 2, W / 2 + 7, 0.6, kerbM, 28); ribbon(-W / 2 - 7, -W / 2, 0.6, kerbM, 28);
@@ -146,7 +161,8 @@ function buildWorld(tr) {
       if (!free(x, y, 20)) continue;
       const k = r();
       if (id === "monaco") { if (k < 0.3) palms.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.5, r: r() * 6 }); else if (k < 0.75) { const sx = 50 + r() * 40, sz = 50 + r() * 40, far = near + 40 + r() * 80, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 25)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 60 + r() * 90, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f3e0c0"][(r() * 5) | 0] }); } }
-      else if (id === "interlagos" || id === "luigi" || id === "sorvete") { if (k < 0.45) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
+      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra") { if (k < 0.52) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
+      else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
       else if (id === "losangeles") { // palmeiras altas na beira e prédios de vidro mais para trás
         if (k < 0.35) palms.push({ x, y, h: hAt(x, y), s: 1.6 + r() * 0.5, r: r() * 6 });
         else if (k < 0.7) { const sx = 60 + r() * 50, sz = 60 + r() * 50, far = near + 60 + r() * 120, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 25)) glass.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 140 + r() * 360, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); }
@@ -170,7 +186,8 @@ function buildWorld(tr) {
     const x = -pad + 100 + r() * (WORLD + 2 * pad - 200), y = -pad + 100 + r() * (WORLD + 2 * pad - 200);
     if (!free(x, y, 160)) continue;
     if (id === "monaco") { if (y > 1260 * K) continue; blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 60, sy: 80 + r() * 140, sz: 60 + r() * 60, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f"][(r() * 4) | 0] }); }
-    else if (id === "interlagos" || id === "luigi" || id === "sorvete") trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 });
+    else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra") trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 });
+    else if (id === "deserto") { if (r() < 0.07) palms.push({ x, y, h: hAt(x, y), s: 1.2, r: r() * 6 }); }
     else if (id === "losangeles") { if (r() < 0.5) glass.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 120 + r() * 420, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); else palms.push({ x, y, h: hAt(x, y), s: 1.8, r: r() * 6 }); }
     else if (id === "rio") { if (rioSea(x, y)) continue; if (hAt(x, y) > 15 || r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.3 + r() * 1.2 }); else blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 50, sy: 70 + r() * 120, sz: 60 + r() * 50, dy: 0.5, r: r() * 3, c: ["#f4f1e6", "#e8e0cf", "#d9e6ef"][(r() * 3) | 0] }); }
     else towers.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 150 + r() * 500, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#1d2033", "#242842", "#191b2b", "#2a2340"][(r() * 4) | 0] });
@@ -239,16 +256,17 @@ function landmarksRio(tr, add, r, size, ribbon) {
   const waves = canvasTex(128, 128, (x, w, hh) => { x.fillStyle = "#f4f1e6"; x.fillRect(0, 0, w, hh); x.strokeStyle = "#1a1a1a"; x.lineWidth = 14; for (let k = -1; k < 3; k++) { x.beginPath(); for (let yy = 0; yy <= hh; yy += 4) { const xx = w / 2 + Math.sin((yy / hh) * Math.PI * 2) * 30 + k * 0; yy ? x.lineTo(xx + (k - 0.5) * 64, yy) : x.moveTo(xx + (k - 0.5) * 64, yy); } x.stroke(); } });
   ribbon(L, L + 34, 0.5, new THREE.MeshStandardMaterial({ map: waves, roughness: 0.8, side: THREE.DoubleSide }), 40, 0.5, 1, 0, i1);
   const sand = canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#e8d6a8"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 500; i++) { x.fillStyle = rr() < 0.5 ? "#dcc995" : "#f2e3bb"; x.fillRect(rr() * w, rr() * hh, 2, 2); } });
-  ribbon(L + 34, L + 190, 0.3, new THREE.MeshStandardMaterial({ map: sand, roughness: 1, side: THREE.DoubleSide }), 64, -10, 4, 0, i1);
-  const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ color: 0x1f8ab0, roughness: 0.15, metalness: 0.25 }))); sea.rotation.x = -Math.PI / 2; sea.position.set(WORLD / 2, -6, WORLD / 2);
+  ribbon(L + 34, L + 190, 0.6, new THREE.MeshStandardMaterial({ map: sand, roughness: 1, side: THREE.DoubleSide }), 64, 0.6, 4, 0, i1);
+  const world = tr.t.world, K = tr.t.scale;
+  const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ color: 0x1f8ab0, roughness: 0.15, metalness: 0.25 }))); sea.rotation.x = -Math.PI / 2; sea.position.set(world / 2, -6, world / 2);
   // guarda-sóis coloridos na areia
   for (let i = 4; i < i1; i += 6) { const p = pts[i], d = L + 60 + r() * 90, x = p.x + p.nx * d, y = p.y + p.ny * d, col = [0xff5a5a, 0xffd23f, 0x3fa9f5, 0x7ed07a][(r() * 4) | 0];
     const um = add(new THREE.Mesh(new THREE.ConeGeometry(12, 5, 8), M(col))); um.position.set(x, 13, y); const st = add(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 12), M(0xdddddd))); st.position.set(x, 6, y); }
   // Pão de Açúcar (dois morros no mar)
-  for (const [x, y, s] of [[-420, 1650, 1], [-180, 1820, 0.6]]) { const m = add(new THREE.Mesh(new THREE.SphereGeometry(200, 24, 16), M(0x4a5a46))); m.scale.set(s, s * 1.9, s * 0.9); m.position.set(x, 0, y); }
+  for (const [x, y, s] of [[-420, 1650, 1], [-180, 1820, 0.6]]) { const m = add(new THREE.Mesh(new THREE.SphereGeometry(200, 24, 16), M(0x4a5a46))); m.scale.set(s * K, s * K * 1.9, s * K * 0.9); m.position.set(x * K, 0, y * K); }
   // Cristo Redentor num morro alto atrás da subida
-  const hill = add(new THREE.Mesh(new THREE.ConeGeometry(700, 900, 10), M(0x2f5a32))); hill.position.set(2300, 380, -700);
-  const stone = M(0xeeeeee, { roughness: 0.6 }), cg = new THREE.Group(); cg.position.set(2300, 830, -700); add(cg);
+  const hill = add(new THREE.Mesh(new THREE.ConeGeometry(700, 900, 10), M(0x2f5a32))); hill.position.set(2300 * K, 380, -700 * K);
+  const stone = M(0xeeeeee, { roughness: 0.6 }), cg = new THREE.Group(); cg.position.set(2300 * K, 830, -700 * K); add(cg);
   const body = new THREE.Mesh(new THREE.CylinderGeometry(14, 22, 110, 10), stone); body.position.y = 55; cg.add(body);
   const arms = new THREE.Mesh(new THREE.BoxGeometry(150, 14, 14), stone); arms.position.y = 98; arms.rotation.y = 0.7; cg.add(arms);
   const head = new THREE.Mesh(new THREE.SphereGeometry(11, 10, 8), stone); head.position.y = 118; cg.add(head);

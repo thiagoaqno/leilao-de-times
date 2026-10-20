@@ -36,10 +36,13 @@ export function renderLobby() {
   }
   const dis = isHost ? "" : "disabled";
   $("cfg").innerHTML = `<div class="tracks">${Object.entries(PISTAS).map(([id, t]) => `<button class="track ${c.pista === id ? "on" : ""}" data-pista="${id}" ${dis}><canvas data-prev="${id}" width="160" height="160"></canvas><b>${t.name}</b><small>${h(t.sub)}</small>${loadBest(id) ? `<small class="rec">🏆 seu recorde: ${fmt(loadBest(id).t)}</small>` : ""}</button>`).join("")}</div>
-    <div class="field"><label>Voltas</label><div class="seg">${[1, 2, 3, 5].map((v) => `<button data-v="${v}" class="${c.voltas === v ? "on" : ""}" ${dis}>${v}</button>`).join("")}</div></div>`;
+    <div class="field"><label>Voltas</label><div class="seg">${[1, 2, 3, 5].map((v) => `<button data-v="${v}" class="${c.voltas === v ? "on" : ""}" ${dis}>${v}</button>`).join("")}</div></div>
+    <div class="field"><label>Caixas de itens</label><div class="seg"><button data-opt="caixas" class="${c.caixas ? "on" : ""}" ${dis}>${c.caixas ? "🎁 Ligadas" : "Desligadas"}</button></div><small>Os mesmos seis itens da Batalha, espalhados pela pista.</small></div>
+    <div class="field"><label>Equilíbrio</label><div class="seg"><button data-opt="equilibrio" class="${c.equilibrio !== false ? "on" : ""}" ${dis}>${c.equilibrio !== false ? "Ligado" : "Desligado"}</button></div><small>Pequena ajuda de velocidade para quem ficou longe do pelotão.</small></div>`;
   $("cfg").querySelectorAll("[data-prev]").forEach((cv) => drawPreview(cv, cv.dataset.prev));
   $("cfg").querySelectorAll("[data-pista]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, pista: b.dataset.pista } })));
   $("cfg").querySelectorAll("[data-v]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, voltas: +b.dataset.v } })));
+  $("cfg").querySelectorAll("[data-opt]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, [b.dataset.opt]: !E.S.config[b.dataset.opt] } })));
   $("startBox").innerHTML = isHost
     ? `<button class="primary" id="btnStart" style="width:100%;font-size:19px">🏁 Largar</button><p class="hint">A largada é igual para todo mundo: 3, 2, 1… vai!</p>`
     : `<p class="muted" style="margin:0">Esperando o organizador dar a largada…</p>`;
@@ -65,14 +68,16 @@ export function drawPreview(cv, id) {
 $("btnRules").onclick = () => {
   $("modalBox").innerHTML = `<h2>Como jogar</h2>
   <h3>Controles</h3><ul>
-  <li><b>Teclado:</b> ↑ ou W acelera, ↓ ou S freia (e dá ré), ← → ou A D viram. R volta para a pista. C troca a câmera (perto, primeira pessoa ou longe).</li>
-  <li><b>Controle (Xbox/PlayStation):</b> RT (ou A) acelera, LT (ou B) freia e dá ré, o analógico esquerdo vira com a força exata, Y troca a câmera e Select (ou LB) volta para a pista.</li>
-  <li><b>Celular:</b> ◀ ▶ à esquerda viram; ▲ acelera e ▼ freia à direita.</li>
+  <li><b>Teclado:</b> ↑ ou W acelera, ↓ ou S freia (e dá ré), ← → ou A D viram. Espaço ou E usa o item; freio + Espaço joga para trás. R volta para a pista. C troca a câmera.</li>
+  <li><b>Controle (Xbox/PlayStation):</b> RT (ou A) acelera, LT (ou B) freia e dá ré, analógico esquerdo vira, RB usa o item, Y troca a câmera e Select (ou LB) volta para a pista.</li>
+  <li><b>Celular:</b> ◀ ▶ à esquerda viram; ▲ acelera e ▼ freia à direita. Toque no botão 🎁 para usar o item.</li>
   <li><b>↺ Pista:</b> se rodar, ficar preso ou entrar na contramão, volta para o meio da pista.</li></ul>
   <h3>A corrida</h3><ul>
   <li>Largada igual para todo mundo: 3, 2, 1… vai! Ganha quem completar as voltas primeiro.</li>
   <li>Os carros <b>batem de verdade</b>: quem encosta empurra e é empurrado. O tanque é pesado e leva os outros embora; a formiga é leve e sai rodando. Num viaduto ou no ar, um passa por cima do outro.</li>
   <li><b>Vácuo:</b> logo atrás de outro carro, na mesma linha, o seu anda mais (aparecem as linhas de vento). Ficou mais de 1 segundo no vácuo e saiu de trás para ultrapassar? Ganha o <b>estilingue</b>, um empurrão curto.</li>
+  <li><b>Caixas opcionais:</b> bananas, cascos verde e vermelho, cogumelo, estrela e bomba da Batalha. O organizador liga as caixas na sala.</li>
+  <li><b>Equilíbrio:</b> quem estiver muito atrás recebe um pequeno ganho de aceleração e velocidade. A ajuda diminui perto da chegada.</li>
   <li><b>Fantasma do recorde:</b> a sua volta mais rápida em cada pista fica salva neste aparelho. Nas próximas corridas, um carro dourado refaz essa volta com você, e o placar mostra quantos segundos você está na frente (verde) ou atrás (vermelho).</li>
   <li><b>Relevo:</b> subida freia, descida embala, e numa lombada rápida o carro voa. No ar ele não acelera nem vira direito, então chegue alinhado.</li>
   <li><b>Freie antes da curva.</b> O pneu só segura até certo ponto: entrou rápido demais, o carro escorrega para fora (sai fumaça e o pneu canta) e perde velocidade. Fora do asfalto ele fica lento; em Mônaco e em Tóquio tem muro.</li>
@@ -83,6 +88,7 @@ $("btnRules").onclick = () => {
   <li><b>Mônaco:</b> estreita, com guard-rail colado, a subida da Beau Rivage até o Cassino, a descida até o grampo e o porto cheio de iates.</li>
   <li><b>Interlagos:</b> larga e rápida: a descida do S do Senna, a lombada da Reta Oposta (dá para voar!), o Mergulho e a subida dos boxes.</li>
   <li><b>Tóquio:</b> de noite, entre os prédios de neon, com dois viadutos, uma rampa de pulo e o Fuji no horizonte.</li></ul>
+  <p>Rio de Janeiro, Serra Verde e Deserto Dourado oferecem voltas mais longas. Os balizadores das curvas cedem ao toque.</p>
   <div class="row" style="margin-top:16px"><button class="primary" id="rulesOk">Bora!</button></div>`;
   $("modal").classList.remove("hidden");
   $("rulesOk").onclick = () => $("modal").classList.add("hidden");
