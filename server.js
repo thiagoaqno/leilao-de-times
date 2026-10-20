@@ -44,6 +44,7 @@ require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas
 require("./digita.js")(io); // Corrida de Digitação: quem digita a frase mais rápido, canal /digita
 require("./futevolei.js")(io); // Futevôlei da Galera: futevôlei 3D na areia, 1x1 ou duplas, com robôs, canal /futevolei
 require("./haxball.js")(io); // Haxball da Galera: futebol de discos 2D, de 1x1 a 5x5, canal /haxball
+require("./cozinha.js")(io); // Cozinha da Galera: o Overcooked da galera, de 1 a 4 cozinheiros, canal /cozinha
 require("./proibida.js")(io); // Palavra Proibida da Galera: explicar palavras em dois times, canal /proibida
 require("./rumi.js")(io); // Rumi da Galera: o jogo de peças numeradas clássico, 2 a 4 com robôs, canal /rumi
 app.use(express.static(path.join(__dirname, "public")));
@@ -131,6 +132,7 @@ app.get("/road-to-champions/", (req, res) => res.redirect("/jogador/"));
 app.get("/tenis", (req, res) => res.redirect("/tenis/"));
 app.get("/futevolei", (req, res) => res.redirect("/futevolei/"));
 app.get("/haxball", (req, res) => res.redirect("/haxball/"));
+app.get("/cozinha", (req, res) => res.redirect("/cozinha/"));
 app.get("/digita", (req, res) => res.redirect("/digita/"));
 app.get("/rumi", (req, res) => res.redirect("/rumi/"));
 app.get("/proibida", (req, res) => res.redirect("/proibida/"));
