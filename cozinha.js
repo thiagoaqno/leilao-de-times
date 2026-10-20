@@ -20,7 +20,7 @@ module.exports = function attachCozinha(io) {
   const rooms = new Map();
   require("./lobby.js").registrar("cozinha", rooms, { max: MAX_COZINHEIROS });
 
-  const cleanConfig = (c = {}) => ({ cozinha: K.COZINHAS[c.cozinha] ? c.cozinha : "1-1" });
+  const cleanConfig = (c = {}) => ({ cozinha: K.COZINHAS[c.cozinha] ? c.cozinha : "1-1", robos: !!c.robos });
   const cozinheiros = (room) => room.order.map((id) => room.players[id]).filter((p) => p.chef);
   function log(room, text) { room.feed.push({ t: Date.now(), text }); if (room.feed.length > 30) room.feed.splice(0, room.feed.length - 30); }
 
@@ -29,7 +29,7 @@ module.exports = function attachCozinha(io) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config,
       players: room.order.map((id) => { const p = room.players[id]; return { id, name: p.name, chef: p.chef, skin: p.skin, online: p.sockets.size > 0, ping: p.rtt == null ? null : Math.round(p.rtt) }; }),
-      match: m ? { coz: m.coz, jogadores: m.jogadores.map((j) => ({ id: j.id, nome: j.nome, skin: j.skin })) } : null,
+      match: m ? { coz: m.coz, jogadores: m.jogadores.map((j) => ({ id: j.id, nome: j.nome, skin: j.skin })), controles: room.controles, grupos: room.grupos } : null,
       feed: room.feed.slice(-12), now: Date.now(),
     };
   }
@@ -39,6 +39,15 @@ module.exports = function attachCozinha(io) {
   // ---------- partida ----------
   function startMatch(room) {
     const lista = cozinheiros(room).map((p) => ({ id: p.id, nome: p.name, skin: p.skin }));
+    const humanos = lista.slice();
+    room.grupos = Object.fromEntries(lista.map((p) => [p.id, [p.id]]));
+    const extras = room.config.robos ? MAX_COZINHEIROS - lista.length : lista.length === 1 ? 1 : 0;
+    for (let k = 0; k < extras; k++) {
+      const dono = humanos[k % humanos.length], id = dono.id + "-extra-" + k;
+      lista.push({ id, nome: dono.nome + " " + (room.grupos[dono.id].length + 1), skin: dono.skin });
+      room.grupos[dono.id].push(id);
+    }
+    room.controles = Object.fromEntries(Object.keys(room.grupos).map((id) => [id, id]));
     room.match = K.novaPartida(room.config.cozinha, lista);
     room.phase = "play"; room.frame = 0; room.acum = 0; room.ultTick = Date.now();
     log(room, `Cozinha aberta: ${K.COZINHAS[room.match.coz].nome}.`);
@@ -58,7 +67,7 @@ module.exports = function attachCozinha(io) {
     if (agora - (room.ultSnap || 0) >= SNAP_MS) { room.ultSnap = agora; nsp.to(room.code).volatile.emit("snap", { t: Date.now(), j: m.jogadores.map((j) => [j.id, q2(j.x), q2(j.z), q2(j.vx), q2(j.vz), q2(j.d || 0)]) }); }
     if (m.fase === "fim") {
       room.phase = "over"; clearInterval(room.loop); room.loop = null;
-      const nomes = m.jogadores.map((j) => j.nome);
+      const nomes = cozinheiros(room).map((p) => p.name);
       if (m.estrelas > 0) noite.vitoria("cozinha", room.code, nomes, []); else noite.vitoria("cozinha", room.code, [], nomes);
       log(room, `Fim do expediente: ${m.pontos} pontos e ${m.estrelas} ${m.estrelas === 1 ? "estrela" : "estrelas"}.`);
       broadcast(room); mandarMesa(room);
@@ -69,7 +78,7 @@ module.exports = function attachCozinha(io) {
   nsp.on("connection", (socket) => {
     const ctx = () => contexto(socket, rooms);
     const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
-    const jogadorDe = (room, me) => room && me && room.match && room.match.jogadores.find((j) => j.id === me.id);
+    const jogadorDe = (room, me) => room && me && room.match && room.match.jogadores.find((j) => j.id === room.controles?.[me.id]);
     function addPlayer(room, name, skin) {
       const id = rid(6);
       room.players[id] = { id, token: rid(12), name, chef: room.phase === "lobby" && cozinheiros(room).length < MAX_COZINHEIROS, skin: Campo.SKINS[skin] ? skin : "padrao", rtt: null, sockets: new Set() };
@@ -131,6 +140,10 @@ module.exports = function attachCozinha(io) {
           me.chef = !!data.on; return;
         }
         if (type === "skin") { if (!me || !Campo.SKINS[data.skin]) return "Skin inválida."; me.skin = data.skin; return; }
+        if (type === "trocar") {
+          const grupo = me && room.grupos?.[me.id]; if (!playing || !grupo || grupo.length < 2) return "Não há outro cozinheiro para trocar.";
+          room.controles[me.id] = grupo[(grupo.indexOf(room.controles[me.id]) + 1) % grupo.length]; return;
+        }
         if (type === "config") {
           if (!isHost || playing) return "Só o organizador muda, fora do expediente.";
           room.config = cleanConfig(data.config); return;
