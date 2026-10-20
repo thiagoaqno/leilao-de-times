@@ -17,7 +17,7 @@ import { startItems, stopItems, stepItems } from "./itens.js";
 import { passoEfeitos, limparEfeitos } from "./efeitos.js";
 import { animarVida } from "./vida.js";
 import { ceuPronto } from "./ceu.js";
-import { desenhar, ajustarTela, medirQuadro } from "./desfoque.js";
+import { desenhar, ajustarTela, medirQuadro, comecarMedida } from "./desfoque.js";
 const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
 // ---------- corrida ----------
@@ -32,7 +32,7 @@ export function startRace(st) {
     kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0 };
   startItems(tr, st.config.caixas);
   $("results").classList.add("hidden");
-  resize();
+  resize(); comecarMedida();
   if (!raf) raf = requestAnimationFrame(loop);
 }
 function clearRace() { if (!race) return; stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
