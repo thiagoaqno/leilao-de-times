@@ -48,13 +48,14 @@ function enquadrar() {
 function montarCozinha(cozId) {
   limparCozinha();
   const coz = K.COZINHAS[cozId]; G.coz = cozId; G.mapa = K.montarMapa(coz);
-  cozinha3d.add(Mod.chao(G.mapa.w, G.mapa.h), Mod.paredes(G.mapa.w, G.mapa.h));
-  const fora = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 1 })); fora.rotation.x = -Math.PI / 2; fora.position.y = -0.01; fora.receiveShadow = true; cozinha3d.add(fora);
+  const tema = Mod.TEMAS[coz.tema] || Mod.TEMAS.restaurante; scene.background.setHex(tema.fundo);
+  cozinha3d.add(Mod.chao(G.mapa.w, G.mapa.h, coz.tema), Mod.paredes(G.mapa.w, G.mapa.h, coz.tema));
+  const fora = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: tema.fora, roughness: 1 })); fora.rotation.x = -Math.PI / 2; fora.position.y = -0.01; fora.receiveShadow = true; cozinha3d.add(fora);
   G.lugares = G.mapa.tiles.map((t) => {
     const g = Mod.estacao(t); g.position.set((t.c + 0.5) * T, 0, (t.r + 0.5) * T); cozinha3d.add(g);
     const b = Mod.barra(); b.visible = false; b.position.set(g.position.x, 2.1, g.position.z); cozinha3d.add(b);
     const av = Mod.aviso(); av.visible = false; av.position.set(g.position.x, 2.5, g.position.z); cozinha3d.add(av);
-    return { t, g, barra: b, aviso: av, chave: "", obj: null, chama: g.userData.chama || null, fogo: g.userData.fogo || null, agua: g.userData.agua || null, faca: g.userData.faca || null };
+    return { t, g, barra: b, aviso: av, chave: "", obj: null, chama: g.userData.chama || null, fogo: g.userData.fogo || null, agua: g.userData.agua || null, faca: g.userData.faca || null, divisoria: g.userData.divisoria || null };
   });
   // o anel de luz da bancada da frente (a que o meu cozinheiro vai usar)
   G.luz = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(T * 1.04, 0.04, T * 1.04)), new THREE.LineBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.9, depthTest: false }));
@@ -71,6 +72,7 @@ function limparCozinha() {
 // a mesa nova do servidor: troca o modelo só do que mudou
 function aplicarMesa() {
   const ms = G.mesa; if (!ms || !G.mapa) return;
+  if (G.mapa.baixo !== !!ms.baixo) G.mapa.baixo = !!ms.baixo;
   ms.lugares.forEach(([item, n], i) => {
     const L = G.lugares[i]; if (!L) return;
     const pilhaN = L.t.tipo === "escorredor" || L.t.tipo === "pia" ? n : 0, chave = JSON.stringify([item && { ...item, p: 0 }, pilhaN]);
@@ -110,12 +112,13 @@ function barras(tJogo) {
       if (trabalhando.has(i) && agora - (L.cortou || 0) > 0.22) { L.cortou = agora; particulas(L.g.position, K.INGREDIENTES[item.t].cor, 4, "lasca"); }
     }
     if (L.t.tipo === "pia" && n && (p > 0 || trabalhando.has(i))) v = (p + (trabalhando.has(i) ? passou : 0)) / K.TEMPOS.lavar;
-    if (L.t.tipo === "fogao" && item && K.RECIPIENTES[item.k] && item.c.length && !item.q) {
-      const R = K.RECIPIENTES[item.k], prec = R.tempo * item.c.length, pp = item.p + (L.t.tipo === "fogao" && ms.fase === "jogo" ? passou : 0);
+    const noFogo = !!L.t.rec && item && K.RECIPIENTES[item.k] && item.c.length && !item.q && K.esquenta(item);
+    if (noFogo) {
+      const R = K.RECIPIENTES[item.k], prec = K.tempoRec(item), pp = item.p + (ms.fase === "jogo" ? passou : 0);
       if (pp < prec) v = pp / prec;
       else if (pp >= prec + R.queima * K.TEMPOS.alerta) alerta = true;
     }
-    const aceso = L.t.tipo === "fogao" && item && K.RECIPIENTES[item.k] && item.c.length && !item.q;
+    const aceso = noFogo;
     if (L.chama) L.chama.material.emissiveIntensity = aceso ? 1.1 + Math.sin(agora * 17 + i) * 0.35 : 0;
     if (L.fogo) { L.fogo.visible = !!(aceso || item?.q); if (L.fogo.visible) L.fogo.children.forEach((f, k) => { f.scale.y = (item.q ? 0.2 : 0.08) + 0.05 * (1 + Math.sin(agora * 14 + k)); }); }
     if (L.agua) L.agua.visible = trabalhando.has(i);
@@ -131,12 +134,22 @@ function barras(tJogo) {
       const carne = L.obj.userData.carne, progresso = Math.min(1, (item.p + (aceso ? passou : 0)) / K.tempoRec(item));
       carne.material.color.copy(new THREE.Color("#b64d48").lerp(new THREE.Color(item.q ? "#17120f" : "#714020"), item.q ? 1 : progresso));
     }
+    if (L.divisoria) divisoria(L, tJogo, agora);
     L.barra.visible = v != null && v < 1; if (L.barra.visible) { L.barra.userData.set(v, cor); L.barra.quaternion.copy(cam.quaternion); }
-    const urgencia = L.t.tipo === "fogao" && item && K.RECIPIENTES[item.k] ? Math.max(0, (item.p + passou - K.tempoRec(item)) / K.RECIPIENTES[item.k].queima) : 0;
+    const urgencia = noFogo ? Math.max(0, (item.p + passou - K.tempoRec(item)) / K.RECIPIENTES[item.k].queima) : 0;
     const pulso = Math.max(0.12, 0.48 - urgencia * 0.32);
     L.aviso.visible = alerta && Math.floor(agora / pulso) % 2 === 0;
     if (alerta && performance.now() - (L.bip || 0) > pulso * 1700) { L.bip = performance.now(); Som.bip(); }
   });
+}
+
+// a divisória do food truck: desce e sobe devagar e pisca nos 2 s antes de mudar (o mapa muda na hora que o servidor
+// manda; o desenho só acompanha)
+function divisoria(L, tJogo, agora) {
+  const coz = K.COZINHAS[G.coz], alvoY = G.mapa.baixo ? -(Mod.ALTURA - 0.04) : 0, d = L.divisoria;
+  d.position.y += (alvoY - d.position.y) * 0.12;
+  const vaiMudar = coz.mexe && G.mesa?.fase === "jogo" && K.divisoriaBaixa(coz, tJogo + 2) !== G.mapa.baixo;
+  d.children[0].material.emissive.setHex(vaiMudar && Math.floor(agora * 6) % 2 === 0 ? 0x664400 : 0x000000);
 }
 
 // ---------- a fumaça da panela queimada ----------
@@ -162,7 +175,7 @@ function fumaca(dt) {
   const agora = performance.now();
   for (const L of G.lugares) {
     const it = G.mesa && G.mesa.lugares[L.t.i] && G.mesa.lugares[L.t.i][0];
-    if (!it || !K.RECIPIENTES[it.k] || !it.c.length || (L.t.tipo !== "fogao" && !it.q) || agora - (L.fumou || 0) < 220 || fumacas.length > 60) continue;
+    if (!it || !K.RECIPIENTES[it.k] || !it.c.length || (!L.t.rec && !it.q) || agora - (L.fumou || 0) < 220 || fumacas.length > 60) continue;
     const perto = (it.p - K.tempoRec(it)) / K.RECIPIENTES[it.k].queima;
     if (!it.q && perto < 0.4) continue;
     L.fumou = agora;
@@ -252,10 +265,25 @@ const skinBotoes = (atual) => Object.entries(CP.SKINS).map(([k, s]) => `<button 
 const minhaSkin = () => store.get("galera:skin") || "padrao";
 function telaInicial() { $("hSkins").innerHTML = skinBotoes(minhaSkin()); }
 const myP = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : null);
-// o cartão de uma cozinha: o número, o nome, o texto e os pratos do cardápio
+// o mapa das fases (como o do Overcooked): as estrelas de cada cozinha ficam guardadas neste navegador, e a próxima
+// só abre depois de pelo menos 1 estrela na anterior. Cada "mundo" é o número antes do traço.
+const CADEADO = `<svg viewBox="0 0 24 24" class="cadeado"><rect x="4" y="10" width="16" height="12" rx="2" fill="#8a7a66" stroke="#2a1d17" stroke-width="1.6"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#2a1d17" stroke-width="2"/><rect x="11" y="14" width="2" height="4" fill="#2a1d17"/></svg>`;
+const MUNDOS = { 1: "A cozinha da galera", 2: "Pelo mundo" };
+const progresso = () => store.get("cozinha:estrelas") || {};
+function liberada(id) {
+  const ids = Object.keys(K.COZINHAS), i = ids.indexOf(id);
+  return i <= 0 || (progresso()[ids[i - 1]] || 0) >= 1;
+}
+function guardarEstrelas(id, n) { const p = progresso(); if (n > (p[id] || 0)) { p[id] = n; store.set("cozinha:estrelas", p); } }
+function mapaFases(atual, pode) {
+  const porMundo = new Map();
+  for (const id of Object.keys(K.COZINHAS)) { const m = id.split("-")[0]; if (!porMundo.has(m)) porMundo.set(m, []); porMundo.get(m).push(id); }
+  return [...porMundo].map(([m, ids]) => `<div class="mundo"><h3>Mundo ${m}<small>${h(MUNDOS[m] || "")}</small></h3><div class="trilha">${ids.map((id) => cartaoCozinha(id, atual, pode)).join("")}</div></div>`).join("");
+}
+// o cartão de uma cozinha: o número, o nome, o texto, os pratos do cardápio e as estrelas que já ganhou
 function cartaoCozinha(id, atual, pode) {
-  const c = K.COZINHAS[id];
-  return `<button class="coz ${id === atual ? "on" : ""}" data-coz="${id}" ${pode ? "" : "disabled"}><span class="num">${id}</span><span><b>${h(c.nome)}</b><small>${h(c.desc)}</small>
+  const c = K.COZINHAS[id], livre = liberada(id), est = progresso()[id] || 0;
+  return `<button class="coz ${id === atual ? "on" : ""} ${livre ? "" : "trancada"}" data-coz="${id}" ${pode && livre ? "" : "disabled"}><span class="num">${livre ? id : CADEADO}<span class="mini">${[1, 2, 3].map((k) => ESTRELA(est >= k)).join("")}</span></span><span><b>${h(c.nome)}</b><small>${livre ? h(c.desc) : "Ganhe pelo menos 1 estrela na cozinha anterior para abrir esta."}</small>
     <span class="rec">${c.receitas.map((r) => `<img src="${Mod.figuraReceita(r)}" alt="${h(K.RECEITAS[r].nome)}" title="${h(K.RECEITAS[r].nome)}">`).join("")}</span></span></button>`;
 }
 function fichasHTML(cozId) {
@@ -286,8 +314,8 @@ function tutorialEtapas(cozId) {
   const caixa = mapa.tiles.find((t) => t.tipo === "caixa" && t.ing === ing);
   const etapas = [[caixa, `Pegue ${K.INGREDIENTES[ing].nome.toLowerCase()} aqui`, "pegou"]];
   if (K.INGREDIENTES[ing].passos.includes("picar")) etapas.push([mapa.tiles.find((t) => t.tipo === "tabua"), "Pique na tábua", "picou"]);
-  const processo = K.INGREDIENTES[ing].passos.find((p) => p === "cozinhar" || p === "fritar");
-  if (processo) etapas.push([mapa.tiles.find((t) => t.tipo === "fogao" && t.rec === (processo === "fritar" ? "frigideira" : "panela")), processo === "fritar" ? "Frite aqui" : "Cozinhe na panela", "pronto"]);
+  const processo = K.INGREDIENTES[ing].passos.find((p) => p !== "picar"), TEXTO = { cozinhar: "Cozinhe na panela", fritar: "Frite aqui", assar: "Asse no forno" };
+  if (processo) etapas.push([mapa.tiles.find((t) => t.rec && K.RECIPIENTES[t.rec].processo === processo), TEXTO[processo], "pronto"]);
   etapas.push([mapa.tiles.find((t) => t.tipo === "escorredor"), "Pegue um prato", "pegou"]);
   etapas.push([mapa.tiles.find((t) => t.tipo === "entrega"), "Entregue o prato", "entregou"]);
   return etapas.filter(([t]) => !!t);
@@ -314,7 +342,7 @@ function desenharGuia() {
     const mao = ms.maos[G.myId];
     if (mao?.k === "ing" && K.proximoPasso(mao) === "picar") { t = G.mapa.tiles.find((x) => x.tipo === "tabua"); texto = "Pique aqui"; dica = true; }
     if (mao?.k === "prato" && !mao.c.length) {
-      t = G.mapa.tiles.find((x) => x.tipo === "fogao" && K.pronto(ms.lugares[x.i][0]));
+      t = G.mapa.tiles.find((x) => x.rec && K.pronto(ms.lugares[x.i][0]));
       if (t) { texto = "Sirva o prato"; dica = true; }
     }
   }
@@ -331,7 +359,7 @@ function renderLobby() {
   $("lFora").innerHTML = fora.length ? "Só olhando: " + fora.map((p) => h(p.name)).join(", ") : "";
   $("btnChef").classList.toggle("hidden", !mine); if (mine) $("btnChef").textContent = mine.chef ? "Só olhar" : "Entrar na cozinha";
   $("lSkins").innerHTML = skinBotoes(mine && mine.skin);
-  $("lCoz").innerHTML = Object.keys(K.COZINHAS).map((id) => cartaoCozinha(id, S.config.cozinha, isHost)).join("");
+  $("lCoz").innerHTML = mapaFases(S.config.cozinha, isHost);
   $("lRobos").innerHTML = isHost ? `<button class="ghost" data-robos="1">Cozinheiros extras: ${S.config.robos ? "ligados" : "desligados"}</button><p class="muted">As vagas livres viram cozinheiros que você troca com Q.</p>` : `<p class="muted">Cozinheiros extras: ${S.config.robos ? "ligados" : "desligados"}</p>`;
   $("startBox").innerHTML = isHost ? `<button class="primary" id="btnStart" style="width:100%">Abrir a cozinha</button>` : `<p class="muted">Esperando o organizador abrir a cozinha…</p>`;
   if ($("btnStart")) $("btnStart").onclick = () => { Som.unlock(); act("start"); };
@@ -358,7 +386,7 @@ function mostrarFim() {
   $("over").classList.remove("hidden");
   if ($("btnDeNovo")) $("btnDeNovo").onclick = () => act("start");
   if ($("btnTrocar")) $("btnTrocar").onclick = () => act("lobby");
-  if (!G.fimTocado) { G.fimTocado = true; Som.fim(); if (ms.estrelas && !matchMedia("(prefers-reduced-motion: reduce)").matches) Comum.confetti(["#f2b632", "#e2553d", "#fff8ea", "#3aa65b"]); }
+  if (!G.fimTocado) { G.fimTocado = true; guardarEstrelas(ms.coz, ms.estrelas); Som.fim(); if (ms.estrelas && !matchMedia("(prefers-reduced-motion: reduce)").matches) Comum.confetti(["#f2b632", "#e2553d", "#fff8ea", "#3aa65b"]); }
 }
 
 // ---------- HUD: pedidos, moedas, relógio ----------
@@ -501,6 +529,7 @@ function aoEvento(e) {
     case "picou": Som.picar(); break;
     case "lavou": Som.lavar(); { const esc = G.lugares.find((L) => L.t.tipo === "escorredor"); if (esc) flutuar(esc.t.i, "✦"); } break;
     case "pronto": Som.pronto(); break;
+    case "mexeu": Som.apito(); toast(e.baixo ? "A divisória abaixou: dá para passar pelo meio!" : "A divisória subiu de novo."); break;
     case "queimou": Som.queimou(); toast("Queimou! Jogue no lixo e comece de novo."); break;
     case "entregou": Som.entregou(); entregaVisual(e); flutuar(e.i, `+${e.pontos}${e.gorjeta ? `<small>+${e.gorjeta} de gorjeta</small>` : ""}`); break;
     case "pedido": Som.pedido(); break;

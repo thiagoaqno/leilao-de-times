@@ -20,24 +20,54 @@ const texAco = canvasTex(64, 64, (x, w, h, r) => { x.fillStyle = "#c9d0d6"; x.fi
 const texMadeira = canvasTex(64, 64, (x, w, h, r) => { x.fillStyle = "#b07a45"; x.fillRect(0, 0, w, h); for (let i = 0; i < 14; i++) { x.fillStyle = r() < 0.5 ? "#8a5a30" : "#c48d55"; x.fillRect(0, r() * h, w, 1 + r() * 2); } });
 const texFrente = canvasTex(64, 64, (x, w, h) => { x.fillStyle = "#e9e1cf"; x.fillRect(0, 0, w, h); x.fillStyle = "#d4c9b0"; x.fillRect(4, 6, w - 8, h - 14); x.fillStyle = "#9a8f78"; x.fillRect(w / 2 - 8, 12, 16, 3); });
 const texCaixote = canvasTex(64, 64, (x, w, h) => { x.fillStyle = "#a8743f"; x.fillRect(0, 0, w, h); x.fillStyle = "#86592c"; for (let i = 0; i < 4; i++) x.fillRect(0, i * 16 + 14, w, 2); x.fillRect(0, 0, 4, h); x.fillRect(w - 4, 0, 4, h); });
-const texParede = canvasTex(64, 64, (x, w, h) => { x.fillStyle = "#f3efe6"; x.fillRect(0, 0, w, h); x.strokeStyle = "#cfc6b4"; x.lineWidth = 2; for (let i = 0; i <= 64; i += 16) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, h); x.moveTo(0, i); x.lineTo(w, i); x.stroke(); } x.fillStyle = "#3f7fb5"; x.fillRect(0, 44, w, 6); });
+// ---------- temas: o chão, a parede e o lado de fora de cada cozinha (coz.tema em regras.js) ----------
+export const TEMAS = {
+  restaurante: { piso: "xadrez", cores: ["#efe7d6", "#c95f4a"], parede: "azulejo", corParede: ["#f3efe6", "#cfc6b4"], faixa: "#3f7fb5", fora: 0x3a2a20, fundo: 0x1b120e },
+  sushi: { piso: "tatame", cores: ["#d8c48e", "#b9a46c"], parede: "ripas", corParede: ["#efe4cc", "#8a5a30"], faixa: "#b8322a", fora: 0x22201c, fundo: 0x121010 },
+  foodtruck: { piso: "chapa", cores: ["#b7bec6", "#8d959f"], parede: "azulejo", corParede: ["#ffd75a", "#e0b43a"], faixa: "#e2553d", fora: 0x4a4f55, fundo: 0x1a2430 },
+  pizzaria: { piso: "terracota", cores: ["#d98a5a", "#b9643a"], parede: "tijolo", corParede: ["#b5562f", "#e8d6bd"], faixa: "#2f7d3a", fora: 0x3a2418, fundo: 0x1e110b },
+};
+const temaDe = (t) => TEMAS[t] || TEMAS.restaurante;
+const paredeTex = new Map();
+function texParedeDe(tema) {
+  const T2 = temaDe(tema), k = T2.parede + T2.corParede + T2.faixa;
+  if (!paredeTex.has(k)) paredeTex.set(k, canvasTex(64, 64, (x, w, h) => {
+    const [c1, c2] = T2.corParede; x.fillStyle = c1; x.fillRect(0, 0, w, h);
+    if (T2.parede === "tijolo") { x.fillStyle = c2; for (let r = 0; r < 8; r++) for (let c = -1; c < 4; c++) x.fillRect(c * 16 + (r % 2) * 8 + 1, r * 8 + 1, 14, 6); x.fillStyle = "#00000022"; for (let r = 0; r < 8; r++) x.fillRect(0, r * 8, w, 1); }
+    else if (T2.parede === "ripas") { x.fillStyle = c2; for (let i = 0; i < 64; i += 8) x.fillRect(i, 0, 2, h); x.fillRect(0, 30, w, 3); }
+    else { x.strokeStyle = c2; x.lineWidth = 2; for (let i = 0; i <= 64; i += 16) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, h); x.moveTo(0, i); x.lineTo(w, i); x.stroke(); } }
+    x.fillStyle = T2.faixa; x.fillRect(0, 44, w, 6);
+  }));
+  return paredeTex.get(k);
+}
+const texParede = texParedeDe("restaurante");
 const mAco = new THREE.MeshStandardMaterial({ map: texAco, metalness: 0.45, roughness: 0.45 });
 const mMadeira = new THREE.MeshStandardMaterial({ map: texMadeira, roughness: 0.8 });
 const mFrente = new THREE.MeshStandardMaterial({ map: texFrente, roughness: 0.85 });
 const mCaixote = new THREE.MeshStandardMaterial({ map: texCaixote, roughness: 0.9 });
 const mParede = new THREE.MeshStandardMaterial({ map: texParede, roughness: 0.9 });
+const mTijolo = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, h) => { x.fillStyle = "#e3cdb0"; x.fillRect(0, 0, w, h); x.fillStyle = "#b5562f"; for (let r = 0; r < 8; r++) for (let c = -1; c < 4; c++) x.fillRect(c * 16 + (r % 2) * 8 + 1, r * 8 + 1, 14, 6); }), roughness: 0.95 });
+const mFaixa = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, h) => { x.fillStyle = "#f2c230"; x.fillRect(0, 0, w, h); x.fillStyle = "#2b2b2b"; for (let i = -64; i < 64; i += 16) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 8, 0); x.lineTo(i + 72, h); x.lineTo(i + 64, h); x.fill(); } }), roughness: 0.7 });
 
-// o chão: azulejo xadrez da cozinha (w x h casas)
-export function chao(w, h) {
-  const tex = canvasTex(64, 64, (x, ww, hh) => { x.fillStyle = "#efe7d6"; x.fillRect(0, 0, ww, hh); x.fillStyle = "#c95f4a"; x.fillRect(0, 0, ww / 2, hh / 2); x.fillRect(ww / 2, hh / 2, ww / 2, hh / 2); x.fillStyle = "#00000018"; x.fillRect(0, 0, ww, 1); x.fillRect(0, 0, 1, hh); }, true);
+// o chão (w x h casas), no jeito do tema: azulejo xadrez, tatame, chapa de metal ou lajota de terracota
+export function chao(w, h, tema) {
+  const T2 = temaDe(tema), [c1, c2] = T2.cores;
+  const tex = canvasTex(64, 64, (x, ww, hh, r) => {
+    x.fillStyle = c1; x.fillRect(0, 0, ww, hh);
+    if (T2.piso === "tatame") { x.fillStyle = c2; for (let i = 0; i < hh; i += 4) x.fillRect(0, i, ww, 1); x.fillStyle = "#3a5a2a"; x.fillRect(0, 0, ww, 3); x.fillRect(0, hh - 3, ww, 3); }
+    else if (T2.piso === "chapa") { x.fillStyle = c2; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.save(); x.translate(i * 16 + 8, j * 16 + 8); x.rotate((i + j) % 2 ? 0.8 : -0.8); x.fillRect(-5, -1.5, 10, 3); x.restore(); } }
+    else if (T2.piso === "terracota") { x.fillStyle = c2; x.fillRect(0, 0, ww / 2 - 1, hh / 2 - 1); x.fillRect(ww / 2, hh / 2, ww / 2 - 1, hh / 2 - 1); for (let i = 0; i < 40; i++) { x.fillStyle = r() < 0.5 ? "#ffffff10" : "#0000000f"; x.fillRect(r() * ww, r() * hh, 3, 3); } x.fillStyle = "#e8d6bd"; x.fillRect(0, hh / 2 - 1, ww, 1); x.fillRect(ww / 2 - 1, 0, 1, hh); }
+    else { x.fillStyle = c2; x.fillRect(0, 0, ww / 2, hh / 2); x.fillRect(ww / 2, hh / 2, ww / 2, hh / 2); }
+    x.fillStyle = "#00000018"; x.fillRect(0, 0, ww, 1); x.fillRect(0, 0, 1, hh);
+  }, true);
   tex.repeat.set(w, h);
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w * T, h * T), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.75 }));
   m.rotation.x = -Math.PI / 2; m.position.set(w * T / 2, 0, h * T / 2); m.receiveShadow = true;
   return m;
 }
 // a parede do fundo e dos lados (enfeite atrás das bancadas de cima)
-export function paredes(w, h) {
-  const g = new THREE.Group(), alt = 3.2;
+export function paredes(w, h, tema) {
+  const g = new THREE.Group(), alt = 3.2, mParede = new THREE.MeshStandardMaterial({ map: texParedeDe(tema), roughness: 0.9 });
   const fundo = caixa(w * T + 1, alt, 0.4, mParede, w * T / 2, alt / 2, -0.2); g.add(fundo);
   for (const s of [0, 1]) g.add(caixa(0.4, 1.1, h * T + 0.4, mParede, s ? w * T + 0.2 : -0.2, 0.55, h * T / 2 - 0.2)); // dos lados, só a mureta (para a câmera ver tudo)
   // a janela com o céu e as prateleiras de enfeite
@@ -61,6 +91,22 @@ export function estacao(t) {
     g.add(cil(T * 0.32, 0.85, "#8f9aa6", 0, 0.42, 0, { metalness: 0.2, roughness: 0.45 }));
     g.add(cil(T * 0.34, 0.06, "#6d7883", 0, 0.88, 0)); g.add(cil(T * 0.27, 0.01, "#2b2f35", 0, 0.915, 0));
     g.add(caixa(0.2, 0.05, 0.12, "#2b3036", 0, 0.04, T * 0.36));
+    return g;
+  }
+  if (tipo === "divisoria") { // a divisória que desce no chão e sobe de novo (listras de aviso)
+    const sobe = new THREE.Group();
+    sobe.add(caixa(T, ALTURA - 0.06, T, mFaixa, 0, (ALTURA - 0.06) / 2, 0)); sobe.add(caixa(T * 1.002, 0.06, T * 1.002, "#3a3f46", 0, ALTURA - 0.03, 0));
+    g.add(sobe); g.userData.divisoria = sobe;
+    g.add(caixa(T * 0.98, 0.012, T * 0.98, "#2b2f35", 0, 0.006, 0)); // o trilho no chão, que aparece quando ela abaixa
+    return g;
+  }
+  if (tipo === "forno") { // o forno de tijolo: a boca acesa quando assa, a chaminé, e a assadeira em cima
+    g.add(caixa(T, ALTURA - 0.06, T, mTijolo, 0, (ALTURA - 0.06) / 2, 0));
+    g.add(caixa(T * 1.002, 0.06, T * 1.002, "#5a3a2a", 0, ALTURA - 0.03, 0));
+    const boca = new THREE.Mesh(new THREE.CircleGeometry(0.34, 20, 0, Math.PI), new THREE.MeshStandardMaterial({ color: 0x140c08, emissive: 0xff6a1a, emissiveIntensity: 0 }));
+    boca.position.set(0, 0.28, T / 2 + 0.006); g.add(boca); g.userData.chama = boca;
+    g.add(caixa(0.8, 0.06, 0.04, "#7a4a30", 0, 0.25, T / 2 + 0.01));
+    g.add(caixa(0.22, 0.5, 0.22, mTijolo, T * 0.3, ALTURA + 0.25, -T * 0.32));
     return g;
   }
   if (tipo === "caixa") {
@@ -108,8 +154,10 @@ export function estacao(t) {
 
 // ---------- a comida ----------
 function ingInteiro(t, e) {
-  const d = K.INGREDIENTES[t], g = new THREE.Group(), cor = e === "queimado" ? "#1c1c1c" : e === "frito" ? "#6b3a1f" : d.cor;
+  const d = K.INGREDIENTES[t], g = new THREE.Group(), cor = e === "queimado" ? "#1c1c1c" : e === "frito" ? "#6b3a1f" : e === "assado" ? "#d89a48" : d.cor;
   switch (d.forma) {
+    case "disco": g.add(cil(0.22, 0.04, cor, 0, 0.02, 0)); if (e === "assado") g.add(cil(0.17, 0.045, "#e8b867", 0, 0.025, 0)); break;
+    case "queijo": { const q = caixa(0.26, 0.14, 0.18, cor, 0, 0.07, 0); q.rotation.y = 0.4; g.add(q); g.add(bola(0.03, d.cor2, 0.05, 0.14, 0.02)); break; }
     case "cogumelo": g.add(cil(0.05, 0.12, d.cor2, 0, 0.06, 0)); g.add(bola(0.15, cor, 0, 0.14, 0, 1, 0.6, 1)); break;
     case "comprido": { const m = cil(0.07, 0.42, cor, 0, 0.08, 0); m.rotation.z = Math.PI / 2; g.add(m); break; }
     case "bife": g.add(cil(0.17, 0.08, cor, 0, 0.04, 0)); if (e !== "frito" && e !== "queimado") g.add(cil(0.08, 0.085, d.cor2, 0.05, 0.04, 0.03)); break;
@@ -133,6 +181,24 @@ function ingPicado(t, e, r = 0.16) {
   return g;
 }
 export function ingrediente(t, e) { return e === "picado" || (e === "cozido" && K.INGREDIENTES[t].forma !== "saco") ? ingPicado(t, e) : t === "arroz" && e === "cozido" ? bolinhoArroz() : ingInteiro(t, e); }
+// a pizza: a massa, o molho e o queijo derretido (ou em cubinhos, antes de assar); queimada, fica preta
+function pizza(c, y = 0) {
+  const g = new THREE.Group(), q = c.some((i) => i.e === "queimado"), m = c.find((i) => i.t === "massa"), assou = m && m.e === "assado";
+  if (m) g.add(cil(0.25, 0.04, q ? "#1c1c1c" : assou ? "#d89a48" : K.INGREDIENTES.massa.cor, 0, y + 0.02, 0));
+  if (c.some((i) => i.t === "tomate")) g.add(cil(0.2, 0.012, q ? "#2a1a17" : "#c8352a", 0, y + 0.046, 0));
+  if (c.some((i) => i.t === "queijo")) {
+    if (assou && !q) { g.add(cil(0.17, 0.012, "#f7d36a", 0, y + 0.056, 0)); for (let k = 0; k < 5; k++) g.add(cil(0.035, 0.013, "#e9a92a", Math.cos(k * 1.3) * 0.1, y + 0.062, Math.sin(k * 1.3) * 0.1)); }
+    else { const p = ingPicado("queijo", q ? "queimado" : "picado", 0.12); p.scale.setScalar(0.7); p.position.y = y + 0.05; g.add(p); }
+  }
+  if (!m) c.forEach((i, k) => { const p = ingPicado(i.t, i.e, 0.1); p.scale.setScalar(0.6); p.position.set(Math.cos(k * 2.1) * 0.1, y + 0.02, Math.sin(k * 2.1) * 0.1); g.add(p); });
+  return g;
+}
+function assadeira(o) {
+  const g = new THREE.Group();
+  g.add(cil(0.31, 0.025, "#5b5f66", 0, 0.012, 0, { metalness: 0.4, roughness: 0.45 })); g.add(cil(0.29, 0.03, "#3d4046", 0, 0.016, 0));
+  if (o.c.length) g.add(pizza(o.c, 0.03));
+  return g;
+}
 const bolinhoArroz = () => { const g = new THREE.Group(); g.add(bola(0.15, "#f7f4ea", 0, 0.08, 0, 1, 0.55, 1)); return g; };
 
 // a cor do caldo: a média das cores dos ingredientes
@@ -170,6 +236,24 @@ function prato(o) {
     g.add(cil(0.22, 0.16, "#fbfbf8", 0, 0.12, 0, { roughness: 0.3 })); g.add(cil(0.19, 0.02, corCaldo(c), 0, 0.2, 0, { roughness: 0.35 }));
     return g;
   }
+  if (c.some((i) => i.t === "massa")) { g.add(pizza(c, 0.035)); return g; }
+  if (c.some((i) => i.t === "tortilha")) { // o burrito: a tortilha aberta e, com recheio, enrolada (com a ponta do recheio aparecendo)
+    const tor = K.INGREDIENTES.tortilha;
+    if (c.length === 1) { g.add(cil(0.22, 0.03, tor.cor, 0, 0.05, 0)); return g; }
+    const rolo = cil(0.1, 0.42, tor.cor, 0, 0.12, 0); rolo.rotation.z = Math.PI / 2; g.add(rolo);
+    const recheio = c.some((i) => i.t === "carne") ? "#6b3a1f" : "#f4f1e6", ponta = cil(0.085, 0.02, recheio, 0.21, 0.12, 0); ponta.rotation.z = Math.PI / 2; g.add(ponta);
+    for (const s of [-0.1, 0.06]) { const f = cil(0.102, 0.02, tor.cor2, s, 0.12, 0); f.rotation.z = Math.PI / 2; g.add(f); }
+    return g;
+  }
+  if (c.some((i) => i.t === "alga") && c.some((i) => i.t === "arroz")) { // o sushi: três rolinhos de alga com o arroz e o recheio no meio
+    const meio = c.find((i) => i.t !== "alga" && i.t !== "arroz");
+    for (let k = 0; k < 3; k++) { const x0 = (k - 1) * 0.15; g.add(cil(0.07, 0.08, K.INGREDIENTES.alga.cor, x0, 0.08, 0)); g.add(cil(0.055, 0.082, "#f7f4ea", x0, 0.081, 0)); if (meio) g.add(cil(0.025, 0.084, K.INGREDIENTES[meio.t].cor, x0, 0.082, 0)); }
+    return g;
+  }
+  if (c.length === 1 && c[0].t === "peixe" && c[0].e === "picado") { // o sashimi: as fatias em leque
+    for (let k = 0; k < 4; k++) { const f = caixa(0.2, 0.035, 0.08, K.INGREDIENTES.peixe.cor, -0.06 + k * 0.05, 0.05 + k * 0.004, 0); f.rotation.y = -0.4 + k * 0.25; g.add(f); g.add(caixa(0.2, 0.004, 0.012, "#fff2e8", -0.06 + k * 0.05, 0.07 + k * 0.004, 0.02)); }
+    return g;
+  }
   if (c.some((i) => i.t === "pao")) { // o lanche: pão de baixo, o recheio e o pão de cima
     let y = 0.04; g.add(cil(0.17, 0.06, K.INGREDIENTES.pao.cor2, 0, y + 0.03, 0)); y += 0.06;
     for (const t of ["carne", "alface", "tomate"]) { const i = c.find((x) => x.t === t); if (!i) continue; const cor = t === "carne" ? (i.e === "frito" ? "#6b3a1f" : K.INGREDIENTES.carne.cor) : K.INGREDIENTES[t].cor; g.add(cil(t === "carne" ? 0.18 : 0.19, t === "carne" ? 0.07 : 0.025, cor, 0, y + 0.03, 0)); y += t === "carne" ? 0.07 : 0.03; }
@@ -190,6 +274,7 @@ export function item(o) {
   if (o.k === "ing") return ingrediente(o.t, o.e);
   if (o.k === "panela") return panela(o);
   if (o.k === "frigideira") return frigideira(o);
+  if (o.k === "assadeira") return assadeira(o);
   if (o.k === "prato") return prato(o);
   if (o.k === "sujos") return sujos(o.n);
   return new THREE.Group();
@@ -236,7 +321,9 @@ export function pintarIng(x, t, e, cx, cy, r) {
   const d = K.INGREDIENTES[t];
   x.save(); x.translate(cx, cy);
   const corpo = (cor) => { x.fillStyle = cor; x.beginPath(); x.arc(0, 0, r, 0, 7); x.fill(); x.strokeStyle = "#00000055"; x.lineWidth = Math.max(1, r * 0.12); x.stroke(); };
-  if (e === "picado" || e === "cozido" || e === "frito") {
+  if (d.forma === "disco") { x.fillStyle = e === "assado" ? "#d89a48" : d.cor; x.beginPath(); x.arc(0, 0, r, 0, 7); x.fill(); x.strokeStyle = d.cor2; x.lineWidth = Math.max(1, r * 0.15); x.stroke(); }
+  else if (d.forma === "queijo" && e !== "picado") { x.fillStyle = d.cor; x.beginPath(); x.moveTo(-r, r * 0.6); x.lineTo(r, r * 0.6); x.lineTo(r * 0.6, -r * 0.6); x.closePath(); x.fill(); x.fillStyle = d.cor2; x.beginPath(); x.arc(r * 0.2, r * 0.2, r * 0.16, 0, 7); x.fill(); }
+  else if (e === "picado" || e === "cozido" || e === "frito") {
     const cores = e === "frito" ? ["#6b3a1f", "#8a4e2a"] : [d.cor, d.cor2];
     for (let i = 0; i < 6; i++) { const a = i * 1.05, rr = r * 0.45; x.fillStyle = cores[i % 2]; x.fillRect(Math.cos(a) * rr - r * 0.28, Math.sin(a) * rr - r * 0.28, r * 0.56, r * 0.56); }
   } else if (d.forma === "pao") { x.fillStyle = d.cor; x.beginPath(); x.ellipse(0, r * 0.1, r, r * 0.7, 0, Math.PI, 0); x.fill(); x.fillStyle = d.cor2; x.fillRect(-r, r * 0.1, 2 * r, r * 0.35); }
@@ -262,7 +349,19 @@ export function figuraReceita(id) {
   const x = cv.getContext("2d");
   x.fillStyle = "#ffffff"; x.beginPath(); x.ellipse(48, 58, 42, 26, 0, 0, 7); x.fill(); x.strokeStyle = "#cfcfc8"; x.lineWidth = 3; x.stroke();
   const itens = R.itens.map((k) => k.split(":"));
-  if (R.sopa) { x.fillStyle = "#fbfbf8"; x.beginPath(); x.ellipse(48, 50, 28, 18, 0, 0, 7); x.fill(); x.strokeStyle = "#d8d8d0"; x.stroke(); x.fillStyle = K.INGREDIENTES[itens[0][0]].cor; x.beginPath(); x.ellipse(48, 47, 22, 12, 0, 0, 7); x.fill(); }
+  if (R.figura === "pizza") {
+    x.fillStyle = "#d89a48"; x.beginPath(); x.arc(48, 52, 30, 0, 7); x.fill();
+    if (itens.some(([t]) => t === "tomate")) { x.fillStyle = "#c8352a"; x.beginPath(); x.arc(48, 52, 24, 0, 7); x.fill(); }
+    x.fillStyle = "#f7d36a"; for (let k = 0; k < 7; k++) { x.beginPath(); x.arc(48 + Math.cos(k * 0.9) * 13, 52 + Math.sin(k * 0.9) * 13, 6, 0, 7); x.fill(); }
+  } else if (R.figura === "burrito") {
+    x.save(); x.translate(48, 52); x.rotate(-0.35); x.fillStyle = K.INGREDIENTES.tortilha.cor; x.fillRect(-30, -11, 60, 22); x.fillStyle = K.INGREDIENTES.tortilha.cor2; x.fillRect(-10, -11, 3, 22); x.fillRect(8, -11, 3, 22);
+    x.fillStyle = itens.some(([t]) => t === "carne") ? "#6b3a1f" : "#f4f1e6"; x.beginPath(); x.ellipse(30, 0, 5, 10, 0, 0, 7); x.fill(); x.restore();
+  } else if (R.figura === "sushi") {
+    const meio = itens.find(([t]) => t !== "alga" && t !== "arroz");
+    for (let k = 0; k < 3; k++) { const cx = 26 + k * 22; x.fillStyle = K.INGREDIENTES.alga.cor; x.beginPath(); x.arc(cx, 52, 11, 0, 7); x.fill(); x.fillStyle = "#f7f4ea"; x.beginPath(); x.arc(cx, 52, 8, 0, 7); x.fill(); x.fillStyle = K.INGREDIENTES[meio[0]].cor; x.beginPath(); x.arc(cx, 52, 3.5, 0, 7); x.fill(); }
+  } else if (R.figura === "sashimi") {
+    for (let k = 0; k < 4; k++) { x.save(); x.translate(34 + k * 9, 52); x.rotate(-0.5 + k * 0.3); x.fillStyle = K.INGREDIENTES.peixe.cor; x.fillRect(-6, -14, 12, 28); x.fillStyle = "#fff2e8"; x.fillRect(-1, -14, 2, 28); x.restore(); }
+  } else if (R.sopa) { x.fillStyle = "#fbfbf8"; x.beginPath(); x.ellipse(48, 50, 28, 18, 0, 0, 7); x.fill(); x.strokeStyle = "#d8d8d0"; x.stroke(); x.fillStyle = K.INGREDIENTES[itens[0][0]].cor; x.beginPath(); x.ellipse(48, 47, 22, 12, 0, 0, 7); x.fill(); }
   else if (itens.some(([t]) => t === "pao")) {
     let y = 64; x.fillStyle = K.INGREDIENTES.pao.cor2; x.fillRect(24, y - 6, 48, 8);
     for (const [t, e] of itens) if (t !== "pao") { x.fillStyle = t === "carne" ? (e === "frito" ? "#6b3a1f" : K.INGREDIENTES.carne.cor) : K.INGREDIENTES[t].cor; const hh = t === "carne" ? 10 : 5; y -= hh; x.fillRect(22, y - 6, 52, hh); }
@@ -277,5 +376,6 @@ export function iconeIng(t, e) {
   const cv = document.createElement("canvas"); cv.width = cv.height = 48; const x = cv.getContext("2d");
   x.fillStyle = "#fff8ea"; x.beginPath(); x.arc(24, 24, 22, 0, 7); x.fill();
   pintarIng(x, t, e === "cozido" || e === "frito" ? "cru" : e, 24, 24, 13);
+  if (e === "assado") { x.fillStyle = "#c8352a"; x.font = "bold 13px sans-serif"; x.textAlign = "center"; x.fillText("♨", 37, 15); }
   const url = cv.toDataURL(); pequenos.set(k, url); return url;
 }

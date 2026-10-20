@@ -41,7 +41,7 @@ test("toda cozinha do catálogo dá para jogar: lugares no chão, bancadas alcan
     while (fila.length) { const [c, r] = fila.shift(); for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = [c + dc, r + dr]; if (!K.solido(mapa, ...k) && !visto.has(k.join())) { visto.add(k.join()); fila.push(k); } } }
     for (const [c, r] of ini) assert.ok(visto.has(c + "," + r), `${id}: lugar ${c},${r} fora do chão alcançável`);
     const alcanca = (t) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => visto.has(t.c + dc + "," + (t.r + dr)));
-    for (const t of mapa.tiles) if (!["parede", "vazio", "balcao"].includes(t.tipo)) assert.ok(alcanca(t), `${id}: ${t.tipo} em ${t.c},${t.r} não se alcança`);
+    for (const t of mapa.tiles) if (!["parede", "vazio", "balcao", "divisoria"].includes(t.tipo)) assert.ok(alcanca(t), `${id}: ${t.tipo} em ${t.c},${t.r} não se alcança`);
     // cada receita: os ingredientes nas caixas e os processos com a sua bancada
     const caixas = new Set(mapa.tiles.filter((t) => t.tipo === "caixa").map((t) => t.ing)), recs = new Set(mapa.tiles.filter((t) => t.rec).map((t) => t.rec));
     for (const r of coz.receitas) for (const k of K.RECEITAS[r].itens) {
@@ -184,6 +184,58 @@ test("as metas vêm do planejador com distância real: em equipe a terceira estr
   // sozinho com o cozinheiro extra (dois cozinheiros, uma pessoa): a meta é a de quem joga só
   const solo = K.novaPartida("1-1", [{ id: "a" }, { id: "a-extra-0" }], { pessoas: 1 });
   assert.deepStrictEqual(solo.meta, K.metaDe(K.COZINHAS["1-1"], 1));
+});
+
+test("pizza: massa, tomate e queijo picados na assadeira, o forno assa tudo junto e a pizza vai no prato", () => {
+  const m = K.novaPartida("2-3", [{ id: "a", nome: "Ana" }], { rng: () => 0.99 }), j = m.jogadores[0];
+  passar(m, K.TEMPOS.conta + 0.1);
+  assert.ok(m.pedidos.some((p) => p.r === "pizza"));
+  const forno = achar(m, "forno"), tabua = achar(m, "tabua"), esc = achar(m, "escorredor"), ent = achar(m, "entrega");
+  const caixa = (t) => achar(m, "caixa", (x) => x.ing === t);
+  assert.strictEqual(m.estado[forno.i].item.k, "assadeira");
+  for (const t of ["tomate", "queijo"]) {
+    deFrente(m, j, caixa(t).c, caixa(t).r); assert.ok(K.interagir(m, j));
+    deFrente(m, j, forno.c, forno.r); assert.ok(!K.interagir(m, j), t + " cru não vai na assadeira");
+    deFrente(m, j, tabua.c, tabua.r); assert.ok(K.interagir(m, j)); assert.ok(K.usar(m, j));
+    passar(m, K.INGREDIENTES[t].picar + 0.05); assert.ok(K.interagir(m, j));
+    deFrente(m, j, forno.c, forno.r); assert.ok(K.interagir(m, j), t + " picado vai por cima");
+  }
+  passar(m, 3); assert.strictEqual(m.estado[forno.i].item.p, 0, "só a cobertura não assa");
+  deFrente(m, j, caixa("massa").c, caixa("massa").r); assert.ok(K.interagir(m, j));
+  deFrente(m, j, forno.c, forno.r); assert.ok(K.interagir(m, j)); assert.strictEqual(j.mao, null);
+  passar(m, K.RECIPIENTES.assadeira.tempo - 1);
+  assert.ok(!K.pronto(m.estado[forno.i].item), "o forno leva o mesmo tempo com 1 ou 3 coisas");
+  passar(m, 1.2);
+  const assadeira = m.estado[forno.i].item;
+  assert.ok(K.pronto(assadeira));
+  assert.deepStrictEqual(assadeira.c.map((i) => i.t + ":" + i.e).sort(), ["massa:assado", "queijo:picado", "tomate:picado"]);
+  deFrente(m, j, esc.c, esc.r); assert.ok(K.interagir(m, j));
+  deFrente(m, j, forno.c, forno.r); assert.ok(K.interagir(m, j)); assert.strictEqual(K.nomeItem(j.mao), "Pizza");
+  deFrente(m, j, ent.c, ent.r); assert.ok(K.interagir(m, j)); assert.strictEqual(m.entregues, 1);
+  // a panela não vai no forno, nem a assadeira no fogão
+  assert.ok(!K.aceita(forno, K.novoRec("panela"))); assert.ok(!K.aceita({ tipo: "fogao" }, K.novoRec("assadeira")));
+});
+
+test("a assadeira esquecida no forno queima", () => {
+  const m = K.novaPartida("2-3", [{ id: "a", nome: "Ana" }], { rng: () => 0 }), forno = achar(m, "forno");
+  passar(m, K.TEMPOS.conta + 0.1);
+  K.colocar(m.estado[forno.i].item, { k: "ing", t: "massa", e: "cru" }, K.COZINHAS["2-3"].receitas);
+  passar(m, K.RECIPIENTES.assadeira.tempo + K.RECIPIENTES.assadeira.queima + 0.1);
+  assert.ok(m.estado[forno.i].item.q); assert.strictEqual(m.estado[forno.i].item.c[0].e, "queimado");
+});
+
+test("food truck: a divisória abaixa, vira chão, e ao subir empurra quem está em cima", () => {
+  const m = K.novaPartida("2-2", [{ id: "a", nome: "Ana" }, { id: "b", nome: "Bia" }], { rng: () => 0 }), j = m.jogadores[0];
+  const div = achar(m, "divisoria"), P = K.COZINHAS["2-2"].mexe.periodo;
+  passar(m, K.TEMPOS.conta + 0.1);
+  assert.ok(K.solido(m.mapa, div.c, div.r));
+  passar(m, P);
+  assert.ok(m.mapa.baixo && !K.solido(m.mapa, div.c, div.r), "abaixou");
+  assert.ok(K.mesa(m).baixo);
+  j.x = (div.c + 0.5) * T; j.z = (div.r + 0.5) * T; j.vx = j.vz = 0;
+  passar(m, P);
+  assert.ok(!m.mapa.baixo && K.solido(m.mapa, div.c, div.r), "subiu");
+  assert.ok(!K.solido(m.mapa, Math.floor(j.x / T), Math.floor(j.z / T)), "quem estava em cima foi para o chão do lado");
 });
 
 test("o cozinheiro não atravessa bancada e o impulso tem recarga", () => {
