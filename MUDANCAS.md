@@ -1,4 +1,4 @@
-# Corrida: de volta ao kart, mais leve, e Nürburgring e Laguna Seca
+# Corrida: de volta ao kart, checkpoints, som de novo, e Nürburgring e Laguna Seca
 
 O PR #257 foi mesclado antes do segundo commit dele entrar. Este PR traz esse commit e as duas pistas novas.
 
@@ -18,6 +18,7 @@ O PR #257 foi mesclado antes do segundo commit dele entrar. Este PR traz esse co
 
 ## Verificação
 
-- `node --test tests/corrida-robos.test.js tests/corrida-experiencia.test.js tests/corrida-colisao.test.js`: passaram. As duas pistas novas entram no teste de traçado sem trechos encostando.
+- `node --test tests/corrida-robos.test.js tests/corrida-experiencia.test.js tests/corrida-colisao.test.js`: 11 passaram. Um teste novo dá uma volta com 3 robôs em **cada uma das 12 pistas** e confere que o grid está no reto, que os 12 checkpoints vêm em ordem, que todos fecham a volta e que ninguém sai da pista.
+- No navegador: as 12 pistas montam sem erro; uma volta inteira em Interlagos passou pelos 12 checkpoints em ordem, a volta contou no servidor e na tela, e a posição se manteve.
 - No navegador, com 8 carros: ~57 quadros por segundo e ~10 ms de JavaScript por quadro. Os robôs andam alinhados.
 - Conferido o Nürburgring rodando e Laguna Seca no grid.

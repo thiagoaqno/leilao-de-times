@@ -18,7 +18,7 @@ const CACHE = new Map();
 const LINHAS = new Map();
 function tracado(pista) {
   if (LINHAS.has(pista)) return LINHAS.get(pista);
-  const t = T.PISTAS[pista], pts = T.elevate(T.sample(t.points, STEP), t.hills), n = pts.length, max = t.width / 2 - 16;
+  const t = T.PISTAS[pista], pts = T.pontos(t, STEP), n = pts.length, max = t.width / 2 - 16;
   const lat = new Float64Array(n), X = new Float64Array(n), Y = new Float64Array(n);
   const pos = () => { for (let i = 0; i < n; i++) { X[i] = pts[i].x - pts[i].ty * lat[i]; Y[i] = pts[i].y + pts[i].tx * lat[i]; } };
   for (const k of [12, 8, 5, 3]) for (let it = 0; it < 60; it++) {
@@ -116,7 +116,8 @@ function largar(room) {
     const p = room.players[id]; if (!p.bot) continue;
     const pf = perfil(room.config.pista, p.car), g = largada(pf.pts, p.grid, t.width);
     p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
-    p.ia = { s: g.idx, lat: g.lat, desvio: 0, v: 0, nivel: (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.97, 1.02), jeito: rnd(-6, 6), usaEm: 0 };
+    // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
+    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel: (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.97, 1.02), jeito: rnd(-11, 11), reacao: rnd(0, 450), usaEm: 0 };
     posicionar(p, pf, 0);
   }
 }
@@ -139,7 +140,7 @@ function passo(room, dt, setor, emit) {
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot || !p.ia) continue;
     const pf = perfil(room.config.pista, p.car), ia = p.ia, c = pf.c;
-    if (corrida && p.finish == null) {
+    if (corrida && p.finish == null && now >= room.startAt + ia.reacao) {
       // elástico: quem dispara na frente dos humanos alivia; quem fica muito para trás aperta um pouco
       let el = 1; if (lider != null && p.pos) { const dif = (p.pos.prog - lider) / pf.n; el = dif > 0.08 ? 0.93 : dif < -0.25 ? 1.05 : 1; }
       const i = Math.floor(ia.s) % pf.n;
@@ -153,8 +154,12 @@ function passo(room, dt, setor, emit) {
       let desvio = 0;
       for (const oid of room.order) { const o = room.players[oid]; if (o === p || !o.bot || !o.ia) continue;
         const ds = (o.ia.s - ia.s + pf.n) % pf.n; if (ds > 0 && ds < 9 && Math.abs(o.ia.lat - ia.lat) < 26) desvio = (o.ia.lat > pf.lat[i] ? -1 : 1) * 34; }
+      // depois da largada (~600 de reta), sai da faixa do grid e vai aos poucos para o traçado; antes disso, não desvia de ninguém
+      const saida = Math.min(1, ((ia.s - ia.s0 + pf.n) % pf.n) / 100), largando = saida < 1;
+      if (largando) desvio = 0;
       ia.desvio += (desvio - ia.desvio) * Math.min(1, dt * 1.5);
-      const max = t.width / 2 - 10, quer = Math.max(-max, Math.min(max, pf.lat[(i + 2) % pf.n] + ia.jeito + ia.desvio));
+      const linha = pf.lat[(i + 2) % pf.n] + ia.jeito, alvoLat = largando ? ia.lat0 * (1 - saida) + linha * saida : linha + ia.desvio;
+      const max = t.width / 2 - 10, quer = Math.max(-max, Math.min(max, alvoLat));
       ia.lat += (quer - ia.lat) * Math.min(1, dt * 4);
     }
     const i = posicionar(p, pf, p.laps);

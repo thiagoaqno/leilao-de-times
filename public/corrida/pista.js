@@ -34,7 +34,7 @@ export function gridSpot(pts, g, W) {
 const TRACKS = {};
 export function buildTrack(id) {
   if (TRACKS[id]) return TRACKS[id];
-  const t = PISTAS[id], pts = elevate(sample(t.points, 6), t.hills), n = pts.length, W = t.width;
+  const t = PISTAS[id], pts = window.Pistas.pontos(t, 6), n = pts.length, W = t.width;
   for (const p of pts) { p.nx = -p.ty; p.ny = p.tx; }
   const mini = document.createElement("canvas"); mini.width = mini.height = 240; drawPreview(mini, id);
   const tr = { id, t, pts, n, W, look: LOOK[id], theme: THEMES[id], mini, wallLat: t.walls ? W / 2 + t.wall : Infinity, grp: new THREE.Group() };
@@ -102,7 +102,7 @@ function buildWorld(tr) {
   function ribbon(l0, l1, y0, mat, vLen, y1 = y0, uSpan = 1, i0 = 0, i1 = n) { // de i0 a i1: só um trecho da volta
     const vs = [], uv = [], idx = [];
     for (let i = i0; i <= i1; i++) {
-      const p = pts[i % n], d = i * 6;
+      const p = pts[((i % n) + n) % n], d = i * 6;
       for (const [l, yy, u] of [[l0, y0, 0], [l1, y1, uSpan]]) { vs.push(p.x + p.nx * l, p.h * falloff(tr, l) + yy, p.y + p.ny * l); uv.push(u, d / vLen); }
       if (i < i1) { const a = (i - i0) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
     }
@@ -169,6 +169,43 @@ function buildWorld(tr) {
     list.forEach((o, i) => { d.position.set(o.x, o.h + (o.dy || 0) * sc(o), o.y); d.rotation.set(0, o.r || 0, 0); const s = sc(o); d.scale.set(o.sx || s, o.sy || s, o.sz || s); d.updateMatrix(); m.setMatrixAt(i, d.matrix); if (o.c != null && m.setColorAt) m.setColorAt(i, new THREE.Color(o.c)); });
     m.castShadow = true; m.receiveShadow = true; return m;
   };
+  // barreiras de pneus: do lado de fora das curvas fechadas (a física bate nelas: tr.pneus guarda o lado de cada ponto)
+  tr.pneus = new Int8Array(n);
+  if (!t.espaco) {
+    const pilhas = [], topos = [];
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 170)) continue;
+      const fora = p.tx * q.ty - p.ty * q.tx > 0 ? -1 : 1;
+      for (let j = i - 4; j <= i + 4; j++) tr.pneus[(j + n) % n] = fora;
+      if (i % 3) continue;
+      const x = p.x + p.nx * fora * (W / 2 + 30), y = p.y + p.ny * fora * (W / 2 + 30), h = groundH(tr, x, y, i);
+      for (let k = 0; k < 3; k++) (k === 2 ? topos : pilhas).push({ x, y, h: h + 1.1 + k * 2.2, s: 1, r: 0, c: k === 2 ? ((i / 3) % 2 ? "#e53935" : "#f4f4f4") : undefined });
+    }
+    const pneuGeo = new THREE.CylinderGeometry(3, 3, 2.1, 10);
+    inst(pneuGeo, M(0x1d1e22, { roughness: 0.9 }), pilhas);
+    inst(pneuGeo, M(0xffffff, { roughness: 0.7 }), topos);
+  }
+  // os checkpoints (como no Forza): duas bandeiras altas verde-limão, uma de cada lado, com "CHECKPOINT." na vertical.
+  // Só aparecem o próximo e o seguinte (jogo.js acende, balança e pinta de vermelho o perdido).
+  tr.portais = [];
+  const bandeira = canvasTex(128, 512, (x, w, hh) => {
+    x.fillStyle = "#d9f02e"; x.fillRect(0, 0, w, hh); x.fillStyle = "#c2d81f"; x.fillRect(0, 0, 8, hh);
+    x.save(); x.translate(w / 2 + 6, hh * 0.42); x.rotate(-Math.PI / 2); x.fillStyle = "#121212"; x.font = "900 74px Bungee, Impact, Arial Black, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("CHECKPOINT.", 0, 0, hh * 0.78); x.restore();
+    x.fillStyle = "#121212"; x.fillRect(w / 2 - 22, hh - 92, 44, 44); x.fillStyle = "#d9f02e"; x.font = "900 34px Arial Black, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("G", w / 2, hh - 69);
+  }, false);
+  const panoGeo = new THREE.PlaneGeometry(10, 40), mastroGeo = new THREE.CylinderGeometry(0.5, 0.6, 50, 6), mastroMat = M(0xe8e8e8, { metalness: 0.4, roughness: 0.4 });
+  for (let k = 1; k < window.Pistas.SECTORS; k++) {
+    const i = window.Pistas.checkpoint(k, n), p = pts[i], g = new THREE.Group(); add(g);
+    const mat = new THREE.MeshBasicMaterial({ map: bandeira, side: THREE.DoubleSide, transparent: true }), panos = [];
+    for (const sd of [-1, 1]) {
+      const x = p.x + p.nx * sd * (W / 2 + 14), y = p.y + p.ny * sd * (W / 2 + 14), h = groundH(tr, x, y, i);
+      const m = new THREE.Mesh(mastroGeo, mastroMat); m.position.set(x, h + 25, y); g.add(m);
+      const pano = new THREE.Group(); pano.position.set(x, h + 27, y); pano.rotation.y = Math.atan2(-p.tx, -p.ty); g.add(pano); // virada para quem chega
+      const pm = new THREE.Mesh(panoGeo, mat); pm.position.x = -5.4 * sd; pano.add(pm); panos.push(pano);
+    }
+    tr.portais.push({ k, g, mat, panos, base: panos.map((q) => q.rotation.y) });
+  }
+
   const trees = [], palms = [], blds = [], towers = [], stands = [], yachts = [], neons = [], glass = [], jungle = [], houses = [];
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
     const p = pts[i];
@@ -184,7 +221,7 @@ function buildWorld(tr) {
         else if (k < 0.7) { const sx = 60 + r() * 50, sz = 60 + r() * 50, far = near + 60 + r() * 120, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 25)) glass.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 140 + r() * 360, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); }
       }
       else if (id === "rio") { // orla com palmeiras; na subida, mata fechada e casinhas coloridas
-        const beach = i < n * 0.2 && side > 0;
+        const beach = p.x < 470 * K && side > 0; // a orla de Copacabana: o lado do mar
         if (beach) { if (k < 0.6) palms.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 0.4, r: r() * 6 }); }
         else if (p.h > 18) { if (k < 0.75) jungle.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.9 }); else houses.push({ x, y, h: hAt(x, y), s: 1, sx: 18 + r() * 14, sy: 14 + r() * 10, sz: 18 + r() * 14, dy: 0.5, r: r() * 3, c: ["#f2c14e", "#e86a5a", "#5fb3e8", "#7ed07a", "#f29ad8", "#fff3d6"][(r() * 6) | 0] }); }
         else if (k < 0.5) { const sx = 50 + r() * 40, sz = 50 + r() * 40, far = near + 50 + r() * 100, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (!rioSea(bx, by) && free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 25)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 70 + r() * 110, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f4f1e6", "#e8e0cf", "#d9e6ef", "#f2dfc8"][(r() * 4) | 0] }); }
@@ -269,16 +306,20 @@ function landmarksLA(tr, add, r) {
 }
 // Rio: calçadão de Copacabana com as ondas pretas e brancas, areia, Pão de Açúcar, Cristo no morro e os Arcos da Lapa
 function landmarksRio(tr, add, r, size, ribbon) {
-  const { pts, n, W } = tr, L = tr.wallLat, i1 = Math.floor(n * 0.2);
+  const { pts, n, W } = tr, L0 = tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 20, L = L0;
+  // o trecho da orla: os pontos perto do mar (com a largada girada, ele pode passar pelo índice 0)
+  const naOrla = (i) => pts[(i + n) % n].x < 470 * tr.t.scale;
+  let i0 = 0; while (i0 < n && !naOrla(i0)) i0++; while (i0 > -n && naOrla(i0 - 1)) i0--; // volta até o começo da orla
+  let i1 = i0; while (i1 < i0 + n - 1 && naOrla(i1 + 1)) i1++; // e vai até o fim dela (i1 pode passar de n: a fita usa i % n)
   const waves = canvasTex(128, 128, (x, w, hh) => { x.fillStyle = "#f4f1e6"; x.fillRect(0, 0, w, hh); x.strokeStyle = "#1a1a1a"; x.lineWidth = 14; for (let k = -1; k < 3; k++) { x.beginPath(); for (let yy = 0; yy <= hh; yy += 4) { const xx = w / 2 + Math.sin((yy / hh) * Math.PI * 2) * 30 + k * 0; yy ? x.lineTo(xx + (k - 0.5) * 64, yy) : x.moveTo(xx + (k - 0.5) * 64, yy); } x.stroke(); } });
-  ribbon(L, L + 34, 0.5, new THREE.MeshStandardMaterial({ map: waves, roughness: 0.8, side: THREE.DoubleSide }), 40, 0.5, 1, 0, i1);
+  ribbon(L, L + 34, 0.5, new THREE.MeshStandardMaterial({ map: waves, roughness: 0.8, side: THREE.DoubleSide }), 40, 0.5, 1, i0, i1);
   const sand = canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#e8d6a8"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 500; i++) { x.fillStyle = rr() < 0.5 ? "#dcc995" : "#f2e3bb"; x.fillRect(rr() * w, rr() * hh, 2, 2); } });
-  ribbon(L + 34, L + 190, 0.6, new THREE.MeshStandardMaterial({ map: sand, roughness: 1, side: THREE.DoubleSide }), 64, 0.6, 4, 0, i1);
+  ribbon(L + 34, L + 190, 0.6, new THREE.MeshStandardMaterial({ map: sand, roughness: 1, side: THREE.DoubleSide }), 64, 0.6, 4, i0, i1);
   const world = tr.t.world, K = tr.t.scale;
   const seaM = new THREE.MeshStandardMaterial({ map: aguaTex("#1f8ab0"), roughness: 0.15, metalness: 0.25 }); seaM.map.repeat.set(size / 220, size / 220); tr.agua.push(seaM);
   const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(size, size), seaM)); sea.rotation.x = -Math.PI / 2; sea.position.set(world / 2, -6, world / 2);
   // guarda-sóis coloridos na areia
-  for (let i = 4; i < i1; i += 6) { const p = pts[i], d = L + 60 + r() * 90, x = p.x + p.nx * d, y = p.y + p.ny * d, col = [0xff5a5a, 0xffd23f, 0x3fa9f5, 0x7ed07a][(r() * 4) | 0];
+  for (let i = i0 + 4; i < i1; i += 6) { const p = pts[(i + n) % n], d = L + 60 + r() * 90, x = p.x + p.nx * d, y = p.y + p.ny * d, col = [0xff5a5a, 0xffd23f, 0x3fa9f5, 0x7ed07a][(r() * 4) | 0];
     const um = add(new THREE.Mesh(new THREE.ConeGeometry(12, 5, 8), M(col))); um.position.set(x, 13, y); const st = add(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 12), M(0xdddddd))); st.position.set(x, 6, y); }
   // Pão de Açúcar (dois morros no mar)
   for (const [x, y, s] of [[-420, 1650, 1], [-180, 1820, 0.6]]) { const m = add(new THREE.Mesh(new THREE.SphereGeometry(200, 24, 16), M(0x4a5a46))); m.scale.set(s * K, s * K * 1.9, s * K * 0.9); m.position.set(x * K, 0, y * K); }

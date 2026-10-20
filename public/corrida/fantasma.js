@@ -55,4 +55,5 @@ export function deltaBest() {
   return (tl - s[i][0]) / 1000;
 }
 // quanto cada um já andou (para a posição na corrida): voltas completas + ponto da pista (antes da largada conta negativo)
-export function myProg() { const m = me(); if (!m) return 0; return (m.started ? m.laps * race.tr.n + race.idx : race.idx - race.tr.n); }
+// (a volta conta na hora em que passa a linha: sem esperar o servidor, ninguém "cai para último" por um instante)
+export function myProg() { const m = me(); if (!m) return 0; const voltas = Math.max(m.laps, race.voltaLocal || 0); return (m.started || race.largou ? voltas * race.tr.n + race.idx : race.idx - race.tr.n); }

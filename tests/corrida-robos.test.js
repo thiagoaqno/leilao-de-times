@@ -7,7 +7,7 @@ const Itens = require("../corrida-itens.js");
 test("pistas refeitas: voltas longas sem trechos encostando um no outro", () => {
   for (const [id, t] of Object.entries(T.PISTAS)) {
     if (t.espaco) continue; // o Arco-íris cruza por cima de si mesmo nos viadutos, de propósito
-    const pts = T.elevate(T.sample(t.points, 6), t.hills), n = pts.length, folga = t.width + 2 * (t.walls ? t.wall : 20);
+    const pts = T.pontos(t, 6), n = pts.length, folga = t.width + 2 * (t.walls ? t.wall : 20);
     assert.ok(n * 6 > 12000, `${id}: volta de ${n * 6}`);
     assert.ok(pts.every((p) => Number.isFinite(p.h) && p.x > 0 && p.y > 0 && p.x < t.world && p.y < t.world), id);
     const gap = Math.ceil((folga * 2.2) / 6);
@@ -26,7 +26,7 @@ function correr(pista, nivel = "medio", caixas = false, robos = 3) {
     let k = 0; Robos.preparar(room, ["#a", "#b", "#c", "#d"], () => "x" + k++);
     room.order.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null }));
     Itens.start(room); Robos.largar(room);
-    const eventos = [], lats = [], setor = (p, s) => { p.sector = s; if (s === 0) { if (!p.started) { p.started = true; p.ini = relogio; } else { p.laps++; p.volta = (relogio - p.ini) / 1000; } } };
+    const eventos = [], lats = [], setor = (p, s) => { if (s !== (p.sector + 1) % T.SECTORS) p.foraDeOrdem = true; p.sector = s; if (s === 0) { if (!p.started) { p.started = true; p.ini = relogio; } else { p.laps++; p.volta = (relogio - p.ini) / 1000; } } };
     for (let t = 0; t < 240 && room.order.some((id) => !room.players[id].laps); t += 0.05) {
       relogio += 50; Robos.passo(room, 0.05, setor, (e) => eventos.push(e)); Itens.tick(room, (e) => eventos.push(e));
       lats.push(room.players[room.order[0]].ia.lat);
@@ -63,12 +63,22 @@ test("casco persegue a 1,7× a velocidade máxima do alvo", () => {
   assert.ok(Math.abs(Math.hypot(casco.vx, casco.vy) - T.CARROS.foguete.vmax * 1.7) < 1);
 });
 test("robôs aprendem a volta gravada: passam pelo lado e na velocidade de quem gravou", () => {
-  const pista = "luigi", t = T.PISTAS[pista], pts = T.elevate(T.sample(t.points, 6), t.hills), n = pts.length, s = [];
+  const pista = "luigi", t = T.PISTAS[pista], pts = T.pontos(t, 6), n = pts.length, s = [];
   let ms = 0; for (let i = 0; i < n; i += 4) { s.push([ms, pts[i].x - pts[i].ty * 25, pts[i].y + pts[i].tx * 25, pts[i].h, 0, i]); ms += 100; } // sempre 25 para um lado
   assert.equal(Robos.aprender(pista, { s, carro: "equilibrado", tempo: ms / 1000, piloto: "Ana" }), true);
   assert.equal(Robos.aprender(pista, { s: s.slice(0, 20), carro: "equilibrado", tempo: 1, piloto: "Bia" }), false); // volta curta não vale
   const { room, lats } = correr(pista, "dificil", false, 1), meio = lats.slice(lats.length / 3); // um robô só: sem ninguém na frente para desviar
   const media = meio.reduce((a, b) => a + b, 0) / meio.length;
-  assert.ok(Math.abs(media - 25) < 8, `linha média ${media.toFixed(1)}`);
+  const jeito = room.players[room.order[0]].ia.jeito; // cada robô passa um pouco para um lado da linha (de propósito)
+  assert.ok(Math.abs(media - 25 - jeito) < 8, `linha média ${media.toFixed(1)} (jeito ${jeito.toFixed(1)})`);
   assert.ok(room.order.every((id) => room.players[id].laps === 1));
+});
+test("todas as pistas: robôs largam no reto, passam pelos 12 checkpoints em ordem e fecham a volta sem sair da pista", () => {
+  for (const [id, t] of Object.entries(T.PISTAS)) {
+    const pts = T.pontos(t, 6), n = pts.length;
+    for (let g = 0; g < 8; g++) { const i = (n - 6 - Math.floor(g / 2) * 13 + n) % n; assert.ok(!pts[i].k, `${id}: o lugar ${g + 1} do grid está numa curva`); }
+    const { room, lats } = correr(id, "medio", false, 3), meia = t.width / 2;
+    for (const rid of room.order) { const p = room.players[rid]; assert.equal(p.laps, 1, `${id}: ${p.name} não fechou a volta`); assert.ok(!p.foraDeOrdem, `${id}: checkpoint fora de ordem`); }
+    assert.ok(Math.max(...lats.map(Math.abs)) < meia, `${id}: robô saiu da pista`);
+  }
 });

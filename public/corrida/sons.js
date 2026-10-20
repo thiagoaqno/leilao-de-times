@@ -5,7 +5,7 @@ import { $, store } from "./estado.js";
 export const Sound = (() => {
   let ac = null, on = store.get("corrida:sound") !== false, eng = null, skidG = null, master = null, volume = Math.max(0, Math.min(1, store.get("corrida:volume") ?? 0.7));
   // todo som passa pelo volume geral (o deslizante do cabeçalho e da corrida)
-  function ctx() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = volume; master.connect(amaster); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; }
+  function ctx() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = volume; master.connect(ac.destination); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; }
   function tone(f, dur, { type = "square", vol = 0.12, at = 0 } = {}) {
     const c = ctx(); if (!c || !on) return; const t = c.currentTime + at;
     const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f;

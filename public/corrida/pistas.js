@@ -380,6 +380,8 @@ for (const t of Object.values(PISTAS)) {
   t.scale = s; t.world = WORLD * s;
   if (s !== 1) t.points = t.points.map(([x, y, r]) => [x * s, y * s, (r || 0) * s]);
   if (t.relevo) { t.hills = t.hills.map(([f, h]) => [f, h * t.relevo]); t.fall *= t.relevo; }
+  // sem muro em volta (a volta só vale passando pelos checkpoints, em ordem); o Arco-íris, no espaço, continua com a beirada
+  if (!t.espaco) { t.walls = false; t.wall = 20; }
 }
 
 // Os cinco acertos do carro de F1 (os ids continuam os antigos, para as salas e o servidor). vmax: velocidade final no asfalto · acc: aceleração na arrancada (ela cai perto da velocidade
@@ -468,10 +470,26 @@ const MODS = {
 };
 const MODS_PADRAO = { pintura: "propria" };
 
-const SECTORS = 4; // a volta só conta passando pelos 4 setores na ordem (contra atalho e contramão)
+const SECTORS = 12; // os checkpoints: a volta só conta passando pelos 12, na ordem (contra atalho e contramão)
+// A pista pronta para correr: amostrada, com relevo e começando na largada. A largada fica a 60% da reta mais longa,
+// para o grid (que fica atrás da linha) estar todo no reto. O relevo é calculado antes de girar, então não muda.
+function pontos(t, step = 6) {
+  const pts = elevate(sample(t.points, step), t.hills), n = pts.length;
+  let ini = 0;
+  if (!t.espaco) {
+    let best = 0, bestIni = 0, run = 0, runIni = 0;
+    for (let k = 0; k < 2 * n; k++) { if (!pts[k % n].k) { if (!run) runIni = k; run++; if (run > best && run < n) { best = run; bestIni = runIni; } } else run = 0; }
+    ini = (bestIni + Math.floor(best * 0.6)) % n;
+  }
+  const out = pts.slice(ini).concat(pts.slice(0, ini));
+  out.forEach((p, i) => { p.d = i * step; });
+  return out;
+}
+// onde fica cada checkpoint (o índice do ponto da pista): divide a volta em SECTORS partes iguais
+const checkpoint = (k, n) => Math.ceil((k * n) / SECTORS) % n;
 // Três caixas por conjunto, espaçadas na volta. A mesma posição é calculada no servidor e no navegador.
 function boxesFor(id) {
-  const t = PISTAS[id], pts = elevate(sample(t.points, 6), t.hills);
+  const t = PISTAS[id], pts = pontos(t, 6);
   const out = [];
   for (const f of [0.12, 0.27, 0.43, 0.59, 0.75, 0.9]) {
     const p = pts[Math.floor(pts.length * f)], sideX = -p.ty, sideY = p.tx;
@@ -480,7 +498,7 @@ function boxesFor(id) {
   return out;
 }
 
-const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, boxesFor, SECTORS };
+const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, boxesFor, SECTORS };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pistas = api;
 })(typeof window !== "undefined" ? window : globalThis);

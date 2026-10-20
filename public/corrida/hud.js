@@ -1,5 +1,5 @@
 // Corrida da Galera — o placar da corrida e o resultado.
-import { E, PISTAS, $, h, sNow, me, act, fmt } from "./estado.js";
+import { E, PISTAS, $, h, sNow, me, act, fmt, SECTORS, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { race } from "./jogo.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
@@ -49,6 +49,8 @@ export function hud() {
   let msg = "";
   if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
   else if (race.wrong > 1) msg = "⚠️ CONTRAMÃO! (aperte ↺)";
+  else if (race.perdeu >= 0 && m && m.finish == null) msg = "⟲ CHECKPOINT PERDIDO: volte nele ou aperte ↺";
+  else if (race.cpT > now - 900 && race.sector > 0) msg = `✓ CHECKPOINT ${race.sector}/${SECTORS}`;
   else if (m && m.finish == null && m.started && m.laps === cfg.voltas - 1 && cfg.voltas > 1 && race.lastLapMsg > now - 2500) msg = "ÚLTIMA VOLTA!";
   else if (E.S.endAt && m && m.finish == null) msg = `⏱️ ${Math.max(0, Math.ceil((E.S.endAt - now) / 1000))} s para cruzar`;
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";

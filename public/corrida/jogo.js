@@ -1,7 +1,7 @@
 // Corrida da Galera — o jogo no navegador: sala, garagem, e a corrida em 3D (Three.js).
 // Este é o módulo de entrada: começa e para a corrida, o laço e o desenho, e a capa da página. O resto fica nos
 // outros módulos desta pasta (estado, sons, rede, menus, cena, pista, carros, controles, fisica, fantasma e hud).
-import { E, SECTORS, COLORS, socket, $, sNow, me, P, act } from "./estado.js";
+import { E, SECTORS, COLORS, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
@@ -56,6 +56,7 @@ export function nearest(tr, x, y, from) {
 export function respawn() {
   if (!race || sNow() < race.startAt) return;
   race.sujou = true; // volta com "↺ Pista" não serve de exemplo para os robôs
+  if (race.perdeu >= 0) race.idx = (checkpoint(race.perdeu, race.tr.n) - 5 + race.tr.n) % race.tr.n; // perdeu o checkpoint: volta para antes dele
   const p = race.tr.pts[race.idx]; Object.assign(race.car, { x: p.x, y: p.y, z: p.h, vz: 0, air: false, a: Math.atan2(p.ty, p.tx), v: 0, vx: 0, vy: 0, slip: 0 }); Sound.pop();
 }
 
@@ -110,6 +111,14 @@ function draw(dt) {
     let da = gh.a - (gh.aAnt ?? gh.a); da = Math.atan2(Math.sin(da), Math.cos(da)); gh.aAnt = gh.a;
     gh.vira = (gh.vira || 0) + (Math.max(-1, Math.min(1, da / Math.max(dt, 1e-3) / 2.4)) - (gh.vira || 0)) * Math.min(1, dt * 8);
     poseKart(gh.kart, gh.x, gh.y, gh.z, gh.a, gh.v || 0, gh.vira, gz, dt, inc.roll, inc.pitch, fxDe(pl, now));
+  }
+  // o próximo checkpoint acende e pulsa; o perdido fica vermelho; os outros, apagadinhos
+  for (const pt of tr.portais || []) {
+    const prox = (race.sector + 1) % SECTORS, seguinte = (race.sector + 2) % SECTORS, perdido = race.perdeu === pt.k;
+    pt.g.visible = pt.k === prox || pt.k === seguinte || perdido;
+    if (!pt.g.visible) continue;
+    pt.mat.color.setHex(perdido ? 0xff5050 : 0xffffff); pt.mat.opacity = pt.k === prox || perdido ? 1 : 0.55;
+    pt.panos.forEach((q, j) => { q.rotation.y = pt.base[j] + Math.sin(now / 420 + j * 1.7 + pt.k) * 0.12; }); // balança no vento
   }
   drawBest(dt);
   stepPuffs(dt);
