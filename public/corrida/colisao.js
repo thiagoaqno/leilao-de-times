@@ -2,7 +2,7 @@
 // Cada carro vira 3 círculos ao longo do corpo. Quem bate empurra os dois: cada navegador resolve a sua metade com a
 // mesma conta (impulso pela massa e pela velocidade relativa), então os dois lados chegam quase no mesmo resultado.
 export const MASSA = { equilibrado: 1, foguete: 0.9, formiga: 0.8, drifteiro: 1, tanque: 1.5 };
-const ELASTICIDADE = 0.35;
+const ELASTICIDADE = 0.2; // pouco quique: bater no outro empurra, mas não joga o carro longe
 
 // os 3 círculos do carro: [x, y] no mundo e o raio (L e W em unidades da pista)
 export function circulos(x, y, a, L, W) {

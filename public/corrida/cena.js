@@ -6,7 +6,7 @@ import { $, rng } from "./estado.js";
 // Mundo: o traçado continua em 2D (x, y de 0 a 1600, igual ao servidor), e cada ponto da pista tem uma altura h.
 // No 3D, o "y" do traçado vira o z, e a altura vira o y. 1 unidade ≈ 10 cm (um kart tem ~18 de largura).
 const cv = $("screen");
-export const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
+export const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: "high-performance" }); // sem preserveDrawingBuffer: guardar a tela a cada quadro custa caro e ninguém lê
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;

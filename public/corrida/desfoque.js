@@ -2,8 +2,8 @@
 // Desfoque: depois de desenhar a cena, um passe na placa de vídeo puxa cada ponto da tela para fora, a partir do centro
 // (como uma foto tirada em movimento). O centro, para onde se olha, e o carro, embaixo no meio, ficam nítidos; o cenário
 // dos lados borra mais quanto mais rápido. Parado (ou com "menos movimento" no sistema), a cena vai direto para a tela.
-// Qualidade: se o jogo fica abaixo de ~50 quadros por segundo, baixa a resolução, depois tira as sombras e, só no último
-// caso, o desfoque.
+// Qualidade: se o jogo fica lento para a tela (ver medirQuadro), baixa a resolução, depois tira as sombras e, só no
+// último caso, o desfoque.
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -42,16 +42,38 @@ export function desenhar(forca) {
   radial.uniforms.forca.value = Math.min(1.4, forca);
   composer.render();
 }
-// mede os quadros por segundo; dois trechos de 2 s abaixo de 50, desce um nível (nunca volta: evita ficar pulando)
-let quadros = 0, desde = performance.now(), ruins = 0;
+// Mede os quadros por segundo em trechos de 2 s e só desce de nível quando baixar ajuda de verdade:
+// - não mede nos primeiros 6 s da corrida (carregando texturas e montando os shaders, todo computador engasga);
+// - compara com o melhor que esta tela já conseguiu (o "teto"): tela de 50 Hz, ou navegador economizando bateria
+//   (que prende em 30 qps), não é lentidão, e baixar a qualidade ali não muda nada;
+// - depois de descer, confere: se os quadros não melhoraram, era um limite da tela e não da placa, então volta o nível
+//   e para de mexer. Quem quiser fixar escreve no console localStorage["corrida:qualidade"] = "alta" (ou "baixa").
+const fixa = (() => { try { return localStorage.getItem("corrida:qualidade"); } catch { return null; } })();
+let quadros = 0, desde = performance.now(), ruins = 0, teto = 0, inicio = 0, conferir = null, parou = fixa === "alta";
+function aplicar(n) {
+  if (n >= 1 !== nivel >= 1) { renderer.setPixelRatio(n >= 1 ? 0.85 : Math.min(window.devicePixelRatio || 1, 1.25)); const s = renderer.getSize(new THREE.Vector2()); ajustarTela(s.x, s.y); }
+  if (n >= 2 !== nivel >= 2) { renderer.shadowMap.enabled = n < 2; scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; }); }
+  nivel = n;
+}
+if (fixa === "baixa") aplicar(3);
+// chamada a cada corrida nova: o relógio dos 6 s recomeça
+export function comecarMedida() { inicio = performance.now(); quadros = 0; desde = inicio; ruins = 0; }
 export function medirQuadro() {
   quadros++; const agora = performance.now(), dt = agora - desde;
   if (dt < 2000) return;
   const fps = (quadros * 1000) / dt; quadros = 0; desde = agora;
-  if (document.hidden || fps > 50) { ruins = 0; return; }
-  if (++ruins < 2 || nivel >= 3) return;
-  ruins = 0; nivel++;
-  if (nivel === 1) { renderer.setPixelRatio(0.85); const s = renderer.getSize(new THREE.Vector2()); ajustarTela(s.x, s.y); }
-  if (nivel === 2) { renderer.shadowMap.enabled = false; scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; }); } // sem sombras
-  console.info("Corrida: qualidade reduzida para manter a fluidez (nível " + nivel + ", " + fps.toFixed(0) + " qps)");
+  if (document.hidden || agora - inicio < 6000 || dt > 3000) { ruins = 0; return; } // escondida ou travou (aba trocada): não conta
+  teto = Math.max(teto, fps);
+  if (conferir) { // acabou de descer: melhorou pelo menos 10%?
+    if (++conferir.n < 2) return;
+    if (fps < conferir.fps * 1.1) { aplicar(conferir.antes); parou = true; console.info("Corrida: baixar a qualidade não ajudou (" + fps.toFixed(0) + " qps); voltou ao nível " + nivel); }
+    conferir = null; return;
+  }
+  if (parou || nivel >= 3) return;
+  const ruim = fps < 50 && fps < teto * 0.8; // lento para esta tela, não só para uma tela de 60 Hz
+  if (!ruim) { ruins = 0; return; }
+  if (++ruins < 2) return;
+  ruins = 0; conferir = { antes: nivel, fps, n: 0 };
+  aplicar(nivel + 1);
+  console.info("Corrida: qualidade reduzida para manter a fluidez (nível " + nivel + ", " + fps.toFixed(0) + " qps, a tela já fez " + teto.toFixed(0) + ")");
 }

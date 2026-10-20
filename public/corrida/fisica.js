@@ -84,8 +84,12 @@ export function physics(dt, spec = carOf(me())) {
     if (over > 0) { nx -= p.nx * s * over; ny -= p.ny * s * over; }
     nx = Math.max(2, Math.min(tr.t.world - 2, nx)); ny = Math.max(2, Math.min(tr.t.world - 2, ny));
     const vn = c.vx * p.nx * s + c.vy * p.ny * s, hit = Math.abs(vn);
-    if (vn > 0) { c.vx -= p.nx * s * vn * 1.25; c.vy -= p.ny * s * vn * 1.25; }
-    c.vx *= spec.wall + (1 - spec.wall) * 0.6; c.vy *= spec.wall + (1 - spec.wall) * 0.6;
+    // a batida tira a velocidade que ia contra o muro (com um quiquezinho) e, do resto, perde mais quanto mais de frente
+    // bateu: de raspão segue quase igual. Encostado, só um atrito leve por segundo (antes era um tanto a cada quadro,
+    // e raspar o muro parava o carro)
+    if (vn > 0) { c.vx -= p.nx * s * vn * 1.2; c.vy -= p.ny * s * vn * 1.2; }
+    const pancada = 1 - (1 - spec.wall) * 0.5 * Math.min(1, hit / 260) * (vn > 0 ? 1 : 0), raspa = Math.exp(-(1 - spec.wall) * 0.7 * dt);
+    c.vx *= pancada * raspa; c.vy *= pancada * raspa;
     if (hit > 60) { Sound.bump(); race.shake = 0.25; race.bumps = (race.bumps || 0) + 1; }
   }
   c.x = nx; c.y = ny;
