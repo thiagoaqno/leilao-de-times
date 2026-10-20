@@ -56,3 +56,43 @@ test("haxball: sala real suporta 1x1 e 5x5, limita times e protege início", asy
   assert.equal(match.match.discs.length, 10);
   await assert.rejects(pedir(clients[1], "act", { type: "lobby" }), /Só o anfitrião/);
 });
+
+test("haxball: robôs jogam sozinhos e fazem gol (inclusive com gente parada no time)", () => {
+  for (const [n, nivel] of [[1, "medio"], [2, "dificil"], [3, "facil"]]) {
+    const ps = []; for (let i = 0; i < n * 2; i++) ps.push({ id: "p" + i, name: "P" + i, team: i % 2, bot: i !== 0 }); // p0 é gente e fica parada
+    const m = H.nova(ps, { size: n, minutes: 3, goals: 99 }, 0);
+    let now = 0, chutes = 0;
+    for (let i = 0; i < 60 * 150; i++) {
+      now += 1000 / 60;
+      for (const p of m.discs) if (p.bot) { const r = H.robo(m, p, nivel, now); assert.ok(Math.hypot(r.x, r.y) <= 1.5); p.input = { x: r.x, y: r.y }; if (r.kick) { p.kick = true; chutes++; } }
+      H.step(m, 1 / 60, now);
+    }
+    assert.ok(m.score[0] + m.score[1] >= 1, `${n}x${n}: nenhum gol em 2,5 min`);
+    assert.ok(chutes > 5);
+  }
+});
+
+test("haxball: bola presa na parede por 4 s volta para o campo", () => {
+  const m = H.nova([{ id: "a", name: "A", team: 0 }, { id: "b", name: "B", team: 1 }], { size: 1, minutes: 3, goals: 3 }, 0);
+  H.step(m, 1 / 60, 2300);
+  let now = 2300;
+  for (let i = 0; i < 60 * 5; i++) { now += 1000 / 60; m.ball.x = H.RIGHT - H.BR; m.ball.y = H.BOTTOM - H.BR; m.ball.vx = m.ball.vy = 0; H.step(m, 1 / 60, now); if (m.ball.x < H.RIGHT - 40) break; }
+  assert.ok(m.ball.x < H.RIGHT - 40 && m.ball.y < H.BOTTOM - 40);
+});
+
+test("haxball: anfitrião põe robôs, completa os times e começa", async (t) => {
+  const server = await subirServidor();
+  t.after(() => server.parar());
+  const a = await conectar(server.url, "/haxball"), b = await conectar(server.url, "/haxball");
+  t.after(() => { a.disconnect(); b.disconnect(); });
+  const sala = await pedir(a, "create", { name: "Ana", config: { size: 3, minutes: 3, goals: 3, nivel: "dificil" } });
+  await pedir(b, "join", { code: sala.code, name: "Bia" });
+  await assert.rejects(pedir(b, "act", { type: "bot", team: 1 }), /anfitrião/);
+  await pedir(a, "act", { type: "bot", team: 1 });
+  await pedir(a, "act", { type: "completar" });
+  const cheia = await esperarEstado(a, (s) => s.players.length === 6);
+  assert.equal(cheia.players.filter((p) => p.bot).length, 4);
+  assert.equal(cheia.config.nivel, "dificil");
+  await pedir(a, "act", { type: "start" });
+  await esperarEstado(b, (s) => s.phase === "play" && s.match.discs.filter((d) => d.bot).length === 4);
+});

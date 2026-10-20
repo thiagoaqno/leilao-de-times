@@ -8,7 +8,7 @@ decisões dos primeiros dias estão em `PROJETO.md`, e o que mudou em cada PR fi
 - Site de jogos para jogar com os amigos, tudo em português.
   - A página inicial (`/`) é a **Vila**: um mapinha pixel-art em que cada prédio leva a um jogo.
 - **Servidor:** Node + Express 5 + Socket.io 4, em `server.js`.
-  - `haxball.js` atende `/haxball`: futebol de discos 2D de 1x1 a 5x5. O servidor roda a física de `public/haxball/regras.js` a 60 Hz e envia quadros a 20 Hz; `public/haxball/jogo.js` desenha o canvas e envia movimento/chute. Salas por código, espectador, times, revanche e controles de toque. Teste: `tests/haxball.test.js`.
+  - `haxball.js` atende `/haxball`: futebol de discos 2D de 1x1 a 5x5. O servidor roda a física de `public/haxball/regras.js` a 60 Hz e envia quadros a 20 Hz; `public/haxball/jogo.js` desenha o canvas (campo e arquibancada numa tela escondida, discos interpolados 70 ms atrás, gol com rede que estufa, "GOL!" e confete) e envia movimento/chute. Robôs: `H.robo(m, disco, nivel)` em `regras.js` (papéis divididos só entre os robôs: atacante contorna por trás da bola, goleiro, posição), ligados pelo servidor a cada passo; o anfitrião usa as ações `bot` e `completar`, e `config.nivel`. Bola presa na parede por 4 s volta para o campo. Salas por código, espectador, times, revanche, "Treinar contra robôs" e controles de toque. Teste: `tests/haxball.test.js`.
   - Cada jogo é um módulo `<jogo>.js` na raiz, com o seu canal (namespace) `/<jogo>`.
   - `npm start` sobe em `localhost:3000`.
 - **Navegador:** HTML/JS puro, sem build.

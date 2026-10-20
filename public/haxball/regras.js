@@ -11,7 +11,7 @@
     const count = [0, 0];
     const discs = players.map((p) => {
       const slot = count[p.team]++, n = config.size;
-      return { id: p.id, name: p.name, team: p.team, x: p.team ? 710 : 250,
+      return { id: p.id, name: p.name, team: p.team, bot: !!p.bot, x: p.team ? 710 : 250,
         y: H / 2 + (slot - (n - 1) / 2) * Math.min(74, 360 / Math.max(1, n - 1)),
         homeX: p.team ? 710 : 250, homeY: H / 2 + (slot - (n - 1) / 2) * Math.min(74, 360 / Math.max(1, n - 1)),
         vx: 0, vy: 0, input: { x: 0, y: 0 }, kick: false, lastKick: 0 };
@@ -112,14 +112,79 @@
       if (m.score[team] >= m.limit) { m.phase = "over"; m.winner = team; return "over"; }
       reset(m, now); return "goal";
     }
+    // bola presa: 4 s quase no mesmo lugar, encostada numa parede (no canto, entre dois discos)? volta para dentro, como um lateral
+    const naParede = ball.x < LEFT + BR + 14 || ball.x > RIGHT - BR - 14 || ball.y < TOP + BR + 14 || ball.y > BOTTOM - BR - 14;
+    if (!naParede || !m.presa || Math.hypot(ball.x - m.presa.x, ball.y - m.presa.y) > 25) m.presa = naParede ? { t: now, x: ball.x, y: ball.y } : null;
+    else if (now - m.presa.t > 4000) {
+      const cx = W / 2 - ball.x, cy = H / 2 - ball.y, cl = Math.hypot(cx, cy) || 1;
+      ball.x += (cx / cl) * 70; ball.y += (cy / cl) * 70; ball.vx = ball.vy = 0; m.presa = null;
+      effect(m, "wall", ball.x, ball.y); m.lastEvent = "Bola presa: volta para o campo";
+    }
     if (ball.x < LEFT + BR && !inGoal) { ball.x = LEFT + BR; if (ball.vx < -150) effect(m, "wall", ball.x, ball.y); ball.vx = Math.abs(ball.vx) * 0.84; }
     if (ball.x > RIGHT - BR && !inGoal) { ball.x = RIGHT - BR; if (ball.vx > 150) effect(m, "wall", ball.x, ball.y); ball.vx = -Math.abs(ball.vx) * 0.84; }
     return null;
   }
+  // ---------- robôs ----------
+  // Cada robô decide a cada passo para onde ir e se chuta. O mais perto da bola do time vai nela; se o time tem 2 ou
+  // mais, o mais recuado fica de goleiro (anda na frente do gol, acompanhando a bola); os outros guardam posição. Quem
+  // vai na bola contorna por trás dela (do lado do próprio gol) e só chuta com o gol adversário na frente.
+  const NIVEIS = { facil: { vel: 0.72, mira: 0.62, reacao: 0.35 }, medio: { vel: 0.88, mira: 0.8, reacao: 0.18 }, dificil: { vel: 1, mira: 0.92, reacao: 0.06 } };
+  function robo(m, p, nivel = "medio", now = Date.now()) {
+    const N = NIVEIS[nivel] || NIVEIS.medio, ball = m.ball, ataca = p.team === 0 ? 1 : -1;
+    const golAlvo = { x: ataca > 0 ? RIGHT + 10 : LEFT - 10, y: H / 2 }, golMeu = { x: ataca > 0 ? LEFT : RIGHT, y: H / 2 };
+    const time = m.discs.filter((d) => d.team === p.team), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    // a bola daqui a pouco (quem pensa mais rápido mira mais longe)
+    const prev = 0.12 + (1 - N.reacao) * 0.18, bola = { x: ball.x + ball.vx * prev, y: ball.y + ball.vy * prev };
+    // os papéis são divididos só entre os robôs (gente joga do jeito que quiser): o robô mais perto da bola vai nela e,
+    // se sobrar mais de um, o mais recuado fica no gol
+    const robos = time.filter((d) => d.bot || d === p);
+    const atacante = robos.reduce((a, d) => (dist(d, bola) < dist(a, bola) ? d : a), robos[0]);
+    const goleiro = robos.length > 1 ? robos.filter((d) => d !== atacante).reduce((a, d) => (Math.abs(d.x - golMeu.x) < Math.abs(a.x - golMeu.x) ? d : a)) : null;
+    let alvo, chuta = false;
+    const dentro = (q) => ({ x: Math.max(LEFT + PR, Math.min(RIGHT - PR, q.x)), y: Math.max(TOP + PR, Math.min(BOTTOM - PR, q.y)) });
+    // travado: colado na bola que quase não sai do lugar (no canto, contra outro disco) há mais de 1 s? chuta (a bola
+    // quica nas paredes e sai) e recua um pouco antes de tentar de novo
+    const colado = dist(p, ball) < PR + BR + 10;
+    if (!colado) p.travado = null;
+    else if (!p.travado) p.travado = { t: now, x: ball.x, y: ball.y };
+    else if (Math.hypot(ball.x - p.travado.x, ball.y - p.travado.y) > 30) p.travado = { t: now, x: ball.x, y: ball.y };
+    else if (now - p.travado.t > 900 + (p.team ? 300 : 0)) { p.recua = now + 600; p.travado = null; return { x: 0, y: 0, kick: true }; }
+    if (p.recua > now) {
+      const cx = W / 2 - ball.x, cy = H / 2 - ball.y, cl = Math.hypot(cx, cy) || 1;
+      alvo = dentro({ x: ball.x + (cx / cl) * 80 - ataca * 30, y: ball.y + (cy / cl) * 80 });
+    } else if (p === atacante) {
+      // ponto atrás da bola, na linha bola -> gol adversário
+      const gx = golAlvo.x - bola.x, gy = golAlvo.y - bola.y, gl = Math.hypot(gx, gy) || 1, ux = gx / gl, uy = gy / gl;
+      const atras = { x: bola.x - ux * (PR + BR + 4), y: bola.y - uy * (PR + BR + 4) };
+      const naFrente = (p.x - bola.x) * ux + (p.y - bola.y) * uy > -2; // está do lado errado da bola
+      if (naFrente && dist(p, bola) < 90) { // contorna pelo lado, sem empurrar a bola para o próprio gol
+        const lado = (p.y - bola.y) >= 0 ? 1 : -1;
+        alvo = { x: bola.x - ux * 34 - uy * lado * 46, y: bola.y - uy * 34 + ux * lado * 46 };
+      } else alvo = dist(p, dentro(atras)) > 14 ? atras : { x: bola.x + ux * 20, y: bola.y + uy * 20 }; // alinhado: empurra para o gol
+      alvo = dentro(alvo);
+      const dx = ball.x - p.x, dy = ball.y - p.y, dl = Math.hypot(dx, dy) || 1, alinhado = (dx * ux + dy * uy) / dl;
+      chuta = dl < PR + BR + 24 && alinhado > N.mira && dx * ataca > 0;
+      // perto do próprio gol, qualquer chute para longe vale (afastar o perigo)
+      if (!chuta && dl < PR + BR + 24 && Math.abs(p.x - golMeu.x) < 170 && dx * ataca > 0) chuta = true;
+    } else if (p === goleiro) {
+      const gy = Math.max(GOAL_TOP + 10, Math.min(GOAL_BOTTOM - 10, bola.y));
+      alvo = { x: golMeu.x + ataca * (PR + 22), y: gy };
+      if (dist(p, ball) < PR + BR + 22 && (ball.x - p.x) * ataca > 0) chuta = true; // tira a bola da área
+    } else {
+      // os outros: um pouco atrás da bola, espalhados na altura do campo
+      const outros = robos.filter((d) => d !== atacante && d !== goleiro), k = outros.indexOf(p), n = outros.length;
+      const faixa = n > 1 ? TOP + 60 + (k / (n - 1)) * (BOTTOM - TOP - 120) : H / 2 + (bola.y - H / 2) * 0.5;
+      alvo = { x: Math.max(LEFT + 60, Math.min(RIGHT - 60, bola.x - ataca * 140)), y: faixa };
+    }
+    // anda até o alvo (freia chegando), com um tremidinho de quem não é perfeito
+    const ax = alvo.x - p.x, ay = alvo.y - p.y, al = Math.hypot(ax, ay), forca = Math.min(1, al / 26) * N.vel;
+    const ruido = Math.sin(now / 370 + p.x * 0.01) * N.reacao * 0.4;
+    return { x: al > 1 ? (ax / al) * forca + ruido * 0.3 : 0, y: al > 1 ? (ay / al) * forca - ruido * 0.3 : 0, kick: chuta };
+  }
   function snapshot(m) {
-    return { discs: m.discs.map(({ id, name, team, x, y, vx, vy }) => ({ id, name, team, x, y, vx, vy })),
+    return { discs: m.discs.map(({ id, name, team, x, y, vx, vy, bot }) => ({ id, name, team, x, y, vx, vy, bot: !!bot })),
       ball: { ...m.ball }, score: [...m.score], phase: m.phase, remaining: m.remaining,
       resumeAt: m.resumeAt, lastEvent: m.lastEvent, winner: m.winner, fxSeq: m.fxSeq, fx: m.fx.map((e) => ({ ...e })) };
   }
-  return { W, H, LEFT, RIGHT, TOP, BOTTOM, GOAL_TOP, GOAL_BOTTOM, PR, BR, nova, step, snapshot };
+  return { W, H, LEFT, RIGHT, TOP, BOTTOM, GOAL_TOP, GOAL_BOTTOM, PR, BR, NIVEIS, nova, step, snapshot, robo };
 });

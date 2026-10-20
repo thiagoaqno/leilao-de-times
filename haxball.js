@@ -1,4 +1,4 @@
-// Haxball da Galera: futebol de discos 2D em salas de 1x1 a 5x5.
+// Haxball da Galera: futebol de discos 2D em salas de 1x1 a 5x5, com robôs para completar os times (H.robo).
 const H = require("./public/haxball/regras.js");
 const { rid, novoCodigo, limparNome, ok, falha, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js");
 const noite = require("./noite.js");
@@ -6,7 +6,9 @@ const configOf = (c = {}) => ({
   size: Math.max(1, Math.min(5, Number.parseInt(c.size, 10) || 1)),
   minutes: [3, 5, 10].includes(Number(c.minutes)) ? Number(c.minutes) : 5,
   goals: [3, 5, 10].includes(Number(c.goals)) ? Number(c.goals) : 5,
+  nivel: H.NIVEIS[c.nivel] ? c.nivel : "medio",
 });
+const NOMES_ROBO = ["Robozão", "Chutador", "Paredão", "Driblador", "Canhão", "Zagueirão", "Goleirão", "Pelé-9000", "Lateral", "Tanque"];
 
 module.exports = function attachHaxball(io) {
   const nsp = io.of("/haxball"), rooms = new Map();
@@ -14,7 +16,7 @@ module.exports = function attachHaxball(io) {
   const team = (r, t) => r.order.map((id) => r.players[id]).filter((p) => p.team === t);
   function state(r) {
     return { code: r.code, host: r.host, phase: r.phase, config: r.config,
-      players: r.order.map((id) => { const p = r.players[id]; return { id, name: p.name, team: p.team, online: p.sockets.size > 0 }; }),
+      players: r.order.map((id) => { const p = r.players[id]; return { id, name: p.name, team: p.team, bot: !!p.bot, online: p.bot || p.sockets.size > 0 }; }),
       match: r.match ? H.snapshot(r.match) : null };
   }
   function broadcast(r) { r.t = Date.now(); nsp.to(r.code).emit("state", state(r)); }
@@ -26,12 +28,14 @@ module.exports = function attachHaxball(io) {
     let last = Date.now(), frame = 0;
     r.loop = setInterval(() => {
       const now = Date.now(), dt = Math.min(1 / 30, (now - last) / 1000); last = now;
+      for (const d of r.match.discs) if (d.bot) { const c = H.robo(r.match, d, r.config.nivel, now); d.input = { x: c.x, y: c.y }; if (c.kick) d.kick = true; } // os robôs decidem a cada passo
       const event = H.step(r.match, dt, now);
       if (event === "over") {
         r.phase = "over"; stop(r);
         if (r.match.winner !== null) {
           const win = r.match.winner;
-          noite.vitoria("haxball", r.code, list.filter((p) => p.team === win).map((p) => p.name), list.filter((p) => p.team !== win).map((p) => p.name));
+          const gente = list.filter((p) => !p.bot); // robô não entra no placar da Noite
+          noite.vitoria("haxball", r.code, gente.filter((p) => p.team === win).map((p) => p.name), gente.filter((p) => p.team !== win).map((p) => p.name));
         }
       }
       if (event || ++frame % 3 === 0) nsp.to(r.code).volatile.emit("frame", H.snapshot(r.match));
@@ -82,6 +86,21 @@ module.exports = function attachHaxball(io) {
         if (!host || playing) return falha(cb, "Só o anfitrião configura fora da partida.");
         r.config = configOf(data.config);
         for (const t of [0, 1]) team(r, t).slice(r.config.size).forEach((p) => { p.team = null; });
+        for (const id of [...r.order]) if (r.players[id].bot && r.players[id].team === null) { delete r.players[id]; r.order = r.order.filter((x) => x !== id); } // robô sem vaga sai
+      } else if (data.type === "bot") { // robô novo num time (o anfitrião, fora da partida)
+        if (!host || playing) return falha(cb, "Só o anfitrião põe robôs, fora da partida.");
+        const t = data.team === 0 || data.team === 1 ? data.team : null;
+        if (t === null || team(r, t).length >= r.config.size) return falha(cb, "Esse time está cheio.");
+        if (r.order.length >= 10) return falha(cb, "A sala está cheia.");
+        const usados = new Set(r.order.map((id) => r.players[id].name)), nome = NOMES_ROBO.find((n) => !usados.has(n)) || "Robô";
+        const b = { id: rid(6), token: null, name: nome, team: t, bot: true, sockets: new Set() };
+        r.players[b.id] = b; r.order.push(b.id);
+      } else if (data.type === "completar") { // enche as vagas que sobraram com robôs
+        if (!host || playing) return falha(cb, "Só o anfitrião põe robôs, fora da partida.");
+        for (const t of [0, 1]) while (team(r, t).length < r.config.size && r.order.length < 10) {
+          const usados = new Set(r.order.map((id) => r.players[id].name)), nome = NOMES_ROBO.find((n) => !usados.has(n)) || "Robô";
+          const b = { id: rid(6), token: null, name: nome, team: t, bot: true, sockets: new Set() }; r.players[b.id] = b; r.order.push(b.id);
+        }
       } else if (data.type === "start") {
         if (!host || playing) return falha(cb, "Só o anfitrião inicia a partida.");
         if (team(r, 0).length !== r.config.size || team(r, 1).length !== r.config.size) return falha(cb, `Cada time precisa de ${r.config.size} jogador(es).`);
@@ -93,7 +112,7 @@ module.exports = function attachHaxball(io) {
         if (!host || playing) return falha(cb, "Só o anfitrião remove jogadores entre partidas.");
         const p = r.players[data.id];
         if (!p || p.id === me.id) return falha(cb, "Jogador inválido.");
-        for (const sid of p.sockets) { const s = nsp.sockets.get(sid); if (s) { s.emit("removed"); s.data.pid = null; } }
+        for (const sid of p.sockets) { const s = nsp.sockets.get(sid); if (s) { s.emit("removed"); s.data.pid = null; } } // (robô não tem conexão)
         delete r.players[p.id]; r.order = r.order.filter((id) => id !== p.id);
       } else return falha(cb, "Ação desconhecida.");
       ok(cb); broadcast(r);
@@ -115,7 +134,7 @@ module.exports = function attachHaxball(io) {
         me.sockets.delete(socket.id);
         if (!me.sockets.size && r.match) { const p = r.match.discs.find((d) => d.id === me.id); if (p) p.input = { x: 0, y: 0 }; }
       }
-      if (r.loop && !r.order.some((id) => r.players[id].sockets.size)) { stop(r); r.phase = "lobby"; r.match = null; }
+      if (r.loop && !r.order.some((id) => !r.players[id].bot && r.players[id].sockets.size)) { stop(r); r.phase = "lobby"; r.match = null; }
       broadcast(r);
     });
   });
