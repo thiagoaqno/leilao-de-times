@@ -14,6 +14,8 @@ test("cozinha em pé mostra controles sem pedir para girar o celular", async ({ 
     await page.waitForFunction(() => window.__cozinha?.G.mesa?.fase === "jogo");
     await expect(page.locator("#toque")).toBeVisible();
     await expect(page.locator("#toque .turn")).toBeHidden();
+    await expect(page.locator("#toque .top button")).toHaveCount(2);
+    await expect(page.locator("#toque .top")).toContainText("chão");
     const botoes = await page.locator("#toque .btns button").all();
     expect(botoes).toHaveLength(4);
     const posicoes = await Promise.all(botoes.map((b) => b.boundingBox()));

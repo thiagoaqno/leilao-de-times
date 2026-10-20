@@ -61,11 +61,11 @@
   };
 
   // ---------- receitas (as do Overcooked) ----------
-  // itens: "ingrediente:estado", com repetição; pontos: o valor do pedido; tempo: a paciência do cliente
+  // itens: "ingrediente:estado", cada tipo uma vez; pontos: o valor do pedido; tempo: a paciência do cliente
   const RECEITAS = {
-    sopa_cebola: { nome: "Sopa de cebola", itens: ["cebola:cozido", "cebola:cozido", "cebola:cozido"], pontos: 20, tempo: 75, sopa: true },
-    sopa_tomate: { nome: "Sopa de tomate", itens: ["tomate:cozido", "tomate:cozido", "tomate:cozido"], pontos: 20, tempo: 75, sopa: true },
-    sopa_cogumelo: { nome: "Sopa de cogumelo", itens: ["cogumelo:cozido", "cogumelo:cozido", "cogumelo:cozido"], pontos: 20, tempo: 75, sopa: true },
+    sopa_cebola: { nome: "Sopa de cebola", itens: ["cebola:cozido"], pontos: 20, tempo: 75, sopa: true },
+    sopa_tomate: { nome: "Sopa de tomate", itens: ["tomate:cozido"], pontos: 20, tempo: 75, sopa: true },
+    sopa_cogumelo: { nome: "Sopa de cogumelo", itens: ["cogumelo:cozido"], pontos: 20, tempo: 75, sopa: true },
     salada: { nome: "Salada", itens: ["alface:picado"], pontos: 10, tempo: 55 },
     salada_tomate: { nome: "Salada com tomate", itens: ["alface:picado", "tomate:picado"], pontos: 15, tempo: 65 },
     salada_completa: { nome: "Salada completa", itens: ["alface:picado", "tomate:picado", "pepino:picado"], pontos: 20, tempo: 75 },
@@ -99,7 +99,7 @@
   // as metas das estrelas são calculadas por metaDe para cada número de cozinheiros
   const COZINHAS = {
     "1-1": {
-      nome: "Sopa de cebola", desc: "A primeira cozinha: pique a cebola, três na panela, sirva no prato e lave a louça.",
+      nome: "Sopa de cebola", desc: "A primeira cozinha: pique a cebola, coloque-a na panela, sirva no prato e lave a louça.",
       mapa: [
         "#oo#==#SS##",
         "#.........F",
@@ -307,7 +307,7 @@
     if (!dest || !orig || dest === orig) return false;
     if (ehRec(dest)) {
       const R = RECIPIENTES[dest.k];
-      if (orig.k !== "ing" || dest.q || dest.c.length >= R.cap || proximoPasso(orig) !== R.processo) return false;
+      if (orig.k !== "ing" || dest.q || dest.c.length >= R.cap || dest.c.some((i) => i.t === orig.t) || proximoPasso(orig) !== R.processo) return false;
       dest.p = Math.min(dest.p, R.tempo * dest.c.length); // o que já estava pronto espera o novo cozinhar (e o queimar recomeça)
       dest.c.push({ t: orig.t, e: orig.e }); return true;
     }
@@ -434,6 +434,11 @@
       y: 1.1, vx: fx * v, vz: fz * v, vy: 3.5 });
     j.mao = null; j.trab = null; evento(m, { tipo: "arremessou", j: j.id }); mudou(m); return true;
   }
+  function soltarNoChao(m, j) {
+    if (m.fase !== "jogo" || j.mao?.k !== "ing") return false;
+    m.caidos.push({ id: ++m.seqVoo, item: j.mao, x: j.x, z: j.z });
+    j.mao = null; j.trab = null; evento(m, { tipo: "soltouChao", j: j.id }); mudou(m); return true;
+  }
   function pousar(m, o) {
     const c = Math.floor(o.x / TILE), r = Math.floor(o.z / TILE), t = tileEm(m.mapa, c, r);
     if (t?.i != null) {
@@ -463,7 +468,8 @@
     m.pontos += ganhos; m.gorjetas += gorjeta * multiplicador; m.entregues++;
     j.mao = null; j.trab = null;
     m.voltando.push({ em: m.t + TEMPOS.voltaPrato });
-    m.proxPedido = Math.min(m.proxPedido, m.t + 1 + m.rng() * 2);
+    novoPedido(m);
+    m.proxPedido = m.pedidos.length < coz.pedidos.max ? Math.min(m.proxPedido, m.t + 1 + m.rng() * 2) : Infinity;
     evento(m, { tipo: "entregou", j: j.id, i: t.i, r, pontos: RECEITAS[r].pontos * multiplicador, gorjeta: gorjeta * multiplicador, multiplicador }); mudou(m);
     return true;
   }
@@ -524,10 +530,10 @@
       const p = m.pedidos[k];
       if (m.t >= p.ate) { m.pedidos.splice(k, 1); m.pontos = Math.max(0, m.pontos - TEMPOS.multa); m.perdidos++; m.combo = 0; evento(m, { tipo: "perdeu", r: p.r }); mudou(m); }
     }
-    if (m.pedidos.length < coz.pedidos.inicio && m.proxPedido === Infinity) m.proxPedido = m.t + intervalo(m);
+    while (m.pedidos.length < coz.pedidos.inicio) novoPedido(m);
     if (m.t >= m.proxPedido) {
       if (m.pedidos.length < coz.pedidos.max) novoPedido(m);
-      m.proxPedido = m.pedidos.length < coz.pedidos.inicio ? m.t + intervalo(m) : Infinity;
+      m.proxPedido = m.pedidos.length < coz.pedidos.max ? m.t + 1 + m.rng() * 2 : Infinity;
     }
     // os pratos sujos voltam (empilhados no retorno; sem retorno, limpos no escorredor)
     for (let k = m.voltando.length - 1; k >= 0; k--) {
@@ -574,7 +580,7 @@
   return {
     TILE, RAIO, MOV, TEMPOS, PROCESSOS, INGREDIENTES, RECIPIENTES, RECEITAS, COZINHAS, SIMBOLOS,
     estadosDe, proximoPasso, cabe, receitaDe, rota, simularPerfeito, metaDe, montarMapa, tileEm, solido, frente, colidir, mover, afastar, alvo,
-    novoIng, novoRec, novoPrato, pronto, tempoRec, colocar, juntar, aceita, novaPartida, interagir, usar, arremessar, podeUsar, passo,
+    novoIng, novoRec, novoPrato, pronto, tempoRec, colocar, juntar, aceita, novaPartida, interagir, usar, arremessar, soltarNoChao, podeUsar, passo,
     mesa, andando, nomeItem,
   };
 });

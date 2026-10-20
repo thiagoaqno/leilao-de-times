@@ -10,6 +10,7 @@ test("receitas, metas e orientação aparecem no começo da cozinha", async ({ p
   await page.locator("#btnStart").click();
   await expect(page.locator("#receitas")).toBeVisible();
   await expect(page.locator("#receitasBox .ficha")).toHaveCount(1);
+  await expect(page.locator("#receitasBox .ficha .ingredientes img")).toHaveCount(1);
   await expect(page.locator("#receitasBox")).toContainText("Caixa → Picar → Cozinhar → Prato → Entrega");
   await page.waitForFunction(() => window.__cozinha?.G.mesa?.fase === "jogo");
   await expect(page.locator("#receitas")).toBeHidden();
