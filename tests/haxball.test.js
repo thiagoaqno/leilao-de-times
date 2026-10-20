@@ -34,6 +34,23 @@ test("haxball: impacto entre discos gera reação física e visual", () => {
   assert.ok(H.snapshot(m).fx.some((e) => e.kind === "bump"));
 });
 
+test("haxball: cantos chanfrados devolvem a bola e não deixam ninguém preso na quina", () => {
+  const m = H.nova([{ id: "a", name: "A", team: 0 }, { id: "b", name: "B", team: 1 }], { size: 1, minutes: 3, goals: 3 }, 0);
+  H.step(m, 1 / 60, 2300);
+  // bola indo em diagonal para o canto de cima à esquerda: quica no chanfro e volta para o campo
+  Object.assign(m.ball, { x: H.LEFT + 60, y: H.TOP + 60, vx: -400, vy: -400 });
+  for (let i = 0; i < 30; i++) H.step(m, 1 / 60, 2400 + i * 17);
+  assert.ok(m.ball.vx > 0 && m.ball.vy > 0);
+  assert.ok((m.ball.x - H.LEFT) + (m.ball.y - H.TOP) >= H.CH + H.BR * Math.SQRT2 - 0.01);
+  // disco empurrando a bola contra o canto de baixo à direita: a bola nunca fica na quina
+  const [a] = m.discs;
+  Object.assign(a, { x: H.RIGHT - 80, y: H.BOTTOM - 80, input: { x: 1, y: 1 } });
+  Object.assign(m.ball, { x: H.RIGHT - 50, y: H.BOTTOM - 50, vx: 0, vy: 0 });
+  for (let i = 0; i < 120; i++) H.step(m, 1 / 60, 3000 + i * 17);
+  assert.ok((H.RIGHT - m.ball.x) + (H.BOTTOM - m.ball.y) >= H.CH + H.BR * Math.SQRT2 - 0.01);
+  assert.ok((H.RIGHT - a.x) + (H.BOTTOM - a.y) >= H.CH + H.PR * Math.SQRT2 - 0.01);
+});
+
 test("haxball: sala real suporta 1x1 e 5x5, limita times e protege início", async (t) => {
   const server = await subirServidor();
   t.after(() => server.parar());

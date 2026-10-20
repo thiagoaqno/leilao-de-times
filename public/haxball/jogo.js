@@ -169,14 +169,24 @@
     for (let i = 0; i < 2600; i++) { x.fillStyle = rnd() < 0.5 ? "#ffffff0a" : "#0000000d"; x.fillRect(H.LEFT + rnd() * (H.RIGHT - H.LEFT), H.TOP + rnd() * (H.BOTTOM - H.TOP), 2, 2); }
     // linhas
     x.strokeStyle = "#f4fff6e6"; x.lineWidth = 3; x.shadowColor = "#ffffff55"; x.shadowBlur = 4;
-    x.strokeRect(H.LEFT, H.TOP, H.RIGHT - H.LEFT, H.BOTTOM - H.TOP);
+    // os cantos chanfrados: a mureta em diagonal (a bola quica nela) e o contorno do campo acompanhando
+    const C = H.CH, cantos = [[H.LEFT, H.TOP, 1, 1], [H.RIGHT, H.TOP, -1, 1], [H.RIGHT, H.BOTTOM, -1, -1], [H.LEFT, H.BOTTOM, 1, -1]];
+    x.save(); x.shadowBlur = 0;
+    for (const [cx, cy, sx, sy] of cantos) {
+      x.beginPath(); x.moveTo(cx - sx * 8, cy - sy * 8); x.lineTo(cx + sx * (C + 8), cy - sy * 8); x.lineTo(cx + sx * C, cy); x.lineTo(cx, cy + sy * C); x.lineTo(cx - sx * 8, cy + sy * (C + 8)); x.closePath();
+      x.fillStyle = "#16392c"; x.fill();
+      for (let k = 6; k < C; k += 10) { x.beginPath(); x.moveTo(cx + sx * k, cy - sy * 4); x.lineTo(cx - sx * 4, cy + sy * k); x.strokeStyle = "#ffffff14"; x.lineWidth = 3; x.stroke(); }
+    }
+    x.restore();
+    x.beginPath();
+    cantos.forEach(([cx, cy, sx, sy], i) => { const a = i % 2 ? [cx + sx * C, cy] : [cx, cy + sy * C], b = i % 2 ? [cx, cy + sy * C] : [cx + sx * C, cy]; if (i) x.lineTo(...a); else x.moveTo(...a); x.lineTo(...b); });
+    x.closePath(); x.stroke();
     x.beginPath(); x.moveTo(H.W / 2, H.TOP); x.lineTo(H.W / 2, H.BOTTOM); x.stroke();
     x.beginPath(); x.arc(H.W / 2, H.H / 2, 72, 0, Math.PI * 2); x.stroke();
     x.beginPath(); x.arc(H.W / 2, H.H / 2, 4, 0, Math.PI * 2); x.fillStyle = "#f4fff6"; x.fill();
     for (const [lx, s] of [[H.LEFT, 1], [H.RIGHT, -1]]) {
       x.strokeRect(s > 0 ? lx : lx - 130, H.H / 2 - 122, 130, 244);
       x.beginPath(); x.arc(lx, H.H / 2, 150, s > 0 ? -0.62 : Math.PI - 0.62 + 0, s > 0 ? 0.62 : Math.PI + 0.62); x.stroke();
-      for (const cy of [H.TOP, H.BOTTOM]) { x.beginPath(); x.arc(lx, cy, 14, s > 0 ? (cy === H.TOP ? 0 : -Math.PI / 2) : (cy === H.TOP ? Math.PI / 2 : Math.PI), s > 0 ? (cy === H.TOP ? Math.PI / 2 : 0) : (cy === H.TOP ? Math.PI : Math.PI * 1.5)); x.stroke(); }
     }
     x.shadowBlur = 0;
     fundo = c;

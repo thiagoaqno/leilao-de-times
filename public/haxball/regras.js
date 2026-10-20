@@ -6,6 +6,9 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const W = 960, H = 540, LEFT = 42, RIGHT = 918, TOP = 48, BOTTOM = 492;
   const GOAL_TOP = 208, GOAL_BOTTOM = 332, PR = 19, BR = 11;
+  // os cantos são chanfrados (uma parede em diagonal de CH em cada lado), para a bola não ficar presa na quina
+  const CH = 58, R2 = Math.SQRT1_2;
+  const CANTOS = [[LEFT, TOP, 1, 1], [RIGHT, TOP, -1, 1], [LEFT, BOTTOM, 1, -1], [RIGHT, BOTTOM, -1, -1]];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   function nova(players, config, now = Date.now()) {
     const count = [0, 0];
@@ -23,6 +26,20 @@
   function effect(m, kind, x, y, team = null, id = null) {
     m.fx.push({ seq: ++m.fxSeq, kind, x, y, team, id });
     if (m.fx.length > 12) m.fx.shift();
+  }
+  // empurra para fora do chanfro quem passou dele (raio r) e devolve a velocidade que vem contra a parede, multiplicada
+  // por "quique" (0 = só escorrega). Devolve a velocidade da batida, ou 0 se não encostou.
+  function chanfro(o, r, quique) {
+    for (const [cx, cy, sx, sy] of CANTOS) {
+      const u = (o.x - cx) * sx, v = (o.y - cy) * sy, dist = (u + v - CH) * R2;
+      if (dist >= r) continue;
+      const fora = r - dist, nx = sx * R2, ny = sy * R2;
+      o.x += nx * fora; o.y += ny * fora;
+      const vn = o.vx * nx + o.vy * ny;
+      if (vn < 0) { o.vx -= (1 + quique) * vn * nx; o.vy -= (1 + quique) * vn * ny; return -vn; }
+      return 0;
+    }
+    return 0;
   }
   function reset(m, now) {
     m.ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
@@ -75,6 +92,7 @@
       b.x = clamp(b.x + nx * push, LEFT + PR, RIGHT - PR);
       b.y = clamp(b.y + ny * push, TOP + PR, BOTTOM - PR);
     }
+    for (const p of m.discs) chanfro(p, PR, 0);
     const ball = m.ball;
     for (const p of m.discs) {
       let dx = ball.x - p.x, dy = ball.y - p.y, d = Math.hypot(dx, dy);
@@ -122,6 +140,7 @@
     }
     if (ball.x < LEFT + BR && !inGoal) { ball.x = LEFT + BR; if (ball.vx < -150) effect(m, "wall", ball.x, ball.y); ball.vx = Math.abs(ball.vx) * 0.84; }
     if (ball.x > RIGHT - BR && !inGoal) { ball.x = RIGHT - BR; if (ball.vx > 150) effect(m, "wall", ball.x, ball.y); ball.vx = -Math.abs(ball.vx) * 0.84; }
+    if (chanfro(ball, BR, 0.84) > 150) effect(m, "wall", ball.x, ball.y);
     return null;
   }
   // ---------- robÃ´s ----------
@@ -186,5 +205,5 @@
       ball: { ...m.ball }, score: [...m.score], phase: m.phase, remaining: m.remaining,
       resumeAt: m.resumeAt, lastEvent: m.lastEvent, winner: m.winner, fxSeq: m.fxSeq, fx: m.fx.map((e) => ({ ...e })) };
   }
-  return { W, H, LEFT, RIGHT, TOP, BOTTOM, GOAL_TOP, GOAL_BOTTOM, PR, BR, NIVEIS, nova, step, snapshot, robo };
+  return { W, H, LEFT, RIGHT, TOP, BOTTOM, GOAL_TOP, GOAL_BOTTOM, PR, BR, CH, NIVEIS, nova, step, snapshot, robo };
 });
