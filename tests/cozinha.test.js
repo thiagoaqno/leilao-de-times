@@ -20,11 +20,16 @@ function deFrente(m, j, c, r) {
 }
 const achar = (m, tipo, f = () => true) => m.mapa.tiles.find((t) => t.tipo === tipo && f(t));
 
-test("cada receita pede no máximo uma unidade de cada ingrediente", () => {
+test("como no Overcooked: a sopa leva 3 do mesmo ingrediente e o resto leva um de cada", () => {
   for (const [id, r] of Object.entries(K.RECEITAS)) {
     const tipos = r.itens.map((v) => v.split(":")[0]);
-    assert.strictEqual(new Set(tipos).size, tipos.length, id);
+    if (r.sopa) assert.deepStrictEqual([tipos.length, new Set(tipos).size], [3, 1], id);
+    else assert.strictEqual(new Set(tipos).size, tipos.length, id);
   }
+  // a panela aceita até 3, repetidos; a quarta não entra
+  const pan = K.novoRec("panela"), card = ["sopa_cebola"];
+  for (let k = 0; k < 3; k++) assert.ok(K.juntar(ing("cebola", "picado"), pan, card), "cebola " + (k + 1));
+  assert.ok(!K.juntar(ing("cebola", "picado"), pan, card));
 });
 
 test("toda cozinha do catálogo dá para jogar: lugares no chão, bancadas alcançáveis e todas as receitas possíveis", () => {
@@ -59,13 +64,14 @@ test("juntar: só entra na panela o que está picado, o prato só aceita o que �
   const pan = K.novoRec("panela");
   assert.strictEqual(K.juntar(ing("cebola"), pan, card), null, "cebola inteira não vai na panela");
   assert.ok(K.juntar(ing("cebola", "picado"), pan, card));
-  assert.strictEqual(K.juntar(ing("cebola", "picado"), pan, card), null, "a panela não aceita o mesmo ingrediente duas vezes");
+  assert.ok(K.juntar(ing("cebola", "picado"), pan, card), "a sopa leva 3 cebolas na mesma panela");
+  assert.ok(K.juntar(ing("cebola", "picado"), pan, card));
   const prato = K.novoPrato();
   assert.strictEqual(K.juntar(prato, pan, card), null, "sopa crua não vai para o prato");
   pan.p = K.tempoRec(pan); for (const i of pan.c) i.e = "cozido";
   const r = K.juntar(prato, pan, card); // com o prato na mão, encostando na panela pronta
   assert.ok(r && r.mao === prato && r.alvo === pan);
-  assert.strictEqual(prato.c.length, 1); assert.strictEqual(pan.c.length, 0);
+  assert.strictEqual(prato.c.length, 3); assert.strictEqual(pan.c.length, 0);
   assert.strictEqual(K.receitaDe(prato.c, card), "sopa_cebola");
   // o lanche monta em qualquer ordem; o que não é de receita nenhuma não entra
   const lanche = K.novoPrato();
@@ -82,7 +88,7 @@ test("uma sopa de cebola inteira, da caixa à entrega, e o prato sujo que volta 
   passar(m, K.TEMPOS.conta + 0.1);
   assert.strictEqual(m.fase, "jogo"); assert.strictEqual(m.pedidos.length, 2);
   const caixa = achar(m, "caixa"), tabua = achar(m, "tabua"), fogao = achar(m, "fogao"), esc = achar(m, "escorredor"), ent = achar(m, "entrega"), ret = achar(m, "retorno"), pia = achar(m, "pia");
-  for (let k = 0; k < 1; k++) {
+  for (let k = 0; k < 3; k++) {
     deFrente(m, j, caixa.c, caixa.r); assert.ok(K.interagir(m, j)); assert.strictEqual(K.nomeItem(j.mao), "Cebola");
     deFrente(m, j, tabua.c, tabua.r); assert.ok(K.interagir(m, j)); assert.ok(K.usar(m, j));
     passar(m, K.INGREDIENTES.cebola.picar + 0.05);
@@ -90,7 +96,7 @@ test("uma sopa de cebola inteira, da caixa à entrega, e o prato sujo que volta 
     assert.ok(K.interagir(m, j)); assert.strictEqual(K.nomeItem(j.mao), "Cebola picada");
     deFrente(m, j, fogao.c, fogao.r); assert.ok(K.interagir(m, j)); assert.strictEqual(j.mao, null);
   }
-  passar(m, K.RECIPIENTES.panela.tempo + 0.1);
+  passar(m, K.RECIPIENTES.panela.tempo * 3 + 0.1); // cada cebola soma o tempo dela
   assert.ok(K.pronto(m.estado[fogao.i].item));
   deFrente(m, j, esc.c, esc.r); assert.ok(K.interagir(m, j)); assert.strictEqual(m.estado[esc.i].n, 2);
   deFrente(m, j, fogao.c, fogao.r); assert.ok(K.interagir(m, j)); assert.strictEqual(K.nomeItem(j.mao), "Sopa de cebola");
@@ -104,7 +110,7 @@ test("uma sopa de cebola inteira, da caixa à entrega, e o prato sujo que volta 
   assert.strictEqual(m.estado[pia.i].n, 0); assert.strictEqual(m.estado[esc.i].n, 3);
 });
 
-test("ingrediente diferente na panela já pronta volta a cozinhar sem duplicar tipos", () => {
+test("ingrediente novo na panela já pronta volta a cozinhar", () => {
   const card = ["sopa_cebola", "sopa_tomate"], pan = K.novoRec("panela"), R = K.RECIPIENTES.panela;
   K.juntar(ing("cebola", "picado"), pan, card);
   pan.p = R.tempo + 3; pan.c[0].e = "cozido"; // pronta há 3 s
@@ -164,14 +170,20 @@ test("a fila repõe pedidos após entregas e o combo sobe só na ordem", () => {
   assert.ok(servir()); assert.strictEqual(m.combo, 0, "servir fora da ordem zera o combo");
 });
 
-test("as metas vêm do planejador com distância real e terceira estrela acima de 80% do ótimo", () => {
-  for (const [id, coz] of Object.entries(K.COZINHAS)) for (let n = 1; n <= 4; n++) {
-    const perfeito = K.simularPerfeito(coz, n), meta = K.metaDe(coz, n);
-    assert.ok(perfeito.pratos > 0, `${id}/${n}: nenhum prato possível`);
-    assert.ok(perfeito.duracoes.every((d) => d > 0 && Number.isFinite(d)), `${id}/${n}: rota impossível`);
-    assert.ok(meta[2] <= perfeito.pontos && meta[2] >= perfeito.pontos * 0.8, `${id}/${n}: terceira estrela fora da faixa`);
-    assert.ok(meta[0] < meta[1] && meta[1] < meta[2]);
+test("as metas vêm do planejador com distância real: em equipe a terceira estrela pede 80% do ótimo, sozinho menos", () => {
+  for (const [id, coz] of Object.entries(K.COZINHAS)) {
+    for (let n = 1; n <= 4; n++) {
+      const perfeito = K.simularPerfeito(coz, n), meta = K.metaDe(coz, n), minimo = n === 1 ? 0.65 : 0.8;
+      assert.ok(perfeito.pratos > 0, `${id}/${n}: nenhum prato possível`);
+      assert.ok(perfeito.duracoes.every((d) => d > 0 && Number.isFinite(d)), `${id}/${n}: rota impossível`);
+      assert.ok(meta[2] <= perfeito.pontos && meta[2] >= perfeito.pontos * minimo, `${id}/${n}: terceira estrela fora da faixa`);
+      assert.ok(meta[0] < meta[1] && meta[1] < meta[2]);
+    }
+    assert.ok(K.metaDe(coz, 1)[2] < K.metaDe(coz, 2)[2], `${id}: sozinho a 3ª estrela tem que ser mais fácil que em dupla`);
   }
+  // sozinho com o cozinheiro extra (dois cozinheiros, uma pessoa): a meta é a de quem joga só
+  const solo = K.novaPartida("1-1", [{ id: "a" }, { id: "a-extra-0" }], { pessoas: 1 });
+  assert.deepStrictEqual(solo.meta, K.metaDe(K.COZINHAS["1-1"], 1));
 });
 
 test("o cozinheiro não atravessa bancada e o impulso tem recarga", () => {
@@ -276,7 +288,7 @@ test("servidor: abre a cozinha, pega, pica e entrega uma sopa (tempo acelerado)"
     const acao = async (ev, cond) => { a.emit("st", { x: j.x, z: j.z, vx: 0, vz: 0, d: j.d }); await new Promise((ok) => setTimeout(ok, 60)); a.emit(ev, { x: j.x, z: j.z, vx: 0, vz: 0, d: j.d }); return esperarMesa(cond); };
     // anda devagar até lá (o servidor não aceita teletransporte)
     const andar = async (tipo) => { const alvo = { ...j }; const t = achar(m, tipo); deFrente(m, alvo, t.c, t.r); const passos = 12; const x0 = j.x, z0 = j.z; for (let k = 1; k <= passos; k++) { a.emit("st", { x: x0 + (alvo.x - x0) * k / passos, z: z0 + (alvo.z - z0) * k / passos, vx: 0, vz: 0, d: alvo.d }); await new Promise((ok) => setTimeout(ok, 35)); } Object.assign(j, { x: alvo.x, z: alvo.z, d: alvo.d }); return t; };
-    for (let k = 0; k < 1; k++) {
+    for (let k = 0; k < 3; k++) {
       await andar("caixa"); await acao("pegar", (ms) => ms.maos[r.id] && ms.maos[r.id].t === "cebola");
       await acao("soltarChao", (ms) => !ms.maos[r.id] && ms.caidos.length === 1);
       await acao("pegar", (ms) => ms.maos[r.id]?.t === "cebola" && ms.caidos.length === 0);
@@ -288,7 +300,7 @@ test("servidor: abre a cozinha, pega, pica e entrega uma sopa (tempo acelerado)"
     const fog = achar(m, "fogao");
     await esperarMesa((ms) => K.pronto(ms.lugares[fog.i][0]));
     await andar("escorredor"); await acao("pegar", (ms) => ms.maos[r.id] && ms.maos[r.id].k === "prato");
-    await andar("fogao"); await acao("pegar", (ms) => ms.maos[r.id] && ms.maos[r.id].c.length === 1);
+    await andar("fogao"); await acao("pegar", (ms) => ms.maos[r.id] && ms.maos[r.id].c.length === 3);
     await andar("entrega"); const fim = await acao("pegar", (ms) => ms.entregues === 1);
     assert.ok(fim.pontos >= K.RECEITAS.sopa_cebola.pontos);
   } finally { a.close(); await srv.parar(); }
