@@ -1,19 +1,11 @@
-# Modo drag — primeira versão
+# Modo drag — no jeito do Need for Speed Underground 2
 
-Abra `/corrida/drag/` pelo botão na entrada da Corrida da Galera. O modo é local, em três pistas retas, com três faixas, aceleração pelo jogador, cinco marchas manuais, três rivais, seis carros selecionáveis e áudio sintetizado. `logic.mjs` concentra direção, motor e contato entre carros; `main.js` monta a cena e o HUD.
+Abra `/corrida/drag/` pelo botão na entrada da Corrida da Galera. Corrida local contra três rivais, em três pistas noturnas (Ponte Estaiada, Debaixo do Elevado, Porto à Noite), retas com curvas leves e quatro faixas.
 
-Controles: segure W para acelerar; setas esquerda/direita ou A/D para mudar de faixa; Shift esquerdo para subir marcha; Ctrl esquerdo para reduzir. Na tela de toque, segure GÁS e use os botões de faixa e marcha. A troca de faixa leva 0,42 s e aceita reversão. O contato com um carro à frente limita a velocidade à dele e corrige a sobreposição, sem impulso de ricochete.
+- `logic.mjs`: as regras, puras (testadas em `tests/corrida-drag.test.mjs`). `criarCorrida` e `passoCorrida` rodam a corrida inteira: aquecimento dos pneus (`aquecer`, `ZONA_PNEU`), as luzes, a largada (`largar`: perfeita, boa, patinou ou fraca), câmbio manual (`shift` devolve a qualidade pelo giro: perfeita na faixa verde, boa na azul, cedo ou tarde), nitro (patina na 1ª e 2ª), vácuo (`atualizarVacuo`), freio, tráfego e obras (`gerarTrafego`: cada faixa num ritmo, nada atrás das obras), perda total (bater de frente com `PERDA_TOTAL_KMH` de diferença), raspão na troca de faixa e motor que estoura no corte (`ENGINE_LIMIT_SECONDS`). Os rivais (`RIVAIS`, `pilotar`) trocam marcha mirando um giro, usam nitro, desviam e freiam conforme a habilidade.
+- `main.js`: desenha a corrida (cenário varrido ao longo da curva com `varrer`/`instanciar`, brilho com bloom, neon, lanternas, fumaça dos pneus, cones que voam), o HUD (conta-giros com as faixas e a luz de troca, N2O, vácuo, motor, posição, árvore de luzes) e o som sintetizado. A qualidade cai sozinha se os quadros ficarem lentos (`drag:qualidade`; `?leve=1` já começa leve). `#debug` expõe `window.__drag`.
+- Carros: os seis GLB de `models/`, empacotados por `tools/importar-carros-drag.py`. O jogador usa o escolhido; os rivais usam três dos outros (carregados enquanto você escolhe; até chegarem, aparece um carro provisório). O brilho das lanternas vai nas peças de lanterna de cada modelo (`acharLanternas`; `LANTERNAS_FIXAS` para o 911 e a SF90). O Skyline R33 não trouxe arquivo de licença; verificar os direitos antes de distribuir.
 
-O tacômetro à esquerda marca a faixa de troca perfeita. Acima dela, o tempo de giro crítico acumula até 4 segundos e o motor explode, encerrando a corrida. Em giro normal, esse tempo cai lentamente (0,35 segundo por segundo).
+Controles: W/↑ acelera, S/↓ freia, ←/→ (A/D) trocam de faixa, Shift ou E sobe marcha, Q reduz, Espaço (ou N) nitro. No toque: GÁS, FREIO, N2O, + e − e as setas.
 
-Os modelos em `models/` foram empacotados a partir dos seis ZIPs fornecidos, por `tools/importar-carros-drag.py`. Os textos de licença originais ficam junto dos GLB. O Skyline R33 não trouxe um arquivo de licença no pacote; verificar os direitos antes de distribuir o jogo. Os carros dos rivais continuam leves e provisórios para manter a corrida fluida.
-
-Coloque `.mp3` em `musicas/`. A pasta é lida no início de cada corrida, sem editar uma lista. A primeira música começa na largada e as seguintes tocam em sequência; o botão de som controla a trilha e os motores.
-
-## Próximas etapas
-
-- Nitro com recarga por tempo no vácuo, consumo, efeitos e indicação no HUD.
-- Completar a garagem até dez carros quando os demais arquivos forem disponibilizados.
-- Personalização visual e quatro estágios de motor com números equilibrados por estágio.
-- Ajuste fino de volume da trilha sonora quando houver músicas reais na pasta.
-- Se desejado, integrar salas online ao servidor de Corrida; esta versão é uma corrida local para fechar a jogabilidade principal.
+Músicas: coloque `.mp3` em `musicas/`; a pasta é lida a cada corrida.
