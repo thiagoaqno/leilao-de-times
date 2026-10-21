@@ -20,6 +20,16 @@ test("recordes: só os 5 mais rápidos ficam, cada piloto uma vez, com a melhor 
   assert.strictEqual(bd.recordesCorrida().monaco, undefined, "cada pista tem o seu quadro");
 });
 
+test("traçados dos bots: guarda cinco pilotos diferentes e só melhora a própria volta", () => {
+  const s = [[0, 1, 2, 0, 0, 0]];
+  for (const [piloto, tempo] of [["Ana", 50], ["Bia", 51], ["Caio", 52], ["Duda", 53], ["Edu", 54]])
+    assert.equal(bd.salvarVoltaCorrida("interlagos", tempo, "equilibrado", piloto, s), true);
+  assert.equal(bd.salvarVoltaCorrida("interlagos", 55, "equilibrado", "Fabi", s), false);
+  assert.equal(bd.salvarVoltaCorrida("interlagos", 49, "equilibrado", "ANA", s), true);
+  assert.deepStrictEqual(bd.melhoresTracadosCorrida("interlagos").map((v) => [v.piloto, v.tempo]),
+    [["ANA", 49], ["Bia", 51], ["Caio", 52], ["Duda", 53], ["Edu", 54]]);
+});
+
 test("recordes: a migração traz a melhor volta que já estava guardada", () => {
   const db = bd.abrir();
   db.exec("DELETE FROM migracoes WHERE nome = '013-corrida-recordes.sql'; DROP TABLE corrida_recordes;");

@@ -7,7 +7,7 @@ const T = require("./public/corrida/pistas.js");
 const Itens = require("./corrida-itens.js");
 const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servidor)
 const bd = require("./bd.js");
-Robos.usarFonte((pista) => bd.melhorVoltaCorrida(pista)); // os robôs copiam a melhor volta guardada de cada pista
+Robos.usarFonte((pista) => bd.melhoresTracadosCorrida(pista)); // até cinco linhas humanas por pista
 const { SKINS } = require("./public/pelada/campo.js"); // o piloto do kart usa as skins da Pelada
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
@@ -250,7 +250,7 @@ module.exports = function attachCorrida(io) {
       if (Itens.use(room, me, d.back === true, (event, data) => nsp.to(room.code).emit(event, data))) broadcast(room);
     });
 
-    // a volta que acabei de fazer (amostras a cada 0,1 s): se for a mais rápida da pista, os robôs passam a copiá-la.
+    // a volta que acabei de fazer (amostras a cada 0,1 s): até cinco pilotos ensinam linhas diferentes.
     // Só vale se bate com o tempo que o servidor mediu e se é uma volta só (uma por volta, de quem está correndo).
     socket.on("volta", (d = {}) => {
       const { room, me } = ctx();
@@ -262,7 +262,7 @@ module.exports = function attachCorrida(io) {
       me.voltaEnviada = me.laps;
       let nova = false;
       try { nova = bd.salvarVoltaCorrida(pista, me.last, me.car, me.name, s); } catch (e) { console.warn("Corrida: volta não guardada", e.message); }
-      if (nova && Robos.aprender(pista, { s, carro: me.car, tempo: me.last, piloto: me.name })) { log(room, `🤖 Os robôs aprenderam a volta de ${me.name} em ${t.name}.`); broadcast(room); }
+      if (nova && Robos.aprender(pista, bd.melhoresTracadosCorrida(pista))) { log(room, `🤖 Os robôs aprenderam a volta de ${me.name} em ${t.name}.`); broadcast(room); }
     });
 
     // posição do meu carro (10 por segundo): vai para os outros
