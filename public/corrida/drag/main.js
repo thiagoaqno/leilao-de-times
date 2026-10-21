@@ -1,6 +1,7 @@
 // Drag da Galera: desenha a `corrida` de logic.mjs (cena noturna, carros, HUD) e manda os comandos.
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -73,7 +74,7 @@ const hemi = new THREE.HemisphereLight(0xffffff, 0x101010, 0.7); scene.add(hemi)
 const lua = new THREE.DirectionalLight(0x9db8ff, 0.35); lua.position.set(-40, 80, -30); scene.add(lua);
 const farol = new THREE.SpotLight(0xf4f7ff, 26, 95, 0.46, 0.65, 1); scene.add(farol); scene.add(farol.target);
 const pmrem = new THREE.PMREMGenerator(renderer);
-const loader = new GLTFLoader(), modelCache = new Map();
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), modelCache = new Map(); // os GLB vêm comprimidos (meshopt + WebP)
 let readyModel = null;
 
 // Carrega um GLB uma vez só (o vidro com "transmission" pede uma passada inteira a mais por quadro: vira vidro comum).
@@ -263,16 +264,28 @@ function texturaDoCeu(tr) {
     for (let i = 0; i < 900; i++) { g.fillStyle = Math.random() < 0.7 ? "rgba(255,200,120,.7)" : "rgba(160,220,255,.7)"; g.fillRect(Math.random() * w, h * 0.47 + Math.random() * h * 0.05, 1.5, 1.5); }
   });
 }
+// O asfalto: a foto de asfalto de verdade (asphalt_02 do Poly Haven, CC0, reduzida para 512 px em asfalto.jpg, 66 KB),
+// repetida em ladrilhos de uns 3 m e escurecida na cor de cada pista, com as faixas pintadas por cima. Enquanto a foto
+// não chega, vale o asfalto desenhado.
+const fotoAsfalto = new Image(); fotoAsfalto.src = "/corrida/drag/asfalto.jpg";
 function asfaltoTex(tr) {
-  const t = canvasTex(512, 384, (g, w, h) => {
+  const desenhar = (g, w, h) => {
     g.fillStyle = tr.asfalto; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 9000; i++) { const c = 20 + Math.random() * 40; g.fillStyle = `rgba(${c},${c},${c + 4},${Math.random() * 0.5})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
-    for (let i = 0; i < 18; i++) { g.fillStyle = "rgba(0,0,0,.18)"; g.fillRect(Math.random() * w, 0, 6 + Math.random() * 30, h); }
+    if (fotoAsfalto.complete && fotoAsfalto.naturalWidth) {
+      const lw = w / 5, lh = h / 4; // 15,8 m de largura e 12 m de comprimento na textura
+      for (let x = 0; x < w; x += lw) for (let y = 0; y < h; y += lh) g.drawImage(fotoAsfalto, x, y, lw + 1, lh + 1);
+      g.globalAlpha = 0.45; g.fillStyle = tr.asfalto; g.fillRect(0, 0, w, h); g.globalAlpha = 1;
+    } else {
+      for (let i = 0; i < 9000; i++) { const c = 20 + Math.random() * 40; g.fillStyle = `rgba(${c},${c},${c + 4},${Math.random() * 0.5})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    }
+    for (let i = 0; i < 18; i++) { g.fillStyle = "rgba(0,0,0,.14)"; g.fillRect(Math.random() * w, 0, 6 + Math.random() * 30, h); }
     const u = (s) => (7.9 - s) / 15.8 * w;
     g.fillStyle = "#e8b622"; g.fillRect(u(7.4) - 4, 0, 8, h);
     g.fillStyle = "#e9ecec"; g.fillRect(u(-7.4) - 4, 0, 8, h);
     for (const s of [3.7, 0, -3.7]) g.fillRect(u(s) - 3, 0, 6, h * 0.3);
-  }, { repetir: true });
+  };
+  const t = canvasTex(1024, 768, desenhar, { repetir: true });
+  if (!fotoAsfalto.complete) fotoAsfalto.addEventListener("load", () => { desenhar(t.image.getContext("2d"), t.image.width, t.image.height); t.needsUpdate = true; }, { once: true });
   return t;
 }
 function disposeGroup(group) {
@@ -1293,7 +1306,7 @@ function resize() {
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 // ---------- Garagem ----------
-const garagem = criarGaragem({ scene, pmrem, fotoNoitePronta, aplicarAmbiente, canvasTex, TEX, placa, brilhoMat, aditivo, carroProcedural, soltarCarro,
+const garagem = criarGaragem({ scene, pmrem, fotoNoitePronta, fotoAsfalto, aplicarAmbiente, canvasTex, TEX, placa, brilhoMat, aditivo, carroProcedural, soltarCarro,
   remontar: () => { if (readyModel) garagem.mostrarCarro(importedCar(readyModel, selectedCar, visualDe(selectedCar, L.CARROS[selectedCar].neon))); } });
 function voltarGaragem() {
   if (world) world.visible = false;

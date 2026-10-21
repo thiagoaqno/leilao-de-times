@@ -13,6 +13,8 @@
 - **Serra à Noite:** pista nova com curvas fechadas (paredão de pedra, ribanceira com mata, guard-rail, olhos de gato e placas de curva). O carro esterça sozinho, deita na curva e o pneu canta.
 - **Ponteiro 10% mais rápido:** a aceleração subiu 10% (o giro sobe mais rápido em cada marcha) e o aquecimento dos pneus também sobe o giro 10% mais rápido.
 - **Som de cada motor, com pops and bangs:** sintetizado com o jeito de cada carro (4, 6, 8 ou 10 cilindros, giro, turbo ou aspirado): o assobio e a válvula do turbo, estalos no escapamento ao tirar o pé em giro alto e o estouro na troca, com a labareda saindo do escapamento.
+- **Carros 6× mais leves:** os onze GLB foram comprimidos (malha com meshopt, texturas em WebP de até 1024 px): de 197 MB para 31 MB no total, sem simplificar a malha (faróis, lanternas e bancos continuam no lugar). O drag liga o `MeshoptDecoder`; o comando está no `tools/importar-carros-drag.py`.
+- **Asfalto de verdade:** a pista e a rua da garagem usam a foto `asfalto.jpg` (asphalt_02 do Poly Haven, CC0, reduzida para 512 px, 66 KB), com a cor de cada pista e as faixas pintadas por cima.
 - **Primeira corrida sem tranco (drag):** a largada espera os modelos dos rivais (antes, o carro provisório era trocado pelo modelo no meio da corrida), compila os shaders de tudo o que vai aparecer e sobe as texturas antes de o relógio andar; as partículas já nascem prontas e a pista é reaproveitada quando é a mesma.
 - **Primeira corrida sem tranco (Corrida):** a preparação da largada também compila os efeitos que só nascem no meio da corrida (fumaça da derrapagem, cacos, explosão, "POW!" e os itens).
 
