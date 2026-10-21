@@ -8,7 +8,10 @@ const Itens = require("./corrida-itens.js");
 const { SKINS } = require("./public/pelada/campo.js");
 
 const NOMES = ["Faísca", "Pistão", "Graxa", "Biela", "Vácuo", "Turbo", "Chicane"];
-const NIVEIS = { facil: 0.80, medio: 0.87, dificil: 0.93 }; // mesmo no difícil, deixa margem para um humano alcançar
+const NIVEIS = { facil: 0.80, medio: 0.87, dificil: 0.93 }; // sem ninguém com volta na pista: fração da velocidade do traçado
+// Com voltas guardadas: o tempo de volta que o robô mira, em relação ao ritmo de quem joga (a média das cinco
+// melhores voltas de cada um). No médio, um pouco mais lento que essa média; no difícil, um pouco mais rápido.
+const RITMO = { facil: 1.12, medio: 1.03, dificil: 0.98 };
 const STEP = 6;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const CACHE = new Map();
@@ -43,7 +46,8 @@ function tracado(pista) {
 // qualquer um dos cinco). Pontos sem amostra são preenchidos pelos vizinhos, e tudo é suavizado.
 const APRENDIDO = new Map(); // pista -> até cinco perfis humanos válidos
 let fonte = () => []; // de onde vêm até cinco voltas guardadas (o servidor liga no banco)
-function usarFonte(f) { fonte = f; APRENDIDO.clear(); CACHE.clear(); }
+let fonteRitmo = () => null; // o ritmo de quem joga: (pista, nomes da sala ou null) -> { tempo } (bd.ritmoCorrida)
+function usarFonte(f, ritmo = () => null) { fonte = f; fonteRitmo = ritmo; APRENDIDO.clear(); CACHE.clear(); }
 function processar(pista, volta) {
   const t = T.PISTAS[pista], linha = tracado(pista), pts = linha.pts, n = pts.length, s = volta && volta.s;
   const vmax = (T.CARROS[volta && volta.carro] || T.CARROS.equilibrado).vmax;
@@ -92,6 +96,32 @@ function perfil(pista, carro, tracadoId = 0) {
   }
   const out = { pts, n, lim, lat, t, c, linha, aprendeu: !!ap }; CACHE.set(chave, out); return out;
 }
+// O tempo de uma volta lançada andando no limite do perfil vezes `escala`, com a arrancada do carro (a mesma conta do
+// passo, sem tráfego). Serve para achar a escala que fecha a volta no tempo que o robô mira.
+function tempoDaVolta(pf, escala) {
+  const { lim, n, c } = pf;
+  let v = 0, t = 0;
+  for (let volta = 0; volta < 2; volta++) {
+    t = 0;
+    for (let i = 0; i < n; i++) {
+      const teto = Math.min(c.vmax, Math.min(lim[i], lim[(i + 3) % n]) * escala);
+      v = Math.min(teto, Math.sqrt(v * v + 2 * c.acc * (1 - 0.8 * Math.pow(Math.max(0, v) / c.vmax, 1.6)) * STEP));
+      t += STEP / Math.max(v, 1);
+    }
+  }
+  return t;
+}
+function escalaPara(pf, alvo) {
+  let lo = 0.4, hi = 1.6;
+  if (tempoDaVolta(pf, hi) > alvo) return hi; // nem no máximo chega: vai no máximo
+  for (let k = 0; k < 24; k++) { const m = (lo + hi) / 2; if (tempoDaVolta(pf, m) > alvo) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
+// O ritmo da largada: o de quem está na sala; sem volta deles nesta pista, o de todo mundo que já correu nela.
+function ritmoDaSala(room) {
+  const nomes = room.order.map((id) => room.players[id]).filter((p) => p && !p.bot).map((p) => p.name);
+  try { return (nomes.length && fonteRitmo(room.config.pista, nomes)) || fonteRitmo(room.config.pista, null) || null; } catch (e) { return null; }
+}
 function largada(pts, g, W) { // o mesmo lugar do grid do navegador (gridSpot, em pista.js)
   const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * 13 + n) % n;
   return { idx, lat: (g % 2 ? 1 : -1) * W * 0.22 };
@@ -113,13 +143,18 @@ function remover(room) {
 }
 // depois do grid sorteado: cada robô no seu lugar, parado
 function largar(room) {
-  const t = T.PISTAS[room.config.pista];
+  const t = T.PISTAS[room.config.pista], bots = room.order.filter((id) => room.players[id].bot), ritmo = ritmoDaSala(room);
+  room.ritmoRobos = ritmo ? ritmo.tempo * (RITMO[room.config.nivel] || RITMO.medio) : null;
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot) continue;
-    const tracadoId = room.order.filter((id) => room.players[id].bot).indexOf(id), pf = perfil(room.config.pista, p.car, tracadoId), g = largada(pf.pts, p.grid, t.width);
+    const tracadoId = bots.indexOf(id), pf = perfil(room.config.pista, p.car, tracadoId), g = largada(pf.pts, p.grid, t.width);
+    // Todos miram o mesmo ritmo (com uns 3% de diferença entre o mais rápido e o mais lento), seja qual for o traçado
+    // que copiam. Sem volta de ninguém na pista, andam numa fração do limite do traçado.
+    const espalha = bots.length > 1 ? (tracadoId / (bots.length - 1) - 0.5) * 0.03 : 0;
+    const nivel = ritmo ? escalaPara(pf, room.ritmoRobos * (1 + espalha)) : (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.98, 1.02);
     p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
     // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
-    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel: (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.98, 1.02), jeito: rnd(-7, 7), tracadoId, reacao: rnd(0, 450), usaEm: 0 };
+    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: rnd(-7, 7), tracadoId, reacao: rnd(0, 450), usaEm: 0 };
     posicionar(p, pf, 0);
   }
 }
@@ -195,4 +230,4 @@ function passo(room, dt, setor, emit) {
     }
   }
 }
-module.exports = { preparar, remover, largar, passo, NIVEIS, aprender, usarFonte, aprendido };
+module.exports = { preparar, remover, largar, passo, NIVEIS, RITMO, aprender, usarFonte, aprendido, tempoDaVolta, perfil };

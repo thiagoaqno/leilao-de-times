@@ -1,19 +1,19 @@
-# Corrida: modo Drag no jeito do Need for Speed Underground 2
+# Corrida: robôs no ritmo de quem joga
+
+## O problema
+
+Os robôs ou eram imbatíveis ou eram muito lentos. O banco guardava só a melhor volta de cada piloto (e só dos cinco pilotos mais rápidos), e cada robô copiava a volta de um piloto diferente, a 80/87/93% da velocidade: um robô andava quase no seu recorde, sem nunca errar, e outro copiava a volta de quem jogou uma vez e andou devagar.
 
 ## O que muda
 
-- **Quatro faixas e troca de faixa semiautomática.** ←/→ só trocam de faixa; o carro se alinha sozinho. Com alguém do lado, a troca é recusada; um raspão no meio da troca devolve o carro para a faixa dele.
-- **Aquecimento dos pneus e largada.** Antes das luzes, segurar o ponteiro na faixa verde do conta-giros esquenta os pneus (mais tração na 1ª e 2ª). No verde, o giro decide a largada: perfeita, boa, patinou (alto demais) ou fraca.
-- **Câmbio manual obrigatório.** A luz do conta-giros mostra a hora da troca: verde é troca perfeita (um tranco a mais), azul é boa, fora disso é cedo (o carro morre na marcha seguinte) ou tarde. Ficar no corte de giro esquenta o motor até estourar.
-- **Nitro (N2O)** com medidor próprio; nas primeiras marchas ele só faz o pneu patinar. **Vácuo:** logo atrás de um rival, a barra enche e o ar pesa menos.
-- **Tráfego e obras.** Carros comuns em cada faixa e obras que fecham uma faixa (com cones e placa de seta antes). Bater de frente é **perda total** e acaba a corrida. Freio no S/↓.
-- **Rivais de verdade:** três pilotos com níveis diferentes que trocam marcha, usam nitro, desviam e às vezes também dão perda total. Eles usam os outros modelos de carro da garagem.
-- **Três pistas noturnas:** Ponte Estaiada (cabos e refletores verdes), Debaixo do Elevado (luz de sódio e alambrado vermelho) e Porto à Noite. Neon embaixo dos carros, brilho nas luzes, lanternas acesas no lugar das lanternas de cada modelo, fumaça dos pneus.
-- **HUD no jeito do jogo:** conta-giros grande à esquerda com a marcha, N2O à direita, posição, tempo e velocidade no alto, a árvore de luzes da largada e a classificação no fim.
-- O Ctrl saiu dos controles (Ctrl+W fechava a aba): reduzir é Q.
+- **O banco guarda as cinco melhores voltas de cada piloto** em cada pista (`corrida_voltas_piloto`, migração 017, que traz as voltas que já estavam guardadas).
+- **O ritmo dos robôs é a média dessas voltas** de quem está na sala (cada piloto pesa igual). Se ninguém da sala tem volta naquela pista, vale a média de todo mundo que já correu nela.
+- **Cada robô ajusta a própria velocidade para fechar a volta nesse ritmo vezes o nível**, seja qual for o traçado que ele copia: fácil 12% mais lento que a média, médio 3% mais lento, difícil 2% mais rápido. Entre os robôs há uns 3% de diferença, para não andarem em fila.
+- O traçado (por onde o robô passa) continua sendo a melhor volta de cada um dos cinco pilotos mais rápidos. Ele só muda quando alguém bate a própria melhor volta.
+- Na largada, o registro da sala mostra o tempo de volta que os robôs vão buscar.
+- Sem volta de ninguém na pista, nada muda: os robôs seguem o traçado calculado, como antes.
 
 ## Verificação
 
-- `node --test tests/corrida-drag.test.mjs` (regras: trocas, aquecimento, nitro, vácuo, perda total, tráfego, corrida inteira e equilíbrio dos rivais).
-- Fotos das três pistas e de cada carro visto de trás, com as lanternas.
-- Os testes E2E do drag foram atualizados (`tests/e2e/corrida-drag*.spec.js`), mas não rodaram aqui: o navegador por software deste ambiente fica em 1 quadro por segundo.
+- `node --test tests/corrida-robos.test.js tests/corrida-recordes.test.js tests/corrida-experiencia.test.js tests/corrida-colisao.test.js tests/bd.test.js tests/salas.test.js`.
+- Simulação em Interlagos, Mônaco, Tóquio e Nürburgring, com dois ritmos diferentes: os robôs fecham a volta a 1–2% do tempo que miram, nos três níveis. A exceção é quando o carro não tem velocidade para chegar no tempo pedido.

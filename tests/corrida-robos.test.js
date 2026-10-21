@@ -134,3 +134,39 @@ test("todas as pistas: robôs largam no reto, passam pelos 12 checkpoints em ord
     assert.ok(Math.max(...lats.map(Math.abs)) < meia, `${id}: robô saiu da pista`);
   }
 });
+
+// A volta dos robôs não depende de quem gravou o traçado: miram o ritmo da sala (a média das cinco melhores voltas de
+// cada um) vezes o nível. Antes, cada robô copiava a melhor volta de um piloto: um ficava no recorde, outro na volta
+// do novato.
+test("robôs miram o ritmo da sala, seja qual for a volta que copiam", () => {
+  const pista = "interlagos";
+  const voltaDe = (nivel) => { // grava uma volta de robô para servir de volta humana
+    Robos.usarFonte(() => []);
+    const amostras = [];
+    const { room } = correr(pista, nivel, false, 1, (r, t, relogio) => { const p = r.players[r.order[0]]; if (p.started && !p.laps && Math.round(t * 20) % 2 === 0) amostras.push([relogio, p.pos.x, p.pos.y, p.pos.z, p.pos.a, p.pos.prog]); });
+    return { s: amostras, carro: room.players[room.order[0]].car, tempo: room.players[room.order[0]].volta, piloto: nivel };
+  };
+  const rapida = voltaDe("dificil"), lenta = voltaDe("facil");
+  assert.ok(lenta.tempo > rapida.tempo * 1.1, "as duas voltas gravadas têm ritmos bem diferentes");
+  const ritmo = 75;
+  try {
+    for (const nivel of ["facil", "medio", "dificil"]) {
+      Robos.usarFonte(() => [rapida, lenta], () => ({ tempo: ritmo }));
+      const { room } = correr(pista, nivel, false, 2);
+      const alvo = ritmo * Robos.RITMO[nivel];
+      assert.ok(Math.abs(room.ritmoRobos - alvo) < 1e-9);
+      for (const id of room.order) {
+        const p = room.players[id];
+        assert.ok(Math.abs(p.volta - alvo) / alvo < 0.06, `${nivel}: ${p.name} (traçado ${p.ia.tracadoId}) fez ${p.volta.toFixed(1)} s, mirando ${alvo.toFixed(1)} s`);
+      }
+    }
+  } finally { Robos.usarFonte(() => null); }
+});
+
+test("sem volta de ninguém na pista, os robôs seguem o traçado calculado pelo nível", () => {
+  Robos.usarFonte(() => [], () => null);
+  const { room } = correr("interlagos", "dificil", false, 1);
+  assert.equal(room.ritmoRobos, null);
+  assert.ok(Math.abs(room.players[room.order[0]].ia.nivel - Robos.NIVEIS.dificil) < 0.03);
+  Robos.usarFonte(() => null);
+});
