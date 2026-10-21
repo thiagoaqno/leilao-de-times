@@ -101,10 +101,15 @@ export function respawn() {
   const p = race.tr.pts[race.idx]; Object.assign(race.car, { x: p.x, y: p.y, z: p.h, vz: 0, air: false, a: Math.atan2(p.ty, p.tx), v: 0, vx: 0, vy: 0, slip: 0 }); Sound.pop();
 }
 
-let lastT = 0;
+let lastT = 0, ultimoQuadro = 0;
+// Telas de 120/144 Hz pediam um quadro a cada 7 ms e a placa de vídeo desenhava tudo 144 vezes por segundo. Um quadro
+// precisa de pelo menos 11 ms: em 144 Hz desenha um sim e outro não (72 por segundo), em 60 Hz todos.
+const QUADRO_MIN = 11;
 function loop(t) {
   raf = requestAnimationFrame(loop);
   if (!race) { raf && cancelAnimationFrame(raf); raf = 0; return; }
+  if (t - ultimoQuadro < QUADRO_MIN) return;
+  ultimoQuadro = t;
   const dt = Math.min(1 / 30, (t - (lastT || t)) / 1000); lastT = t;
   pollPad();
   if (E.S && E.S.phase === "race") { const steps = dt > 1 / 50 ? 2 : 1; for (let i = 0; i < steps; i++) physics(dt / steps); }
