@@ -71,6 +71,13 @@ app.get("/api/musicas-vila3d", (req, res) => {
   res.json(lista);
 });
 // a estante de troféus da Carreira (todas as carreiras, solo e em grupo): o ranking dos técnicos e as últimas conquistas
+// os recordes de volta da Corrida (os 5 melhores de cada pista, para sempre): o placar do Autódromo na Vila
+app.get("/api/recordes-corrida", (req, res) => {
+  try {
+    const T = require("./public/corrida/pistas.js"), rec = require("./bd.js").recordesCorrida();
+    res.json({ pistas: Object.entries(T.PISTAS).map(([id, p]) => ({ id, nome: p.name, top: rec[id] || [] })) });
+  } catch (e) { res.status(500).json({ erro: "O placar não abriu." }); }
+});
 app.get("/api/estante", (req, res) => { try { res.json(require("./bd.js").estante()); } catch (e) { res.status(500).json({ erro: "A estante não abriu." }); } });
 // Escudos da Carreira guardados no Git. O mesmo endereço serve a tela e o canvas das notícias, sem chamar a API em jogo.
 const escudosApi = (() => { try { return require("./public/carreira/escudos-api.json"); } catch { return {}; } })();

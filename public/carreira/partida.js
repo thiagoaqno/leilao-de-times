@@ -247,7 +247,7 @@ function abrirDecisao(p) {
     if (!$("decisao").open) $("decisao").showModal();
     return;
   }
-  $("dTempoBox").classList.toggle("hidden", p.tipo !== "lance");
+  $("dTempoBox").classList.toggle("hidden", p.tipo !== "lance" && !(J.grupo && p.ate)); // no grupo, a parada tática também tem prazo
   $("decisao").classList.remove("intervalo", "sem-prancheta");
   // na parada tática, o estádio de quem joga em casa (estadios.js) fica atrás da prancheta
   const est = $("dEstadio"); est.innerHTML = ""; est.classList.toggle("hidden", p.tipo !== "tatica");
@@ -256,14 +256,33 @@ function abrirDecisao(p) {
     Estadio.montar(est, CLUBES[J.casa], CLUBES[J.fora], J.clima);
   }
   if (p.tipo === "tatica") decisaoTatica(p); else decisaoLance(p);
+  armarTempo(p);
   if (!$("decisao").open) $("decisao").showModal();
   if (p.tipo === "tatica") $("decisao").scrollTop = 0; // o foco vai para o 1º jogador do campo (abaixo do cartão): sem isso a janela rolava e escondia o título
 }
 $("decisao").addEventListener("cancel", (e) => e.preventDefault()); // a decisão não fecha no Esc: precisa responder
+// o tempo para decidir. Sozinho, são 20 s do lance (TEMPO_LANCE). No grupo, quem manda é o prazo do servidor
+// (parado.ate): ele começou a contar quando o jogo chegou no lance lá, e a tela pode ter chegado depois (a animação
+// atrás, ou a aba escondida no celular). Contar 20 s a partir daqui fazia a janela fechar sozinha antes do fim da barra.
+function armarTempo(p) {
+  clearTimeout(J.timerLance); J.timerLance = null;
+  const grupo = J.grupo && p.ate && typeof agoraServidor === "function";
+  if (p.tipo !== "lance" && !grupo) return;
+  const ms = grupo ? Math.max(0, Math.min(TEMPO_LANCE, p.ate - agoraServidor() - 300)) : TEMPO_LANCE;
+  // a barra: uma transição só, linear, que não recomeça (no grupo, já começa no pedaço que sobrou)
+  const barra = $("dTempo");
+  barra.style.transition = "none"; barra.style.transform = `scaleX(${grupo ? ms / TEMPO_LANCE : 1})`;
+  requestAnimationFrame(() => requestAnimationFrame(() => { barra.style.transition = `transform ${ms}ms linear`; barra.style.transform = "scaleX(0)"; }));
+  // sem resposta, vai a opção de maior chance. No grupo, quem aplica é o servidor, no fim do prazo dele
+  // (carreira-rodada.js, a mesma Motor.decisaoAutomatica): mandar daqui só arriscava uma decisão vencida
+  if (p.tipo === "lance" && !grupo) J.timerLance = setTimeout(() => enviarDecisao(Motor.decisaoAutomatica(p)), ms);
+}
 async function enviarDecisao(resposta) {
   clearTimeout(J.timerLance); J.timerLance = null;
+  const parado = J.parado;
+  if (!parado || parado.esperando) return; // a parada já fechou (o prazo do servidor acabou antes): não há o que mandar
   for (const b of $("dCorpo").querySelectorAll("button")) b.disabled = true;
-  const r = await pedir("decidir", { id: J.parado.id, resposta });
+  const r = await pedir("decidir", { id: parado.id, resposta });
   if (!r.ok) { toast(r.error); for (const b of $("dCorpo").querySelectorAll("button")) b.disabled = false; return; }
   if (J.grupo) { atualizarRodadaGrupo(r.rodada); return; } // grupo.js: a rodada segue (ou espera o outro técnico)
   receber(r.estado);
@@ -294,11 +313,6 @@ function decisaoLance(p) {
       <p class="suave">${contra ? "Chance de evitar o gol, pelas notas de quem está no lance. Quem arrisca mais (chance menor) ganha mais impulso no ataque se der certo: o bônus vale para o seu próximo lance, por uns 10 minutos." : "Chance de gol, pelas notas de quem está no lance."}${p.situacao ? " As setas ▲▼ mostram o que a situação muda: o número não conta tudo." : ""}${p.impulso ? ` <b class="impulso-nota">Já inclui +${Math.round(p.impulso * 100)}% do impulso da sua defesa.</b>` : ""}</p>`;
   }
   for (const b of $("dCorpo").querySelectorAll("[data-op]")) b.onclick = () => { b.classList.add("escolhida"); enviarDecisao(b.dataset.op); };
-  // o tempo: uma transição só, linear, que não recomeça
-  const barra = $("dTempo");
-  barra.style.transition = "none"; barra.style.transform = "scaleX(1)";
-  requestAnimationFrame(() => requestAnimationFrame(() => { barra.style.transition = `transform ${TEMPO_LANCE}ms linear`; barra.style.transform = "scaleX(0)"; }));
-  J.timerLance = setTimeout(() => enviarDecisao(Motor.decisaoAutomatica(p)), TEMPO_LANCE);
 }
 // o que o outro técnico montou e o que a SUA formação e o SEU estilo rendem contra ele (muda a cada escolha da prancheta)
 function rivalDaParadaHTML(p, d) {
