@@ -1,0 +1,11 @@
+Model Information:
+* title:	2021 Volkswagen Phideon 380 TSI
+* source:	https://sketchfab.com/3d-models/2021-volkswagen-phideon-380-tsi-e4080a254e824397bf8c823993fbffc4
+* author:	Ddiaz Design (https://sketchfab.com/ddiaz-design)
+
+Model License:
+* license type:	CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/)
+* requirements:	Author must be credited. No commercial use. Modified versions must have the same license.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "2021 Volkswagen Phideon 380 TSI" (https://sketchfab.com/3d-models/2021-volkswagen-phideon-380-tsi-e4080a254e824397bf8c823993fbffc4) by Ddiaz Design (https://sketchfab.com/ddiaz-design) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/)

@@ -123,4 +123,6 @@ export function puff(x, y, z, color = "#e6e6e6", s = 3, vida = 0.7, cresce = 1.6
   const m = new THREE.Mesh(puffGeo, mat.clone()); m.position.set(x, y, z); m.scale.setScalar(s); scene.add(m);
   puffs.push({ m, t: vida, t0: vida, op, cresce, vy: 6 + Math.random() * 6, vx: (Math.random() - 0.5) * 8, vz: (Math.random() - 0.5) * 8 });
 }
+// uma nuvem escondida, para a largada já compilar o shader da fumaça (ver amostrasDeEfeitos em efeitos.js)
+export function amostraDeFumaca() { const m = new THREE.Mesh(puffGeo, new THREE.MeshLambertMaterial({ color: "#e6e6e6", transparent: true, opacity: 0.6, depthWrite: false })); m.visible = false; return m; }
 export function stepPuffs(dt) { for (let i = puffs.length - 1; i >= 0; i--) { const p = puffs[i]; p.t -= dt; if (p.t <= 0) { scene.remove(p.m); p.m.material.dispose(); puffs.splice(i, 1); continue; } p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.scale.multiplyScalar(1 + dt * p.cresce); p.m.material.opacity = (p.t / p.t0) * p.op; } }

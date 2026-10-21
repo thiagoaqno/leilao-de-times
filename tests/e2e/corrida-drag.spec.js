@@ -4,7 +4,7 @@ const largar = async (page, pista) => {
   await page.goto("/corrida/drag/#debug");
   await expect(page.locator("#carStatus")).toHaveText("Modelo pronto", { timeout: 90000 });
   if (pista) await page.getByRole("button", { name: pista }).click();
-  await page.getByRole("button", { name: /largar nesta pista/i }).click();
+  await page.getByRole("button", { name: /^correr/i }).click();
 };
 
 test("drag: aquece os pneus, larga, troca marcha e muda de faixa", async ({ page }, testInfo) => {
@@ -12,7 +12,7 @@ test("drag: aquece os pneus, larga, troca marcha e muda de faixa", async ({ page
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/corrida/drag/");
   await expect(page.locator(".track")).toHaveCount(3);
-  await expect(page.locator("#carSelect option")).toHaveCount(6);
+  await expect(page.locator("#carSelect option")).toHaveCount(11);
   await expect(page.locator("#carStatus")).toHaveText("Modelo pronto", { timeout: 90000 });
   await page.screenshot({ path: testInfo.outputPath("corrida-drag-menu.png") });
   await largar(page, /debaixo do elevado/i);
@@ -43,6 +43,50 @@ test("drag: aquece os pneus, larga, troca marcha e muda de faixa", async ({ page
   if (tracks.length) await expect(page.locator("#song")).toContainText("♪");
   else await expect(page.locator("#song")).toBeEmpty(); // pasta vazia não impede a corrida
   await page.screenshot({ path: testInfo.outputPath("corrida-drag.png") });
+  expect(errors).toEqual([]);
+});
+
+test("drag: a garagem personaliza o carro e a escolha vale na corrida", async ({ page }, testInfo) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/corrida/drag/#debug");
+  await expect(page.locator("#carStatus")).toHaveText("Modelo pronto", { timeout: 90000 });
+  await page.locator("#carNext").click(); // troca de carro pelas setas
+  await expect(page.locator("#carSelect")).not.toHaveValue("supra");
+  await page.locator("#carPrev").click();
+  await expect(page.locator("#carSelect")).toHaveValue("supra");
+  await expect(page.locator("#carStatus")).toHaveText("Modelo pronto", { timeout: 90000 });
+  await page.getByRole("button", { name: "Personalizar" }).click();
+  await expect(page.locator("#oficina")).toBeVisible();
+  await page.getByRole("button", { name: "Pintura: Roxo meia-noite" }).click();
+  await page.getByRole("button", { name: "Neon: Rosa" }).click();
+  await page.getByRole("button", { name: "Chama do nitro: Verde" }).click();
+  await expect(page.getByRole("button", { name: "Pintura: Roxo meia-noite" })).toHaveClass(/on/);
+  const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("drag:garagem")).supra);
+  expect(salvo).toMatchObject({ pintura: "#3a1466", neon: "#ff2bd6", chama: "#3dff9a" });
+  await page.screenshot({ path: testInfo.outputPath("corrida-drag-oficina.png") });
+  await page.getByRole("button", { name: "Pronto" }).click();
+  await expect(page.locator("#oficina")).toBeHidden();
+  await page.getByRole("button", { name: /^correr/i }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-phase", "burnout", { timeout: 60000 });
+  // o carro da corrida sai pintado (a peça de pintura do modelo) e com a chama escolhida
+  const cores = await page.evaluate(() => {
+    const cores = new Set();
+    let carro = null;
+    window.__drag.scene.traverse((o) => { if (o.userData.imported && o.visible && o.parent === window.__drag.scene && !carro) carro = o; });
+    carro.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.userData.copia) cores.add(m.color.getHexString()); });
+    return { pintura: [...cores], chama: carro.userData.chamas[0].material.color.getHexString() };
+  });
+  expect(cores.pintura.length).toBeGreaterThan(0);
+  expect(cores.chama).not.toBe("3aa0ff");
+  // de volta à garagem pelo fim da corrida
+  await page.evaluate(() => { const j = window.__drag.corrida.jogador; j.engineBlown = true; });
+  await page.keyboard.down("w");
+  await expect(page.locator("body")).toHaveAttribute("data-phase", "finish", { timeout: 60000 });
+  await page.keyboard.up("w");
+  await page.getByRole("button", { name: "← Garagem" }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-phase", "menu");
+  await expect(page.locator("#menu")).toBeVisible();
   expect(errors).toEqual([]);
 });
 

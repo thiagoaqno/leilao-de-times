@@ -15,15 +15,39 @@
 .top{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top)) 18px 10px;z-index:6;pointer-events:none}.top>*{pointer-events:auto}.wordmark{font:italic 900 21px/1 var(--hud);letter-spacing:.04em}.wordmark span{color:var(--amber)}.top a,.top button{background:#05070bb8;border:1px solid #ffffff38;border-radius:4px;padding:8px 12px;color:#fff;font-weight:700}.top .spacer{flex:1}.top button{min-width:46px}
 body[data-phase=race] .wordmark,body[data-phase=burnout] .wordmark,body[data-phase=countdown] .wordmark{display:none}
 
-/* Menu */
+/* Lobby: a garagem numa rua à meia-noite (o carro em 3D no meio, os painéis nas beiradas) */
+:root{--rosa:#ff2bd6;--ciano:#2be8ff}
 .screen{position:fixed;inset:0;display:grid;place-items:center;z-index:4;padding:78px 18px 36px;background:linear-gradient(90deg,#05070bf0,#05070b80 60%,#05070b30);overflow:auto}.panel{width:min(980px,100%);margin:auto}.eyebrow{color:var(--amber);font-weight:800;font-size:13px;letter-spacing:.16em;text-transform:uppercase}
-.panel h1{font:italic 900 clamp(58px,9vw,128px)/.8 var(--hud);letter-spacing:-.02em;margin:16px 0 22px;text-transform:uppercase}.panel h1 span{color:var(--amber)}
-.intro{max-width:520px;font-size:16px;line-height:1.45;color:#dfe5ea;margin:0 0 18px}
-.track-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}.track{appearance:none;text-align:left;min-height:146px;padding:16px 18px;border-radius:4px;border:1px solid #ffffff38;background:linear-gradient(150deg,var(--swatch),#0a0e15 75%);color:#fff;position:relative;overflow:hidden;transform:skewX(-6deg)}.track>*{transform:skewX(6deg)}.track:hover,.track.selected{border-color:var(--amber)}.track.selected{box-shadow:inset 0 0 0 2px var(--amber)}.track small{display:block;font-size:12px;font-weight:700;color:#fffa}.track strong{display:block;font:italic 900 31px/1 var(--hud);margin:26px 0 6px;text-transform:uppercase}.track span{font-size:13px;color:#dfe6ea}
-.actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.primary{border:0;background:var(--amber);color:#121921;border-radius:3px;padding:13px 26px;font:italic 900 24px/1 var(--hud);text-transform:uppercase;box-shadow:5px 5px 0 #fff3}.primary:hover{filter:brightness(1.1)}.primary:disabled{opacity:.55;cursor:wait}
-.controls-note{color:#dfe4e8;font-size:13px;line-height:1.55}.controls-note b{color:#fff}
-.car-choice{min-width:200px;display:grid;gap:3px}.car-choice label{font:800 12px var(--hud);letter-spacing:.08em}.car-choice select{width:100%;background:#0a0f17e8;color:#fff;border:1px solid #ffffff75;border-radius:3px;padding:9px;font:700 15px Barlow,sans-serif}.car-choice small{font-size:11px;color:#cbd9de;min-height:14px}
-.how{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 20px;max-width:900px}.how div{border-left:3px solid var(--c,#fff);padding:4px 10px;font-size:12.5px;line-height:1.35;color:#d9e1e6}.how b{display:block;font:italic 800 16px var(--hud);color:#fff;letter-spacing:.03em}
+.lobby{display:block;padding:calc(64px + env(safe-area-inset-top)) 22px 22px;background:linear-gradient(90deg,#05030af2 0,#05030ab8 26%,transparent 46%,transparent 70%,#05030ac4 88%),linear-gradient(0deg,#05030ad0,transparent 30%)}
+.lobby-grid{min-height:100%;display:grid;grid-template-columns:minmax(0,430px) 1fr minmax(0,330px);gap:20px;align-items:end}
+.encontro{align-self:start}.encontro .eyebrow{color:var(--ciano);display:flex;align-items:center;gap:8px}
+.pisca{width:9px;height:9px;border-radius:50%;background:var(--verm);box-shadow:0 0 10px var(--verm);animation:pisca 1.2s steps(2) infinite}
+@keyframes pisca{50%{opacity:.15}}
+.relogio{font:italic 900 64px/1 var(--hud);color:#ffd6f4;text-shadow:0 0 6px var(--rosa),0 0 22px var(--rosa);letter-spacing:.04em;margin:10px 0 2px;font-variant-numeric:tabular-nums}.relogio i{font-style:normal;animation:pisca 1s steps(2) infinite}
+.lobby h1{font:italic 900 clamp(44px,5.4vw,78px)/.84 var(--hud);letter-spacing:-.01em;margin:6px 0 14px;text-transform:uppercase;text-shadow:0 4px 24px #000}.lobby h1 span{color:var(--amber)}
+.intro{max-width:430px;font-size:15px;line-height:1.45;color:#ded8ea;margin:0 0 16px}
+.titulo-sec{font:italic 800 14px var(--hud);letter-spacing:.14em;color:#cfc6e0;text-transform:uppercase;margin:0 0 8px}
+.track-grid{display:grid;gap:8px;margin:0 0 14px}.track{appearance:none;text-align:left;padding:10px 16px 11px;border-radius:3px;border:1px solid #ffffff2a;background:linear-gradient(100deg,var(--swatch) 0,#0b0712e6 70%);color:#fff;position:relative;overflow:hidden;transform:skewX(-8deg);transition:transform .2s var(--ease),border-color .2s}.track>*{transform:skewX(8deg)}
+.track:hover{transform:skewX(-8deg) translateX(4px)}.track.selected{border-color:var(--rosa);box-shadow:0 0 0 1px var(--rosa),0 0 18px #ff2bd655,inset 0 0 22px #ff2bd622}
+.track small{display:block;font-size:11px;font-weight:700;color:#fffa;letter-spacing:.1em}.track strong{display:block;font:italic 900 25px/1 var(--hud);margin:3px 0 2px;text-transform:uppercase}.track span{font-size:12.5px;color:#d9d2e6}
+.galera{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font:700 12px Barlow,sans-serif;color:#bdb4cf;margin-bottom:12px}.galera b{font:italic 800 14px var(--hud);color:#fff;padding:2px 8px;border-left:3px solid var(--c);background:#ffffff10}
+.how-box summary{cursor:pointer;font:italic 800 14px var(--hud);letter-spacing:.1em;color:#cfc6e0;text-transform:uppercase}.how-box[open] summary{margin-bottom:8px}
+.how{display:grid;grid-template-columns:1fr 1fr;gap:8px}.how div{border-left:3px solid var(--c,#fff);padding:3px 9px;font-size:12px;line-height:1.35;color:#d9e1e6}.how b{display:block;font:italic 800 15px var(--hud);color:#fff;letter-spacing:.03em}
+.carro-painel{grid-column:3;display:grid;gap:12px;padding:16px 18px;background:#0b0712d9;border:1px solid #ffffff22;border-top:3px solid var(--rosa);box-shadow:0 0 30px #ff2bd622;border-radius:3px}
+.car-choice{display:grid;gap:6px}.car-choice label{font:800 12px var(--hud);letter-spacing:.14em;color:var(--ciano);text-transform:uppercase}
+.car-row{display:grid;grid-template-columns:40px 1fr 40px;gap:6px}.car-row button{border:1px solid #ffffff40;background:#ffffff0e;color:#fff;border-radius:3px;font:900 24px/1 var(--hud)}.car-row button:hover{border-color:var(--rosa)}
+.car-choice select{width:100%;min-width:0;background:#120c1c;color:#fff;border:1px solid #ffffff55;border-radius:3px;padding:8px;font:italic 800 19px var(--hud);text-transform:uppercase}
+.ficha{display:grid;gap:5px}.ficha div{display:grid;grid-template-columns:52px 1fr;align-items:center;gap:8px;font:italic 800 13px var(--hud);letter-spacing:.06em;color:#d8d0e6;text-transform:uppercase}.ficha i{height:7px;background:#ffffff1c;transform:skewX(-20deg)}.ficha i b{display:block;height:100%;background:linear-gradient(90deg,var(--ciano),var(--rosa));box-shadow:0 0 8px #ff2bd688}.ficha small,.car-choice>small{font-size:11.5px;color:#bdb4cf}
+.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.primary{border:0;background:var(--amber);color:#121921;border-radius:3px;padding:13px 24px;font:italic 900 24px/1 var(--hud);text-transform:uppercase;box-shadow:5px 5px 0 #ff2bd6aa}.primary:hover{filter:brightness(1.1)}.primary:disabled{opacity:.55;cursor:wait}
+.secundario{border:1px solid var(--ciano);background:#2be8ff12;color:#dffaff;border-radius:3px;padding:12px 16px;font:italic 800 18px/1 var(--hud);text-transform:uppercase}.secundario:hover{background:#2be8ff2a}
+.carro-painel .actions .primary{flex:1}
+.controls-note{color:#cfc8dc;font-size:12px;line-height:1.55}.controls-note b{color:#fff}.controls-note a{color:var(--ciano)}
+.oficina{position:fixed;left:22px;top:calc(70px + env(safe-area-inset-top));width:min(380px,calc(100% - 44px));max-height:calc(100% - 100px);overflow:auto;padding:16px 18px;background:#0b0712e6;border:1px solid #ffffff22;border-top:3px solid var(--ciano);border-radius:3px;display:none;z-index:5}
+.oficina h2{font:italic 900 34px/1 var(--hud);margin:4px 0 12px;text-transform:uppercase}
+body.na-oficina .oficina{display:block}body.na-oficina .encontro,body.na-oficina .carro-painel{display:none}
+.linha-of{margin:0 0 12px}.linha-of b{display:block;font:italic 800 14px var(--hud);letter-spacing:.1em;color:#d8d0e6;text-transform:uppercase;margin-bottom:6px}.amostras{display:flex;flex-wrap:wrap;gap:7px}
+.amostra{width:30px;height:30px;border-radius:50%;border:2px solid #ffffff40;background:var(--c);padding:0;box-shadow:inset 0 -6px 10px #0006}.amostra.vazia{background:repeating-linear-gradient(45deg,#fff3 0 3px,transparent 3px 7px)}.amostra.on{border-color:#fff;box-shadow:0 0 0 2px var(--rosa),0 0 12px var(--c)}.amostra:hover{transform:scale(1.08)}
+body[data-phase=menu] .vignette{background:radial-gradient(ellipse at 55% 50%,transparent 45%,#000c 100%)}
 
 /* HUD de corrida (no jeito do Underground 2) */
 .hud{position:fixed;inset:0;pointer-events:none;z-index:3;font-family:var(--hud)}
@@ -51,12 +75,14 @@ body[data-phase=race] .wordmark,body[data-phase=burnout] .wordmark,body[data-pha
 .pneu{height:12px;background:#ffffff30;transform:skewX(-20deg);overflow:hidden;border:1px solid #ffffff50}.pneu i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2aa8ff,#3dff7a)}.pneu-rot{display:flex;justify-content:space-between;font:italic 800 13px var(--hud);margin-top:4px;letter-spacing:.08em}
 .arvore{display:flex;justify-content:center;gap:10px;margin-top:14px}.arvore i{width:30px;height:30px;border-radius:50%;background:#262a30;border:2px solid #000;box-shadow:inset 0 2px 4px #0008}.arvore i.ambar{background:#ffb21c;box-shadow:0 0 18px #ffb21c}.arvore i.verde{background:var(--verde);box-shadow:0 0 22px var(--verde)}
 .impact{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 #ff3b45;opacity:0;z-index:2}.impact.flash{animation:impact .4s ease-out}@keyframes impact{20%{box-shadow:inset 0 0 90px 20px #ff3b45;opacity:.8}100%{opacity:0}}
-.nitrofx{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;background:radial-gradient(ellipse at 50% 55%,transparent 45%,#1a6cff55 100%);transition:opacity .25s}body.nitro .nitrofx{opacity:1}
+.hud.enchendo .n2o svg{filter:drop-shadow(0 0 10px #27b4ff) drop-shadow(0 2px 6px #000c)}.hud.enchendo #vacuoBox{color:#9fe4ff}
+.nitrofx{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;background:radial-gradient(ellipse at 50% 55%,transparent 45%,#1a6cff55 100%);transition:opacity .25s}body.nitro .hud.enchendo .n2o svg{filter:drop-shadow(0 0 10px #27b4ff) drop-shadow(0 2px 6px #000c)}.hud.enchendo #vacuoBox{color:#9fe4ff}
+.nitrofx{opacity:1}
 .song{position:absolute;bottom:calc(64px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);max-width:50vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12px Barlow,sans-serif;color:#dbe8ec;text-shadow:0 2px 7px #000}
 
 /* Toque */
 .touch{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));display:none;justify-content:space-between;align-items:end;z-index:5;pointer-events:none}.touch div{display:flex;gap:8px;align-items:end}.touch button{pointer-events:auto;border:1px solid #fff8;background:#05070bc9;color:#fff;border-radius:6px;min-width:58px;min-height:56px;font:italic 900 24px var(--hud);touch-action:none;user-select:none;-webkit-user-select:none}.touch button:active,.touch button.on{background:var(--amber);color:#101923}
-.touch .gas-touch{min-width:84px;min-height:84px;background:#ffbd45d9;color:#101923;font-size:20px}.touch .n2o-touch{background:#1878d8d0;font-size:18px}.touch .freio-touch{font-size:16px}.touch .col{flex-direction:column}
+.touch .gas-touch{min-width:84px;min-height:84px;background:#ffbd45d9;color:#101923;font-size:20px}.touch .n2o-touch{background:#1878d8d0;font-size:18px}.touch .freio-touch{font-size:16px}.touch .cam-touch{font-size:16px;min-width:50px}.touch .col{flex-direction:column}
 @media(pointer:coarse){.touch:not(.hidden){display:flex}.faixas{bottom:calc(150px + env(safe-area-inset-bottom))}#lane{bottom:calc(166px + env(safe-area-inset-bottom))}.medidores{bottom:calc(150px + env(safe-area-inset-bottom));right:auto;left:50%;transform:translateX(-50%)}.song{display:none}.tach,.n2o{bottom:calc(120px + env(safe-area-inset-bottom))}}
 
 /* Resultado */
@@ -64,41 +90,55 @@ body[data-phase=race] .wordmark,body[data-phase=burnout] .wordmark,body[data-pha
 .summary{display:flex;flex-wrap:wrap;gap:22px;margin:0 0 22px}.summary div{border-top:2px solid var(--amber);padding-top:8px;min-width:90px}.summary strong{font:italic 800 32px var(--hud);display:block}.summary small{color:#cdd2d7}
 .tabela{width:min(520px,100%);border-collapse:collapse;margin:0 0 24px;font:italic 700 19px var(--hud)}.tabela td{padding:6px 10px;border-bottom:1px solid #ffffff22}.tabela tr.eu td{color:var(--amber)}.tabela td:last-child{text-align:right;font-variant-numeric:tabular-nums}.tabela td:first-child{width:40px}
 
-@media(max-width:650px){.top{padding-left:12px;padding-right:12px}.wordmark{font-size:17px}.screen{align-items:start;padding-top:92px}.track-grid{grid-template-columns:1fr;gap:7px;margin:14px 0}.track{min-height:78px;padding:10px 16px}.track strong{margin:6px 0 2px;font-size:25px}.track span{font-size:12px}.panel h1{font-size:62px}.intro{font-size:15px}.how{grid-template-columns:1fr 1fr}
+@media(max-width:900px){.lobby{padding-top:calc(46vh + 20px);background:linear-gradient(0deg,#05030af5 0,#05030ae0 calc(100% - 46vh),transparent calc(100% - 40vh))}.lobby-grid{grid-template-columns:1fr;align-items:start}.carro-painel{grid-column:1;grid-row:1}.encontro{grid-row:2}.relogio{font-size:46px}.oficina{top:auto;bottom:12px;max-height:52vh}body.na-oficina .encontro{display:none}}
+@media(max-width:650px){.top{padding-left:12px;padding-right:12px}.wordmark{font-size:17px}.screen{align-items:start;padding-top:92px}.lobby{padding:calc(42vh + 10px) 12px 16px}.panel h1{font-size:62px}.intro{font-size:14px}.lobby h1{font-size:44px}
 .box{top:calc(50px + env(safe-area-inset-top));right:8px;min-width:0;padding:4px 10px 6px 20px}.box .pos{font-size:38px}.box .pos small{font-size:24px}.box .vel{font-size:28px}.box .tempo{font-size:16px}
 .rota{top:calc(54px + env(safe-area-inset-top));left:12px;transform:none;width:44vw}.tach{width:118px;height:52vh}.n2o{width:84px;height:32vh}#gear{font-size:80px}.preparo{top:calc(150px + env(safe-area-inset-top))}.preparo h2{font-size:26px}}
-@media(prefers-reduced-motion:reduce){.impact.flash,.callout.pop{animation:none}.nitrofx{transition:none}}
+@media(prefers-reduced-motion:reduce){.pisca,.relogio i{animation:none}.track{transition:none}.impact.flash,.callout.pop{animation:none}.hud.enchendo .n2o svg{filter:drop-shadow(0 0 10px #27b4ff) drop-shadow(0 2px 6px #000c)}.hud.enchendo #vacuoBox{color:#9fe4ff}
+.nitrofx{transition:none}}
 </style>
 <script type="importmap">{"imports":{"three":"/vendor/three/three.module.js","three/addons/":"/vendor/three-addons/"}}</script>
 </head>
 <body data-phase="menu">
 <canvas id="view" aria-label="Pista de drag em 3D"></canvas><div class="vignette"></div><div class="nitrofx"></div><div class="impact" id="impact"></div>
-<header class="top"><a href="/corrida/" aria-label="Voltar para Corrida da Galera">← Corrida</a><div class="wordmark">DRAG <span>DA GALERA</span></div><div class="spacer"></div><button id="sound" aria-label="Ativar ou desativar som" title="Som">🔊</button></header>
+<header class="top"><a href="/corrida/" aria-label="Voltar para Corrida da Galera">← Corrida</a><div class="wordmark">RACHA <span>DA MEIA-NOITE</span></div><div class="spacer"></div><button id="sound" aria-label="Ativar ou desativar som" title="Som">🔊</button></header>
 
-<main id="menu" class="screen"><div class="panel">
-  <div class="eyebrow">Corrida da Galera / modo drag</div>
-  <h1>Quatro faixas,<br><span>câmbio na mão</span><br>e nitro.</h1>
-  <p class="intro">Aqueça os pneus, largue no giro certo e troque cada marcha na luz verde. Desvie do tráfego trocando de faixa: bater de frente é perda total.</p>
-  <div class="how">
-    <div style="--c:#3dff7a"><b>Troca perfeita</b>Na luz verde: o carro dá um tranco para a frente.</div>
-    <div style="--c:#2aa8ff"><b>Nitro</b>Da 3ª marcha em diante. Antes disso, o pneu só patina.</div>
-    <div style="--c:#ffbd45"><b>Vácuo</b>Logo atrás de um rival, a barra enche e o ar pesa menos.</div>
-    <div style="--c:#ff3b45"><b>Giro no vermelho</b>Segurar no corte esquenta o motor até estourar.</div>
-  </div>
-  <div class="track-grid" id="tracks"></div>
-  <div class="actions">
-    <div class="car-choice"><label for="carSelect">Seu carro</label><select id="carSelect"></select><small id="carStatus">Carregando modelo...</small></div>
-    <button class="primary" id="start" disabled>Largar nesta pista →</button>
-    <div class="controls-note"><b>W / ↑</b> acelera · <b>S / ↓</b> freia · <b>← →</b> trocam de faixa<br><b>Shift / E</b> sobe marcha · <b>Q</b> reduz · <b>Espaço</b> nitro<br><a href="/corrida/drag/creditos.html" target="_blank" rel="noopener">Créditos dos carros</a></div>
-  </div>
-</div></main>
+<main id="menu" class="screen lobby"><div class="lobby-grid">
+  <section class="encontro">
+    <div class="eyebrow"><span class="pisca"></span>Drag da Galera · racha de rua</div>
+    <div class="relogio" id="relogio" aria-label="Hora agora">00<i>:</i>00</div>
+    <h1>Meia-noite.<br>Rua vazia.<br><span>Quatro faixas.</span></h1>
+    <p class="intro">A galera já está no ponto. Aqueça os pneus, largue no giro certo, troque na luz verde e cole no vácuo para encher o nitro.</p>
+    <div class="titulo-sec">Ponto de encontro</div>
+    <div class="track-grid" id="tracks"></div>
+    <div class="galera">Na área hoje: <b style="--c:#ff2a6d">Duda Neon</b><b style="--c:#39ff7a">Rafa Turbo</b><b style="--c:#b04dff">Bia Escape</b></div>
+    <details class="how-box"><summary>Como se corre aqui</summary><div class="how">
+      <div style="--c:#3dff7a"><b>Troca perfeita</b>Na luz verde: o carro dá um tranco para a frente.</div>
+      <div style="--c:#2aa8ff"><b>Nitro</b>Da 3ª marcha em diante. Antes disso, o pneu só patina.</div>
+      <div style="--c:#ffbd45"><b>Vácuo vira nitro</b>Cole atrás de um rival: o tanque de N2O vai enchendo.</div>
+      <div style="--c:#ff3b45"><b>Giro no vermelho</b>Segurar no corte esquenta o motor até estourar.</div>
+    </div></details>
+  </section>
+  <section class="carro-painel">
+    <div class="car-choice">
+      <label for="carSelect">Seu carro</label>
+      <div class="car-row"><button id="carPrev" aria-label="Carro anterior">‹</button><select id="carSelect"></select><button id="carNext" aria-label="Próximo carro">›</button></div>
+      <div class="ficha" id="ficha"></div>
+      <small id="carStatus">Carregando modelo...</small>
+    </div>
+    <div class="actions"><button class="secundario" id="garagemBtn">Personalizar</button><button class="primary" id="start" disabled>Correr →</button></div>
+    <div class="controls-note"><b>W / ↑</b> acelera · <b>S / ↓</b> freia · <b>← →</b> faixa<br><b>Shift / E</b> sobe · <b>Q</b> reduz · <b>Espaço</b> nitro · <b>C</b> câmera · <a href="/corrida/drag/creditos.html" target="_blank" rel="noopener">Créditos dos carros</a></div>
+  </section>
+</div>
+<aside class="oficina" id="oficina" aria-label="Personalizar o carro"><div class="eyebrow">Oficina da garagem</div><h2>Do seu jeito</h2><div id="oficinaLinhas"></div><div class="actions"><button class="secundario" id="oficinaReset">De fábrica</button><button class="primary" id="oficinaPronto">Pronto</button></div></aside>
+</main>
 
 <div id="hud" class="hud hidden">
   <div class="rota"><div class="linha"><span id="trackName">PISTA</span><span id="distance">0 / 0 m</span></div><div class="trilho" id="trilho"><b></b></div></div>
   <div class="box"><div class="pos" id="rank">1<sup>º</sup><small>/4</small></div><div class="tempo" id="timer">0:00.00</div><div class="vel"><span id="speed">000</span><small>KM/H</small></div></div>
   <div class="tach"><svg id="rpmDial" viewBox="0 0 300 560" aria-label="Conta-giros"><g id="tachZonas"></g><g id="tachTicks"></g><line id="rpmNeedle" x1="0" y1="0" x2="0" y2="0" stroke="#fff" stroke-width="6" stroke-linecap="round"/><circle id="shiftLight" cx="252" cy="54" r="15" fill="#20242a" stroke="#000" stroke-width="3"/><text id="gear" x="168" y="80" text-anchor="middle">N</text><text class="rotulo" x="132" y="548">RPM × 1000</text></svg></div>
   <div class="n2o"><svg viewBox="0 0 200 400" aria-label="Nitro"><path id="n2oBase" fill="none" stroke="#ffffff40" stroke-width="14"/><path id="n2oFill" fill="none" stroke="#27b4ff" stroke-width="14"/><text x="80" y="236" text-anchor="middle" transform="rotate(-8 80 236)">N2O</text></svg></div>
-  <div class="medidores"><div class="medidor" id="vacuoBox" style="--c:#ffbd45">VÁCUO<div><i id="vacuoBar"></i></div></div><div class="medidor" id="motorBox" style="--c:#ff3b45">MOTOR<div><i id="motorBar"></i></div></div></div>
+  <div class="medidores"><div class="medidor" id="vacuoBox" style="--c:#27b4ff">VÁCUO → N2O<div><i id="vacuoBar"></i></div></div><div class="medidor" id="motorBox" style="--c:#ff3b45">MOTOR<div><i id="motorBar"></i></div></div></div>
   <div id="lane">FAIXA 2</div><div class="faixas" id="faixas"><i></i><i></i><i></i><i></i></div>
   <div class="preparo hidden" id="preparo"><h2 id="preparoTitulo">AQUEÇA OS PNEUS</h2><p id="preparoTexto">Segure o acelerador e mantenha o ponteiro na faixa verde do conta-giros.</p><div class="pneu"><i id="pneuBar"></i></div><div class="pneu-rot"><span>PNEUS</span><span id="pneuPct">0%</span></div><div class="arvore" id="arvore"><i></i><i></i><i></i><i></i></div></div>
   <div class="callout" id="callout"></div>
@@ -106,7 +146,7 @@ body[data-phase=race] .wordmark,body[data-phase=burnout] .wordmark,body[data-pha
 </div>
 
 <div class="touch hidden" id="touch">
-  <div><button data-action="left" aria-label="Faixa à esquerda">←</button><button data-action="right" aria-label="Faixa à direita">→</button></div>
+  <div><button data-action="left" aria-label="Faixa à esquerda">←</button><button data-action="right" aria-label="Faixa à direita">→</button><button class="cam-touch" data-action="cam" aria-label="Trocar a câmera (de trás ou de dentro)">CAM</button></div>
   <div><div class="col" style="display:flex;gap:8px"><button data-action="up" aria-label="Subir marcha">+</button><button data-action="down" aria-label="Reduzir marcha">−</button></div><div class="col" style="display:flex;gap:8px"><button class="n2o-touch" data-action="nitro" aria-label="Segure para usar o nitro">N2O</button><button class="freio-touch" data-action="freio" aria-label="Segure para frear">FREIO</button></div><button class="gas-touch" data-action="gas" aria-label="Segure para acelerar">GÁS</button></div>
 </div>
 
@@ -114,9 +154,9 @@ body[data-phase=race] .wordmark,body[data-phase=burnout] .wordmark,body[data-pha
   <div class="eyebrow" id="finishTrack">Pista concluída</div>
   <h2 class="result" id="result">CHEGADA</h2>
   <p class="result-sub" id="resultSub"></p>
-  <div class="summary"><div><strong id="finalTime">0:00.00</strong><small>Seu tempo</small></div><div><strong id="finalSpeed">0</strong><small>Velocidade máxima · km/h</small></div><div><strong id="finalShifts">0</strong><small>Trocas perfeitas</small></div><div><strong id="finalLaunch">—</strong><small>Largada</small></div></div>
+  <div class="summary"><div><strong id="finalTime">0:00.00</strong><small>Seu tempo</small></div><div><strong id="finalSpeed">0</strong><small>Velocidade máxima · km/h</small></div><div><strong id="finalShifts">0</strong><small>Trocas perfeitas</small></div><div><strong id="finalLaunch">—</strong><small>Largada</small></div><div><strong id="finalVacuo">0</strong><small>Nitro do vácuo</small></div></div>
   <table class="tabela" id="tabela"></table>
-  <button class="primary" id="again">Correr de novo →</button>
+  <div class="actions"><button class="secundario" id="garage">← Garagem</button><button class="primary" id="again">Correr de novo →</button></div>
 </div></section>
 <audio id="musicAudio" preload="none"></audio>
 <script type="module" src="/corrida/drag/main.js"></script>

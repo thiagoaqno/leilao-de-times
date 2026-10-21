@@ -1,12 +1,13 @@
 // Corrida da Galera — o jogo no navegador: sala, garagem, e a corrida em 3D (Three.js).
 // Este é o módulo de entrada: começa e para a corrida, o laço e o desenho, e a capa da página. O resto fica nos
 // outros módulos desta pasta (estado, sons, rede, menus, cena, pista, carros, controles, fisica, fantasma e hud).
+import * as THREE from "three";
 import { E, SECTORS, COLORS, CARROS, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
-import { CARS3, KS, makeKart, poseKart, dropKart, puff, stepPuffs } from "./carros.js";
+import { CARS3, KS, makeKart, poseKart, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
 import { camMode, pollPad } from "./controles.js";
 import { physics } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
@@ -14,7 +15,7 @@ import { standings, hud } from "./hud.js";
 import { f1Pronto } from "./f1.js";
 import { propsPronto } from "./props.js";
 import { startItems, stopItems, stepItems } from "./itens.js";
-import { passoEfeitos, limparEfeitos } from "./efeitos.js";
+import { passoEfeitos, limparEfeitos, amostrasDeEfeitos } from "./efeitos.js";
 import { animarVida } from "./vida.js";
 import { ceuPronto, luzPendente } from "./ceu.js";
 import { desenhar, ajustarTela, medirQuadro, comecarMedida } from "./desfoque.js";
@@ -28,7 +29,8 @@ export const keys = { gas: false, brake: false, left: false, right: false };
 // placa de vídeo na primeira vez que ela aparece na tela, e cada curva nova traz coisas que ainda não tinham aparecido.
 // No lobby, assim que a pista é escolhida, a pista é montada e a foto do céu já vem (prepararPista). Na largada, com o
 // céu aplicado, as texturas sobem todas e os shaders compilam durante a contagem (aquecerPista: o compileAsync deixa o
-// navegador compilar em paralelo, sem travar a página).
+// navegador compilar em paralelo, sem travar a página). Os efeitos que só nascem no meio da corrida (fumaça da
+// derrapagem, cacos, explosão, "POW!" e os itens) entram escondidos na cena só durante essa preparação.
 export function prepararPista(id, hora = "dia") {
   const tr = buildTrack(id);
   ceuPronto(hora === "noite" ? "tokyo" : id).catch(() => {});
@@ -43,8 +45,9 @@ function aquecerPista(tr, ceu) {
   const espera = new Promise((ok) => setTimeout(ok, 1500)); // o céu que não chega em 1,5 s não segura a preparação
   Promise.race([ceu, espera]).then(() => {
     if (!race || race.tr !== tr) return;
+    const amostras = new THREE.Group(); amostras.add(amostrasDeEfeitos(), amostraDeFumaca()); scene.add(amostras);
     subirTexturas(scene);
-    renderer.compileAsync(scene, cam).catch(() => {});
+    renderer.compileAsync(scene, cam).catch(() => {}).finally(() => scene.remove(amostras));
   });
 }
 export function startRace(st) {

@@ -1,7 +1,8 @@
-"""Empacota os seis ZIPs fornecidos pelo usuário em GLB autocontidos.
+"""Empacota os ZIPs (ou GLB soltos) fornecidos pelo usuário em GLB autocontidos.
 
 Uso: python tools/importar-carros-drag.py C:/caminho/dos/zips
-Não extrai caminhos do ZIP no disco; lê apenas os recursos referidos pelo glTF.
+Importa só os carros que estiverem na pasta. Não extrai caminhos do ZIP no disco; lê apenas os recursos referidos
+pelo glTF. Sem license.txt, a licença sai dos dados do próprio GLB (asset.extras, como o Sketchfab exporta).
 """
 import json
 import mimetypes
@@ -17,6 +18,11 @@ SOURCE = {
     "free_porsche_911_carrera_4s": "porsche-911",
     "nissan-skyline-gtr-r33-nismo-wwwvecarzcom": "skyline-r33",
     "porsche_718_cayman_gt4_2020__www.vecarz.com": "porsche-718",
+    "2002_nissan_skyline_r34_gt-r": "skyline-r34",
+    "2009-lamborghini-gallardo-lp560-4-spyder": "gallardo",
+    "2021_volkswagen_phideon_380_tsi": "vw-phideon",
+    "2021_volkswagen_polo_plus": "vw-polo",
+    "2021_volkswagen_t-cross_280_tsi": "vw-tcross",
 }
 OUT = pathlib.Path(__file__).resolve().parents[1] / "public/corrida/drag/models"
 
@@ -55,22 +61,41 @@ def gltf_to_glb(archive, scene_name):
             + struct.pack("<II", len(bin_chunk), 0x004E4942) + bin_chunk)
 
 
+def licenca_do_glb(data):
+    """O texto de crédito que o Sketchfab grava em asset.extras (title, author, license, source)."""
+    tamanho = struct.unpack("<I", data[12:16])[0]
+    extras = json.loads(data[20:20 + tamanho]).get("asset", {}).get("extras", {})
+    if not extras.get("license"):
+        return None
+    return (f"Model Information:\n* title:\t{extras.get('title', '')}\n* source:\t{extras.get('source', '')}\n"
+            f"* author:\t{extras.get('author', '')}\n\nModel License:\n* license type:\t{extras['license']}\n").encode()
+
+
 def main():
     folder = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path.home() / "Downloads/carro"
     OUT.mkdir(parents=True, exist_ok=True)
     for stem, slug in SOURCE.items():
-        with zipfile.ZipFile(folder / f"{stem}.zip") as archive:
-            files = archive.namelist()
-            glbs = [f for f in files if f.lower().endswith(".glb")]
-            if glbs:
-                data = read_resource(archive, glbs[0])
-            else:
-                scene_name = next(f for f in files if f.lower().endswith(".gltf"))
-                data = gltf_to_glb(archive, scene_name)
-            (OUT / f"{slug}.glb").write_bytes(data)
-            if "license.txt" in files:
-                (OUT / f"{slug}-license.txt").write_bytes(archive.read("license.txt"))
-            print(slug, f"{len(data) / 1024 / 1024:.1f} MB")
+        licenca = None
+        if (folder / f"{stem}.glb").exists():
+            data = (folder / f"{stem}.glb").read_bytes()
+        elif (folder / f"{stem}.zip").exists():
+            with zipfile.ZipFile(folder / f"{stem}.zip") as archive:
+                files = archive.namelist()
+                glbs = [f for f in files if f.lower().endswith(".glb")]
+                if glbs:
+                    data = read_resource(archive, glbs[0])
+                else:
+                    scene_name = next(f for f in files if f.lower().endswith(".gltf"))
+                    data = gltf_to_glb(archive, scene_name)
+                if "license.txt" in files:
+                    licenca = archive.read("license.txt")
+        else:
+            continue
+        (OUT / f"{slug}.glb").write_bytes(data)
+        licenca = licenca or licenca_do_glb(data)
+        if licenca:
+            (OUT / f"{slug}-license.txt").write_bytes(licenca)
+        print(slug, f"{len(data) / 1024 / 1024:.1f} MB", "" if licenca else "(sem licença)")
 
 
 if __name__ == "__main__":

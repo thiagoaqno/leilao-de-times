@@ -1,19 +1,18 @@
-# Corrida: robôs no ritmo de quem joga
-
-## O problema
-
-Os robôs ou eram imbatíveis ou eram muito lentos. O banco guardava só a melhor volta de cada piloto (e só dos cinco pilotos mais rápidos), e cada robô copiava a volta de um piloto diferente, a 80/87/93% da velocidade: um robô andava quase no seu recorde, sem nunca errar, e outro copiava a volta de quem jogou uma vez e andou devagar.
+# Drag: carros novos, garagem à meia-noite e vácuo que vira nitro
 
 ## O que muda
 
-- **O banco guarda as cinco melhores voltas de cada piloto** em cada pista (`corrida_voltas_piloto`, migração 017, que traz as voltas que já estavam guardadas).
-- **O ritmo dos robôs é a média dessas voltas** de quem está na sala (cada piloto pesa igual). Se ninguém da sala tem volta naquela pista, vale a média de todo mundo que já correu nela.
-- **Cada robô ajusta a própria velocidade para fechar a volta nesse ritmo vezes o nível**, seja qual for o traçado que ele copia: fácil 12% mais lento que a média, médio 3% mais lento, difícil 2% mais rápido. Entre os robôs há uns 3% de diferença, para não andarem em fila.
-- O traçado (por onde o robô passa) continua sendo a melhor volta de cada um dos cinco pilotos mais rápidos. Ele só muda quando alguém bate a própria melhor volta.
-- Na largada, o registro da sala mostra o tempo de volta que os robôs vão buscar.
-- Sem volta de ninguém na pista, nada muda: os robôs seguem o traçado calculado, como antes.
+- **Cinco carros novos no drag:** Nissan Skyline R34 GT-R, Lamborghini Gallardo LP560-4, Volkswagen Phideon, Polo Plus e T-Cross (onze no total), cada um com marchas, força e nitro próprios. `tools/importar-carros-drag.py` agora importa só o que estiver na pasta (ZIP com glTF, ZIP com GLB ou GLB solto) e tira a licença do próprio GLB quando o ZIP não traz `license.txt`.
+- **Faróis e lanternas no lugar certo:** `modelos.js` guarda, para cada um dos onze modelos, onde ficam as lanternas e os faróis, conferidos de frente e de trás em cada carro (R33, R34 e Supra com as duas lanternas redondas de cada lado). Os carros agora têm farol aceso com o facho no asfalto, e a lanterna fica mais forte no freio (o seu e o dos rivais). Sai a busca automática de lanternas, que errava em alguns modelos.
+- **O vácuo vira nitro:** colado atrás de um rival, o tanque de N2O vai enchendo (mais rápido com a barra cheia, e um bônus quando ela enche). O vácuo não deixa mais o ar mais leve. O HUD mostra "VÁCUO → N2O", o medidor de nitro brilha enquanto enche, e o resultado mostra quanto nitro veio do vácuo.
+- **A garagem (casa do drag) e a oficina:** o lobby virou uma rua à meia-noite com o galpão da Garagem da Galera, letreiro e tubos de neon, poste de sódio, asfalto molhado e a galera parada em volta, com o seu carro em exposição. Dá para trocar de carro pelas setas, ver a ficha (força, final, nitro) e abrir a oficina: pintura (11 cores ou a de fábrica), neon, cor dos faróis e cor da chama do nitro, guardados por carro no navegador. Do fim da corrida dá para voltar à garagem.
+- **Lobby com cara de racha:** relógio de neon que abre às 23:58, "Meia-noite. Rua vazia. Quatro faixas.", as pistas como pontos de encontro e quem está na área. O céu da garagem e das pistas é a foto noturna que a Corrida já usava (`/corrida/ceus/tokyo.jpg`, Poly Haven, CC0).
+- **Câmera interna:** C (ou o botão CAM no celular) troca entre a câmera de trás e a de dentro do carro, no banco do motorista de cada um dos onze modelos (conferido olhando de dentro; o R33 e o R34 têm o volante à direita), com o painel aceso. A escolha fica guardada.
+- **Primeira corrida sem tranco (drag):** a largada espera os modelos dos rivais (antes, o carro provisório era trocado pelo modelo no meio da corrida), compila os shaders de tudo o que vai aparecer e sobe as texturas antes de o relógio andar; as partículas já nascem prontas e a pista é reaproveitada quando é a mesma.
+- **Primeira corrida sem tranco (Corrida):** a preparação da largada também compila os efeitos que só nascem no meio da corrida (fumaça da derrapagem, cacos, explosão, "POW!" e os itens).
 
 ## Verificação
 
-- `node --test tests/corrida-robos.test.js tests/corrida-recordes.test.js tests/corrida-experiencia.test.js tests/corrida-colisao.test.js tests/bd.test.js tests/salas.test.js`.
-- Simulação em Interlagos, Mônaco, Tóquio e Nürburgring, com dois ritmos diferentes: os robôs fecham a volta a 1–2% do tempo que miram, nos três níveis. A exceção é quando o carro não tem velocidade para chegar no tempo pedido.
+- `node --test tests/corrida-drag.test.mjs tests/corrida-experiencia.test.js tests/corrida-colisao.test.js tests/corrida-robos.test.js`: 33 passam (inclui o teste novo do vácuo que enche o nitro).
+- Faróis e lanternas dos onze modelos conferidos em fotos de frente e de trás; fotos da garagem, da oficina e da largada (Supra, Gallardo e T-Cross) num Chrome sem janela.
+- `tests/e2e/corrida-drag*.spec.js` foram atualizados (onze modelos, teste da garagem), mas não rodados.

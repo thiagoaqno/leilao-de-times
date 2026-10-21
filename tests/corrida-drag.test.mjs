@@ -112,6 +112,21 @@ test("vácuo enche atrás de outro piloto na mesma faixa", () => {
   assert.equal(outro.vacuo, 0);
 });
 
+test("o vácuo vira nitro: atrás de alguém o tanque enche, e o ar não fica mais leve", () => {
+  const eu = makeCar({ lane: 1, z: 100, speed: 180 }), frente = makeCar({ lane: 1, z: 112, speed: 180 });
+  eu.nitro = 0;
+  for (let i = 0; i < 100; i++) L.atualizarVacuo(eu, [eu, frente], 0.02);
+  assert.ok(eu.nitro > L.BONUS_VACUO + 0.3, `nitro ${eu.nitro}`);
+  assert.ok(Math.abs(eu.nitroDoVacuo - eu.nitro) < 1e-9);
+  for (let i = 0; i < 2000; i++) L.atualizarVacuo(eu, [eu, frente], 0.02);
+  assert.equal(eu.nitro, eu.nitroMax); // não passa do tanque
+  // com a barra cheia, o carro anda igual a um sem vácuo
+  const puxando = makeCar({ gear: 4, speed: 150 }), sozinho = makeCar({ gear: 4, speed: 150 });
+  puxando.vacuo = 1;
+  correr(puxando, 1); correr(sozinho, 1);
+  assert.ok(Math.abs(puxando.speed - sozinho.speed) < 1e-9);
+});
+
 test("bater de frente rápido é perda total; encostar devagar só segura", () => {
   const car = makeCar({ z: 10, speed: 170 });
   const trafego = { kind: "trafego", x: LANE_X[1], z: 14.6, speed: 80, len: 4.5, w: 2.1 };
