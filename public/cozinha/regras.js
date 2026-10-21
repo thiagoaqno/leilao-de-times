@@ -200,6 +200,54 @@
       legenda: { m: "massa", t: "tomate", q: "queijo" }, receitas: ["pizza_queijo", "pizza"], tempo: 240, pratos: 4,
       pedidos: { max: 4, inicio: 2, intervalo: [14, 22] },
     },
+    // terceiro mundo: cardápios conhecidos em plantas novas, inspiradas nas cozinhas com rotas de Overcooked
+    "3-1": {
+      nome: "Dois lados", tema: "sushi", desc: "Peixe e alga de um lado, arroz e entrega do outro. A passagem ao sul liga as duas equipes.",
+      mapa: [
+        "#pp#gg#SS#aa#",
+        "#.....#.....F",
+        "=..1..#..2..F",
+        "=.....#.....#",
+        "#.....#.....#",
+        "E.....#..3..L",
+        "P..4........#",
+        "#.....#.....#",
+        "#R#cc##==####",
+      ],
+      legenda: { p: "peixe", g: "alga", a: "arroz", c: "pepino" }, receitas: ["sashimi", "sushi_peixe", "sushi_pepino"], tempo: 240, pratos: 4,
+      pedidos: { max: 5, inicio: 2, intervalo: [12, 20] },
+    },
+    "3-2": {
+      nome: "Ilhas de bancada", desc: "As bancadas espalhadas pelo salão criam atalhos e desvios entre os ingredientes e a entrega.",
+      mapa: [
+        "#aa#tt#cc#pp##",
+        "#............f",
+        "=..1...##....f",
+        "=...#....#...#",
+        "#...#....#...#",
+        "S...##..2....L",
+        "S..3......4..#",
+        "#PE#R#==######",
+      ],
+      legenda: { a: "alface", t: "tomate", c: "carne", p: "pao" }, receitas: ["salada", "salada_tomate", "hamburguer", "hamburguer_alface"], tempo: 240, pratos: 4,
+      pedidos: { max: 5, inicio: 2, intervalo: [12, 20] },
+    },
+    "3-3": {
+      nome: "Balcão em U", desc: "A passagem dentro do balcão tem uma única saída. Divida o preparo para não cruzar a cozinha à toa.",
+      mapa: [
+        "#aa#tt#cc#pp##",
+        "#............f",
+        "=..1......2..f",
+        "=..#######...#",
+        "#..#..3..#...#",
+        "S..#.....#...L",
+        "S............#",
+        "#..4.........#",
+        "#PE#R#==######",
+      ],
+      legenda: { a: "alface", t: "tomate", c: "carne", p: "pao" }, receitas: ["salada", "salada_tomate", "hamburguer", "hamburguer_alface"], tempo: 240, pratos: 4,
+      pedidos: { max: 5, inicio: 2, intervalo: [12, 20] },
+    },
   };
   // Planejador compartilhado: caminho mais curto pelo chão até uma bancada. O robô pode seguir estes mesmos pontos.
   function rota(mapa, origem, bancada) {
