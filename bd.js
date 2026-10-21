@@ -56,11 +56,26 @@ function melhorVoltaCorrida(pista) {
   const v = bd().prepare("SELECT tempo, carro, piloto, dados FROM corrida_voltas WHERE pista = ?").get(pista);
   return v ? { tempo: v.tempo, carro: v.carro, piloto: v.piloto, s: JSON.parse(v.dados) } : null;
 }
+function melhoresTracadosCorrida(pista) {
+  return bd().prepare("SELECT tempo, carro, piloto, dados FROM corrida_tracados WHERE pista = ? ORDER BY tempo, feita_em LIMIT 5").all(pista)
+    .map((v) => ({ tempo: v.tempo, carro: v.carro, piloto: v.piloto, s: JSON.parse(v.dados) }));
+}
 function salvarVoltaCorrida(pista, tempo, carro, piloto, amostras) {
-  const r = bd().prepare(`INSERT INTO corrida_voltas (pista, tempo, carro, piloto, dados, feita_em) VALUES (?, ?, ?, ?, ?, ?)
+  const db = bd(), dados = JSON.stringify(amostras), agora = Date.now(), chave = String(piloto).trim().toLowerCase();
+  if (!chave || !Number.isFinite(tempo)) return false;
+  db.exec("BEGIN");
+  try {
+    const r = db.prepare(`INSERT INTO corrida_tracados (pista, chave, piloto, tempo, carro, dados, feita_em) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(pista, chave) DO UPDATE SET piloto=excluded.piloto, tempo=excluded.tempo, carro=excluded.carro, dados=excluded.dados, feita_em=excluded.feita_em
+      WHERE excluded.tempo < corrida_tracados.tempo`).run(pista, chave, piloto, tempo, carro, dados, agora);
+    db.prepare(`DELETE FROM corrida_tracados WHERE pista = ? AND chave NOT IN
+      (SELECT chave FROM corrida_tracados WHERE pista = ? ORDER BY tempo, feita_em LIMIT 5)`).run(pista, pista);
+    db.prepare(`INSERT INTO corrida_voltas (pista, tempo, carro, piloto, dados, feita_em) VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(pista) DO UPDATE SET tempo=excluded.tempo, carro=excluded.carro, piloto=excluded.piloto, dados=excluded.dados, feita_em=excluded.feita_em
-    WHERE excluded.tempo < corrida_voltas.tempo`).run(pista, tempo, carro, piloto, JSON.stringify(amostras), Date.now());
-  return r.changes > 0;
+    WHERE excluded.tempo < corrida_voltas.tempo`).run(pista, tempo, carro, piloto, dados, agora);
+    db.exec("COMMIT");
+    return r.changes > 0 && !!db.prepare("SELECT 1 FROM corrida_tracados WHERE pista = ? AND chave = ?").get(pista, chave);
+  } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
 
 // Os recordes de volta de cada pista (migração 013): cada piloto uma vez por pista, com a melhor volta dele, e só os 5
@@ -362,4 +377,4 @@ function nivelDeTodosAdmin(treinador, nivel, ator) {
 const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, tipo, captura, antes, depois, criado_em FROM moderacao_pokemon WHERE treinador = ? ORDER BY id DESC LIMIT ?").all(treinador, limite)
   .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
 
-module.exports = { melhorVoltaCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { melhorVoltaCorrida, melhoresTracadosCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

@@ -51,6 +51,20 @@ test("robôs pegam caixas e usam os itens", () => {
   assert.ok(eventos.includes("item:box"));
   assert.ok(eventos.includes("item:use"));
 });
+test("robô vê um humano à frente, abre espaço e reduz antes de encostar", () => {
+  Robos.usarFonte(() => []);
+  const agora = Date.now(), room = { config: { pista: "interlagos", caixas: false, robos: 1, nivel: "medio", voltas: 1 }, players: {}, order: [], phase: "race", startAt: agora - 2000 };
+  Robos.preparar(room, ["#a"], () => "a");
+  const bot = room.players[room.order[0]]; bot.grid = 0;
+  Robos.largar(room); bot.ia.reacao = 0; bot.ia.v = 120;
+  const { x, y, a, z, prog } = bot.pos;
+  room.players.h = { id: "h", bot: false, pos: { x: x + Math.cos(a) * 45, y: y + Math.sin(a) * 45, z, a, v: 70, prog: prog + 7 } };
+  room.order.push("h");
+  Robos.passo(room, 0.05, () => {}, () => {});
+  assert.notEqual(bot.ia.passSide, 0, "escolhe um lado para ultrapassar");
+  assert.ok(Math.abs(bot.ia.desvio) > 0, "começa a mudar de linha suavemente");
+  assert.ok(bot.ia.v < 120, "reduz enquanto ainda não há espaço lateral");
+});
 test("casco persegue a 1,7× a velocidade máxima do alvo", () => {
   const now = Date.now(), p = { id: "a", car: "formiga", finish: null, item: "vermelho", rolling: 0, spinUntil: 0, pos: { x: 1000, y: 1000, z: 0, a: 0, v: 200, prog: 5, at: now } };
   const q = { id: "b", car: "foguete", finish: null, pos: { x: 1400, y: 1000, z: 0, a: 0, v: 300, prog: 6, at: now } };
@@ -73,6 +87,17 @@ test("robôs aprendem a volta gravada: passam pelo lado e na velocidade de quem 
   assert.ok(Math.abs(media - 25 - jeito) < 8, `linha média ${media.toFixed(1)} (jeito ${jeito.toFixed(1)})`);
   assert.ok(room.order.every((id) => room.players[id].laps === 1));
 });
+test("cinco linhas humanas podem dar traçados distintos aos bots", () => {
+  const pista = "luigi", pts = T.pontos(T.PISTAS[pista], 6), perfis = [-25, 25].map((lat, k) => {
+    const s = []; for (let i = 0; i < pts.length; i += 4) s.push([s.length * 100, pts[i].x - pts[i].ty * lat, pts[i].y + pts[i].tx * lat, pts[i].h, 0, i]);
+    return { s, carro: "equilibrado", tempo: s.length / 10, piloto: `Piloto ${k}` };
+  });
+  assert.equal(Robos.aprender(pista, perfis), true);
+  assert.equal(Robos.aprendido(pista).length, 2);
+  const { room } = correr(pista, "medio", false, 2);
+  assert.deepStrictEqual(room.order.map((id) => room.players[id].ia.tracadoId), [0, 1]);
+  Robos.usarFonte(() => []);
+});
 test("robôs não têm vantagem: copiando uma volta feita no vácuo, não passam da velocidade final nem arrancam mais forte", () => {
   const pista = "interlagos", pts = T.pontos(T.PISTAS[pista], 6), n = pts.length, s = [];
   // a volta gravada a ~1,4x a velocidade final do carro (como se quem gravou ficasse no vácuo e no estilingue o tempo todo)
@@ -92,9 +117,12 @@ test("turbo do cogumelo: dura TURBO_MS acima da velocidade final e, quando acaba
   assert.ok(Math.abs(p.boostUntil - now - T.TURBO_MS) < 50 && T.TURBO_MS >= 3000);
   // um robô na reta, já no topo, pega o turbo: passa da final durante o turbo e continua acima dela logo depois que acaba
   let fim = 0;
-  const { room: r, vs } = correr("interlagos", "dificil", false, 1, (room, t, agora) => { if (Math.abs(t - 6) < 0.01) { room.players[room.order[0]].boostUntil = agora + T.TURBO_MS; fim = t + T.TURBO_MS / 1000; } });
-  const c = T.CARROS[r.players[r.order[0]].car], em = (t) => vs[Math.round(t / 0.05)];
-  assert.ok(Math.max(...vs) > c.vmax * 1.1, "o turbo passa da velocidade final");
+  const rodar = (turbo) => correr("interlagos", "dificil", false, 1, (room, t, agora) => {
+    const bot = room.players[room.order[0]]; bot.car = "equilibrado"; bot.ia.reacao = 0; bot.ia.jeito = 0; bot.ia.nivel = Robos.NIVEIS.dificil;
+    if (turbo && Math.abs(t - 6) < 0.01) { bot.boostUntil = agora + T.TURBO_MS; fim = t + T.TURBO_MS / 1000; }
+  });
+  const { vs } = rodar(true), sem = rodar(false).vs, c = T.CARROS.equilibrado, em = (t) => vs[Math.round(t / 0.05)];
+  assert.ok(vs[145] > sem[145] + 8, "o turbo acelera mais do que a corrida sem item");
   assert.ok(em(fim + 0.3) > c.vmax * 1.03 || em(fim + 0.3) < c.vmax * 0.98, `logo depois do turbo: ${em(fim + 0.3).toFixed(0)}`); // ainda solta (ou já está freando para uma curva)
 });
 test("todas as pistas: robôs largam no reto, passam pelos 12 checkpoints em ordem e fecham a volta sem sair da pista", () => {

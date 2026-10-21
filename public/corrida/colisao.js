@@ -1,8 +1,7 @@
 // Corrida da Galera — batida entre carros (pura, sem página: o teste carrega este arquivo direto).
-// Cada carro vira 3 círculos ao longo do corpo. Quem bate empurra os dois: cada navegador resolve a sua metade com a
-// mesma conta (impulso pela massa e pela velocidade relativa), então os dois lados chegam quase no mesmo resultado.
+// Cada carro vira 3 círculos ao longo do corpo. O contato separa as carrocerias suavemente,
+// sem alterar a velocidade de nenhum piloto: encostar não vira freio nem impulso de ultrapassagem.
 export const MASSA = { equilibrado: 1, foguete: 0.9, formiga: 0.8, drifteiro: 1, tanque: 1.5 };
-const ELASTICIDADE = 0.2; // pouco quique: bater no outro empurra, mas não joga o carro longe
 
 // os 3 círculos do carro: [x, y] no mundo e o raio (L e W em unidades da pista)
 export function circulos(x, y, a, L, W) {
@@ -20,14 +19,10 @@ export function baterNoOutro(eu, outro) {
     if (pen > 0 && (!melhor || pen > melhor.pen)) melhor = { pen, nx: d > 1e-6 ? dx / d : Math.cos(eu.a + Math.PI / 2), ny: d > 1e-6 ? dy / d : Math.sin(eu.a + Math.PI / 2) };
   }
   if (!melhor) return 0;
-  const { pen, nx, ny } = melhor, ma = eu.massa || 1, mb = outro.massa || 1;
-  // sai de dentro: cada lado resolve a sua parte da penetração (a do mais leve é maior)
-  const parte = mb / (ma + mb) * 1.05;
-  eu.x += nx * pen * parte; eu.y += ny * pen * parte;
+  const { pen, nx, ny } = melhor;
+  const correcao = Math.min(3.5, pen * 0.5);
+  eu.x += nx * correcao; eu.y += ny * correcao;
   const ovx = Math.cos(outro.a) * (outro.v || 0), ovy = Math.sin(outro.a) * (outro.v || 0);
   const vn = (eu.vx - ovx) * nx + (eu.vy - ovy) * ny; // negativo = se aproximando
-  if (vn >= 0) return 0;
-  const j = -(1 + ELASTICIDADE) * vn / (1 / ma + 1 / mb);
-  eu.vx += (j / ma) * nx; eu.vy += (j / ma) * ny;
-  return -vn;
+  return Math.max(0, -vn);
 }

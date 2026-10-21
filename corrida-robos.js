@@ -1,5 +1,5 @@
 // Corrida da Galera — os robôs. Rodam no servidor e aprendem com a galera: se alguém já fez uma volta limpa na pista,
-// eles copiam a linha e a velocidade dessa volta (a melhor de todas, guardada no banco), ponto a ponto. Sem volta
+// eles usam até cinco linhas humanas diferentes, com velocidade limitada e margem para ultrapassagem. Sem volta
 // gravada, seguem o traçado de corrida calculado (abre antes da curva, corta no ápice) com a velocidade que a curva
 // permite. Pegam caixas e usam os itens. Para os navegadores eles são pilotos como os outros: a posição sai pelo
 // mesmo evento "ghost" e as voltas contam pelos mesmos setores.
@@ -8,7 +8,7 @@ const Itens = require("./corrida-itens.js");
 const { SKINS } = require("./public/pelada/campo.js");
 
 const NOMES = ["Faísca", "Pistão", "Graxa", "Biela", "Vácuo", "Turbo", "Chicane"];
-const NIVEIS = { facil: 0.86, medio: 0.95, dificil: 1.0 }; // quanto da velocidade de referência (a volta gravada ou o limite da curva) o robô usa
+const NIVEIS = { facil: 0.80, medio: 0.87, dificil: 0.93 }; // mesmo no difícil, deixa margem para um humano alcançar
 const STEP = 6;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const CACHE = new Map();
@@ -41,8 +41,8 @@ function tracado(pista) {
 // A volta gravada (amostras [tempo ms, x, y, z, ângulo, progresso] a cada 0,1 s) vira, para cada ponto da pista, o
 // lado em que o carro passou (lat) e a velocidade dele, em fração da velocidade final daquele carro (para valer para
 // qualquer um dos cinco). Pontos sem amostra são preenchidos pelos vizinhos, e tudo é suavizado.
-const APRENDIDO = new Map(); // pista -> { lat, vel, tempo, piloto } ou null
-let fonte = () => null; // de onde vem a melhor volta guardada (o servidor liga no banco)
+const APRENDIDO = new Map(); // pista -> até cinco perfis humanos válidos
+let fonte = () => []; // de onde vêm até cinco voltas guardadas (o servidor liga no banco)
 function usarFonte(f) { fonte = f; APRENDIDO.clear(); CACHE.clear(); }
 function processar(pista, volta) {
   const t = T.PISTAS[pista], linha = tracado(pista), pts = linha.pts, n = pts.length, s = volta && volta.s;
@@ -69,24 +69,25 @@ function processar(pista, volta) {
   return { lat: suave(lat, 4), vel: suave(vel, 3), tempo: volta.tempo, piloto: volta.piloto };
 }
 function aprendido(pista) {
-  if (!APRENDIDO.has(pista)) { let v = null; try { v = processar(pista, fonte(pista)); } catch (e) { v = null; } APRENDIDO.set(pista, v); }
+  if (!APRENDIDO.has(pista)) { let v = []; try { const voltas = fonte(pista); v = (Array.isArray(voltas) ? voltas : [voltas]).map((volta) => processar(pista, volta)).filter(Boolean).slice(0, 5); } catch (e) { v = []; } APRENDIDO.set(pista, v); }
   return APRENDIDO.get(pista);
 }
-// volta nova mais rápida que a guardada: os robôs passam a usá-la já na próxima largada
+// Uma das cinco melhores voltas mudou: recarrega os perfis para a próxima largada.
 function aprender(pista, volta) {
-  const v = processar(pista, volta); if (!v) return false;
+  const v = (Array.isArray(volta) ? volta : [volta]).map((item) => processar(pista, item)).filter(Boolean).slice(0, 5); if (!v.length) return false;
   APRENDIDO.set(pista, v); for (const k of [...CACHE.keys()]) if (k.startsWith(pista + ":")) CACHE.delete(k);
   return true;
 }
 // a pista amostrada, a linha e a velocidade de referência em cada ponto, para um carro
-function perfil(pista, carro) {
-  const chave = pista + ":" + carro; if (CACHE.has(chave)) return CACHE.get(chave);
-  const t = T.PISTAS[pista], c = T.CARROS[carro], linha = tracado(pista), pts = linha.pts, n = pts.length, ap = aprendido(pista);
+function perfil(pista, carro, tracadoId = 0) {
+  const chave = pista + ":" + carro + ":" + tracadoId; if (CACHE.has(chave)) return CACHE.get(chave);
+  const t = T.PISTAS[pista], c = T.CARROS[carro], linha = tracado(pista), pts = linha.pts, n = pts.length, perfis = aprendido(pista), ap = perfis[tracadoId % perfis.length];
   let lim, lat;
-  if (ap) { lim = Array.from(ap.vel, (v) => Math.max(40, v * c.vmax)); lat = ap.lat; } // a velocidade de quem gravou, na escala deste carro
+  const curva = Array.from(linha.k, (k) => (k > 1e-4 ? Math.min(c.turn / k * 1.1, Math.sqrt(c.grip / k) * 1.2, c.vmax) : c.vmax));
+  for (let volta = 0; volta < 2; volta++) for (let i = n - 1; i >= 0; i--) curva[i] = Math.min(curva[i], Math.sqrt(curva[(i + 1) % n] ** 2 + 2 * c.brake * 0.72 * STEP));
+  if (ap) { lim = Array.from(ap.vel, (v, i) => Math.min(curva[i], Math.max(40, v * c.vmax))); lat = ap.lat; }
   else {
-    lim = Array.from(linha.k, (k) => (k > 1e-4 ? Math.min(c.turn / k * 1.1, Math.sqrt(c.grip / k) * 1.2, c.vmax) : c.vmax));
-    for (let volta = 0; volta < 2; volta++) for (let i = n - 1; i >= 0; i--) lim[i] = Math.min(lim[i], Math.sqrt(lim[(i + 1) % n] ** 2 + 2 * c.brake * 0.85 * STEP)); // freia tarde
+    lim = curva;
     lat = linha.lat;
   }
   const out = { pts, n, lim, lat, t, c, linha, aprendeu: !!ap }; CACHE.set(chave, out); return out;
@@ -115,10 +116,10 @@ function largar(room) {
   const t = T.PISTAS[room.config.pista];
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot) continue;
-    const pf = perfil(room.config.pista, p.car), g = largada(pf.pts, p.grid, t.width);
+    const tracadoId = room.order.filter((id) => room.players[id].bot).indexOf(id), pf = perfil(room.config.pista, p.car, tracadoId), g = largada(pf.pts, p.grid, t.width);
     p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
     // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
-    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel: (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.97, 1.02), jeito: rnd(-11, 11), reacao: rnd(0, 450), usaEm: 0 };
+    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel: (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.98, 1.02), jeito: rnd(-7, 7), tracadoId, reacao: rnd(0, 450), usaEm: 0 };
     posicionar(p, pf, 0);
   }
 }
@@ -140,31 +141,48 @@ function passo(room, dt, setor, emit) {
   const lider = humanos.length ? Math.max(...humanos.map((q) => q.pos.prog)) : null;
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot || !p.ia) continue;
-    const pf = perfil(room.config.pista, p.car), ia = p.ia, c = pf.c;
+    const ia = p.ia, pf = perfil(room.config.pista, p.car, ia.tracadoId), c = pf.c;
     if (corrida && p.finish == null && now >= room.startAt + ia.reacao) {
-      // elástico: quem dispara na frente dos humanos alivia; quem fica muito para trás aperta um pouco
-      let el = 1; if (lider != null && p.pos) { const dif = (p.pos.prog - lider) / pf.n; el = dif > 0.08 ? 0.93 : dif < -0.25 ? 1.05 : 1; }
+      // Corre pelo próprio ritmo; a posição do humano não dá aceleração extra ao bot.
+      let el = 1; if (lider != null && p.pos && (p.pos.prog - lider) / pf.n > 0.08) el = 0.97;
       const i = Math.floor(ia.s) % pf.n;
       let alvo = Math.min(pf.lim[i], pf.lim[(i + 3) % pf.n]) * ia.nivel * el * (1 - Math.min(1, Math.abs(ia.desvio) / 40) * 0.06);
+      const baseLat = pf.lat[(i + 2) % pf.n] + ia.jeito + Math.sin(ia.s / 105 + ia.tracadoId * 1.7) * 4;
+      const maxLat = t.width / 2 - 10, ponto = pf.pts[i];
+      let desvio = 0, freioTrafego = Infinity, encontrou = false;
+      for (const oid of room.order) {
+        const o = room.players[oid]; if (o === p || !o.pos || Math.abs((o.pos.z || 0) - ponto.h) > 15) continue;
+        const dx = o.pos.x - p.pos.x, dy = o.pos.y - p.pos.y;
+        const frente = dx * ponto.tx + dy * ponto.ty, lado = dx * -ponto.ty + dy * ponto.tx;
+        if (frente < -40 || frente > 185 || Math.abs(lado) > 65) continue;
+        const latOutro = (o.pos.x - ponto.x) * -ponto.ty + (o.pos.y - ponto.y) * ponto.tx;
+        if (Math.abs(latOutro - ia.lat) > 34) continue;
+        encontrou = true;
+        const esquerda = latOutro - 30, direita = latOutro + 30;
+        const cabeEsquerda = esquerda >= -maxLat, cabeDireita = direita <= maxLat;
+        if (!ia.passSide || (ia.passSide < 0 && !cabeEsquerda) || (ia.passSide > 0 && !cabeDireita))
+          ia.passSide = cabeEsquerda && (!cabeDireita || Math.abs(esquerda - baseLat) < Math.abs(direita - baseLat)) ? -1 : cabeDireita ? 1 : 0;
+        const alvoPassagem = ia.passSide < 0 ? esquerda : direita;
+        if (ia.passSide) desvio = alvoPassagem - baseLat;
+        const faltaEspaco = !ia.passSide || Math.abs(ia.lat - latOutro) < 25;
+        if (frente > 0 && frente < 115 && faltaEspaco) freioTrafego = Math.min(freioTrafego, Math.max(35, (o.pos.v || 0) * 0.94));
+      }
+      if (!encontrou) ia.passSide = 0;
+      alvo = Math.min(alvo, freioTrafego);
       alvo = Math.min(alvo, c.vmax); // nunca passa da velocidade final do carro (a mesma de quem joga)
       // turbo e estrela: as mesmas contas do carro de quem joga (fisica.js): mais velocidade final e mais força para chegar nela
       const turbo = p.boostUntil > now, estrela = p.starUntil > now, bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0), ak = 1 + (turbo ? 0.8 : 0) + (estrela ? 0.4 : 0);
-      alvo *= bk;
+      alvo += c.vmax * (bk - 1); // o item mantém sua força mesmo com o ritmo base mais acessível
       if (p.spinUntil > now) ia.v *= Math.exp(-dt * 2.2);
       else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * ak * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / (c.vmax * bk), 1.6)) * dt); // a mesma arrancada do carro de quem joga
       else ia.v = Math.max(alvo, ia.v - (ia.v > c.vmax && alvo >= c.vmax * 0.98 ? T.TURBO_SOLTA : c.brake) * dt); // fim do turbo na reta: solta aos poucos, como quem joga
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
-      // segue o traçado de corrida; se tem outro robô logo à frente na mesma linha, desvia para o lado para passar
-      let desvio = 0;
-      for (const oid of room.order) { const o = room.players[oid]; if (o === p || !o.bot || !o.ia) continue;
-        const ds = (o.ia.s - ia.s + pf.n) % pf.n; if (ds > 0 && ds < 9 && Math.abs(o.ia.lat - ia.lat) < 26) desvio = (o.ia.lat > pf.lat[i] ? -1 : 1) * 34; }
       // depois da largada (~600 de reta), sai da faixa do grid e vai aos poucos para o traçado; antes disso, não desvia de ninguém
       const saida = Math.min(1, ((ia.s - ia.s0 + pf.n) % pf.n) / 100), largando = saida < 1;
-      if (largando) desvio = 0;
-      ia.desvio += (desvio - ia.desvio) * Math.min(1, dt * 1.5);
-      const linha = pf.lat[(i + 2) % pf.n] + ia.jeito, alvoLat = largando ? ia.lat0 * (1 - saida) + linha * saida : linha + ia.desvio;
-      const max = t.width / 2 - 10, quer = Math.max(-max, Math.min(max, alvoLat));
-      ia.lat += (quer - ia.lat) * Math.min(1, dt * 4);
+      ia.desvio += (desvio - ia.desvio) * Math.min(1, dt * 2.2);
+      const alvoLat = largando ? ia.lat0 * (1 - saida) + (baseLat + ia.desvio) * saida : baseLat + ia.desvio;
+      const quer = Math.max(-maxLat, Math.min(maxLat, alvoLat));
+      ia.lat += Math.max(-42 * dt, Math.min(42 * dt, quer - ia.lat));
     }
     const i = posicionar(p, pf, p.laps);
     // setores: o mesmo caminho dos humanos (a volta só conta passando pelos 4, na ordem)
