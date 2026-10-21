@@ -4,6 +4,7 @@ import { THEMES } from "./pista.js";
 import { MODS3, MODS_PADRAO, carPreview } from "./carros.js";
 import { loadBest } from "./fantasma.js";
 import { f1Pronto } from "./f1.js";
+import { CARROS as CARROS_DRAG } from "./drag/logic.mjs";
 f1Pronto.then(() => { if (E.S && E.S.phase === "lobby") renderLobby(); }); // refaz as fotos dos carros com o modelo 3D
 
 export function show(id) {
@@ -19,7 +20,16 @@ export function show(id) {
 let aba = "box";
 const ABAS = { box: "Box", pista: "Pistas", garagem: "Garagem", pintura: "Pintura", regras: "Regras" };
 const NIVEL = { facil: "fácil", medio: "médio", dificil: "difícil" };
+const nomeCarro = (p, config) => config.carrosDrag && p.carDrag ? CARROS_DRAG[p.carDrag]?.nome || "Carro do Drag" : carOf(p).name;
+function cartaoDrag(cv, nome, cor) {
+  const x = cv.getContext("2d"), w = cv.width, h = cv.height;
+  x.fillStyle = "#111723"; x.fillRect(0, 0, w, h);
+  x.fillStyle = cor; x.fillRect(12, h - 37, w - 24, 4);
+  x.fillStyle = "#fff"; x.font = "bold 16px sans-serif"; x.fillText("DRAG", 14, 29);
+  x.font = "bold 13px sans-serif"; x.fillText(nome, 14, h - 48, w - 28);
+}
 function abrir(qual) {
+  if (qual === "pintura" && E.S?.config.carrosDrag) qual = "garagem";
   aba = ABAS[qual] ? qual : "box";
   $("hub").classList.toggle("hidden", aba !== "box");
   document.querySelectorAll("[data-painel]").forEach((p) => p.classList.toggle("hidden", p.dataset.painel !== aba));
@@ -29,33 +39,36 @@ document.addEventListener("click", (e) => { const b = e.target.closest("[data-ab
 document.addEventListener("keydown", (e) => {
   if ($("lobby").classList.contains("hidden") || e.target.tagName === "INPUT") return;
   if (e.key === "Escape" && aba !== "box") { abrir("box"); e.preventDefault(); }
-  const ks = Object.keys(ABAS), i = ks.indexOf(aba);
+  const ks = Object.keys(ABAS).filter((k) => k !== "pintura" || !E.S?.config.carrosDrag), i = ks.indexOf(aba);
   if (e.key === "q" || e.key === "Q") abrir(ks[(i - 1 + ks.length) % ks.length]);
   if (e.key === "e" || e.key === "E") abrir(ks[(i + 1) % ks.length]);
 });
-$("hubAnt").onclick = () => { const ks = Object.keys(ABAS); abrir(ks[(ks.indexOf(aba) - 1 + ks.length) % ks.length]); };
-$("hubProx").onclick = () => { const ks = Object.keys(ABAS); abrir(ks[(ks.indexOf(aba) + 1) % ks.length]); };
+$("hubAnt").onclick = () => { const ks = Object.keys(ABAS).filter((k) => k !== "pintura" || !E.S?.config.carrosDrag); abrir(ks[(ks.indexOf(aba) - 1 + ks.length) % ks.length]); };
+$("hubProx").onclick = () => { const ks = Object.keys(ABAS).filter((k) => k !== "pintura" || !E.S?.config.carrosDrag); abrir(ks[(ks.indexOf(aba) + 1) % ks.length]); };
 
 export function renderLobby() {
   const m = me(), isHost = m && E.S.host === m.id, c = E.S.config, t = PISTAS[c.pista], dis = isHost ? "" : "disabled";
   const robos = Math.min(c.robos || 0, 8 - E.S.players.length);
   // cabeçalho: o carro (foto 3D) e o piloto
-  if (m) { const k = carOf(m); $("hubCarNome").textContent = k.name; $("hubClasse").textContent = k.inspo || ""; carPreview($("hubCarro"), m.color, m.car, m.mods); }
+  if (m) { const k = carOf(m); $("hubCarNome").textContent = nomeCarro(m, c); $("hubClasse").textContent = c.carrosDrag ? "Carros do Drag · visual, física equilibrada" : k.inspo || ""; if (c.carrosDrag) cartaoDrag($("hubCarro"), nomeCarro(m, c), m.color); else carPreview($("hubCarro"), m.color, m.car, m.mods); }
   else { $("hubCarNome").textContent = "Assistindo"; $("hubClasse").textContent = "você entrou só para ver"; }
   $("hubPawn").textContent = m ? m.pawn : "👀"; $("hubNome").textContent = m ? m.name : "Torcida"; $("hubSala").textContent = `Sala ${E.S.code} · ${E.S.players.length + robos} no grid`;
-  document.querySelectorAll('#hubAbas [data-aba="garagem"], #hubAbas [data-aba="pintura"], .tile[data-aba="garagem"], .tile[data-aba="pintura"]').forEach((b) => (b.disabled = !m));
+  document.querySelectorAll('#hubAbas [data-aba="garagem"], .tile[data-aba="garagem"]').forEach((b) => (b.disabled = !m));
+  document.querySelectorAll('#hubAbas [data-aba="pintura"], .tile[data-aba="pintura"]').forEach((b) => (b.disabled = !m || c.carrosDrag));
+  if (c.carrosDrag && aba === "pintura") abrir("garagem");
   // os blocos
   const pint = (m && MODS3.pintura[(m.mods || MODS_PADRAO).pintura]) || MODS3.pintura.propria;
-  if (m) { carPreview($("tileCarro"), m.color, m.car, m.mods); $("tileCarroTxt").textContent = carOf(m).name; }
+  if (m) { if (c.carrosDrag) cartaoDrag($("tileCarro"), nomeCarro(m, c), m.color); else carPreview($("tileCarro"), m.color, m.car, m.mods); $("tileCarroTxt").textContent = nomeCarro(m, c); }
   drawPreview($("tileMapa"), c.pista);
   $("tileMapaTxt").textContent = t.name; $("tileMapaSub").textContent = t.sub;
-  $("tileRegrasTxt").innerHTML = `${c.voltas} volta${c.voltas > 1 ? "s" : ""} · ${c.hora === "noite" ? "noite" : "dia"} · câmbio ${c.cambio === "manual" ? "manual" : "automático"}<br>${c.caixas ? "caixas ligadas" : "sem caixas"}<br>${robos ? `${robos} robô${robos > 1 ? "s" : ""} (${NIVEL[c.nivel] || "médio"})` : "sem robôs"}`;
-  $("tilePilotoTxt").innerHTML = m ? `<span class="faixas"><i style="background:${pint.c || m.color}"></i><i style="background:${pint.c2}"></i></span>${h(pint.name)}` : "";
+  $("tileRegrasTxt").innerHTML = `${c.voltas} volta${c.voltas > 1 ? "s" : ""} · ${c.hora === "noite" ? "noite" : "dia"} · câmbio ${c.cambio === "manual" ? "manual" : "automático"}<br>${c.caixas ? "caixas ligadas" : "sem caixas"} · ${c.carrosDrag ? "carros do Drag" : "F1"}<br>${robos ? `${robos} robô${robos > 1 ? "s" : ""} (${NIVEL[c.nivel] || "médio"})` : "sem robôs"}`;
+  $("tilePilotoTxt").innerHTML = m ? c.carrosDrag ? `<span class="faixas"><i style="background:${m.color}"></i></span>Sua cor na carroceria` : `<span class="faixas"><i style="background:${pint.c || m.color}"></i><i style="background:${pint.c2}"></i></span>${h(pint.name)}` : "";
+  document.querySelector(".t-piloto h3").textContent = c.carrosDrag ? "Cor" : "Pintura";
   $("tLargarTit").textContent = isHost ? "Largar" : "No grid";
   $("tLargarTxt").textContent = isHost ? `${t.name} · ${c.voltas} volta${c.voltas > 1 ? "s" : ""}` : "Esperando o organizador dar a largada";
   $("btnStart").disabled = !isHost;
   $("btnStart").onclick = () => isHost && act("start");
-  $("pilots").innerHTML = E.S.players.map((p) => `<div class="pilot" style="--c:${p.color}"><div class="av">${p.pawn}</div><div class="grow"><b>${h(p.name)}</b><small><span class="dot ${p.online ? "" : "off"}"></span>${h(carOf(p).name)}${p.id === E.S.host ? " · organizador" : ""}${m && p.id === m.id ? " · você" : ""}</small></div>${isHost && p.id !== m.id ? `<button class="small ghost" data-kick="${p.id}" title="Tirar da sala">✕</button>` : ""}</div>`).join("")
+  $("pilots").innerHTML = E.S.players.map((p) => `<div class="pilot" style="--c:${p.color}"><div class="av">${p.pawn}</div><div class="grow"><b>${h(p.name)}</b><small><span class="dot ${p.online ? "" : "off"}"></span>${h(nomeCarro(p, c))}${p.id === E.S.host ? " · organizador" : ""}${m && p.id === m.id ? " · você" : ""}</small></div>${isHost && p.id !== m.id ? `<button class="small ghost" data-kick="${p.id}" title="Tirar da sala">✕</button>` : ""}</div>`).join("")
     + (robos ? `<div class="pilot" style="--c:#9aa1ad"><div class="av">🤖</div><div class="grow"><b>${robos} robô${robos > 1 ? "s" : ""}</b><small>nível ${NIVEL[c.nivel] || "médio"} · entram na largada</small></div></div>` : "")
     + (E.S.players.length < 8 ? `<p class="hint">Mande o código para a galera. Dá para correr sozinho, contra o relógio ou contra robôs.</p>` : "");
   $("pilots").querySelectorAll("[data-kick]").forEach((b) => (b.onclick = () => act("kick", { id: b.dataset.kick })));
@@ -67,6 +80,7 @@ export function renderLobby() {
   $("cfg").innerHTML = `<div class="field"><label>Horário da pista</label><div class="seg"><button data-hora="dia" class="${c.hora !== "noite" ? "on" : ""}" ${dis}>☀️ Dia</button><button data-hora="noite" class="${c.hora === "noite" ? "on" : ""}" ${dis}>🌙 Noite</button></div><small>Disponível em todas as pistas.</small></div><div class="field"><label>Voltas</label><div class="seg">${[1, 2, 3, 5].map((v) => `<button data-v="${v}" class="${c.voltas === v ? "on" : ""}" ${dis}>${v}</button>`).join("")}</div></div>
     <div class="field"><label>Câmbio</label><div class="seg">${[["auto", "Automático"], ["manual", "Manual"]].map(([v, l]) => `<button data-cambio="${v}" class="${(c.cambio || "auto") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div><small>Manual para todo mundo: Shift sobe a marcha, Ctrl direito reduz (no celular, os botões + e −). Os robôs continuam no automático.</small></div>
     <div class="field"><label>Caixas de itens</label><div class="seg"><button data-opt="caixas" class="${c.caixas ? "on" : ""}" ${dis}>${c.caixas ? "🎁 Ligadas" : "Desligadas"}</button></div><small>Banana, cascos, cogumelo, estrela e bomba espalhados pela pista.</small></div>
+    <div class="field"><label>Carros do Drag</label><div class="seg"><button data-opt="carrosDrag" class="${c.carrosDrag ? "on" : ""}" ${dis}>${c.carrosDrag ? "🏎️ Liberados" : "Carros F1"}</button></div><small>Os pilotos escolhem um dos 11 modelos do Drag. Todos usam a física do carro equilibrado. <a href="/corrida/drag/creditos.html" target="_blank" rel="noopener">Créditos e licenças dos modelos</a>.</small></div>
     <div class="field"><label>Robôs</label><div class="seg">${[0, 1, 3, 5, 7].map((v) => `<button data-robos="${v}" class="${(c.robos || 0) === v ? "on" : ""}" ${dis}>${v ? v : "Sem"}</button>`).join("")}</div>
       ${c.robos ? `<div class="seg" style="margin-top:6px">${[["facil", "Fácil"], ["medio", "Médio"], ["dificil", "Difícil"]].map(([v, l]) => `<button data-nivel="${v}" class="${(c.nivel || "medio") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div>` : ""}<small>Pilotos do computador entram no grid (até completar 8 carros), seguem o traçado de corrida, pegam caixas e usam itens.</small></div>
     <div class="field"><label>Equilíbrio</label><div class="seg"><button data-opt="equilibrio" class="${c.equilibrio !== false ? "on" : ""}" ${dis}>${c.equilibrio !== false ? "Ligado" : "Desligado"}</button></div><small>Pequena ajuda de velocidade para quem ficou longe do pelotão.</small></div>${isHost ? "" : `<p class="hint">Só o organizador muda as regras.</p>`}`;
@@ -80,10 +94,11 @@ export function renderLobby() {
   if (m) {
     $("colorPick").innerHTML = COLORS.map((col) => { const taken = E.S.players.some((p) => p.color === col && p.id !== m.id); return `<button class="${col === m.color ? "on" : ""} ${taken ? "taken" : ""}" data-c="${col}" ${taken ? "disabled" : ""} style="background:${col}" aria-label="Cor ${col}"></button>`; }).join("");
     $("colorPick").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => act("color", { color: b.dataset.c })));
-    $("carPick").innerHTML = Object.entries(CARROS).map(([id, k]) => `<button class="car ${m.car === id ? "on" : ""}" data-car="${id}" aria-pressed="${m.car === id}"><canvas data-carprev="${id}" width="240" height="135"></canvas><b>${h(k.name)}</b><small class="inspo">${h(k.inspo || "")}</small><p>${h(k.desc)}</p>
+    $("carPick").innerHTML = c.carrosDrag ? `<p class="hint">Escolha o modelo. A cor do piloto pinta a carroceria; todos correm com a mesma física. <a href="/corrida/drag/creditos.html" target="_blank" rel="noopener">Créditos e licenças</a>.</p>${Object.entries(CARROS_DRAG).map(([id, k]) => `<button class="car ${m.carDrag === id ? "on" : ""}" data-car-drag="${id}" aria-pressed="${m.carDrag === id}"><b>${h(k.nome)}</b><small class="inspo">Drag da Galera</small></button>`).join("")}` : Object.entries(CARROS).map(([id, k]) => `<button class="car ${m.car === id ? "on" : ""}" data-car="${id}" aria-pressed="${m.car === id}"><canvas data-carprev="${id}" width="240" height="135"></canvas><b>${h(k.name)}</b><small class="inspo">${h(k.inspo || "")}</small><p>${h(k.desc)}</p>
       <div class="spec">${specRows(k).map(([lbl, n]) => `<span>${lbl}</span>${leds(n)}`).join("")}</div></button>`).join("");
     $("carPick").querySelectorAll("[data-carprev]").forEach((cv) => carPreview(cv, m.color, cv.dataset.carprev, m.mods));
     $("carPick").querySelectorAll("[data-car]").forEach((b) => (b.onclick = () => act("car", { car: b.dataset.car })));
+    $("carPick").querySelectorAll("[data-car-drag]").forEach((b) => (b.onclick = () => act("carDrag", { carDrag: b.dataset.carDrag })));
     // as pinturas: cada uma com a foto do carro pintado e as duas cores
     const atual = (m.mods || MODS_PADRAO).pintura || "propria";
     $("modPick").innerHTML = Object.entries(MODS3.pintura).map(([id, p]) => `<button class="pint ${atual === id ? "on" : ""}" data-pintura="${id}" aria-pressed="${atual === id}"><canvas data-pintprev="${id}" width="240" height="135"></canvas><span class="faixas"><i style="background:${p.c || m.color}"></i><i style="background:${p.c2}"></i></span><b>${h(p.name)}</b></button>`).join("");

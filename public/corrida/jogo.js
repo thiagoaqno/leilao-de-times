@@ -2,7 +2,7 @@
 // Este é o módulo de entrada: começa e para a corrida, o laço e o desenho, e a capa da página. O resto fica nos
 // outros módulos desta pasta (estado, sons, rede, menus, cena, pista, carros, controles, fisica, fantasma e hud).
 import * as THREE from "three";
-import { E, SECTORS, COLORS, CARROS, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
+import { E, SECTORS, COLORS, CARROS, tipoCarro, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
@@ -13,6 +13,7 @@ import { physics } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
 import { standings, hud } from "./hud.js";
 import { f1Pronto } from "./f1.js";
+import { prepararCarrosDrag } from "./carros-drag.js";
 import { propsPronto } from "./props.js";
 import { startItems, stopItems, stepItems } from "./itens.js";
 import { passoEfeitos, limparEfeitos, amostrasDeEfeitos } from "./efeitos.js";
@@ -41,13 +42,23 @@ function subirTexturas(grp) {
   const vistas = new Set();
   grp.traverse((o) => { for (const m of [].concat(o.material || [])) for (const k of MAPAS) { const t = m[k]; if (t && t.isTexture && !vistas.has(t)) { vistas.add(t); renderer.initTexture(t); } } });
 }
-function aquecerPista(tr, ceu) {
+// Um quadro fora da tela envia também as malhas para a placa de vídeo. Só compilar o shader não fazia isso:
+// a primeira aparição de cada curva ainda podia interromper a corrida.
+function subirMalhas(tr) {
+  if (!race || race.tr !== tr || sNow() >= race.startAt - 300) return;
+  const alvo = new THREE.WebGLRenderTarget(2, 2), anterior = renderer.getRenderTarget();
+  const meia = tr.t.world / 2, camara = new THREE.OrthographicCamera(-meia, meia, meia, -meia, 1, tr.t.world * 3);
+  camara.position.set(meia, tr.t.world, meia); camara.lookAt(meia, 0, meia);
+  try { renderer.setRenderTarget(alvo); renderer.render(scene, camara); }
+  finally { renderer.setRenderTarget(anterior); alvo.dispose(); }
+}
+function aquecerPista(tr, ceu, jogadores) {
   const espera = new Promise((ok) => setTimeout(ok, 1500)); // o céu que não chega em 1,5 s não segura a preparação
-  Promise.race([ceu, espera]).then(() => {
+  Promise.all([Promise.race([ceu, espera]), f1Pronto, propsPronto, prepararCarrosDrag(jogadores)]).then(() => {
     if (!race || race.tr !== tr) return;
     const amostras = new THREE.Group(); amostras.add(amostrasDeEfeitos(), amostraDeFumaca()); scene.add(amostras);
     subirTexturas(scene);
-    renderer.compileAsync(scene, cam).catch(() => {}).finally(() => scene.remove(amostras));
+    renderer.compileAsync(scene, cam).then(() => subirMalhas(tr)).catch((e) => console.warn("Corrida: aquecimento incompleto", e)).finally(() => scene.remove(amostras));
   });
 }
 export function startRace(st) {
@@ -58,11 +69,11 @@ export function startRace(st) {
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W);
   if (race) clearRace();
   race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
-    kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0 };
+    kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods, undefined, false, mine.carDrag) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0 };
   startItems(tr, st.config.caixas);
   $("results").classList.add("hidden");
   resize(); comecarMedida();
-  aquecerPista(tr, ceu);
+  aquecerPista(tr, ceu, st.players);
   if (!raf) raf = requestAnimationFrame(loop);
 }
 function clearRace() { if (!race) return; stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
@@ -122,7 +133,7 @@ function draw(dt) {
   // meu kart
   if (race.kart) {
     const slide = Math.max(-1, Math.min(1, (c.slip || 0) / 160)) * Math.sign(c.steer || 1), fr = groundH(tr, c.x, c.y, race.idx);
-    const spec = CARS3[me()?.car] || CARS3.equilibrado, inc = inclinacao(tr, c.x, c.y, c.a, race.idx, spec.L * KS, spec.W * KS, c.vz, c.air, c.v);
+    const spec = CARS3[tipoCarro(me())] || CARS3.equilibrado, inc = inclinacao(tr, c.x, c.y, c.a, race.idx, spec.L * KS, spec.W * KS, c.vz, c.air, c.v);
     race.pitch = inc.pitch;
     const turbo = race.boostUntil > now || race.sling > 0, rodando = race.spinUntil > now;
     poseKart(race.kart, c.x, c.y, c.z, c.a + slide * 0.25, c.v, c.steer, fr, dt, -c.steer * 0.04 + inc.roll, inc.pitch, fxDe(me(), now, { turbo, rodando, derrapa: c.slip > 45 ? (c.slip > 110 ? 2 : 1) : 0 }));
@@ -133,8 +144,8 @@ function draw(dt) {
   // os outros pilotos (carros de verdade: dá para bater)
   for (const [id, gh] of race.ghosts) {
     const pl = P(id); if (!pl) continue;
-    const key = pl.color + pl.car + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, true); gh.kartKey = key; }
-    const spec = CARS3[pl.car] || CARS3.equilibrado, gz = groundH(tr, gh.x, gh.y, gh.idx || 0), noAr = gh.z > gz + 3;
+    const key = pl.color + pl.car + pl.carDrag + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, true, pl.carDrag); gh.kartKey = key; }
+    const spec = CARS3[tipoCarro(pl)] || CARS3.equilibrado, gz = groundH(tr, gh.x, gh.y, gh.idx || 0), noAr = gh.z > gz + 3;
     gh.vz = ((gh.z - (gh.zAnt ?? gh.z)) / Math.max(dt, 1e-3)) * 0.3 + (gh.vz || 0) * 0.7; gh.zAnt = gh.z;
     const inc = inclinacao(tr, gh.x, gh.y, gh.a, gh.idx || 0, spec.L * KS, spec.W * KS, gh.vz, noAr, gh.v || 0);
     // o volante dos outros: pela rapidez com que a direção muda (no carro, girar 2,4 rad/s é o volante todo)
@@ -187,7 +198,7 @@ function draw(dt) {
     cam.fov += (24 - cam.fov) * fovStep; cam.updateProjectionMatrix();
   } else if (mode === "cockpit") {
     // primeira pessoa: no lugar do piloto, olhando por cima do volante (o bico do kart aparece embaixo)
-    const spec = CARS3[me().car] || CARS3.equilibrado, eyeU = race.kart.eye.u, eyeH = race.kart.eye.h;
+    const spec = CARS3[tipoCarro(me())] || CARS3.equilibrado, eyeU = race.kart.eye.u, eyeH = race.kart.eye.h;
     const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = (eyeU - spec.L / 2) * KS, eh = eyeH * KS;
     const ahead = c.air ? c.z : groundH(tr, c.x + fx * 70, c.y + fy * 70, nearest(tr, c.x + fx * 70, c.y + fy * 70, race.idx));
     C.lookY = C.lookY == null ? ahead : C.lookY + (ahead - C.lookY) * (1 - Math.exp(-dt * 6));

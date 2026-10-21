@@ -5,6 +5,7 @@ import { show, renderLobby } from "./menus.js";
 import { race, startRace, stopRace, nearest, prepararPista } from "./jogo.js";
 import { checkMyLap, renderResults } from "./hud.js";
 import { onBox, onUse, onHit, onBoom, setHazards } from "./itens.js";
+import { prepararCarrosDrag } from "./carros-drag.js";
 
 // ---------- entrar / criar ----------
 const urlCode = new URLSearchParams(location.search).get("sala");
@@ -48,7 +49,7 @@ const preparar = (id, hora) => { const chave = `${id}:${hora}`; if (id && chave 
 socket.on("state", (st) => {
   relogio.doEstado(st.now);
   const old = E.S; E.S = st;
-  if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista, st.config.hora); return; }
+  if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista, st.config.hora); if (st.config.carrosDrag) prepararCarrosDrag(st.players); return; }
   show("race");
   if (!race || race.startAt !== st.startAt) startRace(st);
   if (old && old.phase === "race" && st.phase === "results") Sound.finish();
