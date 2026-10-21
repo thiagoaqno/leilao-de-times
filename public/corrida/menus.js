@@ -49,7 +49,7 @@ export function renderLobby() {
   if (m) { carPreview($("tileCarro"), m.color, m.car, m.mods); $("tileCarroTxt").textContent = carOf(m).name; }
   drawPreview($("tileMapa"), c.pista);
   $("tileMapaTxt").textContent = t.name; $("tileMapaSub").textContent = t.sub;
-  $("tileRegrasTxt").innerHTML = `${c.voltas} volta${c.voltas > 1 ? "s" : ""} · câmbio ${c.cambio === "manual" ? "manual" : "automático"}<br>${c.caixas ? "caixas ligadas" : "sem caixas"}<br>${robos ? `${robos} robô${robos > 1 ? "s" : ""} (${NIVEL[c.nivel] || "médio"})` : "sem robôs"}`;
+  $("tileRegrasTxt").innerHTML = `${c.voltas} volta${c.voltas > 1 ? "s" : ""} · ${c.hora === "noite" ? "noite" : "dia"} · câmbio ${c.cambio === "manual" ? "manual" : "automático"}<br>${c.caixas ? "caixas ligadas" : "sem caixas"}<br>${robos ? `${robos} robô${robos > 1 ? "s" : ""} (${NIVEL[c.nivel] || "médio"})` : "sem robôs"}`;
   $("tilePilotoTxt").innerHTML = m ? `<span class="faixas"><i style="background:${pint.c || m.color}"></i><i style="background:${pint.c2}"></i></span>${h(pint.name)}` : "";
   $("tLargarTit").textContent = isHost ? "Largar" : "No grid";
   $("tLargarTxt").textContent = isHost ? `${t.name} · ${c.voltas} volta${c.voltas > 1 ? "s" : ""}` : "Esperando o organizador dar a largada";
@@ -64,13 +64,14 @@ export function renderLobby() {
   $("cfgPistas").querySelectorAll("[data-prev]").forEach((cv) => drawPreview(cv, cv.dataset.prev));
   $("cfgPistas").querySelectorAll("[data-pista]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, pista: b.dataset.pista } })));
   // painel das regras
-  $("cfg").innerHTML = `<div class="field"><label>Voltas</label><div class="seg">${[1, 2, 3, 5].map((v) => `<button data-v="${v}" class="${c.voltas === v ? "on" : ""}" ${dis}>${v}</button>`).join("")}</div></div>
+  $("cfg").innerHTML = `<div class="field"><label>Horário da pista</label><div class="seg"><button data-hora="dia" class="${c.hora !== "noite" ? "on" : ""}" ${dis}>☀️ Dia</button><button data-hora="noite" class="${c.hora === "noite" ? "on" : ""}" ${dis}>🌙 Noite</button></div><small>Disponível em todas as pistas.</small></div><div class="field"><label>Voltas</label><div class="seg">${[1, 2, 3, 5].map((v) => `<button data-v="${v}" class="${c.voltas === v ? "on" : ""}" ${dis}>${v}</button>`).join("")}</div></div>
     <div class="field"><label>Câmbio</label><div class="seg">${[["auto", "Automático"], ["manual", "Manual"]].map(([v, l]) => `<button data-cambio="${v}" class="${(c.cambio || "auto") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div><small>Manual para todo mundo: Shift sobe a marcha, Ctrl direito reduz (no celular, os botões + e −). Os robôs continuam no automático.</small></div>
     <div class="field"><label>Caixas de itens</label><div class="seg"><button data-opt="caixas" class="${c.caixas ? "on" : ""}" ${dis}>${c.caixas ? "🎁 Ligadas" : "Desligadas"}</button></div><small>Banana, cascos, cogumelo, estrela e bomba espalhados pela pista.</small></div>
     <div class="field"><label>Robôs</label><div class="seg">${[0, 1, 3, 5, 7].map((v) => `<button data-robos="${v}" class="${(c.robos || 0) === v ? "on" : ""}" ${dis}>${v ? v : "Sem"}</button>`).join("")}</div>
       ${c.robos ? `<div class="seg" style="margin-top:6px">${[["facil", "Fácil"], ["medio", "Médio"], ["dificil", "Difícil"]].map(([v, l]) => `<button data-nivel="${v}" class="${(c.nivel || "medio") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div>` : ""}<small>Pilotos do computador entram no grid (até completar 8 carros), seguem o traçado de corrida, pegam caixas e usam itens.</small></div>
     <div class="field"><label>Equilíbrio</label><div class="seg"><button data-opt="equilibrio" class="${c.equilibrio !== false ? "on" : ""}" ${dis}>${c.equilibrio !== false ? "Ligado" : "Desligado"}</button></div><small>Pequena ajuda de velocidade para quem ficou longe do pelotão.</small></div>${isHost ? "" : `<p class="hint">Só o organizador muda as regras.</p>`}`;
   $("cfg").querySelectorAll("[data-v]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, voltas: +b.dataset.v } })));
+  $("cfg").querySelectorAll("[data-hora]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, hora: b.dataset.hora } })));
   $("cfg").querySelectorAll("[data-cambio]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, cambio: b.dataset.cambio } })));
   $("cfg").querySelectorAll("[data-robos]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, robos: +b.dataset.robos } })));
   $("cfg").querySelectorAll("[data-nivel]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, nivel: b.dataset.nivel } })));

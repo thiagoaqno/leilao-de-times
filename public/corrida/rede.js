@@ -43,12 +43,12 @@ socket.on("recorde", (r) => {
 });
 // a pista escolhida no lobby já vai sendo montada, com a foto do céu, para a largada não travar (jogo.js, prepararPista)
 let preparada = null;
-const preparar = (id) => { if (id && id !== preparada) { preparada = id; try { prepararPista(id); } catch (e) { console.warn("Corrida: pista não preparada", e); } } };
+const preparar = (id, hora) => { const chave = `${id}:${hora}`; if (id && chave !== preparada) { preparada = chave; try { prepararPista(id, hora); } catch (e) { console.warn("Corrida: pista não preparada", e); } } };
 // ---------- estado vindo do servidor ----------
 socket.on("state", (st) => {
   relogio.doEstado(st.now);
   const old = E.S; E.S = st;
-  if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista); return; }
+  if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista, st.config.hora); return; }
   show("race");
   if (!race || race.startAt !== st.startAt) startRace(st);
   if (old && old.phase === "race" && st.phase === "results") Sound.finish();

@@ -1,5 +1,5 @@
 // Corrida da Galera — o cenário de Mônaco: o porto Hercule com os iates, a piscina, as arquibancadas azuis, o túnel
-// embaixo do hotel (o teto some quando o carro está lá dentro, senão a câmera de cima não vê nada), a Place du Casino
+// embaixo do hotel (com teto opaco), a Place du Casino
 // com o canteiro redondo e as palmeiras, e o Cassino. As coordenadas fixas estão no quadrado de 1600 do traçado (as
 // mesmas dos vértices em pistas.js) e são multiplicadas pela escala da pista.
 import * as THREE from "three";
@@ -142,35 +142,25 @@ export function cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, j
   // ---- o túnel (embaixo do hotel) ----
   {
     let i0 = indicePerto(tr, 1485, 797), i1 = indicePerto(tr, 927, 865), iH = indicePerto(tr, 1268, 927); if (i1 < i0) i1 += n; if (iH < i0) iH += n;
-    const alto = 34, mats = [];
+    const alto = 34;
     const parede = new THREE.MeshStandardMaterial({ map: canvasTex(64, 32, (x, w, hh) => { x.fillStyle = "#cfc8b8"; x.fillRect(0, 0, w, hh); x.fillStyle = "#b5ae9e"; x.fillRect(0, hh - 8, w, 8); x.fillStyle = "#f2c94c"; x.fillRect(0, 10, w, 2); }), roughness: 0.9, side: THREE.DoubleSide });
     faixa(tr, add, i0, i1, L + 1, L + 1, 0, alto, parede, 32); faixa(tr, add, i0, i1, -L - 1, -L - 1, 0, alto, parede, 32);
     // as luzes amarelas no teto, por dentro
     const luz = new THREE.MeshStandardMaterial({ color: 0xffe8a8, emissive: 0xffd27a, emissiveIntensity: 1.6 }), lg = new THREE.BoxGeometry(5, 1, 2);
     for (let i = i0; i <= i1; i += 3) { const p = pts[i % n]; for (const s of [-1, 1]) { const m = add(new THREE.Mesh(lg, luz)); m.position.set(p.x + p.nx * s * (L - 6), p.h + alto - 1.5, p.y + p.ny * s * (L - 6)); m.rotation.y = Math.atan2(p.tx, p.ty); } }
-    // o teto e o que fica em cima (o hotel na primeira parte, depois o terraço com jardim): somem quando o carro entra
-    const teto = new THREE.MeshStandardMaterial({ color: 0x8f8a80, roughness: 0.9, side: THREE.DoubleSide, transparent: true });
-    const hotel = new THREE.MeshStandardMaterial({ map: janelas("#f3ede0", "#5d7f9c", 64, 64), roughness: 0.8, side: THREE.DoubleSide, transparent: true });
-    const terraco = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#5f9a46"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 300; i++) { x.fillStyle = rr() < 0.5 ? "#4c8538" : "#78b05a"; x.fillRect(rr() * w, rr() * hh, 3, 3); } }), roughness: 1, side: THREE.DoubleSide, transparent: true });
+    // O teto e o hotel permanecem opacos mesmo quando o carro passa por baixo.
+    const teto = new THREE.MeshStandardMaterial({ color: 0x8f8a80, roughness: 0.9, side: THREE.DoubleSide });
+    const hotel = new THREE.MeshStandardMaterial({ map: janelas("#f3ede0", "#5d7f9c", 64, 64), roughness: 0.8, side: THREE.DoubleSide });
+    const terraco = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#5f9a46"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 300; i++) { x.fillStyle = rr() < 0.5 ? "#4c8538" : "#78b05a"; x.fillRect(rr() * w, rr() * hh, 3, 3); } }), roughness: 1, side: THREE.DoubleSide });
     const telhadoHotel = new THREE.MeshStandardMaterial({ map: canvasTex(128, 128, (x, w, hh, rr) => { // o terraço do hotel: piso claro, jardins, a piscina e as casas de máquinas
       x.fillStyle = "#d9d3c5"; x.fillRect(0, 0, w, hh); x.strokeStyle = "#c4bdae"; x.lineWidth = 2; for (let k = 0; k < w; k += 16) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k, hh); x.stroke(); }
       x.fillStyle = "#6aa14e"; x.fillRect(8, 10, 34, 40); x.fillRect(86, 70, 32, 46); x.fillStyle = "#3fb6e0"; x.fillRect(54, 20, 22, 30); x.fillStyle = "#9a9488"; for (let k = 0; k < 4; k++) x.fillRect(20 + k * 22, 96, 12, 12);
-    }), roughness: 0.8, side: THREE.DoubleSide, transparent: true });
-    mats.push(teto, hotel, terraco, telhadoHotel);
+    }), roughness: 0.8, side: THREE.DoubleSide });
     faixa(tr, add, i0, i1, -L - 4, L + 4, alto, alto, teto, 60);
     // o hotel fica do lado do mar (avança sobre a água, como o de verdade) e não passa muito da altura do grampo, que
     // fica logo acima: em cima do túnel é o terraço com jardim
     bloco(tr, add, i0 - 4, iH, -L - 150, -L - 20, -20, alto + 70, hotel, telhadoHotel, 260);
     bloco(tr, add, i0, i1, -L - 20, L + 10, alto, alto + 6, terraco, terraco);
-    tr.tunel = {
-      i0, i1, mats, f: 1,
-      animar(foco, dt) {
-        let dentroT = false;
-        if (foco && Number.isFinite(foco.x)) { let i = tr.indiceAt(foco.x, foco.y); if (i < i0 - 30) i += n; dentroT = i >= i0 - 30 && i <= i1 + 20 && tr.distAt(foco.x, foco.y) < L + 120; }
-        const alvo = dentroT ? 0.12 : 1; this.f += (alvo - this.f) * Math.min(1, dt * 6);
-        for (const m of mats) { m.opacity = this.f; m.depthWrite = this.f > 0.9; }
-      },
-    };
     for (let i = i0 - 10; i <= i1 + 10; i += 5) { const p = pts[((i % n) + n) % n]; reservado.push([p.x, p.y, L + 100]); }
     tr.coberto = (i) => { let k = i; if (k < i0 - 15) k += n; return k >= i0 - 15 && k <= i1 + 15; };
   }

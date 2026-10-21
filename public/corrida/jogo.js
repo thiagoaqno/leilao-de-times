@@ -4,7 +4,7 @@
 import { E, SECTORS, COLORS, CARROS, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { updateGhosts } from "./rede.js";
-import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
+import { gridSpot, buildTrack, groundH, useTrack, iluminarPista } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
 import { CARS3, KS, makeKart, poseKart, dropKart, puff, stepPuffs } from "./carros.js";
 import { camMode, pollPad } from "./controles.js";
@@ -29,9 +29,9 @@ export const keys = { gas: false, brake: false, left: false, right: false };
 // No lobby, assim que a pista é escolhida, a pista é montada e a foto do céu já vem (prepararPista). Na largada, com o
 // céu aplicado, as texturas sobem todas e os shaders compilam durante a contagem (aquecerPista: o compileAsync deixa o
 // navegador compilar em paralelo, sem travar a página).
-export function prepararPista(id) {
+export function prepararPista(id, hora = "dia") {
   const tr = buildTrack(id);
-  ceuPronto(id).catch(() => {});
+  ceuPronto(hora === "noite" ? "tokyo" : id).catch(() => {});
   subirTexturas(tr.grp);
 }
 const MAPAS = ["map", "normalMap", "roughnessMap", "metalnessMap", "emissiveMap", "alphaMap", "aoMap", "bumpMap"];
@@ -50,7 +50,7 @@ function aquecerPista(tr, ceu) {
 export function startRace(st) {
   const tr = buildTrack(st.config.pista), mine = me();
   // a luz da foto do céu só muda durante a contagem: com o carro andando, ela recompilaria todos os materiais
-  const ceu = useTrack(tr, () => !race || race.tr !== tr || sNow() < race.startAt);
+  const ceu = useTrack(tr, st.config.hora, () => !race || race.tr !== tr || sNow() < race.startAt);
   luzPendente();
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W);
   if (race) clearRace();
@@ -206,6 +206,8 @@ function draw(dt) {
     const want = V3(src.x - fx * back, (src.z || 0) + up, src.y - fy * back);
     want.y = Math.max(want.y, groundH(tr, want.x, want.z, nearest(tr, want.x, want.z, race.idx)) + 6);
     if (!C.pos) C.pos = want.clone(); else C.pos.lerp(want, near ? 1 - Math.exp(-dt * 9) : k);
+    // No túnel de Mônaco, a câmera externa fica abaixo do teto opaco.
+    if (tr.coberto?.(race.idx)) C.pos.y = Math.min(C.pos.y, (src.z || 0) + 23);
     cam.position.copy(C.pos);
     if (race.shake > 0) { race.shake -= dt; if (!reduceMotion) { cam.position.x += (Math.random() - 0.5) * 3; cam.position.y += (Math.random() - 0.5) * 3; } }
     if (race.offroad && !reduceMotion) cam.position.y += (Math.random() - 0.5) * 1.2;
@@ -218,6 +220,7 @@ function draw(dt) {
   }
   // sol e sombras acompanham o carro (a direção do sol vem da foto do céu, quando tem)
   const sd = tr.sol; if (sd) sun.position.set(src.x + sd.x * 800, (src.z || 0) + sd.y * 800, src.y + sd.z * 800); else sun.position.set(src.x - 300, (src.z || 0) + 700, src.y + 260);
+  iluminarPista(tr, src);
   sun.target.position.set(src.x, src.z || 0, src.y);
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
   // desfoque de velocidade, pela fração da velocidade final do carro (vale igual para os cinco): começa em 40% (uns 90 km/h
