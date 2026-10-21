@@ -63,6 +63,34 @@ function salvarVoltaCorrida(pista, tempo, carro, piloto, amostras) {
   return r.changes > 0;
 }
 
+// Os recordes de volta de cada pista (migração 013): cada piloto uma vez por pista, com a melhor volta dele, e só os 5
+// mais rápidos ficam. Devolve a posição (1 a 5) se a volta entrou no quadro agora, ou 0.
+const RECORDES_POR_PISTA = 5;
+function registrarRecordeCorrida(pista, tempo, carro, piloto) {
+  const db = bd(), chave = String(piloto).trim().toLowerCase();
+  if (!chave || !Number.isFinite(tempo)) return 0;
+  db.exec("BEGIN");
+  try {
+    const r = db.prepare(`INSERT INTO corrida_recordes (pista, chave, piloto, tempo, carro, feita_em) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(pista, chave) DO UPDATE SET piloto=excluded.piloto, tempo=excluded.tempo, carro=excluded.carro, feita_em=excluded.feita_em
+      WHERE excluded.tempo < corrida_recordes.tempo`).run(pista, chave, piloto, tempo, carro, Date.now());
+    // só os 5 primeiros ficam (no empate, quem fez antes fica na frente)
+    db.prepare(`DELETE FROM corrida_recordes WHERE pista = ? AND chave NOT IN
+      (SELECT chave FROM corrida_recordes WHERE pista = ? ORDER BY tempo, feita_em LIMIT ?)`).run(pista, pista, RECORDES_POR_PISTA);
+    db.exec("COMMIT");
+    if (!r.changes) return 0;
+    const top = db.prepare("SELECT chave FROM corrida_recordes WHERE pista = ? ORDER BY tempo, feita_em").all(pista);
+    return top.findIndex((x) => x.chave === chave) + 1;
+  } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
+// o quadro de todas as pistas: { pista: [{ piloto, tempo, carro, em }] }, do mais rápido para o mais lento
+function recordesCorrida() {
+  const out = {};
+  for (const r of bd().prepare("SELECT pista, piloto, tempo, carro, feita_em FROM corrida_recordes ORDER BY pista, tempo, feita_em").all())
+    (out[r.pista] ||= []).push({ piloto: r.piloto, tempo: r.tempo, carro: r.carro, em: r.feita_em });
+  return out;
+}
+
 // Times Pokémon dos personagens do Ginásio. O código base é o padrão; o banco guarda só edições.
 const timesPokemonGinasio = () => bd().prepare("SELECT treinador, time_json, ator, atualizado_em FROM ginasio_times_pokemon").all();
 function salvarTimePokemonGinasio(treinador, time, ator) {
@@ -334,4 +362,4 @@ function nivelDeTodosAdmin(treinador, nivel, ator) {
 const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, tipo, captura, antes, depois, criado_em FROM moderacao_pokemon WHERE treinador = ? ORDER BY id DESC LIMIT ?").all(treinador, limite)
   .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
 
-module.exports = { melhorVoltaCorrida, salvarVoltaCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { melhorVoltaCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };

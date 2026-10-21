@@ -35,6 +35,12 @@ function autoJoin() {
 }
 socket.on("connect", autoJoin);
 socket.on("kicked", () => { toast("O organizador tirou você da sala."); E.ME = null; E.S = null; history.replaceState(null, "", "/corrida/"); document.body.classList.remove("inroom"); $("roomTag").classList.add("hidden"); show("home"); });
+// alguém da sala entrou no quadro de recordes da pista (os 5 melhores para sempre, que aparecem na Vila)
+socket.on("recorde", (r) => {
+  if (!r || !r.piloto) return;
+  const eu = E.ME && E.S && E.S.players.find((p) => p.id === E.ME.id), meu = eu && eu.name === r.piloto;
+  toast(r.pos === 1 ? `${meu ? "Você bateu" : `${r.piloto} bateu`} o recorde da pista: ${r.tempo.toFixed(3)} s!` : `${meu ? "Você entrou" : `${r.piloto} entrou`} no quadro de recordes: ${r.pos}º, ${r.tempo.toFixed(3)} s.`, 4000);
+});
 // ---------- estado vindo do servidor ----------
 socket.on("state", (st) => {
   relogio.doEstado(st.now);

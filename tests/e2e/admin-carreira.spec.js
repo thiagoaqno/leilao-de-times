@@ -12,6 +12,9 @@ test("painel permite escolher jogador e desfazer transferência pela própria li
       atr: { rit: 72, fin: 81, pas: 88, dri: 89, def: 44, fis: 62 } }],
     transferencias: [{ jogador: "palmeiras-9", nome: "Pedro", de: "Palmeiras", deNome: "Palmeiras",
       para: "Flamengo", paraNome: "Flamengo", valor: 1000000, revertida: false, especial: false }],
+    // os comandos da sala (carreira-online.js, infoSala), que o painel desenha desde o controle da ausência
+    sala: { fase: "carreira", temporada: 1, temporadasMax: 2, nRodada: 2, ritmo: "normal", rodada: null, pausa: 0, leilao: null, trocas: [],
+      temporadaAcabou: false, carreiraAcabou: false, tecnicos: [{ id: "p1", nome: "Ana", clube: "flamengo", nomeClube: "Flamengo", online: true, auto: false, host: true }] },
   };
   await page.route("**/admin/carreira", (r) => r.fulfill({ status: 200, contentType: "text/html", body: html }));
   await page.route("**/admin/carreira/api/inicio", (r) => r.fulfill({ json: { csrf: "teste", salas: [{ codigo: "ABCDE", temporada: 1, rodada: 2, jogoAoVivo: false,

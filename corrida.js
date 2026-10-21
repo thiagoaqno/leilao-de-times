@@ -92,6 +92,16 @@ module.exports = function attachCorrida(io) {
     log(room, "🏆 Fim de corrida!");
     broadcast(room);
   }
+  // os recordes da pista para sempre (bd.js, os 5 melhores, um por piloto). O tempo é o que o servidor mediu pelos
+  // setores, então não depende do que o navegador manda. Entrou no quadro: todo mundo da sala fica sabendo.
+  function registrarRecorde(room, p, lap) {
+    let pos = 0;
+    try { pos = bd.registrarRecordeCorrida(room.config.pista, lap, p.car, p.name); } catch (e) { console.warn("Corrida: recorde não guardado", e.message); }
+    if (!pos) return;
+    const pista = T.PISTAS[room.config.pista].name;
+    log(room, pos === 1 ? `🏆 Recorde de ${pista}! ${p.name} fez ${lap.toFixed(3)} s.` : `🏆 ${p.name} entrou no quadro de ${pista}: ${pos}º, ${lap.toFixed(3)} s.`);
+    nsp.to(room.code).emit("recorde", { piloto: p.name, pos, tempo: lap, pista: room.config.pista });
+  }
   // Setor novo: só vale o próximo na ordem. Voltar ao setor 0 depois do 3 fecha a volta (a primeira passagem é a largada).
   function onSector(room, p, s) {
     const now = Date.now();
@@ -103,6 +113,7 @@ module.exports = function attachCorrida(io) {
     const lap = (now - p.lapStart) / 1000;
     if (lap < T.PISTAS[room.config.pista].minLap) { p.sector = T.SECTORS - 1; return false; } // rápido demais: atalho
     p.laps++; p.last = lap; p.best = p.best == null ? lap : Math.min(p.best, lap); p.lapStart = now;
+    if (!p.bot) registrarRecorde(room, p, lap);
     if (p.laps >= room.config.voltas) {
       p.finish = (now - room.startAt) / 1000;
       room.finishOrder.push(p.id);

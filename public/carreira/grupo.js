@@ -206,6 +206,7 @@ function atualizarRodadaGrupo(v) {
   if (telaAtual !== "partida" || !J.grupo || J.rodada !== m.id) { if (!m.fim) abrirPartida(); return; }
   const mudouParada = (J.parado && J.parado.id) !== (m.parado && m.parado.id) || !!(J.parado && J.parado.esperando) !== !!(m.parado && m.parado.esperando);
   Object.assign(J, { eventos: m.eventos, parado: m.parado || null, completo: !!m.completo });
+  if (mudouParada) { clearTimeout(J.timerLance); J.timerLance = null; } // a parada fechou ou mudou: o relógio da anterior não pode mais disparar
   if (mudouParada && $("decisao").open) { $("decisao").close(); J.decidindo = false; }
   if (!antes) atualizarPlacar();
 }
