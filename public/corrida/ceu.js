@@ -53,11 +53,13 @@ function carregar(id) {
 // página trava meio segundo. Com o carro andando isso não pode acontecer: se a foto chega com a corrida já valendo
 // (podeMudarLuz falso), entra só o fundo (que não recompila nada) e a luz fica guardada para a próxima largada.
 let pendente = null;
-export function aplicarCeu(tr, look, podeMudarLuz = () => true) {
-  atual = tr.id; scene.background = null; scene.environment = null; tr.sol = null; pendente = null;
-  const cfg = CEUS[tr.id]; if (!cfg) return Promise.resolve();
-  return carregar(tr.id).then((s) => {
-    if (!s || atual !== tr.id) return;
+export function aplicarCeu(tr, look, noite = false, podeMudarLuz = () => true) {
+  const chave = `${tr.id}:${noite}`;
+  atual = chave; scene.background = null; scene.environment = null; tr.sol = null; pendente = null;
+  const cfg = noite ? { brilho: 0.52, luz: 0.32, noite: true } : CEUS[tr.id]; if (!cfg) return Promise.resolve();
+  // Qwantani Night (Pure Sky), Poly Haven CC0; já usado em Tóquio e compartilhado pelas versões noturnas.
+  return carregar(noite ? "tokyo" : tr.id).then((s) => {
+    if (!s || atual !== chave) return;
     scene.background = s.tex; scene.backgroundIntensity = cfg.brilho;
     if (!cfg.noite) {
       tr.sol = s.sol;
@@ -65,9 +67,9 @@ export function aplicarCeu(tr, look, podeMudarLuz = () => true) {
     }
     const luz = () => {
       scene.environment = s.env; scene.environmentIntensity = cfg.luz;
-      hemi.intensity = look.hemi[2] * (cfg.noite ? 1 : 0.65); // a foto já ilumina: a luz ambiente do tema baixa
+      hemi.intensity = noite ? 0.95 : look.hemi[2] * (cfg.noite ? 1 : 0.65); // a foto já ilumina: a luz ambiente do tema baixa
     };
-    if (podeMudarLuz()) luz(); else pendente = { id: tr.id, luz };
+    if (podeMudarLuz()) luz(); else pendente = { id: chave, luz };
   });
 }
 // na próxima largada da mesma pista, a luz que chegou atrasada entra (antes de preparar os shaders)

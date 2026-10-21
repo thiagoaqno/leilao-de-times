@@ -177,7 +177,6 @@ export function animarVida(tr, dt, foco) {
   const V = tr && tr.vida; if (!V) return;
   const parado = reduz.matches; V.tempo += dt; const t = V.tempo;
   for (const a of V.agua) if (a.map && !parado) { a.map.offset.x = (t * 0.012) % 1; a.map.offset.y = (t * 0.02) % 1; }
-  if (tr.tunel) tr.tunel.animar(foco, dt); // Mônaco: o teto do túnel (e o hotel em cima) some com o carro lá dentro
   // torcida: só mexe quem está perto da câmera (a de longe fica parada; ninguém vê a diferença)
   for (const T of [V.torcida, ...(V.torcidas || [])]) {
     if (!T || parado) continue;

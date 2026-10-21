@@ -26,6 +26,7 @@ module.exports = function attachCorrida(io) {
 
   const cleanConfig = (c = {}) => ({
     pista: T.PISTAS[c.pista] ? c.pista : "interlagos",
+    hora: c.hora === "noite" ? "noite" : "dia",
     voltas: [1, 2, 3, 5].includes(int(c.voltas, 3)) ? int(c.voltas, 3) : 3,
     caixas: c.caixas === true,
     equilibrio: c.equilibrio !== false,

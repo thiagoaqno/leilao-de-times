@@ -354,16 +354,32 @@ function landmarksRio(tr, add, r, size, ribbon) {
 }
 let worldOn = null;
 // devolve a promessa do céu (resolve quando a foto chegou e foi aplicada, ou na hora se ela não vem)
-export function useTrack(tr, podeMudarLuz) {
-  if (worldOn === tr) return Promise.resolve();
+const luzesPista = Array.from({ length: 3 }, () => {
+  const luz = new THREE.PointLight(0xffdfaa, 7000, 220, 2);
+  luz.visible = false; luz.castShadow = false; scene.add(luz); return luz;
+});
+export function iluminarPista(tr, foco) {
+  if (!tr.noite || !foco) return;
+  const i = tr.indiceAt(foco.x, foco.y), passo = 23;
+  luzesPista.forEach((luz, k) => {
+    const p = tr.pts[(Math.floor(i / passo) * passo + (k - 1) * passo + tr.n * 2) % tr.n];
+    const lado = k % 2 ? 1 : -1, lat = tr.t.walls ? tr.wallLat + 5 : tr.W / 2 + 22;
+    luz.position.set(p.x + p.nx * lado * lat, p.h + 48, p.y + p.ny * lado * lat);
+  });
+}
+export function useTrack(tr, hora = "dia", podeMudarLuz = () => true) {
+  const noite = hora === "noite";
+  if (worldOn === tr && tr.noite === noite) return Promise.resolve();
   if (worldOn) scene.remove(worldOn.grp);
-  worldOn = tr; scene.add(tr.grp);
+  worldOn = tr; tr.noite = noite; scene.add(tr.grp);
+  for (const luz of luzesPista) luz.visible = noite;
   const L = tr.look;
-  scene.fog = new THREE.Fog(L.fog, L.fogN, L.fogF); renderer.setClearColor(L.fog);
-  hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2];
-  sun.color.set(L.sun[0]); sun.intensity = L.sun[1];
-  if (tr.sky) tr.sky.visible = true;
-  return aplicarCeu(tr, L, podeMudarLuz).then(() => { if (worldOn === tr && tr.sky && scene.background) tr.sky.visible = false; }); // a foto do céu chegou: sai o degradê
+  const corNeblina = noite ? 0x101b33 : L.fog;
+  scene.fog = new THREE.Fog(corNeblina, noite ? Math.min(L.fogN, 650) : L.fogN, noite ? Math.min(L.fogF, 3400) : L.fogF); renderer.setClearColor(corNeblina);
+  hemi.color.set(noite ? 0x9eb9ee : L.hemi[0]); hemi.groundColor.set(noite ? 0x41445a : L.hemi[1]); hemi.intensity = noite ? 0.95 : L.hemi[2];
+  sun.color.set(noite ? 0xc9dcff : L.sun[0]); sun.intensity = noite ? 0.8 : L.sun[1];
+  if (tr.sky) { tr.sky.visible = true; tr.sky.material.color.set(noite ? 0x15213d : 0xffffff); }
+  return aplicarCeu(tr, L, noite, podeMudarLuz).then(() => { if (worldOn === tr && tr.sky && scene.background) tr.sky.visible = false; }); // a foto do céu chegou: sai o degradê
 }
 
 // quando os enfeites do Kenney chegam, as pistas que já tinham sido montadas com formas simples são refeitas
