@@ -415,11 +415,13 @@
   // ---------- a partida ----------
   function novaPartida(cozId, jogadores, opcoes = {}) {
     const coz = COZINHAS[cozId] || COZINHAS["1-1"], mapa = montarMapa(coz);
+    const pessoas = Math.max(1, opcoes.pessoas || jogadores.length);
     const m = {
       coz: COZINHAS[cozId] ? cozId : "1-1", mapa, fase: "conta", t: -TEMPOS.conta, resta: coz.tempo, pontos: 0,
-      meta: metaDe(coz, opcoes.pessoas || jogadores.length), estrelas: 0, entregues: 0, perdidos: 0, gorjetas: 0, combo: 0,
+      meta: metaDe(coz, pessoas), estrelas: 0, entregues: 0, perdidos: 0, gorjetas: 0, combo: 0,
       pedidos: [], seqPedido: 0, proxPedido: 0, voltando: [], voando: [], caidos: [], seqVoo: 0, ev: [], versao: 1,
       rng: opcoes.rng || Math.random,
+      duracoes: simularPerfeito(coz, pessoas).duracoes,
       estado: mapa.tiles.map((t) => ({ item: t.rec ? novoRec(t.rec) : null, n: 0, p: 0 })),
       jogadores: jogadores.map((jg, k) => ({ id: jg.id, nome: jg.nome, skin: jg.skin, x: mapa.inicio[k][0], z: mapa.inicio[k][1], vx: 0, vz: 0, d: Math.PI, mao: null, trab: null })),
     };
@@ -434,7 +436,9 @@
   const evento = (m, e) => { m.ev.push(e); };
 
   function novoPedido(m) {
-    const coz = cozDe(m), r = coz.receitas[Math.floor(m.rng() * coz.receitas.length)], dur = RECEITAS[r].tempo;
+    const coz = cozDe(m), i = Math.floor(m.rng() * coz.receitas.length), r = coz.receitas[i];
+    // Duas comandas já chegam juntas. Damos tempo para preparar ambas, inclusive os deslocamentos da cozinha.
+    const dur = Math.max(RECEITAS[r].tempo, Math.ceil((m.duracoes[i] * 3 + 20) / 5) * 5);
     m.pedidos.push({ id: ++m.seqPedido, r, ini: m.t, ate: m.t + dur });
     evento(m, { tipo: "pedido", r }); mudou(m);
   }
@@ -562,8 +566,7 @@
     m.pontos += ganhos; m.gorjetas += gorjeta * multiplicador; m.entregues++;
     j.mao = null; j.trab = null;
     m.voltando.push({ em: m.t + TEMPOS.voltaPrato });
-    novoPedido(m);
-    m.proxPedido = m.pedidos.length < coz.pedidos.max ? Math.min(m.proxPedido, m.t + 1 + m.rng() * 2) : Infinity;
+    if (!m.pedidos.length) { novoPedido(m); m.proxPedido = m.t + intervalo(m); }
     evento(m, { tipo: "entregou", j: j.id, i: t.i, r, pontos: RECEITAS[r].pontos * multiplicador, gorjeta: gorjeta * multiplicador, multiplicador }); mudou(m);
     return true;
   }
@@ -576,7 +579,7 @@
       if (m.t < 0) return;
       m.fase = "jogo"; evento(m, { tipo: "abriu" }); mudou(m);
       for (let k = 0; k < cozDe(m).pedidos.inicio; k++) novoPedido(m);
-      m.proxPedido = Infinity;
+      m.proxPedido = m.t + intervalo(m);
     }
     const coz = cozDe(m);
     m.resta = Math.max(0, coz.tempo - m.t);
@@ -625,10 +628,10 @@
       const p = m.pedidos[k];
       if (m.t >= p.ate) { m.pedidos.splice(k, 1); m.pontos = Math.max(0, m.pontos - TEMPOS.multa); m.perdidos++; m.combo = 0; evento(m, { tipo: "perdeu", r: p.r }); mudou(m); }
     }
-    while (m.pedidos.length < coz.pedidos.inicio) novoPedido(m);
+    if (!m.pedidos.length) { novoPedido(m); m.proxPedido = m.t + intervalo(m); }
     if (m.t >= m.proxPedido) {
       if (m.pedidos.length < coz.pedidos.max) novoPedido(m);
-      m.proxPedido = m.pedidos.length < coz.pedidos.max ? m.t + 1 + m.rng() * 2 : Infinity;
+      m.proxPedido = m.t + intervalo(m);
     }
     // os pratos sujos voltam (empilhados no retorno; sem retorno, limpos no escorredor)
     for (let k = m.voltando.length - 1; k >= 0; k--) {
@@ -645,7 +648,11 @@
       evento(m, { tipo: "fim", estrelas: m.estrelas, pontos: m.pontos }); mudou(m);
     }
   }
-  function intervalo(m) { const [a, b] = cozDe(m).pedidos.intervalo; return a + m.rng() * (b - a); }
+  function intervalo(m) {
+    const [a, b] = cozDe(m).pedidos.intervalo;
+    const media = m.duracoes.reduce((s, v) => s + v, 0) / m.duracoes.length;
+    return Math.max(a + m.rng() * (b - a), media * 1.2);
+  }
 
   // o que vai para o navegador quando a cozinha muda (as posições vão à parte, no pacote rápido)
   function mesa(m) {

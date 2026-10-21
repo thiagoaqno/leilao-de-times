@@ -149,25 +149,44 @@ test("panela fora do fogão para de cozinhar e não queima", () => {
 test("pedido que vence dá multa; o fim conta as estrelas pela meta de quem está jogando", () => {
   const m = K.novaPartida("1-1", [{ id: "a", nome: "Ana" }, { id: "b", nome: "Bia" }], { rng: () => 0 });
   passar(m, K.TEMPOS.conta + 0.1); m.pontos = 15;
-  passar(m, K.RECEITAS.sopa_cebola.tempo + 0.1);
+  const primeiros = m.pedidos.map((p) => p.id), vencimento = m.pedidos[0].ate;
+  passar(m, vencimento - m.t + 0.1);
   assert.ok(m.perdidos >= 2); assert.strictEqual(m.pontos, 0, "a multa não deixa negativo");
-  assert.ok(m.pedidos.length >= 2, "pedidos vencidos não deixam a fila vazia");
+  assert.ok(m.pedidos.length >= 1, "pedidos vencidos não deixam a fila vazia");
+  assert.ok(primeiros.every((id) => !m.pedidos.some((p) => p.id === id)));
   assert.deepStrictEqual(m.meta, K.metaDe(K.COZINHAS["1-1"], 2));
   assert.ok(K.metaDe(K.COZINHAS["1-1"], 1)[0] <= m.meta[0], "sozinho a meta não é maior");
   m.pedidos = []; m.proxPedido = Infinity; m.pontos = m.meta[1] + 1; m.t = K.COZINHAS["1-1"].tempo - 0.1; passar(m, 0.2);
   assert.strictEqual(m.fase, "fim"); assert.strictEqual(m.estrelas, 2);
 });
 
-test("a fila repõe pedidos após entregas e o combo sobe só na ordem", () => {
+test("a fila espera o intervalo da cozinha após entregas e o combo sobe só na ordem", () => {
   const m = K.novaPartida("1-1", [{ id: "a", nome: "Ana" }], { rng: () => 0 });
   passar(m, K.TEMPOS.conta + 0.1);
   const j = m.jogadores[0], ent = achar(m, "entrega");
   const servir = () => { j.mao = K.novoPrato(); j.mao.c = K.RECEITAS.sopa_cebola.itens.map((v) => ({ t: v.split(":")[0], e: "cozido" })); deFrente(m, j, ent.c, ent.r); return K.interagir(m, j); };
-  assert.ok(servir()); assert.strictEqual(m.combo, 1); assert.strictEqual(m.pedidos.length, 2, "a entrega repõe o pedido imediatamente");
-  passar(m, 1.2); assert.ok(m.pedidos.length >= 2, "a fila continua cheia");
+  assert.ok(servir()); assert.strictEqual(m.combo, 1); assert.strictEqual(m.pedidos.length, 1, "a entrega não despeja outra comanda imediatamente");
+  passar(m, 1.2); assert.strictEqual(m.pedidos.length, 1);
   assert.ok(servir()); assert.strictEqual(m.combo, 2);
+  assert.strictEqual(m.pedidos.length, 1, "a fila não fica vazia");
+  const proximo = m.proxPedido;
+  passar(m, proximo - m.t + 0.1); assert.ok(m.pedidos.length >= 2, "o pedido novo respeita o intervalo");
   m.pedidos.unshift({ id: ++m.seqPedido, r: "sopa_tomate", ini: m.t, ate: m.t + 75 });
   assert.ok(servir()); assert.strictEqual(m.combo, 0, "servir fora da ordem zera o combo");
+});
+
+test("todas as cozinhas dão tempo para preparar as comandas sem despejar pedidos a cada segundo", () => {
+  for (const [id, coz] of Object.entries(K.COZINHAS)) for (const pessoas of [1, 2]) {
+    const jogadores = Array.from({ length: pessoas }, (_, i) => ({ id: String(i) }));
+    const m = K.novaPartida(id, jogadores, { pessoas, rng: () => 0.99 });
+    passar(m, K.TEMPOS.conta + 0.1);
+    const dur = K.simularPerfeito(coz, pessoas).duracoes.at(-1);
+    assert.ok(m.pedidos[0].ate - m.pedidos[0].ini >= dur * 3 + 20, `${id}/${pessoas}: prazo curto`);
+    const media = m.duracoes.reduce((s, v) => s + v, 0) / m.duracoes.length;
+    assert.ok(m.proxPedido - m.t >= media * 1.2 - 0.1, `${id}/${pessoas}: pedido novo cedo demais`);
+    passar(m, 3);
+    assert.strictEqual(m.pedidos.length, 2, `${id}/${pessoas}: a fila cresceu antes da hora`);
+  }
 });
 
 test("as metas vêm do planejador com distância real: em equipe a terceira estrela pede 80% do ótimo, sozinho menos", () => {
