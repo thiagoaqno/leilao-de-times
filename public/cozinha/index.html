@@ -95,16 +95,18 @@ kbd{display:inline-block;background:#fff;border:1.5px solid var(--ink);border-bo
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .hud{position:absolute;pointer-events:none}
 /* os pedidos: comandas penduradas no alto, a mais antiga à esquerda */
-#hPed{top:10px;left:10px;right:150px;display:flex;gap:8px;align-items:flex-start}
-.ped{width:118px;background:var(--panel);border-radius:6px;box-shadow:0 6px 16px #0008;overflow:hidden;transform-origin:top center;animation:chega .35s ease-out}
+#hPed{top:10px;left:10px;right:150px;display:flex;gap:8px;align-items:flex-start;overflow-x:auto;padding-bottom:8px;pointer-events:auto}
+.ped{flex:0 0 132px;background:var(--panel);border-radius:6px;box-shadow:0 6px 16px #0008;overflow:hidden;transform-origin:top center;animation:chega .35s ease-out}
 .ped .tempo{height:7px;background:#00000022}
 .ped .tempo i{display:block;height:100%;background:var(--good)}
 .ped .fig{display:block;width:72px;height:72px;margin:2px auto -4px}
 .ped .nome{font:13px var(--display);text-align:center;color:var(--ink);padding:0 4px;line-height:1.1}
-.ped .ings{display:flex;justify-content:center;gap:2px;padding:4px 4px 6px;flex-wrap:wrap}
-.ped .ing{position:relative;width:26px;height:30px}
-.ped .ing img{width:26px;height:26px;display:block}
-.ped .ing em{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);width:16px;height:9px;border-radius:3px}
+.ped .ings{display:grid;gap:2px;padding:4px 7px 7px}
+.ped .ing{position:relative;display:flex;align-items:center;gap:3px;min-width:0;height:25px;color:var(--ink)}
+.ped .ing img{width:24px;height:24px;display:block;flex:none}
+.ped .ing .qtd{font:13px var(--display);color:#a34a29;white-space:nowrap}
+.ped .ing-nome{font:700 11px var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ped .ing em{position:absolute;left:4px;bottom:0;width:15px;height:6px;border-radius:3px}
 .ped .ing em.picar{background:#a8743f}.ped .ing em.cozinhar{background:#5d6670}.ped .ing em.fritar{background:#2b2b2b}
 .ped.urgente{animation:treme .5s infinite}
 .ped.sai{animation:sai .4s forwards}
@@ -135,7 +137,7 @@ kbd{display:inline-block;background:#fff;border:1.5px solid var(--ink);border-bo
 #hMsg.pop{animation:pop .45s ease-out}
 @keyframes pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}70%{transform:translate(-50%,-50%) scale(1.12)}100%{transform:translate(-50%,-50%) scale(1)}}
 #hHint{right:16px;top:12px;font:600 12.5px var(--body);text-align:right;line-height:1.7;color:#fff8eacc;text-shadow:0 1px 0 #000}
-@media (pointer:coarse){#hHint{display:none!important}#hPts{left:50%;transform:translateX(-50%);bottom:112px;font-size:22px}#hCombo{left:8px;bottom:118px}#hMetas{left:8px;bottom:158px;width:45vw}#hRel{top:10px;bottom:auto;font-size:24px;min-width:90px}#hPed{right:120px}.ped{width:96px}.ped .fig{width:54px;height:54px}}
+@media (pointer:coarse){#hHint{display:none!important}#hPts{left:50%;transform:translateX(-50%);bottom:112px;font-size:22px}#hCombo{left:8px;bottom:118px}#hMetas{left:8px;bottom:158px;width:45vw}#hRel{top:10px;bottom:auto;font-size:24px;min-width:90px}#hPed{right:120px}.ped{flex-basis:116px}.ped .fig{width:54px;height:54px}}
 .flutua{position:absolute;font:28px var(--display);color:#ffe58a;text-shadow:0 3px 0 #2a1d17;pointer-events:none;animation:sobe 1.3s ease-out forwards;white-space:nowrap;transform:translate(-50%,-50%)}
 .flutua small{display:block;font-size:17px;color:#bff5c9;text-align:center}
 .flutua .carimbo{display:block;background:#fff8ea;color:#367c4b;border:3px solid #367c4b;border-radius:4px;padding:2px 8px;font:700 15px var(--body);transform:rotate(-8deg)}

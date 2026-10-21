@@ -226,28 +226,36 @@ function criarCorpo(j, k) {
 function limparCorpos() { for (const c of G.corpos.values()) descartarJogador(c.model); G.corpos.clear(); }
 
 // ======================================================================
-// Sons (sintetizados)
+// Efeitos sintetizados e músicas do lobby e das fases
 // ======================================================================
 const Som = (() => {
-  let ac = null, vol = store.get("cozinha:vol") ?? 0.7, volMus = store.get("cozinha:musica") ?? 0.35, master = null, music = null;
-  let proximaNota = 0, passoMus = 0;
-  const ctx = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = vol; master.connect(ac.destination); music = ac.createGain(); music.gain.value = volMus; music.connect(ac.destination); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; };
+  let ac = null, vol = store.get("cozinha:vol") ?? 0.7, volMus = store.get("cozinha:musica") ?? 0.35, master = null;
+  const faixas = { lobby: "/cozinha/musicas/lobby.mp3", 1: "/cozinha/musicas/fase-1.mp3", 2: "/cozinha/musicas/fase-2.mp3", 3: "/cozinha/musicas/fase-3.mp3" };
+  const audio = new Audio(); audio.loop = true; audio.volume = volMus;
+  let faixaAtual = null, tentando = false, bloqueado = false;
+  const ctx = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = vol; master.connect(ac.destination); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; };
   function tom(f0, f1, dur, ganho, tipo = "sine", atraso = 0, saida = master) { const c = ctx(); if (!c) return; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + atraso; o.type = tipo; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur); g.gain.setValueAtTime(ganho, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g).connect(saida || master); o.start(t); o.stop(t + dur + 0.02); }
   function ruido(dur, ganho, freq, tipo = "bandpass", saida = master) { const c = ctx(); if (!c) return; const n = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate), d = n.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length); const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = n; f.type = tipo; f.frequency.value = freq; g.gain.value = ganho; s.connect(f).connect(g).connect(saida || master); s.start(); }
-  function musica(resta, tocando) {
-    if (!tocando || volMus <= 0 || !ac || ac.state !== "running") { proximaNota = 0; return; }
-    if (ac.currentTime < proximaNota) return;
-    const bpm = resta <= 60 ? 118 + 46 * (1 - Math.max(0, resta) / 60) : 118;
-    const pulso = 30 / bpm, melodia = [392, 0, 523, 0, 440, 0, 587, 0, 523, 0, 659, 0, 440, 0, 392, 0];
-    const nota = melodia[passoMus % melodia.length];
-    if (nota) tom(nota, nota * 0.997, pulso * 0.8, 0.11, "triangle", 0, music);
-    if (passoMus % 4 === 0) { tom([196, 174.6, 220, 196][Math.floor(passoMus / 4) % 4], 150, pulso * 1.5, 0.12, "sine", 0, music); ruido(0.035, 0.08, 700, "lowpass", music); }
-    if (passoMus % 4 === 2) ruido(0.025, 0.06, 3500, "highpass", music);
-    passoMus++; proximaNota = ac.currentTime + pulso;
+  function tocarMusica() {
+    if (!faixaAtual || !volMus || !audio.paused || tentando || bloqueado) return;
+    tentando = true;
+    audio.play().catch(() => { bloqueado = true; }).finally(() => { tentando = false; });
+  }
+  function musica(alvo) {
+    const faixa = alvo === "lobby" ? "lobby" : alvo ? String(alvo).split("-")[1] : null;
+    if (faixa !== faixaAtual) {
+      audio.pause(); faixaAtual = faixa;
+      if (faixa) { audio.src = faixas[faixa]; audio.load(); }
+      else { audio.removeAttribute("src"); audio.load(); }
+    }
+    if (!volMus || !faixa) audio.pause();
+    else tocarMusica();
   }
   return {
     get vol() { return vol; }, setVol(v) { vol = v; store.set("cozinha:vol", v); if (master) master.gain.value = v; },
-    get volMus() { return volMus; }, setMus(v) { volMus = v; store.set("cozinha:musica", v); if (music) music.gain.value = v; proximaNota = 0; }, unlock: ctx, musica,
+    get volMus() { return volMus; }, setMus(v) { volMus = v; store.set("cozinha:musica", v); audio.volume = v; if (!v) audio.pause(); else tocarMusica(); },
+    get faixa() { return faixaAtual; }, get audio() { return audio; },
+    unlock() { ctx(); bloqueado = false; tocarMusica(); }, musica,
     pegar() { tom(500, 760, 0.07, 0.18, "triangle"); },
     soltar() { tom(420, 260, 0.08, 0.2, "triangle"); },
     juntar() { tom(600, 900, 0.06, 0.15, "triangle"); tom(900, 1200, 0.06, 0.12, "triangle", 0.05); },
@@ -284,7 +292,7 @@ controlesSom();
 // ======================================================================
 // Telas: inicial, brigada (a sala de espera) e o fim do expediente
 // ======================================================================
-function show(id) { for (const s of ["home", "lobby"]) $(s).classList.toggle("hidden", s !== id); $("game").classList.toggle("hidden", id !== "game"); $("bar").classList.toggle("hidden", id === "game"); }
+function show(id) { for (const s of ["home", "lobby"]) $(s).classList.toggle("hidden", s !== id); $("game").classList.toggle("hidden", id !== "game"); $("bar").classList.toggle("hidden", id === "game"); Som.musica(id === "lobby" ? "lobby" : null); }
 const skinBotoes = (atual) => Object.entries(CP.SKINS).map(([k, s]) => `<button data-skin="${k}" class="${k === (atual || "padrao") ? "on" : ""}">${h(s.name)}</button>`).join("");
 const minhaSkin = () => store.get("galera:skin") || "padrao";
 function telaInicial() { $("hSkins").innerHTML = skinBotoes(minhaSkin()); }
@@ -423,7 +431,7 @@ function desenharPedidos() {
     if (box.querySelector(`[data-id="${p.id}"]`)) continue;
     const R = K.RECEITAS[p.r], vistos = new Map();
     for (const k of R.itens) vistos.set(k, (vistos.get(k) || 0) + 1);
-    const ings = [...vistos].map(([k]) => { const [t, e] = k.split(":"); const passo = K.INGREDIENTES[t].passos[K.estadosDe(t).indexOf(e) - 1] || ""; return `<span class="ing"><img src="${Mod.iconeIng(t, e)}" alt="">${passo ? `<em class="${passo}"></em>` : ""}</span>`; }).join("");
+    const ings = [...vistos].map(([k, n]) => { const [t, e] = k.split(":"); const passo = K.INGREDIENTES[t].passos[K.estadosDe(t).indexOf(e) - 1] || ""; return `<span class="ing"><img src="${Mod.iconeIng(t, e)}" alt=""><b class="qtd">${n}×</b>${passo ? `<em class="${passo}"></em>` : ""}<span class="ing-nome">${h(K.INGREDIENTES[t].nome)}</span></span>`; }).join("");
     const el = document.createElement("div"); el.className = "ped"; el.dataset.id = p.id;
     el.innerHTML = `<div class="tempo"><i></i></div><img class="fig" src="${Mod.figuraReceita(p.r)}" alt=""><div class="nome">${h(R.nome)}</div><div class="ings">${ings}</div>`;
     box.appendChild(el);
@@ -441,7 +449,7 @@ function hud(tJogo) {
     el.classList.toggle("urgente", f < 0.2);
   }
   const resta = ms.fase === "conta" ? K.COZINHAS[ms.coz].tempo : Math.max(0, K.COZINHAS[ms.coz].tempo - tJogo);
-  Som.musica(resta, ms.fase === "jogo");
+  Som.musica(ms.fase === "fim" ? null : ms.coz);
   if (ms.fase === "jogo" && resta > 0 && resta <= 10) {
     const segundo = Math.ceil(resta);
     if (G.ultimoTic !== segundo) { G.ultimoTic = segundo; Som.relogio(); }
@@ -605,7 +613,7 @@ const ICONE = {
 // partida nova na mesma cozinha: cada um volta para o seu lugar
 function reposicionar() { S.match.jogadores.forEach((j, k) => { const c = G.corpos.get(j.id); if (c) { [c.x, c.z] = G.mapa.inicio[k]; c.vx = c.vz = 0; c.d = Math.PI; } }); G.buf = []; }
 function pararJogo() {
-  Som.musica(0, false);
+  Som.musica(null);
   G.active = false; limparCorpos(); limparCozinha(); G.mesa = null; G.me = null; G.myId = null; G.buf = []; G.matchKey = null;
   $("receitas").classList.add("hidden"); $("guia").classList.add("hidden");
   if (window.Toque) Toque.show(false);
@@ -761,4 +769,4 @@ requestAnimationFrame(quadro);
 
 telaInicial();
 // #debug: window.__cozinha para os testes; quadros(n) anda n quadros na mão (o painel escondido pausa o requestAnimationFrame)
-if (location.hash === "#debug") window.__cozinha = { G, get S() { return S; }, get ME() { return ME; }, K, socket, keys, quadros: (n = 1) => { for (let i = 0; i < n; i++) desenhar(ultimo + 1000 / 60); } };
+if (location.hash === "#debug") window.__cozinha = { G, Som, get S() { return S; }, get ME() { return ME; }, K, socket, keys, quadros: (n = 1) => { for (let i = 0; i < n; i++) desenhar(ultimo + 1000 / 60); } };
