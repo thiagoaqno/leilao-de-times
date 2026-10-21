@@ -57,6 +57,7 @@ button{font:inherit;cursor:pointer}
 .telao-top li::before{content:counter(t) "º";min-width:24px;font-weight:700;color:#4a5690}
 .telao-top li:nth-child(1)::before{color:#b8860b}.telao-top li:nth-child(2)::before{color:#7a8496}.telao-top li:nth-child(3)::before{color:#a0522d}
 .telao-top i{margin-left:auto;font-style:normal;font-size:14px;white-space:nowrap}
+.torre-pista{margin:10px 0 0;font-size:15px}
 .dlg .go{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
 .dlg .go span{font-size:15px;color:#4a5690}
 .dlg .go span::after{content:" ▼";display:inline-block;animation:blink 1s steps(2) infinite}
@@ -517,6 +518,12 @@ for (const g of GAMES) {
 for (let y = 2; y < 15; y++) for (let x = 2; x < VW - 2; x++) if (ground[y + OY][x + OX] === "g" && (x * 7 + y * 3) % 9 === 0) set(x + OX, y + OY, "f"); // canteiros entre os prédios
 for (let y = FOUNTAIN.y; y < FOUNTAIN.y + FOUNTAIN.h; y++) for (let x = FOUNTAIN.x; x < FOUNTAIN.x + FOUNTAIN.w; x++) solid[y][x] = true;
 for (let x = TELAO.x; x < TELAO.x + TELAO.w; x++) solid[TELAO.y][x] = true;
+// a torre de cronometragem do Autódromo (os recordes de volta da Corrida): no gramado à direita do prédio, na fileira da
+// porta. Sai da posição do prédio, então acompanha se o Autódromo mudar de lugar (e não aparece se não couber).
+const AUTODROMO = GAMES.find((g) => g.id === "corrida");
+const TORRE = AUTODROMO && { x: AUTODROMO.x + AUTODROMO.w, y: AUTODROMO.y + AUTODROMO.h - 1, w: 2 };
+if (TORRE && [0, 1].some((d) => solid[TORRE.y][TORRE.x + d] || solid[TORRE.y + 1][TORRE.x + d])) TORRE.w = 0;
+if (TORRE) for (let x = TORRE.x; x < TORRE.x + TORRE.w; x++) solid[TORRE.y][x] = true;
 for (let x = PAINEL.x; x < PAINEL.x + PAINEL.w; x++) solid[PAINEL.y][x] = true;
 solid[ANTENA.y][ANTENA.x] = true;
 for (const [x, y] of FOODTRUCKS) for (let dx = 0; dx < 3; dx++) for (let dy = 0; dy < 2; dy++) solid[y + dy][x + dx] = true;
@@ -1235,10 +1242,11 @@ function setHere(g) {
 
 // Uma porta, o telão ou um terreno podem abrir o diálogo da Vila.
 const naFrenteDoTelao = (x, y) => y === TELAO.y + 1 && x >= TELAO.x && x < TELAO.x + TELAO.w;
+const naFrenteDaTorre = (x, y) => !!TORRE && TORRE.w > 0 && y === TORRE.y + 1 && x >= TORRE.x && x < TORRE.x + TORRE.w;
 const TERRENO_LUGAR = { tipo: "terreno", icon: "🚧", name: "Terreno", desc: "Reservado para um jogo novo da galera. Em breve tem construção aqui.", verbo: "seguir", botao: "Beleza" };
 const terrenoEm = (x, y) => TERRENOS.find((t) => t.placa[0] === x && t.placa[1] === y);
 function lugarEm(x, y) {
-  return matAt(x, y) || (naFrenteDoTelao(x, y) ? TELAO_LUGAR : null) || (terrenoEm(x, y) ? TERRENO_LUGAR : null);
+  return matAt(x, y) || (naFrenteDoTelao(x, y) ? TELAO_LUGAR : null) || (naFrenteDaTorre(x, y) ? TORRE_LUGAR : null) || (terrenoEm(x, y) ? TERRENO_LUGAR : null);
 }
 // O minimapa cabe inteiro em 64 x 64 casas; o ponto amarelo é você.
 let miniOn = false;
@@ -1259,6 +1267,7 @@ function drawMini(t) {
 function enter(g) {
   if (player.entering) return;
   if (g.tipo === "terreno") return setHere(null);
+  if (g.tipo === "torre") return enter(AUTODROMO); // a torre leva para dentro do Autódromo
   if (g.tipo === "telao") { // vai para a Sede da Carreira (a estante de cada carreira fica lá)
     setHere(null); store.set("vila_spawn", "sede");
     setTimeout(() => $("fade").classList.add("on"), 60);
@@ -1877,6 +1886,57 @@ function buscarEstante() {
     ESTANTE.erro = false;
   }).catch(() => { ESTANTE.erro = true; }).finally(() => { if (here === TELAO_LUGAR) { here = null; setHere(TELAO_LUGAR); } });
 }
+// ---------- a torre de cronometragem do Autódromo ----------
+// os 5 melhores tempos de volta de cada pista, para sempre (GET /api/recordes-corrida, bd.recordesCorrida). A torre
+// mostra uma pista por vez, trocando sozinha; parado na frente dela, o diálogo lista todas.
+const RECORDES = { pistas: null, erro: false };
+// o tempo de volta: 1:04.30 (no diálogo, centésimos: num recorde, cada um conta) ou 1:04.3 (na torre, que é estreita)
+const tempoVolta = (t, casas = 2) => { const m = Math.floor(t / 60), s = t - m * 60; return m ? `${m}:${s.toFixed(casas).padStart(casas + 3, "0")}` : s.toFixed(casas); };
+const TORRE_LUGAR = { tipo: "torre", icon: "⏱️", name: "Recordes do Autódromo", verbo: "entrar no Autódromo", botao: "Correr",
+  html: () => {
+    const ps = RECORDES.pistas;
+    if (!ps) return `<p>${RECORDES.erro ? "A torre não abriu agora. Tente de novo daqui a pouco." : "Ligando a torre…"}</p>`;
+    const com = ps.filter((p) => p.top.length);
+    if (!com.length) return `<p>Nenhuma volta registrada ainda. A primeira volta completa em qualquer pista estreia a torre.</p>`;
+    return `<p class="meta">As 5 voltas mais rápidas de cada pista, para sempre. Cada piloto aparece uma vez, com o melhor tempo dele.</p>`
+      + com.map((p) => `<h3 class="torre-pista">${esc(p.nome)}</h3><ol class="telao-top">${p.top.map((r) => `<li><b>${esc(r.piloto)}</b><i>${tempoVolta(r.tempo)}</i></li>`).join("")}</ol>`).join("")
+      + (com.length < ps.length ? `<p class="meta">Ainda sem volta: ${ps.filter((p) => !p.top.length).map((p) => esc(p.nome)).join(", ")}.</p>` : "");
+  } };
+function buscarRecordes() {
+  fetch("/api/recordes-corrida").then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status)))).then((d) => {
+    RECORDES.pistas = d.pistas || []; RECORDES.erro = false;
+  }).catch(() => { RECORDES.erro = true; }).finally(() => { if (here === TORRE_LUGAR) { here = null; setHere(TORRE_LUGAR); } });
+}
+// a torre, como as de cronometragem da F1: preta, com a faixa quadriculada, o nome da pista e P1 a P5
+function drawTorre(c, t) {
+  if (!TORRE || !TORRE.w) return;
+  const W = 58, H = 58, X = Math.round(TORRE.x * TS + TORRE.w * TS / 2 - W / 2), base = TORRE.y * TS + TS - 2, Y = base - H - 14;
+  px(c, "#1b1f2455", X + 3, base + 1, W - 6, 3); // a sombra no chão
+  px(c, "#3a3f46", X + W / 2 - 3, Y + H, 6, base - Y - H); // o poste
+  px(c, "#5a616b", X + W / 2 - 7, base - 3, 14, 3);
+  px(c, "#0d0f12", X - 1, Y - 1, W + 2, H + 2);
+  px(c, "#16191e", X, Y, W, H);
+  for (let i = 0; i < W / 3; i++) px(c, i % 2 ? "#f4f4f4" : "#16191e", X + i * 3, Y, 3, 2), px(c, i % 2 ? "#16191e" : "#f4f4f4", X + i * 3, Y + 2, 3, 2);
+  c.textBaseline = "middle"; c.font = '700 6px "Pixelify Sans", monospace';
+  const ps = (RECORDES.pistas || []).filter((p) => p.top.length);
+  if (!ps.length) {
+    c.textAlign = "center"; c.fillStyle = "#e7ecf2";
+    c.fillText(RECORDES.erro ? "SEM SINAL" : "RECORDES", X + W / 2, Y + 14);
+    c.fillStyle = "#9aa6b6"; c.fillText("DÊ UMA", X + W / 2, Y + 30); c.fillText("VOLTA E", X + W / 2, Y + 38); c.fillText("APAREÇA", X + W / 2, Y + 46);
+    c.textAlign = "left"; return;
+  }
+  const p = ps[Math.floor(t / 5000) % ps.length]; // uma pista a cada 5 s
+  px(c, "#e10600", X, Y + 5, W, 8);
+  c.textAlign = "center"; c.fillStyle = "#ffffff"; c.fillText(String(p.nome).toUpperCase().slice(0, 11), X + W / 2, Y + 9.5);
+  p.top.forEach((r, i) => {
+    const yy = Y + 19 + i * 8;
+    if (i % 2) px(c, "#1f242b", X + 1, yy - 4, W - 2, 8);
+    c.textAlign = "left"; c.fillStyle = CORES_PODIO[i] || "#8fa3c8"; c.fillText(String(i + 1), X + 3, yy);
+    c.fillStyle = i ? "#d9dee6" : "#ffffff"; c.fillText(String(r.piloto).toUpperCase().slice(0, 6), X + 10, yy);
+    c.textAlign = "right"; c.fillStyle = i ? "#b8c2cf" : "#ffe066"; c.fillText(tempoVolta(r.tempo, 1), X + W - 2, yy);
+  });
+  c.textAlign = "left";
+}
 const CORES_PODIO = ["#ffd34d", "#d6dde8", "#e09a5a"];
 function drawTelao(c, t) {
   const x0 = TELAO.x * TS, base = TELAO.y * TS, W = TELAO.w * TS + 8, H = 54, X = x0 - 4, Y = base - H - 2;
@@ -2120,6 +2180,7 @@ function frame(now) {
     if (cx >= 0 && cy >= 0 && cx * CH < MW && cy * CH < MH) ctx.drawImage(pedaco(cx, cy), cx * CHP, cy * CHP);
   drawFountainWater(ctx, now);
   drawTelao(ctx, now);
+  drawTorre(ctx, now);
   GAMES.forEach((g) => { if (g.casino) drawCasinoBulbs(ctx, g, now); });
   if (player.entering) { // a porta abre
     const g = player.entering;
@@ -2150,8 +2211,9 @@ $("bMapa").onclick = () => { miniOn = !miniOn; $("mini").classList.toggle("off",
 setHere(lugarEm(player.x, player.y));
 requestAnimationFrame(frame);
 buscarEstante(); setInterval(buscarEstante, 60e3);
+buscarRecordes(); setInterval(buscarRecordes, 60e3);
 if (location.hash === "#debug") window.__vila = {
-  GAMES, player, others, ground, solid, walkable, bfs, TELAO, ESTANTE, TERRENOS,
+  GAMES, player, others, ground, solid, walkable, bfs, TELAO, ESTANTE, TERRENOS, TORRE, RECORDES,
   get here() { return here; }, get myId() { return myId; },
   get camera() { return { x: camX, y: camY, scale: scale / dpr, tile: TS }; },
 };
