@@ -4,7 +4,7 @@
 import { E, SECTORS, COLORS, CARROS, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { updateGhosts } from "./rede.js";
-import { gridSpot, buildTrack, groundH, useTrack, iluminarPista } from "./pista.js";
+import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
 import { CARS3, KS, makeKart, poseKart, dropKart, puff, stepPuffs } from "./carros.js";
 import { camMode, pollPad } from "./controles.js";
@@ -220,7 +220,6 @@ function draw(dt) {
   }
   // sol e sombras acompanham o carro (a direção do sol vem da foto do céu, quando tem)
   const sd = tr.sol; if (sd) sun.position.set(src.x + sd.x * 800, (src.z || 0) + sd.y * 800, src.y + sd.z * 800); else sun.position.set(src.x - 300, (src.z || 0) + 700, src.y + 260);
-  iluminarPista(tr, src);
   sun.target.position.set(src.x, src.z || 0, src.y);
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
   // desfoque de velocidade, pela fração da velocidade final do carro (vale igual para os cinco): começa em 40% (uns 90 km/h

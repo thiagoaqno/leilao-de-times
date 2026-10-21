@@ -354,25 +354,11 @@ function landmarksRio(tr, add, r, size, ribbon) {
 }
 let worldOn = null;
 // devolve a promessa do céu (resolve quando a foto chegou e foi aplicada, ou na hora se ela não vem)
-const luzesPista = Array.from({ length: 3 }, () => {
-  const luz = new THREE.PointLight(0xffdfaa, 7000, 220, 2);
-  luz.visible = false; luz.castShadow = false; scene.add(luz); return luz;
-});
-export function iluminarPista(tr, foco) {
-  if (!tr.noite || !foco) return;
-  const i = tr.indiceAt(foco.x, foco.y), passo = 23;
-  luzesPista.forEach((luz, k) => {
-    const p = tr.pts[(Math.floor(i / passo) * passo + (k - 1) * passo + tr.n * 2) % tr.n];
-    const lado = k % 2 ? 1 : -1, lat = tr.t.walls ? tr.wallLat + 5 : tr.W / 2 + 22;
-    luz.position.set(p.x + p.nx * lado * lat, p.h + 48, p.y + p.ny * lado * lat);
-  });
-}
 export function useTrack(tr, hora = "dia", podeMudarLuz = () => true) {
   const noite = hora === "noite";
   if (worldOn === tr && tr.noite === noite) return Promise.resolve();
   if (worldOn) scene.remove(worldOn.grp);
   worldOn = tr; tr.noite = noite; scene.add(tr.grp);
-  for (const luz of luzesPista) luz.visible = noite;
   const L = tr.look;
   const corNeblina = noite ? 0x101b33 : L.fog;
   scene.fog = new THREE.Fog(corNeblina, noite ? Math.min(L.fogN, 650) : L.fogN, noite ? Math.min(L.fogF, 3400) : L.fogF); renderer.setClearColor(corNeblina);
