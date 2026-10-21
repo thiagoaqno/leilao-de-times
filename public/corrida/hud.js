@@ -21,7 +21,7 @@ export function hud() {
   const left = (race.startAt - now) / 1000;
   // contagem 3, 2, 1, VAI!
   let big = "";
-  if (left > 0) { const n = Math.ceil(left); big = n <= 3 ? String(n) : ""; if (n <= 3 && race.beeped !== n) { race.beeped = n; Sound.beep(false); } }
+  if (left > 0) { const n = Math.ceil(left); big = n <= 3 ? String(n) : "PREPARANDO"; if (n <= 3 && race.beeped !== n) { race.beeped = n; Sound.beep(false); } }
   else if (left > -1) { big = "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); } }
   if (m && m.finish != null && E.S.phase === "race") big = "";
   $("hBig").textContent = big;

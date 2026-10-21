@@ -2,7 +2,8 @@
 // Variável reatribuída por mais de um módulo fica dentro do E (um import não pode ser reatribuído).
 
 export const { PISTAS, CARROS, sample, elevate, SECTORS, WORLD, checkpoint } = window.Pistas;
-export const carOf = (p) => (p && CARROS[p.car]) || CARROS.equilibrado;
+export const tipoCarro = (p) => p?.carDrag ? "equilibrado" : p?.car;
+export const carOf = (p) => CARROS[tipoCarro(p)] || CARROS.equilibrado;
 export const COLORS = ["#e63946", "#1e88e5", "#43a047", "#fdd835", "#8e24aa", "#fb8c00", "#00acc1", "#f06292"];
 export const PAWNS = ["😎", "🤠", "👽", "🤖", "🐸", "🦊", "🐼", "🐯", "🦄", "🐙", "👻", "🤡", "🦁", "🐵", "🐧", "🏎️"];
 export const socket = io("/corrida");
