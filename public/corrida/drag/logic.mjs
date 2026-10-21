@@ -18,7 +18,8 @@ export const ENGINE_RECOVERY_RATE = 0.5;
 export const PERDA_TOTAL_KMH = 38; // bater de frente com essa diferença de velocidade (ou mais) acaba a corrida
 export const TEMPO_FAIXA = 0.45;
 export const AQUECIMENTO = 3.5, LUZES = 3;
-const ACEL = 34, ARRASTO = 1.5e-4, ROLAGEM = 0.8, FREIO = 48;
+// ACEL: 10% mais forte que os 34 de antes, para o ponteiro subir mais rápido em cada marcha
+const ACEL = 37.4, ARRASTO = 1.5e-4, ROLAGEM = 0.8, FREIO = 48;
 
 // Os carros: velocidade no corte de cada marcha (km/h), força, nitro (segundos) e a cor do neon.
 export const CARROS = {
@@ -116,7 +117,7 @@ export function shift(car, direction) {
 // Antes da largada: o motor gira em ponto morto. Manter o ponteiro na faixa aquece os pneus.
 export function aquecer(car, dt, gas) {
   const alvo = gas ? 1.02 : IDLE;
-  car.rpm = clamp(car.rpm + (alvo - car.rpm) * Math.min(1, dt * (gas ? 2.1 : 2.6)), IDLE, 1);
+  car.rpm = clamp(car.rpm + (alvo - car.rpm) * Math.min(1, dt * (gas ? 2.31 : 2.6)), IDLE, 1);
   const naFaixa = car.rpm >= ZONA_PNEU.min && car.rpm <= ZONA_PNEU.max;
   car.pneu = clamp(car.pneu + (naFaixa ? dt / 2.4 : car.rpm > ZONA_PNEU.max ? dt / 9 : -dt / 12), 0, 1);
   car.overrev = clamp(car.overrev + (car.rpm >= ZONA.tarde ? dt * 0.5 : -dt * ENGINE_RECOVERY_RATE), 0, ENGINE_LIMIT_SECONDS - 0.5);

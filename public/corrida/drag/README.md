@@ -1,6 +1,10 @@
 # Modo drag — no jeito do Need for Speed Underground 2
 
-Abra `/corrida/drag/` pelo botão na entrada da Corrida da Galera. Corrida local contra três rivais, em três pistas noturnas (Ponte Estaiada, Debaixo do Elevado, Porto à Noite), retas com curvas leves e quatro faixas.
+Abra `/corrida/drag/` pela Garagem do Drag na Vila (entre o MASP e a Consolação) ou pelo botão na entrada da Corrida da Galera. Corrida local contra três rivais, em quatro pistas noturnas com quatro faixas: Ponte Estaiada, Debaixo do Elevado e Porto à Noite (retas com curvas leves) e a Serra à Noite (curvas fechadas). O carro esterça sozinho: as faixas acompanham a pista, a carroceria deita na curva e o pneu canta quando a força para fora passa do ponto.
+
+Carregando: o seu carro carrega primeiro (com a porcentagem na garagem), depois os três rivais, e então os outros carros baixam devagar para o cache (`baixarOResto`, fora do celular). Ao largar, a tela de carregando mostra os carros chegando e a preparação da pista.
+
+Som (`EngineAudio`): o motor de cada carro é sintetizado pelo `motor` de `modelos.js` (cilindros, giro, turbo, aspereza), com o assobio do turbo, a válvula na troca e os pops and bangs: estalos ao tirar o pé em giro alto e um estouro em cada troca para cima, com a labareda no escapamento (`acenderEstouro`; os rivais também estouram na troca).
 
 O lobby é a **garagem** (`garagem.js`): uma rua à meia-noite com o galpão da Garagem da Galera, o seu carro em exposição e a galera parada em volta. Lá se escolhe o carro (setas ou lista, com a ficha de força, final e nitro), o ponto de encontro (a pista) e se abre a **oficina**: pintura, neon, cor dos faróis e da chama do nitro, guardados por carro em `drag:garagem` (`modelos.js`: `visualDe`, `salvarVisual`). Do fim da corrida dá para voltar à garagem.
 
