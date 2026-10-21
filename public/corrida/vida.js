@@ -72,6 +72,7 @@ export function enfeitar(tr, add, r, alturaEm) {
   if (CIDADE[id]) {
     const haste = [], braco = [], luz = [];
     for (let i = 10; i < n; i += 23) {
+      if (tr.coberto && tr.coberto(i)) continue; // no túnel de Mônaco o poste furaria o teto
       const p = pts[i], s = (i / 23) % 2 ? 1 : -1, [x, z] = lat(p, s * (comMuro ? tr.wallLat + 5 : W / 2 + 22)), y = alturaEm(x, z, i), ry = Math.atan2(p.nx * s, p.ny * s);
       haste.push({ x, y: y + 27, z, s: 1 });
       braco.push({ x: x - p.nx * s * 8, y: y + 54, z: z - p.ny * s * 8, ry, s: 1 });
@@ -87,7 +88,7 @@ export function enfeitar(tr, add, r, alturaEm) {
     for (let i = 0; i < n && feitos < 14; i += 3) {
       const p = pts[i]; if (p.k || i - ult < n / 16) continue;
       const s = feitos % 2 ? 1 : -1, d = (comMuro ? tr.wallLat : W / 2 + 30) + 26, [x, z] = lat(p, s * d);
-      if (tr.distAt(x, z) < W / 2 + 18) continue;
+      if (tr.distAt(x, z) < W / 2 + 18 || (tr.ocupado && tr.ocupado(x, z, i))) continue;
       const y = alturaEm(x, z, i), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = Math.atan2(-p.nx * s, -p.ny * s) + Math.PI * 0; add(g);
       const tex = anuncio(ANUNCIOS[(feitos + id.length) % ANUNCIOS.length], id === "tokyo");
       const quadro = new THREE.Mesh(new THREE.BoxGeometry(64, 28, 1.6), [M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: id === "tokyo" ? 0.9 : 0.12, roughness: 0.6 }), M(0x2a2d33)]);
@@ -98,6 +99,7 @@ export function enfeitar(tr, add, r, alturaEm) {
   }
   // bandeirolas atravessando a pista
   if (!t.espaco) for (const f of [0.012, 0.2, 0.41, 0.6, 0.79]) {
+    if (tr.coberto && tr.coberto(Math.floor(n * f))) continue;
     const i = Math.floor(n * f), p = pts[i], L = borda + 6, alto = 46, cores = ["#e63946", "#ffd23f", "#1e88e5", "#43a047", "#ffffff", "#fb8c00"];
     const [x1, z1] = lat(p, L), [x2, z2] = lat(p, -L), y1 = alturaEm(x1, z1, i), y2 = alturaEm(x2, z2, i);
     for (const [x, z, y] of [[x1, z1, y1], [x2, z2, y2]]) { const pau = add(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, alto + 4, 6), M(0x6f747c))); pau.position.set(x, y + (alto + 4) / 2, z); pau.castShadow = true; }
@@ -118,7 +120,7 @@ export function enfeitar(tr, add, r, alturaEm) {
       const p = pts[(i + n) % n];
       for (const s of [-1, 1]) for (let fila = 0; fila < 3; fila++) {
         if (r() < 0.35) continue;
-        const d = borda + 10 + fila * 8 + r() * 2, [x, z] = lat(p, s * d); if (tr.distAt(x, z) < borda + 4) continue;
+        const d = borda + 10 + fila * 8 + r() * 2, [x, z] = lat(p, s * d); if (tr.distAt(x, z) < borda + 4 || (tr.ocupado && tr.ocupado(x, z))) continue;
         gente.push({ x, y: alturaEm(x, z, (i + n) % n) + fila * 3.5, z, ry: Math.atan2(-p.nx * s, -p.ny * s), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: pele[(r() * 5) | 0], camisa: camisa[(r() * 8) | 0] });
       }
     }
@@ -175,6 +177,7 @@ export function animarVida(tr, dt, foco) {
   const V = tr && tr.vida; if (!V) return;
   const parado = reduz.matches; V.tempo += dt; const t = V.tempo;
   for (const a of V.agua) if (a.map && !parado) { a.map.offset.x = (t * 0.012) % 1; a.map.offset.y = (t * 0.02) % 1; }
+  if (tr.tunel) tr.tunel.animar(foco, dt); // Mônaco: o teto do túnel (e o hotel em cima) some com o carro lá dentro
   // torcida: só mexe quem está perto da câmera (a de longe fica parada; ninguém vê a diferença)
   for (const T of [V.torcida, ...(V.torcidas || [])]) {
     if (!T || parado) continue;

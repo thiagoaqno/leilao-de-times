@@ -203,6 +203,7 @@ function draw(dt) {
 // ---------- capa: a largada de Interlagos em 3D (o mesmo desenho da corrida) ----------
 (function heroArt() {
   const paint = () => {
+    if (race) return; // quem volta para a sala no meio da corrida: a capa chegaria depois e trocaria a pista na tela
     const tr = buildTrack("interlagos"); useTrack(tr);
     const at = (g) => gridSpot(tr.pts, g, tr.W), ks = [];
     [[4, COLORS[0], "equilibrado", { pintura: "classico" }], [0, COLORS[1], "foguete", { pintura: "papaia" }], [1, COLORS[2], "drifteiro", { pintura: "flecha" }], [2, COLORS[3], "formiga", { pintura: "touro" }], [3, COLORS[4], "tanque", { pintura: "rosso" }]].forEach(([g, col, model, mods]) => { const s = at(g), k = makeKart(col, model, false, "", mods); poseKart(k, s.x, s.y, tr.pts[s.idx].h, s.a, 0, 0, tr.pts[s.idx].h, 0); ks.push(k); });

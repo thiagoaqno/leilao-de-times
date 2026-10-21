@@ -1,32 +1,40 @@
-# Carreira em grupo: a decisão não some mais antes da hora · Corrida: recordes de volta para sempre
+# Corrida: Mônaco refeito em cima do traçado oficial
 
-## O bug
-Na carreira em grupo, o servidor dá 20 s para cada decisão, contados de quando o jogo **dele** chega no lance (`parado.ate`). A página contava os seus próprios 20 s a partir de quando ela **mostrava** o lance. Como a tela costuma estar um pouco atrás do servidor (a animação, ou a aba escondida no celular), o servidor desistia primeiro:
-- a janela da decisão fechava sozinha antes de a barra acabar, e valia a decisão padrão;
-- o relógio da página continuava armado e, ao disparar, quebrava (`Cannot read properties of null (reading 'id')` em `enviarDecisao`);
-- a parada tática do grupo tinha o mesmo prazo, mas sem nenhum contador na tela: fechava "do nada".
+O circuito de Mônaco foi redesenhado do zero, em cima do mapa oficial da F1 (as 19 curvas, os 3 setores e o perfil de
+relevo), e ganhou o cenário de verdade: o porto com os iates, a piscina, as arquibancadas azuis, o túnel embaixo do
+hotel, a Place du Casino e o Rochedo.
 
-Reproduzido com a sala real 5B8B5 copiada da produção: o lance abriu com 14 s restantes no servidor e fechou sozinho, com o erro no console.
+## O traçado
+- Na ordem: reta dos boxes (Boulevard Albert 1er) → Sainte Dévote → subida da Beau Rivage → Massenet e Casino, em volta
+  do canteiro redondo da Place du Casino → Mirabeau Haute → o grampo do Grand Hotel → Mirabeau Bas → Portier → o túnel
+  (curva longa à direita) → Nouvelle Chicane → Tabac → Piscine (as duas chicanes) → La Rascasse → Anthony Noghès.
+- Os vértices foram tirados do mapa oficial, na mesma posição (dá para pôr um em cima do outro). Volta de ~13 mil, como
+  as outras pistas; os robôs fecham em 66–74 s, na faixa de Tóquio (a outra pista de rua).
+- Relevo do perfil oficial: plano na reta, sobe da Sainte Dévote até o Cassino (o ponto mais alto, curvas 3 e 4), desce
+  por Mirabeau e o grampo até Portier, e do túnel até o fim fica ao nível do mar.
+- Rua estreita: guard-rail colado na pista o tempo todo, sem área de escape e sem barreira de pneus (`muro: true` em
+  `pistas.js`; as outras pistas continuam sem muro). A largada fica a 30% da reta dos boxes (`largada`), como no mapa.
+- A melhor volta guardada de Mônaco era do traçado antigo e os robôs copiariam uma linha que não existe mais: a migração
+  `014-monaco-novo.sql` apaga essa volta, e a próxima volta limpa passa a valer.
 
-## O que muda
-- No grupo, a barra de tempo usa o prazo do servidor e já começa no pedaço que sobrou (`armarTempo` em `partida.js`). A parada tática do grupo também ganha a barra.
-- No grupo, a página não manda mais a decisão automática: quem aplica é o servidor, no fim do prazo dele, com a mesma `Motor.decisaoAutomatica`. Sozinho, continua como antes (20 s e a opção de maior chance).
-- Quando a parada fecha ou muda, o relógio da anterior é desarmado (`grupo.js`), e `enviarDecisao` não quebra se a parada já fechou.
+## O cenário (`public/corrida/monaco.js`)
+- O mar e o porto Hercule: o chão afunda onde é água, com o cais em linha lisa (`fundoMonaco`), a marina com píeres e
+  iates presos dos dois lados (casco com proa e cabine de dois andares) e os superiates na boca do porto.
+- A piscina entre a Piscine e o porto, e a beira do porto aberta, sem prédio entre a pista e os iates.
+- Arquibancadas azuis lotadas na reta dos boxes, na Sainte Dévote, no cais da chicane ao Tabac e na Piscine.
+- O túnel coberto, com as luzes amarelas no teto, embaixo do hotel (que avança sobre o mar) e do terraço com jardim.
+  Com o carro lá dentro, o teto e o hotel ficam transparentes, senão a câmera de cima não veria nada.
+- A Place du Casino: o canteiro redondo florido, com palmeiras e o chafariz, dentro da curva do Cassino, e o Cassino
+  (fachada creme, torres e telhado de cobre) de frente para a praça.
+- O Rochedo (Monaco-Ville) do outro lado do porto, com o Palácio, a catedral, a cidade velha e os jardins.
+- Prédios mais altos colados na rua, as árvores no morro lá atrás e o chão de pedra clara no lugar da areia.
+- Postes, outdoors, bandeirolas e torcida de `vida.js` não caem mais na água, em cima do túnel nem no meio do grampo.
+
+## Conserto de passagem
+- Quem voltava para a sala no meio da corrida via Interlagos: a capa do menu era redesenhada por cima e trocava a pista
+  da cena. Agora a capa não redesenha com a corrida andando.
 
 ## Testes
-- No navegador, com a sala 5B8B5 e o anfitrião sem responder: o lance abriu com a barra em 68% (14 s restantes) e fechou junto com o prazo; a parada tática mostrou a barra e fechou em 19,9 s; nenhum erro no console.
-
-# Corrida: os 5 melhores tempos de cada pista, para sempre
-
-## O que muda
-- Tabela nova `corrida_recordes` (migração 013): os 5 melhores tempos de volta de cada pista ficam guardados para sempre. Cada piloto aparece uma vez por pista, com o melhor tempo dele ("Ana" e "ana" contam como a mesma pessoa), para ninguém ocupar o pódio inteiro. A tabela começa com a volta recorde que já estava guardada (`corrida_voltas`, a que os robôs copiam).
-- O tempo que vale é o medido pelo servidor (pelos 12 setores, ao fechar a volta), não o que o navegador manda. Robô não entra.
-- Quem entra no quadro gera um aviso para todos da sala ("Thiago bateu o recorde da pista: 1:11.42!") e uma linha no registro da sala.
-- **Na Vila:** uma torre de cronometragem, como as da F1, ao lado do Autódromo. Ela mostra P1 a P5 de uma pista por vez, trocando a cada 5 s. Parado na frente dela, abre o quadro com todas as pistas que têm tempo (as vazias numa linha só), e o botão leva para o Autódromo. Os dados vêm de `GET /api/recordes-corrida`, atualizados a cada minuto, como o telão da estante.
-
-## Testes
-- `node --test tests/corrida-recordes.test.js`: o top 5 com um por piloto, a migração que traz o recorde antigo, a API e uma corrida de verdade pelo servidor (a volta fecha pelos setores, entra no quadro e a sala recebe o aviso).
-- Conferido no navegador: a torre na Vila e o quadro aberto na frente dela.
-
-## Também neste PR
-- `tests/e2e/admin-carreira.spec.js`: a resposta falsa do teste não tinha os comandos da sala (`sala`), que o painel desenha desde o controle da ausência (15/10). O painel de verdade estava certo; o teste estava desatualizado.
+- `npm test` e os E2E da Corrida (`tests/e2e/paginas.spec.js` e `tests/e2e/salas.spec.js`).
+- `tests/corrida-robos.test.js` cobre Mônaco (trechos sem encostar, robôs fecham a volta pelos 12 checkpoints sem sair
+  da pista). O teste do turbo do cogumelo já falhava no `main` antes desta mudança.

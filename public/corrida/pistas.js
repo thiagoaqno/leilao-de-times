@@ -9,42 +9,37 @@ const WORLD = 1600;
 
 const PISTAS = {
   monaco: {
-    name: "Mônaco", sub: "Estreita e travada: Sainte Dévote, a subida até o Cassino, dois grampos, o túnel, a chicane do porto, a piscina e a Rascasse",
-    scale: 2.4, width: 104, minLap: 25, walls: true, wall: 9, flat: 12, fall: 70,
-    // relevo: sobe a Beau Rivage até o Cassino, desce pelos grampos até o túnel e fica à beira do mar até a Rascasse
-    hills: [[0, 10], [0.1, 10], [0.14, 30], [0.2, 62], [0.25, 85], [0.29, 88], [0.33, 74], [0.38, 58], [0.42, 38], [0.47, 24], [0.53, 12], [0.57, 8], [0.61, 6], [0.7, 4], [0.8, 4], [0.9, 6], [1, 10]],
+    name: "Mônaco", sub: "O traçado de verdade: Sainte Dévote, a subida até o Cassino, Mirabeau, o grampo do Grand Hotel, Portier, o túnel, a chicane do porto, Tabac, a Piscine e a Rascasse",
+    // a rua estreita, com guard-rail colado na pista (muro: fica mesmo sem o muro das outras pistas) e sem área de escape
+    scale: 3, width: 104, minLap: 25, walls: true, muro: true, wall: 14, flat: 20, fall: 120, largada: 0.3,
+    // relevo (o perfil oficial): a reta dos boxes à beira do porto, a subida da Beau Rivage até o Cassino (o ponto mais
+    // alto, nas curvas 3 e 4), a descida por Mirabeau e o grampo até Portier, e do túnel até o fim, plano ao nível do mar
+    hills: [[0, 9], [0.07, 8], [0.165, 8], [0.2, 26], [0.25, 52], [0.285, 70], [0.33, 84], [0.38, 88], [0.44, 83], [0.49, 64], [0.52, 44], [0.545, 22], [0.6, 11], [0.7, 8], [0.82, 7], [0.9, 4], [0.95, 4], [0.98, 8], [1, 9]],
+    // desenhada em cima do mapa oficial da F1 (as 19 curvas), na mesma posição: a largada sobe para a esquerda do mapa
     points: [
-      [620, 700, 0], // reta dos boxes (para a direita), com o porto embaixo
-      [1180, 700, 50], // Sainte Dévote
-      [1230, 560, 0],
-      [1330, 330, 150], // subida da Beau Rivage
-      [1240, 170, 80], // Massenet
-      [1050, 140, 60],
-      [930, 230, 45], // Cassino
-      [1000, 330, 40],
-      [880, 420, 35], // Mirabeau
-      [760, 380, 30],
-      [700, 470, 28], // grampo do Grand Hotel
-      [600, 500, 28],
-      [560, 380, 40], // segundo grampo
-      [430, 330, 60], // Portier
-      [300, 420, 90],
-      [200, 620, 150], // túnel, colado no mar
-      [230, 1050, 180],
-      [380, 1190, 60], // saída do túnel
-      [520, 1170, 0],
-      [580, 1215, 25], // chicane do porto
-      [650, 1165, 25],
-      [900, 1175, 0],
-      [1080, 1180, 70], // Tabac
-      [1200, 1100, 40],
-      [1160, 1000, 35], // piscina
-      [1240, 930, 35],
-      [1180, 860, 40],
-      [700, 860, 0],
-      [470, 860, 55], // Rascasse
-      [440, 760, 45], // Anthony Noghes
-      [520, 700, 40],
+      [65, 1020, 31], // Anthony Noghès (19)
+      [183, 772, 186], // reta dos boxes (Boulevard Albert 1er), com a linha de chegada
+      [478, 478, 28], // Sainte Dévote (1)
+      [512, 521, 43],
+      [710, 636, 620], // subida da Beau Rivage (Avenue d'Ostende)
+      [921, 753, 155], // a dobra no alto da subida (2)
+      [1147, 871, 50], // Massenet (3)
+      [1150, 648, 45], // Casino (4), em volta do canteiro redondo da Place du Casino
+      [1454, 611, 25], // Mirabeau Haute (5)
+      [1349, 791, 25], // grampo do Grand Hotel (6), o mais lento da F1
+      [1398, 800, 25],
+      [1460, 710, 22], // Mirabeau Bas (7)
+      [1535, 763, 22], // Portier (8), de frente para o mar
+      [1191, 995, 372], // o túnel (9), uma curva longa à direita embaixo do hotel
+      [791, 778, 22], // Nouvelle Chicane (10-11), na saída do túnel
+      [729, 809, 22],
+      [487, 577, 40], // Tabac (12)
+      [357, 673, 43], // Piscine (13-14)
+      [357, 729, 43],
+      [270, 837, 25], // Piscine, segunda parte (15-16)
+      [217, 831, 25],
+      [208, 995, 78], // La Rascasse (17-18)
+      [233, 1122, 25],
     ],
   },
   interlagos: {
@@ -380,8 +375,9 @@ for (const t of Object.values(PISTAS)) {
   t.scale = s; t.world = WORLD * s;
   if (s !== 1) t.points = t.points.map(([x, y, r]) => [x * s, y * s, (r || 0) * s]);
   if (t.relevo) { t.hills = t.hills.map(([f, h]) => [f, h * t.relevo]); t.fall *= t.relevo; }
-  // sem muro em volta (a volta só vale passando pelos checkpoints, em ordem); o Arco-íris, no espaço, continua com a beirada
-  if (!t.espaco) { t.walls = false; t.wall = 20; }
+  // sem muro em volta (a volta só vale passando pelos checkpoints, em ordem); o Arco-íris, no espaço, continua com a beirada,
+  // e Mônaco com o guard-rail colado na pista (muro)
+  if (!t.espaco && !t.muro) { t.walls = false; t.wall = 20; }
 }
 
 // Os cinco acertos do carro de F1 (os ids continuam os antigos, para as salas e o servidor). vmax: velocidade final no asfalto · acc: aceleração na arrancada (ela cai perto da velocidade
@@ -471,15 +467,15 @@ const MODS = {
 const MODS_PADRAO = { pintura: "propria" };
 
 const SECTORS = 12; // os checkpoints: a volta só conta passando pelos 12, na ordem (contra atalho e contramão)
-// A pista pronta para correr: amostrada, com relevo e começando na largada. A largada fica a 60% da reta mais longa,
-// para o grid (que fica atrás da linha) estar todo no reto. O relevo é calculado antes de girar, então não muda.
+// A pista pronta para correr: amostrada, com relevo e começando na largada. A largada fica a 60% da reta mais longa
+// (ou onde `largada` disser), para o grid (que fica atrás da linha) estar todo no reto. O relevo é calculado antes de girar, então não muda.
 function pontos(t, step = 6) {
   const pts = elevate(sample(t.points, step), t.hills), n = pts.length;
   let ini = 0;
   if (!t.espaco) {
     let best = 0, bestIni = 0, run = 0, runIni = 0;
     for (let k = 0; k < 2 * n; k++) { if (!pts[k % n].k) { if (!run) runIni = k; run++; if (run > best && run < n) { best = run; bestIni = runIni; } } else run = 0; }
-    ini = (bestIni + Math.floor(best * 0.6)) % n;
+    ini = (bestIni + Math.floor(best * (t.largada || 0.6))) % n;
   }
   const out = pts.slice(ini).concat(pts.slice(0, ini));
   out.forEach((p, i) => { p.d = i * step; });

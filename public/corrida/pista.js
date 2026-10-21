@@ -3,10 +3,10 @@ import * as THREE from "three";
 import { PISTAS, sample, elevate, WORLD, rng } from "./estado.js";
 import { drawPreview } from "./menus.js";
 import { renderer, scene, hemi, sun, canvasTex, M, LOOK } from "./cena.js";
-import { nearest } from "./jogo.js";
 import { PROPS, aoCarregar } from "./props.js";
 import { enfeitar } from "./vida.js";
 import { aplicarCeu } from "./ceu.js";
+import { aguaMonaco, fundoMonaco, orlaMonaco, alturaRocha, cenarioMonaco } from "./monaco.js";
 
 // ---------- temas das pistas: cores, chão, enfeites e o horizonte ----------
 export const THEMES = {
@@ -52,6 +52,7 @@ export function buildTrack(id) {
   // altura do chão em qualquer lugar: longe demais para o barranco da pista alcançar, é o nível zero
   const alcance = W / 2 + t.flat + t.fall + cell;
   tr.chao = (x, y) => (tr.distAt(x, y) > alcance ? 0 : groundH(tr, x, y, tr.indiceAt(x, y)));
+  if (id === "monaco") { const plano = tr.chao; tr.chao = (x, y) => Math.max(plano(x, y), alturaRocha(tr, x, y)); } // o Rochedo
   buildWorld(tr); tr.comProps = !!PROPS.pronto;
   return (TRACKS[id] = tr);
 }
@@ -82,7 +83,7 @@ function buildWorld(tr) {
     const longe = tr.distAt(x, y) > W / 2 + t.flat + t.fall + WORLD / 96, bi = longe ? 0 : tr.indiceAt(x, y);
     const perto = !longe && Math.abs(trackFrame(tr, x, y, bi).lat) < W / 2 + 26; // embaixo da pista o chão afunda mais (a malha é grossa e furava o asfalto nas rampas)
     let h = t.espaco ? -700 : (longe ? 0 : groundH(tr, x, y, bi)) - (perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
-    if (id === "monaco" && y > 1250 * K + Math.sin(x / 170) * 20) h = Math.min(h, -14); // o mar
+    if (id === "monaco") { const s = fundoMonaco(tr, x, y); if (s > -16) h = s > 0 ? Math.max(-16, -6 - s * 0.6) : Math.min(h, -6 - s * 0.6); const ar = alturaRocha(tr, x, y); if (ar > 0) h = Math.max(h, ar); } // o porto e o mar, com o cais, e o Rochedo
     if (id === "rio" && rioSea(x, y)) h = Math.min(h, -14); // o mar de Copacabana
     pos.setY(i, h);
   }
@@ -91,13 +92,6 @@ function buildWorld(tr) {
   gtex.repeat.set(size / 120, size / 120);
   const ground = add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: gtex, roughness: 1 })));
   ground.position.set(WORLD / 2, 0, WORLD / 2); ground.receiveShadow = true;
-  if (id === "monaco") { // mar e o porto
-    const seaM = new THREE.MeshStandardMaterial({ map: aguaTex("#1f6fae"), roughness: 0.15, metalness: 0.25 }); seaM.map.repeat.set(size / 220, 1600 * K / 220); tr.agua.push(seaM);
-    const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(size, 1600 * K), seaM));
-    sea.rotation.x = -Math.PI / 2; sea.position.set(WORLD / 2, -6, (1250 + 800) * K);
-    const port = add(new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshStandardMaterial({ color: 0x2a80bf, roughness: 0.2 })));
-    port.rotation.x = -Math.PI / 2; port.scale.set(270 * K, 58 * K, 1); port.position.set(800 * K, groundH(tr, 800 * K, 1020 * K, nearest(tr, 800 * K, 1020 * K, 0)) - 0.5, 1020 * K);
-  }
   // ---- fitas ao longo da pista (asfalto, zebras, calçada): cada ponto com a sua altura ----
   function ribbon(l0, l1, y0, mat, vLen, y1 = y0, uSpan = 1, i0 = 0, i1 = n) { // de i0 a i1: só um trecho da volta
     const vs = [], uv = [], idx = [];
@@ -169,9 +163,10 @@ function buildWorld(tr) {
     list.forEach((o, i) => { d.position.set(o.x, o.h + (o.dy || 0) * sc(o), o.y); d.rotation.set(0, o.r || 0, 0); const s = sc(o); d.scale.set(o.sx || s, o.sy || s, o.sz || s); d.updateMatrix(); m.setMatrixAt(i, d.matrix); if (o.c != null && m.setColorAt) m.setColorAt(i, new THREE.Color(o.c)); });
     m.castShadow = true; m.receiveShadow = true; return m;
   };
-  // barreiras de pneus: do lado de fora das curvas fechadas (a física bate nelas: tr.pneus guarda o lado de cada ponto)
+  // barreiras de pneus: do lado de fora das curvas fechadas (a física bate nelas: tr.pneus guarda o lado de cada ponto).
+  // Em Mônaco, não: o guard-rail fica colado na pista o tempo todo
   tr.pneus = new Int8Array(n);
-  if (!t.espaco) {
+  if (!t.espaco && !t.muro) {
     const pilhas = [], topos = [];
     for (let i = 0; i < n; i++) {
       const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 170)) continue;
@@ -207,13 +202,21 @@ function buildWorld(tr) {
   }
 
   const trees = [], palms = [], blds = [], towers = [], stands = [], yachts = [], neons = [], glass = [], jungle = [], houses = [];
+  // Mônaco: o porto, a piscina, as arquibancadas, o túnel e a Place du Casino (monaco.js); os enfeites soltos não caem
+  // na água nem em cima deles
+  if (id === "monaco") cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, jungle, blds });
+  const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
     const p = pts[i];
     for (const side of [-1, 1]) {
       const near = (tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 36) + 10 + r() * 60, x = p.x + p.nx * side * near, y = p.y + p.ny * side * near;
       if (!free(x, y, 20)) continue;
       const k = r();
-      if (id === "monaco") { if (k < 0.3) palms.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.5, r: r() * 6 }); else if (k < 0.75) { const sx = 50 + r() * 40, sz = 50 + r() * 40, far = near + 40 + r() * 80, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 25)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 60 + r() * 90, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f3e0c0"][(r() * 5) | 0] }); } }
+      if (id === "monaco") { // palmeiras na calçada e os prédios altos colados na rua (sem área de escape)
+        if (!terra(x, y)) continue;
+        if (k < 0.25) palms.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.5, r: r() * 6 });
+        else if (k < 0.85) { const sx = 55 + r() * 50, sz = 55 + r() * 50, far = near + 30 + r() * 50, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 18) && terra(bx, by) && !orlaMonaco(tr, bx, by)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 90 + r() * 200, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f3e0c0", "#f4ece0"][(r() * 6) | 0] }); }
+      }
       else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : 0.52)) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
       else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
       else if (id === "losangeles") { // palmeiras altas na beira e prédios de vidro mais para trás
@@ -238,14 +241,18 @@ function buildWorld(tr) {
   for (let k = 0; k < (t.espaco ? 0 : Math.round(220 * K * K)); k++) {
     const x = -pad + 100 + r() * (WORLD + 2 * pad - 200), y = -pad + 100 + r() * (WORLD + 2 * pad - 200);
     if (!free(x, y, 160)) continue;
-    if (id === "monaco") { if (y > 1260 * K) continue; blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 60, sy: 80 + r() * 140, sz: 60 + r() * 60, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f"][(r() * 4) | 0] }); }
+    if (id === "monaco") { // a cidade subindo a encosta, com as árvores no morro lá atrás (o norte, longe do mar)
+      if (!terra(x, y)) continue;
+      if (y < 560 * K && r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.1 + r() * 1.1 });
+      else if (!orlaMonaco(tr, x, y)) blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 70, sy: 90 + r() * (r() < 0.15 ? 420 : 220), sz: 60 + r() * 70, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f4ece0"][(r() * 5) | 0] });
+    }
     else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (id !== "laguna" || r() < 0.3) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
     else if (id === "deserto") { if (r() < 0.07) palms.push({ x, y, h: hAt(x, y), s: 1.2, r: r() * 6 }); }
     else if (id === "losangeles") { if (r() < 0.5) glass.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 120 + r() * 420, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); else palms.push({ x, y, h: hAt(x, y), s: 1.8, r: r() * 6 }); }
     else if (id === "rio") { if (rioSea(x, y)) continue; if (hAt(x, y) > 15 || r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.3 + r() * 1.2 }); else blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 50, sy: 70 + r() * 120, sz: 60 + r() * 50, dy: 0.5, r: r() * 3, c: ["#f4f1e6", "#e8e0cf", "#d9e6ef"][(r() * 3) | 0] }); }
     else towers.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 150 + r() * 500, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#1d2033", "#242842", "#191b2b", "#2a2340"][(r() * 4) | 0] });
   }
-  if (id === "monaco") { for (let k = 0; k < 26; k++) { const a = r() * 6.28, rr2 = Math.sqrt(r()); yachts.push({ x: (800 + Math.cos(a) * 230 * rr2) * K, y: (1020 + Math.sin(a) * 40 * rr2) * K, h: hAt(800 * K, 1020 * K) + 1, s: 1, r: r() * 0.4 }); } for (let k = 0; k < 20; k++) yachts.push({ x: r() * WORLD, y: (1320 + r() * 500) * K, h: -6, s: 1.3, r: r() * 6 }); }
+  if (id === "monaco") for (let k = 0; k < 20; k++) yachts.push({ x: r() * WORLD, y: (1320 + r() * 500) * K, h: -6, s: 1.3, r: r() * 6 }); // lá fora, no mar
   if (id === "interlagos" || id === "laguna" || id === "nurburgring") for (let k = 0; k < 7; k++) { const p = pts[Math.floor(n * (0.015 + k * 0.013))], L = W / 2 + 70; stands.push({ x: p.x - p.nx * L, y: p.y - p.ny * L, h: p.h, s: 1, r: -Math.atan2(p.ny, p.nx) }); }
   // modelos
   if (PROPS.arvore) for (const { geo, mat } of PROPS.arvore.pecas) { const g = geo.clone(); g.scale(60, 60, 60); inst(g, mat, trees); } // a árvore do Kenney: 1,5 do modelo vira uns 9 m
@@ -260,7 +267,13 @@ function buildWorld(tr) {
   if (glass.length) inst(bgeo, new THREE.MeshStandardMaterial({ map: win(0, false), metalness: 0.15, roughness: 0.35, emissive: 0x2a1a10, emissiveIntensity: 0.4 }), glass, () => 1); // arranha-céus de vidro (LA)
   if (houses.length) inst(bgeo, M(0xffffff, { roughness: 0.9 }), houses, () => 1); // casinhas coloridas no morro (Rio)
   if (jungle.length) { const crown = new THREE.IcosahedronGeometry(26, 0); crown.translate(0, 40, 0); inst(crown, M(0x1f6a2a), jungle); const tk = new THREE.CylinderGeometry(3, 4, 22, 6); tk.translate(0, 11, 0); inst(tk, M(0x5a3a1a), jungle); }
-  if (yachts.length) { const yg = new THREE.BoxGeometry(60, 10, 18); yg.translate(0, 5, 0); inst(yg, M(0xf7f7f7, { roughness: 0.4 }), yachts); const cab = new THREE.BoxGeometry(24, 8, 12); cab.translate(-4, 14, 0); inst(cab, M(0xdfe3ea), yachts); }
+  if (yachts.length) { // casco com a proa fina e dois andares de cabine com os vidros escuros
+    const casco = new THREE.Shape(); casco.moveTo(-30, -9); casco.lineTo(14, -9); casco.quadraticCurveTo(28, -7, 34, 0); casco.quadraticCurveTo(28, 7, 14, 9); casco.lineTo(-30, 9); casco.closePath();
+    const yg = new THREE.ExtrudeGeometry(casco, { depth: 10, bevelEnabled: false }); yg.rotateX(-Math.PI / 2); inst(yg, M(0xf7f7f7, { roughness: 0.4 }), yachts);
+    const deck = new THREE.BoxGeometry(40, 1, 15); deck.translate(-6, 10.5, 0); inst(deck, M(0xc9a27a, { roughness: 0.7 }), yachts);
+    const cab = new THREE.BoxGeometry(26, 6, 12); cab.translate(-4, 14, 0); inst(cab, M(0xeef1f5), yachts);
+    const vidro = new THREE.BoxGeometry(16, 4.5, 10.5); vidro.translate(-2, 19, 0); inst(vidro, M(0x22313f, { roughness: 0.2, metalness: 0.4 }), yachts);
+  }
   for (const s0 of stands) { // arquibancadas da reta dos boxes
     const g = new THREE.Group(); g.position.set(s0.x, s0.h, s0.y); g.rotation.y = s0.r; add(g);
     if (PROPS.arquibancada) { // a arquibancada coberta do Kenney, de frente para a pista (o modelo olha para +z, a pista fica em +x)
