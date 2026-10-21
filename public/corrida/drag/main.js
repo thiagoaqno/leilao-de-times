@@ -966,12 +966,15 @@ class RaceMusic {
       if (!response.ok) return;
       const tracks = await response.json();
       if (!this.active || run !== this.run || !tracks.length) return;
+      // a lista chega em ordem alfabética: embaralha a cada corrida, sem começar pela última que tocou
+      for (let i = tracks.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [tracks[i], tracks[k]] = [tracks[k], tracks[i]]; }
+      if (tracks.length > 1 && tracks[0].url === this.ultima) tracks.push(tracks.shift());
       this.tracks = tracks; this.index = 0; this.playCurrent();
     } catch (error) { console.warn("Drag: não foi possível listar as músicas", error); }
   }
   async playCurrent() {
     if (!this.active || !this.tracks.length) return;
-    const track = this.tracks[this.index]; this.audio.src = track.url; this.audio.muted = !audio.on;
+    const track = this.tracks[this.index]; this.audio.src = track.url; this.ultima = track.url; this.audio.muted = !audio.on;
     $("song").textContent = `♪ ${track.nome}`;
     try { await this.audio.play(); }
     catch { $("song").textContent = `♪ Toque em 🔇/🔊 para iniciar: ${track.nome}`; }
