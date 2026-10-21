@@ -18,6 +18,6 @@
 
 ## Verificação
 
-- `node --test tests/corrida-drag.test.mjs tests/corrida-experiencia.test.js tests/corrida-colisao.test.js tests/corrida-robos.test.js`: 33 passam (inclui o teste novo do vácuo que enche o nitro).
-- Faróis e lanternas dos onze modelos conferidos em fotos de frente e de trás; fotos da garagem, da oficina e da largada (Supra, Gallardo e T-Cross) num Chrome sem janela.
+- `node --test tests/corrida-drag.test.mjs tests/corrida-experiencia.test.js tests/corrida-colisao.test.js tests/corrida-robos.test.js`: 33 passaram (inclui o teste novo do vácuo que enche o nitro), antes da aceleração 10% maior; depois dela, não foram rodados de novo.
+- Faróis, lanternas e o banco do motorista dos onze modelos conferidos em fotos de frente e de trás; fotos da garagem, da oficina e da largada (Supra, Gallardo, T-Cross), de dentro da BMW, da Serra numa curva e da casinha na Vila, num Chrome sem janela. Os sons e a tela de carregando não foram conferidos.
 - `tests/e2e/corrida-drag*.spec.js` foram atualizados (onze modelos, teste da garagem), mas não rodados.
