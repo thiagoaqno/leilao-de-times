@@ -1,21 +1,40 @@
-# Cozinha: sopa de 3, estrelas por pessoas, conteúdo novo (bloco 7) e acabamento (bloco 8)
+# Corrida: Mônaco refeito em cima do traçado oficial
 
-Três branches, juntadas nesta ordem: `cozinha-sopa-3`, `cozinha-conteudo` e `cozinha-acabamento`.
+O circuito de Mônaco foi redesenhado do zero, em cima do mapa oficial da F1 (as 19 curvas, os 3 setores e o perfil de
+relevo), e ganhou o cenário de verdade: o porto com os iates, a piscina, as arquibancadas azuis, o túnel embaixo do
+hotel, a Place du Casino e o Rochedo.
 
-## Sopa como no Overcooked e estrelas pelo número de pessoas (`cozinha-sopa-3`)
-- A sopa volta a levar 3 do mesmo ingrediente na panela. A panela aceita até 3, repetidos ou não, e cada um soma o seu tempo de fogo.
-- A meta das estrelas conta pessoas, não cozinheiros. Sozinho, o cozinheiro extra fazia você pegar a meta de dupla. Sozinho, a meta também é uma parte menor do ótimo: 30/50/70% (em equipe, 35/60/85%).
+## O traçado
+- Na ordem: reta dos boxes (Boulevard Albert 1er) → Sainte Dévote → subida da Beau Rivage → Massenet e Casino, em volta
+  do canteiro redondo da Place du Casino → Mirabeau Haute → o grampo do Grand Hotel → Mirabeau Bas → Portier → o túnel
+  (curva longa à direita) → Nouvelle Chicane → Tabac → Piscine (as duas chicanes) → La Rascasse → Anthony Noghès.
+- Os vértices foram tirados do mapa oficial, na mesma posição (dá para pôr um em cima do outro). Volta de ~13 mil, como
+  as outras pistas; os robôs fecham em 66–74 s, na faixa de Tóquio (a outra pista de rua).
+- Relevo do perfil oficial: plano na reta, sobe da Sainte Dévote até o Cassino (o ponto mais alto, curvas 3 e 4), desce
+  por Mirabeau e o grampo até Portier, e do túnel até o fim fica ao nível do mar.
+- Rua estreita: guard-rail colado na pista o tempo todo, sem área de escape e sem barreira de pneus (`muro: true` em
+  `pistas.js`; as outras pistas continuam sem muro). A largada fica a 30% da reta dos boxes (`largada`), como no mapa.
+- A melhor volta guardada de Mônaco era do traçado antigo e os robôs copiariam uma linha que não existe mais: a migração
+  `014-monaco-novo.sql` apaga essa volta, e a próxima volta limpa passa a valer.
 
-## Conteúdo novo, bloco 7 (`cozinha-conteudo`)
-- Receitas: sashimi, sushi de peixe e de pepino, burrito e burrito de arroz, pizza e pizza de queijo. Ingredientes: tortilha, massa e queijo.
-- Forno com assadeira: a massa assa com o tomate e o queijo picados por cima, tudo junto. Só a cobertura não assa. Esquecida, queima.
-- Food truck com a divisória que abaixa e sobe a cada 25 s (pisca antes de mudar).
-- Mundo 2: Balcão de sushi, Food truck de burrito e Pizzaria. Mapa das fases com as estrelas guardadas no navegador (a próxima abre com 1★ na anterior). Cada cozinha com o seu tema (chão e parede).
+## O cenário (`public/corrida/monaco.js`)
+- O mar e o porto Hercule: o chão afunda onde é água, com o cais em linha lisa (`fundoMonaco`), a marina com píeres e
+  iates presos dos dois lados (casco com proa e cabine de dois andares) e os superiates na boca do porto.
+- A piscina entre a Piscine e o porto, e a beira do porto aberta, sem prédio entre a pista e os iates.
+- Arquibancadas azuis lotadas na reta dos boxes, na Sainte Dévote, no cais da chicane ao Tabac e na Piscine.
+- O túnel coberto, com as luzes amarelas no teto, embaixo do hotel (que avança sobre o mar) e do terraço com jardim.
+  Com o carro lá dentro, o teto e o hotel ficam transparentes, senão a câmera de cima não veria nada.
+- A Place du Casino: o canteiro redondo florido, com palmeiras e o chafariz, dentro da curva do Cassino, e o Cassino
+  (fachada creme, torres e telhado de cobre) de frente para a praça.
+- O Rochedo (Monaco-Ville) do outro lado do porto, com o Palácio, a catedral, a cidade velha e os jardins.
+- Prédios mais altos colados na rua, as árvores no morro lá atrás e o chão de pedra clara no lugar da areia.
+- Postes, outdoors, bandeirolas e torcida de `vida.js` não caem mais na água, em cima do túnel nem no meio do grampo.
 
-## Acabamento, bloco 8 (`cozinha-acabamento`)
-- Bolinhas em cima da panela e do prato com cada ingrediente dentro. No prato montando, o que falta aparece tracejado.
-- A plaquinha com o nome do item na mão.
-- E2E de uma sopa inteira só com o teclado.
+## Conserto de passagem
+- Quem voltava para a sala no meio da corrida via Interlagos: a capa do menu era redesenhada por cima e trocava a pista
+  da cena. Agora a capa não redesenha com a corrida andando.
 
 ## Testes
-- `node --test tests/cozinha.test.js tests/salas.test.js` e `npx playwright test tests/e2e/cozinha` no resultado juntado.
+- `npm test` e os E2E da Corrida (`tests/e2e/paginas.spec.js` e `tests/e2e/salas.spec.js`).
+- `tests/corrida-robos.test.js` cobre Mônaco (trechos sem encostar, robôs fecham a volta pelos 12 checkpoints sem sair
+  da pista). O teste do turbo do cogumelo já falhava no `main` antes desta mudança.
