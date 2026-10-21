@@ -16,7 +16,8 @@ const DEBUG = location.hash.includes("debug");
 const LEVE = new URLSearchParams(location.search).has("leve");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 
-// As pistas: todas à noite, retas com curvas leves (`curva`: amplitude e período em metros).
+// As pistas: todas à noite (`curva`: amplitude e período em metros). As três primeiras são retas com curvas leves; a
+// Serra tem curvas de verdade. Em todas o carro esterça sozinho: as faixas acompanham a pista e você só troca de faixa.
 const TRACKS = [
   { id: "ponte", name: "Ponte Estaiada", detail: "Cabos acesos de verde sobre o rio", length: 1400, swatch: "#45651a",
     curva: [9, 1300], ceu: ["#010301", "#0b1307", "#40601a"], nevoa: [0x16200c, 90, 560], hemi: [0xa8d070, 0x0c1008, 0.75], asfalto: "#25282a", molhado: 0.42, luz: 0xd8ff9a },
@@ -24,6 +25,8 @@ const TRACKS = [
     curva: [14, 1700], ceu: ["#010102", "#0a090c", "#3a2412"], nevoa: [0x120c08, 45, 330], hemi: [0xffb066, 0x0a0806, 0.55], asfalto: "#2a2a2c", molhado: 0.5, luz: 0xffa040 },
   { id: "porto", name: "Porto à Noite", detail: "Contêineres, guindastes e chão molhado", length: 1200, swatch: "#0d4a5e",
     curva: [6, 1000], ceu: ["#01030a", "#061626", "#1f5268"], nevoa: [0x0a1a24, 60, 430], hemi: [0x7fd0ff, 0x060a10, 0.6], asfalto: "#1d2328", molhado: 0.3, luz: 0x9fe8ff },
+  { id: "serra", name: "Serra à Noite", detail: "Curvas fechadas descendo a serra: o carro esterça sozinho", length: 1800, swatch: "#2a5a3a",
+    curva: [46, 620], ceu: ["#010203", "#071210", "#24443a"], nevoa: [0x08100e, 40, 300], hemi: [0x9fd8c0, 0x060a08, 0.5], asfalto: "#232527", molhado: 0.38, luz: 0xffb060 },
 ];
 const CARROS = Object.entries(L.CARROS).map(([id, c]) => ({ id, ...c }));
 const NEON_RIVAL = [0xff2a6d, 0x39ff7a, 0xb04dff];
@@ -74,8 +77,12 @@ const loader = new GLTFLoader(), modelCache = new Map();
 let readyModel = null;
 
 // Carrega um GLB uma vez só (o vidro com "transmission" pede uma passada inteira a mais por quadro: vira vidro comum).
+// `progresso[id]`: de 0 a 1, quanto do arquivo já chegou (a garagem e a tela de carregando mostram).
+const progresso = {};
+const aoBaixar = (id) => (e) => { if (e.total) progresso[id] = Math.min(0.99, e.loaded / e.total); atualizarCarregando(); };
 function carregarModelo(id) {
-  if (!modelCache.has(id)) modelCache.set(id, loader.loadAsync(`/corrida/drag/models/${id}.glb`).then((gltf) => {
+  if (!modelCache.has(id)) modelCache.set(id, loader.loadAsync(`/corrida/drag/models/${id}.glb`, aoBaixar(id)).then((gltf) => {
+    progresso[id] = 1; atualizarCarregando();
     gltf.scene.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = Math.min(m.opacity, 0.45); m.needsUpdate = true; } });
     acenderLanternas(gltf);
     return gltf;
@@ -89,6 +96,38 @@ let modelosRivais = [], rivaisProntos = Promise.resolve();
 function sortearRivais() {
   modelosRivais = CARROS.map((c) => c.id).filter((id) => id !== selectedCar).sort(() => Math.random() - 0.5).slice(0, 3);
   rivaisProntos = Promise.allSettled(modelosRivais.map((id) => carregarModelo(id).catch((e) => { console.warn("Drag: modelo do rival não carregou", id, e); throw e; })));
+  rivaisProntos.then(baixarOResto);
+}
+// Com o seu carro e os rivais prontos, os outros carros da garagem vão baixando um por um, sem pressa, para trocar de
+// carro na hora (só o arquivo, que fica no cache do navegador; montar o carro fica para quando ele for escolhido).
+// No celular e com economia de dados ligada, não.
+let baixandoResto = false;
+function baixarOResto() {
+  if (baixandoResto || matchMedia("(pointer: coarse)").matches || navigator.connection?.saveData) return;
+  baixandoResto = true;
+  const fila = CARROS.map((c) => c.id).filter((id) => !modelCache.has(id));
+  const proximo = () => {
+    const id = fila.shift(); if (!id) return;
+    const ocioso = window.requestIdleCallback || ((f) => setTimeout(f, 300));
+    ocioso(() => fetch(`/corrida/drag/models/${id}.glb`, { priority: "low" }).then((r) => r.arrayBuffer()).catch(() => {}).finally(proximo));
+  };
+  proximo();
+}
+// A tela de carregando da largada: seu carro e os três rivais (o quanto já baixou de cada um) e, por fim, a pista.
+let carregandoEtapa = null;
+function atualizarCarregando() {
+  const id = selectedCar, p = progresso[id];
+  if (!readyModel && p !== undefined && p < 1 && phase === "menu") $("carStatus").textContent = `Carregando modelo... ${Math.round(p * 100)}%`;
+  if (!carregandoEtapa) return;
+  const ids = [selectedCar, ...modelosRivais], feito = ids.reduce((a, i) => a + (progresso[i] ?? (modelCache.has(i) ? 0 : 1)), 0) / ids.length;
+  const total = carregandoEtapa === "pista" ? 0.9 + 0.1 * 0.5 : feito * 0.9;
+  $("carregandoBarra").style.width = `${Math.round(total * 100)}%`;
+  $("carregandoTexto").textContent = carregandoEtapa === "pista" ? "Preparando a pista..." : `Chegando os carros · ${ids.filter((i) => (progresso[i] ?? 1) >= 1).length} de ${ids.length}`;
+}
+function mostrarCarregando(etapa) {
+  carregandoEtapa = etapa;
+  $("carregando").classList.toggle("hidden", !etapa);
+  if (etapa) { $("carregandoPista").textContent = TRACKS[selected].name; atualizarCarregando(); }
 }
 function prepareCar() {
   const id = selectedCar;
@@ -277,6 +316,7 @@ function buildWorld() {
 
   if (tr.id === "ponte") montarPonte(tr, L0, L1, luzPool);
   else if (tr.id === "elevado") montarElevado(tr, L0, L1, luzPool);
+  else if (tr.id === "serra") montarSerra(tr, L0, L1, luzPool);
   else montarPorto(tr, L0, L1, luzPool);
   montarLargada(tr);
 }
@@ -419,6 +459,43 @@ function montarPorto(tr, L0, L1, luz) {
   predios(L0 - 200, L1 + 400, 230, 420, 30, 90);
 }
 
+// A serra: paredão de pedra de um lado, a ribanceira com mata do outro, guard-rail, olhos de gato no asfalto, as
+// placas de curva por fora de cada curva e a cidade acesa lá embaixo.
+const CONE_ARVORE = new THREE.ConeGeometry(0.5, 1, 7).translate(0, 0.5, 0); COMPARTILHADOS.add(CONE_ARVORE);
+function montarSerra(tr, L0, L1, luz) {
+  const pedra = mat(0x3b3631, { roughness: 0.95 }), mata = mat(0x0f1a14, { roughness: 1 }), trilho = mat(0xb0b6ba, { metalness: 0.7, roughness: 0.35 });
+  for (const lado of [-1, 1]) {
+    const postinhos = []; for (let z = L0; z < L1; z += 4) postinhos.push({ s: 8.5 * lado, z, y: 0.4, sx: 0.14, sy: 0.8, sz: 0.14 });
+    instanciar(world, CUBO, trilho, postinhos);
+    varrer(world, [[8.4 * lado, 0.5], [8.4 * lado, 0.85]], L0, L1, trilho);
+  }
+  // o paredão à esquerda (s positivo) e a ribanceira à direita
+  varrer(world, [[8.7, 0], [10, 3], [11.5, 9], [16, 17], [26, 22]], L0, L1, pedra, { uvZ: 8 });
+  varrer(world, [[-8.7, 0], [-12, -1], [-40, -26], [-120, -60]], L0, L1, mata, { uvZ: 10 });
+  const arvores = [];
+  for (let z = L0; z < L1; z += 5) {
+    if (Math.random() < 0.8) { const h = 6 + Math.random() * 7; arvores.push({ s: -(13 + Math.random() * 22), z: z + Math.random() * 4, y: -2 - Math.random() * 12, sx: h * 0.45, sy: h, sz: h * 0.45, cor: 0x1c3a26 }); }
+    if (Math.random() < 0.5) { const h = 5 + Math.random() * 6; arvores.push({ s: 17 + Math.random() * 10, z: z + Math.random() * 4, y: 17 + Math.random() * 3, sx: h * 0.45, sy: h, sz: h * 0.45, cor: 0x223f2a }); }
+  }
+  instanciar(world, CONE_ARVORE, mat(0xffffff, { roughness: 1 }), arvores);
+  postes(-1, L0 + 20, L1, 70, { altura: 9, cor: 0xffa040, base: 9.1 });
+  // olhos de gato nas linhas das faixas
+  const olhos = []; for (let z = L0; z < L1; z += 12) for (const s of [3.7, 0, -3.7]) olhos.push({ s, z, y: 0.02, sx: 0.07, sy: 0.03, sz: 0.12 });
+  instanciar(world, CUBO, brilhoMat(0xfff0b0, 1.5), olhos);
+  // placa de curva (as setas) por fora de cada curva fechada
+  const setaMat = new THREE.MeshBasicMaterial({ map: TEX.seta, color: 0xd8d8d8 }), curvatura = (z) => inclin(z + 2) - inclin(z - 2);
+  for (let z = 120; z < tr.length + 200; z += 30) {
+    const k = curvatura(z); if (Math.abs(k) < 0.12) continue;
+    const fora = k > 0 ? -1 : 1; // a curva vira para um lado: a placa fica do outro
+    for (const dz of [-6, 0, 6]) {
+      const pl = colocar(new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.1), setaMat), 9.3 * fora, z + dz, 1.4, Math.PI);
+      if (fora < 0) pl.scale.x = -1; world.add(pl);
+    }
+    z += 60;
+  }
+  predios(L0 - 200, L1 + 400, 300, 520, 24, 60);
+}
+
 function montarLargada(tr) {
   // A árvore de luzes da largada, à esquerda
   const poste = colocar(new THREE.Mesh(CUBO, mat(0x22262a)), 8.9, 5, 2.4); poste.scale.set(0.35, 4.8, 0.35); world.add(poste);
@@ -485,6 +562,12 @@ function enfeitar(root, { L, W, neon = null, altura = 0.72, lanternas = null, fa
     const n = new THREE.Mesh(CHAO, aditivo(TEX.neon, new THREE.Color(neon).multiplyScalar(1.8), 0.95));
     n.scale.set(W * 1.9, 1, L * 1.25); n.position.y = 0.04; root.add(n); ud.neon = n;
   }
+  // a labareda do pop and bang, no escapamento (acende por um instante)
+  ud.estouros = [-1, 1].map((lado) => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.brilho, color: new THREE.Color(0xff8a2a).multiplyScalar(2.5), blending: THREE.AdditiveBlending, depthWrite: false }));
+    sp.position.set(lado * 0.28, 0.38, -L / 2 - 0.25); sp.visible = false; root.add(sp); return sp;
+  });
+  ud.estouroT = 0;
   ud.chamas = [];
   for (const lado of [-1, 1]) {
     const c = new THREE.Mesh(new THREE.ConeGeometry(0.13, 1, 10).rotateX(-Math.PI / 2).translate(0, 0, -0.5), aditivo(null, new THREE.Color(chama).multiplyScalar(2.2), 0.9));
@@ -671,18 +754,20 @@ let largando = false;
 async function start() {
   if (largando) return;
   largando = true; $("start").disabled = true; $("again").disabled = true;
-  $("carStatus").textContent = "Esperando os rivais...";
+  garagem.fecharOficina(); mostrarCarregando("carros");
   audio.unlock(); music.start();
   try {
     const rivais = await Promise.race([rivaisProntos, new Promise((ok) => setTimeout(() => ok([]), 25000))]);
     modelosProntos.clear();
     rivais.forEach((r, i) => { if (r.status === "fulfilled") modelosProntos.set(modelosRivais[i], r.value); });
-    $("carStatus").textContent = "Preparando a pista...";
+    mostrarCarregando("pista");
+    await new Promise((ok) => requestAnimationFrame(() => setTimeout(ok, 0))); // a tela de carregando aparece antes de montar
     iniciarCorrida();
     await aquecer();
     corrida.pronta = true;
   } finally {
-    largando = false; $("start").disabled = false; $("again").disabled = false; $("carStatus").textContent = "Modelo pronto";
+    mostrarCarregando(null);
+    largando = false; $("start").disabled = false; $("again").disabled = false;
   }
 }
 function iniciarCorrida() {
@@ -691,6 +776,7 @@ function iniciarCorrida() {
   garagem.esconder(); buildWorld();
   corrida = L.criarCorrida({ comprimento: tr.length, carro: selectedCar, semente: (Date.now() & 0xffff) + selected * 977 });
   corrida.pronta = false; // o relógio só anda depois do aquecer
+  audio.setPerfil(MODELOS[selectedCar]?.motor);
   montarCarros();
   sortearRivais(); // a próxima corrida já carrega outros rivais
   gasHeld = nitroHeld = brakeHeld = false; cameraShake = 0; primeiroQuadro = true; fimAte = 0;
@@ -753,8 +839,13 @@ $("touch").querySelectorAll("button").forEach((b) => {
 $("touch").addEventListener("contextmenu", (e) => e.preventDefault());
 
 // ---------- Som ----------
+// O som do seu motor, sintetizado com o jeito de cada carro (`motor` em modelos.js). A nota segue as explosões do
+// motor (giro / 60 × cilindros / 4, com os harmônicos por cima); o turbo assobia com o giro e solta a válvula
+// ("psssh") na troca; e tem os pops and bangs: tirar o pé em giro alto solta estalos no escapamento por um instante,
+// e cada troca para cima dá um estouro. `aoEstourar(forte)` avisa o desenho (a labareda no escapamento).
 class EngineAudio {
-  constructor() { this.on = true; this.ctx = null; }
+  constructor() { this.on = true; this.ctx = null; this.perfil = { cil: 6, giro: 7500, turbo: true, aspereza: 0.5 }; this.estalos = 0; this.gasAntes = false; this.aoEstourar = null; }
+  setPerfil(p) { if (p) this.perfil = p; }
   ruido(c) {
     const b = c.createBuffer(1, c.sampleRate, c.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -767,8 +858,20 @@ class EngineAudio {
       this.master = c.createGain(); this.master.gain.value = 0.42; this.master.connect(c.destination);
       this.motor = c.createGain(); this.motor.gain.value = 0; this.filter = c.createBiquadFilter(); this.filter.type = "lowpass";
       this.motor.connect(this.filter).connect(this.master);
-      this.oscs = [1, 0.5, 2].map((ratio, i) => { const o = c.createOscillator(); o.type = i === 1 ? "triangle" : "sawtooth"; const g = c.createGain(); g.gain.value = [0.22, 0.15, 0.04][i]; o.connect(g).connect(this.motor); o.start(); return { o, ratio }; });
+      this.oscs = [[1, "sawtooth", 0.2], [0.5, "triangle", 0.16], [2, "sawtooth", 0.05], [3, "square", 0.025]].map(([ratio, tipo, vol]) => {
+        const o = c.createOscillator(); o.type = tipo; const g = c.createGain(); g.gain.value = vol; o.connect(g).connect(this.motor); o.start(); return { o, ratio, g, vol };
+      });
       const faixa = (tipo, f, q = 1) => { const b = c.createBiquadFilter(); b.type = tipo; b.frequency.value = f; b.Q.value = q; return b; };
+      this.faixa = faixa;
+      // o ronco rasgado: ruído numa faixa que acompanha a nota do motor
+      this.rasgo = c.createGain(); this.rasgo.gain.value = 0; this.rasgoFiltro = faixa("bandpass", 200, 2.5);
+      this.ruido(c).connect(this.rasgoFiltro).connect(this.rasgo).connect(this.filter);
+      // o assobio do turbo
+      this.turbo = c.createOscillator(); this.turbo.type = "sine"; this.turboGain = c.createGain(); this.turboGain.gain.value = 0;
+      this.turbo.connect(this.turboGain).connect(this.master); this.turbo.start();
+      // o ruído guardado para os estalos (cada estalo toca um pedaço dele)
+      this.estaloBuf = c.createBuffer(1, c.sampleRate, c.sampleRate);
+      const d = this.estaloBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       this.wind = c.createGain(); this.wind.gain.value = 0; this.ruido(c).connect(faixa("bandpass", 540)).connect(this.wind).connect(this.master);
       this.chiado = c.createGain(); this.chiado.gain.value = 0; this.ruido(c).connect(faixa("bandpass", 2300, 3)).connect(this.chiado).connect(this.master);
       this.sopro = c.createGain(); this.sopro.gain.value = 0; this.ruido(c).connect(faixa("highpass", 2600)).connect(this.sopro).connect(this.master);
@@ -777,12 +880,22 @@ class EngineAudio {
     }
     if (this.ctx.state === "suspended") this.ctx.resume();
   }
-  update({ speed = 0, rpm = 0, active = false, cut = false, rival = null, distRival = 1e9, gas = false, chiado = 0, nitro = false }) {
-    if (!this.ctx) return; const t = this.ctx.currentTime, on = this.on && active;
+  update({ speed = 0, rpm = 0, active = false, cut = false, rival = null, distRival = 1e9, gas = false, chiado = 0, nitro = false, dt = 0 }) {
+    if (!this.ctx) return; const t = this.ctx.currentTime, on = this.on && active, P = this.perfil;
     const gain = on ? (gas ? 0.085 : 0.035) * (cut ? 0.4 : 1) : 0;
-    const f = 39 + rpm * 95; for (const { o, ratio } of this.oscs) o.frequency.setTargetAtTime(f * ratio, t, 0.03);
-    this.filter.frequency.setTargetAtTime(300 + rpm * 2100, t, 0.05);
+    const giro = 850 + Math.min(1.02, rpm) * (P.giro - 850), f = giro / 60 * P.cil / 4;
+    for (const { o, ratio, g, vol } of this.oscs) { o.frequency.setTargetAtTime(f * ratio, t, 0.03); if (ratio === 3) g.gain.setTargetAtTime(vol * (0.4 + P.aspereza), t, 0.1); }
+    this.filter.frequency.setTargetAtTime(350 + rpm * (gas ? 2600 : 1500), t, 0.05);
     this.motor.gain.setTargetAtTime(gain, t, 0.05);
+    this.rasgoFiltro.frequency.setTargetAtTime(f * 2, t, 0.03);
+    this.rasgo.gain.setTargetAtTime(on ? P.aspereza * (gas ? 0.5 : 0.2) * (0.3 + rpm) : 0, t, 0.06);
+    this.turbo.frequency.setTargetAtTime(1500 + rpm * 2800, t, 0.08);
+    this.turboGain.gain.setTargetAtTime(on && P.turbo && gas ? 0.01 * rpm * rpm : 0, t, 0.15);
+    // tirou o pé em giro alto: os estalos no escapamento por um instante (e a válvula do turbo)
+    if (on && this.gasAntes && !gas && rpm > 0.55) { this.estalos = 0.45 + rpm * 0.8; if (P.turbo) this.valvula(); }
+    this.gasAntes = gas;
+    if (on && this.estalos > 0) { this.estalos -= dt; if (Math.random() < dt * 16) this.estalo(Math.random() < 0.16); }
+    if (!on) this.estalos = 0;
     this.wind.gain.setTargetAtTime(on ? Math.min(0.09, speed * 0.00036) : 0, t, 0.12);
     this.chiado.gain.setTargetAtTime(on ? chiado * 0.05 : 0, t, 0.06);
     this.sopro.gain.setTargetAtTime(on && nitro ? 0.07 : 0, t, 0.08);
@@ -795,7 +908,28 @@ class EngineAudio {
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
     o.connect(g).connect(this.master); o.start(t); o.stop(t + duration);
   }
-  troca(q) { if (q === "perfeita") { this.blip(520, 0.07); setTimeout(() => this.blip(780, 0.09), 70); } else if (q === "boa") this.blip(380, 0.09); else this.blip(170, 0.12, "sawtooth"); }
+  troca(q) {
+    if (q !== "reduziu") { this.estalo(true); if (this.perfil.turbo) this.valvula(); } // o estouro da troca
+    if (q === "perfeita") { this.blip(520, 0.07, "square", 0.04); setTimeout(() => this.blip(780, 0.09, "square", 0.04), 70); } else if (q === "boa") this.blip(380, 0.09, "square", 0.04); else if (q !== "reduziu") this.blip(170, 0.12, "sawtooth", 0.05);
+  }
+  // um estalo do escapamento: um pedacinho de ruído abafado; o forte (o "bang") tem a pancada grave por baixo
+  estalo(forte = false) {
+    if (!this.on || !this.ctx) return; const c = this.ctx, t = c.currentTime;
+    const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), dur = forte ? 0.14 : 0.03 + Math.random() * 0.04;
+    s.buffer = this.estaloBuf; f.type = "lowpass"; f.frequency.value = forte ? 900 : 1100 + Math.random() * 1600;
+    g.gain.setValueAtTime(forte ? 0.42 : 0.14 + Math.random() * 0.1, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f).connect(g).connect(this.master); s.start(t, Math.random() * 0.8, dur + 0.02);
+    if (forte) this.blip(70, 0.16, "sine", 0.22);
+    this.aoEstourar?.(forte);
+  }
+  // a válvula do turbo aliviando: um "psssh" que some
+  valvula() {
+    if (!this.on || !this.ctx) return; const c = this.ctx, t = c.currentTime;
+    const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = this.estaloBuf; f.type = "bandpass"; f.Q.value = 0.8; f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(1400, t + 0.35);
+    g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+    s.connect(f).connect(g).connect(this.master); s.start(t, Math.random() * 0.5, 0.42);
+  }
   batida(forte = false) {
     if (!this.on || !this.ctx) return; const c = this.ctx, t = c.currentTime;
     const s = this.ruido(c), f = c.createBiquadFilter(), g = c.createGain(); f.type = "lowpass"; f.frequency.value = forte ? 900 : 1600;
@@ -806,6 +940,7 @@ class EngineAudio {
   toggle() { this.on = !this.on; $("sound").textContent = this.on ? "🔊" : "🔇"; this.unlock(); }
 }
 const audio = new EngineAudio();
+audio.aoEstourar = (forte) => { const eu = corrida && visual.get(corrida.jogador); if (eu) acenderEstouro(eu, forte); };
 class RaceMusic {
   constructor() {
     this.audio = $("musicAudio"); this.audio.volume = 0.38; this.tracks = []; this.index = 0; this.active = false; this.run = 0;
@@ -976,6 +1111,13 @@ function mostrarResultado() {
 
 // ---------- Desenho de cada quadro ----------
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
+function acenderEstouro(obj, forte) {
+  const ud = obj.userData; if (!ud.estouros) return;
+  ud.estouroT = forte ? 0.12 : 0.06;
+  for (const sp of ud.estouros) sp.scale.setScalar((forte ? 1.3 : 0.7) * (0.8 + Math.random() * 0.4));
+}
+// o pneu canta na curva quando a força para fora passa do ponto
+function curvaChiado(p) { const lateral = Math.abs((p.speed / 3.6) ** 2 * (inclin(p.z + 2) - inclin(p.z - 2)) / 4); return clamp((lateral - 7) / 9, 0, 0.8); }
 function posicionarCarro(obj, p, dt, t) {
   const s = -p.x;
   ponto(s, p.z, 0.02, obj.position);
@@ -986,6 +1128,10 @@ function posicionarCarro(obj, p, dt, t) {
     const acel = ud.vAnt === undefined ? 0 : (p.speed - ud.vAnt) / Math.max(dt, 1e-3); ud.vAnt = p.speed;
     ud.pitch = (ud.pitch || 0) + (clamp(-acel * 0.0016, -0.04, 0.05) - (ud.pitch || 0)) * Math.min(1, dt * 6);
     corpo.rotation.x = ud.pitch;
+    // na curva o carro esterça sozinho e a carroceria deita um pouco para fora
+    const lateral = (p.speed / 3.6) ** 2 * (inclin(p.z + 2) - inclin(p.z - 2)) / 4;
+    ud.roll = (ud.roll || 0) + (clamp(lateral * 0.0035, -0.07, 0.07) - (ud.roll || 0)) * Math.min(1, dt * 5);
+    if (!p.totaled) corpo.rotation.z = ud.roll;
     if (p.totaled) {
       const k = p.foraT || 0;
       corpo.rotation.y = Math.min(1, k) * (p.lane % 2 ? 1.9 : -1.6);
@@ -995,6 +1141,11 @@ function posicionarCarro(obj, p, dt, t) {
     const usando = p.nitroOn && p.nitro > 0 && (p === corrida.jogador ? gasHeld : true) && corrida.fase !== "fim" && !p.totaled;
     for (const c of ud.chamas) { c.visible = usando; if (usando) c.scale.set(1, 1, 0.7 + Math.random() * 0.8); }
     frear(obj, !p.totaled && (p === corrida.jogador ? brakeHeld : p.freio));
+    // os rivais também estouram na troca de marcha
+    if (p !== corrida.jogador && ud.marcha !== undefined && p.gear > ud.marcha) acenderEstouro(obj, Math.random() < 0.4);
+    ud.marcha = p.gear;
+    ud.estouroT = Math.max(0, ud.estouroT - dt);
+    for (const sp of ud.estouros || []) sp.visible = ud.estouroT > 0;
     if (ud.neon) ud.neon.material.opacity = p.totaled ? 0.2 : 0.8 + Math.sin(t * 0.004 + p.z) * 0.1;
     // fumaça dos pneus no aquecimento e quando o carro patina
     const preparo = corrida.fase === "aquecimento" || corrida.fase === "luzes";
@@ -1132,7 +1283,7 @@ function quadro(t) {
     const j = corrida.jogador, vivo = phase === "race" || phase === "burnout" || phase === "countdown";
     const rival = corrida.pilotos.slice(1).reduce((b, r) => !b || Math.abs(r.z - j.z) < Math.abs(b.z - j.z) ? r : b, null);
     audio.update({ speed: j.speed, rpm: j.rpm, active: vivo, cut: j.shiftCut > 0, rival, distRival: rival ? Math.hypot(rival.z - j.z, (rival.x - j.x) * 2) : 1e9,
-      gas: gasHeld, chiado: corrida.fase === "corrida" ? clamp((1 - j.grip) * 3, 0, 1) * (gasHeld ? 1 : 0) : (gasHeld && j.rpm > 0.45 ? 0.6 : 0), nitro: document.body.classList.contains("nitro") });
+      gas: gasHeld, chiado: corrida.fase === "corrida" ? Math.max(clamp((1 - j.grip) * 3, 0, 1) * (gasHeld ? 1 : 0), curvaChiado(j)) : (gasHeld && j.rpm > 0.45 ? 0.6 : 0), nitro: document.body.classList.contains("nitro"), dt });
   }
   if (usarBloom) composer.render(); else renderer.render(scene, camera);
 }

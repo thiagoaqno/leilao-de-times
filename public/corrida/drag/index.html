@@ -47,6 +47,11 @@ body[data-phase=race] .wordmark,body[data-phase=burnout] .wordmark,body[data-pha
 body.na-oficina .oficina{display:block}body.na-oficina .encontro,body.na-oficina .carro-painel{display:none}
 .linha-of{margin:0 0 12px}.linha-of b{display:block;font:italic 800 14px var(--hud);letter-spacing:.1em;color:#d8d0e6;text-transform:uppercase;margin-bottom:6px}.amostras{display:flex;flex-wrap:wrap;gap:7px}
 .amostra{width:30px;height:30px;border-radius:50%;border:2px solid #ffffff40;background:var(--c);padding:0;box-shadow:inset 0 -6px 10px #0006}.amostra.vazia{background:repeating-linear-gradient(45deg,#fff3 0 3px,transparent 3px 7px)}.amostra.on{border-color:#fff;box-shadow:0 0 0 2px var(--rosa),0 0 12px var(--c)}.amostra:hover{transform:scale(1.08)}
+.carregando{position:fixed;inset:0;z-index:7;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 50% 60%,#2a0f33f0,#05030af8 70%)}
+.carregando>div{width:min(460px,100%);text-align:center}.carregando .eyebrow{color:var(--ciano)}
+.carregando h2{font:italic 900 clamp(38px,7vw,64px)/.95 var(--hud);margin:10px 0 18px;text-transform:uppercase;color:#fff;text-shadow:0 0 18px #ff2bd688}
+.carregando-trilho{height:10px;background:#ffffff1c;transform:skewX(-20deg);overflow:hidden;border:1px solid #ffffff30}.carregando-trilho i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ciano),var(--rosa));box-shadow:0 0 12px var(--rosa);transition:width .25s}
+.carregando p{font:italic 800 15px var(--hud);letter-spacing:.12em;color:#d8d0e6;text-transform:uppercase;margin:12px 0 0}
 body[data-phase=menu] .vignette{background:radial-gradient(ellipse at 55% 50%,transparent 45%,#000c 100%)}
 
 /* HUD de corrida (no jeito do Underground 2) */
@@ -94,14 +99,14 @@ body[data-phase=menu] .vignette{background:radial-gradient(ellipse at 55% 50%,tr
 @media(max-width:650px){.top{padding-left:12px;padding-right:12px}.wordmark{font-size:17px}.screen{align-items:start;padding-top:92px}.lobby{padding:calc(42vh + 10px) 12px 16px}.panel h1{font-size:62px}.intro{font-size:14px}.lobby h1{font-size:44px}
 .box{top:calc(50px + env(safe-area-inset-top));right:8px;min-width:0;padding:4px 10px 6px 20px}.box .pos{font-size:38px}.box .pos small{font-size:24px}.box .vel{font-size:28px}.box .tempo{font-size:16px}
 .rota{top:calc(54px + env(safe-area-inset-top));left:12px;transform:none;width:44vw}.tach{width:118px;height:52vh}.n2o{width:84px;height:32vh}#gear{font-size:80px}.preparo{top:calc(150px + env(safe-area-inset-top))}.preparo h2{font-size:26px}}
-@media(prefers-reduced-motion:reduce){.pisca,.relogio i{animation:none}.track{transition:none}.impact.flash,.callout.pop{animation:none}.hud.enchendo .n2o svg{filter:drop-shadow(0 0 10px #27b4ff) drop-shadow(0 2px 6px #000c)}.hud.enchendo #vacuoBox{color:#9fe4ff}
+@media(prefers-reduced-motion:reduce){.carregando-trilho i{transition:none}.pisca,.relogio i{animation:none}.track{transition:none}.impact.flash,.callout.pop{animation:none}.hud.enchendo .n2o svg{filter:drop-shadow(0 0 10px #27b4ff) drop-shadow(0 2px 6px #000c)}.hud.enchendo #vacuoBox{color:#9fe4ff}
 .nitrofx{transition:none}}
 </style>
 <script type="importmap">{"imports":{"three":"/vendor/three/three.module.js","three/addons/":"/vendor/three-addons/"}}</script>
 </head>
 <body data-phase="menu">
 <canvas id="view" aria-label="Pista de drag em 3D"></canvas><div class="vignette"></div><div class="nitrofx"></div><div class="impact" id="impact"></div>
-<header class="top"><a href="/corrida/" aria-label="Voltar para Corrida da Galera">← Corrida</a><div class="wordmark">RACHA <span>DA MEIA-NOITE</span></div><div class="spacer"></div><button id="sound" aria-label="Ativar ou desativar som" title="Som">🔊</button></header>
+<header class="top"><a href="/" aria-label="Voltar para a Vila">← Vila</a><div class="wordmark">RACHA <span>DA MEIA-NOITE</span></div><div class="spacer"></div><button id="sound" aria-label="Ativar ou desativar som" title="Som">🔊</button></header>
 
 <main id="menu" class="screen lobby"><div class="lobby-grid">
   <section class="encontro">
@@ -158,6 +163,7 @@ body[data-phase=menu] .vignette{background:radial-gradient(ellipse at 55% 50%,tr
   <table class="tabela" id="tabela"></table>
   <div class="actions"><button class="secundario" id="garage">← Garagem</button><button class="primary" id="again">Correr de novo →</button></div>
 </div></section>
+<div id="carregando" class="carregando hidden" role="status" aria-live="polite"><div><div class="eyebrow">Indo para o ponto</div><h2 id="carregandoPista">Ponte Estaiada</h2><div class="carregando-trilho"><i id="carregandoBarra"></i></div><p id="carregandoTexto">Chegando os carros</p></div></div>
 <audio id="musicAudio" preload="none"></audio>
 <script type="module" src="/corrida/drag/main.js"></script>
 </body></html>

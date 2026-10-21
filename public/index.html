@@ -385,6 +385,10 @@ const GAMES = [
   // autódromo no fim da vila, depois da rua de baixo: concreto e telhado de bandeira quadriculada
   { id: "corrida", url: "/corrida/", icon: "🏁", sign: "CORRIDA", name: "Autódromo", desc: "Carros esportivos em 3D (inspirados no R34, AE86, Mustang...) em Mônaco, Interlagos, Tóquio, Los Angeles e Rio, com vácuo, fantasma do seu recorde e lombadas para voar!", meta: "Corrida da Galera · 1 a 8 pilotos",
     x: 31, y: 30, w: 10, h: 5, doors: [35, 36], bairro: "autodromo", roof: "#f4f4f4", roof2: "#151515", wall: "#9aa0a8", wall2: "#7d838c", race: true },
+  // a garagem do Drag, entre o MASP e a Consolação: galpão escuro com a pista de arrancada pintada no telhado, a árvore
+  // de luzes da largada e o neon rosa em volta
+  { id: "drag", url: "/corrida/drag/", icon: "🌙", sign: "DRAG", name: "Garagem do Drag", desc: "Racha à meia-noite: quatro faixas, câmbio na mão, nitro e vácuo. Onze carros, e a oficina para deixar o seu com pintura, neon e chama do seu jeito.", meta: "Drag da Galera · você contra três rivais",
+    x: 41, y: 30, w: 5, h: 4, doors: [43], bairro: "autodromo", roof: "#1c1a22", roof2: "#2c2934", wall: "#3a3440", wall2: "#2a2530", drag: true },
   // bunker no canto de baixo, à direita do autódromo: paredes de saco de areia e um alvo pintado no telhado
   { id: "tiro", url: "/tiro/", icon: "🎯", sign: "TIRO", name: "Arena de Tiro", desc: "FPS em rodadas no estilo CS, x1 ou x2, com AK-47 e AWP numa arena no deserto. Precisa de teclado e mouse.", meta: "Tiro da Galera · x1 ou x2",
     x: 44, y: 31, w: 5, h: 4, doors: [46], bairro: "autodromo", roof: "#5b6440", roof2: "#4a5234", wall: "#b8a77a", wall2: "#9a8a60", tiro: true },
@@ -433,7 +437,7 @@ const GAMES = [
 const POSICOES = {
   banco: [3, 3, 8, 5], uno: [13, 3, 7, 5], truco: [25, 3, 8, 5], sinuca: [35, 3, 7, 5], domino: [49, 3, 7, 5], rumi: [58, 3, 7, 5], proibida: [71, 3, 7, 5], bloqueio: [80, 3, 6, 5],
   digita: [3, 11, 6, 4], tenis: [12, 11, 7, 4], carreira: [49, 11, 6, 4], ginasio: [57, 11, 7, 4], futevolei: [71, 11, 6, 4], haxball: [79, 11, 7, 4],
-  corrida: [3, 29, 10, 5], tiro: [15, 30, 5, 4], leilao: [27, 29, 13, 5], rocket: [49, 30, 8, 4], batalha: [59, 30, 7, 4], pelada: [71, 30, 7, 4], jogador: [80, 30, 6, 4],
+  corrida: [3, 29, 10, 5], tiro: [15, 30, 5, 4], leilao: [27, 29, 13, 5], drag: [41, 30, 5, 4], rocket: [49, 30, 8, 4], batalha: [59, 30, 7, 4], pelada: [71, 30, 7, 4], jogador: [80, 30, 6, 4],
   ludo: [25, 38, 5, 3], naruto: [40, 38, 5, 3], botao: [58, 38, 5, 3], cozinha: [5, 37, 11, 4],
 };
 const portas = (x, w) => (w >= 8 ? [x + (w >> 1) - 1, x + (w >> 1)] : [x + (w >> 1)]);
@@ -741,6 +745,18 @@ function drawBuilding(c, g) {
     const linhas = ["##############", "#gggwwgggwwggg#", "#gggwwgggwwggg#", "#ggwwwwwwwwwgg#", "#gggwwwwwwwggg#", "#ggggwwgwwgggg#", " #gggwgggwggg# ", "  #ggggggggg#  ", "   #ggggggg#   ", "    #ggggg#    ", "     #####     "];
     const cor = { "#": "#d4af37", g: "#2e8b57", w: "#f4f1e6" };
     linhas.forEach((l, j) => [...l].forEach((ch, i) => { if (cor[ch]) px(c, cor[ch], ex + i, ey + j, 1, 1); }));
+  }
+  if (g.drag) { // telhado de asfalto com a pista de arrancada: duas faixas, a largada quadriculada, a árvore de luzes e o neon
+    const fy = Y + 2, fh = roofH - 6, meio = fy + Math.round(fh / 2);
+    px(c, "#15141a", rx, Y, rw, roofH - 3);
+    for (let xx = rx + 3; xx < rx + rw - 3; xx += 6) px(c, "#d9d4c4", xx, meio, 3, 1); // a faixa do meio
+    for (let yy = fy; yy < fy + fh; yy += 2) px(c, (yy - fy) % 4 ? "#f4f4f0" : "#15141a", rx + 6, yy, 2, 2), px(c, (yy - fy) % 4 ? "#15141a" : "#f4f4f0", rx + 8, yy, 2, 2);
+    px(c, "#2a2833", rx + rw - 9, fy, 5, fh); // a árvore de luzes, no fim da pista
+    for (let k = 0; k < 3; k++) px(c, "#ffb21c", rx + rw - 8, fy + 2 + k * 4, 3, 3);
+    px(c, "#3dff7a", rx + rw - 8, fy + 14, 3, 3);
+    px(c, "#ff2bd6", rx, Y, rw, 1); px(c, "#2be8ff", rx, Y + roofH - 4, rw, 1); // o neon em volta
+    px(c, "#ff2bd6", rx, Y, 1, roofH - 3); px(c, "#ff2bd6", rx + rw - 1, Y, 1, roofH - 3);
+    px(c, "#ff2bd6", X + 2, Y + H - 5, W - 4, 1); // o neon embaixo da fachada
   }
   if (g.rocket) { // telhado metade azul, metade laranja, com a bola gigante no meio
     px(c, "#2f6fde", rx, Y, rw / 2, roofH - 3); px(c, "#e0742a", rx + rw / 2, Y, rw / 2, roofH - 3);
