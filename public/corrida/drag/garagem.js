@@ -7,7 +7,7 @@ import { PINTURAS, NEONS, FAROIS, CHAMAS, visualDe, salvarVisual } from "./model
 
 const $ = (id) => document.getElementById(id);
 
-export function criarGaragem({ scene, pmrem, fotoNoitePronta, aplicarAmbiente, canvasTex, TEX, placa, brilhoMat, aditivo, carroProcedural, soltarCarro, remontar }) {
+export function criarGaragem({ scene, pmrem, fotoNoitePronta, fotoAsfalto, aplicarAmbiente, canvasTex, TEX, placa, brilhoMat, aditivo, carroProcedural, soltarCarro, remontar }) {
   const grupo = new THREE.Group(); grupo.visible = false; scene.add(grupo);
   const CUBO = new THREE.BoxGeometry(1, 1, 1), CHAO = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
   const mat = (color, opt = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.1, ...opt });
@@ -33,11 +33,15 @@ export function criarGaragem({ scene, pmrem, fotoNoitePronta, aplicarAmbiente, c
   });
 
   // O asfalto molhado, com as poças refletindo o neon
-  const asfalto = canvasTex(512, 512, (g, w, h) => {
+  // o asfalto da rua: a mesma foto de asfalto da pista (main.js), escurecida e molhada
+  const pintarAsfalto = (g, w, h) => {
     g.fillStyle = "#1a1b20"; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 12000; i++) { const c = 18 + Math.random() * 30; g.fillStyle = `rgba(${c},${c},${c + 6},${Math.random() * 0.6})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    if (fotoAsfalto.complete && fotoAsfalto.naturalWidth) { g.drawImage(fotoAsfalto, 0, 0, w, h); g.globalAlpha = 0.5; g.fillRect(0, 0, w, h); g.globalAlpha = 1; }
+    else for (let i = 0; i < 12000; i++) { const c = 18 + Math.random() * 30; g.fillStyle = `rgba(${c},${c},${c + 6},${Math.random() * 0.6})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
     g.fillStyle = "#d9d9d0"; for (let x = 0; x < w; x += 128) g.fillRect(x, h * 0.62, 64, 6); // a faixa da rua
-  }, { repetir: true });
+  };
+  const asfalto = canvasTex(512, 512, pintarAsfalto, { repetir: true });
+  if (!fotoAsfalto.complete) fotoAsfalto.addEventListener("load", () => { pintarAsfalto(asfalto.image.getContext("2d"), 512, 512); asfalto.needsUpdate = true; }, { once: true });
   asfalto.repeat.set(10, 10);
   const chao = new THREE.Mesh(new THREE.PlaneGeometry(120, 120).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: asfalto, roughness: 0.22, metalness: 0.35, envMapIntensity: 1.6 }));
   grupo.add(chao);

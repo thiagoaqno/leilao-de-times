@@ -3,6 +3,11 @@
 Uso: python tools/importar-carros-drag.py C:/caminho/dos/zips
 Importa só os carros que estiverem na pasta. Não extrai caminhos do ZIP no disco; lê apenas os recursos referidos
 pelo glTF. Sem license.txt, a licença sai dos dados do próprio GLB (asset.extras, como o Sketchfab exporta).
+
+Depois, comprima cada GLB (malha com meshopt, texturas em WebP de até 1024 px; o drag já liga o MeshoptDecoder):
+  npx @gltf-transform/cli optimize carro.glb carro.glb --compress meshopt --texture-compress webp --texture-size 1024 --simplify false --palette false
+Sem simplificar (os faróis e o banco de modelos.js continuam no lugar) e sem palette (que juntaria a pintura com
+outros materiais).
 """
 import json
 import mimetypes
