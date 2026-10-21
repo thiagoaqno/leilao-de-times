@@ -20,14 +20,27 @@ test("recordes: só os 5 mais rápidos ficam, cada piloto uma vez, com a melhor 
   assert.strictEqual(bd.recordesCorrida().monaco, undefined, "cada pista tem o seu quadro");
 });
 
-test("traçados dos bots: guarda cinco pilotos diferentes e só melhora a própria volta", () => {
+test("voltas dos bots: cinco por piloto, traçado da melhor de cada um e ritmo pela média", () => {
   const s = [[0, 1, 2, 0, 0, 0]];
-  for (const [piloto, tempo] of [["Ana", 50], ["Bia", 51], ["Caio", 52], ["Duda", 53], ["Edu", 54]])
-    assert.equal(bd.salvarVoltaCorrida("interlagos", tempo, "equilibrado", piloto, s), true);
-  assert.equal(bd.salvarVoltaCorrida("interlagos", 55, "equilibrado", "Fabi", s), false);
-  assert.equal(bd.salvarVoltaCorrida("interlagos", 49, "equilibrado", "ANA", s), true);
+  assert.deepStrictEqual([50, 52, 49, 55, 51, 53].map((t) => bd.salvarVoltaCorrida("interlagos", t, "equilibrado", "Ana", s)), [2, 1, 2, 1, 1, 1]);
+  assert.equal(bd.salvarVoltaCorrida("interlagos", 60, "equilibrado", "ana", s), 0, "mais lenta que as cinco dela: fica de fora");
+  for (const [piloto, tempo] of [["Bia", 51], ["Caio", 52], ["Duda", 53], ["Edu", 54], ["Fabi", 70]]) bd.salvarVoltaCorrida("interlagos", tempo, "equilibrado", piloto, s);
   assert.deepStrictEqual(bd.melhoresTracadosCorrida("interlagos").map((v) => [v.piloto, v.tempo]),
-    [["ANA", 49], ["Bia", 51], ["Caio", 52], ["Duda", 53], ["Edu", 54]]);
+    [["Ana", 49], ["Bia", 51], ["Caio", 52], ["Duda", 53], ["Edu", 54]]);
+  assert.deepStrictEqual(bd.ritmoCorrida("interlagos", ["ANA"]), { tempo: 51, pilotos: 1, voltas: 5 }, "média das cinco melhores da Ana");
+  assert.strictEqual(bd.ritmoCorrida("interlagos", ["Ana", "Fabi"]).tempo, (51 + 70) / 2, "cada piloto pesa igual");
+  assert.strictEqual(bd.ritmoCorrida("interlagos", ["Zeca"]), null);
+  assert.strictEqual(bd.ritmoCorrida("monaco"), null);
+});
+
+test("voltas dos bots: a migração 017 traz os traçados que já estavam guardados", () => {
+  const db = bd.abrir();
+  db.exec(`DELETE FROM migracoes WHERE nome = '017-corrida-voltas-piloto.sql'; DROP TABLE corrida_voltas_piloto;
+    CREATE TABLE corrida_tracados (pista TEXT NOT NULL, chave TEXT NOT NULL, piloto TEXT NOT NULL, tempo REAL NOT NULL, carro TEXT NOT NULL, dados TEXT NOT NULL, feita_em INTEGER NOT NULL, PRIMARY KEY (pista, chave));
+    INSERT INTO corrida_tracados VALUES ('rio', 'zeca', 'Zeca', 61.5, 'tanque', '[[0,1,2,0,0,0]]', 1);`);
+  bd.migrar(db);
+  assert.deepStrictEqual(bd.melhoresTracadosCorrida("rio").map((v) => [v.piloto, v.tempo, v.carro]), [["Zeca", 61.5, "tanque"]]);
+  assert.strictEqual(bd.ritmoCorrida("rio").tempo, 61.5);
 });
 
 test("recordes: a migração traz a melhor volta que já estava guardada", () => {

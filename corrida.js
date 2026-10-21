@@ -7,7 +7,7 @@ const T = require("./public/corrida/pistas.js");
 const Itens = require("./corrida-itens.js");
 const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servidor)
 const bd = require("./bd.js");
-Robos.usarFonte((pista) => bd.melhoresTracadosCorrida(pista)); // até cinco linhas humanas por pista
+Robos.usarFonte((pista) => bd.melhoresTracadosCorrida(pista), (pista, nomes) => bd.ritmoCorrida(pista, nomes)); // até cinco linhas humanas e o ritmo de quem joga
 const { SKINS } = require("./public/pelada/campo.js"); // o piloto do kart usa as skins da Pelada
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
@@ -65,6 +65,7 @@ module.exports = function attachCorrida(io) {
     ids.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, lapStart: null, lastPos: 0 }));
     Itens.start(room);
     Robos.largar(room);
+    if (room.ritmoRobos) { const tt = room.ritmoRobos; log(room, `🤖 Os robôs miram voltas de ${Math.floor(tt / 60)}:${(tt % 60).toFixed(1).padStart(4, "0")} (pela média das 5 melhores voltas de quem está na sala).`); }
     if (room.order.some((id) => room.players[id].bot)) {
       let tique = 0;
       const emit = (event, data) => nsp.to(room.code).emit(event, data);
@@ -260,9 +261,10 @@ module.exports = function attachCorrida(io) {
       if (!s.every((a) => Array.isArray(a) && a.length === 6 && a.every(Number.isFinite) && a[1] >= 0 && a[2] >= 0 && a[1] <= t.world && a[2] <= t.world)) return;
       if (Math.abs((s[s.length - 1][0] - s[0][0]) / 1000 - me.last) > 1.5) return;
       me.voltaEnviada = me.laps;
-      let nova = false;
+      let nova = 0;
       try { nova = bd.salvarVoltaCorrida(pista, me.last, me.car, me.name, s); } catch (e) { console.warn("Corrida: volta não guardada", e.message); }
-      if (nova && Robos.aprender(pista, bd.melhoresTracadosCorrida(pista))) { log(room, `🤖 Os robôs aprenderam a volta de ${me.name} em ${t.name}.`); broadcast(room); }
+      // o ritmo (as cinco melhores de cada um) vale na próxima largada; a linha muda só com a melhor volta do piloto
+      if (nova === 2 && Robos.aprender(pista, bd.melhoresTracadosCorrida(pista))) { log(room, `🤖 Os robôs aprenderam a volta de ${me.name} em ${t.name}.`); broadcast(room); }
     });
 
     // posição do meu carro (10 por segundo): vai para os outros
