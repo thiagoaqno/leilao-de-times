@@ -59,6 +59,15 @@ test("toda cozinha do catálogo dá para jogar: lugares no chão, bancadas alcan
   }
 });
 
+test("as fases do terceiro mundo reutilizam cardápios em plantas diferentes", () => {
+  for (const [nova, original] of [["3-1", "2-1"], ["3-2", "1-3"], ["3-3", "1-3"]]) {
+    assert.deepStrictEqual(K.COZINHAS[nova].receitas, K.COZINHAS[original].receitas);
+    assert.deepStrictEqual(K.COZINHAS[nova].legenda, K.COZINHAS[original].legenda);
+    assert.notDeepStrictEqual(K.COZINHAS[nova].mapa, K.COZINHAS[original].mapa);
+  }
+  assert.notDeepStrictEqual(K.COZINHAS["3-2"].mapa, K.COZINHAS["3-3"].mapa);
+});
+
 test("juntar: só entra na panela o que está picado, o prato só aceita o que é de alguma receita", () => {
   const card = ["sopa_cebola", "hamburguer_alface"];
   const pan = K.novoRec("panela");
