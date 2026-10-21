@@ -1,5 +1,5 @@
 // Corrida da Galera — a física do kart (arcade com aderência e relevo).
-import { SECTORS, E, carOf, tipoCarro, socket, sNow, me, P, checkpoint } from "./estado.js";
+import { SECTORS, E, carOf, socket, sNow, me, P, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { trackFrame, groundH } from "./pista.js";
 import { race, keys, nearest } from "./jogo.js";
@@ -101,9 +101,9 @@ export function physics(dt, spec = carOf(me())) {
   // batida com os outros carros (cada um empurra o outro; quem está em outro nível, viaduto ou no ar, passa por cima)
   if (!air) for (const [id, gh] of race.ghosts) {
     if (Math.abs((gh.z || 0) - c.z) > 12 || !me()) continue;
-    const pl = P(id), outro = CARS3[tipoCarro(pl)] || CARS3.equilibrado, meuTipo = tipoCarro(me());
-    const eu = { x: c.x, y: c.y, a: c.a, vx: c.vx, vy: c.vy, L: (CARS3[meuTipo] || CARS3.equilibrado).L * KS, W: (CARS3[meuTipo] || CARS3.equilibrado).W * KS, massa: MASSA[meuTipo] || 1 };
-    const forca = baterNoOutro(eu, { x: gh.x, y: gh.y, a: gh.a, v: gh.v || 0, L: outro.L * KS, W: outro.W * KS, massa: MASSA[tipoCarro(pl)] || 1 });
+    const pl = P(id), outro = CARS3[pl && pl.car] || CARS3.equilibrado;
+    const eu = { x: c.x, y: c.y, a: c.a, vx: c.vx, vy: c.vy, L: (CARS3[me().car] || CARS3.equilibrado).L * KS, W: (CARS3[me().car] || CARS3.equilibrado).W * KS, massa: MASSA[me().car] || 1 };
+    const forca = baterNoOutro(eu, { x: gh.x, y: gh.y, a: gh.a, v: gh.v || 0, L: outro.L * KS, W: outro.W * KS, massa: MASSA[pl && pl.car] || 1 });
     if (forca > 0 || eu.x !== c.x || eu.y !== c.y) {
       c.x = eu.x; c.y = eu.y; c.vx = eu.vx; c.vy = eu.vy;
       const f = Math.cos(c.a), g = Math.sin(c.a); c.v = c.vx * f + c.vy * g;

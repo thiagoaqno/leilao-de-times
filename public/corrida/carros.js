@@ -2,7 +2,6 @@
 import * as THREE from "three";
 import { scene } from "./cena.js";
 import { montarF1, animarF1, soltarF1, f1Pronto, coresDa, TAM } from "./f1.js";
-import { prepararCarroDrag, montarCarroDrag, carroDragPronto } from "./carros-drag.js";
 let kartChegou = false; f1Pronto.then(() => { kartChegou = true; }); // a foto da garagem é refeita quando o modelo 3D chega
 import { faiscas } from "./efeitos.js";
 
@@ -19,11 +18,11 @@ export const CARS3 = {
 export const KS = 10; // metros do modelo -> unidades da pista
 export const MODS3 = window.Pistas.MODS, MODS_PADRAO = window.Pistas.MODS_PADRAO;
 // leve: o modelo com menos triângulos e sem sombra projetada (os carros dos outros; a sombra redonda no chão fica)
-export function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene, leve = false, carDrag = null) {
+export function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene, leve = false) {
   const tipo = CARS3[model] ? model : "equilibrado", spec = CARS3[tipo], md = { ...MODS_PADRAO, ...(mods || {}) };
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   const [cor1, cor2] = coresDa(md.pintura, color);
-  let kt = montarF1({ cor: ghost ? "#ffd23f" : cor1, cor2: ghost ? "#ffffff" : cor2, leve: leve || ghost });
+  const kt = montarF1({ cor: ghost ? "#ffd23f" : cor1, cor2: ghost ? "#ffffff" : cor2, leve: leve || ghost });
   const sc = spec.L / TAM; kt.g.scale.setScalar(sc * KS); body.add(kt.g);
   if (name) {
     const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
@@ -58,21 +57,6 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
     if (ghost) for (const m of kt.mats) { m.transparent = true; m.opacity = 0.5; m.depthWrite = false; }
   };
   kt.aoMontar = pronto; pronto();
-  if (carDrag && !ghost) {
-    const trocar = () => {
-      if (k.solto) return;
-      const novo = montarCarroDrag(carDrag, color, leve);
-      if (!novo) return;
-      soltarF1(kt); body.remove(kt.g);
-      kt = { ...novo, rodas: [], volante: null, piloto: new THREE.Object3D() };
-      k.kt = kt; k.sc = spec.L / 4.6;
-      kt.g.scale.setScalar(k.sc * KS); body.add(kt.g);
-      for (const f of chamas) kt.g.add(f);
-      k.roof = kt.piloto; pronto();
-    };
-    if (carroDragPronto(carDrag)) trocar();
-    else prepararCarroDrag(carDrag).then(trocar).catch(() => {});
-  }
   return k;
 }
 // pitch: o bico sobe na subida e desce na descida (o relevo vem de quem chama); lean/roll: inclina para o lado.
@@ -105,7 +89,7 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
   }
 }
 export function dropKart(k) {
-  if (!k) return; k.solto = true; (k.target || scene).remove(k.g);
+  if (!k) return; (k.target || scene).remove(k.g);
   soltarF1(k.kt); for (const f of k.chamas || []) f.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
 }
 
