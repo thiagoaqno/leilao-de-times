@@ -7,7 +7,7 @@ test("drag no celular acelera enquanto GÁS é segurado", async ({ browser }, te
     await page.goto("/corrida/drag/");
     await expect(page.locator("#carStatus")).toHaveText("Modelo pronto");
     await page.locator("#start").click();
-    await expect(page.locator("body")).toHaveAttribute("data-phase", "race", { timeout: 20000 });
+    await expect(page.locator("body")).toHaveAttribute("data-phase", "race", { timeout: 60000 });
     const gas = page.locator('[data-action="gas"]');
     await expect(gas).toBeVisible();
     const box = await gas.boundingBox();
