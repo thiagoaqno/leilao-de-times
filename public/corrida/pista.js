@@ -353,8 +353,9 @@ function landmarksRio(tr, add, r, size, ribbon) {
   for (let k = -6; k < 6; k++) { const arch = new THREE.Mesh(new THREE.TorusGeometry(span / 2 - 5, 3, 6, 12, Math.PI), white); arch.position.set(0, 62, (k + 0.5) * span); arch.rotation.y = Math.PI / 2; g.add(arch); }
 }
 let worldOn = null;
-export function useTrack(tr) {
-  if (worldOn === tr) return;
+// devolve a promessa do céu (resolve quando a foto chegou e foi aplicada, ou na hora se ela não vem)
+export function useTrack(tr, podeMudarLuz) {
+  if (worldOn === tr) return Promise.resolve();
   if (worldOn) scene.remove(worldOn.grp);
   worldOn = tr; scene.add(tr.grp);
   const L = tr.look;
@@ -362,7 +363,7 @@ export function useTrack(tr) {
   hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2];
   sun.color.set(L.sun[0]); sun.intensity = L.sun[1];
   if (tr.sky) tr.sky.visible = true;
-  aplicarCeu(tr, L).then(() => { if (worldOn === tr && tr.sky && scene.background) tr.sky.visible = false; }); // a foto do céu chegou: sai o degradê
+  return aplicarCeu(tr, L, podeMudarLuz).then(() => { if (worldOn === tr && tr.sky && scene.background) tr.sky.visible = false; }); // a foto do céu chegou: sai o degradê
 }
 
 // quando os enfeites do Kenney chegam, as pistas que já tinham sido montadas com formas simples são refeitas

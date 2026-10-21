@@ -2,7 +2,7 @@
 import { E, socket, $, store, relogio, toast } from "./estado.js";
 import { Sound } from "./sons.js";
 import { show, renderLobby } from "./menus.js";
-import { race, startRace, stopRace, nearest } from "./jogo.js";
+import { race, startRace, stopRace, nearest, prepararPista } from "./jogo.js";
 import { checkMyLap, renderResults } from "./hud.js";
 import { onBox, onUse, onHit, onBoom, setHazards } from "./itens.js";
 
@@ -41,11 +41,14 @@ socket.on("recorde", (r) => {
   const eu = E.ME && E.S && E.S.players.find((p) => p.id === E.ME.id), meu = eu && eu.name === r.piloto;
   toast(r.pos === 1 ? `${meu ? "Você bateu" : `${r.piloto} bateu`} o recorde da pista: ${r.tempo.toFixed(3)} s!` : `${meu ? "Você entrou" : `${r.piloto} entrou`} no quadro de recordes: ${r.pos}º, ${r.tempo.toFixed(3)} s.`, 4000);
 });
+// a pista escolhida no lobby já vai sendo montada, com a foto do céu, para a largada não travar (jogo.js, prepararPista)
+let preparada = null;
+const preparar = (id) => { if (id && id !== preparada) { preparada = id; try { prepararPista(id); } catch (e) { console.warn("Corrida: pista não preparada", e); } } };
 // ---------- estado vindo do servidor ----------
 socket.on("state", (st) => {
   relogio.doEstado(st.now);
   const old = E.S; E.S = st;
-  if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); return; }
+  if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista); return; }
   show("race");
   if (!race || race.startAt !== st.startAt) startRace(st);
   if (old && old.phase === "race" && st.phase === "results") Sound.finish();

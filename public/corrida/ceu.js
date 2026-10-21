@@ -48,19 +48,28 @@ function carregar(id) {
   }).catch(() => null));
   return cache.get(id);
 }
-// troca o céu ao trocar de pista (enquanto a foto não chega, fica a cor lisa do tema)
-export function aplicarCeu(tr, look) {
-  atual = tr.id; scene.background = null; scene.environment = null; tr.sol = null;
+// troca o céu ao trocar de pista (enquanto a foto não chega, fica a cor lisa do tema).
+// A luz da foto (scene.environment) muda o shader de TODOS os materiais: o Three.js recompila tudo de uma vez, e a
+// página trava meio segundo. Com o carro andando isso não pode acontecer: se a foto chega com a corrida já valendo
+// (podeMudarLuz falso), entra só o fundo (que não recompila nada) e a luz fica guardada para a próxima largada.
+let pendente = null;
+export function aplicarCeu(tr, look, podeMudarLuz = () => true) {
+  atual = tr.id; scene.background = null; scene.environment = null; tr.sol = null; pendente = null;
   const cfg = CEUS[tr.id]; if (!cfg) return Promise.resolve();
   return carregar(tr.id).then((s) => {
     if (!s || atual !== tr.id) return;
     scene.background = s.tex; scene.backgroundIntensity = cfg.brilho;
-    scene.environment = s.env; scene.environmentIntensity = cfg.luz;
-    hemi.intensity = look.hemi[2] * (cfg.noite ? 1 : 0.65); // a foto já ilumina: a luz ambiente do tema baixa
     if (!cfg.noite) {
       tr.sol = s.sol;
       scene.fog.color.copy(s.horizonte); renderer.setClearColor(s.horizonte);
     }
+    const luz = () => {
+      scene.environment = s.env; scene.environmentIntensity = cfg.luz;
+      hemi.intensity = look.hemi[2] * (cfg.noite ? 1 : 0.65); // a foto já ilumina: a luz ambiente do tema baixa
+    };
+    if (podeMudarLuz()) luz(); else pendente = { id: tr.id, luz };
   });
 }
+// na próxima largada da mesma pista, a luz que chegou atrasada entra (antes de preparar os shaders)
+export function luzPendente() { if (pendente && pendente.id === atual) pendente.luz(); pendente = null; }
 export const ceuPronto = (id) => carregar(id);

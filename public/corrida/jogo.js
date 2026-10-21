@@ -16,16 +16,42 @@ import { propsPronto } from "./props.js";
 import { startItems, stopItems, stepItems } from "./itens.js";
 import { passoEfeitos, limparEfeitos } from "./efeitos.js";
 import { animarVida } from "./vida.js";
-import { ceuPronto } from "./ceu.js";
+import { ceuPronto, luzPendente } from "./ceu.js";
 import { desenhar, ajustarTela, medirQuadro, comecarMedida } from "./desfoque.js";
 const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
 // ---------- corrida ----------
 export let race = null, raf = 0;
 export const keys = { gas: false, brake: false, left: false, right: false };
+// ---------- preparar a pista antes de correr ----------
+// A primeira volta numa pista travava: o navegador só monta o shader de cada material e só manda cada textura para a
+// placa de vídeo na primeira vez que ela aparece na tela, e cada curva nova traz coisas que ainda não tinham aparecido.
+// No lobby, assim que a pista é escolhida, a pista é montada e a foto do céu já vem (prepararPista). Na largada, com o
+// céu aplicado, as texturas sobem todas e os shaders compilam durante a contagem (aquecerPista: o compileAsync deixa o
+// navegador compilar em paralelo, sem travar a página).
+export function prepararPista(id) {
+  const tr = buildTrack(id);
+  ceuPronto(id).catch(() => {});
+  subirTexturas(tr.grp);
+}
+const MAPAS = ["map", "normalMap", "roughnessMap", "metalnessMap", "emissiveMap", "alphaMap", "aoMap", "bumpMap"];
+function subirTexturas(grp) {
+  const vistas = new Set();
+  grp.traverse((o) => { for (const m of [].concat(o.material || [])) for (const k of MAPAS) { const t = m[k]; if (t && t.isTexture && !vistas.has(t)) { vistas.add(t); renderer.initTexture(t); } } });
+}
+function aquecerPista(tr, ceu) {
+  const espera = new Promise((ok) => setTimeout(ok, 1500)); // o céu que não chega em 1,5 s não segura a preparação
+  Promise.race([ceu, espera]).then(() => {
+    if (!race || race.tr !== tr) return;
+    subirTexturas(scene);
+    renderer.compileAsync(scene, cam).catch(() => {});
+  });
+}
 export function startRace(st) {
   const tr = buildTrack(st.config.pista), mine = me();
-  useTrack(tr);
+  // a luz da foto do céu só muda durante a contagem: com o carro andando, ela recompilaria todos os materiais
+  const ceu = useTrack(tr, () => !race || race.tr !== tr || sNow() < race.startAt);
+  luzPendente();
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W);
   if (race) clearRace();
   race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
@@ -33,6 +59,7 @@ export function startRace(st) {
   startItems(tr, st.config.caixas);
   $("results").classList.add("hidden");
   resize(); comecarMedida();
+  aquecerPista(tr, ceu);
   if (!raf) raf = requestAnimationFrame(loop);
 }
 function clearRace() { if (!race) return; stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
