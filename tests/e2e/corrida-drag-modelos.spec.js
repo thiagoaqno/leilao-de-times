@@ -1,6 +1,6 @@
 const { test, expect } = require("@playwright/test");
 
-for (const id of ["skyline-r33", "bmw-m4", "porsche-911", "porsche-718", "ferrari-sf90"]) {
+for (const id of ["skyline-r33", "bmw-m4", "porsche-911", "porsche-718", "ferrari-sf90", "skyline-r34", "gallardo", "vw-phideon", "vw-polo", "vw-tcross"]) {
   test(`modelo ${id} carrega na corrida`, async ({ page }, testInfo) => {
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));

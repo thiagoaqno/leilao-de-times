@@ -38,6 +38,16 @@ const pows = [];
 export function pow(x, y, z) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: powTex, transparent: true, depthTest: false })); s.position.set(x, y, z); s.renderOrder = 6; scene.add(s); pows.push({ s, t: 0 });
 }
+// Uma peça escondida de cada efeito, para a largada já compilar os shaders deles (aquecerPista, em jogo.js): sem isso, o
+// primeiro caco, a primeira explosão e o primeiro "POW!" da corrida travavam um quadro.
+export function amostrasDeEfeitos() {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(geo, mat("#ffffff")));
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffa020, transparent: true, opacity: 0.9, depthWrite: false })));
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: powTex, transparent: true, depthTest: false })); s.renderOrder = 6; g.add(s);
+  g.traverse((o) => { o.visible = false; });
+  return g;
+}
 export function passoEfeitos(dt) {
   for (let i = pows.length - 1; i >= 0; i--) {
     const p = pows[i]; p.t += dt;

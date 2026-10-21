@@ -6,6 +6,8 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import * as L from "./logic.mjs";
+import { MODELOS, visualDe } from "./modelos.js";
+import { criarGaragem } from "./garagem.js";
 
 const { LANE_X, ZONA, ZONA_PNEU, clamp } = L;
 const $ = (id) => document.getElementById(id);
@@ -35,11 +37,18 @@ if (!L.CARROS[selectedCar]) selectedCar = "supra";
 // ---------- Menu ----------
 $("carSelect").innerHTML = CARROS.map((c) => `<option value="${c.id}">${c.nome}</option>`).join("");
 $("carSelect").value = selectedCar;
-$("carSelect").onchange = () => { selectedCar = $("carSelect").value; try { localStorage.setItem("drag:carro", selectedCar); } catch {} prepareCar(); };
+function escolherCarro(id) {
+  selectedCar = id; $("carSelect").value = id;
+  try { localStorage.setItem("drag:carro", selectedCar); } catch {}
+  prepareCar(); garagem.mostrarFicha(id);
+}
+$("carSelect").onchange = () => escolherCarro($("carSelect").value);
+const girarCarro = (passo) => escolherCarro(CARROS[(CARROS.findIndex((c) => c.id === selectedCar) + passo + CARROS.length) % CARROS.length].id);
+$("carPrev").onclick = () => girarCarro(-1); $("carNext").onclick = () => girarCarro(1);
 for (const [i, tr] of TRACKS.entries()) {
   const b = document.createElement("button"); b.className = `track ${i === 0 ? "selected" : ""}`; b.style.setProperty("--swatch", tr.swatch);
-  b.innerHTML = `<small>PISTA ${String(i + 1).padStart(2, "0")} / ${tr.length} M</small><strong>${tr.name}</strong><span>${tr.detail}</span>`;
-  b.onclick = () => { selected = i; document.querySelectorAll(".track").forEach((x, n) => x.classList.toggle("selected", n === i)); buildWorld(); };
+  b.innerHTML = `<small>PONTO ${String(i + 1).padStart(2, "0")} · ${tr.length} M</small><strong>${tr.name}</strong><span>${tr.detail}</span>`;
+  b.onclick = () => { selected = i; document.querySelectorAll(".track").forEach((x, n) => x.classList.toggle("selected", n === i)); };
   $("tracks").append(b);
 }
 
@@ -68,15 +77,18 @@ let readyModel = null;
 function carregarModelo(id) {
   if (!modelCache.has(id)) modelCache.set(id, loader.loadAsync(`/corrida/drag/models/${id}.glb`).then((gltf) => {
     gltf.scene.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = Math.min(m.opacity, 0.45); m.needsUpdate = true; } });
+    acenderLanternas(gltf);
     return gltf;
   }).catch((error) => { modelCache.delete(id); throw error; }));
   return modelCache.get(id);
 }
-// Os rivais andam com os outros carros da garagem (três sorteados entre os que você não escolheu).
-let modelosRivais = [];
+// Os rivais andam com os outros carros da garagem (três sorteados entre os que você não escolheu). Eles carregam
+// enquanto você está na garagem, e a largada espera por eles: trocar o carro provisório pelo modelo no meio da corrida
+// (montar a malha, subir as texturas, compilar os shaders) era o que travava a primeira corrida.
+let modelosRivais = [], rivaisProntos = Promise.resolve();
 function sortearRivais() {
   modelosRivais = CARROS.map((c) => c.id).filter((id) => id !== selectedCar).sort(() => Math.random() - 0.5).slice(0, 3);
-  for (const id of modelosRivais) carregarModelo(id).catch((e) => console.warn("Drag: modelo do rival não carregou", id, e));
+  rivaisProntos = Promise.allSettled(modelosRivais.map((id) => carregarModelo(id).catch((e) => { console.warn("Drag: modelo do rival não carregou", id, e); throw e; })));
 }
 function prepareCar() {
   const id = selectedCar;
@@ -84,13 +96,13 @@ function prepareCar() {
   carregarModelo(id).then((gltf) => {
     if (selectedCar !== id) return;
     readyModel = gltf.scene; $("carStatus").textContent = "Modelo pronto"; $("start").disabled = false;
+    garagem.mostrarCarro(importedCar(readyModel, id, visualDe(id, L.CARROS[id].neon)));
     sortearRivais();
   }).catch((error) => {
     console.warn("Drag: modelo não carregou", id, error);
-    if (selectedCar === id) { $("carStatus").textContent = "Modelo indisponível; carro provisório"; $("start").disabled = false; }
+    if (selectedCar === id) { $("carStatus").textContent = "Modelo indisponível; carro provisório"; $("start").disabled = false; garagem.mostrarCarro(carroProcedural("esporte", 0xf4f6f6, L.CARROS[id].neon)); }
   });
 }
-prepareCar();
 
 // ---------- Texturas desenhadas ----------
 function canvasTex(w, h, desenhar, { repetir = false, srgb = true } = {}) {
@@ -188,6 +200,21 @@ function colocar(obj, s, z, y = 0, ry = 0) { ponto(s, z, y, obj.position); obj.r
 
 // ---------- O mundo ----------
 let world = null, arvoreLuzes = [], placasDinamicas = [], ceu = null;
+// O céu da meia-noite: a foto noturna que a Corrida já usa (qwantani_night_puresky do Poly Haven, CC0, em
+// /corrida/ceus/tokyo.jpg). Enquanto ela não chega, vale o céu desenhado; quando chega, só troca a imagem da esfera
+// (o que não recompila nenhum shader) e, na garagem, também o reflexo.
+let fotoNoite = null;
+const fotoNoitePronta = new THREE.TextureLoader().loadAsync("/corrida/ceus/tokyo.jpg").then((tex) => {
+  tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
+  COMPARTILHADOS.add(tex); fotoNoite = tex;
+  if (world) vestirCeu(world.userData.ceu, world.userData.trilha);
+  return tex;
+}).catch((e) => { console.warn("Drag: o céu da noite não carregou", e); return null; });
+// a foto vai tingida com a cor do lugar (o verde da ponte, o sódio do elevado, o azul do porto)
+function vestirCeu(esfera, tr) {
+  if (!fotoNoite || !esfera || !tr) return;
+  esfera.material.map = fotoNoite; esfera.material.color.set(tr.ceu[2]).lerp(new THREE.Color(1, 1, 1), 0.4).multiplyScalar(0.3); esfera.material.needsUpdate = true;
+}
 function texturaDoCeu(tr) {
   return canvasTex(1024, 512, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h);
@@ -219,20 +246,26 @@ function disposeGroup(group) {
   geos.forEach((g) => g.dispose());
 }
 
+// O ar de cada lugar (o da pista, ou o da garagem): reflexo, fundo, névoa e luz ambiente.
+function aplicarAmbiente(a) {
+  scene.environment = a.env; scene.environmentIntensity = a.envIntensidade;
+  scene.background = new THREE.Color(a.fundo); scene.fog = a.fog;
+  hemi.color.setHex(a.hemi[0]); hemi.groundColor.setHex(a.hemi[1]); hemi.intensity = a.hemi[2];
+  lua.intensity = a.lua ?? 0.35;
+}
+// Monta a pista escolhida. A mesma pista de antes é reaproveitada (nada de montar e subir tudo de novo).
 function buildWorld() {
-  if (world) { scene.remove(world); disposeGroup(world); }
   const tr = TRACKS[selected]; curva = tr.curva;
-  world = new THREE.Group(); scene.add(world); arvoreLuzes = []; placasDinamicas = [];
+  if (world && world.userData.id === tr.id) { world.visible = true; aplicarAmbiente(world.userData.ambiente); ceu = world.userData.ceu; return; }
+  if (world) { scene.remove(world); world.userData.ambiente.env.dispose(); disposeGroup(world); }
+  world = new THREE.Group(); world.userData.id = tr.id; scene.add(world); arvoreLuzes = []; placasDinamicas = [];
   const ceuTex = texturaDoCeu(tr);
   ceuTex.mapping = THREE.EquirectangularReflectionMapping;
-  if (scene.environment) scene.environment.dispose();
-  scene.environment = pmrem.fromEquirectangular(ceuTex).texture;
-  scene.environmentIntensity = 0.55;
+  world.userData.ambiente = { env: pmrem.fromEquirectangular(ceuTex).texture, envIntensidade: 0.55, fundo: tr.ceu[0], fog: new THREE.Fog(tr.nevoa[0], tr.nevoa[1], tr.nevoa[2]), hemi: tr.hemi };
+  aplicarAmbiente(world.userData.ambiente);
   ceu = new THREE.Mesh(new THREE.SphereGeometry(700, 32, 16), new THREE.MeshBasicMaterial({ map: ceuTex, side: THREE.BackSide, fog: false, depthWrite: false }));
-  ceu.renderOrder = -1; world.add(ceu);
-  scene.background = new THREE.Color(tr.ceu[0]);
-  scene.fog = new THREE.Fog(tr.nevoa[0], tr.nevoa[1], tr.nevoa[2]);
-  hemi.color.setHex(tr.hemi[0]); hemi.groundColor.setHex(tr.hemi[1]); hemi.intensity = tr.hemi[2];
+  ceu.renderOrder = -1; world.add(ceu); world.userData.ceu = ceu; world.userData.trilha = tr;
+  vestirCeu(ceu, tr);
   const L0 = -90, L1 = tr.length + 320;
 
   // Asfalto com as faixas pintadas
@@ -430,23 +463,37 @@ const RODA = new THREE.CylinderGeometry(0.35, 0.35, 0.26, 16).rotateZ(Math.PI / 
 const matVidro = mat(0x0b1218, { metalness: 0.6, roughness: 0.12 }), matPneu = mat(0x0b0b0c, { roughness: 0.9 });
 const matLanterna = brilhoMat(0xff1a24, 2.6), matOcupado = new Set([matVidro, matPneu, matLanterna]);
 
-function enfeitar(root, { L, W, neon = null, altura = 0.72, lanternas = null }) {
-  // lanternas acesas (com o brilho), neon embaixo e as chamas do nitro
-  const ud = root.userData; ud.L = L; ud.W = W;
-  const pontos = lanternas || [-1, 1].map((lado) => new THREE.Vector3(lado * (W / 2 - 0.32), altura, -L / 2 - 0.08));
-  for (const pt of pontos) {
+// Lanternas (vermelhas, mais fortes no freio), faróis (com o facho no chão à frente), neon embaixo e as chamas do nitro.
+// `lanternas` e `farois`: os pontos do modelo (modelos.js); sem eles, perto dos cantos da caixa do carro.
+function enfeitar(root, { L, W, neon = null, altura = 0.72, lanternas = null, farois = null, farol = 0xeef4ff, chama = 0x3aa0ff }) {
+  const ud = root.userData; ud.L = L; ud.W = W; ud.lanternas = []; ud.farois = [];
+  const tras = lanternas || [-1, 1].map((lado) => new THREE.Vector3(lado * (W / 2 - 0.32), altura, -L / 2 - 0.08));
+  const tam = tras.length > 2 ? 0.38 : 0.6;
+  for (const pt of tras) {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.brilho, color: 0xff2a2a, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.75 }));
-    sp.scale.set(0.6, 0.36, 1); sp.position.copy(pt); root.add(sp);
+    sp.scale.set(tam, tam * 0.6, 1); sp.position.copy(pt); sp.position.z -= 0.04; sp.userData.tam = tam; root.add(sp); ud.lanternas.push(sp);
   }
+  const frente = farois || [-1, 1].map((lado) => new THREE.Vector3(lado * (W / 2 - 0.35), altura * 0.85, L / 2 + 0.05));
+  for (const pt of frente) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.brilho, color: new THREE.Color(farol).multiplyScalar(1.1), blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.85 }));
+    sp.scale.set(0.42, 0.28, 1); sp.position.copy(pt); sp.position.z += 0.05; root.add(sp); ud.farois.push(sp);
+  }
+  // o facho dos faróis no asfalto
+  const facho = new THREE.Mesh(CHAO, aditivo(TEX.poça, new THREE.Color(farol).multiplyScalar(0.3), 0.6));
+  facho.scale.set(W * 2.2, 1, 9); facho.position.set(0, 0.05, L / 2 + 5); root.add(facho); ud.facho = facho;
   if (neon !== null) {
     const n = new THREE.Mesh(CHAO, aditivo(TEX.neon, new THREE.Color(neon).multiplyScalar(1.8), 0.95));
     n.scale.set(W * 1.9, 1, L * 1.25); n.position.y = 0.04; root.add(n); ud.neon = n;
   }
   ud.chamas = [];
   for (const lado of [-1, 1]) {
-    const c = new THREE.Mesh(new THREE.ConeGeometry(0.13, 1, 10).rotateX(-Math.PI / 2).translate(0, 0, -0.5), aditivo(null, new THREE.Color(0x3aa0ff).multiplyScalar(2.2), 0.9));
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.13, 1, 10).rotateX(-Math.PI / 2).translate(0, 0, -0.5), aditivo(null, new THREE.Color(chama).multiplyScalar(2.2), 0.9));
     c.position.set(lado * 0.28, 0.38, -L / 2 - 0.05); c.visible = false; root.add(c); ud.chamas.push(c);
   }
+}
+// O freio acende as lanternas.
+function frear(obj, forte) {
+  for (const sp of obj.userData.lanternas || []) { const k = forte ? 1.5 : 1; sp.scale.set(sp.userData.tam * k, sp.userData.tam * 0.6 * k, 1); sp.material.opacity = forte ? 1 : 0.75; }
 }
 function carroProcedural(tipo, cor, neon) {
   const p = PERFIS[tipo], root = new THREE.Group(), corpo = new THREE.Group(); root.add(corpo);
@@ -462,10 +509,13 @@ function carroProcedural(tipo, cor, neon) {
   enfeitar(root, { L: p.L, W: p.W, neon, altura: p.bau ? 0.9 : 0.72 });
   return root;
 }
-function importedCar(source, id, neon) {
-  const root = new THREE.Group(), corpo = new THREE.Group(), car = source.clone(true);
+// O carro de um GLB, encaixado no tamanho do jogo, com o visual da garagem (`visual`: pintura, neon, farol e chama em
+// "#rrggbb"; a pintura `null` é a de fábrica e o neon `null` é sem neon). A pintura troca só a cor da peça de pintura
+// deste carro (o material é copiado, o modelo carregado fica igual).
+function importedCar(source, id, visual) {
+  const root = new THREE.Group(), corpo = new THREE.Group(), car = source.clone(true), modelo = MODELOS[id] || {};
   root.userData.imported = true; root.add(corpo);
-  if (id === "skyline-r33") car.rotation.y += Math.PI;
+  car.rotation.y += modelo.giro || 0;
   car.updateMatrixWorld(true);
   let bounds = new THREE.Box3().setFromObject(car), size = bounds.getSize(new THREE.Vector3());
   if (size.x > size.z * 1.1) {
@@ -476,59 +526,49 @@ function importedCar(source, id, neon) {
   const center = bounds.getCenter(new THREE.Vector3());
   car.scale.multiplyScalar(scale);
   car.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
+  if (visual.pintura && modelo.pintura) {
+    const copias = new Map();
+    car.traverse((o) => {
+      if (!o.isMesh) return;
+      const pintar = (m) => {
+        if (!modelo.pintura.test(m.name)) return m;
+        if (!copias.has(m)) { const c = m.clone(); c.map = null; c.color.set(visual.pintura); c.userData.copia = true; copias.set(m, c); }
+        return copias.get(m);
+      };
+      o.material = Array.isArray(o.material) ? o.material.map(pintar) : pintar(o.material);
+    });
+  }
   corpo.add(car); root.userData.corpo = corpo; root.userData.rodas = [];
-  if (!lanternasCache.has(id)) lanternasCache.set(id, LANTERNAS_FIXAS[id]?.map(([x, y, z]) => new THREE.Vector3(x, y, z)) || acharLanternas(car));
-  enfeitar(root, { L: size.z * scale, W: size.x * scale, neon, altura: size.y * scale * 0.55, lanternas: lanternasCache.get(id) });
+  const pontos = (lista) => lista?.map(([x, y, z]) => new THREE.Vector3(x, y, z));
+  enfeitar(root, { L: size.z * scale, W: size.x * scale, neon: visual.neon, altura: size.y * scale * 0.55, lanternas: pontos(modelo.tras), farois: pontos(modelo.frente), farol: visual.farol, chama: visual.chama });
   return root;
 }
-// Onde ficam as lanternas de cada modelo: as peças da traseira com material vermelho ou com nome de luz traseira
-// (red_glass, glassBackLight, LIGHTSREAR...); sem elas, as peças de "light" da traseira. Um ponto por lado.
-const lanternasCache = new Map();
-// Modelos em que a busca erra: a barra fina do 911 e as lâminas altas da SF90 (a busca acha os refletores do para-choque).
-const LANTERNAS_FIXAS = { "porsche-911": [[-0.55, 0.55, -1.64], [0.55, 0.55, -1.64]], "ferrari-sf90": [[-0.64, 0.7, -2.16], [0.64, 0.7, -2.16]] };
-const NOME_LANTERNA = /red|tail|rear|back|stop/i, NOME_LUZ = /light|lamp|luz/i;
-function vermelho(m) { const c = m.color; return c && c.r > 0.45 && c.g < c.r * 0.35 && c.b < c.r * 0.35; }
-function acharLanternas(car) {
-  car.updateMatrixWorld(true);
-  const caixa = new THREE.Box3().setFromObject(car), tam = caixa.getSize(new THREE.Vector3());
-  const traseira = caixa.min.z + tam.z * 0.2, yMin = caixa.min.y + tam.y * 0.25, yMax = caixa.min.y + tam.y * 0.85;
-  const grupos = [[], []], v = new THREE.Vector3();
-  car.traverse((o) => {
-    if (!o.isMesh || !o.geometry?.attributes.position) return;
-    for (const m of [].concat(o.material)) {
-      const nome = `${m.name} ${o.name}`;
-      const prioridade = (vermelho(m) || NOME_LANTERNA.test(m.name)) && !/disc|calliper|caliper/i.test(nome) ? 0 : NOME_LUZ.test(m.name) ? 1 : -1;
-      if (prioridade < 0) continue;
-      const pos = o.geometry.attributes.position, passo = Math.max(1, Math.floor(pos.count / 4000));
-      for (let i = 0; i < pos.count; i += passo) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-        if (v.z < traseira && v.y > yMin && v.y < yMax) grupos[prioridade].push(v.clone());
-      }
-      if (prioridade === 0 && vermelho(m) && !m.userData.acesa) { m.userData.acesa = true; m.emissive?.setHex(0xff1010); m.emissiveIntensity = 1.6; }
+// O vidro das lanternas de cada modelo acende (vermelho com nome de luz traseira: red_glass, RED_GLASS, glassBackLight...).
+function acenderLanternas(gltf) {
+  gltf.scene.traverse((o) => {
+    for (const m of [].concat(o.material || [])) {
+      const c = m.color;
+      if (!m.userData.acesa && /red|tail|backlight|stop/i.test(m.name) && c && c.r > 0.45 && c.g < c.r * 0.35 && c.b < c.r * 0.35) { m.userData.acesa = true; m.emissive?.setHex(0xff1010); m.emissiveIntensity = 1.6; }
     }
-  });
-  const pts = grupos[0].length > 20 ? grupos[0] : grupos[1];
-  if (pts.length < 20) return null;
-  const lados = [-1, 1].map((lado) => pts.filter((p) => p.x * lado > tam.x * 0.08));
-  if (lados.some((l) => l.length < 5)) return null;
-  return lados.map((l) => {
-    const c = l.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(l.length);
-    c.z = Math.min(...l.map((p) => p.z)) - 0.04; // um pouco atrás da lente
-    return c;
   });
 }
 
 // ---------- Partículas (fumaça dos pneus, faíscas) ----------
+// Criadas de uma vez antes da largada (criarParticulas), para não montar material no meio da corrida.
 const particulas = [];
+function novaParticula(tipo) {
+  const m = tipo === "fumaça"
+    ? new THREE.SpriteMaterial({ map: TEX.fumaça, color: 0xd8d8d8, transparent: true, depthWrite: false })
+    : new THREE.SpriteMaterial({ map: TEX.brilho, color: new THREE.Color(0xffa040).multiplyScalar(3), blending: THREE.AdditiveBlending, depthWrite: false });
+  const p = { tipo, sp: new THREE.Sprite(m), vivo: false }; p.sp.visible = false; scene.add(p.sp); particulas.push(p); return p;
+}
+function criarParticulas() { while (particulas.length < 120) novaParticula(particulas.length % 3 ? "fumaça" : "faisca"); }
 function soltar(tipo, pos, vel, vida = 1.2, tam = 1) {
-  if (reduced.matches && tipo === "fumaça" && particulas.length > 20) return;
+  if (reduced.matches && tipo === "fumaça" && particulas.filter((x) => x.vivo).length > 20) return;
   let p = particulas.find((x) => !x.vivo && x.tipo === tipo);
   if (!p) {
     if (particulas.length > 160) return;
-    const m = tipo === "fumaça"
-      ? new THREE.SpriteMaterial({ map: TEX.fumaça, color: 0xd8d8d8, transparent: true, depthWrite: false })
-      : new THREE.SpriteMaterial({ map: TEX.brilho, color: new THREE.Color(0xffa040).multiplyScalar(3), blending: THREE.AdditiveBlending, depthWrite: false });
-    p = { tipo, sp: new THREE.Sprite(m) }; scene.add(p.sp); particulas.push(p);
+    p = novaParticula(tipo);
   }
   Object.assign(p, { vivo: true, t: 0, vida, tam, vel: vel.clone() });
   p.sp.position.copy(pos); p.sp.visible = true;
@@ -553,28 +593,29 @@ let primeiroQuadro = true;
 
 function setPhase(p) { phase = p; document.body.dataset.phase = p; }
 function limparCarros() {
-  for (const v of visual.values()) { scene.remove(v); if (!v.userData.imported) disposeCarro(v); else v.traverse((o) => { if (o.material && (o.isSprite || o.material.blending === THREE.AdditiveBlending)) o.material.dispose(); }); }
+  for (const v of visual.values()) { scene.remove(v); soltarCarro(v); }
   visual.clear();
   for (const o of [...obstaculosVis, ...cones]) { scene.remove(o.obj || o); }
   obstaculosVis = []; cones = [];
 }
 function disposeCarro(g) { g.traverse((o) => { if (o.material && !matOcupado.has(o.material)) o.material.dispose(); if (o.geometry && !COMPARTILHADOS.has(o.geometry)) o.geometry.dispose(); }); }
+// Solta um carro: o procedural inteiro; do importado, só o que é dele (brilhos, neon, chamas e a pintura copiada).
+function soltarCarro(v) {
+  if (!v.userData.imported) return disposeCarro(v);
+  v.traverse((o) => {
+    for (const m of [].concat(o.material || [])) if (o.isSprite || m.blending === THREE.AdditiveBlending || m.userData.copia) m.dispose();
+    if (o.geometry?.type === "ConeGeometry") o.geometry.dispose();
+  });
+}
 
 function montarCarros() {
   limparCarros();
   const j = corrida.jogador, spec = L.CARROS[selectedCar];
-  visual.set(j, readyModel ? importedCar(readyModel, selectedCar, spec.neon) : carroProcedural("esporte", 0xf4f6f6, spec.neon));
-  const corridaAtual = corrida;
+  visual.set(j, readyModel ? importedCar(readyModel, selectedCar, visualDe(selectedCar, spec.neon)) : carroProcedural("esporte", 0xf4f6f6, spec.neon));
+  // os rivais: o modelo, se carregou (a largada espera por eles); senão, o carro provisório
   corrida.pilotos.slice(1).forEach((r, i) => {
-    visual.set(r, carroProcedural("esporte", COR_RIVAL[i % 3], NEON_RIVAL[i % 3]));
-    // o carro provisório fica só até o modelo do rival chegar
-    const id = modelosRivais[i];
-    if (id) carregarModelo(id).then((gltf) => {
-      if (corrida !== corridaAtual || !visual.has(r)) return;
-      const velho = visual.get(r), novo = importedCar(gltf.scene, id, NEON_RIVAL[i % 3]);
-      scene.remove(velho); disposeCarro(velho);
-      visual.set(r, novo); scene.add(novo);
-    }).catch(() => {});
+    const id = modelosRivais[i], gltf = id && modelosProntos.get(id);
+    visual.set(r, gltf ? importedCar(gltf.scene, id, { neon: `#${new THREE.Color(NEON_RIVAL[i % 3]).getHexString()}`, farol: "#eef4ff", chama: "#3aa0ff" }) : carroProcedural("esporte", COR_RIVAL[i % 3], NEON_RIVAL[i % 3]));
   });
   corrida.trafego.forEach((t) => visual.set(t, carroProcedural(t.tipo, COR_TRAFEGO[t.cor % COR_TRAFEGO.length], null)));
   for (const v of visual.values()) scene.add(v);
@@ -599,12 +640,44 @@ function montarCarros() {
   }
 }
 
-function start() {
-  limparParticulas();
+// Antes da largada, com tudo montado: o navegador compila os shaders de tudo o que vai aparecer (em paralelo, sem
+// travar a página) e manda as texturas para a placa de vídeo. Sem isso, cada coisa nova que aparecia na tela pela
+// primeira vez (um rival, a fumaça, a chama do nitro, um carro do tráfego) travava um quadro.
+const MAPAS = ["map", "normalMap", "roughnessMap", "metalnessMap", "emissiveMap", "alphaMap", "aoMap", "bumpMap", "clearcoatNormalMap", "specularColorMap"];
+const texturasSubidas = new WeakSet();
+// (O compile passa por tudo, até pelo que está escondido; só as luzes contam se estiverem acesas, e é com as luzes da
+// pista que os shaders têm de sair.)
+async function aquecer() {
+  try {
+    await Promise.race([renderer.compileAsync(scene, camera), new Promise((ok) => setTimeout(ok, 4000))]);
+    scene.traverse((o) => { for (const m of [].concat(o.material || [])) for (const k of MAPAS) { const t = m[k]; if (t?.isTexture && !texturasSubidas.has(t)) { texturasSubidas.add(t); renderer.initTexture(t); } } });
+  } catch (e) { console.warn("Drag: não deu para preparar os shaders", e); }
+}
+const modelosProntos = new Map();
+let largando = false;
+async function start() {
+  if (largando) return;
+  largando = true; $("start").disabled = true; $("again").disabled = true;
+  $("carStatus").textContent = "Esperando os rivais...";
   audio.unlock(); music.start();
+  try {
+    const rivais = await Promise.race([rivaisProntos, new Promise((ok) => setTimeout(() => ok([]), 25000))]);
+    modelosProntos.clear();
+    rivais.forEach((r, i) => { if (r.status === "fulfilled") modelosProntos.set(modelosRivais[i], r.value); });
+    $("carStatus").textContent = "Preparando a pista...";
+    iniciarCorrida();
+    await aquecer();
+    corrida.pronta = true;
+  } finally {
+    largando = false; $("start").disabled = false; $("again").disabled = false; $("carStatus").textContent = "Modelo pronto";
+  }
+}
+function iniciarCorrida() {
+  limparParticulas(); criarParticulas();
   const tr = TRACKS[selected];
-  buildWorld();
+  garagem.esconder(); buildWorld();
   corrida = L.criarCorrida({ comprimento: tr.length, carro: selectedCar, semente: (Date.now() & 0xffff) + selected * 977 });
+  corrida.pronta = false; // o relógio só anda depois do aquecer
   montarCarros();
   sortearRivais(); // a próxima corrida já carrega outros rivais
   gasHeld = nitroHeld = brakeHeld = false; cameraShake = 0; primeiroQuadro = true; fimAte = 0;
@@ -616,7 +689,6 @@ function start() {
   corrida.pilotos.forEach((p, i) => { const el = document.createElement("i"); el.style.setProperty("--c", `#${new THREE.Color(i ? NEON_RIVAL[(i - 1) % 3] : 0xffbd45).getHexString()}`); if (!i) el.className = "eu"; $("trilho").append(el); p.marcador = el; });
   desenharZonas(true);
   showCallout("", 0); updateHud();
-  if (DEBUG) window.__drag = { get corrida() { return corrida; }, get phase() { return phase; }, L, scene, renderer, get world() { return world; }, set bloom(v) { usarBloom = v; } };
 }
 $("start").onclick = start; $("again").onclick = start;
 
@@ -819,6 +891,7 @@ function updateHud() {
   $("n2oFill").setAttribute("d", n > 0.005 ? arco(-80, 200, 230, 58, 58 - 116 * n) : "");
   $("n2oFill").setAttribute("stroke", j.nitroOn && n > 0 ? "#9fe4ff" : "#27b4ff");
   $("vacuoBar").style.width = `${j.vacuo * 100}%`; $("vacuoBox").classList.toggle("cheio", j.vacuo >= 1);
+  $("hud").classList.toggle("enchendo", j.vacuo > 0.05 && j.nitro < j.nitroMax && corrida.fase === "corrida");
   $("motorBar").style.width = `${j.overrev / L.ENGINE_LIMIT_SECONDS * 100}%`; $("motorBox").classList.toggle("alerta", j.overrev > 1.2);
   // preparo: pneus e a árvore de luzes
   if (!corridaRolando) {
@@ -840,7 +913,7 @@ function tratarEventos() {
     else if (e.tipo === "largada") {
       const T = { perfeita: ["LARGADA PERFEITA", "verde"], boa: ["BOA LARGADA", "azul"], patinou: ["PATINOU!", "amarelo", "giro alto demais na largada"], fraca: ["LARGADA FRACA", "amarelo", "giro baixo demais na largada"] }[e.qualidade];
       showCallout(T[0], 1.1, T[1], T[2] || "");
-    } else if (e.tipo === "vacuo") { showCallout("VÁCUO!", 0.7, "amarelo"); audio.blip(640, 0.12, "triangle"); }
+    } else if (e.tipo === "vacuo") { showCallout("VÁCUO!", 0.8, "azul", `+N2O`); audio.blip(640, 0.12, "triangle"); }
     else if (e.tipo === "raspao") { batidaVisual(false); showCallout("RASPÃO", 0.5, "amarelo"); }
     else if (e.tipo === "batida") batidaVisual(false);
     else if (e.tipo === "perda-total") {
@@ -882,6 +955,7 @@ function mostrarResultado() {
   $("finalSpeed").textContent = Math.round(j.velMax);
   $("finalShifts").textContent = `${j.trocas.perfeita} / ${Object.values(j.trocas).reduce((a, b) => a + b, 0)}`;
   $("finalLaunch").textContent = { perfeita: "Perfeita", boa: "Boa", patinou: "Patinou", fraca: "Fraca" }[j.largada] || "—";
+  $("finalVacuo").textContent = `+${j.nitroDoVacuo.toFixed(1)} s`;
   $("tabela").innerHTML = r.ordem.map((o, i) => `<tr class="${o.jogador ? "eu" : ""}"><td>${o.fora ? "—" : `${i + 1}º`}</td><td>${o.nome}</td><td>${o.fora ? o.fora.toUpperCase() : o.tempo ? timeString(o.tempo) : "—"}</td></tr>`).join("");
 }
 
@@ -905,6 +979,7 @@ function posicionarCarro(obj, p, dt, t) {
     }
     const usando = p.nitroOn && p.nitro > 0 && (p === corrida.jogador ? gasHeld : true) && corrida.fase !== "fim" && !p.totaled;
     for (const c of ud.chamas) { c.visible = usando; if (usando) c.scale.set(1, 1, 0.7 + Math.random() * 0.8); }
+    frear(obj, !p.totaled && (p === corrida.jogador ? brakeHeld : p.freio));
     if (ud.neon) ud.neon.material.opacity = p.totaled ? 0.2 : 0.8 + Math.sin(t * 0.004 + p.z) * 0.1;
     // fumaça dos pneus no aquecimento e quando o carro patina
     const preparo = corrida.fase === "aquecimento" || corrida.fase === "luzes";
@@ -959,13 +1034,7 @@ function ajustarQualidade(dt) {
 }
 function camera3d(dt, t) {
   const j = corrida ? corrida.jogador : null;
-  const tr = TRACKS[selected];
-  if (!j) {
-    // menu: passeio lento pela pista
-    const z = (t * 0.012) % tr.length;
-    ponto(-6, z, 3.2, follow); camera.position.copy(follow); camera.lookAt(ponto(1, z + 40, 1.2, olhar));
-    camera.fov = 58; camera.updateProjectionMatrix(); return;
-  }
+  if (!j) { garagem.camera(camera, dt, t, reduced.matches); return; } // no lobby: a volta em torno do carro na garagem
   const v = j.speed / 300, s = -j.x;
   const preparo = corrida.fase === "aquecimento" || corrida.fase === "luzes";
   const nitro = document.body.classList.contains("nitro");
@@ -990,10 +1059,12 @@ function camera3d(dt, t) {
   ponto(s, j.z + 1.8, 0.75, farol.position); ponto(s * 0.9, j.z + 26, 0, farol.target.position);
 }
 
-function frame(t) {
-  requestAnimationFrame(frame);
+function frame(t) { requestAnimationFrame(frame); quadro(t); }
+function quadro(t) {
   const dt = Math.min(0.25, (t - (last || t)) / 1000); ultimoT = last; last = t;
-  if (corrida && corrida.fase !== "fim") {
+  if (corrida && corrida.pronta === false) {
+    // preparando a largada (aquecer): nada anda ainda
+  } else if (corrida && corrida.fase !== "fim") {
     // No preparo o relógio anda em tempo real mesmo com poucos quadros; na corrida, no máximo 0,25 s por quadro.
     let resto = corrida.fase === "corrida" ? dt : Math.min(1, (t - (ultimoT || t)) / 1000);
     while (resto > 0 && corrida.fase !== "fim") {
@@ -1035,6 +1106,19 @@ function resize() {
   renderer.setSize(w, h, false); composer.setPixelRatio(pixelRatio); composer.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
-addEventListener("resize", resize); aplicarQualidade(); buildWorld();
-document.body.dataset.phase = "menu";
+// ---------- Garagem ----------
+const garagem = criarGaragem({ scene, pmrem, fotoNoitePronta, aplicarAmbiente, canvasTex, TEX, placa, brilhoMat, aditivo, carroProcedural, soltarCarro,
+  remontar: () => { if (readyModel) garagem.mostrarCarro(importedCar(readyModel, selectedCar, visualDe(selectedCar, L.CARROS[selectedCar].neon))); } });
+function voltarGaragem() {
+  if (world) world.visible = false;
+  limparCarros(); limparParticulas(); corrida = null; fimAte = 0; music.stop(); audio.update({});
+  setPhase("menu"); document.body.classList.remove("nitro");
+  $("finish").classList.add("hidden"); $("hud").classList.add("hidden"); $("touch").classList.add("hidden"); $("menu").classList.remove("hidden");
+  garagem.mostrar();
+}
+$("garage").onclick = voltarGaragem;
+addEventListener("resize", resize); aplicarQualidade();
+voltarGaragem(); prepareCar(); garagem.mostrarFicha(selectedCar);
+// #debug: o teste mexe no jogo por aqui (`quadro(ms)` desenha um quadro na mão, para quando a aba não anima sozinha)
+if (DEBUG) window.__drag = { get corrida() { return corrida; }, get phase() { return phase; }, L, scene, renderer, garagem, get world() { return world; }, set bloom(v) { usarBloom = v; }, quadro: (ms = 16) => quadro((last || 0) + ms) };
 requestAnimationFrame(frame);

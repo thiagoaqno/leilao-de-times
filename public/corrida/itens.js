@@ -23,6 +23,8 @@ export function startItems(tr, enabled) {
     return { ...b, mesh: cube, sombra: sh };
   });
   asked = boxes.map(() => 0);
+  // um de cada item, escondido: a largada já compila os shaders e sobe as texturas deles (aquecerPista, em jogo.js)
+  for (const tipo of TIPOS) { const m = modeloItem(tipo); m.traverse((o) => { o.visible = false; }); group.add(m); }
 }
 export function stopItems() {
   if (group) scene.remove(group);

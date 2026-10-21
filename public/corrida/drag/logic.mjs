@@ -1,6 +1,6 @@
 // Regras do drag, no jeito do modo Drag do Need for Speed Underground 2: quatro faixas e troca de faixa
 // semiautomática, câmbio manual obrigatório (troca perfeita, boa, cedo ou tarde), aquecimento dos pneus antes da
-// largada, nitro, vácuo atrás de outro piloto, tráfego e obstáculos (bater de frente é perda total) e motor que
+// largada, nitro, vácuo atrás de outro piloto (que enche o nitro), tráfego e obstáculos (bater de frente é perda total) e motor que
 // estoura no corte de giro. Tudo puro, sem desenho: main.js só desenha a `corrida` e manda os comandos.
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
@@ -28,6 +28,11 @@ export const CARROS = {
   "porsche-911": { nome: "Porsche 911 Carrera 4S", marchas: [67, 108, 150, 193, 235, 275], forca: 1.05, nitro: 3.6, neon: 0xff2bd6 },
   "porsche-718": { nome: "Porsche 718 Cayman GT4", marchas: [65, 104, 146, 188, 229, 268], forca: 1.02, nitro: 3.9, neon: 0x2bff88 },
   "ferrari-sf90": { nome: "Ferrari SF90 XX", marchas: [72, 116, 162, 208, 254, 300], forca: 1.12, nitro: 3.4, neon: 0xff3b2f },
+  "skyline-r34": { nome: "Nissan Skyline R34 GT-R", marchas: [63, 102, 143, 185, 225, 263], forca: 1.03, nitro: 4.2, neon: 0x2fd0ff },
+  gallardo: { nome: "Lamborghini Gallardo LP560-4", marchas: [70, 112, 157, 202, 246, 290], forca: 1.09, nitro: 3.6, neon: 0xffd21f },
+  "vw-phideon": { nome: "Volkswagen Phideon 380 TSI", marchas: [58, 94, 132, 170, 207, 240], forca: 0.94, nitro: 4.8, neon: 0xf2f2ff },
+  "vw-polo": { nome: "Volkswagen Polo Plus", marchas: [55, 90, 126, 162, 196, 224], forca: 0.9, nitro: 5.2, neon: 0x3dff7a },
+  "vw-tcross": { nome: "Volkswagen T-Cross 280 TSI", marchas: [56, 92, 128, 164, 198, 228], forca: 0.91, nitro: 5, neon: 0xff7a1a },
 };
 export const TOP_SPEEDS = CARROS.supra.marchas;
 
@@ -69,7 +74,7 @@ export function makeCar({ lane = 1, z = 0, speed = 0, gear = 1, carro = "supra",
     kind: "piloto", nome, carro, ia, lane, targetLane: lane, laneFrom: LANE_X[lane], laneTime: 1, x: LANE_X[lane], z,
     speed, gear, marchas: spec.marchas, forca: spec.forca * forca, rpm: rpmFor(speed, gear, spec.marchas),
     shiftCut: 0, embalo: 0, patina: 0, largadaRpm: 0, largadaT: 1, pneu: 0, grip: 1,
-    nitro: spec.nitro, nitroMax: spec.nitro, nitroOn: false, vacuo: 0, vacuoTempo: 0,
+    nitro: spec.nitro, nitroMax: spec.nitro, nitroOn: false, vacuo: 0, vacuoTempo: 0, nitroDoVacuo: 0, freio: false,
     collisionTime: 0, overrev: 0, engineBlown: false, totaled: false, chegada: null, velMax: 0,
     trocas: { perfeita: 0, boa: 0, cedo: 0, tarde: 0 }, largada: null,
   };
@@ -173,9 +178,8 @@ export function stepCar(car, dt, outros = [], gas = false, freio = false) {
     if (rpmMotor >= 1) empuxo = 0; // corte de giro
     if (usandoNitro) empuxo *= 1.5;
     if (car.embalo > 0) empuxo *= 1.15;
-    empuxo *= 1 + 0.08 * car.vacuo;
   }
-  const arrasto = car.speed * car.speed * ARRASTO * (1 - 0.35 * car.vacuo) + (car.speed > 0 ? ROLAGEM : 0) + (gas ? 0 : 6) + (freio ? FREIO : 0);
+  const arrasto = car.speed * car.speed * ARRASTO + (car.speed > 0 ? ROLAGEM : 0) + (gas ? 0 : 6) + (freio ? FREIO : 0);
   car.speed = clamp(car.speed + (empuxo - arrasto) * dt, 0, car.marchas.at(-1) * (usandoNitro ? 1.04 : 1));
   car.z += car.speed / 3.6 * dt;
   car.velMax = Math.max(car.velMax, car.speed);
@@ -209,13 +213,19 @@ export function stepCar(car, dt, outros = [], gas = false, freio = false) {
   return { ...res, blown: car.engineBlown };
 }
 
-// O vácuo: logo atrás de outro piloto, na mesma faixa, a barra enche e o ar pesa menos.
+// O vácuo vira nitro: logo atrás de outro piloto, na mesma faixa, a barra enche e o tanque de N2O vai enchendo junto
+// (mais depressa com a barra cheia). Encher a barra inteira ainda dá um bônus de uma vez.
+export const NITRO_VACUO = 0.32, BONUS_VACUO = 0.6; // segundos de nitro por segundo no vácuo (barra cheia: o dobro)
 export function atualizarVacuo(car, pilotos, dt) {
   const atras = pilotos.some((o) => o !== car && !o.totaled && Math.abs(o.x - car.x) < 1.6 && o.z - car.z > 4 && o.z - car.z < 30);
-  const antes = car.vacuo;
-  car.vacuo = clamp(car.vacuo + (atras && car.speed > 60 ? dt / 1.6 : -dt / 0.8), 0, 1);
+  const antes = car.vacuo, puxando = atras && car.speed > 60;
+  car.vacuo = clamp(car.vacuo + (puxando ? dt / 1.6 : -dt / 0.8), 0, 1);
   if (car.vacuo > 0.05) car.vacuoTempo += dt;
-  return antes < 1 && car.vacuo >= 1;
+  const encheu = antes < 1 && car.vacuo >= 1;
+  const ganho = (puxando ? NITRO_VACUO * (1 + car.vacuo) * dt : 0) + (encheu ? BONUS_VACUO : 0);
+  const novo = Math.min(car.nitroMax, car.nitro + ganho);
+  car.nitroDoVacuo += novo - car.nitro; car.nitro = novo;
+  return encheu;
 }
 
 // O tráfego: cada faixa anda num ritmo (ninguém bate em ninguém), nunca mais de dois carros juntos, e cada obra
@@ -373,6 +383,7 @@ export function passoCorrida(corrida, dt, entrada = {}) {
     else ({ gas = false, nitro = false, freio = false } = entrada);
     if (p.chegada !== null) { gas = true; freio = false; }
     p.nitroOn = !!nitro && p.nitro > 0;
+    p.freio = !!freio;
     if (atualizarVacuo(p, pilotos, dt) && p === jogador) evento(corrida, { tipo: "vacuo" });
     const r = stepCar(p, dt, todos, gas, freio);
     if (p === jogador) {

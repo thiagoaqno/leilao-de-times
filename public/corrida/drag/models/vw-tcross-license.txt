@@ -1,0 +1,7 @@
+Model Information:
+* title:	2021 Volkswagen T-Cross 280 TSI
+* source:	https://sketchfab.com/3d-models/2021-volkswagen-t-cross-280-tsi-e7a833769e774e62a6500c294cb1aea6
+* author:	Ddiaz Design (https://sketchfab.com/ddiaz-design)
+
+Model License:
+* license type:	CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/)
