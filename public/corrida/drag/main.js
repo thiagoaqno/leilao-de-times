@@ -505,7 +505,7 @@ function carroProcedural(tipo, cor, neon) {
   const rodas = [];
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const r = new THREE.Mesh(RODA, matPneu); r.position.set(sx * (p.W / 2 - 0.1), 0.35, sz * (p.L / 2 - (p.L > 6 ? 1.4 : 0.85))); root.add(r); rodas.push(r); }
   for (const lado of [-1, 1]) { const t = new THREE.Mesh(CUBO, matLanterna); t.scale.set(0.42, 0.12, 0.06); t.position.set(lado * (p.W / 2 - 0.32), p.bau ? 0.9 : 0.72, -p.L / 2 - 0.04); corpo.add(t); }
-  root.userData.corpo = corpo; root.userData.rodas = rodas;
+  root.userData.corpo = corpo; root.userData.rodas = rodas; root.userData.banco = new THREE.Vector3(0.4, 1.1, -0.3);
   enfeitar(root, { L: p.L, W: p.W, neon, altura: p.bau ? 0.9 : 0.72 });
   return root;
 }
@@ -539,6 +539,7 @@ function importedCar(source, id, visual) {
     });
   }
   corpo.add(car); root.userData.corpo = corpo; root.userData.rodas = [];
+  root.userData.banco = new THREE.Vector3(...(modelo.banco || [0.37, size.y * scale * 0.72, -0.3]));
   const pontos = (lista) => lista?.map(([x, y, z]) => new THREE.Vector3(x, y, z));
   enfeitar(root, { L: size.z * scale, W: size.x * scale, neon: visual.neon, altura: size.y * scale * 0.55, lanternas: pontos(modelo.tras), farois: pontos(modelo.frente), farol: visual.farol, chama: visual.chama });
   return root;
@@ -589,7 +590,15 @@ function limparParticulas() { for (const p of particulas) { p.vivo = false; p.sp
 let corrida = null, phase = "menu", visual = new Map(), cones = [], obstaculosVis = [];
 let gasHeld = false, nitroHeld = false, brakeHeld = false, last = 0, ultimoT = 0, fimAte = 0, messageUntil = 0, cameraShake = 0;
 const follow = new THREE.Vector3(), olhar = new THREE.Vector3();
-let primeiroQuadro = true;
+let primeiroQuadro = true, luzPainel = null;
+// A câmera: de trás do carro ou de dentro (do banco do motorista, modelos.js). C ou o botão CAM trocam; fica guardada.
+let camInterna = (() => { try { return localStorage.getItem("drag:camera") === "interna"; } catch { return false; } })();
+function alternarCamera() {
+  camInterna = !camInterna;
+  try { localStorage.setItem("drag:camera", camInterna ? "interna" : "tras"); } catch {}
+  if (corrida) showCallout(camInterna ? "CÂMERA INTERNA" : "CÂMERA DE TRÁS", 0.6, "azul");
+  primeiroQuadro = true;
+}
 
 function setPhase(p) { phase = p; document.body.dataset.phase = p; }
 function limparCarros() {
@@ -612,6 +621,10 @@ function montarCarros() {
   limparCarros();
   const j = corrida.jogador, spec = L.CARROS[selectedCar];
   visual.set(j, readyModel ? importedCar(readyModel, selectedCar, visualDe(selectedCar, spec.neon)) : carroProcedural("esporte", 0xf4f6f6, spec.neon));
+  // a luz fraca do painel, que só acende na câmera interna (ela existe sempre: acender ou apagar uma luz nova
+  // mudaria a conta de luzes e recompilaria todos os shaders no meio da corrida)
+  const eu = visual.get(j), b = eu.userData.banco;
+  luzPainel = new THREE.PointLight(0x9fb8ff, 0, 1.6, 2); luzPainel.position.set(b.x * 0.5, b.y - 0.2, b.z + 0.7); eu.userData.corpo.add(luzPainel);
   // os rivais: o modelo, se carregou (a largada espera por eles); senão, o carro provisório
   corrida.pilotos.slice(1).forEach((r, i) => {
     const id = modelosRivais[i], gltf = id && modelosProntos.get(id);
@@ -695,6 +708,7 @@ $("start").onclick = start; $("again").onclick = start;
 // ---------- Controles ----------
 function todosNaPista() { return [...corrida.pilotos.filter((p) => !(p.foraT > 1.2)), ...corrida.trafego, ...corrida.obstaculos]; }
 function action(a) {
+  if (a === "cam") return alternarCamera();
   if (!corrida || corrida.fase !== "corrida") return;
   const j = corrida.jogador;
   if (a === "left" || a === "right") {
@@ -717,6 +731,7 @@ document.addEventListener("keydown", (e) => {
   if (e.code === "KeyS" || e.code === "ArrowDown") { e.preventDefault(); brakeHeld = true; return; }
   if (e.code === "Space" || e.code === "KeyN") { e.preventDefault(); nitroHeld = true; return; }
   if (TECLAS[e.code]) { e.preventDefault(); if (!e.repeat) action(TECLAS[e.code]); }
+  if (e.code === "KeyC" && !e.repeat && phase !== "menu") alternarCamera();
   if (e.key === "Enter" && (phase === "menu" || phase === "finish") && !$("start").disabled) start();
 });
 document.addEventListener("keyup", (e) => {
@@ -1038,6 +1053,26 @@ function camera3d(dt, t) {
   const v = j.speed / 300, s = -j.x;
   const preparo = corrida.fase === "aquecimento" || corrida.fase === "luzes";
   const nitro = document.body.classList.contains("nitro");
+  // de dentro: o olho no banco do motorista, preso ao carro (balança junto quando ele empina na arrancada)
+  const eu = visual.get(j);
+  if (luzPainel) luzPainel.intensity = camInterna ? 0.8 : 0;
+  if (eu) for (const sp of eu.userData.farois || []) sp.visible = !camInterna; // o brilho do farol não vaza pelo capô
+  if (camInterna && eu && corrida.fase !== "aquecimento") {
+    const b = eu.userData.banco, corpo = eu.userData.corpo;
+    eu.updateMatrixWorld(true);
+    corpo.localToWorld(camera.position.copy(b));
+    const tremor = reduced.matches ? 0 : cameraShake * 0.12 + (nitro ? 0.008 : 0) + Math.max(0, v - 0.6) * 0.006;
+    if (tremor) camera.position.add(_v2.set((Math.random() - 0.5) * tremor, (Math.random() - 0.5) * tremor, 0));
+    cameraShake = Math.max(0, cameraShake - dt);
+    camera.lookAt(corpo.localToWorld(olhar.set(b.x * 0.85, b.y - 0.1, b.z + 14)));
+    if (camera.near !== 0.04) camera.near = 0.04;
+    const fovIn = 66 + (reduced.matches ? 0 : v * 12 + (nitro ? 5 : 0));
+    camera.fov += (fovIn - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix();
+    primeiroQuadro = true;
+    ponto(s, j.z + 1.8, 0.75, farol.position); ponto(s * 0.9, j.z + 26, 0, farol.target.position);
+    return;
+  }
+  if (camera.near !== 0.2) camera.near = 0.2;
   let alvo;
   if (preparo && !reduced.matches) {
     // na largada, a câmera dá a volta no carro até ficar atrás dele

@@ -82,7 +82,7 @@ body[data-phase=menu] .vignette{background:radial-gradient(ellipse at 55% 50%,tr
 
 /* Toque */
 .touch{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));display:none;justify-content:space-between;align-items:end;z-index:5;pointer-events:none}.touch div{display:flex;gap:8px;align-items:end}.touch button{pointer-events:auto;border:1px solid #fff8;background:#05070bc9;color:#fff;border-radius:6px;min-width:58px;min-height:56px;font:italic 900 24px var(--hud);touch-action:none;user-select:none;-webkit-user-select:none}.touch button:active,.touch button.on{background:var(--amber);color:#101923}
-.touch .gas-touch{min-width:84px;min-height:84px;background:#ffbd45d9;color:#101923;font-size:20px}.touch .n2o-touch{background:#1878d8d0;font-size:18px}.touch .freio-touch{font-size:16px}.touch .col{flex-direction:column}
+.touch .gas-touch{min-width:84px;min-height:84px;background:#ffbd45d9;color:#101923;font-size:20px}.touch .n2o-touch{background:#1878d8d0;font-size:18px}.touch .freio-touch{font-size:16px}.touch .cam-touch{font-size:16px;min-width:50px}.touch .col{flex-direction:column}
 @media(pointer:coarse){.touch:not(.hidden){display:flex}.faixas{bottom:calc(150px + env(safe-area-inset-bottom))}#lane{bottom:calc(166px + env(safe-area-inset-bottom))}.medidores{bottom:calc(150px + env(safe-area-inset-bottom));right:auto;left:50%;transform:translateX(-50%)}.song{display:none}.tach,.n2o{bottom:calc(120px + env(safe-area-inset-bottom))}}
 
 /* Resultado */
@@ -127,7 +127,7 @@ body[data-phase=menu] .vignette{background:radial-gradient(ellipse at 55% 50%,tr
       <small id="carStatus">Carregando modelo...</small>
     </div>
     <div class="actions"><button class="secundario" id="garagemBtn">Personalizar</button><button class="primary" id="start" disabled>Correr →</button></div>
-    <div class="controls-note"><b>W / ↑</b> acelera · <b>S / ↓</b> freia · <b>← →</b> faixa<br><b>Shift / E</b> sobe · <b>Q</b> reduz · <b>Espaço</b> nitro · <a href="/corrida/drag/creditos.html" target="_blank" rel="noopener">Créditos dos carros</a></div>
+    <div class="controls-note"><b>W / ↑</b> acelera · <b>S / ↓</b> freia · <b>← →</b> faixa<br><b>Shift / E</b> sobe · <b>Q</b> reduz · <b>Espaço</b> nitro · <b>C</b> câmera · <a href="/corrida/drag/creditos.html" target="_blank" rel="noopener">Créditos dos carros</a></div>
   </section>
 </div>
 <aside class="oficina" id="oficina" aria-label="Personalizar o carro"><div class="eyebrow">Oficina da garagem</div><h2>Do seu jeito</h2><div id="oficinaLinhas"></div><div class="actions"><button class="secundario" id="oficinaReset">De fábrica</button><button class="primary" id="oficinaPronto">Pronto</button></div></aside>
@@ -146,7 +146,7 @@ body[data-phase=menu] .vignette{background:radial-gradient(ellipse at 55% 50%,tr
 </div>
 
 <div class="touch hidden" id="touch">
-  <div><button data-action="left" aria-label="Faixa à esquerda">←</button><button data-action="right" aria-label="Faixa à direita">→</button></div>
+  <div><button data-action="left" aria-label="Faixa à esquerda">←</button><button data-action="right" aria-label="Faixa à direita">→</button><button class="cam-touch" data-action="cam" aria-label="Trocar a câmera (de trás ou de dentro)">CAM</button></div>
   <div><div class="col" style="display:flex;gap:8px"><button data-action="up" aria-label="Subir marcha">+</button><button data-action="down" aria-label="Reduzir marcha">−</button></div><div class="col" style="display:flex;gap:8px"><button class="n2o-touch" data-action="nitro" aria-label="Segure para usar o nitro">N2O</button><button class="freio-touch" data-action="freio" aria-label="Segure para frear">FREIO</button></div><button class="gas-touch" data-action="gas" aria-label="Segure para acelerar">GÁS</button></div>
 </div>
 

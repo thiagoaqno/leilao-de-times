@@ -9,6 +9,8 @@ O lobby é a **garagem** (`garagem.js`): uma rua à meia-noite com o galpão da 
 - Carros: os onze GLB de `models/`, empacotados por `tools/importar-carros-drag.py` (importa os ZIPs ou GLB que estiverem na pasta indicada). O jogador usa o escolhido; os rivais usam três dos outros, carregados enquanto você está na garagem, e a largada espera por eles. `modelos.js` diz, para cada modelo, onde ficam as lanternas e os faróis (`tras` e `frente`, conferidos de frente e de trás em cada carro) e qual material leva a pintura. Carro novo entra em `CARROS` (logic.mjs), em `MODELOS` (modelos.js) e nos créditos. O Skyline R33 não trouxe arquivo de licença; verificar os direitos antes de distribuir.
 - Primeira corrida sem tranco: antes do relógio andar, `aquecer` compila os shaders de tudo o que vai aparecer (`compileAsync`) e sobe as texturas; as partículas já nascem prontas (`criarParticulas`) e a pista é reaproveitada quando é a mesma.
 
-Controles: W/↑ acelera, S/↓ freia, ←/→ (A/D) trocam de faixa, Shift ou E sobe marcha, Q reduz, Espaço (ou N) nitro. No toque: GÁS, FREIO, N2O, + e − e as setas.
+Controles: W/↑ acelera, S/↓ freia, ←/→ (A/D) trocam de faixa, Shift ou E sobe marcha, Q reduz, Espaço (ou N) nitro, C troca a câmera. No toque: GÁS, FREIO, N2O, + e −, as setas e CAM.
+
+Câmera interna: o olho fica no banco do motorista de cada modelo (`banco` em `modelos.js`; R33 e R34 são de mão inglesa), preso ao carro, com uma luz fraca no painel (`luzPainel`, que existe sempre e só muda de intensidade, para não recompilar os shaders). A escolha fica em `drag:camera`.
 
 Músicas: coloque `.mp3` em `musicas/`; a pasta é lida a cada corrida.
