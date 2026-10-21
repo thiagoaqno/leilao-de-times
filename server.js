@@ -59,6 +59,18 @@ app.get("/api/musicas", (req, res) => {
   } catch (e) { /* sem pasta, sem músicas */ }
   res.json(lista);
 });
+// Modo drag: basta colocar MP3 na pasta; a lista é lida a cada corrida.
+const PASTA_MUSICA_DRAG = path.join(__dirname, "public", "corrida", "drag", "musicas");
+app.get("/api/corrida/drag/musicas", (req, res) => {
+  let lista = [];
+  try {
+    lista = require("fs").readdirSync(PASTA_MUSICA_DRAG)
+      .filter((f) => /\.mp3$/i.test(f))
+      .sort((a, b) => a.localeCompare(b, "pt", { numeric: true }))
+      .map((f) => ({ nome: f.replace(/\.mp3$/i, ""), url: "/corrida/drag/musicas/" + encodeURIComponent(f) }));
+  } catch (e) { /* pasta vazia ou ausente */ }
+  res.json(lista);
+});
 // a música ambiente da Vila 3D (public/vila3d/musica/, ou VILA3D_MUSICA_DIR): a mesma ideia de /api/musicas
 const PASTA_MUSICA_3D = process.env.VILA3D_MUSICA_DIR || path.join(__dirname, "public", "vila3d", "musica");
 if (process.env.VILA3D_MUSICA_DIR) app.use("/vila3d/musica", express.static(PASTA_MUSICA_3D));

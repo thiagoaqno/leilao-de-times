@@ -7,7 +7,6 @@ import { canvasTex, M } from "./cena.js";
 import { enfeitarMais, animarMais, montarTorcida } from "./vida-mais.js";
 
 const reduz = matchMedia("(prefers-reduced-motion: reduce)");
-const CIDADE = { monaco: 1, tokyo: 1, losangeles: 1, rio: 1, luigi: 1 };
 const ANUNCIOS = [
   ["#ffd23f", "#1b1b1b", "PASTEL DA VILA", "o mais rápido do bairro"],
   ["#1f8a3a", "#ffffff", "GUARANÁ GALERA", "gelado na largada"],
@@ -68,20 +67,6 @@ export function enfeitar(tr, add, r, alturaEm) {
   const placa = new THREE.PlaneGeometry(14, 10.5);
   setas.forEach((l, k) => instancias(add, placa, new THREE.MeshStandardMaterial({ map: setaTex(k ? 1 : -1), roughness: 0.5, emissive: 0xffffff, emissiveIntensity: noite ? 0.5 : 0.08, emissiveMap: null, side: THREE.DoubleSide }), l, false));
   instancias(add, new THREE.CylinderGeometry(0.6, 0.6, 8, 5), M(0x555a60), postes, false);
-  // postes de luz nas pistas de cidade
-  if (CIDADE[id]) {
-    const haste = [], braco = [], luz = [];
-    for (let i = 10; i < n; i += 23) {
-      if (tr.coberto && tr.coberto(i)) continue; // no túnel de Mônaco o poste furaria o teto
-      const p = pts[i], s = (i / 23) % 2 ? 1 : -1, [x, z] = lat(p, s * (comMuro ? tr.wallLat + 5 : W / 2 + 22)), y = alturaEm(x, z, i), ry = Math.atan2(p.nx * s, p.ny * s);
-      haste.push({ x, y: y + 27, z, s: 1 });
-      braco.push({ x: x - p.nx * s * 8, y: y + 54, z: z - p.ny * s * 8, ry, s: 1 });
-      luz.push({ x: x - p.nx * s * 15, y: y + 52.5, z: z - p.ny * s * 15, ry, s: 1 });
-    }
-    instancias(add, new THREE.CylinderGeometry(0.9, 1.3, 54, 6), M(0x3c4048, { metalness: 0.5, roughness: 0.4 }), haste);
-    instancias(add, new THREE.BoxGeometry(1.2, 1.2, 18), M(0x3c4048), braco, false);
-    instancias(add, new THREE.BoxGeometry(3.4, 1.6, 6), new THREE.MeshStandardMaterial({ color: 0xfff6d8, emissive: 0xffe2a0, emissiveIntensity: noite ? 2.2 : 0.5 }), luz, false);
-  }
   // outdoors nas retas, virados para a pista
   if (!t.espaco) {
     let feitos = 0, ult = -1e9;
