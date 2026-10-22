@@ -1,5 +1,9 @@
 const { test, expect } = require("@playwright/test");
 
+// o navegador dos testes desenha poucos quadros e o jogo anda bem mais devagar que o tempo real (o passo de cada quadro
+// tem limite): a contagem da largada e a corrida levam muito mais tempo aqui do que na tela de quem joga
+test.describe.configure({ timeout: 300000 });
+
 const largar = async (page, pista) => {
   await page.goto("/corrida/drag/#debug");
   await expect(page.locator("#carStatus")).toHaveText("Modelo pronto", { timeout: 90000 });
@@ -10,8 +14,8 @@ const largar = async (page, pista) => {
 test("drag: aquece os pneus, larga, troca marcha e muda de faixa", async ({ page }, testInfo) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/corrida/drag/");
-  await expect(page.locator(".track")).toHaveCount(3);
+  await page.goto("/corrida/drag/#debug"); // com #debug desde o começo: o largar só troca a pista (mudar só o # não recarrega)
+  await expect(page.locator(".track")).toHaveCount(4); // Ponte, Elevado, Porto e Serra
   await expect(page.locator("#carSelect option")).toHaveCount(11);
   await expect(page.locator("#carStatus")).toHaveText("Modelo pronto", { timeout: 90000 });
   await page.screenshot({ path: testInfo.outputPath("corrida-drag-menu.png") });
@@ -23,7 +27,7 @@ test("drag: aquece os pneus, larga, troca marcha e muda de faixa", async ({ page
   await page.keyboard.down("w");
   await expect.poll(() => page.evaluate(() => window.__drag.corrida.jogador.pneu)).toBeGreaterThan(0);
   await page.keyboard.up("w");
-  await expect(page.locator("body")).toHaveAttribute("data-phase", "race", { timeout: 60000 });
+  await expect(page.locator("body")).toHaveAttribute("data-phase", "race", { timeout: 150000 });
   await expect(page.locator("#preparo")).toBeHidden();
   await page.keyboard.down("w");
   await expect(page.locator("#speed")).not.toHaveText("000");
@@ -91,17 +95,18 @@ test("drag: a garagem personaliza o carro e a escolha vale na corrida", async ({
 });
 
 test("drag: segurar W sem trocar marcha explode o motor", async ({ page }) => {
+  // o motor leva uns 30 s para chegar no corte e outros 60 s para estourar (3,5 s de jogo no vermelho)
   await largar(page);
-  await expect(page.locator("body")).toHaveAttribute("data-phase", "race", { timeout: 60000 });
+  await expect(page.locator("body")).toHaveAttribute("data-phase", "race", { timeout: 150000 });
   await page.keyboard.down("w");
-  await expect(page.locator("body")).toHaveAttribute("data-phase", "finish", { timeout: 90000 });
+  await expect(page.locator("body")).toHaveAttribute("data-phase", "finish", { timeout: 200000 });
   await expect(page.locator("#result")).toHaveText("MOTOR EXPLODIU");
   await page.keyboard.up("w");
 });
 
 test("drag: nitro na terceira e bater de frente é perda total", async ({ page }, testInfo) => {
   await largar(page, /porto à noite/i);
-  await expect(page.locator("body")).toHaveAttribute("data-phase", "race", { timeout: 60000 });
+  await expect(page.locator("body")).toHaveAttribute("data-phase", "race", { timeout: 150000 });
   await page.evaluate(() => { const j = window.__drag.corrida.jogador; j.gear = 3; j.speed = 120; });
   await page.keyboard.down("w");
   await page.keyboard.down("Space");

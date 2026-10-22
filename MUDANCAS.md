@@ -1,32 +1,22 @@
-# Copa do Mundo: ninguém do mesmo grupo se cruza nos 16 avos
+# Testes que falhavam por acaso ou estavam velhos
 
-## O bug
+Mais um passo da refatoração. Nada muda no jogo: só os testes.
 
-- **O que acontecia:** na Copa do Mundo da Carreira, depois de montar a chave dos 16 avos (os 12 primeiros, os 12
-  segundos e os 8 melhores terceiros), o código trocava o "de baixo" de um confronto com o do confronto seguinte
-  quando os dois eram do mesmo grupo.
-- **Por que dava errado:** essa troca às vezes criava um encontro novo do mesmo grupo no confronto seguinte. No último
-  confronto, a troca voltava para o primeiro, que já tinha sido conferido.
-- **O tamanho:** em 5000 sorteios, 393 Copas (cerca de 8%) tinham duas seleções do mesmo grupo se enfrentando de novo
-  nos 16 avos. O teste da Copa (`carreira-copa.test.js`) pegava isso e falhava por acaso, conforme o sorteio da
-  temporada. Foi o que deixou vermelho o teste do GitHub no PR #296.
+## O que muda
 
-## A correção
-
-- **`Temporada.separarGrupos`** (`public/carreira/temporada.js`): quando um confronto é do mesmo grupo, troca o de
-  baixo com o de baixo de outro confronto (o seguinte e, se precisar, dando a volta), só onde a troca não cria um
-  encontro novo do mesmo grupo.
-- **O que muda nas Copas que já existiam:** quando a troca antiga já dava certo, a nova faz a mesma troca. Só mudam as
-  Copas que estavam erradas.
-
-## Trazido do PR #296
-
-- **O teste dos robôs da Corrida** ("robôs miram o ritmo da sala") sorteava sem semente e às vezes falhava por acaso:
-  falhou no GitHub neste PR. A mesma correção do #296 (`comSemente`, só no teste) vem aqui. Quando o #296 entrar, ela
-  não muda mais nada.
+- **Ginásio, "dois clientes e robôs jogam até o fim":** a partida em tempo real exigia que os clientes vencessem os
+  robôs da sala. No GitHub, com todos os testes rodando juntos, os robôs (no nível normal) às vezes ganhavam, e o teste
+  falhava por acaso: aconteceu no PR #298. Agora os robôs da sala são os fáceis (`robo: "facil"`). Com 6 cópias do teste
+  rodando ao mesmo tempo, a versão antiga falhou 1 vez em 6. A nova passou 6 de 6, e depois 8 de 8.
+- **Drag no navegador (`corrida-drag.spec.js`):** dois testes falhavam também na `main`:
+  - "aquece os pneus": esperava 3 pistas, e o Drag tem 4 desde a Serra. Ele também abria a página sem o `#debug`, e o
+    `largar` só trocava o `#` do endereço, o que não recarrega a página: o `window.__drag` nunca existia;
+  - "segurar W explode o motor": o motor estoura mesmo, mas o navegador dos testes roda o jogo a cerca de um décimo da
+    velocidade real (o passo de cada quadro tem limite). O motor leva uns 93 s para estourar, e o teste esperava 90 s.
+    O arquivo ganhou mais tempo (`test.describe.configure`), e as esperas pela largada também, porque a contagem anda
+    devagar do mesmo jeito.
 
 ## Testes
 
-- **Novo, `tests/carreira-copa-chave.test.js`:** 5000 sorteios no formato da Copa, sem nenhum encontro do mesmo grupo.
-  O algoritmo antigo falha em 393 deles.
-- `carreira-copa`, `carreira-copas` e `carreira-temporada`: passando.
+- Ginásio: 4 vezes sozinho, 6 e depois 8 cópias ao mesmo tempo, todas passando.
+- `corrida-drag.spec.js`: os 4 passando (antes, 2 falhavam na `main`).
