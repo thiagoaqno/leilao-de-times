@@ -1,35 +1,32 @@
-# Os jogos de mesa usam um esqueleto só
+# Copa do Mundo: ninguém do mesmo grupo se cruza nos 16 avos
 
-Quinto passo da refatoração: tirar o código repetido do servidor, começando pelos jogos de mesa.
+## O bug
 
-## O que muda
+- **O que acontecia:** na Copa do Mundo da Carreira, depois de montar a chave dos 16 avos (os 12 primeiros, os 12
+  segundos e os 8 melhores terceiros), o código trocava o "de baixo" de um confronto com o do confronto seguinte
+  quando os dois eram do mesmo grupo.
+- **Por que dava errado:** essa troca às vezes criava um encontro novo do mesmo grupo no confronto seguinte. No último
+  confronto, a troca voltava para o primeiro, que já tinha sido conferido.
+- **O tamanho:** em 5000 sorteios, 393 Copas (cerca de 8%) tinham duas seleções do mesmo grupo se enfrentando de novo
+  nos 16 avos. O teste da Copa (`carreira-copa.test.js`) pegava isso e falhava por acaso, conforme o sorteio da
+  temporada. Foi o que deixou vermelho o teste do GitHub no PR #296.
 
-- **`ligarMesa` (`salas.js`):** Uno, Truco, Dominó, Ludo, Bloqueio, Sinuca e Botão repetiam, quase letra por letra, o
-  mesmo bloco de conexão:
-  - `create`, que cria a mesa;
-  - `join`, que deixa voltar com o token, assistir ou sentar;
-  - `act`, que chama as ações;
-  - `react`, as reações com emoji;
-  - `disconnect`.
+## A correção
 
-  Agora esse bloco mora num lugar só. Cada jogo passa só o que é dele:
-  - o limite de jogadores;
-  - os campos da sala nova;
-  - o jogador novo e as ações;
-  - os eventos a mais: a mira da Sinuca e do Botão, o goleiro do Botão e o sinal do Truco;
-  - as frases próprias do registro: "Mesa montada por..." do Botão e "... chegou." da Sinuca e do Botão.
-- **Para quem joga, nada muda:** as mesmas mensagens, os mesmos limites, o mesmo estado. As regras de cada jogo
-  (`handle`, `addPlayer`) só saíram de dentro do bloco de conexão e continuam no módulo de cada jogo, iguais. O
-  `git diff -w` mostra só o bloco que saiu.
-- **Os sete módulos perderam cerca de 390 linhas.** Contando a peça nova do `salas.js`, o projeto fica cerca de 310
-  linhas menor. Cada módulo importa do `salas.js` só o que ainda usa.
-- **Jogo de mesa novo:** usar o `ligarMesa` em vez de copiar o bloco (está no `CLAUDE.md`).
+- **`Temporada.separarGrupos`** (`public/carreira/temporada.js`): quando um confronto é do mesmo grupo, troca o de
+  baixo com o de baixo de outro confronto (o seguinte e, se precisar, dando a volta), só onde a troca não cria um
+  encontro novo do mesmo grupo.
+- **O que muda nas Copas que já existiam:** quando a troca antiga já dava certo, a nova faz a mesma troca. Só mudam as
+  Copas que estavam erradas.
+
+## Trazido do PR #296
+
+- **O teste dos robôs da Corrida** ("robôs miram o ritmo da sala") sorteava sem semente e às vezes falhava por acaso:
+  falhou no GitHub neste PR. A mesma correção do #296 (`comSemente`, só no teste) vem aqui. Quando o #296 entrar, ela
+  não muda mais nada.
 
 ## Testes
 
-- `salas` (a forma do estado de cada canal, com entrar e sair), `servidor` (partidas de verdade), `regras`, `bloqueio`,
-  `lobby` e `rumi`: 33 passando.
-- No navegador, `salas.spec.js` (dois entram e jogam em cada jogo), `mesa.spec.js` e `paginas.spec.js`: 41 de 42
-  passando, com as sete mesas todas verdes.
-- O que falhou foi "corrida: dois entram, começa e roda sem erro", e a Corrida não mudou neste PR. Esse teste passa
-  sozinho na `main` e falha quando a máquina está carregada. Fica anotado como teste instável.
+- **Novo, `tests/carreira-copa-chave.test.js`:** 5000 sorteios no formato da Copa, sem nenhum encontro do mesmo grupo.
+  O algoritmo antigo falha em 393 deles.
+- `carreira-copa`, `carreira-copas` e `carreira-temporada`: passando.
