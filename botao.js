@@ -6,7 +6,7 @@
 // O servidor simula cada jogada (public/botao/fisica.js) e aplica as regras; os navegadores recebem a jogada e
 // refazem a mesma simulação só para animar.
 const F = require("./public/botao/fisica.js");
-const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const { ligarMesa, rid, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
 const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
@@ -337,159 +337,116 @@ module.exports = function attachBotao(io) {
   }
 
   // ---------- conexões ----------
-  nsp.on("connection", (socket) => {
-    const ctx = () => contexto(socket, rooms);
-    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
-    function addPlayer(room, name) {
-      const used = new Set(Object.values(room.players).map((p) => p.pawn)), kits = new Set(Object.values(room.players).map((p) => p.kit));
-      const id = rid(6);
-      const t0 = room.order.filter((x) => room.players[x].team === 0).length, t1 = room.order.length - t0;
-      // começa com uma camisa que ninguém está usando (dá para trocar para a mesma de outro depois)
-      room.players[id] = { id, name, token: rid(), pawn: PAWNS.find((x) => !used.has(x)), kit: KITS.find((k) => !kits.has(k)) || KITS[0], form: "2-2", team: t0 <= t1 ? 0 : 1, wins: 0, sockets: new Set() };
-      room.order.push(id);
-      return room.players[id];
+  function addPlayer(room, name) {
+    const used = new Set(Object.values(room.players).map((p) => p.pawn)), kits = new Set(Object.values(room.players).map((p) => p.kit));
+    const id = rid(6);
+    const t0 = room.order.filter((x) => room.players[x].team === 0).length, t1 = room.order.length - t0;
+    // começa com uma camisa que ninguém está usando (dá para trocar para a mesma de outro depois)
+    room.players[id] = { id, name, token: rid(), pawn: PAWNS.find((x) => !used.has(x)), kit: KITS.find((k) => !kits.has(k)) || KITS[0], form: "2-2", team: t0 <= t1 ? 0 : 1, wins: 0, sockets: new Set() };
+    room.order.push(id);
+    return room.players[id];
+  }
+
+  function handle(room, me, data) {
+    const type = data.type, isHost = me && room.host === me.id;
+    // ---- sala de espera ----
+    if (type === "pawn") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      if (!PAWNS.includes(data.pawn)) return "Avatar inválido.";
+      if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
+      me.pawn = data.pawn; return;
     }
-
-    socket.on("create", (data = {}, cb) => {
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], g: null, match: null, tour: null, log: [], t: Date.now() };
-      rooms.set(room.code, room);
-      const p = addPlayer(room, name);
-      room.host = p.id;
-      bind(room, p.id);
-      log(room, `Mesa montada por ${name}.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-
-    socket.on("join", (data = {}, cb) => {
-      const room = buscarSala(rooms, data.code);
-      if (!room) return fail(cb, "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu).");
-      const back = quemVolta(room, data);
-      if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
-      if (data.watch || room.phase !== "lobby") {
-        if (!data.watch) return fail(cb, "O jogo já começou. Você pode entrar para assistir.");
-        bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room);
-      }
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      if (room.order.length >= MAX_PLAYERS) return fail(cb, `A mesa já tem ${MAX_PLAYERS} jogadores. Você pode entrar para assistir.`);
-      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na mesa.");
-      const p = addPlayer(room, name);
-      bind(room, p.id);
-      log(room, `${name} chegou.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-
-    socket.on("act", (data = {}, cb) => {
-      const { room, me } = ctx();
-      if (!room) return fail(cb, "Você não está numa mesa.");
-      const err = handle(room, me, data);
-      if (err) return fail(cb, err);
-      ok(cb);
-      broadcast(room);
-    });
-
-    function handle(room, me, data) {
-      const type = data.type, isHost = me && room.host === me.id;
-      // ---- sala de espera ----
-      if (type === "pawn") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        if (!PAWNS.includes(data.pawn)) return "Avatar inválido.";
-        if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
-        me.pawn = data.pawn; return;
-      }
-      if (type === "kit") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        if (!KITS.includes(data.kit)) return "Camisa inválida.";
-        me.kit = data.kit; return;
-      }
-      if (type === "form") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        if (!FORMS.includes(data.form)) return "Formação inválida.";
-        // nos times, a formação é do time inteiro; cada um por si, é só a sua
-        for (const p of Object.values(room.players)) if (p === me || (room.config.mode === "times" && p.team === me.team)) p.form = data.form;
-        return;
-      }
-      if (type === "team") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        const id = data.id && isHost ? data.id : me.id, p = room.players[id];
-        if (!p) return "Jogador inválido.";
-        p.team = p.team ? 0 : 1;
-        if (room.config.mode === "times") { const mate = Object.values(room.players).find((x) => x !== p && x.team === p.team); if (mate) p.form = mate.form; } // entra na formação do time novo
-        return;
-      }
-      if (type === "shuffleTeams") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
-        shuffle([...room.order]).forEach((id, i) => (room.players[id].team = i % 2));
-        log(room, "🎲 Times sorteados."); return;
-      }
-      if (type === "config") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador muda as regras, antes de começar.";
-        room.config = cleanConfig(data.config); return;
-      }
-      if (type === "kick") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
-        const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
-        for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
-        delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
-        log(room, `${p.name} saiu da mesa.`); return;
-      }
-      if (type === "start") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador começa o jogo.";
-        const n = room.order.length, cfg = room.config;
-        if (n < 2) return "Precisa de pelo menos 2 jogadores.";
-        for (const id of room.order) room.players[id].wins = 0;
-        room.champion = null; room.g = null;
-        if (cfg.mode === "times") {
-          const a = room.order.filter((id) => room.players[id].team === 0), b = room.order.filter((id) => room.players[id].team === 1);
-          if (!a.length || !b.length) return "Cada time precisa de pelo menos 1 jogador.";
-          if (a.length > MAX_TEAM || b.length > MAX_TEAM) return `Cada time pode ter até ${MAX_TEAM} jogadores.`;
-          room.tour = { kind: "times" };
-          startMatch(room, [shuffle(a), shuffle(b)], `${a.length}x${b.length}`);
-        } else if (n === 2) {
-          room.tour = { kind: "serie" };
-          startMatch(room, shuffle([[room.order[0]], [room.order[1]]]), "");
-        } else if (cfg.format === "mata") {
-          if (n !== 4 && n !== 8) return "Mata-mata precisa de 4 ou 8 jogadores. Com outra quantidade, use o Rei do campo.";
-          const ids = shuffle([...room.order]), r0 = [];
-          for (let i = 0; i < n; i += 2) r0.push({ a: ids[i], b: ids[i + 1], w: null });
-          room.tour = { kind: "mata", rounds: [r0], r: 0, m: 0 };
-          mataMatch(room);
-        } else {
-          const q = shuffle([...room.order]);
-          room.tour = { kind: "rei", queue: q, streak: 0, last: null };
-          startMatch(room, [[q[0]], [q[1]]], "Rei do campo");
-        }
-        return;
-      }
-      if (type === "next") {
-        if (!isHost || room.phase !== "gameEnd" || !room.nextFn) return "Só o organizador adianta.";
-        clearTimeout(room.nextTimer); const f = room.nextFn; room.nextFn = null; f(); return;
-      }
-      if (type === "restart") {
-        if (!isHost || room.phase === "lobby") return "Só o organizador.";
-        clearTimeout(room.nextTimer); clearTimeout(room.turnTimer); clearTimeout(room.clockTimer);
-        room.phase = "lobby"; room.g = null; room.match = null; room.tour = null; room.result = null; room.champion = null; room.deadline = null; room.nextAt = null; room.nextFn = null;
-        log(room, "A mesa voltou para a sala de espera."); return;
-      }
-      if (!me) return "Você está só assistindo.";
-      // ---- jogo ----
-      if (type === "shoot") {
-        if (room.phase !== "playing") return "O jogo não está em andamento.";
-        if (Date.now() < room.g.busyUntil) return "Espere as peças pararem.";
-        if (shooterOf(room) !== me.id) return "Não é a sua vez.";
-        const f = cleanFlick(room, data);
-        if (f.err) return f.err;
-        if (f.p < 0.03) return "Puxe a tampinha para chutar.";
-        play(room, [f], [me.id]);
-        return;
-      }
-      return "Ação desconhecida.";
+    if (type === "kit") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      if (!KITS.includes(data.kit)) return "Camisa inválida.";
+      me.kit = data.kit; return;
     }
+    if (type === "form") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      if (!FORMS.includes(data.form)) return "Formação inválida.";
+      // nos times, a formação é do time inteiro; cada um por si, é só a sua
+      for (const p of Object.values(room.players)) if (p === me || (room.config.mode === "times" && p.team === me.team)) p.form = data.form;
+      return;
+    }
+    if (type === "team") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      const id = data.id && isHost ? data.id : me.id, p = room.players[id];
+      if (!p) return "Jogador inválido.";
+      p.team = p.team ? 0 : 1;
+      if (room.config.mode === "times") { const mate = Object.values(room.players).find((x) => x !== p && x.team === p.team); if (mate) p.form = mate.form; } // entra na formação do time novo
+      return;
+    }
+    if (type === "shuffleTeams") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
+      shuffle([...room.order]).forEach((id, i) => (room.players[id].team = i % 2));
+      log(room, "🎲 Times sorteados."); return;
+    }
+    if (type === "config") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador muda as regras, antes de começar.";
+      room.config = cleanConfig(data.config); return;
+    }
+    if (type === "kick") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
+      const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
+      for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
+      delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
+      log(room, `${p.name} saiu da mesa.`); return;
+    }
+    if (type === "start") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador começa o jogo.";
+      const n = room.order.length, cfg = room.config;
+      if (n < 2) return "Precisa de pelo menos 2 jogadores.";
+      for (const id of room.order) room.players[id].wins = 0;
+      room.champion = null; room.g = null;
+      if (cfg.mode === "times") {
+        const a = room.order.filter((id) => room.players[id].team === 0), b = room.order.filter((id) => room.players[id].team === 1);
+        if (!a.length || !b.length) return "Cada time precisa de pelo menos 1 jogador.";
+        if (a.length > MAX_TEAM || b.length > MAX_TEAM) return `Cada time pode ter até ${MAX_TEAM} jogadores.`;
+        room.tour = { kind: "times" };
+        startMatch(room, [shuffle(a), shuffle(b)], `${a.length}x${b.length}`);
+      } else if (n === 2) {
+        room.tour = { kind: "serie" };
+        startMatch(room, shuffle([[room.order[0]], [room.order[1]]]), "");
+      } else if (cfg.format === "mata") {
+        if (n !== 4 && n !== 8) return "Mata-mata precisa de 4 ou 8 jogadores. Com outra quantidade, use o Rei do campo.";
+        const ids = shuffle([...room.order]), r0 = [];
+        for (let i = 0; i < n; i += 2) r0.push({ a: ids[i], b: ids[i + 1], w: null });
+        room.tour = { kind: "mata", rounds: [r0], r: 0, m: 0 };
+        mataMatch(room);
+      } else {
+        const q = shuffle([...room.order]);
+        room.tour = { kind: "rei", queue: q, streak: 0, last: null };
+        startMatch(room, [[q[0]], [q[1]]], "Rei do campo");
+      }
+      return;
+    }
+    if (type === "next") {
+      if (!isHost || room.phase !== "gameEnd" || !room.nextFn) return "Só o organizador adianta.";
+      clearTimeout(room.nextTimer); const f = room.nextFn; room.nextFn = null; f(); return;
+    }
+    if (type === "restart") {
+      if (!isHost || room.phase === "lobby") return "Só o organizador.";
+      clearTimeout(room.nextTimer); clearTimeout(room.turnTimer); clearTimeout(room.clockTimer);
+      room.phase = "lobby"; room.g = null; room.match = null; room.tour = null; room.result = null; room.champion = null; room.deadline = null; room.nextAt = null; room.nextFn = null;
+      log(room, "A mesa voltou para a sala de espera."); return;
+    }
+    if (!me) return "Você está só assistindo.";
+    // ---- jogo ----
+    if (type === "shoot") {
+      if (room.phase !== "playing") return "O jogo não está em andamento.";
+      if (Date.now() < room.g.busyUntil) return "Espere as peças pararem.";
+      if (shooterOf(room) !== me.id) return "Não é a sua vez.";
+      const f = cleanFlick(room, data);
+      if (f.err) return f.err;
+      if (f.p < 0.03) return "Puxe a tampinha para chutar.";
+      play(room, [f], [me.id]);
+      return;
+    }
+    return "Ação desconhecida.";
+  }
 
+  // os eventos que só este jogo tem
+  const extras = (socket, ctx) => {
     // Mira ao vivo: quem está jogando manda a tampinha escolhida e o quanto puxou, e os outros veem a seta.
     socket.on("aim", (d = {}) => {
       const { room, me } = ctx();
@@ -514,23 +471,10 @@ module.exports = function attachBotao(io) {
       g.keepers[side] = F.clampKeeper(y);
       socket.to(room.code).emit("keeper", { side, y: g.keepers[side] });
     });
+  };
 
-    socket.on("react", (data = {}) => {
-      const { room, me } = ctx();
-      if (!room || !me || room.phase === "lobby" || !REACTIONS.includes(data.emoji)) return;
-      const now = Date.now();
-      if (now - (me.lastReact || 0) < 700) return;
-      me.lastReact = now;
-      nsp.to(room.code).emit("react", { player: me.id, emoji: data.emoji });
-    });
-
-    socket.on("disconnect", () => {
-      const { room, me } = ctx();
-      if (!room) return;
-      if (me) me.sockets.delete(socket.id);
-      broadcast(room);
-    });
-  });
+  // criar, entrar, as ações, as reações e a saída: o esqueleto comum dos jogos de mesa (salas.ligarMesa)
+  ligarMesa(nsp, rooms, { max: MAX_PLAYERS, sala: (data) => ({ config: cleanConfig(data.config), g: null, match: null, tour: null }), novoJogador: addPlayer, acao: handle, broadcast, log, reacoes: REACTIONS, textos: { criou: (nome) => `Mesa montada por ${nome}.`, sentou: (nome) => `${nome} chegou.` }, extras });
 
   // mesas paradas há mais de 12 horas somem
   limparSalasParadas(rooms, { aoApagar: (r) => { clearTimeout(r.turnTimer); clearTimeout(r.nextTimer); clearTimeout(r.clockTimer); } });

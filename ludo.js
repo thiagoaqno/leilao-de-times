@@ -3,7 +3,7 @@
 // Com 2 dados (o padrão), cada dado é uma jogada: usa um num peão e o outro no mesmo ou em outro peão. Dobradinha
 // (os dois iguais) joga de novo; três dobradinhas seguidas perdem a vez. Com 1 dado, é o ludo de sempre (6 joga de novo).
 const R = require("./public/ludo/regras.js");
-const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const { ligarMesa, rid, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
 const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
@@ -162,122 +162,72 @@ module.exports = function attachLudo(io) {
   }
 
   // ---------- conexões ----------
-  nsp.on("connection", (socket) => {
-    const ctx = () => contexto(socket, rooms);
-    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
-    function addPlayer(room, name) {
-      const usedPawn = new Set(Object.values(room.players).map((p) => p.pawn));
-      const usedColor = new Set(Object.values(room.players).map((p) => p.color));
-      // com 2 pessoas, ficam em cantos opostos (vermelho e amarelo)
-      const color = ["red", "yellow", "green", "blue"].find((c) => !usedColor.has(c));
-      const id = rid(6);
-      room.players[id] = { id, name, token: rid(), pawn: PAWNS.find((x) => !usedPawn.has(x)), color, sockets: new Set() };
-      room.order.push(id);
-      return room.players[id];
+  function addPlayer(room, name) {
+    const usedPawn = new Set(Object.values(room.players).map((p) => p.pawn));
+    const usedColor = new Set(Object.values(room.players).map((p) => p.color));
+    // com 2 pessoas, ficam em cantos opostos (vermelho e amarelo)
+    const color = ["red", "yellow", "green", "blue"].find((c) => !usedColor.has(c));
+    const id = rid(6);
+    room.players[id] = { id, name, token: rid(), pawn: PAWNS.find((x) => !usedPawn.has(x)), color, sockets: new Set() };
+    room.order.push(id);
+    return room.players[id];
+  }
+
+  function handle(room, me, data) {
+    const type = data.type, isHost = me && room.host === me.id, g = room.g;
+    if (type === "pawn") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      if (!PAWNS.includes(data.pawn)) return "Avatar inválido.";
+      if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
+      me.pawn = data.pawn; return;
     }
-
-    socket.on("create", (data = {}, cb) => {
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], g: null, timer: null, deadline: null, log: [], t: Date.now() };
-      rooms.set(room.code, room);
-      const p = addPlayer(room, name);
-      room.host = p.id;
-      bind(room, p.id);
-      log(room, `Mesa criada por ${name}.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-
-    socket.on("join", (data = {}, cb) => {
-      const room = buscarSala(rooms, data.code);
-      if (!room) return fail(cb, "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu).");
-      const back = quemVolta(room, data);
-      if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
-      if (data.watch || room.phase !== "lobby") {
-        if (!data.watch) return fail(cb, "O jogo já começou. Você pode entrar para assistir.");
-        bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room);
-      }
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      if (room.order.length >= 4) return fail(cb, "A mesa já tem 4 jogadores. Você pode entrar para assistir.");
-      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na mesa.");
-      const p = addPlayer(room, name);
-      bind(room, p.id);
-      log(room, `${name} sentou à mesa.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-
-    socket.on("act", (data = {}, cb) => {
-      const { room, me } = ctx();
-      if (!room) return fail(cb, "Você não está numa mesa.");
-      const err = handle(room, me, data);
-      if (err) return fail(cb, err);
-      ok(cb);
-      broadcast(room);
-    });
-
-    function handle(room, me, data) {
-      const type = data.type, isHost = me && room.host === me.id, g = room.g;
-      if (type === "pawn") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        if (!PAWNS.includes(data.pawn)) return "Avatar inválido.";
-        if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
-        me.pawn = data.pawn; return;
-      }
-      if (type === "color") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        if (!R.COLORS.includes(data.color)) return "Cor inválida.";
-        if (Object.values(room.players).some((p) => p !== me && p.color === data.color)) return "Essa cor já é de outra pessoa.";
-        me.color = data.color; return;
-      }
-      if (type === "config") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador muda as regras, antes de começar.";
-        room.config = cleanConfig(data.config); return;
-      }
-      if (type === "kick") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
-        const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
-        for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
-        delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
-        log(room, `${p.name} saiu da mesa.`); return;
-      }
-      if (type === "start") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador começa o jogo.";
-        if (room.order.length < 2) return "Precisa de pelo menos 2 jogadores.";
-        startGame(room); return;
-      }
-      if (type === "restart") {
-        if (!isHost || room.phase === "lobby") return "Só o organizador.";
-        clearTimeout(room.timer);
-        room.phase = "lobby"; room.g = null; room.deadline = null; room.winner = null;
-        log(room, "A mesa voltou para a sala de espera."); return;
-      }
-      if (!me) return "Você está só assistindo.";
-      if (room.phase !== "playing") return "O jogo não está em andamento.";
-      if (turnColor(g) !== me.color) return "Não é a sua vez.";
-      if (type === "roll") {
-        if (g.stage !== "roll") return "Agora não é hora de rolar o dado.";
-        roll(room); return;
-      }
-      if (type === "move") {
-        if (g.stage !== "move") return "Role o dado primeiro.";
-        const i = int(data.i, -1), k = int(data.k, -1);
-        const m = g.legal.find((x) => x.i === i && (k < 0 || x.k === k || g.restam[x.k] === g.restam[k])) || g.legal.find((x) => x.i === i);
-        if (!m) return "Esse peão não pode andar com esse número.";
-        move(room, m); return;
-      }
-      return "Ação desconhecida.";
+    if (type === "color") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      if (!R.COLORS.includes(data.color)) return "Cor inválida.";
+      if (Object.values(room.players).some((p) => p !== me && p.color === data.color)) return "Essa cor já é de outra pessoa.";
+      me.color = data.color; return;
     }
+    if (type === "config") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador muda as regras, antes de começar.";
+      room.config = cleanConfig(data.config); return;
+    }
+    if (type === "kick") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
+      const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
+      for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
+      delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
+      log(room, `${p.name} saiu da mesa.`); return;
+    }
+    if (type === "start") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador começa o jogo.";
+      if (room.order.length < 2) return "Precisa de pelo menos 2 jogadores.";
+      startGame(room); return;
+    }
+    if (type === "restart") {
+      if (!isHost || room.phase === "lobby") return "Só o organizador.";
+      clearTimeout(room.timer);
+      room.phase = "lobby"; room.g = null; room.deadline = null; room.winner = null;
+      log(room, "A mesa voltou para a sala de espera."); return;
+    }
+    if (!me) return "Você está só assistindo.";
+    if (room.phase !== "playing") return "O jogo não está em andamento.";
+    if (turnColor(g) !== me.color) return "Não é a sua vez.";
+    if (type === "roll") {
+      if (g.stage !== "roll") return "Agora não é hora de rolar o dado.";
+      roll(room); return;
+    }
+    if (type === "move") {
+      if (g.stage !== "move") return "Role o dado primeiro.";
+      const i = int(data.i, -1), k = int(data.k, -1);
+      const m = g.legal.find((x) => x.i === i && (k < 0 || x.k === k || g.restam[x.k] === g.restam[k])) || g.legal.find((x) => x.i === i);
+      if (!m) return "Esse peão não pode andar com esse número.";
+      move(room, m); return;
+    }
+    return "Ação desconhecida.";
+  }
 
-    socket.on("disconnect", () => {
-      const { room, me } = ctx();
-      if (!room) return;
-      if (me) me.sockets.delete(socket.id);
-      broadcast(room);
-    });
-  });
+  // criar, entrar, as ações, as reações e a saída: o esqueleto comum dos jogos de mesa (salas.ligarMesa)
+  ligarMesa(nsp, rooms, { max: 4, sala: (data) => ({ config: cleanConfig(data.config), g: null, timer: null, deadline: null }), novoJogador: addPlayer, acao: handle, broadcast, log });
 
   // mesas paradas há mais de 12 horas são apagadas
   limparSalasParadas(rooms, { aoApagar: (r) => { clearTimeout(r.timer); } });
