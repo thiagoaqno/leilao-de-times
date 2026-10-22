@@ -3,7 +3,7 @@ import { E, AR, WP, $, store, clamp, lerp, TEAM, INTERP, toast, socket, relogio,
 import { show, renderLobby } from "./menus.js";
 import { Sound, hearing } from "./sons.js";
 import { scene } from "./cena.js";
-import { makePlayer } from "./bonecos.js";
+import { makePlayer, soltarBoneco } from "./bonecos.js";
 import { tracer, impact, blood, addRag } from "./efeitos.js";
 import { newMe, startGame, stopGame } from "./jogo.js";
 import { pushFeed, flashMsg, hitMarker, hurt, showOver } from "./hud.js";
@@ -68,7 +68,7 @@ export function syncFromState(old, st) {
     ids.add(p.id);
     let rm = G.remotes.get(p.id);
     if (!rm || rm.team !== p.team) {
-      if (rm) scene.remove(rm.model);
+      if (rm) { scene.remove(rm.model); soltarBoneco(rm.model); }
       const mate = mine && mine.team === p.team;
       rm = { id: p.id, team: p.team, name: p.name, model: makePlayer(p.team, p.name, mate), buf: [], x: 0, y: 0, z: 0, yaw: 0, pitch: 0, w: p.w, speed: 0, stepT: 0, g: 1, wk: 0 };
       scene.add(rm.model); G.remotes.set(p.id, rm);
@@ -76,7 +76,7 @@ export function syncFromState(old, st) {
     rm.alive = p.alive; rm.w = rm.w || p.w;
     if (p.spawn && (!old || !old.round || !r || old.round.n !== r.n)) { rm.buf = [{ t: sNow() - 500, x: p.spawn[0], y: p.spawn[1], z: p.spawn[2], yaw: p.spawn[3], pitch: 0, w: p.w }]; }
   }
-  for (const [id, rm] of G.remotes) if (!ids.has(id)) { scene.remove(rm.model); G.remotes.delete(id); }
+  for (const [id, rm] of G.remotes) if (!ids.has(id)) { scene.remove(rm.model); soltarBoneco(rm.model); G.remotes.delete(id); }
   // rodada nova: volto para a base, vida cheia
   const key = r ? `${r.n}` : null;
   if (r && key !== G.roundKey) {

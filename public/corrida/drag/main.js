@@ -13,6 +13,8 @@ import { criarSala } from "./sala.js";
 
 const { LANE_X, ZONA, ZONA_PNEU, clamp } = L;
 const $ = (id) => document.getElementById(id);
+// os nomes vêm dos outros pilotos da sala: sempre escapados antes de virar HTML
+const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const D = Math.PI / 180;
 const DEBUG = location.hash.includes("debug");
 const LEVE = new URLSearchParams(location.search).has("leve");
@@ -1186,7 +1188,7 @@ function tratarEventos() {
     else if (e.tipo === "batida") batidaVisual(false);
     else if (e.tipo === "perda-total") {
       if (e.jogador) { batidaVisual(true); showCallout("PERDA TOTAL", 2, "vermelho"); }
-      else { const p = corrida.pilotos.find((x) => x.nome === e.nome); audio.batida(false); faiscas(p, 16); if (corrida.fase === "corrida") showCallout(`${e.nome.toUpperCase()}`, 1, "amarelo", "deu perda total"); }
+      else { const p = corrida.pilotos.find((x) => x.nome === e.nome); audio.batida(false); faiscas(p, 16); if (corrida.fase === "corrida") showCallout(esc(e.nome.toUpperCase()), 1, "amarelo", "deu perda total"); }
     } else if (e.tipo === "ultrapassagem") audio.blip(560, 0.05, "triangle", 0.04);
   }
 }
@@ -1234,7 +1236,7 @@ function mostrarResultado() {
   $("finalShifts").textContent = `${j.trocas.perfeita} / ${Object.values(j.trocas).reduce((a, b) => a + b, 0)}`;
   $("finalLaunch").textContent = { perfeita: "Perfeita", boa: "Boa", patinou: "Patinou", fraca: "Fraca" }[j.largada] || "—";
   $("finalVacuo").textContent = `+${j.nitroDoVacuo.toFixed(1)} s`;
-  $("tabela").innerHTML = r.ordem.map((o, i) => `<tr class="${o.jogador ? "eu" : ""}"><td>${o.fora ? "—" : `${i + 1}º`}</td><td>${o.nome}</td><td>${o.fora ? o.fora.toUpperCase() : o.tempo ? timeString(o.tempo) : "—"}</td></tr>`).join("");
+  $("tabela").innerHTML = r.ordem.map((o, i) => `<tr class="${o.jogador ? "eu" : ""}"><td>${o.fora ? "—" : `${i + 1}º`}</td><td>${esc(o.nome)}</td><td>${o.fora ? o.fora.toUpperCase() : o.tempo ? timeString(o.tempo) : "—"}</td></tr>`).join("");
 }
 
 // ---------- Desenho de cada quadro ----------

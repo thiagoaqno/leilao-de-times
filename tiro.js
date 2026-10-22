@@ -303,5 +303,5 @@ module.exports = function attachTiro(io) {
   medirPing(nsp, rooms, (room) => room.phase === "lobby" && !room.order.length);
 
   // salas paradas há mais de 6 horas somem
-  limparSalasParadas(rooms, { horas: 6, aoApagar: (r) => { clearTimeout(r.timer); } });
+  limparSalasParadas(rooms, { horas: 6, aoApagar: (r) => { clearTimeout(r.timer); clearInterval(r.net); } }); // o envio das posições também para
 };
