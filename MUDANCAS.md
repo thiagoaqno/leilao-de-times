@@ -1,37 +1,43 @@
-# Limpeza: o que não roda mais sai do projeto
+# Bugs pequenos achados na varredura
 
-Segundo passo da refatoração. Nada muda na tela: sai só o que nenhuma página, rota ou jogo usava.
+Quarto passo da refatoração: correções pontuais.
 
-## O que sai
+## O que muda
 
-- **Rumo ao Estrelato (o Modo Jogador):** o `server.js` não liga esse canal desde que o Road to Champions ocupou o
-  `/jogador/`. Saem:
-  - `jogador.js`, `jogador-historia.js` e `jogador-mercado.js`;
-  - a página antiga (`public/jogador/jogador.js` e `jogador.css`);
-  - o bloco do fim do `carreira.js` que só servia a ele (`jogarProximoDoJogador` e `module.exports.jogador`);
-  - o teste `tests/jogador.test.js`.
+- **Haxball na Noite da Galera:**
+  - a página não carregava o `noite.js`, então o Haxball ficava sem a aba 🌙. Quem a Noite chamava para o Haxball
+    caía na página e tinha que entrar na mão. Agora a aba aparece e o `?entrar=1` entra sozinho na sala
+    (`CAMPOS.haxball` no `public/noite.js`);
+  - o nome passa a ser guardado também em `galera:name`, como nos outros jogos;
+  - `vila.js` não tinha o `haxball` na lista `GAMES`. Quem entrava no prédio do Haxball sumia do mapa sem o nome do
+    jogo.
+- **Tiro:** quando a faxina apagava uma sala parada no meio de uma partida, o envio das posições (a cada 50 ms)
+  continuava rodando para sempre. Agora para junto.
+- **Palavra Proibida:** a sala guardava só a hora em que foi criada (`room.t`), e a faxina apagava uma mesa em uso 6 h
+  depois de criada. Agora cada estado enviado atualiza a hora.
+- **Nomes sem escape:**
+  - no Drag, o nome dos outros pilotos entrava direto no HTML (o aviso de "perda total" e a tabela do resultado);
+  - o `esc` do Leilão não escapava aspas e era usado dentro de `title="..."`. Agora usa o `Comum.h`;
+  - os escapes da Noite, dos replays do Leilão e dos escudos da Carreira passam a escapar o apóstrofo também.
+- **Memória do 3D:**
+  - **Batalha:** cada item que sumia da pista (banana, casco, bomba) e cada kart que saía ficavam com as geometrias,
+    os materiais e a etiqueta do nome na memória da placa de vídeo. Agora saem (`soltarProj`, `disposeKart`).
+  - **Tiro:** o mesmo com os bonecos dos outros jogadores (`soltarBoneco`). Os materiais do corpo ficam, porque o
+    boneco de pano de quem morreu ainda pode estar usando.
 
-  As carreiras desse modo que já estão no banco continuam lá. O painel de moderação ainda as mostra como "Rumo ao
-  Estrelato", e a estante guarda os títulos delas.
-- **`index.antigo.html`:** a página antiga do Leilão, que ficava fora da `public`. Ela continua no histórico do Git
-  (`PROJETO.md` e `.dockerignore` acertados).
-- **A música da "Vila 3D":** um MP3 de 14 MB em `public/vila3d/`, a rota `/api/musicas-vila3d` e o teste dela. Não
-  existe página da Vila 3D.
-- **`/pelada/campo.js` na Corrida:** a página carregava 900 linhas que nenhum script dela usa.
+## Conferido e deixado como está
 
-## O que muda de lugar
-
-- **`tools/` entrou em `ferramentas/`:** eram duas pastas para a mesma coisa, os scripts que rodam fora do site
-  (`baixar-escudos`, `baixar-escudos-locais`, `baixar-estadios`, `baixar-trofeus` e `importar-carros-drag.py`). Os
-  comentários "gerado por" e o `CLAUDE.md` apontam para o lugar novo.
-- **`trofeus-carreira.js`** foi para `ferramentas/`: só a ferramenta dos troféus e o teste dela usam.
-
-## O que ficou
-
-- **A tabela `rtc_campanhas`** (as campanhas do Road to Champions) continua no banco. Apagar dados do banco de
-  produção precisa de uma liberação à parte.
+- **Ginásio fora da lista de salas da Vila:** é de propósito. Ele tem salas particulares (desafio da Vila, líderes,
+  selvagens).
+- **Carreira em grupo sem o evento `pedido`:** a chamada só existe no ramo da carreira solo, então não é bug.
 
 ## Testes
 
-- `musica`, `carreira-trofeus-api`, `carreira-servidor` e `salas`: passando.
-- No navegador, `paginas.spec.js` abre `/corrida/` sem erro sem o `campo.js`. Nenhum script da Corrida usa `Campo`.
+- **Novo, em `tests/e2e/haxball.spec.js`:** chegando pela Noite (`?sala=&entrar=1`), o Haxball entra sozinho na sala
+  com o nome da galera e mostra a aba da Noite. Conferido também no Chromium: dentro da sala, a aba 🌙 aparece na
+  beirada esquerda.
+- `proibida`, `haxball`, `salas` e `servidor`: passando.
+- No navegador, `haxball`, `leilao-campeao`, `paginas` e `salas`: passando.
+- `corrida-drag.spec.js` tem 2 testes que falham também na `main` sem esta mudança: esperam 3 carros e acham 4, e o
+  motor não chega a explodir. É uma falha que já existia, provavelmente desde o racha multijogador (#291). Fica
+  anotada no plano.

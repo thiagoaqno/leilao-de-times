@@ -35,6 +35,7 @@ module.exports = function attachProibida(io) {
   }
   // cada um recebe o estado; quem explica e o time adversário recebem também a carta
   function broadcast(room) {
+    room.t = Date.now(); // a sala em uso não é apagada pela faxina (antes só contava a hora em que foi criada)
     const pub = publicState(room), v = room.vez;
     for (const s of nsp.sockets.values()) {
       if (s.data.code !== room.code) continue;
