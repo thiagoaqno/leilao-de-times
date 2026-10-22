@@ -6,8 +6,9 @@
 (function () {
   if (typeof io !== "function") return;
   const ler = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
-  const JOGO = location.pathname.split("/").filter(Boolean)[0] || "";
-  const URLS = { rocket: "/rocket/" };
+  // o jogo é a primeira pasta do endereço; o Drag mora dentro da Corrida e avisa no próprio <script data-jogo="drag">
+  const JOGO = (document.currentScript && document.currentScript.dataset.jogo) || location.pathname.split("/").filter(Boolean)[0] || "";
+  const URLS = { rocket: "/rocket/", drag: "/corrida/drag/" };
   // como cada página guarda o código da sala no endereço e quais campos ela usa (o padrão: hName, hCode, btnCreate, btnJoin)
   const MESA = ["banco", "uno", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao"];
   const CAMPOS = { leilao: { nomeCriar: "cName", nome: "jName", codigo: "jCode" } };
