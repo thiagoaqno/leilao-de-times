@@ -1,43 +1,35 @@
-# Bugs pequenos achados na varredura
+# Os testes esquecidos voltam a rodar
 
-Quarto passo da refatoração: correções pontuais.
+Terceiro passo da refatoração.
 
 ## O que muda
 
-- **Haxball na Noite da Galera:**
-  - a página não carregava o `noite.js`, então o Haxball ficava sem a aba 🌙. Quem a Noite chamava para o Haxball
-    caía na página e tinha que entrar na mão. Agora a aba aparece e o `?entrar=1` entra sozinho na sala
-    (`CAMPOS.haxball` no `public/noite.js`);
-  - o nome passa a ser guardado também em `galera:name`, como nos outros jogos;
-  - `vila.js` não tinha o `haxball` na lista `GAMES`. Quem entrava no prédio do Haxball sumia do mapa sem o nome do
-    jogo.
-- **Tiro:** quando a faxina apagava uma sala parada no meio de uma partida, o envio das posições (a cada 50 ms)
-  continuava rodando para sempre. Agora para junto.
-- **Palavra Proibida:** a sala guardava só a hora em que foi criada (`room.t`), e a faxina apagava uma mesa em uso 6 h
-  depois de criada. Agora cada estado enviado atualiza a hora.
-- **Nomes sem escape:**
-  - no Drag, o nome dos outros pilotos entrava direto no HTML (o aviso de "perda total" e a tabela do resultado);
-  - o `esc` do Leilão não escapava aspas e era usado dentro de `title="..."`. Agora usa o `Comum.h`;
-  - os escapes da Noite, dos replays do Leilão e dos escudos da Carreira passam a escapar o apóstrofo também.
-- **Memória do 3D:**
-  - **Batalha:** cada item que sumia da pista (banana, casco, bomba) e cada kart que saía ficavam com as geometrias,
-    os materiais e a etiqueta do nome na memória da placa de vídeo. Agora saem (`soltarProj`, `disposeKart`).
-  - **Tiro:** o mesmo com os bonecos dos outros jogadores (`soltarBoneco`). Os materiais do corpo ficam, porque o
-    boneco de pano de quem morreu ainda pode estar usando.
+- **`npm test` roda todos os arquivos de teste.** A lista no `package.json` era feita à mão e tinha ficado para trás:
+  28 arquivos existiam, mas nunca rodavam:
+  - Banco, Bloqueio, Digitação, Cozinha, Drag, Lobby e música;
+  - comida do Leilão;
+  - física, biomas e encenação do Ginásio;
+  - encenação do Futevôlei;
+  - poderes e recordes da Corrida;
+  - 14 da Carreira: estante, festa, leitura, memória, painel de moderação, anfitrião, pausa, personalidade, pressão,
+    rivais, rodada, técnicos, troféus e ver time.
 
-## Conferido e deixado como está
+  Agora o script é `node --test "tests/*.test.js" "tests/*.test.mjs"`: teste novo entra sozinho. Os 28 passam como
+  estão.
+- **O teste dos robôs da Corrida ficou estável.** "Robôs miram o ritmo da sala" sorteava o carro e a pilotagem dos
+  robôs sem semente, e às vezes as duas voltas gravadas saíam parecidas demais. Agora o teste usa um `Math.random` com
+  semente só enquanto roda (`comSemente`). O jogo não muda.
+- **O teste dos dilemas da Carreira ficou estável.** "Cada resposta muda o jogo e a conta chega depois" joga antes uma
+  temporada sorteada, e às vezes um dilema dela deixava outra conta agendada em `gestao.depois` (dava 2 em vez de 1).
+  O teste já zerava a demissão e a confiança dessa temporada. Agora zera também as contas agendadas.
 
-- **Ginásio fora da lista de salas da Vila:** é de propósito. Ele tem salas particulares (desafio da Vila, líderes,
-  selvagens).
-- **Carreira em grupo sem o evento `pedido`:** a chamada só existe no ramo da carreira solo, então não é bug.
+- **A Copa do Mundo da Carreira (correção trazida do PR #298):** "Nos 16 avos, ninguém do mesmo grupo" falhou no
+  GitHub neste PR. Não era o teste: em cerca de 8% dos sorteios, a troca que separava os grupos criava outro encontro
+  do mesmo grupo. A mesma correção do #298 (`Temporada.separarGrupos`, com o teste `carreira-copa-chave`) vem aqui
+  para este PR ficar verde. Quando o #298 entrar, ela não muda mais nada.
 
 ## Testes
 
-- **Novo, em `tests/e2e/haxball.spec.js`:** chegando pela Noite (`?sala=&entrar=1`), o Haxball entra sozinho na sala
-  com o nome da galera e mostra a aba da Noite. Conferido também no Chromium: dentro da sala, a aba 🌙 aparece na
-  beirada esquerda.
-- `proibida`, `haxball`, `salas` e `servidor`: passando.
-- No navegador, `haxball`, `leilao-campeao`, `paginas` e `salas`: passando.
-- `corrida-drag.spec.js` tem 2 testes que falham também na `main` sem esta mudança: esperam 3 carros e acham 4, e o
-  motor não chega a explodir. É uma falha que já existia, provavelmente desde o racha multijogador (#291). Fica
-  anotada no plano.
+- Os 28 arquivos que estavam de fora, um por um: todos passando.
+- `corrida-robos.test.js` três vezes seguidas: passando.
+- `npm test` inteiro com o padrão novo: 595 testes (antes, 451). Falhou só o dos dilemas, que agora está estável.
