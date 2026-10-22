@@ -11,11 +11,11 @@
   const URLS = { rocket: "/rocket/", drag: "/corrida/drag/" };
   // como cada página guarda o código da sala no endereço e quais campos ela usa (o padrão: hName, hCode, btnCreate, btnJoin)
   const MESA = ["banco", "uno", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao"];
-  const CAMPOS = { leilao: { nomeCriar: "cName", nome: "jName", codigo: "jCode" } };
+  const CAMPOS = { leilao: { nomeCriar: "cName", nome: "jName", codigo: "jCode" }, haxball: { nome: "name", nomeCriar: "name", codigo: "code", criar: "create", entrar: "join" } };
   const param = (j) => (MESA.includes(j) ? "mesa" : "sala");
   const campos = { nome: "hName", nomeCriar: "hName", codigo: "hCode", criar: "btnCreate", entrar: "btnJoin", ...(CAMPOS[JOGO] || {}) };
   const q = new URLSearchParams(location.search), $ = (id) => document.getElementById(id);
-  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   let noiteId = q.get("noite") || sessionStorage.getItem("galera:noite") || null, N = null, salaAtual = null;
   const nome = () => ler("galera:name") || ($(campos.nome) && $(campos.nome).value.trim()) || "";
 

@@ -12,8 +12,8 @@ function setSkin(s){ skinNow = FOOD_SKINS.includes(s) ? s : null; document.body.
 const skinOfTheme = (th) => th.skin || (FOOD_SKINS.includes(th.id) ? th.id : null);
 
 const toast = Comum.criarToast(2600);
-function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
-const escA = (s) => esc(s).replace(/"/g, "&quot;");
+const esc = Comum.h; // escapa também as aspas: o nome entra em atributos (title="...")
+const escA = esc;
 
 // os botões − e + ao lado dos números (participantes, moedas, o lance): respeitam o mínimo e o máximo do campo
 document.addEventListener("click", (e) => {

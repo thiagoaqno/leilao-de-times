@@ -9,7 +9,7 @@ import { syncFromState, updateRemotes } from "./rede.js";
 import { show, renderLobby } from "./menus.js";
 import { Sound } from "./sons.js";
 import { renderer, scene, cam, BASE_FOV, ZOOM_FOV } from "./cena.js";
-import { vScene, vCam, vm, VM, vFlash, flashLight } from "./bonecos.js";
+import { vScene, vCam, vm, VM, vFlash, flashLight, soltarBoneco } from "./bonecos.js";
 import { rags, updateRags, clearRags, updateFx } from "./efeitos.js";
 import { hud } from "./hud.js";
 import { spawnBots, updateBots, botHit } from "./bots.js";
@@ -37,7 +37,7 @@ export function startGame(mode) {
 export function stopGame() {
   if (!G.active) return;
   G.active = false;
-  for (const r of G.remotes.values()) scene.remove(r.model);
+  for (const r of G.remotes.values()) { scene.remove(r.model); soltarBoneco(r.model); }
   G.remotes.clear(); G.bots = []; clearRags();
   if (document.pointerLockElement) document.exitPointerLock();
   E.touchPlay = false; if (TOUCH) Toque.show(false);
