@@ -9,7 +9,7 @@ const path = require("path");
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing } = require("./salas.js");
 const noite = require("./noite.js"); // o placar da Noite da Galera
 
-const MAX = 4, PISTAS = 4, ESPERA_PRONTOS_MS = 25000, ATE_LARGAR_MS = 1200, ESPERA_CHEGADA_MS = 25000, CORRIDA_MAX_MS = 150000;
+const MAX = 4, PISTAS = 4, ESPERA_PRONTOS_MS = 25000, ATE_LARGAR_MS = 1200, ESPERA_CHEGADA_MS = 25000, ESPERA_ROBOS_MS = 2500, CORRIDA_MAX_MS = 150000;
 const FAIXAS = [1, 2, 0, 3]; // quem entra primeiro fica com as faixas do meio
 const fin = (v) => typeof v === "number" && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -64,10 +64,13 @@ module.exports = function attachDrag(io) {
     const c = room.corrida; if (!c || room.phase !== "corrida" || c.chegadas.has(lane)) return;
     const motivo = ["chegada", "motor", "perda-total"].includes(d.motivo) ? d.motivo : "chegada";
     c.chegadas.set(lane, { tempo: motivo === "chegada" && fin(d.tempo) ? clamp(d.tempo, 1, 600) : null, motivo, estimado: !!d.estimado });
-    const humanos = c.participantes.filter((p) => !p.robo);
-    if (humanos.every((p) => c.chegadas.has(p.lane))) return fechar(room);
-    if (!room.tChegada) room.tChegada = setTimeout(() => fechar(room), ESPERA_CHEGADA_MS); // o primeiro chegou: os outros têm 25 s
     nsp.to(room.code).emit("chegou", { lane, ...c.chegadas.get(lane) });
+    if (c.participantes.every((p) => c.chegadas.has(p.lane))) return fechar(room);
+    // todas as pessoas já terminaram: o tempo dos robôs (que o organizador manda) tem mais 2,5 s para chegar
+    if (c.participantes.filter((p) => !p.robo).every((p) => c.chegadas.has(p.lane))) { clearTimeout(room.tChegada); room.tChegada = setTimeout(() => fechar(room), ESPERA_ROBOS_MS); return; }
+    // a primeira chegada de verdade (bater ou estourar o motor não conta): quem ainda corre tem 25 s para cruzar a linha
+    const p = c.participantes.find((x) => x.lane === lane);
+    if (!room.tChegada && p && !p.robo && motivo === "chegada") room.tChegada = setTimeout(() => fechar(room), ESPERA_CHEGADA_MS);
   }
   function fechar(room) {
     const c = room.corrida; if (!c || room.phase !== "corrida") return;
@@ -143,6 +146,14 @@ module.exports = function attachDrag(io) {
           return;
         }
         if (type === "lobby") { if (!isHost) return "Só o organizador."; limparTimers(room); room.phase = "lobby"; room.corrida = null; return; }
+        if (type === "sair") { // sai da sala de vez (no meio da corrida, conta como não chegou); o organizador passa a vez
+          delete room.players[me.id]; room.order = room.order.filter((x) => x !== me.id);
+          socket.leave(room.code); socket.data.code = null; socket.data.pid = null;
+          if (room.host === me.id) room.host = room.order[0] || null;
+          if (!room.order.length) { limparTimers(room); rooms.delete(room.code); }
+          else if (room.phase === "carregando" && pilotos(room).every((p) => room.corrida.prontos.has(p.id) || !p.sockets.size)) largar(room);
+          return;
+        }
         if (type === "kick") {
           if (!isHost || correndo) return "Só o organizador, fora da corrida.";
           const p = room.players[data.id]; if (!p || p.id === me.id) return "Piloto inválido.";

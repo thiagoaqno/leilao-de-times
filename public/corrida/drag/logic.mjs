@@ -352,14 +352,14 @@ export function criarCorridaMulti({ comprimento = 1400, semente = 1, participant
     const car = p.robo ? criarRival(rivais[p.rival % rivais.length], p.lane, p.carro, sorte) : makeCar({ lane: p.lane, carro: p.carro, nome: p.nome });
     car.carro = CARROS[p.carro] ? p.carro : "supra";
     if (p.robo) car.nome = p.nome;
-    car.humano = !p.robo; car.idSala = p.id;
+    car.humano = !p.robo; car.idSala = p.id; car.faixaSala = p.lane; // a faixa da largada é o nome do carro na sala
     if (!(p.robo ? host : p.id === meuId)) { car.remoto = true; car.ia = p.robo ? car.ia : null; }
     porFaixa.set(p.lane, car);
   }
   const eu = [...porFaixa.values()].find((c) => c.idSala === meuId && !c.remoto) || porFaixa.values().next().value;
   const pilotos = [eu, ...[...porFaixa.values()].filter((c) => c !== eu)];
   const { trafego, obstaculos } = gerarTrafego(comprimento, sorte);
-  return { comprimento, sorte, fase: "aquecimento", t: 0, tempo: 0, luzes: 0, pilotos, jogador: eu, trafego, obstaculos, eventos: [], resultado: null, multi: true, porFaixa };
+  return { comprimento, sorte, fase: "aquecimento", t: 0, tempo: 0, luzes: 0, pilotos, jogador: eu, trafego, obstaculos, eventos: [], resultado: null, multi: true, porFaixa, semente };
 }
 
 export function posicaoDe(corrida, car = corrida.jogador) {

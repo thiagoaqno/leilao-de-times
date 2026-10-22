@@ -41,7 +41,26 @@ body[data-phase=race] .wordmark,body[data-phase=burnout] .wordmark,body[data-pha
 .actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.primary{border:0;background:var(--amber);color:#121921;border-radius:3px;padding:13px 24px;font:italic 900 24px/1 var(--hud);text-transform:uppercase;box-shadow:5px 5px 0 #ff2bd6aa}.primary:hover{filter:brightness(1.1)}.primary:disabled{opacity:.55;cursor:wait}
 .secundario{border:1px solid var(--ciano);background:#2be8ff12;color:#dffaff;border-radius:3px;padding:12px 16px;font:italic 800 18px/1 var(--hud);text-transform:uppercase}.secundario:hover{background:#2be8ff2a}
 .carro-painel .actions .primary{flex:1}
-.controls-note{color:#cfc8dc;font-size:12px;line-height:1.55}.controls-note b{color:#fff}.controls-note a{color:var(--ciano)}
+.controls-note{color:#cfc8dc;font-size:12px;line-height:1.55}
+.racha{display:grid;gap:8px;padding:12px 0 2px;border-top:1px solid #ffffff1c}
+.racha .titulo-sec{margin:0;color:var(--ciano)}
+.racha-linha{display:flex;gap:8px;flex-wrap:wrap}
+.racha input{flex:1;min-width:0;background:#120c1c;color:#fff;border:1px solid #ffffff55;border-radius:3px;padding:8px 10px;font:italic 800 17px var(--hud);text-transform:uppercase;letter-spacing:.06em}
+.racha input#hCode{flex:0 0 96px;text-align:center}
+.racha .secundario{padding:9px 12px;font-size:15px}
+.racha-codigo{display:flex;align-items:center;gap:8px;font:italic 800 14px var(--hud);letter-spacing:.12em;color:#cfc6e0;text-transform:uppercase}
+.racha-codigo b{font-size:26px;color:var(--amber);letter-spacing:.18em;margin-right:auto}
+.racha ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.racha li{display:grid;grid-template-columns:1fr auto;gap:0 8px;padding:5px 9px;background:#ffffff0d;border-left:3px solid var(--ciano);font:italic 800 15px var(--hud);text-transform:uppercase}
+.racha li.eu{border-left-color:var(--amber);background:#ffbd4514}
+.racha li.robo{border-left-color:#ffffff33;color:#ffffff66}
+.racha li.fora{opacity:.55}
+.racha li b small{font-size:11px;color:var(--rosa);letter-spacing:.1em;margin-left:4px}
+.racha li span{grid-column:1;font:600 12px Barlow,sans-serif;color:#bdb4cf;text-transform:none}
+.racha li i{grid-column:2;grid-row:1/3;align-self:center;font:italic 800 12px var(--hud);color:var(--verde);letter-spacing:.08em}
+.racha small{font-size:12px;color:#bdb4cf}
+#rachaErro{color:#ff8a92}
+.track:disabled{cursor:default;opacity:.8}.controls-note b{color:#fff}.controls-note a{color:var(--ciano)}
 .oficina{position:fixed;left:22px;top:calc(70px + env(safe-area-inset-top));width:min(380px,calc(100% - 44px));max-height:calc(100% - 100px);overflow:auto;padding:16px 18px;background:#0b0712e6;border:1px solid #ffffff22;border-top:3px solid var(--ciano);border-radius:3px;display:none;z-index:5}
 .oficina h2{font:italic 900 34px/1 var(--hud);margin:4px 0 12px;text-transform:uppercase}
 body.na-oficina .oficina{display:block}body.na-oficina .encontro,body.na-oficina .carro-painel{display:none}
@@ -131,6 +150,20 @@ body[data-phase=menu] .vignette{background:radial-gradient(ellipse at 55% 50%,tr
       <div class="ficha" id="ficha"></div>
       <small id="carStatus">Carregando modelo...</small>
     </div>
+    <div class="racha" id="racha">
+      <div class="titulo-sec">Racha com a galera</div>
+      <div id="rachaFora" class="racha-fora">
+        <div class="racha-linha"><input id="hName" maxlength="8" placeholder="Seu nome" autocomplete="nickname" aria-label="Seu nome"><input id="hCode" maxlength="5" placeholder="Código" aria-label="Código da sala"></div>
+        <div class="racha-linha"><button class="secundario" id="btnCreate">Abrir racha</button><button class="secundario" id="btnJoin">Entrar</button></div>
+        <small>Até 4 pilotos, cada um no seu computador. As vagas livres viram rivais robôs.</small>
+        <small id="rachaErro" role="alert"></small>
+      </div>
+      <div id="rachaDentro" class="hidden">
+        <div class="racha-codigo">Sala <b id="rCode"></b><button class="secundario" id="rConvidar">Convidar</button><button class="secundario" id="rSair">Sair</button></div>
+        <ul id="rPilotos"></ul>
+        <small id="rAviso"></small>
+      </div>
+    </div>
     <div class="actions"><button class="secundario" id="garagemBtn">Personalizar</button><button class="primary" id="start" disabled>Correr →</button></div>
     <div class="controls-note"><b>W / ↑</b> acelera · <b>S / ↓</b> freia · <b>← →</b> faixa<br><b>Shift / E</b> sobe · <b>Q</b> reduz · <b>Espaço</b> nitro · <b>C</b> câmera · <a href="/corrida/drag/creditos.html" target="_blank" rel="noopener">Créditos dos carros</a></div>
   </section>
@@ -165,5 +198,7 @@ body[data-phase=menu] .vignette{background:radial-gradient(ellipse at 55% 50%,tr
 </div></section>
 <div id="carregando" class="carregando hidden" role="status" aria-live="polite"><div><div class="eyebrow">Indo para o ponto</div><h2 id="carregandoPista">Ponte Estaiada</h2><div class="carregando-trilho"><i id="carregandoBarra"></i></div><p id="carregandoTexto">Chegando os carros</p></div></div>
 <audio id="musicAudio" preload="none"></audio>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/noite.js" data-jogo="drag"></script>
 <script type="module" src="/corrida/drag/main.js"></script>
 </body></html>

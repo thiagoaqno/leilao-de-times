@@ -197,3 +197,25 @@ test("quem dirige bem ganha a maioria das corridas", () => {
   assert.ok(chegadas >= 20);
   assert.ok(vitorias / chegadas > 0.5, `${vitorias}/${chegadas}`);
 });
+
+test("racha com a galera: a mesma rua e os mesmos robôs em todos os navegadores; cada um pilota só o que é dele", () => {
+  const participantes = [
+    { id: "a", nome: "Ana", carro: "supra", lane: 1, robo: false },
+    { id: "b", nome: "Bia", carro: "bmw-m4", lane: 2, robo: false },
+    { id: null, nome: "Duda Neon", carro: "porsche-911", lane: 0, robo: true, rival: 0 },
+    { id: null, nome: "Rafa Turbo", carro: "skyline-r33", lane: 3, robo: true, rival: 1 },
+  ];
+  const ana = L.criarCorridaMulti({ semente: 42, participantes, meuId: "a", host: true });
+  const bia = L.criarCorridaMulti({ semente: 42, participantes, meuId: "b", host: false });
+  assert.equal(ana.jogador.nome, "Ana"); assert.equal(bia.jogador.nome, "Bia");
+  assert.equal(ana.pilotos[0], ana.jogador); assert.equal(bia.pilotos[0], bia.jogador);
+  // o organizador pilota os robôs; para a Bia, só o carro dela é local
+  assert.deepEqual(ana.pilotos.filter((p) => !p.remoto).map((p) => p.nome).sort(), ["Ana", "Duda Neon", "Rafa Turbo"]);
+  assert.deepEqual(bia.pilotos.filter((p) => !p.remoto).map((p) => p.nome), ["Bia"]);
+  const rua = (c) => JSON.stringify([c.trafego.map((t) => [t.lane, t.z, t.tipo]), c.obstaculos.map((o) => [o.lane, o.z])]);
+  assert.equal(rua(ana), rua(bia));
+  // o carro remoto não anda sozinho na lógica (quem mexe nele é a rede)
+  for (let i = 0; i < 600; i++) L.passoCorrida(bia, 1 / 60, { gas: true });
+  assert.equal(bia.porFaixa.get(1).z, 0);
+  assert.ok(bia.jogador.z > 0);
+});

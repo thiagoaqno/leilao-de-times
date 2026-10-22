@@ -9,6 +9,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import * as L from "./logic.mjs";
 import { MODELOS, visualDe } from "./modelos.js";
 import { criarGaragem } from "./garagem.js";
+import { criarSala } from "./sala.js";
 
 const { LANE_X, ZONA, ZONA_PNEU, clamp } = L;
 const $ = (id) => document.getElementById(id);
@@ -35,6 +36,9 @@ const COR_RIVAL = [0xc8102e, 0xe9e9e4, 0x1b2fd8];
 const COR_TRAFEGO = [0x8a8f96, 0x3b4a5c, 0x6b1f1f, 0xd8d4c8, 0x2d3a2a, 0x1c1c22];
 
 let selected = 0, selectedCar = CARS0();
+// o racha com a galera (sala.js): `sala` é a conexão; `multi`, a corrida da sala que está rodando aqui (null: sozinho)
+let sala = null, multi = null;
+const naSala = () => !!(sala && sala.emSala());
 function CARS0() { try { return localStorage.getItem("drag:carro") || "supra"; } catch { return "supra"; } }
 if (!L.CARROS[selectedCar]) selectedCar = "supra";
 
@@ -45,6 +49,7 @@ function escolherCarro(id) {
   selectedCar = id; $("carSelect").value = id;
   try { localStorage.setItem("drag:carro", selectedCar); } catch {}
   prepareCar(); garagem.mostrarFicha(id);
+  if (naSala()) sala.act("carro", { carro: id });
 }
 $("carSelect").onchange = () => escolherCarro($("carSelect").value);
 const girarCarro = (passo) => escolherCarro(CARROS[(CARROS.findIndex((c) => c.id === selectedCar) + passo + CARROS.length) % CARROS.length].id);
@@ -52,9 +57,10 @@ $("carPrev").onclick = () => girarCarro(-1); $("carNext").onclick = () => girarC
 for (const [i, tr] of TRACKS.entries()) {
   const b = document.createElement("button"); b.className = `track ${i === 0 ? "selected" : ""}`; b.style.setProperty("--swatch", tr.swatch);
   b.innerHTML = `<small>PONTO ${String(i + 1).padStart(2, "0")} · ${tr.length} M</small><strong>${tr.name}</strong><span>${tr.detail}</span>`;
-  b.onclick = () => { selected = i; document.querySelectorAll(".track").forEach((x, n) => x.classList.toggle("selected", n === i)); };
+  b.onclick = () => { if (naSala()) { if (sala.souHost()) sala.act("pista", { pista: i }); return; } selecionarPista(i); };
   $("tracks").append(b);
 }
+function selecionarPista(i) { selected = i; document.querySelectorAll(".track").forEach((x, n) => x.classList.toggle("selected", n === i)); }
 
 // ---------- Renderer ----------
 const renderer = new THREE.WebGLRenderer({ canvas: $("view"), antialias: true, powerPreference: "high-performance" });
@@ -135,12 +141,12 @@ function prepareCar() {
   readyModel = null; $("start").disabled = true; $("carStatus").textContent = "Carregando modelo...";
   carregarModelo(id).then((gltf) => {
     if (selectedCar !== id) return;
-    readyModel = gltf.scene; $("carStatus").textContent = "Modelo pronto"; $("start").disabled = false;
+    readyModel = gltf.scene; $("carStatus").textContent = "Modelo pronto"; $("start").disabled = false; atualizarBotoes();
     garagem.mostrarCarro(importedCar(readyModel, id, visualDe(id, L.CARROS[id].neon)));
     sortearRivais();
   }).catch((error) => {
     console.warn("Drag: modelo não carregou", id, error);
-    if (selectedCar === id) { $("carStatus").textContent = "Modelo indisponível; carro provisório"; $("start").disabled = false; garagem.mostrarCarro(carroProcedural("esporte", 0xf4f6f6, L.CARROS[id].neon)); }
+    if (selectedCar === id) { $("carStatus").textContent = "Modelo indisponível; carro provisório"; $("start").disabled = false; atualizarBotoes(); garagem.mostrarCarro(carroProcedural("esporte", 0xf4f6f6, L.CARROS[id].neon)); }
   });
 }
 
@@ -765,6 +771,7 @@ async function aquecer() {
 const modelosProntos = new Map();
 let largando = false;
 async function start() {
+  if (naSala()) { if (sala.souHost()) sala.act("start"); return; } // no racha, quem larga é o organizador, para todos
   if (largando) return;
   largando = true; $("start").disabled = true; $("again").disabled = true;
   garagem.fecharOficina(); mostrarCarregando("carros");
@@ -783,15 +790,16 @@ async function start() {
     largando = false; $("start").disabled = false; $("again").disabled = false;
   }
 }
-function iniciarCorrida() {
+function iniciarCorrida(c = null) {
   limparParticulas(); criarParticulas();
   const tr = TRACKS[selected];
   garagem.esconder(); buildWorld();
-  corrida = L.criarCorrida({ comprimento: tr.length, carro: selectedCar, semente: (Date.now() & 0xffff) + selected * 977 });
-  corrida.pronta = false; // o relógio só anda depois do aquecer
+  corrida = c ? L.criarCorridaMulti({ comprimento: tr.length, semente: c.semente, participantes: c.participantes, meuId: sala.eu, host: sala.souHost() })
+    : L.criarCorrida({ comprimento: tr.length, carro: selectedCar, semente: (Date.now() & 0xffff) + selected * 977 });
+  corrida.pronta = false; // o relógio só anda depois do aquecer (no racha, quando o servidor dá a largada)
   audio.setPerfil(MODELOS[selectedCar]?.motor);
   montarCarros();
-  sortearRivais(); // a próxima corrida já carrega outros rivais
+  if (!c) sortearRivais(); // a próxima corrida já carrega outros rivais
   gasHeld = nitroHeld = brakeHeld = false; cameraShake = 0; primeiroQuadro = true; fimAte = 0;
   setPhase("burnout");
   $("menu").classList.add("hidden"); $("finish").classList.add("hidden"); $("hud").classList.remove("hidden"); $("touch").classList.remove("hidden");
@@ -803,6 +811,100 @@ function iniciarCorrida() {
   showCallout("", 0); updateHud();
 }
 $("start").onclick = start; $("again").onclick = start;
+
+// ---------- O racha com a galera (sala.js e drag.js) ----------
+// O organizador larga; o servidor manda a lista de quem corre (cada um numa faixa, robôs nas que sobram) e a semente.
+// Todo mundo carrega os carros, monta a pista e avisa "pronto"; o servidor marca o instante da largada, igual para
+// todos. Cada navegador pilota o seu carro (o organizador, também os robôs) e manda o estado ~12 vezes por segundo.
+function atualizarBotoes() {
+  const dentro = naSala(), host = dentro && sala.souHost();
+  for (const id of ["start", "again"]) {
+    const b = $(id);
+    b.textContent = !dentro ? (id === "start" ? "Correr →" : "Correr de novo →") : host ? (id === "start" ? "Largar o racha →" : "Largar de novo →") : "Esperando o organizador";
+    if (dentro && !host) b.disabled = true;
+    else if (!largando) b.disabled = !readyModel && $("carStatus").textContent.startsWith("Carregando");
+  }
+  document.querySelectorAll(".track").forEach((b) => { b.disabled = dentro && !host; });
+}
+function aoEstadoSala(s) {
+  atualizarBotoes();
+  if (!s) { multi = null; return; }
+  const c = s.corrida;
+  if ((s.phase === "lobby" || s.phase === "resultado") && selected !== s.config.pista && phase === "menu") selecionarPista(s.config.pista);
+  if (s.phase === "carregando" && c && (!multi || multi.semente !== c.semente)) largarMulti(c);
+  if (s.phase === "corrida" && multi && c && c.semente === multi.semente) multi.inicio = c.inicio;
+  if (s.phase === "resultado" && multi && c && c.semente === multi.semente && c.resultado) { multi.resultado = c.resultado; if (phase === "finish") mostrarResultado(); }
+}
+async function largarMulti(c) {
+  multi = { semente: c.semente, inicio: c.inicio, resultado: null, enviados: new Set(), ultimoSt: 0 };
+  if (largando) return;
+  largando = true; $("start").disabled = true; $("again").disabled = true;
+  selecionarPista(c.pista);
+  garagem.fecharOficina(); $("finish").classList.add("hidden"); mostrarCarregando("carros");
+  audio.unlock(); music.start();
+  try {
+    // os carros dos outros, na mesma ordem em que criarCorridaMulti põe os pilotos (as faixas, sem o meu)
+    const meu = c.participantes.find((p) => p.id === sala.eu);
+    modelosRivais = c.participantes.filter((p) => p !== meu).sort((a, b) => a.lane - b.lane).map((p) => p.carro);
+    rivaisProntos = Promise.allSettled(modelosRivais.map((id) => carregarModelo(id)));
+    const meuModelo = carregarModelo(selectedCar).then((g) => { readyModel = g.scene; }).catch(() => {});
+    const prontos = await Promise.race([Promise.all([rivaisProntos, meuModelo]).then(([r]) => r), new Promise((ok) => setTimeout(() => ok([]), 20000))]);
+    modelosProntos.clear();
+    prontos.forEach((r, i) => { if (r.status === "fulfilled") modelosProntos.set(modelosRivais[i], r.value); });
+    mostrarCarregando("pista");
+    await new Promise((ok) => requestAnimationFrame(() => setTimeout(ok, 0)));
+    iniciarCorrida(c);
+    await aquecer();
+    if (multi && multi.semente === c.semente) sala.act("pronto");
+  } catch (e) { console.warn("Drag: não deu para entrar no racha", e); }
+  finally { mostrarCarregando(null); largando = false; atualizarBotoes(); }
+}
+// o estado de um carro que vai pela rede: [faixa da largada, z, x, km/h, giro, marcha, faixa, sinais, chegada]
+const q2 = (v) => Math.round(v * 100) / 100;
+function estadoDe(p) {
+  const sinais = (p.nitroOn ? 1 : 0) | (p.freio ? 2 : 0) | (p.totaled ? 4 : 0) | (p.engineBlown ? 8 : 0);
+  return [p.faixaSala, q2(p.z), q2(p.x), Math.round(p.speed * 10) / 10, Math.round(p.rpm * 1000) / 1000, p.gear, p.targetLane, sinais, p.chegada ?? -1];
+}
+function aoStSala(d) {
+  if (!corrida || !corrida.multi || !multi || corrida.semente !== multi.semente || !d || !Array.isArray(d.c)) return;
+  const agora = performance.now();
+  for (const s of d.c) {
+    const p = corrida.porFaixa.get(s[0]); if (!p || !p.remoto) continue;
+    const [, z, x, speed, rpm, gear, faixa, sinais, chegada] = s;
+    if (!p.net) { p.z = z; p.x = x; }
+    p.net = { z, x, speed, t: agora };
+    p.speed = speed; p.rpm = rpm; p.gear = gear; p.targetLane = p.lane = faixa; p.laneTime = 1;
+    p.nitroOn = !!(sinais & 1); p.freio = !!(sinais & 2); p.engineBlown = !!(sinais & 8);
+    if (sinais & 4 && !p.totaled) { p.totaled = true; corrida.eventos.push({ tipo: "perda-total", nome: p.nome, jogador: false }); }
+    if (chegada >= 0 && p.chegada === null) p.chegada = chegada;
+  }
+}
+// os carros dos outros: a posição prevista pela velocidade desde o último pacote, chegando nela aos poucos
+function atualizarRemotos(dt) {
+  const agora = performance.now();
+  for (const p of corrida.pilotos) {
+    if (!p.remoto || !p.net) continue;
+    const prevista = p.net.z + (p.totaled || p.engineBlown ? 0 : p.net.speed / 3.6 * Math.min(0.5, (agora - p.net.t) / 1000));
+    p.z = Math.abs(prevista - p.z) > 25 ? prevista : p.z + (prevista - p.z) * Math.min(1, dt * 10);
+    p.x += (p.net.x - p.x) * Math.min(1, dt * 12);
+    if (p.totaled) p.foraT = (p.foraT || 0) + dt;
+  }
+}
+// o meu carro (e, do organizador, os robôs) para os outros, e as chegadas para o servidor
+function enviarRacha() {
+  // os robôs antes do meu: quando a minha chegada fecha o racha, o tempo deles já está lá
+  const agora = performance.now(), meus = corrida.pilotos.filter((p) => !p.remoto).sort((a, b) => (a === corrida.jogador) - (b === corrida.jogador));
+  if (agora - multi.ultimoSt > 80) { multi.ultimoSt = agora; sala.st(meus.map(estadoDe)); }
+  for (const p of meus) {
+    if (multi.enviados.has(p.faixaSala)) continue;
+    const fora = p.engineBlown ? "motor" : p.totaled ? "perda-total" : null;
+    // o seu: quando a corrida acaba para você; os robôs: quando chegam ou quebram (ou, no fim do organizador, a estimada)
+    if (p === corrida.jogador ? corrida.fase === "fim" : (p.chegada !== null || fora || corrida.fase === "fim")) {
+      multi.enviados.add(p.faixaSala);
+      sala.fim({ lane: p.faixaSala, tempo: p.chegada ?? p.estimada ?? null, motivo: fora || "chegada", estimado: p.chegada === null });
+    }
+  }
+}
 
 // ---------- Controles ----------
 function todosNaPista() { return [...corrida.pilotos.filter((p) => !(p.foraT > 1.2)), ...corrida.trafego, ...corrida.obstaculos]; }
@@ -1107,16 +1209,26 @@ function encerrar() {
   else { setPhase("finishing"); const pos = r.posicao; showCallout(pos === 1 ? "VITÓRIA!" : `${pos}º LUGAR`, 1.4, pos === 1 ? "verde" : "amarelo"); audio.blip(pos === 1 ? 990 : 520, 0.3); fimAte = performance.now() + 1500; }
   music.stop();
 }
+// no racha, a ordem é a do servidor (a mesma para todos); até ela chegar, a de cá, com os outros ainda correndo
+function resultadoDoRacha(local) {
+  if (!corrida.multi) return local;
+  const lista = multi && multi.resultado;
+  if (!lista) return { ...local, esperando: true };
+  const minha = corrida.jogador.faixaSala, ordem = lista.map((o) => ({ nome: o.nome, jogador: o.lane === minha, tempo: o.tempo, fora: o.fora }));
+  const i = ordem.findIndex((o) => o.jogador);
+  return { ...local, ordem, posicao: i >= 0 && !ordem[i].fora ? i + 1 : null };
+}
 function mostrarResultado() {
-  const r = corrida.resultado, j = corrida.jogador, tr = TRACKS[selected];
+  const r = resultadoDoRacha(corrida.resultado), j = corrida.jogador, tr = TRACKS[selected];
   setPhase("finish"); audio.update({});
   $("hud").classList.add("hidden"); $("touch").classList.add("hidden"); $("finish").classList.remove("hidden");
   document.body.classList.remove("nitro");
   $("finishTrack").textContent = tr.name;
   const ruim = r.motivo !== "chegada";
-  $("result").textContent = r.motivo === "motor" ? "MOTOR EXPLODIU" : r.motivo === "perda-total" ? "PERDA TOTAL" : r.posicao === 1 ? "VITÓRIA" : `${r.posicao}º LUGAR`;
+  const foraDoTempo = !r.esperando && r.motivo === "chegada" && r.posicao == null; // o racha fechou antes de você cruzar a linha
+  $("result").textContent = r.motivo === "motor" ? "MOTOR EXPLODIU" : r.motivo === "perda-total" ? "PERDA TOTAL" : r.esperando ? "NA CHEGADA" : foraDoTempo ? "FORA DO TEMPO" : r.posicao === 1 ? "VITÓRIA" : `${r.posicao}º LUGAR`;
   $("result").classList.toggle("ruim", ruim);
-  $("resultSub").textContent = r.motivo === "motor" ? "O ponteiro ficou no vermelho tempo demais. Troque a marcha na luz verde." : r.motivo === "perda-total" ? "Bateu de frente. Troque de faixa antes de chegar no carro da frente." : r.posicao === 1 ? "Você dominou a reta." : "A próxima largada já está esperando.";
+  $("resultSub").textContent = r.esperando ? "Esperando os outros pilotos cruzarem a linha para fechar o resultado do racha." : foraDoTempo ? "O racha fecha 25 segundos depois da primeira chegada." : r.motivo === "motor" ? "O ponteiro ficou no vermelho tempo demais. Troque a marcha na luz verde." : r.motivo === "perda-total" ? "Bateu de frente. Troque de faixa antes de chegar no carro da frente." : r.posicao === 1 ? "Você dominou a reta." : "A próxima largada já está esperando.";
   $("finalTime").textContent = r.motivo === "chegada" ? timeString(j.chegada) : "—";
   $("finalSpeed").textContent = Math.round(j.velMax);
   $("finalShifts").textContent = `${j.trocas.perfeita} / ${Object.values(j.trocas).reduce((a, b) => a + b, 0)}`;
@@ -1267,6 +1379,16 @@ let ultimoQuadro = 0;
 function frame(t) { requestAnimationFrame(frame); if (t - ultimoQuadro < 11) return; ultimoQuadro = t; quadro(t); }
 function quadro(t) {
   const dt = Math.min(0.25, (t - (last || t)) / 1000); ultimoT = last; last = t;
+  // (só a corrida desta largada: enquanto a próxima carrega, a anterior ainda está na tela e não manda mais nada)
+  if (corrida && corrida.multi && multi && corrida.semente === multi.semente) {
+    // a largada do racha: no instante do servidor; quem ficou pronto depois corre atrás do tempo perdido
+    if (corrida.pronta === false && !largando && multi.inicio && sala.agora() >= multi.inicio) {
+      corrida.pronta = true;
+      for (let atraso = Math.min(20, (sala.agora() - multi.inicio) / 1000); atraso > 0.02; atraso -= 0.02) L.passoCorrida(corrida, 0.02, {});
+    }
+    atualizarRemotos(dt);
+    if (corrida.pronta) enviarRacha();
+  }
   if (corrida && corrida.pronta === false) {
     // preparando a largada (aquecer): nada anda ainda
   } else if (corrida && corrida.fase !== "fim") {
@@ -1284,8 +1406,8 @@ function quadro(t) {
   } else if (corrida && fimAte) {
     tratarEventos();
     // depois do fim, os outros seguem andando enquanto a cena termina
-    for (const p of corrida.pilotos) if (!p.totaled && !p.engineBlown) p.z += p.speed / 3.6 * dt;
-    for (const p of corrida.pilotos) if (p.totaled) { p.foraT = (p.foraT || 0) + dt; p.speed = Math.max(0, p.speed - 95 * dt); p.z += p.speed / 3.6 * dt; }
+    for (const p of corrida.pilotos) if (!p.remoto && !p.totaled && !p.engineBlown) p.z += p.speed / 3.6 * dt;
+    for (const p of corrida.pilotos) if (!p.remoto && p.totaled) { p.foraT = (p.foraT || 0) + dt; p.speed = Math.max(0, p.speed - 95 * dt); p.z += p.speed / 3.6 * dt; }
     for (const tr of corrida.trafego) tr.z += tr.speed / 3.6 * dt;
     const j = corrida.jogador;
     if (j.engineBlown) { j.speed = Math.max(0, j.speed - 30 * dt); j.z += j.speed / 3.6 * dt; if (Math.random() < 0.7) soltar("fumaça", ponto(-j.x, j.z + 1.6, 1.1), new THREE.Vector3((Math.random() - 0.5), 2.5, j.speed / 3.6 * 0.5), 1.6, 1.4); }
@@ -1316,6 +1438,7 @@ const garagem = criarGaragem({ scene, pmrem, fotoNoitePronta, fotoAsfalto, aplic
   remontar: () => { if (readyModel) garagem.mostrarCarro(importedCar(readyModel, selectedCar, visualDe(selectedCar, L.CARROS[selectedCar].neon))); } });
 function voltarGaragem() {
   if (world) world.visible = false;
+  multi = null;
   limparCarros(); limparParticulas(); corrida = null; fimAte = 0; music.stop(); audio.update({});
   setPhase("menu"); document.body.classList.remove("nitro");
   $("finish").classList.add("hidden"); $("hud").classList.add("hidden"); $("touch").classList.add("hidden"); $("menu").classList.remove("hidden");
@@ -1323,7 +1446,8 @@ function voltarGaragem() {
 }
 $("garage").onclick = voltarGaragem;
 addEventListener("resize", resize); aplicarQualidade();
+sala = criarSala({ $, carro: () => selectedCar, nomeDoCarro: (id) => (L.CARROS[id] || L.CARROS.supra).nome, aoEstado: aoEstadoSala, aoSt: aoStSala, aoChegou: () => {} });
 voltarGaragem(); prepareCar(); garagem.mostrarFicha(selectedCar);
 // #debug: o teste mexe no jogo por aqui (`quadro(ms)` desenha um quadro na mão, para quando a aba não anima sozinha)
-if (DEBUG) window.__drag = { get corrida() { return corrida; }, get phase() { return phase; }, L, scene, renderer, garagem, get world() { return world; }, set bloom(v) { usarBloom = v; }, quadro: (ms = 16) => quadro((last || 0) + ms) };
+if (DEBUG) window.__drag = { get corrida() { return corrida; }, get phase() { return phase; }, get sala() { return sala; }, get multi() { return multi; }, L, scene, renderer, garagem, get world() { return world; }, set bloom(v) { usarBloom = v; }, quadro: (ms = 16) => quadro((last || 0) + ms) };
 requestAnimationFrame(frame);

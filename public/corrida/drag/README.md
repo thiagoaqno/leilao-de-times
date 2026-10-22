@@ -1,6 +1,6 @@
 # Modo drag — no jeito do Need for Speed Underground 2
 
-Abra `/corrida/drag/` pela Garagem do Drag na Vila (entre o MASP e a Consolação) ou pelo botão na entrada da Corrida da Galera. Corrida local contra três rivais, em quatro pistas noturnas com quatro faixas: Ponte Estaiada, Debaixo do Elevado e Porto à Noite (retas com curvas leves) e a Serra à Noite (curvas fechadas). O carro esterça sozinho: as faixas acompanham a pista, a carroceria deita na curva e o pneu canta quando a força para fora passa do ponto.
+Abra `/corrida/drag/` pela Garagem do Drag na Vila (entre o MASP e a Consolação) ou pelo botão na entrada da Corrida da Galera. Corrida sozinho contra três rivais, ou o racha com a galera (até 4 pessoas na mesma sala, as vagas livres com rivais robôs: `sala.js` e `drag.js` no servidor), em quatro pistas noturnas com quatro faixas: Ponte Estaiada, Debaixo do Elevado e Porto à Noite (retas com curvas leves) e a Serra à Noite (curvas fechadas). O carro esterça sozinho: as faixas acompanham a pista, a carroceria deita na curva e o pneu canta quando a força para fora passa do ponto.
 
 Carregando: o seu carro carrega primeiro (com a porcentagem na garagem), depois os três rivais, e então os outros carros baixam devagar para o cache (`baixarOResto`, fora do celular). Ao largar, a tela de carregando mostra os carros chegando e a preparação da pista.
 
