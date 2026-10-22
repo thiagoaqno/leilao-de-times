@@ -1,4 +1,4 @@
-// Nomes alternativos dos clubes da Série B para atualizar os PNGs com tools/baixar-escudos-locais.js.
+// Nomes alternativos dos clubes da Série B para atualizar os PNGs com ferramentas/baixar-escudos-locais.js.
 // O jogo não carrega este arquivo nem consulta a TheSportsDB durante a partida.
 (function (root, fabrica) {
   const m = fabrica();

@@ -72,17 +72,6 @@ app.get("/api/corrida/drag/musicas", (req, res) => {
   } catch (e) { /* pasta vazia ou ausente */ }
   res.json(lista);
 });
-// a música ambiente da Vila 3D (public/vila3d/musica/, ou VILA3D_MUSICA_DIR): a mesma ideia de /api/musicas
-const PASTA_MUSICA_3D = process.env.VILA3D_MUSICA_DIR || path.join(__dirname, "public", "vila3d", "musica");
-if (process.env.VILA3D_MUSICA_DIR) app.use("/vila3d/musica", express.static(PASTA_MUSICA_3D));
-app.get("/api/musicas-vila3d", (req, res) => {
-  let lista = [];
-  try {
-    lista = require("fs").readdirSync(PASTA_MUSICA_3D).filter((f) => /\.(mp3|ogg|m4a|wav)$/i.test(f)).sort((a, b) => a.localeCompare(b, "pt", { numeric: true }))
-      .map((f) => ({ nome: f.replace(/\.[^.]+$/, "").replace(/^\s*\d+\s*[-._)]\s*/, ""), url: "/vila3d/musica/" + encodeURIComponent(f) }));
-  } catch (e) { /* sem pasta, sem músicas */ }
-  res.json(lista);
-});
 // a estante de troféus da Carreira (todas as carreiras, solo e em grupo): o ranking dos técnicos e as últimas conquistas
 // os recordes de volta da Corrida (os 5 melhores de cada pista, para sempre): o placar do Autódromo na Vila
 app.get("/api/recordes-corrida", (req, res) => {
