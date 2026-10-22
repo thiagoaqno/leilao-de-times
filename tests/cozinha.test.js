@@ -68,6 +68,16 @@ test("as fases do terceiro mundo reutilizam cardápios em plantas diferentes", (
   assert.notDeepStrictEqual(K.COZINHAS["3-2"].mapa, K.COZINHAS["3-3"].mapa);
 });
 
+test("o quarto mundo repete receitas que já existem, cada fase numa planta própria", () => {
+  const fases = Object.keys(K.COZINHAS).filter((id) => id.startsWith("4-")), outras = Object.keys(K.COZINHAS).filter((id) => !id.startsWith("4-"));
+  assert.strictEqual(fases.length, 6);
+  for (const id of fases) {
+    const coz = K.COZINHAS[id];
+    for (const r of coz.receitas) assert.ok(K.RECEITAS[r], `${id}: receita ${r} não existe`);
+    for (const outra of [...outras, ...fases.filter((f) => f !== id)]) assert.notDeepStrictEqual(coz.mapa, K.COZINHAS[outra].mapa, `${id} igual a ${outra}`);
+  }
+});
+
 test("juntar: só entra na panela o que está picado, o prato só aceita o que é de alguma receita", () => {
   const card = ["sopa_cebola", "hamburguer_alface"];
   const pan = K.novoRec("panela");
