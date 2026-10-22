@@ -262,7 +262,9 @@ test("ginásio/servidor: quem assiste não manda comandos, e um removido sai da 
 
 test("ginásio/servidor: dois clientes e robôs jogam até o fim e pontuam na Noite", { timeout: 60000 }, async (t) => {
   const time = ["mewtwo", "kyogre", "dialga"];
-  const m = await abrir(t, { modo: "pokemon", formato: "2x2" }, 2, [time, time]);
+  // os robôs da sala no fácil: a vitória dos clientes não depende da folga da máquina (no GitHub, com tudo rodando junto,
+  // os robôs normais às vezes ganhavam, e o teste falhava por acaso)
+  const m = await abrir(t, { modo: "pokemon", formato: "2x2", robo: "facil" }, 2, [time, time]);
   const [a, b] = m.todos;
   await pedir(b, "act", { type: "lado", lado: 0 });
   const n = await m.conectar("/noite");
