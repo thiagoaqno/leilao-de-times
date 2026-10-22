@@ -1,41 +1,42 @@
-# Drag: o racha com a galera (até 4 pessoas)
+# Bugs pequenos achados na varredura
 
-O Drag agora dá para correr com a galera: até 4 pessoas na mesma sala, cada uma no seu computador e numa faixa, e as
-faixas que sobram ficam com os rivais robôs. Sozinho, sem sala, continua igual.
+Quarto passo da refatoração: correções pontuais.
 
-## Como joga
-- Na garagem, a caixa **Racha com a galera**: o seu nome e **Abrir racha**, ou o código e **Entrar**. **Convidar**
-  copia o link da sala. A sala também aparece no lobby da Vila e entra na Noite da Galera (placar e "Bora de outro
-  jogo").
-- A lista mostra quem está no racha, com o carro de cada um, e as vagas que vão ser de robô. Cada um escolhe o seu
-  carro; o organizador escolhe a pista e dá a largada (**Largar o racha**). Para os outros, o botão fica em
-  "Esperando o organizador".
-- Todo mundo carrega os carros de todos, monta a pista e avisa que está pronto. O servidor marca o instante da
-  largada, o mesmo para todos (quem demora mais de 25 s não segura os outros).
-- Na pista, você vê os carros da galera andando na faixa de cada um, e todos veem os mesmos robôs, o mesmo tráfego e
-  as mesmas obras (saem da mesma semente).
-- O resultado é o mesmo para todo mundo. Até ele fechar, a tela do fim diz "Esperando os outros pilotos". O racha fecha
-  quando todos terminam, ou 25 s depois da primeira chegada de verdade (bater ou estourar o motor não conta para esse
-  prazo). Quem não cruzou a linha a tempo vê "Fora do tempo". O vencedor conta no placar da Noite.
-- O organizador larga de novo direto da tela do fim.
+## O que muda
 
-## Como funciona
-- `drag.js` (canal `/drag`): a sala, os carros, a pista, a largada sincronizada, o repasse das posições e o resultado.
-  Quem sai da sala passa a vez de organizar.
-- `logic.mjs`: `criarCorridaMulti` monta a mesma corrida em todos os navegadores. Cada um pilota o próprio carro, e o
-  organizador pilota também os robôs. O resto é `remoto` e só anda pelo que chega da rede.
-- `sala.js` (novo): a sala no navegador, o relógio acertado com o do servidor e a lista de pilotos.
-- `main.js`: carrega os carros de quem vai correr, segura a largada até o instante do servidor, manda o estado do seu
-  carro (e dos robôs, se você organiza) ~12 vezes por segundo, mostra os outros com a posição prevista pela velocidade,
-  e manda a chegada. Na segunda largada seguida, a corrida anterior não manda mais nada (antes, as chegadas velhas
-  iam para a corrida nova e o racha travava).
-- A aba da Noite (`public/noite.js`) agora sabe que o Drag mora em `/corrida/drag/` (`<script data-jogo="drag">`).
+- **Haxball na Noite da Galera:**
+  - a página não carregava o `noite.js`, então o Haxball ficava sem a aba 🌙. Quem a Noite chamava para o Haxball
+    caía na página e tinha que entrar na mão. Agora a aba aparece e o `?entrar=1` entra sozinho na sala
+    (`CAMPOS.haxball` no `public/noite.js`);
+  - o nome passa a ser guardado também em `galera:name`, como nos outros jogos;
+  - `vila.js` não tinha o `haxball` na lista `GAMES`. Quem entrava no prédio do Haxball sumia do mapa sem o nome do
+    jogo.
+- **Tiro:** quando a faxina apagava uma sala parada no meio de uma partida, o envio das posições (a cada 50 ms)
+  continuava rodando para sempre. Agora para junto.
+- **Palavra Proibida:** a sala guardava só a hora em que foi criada (`room.t`), e a faxina apagava uma mesa em uso 6 h
+  depois de criada. Agora cada estado enviado atualiza a hora.
+- **Nomes sem escape:**
+  - no Drag, o nome dos outros pilotos entrava direto no HTML (o aviso de "perda total" e a tabela do resultado);
+  - o `esc` do Leilão não escapava aspas e era usado dentro de `title="..."`. Agora usa o `Comum.h`;
+  - os escapes da Noite, dos replays do Leilão e dos escudos da Carreira passam a escapar o apóstrofo também.
+- **Memória do 3D:**
+  - **Batalha:** cada item que sumia da pista (banana, casco, bomba) e cada kart que saía ficavam com as geometrias,
+    os materiais e a etiqueta do nome na memória da placa de vídeo. Agora saem (`soltarProj`, `disposeKart`).
+  - **Tiro:** o mesmo com os bonecos dos outros jogadores (`soltarBoneco`). Os materiais do corpo ficam, porque o
+    boneco de pano de quem morreu ainda pode estar usando.
+
+## Conferido e deixado como está
+
+- **Ginásio fora da lista de salas da Vila:** é de propósito. Ele tem salas particulares (desafio da Vila, líderes,
+  selvagens).
+- **Carreira em grupo sem o evento `pedido`:** a chamada só existe no ramo da carreira solo, então não é bug.
 
 ## Testes
-- Novos: `tests/drag-servidor.test.js` (vagas, só o organizador larga e escolhe a pista, largada no mesmo instante,
-  robôs nas faixas livres, o repasse das posições, chegadas, o mesmo resultado para todos, largar de novo, quem bate
-  cedo não fecha o racha e quem sai passa a vez) e um teste de `criarCorridaMulti` em `tests/corrida-drag.test.mjs`.
-- Não rodei os testes. O canal `/drag` ainda não entrou em `tests/salas.test.js`: para isso é preciso regravar
-  `salas-esperado.json` (`GRAVAR=1 node --test tests/salas.test.js`).
-- Conferido no navegador do app, com duas abas na mesma sala: entrar, escolher carro e pista, largar, ver os carros uns
-  dos outros, a mesma rua, e o mesmo resultado nas duas, em várias largadas seguidas.
+
+- **Novo, em `tests/e2e/haxball.spec.js`:** chegando pela Noite (`?sala=&entrar=1`), o Haxball entra sozinho na sala
+  com o nome da galera e mostra a aba da Noite.
+- `proibida`, `haxball`, `salas` e `servidor`: passando.
+- No navegador, `haxball`, `leilao-campeao`, `paginas` e `salas`: passando.
+- `corrida-drag.spec.js` tem 2 testes que falham também na `main` sem esta mudança: esperam 3 carros e acham 4, e o
+  motor não chega a explodir. É uma falha que já existia, provavelmente desde o racha multijogador (#291). Fica
+  anotada no plano.

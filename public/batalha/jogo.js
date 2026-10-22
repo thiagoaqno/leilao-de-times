@@ -434,7 +434,16 @@ function makeKart(colorIdx, name, isMe, skin) {
   scene.add(g);
   return { g, body, mats, paint: kt.pintura, kt, balloons, flame, tag, shadow, color, shown: 3, spinA: 0, ghostK: 0, steer: 0, lastYaw: null, sparkT: 0 };
 }
-function disposeKart(k) { scene.remove(k.g); soltarKart(k.kt); k.g.traverse((o) => { if (o.geometry && o.geometry !== balloonGeo && o.geometry !== partGeo) o.geometry.dispose(); }); }
+// solta da memória o kart inteiro: geometrias, materiais (balões, barbante, chama, sombra) e a textura do nome. A
+// geometria dos balões e as partículas são de todos os karts e ficam.
+function disposeKart(k) {
+  scene.remove(k.g); soltarKart(k.kt);
+  const comuns = new Set(Object.values(partMats));
+  k.g.traverse((o) => {
+    if (o.geometry && o.geometry !== balloonGeo && o.geometry !== partGeo) o.geometry.dispose();
+    for (const m of [].concat(o.material || [])) if (!comuns.has(m)) { m.map?.dispose(); m.dispose(); }
+  });
+}
 const _c = new THREE.Color();
 // desenha o kart: posição, giro quando leva item, derrapagem, estrela, fantasma, balões
 function poseKart(k, s, dt, now) {
@@ -499,6 +508,8 @@ function makeProj(type) {
   }
   scene.add(g); return g;
 }
+// cada item tem as suas geometrias e materiais (makeProj): ao sumir da pista, sai da memória também
+function soltarProj(g) { scene.remove(g); g.traverse((o) => { o.geometry?.dispose(); for (const m of [].concat(o.material || [])) m.dispose(); }); }
 
 // ======================================================================
 // Estado do jogo
@@ -516,7 +527,7 @@ const matchEnd = () => (G.practice ? G.m.end : S && S.match ? S.match.end : 0);
 
 function resetGame() {
   for (const k of G.karts.values()) disposeKart(k); G.karts.clear();
-  for (const m of projMeshes.values()) scene.remove(m); projMeshes.clear();
+  for (const m of projMeshes.values()) soltarProj(m); projMeshes.clear();
   Object.assign(G, { buf: [], item: null, rollUntil: 0, boxHide: [], ghostUntil: 0, feed: [], counted: -1, overShown: false, last: null, shake: 0, msgUntil: 0 });
   setH("hMsg", ""); $("over").classList.add("hidden"); $("pause").classList.add("hidden");
 }
@@ -770,7 +781,7 @@ function frame() {
       if (m.userData.spin) m.rotation.y += dt * 14;
       if (m.userData.spark) m.userData.spark.visible = Math.floor(tNow / 90) % 2 === 0;
     }
-    for (const [id, m] of projMeshes) if (!pseen.has(id)) { scene.remove(m); projMeshes.delete(id); }
+    for (const [id, m] of projMeshes) if (!pseen.has(id)) { soltarProj(m); projMeshes.delete(id); }
     boxMeshes.forEach((b, i) => {
       b.visible = smp.bx[i] === "1" && !((G.boxHide[i] || 0) > now); b.rotation.y += dt * 1.2; b.rotation.x = Math.sin(tNow / 700 + i) * 0.3; b.position.y = b.userData.y + Math.sin(tNow / 400 + i) * 0.15;
     });

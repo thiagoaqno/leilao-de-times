@@ -92,6 +92,12 @@ export function makePlayer(team, name, mate) {
   g.userData = { legs, head, upper, guns, gunGroup: gun, tag, mats: { head: skin, hair: dark, torso: shirt, upperArm: shirt, forearm: shirt, thigh: pants, shin: pants, boot } };
   return g;
 }
+// solta da memória o boneco que saiu da cena: geometrias, armas, a etiqueta do nome. Os materiais do corpo
+// (userData.mats) ficam, porque o boneco de pano de quem morreu ainda pode estar usando.
+export function soltarBoneco(g) {
+  const doCorpo = new Set(Object.values(g.userData.mats || {}));
+  g.traverse((o) => { o.geometry?.dispose(); for (const m of [].concat(o.material || [])) if (!doCorpo.has(m)) { m.map?.dispose(); m.dispose(); } });
+}
 
 // ---------- arma na mão (primeira pessoa): cena separada, desenhada por cima, para não atravessar paredes ----------
 export const vScene = new THREE.Scene(), vCam = new THREE.PerspectiveCamera(54, 1, 0.01, 10);
