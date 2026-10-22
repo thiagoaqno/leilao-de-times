@@ -8,7 +8,7 @@ for (const id of ["skyline-r33", "bmw-m4", "porsche-911", "porsche-718", "ferrar
     await page.locator("#carSelect").selectOption(id);
     await expect(page.locator("#carStatus")).toHaveText("Modelo pronto", { timeout: 90000 });
     await page.locator("#start").click();
-    await expect(page.locator("#hud")).toBeVisible({ timeout: 90000 });
+    await expect(page.locator("#hud")).toBeVisible();
     await page.waitForTimeout(700);
     await page.screenshot({ path: testInfo.outputPath(`${id}.png`) });
     expect(errors).toEqual([]);
