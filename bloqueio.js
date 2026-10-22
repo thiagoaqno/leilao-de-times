@@ -2,7 +2,7 @@
 // 2 ou 4 jogadores (robôs completam). Roda no mesmo servidor, num canal separado do Socket.io ("/bloqueio").
 // As regras ficam em public/bloqueio/regras.js (as mesmas do navegador); aqui só ficam a sala, a vez e o relógio.
 const R = require("./public/bloqueio/regras.js");
-const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js");
+const { ligarMesa, rid, limparSalasParadas } = require("./salas.js");
 const noite = require("./noite.js");
 
 const ROBO_MS = +process.env.BLOQUEIO_ROBO_MS || 900, OFFLINE_MS = +process.env.BLOQUEIO_OFFLINE_MS || 6000;
@@ -88,119 +88,65 @@ module.exports = function attachBloqueio(io) {
   }
 
   // ---------- conexões ----------
-  nsp.on("connection", (socket) => {
-    const ctx = () => contexto(socket, rooms);
-    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
-    function addPlayer(room, name, bot = false) {
-      const used = new Set(Object.values(room.players).map((p) => p.pawn));
-      const id = rid(6);
-      room.players[id] = { id, name, token: rid(), pawn: R.AVATARES.find((x) => !used.has(x)), bot, sockets: new Set() };
-      room.order.push(id);
-      return room.players[id];
-    }
-    socket.on("create", (data = {}, cb) => {
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], g: null, wins: {}, log: [], t: Date.now() };
-      rooms.set(room.code, room);
-      const p = addPlayer(room, name);
-      room.host = p.id; bind(room, p.id);
-      log(room, `Mesa criada por ${name}.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-    socket.on("join", (data = {}, cb) => {
-      const room = buscarSala(rooms, data.code);
-      if (!room) return fail(cb, "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu).");
-      const back = quemVolta(room, data);
-      if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
-      if (data.watch || room.phase !== "lobby") {
-        if (!data.watch) return fail(cb, "O jogo já começou. Você pode entrar para assistir.");
-        bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room);
-      }
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      if (room.order.length >= 4) return fail(cb, "A mesa já tem 4 jogadores. Você pode entrar para assistir.");
-      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na mesa.");
-      const p = addPlayer(room, name);
-      bind(room, p.id);
-      log(room, `${name} sentou à mesa.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-    socket.on("act", (data = {}, cb) => {
-      const { room, me } = ctx();
-      if (!room) return fail(cb, "Você não está numa mesa.");
-      const err = handle(room, me, data);
-      if (err) return fail(cb, err);
-      ok(cb);
-      broadcast(room);
-    });
+  function addPlayer(room, name, bot = false) {
+    const used = new Set(Object.values(room.players).map((p) => p.pawn));
+    const id = rid(6);
+    room.players[id] = { id, name, token: rid(), pawn: R.AVATARES.find((x) => !used.has(x)), bot, sockets: new Set() };
+    room.order.push(id);
+    return room.players[id];
+  }
 
-    function handle(room, me, data) {
-      const type = data.type, isHost = me && room.host === me.id;
-      const lobby = room.phase === "lobby";
-      if (type === "pawn") {
-        if (!me || !lobby) return "Só dá para trocar antes de começar.";
-        if (!R.AVATARES.includes(data.pawn)) return "Avatar inválido.";
-        if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
-        me.pawn = data.pawn; return;
-      }
-      if (type === "config") { if (!isHost || !lobby) return "Só o organizador muda as regras, antes de começar."; room.config = cleanConfig(data.config); return; }
-      if (type === "addBot") {
-        if (!isHost || !lobby) return "Só o organizador, antes de começar.";
-        if (room.order.length >= 4) return "A mesa está cheia.";
-        const usados = new Set(Object.values(room.players).map((p) => p.name));
-        addPlayer(room, NOMES_ROBO.find((n) => !usados.has(n)) || "Robô", true); return;
-      }
-      if (type === "kick") {
-        if (!isHost || !lobby) return "Só o organizador, antes de começar.";
-        const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
-        for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
-        delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
-        log(room, `${p.name} saiu da mesa.`); return;
-      }
-      if (type === "start") {
-        if (!isHost || !lobby) return "Só o organizador começa o jogo.";
-        const n = room.order.length;
-        if (n !== 2 && n !== 4) return "O Bloqueio é de 2 ou 4 jogadores (use os robôs para completar a mesa).";
-        comecar(room); return;
-      }
-      if (type === "restart") {
-        if (!isHost || lobby) return "Só o organizador.";
-        clearTimeout(room.turnTimer); room.phase = "lobby"; room.g = null; room.deadline = null; room.winner = null;
-        log(room, "A mesa voltou para a sala de espera."); return;
-      }
-      if (type === "again") {
-        if (!isHost || room.phase !== "ended") return "Só o organizador, depois que o jogo acabar.";
-        comecar(room); return;
-      }
-      if (!me) return "Você está só assistindo.";
-      if (type === "move" || type === "wall") {
-        if (room.phase !== "playing") return "O jogo não está em andamento.";
-        if (idDaVez(room) !== me.id) return "Não é a sua vez.";
-        const e = type === "move" ? jogar(room, me.id, { mover: { r: data.r | 0, c: data.c | 0 } }) : jogar(room, me.id, { parede: { r: data.r, c: data.c, o: data.o } });
-        if (!e) room.passo++;
-        return e;
-      }
-      return "Ação desconhecida.";
+  function handle(room, me, data) {
+    const type = data.type, isHost = me && room.host === me.id;
+    const lobby = room.phase === "lobby";
+    if (type === "pawn") {
+      if (!me || !lobby) return "Só dá para trocar antes de começar.";
+      if (!R.AVATARES.includes(data.pawn)) return "Avatar inválido.";
+      if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
+      me.pawn = data.pawn; return;
     }
+    if (type === "config") { if (!isHost || !lobby) return "Só o organizador muda as regras, antes de começar."; room.config = cleanConfig(data.config); return; }
+    if (type === "addBot") {
+      if (!isHost || !lobby) return "Só o organizador, antes de começar.";
+      if (room.order.length >= 4) return "A mesa está cheia.";
+      const usados = new Set(Object.values(room.players).map((p) => p.name));
+      addPlayer(room, NOMES_ROBO.find((n) => !usados.has(n)) || "Robô", true); return;
+    }
+    if (type === "kick") {
+      if (!isHost || !lobby) return "Só o organizador, antes de começar.";
+      const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
+      for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
+      delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
+      log(room, `${p.name} saiu da mesa.`); return;
+    }
+    if (type === "start") {
+      if (!isHost || !lobby) return "Só o organizador começa o jogo.";
+      const n = room.order.length;
+      if (n !== 2 && n !== 4) return "O Bloqueio é de 2 ou 4 jogadores (use os robôs para completar a mesa).";
+      comecar(room); return;
+    }
+    if (type === "restart") {
+      if (!isHost || lobby) return "Só o organizador.";
+      clearTimeout(room.turnTimer); room.phase = "lobby"; room.g = null; room.deadline = null; room.winner = null;
+      log(room, "A mesa voltou para a sala de espera."); return;
+    }
+    if (type === "again") {
+      if (!isHost || room.phase !== "ended") return "Só o organizador, depois que o jogo acabar.";
+      comecar(room); return;
+    }
+    if (!me) return "Você está só assistindo.";
+    if (type === "move" || type === "wall") {
+      if (room.phase !== "playing") return "O jogo não está em andamento.";
+      if (idDaVez(room) !== me.id) return "Não é a sua vez.";
+      const e = type === "move" ? jogar(room, me.id, { mover: { r: data.r | 0, c: data.c | 0 } }) : jogar(room, me.id, { parede: { r: data.r, c: data.c, o: data.o } });
+      if (!e) room.passo++;
+      return e;
+    }
+    return "Ação desconhecida.";
+  }
 
-    socket.on("react", (data = {}) => {
-      const { room, me } = ctx();
-      if (!room || !me || room.phase === "lobby" || !R.REACOES.includes(data.emoji)) return;
-      const now = Date.now();
-      if (now - (me.lastReact || 0) < 700) return;
-      me.lastReact = now;
-      nsp.to(room.code).emit("react", { player: me.id, emoji: data.emoji });
-    });
-    socket.on("disconnect", () => {
-      const { room, me } = ctx();
-      if (!room) return;
-      if (me) me.sockets.delete(socket.id);
-      broadcast(room);
-    });
-  });
+  // criar, entrar, as ações, as reações e a saída: o esqueleto comum dos jogos de mesa (salas.ligarMesa)
+  ligarMesa(nsp, rooms, { max: 4, sala: (data) => ({ config: cleanConfig(data.config), g: null, wins: {} }), novoJogador: addPlayer, acao: handle, broadcast, log, reacoes: R.REACOES });
 
   limparSalasParadas(rooms, { aoApagar: (r) => clearTimeout(r.turnTimer) });
 };

@@ -5,7 +5,7 @@
 // Roda no mesmo servidor do leilão, num canal separado do Socket.io ("/domino").
 // Cada jogador recebe só as próprias peças; dos outros, só quantas têm (no fim da mão, todo mundo vê).
 const R = require("./public/domino/regras.js");
-const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const { ligarMesa, rid, ok, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
 const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
@@ -215,157 +215,99 @@ module.exports = function attachDomino(io) {
   }
 
   // ---------- conexões ----------
-  nsp.on("connection", (socket) => {
-    const ctx = () => contexto(socket, rooms);
-    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
-    function addPlayer(room, name) {
-      const used = new Set(Object.values(room.players).map((p) => p.pawn));
-      const id = rid(6);
-      const t0 = room.order.filter((x) => room.players[x].team === 0).length, t1 = room.order.length - t0;
-      room.players[id] = { id, name, token: rid(), pawn: R.PAWNS.find((x) => !used.has(x)), team: t0 <= t1 ? 0 : 1, sockets: new Set() };
-      room.order.push(id);
-      return room.players[id];
+  function addPlayer(room, name) {
+    const used = new Set(Object.values(room.players).map((p) => p.pawn));
+    const id = rid(6);
+    const t0 = room.order.filter((x) => room.players[x].team === 0).length, t1 = room.order.length - t0;
+    room.players[id] = { id, name, token: rid(), pawn: R.PAWNS.find((x) => !used.has(x)), team: t0 <= t1 ? 0 : 1, sockets: new Set() };
+    room.order.push(id);
+    return room.players[id];
+  }
+
+  function handle(room, me, data) {
+    const type = data.type, isHost = me && room.host === me.id, h = room.h;
+    if (type === "pawn") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      if (!R.PAWNS.includes(data.pawn)) return "Avatar inválido.";
+      if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
+      me.pawn = data.pawn; return;
     }
-
-    socket.on("create", (data = {}, cb) => {
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], h: null, score: [0, 0], games: [0, 0], fx: [], log: [], t: Date.now() };
-      rooms.set(room.code, room);
-      const p = addPlayer(room, name);
-      room.host = p.id;
-      bind(room, p.id);
-      log(room, `Mesa criada por ${name}.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-
-    socket.on("join", (data = {}, cb) => {
-      const room = buscarSala(rooms, data.code);
-      if (!room) return fail(cb, "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu).");
-      const back = quemVolta(room, data);
-      if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
-      if (data.watch || room.phase !== "lobby") {
-        if (!data.watch) return fail(cb, "O jogo já começou. Você pode entrar para assistir.");
-        bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room);
-      }
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      if (room.order.length >= 6) return fail(cb, "A mesa já tem 6 jogadores. Você pode entrar para assistir.");
-      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na mesa.");
-      const p = addPlayer(room, name);
-      bind(room, p.id);
-      log(room, `${name} sentou à mesa.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-
-    socket.on("act", (data = {}, cb) => {
-      const { room, me } = ctx();
-      if (!room) return fail(cb, "Você não está numa mesa.");
-      const err = handle(room, me, data);
-      if (err) return fail(cb, err);
-      ok(cb);
-      broadcast(room);
-    });
-
-    function handle(room, me, data) {
-      const type = data.type, isHost = me && room.host === me.id, h = room.h;
-      if (type === "pawn") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        if (!R.PAWNS.includes(data.pawn)) return "Avatar inválido.";
-        if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
-        me.pawn = data.pawn; return;
-      }
-      if (type === "team") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        const p = room.players[data.id && isHost ? data.id : me.id];
-        if (!p) return "Jogador inválido.";
-        p.team = p.team ? 0 : 1; return;
-      }
-      if (type === "shuffleTeams") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
-        shuffle([...room.order]).forEach((id, i) => (room.players[id].team = i % 2));
-        log(room, "🎲 Duplas sorteadas."); return;
-      }
-      if (type === "config") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador muda as regras, antes de começar.";
-        room.config = cleanConfig(data.config); return;
-      }
-      if (type === "kick") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
-        const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
-        for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
-        delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
-        log(room, `${p.name} saiu da mesa.`); return;
-      }
-      if (type === "start") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador começa o jogo.";
-        const mode = room.config.mode, n = room.order.length;
-        if (mode === "dupla") {
-          const a = room.order.filter((id) => room.players[id].team === 0), b = room.order.filter((id) => room.players[id].team === 1);
-          if (n !== 4 || a.length !== 2 || b.length !== 2) return "O dominó de dupla é com 4 jogadores, 2 em cada dupla.";
-          shuffle(a); shuffle(b);
-          room.order = [a[0], b[0], a[1], b[1]]; // parceiros de frente
-          log(room, `🎉 Começou! ${a.map((id) => nameOf(room, id)).join(" e ")} contra ${b.map((id) => nameOf(room, id)).join(" e ")}.`);
-        } else {
-          if (n < MIN[mode] || n > MAX[mode]) return mode === "burrinho" ? "O burrinho é de 2 a 6 jogadores." : "Cada um por si é de 2 a 4 jogadores.";
-          shuffle(room.order);
-          log(room, `🎉 Começou ${mode === "burrinho" ? "o burrinho" : "o cada um por si"}, com ${n}!${compraLigada(room) ? " Quem não tiver pedra que sirva compra do monte." : ""}`);
-        }
-        room.score = Array(nSides(room)).fill(0); room.games = Array(nSides(room)).fill(0); room.winner = null; room.h = null; room.fx = [];
-        startHand(room, null); return;
-      }
-      if (type === "next") {
-        if (!isHost || room.phase !== "handEnd") return "Só o organizador adianta.";
-        nextHand(room); return;
-      }
-      if (type === "restart") {
-        if (!isHost || room.phase === "lobby") return "Só o organizador.";
-        clearTimeout(room.nextTimer); clearTimeout(room.turnTimer); clearTimeout(room.passTimer);
-        room.phase = "lobby"; room.h = null; room.deadline = null; room.nextAt = null; room.winner = null;
-        log(room, "A mesa voltou para a sala de espera."); return;
-      }
-      if (!me) return "Você está só assistindo.";
-      if (type === "play") {
-        if (room.phase !== "playing") return "A mão não está em andamento.";
-        if (room.order[h.turn] !== me.id) return "Não é a sua vez.";
-        const tile = h.hands[me.id].find((t) => t.id === int(data.id, -1));
-        if (!tile) return "Essa peça não está na sua mão.";
-        if (h.mustOpen != null && tile.id !== h.mustOpen) return "A primeira mão começa com a pedra marcada.";
-        const ok = R.sides(tile, R.ends(h.chain));
-        if (!ok.length) return "Essa peça não encaixa em nenhuma ponta.";
-        const side = ok.includes(data.side) ? data.side : ok[0];
-        place(room, me.id, tile, side);
-        return;
-      }
-      if (type === "buy") {
-        if (room.phase !== "playing" || !h.chain) return "Não dá para comprar agora.";
-        if (room.order[h.turn] !== me.id) return "Não é a sua vez.";
-        if (R.canPlay(h.hands[me.id], R.ends(h.chain))) return "Você tem pedra que serve: jogue ela.";
-        if (!podeComprar(room)) return compraLigada(room) ? "O monte acabou." : "Nesta mesa não tem compra.";
-        compra(room, me.id);
-        autoPass(room); // comprou e ainda não serve, com o monte vazio: passa
-        return;
-      }
-      return "Ação desconhecida.";
+    if (type === "team") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      const p = room.players[data.id && isHost ? data.id : me.id];
+      if (!p) return "Jogador inválido.";
+      p.team = p.team ? 0 : 1; return;
     }
+    if (type === "shuffleTeams") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
+      shuffle([...room.order]).forEach((id, i) => (room.players[id].team = i % 2));
+      log(room, "🎲 Duplas sorteadas."); return;
+    }
+    if (type === "config") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador muda as regras, antes de começar.";
+      room.config = cleanConfig(data.config); return;
+    }
+    if (type === "kick") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
+      const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
+      for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
+      delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
+      log(room, `${p.name} saiu da mesa.`); return;
+    }
+    if (type === "start") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador começa o jogo.";
+      const mode = room.config.mode, n = room.order.length;
+      if (mode === "dupla") {
+        const a = room.order.filter((id) => room.players[id].team === 0), b = room.order.filter((id) => room.players[id].team === 1);
+        if (n !== 4 || a.length !== 2 || b.length !== 2) return "O dominó de dupla é com 4 jogadores, 2 em cada dupla.";
+        shuffle(a); shuffle(b);
+        room.order = [a[0], b[0], a[1], b[1]]; // parceiros de frente
+        log(room, `🎉 Começou! ${a.map((id) => nameOf(room, id)).join(" e ")} contra ${b.map((id) => nameOf(room, id)).join(" e ")}.`);
+      } else {
+        if (n < MIN[mode] || n > MAX[mode]) return mode === "burrinho" ? "O burrinho é de 2 a 6 jogadores." : "Cada um por si é de 2 a 4 jogadores.";
+        shuffle(room.order);
+        log(room, `🎉 Começou ${mode === "burrinho" ? "o burrinho" : "o cada um por si"}, com ${n}!${compraLigada(room) ? " Quem não tiver pedra que sirva compra do monte." : ""}`);
+      }
+      room.score = Array(nSides(room)).fill(0); room.games = Array(nSides(room)).fill(0); room.winner = null; room.h = null; room.fx = [];
+      startHand(room, null); return;
+    }
+    if (type === "next") {
+      if (!isHost || room.phase !== "handEnd") return "Só o organizador adianta.";
+      nextHand(room); return;
+    }
+    if (type === "restart") {
+      if (!isHost || room.phase === "lobby") return "Só o organizador.";
+      clearTimeout(room.nextTimer); clearTimeout(room.turnTimer); clearTimeout(room.passTimer);
+      room.phase = "lobby"; room.h = null; room.deadline = null; room.nextAt = null; room.winner = null;
+      log(room, "A mesa voltou para a sala de espera."); return;
+    }
+    if (!me) return "Você está só assistindo.";
+    if (type === "play") {
+      if (room.phase !== "playing") return "A mão não está em andamento.";
+      if (room.order[h.turn] !== me.id) return "Não é a sua vez.";
+      const tile = h.hands[me.id].find((t) => t.id === int(data.id, -1));
+      if (!tile) return "Essa peça não está na sua mão.";
+      if (h.mustOpen != null && tile.id !== h.mustOpen) return "A primeira mão começa com a pedra marcada.";
+      const ok = R.sides(tile, R.ends(h.chain));
+      if (!ok.length) return "Essa peça não encaixa em nenhuma ponta.";
+      const side = ok.includes(data.side) ? data.side : ok[0];
+      place(room, me.id, tile, side);
+      return;
+    }
+    if (type === "buy") {
+      if (room.phase !== "playing" || !h.chain) return "Não dá para comprar agora.";
+      if (room.order[h.turn] !== me.id) return "Não é a sua vez.";
+      if (R.canPlay(h.hands[me.id], R.ends(h.chain))) return "Você tem pedra que serve: jogue ela.";
+      if (!podeComprar(room)) return compraLigada(room) ? "O monte acabou." : "Nesta mesa não tem compra.";
+      compra(room, me.id);
+      autoPass(room); // comprou e ainda não serve, com o monte vazio: passa
+      return;
+    }
+    return "Ação desconhecida.";
+  }
 
-    socket.on("react", (data = {}) => {
-      const { room, me } = ctx();
-      if (!room || !me || room.phase === "lobby" || !R.REACTIONS.includes(data.emoji)) return;
-      const now = Date.now();
-      if (now - (me.lastReact || 0) < 700) return;
-      me.lastReact = now;
-      nsp.to(room.code).emit("react", { player: me.id, emoji: data.emoji });
-    });
-    socket.on("disconnect", () => {
-      const { room, me } = ctx();
-      if (!room) return;
-      if (me) me.sockets.delete(socket.id);
-      broadcast(room);
-    });
-  });
+  // criar, entrar, as ações, as reações e a saída: o esqueleto comum dos jogos de mesa (salas.ligarMesa)
+  ligarMesa(nsp, rooms, { max: 6, sala: (data) => ({ config: cleanConfig(data.config), h: null, score: [0, 0], games: [0, 0], fx: [] }), novoJogador: addPlayer, acao: handle, broadcast, log, reacoes: R.REACTIONS });
 
   limparSalasParadas(rooms, { aoApagar: (r) => { clearTimeout(r.turnTimer); clearTimeout(r.nextTimer); clearTimeout(r.passTimer); } });
 };

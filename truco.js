@@ -2,7 +2,7 @@
 // Roda no mesmo servidor do leilão, num canal separado do Socket.io ("/truco").
 // Cada jogador recebe só as próprias cartas (na mão de onze, o time que tem 11 vê as cartas do parceiro).
 const R = require("./public/truco/regras.js");
-const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
+const { ligarMesa, rid, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
 const nomesDe = (room, ids) => ids.map((id) => room.players[id] && room.players[id].name).filter(Boolean);
 
@@ -191,163 +191,120 @@ module.exports = function attachTruco(io) {
   }
 
   // ---------- conexões ----------
-  nsp.on("connection", (socket) => {
-    const ctx = () => contexto(socket, rooms);
-    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
-    function addPlayer(room, name) {
-      const used = new Set(Object.values(room.players).map((p) => p.pawn));
-      const id = rid(6);
-      const t0 = room.order.filter((x) => room.players[x].team === 0).length, t1 = room.order.length - t0;
-      room.players[id] = { id, name, token: rid(), pawn: R.PAWNS.find((x) => !used.has(x)), team: t0 <= t1 ? 0 : 1, sockets: new Set() };
-      room.order.push(id);
-      return room.players[id];
+  function addPlayer(room, name) {
+    const used = new Set(Object.values(room.players).map((p) => p.pawn));
+    const id = rid(6);
+    const t0 = room.order.filter((x) => room.players[x].team === 0).length, t1 = room.order.length - t0;
+    room.players[id] = { id, name, token: rid(), pawn: R.PAWNS.find((x) => !used.has(x)), team: t0 <= t1 ? 0 : 1, sockets: new Set() };
+    room.order.push(id);
+    return room.players[id];
+  }
+
+  function handle(room, me, data) {
+    const type = data.type, isHost = me && room.host === me.id, h = room.h;
+    // ---- sala de espera ----
+    if (type === "pawn") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      if (!R.PAWNS.includes(data.pawn)) return "Avatar inválido.";
+      if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
+      me.pawn = data.pawn; return;
     }
-
-    socket.on("create", (data = {}, cb) => {
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], h: null, score: [0, 0], games: [0, 0], fx: [], log: [], t: Date.now() };
-      rooms.set(room.code, room);
-      const p = addPlayer(room, name);
-      room.host = p.id;
-      bind(room, p.id);
-      log(room, `Mesa criada por ${name}.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-
-    socket.on("join", (data = {}, cb) => {
-      const room = buscarSala(rooms, data.code);
-      if (!room) return fail(cb, "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu).");
-      const back = quemVolta(room, data);
-      if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
-      if (data.watch || room.phase !== "lobby") {
-        if (!data.watch) return fail(cb, "O jogo já começou. Você pode entrar para assistir.");
-        bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room);
-      }
-      const name = cleanName(data.name);
-      if (!name) return fail(cb, "Coloque o seu nome.");
-      if (room.order.length >= MAX_PLAYERS) return fail(cb, `A mesa já tem ${MAX_PLAYERS} jogadores. Você pode entrar para assistir.`);
-      if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na mesa.");
-      const p = addPlayer(room, name);
-      bind(room, p.id);
-      log(room, `${name} sentou à mesa.`);
-      ok(cb, { code: room.code, id: p.id, token: p.token });
-      broadcast(room);
-    });
-
-    socket.on("act", (data = {}, cb) => {
-      const { room, me } = ctx();
-      if (!room) return fail(cb, "Você não está numa mesa.");
-      const err = handle(room, me, data);
-      if (err) return fail(cb, err);
-      ok(cb);
-      broadcast(room);
-    });
-
-    function handle(room, me, data) {
-      const type = data.type, isHost = me && room.host === me.id, h = room.h;
-      // ---- sala de espera ----
-      if (type === "pawn") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        if (!R.PAWNS.includes(data.pawn)) return "Avatar inválido.";
-        if (Object.values(room.players).some((p) => p !== me && p.pawn === data.pawn)) return "Esse avatar já é de outra pessoa.";
-        me.pawn = data.pawn; return;
-      }
-      if (type === "team") {
-        if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
-        const p = room.players[data.id && isHost ? data.id : me.id];
-        if (!p) return "Jogador inválido.";
-        p.team = p.team ? 0 : 1; return;
-      }
-      if (type === "shuffleTeams") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
-        shuffle([...room.order]).forEach((id, i) => (room.players[id].team = i % 2));
-        log(room, "🎲 Times sorteados."); return;
-      }
-      if (type === "config") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador muda as regras, antes de começar.";
-        room.config = cleanConfig(data.config); return;
-      }
-      if (type === "kick") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
-        const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
-        for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
-        delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
-        log(room, `${p.name} saiu da mesa.`); return;
-      }
-      if (type === "start") {
-        if (!isHost || room.phase !== "lobby") return "Só o organizador começa o jogo.";
-        const a = room.order.filter((id) => room.players[id].team === 0), b = room.order.filter((id) => room.players[id].team === 1);
-        if (![2, 4, 6].includes(room.order.length)) return "O truco é com 2, 4 ou 6 jogadores.";
-        if (a.length !== b.length) return "Os dois times precisam ter o mesmo número de jogadores.";
-        // lugares alternados: um de cada time
-        shuffle(a); shuffle(b);
-        room.order = a.flatMap((id, i) => [id, b[i]]);
-        room.score = [0, 0]; room.games = [0, 0]; room.winner = null; room.h = null; room.fx = [];
-        room.firstDealer = Math.floor(Math.random() * room.order.length);
-        log(room, `🎉 Começou! ${teamName(room, 0)} contra ${teamName(room, 1)}.`);
-        startHand(room); return;
-      }
-      if (type === "next") {
-        if (!isHost || room.phase !== "handEnd") return "Só o organizador adianta.";
-        nextHand(room); return;
-      }
-      if (type === "restart") {
-        if (!isHost || room.phase === "lobby") return "Só o organizador.";
-        clearTimeout(room.nextTimer); clearTimeout(room.turnTimer);
-        room.phase = "lobby"; room.h = null; room.deadline = null; room.nextAt = null; room.winner = null;
-        log(room, "A mesa voltou para a sala de espera."); return;
-      }
-      if (!me) return "Você está só assistindo.";
-      if (room.phase !== "playing") return "A mão não está em andamento.";
-      const myTeam = me.team;
-
-      if (type === "onze") {
-        if (h.stage !== "onze" || myTeam !== h.onzeTeam) return "Não é hora disso.";
-        if (data.play) { h.value = 3; h.stage = "play"; h.step++; fx(room, { kind: "onze", pid: me.id, play: true }); log(room, `✋ ${me.name}: vamos jogar a mão de onze (vale 3).`); }
-        else { fx(room, { kind: "run", pid: me.id }); log(room, `🏃 ${me.name} correu da mão de onze.`); endHand(room, 1 - myTeam, 1, `${teamName(room, myTeam)} ${pl(room, myTeam, "correu", "correram")} da mão de onze`); }
-        return;
-      }
-      if (type === "accept" || type === "run" || type === "raise") {
-        const r = h.raise;
-        if (!r || myTeam === r.team) return "Não tem pedido para responder.";
-        if (type === "accept") { acceptRaise(room, me); return; }
-        if (type === "run") {
-          fx(room, { kind: "run", pid: me.id });
-          log(room, `🏃 ${me.name} correu.`);
-          endHand(room, r.team, h.value, `${teamName(room, myTeam)} ${pl(room, myTeam, "correu", "correram")} do ${R.RAISE_NAME[r.to].toLowerCase()}`);
-          return;
-        }
-        const to = R.nextValue(r.to);
-        if (to > TARGET) return "Não dá para aumentar mais.";
-        h.value = r.to; h.lastRaiser = r.team;
-        h.raise = { team: myTeam, to, by: me.id }; h.step++;
-        fx(room, { kind: "raise", pid: me.id, to });
-        log(room, `🗣️ ${me.name}: ${R.RAISE_NAME[to].toUpperCase()}!`);
-        return;
-      }
-      if (h.stage !== "play") return "Espere a decisão da mão de onze.";
-      if (room.order[h.turn] !== me.id) return "Não é a sua vez.";
-      if (Date.now() < (h.pauseUntil || 0)) return "Calma, a rodada acabou de fechar.";
-      if (type === "truco") {
-        if (h.raise) return "Já tem um pedido na mesa.";
-        if (h.special) return "Na mão de onze (e na de ferro) não tem truco.";
-        if (h.lastRaiser === myTeam) return "Agora só o outro time pode aumentar.";
-        const to = R.nextValue(h.value);
-        if (to > TARGET) return "A mão já vale 12.";
-        h.raise = { team: myTeam, to, by: me.id }; h.step++;
-        fx(room, { kind: "raise", pid: me.id, to });
-        log(room, `🗣️ ${me.name}: ${R.RAISE_NAME[to].toUpperCase()}!`);
-        return;
-      }
-      if (type === "play") {
-        if (h.raise) return "Espere a resposta do pedido.";
-        return play(room, me, data);
-      }
-      return "Ação desconhecida.";
+    if (type === "team") {
+      if (!me || room.phase !== "lobby") return "Só dá para trocar antes de começar.";
+      const p = room.players[data.id && isHost ? data.id : me.id];
+      if (!p) return "Jogador inválido.";
+      p.team = p.team ? 0 : 1; return;
     }
+    if (type === "shuffleTeams") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
+      shuffle([...room.order]).forEach((id, i) => (room.players[id].team = i % 2));
+      log(room, "🎲 Times sorteados."); return;
+    }
+    if (type === "config") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador muda as regras, antes de começar.";
+      room.config = cleanConfig(data.config); return;
+    }
+    if (type === "kick") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador, antes de começar.";
+      const p = room.players[data.id]; if (!p || p.id === me.id) return "Jogador inválido.";
+      for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
+      delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
+      log(room, `${p.name} saiu da mesa.`); return;
+    }
+    if (type === "start") {
+      if (!isHost || room.phase !== "lobby") return "Só o organizador começa o jogo.";
+      const a = room.order.filter((id) => room.players[id].team === 0), b = room.order.filter((id) => room.players[id].team === 1);
+      if (![2, 4, 6].includes(room.order.length)) return "O truco é com 2, 4 ou 6 jogadores.";
+      if (a.length !== b.length) return "Os dois times precisam ter o mesmo número de jogadores.";
+      // lugares alternados: um de cada time
+      shuffle(a); shuffle(b);
+      room.order = a.flatMap((id, i) => [id, b[i]]);
+      room.score = [0, 0]; room.games = [0, 0]; room.winner = null; room.h = null; room.fx = [];
+      room.firstDealer = Math.floor(Math.random() * room.order.length);
+      log(room, `🎉 Começou! ${teamName(room, 0)} contra ${teamName(room, 1)}.`);
+      startHand(room); return;
+    }
+    if (type === "next") {
+      if (!isHost || room.phase !== "handEnd") return "Só o organizador adianta.";
+      nextHand(room); return;
+    }
+    if (type === "restart") {
+      if (!isHost || room.phase === "lobby") return "Só o organizador.";
+      clearTimeout(room.nextTimer); clearTimeout(room.turnTimer);
+      room.phase = "lobby"; room.h = null; room.deadline = null; room.nextAt = null; room.winner = null;
+      log(room, "A mesa voltou para a sala de espera."); return;
+    }
+    if (!me) return "Você está só assistindo.";
+    if (room.phase !== "playing") return "A mão não está em andamento.";
+    const myTeam = me.team;
 
+    if (type === "onze") {
+      if (h.stage !== "onze" || myTeam !== h.onzeTeam) return "Não é hora disso.";
+      if (data.play) { h.value = 3; h.stage = "play"; h.step++; fx(room, { kind: "onze", pid: me.id, play: true }); log(room, `✋ ${me.name}: vamos jogar a mão de onze (vale 3).`); }
+      else { fx(room, { kind: "run", pid: me.id }); log(room, `🏃 ${me.name} correu da mão de onze.`); endHand(room, 1 - myTeam, 1, `${teamName(room, myTeam)} ${pl(room, myTeam, "correu", "correram")} da mão de onze`); }
+      return;
+    }
+    if (type === "accept" || type === "run" || type === "raise") {
+      const r = h.raise;
+      if (!r || myTeam === r.team) return "Não tem pedido para responder.";
+      if (type === "accept") { acceptRaise(room, me); return; }
+      if (type === "run") {
+        fx(room, { kind: "run", pid: me.id });
+        log(room, `🏃 ${me.name} correu.`);
+        endHand(room, r.team, h.value, `${teamName(room, myTeam)} ${pl(room, myTeam, "correu", "correram")} do ${R.RAISE_NAME[r.to].toLowerCase()}`);
+        return;
+      }
+      const to = R.nextValue(r.to);
+      if (to > TARGET) return "Não dá para aumentar mais.";
+      h.value = r.to; h.lastRaiser = r.team;
+      h.raise = { team: myTeam, to, by: me.id }; h.step++;
+      fx(room, { kind: "raise", pid: me.id, to });
+      log(room, `🗣️ ${me.name}: ${R.RAISE_NAME[to].toUpperCase()}!`);
+      return;
+    }
+    if (h.stage !== "play") return "Espere a decisão da mão de onze.";
+    if (room.order[h.turn] !== me.id) return "Não é a sua vez.";
+    if (Date.now() < (h.pauseUntil || 0)) return "Calma, a rodada acabou de fechar.";
+    if (type === "truco") {
+      if (h.raise) return "Já tem um pedido na mesa.";
+      if (h.special) return "Na mão de onze (e na de ferro) não tem truco.";
+      if (h.lastRaiser === myTeam) return "Agora só o outro time pode aumentar.";
+      const to = R.nextValue(h.value);
+      if (to > TARGET) return "A mão já vale 12.";
+      h.raise = { team: myTeam, to, by: me.id }; h.step++;
+      fx(room, { kind: "raise", pid: me.id, to });
+      log(room, `🗣️ ${me.name}: ${R.RAISE_NAME[to].toUpperCase()}!`);
+      return;
+    }
+    if (type === "play") {
+      if (h.raise) return "Espere a resposta do pedido.";
+      return play(room, me, data);
+    }
+    return "Ação desconhecida.";
+  }
+
+  // os eventos que só este jogo tem
+  const extras = (socket, ctx) => {
     // Sinal para o parceiro: vai para a mesa toda, como na vida real (o adversário também vê, então dá para blefar).
     socket.on("signal", (data = {}) => {
       const { room, me } = ctx();
@@ -357,21 +314,10 @@ module.exports = function attachTruco(io) {
       me.lastSig = now;
       nsp.to(room.code).emit("signal", { from: me.id, k: data.k });
     });
-    socket.on("react", (data = {}) => {
-      const { room, me } = ctx();
-      if (!room || !me || room.phase === "lobby" || !R.REACTIONS.includes(data.emoji)) return;
-      const now = Date.now();
-      if (now - (me.lastReact || 0) < 700) return;
-      me.lastReact = now;
-      nsp.to(room.code).emit("react", { player: me.id, emoji: data.emoji });
-    });
-    socket.on("disconnect", () => {
-      const { room, me } = ctx();
-      if (!room) return;
-      if (me) me.sockets.delete(socket.id);
-      broadcast(room);
-    });
-  });
+  };
+
+  // criar, entrar, as ações, as reações e a saída: o esqueleto comum dos jogos de mesa (salas.ligarMesa)
+  ligarMesa(nsp, rooms, { max: MAX_PLAYERS, sala: (data) => ({ config: cleanConfig(data.config), h: null, score: [0, 0], games: [0, 0], fx: [] }), novoJogador: addPlayer, acao: handle, broadcast, log, reacoes: R.REACTIONS, extras });
 
   limparSalasParadas(rooms, { aoApagar: (r) => { clearTimeout(r.turnTimer); clearTimeout(r.nextTimer); } });
 };
