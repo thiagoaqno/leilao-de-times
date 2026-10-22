@@ -138,7 +138,15 @@ test("todas as pistas: robôs largam no reto, passam pelos 12 checkpoints em ord
 // A volta dos robôs não depende de quem gravou o traçado: miram o ritmo da sala (a média das cinco melhores voltas de
 // cada um) vezes o nível. Antes, cada robô copiava a melhor volta de um piloto: um ficava no recorde, outro na volta
 // do novato.
-test("robôs miram o ritmo da sala, seja qual for a volta que copiam", () => {
+// o sorteio dos robôs (o carro de cada um, a pilotagem) com semente: o teste dá sempre o mesmo resultado. Sem ela, às
+// vezes as duas voltas gravadas saíam parecidas demais e o teste falhava por acaso.
+function comSemente(semente, f) {
+  const original = Math.random;
+  let a = semente >>> 0;
+  Math.random = () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  try { return f(); } finally { Math.random = original; }
+}
+test("robôs miram o ritmo da sala, seja qual for a volta que copiam", () => comSemente(7, () => {
   const pista = "interlagos";
   const voltaDe = (nivel) => { // grava uma volta de robô para servir de volta humana
     Robos.usarFonte(() => []);
@@ -161,7 +169,7 @@ test("robôs miram o ritmo da sala, seja qual for a volta que copiam", () => {
       }
     }
   } finally { Robos.usarFonte(() => null); }
-});
+}));
 
 test("sem volta de ninguém na pista, os robôs seguem o traçado calculado pelo nível", () => {
   Robos.usarFonte(() => [], () => null);

@@ -422,7 +422,8 @@ Para achar algo dentro de um jogo:
 
 ## Testes
 
-- **`npm test`:** `node --test` em `tests/*.test.js`.
+- **`npm test`:** `node --test` em todos os `tests/*.test.js` e `tests/*.test.mjs` (o `package.json` usa o padrão, não
+  uma lista: teste novo entra sozinho). O GitHub roda o mesmo em todo PR (`.github/workflows/testes.yml`).
   - Os testes de servidor sobem o `server.js` de verdade e jogam com clientes Socket.io (ajudas em
     `tests/ajuda.js`: `subirServidor`, `conectar`, `pedir`, `esperarEstado`).
 - **Ginásio:** `tests/ginasio.test.js` cobre o motor; `tests/ginasio-marcas.test.js` cobre as marcas no chão (o tipo de marca de cada golpe e o esmaecer até o fim); `tests/ginasio-servidor.test.js` cobre salas, comandos,

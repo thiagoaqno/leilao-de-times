@@ -146,6 +146,20 @@
     while (ordem.length < n) { const m = ordem.length * 2; ordem = ordem.flatMap((x) => [x, m + 1 - x]); }
     return ordem;
   }
+  // quem é do mesmo grupo não se cruza no primeiro mata-mata: troca o de baixo com o de baixo de outro confronto (o seguinte,
+  // e dando a volta se precisar), só onde a troca não cria um encontro novo do mesmo grupo. Antes trocava sempre com o
+  // seguinte, e a troca às vezes criava outro conflito (e a do último confronto voltava para o primeiro, já conferido).
+  function separarGrupos(chave, grupoDe) {
+    const mesmo = (a, b) => grupoDe[a] === grupoDe[b], n = chave.length;
+    for (let i = 0; i < n; i += 2) {
+      if (!mesmo(chave[i], chave[i + 1])) continue;
+      for (let d = 2; d < n; d += 2) {
+        const j = (i + d) % n;
+        if (!mesmo(chave[i], chave[j + 1]) && !mesmo(chave[j], chave[i + 1])) { [chave[i + 1], chave[j + 1]] = [chave[j + 1], chave[i + 1]]; break; }
+      }
+    }
+    return chave;
+  }
   // a Copa do Mundo. copa: { selecoes: [times com jogadores], semana: a primeira semana dela }. Os potes saem da força; o sorteio,
   // da semente da temporada (um de cada pote por grupo).
   function copaDoMundo(copa, clubes, semente, jogar) {
@@ -160,8 +174,7 @@
     const cabecas = [...ordenar(grupos.map((g) => g.tabela[0])), ...ordenar(grupos.map((g) => g.tabela[1])), ...ordenar(grupos.map((g) => g.tabela[2])).slice(0, 8)].map((l) => l.id);
     const grupoDe = Object.fromEntries(grupos.flatMap((g) => g.clubes.map((id) => [id, g.id])));
     const chave = ordemDaChave(32).map((n) => cabecas[n - 1]);
-    // quem é do mesmo grupo não se cruza nos 16 avos: troca o de baixo com o do confronto seguinte
-    for (let i = 0; i < 32; i += 2) if (grupoDe[chave[i]] === grupoDe[chave[i + 1]]) { const k = (i + 3) % 32; [chave[i + 1], chave[k]] = [chave[k], chave[i + 1]]; }
+    separarGrupos(chave, grupoDe);
     const m = mataMata(COPA, chave, semente, jogar, clubes, [P + 3, P + 4, P + 5, P + 6, P + 7], FASES_COPA);
     // a disputa do 3º lugar: os que perderam as semifinais, na semana da final
     const perdedores = m.jogos.filter((j) => j.fase === "semifinal").map((j) => (vencedorJogo(j, semente, clubes) === j.casa ? j.fora : j.casa));
@@ -222,5 +235,5 @@
   }
   function jogosDoClube(mundo, clube) { return mundo.jogos.filter((j) => j.casa === clube || j.fora === clube); }
   function conflitoDeCalendario(jogos) { const vistos = new Set(); for (const j of jogos) for (const clube of [j.casa, j.fora]) { const k = `${j.semana}:${clube}`; if (vistos.has(k)) return { semana: j.semana, clube }; vistos.add(k); } return null; }
-  return { gerarCalendario, jogoDoClube, tabela, zona, simularMundo, jogosDoClube, conflitoDeCalendario, EUROPA, NOMES, masculina, COPA, SEMANAS_COPA, ordemDaChave };
+  return { gerarCalendario, jogoDoClube, tabela, zona, simularMundo, jogosDoClube, conflitoDeCalendario, EUROPA, NOMES, masculina, COPA, SEMANAS_COPA, ordemDaChave, separarGrupos };
 });
