@@ -17,8 +17,9 @@ function novoCodigo(rooms) {
 const limparNome = (s) => Array.from(String(s || "").trim().replace(/\s+/g, " ")).slice(0, 8).join("").trim();
 
 // respostas dos eventos com callback: {ok: true, ...} ou {ok: false, error}
-const ok = (cb, extra = {}) => cb && cb({ ok: true, ...extra });
-const falha = (cb, error) => cb && cb({ ok: false, error });
+// (o callback vem do navegador: só chama se for mesmo uma função)
+const ok = (cb, extra = {}) => typeof cb === "function" && cb({ ok: true, ...extra });
+const falha = (cb, error) => typeof cb === "function" && cb({ ok: false, error });
 
 // a sala e o jogador deste socket (me é null para quem só assiste)
 function contexto(socket, rooms) {
@@ -71,6 +72,28 @@ function medirPing(nsp, rooms, pular = null) {
       }
     }
   }, 2000).unref?.();
+}
+
+// A rede de proteção de todos os canais: cada handler registrado com socket.on roda dentro de um try (e o erro de um
+// handler async vira só um aviso). Um evento com dados quebrados (null no lugar do objeto, um callback que não é função)
+// jogava um erro fora de qualquer try, e o processo inteiro caía, com as salas de todos os jogos. Quem pediu com
+// callback recebe {ok: false}. Chamar logo depois de criar o io, antes de os jogos abrirem os canais.
+function protegerCanais(io) {
+  const avisar = (nsp, ev, e) => console.error(`[${nsp.name}] o evento "${ev}" falhou:`, e && e.stack || e);
+  const proteger = (nsp) => nsp.use((socket, next) => {
+    const on = socket.on.bind(socket);
+    socket.on = (ev, fn) => typeof fn !== "function" ? on(ev, fn) : on(ev, (...args) => {
+      const responder = (e) => { avisar(nsp, ev, e); const cb = args[args.length - 1]; falha(cb, "Pedido inválido."); };
+      try {
+        const r = fn(...args);
+        if (r && typeof r.then === "function") r.then(null, responder);
+        return r;
+      } catch (e) { responder(e); }
+    });
+    next();
+  });
+  proteger(io.of("/"));
+  io.on("new_namespace", proteger);
 }
 
 // O esqueleto dos jogos de mesa (Uno, Truco, Dominó, Ludo, Bloqueio, Sinuca e Botão), que cada um repetia igual: criar
@@ -149,4 +172,4 @@ function ligarMesa(nsp, rooms, j) {
   });
 }
 
-module.exports = { ligarMesa, rid, novoCodigo, limparNome, ok, falha, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing };
+module.exports = { protegerCanais, ligarMesa, rid, novoCodigo, limparNome, ok, falha, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing };
