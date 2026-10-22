@@ -6,9 +6,6 @@
 // SomPartida.tela (a cada troca de tela): na partida a música de fundo (musica.js) para e a torcida entra; fora dela,
 // tudo para e a música volta. O botão #btnSom troca entre tudo, só a torcida e sem som (carreira:somPartida).
 // Só enfeita: nada daqui muda o jogo nem vai para o servidor.
-// Outra página (o jogo ao vivo do Road to Champions, public/jogador/road-partida.js) usa o mesmo som com
-// SomPartida.configurar({ naPartida, jogo, velocidade }): `jogo()` devolve o jogo que está na tela no formato do `J` da
-// Carreira (casa, fora, eventos, i, relogio, pulando, decidindo, completo, peso). Os áudios moram em /carreira/som/.
 const SomPartida = (() => {
   const IDX = window.SOM_PARTIDA || null;
   const MODOS = ["tudo", "torcida", "mudo"];
@@ -133,7 +130,7 @@ const SomPartida = (() => {
   function calarNarrador() { fila.length = 0; if (busVoz && ctx) { rampa(busVoz.gain, 0, 0.05); setTimeout(() => { if (modo === "tudo") rampa(busVoz.gain, 1, 0.05); }, 300); } }
 
   // ---------- o jogo ----------
-  // de onde vem o jogo: na Carreira, as variáveis da página (telaAtual, J e Mesa); outra página troca por configurar()
+  // de onde vem o jogo: as variáveis da página da Carreira (telaAtual, J e Mesa)
   const F = {
     naPartida: () => typeof telaAtual !== "undefined" && telaAtual === "partida",
     jogo: () => (typeof J === "undefined" ? null : J),
@@ -352,6 +349,5 @@ const SomPartida = (() => {
   document.head.appendChild(css);
   aplicar();
 
-  const configurar = (o = {}) => { for (const k of ["naPartida", "jogo", "velocidade"]) if (typeof o[k] === "function") F[k] = o[k]; };
-  return { abrir, evento, tela, alternar, definirVolume, configurar, historico, get volume() { return volume; }, get modo() { return modo; }, get contexto() { return ctx; } };
+  return { abrir, evento, tela, alternar, definirVolume, historico, get volume() { return volume; }, get modo() { return modo; }, get contexto() { return ctx; } };
 })();
