@@ -83,6 +83,11 @@ segmentos de ritmo em `rod.ritmos`, para trocar a velocidade sem saltar o minuto
 | `public/ragdoll.js` | Boneco de pano (Tiro e Pelada). |
 
 **`salas.js`:**
+- `ligarMesa(nsp, rooms, { max, sala, novoJogador, acao, broadcast, log, reacoes, extras, textos })`: o esqueleto dos
+  jogos de mesa (Uno, Truco, Dominó, Ludo, Bloqueio, Sinuca e Botão). Cuida de `create`, `join` (voltar com o token,
+  assistir ou sentar), `act` (chama `acao(room, me, data)`, que devolve o erro em texto), `react` e `disconnect`. O
+  jogo passa só o que é dele: os campos da sala nova (`sala(data)`), o jogador novo, as ações e os eventos a mais
+  (`extras(socket, ctx)`, como a mira da Sinuca e o sinal do Truco). Jogo de mesa novo: usar isto em vez de copiar;
 - `rid` e `novoCodigo`;
 - `limparNome` (corta em 8 letras), `ok` e `falha` (respostas das ações);
 - `contexto(socket, rooms)`, `ligarSocket` e `buscarSala`;
