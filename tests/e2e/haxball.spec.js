@@ -37,6 +37,6 @@ test("haxball: chegando pela Noite (?entrar=1), entra sozinho na sala com o nome
   await amigo.evaluate(() => localStorage.setItem("galera:name", JSON.stringify("Amigo")));
   await amigo.goto(`/haxball/?sala=${code}&entrar=1`);
   await expect(amigo.locator("#roomCode")).toHaveText(code);
-  await expect(amigo.locator("#noiteAba")).toBeAttached(); // a aba 🌙 da Noite agora aparece no Haxball
+  await expect(amigo.locator("#noiteAba")).toBeVisible(); // a aba 🌙 da Noite agora aparece no Haxball, dentro da sala
   await host.close(); await amigo.close();
 });

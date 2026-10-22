@@ -34,7 +34,8 @@ Quarto passo da refatoração: correções pontuais.
 ## Testes
 
 - **Novo, em `tests/e2e/haxball.spec.js`:** chegando pela Noite (`?sala=&entrar=1`), o Haxball entra sozinho na sala
-  com o nome da galera e mostra a aba da Noite.
+  com o nome da galera e mostra a aba da Noite. Conferido também no Chromium: dentro da sala, a aba 🌙 aparece na
+  beirada esquerda.
 - `proibida`, `haxball`, `salas` e `servidor`: passando.
 - No navegador, `haxball`, `leilao-campeao`, `paginas` e `salas`: passando.
 - `corrida-drag.spec.js` tem 2 testes que falham também na `main` sem esta mudança: esperam 3 carros e acham 4, e o
