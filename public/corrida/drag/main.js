@@ -1261,7 +1261,10 @@ function camera3d(dt, t) {
   ponto(s, j.z + 1.8, 0.75, farol.position); ponto(s * 0.9, j.z + 26, 0, farol.target.position);
 }
 
-function frame(t) { requestAnimationFrame(frame); quadro(t); }
+// Telas de 120/144 Hz: no máximo um quadro a cada 11 ms (em 144 Hz, 72 por segundo; em 60 Hz, todos). Sem isso a placa
+// de vídeo desenhava a garagem e a corrida 144 vezes por segundo.
+let ultimoQuadro = 0;
+function frame(t) { requestAnimationFrame(frame); if (t - ultimoQuadro < 11) return; ultimoQuadro = t; quadro(t); }
 function quadro(t) {
   const dt = Math.min(0.25, (t - (last || t)) / 1000); ultimoT = last; last = t;
   if (corrida && corrida.pronta === false) {

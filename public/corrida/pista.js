@@ -65,6 +65,19 @@ export function trackFrame(tr, x, y, idx) { // ponto da pista mais perto (já sa
   const lat = (x - r.px) * a.nx + (y - r.py) * a.ny;
   return { h: r.h, lat };
 }
+// corta uma PlaneGeometry de S × S quadrados em N × N pedaços (os vértices da borda se repetem nos dois vizinhos)
+function emPedacos(geo, S, N) {
+  const P = geo.attributes.position.array, NO = geo.attributes.normal.array, UV = geo.attributes.uv.array, out = [];
+  for (let tj = 0; tj < N; tj++) for (let ti = 0; ti < N; ti++) {
+    const x0 = Math.floor((ti * S) / N), x1 = Math.floor(((ti + 1) * S) / N), y0 = Math.floor((tj * S) / N), y1 = Math.floor(((tj + 1) * S) / N), w = x1 - x0 + 1;
+    const pos = [], nor = [], uv = [], idx = [];
+    for (let iy = y0; iy <= y1; iy++) for (let ix = x0; ix <= x1; ix++) { const k = iy * (S + 1) + ix; pos.push(P[k * 3], P[k * 3 + 1], P[k * 3 + 2]); nor.push(NO[k * 3], NO[k * 3 + 1], NO[k * 3 + 2]); uv.push(UV[k * 2], UV[k * 2 + 1]); }
+    for (let iy = 0; iy < y1 - y0; iy++) for (let ix = 0; ix < x1 - x0; ix++) { const a = iy * w + ix, b = a + w, c = b + 1, d = a + 1; idx.push(a, b, d, b, c, d); }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+    out.push(g);
+  }
+  return out;
+}
 export function groundH(tr, x, y, idx) { const f = trackFrame(tr, x, y, idx); return f.h * falloff(tr, f.lat); }
 
 // Rio: o mar fica do lado de fora da reta da orla (Copacabana); as coordenadas foram desenhadas no quadrado de 1600
@@ -90,8 +103,11 @@ function buildWorld(tr) {
   geo.computeVertexNormals();
   const gtex = canvasTex(256, 256, (x, w, hh, rr) => { x.fillStyle = look.ground[0]; x.fillRect(0, 0, w, hh); for (let i = 0; i < 5000; i++) { x.fillStyle = look.ground[1 + ((rr() * 2) | 0)]; x.fillRect(rr() * w, rr() * hh, 3, 3); } });
   gtex.repeat.set(size / 120, size / 120);
-  const ground = add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: gtex, roughness: 1 })));
-  ground.position.set(WORLD / 2, 0, WORLD / 2); ground.receiveShadow = true;
+  // em pedaços (8 × 8): a malha inteira tem quase 300 mil triângulos e era desenhada toda a cada quadro; assim a placa
+  // só desenha os pedaços que aparecem na tela. As normais já foram calculadas na malha inteira (sem emenda entre eles)
+  const chaoM = new THREE.MeshStandardMaterial({ map: gtex, roughness: 1 });
+  for (const pedaco of emPedacos(geo, S, 8)) { const m = add(new THREE.Mesh(pedaco, chaoM)); m.position.set(WORLD / 2, 0, WORLD / 2); m.receiveShadow = true; }
+  geo.dispose();
   // ---- fitas ao longo da pista (asfalto, zebras, calçada): cada ponto com a sua altura ----
   function ribbon(l0, l1, y0, mat, vLen, y1 = y0, uSpan = 1, i0 = 0, i1 = n) { // de i0 a i1: só um trecho da volta
     const vs = [], uv = [], idx = [];

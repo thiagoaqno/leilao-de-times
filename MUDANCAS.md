@@ -1,12 +1,17 @@
-# Corrida: volta para antes dos carros do Drag
+# Corrida e Drag: menos peso na placa de vídeo
 
-O jogo ficou travado depois do PR #285 ("Corrida: libera carros do Drag e aquece primeira largada"). Este PR desfaz
-só ele: o código volta a ser o do `main` logo depois do PR #284.
+## Limite de quadros (Corrida e Drag)
+- Em tela de 120/144 Hz os dois jogos desenhavam tudo a cada 7 ms, 144 vezes por segundo, e a placa de vídeo ficava
+  perto de 80%. Agora um quadro precisa de pelo menos 11 ms: em 144 Hz desenha um sim e outro não (72 por segundo), em
+  120 Hz fica em 60, e em 60 Hz nada muda.
+- No Drag isso vale também para a garagem do menu, que ficava desenhando sem parar atrás do painel.
 
-- Os carros do Drag ficam só no Drag, comprimidos (meshopt + WebP), como no PR #283.
-- A Corrida volta a ter só os carros de F1 de sempre (os cinco acertos).
-- Saem `public/corrida/carros-drag.js`, `tests/corrida-carros-drag.test.js` e `tests/e2e/corrida-carros-drag.spec.js`.
-- O aquecimento da primeira largada, que veio no mesmo PR, também sai.
+## Chão da Corrida em pedaços
+- O chão de cada pista era uma malha só de quase 300 mil triângulos, desenhada inteira a cada quadro, mesmo com quase
+  tudo fora da tela. Agora é cortado em 8 × 8 pedaços (`emPedacos`, em `pista.js`), e a placa só desenha os que aparecem.
+  As normais são as da malha inteira, então não aparece emenda.
+- Em Mônaco, com a câmera atrás do carro: de ~735 mil para ~360 mil triângulos por quadro.
 
 ## Testes
-- Não rodei os testes. O código é o mesmo do `main` do PR #284, que já estava no ar.
+- Não rodei os testes. Conferido no navegador: a Corrida em Mônaco desenha igual, sem emenda no chão, e o Drag abre
+  sem erro.
