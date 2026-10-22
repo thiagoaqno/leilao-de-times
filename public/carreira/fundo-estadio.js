@@ -1,4 +1,4 @@
-// Carreira: o fundo da sede. A foto do estádio do clube (estadios-api.js, da TheSportsDB, gerado por tools/baixar-estadios.js) fica atrás
+// Carreira: o fundo da sede. A foto do estádio do clube (estadios-api.js, da TheSportsDB, gerado por ferramentas/baixar-estadios.js) fica atrás
 // de tudo, borrada e com pouco brilho para não atrapalhar a leitura. Sem foto (clube fora do arquivo, imagem que não abre ou sem internet),
 // vale o estádio desenhado em pixel-art (estadios.js), também borrado. Só aparece na sede (CSS: body[data-tela="sede"]); o crédito
 // fica no canto de baixo.
