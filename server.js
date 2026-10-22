@@ -7,13 +7,14 @@ const { simulate, FORMATIONS } = require("./simulador.js");
 const { cleanPins } = require("./public/escalacao.js");
 const Juri = require("./juri.js");
 const Ratings = require("./public/ratings.js");
-const { rid, novoCodigo, buscarSala } = require("./salas.js");
+const { rid, novoCodigo, buscarSala, protegerCanais } = require("./salas.js");
 const ALL_FORMATIONS = new Set(["auto", ...Object.keys(FORMATIONS.futsal), ...Object.keys(FORMATIONS.futebol)]);
 
 const app = express();
 const server = http.createServer(app);
 // compressão das mensagens do WebSocket: os pacotes dos jogos em tempo real se repetem muito e encolhem bastante
 const io = new Server(server, { perMessageDeflate: { threshold: 128 } });
+protegerCanais(io); // um evento com dados quebrados não derruba mais o servidor (antes dos jogos abrirem os canais)
 require("./banco.js")(io); // Banco da Galera: jogo de tabuleiro, canal /banco
 require("./uno.js")(io); // Uno da Galera: jogo de cartas, canal /uno
 require("./sinuca.js")(io); // Sinuca da Galera: bola 8, canal /sinuca

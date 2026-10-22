@@ -80,8 +80,12 @@ segmentos de ritmo em `rod.ritmos`, para trocar a velocidade sem saltar o minuto
 | `public/ragdoll.js` | Boneco de pano (Tiro e Pelada). |
 
 **`salas.js`:**
+- `protegerCanais(io)`: chamado no `server.js` logo depois de criar o `io`, antes dos jogos. Cada `socket.on` de todos
+  os canais roda dentro de um try (o erro de um handler async também), e quem pediu com callback recebe `{ok: false}`:
+  um evento com dados quebrados não derruba o servidor. Teste: `tests/entrada-invalida.test.js` (lê os canais e os
+  eventos do código e manda lixo para todos);
 - `rid` e `novoCodigo`;
-- `limparNome` (corta em 8 letras), `ok` e `falha` (respostas das ações);
+- `limparNome` (corta em 8 letras), `ok` e `falha` (respostas das ações; só chamam o callback se ele for uma função);
 - `contexto(socket, rooms)`, `ligarSocket` e `buscarSala`;
 - `quemVolta` (reconexão por token) e `nomeEmUso`;
 - `limparSalasParadas` e `medirPing`.
