@@ -14,7 +14,9 @@ export const scene = new THREE.Scene();
 export const cam = new THREE.PerspectiveCamera(68, 16 / 9, 2, 16000);
 export const hemi = new THREE.HemisphereLight(0xdfeaff, 0x4a5a3a, 1.3); scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xfff1dc, 2.2);
-sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.5;
+// sombra de 1024 × 1024 nos 520 × 520 em volta do carro (5 cm por ponto, ainda nítida): a de 2048 quase dobrava o tempo
+// de cada quadro (medido em Mônaco: 6,3 ms com ela, 3,9 ms com a de 1024, 3,3 ms sem sombra)
+sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.5;
 Object.assign(sun.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 10, far: 1600 });
 scene.add(sun, sun.target);
 const maxAniso = renderer.capabilities.getMaxAnisotropy();

@@ -1,17 +1,26 @@
-# Corrida e Drag: menos peso na placa de vídeo
+# Corrida: sombra mais leve e sem a travada da primeira volta
 
-## Limite de quadros (Corrida e Drag)
-- Em tela de 120/144 Hz os dois jogos desenhavam tudo a cada 7 ms, 144 vezes por segundo, e a placa de vídeo ficava
-  perto de 80%. Agora um quadro precisa de pelo menos 11 ms: em 144 Hz desenha um sim e outro não (72 por segundo), em
-  120 Hz fica em 60, e em 60 Hz nada muda.
-- No Drag isso vale também para a garagem do menu, que ficava desenhando sem parar atrás do painel.
+## Sombra
+- O mapa de sombra do sol caiu de 2048 × 2048 para 1024 × 1024. Ele cobre só 520 × 520 em volta do carro, então cada
+  ponto da sombra ainda tem 5 cm e ela continua nítida.
+- Medido em Mônaco: 6,3 ms por quadro com a sombra de 2048, 3,9 ms com a de 1024 e 3,3 ms sem sombra. A sombra antiga
+  quase dobrava o tempo de cada quadro.
 
-## Chão da Corrida em pedaços
-- O chão de cada pista era uma malha só de quase 300 mil triângulos, desenhada inteira a cada quadro, mesmo com quase
-  tudo fora da tela. Agora é cortado em 8 × 8 pedaços (`emPedacos`, em `pista.js`), e a placa só desenha os que aparecem.
-  As normais são as da malha inteira, então não aparece emenda.
-- Em Mônaco, com a câmera atrás do carro: de ~735 mil para ~360 mil triângulos por quadro.
+## A travada da primeira vez
+Medido em Mônaco, 10 s depois da largada: o primeiro desenho de cada trecho novo levava ~260 ms (os seguintes, ~20 ms),
+e a primeira vez que o desfoque de velocidade ligava compilava ~25 shaders de uma vez, no meio da reta. Os motivos:
+- Cada shader tem duas versões, a de desenhar na tela e a de desenhar numa imagem (a que o desfoque usa). Só a da tela
+  era compilada antes da largada. Agora as duas compilam em paralelo durante a contagem (`compilarTudo`), sem travar.
+- As malhas só iam para a placa de vídeo na primeira vez que apareciam. Agora, na contagem, a pista inteira é
+  desenhada fora da tela em 8 partes de mais ou menos o mesmo tanto de triângulos, uma a cada 30 ms (`subirMalhas`), o
+  que também compila a sombra. A câmera desse desenho é de perspectiva, como a do jogo (com uma ortográfica o
+  navegador compilaria outra versão de cada shader).
+- O aquecimento espera o carro de F1 e os enfeites do Kenney chegarem, porque eles remontam os carros e a pista. Se a
+  foto do céu chega depois dele, aquece de novo (a luz da foto muda todos os materiais).
+- Resultado: na corrida, nenhum trecho novo passou de ~30–60 ms no primeiro desenho, e o desfoque não compila mais
+  nada. O que sobra são umas paradinhas de 0,1–0,3 s durante a contagem (os shaders da sombra, que o navegador só
+  compila desenhando), com o carro ainda parado.
 
 ## Testes
-- Não rodei os testes. Conferido no navegador: a Corrida em Mônaco desenha igual, sem emenda no chão, e o Drag abre
-  sem erro.
+- Não rodei os testes. Medido no navegador do app, em Mônaco (o painel estava escondido, então os números de tempo são
+  de um navegador em segundo plano, mais lento que o normal).
