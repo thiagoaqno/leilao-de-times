@@ -30,7 +30,8 @@ export const keys = { gas: false, brake: false, left: false, right: false };
 // No lobby, assim que a pista é escolhida, a pista é montada e a foto do céu já vem (prepararPista). Na largada, com o
 // céu aplicado, as texturas sobem todas e os shaders compilam durante a contagem (aquecerPista: o compileAsync deixa o
 // navegador compilar em paralelo, sem travar a página). Os efeitos que só nascem no meio da corrida (fumaça da
-// derrapagem, cacos, explosão, "POW!" e os itens) entram escondidos na cena só durante essa preparação.
+// derrapagem, cacos, explosão, "POW!" e os itens) entram escondidos na cena só durante essa preparação. Depois, um
+// quadro fora da tela com a pista inteira (subirMalhas) manda as malhas para a placa e compila a sombra.
 export function prepararPista(id, hora = "dia") {
   const tr = buildTrack(id);
   ceuPronto(hora === "noite" ? "tokyo" : id).catch(() => {});
@@ -41,14 +42,57 @@ function subirTexturas(grp) {
   const vistas = new Set();
   grp.traverse((o) => { for (const m of [].concat(o.material || [])) for (const k of MAPAS) { const t = m[k]; if (t && t.isTexture && !vistas.has(t)) { vistas.add(t); renderer.initTexture(t); } } });
 }
+// Só compilar não bastava: cada malha só vai para a placa de vídeo na primeira vez que é desenhada, e os shaders da
+// sombra só compilam no primeiro quadro com sombra. Medido em Mônaco, 10 s depois da largada o primeiro desenho de um
+// trecho novo ainda levava ~250 ms (os seguintes, ~20 ms). Um quadro fora da tela, de cima e com a pista inteira,
+// faz tudo isso durante a contagem; perto da largada já não dá tempo e fica para a corrida. A câmera é de perspectiva,
+// como a do jogo: com uma ortográfica o navegador compilava outra versão de cada shader (1,2 s à toa, medido). E vai
+// em 8 partes com mais ou menos o mesmo tanto de triângulos, uma a cada 30 ms: de uma vez só, mandar tudo travava a
+// contagem por meio segundo.
+const triangulos = (o) => { let n = 0; o.traverse((m) => { const g = m.isMesh && m.geometry; if (g) n += ((g.index ? g.index.count : g.attributes.position.count) / 3) * (m.isInstancedMesh ? m.count : 1); }); return n; };
+async function subirMalhas(tr, alvo) {
+  const meia = tr.t.world / 2 + 1500, camara = new THREE.PerspectiveCamera(90, 1, 10, meia * 4);
+  camara.position.set(tr.t.world / 2, meia * 1.05, tr.t.world / 2); camara.lookAt(tr.t.world / 2, 0, tr.t.world / 2);
+  const filhos = tr.grp.children.slice(), PARTES = 8, pesos = filhos.map(triangulos), total = pesos.reduce((a, b) => a + b, 0) || 1, parte = [];
+  let soma = 0; pesos.forEach((p) => { parte.push(Math.min(PARTES - 1, Math.floor((soma / total) * PARTES))); soma += p; });
+  for (let k = 0; k < PARTES; k++) {
+    if (!race || race.tr !== tr || sNow() >= race.startAt - 300) return;
+    const anterior = renderer.getRenderTarget(), visivel = filhos.map((o) => o.visible); // o céu pode ter mudado entre uma parte e outra
+    filhos.forEach((o, i) => { o.visible = visivel[i] && parte[i] === k; });
+    try { renderer.setRenderTarget(alvo); renderer.render(scene, camara); }
+    finally { renderer.setRenderTarget(anterior); filhos.forEach((o, i) => { o.visible = visivel[i]; }); }
+    await new Promise((ok) => setTimeout(ok, 30));
+  }
+}
+// Cada shader tem duas versões: a de desenhar na tela e a de desenhar numa imagem (cor linear, sem o ajuste de tons),
+// que é a que o desfoque de velocidade usa (desfoque.js). Só a da tela era compilada: na primeira vez que o carro
+// passava de 40% da velocidade, as ~25 da outra compilavam de uma vez, no meio da reta. Aqui as duas compilam em
+// paralelo (o compileAsync escolhe a versão pelo alvo do momento em que é chamado).
+function compilarTudo(alvo) {
+  const anterior = renderer.getRenderTarget();
+  renderer.setRenderTarget(alvo); const naImagem = renderer.compileAsync(scene, cam); renderer.setRenderTarget(anterior);
+  return Promise.all([renderer.compileAsync(scene, cam), naImagem]);
+}
 function aquecerPista(tr, ceu) {
-  const espera = new Promise((ok) => setTimeout(ok, 1500)); // o céu que não chega em 1,5 s não segura a preparação
-  Promise.race([ceu, espera]).then(() => {
-    if (!race || race.tr !== tr) return;
+  let fila = Promise.resolve(), ceuChegou = false;
+  ceu.then(() => { ceuChegou = true; }, () => {});
+  const aquecer = () => { fila = fila.then(() => {
+    if (!race || race.tr !== tr || sNow() >= race.startAt - 300) return;
     const amostras = new THREE.Group(); amostras.add(amostrasDeEfeitos(), amostraDeFumaca()); scene.add(amostras);
     subirTexturas(scene);
-    renderer.compileAsync(scene, cam).catch(() => {}).finally(() => scene.remove(amostras));
-  });
+    const alvo = new THREE.WebGLRenderTarget(2, 2);
+    return compilarTudo(alvo).then(() => subirMalhas(tr, alvo)).catch((e) => console.warn("Corrida: aquecimento incompleto", e)).finally(() => { alvo.dispose(); scene.remove(amostras); });
+  }); };
+  // espera também o carro de F1 e os enfeites do Kenney: quando chegam, os carros e a pista são remontados, e o que
+  // nasce depois do aquecimento travaria na primeira vez que aparecesse
+  const modelos = Promise.all([f1Pronto, propsPronto]);
+  const espera = modelos.then(() => new Promise((ok) => setTimeout(ok, 1500))); // o céu que não chega em 1,5 s não segura a preparação
+  Promise.race([Promise.all([modelos, ceu]), espera]).then(() => {
+    aquecer();
+    // o céu chegou depois: a luz da foto muda todos os materiais, que compilariam de novo (de uma vez, travando) no
+    // primeiro quadro; aquece de novo, se ainda der tempo antes da largada
+    if (!ceuChegou) Promise.all([modelos, ceu]).then(aquecer, () => {});
+  }, () => {});
 }
 export function startRace(st) {
   const tr = buildTrack(st.config.pista), mine = me();
