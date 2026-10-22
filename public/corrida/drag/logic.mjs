@@ -340,6 +340,28 @@ export function criarCorrida({ comprimento = 1400, carro = "supra", semente = 1,
   return { comprimento, sorte, fase: "aquecimento", t: 0, tempo: 0, luzes: 0, pilotos, jogador, trafego, obstaculos, eventos: [], resultado: null };
 }
 
+// O racha com a galera (até 4 pessoas; drag.js no servidor): a mesma corrida em todos os navegadores. `participantes`
+// vem do servidor, um por faixa: { nome, carro, lane, robo, rival, id }. Os carros são criados na ordem das faixas, e
+// a sorte é gasta só com os robôs e o tráfego, então a rua e os robôs saem iguais para todos. Cada navegador pilota o
+// próprio carro; o organizador (`host`) pilota também os robôs. O resto é `remoto`: só anda pelo que chega da rede
+// (main.js), e passoCorrida não mexe nele. O seu carro fica em pilotos[0], como na corrida sozinho.
+export function criarCorridaMulti({ comprimento = 1400, semente = 1, participantes, meuId, host = false, rivais = RIVAIS }) {
+  const sorte = rng(semente), porFaixa = new Map();
+  const ordem = [...participantes].sort((a, b) => a.lane - b.lane);
+  for (const p of ordem) {
+    const car = p.robo ? criarRival(rivais[p.rival % rivais.length], p.lane, p.carro, sorte) : makeCar({ lane: p.lane, carro: p.carro, nome: p.nome });
+    car.carro = CARROS[p.carro] ? p.carro : "supra";
+    if (p.robo) car.nome = p.nome;
+    car.humano = !p.robo; car.idSala = p.id; car.faixaSala = p.lane; // a faixa da largada é o nome do carro na sala
+    if (!(p.robo ? host : p.id === meuId)) { car.remoto = true; car.ia = p.robo ? car.ia : null; }
+    porFaixa.set(p.lane, car);
+  }
+  const eu = [...porFaixa.values()].find((c) => c.idSala === meuId && !c.remoto) || porFaixa.values().next().value;
+  const pilotos = [eu, ...[...porFaixa.values()].filter((c) => c !== eu)];
+  const { trafego, obstaculos } = gerarTrafego(comprimento, sorte);
+  return { comprimento, sorte, fase: "aquecimento", t: 0, tempo: 0, luzes: 0, pilotos, jogador: eu, trafego, obstaculos, eventos: [], resultado: null, multi: true, porFaixa, semente };
+}
+
 export function posicaoDe(corrida, car = corrida.jogador) {
   const ordem = [...corrida.pilotos].sort((a, b) => (a.chegada ?? Infinity) - (b.chegada ?? Infinity) || b.z - a.z);
   return ordem.indexOf(car) + 1;
@@ -353,7 +375,7 @@ export function passoCorrida(corrida, dt, entrada = {}) {
   corrida.t += dt;
   if (corrida.fase === "aquecimento" || corrida.fase === "luzes") {
     aquecer(jogador, dt, !!entrada.gas);
-    for (const r of pilotos) if (r.ia) {
+    for (const r of pilotos) if (r.ia && !r.remoto) {
       const alvo = corrida.fase === "aquecimento" ? 0.68 : r.ia.giroLargada;
       r.rpm += (alvo - r.rpm) * Math.min(1, dt * 3);
       r.pneu = clamp(r.pneu + dt / (2.4 + (1 - r.ia.habilidade) * 3), 0, 1);
@@ -379,6 +401,7 @@ export function passoCorrida(corrida, dt, entrada = {}) {
   for (const t of corrida.trafego) t.z += t.speed / 3.6 * dt;
   const posAntes = posicaoDe(corrida);
   for (const p of pilotos) {
+    if (p.remoto) continue; // pilotado em outro navegador (racha com a galera)
     let gas, nitro, freio;
     if (p.ia) ({ gas, nitro, freio } = pilotar(p, dt, todos, corrida.sorte));
     else ({ gas = false, nitro = false, freio = false } = entrada);

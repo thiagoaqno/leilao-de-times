@@ -45,6 +45,7 @@ require("./digita.js")(io); // Corrida de Digitação: quem digita a frase mais 
 require("./futevolei.js")(io); // Futevôlei da Galera: futevôlei 3D na areia, 1x1 ou duplas, com robôs, canal /futevolei
 require("./haxball.js")(io); // Haxball da Galera: futebol de discos 2D, de 1x1 a 5x5, canal /haxball
 require("./cozinha.js")(io); // Cozinha da Galera: o Overcooked da galera, de 1 a 4 cozinheiros, canal /cozinha
+require("./drag.js")(io); // Drag da Galera: o racha de até 4 pessoas (o resto são rivais robôs), canal /drag
 require("./proibida.js")(io); // Palavra Proibida da Galera: explicar palavras em dois times, canal /proibida
 require("./rumi.js")(io); // Rumi da Galera: o jogo de peças numeradas clássico, 2 a 4 com robôs, canal /rumi
 app.use(express.static(path.join(__dirname, "public")));

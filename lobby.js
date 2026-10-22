@@ -4,7 +4,7 @@
 const { JOGOS } = require("./noite.js");
 
 const MESA = ["banco", "uno", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao"]; // o endereço usa ?mesa= em vez de ?sala=
-const URLS = { rocket: "/rocket/", carreira: "/carreira/" };
+const URLS = { rocket: "/rocket/", carreira: "/carreira/", drag: "/corrida/drag/" };
 const registros = new Map(); // jogo -> { rooms, max, jogadores, config }
 
 // opcoes.max: número ou função(sala); opcoes.jogadores(sala): [{ nome, online, host }] quando a sala não é do formato padrão
