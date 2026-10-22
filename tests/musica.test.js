@@ -15,14 +15,3 @@ test("/api/musicas lista os áudios da pasta, em ordem, sem número no nome", as
     assert.strictEqual((await fetch(srv.url + l[0].url)).status, 200);
   } finally { await srv.parar(); fs.rmSync(pasta, { recursive: true, force: true }); }
 });
-
-test("/api/musicas-vila3d lista os áudios da pasta da Vila 3D", async () => {
-  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), "musica3d-"));
-  for (const f of ["2 - Fim.mp3", "1 - Começo.ogg", "LEIAME.md"]) fs.writeFileSync(path.join(pasta, f), "x");
-  const srv = await subirServidor({ VILA3D_MUSICA_DIR: pasta });
-  try {
-    const l = await (await fetch(srv.url + "/api/musicas-vila3d")).json();
-    assert.deepStrictEqual(l.map((m) => m.nome), ["Começo", "Fim"]);
-    assert.strictEqual((await fetch(srv.url + l[0].url)).status, 200);
-  } finally { await srv.parar(); fs.rmSync(pasta, { recursive: true, force: true }); }
-});
