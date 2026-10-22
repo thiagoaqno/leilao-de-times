@@ -44,7 +44,8 @@ module.exports = function attachCorrida(io) {
       players: room.order.map((id) => {
         const p = room.players[id];
         return { id, bot: !!p.bot, name: p.name, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
-          item: p.item || null, rolling: p.rolling || 0, boostUntil: p.boostUntil || 0, starUntil: p.starUntil || 0, spinUntil: p.spinUntil || 0 };
+          item: p.item || null, cargas: p.cargas || 0, rolling: p.rolling || 0, boostUntil: p.boostUntil || 0, starUntil: p.starUntil || 0, spinUntil: p.spinUntil || 0,
+          shrinkUntil: p.shrinkUntil || 0, inkUntil: p.inkUntil || 0, balaUntil: p.balaUntil || 0 };
       }),
       finishOrder: room.finishOrder, log: room.log.slice(-20), now: Date.now(),
     };
