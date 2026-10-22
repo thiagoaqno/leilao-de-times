@@ -300,7 +300,7 @@ const myP = () => (S && ME && ME.id ? S.players.find((p) => p.id === ME.id) : nu
 // o mapa das fases (como o do Overcooked): as estrelas de cada cozinha ficam guardadas neste navegador, e a próxima
 // só abre depois de pelo menos 1 estrela na anterior. Cada "mundo" é o número antes do traço.
 const CADEADO = `<svg viewBox="0 0 24 24" class="cadeado"><rect x="4" y="10" width="16" height="12" rx="2" fill="#8a7a66" stroke="#2a1d17" stroke-width="1.6"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#2a1d17" stroke-width="2"/><rect x="11" y="14" width="2" height="4" fill="#2a1d17"/></svg>`;
-const MUNDOS = { 1: "A cozinha da galera", 2: "Pelo mundo", 3: "Novos caminhos" };
+const MUNDOS = { 1: "A cozinha da galera", 2: "Pelo mundo", 3: "Novos caminhos", 4: "Casa cheia" };
 const progresso = () => store.get("cozinha:estrelas") || {};
 function liberada(id) {
   const ids = Object.keys(K.COZINHAS), i = ids.indexOf(id);

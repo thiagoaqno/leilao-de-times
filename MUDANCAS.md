@@ -1,26 +1,25 @@
-# Corrida: sombra mais leve e sem a travada da primeira volta
+# Cozinha: Mundo 4, "Casa cheia" (seis fases novas)
 
-## Sombra
-- O mapa de sombra do sol caiu de 2048 × 2048 para 1024 × 1024. Ele cobre só 520 × 520 em volta do carro, então cada
-  ponto da sombra ainda tem 5 cm e ela continua nítida.
-- Medido em Mônaco: 6,3 ms por quadro com a sombra de 2048, 3,9 ms com a de 1024 e 3,3 ms sem sombra. A sombra antiga
-  quase dobrava o tempo de cada quadro.
+Seis cozinhas novas com receitas que já existiam, cada uma numa planta diferente. Entram três receitas que ainda não
+tinham cozinha: sopa de cogumelo, salada completa e hambúrguer completo. Não muda nada no motor: são só desenhos novos
+em `COZINHAS` (`public/cozinha/regras.js`), e as metas das estrelas saem do planejador, como nas outras fases.
 
-## A travada da primeira vez
-Medido em Mônaco, 10 s depois da largada: o primeiro desenho de cada trecho novo levava ~260 ms (os seguintes, ~20 ms),
-e a primeira vez que o desfoque de velocidade ligava compilava ~25 shaders de uma vez, no meio da reta. Os motivos:
-- Cada shader tem duas versões, a de desenhar na tela e a de desenhar numa imagem (a que o desfoque usa). Só a da tela
-  era compilada antes da largada. Agora as duas compilam em paralelo durante a contagem (`compilarTudo`), sem travar.
-- As malhas só iam para a placa de vídeo na primeira vez que apareciam. Agora, na contagem, a pista inteira é
-  desenhada fora da tela em 8 partes de mais ou menos o mesmo tanto de triângulos, uma a cada 30 ms (`subirMalhas`), o
-  que também compila a sombra. A câmera desse desenho é de perspectiva, como a do jogo (com uma ortográfica o
-  navegador compilaria outra versão de cada shader).
-- O aquecimento espera o carro de F1 e os enfeites do Kenney chegarem, porque eles remontam os carros e a pista. Se a
-  foto do céu chega depois dele, aquece de novo (a luz da foto muda todos os materiais).
-- Resultado: na corrida, nenhum trecho novo passou de ~30–60 ms no primeiro desenho, e o desfoque não compila mais
-  nada. O que sobra são umas paradinhas de 0,1–0,3 s durante a contagem (os shaders da sombra, que o navegador só
-  compila desenhando), com o carro ainda parado.
+| Fase | Nome | Receitas | O que muda no caminho |
+| --- | --- | --- | --- |
+| 4-1 | Cozinha comprida | as três sopas (cebola, tomate e cogumelo) | caixas de um lado, panelas do outro, ilha no meio |
+| 4-2 | Cozinha dividida | saladas (com tomate, completa) e hambúrgueres (com alface, completo) | parede de bancadas com uma passagem só; a comida passa por cima do balcão |
+| 4-3 | Ilha do sushi | sashimi e os dois sushis | tábuas e panelas numa ilha no centro, com um corredor em volta |
+| 4-4 | Cruzamento | os dois burritos | divisórias em cruz que descem juntas a cada 25 s, com o meio sempre aberto |
+| 4-5 | Forno no meio | as duas pizzas | o forno numa ilha central |
+| 4-6 | Banquete | sopa de tomate, salada completa e hambúrguer completo | a final: três cardápios juntos, com uma coluna no meio |
+
+- O mapa das fases ganhou o Mundo 4 ("Casa cheia"). Como nos outros mundos, cada fase abre com 1 estrela na anterior.
+- Cozinha 4-3 e 4-5 marcam onde começam os cozinheiros 3 e 4 (o lugar automático cairia em cima da ilha).
 
 ## Testes
-- Não rodei os testes. Medido no navegador do app, em Mônaco (o painel estava escondido, então os números de tempo são
-  de um navegador em segundo plano, mais lento que o normal).
+- `tests/cozinha.test.js`: novo teste de que o Mundo 4 tem seis fases, só com receitas que existem e cada uma com uma
+  planta diferente de todas as outras. O teste "toda cozinha do catálogo dá para jogar" já confere as fases novas.
+- `tests/e2e/cozinha-fases.spec.js`: agora espera quatro mundos e abre também as fases 4-1 a 4-6.
+- Não rodei os testes. Conferido à parte: nas seis, todos os lugares e bancadas se alcançam, todas as receitas dão
+  para fazer, e as metas ficam na faixa das fases com o mesmo cardápio. No navegador, as seis abrem e chegam à
+  contagem sem erro.
