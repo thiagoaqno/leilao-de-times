@@ -1,6 +1,6 @@
 // Baixa o endereço da foto do estádio de cada clube na API TheSportsDB (chave gratuita de teste) e grava em
 // public/carreira/estadios-api.json e estadios-api.js ({ idDoClube: { url, nome } }; a página carrega o .js). Roda depois de
-// tools/baixar-escudos.js: usa o escudo já achado (escudos-api.json) para reconhecer o time certo na busca, pega o estádio
+// ferramentas/baixar-escudos.js: usa o escudo já achado (escudos-api.json) para reconhecer o time certo na busca, pega o estádio
 // dele (idVenue) e busca a foto (strThumb). Clube sem foto fica de fora e a sede usa o estádio desenhado (estadios.js).
 // A chave gratuita aceita ~30 pedidos por minuto: o script espera entre os pedidos e continua de onde parou.
 const fs = require("fs");
@@ -11,7 +11,7 @@ const SAIDA = path.join(RAIZ, "estadios-api.json"), SAIDA_JS = path.join(RAIZ, "
 const CHAVE = process.env.THESPORTSDB_KEY || "123";
 const gravar = (obj) => {
   fs.writeFileSync(SAIDA, JSON.stringify(obj, null, 1));
-  fs.writeFileSync(SAIDA_JS, `// gerado por tools/baixar-estadios.js (fotos de estádio da TheSportsDB)\nwindow.ESTADIOS_API = ${JSON.stringify(obj)};\n`);
+  fs.writeFileSync(SAIDA_JS, `// gerado por ferramentas/baixar-estadios.js (fotos de estádio da TheSportsDB)\nwindow.ESTADIOS_API = ${JSON.stringify(obj)};\n`);
 };
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 async function pedir(url) {

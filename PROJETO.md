@@ -58,7 +58,7 @@ O site substitui a live, a roleta e o Excel.
 - **Conceito:** noite de Champions League. Estádio azul-marinho com refletores e estrelas, prata da taça no lugar do dourado, ciano e magenta de destaque. A roleta fica no círculo central de um gramado noturno, com um aro de refletores que piscam só enquanto ela gira. Cada compra aparece numa placa prateada de "vendido".
 - **Cores:** fundo `#050d33`, prata `#dfe7fb`, ciano `#2fd3ff`, magenta `#ff2e88`, verde `#3ee08f`, gramado `#0f4f31`/`#125a39`. Ficam como variáveis no topo do `<style>` de `public/index.html`.
 - **Fontes:** Saira Condensed (títulos, números, código da sala, roleta, card do campeão) e Figtree (texto).
-- O visual antigo está guardado em `index.antigo.html`, na raiz do projeto (fora da `public`, então não vai para o site).
+- O visual antigo ficou guardado em `index.antigo.html` até a refatoração de outubro de 2026, quando saiu (continua no histórico do Git).
 - **Emblema:** escudo prateado com a roleta dentro e duas estrelas (`public/emblema.svg`). Também é o ícone da aba.
 - **Cabeçalho:** uma barra fina fixa no topo. Dentro da sala, mostra o código e o botão de convite; as regras da sala ficam numa linha discreta logo abaixo.
 - **Campinho ao vivo (futebol e futsal):** cada time aparece num campo (ou quadra de futsal) com a formação de cada participante, e os jogadores entram na vaga assim que são comprados. A escalação é a mesma que o simulador usa (`public/escalacao.js`, compartilhado entre o site e o `simulador.js`). Número em rosa = jogador fora de posição, mostrando quanto rende ali. Vaga tracejada = vaga que ainda falta. Quem sobra fica em "Reserva". No celular, os times passam para o lado com o dedo.

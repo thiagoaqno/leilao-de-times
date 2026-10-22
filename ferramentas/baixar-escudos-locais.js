@@ -80,7 +80,7 @@ async function executar() {
   }));
   const ordenados = Object.fromEntries(Object.entries(salvos).sort(([a], [b]) => a.localeCompare(b)));
   fs.writeFileSync(arquivo, JSON.stringify(ordenados, null, 1) + "\n");
-  fs.writeFileSync(arquivo.replace(/\.json$/, ".js"), `// gerado por tools/baixar-escudos-locais.js; os arquivos ficam em escudos-locais/\nwindow.ESCUDOS_API = ${JSON.stringify(ordenados)};\n`);
+  fs.writeFileSync(arquivo.replace(/\.json$/, ".js"), `// gerado por ferramentas/baixar-escudos-locais.js; os arquivos ficam em escudos-locais/\nwindow.ESCUDOS_API = ${JSON.stringify(ordenados)};\n`);
   console.log(`Escudos locais: ${Object.keys(ordenados).length}. Sem arquivo: ${falhas.join(", ") || "nenhum"}.`);
   if (falhas.length) process.exitCode = 1;
 }

@@ -2,7 +2,7 @@
 // Em jogo, a Estante lê apenas os arquivos locais.
 const fs = require('node:fs');
 const path = require('node:path');
-const { LIGAS, buscarTrofeu } = require('../trofeus-carreira');
+const { LIGAS, buscarTrofeu } = require('./trofeus-carreira');
 
 const raiz = path.join(__dirname, '..', 'public', 'carreira');
 const pasta = path.join(raiz, 'trofeus-locais');
