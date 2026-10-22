@@ -1,35 +1,35 @@
-# Os testes esquecidos voltam a rodar
+# Os jogos de mesa usam um esqueleto só
 
-Terceiro passo da refatoração.
+Quinto passo da refatoração: tirar o código repetido do servidor, começando pelos jogos de mesa.
 
 ## O que muda
 
-- **`npm test` roda todos os arquivos de teste.** A lista no `package.json` era feita à mão e tinha ficado para trás:
-  28 arquivos existiam, mas nunca rodavam:
-  - Banco, Bloqueio, Digitação, Cozinha, Drag, Lobby e música;
-  - comida do Leilão;
-  - física, biomas e encenação do Ginásio;
-  - encenação do Futevôlei;
-  - poderes e recordes da Corrida;
-  - 14 da Carreira: estante, festa, leitura, memória, painel de moderação, anfitrião, pausa, personalidade, pressão,
-    rivais, rodada, técnicos, troféus e ver time.
+- **`ligarMesa` (`salas.js`):** Uno, Truco, Dominó, Ludo, Bloqueio, Sinuca e Botão repetiam, quase letra por letra, o
+  mesmo bloco de conexão:
+  - `create`, que cria a mesa;
+  - `join`, que deixa voltar com o token, assistir ou sentar;
+  - `act`, que chama as ações;
+  - `react`, as reações com emoji;
+  - `disconnect`.
 
-  Agora o script é `node --test "tests/*.test.js" "tests/*.test.mjs"`: teste novo entra sozinho. Os 28 passam como
-  estão.
-- **O teste dos robôs da Corrida ficou estável.** "Robôs miram o ritmo da sala" sorteava o carro e a pilotagem dos
-  robôs sem semente, e às vezes as duas voltas gravadas saíam parecidas demais. Agora o teste usa um `Math.random` com
-  semente só enquanto roda (`comSemente`). O jogo não muda.
-- **O teste dos dilemas da Carreira ficou estável.** "Cada resposta muda o jogo e a conta chega depois" joga antes uma
-  temporada sorteada, e às vezes um dilema dela deixava outra conta agendada em `gestao.depois` (dava 2 em vez de 1).
-  O teste já zerava a demissão e a confiança dessa temporada. Agora zera também as contas agendadas.
-
-- **A Copa do Mundo da Carreira (correção trazida do PR #298):** "Nos 16 avos, ninguém do mesmo grupo" falhou no
-  GitHub neste PR. Não era o teste: em cerca de 8% dos sorteios, a troca que separava os grupos criava outro encontro
-  do mesmo grupo. A mesma correção do #298 (`Temporada.separarGrupos`, com o teste `carreira-copa-chave`) vem aqui
-  para este PR ficar verde. Quando o #298 entrar, ela não muda mais nada.
+  Agora esse bloco mora num lugar só. Cada jogo passa só o que é dele:
+  - o limite de jogadores;
+  - os campos da sala nova;
+  - o jogador novo e as ações;
+  - os eventos a mais: a mira da Sinuca e do Botão, o goleiro do Botão e o sinal do Truco;
+  - as frases próprias do registro: "Mesa montada por..." do Botão e "... chegou." da Sinuca e do Botão.
+- **Para quem joga, nada muda:** as mesmas mensagens, os mesmos limites, o mesmo estado. As regras de cada jogo
+  (`handle`, `addPlayer`) só saíram de dentro do bloco de conexão e continuam no módulo de cada jogo, iguais. O
+  `git diff -w` mostra só o bloco que saiu.
+- **Os sete módulos perderam cerca de 390 linhas.** Contando a peça nova do `salas.js`, o projeto fica cerca de 310
+  linhas menor. Cada módulo importa do `salas.js` só o que ainda usa.
+- **Jogo de mesa novo:** usar o `ligarMesa` em vez de copiar o bloco (está no `CLAUDE.md`).
 
 ## Testes
 
-- Os 28 arquivos que estavam de fora, um por um: todos passando.
-- `corrida-robos.test.js` três vezes seguidas: passando.
-- `npm test` inteiro com o padrão novo: 595 testes (antes, 451). Falhou só o dos dilemas, que agora está estável.
+- `salas` (a forma do estado de cada canal, com entrar e sair), `servidor` (partidas de verdade), `regras`, `bloqueio`,
+  `lobby` e `rumi`: 33 passando.
+- No navegador, `salas.spec.js` (dois entram e jogam em cada jogo), `mesa.spec.js` e `paginas.spec.js`: 41 de 42
+  passando, com as sete mesas todas verdes.
+- O que falhou foi "corrida: dois entram, começa e roda sem erro", e a Corrida não mudou neste PR. Esse teste passa
+  sozinho na `main` e falha quando a máquina está carregada. Fica anotado como teste instável.

@@ -96,4 +96,80 @@ function protegerCanais(io) {
   io.on("new_namespace", proteger);
 }
 
-module.exports = { protegerCanais, rid, novoCodigo, limparNome, ok, falha, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing };
+// O esqueleto dos jogos de mesa (Uno, Truco, Dominó, Ludo, Bloqueio, Sinuca e Botão), que cada um repetia igual: criar
+// a mesa, entrar (voltar com o token, assistir ou sentar), as ações, as reações e a saída. O jogo passa só o que é dele:
+//   max: quantos sentam; sala(data): os campos próprios da sala nova; novoJogador(room, nome): cria o jogador e põe na
+//   ordem; acao(room, me, data): faz a ação e devolve o erro em texto (ou nada); broadcast(room); log(room, texto);
+//   reacoes: os emojis aceitos (sem a lista, a mesa não tem reações); extras(socket, ctx): eventos a mais (a mira da
+//   Sinuca, o sinal do Truco); textos: { criou(nome), sentou(nome) } quando a frase do registro é outra.
+function ligarMesa(nsp, rooms, j) {
+  const criou = (j.textos && j.textos.criou) || ((nome) => `Mesa criada por ${nome}.`);
+  const sentou = (j.textos && j.textos.sentou) || ((nome) => `${nome} sentou à mesa.`);
+  nsp.on("connection", (socket) => {
+    const ctx = () => contexto(socket, rooms);
+    const bind = (room, pid) => ligarSocket(socket, rooms, room, pid);
+
+    socket.on("create", (data = {}, cb) => {
+      const name = limparNome(data.name);
+      if (!name) return falha(cb, "Coloque o seu nome.");
+      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", players: {}, order: [], ...j.sala(data), log: [], t: Date.now() };
+      rooms.set(room.code, room);
+      const p = j.novoJogador(room, name);
+      room.host = p.id;
+      bind(room, p.id);
+      j.log(room, criou(name));
+      ok(cb, { code: room.code, id: p.id, token: p.token });
+      j.broadcast(room);
+    });
+
+    socket.on("join", (data = {}, cb) => {
+      const room = buscarSala(rooms, data.code);
+      if (!room) return falha(cb, "Mesa não encontrada. Confira o código (se o servidor reiniciou, a mesa se perdeu).");
+      const back = quemVolta(room, data);
+      if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return j.broadcast(room); }
+      if (data.watch || room.phase !== "lobby") {
+        if (!data.watch) return falha(cb, "O jogo já começou. Você pode entrar para assistir.");
+        bind(room, null); ok(cb, { code: room.code, id: null }); return j.broadcast(room);
+      }
+      const name = limparNome(data.name);
+      if (!name) return falha(cb, "Coloque o seu nome.");
+      if (room.order.length >= j.max) return falha(cb, `A mesa já tem ${j.max} jogadores. Você pode entrar para assistir.`);
+      if (nomeEmUso(room, name)) return falha(cb, "Já tem alguém com esse nome na mesa.");
+      const p = j.novoJogador(room, name);
+      bind(room, p.id);
+      j.log(room, sentou(name));
+      ok(cb, { code: room.code, id: p.id, token: p.token });
+      j.broadcast(room);
+    });
+
+    socket.on("act", (data = {}, cb) => {
+      const { room, me } = ctx();
+      if (!room) return falha(cb, "Você não está numa mesa.");
+      const err = j.acao(room, me, data);
+      if (err) return falha(cb, err);
+      ok(cb);
+      j.broadcast(room);
+    });
+
+    // reação com emoji: vai direto para a mesa, sem mexer no estado do jogo
+    if (j.reacoes) socket.on("react", (data = {}) => {
+      const { room, me } = ctx();
+      if (!room || !me || room.phase === "lobby" || !j.reacoes.includes(data.emoji)) return;
+      const now = Date.now();
+      if (now - (me.lastReact || 0) < 700) return;
+      me.lastReact = now;
+      nsp.to(room.code).emit("react", { player: me.id, emoji: data.emoji });
+    });
+
+    if (j.extras) j.extras(socket, ctx);
+
+    socket.on("disconnect", () => {
+      const { room, me } = ctx();
+      if (!room) return;
+      if (me) me.sockets.delete(socket.id);
+      j.broadcast(room);
+    });
+  });
+}
+
+module.exports = { protegerCanais, ligarMesa, rid, novoCodigo, limparNome, ok, falha, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas, medirPing };
