@@ -23,6 +23,11 @@ Terceiro passo da refatoração.
   temporada sorteada, e às vezes um dilema dela deixava outra conta agendada em `gestao.depois` (dava 2 em vez de 1).
   O teste já zerava a demissão e a confiança dessa temporada. Agora zera também as contas agendadas.
 
+- **A Copa do Mundo da Carreira (correção trazida do PR #298):** "Nos 16 avos, ninguém do mesmo grupo" falhou no
+  GitHub neste PR. Não era o teste: em cerca de 8% dos sorteios, a troca que separava os grupos criava outro encontro
+  do mesmo grupo. A mesma correção do #298 (`Temporada.separarGrupos`, com o teste `carreira-copa-chave`) vem aqui
+  para este PR ficar verde. Quando o #298 entrar, ela não muda mais nada.
+
 ## Testes
 
 - Os 28 arquivos que estavam de fora, um por um: todos passando.
