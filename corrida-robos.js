@@ -13,6 +13,7 @@ const NIVEIS = { facil: 0.80, medio: 0.87, dificil: 0.93 }; // sem ninguém com 
 // melhores voltas de cada um). No médio, um pouco mais lento que essa média; no difícil, um pouco mais rápido.
 const RITMO = { facil: 1.12, medio: 1.03, dificil: 0.98 };
 const STEP = 6;
+const ENCOLHIDO = 0.72, BALA = 1.45; // o raio deixa o carro com 72% da velocidade final; a bala anda a 145% (iguais em fisica.js)
 const rnd = (a, b) => a + Math.random() * (b - a);
 const CACHE = new Map();
 // O traçado de corrida: um elástico esticado dentro da pista. Começa no meio e, várias vezes, cada ponto vai para o
@@ -203,10 +204,14 @@ function passo(room, dt, setor, emit) {
         if (frente > 0 && frente < 115 && faltaEspaco) freioTrafego = Math.min(freioTrafego, Math.max(35, (o.pos.v || 0) * 0.94));
       }
       if (!encontrou) ia.passSide = 0;
-      alvo = Math.min(alvo, freioTrafego);
+      const bala = p.balaUntil > now; // a bala não freia para ninguém nem para curva: passa por cima
+      if (!bala) alvo = Math.min(alvo, freioTrafego);
       alvo = Math.min(alvo, c.vmax); // nunca passa da velocidade final do carro (a mesma de quem joga)
+      if (p.shrinkUntil > now) alvo *= ENCOLHIDO; // o raio: pequeno e lento, como quem joga (fisica.js)
+      if (p.inkUntil > now) alvo *= 0.9; // a lula: sem enxergar direito, tira o pé
+      if (bala) alvo = c.vmax; // e a bala soma a força dela logo abaixo, como o turbo
       // turbo e estrela: as mesmas contas do carro de quem joga (fisica.js): mais velocidade final e mais força para chegar nela
-      const turbo = p.boostUntil > now, estrela = p.starUntil > now, bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0), ak = 1 + (turbo ? 0.8 : 0) + (estrela ? 0.4 : 0);
+      const turbo = p.boostUntil > now, estrela = p.starUntil > now, bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0) + (bala ? BALA - 1 : 0), ak = 1 + (turbo ? 0.8 : 0) + (estrela ? 0.4 : 0) + (bala ? 1.5 : 0);
       alvo += c.vmax * (bk - 1); // o item mantém sua força mesmo com o ritmo base mais acessível
       if (p.spinUntil > now) ia.v *= Math.exp(-dt * 2.2);
       else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * ak * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / (c.vmax * bk), 1.6)) * dt); // a mesma arrancada do carro de quem joga

@@ -1,6 +1,7 @@
-// Corrida da Galera — os modelos 3D da caixa de item e dos seis poderes (banana, casco verde, casco vermelho,
-// cogumelo, estrela e bomba), feitos de formas do Three.js, em metros (quem usa escala). Também desenha o ícone de
-// cada poder para o botão do item (uma foto do modelo, tirada uma vez só).
+// Corrida da Galera — os modelos 3D da caixa de item e dos poderes (banana, casco verde, casco vermelho, cogumelo,
+// estrela e bomba, e os do Mario Kart só da corrida: casco azul, raio, cogumelo triplo, lula e bala), feitos de formas
+// do Three.js, em metros (quem usa escala). Também desenha o ícone de cada poder para o botão do item (uma foto do
+// modelo, tirada uma vez só).
 import * as THREE from "three";
 
 const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.45, ...o });
@@ -96,13 +97,73 @@ function bomba() {
   g.userData = { faisca, chave, corpo: b };
   return g;
 }
-const FAZ = { banana, verde: () => casco(0x2ecc40), vermelho: () => casco(0xe53935), cogumelo, estrela, bomba };
+// o casco azul: o casco com espinhos brancos por cima e as asas abertas (voa até o líder)
+function azul() {
+  const g = casco(0x2a5cff), branco = M(0xffffff, { roughness: 0.35 });
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2, e = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.26, 8), branco); e.position.set(Math.cos(a) * 0.28, 0.72, Math.sin(a) * 0.28); e.lookAt(Math.cos(a) * 3, 3.5, Math.sin(a) * 3); e.rotateX(Math.PI / 2); g.add(e); }
+  const pico = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.3, 8), branco); pico.position.y = 0.88; g.add(pico);
+  const asas = [];
+  for (const s of [-1, 1]) {
+    const asa = new THREE.Group(); asa.position.set(s * 0.5, 0.45, 0); g.add(asa);
+    const pena = new THREE.Mesh(new THREE.CircleGeometry(0.42, 18), M(0xffffff, { side: THREE.DoubleSide, roughness: 0.5 })); pena.scale.set(1, 0.5, 1); pena.position.x = s * 0.38; pena.rotation.x = -Math.PI / 2; asa.add(pena);
+    asas.push({ asa, s });
+  }
+  g.userData.asas = asas; g.userData.gira = false; return g;
+}
+// o raio: o zigue-zague amarelo, aceso
+const formaRaio = (() => {
+  const s = new THREE.Shape(); [[0.12, 0.62], [-0.28, 0.02], [-0.02, 0.02], [-0.16, -0.62], [0.3, 0.1], [0.04, 0.1], [0.22, 0.62]].forEach(([x, y], i) => (i ? s.lineTo(x, y) : s.moveTo(x, y)));
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.14, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.03, bevelSegments: 2 }); g.center(); return g;
+})();
+function raio() {
+  const g = new THREE.Group(), r = new THREE.Mesh(formaRaio, M(0xffe23a, { emissive: 0xffb300, emissiveIntensity: 0.7, roughness: 0.3, metalness: 0.2 }));
+  r.position.y = 0.66; g.add(r); g.userData.raio = r; return g;
+}
+// três cogumelos juntinhos (um turbo de cada vez)
+function triplo() {
+  const g = new THREE.Group();
+  for (const [x, z, s] of [[-0.36, 0.12, 0.62], [0.36, 0.12, 0.62], [0, -0.22, 0.72]]) { const c = cogumelo(); c.scale.setScalar(s); c.position.set(x, 0, z); g.add(c); }
+  return g;
+}
+// a lula: corpo branco comprido com a cabeça em ponta, os olhos e os tentáculos
+function lula() {
+  const g = new THREE.Group(), branco = M(0xfafafa, { roughness: 0.4 });
+  const corpo = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.5, 6, 14), branco); corpo.position.y = 0.72; g.add(corpo);
+  const ponta = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.36, 14), branco); ponta.position.y = 1.2; g.add(ponta);
+  for (const s of [-1, 1]) {
+    const olho = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), M(0x111111)); olho.position.set(s * 0.1, 0.82, 0.23); g.add(olho);
+    const brilho = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 5), M(0xffffff)); brilho.position.set(s * 0.1 + 0.02, 0.85, 0.3); g.add(brilho);
+  }
+  const boca = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.015, 6, 12), M(0xe8507a)); boca.position.set(0, 0.68, 0.25); g.add(boca);
+  const tents = [];
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2, t = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.3, 4, 8), branco); t.position.set(Math.cos(a) * 0.16, 0.28, Math.sin(a) * 0.16); g.add(t); tents.push({ t, a }); }
+  g.userData.tents = tents; return g;
+}
+// a bala: corpo preto com a ponta redonda, os olhos bravos, os bracinhos e a cinta de trás (a ponta aponta para -z)
+function bala() {
+  const g = new THREE.Group(), preto = M(0x1b1c22, { roughness: 0.3, metalness: 0.4 });
+  const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.9, 20), preto); corpo.rotation.x = Math.PI / 2; corpo.position.y = 0.48; g.add(corpo);
+  const nariz = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), preto); nariz.rotation.x = -Math.PI / 2; nariz.position.set(0, 0.48, -0.45); g.add(nariz);
+  const cinta = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.16, 20), M(0x3a3d46, { metalness: 0.7, roughness: 0.35 })); cinta.rotation.x = Math.PI / 2; cinta.position.set(0, 0.48, 0.42); g.add(cinta);
+  const fundo = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 0.12, 20), M(0x0e0f13, { roughness: 0.6 })); fundo.rotation.x = Math.PI / 2; fundo.position.set(0, 0.48, 0.54); g.add(fundo);
+  for (const s of [-1, 1]) {
+    const olho = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), M(0xffffff)); olho.scale.set(0.7, 1.15, 1); olho.position.set(s * 0.3, 0.76, -0.28); g.add(olho);
+    const pupila = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), M(0x111111)); pupila.position.set(s * 0.36, 0.77, -0.36); g.add(pupila);
+    const sobrancelha = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.24), M(0xffffff)); sobrancelha.position.set(s * 0.33, 0.93, -0.27); sobrancelha.rotation.x = -0.45; g.add(sobrancelha);
+    const braco = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), M(0xffffff)); braco.scale.set(0.8, 0.6, 1.2); braco.position.set(s * 0.48, 0.38, -0.05); g.add(braco);
+  }
+  return g;
+}
+const FAZ = { banana, verde: () => casco(0x2ecc40), vermelho: () => casco(0xe53935), cogumelo, estrela, bomba, azul, raio, triplo, lula, bala };
 export function modeloItem(tipo) { return sombra((FAZ[tipo] || bomba)()); }
 // gira o casco, pisca a bomba, faz a estrela brilhar
 export function animarItem(g, t, perto = 0) {
   const u = g.userData;
   if (u.gira) g.rotation.y = t * 9;
   if (u.estrela) { u.estrela.rotation.y = t * 2.5; u.estrela.position.y = 0.6 + Math.sin(t * 4) * 0.08; }
+  if (u.asas) { g.rotation.y = t * 4; for (const { asa, s } of u.asas) asa.rotation.z = s * Math.sin(t * 18) * 0.5; } // o azul bate as asas
+  if (u.raio) { u.raio.rotation.y = t * 3; u.raio.material.emissiveIntensity = 0.6 + Math.random() * 0.6; }
+  if (u.tents) for (const { t: tt, a } of u.tents) tt.rotation.set(Math.sin(t * 6 + a) * 0.3, 0, Math.cos(t * 6 + a) * 0.3);
   if (u.faisca) {
     u.faisca.scale.setScalar(0.7 + Math.random() * 0.8); u.chave.rotation.z = t * 6;
     u.corpo.material.emissive.setRGB(perto * (0.5 + 0.5 * Math.sin(t * 30)), 0, 0); // pisca vermelho antes de estourar
@@ -122,7 +183,7 @@ export function iconeItem(tipo) {
   }
   const m = tipo === "caixa" ? caixaItem() : modeloItem(tipo); fotoCena.add(m);
   if (tipo === "caixa") { m.position.y = 0.6; m.rotation.set(0.35, 0.6, 0); m.userData.vidro.emissive.setHSL(0.83, 0.9, 0.55); }
-  else m.rotation.y = tipo === "bomba" ? 0.5 : -0.5;
+  else m.rotation.y = tipo === "bomba" ? 0.5 : tipo === "bala" ? Math.PI + 0.75 : -0.5; // a bala com a cara para a foto
   const caixa = new THREE.Box3().setFromObject(m), c = caixa.getCenter(new THREE.Vector3()), r = caixa.getSize(new THREE.Vector3()).length() / 2;
   fotoCam.position.set(c.x, c.y + r * 0.9, c.z + r * 3.4); fotoCam.lookAt(c);
   fotoR.render(fotoCena, fotoCam);

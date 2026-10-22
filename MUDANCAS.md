@@ -1,25 +1,27 @@
-# Cozinha: Mundo 4, "Casa cheia" (seis fases novas)
+# Corrida: cinco poderes novos do Mario Kart
 
-Seis cozinhas novas com receitas que já existiam, cada uma numa planta diferente. Entram três receitas que ainda não
-tinham cozinha: sopa de cogumelo, salada completa e hambúrguer completo. Não muda nada no motor: são só desenhos novos
-em `COZINHAS` (`public/cozinha/regras.js`), e as metas das estrelas saem do planejador, como nas outras fases.
+A Corrida ganhou os poderes do Mario Kart que faltavam, além dos seis da Batalha (banana, casco verde, casco vermelho,
+cogumelo, estrela e bomba). A Batalha continua igual.
 
-| Fase | Nome | Receitas | O que muda no caminho |
-| --- | --- | --- | --- |
-| 4-1 | Cozinha comprida | as três sopas (cebola, tomate e cogumelo) | caixas de um lado, panelas do outro, ilha no meio |
-| 4-2 | Cozinha dividida | saladas (com tomate, completa) e hambúrgueres (com alface, completo) | parede de bancadas com uma passagem só; a comida passa por cima do balcão |
-| 4-3 | Ilha do sushi | sashimi e os dois sushis | tábuas e panelas numa ilha no centro, com um corredor em volta |
-| 4-4 | Cruzamento | os dois burritos | divisórias em cruz que descem juntas a cada 25 s, com o meio sempre aberto |
-| 4-5 | Forno no meio | as duas pizzas | o forno numa ilha central |
-| 4-6 | Banquete | sopa de tomate, salada completa e hambúrguer completo | a final: três cardápios juntos, com uma coluna no meio |
+| Poder | O que faz |
+| --- | --- |
+| Casco azul | Voa por cima de todo mundo até o líder e explode em cima dele, derrubando também quem estiver colado. Se o líder cruza a chegada, vai atrás do novo líder. |
+| Raio | Todos os outros rodam, perdem o item que tinham e ficam pequenos e lentos (72% da velocidade final). Quem vai na frente fica mais tempo pequeno (de 2,5 a 6 s). A estrela e a bala protegem. Na tela de todo mundo, um clarão. |
+| Cogumelo triplo | Três turbos, um de cada vez (o botão do item mostra quantos sobram). |
+| Lula | Joga tinta na tela de quem está na frente de quem usou: manchas pretas que escorrem e somem em 4,5 s. |
+| Bala | Piloto automático por 3,5 s: o carro vira a bala, segue a pista sozinho a 145% da velocidade final e não roda com nada. |
 
-- O mapa das fases ganhou o Mundo 4 ("Casa cheia"). Como nos outros mundos, cada fase abre com 1 estrela na anterior.
-- Cozinha 4-3 e 4-5 marcam onde começam os cozinheiros 3 e 4 (o lugar automático cairia em cima da ilha).
+- **Roleta pela colocação, como no Mario Kart:** na frente saem mais banana e casco verde; lá atrás, cogumelos, estrela,
+  bala, casco azul e raio. O líder nunca tira estrela, bala, casco azul nem raio. Antes a Corrida usava a roleta da
+  Batalha; agora tem a própria (`rollItem` em `corrida-itens.js`).
+- **De estrela ou de bala, quem encosta nos outros derruba (como no Mario Kart).** Antes a estrela só protegia.
+- **Os robôs usam todos os poderes novos e sofrem com eles:** encolhidos andam mais devagar, com tinta tiram o pé, e de
+  bala aceleram e passam por cima do trânsito.
+- Os modelos 3D dos poderes novos (`modelos.js`): o casco azul com asas e espinhos, o raio aceso, os três cogumelos, a
+  lula e a bala com os olhos bravos. Os ícones do botão do item saem desses modelos.
 
 ## Testes
-- `tests/cozinha.test.js`: novo teste de que o Mundo 4 tem seis fases, só com receitas que existem e cada uma com uma
-  planta diferente de todas as outras. O teste "toda cozinha do catálogo dá para jogar" já confere as fases novas.
-- `tests/e2e/cozinha-fases.spec.js`: agora espera quatro mundos e abre também as fases 4-1 a 4-6.
-- Não rodei os testes. Conferido à parte: nas seis, todos os lugares e bancadas se alcançam, todas as receitas dão
-  para fazer, e as metas ficam na faixa das fases com o mesmo cardápio. No navegador, as seis abrem e chegam à
-  contagem sem erro.
+- Novo `tests/corrida-poderes.test.js`: a roleta pela colocação, o cogumelo triplo, o raio, a lula, o casco azul até o
+  líder e a bala derrubando quem encosta.
+- Não rodei os testes. Conferido no navegador: uma corrida com 7 robôs usando os itens sem erro (no navegador e no
+  servidor), os ícones dos poderes novos, a tinta da lula, a bala no lugar do carro e o carro encolhido pelo raio.

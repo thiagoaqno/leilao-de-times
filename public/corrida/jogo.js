@@ -164,7 +164,9 @@ function inclinacao(tr, x, y, a, idx, L, W, vz, noAr, v) {
   const frente = h(fx * L / 2, fy * L / 2), tras = h(-fx * L / 2, -fy * L / 2), dir = h(-fy * W / 2, fx * W / 2), esq = h(fy * W / 2, -fx * W / 2);
   return { pitch: Math.atan2(frente - tras, L), roll: Math.atan2(dir - esq, W) };
 }
-const fxDe = (p, now, extra = {}) => ({ turbo: !!(p && p.boostUntil > now) || !!extra.turbo, estrela: !!(p && p.starUntil > now), rodando: !!(p && (p.spinUntil > now || race.atingidos?.[p.id] > now)) || !!extra.rodando, derrapa: extra.derrapa || 0 });
+const fxDe = (p, now, extra = {}) => { const bala = !!(p && p.balaUntil > now) || !!extra.bala;
+  return { turbo: !!(p && p.boostUntil > now) || !!extra.turbo, estrela: !!(p && p.starUntil > now), rodando: !bala && (!!(p && (p.spinUntil > now || race.atingidos?.[p.id] > now)) || !!extra.rodando), derrapa: extra.derrapa || 0,
+    pequeno: !bala && !!(p && p.shrinkUntil > now), bala }; };
 // câmera atrás do kart (quem só assiste segue o primeiro colocado)
 function draw(dt) {
   const tr = race.tr, c = race.car, now = sNow();
@@ -173,8 +175,8 @@ function draw(dt) {
     const slide = Math.max(-1, Math.min(1, (c.slip || 0) / 160)) * Math.sign(c.steer || 1), fr = groundH(tr, c.x, c.y, race.idx);
     const spec = CARS3[me()?.car] || CARS3.equilibrado, inc = inclinacao(tr, c.x, c.y, c.a, race.idx, spec.L * KS, spec.W * KS, c.vz, c.air, c.v);
     race.pitch = inc.pitch;
-    const turbo = race.boostUntil > now || race.sling > 0, rodando = race.spinUntil > now;
-    poseKart(race.kart, c.x, c.y, c.z, c.a + slide * 0.25, c.v, c.steer, fr, dt, -c.steer * 0.04 + inc.roll, inc.pitch, fxDe(me(), now, { turbo, rodando, derrapa: c.slip > 45 ? (c.slip > 110 ? 2 : 1) : 0 }));
+    const turbo = race.boostUntil > now || race.sling > 0, rodando = race.spinUntil > now, bala = race.balaUntil > now;
+    poseKart(race.kart, c.x, c.y, c.z, c.a + slide * 0.25, c.v, c.steer, fr, dt, -c.steer * 0.04 + inc.roll, inc.pitch, fxDe(me(), now, { turbo, rodando, bala, derrapa: c.slip > 45 ? (c.slip > 110 ? 2 : 1) : 0 }));
     // derrapagem: fumaça branca saindo dos pneus de trás, mais grossa quanto mais o carro escorrega
     if (c.slip > 40 && !c.air) { const forte = Math.min(1, (c.slip - 40) / 120); for (const s of [-1, 1]) if (Math.random() < 0.55 + forte * 0.45) puff(c.x - Math.cos(c.a) * 15 + -Math.sin(c.a) * s * 9, c.z + 3, c.y - Math.sin(c.a) * 15 + Math.cos(c.a) * s * 9, "#eeeeee", 3.2 + forte * 3, 0.8 + forte * 0.6, 1.7, 0.3 + forte * 0.22); }
     if (race.offroad && Math.random() < 0.5) puff(c.x - Math.cos(c.a) * 18, c.z + 2, c.y - Math.sin(c.a) * 18, tr.id === "interlagos" ? "#b39c66" : "#9a9a9a", 2.5);
