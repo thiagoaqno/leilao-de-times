@@ -19,6 +19,12 @@
 - **O que muda nas Copas que já existiam:** quando a troca antiga já dava certo, a nova faz a mesma troca. Só mudam as
   Copas que estavam erradas.
 
+## Trazido do PR #296
+
+- **O teste dos robôs da Corrida** ("robôs miram o ritmo da sala") sorteava sem semente e às vezes falhava por acaso:
+  falhou no GitHub neste PR. A mesma correção do #296 (`comSemente`, só no teste) vem aqui. Quando o #296 entrar, ela
+  não muda mais nada.
+
 ## Testes
 
 - **Novo, `tests/carreira-copa-chave.test.js`:** 5000 sorteios no formato da Copa, sem nenhum encontro do mesmo grupo.
