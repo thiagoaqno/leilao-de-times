@@ -24,7 +24,7 @@ async function subirServidor(env = {}) {
     proc.stderr.on("data", (d) => { saida += d; });
     proc.on("exit", (c) => { clearTimeout(t); erro(new Error(`O servidor saiu (${c}):\n${saida}`)); });
   });
-  return { url: `http://localhost:${porta}`, porta, parar: () => new Promise((ok) => { proc.once("exit", ok); proc.kill(); }) };
+  return { url: `http://localhost:${porta}`, porta, parar: () => new Promise((ok) => { if (proc.exitCode !== null || proc.signalCode) return ok(); proc.once("exit", ok); proc.kill(); }) }; // se já caiu, não espera um "exit" que não vem mais
 }
 
 // Cliente de um canal ("/domino", "/pelada"…). Guarda o último "state" recebido.
