@@ -16,6 +16,9 @@ import { marchaAuto, rotacao, torque, topo, NUM } from "./cambio.js";
 // velocidade (scrub) e leva o kart para a grama ou para o muro. Por isso tem que frear antes das curvas fechadas.
 // Agora com relevo: subida freia, descida embala, e numa lombada rápida o kart voa (no ar não acelera nem vira muito).
 const GRAV = 160;
+// os poderes do Mario Kart (corrida-itens.js): encolhido pelo raio, o carro fica com 72% da velocidade final e menos
+// força; de bala, segue a pista sozinho a 145% dela (os mesmos números dos robôs, em corrida-robos.js)
+const ENCOLHIDO = 0.72, BALA = 1.45;
 export function physics(dt, spec = carOf(me())) {
   const c = race.car, tr = race.tr, go = sNow() >= race.startAt && !!me();
   if (!go) { c.v = c.vx = c.vy = 0; return; }
@@ -40,7 +43,8 @@ export function physics(dt, spec = carOf(me())) {
   race.catchup = catchup;
   const boostAtivo = (m && m.boostUntil > sNow()) || race.boostUntil > sNow();
   const estrelaAtiva = m && m.starUntil > sNow();
-  const boostK = 1 + 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0) + catchup + (boostAtivo ? 0.18 : 0) + (estrelaAtiva ? 0.12 : 0);
+  const bala = (m && m.balaUntil > sNow()) || race.balaUntil > sNow(), pequeno = !bala && m && m.shrinkUntil > sNow();
+  const boostK = bala ? BALA : (1 + 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0) + catchup + (boostAtivo ? 0.18 : 0) + (estrelaAtiva ? 0.12 : 0)) * (pequeno ? ENCOLHIDO : 1);
   const vmax = (road ? spec.vmax : spec.offMax) * boostK;
   // câmbio: no automático a marcha só acompanha (som e painel); no manual ela manda na força e no corte de giro
   const manual = E.S && E.S.config.cambio === "manual", vmaxF1 = spec.vmax * boostK;
@@ -58,16 +62,24 @@ export function physics(dt, spec = carOf(me())) {
     vf -= ((h1 - h0) / 10) * GRAV * 0.55 * dt;
   }
   vf = Math.max(-70, vf);
-  if (race.spinUntil > sNow() || (m && m.spinUntil > sNow())) vf *= Math.exp(-dt * 2.2);
+  if (!bala && (race.spinUntil > sNow() || (m && m.spinUntil > sNow()))) vf *= Math.exp(-dt * 2.2);
   // volante: gira o bico (só andando); a velocidade fica no mundo e é medida de novo no eixo novo do carro
-  const steer = race.spinUntil > sNow() || (m && m.spinUntil > sNow()) ? 0 : pad.on && pad.steer ? pad.steer : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  const steer = bala || race.spinUntil > sNow() || (m && m.spinUntil > sNow()) ? 0 : pad.on && pad.steer ? pad.steer : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
   c.steer += (steer - c.steer) * Math.min(1, dt * 10);
   const wx = fx * vf - fy * vl, wy = fy * vf + fx * vl;
   c.a += c.steer * spec.turn * Math.min(1, Math.abs(vf) / 90) * Math.sign(vf || 1) * dt * (air ? 0.35 : 1);
   fx = Math.cos(c.a); fy = Math.sin(c.a);
   vf = wx * fx + wy * fy; vl = wx * -fy + wy * fx;
+  // de bala: o bico mira um ponto do meio da pista lá na frente e a velocidade vai para 145% da final, sem escorregar
+  if (bala) {
+    const alvo = tr.pts[(race.idx + 14) % tr.n];
+    let d = Math.atan2(alvo.y - c.y, alvo.x - c.x) - c.a; d = Math.atan2(Math.sin(d), Math.cos(d));
+    c.a += Math.max(-7 * dt, Math.min(7 * dt, d * 6 * dt)); c.steer = Math.max(-1, Math.min(1, d * 2));
+    fx = Math.cos(c.a); fy = Math.sin(c.a);
+    vf += (spec.vmax * BALA - vf) * Math.min(1, dt * 2.5); vl = 0;
+  }
   // pneus: tiram até grip·dt da velocidade de lado; o resto escorrega e freia o carro (no ar, os pneus não seguram)
-  if (!air) {
+  if (!air && !bala) {
     const g = spec.grip * (road ? 1 : 0.5) * (c.slip > 30 ? spec.kin : 1) * dt;
     if (Math.abs(vl) <= g) vl = 0;
     else { vl -= Math.sign(vl) * g; vf -= Math.sign(vf) * Math.min(Math.abs(vf), spec.scrub * 3 * Math.abs(vl) * dt); }

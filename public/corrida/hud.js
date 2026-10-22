@@ -47,7 +47,9 @@ export function hud() {
   if (m && race.hudChip !== m.name) { race.hudChip = m.name; $("hChip").innerHTML = `<i style="background:${m.color}"></i>${h(m.name)}<span>${h(PISTAS[cfg.pista].name)}</span>`; }
   // avisos
   let msg = "";
-  if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
+  if (m && m.balaUntil > now) msg = "🚀 BALA! (piloto automático)";
+  else if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
+  else if (m && m.shrinkUntil > now) msg = "⚡ ENCOLHIDO PELO RAIO!";
   else if (race.wrong > 1) msg = "⚠️ CONTRAMÃO! (aperte ↺)";
   else if (race.perdeu >= 0 && m && m.finish == null) msg = "⟲ CHECKPOINT PERDIDO: volte nele ou aperte ↺";
   else if (race.cpT > now - 900 && race.sector > 0) msg = `✓ CHECKPOINT ${race.sector}/${SECTORS}`;

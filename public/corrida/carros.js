@@ -4,6 +4,7 @@ import { scene } from "./cena.js";
 import { montarF1, animarF1, soltarF1, f1Pronto, coresDa, TAM } from "./f1.js";
 let kartChegou = false; f1Pronto.then(() => { kartChegou = true; }); // a foto da garagem é refeita quando o modelo 3D chega
 import { faiscas } from "./efeitos.js";
+import { modeloItem } from "./modelos.js";
 
 // ---------- os carros 3D ----------
 // Cada "carro" (os 5 da garagem, com a física de cada um) é o mesmo F1 de f1.js, no comprimento do carro
@@ -49,7 +50,7 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   shadow.rotation.x = -Math.PI / 2; shadow.scale.set(spec.W / 2 * KS, (spec.L / 2 + 0.2) * KS, 1); g.add(shadow);
   target.add(g);
   // primeira pessoa: a câmera fica no capacete, atrás do volante; o fantasma fica meio transparente
-  const k = { g, body, kt, shadow, chamas, tontura, tAt: 0, mats: kt.mats, steerV: 0, target, sc, eye: { u: 0, h: 0 }, roof: kt.piloto, cabin: new THREE.Object3D(), roofBits: [], pitch: 0, roll: 0, giro: 0, faisca: 0 };
+  const k = { g, body, kt, shadow, chamas, tontura, L: spec.L * KS, tAt: 0, mats: kt.mats, steerV: 0, target, sc, eye: { u: 0, h: 0 }, roof: kt.piloto, cabin: new THREE.Object3D(), roofBits: [], pitch: 0, roll: 0, giro: 0, faisca: 0 };
   const pronto = () => {
     k.mats = kt.mats; k.eye.u = spec.L / 2 - kt.olho.z * sc; k.eye.h = kt.olho.y * sc;
     for (const f of chamas) f.position.z = kt.escapamento.z;
@@ -60,7 +61,8 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   return k;
 }
 // pitch: o bico sobe na subida e desce na descida (o relevo vem de quem chama); lean/roll: inclina para o lado.
-// fx: { turbo, estrela, rodando, derrapa } — a chama, o arco-íris da estrela, o giro de quem foi atingido e as faíscas.
+// fx: { turbo, estrela, rodando, derrapa, pequeno, bala } — a chama, o arco-íris da estrela, o giro de quem foi atingido,
+// as faíscas, o carro encolhido pelo raio e a bala no lugar do carro.
 const _cor = new THREE.Color();
 export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 0, fx = {}) {
   const suave = 1 - Math.exp(-dt * 12);
@@ -82,10 +84,16 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
   if (fx.estrela) { _cor.setHSL((performance.now() / 300) % 1, 1, 0.5); tinta.emissive.copy(_cor); tinta.emissiveIntensity = 0.9; }
   else if (tinta.emissiveIntensity) tinta.emissiveIntensity = 0;
   // faíscas atrás das rodas: azul na derrapagem, dourado com a estrela
+  // encolhido pelo raio: o carro (sem o nome em cima) fica pequeno e volta crescendo
+  k.esc = (k.esc ?? 1) + ((fx.pequeno ? 0.55 : 1) - (k.esc ?? 1)) * Math.min(1, dt * 6);
+  k.body.scale.setScalar(k.esc);
+  // de bala: o carro some dentro dela (do tamanho do carro, com a ponta para a frente)
+  if (fx.bala && !k.bala) { k.bala = modeloItem("bala"); k.bala.scale.setScalar(k.L * 1.1 / 1.35); k.body.add(k.bala); }
+  if (k.bala) { k.bala.visible = !!fx.bala; k.kt.g.visible = !fx.bala; }
   k.faisca -= dt;
-  if ((fx.derrapa || fx.estrela) && k.faisca <= 0 && v > 60) {
+  if ((fx.derrapa || fx.estrela || fx.bala) && k.faisca <= 0 && v > 60) {
     k.faisca = 0.05; const fx0 = Math.cos(a), fy0 = Math.sin(a);
-    for (const s of [-1, 1]) faiscas(x - fx0 * 16 - fy0 * s * 9, z + 2, y - fy0 * 16 + fx0 * s * 9, fx.estrela ? "#ffd84a" : fx.derrapa > 1 ? "#ff9a20" : "#6cc8ff", 2, 22);
+    for (const s of [-1, 1]) faiscas(x - fx0 * 16 - fy0 * s * 9, z + 2, y - fy0 * 16 + fx0 * s * 9, fx.bala ? "#ff7a1a" : fx.estrela ? "#ffd84a" : fx.derrapa > 1 ? "#ff9a20" : "#6cc8ff", 2, 22);
   }
 }
 export function dropKart(k) {

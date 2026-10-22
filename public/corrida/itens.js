@@ -1,5 +1,5 @@
 // Caixas e perigos da corrida. O estado real vem da sala; estas malhas só representam os eventos.
-// Os modelos 3D (a caixa de vidro com o "?" e os seis poderes) ficam em modelos.js.
+// Os modelos 3D (a caixa de vidro com o "?" e os poderes) ficam em modelos.js; as regras de cada um, em corrida-itens.js.
 import * as THREE from "three";
 import { E, socket, sNow, $, me } from "./estado.js";
 import { scene } from "./cena.js";
@@ -7,7 +7,9 @@ import { Sound } from "./sons.js";
 import { caixaItem, animarCaixa, modeloItem, animarItem, iconeItem } from "./modelos.js";
 import { estourar, explodir, pow } from "./efeitos.js";
 
-const NOME = { banana: "Banana", verde: "Casco verde", vermelho: "Casco vermelho", cogumelo: "Cogumelo", estrela: "Estrela", bomba: "Bomba" };
+const NOME = { banana: "Banana", verde: "Casco verde", vermelho: "Casco vermelho", cogumelo: "Cogumelo", estrela: "Estrela", bomba: "Bomba",
+  azul: "Casco azul", raio: "Raio", triplo: "Cogumelo triplo", lula: "Lula", bala: "Bala" };
+export const BALA_MS = 3500; // o mesmo de corrida-itens.js
 const TIPOS = Object.keys(NOME);
 const ESCALA_CAIXA = 17, ESCALA_ITEM = 15;
 let group = null, boxes = [], hazards = new Map(), nextHazards = [], asked = [], pops = [];
@@ -77,13 +79,28 @@ export function onBox(e) {
   estourar(b.x, b.h + 18, b.y, ["#ff5f9e", "#ffd84a", "#5fff8f", "#5fc8ff", "#c45fff", "#ffffff"], 26, 70, 0.7, 110, 2.6);
 }
 export function onUse(e, race) {
-  if (e.type === "cogumelo" || e.type === "estrela") { // o poder aparece por cima de quem usou
-    const m = modeloItem(e.type); m.scale.setScalar(0.01); m.position.set(e.x, (e.z || 0) + 20, e.y); scene.add(m); pops.push({ m, t: 0, y0: e.z || 0 });
+  if (["cogumelo", "triplo", "estrela", "raio", "lula", "bala"].includes(e.type)) { // o poder aparece por cima de quem usou
+    const m = modeloItem(e.type === "triplo" ? "cogumelo" : e.type); m.scale.setScalar(0.01); m.position.set(e.x, (e.z || 0) + 20, e.y); scene.add(m); pops.push({ m, t: 0, y0: e.z || 0 });
   }
-  if (!race || e.id !== E.ME?.id) return;
-  if (e.type === "cogumelo") { race.boostUntil = sNow() + window.Pistas.TURBO_MS; Sound.sling(); }
+  const eu = E.ME?.id;
+  if (e.type === "raio") { // o clarão é na tela de todo mundo; quem foi atingido roda e encolhe (o estado da sala chega logo depois)
+    piscar("hRaio"); Sound.crash(220);
+    if (race && e.alvos?.includes(eu)) { race.spinUntil = sNow() + 800; race.car.v *= 0.6; race.car.vx *= 0.6; race.car.vy *= 0.6; }
+  }
+  if (e.type === "lula" && race && e.alvos?.includes(eu)) { espirrarTinta(); Sound.pop(); }
+  if (!race || e.id !== eu) return;
+  if (e.type === "cogumelo" || e.type === "triplo") { race.boostUntil = sNow() + window.Pistas.TURBO_MS; Sound.sling(); }
+  else if (e.type === "bala") { race.balaUntil = sNow() + BALA_MS; Sound.sling(); }
   else if (e.type === "estrela") Sound.lap();
-  else Sound.pop();
+  else if (e.type !== "raio") Sound.pop();
+}
+// o clarão do raio: a tela fica branca e volta
+function piscar(id) { const el = $(id); if (!el) return; el.classList.remove("on"); void el.offsetWidth; el.classList.add("on"); }
+// a tinta da lula: manchas pretas em lugares sorteados da tela, que escorrem e somem sozinhas (CSS)
+function espirrarTinta() {
+  const el = $("hTinta"); if (!el) return;
+  el.innerHTML = Array.from({ length: 7 }, () => { const s = 18 + Math.random() * 22; return `<i style="left:${Math.random() * 80 + 5}%;top:${Math.random() * 60 + 10}%;width:${s}vmin;height:${s * (0.8 + Math.random() * 0.4)}vmin;transform:rotate(${Math.random() * 360}deg)"></i>`; }).join("");
+  piscar("hTinta");
 }
 export function onHit(e, race) {
   estourar(e.x, (e.z || 0) + 10, e.y, ["#ffd84a", "#ffffff", "#ff8a00"], 24, 70, 0.7, 90, 2);
@@ -93,7 +110,7 @@ export function onHit(e, race) {
   race.spinUntil = sNow() + 1100; race.shake = 0.25;
   race.car.v *= 0.42; race.car.vx *= 0.42; race.car.vy *= 0.42; Sound.crash(130);
 }
-export function onBoom(e) { explodir(e.x, e.h || 0, e.y, 105); }
+export function onBoom(e) { explodir(e.x, e.h || 0, e.y, e.type === "azul" ? 75 : 105); if (e.type === "azul") estourar(e.x, (e.h || 0) + 10, e.y, ["#2a5cff", "#8fb0ff", "#ffffff"], 34, 90, 0.8, 120, 2.4); }
 export function useItem(back = false) {
   const p = me(); if (!p || !p.item || p.rolling > sNow()) return;
   socket.emit("item:use", { back });
@@ -105,10 +122,10 @@ export function drawItemHud() {
   const enabled = !!E.S?.config.caixas && !!p; el.classList.toggle("hidden", !enabled);
   if (!enabled) return;
   const girando = p.item && p.rolling > sNow(), tipo = !p.item ? "caixa" : girando ? TIPOS[Math.floor(performance.now() / 80) % TIPOS.length] : p.item;
-  const chave = tipo + (girando ? "?" : p.item ? "!" : "");
+  const chave = tipo + (girando ? "?" : p.item ? "!" + (p.cargas || "") : "");
   if (chave !== ultimo) {
     ultimo = chave;
-    el.innerHTML = `<img src="${iconeItem(tipo)}" alt="" width="52" height="52">${p.item && !girando ? `<span>${NOME[p.item]}<small>ESPAÇO</small></span>` : ""}`;
+    el.innerHTML = `<img src="${iconeItem(tipo)}" alt="" width="52" height="52">${p.item && !girando ? `<span>${NOME[p.item]}${p.item === "triplo" && p.cargas ? ` ×${p.cargas}` : ""}<small>ESPAÇO</small></span>` : ""}`;
     el.setAttribute("aria-label", p.item && !girando ? `Usar ${NOME[p.item]}` : "Sem item");
   }
   el.disabled = !p.item || girando;
