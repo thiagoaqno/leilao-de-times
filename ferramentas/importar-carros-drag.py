@@ -1,6 +1,6 @@
 """Empacota os ZIPs (ou GLB soltos) fornecidos pelo usuário em GLB autocontidos.
 
-Uso: python tools/importar-carros-drag.py C:/caminho/dos/zips
+Uso: python ferramentas/importar-carros-drag.py C:/caminho/dos/zips
 Importa só os carros que estiverem na pasta. Não extrai caminhos do ZIP no disco; lê apenas os recursos referidos
 pelo glTF. Sem license.txt, a licença sai dos dados do próprio GLB (asset.extras, como o Sketchfab exporta).
 

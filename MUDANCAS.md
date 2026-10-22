@@ -1,27 +1,37 @@
-# O servidor não cai mais com um pacote quebrado
+# Limpeza: o que não roda mais sai do projeto
 
-## O problema
+Segundo passo da refatoração. Nada muda na tela: sai só o que nenhuma página, rota ou jogo usava.
 
-Um único `emit("create", null)`, que qualquer visitante pode mandar pelo console do navegador, derrubava o servidor
-inteiro, com as salas de todos os jogos. Os handlers usam `(data = {}, cb)`, e o valor padrão só vale para
-`undefined`: com `null`, `data.code` dá erro. Um `cb` que não é função quebrava o `ok`/`falha`. Como o Socket.io chama
-os handlers fora de qualquer try, o processo caía.
+## O que sai
 
-## O que muda
+- **Rumo ao Estrelato (o Modo Jogador):** o `server.js` não liga esse canal desde que o Road to Champions ocupou o
+  `/jogador/`. Saem:
+  - `jogador.js`, `jogador-historia.js` e `jogador-mercado.js`;
+  - a página antiga (`public/jogador/jogador.js` e `jogador.css`);
+  - o bloco do fim do `carreira.js` que só servia a ele (`jogarProximoDoJogador` e `module.exports.jogador`);
+  - o teste `tests/jogador.test.js`.
 
-- **`protegerCanais(io)`** (`salas.js`), chamado no `server.js` logo depois de criar o `io`, antes dos jogos. Cada
-  `socket.on` de todos os canais (os jogos, a Carreira, a Vila, o Leilão no canal padrão) passa a rodar dentro de um
-  try, e o erro de um handler async também é pego. O erro vai para o log com o canal e o evento, e quem pediu com
-  callback recebe `{ ok: false, error: "Pedido inválido." }`. Nenhum jogo precisou mudar.
-- **`ok` e `falha`** só chamam o callback se ele for uma função.
-- **`tests/ajuda.js`:** `parar()` não fica mais esperando para sempre quando o servidor já caiu. Antes, isso
-  escondia o erro de verdade do teste.
+  As carreiras desse modo que já estão no banco continuam lá. O painel de moderação ainda as mostra como "Rumo ao
+  Estrelato", e a estante guarda os títulos delas.
+- **`index.antigo.html`:** a página antiga do Leilão, que ficava fora da `public`. Ela continua no histórico do Git
+  (`PROJETO.md` e `.dockerignore` acertados).
+- **A música da "Vila 3D":** um MP3 de 14 MB em `public/vila3d/`, a rota `/api/musicas-vila3d` e o teste dela. Não
+  existe página da Vila 3D.
+- **`/pelada/campo.js` na Corrida:** a página carregava 900 linhas que nenhum script dela usa.
+
+## O que muda de lugar
+
+- **`tools/` entrou em `ferramentas/`:** eram duas pastas para a mesma coisa, os scripts que rodam fora do site
+  (`baixar-escudos`, `baixar-escudos-locais`, `baixar-estadios`, `baixar-trofeus` e `importar-carros-drag.py`). Os
+  comentários "gerado por" e o `CLAUDE.md` apontam para o lugar novo.
+- **`trofeus-carreira.js`** foi para `ferramentas/`: só a ferramenta dos troféus e o teste dela usam.
+
+## O que ficou
+
+- **A tabela `rtc_campanhas`** (as campanhas do Road to Champions) continua no banco. Apagar dados do banco de
+  produção precisa de uma liberação à parte.
 
 ## Testes
 
-- **Novo, `tests/entrada-invalida.test.js`:** lê no código os canais (`io.of("/canal")`) e os eventos de cada um
-  (`socket.on("evento")`), manda nove tipos de lixo para todos (mais de 500 eventos) e confere que o servidor continua
-  atendendo.
-  - Antes da correção, falha: o lixo mandado ao Leilão derruba o servidor.
-  - Depois, passa.
-- `npm test` inteiro, com o teste novo na lista.
+- `musica`, `carreira-trofeus-api`, `carreira-servidor` e `salas`: passando.
+- No navegador, `paginas.spec.js` abre `/corrida/` sem erro sem o `campo.js`. Nenhum script da Corrida usa `Campo`.

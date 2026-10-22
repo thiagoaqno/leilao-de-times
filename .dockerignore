@@ -3,7 +3,6 @@ dados
 .git
 .github
 *.md
-index.antigo.html
 fly.toml
 Dockerfile
 .dockerignore

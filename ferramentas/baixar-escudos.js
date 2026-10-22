@@ -1,7 +1,7 @@
 // Ferramenta antiga para atualizar os endereços de origem. Depois de usá-la, rode
-// tools/baixar-escudos-locais.js --refresh para salvar os PNGs no Git e validar o manifesto.
+// ferramentas/baixar-escudos-locais.js --refresh para salvar os PNGs no Git e validar o manifesto.
 // Baixa o endereço do escudo de cada clube da carreira na API TheSportsDB (chave gratuita de teste) e grava em
-// public/carreira/escudos-api.json e escudos-api.js ({ idDoClube: { url, nome } }; a página carrega o .js). Roda uma vez (node tools/baixar-escudos.js): a página usa o
+// public/carreira/escudos-api.json e escudos-api.js ({ idDoClube: { url, nome } }; a página carrega o .js). Roda uma vez (node ferramentas/baixar-escudos.js): a página usa o
 // arquivo, sem chamar a API a cada abertura, e cai no escudo desenhado (escudos.js) quando o clube não está no arquivo ou a imagem não carrega.
 // A chave gratuita aceita ~30 pedidos por minuto, então o script espera entre um clube e outro e guarda o que já achou (dá para rodar de novo).
 const fs = require("fs");
@@ -10,7 +10,7 @@ const BASE = path.join(__dirname, "..", "public", "carreira", "base");
 const SAIDA = path.join(__dirname, "..", "public", "carreira", "escudos-api.json"), SAIDA_JS = SAIDA.replace(".json", ".js");
 const gravar = (obj) => {
   fs.writeFileSync(SAIDA, JSON.stringify(obj, null, 1));
-  fs.writeFileSync(SAIDA_JS, `// gerado por tools/baixar-escudos.js (escudos da TheSportsDB)\nwindow.ESCUDOS_API = ${JSON.stringify(obj)};\n`);
+  fs.writeFileSync(SAIDA_JS, `// gerado por ferramentas/baixar-escudos.js (escudos da TheSportsDB)\nwindow.ESCUDOS_API = ${JSON.stringify(obj)};\n`);
 };
 const CHAVE = process.env.THESPORTSDB_KEY || "123";
 const PAISES = { "brasileirao-2026": "Brazil", "inglaterra-2026": "England", "espanha-2026": "Spain", "italia-2026": "Italy", "alemanha-2026": "Germany", "franca-2026": "France", "argentina-2026": "Argentina" };
