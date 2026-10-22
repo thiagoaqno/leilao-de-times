@@ -8,7 +8,9 @@
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   let lastFxSeq = 0, liveFx = [];
   const chutes = new Map(); // id -> quando chutou (para o anel em volta do disco)
-  $("name").value = localStorage.getItem("haxball:nome") || "";
+  // o nome da galera (galera:name, em JSON como o store do comum.js; a Noite lê dele) ou o antigo do Haxball
+  const nomeDaGalera = () => { try { return JSON.parse(localStorage.getItem("galera:name")) || ""; } catch { return ""; } };
+  $("name").value = nomeDaGalera() || localStorage.getItem("haxball:nome") || "";
   $("code").value = (params.get("sala") || "").toUpperCase().slice(0, 5);
   const say = (id, message) => { $(id).textContent = message || ""; };
   function request(event, data, done) {
@@ -24,7 +26,7 @@
     history.replaceState(null, "", "/haxball/?sala=" + encodeURIComponent(r.code));
     if (room?.code === r.code) renderRoom();
   }
-  function saveName() { const name = $("name").value.trim(); if (name) localStorage.setItem("haxball:nome", name); return name; }
+  function saveName() { const name = $("name").value.trim(); if (name) { localStorage.setItem("haxball:nome", name); localStorage.setItem("galera:name", JSON.stringify(name)); } return name; }
   $("create").onclick = () => { const name = saveName(); request("create", { name, config: { size: $("size").value, minutes: $("minutes").value, goals: $("goals").value } }, remember); };
   // treino: cria a sala, completa os dois times com robôs e começa (o tamanho e o tempo vêm do formulário)
   $("treino").onclick = () => { const name = saveName(); request("create", { name, config: { size: $("size").value, minutes: $("minutes").value, goals: $("goals").value } }, (r) => { remember(r); request("act", { type: "completar" }, () => request("act", { type: "start" })); }); };
