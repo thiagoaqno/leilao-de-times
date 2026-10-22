@@ -1960,24 +1960,3 @@ module.exports.paraTestes = { Copa, cx, prepararCopa, selecaoAcao, recalcularMun
 module.exports.grupo = { Copa, humanoDoTime, prazosDaCopa, selecaoAcao, rodadaDaSemana, estanteDaSala, Clube, VERSAO, erroDeTroca, executarTroca, paralelosDaSemana, golsDoMundo, entrarNaCarreira, regraDeCompras, erroDeCompra, novaCarreiraGrupo, vistaDe, guardarVista, estado, limparEscalacao, completar, clubesEscolhiveis,
   proximaRodadaGrupo, simularJogoGrupo, fecharJogoGrupo, jogarNaHora, comecarRodadaGrupo, fecharRodadaGrupo, novaTemporadaGrupo,
   fichaDoTime, infoLeilao, erroDoLance, passoDoLance, concluirLeilao, olheiro, propor, vender, valorAtual, limparDecisao, resolverPendentes, venderAcao, eventoAcao, jogadorDe, donoDe, elencoDe, tetoVenda, Mercado, Eventos, ajudas, temporadaAcabou, Motor, clubeDe: (id) => BASES[BASE_PADRAO].clubes.find((c) => c.id === id), Orcamentos, VERSAO, CAMPOS_CLUBE, BASE_PADRAO };
-
-// ---------- para o modo jogador (jogador.js) ----------
-// Só acrescenta: nada da carreira de treinador muda por causa dele. É o mesmo mundo, calendário e motor, com um jogador no clube.
-function jogarProximoDoJogador(save, d = {}) {
-  if (save.demitido) return "Você foi demitido: a carreira acabou.";
-  if (save.partida) return null;
-  if (save.base === BASE_PADRAO) {
-    const jogo = proximoJogoMundo(save); if (!jogo) return "A temporada acabou.";
-    resolverPendentes(save);
-    save.partida = { rodada: save.rodada, jogoId: jogo.id, competicao: jogo.competicao, fase: jogo.fase, mataMata: jogo.mataMata, agregado: agregadoDe(save, jogo), casa: jogo.casa, fora: jogo.fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, jogo.semana, jogo.casa, jogo.fora), decisoes: {} };
-    const r = simularMinha(save); if (r.completo) fecharRodada(save, r); return null;
-  }
-  if (save.rodada >= save.calendario.length) return "A temporada acabou.";
-  resolverPendentes(save);
-  const [casa, fora] = Temporada.jogoDoClube(save.calendario, save.rodada, save.clube);
-  save.partida = { rodada: save.rodada, casa, fora, modo: inteiro(d.modo ?? save.modo, 1, 3, 1), semente: sementeDoJogo(save, save.rodada, casa, fora), decisoes: {} };
-  const r = simularMinha(save);
-  if (r.completo) fecharRodada(save, r);
-  return null;
-}
-module.exports.jogador = { clubesDaLiga, recalcularMundo, salarioDe, golsDoMundo, clubeDeLiga: ligaDoClube, Clube, caixaInicial, novaCarreira, completar, jogarProximo: jogarProximoDoJogador, novaTemporada, proximoJogoMundo, temporadaAcabou, clubeDe, jogadorDe, notaDe, elencoDe, titularesDe, estadoMundo, registrarTemporada, VERSAO, antiga, ANTIGA, ligaDoClube, Evolucao, Motor, BASES, BASE_PADRAO };

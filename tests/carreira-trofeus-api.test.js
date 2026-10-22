@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { LIGAS, urlDeTrofeu, buscarTrofeu } = require('../trofeus-carreira');
+const { LIGAS, urlDeTrofeu, buscarTrofeu } = require('../ferramentas/trofeus-carreira');
 
 test('as competições da carreira apontam para ligas da TheSportsDB', () => {
   assert.equal(LIGAS['brasileirao-2026'], 4351);
