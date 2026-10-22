@@ -174,6 +174,8 @@ test("dilemas: cada resposta muda o jogo e a conta chega depois, como aviso", ()
   // a diretoria tranquila: a temporada anterior é sorteada e às vezes termina em demissão, ou deixa a confiança baixa e os
   // 8 empates abaixo davam ultimato e demissão; demitido, aposJogo para de contar e a conta do patrocínio nunca chega
   v.demitido = null; v.gestao.confianca = 60; v.gestao.ultimato = null;
+  // e sem conta pendurada da temporada sorteada: um dilema dela às vezes ainda tinha consequência agendada
+  v.gestao.depois = [];
   const e = dilema(v, "patrocinio-polemico"); assert.ok(e && e.opcoes.length === 2 && !e.resolvido);
   v.caixaEntrada.unshift(e);
   const caixa = v.caixa, texto = Clube.responder(v, ajudas, e, "aceitar");
