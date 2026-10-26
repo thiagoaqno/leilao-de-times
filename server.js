@@ -23,7 +23,7 @@ require("./bloqueio.js")(io); // Bloqueio: corrida de peões com paredes (Quorid
 require("./domino.js")(io); // Dominó da Galera: dominó de dupla, canal /domino
 require("./ludo.js")(io); // Ludo da Galera: ludo de 2 a 4 jogadores, canal /ludo
 require("./botao.js")(io); // Futebol de Botão da Galera: x1, duplas ou rei do campo, canal /botao
-require("./corrida.js")(io); // Corrida da Galera: kart com fantasmas em Mônaco, Interlagos e Tóquio, canal /corrida
+const corrida = require("./corrida.js")(io); // Corrida da Galera: kart com fantasmas em Mônaco, Interlagos e Tóquio, canal /corrida
 const ginasio = require("./ginasio.js")(io); // Ginasio: Galeramon e Pokemon em tempo real, canal /ginasio
 require("./lobby.js").attach(io); // lista de salas abertas de todos os jogos, canal /lobby
 require("./vila.js")(io, ginasio); // Vila da Galera: o lobby em mapinha, canal /vila
@@ -33,6 +33,7 @@ require("./batalha.js")(io); // Batalha da Galera: batalha de balões de kart es
 const Ritmo = require("./public/leilao/ritmo.js"); // quanto dura cada parte do campeonato ao vivo
 // o banco de dados (bd.js: SQLite, carreiras de treinador). Se não abrir, o resto do site segue funcionando.
 try { require("./bd.js").abrir(); } catch (e) { console.warn("Banco de dados não abriu:", e.message); }
+require("./corrida-temporada.js")(io, corrida); // temporada solo de Fórmula 1, canal /corrida-temporada
 require("./fotos-jogadores.js").attach(app);
 require("./carreira.js")(io); // Carreira de Treinador: a temporada contra o computador, salva no banco, canal /carreira
 const carreiraOnline = require("./carreira-online.js")(io); // Carreira em grupo: a sala com código, cada amigo num clube do mesmo mundo, canal /carreira-online
