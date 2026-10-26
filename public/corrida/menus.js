@@ -37,7 +37,7 @@ $("hubAnt").onclick = () => { const ks = Object.keys(ABAS); abrir(ks[(ks.indexOf
 $("hubProx").onclick = () => { const ks = Object.keys(ABAS); abrir(ks[(ks.indexOf(aba) + 1) % ks.length]); };
 
 export function renderLobby() {
-  const m = me(), isHost = m && E.S.host === m.id, c = E.S.config, t = PISTAS[c.pista], dis = isHost ? "" : "disabled";
+  const m = me(), isHost = m && E.S.host === m.id, c = E.S.config, t = PISTAS[c.pista], dis = isHost ? "" : "disabled", f1 = c.regras === "f1";
   const robos = Math.min(c.robos || 0, 8 - E.S.players.length);
   // cabeçalho: o carro (foto 3D) e o piloto
   if (m) { const k = carOf(m); $("hubCarNome").textContent = k.name; $("hubClasse").textContent = k.inspo || ""; carPreview($("hubCarro"), m.color, m.car, m.mods); }
@@ -49,7 +49,7 @@ export function renderLobby() {
   if (m) { carPreview($("tileCarro"), m.color, m.car, m.mods); $("tileCarroTxt").textContent = carOf(m).name; }
   drawPreview($("tileMapa"), c.pista);
   $("tileMapaTxt").textContent = t.name; $("tileMapaSub").textContent = t.sub;
-  $("tileRegrasTxt").innerHTML = `${c.voltas} volta${c.voltas > 1 ? "s" : ""} · ${c.hora === "noite" ? "noite" : "dia"} · câmbio ${c.cambio === "manual" ? "manual" : "automático"}<br>${c.caixas ? "caixas ligadas" : "sem caixas"}<br>${robos ? `${robos} robô${robos > 1 ? "s" : ""} (${NIVEL[c.nivel] || "médio"})` : "sem robôs"}`;
+  $("tileRegrasTxt").innerHTML = `${c.voltas} volta${c.voltas > 1 ? "s" : ""} · ${c.hora === "noite" ? "noite" : "dia"} · câmbio ${c.cambio === "manual" ? "manual" : "automático"}<br>${f1 ? "regras de F1 · pneus" : c.caixas ? "caixas ligadas" : "sem caixas"}<br>${robos ? `${robos} robô${robos > 1 ? "s" : ""} (${NIVEL[c.nivel] || "médio"})` : "sem robôs"}`;
   $("tilePilotoTxt").innerHTML = m ? `<span class="faixas"><i style="background:${pint.c || m.color}"></i><i style="background:${pint.c2}"></i></span>${h(pint.name)}` : "";
   $("tLargarTit").textContent = isHost ? "Largar" : "No grid";
   $("tLargarTxt").textContent = isHost ? `${t.name} · ${c.voltas} volta${c.voltas > 1 ? "s" : ""}` : "Esperando o organizador dar a largada";
@@ -66,13 +66,17 @@ export function renderLobby() {
   // painel das regras
   $("cfg").innerHTML = `<div class="field"><label>Horário da pista</label><div class="seg"><button data-hora="dia" class="${c.hora !== "noite" ? "on" : ""}" ${dis}>☀️ Dia</button><button data-hora="noite" class="${c.hora === "noite" ? "on" : ""}" ${dis}>🌙 Noite</button></div><small>Disponível em todas as pistas.</small></div><div class="field"><label>Voltas</label><div class="seg">${[1, 2, 3, 5].map((v) => `<button data-v="${v}" class="${c.voltas === v ? "on" : ""}" ${dis}>${v}</button>`).join("")}</div></div>
     <div class="field"><label>Câmbio</label><div class="seg">${[["auto", "Automático"], ["manual", "Manual"]].map(([v, l]) => `<button data-cambio="${v}" class="${(c.cambio || "auto") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div><small>Manual para todo mundo: Shift sobe a marcha, Ctrl direito reduz (no celular, os botões + e −). Os robôs continuam no automático.</small></div>
-    <div class="field"><label>Caixas de itens</label><div class="seg"><button data-opt="caixas" class="${c.caixas ? "on" : ""}" ${dis}>${c.caixas ? "🎁 Ligadas" : "Desligadas"}</button></div><small>Banana, cascos, cogumelo, estrela e bomba espalhados pela pista.</small></div>
+    <div class="field"><label>Regras</label><div class="seg">${[["galera", "Corrida da Galera"], ["f1", "Fórmula 1"]].map(([v, l]) => `<button data-regras="${v}" class="${(c.regras || "galera") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div><small>Fórmula 1: os pneus gastam e esfriam (macio, médio e duro), sem caixas e sem a ajuda do pelotão. Os robôs usam os mesmos pneus.</small></div>
+    ${f1 && m ? `<div class="field"><label>Seu pneu na largada</label><div class="seg">${Object.entries(window.F1Regras.PNEUS).map(([v, p]) => `<button data-pneu="${v}" class="${(m.pneu || "medio") === v ? "on" : ""}"><i class="bola-pneu" style="--c:${p.cor}"></i>${p.nome}</button>`).join("")}</div><small>O macio é o mais rápido e o que gasta antes; o duro aguenta a corrida inteira, mas segura menos. Pneu gasto escorrega nas curvas e, perto do fim, despenca.</small></div>` : ""}
+    ${f1 ? "" : `<div class="field"><label>Caixas de itens</label><div class="seg"><button data-opt="caixas" class="${c.caixas ? "on" : ""}" ${dis}>${c.caixas ? "🎁 Ligadas" : "Desligadas"}</button></div><small>Banana, cascos, cogumelo, estrela e bomba espalhados pela pista.</small></div>`}
     <div class="field"><label>Robôs</label><div class="seg">${[0, 1, 3, 5, 7].map((v) => `<button data-robos="${v}" class="${(c.robos || 0) === v ? "on" : ""}" ${dis}>${v ? v : "Sem"}</button>`).join("")}</div>
       ${c.robos ? `<div class="seg" style="margin-top:6px">${[["facil", "Fácil"], ["medio", "Médio"], ["dificil", "Difícil"]].map(([v, l]) => `<button data-nivel="${v}" class="${(c.nivel || "medio") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div>` : ""}<small>Pilotos do computador entram no grid (até completar 8 carros), seguem o traçado de corrida, pegam caixas e usam itens.</small></div>
-    <div class="field"><label>Equilíbrio</label><div class="seg"><button data-opt="equilibrio" class="${c.equilibrio !== false ? "on" : ""}" ${dis}>${c.equilibrio !== false ? "Ligado" : "Desligado"}</button></div><small>Pequena ajuda de velocidade para quem ficou longe do pelotão.</small></div>${isHost ? "" : `<p class="hint">Só o organizador muda as regras.</p>`}`;
+    ${f1 ? "" : `<div class="field"><label>Equilíbrio</label><div class="seg"><button data-opt="equilibrio" class="${c.equilibrio !== false ? "on" : ""}" ${dis}>${c.equilibrio !== false ? "Ligado" : "Desligado"}</button></div><small>Pequena ajuda de velocidade para quem ficou longe do pelotão.</small></div>`}${isHost ? "" : `<p class="hint">Só o organizador muda as regras.</p>`}`;
   $("cfg").querySelectorAll("[data-v]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, voltas: +b.dataset.v } })));
   $("cfg").querySelectorAll("[data-hora]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, hora: b.dataset.hora } })));
   $("cfg").querySelectorAll("[data-cambio]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, cambio: b.dataset.cambio } })));
+  $("cfg").querySelectorAll("[data-regras]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, regras: b.dataset.regras } })));
+  $("cfg").querySelectorAll("[data-pneu]").forEach((b) => (b.onclick = () => act("pneu", { pneu: b.dataset.pneu })));
   $("cfg").querySelectorAll("[data-robos]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, robos: +b.dataset.robos } })));
   $("cfg").querySelectorAll("[data-nivel]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, nivel: b.dataset.nivel } })));
   $("cfg").querySelectorAll("[data-opt]").forEach((b) => (b.onclick = () => act("config", { config: { ...E.S.config, [b.dataset.opt]: !E.S.config[b.dataset.opt] } })));
@@ -124,6 +128,7 @@ $("btnRules").onclick = () => {
   <li><b>Vácuo:</b> logo atrás de outro carro, na mesma linha, o seu anda mais (a barra de vácuo aparece embaixo). Ficou mais de 1 segundo no vácuo e saiu de trás para ultrapassar? Ganha o <b>estilingue</b>, um empurrão curto.</li>
   <li><b>Caixas opcionais:</b> bananas, cascos verde e vermelho, cogumelo, estrela e bomba da Batalha. O organizador liga as caixas na sala.</li>
   <li><b>Equilíbrio:</b> quem estiver muito atrás recebe um pequeno ganho de aceleração e velocidade. A ajuda diminui perto da chegada.</li>
+  <li><b>Regras de F1</b> (se o organizador ligar nas Regras): os pneus gastam pela corrida e esfriam na largada. O anel do pneu, ao lado do velocímetro, esvazia com o desgaste e fica vermelho no fim; com o pneu frio, o miolo fica azul. Escolha o composto da largada nas Regras.</li>
   <li><b>Fantasma do recorde:</b> a sua volta mais rápida em cada pista fica salva neste aparelho. Nas próximas corridas, um carro dourado refaz essa volta com você, e o placar mostra quantos segundos você está na frente (verde) ou atrás (vermelho).</li>
   <li><b>Relevo:</b> subida freia, descida embala, e numa lombada rápida o carro voa. No ar ele não acelera nem vira direito, então chegue alinhado.</li>
   <li><b>Freie antes da curva.</b> O pneu só segura até certo ponto: entrou rápido demais, o carro escorrega para fora (sai fumaça e o pneu canta) e perde velocidade. Fora do asfalto ele fica lento; em Mônaco e em Tóquio tem muro.</li>
