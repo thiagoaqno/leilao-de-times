@@ -51,8 +51,8 @@ export const GP_BARCELONA = {
     zebra: { cores: ["#d62828", "#f4f4f4"], dentro: 340, fora: 220 },
     sc: [[0.93, "SC 1"], [0.12, "SC 2"]],
     grid: true, remendos: 26,
-    brita: { cor: "#e3d9bb", largura: 24 }, // a brita do lado de fora das curvas
   },
+  escape: { britaCurvas: 450, corBrita: "#e3d9bb", largura: 24 }, // a brita do lado de fora das curvas
   arquibancadas: { trechos: [
     { de: 0.004, ate: 0.108, lado: -1, degraus: 7, cor: "#c8102e", encosto: "#f1b82d" }, // a tribuna da reta dos boxes, vermelha e amarela
     { de: 0.142, ate: 0.185, lado: -1, degraus: 6, cor: "#1f5fbf", encosto: "#5aa0f0" }, // por fora da curva 1
