@@ -31,6 +31,7 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
   function lugar(i, lado, lat = L + 1, raio = 2) {
     if (naRampa(i, lado)) return null;
     const p = pts[(i + n) % n], x = p.x + p.nx * lado * lat, z = p.y + p.ny * lado * lat;
+    if (tr.noCorredor?.(x, z)) return null;
     // Distância exata ao traçado, inclusive ao trecho vizinho no grampo.
     if (pts.some(q => Math.hypot(q.x - x, q.y - z) < W / 2 + raio)) return null;
     return { p, x, z, h: p.h, ry: Math.atan2(-p.nx * lado, -p.ny * lado) };

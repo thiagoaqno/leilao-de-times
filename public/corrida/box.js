@@ -49,8 +49,8 @@ export function muretaDoBox(tr, idx, lat) {
   return over > 0 && over < 10 ? { over, lado: cor.lado } : null;
 }
 // o ponto (x, y) e o rumo do carro no corredor, no ponto u (em pontos da pista), saindo do lado lat0
-function ponto(tr, cor, u, lat0) {
-  const n = tr.n, i = cor.i0 + Math.floor(u), f = u - Math.floor(u), a = tr.pts[i % n], b = tr.pts[(i + 1) % n], lat = cor.lat(u, lat0);
+function ponto(tr, cor, u, lat0, garagem) {
+  const n = tr.n, i = cor.i0 + Math.floor(u), f = u - Math.floor(u), a = tr.pts[i % n], b = tr.pts[(i + 1) % n], lat = cor.latParada(u, garagem, lat0);
   return { x: a.x + (b.x - a.x) * f + (a.nx + (b.nx - a.nx) * f) * lat, y: a.y + (b.y - a.y) * f + (a.ny + (b.ny - a.ny) * f) * lat };
 }
 // um passo do carro no corredor; true enquanto o carro está nele (a física normal fica de fora)
@@ -78,7 +78,7 @@ export function passoBox(dt, spec) {
   } else {
     vai(vlim, spec.acc); B.u = Math.min(cor.len, B.u + (c.v * dt) / 6);
   }
-  const fim = B.u >= cor.len, p = ponto(tr, cor, B.u, B.lat0), q = ponto(tr, cor, Math.min(cor.len, B.u + 0.4), B.lat0);
+  const fim = B.u >= cor.len, p = ponto(tr, cor, B.u, B.lat0, B.garagem), q = ponto(tr, cor, Math.min(cor.len, B.u + 0.4), B.lat0, B.garagem);
   // Na saída, q e p são o mesmo ponto: atan2(0, 0) apontava sempre para leste.
   // O rumo da pista também evita que a rampa lateral dite o ângulo ao soltar o carro.
   const saida = fim ? F1().saidaDoCorredor(cor, tr.pts) : null;
