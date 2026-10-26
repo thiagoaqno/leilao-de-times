@@ -3,20 +3,26 @@ import * as THREE from "three";
 import { PISTAS, sample, elevate, WORLD, rng } from "./estado.js";
 import { drawPreview } from "./menus.js";
 import { renderer, scene, hemi, sun, canvasTex, M, LOOK } from "./cena.js";
-import { ambienteInterlagos } from "./interlagos.js";
 import { asfaltoGP, borrachaGP } from "./asfalto-gp.js";
-import { ambienteMonaco } from "./monaco-ambiente.js";
 import { PROPS, aoCarregar } from "./props.js";
 import { enfeitar } from "./vida.js";
 import { aplicarCeu } from "./ceu.js";
-import { aguaMonaco, fundoMonaco, orlaMonaco, alturaRocha, cenarioMonaco } from "./monaco.js";
-import { chaoMonaco, guardRailMonaco, fachadasMonaco, marcosMonaco, montanhaMonaco } from "./monaco-detalhes.js";
-import { vidaMonaco } from "./monaco-vida.js";
+import { aguaMonaco, fundoMonaco, orlaMonaco, alturaRocha } from "./monaco.js";
+// o kit de pista (kit/README.md) e a configuração de cada GP (gps/)
+import { GPS } from "./gps/index.js";
+import { arquibancadas } from "./kit/arquibancadas.js";
+import { chaoGP } from "./kit/chao.js";
+import { escapeGP } from "./kit/escape.js";
+import { guardRail, fachadas } from "./kit/beira.js";
+import { ambienteGP } from "./kit/ambiente.js";
+import { passarelas, postes, montanha } from "./kit/marcos.js";
+import { vidaGP } from "./kit/vida.js";
 
 // ---------- temas das pistas: cores, chão, enfeites e o horizonte ----------
 export const THEMES = {
   monaco: { preview: "#2a6fa3", sky: ["#5fb7ff", "#cfeeff"], fog: "#cfe6f2", oob: 0xffae6f1f, roadCol: "#5b5b61" },
   interlagos: { preview: "#2f7d33", sky: ["#4aa3e8", "#f3e6c8"], fog: "#dfe7d8", oob: 0xff3a9a3f, roadCol: "#4b4b50" },
+  barcelona: { preview: "#a9a35a", sky: ["#4a9be0", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4c4d52" },
   losangeles: { preview: "#7a4a6a", sky: ["#3b2a6b", "#ff9a5a"], fog: "#e8a07a", oob: 0xff6a8aa0, roadCol: "#3f3f46" },
   rio: { preview: "#1f8a8a", sky: ["#3f97e0", "#d6f1ff"], fog: "#cfeaf2", oob: 0xff2a7a3a, roadCol: "#4a4a50" },
   serra: { preview: "#4d8854", sky: ["#6eb9f0", "#e4f6ff"], fog: "#cde6dd", oob: 0xff467b45, roadCol: "#51545a" },
@@ -90,7 +96,8 @@ const rioSea = (x, y) => { const K = PISTAS.rio.scale; return x < 230 * K + (y -
 // água que mexe: listras claras numa textura que desliza (vida.js anda com o offset)
 const aguaTex = (cor) => canvasTex(256, 256, (x, w, hh, rr) => { x.fillStyle = cor; x.fillRect(0, 0, w, hh); for (let i = 0; i < 260; i++) { x.fillStyle = rr() < 0.5 ? "#ffffff22" : "#00000018"; x.fillRect(rr() * w, rr() * hh, 10 + rr() * 30, 2); } });
 function buildWorld(tr) {
-  const { pts, n, W, look, id, grp } = tr, t = tr.t, add = (o) => (grp.add(o), o), r = rng(id.length * 977);
+  const { pts, n, W, look, id, grp } = tr, t = tr.t, add = (o) => (grp.add(o), o), r = rng(id.length * 977), gp = GPS[id];
+  tr.reservado = []; // onde os enfeites soltos não entram (o kit e o cenário de cada GP vão pondo aqui)
   const WORLD = t.world, K = t.scale; // pistas ampliadas: o mundo cresce junto e as coordenadas fixas (mar, porto) vão × K
   tr.agua = [];
   // ---- chão em volta (malha com relevo) ----
@@ -124,10 +131,10 @@ function buildWorld(tr) {
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
     const m = add(new THREE.Mesh(g, mat)); m.receiveShadow = true; return m;
   }
-  const asphalt = (id === "interlagos" || id === "monaco") ? null : canvasTex(128, 256, (x, w, hh, rr) => { x.fillStyle = look.road; x.fillRect(0, 0, w, hh); for (let i = 0; i < 3000; i++) { x.fillStyle = rr() < 0.5 ? "#00000018" : "#ffffff10"; x.fillRect(rr() * w, rr() * hh, 2, 2); } x.fillStyle = "#00000022"; x.fillRect(w * 0.3, 0, 10, hh); x.fillRect(w * 0.62, 0, 12, hh); x.fillStyle = "#e8e8e8"; x.fillRect(2, 0, 3, hh); x.fillRect(w - 5, 0, 3, hh); x.fillStyle = id === "tokyo" ? "#f2c94c" : "#f2f2f2"; if (id !== "interlagos") x.fillRect(w / 2 - 1.5, 0, 3, hh * 0.45); });
+  const asphalt = gp?.asfalto ? null : canvasTex(128, 256, (x, w, hh, rr) => { x.fillStyle = look.road; x.fillRect(0, 0, w, hh); for (let i = 0; i < 3000; i++) { x.fillStyle = rr() < 0.5 ? "#00000018" : "#ffffff10"; x.fillRect(rr() * w, rr() * hh, 2, 2); } x.fillStyle = "#00000022"; x.fillRect(w * 0.3, 0, 10, hh); x.fillRect(w * 0.62, 0, 12, hh); x.fillStyle = "#e8e8e8"; x.fillRect(2, 0, 3, hh); x.fillRect(w - 5, 0, 3, hh); x.fillStyle = id === "tokyo" ? "#f2c94c" : "#f2f2f2"; if (id !== "interlagos") x.fillRect(w / 2 - 1.5, 0, 3, hh * 0.45); });
   // a faixa do meio tracejada (uma a cada 10 m) e as marcas de pneu: passando rápido embaixo do carro, dão a noção de velocidade
   const arco = id === "arcoiris" ? canvasTex(128, 32, (x, w, hh) => { ["#ff3b3b", "#ff9a2e", "#ffe14a", "#3ee07a", "#3aa0ff", "#8a5bff", "#ff5fd2"].forEach((c, i) => { x.fillStyle = c; x.fillRect((i * w) / 7, 0, w / 7 + 1, hh); }); x.fillStyle = "#ffffff55"; x.fillRect(0, 0, w, 3); }) : null;
-  if (id === "interlagos" || id === "monaco") {
+  if (gp?.asfalto) {
     ribbon(-W / 2, W / 2, 0.4, asfaltoGP(), 80, 0.4, W / 80);
     const tinta = M(0xe2e0d7, { roughness: 0.95, side: THREE.DoubleSide });
     for (const lado of [-1, 1]) ribbon(lado * (W / 2 - 2.6), lado * (W / 2 - 1.2), 0.49, tinta, 80);
@@ -135,7 +142,7 @@ function buildWorld(tr) {
   } else ribbon(-W / 2, W / 2, 0.4, arco ? new THREE.MeshStandardMaterial({ map: arco, emissive: 0xffffff, emissiveMap: arco, emissiveIntensity: 0.55, roughness: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }) : new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, side: THREE.DoubleSide }), 256);
   // Balizadores leves nas saídas de curva: o carro pode tocá-los e eles se inclinam.
   tr.cones = [];
-  if (!t.espaco && id !== "interlagos" && id !== "monaco") {
+  if (!t.espaco && !gp) {
     const orange = M(0xff792d), white = M(0xf7f1df), base = M(0x34383a);
     for (let i = 28; i < n; i += Math.max(45, Math.floor(n / 42))) {
       const p = pts[i], side = i % 2 ? -1 : 1, lat = side * (W / 2 - 3);
@@ -148,9 +155,10 @@ function buildWorld(tr) {
   }
   const kerbT = canvasTex(32, 64, (x, w, hh) => { x.fillStyle = look.kerb[0]; x.fillRect(0, 0, w, hh / 2); x.fillStyle = look.kerb[1]; x.fillRect(0, hh / 2, w, hh / 2); });
   const kerbM = new THREE.MeshStandardMaterial({ map: kerbT, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x0a3a44 : 0 });
-  if (id === "monaco") chaoMonaco(tr, add, { gridSpot }); // sarjeta, zebras só nas curvas e as marcas da rua (monaco-detalhes.js)
+  if (gp?.chao) chaoGP(tr, add, gp.chao, { gridSpot }); // margem, zebras só nas curvas e as marcas da rua (kit/chao.js)
   else { ribbon(W / 2, W / 2 + 7, 0.6, kerbM, 28); ribbon(-W / 2 - 7, -W / 2, 0.6, kerbM, 28); }
-  if (id === "interlagos" || id === "laguna") { // área de escape de brita
+  if (gp?.escape) escapeGP(tr, add, gp.escape); // brita e asfalto de escape listrado só onde o GP diz (kit/escape.js)
+  if ((id === "interlagos" || id === "laguna") && !gp?.escape) { // área de escape de brita
     const brita = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#c9b37a"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 600; i++) { x.fillStyle = rr() < 0.5 ? "#b39c66" : "#ddc893"; x.fillRect(rr() * w, rr() * hh, 2, 2); } }), roughness: 1, side: THREE.DoubleSide });
     ribbon(W / 2 + 7, W / 2 + 30, 0.3, brita, 64, 0.2); ribbon(-W / 2 - 30, -W / 2 - 7, 0.2, brita, 64, 0.3);
   } else { // calçada até o muro
@@ -163,8 +171,8 @@ function buildWorld(tr) {
       : id !== "tokyo" ? canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#aeb4ba"; x.fillRect(0, 0, w, hh); x.fillStyle = "#d9dee2"; x.fillRect(0, 4, w, 3); x.fillRect(0, 10, w, 2); x.fillStyle = "#5d6268"; x.fillRect(w - 3, 0, 3, hh); }) // guard-rail de aço
       : canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#6c6f80"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ff4fd8"; x.fillRect(0, 2, w, 3); });
     const wm = new THREE.MeshStandardMaterial({ map: wt, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x220a22 : 0 });
-    // em Mônaco, o guard-rail pintado em painéis (um material por lado, para os nomes não saírem espelhados)
-    if (L < 1e9) for (const s of [1, -1]) { const m = id === "monaco" ? ribbon(s * L, s * L, 0.5, new THREE.MeshStandardMaterial({ map: guardRailMonaco(s), roughness: 0.55, side: THREE.DoubleSide }), 480, 12, 1) : ribbon(s * L, s * L, 0.5, wm, 32, 12, 1); m.castShadow = true; }
+    // nos GPs, o guard-rail pintado em painéis (kit/beira.js; um material por lado, para os nomes não saírem espelhados)
+    if (L < 1e9) for (const s of [1, -1]) { const m = gp?.guardrail ? ribbon(s * L, s * L, 0.5, new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }), 480, 12, 1) : ribbon(s * L, s * L, 0.5, wm, 32, 12, 1); m.castShadow = true; }
   }
   // paredão embaixo dos trechos altos (para não ficar "flutuando") e pilares nos viadutos
   if (id === "tokyo" || id === "losangeles") {
@@ -175,8 +183,8 @@ function buildWorld(tr) {
   const a0 = pts[0], chk = canvasTex(128, 16, (x, w, hh) => { for (let i = 0; i < 16; i++) for (let j = 0; j < 2; j++) { x.fillStyle = (i + j) % 2 ? "#111" : "#f4f4f4"; x.fillRect(i * 8, j * 8, 8, 8); } }, false);
   const line = add(new THREE.Mesh(new THREE.PlaneGeometry(W, 12), new THREE.MeshStandardMaterial({ map: chk, roughness: 0.6 })));
   line.rotation.x = -Math.PI / 2; line.rotation.z = -Math.atan2(a0.ty, a0.tx) + Math.PI / 2; line.position.set(a0.x, a0.h + 0.55, a0.y);
-  // Mônaco tem o grid pintado com os números (monaco-detalhes.js)
-  if (id !== "monaco") for (let g = 0; g < 8; g++) { const p = gridSpot(pts, g, W); const m = add(new THREE.Mesh(new THREE.PlaneGeometry(20, 2), new THREE.MeshBasicMaterial({ color: 0xffffff }))); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); }
+  // os GPs com o chão do kit têm o grid pintado com os números
+  if (!gp?.chao?.grid) for (let g = 0; g < 8; g++) { const p = gridSpot(pts, g, W); const m = add(new THREE.Mesh(new THREE.PlaneGeometry(20, 2), new THREE.MeshBasicMaterial({ color: 0xffffff }))); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); }
   // pórtico da largada
   { const s = 1, L = W / 2 + 14, mat = M(0x333844), sign = canvasTex(256, 32, (x, w, hh) => { x.fillStyle = "#111"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ffd23f"; x.font = "bold 24px sans-serif"; x.textAlign = "center"; x.fillText("CORRIDA DA GALERA", w / 2, 24); }, false);
     for (const k of [1, -1]) { const m = add(new THREE.Mesh(new THREE.BoxGeometry(4, 60, 4), mat)); m.position.set(a0.x + a0.nx * k * L, a0.h + 30, a0.y + a0.ny * k * L); m.castShadow = true; }
@@ -231,16 +239,21 @@ function buildWorld(tr) {
   }
 
   const trees = [], palms = [], blds = [], towers = [], stands = [], yachts = [], neons = [], glass = [], jungle = [], houses = [];
-  // Mônaco: o porto, a piscina, as arquibancadas, o túnel e a Place du Casino (monaco.js); os enfeites soltos não caem
-  // na água nem em cima deles
-  if (id === "monaco") {
-    cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, jungle, blds });
-    ambienteMonaco(tr, add);
-    marcosMonaco(tr, add, { hAt }); // passarelas, a capela de Sainte Dévote e os postes
-    montanhaMonaco(tr, add);
-    vidaMonaco(tr, add); // o helicóptero, as gaivotas, os fiscais com a bandeira e o som de cada região
+  // os GPs (gps/): o que só a pista tem (em Mônaco, o porto, a piscina, as arquibancadas, o túnel e a Place du Casino) e
+  // as peças do kit; os enfeites soltos de depois não caem na água nem em cima delas
+  const ctx = { add, r, hAt, size, aguaTex, palms, yachts, jungle, blds };
+  if (gp) {
+    if (gp.arquibancadas) arquibancadas(tr, add, gp.arquibancadas); // as arquibancadas do kit (kit/arquibancadas.js)
+    gp.cenario?.(tr, ctx);
+    if (gp.ambiente) ambienteGP(tr, add, gp.ambiente); // cerca, painéis, bandeiras, postos e placas
+    if (gp.passarelas) passarelas(tr, add, gp.passarelas);
+    gp.marcos?.(tr, ctx); // os marcos próprios (Mônaco: a capela de Sainte Dévote)
+    if (gp.postes) postes(tr, add, gp.postes);
+    if (gp.montanha) montanha(tr, add, gp.montanha);
+    if (gp.vida) vidaGP(tr, add, gp.vida); // helicóptero, gaivotas, fiscais com a bandeira e o som de cada região
   }
   const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
+  const livreRes = (x, y) => !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr); // fora das arquibancadas e prédios do GP
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
     const p = pts[i];
     for (const side of [-1, 1]) {
@@ -252,7 +265,7 @@ function buildWorld(tr) {
         if (k < 0.25) palms.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.5, r: r() * 6 });
         else if (k < 0.85) { const sx = 55 + r() * 50, sz = 55 + r() * 50, far = near + 30 + r() * 50, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 18) && terra(bx, by) && !orlaMonaco(tr, bx, by)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 90 + r() * 200, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f3e0c0", "#f4ece0"][(r() * 6) | 0] }); }
       }
-      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" ? 0.07 : 0.52)) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
+      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "barcelona") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" || id === "barcelona" ? 0.07 : 0.52) && (id !== "barcelona" || livreRes(x, y))) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
       else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
       else if (id === "losangeles") { // palmeiras altas na beira e prédios de vidro mais para trás
         if (k < 0.35) palms.push({ x, y, h: hAt(x, y), s: 1.6 + r() * 0.5, r: r() * 6 });
@@ -281,7 +294,7 @@ function buildWorld(tr) {
       if (y < 560 * K && r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.1 + r() * 1.1 });
       else if (!orlaMonaco(tr, x, y)) blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 70, sy: 90 + r() * (r() < 0.15 ? 420 : 220), sz: 60 + r() * 70, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f4ece0"][(r() * 5) | 0] });
     }
-    else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (id !== "laguna" || r() < 0.3) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
+    else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "barcelona") { if ((id !== "laguna" && id !== "barcelona") || r() < (id === "barcelona" ? 0.12 : 0.3)) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
     else if (id === "deserto") { if (r() < 0.07) palms.push({ x, y, h: hAt(x, y), s: 1.2, r: r() * 6 }); }
     else if (id === "losangeles") { if (r() < 0.5) glass.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 120 + r() * 420, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); else palms.push({ x, y, h: hAt(x, y), s: 1.8, r: r() * 6 }); }
     else if (id === "rio") { if (rioSea(x, y)) continue; if (hAt(x, y) > 15 || r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.3 + r() * 1.2 }); else blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 50, sy: 70 + r() * 120, sz: 60 + r() * 50, dy: 0.5, r: r() * 3, c: ["#f4f1e6", "#e8e0cf", "#d9e6ef"][(r() * 3) | 0] }); }
@@ -297,7 +310,7 @@ function buildWorld(tr) {
   const fronds = new THREE.ConeGeometry(22, 12, 6, 1, true); fronds.translate(0, 62, 0); inst(fronds, M(0x2f8f3a, { side: THREE.DoubleSide }), palms);
   const win = (base, lit) => canvasTex(64, 128, (x, w, hh, rr) => { x.fillStyle = lit ? "#1a1c2a" : "#fff"; x.fillRect(0, 0, w, hh); for (let yy = 6; yy < hh; yy += 10) for (let xx = 4; xx < w; xx += 10) { x.fillStyle = lit ? (rr() < 0.55 ? (rr() < 0.7 ? "#ffd86b" : "#9fe3ff") : "#0b0c14") : "#4d6f94"; x.fillRect(xx, yy, 6, 6); } });
   const bgeo = new THREE.BoxGeometry(1, 1, 1);
-  if (id === "monaco") fachadasMonaco(add, blds); // sacadas, venezianas, toldos e telhados
+  if (gp?.fachadas) fachadas(add, blds, gp.fachadas); // sacadas, venezianas, toldos e telhados (kit/beira.js)
   else if (blds.length) { const t = win(0, false); t.repeat.set(1, 1); const m = inst(bgeo, new THREE.MeshStandardMaterial({ map: t, roughness: 0.8 }), blds, () => 1); if (m) m.castShadow = true; }
   if (towers.length) { const t = win(0, true); const mm = new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: 0.8, roughness: 0.6 }); for (const o of towers) delete o.c; inst(bgeo, mm, towers, () => 1); }
   if (glass.length) inst(bgeo, new THREE.MeshStandardMaterial({ map: win(0, false), metalness: 0.15, roughness: 0.35, emissive: 0x2a1a10, emissiveIntensity: 0.4 }), glass, () => 1); // arranha-céus de vidro (LA)
@@ -327,7 +340,7 @@ function buildWorld(tr) {
   }
   const NEON = [["#ff4fd8", "東京"], ["#4fe3ff", "夜道"], ["#ffe14f", "走れ"], ["#7dff6b", "友達"]].map(([c, t]) => canvasTex(64, 128, (x, w, hh) => { x.fillStyle = "#0b0b14"; x.fillRect(0, 0, w, hh); x.strokeStyle = c; x.lineWidth = 4; x.strokeRect(4, 4, w - 8, hh - 8); x.fillStyle = c; x.font = "bold 40px sans-serif"; x.textAlign = "center"; x.fillText(t[0], w / 2, 52); x.fillText(t[1], w / 2, 104); }, false));
   for (const o of neons) { const m = add(new THREE.Mesh(new THREE.PlaneGeometry(26, 52), new THREE.MeshBasicMaterial({ map: NEON[o.g], side: THREE.DoubleSide }))); m.position.set(o.x, o.h + 40, o.y); m.rotation.y = -o.r + Math.PI / 2; const pole = add(new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 16), M(0x222222))); pole.position.set(o.x, o.h + 8, o.y); }
-  if (id === "interlagos") ambienteInterlagos(tr, add);
+  gp?.depois?.(tr, ctx); // o que vem por cima dos enfeites (Interlagos: o ambiente de interlagos.js)
   enfeitar(tr, add, r, (x, y, i) => groundH(tr, x, y, i));
   if (id === "losangeles") landmarksLA(tr, add, r);
   if (id === "rio") landmarksRio(tr, add, r, size, ribbon);
@@ -337,7 +350,7 @@ function buildWorld(tr) {
     const fuji = far(new THREE.ConeGeometry(1400, 900, 24), M(0x3b2c63, { fog: false }), -2600, -2400, 300); void fuji;
     const cap = far(new THREE.ConeGeometry(420, 270, 24), M(0xe9e6ff, { fog: false }), -2600, -2400, 615); void cap;
     const tower = far(new THREE.ConeGeometry(70, 700, 4, 8, true), new THREE.MeshBasicMaterial({ color: 0xff4b3a, wireframe: true }), 2600, -1400, 350); void tower;
-  } else if (!t.espaco) for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2, R0 = WORLD * 0.5 + 2400 + r() * 600, hh = 300 + r() * 500; const m = far(new THREE.ConeGeometry(700 + r() * 500, hh, 7), M(id === "monaco" ? 0x7e8f86 : id === "losangeles" ? 0x8a6a6a : id === "rio" ? 0x2f6a3a : 0x86a37a), WORLD / 2 + Math.cos(a) * R0, WORLD / 2 + Math.sin(a) * R0, hh / 2 - 40); if ((id === "monaco" && Math.abs(Math.sin(a)) > 0.3) || (id === "rio" && Math.cos(a) < -0.3)) m.visible = false; }
+  } else if (!t.espaco) for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2, R0 = WORLD * 0.5 + 2400 + r() * 600, hh = 300 + r() * 500; const m = far(new THREE.ConeGeometry(700 + r() * 500, hh, 7), M(id === "monaco" ? 0x7e8f86 : id === "barcelona" ? 0x9a9472 : id === "losangeles" ? 0x8a6a6a : id === "rio" ? 0x2f6a3a : 0x86a37a), WORLD / 2 + Math.cos(a) * R0, WORLD / 2 + Math.sin(a) * R0, hh / 2 - 40); if ((id === "monaco" && Math.abs(Math.sin(a)) > 0.3) || (id === "rio" && Math.cos(a) < -0.3)) m.visible = false; }
   // céu
   const sky = new THREE.SphereGeometry(5000, 32, 16), col = [], ps = sky.attributes.position, top = new THREE.Color(look.sky[0]), low = new THREE.Color(look.sky[1]);
   for (let i = 0; i < ps.count; i++) { const yy = ps.getY(i) / 5000, c = low.clone().lerp(top, Math.min(1, Math.max(0, yy * 2.2))); col.push(c.r, c.g, c.b); }

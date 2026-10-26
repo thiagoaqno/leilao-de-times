@@ -1,7 +1,7 @@
 // Corrida da Galera — as marcas de verdade dos patrocinadores da F1 (o jogo é só para os amigos), desenhadas no canvas:
 // a cor de fundo, a letra e o traço que faz cada logo ser reconhecido (a coroa da Rolex, o P comprido da Pirelli, as
 // faixas da DHL, o sorriso da AWS...). Sem baixar imagem: funciona sem internet e em qualquer tamanho.
-import { canvasTex } from "./cena.js";
+import { canvasTex } from "../cena.js";
 
 export const MARCAS = {
   rolex: { fundo: "#00603a", cor: "#c9a54c", texto: "ROLEX", fonte: "700 {s}px Georgia, 'Times New Roman', serif", coroa: true },
@@ -17,6 +17,14 @@ export const MARCAS = {
   msc: { fundo: "#0b1f3a", cor: "#ffffff", texto: "MSC CRUISES", fonte: "700 {s}px Georgia, serif" },
   lv: { fundo: "#3b2a1e", cor: "#c9a96e", texto: "LOUIS VUITTON", fonte: "400 {s}px Georgia, serif" },
   crypto: { fundo: "#0b2a5b", cor: "#ffffff", texto: "crypto.com", fonte: "700 {s}px Arial, sans-serif" },
+  petrobras: { fundo: "#00793a", cor: "#ffdd00", texto: "PETROBRAS", fonte: "900 {s}px Arial, sans-serif", moldura: "#ffdd00" },
+  bb: { fundo: "#fcdc2a", cor: "#0b3d91", texto: "Banco do Brasil", fonte: "900 {s}px Arial, sans-serif" },
+  itau: { fundo: "#ec7000", cor: "#ffffff", texto: "itaú", fonte: "900 {s}px Arial, sans-serif", moldura: "#003a8c" },
+  gpsp: { fundo: "#ffffff", cor: "#00793a", texto: "GP DE SÃO PAULO", fonte: "italic 900 {s}px 'Arial Black', Arial, sans-serif", moldura: "#ffdd00" },
+  repsol: { fundo: "#ffffff", cor: "#ee7203", texto: "REPSOL", fonte: "900 {s}px Arial, sans-serif", moldura: "#ee7203" },
+  lacaixa: { fundo: "#0079ae", cor: "#ffffff", texto: "la Caixa", fonte: "700 {s}px Arial, sans-serif" },
+  sabadell: { fundo: "#ffffff", cor: "#0a6ebd", texto: "Sabadell", fonte: "700 {s}px Arial, sans-serif", moldura: "#0a6ebd" },
+  circuit: { fundo: "#c8102e", cor: "#ffd100", texto: "BARCELONA-CATALUNYA", fonte: "900 {s}px Arial, sans-serif" },
   acm: { fundo: "#ffffff", cor: "#c8102e", texto: "AUTOMOBILE CLUB DE MONACO", fonte: "700 {s}px Georgia, serif", moldura: "#c8102e" },
 };
 // a ordem em que as marcas se repetem pela pista
