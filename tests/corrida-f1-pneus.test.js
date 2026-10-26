@@ -75,11 +75,14 @@ function voltaDosRobos(regras, pneu) {
 
 test("robôs: nas regras de F1 usam o mesmo pneu, que gasta pela volta; sem elas, nada muda", () => {
   for (const r of voltaDosRobos("galera")) { assert.equal(r.ia.pneu, null); assert.equal(r.laps, 1); }
-  const medio = voltaDosRobos("f1", "medio"), duro = voltaDosRobos("f1", "duro");
-  for (const r of [...medio, ...duro]) { assert.equal(r.laps, 1, "fecha a volta"); assert.ok(!F1.frio(r.ia.pneu), "o pneu esquentou"); }
-  // a corrida de uma volta inteira: o médio passa do penhasco (vida 0,6), o duro chega perto dele (vida 0,9)
-  for (const r of medio) assert.ok(r.ia.pneu.desgaste > F1.PENHASCO, `médio: ${r.ia.pneu.desgaste}`);
-  for (const r of duro) assert.ok(r.ia.pneu.desgaste > 0.7 && r.ia.pneu.desgaste < 1, `duro: ${r.ia.pneu.desgaste}`);
+  // (desde o pit stop, cada robô sai com o composto da estratégia dele, e não com o do jogador)
+  for (const r of voltaDosRobos("f1", "medio")) {
+    assert.equal(r.laps, 1, "fecha a volta"); assert.ok(!F1.frio(r.ia.pneu), "o pneu esquentou");
+    assert.equal(r.ia.pneu.composto, r.ia.plano.largada);
+    // a corrida de uma volta inteira gasta o pneu: perto do penhasco no médio, bem antes dele no duro
+    const vida = F1.PNEUS[r.ia.pneu.composto].vida;
+    assert.ok(r.ia.pneu.desgaste > Math.min(0.7, F1.PENHASCO / vida * 0.8) && r.ia.pneu.desgaste < 1, `${r.ia.pneu.composto}: ${r.ia.pneu.desgaste}`);
+  }
 });
 
 test("sala: as regras de F1 desligam caixas e ajuda do pelotão, e cada piloto escolhe o pneu da largada", { timeout: 30000 }, async () => {

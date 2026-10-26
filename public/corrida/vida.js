@@ -102,10 +102,12 @@ export function enfeitar(tr, add, r, alturaEm) {
   // torcida na reta dos boxes: três fileiras dos dois lados, atrás do muro
   if (!t.espaco) {
     const gente = [], pele = ["#f1c7a5", "#d9a37a", "#a8714a", "#7a4a2a", "#5a3520"], camisa = tr.camisasGP || ["#ffd23f", "#e63946", "#1e88e5", "#43a047", "#ffffff", "#fb8c00", "#8e24aa", "#111111"]; // os GPs podem vestir a torcida (tr.camisasGP)
+    const cb = t.boxes && window.F1Regras ? window.F1Regras.corredor(t, n, tr.W) : null; // o corredor dos boxes (regras de F1) fica sem torcida
     for (let i = -Math.floor(n * 0.04); i < Math.floor(n * 0.05); i += 1) {
       const p = pts[(i + n) % n];
       for (const s of [-1, 1]) for (let fila = 0; fila < 3; fila++) {
         if (r() < 0.35) continue;
+        if (cb && s === cb.lado && (((i - cb.i0) % n) + n) % n <= cb.len + 3) continue;
         const d = borda + 10 + fila * 8 + r() * 2, [x, z] = lat(p, s * d); if (tr.distAt(x, z) < borda + 4 || (tr.ocupado && tr.ocupado(x, z))) continue;
         gente.push({ x, y: alturaEm(x, z, (i + n) % n) + fila * 3.5, z, ry: Math.atan2(-p.nx * s, -p.ny * s), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: pele[(r() * 5) | 0], camisa: camisa[(r() * camisa.length) | 0] });
       }

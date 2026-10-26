@@ -1,30 +1,43 @@
-# Corrida: Monza (GP da Itália)
+# Corrida: regras de F1, parte 2, o pit stop
 
-A Corrida da Galera ganha **Monza** (Autodromo Nazionale Monza), montada com o kit de pista, parecida com a de verdade: a reta dos boxes longa, a Variante del Rettifilo, a Curva Grande e Biassono, a Variante della Roggia, as duas Lesmo, o Serraglio, a Variante Ascari, a reta de trás e a Parabolica (Curva Alboreto).
+O PR 2 do plano `planos/temporada-f1.md`. Só vale com **Regras: Fórmula 1**; sem elas a sala corre como antes.
 
-**O traçado** (`public/corrida/pistas.js`)
-- Vem da **linha central real do circuito** (OpenStreetMap), ajustada em 27 vértices `[x, y, raio]` curva por curva, no mesmo sentido (horário, norte para cima): a largada sobe para o norte pela reta dos boxes, a 70% do caminho até o Rettifilo. Volta de ~14,9 mil unidades; `scale: 3,7`, `width: 112`.
-- Quase plano (uns 12 m de diferença, `hills`). As chicanes (Rettifilo, Roggia, Ascari) ficaram um pouco maiores que as reais para caber na pista larga.
-- `tests/corrida-robos.test.js` passou a dar uma volta em Monza também.
+**O corredor dos boxes**
+- `boxes: { entra, para, sai, lado }` em `pistas.js` (frações da volta) nas 14 pistas com reta na largada: Monza e Silverstone (que entraram na main no meio do PR) e as 8 do calendário do plano (Deserto, Tóquio, Mônaco, Rio, Nürburgring, Laguna, Los Angeles, Interlagos), Serra Verde, Barcelona, Luigi e Sorvete. O Arco-íris não tem reta onde caiba. Conferido por conta: o corredor cabe em todas, longe de outro trecho da pista (Mônaco é a apertada, e fica sem garagens; ver abaixo).
+- A conta é uma só, em `f1-regras.js` (`corredor`): 34 de largura (cabem dois carros lado a lado), ~500 de comprimento, rampas de entrada e saída, 10 garagens. O carro, os robôs, o desenho e os testes usam a mesma.
+- Peça nova do kit: `kit/corredor-boxes.js` (o `kit/boxes.js` da main é o prédio dos boxes, outra peça) (chave `boxes` em `gps/`; toda pista com `boxes` ganha o corredor sozinha; linha nova no `kit/README.md`). Asfalto, linha branca de entrada, vermelha de saída, mureta, o quadrado pintado onde o carro para, as garagens e **4 mecânicos por garagem, na cor de quem usa a garagem** (`jogo.js` pinta cada uma com a cor do piloto do grid). Entrada e saída ficam livres de painel e cerca, e os balizadores do meio do corredor saem de cena. Só aparece com as regras de F1.
+- Em Mônaco as linhas SC 1 e SC 2 (`gps/monaco.js`) passaram a ser a entrada e a saída do corredor (0,98 e 0,02 da volta; antes 0,89 e 0,075).
 
-**O GP** (`public/corrida/gps/monza.js` e `public/corrida/monza.js`)
-- Asfalto de GP, margem cinza, zebras vermelhas e brancas, **zebras amarelas altas** nas três chicanes, **escape listrado** de vermelho e branco nelas, **brita** na saída de Biassono, das Lesmo e da Parabolica e **pilhas de pneus** nas Lesmo e na Parabolica (tudo pelo `escape` do kit).
-- **Tribunas vermelhas** com a torcida da Ferrari na reta dos boxes, por fora do Rettifilo e da Parabolica; a torcida solta de `vida.js` também veste vermelho.
-- **Prédio dos boxes** na reta, com as garagens e os painéis dos patrocinadores no teto.
-- **O pódio sobre a reta**: a passarela de ponta a ponta da pista, com as faixas do GP da Itália, as bandeiras da Itália nas duas torres e a sacada do pódio pendurada embaixo, com os três degraus.
-- **A Sopraelevata**: a velha pista oval inclinada (traçada pelo OpenStreetMap) aparece ao lado da Curva Grande, do Serraglio e da Parabolica, com a borda levantada nas curvas, o concreto velho com mato nas juntas e uma **ponte por cima do Serraglio**.
-- **O parque**: ~3 mil árvores altas (folhosas e pinheiros) fecham a pista dos dois lados, e os Alpes ao norte, no horizonte.
-- Bandeira da Itália de três faixas, patrocinadores do GP (Ferrari, Pirelli, Heineken, Rolex, Aramco, DHL, Iveco, Peroni, GP da Itália...), placas de frenagem de 150, 100 e 50 m, passarelas, fiscais com bandeira, helicóptero, e só o som de `campo` e da torcida.
-- O céu é a foto `ceus/monza.jpg` (Poly Haven, CC0, `pizzo_pernice_puresky`), as cores do tema em `cena.js` e `pista.js`.
+**Mônaco e a mureta**
+- Em Mônaco o corredor (sem garagens) tem a mureta de concreto no lugar do guard-rail, que some só nesse trecho e só enquanto o corredor aparece; cerca, painéis e torcida também saem de lá (a torcida, em todas as salas, no trecho do corredor de cada pista). Foto: `planos/imagens/corrida-box-monaco.jpg`.
+- A **mureta é sólida** (`muretaDoBox`, em `box.js`): quem não vai parar não passa para o corredor, só pelas rampas de entrada e saída. Conferido rodando a física contra ela: o carro para a 11 da beira.
 
-**No kit** (`public/corrida/kit/`, guia em `kit/README.md`)
-- `parque.js`: o bosque que fecha a pista dos dois lados (chave `parque`).
-- `boxes.js`: o prédio dos boxes com os painéis (função `prediosDosBoxes`).
-- `arquibancadas`: `torcida` por trecho (as cores das camisas); `ambiente`: `bandeira` com três cores vira faixas verticais; `marcas.js`: Ferrari (com o escudo), Iveco, Peroni, GP da Itália e Autodromo Nazionale Monza.
-- `vida.js` e `vida-mais.js` leem `tr.camisasGP` para vestir a torcida solta.
+**A parada**
+- **B** (ou o botão "Box") pede a parada, de novo passa para o outro composto e, no fim, cancela; **1, 2 e 3** escolhem macio, médio e duro. Na próxima passagem pela entrada o carro entra e anda sozinho no limitador (40% da velocidade final, `box.js`), para na sua garagem, troca o pneu (2,4 s mais o erro dos mecânicos, de 0 a 1,5 s, sorteado com a semente do GP: `tempoDeParada`) e sai com o pneu novo, frio. **Uma parada inteira leva de 5 a 10 s** (6,7 a 8,2 s em Interlagos); o plano dizia 18 a 25 s, mas o dono pediu 5 a 10 s, e o teste confere isso.
+- Não dá para parar na última volta (o corredor passaria pela chegada).
+- HUD: o aviso do box (limitador, trocando com a contagem, saindo), o botão com o composto pedido e, na torre, o pneu de cada um, quantas paradas fez e quem está no box.
+
+**No servidor**
+- `act` `box` (fases `entra` e `sai`): guarda a parada em `p.paradas` (volta, tempo, composto), o composto em uso (`pneuAtual`) e os usados (`compostos`), confere o limitador pelo tempo no corredor (rápido demais: **+5 s**) e avisa no log.
+- **Regra dos dois compostos:** quem termina sem ter usado dois compostos leva **+10 s**. Os acréscimos reordenam o resultado (`finish + acrescimo`), na torre e na tela final.
+- `semente` do GP no estado da sala.
+- **Robôs:** cada um sai com uma `estrategia` (`f1-regras.js`: composto da largada, uma ou duas paradas, sempre dois compostos, nunca na última volta), entra pelo mesmo caminho, perde o mesmo tempo e antecipa a parada se o pneu passar do penhasco.
+- A escolha do composto da largada no lobby já tinha entrado no PR 1.
+
+**Voltas e pneus**
+- Novas opções de **10 e 21 voltas** (o limite da corrida subiu de 15 para 45 min). O desgaste continua medido em fração da corrida: numa corrida de 3 voltas o pneu médio chega ao penhasco na volta 1,8, e numa de 21, na volta 12,6; o macio dura ~7 voltas e o duro ~19. Por isso o pneu "acaba em 1,5 volta" só nas corridas curtas.
+
+**Testes** (`tests/corrida-f1-box.test.js`, 8 testes)
+- Uma parada em Interlagos custa de 5 a 10 s; as 14 pistas têm corredor com as garagens entre as rampas.
+- O mesmo GP com a mesma semente dá os mesmos erros de mecânico.
+- A estratégia dos robôs sempre usa dois compostos e nunca para na última volta.
+- Os robôs fazem as paradas pelo corredor, no limitador; sem as regras de F1 não existe box.
+- A sala (sem rede, com tempo de mentira): +10 s para quem usou um composto só e perde a vitória, +5 s por passar do limitador, sem box na última volta; sem as regras de F1 o box é ignorado.
 
 **Conferido**
-- `node --test tests/corrida*.test.js` passa; os robôs fecham a volta em Monza sem sair da pista.
-- No navegador do app (`#debug`), sem erro no console: a largada e a reta dos boxes com as tribunas e o pódio, o Rettifilo, a Curva Grande com a passarela da Ferrari, a Roggia com as zebras amarelas e o escape listrado, as Lesmo com os pneus, a ponte do Serraglio, a Ascari, a reta de trás, a Parabolica e vistas de cima do pódio e da Sopraelevata. Mônaco, Interlagos e Barcelona continuam montando.
+- No navegador do app (`#debug`), em Interlagos com 21 voltas e 3 robôs: uma parada de verdade, da entrada à saída, com a troca para o duro: `planos/imagens/corrida-box-parada.jpg` (HUD e contagem), `corrida-box-garagens.jpg` (as garagens na cor de cada piloto, com os mecânicos) e `corrida-box-saida.jpg`. Sem erro no console.
+- Só os testes da Corrida (`node --test tests/corrida*.test.js`): 43 de 43 passam, os 8 novos e os de hoje. A suíte inteira não foi rodada de novo (a rodada completa anterior só falhou em um teste do Leilão, por carga, e em dois meus, já corrigidos).
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+**O que falta**
+- Os mecânicos são figuras paradas, sem animação.
+- As penalidades de verdade (bandeiras, limites de pista) são do PR 4.

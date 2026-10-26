@@ -25,7 +25,11 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
     if (!lotes.has(mat)) lotes.set(mat, []);
     lotes.get(mat).push({ x, y, z, sx, sy, sz, ry });
   }
+  // a entrada e a saída do corredor dos boxes (regras de F1) ficam livres de painel e cerca
+  const bx = tr.t.boxes && window.F1Regras ? window.F1Regras.corredor(tr.t, n, W) : null;
+  const naRampa = (i, lado) => { if (!bx || lado !== bx.lado) return false; const r = (((i - bx.i0) % n) + n) % n, ra = window.F1Regras.RAMPA + 3; return r <= (tr.t.muro ? bx.len + 3 : ra) || (r >= bx.len - ra && r <= bx.len + 3); }; // rua com guard-rail: o corredor inteiro fica livre, o guard-rail dá lugar à mureta
   function lugar(i, lado, lat = L + 1, raio = 2) {
+    if (naRampa(i, lado)) return null;
     const p = pts[(i + n) % n], x = p.x + p.nx * lado * lat, z = p.y + p.ny * lado * lat;
     // Distância exata ao traçado, inclusive ao trecho vizinho no grampo.
     if (pts.some(q => Math.hypot(q.x - x, q.y - z) < W / 2 + raio)) return null;

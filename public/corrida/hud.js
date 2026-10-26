@@ -10,7 +10,7 @@ export function standings() {
   if (!E.S || !race) return [];
   const rows = E.S.players.map((p) => {
     const gh = race.ghosts.get(p.id), prog = E.ME && p.id === E.ME.id ? myProg() : gh ? gh.prog : -1e9;
-    return { id: p.id, p, prog, done: p.finish };
+    return { id: p.id, p, prog, done: p.finish != null ? p.finish + (p.acrescimo || 0) : null }; // regras de F1: os acréscimos (um composto só, limitador) contam
   });
   return rows.sort((a, b) => (a.done != null || b.done != null ? (a.done ?? 1e9) - (b.done ?? 1e9) : b.prog - a.prog));
 }
@@ -42,12 +42,16 @@ export function hud() {
     el.textContent = d == null ? (race.best ? `🏆 recorde ${fmt(race.best.t)}` : "") : `${d < 0 ? "−" : "+"}${Math.abs(d).toFixed(2)} s do recorde`;
     el.className = "time num " + (d == null ? "" : d < 0 ? "ahead" : "behind");
   } else { $("hPos").innerHTML = "👀"; $("hLap").textContent = "Assistindo"; $("hTime").textContent = fmt(Math.max(0, (now - race.startAt) / 1000)); velocimetro(Math.abs(lider ? race.ghosts.get(lider.id)?.v || 0 : 0)); }
-  const quadro = st.slice(0, 8).map((r, i) => `<div class="${m && r.id === m.id ? "eu" : ""}"><span>${i + 1}</span><i style="background:${r.p.color}"></i>${h(r.p.name)}${r.p.bot ? " <em>CPU</em>" : ""}${r.done != null ? " 🏁" : ""}</div>`).join("");
+  const f1 = cfg.regras === "f1", pneuDe = (p) => (f1 ? ` <u class="pn" style="--c:${window.F1Regras.PNEUS[p.pneuAtual || p.pneu].cor}"></u>${p.paradas ? ` <em>${p.paradas}P</em>` : ""}${p.noBox ? ` <em class="box">BOX</em>` : ""}` : "");
+  const quadro = st.slice(0, 8).map((r, i) => `<div class="${m && r.id === m.id ? "eu" : ""}"><span>${i + 1}</span><i style="background:${r.p.color}"></i>${h(r.p.name)}${r.p.bot ? " <em>CPU</em>" : ""}${pneuDe(r.p)}${r.done != null ? " 🏁" : ""}</div>`).join("");
   if (race.hudQuadro !== quadro) { race.hudQuadro = quadro; $("hBoard").innerHTML = quadro; }
   if (m && race.hudChip !== m.name) { race.hudChip = m.name; $("hChip").innerHTML = `<i style="background:${m.color}"></i>${h(m.name)}<span>${h(PISTAS[cfg.pista].name)}</span>`; }
   // avisos
   let msg = "";
-  if (m && m.balaUntil > now) msg = "🚀 BALA! (piloto automático)";
+  const B = race.box, nomeBox = B && (B.fase ? B.composto : B.pedido) ? window.F1Regras.PNEUS[B.fase ? B.composto : B.pedido].nome : "";
+  if (B && B.fase) msg = B.fase === "entra" ? `🔧 BOX: limitador de velocidade` : B.fase === "parada" ? `🔧 BOX: trocando para o ${nomeBox} · ${Math.max(0, B.parada - B.t).toFixed(1)} s` : "🔧 BOX: saindo, pneu novo ainda frio";
+  else if (B && B.pedido) msg = `🔧 BOX: ${nomeBox} (1, 2, 3 trocam · B cancela)`;
+  else if (m && m.balaUntil > now) msg = "🚀 BALA! (piloto automático)";
   else if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
   else if (m && m.shrinkUntil > now) msg = "⚡ ENCOLHIDO PELO RAIO!";
   else if (race.wrong > 1) msg = "⚠️ CONTRAMÃO! (aperte ↺)";
@@ -57,6 +61,7 @@ export function hud() {
   else if (race.pneu && race.pneu.desgaste > window.F1Regras.PENHASCO && m && m.finish == null && m.started) msg = "PNEU NO FIM: segura nas curvas";
   else if (E.S.endAt && m && m.finish == null) msg = `⏱️ ${Math.max(0, Math.ceil((E.S.endAt - now) / 1000))} s para cruzar`;
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
+  if (B) { const bt = $("bBox"), txt = B.pedido || B.fase ? `🔧 ${nomeBox}` : "🔧 Box"; if (bt.textContent !== txt) { bt.textContent = txt; bt.classList.toggle("pedido", !!(B.pedido || B.fase)); } }
   $("hMsg").textContent = msg;
   // vácuo e estilingue
   const dr = race.sling > 0 ? 1 : race.draft;
@@ -132,7 +137,7 @@ export function renderResults() {
   const m = me(), isHost = m && E.S.host === m.id, rows = standings();
   el.classList.remove("hidden");
   el.innerHTML = `<div class="placa"><div class="chk"></div><div class="in"><h2 style="font-size:28px;margin-bottom:10px">🏆 Resultado · ${h(PISTAS[E.S.config.pista].name)}</h2>
-    <table>${rows.map((r, i) => `<tr><td>${r.done != null ? i + 1 + "º" : "—"}</td><td>${r.p.pawn} <b style="color:${r.p.color}">${h(r.p.name)}</b></td><td class="num">${r.done != null ? fmt(r.done) : "não terminou"}</td><td class="num muted">${r.p.best != null ? "melhor " + fmt(r.p.best) : ""}</td></tr>`).join("")}</table>
+    <table>${rows.map((r, i) => `<tr><td>${r.done != null ? i + 1 + "º" : "—"}</td><td>${r.p.pawn} <b style="color:${r.p.color}">${h(r.p.name)}</b></td><td class="num">${r.done != null ? fmt(r.done) : "não terminou"}${r.p.acrescimo ? ` <small class="muted">(+${r.p.acrescimo} s)</small>` : ""}</td><td class="num muted">${r.p.best != null ? "melhor " + fmt(r.p.best) : ""}</td></tr>`).join("")}</table>
     <div class="row" style="margin-top:14px;justify-content:center">${isHost ? `<button class="primary" id="rAgain">🏁 Correr de novo</button><button id="rLobby">Trocar pista</button>` : `<span class="muted">Esperando o organizador…</span>`}<button class="ghost" onclick="location.href='/'">🏠 Vila</button></div></div></div>`;
   if ($("rAgain")) $("rAgain").onclick = () => act("start");
   if ($("rLobby")) $("rLobby").onclick = () => act("lobby");

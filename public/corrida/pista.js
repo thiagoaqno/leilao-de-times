@@ -17,6 +17,7 @@ import { guardRail, fachadas } from "./kit/beira.js";
 import { ambienteGP } from "./kit/ambiente.js";
 import { passarelas, postes, montanha } from "./kit/marcos.js";
 import { vidaGP } from "./kit/vida.js";
+import { boxesGP } from "./kit/corredor-boxes.js";
 import { parque } from "./kit/parque.js";
 
 // ---------- temas das pistas: cores, chão, enfeites e o horizonte ----------
@@ -175,7 +176,14 @@ function buildWorld(tr) {
       : canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#6c6f80"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ff4fd8"; x.fillRect(0, 2, w, 3); });
     const wm = new THREE.MeshStandardMaterial({ map: wt, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x220a22 : 0 });
     // nos GPs, o guard-rail pintado em painéis (kit/beira.js; um material por lado, para os nomes não saírem espelhados)
-    if (L < 1e9) for (const s of [1, -1]) { const m = gp?.guardrail ? ribbon(s * L, s * L, 0.5, new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }), 480, 12, 1) : ribbon(s * L, s * L, 0.5, wm, 32, 12, 1); m.castShadow = true; }
+    if (L < 1e9) for (const s of [1, -1]) {
+      const mat = gp?.guardrail ? new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }) : wm, vLen = gp?.guardrail ? 480 : 32;
+      const trecho = (i0, i1) => { const m = ribbon(s * L, s * L, 0.5, mat, vLen, 12, 1, i0, i1); m.castShadow = true; return m; };
+      // o trecho do corredor dos boxes (regras de F1) é uma peça à parte, que some enquanto o corredor aparece (kit/corredor-boxes.js)
+      const cb = tr.t.boxes && s === tr.t.boxes.lado && window.F1Regras ? window.F1Regras.corredor(tr.t, n, W) : null;
+      if (!cb) trecho(0, n);
+      else { trecho(cb.i0 + cb.len + 1, cb.i0 + n - 1); (tr.guardaBox = tr.guardaBox || []).push(trecho(cb.i0 - 1, cb.i0 + cb.len + 1)); }
+    }
   }
   // paredão embaixo dos trechos altos (para não ficar "flutuando") e pilares nos viadutos
   if (id === "tokyo" || id === "losangeles") {
@@ -255,13 +263,14 @@ function buildWorld(tr) {
     if (gp.montanha) montanha(tr, add, gp.montanha);
     if (gp.vida) vidaGP(tr, add, gp.vida); // helicóptero, gaivotas, fiscais com a bandeira e o som de cada região
   }
+  if (t.boxes && gp?.boxes !== false) boxesGP(tr, add, gp?.boxes || {}); // o corredor dos boxes das regras de F1 (kit/corredor-boxes.js)
   const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
   const livreRes = (x, y) => !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr); // fora das arquibancadas e prédios do GP
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
     const p = pts[i];
     for (const side of [-1, 1]) {
       const near = (tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 36) + 10 + r() * 60, x = p.x + p.nx * side * near, y = p.y + p.ny * side * near;
-      if (!free(x, y, 20)) continue;
+      if (!free(x, y, 20) || (tr.boxesInfo && !livreRes(x, y))) continue; // nem em cima das garagens do corredor dos boxes
       const k = r();
       if (id === "monaco") { // palmeiras na calçada e os prédios altos colados na rua (sem área de escape)
         if (!terra(x, y)) continue;

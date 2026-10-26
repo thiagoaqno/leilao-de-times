@@ -28,6 +28,8 @@ function capela(tr, { add, hAt }) {
   }
 }
 
+const BOXES = window.Pistas.PISTAS.monaco.boxes; // o corredor dos boxes (pistas.js): as linhas SC 1 e SC 2 são a entrada e a saída dele
+
 export const GP_MONACO = {
   asfalto: true, // o asfalto de GP de asfalto-gp.js, com as linhas de borda e a borracha
   chao: {
@@ -35,11 +37,12 @@ export const GP_MONACO = {
     amarelas: [[0.608, 0.645], [0.735, 0.805]], // Nouvelle Chicane e Piscine
     faixasPedestre: [0.12, 0.24, 0.31, 0.36, 0.402, 0.445, 0.69, 0.865],
     tracejado: [[0.09, 0.24], [0.33, 0.37], [0.44, 0.61], [0.655, 0.7]], // Beau Rivage, Portier, túnel e cais
-    sc: [[0.075, "SC 2"], [0.89, "SC 1"]],
+    sc: [[BOXES.sai, "SC 2"], [BOXES.entra, "SC 1"]],
     grid: true, remendos: 46, bueiros: 40,
   },
   guardrail: { paineis: ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"] },
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, o Cassino e o Rochedo
+  boxes: { garagens: false, mureta: true }, // o corredor dos boxes sem as garagens (a rua é estreita demais para elas), com a mureta no lugar do guard-rail
   ambiente: {}, // cerca, painéis, bandeiras vermelhas e brancas, postos e placas (os padrões do kit)
   passarelas: { candidatos: [0.02, 0.165, 0.855, 0.31, 0.93], marcas: ["rolex", "heineken", "tag"] }, // a da Rolex na reta dos boxes
   marcos: capela,

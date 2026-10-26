@@ -551,6 +551,27 @@ const PISTAS = {
   },
 };
 
+// O corredor dos boxes das pistas do calendário de F1 (e do Luigi e do Sorvete; o Arco-íris não tem reta onde caiba) (regras de F1, f1-regras.js `corredor`): frações da volta a partir da
+// chegada. `entra` e `sai` são a linha de entrada e a de saída (o corredor corre ao lado da reta, entre elas), `para` é o
+// meio das 10 garagens e `lado` é o lado da reta (1 ou -1; o de dentro da pista).
+const BOXES = {
+  interlagos: { entra: 0.9806, para: 0, sai: 0.0194, lado: 1 },
+  barcelona: { entra: 0.0118, para: 0.03, sai: 0.0482, lado: 1 },
+  monaco: { entra: 0.9805, para: 0, sai: 0.0195, lado: 1 }, // sem garagens (gps/monaco.js)
+  deserto: { entra: 0.9856, para: 0.005, sai: 0.0244, lado: 1 },
+  tokyo: { entra: 0.9807, para: 0, sai: 0.0193, lado: -1 },
+  rio: { entra: 0.9806, para: 0, sai: 0.0194, lado: -1 },
+  nurburgring: { entra: 0.9856, para: 0, sai: 0.0144, lado: -1 },
+  laguna: { entra: 0.0098, para: 0.03, sai: 0.0502, lado: 1 },
+  losangeles: { entra: 0.9856, para: 0.005, sai: 0.0244, lado: -1 },
+  serra: { entra: 0.9926, para: 0.012, sai: 0.0314, lado: 1 },
+  luigi: { entra: 0.0006, para: 0.02, sai: 0.0394, lado: 1 },
+  sorvete: { entra: 0.9906, para: 0.01, sai: 0.0294, lado: 1 },
+  monza: { entra: 0.013, para: 0.03, sai: 0.047, lado: 1 },
+  silverstone: { entra: 0.9827, para: 0, sai: 0.0173, lado: 1 },
+};
+for (const [id, b] of Object.entries(BOXES)) if (PISTAS[id]) PISTAS[id].boxes = b;
+
 // Pistas ampliadas: os vértices (e os raios) foram desenhados no quadrado de 1600 e são multiplicados por `scale`,
 // e o mundo dessa pista cresce junto (t.world). Todas as voltas têm uns 13 mil (pouco mais de 1 min de kart). `relevo`
 // multiplica as alturas e o barranco junto com a escala, para as rampas continuarem com a mesma inclinação.
