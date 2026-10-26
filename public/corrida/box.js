@@ -40,6 +40,14 @@ export function escolherComposto(composto) {
 }
 function avisar() { const B = race.box, cor = F1().PNEUS[B.pedido]; toast(`🔧 Box na próxima passagem: ${cor.nome}`, 1600); Sound.pop(); }
 
+// a mureta entre a pista e o corredor (a que kit/boxes.js desenha, a W/2 + 11): quanto o carro passou dela, só no trecho
+// reto (nas rampas de entrada e de saída não tem mureta) e só um pouco (quem já está dentro do corredor não é empurrado)
+export function muretaDoBox(tr, idx, lat) {
+  const cor = race.box.cor, rel = (idx - cor.i0 + tr.n) % tr.n;
+  if (rel <= F1().RAMPA + 1 || rel >= cor.len - F1().RAMPA - 1) return null;
+  const over = lat * cor.lado - (tr.W / 2 + 11);
+  return over > 0 && over < 10 ? { over, lado: cor.lado } : null;
+}
 // o ponto (x, y) e o rumo do carro no corredor, no ponto u (em pontos da pista), saindo do lado lat0
 function ponto(tr, cor, u, lat0) {
   const n = tr.n, i = cor.i0 + Math.floor(u), f = u - Math.floor(u), a = tr.pts[i % n], b = tr.pts[(i + 1) % n], lat = cor.lat(u, lat0);

@@ -173,7 +173,14 @@ function buildWorld(tr) {
       : canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#6c6f80"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ff4fd8"; x.fillRect(0, 2, w, 3); });
     const wm = new THREE.MeshStandardMaterial({ map: wt, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x220a22 : 0 });
     // nos GPs, o guard-rail pintado em painéis (kit/beira.js; um material por lado, para os nomes não saírem espelhados)
-    if (L < 1e9) for (const s of [1, -1]) { const m = gp?.guardrail ? ribbon(s * L, s * L, 0.5, new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }), 480, 12, 1) : ribbon(s * L, s * L, 0.5, wm, 32, 12, 1); m.castShadow = true; }
+    if (L < 1e9) for (const s of [1, -1]) {
+      const mat = gp?.guardrail ? new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }) : wm, vLen = gp?.guardrail ? 480 : 32;
+      const trecho = (i0, i1) => { const m = ribbon(s * L, s * L, 0.5, mat, vLen, 12, 1, i0, i1); m.castShadow = true; return m; };
+      // o trecho do corredor dos boxes (regras de F1) é uma peça à parte, que some enquanto o corredor aparece (kit/boxes.js)
+      const cb = tr.t.boxes && s === tr.t.boxes.lado && window.F1Regras ? window.F1Regras.corredor(tr.t, n, W) : null;
+      if (!cb) trecho(0, n);
+      else { trecho(cb.i0 + cb.len + 1, cb.i0 + n - 1); (tr.guardaBox = tr.guardaBox || []).push(trecho(cb.i0 - 1, cb.i0 + cb.len + 1)); }
+    }
   }
   // paredão embaixo dos trechos altos (para não ficar "flutuando") e pilares nos viadutos
   if (id === "tokyo" || id === "losangeles") {

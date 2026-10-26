@@ -99,7 +99,7 @@ export function boxesGP(tr, add, cfg = {}) {
   };
   // os balizadores que ficariam no meio do corredor saem de cena enquanto ele aparece (as regras de F1)
   const noCorredor = (tr.cones || []).filter((co) => { for (let u = 0; u <= fim; u += 3) { const q = em(u, latDe(u)); if (Math.hypot(q.x - co.x, q.y - co.y) < meia + 6) return true; } return false; });
-  grp.userData.mostrar = (on) => { grp.visible = on; for (const co of noCorredor) { co.mesh.visible = !on; co.cooldown = on ? Infinity : 0; } };
+  grp.userData.mostrar = (on) => { grp.visible = on; for (const m of tr.guardaBox || []) m.visible = !on; for (const co of noCorredor) { co.mesh.visible = !on; co.cooldown = on ? Infinity : 0; } };
   // os enfeites soltos de depois não entram em cima das garagens
   for (let u = F.RAMPA; u <= fim - F.RAMPA; u += 8) { const q = em(u, cor.D + lado * 28); if (comGaragem) tr.reservado.push([q.x, q.y, 50]); }
   grp.userData.mostrar(!!tr.mostrarBoxes);

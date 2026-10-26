@@ -9,7 +9,7 @@ import { CARS3, KS } from "./carros.js";
 import { myProg } from "./fantasma.js";
 import { ajudaDePelotao } from "./equilibrio.js";
 import { marchaAuto, rotacao, torque, topo, NUM } from "./cambio.js";
-import { passoBox } from "./box.js";
+import { passoBox, muretaDoBox } from "./box.js";
 
 // Física do kart (arcade com aderência): o carro tem inércia e os pneus só seguram uma certa força de lado.
 // Virar gira o bico, mas a velocidade continua indo para onde ia; os pneus puxam o carro para a nova direção até o
@@ -108,6 +108,13 @@ export function physics(dt, spec = carOf(me())) {
     const pancada = 1 - (1 - spec.wall) * 0.5 * Math.min(1, hit / 260) * (vn > 0 ? 1 : 0), raspa = Math.exp(-(1 - spec.wall) * 0.7 * dt);
     c.vx *= pancada * raspa; c.vy *= pancada * raspa;
     if (hit > 60) { Sound.bump(); race.shake = 0.25; race.bumps = (race.bumps || 0) + 1; }
+  }
+  // regras de F1: a mureta do corredor dos boxes é de verdade (box.js); quem não vai parar fica na pista
+  const sobra = race.box && !race.box.fase && tr.mostrarBoxes ? muretaDoBox(tr, race.idx, fr.lat) : null;
+  if (sobra) {
+    const p = tr.pts[race.idx], s = sobra.lado, vn = (c.vx * p.nx + c.vy * p.ny) * s;
+    nx -= p.nx * s * sobra.over; ny -= p.ny * s * sobra.over;
+    if (vn > 0) { c.vx -= p.nx * s * vn * 1.2; c.vy -= p.ny * s * vn * 1.2; if (vn > 60) { Sound.bump(); race.shake = 0.25; } }
   }
   if (race.pneu) window.F1Regras.gastarPneu(race.pneu, { dist: Math.hypot(nx - c.x, ny - c.y), total: (E.S.config.voltas || 1) * tr.n * 6, slip: c.slip, v: vf, vmax: spec.vmax, dt });
   c.x = nx; c.y = ny;

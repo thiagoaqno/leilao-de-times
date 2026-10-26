@@ -42,7 +42,7 @@ export const GP_MONACO = {
   },
   guardrail: { paineis: ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"] },
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, o Cassino e o Rochedo
-  boxes: { garagens: false }, // o corredor dos boxes sem as garagens: a rua é estreita demais para elas
+  boxes: { garagens: false, mureta: true }, // o corredor dos boxes sem as garagens (a rua é estreita demais para elas), com a mureta no lugar do guard-rail
   ambiente: {}, // cerca, painéis, bandeiras vermelhas e brancas, postos e placas (os padrões do kit)
   passarelas: { candidatos: [0.02, 0.165, 0.855, 0.31, 0.93], marcas: ["rolex", "heineken", "tag"] }, // a da Rolex na reta dos boxes
   marcos: capela,
