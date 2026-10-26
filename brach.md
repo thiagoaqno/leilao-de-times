@@ -1,31 +1,40 @@
-# Carreira F1: batidas com punição e dano, box com três tempos e robôs mais espertos
+# Corrida: as pistas do calendário de F1 de 2026, convertidas de bacinger/f1-circuits
 
-Tudo vale só com as regras de F1 ligadas na sala (`config.regras === "f1"`); sem elas, nada muda (as caixas, o pelotão e os robôs do modo arcade seguem como estavam).
+Um conversor dos circuitos do repositório [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits) (GeoJSON, licença MIT) para o nosso formato de pista, e as 19 pistas do calendário de 2026 que ainda não tínhamos. Mônaco, Interlagos, Barcelona, Silverstone, Monza e as de fantasia não mudaram.
 
-## O que entrou nesta branch
+## O conversor: `ferramentas/circuitos-f1.js`
 
-- **Batidas: punição e dano.** Cada batida (no muro, no guard-rail ou em outro carro) tem uma força, a velocidade de aproximação (`hit` em `fisica.js`; `baterNoOutro` em `colisao.js` para os carros). `F1.batida(forca)` (em `f1-regras.js`) diz o nível: abaixo de 50 é só encostão; de 50 a 110, leve (+1 s); de 110 a 180, média (+2 s); a partir de 180, forte (+5 s). O dano é proporcional à força (0,12% por unidade, com teto em 360), acumula, e o carro danificado anda pior: até 15% menos de velocidade final e 20% menos de aderência (`F1.efeitoDoDano`, em `fisica.js` e nos robôs). Em 100% é **perda total**: o carro para, o piloto sai da corrida e aparece como DNF no resultado, sem pontos.
-- **O servidor manda.** O navegador manda o `act` `batida` com a força e o tipo; o servidor segura o intervalo entre batidas (1,2 s, para o mesmo toque não contar duas vezes), limita a força pelo carro e pela velocidade da última posição, e a batida com outro carro só vale com alguém perto. `Direcao.bater` (`corrida-f1-direcao.js`) soma a punição em `p.acrescimo` (como o pit stop), acumula `p.dano`, anuncia no log da direção de prova e decide a perda total (a corrida também acaba se os que ainda corriam foram todos destruídos). O estado público ganhou `dano`, `dnf` e `ultimaBatida`.
-- **HUD.** A barra "DANO" fica acima do anel do pneu (verde, laranja e vermelha), o aviso "Batida média: +2 s · dano +14%" aparece na hora, a tela de perda total diz que o piloto está fora e o resultado do GP mostra "DNF" e o dano de cada um.
-- **Box com três tempos.** `tempoDeParada` agora sorteia, pela semente do GP, 2,0 s (perfeito, 25%), 2,7 s (normal, 55%) ou 3,3 s (ruim, 20%): mesma semente, mesmo resultado. O HUD mostra "Box perfeito · 2,0 s" durante a troca (e no fim da parada), e o log do GP também.
-- **IA melhor** (`corrida-robos.js`, só nas regras de F1):
-  - *Respeita os carros:* `transito` freia a tempo atrás de quem vai à frente (a velocidade dele mais o que dá para frear até chegar, com uma distância de segurança maior nas curvas fechadas), não vai para cima de quem está ao lado e só ultrapassa na reta (ou diante de um carro parado), pelo lado livre, até deixar o outro para trás.
-  - *Traçados variados:* cada robô tem o seu jeito (`ia.estilo`, sorteado pela semente do GP): mais por dentro ou por fora das curvas, mais para um lado da linha, freando mais cedo ou mais tarde.
-  - *Sem derrapar:* a velocidade de curva e a frenagem levam em conta o pneu, o ar sujo de quem vem colado, o vácuo na reta (o mesmo ganho aerodinâmico de quem joga) e o dano.
-  - *Erros realistas:* de vez em quando (mais no fácil e nos pilotos menos constantes) o robô trava a roda na frenagem e sai largo da curva; raramente chega a bater no muro. Os erros só custam tempo: a velocidade nunca passa do carro, e o ritmo continua o do nível.
-  - *Batem como os outros:* o servidor mede o contato dos robôs entre si e com os humanos (`contatos`, os mesmos três círculos de `colisao.js`), e eles também levam punição e dano. Usam o DRS, o ERS e a estratégia de box que já existiam.
+`node ferramentas/circuitos-f1.js be-1925 --id spa --nome "Spa-Francorchamps"` baixa `circuits/<id>.geojson` e imprime o bloco da pista para colar em `pistas.js`. Funciona com qualquer arquivo do repositório (ou `--arquivo` local):
 
-## Testes
+- projeta as coordenadas em metros e escolhe o tamanho da volta pelo comprimento real (13 mil + os metros acima de 4,3 km: Spa fica com 15,5 mil);
+- passa uma spline pelos pontos reais e **afasta os trechos que encostariam** (a nossa pista é bem mais larga que a real) e abre as curvas fechadas demais;
+- põe no quadrado de 1600, simplifica em vértices `[x, y, raio]` (reta = 0, curva = o raio que casa com a curva real) e deixa a linha de chegada no vértice 0, com `largada` apontando para ela (anda um pouco para a frente se o grid de 20 não couber);
+- `hills` com a **altitude real** de 100 pontos da volta (API de elevação do Open-Meteo);
+- acha onde a pista passa por cima de si mesma (`cruza`, o oito de Suzuka) e confere trechos encostados, curva mais fechada e grid, como o teste de robôs;
+- `--svg` desenha o traçado para conferir; `--rua`, `--volta`, `--raio-min`, `--tol`, `--sem-relevo`, `--inverter`.
 
-- Só os da Corrida: `node --test tests/corrida*.test.js`, 74 passando, com o novo `tests/corrida-f1-dano-ia.test.js`: a punição e o dano por força, o teto do dano, o efeito do dano no carro, o intervalo entre batidas, a perda total e o DNF no resultado, o servidor de verdade conferindo a batida (sem alguém perto, intervalo, teto de força e perda total), os três tempos de box (mesma semente, mesmo resultado; a distribuição 25/55/20) e a IA (10 robôs numa corrida de F1 no servidor: terminam com poucas batidas e ninguém destruído; fácil mais lento que o médio, que é mais lento que o difícil, sem passar do carro; jeitos diferentes pela semente; para atrás de um carro parado sem encostar). O teste de box antigo deixou de exigir tempos diferentes em duas paradas seguidas, porque com três tempos elas podem coincidir.
-- Medi também (fora dos testes) corridas de 15 robôs em 3 voltas em Interlagos, Mônaco, Monza e Silverstone, nos três níveis: de 0 a 4 batidas em Interlagos e de 2 a 9 contatos nas outras, nenhum robô destruído, de 1 a 6 erros por corrida e os tempos de volta dos níveis separados (em Interlagos, mediana de 63,9 s no fácil, 59,6 s no médio e 55,6 s no difícil).
-- No navegador do app com `#debug`: uma batida forte no muro (+5 s, dano de 26% no HUD e o aviso), uma parada ("Box normal · 2,7 s" no HUD) e os robôs disputando posição e parando nos boxes ("Box perfeito", "Box ruim" no log), sem erro no console.
+A licença MIT e o crédito estão no cabeçalho dos traçados convertidos em `pistas.js` e no próprio conversor.
 
-## O que fica para os próximos PRs
+## As pistas novas (na ordem do calendário)
 
-- A batida entre dois humanos pune os dois (cada navegador manda a sua metade); quem foi atingido por trás leva a mesma punição de quem bateu. Separar "culpado" e "vítima" fica para uma próxima.
-- A perda total de um humano deixa o carro parado na pista (os outros desviam dele); não tem safety car por causa disso.
-- Em Mônaco, com 15 robôs, ainda tem batidas leves nos pontos mais apertados.
-- O PR 3 (equipes e montagem do carro) vai mexer no `spec` do carro; o dano e a IA usam o `spec` que a física já recebe.
+Melbourne, Xangai, Suzuka, Bahrein, Jeddah, Miami, Montreal, Red Bull Ring, Spa-Francorchamps, Hungaroring, Zandvoort, Madri, Baku, Singapura, Austin, Cidade do México, Las Vegas, Catar e Abu Dhabi.
+
+- **Traçado** convertido (75 a 156 vértices), com `f1: true` (luz de freio e faíscas do carro de F1), `boxes` e `drs` calculados pela geometria (o lado de dentro e as duas retas mais compridas). Xangai (2,8 em vez de 2,42), Spa (4 em vez de 3,56) e Austin (4,2 em vez de 3,59) usam `scale` maior que o do conversor: as curvas travadas deixavam a volta dos robôs lenta demais.
+- **Relevo real**: Spa com 97 m de diferença (Eau Rouge embaixo, Les Combes no alto, Stavelot no fundo), Red Bull Ring 68 m, Suzuka 48 m, Hungaroring 40 m, Baku 36 m...
+- **Suzuka** passa por cima de si mesma: a reta de trás ganha uma ponte 52 acima do trecho depois da Degner (`cruza` em `pistas.js`; `pista.js` baixa o chão em volta do trecho de baixo com `tr.sobPonte`; `gps/suzuka.js` desenha o tabuleiro, as muretas e os pilares).
+- **Cores** em `cena.js` (`LOOK`) e `pista.js` (`THEMES`) e o céu em `ceu.js`, reaproveitando as fotos que já existem pelo clima de cada lugar (o pôr do sol para Singapura, Las Vegas e Abu Dhabi, o deserto para Bahrein, Jeddah e Catar).
+- **GP simples** em `gps/<id>.js`, com a peça nova do kit `kit/gp-simples.js` (`gpSimples(id, opções)`): asfalto de GP, zebras, grid, brita do lado de fora das curvas, a tribuna da reta, o prédio dos boxes, painéis, bandeira do país, passarela e som de campo; nas de rua (`rua: true`: Baku, Singapura, Jeddah e Las Vegas, com `walls`), sarjeta, guard-rail com os painéis, postes e som de cidade. Montanha onde há serra (os Alpes no Red Bull Ring, o Popocatépetl no México, Guadarrama em Madri, as Spring Mountains em Las Vegas, os montes de Suzuka, o Mont Royal), a floresta das Ardenas em Spa (`parque`) e a torcida laranja em Zandvoort. O cenário fino de cada uma fica para depois.
+- Duas chaves novas lidas por `pista.js` (e na tabela do `kit/README.md`): `beira` (árvores, palmeiras, prédios e prédios de vidro da beira e de longe; antes, pista sem tema caía nos neons de Tóquio) e `horizonte` (`false` tira os morros de longe; `{ cor }`).
+
+## Conferido
+
+- Só os testes da Corrida: `node --test tests/corrida*.test.js`, 85 passando, depois do merge com a `main` (as 19 pistas novas entraram em `tests/corrida-robos.test.js` e `tests/corrida-f1-box.test.js`; o teste dos trechos encostados deixa passar o cruzamento de Suzuka). O `npm test` completo não foi rodado.
+- No navegador do app com `#debug`: as 19 montam (`__corrida.buildTrack`) e largam numa sala com robôs, sem erro no console; Mônaco continua montando. As fotos foram tiradas na largada (e no trecho de Suzuka depois da Degner); a volta inteira foi conferida pelo teste de robôs.
+
+## Faltou
+
+- Imola não está no calendário de 2026; Sepang (que o arquivo de 2026 do bacinger lista) ficou de fora.
+- As corridas noturnas (Singapura, Las Vegas, Bahrein, Jeddah, Catar, Abu Dhabi) estão de dia ou no fim da tarde.
+- O cenário fino de cada pista (prédios dos boxes próprios, marcos, marcas locais em `kit/marcas.js`).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

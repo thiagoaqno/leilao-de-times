@@ -11,8 +11,11 @@ test("pistas refeitas: voltas longas sem trechos encostando um no outro", () => 
     assert.ok(n * 6 > 12000, `${id}: volta de ${n * 6}`);
     assert.ok(pts.every((p) => Number.isFinite(p.h) && p.x > 0 && p.y > 0 && p.x < t.world && p.y < t.world), id);
     const gap = Math.ceil((folga * 2.2) / 6);
+    // onde a pista passa por cima de si mesma (`cruza`: a ponte de Suzuka), os dois trechos podem se encontrar
+    const perto = (i, f) => { const d = Math.abs(i / n - f); return Math.min(d, 1 - d) < 0.04; };
+    const ponte = (i, j) => (t.cruza || []).some(([a, b]) => (perto(i, a) && perto(j, b)) || (perto(i, b) && perto(j, a)));
     let pior = Infinity;
-    for (let i = 0; i < n; i += 3) for (let j = i + gap; j < n - (i < gap ? gap - i : 0); j += 3) pior = Math.min(pior, Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y));
+    for (let i = 0; i < n; i += 3) for (let j = i + gap; j < n - (i < gap ? gap - i : 0); j += 3) if (!ponte(i, j)) pior = Math.min(pior, Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y));
     assert.ok(pior > folga, `${id}: dois trechos a ${pior.toFixed(0)} (precisa de ${folga})`);
   }
 });
@@ -35,7 +38,9 @@ function correr(pista, nivel = "medio", caixas = false, robos = 3, aCada = null)
   } finally { Date.now = agora; }
 }
 test("robôs seguem o traçado de corrida: usam a pista toda, sem sair dela, e fecham a volta", () => {
-  for (const pista of ["interlagos", "monaco", "tokyo", "barcelona", "silverstone", "monza"]) {
+  for (const pista of ["interlagos", "monaco", "tokyo", "barcelona", "silverstone", "monza",
+    // as pistas do calendário de F1 convertidas de bacinger/f1-circuits (ferramentas/circuitos-f1.js)
+    "melbourne", "xangai", "suzuka", "bahrein", "jeddah", "miami", "montreal", "redbullring", "spa", "hungaroring", "zandvoort", "madri", "baku", "singapura", "austin", "mexico", "lasvegas", "catar", "abudhabi"]) {
     const { room, lats } = correr(pista), meia = T.PISTAS[pista].width / 2;
     for (const id of room.order) {
       const p = room.players[id];
