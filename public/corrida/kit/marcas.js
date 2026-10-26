@@ -1,7 +1,7 @@
 // Corrida da Galera — as marcas de verdade dos patrocinadores da F1 (o jogo é só para os amigos), desenhadas no canvas:
 // a cor de fundo, a letra e o traço que faz cada logo ser reconhecido (a coroa da Rolex, o P comprido da Pirelli, as
 // faixas da DHL, o sorriso da AWS...). Sem baixar imagem: funciona sem internet e em qualquer tamanho.
-import { canvasTex } from "./cena.js";
+import { canvasTex } from "../cena.js";
 
 export const MARCAS = {
   rolex: { fundo: "#00603a", cor: "#c9a54c", texto: "ROLEX", fonte: "700 {s}px Georgia, 'Times New Roman', serif", coroa: true },

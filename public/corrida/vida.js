@@ -5,7 +5,7 @@
 import * as THREE from "three";
 import { canvasTex, M } from "./cena.js";
 import { enfeitarMais, animarMais, montarTorcida } from "./vida-mais.js";
-import { marcaTex, PATROCINIO } from "./marcas.js";
+import { marcaTex } from "./kit/marcas.js";
 
 const reduz = matchMedia("(prefers-reduced-motion: reduce)");
 const ANUNCIOS = [
@@ -76,15 +76,15 @@ export function enfeitar(tr, add, r, alturaEm) {
       const s = feitos % 2 ? 1 : -1, d = (comMuro ? tr.wallLat : W / 2 + 30) + 26, [x, z] = lat(p, s * d);
       if (tr.distAt(x, z) < W / 2 + 18 || (tr.ocupado && tr.ocupado(x, z, i))) continue;
       const y = alturaEm(x, z, i), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = Math.atan2(-p.nx * s, -p.ny * s) + Math.PI * 0; add(g);
-      const tex = id === "monaco" ? marcaTex(PATROCINIO[(feitos * 5 + 3) % PATROCINIO.length], 512, 220) : anuncio(ANUNCIOS[(feitos + id.length) % ANUNCIOS.length], id === "tokyo"); // Mônaco: os patrocinadores de verdade
+      const tex = tr.marcasGP ? marcaTex(tr.marcasGP[(feitos * 5 + 3) % tr.marcasGP.length], 512, 220) : anuncio(ANUNCIOS[(feitos + id.length) % ANUNCIOS.length], id === "tokyo"); // nos GPs: os patrocinadores de verdade (kit/ambiente.js)
       const quadro = new THREE.Mesh(new THREE.BoxGeometry(64, 28, 1.6), [M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: id === "tokyo" ? 0.9 : 0.12, roughness: 0.6 }), M(0x2a2d33)]);
       quadro.position.y = 34; quadro.castShadow = true; g.add(quadro);
       for (const k of [-20, 20]) { const perna = new THREE.Mesh(new THREE.BoxGeometry(2.2, 22, 2.2), M(0x50555e)); perna.position.set(k, 11, -1); perna.castShadow = true; g.add(perna); }
       feitos++; ult = i;
     }
   }
-  // bandeirolas atravessando a pista (Mônaco tem as passarelas do GP no lugar: monaco-detalhes.js)
-  if (!t.espaco && id !== "monaco") for (const f of [0.012, 0.2, 0.41, 0.6, 0.79]) {
+  // bandeirolas atravessando a pista (os GPs com passarelas do kit não têm)
+  if (!t.espaco && !tr.semBandeirolas) for (const f of [0.012, 0.2, 0.41, 0.6, 0.79]) {
     if (tr.coberto && tr.coberto(Math.floor(n * f))) continue;
     const i = Math.floor(n * f), p = pts[i], L = borda + 6, alto = 46, cores = ["#e63946", "#ffd23f", "#1e88e5", "#43a047", "#ffffff", "#fb8c00"];
     const [x1, z1] = lat(p, L), [x2, z2] = lat(p, -L), y1 = alturaEm(x1, z1, i), y2 = alturaEm(x2, z2, i);
@@ -194,7 +194,7 @@ export function animarVida(tr, dt, foco) {
   }
   if (V.planeta && !parado) V.planeta.rotation.y = t * 0.02;
   animarMais(tr, V, t, dt, foco);
-  if (tr.animarPista) tr.animarPista(dt, foco, t); // o que é só de uma pista (Mônaco: monaco-vida.js)
+  if (tr.animarPista) tr.animarPista(dt, foco, t); // o que é só de uma pista (os GPs: kit/vida.js)
   for (const f of V.fogos) {
     f.t += dt; const pos = f.pts.geometry.attributes.position, N = pos.count;
     if (f.t > 2.6 + f.espera) { // um fogo novo, num canto do céu

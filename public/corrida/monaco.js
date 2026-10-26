@@ -133,7 +133,7 @@ export function cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, j
     faixa(tr, add, i0, i1, l0 + lado * (degraus * 9 - 8), l0 + lado * (degraus * 9 + 4), 4 + degraus * 6 + 22, 4 + degraus * 6 + 25, cobertura, 60); // a marquise lá atrás (os assentos ficam à vista)
     for (let i = i0; i <= i1; i += 10) { const p = pts[i % n]; for (const d of [l0 + lado * 2, l0 + lado * degraus * 9]) { const m = add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, degraus * 6 + 30), estrutura)); m.position.set(p.x + p.nx * d, p.h + (degraus * 6 + 30) / 2 - 4, p.y + p.ny * d); } }
     for (let i = i0; i <= i1; i += 4) { const p = pts[i % n]; reservado.push([p.x + p.nx * (l0 + lado * 30), p.y + p.ny * (l0 + lado * 30), 60]); }
-    tr.arquibancadas.push([i0, i1]); // o som da torcida (monaco-vida.js)
+    tr.arquibancadas.push([i0, i1]); // o som da torcida (kit/som.js)
   };
   arquibancada(150, 830, 300, 640, -1, 7); // reta dos boxes, do lado de fora
   arquibancada(380, 575, 470, 488, -1, 6); // chegando na Sainte Dévote
