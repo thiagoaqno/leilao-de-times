@@ -33,6 +33,7 @@ export const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 export const LOOK = {
   monaco: { sky: [0x4fa9f5, 0xd9f0ff], fog: 0xcfe6f2, fogN: 900, fogF: 3800, hemi: [0xe8f2ff, 0x6a6a5a, 1.35], sun: [0xfff3df, 2.3], ground: ["#cfc8b8", "#c2baa8", "#dad4c6"], road: "#5b5b61", kerb: ["#d62828", "#f4f4f4"] },
   interlagos: { sky: [0x3f97e0, 0xf3e6c8], fog: 0xdfe7d8, fogN: 1000, fogF: 4200, hemi: [0xe4efff, 0x4a6a3a, 1.3], sun: [0xfff1dc, 2.3], ground: ["#3f9a3a", "#47a542", "#378331"], road: "#4b4b50", kerb: ["#e53935", "#f4f4f4"] },
+  barcelona: { sky: [0x3f93dc, 0xf2ead6], fog: 0xe8e4d2, fogN: 1000, fogF: 4400, hemi: [0xeaf2ff, 0x7a7448, 1.35], sun: [0xfff0d6, 2.4], ground: ["#a9a35a", "#b6ae66", "#968f4e"], road: "#4c4d52", kerb: ["#d62828", "#f4f4f4"] },
   losangeles: { sky: [0x3b2a6b, 0xff9a5a], fog: 0xe8a07a, fogN: 900, fogF: 4000, hemi: [0xffd2b0, 0x5a4a5a, 1.25], sun: [0xffb070, 2.4], ground: ["#9c8a6a", "#8f7d5e", "#a89677"], road: "#3f3f46", kerb: ["#e53935", "#f4f4f4"] },
   rio: { sky: [0x3f97e0, 0xd6f1ff], fog: 0xcfeaf2, fogN: 1000, fogF: 4200, hemi: [0xeaf6ff, 0x3f6a3a, 1.35], sun: [0xfff3df, 2.4], ground: ["#3f8a3a", "#4a9a42", "#367a31"], road: "#4a4a50", kerb: ["#ffd23f", "#1f8a3a"] },
   serra: { sky: [0x6eb9f0, 0xe4f6ff], fog: 0xcde6dd, fogN: 1100, fogF: 5000, hemi: [0xe9f7ff, 0x426c48, 1.4], sun: [0xffeecb, 2.2], ground: ["#467b45", "#548b4e", "#386c3c"], road: "#51545a", kerb: ["#f5f5f5", "#d64135"] },

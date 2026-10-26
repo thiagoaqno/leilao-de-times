@@ -3,5 +3,6 @@
 // Pista nova de GP: um arquivo nesta pasta exportando a configuração e uma linha aqui.
 import { GP_MONACO } from "./monaco.js";
 import { GP_INTERLAGOS } from "./interlagos.js";
+import { GP_BARCELONA } from "./barcelona.js";
 
-export const GPS = { monaco: GP_MONACO, interlagos: GP_INTERLAGOS };
+export const GPS = { monaco: GP_MONACO, interlagos: GP_INTERLAGOS, barcelona: GP_BARCELONA };

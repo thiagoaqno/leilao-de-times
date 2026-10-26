@@ -12,6 +12,8 @@
 //   sc: [[f, "SC 1"], ...]     — linhas do safety car com o nome pintado
 //   grid: true                 — o colchete e o número de cada posição (no lugar das barras de pista.js)
 //   remendos: 46, bueiros: 40  — quantos
+//   brita: { cor, largura, raio } — a área de escape de brita do lado de fora das curvas (raio: as mais fechadas que
+//          esse raio em unidades, 450 se faltar); só pintura, a física é a da grama
 import * as THREE from "three";
 import { canvasTex } from "../cena.js";
 import { lotes, tira, tinta, gastar, sinalDaCurva, sorteio } from "./comum.js";
@@ -46,6 +48,18 @@ export function chaoGP(tr, add, cfg, { gridSpot }) {
       if (a >= 0 && (!tem || cor !== corA)) { tira(tr, L.de(corA ? amarela : zebra), a, i, s * meia, s * (meia + 7), 0.58, corA ? 1.6 : 1.0, (a * 6) / 28, (i * 6) / 28); a = -1; }
       if (tem && a < 0) { a = i; corA = cor; }
       if (tem) tr.zebras[i] = 1;
+    }
+  }
+  // brita: do lado de fora das curvas (do ápice até a saída), logo depois da zebra
+  if (cfg.brita) {
+    const b = { cor: "#c9b37a", largura: 24, raio: 450, ...cfg.brita };
+    const matBrita = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = b.cor; x.fillRect(0, 0, w, hh); for (let i = 0; i < 600; i++) { x.fillStyle = rr() < 0.5 ? "#00000022" : "#ffffff26"; x.fillRect(rr() * w, rr() * hh, 2, 2); } }), roughness: 1, side: THREE.DoubleSide });
+    const fora = { "-1": new Uint8Array(n), "1": new Uint8Array(n) };
+    for (let i = 0; i < n; i++) { if ((pts[i].k || 0) < 1 / b.raio) continue; const lado = -sinalDaCurva(pts, n, i); for (let j = i - 10; j <= i + 14; j++) fora[lado][(j + n) % n] = 1; }
+    for (const s of [-1, 1]) for (let i = 0, a = -1; i <= n; i++) {
+      const tem = i < n && !!fora[s][i];
+      if (a >= 0 && !tem) { tira(tr, L.de(matBrita), a, i, s * (meia + 7), s * (meia + 7 + b.largura), 0.3, 0.2, (a * 6) / 64, (i * 6) / 64); a = -1; }
+      if (tem && a < 0) a = i;
     }
   }
   const proibido = (i) => { const q = ((i % n) + n) % n, f = q / n; return f > 0.955 || f < 0.012 || !!tr.coberto?.(q); }; // o grid, a linha e o túnel

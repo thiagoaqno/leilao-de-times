@@ -73,6 +73,44 @@ const PISTAS = {
       [1250, 1300, 100],
     ],
   },
+  barcelona: {
+    name: "Barcelona", sub: "Circuit de Barcelona-Catalunya: a reta dos boxes, Elf e Renault, a curva 3 longa, Repsol e Seat, a subida até a Campsa cega, La Caixa, Banc de Sabadell e a reta final",
+    // autódromo de verdade: asfalto largo, brita e área de escape dos dois lados (sem muro colado)
+    scale: 2.72, width: 130, minLap: 30, walls: false, flat: 40, fall: 220, largada: 0.3,
+    // relevo: a reta dos boxes quase plana, desce até a Elf, sobe a curva 3 e a reta até a Seat, e continua subindo (Würth, curvas 7-8)
+    // até o alto da Campsa, o ponto mais alto; da La Caixa em diante desce por Sabadell até a reta final
+    hills: [[0, 8], [0.08, 7], [0.17, 4], [0.22, 10], [0.31, 24], [0.36, 30], [0.43, 38], [0.5, 50], [0.55, 62], [0.6, 72], [0.64, 76], [0.7, 68], [0.74, 58], [0.8, 40], [0.88, 22], [0.95, 12], [1, 8]],
+    // desenhada em cima do mapa oficial do circuito (layout atual, 14 curvas), no mesmo sentido: a largada desce para o sudoeste do mapa
+    points: [
+      [1176, 615, 0], // linha de chegada, no meio da reta dos boxes (que desce para o sudoeste)
+      [690, 1374, 117], // Elf (1), à direita no fim da reta
+      [655, 1391, 55], // Elf (1), saída
+      [565, 1339, 88], // Renault (2), à esquerda
+      [401, 1457, 136], // curva 3, a longa à direita
+      [267, 1385, 146], // curva 3
+      [264, 1221, 269], // curva 3, saída
+      [464, 906, 75], // curva 4 (Repsol), à direita
+      [563, 934, 87], // curva 4
+      [567, 1042, 164], // curva 4, saída
+      [425, 1262, 68], // Seat (5), o grampo à esquerda
+      [460, 1308, 61], // Seat (5)
+      [686, 1208, 265], // Würth (6), à direita, subindo
+      [789, 1056, 94], // curvas 7-8, à esquerda, subindo
+      [785, 1021, 61], // curvas 7-8
+      [714, 972, 153], // curvas 7-8, saída
+      [614, 732, 127], // Campsa (9), cega no alto
+      [644, 658, 134], // Campsa (9), saída
+      [1186, 393, 45], // La Caixa (10), o grampo no fim da reta de trás
+      [1169, 361, 97], // La Caixa (10)
+      [1044, 331, 87], // curva 11, à esquerda
+      [959, 387, 76], // Banc de Sabadell (12), a curva longa à direita
+      [889, 352, 65], // Banc de Sabadell (12)
+      [896, 280, 93], // Banc de Sabadell (12), saída
+      [1082, 132, 190], // curva 13, à direita
+      [1325, 280, 123], // curva 14, à direita
+      [1341, 359, 127], // curva 14, e a reta final
+    ],
+  },
   tokyo: {
     name: "Tóquio", sub: "Doze quarteirões de neon com esquinas de 90°, via expressa elevada, rampa de pulo e viaduto",
     scale: 2.01, width: 112, minLap: 25, walls: true, wall: 23, flat: 25, fall: 50,
