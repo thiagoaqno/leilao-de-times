@@ -192,13 +192,13 @@ function danoHud(c, dano, x, y) {
   c.lineWidth = 1; c.strokeStyle = "#ffffff66"; c.strokeRect(x + 0.5, y + 0.5, w - 1, 8);
   c.fillStyle = "#fff"; c.textAlign = "left"; c.textBaseline = "bottom"; c.font = "800 9px Figtree, sans-serif"; c.fillText(`DANO ${dano}%`, x, y - 2);
 }
-// a punição de uma batida nova (a mesma que o servidor somou ao tempo): aparece na hora, uma vez só
+// o dano de uma batida nova: aparece na hora, uma vez só
 function avisoDeBatida(m) {
   const b = m && m.ultimaBatida;
   if (!b || race.batidaVista === b.at) return;
   race.batidaVista = b.at;
   if (sNow() - b.at > 4000) return; // uma batida velha, de antes de eu abrir a tela
-  toast(`💥 Batida ${b.nivel === "media" ? "média" : b.nivel}: +${b.segundos} s · dano +${Math.round(b.dano)}%`, 2800);
+  toast(`💥 Batida ${b.nivel === "media" ? "média" : b.nivel}: dano +${Math.round(b.dano)}%`, 2800);
 }
 // o pneu (regras de F1), à esquerda do velocímetro: o anel da cor do composto esvazia com o desgaste e fica vermelho
 // depois do penhasco; com o pneu frio, o miolo fica azul. Embaixo, o nome do composto; no meio, quanto ainda resta.

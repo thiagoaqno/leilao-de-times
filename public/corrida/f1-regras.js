@@ -208,21 +208,20 @@ function classificacaoFinal(carros, voltas) {
   });
 }
 
-// ---------- as batidas: punição e dano ----------
-// A força da batida é a velocidade com que os carros (ou o carro e o muro) se aproximaram, em unidades por segundo. Abaixo
-// de BATIDA_MIN é só um encostão. Leve: +1 s; média: +2 s; forte: +5 s (somados ao tempo final, como o pit stop). O dano
-// é proporcional à força (até BATIDA_MAX), acumula, tira um pouco de velocidade final e de aderência, e em 100% é perda total.
-const BATIDA_MIN = 50, BATIDA_MEDIA = 110, BATIDA_FORTE = 180, BATIDA_MAX = 360, DANO_POR_FORCA = 0.12, BATIDA_INTERVALO = 1200;
-const DANO_FINAL = 0.15, DANO_GRIP = 0.2;
+// ---------- as batidas: dano fixo ----------
+// A força serve para separar contato perceptível de aproximação sem impacto. Toda batida válida causa 2% de dano,
+// sem segundos de penalidade; um intervalo maior evita que o mesmo contato durante uma travada conte repetidamente.
+const BATIDA_MIN = 20, BATIDA_MEDIA = 110, BATIDA_FORTE = 180, BATIDA_MAX = 360, DANO_POR_BATIDA = 2, BATIDA_INTERVALO = 4000;
 function batida(forca) {
   if (!(forca >= BATIDA_MIN)) return null;
   const nivel = forca >= BATIDA_FORTE ? "forte" : forca >= BATIDA_MEDIA ? "media" : "leve";
-  return { nivel, segundos: nivel === "forte" ? 5 : nivel === "media" ? 2 : 1, dano: Math.round(Math.min(forca, BATIDA_MAX) * DANO_POR_FORCA * 10) / 10 };
+  return { nivel, segundos: 0, dano: DANO_POR_BATIDA };
 }
-// o que o dano (0 a 100) faz com o carro: multiplicadores da velocidade final e da aderência
+// Cada ponto percentual de dano tira um ponto percentual de velocidade, aceleração, freio e aderência.
 function efeitoDoDano(dano) {
   const d = limite((dano || 0) / 100, 0, 1);
-  return { final: 1 - DANO_FINAL * d, grip: 1 - DANO_GRIP * d };
+  const desempenho = 1 - d;
+  return { final: desempenho, grip: desempenho, tracao: desempenho, freio: desempenho };
 }
 
 // ---------- o vácuo da F1 ----------

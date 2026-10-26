@@ -1,4 +1,4 @@
-// Corrida da Galera, regras de F1: a punição e o dano das batidas (a perda total), o box com três tempos e a IA dos robôs.
+// Corrida da Galera, regras de F1: o dano fixo das batidas, o box e a IA dos robôs.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const F1 = require("../public/corrida/f1-regras.js");
@@ -15,54 +15,46 @@ const salaDeTeste = () => {
   return room;
 };
 
-test("batida: a força decide a punição (1, 2 ou 5 s) e o dano proporcional; encostão não conta", () => {
+test("batida: toda força válida causa 2% de dano e nenhuma punição de tempo", () => {
   assert.equal(F1.batida(0), null);
   assert.equal(F1.batida(F1.BATIDA_MIN - 1), null);
-  assert.deepEqual([F1.batida(60).nivel, F1.batida(60).segundos], ["leve", 1]);
-  assert.deepEqual([F1.batida(F1.BATIDA_MEDIA).nivel, F1.batida(F1.BATIDA_MEDIA).segundos], ["media", 2]);
-  assert.deepEqual([F1.batida(150).nivel, F1.batida(150).segundos], ["media", 2]);
-  assert.deepEqual([F1.batida(F1.BATIDA_FORTE).nivel, F1.batida(F1.BATIDA_FORTE).segundos], ["forte", 5]);
-  assert.deepEqual([F1.batida(300).nivel, F1.batida(300).segundos], ["forte", 5]);
-  let antes = 0;
-  for (let f = F1.BATIDA_MIN; f <= F1.BATIDA_MAX; f += 10) { const d = F1.batida(f).dano; assert.ok(d >= antes, "o dano cresce com a força"); antes = d; }
-  assert.equal(F1.batida(5000).dano, F1.batida(F1.BATIDA_MAX).dano, "o dano tem teto");
-  assert.ok(F1.batida(100).dano > 0 && F1.batida(100).dano < 100);
+  for (const forca of [F1.BATIDA_MIN, 60, F1.BATIDA_MEDIA, F1.BATIDA_FORTE, 5000])
+    assert.deepEqual([F1.batida(forca).dano, F1.batida(forca).segundos], [2, 0]);
 });
 
-test("dano: o carro batido anda pior (velocidade final e aderência), e sem dano nada muda", () => {
-  assert.deepEqual(F1.efeitoDoDano(0), { final: 1, grip: 1 });
-  assert.deepEqual(F1.efeitoDoDano(undefined), { final: 1, grip: 1 });
-  const metade = F1.efeitoDoDano(50), cheio = F1.efeitoDoDano(100);
-  assert.ok(metade.final < 1 && metade.grip < 1 && cheio.final < metade.final && cheio.grip < metade.grip);
-  assert.ok(cheio.final > 0.8 && cheio.grip > 0.7, "um pouco menos, não um carro parado");
+test("dano: 2% tira 2% de velocidade, aceleração, freio e aderência", () => {
+  assert.deepEqual(F1.efeitoDoDano(0), { final: 1, grip: 1, tracao: 1, freio: 1 });
+  assert.deepEqual(F1.efeitoDoDano(undefined), F1.efeitoDoDano(0));
+  assert.deepEqual(F1.efeitoDoDano(2), { final: 0.98, grip: 0.98, tracao: 0.98, freio: 0.98 });
+  assert.deepEqual(F1.efeitoDoDano(50), { final: 0.5, grip: 0.5, tracao: 0.5, freio: 0.5 });
 });
 
-test("direção de prova: a batida soma a punição ao tempo final, acumula dano e anuncia no log", () => {
+test("direção de prova: batida não soma tempo, acumula 2% e anuncia no log", () => {
   const room = salaDeTeste(), p = room.players.a, log = [];
   const b = Direcao.bater(room, p, 150, "muro", 5000, (s) => log.push(s));
   assert.equal(b.nivel, "media");
-  assert.equal(p.penal, 2); assert.equal(p.acrescimo, 2);
-  assert.equal(p.dano, F1.batida(150).dano);
-  assert.equal(p.ultimaBatida.segundos, 2);
-  assert.ok(log.some((s) => /Ana.*batida média no muro.*\+2 s/.test(s)), log.join("|"));
+  assert.equal(p.penal, 0); assert.equal(p.acrescimo, 0);
+  assert.equal(p.dano, 2);
+  assert.equal(p.ultimaBatida.segundos, undefined);
+  assert.ok(log.some((s) => /Ana.*batida média no muro.*dano 2%/.test(s)), log.join("|"));
   // o mesmo toque (dentro do intervalo) não conta duas vezes; depois do intervalo, conta
   assert.equal(Direcao.bater(room, p, 150, "muro", 5000 + F1.BATIDA_INTERVALO - 1, semLog), null);
-  assert.equal(p.penal, 2);
+  assert.equal(p.dano, 2);
   Direcao.bater(room, p, 200, "carro", 5000 + F1.BATIDA_INTERVALO, (s) => log.push(s));
-  assert.equal(p.penal, 7); assert.equal(p.batidas, 2);
+  assert.equal(p.penal, 0); assert.equal(p.dano, 4); assert.equal(p.batidas, 2);
   assert.ok(log.some((s) => /batida forte com outro carro/.test(s)));
   // um encostão, antes da largada, na pausa ou com o carro no box não vale
-  assert.equal(Direcao.bater(room, p, 20, "muro", 99999, semLog), null);
+  assert.equal(Direcao.bater(room, p, F1.BATIDA_MIN - 1, "muro", 99999, semLog), null);
   room.startAt = 1e9; assert.equal(Direcao.bater(room, p, 150, "muro", 99999, semLog), null);
 });
 
 test("direção de prova: com 100% de dano é perda total (DNF): o piloto fica fora e não pontua", () => {
   const room = salaDeTeste(), p = room.players.a, log = [];
   let t = 5000, n = 0;
-  while (!p.dnf && n++ < 20) { Direcao.bater(room, p, 300, "muro", t, (s) => log.push(s)); t += F1.BATIDA_INTERVALO; }
+  while (!p.dnf && n++ < 50) { Direcao.bater(room, p, 300, "muro", t, (s) => log.push(s)); t += F1.BATIDA_INTERVALO; }
   assert.ok(p.dnf, "chegou a 100%");
   assert.equal(p.dano, 100);
-  assert.ok(n <= 4, "poucas batidas fortes bastam: " + n);
+  assert.equal(n, 50, "perda total só após 50 batidas válidas");
   assert.ok(log.some((s) => /perda total/.test(s)));
   assert.equal(Direcao.bater(room, p, 300, "muro", t + 5000, semLog), null, "quem já abandonou não bate de novo");
   const r = F1.classificacaoFinal([
@@ -88,22 +80,16 @@ test("servidor: o navegador manda a batida e a força, o servidor confere (teto 
     // batida com o carro ao lado de ninguém: não vale
     assert.equal((await bate(150, "carro")).ignored, true);
     assert.equal(eu().dano, 0);
-    // no muro: a punição e o dano da força
+    // no muro: dano fixo, sem punição em segundos
     await bate(150, "muro"); await espera(() => eu().dano > 0);
-    assert.equal(eu().penal, 2); assert.equal(eu().dano, F1.batida(150).dano);
+    assert.equal(eu().penal, 0); assert.equal(eu().dano, 2);
     assert.equal(eu().ultimaBatida.nivel, "media");
     // dentro do intervalo: ignorada
     assert.equal((await bate(300, "muro")).ignored, true);
     await new Promise((ok) => setTimeout(ok, F1.BATIDA_INTERVALO));
-    // uma força absurda vira o teto da velocidade do carro (nunca passa dos limites)
-    await bate(1e6, "muro"); await espera(() => eu().penal >= 7);
-    assert.ok(eu().dano <= F1.batida(F1.BATIDA_MAX).dano + F1.batida(150).dano + 0.01, "teto de dano: " + eu().dano);
-    assert.equal(eu().penal, 7);
-    // até a perda total
-    for (let k = 0; k < 4 && !eu().dnf; k++) { await new Promise((ok) => setTimeout(ok, F1.BATIDA_INTERVALO)); await bate(300, "muro"); }
-    await espera(() => eu().dnf);
-    assert.equal(eu().dano, 100);
-    assert.ok(s.ultimo.log.some((l) => /perda total/.test(l.text)));
+    // uma força absurda também vale só 2% e não estoura o carro
+    await bate(1e6, "muro"); await espera(() => eu().dano === 4);
+    assert.equal(eu().penal, 0); assert.equal(eu().acrescimo, 0); assert.equal(eu().dnf, false);
   } finally { s.close(); await srv.parar(); }
 });
 
@@ -177,6 +163,62 @@ test("IA: o ritmo continua o do nível (fácil mais lento que o médio, que é m
   const pf = Robos.perfil("interlagos", "equilibrado", 0), maximo = Robos.tempoDaVolta(pf, 1.6);
   assert.ok(d > maximo * 0.92, `o difícil (${d.toFixed(1)} s) não pode ser mais rápido que o carro (${maximo.toFixed(1)} s)`);
   assert.ok(m < maximo * 1.6, `o médio não pode ser lento demais (${m.toFixed(1)} s)`);
+});
+
+test("IA: sem volta humana, o grid completo fecha Mônaco e classifica perto de uma volta competitiva", () => {
+  const { room } = corridaDeRobos({ pista: "monaco", robos: 19, voltas: 2 });
+  assert.equal(room.order.length, 19);
+  assert.ok(room.order.every((id) => room.players[id].finish != null), "todos cruzam a chegada");
+  const tempos = room.order.map((id, i) => Robos.voltaLancada(room, room.players[id], 0, i, 19).tempo).sort((a, b) => a - b);
+  assert.ok(tempos[0] > 43 && tempos[0] < 50, `pole ${tempos[0]}`);
+  assert.ok(tempos.at(-1) - tempos[0] < 5, `grid disperso: ${tempos[0]} a ${tempos.at(-1)}`);
+});
+
+test("IA: grid completo termina em todas as pistas de GP sem volta gravada", () => {
+  for (const pista of Object.keys(T.PISTAS).filter((id) => T.PISTAS[id].f1 || ["monaco", "interlagos", "barcelona", "silverstone", "monza"].includes(id))) {
+    const { room } = corridaDeRobos({ pista, robos: 19, voltas: 2 });
+    assert.equal(room.order.length, 19, pista);
+    const semChegada = room.order.map((id) => room.players[id]).filter((p) => p.finish == null);
+    assert.equal(semChegada.length, 0, `${pista}: ${semChegada.length} robôs sem chegada; ${semChegada.slice(0, 3).map((p) => `${p.name} volta ${p.laps} posição ${p.ia.s.toFixed(0)}`).join(", ")}`);
+  }
+});
+
+test("IA: recorde humano limita a pole; volta boa em Cadillac não vira P2 automaticamente", () => {
+  Robos.usarFonte(() => [], () => ({ tempo: 49.5 }), () => ({ tempo: 43.2 }));
+  const room = { config: { pista: "monaco", regras: "f1", nivel: "medio", robos: 19 }, players: { h: { id: "h", name: "Thiago", bot: false, equipe: "cadillac" } }, order: ["h"], semente: 4321 };
+  Robos.preparar(room, ["#a"], () => "x");
+  Robos.ritmoDosRobos(room);
+  const bots = room.order.map((id) => room.players[id]).filter((p) => p.bot);
+  const tempos = bots.map((p, i) => Robos.voltaLancada(room, p, 0, i, bots.length).tempo).sort((a, b) => a - b);
+  assert.ok(tempos[0] > 43.2 && tempos[0] < 47, `pole ${tempos[0]}`);
+  assert.ok(tempos.at(-1) < 49.5, `fundo do grid ${tempos.at(-1)}`);
+  Robos.usarFonte(() => [], () => ({ tempo: 49.5 }), () => ({ tempo: 49.5 }));
+  Robos.ritmoDosRobos(room);
+  const poleSemRecordeRapido = Math.min(...bots.map((p, i) => Robos.voltaLancada(room, p, 0, i, bots.length).tempo));
+  assert.ok(poleSemRecordeRapido < 49.5, `uma única volta de 49,5 s não deve limitar o grid: ${poleSemRecordeRapido}`);
+  Robos.usarFonte(() => []);
+});
+
+test("IA: o prazo de chegada da F1 cobre a distância que falta aos robôs", () => {
+  const room = { config: { pista: "monaco", regras: "f1", voltas: 5 }, order: ["b"], players: { b: { id: "b", bot: true, laps: 3, started: true, finish: null, pos: { prog: 0 } } }, ritmoRobos: 45 };
+  assert.ok(Robos.prazoDeChegada(room) > 45000);
+  assert.equal(Robos.prazoDeChegada({ ...room, config: { ...room.config, regras: "arcade" } }), 45000);
+});
+
+test("IA: carro com perda total é retirado do tráfego, mesmo numa curva", () => {
+  Robos.usarFonte(() => []);
+  const agora = Date.now; let relogio = agora(); Date.now = () => relogio;
+  try {
+    const room = { config: { pista: "interlagos", regras: "f1", caixas: false, robos: 1, nivel: "medio", voltas: 2 }, players: {}, order: [], phase: "race", startAt: relogio, semente: 7, finishOrder: [] };
+    Robos.preparar(room, ["#a"], () => "a");
+    const bot = room.players[room.order[0]]; bot.grid = 0; Robos.largar(room);
+    const pf = Robos.perfil("interlagos", bot.spec), idx = Math.floor((bot.ia.s + 25) % pf.n), pt = pf.pts[idx];
+    room.players.wreck = { id: "wreck", bot: false, name: "Retirado", dnf: true, finish: null, pos: { x: pt.x, y: pt.y, z: pt.h, a: Math.atan2(pt.ty, pt.tx), v: 0, prog: idx } };
+    room.order.push("wreck");
+    const inicio = bot.ia.s;
+    for (let i = 0; i < 180; i++) { relogio += 50; Robos.passo(room, 0.05, () => {}, () => {}); }
+    assert.ok((bot.ia.s - inicio + pf.n) % pf.n > 100, `bot preso atrás do carro retirado: ${bot.ia.s - inicio}`);
+  } finally { Date.now = agora; }
 });
 
 test("IA: cada robô tem o seu jeito (traçado, frenagem, erros), sorteado pela semente do GP", () => {

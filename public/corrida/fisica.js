@@ -24,7 +24,7 @@ export function physics(dt, spec = carOf(me())) {
   // nas regras de F1 o carro já anda antes das luzes apagarem (a largada queimada: o servidor dá +5 s); nas outras, só depois da contagem
   const c = race.car, tr = race.tr, go = (sNow() >= race.startAt || !!race.luzes) && !!me();
   if (!go || (race.luzes && sNow() < race.startAt && !keys.gas)) { c.v = c.vx = c.vy = 0; return; } // (nas luzes de F1, o freio de mão segura o carro na ladeira do grid até alguém acelerar)
-  // regras de F1: perda total (100% de dano): o carro para onde está e o piloto está fora da corrida
+  // regras de F1: a perda total retira o carro da disputa e o torna não sólido para os demais
   if (me().dnf) { c.v = c.vx = c.vy = 0; return; }
   // regras de F1: no corredor dos boxes o carro anda sozinho (box.js); os checkpoints continuam valendo lá dentro
   if (race.box && passoBox(dt, spec)) return setores(tr, trackFrame(tr, c.x, c.y, race.idx), dt);
@@ -34,7 +34,8 @@ export function physics(dt, spec = carOf(me())) {
   // VÁCUO: logo atrás de outro carro (até ~17 m, na mesma linha e mesma direção) o ar empurra menos e o carro anda
   // mais. Ficou no vácuo mais de 1 s e saiu de trás dele (para ultrapassar)? Ganha o ESTILINGUE, um empurrão curto.
   let draft = 0;
-  if (!air && vf > 120) for (const gh of race.ghosts.values()) {
+  if (!air && vf > 120) for (const [id, gh] of race.ghosts) {
+    if (P(id)?.dnf) continue;
     const dx = gh.x - c.x, dy = gh.y - c.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx);
     if (along < 22 || along > 170 || lat > 24 || Math.abs((gh.z || 0) - c.z) > 15 || Math.cos(gh.a - c.a) < 0.9) continue;
     draft = Math.max(draft, 1 - (along - 22) / 148);
@@ -44,7 +45,7 @@ export function physics(dt, spec = carOf(me())) {
   if (race.pneu) race.draftT = 0;
   else if (race.draft > 0.35) race.draftT += dt; else { if (race.draftT > 1 && race.draft < 0.2) { race.sling = 1.2; Sound.sling(); } race.draftT = 0; }
   race.sling = Math.max(0, race.sling - dt);
-  const outros = [...race.ghosts.values()].filter((gh) => Number.isFinite(gh.prog));
+  const outros = [...race.ghosts].filter(([id, gh]) => !P(id)?.dnf && Number.isFinite(gh.prog)).map(([, gh]) => gh);
   const lider = Math.max(myProg(), ...outros.map((gh) => gh.prog));
   const m = me(), ultima = m && E.S && m.laps >= E.S.config.voltas - 1;
   const catchup = outros.length ? ajudaDePelotao(myProg() / tr.n, lider / tr.n, ultima ? race.idx / tr.n : 0, E.S.config.equilibrio !== false) : 0;
@@ -53,7 +54,7 @@ export function physics(dt, spec = carOf(me())) {
   const estrelaAtiva = m && m.starUntil > sNow();
   const bala = (m && m.balaUntil > sNow()) || race.balaUntil > sNow(), pequeno = !bala && m && m.shrinkUntil > sNow();
   const F1 = window.F1Regras, pn = race.pneu ? F1.aderencia(race.pneu) : null;
-  const dano = pn ? F1.efeitoDoDano(m && m.dano) : null; // o carro batido anda pior: menos velocidade final e aderência
+  const dano = pn ? F1.efeitoDoDano(m && m.dano) : null; // cada 1% de dano reduz os atributos do carro em 1%
   const direcao = E.S?.direcao, setor = Math.floor(race.idx / (tr.n / SECTORS));
   const zona = F1.zonaDRS(race.idx / tr.n, tr.t.drs), amarela = direcao?.amarelo?.setor === setor;
   const drs = !!(pn && m && m.drsZona === zona && zona >= 0 && !keys.brake && !amarela && !direcao?.safety);
@@ -75,8 +76,8 @@ export function physics(dt, spec = carOf(me())) {
   race.rpm = rotacao(vf, vmaxF1, race.marcha);
   const forca = manual ? torque(race.rpm) : 1;
   if (!air) {
-    if (keys.gas) vf += (vf < 0 ? spec.brake : forca * spec.acc * (pn?.tracao || 1) * (1 + (vac ? vac.acel : race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0)) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0) + (ersAtivo ? 0.25 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
-    else if (keys.brake) vf -= (vf > 0 ? spec.brake * (pn?.freio || 1) : 120) * dt;
+    if (keys.gas) vf += (vf < 0 ? spec.brake : forca * spec.acc * (pn?.tracao || 1) * (dano?.tracao || 1) * (1 + (vac ? vac.acel : race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0)) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0) + (ersAtivo ? 0.25 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
+    else if (keys.brake) vf -= (vf > 0 ? spec.brake * (pn?.freio || 1) * (dano?.freio || 1) : 120) * dt;
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (70 + (manual && vf > 0 ? (NUM + 1 - race.marcha) * 18 : 0)) * dt); // no manual, marcha baixa segura o carro (freio-motor)
     if (vf > vmax) vf = direcao?.safety || amarela ? Math.max(vmax, vf - spec.brake * dt) : Math.max(vmax, vf - (road ? window.Pistas.TURBO_SOLTA : 700) * dt); // sob bandeira reduz de verdade
     if (manual && vf > topo(race.marcha, vmaxF1)) vf = Math.max(topo(race.marcha, vmaxF1), vf - 260 * dt); // corte de giro
@@ -145,6 +146,7 @@ export function physics(dt, spec = carOf(me())) {
   }
   // batida com os outros carros (cada um empurra o outro; quem está em outro nível, viaduto ou no ar, passa por cima)
   if (!air && !race.quali) for (const [id, gh] of race.ghosts) { // na classificação não tem batida (cada um faz a sua volta)
+    if (P(id)?.dnf) continue;
     if (Math.abs((gh.z || 0) - c.z) > 12 || !me()) continue;
     const pl = P(id), outro = CARS3[pl && pl.car] || CARS3.equilibrado;
     const eu = { x: c.x, y: c.y, a: c.a, vx: c.vx, vy: c.vy, L: (CARS3[me().car] || CARS3.equilibrado).L * KS, W: (CARS3[me().car] || CARS3.equilibrado).W * KS, massa: MASSA[me().car] || 1 };
