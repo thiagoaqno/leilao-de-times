@@ -1,22 +1,9 @@
-# Testes que falhavam por acaso ou estavam velhos
+# Interlagos: protótipo de ambiente de Fórmula 1
 
-Mais um passo da refatoração. Nada muda no jogo: só os testes.
+Interlagos ganha luz traseira vermelha em matriz de LEDs, com pulso de 0,8 s, discos dianteiros incandescentes sob frenagem forte e faíscas do assoalho em alta velocidade sobre zebras ou trechos inclinados. Com menos movimento, a lanterna fica acesa e as novas faíscas são desativadas.
 
-## O que muda
+A ambientação percorre a volta: 82 painéis de Interlagos/São Paulo/GP da Galera, 16 postos cobertos, 21 placas de aproximação de curvas, cercas e novas arquibancadas em trechos intermediários. Menos árvores junto à pista deixam as estruturas visíveis; o asfalto de Interlagos perde a faixa tracejada central. Peças repetidas usam InstancedMesh e materiais compartilhados, e o posicionamento verifica a distância aos outros trechos do circuito.
 
-- **Ginásio, "dois clientes e robôs jogam até o fim":** a partida em tempo real exigia que os clientes vencessem os
-  robôs da sala. No GitHub, com todos os testes rodando juntos, os robôs (no nível normal) às vezes ganhavam, e o teste
-  falhava por acaso: aconteceu no PR #298. Agora os robôs da sala são os fáceis (`robo: "facil"`). Com 6 cópias do teste
-  rodando ao mesmo tempo, a versão antiga falhou 1 vez em 6. A nova passou 6 de 6, e depois 8 de 8.
-- **Drag no navegador (`corrida-drag.spec.js`):** dois testes falhavam também na `main`:
-  - "aquece os pneus": esperava 3 pistas, e o Drag tem 4 desde a Serra. Ele também abria a página sem o `#debug`, e o
-    `largar` só trocava o `#` do endereço, o que não recarrega a página: o `window.__drag` nunca existia;
-  - "segurar W explode o motor": o motor estoura mesmo, mas o navegador dos testes roda o jogo a cerca de um décimo da
-    velocidade real (o passo de cada quadro tem limite). O motor leva uns 93 s para estourar, e o teste esperava 90 s.
-    O arquivo ganhou mais tempo (`test.describe.configure`), e as esperas pela largada também, porque a contagem anda
-    devagar do mesmo jeito.
+O protótipo e os novos efeitos só são ativados em Interlagos. Mônaco continua com o visual anterior. Os elementos novos são cenográficos, sem mudar colisões ou regras.
 
-## Testes
-
-- Ginásio: 4 vezes sozinho, 6 e depois 8 cópias ao mesmo tempo, todas passando.
-- `corrida-drag.spec.js`: os 4 passando (antes, 2 falhavam na `main`).
+Validação: 29 testes de corrida passaram (colisão, experiência, poderes, recordes e robôs); sintaxe dos módulos e git diff --check sem erros. Inspeção no navegador do app em quatro posições da volta, com verificações do pulso dos LEDs, aquecimento dos discos, contagem da ambientação e isolamento de Mônaco.
