@@ -10,6 +10,7 @@ import { PROPS, aoCarregar } from "./props.js";
 import { enfeitar } from "./vida.js";
 import { aplicarCeu } from "./ceu.js";
 import { aguaMonaco, fundoMonaco, orlaMonaco, alturaRocha, cenarioMonaco } from "./monaco.js";
+import { chaoMonaco, guardRailMonaco, fachadasMonaco, marcosMonaco, montanhaMonaco } from "./monaco-detalhes.js";
 
 // ---------- temas das pistas: cores, chão, enfeites e o horizonte ----------
 export const THEMES = {
@@ -146,7 +147,8 @@ function buildWorld(tr) {
   }
   const kerbT = canvasTex(32, 64, (x, w, hh) => { x.fillStyle = look.kerb[0]; x.fillRect(0, 0, w, hh / 2); x.fillStyle = look.kerb[1]; x.fillRect(0, hh / 2, w, hh / 2); });
   const kerbM = new THREE.MeshStandardMaterial({ map: kerbT, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x0a3a44 : 0 });
-  ribbon(W / 2, W / 2 + 7, 0.6, kerbM, 28); ribbon(-W / 2 - 7, -W / 2, 0.6, kerbM, 28);
+  if (id === "monaco") chaoMonaco(tr, add, { gridSpot }); // sarjeta, zebras só nas curvas e as marcas da rua (monaco-detalhes.js)
+  else { ribbon(W / 2, W / 2 + 7, 0.6, kerbM, 28); ribbon(-W / 2 - 7, -W / 2, 0.6, kerbM, 28); }
   if (id === "interlagos" || id === "laguna") { // área de escape de brita
     const brita = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#c9b37a"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 600; i++) { x.fillStyle = rr() < 0.5 ? "#b39c66" : "#ddc893"; x.fillRect(rr() * w, rr() * hh, 2, 2); } }), roughness: 1, side: THREE.DoubleSide });
     ribbon(W / 2 + 7, W / 2 + 30, 0.3, brita, 64, 0.2); ribbon(-W / 2 - 30, -W / 2 - 7, 0.2, brita, 64, 0.3);
@@ -160,7 +162,8 @@ function buildWorld(tr) {
       : id !== "tokyo" ? canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#aeb4ba"; x.fillRect(0, 0, w, hh); x.fillStyle = "#d9dee2"; x.fillRect(0, 4, w, 3); x.fillRect(0, 10, w, 2); x.fillStyle = "#5d6268"; x.fillRect(w - 3, 0, 3, hh); }) // guard-rail de aço
       : canvasTex(64, 16, (x, w, hh) => { x.fillStyle = "#6c6f80"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ff4fd8"; x.fillRect(0, 2, w, 3); });
     const wm = new THREE.MeshStandardMaterial({ map: wt, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x220a22 : 0 });
-    if (L < 1e9) for (const s of [1, -1]) { const m = ribbon(s * L, s * L, 0.5, wm, 32, 12, 1); m.castShadow = true; }
+    // em Mônaco, o guard-rail pintado em painéis (um material por lado, para os nomes não saírem espelhados)
+    if (L < 1e9) for (const s of [1, -1]) { const m = id === "monaco" ? ribbon(s * L, s * L, 0.5, new THREE.MeshStandardMaterial({ map: guardRailMonaco(s), roughness: 0.55, side: THREE.DoubleSide }), 480, 12, 1) : ribbon(s * L, s * L, 0.5, wm, 32, 12, 1); m.castShadow = true; }
   }
   // paredão embaixo dos trechos altos (para não ficar "flutuando") e pilares nos viadutos
   if (id === "tokyo" || id === "losangeles") {
@@ -171,7 +174,8 @@ function buildWorld(tr) {
   const a0 = pts[0], chk = canvasTex(128, 16, (x, w, hh) => { for (let i = 0; i < 16; i++) for (let j = 0; j < 2; j++) { x.fillStyle = (i + j) % 2 ? "#111" : "#f4f4f4"; x.fillRect(i * 8, j * 8, 8, 8); } }, false);
   const line = add(new THREE.Mesh(new THREE.PlaneGeometry(W, 12), new THREE.MeshStandardMaterial({ map: chk, roughness: 0.6 })));
   line.rotation.x = -Math.PI / 2; line.rotation.z = -Math.atan2(a0.ty, a0.tx) + Math.PI / 2; line.position.set(a0.x, a0.h + 0.55, a0.y);
-  for (let g = 0; g < 8; g++) { const p = gridSpot(pts, g, W); const m = add(new THREE.Mesh(new THREE.PlaneGeometry(20, 2), new THREE.MeshBasicMaterial({ color: 0xffffff }))); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); }
+  // Mônaco tem o grid pintado com os números (monaco-detalhes.js)
+  if (id !== "monaco") for (let g = 0; g < 8; g++) { const p = gridSpot(pts, g, W); const m = add(new THREE.Mesh(new THREE.PlaneGeometry(20, 2), new THREE.MeshBasicMaterial({ color: 0xffffff }))); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); }
   // pórtico da largada
   { const s = 1, L = W / 2 + 14, mat = M(0x333844), sign = canvasTex(256, 32, (x, w, hh) => { x.fillStyle = "#111"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ffd23f"; x.font = "bold 24px sans-serif"; x.textAlign = "center"; x.fillText("CORRIDA DA GALERA", w / 2, 24); }, false);
     for (const k of [1, -1]) { const m = add(new THREE.Mesh(new THREE.BoxGeometry(4, 60, 4), mat)); m.position.set(a0.x + a0.nx * k * L, a0.h + 30, a0.y + a0.ny * k * L); m.castShadow = true; }
@@ -231,6 +235,8 @@ function buildWorld(tr) {
   if (id === "monaco") {
     cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, jungle, blds });
     ambienteMonaco(tr, add);
+    marcosMonaco(tr, add, { hAt }); // passarelas, a capela de Sainte Dévote e os postes
+    montanhaMonaco(tr, add);
   }
   const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
@@ -289,7 +295,8 @@ function buildWorld(tr) {
   const fronds = new THREE.ConeGeometry(22, 12, 6, 1, true); fronds.translate(0, 62, 0); inst(fronds, M(0x2f8f3a, { side: THREE.DoubleSide }), palms);
   const win = (base, lit) => canvasTex(64, 128, (x, w, hh, rr) => { x.fillStyle = lit ? "#1a1c2a" : "#fff"; x.fillRect(0, 0, w, hh); for (let yy = 6; yy < hh; yy += 10) for (let xx = 4; xx < w; xx += 10) { x.fillStyle = lit ? (rr() < 0.55 ? (rr() < 0.7 ? "#ffd86b" : "#9fe3ff") : "#0b0c14") : "#4d6f94"; x.fillRect(xx, yy, 6, 6); } });
   const bgeo = new THREE.BoxGeometry(1, 1, 1);
-  if (blds.length) { const t = win(0, false); t.repeat.set(1, 1); const m = inst(bgeo, new THREE.MeshStandardMaterial({ map: t, roughness: 0.8 }), blds, () => 1); if (m) m.castShadow = true; }
+  if (id === "monaco") fachadasMonaco(add, blds); // sacadas, venezianas, toldos e telhados
+  else if (blds.length) { const t = win(0, false); t.repeat.set(1, 1); const m = inst(bgeo, new THREE.MeshStandardMaterial({ map: t, roughness: 0.8 }), blds, () => 1); if (m) m.castShadow = true; }
   if (towers.length) { const t = win(0, true); const mm = new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: 0.8, roughness: 0.6 }); for (const o of towers) delete o.c; inst(bgeo, mm, towers, () => 1); }
   if (glass.length) inst(bgeo, new THREE.MeshStandardMaterial({ map: win(0, false), metalness: 0.15, roughness: 0.35, emissive: 0x2a1a10, emissiveIntensity: 0.4 }), glass, () => 1); // arranha-céus de vidro (LA)
   if (houses.length) inst(bgeo, M(0xffffff, { roughness: 0.9 }), houses, () => 1); // casinhas coloridas no morro (Rio)
@@ -328,7 +335,7 @@ function buildWorld(tr) {
     const fuji = far(new THREE.ConeGeometry(1400, 900, 24), M(0x3b2c63, { fog: false }), -2600, -2400, 300); void fuji;
     const cap = far(new THREE.ConeGeometry(420, 270, 24), M(0xe9e6ff, { fog: false }), -2600, -2400, 615); void cap;
     const tower = far(new THREE.ConeGeometry(70, 700, 4, 8, true), new THREE.MeshBasicMaterial({ color: 0xff4b3a, wireframe: true }), 2600, -1400, 350); void tower;
-  } else if (!t.espaco) for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2, R0 = WORLD * 0.5 + 2400 + r() * 600, hh = 300 + r() * 500; const m = far(new THREE.ConeGeometry(700 + r() * 500, hh, 7), M(id === "monaco" ? 0x7e8f86 : id === "losangeles" ? 0x8a6a6a : id === "rio" ? 0x2f6a3a : 0x86a37a), WORLD / 2 + Math.cos(a) * R0, WORLD / 2 + Math.sin(a) * R0, hh / 2 - 40); if ((id === "monaco" && Math.sin(a) > 0.3) || (id === "rio" && Math.cos(a) < -0.3)) m.visible = false; }
+  } else if (!t.espaco) for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2, R0 = WORLD * 0.5 + 2400 + r() * 600, hh = 300 + r() * 500; const m = far(new THREE.ConeGeometry(700 + r() * 500, hh, 7), M(id === "monaco" ? 0x7e8f86 : id === "losangeles" ? 0x8a6a6a : id === "rio" ? 0x2f6a3a : 0x86a37a), WORLD / 2 + Math.cos(a) * R0, WORLD / 2 + Math.sin(a) * R0, hh / 2 - 40); if ((id === "monaco" && Math.abs(Math.sin(a)) > 0.3) || (id === "rio" && Math.cos(a) < -0.3)) m.visible = false; }
   // céu
   const sky = new THREE.SphereGeometry(5000, 32, 16), col = [], ps = sky.attributes.position, top = new THREE.Color(look.sky[0]), low = new THREE.Color(look.sky[1]);
   for (let i = 0; i < ps.count; i++) { const yy = ps.getY(i) / 5000, c = low.clone().lerp(top, Math.min(1, Math.max(0, yy * 2.2))); col.push(c.r, c.g, c.b); }

@@ -82,8 +82,8 @@ export function enfeitar(tr, add, r, alturaEm) {
       feitos++; ult = i;
     }
   }
-  // bandeirolas atravessando a pista
-  if (!t.espaco) for (const f of [0.012, 0.2, 0.41, 0.6, 0.79]) {
+  // bandeirolas atravessando a pista (Mônaco tem as passarelas do GP no lugar: monaco-detalhes.js)
+  if (!t.espaco && id !== "monaco") for (const f of [0.012, 0.2, 0.41, 0.6, 0.79]) {
     if (tr.coberto && tr.coberto(Math.floor(n * f))) continue;
     const i = Math.floor(n * f), p = pts[i], L = borda + 6, alto = 46, cores = ["#e63946", "#ffd23f", "#1e88e5", "#43a047", "#ffffff", "#fb8c00"];
     const [x1, z1] = lat(p, L), [x2, z2] = lat(p, -L), y1 = alturaEm(x1, z1, i), y2 = alturaEm(x2, z2, i);
