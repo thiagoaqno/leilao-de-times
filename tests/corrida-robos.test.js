@@ -35,7 +35,7 @@ function correr(pista, nivel = "medio", caixas = false, robos = 3, aCada = null)
   } finally { Date.now = agora; }
 }
 test("robôs seguem o traçado de corrida: usam a pista toda, sem sair dela, e fecham a volta", () => {
-  for (const pista of ["interlagos", "monaco", "tokyo", "barcelona", "monza"]) {
+  for (const pista of ["interlagos", "monaco", "tokyo", "barcelona", "silverstone", "monza"]) {
     const { room, lats } = correr(pista), meia = T.PISTAS[pista].width / 2;
     for (const id of room.order) {
       const p = room.players[id];

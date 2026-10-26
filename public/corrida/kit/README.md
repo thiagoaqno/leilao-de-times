@@ -2,7 +2,7 @@
 
 Peças reaproveitáveis para montar o cenário de qualquer GP. Cada pista de F1 tem uma configuração em `../gps/<pista>.js`,
 registrada em `../gps/index.js`; `../pista.js` lê a configuração e chama as peças. Nada daqui muda a física: é cenário e
-som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo. `boxes.js` não tem chave: é uma função (`prediosDosBoxes(tr, add, cfg)`, o prédio das garagens com os painéis em cima) que o `cenario` do GP chama (Monza).
+som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo; Silverstone (`../gps/silverstone.js`) é o de autódromo plano com `escape`. `boxes.js` não tem chave: é uma função (`prediosDosBoxes(tr, add, cfg)`, o prédio das garagens com os painéis em cima) que o `cenario` do GP chama (Monza).
 
 ## Como fazer um GP novo
 
@@ -20,8 +20,8 @@ som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo. `
 | Chave | Peça | O que faz |
 | --- | --- | --- |
 | `asfalto: true` | `../asfalto-gp.js` | Asfalto de GP com relevo fino, linhas de borda e a borracha nas curvas (tira os cones). |
-| `chao: {...}` | `chao.js` → `chaoGP` | `margem` (`"sarjeta"` de rua ou `{ cor }`), `zebra` (`cores`, `dentro`, `fora`: raios das curvas que ganham zebra), `amarelas` (trechos `[f0, f1]` com zebra amarela alta), `faixasPedestre`, `tracejado`, `sc` (`[[f, "SC 1"]]`), `grid: true`, `remendos`, `bueiros`, `brita` (`{ cor, largura, raio }`: a área de escape de brita do lado de fora das curvas mais fechadas que `raio`, só pintura). Grava `tr.zebras` (as faíscas só saem ali). |
-| `escape: {...}` | `escape.js` → `escapeGP` | A área de escape depois da zebra: `brita`, `listrado` (asfalto pintado, `cores` padrão verde e amarelo) e `pneus` (pilhas de 3 pneus), cada um uma lista `[f0, f1, lado]` (`lado`: 1, -1, 0 = os dois, `"fora"` ou `"dentro"` da curva). `largura` (23). Com `escape`, a brita de pista.js sai. |
+| `chao: {...}` | `chao.js` → `chaoGP` | `margem` (`"sarjeta"` de rua ou `{ cor }`), `zebra` (`cores`, `dentro`, `fora`: raios das curvas que ganham zebra), `amarelas` (trechos `[f0, f1]` com zebra amarela alta), `faixasPedestre`, `tracejado`, `sc` (`[[f, "SC 1"]]`), `grid: true`, `remendos`, `bueiros`. Grava `tr.zebras` (as faíscas só saem ali). |
+| `escape: {...}` | `escape.js` → `escapeGP` | A área de escape depois da zebra: `brita`, `listrado` (asfalto pintado, `cores` padrão verde e amarelo) e `pneus` (pilhas de 3 pneus), cada um uma lista `[f0, f1, lado]` (`lado`: 1, -1, 0 = os dois, `"fora"` ou `"dentro"` da curva). `britaCurvas` (raio, ex.: `450`: brita automática do lado de fora das curvas mais fechadas que ele, sem listar trechos) e `corBrita`. `largura` (23). Com `escape`, a brita de pista.js sai. |
 | `guardrail: {...}` | `beira.js` → `guardRail` | O guard-rail em 8 painéis de 6 m: `paineis` (nomes de `marcas.js`, `null` = listras) e `cores` das listras. Só em pista com `walls`. |
 | `arquibancadas: {...}` | `arquibancadas.js` → `arquibancadas` | Arquibancadas lotadas em rampa, com fundo, marquise (`cobertura`) e colunas: `trechos` `[{ de, ate, lado, degraus, cor, encosto, cobertura, torcida }]` (`torcida`: as cores das camisas, a torcida vermelha de Monza) (`de`/`ate` são frações da volta, `lado` 1 ou -1). Põem `tr.arquibancadas` (o som da torcida) e `tr.reservado`. Roda antes do `cenario`. |
 | `cenario(tr, ctx)` | a pista | O que só ela tem, antes de tudo (Mônaco: porto, piscina, túnel, Cassino). Pode definir `tr.coberto(i)` (túnel), `tr.ocupado(x, z, i)`, `tr.arquibancadas` (`[[i0, i1]]`, para o som da torcida) e pôr lugares em `tr.reservado` (`[x, z, raio]`). |
