@@ -1,5 +1,5 @@
 // Corrida da Galera — o placar da corrida e o resultado.
-import { E, PISTAS, $, h, sNow, me, P, act, fmt, SECTORS, checkpoint } from "./estado.js";
+import { E, PISTAS, $, h, sNow, me, P, act, fmt, SECTORS, checkpoint, toast } from "./estado.js";
 import { Sound } from "./sons.js";
 import { race } from "./jogo.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
@@ -60,7 +60,8 @@ export function hud() {
   // avisos
   let msg = "";
   const B = race.box, nomeBox = B && (B.fase ? B.composto : B.pedido) ? window.F1Regras.PNEUS[B.fase ? B.composto : B.pedido].nome : "";
-  if (B && B.fase) msg = B.fase === "entra" ? `🔧 BOX: limitador de velocidade` : B.fase === "parada" ? `🔧 BOX: trocando para o ${nomeBox} · ${Math.max(0, B.parada - B.t).toFixed(1)} s` : "🔧 BOX: saindo, pneu novo ainda frio";
+  if (m && m.dnf) msg = "💥 PERDA TOTAL: o carro está destruído, você está fora";
+  else if (B && B.fase) msg = B.fase === "entra" ? `🔧 BOX: limitador de velocidade` : B.fase === "parada" ? `🔧 ${window.F1Regras.textoDaParada(B.parada)} · trocando para o ${nomeBox} · ${Math.max(0, B.parada - B.t).toFixed(1)} s` : "🔧 BOX: saindo, pneu novo ainda frio";
   else if (E.S.direcao?.safety) msg = "🚨 SAFETY CAR: reduza e mantenha a posição";
   else if (E.S.direcao?.amarelo?.setor === Math.floor(race.idx / (tr.n / SECTORS))) msg = "🟡 BANDEIRA AMARELA: não ultrapasse";
   else if (B && B.pedido) msg = `🔧 BOX: ${nomeBox} (1, 2, 3 trocam · B cancela)`;
@@ -76,6 +77,7 @@ export function hud() {
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
   if (B) { const bt = $("bBox"), txt = B.pedido || B.fase ? `🔧 ${nomeBox}` : "🔧 Box"; if (bt.textContent !== txt) { bt.textContent = txt; bt.classList.toggle("pedido", !!(B.pedido || B.fase)); } }
   $("hMsg").textContent = msg;
+  avisoDeBatida(m);
   if (E.S.phase === "quali") hudClassificacao(m, now);
   // vácuo e estilingue
   const dr = race.sling > 0 ? 1 : race.draft;
@@ -164,7 +166,8 @@ function minimapa(st, m) {
 function velocimetro(v) {
   const cv = $("velo"), c = cv.getContext("2d"), W = cv.width, H = cv.height, kmh = Math.round(v * 0.75);
   const marcha = race.marcha || 1, manual = E.S.config.cambio === "manual", pn = race.pneu;
-  const chave = kmh + ":" + marcha + (pn ? ":" + pn.composto + Math.round(pn.desgaste * 100) + window.F1Regras.frio(pn) : ""); if (race.hudVelo === chave) return; race.hudVelo = chave;
+  const dano = pn && me() ? Math.round(me().dano || 0) : 0;
+  const chave = kmh + ":" + marcha + (pn ? ":" + pn.composto + Math.round(pn.desgaste * 100) + window.F1Regras.frio(pn) + ":" + dano : ""); if (race.hudVelo === chave) return; race.hudVelo = chave;
   const cx = W * 0.56, cy = H * 0.5, r = H * 0.4, a0 = Math.PI * 0.8, a1 = Math.PI * 2.2, max = 300, ang = (k) => a0 + (a1 - a0) * Math.min(1, k / max);
   c.clearRect(0, 0, W, H); c.lineCap = "round";
   c.beginPath(); c.arc(cx, cy, r, a0, a1); c.lineWidth = 3; c.strokeStyle = "#ffffff55"; c.stroke();
@@ -179,7 +182,23 @@ function velocimetro(v) {
   c.shadowColor = "#000a"; c.shadowBlur = 6;
   c.fillStyle = "#fff"; c.font = "500 58px Figtree, sans-serif"; c.textBaseline = "alphabetic"; c.fillText(String(kmh), cx, cy + r + 18);
   c.font = "800 12px Figtree, sans-serif"; c.fillStyle = "#ffffffcc"; c.textAlign = "left"; c.fillText("KM/H", cx + r * 0.78, cy + r + 16); c.shadowBlur = 0;
-  if (pn) pneuHud(c, pn, 30, H - 46);
+  if (pn) { pneuHud(c, pn, 30, H - 46); danoHud(c, dano, 6, H - 80); }
+}
+// a barra de dano do carro (regras de F1), em cima do pneu: enche de verde a vermelho conforme as batidas; em 100% é perda total
+function danoHud(c, dano, x, y) {
+  const w = 72, cor = dano >= 66 ? "#ff3d6e" : dano >= 33 ? "#ffb02e" : "#2ecc71";
+  c.fillStyle = "#0b1016cc"; c.fillRect(x, y, w, 9);
+  c.fillStyle = cor; c.fillRect(x, y, w * Math.min(1, dano / 100), 9);
+  c.lineWidth = 1; c.strokeStyle = "#ffffff66"; c.strokeRect(x + 0.5, y + 0.5, w - 1, 8);
+  c.fillStyle = "#fff"; c.textAlign = "left"; c.textBaseline = "bottom"; c.font = "800 9px Figtree, sans-serif"; c.fillText(`DANO ${dano}%`, x, y - 2);
+}
+// a punição de uma batida nova (a mesma que o servidor somou ao tempo): aparece na hora, uma vez só
+function avisoDeBatida(m) {
+  const b = m && m.ultimaBatida;
+  if (!b || race.batidaVista === b.at) return;
+  race.batidaVista = b.at;
+  if (sNow() - b.at > 4000) return; // uma batida velha, de antes de eu abrir a tela
+  toast(`💥 Batida ${b.nivel === "media" ? "média" : b.nivel}: +${b.segundos} s · dano +${Math.round(b.dano)}%`, 2800);
 }
 // o pneu (regras de F1), à esquerda do velocímetro: o anel da cor do composto esvazia com o desgaste e fica vermelho
 // depois do penhasco; com o pneu frio, o miolo fica azul. Embaixo, o nome do composto; no meio, quanto ainda resta.
@@ -201,13 +220,13 @@ export function checkMyLap(old) {
 function resultadoGP(el, m, isHost) {
   const S = E.S, R = S.resultado, F = window.F1Regras, vencedor = R[0], nome = (id) => pilotoNome(P(id));
   const pneus = (r) => (r.paradas ? `${r.paradas}P ` : "0P ") + (r.compostos || []).map((c) => `<u class="pn" style="--c:${F.PNEUS[c] ? F.PNEUS[c].cor : "#999"}"></u>`).join("");
-  const final = (r) => r.nc ? "NC" : r.tempo == null ? `+${Math.max(1, S.config.voltas - r.voltas)} volta${S.config.voltas - r.voltas > 1 ? "s" : ""}` : r === vencedor ? fmt(r.tempo) : `+${(r.tempo - vencedor.tempo).toFixed(3)} s`;
+  const final = (r) => r.dnf ? "DNF" : r.nc ? "NC" : r.tempo == null ? `+${Math.max(1, S.config.voltas - r.voltas)} volta${S.config.voltas - r.voltas > 1 ? "s" : ""}` : r === vencedor ? fmt(r.tempo) : `+${(r.tempo - vencedor.tempo).toFixed(3)} s`;
   const podio = [1, 0, 2].filter((i) => R[i]).map((i) => { const r = R[i], p = P(r.id); return `<div class="pod pod${i + 1}"><span class="pn-eq" style="background:${p ? p.color : "#999"}"></span><b>${h(nome(r.id))}</b><small>${h(p && p.equipe ? p.sigla : "")} ${r.tempo != null ? (r === vencedor ? fmt(r.tempo) : "+" + (r.tempo - vencedor.tempo).toFixed(3)) : ""}</small><div class="bloco">${i + 1}</div></div>`; }).join("");
   el.classList.remove("hidden");
   el.innerHTML = `<div class="placa gp"><div class="chk"></div><div class="in"><h2 style="font-size:26px;margin-bottom:6px">🏆 GP · ${h(PISTAS[S.config.pista].name)}</h2>
     <div class="podio">${podio}</div>
     <table class="gptab"><thead><tr><th></th><th>Piloto</th><th class="num">Tempo</th><th>Grid</th><th>Paradas</th><th class="num">Melhor</th><th class="num">Pts</th></tr></thead><tbody>${R.map((r) => { const p = P(r.id), g = r.grid + 1, d = g - r.pos;
-      return `<tr class="${m && r.id === m.id ? "eu" : ""} ${r.nc ? "nc" : ""}"><td>${r.nc ? "—" : r.pos + "º"}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(nome(r.id))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}</td><td class="num">${final(r)}${r.penal ? ` <small class="muted">(+${r.penal} s)</small>` : ""}</td><td class="muted">${g}º ${d ? `<small class="${d > 0 ? "sobe" : "desce"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</small>` : ""}</td><td class="muted">${pneus(r)}</td><td class="num muted">${r.melhor != null ? fmt(r.melhor) : ""}</td><td class="num"><b>${r.pontos || ""}</b></td></tr>`; }).join("")}</tbody></table>
+      return `<tr class="${m && r.id === m.id ? "eu" : ""} ${r.nc || r.dnf ? "nc" : ""}"><td>${r.nc || r.dnf ? "—" : r.pos + "º"}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(nome(r.id))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}</td><td class="num">${final(r)}${r.penal ? ` <small class="muted">(+${r.penal} s)</small>` : ""}${r.dano ? ` <small class="muted">· dano ${Math.round(r.dano)}%</small>` : ""}</td><td class="muted">${g}º ${d ? `<small class="${d > 0 ? "sobe" : "desce"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</small>` : ""}</td><td class="muted">${pneus(r)}</td><td class="num muted">${r.melhor != null ? fmt(r.melhor) : ""}</td><td class="num"><b>${r.pontos || ""}</b></td></tr>`; }).join("")}</tbody></table>
     <div class="row" style="margin-top:14px;justify-content:center">${isHost ? `<button class="primary" id="rAgain">🏁 Novo GP</button><button id="rLobby">Trocar pista</button>` : `<span class="muted">Esperando o organizador…</span>`}<button class="ghost" onclick="location.href='/'">🏠 Vila</button></div></div></div>`;
   if ($("rAgain")) $("rAgain").onclick = () => act("start");
   if ($("rLobby")) $("rLobby").onclick = () => act("lobby");
