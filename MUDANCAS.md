@@ -32,7 +32,7 @@ O PR 2 do plano `planos/temporada-f1.md`. Só vale com **Regras: Fórmula 1**; s
 
 **Conferido**
 - No navegador do app (`#debug`), em Interlagos com 21 voltas e 3 robôs: uma parada de verdade, da entrada à saída, com a troca para o duro: `planos/imagens/corrida-box-parada.jpg` (HUD e contagem), `corrida-box-garagens.jpg` (as garagens na cor de cada piloto, com os mecânicos) e `corrida-box-saida.jpg`. Sem erro no console.
-- `npm test`: 562 testes; na primeira rodada falharam 3: o do Leilão (`carreira-online-mercado`, por tempo, a máquina estava carregada; passa sozinho), e dois meus, que já foram corrigidos (o estado público da sala ganhava a chave `semente` também sem as regras de F1, e o teste dos pneus dos robôs do PR 1 supunha o médio, mas agora cada robô sai com o composto da estratégia). Rodados de novo, `corrida-f1-pneus`, `corrida-f1-box` e `salas` passam inteiros (15 de 15); o resto da suíte não foi repetido inteira depois da correção.
+- Só os testes da Corrida (`node --test tests/corrida*.test.js`): 43 de 43 passam, os 8 novos e os de hoje. A suíte inteira não foi rodada de novo (a rodada completa anterior só falhou em um teste do Leilão, por carga, e em dois meus, já corrigidos).
 
 **O que falta**
 - Mônaco: o corredor passa por trás do guard-rail e perto do público; precisa de acabamento.
