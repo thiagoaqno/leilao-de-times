@@ -50,7 +50,7 @@ const frio = (pneu) => !!pneu && pneu.temp < TEMP_BOA - 0.02;
 // com a semente do GP: recarregar a página nunca muda o resultado). Quem termina a corrida sem ter usado dois
 // compostos leva UM_COMPOSTO s no resultado; passar do limitador leva RAPIDO s.
 const LIMITADOR = 0.40, PARADA_BASE = 2.4, PARADA_ERRO = 1.5, UM_COMPOSTO = 10, RAPIDO = 5;
-const RAMPA = 14, LARGURA_CORREDOR = 34, FOLGA_CORREDOR = 12, GARAGENS = 10; // a rampa é em pontos da pista (6 unidades cada)
+const RAMPA = 14, LARGURA_CORREDOR = 54, FOLGA_CORREDOR = 12, GARAGENS = 10; // duas faixas de 27 unidades; a rampa é em pontos da pista (6 unidades cada)
 const hashTexto = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 // gerador com semente (mulberry32): a mesma semente dá sempre a mesma sequência
 function sorteio(semente) { let a = hashTexto(semente) || 1; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -66,12 +66,17 @@ function tempoDeParada(semente, quem, n) {
 function corredor(t, n, W) {
   const b = t && t.boxes; if (!b || !n) return null;
   const i0 = Math.round(b.entra * n) % n, rel = (f) => (((Math.round(f * n) - i0) % n) + n) % n;
-  const len = rel(b.sai), ip = rel(b.para), lado = b.lado < 0 ? -1 : 1, D = lado * (W / 2 + FOLGA_CORREDOR + LARGURA_CORREDOR / 2), fim = lado * (W / 2 - 22);
+  const len = rel(b.sai), ip = rel(b.para), lado = b.lado < 0 ? -1 : 1;
+  const faixa = LARGURA_CORREDOR / 2, D = lado * (W / 2 + FOLGA_CORREDOR + faixa / 2), centroAsfalto = D + lado * faixa / 2;
+  const garagemLat = D + lado * faixa, fim = lado * (W / 2 - 22);
   const gap = Math.max(2, Math.min(7, Math.min(ip - RAMPA - 2, len - RAMPA - 2 - ip) / 5)); // pontos entre garagens
   const garagens = Array.from({ length: GARAGENS }, (_, k) => ip + (k - (GARAGENS - 1) / 2) * gap);
   const suave = (x) => { x = limite(x, 0, 1); return x * x * (3 - 2 * x); };
   const lat = (u, lat0 = fim) => u >= len - RAMPA ? D + (fim - D) * suave((u - (len - RAMPA)) / RAMPA) : lat0 + (D - lat0) * suave(u / RAMPA);
-  return { i0, ip, len, lado, D, fim, garagens, gap, lat, larguraCorredor: LARGURA_CORREDOR, folga: FOLGA_CORREDOR, comprimento: len * 6 };
+  // O carro que para desvia da faixa rápida só junto da sua garagem e volta a ela após a troca.
+  const latParada = (u, garagem, lat0 = fim) => lat(u, lat0) + (garagemLat - D) *
+    Math.min(suave((u - garagem + 6) / 5), 1 - suave((u - garagem - 1) / 5));
+  return { i0, ip, len, lado, D, centroAsfalto, garagemLat, fim, garagens, gap, lat, latParada, larguraCorredor: LARGURA_CORREDOR, folga: FOLGA_CORREDOR, comprimento: len * 6 };
 }
 // a garagem do piloto de número `k` no grid (cada um tem a sua, até GARAGENS)
 const garagemDe = (c, k) => c.garagens[((k % GARAGENS) + GARAGENS) % GARAGENS];
