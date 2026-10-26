@@ -76,11 +76,11 @@ test("robôs: a estratégia sempre usa dois compostos e nunca para na última vo
 });
 
 // os robôs numa corrida de `voltas` voltas, no tempo de mentira, até todos acabarem (ou 400 s)
-function corridaDosRobos(voltas, semente) {
+function corridaDosRobos(voltas, semente, quantidade = 3) {
   const agora = Date.now; let relogio = agora();
   Date.now = () => relogio;
   try {
-    const room = { config: { pista: "interlagos", caixas: false, robos: 3, nivel: "medio", voltas, regras: "f1" }, players: {}, order: [], phase: "race", startAt: relogio, semente };
+    const room = { config: { pista: "interlagos", caixas: false, robos: quantidade, nivel: "medio", voltas, regras: "f1" }, players: {}, order: [], phase: "race", startAt: relogio, semente };
     let k = 0; Robos.preparar(room, ["#a", "#b", "#c", "#d"], () => "x" + k++);
     room.order.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null }));
     Itens.start(room); Robos.largar(room);
@@ -106,6 +106,15 @@ test("robôs: cada um faz as paradas da estratégia pelo corredor, no limitador,
     }
   }
   assert.equal(eventos.length, robos.reduce((a, r) => a + r.paradas.length, 0));
+});
+
+test("robôs: oito pilotos fazem cinco voltas, param em momentos diferentes e a semente fixa as estratégias", { timeout: 60000 }, () => {
+  const a = corridaDosRobos(5, 8327, 8), b = corridaDosRobos(5, 8327, 8);
+  const planos = ({ robos }) => robos.map((r) => r.ia.plano);
+  assert.deepEqual(planos(a), planos(b));
+  assert.equal(a.robos.length, 8);
+  assert.ok(a.robos.every((r) => r.finish != null && r.paradas.length >= 1 && F1.usouDoisCompostos(r)));
+  assert.ok(new Set(a.robos.map((r) => r.paradas[0].volta)).size >= 2, "paradas em voltas diferentes");
 });
 
 test("robôs: sem as regras de F1 não existe box", () => {

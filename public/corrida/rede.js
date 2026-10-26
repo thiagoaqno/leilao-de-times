@@ -51,6 +51,7 @@ socket.on("state", (st) => {
   if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista, st.config.hora); return; }
   show("race");
   if (!race || race.startAt !== st.startAt) startRace(st);
+  if (race) race.safety = st.direcao?.safety || null;
   if (old && old.phase === "race" && st.phase === "results") Sound.finish();
   checkMyLap(old);
   renderResults();

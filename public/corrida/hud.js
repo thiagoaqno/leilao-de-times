@@ -43,6 +43,15 @@ export function hud() {
     el.className = "time num " + (d == null ? "" : d < 0 ? "ahead" : "behind");
   } else { $("hPos").innerHTML = "👀"; $("hLap").textContent = "Assistindo"; $("hTime").textContent = fmt(Math.max(0, (now - race.startAt) / 1000)); velocimetro(Math.abs(lider ? race.ghosts.get(lider.id)?.v || 0 : 0)); }
   const f1 = cfg.regras === "f1", pneuDe = (p) => (f1 ? ` <u class="pn" style="--c:${window.F1Regras.PNEUS[p.pneuAtual || p.pneu].cor}"></u>${p.paradas ? ` <em>${p.paradas}P</em>` : ""}${p.noBox ? ` <em class="box">BOX</em>` : ""}` : "");
+  $("hF1").classList.toggle("hidden", !f1);
+  if (f1) {
+    const d = E.S.direcao, setor = Math.floor(race.idx / (tr.n / SECTORS));
+    $("hBandeira").textContent = d?.safety ? "🚨 SAFETY CAR · fila, sem ultrapassar" : d?.amarelo?.setor === setor ? "🟡 AMARELA · reduza" : m?.azul ? "🔵 AZUL · deixe passar" : m && m.avisosLimite ? `⚫⚪ Limites: ${m.avisosLimite}/4` : "🟢 Pista livre";
+    $("hDrs").textContent = race.drsAtivo ? "DRS ABERTO" : m?.drsZona >= 0 ? "DRS disponível na zona" : "DRS indisponível";
+    $("hDrs").classList.toggle("aberto", !!race.drsAtivo);
+    $("hErsCarga").style.width = `${Math.round((race.ers?.carga || 0) * 100)}%`;
+    $("hErsTexto").textContent = `${Math.round((race.ers?.carga || 0) * 100)}%${race.ersAtivo ? " ⚡" : ""}`;
+  }
   const quadro = st.slice(0, 8).map((r, i) => `<div class="${m && r.id === m.id ? "eu" : ""}"><span>${i + 1}</span><i style="background:${r.p.color}"></i>${h(r.p.name)}${r.p.bot ? " <em>CPU</em>" : ""}${pneuDe(r.p)}${r.done != null ? " 🏁" : ""}</div>`).join("");
   if (race.hudQuadro !== quadro) { race.hudQuadro = quadro; $("hBoard").innerHTML = quadro; }
   if (m && race.hudChip !== m.name) { race.hudChip = m.name; $("hChip").innerHTML = `<i style="background:${m.color}"></i>${h(m.name)}<span>${h(PISTAS[cfg.pista].name)}</span>`; }
@@ -50,6 +59,8 @@ export function hud() {
   let msg = "";
   const B = race.box, nomeBox = B && (B.fase ? B.composto : B.pedido) ? window.F1Regras.PNEUS[B.fase ? B.composto : B.pedido].nome : "";
   if (B && B.fase) msg = B.fase === "entra" ? `🔧 BOX: limitador de velocidade` : B.fase === "parada" ? `🔧 BOX: trocando para o ${nomeBox} · ${Math.max(0, B.parada - B.t).toFixed(1)} s` : "🔧 BOX: saindo, pneu novo ainda frio";
+  else if (E.S.direcao?.safety) msg = "🚨 SAFETY CAR: reduza e mantenha a posição";
+  else if (E.S.direcao?.amarelo?.setor === Math.floor(race.idx / (tr.n / SECTORS))) msg = "🟡 BANDEIRA AMARELA: não ultrapasse";
   else if (B && B.pedido) msg = `🔧 BOX: ${nomeBox} (1, 2, 3 trocam · B cancela)`;
   else if (m && m.balaUntil > now) msg = "🚀 BALA! (piloto automático)";
   else if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
@@ -137,7 +148,7 @@ export function renderResults() {
   const m = me(), isHost = m && E.S.host === m.id, rows = standings();
   el.classList.remove("hidden");
   el.innerHTML = `<div class="placa"><div class="chk"></div><div class="in"><h2 style="font-size:28px;margin-bottom:10px">🏆 Resultado · ${h(PISTAS[E.S.config.pista].name)}</h2>
-    <table>${rows.map((r, i) => `<tr><td>${r.done != null ? i + 1 + "º" : "—"}</td><td>${r.p.pawn} <b style="color:${r.p.color}">${h(r.p.name)}</b></td><td class="num">${r.done != null ? fmt(r.done) : "não terminou"}${r.p.acrescimo ? ` <small class="muted">(+${r.p.acrescimo} s)</small>` : ""}</td><td class="num muted">${r.p.best != null ? "melhor " + fmt(r.p.best) : ""}</td></tr>`).join("")}</table>
+    <table>${rows.map((r, i) => `<tr><td>${r.done != null ? i + 1 + "º" : "—"}</td><td>${r.p.pawn} <b style="color:${r.p.color}">${h(r.p.name)}</b>${E.S.config.regras === "f1" ? ` <small class="muted">${h(r.p.pneuAtual || r.p.pneu)} · ${r.p.paradas}P</small>` : ""}</td><td class="num">${r.done != null ? fmt(r.done) : "não terminou"}${r.p.acrescimo ? ` <small class="muted">(+${r.p.acrescimo} s)</small>` : ""}</td><td class="num muted">${r.p.best != null ? "melhor " + fmt(r.p.best) : ""}</td></tr>`).join("")}</table>
     <div class="row" style="margin-top:14px;justify-content:center">${isHost ? `<button class="primary" id="rAgain">🏁 Correr de novo</button><button id="rLobby">Trocar pista</button>` : `<span class="muted">Esperando o organizador…</span>`}<button class="ghost" onclick="location.href='/'">🏠 Vila</button></div></div></div>`;
   if ($("rAgain")) $("rAgain").onclick = () => act("start");
   if ($("rLobby")) $("rLobby").onclick = () => act("lobby");

@@ -24,7 +24,7 @@ const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
 // ---------- corrida ----------
 export let race = null, raf = 0;
-export const keys = { gas: false, brake: false, left: false, right: false };
+export const keys = { gas: false, brake: false, left: false, right: false, ers: false };
 // ---------- preparar a pista antes de correr ----------
 // A primeira volta numa pista travava: o navegador só monta o shader de cada material e só manda cada textura para a
 // placa de vídeo na primeira vez que ela aparece na tela, e cada curva nova traz coisas que ainda não tinham aparecido.
@@ -101,6 +101,7 @@ export function startRace(st) {
   const ceu = useTrack(tr, st.config.hora, () => !race || race.tr !== tr || sNow() < race.startAt);
   luzPendente();
   tr.mostrarBoxes = st.config.regras === "f1"; if (tr.boxesGP) tr.boxesGP.userData.mostrar(tr.mostrarBoxes); // o corredor dos boxes só aparece nas regras de F1
+  if (tr.drsPlacas) tr.drsPlacas.visible = tr.mostrarBoxes;
   if (tr.boxesGP) {
     const cores = Object.values(window.EQUIPES_F1 || {}).map((e) => e.cor);
     for (const p of st.players) {
@@ -113,15 +114,17 @@ export function startRace(st) {
   if (race) clearRace();
   race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
     kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0,
-    pneu: st.config.regras === "f1" ? window.F1Regras.pneuNovo(mine && mine.pneu) : null, box: iniciarBox(tr, st) }; // regras de F1: o pneu que gasta e o pit stop (box.js)
+    pneu: st.config.regras === "f1" ? window.F1Regras.pneuNovo(mine && mine.pneu) : null,
+    ers: st.config.regras === "f1" ? window.F1Regras.ersNovo() : null, box: iniciarBox(tr, st) }; // regras de F1: pneu, ERS e pit stop
   $("bBox").classList.toggle("hidden", !race.box || !mine);
+  $("bErs").classList.toggle("hidden", !race.ers || !mine);
   startItems(tr, st.config.caixas);
   $("results").classList.add("hidden");
   resize(); comecarMedida();
   aquecerPista(tr, ceu);
   if (!raf) raf = requestAnimationFrame(loop);
 }
-function clearRace() { if (!race) return; stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
+function clearRace() { if (!race) return; stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); dropKart(race.safetyKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
 export function stopRace() { clearRace(); race = null; Sound.engine(0, false); }
 function resize() {
   const w = window.innerWidth, hh = window.innerHeight;
@@ -205,6 +208,17 @@ function draw(dt) {
     gh.vira = (gh.vira || 0) + (Math.max(-1, Math.min(1, da / Math.max(dt, 1e-3) / 2.4)) - (gh.vira || 0)) * Math.min(1, dt * 8);
     poseKart(gh.kart, gh.x, gh.y, gh.z, gh.a, gh.v || 0, gh.vira, gz, dt, inc.roll, inc.pitch, fxDe(pl, now));
   }
+  // Safety car: um carro próprio à frente da fila, calculado pela direção de prova no servidor.
+  if (race.safety) {
+    if (!race.safetyKart) {
+      race.safetyKart = makeKart("#202733", "equilibrado", false, "SAFETY CAR", { pintura: "ouro" }, undefined, true);
+      const farol = new THREE.Mesh(new THREE.BoxGeometry(12, 3, 4), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
+      farol.position.set(0, 17, 0); race.safetyKart.body.add(farol); race.safetyKart.farol = farol;
+    }
+    const i = ((Math.floor(race.safety.prog * tr.n) % tr.n) + tr.n) % tr.n, p = tr.pts[i];
+    race.safetyKart.farol.visible = motionPreference.matches || Math.floor(now / 250) % 2 === 0;
+    poseKart(race.safetyKart, p.x, p.y, p.h, Math.atan2(p.ty, p.tx), 160, 0, p.h, dt, 0, 0, { f1: true });
+  } else if (race.safetyKart) { dropKart(race.safetyKart); race.safetyKart = null; }
   // o próximo checkpoint acende e pulsa; o perdido fica vermelho; os outros, apagadinhos
   for (const pt of tr.portais || []) {
     const prox = (race.sector + 1) % SECTORS, seguinte = (race.sector + 2) % SECTORS, perdido = race.perdeu === pt.k;

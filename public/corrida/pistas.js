@@ -692,6 +692,15 @@ function pontos(t, step = 6) {
 }
 // onde fica cada checkpoint (o índice do ponto da pista): divide a volta em SECTORS partes iguais
 const checkpoint = (k, n) => Math.ceil((k * n) / SECTORS) % n;
+// Detecção, abertura e fim do DRS clássico, em frações da volta. A zona dos boxes cruza a linha de chegada.
+const DRS = {
+  monaco: [[0.91, 0.95, 0.04]], interlagos: [[0.91, 0.95, 0.05], [0.24, 0.27, 0.35]],
+  barcelona: [[0.92, 0.96, 0.08], [0.42, 0.45, 0.52]], silverstone: [[0.92, 0.95, 0.05], [0.38, 0.41, 0.49]],
+  monza: [[0.92, 0.96, 0.07], [0.48, 0.51, 0.60]], deserto: [[0.92, 0.95, 0.05]],
+  tokyo: [[0.92, 0.95, 0.05]], rio: [[0.92, 0.95, 0.05]], nurburgring: [[0.92, 0.95, 0.05]],
+  laguna: [[0.92, 0.95, 0.05]], losangeles: [[0.92, 0.95, 0.05]], serra: [[0.92, 0.95, 0.05]],
+};
+for (const [id, zonas] of Object.entries(DRS)) if (PISTAS[id]) PISTAS[id].drs = zonas;
 // Três caixas por conjunto, espaçadas na volta. A mesma posição é calculada no servidor e no navegador.
 function boxesFor(id) {
   const t = PISTAS[id], pts = pontos(t, 6);

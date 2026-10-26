@@ -40,9 +40,40 @@ function aderencia(pneu) {
   const pn = PNEUS[pneu && pneu.composto] || PNEUS[COMPOSTO_PADRAO], d = pneu ? pneu.desgaste : 0, temp = pneu ? pneu.temp : TEMP_BOA;
   const perda = d <= PENHASCO ? PERDA_ANTES * d / PENHASCO : PERDA_ANTES + (PERDA_FIM - PERDA_ANTES) * (d - PENHASCO) / (1 - PENHASCO);
   const quente = FRIO + (1 - FRIO) * limite((temp - TEMP_SAIDA) / (TEMP_BOA - TEMP_SAIDA), 0, 1);
-  return { grip: limite(pn.pico * (1 - perda) * quente, 0.7, 1.1), kin: limite(1 - perda * 0.5, 0.85, 1) };
+  const base = limite(pn.pico * (1 - perda) * quente, 0.7, 1.1);
+  return { grip: base, kin: limite(1 - perda * 0.5, 0.85, 1),
+    freio: limite(base, 0.72, 1.08), tracao: limite(base * quente, 0.65, 1.08),
+    final: limite(1 - Math.max(0, d - PENHASCO) * 0.22, 0.95, 1) };
 }
 const frio = (pneu) => !!pneu && pneu.temp < TEMP_BOA - 0.02;
+
+// DRS clássico: a elegibilidade é decidida na detecção e vale apenas na zona correspondente.
+// Frações de volta atravessam a linha de chegada sem mudar a semântica da zona.
+const fracao = (v) => ((v % 1) + 1) % 1;
+const naZona = (f, abre, fecha) => abre <= fecha ? f >= abre && f < fecha : f >= abre || f < fecha;
+function zonaDRS(progresso, zonas) {
+  const f = fracao(progresso);
+  return (zonas || []).findIndex(([, abre, fecha]) => naZona(f, abre, fecha));
+}
+function drsHabilitado({ volta, intervalo, amarela, safety }) {
+  return volta >= 2 && intervalo >= 0 && intervalo < 1 && !amarela && !safety;
+}
+
+// O teto de recarga vale por volta: frear repõe mais que apenas aliviar o acelerador.
+const ERS_MAX_RECARGA = 0.45, ERS_GASTO = 0.28;
+const ersNovo = () => ({ carga: 0.65, recarga: 0, volta: 0 });
+function carregarErs(ers, dt, freando, semGas, volta) {
+  if (volta !== ers.volta) { ers.volta = volta; ers.recarga = 0; }
+  const ganho = Math.min(Math.max(0, ERS_MAX_RECARGA - ers.recarga), Math.max(0, dt) * (freando ? 0.18 : semGas ? 0.045 : 0));
+  ers.carga = limite(ers.carga + ganho, 0, 1); ers.recarga += ganho;
+  return ganho;
+}
+function gastarErs(ers, dt, ativo) {
+  const gasto = ativo ? Math.min(ers.carga, Math.max(0, dt) * ERS_GASTO) : 0;
+  ers.carga = limite(ers.carga - gasto, 0, 1);
+  return gasto > 0;
+}
+const usarErsAuto = (carga, velocidade, vmax, reta, perto) => carga > (perto ? 0.12 : 0.38) && velocidade > vmax * 0.35 && (reta || perto);
 
 // ---------- o pit stop ----------
 // No corredor dos boxes o carro anda sozinho no limitador (LIMITADOR da velocidade final), para na garagem, troca os
@@ -127,6 +158,7 @@ function estrategia(voltas, nivel = "medio", semente = 1) {
 }
 
 const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, pneuNovo, gastarPneu, aderencia, frio,
+  zonaDRS, drsHabilitado, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
   LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;
