@@ -62,7 +62,7 @@ function apice(tr, bx, by) {
 // ---------- monta tudo (chamado por pista.js, dentro do grupo da pista) ----------
 export function cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, jungle, blds }) {
   const { pts, n, W } = tr, t = tr.t, K = t.scale, L = tr.wallLat, world = t.world;
-  const reservado = (tr.reservado = []); // lugares onde os prédios e palmeiras soltos não entram
+  const reservado = (tr.reservado = []); tr.arquibancadas = []; // lugares onde os prédios e palmeiras soltos não entram
   // ---- o mar inteiro (o chão afunda onde é água: pista.js usa aguaMonaco) ----
   const seaM = new THREE.MeshStandardMaterial({ map: aguaTex("#1f6fae"), roughness: 0.15, metalness: 0.25 }); seaM.map.repeat.set(size / 220, size / 220); tr.agua.push(seaM);
   const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(size, size), seaM)); sea.rotation.x = -Math.PI / 2; sea.position.set(world / 2, -6, world / 2);
@@ -92,7 +92,7 @@ export function cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, j
   }
   // ---- a Place du Casino: o canteiro redondo com palmeiras dentro da curva do Cassino, e o Cassino atrás ----
   {
-    const ap = apice(tr, 1150, 648), raio = ap.R - W / 2 - t.wall - 4, h = hAt(ap.cx, ap.cy);
+    const ap = apice(tr, 1150, 648), raio = ap.R - W / 2 - t.wall - 4, h = hAt(ap.cx, ap.cy); tr.pracaCassino = { x: ap.cx, y: ap.cy }; // o som da fonte
     if (raio > 12) {
       const borda = add(new THREE.Mesh(new THREE.CylinderGeometry(raio, raio + 1, 3, 40), M(0xe9e4d8, { roughness: 0.8 }))); borda.position.set(ap.cx, h + 1.5, ap.cy); borda.receiveShadow = true;
       const flores = canvasTex(128, 128, (x, w, hh, rr) => { x.fillStyle = "#4f9a3a"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 700; i++) { x.fillStyle = ["#e94f6a", "#ffd23f", "#ffffff", "#ff8fb8", "#3d8a2e"][(rr() * 5) | 0]; x.fillRect(rr() * w, rr() * hh, 3, 3); } });
@@ -133,6 +133,7 @@ export function cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, j
     faixa(tr, add, i0, i1, l0 + lado * (degraus * 9 - 8), l0 + lado * (degraus * 9 + 4), 4 + degraus * 6 + 22, 4 + degraus * 6 + 25, cobertura, 60); // a marquise lá atrás (os assentos ficam à vista)
     for (let i = i0; i <= i1; i += 10) { const p = pts[i % n]; for (const d of [l0 + lado * 2, l0 + lado * degraus * 9]) { const m = add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, degraus * 6 + 30), estrutura)); m.position.set(p.x + p.nx * d, p.h + (degraus * 6 + 30) / 2 - 4, p.y + p.ny * d); } }
     for (let i = i0; i <= i1; i += 4) { const p = pts[i % n]; reservado.push([p.x + p.nx * (l0 + lado * 30), p.y + p.ny * (l0 + lado * 30), 60]); }
+    tr.arquibancadas.push([i0, i1]); // o som da torcida (monaco-vida.js)
   };
   arquibancada(150, 830, 300, 640, -1, 7); // reta dos boxes, do lado de fora
   arquibancada(380, 575, 470, 488, -1, 6); // chegando na Sainte Dévote
