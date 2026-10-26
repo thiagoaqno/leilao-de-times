@@ -6,6 +6,7 @@
 const T = require("./public/corrida/pistas.js");
 const Itens = require("./corrida-itens.js");
 const F1 = require("./public/corrida/f1-regras.js"); // os pneus das regras de F1
+const Pilotos = require("./public/corrida/f1-pilotos-2026.js"); // as equipes e os pilotos reais de 2026 (os robôs das regras de F1)
 const { SKINS } = require("./public/pelada/campo.js");
 
 const NOMES = ["Faísca", "Pistão", "Graxa", "Biela", "Vácuo", "Turbo", "Chicane"];
@@ -14,6 +15,7 @@ const NIVEIS = { facil: 0.80, medio: 0.87, dificil: 0.93 }; // sem ninguém com 
 // melhores voltas de cada um). No médio, um pouco mais lento que essa média; no difícil, um pouco mais rápido.
 const RITMO = { facil: 1.12, medio: 1.03, dificil: 0.98 };
 const STEP = 6;
+const GRID_F1 = 20; // as regras de F1: o grid tem 20 carros (humanos e robôs)
 const ENCOLHIDO = 0.72, BALA = 1.45; // o raio deixa o carro com 72% da velocidade final; a bala anda a 145% (iguais em fisica.js)
 const rnd = (a, b) => a + Math.random() * (b - a);
 const CACHE = new Map();
@@ -100,14 +102,16 @@ function perfil(pista, carro, tracadoId = 0) {
 }
 // O tempo de uma volta lançada andando no limite do perfil vezes `escala`, com a arrancada do carro (a mesma conta do
 // passo, sem tráfego). Serve para achar a escala que fecha a volta no tempo que o robô mira.
-function tempoDaVolta(pf, escala) {
-  const { lim, n, c } = pf;
+// `ader` (opcional, regras de F1): a aderência do pneu (F1.aderencia), aplicada como no passo: nas curvas a velocidade vai
+// com a raiz do grip, a velocidade final com `final` e a arrancada com `tracao`.
+function tempoDaVolta(pf, escala, ader) {
+  const { lim, n, c } = pf, raiz = ader ? Math.sqrt(ader.grip) : 1;
   let v = 0, t = 0;
   for (let volta = 0; volta < 2; volta++) {
     t = 0;
     for (let i = 0; i < n; i++) {
-      const teto = Math.min(c.vmax, Math.min(lim[i], lim[(i + 3) % n]) * escala);
-      v = Math.min(teto, Math.sqrt(v * v + 2 * c.acc * (1 - 0.8 * Math.pow(Math.max(0, v) / c.vmax, 1.6)) * STEP));
+      const teto = Math.min(c.vmax * (ader ? ader.final : 1), Math.min(lim[i], lim[(i + 3) % n]) * escala * (ader && lim[i] < c.vmax * 0.97 ? raiz : 1));
+      v = Math.min(teto, Math.sqrt(v * v + 2 * c.acc * (ader ? ader.tracao : 1) * (1 - 0.8 * Math.pow(Math.max(0, v) / c.vmax, 1.6)) * STEP));
       t += STEP / Math.max(v, 1);
     }
   }
@@ -124,19 +128,55 @@ function ritmoDaSala(room) {
   const nomes = room.order.map((id) => room.players[id]).filter((p) => p && !p.bot).map((p) => p.name);
   try { return (nomes.length && fonteRitmo(room.config.pista, nomes)) || fonteRitmo(room.config.pista, null) || null; } catch (e) { return null; }
 }
-function largada(pts, g, W) { // o mesmo lugar do grid do navegador (gridSpot, em pista.js)
-  const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * 13 + n) % n;
+function largada(pts, g, W, f1) { // o mesmo lugar do grid do navegador (gridSpot, em pista.js); com 20 carros as filas ficam mais juntas
+  const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * (f1 ? 8 : 13) + n * 2) % n;
   return { idx, lat: (g % 2 ? 1 : -1) * W * 0.22 };
+}
+// O nível de um robô (a escala do limite do traçado, em `ia.nivel`): todos miram o mesmo ritmo (com uns 3% de diferença
+// entre o mais rápido e o mais lento), seja qual for o traçado que copiam. Nas regras de F1 a diferença vem do piloto
+// de verdade (`p.piloto`: o ritmo de 2026). Sem volta de ninguém na pista, anda numa fração do limite do traçado.
+function nivelDe(room, p, tracadoId, nBots, pf) {
+  const pil = p.piloto, ritmo = room.ritmoRobos;
+  const sorte = room.config.regras === "f1" ? ((r) => (a, b) => a + r() * (b - a))(F1.sorteio(`nivel:${room.semente}:${p.id}`)) : rnd; // no GP o sorteio é da semente: a volta da classificação e a da corrida combinam
+  const espalha = pil ? Pilotos.fatorDeRitmo(pil.ritmo) - 1 : nBots > 1 ? (tracadoId / (nBots - 1) - 0.5) * 0.03 : 0;
+  return ritmo ? escalaPara(pf, ritmo * (1 + espalha)) : (NIVEIS[room.config.nivel] || NIVEIS.medio) * sorte(0.98, 1.02) * (pil ? 2 - Pilotos.fatorDeRitmo(pil.ritmo) : 1);
+}
+// o ritmo da sala (o tempo que os robôs miram), guardado em room.ritmoRobos
+function ritmoDosRobos(room) {
+  const ritmo = ritmoDaSala(room);
+  room.ritmoRobos = ritmo ? ritmo.tempo * (RITMO[room.config.nivel] || RITMO.medio) : null;
+  return room.ritmoRobos;
+}
+// ---------- a classificação (regras de F1) ----------
+// A volta lançada de um robô: o tempo da volta no ritmo dele (a mesma conta da corrida, `tempoDaVolta`) com pneu macio novo e
+// quente (a mesma aderência do carro de quem joga), mais o ruído da constância do piloto, sorteado pela semente do GP,
+// da sessão e do robô (recarregar nada muda). `em` é a hora (fração da sessão) em que o robô cruza a linha.
+function gauss(r) { return Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r()); }
+function voltaLancada(room, p, sessao, tracadoId, nBots) {
+  const pf = perfil(room.config.pista, p.car, tracadoId), nivel = nivelDe(room, p, tracadoId, nBots, pf);
+  const ader = F1.aderencia({ composto: "macio", desgaste: 0.03, temp: 0.8 });
+  const r = F1.sorteio(`quali:${room.semente}:${sessao}:${p.id}`), sigma = p.piloto ? Pilotos.ruidoDaVolta(p.piloto.constancia) : 0.012;
+  const tempo = tempoDaVolta(pf, nivel, ader) * (1 + Math.max(-2.5, Math.min(2.5, gauss(r))) * sigma);
+  return { tempo: Math.round(tempo * 1000) / 1000, em: 0.3 + 0.62 * r() };
+}
+// quanto dura uma sessão de classificação, em segundos: dá para uma volta de saída e duas lançadas de um carro médio
+function duracaoDaClassificacao(pista) {
+  const t = tempoDaVolta(perfil(pista, "equilibrado", 0), NIVEIS.medio);
+  return Math.max(70, Math.min(210, Math.round(t * 2.2 + 12)));
 }
 
 // troca os robôs da sala pelos novos (chamado na largada); devolve os ids
 function preparar(room, COLORS, rid) {
   remover(room);
-  const livres = (room.config.regras === "f1" ? 9 : 8) - room.order.length, n = Math.max(0, Math.min(livres, room.config.robos || 0)), carros = Object.keys(T.CARROS), skins = Object.keys(SKINS);
-  const sorteio = room.config.regras === "f1" ? F1.sorteio(`robos:${room.semente}`) : Math.random;
+  const f1 = room.config.regras === "f1";
+  const livres = (f1 ? GRID_F1 : 8) - room.order.length, n = Math.max(0, Math.min(livres, room.config.robos || 0)), carros = Object.keys(T.CARROS), skins = Object.keys(SKINS);
+  const sorteio = f1 ? F1.sorteio(`robos:${room.semente}`) : Math.random;
+  // (no GP todos os robôs têm o mesmo carro: a montagem de cada equipe vem no PR 3)
+  const pilotos = f1 ? Pilotos.escolher(n, room.semente) : []; // regras de F1: os pilotos reais de 2026, na ordem das equipes
   for (let k = 0; k < n; k++) {
-    const usadas = new Set(Object.values(room.players).map((p) => p.color)), id = room.config.regras === "f1" ? `robo-${k + 1}` : "r" + rid(5);
-    room.players[id] = { id, name: NOMES[k % NOMES.length], bot: true, token: null, pawn: "🤖", color: COLORS.find((c) => !usadas.has(c)) || COLORS[k % COLORS.length], skin: skins[(sorteio() * skins.length) | 0], car: carros[(sorteio() * carros.length) | 0], mods: { ...T.MODS_PADRAO }, grid: 0, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set() };
+    const usadas = new Set(Object.values(room.players).map((p) => p.color)), id = f1 ? `robo-${k + 1}` : "r" + rid(5), pil = pilotos[k], equipe = pil && Pilotos.EQUIPES[pil.equipe];
+    room.players[id] = { id, name: pil ? pil.curto : NOMES[k % NOMES.length], bot: true, token: null, pawn: "🤖", color: equipe ? equipe.cor : COLORS.find((c) => !usadas.has(c)) || COLORS[k % COLORS.length], skin: skins[(sorteio() * skins.length) | 0], car: f1 ? "equilibrado" : carros[(sorteio() * carros.length) | 0], mods: equipe && T.MODS.pintura[equipe.pintura] ? { pintura: equipe.pintura } : { ...T.MODS_PADRAO }, grid: 0, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set(),
+      ...(pil ? { piloto: { id: pil.id, ritmo: pil.ritmo, constancia: pil.constancia, largada: pil.largada }, equipe: pil.equipe, numero: pil.numero, sigla: pil.sigla, nomeCompleto: pil.nome } : {}) };
     room.order.push(id);
   }
 }
@@ -146,21 +186,19 @@ function remover(room) {
 }
 // depois do grid sorteado: cada robô no seu lugar, parado
 function largar(room) {
-  const t = T.PISTAS[room.config.pista], bots = room.order.filter((id) => room.players[id].bot), ritmo = ritmoDaSala(room);
-  room.ritmoRobos = ritmo ? ritmo.tempo * (RITMO[room.config.nivel] || RITMO.medio) : null;
+  const t = T.PISTAS[room.config.pista], bots = room.order.filter((id) => room.players[id].bot);
+  ritmoDosRobos(room);
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot) continue;
-    const tracadoId = bots.indexOf(id), pf = perfil(room.config.pista, p.car, tracadoId), g = largada(pf.pts, p.grid, t.width);
-    // Todos miram o mesmo ritmo (com uns 3% de diferença entre o mais rápido e o mais lento), seja qual for o traçado
-    // que copiam. Sem volta de ninguém na pista, andam numa fração do limite do traçado.
-    const espalha = bots.length > 1 ? (tracadoId / (bots.length - 1) - 0.5) * 0.03 : 0;
-    const nivel = ritmo ? escalaPara(pf, room.ritmoRobos * (1 + espalha)) : (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.98, 1.02);
+    const tracadoId = bots.indexOf(id), pf = perfil(room.config.pista, p.car, tracadoId), g = largada(pf.pts, p.grid, t.width, room.config.regras === "f1");
+    const nivel = nivelDe(room, p, tracadoId, bots.length, pf);
+    const pil = p.piloto; // regras de F1: o piloto de verdade manda na reação da largada e na regularidade da linha
     p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
     // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
     // regras de F1: a estratégia de parada do robô (o composto da largada e as paradas) e o mesmo pneu de quem joga
     const f1 = room.config.regras === "f1", plano = f1 ? F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${id}`) : null;
     if (plano) Object.assign(p, { pneu: plano.largada, pneuAtual: plano.largada, compostos: [plano.largada], paradas: [], acrescimo: 0, box: null });
-    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: rnd(-7, 7), tracadoId, reacao: rnd(0, 450), usaEm: 0,
+    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: pil ? rnd(-1, 1) * (2 + (100 - pil.constancia) * 0.3) : rnd(-7, 7), tracadoId, reacao: pil ? Pilotos.reacaoNaLargada(pil.largada) + rnd(0, 120) : rnd(0, 450), usaEm: 0,
       pneu: f1 ? F1.pneuNovo(p.pneu) : null, ers: f1 ? F1.ersNovo() : null, plano, box: null };
     posicionar(p, pf, 0);
   }
@@ -295,4 +333,4 @@ function passo(room, dt, setor, emit) {
     }
   }
 }
-module.exports = { preparar, remover, largar, passo, NIVEIS, RITMO, aprender, usarFonte, aprendido, tempoDaVolta, perfil };
+module.exports = { preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, voltaLancada, duracaoDaClassificacao };

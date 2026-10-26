@@ -144,13 +144,13 @@ test("sala: quem corre com um composto só leva +10 s e perde a vitória para qu
   const agora = Date.now; let relogio = agora(); Date.now = () => relogio;
   return (async () => {
     const { socket, chamar, estado } = salaDeMentira(), ana = socket(), beto = socket(), caio = socket();
-    const criou = await chamar(ana, "create", { name: "Ana", config: { pista: "interlagos", voltas: 2, regras: "f1" } });
+    const criou = await chamar(ana, "create", { name: "Ana", config: { pista: "interlagos", voltas: 2, regras: "f1", classificacao: "pular" } });
     await chamar(beto, "join", { code: criou.code, name: "Beto" }); await chamar(caio, "join", { code: criou.code, name: "Caio" });
     const act = (s, dados) => chamar(s, "act", dados);
     assert.equal((await act(beto, { type: "box", fase: "entra" })).ignored, true); // fora da corrida: ignorado
     assert.equal((await act(ana, { type: "start" })).ok, true);
     assert.ok(estado(criou.code).semente > 0, "o GP tem semente");
-    relogio += 5000;
+    relogio += 11000; // as cinco luzes: a largada vem até 10,3 s depois do start
     const todos = [ana, beto, caio], volta = async (s, quem) => { for (let k = 1; k < 12; k++) for (const q of quem) await act(q, { type: "sector", s: k }); for (const q of quem) await act(q, { type: "sector", s: 0 }); };
     for (const q of todos) await act(q, { type: "sector", s: 0 }); // a largada
     // o Beto e o Caio entram no corredor na volta 1

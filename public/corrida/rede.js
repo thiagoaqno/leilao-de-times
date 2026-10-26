@@ -1,9 +1,9 @@
 // Corrida da Galera — rede: entrar/criar sala, o estado que vem do servidor e os fantasmas dos outros pilotos.
-import { E, socket, $, store, relogio, toast } from "./estado.js";
+import { E, socket, $, store, relogio, toast, act } from "./estado.js";
 import { Sound } from "./sons.js";
 import { show, renderLobby } from "./menus.js";
 import { race, startRace, stopRace, nearest, prepararPista } from "./jogo.js";
-import { checkMyLap, renderResults } from "./hud.js";
+import { checkMyLap, renderResults, renderQuali } from "./hud.js";
 import { onBox, onUse, onHit, onBoom, setHazards } from "./itens.js";
 
 // ---------- entrar / criar ----------
@@ -25,6 +25,7 @@ $("btnJoin").onclick = () => {
   socket.emit("join", { code, name, skin: store.get("galera:skin"), id: saved.id, token: saved.token }, enter);
 };
 $("btnWatch").onclick = () => { const code = $("hCode").value.trim().toUpperCase(); if (code.length !== 5) return ($("hErr").textContent = "Coloque o código da sala."); socket.emit("join", { code, watch: true }, enter); };
+$("bPronto").onclick = () => act("qpronto"); // classificação: terminei a minha volta
 $("hCode").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnJoin").click(); });
 $("btnInvite").onclick = async () => { const link = location.origin + "/corrida/?sala=" + E.ME.code; try { await navigator.clipboard.writeText(link); toast("Convite copiado! Manda no grupo."); } catch { prompt("Copie o convite:", link); } };
 function autoJoin() {
@@ -48,13 +49,14 @@ const preparar = (id, hora) => { const chave = `${id}:${hora}`; if (id && chave 
 socket.on("state", (st) => {
   relogio.doEstado(st.now);
   const old = E.S; E.S = st;
-  if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista, st.config.hora); return; }
+  if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista, st.config.hora); $("quali").classList.add("hidden"); return; }
   show("race");
   if (!race || race.startAt !== st.startAt) startRace(st);
   if (race) race.safety = st.direcao?.safety || null;
   if (old && old.phase === "race" && st.phase === "results") Sound.finish();
   checkMyLap(old);
   renderResults();
+  renderQuali();
 });
 
 // fantasmas: posição recebida, suavizada e empurrada um pouquinho pela velocidade

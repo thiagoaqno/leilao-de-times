@@ -76,13 +76,18 @@ export function chaoGP(tr, add, cfg, { gridSpot }) {
     tira(tr, L.de(escrito(nome)), i + 2, i + 6, meia - 30, meia - 6, 0.55, 0.55);
   }
   // o grid: o "colchete" de cada posição e o número pintado (as ímpares de um lado, as pares do outro)
-  if (cfg.grid) for (let g = 0; g < 8; g++) {
-    const sp = gridSpot(pts, g, W), lat = (g % 2 ? 1 : -1) * W * 0.22;
-    const mat = tinta(canvasTex(128, 192, (x, w, hh, rr) => {
+  // São dois conjuntos: as 8 vagas de sempre e as 20 das regras de F1 (mais juntas, como em gridSpot); jogo.js liga um por vez.
+  if (cfg.grid) {
+    const LG = lotes(), LF = lotes(), numeros = Array.from({ length: 20 }, (_, g) => tinta(canvasTex(128, 192, (x, w, hh, rr) => {
       x.clearRect(0, 0, w, hh); x.fillStyle = "#f4f4f4"; x.fillRect(4, 4, w - 8, 12); x.fillRect(4, 4, 10, 60); x.fillRect(w - 14, 4, 10, 60);
       x.font = "900 70px Arial Black, Impact, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(String(g + 1), w / 2, 120); gastar(x, w, hh, rr, 0.12);
-    }, false));
-    tira(tr, L.de(mat), sp.idx - 3, sp.idx + 3, lat - 15, lat + 15, 0.55, 0.55);
+    }, false)));
+    const vaga = (lote, g, f1) => { const sp = gridSpot(pts, g, W, f1), lat = (g % 2 ? 1 : -1) * W * 0.22; tira(tr, lote.de(numeros[g]), sp.idx - 3, sp.idx + 3, lat - 15, lat + 15, 0.55, 0.55); };
+    for (let g = 0; g < 8; g++) vaga(LG, g, false);
+    for (let g = 0; g < 20; g++) vaga(LF, g, true);
+    tr.gridGalera = add(new THREE.Group()); tr.gridF1 = add(new THREE.Group()); tr.gridF1.visible = false;
+    LG.montar((m) => { tr.gridGalera.add(m); return m; }, `${tr.id}-grid`);
+    LF.montar((m) => { tr.gridF1.add(m); return m; }, `${tr.id}-grid-f1`);
   }
   // remendos de asfalto e bueiros
   const remendo = (cor) => tinta(canvasTex(64, 64, (x, w, hh, rr) => {

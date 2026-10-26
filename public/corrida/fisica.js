@@ -21,8 +21,9 @@ const GRAV = 160;
 // força; de bala, segue a pista sozinho a 145% dela (os mesmos números dos robôs, em corrida-robos.js)
 const ENCOLHIDO = 0.72, BALA = 1.45;
 export function physics(dt, spec = carOf(me())) {
-  const c = race.car, tr = race.tr, go = sNow() >= race.startAt && !!me();
-  if (!go) { c.v = c.vx = c.vy = 0; return; }
+  // nas regras de F1 o carro já anda antes das luzes apagarem (a largada queimada: o servidor dá +5 s); nas outras, só depois da contagem
+  const c = race.car, tr = race.tr, go = (sNow() >= race.startAt || !!race.luzes) && !!me();
+  if (!go || (race.luzes && sNow() < race.startAt && !keys.gas)) { c.v = c.vx = c.vy = 0; return; } // (nas luzes de F1, o freio de mão segura o carro na ladeira do grid até alguém acelerar)
   // regras de F1: no corredor dos boxes o carro anda sozinho (box.js); os checkpoints continuam valendo lá dentro
   if (race.box && passoBox(dt, spec)) return setores(tr, trackFrame(tr, c.x, c.y, race.idx), dt);
   const fr0 = trackFrame(tr, c.x, c.y, race.idx), road = Math.abs(fr0.lat) <= tr.W / 2 + 6, air = c.air;
@@ -135,7 +136,7 @@ export function physics(dt, spec = carOf(me())) {
     cone.hit = 1; cone.dir = c.a; cone.cooldown = sNow() + 3000; Sound.pop();
   }
   // batida com os outros carros (cada um empurra o outro; quem está em outro nível, viaduto ou no ar, passa por cima)
-  if (!air) for (const [id, gh] of race.ghosts) {
+  if (!air && !race.quali) for (const [id, gh] of race.ghosts) { // na classificação não tem batida (cada um faz a sua volta)
     if (Math.abs((gh.z || 0) - c.z) > 12 || !me()) continue;
     const pl = P(id), outro = CARS3[pl && pl.car] || CARS3.equilibrado;
     const eu = { x: c.x, y: c.y, a: c.a, vx: c.vx, vy: c.vy, L: (CARS3[me().car] || CARS3.equilibrado).L * KS, W: (CARS3[me().car] || CARS3.equilibrado).W * KS, massa: MASSA[me().car] || 1 };
