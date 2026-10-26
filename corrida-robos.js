@@ -217,7 +217,7 @@ function preparar(room, COLORS, rid) {
   // quem já tem humano na equipe deixa a vaga dele (cada equipe tem 2 carros)
   const ocupadas = {};
   for (const q of Object.values(room.players)) if (!q.bot && q.equipe) ocupadas[q.equipe] = (ocupadas[q.equipe] || 0) + 1;
-  const pilotos = f1 ? Pilotos.escolher(n, room.semente, ocupadas) : []; // regras de F1: os pilotos reais de 2026, na ordem das equipes
+  const pilotos = f1 ? (room.pilotosTemporada || Pilotos.escolher(n, room.semente, ocupadas)) : []; // na temporada, o contrato fixa o companheiro
   for (let k = 0; k < n; k++) {
     const usadas = new Set(Object.values(room.players).map((p) => p.color)), id = f1 ? `robo-${k + 1}` : "r" + rid(5), pil = pilotos[k], equipe = pil && Pilotos.EQUIPES[pil.equipe];
     room.players[id] = { id, name: pil ? pil.curto : NOMES[k % NOMES.length], bot: true, token: null, pawn: "🤖", color: equipe ? equipe.cor : COLORS.find((c) => !usadas.has(c)) || COLORS[k % COLORS.length], skin: skins[(sorteio() * skins.length) | 0], car: f1 ? "equilibrado" : carros[(sorteio() * carros.length) | 0], mods: equipe && T.MODS.pintura[equipe.pintura] ? { pintura: equipe.pintura } : { ...T.MODS_PADRAO }, grid: 0, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set(),

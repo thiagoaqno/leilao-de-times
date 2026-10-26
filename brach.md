@@ -1,26 +1,25 @@
-# PR intermediário: ritmo dos robôs na F1
+# PR4: temporada solo de Fórmula 1
 
-Branch `fix/corrida-ia-ritmo`, criada a partir de `origin/main` depois dos PRs 1 a 3 e dos extras de equipes, pontuação e pistas.
+Branch `feat/corrida-f1-temporada-solo`, criada a partir de `origin/main` após a incorporação do PR intermediário #322.
 
 ## Adicionado nesta branch
 
-- Na F1, a classificação e a corrida usam uma referência competitiva por pista: o melhor tempo humano guardado no banco, limitado pela capacidade do carro da McLaren no traçado calculado. Em pista ainda sem volta, usam essa capacidade. Uma volta apenas razoável do jogador deixa de reduzir o ritmo do grid inteiro. Um recorde humano competitivo permanece protegido na classificação. Os outros modos conservam o balanceamento anterior.
-- O alvo de cada bot inclui o carro da equipe e a nota de ritmo do piloto. A semente ainda define a constância da volta e o estilo de pilotagem. O limite de velocidade final, os pneus, o dano, o tráfego e os boxes continuam valendo na corrida.
-- A pole simulada fica acima de um recorde humano conhecido, mesmo com uma variação favorável no sorteio da classificação.
-- Depois da primeira chegada, a F1 calcula o prazo para os bots ativos cobrirem as voltas que faltam, com margem para tráfego e paradas, até 10 minutos. A regra de 45 segundos dos outros modos continua.
-- O tráfego dos bots confere também a distância percorrida na pista antes de frear por outro carro. Isso evita confundir trechos vizinhos do desenho; carros que já chegaram não bloqueiam o pelotão e uma fila parada pode voltar a ultrapassar.
-- Uma perda total retira o carro da pista: bots, colisões e direção de prova deixam de considerá-lo obstáculo; os navegadores deixam de desenhá-lo. O pelotão pode continuar mesmo numa curva sob bandeira.
-- Cada batida válida agora causa 2% de dano, independentemente da força, e nenhuma punição em segundos. Cada 2% de dano reduz em 2% velocidade final, aceleração, frenagem e aderência, para humanos e bots. O intervalo entre registros do mesmo contato passou a quatro segundos.
-- O log da F1 informa se o alvo veio do recorde ou da capacidade dos carros.
+- Sede da temporada em `/corrida/temporada/`: criação, recuperação, próximo GP, calendário, tabelas de pilotos e construtores, garagem, mercado, caixa e limite anual de gastos. A entrada da Corrida agora aponta para ela; o resultado do GP e o botão de saída voltam à sede.
+- Save próprio no SQLite (`corrida_temporadas`, migração 018), com hash do token e do código de recuperação. O save mantém equipe, carro, companheiro, engenheiros, dinheiro, calendário e histórico de resultados. A recuperação troca o token; o código pode ser renovado.
+- Mini temporada de 4 GPs ou temporada de 8 GPs, com pistas que já existem no jogo e ordem baseada no [calendário oficial de 2026](https://www.formula1.com/en/latest/article/formula-1-reveals-calendar-for-2026-season.YctbMZWqBvrgyddrnauo8). O grid usa 20 carros: o jogador, seu companheiro contratado e 18 rivais de 2026. O companheiro permanece na equipe escolhida durante o campeonato.
+- Cada etapa abre classificação Q1/Q2/Q3 e corrida F1 já existentes, em sala privada que não aparece na Vila. Um acesso válido permite voltar ao GP. Abandono sem retorno após 20 segundos vira DNF; os bots continuam. Só a bandeirada registra o resultado e avança o calendário, uma vez por GP.
+- Pontuação oficial de pilotos e construtores, desempate por vitórias e melhores colocações, histórico do último GP e campeões ao fim do calendário. O ano seguinte preserva caixa, contratos, carro e desenvolvimento; zera pontos e gastos anuais.
+- Contratação de companheiro e engenheiros, desenvolvimento de até quatro pontos extras de montagem, prêmios, patrocínio, salários e teto anual de R$ 140 milhões. A equipe de box dá crédito de tempo por parada no resultado do GP. A validação financeira e da montagem acontece no servidor.
 
 ## Conferência
 
-- Simulação de 19 bots, duas voltas em cada uma das 24 pistas de GP, sem volta humana: todos terminam. Em Mônaco, o grid de classificação fica aproximadamente entre 46 e 49 s no nível médio.
-- Com recorde humano de 43,2 s em Mônaco e uma volta de 49,5 s, a pole dos bots fica acima do recorde, e os 19 bots classificam abaixo de 49,5 s. Se a única volta conhecida é 49,5 s, ela não arrasta a pole para trás. Em Interlagos, o grid sem referência também deixa de andar no ritmo do Cadillac.
-- Teste de um bot passando por carro retirado da pista, mesmo em trecho curvo, e testes de dano fixo sem acréscimo ao tempo.
-- Testes novos cobrem o grid completo sem referência, o limite pelo recorde e o prazo após a primeira chegada. `node --test tests/corrida*.test.js` e `git diff --check`.
+- `node --test tests/corrida*.test.js`: testes da Corrida passaram.
+- Teste novo: quatro bandeiradas simuladas atravessam o canal da sede, produzem quatro saves e 74 pontos para o jogador; callback repetida não duplica GP. Também cobre grid e contrato, orçamento, token e recuperação, persistência após reabrir SQLite, sala privada e acesso à classificação.
+- Navegador real: criação e sede conferidas em 1440 px e 390 px, sem erros de JavaScript nem rolagem horizontal; botão Iniciar GP abriu a classificação em Melbourne. Capturas conferidas localmente.
+- `git diff --check`.
 
-## Repositórios consultados
+## Fontes consultadas
 
-- [awesome-f1](https://github.com/subinium/awesome-f1#tools-and-apps) é um índice de ferramentas e fontes; suas entradas de telemetria e traçados podem ajudar a aferir pistas em trabalho futuro. Não há algoritmo de IA para importar diretamente.
-- [F1DB](https://github.com/f1db/f1db) disponibiliza dados históricos de pilotos, construtores, circuitos e temporadas em formatos abertos. É uma boa fonte para conferir o calendário e as tabelas no PR 4; qualquer dado copiado exigirá a atribuição prevista na licença CC BY 4.0. O balanceamento deste PR usa os tempos medidos no próprio jogo, pois a duração das pistas do jogo não corresponde à volta real da F1.
+- [Calendário oficial de 2026](https://www.formula1.com/en/latest/article/formula-1-reveals-calendar-for-2026-season.YctbMZWqBvrgyddrnauo8): ordem das oito etapas disponíveis no jogo.
+- [F1DB](https://github.com/f1db/f1db): referência para dados históricos; nenhum pacote ou base externa foi importado nesta branch.
+- [awesome-f1](https://github.com/subinium/awesome-f1#tools-and-apps): índice de ferramentas para aferição futura de pistas e telemetria.

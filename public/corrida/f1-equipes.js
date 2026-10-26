@@ -49,7 +49,7 @@ const custoDaMontagem = soma; // 1 ponto por nível
 
 // A montagem de uma equipe, conferida: todas as seis peças, inteiros de 0 a MAX_NIVEL, nada além delas e a soma dentro
 // do orçamento. Devolve { ok: true, montagem } (uma cópia limpa) ou { ok: false, erro }.
-function validar(equipeId, m) {
+function validar(equipeId, m, bonus = 0) {
   const eq = EQUIPES[equipeId];
   if (!eq) return { ok: false, erro: "Equipe inválida." };
   if (!m || typeof m !== "object" || Array.isArray(m)) return { ok: false, erro: "Montagem inválida." };
@@ -60,7 +60,8 @@ function validar(equipeId, m) {
     if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > MAX_NIVEL) return { ok: false, erro: `Nível inválido em ${PECAS[k].nome} (de 0 a ${MAX_NIVEL}).` };
     limpa[k] = v;
   }
-  if (soma(limpa) > eq.orcamento) return { ok: false, erro: `A montagem passa do orçamento (${soma(limpa)} de ${eq.orcamento} pontos).` };
+  const limite = eq.orcamento + Math.max(0, Math.min(4, Number(bonus) || 0));
+  if (soma(limpa) > limite) return { ok: false, erro: `A montagem passa do orçamento (${soma(limpa)} de ${limite} pontos).` };
   return { ok: true, montagem: limpa };
 }
 const montagemPadrao = (equipeId) => ({ ...(EQUIPES[equipeId] || EQUIPES.mclaren).padrao });

@@ -20,6 +20,7 @@ const padrao = (r) => r.order.map((id) => r.players[id]).filter(Boolean).map((p)
 const nomeCartao = (r) => String(r.nome || r.config?.nome || "").slice(0, 24);
 
 function descrever(jogo, reg, r) {
+  if (r.privada) return null;
   const gente = (reg.jogadores ? reg.jogadores(r) : padrao(r)).map((p) => ({ ...p, host: p.host || (r.host && r.players?.[r.host]?.name === p.nome) }));
   if (!gente.some((p) => p.online)) return null; // sala abandonada, esperando a faxina
   const max = typeof reg.max === "function" ? reg.max(r) : reg.max || 0;

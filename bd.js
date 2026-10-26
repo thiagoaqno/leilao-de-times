@@ -195,6 +195,46 @@ function excluirCarreira(id) {
   return bd().prepare("DELETE FROM carreiras WHERE id = ?").run(id).changes > 0;
 }
 
+// Temporada F1: credenciais próprias, sem misturar os saves da Carreira de futebol.
+function lerTemporada(linha) {
+  if (!linha) return null;
+  return { id: Number(linha.id), nome: linha.nome, dados: JSON.parse(linha.dados), criadaEm: linha.criada_em, atualizadaEm: linha.atualizada_em };
+}
+function criarTemporadaCorrida(nome, dados) {
+  const token = novoToken(), recuperacao = novoCodigoRecuperacao(), agora = Date.now();
+  const r = bd().prepare("INSERT INTO corrida_temporadas (token_hash, recuperacao_hash, nome, dados, criada_em, atualizada_em) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(hash(token), hash(recuperacao), String(nome).slice(0, 40), JSON.stringify(dados), agora, agora);
+  return { id: Number(r.lastInsertRowid), token, recuperacao };
+}
+function temporadaCorridaPorToken(token) {
+  if (!tokenValido(token)) return null;
+  return lerTemporada(bd().prepare("SELECT * FROM corrida_temporadas WHERE token_hash = ?").get(hash(token)));
+}
+function temporadaCorridaPorId(id) {
+  return lerTemporada(bd().prepare("SELECT * FROM corrida_temporadas WHERE id = ?").get(id));
+}
+function recuperarTemporadaCorrida(codigo) {
+  const c = limparCodigo(codigo);
+  if (c.length !== 12) return null;
+  const linha = bd().prepare("SELECT * FROM corrida_temporadas WHERE recuperacao_hash = ?").get(hash(c));
+  if (!linha) return null;
+  const token = novoToken();
+  bd().prepare("UPDATE corrida_temporadas SET token_hash = ?, atualizada_em = ? WHERE id = ?").run(hash(token), Date.now(), linha.id);
+  return { ...lerTemporada(linha), token };
+}
+function salvarTemporadaCorrida(id, dados, gpEsperado) {
+  const r = gpEsperado == null
+    ? bd().prepare("UPDATE corrida_temporadas SET dados = ?, atualizada_em = ? WHERE id = ?").run(JSON.stringify(dados), Date.now(), id)
+    : bd().prepare("UPDATE corrida_temporadas SET dados = ?, atualizada_em = ? WHERE id = ? AND CAST(json_extract(dados, '$.gp') AS INTEGER) = ?")
+      .run(JSON.stringify(dados), Date.now(), id, gpEsperado);
+  return r.changes > 0;
+}
+function novoCodigoTemporadaCorrida(id) {
+  const recuperacao = novoCodigoRecuperacao();
+  const r = bd().prepare("UPDATE corrida_temporadas SET recuperacao_hash = ?, atualizada_em = ? WHERE id = ?").run(hash(recuperacao), Date.now(), id);
+  return r.changes ? recuperacao : null;
+}
+
 // ---------- a moderação das carreiras solo (admin-carreira.js) ----------
 // a lista sem abrir o save inteiro de cada uma: só os campos que o painel mostra, tirados do JSON pelo próprio SQLite
 const listarCarreiras = (limite = 300) => bd().prepare(`SELECT id, nome, criada_em, atualizada_em,
@@ -395,3 +435,4 @@ const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, 
   .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
 
 module.exports = { melhorVoltaCorrida, melhoresTracadosCorrida, ritmoCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+Object.assign(module.exports, { criarTemporadaCorrida, temporadaCorridaPorToken, temporadaCorridaPorId, recuperarTemporadaCorrida, salvarTemporadaCorrida, novoCodigoTemporadaCorrida });
