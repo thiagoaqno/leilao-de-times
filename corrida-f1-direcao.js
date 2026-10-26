@@ -7,6 +7,11 @@ const penalizar = (p, segundos, motivo, log) => {
   p.acrescimo = (p.acrescimo || 0) + segundos;
   log(`⏱️ ${p.name}: ${motivo}, +${segundos} s.`);
 };
+// A largada queimada: o carro já anda (mais de 45 u/s) antes de as luzes apagarem (com 150 ms de folga para o relógio).
+function largada(room, p, pos, agora, log) {
+  if (p.queimou || !(agora < room.startAt - 150) || !(pos.v > 45)) return;
+  p.queimou = true; penalizar(p, 5, 'queimou a largada', log);
+}
 const atravessou = (antes, depois, marco) => Number.isFinite(antes) && depois >= antes && Math.floor(depois - marco) > Math.floor(antes - marco);
 
 function iniciar(room) {
@@ -17,7 +22,7 @@ function iniciar(room) {
     scDura: 10000 + Math.floor(r() * 4000),
     pista: T.pontos(t, 6), ultimaAtualizacao: 0 };
   for (const id of room.order) Object.assign(room.players[id], { drsZona: -1, penal: 0, avisosLimite: 0,
-    avisosAmarela: 0, avisosAzul: 0, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
+    avisosAmarela: 0, avisosAzul: 0, queimou: false, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
 }
 function progresso(p, n) { return Number.isFinite(p.pos?.prog) ? p.pos.prog / n : -1; }
 function ordem(room) {
@@ -54,6 +59,7 @@ function passo(room, agora, log) {
 }
 function registrar(room, p, pos, agora, log) {
   const d = room.direcao; if (!d || !Number.isFinite(pos.prog) || !Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
+  largada(room, p, pos, agora, log);
   const n = d.pista.length, t = T.PISTAS[room.config.pista], pr = pos.prog / n, anterior = Number.isFinite(p.progressoF1) ? p.progressoF1 : pr;
   const idx = ((Math.round(pos.prog) % n) + n) % n, pt = d.pista[idx];
   const lat = (pos.x - pt.x) * -pt.ty + (pos.y - pt.y) * pt.tx;

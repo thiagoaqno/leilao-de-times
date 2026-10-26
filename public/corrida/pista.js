@@ -40,8 +40,9 @@ export const THEMES = {
 };
 
 // posição de largada g: atrás da linha, em duas filas
-export function gridSpot(pts, g, W) {
-  const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * 13 + n) % n, p = pts[idx], nx = -p.ty, ny = p.tx, side = g % 2 ? 1 : -1, lat = side * W * 0.22;
+// (regras de F1: o grid tem 20 carros e as filas ficam mais juntas, a 8 pontos uma da outra em vez de 13)
+export function gridSpot(pts, g, W, f1 = false) {
+  const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * (f1 ? 8 : 13) + n * 2) % n, p = pts[idx], nx = -p.ty, ny = p.tx, side = g % 2 ? 1 : -1, lat = side * W * 0.22;
   return { x: p.x + nx * lat, y: p.y + ny * lat, tx: p.tx, ty: p.ty, nx, ny, a: Math.atan2(p.ty, p.tx), idx };
 }
 
@@ -207,12 +208,29 @@ function buildWorld(tr) {
   const line = add(new THREE.Mesh(new THREE.PlaneGeometry(W, 12), new THREE.MeshStandardMaterial({ map: chk, roughness: 0.6 })));
   line.rotation.x = -Math.PI / 2; line.rotation.z = -Math.atan2(a0.ty, a0.tx) + Math.PI / 2; line.position.set(a0.x, a0.h + 0.55, a0.y);
   // os GPs com o chão do kit têm o grid pintado com os números
-  if (!gp?.chao?.grid) for (let g = 0; g < 8; g++) { const p = gridSpot(pts, g, W); const m = add(new THREE.Mesh(new THREE.PlaneGeometry(20, 2), new THREE.MeshBasicMaterial({ color: 0xffffff }))); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); }
+  // (as barras das regras de F1 são as 20 vagas do grid mais juntas; as de hoje, as 8 de sempre: pista.js liga um conjunto de cada vez)
+  if (!gp?.chao?.grid) { tr.gridGalera = add(new THREE.Group()); tr.gridF1 = add(new THREE.Group()); tr.gridF1.visible = false;
+    const barra = new THREE.PlaneGeometry(20, 2), branco = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    for (const [grupo, quantas, f1] of [[tr.gridGalera, 8, false], [tr.gridF1, 20, true]]) for (let g = 0; g < quantas; g++) { const p = gridSpot(pts, g, W, f1); const m = new THREE.Mesh(barra, branco); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); grupo.add(m); } }
   // pórtico da largada
   { const s = 1, L = W / 2 + 14, mat = M(0x333844), sign = canvasTex(256, 32, (x, w, hh) => { x.fillStyle = "#111"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ffd23f"; x.font = "bold 24px sans-serif"; x.textAlign = "center"; x.fillText("CORRIDA DA GALERA", w / 2, 24); }, false);
     for (const k of [1, -1]) { const m = add(new THREE.Mesh(new THREE.BoxGeometry(4, 60, 4), mat)); m.position.set(a0.x + a0.nx * k * L, a0.h + 30, a0.y + a0.ny * k * L); m.castShadow = true; }
     const top = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 4, 10, 3), [mat, mat, mat, mat, new THREE.MeshBasicMaterial({ map: sign }), new THREE.MeshBasicMaterial({ map: sign })]));
-    top.position.set(a0.x, a0.h + 62, a0.y); top.rotation.y = -Math.atan2(a0.ny, a0.nx); void s; }
+    top.position.set(a0.x, a0.h + 62, a0.y); top.rotation.y = -Math.atan2(a0.ny, a0.nx); void s;
+    // nas pistas de GP, o pórtico das regras de F1: no lugar da faixa "CORRIDA DA GALERA", cinco caixas com duas luzes vermelhas
+    // cada, que acendem uma por segundo e apagam juntas (tr.luzes.set(n), chamado por hud.js). jogo.js liga um pórtico ou o outro.
+    if (gp) {
+      const topF1 = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 4, 10, 3), mat)); topF1.position.copy(top.position); topF1.rotation.copy(top.rotation); topF1.visible = false;
+      const grupo = add(new THREE.Group()); grupo.position.copy(top.position); grupo.rotation.copy(top.rotation); grupo.visible = false;
+      const caixa = new THREE.BoxGeometry(10, 15, 2), esfera = new THREE.SphereGeometry(2.6, 12, 8), preto = M(0x0b0c10), apagada = 0x2a0505, acesa = 0xff2a1a, lampadas = [];
+      for (let k = 0; k < 5; k++) {
+        const c = new THREE.Mesh(caixa, preto); c.position.set((k - 2) * 13, 0, 2.2); grupo.add(c);
+        const luz = new THREE.MeshBasicMaterial({ color: apagada }); lampadas.push(luz);
+        for (const dy of [-3.6, 3.6]) { const e = new THREE.Mesh(esfera, luz); e.position.set((k - 2) * 13, dy, 3.7); grupo.add(e); }
+      }
+      tr.faixaGalera = top; tr.portico = { topF1, grupo };
+      tr.luzes = { set(n) { lampadas.forEach((l, i) => l.color.setHex(i < n ? acesa : apagada)); } };
+    } }
   // ---- enfeites ----
   const spots = []; // [x, y, chão] longe da pista
   const free = (x, y, gap) => x > -pad + 50 && y > -pad + 50 && x < WORLD + pad - 50 && y < WORLD + pad - 50 && tr.distAt(x, y) > W / 2 + gap;

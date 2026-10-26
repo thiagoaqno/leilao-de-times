@@ -157,6 +157,52 @@ function estrategia(voltas, nivel = "medio", semente = 1) {
   return { largada, paradas };
 }
 
+// ---------- o fim de semana: classificação e pontos ----------
+// Q1, Q2 e Q3: o Q1 tem todos os carros e deixa 15, o Q2 deixa 10 e o Q3 decide o resto. Com menos carros, as sessões
+// que não eliminam ninguém não existem (20 carros: [20, 15, 10]; 12: [12, 10]; 8: [8]).
+const SEGUEM_NA_CLASSIFICACAO = [15, 10];
+function sessoesDeClassificacao(n) {
+  const t = [Math.max(0, n)];
+  for (const k of SEGUEM_NA_CLASSIFICACAO) if (t[t.length - 1] > k) t.push(k);
+  return t;
+}
+// `tabela`: [{ id, tempo (s, ou null se não fez volta), quando (ms em que fez o melhor tempo) }]. Vale o menor tempo; quem
+// não tem tempo fica por último; empate: quem fez o tempo primeiro (e, sem `quando`, a ordem em que veio).
+function ordenarClassificacao(tabela) {
+  const t = (x) => (x.tempo == null ? Infinity : x.tempo), q = (x) => (x.quando == null ? Infinity : x.quando);
+  return tabela.map((x, i) => ({ x, i })).sort((a, b) => {
+    const dt = t(a.x) === t(b.x) ? 0 : t(a.x) < t(b.x) ? -1 : 1; if (dt) return dt;
+    const dq = q(a.x) === q(b.x) ? 0 : q(a.x) < q(b.x) ? -1 : 1; return dq || a.i - b.i;
+  }).map((o) => o.x);
+}
+// fecha uma sessão: a ordem dos tempos, quem passa para a próxima (`passam` carros) e quem é eliminado
+function fecharSessao(tabela, passam) {
+  const ordem = ordenarClassificacao(tabela), n = Math.max(0, Math.min(ordem.length, passam));
+  return { ordem, passam: ordem.slice(0, n), eliminados: ordem.slice(n) };
+}
+// O grid (ids, do 1º ao último) pelas sessões fechadas, da primeira à última: a última sessão decide as primeiras
+// posições, os eliminados do Q2 vêm depois deles e os do Q1 no fim, cada grupo na ordem dos seus tempos.
+function gridDaClassificacao(sessoes) {
+  const grid = [];
+  for (let i = sessoes.length - 1; i >= 0; i--) for (const x of (i === sessoes.length - 1 ? sessoes[i].ordem : sessoes[i].eliminados)) grid.push(x.id);
+  return grid;
+}
+
+// Os pontos oficiais do GP (do 1º ao 10º); não tem ponto pela volta mais rápida (a F1 tirou em 2025).
+const PONTOS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1], CLASSIFICADO = 0.9;
+// O resultado do GP. `carros`: [{ id, laps, finish (s, ou null), acrescimo (s), prog }], `voltas` da corrida. Quem cruzou a
+// chegada vem primeiro, pelo tempo mais os acréscimos; depois, quem não terminou, por voltas e progresso. Quem fez menos de
+// 90% das voltas da corrida é "NC" (não classificado) e não pontua. Devolve [{ id, pos, nc, tempo, pontos }].
+function classificacaoFinal(carros, voltas) {
+  const minimo = Math.ceil(voltas * CLASSIFICADO), final = (c) => c.finish + (c.acrescimo || 0);
+  const terminaram = carros.filter((c) => c.finish != null).sort((a, b) => final(a) - final(b));
+  const resto = carros.filter((c) => c.finish == null).sort((a, b) => (b.laps - a.laps) || ((b.prog || 0) - (a.prog || 0)));
+  return [...terminaram, ...resto].map((c, i) => {
+    const nc = c.finish == null && (c.laps || 0) < minimo;
+    return { id: c.id, pos: i + 1, nc, tempo: c.finish != null ? final(c) : null, pontos: !nc && i < PONTOS.length ? PONTOS[i] : 0 };
+  });
+}
+
 // ---------- o vácuo da F1 ----------
 // Atrás de outro carro na reta o ar empurra menos: um pouco de velocidade final (bem menos que o DRS, que é o que decide
 // a ultrapassagem) e um pouco de aceleração. Nas curvas é o contrário, o ar sujo: o carro de trás perde aderência e
@@ -167,7 +213,7 @@ function vacuoF1(draft, curva) {
   return { final: VACUO_FINAL * d, acel: VACUO_ACEL * d, aderencia: 1 - (curva ? AR_SUJO * d : 0) };
 }
 
-const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, pneuNovo, gastarPneu, aderencia, frio,
+const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
   LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia };
 if (typeof module !== "undefined" && module.exports) module.exports = api;

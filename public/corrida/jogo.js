@@ -95,6 +95,18 @@ function aquecerPista(tr, ceu) {
     if (!ceuChegou) Promise.all([modelos, ceu]).then(aquecer, () => {});
   }, () => {});
 }
+// o pneu de cada largada: na classificação, macio novo e já quente (como o dos robôs); na corrida, o escolhido na sala, frio
+function pneuDaLargada(st, mine) {
+  if (st.phase !== "quali") return window.F1Regras.pneuNovo(mine && mine.pneu);
+  const pn = window.F1Regras.pneuNovo("macio"); pn.temp = 0.8; return pn;
+}
+// quem está correndo agora: a corrida, ou uma sessão da classificação em que o meu carro está e que não parou no intervalo
+export function ativo() {
+  const S = E.S; if (!S) return false;
+  if (S.phase === "race") return true;
+  const q = S.quali, m = me();
+  return S.phase === "quali" && !!q && !q.pausa && !!m && q.ativos.includes(m.id);
+}
 export function startRace(st) {
   const tr = buildTrack(st.config.pista), mine = me();
   // a luz da foto do céu só muda durante a contagem: com o carro andando, ela recompilaria todos os materiais
@@ -102,6 +114,9 @@ export function startRace(st) {
   luzPendente();
   tr.mostrarBoxes = st.config.regras === "f1"; if (tr.boxesGP) tr.boxesGP.userData.mostrar(tr.mostrarBoxes); // o corredor dos boxes só aparece nas regras de F1
   if (tr.drsPlacas) tr.drsPlacas.visible = tr.mostrarBoxes;
+  // regras de F1: o grid de 20 vagas e o pórtico das cinco luzes no lugar do "CORRIDA DA GALERA" (nas pistas de GP)
+  if (tr.gridGalera) tr.gridGalera.visible = !tr.mostrarBoxes; if (tr.gridF1) tr.gridF1.visible = tr.mostrarBoxes;
+  if (tr.portico) { tr.faixaGalera.visible = !tr.mostrarBoxes; tr.portico.topF1.visible = tr.portico.grupo.visible = tr.mostrarBoxes; tr.luzes.set(0); }
   if (tr.boxesGP) {
     const cores = Object.values(window.EQUIPES_F1 || {}).map((e) => e.cor);
     for (const p of st.players) {
@@ -110,12 +125,13 @@ export function startRace(st) {
     }
     tr.boxesGP.userData.colorir(cores);
   }
-  const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W);
+  const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W, st.config.regras === "f1");
   if (race) clearRace();
   race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
     kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0,
-    pneu: st.config.regras === "f1" ? window.F1Regras.pneuNovo(mine && mine.pneu) : null,
-    ers: st.config.regras === "f1" ? window.F1Regras.ersNovo() : null, box: iniciarBox(tr, st) }; // regras de F1: pneu, ERS e pit stop
+    pneu: st.config.regras === "f1" ? pneuDaLargada(st, mine) : null,
+    ers: st.config.regras === "f1" ? window.F1Regras.ersNovo() : null, box: st.phase === "quali" ? null : iniciarBox(tr, st), // regras de F1: pneu, ERS e pit stop
+    quali: st.phase === "quali", luzes: st.phase === "race" && st.config.regras === "f1" ? st.luzes : null, luzN: 0 }; // classificação (sem batida nem box) e as cinco luzes da largada
   $("bBox").classList.toggle("hidden", !race.box || !mine);
   $("bErs").classList.toggle("hidden", !race.ers || !mine);
   startItems(tr, st.config.caixas);
@@ -160,12 +176,12 @@ function loop(t) {
   ultimoQuadro = t;
   const dt = Math.min(1 / 30, (t - (lastT || t)) / 1000); lastT = t;
   pollPad();
-  if (E.S && E.S.phase === "race") { const steps = dt > 1 / 50 ? 2 : 1; for (let i = 0; i < steps; i++) physics(dt / steps); }
+  if (ativo()) { const steps = dt > 1 / 50 ? 2 : 1; for (let i = 0; i < steps; i++) physics(dt / steps); }
   updateGhosts(dt);
   recordLap();
-  if (me() && E.S.phase === "race" && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
-  Sound.engine(race.car.v, E.S && E.S.phase === "race" && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0);
-  Sound.skid(me() && E.S.phase === "race" && race.car.slip > 45 ? race.car.slip : 0);
+  if (me() && ativo() && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
+  Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0);
+  Sound.skid(me() && ativo() && race.car.slip > 45 ? race.car.slip : 0);
   draw(dt);
   medirQuadro();
   hud();

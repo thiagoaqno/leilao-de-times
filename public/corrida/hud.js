@@ -1,5 +1,5 @@
 // Corrida da Galera — o placar da corrida e o resultado.
-import { E, PISTAS, $, h, sNow, me, act, fmt, SECTORS, checkpoint } from "./estado.js";
+import { E, PISTAS, $, h, sNow, me, P, act, fmt, SECTORS, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { race } from "./jogo.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
@@ -19,10 +19,12 @@ export function hud() {
   drawItemHud();
   const m = me(), st = standings(), now = sNow(), cfg = E.S.config, tr = race.tr;
   const left = (race.startAt - now) / 1000;
-  // contagem 3, 2, 1, VAI!
+  // contagem 3, 2, 1, VAI! (nas regras de F1 a largada são as cinco luzes: sem número, só o apito quando apagam)
+  const luz = !!race.luzes;
   let big = "";
-  if (left > 0) { const n = Math.ceil(left); big = n <= 3 ? String(n) : ""; if (n <= 3 && race.beeped !== n) { race.beeped = n; Sound.beep(false); } }
-  else if (left > -1) { big = "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); } }
+  if (left > 0) { const n = Math.ceil(left); big = !luz && n <= 3 ? String(n) : ""; if (!luz && n <= 3 && race.beeped !== n) { race.beeped = n; Sound.beep(false); } }
+  else if (left > -1) { big = luz ? "" : "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); } }
+  luzesDaLargada(left);
   if (m && m.finish != null && E.S.phase === "race") big = "";
   $("hBig").textContent = big;
   $("hBig").style.color = left > 0 ? "#ff4d4d" : "#2ecc71";
@@ -43,7 +45,7 @@ export function hud() {
     el.className = "time num " + (d == null ? "" : d < 0 ? "ahead" : "behind");
   } else { $("hPos").innerHTML = "👀"; $("hLap").textContent = "Assistindo"; $("hTime").textContent = fmt(Math.max(0, (now - race.startAt) / 1000)); velocimetro(Math.abs(lider ? race.ghosts.get(lider.id)?.v || 0 : 0)); }
   const f1 = cfg.regras === "f1", pneuDe = (p) => (f1 ? ` <u class="pn" style="--c:${window.F1Regras.PNEUS[p.pneuAtual || p.pneu].cor}"></u>${p.paradas ? ` <em>${p.paradas}P</em>` : ""}${p.noBox ? ` <em class="box">BOX</em>` : ""}` : "");
-  $("hF1").classList.toggle("hidden", !f1);
+  $("hF1").classList.toggle("hidden", !f1 || E.S.phase === "quali");
   if (f1) {
     const d = E.S.direcao, setor = Math.floor(race.idx / (tr.n / SECTORS));
     $("hBandeira").textContent = d?.safety ? "🚨 SAFETY CAR · fila, sem ultrapassar" : d?.amarelo?.setor === setor ? "🟡 AMARELA · reduza" : m?.azul ? "🔵 AZUL · deixe passar" : m && m.avisosLimite ? `⚫⚪ Limites: ${m.avisosLimite}/4` : "🟢 Pista livre";
@@ -53,7 +55,7 @@ export function hud() {
     $("hErsTexto").textContent = `${Math.round((race.ers?.carga || 0) * 100)}%${race.ersAtivo ? " ⚡" : ""}`;
   }
   const quadro = st.slice(0, 8).map((r, i) => `<div class="${m && r.id === m.id ? "eu" : ""}"><span>${i + 1}</span><i style="background:${r.p.color}"></i>${h(r.p.name)}${r.p.bot ? " <em>CPU</em>" : ""}${pneuDe(r.p)}${r.done != null ? " 🏁" : ""}</div>`).join("");
-  if (race.hudQuadro !== quadro) { race.hudQuadro = quadro; $("hBoard").innerHTML = quadro; }
+  if (E.S.phase !== "quali" && race.hudQuadro !== quadro) { race.hudQuadro = quadro; $("hBoard").innerHTML = quadro; }
   if (m && race.hudChip !== m.name) { race.hudChip = m.name; $("hChip").innerHTML = `<i style="background:${m.color}"></i>${h(m.name)}<span>${h(PISTAS[cfg.pista].name)}</span>`; }
   // avisos
   let msg = "";
@@ -74,6 +76,7 @@ export function hud() {
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
   if (B) { const bt = $("bBox"), txt = B.pedido || B.fase ? `🔧 ${nomeBox}` : "🔧 Box"; if (bt.textContent !== txt) { bt.textContent = txt; bt.classList.toggle("pedido", !!(B.pedido || B.fase)); } }
   $("hMsg").textContent = msg;
+  if (E.S.phase === "quali") hudClassificacao(m, now);
   // vácuo e estilingue
   const dr = race.sling > 0 ? 1 : race.draft;
   const hd = $("hDraft");
@@ -81,6 +84,58 @@ export function hud() {
   hd.innerHTML = star ? "⭐ ESTRELA!" : race.sling > 0 ? "🚀 ESTILINGUE!" : race.arSujo > 0.03 ? `🌀 AR SUJO<i style="width:${Math.round(race.draft * 100)}%"></i>` : race.draft > 0.15 ? `💨 VÁCUO<i style="width:${Math.round(race.draft * 100)}%"></i>` : race.catchup > 0.025 ? "⚡ PELOTÃO À VISTA" : "";
   hd.style.opacity = star || race.sling > 0 || race.draft > 0.15 || race.catchup > 0.025 ? 1 : 0;
   if ((race.hudVez = (race.hudVez || 0) + 1) % 2 === 0) minimapa(st, m); // o minimapa a cada 2 quadros já basta
+}
+// ---------- as cinco luzes da largada (regras de F1) ----------
+// Uma acende por segundo e as cinco apagam juntas depois da espera sorteada pelo servidor (`luzes.espera`): a largada
+// é quando apagam. Mostra a fileira no alto da tela (a do pórtico fica lá longe, na frente do grid) e acende também o pórtico.
+function luzesDaLargada(left) {
+  const l = race.luzes, el = $("hLuzes"); if (!el) return;
+  const n = !l || left <= 0 || left > l.espera + 4 ? 0 : Math.min(5, Math.floor(l.espera + 5 - left));
+  el.classList.toggle("hidden", !l || left <= -1.2);
+  if (race.luzN === n) return;
+  if (n > race.luzN) Sound.beep(false);
+  race.luzN = n; el.querySelectorAll("i").forEach((i, k) => i.classList.toggle("on", k < n)); if (race.tr.luzes) race.tr.luzes.set(n);
+}
+// ---------- a classificação (regras de F1) ----------
+const tempo3 = (s) => (s == null ? "—" : `${Math.floor(s / 60)}:${(s % 60).toFixed(3).padStart(6, "0")}`);
+const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const pilotoNome = (p) => (p && (p.nomeCompleto || p.name)) || "?";
+// o lugar no grid de quem foi eliminado na sessão `i` (quem passa tem `sessoes[i + 1]` carros): depois dos que seguem
+const lugarDoEliminado = (q, i, id) => { const f = q.fechadas[i], passam = f.ordem.length - f.eliminados.length; return passam + f.eliminados.indexOf(id) + 1; };
+function hudClassificacao(m, now) {
+  const q = E.S.quali; if (!q) return;
+  const tab = q.tabela, dentro = !!m && q.ativos.includes(m.id), pos = dentro ? tab.findIndex((x) => x.id === m.id) + 1 : 0, restante = Math.max(0, (q.fimAt - now) / 1000);
+  const meu = m && tab.find((x) => x.id === m.id), pole = tab[0];
+  $("hProg").textContent = q.nome; const frac = Math.max(0, Math.min(1, 1 - restante / Math.max(1, (q.fimAt - q.startAt) / 1000))); $("hBarra").style.width = Math.round(q.pausa ? 100 : frac * 100) + "%";
+  $("hPos").innerHTML = dentro ? `${pos ? pos + "º" : "—"}<small>/${q.ativos.length}</small>` : "👀";
+  $("hLap").textContent = q.pausa ? `${q.nome} encerrado` : now < q.startAt ? q.nome : restante > 0 ? `${q.nome} · ${mmss(restante)}` : `${q.nome} · bandeirada`;
+  $("hTime").textContent = meu ? `melhor ${tempo3(meu.tempo)}` : dentro ? "sem tempo" : "";
+  const el = $("hDelta"); el.textContent = meu && pole && pole.id !== m.id ? `+${(meu.tempo - pole.tempo).toFixed(3)} s da pole` : ""; el.className = "time num behind";
+  const linhas = tab.slice(0, 8).map((x, i) => { const p = P(x.id); return `<div class="${m && x.id === m.id ? "eu" : ""}"><span>${i + 1}</span><i style="background:${p ? p.color : "#999"}"></i>${h(p ? p.name : "?")}<em>${tempo3(x.tempo)}</em></div>`; });
+  if (meu && pos > 8) linhas.push(`<div class="eu"><span>${pos}</span><i style="background:${m.color}"></i>${h(m.name)} <em>${tempo3(meu.tempo)}</em></div>`);
+  const quadro = linhas.join(""); if (race.hudQuadro !== quadro) { race.hudQuadro = quadro; $("hBoard").innerHTML = quadro; }
+  const eliminado = m && !dentro ? q.fechadas.findIndex((f) => f.eliminados.includes(m.id)) : -1;
+  let msg = "";
+  if (q.pausa) msg = q.grid ? "🏁 Grid definido: largada logo mais" : `🔴 ${q.nome} encerrado`;
+  else if (eliminado >= 0) msg = `🔴 Eliminado no ${q.fechadas[eliminado].nome}: largará em ${lugarDoEliminado(q, eliminado, m.id)}º`;
+  else if (dentro && now < q.startAt) msg = "⏱️ Classificação: faça a sua melhor volta lançada";
+  else if (dentro && restante <= 0) msg = "🏁 Bandeirada: termine a volta";
+  else if (dentro && !meu) msg = "⏱️ A volta conta na linha de chegada";
+  $("hMsg").textContent = msg;
+  const bp = $("bPronto"); if (bp) { bp.classList.toggle("hidden", !dentro || q.pausa); bp.disabled = q.pronto.includes(m && m.id); }
+}
+// a tela entre as sessões: quem passou, quem caiu (em vermelho) e, no fim, o grid da largada
+export function renderQuali() {
+  const el = $("quali"), S = E.S, q = S && S.phase === "quali" && S.quali;
+  if (!q || !q.pausa || !q.fechadas.length) { el.classList.add("hidden"); return; }
+  const f = q.fechadas[q.fechadas.length - 1], ultima = !!q.grid, m = me();
+  const tempos = {}; for (const s of q.fechadas) for (const x of s.ordem) tempos[x.id] = x.tempo;
+  const linhas = ultima ? q.grid.map((id) => ({ id, fora: false })) : f.ordem.map((x) => ({ id: x.id, fora: f.eliminados.includes(x.id) }));
+  const pole = tempos[linhas[0].id], naUltima = new Set(f.ordem.map((x) => x.id)); // no grid final, só quem correu a última sessão tem diferença que se compara
+  el.classList.remove("hidden");
+  el.innerHTML = `<div class="placa gp"><div class="chk"></div><div class="in"><h2 style="font-size:26px;margin-bottom:6px">${ultima ? `🏁 Grid de largada · ${h(PISTAS[S.config.pista].name)}` : `⏱️ ${f.nome} encerrado`}</h2>
+    <p class="muted" style="margin:0 0 8px">${ultima ? "A corrida começa logo mais, com as cinco luzes." : `Os ${f.eliminados.length} mais lentos ficam por aqui e largam do fim do grid. Próxima sessão em instantes.`}</p>
+    <table class="qtab">${linhas.map((r, i) => { const p = P(r.id), t = tempos[r.id]; return `<tr class="${r.fora ? "fora" : ""} ${m && r.id === m.id ? "eu" : ""}"><td>${i + 1}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(pilotoNome(p))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}</td><td class="num">${t == null ? "sem tempo" : tempo3(t)}</td><td class="num muted">${t != null && i > 0 && pole != null && (!ultima || naUltima.has(r.id)) ? "+" + (t - pole).toFixed(3) : ""}</td></tr>`; }).join("")}</table></div></div>`;
 }
 // minimapa redondo que gira com o carro (a frente é para cima): a pista em cinza e o caminho à frente em azul-claro
 function minimapa(st, m) {
@@ -142,10 +197,26 @@ export function checkMyLap(old) {
   if (!m || !o || !race) return;
   if (m.laps > o.laps) { lapDone(m); if (m.finish != null) Sound.finish(); else { Sound.lap(); race.lastLapMsg = sNow(); } }
 }
+// a tela do GP (regras de F1): o pódio, e a tabela com tempo ou diferença, grid, paradas, penalidades e os pontos oficiais
+function resultadoGP(el, m, isHost) {
+  const S = E.S, R = S.resultado, F = window.F1Regras, vencedor = R[0], nome = (id) => pilotoNome(P(id));
+  const pneus = (r) => (r.paradas ? `${r.paradas}P ` : "0P ") + (r.compostos || []).map((c) => `<u class="pn" style="--c:${F.PNEUS[c] ? F.PNEUS[c].cor : "#999"}"></u>`).join("");
+  const final = (r) => r.nc ? "NC" : r.tempo == null ? `+${Math.max(1, S.config.voltas - r.voltas)} volta${S.config.voltas - r.voltas > 1 ? "s" : ""}` : r === vencedor ? fmt(r.tempo) : `+${(r.tempo - vencedor.tempo).toFixed(3)} s`;
+  const podio = [1, 0, 2].filter((i) => R[i]).map((i) => { const r = R[i], p = P(r.id); return `<div class="pod pod${i + 1}"><span class="pn-eq" style="background:${p ? p.color : "#999"}"></span><b>${h(nome(r.id))}</b><small>${h(p && p.equipe ? p.sigla : "")} ${r.tempo != null ? (r === vencedor ? fmt(r.tempo) : "+" + (r.tempo - vencedor.tempo).toFixed(3)) : ""}</small><div class="bloco">${i + 1}</div></div>`; }).join("");
+  el.classList.remove("hidden");
+  el.innerHTML = `<div class="placa gp"><div class="chk"></div><div class="in"><h2 style="font-size:26px;margin-bottom:6px">🏆 GP · ${h(PISTAS[S.config.pista].name)}</h2>
+    <div class="podio">${podio}</div>
+    <table class="gptab"><thead><tr><th></th><th>Piloto</th><th class="num">Tempo</th><th>Grid</th><th>Paradas</th><th class="num">Melhor</th><th class="num">Pts</th></tr></thead><tbody>${R.map((r) => { const p = P(r.id), g = r.grid + 1, d = g - r.pos;
+      return `<tr class="${m && r.id === m.id ? "eu" : ""} ${r.nc ? "nc" : ""}"><td>${r.nc ? "—" : r.pos + "º"}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(nome(r.id))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}</td><td class="num">${final(r)}${r.penal ? ` <small class="muted">(+${r.penal} s)</small>` : ""}</td><td class="muted">${g}º ${d ? `<small class="${d > 0 ? "sobe" : "desce"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</small>` : ""}</td><td class="muted">${pneus(r)}</td><td class="num muted">${r.melhor != null ? fmt(r.melhor) : ""}</td><td class="num"><b>${r.pontos || ""}</b></td></tr>`; }).join("")}</tbody></table>
+    <div class="row" style="margin-top:14px;justify-content:center">${isHost ? `<button class="primary" id="rAgain">🏁 Novo GP</button><button id="rLobby">Trocar pista</button>` : `<span class="muted">Esperando o organizador…</span>`}<button class="ghost" onclick="location.href='/'">🏠 Vila</button></div></div></div>`;
+  if ($("rAgain")) $("rAgain").onclick = () => act("start");
+  if ($("rLobby")) $("rLobby").onclick = () => act("lobby");
+}
 export function renderResults() {
   const el = $("results");
   if (!E.S || E.S.phase !== "results") { el.classList.add("hidden"); return; }
   const m = me(), isHost = m && E.S.host === m.id, rows = standings();
+  if (E.S.config.regras === "f1" && E.S.resultado) return resultadoGP(el, m, isHost);
   el.classList.remove("hidden");
   el.innerHTML = `<div class="placa"><div class="chk"></div><div class="in"><h2 style="font-size:28px;margin-bottom:10px">🏆 Resultado · ${h(PISTAS[E.S.config.pista].name)}</h2>
     <table>${rows.map((r, i) => `<tr><td>${r.done != null ? i + 1 + "º" : "—"}</td><td>${r.p.pawn} <b style="color:${r.p.color}">${h(r.p.name)}</b>${E.S.config.regras === "f1" ? ` <small class="muted">${h(r.p.pneuAtual || r.p.pneu)} · ${r.p.paradas}P</small>` : ""}</td><td class="num">${r.done != null ? fmt(r.done) : "não terminou"}${r.p.acrescimo ? ` <small class="muted">(+${r.p.acrescimo} s)</small>` : ""}</td><td class="num muted">${r.p.best != null ? "melhor " + fmt(r.p.best) : ""}</td></tr>`).join("")}</table>

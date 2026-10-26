@@ -7,6 +7,7 @@ const T = require("./public/corrida/pistas.js");
 const Itens = require("./corrida-itens.js");
 const F1 = require("./public/corrida/f1-regras.js"); // as regras de F1 (os pneus), opção da sala
 const Direcao = require("./corrida-f1-direcao.js");
+const Quali = require("./corrida-f1-classificacao.js"); // a classificação (Q1, Q2, Q3) que define o grid das regras de F1
 const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servidor)
 const bd = require("./bd.js");
 Robos.usarFonte((pista) => bd.melhoresTracadosCorrida(pista), (pista, nomes) => bd.ritmoCorrida(pista, nomes)); // até cinco linhas humanas e o ritmo de quem joga
@@ -15,6 +16,7 @@ const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligar
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
 const nomesDe = (room, ids) => ids.map((id) => room.players[id] && !room.players[id].bot && room.players[id].name).filter(Boolean); // robô não entra no placar da Noite
 
+const LUZES_MS = 3500; // regras de F1: o tempo até acender a primeira das cinco luzes (a largada vem 4 s mais a espera sorteada depois)
 const MAX_PLAYERS = 8, COUNTDOWN_MS = 4500, AFTER_FIRST_MS = 45000, MAX_RACE_MS = 45 * 60000; // 45 min: dá para as 21 voltas
 const COLORS = ["#e63946", "#1e88e5", "#43a047", "#fdd835", "#8e24aa", "#fb8c00", "#00acc1", "#f06292"];
 const PAWNS = ["😎", "🤠", "👽", "🤖", "🐸", "🦊", "🐼", "🐯", "🦄", "🐙", "👻", "🤡", "🦁", "🐵", "🐧", "🏎️"];
@@ -36,7 +38,8 @@ module.exports = function attachCorrida(io) {
       regras: f1 ? "f1" : "galera",
       caixas: !f1 && c.caixas === true,
       equilibrio: !f1 && c.equilibrio !== false,
-      robos: Math.max(0, Math.min(f1 ? 8 : 7, int(c.robos, 0))),
+      robos: Math.max(0, Math.min(f1 ? Robos.GRID_F1 - 1 : 7, int(c.robos, 0))), // nas regras de F1 o grid tem até 20 carros
+      classificacao: f1 && c.classificacao === "pular" ? "pular" : f1 ? "completa" : "pular", // F1: Q1, Q2 e Q3 antes da corrida, ou grid pela ordem dos pilotos
       cambio: c.cambio === "manual" ? "manual" : "auto",
       ers: f1 && c.ers === "manual" ? "manual" : "auto",
       nivel: Robos.NIVEIS[c.nivel] ? c.nivel : "medio",
@@ -48,10 +51,10 @@ module.exports = function attachCorrida(io) {
   function publicState(room) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null,
-      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { semente: room.semente || null, direcao: Direcao.publico(room) } : {}),
+      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, bot: !!p.bot, name: p.name, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, noBox: !!p.box, acrescimo: p.acrescimo || 0, penal: p.penal || 0, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
+        return { id, bot: !!p.bot, name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, noBox: !!p.box, acrescimo: p.acrescimo || 0, penal: p.penal || 0, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
           item: p.item || null, cargas: p.cargas || 0, rolling: p.rolling || 0, boostUntil: p.boostUntil || 0, starUntil: p.starUntil || 0, spinUntil: p.spinUntil || 0,
           shrinkUntil: p.shrinkUntil || 0, inkUntil: p.inkUntil || 0, balaUntil: p.balaUntil || 0 };
       }),
@@ -61,17 +64,22 @@ module.exports = function attachCorrida(io) {
   function broadcast(room) { room.t = Date.now(); nsp.to(room.code).emit("state", publicState(room)); }
 
   // ---------- corrida ----------
-  function startRace(room) {
+  // A classificação (regras de F1) já escolheu a semente e os robôs; ela chama `startRace(room, grid)` com os ids na ordem do grid.
+  function startRace(room, grid) {
+    const f1 = room.config.regras === "f1", daClassificacao = !!(grid && room.quali);
     clearTimeout(room.endTimer);
     clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer);
+    Quali.cancelar(room);
     room.phase = "race";
-    room.semente = room.config.regras === "f1" ? Math.floor(Math.random() * 1e9) : null;
-    Robos.preparar(room, COLORS, rid);
-    room.startAt = Date.now() + COUNTDOWN_MS;
+    if (!daClassificacao) preparar(room);
+    room.resultado = null;
+    // as cinco luzes (F1): acendem uma por segundo e apagam juntas depois de uma espera sorteada (0,4 a 2,8 s) pela semente do GP
+    room.luzes = f1 ? { espera: Math.round((0.4 + F1.sorteio(`luzes:${room.semente}`)() * 2.4) * 100) / 100 } : null;
+    room.startAt = Date.now() + (f1 ? Math.round(LUZES_MS + (4 + room.luzes.espera) * 1000) : COUNTDOWN_MS);
     room.endAt = null;
     room.finishOrder = [];
-    // grid: ordem de chegada da sala, embaralhada a cada corrida
-    const ids = [...room.order].sort(() => Math.random() - 0.5);
+    // grid: o da classificação; nas regras de F1 sem classificação, a ordem dos pilotos da sala; senão, embaralhado a cada corrida
+    const ids = grid ? [...grid.filter((id) => room.players[id]), ...room.order.filter((id) => !grid.includes(id))] : f1 ? [...room.order] : [...room.order].sort(() => Math.random() - 0.5);
     ids.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, lapStart: null, lastPos: 0 }));
     // regras de F1: a semente do GP (os erros dos mecânicos saem dela) e o pit stop de cada um começa do zero
     for (const id of ids) { const p = room.players[id]; Object.assign(p, { paradas: [], compostos: [p.pneu || F1.COMPOSTO_PADRAO], pneuAtual: p.pneu || F1.COMPOSTO_PADRAO, acrescimo: 0, box: null }); }
@@ -108,6 +116,19 @@ module.exports = function attachCorrida(io) {
     room.endTimer = setTimeout(() => endRace(room), COUNTDOWN_MS + MAX_RACE_MS);
     log(room, `🏁 Largada em ${T.PISTAS[room.config.pista].name}, ${room.config.voltas} volta${room.config.voltas > 1 ? "s" : ""}.`);
   }
+  // a semente do GP (os sorteios saem dela) e os robôs da sala
+  function preparar(room) {
+    room.semente = room.config.regras === "f1" ? Math.floor(Math.random() * 1e9) : null;
+    Robos.preparar(room, COLORS, rid);
+  }
+  // a classificação (Q1, Q2 e Q3) antes da corrida das regras de F1; no fim ela chama startRace com o grid
+  const classificacao = { log, broadcast, largar: (room, grid) => startRace(room, grid) };
+  function iniciarClassificacao(room) {
+    clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer);
+    preparar(room);
+    room.phase = "quali"; room.resultado = null; room.luzes = null; room.finishOrder = [];
+    Quali.iniciar(room, classificacao);
+  }
   function endRace(room) {
     if (room.phase !== "race") return;
     clearTimeout(room.endTimer);
@@ -118,6 +139,12 @@ module.exports = function attachCorrida(io) {
       const final = (id) => room.players[id].finish + (room.players[id].acrescimo || 0), antes = room.finishOrder.join();
       room.finishOrder.sort((a, b) => final(a) - final(b));
       if (room.finishOrder.join() !== antes) log(room, `⏱️ Com os acréscimos, ${nameOf(room, room.finishOrder[0])} fica com a vitória.`);
+    }
+    // regras de F1: o resultado do GP, com os pontos oficiais (quem fez menos de 90% das voltas é NC e não pontua)
+    if (room.config.regras === "f1") {
+      room.resultado = F1.classificacaoFinal(room.order.map((id) => { const p = room.players[id]; return { id, laps: p.laps, finish: p.finish, acrescimo: p.acrescimo || 0, prog: p.pos ? p.pos.prog : 0 }; }), room.config.voltas)
+        .map((r) => { const p = room.players[r.id]; return { ...r, voltas: p.laps, grid: p.grid, paradas: (p.paradas || []).length, compostos: p.compostos || [], penal: p.penal || 0, melhor: p.best }; });
+      const v = room.resultado[0]; if (v) log(room, `🏆 ${nameOf(room, v.id)} venceu o GP e leva ${v.pontos} pontos.`);
     }
     if (room.finishOrder.length) noite.vitoria("corrida", room.code, nomesDe(room, room.finishOrder.slice(0, 1)), nomesDe(room, room.order.filter((id) => id !== room.finishOrder[0])));
     log(room, "🏆 Fim de corrida!");
@@ -150,6 +177,7 @@ module.exports = function attachCorrida(io) {
   const corredorDe = (room) => { const t = T.PISTAS[room.config.pista]; return t.boxes ? F1.corredor(t, T.pontos(t, 6).length, t.width) : null; };
   // Setor novo: só vale o próximo na ordem. Voltar ao setor 0 depois do 3 fecha a volta (a primeira passagem é a largada).
   function onSector(room, p, s) {
+    if (room.phase === "quali") { const mudou = Quali.aoSetor(room, p, s); if (mudou) Quali.verificarFim(room, classificacao); return mudou; } // classificação: volta lançada
     const now = Date.now();
     if (room.phase !== "race" || now < room.startAt || p.finish != null) return false;
     if (s !== (p.sector + 1) % T.SECTORS) return false;
@@ -168,7 +196,7 @@ module.exports = function attachCorrida(io) {
         const mais = F1.acrescimoDeFinal(p, room.config.voltas);
         if (mais) { p.acrescimo = (p.acrescimo || 0) + mais; log(room, `⏱️ ${p.name} usou um composto só: +${mais} s no resultado.`); }
       }
-      const racing = room.order.filter((id) => room.players[id].finish == null && room.players[id].sockets.size);
+      const racing = room.order.filter((id) => room.players[id].finish == null && (room.players[id].sockets.size || (room.config.regras === "f1" && room.players[id].bot))); // no GP, a corrida só acaba com os robôs também (ou 45 s depois do primeiro)
       if (!racing.length) endRace(room);
       else if (room.finishOrder.length === 1) { // o primeiro chegou: os outros têm um tempo para terminar
         room.endAt = now + AFTER_FIRST_MS;
@@ -209,7 +237,7 @@ module.exports = function attachCorrida(io) {
       if (!room) return fail(cb, "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu).");
       const back = quemVolta(room, data);
       if (back) { bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); return broadcast(room); }
-      if (data.watch || room.phase === "race") {
+      if (data.watch || room.phase === "race" || room.phase === "quali") {
         if (!data.watch) return fail(cb, "A corrida já começou. Você pode entrar para assistir.");
         bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room);
       }
@@ -260,29 +288,34 @@ module.exports = function attachCorrida(io) {
           me.pawn = data.pawn; return;
         }
         if (type === "config") {
-          if (!isHost || room.phase === "race") return "Só o organizador muda, fora da corrida.";
+          if (!isHost || room.phase === "race" || room.phase === "quali") return "Só o organizador muda, fora da corrida.";
           room.config = cleanConfig(data.config); return;
         }
         if (type === "kick") {
-          if (!isHost || room.phase === "race") return "Só o organizador, fora da corrida.";
+          if (!isHost || room.phase === "race" || room.phase === "quali") return "Só o organizador, fora da corrida.";
           const p = room.players[data.id]; if (!p || p.id === me.id) return "Piloto inválido.";
           for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("kicked");
           delete room.players[p.id]; room.order = room.order.filter((x) => x !== p.id);
           log(room, `${p.name} saiu da sala.`); return;
         }
         if (type === "start") {
-          if (!isHost || room.phase === "race") return "Só o organizador dá a largada.";
-          startRace(room); return;
+          if (!isHost || room.phase === "race" || room.phase === "quali") return "Só o organizador dá a largada.";
+          if (room.config.regras === "f1" && room.config.classificacao !== "pular") iniciarClassificacao(room); else startRace(room);
+          return;
         }
         if (type === "lobby") {
           if (!isHost) return "Só o organizador.";
-          clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); Robos.remover(room); room.phase = "lobby"; room.startAt = null; room.endAt = null; return;
+          clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); Quali.cancelar(room); Robos.remover(room); room.resultado = null; room.phase = "lobby"; room.startAt = null; room.endAt = null; return;
         }
         if (type === "end") {
           if (!isHost || room.phase !== "race") return "Só o organizador encerra a corrida.";
           endRace(room); return;
         }
         if (!me) return "Você está só assistindo.";
+        if (type === "qpronto") { // classificação: "já fiz a minha volta" (a sessão fecha quando todo mundo na pista disser)
+          if (room.phase !== "quali" || room.quali.pausaAte) return "ignorado";
+          Quali.pronto(room, me); Quali.verificarFim(room, classificacao); return;
+        }
         if (type === "box") { // regras de F1: entrou no corredor dos boxes (fase "entra") ou saiu dele com o pneu novo (fase "sai")
           if (room.config.regras !== "f1" || room.phase !== "race" || me.finish != null || !corredorDe(room)) return "ignorado";
           if (data.fase === "entra") {
@@ -337,7 +370,8 @@ module.exports = function attachCorrida(io) {
     // posição do meu carro (10 por segundo): vai para os outros
     socket.on("pos", (d = {}) => {
       const { room, me } = ctx();
-      if (!room || !me || room.phase !== "race") return;
+      if (!room || !me || (room.phase !== "race" && room.phase !== "quali")) return;
+      if (room.phase === "quali" && (room.quali.pausaAte || !room.quali.ativos.includes(me.id))) return; // só quem está na sessão
       const now = Date.now();
       if (now - (me.lastPos || 0) < 50) return;
       me.lastPos = now;
@@ -347,7 +381,7 @@ module.exports = function attachCorrida(io) {
       const world = T.PISTAS[room.config.pista].world;
       if (x < 0 || y < 0 || x > world || y > world) return;
       const pos = { x, y, z: Number.isFinite(z) ? z : 0, a, v: Number.isFinite(v) ? v : 0, prog: Number.isFinite(prog) ? prog : 0, at: now };
-      if (room.config.regras === "f1") Direcao.registrar(room, me, pos, now, (s) => log(room, s));
+      if (room.config.regras === "f1" && room.phase === "race") { const penal = me.penal || 0; Direcao.registrar(room, me, pos, now, (s) => log(room, s)); if ((me.penal || 0) !== penal) broadcast(room); } // a penalidade aparece na hora
       else me.pos = pos;
       socket.to(room.code).volatile.emit("ghost", { id: me.id, x, y, z: Number.isFinite(z) ? Math.max(-50, Math.min(400, z)) : 0, a, v: Number.isFinite(v) ? v : 0, prog: Number.isFinite(prog) ? prog : 0, laps: me.laps, t: now });
     });
@@ -356,13 +390,14 @@ module.exports = function attachCorrida(io) {
       const { room, me } = ctx();
       if (!room) return;
       if (me) me.sockets.delete(socket.id);
+      if (room.phase === "quali") Quali.verificarFim(room, classificacao); // quem saiu não segura a sessão
       if (room.phase === "race" && room.finishOrder.length && !room.order.some((id) => room.players[id].finish == null && room.players[id].sockets.size)) endRace(room);
       broadcast(room);
     });
   });
 
   // salas paradas há mais de 12 horas somem
-  limparSalasParadas(rooms, { aoApagar: (r) => { clearTimeout(r.endTimer); clearInterval(r.itemTimer); clearInterval(r.botTimer); clearInterval(r.f1Timer); } });
+  limparSalasParadas(rooms, { aoApagar: (r) => { Quali.cancelar(r); clearTimeout(r.endTimer); clearInterval(r.itemTimer); clearInterval(r.botTimer); clearInterval(r.f1Timer); } });
 };
 module.exports.COLORS = COLORS;
 module.exports.PAWNS = PAWNS;
