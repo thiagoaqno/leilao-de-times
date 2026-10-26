@@ -73,6 +73,44 @@ const PISTAS = {
       [1250, 1300, 100],
     ],
   },
+  monza: {
+    name: "Monza", sub: "O Templo da Velocidade: a reta dos boxes, a Variante del Rettifilo, a Curva Grande e Biassono, a Variante della Roggia, as duas Lesmo, o Serraglio, a Variante Ascari, a reta de trás e a Parabolica",
+    // autódromo dentro do Parque de Monza: asfalto, zebra alta nas chicanes e área de escape (sem muro colado). Quase plano
+    scale: 3.7, width: 112, minLap: 35, walls: false, flat: 40, fall: 220, largada: 0.4,
+    // relevo: o autódromo é quase plano (uns 12 m de diferença): sobe de leve da Curva Grande até as Lesmo e desce até o Ascari e a Parabolica
+    hills: [[0, 3], [0.1, 4], [0.2, 6], [0.32, 9], [0.4, 12], [0.5, 12], [0.58, 10], [0.66, 8], [0.76, 5], [0.88, 3], [1, 3]],
+    // o traçado vem da linha central real do circuito (OpenStreetMap), ajustada em vértices curva por curva, no mesmo sentido
+    // (horário, com o norte para cima): a largada sobe para o norte pela reta dos boxes
+    points: [
+      [426, 583, 17], // Variante del Rettifilo (1), à direita, no fim da reta dos boxes (a chicane é maior que a real, para caber na pista)
+      [466, 583, 17], // Variante del Rettifilo (2), à esquerda
+      [436, 461, 384], // Curva Grande, longa à direita
+      [443, 344, 243], // Curva Grande
+      [455, 300, 181], // Curva Grande
+      [481, 251, 164], // Curva Grande
+      [539, 197, 228], // Curva Grande
+      [621, 162, 269], // Curva Biassono (3), saída
+      [939, 134, 38], // Variante della Roggia (4), à esquerda
+      [960, 103, 50], // Variante della Roggia (5), à direita
+      [1165, 42, 64], // Lesmo 1 (6), à direita
+      [1186, 42, 48], // Lesmo 1 (6)
+      [1205, 52, 34], // Lesmo 1 (6)
+      [1224, 85, 85], // Lesmo 1 (6), saída
+      [1240, 251, 60], // Lesmo 2 (7), à direita, o mais fechado
+      [1234, 272, 26], // Lesmo 2 (7)
+      [981, 419, 1475], // Serraglio, a curva leve à esquerda
+      [643, 717, 79], // Variante Ascari (8), à esquerda
+      [640, 786, 104], // Variante Ascari (9), à direita
+      [596, 842, 123], // Variante Ascari (10), à esquerda
+      [523, 1512, 84], // Curva Alboreto (Parabolica, 11), à direita no fim da reta de trás
+      [514, 1535, 42], // Parabolica
+      [484, 1556, 53], // Parabolica
+      [448, 1556, 66], // Parabolica
+      [406, 1531, 108], // Parabolica
+      [379, 1492, 121], // Parabolica
+      [362, 1421, 233], // Parabolica, saída para a reta dos boxes
+    ],
+  },
   barcelona: {
     name: "Barcelona", sub: "Circuit de Barcelona-Catalunya: a reta dos boxes, Elf e Renault, a curva 3 longa, Repsol e Seat, a subida até a Campsa cega, La Caixa, Banc de Sabadell e a reta final",
     // autódromo de verdade: asfalto largo, brita e área de escape dos dois lados (sem muro colado)

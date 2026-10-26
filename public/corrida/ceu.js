@@ -9,6 +9,7 @@ import { renderer, scene, hemi } from "./cena.js";
 export const CEUS = {
   monaco: { brilho: 1, luz: 0.55 },
   interlagos: { brilho: 1, luz: 0.55 },
+  monza: { brilho: 1, luz: 0.55 },
   barcelona: { brilho: 1, luz: 0.55 },
   silverstone: { brilho: 0.95, luz: 0.5, arquivo: "nurburgring" }, // o céu nublado do Nürburgring serve para a Inglaterra
   losangeles: { brilho: 1, luz: 0.6 },

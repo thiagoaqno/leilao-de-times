@@ -21,7 +21,7 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
       const p0 = pts[i0 % n], q0 = pts[(i0 + 3) % n], fora = p0.tx * q0.ty - p0.ty * q0.tx > 0 ? -1 : 1;
       for (let i = i0; i < i0 + Math.floor(n * 0.012); i++) { const p = pts[i % n]; for (let fila = 0; fila < 2; fila++) {
         if (r() < 0.4) continue; const d = borda + 12 + fila * 8, [x, z] = lat(p, fora * d); if (tr.distAt(x, z) < borda + 4 || (tr.ocupado && tr.ocupado(x, z, i % n))) continue;
-        extra.push({ x, y: alturaEm(x, z, i % n) + fila * 3, z, ry: Math.atan2(-p.nx * fora, -p.ny * fora), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: PELE[(r() * 5) | 0], camisa: CAMISA[(r() * 8) | 0] }); } }
+        extra.push({ x, y: alturaEm(x, z, i % n) + fila * 3, z, ry: Math.atan2(-p.nx * fora, -p.ny * fora), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: PELE[(r() * 5) | 0], camisa: (tr.camisasGP || CAMISA)[(r() * (tr.camisasGP || CAMISA).length) | 0] }); } }
     }
     V.torcidas = [montarTorcida(add, extra)];
   }
