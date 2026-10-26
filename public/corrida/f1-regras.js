@@ -25,11 +25,11 @@ function pneuNovo(composto = COMPOSTO_PADRAO) {
 // Um passo do pneu. O desgaste anda pela distância (fração da corrida inteira), então 3 ou 8 voltas gastam a mesma
 // fração do pneu: a estratégia é a mesma em qualquer tamanho de corrida. Escorregar gasta mais; andar limpo, um pouco
 // menos que o normal. A temperatura vai para um alvo pela velocidade e pelo escorregão, mais rápido no macio.
-// d: { dist (andado neste passo), total (a corrida inteira), slip, v, vmax, dt }
+// d: { dist (andado neste passo), total (a corrida inteira), slip, v, vmax, dt, fator (opcional: o quanto o carro gasta o pneu, `desgaste` de f1-equipes.js) }
 function gastarPneu(pneu, d) {
   const pn = PNEUS[pneu.composto] || PNEUS[COMPOSTO_PADRAO];
   const escorrega = limite((d.slip || 0) / 60, 0, 1);
-  if (d.total > 0 && d.dist > 0) pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.total) * (PENHASCO / pn.vida) * (0.85 + 0.6 * escorrega));
+  if (d.total > 0 && d.dist > 0) pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.total) * (PENHASCO / pn.vida) * (0.85 + 0.6 * escorrega) * (d.fator || 1));
   const vel = d.vmax > 0 ? limite(Math.abs(d.v || 0) / d.vmax, 0, 1) : 0;
   const alvo = Math.min(1, 0.5 + 0.45 * vel + 0.15 * escorrega);
   pneu.temp += (alvo - pneu.temp) * Math.min(1, (d.dt || 0) * 0.25 * pn.aquece);
@@ -77,19 +77,24 @@ const usarErsAuto = (carga, velocidade, vmax, reta, perto) => carga > (perto ? 0
 
 // ---------- o pit stop ----------
 // No corredor dos boxes o carro anda sozinho no limitador (LIMITADOR da velocidade final), para na garagem, troca os
-// pneus e volta para a pista. A parada leva PARADA_BASE s mais o erro dos mecânicos (de 0 a PARADA_ERRO s, sorteado
-// com a semente do GP: recarregar a página nunca muda o resultado). Quem termina a corrida sem ter usado dois
+// pneus e volta para a pista. A parada leva um de três tempos (PARADAS): 2,0 s (perfeita), 2,7 s (normal) ou 3,3 s (ruim),
+// sorteado com a semente do GP (recarregar a página nunca muda o resultado), com chance maior de ser normal. Quem termina a corrida sem ter usado dois
 // compostos leva UM_COMPOSTO s no resultado; passar do limitador leva RAPIDO s.
-const LIMITADOR = 0.40, PARADA_BASE = 2.4, PARADA_ERRO = 1.5, UM_COMPOSTO = 10, RAPIDO = 5;
+const LIMITADOR = 0.40, PARADA_BASE = 2.0, PARADA_ERRO = 1.3, UM_COMPOSTO = 10, RAPIDO = 5;
 const RAMPA = 14, LARGURA_CORREDOR = 54, FOLGA_CORREDOR = 12, GARAGENS = 10; // duas faixas de 27 unidades; a rampa é em pontos da pista (6 unidades cada)
 const hashTexto = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 // gerador com semente (mulberry32): a mesma semente dá sempre a mesma sequência
 function sorteio(semente) { let a = hashTexto(semente) || 1; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-// quanto dura a n-ésima parada de `quem` neste GP: a maioria sai limpa, de vez em quando o mecânico erra
+// os três tempos do box e o corte do sorteio de cada um (25% perfeita, 55% normal, 20% ruim)
+const PARADAS = [{ id: "perfeito", nome: "perfeito", tempo: 2.0, ate: 0.25 }, { id: "normal", nome: "normal", tempo: 2.7, ate: 0.8 }, { id: "ruim", nome: "ruim", tempo: 3.3, ate: 1 }];
+// quanto dura a n-ésima parada de `quem` neste GP
 function tempoDeParada(semente, quem, n) {
   const r = sorteio(`${semente}:${quem}:${n}`)();
-  return Math.round((PARADA_BASE + PARADA_ERRO * r * r) * 100) / 100;
+  return (PARADAS.find((q) => r < q.ate) || PARADAS[1]).tempo;
 }
+// a classe de uma parada pelo tempo ("perfeito", "normal" ou "ruim") e o texto do HUD: "Box perfeito · 2,0 s"
+const classeDaParada = (tempo) => PARADAS.reduce((a, q) => (Math.abs(q.tempo - tempo) < Math.abs(a.tempo - tempo) ? q : a), PARADAS[1]).id;
+const textoDaParada = (tempo) => `Box ${classeDaParada(tempo)} · ${tempo.toFixed(1).replace(".", ",")} s`;
 // O corredor da pista `t` (que tem `boxes: { entra, para, sai, lado }`, frações da volta): faixa paralela à reta, do lado
 // de dentro, atrás de uma mureta. `n` é o número de pontos da pista (de 6 em 6 unidades) e `W` a largura. Os pontos do
 // corredor vão de 0 (a entrada, `i0`) a `len` (a saída); `lat(u, lat0)` é o lado em que o carro está no ponto u, saindo
@@ -195,12 +200,29 @@ const PONTOS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1], CLASSIFICADO = 0.9;
 // 90% das voltas da corrida é "NC" (não classificado) e não pontua. Devolve [{ id, pos, nc, tempo, pontos }].
 function classificacaoFinal(carros, voltas) {
   const minimo = Math.ceil(voltas * CLASSIFICADO), final = (c) => c.finish + (c.acrescimo || 0);
-  const terminaram = carros.filter((c) => c.finish != null).sort((a, b) => final(a) - final(b));
-  const resto = carros.filter((c) => c.finish == null).sort((a, b) => (b.laps - a.laps) || ((b.prog || 0) - (a.prog || 0)));
+  const terminaram = carros.filter((c) => c.finish != null && !c.dnf).sort((a, b) => final(a) - final(b));
+  const resto = carros.filter((c) => c.finish == null || c.dnf).sort((a, b) => (b.laps - a.laps) || ((b.prog || 0) - (a.prog || 0)));
   return [...terminaram, ...resto].map((c, i) => {
-    const nc = c.finish == null && (c.laps || 0) < minimo;
-    return { id: c.id, pos: i + 1, nc, tempo: c.finish != null ? final(c) : null, pontos: !nc && i < PONTOS.length ? PONTOS[i] : 0 };
+    const nc = !c.dnf && c.finish == null && (c.laps || 0) < minimo; // quem abandonou por dano (dnf) não pontua
+    return { id: c.id, pos: i + 1, nc, dnf: !!c.dnf, tempo: c.finish != null && !c.dnf ? final(c) : null, pontos: !nc && !c.dnf && i < PONTOS.length ? PONTOS[i] : 0 };
   });
+}
+
+// ---------- as batidas: punição e dano ----------
+// A força da batida é a velocidade com que os carros (ou o carro e o muro) se aproximaram, em unidades por segundo. Abaixo
+// de BATIDA_MIN é só um encostão. Leve: +1 s; média: +2 s; forte: +5 s (somados ao tempo final, como o pit stop). O dano
+// é proporcional à força (até BATIDA_MAX), acumula, tira um pouco de velocidade final e de aderência, e em 100% é perda total.
+const BATIDA_MIN = 50, BATIDA_MEDIA = 110, BATIDA_FORTE = 180, BATIDA_MAX = 360, DANO_POR_FORCA = 0.12, BATIDA_INTERVALO = 1200;
+const DANO_FINAL = 0.15, DANO_GRIP = 0.2;
+function batida(forca) {
+  if (!(forca >= BATIDA_MIN)) return null;
+  const nivel = forca >= BATIDA_FORTE ? "forte" : forca >= BATIDA_MEDIA ? "media" : "leve";
+  return { nivel, segundos: nivel === "forte" ? 5 : nivel === "media" ? 2 : 1, dano: Math.round(Math.min(forca, BATIDA_MAX) * DANO_POR_FORCA * 10) / 10 };
+}
+// o que o dano (0 a 100) faz com o carro: multiplicadores da velocidade final e da aderência
+function efeitoDoDano(dano) {
+  const d = limite((dano || 0) / 100, 0, 1);
+  return { final: 1 - DANO_FINAL * d, grip: 1 - DANO_GRIP * d };
 }
 
 // ---------- o vácuo da F1 ----------
@@ -215,7 +237,7 @@ function vacuoF1(draft, curva) {
 
 const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
-  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia };
+  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;
 })(typeof window !== "undefined" ? window : globalThis);

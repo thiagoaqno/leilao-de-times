@@ -86,6 +86,6 @@ export function passoBox(dt, spec) {
   c.x = p.x; c.y = p.y;
   c.vx = Math.cos(c.a) * c.v; c.vy = Math.sin(c.a) * c.v; c.slip = 0; c.vz = 0; c.air = false; c.steer *= 0.8; race.offroad = false;
   race.idx = saida ? saida.indice : nearest(tr, c.x, c.y, race.idx); c.z = groundH(tr, c.x, c.y, race.idx);
-  if (fim) { socket.emit("act", { type: "box", fase: "sai", composto: B.composto }, () => {}); B.fase = null; B.pedido = null; }
+  if (fim) { socket.emit("act", { type: "box", fase: "sai", composto: B.composto }, () => {}); toast(`🔧 ${F1().textoDaParada(B.parada)}`, 2400); B.fase = null; B.pedido = null; }
   return !fim; // no último passo o carro já está na beira da pista e a física de sempre continua dali
 }

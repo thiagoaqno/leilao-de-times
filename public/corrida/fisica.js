@@ -24,6 +24,8 @@ export function physics(dt, spec = carOf(me())) {
   // nas regras de F1 o carro já anda antes das luzes apagarem (a largada queimada: o servidor dá +5 s); nas outras, só depois da contagem
   const c = race.car, tr = race.tr, go = (sNow() >= race.startAt || !!race.luzes) && !!me();
   if (!go || (race.luzes && sNow() < race.startAt && !keys.gas)) { c.v = c.vx = c.vy = 0; return; } // (nas luzes de F1, o freio de mão segura o carro na ladeira do grid até alguém acelerar)
+  // regras de F1: perda total (100% de dano): o carro para onde está e o piloto está fora da corrida
+  if (me().dnf) { c.v = c.vx = c.vy = 0; return; }
   // regras de F1: no corredor dos boxes o carro anda sozinho (box.js); os checkpoints continuam valendo lá dentro
   if (race.box && passoBox(dt, spec)) return setores(tr, trackFrame(tr, c.x, c.y, race.idx), dt);
   const fr0 = trackFrame(tr, c.x, c.y, race.idx), road = Math.abs(fr0.lat) <= tr.W / 2 + 6, air = c.air;
@@ -51,6 +53,7 @@ export function physics(dt, spec = carOf(me())) {
   const estrelaAtiva = m && m.starUntil > sNow();
   const bala = (m && m.balaUntil > sNow()) || race.balaUntil > sNow(), pequeno = !bala && m && m.shrinkUntil > sNow();
   const F1 = window.F1Regras, pn = race.pneu ? F1.aderencia(race.pneu) : null;
+  const dano = pn ? F1.efeitoDoDano(m && m.dano) : null; // o carro batido anda pior: menos velocidade final e aderência
   const direcao = E.S?.direcao, setor = Math.floor(race.idx / (tr.n / SECTORS));
   const zona = F1.zonaDRS(race.idx / tr.n, tr.t.drs), amarela = direcao?.amarelo?.setor === setor;
   const drs = !!(pn && m && m.drsZona === zona && zona >= 0 && !keys.brake && !amarela && !direcao?.safety);
@@ -62,12 +65,12 @@ export function physics(dt, spec = carOf(me())) {
   race.drsAtivo = drs; race.ersAtivo = ersAtivo;
   const curva = (tr.pts[race.idx].k || 0) > 1 / 600, vac = pn ? F1.vacuoF1(race.draft, curva) : null; // nas regras de F1: vácuo na reta, ar sujo na curva
   race.arSujo = vac ? 1 - vac.aderencia : 0;
-  const aero = pn ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 : 0) + (ersAtivo ? 0.03 : 0)) : 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
+  const aero = pn ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 * (spec.drs ?? 1) : 0) + (ersAtivo ? 0.03 : 0)) : 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
   const boostK = bala ? BALA : (1 + aero + catchup + (boostAtivo ? 0.18 : 0) + (estrelaAtiva ? 0.12 : 0)) * (pequeno ? ENCOLHIDO : 1);
   const bandeiraLimite = direcao?.safety ? 0.54 : amarela ? 0.82 : 1;
-  const vmax = (road ? spec.vmax * (pn?.final || 1) : spec.offMax) * Math.min(boostK, bandeiraLimite);
+  const vmax = (road ? spec.vmax * (pn?.final || 1) * (dano?.final || 1) : spec.offMax) * Math.min(boostK, bandeiraLimite);
   // câmbio: no automático a marcha só acompanha (som e painel); no manual ela manda na força e no corte de giro
-  const manual = E.S && E.S.config.cambio === "manual", vmaxF1 = spec.vmax * boostK * (pn?.final || 1);
+  const manual = E.S && E.S.config.cambio === "manual", vmaxF1 = spec.vmax * boostK * (pn?.final || 1) * (dano?.final || 1);
   race.marcha = manual ? Math.max(1, Math.min(NUM, race.marcha || 1)) : marchaAuto(vf, vmaxF1, race.marcha);
   race.rpm = rotacao(vf, vmaxF1, race.marcha);
   const forca = manual ? torque(race.rpm) : 1;
@@ -101,7 +104,7 @@ export function physics(dt, spec = carOf(me())) {
   // pneus: tiram até grip·dt da velocidade de lado; o resto escorrega e freia o carro (no ar, os pneus não seguram).
   // Nas regras de F1 o pneu gasta e esfria (f1-regras.js): a aderência dele multiplica a do carro.
   if (!air && !bala) {
-    const g = spec.grip * (pn ? pn.grip : 1) * (1 - (race.arSujo || 0)) * (road ? 1 : 0.5) * (c.slip > 30 ? spec.kin * (pn ? pn.kin : 1) : 1) * dt;
+    const g = spec.grip * (pn ? pn.grip : 1) * (dano?.grip || 1) * (1 - (race.arSujo || 0)) * (road ? 1 : 0.5) * (c.slip > 30 ? spec.kin * (pn ? pn.kin : 1) : 1) * dt;
     if (Math.abs(vl) <= g) vl = 0;
     else { vl -= Math.sign(vl) * g; vf -= Math.sign(vf) * Math.min(Math.abs(vf), spec.scrub * 3 * Math.abs(vl) * dt); }
   }
@@ -124,6 +127,7 @@ export function physics(dt, spec = carOf(me())) {
     const pancada = 1 - (1 - spec.wall) * 0.5 * Math.min(1, hit / 260) * (vn > 0 ? 1 : 0), raspa = Math.exp(-(1 - spec.wall) * 0.7 * dt);
     c.vx *= pancada * raspa; c.vy *= pancada * raspa;
     if (hit > 60) { Sound.bump(); race.shake = 0.25; race.bumps = (race.bumps || 0) + 1; }
+    if (vn > 0) avisarBatida(hit, "muro");
   }
   // regras de F1: a mureta do corredor dos boxes é de verdade (box.js); quem não vai parar fica na pista
   const sobra = race.box && !race.box.fase && tr.mostrarBoxes ? muretaDoBox(tr, race.idx, fr.lat) : null;
@@ -132,7 +136,7 @@ export function physics(dt, spec = carOf(me())) {
     nx -= p.nx * s * sobra.over; ny -= p.ny * s * sobra.over;
     if (vn > 0) { c.vx -= p.nx * s * vn * 1.2; c.vy -= p.ny * s * vn * 1.2; if (vn > 60) { Sound.bump(); race.shake = 0.25; } }
   }
-  if (race.pneu) window.F1Regras.gastarPneu(race.pneu, { dist: Math.hypot(nx - c.x, ny - c.y), total: (E.S.config.voltas || 1) * tr.n * 6, slip: c.slip, v: vf, vmax: spec.vmax, dt });
+  if (race.pneu) window.F1Regras.gastarPneu(race.pneu, { dist: Math.hypot(nx - c.x, ny - c.y), total: (E.S.config.voltas || 1) * tr.n * 6, slip: c.slip, v: vf, vmax: spec.vmax, dt, fator: spec.desgaste });
   c.x = nx; c.y = ny;
   // Balizadores flexíveis reagem ao toque e voltam sozinhos; não bloqueiam o carro.
   if (tr.cones && Math.abs(c.v) > 25) for (const cone of tr.cones) {
@@ -148,6 +152,7 @@ export function physics(dt, spec = carOf(me())) {
     if (forca > 0 || eu.x !== c.x || eu.y !== c.y) {
       c.x = eu.x; c.y = eu.y; c.vx = eu.vx; c.vy = eu.vy;
       const f = Math.cos(c.a), g = Math.sin(c.a); c.v = c.vx * f + c.vy * g;
+      avisarBatida(forca, "carro");
       if (forca > 40 && (race.hitT || 0) <= 0) { Sound.crash(forca); race.shake = Math.max(race.shake, Math.min(0.3, forca / 500)); race.hitT = 0.25; }
     }
   }
@@ -161,6 +166,14 @@ export function physics(dt, spec = carOf(me())) {
   else { c.gvz = Math.max(-400, Math.min(400, (gh - c.z) / Math.max(dt, 1e-3))); c.z = gh; }
   race.offroad = !road && !c.air && Math.abs(vf) > 30;
   setores(tr, fr, dt);
+}
+// regras de F1: diz ao servidor que bati e com que força (a punição e o dano saem de lá; o servidor confere e segura
+// um intervalo entre uma batida e outra, o mesmo daqui)
+function avisarBatida(forca, tipo) {
+  const F1 = window.F1Regras;
+  if (!race.pneu || !(forca >= F1.BATIDA_MIN) || (race.batidaT || 0) > sNow()) return;
+  race.batidaT = sNow() + F1.BATIDA_INTERVALO;
+  act2("batida", { forca: Math.round(forca), tipo });
 }
 // checkpoints (como no Forza): o próximo só vale passando por ele, perto da pista e na ordem. Passou direto (cortou
 // caminho)? Fica "perdido" até voltar nele, e o "↺ Pista" leva de volta para ele.

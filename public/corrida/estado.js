@@ -2,7 +2,21 @@
 // Variável reatribuída por mais de um módulo fica dentro do E (um import não pode ser reatribuído).
 
 export const { PISTAS, CARROS, sample, elevate, SECTORS, WORLD, checkpoint } = window.Pistas;
-export const carOf = (p) => (p && CARROS[p.car]) || CARROS.equilibrado;
+// O carro de um piloto: nas regras de F1, quem tem equipe anda com o carro dela (a montagem do chefe da equipe, ou a padrão;
+// f1-equipes.js, as mesmas contas do servidor); senão, um dos cinco carros. Carro quebrado anda no modo de emergência.
+const CARROS_F1 = new Map();
+export const carOf = (p) => {
+  const eq = p && p.equipe && E.S && E.S.config.regras === "f1" && window.F1Equipes && window.F1Equipes.EQUIPES[p.equipe] ? p.equipe : null;
+  const base = eq ? specDaEquipe(eq) : (p && CARROS[p.car]) || CARROS.equilibrado;
+  return p && p.quebrou ? emergencia(base) : base;
+};
+// a especificação do carro de uma equipe na sala de agora (guardada por montagem: não refaz a conta a cada quadro)
+export function specDaEquipe(equipe) {
+  const F = window.F1Equipes, m = (E.S && E.S.montagens && E.S.montagens[equipe]) || null, chave = equipe + ":" + (m ? F.ORDEM.map((k) => m[k]).join("-") : "padrao");
+  if (!CARROS_F1.has(chave)) { if (CARROS_F1.size > 60) CARROS_F1.clear(); CARROS_F1.set(chave, F.specDaEquipe(equipe, m)); }
+  return CARROS_F1.get(chave);
+}
+const emergencia = (s) => ({ ...s, vmax: s.vmax * window.F1Equipes.EMERGENCIA, acc: s.acc * 0.5 });
 export const COLORS = ["#e63946", "#1e88e5", "#43a047", "#fdd835", "#8e24aa", "#fb8c00", "#00acc1", "#f06292"];
 export const PAWNS = ["😎", "🤠", "👽", "🤖", "🐸", "🦊", "🐼", "🐯", "🦄", "🐙", "👻", "🤡", "🦁", "🐵", "🐧", "🏎️"];
 export const socket = io("/corrida");
