@@ -1,22 +1,40 @@
-# Carreira F1, PR 2: o fim de semana de GP
+# Corrida: as pistas do calendário de F1 de 2026, convertidas de bacinger/f1-circuits
 
-Segundo dos 5 PRs grandes da Carreira F1 (`planos/temporada-f1.md`). Tudo vale só com as regras de F1 ligadas na sala (`config.regras === "f1"`); sem elas, a corrida continua como antes. O GP agora tem classificação, grid de 20 carros com os pilotos reais de 2026, a largada nas cinco luzes e os pontos oficiais.
+Um conversor dos circuitos do repositório [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits) (GeoJSON, licença MIT) para o nosso formato de pista, e as 19 pistas do calendário de 2026 que ainda não tínhamos. Mônaco, Interlagos, Barcelona, Silverstone, Monza e as de fantasia não mudaram.
 
-## O que entrou nesta branch
+## O conversor: `ferramentas/circuitos-f1.js`
 
-- **Pilotos e equipes reais de 2026** (`public/corrida/f1-pilotos-2026.js`, UMD, servidor e navegador): as 11 equipes com a cor oficial e a pintura de `MODS.pintura`, os 22 titulares conferidos na internet (formula1.com e the-race.com) com o número e três níveis (ritmo, constância e largada, de 60 a 99, estimados por nós: o Thiago revisa). Os robôs usam esses pilotos no lugar de "Faísca", "Chicane" e companhia: o nome (L. Norris), a cor e a pintura da equipe, o ritmo na volta, a reação na largada e o quanto a linha varia. No GP todos os robôs têm o mesmo carro (a montagem de cada equipe vem no PR 3).
-- **Grid de 20 carros:** a sala de F1 aceita até 19 robôs ("Grid de 20" completa o que faltar com os humanos; 22 titulares, 2 ficam de fora pelo sorteio da semente). `gridSpot` ganhou o modo F1, com as filas a 8 pontos uma da outra (13 não cabiam em Mônaco), e `kit/chao.js` pinta as 20 vagas com os números; as 8 de sempre continuam para as outras salas (jogo.js liga um conjunto de cada vez).
-- **Classificação Q1, Q2 e Q3** (`corrida-f1-classificacao.js`, fase `quali` da sala): voltas lançadas com o relógio da sessão. A volta abre na primeira passagem pela linha e fecha na seguinte (o servidor mede pelos setores, com a volta mínima contra atalho); a bandeirada deixa terminar a volta aberta; "✔ Pronto" fecha a sessão antes quando todo mundo na pista termina. O Q1 tira os 5 mais lentos, o Q2 mais 5 e o Q3 decide a pole (as contas puras, `sessoesDeClassificacao`, `fecharSessao`, `gridDaClassificacao`, estão em `f1-regras.js`; empate: quem fez o tempo primeiro). Os robôs fazem a volta pela mesma conta da corrida (`tempoDaVolta`, agora com a aderência do pneu), com macio novo, mais o ruído da constância do piloto, tudo sorteado pela semente do GP, e a tabela vai se enchendo durante a sessão. Sem batida na classificação. Entre as sessões, a tela com quem passou e quem caiu e, no fim, o grid da largada. Opção na sala: "Classificação: Q1, Q2 e Q3" ou "Pular" (grid pela ordem dos pilotos da sala, humanos primeiro).
-- **As cinco luzes:** nas pistas de GP o pórtico da largada ganha as cinco luzes vermelhas no lugar do "CORRIDA DA GALERA" (só com as regras de F1; `pista.js` guarda os dois e `jogo.js` liga um), com a fileira também no HUD. Acendem uma por segundo e apagam juntas depois de uma espera sorteada pela semente (0,4 a 2,8 s); a largada é quando apagam. **Queimar a largada** (andar a mais de 45 u/s antes de apagarem, com 150 ms de folga) dá +5 s (`corrida-f1-direcao.js`), aparece na hora. Nas luzes, o freio de mão segura o carro na ladeira do grid até alguém acelerar.
-- **Pontos oficiais e resultado** (`F1.PONTOS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]`, sem ponto pela volta mais rápida; `F1.classificacaoFinal`): quem cruza a chegada vem pelo tempo mais os acréscimos; quem não cruza fica pelas voltas, e quem fez menos de 90% das voltas é NC e não pontua. A corrida do GP só acaba quando os robôs também terminam (ou 45 s depois do primeiro). A tela do GP mostra o pódio, o tempo ou a diferença, o grid (com as posições ganhas), as paradas com os compostos, a penalidade, a melhor volta e os pontos.
+`node ferramentas/circuitos-f1.js be-1925 --id spa --nome "Spa-Francorchamps"` baixa `circuits/<id>.geojson` e imprime o bloco da pista para colar em `pistas.js`. Funciona com qualquer arquivo do repositório (ou `--arquivo` local):
 
-## Testes
+- projeta as coordenadas em metros e escolhe o tamanho da volta pelo comprimento real (13 mil + os metros acima de 4,3 km: Spa fica com 15,5 mil);
+- passa uma spline pelos pontos reais e **afasta os trechos que encostariam** (a nossa pista é bem mais larga que a real) e abre as curvas fechadas demais;
+- põe no quadrado de 1600, simplifica em vértices `[x, y, raio]` (reta = 0, curva = o raio que casa com a curva real) e deixa a linha de chegada no vértice 0, com `largada` apontando para ela (anda um pouco para a frente se o grid de 20 não couber);
+- `hills` com a **altitude real** de 100 pontos da volta (API de elevação do Open-Meteo);
+- acha onde a pista passa por cima de si mesma (`cruza`, o oito de Suzuka) e confere trechos encostados, curva mais fechada e grid, como o teste de robôs;
+- `--svg` desenha o traçado para conferir; `--rua`, `--volta`, `--raio-min`, `--tol`, `--sem-relevo`, `--inverter`.
 
-- Só os da Corrida: `node --test tests/corrida*.test.js`, todos passando, com o novo `tests/corrida-f1-fim-de-semana.test.js`: os 22 pilotos e as 11 equipes, o grid de 20 com os robôs reais, as sessões 20/15/10, a eliminação e a ordem do grid, o empate, os pontos oficiais e o NC, a largada queimada e a classificação inteira no servidor (com relógio simulado, humano online e só robôs). `tests/corrida-f1-box.test.js` passou a pular a classificação e esperar a largada nas luzes (até 10,3 s).
-- No navegador do app com `#debug`: Mônaco com 20 carros, a classificação (Q1 com um humano, a tela de Q2, o grid), as cinco luzes no pórtico e no HUD, a largada queimada e o resultado do GP com o pódio, sem erro no console. Fotos em `planos/imagens/f1-gp-*.jpg`.
+A licença MIT e o crédito estão no cabeçalho dos traçados convertidos em `pistas.js` e no próprio conversor.
 
-## O que fica para os próximos PRs
+## As pistas novas (na ordem do calendário)
 
-- Quadros por segundo em Mônaco com 20 carros: **não medi**, porque o navegador deste ambiente roda sem placa de vídeo (~1 quadro por segundo); falta medir numa máquina de verdade (o plano pede o antes e o depois no `MUDANCAS.md`).
-- A classificação de vários humanos ao mesmo tempo (hoje cada um corre a sua volta sem batida, mas todos na mesma sessão) e o pneu de largada pelo Q2 ficam para o PR 5. Humano que cai no meio da classificação fica sem tempo.
-- PR 3: a montagem do carro com o orçamento de cada equipe (hoje todos os robôs têm o mesmo carro).
+Melbourne, Xangai, Suzuka, Bahrein, Jeddah, Miami, Montreal, Red Bull Ring, Spa-Francorchamps, Hungaroring, Zandvoort, Madri, Baku, Singapura, Austin, Cidade do México, Las Vegas, Catar e Abu Dhabi.
+
+- **Traçado** convertido (75 a 156 vértices), com `f1: true` (luz de freio e faíscas do carro de F1), `boxes` e `drs` calculados pela geometria (o lado de dentro e as duas retas mais compridas). Xangai usa `scale` 2,8 em vez dos 2,42 do conversor: o caracol e o grampo deixavam a volta lenta demais.
+- **Relevo real**: Spa com 97 m de diferença (Eau Rouge embaixo, Les Combes no alto, Stavelot no fundo), Red Bull Ring 68 m, Suzuka 48 m, Hungaroring 40 m, Baku 36 m...
+- **Suzuka** passa por cima de si mesma: a reta de trás ganha uma ponte 52 acima do trecho depois da Degner (`cruza` em `pistas.js`; `pista.js` baixa o chão em volta do trecho de baixo com `tr.sobPonte`; `gps/suzuka.js` desenha o tabuleiro, as muretas e os pilares).
+- **Cores** em `cena.js` (`LOOK`) e `pista.js` (`THEMES`) e o céu em `ceu.js`, reaproveitando as fotos que já existem pelo clima de cada lugar (o pôr do sol para Singapura, Las Vegas e Abu Dhabi, o deserto para Bahrein, Jeddah e Catar).
+- **GP simples** em `gps/<id>.js`, com a peça nova do kit `kit/gp-simples.js` (`gpSimples(id, opções)`): asfalto de GP, zebras, grid, brita do lado de fora das curvas, a tribuna da reta, o prédio dos boxes, painéis, bandeira do país, passarela e som de campo; nas de rua (`rua: true`: Baku, Singapura, Jeddah e Las Vegas, com `walls`), sarjeta, guard-rail com os painéis, postes e som de cidade. Montanha onde há serra (os Alpes no Red Bull Ring, o Popocatépetl no México, Guadarrama em Madri, as Spring Mountains em Las Vegas, os montes de Suzuka, o Mont Royal), a floresta das Ardenas em Spa (`parque`) e a torcida laranja em Zandvoort. O cenário fino de cada uma fica para depois.
+- Duas chaves novas lidas por `pista.js` (e na tabela do `kit/README.md`): `beira` (árvores, palmeiras, prédios e prédios de vidro da beira e de longe; antes, pista sem tema caía nos neons de Tóquio) e `horizonte` (`false` tira os morros de longe; `{ cor }`).
+
+## Conferido
+
+- Só os testes da Corrida: `node --test tests/corrida*.test.js`, 64 passando (as 19 pistas novas entraram em `tests/corrida-robos.test.js` e `tests/corrida-f1-box.test.js`; o teste dos trechos encostados deixa passar o cruzamento de Suzuka). O `npm test` completo não foi rodado.
+- No navegador do app com `#debug`: as 19 montam (`__corrida.buildTrack`) e largam numa sala com robôs, sem erro no console; Mônaco continua montando. As fotos foram tiradas na largada (e no trecho de Suzuka depois da Degner); a volta inteira foi conferida pelo teste de robôs.
+
+## Faltou
+
+- Imola não está no calendário de 2026; Sepang (que o arquivo de 2026 do bacinger lista) ficou de fora.
+- As corridas noturnas (Singapura, Las Vegas, Bahrein, Jeddah, Catar, Abu Dhabi) estão de dia ou no fim da tarde.
+- O cenário fino de cada pista (prédios dos boxes próprios, marcos, marcas locais em `kit/marcas.js`).
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

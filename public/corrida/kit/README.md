@@ -35,9 +35,21 @@ som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo; S
 | `fachadas: {...}` | `beira.js` → `fachadas` | Prédios com sacadas, venezianas, toldos e telhados: `cores` (`[parede, veneziana]`), `toldos`, `telhas` (0 a 1). `FACHADAS_MEDITERRANEO` é o padrão. |
 | `boxes: {...}` | `corredor-boxes.js` → `boxesGP` | O corredor dos boxes das regras de F1: asfalto de 34 m de largura ao lado da reta, linhas de entrada (branca) e saída (vermelha), mureta, o quadrado pintado onde o carro para e as 10 garagens com os mecânicos, na cor de quem usa cada uma (`grp.userData.colorir(cores)`). O traçado vem de `boxes: { entra, para, sai, lado }` em `../pistas.js` (frações da volta) e da conta `F1Regras.corredor`; toda pista com `boxes` ganha o corredor sozinha. Chaves: `garagens: false` (só o corredor, Mônaco), `mureta`, `asfalto`, `cores`; `boxes: false` desliga. Só aparece com as regras de F1 (`tr.mostrarBoxes`) e tira os balizadores do meio dele. |
 | `depois(tr, ctx)` | a pista | Por cima dos enfeites soltos (Interlagos: `../interlagos.js`). |
+| `beira: {...}` | `../pista.js` | O que nasce na beira e longe da pista, nas proporções de cada coisa (0 a 1): `arvores`, `palmeiras`, `predios` (com janelas, nas `cores`), `vidro` (prédios de vidro), `altura` dos prédios e `longe: {...}` com as mesmas chaves para longe da pista. Respeita `tr.reservado`. |
+| `horizonte` | `../pista.js` | Os morros de longe: `false` tira (deserto, mar, planície); `{ cor }` muda a cor. |
 
 `ctx` traz `{ add, r, hAt, size, aguaTex, palms, yachts, jungle, blds }`: `add` põe na cena da pista, `hAt(x, z)` dá a
 altura do chão e as listas recebem palmeiras, iates, árvores e prédios (desenhados por `pista.js`).
+
+## O GP simples (`gp-simples.js`)
+
+`gpSimples(id, opções)` devolve a configuração inteira de um GP com as peças de sempre: asfalto, zebras, grid, escape (brita
+do lado de fora das curvas), a tribuna da reta do lado de fora, o prédio dos boxes (`boxes.js`) do lado do corredor, painéis,
+bandeira, passarela e som de campo; com `rua: true`, sarjeta, faixas, guard-rail com os painéis, postes e som de cidade.
+É o ponto de partida das pistas convertidas de `bacinger/f1-circuits` por `ferramentas/circuitos-f1.js` (Spa, Suzuka...),
+antes de cada uma ganhar o cenário fino. Opções: `rua`, `bandeira`, `marcas`, `posto`, `zebra`, `margem`, `escape`,
+`arquibancadas` (trechos a mais), `tribuna: false`, `corTribuna`, `montanha`, `parque`, `beira`, `fachadas`, `horizonte`,
+`som`, `gaivotas`, `amarelas` e `cenario(tr, ctx)` (o que só aquela pista tem, como a ponte do oito de Suzuka).
 
 ## O som (`som.js`)
 
