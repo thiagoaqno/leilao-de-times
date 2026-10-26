@@ -166,7 +166,7 @@ function inclinacao(tr, x, y, a, idx, L, W, vz, noAr, v) {
   return { pitch: Math.atan2(frente - tras, L), roll: Math.atan2(dir - esq, W) };
 }
 const fxDe = (p, now, extra = {}) => { const bala = !!(p && p.balaUntil > now) || !!extra.bala;
-  return { f1: race.tr.id === "interlagos" || race.tr.id === "monaco" || race.tr.id === "barcelona", zebra: !!extra.zebra, turbo: !!(p && p.boostUntil > now) || !!extra.turbo, estrela: !!(p && p.starUntil > now), rodando: !bala && (!!(p && (p.spinUntil > now || race.atingidos?.[p.id] > now)) || !!extra.rodando), derrapa: extra.derrapa || 0,
+  return { f1: race.tr.id === "interlagos" || race.tr.id === "monaco" || race.tr.id === "monza" || race.tr.id === "barcelona", zebra: !!extra.zebra, turbo: !!(p && p.boostUntil > now) || !!extra.turbo, estrela: !!(p && p.starUntil > now), rodando: !bala && (!!(p && (p.spinUntil > now || race.atingidos?.[p.id] > now)) || !!extra.rodando), derrapa: extra.derrapa || 0,
     pequeno: !bala && !!(p && p.shrinkUntil > now), bala }; };
 // câmera atrás do kart (quem só assiste segue o primeiro colocado)
 function draw(dt) {

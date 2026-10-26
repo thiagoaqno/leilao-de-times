@@ -5,7 +5,7 @@
 // cfg: { trechos: [{ de, ate, lado, degraus, cor, encosto, cobertura }] }
 //   de, ate: frações da volta (0 a 1, a partir da chegada) · lado: 1 ou -1, de que lado da pista (o sinal de p.nx)
 //   degraus: quantas fileiras (9 unidades de fundo e 6 de altura cada) · cor, encosto: o assento e a borda dele
-//   cobertura: marquise lá atrás (false deixa aberta)
+//   cobertura: marquise lá atrás (false deixa aberta) · torcida: as cores das camisas (lista; padrão: variadas)
 import * as THREE from "three";
 import { canvasTex, M } from "../cena.js";
 
@@ -21,18 +21,19 @@ export function faixa(tr, add, i0, i1, l0, l1, y0, y1, mat, vLen = 40, uSpan = 1
 }
 
 // cada degrau é uma fileira: o encosto corre ao longo da pista (v) e a galera sentada por cima
-const cadeiras = (cor, encosto, fundo) => new THREE.MeshStandardMaterial({ roughness: 0.8, side: THREE.DoubleSide, map: canvasTex(32, 256, (x, w, hh, rr) => {
+const CAMISAS = ["#ffffff", "#e63946", "#ffd23f", "#1b1b1b", "#ff7ad9", "#43a047", "#f4f4f4"];
+const cadeiras = (cor, encosto, fundo, camisas = CAMISAS) => new THREE.MeshStandardMaterial({ roughness: 0.8, side: THREE.DoubleSide, map: canvasTex(32, 256, (x, w, hh, rr) => {
   x.fillStyle = cor; x.fillRect(0, 0, w, hh); x.fillStyle = encosto; x.fillRect(w - 9, 0, 9, hh); x.fillStyle = fundo; for (let yy = 0; yy < hh; yy += 6) x.fillRect(0, yy, w - 9, 1);
-  for (let yy = 1; yy < hh - 4; yy += 6) if (rr() < 0.8) { x.fillStyle = ["#ffffff", "#e63946", "#ffd23f", "#1b1b1b", "#ff7ad9", "#43a047", "#f4f4f4"][(rr() * 7) | 0]; x.fillRect(8 + rr() * 8, yy, 6, 4); x.fillStyle = ["#f1c7a5", "#d9a37a", "#a8714a", "#7a4a2a"][(rr() * 4) | 0]; x.fillRect(16 + rr() * 2, yy + 1, 3, 3); }
+  for (let yy = 1; yy < hh - 4; yy += 6) if (rr() < 0.8) { x.fillStyle = camisas[(rr() * camisas.length) | 0]; x.fillRect(8 + rr() * 8, yy, 6, 4); x.fillStyle = ["#f1c7a5", "#d9a37a", "#a8714a", "#7a4a2a"][(rr() * 4) | 0]; x.fillRect(16 + rr() * 2, yy + 1, 3, 3); }
 }) });
 
 export function arquibancadas(tr, add, { trechos }) {
   const { pts, n } = tr, estrutura = M(0xd8dbe0, { roughness: 0.7, side: THREE.DoubleSide }), cobertura = M(0xf4f4f4, { roughness: 0.5, side: THREE.DoubleSide });
   const L = tr.wallLat < 1e9 ? tr.wallLat : tr.W / 2 + 30, colunaGeo = new THREE.CylinderGeometry(0.9, 0.9, 1, 6), materiais = new Map();
   tr.arquibancadas ||= []; tr.reservado ||= [];
-  for (const { de, ate, lado = -1, degraus = 6, cor = "#1f5fbf", encosto = "#3f86e8", cobertura: coberta = true } of trechos) {
+  for (const { de, ate, lado = -1, degraus = 6, cor = "#1f5fbf", encosto = "#3f86e8", cobertura: coberta = true, torcida } of trechos) {
     const i0 = Math.floor(de * n); let i1 = Math.floor(ate * n); if (i1 < i0) i1 += n;
-    const chave = cor + encosto; if (!materiais.has(chave)) materiais.set(chave, cadeiras(cor, encosto, "#00000038"));
+    const chave = cor + encosto + (torcida || ""); if (!materiais.has(chave)) materiais.set(chave, cadeiras(cor, encosto, "#00000038", torcida));
     const l0 = lado * (L + 6), alto = degraus * 6 + 30;
     // os degraus são uma rampa só (a galera aparece de baixo também); a textura repete a fileira em cada 9 unidades
     faixa(tr, add, i0, i1, l0, l0 + lado * degraus * 9, 4, 4 + degraus * 6, materiais.get(chave), 48, degraus);

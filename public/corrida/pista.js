@@ -17,11 +17,13 @@ import { guardRail, fachadas } from "./kit/beira.js";
 import { ambienteGP } from "./kit/ambiente.js";
 import { passarelas, postes, montanha } from "./kit/marcos.js";
 import { vidaGP } from "./kit/vida.js";
+import { parque } from "./kit/parque.js";
 
 // ---------- temas das pistas: cores, chão, enfeites e o horizonte ----------
 export const THEMES = {
   monaco: { preview: "#2a6fa3", sky: ["#5fb7ff", "#cfeeff"], fog: "#cfe6f2", oob: 0xffae6f1f, roadCol: "#5b5b61" },
   interlagos: { preview: "#2f7d33", sky: ["#4aa3e8", "#f3e6c8"], fog: "#dfe7d8", oob: 0xff3a9a3f, roadCol: "#4b4b50" },
+  monza: { preview: "#4f8b3d", sky: ["#4a95dc", "#f1eadb"], fog: "#dde6d6", oob: 0xff4f8b3d, roadCol: "#4d4e53" },
   barcelona: { preview: "#a9a35a", sky: ["#4a9be0", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4c4d52" },
   losangeles: { preview: "#7a4a6a", sky: ["#3b2a6b", "#ff9a5a"], fog: "#e8a07a", oob: 0xff6a8aa0, roadCol: "#3f3f46" },
   rio: { preview: "#1f8a8a", sky: ["#3f97e0", "#d6f1ff"], fog: "#cfeaf2", oob: 0xff2a7a3a, roadCol: "#4a4a50" },
@@ -267,6 +269,7 @@ function buildWorld(tr) {
       }
       else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "barcelona") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" || id === "barcelona" ? 0.07 : 0.52) && (id !== "barcelona" || livreRes(x, y))) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
       else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
+      else if (gp?.parque) { /* o bosque fechado vem de kit/parque.js */ }
       else if (id === "losangeles") { // palmeiras altas na beira e prédios de vidro mais para trás
         if (k < 0.35) palms.push({ x, y, h: hAt(x, y), s: 1.6 + r() * 0.5, r: r() * 6 });
         else if (k < 0.7) { const sx = 60 + r() * 50, sz = 60 + r() * 50, far = near + 60 + r() * 120, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 25)) glass.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 140 + r() * 360, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); }
@@ -296,6 +299,7 @@ function buildWorld(tr) {
     }
     else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "barcelona") { if ((id !== "laguna" && id !== "barcelona") || r() < (id === "barcelona" ? 0.12 : 0.3)) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
     else if (id === "deserto") { if (r() < 0.07) palms.push({ x, y, h: hAt(x, y), s: 1.2, r: r() * 6 }); }
+    else if (gp?.parque) { if (r() < 0.1) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // o parque continua longe da pista
     else if (id === "losangeles") { if (r() < 0.5) glass.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 120 + r() * 420, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); else palms.push({ x, y, h: hAt(x, y), s: 1.8, r: r() * 6 }); }
     else if (id === "rio") { if (rioSea(x, y)) continue; if (hAt(x, y) > 15 || r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.3 + r() * 1.2 }); else blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 50, sy: 70 + r() * 120, sz: 60 + r() * 50, dy: 0.5, r: r() * 3, c: ["#f4f1e6", "#e8e0cf", "#d9e6ef"][(r() * 3) | 0] }); }
     else towers.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 150 + r() * 500, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#1d2033", "#242842", "#191b2b", "#2a2340"][(r() * 4) | 0] });
@@ -341,6 +345,7 @@ function buildWorld(tr) {
   const NEON = [["#ff4fd8", "東京"], ["#4fe3ff", "夜道"], ["#ffe14f", "走れ"], ["#7dff6b", "友達"]].map(([c, t]) => canvasTex(64, 128, (x, w, hh) => { x.fillStyle = "#0b0b14"; x.fillRect(0, 0, w, hh); x.strokeStyle = c; x.lineWidth = 4; x.strokeRect(4, 4, w - 8, hh - 8); x.fillStyle = c; x.font = "bold 40px sans-serif"; x.textAlign = "center"; x.fillText(t[0], w / 2, 52); x.fillText(t[1], w / 2, 104); }, false));
   for (const o of neons) { const m = add(new THREE.Mesh(new THREE.PlaneGeometry(26, 52), new THREE.MeshBasicMaterial({ map: NEON[o.g], side: THREE.DoubleSide }))); m.position.set(o.x, o.h + 40, o.y); m.rotation.y = -o.r + Math.PI / 2; const pole = add(new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 16), M(0x222222))); pole.position.set(o.x, o.h + 8, o.y); }
   gp?.depois?.(tr, ctx); // o que vem por cima dos enfeites (Interlagos: o ambiente de interlagos.js)
+  if (gp?.parque) parque(tr, add, gp.parque); // o bosque fechado em volta da pista (kit/parque.js)
   enfeitar(tr, add, r, (x, y, i) => groundH(tr, x, y, i));
   if (id === "losangeles") landmarksLA(tr, add, r);
   if (id === "rio") landmarksRio(tr, add, r, size, ribbon);

@@ -25,6 +25,11 @@ export const MARCAS = {
   lacaixa: { fundo: "#0079ae", cor: "#ffffff", texto: "la Caixa", fonte: "700 {s}px Arial, sans-serif" },
   sabadell: { fundo: "#ffffff", cor: "#0a6ebd", texto: "Sabadell", fonte: "700 {s}px Arial, sans-serif", moldura: "#0a6ebd" },
   circuit: { fundo: "#c8102e", cor: "#ffd100", texto: "BARCELONA-CATALUNYA", fonte: "900 {s}px Arial, sans-serif" },
+  ferrari: { fundo: "#c8102e", cor: "#ffd100", texto: "Ferrari", fonte: "italic 700 {s}px Georgia, 'Times New Roman', serif", escudo: true },
+  iveco: { fundo: "#ffffff", cor: "#0b3d91", texto: "IVECO", fonte: "italic 900 {s}px 'Arial Black', Arial, sans-serif", moldura: "#0b3d91" },
+  peroni: { fundo: "#ffffff", cor: "#c8102e", texto: "PERONI", fonte: "900 {s}px Georgia, serif", moldura: "#0f4ea0" },
+  gpit: { fundo: "#ffffff", cor: "#c8102e", texto: "GRAN PREMIO D'ITALIA", fonte: "900 {s}px Arial, sans-serif", tricolore: true },
+  monza: { fundo: "#c8102e", cor: "#ffffff", texto: "AUTODROMO NAZIONALE MONZA", fonte: "900 {s}px Arial, sans-serif" },
   acm: { fundo: "#ffffff", cor: "#c8102e", texto: "AUTOMOBILE CLUB DE MONACO", fonte: "700 {s}px Georgia, serif", moldura: "#c8102e" },
 };
 // a ordem em que as marcas se repetem pela pista
@@ -37,7 +42,8 @@ export function desenharMarca(x, nome, x0, y0, w, h) {
   x.fillStyle = m.fundo; x.fillRect(x0, y0, w, h);
   if (m.moldura) { x.strokeStyle = m.moldura; x.lineWidth = Math.max(2, h * 0.06); x.strokeRect(x0 + h * 0.08, y0 + h * 0.08, w - h * 0.16, h - h * 0.16); }
   let tx = x0 + w / 2, larg = w - h * 0.5;
-  if (m.coroa || m.estrela || m.dhl) { tx += h * 0.32; larg -= h * 0.6; }
+  if (m.coroa || m.estrela || m.dhl || m.escudo) { tx += h * 0.32; larg -= h * 0.6; }
+  if (m.tricolore) { x.fillStyle = "#009246"; x.fillRect(x0, y0, w / 3, h * 0.12); x.fillStyle = "#f4f4f4"; x.fillRect(x0 + w / 3, y0, w / 3, h * 0.12); x.fillStyle = "#ce2b37"; x.fillRect(x0 + (2 * w) / 3, y0, w / 3, h * 0.12); x.fillRect(x0, y0 + h * 0.88, w, h * 0.12); x.fillStyle = "#009246"; x.fillRect(x0, y0 + h * 0.88, w / 3, h * 0.12); x.fillStyle = "#f4f4f4"; x.fillRect(x0 + w / 3, y0 + h * 0.88, w / 3, h * 0.12); }
   x.font = m.fonte.replace("{s}", s); x.fillStyle = m.cor; x.textAlign = "center"; x.textBaseline = "middle";
   const medida = Math.min(larg, x.measureText(m.texto).width), esq = tx - medida / 2;
   if (m.dhl) { x.fillStyle = m.cor; for (let k = 0; k < 4; k++) x.fillRect(x0 + h * 0.12 + k * h * 0.06, cy - h * 0.18 + k * h * 0.1, h * 0.55 - k * h * 0.08, h * 0.06); x.fillStyle = m.cor; }
@@ -56,6 +62,11 @@ export function desenharMarca(x, nome, x0, y0, w, h) {
   x.fillStyle = m.cor; x.fillText(m.texto, tx, cy + h * 0.02, larg);
   if (m.pirelli) { x.fillRect(esq + medida * 0.05, cy - s * 0.48, medida * 0.95, s * 0.12); } // o P comprido, o traço por cima do nome
   if (m.sorriso) { x.strokeStyle = "#ff9900"; x.lineWidth = h * 0.06; x.lineCap = "round"; x.beginPath(); x.moveTo(esq + medida * 0.08, cy + s * 0.45); x.quadraticCurveTo(tx, cy + s * 0.75, esq + medida * 0.9, cy + s * 0.42); x.stroke(); }
+  if (m.escudo) { // o escudo amarelo da Scuderia, com o SF em preto
+    const c = esq - h * 0.4, a = h * 0.3; x.fillStyle = m.cor; x.beginPath(); x.moveTo(c - a, cy - a * 1.15); x.lineTo(c + a, cy - a * 1.15); x.lineTo(c + a, cy + a * 0.3); x.quadraticCurveTo(c + a, cy + a * 1.2, c, cy + a * 1.35); x.quadraticCurveTo(c - a, cy + a * 1.2, c - a, cy + a * 0.3); x.closePath(); x.fill();
+    x.fillStyle = "#009246"; x.fillRect(c - a, cy - a * 1.15, a * 0.66, a * 0.3); x.fillStyle = "#f4f4f4"; x.fillRect(c - a * 0.34, cy - a * 1.15, a * 0.68, a * 0.3); x.fillStyle = "#ce2b37"; x.fillRect(c + a * 0.34, cy - a * 1.15, a * 0.66, a * 0.3);
+    x.fillStyle = "#111"; x.font = "900 " + Math.round(a * 1.1) + "px Arial, sans-serif"; x.fillText("SF", c, cy + a * 0.45); x.fillStyle = m.cor;
+  }
   if (m.aramco) { x.fillStyle = "#00a3e0"; x.fillRect(esq - h * 0.3, cy - h * 0.2, h * 0.16, h * 0.4); x.fillStyle = "#84bd00"; x.fillRect(esq - h * 0.3, cy - h * 0.2, h * 0.16, h * 0.18); }
   x.restore();
 }

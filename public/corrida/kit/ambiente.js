@@ -2,7 +2,7 @@
 // com a bandeira do país, os postos dos fiscais (que vida.js anima, em tr.postosGP), as placas de 100 e 50 m antes das
 // curvas e as guias luminosas do túnel. Tudo em InstancedMesh, sem luz nova.
 //
-// cfg: { marcas: nomes de marcas.js para os painéis, posto: a marca do posto, bandeira: [cor de cima, cor de baixo],
+// cfg: { marcas: nomes de marcas.js para os painéis, posto: a marca do posto, bandeira: [cor de cima, cor de baixo] (ou três cores: faixas verticais),
 //        placas: as distâncias das placas de frenagem em metros (100 e 50), outdoors: as marcas dos outdoors de vida.js }
 import * as THREE from "three";
 import { canvasTex, M } from "../cena.js";
@@ -11,7 +11,7 @@ import { ocupado } from "./comum.js";
 
 export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "f1", bandeira = [0xc42d38, 0xf0eee6], placas = [100, 50], outdoors = PATROCINIO } = {}) {
   const { pts, n, W } = tr, L = tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 30, lotes = new Map();
-  const metal = M(0x697780), branco = M(0xf0eee6), vermelho = M(0xc42d38), laranja = M(0xf27421), escuro = M(0x18242b), bandCima = M(bandeira[0]), bandBaixo = M(bandeira[1]);
+  const metal = M(0x697780), branco = M(0xf0eee6), vermelho = M(0xc42d38), laranja = M(0xf27421), escuro = M(0x18242b), bandCima = M(bandeira[0]), bandBaixo = M(bandeira[1]), bandMeio = bandeira[2] != null ? M(bandeira[2]) : null;
   const luz = new THREE.MeshBasicMaterial({ color: 0xffdf9c, toneMapped: false });
   const placa = (texto, fundo, cor = "#ffffff") => new THREE.MeshBasicMaterial({ map: canvasTex(512, 128, (x, w, h) => {
     x.fillStyle = fundo; x.fillRect(0, 0, w, h); x.fillStyle = cor; x.fillRect(0, h - 6, w, 6);
@@ -49,8 +49,9 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
     }
     if (i % 81 === 0) {
       caixa(metal, x, h + 31, z, 1, 38, 1);
-      caixa(bandCima, x, h + 47, z, 15, 4.5, 0.5, ry);
-      caixa(bandBaixo, x, h + 42.5, z, 15, 4.5, 0.5, ry); stats.bandeiras++;
+      if (bandMeio) for (const [m, s] of [[bandCima, -1], [bandMeio, 0], [bandBaixo, 1]]) caixa(m, x + s * 5 * Math.cos(ry), h + 44.5, z - s * 5 * Math.sin(ry), 5, 9, 0.5, ry); // três faixas verticais (Itália)
+      else { caixa(bandCima, x, h + 47, z, 15, 4.5, 0.5, ry); caixa(bandBaixo, x, h + 42.5, z, 15, 4.5, 0.5, ry); }
+      stats.bandeiras++;
     }
   }
   // Postos compactos só onde há calçada livre, sem ocupar piscina, arquibancadas ou porto.

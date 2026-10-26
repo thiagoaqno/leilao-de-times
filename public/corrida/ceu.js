@@ -9,6 +9,7 @@ import { renderer, scene, hemi } from "./cena.js";
 export const CEUS = {
   monaco: { brilho: 1, luz: 0.55 },
   interlagos: { brilho: 1, luz: 0.55 },
+  monza: { brilho: 1, luz: 0.55 },
   barcelona: { brilho: 1, luz: 0.55 },
   losangeles: { brilho: 1, luz: 0.6 },
   rio: { brilho: 1, luz: 0.55 },
