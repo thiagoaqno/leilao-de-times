@@ -11,6 +11,7 @@ import { aguaMonaco, fundoMonaco, orlaMonaco, alturaRocha } from "./monaco.js";
 // o kit de pista (kit/README.md) e a configuração de cada GP (gps/)
 import { GPS } from "./gps/index.js";
 import { chaoGP } from "./kit/chao.js";
+import { escapeGP } from "./kit/escape.js";
 import { guardRail, fachadas } from "./kit/beira.js";
 import { ambienteGP } from "./kit/ambiente.js";
 import { passarelas, postes, montanha } from "./kit/marcos.js";
@@ -154,7 +155,8 @@ function buildWorld(tr) {
   const kerbM = new THREE.MeshStandardMaterial({ map: kerbT, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x0a3a44 : 0 });
   if (gp?.chao) chaoGP(tr, add, gp.chao, { gridSpot }); // margem, zebras só nas curvas e as marcas da rua (kit/chao.js)
   else { ribbon(W / 2, W / 2 + 7, 0.6, kerbM, 28); ribbon(-W / 2 - 7, -W / 2, 0.6, kerbM, 28); }
-  if (id === "interlagos" || id === "laguna") { // área de escape de brita
+  if (gp?.escape) escapeGP(tr, add, gp.escape); // brita e asfalto de escape listrado só onde o GP diz (kit/escape.js)
+  if ((id === "interlagos" || id === "laguna") && !gp?.escape) { // área de escape de brita
     const brita = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#c9b37a"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 600; i++) { x.fillStyle = rr() < 0.5 ? "#b39c66" : "#ddc893"; x.fillRect(rr() * w, rr() * hh, 2, 2); } }), roughness: 1, side: THREE.DoubleSide });
     ribbon(W / 2 + 7, W / 2 + 30, 0.3, brita, 64, 0.2); ribbon(-W / 2 - 30, -W / 2 - 7, 0.2, brita, 64, 0.3);
   } else { // calçada até o muro

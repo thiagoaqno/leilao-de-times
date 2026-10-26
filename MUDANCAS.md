@@ -1,17 +1,16 @@
-# Kit de pista: o que fizemos em Mônaco vira peça para qualquer GP
+# Interlagos com o kit de pista
 
-Preparação para criar as outras pistas da temporada (Barcelona primeiro) e melhorar as atuais sem refazer tudo. Mônaco continua igual na tela (mesmos números de painéis, postos, placas, luzes do túnel e zebras); a física não muda.
+Interlagos (Autódromo José Carlos Pace) agora monta com as peças do kit, em `gps/interlagos.js`; Mônaco continua igual na tela (mesmos números de painéis, postos e placas).
 
-**`public/corrida/kit/`** (com o guia `kit/README.md`)
-- `chao.js`: margem (sarjeta de rua ou faixa de cor), zebras só nas curvas, zebras amarelas, faixas de pedestre, linha tracejada, linhas SC, grid numerado, remendos e bueiros.
-- `beira.js`: guard-rail em painéis com patrocinadores e as fachadas com sacadas, toldos e telhados.
-- `ambiente.js`: cerca, painéis, mastros com a bandeira do país, postos de fiscais e placas de 100/50 m.
-- `marcos.js`: passarelas, postes de rua e a serra no horizonte (em qualquer direção).
-- `vida.js` e `som.js`: helicóptero da TV, gaivotas, fiscais com a bandeira e o som por região (agora com uma região nova, `campo`: vento e passarinhos para autódromos).
-- `marcas.js` (veio de `public/corrida/`) e `comum.js` com as ferramentas.
+**Pista (`gps/interlagos.js`)**
+- Chão: margem de asfalto cinza, zebras vermelhas e brancas só nas curvas, zebra alta amarela no Mergulho, linhas SC 1 e SC 2 e o grid numerado.
+- Escape (peça nova `kit/escape.js`, chave `escape`): asfalto de escape pintado de verde e amarelo (saída do S do Senna, Descida do Lago, Junção), brita (Ferradura, Pinheirinho, Bico de Pato) e muro de pilhas de pneus por fora das curvas. No lugar da brita contínua de `pista.js`.
+- Beira: cerca, painéis e postos do kit com patrocinadores reais (Heineken, Pirelli, Petrobras, Rolex, Banco do Brasil, Aramco, Itaú, DHL, TAG Heuer e o GP de São Paulo), mastros com a bandeira do Brasil e placas de frenagem de 150, 100 e 50 m. Marcas novas em `kit/marcas.js`: Petrobras, Banco do Brasil, Itaú e GP de São Paulo.
+- Passarela com a faixa do GP de São Paulo na reta dos boxes (mais uma depois do Mergulho), Serra da Cantareira ao norte e fachadas paulistanas nos prédios.
+- Vida e som: helicóptero, fiscais com a bandeira, vento e passarinhos do autódromo, a cidade baixa lá longe e a torcida nas arquibancadas.
 
-**`public/corrida/gps/`**: a configuração de cada GP. `pista.js` lê `GPS[id]` no lugar dos `if (id === "monaco")`. Mônaco usa todas as peças (e guarda a capela de Sainte Dévote); Interlagos por enquanto só o asfalto e o ambiente próprio. Os outdoors e as bandeirolas de `vida.js` passam a seguir o que o GP tem, não o nome da pista.
+**Só de Interlagos (`interlagos.js`, agora bem menor):** o lago da Descida do Lago, o prédio dos boxes com os camarotes e a torre de controle, e São Paulo em volta (220 prédios de 8 a 20 andares longe da pista). O que `ambiente.js` já fazia (cercas, painéis, postos, placas) saiu daqui.
 
-**Skill de projeto `nova-pista`** (`.claude/skills/nova-pista/SKILL.md`): o passo a passo para criar ou melhorar uma pista com o kit (pesquisa do circuito, traçado, cores, configuração do GP, conferência no navegador e entrega). As sessões do Claude Code carregam a skill sozinhas quando o pedido é de pista.
+**Kit:** `escape.js` (brita, listrado, pneus), `ambiente.js` ganhou `placas` e `outdoors`, `marcas.js` quatro marcas; `kit/README.md` e `CLAUDE.md` atualizados.
 
-Validação: 29 testes da corrida passaram; `git diff --check` sem erros. No navegador do app, Mônaco montou com os mesmos números de antes, sem erro no console, e Interlagos, Tóquio, Rio e Nürburgring montam normalmente.
+Validação: testes da corrida (46) passam; Interlagos conferido no navegador com `#debug` (largada, S do Senna, Lago, Ferradura, Junção e passarela, sem erro no console); Mônaco monta com os mesmos números (136 painéis, 46 postos, 13 placas, 74 luzes do túnel).

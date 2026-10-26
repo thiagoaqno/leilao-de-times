@@ -2,13 +2,14 @@
 // com a bandeira do país, os postos dos fiscais (que vida.js anima, em tr.postosGP), as placas de 100 e 50 m antes das
 // curvas e as guias luminosas do túnel. Tudo em InstancedMesh, sem luz nova.
 //
-// cfg: { marcas: nomes de marcas.js para os painéis, posto: a marca do posto, bandeira: [cor de cima, cor de baixo] }
+// cfg: { marcas: nomes de marcas.js para os painéis, posto: a marca do posto, bandeira: [cor de cima, cor de baixo],
+//        placas: as distâncias das placas de frenagem em metros (100 e 50), outdoors: as marcas dos outdoors de vida.js }
 import * as THREE from "three";
 import { canvasTex, M } from "../cena.js";
 import { marcaTex, PATROCINIO } from "./marcas.js";
 import { ocupado } from "./comum.js";
 
-export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "f1", bandeira = [0xc42d38, 0xf0eee6] } = {}) {
+export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "f1", bandeira = [0xc42d38, 0xf0eee6], placas = [100, 50], outdoors = PATROCINIO } = {}) {
   const { pts, n, W } = tr, L = tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 30, lotes = new Map();
   const metal = M(0x697780), branco = M(0xf0eee6), vermelho = M(0xc42d38), laranja = M(0xf27421), escuro = M(0x18242b), bandCima = M(bandeira[0]), bandBaixo = M(bandeira[1]);
   const luz = new THREE.MeshBasicMaterial({ color: 0xffdf9c, toneMapped: false });
@@ -17,8 +18,8 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
     x.font = "900 65px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(texto, w / 2, h / 2, w - 24);
   }, false) });
   const anuncios = marcas.map((nome) => new THREE.MeshBasicMaterial({ map: marcaTex(nome, 512, 128) })), painelPosto = new THREE.MeshBasicMaterial({ map: marcaTex(posto, 512, 128) });
-  const distancias = [100, 50].map(v => placa(String(v), "#f5f4ee", "#18242b"));
-  tr.postosGP = []; tr.marcasGP = PATROCINIO; // os outdoors de vida.js também levam as marcas
+  const distancias = placas.map(v => placa(String(v), "#f5f4ee", "#18242b"));
+  tr.postosGP = []; tr.marcasGP = outdoors; // os outdoors de vida.js também levam as marcas
   const stats = tr.ambienteGP = { paineis: 0, postos: 0, placas: 0, bandeiras: 0, luzesTunel: 0, setores: [0, 0, 0, 0] };
   function caixa(mat, x, y, z, sx, sy, sz, ry = 0) {
     if (!lotes.has(mat)) lotes.set(mat, []);
@@ -74,7 +75,7 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
     if (pts[i].k < 1 / 350 || i - ultima < n / 12) continue;
     ultima = i;
     const p = pts[i], q = pts[(i + 3) % n], lado = p.tx * q.ty - p.ty * q.tx > 0 ? -1 : 1;
-    [100, 50].forEach((distancia, j) => {
+    placas.forEach((distancia, j) => {
       const idx = (i - Math.round(distancia * 10 / 6) + n) % n, o = lugar(idx, lado, L + 2, 5);
       if (!o || tr.coberto?.(idx)) return;
       caixa(distancias[j], o.x, o.h + 22, o.z, 13, 9, 0.8, Math.atan2(-o.p.tx, -o.p.ty)); stats.placas++;
