@@ -17,6 +17,10 @@ export const MARCAS = {
   msc: { fundo: "#0b1f3a", cor: "#ffffff", texto: "MSC CRUISES", fonte: "700 {s}px Georgia, serif" },
   lv: { fundo: "#3b2a1e", cor: "#c9a96e", texto: "LOUIS VUITTON", fonte: "400 {s}px Georgia, serif" },
   crypto: { fundo: "#0b2a5b", cor: "#ffffff", texto: "crypto.com", fonte: "700 {s}px Arial, sans-serif" },
+  petrobras: { fundo: "#00793a", cor: "#ffdd00", texto: "PETROBRAS", fonte: "900 {s}px Arial, sans-serif", moldura: "#ffdd00" },
+  bb: { fundo: "#fcdc2a", cor: "#0b3d91", texto: "Banco do Brasil", fonte: "900 {s}px Arial, sans-serif" },
+  itau: { fundo: "#ec7000", cor: "#ffffff", texto: "itaú", fonte: "900 {s}px Arial, sans-serif", moldura: "#003a8c" },
+  gpsp: { fundo: "#ffffff", cor: "#00793a", texto: "GP DE SÃO PAULO", fonte: "italic 900 {s}px 'Arial Black', Arial, sans-serif", moldura: "#ffdd00" },
   acm: { fundo: "#ffffff", cor: "#c8102e", texto: "AUTOMOBILE CLUB DE MONACO", fonte: "700 {s}px Georgia, serif", moldura: "#c8102e" },
 };
 // a ordem em que as marcas se repetem pela pista
