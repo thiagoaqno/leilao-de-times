@@ -54,6 +54,7 @@ export function hud() {
   else if (race.perdeu >= 0 && m && m.finish == null) msg = "⟲ CHECKPOINT PERDIDO: volte nele ou aperte ↺";
   else if (race.cpT > now - 900 && race.sector > 0) msg = `✓ CHECKPOINT ${race.sector}/${SECTORS}`;
   else if (m && m.finish == null && m.started && m.laps === cfg.voltas - 1 && cfg.voltas > 1 && race.lastLapMsg > now - 2500) msg = "ÚLTIMA VOLTA!";
+  else if (race.pneu && race.pneu.desgaste > window.F1Regras.PENHASCO && m && m.finish == null && m.started) msg = "PNEU NO FIM: segura nas curvas";
   else if (E.S.endAt && m && m.finish == null) msg = `⏱️ ${Math.max(0, Math.ceil((E.S.endAt - now) / 1000))} s para cruzar`;
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
   $("hMsg").textContent = msg;
@@ -91,7 +92,8 @@ function minimapa(st, m) {
 // velocímetro em arco: risquinhos, a faixa vermelha no fim, o arco aceso até a velocidade, a marcha e o número grande
 function velocimetro(v) {
   const cv = $("velo"), c = cv.getContext("2d"), W = cv.width, H = cv.height, kmh = Math.round(v * 0.75);
-  const marcha = race.marcha || 1, manual = E.S.config.cambio === "manual", chave = kmh + ":" + marcha; if (race.hudVelo === chave) return; race.hudVelo = chave;
+  const marcha = race.marcha || 1, manual = E.S.config.cambio === "manual", pn = race.pneu;
+  const chave = kmh + ":" + marcha + (pn ? ":" + pn.composto + Math.round(pn.desgaste * 100) + window.F1Regras.frio(pn) : ""); if (race.hudVelo === chave) return; race.hudVelo = chave;
   const cx = W * 0.56, cy = H * 0.5, r = H * 0.4, a0 = Math.PI * 0.8, a1 = Math.PI * 2.2, max = 300, ang = (k) => a0 + (a1 - a0) * Math.min(1, k / max);
   c.clearRect(0, 0, W, H); c.lineCap = "round";
   c.beginPath(); c.arc(cx, cy, r, a0, a1); c.lineWidth = 3; c.strokeStyle = "#ffffff55"; c.stroke();
@@ -106,6 +108,17 @@ function velocimetro(v) {
   c.shadowColor = "#000a"; c.shadowBlur = 6;
   c.fillStyle = "#fff"; c.font = "500 58px Figtree, sans-serif"; c.textBaseline = "alphabetic"; c.fillText(String(kmh), cx, cy + r + 18);
   c.font = "800 12px Figtree, sans-serif"; c.fillStyle = "#ffffffcc"; c.textAlign = "left"; c.fillText("KM/H", cx + r * 0.78, cy + r + 16); c.shadowBlur = 0;
+  if (pn) pneuHud(c, pn, 30, H - 46);
+}
+// o pneu (regras de F1), à esquerda do velocímetro: o anel da cor do composto esvazia com o desgaste e fica vermelho
+// depois do penhasco; com o pneu frio, o miolo fica azul. Embaixo, o nome do composto; no meio, quanto ainda resta.
+function pneuHud(c, pn, x, y) {
+  const F = window.F1Regras, tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], resta = Math.max(0, 1 - pn.desgaste), r = 21;
+  c.beginPath(); c.arc(x, y, r, 0, 7); c.fillStyle = F.frio(pn) ? "#1d5fa8dd" : "#0b1016cc"; c.fill();
+  c.lineWidth = 6; c.beginPath(); c.arc(x, y, r - 4, 0, 7); c.strokeStyle = "#ffffff22"; c.stroke();
+  c.beginPath(); c.arc(x, y, r - 4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * resta); c.strokeStyle = pn.desgaste > F.PENHASCO ? "#ff3d6e" : tipo.cor; c.stroke();
+  c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle"; c.font = "800 11px Figtree, sans-serif"; c.fillText(Math.round(resta * 100) + "%", x, y + 1);
+  c.font = "800 10px Figtree, sans-serif"; c.fillStyle = "#ffffffcc"; c.fillText(tipo.nome.toUpperCase(), x, y + r + 11);
 }
 // volta nova: bipe e "última volta"
 export function checkMyLap(old) {

@@ -78,9 +78,11 @@ export function physics(dt, spec = carOf(me())) {
     fx = Math.cos(c.a); fy = Math.sin(c.a);
     vf += (spec.vmax * BALA - vf) * Math.min(1, dt * 2.5); vl = 0;
   }
-  // pneus: tiram até grip·dt da velocidade de lado; o resto escorrega e freia o carro (no ar, os pneus não seguram)
+  // pneus: tiram até grip·dt da velocidade de lado; o resto escorrega e freia o carro (no ar, os pneus não seguram).
+  // Nas regras de F1 o pneu gasta e esfria (f1-regras.js): a aderência dele multiplica a do carro.
+  const pn = race.pneu ? window.F1Regras.aderencia(race.pneu) : null;
   if (!air && !bala) {
-    const g = spec.grip * (road ? 1 : 0.5) * (c.slip > 30 ? spec.kin : 1) * dt;
+    const g = spec.grip * (pn ? pn.grip : 1) * (road ? 1 : 0.5) * (c.slip > 30 ? spec.kin * (pn ? pn.kin : 1) : 1) * dt;
     if (Math.abs(vl) <= g) vl = 0;
     else { vl -= Math.sign(vl) * g; vf -= Math.sign(vf) * Math.min(Math.abs(vf), spec.scrub * 3 * Math.abs(vl) * dt); }
   }
@@ -104,6 +106,7 @@ export function physics(dt, spec = carOf(me())) {
     c.vx *= pancada * raspa; c.vy *= pancada * raspa;
     if (hit > 60) { Sound.bump(); race.shake = 0.25; race.bumps = (race.bumps || 0) + 1; }
   }
+  if (race.pneu) window.F1Regras.gastarPneu(race.pneu, { dist: Math.hypot(nx - c.x, ny - c.y), total: (E.S.config.voltas || 1) * tr.n * 6, slip: c.slip, v: vf, vmax: spec.vmax, dt });
   c.x = nx; c.y = ny;
   // Balizadores flexíveis reagem ao toque e voltam sozinhos; não bloqueiam o carro.
   if (tr.cones && Math.abs(c.v) > 25) for (const cone of tr.cones) {

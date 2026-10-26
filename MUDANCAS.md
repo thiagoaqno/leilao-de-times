@@ -1,24 +1,32 @@
-# Mônaco, fase 2: marcas reais, som de cada região e cenário vivo
+# Corrida: regras de F1, parte 1, os pneus
 
-Começo da fase 2 (imersão nas pistas), com Mônaco como piloto. Tudo é cenário e som: a física não muda, e as outras pistas continuam iguais.
+O PR 1 do plano `planos/temporada-f1.md`. A sala da Corrida ganha a opção **Regras: Corrida da Galera / Fórmula 1**. Com as regras de hoje, nada muda.
 
-**Marcas de verdade** (`public/corrida/marcas.js`)
-- Os patrocinadores da F1 desenhados no canvas, sem baixar imagem: Rolex (com a coroa), Pirelli (o P comprido), Aramco, Heineken (a estrela vermelha), DHL (as faixas), TAG Heuer, Lenovo, AWS (o sorriso), Formula 1, Qatar Airways, MSC, Crypto.com, Louis Vuitton e o Automobile Club de Monaco.
-- Estão no guard-rail (entre as listras vermelhas e brancas), nos painéis colados nele, nos postos dos fiscais, nos outdoors e nas passarelas (a da reta dos boxes é a da Rolex, como no GP).
+**Os pneus** (`public/corrida/f1-regras.js`, o mesmo arquivo no servidor e no navegador)
+- Três compostos com as cores da Pirelli: **macio** (o que mais segura, dura 35% da corrida até o penhasco), **médio** (60%) e **duro** (90%, segura menos).
+- O desgaste anda pela **fração da corrida**, não por volta: 3 ou 5 voltas gastam a mesma parte do pneu, então a estratégia vale em qualquer tamanho de corrida. Escorregar gasta mais.
+- Até o penhasco o pneu perde pouco (6%); depois dele, despenca (até 26% a menos de aderência).
+- Na largada o pneu está **frio** (8% a menos) e esquenta andando; o macio esquenta mais rápido.
+- Na física (`fisica.js`), a aderência do pneu multiplica o `grip` e o `kin` do carro: com o pneu gasto, o carro escorrega mais nas curvas.
 
-**Som ambiente que muda pela pista** (`public/corrida/monaco-vida.js`, tudo sintetizado)
-- Porto: ondas, gaivotas e de vez em quando a buzina de um iate.
-- Arquibancadas: a torcida, com os gritos subindo e descendo.
-- Cidade: o ronco da rua e lambretas passando; na Place du Casino, a fonte.
-- Túnel: o zumbido dos exaustores e o eco do motor; lá dentro o som de fora quase some.
-- Sainte Dévote: os sinos da capela tocam de tempos em tempos.
-- O helicóptero da TV, mais alto quanto mais perto.
-- O som ambiente segue o volume e o botão de som da corrida e só toca durante a corrida.
+**Na sala**
+- Com "Fórmula 1", as caixas e a ajuda do pelotão saem (o servidor desliga as duas). O vácuo continua.
+- Cada piloto escolhe o **pneu da largada** (macio, médio ou duro) nas Regras. O plano deixava a escolha para o PR 2, com o box, mas sem box um pneu só não aguentaria a corrida, por isso ela veio já agora.
+- Os **robôs** usam o mesmo pneu: gasta pela distância, escorrega quando a curva pede mais que o grip, e nas curvas eles andam com a raiz da aderência (com o pneu gasto ou frio, freiam antes).
 
-**Cenário vivo**
-- O helicóptero da TV acompanha a corrida, à frente de quem a câmera segue, com o rotor girando.
-- Gaivotas planando sobre o porto.
-- Os fiscais dos 46 postos agitam a bandeira verde quando o carro passa perto.
-- Com "menos movimento" ligado no sistema, as animações param.
+**No HUD**
+- O anel do pneu ao lado do velocímetro: a cor do composto, esvaziando com o desgaste, vermelho depois do penhasco e com o miolo azul enquanto está frio; no meio, quanto ainda resta.
+- O aviso "PNEU NO FIM: segura nas curvas" depois do penhasco.
+- "Como jogar" explica os pneus.
 
-Validação: 29 testes da corrida passaram; `git diff --check` sem erros. Conferido no navegador do app: marcas na reta, na Sainte Dévote, no cais e no grampo; o peso de cada região do som medido no #debug (`tr.somMonaco`) no grid, no Cassino, no túnel, no cais e na Sainte Dévote; o helicóptero e os fiscais com a bandeira.
+**Testes** (`tests/corrida-f1-pneus.test.js`, 6 testes)
+- O macio é o mais rápido no começo e chega ao penhasco antes do médio e do duro; depois dele, fica atrás do duro.
+- 3 ou 8 voltas gastam a mesma fração; escorregar gasta mais; a aderência fica sempre entre 0,7 e 1,1.
+- Os robôs com as regras de F1 gastam o pneu e fecham a volta; sem elas, não têm pneu.
+- A sala: "f1" desliga caixas e equilíbrio, o pneu inválido e a troca no meio da corrida são recusados.
+
+**Conferido**
+- `npm test`: 553 de 554 passaram; o que falhou foi um teste da Cozinha (`servidor: abre a cozinha...`), por tempo, com a máquina carregada; rodado sozinho, `tests/cozinha.test.js` passa inteiro (24 de 24). Os 6 testes novos e os de hoje da Corrida passam.
+- No navegador do app, em Interlagos com 1 volta, macio e 3 robôs: as Regras sem caixas e sem equilíbrio, com a escolha do pneu (`planos/imagens/corrida-pneus-regras.jpg`); o pneu frio na largada (`corrida-pneus-largada.jpg`); o macio em 28% com 36% da corrida, já vermelho (`corrida-pneus-desgaste.jpg`); e em 0%, com o aviso e a fumaça do carro escorregando (`corrida-pneus-fim.jpg`).
+
+Não mexe em `pista.js`, `vida.js` nem `sons.js` (o #303 mexe neles).

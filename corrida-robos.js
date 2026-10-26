@@ -5,6 +5,7 @@
 // mesmo evento "ghost" e as voltas contam pelos mesmos setores.
 const T = require("./public/corrida/pistas.js");
 const Itens = require("./corrida-itens.js");
+const F1 = require("./public/corrida/f1-regras.js"); // os pneus das regras de F1
 const { SKINS } = require("./public/pelada/campo.js");
 
 const NOMES = ["Faísca", "Pistão", "Graxa", "Biela", "Vácuo", "Turbo", "Chicane"];
@@ -155,7 +156,8 @@ function largar(room) {
     const nivel = ritmo ? escalaPara(pf, room.ritmoRobos * (1 + espalha)) : (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.98, 1.02);
     p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
     // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
-    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: rnd(-7, 7), tracadoId, reacao: rnd(0, 450), usaEm: 0 };
+    p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: rnd(-7, 7), tracadoId, reacao: rnd(0, 450), usaEm: 0,
+      pneu: room.config.regras === "f1" ? F1.pneuNovo(p.pneu) : null }; // regras de F1: o mesmo pneu de quem joga
     posicionar(p, pf, 0);
   }
 }
@@ -183,6 +185,9 @@ function passo(room, dt, setor, emit) {
       let el = 1; if (lider != null && p.pos && (p.pos.prog - lider) / pf.n > 0.08) el = 0.97;
       const i = Math.floor(ia.s) % pf.n;
       let alvo = Math.min(pf.lim[i], pf.lim[(i + 3) % pf.n]) * ia.nivel * el * (1 - Math.min(1, Math.abs(ia.desvio) / 40) * 0.06);
+      // regras de F1: nas curvas, a velocidade vai com a raiz da aderência do pneu (gasto ou frio, o robô freia antes)
+      const aderencia = ia.pneu && F1.aderencia(ia.pneu);
+      if (aderencia && pf.lim[i] < c.vmax * 0.97) alvo *= Math.sqrt(aderencia.grip);
       const baseLat = pf.lat[(i + 2) % pf.n] + ia.jeito + Math.sin(ia.s / 105 + ia.tracadoId * 1.7) * 4;
       const maxLat = t.width / 2 - 10, ponto = pf.pts[i];
       let desvio = 0, freioTrafego = Infinity, encontrou = false;
@@ -217,6 +222,8 @@ function passo(room, dt, setor, emit) {
       else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * ak * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / (c.vmax * bk), 1.6)) * dt); // a mesma arrancada do carro de quem joga
       else ia.v = Math.max(alvo, ia.v - (ia.v > c.vmax && alvo >= c.vmax * 0.98 ? T.TURBO_SOLTA : c.brake) * dt); // fim do turbo na reta: solta aos poucos, como quem joga
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
+      // o pneu gasta pela distância; escorrega quando a curva pede mais que o grip do carro
+      if (ia.pneu) F1.gastarPneu(ia.pneu, { dist: ia.v * dt, total: room.config.voltas * pf.n * STEP, slip: Math.max(0, (ia.v * ia.v * pf.linha.k[i]) / c.grip - 0.9) * 120, v: ia.v, vmax: c.vmax, dt });
       // depois da largada (~600 de reta), sai da faixa do grid e vai aos poucos para o traçado; antes disso, não desvia de ninguém
       const saida = Math.min(1, ((ia.s - ia.s0 + pf.n) % pf.n) / 100), largando = saida < 1;
       ia.desvio += (desvio - ia.desvio) * Math.min(1, dt * 2.2);
