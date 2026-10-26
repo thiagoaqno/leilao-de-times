@@ -1,22 +1,13 @@
-# Testes que falhavam por acaso ou estavam velhos
+# Interlagos e Mônaco: ambiente de Fórmula 1
 
-Mais um passo da refatoração. Nada muda no jogo: só os testes.
+Os dois circuitos ganham luz traseira vermelha em matriz de LEDs, discos dianteiros incandescentes sob frenagem forte e faíscas do assoalho em alta velocidade sobre zebras ou trechos inclinados. Com menos movimento, a lanterna fica acesa continuamente e as novas faíscas são desativadas.
 
-## O que muda
+O asfalto compartilhado usa textura de agregado fino de 1024 × 1024, repetida a cada 8 metros, com relevo sutil, desgaste e marcas de borracha que acompanham as curvas. As linhas de borda ficam separadas da textura; a faixa central tracejada e os cones foram removidos desses dois circuitos.
 
-- **Ginásio, "dois clientes e robôs jogam até o fim":** a partida em tempo real exigia que os clientes vencessem os
-  robôs da sala. No GitHub, com todos os testes rodando juntos, os robôs (no nível normal) às vezes ganhavam, e o teste
-  falhava por acaso: aconteceu no PR #298. Agora os robôs da sala são os fáceis (`robo: "facil"`). Com 6 cópias do teste
-  rodando ao mesmo tempo, a versão antiga falhou 1 vez em 6. A nova passou 6 de 6, e depois 8 de 8.
-- **Drag no navegador (`corrida-drag.spec.js`):** dois testes falhavam também na `main`:
-  - "aquece os pneus": esperava 3 pistas, e o Drag tem 4 desde a Serra. Ele também abria a página sem o `#debug`, e o
-    `largar` só trocava o `#` do endereço, o que não recarrega a página: o `window.__drag` nunca existia;
-  - "segurar W explode o motor": o motor estoura mesmo, mas o navegador dos testes roda o jogo a cerca de um décimo da
-    velocidade real (o passo de cada quadro tem limite). O motor leva uns 93 s para estourar, e o teste esperava 90 s.
-    O arquivo ganhou mais tempo (`test.describe.configure`), e as esperas pela largada também, porque a contagem anda
-    devagar do mesmo jeito.
+Interlagos recebe 82 painéis, 16 postos cobertos, 21 placas de aproximação de curvas, cercas e arquibancadas adicionais em trechos intermediários. Menos árvores junto à pista deixam as estruturas visíveis.
 
-## Testes
+Mônaco recebe ambientação própria para ruas estreitas: 136 painéis no guard-rail, cercas de proteção, 46 bandeiras vermelhas e brancas, 46 postos compactos com fiscais e 13 placas de frenagem. O túnel recebe 74 guias luminosas baixas. A decoração acompanha toda a volta (40/32/24/40 painéis por quarto do circuito); os postos respeitam as áreas reservadas do porto, piscina, hotel e arquibancadas, e os novos postes e painéis verificam a distância ao traçado vizinho.
 
-- Ginásio: 4 vezes sozinho, 6 e depois 8 cópias ao mesmo tempo, todas passando.
-- `corrida-drag.spec.js`: os 4 passando (antes, 2 falhavam na `main`).
+Peças repetidas usam InstancedMesh e materiais compartilhados, sem novas luzes dinâmicas. As adições são cenográficas e não alteram as regras ou colisões. Os demais circuitos mantêm o visual anterior.
+
+Validação: 29 testes de corrida passaram na etapa de Interlagos; os 5 testes de colisão e experiência foram executados novamente após estender a Mônaco. Sintaxe dos módulos e git diff --check sem erros. Inspeção no navegador do app em quatro posições de Interlagos e cinco de Mônaco, incluindo túnel; contagens da ambientação e ausência de cones conferidas, além do pulso dos LEDs e aquecimento dos discos na etapa inicial.

@@ -3,6 +3,9 @@ import * as THREE from "three";
 import { PISTAS, sample, elevate, WORLD, rng } from "./estado.js";
 import { drawPreview } from "./menus.js";
 import { renderer, scene, hemi, sun, canvasTex, M, LOOK } from "./cena.js";
+import { ambienteInterlagos } from "./interlagos.js";
+import { asfaltoGP, borrachaGP } from "./asfalto-gp.js";
+import { ambienteMonaco } from "./monaco-ambiente.js";
 import { PROPS, aoCarregar } from "./props.js";
 import { enfeitar } from "./vida.js";
 import { aplicarCeu } from "./ceu.js";
@@ -119,13 +122,18 @@ function buildWorld(tr) {
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
     const m = add(new THREE.Mesh(g, mat)); m.receiveShadow = true; return m;
   }
-  const asphalt = canvasTex(128, 256, (x, w, hh, rr) => { x.fillStyle = look.road; x.fillRect(0, 0, w, hh); for (let i = 0; i < 3000; i++) { x.fillStyle = rr() < 0.5 ? "#00000018" : "#ffffff10"; x.fillRect(rr() * w, rr() * hh, 2, 2); } x.fillStyle = "#00000022"; x.fillRect(w * 0.3, 0, 10, hh); x.fillRect(w * 0.62, 0, 12, hh); x.fillStyle = "#e8e8e8"; x.fillRect(2, 0, 3, hh); x.fillRect(w - 5, 0, 3, hh); x.fillStyle = id === "tokyo" ? "#f2c94c" : "#f2f2f2"; x.fillRect(w / 2 - 1.5, 0, 3, hh * 0.45); });
+  const asphalt = (id === "interlagos" || id === "monaco") ? null : canvasTex(128, 256, (x, w, hh, rr) => { x.fillStyle = look.road; x.fillRect(0, 0, w, hh); for (let i = 0; i < 3000; i++) { x.fillStyle = rr() < 0.5 ? "#00000018" : "#ffffff10"; x.fillRect(rr() * w, rr() * hh, 2, 2); } x.fillStyle = "#00000022"; x.fillRect(w * 0.3, 0, 10, hh); x.fillRect(w * 0.62, 0, 12, hh); x.fillStyle = "#e8e8e8"; x.fillRect(2, 0, 3, hh); x.fillRect(w - 5, 0, 3, hh); x.fillStyle = id === "tokyo" ? "#f2c94c" : "#f2f2f2"; if (id !== "interlagos") x.fillRect(w / 2 - 1.5, 0, 3, hh * 0.45); });
   // a faixa do meio tracejada (uma a cada 10 m) e as marcas de pneu: passando rápido embaixo do carro, dão a noção de velocidade
   const arco = id === "arcoiris" ? canvasTex(128, 32, (x, w, hh) => { ["#ff3b3b", "#ff9a2e", "#ffe14a", "#3ee07a", "#3aa0ff", "#8a5bff", "#ff5fd2"].forEach((c, i) => { x.fillStyle = c; x.fillRect((i * w) / 7, 0, w / 7 + 1, hh); }); x.fillStyle = "#ffffff55"; x.fillRect(0, 0, w, 3); }) : null;
-  ribbon(-W / 2, W / 2, 0.4, arco ? new THREE.MeshStandardMaterial({ map: arco, emissive: 0xffffff, emissiveMap: arco, emissiveIntensity: 0.55, roughness: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }) : new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, side: THREE.DoubleSide }), 256);
+  if (id === "interlagos" || id === "monaco") {
+    ribbon(-W / 2, W / 2, 0.4, asfaltoGP(), 80, 0.4, W / 80);
+    const tinta = M(0xe2e0d7, { roughness: 0.95, side: THREE.DoubleSide });
+    for (const lado of [-1, 1]) ribbon(lado * (W / 2 - 2.6), lado * (W / 2 - 1.2), 0.49, tinta, 80);
+    borrachaGP(tr, add);
+  } else ribbon(-W / 2, W / 2, 0.4, arco ? new THREE.MeshStandardMaterial({ map: arco, emissive: 0xffffff, emissiveMap: arco, emissiveIntensity: 0.55, roughness: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }) : new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, side: THREE.DoubleSide }), 256);
   // Balizadores leves nas saídas de curva: o carro pode tocá-los e eles se inclinam.
   tr.cones = [];
-  if (!t.espaco) {
+  if (!t.espaco && id !== "interlagos" && id !== "monaco") {
     const orange = M(0xff792d), white = M(0xf7f1df), base = M(0x34383a);
     for (let i = 28; i < n; i += Math.max(45, Math.floor(n / 42))) {
       const p = pts[i], side = i % 2 ? -1 : 1, lat = side * (W / 2 - 3);
@@ -220,7 +228,10 @@ function buildWorld(tr) {
   const trees = [], palms = [], blds = [], towers = [], stands = [], yachts = [], neons = [], glass = [], jungle = [], houses = [];
   // Mônaco: o porto, a piscina, as arquibancadas, o túnel e a Place du Casino (monaco.js); os enfeites soltos não caem
   // na água nem em cima deles
-  if (id === "monaco") cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, jungle, blds });
+  if (id === "monaco") {
+    cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, jungle, blds });
+    ambienteMonaco(tr, add);
+  }
   const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
     const p = pts[i];
@@ -233,7 +244,7 @@ function buildWorld(tr) {
         if (k < 0.25) palms.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.5, r: r() * 6 });
         else if (k < 0.85) { const sx = 55 + r() * 50, sz = 55 + r() * 50, far = near + 30 + r() * 50, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 18) && terra(bx, by) && !orlaMonaco(tr, bx, by)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 90 + r() * 200, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f3e0c0", "#f4ece0"][(r() * 6) | 0] }); }
       }
-      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : 0.52)) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
+      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" ? 0.07 : 0.52)) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
       else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
       else if (id === "losangeles") { // palmeiras altas na beira e prédios de vidro mais para trás
         if (k < 0.35) palms.push({ x, y, h: hAt(x, y), s: 1.6 + r() * 0.5, r: r() * 6 });
@@ -290,6 +301,10 @@ function buildWorld(tr) {
     const cab = new THREE.BoxGeometry(26, 6, 12); cab.translate(-4, 14, 0); inst(cab, M(0xeef1f5), yachts);
     const vidro = new THREE.BoxGeometry(16, 4.5, 10.5); vidro.translate(-2, 19, 0); inst(vidro, M(0x22313f, { roughness: 0.2, metalness: 0.4 }), yachts);
   }
+  if (id === "interlagos") for (const f of [0.16, 0.27, 0.39, 0.51, 0.63, 0.75, 0.87]) {
+    const p = pts[Math.floor(n * f)], L = W / 2 + 155, x = p.x - p.nx * L, y = p.y - p.ny * L;
+    if (pts.every(q => Math.hypot(q.x - x, q.y - y) > W / 2 + 95)) stands.push({ x, y, h: hAt(x, y), s: 1, r: -Math.atan2(p.ny, p.nx) });
+  }
   for (const s0 of stands) { // arquibancadas da reta dos boxes
     const g = new THREE.Group(); g.position.set(s0.x, s0.h, s0.y); g.rotation.y = s0.r; add(g);
     if (PROPS.arquibancada) { // a arquibancada coberta do Kenney, de frente para a pista (o modelo olha para +z, a pista fica em +x)
@@ -303,6 +318,7 @@ function buildWorld(tr) {
   }
   const NEON = [["#ff4fd8", "東京"], ["#4fe3ff", "夜道"], ["#ffe14f", "走れ"], ["#7dff6b", "友達"]].map(([c, t]) => canvasTex(64, 128, (x, w, hh) => { x.fillStyle = "#0b0b14"; x.fillRect(0, 0, w, hh); x.strokeStyle = c; x.lineWidth = 4; x.strokeRect(4, 4, w - 8, hh - 8); x.fillStyle = c; x.font = "bold 40px sans-serif"; x.textAlign = "center"; x.fillText(t[0], w / 2, 52); x.fillText(t[1], w / 2, 104); }, false));
   for (const o of neons) { const m = add(new THREE.Mesh(new THREE.PlaneGeometry(26, 52), new THREE.MeshBasicMaterial({ map: NEON[o.g], side: THREE.DoubleSide }))); m.position.set(o.x, o.h + 40, o.y); m.rotation.y = -o.r + Math.PI / 2; const pole = add(new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 16), M(0x222222))); pole.position.set(o.x, o.h + 8, o.y); }
+  if (id === "interlagos") ambienteInterlagos(tr, add);
   enfeitar(tr, add, r, (x, y, i) => groundH(tr, x, y, i));
   if (id === "losangeles") landmarksLA(tr, add, r);
   if (id === "rio") landmarksRio(tr, add, r, size, ribbon);

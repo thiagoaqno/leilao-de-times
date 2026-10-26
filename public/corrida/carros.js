@@ -42,6 +42,18 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
     for (const [r, l, c, o] of [[0.13, 0.9, 0xff7a1a, 0.75], [0.07, 0.6, 0xfff07a, 0.95]]) { const m = new THREE.Mesh(new THREE.ConeGeometry(r, l, 10), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending })); m.rotation.x = Math.PI / 2; m.position.z = l / 2; f.add(m); }
     chamas.push(f);
   }
+  // Lanterna central com matriz de LEDs; sem luz dinâmica por carro.
+  const lanterna = new THREE.Group(); lanterna.position.set(0, 0.57, 2.23); kt.g.add(lanterna); lanterna.scale.setScalar(0.72); lanterna.visible = false;
+  const suporte = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.25, 0.08), new THREE.MeshBasicMaterial({ color: 0x101216 })); lanterna.add(suporte);
+  const ledMat = new THREE.MeshBasicMaterial({ color: 0xff2418, toneMapped: false });
+  const leds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.045, 0.045, 0.018), ledMat, 20), matriz = new THREE.Object3D();
+  for (let i = 0; i < 20; i++) { matriz.position.set((i % 5 - 2) * 0.057, (Math.floor(i / 5) - 1.5) * 0.057, 0.05); matriz.updateMatrix(); leds.setMatrixAt(i, matriz.matrix); }
+  lanterna.add(leds);
+  // Discos dianteiros ficam incandescentes sob frenagem forte e esfriam progressivamente.
+  const freios = new THREE.Group(); kt.g.add(freios); freios.visible = false;
+  const discoMat = new THREE.MeshBasicMaterial({ color: 0xff4a0a, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+  const discoGeo = new THREE.RingGeometry(0.075, 0.19, 16);
+  for (const lado of [-1, 1]) { const m = new THREE.Mesh(discoGeo, discoMat); m.material.side = THREE.DoubleSide; m.rotation.y = Math.PI / 2; m.position.set(lado * 0.78, 0.31, -1.35); freios.add(m); }
   // tontura: estrelinhas rodando em cima da cabeça de quem foi atingido
   const tontura = new THREE.Group(); tontura.position.y = 24; tontura.visible = false; body.add(tontura);
   const estrelaGeo = new THREE.OctahedronGeometry(1.6, 0), estrelaMat = new THREE.MeshBasicMaterial({ color: 0xffe14a });
@@ -50,10 +62,15 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   shadow.rotation.x = -Math.PI / 2; shadow.scale.set(spec.W / 2 * KS, (spec.L / 2 + 0.2) * KS, 1); g.add(shadow);
   target.add(g);
   // primeira pessoa: a câmera fica no capacete, atrás do volante; o fantasma fica meio transparente
-  const k = { g, body, kt, shadow, chamas, tontura, L: spec.L * KS, tAt: 0, mats: kt.mats, steerV: 0, target, sc, eye: { u: 0, h: 0 }, roof: kt.piloto, cabin: new THREE.Object3D(), roofBits: [], pitch: 0, roll: 0, giro: 0, faisca: 0 };
+  const k = { g, body, kt, shadow, chamas, tontura, lanterna, leds, ledMat, freios, discoMat, calor: 0, tempoGP: 0, faiscaGP: 0, L: spec.L * KS, tAt: 0, mats: kt.mats, steerV: 0, target, sc, eye: { u: 0, h: 0 }, roof: kt.piloto, cabin: new THREE.Object3D(), roofBits: [], pitch: 0, roll: 0, giro: 0, faisca: 0 };
   const pronto = () => {
     k.mats = kt.mats; k.eye.u = spec.L / 2 - kt.olho.z * sc; k.eye.h = kt.olho.y * sc;
     for (const f of chamas) f.position.z = kt.escapamento.z;
+    lanterna.position.z = kt.escapamento.z - 0.18;
+    kt.rodas.filter(r => r.esterca).forEach((r, i) => {
+      const disco = freios.children[i]; if (!disco) return;
+      disco.position.copy(r.esterca.position); disco.position.x -= Math.sign(disco.position.x) * 0.1;
+    });
     kt.g.traverse((o) => { if (o.isMesh) o.castShadow = !ghost && !leve; });
     if (ghost) for (const m of kt.mats) { m.transparent = true; m.opacity = 0.5; m.depthWrite = false; }
   };
@@ -64,6 +81,7 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
 // fx: { turbo, estrela, rodando, derrapa, pequeno, bala } — a chama, o arco-íris da estrela, o giro de quem foi atingido,
 // as faíscas, o carro encolhido pelo raio e a bala no lugar do carro.
 const _cor = new THREE.Color();
+const menosMovimento = matchMedia("(prefers-reduced-motion: reduce)");
 export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 0, fx = {}) {
   const suave = 1 - Math.exp(-dt * 12);
   k.pitch += (pitch - k.pitch) * suave; k.roll += (lean - k.roll) * suave;
@@ -79,6 +97,20 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
   k.steerV += (steer - k.steerV) * 0.3;
   animarF1(k.kt, (v * dt) / (k.sc * KS), k.steerV);
   k.shadow.position.y = ground - z + 0.7;
+  k.tempoGP += dt;
+  k.lanterna.visible = k.freios.visible = !!fx.f1 && !fx.bala;
+  // Um pulso a cada 0,8 s; com menos movimento a lanterna fica acesa continuamente.
+  k.ledMat.color.setHex(menosMovimento.matches || k.tempoGP % 0.8 < 0.2 ? 0xff3525 : 0x610500);
+  const desaceleracao = dt > 0 ? ((k.velAnterior ?? v) - v) / dt : 0; k.velAnterior = v;
+  const freando = fx.f1 && v > 90 && desaceleracao > 90 && Math.abs(z - ground) < 5;
+  k.calor += ((freando ? 0.8 : 0) - k.calor) * (1 - Math.exp(-dt * (freando ? 5 : 1.4)));
+  k.discoMat.opacity = k.calor;
+  k.faiscaGP -= dt;
+  // Assoalho raspa nas zebras ou nas compressões em alta velocidade. Emissão limitada por tempo.
+  if (fx.f1 && !fx.bala && !fx.rodando && !menosMovimento.matches && v > 230 && Math.abs(z - ground) < 4 && (fx.zebra || Math.abs(pitch) > 0.045) && k.faiscaGP <= 0) {
+    k.faiscaGP = 0.12;
+    faiscas(x - Math.cos(a) * k.L * 0.43, ground + 1.5, y - Math.sin(a) * k.L * 0.43, "#ffd6a0", 4, 32);
+  }
   for (const f of k.chamas) { f.visible = !!fx.turbo; if (f.visible) f.scale.set(1, 1, 0.7 + Math.random() * 0.7); }
   const tinta = k.kt.pintura;
   if (fx.estrela) { _cor.setHSL((performance.now() / 300) % 1, 1, 0.5); tinta.emissive.copy(_cor); tinta.emissiveIntensity = 0.9; }
@@ -98,6 +130,7 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
 }
 export function dropKart(k) {
   if (!k) return; (k.target || scene).remove(k.g);
+  for (const grupo of [k.lanterna, k.freios]) grupo.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
   soltarF1(k.kt); for (const f of k.chamas || []) f.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
 }
 
