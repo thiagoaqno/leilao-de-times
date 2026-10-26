@@ -1,24 +1,17 @@
-# Mônaco, fase 2: marcas reais, som de cada região e cenário vivo
+# Plano: a temporada de F1 na Corrida
 
-Começo da fase 2 (imersão nas pistas), com Mônaco como piloto. Tudo é cenário e som: a física não muda, e as outras pistas continuam iguais.
+Só o documento, sem código: `planos/temporada-f1.md`, o plano para levar a Corrida da Galera a um modo carreira de Fórmula 1, dividido em 14 PRs pequenos, cada um com o que entrega e como testar.
 
-**Marcas de verdade** (`public/corrida/marcas.js`)
-- Os patrocinadores da F1 desenhados no canvas, sem baixar imagem: Rolex (com a coroa), Pirelli (o P comprido), Aramco, Heineken (a estrela vermelha), DHL (as faixas), TAG Heuer, Lenovo, AWS (o sorriso), Formula 1, Qatar Airways, MSC, Crypto.com, Louis Vuitton e o Automobile Club de Monaco.
-- Estão no guard-rail (entre as listras vermelhas e brancas), nos painéis colados nele, nos postos dos fiscais, nos outdoors e nas passarelas (a da reta dos boxes é a da Rolex, como no GP).
+**As quatro partes**
+- **Dirigibilidade e regras de F1** (PRs 1 a 5), como opção da sala de hoje: pneus (macio, médio e duro, desgaste medido em fração da corrida e temperatura), pit stop pelo corredor dos boxes com a regra dos dois compostos, DRS clássico e ERS, bandeiras, limites de pista, penalidades e safety car, classificação, grid de 22, as cinco luzes e a pontuação oficial. O plano mostra onde cada regra entra em `fisica.js` (o `spec` que a física já recebe, a linha da aderência dos pneus, o `boostK` do vácuo e do turbo, o piloto automático da bala no corredor dos boxes).
+- **A equipe** (PRs 6 e 7): as peças viram o `spec` do carro sob um teto de gastos, mais os pilotos reais de 2026 e quatro engenheiros.
+- **A temporada solo** (PRs 8 a 10): o save como o da Carreira, a sede da equipe, 8 GPs com a final em Interlagos, os campeonatos de pilotos e de construtores, o dinheiro e o desenvolvimento entre GPs.
+- **O multiplayer** (PRs 11 a 14): a sala com código, dois amigos podendo dividir a mesma equipe, o GP ao vivo para todos, o mercado de pilotos em leilão e o acabamento.
 
-**Som ambiente que muda pela pista** (`public/corrida/monaco-vida.js`, tudo sintetizado)
-- Porto: ondas, gaivotas e de vez em quando a buzina de um iate.
-- Arquibancadas: a torcida, com os gritos subindo e descendo.
-- Cidade: o ronco da rua e lambretas passando; na Place du Casino, a fonte.
-- Túnel: o zumbido dos exaustores e o eco do motor; lá dentro o som de fora quase some.
-- Sainte Dévote: os sinos da capela tocam de tempos em tempos.
-- O helicóptero da TV, mais alto quanto mais perto.
-- O som ambiente segue o volume e o botão de som da corrida e só toca durante a corrida.
+**Decisões do Thiago** (já no plano)
+- Pilotos e equipes reais de 2026 (as 11 equipes e os 22 titulares; o jogador assume uma equipe e é o piloto 1 dela).
+- DRS clássico.
+- A lista de GPs está boa.
+- Dois amigos podem dividir a mesma equipe (o primeiro que entrou é o chefe e confirma a montagem).
 
-**Cenário vivo**
-- O helicóptero da TV acompanha a corrida, à frente de quem a câmera segue, com o rotor girando.
-- Gaivotas planando sobre o porto.
-- Os fiscais dos 46 postos agitam a bandeira verde quando o carro passa perto.
-- Com "menos movimento" ligado no sistema, as animações param.
-
-Validação: 29 testes da corrida passaram; `git diff --check` sem erros. Conferido no navegador do app: marcas na reta, na Sainte Dévote, no cais e no grampo; o peso de cada região do som medido no #debug (`tr.somMonaco`) no grid, no Cassino, no túnel, no cais e na Sainte Dévote; o helicóptero e os fiscais com a bandeira.
+Nenhum código mudou.
