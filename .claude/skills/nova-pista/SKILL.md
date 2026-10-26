@@ -61,7 +61,9 @@ Nada do cenário muda a física.
 
 ## 6. Conferir
 
-- `node --test tests/corrida*.test.js` (e `npm test` antes do commit) e `git diff --check`.
+- Só os testes da Corrida: `node --test tests/corrida*.test.js` (e os specs do Playwright da corrida, se cobrirem o que
+  você mexeu) e `git diff --check`. Não rode o `npm test` completo: a suíte inteira é lenta e não tem a ver com a pista;
+  diga no PR que rodou só os testes da Corrida.
 - No navegador do app, `/corrida/#debug`: abra uma sala, escolha a pista e largue. `window.__corrida.race.tr` tem os
   números das peças (`chaoGP`, `ambienteGP`, `somGP`, `zebras`...). Para fotografar vários pontos, mova o carro:
   `car = __corrida.race.car`, ponha `x`, `y`, `z`, `a` num ponto de `tr.pts` e zere `race.cam.pos`. Tire fotos da
