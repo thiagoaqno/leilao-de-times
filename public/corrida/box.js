@@ -76,12 +76,16 @@ export function passoBox(dt, spec) {
     c.v = 0; B.t += dt;
     if (B.t >= B.parada) { race.pneu = F1().pneuNovo(B.composto); B.fase = "sai"; Sound.pop(); }
   } else {
-    vai(vlim, spec.acc); B.u += (c.v * dt) / 6;
+    vai(vlim, spec.acc); B.u = Math.min(cor.len, B.u + (c.v * dt) / 6);
   }
   const fim = B.u >= cor.len, p = ponto(tr, cor, B.u, B.lat0), q = ponto(tr, cor, Math.min(cor.len, B.u + 0.4), B.lat0);
-  c.a = Math.atan2(q.y - p.y, q.x - p.x); c.x = p.x; c.y = p.y;
+  // Na saída, q e p são o mesmo ponto: atan2(0, 0) apontava sempre para leste.
+  // O rumo da pista também evita que a rampa lateral dite o ângulo ao soltar o carro.
+  const saida = fim ? F1().saidaDoCorredor(cor, tr.pts) : null;
+  c.a = saida ? saida.a : Math.atan2(q.y - p.y, q.x - p.x);
+  c.x = p.x; c.y = p.y;
   c.vx = Math.cos(c.a) * c.v; c.vy = Math.sin(c.a) * c.v; c.slip = 0; c.vz = 0; c.air = false; c.steer *= 0.8; race.offroad = false;
-  race.idx = nearest(tr, c.x, c.y, race.idx); c.z = groundH(tr, c.x, c.y, race.idx);
+  race.idx = saida ? saida.indice : nearest(tr, c.x, c.y, race.idx); c.z = groundH(tr, c.x, c.y, race.idx);
   if (fim) { socket.emit("act", { type: "box", fase: "sai", composto: B.composto }, () => {}); B.fase = null; B.pedido = null; }
   return !fim; // no último passo o carro já está na beira da pista e a física de sempre continua dali
 }

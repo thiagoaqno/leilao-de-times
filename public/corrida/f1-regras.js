@@ -75,6 +75,11 @@ function corredor(t, n, W) {
 }
 // a garagem do piloto de número `k` no grid (cada um tem a sua, até GARAGENS)
 const garagemDe = (c, k) => c.garagens[((k % GARAGENS) + GARAGENS) % GARAGENS];
+// Ao deixar a rampa, usa a tangente da pista: o último ponto do corredor não tem um ponto seguinte.
+function saidaDoCorredor(c, pts) {
+  const indice = (c.i0 + c.len) % pts.length, p = pts[indice];
+  return { indice, a: Math.atan2(p.ty, p.tx) };
+}
 // o tempo que uma parada deixa o carro no corredor: andar nele no limitador mais a parada
 const tempoNoBox = (c, vmax, parada) => c.comprimento / (LIMITADOR * vmax) + parada;
 // registra a parada de `p` (volta em que entrou, quanto ficou, composto novo) e o composto passa a valer
@@ -117,7 +122,7 @@ function estrategia(voltas, nivel = "medio", semente = 1) {
 }
 
 const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, pneuNovo, gastarPneu, aderencia, frio,
-  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, corredor, garagemDe, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia };
+  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;
 })(typeof window !== "undefined" ? window : globalThis);
