@@ -51,6 +51,7 @@ export function enfeitar(tr, add, r, alturaEm) {
     const p = pts[i];
     for (const s of [-1, 1]) {
       const [x, z] = lat(p, s * (borda + (comMuro ? 0 : 0))), y = comMuro ? alturaEm(x, z, i) + 12 : alturaEm(x, z, i);
+      if (tr.noCorredor?.(x, z)) continue;
       if (comMuro) olho.push({ x, y: y + 0.8, z, ry: Math.atan2(p.tx, p.ty), sx: 2.4, sy: 1.6, sz: 2.4, c: (i / 6) % 2 ? "#ffd23f" : "#ffffff" });
       else { bal.push({ x, y: y + 5, z, s: 1 }); olho.push({ x, y: y + 8, z, ry: Math.atan2(p.tx, p.ty), sx: 1.9, sy: 2.2, sz: 1.9, c: "#ff7a1a" }); }
     }
@@ -62,6 +63,7 @@ export function enfeitar(tr, add, r, alturaEm) {
   for (let i = 0; i < n; i += 4) {
     const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 230) || t.espaco) continue;
     const giro = p.tx * q.ty - p.ty * q.tx, fora = giro > 0 ? -1 : 1, [x, z] = lat(p, fora * (comMuro ? tr.wallLat - 3 : W / 2 + 14)), y = alturaEm(x, z, i);
+    if (tr.noCorredor?.(x, z)) continue;
     setas[fora > 0 ? 0 : 1].push({ x, y: y + (comMuro ? 18 : 12), z, ry: Math.atan2(-p.tx, -p.ty), s: 1 });
     if (!comMuro) postes.push({ x, y: y + 4, z, s: 1 });
   }
@@ -74,7 +76,7 @@ export function enfeitar(tr, add, r, alturaEm) {
     for (let i = 0; i < n && feitos < 14; i += 3) {
       const p = pts[i]; if (p.k || i - ult < n / 16) continue;
       const s = feitos % 2 ? 1 : -1, d = (comMuro ? tr.wallLat : W / 2 + 30) + 26, [x, z] = lat(p, s * d);
-      if (tr.distAt(x, z) < W / 2 + 18 || (tr.ocupado && tr.ocupado(x, z, i))) continue;
+      if (tr.distAt(x, z) < W / 2 + 18 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z, i))) continue;
       const y = alturaEm(x, z, i), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = Math.atan2(-p.nx * s, -p.ny * s) + Math.PI * 0; add(g);
       const tex = tr.marcasGP ? marcaTex(tr.marcasGP[(feitos * 5 + 3) % tr.marcasGP.length], 512, 220) : anuncio(ANUNCIOS[(feitos + id.length) % ANUNCIOS.length], id === "tokyo"); // nos GPs: os patrocinadores de verdade (kit/ambiente.js)
       const quadro = new THREE.Mesh(new THREE.BoxGeometry(64, 28, 1.6), [M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: id === "tokyo" ? 0.9 : 0.12, roughness: 0.6 }), M(0x2a2d33)]);
@@ -88,6 +90,7 @@ export function enfeitar(tr, add, r, alturaEm) {
     if (tr.coberto && tr.coberto(Math.floor(n * f))) continue;
     const i = Math.floor(n * f), p = pts[i], L = borda + 6, alto = 46, cores = ["#e63946", "#ffd23f", "#1e88e5", "#43a047", "#ffffff", "#fb8c00"];
     const [x1, z1] = lat(p, L), [x2, z2] = lat(p, -L), y1 = alturaEm(x1, z1, i), y2 = alturaEm(x2, z2, i);
+    if (tr.noCorredor?.(x1, z1) || tr.noCorredor?.(x2, z2)) continue;
     for (const [x, z, y] of [[x1, z1, y1], [x2, z2, y2]]) { const pau = add(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, alto + 4, 6), M(0x6f747c))); pau.position.set(x, y + (alto + 4) / 2, z); pau.castShadow = true; }
     const N = 26, tri = new THREE.BufferGeometry(); tri.setAttribute("position", new THREE.Float32BufferAttribute([-2.4, 0, 0, 2.4, 0, 0, 0, -6, 0], 3)); tri.computeVertexNormals();
     const fl = add(new THREE.InstancedMesh(tri, new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.7 }), N)); fl.castShadow = true;
@@ -108,7 +111,7 @@ export function enfeitar(tr, add, r, alturaEm) {
       for (const s of [-1, 1]) for (let fila = 0; fila < 3; fila++) {
         if (r() < 0.35) continue;
         if (cb && s === cb.lado && (((i - cb.i0) % n) + n) % n <= cb.len + 3) continue;
-        const d = borda + 10 + fila * 8 + r() * 2, [x, z] = lat(p, s * d); if (tr.distAt(x, z) < borda + 4 || (tr.ocupado && tr.ocupado(x, z))) continue;
+        const d = borda + 10 + fila * 8 + r() * 2, [x, z] = lat(p, s * d); if (tr.distAt(x, z) < borda + 4 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z))) continue;
         gente.push({ x, y: alturaEm(x, z, (i + n) % n) + fila * 3.5, z, ry: Math.atan2(-p.nx * s, -p.ny * s), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: pele[(r() * 5) | 0], camisa: camisa[(r() * camisa.length) | 0] });
       }
     }

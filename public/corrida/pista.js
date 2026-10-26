@@ -102,6 +102,18 @@ const aguaTex = (cor) => canvasTex(256, 256, (x, w, hh, rr) => { x.fillStyle = c
 function buildWorld(tr) {
   const { pts, n, W, look, id, grp } = tr, t = tr.t, add = (o) => (grp.add(o), o), r = rng(id.length * 977), gp = GPS[id];
   tr.reservado = []; // onde os enfeites soltos não entram (o kit e o cenário de cada GP vão pondo aqui)
+  // Reserva as duas faixas e o prédio antes do cenário, do ambiente e da vida da pista.
+  if (t.boxes && gp?.boxes !== false && window.F1Regras) {
+    const cor = window.F1Regras.corredor(t, n, W);
+    const pontosBox = [];
+    for (let u = 0; u <= cor.len; u += 2) {
+      const i = (cor.i0 + u) % n, p = pts[i];
+      const lat = cor.lat(u, cor.fim) + cor.centroAsfalto - cor.D;
+      pontosBox.push([p.x + p.nx * lat, p.y + p.ny * lat, cor.larguraCorredor / 2 + 25]);
+    }
+    tr.reservado.push(...pontosBox);
+    tr.noCorredor = (x, y) => pontosBox.some(([cx, cy, raio]) => (x - cx) ** 2 + (y - cy) ** 2 < raio * raio);
+  }
   const WORLD = t.world, K = t.scale; // pistas ampliadas: o mundo cresce junto e as coordenadas fixas (mar, porto) vão × K
   tr.agua = [];
   // ---- chão em volta (malha com relevo) ----

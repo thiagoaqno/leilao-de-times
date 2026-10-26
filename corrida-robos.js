@@ -205,7 +205,7 @@ function passoNoBox(room, p, ia, pf, dt, emit) {
     vai(vlim); b.u += (ia.v * dt) / STEP;
     if (b.u >= cor.len) { b.u = cor.len; ia.box = null; p.box = null; emit("box", { id: p.id, composto: b.composto, tempo: b.tempo, volta: b.volta }); }
   }
-  ia.s = (cor.i0 + b.u) % pf.n; ia.lat = cor.lat(b.u, b.lat0);
+    ia.s = (cor.i0 + b.u) % pf.n; ia.lat = cor.latParada(b.u, b.garagem, b.lat0);
 }
 // um passo (dt em segundos). setor(p, s) é o mesmo onSector dos humanos; emit manda eventos para a sala
 function passo(room, dt, setor, emit) {

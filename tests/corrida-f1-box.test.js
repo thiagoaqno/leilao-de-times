@@ -32,6 +32,16 @@ test("box: toda pista do calendário tem corredor, com as 10 garagens entre a ra
   }
 });
 
+test("box: a faixa rápida passa ao lado do carro parado na garagem", () => {
+  for (const id of ["monaco", "interlagos"]) {
+    const c = corredorDe(id), garagem = c.garagens[4];
+    assert.equal(c.larguraCorredor, 54);
+    assert.ok(Math.abs(c.latParada(garagem, garagem) - c.lat(garagem)) >= 27, `${id}: duas faixas independentes`);
+    assert.ok(Math.abs(c.latParada(garagem - 7, garagem) - c.lat(garagem - 7)) < 0.01, `${id}: entra pela faixa rápida`);
+    assert.ok(Math.abs(c.latParada(garagem + 7, garagem) - c.lat(garagem + 7)) < 0.01, `${id}: volta à faixa rápida`);
+  }
+});
+
 test("box: o mesmo GP com a mesma semente dá os mesmos erros de mecânico", () => {
   const erros = (semente) => ["ana", "beto", "caio"].flatMap((q) => [1, 2].map((n) => F1.tempoDeParada(semente, q, n)));
   assert.deepEqual(erros(4242), erros(4242));

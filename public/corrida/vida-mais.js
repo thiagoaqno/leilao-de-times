@@ -11,7 +11,7 @@ const PELE = ["#f1c7a5", "#d9a37a", "#a8714a", "#7a4a2a", "#5a3520"], CAMISA = [
 export function enfeitarMais(tr, add, r, alturaEm, V) {
   const { pts, n, W, id } = tr, t = tr.t, comMuro = tr.wallLat < 1e9, borda = comMuro ? tr.wallLat : W / 2 + 30, C = t.world / 2;
   const lat = (p, l) => [p.x + p.nx * l, p.y + p.ny * l];
-  const livre = (x, z, folga) => tr.distAt(x, z) > W / 2 + folga && x > -1200 && z > -1200 && x < t.world + 1200 && z < t.world + 1200 && !(tr.ocupado && tr.ocupado(x, z));
+  const livre = (x, z, folga) => tr.distAt(x, z) > W / 2 + folga && x > -1200 && z > -1200 && x < t.world + 1200 && z < t.world + 1200 && !tr.noCorredor?.(x, z) && !(tr.ocupado && tr.ocupado(x, z));
   if (t.espaco) return enfeitarEspaco(tr, add, r, V);
   // torcida nas curvas: um grupo a cada ~1/9 da volta, do lado de fora (onde a ultrapassagem acontece)
   if (V.torcida) {
@@ -20,7 +20,7 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
       let i0 = Math.floor((n * g) / 9); for (let k = 0; k < n / 12 && !(pts[(i0 + k) % n].k > 1 / 300); k++) i0++; // procura a próxima curva
       const p0 = pts[i0 % n], q0 = pts[(i0 + 3) % n], fora = p0.tx * q0.ty - p0.ty * q0.tx > 0 ? -1 : 1;
       for (let i = i0; i < i0 + Math.floor(n * 0.012); i++) { const p = pts[i % n]; for (let fila = 0; fila < 2; fila++) {
-        if (r() < 0.4) continue; const d = borda + 12 + fila * 8, [x, z] = lat(p, fora * d); if (tr.distAt(x, z) < borda + 4 || (tr.ocupado && tr.ocupado(x, z, i % n))) continue;
+        if (r() < 0.4) continue; const d = borda + 12 + fila * 8, [x, z] = lat(p, fora * d); if (tr.distAt(x, z) < borda + 4 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z, i % n))) continue;
         extra.push({ x, y: alturaEm(x, z, i % n) + fila * 3, z, ry: Math.atan2(-p.nx * fora, -p.ny * fora), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: PELE[(r() * 5) | 0], camisa: (tr.camisasGP || CAMISA)[(r() * (tr.camisasGP || CAMISA).length) | 0] }); } }
     }
     V.torcidas = [montarTorcida(add, extra)];

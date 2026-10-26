@@ -62,7 +62,7 @@ function apice(tr, bx, by) {
 // ---------- monta tudo (chamado por pista.js, dentro do grupo da pista) ----------
 export function cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, jungle, blds }) {
   const { pts, n, W } = tr, t = tr.t, K = t.scale, L = tr.wallLat, world = t.world;
-  const reservado = (tr.reservado = []); tr.arquibancadas = []; // lugares onde os prédios e palmeiras soltos não entram
+  const reservado = (tr.reservado ||= []); tr.arquibancadas = []; // inclui o corredor reservado antes do cenário
   // ---- o mar inteiro (o chão afunda onde é água: pista.js usa aguaMonaco) ----
   const seaM = new THREE.MeshStandardMaterial({ map: aguaTex("#1f6fae"), roughness: 0.15, metalness: 0.25 }); seaM.map.repeat.set(size / 220, size / 220); tr.agua.push(seaM);
   const sea = add(new THREE.Mesh(new THREE.PlaneGeometry(size, size), seaM)); sea.rotation.x = -Math.PI / 2; sea.position.set(world / 2, -6, world / 2);
@@ -127,6 +127,8 @@ export function cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, j
   const arquibancada = (bx0, by0, bx1, by1, lado, degraus = 6) => {
     let i0 = indicePerto(tr, bx0, by0), i1 = indicePerto(tr, bx1, by1); if (i1 < i0) i1 += n;
     const l0 = lado * (L + 6);
+    if (tr.noCorredor && Array.from({ length: Math.ceil((i1 - i0) / 4) + 1 }, (_, k) => pts[(i0 + k * 4) % n])
+      .some((p) => tr.noCorredor(p.x + p.nx * l0, p.y + p.ny * l0))) return;
     for (let k = 0; k < degraus; k++) faixa(tr, add, i0, i1, l0 + lado * k * 9, l0 + lado * (k + 1) * 9, 4 + k * 6, 4 + k * 6, cadeiras, 48);
     faixa(tr, add, i0, i1, l0 + lado * degraus * 9, l0 + lado * degraus * 9, -8, 4 + degraus * 6 + 22, estrutura, 60); // o fundo
     faixa(tr, add, i0, i1, l0, l0, -8, 4, estrutura, 60);

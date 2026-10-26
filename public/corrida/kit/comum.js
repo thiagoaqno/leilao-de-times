@@ -37,7 +37,7 @@ export const sinalDaCurva = (pts, n, i) => { const p = pts[i], q = pts[(i + 3) %
 // longe de qualquer trecho da pista (os grampos deixam trechos vizinhos colados)
 export const livre = (tr, x, z, folga) => tr.pts.every((q) => Math.hypot(q.x - x, q.y - z) > tr.W / 2 + folga);
 // o lugar está tomado (água, arquibancada, túnel...)? Cada pista pode dizer em tr.ocupado; senão, só o que foi reservado
-export const ocupado = (tr, x, z, i) => (tr.ocupado ? tr.ocupado(x, z, i) : (tr.reservado || []).some(([cx, cy, rr]) => (x - cx) ** 2 + (z - cy) ** 2 < rr * rr));
+export const ocupado = (tr, x, z, i) => !!tr.ocupado?.(x, z, i) || (tr.reservado || []).some(([cx, cy, rr]) => (x - cx) ** 2 + (z - cy) ** 2 < rr * rr);
 // instâncias de caixas (ou outra forma) numa lista de { x, y, z, sx, sy, sz, r }
 export function instancias(add, geo, mat, lista, { sombra = true, nome } = {}) {
   if (!lista.length) return null;

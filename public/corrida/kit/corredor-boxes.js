@@ -13,11 +13,17 @@ import * as THREE from "three";
 import { canvasTex } from "../cena.js";
 import { lotes } from "./comum.js";
 
+const EQUIPES = [
+  ["McLaren", "#ff8700"], ["Ferrari", "#e8002d"], ["Mercedes", "#27f4d2"], ["Red Bull", "#3671c6"],
+  ["Racing Bulls", "#6692ff"], ["Aston Martin", "#229971"], ["Williams", "#37bedd"],
+  ["Audi", "#d7172f"], ["Alpine", "#ff87bc"], ["Haas", "#c6cbd0"],
+];
+
 export function boxesGP(tr, add, cfg = {}) {
   const F = window.F1Regras, cor = F.corredor(tr.t, tr.n, tr.W); if (!cor) return;
   const { pts, n, W } = tr, lado = cor.lado, meia = cor.larguraCorredor / 2, grp = new THREE.Group(), L = lotes();
   grp.name = `${tr.id}-boxes`; grp.visible = !!tr.mostrarBoxes; tr.boxesGP = grp; add(grp);
-  const latDe = (u) => cor.lat(u, lado * (W / 2 - 10)), cores = cfg.cores;
+  const latDe = (u) => cor.lat(u, lado * (W / 2 - 10)) + cor.centroAsfalto - cor.D, cores = cfg.cores;
   // o ponto da pista no ponto u (inteiro ou não) do corredor, com o lado `l`
   const em = (u, l) => {
     const i = cor.i0 + Math.floor(u), f = u - Math.floor(u), a = pts[i % n], b = pts[(i + 1) % n];
@@ -44,6 +50,8 @@ export function boxesGP(tr, add, cfg = {}) {
   // as bordas do corredor (a linha branca do lado da pista é a "linha branca de entrada") e as linhas de entrada e saída
   fita(branco, 1, fim - 1, desloc(-meia + 0.4), desloc(-meia + 1.8), y0 + 0.04, y0 + 0.04);
   fita(branco, 1, fim - 1, desloc(meia - 1.8), desloc(meia - 0.4), y0 + 0.04, y0 + 0.04);
+  // A linha entre a faixa rápida e a faixa das garagens deixa livre a passagem de quem não para.
+  fita(branco, F.RAMPA, fim - F.RAMPA, desloc(-0.45), desloc(0.45), y0 + 0.04, y0 + 0.04);
   fita(branco, F.RAMPA - 1, F.RAMPA - 0.5, desloc(-meia), desloc(meia), y0 + 0.05, y0 + 0.05);
   fita(vermelho, fim - F.RAMPA, fim - F.RAMPA + 0.5, desloc(-meia), desloc(meia), y0 + 0.05, y0 + 0.05);
   // a mureta entre a pista e o corredor, só no trecho reto (nas rampas o carro cruza); pista de rua já tem o guard-rail
@@ -69,13 +77,20 @@ export function boxesGP(tr, add, cfg = {}) {
   const fundo = 16, alt = 14, pele = "#e2b48c", cinza = "#8c8f96", comGaragem = cfg.garagens !== false;
   cor.garagens.forEach((u, k) => {
     const i = cor.i0 + Math.floor(u), p = pts[i % n], tx = p.tx, ty = p.ty, nx = p.nx * lado, ny = p.ny * lado;
-    const largura = Math.max(18, cor.gap * 6 * 0.92), q = em(u, cor.D), c = cfg.cores ? cfg.cores[k % cfg.cores.length] : cinza;
-    const ref = { x: q.x + nx * meia, y: q.y + ny * meia, h: q.h }; // a borda do corredor, do lado das garagens
+    const largura = Math.max(18, cor.gap * 6 * 0.92), q = em(u, cor.garagemLat), c = cfg.cores?.[k % cfg.cores.length] || EQUIPES[k][1];
+    const ref = { x: q.x + nx * (meia / 2), y: q.y + ny * (meia / 2), h: q.h }; // a borda externa da faixa das garagens
     if (comGaragem) {
       caixa(ref, tx, ty, nx, ny, 0, fundo - 0.7, -9, largura, 1.4, 9 + alt, c, k); // o fundo, na cor da equipe
       for (const s of [-1, 1]) caixa(ref, tx, ty, nx, ny, s * (largura / 2 - 0.4), fundo / 2, -9, 0.8, fundo, 9 + alt, "#cfcdc6"); // as laterais
       caixa(ref, tx, ty, nx, ny, 0, fundo / 2 - 1.5, alt, largura + 1.4, fundo + 3, 1.2, "#dcdad4"); // o teto, saindo para o corredor
       caixa(ref, tx, ty, nx, ny, 0, -2.4, alt - 5.5, largura + 1.4, 1.2, 5.5, c, k); // a faixa grande na frente, na cor da equipe
+      const nome = cfg.nomes?.[k] || EQUIPES[k][0];
+      const letreiro = new THREE.Mesh(new THREE.PlaneGeometry(largura - 2, 4.8), new THREE.MeshBasicMaterial({
+        map: canvasTex(512, 96, (ctx, w, h) => { ctx.fillStyle = "#ffffff"; ctx.font = "900 58px Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(nome.toUpperCase(), w / 2, h / 2, w - 20); }, false), transparent: true, side: THREE.DoubleSide,
+      }));
+      letreiro.position.set(ref.x - nx * 3.1, ref.h + alt - 2.7, ref.y - ny * 3.1);
+      letreiro.rotation.y = Math.atan2(nx, ny);
+      grp.add(letreiro);
       caixa(ref, tx, ty, nx, ny, 0, fundo + 0.2, alt + 1.2, 7, 1, 6, c, k); caixa(ref, tx, ty, nx, ny, 0, fundo + 0.2, alt + 6.8, 9, 1, 1.4, "#f4f4f4"); // a placa da garagem em cima do teto
       // os mecânicos da equipe: macacão da cor dela e capacete, em fila na frente da garagem
       for (const s of [-1.5, -0.5, 0.5, 1.5]) {
@@ -94,7 +109,7 @@ export function boxesGP(tr, add, cfg = {}) {
   // pinta as partes da equipe de cada garagem: cores[k] (ou cinza) vale para a garagem k
   grp.userData.colorir = (cores) => {
     const atr = g.attributes.color;
-    faixas.forEach((lista, k) => { const col = cor3(cores[k] || cinza); for (const [v0, v1] of lista) for (let v = v0; v < v1; v++) atr.setXYZ(v, col.r, col.g, col.b); });
+    faixas.forEach((lista, k) => { const col = cor3(cores[k] || cfg.cores?.[k] || EQUIPES[k][1]); for (const [v0, v1] of lista) for (let v = v0; v < v1; v++) atr.setXYZ(v, col.r, col.g, col.b); });
     atr.needsUpdate = true;
   };
   // os balizadores que ficariam no meio do corredor saem de cena enquanto ele aparece (as regras de F1)

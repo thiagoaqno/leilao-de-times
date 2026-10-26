@@ -35,6 +35,8 @@ export function arquibancadas(tr, add, { trechos }) {
     const i0 = Math.floor(de * n); let i1 = Math.floor(ate * n); if (i1 < i0) i1 += n;
     const chave = cor + encosto + (torcida || ""); if (!materiais.has(chave)) materiais.set(chave, cadeiras(cor, encosto, "#00000038", torcida));
     const l0 = lado * (L + 6), alto = degraus * 6 + 30;
+    if (tr.noCorredor && Array.from({ length: Math.ceil((i1 - i0) / 4) + 1 }, (_, k) => pts[(i0 + k * 4) % n])
+      .some((p) => tr.noCorredor(p.x + p.nx * l0, p.y + p.ny * l0))) continue;
     // os degraus são uma rampa só (a galera aparece de baixo também); a textura repete a fileira em cada 9 unidades
     faixa(tr, add, i0, i1, l0, l0 + lado * degraus * 9, 4, 4 + degraus * 6, materiais.get(chave), 48, degraus);
     faixa(tr, add, i0, i1, l0 + lado * degraus * 9, l0 + lado * degraus * 9, -8, 4 + degraus * 6 + 22, estrutura, 60); // o fundo
