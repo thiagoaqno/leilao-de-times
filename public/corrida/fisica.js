@@ -62,7 +62,7 @@ export function physics(dt, spec = carOf(me())) {
   race.drsAtivo = drs; race.ersAtivo = ersAtivo;
   const curva = (tr.pts[race.idx].k || 0) > 1 / 600, vac = pn ? F1.vacuoF1(race.draft, curva) : null; // nas regras de F1: vácuo na reta, ar sujo na curva
   race.arSujo = vac ? 1 - vac.aderencia : 0;
-  const aero = pn ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 : 0) + (ersAtivo ? 0.03 : 0)) : 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
+  const aero = pn ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 * (spec.drs ?? 1) : 0) + (ersAtivo ? 0.03 : 0)) : 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
   const boostK = bala ? BALA : (1 + aero + catchup + (boostAtivo ? 0.18 : 0) + (estrelaAtiva ? 0.12 : 0)) * (pequeno ? ENCOLHIDO : 1);
   const bandeiraLimite = direcao?.safety ? 0.54 : amarela ? 0.82 : 1;
   const vmax = (road ? spec.vmax * (pn?.final || 1) : spec.offMax) * Math.min(boostK, bandeiraLimite);
@@ -132,7 +132,7 @@ export function physics(dt, spec = carOf(me())) {
     nx -= p.nx * s * sobra.over; ny -= p.ny * s * sobra.over;
     if (vn > 0) { c.vx -= p.nx * s * vn * 1.2; c.vy -= p.ny * s * vn * 1.2; if (vn > 60) { Sound.bump(); race.shake = 0.25; } }
   }
-  if (race.pneu) window.F1Regras.gastarPneu(race.pneu, { dist: Math.hypot(nx - c.x, ny - c.y), total: (E.S.config.voltas || 1) * tr.n * 6, slip: c.slip, v: vf, vmax: spec.vmax, dt });
+  if (race.pneu) window.F1Regras.gastarPneu(race.pneu, { dist: Math.hypot(nx - c.x, ny - c.y), total: (E.S.config.voltas || 1) * tr.n * 6, slip: c.slip, v: vf, vmax: spec.vmax, dt, fator: spec.desgaste });
   c.x = nx; c.y = ny;
   // Balizadores flexíveis reagem ao toque e voltam sozinhos; não bloqueiam o carro.
   if (tr.cones && Math.abs(c.v) > 25) for (const cone of tr.cones) {

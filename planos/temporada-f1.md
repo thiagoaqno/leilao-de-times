@@ -304,6 +304,17 @@ temporada.
 
 **Objetivo:** cada equipe tem um carro feito de peças, e o carro vira o `spec` da física.
 
+> **Estado (feito, o PR 3 dos cinco grandes, `claude/f1-equipes`):** a montagem entrou **com orçamento em pontos** (pedido do
+> Thiago) no lugar do teto em M$: cada equipe tem de 15 a 20 pontos (McLaren 20; Ferrari, Mercedes e Red Bull 19; Williams e
+> Aston Martin 17; Racing Bulls e Haas 16; Audi, Alpine e Cadillac 15) e gasta 1 ponto por nível (0 a 8) em seis peças:
+> motor, aerodinâmica, chassi leve, freios, suspensão e confiabilidade. O arquivo é `public/corrida/f1-equipes.js`
+> (UMD) e não `temporada/montagem.js`; a tela é a aba **Equipe** do box das regras de F1; o servidor guarda
+> `room.montagens[equipe]` (só o chefe, o primeiro humano da equipe, mexe; dois amigos dividem o mesmo carro) e os robôs
+> correm com o carro da equipe. Peças com preço em M$ e o teto de gastos ficam para o PR 8 e o 10 (a montagem e o orçamento
+> são dados simples, `{ motor, aero, chassi, freios, suspensao, confiab }` e os pontos da equipe, que vão para o save).
+> Trocas em relação ao texto abaixo: a unidade de potência e o câmbio viraram "motor" e "confiabilidade" (a chance de
+> quebrar, `spec.quebra`, vira carro no modo de emergência) e a suspensão pega também o desgaste do pneu.
+
 - **`public/corrida/temporada/montagem.js`** (UMD, novo):
   - as **peças**, cada uma em 3 a 4 opções com preço, e o que cada uma mexe nos números de `CARROS`:
 
