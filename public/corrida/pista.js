@@ -11,6 +11,7 @@ import { enfeitar } from "./vida.js";
 import { aplicarCeu } from "./ceu.js";
 import { aguaMonaco, fundoMonaco, orlaMonaco, alturaRocha, cenarioMonaco } from "./monaco.js";
 import { chaoMonaco, guardRailMonaco, fachadasMonaco, marcosMonaco, montanhaMonaco } from "./monaco-detalhes.js";
+import { vidaMonaco } from "./monaco-vida.js";
 
 // ---------- temas das pistas: cores, chão, enfeites e o horizonte ----------
 export const THEMES = {
@@ -237,6 +238,7 @@ function buildWorld(tr) {
     ambienteMonaco(tr, add);
     marcosMonaco(tr, add, { hAt }); // passarelas, a capela de Sainte Dévote e os postes
     montanhaMonaco(tr, add);
+    vidaMonaco(tr, add); // o helicóptero, as gaivotas, os fiscais com a bandeira e o som de cada região
   }
   const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira

@@ -5,6 +5,7 @@
 import * as THREE from "three";
 import { canvasTex, M } from "./cena.js";
 import { enfeitarMais, animarMais, montarTorcida } from "./vida-mais.js";
+import { marcaTex, PATROCINIO } from "./marcas.js";
 
 const reduz = matchMedia("(prefers-reduced-motion: reduce)");
 const ANUNCIOS = [
@@ -75,7 +76,7 @@ export function enfeitar(tr, add, r, alturaEm) {
       const s = feitos % 2 ? 1 : -1, d = (comMuro ? tr.wallLat : W / 2 + 30) + 26, [x, z] = lat(p, s * d);
       if (tr.distAt(x, z) < W / 2 + 18 || (tr.ocupado && tr.ocupado(x, z, i))) continue;
       const y = alturaEm(x, z, i), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = Math.atan2(-p.nx * s, -p.ny * s) + Math.PI * 0; add(g);
-      const tex = anuncio(ANUNCIOS[(feitos + id.length) % ANUNCIOS.length], id === "tokyo");
+      const tex = id === "monaco" ? marcaTex(PATROCINIO[(feitos * 5 + 3) % PATROCINIO.length], 512, 220) : anuncio(ANUNCIOS[(feitos + id.length) % ANUNCIOS.length], id === "tokyo"); // Mônaco: os patrocinadores de verdade
       const quadro = new THREE.Mesh(new THREE.BoxGeometry(64, 28, 1.6), [M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: id === "tokyo" ? 0.9 : 0.12, roughness: 0.6 }), M(0x2a2d33)]);
       quadro.position.y = 34; quadro.castShadow = true; g.add(quadro);
       for (const k of [-20, 20]) { const perna = new THREE.Mesh(new THREE.BoxGeometry(2.2, 22, 2.2), M(0x50555e)); perna.position.set(k, 11, -1); perna.castShadow = true; g.add(perna); }
@@ -193,6 +194,7 @@ export function animarVida(tr, dt, foco) {
   }
   if (V.planeta && !parado) V.planeta.rotation.y = t * 0.02;
   animarMais(tr, V, t, dt, foco);
+  if (tr.animarPista) tr.animarPista(dt, foco, t); // o que é só de uma pista (Mônaco: monaco-vida.js)
   for (const f of V.fogos) {
     f.t += dt; const pos = f.pts.geometry.attributes.position, N = pos.count;
     if (f.t > 2.6 + f.espera) { // um fogo novo, num canto do céu

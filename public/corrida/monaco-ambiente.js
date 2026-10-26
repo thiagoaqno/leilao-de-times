@@ -1,6 +1,7 @@
 // Equipamentos de GP adaptados às ruas estreitas de Mônaco e ao túnel.
 import * as THREE from "three";
 import { canvasTex, M } from "./cena.js";
+import { marcaTex, PATROCINIO } from "./marcas.js";
 
 export function ambienteMonaco(tr, add) {
   const { pts, n, W, wallLat: L } = tr, lotes = new Map();
@@ -10,8 +11,10 @@ export function ambienteMonaco(tr, add) {
     x.fillStyle = fundo; x.fillRect(0, 0, w, h); x.fillStyle = cor; x.fillRect(0, h - 6, w, 6);
     x.font = "900 65px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(texto, w / 2, h / 2, w - 24);
   }, false) });
-  const anuncios = [placa("MONTE-CARLO", "#9d2331"), placa("GRAND PRIX", "#132c36"), placa("MONACO", "#eee8dc", "#a11e30")];
+  // os painéis do guard-rail com as marcas de verdade (marcas.js); o posto leva a F1
+  const anuncios = PATROCINIO.slice(0, 9).map((nome) => new THREE.MeshBasicMaterial({ map: marcaTex(nome, 512, 128) })), painelPosto = new THREE.MeshBasicMaterial({ map: marcaTex("f1", 512, 128) });
   const distancias = [100, 50].map(v => placa(String(v), "#f5f4ee", "#18242b"));
+  tr.postosMonaco = [];
   const stats = tr.ambienteGP = { paineis: 0, postos: 0, placas: 0, bandeiras: 0, luzesTunel: 0, setores: [0, 0, 0, 0] };
   function caixa(mat, x, y, z, sx, sy, sz, ry = 0) {
     if (!lotes.has(mat)) lotes.set(mat, []);
@@ -36,7 +39,7 @@ export function ambienteMonaco(tr, add) {
     for (const altura of [15, 23, 34]) caixa(metal, x, h + altura, z, 32, 0.5, 0.5, ry);
     for (const deslocamento of [-12, -6, 6, 12]) caixa(metal, x + p.tx * deslocamento, h + 24, z + p.ty * deslocamento, 0.22, 22, 0.22);
     if (i % 27 === 0) {
-      caixa(anuncios[(i / 27) % 3], x - p.nx * lado * 1.6, h + 7, z - p.ny * lado * 1.6, 30, 9, 0.6, ry);
+      caixa(anuncios[(i / 27) % anuncios.length], x - p.nx * lado * 1.6, h + 7, z - p.ny * lado * 1.6, 30, 9, 0.6, ry);
       stats.paineis++; stats.setores[Math.floor(i / n * 4)]++;
     }
     if (i % 81 === 0) {
@@ -53,13 +56,13 @@ export function ambienteMonaco(tr, add) {
     caixa(escuro, x, h + 1, z, 23, 2, 20, ry);
     for (const s of [-1, 1]) caixa(metal, x + s * 9 * Math.cos(ry), h + 13, z - s * 9 * Math.sin(ry), 1, 24, 1);
     caixa(vermelho, x, h + 26, z, 26, 2, 23, ry);
-    caixa(anuncios[1], x, h + 19, z, 21, 6, 1, ry);
+    caixa(painelPosto, x, h + 19, z, 21, 6, 1, ry);
     // Equipamentos e dois fiscais enfileirados no posto, com capacete branco.
     for (const s of [-1, 1]) {
       caixa(laranja, x + s * 5, h + 7, z, 3.4, 8, 3, ry);
       caixa(branco, x + s * 5, h + 12, z, 3, 2.5, 3, ry);
     }
-    stats.postos++; tr.reservado.push([x, z, 22]);
+    stats.postos++; tr.reservado.push([x, z, 22]); tr.postosMonaco.push({ x, z, h, ry, i }); // pista-vida.js põe o fiscal com a bandeira
   }
   // Placas compactas de frenagem no lado de fora das curvas, apoiadas sobre a barreira.
   let ultima = -n;

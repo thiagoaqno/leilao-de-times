@@ -1,24 +1,24 @@
-# Mônaco mais parecido com o de verdade
+# Mônaco, fase 2: marcas reais, som de cada região e cenário vivo
 
-Primeiro passo para ter todas as pistas da temporada com cara de GP: Mônaco ganha os detalhes das fotos da corrida real, num módulo novo, `public/corrida/monaco-detalhes.js`. Tudo é cenário: a física e as colisões não mudam.
+Começo da fase 2 (imersão nas pistas), com Mônaco como piloto. Tudo é cenário e som: a física não muda, e as outras pistas continuam iguais.
 
-**No chão**
-- As zebras vermelhas e brancas saíram da volta inteira e ficam só nas curvas: do lado de dentro, em volta do ápice, e do lado de fora, na saída das curvas fechadas. Na Nouvelle Chicane e na Piscine, as de dentro são amarelas e mais altas, como as que o circuito pôs para ninguém cortar caminho.
-- No resto, a sarjeta de concreto com a junta escura e a canaleta junto do guard-rail.
-- Faixas de pedestre nas retas da cidade (Beau Rivage, Cassino, descida para Mirabeau, saída do grampo, Portier, cais e Rascasse).
-- A linha da rua tracejada e gasta na subida da Beau Rivage, em Portier, dentro do túnel e no cais.
-- As linhas do safety car (SC 2 depois da Sainte Dévote e SC 1 antes da Anthony Noghès), com o nome pintado.
-- O grid pintado: o "colchete" de cada posição e o número, de 1 a 8.
-- Remendos de asfalto e bueiros espalhados pela pista. As faíscas do assoalho agora só saem onde existe zebra.
+**Marcas de verdade** (`public/corrida/marcas.js`)
+- Os patrocinadores da F1 desenhados no canvas, sem baixar imagem: Rolex (com a coroa), Pirelli (o P comprido), Aramco, Heineken (a estrela vermelha), DHL (as faixas), TAG Heuer, Lenovo, AWS (o sorriso), Formula 1, Qatar Airways, MSC, Crypto.com, Louis Vuitton e o Automobile Club de Monaco.
+- Estão no guard-rail (entre as listras vermelhas e brancas), nos painéis colados nele, nos postos dos fiscais, nos outdoors e nas passarelas (a da reta dos boxes é a da Rolex, como no GP).
 
-**Na beira e no horizonte**
-- O guard-rail ganha painéis de 6 m: listras vermelhas e brancas e os nomes MONACO, GRAND PRIX, MONTE-CARLO e GALERA, legíveis dos dois lados da pista.
-- Os prédios ganham fachadas com sacadas de grade, venezianas, toldos listrados, cornija, telhado de telha ou terraço com casa de máquinas. As janelas têm sempre o mesmo tamanho, qualquer que seja o prédio.
-- Três passarelas com faixas do GP por cima da pista (na reta dos boxes, na Beau Rivage e depois da Rascasse), no lugar das bandeirolas coloridas.
-- A capela de Sainte Dévote do lado de fora da primeira curva.
-- 34 postes de rua verde-escuros atrás do guard-rail.
-- A montanha de pedra (a Tête de Chien) atrás da cidade, ao norte.
+**Som ambiente que muda pela pista** (`public/corrida/monaco-vida.js`, tudo sintetizado)
+- Porto: ondas, gaivotas e de vez em quando a buzina de um iate.
+- Arquibancadas: a torcida, com os gritos subindo e descendo.
+- Cidade: o ronco da rua e lambretas passando; na Place du Casino, a fonte.
+- Túnel: o zumbido dos exaustores e o eco do motor; lá dentro o som de fora quase some.
+- Sainte Dévote: os sinos da capela tocam de tempos em tempos.
+- O helicóptero da TV, mais alto quanto mais perto.
+- O som ambiente segue o volume e o botão de som da corrida e só toca durante a corrida.
 
-As peças repetidas usam InstancedMesh ou uma malha só por material, sem luzes novas. As outras pistas continuam iguais.
+**Cenário vivo**
+- O helicóptero da TV acompanha a corrida, à frente de quem a câmera segue, com o rotor girando.
+- Gaivotas planando sobre o porto.
+- Os fiscais dos 46 postos agitam a bandeira verde quando o carro passa perto.
+- Com "menos movimento" ligado no sistema, as animações param.
 
-Validação: 29 testes da corrida passaram; `git diff --check` sem erros. Conferido no navegador do app em toda a volta (grid, Sainte Dévote, Beau Rivage, Cassino, grampo, túnel, chicane, Piscine e Rascasse).
+Validação: 29 testes da corrida passaram; `git diff --check` sem erros. Conferido no navegador do app: marcas na reta, na Sainte Dévote, no cais e no grampo; o peso de cada região do som medido no #debug (`tr.somMonaco`) no grid, no Cassino, no túnel, no cais e na Sainte Dévote; o helicóptero e os fiscais com a bandeira.

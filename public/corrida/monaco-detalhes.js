@@ -5,6 +5,7 @@
 // Tudo é cenário: nada aqui muda a física. As frações (0 a 1) são da volta, a partir da linha de chegada.
 import * as THREE from "three";
 import { canvasTex, M } from "./cena.js";
+import { desenharMarca, marcaTex } from "./marcas.js";
 
 // ---------- trechos pintados ao longo da pista ----------
 // Cada material junta todos os seus pedaços numa malha só (uma chamada de desenho por material).
@@ -136,15 +137,14 @@ export function chaoMonaco(tr, add, { gridSpot }) {
   tr.detalhesMonaco = { faixas: faixas.length };
 }
 
-// ---------- o guard-rail pintado: painéis de 60 (6 m) com as faixas vermelhas e brancas e os nomes do GP ----------
+// ---------- o guard-rail pintado: painéis de 60 (6 m) com as faixas vermelhas e brancas e os patrocinadores ----------
 // A textura cobre 480 unidades. lado: de que lado da pista ele fica (o texto lê na direção de quem olha da pista).
 export function guardRailMonaco(lado) {
   const C = 1024, H = 48, plano = document.createElement("canvas"); plano.width = C; plano.height = H;
   const x = plano.getContext("2d"), painel = C / 8;
   const listras = (x0) => { for (let k = 0; k < 8; k++) { x.fillStyle = k % 2 ? "#f4f4f4" : "#d62828"; x.fillRect(x0 + (k * painel) / 8, 0, painel / 8 + 1, H); } };
-  const nome = (x0, fundo, cor, texto) => { x.fillStyle = fundo; x.fillRect(x0, 0, painel, H); x.fillStyle = cor; x.font = "900 26px Arial Black, Impact, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(texto, x0 + painel / 2, H / 2 + 1, painel - 10); };
-  listras(0); nome(painel, "#c8102e", "#ffffff", "MONACO"); listras(painel * 2); nome(painel * 3, "#10283a", "#ffffff", "GRAND PRIX");
-  nome(painel * 4, "#0d3b2e", "#e6c56a", "MONTE-CARLO"); listras(painel * 5); nome(painel * 6, "#f4f4f4", "#c8102e", "MONACO"); nome(painel * 7, "#ffd23f", "#111111", "GALERA");
+  // os patrocinadores de verdade (marcas.js) entre as listras
+  ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"].forEach((m, k) => { if (m) desenharMarca(x, m, painel * k, 0, painel, H); else listras(painel * k); });
   // a lâmina ondulada do guard-rail: duas dobras escuras e as bordas de aço
   x.fillStyle = "#0000002a"; x.fillRect(0, 15, C, 3); x.fillRect(0, 31, C, 3); x.fillStyle = "#9aa3a8"; x.fillRect(0, 0, C, 3); x.fillRect(0, H - 4, C, 4);
   x.fillStyle = "#00000040"; for (let k = 0; k < C; k += painel / 2) x.fillRect(k, 0, 2, H); // os parafusos/emendas
@@ -223,8 +223,7 @@ export function marcosMonaco(tr, add, { hAt }) {
   const livre = (x, z, folga) => pts.every((q) => Math.hypot(q.x - x, q.y - z) > W / 2 + folga);
   const stats = { passarelas: 0, postes: 0, capela: 0 };
   // passarelas por cima da pista, com as faixas do GP dos dois lados
-  const faixa = (texto, fundo, cor) => canvasTex(1024, 128, (x, w, hh) => { x.fillStyle = fundo; x.fillRect(0, 0, w, hh); x.fillStyle = cor; x.fillRect(0, hh - 10, w, 10); x.font = "900 76px Arial Black, Impact, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(texto, w / 2, hh / 2 - 2, w - 40); }, false);
-  const faixas = [faixa("GRAND PRIX DE MONACO", "#c8102e", "#f4f4f4"), faixa("MONTE-CARLO", "#10283a", "#e6c56a"), faixa("GALERA · MONACO", "#f4f4f4", "#c8102e")];
+  const faixas = ["rolex", "heineken", "tag"].map((nome) => marcaTex(nome, 1024, 128)); // como no GP: a da Rolex na reta dos boxes
   const aco = M(0x3a4048, { roughness: 0.5, metalness: 0.4 }), vidro = M(0x9fb8c8, { roughness: 0.15, metalness: 0.3, transparent: true, opacity: 0.55 });
   // os candidatos, em ordem: ficam no máximo três (os pés não podem cair na água, na arquibancada ou no grampo vizinho)
   [0.02, 0.165, 0.855, 0.31, 0.93].forEach((f) => {
@@ -258,7 +257,7 @@ export function marcosMonaco(tr, add, { hAt }) {
       const sino = new THREE.Mesh(new THREE.BoxGeometry(10.4, 7, 10.4), M(0x3a3026)); sino.position.set(0, 42, -26); g.add(sino);
       const ponta = new THREE.Mesh(new THREE.ConeGeometry(7.6, 12, 4), telha); ponta.rotation.y = Math.PI / 4; ponta.position.set(0, 54, -26); g.add(ponta);
       const porta = new THREE.Mesh(new THREE.BoxGeometry(8, 12, 0.6), M(0x5b3a24)); porta.position.set(0, 6, 23.3); g.add(porta);
-      tr.reservado?.push([x, z, 50]); stats.capela = 1; break;
+      tr.reservado?.push([x, z, 50]); tr.capelaMonaco = { x, y: z }; stats.capela = 1; break; // os sinos (monaco-vida.js)
     }
   }
   // postes da rua, verde-escuros, com o braço virado para a pista (atrás do guard-rail, um lado de cada vez)
