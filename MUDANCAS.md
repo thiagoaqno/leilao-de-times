@@ -12,4 +12,6 @@ Preparação para criar as outras pistas da temporada (Barcelona primeiro) e mel
 
 **`public/corrida/gps/`**: a configuração de cada GP. `pista.js` lê `GPS[id]` no lugar dos `if (id === "monaco")`. Mônaco usa todas as peças (e guarda a capela de Sainte Dévote); Interlagos por enquanto só o asfalto e o ambiente próprio. Os outdoors e as bandeirolas de `vida.js` passam a seguir o que o GP tem, não o nome da pista.
 
+**Skill de projeto `nova-pista`** (`.claude/skills/nova-pista/SKILL.md`): o passo a passo para criar ou melhorar uma pista com o kit (pesquisa do circuito, traçado, cores, configuração do GP, conferência no navegador e entrega). As sessões do Claude Code carregam a skill sozinhas quando o pedido é de pista.
+
 Validação: 29 testes da corrida passaram; `git diff --check` sem erros. No navegador do app, Mônaco montou com os mesmos números de antes, sem erro no console, e Interlagos, Tóquio, Rio e Nürburgring montam normalmente.
