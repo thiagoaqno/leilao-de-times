@@ -101,7 +101,14 @@ export function startRace(st) {
   const ceu = useTrack(tr, st.config.hora, () => !race || race.tr !== tr || sNow() < race.startAt);
   luzPendente();
   tr.mostrarBoxes = st.config.regras === "f1"; if (tr.boxesGP) tr.boxesGP.userData.mostrar(tr.mostrarBoxes); // o corredor dos boxes só aparece nas regras de F1
-  if (tr.boxesGP) { const cores = []; for (const p of st.players) cores[p.grid % window.F1Regras.GARAGENS] = p.color; tr.boxesGP.userData.colorir(cores); } // cada garagem na cor de quem para nela
+  if (tr.boxesGP) {
+    const cores = Object.values(window.EQUIPES_F1 || {}).map((e) => e.cor);
+    for (const p of st.players) {
+      const equipe = window.Pistas.MODS.pintura[(p.mods || window.Pistas.MODS_PADRAO).pintura]?.equipe;
+      cores[p.grid % window.F1Regras.GARAGENS] = window.EQUIPES_F1?.[equipe]?.cor || p.color;
+    }
+    tr.boxesGP.userData.colorir(cores);
+  }
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W);
   if (race) clearRace();
   race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
@@ -288,22 +295,4 @@ function draw(dt) {
   // (de cima não tem desfoque: o chão inteiro borrado só atrapalha a ver a pista)
   desenhar(mode === "cima" ? 0 : Math.min(1, Math.max(0, (Math.abs(src.v || 0) / vref - 0.4) / 0.5)) + (turbo ? 0.4 : 0));
 }
-// ---------- capa: a largada de Interlagos em 3D (o mesmo desenho da corrida) ----------
-(function heroArt() {
-  const paint = () => {
-    if (race) return; // quem volta para a sala no meio da corrida: a capa chegaria depois e trocaria a pista na tela
-    const tr = buildTrack("interlagos"); useTrack(tr);
-    const at = (g) => gridSpot(tr.pts, g, tr.W), ks = [];
-    [[4, COLORS[0], "equilibrado", { pintura: "classico" }], [0, COLORS[1], "foguete", { pintura: "papaia" }], [1, COLORS[2], "drifteiro", { pintura: "flecha" }], [2, COLORS[3], "formiga", { pintura: "touro" }], [3, COLORS[4], "tanque", { pintura: "rosso" }]].forEach(([g, col, model, mods]) => { const s = at(g), k = makeKart(col, model, false, "", mods); poseKart(k, s.x, s.y, tr.pts[s.idx].h, s.a, 0, 0, tr.pts[s.idx].h, 0); ks.push(k); });
-    const s = at(4), fx = Math.cos(s.a), fy = Math.sin(s.a), h = tr.pts[s.idx].h;
-    renderer.setSize(640, 360, false); cam.aspect = 16 / 9; cam.fov = 64; cam.updateProjectionMatrix();
-    cam.position.set(s.x - fx * 60, h + 34, s.y - fy * 60); cam.lookAt(s.x + fx * 60, h + 4, s.y + fy * 60);
-    const sd = tr.sol; if (sd) sun.position.set(s.x + sd.x * 800, h + sd.y * 800, s.y + sd.z * 800); else sun.position.set(s.x - 300, h + 700, s.y + 260); sun.target.position.set(s.x, h, s.y); if (tr.sky) tr.sky.position.set(s.x, 0, s.y);
-    renderer.render(scene, cam);
-    const hc = $("heroArt"); hc.width = 640; hc.height = 360; hc.getContext("2d").drawImage(renderer.domElement, 0, 0);
-    ks.forEach(dropKart);
-  };
-  setTimeout(() => { try { paint(); } catch (e) { console.warn(e); } }, 60);
-  Promise.all([f1Pronto, propsPronto, ceuPronto("interlagos")]).then(() => { try { paint(); } catch (e) { console.warn(e); } }); // de novo, quando o kart, os enfeites do Kenney e o céu chegam
-})();
 if (location.hash === "#debug") window.__corrida = { get race() { return race; }, get S() { return E.S; }, keys, physics, groundH, buildTrack, act, renderer, scene, cam };
