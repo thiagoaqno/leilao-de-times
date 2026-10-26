@@ -38,7 +38,9 @@ export function physics(dt, spec = carOf(me())) {
     draft = Math.max(draft, 1 - (along - 22) / 148);
   }
   race.draft += (draft - race.draft) * Math.min(1, dt * 4);
-  if (race.draft > 0.35) race.draftT += dt; else { if (race.draftT > 1 && race.draft < 0.2) { race.sling = 1.2; Sound.sling(); } race.draftT = 0; }
+  // o estilingue é do modo arcade: nas regras de F1 o vácuo é o de verdade (F1Regras.vacuoF1) e quem decide é o DRS
+  if (race.pneu) race.draftT = 0;
+  else if (race.draft > 0.35) race.draftT += dt; else { if (race.draftT > 1 && race.draft < 0.2) { race.sling = 1.2; Sound.sling(); } race.draftT = 0; }
   race.sling = Math.max(0, race.sling - dt);
   const outros = [...race.ghosts.values()].filter((gh) => Number.isFinite(gh.prog));
   const lider = Math.max(myProg(), ...outros.map((gh) => gh.prog));
@@ -58,7 +60,9 @@ export function physics(dt, spec = carOf(me())) {
   const usarErs = !!(ers && keys.gas && !direcao?.safety && (ersAuto ? F1.usarErsAuto(ers.carga, vf, spec.vmax, (tr.pts[race.idx].k || 0) < 1e-4, race.draft > 0.25) : keys.ers));
   const ersAtivo = ers ? F1.gastarErs(ers, dt, usarErs) : false;
   race.drsAtivo = drs; race.ersAtivo = ersAtivo;
-  const aero = pn ? Math.min(0.12, 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0) + (drs ? 0.05 : 0) + (ersAtivo ? 0.03 : 0)) : 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
+  const curva = (tr.pts[race.idx].k || 0) > 1 / 600, vac = pn ? F1.vacuoF1(race.draft, curva) : null; // nas regras de F1: vácuo na reta, ar sujo na curva
+  race.arSujo = vac ? 1 - vac.aderencia : 0;
+  const aero = pn ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 : 0) + (ersAtivo ? 0.03 : 0)) : 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
   const boostK = bala ? BALA : (1 + aero + catchup + (boostAtivo ? 0.18 : 0) + (estrelaAtiva ? 0.12 : 0)) * (pequeno ? ENCOLHIDO : 1);
   const bandeiraLimite = direcao?.safety ? 0.54 : amarela ? 0.82 : 1;
   const vmax = (road ? spec.vmax * (pn?.final || 1) : spec.offMax) * Math.min(boostK, bandeiraLimite);
@@ -68,7 +72,7 @@ export function physics(dt, spec = carOf(me())) {
   race.rpm = rotacao(vf, vmaxF1, race.marcha);
   const forca = manual ? torque(race.rpm) : 1;
   if (!air) {
-    if (keys.gas) vf += (vf < 0 ? spec.brake : forca * spec.acc * (pn?.tracao || 1) * (1 + race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0) + (ersAtivo ? 0.25 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
+    if (keys.gas) vf += (vf < 0 ? spec.brake : forca * spec.acc * (pn?.tracao || 1) * (1 + (vac ? vac.acel : race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0)) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0) + (ersAtivo ? 0.25 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
     else if (keys.brake) vf -= (vf > 0 ? spec.brake * (pn?.freio || 1) : 120) * dt;
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (70 + (manual && vf > 0 ? (NUM + 1 - race.marcha) * 18 : 0)) * dt); // no manual, marcha baixa segura o carro (freio-motor)
     if (vf > vmax) vf = direcao?.safety || amarela ? Math.max(vmax, vf - spec.brake * dt) : Math.max(vmax, vf - (road ? window.Pistas.TURBO_SOLTA : 700) * dt); // sob bandeira reduz de verdade
@@ -97,7 +101,7 @@ export function physics(dt, spec = carOf(me())) {
   // pneus: tiram até grip·dt da velocidade de lado; o resto escorrega e freia o carro (no ar, os pneus não seguram).
   // Nas regras de F1 o pneu gasta e esfria (f1-regras.js): a aderência dele multiplica a do carro.
   if (!air && !bala) {
-    const g = spec.grip * (pn ? pn.grip : 1) * (road ? 1 : 0.5) * (c.slip > 30 ? spec.kin * (pn ? pn.kin : 1) : 1) * dt;
+    const g = spec.grip * (pn ? pn.grip : 1) * (1 - (race.arSujo || 0)) * (road ? 1 : 0.5) * (c.slip > 30 ? spec.kin * (pn ? pn.kin : 1) : 1) * dt;
     if (Math.abs(vl) <= g) vl = 0;
     else { vl -= Math.sign(vl) * g; vf -= Math.sign(vf) * Math.min(Math.abs(vf), spec.scrub * 3 * Math.abs(vl) * dt); }
   }
