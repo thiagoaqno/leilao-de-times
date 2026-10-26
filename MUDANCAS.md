@@ -1,24 +1,15 @@
-# Mônaco, fase 2: marcas reais, som de cada região e cenário vivo
+# Kit de pista: o que fizemos em Mônaco vira peça para qualquer GP
 
-Começo da fase 2 (imersão nas pistas), com Mônaco como piloto. Tudo é cenário e som: a física não muda, e as outras pistas continuam iguais.
+Preparação para criar as outras pistas da temporada (Barcelona primeiro) e melhorar as atuais sem refazer tudo. Mônaco continua igual na tela (mesmos números de painéis, postos, placas, luzes do túnel e zebras); a física não muda.
 
-**Marcas de verdade** (`public/corrida/marcas.js`)
-- Os patrocinadores da F1 desenhados no canvas, sem baixar imagem: Rolex (com a coroa), Pirelli (o P comprido), Aramco, Heineken (a estrela vermelha), DHL (as faixas), TAG Heuer, Lenovo, AWS (o sorriso), Formula 1, Qatar Airways, MSC, Crypto.com, Louis Vuitton e o Automobile Club de Monaco.
-- Estão no guard-rail (entre as listras vermelhas e brancas), nos painéis colados nele, nos postos dos fiscais, nos outdoors e nas passarelas (a da reta dos boxes é a da Rolex, como no GP).
+**`public/corrida/kit/`** (com o guia `kit/README.md`)
+- `chao.js`: margem (sarjeta de rua ou faixa de cor), zebras só nas curvas, zebras amarelas, faixas de pedestre, linha tracejada, linhas SC, grid numerado, remendos e bueiros.
+- `beira.js`: guard-rail em painéis com patrocinadores e as fachadas com sacadas, toldos e telhados.
+- `ambiente.js`: cerca, painéis, mastros com a bandeira do país, postos de fiscais e placas de 100/50 m.
+- `marcos.js`: passarelas, postes de rua e a serra no horizonte (em qualquer direção).
+- `vida.js` e `som.js`: helicóptero da TV, gaivotas, fiscais com a bandeira e o som por região (agora com uma região nova, `campo`: vento e passarinhos para autódromos).
+- `marcas.js` (veio de `public/corrida/`) e `comum.js` com as ferramentas.
 
-**Som ambiente que muda pela pista** (`public/corrida/monaco-vida.js`, tudo sintetizado)
-- Porto: ondas, gaivotas e de vez em quando a buzina de um iate.
-- Arquibancadas: a torcida, com os gritos subindo e descendo.
-- Cidade: o ronco da rua e lambretas passando; na Place du Casino, a fonte.
-- Túnel: o zumbido dos exaustores e o eco do motor; lá dentro o som de fora quase some.
-- Sainte Dévote: os sinos da capela tocam de tempos em tempos.
-- O helicóptero da TV, mais alto quanto mais perto.
-- O som ambiente segue o volume e o botão de som da corrida e só toca durante a corrida.
+**`public/corrida/gps/`**: a configuração de cada GP. `pista.js` lê `GPS[id]` no lugar dos `if (id === "monaco")`. Mônaco usa todas as peças (e guarda a capela de Sainte Dévote); Interlagos por enquanto só o asfalto e o ambiente próprio. Os outdoors e as bandeirolas de `vida.js` passam a seguir o que o GP tem, não o nome da pista.
 
-**Cenário vivo**
-- O helicóptero da TV acompanha a corrida, à frente de quem a câmera segue, com o rotor girando.
-- Gaivotas planando sobre o porto.
-- Os fiscais dos 46 postos agitam a bandeira verde quando o carro passa perto.
-- Com "menos movimento" ligado no sistema, as animações param.
-
-Validação: 29 testes da corrida passaram; `git diff --check` sem erros. Conferido no navegador do app: marcas na reta, na Sainte Dévote, no cais e no grampo; o peso de cada região do som medido no #debug (`tr.somMonaco`) no grid, no Cassino, no túnel, no cais e na Sainte Dévote; o helicóptero e os fiscais com a bandeira.
+Validação: 29 testes da corrida passaram; `git diff --check` sem erros. No navegador do app, Mônaco montou com os mesmos números de antes, sem erro no console, e Interlagos, Tóquio, Rio e Nürburgring montam normalmente.
