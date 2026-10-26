@@ -9,6 +9,7 @@ import { CARS3, KS } from "./carros.js";
 import { myProg } from "./fantasma.js";
 import { ajudaDePelotao } from "./equilibrio.js";
 import { marchaAuto, rotacao, torque, topo, NUM } from "./cambio.js";
+import { passoBox } from "./box.js";
 
 // Física do kart (arcade com aderência): o carro tem inércia e os pneus só seguram uma certa força de lado.
 // Virar gira o bico, mas a velocidade continua indo para onde ia; os pneus puxam o carro para a nova direção até o
@@ -22,6 +23,8 @@ const ENCOLHIDO = 0.72, BALA = 1.45;
 export function physics(dt, spec = carOf(me())) {
   const c = race.car, tr = race.tr, go = sNow() >= race.startAt && !!me();
   if (!go) { c.v = c.vx = c.vy = 0; return; }
+  // regras de F1: no corredor dos boxes o carro anda sozinho (box.js); os checkpoints continuam valendo lá dentro
+  if (race.box && passoBox(dt, spec)) return setores(tr, trackFrame(tr, c.x, c.y, race.idx), dt);
   const fr0 = trackFrame(tr, c.x, c.y, race.idx), road = Math.abs(fr0.lat) <= tr.W / 2 + 6, air = c.air;
   let fx = Math.cos(c.a), fy = Math.sin(c.a);
   let vf = c.vx * fx + c.vy * fy, vl = c.vx * -fy + c.vy * fx; // velocidade para a frente e de lado
@@ -134,9 +137,12 @@ export function physics(dt, spec = carOf(me())) {
   } else if (gh < c.z - 2.5) { c.air = true; c.vz = Math.max(0, c.gvz || 0); c.z += c.vz * dt; }
   else { c.gvz = Math.max(-400, Math.min(400, (gh - c.z) / Math.max(dt, 1e-3))); c.z = gh; }
   race.offroad = !road && !c.air && Math.abs(vf) > 30;
-  // checkpoints (como no Forza): o próximo só vale passando por ele, perto da pista e na ordem. Passou direto (cortou
-  // caminho)? Fica "perdido" até voltar nele, e o "↺ Pista" leva de volta para ele.
-  const prox = (race.sector + 1) % SECTORS, gi = checkpoint(prox, tr.n), depois = (race.idx - gi + tr.n) % tr.n;
+  setores(tr, fr, dt);
+}
+// checkpoints (como no Forza): o próximo só vale passando por ele, perto da pista e na ordem. Passou direto (cortou
+// caminho)? Fica "perdido" até voltar nele, e o "↺ Pista" leva de volta para ele.
+function setores(tr, fr, dt) {
+  const c = race.car, prox = (race.sector + 1) % SECTORS, gi = checkpoint(prox, tr.n), depois = (race.idx - gi + tr.n) % tr.n;
   if (depois < 30 && Math.abs(fr.lat) < tr.W / 2 + 70) {
     race.sector = prox; race.cpT = sNow(); act2("sector", { s: prox });
     if (prox === 0) { if (race.largou) race.voltaLocal = (race.voltaLocal || 0) + 1; race.largou = true; } // a volta já conta aqui (o servidor confirma depois)

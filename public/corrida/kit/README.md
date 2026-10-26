@@ -32,6 +32,7 @@ som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo.
 | `montanha: {...}` | `marcos.js` → `montanha` | Serra no horizonte: `angulo` (-π/2 = norte), `afastamento`, `altura`, `largura`, `rocha`, `mato`, `longe`. |
 | `vida: {...}` | `vida.js` → `vidaGP` | `helicoptero` (padrão sim), `gaivotas` (lista ou função `(tr) => [{ x, z, raio }]`), `fiscais` (padrão sim), `som` (as regiões de `som.js`). |
 | `fachadas: {...}` | `beira.js` → `fachadas` | Prédios com sacadas, venezianas, toldos e telhados: `cores` (`[parede, veneziana]`), `toldos`, `telhas` (0 a 1). `FACHADAS_MEDITERRANEO` é o padrão. |
+| `boxes: {...}` | `boxes.js` → `boxesGP` | O corredor dos boxes das regras de F1: asfalto de 34 m de largura ao lado da reta, linhas de entrada (branca) e saída (vermelha), mureta, o quadrado pintado onde o carro para e as 10 garagens com os mecânicos, na cor de quem usa cada uma (`grp.userData.colorir(cores)`). O traçado vem de `boxes: { entra, para, sai, lado }` em `../pistas.js` (frações da volta) e da conta `F1Regras.corredor`; toda pista com `boxes` ganha o corredor sozinha. Chaves: `garagens: false` (só o corredor, Mônaco), `mureta`, `asfalto`, `cores`; `boxes: false` desliga. Só aparece com as regras de F1 (`tr.mostrarBoxes`) e tira os balizadores do meio dele. |
 | `depois(tr, ctx)` | a pista | Por cima dos enfeites soltos (Interlagos: `../interlagos.js`). |
 
 `ctx` traz `{ add, r, hAt, size, aguaTex, palms, yachts, jungle, blds }`: `add` põe na cena da pista, `hAt(x, z)` dá a

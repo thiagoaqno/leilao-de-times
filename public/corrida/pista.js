@@ -17,6 +17,7 @@ import { guardRail, fachadas } from "./kit/beira.js";
 import { ambienteGP } from "./kit/ambiente.js";
 import { passarelas, postes, montanha } from "./kit/marcos.js";
 import { vidaGP } from "./kit/vida.js";
+import { boxesGP } from "./kit/boxes.js";
 
 // ---------- temas das pistas: cores, chão, enfeites e o horizonte ----------
 export const THEMES = {
@@ -252,13 +253,14 @@ function buildWorld(tr) {
     if (gp.montanha) montanha(tr, add, gp.montanha);
     if (gp.vida) vidaGP(tr, add, gp.vida); // helicóptero, gaivotas, fiscais com a bandeira e o som de cada região
   }
+  if (t.boxes && gp?.boxes !== false) boxesGP(tr, add, gp?.boxes || {}); // o corredor dos boxes das regras de F1 (kit/boxes.js)
   const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
   const livreRes = (x, y) => !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr); // fora das arquibancadas e prédios do GP
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
     const p = pts[i];
     for (const side of [-1, 1]) {
       const near = (tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 36) + 10 + r() * 60, x = p.x + p.nx * side * near, y = p.y + p.ny * side * near;
-      if (!free(x, y, 20)) continue;
+      if (!free(x, y, 20) || (tr.boxesInfo && !livreRes(x, y))) continue; // nem em cima das garagens do corredor dos boxes
       const k = r();
       if (id === "monaco") { // palmeiras na calçada e os prédios altos colados na rua (sem área de escape)
         if (!terra(x, y)) continue;

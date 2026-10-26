@@ -96,7 +96,7 @@ function perfil(pista, carro, tracadoId = 0) {
     lim = curva;
     lat = linha.lat;
   }
-  const out = { pts, n, lim, lat, t, c, linha, aprendeu: !!ap }; CACHE.set(chave, out); return out;
+  const out = { pts, n, lim, lat, t, c, linha, aprendeu: !!ap, corredor: F1.corredor(t, n, t.width) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
 }
 // O tempo de uma volta lançada andando no limite do perfil vezes `escala`, com a arrancada do carro (a mesma conta do
 // passo, sem tráfego). Serve para achar a escala que fecha a volta no tempo que o robô mira.
@@ -156,8 +156,11 @@ function largar(room) {
     const nivel = ritmo ? escalaPara(pf, room.ritmoRobos * (1 + espalha)) : (NIVEIS[room.config.nivel] || NIVEIS.medio) * rnd(0.98, 1.02);
     p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
     // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
+    // regras de F1: a estratégia de parada do robô (o composto da largada e as paradas) e o mesmo pneu de quem joga
+    const f1 = room.config.regras === "f1", plano = f1 ? F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${id}`) : null;
+    if (plano) Object.assign(p, { pneu: plano.largada, pneuAtual: plano.largada, compostos: [plano.largada], paradas: [], acrescimo: 0, box: null });
     p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: rnd(-7, 7), tracadoId, reacao: rnd(0, 450), usaEm: 0,
-      pneu: room.config.regras === "f1" ? F1.pneuNovo(p.pneu) : null }; // regras de F1: o mesmo pneu de quem joga
+      pneu: f1 ? F1.pneuNovo(p.pneu) : null, plano, box: null };
     posicionar(p, pf, 0);
   }
 }
@@ -172,6 +175,38 @@ function posicionar(p, pf, laps) {
   p.pos = { x, y, z, a: dir, v: p.ia.v, prog, at: Date.now() };
   return i;
 }
+// ---------- o pit stop (regras de F1) ----------
+// Passando pela linha de entrada do corredor, o robô entra se está na volta da parada da estratégia, ou antes dela se o
+// pneu já passou do penhasco (e nunca na última volta, que passa pela chegada dentro do corredor).
+function entrarNoBox(room, p, ia, pf) {
+  const cor = pf.corredor, prox = ia.plano && ia.plano.paradas[(p.paradas || []).length];
+  if (!cor || !prox || !p.started || p.laps + 1 >= room.config.voltas) return;
+  const rel = (Math.floor(ia.s) - cor.i0 + pf.n) % pf.n; if (rel > 5) return;
+  const gasto = ia.pneu && ia.pneu.desgaste > F1.PENHASCO * 0.95;
+  if (p.laps + 1 < prox.volta && !gasto) return;
+  const n = (p.paradas || []).length + 1;
+  ia.box = { fase: "entra", u: rel + (ia.s - Math.floor(ia.s)), lat0: ia.lat, garagem: F1.garagemDe(cor, p.grid), parada: F1.tempoDeParada(room.semente, p.id, n), composto: prox.composto, volta: p.laps + 1, tempo: 0, t: 0 };
+  p.box = ia.box;
+}
+// um passo dentro do corredor: freia até o limitador, para na garagem, espera a parada e sai no limitador
+function passoNoBox(room, p, ia, pf, dt, emit) {
+  const b = ia.box, cor = pf.corredor, c = pf.c, vlim = F1.LIMITADOR * c.vmax;
+  b.tempo += dt;
+  const vai = (alvo) => { ia.v = ia.v > alvo ? Math.max(alvo, ia.v - c.brake * dt) : Math.min(alvo, ia.v + c.acc * dt); };
+  if (b.fase === "entra") {
+    const falta = Math.max(0, b.garagem - b.u) * STEP;
+    vai(Math.min(vlim, Math.sqrt(2 * c.brake * 0.6 * falta)));
+    b.u = Math.min(b.garagem, b.u + (ia.v * dt) / STEP);
+    if (b.u >= b.garagem - 0.02) { b.u = b.garagem; ia.v = 0; b.fase = "parada"; b.t = 0; }
+  } else if (b.fase === "parada") {
+    ia.v = 0; b.t += dt;
+    if (b.t >= b.parada) { b.fase = "sai"; ia.pneu = F1.pneuNovo(b.composto); }
+  } else {
+    vai(vlim); b.u += (ia.v * dt) / STEP;
+    if (b.u >= cor.len) { b.u = cor.len; ia.box = null; p.box = null; emit("box", { id: p.id, composto: b.composto, tempo: b.tempo, volta: b.volta }); }
+  }
+  ia.s = (cor.i0 + b.u) % pf.n; ia.lat = cor.lat(b.u, b.lat0);
+}
 // um passo (dt em segundos). setor(p, s) é o mesmo onSector dos humanos; emit manda eventos para a sala
 function passo(room, dt, setor, emit) {
   const now = Date.now(), corrida = room.phase === "race" && now >= room.startAt, t = T.PISTAS[room.config.pista];
@@ -180,7 +215,8 @@ function passo(room, dt, setor, emit) {
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot || !p.ia) continue;
     const ia = p.ia, pf = perfil(room.config.pista, p.car, ia.tracadoId), c = pf.c;
-    if (corrida && p.finish == null && now >= room.startAt + ia.reacao) {
+    if (ia.box && corrida && p.finish == null) passoNoBox(room, p, ia, pf, dt, emit);
+    else if (corrida && p.finish == null && now >= room.startAt + ia.reacao) {
       // Corre pelo próprio ritmo; a posição do humano não dá aceleração extra ao bot.
       let el = 1; if (lider != null && p.pos && (p.pos.prog - lider) / pf.n > 0.08) el = 0.97;
       const i = Math.floor(ia.s) % pf.n;
@@ -222,6 +258,7 @@ function passo(room, dt, setor, emit) {
       else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * ak * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / (c.vmax * bk), 1.6)) * dt); // a mesma arrancada do carro de quem joga
       else ia.v = Math.max(alvo, ia.v - (ia.v > c.vmax && alvo >= c.vmax * 0.98 ? T.TURBO_SOLTA : c.brake) * dt); // fim do turbo na reta: solta aos poucos, como quem joga
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
+      entrarNoBox(room, p, ia, pf);
       // o pneu gasta pela distância; escorrega quando a curva pede mais que o grip do carro
       if (ia.pneu) F1.gastarPneu(ia.pneu, { dist: ia.v * dt, total: room.config.voltas * pf.n * STEP, slip: Math.max(0, (ia.v * ia.v * pf.linha.k[i]) / c.grip - 0.9) * 120, v: ia.v, vmax: c.vmax, dt });
       // depois da largada (~600 de reta), sai da faixa do grid e vai aos poucos para o traçado; antes disso, não desvia de ninguém

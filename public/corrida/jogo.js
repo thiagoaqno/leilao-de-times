@@ -13,6 +13,7 @@ import { physics } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
 import { standings, hud } from "./hud.js";
 import { f1Pronto } from "./f1.js";
+import { iniciarBox } from "./box.js";
 import { propsPronto } from "./props.js";
 import { startItems, stopItems, stepItems } from "./itens.js";
 import { passoEfeitos, limparEfeitos, amostrasDeEfeitos } from "./efeitos.js";
@@ -99,11 +100,14 @@ export function startRace(st) {
   // a luz da foto do céu só muda durante a contagem: com o carro andando, ela recompilaria todos os materiais
   const ceu = useTrack(tr, st.config.hora, () => !race || race.tr !== tr || sNow() < race.startAt);
   luzPendente();
+  tr.mostrarBoxes = st.config.regras === "f1"; if (tr.boxesGP) tr.boxesGP.userData.mostrar(tr.mostrarBoxes); // o corredor dos boxes só aparece nas regras de F1
+  if (tr.boxesGP) { const cores = []; for (const p of st.players) cores[p.grid % window.F1Regras.GARAGENS] = p.color; tr.boxesGP.userData.colorir(cores); } // cada garagem na cor de quem para nela
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W);
   if (race) clearRace();
   race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
     kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0,
-    pneu: st.config.regras === "f1" ? window.F1Regras.pneuNovo(mine && mine.pneu) : null }; // regras de F1: o pneu que gasta
+    pneu: st.config.regras === "f1" ? window.F1Regras.pneuNovo(mine && mine.pneu) : null, box: iniciarBox(tr, st) }; // regras de F1: o pneu que gasta e o pit stop (box.js)
+  $("bBox").classList.toggle("hidden", !race.box || !mine);
   startItems(tr, st.config.caixas);
   $("results").classList.add("hidden");
   resize(); comecarMedida();

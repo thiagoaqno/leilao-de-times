@@ -231,6 +231,9 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
 .hud .board span{width:14px;text-align:right;opacity:.75}
 .hud .board i{width:4px;height:13px;border-radius:2px;display:inline-block}
 .hud .board em{font-style:normal;font-size:9.5px;font-weight:800;opacity:.6;letter-spacing:.06em}
+.hud .board u.pn{width:9px;height:9px;border-radius:50%;border:2.5px solid var(--c);background:#111;display:inline-block;text-decoration:none}
+.hud .board em.box{opacity:1;color:#ffd23f}
+#bBox.pedido{background:#ffd23f;color:#1b1d24}
 .topbtns{position:absolute;right:12px;top:10px;display:flex;gap:6px;z-index:3}
 .vol{width:90px;padding:0;accent-color:var(--yellow);background:transparent;border:0}.topbtns .vol{align-self:center;filter:drop-shadow(0 1px 2px #000)}
 @media (max-width:640px){.vol{width:60px}}
@@ -333,7 +336,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight
   <button id="hItem" class="itemButton hidden" aria-label="Usar item">🎁</button>
   <div class="hud msg" id="hMsg"></div>
   <div class="tinta" id="hTinta" aria-hidden="true"></div><div class="clarao" id="hRaio" aria-hidden="true"></div>
-  <div class="topbtns"><input type="range" class="vol" id="volCorrida" min="0" max="100" aria-label="Volume do som" title="Volume"><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>
+  <div class="topbtns"><input type="range" class="vol" id="volCorrida" min="0" max="100" aria-label="Volume do som" title="Volume"><button id="bBox" class="hidden" title="Pedir a parada no box (B); 1, 2 e 3 escolhem o pneu">🔧 Box</button><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>
   <div class="pad l hidden" id="padL"><button data-k="left" aria-label="Esquerda">◀</button><button data-k="right" aria-label="Direita">▶</button></div>
   <div class="pad m hidden" id="padM"><button data-marcha="-1" aria-label="Reduzir marcha">−</button><button data-marcha="1" aria-label="Subir marcha">+</button></div>
   <div class="pad r hidden" id="padR"><button data-k="brake" aria-label="Frear">▼</button><button class="gas" data-k="gas" aria-label="Acelerar">▲</button></div>
