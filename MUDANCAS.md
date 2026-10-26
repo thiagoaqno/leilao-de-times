@@ -7,3 +7,5 @@ A ambientação percorre a volta: 82 painéis de Interlagos/São Paulo/GP da Gal
 O protótipo e os novos efeitos só são ativados em Interlagos. Mônaco continua com o visual anterior. Os elementos novos são cenográficos, sem mudar colisões ou regras.
 
 Validação: 29 testes de corrida passaram (colisão, experiência, poderes, recordes e robôs); sintaxe dos módulos e git diff --check sem erros. Inspeção no navegador do app em quatro posições da volta, com verificações do pulso dos LEDs, aquecimento dos discos, contagem da ambientação e isolamento de Mônaco.
+
+Refino do asfalto: textura de agregado fino de 1024 × 1024, repetida a cada 8 metros, com relevo sutil e variação de desgaste; marcas de borracha acompanham as curvas em uma camada própria e as linhas de borda ficam em geometria separada. Os cones foram removidos de Interlagos. Resultado conferido durante a corrida no navegador do app.
