@@ -1,5 +1,5 @@
 // Corrida da Galera — telas fora da corrida: sala de espera, garagem e "como jogar".
-import { E, PISTAS, CARROS, sample, carOf, COLORS, PAWNS, $, h, me, act, fmt, store } from "./estado.js";
+import { E, PISTAS, CARROS, sample, carOf, specDaEquipe, COLORS, PAWNS, $, h, me, act, fmt, store } from "./estado.js";
 import { THEMES } from "./pista.js";
 import { MODS3, MODS_PADRAO, carPreview } from "./carros.js";
 import { loadBest } from "./fantasma.js";
@@ -25,7 +25,8 @@ export function show(id) {
 // está na sala. Cada bloco abre o seu painel (as abas e o Esc também). O organizador escolhe pista e regras; todo mundo
 // escolhe carro, cor e piloto.
 let aba = "box";
-const ABAS = { box: "Box", pista: "Pistas", garagem: "Garagem", pintura: "Pintura", regras: "Regras" };
+const ABAS = { box: "Box", pista: "Pistas", garagem: "Garagem", equipe: "Equipe", pintura: "Pintura", regras: "Regras" };
+const abasAtivas = () => Object.keys(ABAS).filter((k) => k !== "equipe" || (E.S && E.S.config.regras === "f1")); // a aba da equipe só existe nas regras de F1
 const NIVEL = { facil: "fácil", medio: "médio", dificil: "difícil" };
 function abrir(qual) {
   aba = ABAS[qual] ? qual : "box";
@@ -37,12 +38,12 @@ document.addEventListener("click", (e) => { const b = e.target.closest("[data-ab
 document.addEventListener("keydown", (e) => {
   if ($("lobby").classList.contains("hidden") || e.target.tagName === "INPUT") return;
   if (e.key === "Escape" && aba !== "box") { abrir("box"); e.preventDefault(); }
-  const ks = Object.keys(ABAS), i = ks.indexOf(aba);
+  const ks = abasAtivas(), i = ks.indexOf(aba);
   if (e.key === "q" || e.key === "Q") abrir(ks[(i - 1 + ks.length) % ks.length]);
   if (e.key === "e" || e.key === "E") abrir(ks[(i + 1) % ks.length]);
 });
-$("hubAnt").onclick = () => { const ks = Object.keys(ABAS); abrir(ks[(ks.indexOf(aba) - 1 + ks.length) % ks.length]); };
-$("hubProx").onclick = () => { const ks = Object.keys(ABAS); abrir(ks[(ks.indexOf(aba) + 1) % ks.length]); };
+$("hubAnt").onclick = () => { const ks = abasAtivas(); abrir(ks[(ks.indexOf(aba) - 1 + ks.length) % ks.length]); };
+$("hubProx").onclick = () => { const ks = abasAtivas(); abrir(ks[(ks.indexOf(aba) + 1) % ks.length]); };
 
 export function renderLobby() {
   const m = me(), isHost = m && E.S.host === m.id, c = E.S.config, t = PISTAS[c.pista], dis = isHost ? "" : "disabled", f1 = c.regras === "f1";
@@ -52,6 +53,14 @@ export function renderLobby() {
   else { $("hubCarNome").textContent = "Assistindo"; $("hubClasse").textContent = "você entrou só para ver"; }
   $("hubPawn").textContent = m ? m.pawn : "👀"; $("hubNome").textContent = m ? m.name : "Torcida"; $("hubSala").textContent = `Sala ${E.S.code} · ${E.S.players.length + robos} no grid`;
   document.querySelectorAll('#hubAbas [data-aba="garagem"], #hubAbas [data-aba="pintura"], .tile[data-aba="garagem"], .tile[data-aba="pintura"]').forEach((b) => (b.disabled = !m));
+  // a equipe e a montagem do carro (regras de F1)
+  document.querySelectorAll('[data-aba="equipe"]').forEach((b) => { b.classList.toggle("hidden", !f1); b.disabled = !m; });
+  if (f1 && m) {
+    const eq = m.equipe && window.F1Equipes.EQUIPES[m.equipe], sobra = eq ? window.F1Equipes.sobra(m.equipe, E.S.montagens && E.S.montagens[m.equipe] || window.F1Equipes.montagemPadrao(m.equipe)) : 0;
+    $("tileEquipeTxt").textContent = eq ? `${window.F1Pilotos.EQUIPES[m.equipe].nome} · ${eq.orcamento} pontos${sobra ? ` (sobram ${sobra})` : ""}` : "Escolha a sua equipe e monte o carro";
+  }
+  renderEquipe(m, f1);
+  if (aba === "equipe" && !f1) abrir("box");
   // os blocos
   const pint = (m && MODS3.pintura[(m.mods || MODS_PADRAO).pintura]) || MODS3.pintura.propria;
   if (m) { carPreview($("tileCarro"), m.color, m.car, m.mods); $("tileCarroTxt").textContent = carOf(m).name; }
@@ -96,7 +105,7 @@ export function renderLobby() {
   if (m) {
     $("colorPick").innerHTML = COLORS.map((col) => { const taken = E.S.players.some((p) => p.color === col && p.id !== m.id); return `<button class="${col === m.color ? "on" : ""} ${taken ? "taken" : ""}" data-c="${col}" ${taken ? "disabled" : ""} style="background:${col}" aria-label="Cor ${col}"></button>`; }).join("");
     $("colorPick").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => act("color", { color: b.dataset.c })));
-    $("carPick").innerHTML = Object.entries(CARROS).map(([id, k]) => `<button class="car ${m.car === id ? "on" : ""}" data-car="${id}" aria-pressed="${m.car === id}"><canvas data-carprev="${id}" width="240" height="135"></canvas><b>${h(k.name)}</b><small class="inspo">${h(k.inspo || "")}</small><p>${h(k.desc)}</p>
+    $("carPick").innerHTML = f1 && m.equipe ? `<p class="hint" style="grid-column:1/-1">Nas regras de Fórmula 1 o carro é o da sua equipe: ${h(carOf(m).name)}. Monte as peças na aba Equipe.</p>` : Object.entries(CARROS).map(([id, k]) => `<button class="car ${m.car === id ? "on" : ""}" data-car="${id}" aria-pressed="${m.car === id}"><canvas data-carprev="${id}" width="240" height="135"></canvas><b>${h(k.name)}</b><small class="inspo">${h(k.inspo || "")}</small><p>${h(k.desc)}</p>
       <div class="spec">${specRows(k).map(([lbl, n]) => `<span>${lbl}</span>${leds(n)}`).join("")}</div></button>`).join("");
     $("carPick").querySelectorAll("[data-carprev]").forEach((cv) => carPreview(cv, m.color, cv.dataset.carprev, m.mods));
     $("carPick").querySelectorAll("[data-car]").forEach((b) => (b.onclick = () => act("car", { car: b.dataset.car })));
@@ -108,6 +117,43 @@ export function renderLobby() {
     $("pawnPick").innerHTML = PAWNS.map((pw) => { const taken = E.S.players.some((p) => p.pawn === pw && p.id !== m.id); return `<button class="${pw === m.pawn ? "on" : ""} ${taken ? "taken" : ""}" data-p="${pw}" ${taken ? "disabled" : ""}>${pw}</button>`; }).join("");
     $("pawnPick").querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => act("pawn", { pawn: b.dataset.p })));
   } else if (aba === "garagem" || aba === "piloto") abrir("box");
+}
+// ---------- a equipe e a montagem do carro (regras de F1; as contas em f1-equipes.js) ----------
+// Cada equipe de 2026 tem um orçamento em pontos para as seis peças (1 ponto por nível, de 0 a 8). Dois amigos podem dividir a
+// mesma equipe (um em cada carro, com o mesmo carro); quem entrou primeiro é o chefe e distribui os pontos. O servidor confere.
+function renderEquipe(m, f1) {
+  const host = $("equipePainel"); if (!host) return;
+  const F = window.F1Equipes, FP = window.F1Pilotos;
+  if (!f1) { host.innerHTML = `<p class="hint">As equipes e a montagem do carro valem nas regras de Fórmula 1 (o organizador liga em Regras).</p>`; return; }
+  if (!m) { host.innerHTML = `<p class="hint">Você entrou só para assistir.</p>`; return; }
+  const humanos = (id) => E.S.players.filter((p) => !p.bot && p.equipe === id);
+  const times = Object.entries(F.EQUIPES).map(([id, q]) => {
+    const e = FP.EQUIPES[id], gente = humanos(id), cheia = gente.length >= 2 && m.equipe !== id;
+    return `<button class="time ${m.equipe === id ? "on" : ""}" data-equipe="${id}" ${cheia ? "disabled" : ""} style="--equipe:${e.cor}" aria-pressed="${m.equipe === id}">${marcaEquipe(id)}<b>${h(e.nome)}</b><span class="pts">${q.orcamento} pontos</span><small>${h(q.nota)}</small>${gente.length ? `<small class="gente">${gente.map((p) => h(p.name)).join(" e ")}${cheia ? " (lotada)" : ""}</small>` : ""}</button>`;
+  }).join("");
+  let carro = "";
+  if (m.equipe) {
+    const eq = m.equipe, orc = F.EQUIPES[eq].orcamento, mont = (E.S.montagens && E.S.montagens[eq]) || F.montagemPadrao(eq), usado = F.custoDaMontagem(mont), sobra = orc - usado;
+    const chefeId = E.S.chefes && E.S.chefes[eq], chefe = E.S.players.find((p) => p.id === chefeId), souChefe = chefeId === m.id, spec = specDaEquipe(eq);
+    const linhas = F.ORDEM.map((k) => { const pc = F.PECAS[k], n = mont[k];
+      return `<div class="peca"><span class="ic" aria-hidden="true">${pc.icone}</span><div class="pnome"><b>${pc.nome}</b><small>${h(pc.desc)}</small><small class="efeito"><i class="mais">+</i> ${h(pc.bom)}${pc.custa === "só os pontos" ? "" : ` · <i class="menos">−</i> ${h(pc.custa)}`}</small></div>
+        <div class="nivel"><button data-menos="${k}" aria-label="Tirar um ponto de ${pc.nome}" ${souChefe && n > 0 ? "" : "disabled"}>−</button><span class="pips" role="img" aria-label="nível ${n} de ${F.MAX_NIVEL}">${Array.from({ length: F.MAX_NIVEL }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span><button data-mais="${k}" aria-label="Pôr um ponto em ${pc.nome}" ${souChefe && n < F.MAX_NIVEL && sobra > 0 ? "" : "disabled"}>+</button><b class="num">${n}</b></div></div>`; }).join("");
+    carro = `<h3>Montar o carro · ${h(FP.EQUIPES[eq].nome)}</h3>
+      <div class="garagem-equipe"><div class="foto"><canvas id="equipeCarro" width="240" height="135"></canvas><b>${h(spec.desc)}</b><small>${h(spec.inspo)}</small></div>
+        <div class="orcamento"><div class="barra" role="img" aria-label="${usado} de ${orc} pontos usados"><i style="width:${(usado / orc) * 100}%"></i></div><b>${sobra ? `Sobram ${sobra} ponto${sobra > 1 ? "s" : ""}` : "Orçamento todo usado"}</b><small>${usado} de ${orc} pontos${souChefe ? "" : ` · quem monta é ${h(chefe ? chefe.name : "o chefe")}`}</small>
+          ${souChefe ? `<button class="small ghost" data-padrao ${E.S.montagens && E.S.montagens[eq] ? "" : "disabled"}>Voltar ao carro da equipe</button>` : ""}</div></div>
+      <div class="pecas">${linhas}</div>
+      <div class="spec ficha-equipe">${F.ficha(spec).map((f) => `<span>${f.rotulo}</span>${leds(f.nota)}`).join("")}</div>
+      <small class="hint">Velocidade final ${Math.round(spec.vmax)} · aceleração ${spec.acc.toFixed(0)} · freio ${Math.round(spec.brake)} · aderência ${Math.round(spec.grip)} · chance de quebrar ${Math.round(spec.quebra * 100)}% · DRS ×${spec.drs.toFixed(2)} · pneu gasta ×${spec.desgaste.toFixed(2)}.</small>`;
+  }
+  host.innerHTML = `<p class="hint" style="margin:0 0 10px">Escolha a sua equipe de 2026. Cada uma tem um orçamento de pontos para as peças do carro; os robôs da equipe correm com o mesmo carro, e dois amigos podem dividir a mesma equipe (um em cada carro).</p><div class="times">${times}</div>${carro}`;
+  host.querySelectorAll("[data-equipe]").forEach((b) => (b.onclick = () => act("equipe", { id: m.equipe === b.dataset.equipe ? null : b.dataset.equipe })));
+  if (!m.equipe) return;
+  const eq = m.equipe, mont = (E.S.montagens && E.S.montagens[eq]) || F.montagemPadrao(eq);
+  host.querySelectorAll("[data-menos]").forEach((b) => (b.onclick = () => act("montagem", { montagem: { ...mont, [b.dataset.menos]: mont[b.dataset.menos] - 1 } })));
+  host.querySelectorAll("[data-mais]").forEach((b) => (b.onclick = () => act("montagem", { montagem: { ...mont, [b.dataset.mais]: mont[b.dataset.mais] + 1 } })));
+  const pad = host.querySelector("[data-padrao]"); if (pad) pad.onclick = () => act("montagem", { montagem: null });
+  const cv = $("equipeCarro"); if (cv) carPreview(cv, m.color, m.car, m.mods);
 }
 // ficha do carro (de 1 a 10 LEDs): velocidade final, aceleração, aderência na curva e resistência (muro e grama)
 const lerp10 = (v, a, b) => Math.max(1, Math.min(10, Math.round(1 + ((v - a) / (b - a)) * 9)));
