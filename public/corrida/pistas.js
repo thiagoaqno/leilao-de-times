@@ -655,18 +655,22 @@ function elevate(pts, hills, step = 6) {
 
 // personalização leve: cor das rodas, aerofólio e faixas
 // a pintura do F1: as combinações de cor das equipes (só as cores, sem nome nem marca) ou a cor do piloto com branco
+const EQUIPES_F1 = typeof module !== "undefined" && module.exports ? require("./logos/index.json") : root.EQUIPES_F1 || {};
+const corF1 = (id, reserva) => EQUIPES_F1[id]?.cor || reserva;
 const MODS = {
   pintura: {
     propria: { name: "Sua cor", c: null, c2: "#f4f4f4" },
-    classico: { name: "Clássico 88", c: "#d8101c", c2: "#f4f4f4" },
-    rosso: { name: "Rosso", c: "#c8000a", c2: "#f2c300" },
-    papaia: { name: "Papaia", c: "#ff7a00", c2: "#1e5bd8" },
-    flecha: { name: "Flecha de Prata", c: "#b9bec4", c2: "#00c2b2" },
-    touro: { name: "Touro Azul", c: "#1b2a5c", c2: "#e8202a" },
-    ingles: { name: "Verde Inglês", c: "#005c4b", c2: "#c8e000" },
-    frances: { name: "Azul Francês", c: "#0a5bc8", c2: "#ff7ab8" },
-    ouro: { name: "Preto e Ouro", c: "#141414", c2: "#c9a64a" },
-    marinho: { name: "Azul Marinho", c: "#0b2147", c2: "#3ab0e8" },
+    classico: { name: "Clássico 88", equipe: "haas", c: corF1("haas", "#9c9fa2"), c2: "#f4f4f4" },
+    rosso: { name: "Rosso", equipe: "ferrari", c: corF1("ferrari", "#ff2800"), c2: "#f2c300" },
+    papaia: { name: "Papaia", equipe: "mclaren", c: corF1("mclaren", "#f47600"), c2: "#1e5bd8" },
+    flecha: { name: "Flecha de Prata", equipe: "mercedes", c: "#b9bec4", c2: corF1("mercedes", "#00d7b6") },
+    touro: { name: "Touro Azul", equipe: "red-bull", c: "#1b2a5c", c2: corF1("red-bull", "#4781d7") },
+    ingles: { name: "Verde Inglês", equipe: "aston-martin", c: corF1("aston-martin", "#229971"), c2: "#c8e000" },
+    frances: { name: "Azul Francês", equipe: "alpine", c: corF1("alpine", "#00a1e8"), c2: "#ff7ab8" },
+    ouro: { name: "Preto e Ouro", equipe: "cadillac", c: "#141414", c2: corF1("cadillac", "#909090") },
+    marinho: { name: "Azul Marinho", equipe: "williams", c: corF1("williams", "#1868db"), c2: "#3ab0e8" },
+    audi: { name: "Audi", equipe: "audi", c: corF1("audi", "#ff2d00"), c2: "#111111" },
+    racingbulls: { name: "Racing Bulls", equipe: "racing-bulls", c: corF1("racing-bulls", "#6c98ff"), c2: "#f4f4f4" },
   },
 };
 const MODS_PADRAO = { pintura: "propria" };

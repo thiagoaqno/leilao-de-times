@@ -91,6 +91,16 @@ app.get("/api/escudo/:id", (req, res) => {
     if (erro && !res.headersSent) res.status(404).end();
   });
 });
+// Emblemas da F1 baixados para o Git: a tela e o canvas usam o mesmo endereço local.
+const logosF1 = (() => { try { return require("./public/corrida/logos/index.json"); } catch { return {}; } })();
+app.get("/api/corrida/logo/:id", (req, res) => {
+  const id = req.params.id, equipe = Object.hasOwn(logosF1, id) && logosF1[id];
+  if (!/^[a-z0-9-]+$/.test(id) || !equipe?.arquivo) return res.status(404).end();
+  res.set("Cache-Control", "public, max-age=604800");
+  res.sendFile(path.join(__dirname, "public", "corrida", "logos", equipe.arquivo), (erro) => {
+    if (erro && !res.headersSent) res.status(404).end();
+  });
+});
 app.get("/leilao", (req, res) => res.redirect("/leilao/"));
 app.get("/banco", (req, res) => res.redirect("/banco/"));
 app.get("/uno", (req, res) => res.redirect("/uno/"));

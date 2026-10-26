@@ -4,6 +4,14 @@ import { THEMES } from "./pista.js";
 import { MODS3, MODS_PADRAO, carPreview } from "./carros.js";
 import { loadBest } from "./fantasma.js";
 import { f1Pronto } from "./f1.js";
+const EQUIPES_F1 = window.EQUIPES_F1 || {};
+const marcaEquipe = (id) => {
+  const e = EQUIPES_F1[id]; if (!e) return "";
+  return `<span class="equipe-marca" style="--equipe:${e.cor}"><span class="sigla">${h(e.sigla)}</span>${e.arquivo ? `<img data-logo-f1 src="/api/corrida/logo/${id}" alt="" loading="lazy">` : ""}</span>`;
+};
+document.addEventListener("error", (ev) => { if (ev.target.matches?.("img[data-logo-f1]")) ev.target.remove(); }, true);
+const logosEquipes = document.getElementById("logosEquipes");
+if (logosEquipes) logosEquipes.innerHTML = Object.entries(EQUIPES_F1).map(([id, e]) => `<span class="equipe-mini" style="--equipe:${e.cor}">${marcaEquipe(id)}<span>${h(e.nome)}</span></span>`).join("");
 f1Pronto.then(() => { if (E.S && E.S.phase === "lobby") renderLobby(); }); // refaz as fotos dos carros com o modelo 3D
 
 export function show(id) {
@@ -66,7 +74,7 @@ export function renderLobby() {
   // painel das regras
   $("cfg").innerHTML = `<div class="field"><label>Horário da pista</label><div class="seg"><button data-hora="dia" class="${c.hora !== "noite" ? "on" : ""}" ${dis}>☀️ Dia</button><button data-hora="noite" class="${c.hora === "noite" ? "on" : ""}" ${dis}>🌙 Noite</button></div><small>Disponível em todas as pistas.</small></div><div class="field"><label>Voltas</label><div class="seg">${[1, 2, 3, 5, 10, 21].map((v) => `<button data-v="${v}" class="${c.voltas === v ? "on" : ""}" ${dis}>${v}</button>`).join("")}</div></div>
     <div class="field"><label>Câmbio</label><div class="seg">${[["auto", "Automático"], ["manual", "Manual"]].map(([v, l]) => `<button data-cambio="${v}" class="${(c.cambio || "auto") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div><small>Manual para todo mundo: Shift sobe a marcha, Ctrl direito reduz (no celular, os botões + e −). Os robôs continuam no automático.</small></div>
-    <div class="field"><label>Regras</label><div class="seg">${[["galera", "Corrida da Galera"], ["f1", "Fórmula 1"]].map(([v, l]) => `<button data-regras="${v}" class="${(c.regras || "galera") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div><small>Fórmula 1: os pneus gastam e esfriam (macio, médio e duro), sem caixas e sem a ajuda do pelotão. Os robôs usam os mesmos pneus.</small></div>
+    <div class="field"><label>Regras</label><div class="seg">${[["galera", "Corrida da Galera"], ["f1", "Fórmula 1"]].map(([v, l]) => `<button data-regras="${v}" class="${(c.regras || "galera") === v ? "on" : ""}" ${dis}>${l}</button>`).join("")}</div><small>Fórmula 1: pneus macio, médio e duro, paradas nos boxes, sem caixas de itens nem ajuda do pelotão. Os robôs usam os mesmos pneus.</small></div>
     ${f1 && m ? `<div class="field"><label>Seu pneu na largada</label><div class="seg">${Object.entries(window.F1Regras.PNEUS).map(([v, p]) => `<button data-pneu="${v}" class="${(m.pneu || "medio") === v ? "on" : ""}"><i class="bola-pneu" style="--c:${p.cor}"></i>${p.nome}</button>`).join("")}</div><small>O macio é o mais rápido e o que gasta antes; o duro aguenta a corrida inteira, mas segura menos. Pneu gasto escorrega nas curvas e, perto do fim, despenca.</small></div>` : ""}
     ${f1 ? "" : `<div class="field"><label>Caixas de itens</label><div class="seg"><button data-opt="caixas" class="${c.caixas ? "on" : ""}" ${dis}>${c.caixas ? "🎁 Ligadas" : "Desligadas"}</button></div><small>Banana, cascos, cogumelo, estrela e bomba espalhados pela pista.</small></div>`}
     <div class="field"><label>Robôs</label><div class="seg">${[0, 1, 3, 5, 7].map((v) => `<button data-robos="${v}" class="${(c.robos || 0) === v ? "on" : ""}" ${dis}>${v ? v : "Sem"}</button>`).join("")}</div>
@@ -90,7 +98,7 @@ export function renderLobby() {
     $("carPick").querySelectorAll("[data-car]").forEach((b) => (b.onclick = () => act("car", { car: b.dataset.car })));
     // as pinturas: cada uma com a foto do carro pintado e as duas cores
     const atual = (m.mods || MODS_PADRAO).pintura || "propria";
-    $("modPick").innerHTML = Object.entries(MODS3.pintura).map(([id, p]) => `<button class="pint ${atual === id ? "on" : ""}" data-pintura="${id}" aria-pressed="${atual === id}"><canvas data-pintprev="${id}" width="240" height="135"></canvas><span class="faixas"><i style="background:${p.c || m.color}"></i><i style="background:${p.c2}"></i></span><b>${h(p.name)}</b></button>`).join("");
+    $("modPick").innerHTML = Object.entries(MODS3.pintura).map(([id, p]) => `<button class="pint ${atual === id ? "on" : ""}" data-pintura="${id}" aria-pressed="${atual === id}"><canvas data-pintprev="${id}" width="240" height="135"></canvas><span class="faixas"><i style="background:${p.c || m.color}"></i><i style="background:${p.c2}"></i></span><span class="equipe-logo">${marcaEquipe(p.equipe)}<b>${h(p.name)}</b></span></button>`).join("");
     $("modPick").querySelectorAll("[data-pintprev]").forEach((cv) => carPreview(cv, m.color, m.car, { pintura: cv.dataset.pintprev }));
     $("modPick").querySelectorAll("[data-pintura]").forEach((b) => (b.onclick = () => act("mods", { mods: { pintura: b.dataset.pintura } })));
     $("pawnPick").innerHTML = PAWNS.map((pw) => { const taken = E.S.players.some((p) => p.pawn === pw && p.id !== m.id); return `<button class="${pw === m.pawn ? "on" : ""} ${taken ? "taken" : ""}" data-p="${pw}" ${taken ? "disabled" : ""}>${pw}</button>`; }).join("");
