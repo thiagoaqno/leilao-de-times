@@ -465,7 +465,7 @@ const PISTAS = {
     name: "Spa-Francorchamps", sub: "Spa-Francorchamps: La Source, a descida até Eau Rouge e o Raidillon, a reta Kemmel, Les Combes, Bruxelles, Pouhon, Stavelot, Blanchimont e o Bus Stop", f1: true,
     // Circuit de Spa-Francorchamps: 6978 m. Traçado de bacinger/f1-circuits (be-1925, licença MIT: ver o cabeçalho dos traçados convertidos)
     // convertido por ferramentas/circuitos-f1.js: a linha central real em 121 vértices, a linha de chegada no primeiro
-    scale: 3.56, width: 120, minLap: 37, walls: false, flat: 40, fall: 220, largada: 0.781,
+    scale: 4, width: 120, minLap: 41, walls: false, flat: 40, fall: 220, largada: 0.781,
     hills: [[0,101], [0.04,111], [0.08,92], [0.12,55], [0.16,62], [0.2,115], [0.24,126], [0.28,158], [0.32,175], [0.36,183], [0.4,170], [0.44,131], [0.48,100], [0.52,61], [0.56,30], [0.6,18], [0.64,18], [0.68,11], [0.72,23], [0.76,39], [0.8,56], [0.84,98], [0.88,91], [0.92,98], [0.96,87], [1,101]],
     points: [
       [641, 284, 0], [606, 225, 1043], [588, 198, 235], [576, 173, 91], [574, 166, 24], [575, 160, 22], [578, 155, 18], [583, 152, 23],
@@ -610,7 +610,7 @@ const PISTAS = {
     name: "Austin", sub: "Circuit of the Americas: a subida até a curva 1, os S rápidos, a reta de trás, o estádio e a curva 19, no Texas", f1: true,
     // Circuit of the Americas: 5520 m. Traçado de bacinger/f1-circuits (us-2012, licença MIT: ver o cabeçalho dos traçados convertidos)
     // convertido por ferramentas/circuitos-f1.js: a linha central real em 114 vértices, a linha de chegada no primeiro
-    scale: 3.59, width: 120, minLap: 34, walls: false, flat: 40, fall: 220, largada: 0.668,
+    scale: 4.2, width: 120, minLap: 39, walls: false, flat: 40, fall: 220, largada: 0.668,
     hills: [[0,13], [0.04,28], [0.08,36], [0.12,31], [0.16,29], [0.2,24], [0.24,28], [0.28,32], [0.32,50], [0.36,29], [0.4,30], [0.44,19], [0.48,21], [0.52,22], [0.56,19], [0.6,14], [0.64,15], [0.68,20], [0.72,25], [0.76,31], [0.8,29], [0.84,13], [0.88,7], [0.92,5], [0.96,10], [1,13]],
     points: [
       [408, 1039, 0], [509, 1119, 0], [547, 1148, 508], [582, 1170, 72], [590, 1171, 23], [598, 1169, 22], [604, 1162, 23], [605, 1151, 126],
@@ -1043,13 +1043,13 @@ const BOXES = {
   miami: { entra: 0.9819, para: 0, sai: 0.0181, lado: -1 },
   montreal: { entra: 0.9806, para: 0, sai: 0.0194, lado: 1 },
   redbullring: { entra: 0.9805, para: 0, sai: 0.0195, lado: 1 },
-  spa: { entra: 0.9838, para: 0, sai: 0.0162, lado: 1 },
+  spa: { entra: 0.9856, para: 0, sai: 0.0144, lado: 1 },
   hungaroring: { entra: 0.9807, para: 0, sai: 0.0193, lado: 1 },
   zandvoort: { entra: 0.9805, para: 0, sai: 0.0195, lado: 1 },
   madri: { entra: 0.9819, para: 0, sai: 0.0181, lado: 1 },
   baku: { entra: 0.9825, para: 0, sai: 0.0175, lado: -1 },
   singapura: { entra: 0.9812, para: 0, sai: 0.0188, lado: 1 },
-  austin: { entra: 0.9819, para: 0, sai: 0.0181, lado: -1 },
+  austin: { entra: 0.9845, para: 0, sai: 0.0155, lado: -1 },
   mexico: { entra: 0.9804, para: 0, sai: 0.0196, lado: 1 },
   lasvegas: { entra: 0.9830, para: 0, sai: 0.0170, lado: -1 },
   catar: { entra: 0.9821, para: 0, sai: 0.0179, lado: 1 },

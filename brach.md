@@ -19,7 +19,7 @@ A licença MIT e o crédito estão no cabeçalho dos traçados convertidos em `p
 
 Melbourne, Xangai, Suzuka, Bahrein, Jeddah, Miami, Montreal, Red Bull Ring, Spa-Francorchamps, Hungaroring, Zandvoort, Madri, Baku, Singapura, Austin, Cidade do México, Las Vegas, Catar e Abu Dhabi.
 
-- **Traçado** convertido (75 a 156 vértices), com `f1: true` (luz de freio e faíscas do carro de F1), `boxes` e `drs` calculados pela geometria (o lado de dentro e as duas retas mais compridas). Xangai usa `scale` 2,8 em vez dos 2,42 do conversor: o caracol e o grampo deixavam a volta lenta demais.
+- **Traçado** convertido (75 a 156 vértices), com `f1: true` (luz de freio e faíscas do carro de F1), `boxes` e `drs` calculados pela geometria (o lado de dentro e as duas retas mais compridas). Xangai (2,8 em vez de 2,42), Spa (4 em vez de 3,56) e Austin (4,2 em vez de 3,59) usam `scale` maior que o do conversor: as curvas travadas deixavam a volta dos robôs lenta demais.
 - **Relevo real**: Spa com 97 m de diferença (Eau Rouge embaixo, Les Combes no alto, Stavelot no fundo), Red Bull Ring 68 m, Suzuka 48 m, Hungaroring 40 m, Baku 36 m...
 - **Suzuka** passa por cima de si mesma: a reta de trás ganha uma ponte 52 acima do trecho depois da Degner (`cruza` em `pistas.js`; `pista.js` baixa o chão em volta do trecho de baixo com `tr.sobPonte`; `gps/suzuka.js` desenha o tabuleiro, as muretas e os pilares).
 - **Cores** em `cena.js` (`LOOK`) e `pista.js` (`THEMES`) e o céu em `ceu.js`, reaproveitando as fotos que já existem pelo clima de cada lugar (o pôr do sol para Singapura, Las Vegas e Abu Dhabi, o deserto para Bahrein, Jeddah e Catar).
@@ -28,7 +28,7 @@ Melbourne, Xangai, Suzuka, Bahrein, Jeddah, Miami, Montreal, Red Bull Ring, Spa-
 
 ## Conferido
 
-- Só os testes da Corrida: `node --test tests/corrida*.test.js`, 64 passando (as 19 pistas novas entraram em `tests/corrida-robos.test.js` e `tests/corrida-f1-box.test.js`; o teste dos trechos encostados deixa passar o cruzamento de Suzuka). O `npm test` completo não foi rodado.
+- Só os testes da Corrida: `node --test tests/corrida*.test.js`, 85 passando, depois do merge com a `main` (as 19 pistas novas entraram em `tests/corrida-robos.test.js` e `tests/corrida-f1-box.test.js`; o teste dos trechos encostados deixa passar o cruzamento de Suzuka). O `npm test` completo não foi rodado.
 - No navegador do app com `#debug`: as 19 montam (`__corrida.buildTrack`) e largam numa sala com robôs, sem erro no console; Mônaco continua montando. As fotos foram tiradas na largada (e no trecho de Suzuka depois da Degner); a volta inteira foi conferida pelo teste de robôs.
 
 ## Faltou
