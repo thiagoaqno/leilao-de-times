@@ -111,6 +111,114 @@ const PISTAS = {
       [1341, 359, 127], // curva 14, e a reta final
     ],
   },
+  silverstone: {
+    name: "Silverstone", sub: "Silverstone Circuit: Abbey, Farm, Village e The Loop, Aintree, a Wellington Straight, Brooklands e Luffield, Woodcote e Copse, o S rápido Maggotts-Becketts-Chapel, a Hangar Straight, Stowe, Vale e Club",
+    // aeródromo de verdade: asfalto largo, área de escape dos dois lados, campo aberto (sem muro colado)
+    scale: 3.3, width: 124, minLap: 35, walls: false, flat: 40, fall: 220, largada: 0.45,
+    // relevo: o aeródromo é quase plano. Sobe um pouco de Chapel pela Hangar Straight até Stowe (o ponto mais alto) e desce por
+    // Vale e Club; a reta dos boxes e Abbey ficam no fundo, e a Wellington Straight desce até Brooklands
+    hills: [[0, 4], [0.1, 6], [0.2, 9], [0.3, 6], [0.4, 3], [0.5, 4], [0.62, 7], [0.7, 12], [0.78, 15], [0.83, 16], [0.88, 11], [0.94, 6], [1, 4]],
+    // desenhada em cima da linha central do circuito (layout atual, 18 curvas), no mesmo sentido: a largada fica na reta
+    // entre Club e Abbey; o norte é para cima
+    points: [
+      [1011, 150, 231], // Copse (9)
+      [1039, 151, 93], // Copse (9)
+      [1065, 159, 63], // Copse (9)
+      [1085, 177, 85], // Copse (9)
+      [1098, 201, 126], // Copse (9)
+      [1107, 227, 447], // Copse (9)
+      [1128, 307, 280], // reta depois de Copse
+      [1132, 334, 896], // reta depois de Copse
+      [1136, 361, 642], // reta depois de Copse
+      [1138, 388, 644], // reta depois de Copse
+      [1144, 526, 153], // Maggotts (10), à esquerda
+      [1150, 552, 114], // Maggotts (10), à esquerda
+      [1175, 601, 77], // Becketts (11), à direita
+      [1178, 628, 63], // Becketts (11), à direita
+      [1171, 654, 345], // Becketts (11), à direita
+      [1152, 705, 84], // Becketts (12), à esquerda
+      [1151, 733, 72], // Becketts (12), à esquerda
+      [1160, 758, 101], // Becketts (12), à esquerda
+      [1175, 781, 402], // Chapel (13-14), à direita
+      [1189, 804, 60], // Chapel (13-14), à direita
+      [1192, 831, 49], // Chapel (13-14), à direita
+      [1180, 855, 65], // Chapel (13-14), à direita
+      [1160, 873, 152], // Chapel (13-14), à direita
+      [1113, 901, 99], // saída de Chapel, para a Hangar Straight
+      [1094, 921, 112], // saída de Chapel, para a Hangar Straight
+      [1079, 944, 577], // saída de Chapel, para a Hangar Straight
+      [991, 1112, 900], // Hangar Straight
+      [895, 1282, 0], // Hangar Straight
+      [882, 1306, 784], // fim da Hangar Straight
+      [868, 1329, 673], // fim da Hangar Straight
+      [824, 1398, 607], // fim da Hangar Straight
+      [808, 1421, 156], // Stowe (15), à direita
+      [788, 1440, 65], // Stowe (15), à direita
+      [763, 1450, 60], // Stowe (15), à direita
+      [736, 1448, 81], // Stowe (15), à direita
+      [711, 1438, 58], // Stowe (15), à direita
+      [693, 1417, 102], // Stowe (15), à direita
+      [669, 1368, 378], // descida para Vale
+      [655, 1345, 242], // descida para Vale
+      [638, 1323, 428], // descida para Vale
+      [620, 1302, 521], // descida para Vale
+      [582, 1262, 419], // descida para Vale
+      [529, 1199, 30], // Vale (16), a chicane
+      [505, 1202, 42], // Vale (16), a chicane
+      [484, 1220, 30], // Vale (16), a chicane
+      [459, 1216, 41], // Vale (16), a chicane
+      [440, 1196, 143], // Club (17-18), à direita
+      [425, 1173, 137], // Club (17-18), à direita
+      [415, 1148, 174], // Club (17-18), à direita
+      [408, 1121, 46], // Club (17-18), à direita
+      [417, 1096, 99], // Club (17-18), à direita
+      [433, 1074, 525], // Club (17-18), à direita
+      [550, 922, 0], // reta dos boxes (The Wing), com a linha de chegada
+      [634, 813, 128], // Abbey (1), à direita
+      [655, 796, 51], // Abbey (1), à direita
+      [682, 791, 104], // Abbey (1), à direita
+      [709, 793, 361], // Abbey (1), à direita
+      [764, 801, 385], // Farm (2), à esquerda
+      [791, 803, 123], // Farm (2), à esquerda
+      [818, 799, 116], // Farm (2), à esquerda
+      [843, 789, 102], // Farm (2), à esquerda
+      [866, 773, 756], // Farm (2), à esquerda
+      [952, 705, 197], // Village (3), à direita
+      [975, 691, 30], // Village (3), à direita
+      [998, 703, 33], // Village (3), à direita
+      [1013, 755, 173], // The Loop (4), à esquerda
+      [1025, 780, 30], // The Loop (4), à esquerda
+      [1050, 780, 30], // The Loop (4), à esquerda
+      [1063, 756, 173], // The Loop (4), à esquerda
+      [1072, 730, 320], // Aintree (5), à esquerda
+      [1079, 704, 185], // Aintree (5), à esquerda
+      [1082, 676, 123], // Aintree (5), à esquerda
+      [1079, 649, 44], // Aintree (5), à esquerda
+      [1062, 629, 213], // Aintree (5), à esquerda
+      [921, 498, 900], // Wellington Straight
+      [777, 371, 0], // Wellington Straight
+      [716, 315, 119], // Brooklands (6), à esquerda
+      [692, 302, 56], // Brooklands (6), à esquerda
+      [665, 301, 59], // Brooklands (6), à esquerda
+      [640, 312, 35], // Brooklands (6), à esquerda
+      [630, 336, 100], // Brooklands (6), à esquerda
+      [627, 364, 821], // Luffield (7), à direita
+      [622, 391, 48], // Luffield (7), à direita
+      [606, 411, 37], // Luffield (7), à direita
+      [579, 415, 41], // Luffield (7), à direita
+      [555, 403, 40], // Luffield (7), à direita
+      [544, 378, 40], // Luffield (7), à direita
+      [551, 352, 129], // Woodcote (8), à direita
+      [600, 254, 109], // Woodcote (8), à direita
+      [618, 233, 264], // Woodcote (8), à direita
+      [638, 214, 287], // Woodcote (8), à direita
+      [660, 198, 129], // Woodcote (8), à direita
+      [684, 186, 158], // Woodcote (8), à direita
+      [711, 178, 163], // Woodcote (8), à direita
+      [738, 174, 1052], // Woodcote (8), à direita
+      [847, 164, 0], // Woodcote (8), à direita
+    ],
+  },
   tokyo: {
     name: "Tóquio", sub: "Doze quarteirões de neon com esquinas de 90°, via expressa elevada, rampa de pulo e viaduto",
     scale: 2.01, width: 112, minLap: 25, walls: true, wall: 23, flat: 25, fall: 50,

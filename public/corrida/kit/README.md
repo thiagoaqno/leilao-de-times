@@ -2,7 +2,7 @@
 
 Peças reaproveitáveis para montar o cenário de qualquer GP. Cada pista de F1 tem uma configuração em `../gps/<pista>.js`,
 registrada em `../gps/index.js`; `../pista.js` lê a configuração e chama as peças. Nada daqui muda a física: é cenário e
-som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo.
+som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo; Silverstone (`../gps/silverstone.js`) é o de autódromo plano com `escape`.
 
 ## Como fazer um GP novo
 
