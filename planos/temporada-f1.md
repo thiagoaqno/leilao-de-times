@@ -9,8 +9,19 @@ A ideia: a Corrida da Galera (o F1 3D de `public/corrida/`) ganha um modo carrei
   e estratégia). O jogo é só para os amigos, então os nomes de equipes e pilotos são os de verdade.
 - **Primeiro solo.** Depois, a mesma temporada **em grupo**: cada amigo com a sua equipe, todos no mesmo grid.
 
-Este plano divide tudo em **14 PRs pequenos, um depois do outro**, cada um a partir de `origin/main` depois que o
-anterior entrou. Cada PR funciona sozinho, tem testes e **não muda a Corrida de hoje** para quem não ligar o modo novo.
+A entrega agora está dividida em **5 PRs grandes**, um de cada vez, sempre a partir de `origin/main` depois do
+anterior entrar. Cada PR termina jogável; sem as regras de F1, a Corrida da Galera continua como antes.
+
+| PR | Entrega jogável | Detalhes originais |
+| --- | --- | --- |
+| 1 | Corrida F1 completa: estratégia dos robôs, pneus, DRS, ERS, bandeiras e safety car | PRs 2 a 4 |
+| 2 | Fim de semana: classificação, grid de 20, cinco luzes, pontos e pilotos reais | PRs 5 e 7 |
+| 3 | Equipe: orçamento, montagem do carro, pilotos e engenheiros | PRs 6 e 7 |
+| 4 | Temporada solo: save, sede, calendário, campeonatos e desenvolvimento | PRs 8 a 10 |
+| 5 | Temporada com amigos: sala, GP ao vivo e mercado disputado | PRs 11 a 13 |
+
+As seções antigas abaixo continuam como referência de regras e números; a divisão acima define os PRs.
+Cada branch registra apenas as suas novidades em `brach.md`.
 
 Antes de começar, leia o `CLAUDE.md` inteiro (principalmente a linha da Corrida) e os arquivos que este plano cita:
 `public/corrida/fisica.js`, `cambio.js`, `carros.js`, `pistas.js`, `estado.js`, `jogo.js`, `hud.js`, `menus.js` e, no
@@ -22,7 +33,7 @@ servidor, `corrida.js` e `corrida-robos.js`. Para o jeito de dividir uma carreir
 ## 0. Regras do projeto (valem para todos os PRs)
 
 - **Branch e PR:** uma branch nova a partir de `origin/main` por PR, e um PR para `main`. Nada de PR em cima de PR.
-- **`MUDANCAS.md`:** reescrito a cada PR; o corpo do PR é esse mesmo texto.
+- **`brach.md`:** atualizado com as novidades desta branch; o corpo do PR usa esse texto.
 - **`CLAUDE.md`:** atualizado com os arquivos e campos novos (a linha da Corrida e, quando nascer, uma linha nova para a
   Temporada).
 - **Português** na tela, nos comentários e nos nomes, no tom dos arquivos de hoje.

@@ -88,6 +88,9 @@
 .results .placa{width:min(560px,100%)}
 .results table{width:100%;border-collapse:collapse;font-size:15px}
 .results td{padding:7px 6px;border-bottom:1px solid var(--line)}
+.f1-info{position:absolute;right:20px;bottom:205px;min-width:155px;padding:8px 10px;border-radius:10px;background:#080e19d9;border:1px solid #ffffff55;font:800 12px Manrope,sans-serif;z-index:2}
+.f1-info>div{margin:3px 0}.f1-info #hBandeira{color:#ffe36a}.f1-info #hDrs.aberto{color:#4de4a0}.f1-info .ers-bar{display:flex;align-items:center;gap:6px}.ers-bar i{width:70px;height:7px;border-radius:9px;background:#ffffff2c;overflow:hidden}.ers-bar b{display:block;height:100%;background:#37d0ee}.ers-bar strong{font-size:10px}
+@media(max-width:620px){.f1-info{right:7px;bottom:177px;font-size:10px;min-width:125px}.ers-bar i{width:45px}}
 .results td:first-child{font-family:var(--display);color:var(--yellow);width:42px}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#262a33;border:1px solid #3a3f4b;padding:10px 18px;border-radius:12px;font-weight:700;z-index:70;max-width:92vw;text-align:center;box-shadow:0 10px 30px #000a}
 .modal{position:fixed;inset:0;background:#000a;display:grid;place-items:center;z-index:50;padding:16px}
@@ -171,12 +174,13 @@
     <div class="linha num"><span class="pos" id="hPos"></span><span id="hLap"></span><span id="hTime"></span></div><div class="num" id="hDelta"></div><div class="board" id="hBoard"></div></div>
   <div class="hud bl"><canvas id="mini" width="220" height="220"></canvas><div class="chip" id="hChip"></div></div>
   <div class="hud br"><canvas id="velo" width="260" height="200"></canvas></div>
+  <div class="hud f1-info hidden" id="hF1"><div id="hBandeira"></div><div id="hDrs"></div><div class="ers-bar"><span>ERS</span><i><b id="hErsCarga"></b></i><strong id="hErsTexto"></strong></div></div>
   <div class="hud bc" id="hBig"></div>
   <div class="hud" id="hDraft"></div>
   <button id="hItem" class="itemButton hidden" aria-label="Usar item">🎁</button>
   <div class="hud msg" id="hMsg"></div>
   <div class="tinta" id="hTinta" aria-hidden="true"></div><div class="clarao" id="hRaio" aria-hidden="true"></div>
-  <div class="topbtns"><input type="range" class="vol" id="volCorrida" min="0" max="100" aria-label="Volume do som" title="Volume"><button id="bBox" class="hidden" title="Pedir a parada no box (B); 1, 2 e 3 escolhem o pneu">🔧 Box</button><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>
+  <div class="topbtns"><input type="range" class="vol" id="volCorrida" min="0" max="100" aria-label="Volume do som" title="Volume"><button id="bBox" class="hidden" title="Pedir a parada no box (B); 1, 2 e 3 escolhem o pneu">🔧 Box</button><button id="bErs" class="hidden" title="Desdobrar ERS enquanto pressionado (E)">⚡ ERS</button><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>
   <div class="pad l hidden" id="padL"><button data-k="left" aria-label="Esquerda">◀</button><button data-k="right" aria-label="Direita">▶</button></div>
   <div class="pad m hidden" id="padM"><button data-marcha="-1" aria-label="Reduzir marcha">−</button><button data-marcha="1" aria-label="Subir marcha">+</button></div>
   <div class="pad r hidden" id="padR"><button data-k="brake" aria-label="Frear">▼</button><button class="gas" data-k="gas" aria-label="Acelerar">▲</button></div>

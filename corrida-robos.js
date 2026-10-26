@@ -132,10 +132,11 @@ function largada(pts, g, W) { // o mesmo lugar do grid do navegador (gridSpot, e
 // troca os robôs da sala pelos novos (chamado na largada); devolve os ids
 function preparar(room, COLORS, rid) {
   remover(room);
-  const livres = 8 - room.order.length, n = Math.max(0, Math.min(livres, room.config.robos || 0)), carros = Object.keys(T.CARROS), skins = Object.keys(SKINS);
+  const livres = (room.config.regras === "f1" ? 9 : 8) - room.order.length, n = Math.max(0, Math.min(livres, room.config.robos || 0)), carros = Object.keys(T.CARROS), skins = Object.keys(SKINS);
+  const sorteio = room.config.regras === "f1" ? F1.sorteio(`robos:${room.semente}`) : Math.random;
   for (let k = 0; k < n; k++) {
-    const usadas = new Set(Object.values(room.players).map((p) => p.color)), id = "r" + rid(5);
-    room.players[id] = { id, name: NOMES[k % NOMES.length], bot: true, token: null, pawn: "🤖", color: COLORS.find((c) => !usadas.has(c)) || COLORS[k % COLORS.length], skin: skins[(Math.random() * skins.length) | 0], car: carros[(Math.random() * carros.length) | 0], mods: { ...T.MODS_PADRAO }, grid: 0, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set() };
+    const usadas = new Set(Object.values(room.players).map((p) => p.color)), id = room.config.regras === "f1" ? `robo-${k + 1}` : "r" + rid(5);
+    room.players[id] = { id, name: NOMES[k % NOMES.length], bot: true, token: null, pawn: "🤖", color: COLORS.find((c) => !usadas.has(c)) || COLORS[k % COLORS.length], skin: skins[(sorteio() * skins.length) | 0], car: carros[(sorteio() * carros.length) | 0], mods: { ...T.MODS_PADRAO }, grid: 0, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set() };
     room.order.push(id);
   }
 }
@@ -160,7 +161,7 @@ function largar(room) {
     const f1 = room.config.regras === "f1", plano = f1 ? F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${id}`) : null;
     if (plano) Object.assign(p, { pneu: plano.largada, pneuAtual: plano.largada, compostos: [plano.largada], paradas: [], acrescimo: 0, box: null });
     p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: rnd(-7, 7), tracadoId, reacao: rnd(0, 450), usaEm: 0,
-      pneu: f1 ? F1.pneuNovo(p.pneu) : null, plano, box: null };
+      pneu: f1 ? F1.pneuNovo(p.pneu) : null, ers: f1 ? F1.ersNovo() : null, plano, box: null };
     posicionar(p, pf, 0);
   }
 }
@@ -183,7 +184,7 @@ function entrarNoBox(room, p, ia, pf) {
   if (!cor || !prox || !p.started || p.laps + 1 >= room.config.voltas) return;
   const rel = (Math.floor(ia.s) - cor.i0 + pf.n) % pf.n; if (rel > 5) return;
   const gasto = ia.pneu && ia.pneu.desgaste > F1.PENHASCO * 0.95;
-  if (p.laps + 1 < prox.volta && !gasto) return;
+  if (p.laps + 1 < prox.volta && !gasto && !room.direcao?.safety) return;
   const n = (p.paradas || []).length + 1;
   ia.box = { fase: "entra", u: rel + (ia.s - Math.floor(ia.s)), lat0: ia.lat, garagem: F1.garagemDe(cor, p.grid), parada: F1.tempoDeParada(room.semente, p.id, n), composto: prox.composto, volta: p.laps + 1, tempo: 0, t: 0 };
   p.box = ia.box;
@@ -224,6 +225,7 @@ function passo(room, dt, setor, emit) {
       // regras de F1: nas curvas, a velocidade vai com a raiz da aderência do pneu (gasto ou frio, o robô freia antes)
       const aderencia = ia.pneu && F1.aderencia(ia.pneu);
       if (aderencia && pf.lim[i] < c.vmax * 0.97) alvo *= Math.sqrt(aderencia.grip);
+      if (aderencia) alvo = Math.min(alvo, c.vmax * aderencia.final);
       const baseLat = pf.lat[(i + 2) % pf.n] + ia.jeito + Math.sin(ia.s / 105 + ia.tracadoId * 1.7) * 4;
       const maxLat = t.width / 2 - 10, ponto = pf.pts[i];
       let desvio = 0, freioTrafego = Infinity, encontrou = false;
@@ -237,7 +239,8 @@ function passo(room, dt, setor, emit) {
         encontrou = true;
         const esquerda = latOutro - 30, direita = latOutro + 30;
         const cabeEsquerda = esquerda >= -maxLat, cabeDireita = direita <= maxLat;
-        if (!ia.passSide || (ia.passSide < 0 && !cabeEsquerda) || (ia.passSide > 0 && !cabeDireita))
+        if (room.direcao?.safety) ia.passSide = 0;
+        else if (!ia.passSide || (ia.passSide < 0 && !cabeEsquerda) || (ia.passSide > 0 && !cabeDireita))
           ia.passSide = cabeEsquerda && (!cabeDireita || Math.abs(esquerda - baseLat) < Math.abs(direita - baseLat)) ? -1 : cabeDireita ? 1 : 0;
         const alvoPassagem = ia.passSide < 0 ? esquerda : direita;
         if (ia.passSide) desvio = alvoPassagem - baseLat;
@@ -245,18 +248,31 @@ function passo(room, dt, setor, emit) {
         if (frente > 0 && frente < 115 && faltaEspaco) freioTrafego = Math.min(freioTrafego, Math.max(35, (o.pos.v || 0) * 0.94));
       }
       if (!encontrou) ia.passSide = 0;
+      if (p.azul) { desvio = maxLat * 0.65 - baseLat; alvo *= 0.82; }
       const bala = p.balaUntil > now; // a bala não freia para ninguém nem para curva: passa por cima
       if (!bala) alvo = Math.min(alvo, freioTrafego);
       alvo = Math.min(alvo, c.vmax); // nunca passa da velocidade final do carro (a mesma de quem joga)
+      if (room.direcao?.safety) alvo = Math.min(alvo, c.vmax * 0.54);
+      else if (room.direcao?.amarelo?.setor === Math.floor(i / (pf.n / T.SECTORS))) alvo = Math.min(alvo, c.vmax * 0.82);
+      if (p.incidenteAte > now) alvo = Math.min(alvo, c.vmax * 0.24);
       if (p.shrinkUntil > now) alvo *= ENCOLHIDO; // o raio: pequeno e lento, como quem joga (fisica.js)
       if (p.inkUntil > now) alvo *= 0.9; // a lula: sem enxergar direito, tira o pé
       if (bala) alvo = c.vmax; // e a bala soma a força dela logo abaixo, como o turbo
       // turbo e estrela: as mesmas contas do carro de quem joga (fisica.js): mais velocidade final e mais força para chegar nela
-      const turbo = p.boostUntil > now, estrela = p.starUntil > now, bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0) + (bala ? BALA - 1 : 0), ak = 1 + (turbo ? 0.8 : 0) + (estrela ? 0.4 : 0) + (bala ? 1.5 : 0);
+      const turbo = p.boostUntil > now, estrela = p.starUntil > now;
+      const drs = !!(aderencia && p.drsZona === F1.zonaDRS(ia.s / pf.n, t.drs) && p.drsZona >= 0 && !room.direcao?.safety && !room.direcao?.amarelo);
+      const ers = ia.ers;
+      if (ers) F1.carregarErs(ers, dt, ia.v > alvo + 12, ia.v >= alvo, p.laps);
+      const usaErs = !!(ers && !room.direcao?.safety && F1.usarErsAuto(ers.carga, ia.v, c.vmax, pf.lim[i] > c.vmax * 0.93, encontrou));
+      if (ers) F1.gastarErs(ers, dt, usaErs);
+      const bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0) + (bala ? BALA - 1 : 0) + (drs ? 0.05 : 0) + (usaErs ? 0.03 : 0);
+      const ak = 1 + (turbo ? 0.8 : 0) + (estrela ? 0.4 : 0) + (bala ? 1.5 : 0) + (usaErs ? 0.25 : 0);
       alvo += c.vmax * (bk - 1); // o item mantém sua força mesmo com o ritmo base mais acessível
+      if (room.direcao?.safety) alvo = Math.min(alvo, c.vmax * 0.54);
+      else if (room.direcao?.amarelo?.setor === Math.floor(i / (pf.n / T.SECTORS))) alvo = Math.min(alvo, c.vmax * 0.82);
       if (p.spinUntil > now) ia.v *= Math.exp(-dt * 2.2);
-      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * ak * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / (c.vmax * bk), 1.6)) * dt); // a mesma arrancada do carro de quem joga
-      else ia.v = Math.max(alvo, ia.v - (ia.v > c.vmax && alvo >= c.vmax * 0.98 ? T.TURBO_SOLTA : c.brake) * dt); // fim do turbo na reta: solta aos poucos, como quem joga
+      else if (ia.v < alvo) ia.v = Math.min(alvo, ia.v + c.acc * ak * (aderencia?.tracao || 1) * (1 - 0.8 * Math.pow(Math.max(0, ia.v) / (c.vmax * bk), 1.6)) * dt); // a mesma arrancada do carro de quem joga
+      else ia.v = Math.max(alvo, ia.v - (ia.v > c.vmax && alvo >= c.vmax * 0.98 ? T.TURBO_SOLTA : c.brake * (aderencia?.freio || 1)) * dt); // fim do turbo na reta: solta aos poucos, como quem joga
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
       entrarNoBox(room, p, ia, pf);
       // o pneu gasta pela distância; escorrega quando a curva pede mais que o grip do carro

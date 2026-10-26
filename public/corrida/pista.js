@@ -276,6 +276,17 @@ function buildWorld(tr) {
     if (gp.vida) vidaGP(tr, add, gp.vida); // helicóptero, gaivotas, fiscais com a bandeira e o som de cada região
   }
   if (t.boxes && gp?.boxes !== false) boxesGP(tr, add, gp?.boxes || {}); // o corredor dos boxes das regras de F1 (kit/corredor-boxes.js)
+  if (t.drs?.length) {
+    const mapa = canvasTex(256, 96, (c, w, h) => { c.fillStyle = '#f2f6f8'; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#102d42'; c.font = '900 70px Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('DRS', w / 2, h / 2); }, false);
+    const mat = new THREE.SpriteMaterial({ map: mapa, depthWrite: false });
+    tr.drsPlacas = add(new THREE.Group()); tr.drsPlacas.visible = false;
+    for (const [deteccao, abre] of t.drs) for (const f of [deteccao, abre]) {
+      const p = pts[Math.floor(f * n) % n], lado = W / 2 + 28;
+      const placa = new THREE.Sprite(mat); placa.position.set(p.x + p.nx * lado, p.h + 18, p.y + p.ny * lado);
+      placa.scale.set(33, 13, 1); tr.drsPlacas.add(placa);
+    }
+  }
   const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
   const livreRes = (x, y) => !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr); // fora das arquibancadas e prédios do GP
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
