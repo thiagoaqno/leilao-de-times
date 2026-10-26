@@ -73,6 +73,44 @@ const PISTAS = {
       [1250, 1300, 100],
     ],
   },
+  monza: {
+    name: "Monza", sub: "O Templo da Velocidade: a reta dos boxes, a Variante del Rettifilo, a Curva Grande e Biassono, a Variante della Roggia, as duas Lesmo, o Serraglio, a Variante Ascari, a reta de trás e a Parabolica",
+    // autódromo dentro do Parque de Monza: asfalto, zebra alta nas chicanes e área de escape (sem muro colado). Quase plano
+    scale: 3.7, width: 112, minLap: 35, walls: false, flat: 40, fall: 220, largada: 0.4,
+    // relevo: o autódromo é quase plano (uns 12 m de diferença): sobe de leve da Curva Grande até as Lesmo e desce até o Ascari e a Parabolica
+    hills: [[0, 3], [0.1, 4], [0.2, 6], [0.32, 9], [0.4, 12], [0.5, 12], [0.58, 10], [0.66, 8], [0.76, 5], [0.88, 3], [1, 3]],
+    // o traçado vem da linha central real do circuito (OpenStreetMap), ajustada em vértices curva por curva, no mesmo sentido
+    // (horário, com o norte para cima): a largada sobe para o norte pela reta dos boxes
+    points: [
+      [426, 583, 17], // Variante del Rettifilo (1), à direita, no fim da reta dos boxes (a chicane é maior que a real, para caber na pista)
+      [466, 583, 17], // Variante del Rettifilo (2), à esquerda
+      [436, 461, 384], // Curva Grande, longa à direita
+      [443, 344, 243], // Curva Grande
+      [455, 300, 181], // Curva Grande
+      [481, 251, 164], // Curva Grande
+      [539, 197, 228], // Curva Grande
+      [621, 162, 269], // Curva Biassono (3), saída
+      [939, 134, 38], // Variante della Roggia (4), à esquerda
+      [960, 103, 50], // Variante della Roggia (5), à direita
+      [1165, 42, 64], // Lesmo 1 (6), à direita
+      [1186, 42, 48], // Lesmo 1 (6)
+      [1205, 52, 34], // Lesmo 1 (6)
+      [1224, 85, 85], // Lesmo 1 (6), saída
+      [1240, 251, 60], // Lesmo 2 (7), à direita, o mais fechado
+      [1234, 272, 26], // Lesmo 2 (7)
+      [981, 419, 1475], // Serraglio, a curva leve à esquerda
+      [643, 717, 79], // Variante Ascari (8), à esquerda
+      [640, 786, 104], // Variante Ascari (9), à direita
+      [596, 842, 123], // Variante Ascari (10), à esquerda
+      [523, 1512, 84], // Curva Alboreto (Parabolica, 11), à direita no fim da reta de trás
+      [514, 1535, 42], // Parabolica
+      [484, 1556, 53], // Parabolica
+      [448, 1556, 66], // Parabolica
+      [406, 1531, 108], // Parabolica
+      [379, 1492, 121], // Parabolica
+      [362, 1421, 233], // Parabolica, saída para a reta dos boxes
+    ],
+  },
   barcelona: {
     name: "Barcelona", sub: "Circuit de Barcelona-Catalunya: a reta dos boxes, Elf e Renault, a curva 3 longa, Repsol e Seat, a subida até a Campsa cega, La Caixa, Banc de Sabadell e a reta final",
     // autódromo de verdade: asfalto largo, brita e área de escape dos dois lados (sem muro colado)
@@ -109,6 +147,114 @@ const PISTAS = {
       [1082, 132, 190], // curva 13, à direita
       [1325, 280, 123], // curva 14, à direita
       [1341, 359, 127], // curva 14, e a reta final
+    ],
+  },
+  silverstone: {
+    name: "Silverstone", sub: "Silverstone Circuit: Abbey, Farm, Village e The Loop, Aintree, a Wellington Straight, Brooklands e Luffield, Woodcote e Copse, o S rápido Maggotts-Becketts-Chapel, a Hangar Straight, Stowe, Vale e Club",
+    // aeródromo de verdade: asfalto largo, área de escape dos dois lados, campo aberto (sem muro colado)
+    scale: 3.3, width: 124, minLap: 35, walls: false, flat: 40, fall: 220, largada: 0.45,
+    // relevo: o aeródromo é quase plano. Sobe um pouco de Chapel pela Hangar Straight até Stowe (o ponto mais alto) e desce por
+    // Vale e Club; a reta dos boxes e Abbey ficam no fundo, e a Wellington Straight desce até Brooklands
+    hills: [[0, 4], [0.1, 6], [0.2, 9], [0.3, 6], [0.4, 3], [0.5, 4], [0.62, 7], [0.7, 12], [0.78, 15], [0.83, 16], [0.88, 11], [0.94, 6], [1, 4]],
+    // desenhada em cima da linha central do circuito (layout atual, 18 curvas), no mesmo sentido: a largada fica na reta
+    // entre Club e Abbey; o norte é para cima
+    points: [
+      [1011, 150, 231], // Copse (9)
+      [1039, 151, 93], // Copse (9)
+      [1065, 159, 63], // Copse (9)
+      [1085, 177, 85], // Copse (9)
+      [1098, 201, 126], // Copse (9)
+      [1107, 227, 447], // Copse (9)
+      [1128, 307, 280], // reta depois de Copse
+      [1132, 334, 896], // reta depois de Copse
+      [1136, 361, 642], // reta depois de Copse
+      [1138, 388, 644], // reta depois de Copse
+      [1144, 526, 153], // Maggotts (10), à esquerda
+      [1150, 552, 114], // Maggotts (10), à esquerda
+      [1175, 601, 77], // Becketts (11), à direita
+      [1178, 628, 63], // Becketts (11), à direita
+      [1171, 654, 345], // Becketts (11), à direita
+      [1152, 705, 84], // Becketts (12), à esquerda
+      [1151, 733, 72], // Becketts (12), à esquerda
+      [1160, 758, 101], // Becketts (12), à esquerda
+      [1175, 781, 402], // Chapel (13-14), à direita
+      [1189, 804, 60], // Chapel (13-14), à direita
+      [1192, 831, 49], // Chapel (13-14), à direita
+      [1180, 855, 65], // Chapel (13-14), à direita
+      [1160, 873, 152], // Chapel (13-14), à direita
+      [1113, 901, 99], // saída de Chapel, para a Hangar Straight
+      [1094, 921, 112], // saída de Chapel, para a Hangar Straight
+      [1079, 944, 577], // saída de Chapel, para a Hangar Straight
+      [991, 1112, 900], // Hangar Straight
+      [895, 1282, 0], // Hangar Straight
+      [882, 1306, 784], // fim da Hangar Straight
+      [868, 1329, 673], // fim da Hangar Straight
+      [824, 1398, 607], // fim da Hangar Straight
+      [808, 1421, 156], // Stowe (15), à direita
+      [788, 1440, 65], // Stowe (15), à direita
+      [763, 1450, 60], // Stowe (15), à direita
+      [736, 1448, 81], // Stowe (15), à direita
+      [711, 1438, 58], // Stowe (15), à direita
+      [693, 1417, 102], // Stowe (15), à direita
+      [669, 1368, 378], // descida para Vale
+      [655, 1345, 242], // descida para Vale
+      [638, 1323, 428], // descida para Vale
+      [620, 1302, 521], // descida para Vale
+      [582, 1262, 419], // descida para Vale
+      [529, 1199, 30], // Vale (16), a chicane
+      [505, 1202, 42], // Vale (16), a chicane
+      [484, 1220, 30], // Vale (16), a chicane
+      [459, 1216, 41], // Vale (16), a chicane
+      [440, 1196, 143], // Club (17-18), à direita
+      [425, 1173, 137], // Club (17-18), à direita
+      [415, 1148, 174], // Club (17-18), à direita
+      [408, 1121, 46], // Club (17-18), à direita
+      [417, 1096, 99], // Club (17-18), à direita
+      [433, 1074, 525], // Club (17-18), à direita
+      [550, 922, 0], // reta dos boxes (The Wing), com a linha de chegada
+      [634, 813, 128], // Abbey (1), à direita
+      [655, 796, 51], // Abbey (1), à direita
+      [682, 791, 104], // Abbey (1), à direita
+      [709, 793, 361], // Abbey (1), à direita
+      [764, 801, 385], // Farm (2), à esquerda
+      [791, 803, 123], // Farm (2), à esquerda
+      [818, 799, 116], // Farm (2), à esquerda
+      [843, 789, 102], // Farm (2), à esquerda
+      [866, 773, 756], // Farm (2), à esquerda
+      [952, 705, 197], // Village (3), à direita
+      [975, 691, 30], // Village (3), à direita
+      [998, 703, 33], // Village (3), à direita
+      [1013, 755, 173], // The Loop (4), à esquerda
+      [1025, 780, 30], // The Loop (4), à esquerda
+      [1050, 780, 30], // The Loop (4), à esquerda
+      [1063, 756, 173], // The Loop (4), à esquerda
+      [1072, 730, 320], // Aintree (5), à esquerda
+      [1079, 704, 185], // Aintree (5), à esquerda
+      [1082, 676, 123], // Aintree (5), à esquerda
+      [1079, 649, 44], // Aintree (5), à esquerda
+      [1062, 629, 213], // Aintree (5), à esquerda
+      [921, 498, 900], // Wellington Straight
+      [777, 371, 0], // Wellington Straight
+      [716, 315, 119], // Brooklands (6), à esquerda
+      [692, 302, 56], // Brooklands (6), à esquerda
+      [665, 301, 59], // Brooklands (6), à esquerda
+      [640, 312, 35], // Brooklands (6), à esquerda
+      [630, 336, 100], // Brooklands (6), à esquerda
+      [627, 364, 821], // Luffield (7), à direita
+      [622, 391, 48], // Luffield (7), à direita
+      [606, 411, 37], // Luffield (7), à direita
+      [579, 415, 41], // Luffield (7), à direita
+      [555, 403, 40], // Luffield (7), à direita
+      [544, 378, 40], // Luffield (7), à direita
+      [551, 352, 129], // Woodcote (8), à direita
+      [600, 254, 109], // Woodcote (8), à direita
+      [618, 233, 264], // Woodcote (8), à direita
+      [638, 214, 287], // Woodcote (8), à direita
+      [660, 198, 129], // Woodcote (8), à direita
+      [684, 186, 158], // Woodcote (8), à direita
+      [711, 178, 163], // Woodcote (8), à direita
+      [738, 174, 1052], // Woodcote (8), à direita
+      [847, 164, 0], // Woodcote (8), à direita
     ],
   },
   tokyo: {
@@ -421,6 +567,8 @@ const BOXES = {
   serra: { entra: 0.9926, para: 0.012, sai: 0.0314, lado: 1 },
   luigi: { entra: 0.0006, para: 0.02, sai: 0.0394, lado: 1 },
   sorvete: { entra: 0.9906, para: 0.01, sai: 0.0294, lado: 1 },
+  monza: { entra: 0.013, para: 0.03, sai: 0.047, lado: 1 },
+  silverstone: { entra: 0.9827, para: 0, sai: 0.0173, lado: 1 },
 };
 for (const [id, b] of Object.entries(BOXES)) if (PISTAS[id]) PISTAS[id].boxes = b;
 

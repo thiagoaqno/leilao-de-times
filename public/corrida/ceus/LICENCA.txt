@@ -15,3 +15,4 @@ arcoiris.jpg    kloppenheim_02_puresky
 nurburgring.jpg kloofendal_28d_misty_puresky
 laguna.jpg      belfast_sunset_puresky
 barcelona.jpg   syferfontein_18d_clear_puresky
+monza.jpg       pizzo_pernice_puresky (céu da Lombardia)

@@ -3,9 +3,9 @@
 O PR 2 do plano `planos/temporada-f1.md`. Só vale com **Regras: Fórmula 1**; sem elas a sala corre como antes.
 
 **O corredor dos boxes**
-- `boxes: { entra, para, sai, lado }` em `pistas.js` (frações da volta) nas 12 pistas com reta na largada: as 8 do calendário do plano (Deserto, Tóquio, Mônaco, Rio, Nürburgring, Laguna, Los Angeles, Interlagos), Serra Verde, Barcelona, Luigi e Sorvete. O Arco-íris não tem reta onde caiba. Conferido por conta: o corredor cabe em todas, longe de outro trecho da pista (Mônaco é a apertada, e fica sem garagens; ver abaixo).
+- `boxes: { entra, para, sai, lado }` em `pistas.js` (frações da volta) nas 14 pistas com reta na largada: Monza e Silverstone (que entraram na main no meio do PR) e as 8 do calendário do plano (Deserto, Tóquio, Mônaco, Rio, Nürburgring, Laguna, Los Angeles, Interlagos), Serra Verde, Barcelona, Luigi e Sorvete. O Arco-íris não tem reta onde caiba. Conferido por conta: o corredor cabe em todas, longe de outro trecho da pista (Mônaco é a apertada, e fica sem garagens; ver abaixo).
 - A conta é uma só, em `f1-regras.js` (`corredor`): 34 de largura (cabem dois carros lado a lado), ~500 de comprimento, rampas de entrada e saída, 10 garagens. O carro, os robôs, o desenho e os testes usam a mesma.
-- Peça nova do kit: `kit/boxes.js` (chave `boxes` em `gps/`; toda pista com `boxes` ganha o corredor sozinha; linha nova no `kit/README.md`). Asfalto, linha branca de entrada, vermelha de saída, mureta, o quadrado pintado onde o carro para, as garagens e **4 mecânicos por garagem, na cor de quem usa a garagem** (`jogo.js` pinta cada uma com a cor do piloto do grid). Entrada e saída ficam livres de painel e cerca, e os balizadores do meio do corredor saem de cena. Só aparece com as regras de F1.
+- Peça nova do kit: `kit/corredor-boxes.js` (o `kit/boxes.js` da main é o prédio dos boxes, outra peça) (chave `boxes` em `gps/`; toda pista com `boxes` ganha o corredor sozinha; linha nova no `kit/README.md`). Asfalto, linha branca de entrada, vermelha de saída, mureta, o quadrado pintado onde o carro para, as garagens e **4 mecânicos por garagem, na cor de quem usa a garagem** (`jogo.js` pinta cada uma com a cor do piloto do grid). Entrada e saída ficam livres de painel e cerca, e os balizadores do meio do corredor saem de cena. Só aparece com as regras de F1.
 - Em Mônaco as linhas SC 1 e SC 2 (`gps/monaco.js`) passaram a ser a entrada e a saída do corredor (0,98 e 0,02 da volta; antes 0,89 e 0,075).
 
 **Mônaco e a mureta**
@@ -28,7 +28,7 @@ O PR 2 do plano `planos/temporada-f1.md`. Só vale com **Regras: Fórmula 1**; s
 - Novas opções de **10 e 21 voltas** (o limite da corrida subiu de 15 para 45 min). O desgaste continua medido em fração da corrida: numa corrida de 3 voltas o pneu médio chega ao penhasco na volta 1,8, e numa de 21, na volta 12,6; o macio dura ~7 voltas e o duro ~19. Por isso o pneu "acaba em 1,5 volta" só nas corridas curtas.
 
 **Testes** (`tests/corrida-f1-box.test.js`, 8 testes)
-- Uma parada em Interlagos custa de 5 a 10 s; as 12 pistas têm corredor com as garagens entre as rampas.
+- Uma parada em Interlagos custa de 5 a 10 s; as 14 pistas têm corredor com as garagens entre as rampas.
 - O mesmo GP com a mesma semente dá os mesmos erros de mecânico.
 - A estratégia dos robôs sempre usa dois compostos e nunca para na última volta.
 - Os robôs fazem as paradas pelo corredor, no limitador; sem as regras de F1 não existe box.
@@ -40,7 +40,4 @@ O PR 2 do plano `planos/temporada-f1.md`. Só vale com **Regras: Fórmula 1**; s
 
 **O que falta**
 - Os mecânicos são figuras paradas, sem animação.
-- Monza e Silverstone (outras sessões) precisam de uma linha em `BOXES`, em `pistas.js`.
 - As penalidades de verdade (bandeiras, limites de pista) são do PR 4.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)

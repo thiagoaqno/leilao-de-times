@@ -20,7 +20,7 @@ test("box: uma parada em Interlagos custa entre 5 e 10 s (entrada + limitador + 
 });
 
 test("box: toda pista do calendário tem corredor, com as 10 garagens entre a rampa de entrada e a de saída", () => {
-  for (const id of ["interlagos", "barcelona", "monaco", "deserto", "tokyo", "rio", "nurburgring", "laguna", "losangeles", "serra", "luigi", "sorvete"]) {
+  for (const id of ["interlagos", "barcelona", "monaco", "deserto", "tokyo", "rio", "nurburgring", "laguna", "losangeles", "serra", "luigi", "sorvete", "monza", "silverstone"]) {
     const c = corredorDe(id), W = T.PISTAS[id].width;
     assert.ok(c, id);
     assert.equal(c.garagens.length, F1.GARAGENS);

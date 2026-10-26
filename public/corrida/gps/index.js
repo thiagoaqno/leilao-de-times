@@ -4,5 +4,7 @@
 import { GP_MONACO } from "./monaco.js";
 import { GP_INTERLAGOS } from "./interlagos.js";
 import { GP_BARCELONA } from "./barcelona.js";
+import { GP_SILVERSTONE } from "./silverstone.js";
+import { GP_MONZA } from "./monza.js";
 
-export const GPS = { monaco: GP_MONACO, interlagos: GP_INTERLAGOS, barcelona: GP_BARCELONA };
+export const GPS = { monaco: GP_MONACO, interlagos: GP_INTERLAGOS, barcelona: GP_BARCELONA, silverstone: GP_SILVERSTONE, monza: GP_MONZA };
