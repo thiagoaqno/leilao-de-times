@@ -21,6 +21,10 @@ export const MARCAS = {
   bb: { fundo: "#fcdc2a", cor: "#0b3d91", texto: "Banco do Brasil", fonte: "900 {s}px Arial, sans-serif" },
   itau: { fundo: "#ec7000", cor: "#ffffff", texto: "itaú", fonte: "900 {s}px Arial, sans-serif", moldura: "#003a8c" },
   gpsp: { fundo: "#ffffff", cor: "#00793a", texto: "GP DE SÃO PAULO", fonte: "italic 900 {s}px 'Arial Black', Arial, sans-serif", moldura: "#ffdd00" },
+  repsol: { fundo: "#ffffff", cor: "#ee7203", texto: "REPSOL", fonte: "900 {s}px Arial, sans-serif", moldura: "#ee7203" },
+  lacaixa: { fundo: "#0079ae", cor: "#ffffff", texto: "la Caixa", fonte: "700 {s}px Arial, sans-serif" },
+  sabadell: { fundo: "#ffffff", cor: "#0a6ebd", texto: "Sabadell", fonte: "700 {s}px Arial, sans-serif", moldura: "#0a6ebd" },
+  circuit: { fundo: "#c8102e", cor: "#ffd100", texto: "BARCELONA-CATALUNYA", fonte: "900 {s}px Arial, sans-serif" },
   acm: { fundo: "#ffffff", cor: "#c8102e", texto: "AUTOMOBILE CLUB DE MONACO", fonte: "700 {s}px Georgia, serif", moldura: "#c8102e" },
 };
 // a ordem em que as marcas se repetem pela pista

@@ -10,6 +10,7 @@ import { aplicarCeu } from "./ceu.js";
 import { aguaMonaco, fundoMonaco, orlaMonaco, alturaRocha } from "./monaco.js";
 // o kit de pista (kit/README.md) e a configuração de cada GP (gps/)
 import { GPS } from "./gps/index.js";
+import { arquibancadas } from "./kit/arquibancadas.js";
 import { chaoGP } from "./kit/chao.js";
 import { escapeGP } from "./kit/escape.js";
 import { guardRail, fachadas } from "./kit/beira.js";
@@ -21,6 +22,7 @@ import { vidaGP } from "./kit/vida.js";
 export const THEMES = {
   monaco: { preview: "#2a6fa3", sky: ["#5fb7ff", "#cfeeff"], fog: "#cfe6f2", oob: 0xffae6f1f, roadCol: "#5b5b61" },
   interlagos: { preview: "#2f7d33", sky: ["#4aa3e8", "#f3e6c8"], fog: "#dfe7d8", oob: 0xff3a9a3f, roadCol: "#4b4b50" },
+  barcelona: { preview: "#a9a35a", sky: ["#4a9be0", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4c4d52" },
   losangeles: { preview: "#7a4a6a", sky: ["#3b2a6b", "#ff9a5a"], fog: "#e8a07a", oob: 0xff6a8aa0, roadCol: "#3f3f46" },
   rio: { preview: "#1f8a8a", sky: ["#3f97e0", "#d6f1ff"], fog: "#cfeaf2", oob: 0xff2a7a3a, roadCol: "#4a4a50" },
   serra: { preview: "#4d8854", sky: ["#6eb9f0", "#e4f6ff"], fog: "#cde6dd", oob: 0xff467b45, roadCol: "#51545a" },
@@ -241,6 +243,7 @@ function buildWorld(tr) {
   // as peças do kit; os enfeites soltos de depois não caem na água nem em cima delas
   const ctx = { add, r, hAt, size, aguaTex, palms, yachts, jungle, blds };
   if (gp) {
+    if (gp.arquibancadas) arquibancadas(tr, add, gp.arquibancadas); // as arquibancadas do kit (kit/arquibancadas.js)
     gp.cenario?.(tr, ctx);
     if (gp.ambiente) ambienteGP(tr, add, gp.ambiente); // cerca, painéis, bandeiras, postos e placas
     if (gp.passarelas) passarelas(tr, add, gp.passarelas);
@@ -250,6 +253,7 @@ function buildWorld(tr) {
     if (gp.vida) vidaGP(tr, add, gp.vida); // helicóptero, gaivotas, fiscais com a bandeira e o som de cada região
   }
   const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
+  const livreRes = (x, y) => !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr); // fora das arquibancadas e prédios do GP
   for (let i = 0; i < (t.espaco ? 0 : n); i += 5) { // no espaço (Arco-íris) não tem enfeite na beira
     const p = pts[i];
     for (const side of [-1, 1]) {
@@ -261,7 +265,7 @@ function buildWorld(tr) {
         if (k < 0.25) palms.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.5, r: r() * 6 });
         else if (k < 0.85) { const sx = 55 + r() * 50, sz = 55 + r() * 50, far = near + 30 + r() * 50, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 18) && terra(bx, by) && !orlaMonaco(tr, bx, by)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 90 + r() * 200, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f3e0c0", "#f4ece0"][(r() * 6) | 0] }); }
       }
-      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" ? 0.07 : 0.52)) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
+      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "barcelona") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" || id === "barcelona" ? 0.07 : 0.52) && (id !== "barcelona" || livreRes(x, y))) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
       else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
       else if (id === "losangeles") { // palmeiras altas na beira e prédios de vidro mais para trás
         if (k < 0.35) palms.push({ x, y, h: hAt(x, y), s: 1.6 + r() * 0.5, r: r() * 6 });
@@ -290,7 +294,7 @@ function buildWorld(tr) {
       if (y < 560 * K && r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.1 + r() * 1.1 });
       else if (!orlaMonaco(tr, x, y)) blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 70, sy: 90 + r() * (r() < 0.15 ? 420 : 220), sz: 60 + r() * 70, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f4ece0"][(r() * 5) | 0] });
     }
-    else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna") { if (id !== "laguna" || r() < 0.3) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
+    else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "barcelona") { if ((id !== "laguna" && id !== "barcelona") || r() < (id === "barcelona" ? 0.12 : 0.3)) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
     else if (id === "deserto") { if (r() < 0.07) palms.push({ x, y, h: hAt(x, y), s: 1.2, r: r() * 6 }); }
     else if (id === "losangeles") { if (r() < 0.5) glass.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 120 + r() * 420, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#7fa6c9", "#9bb7d4", "#6f8fb3", "#c9a27f"][(r() * 4) | 0] }); else palms.push({ x, y, h: hAt(x, y), s: 1.8, r: r() * 6 }); }
     else if (id === "rio") { if (rioSea(x, y)) continue; if (hAt(x, y) > 15 || r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.3 + r() * 1.2 }); else blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 50, sy: 70 + r() * 120, sz: 60 + r() * 50, dy: 0.5, r: r() * 3, c: ["#f4f1e6", "#e8e0cf", "#d9e6ef"][(r() * 3) | 0] }); }
@@ -346,7 +350,7 @@ function buildWorld(tr) {
     const fuji = far(new THREE.ConeGeometry(1400, 900, 24), M(0x3b2c63, { fog: false }), -2600, -2400, 300); void fuji;
     const cap = far(new THREE.ConeGeometry(420, 270, 24), M(0xe9e6ff, { fog: false }), -2600, -2400, 615); void cap;
     const tower = far(new THREE.ConeGeometry(70, 700, 4, 8, true), new THREE.MeshBasicMaterial({ color: 0xff4b3a, wireframe: true }), 2600, -1400, 350); void tower;
-  } else if (!t.espaco) for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2, R0 = WORLD * 0.5 + 2400 + r() * 600, hh = 300 + r() * 500; const m = far(new THREE.ConeGeometry(700 + r() * 500, hh, 7), M(id === "monaco" ? 0x7e8f86 : id === "losangeles" ? 0x8a6a6a : id === "rio" ? 0x2f6a3a : 0x86a37a), WORLD / 2 + Math.cos(a) * R0, WORLD / 2 + Math.sin(a) * R0, hh / 2 - 40); if ((id === "monaco" && Math.abs(Math.sin(a)) > 0.3) || (id === "rio" && Math.cos(a) < -0.3)) m.visible = false; }
+  } else if (!t.espaco) for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2, R0 = WORLD * 0.5 + 2400 + r() * 600, hh = 300 + r() * 500; const m = far(new THREE.ConeGeometry(700 + r() * 500, hh, 7), M(id === "monaco" ? 0x7e8f86 : id === "barcelona" ? 0x9a9472 : id === "losangeles" ? 0x8a6a6a : id === "rio" ? 0x2f6a3a : 0x86a37a), WORLD / 2 + Math.cos(a) * R0, WORLD / 2 + Math.sin(a) * R0, hh / 2 - 40); if ((id === "monaco" && Math.abs(Math.sin(a)) > 0.3) || (id === "rio" && Math.cos(a) < -0.3)) m.visible = false; }
   // céu
   const sky = new THREE.SphereGeometry(5000, 32, 16), col = [], ps = sky.attributes.position, top = new THREE.Color(look.sky[0]), low = new THREE.Color(look.sky[1]);
   for (let i = 0; i < ps.count; i++) { const yy = ps.getY(i) / 5000, c = low.clone().lerp(top, Math.min(1, Math.max(0, yy * 2.2))); col.push(c.r, c.g, c.b); }
