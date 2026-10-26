@@ -58,7 +58,7 @@ test("box: o mesmo GP com a mesma semente dá os mesmos erros de mecânico", () 
   assert.deepEqual(erros(4242), erros(4242));
   assert.notDeepEqual(erros(4242), erros(4243));
   for (const t of erros(7)) assert.ok(t >= F1.PARADA_BASE && t <= F1.PARADA_BASE + F1.PARADA_ERRO, String(t));
-  assert.notEqual(F1.tempoDeParada(7, "ana", 1), F1.tempoDeParada(7, "ana", 2)); // cada parada tem o seu erro
+  assert.ok(new Set(Array.from({ length: 30 }, (_, n) => F1.tempoDeParada(7, "ana", n + 1))).size > 1); // cada parada tem o seu sorteio
 });
 
 test("robôs: a estratégia sempre usa dois compostos e nunca para na última volta", () => {
