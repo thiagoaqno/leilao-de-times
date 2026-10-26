@@ -10,6 +10,7 @@ export const CEUS = {
   monaco: { brilho: 1, luz: 0.55 },
   interlagos: { brilho: 1, luz: 0.55 },
   barcelona: { brilho: 1, luz: 0.55 },
+  silverstone: { brilho: 0.95, luz: 0.5, arquivo: "nurburgring" }, // o céu nublado do Nürburgring serve para a Inglaterra
   losangeles: { brilho: 1, luz: 0.6 },
   rio: { brilho: 1, luz: 0.55 },
   serra: { brilho: 1, luz: 0.5 },
@@ -59,7 +60,7 @@ export function aplicarCeu(tr, look, noite = false, podeMudarLuz = () => true) {
   atual = chave; scene.background = null; scene.environment = null; tr.sol = null; pendente = null;
   const cfg = noite ? { brilho: 0.52, luz: 0.32, noite: true } : CEUS[tr.id]; if (!cfg) return Promise.resolve();
   // Qwantani Night (Pure Sky), Poly Haven CC0; já usado em Tóquio e compartilhado pelas versões noturnas.
-  return carregar(noite ? "tokyo" : tr.id).then((s) => {
+  return carregar(noite ? "tokyo" : cfg.arquivo || tr.id).then((s) => {
     if (!s || atual !== chave) return;
     scene.background = s.tex; scene.backgroundIntensity = cfg.brilho;
     if (!cfg.noite) {
@@ -75,4 +76,4 @@ export function aplicarCeu(tr, look, noite = false, podeMudarLuz = () => true) {
 }
 // na próxima largada da mesma pista, a luz que chegou atrasada entra (antes de preparar os shaders)
 export function luzPendente() { if (pendente && pendente.id === atual) pendente.luz(); pendente = null; }
-export const ceuPronto = (id) => carregar(id);
+export const ceuPronto = (id) => carregar(CEUS[id]?.arquivo || id);

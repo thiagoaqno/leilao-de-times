@@ -139,6 +139,7 @@ $("btnRules").onclick = () => {
   <li><b>Mônaco:</b> estreita, com guard-rail colado, a subida da Beau Rivage até o Cassino, a descida até o grampo e o porto cheio de iates.</li>
   <li><b>Interlagos:</b> larga e rápida: a descida do S do Senna, a lombada da Reta Oposta (dá para voar!), o Mergulho e a subida dos boxes.</li>
   <li><b>Barcelona:</b> autódromo largo de verdade: a reta dos boxes, a curva 3 longa, a subida até a Campsa cega no alto, a La Caixa e as curvas finais, com brita do lado de fora.</li>
+  <li><b>Silverstone:</b> o aeródromo inglês, plano e muito rápido: o S de Maggotts, Becketts e Chapel, a Hangar Straight e Stowe, com brita e área de escape larga em volta.</li>
   <li><b>Tóquio:</b> de noite, entre os prédios de neon, com dois viadutos, uma rampa de pulo e o Fuji no horizonte.</li></ul>
   <p>Rio de Janeiro, Serra Verde e Deserto Dourado oferecem voltas mais longas. Os balizadores das curvas cedem ao toque.</p>
   <div class="row" style="margin-top:16px"><button class="primary" id="rulesOk">Bora!</button></div>`;
