@@ -12,8 +12,8 @@ function largada(room, p, pos, agora, log) {
   if (p.queimou || !(agora < room.startAt - 150) || !(pos.v > 45)) return;
   p.queimou = true; penalizar(p, 5, 'queimou a largada', log);
 }
-// Uma batida (no muro ou em outro carro) de `forca` (F1.batida diz o nível): punição em segundos no tempo final, dano
-// acumulado e, com 100%, perda total (`dnf`: o carro para e o piloto está fora). O navegador só diz a força; quem manda
+// Uma batida (no muro ou em outro carro) de `forca` (F1.batida diz o nível): 2% de dano, sem punição de tempo.
+// Com 100%, perda total (`dnf`: o piloto está fora). O navegador só diz a força; quem manda
 // no resultado é o servidor, que ainda segura um intervalo entre batidas para um mesmo toque não contar duas vezes.
 function bater(room, p, forca, tipo, agora, log) {
   if (!room.direcao || room.phase !== 'race' || !p || p.dnf || p.finish != null || p.box || agora < room.startAt || agora < (p.batidaAte || 0)) return null;
@@ -21,10 +21,10 @@ function bater(room, p, forca, tipo, agora, log) {
   p.batidaAte = agora + F1.BATIDA_INTERVALO;
   p.batidas = (p.batidas || 0) + 1;
   p.dano = Math.min(100, Math.round(((p.dano || 0) + b.dano) * 10) / 10);
-  p.ultimaBatida = { at: agora, nivel: b.nivel, segundos: b.segundos, dano: b.dano, tipo };
+  p.ultimaBatida = { at: agora, nivel: b.nivel, dano: b.dano, tipo };
   const nivel = { leve: 'leve', media: 'média', forte: 'forte' }[b.nivel];
-  penalizar(p, b.segundos, `batida ${nivel} ${tipo === 'muro' ? 'no muro' : 'com outro carro'} (dano ${Math.round(p.dano)}%)`, log);
-  if (p.dano >= 100) { p.dnf = true; log(`💥 ${p.name}: perda total! O carro para e ${p.name} está fora da corrida.`); }
+  log(`💥 ${p.name}: batida ${nivel} ${tipo === 'muro' ? 'no muro' : 'com outro carro'}; dano ${Math.round(p.dano)}% (sem punição de tempo).`);
+  if (p.dano >= 100) { p.dnf = true; log(`💥 ${p.name}: perda total! O carro é retirado da pista e ${p.name} está fora da corrida.`); }
   return b;
 }
 const atravessou = (antes, depois, marco) => Number.isFinite(antes) && depois >= antes && Math.floor(depois - marco) > Math.floor(antes - marco);
@@ -42,7 +42,7 @@ function iniciar(room) {
 function progresso(p, n) { return Number.isFinite(p.pos?.prog) ? p.pos.prog / n : -1; }
 function ordem(room) {
   const n = room.direcao.pista.length;
-  return room.order.map((id) => room.players[id]).filter((p) => p && p.finish == null && p.pos)
+  return room.order.map((id) => room.players[id]).filter((p) => p && p.finish == null && !p.dnf && p.pos)
     .sort((a, b) => progresso(b, n) - progresso(a, n));
 }
 function passo(room, agora, log) {
@@ -107,7 +107,7 @@ function registrar(room, p, pos, agora, log) {
   if (amarela || d.safety) p.drsZona = -1;
   // Se passou um carro em regime de bandeira, tem cinco segundos para devolver o lugar.
   if ((amarela || d.safety) && !p.ultrapassagem) {
-    const antes = room.order.map((id) => room.players[id]).find((q) => q && q.id !== p.id && q.pos &&
+    const antes = room.order.map((id) => room.players[id]).find((q) => q && q.id !== p.id && !q.dnf && q.finish == null && q.pos &&
       progresso(q, n) > anterior + 0.002 && progresso(q, n) < pr - 0.002 && pr - progresso(q, n) < 0.02);
     if (antes) { p.avisosAmarela++; p.ultrapassagem = { id: antes.id, ate: agora + 5000 }; log(`🟡 ${p.name}: devolva a posição para ${antes.name}.`); }
   }

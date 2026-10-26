@@ -203,6 +203,7 @@ function draw(dt) {
   const tr = race.tr, c = race.car, now = sNow();
   // meu kart
   if (race.kart) {
+    race.kart.g.visible = !me()?.dnf; // o carro destruído é recolhido da pista
     const slide = Math.max(-1, Math.min(1, (c.slip || 0) / 160)) * Math.sign(c.steer || 1), fr = groundH(tr, c.x, c.y, race.idx);
     const spec = CARS3[me()?.car] || CARS3.equilibrado, inc = inclinacao(tr, c.x, c.y, c.a, race.idx, spec.L * KS, spec.W * KS, c.vz, c.air, c.v);
     race.pitch = inc.pitch;
@@ -215,6 +216,7 @@ function draw(dt) {
   // os outros pilotos (carros de verdade: dá para bater)
   for (const [id, gh] of race.ghosts) {
     const pl = P(id); if (!pl) continue;
+    if (pl.dnf) { if (gh.kart) { dropKart(gh.kart); gh.kart = null; } continue; }
     const key = pl.color + pl.car + JSON.stringify(pl.mods || {}); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, true); gh.kartKey = key; }
     const spec = CARS3[pl.car] || CARS3.equilibrado, gz = groundH(tr, gh.x, gh.y, gh.idx || 0), noAr = gh.z > gz + 3;
     gh.vz = ((gh.z - (gh.zAnt ?? gh.z)) / Math.max(dt, 1e-3)) * 0.3 + (gh.vz || 0) * 0.7; gh.zAnt = gh.z;

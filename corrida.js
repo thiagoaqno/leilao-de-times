@@ -12,7 +12,7 @@ const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servido
 const Equipes = require("./public/corrida/f1-equipes.js"); // as equipes de 2026, o orçamento em pontos e a montagem do carro
 const Pilotos = require("./public/corrida/f1-pilotos-2026.js");
 const bd = require("./bd.js");
-Robos.usarFonte((pista) => bd.melhoresTracadosCorrida(pista), (pista, nomes) => bd.ritmoCorrida(pista, nomes)); // até cinco linhas humanas e o ritmo de quem joga
+Robos.usarFonte((pista) => bd.melhoresTracadosCorrida(pista), (pista, nomes) => bd.ritmoCorrida(pista, nomes), (pista) => bd.melhorVoltaCorrida(pista));
 const { SKINS } = require("./public/pelada/campo.js"); // o piloto do kart usa as skins da Pelada
 const { rid, novoCodigo, limparNome: cleanName, ok, falha: fail, contexto, ligarSocket, buscarSala, quemVolta, nomeEmUso, limparSalasParadas } = require("./salas.js"); // as peças de sala que todo jogo repete
 const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou e quem perdeu cada partida)
@@ -130,12 +130,12 @@ module.exports = function attachCorrida(io) {
       Direcao.iniciar(room);
       room.f1Timer = setInterval(() => {
         if (room.phase !== "race") return;
-        for (const id of room.order) { const p = room.players[id]; if (p?.bot && p.pos && p.finish == null) Direcao.registrar(room, p, p.pos, Date.now(), (s) => log(room, s)); }
+        for (const id of room.order) { const p = room.players[id]; if (p?.bot && p.pos && p.finish == null && !p.dnf) Direcao.registrar(room, p, p.pos, Date.now(), (s) => log(room, s)); }
         const quebrou = verificarFalhas(room);
         if (Direcao.passo(room, Date.now(), (s) => log(room, s)) || quebrou) broadcast(room);
       }, 100);
     } else room.direcao = null;
-    if (room.ritmoRobos) { const tt = room.ritmoRobos; log(room, `🤖 Os robôs miram voltas de ${Math.floor(tt / 60)}:${(tt % 60).toFixed(1).padStart(4, "0")} (pela média das 5 melhores voltas de quem está na sala).`); }
+    if (room.ritmoRobos) { const tt = room.ritmoRobos; log(room, `🤖 Os robôs miram voltas de ${Math.floor(tt / 60)}:${(tt % 60).toFixed(1).padStart(4, "0")} (${room.config.regras === "f1" ? room.referenciaF1.origem ? "pelo recorde da pista" : "pela capacidade dos carros nesta pista" : "pela média das 5 melhores voltas de quem está na sala"}).`); }
     if (room.order.some((id) => room.players[id].bot)) {
       let tique = 0;
       const emit = (event, data) => nsp.to(room.code).emit(event, data);
@@ -241,12 +241,13 @@ module.exports = function attachCorrida(io) {
         const mais = F1.acrescimoDeFinal(p, room.config.voltas);
         if (mais) { p.acrescimo = (p.acrescimo || 0) + mais; log(room, `⏱️ ${p.name} usou um composto só: +${mais} s no resultado.`); }
       }
-      const racing = room.order.filter((id) => room.players[id].finish == null && !room.players[id].dnf && (room.players[id].sockets.size || (room.config.regras === "f1" && room.players[id].bot))); // no GP, a corrida só acaba com os robôs também (ou 45 s depois do primeiro)
+      const racing = room.order.filter((id) => room.players[id].finish == null && !room.players[id].dnf && (room.players[id].sockets.size || (room.config.regras === "f1" && room.players[id].bot)));
       if (!racing.length) endRace(room);
       else if (room.finishOrder.length === 1) { // o primeiro chegou: os outros têm um tempo para terminar
-        room.endAt = now + AFTER_FIRST_MS;
+        const prazo = Robos.prazoDeChegada(room, AFTER_FIRST_MS);
+        room.endAt = now + prazo;
         clearTimeout(room.endTimer);
-        room.endTimer = setTimeout(() => endRace(room), AFTER_FIRST_MS);
+        room.endTimer = setTimeout(() => endRace(room), prazo);
       }
     }
     return true;
@@ -409,7 +410,7 @@ module.exports = function attachCorrida(io) {
           const forca = num(data.forca), car = T.CARROS[me.car] || T.CARROS.equilibrado;
           if (room.config.regras !== "f1" || room.phase !== "race" || !me.pos || !(forca > 0)) return "ignorado";
           const tipo = data.tipo === "carro" ? "carro" : "muro", agora = Date.now();
-          const perto = tipo === "carro" ? room.order.some((id) => { const o = room.players[id]; return o && o !== me && o.pos && Math.abs((o.pos.z || 0) - me.pos.z) < 20 && Math.hypot(o.pos.x - me.pos.x, o.pos.y - me.pos.y) < 90; }) : true;
+          const perto = tipo === "carro" ? room.order.some((id) => { const o = room.players[id]; return o && o !== me && !o.dnf && o.finish == null && o.pos && Math.abs((o.pos.z || 0) - me.pos.z) < 20 && Math.hypot(o.pos.x - me.pos.x, o.pos.y - me.pos.y) < 90; }) : true;
           const teto = Math.min(F1.BATIDA_MAX, car.vmax * 1.15, (Math.abs(me.pos.v || 0) + 80) * 1.3);
           if (!perto || agora - me.pos.at > 1500) return "ignorado";
           if (!aplicarBatida(room, me, Math.min(forca, teto), tipo)) return "ignorado";
@@ -455,7 +456,7 @@ module.exports = function attachCorrida(io) {
     // posição do meu carro (10 por segundo): vai para os outros
     socket.on("pos", (d = {}) => {
       const { room, me } = ctx();
-      if (!room || !me || (room.phase !== "race" && room.phase !== "quali")) return;
+      if (!room || !me || me.dnf || (room.phase !== "race" && room.phase !== "quali")) return;
       if (room.phase === "quali" && (room.quali.pausaAte || !room.quali.ativos.includes(me.id))) return; // só quem está na sessão
       const now = Date.now();
       if (now - (me.lastPos || 0) < 50) return;

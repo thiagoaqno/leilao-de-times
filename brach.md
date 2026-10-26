@@ -1,40 +1,26 @@
-# Corrida: as pistas do calendário de F1 de 2026, convertidas de bacinger/f1-circuits
+# PR intermediário: ritmo dos robôs na F1
 
-Um conversor dos circuitos do repositório [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits) (GeoJSON, licença MIT) para o nosso formato de pista, e as 19 pistas do calendário de 2026 que ainda não tínhamos. Mônaco, Interlagos, Barcelona, Silverstone, Monza e as de fantasia não mudaram.
+Branch `fix/corrida-ia-ritmo`, criada a partir de `origin/main` depois dos PRs 1 a 3 e dos extras de equipes, pontuação e pistas.
 
-## O conversor: `ferramentas/circuitos-f1.js`
+## Adicionado nesta branch
 
-`node ferramentas/circuitos-f1.js be-1925 --id spa --nome "Spa-Francorchamps"` baixa `circuits/<id>.geojson` e imprime o bloco da pista para colar em `pistas.js`. Funciona com qualquer arquivo do repositório (ou `--arquivo` local):
+- Na F1, a classificação e a corrida usam uma referência competitiva por pista: o melhor tempo humano guardado no banco, limitado pela capacidade do carro da McLaren no traçado calculado. Em pista ainda sem volta, usam essa capacidade. Uma volta apenas razoável do jogador deixa de reduzir o ritmo do grid inteiro. Um recorde humano competitivo permanece protegido na classificação. Os outros modos conservam o balanceamento anterior.
+- O alvo de cada bot inclui o carro da equipe e a nota de ritmo do piloto. A semente ainda define a constância da volta e o estilo de pilotagem. O limite de velocidade final, os pneus, o dano, o tráfego e os boxes continuam valendo na corrida.
+- A pole simulada fica acima de um recorde humano conhecido, mesmo com uma variação favorável no sorteio da classificação.
+- Depois da primeira chegada, a F1 calcula o prazo para os bots ativos cobrirem as voltas que faltam, com margem para tráfego e paradas, até 10 minutos. A regra de 45 segundos dos outros modos continua.
+- O tráfego dos bots confere também a distância percorrida na pista antes de frear por outro carro. Isso evita confundir trechos vizinhos do desenho; carros que já chegaram não bloqueiam o pelotão e uma fila parada pode voltar a ultrapassar.
+- Uma perda total retira o carro da pista: bots, colisões e direção de prova deixam de considerá-lo obstáculo; os navegadores deixam de desenhá-lo. O pelotão pode continuar mesmo numa curva sob bandeira.
+- Cada batida válida agora causa 2% de dano, independentemente da força, e nenhuma punição em segundos. Cada 2% de dano reduz em 2% velocidade final, aceleração, frenagem e aderência, para humanos e bots. O intervalo entre registros do mesmo contato passou a quatro segundos.
+- O log da F1 informa se o alvo veio do recorde ou da capacidade dos carros.
 
-- projeta as coordenadas em metros e escolhe o tamanho da volta pelo comprimento real (13 mil + os metros acima de 4,3 km: Spa fica com 15,5 mil);
-- passa uma spline pelos pontos reais e **afasta os trechos que encostariam** (a nossa pista é bem mais larga que a real) e abre as curvas fechadas demais;
-- põe no quadrado de 1600, simplifica em vértices `[x, y, raio]` (reta = 0, curva = o raio que casa com a curva real) e deixa a linha de chegada no vértice 0, com `largada` apontando para ela (anda um pouco para a frente se o grid de 20 não couber);
-- `hills` com a **altitude real** de 100 pontos da volta (API de elevação do Open-Meteo);
-- acha onde a pista passa por cima de si mesma (`cruza`, o oito de Suzuka) e confere trechos encostados, curva mais fechada e grid, como o teste de robôs;
-- `--svg` desenha o traçado para conferir; `--rua`, `--volta`, `--raio-min`, `--tol`, `--sem-relevo`, `--inverter`.
+## Conferência
 
-A licença MIT e o crédito estão no cabeçalho dos traçados convertidos em `pistas.js` e no próprio conversor.
+- Simulação de 19 bots, duas voltas em cada uma das 24 pistas de GP, sem volta humana: todos terminam. Em Mônaco, o grid de classificação fica aproximadamente entre 46 e 49 s no nível médio.
+- Com recorde humano de 43,2 s em Mônaco e uma volta de 49,5 s, a pole dos bots fica acima do recorde, e os 19 bots classificam abaixo de 49,5 s. Se a única volta conhecida é 49,5 s, ela não arrasta a pole para trás. Em Interlagos, o grid sem referência também deixa de andar no ritmo do Cadillac.
+- Teste de um bot passando por carro retirado da pista, mesmo em trecho curvo, e testes de dano fixo sem acréscimo ao tempo.
+- Testes novos cobrem o grid completo sem referência, o limite pelo recorde e o prazo após a primeira chegada. `node --test tests/corrida*.test.js` e `git diff --check`.
 
-## As pistas novas (na ordem do calendário)
+## Repositórios consultados
 
-Melbourne, Xangai, Suzuka, Bahrein, Jeddah, Miami, Montreal, Red Bull Ring, Spa-Francorchamps, Hungaroring, Zandvoort, Madri, Baku, Singapura, Austin, Cidade do México, Las Vegas, Catar e Abu Dhabi.
-
-- **Traçado** convertido (75 a 156 vértices), com `f1: true` (luz de freio e faíscas do carro de F1), `boxes` e `drs` calculados pela geometria (o lado de dentro e as duas retas mais compridas). Xangai (2,8 em vez de 2,42), Spa (4 em vez de 3,56) e Austin (4,2 em vez de 3,59) usam `scale` maior que o do conversor: as curvas travadas deixavam a volta dos robôs lenta demais.
-- **Relevo real**: Spa com 97 m de diferença (Eau Rouge embaixo, Les Combes no alto, Stavelot no fundo), Red Bull Ring 68 m, Suzuka 48 m, Hungaroring 40 m, Baku 36 m...
-- **Suzuka** passa por cima de si mesma: a reta de trás ganha uma ponte 52 acima do trecho depois da Degner (`cruza` em `pistas.js`; `pista.js` baixa o chão em volta do trecho de baixo com `tr.sobPonte`; `gps/suzuka.js` desenha o tabuleiro, as muretas e os pilares).
-- **Cores** em `cena.js` (`LOOK`) e `pista.js` (`THEMES`) e o céu em `ceu.js`, reaproveitando as fotos que já existem pelo clima de cada lugar (o pôr do sol para Singapura, Las Vegas e Abu Dhabi, o deserto para Bahrein, Jeddah e Catar).
-- **GP simples** em `gps/<id>.js`, com a peça nova do kit `kit/gp-simples.js` (`gpSimples(id, opções)`): asfalto de GP, zebras, grid, brita do lado de fora das curvas, a tribuna da reta, o prédio dos boxes, painéis, bandeira do país, passarela e som de campo; nas de rua (`rua: true`: Baku, Singapura, Jeddah e Las Vegas, com `walls`), sarjeta, guard-rail com os painéis, postes e som de cidade. Montanha onde há serra (os Alpes no Red Bull Ring, o Popocatépetl no México, Guadarrama em Madri, as Spring Mountains em Las Vegas, os montes de Suzuka, o Mont Royal), a floresta das Ardenas em Spa (`parque`) e a torcida laranja em Zandvoort. O cenário fino de cada uma fica para depois.
-- Duas chaves novas lidas por `pista.js` (e na tabela do `kit/README.md`): `beira` (árvores, palmeiras, prédios e prédios de vidro da beira e de longe; antes, pista sem tema caía nos neons de Tóquio) e `horizonte` (`false` tira os morros de longe; `{ cor }`).
-
-## Conferido
-
-- Só os testes da Corrida: `node --test tests/corrida*.test.js`, 85 passando, depois do merge com a `main` (as 19 pistas novas entraram em `tests/corrida-robos.test.js` e `tests/corrida-f1-box.test.js`; o teste dos trechos encostados deixa passar o cruzamento de Suzuka). O `npm test` completo não foi rodado.
-- No navegador do app com `#debug`: as 19 montam (`__corrida.buildTrack`) e largam numa sala com robôs, sem erro no console; Mônaco continua montando. As fotos foram tiradas na largada (e no trecho de Suzuka depois da Degner); a volta inteira foi conferida pelo teste de robôs.
-
-## Faltou
-
-- Imola não está no calendário de 2026; Sepang (que o arquivo de 2026 do bacinger lista) ficou de fora.
-- As corridas noturnas (Singapura, Las Vegas, Bahrein, Jeddah, Catar, Abu Dhabi) estão de dia ou no fim da tarde.
-- O cenário fino de cada pista (prédios dos boxes próprios, marcos, marcas locais em `kit/marcas.js`).
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+- [awesome-f1](https://github.com/subinium/awesome-f1#tools-and-apps) é um índice de ferramentas e fontes; suas entradas de telemetria e traçados podem ajudar a aferir pistas em trabalho futuro. Não há algoritmo de IA para importar diretamente.
+- [F1DB](https://github.com/f1db/f1db) disponibiliza dados históricos de pilotos, construtores, circuitos e temporadas em formatos abertos. É uma boa fonte para conferir o calendário e as tabelas no PR 4; qualquer dado copiado exigirá a atribuição prevista na licença CC BY 4.0. O balanceamento deste PR usa os tempos medidos no próprio jogo, pois a duração das pistas do jogo não corresponde à volta real da F1.
