@@ -10,6 +10,17 @@ const bd = require("../bd.js");
 
 const corredorDe = (id) => { const t = T.PISTAS[id]; return F1.corredor(t, T.pontos(t, 6).length, t.width); };
 
+test("box: a saída aponta no sentido da volta e avança o índice nas cinco pistas de F1", () => {
+  for (const id of ["monaco", "interlagos", "barcelona", "silverstone", "monza"]) {
+    const pts = T.pontos(T.PISTAS[id], 6), cor = corredorDe(id);
+    const saida = F1.saidaDoCorredor(cor, pts);
+    assert.equal(saida.indice, (cor.i0 + cor.len) % pts.length, `${id}: índice da saída`);
+    assert.ok(cor.len > 0 && (saida.indice - cor.i0 + pts.length) % pts.length === cor.len, `${id}: a saída avança pela volta`);
+    const p = pts[saida.indice];
+    assert.ok(Math.cos(saida.a) * p.tx + Math.sin(saida.a) * p.ty > 0.999, `${id}: rumo da volta`);
+  }
+});
+
 test("box: uma parada em Interlagos custa entre 5 e 10 s (entrada + limitador + parada + saída)", () => {
   const c = corredorDe("interlagos"), vmax = T.CARROS.equilibrado.vmax;
   const curta = F1.tempoNoBox(c, vmax, F1.PARADA_BASE), longa = F1.tempoNoBox(c, vmax, F1.PARADA_BASE + F1.PARADA_ERRO);

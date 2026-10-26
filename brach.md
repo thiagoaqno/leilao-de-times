@@ -9,6 +9,6 @@
 
 ## Verificação
 
-- `node --test tests/corrida*.test.js`: 44 testes passaram.
+- `node --test tests/corrida*.test.js`: 45 testes passaram após integrar `origin/main`.
 - `git diff --check`: sem problemas.
 - Conferido no navegador, com regras de F1 e câmera de cima: Mônaco e Interlagos, sem erros de página. Capturas: `planos/imagens/boxes-monaco-duas-faixas.png` e `planos/imagens/boxes-interlagos-duas-faixas.png`.
