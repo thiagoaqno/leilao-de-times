@@ -25,11 +25,11 @@ function pneuNovo(composto = COMPOSTO_PADRAO) {
 // Um passo do pneu. O desgaste anda pela distância (fração da corrida inteira), então 3 ou 8 voltas gastam a mesma
 // fração do pneu: a estratégia é a mesma em qualquer tamanho de corrida. Escorregar gasta mais; andar limpo, um pouco
 // menos que o normal. A temperatura vai para um alvo pela velocidade e pelo escorregão, mais rápido no macio.
-// d: { dist (andado neste passo), total (a corrida inteira), slip, v, vmax, dt }
+// d: { dist (andado neste passo), total (a corrida inteira), slip, v, vmax, dt, fator (opcional: o quanto o carro gasta o pneu, `desgaste` de f1-equipes.js) }
 function gastarPneu(pneu, d) {
   const pn = PNEUS[pneu.composto] || PNEUS[COMPOSTO_PADRAO];
   const escorrega = limite((d.slip || 0) / 60, 0, 1);
-  if (d.total > 0 && d.dist > 0) pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.total) * (PENHASCO / pn.vida) * (0.85 + 0.6 * escorrega));
+  if (d.total > 0 && d.dist > 0) pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.total) * (PENHASCO / pn.vida) * (0.85 + 0.6 * escorrega) * (d.fator || 1));
   const vel = d.vmax > 0 ? limite(Math.abs(d.v || 0) / d.vmax, 0, 1) : 0;
   const alvo = Math.min(1, 0.5 + 0.45 * vel + 0.15 * escorrega);
   pneu.temp += (alvo - pneu.temp) * Math.min(1, (d.dt || 0) * 0.25 * pn.aquece);

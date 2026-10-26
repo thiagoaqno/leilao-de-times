@@ -161,13 +161,14 @@
     </div>
     <nav class="hubabas" id="hubAbas" aria-label="Seções do box">
       <button class="seta" id="hubAnt" title="Aba anterior (Q)">◀</button>
-      <button data-aba="box" class="on">Box</button><button data-aba="pista">Pistas</button><button data-aba="garagem">Garagem</button><button data-aba="pintura">Pintura</button><button data-aba="regras">Regras</button>
+      <button data-aba="box" class="on">Box</button><button data-aba="pista">Pistas</button><button data-aba="garagem">Garagem</button><button data-aba="equipe" class="hidden">Equipe</button><button data-aba="pintura">Pintura</button><button data-aba="regras">Regras</button>
       <button class="seta" id="hubProx" title="Próxima aba (E)">▶</button>
     </nav>
     <div id="hub" class="hubgrid">
       <button class="tile t-garagem" data-aba="garagem"><h3>Garagem</h3><canvas id="tileCarro" width="240" height="135"></canvas><p id="tileCarroTxt">Carro, cor e avatar</p></button>
       <button class="tile t-mapa" data-aba="pista"><canvas id="tileMapa" width="320" height="320"></canvas><h3>Mapa das<br>pistas</h3><span class="tag"><b id="tileMapaTxt"></b><small id="tileMapaSub"></small></span></button>
       <button class="tile t-largar" id="btnStart"><h3 id="tLargarTit">Largar</h3><i class="setas" aria-hidden="true"></i><p id="tLargarTxt"></p></button>
+      <button class="tile t-equipe hidden" data-aba="equipe"><h3>Equipe</h3><p id="tileEquipeTxt"></p></button>
       <button class="tile t-regras" data-aba="regras"><h3>Regras</h3><p id="tileRegrasTxt"></p></button>
       <button class="tile t-piloto" data-aba="pintura"><h3>Pintura</h3><p id="tilePilotoTxt"></p></button>
       <div class="tile t-pilotos"><h3>Na sala</h3><div id="pilots"></div></div>
@@ -177,6 +178,7 @@
       <label>Seu carro</label><div class="cars" id="carPick"></div>
       <label style="margin-top:14px">Sua cor (no placar, no mapa e na pintura "Sua cor")</label><div class="colors" id="colorPick"></div>
       <label style="margin-top:14px">Seu avatar</label><div class="picker" id="pawnPick"></div></div>
+    <div class="hubpainel hidden" data-painel="equipe"><h2>Equipe</h2><div id="equipePainel"></div></div>
     <div class="hubpainel hidden" data-painel="pintura"><h2>Pintura</h2><p class="hint" style="margin:0 0 10px">As cores das equipes de Fórmula 1, ou a sua cor com branco.</p><div class="pinturas" id="modPick"></div></div>
     <div class="hubpainel hidden" data-painel="regras"><h2>Regras da corrida</h2><div id="cfg"></div></div>
     <div class="hubdica"><span><kbd>Clique</kbd> abrir</span><span><kbd>Esc</kbd> voltar ao box</span><span><kbd>Q</kbd><kbd>E</kbd> trocar de aba</span></div>
@@ -214,6 +216,7 @@
 <script src="/corrida/pistas.js"></script>
 <script src="/corrida/f1-regras.js"></script>
 <script src="/corrida/f1-pilotos-2026.js"></script>
+<script src="/corrida/f1-equipes.js"></script>
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
 <script type="module" src="/corrida/jogo.js"></script>
 </body>

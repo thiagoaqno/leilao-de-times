@@ -50,12 +50,15 @@ const gerador = (semente) => { // mulberry32 (a mesma de f1-regras.js `sorteio`)
   return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 };
 // `n` pilotos para os robôs (o grid tem 20 carros e os titulares são 22: quem sobra sai pelo sorteio da semente), na
-// ordem da tabela. Nunca repete e nunca passa de 22.
-function escolher(n, semente = 1) {
-  const r = gerador(`pilotos:${semente}`), resto = PILOTOS.slice(), fora = new Set();
-  const tira = Math.max(0, PILOTOS.length - Math.max(0, Math.min(PILOTOS.length, n)));
+// ordem da tabela. Nunca repete e nunca passa de 22. `ocupadas` ({ equipe: quantos humanos }): cada humano numa equipe
+// ocupa o lugar de um dos titulares dela (o segundo da tabela primeiro), que não corre como robô.
+function escolher(n, semente = 1, ocupadas = {}) {
+  const r = gerador(`pilotos:${semente}`), vagas = { ...ocupadas };
+  const disponiveis = PILOTOS.slice().reverse().filter((p) => (vagas[p.equipe] > 0 ? (vagas[p.equipe]--, false) : true)).reverse();
+  const resto = disponiveis.slice(), fora = new Set();
+  const tira = Math.max(0, disponiveis.length - Math.max(0, Math.min(disponiveis.length, n)));
   while (fora.size < tira) { const k = Math.floor(r() * resto.length); fora.add(resto[k].id); resto.splice(k, 1); }
-  return PILOTOS.filter((p) => !fora.has(p.id));
+  return disponiveis.filter((p) => !fora.has(p.id));
 }
 
 const api = { EQUIPES, PILOTOS, fatorDeRitmo, ruidoDaVolta, reacaoNaLargada, escolher };

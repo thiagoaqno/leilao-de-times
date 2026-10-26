@@ -6,6 +6,7 @@
 const T = require("./public/corrida/pistas.js");
 const Itens = require("./corrida-itens.js");
 const F1 = require("./public/corrida/f1-regras.js"); // os pneus das regras de F1
+const F1Equipes = require("./public/corrida/f1-equipes.js"); // a montagem do carro de cada equipe
 const Pilotos = require("./public/corrida/f1-pilotos-2026.js"); // as equipes e os pilotos reais de 2026 (os robôs das regras de F1)
 const { SKINS } = require("./public/pelada/campo.js");
 
@@ -88,9 +89,9 @@ function aprender(pista, volta) {
   return true;
 }
 // a pista amostrada, a linha e a velocidade de referência em cada ponto, para um carro
-function perfil(pista, carro, tracadoId = 0) {
-  const chave = pista + ":" + carro + ":" + tracadoId; if (CACHE.has(chave)) return CACHE.get(chave);
-  const t = T.PISTAS[pista], c = T.CARROS[carro], linha = tracado(pista), pts = linha.pts, n = pts.length, perfis = aprendido(pista), ap = perfis[tracadoId % perfis.length];
+function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinco carros ou um `spec` (a montagem de uma equipe de F1, com `chave`)
+  const chave = pista + ":" + (carro.chave ? "spec-" + carro.chave : carro) + ":" + tracadoId; if (CACHE.has(chave)) return CACHE.get(chave);
+  const t = T.PISTAS[pista], c = carro.chave ? carro : T.CARROS[carro], linha = tracado(pista), pts = linha.pts, n = pts.length, perfis = aprendido(pista), ap = perfis[tracadoId % perfis.length];
   let lim, lat;
   const curva = Array.from(linha.k, (k) => (k > 1e-4 ? Math.min(c.turn / k * 1.1, Math.sqrt(c.grip / k) * 1.2, c.vmax) : c.vmax));
   for (let volta = 0; volta < 2; volta++) for (let i = n - 1; i >= 0; i--) curva[i] = Math.min(curva[i], Math.sqrt(curva[(i + 1) % n] ** 2 + 2 * c.brake * 0.72 * STEP));
@@ -154,7 +155,7 @@ function ritmoDosRobos(room) {
 // da sessão e do robô (recarregar nada muda). `em` é a hora (fração da sessão) em que o robô cruza a linha.
 function gauss(r) { return Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r()); }
 function voltaLancada(room, p, sessao, tracadoId, nBots) {
-  const pf = perfil(room.config.pista, p.car, tracadoId), nivel = nivelDe(room, p, tracadoId, nBots, pf);
+  const pf = perfil(room.config.pista, p.spec || p.car, tracadoId), nivel = nivelDe(room, p, tracadoId, nBots, pf);
   const ader = F1.aderencia({ composto: "macio", desgaste: 0.03, temp: 0.8 });
   const r = F1.sorteio(`quali:${room.semente}:${sessao}:${p.id}`), sigma = p.piloto ? Pilotos.ruidoDaVolta(p.piloto.constancia) : 0.012;
   const tempo = tempoDaVolta(pf, nivel, ader) * (1 + Math.max(-2.5, Math.min(2.5, gauss(r))) * sigma);
@@ -172,12 +173,15 @@ function preparar(room, COLORS, rid) {
   const f1 = room.config.regras === "f1";
   const livres = (f1 ? GRID_F1 : 8) - room.order.length, n = Math.max(0, Math.min(livres, room.config.robos || 0)), carros = Object.keys(T.CARROS), skins = Object.keys(SKINS);
   const sorteio = f1 ? F1.sorteio(`robos:${room.semente}`) : Math.random;
-  // (no GP todos os robôs têm o mesmo carro: a montagem de cada equipe vem no PR 3)
-  const pilotos = f1 ? Pilotos.escolher(n, room.semente) : []; // regras de F1: os pilotos reais de 2026, na ordem das equipes
+  // regras de F1: o robô anda com o carro da equipe dele (a montagem do chefe humano, se tem, senão a padrão de f1-equipes.js);
+  // quem já tem humano na equipe deixa a vaga dele (cada equipe tem 2 carros)
+  const ocupadas = {};
+  for (const q of Object.values(room.players)) if (!q.bot && q.equipe) ocupadas[q.equipe] = (ocupadas[q.equipe] || 0) + 1;
+  const pilotos = f1 ? Pilotos.escolher(n, room.semente, ocupadas) : []; // regras de F1: os pilotos reais de 2026, na ordem das equipes
   for (let k = 0; k < n; k++) {
     const usadas = new Set(Object.values(room.players).map((p) => p.color)), id = f1 ? `robo-${k + 1}` : "r" + rid(5), pil = pilotos[k], equipe = pil && Pilotos.EQUIPES[pil.equipe];
     room.players[id] = { id, name: pil ? pil.curto : NOMES[k % NOMES.length], bot: true, token: null, pawn: "🤖", color: equipe ? equipe.cor : COLORS.find((c) => !usadas.has(c)) || COLORS[k % COLORS.length], skin: skins[(sorteio() * skins.length) | 0], car: f1 ? "equilibrado" : carros[(sorteio() * carros.length) | 0], mods: equipe && T.MODS.pintura[equipe.pintura] ? { pintura: equipe.pintura } : { ...T.MODS_PADRAO }, grid: 0, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, sockets: new Set(),
-      ...(pil ? { piloto: { id: pil.id, ritmo: pil.ritmo, constancia: pil.constancia, largada: pil.largada }, equipe: pil.equipe, numero: pil.numero, sigla: pil.sigla, nomeCompleto: pil.nome } : {}) };
+      ...(pil ? { piloto: { id: pil.id, ritmo: pil.ritmo, constancia: pil.constancia, largada: pil.largada }, equipe: pil.equipe, numero: pil.numero, sigla: pil.sigla, nomeCompleto: pil.nome, spec: F1Equipes.specDaEquipe(pil.equipe, room.montagens && room.montagens[pil.equipe]) } : {}) };
     room.order.push(id);
   }
 }
@@ -191,7 +195,7 @@ function largar(room) {
   ritmoDosRobos(room);
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot) continue;
-    const tracadoId = bots.indexOf(id), pf = perfil(room.config.pista, p.car, tracadoId), g = largada(pf.pts, p.grid, t.width, room.config.regras === "f1");
+    const tracadoId = bots.indexOf(id), pf = perfil(room.config.pista, p.spec || p.car, tracadoId), g = largada(pf.pts, p.grid, t.width, room.config.regras === "f1");
     const nivel = nivelDe(room, p, tracadoId, bots.length, pf);
     const pil = p.piloto; // regras de F1: o piloto de verdade manda na reação da largada e na regularidade da linha
     p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
@@ -355,7 +359,7 @@ function passo(room, dt, setor, emit) {
   const lider = humanos.length ? Math.max(...humanos.map((q) => q.pos.prog)) : null, f1 = room.config.regras === "f1";
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot || !p.ia) continue;
-    const ia = p.ia, pf = perfil(room.config.pista, p.car, ia.tracadoId), c = pf.c;
+    const ia = p.ia, pf = perfil(room.config.pista, p.spec || p.car, ia.tracadoId), c = pf.c;
     if (p.dnf) { ia.v = Math.max(0, ia.v - c.brake * 1.2 * dt); ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n; } // perda total: o carro para onde está
     else if (ia.box && corrida && p.finish == null) passoNoBox(room, p, ia, pf, dt, emit);
     else if (corrida && p.finish == null && now >= room.startAt + ia.reacao) {
@@ -407,6 +411,7 @@ function passo(room, dt, setor, emit) {
       if (room.direcao?.safety) alvo = Math.min(alvo, c.vmax * 0.54);
       else if (room.direcao?.amarelo?.setor === Math.floor(i / (pf.n / T.SECTORS))) alvo = Math.min(alvo, c.vmax * 0.82);
       if (p.incidenteAte > now) alvo = Math.min(alvo, c.vmax * 0.24);
+      if (p.quebrou) alvo = Math.min(alvo, c.vmax * F1Equipes.EMERGENCIA); // o carro quebrou (f1-equipes.js): anda no modo de emergÃªncia
       if (p.shrinkUntil > now) alvo *= ENCOLHIDO; // o raio: pequeno e lento, como quem joga (fisica.js)
       if (p.inkUntil > now) alvo *= 0.9; // a lula: sem enxergar direito, tira o pé
       if (bala) alvo = c.vmax; // e a bala soma a força dela logo abaixo, como o turbo
@@ -418,7 +423,7 @@ function passo(room, dt, setor, emit) {
       const usaErs = !!(ers && !room.direcao?.safety && F1.usarErsAuto(ers.carga, ia.v, c.vmax, pf.lim[i] > c.vmax * 0.93, encontrou));
       if (ers) F1.gastarErs(ers, dt, usaErs);
       // regras de F1: o vácuo na reta (o mesmo de quem joga, com o mesmo teto do ganho aerodinâmico)
-      const aero = vac ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 : 0) + (usaErs ? 0.03 : 0)) : (drs ? 0.05 : 0) + (usaErs ? 0.03 : 0);
+      const aero = vac ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 * (c.drs ?? 1) : 0) + (usaErs ? 0.03 : 0)) : (drs ? 0.05 * (c.drs ?? 1) : 0) + (usaErs ? 0.03 : 0);
       const bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0) + (bala ? BALA - 1 : 0) + aero;
       const ak = 1 + (turbo ? 0.8 : 0) + (estrela ? 0.4 : 0) + (bala ? 1.5 : 0) + (usaErs ? 0.25 : 0) + (vac ? vac.acel : 0);
       alvo += c.vmax * (bk - 1); // o item mantém sua força mesmo com o ritmo base mais acessível
@@ -430,7 +435,7 @@ function passo(room, dt, setor, emit) {
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
       entrarNoBox(room, p, ia, pf);
       // o pneu gasta pela distância; escorrega quando a curva pede mais que o grip do carro
-      if (ia.pneu) F1.gastarPneu(ia.pneu, { dist: ia.v * dt, total: room.config.voltas * pf.n * STEP, slip: Math.max(0, (ia.v * ia.v * pf.linha.k[i]) / c.grip - 0.9) * 120, v: ia.v, vmax: c.vmax, dt });
+      if (ia.pneu) F1.gastarPneu(ia.pneu, { dist: ia.v * dt, total: room.config.voltas * pf.n * STEP, slip: Math.max(0, (ia.v * ia.v * pf.linha.k[i]) / c.grip - 0.9) * 120, v: ia.v, vmax: c.vmax, dt, fator: c.desgaste });
       // depois da largada (~600 de reta), sai da faixa do grid e vai aos poucos para o traçado; antes disso, não desvia de ninguém
       const saida = Math.min(1, ((ia.s - ia.s0 + pf.n) % pf.n) / 100), largando = saida < 1;
       ia.desvio += (desvio - ia.desvio) * Math.min(1, dt * 2.2);
