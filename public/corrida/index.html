@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700;800&family=Titillium+Web:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/corrida/entrada.css">
 <link rel="stylesheet" href="/corrida/hud-f1.css">
+<link rel="stylesheet" href="/corrida/tema-f1.css">
 <style>
 /* corrida */
 #race{position:fixed;inset:0;background:#000;z-index:30;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -128,7 +129,7 @@
 <div class="wrap">
   <div class="utilbar">
     <div class="roomtag hidden" id="roomTag"><span class="lbl muted">Sala</span><span class="code" id="rCode"></span><button class="small" id="btnInvite" title="Copiar convite"><span class="lg">Convidar</span><span class="sm">🔗</span></button></div>
-    <button class="ghost small" id="btnSound" title="Som">🔊</button><input type="range" class="vol" id="volume" min="0" max="100" aria-label="Volume do som" title="Volume">
+    <button class="ghost small" id="btnSound" title="Som">🔊</button><button class="ghost small" data-radio-botao aria-label="Voz do engenheiro"></button><input type="range" class="vol" id="volume" min="0" max="100" aria-label="Volume do som" title="Volume">
     <button class="ghost small" id="btnRules" title="Como jogar"><span class="lg">Como jogar</span><span class="sm">❔</span></button>
   </div>
   <section id="home" class="hidden">
@@ -202,7 +203,7 @@
   <div class="hud msg" id="hMsg"></div>
   <div id="avisosF1" role="log" aria-live="polite" aria-label="Avisos da corrida"></div>
   <div class="tinta" id="hTinta" aria-hidden="true"></div><div class="clarao" id="hRaio" aria-hidden="true"></div>
-  <div class="topbtns"><input type="range" class="vol" id="volCorrida" min="0" max="100" aria-label="Volume do som" title="Volume"><button id="bBox" class="hidden" title="Pedir a parada no box (B); 1, 2 e 3 escolhem o pneu">🔧 Box</button><button id="bPronto" class="hidden" title="Terminei a minha volta: fechar a sessão quando todos disserem">✔ Pronto</button><button id="bErs" class="hidden" title="Desdobrar ERS enquanto pressionado (E)">⚡ ERS</button><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>
+  <div class="topbtns"><button data-radio-botao aria-label="Voz do engenheiro"></button><input type="range" class="vol" id="volCorrida" min="0" max="100" aria-label="Volume do som" title="Volume"><button id="bBox" class="hidden" title="Pedir a parada no box (B); 1, 2 e 3 escolhem o pneu">🔧 Box</button><button id="bPronto" class="hidden" title="Terminei a minha volta: fechar a sessão quando todos disserem">✔ Pronto</button><button id="bErs" class="hidden" title="Desdobrar ERS enquanto pressionado (E)">⚡ ERS</button><button id="bCam" title="Trocar a câmera (C)">🎥</button><button id="bRespawn" title="Voltar para a pista">↺ Pista</button><button id="bExit" title="Sair da corrida">✕</button></div>
   <div class="pad l hidden" id="padL"><button data-k="left" aria-label="Esquerda">◀</button><button data-k="right" aria-label="Direita">▶</button></div>
   <div class="pad m hidden" id="padM"><button data-marcha="-1" aria-label="Reduzir marcha">−</button><button data-marcha="1" aria-label="Subir marcha">+</button></div>
   <div class="pad r hidden" id="padR"><button data-k="brake" aria-label="Frear">▼</button><button class="gas" data-k="gas" aria-label="Acelerar">▲</button></div>
@@ -224,6 +225,8 @@
 <script src="/corrida/hud-torre.js"></script>
 <script src="/corrida/avisos-f1.js"></script>
 <script src="/corrida/f1-pilotos-2026.js"></script>
+<script src="/corrida/radio/falas.js"></script>
+<script src="/corrida/radio.js"></script>
 <script src="/corrida/f1-equipes.js"></script>
 <script src="/corrida/f1-pecas.js"></script>
 <script src="/corrida/temporada/garagem.js"></script>

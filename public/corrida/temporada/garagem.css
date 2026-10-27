@@ -1,5 +1,5 @@
 /* Garagem do modo carreira: vermelho F1 + preto/cinza, letras condensadas em caixa alta, cartões com cantos levemente cortados. */
-:root{--f1-vm:#e10600;--f1-pt:#0b0c10;--f1-cz:#1a1c22;--f1-cz2:#262932;--f1-lin:#ffffff22;--corte:10px}
+
 .corte{clip-path:polygon(0 0,calc(100% - var(--corte)) 0,100% var(--corte),100% 100%,var(--corte) 100%,0 calc(100% - var(--corte)))}
 /* topo: abas + dinheiro */
 .cr-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 0 14px}

@@ -6,3 +6,6 @@ playwright-report
 ferramentas/.elencos.json
 ferramentas/.elevenlabs-chave
 public/carreira/som/teste/
+
+# vozes do engenheiro (geradas por gerar-radio.bat)
+public/corrida/radio/*.mp3
