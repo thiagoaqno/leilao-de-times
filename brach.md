@@ -1,38 +1,16 @@
-# Corrida F1: robôs fazem as curvas na velocidade de quem joga (Interlagos 63,4 s → 51,4 s de ideal)
+## Limite de 2 jogos de cada composto por corrida (regras de F1)
 
-Vale nas regras de F1. A física do carro não mudou: o robô não ganhou aderência, só passou a calcular e a seguir uma linha melhor.
+O macio virou "meta" e o jogador trocava só para macio. Agora, em cada corrida, cada piloto tem no máximo 2 jogos de macio, 2 de médio e 2 de duro, contando o pneu da largada. O limite é fixo em 2 para qualquer número de voltas; a tabela de estratégia e o tempo de box não mudaram.
 
-## Causa
+### O que mudou
+- `public/corrida/f1-regras.js`: funções puras `jogosUsados`, `jogosRestantes`, `podeUsar` e `compostoParaParada` (mais a constante `JOGOS_POR_COMPOSTO`). A conta usa `p.pneu` (largada) e `p.paradas`.
+- `corrida.js` (servidor autoritativo): `concluirParada` troca o composto esgotado por outro com jogo. Escolha: diferente do atual, e um ainda não usado se o piloto só usou um composto (mantém a regra dos dois compostos); entre os candidatos, o de mais jogos restantes. Se tudo estiver esgotado, repete o menos usado, então nunca fica sem opção. O estado público ganhou `jogos` por piloto.
+- `corrida-robos.js`: `escolherComposto` e `decidirParada` só consideram compostos com jogo (o composto do plano também é conferido).
+- Box/HUD (`box.js`, `hud.js`): B e as teclas 1, 2 e 3 pulam ou recusam o composto esgotado, e o aviso do box mostra os jogos (ex.: "M 1/2 · Md 2/2 · D 0/2").
+- `menus.js`: só a linha das regras de F1 que explica os pneus.
+- Teste novo: `tests/corrida-f1-limite-pneus.test.js` (conta largada + paradas, recusa o 3º macio, esgotado total, regra dos dois compostos, robô não escolhe esgotado).
 
-Medi a volta limpa de um jogador em Interlagos (Cadillac, médio novo, 49,70 s; dado em `tests/dados/volta-interlagos-cadillac.json`). A aceleração lateral dele (v² x curvatura do caminho) chega a ~230-270 u/s², praticamente o limite do pneu que `dinamica.js` calcula. Ou seja, o carro aguenta: quem estava errado era o robô.
-
-- **A linha do robô era a mais curta, não a mais rápida.** O elástico de `tracado` encosta por dentro e fecha o raio no ápice (R ~ 100 u onde quem joga passa a R ~ 300 u). O perfil de velocidade saía 30-40% abaixo do jogador nas curvas. O PR anterior (#335) via o mesmo efeito como "o piloto automático bate acima de 1,08".
-- **O volante mirava mal.** O ponto à frente ficava no lado em que o carro estava, não sobre a linha, e não havia contra-esterço: a traseira escorregava na saída e o carro oscilava de batente a batente.
-
-## O que mudou
-
-- `tracado(pista, true)` (F1, fora das pistas de fantasia): linha de **menor curvatura** (relaxa a quarta diferença do caminho dentro da pista) e curvatura do caminho suavizada em ±72 u (o carro não faz quinas menores que isso). O limite de curva continua vindo de `D.perfilIdeal` e do pneu, valendo em todas as pistas; as margens (1,08 e 1,0) não mudaram.
-- `Sim.pilotoAutomatico`: olha `LD_K` = 0,6 s à frente, aceita a lateral como função do ponto (o robô passa a linha dali), soma contra-esterço pela deriva da traseira (`K_TRASEIRA`) e amortece a diferença de guinada (`K_GUINADA`). Vale também para o fantasma.
-- Níveis: folga sobre o ideal 0 / 2 / 6% (difícil / médio / fácil). Na pista, sozinho, o difícil fica ~4,5% atrás do ideal, o médio ~6% e o fácil ~9%.
-
-## Números (Cadillac, médio novo, robô sozinho, volta lançada)
-
-| Pista | Ideal antes | Ideal depois | Robô difícil antes | Robô difícil depois |
-|---|---|---|---|---|
-| Interlagos | 63,4 s | 51,4 s (jogador: 49,7 s) | 66,6 s | 53,6 s |
-| Melbourne | 64,7 s | 54,5 s | 67,1 s | 56,6 s |
-| Mônaco | 67,8 s | 57,3 s | 71,4 s | 60,0 s |
-
-Velocidade média nas curvas de Interlagos: robô difícil >= 90% da do jogador (antes 60-70%). Nenhuma batida e nenhuma saída de pista nas três pistas.
-
-## Testes
-
-- Novo `tests/corrida-robos-curvas.test.js`: (a) ideal Cadillac/Interlagos em 49,7 s +-4%; (b) robô difícil sozinho em Interlagos e Mônaco: volta lançada a menos de 6% do ideal, sem batida e sem passar do limite da pista; (c) velocidade de curva >= 90% da do jogador.
-- `corrida*.test.js` rodados uma vez no fim.
-
-## Fica de fora
-
-- O difícil ainda está ~8% atrás do jogador (53,6 contra 49,7 s): a diferença restante é de controle (a saída de curva ainda perde velocidade) e de a linha de menor curvatura não ser a de menor tempo. Subir as margens além de 1,08 volta a encostar no muro em Mônaco.
-- Pistas de fantasia e o jogo clássico seguem com a linha e as margens antigas.
+### Testes
+`tests/corrida-f1-limite-pneus.test.js` e `tests/corrida-f1-box.test.js` passam; `tests/corrida*.test.js` rodado no fim.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

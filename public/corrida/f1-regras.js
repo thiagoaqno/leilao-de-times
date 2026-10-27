@@ -153,6 +153,29 @@ function registrarParada(p, { volta, tempo, composto }) {
   p.pneuAtual = composto;
   return p.paradas.length;
 }
+// Limite de jogos: cada piloto tem JOGOS_POR_COMPOSTO jogos de cada composto na corrida, contando o pneu da largada
+// (`p.pneu`) e cada parada. Fixo em 2, seja qual for o número de voltas.
+const JOGOS_POR_COMPOSTO = 2;
+function jogosUsados(p) {
+  const n = {}; for (const c of Object.keys(PNEUS)) n[c] = 0;
+  const largada = p.pneu || COMPOSTO_PADRAO; n[largada] = (n[largada] || 0) + 1;
+  for (const q of p.paradas || []) if (n[q.composto] !== undefined) n[q.composto]++;
+  return n;
+}
+function jogosRestantes(p) { const u = jogosUsados(p), r = {}; for (const c of Object.keys(u)) r[c] = Math.max(0, JOGOS_POR_COMPOSTO - u[c]); return r; }
+const podeUsar = (p, composto) => !!PNEUS[composto] && jogosRestantes(p)[composto] > 0;
+// O composto que o servidor realmente põe num pedido de box: o pedido, se ainda há jogo; senão outro composto com jogo
+// (diferente do atual, e que ainda não usou se só tinha usado um: mantém a regra dos dois compostos; entre eles o de mais
+// jogos restantes). Se tudo estiver esgotado, repete o menos usado (o box acontece, mas nunca fica sem opção).
+function compostoParaParada(p, pedido) {
+  if (podeUsar(p, pedido)) return pedido;
+  const atual = p.pneuAtual || p.pneu || COMPOSTO_PADRAO, r = jogosRestantes(p), usados = new Set(p.compostos || [p.pneu || COMPOSTO_PADRAO]);
+  let lista = Object.keys(PNEUS).filter((c) => r[c] > 0 && c !== atual);
+  if (usados.size < 2) { const novos = lista.filter((c) => !usados.has(c)); if (novos.length) lista = novos; }
+  if (!lista.length) lista = Object.keys(PNEUS).filter((c) => r[c] > 0);
+  if (!lista.length) { const u = jogosUsados(p); lista = Object.keys(PNEUS).sort((a, b) => u[a] - u[b]); }
+  return lista.sort((a, b) => r[b] - r[a])[0];
+}
 // o que a regra dos dois compostos tira de quem terminou com um só (corrida de uma volta não tem onde parar)
 const usouDoisCompostos = (p) => new Set(p.compostos || [p.pneu || COMPOSTO_PADRAO]).size >= 2;
 const acrescimoDeFinal = (p, voltas) => (voltas >= 2 && !usouDoisCompostos(p) ? UM_COMPOSTO : 0);
@@ -284,7 +307,7 @@ function vacuoF1(draft, curva) {
 
 const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
-  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia, melhoresPlanos };
+  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -521,9 +521,10 @@ function encalhou(room, ia, car, now, dt, atras = false) {
 // Depois da parada o composto é o que aguenta o resto da corrida (o mais rápido que aguenta), não o que o plano previa.
 const MARGEM_PNEU = 1.12; // o desgaste real passa um pouco do teórico (tráfego, largada, escorregão)
 const taxaDoPneu = (composto, fator) => (F1.PENHASCO / F1.vidaEmVoltas(composto, 1)) * (fator || 1) * MARGEM_PNEU; // desgaste por volta
-function escolherComposto(restam, usados, fator) {
-  const ordem = ["macio", "medio", "duro"], aguenta = (c) => F1.vidaEmVoltas(c, fator * MARGEM_PNEU) >= restam;
-  let lista = ordem.filter(aguenta); if (!lista.length) lista = ["duro"]; // nem o duro chega: para de novo mais tarde
+function escolherComposto(restam, usados, fator, p) {
+  const ordem = ["macio", "medio", "duro"].filter((c) => !p || F1.podeUsar(p, c)), aguenta = (c) => F1.vidaEmVoltas(c, fator * MARGEM_PNEU) >= restam;
+  let lista = ordem.filter(aguenta); if (!lista.length) lista = ordem.slice(-1); // nem o mais duro chega: para de novo mais tarde
+  if (!lista.length) return F1.compostoParaParada(p, "duro"); // tudo esgotado: repete o menos usado
   if (usados.size < 2) { const novos = lista.filter((c) => !usados.has(c)); if (novos.length) lista = novos; } // dois compostos: prefere um que ainda não usou
   return lista[0];
 }
@@ -539,8 +540,8 @@ function decidirParada(room, p, ia, car, spec) {
   if (!chega) para = passaNaProxima || (planejada && feitas + 1 >= planejada.volta) || (room.direcao?.safety && pneu.desgaste > 0.3);
   if (usados.size < 2 && restam <= 1) para = true; // a última chance de cumprir a regra dos dois compostos
   if (!para) return null;
-  const aguentaPlano = planejada && planejada.composto !== pneu.composto && F1.vidaEmVoltas(planejada.composto, fator * MARGEM_PNEU) >= restam;
-  return aguentaPlano ? planejada.composto : escolherComposto(restam, usados, fator);
+  const aguentaPlano = planejada && planejada.composto !== pneu.composto && F1.podeUsar(p, planejada.composto) && F1.vidaEmVoltas(planejada.composto, fator * MARGEM_PNEU) >= restam;
+  return aguentaPlano ? planejada.composto : escolherComposto(restam, usados, fator, p);
 }
 function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const tr = Sim.criarPista(T.PISTAS[room.config.pista], room.config.pista), car = ia.sim;
@@ -728,4 +729,4 @@ function passo(room, dt, setor, emit) {
 }
 function possivel(pista, spec) { return perfilF1(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0), 1); }
 possivel.topo = (pista, spec) => topoDe(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0));
-module.exports = { idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao };
+module.exports = { idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao, escolherComposto, decidirParada };
