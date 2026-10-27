@@ -63,8 +63,46 @@ function renderizar() {
       <div class="row"><button id="desenvolver" ${s.bonus >= 4 || ativo || terminou ? "disabled" : ""}>Desenvolver +1 ponto · ${dinheiro(12 + s.bonus * 6)}</button><small class="muted">${s.bonus}/4 melhorias</small></div></section>
       <section class="bloco"><header><h2>Mercado & box</h2><small>Teto anual ${dinheiro(Regras.teto)}</small></header><div class="mercado-grid"><div><label for="piloto2">Companheiro · ${h(piloto(s.piloto2)?.nome)}</label><select id="piloto2">${pilotosMercado}</select><div class="row"><p>Contratos são pagos à vista.</p><button id="contratarPiloto" ${ativo || terminou ? "disabled" : ""}>Contratar</button></div></div>
       ${Object.entries(Regras.ENGENHEIROS).map(([area, lista]) => `<div><label for="${area}">${area === "mecanico" ? "Mecânicos" : "Estrategista"} · ${h(lista[s.engenheiros[area]].nome)}</label><select id="${area}">${lista.map((item, i) => `<option value="${i}" ${i <= s.engenheiros[area] ? "disabled" : ""}>${h(item.nome)} · ${dinheiro(item.custo - lista[s.engenheiros[area]].custo)}</option>`).join("")}</select><div class="row"><p>${area === "mecanico" ? "Paradas mais rápidas" : "Decisões mais rápidas no box"} na apuração.</p><button data-engenheiro="${area}" ${ativo || terminou || s.engenheiros[area] === 2 ? "disabled" : ""}>Contratar</button></div></div>`).join("")}</div><p class="boxnota">Patrocínio ${dinheiro(s.patrocinio)} por GP, prêmios por pontos e salários debitados após cada corrida.</p></section></div>
-    <div class="recuperacao"><span>Save automático no servidor · ${h(s.nome)}</span><button id="novoCodigo">Gerar novo código de recuperação</button><span>O código antigo deixa de valer.</span></div>`;
+    <div class="recuperacao"><span>Save automático no servidor · ${h(s.nome)}</span><button id="novoCodigo">Gerar novo código de recuperação</button><span>O código antigo deixa de valer.</span><button id="excluirCarreira" class="discreto">Excluir carreira</button></div>`;
 }
+// ---------- excluir a carreira ----------
+const dlgExcluir = document.createElement("dialog");
+dlgExcluir.className = "dlg-excluir";
+dlgExcluir.setAttribute("aria-labelledby", "exTitulo");
+dlgExcluir.innerHTML = `<form method="dialog" id="exForm"><h2 id="exTitulo">Excluir a carreira?</h2>
+  <p>A equipe, o carro, o caixa, as tabelas e o código de recuperação somem para sempre, em todos os aparelhos. <b>Não dá para desfazer.</b></p>
+  <label for="exConfirma">Para confirmar, escreva <b id="exAlvo">EXCLUIR</b></label>
+  <input id="exConfirma" autocomplete="off" autocapitalize="characters" spellcheck="false">
+  <p id="erroExcluir" class="erro-excluir" role="alert"></p>
+  <div class="linha-excluir"><button type="button" id="exCancela" autofocus>Cancelar</button><button type="submit" id="exSim" class="perigo" disabled>Excluir para sempre</button></div></form>`;
+document.body.appendChild(dlgExcluir);
+const campoEx = dlgExcluir.querySelector("#exConfirma"), simEx = dlgExcluir.querySelector("#exSim"), erroEx = dlgExcluir.querySelector("#erroExcluir");
+const normalizar = (t) => String(t || "").trim().toUpperCase();
+// vale escrever EXCLUIR ou o nome da equipe
+const confirmouEx = () => { const v = normalizar(campoEx.value); return v === "EXCLUIR" || (!!estado?.dados && v === normalizar(equipe(estado.dados.equipe)?.nome)); };
+function abrirExcluir() {
+  campoEx.value = ""; simEx.disabled = true; erroEx.textContent = "";
+  dlgExcluir.querySelector("#exAlvo").textContent = `EXCLUIR${estado?.dados ? ` (ou ${equipe(estado.dados.equipe)?.nome})` : ""}`;
+  dlgExcluir.showModal();
+}
+// o navegador esquece o token e o código e volta para a tela de criar
+function esquecerCarreira() {
+  token = null; codigo = null; estado = null;
+  try { localStorage.removeItem(chave); } catch {}
+  if (dlgExcluir.open) dlgExcluir.close();
+  telaInicial();
+}
+campoEx.addEventListener("input", () => { simEx.disabled = !confirmouEx(); });
+dlgExcluir.querySelector("#exCancela").addEventListener("click", () => dlgExcluir.close());
+dlgExcluir.querySelector("#exForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!confirmouEx()) return;
+  simEx.disabled = true;
+  const r = await pedir("excluir", { token });
+  if (!r?.ok) { erroEx.textContent = r?.erro || "Não foi possível excluir agora."; simEx.disabled = !confirmouEx(); return; }
+  esquecerCarreira(); falar("Carreira excluída.");
+});
+socket.on("excluida", () => { if (!window.SedeGrupo.ativo) { esquecerCarreira(); falar("Esta carreira foi excluída em outro lugar."); } });
 function irAoGP(acesso) {
   if (!acesso?.code) return;
   localStorage.setItem("corrida:" + acesso.code, JSON.stringify({ code: acesso.code, id: acesso.id, token: acesso.token }));
@@ -82,6 +120,7 @@ app.addEventListener("click", async (e) => {
   if (b.id === "desenvolver") await pedir("desenvolver");
   if (b.id === "contratarPiloto") await pedir("piloto", { id: document.getElementById("piloto2").value });
   if (b.dataset.engenheiro) await pedir("engenheiro", { area: b.dataset.engenheiro, nivel: document.getElementById(b.dataset.engenheiro).value });
+  if (b.id === "excluirCarreira") abrirExcluir();
   if (b.id === "novoCodigo") { const r = await pedir("novoCodigo"); if (r?.ok) { codigo = r.recuperacao; renderizar(); } }
   if (b.id === "copiar") { try { await navigator.clipboard.writeText(codigo); falar("Código copiado."); } catch { falar("Selecione e copie o código acima."); } }
   if (b.id === "esconder") { codigo = null; renderizar(); }

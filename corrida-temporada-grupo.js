@@ -109,6 +109,21 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
     };
   }
 
+  // o GP aberto de verdade: uma sala da Corrida ainda viva e fora da tela de resultado (um GP abandonado não trava a sala)
+  function gpAberto(sala) {
+    const a = ativos.get(sala.codigo); if (!a) return false;
+    const r = corrida.salaGP(a.code);
+    if (r && r.phase !== "results") return true;
+    ativos.delete(sala.codigo); return false;
+  }
+  // apaga a sala (memória e banco) e avisa quem está nela
+  function apagarSala(sala, motivo) {
+    salas.delete(sala.codigo); ativos.delete(sala.codigo);
+    try { bd.apagarSalaTemporadaCorrida(sala.codigo); } catch {}
+    for (const s of [...nsp.sockets.values()]) if (s.data.codigo === sala.codigo) { s.emit("encerrada", { motivo }); desligar(s); }
+    presentes.delete(sala.codigo);
+  }
+
   nsp.on("connection", (socket) => {
     socket.on("criar", (d = {}, cb) => {
       try {
@@ -143,6 +158,31 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
         if (!sala.ordem.length) { salas.delete(sala.codigo); try { bd.apagarSalaTemporadaCorrida(sala.codigo); } catch {} } else { guardar(sala); avisar(sala); }
       } else avisar(sala); // depois que a temporada começa, sair só deixa a pessoa ausente
       ok(cb);
+    });
+
+    // sair da temporada (depois que ela começou): o carro da pessoa volta para um robô e ela deixa a sala. Não vale com GP aberto.
+    socket.on("sairDaTemporada", (_, cb) => {
+      try {
+        const { sala, pid } = contexto(socket);
+        if (!sala || !pid) throw Error("Você não está numa sala.");
+        if (gpAberto(sala)) throw Error("O GP está aberto. Saia depois do resultado.");
+        desligar(socket);
+        const fim = G.dispensar(sala, pid);
+        if (fim === "encerrada") apagarSala(sala, "Todos os pilotos saíram: a temporada foi encerrada.");
+        else { guardar(sala); avisar(sala); }
+        ok(cb);
+      } catch (e) { falha(cb, e.message || String(e)); }
+    });
+    // o anfitrião encerra a temporada para todos: a sala some do banco e os outros são avisados
+    socket.on("encerrar", (_, cb) => {
+      try {
+        const { sala, pid } = contexto(socket);
+        if (!sala || !pid) throw Error("Você não está numa sala.");
+        if (sala.host !== pid) throw Error("Só o anfitrião encerra a temporada.");
+        if (gpAberto(sala)) throw Error("O GP está aberto. Encerre depois do resultado.");
+        apagarSala(sala, "O anfitrião encerrou a temporada.");
+        ok(cb);
+      } catch (e) { falha(cb, e.message || String(e)); }
     });
 
     socket.on("equipe", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.escolherEquipe(sala, pid, d.id)));
