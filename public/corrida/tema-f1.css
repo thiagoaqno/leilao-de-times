@@ -6,8 +6,7 @@ html,body{background:var(--estudio)}body{color:var(--tinta)}
 body::before{background:radial-gradient(ellipse 80% 55% at 50% 38%,#fff 0,#f3f5f8 45%,transparent 75%),linear-gradient(180deg,#eef0f4 0,#e1e5ea 62%,#bcc2cb 62.2%,#d3d7de 100%);filter:none}
 body::after{display:none}
 /* cartões: escuros, translúcidos, com a borda e o filete da equipe */
-.glass,.placa,.tile,.hubpainel,.hubabas,.hubtopo,.folha,.sede .bloco,.painelgp,.metricas,.calendario,.fim-noite,.modal .box,.eq-carta,.times .time{color:#f4f5f5;background:linear-gradient(180deg,#14161cf0,#0b0c10f0);border:1px solid var(--f1-lin);border-top:3px solid var(--eq,var(--f1-vm));border-radius:0;box-shadow:0 14px 34px #0b0c1030;backdrop-filter:none;-webkit-backdrop-filter:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
-.tile{border-top-color:var(--accent,var(--f1-vm))}.hubtopo,.hubabas{border-top-width:1px}
+.glass,.placa,.folha,.sede .bloco,.painelgp,.metricas,.calendario,.fim-noite,.modal .box,.eq-carta,.times .time{color:#f4f5f5;background:linear-gradient(180deg,#14161cf0,#0b0c10f0);border:1px solid var(--f1-lin);border-top:3px solid var(--eq,var(--f1-vm));border-radius:0;box-shadow:0 14px 34px #0b0c1030;backdrop-filter:none;-webkit-backdrop-filter:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
 /* texto solto sobre o fundo claro */
 .tovila,.utilbar,.roomtag .code,.roomtag .lbl,.hero h2,.hero h2 em,.hero p.lead,.hero-kicker,.hero-links a,.foto-credito,.equipes-faixa>span,.equipes-faixa,.sede>.abertura>section:first-child,.abertura h1,.abertura .explica,.taglinha,.cr-id h1,.cr-id small,.cabecalho,.cabecalho small,.identidade h1,.recuperacao,.sede>.muted,.hero h2 strong,.abertura h1 span{color:var(--tinta);text-shadow:none}
 .hero h2 strong,.abertura h1 span{color:var(--f1-vm)}.tovila::first-letter{color:var(--f1-vm)}.hero p.lead,.abertura .explica,.foto-credito,.cr-id small,.cabecalho small,.recuperacao,.taglinha{color:var(--tinta2)}
@@ -15,19 +14,17 @@ body::after{display:none}
 .tovila:hover,.hero-links a:hover{color:var(--f1-vm)}
 .err{color:#b3261e}
 /* barra de abas: caixa alta, itálico condensado, a ativa com o filete vermelho embaixo */
-.abas,.hubabas{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}.abas::-webkit-scrollbar,.hubabas::-webkit-scrollbar{display:none}
-.hubabas{padding:0 6px;border-radius:0}.hubabas button{flex:1;min-width:max-content;border:0;border-radius:0;background:transparent;box-shadow:none;color:#aeb8c3;padding:12px 16px;font:800 17px/1 var(--display);font-style:italic;text-transform:uppercase;letter-spacing:.05em;position:relative}
-.hubabas button.on{color:#fff;background:linear-gradient(180deg,transparent,#e1060026)}.hubabas button.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--f1-vm)}
+.abas{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}.abas::-webkit-scrollbar{display:none}
 .abas{border-bottom-color:#14161c30}
 /* botões e campos no mesmo desenho */
 button.primary,#btnCreate{border-radius:0;border:0;background:repeating-linear-gradient(115deg,#ffffff14 0 8px,transparent 8px 18px),var(--f1-vm);box-shadow:inset 0 -3px #0004;font-family:var(--display);font-style:italic;text-transform:uppercase;letter-spacing:.05em;font-size:1.15em}
 .seg{border-radius:0}.seg button{border-radius:0}.seg button.on{background:var(--f1-vm)}
 .sede input,.sede select,.placa input,.placa select,.dlg-excluir input{border-radius:0}
-.pilot,.track,.car,.pint,.time,.peca{border-radius:0}
+.track,.car,.pint,.time,.peca{border-radius:0}
 .toast{border-radius:0;border-left:4px solid var(--f1-vm)}
 /* celular: 16 px de margem, sem rolagem lateral */
 html,body{overflow-x:clip}
-@media (max-width:620px){.wrap,.sede{padding-left:16px;padding-right:16px}.bar-in{padding-inline:16px}.hubabas button{padding:11px 12px;font-size:15px}}
+@media (max-width:620px){.wrap,.sede{padding-left:16px;padding-right:16px}.bar-in{padding-inline:16px}}
 /* botão do fone (rádio do engenheiro) */
 [data-radio-botao]{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;padding:0;flex:none;border-radius:0}[data-radio-botao].mudo{opacity:.6}
 .bar button,.utilbar button.ghost{color:var(--tinta);background:#14161c12;border:1px solid #14161c40}
