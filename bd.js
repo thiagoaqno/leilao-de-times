@@ -235,6 +235,19 @@ function novoCodigoTemporadaCorrida(id) {
   return r.changes ? recuperacao : null;
 }
 
+// A temporada de F1 em grupo (corrida-temporada-grupo.js): uma linha por sala, com a sala inteira em JSON.
+function salvarSalaTemporadaCorrida(codigo, dados) {
+  const agora = Date.now();
+  bd().prepare("INSERT INTO corrida_temporadas_grupo (codigo, dados, criada_em, atualizada_em) VALUES (?, ?, ?, ?) ON CONFLICT(codigo) DO UPDATE SET dados = excluded.dados, atualizada_em = excluded.atualizada_em")
+    .run(codigo, JSON.stringify(dados), agora, agora);
+}
+// todas as salas guardadas (o servidor carrega ao subir): [{ codigo, dados, atualizadaEm }]
+const salasTemporadaCorrida = () => bd().prepare("SELECT * FROM corrida_temporadas_grupo").all().map((l) => {
+  let dados = null; try { dados = JSON.parse(l.dados); } catch {}
+  return { codigo: l.codigo, dados, atualizadaEm: Number(l.atualizada_em) };
+}).filter((s) => s.dados);
+const apagarSalaTemporadaCorrida = (codigo) => bd().prepare("DELETE FROM corrida_temporadas_grupo WHERE codigo = ?").run(codigo).changes > 0;
+
 // ---------- a moderação das carreiras solo (admin-carreira.js) ----------
 // a lista sem abrir o save inteiro de cada uma: só os campos que o painel mostra, tirados do JSON pelo próprio SQLite
 const listarCarreiras = (limite = 300) => bd().prepare(`SELECT id, nome, criada_em, atualizada_em,
@@ -435,4 +448,4 @@ const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, 
   .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
 
 module.exports = { melhorVoltaCorrida, melhoresTracadosCorrida, ritmoCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
-Object.assign(module.exports, { criarTemporadaCorrida, temporadaCorridaPorToken, temporadaCorridaPorId, recuperarTemporadaCorrida, salvarTemporadaCorrida, novoCodigoTemporadaCorrida });
+Object.assign(module.exports, { criarTemporadaCorrida, temporadaCorridaPorToken, temporadaCorridaPorId, recuperarTemporadaCorrida, salvarTemporadaCorrida, novoCodigoTemporadaCorrida, salvarSalaTemporadaCorrida, salasTemporadaCorrida, apagarSalaTemporadaCorrida });

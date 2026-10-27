@@ -25,13 +25,14 @@ $("btnJoin").onclick = () => {
   const saved = store.get("corrida:" + code) || {};
   socket.emit("join", { code, name, skin: store.get("galera:skin"), id: saved.id, token: saved.token }, enter);
 };
-$("btnWatch").onclick = () => { const code = $("hCode").value.trim().toUpperCase(); if (code.length !== 5) return ($("hErr").textContent = "Coloque o código da sala."); socket.emit("join", { code, watch: true }, enter); };
+$("btnWatch").onclick = () => { const code = $("hCode").value.trim().toUpperCase(); if (code.length !== 5) return ($("hErr").textContent = "Coloque o código da sala."); socket.emit("join", { code, watch: true, token: (store.get("corrida:" + code) || {}).token }, enter); }; // (na temporada em grupo, quem só assiste entra com o acesso que a sede guardou)
 $("bPronto").onclick = () => act("qpronto"); // classificação: terminei a minha volta
 $("hCode").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnJoin").click(); });
 $("btnInvite").onclick = async () => { const link = location.origin + "/corrida/?sala=" + E.ME.code; try { await navigator.clipboard.writeText(link); toast("Convite copiado! Manda no grupo."); } catch { prompt("Copie o convite:", link); } };
 function autoJoin() {
   const code = urlCode ? urlCode.toUpperCase() : null, saved = code && store.get("corrida:" + code);
   if (saved && saved.id) socket.emit("join", { code, id: saved.id, token: saved.token }, (r) => { if (r.ok) enter(r); else { show("home"); $("hErr").textContent = r.error; } });
+  else if (saved && saved.token) socket.emit("join", { code, watch: true, token: saved.token }, (r) => { if (r.ok) enter(r); else { show("home"); $("hErr").textContent = r.error; } });
   else if (E.ME) socket.emit("join", { code: E.ME.code, watch: !E.ME.id, id: E.ME.id, token: E.ME.token }, () => {});
   else show("home");
 }
