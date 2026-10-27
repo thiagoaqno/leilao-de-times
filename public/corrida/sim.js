@@ -119,13 +119,16 @@ function vacuoAlvo(c, outros) {
 
 // ---------- o piloto automático (o fantasma depois da bandeirada; os robôs também podem usar) ----------
 // Segue a pista a `latAlvo` do meio e a `vAlvo` (u/s). Devolve a entrada do passo.
+// O volante do piloto automático (robôs e fantasma): olha LD_K s à frente; soma ao ângulo de roda o contra-esterço pela deriva da traseira
+// (K_TRASEIRA rad de roda por rad de deriva: segura a saída de curva) e a diferença entre a guinada pedida e a que o carro faz (K_GUINADA).
+const LD_K = 0.6, K_TRASEIRA = 2, K_GUINADA = 0.5;
 function pilotoAutomatico(c, tr, spec, vAlvo, latAlvo, saida = {}) {
-  const p = D.parametros(spec), n = tr.n, v = Math.max(c.v, 30), Ld = Math.max(22, v * 0.3);
+  const p = D.parametros(spec), n = tr.n, v = Math.max(c.v, 30), Ld = Math.max(22, v * LD_K);
   let j = c.idx, acc = 0; while (acc < Ld) { j = (j + 1) % n; acc += 6; }
-  const q = tr.pts[j], tx = q.x + q.nx * latAlvo, ty = q.y + q.ny * latAlvo;
+  const q = tr.pts[j], la = typeof latAlvo === "function" ? latAlvo(j) : latAlvo, tx = q.x + q.nx * la, ty = q.y + q.ny * la;
   let e = Math.atan2(ty - c.y, tx - c.x) - c.a; e = Math.atan2(Math.sin(e), Math.cos(e));
   if (c.amb && c.amb.pn && c.amb.pn.arcade) saida.steer = D.volanteParaGuinada(p, Math.max(0, c.v), (2 * Math.sin(e) / Ld) * Math.max(0, c.v)); // macio (arcade): o volante dá guinada, não ângulo de roda
-  else { const delta = Math.atan2(2 * p.L * Math.sin(e), Ld * ESC), dm = D.volanteMaximo(p, Math.max(0, c.v) * ESC); saida.steer = limite(delta / dm, -1, 1); }
+  else { const delta = Math.atan2(2 * p.L * Math.sin(e), Ld * ESC) + K_TRASEIRA * (c.alR || 0) + K_GUINADA * (2 * Math.sin(e) / Ld * v - (c.r||0)) * p.L / Math.max(v * ESC,20), dm = D.volanteMaximo(p, Math.max(0, c.v) * ESC); saida.steer = limite(delta / dm, -1, 1); }
   saida.gas = c.v < vAlvo ? 1 : 0; saida.brake = c.v > vAlvo * 1.04 ? 1 : 0; if (saida.brake) saida.gas = 0;
   saida.ers = 0; saida.respawn = 0; saida.pedido = null; saida.marcha = 0;
   return saida;

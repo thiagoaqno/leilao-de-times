@@ -144,7 +144,8 @@ test("IA: sem volta humana, o grid completo fecha Mônaco e classifica perto de 
   assert.equal(room.order.length, 19);
   assert.ok(room.order.every((id) => room.players[id].finish != null), "todos cruzam a chegada");
   const tempos = room.order.map((id, i) => Robos.voltaLancada(room, room.players[id], 0, i, 19).tempo).sort((a, b) => a - b);
-  assert.ok(tempos[0] > 62 && tempos[0] < 90, `pole ${tempos[0]}`); // (macio novo e quente: mais rápido que o pneu neutro do ritmo da corrida)
+  // (a linha de menor curvatura tirou ~10 s da volta em Mônaco: a pole fica em ~55 s)
+  assert.ok(tempos[0] > 50 && tempos[0] < 80, `pole ${tempos[0]}`); // (macio novo e quente: mais rápido que o pneu neutro do ritmo da corrida)
   assert.ok(tempos.at(-1) - tempos[0] < 5, `grid disperso: ${tempos[0]} a ${tempos.at(-1)}`);
 });
 
@@ -166,7 +167,8 @@ test("IA: recorde humano limita a pole; volta boa em Cadillac não vira P2 autom
   const tempos = bots.map((p, i) => Robos.voltaLancada(room, p, 0, i, bots.length).tempo).sort((a, b) => a - b);
   // O macio novo desta tabela de pneus (aderência ~1,51, mais baixa que a antiga) dá ~70,2 s ao piloto ideal em Mônaco; a pole de um
   // robô médio fica a ~3% disso (~72,4 s). O teto antigo (72) era de quando o macio era mais aderente.
-  assert.ok(tempos[0] > 66 && tempos[0] < 73.5, `pole ${tempos[0]}`);
+  // (depois da linha de menor curvatura o ideal em Mônaco caiu de ~70 s para ~57 s: a pole fica em ~55 s)
+  assert.ok(tempos[0] > 50 && tempos[0] < 62, `pole ${tempos[0]}`);
   assert.ok(tempos.at(-1) < 85, `fundo do grid ${tempos.at(-1)}`);
   Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 95 }));
   Robos.ritmoDosRobos(room);

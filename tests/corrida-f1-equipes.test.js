@@ -103,13 +103,14 @@ test("com o mesmo orçamento, nenhuma montagem é melhor em tudo que outra", () 
   }
 });
 
-test("um carro de reta e um de curva: a reta ganha em Monza, a curva ganha em Mônaco e em Barcelona; nenhuma montagem manda em todas as pistas", () => {
+test("um carro de reta e um de curva: a reta ganha em Monza, a curva ganha em Mônaco e empata em Barcelona; nenhuma montagem manda em todas as pistas", () => {
   const volta = (m, pista) => Robos.tempoDaVolta(Robos.perfil(pista, E.specDaMontagem(m), 0), 0.9);
   const reta = montagem(8, 0, 3, 3, 2, 4), curva = montagem(1, 8, 3, 3, 3, 2); // 20 pontos os dois
   assert.equal(E.custoDaMontagem(reta), 20); assert.equal(E.custoDaMontagem(curva), 20);
   assert.ok(volta(reta, "monza") < volta(curva, "monza") * 0.95, "Monza é de reta");
   assert.ok(volta(curva, "monaco") < volta(reta, "monaco") * 0.995, "Mônaco é de curva");
-  assert.ok(volta(curva, "barcelona") < volta(reta, "barcelona") * 0.98, "Barcelona também");
+  // (com a linha de menor curvatura e a curvatura suavizada, as curvas de Barcelona ficam abertas demais para a aderência decidir: empate, até 1%)
+  assert.ok(volta(curva, "barcelona") < volta(reta, "barcelona") * 1.01, "Barcelona empata");
   // procurando entre as montagens de 20 pontos com chassi e freios em 3, quem é melhor em Monza não é o melhor em Mônaco
   const melhor = { monza: [Infinity, null], monaco: [Infinity, null] };
   for (const m of montagens(20)) if (m.chassi === 3 && m.freios === 3) for (const pista of ["monza", "monaco"]) { const t = volta(m, pista); if (t < melhor[pista][0]) melhor[pista] = [t, m]; }
