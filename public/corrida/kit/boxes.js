@@ -8,10 +8,14 @@
 import * as THREE from "three";
 import { canvasTex, M } from "../cena.js";
 import { faixa } from "./arquibancadas.js";
+import { recortar } from "./comum.js";
 import { marcaTex } from "./marcas.js";
 
 export function prediosDosBoxes(tr, add, { de = 0.984, ate = 1.078, lado = 1, recuo = 62, fundo = 46, alto = 36, torre = true, paineis = [], cores = {} } = {}) {
-  const { pts, n, W } = tr, i0 = Math.floor(de * n), i1 = Math.floor(ate * n), l0 = lado * (W / 2 + recuo), l1 = l0 + lado * fundo;
+  const { pts, n, W } = tr, l0 = lado * (W / 2 + recuo), l1 = l0 + lado * fundo;
+  // o prédio acompanha a reta: onde a pista faz uma curva fechada (ou outro trecho passa por perto) ele termina
+  const rec = recortar(tr, Math.floor(de * n), Math.floor(ate * n), [l0 - lado * 6, l1]); if (!rec) return;
+  const { i0, i1 } = rec;
   const c = { parede: "#e9e7e1", friso: "#c8102e", teto: 0xb9bcc0, ...cores };
   // a frente: portas das garagens, a faixa de vidro e a platibanda com o friso
   const frente = new THREE.MeshStandardMaterial({ roughness: 0.7, side: THREE.DoubleSide, map: canvasTex(64, 128, (x, w, hh, rr) => {

@@ -97,15 +97,15 @@ function fechar(room, deps) {
 // Um setor novo de quem está na pista (o mesmo caminho da corrida: só vale o próximo, na ordem). Passando pela linha de
 // chegada: a primeira vez abre a volta lançada; a seguinte fecha e vale o melhor tempo. Volta rápida demais é atalho.
 // Quem cruza a linha depois do fim do relógio termina a sessão (a bandeirada), mas só se a volta já estava aberta.
-function aoSetor(room, p, s) {
-  const q = room.quali, agora = Date.now();
+function aoSetor(room, p, s, quando) { // (`quando`: a hora do passo da física em que o carro cruzou o portão)
+  const q = room.quali, agora = quando ?? Date.now();
   if (!q || q.pausaAte || !q.ativos.includes(p.id) || agora < q.startAt || p.qFim) return false;
   if (s !== (p.sector + 1) % T.SECTORS) return false;
   p.sector = s;
   if (s !== 0) return true;
   if (p.qIni == null) { if (agora > q.fimAt) p.qFim = true; else p.qIni = agora; return true; }
   const volta = (agora - p.qIni) / 1000;
-  if (volta < T.PISTAS[room.config.pista].minLap) { p.sector = T.SECTORS - 1; return false; }
+  if (volta < T.PISTAS[room.config.pista].minLap) return false; // atalho: não conta, mas o setor segue o do navegador
   if (p.qMelhor == null || volta < p.qMelhor) { p.qMelhor = volta; p.qQuando = agora; }
   if (agora > q.fimAt) p.qFim = true; else p.qIni = agora;
   return true;

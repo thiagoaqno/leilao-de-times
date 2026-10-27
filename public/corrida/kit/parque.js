@@ -21,7 +21,11 @@ export function parque(tr, add, cfg = {}) {
     for (const lado of lados) for (let k = 0, q = Math.floor(densidade) + (r() < densidade % 1 ? 1 : 0); k < q; k++) {
       const d = d0 + r() * fundo, x = p.x + p.nx * lado * d + (r() - 0.5) * 14, z = p.y + p.ny * lado * d + (r() - 0.5) * 14;
       if (!livre(tr, x, z, folga) || ocupado(tr, x, z, i % n)) continue;
-      const h = tr.chao(x, z) - 1.5, alt = alturas[0] + r() * (alturas[1] - alturas[0]), larg = alt * (0.36 + r() * 0.12), cor = folhas[(r() * folhas.length) | 0];
+      const h = tr.chao(x, z) - 1.5, alt = alturas[0] + r() * (alturas[1] - alturas[0]), cor = folhas[(r() * folhas.length) | 0];
+      let larg = alt * (0.36 + r() * 0.12);
+      // a copa baixa (menos de 2,4 m acima do asfalto de perto: o morro sobe ao lado da pista) não avança por cima da pista: encolhe até caber
+      const dist = tr.distAt(x, z), baixa = h + alt * 0.2 - pts[tr.indiceAt(x, z)].h < 26;
+      if (baixa && dist < W / 2 + 10 + larg) { larg = Math.min(larg, dist - W / 2 - 10); if (larg < alt * 0.2) continue; }
       if (r() < coniferas) { pinheiros.push({ x, y: h + alt * 0.6, z, sx: larg * 0.55, sy: alt * 0.8, sz: larg * 0.55, r: r() * 6, c: "#24502b" }); troncosPinheiro.push({ x, y: h + alt * 0.125, z, sx: alt * 0.04, sy: alt * 0.25, sz: alt * 0.04 }); }
       else { copas.push({ x, y: h + alt * 0.58, z, sx: larg, sy: alt * 0.42, sz: larg, r: r() * 6, c: cor }); troncos.push({ x, y: h + alt * 0.225, z, sx: alt * 0.045, sy: alt * 0.45, sz: alt * 0.045 }); }
     }

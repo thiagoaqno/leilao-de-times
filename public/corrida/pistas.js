@@ -1036,7 +1036,7 @@ const BOXES = {
   silverstone: { entra: 0.9827, para: 0, sai: 0.0173, lado: 1 },
   // as pistas convertidas (ferramentas/circuitos-f1.js): o corredor de 504 em volta da linha, do lado de dentro
   melbourne: { entra: 0.9819, para: 0, sai: 0.0181, lado: 1 },
-  xangai: { entra: 0.9843, para: 0, sai: 0.0157, lado: 1 },
+  xangai: { entra: 0.9843, para: 0, sai: 0.0157, lado: -1 }, // (o lado de lá: do outro, o corredor e as garagens caíam em cima de outro trecho da pista)
   suzuka: { entra: 0.9824, para: 0, sai: 0.0176, lado: 1 },
   bahrein: { entra: 0.9819, para: 0, sai: 0.0181, lado: 1 },
   jeddah: { entra: 0.9829, para: 0, sai: 0.0171, lado: -1 },
@@ -1045,13 +1045,13 @@ const BOXES = {
   redbullring: { entra: 0.9805, para: 0, sai: 0.0195, lado: 1 },
   spa: { entra: 0.9856, para: 0, sai: 0.0144, lado: 1 },
   hungaroring: { entra: 0.9807, para: 0, sai: 0.0193, lado: 1 },
-  zandvoort: { entra: 0.9805, para: 0, sai: 0.0195, lado: 1 },
+  zandvoort: { entra: 0.9805, para: 0, sai: 0.0195, lado: -1 }, // (idem)
   madri: { entra: 0.9819, para: 0, sai: 0.0181, lado: 1 },
   baku: { entra: 0.9825, para: 0, sai: 0.0175, lado: -1 },
   singapura: { entra: 0.9812, para: 0, sai: 0.0188, lado: 1 },
   austin: { entra: 0.9845, para: 0, sai: 0.0155, lado: -1 },
   mexico: { entra: 0.9804, para: 0, sai: 0.0196, lado: 1 },
-  lasvegas: { entra: 0.9830, para: 0, sai: 0.0170, lado: -1 },
+  lasvegas: { entra: 0.9830, para: 0, sai: 0.0170, lado: 1 }, // (do lado de lá, a ponta das garagens chegava a 12 de outro trecho)
   catar: { entra: 0.9821, para: 0, sai: 0.0179, lado: 1 },
   abudhabi: { entra: 0.9818, para: 0, sai: 0.0182, lado: -1 },
 };
@@ -1177,6 +1177,16 @@ function pontos(t, step = 6) {
 }
 // onde fica cada checkpoint (o índice do ponto da pista): divide a volta em SECTORS partes iguais
 const checkpoint = (k, n) => Math.ceil((k * n) / SECTORS) % n;
+// O portão do checkpoint k: a linha reta que atravessa a pista no ponto dele. O carro passou se o passo (a -> b) cruzou o
+// portão para a frente, dentro de `meia` de lado e na altura da pista (a ponte de Suzuka). Não depende do índice do ponto
+// mais perto, que dá pulos na beirada, no grampo e onde dois trechos se aproximam (era o que perdia a volta).
+function cruzouSetor(pts, n, k, ax, ay, bx, by, z, meia) {
+  const p = pts[checkpoint(k, n)], sa = (ax - p.x) * p.tx + (ay - p.y) * p.ty, sb = (bx - p.x) * p.tx + (by - p.y) * p.ty;
+  if (!(sa < 0 && sb >= 0) || sb - sa > 80) return false; // só para a frente; passo grande é teleporte
+  const u = sa / (sa - sb), qx = ax + (bx - ax) * u, qy = ay + (by - ay) * u;
+  if (Math.abs((qx - p.x) * -p.ty + (qy - p.y) * p.tx) > meia) return false;
+  return z == null || Math.abs(z - p.h) < 40;
+}
 // Detecção, abertura e fim do DRS clássico, em frações da volta. A zona dos boxes cruza a linha de chegada.
 const DRS = {
   monaco: [[0.91, 0.95, 0.04]], interlagos: [[0.91, 0.95, 0.05], [0.24, 0.27, 0.35]],
@@ -1220,7 +1230,7 @@ function boxesFor(id) {
 // o turbo do cogumelo: quanto tempo fica acima da velocidade final, e quanto do excesso perde por segundo quando acaba
 // (aos poucos, para não cortar seco; o vácuo e o estilingue também acabam assim)
 const TURBO_MS = 3500, TURBO_SOLTA = 90;
-const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, boxesFor, SECTORS, TURBO_MS, TURBO_SOLTA };
+const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, cruzouSetor, boxesFor, SECTORS, TURBO_MS, TURBO_SOLTA };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pistas = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -11,9 +11,11 @@ som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo; S
    guard-rail colado (rua) usa `walls: true, muro: true`; autódromo com área de escape, `walls: false`.
 2. **As cores** em `../cena.js` (`LOOK.<id>`) e `../pista.js` (`THEMES.<id>`): céu, neblina, chão, zebra.
 3. **A configuração** em `../gps/<id>.js` e uma linha em `../gps/index.js`.
-4. **Conferir:** `npm test` (o teste de robôs dá uma volta em todas as pistas: o traçado precisa fechar sem sair da pista)
-   e uma volta no navegador com `#debug` (`window.__corrida.race.tr` tem os números de cada peça: `chaoGP`, `ambienteGP`,
-   `somGP`...).
+4. **Conferir:** `node --test tests/corrida*.test.js` (nunca o `npm test` inteiro). O teste de robôs dá uma volta em todas as
+   pistas, `tests/corrida-pistas-volta.test.js` percorre a linha central (e a beirada) com a conferência de checkpoints do
+   navegador e `tests/corrida-pistas-invasao.test.js` monta a cena de cada GP e acusa o que ficou dentro da pista (ver
+   "Conferências automáticas" abaixo). Depois, uma volta no navegador com `#debug` (`window.__corrida.race.tr` tem os
+   números de cada peça: `chaoGP`, `ambienteGP`, `somGP`...).
 
 ## A configuração (todas as chaves são opcionais)
 
@@ -64,10 +66,41 @@ Os patrocinadores reais desenhados no canvas (o jogo é só para os amigos): `MA
 cada logo), `PATROCINIO` (a ordem padrão), `desenharMarca(ctx, nome, x, y, w, h)` e `marcaTex(nome, w, h)`. Marca nova:
 uma entrada em `MARCAS` (e, se o logo pedir, um traço novo em `desenharMarca`).
 
+## Conferências automáticas (`tests/ajuda-cena/`)
+
+A cena 3D de uma pista monta dentro do Node, sem navegador e sem WebGL (`tests/ajuda-cena/index.mjs`: `montar(id)` devolve
+`{ tr, THREE }`; o desenho nos canvas é de mentira, a geometria, os materiais e as posições são os verdadeiros; `rastrear: true`
+anota de que arquivo:linha veio cada objeto).
+
+- **Invasão** (`invasao.mjs`, `tests/corrida-pistas-invasao.test.js`): todo vértice (e cada instância) de 22 cm a 2,4 m acima do
+  asfalto tem que ficar a mais de meia largura + 1 m de QUALQUER ponto da linha central, inclusive dos trechos vizinhos de um
+  grampo. As fitas que acompanham a pista (zebra, brita, guard-rail, terreno) não entram: num grampo mais fechado que a meia
+  largura elas se dobram sobre a própria curva. Como se evita: as peças usam `livre()`/`ocupado()`, que agora medem a distância
+  EXATA (`tr.distAt`; a grade grossa de antes, `tr.distAprox`, erra até 40 e só serve para o relevo), e a fita deslocada por um
+  lado fixo (arquibancada, prédio dos boxes) usa `recortar(tr, i0, i1, [deslocamentos])`, que devolve só o pedaço onde a fita
+  fica onde foi desenhada. Regra boa para uma peça nova: nada pode estar mais perto da pista do que o deslocamento que você
+  desenhou (`tr.distAt(x, z) >= deslocamento - 2`).
+- **Desempenho** (`medir.mjs`: `node tests/ajuda-cena/medir.mjs monaco spa`): chamadas de desenho, triângulos, materiais,
+  texturas e sombras da pista inteira e como a câmera do jogo vê (média de 12 pontos da volta), e `tests/corrida-pistas-desempenho.test.js`
+  guarda os tetos. `CORRIDA_RAIZ=<outra cópia do projeto>` compara com uma versão anterior.
+
+## Juntar o que está parado (`fundir.js`)
+
+No fim de `buildWorld`, `fundirEstaticos(tr, { simular })` junta o cenário: materiais iguais viram um só, as malhas paradas do
+mesmo material e da mesma região viram uma malha só, as instâncias pesadas espalhadas pela volta (cerca, fachadas, árvores)
+viram um InstancedMesh por região (a tela e a sombra cortam o que está longe) e o que sobrou parado deixa de recalcular a
+matriz a cada quadro. Fica de fora o que se mexe: tudo que o resto do jogo guarda em `tr` (portais, cones, pórtico, boxes...) e
+o que as animações de `vida*.js` e dos GPs movem, descoberto rodando a animação por alguns segundos em 24 pontos da volta (por
+isso uma peça que anda tem que mudar de lugar, tamanho ou visibilidade, ou a matriz de um InstancedMesh, dentro de
+`animarVida`/`tr.animarPista`). Peça que se mexe por outro caminho (um evento, um clique) precisa ficar guardada em `tr`.
+O que se repete em muitas cópias que se mexem (asas, gaivotas, barcos, cabines da roda-gigante) é um InstancedMesh com as
+matrizes calculadas na animação, e só do que está perto da câmera.
+
 ## Regras
 
 - Português nos nomes e comentários, no tom do resto.
 - Peça repetida vai em `InstancedMesh` ou numa malha só por material (`comum.js`: `lotes`, `tira`, `instancias`); sem
   luz dinâmica nova.
-- Antes de pôr algo na beira, confira `livre(tr, x, z, folga)` (o grampo vizinho) e `ocupado(tr, x, z)`.
+- Antes de pôr algo na beira, confira `livre(tr, x, z, folga)` (o grampo vizinho; a folga conta a partir da MEIA LARGURA e tem que
+  incluir o tamanho da peça: uma copa de 30 de raio pede 30 a mais) e `ocupado(tr, x, z)`. Fita num deslocamento fixo: `recortar()`.
 - Peça nova que serve para mais de uma pista entra aqui, com a sua chave na configuração e uma linha nesta tabela.

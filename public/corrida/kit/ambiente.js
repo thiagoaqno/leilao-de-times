@@ -28,12 +28,14 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
   // a entrada e a saída do corredor dos boxes (regras de F1) ficam livres de painel e cerca
   const bx = tr.t.boxes && window.F1Regras ? window.F1Regras.corredor(tr.t, n, W) : null;
   const naRampa = (i, lado) => { if (!bx || lado !== bx.lado) return false; const r = (((i - bx.i0) % n) + n) % n, ra = window.F1Regras.RAMPA + 3; return r <= (tr.t.muro ? bx.len + 3 : ra) || (r >= bx.len - ra && r <= bx.len + 3); }; // rua com guard-rail: o corredor inteiro fica livre, o guard-rail dá lugar à mureta
-  function lugar(i, lado, lat = L + 1, raio = 2) {
+  function lugar(i, lado, lat = L + 1, raio = 12) {
     if (naRampa(i, lado)) return null;
     const p = pts[(i + n) % n], x = p.x + p.nx * lado * lat, z = p.y + p.ny * lado * lat;
     if (tr.noCorredor?.(x, z)) return null;
-    // Distância exata ao traçado, inclusive ao trecho vizinho no grampo.
-    if (pts.some(q => Math.hypot(q.x - x, q.y - z) < W / 2 + raio)) return null;
+    // Distância exata a qualquer ponto do traçado, inclusive o trecho vizinho de um grampo e o outro lado de uma curva fechada
+    // (nada pode estar mais perto da pista do que o deslocamento desenhado `lat`; a peça fica a `raio` do asfalto, no mínimo).
+    const minimo = Math.max(lat - 3, W / 2 + raio);
+    if (tr.distAt(x, z) < minimo || tr.distAt(x + p.tx * 16, z + p.ty * 16) < minimo || tr.distAt(x - p.tx * 16, z - p.ty * 16) < minimo) return null; // e as pontas das peças de 32
     return { p, x, z, h: p.h, ry: Math.atan2(-p.nx * lado, -p.ny * lado) };
   }
   for (let i = 0; i < n; i += 9) for (const lado of [-1, 1]) {
@@ -82,7 +84,7 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
     ultima = i;
     const p = pts[i], q = pts[(i + 3) % n], lado = p.tx * q.ty - p.ty * q.tx > 0 ? -1 : 1;
     placas.forEach((distancia, j) => {
-      const idx = (i - Math.round(distancia * 10 / 6) + n) % n, o = lugar(idx, lado, L + 2, 5);
+      const idx = (i - Math.round(distancia * 10 / 6) + n) % n, o = lugar(idx, lado, L + 6, 5);
       if (!o || tr.coberto?.(idx)) return;
       caixa(distancias[j], o.x, o.h + 22, o.z, 13, 9, 0.8, Math.atan2(-o.p.tx, -o.p.ty)); stats.placas++;
     });

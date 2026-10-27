@@ -41,7 +41,7 @@ export const Sound = (() => {
     if (nova !== marcha) { if (nova > marcha) troca = 0.1; marcha = nova; }
     troca = Math.max(0, troca - 0.016);
     const ini = MARCHAS[marcha - 1] || 0, fim = MARCHAS[marcha] > 1e8 || !MARCHAS[marcha] ? ini + 65 : MARCHAS[marcha], rpm = marchaF1 ? Math.min(1.02, rpmF1) : Math.min(1, Math.max(0, (v - ini) / (fim - ini)));
-    const base = 38 + rpm * 62 + marcha * 6; // Hz
+    const base = 38 + rpm * 70 + marcha * 3; // Hz (8 marchas: a rotação sobe até o corte e cai a cada troca)
     eng.o.frequency.setTargetAtTime(base, t, 0.04); eng.o2.frequency.setTargetAtTime(base / 2, t, 0.04); eng.o3.frequency.setTargetAtTime(base * 2, t, 0.04);
     eng.f.frequency.setTargetAtTime(500 + rpm * 1400 + v * 2, t, 0.06);
     eng.g.gain.setTargetAtTime(on && racing ? (0.035 + rpm * 0.02) * (troca > 0 ? 0.3 : 1) : 0, t, 0.05);

@@ -8,6 +8,7 @@
 //   cobertura: marquise lá atrás (false deixa aberta) · torcida: as cores das camisas (lista; padrão: variadas)
 import * as THREE from "three";
 import { canvasTex, M } from "../cena.js";
+import { recortar } from "./comum.js";
 
 export function faixa(tr, add, i0, i1, l0, l1, y0, y1, mat, vLen = 40, uSpan = 1) {
   const { pts, n } = tr, vs = [], uv = [], idx = [];
@@ -32,9 +33,12 @@ export function arquibancadas(tr, add, { trechos }) {
   const L = tr.wallLat < 1e9 ? tr.wallLat : tr.W / 2 + 30, colunaGeo = new THREE.CylinderGeometry(0.9, 0.9, 1, 6), materiais = new Map();
   tr.arquibancadas ||= []; tr.reservado ||= [];
   for (const { de, ate, lado = -1, degraus = 6, cor = "#1f5fbf", encosto = "#3f86e8", cobertura: coberta = true, torcida } of trechos) {
-    const i0 = Math.floor(de * n); let i1 = Math.floor(ate * n); if (i1 < i0) i1 += n;
+    let i0 = Math.floor(de * n), i1 = Math.floor(ate * n); if (i1 < i0) i1 += n;
     const chave = cor + encosto + (torcida || ""); if (!materiais.has(chave)) materiais.set(chave, cadeiras(cor, encosto, "#00000038", torcida));
     const l0 = lado * (L + 6), alto = degraus * 6 + 30;
+    // num grampo ou ao lado de outro trecho da pista a arquibancada não cabe: fica só o pedaço onde ela fica onde foi desenhada
+    const rec = recortar(tr, i0, i1, [l0, l0 + lado * degraus * 9]); if (!rec) continue;
+    ({ i0, i1 } = rec);
     if (tr.noCorredor && Array.from({ length: Math.ceil((i1 - i0) / 4) + 1 }, (_, k) => pts[(i0 + k * 4) % n])
       .some((p) => tr.noCorredor(p.x + p.nx * l0, p.y + p.ny * l0))) continue;
     // os degraus são uma rampa só (a galera aparece de baixo também); a textura repete a fileira em cada 9 unidades

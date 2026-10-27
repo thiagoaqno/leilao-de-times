@@ -1,10 +1,11 @@
 // Corrida da Galera — rede: entrar/criar sala, o estado que vem do servidor e os fantasmas dos outros pilotos.
-import { E, socket, $, store, relogio, toast, act } from "./estado.js";
+import { E, socket, $, store, relogio, sNow, toast, act } from "./estado.js";
 import { Sound } from "./sons.js";
 import { show, renderLobby } from "./menus.js";
 import { race, startRace, stopRace, nearest, prepararPista } from "./jogo.js";
 import { checkMyLap, renderResults, renderQuali } from "./hud.js";
 import { onBox, onUse, onHit, onBoom, setHazards } from "./itens.js";
+import { reconciliar, reenviarEntradas } from "./fisica.js";
 
 // ---------- entrar / criar ----------
 const urlCode = new URLSearchParams(location.search).get("sala");
@@ -59,26 +60,43 @@ socket.on("state", (st) => {
   renderQuali();
 });
 
-// fantasmas: posição recebida, suavizada e empurrada um pouquinho pela velocidade
+// Os outros carros: o servidor manda a posição de todos 20 vezes por segundo (`snap`, e `ghost`/`ghosts` nas salas sem as
+// regras de F1) com a hora dele. Cada carro guarda as últimas amostras e é desenhado ATRASO ms no passado, interpolando entre
+// duas delas: um pacote atrasado ou perdido não faz o carro andar para trás (nem tremer), e o atraso fixo cobre a oscilação
+// da rede. Se faltar amostra nova, o carro segue na direção em que ia por no máximo 0,2 s e depois fica parado onde estava.
+const ATRASO = window.Sim.ATRASO; // (as contas ficam em sim.js: amostraEm)
 socket.on("ghosts", (lista) => { if (Array.isArray(lista)) lista.forEach(receberFantasma); }); // os robôs, todos juntos
 socket.on("ghost", receberFantasma);
+socket.on("snap", (d) => { // [id, x, y, z, a, v, prog] de todos os carros
+  if (!d || !Array.isArray(d.c) || !race) return;
+  const eu = E.ME && E.ME.id;
+  for (const r of d.c) if (r[0] !== eu) receberFantasma({ id: r[0], x: r[1], y: r[2], z: r[3], a: r[4], v: r[5], prog: r[6], t: d.t });
+});
+socket.on("ack", reconciliar); // o estado verdadeiro do meu carro (fisica.js)
+socket.on("connect", reenviarEntradas);
 function receberFantasma(d) {
   if (!race) return;
   let gh = race.ghosts.get(d.id);
-  if (!gh) { gh = { x: d.x, y: d.y, z: d.z || 0, a: d.a, idx: nearest(race.tr, d.x, d.y, 0) }; race.ghosts.set(d.id, gh); }
-  Object.assign(gh, { tx: d.x, ty: d.y, tz: d.z || 0, ta: d.a, v: d.v, prog: d.prog, at: performance.now() });
+  const t = d.t || sNow(), amostra = { t, x: d.x, y: d.y, z: d.z || 0, a: d.a, v: d.v || 0 };
+  if (!gh) { gh = { x: d.x, y: d.y, z: d.z || 0, a: d.a, v: d.v || 0, prog: d.prog, idx: nearest(race.tr, d.x, d.y, 0), buf: [] }; race.ghosts.set(d.id, gh); }
+  const b = gh.buf, ult = b[b.length - 1];
+  if (ult && t <= ult.t) return; // fora de ordem ou repetida
+  b.push(amostra); if (b.length > 20) b.shift();
+  gh.prog = d.prog;
 }
 socket.on("item:box", onBox);
 socket.on("item:use", (e) => onUse(e, race));
 socket.on("item:hit", (e) => onHit(e, race));
 socket.on("item:hazards", setHazards);
 socket.on("item:boom", (e) => { Sound.crash(110); onBoom(e); });
+const ALVO = {};
 export function updateGhosts(dt) {
-  const k = 1 - Math.exp(-dt * 10);
+  const k = 1 - Math.exp(-dt * 30), rt = sNow() - ATRASO; // (um leve alisamento tira só o tremido que sobrar)
   for (const gh of race.ghosts.values()) {
-    const ahead = Math.min(0.25, (performance.now() - gh.at) / 1000), tx = gh.tx + Math.cos(gh.ta) * gh.v * ahead, ty = gh.ty + Math.sin(gh.ta) * gh.v * ahead;
-    gh.x += (tx - gh.x) * k; gh.y += (ty - gh.y) * k; gh.z += (gh.tz - gh.z) * k;
-    let da = gh.ta - gh.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; gh.a += da * k;
+    if (!gh.buf.length) continue;
+    const t = window.Sim.amostraEm(gh.buf, rt, ALVO);
+    gh.x += (t.x - gh.x) * k; gh.y += (t.y - gh.y) * k; gh.z += (t.z - gh.z) * k; gh.v = t.v;
+    let da = t.a - gh.a; da = Math.atan2(Math.sin(da), Math.cos(da)); gh.a += da * k;
     gh.idx = nearest(race.tr, gh.x, gh.y, gh.idx || 0);
   }
 }

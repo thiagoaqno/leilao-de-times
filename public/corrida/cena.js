@@ -22,7 +22,7 @@ scene.add(sun, sun.target);
 const maxAniso = renderer.capabilities.getMaxAnisotropy();
 export function canvasTex(w, hh, draw, repeat = true) {
   const c = document.createElement("canvas"); c.width = w; c.height = hh; draw(c.getContext("2d"), w, hh, rng(w * 7 + hh * 3));
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(maxAniso, 8); // 16x custa caro na placa e de 8 para cima não se vê diferença
   if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }

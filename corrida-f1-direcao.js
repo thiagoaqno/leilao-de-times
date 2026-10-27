@@ -12,13 +12,18 @@ function largada(room, p, pos, agora, log) {
   if (p.queimou || !(agora < room.startAt - 150) || !(pos.v > 45)) return;
   p.queimou = true; penalizar(p, 5, 'queimou a largada', log);
 }
-// Uma batida (no muro ou em outro carro) de `forca` (F1.batida diz o nível): 2% de dano, sem punição de tempo.
-// Com 100%, perda total (`dnf`: o piloto está fora). O navegador só diz a força; quem manda
-// no resultado é o servidor, que ainda segura um intervalo entre batidas para um mesmo toque não contar duas vezes.
-function bater(room, p, forca, tipo, agora, log) {
-  if (!room.direcao || room.phase !== 'race' || !p || p.dnf || p.finish != null || p.box || agora < room.startAt || agora < (p.batidaAte || 0)) return null;
+// Uma batida (no muro ou em outro carro) de `forca` (F1.batida diz o nível): 1% de dano, sem punição de tempo (e cada 1% de
+// dano tira 1% de desempenho: F1.efeitoDoDano). Com 100%, perda total (`dnf`: o piloto está fora). Quem decide é o servidor, que
+// vê o contato na física do carro. O mesmo contato não conta duas vezes: cada par (o muro, ou cada outro carro: `chave`) só volta
+// a valer depois de BATIDA_INTERVALO (4 s). Quem já recebeu a bandeirada (fantasma) não bate nem leva batida.
+function bater(room, p, forca, tipo, agora, log, chave = tipo) {
+  if (!room.direcao || room.phase !== 'race' || !p || p.dnf || p.finish != null || p.box || agora < room.startAt) return null;
+  const cd = p.batidaPares || (p.batidaPares = {});
+  if (agora < (cd[chave] || 0)) return null;
   const b = F1.batida(forca); if (!b) return null;
-  p.batidaAte = agora + F1.BATIDA_INTERVALO;
+  cd[chave] = agora + F1.BATIDA_INTERVALO;
+  for (const k of Object.keys(cd)) if (cd[k] < agora) delete cd[k]; // (só guarda os que ainda valem)
+  p.batidaAte = cd[chave];
   p.batidas = (p.batidas || 0) + 1;
   p.dano = Math.min(100, Math.round(((p.dano || 0) + b.dano) * 10) / 10);
   p.ultimaBatida = { at: agora, nivel: b.nivel, dano: b.dano, tipo };
@@ -37,7 +42,7 @@ function iniciar(room) {
     scDura: 10000 + Math.floor(r() * 4000),
     pista: T.pontos(t, 6), ultimaAtualizacao: 0 };
   for (const id of room.order) Object.assign(room.players[id], { drsZona: -1, penal: 0, avisosLimite: 0,
-    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, batidas: 0, batidaAte: 0, ultimaBatida: null, queimou: false, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
+    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, batidas: 0, batidaAte: 0, batidaPares: {}, ultimaBatida: null, queimou: false, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
 }
 function progresso(p, n) { return Number.isFinite(p.pos?.prog) ? p.pos.prog / n : -1; }
 function ordem(room) {

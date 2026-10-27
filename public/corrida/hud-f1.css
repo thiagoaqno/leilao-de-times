@@ -1,0 +1,73 @@
+/* Corrida da Galera — o HUD de F1 (regras de F1): torre de posições à esquerda, painel embaixo à direita, banner no alto.
+   Só aparece com `#race.f1hud` (hud.js liga quando config.regras === "f1" e a fase é a corrida); no arcade vale o HUD antigo. */
+#hTorre,#hPainel{display:none}
+#race.f1hud{--f1-fonte:"Titillium Web","Formula1","Segoe UI",system-ui,sans-serif}
+#race.f1hud .hud.tl,#race.f1hud .hud.br,#race.f1hud #hF1,#race.f1hud .hud.bl .chip{display:none!important}
+#race.f1hud #hTorre{display:block}
+#race.f1hud #hPainel{display:block}
+#race.f1hud #hDraft{left:auto;right:18px;bottom:196px;transform:none;font:700 13px var(--f1-fonte);letter-spacing:.06em;min-width:120px;text-align:right}
+/* torre */
+#hTorre{position:absolute;left:10px;top:10px;width:212px;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:2;text-shadow:none}
+.tt-topo{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px 0 6px;background:#0a0c12e6;border-bottom:2px solid #e10600}
+.f1logo{width:46px;height:19px;flex:none}
+.tt-topo b{font-size:15px;font-weight:700;letter-spacing:.05em;white-space:nowrap}
+#tLinhas{background:#0a0c12bf}
+.tl{display:grid;grid-template-columns:24px 5px 38px auto 1fr 14px 12px;align-items:center;column-gap:6px;height:26px;padding:0 8px 0 0;border-bottom:1px solid #ffffff12;font-size:14px;font-weight:600;position:relative}
+.tl.hidden{display:none}
+.tl .n{justify-self:stretch;height:100%;display:grid;place-items:center;background:#ffffff1c;font-size:13px;font-weight:700}
+.tl.p1 .n{background:#e10600}
+.tl .eq{height:16px;display:block}
+.tl .sg{font-weight:700;letter-spacing:.04em}
+.tl .df{font-style:normal;text-align:right;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:#e8ebf1;white-space:nowrap}
+.tl .df.lider{color:#fff;font-weight:700}
+.tl .df.m{color:#ffd23f}
+.tl .df.voltas,.tl .df.out{color:#ff7a7a}
+.tl .pn{text-decoration:none;font-size:13px;font-weight:800;text-align:center}
+.tl .vr{display:block;width:9px;height:9px;background:#b05cff;transform:rotate(45deg);justify-self:center}
+.tl .ic{order:1;font-size:10px;font-weight:800;color:#ffd23f}.tl .df{order:2}.tl .pn{order:3}.tl .vr{order:4}
+.tl.eu{background:#fff;color:#0a0c12}
+.tl.eu .n{background:#0a0c12;color:#fff}.tl.eu.p1 .n{background:#e10600}
+.tl.eu .df,.tl.eu .df.lider{color:#0a0c12}.tl.eu .df.m{color:#9a6a00}.tl.eu .df.voltas,.tl.eu .df.out{color:#c4161c}
+.tl.eu .ic{color:#c4161c}
+.tl.out{opacity:.5}
+/* painel de velocidade */
+#hPainel{position:absolute;right:16px;bottom:12px;width:230px;text-align:right;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:2;background:linear-gradient(0deg,#0a0c12b8,#0a0c1200);padding:8px 4px 0 18px}
+.pf-over{display:inline-block;padding:2px 10px;font-size:13px;font-weight:700;letter-spacing:.12em;border:1px solid #ffffff33;color:#ffffff55;background:#0a0c1299;margin-bottom:2px}
+.pf-over.pronto{color:#0a0c12;background:#ffd23f;border-color:#ffd23f}
+.pf-over.aberto{color:#0a0c12;background:#2ee08a;border-color:#2ee08a}
+.pf-vel{display:flex;align-items:baseline;justify-content:flex-end;gap:6px;line-height:.9}
+.pf-vel b{font-size:76px;font-weight:700;font-style:italic;letter-spacing:-.02em;font-variant-numeric:tabular-nums;text-shadow:0 2px 8px #000a}
+.pf-vel span{font-size:15px;font-weight:600;letter-spacing:.1em;color:#ffffffb0}
+.pf-marcha{order:-1;align-self:center;width:34px;height:34px;display:grid;place-items:center;margin-right:8px;font-size:24px;font-weight:700;background:#0a0c12cc;border:1px solid #ffffff55}
+.pf-rpm{display:flex;gap:3px;justify-content:flex-end;margin:6px 0}
+.pf-rpm i{width:14px;height:5px;background:#ffffff26}
+.pf-rpm i.g{background:#2ee08a}.pf-rpm i.r{background:#ff3d4a}.pf-rpm i.b{background:#5fc8ff}
+.pf-boost{display:grid;grid-template-columns:auto 1fr 42px;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.1em}
+.pf-boost>div{height:8px;background:#ffffff26;overflow:hidden}
+.pf-boost i{display:block;height:100%;width:0;background:#c9a4ff;transition:width .15s linear}
+.pf-boost i.on{background:#37d0ee}
+.pf-boost b{font-size:15px;letter-spacing:0;text-align:right;font-variant-numeric:tabular-nums}
+.pf-extra{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:8px;padding-bottom:2px}
+.pf-pneu{--c:#ffd100;--r:100;display:grid;grid-template-columns:34px auto;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#ffffffc0}
+.pf-pneu b{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;font-size:15px;font-weight:700;color:#fff;background:radial-gradient(circle,#0a0c12 58%,transparent 60%),conic-gradient(var(--c) calc(var(--r)*1%),#ffffff26 0)}
+.pf-pneu.fim b{background:radial-gradient(circle,#0a0c12 58%,transparent 60%),conic-gradient(#ff3d4a calc(var(--r)*1%),#ffffff26 0)}
+.pf-pneu.frio b{box-shadow:0 0 0 2px #1d5fa8}
+.pf-dano{width:70px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#ffffffa0;text-align:right}
+.pf-dano>div{height:4px;background:#ffffff26;margin-top:2px}
+.pf-dano i{display:block;height:100%;width:0;background:#2ee08a}.pf-dano i.medio{background:#ffb02e}.pf-dano i.alto{background:#ff3d4a}
+/* o minimapa pequeno no canto inferior esquerdo */
+#race.f1hud .hud.bl{left:10px;bottom:10px}
+#race.f1hud #mini{width:112px;height:112px}
+/* o banner da direção de prova, limpo e centralizado no alto */
+#race.f1hud .hud.msg{top:14px;font:700 clamp(13px,2vw,18px)/1 var(--f1-fonte);letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:none;padding:9px 20px;background:#0a0c12e6;border-left:4px solid #ffd23f;border-right:4px solid #ffd23f;max-width:92vw;white-space:normal;text-align:center}
+#race.f1hud .hud.msg:empty{display:none}
+@media (max-width:700px){
+  #hTorre{width:168px;left:6px;top:6px}
+  .tt-topo{height:28px}.tt-topo b{font-size:12px}.f1logo{width:36px;height:15px}
+  .tl{height:21px;font-size:11.5px;grid-template-columns:20px 4px 30px auto 1fr 12px 10px;column-gap:4px}.tl .df{font-size:11px}.tl .n{font-size:11px}.tl .eq{height:13px}
+  #hPainel{width:176px;right:8px}.pf-vel b{font-size:54px}.pf-rpm i{width:10px}
+  #race.f1hud #mini{width:84px;height:84px}
+  #race.f1hud #hDraft{bottom:150px;right:8px}
+}
+@media (pointer:coarse){#hPainel{bottom:104px}#race.f1hud .hud.bl{bottom:112px}}
+@media (prefers-reduced-motion:reduce){.pf-boost i{transition:none}}

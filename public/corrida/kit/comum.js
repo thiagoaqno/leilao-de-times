@@ -35,7 +35,19 @@ export function gastar(x, w, hh, rr, quanto = 0.18) {
 // o lado de dentro da curva no ponto i (1 ou -1, na direção de p.nx/p.ny)
 export const sinalDaCurva = (pts, n, i) => { const p = pts[i], q = pts[(i + 3) % n]; return p.tx * q.ty - p.ty * q.tx > 0 ? 1 : -1; };
 // longe de qualquer trecho da pista (os grampos deixam trechos vizinhos colados)
-export const livre = (tr, x, z, folga) => tr.pts.every((q) => Math.hypot(q.x - x, q.y - z) > tr.W / 2 + folga);
+export const livre = (tr, x, z, folga) => (tr.distAt ? tr.distAt(x, z) > tr.W / 2 + folga : tr.pts.every((q) => Math.hypot(q.x - x, q.y - z) > tr.W / 2 + folga));
+// O maior pedaço de i0..i1 (os índices podem passar de n) onde uma fita nos deslocamentos `lats` fica onde foi desenhada: nenhum
+// ponto de nenhum trecho da pista mais perto do que o próprio deslocamento (menos `tol`). Num grampo, o deslocamento de dentro
+// passa do centro da curva e cai em cima da pista; ali a fita para. Devolve { i0, i1 } ou null se não sobrou nada que preste.
+export function recortar(tr, i0, i1, lats, tol = 3) {
+  const { pts, n } = tr, ok = (i) => { const p = pts[((i % n) + n) % n]; return lats.every((l) => tr.distAt(p.x + p.nx * l, p.y + p.ny * l) >= Math.abs(l) - tol); };
+  let melhor = null, a = null;
+  for (let i = i0; i <= i1 + 1; i++) {
+    if (i <= i1 && ok(i)) { if (a === null) a = i; }
+    else if (a !== null) { if (!melhor || i - 1 - a > melhor.i1 - melhor.i0) melhor = { i0: a, i1: i - 1 }; a = null; }
+  }
+  return melhor && melhor.i1 - melhor.i0 >= 8 ? melhor : null;
+}
 // o lugar está tomado (água, arquibancada, túnel...)? Cada pista pode dizer em tr.ocupado; senão, só o que foi reservado
 export const ocupado = (tr, x, z, i) => !!tr.ocupado?.(x, z, i) || (tr.reservado || []).some(([cx, cy, rr]) => (x - cx) ** 2 + (z - cy) ** 2 < rr * rr);
 // instâncias de caixas (ou outra forma) numa lista de { x, y, z, sx, sy, sz, r }

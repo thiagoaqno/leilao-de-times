@@ -209,9 +209,10 @@ function classificacaoFinal(carros, voltas) {
 }
 
 // ---------- as batidas: dano fixo ----------
-// A força serve para separar contato perceptível de aproximação sem impacto. Toda batida válida causa 2% de dano,
-// sem segundos de penalidade; um intervalo maior evita que o mesmo contato durante uma travada conte repetidamente.
-const BATIDA_MIN = 20, BATIDA_MEDIA = 110, BATIDA_FORTE = 180, BATIDA_MAX = 360, DANO_POR_BATIDA = 2, BATIDA_INTERVALO = 4000;
+// A força serve para separar contato perceptível de aproximação sem impacto. Toda batida válida causa 1% de dano,
+// sem segundos de penalidade; cada par (o muro, ou cada outro carro) só conta de novo depois de BATIDA_INTERVALO, para o
+// mesmo contato (ou uma raspada comprida no muro) não contar várias vezes.
+const BATIDA_MIN = 20, BATIDA_MEDIA = 110, BATIDA_FORTE = 180, BATIDA_MAX = 360, DANO_POR_BATIDA = 1, BATIDA_INTERVALO = 4000;
 function batida(forca) {
   if (!(forca >= BATIDA_MIN)) return null;
   const nivel = forca >= BATIDA_FORTE ? "forte" : forca >= BATIDA_MEDIA ? "media" : "leve";

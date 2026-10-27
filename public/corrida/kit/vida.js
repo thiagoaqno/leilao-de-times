@@ -30,14 +30,17 @@ function montarHeli(add) {
 export function vidaGP(tr, add, cfg = {}) {
   const { pts, n } = tr, d = new THREE.Object3D();
   const H = cfg.helicoptero === false ? null : { ...montarHeli(add), pos: new THREE.Vector3(pts[0].x, pts[0].h + 260, pts[0].y), ang: 0 };
+  tr.heliGP = !!H; // vida-mais.js não põe um segundo helicóptero
   // as gaivotas: brancas, asas compridas, quase sempre planando
   const gaivotas = [], asa = new THREE.BufferGeometry(); asa.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, -0.8, 0, 0, 0.8, 0, 0, 0, 9, 1.5, 0, 0, 0, -0.8, 0, 0, 0.8], 3)); asa.computeVertexNormals();
   const branco = new THREE.MeshStandardMaterial({ color: 0xf6f6f2, side: THREE.DoubleSide, roughness: 0.7 }), cinza = M(0x9aa0a6);
   (typeof cfg.gaivotas === "function" ? cfg.gaivotas(tr) : cfg.gaivotas || []).forEach((c, k) => {
-    const g = new THREE.Group(), e = new THREE.Mesh(asa, branco), dd = new THREE.Mesh(asa, branco), bico = new THREE.Mesh(new THREE.BoxGeometry(4, 1.2, 1.2), cinza);
-    dd.scale.x = -1; e.rotation.y = dd.rotation.y = Math.PI / 2; g.add(e, dd, bico); add(g);
-    gaivotas.push({ g, e, dd, cx: c.x, cz: c.z, raio: c.raio ?? 80 + k * 13, alto: 60 + (k * 17) % 90, vel: (k % 2 ? 1 : -1) * (0.25 + (k % 4) * 0.06), fase: k * 1.7 });
+    gaivotas.push({ cx: c.x, cz: c.z, raio: c.raio ?? 80 + k * 13, alto: 60 + (k * 17) % 90, vel: (k % 2 ? 1 : -1) * (0.25 + (k % 4) * 0.06), fase: k * 1.7 });
   });
+  // as asas (2 por gaivota) e os bicos são dois InstancedMesh: 3 malhas por gaivota viravam 3 chamadas de desenho por gaivota
+  const asas = gaivotas.length ? add(new THREE.InstancedMesh(asa, branco, gaivotas.length * 2)) : null, bicos = gaivotas.length ? add(new THREE.InstancedMesh(new THREE.BoxGeometry(4, 1.2, 1.2), cinza, gaivotas.length)) : null;
+  if (asas) { asas.frustumCulled = bicos.frustumCulled = false; asas.castShadow = bicos.castShadow = false; }
+  const gh = new THREE.Object3D(), wh = new THREE.Object3D(), mw = new THREE.Matrix4(); gh.add(wh);
   // os fiscais com a bandeira (os postos de ambiente.js em tr.postosGP): a vara e o pano saem da mão (o pivô)
   const postos = cfg.fiscais === false ? [] : (tr.postosGP || []).map((o) => ({ ...o, a: 0 }));
   const vara = new THREE.BoxGeometry(0.4, 10, 0.4); vara.translate(0, 5, 0);
@@ -56,11 +59,17 @@ export function vidaGP(tr, add, cfg = {}) {
       H.heli.position.copy(H.pos); H.heli.position.y += Math.sin(t * 0.7) * 3; H.heli.rotation.set(0, H.ang, 0); H.heli.rotateZ(-0.12);
       if (!parado) { H.rotor.rotation.y += dt * 38; H.rotorCauda.rotation.z += dt * 50; }
     }
-    for (const s of gaivotas) { // voltas largas, batendo as asas de vez em quando
-      const a = s.fase + t * s.vel; s.g.position.set(s.cx + Math.cos(a) * s.raio, s.alto + Math.sin(t * 0.5 + s.fase) * 6, s.cz + Math.sin(a) * s.raio);
-      s.g.rotation.set(0, -a + (s.vel > 0 ? 0 : Math.PI), (s.vel > 0 ? 1 : -1) * 0.25);
-      const bate = parado ? 0.1 : Math.sin(t * 7 + s.fase) > 0.6 ? Math.sin(t * 14 + s.fase) * 0.6 : 0.12; s.e.rotation.x = bate; s.dd.rotation.x = bate;
-    }
+    if (asas) gaivotas.forEach((s, k) => { // voltas largas, batendo as asas de vez em quando (as que estão longe da câmera ficam como estavam)
+      if (foco && (s.cx - foco.x) ** 2 + (s.cz - foco.y) ** 2 > 2600 ** 2 && s.pronta) return;
+      s.pronta = true;
+      const a = s.fase + t * s.vel; gh.position.set(s.cx + Math.cos(a) * s.raio, s.alto + Math.sin(t * 0.5 + s.fase) * 6, s.cz + Math.sin(a) * s.raio);
+      gh.rotation.set(0, -a + (s.vel > 0 ? 0 : Math.PI), (s.vel > 0 ? 1 : -1) * 0.25); gh.updateMatrix();
+      const bate = parado ? 0.1 : Math.sin(t * 7 + s.fase) > 0.6 ? Math.sin(t * 14 + s.fase) * 0.6 : 0.12;
+      wh.rotation.set(bate, Math.PI / 2, 0); wh.scale.set(1, 1, 1); wh.updateMatrix(); asas.setMatrixAt(k * 2, mw.multiplyMatrices(gh.matrix, wh.matrix));
+      wh.scale.x = -1; wh.updateMatrix(); asas.setMatrixAt(k * 2 + 1, mw.multiplyMatrices(gh.matrix, wh.matrix));
+      bicos.setMatrixAt(k, gh.matrix);
+      asas.instanceMatrix.needsUpdate = bicos.instanceMatrix.needsUpdate = true;
+    });
     if (postos.length && foco) { // fiscais: só os perto do carro mexem (e só eles são recalculados)
       let mudou = false;
       postos.forEach((o, k) => {

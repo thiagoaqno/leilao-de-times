@@ -9,11 +9,10 @@ import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
 import { CARS3, KS, makeKart, poseKart, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
 import { camMode, pollPad } from "./controles.js";
-import { physics } from "./fisica.js";
+import { physics, quadroDeFisica, quadroParado, criarRede } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
 import { standings, hud } from "./hud.js";
 import { f1Pronto } from "./f1.js";
-import { iniciarBox } from "./box.js";
 import { propsPronto } from "./props.js";
 import { startItems, stopItems, stepItems } from "./itens.js";
 import { passoEfeitos, limparEfeitos, amostrasDeEfeitos } from "./efeitos.js";
@@ -95,11 +94,6 @@ function aquecerPista(tr, ceu) {
     if (!ceuChegou) Promise.all([modelos, ceu]).then(aquecer, () => {});
   }, () => {});
 }
-// o pneu de cada largada: na classificação, macio novo e já quente (como o dos robôs); na corrida, o escolhido na sala, frio
-function pneuDaLargada(st, mine) {
-  if (st.phase !== "quali") return window.F1Regras.pneuNovo(mine && mine.pneu);
-  const pn = window.F1Regras.pneuNovo("macio"); pn.temp = 0.8; return pn;
-}
 // quem está correndo agora: a corrida, ou uma sessão da classificação em que o meu carro está e que não parou no intervalo
 export function ativo() {
   const S = E.S; if (!S) return false;
@@ -127,10 +121,11 @@ export function startRace(st) {
   }
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W, st.config.regras === "f1");
   if (race) clearRace();
-  race = { startAt: st.startAt, tr, car: { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 }, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
+  // regras de F1: o carro é o da física nova (sim.js), com o pneu, o ERS e o box dentro dele; o servidor é a autoridade (fisica.js)
+  const f1 = st.config.regras === "f1", carro = f1 ? window.Sim.novo(tr, { grid: mine ? mine.grid : 0, f1: true, pneu: window.Sim.pneuDaLargada(st.phase, mine && mine.pneu), box: st.phase !== "quali" }) : { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 };
+  race = { startAt: st.startAt, tr, car: carro, net: f1 && mine ? criarRede() : null, acc: 0, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
     kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0,
-    pneu: st.config.regras === "f1" ? pneuDaLargada(st, mine) : null,
-    ers: st.config.regras === "f1" ? window.F1Regras.ersNovo() : null, box: st.phase === "quali" ? null : iniciarBox(tr, st), // regras de F1: pneu, ERS e pit stop
+    pneu: f1 ? carro.pneu : null, ers: f1 ? carro.ers : null, box: f1 ? carro.box : null, // regras de F1: pneu, ERS e pit stop
     quali: st.phase === "quali", luzes: st.phase === "race" && st.config.regras === "f1" ? st.luzes : null, luzN: 0 }; // classificação (sem batida nem box) e as cinco luzes da largada
   $("bBox").classList.toggle("hidden", !race.box || !mine);
   $("bErs").classList.toggle("hidden", !race.ers || !mine);
@@ -161,6 +156,7 @@ export function nearest(tr, x, y, from) {
 export function respawn() {
   if (!race || sNow() < race.startAt) return;
   race.sujou = true; // volta com "↺ Pista" não serve de exemplo para os robôs
+  if (race.net) { race.respawnPend = true; return; } // regras de F1: o pedido vai na entrada do próximo passo (sim.js, voltarParaPista), e o servidor faz igual
   if (race.perdeu >= 0) race.idx = (checkpoint(race.perdeu, race.tr.n) - 5 + race.tr.n) % race.tr.n; // perdeu o checkpoint: volta para antes dele
   const p = race.tr.pts[race.idx]; Object.assign(race.car, { x: p.x, y: p.y, z: p.h, vz: 0, air: false, a: Math.atan2(p.ty, p.tx), v: 0, vx: 0, vy: 0, slip: 0 }); Sound.pop();
 }
@@ -174,12 +170,14 @@ function loop(t) {
   if (!race) { raf && cancelAnimationFrame(raf); raf = 0; return; }
   if (t - ultimoQuadro < QUADRO_MIN) return;
   ultimoQuadro = t;
-  const dt = Math.min(1 / 30, (t - (lastT || t)) / 1000); lastT = t;
+  const real = Math.min(0.25, (t - (lastT || t)) / 1000), dt = Math.min(1 / 30, real); lastT = t;
   pollPad();
-  if (ativo()) { const steps = dt > 1 / 50 ? 2 : 1; for (let i = 0; i < steps; i++) physics(dt / steps); }
+  // a física anda em passos fixos de 1/120 s (fisica.js): o tempo do quadro só diz quantos passos dar, então 30 ou 144 quadros
+  // por segundo dão a mesma corrida
+  if (ativo()) quadroDeFisica(real); else quadroParado(real);
   updateGhosts(dt);
   recordLap();
-  if (me() && ativo() && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
+  if (me() && ativo() && !race.net && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
   Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0);
   Sound.skid(me() && ativo() && race.car.slip > 45 ? race.car.slip : 0);
   draw(dt);
@@ -200,7 +198,7 @@ const fxDe = (p, now, extra = {}) => { const bala = !!(p && p.balaUntil > now) |
     pequeno: !bala && !!(p && p.shrinkUntil > now), bala }; };
 // câmera atrás do kart (quem só assiste segue o primeiro colocado)
 function draw(dt) {
-  const tr = race.tr, c = race.car, now = sNow();
+  const tr = race.tr, c = race.vis || race.car, now = sNow(); // (race.vis: o carro como é desenhado, entre um passo da física e outro)
   // meu kart
   if (race.kart) {
     race.kart.g.visible = !me()?.dnf; // o carro destruído é recolhido da pista
@@ -208,7 +206,7 @@ function draw(dt) {
     const spec = CARS3[me()?.car] || CARS3.equilibrado, inc = inclinacao(tr, c.x, c.y, c.a, race.idx, spec.L * KS, spec.W * KS, c.vz, c.air, c.v);
     race.pitch = inc.pitch;
     const turbo = race.boostUntil > now || race.sling > 0, rodando = race.spinUntil > now, bala = race.balaUntil > now;
-    poseKart(race.kart, c.x, c.y, c.z, c.a + slide * 0.25, c.v, c.steer, fr, dt, -c.steer * 0.04 + inc.roll, inc.pitch, fxDe(me(), now, { turbo, rodando, bala, zebra: (!tr.zebras || !!tr.zebras[race.idx]) && Math.abs(Math.abs((c.x - tr.pts[race.idx].x) * tr.pts[race.idx].nx + (c.y - tr.pts[race.idx].y) * tr.pts[race.idx].ny) - tr.W / 2) < 9, derrapa: c.slip > 45 ? (c.slip > 110 ? 2 : 1) : 0 }));
+    poseKart(race.kart, c.x, c.y, c.z, c.a + (race.net ? 0 : slide * 0.25), c.v, c.steer, fr, dt, -c.steer * 0.04 + inc.roll, inc.pitch, fxDe(me(), now, { turbo, rodando, bala, zebra: (!tr.zebras || !!tr.zebras[race.idx]) && Math.abs(Math.abs((c.x - tr.pts[race.idx].x) * tr.pts[race.idx].nx + (c.y - tr.pts[race.idx].y) * tr.pts[race.idx].ny) - tr.W / 2) < 9, derrapa: c.slip > 45 ? (c.slip > 110 ? 2 : 1) : 0 }));
     // derrapagem: fumaça branca saindo dos pneus de trás, mais grossa quanto mais o carro escorrega
     if (c.slip > 40 && !c.air) { const forte = Math.min(1, (c.slip - 40) / 120); for (const s of [-1, 1]) if (Math.random() < 0.55 + forte * 0.45) puff(c.x - Math.cos(c.a) * 15 + -Math.sin(c.a) * s * 9, c.z + 3, c.y - Math.sin(c.a) * 15 + Math.cos(c.a) * s * 9, "#eeeeee", 3.2 + forte * 3, 0.8 + forte * 0.6, 1.7, 0.3 + forte * 0.22); }
     if (race.offroad && Math.random() < 0.5) puff(c.x - Math.cos(c.a) * 18, c.z + 2, c.y - Math.sin(c.a) * 18, tr.id === "interlagos" ? "#b39c66" : "#9a9a9a", 2.5);

@@ -2,8 +2,8 @@
 // Desfoque: depois de desenhar a cena, um passe na placa de vídeo puxa cada ponto da tela para fora, a partir do centro
 // (como uma foto tirada em movimento). O centro, para onde se olha, e o carro, embaixo no meio, ficam nítidos; o cenário
 // dos lados borra mais quanto mais rápido. Parado (ou com "menos movimento" no sistema), a cena vai direto para a tela.
-// Qualidade: se o jogo fica lento para a tela (ver medirQuadro), baixa a resolução, depois tira as sombras e, só no
-// último caso, o desfoque.
+// Qualidade: se o jogo fica lento para a tela (ver medirQuadro), baixa a resolução, depois a sombra (mapa menor: não mexe
+// em nenhum shader), e só no último caso tira as sombras e o desfoque (isso recompila os shaders, por isso fica por último).
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -33,7 +33,7 @@ composer.addPass(new RenderPass(scene, cam));
 const radial = new ShaderPass(RADIAL); composer.addPass(radial);
 composer.addPass(new OutputPass());
 const reduz = matchMedia("(prefers-reduced-motion: reduce)");
-let nivel = 0; // 0 = tudo; 1 = resolução menor; 2 = sem sombras; 3 = sem desfoque
+let nivel = 0; // 0 = tudo; 1 = resolução menor; 2 = sombra de 512 (em vez de 1024); 3 = sem sombras e sem desfoque
 
 export function ajustarTela(w, h) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); radial.uniforms.aspecto.value = w / h; }
 // forca: 0 (nítido) a 1 (bem borrado); com turbo vai até 1,4
@@ -52,7 +52,11 @@ const fixa = (() => { try { return localStorage.getItem("corrida:qualidade"); } 
 let quadros = 0, desde = performance.now(), ruins = 0, teto = 0, inicio = 0, conferir = null, parou = fixa === "alta";
 function aplicar(n) {
   if (n >= 1 !== nivel >= 1) { renderer.setPixelRatio(n >= 1 ? 0.85 : Math.min(window.devicePixelRatio || 1, 1.25)); const s = renderer.getSize(new THREE.Vector2()); ajustarTela(s.x, s.y); }
-  if (n >= 2 !== nivel >= 2) { renderer.shadowMap.enabled = n < 2; scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; }); }
+  if (n >= 2 !== nivel >= 2) { // só o tamanho do mapa de sombra: o navegador refaz a textura dele, sem recompilar nenhum shader no meio da corrida
+    const px = n >= 2 ? 512 : 1024; sun.shadow.mapSize.set(px, px);
+    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  }
+  if (n >= 3 !== nivel >= 3) { renderer.shadowMap.enabled = n < 3; scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; }); } // o último recurso: aí sim recompila
   nivel = n;
 }
 if (fixa === "baixa") aplicar(3);

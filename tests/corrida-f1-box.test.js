@@ -130,49 +130,49 @@ test("robôs: sem as regras de F1 não existe box", () => {
 function salaDeMentira() {
   const estados = {};
   const nsp = { handlers: {}, on(e, f) { this.handlers[e] = f; }, to(codigo) { return { emit(ev, d) { if (ev === "state") estados[codigo] = JSON.parse(JSON.stringify(d)); }, volatile: { emit() {} } }; }, sockets: new Map() };
-  require("../corrida.js")({ of: () => nsp });
+  const api = require("../corrida.js")({ of: () => nsp });
   let n = 0;
   const socket = () => {
     const h = {}, s = { id: "s" + ++n, data: {}, h, on(e, f) { h[e] = f; }, emit() {}, join() {}, leave() {}, to() { return { emit() {}, volatile: { emit() {} } }; } };
     nsp.handlers.connection(s); return s;
   };
   const chamar = (s, ev, dados) => new Promise((ok) => s.h[ev](dados, ok));
-  return { socket, chamar, estado: (codigo) => estados[codigo] };
+  return { socket, chamar, estado: (codigo) => estados[codigo], internos: api.internos };
 }
 
 test("sala: quem corre com um composto só leva +10 s e perde a vitória para quem parou; passar do limitador custa 5 s", () => {
+  // (o servidor é a autoridade: o checkpoint e a parada nos boxes saem da física de cada carro, em sim.js; aqui as regras da sala
+  // recebem esses eventos pelos mesmos caminhos que a física usa)
   bd.fechar(); bd.abrir(":memory:");
   const agora = Date.now; let relogio = agora(); Date.now = () => relogio;
   return (async () => {
-    const { socket, chamar, estado } = salaDeMentira(), ana = socket(), beto = socket(), caio = socket();
+    const { socket, chamar, estado, internos } = salaDeMentira(), ana = socket(), beto = socket(), caio = socket();
     const criou = await chamar(ana, "create", { name: "Ana", config: { pista: "interlagos", voltas: 2, regras: "f1", classificacao: "pular" } });
     await chamar(beto, "join", { code: criou.code, name: "Beto" }); await chamar(caio, "join", { code: criou.code, name: "Caio" });
     const act = (s, dados) => chamar(s, "act", dados);
-    assert.equal((await act(beto, { type: "box", fase: "entra" })).ignored, true); // fora da corrida: ignorado
+    // o navegador não manda mais checkpoint, box nem batida: o servidor ignora (a física dele é que conta)
+    assert.equal((await act(beto, { type: "box", fase: "entra" })).ignored, true);
     assert.equal((await act(ana, { type: "start" })).ok, true);
+    assert.equal((await act(ana, { type: "sector", s: 0 })).ignored, true);
+    assert.equal((await act(ana, { type: "batida", forca: 200, tipo: "muro" })).ignored, true);
     assert.ok(estado(criou.code).semente > 0, "o GP tem semente");
     relogio += 11000; // as cinco luzes: a largada vem até 10,3 s depois do start
-    const todos = [ana, beto, caio], volta = async (s, quem) => { for (let k = 1; k < 12; k++) for (const q of quem) await act(q, { type: "sector", s: k }); for (const q of quem) await act(q, { type: "sector", s: 0 }); };
-    for (const q of todos) await act(q, { type: "sector", s: 0 }); // a largada
-    // o Beto e o Caio entram no corredor na volta 1
-    assert.equal((await act(beto, { type: "box", fase: "entra" })).ok, true);
-    assert.equal((await act(caio, { type: "box", fase: "entra" })).ok, true);
-    relogio += 4000;
-    assert.equal((await act(caio, { type: "box", fase: "sai", composto: "duro" })).ok, true); // 4 s: rápido demais
-    relogio += 19000;
-    const ruim = await act(beto, { type: "box", fase: "sai", composto: "chuva" });
-    assert.equal(ruim.ok, false); assert.match(ruim.error, /Pneu inválido/);
-    assert.equal((await act(beto, { type: "box", fase: "sai", composto: "duro" })).ok, true); // 23 s: certo
-    relogio += 3000;
-    await volta(ana, [ana]); await volta(ana, [beto, caio]);
-    // a última volta não tem box
-    assert.equal((await act(ana, { type: "box", fase: "entra" })).ignored, true);
+    const room = internos.sala(criou.code), jogador = (nome) => Object.values(room.players).find((p) => p.name === nome);
+    const volta = (nome) => { const p = jogador(nome); for (let k = 1; k < 12; k++) internos.onSector(room, p, k, relogio); internos.onSector(room, p, 0, relogio); };
+    for (const nome of ["Ana", "Beto", "Caio"]) internos.onSector(room, jogador(nome), 0, relogio); // a largada
+    // o Beto e o Caio param nos boxes na volta 1 (o tempo no corredor é o da física: aqui, o do Caio é rápido demais)
+    internos.concluirParada(room, jogador("Caio"), { composto: "duro", tempo: 4, volta: 1 }); // 4 s: rápido demais
+    internos.concluirParada(room, jogador("Beto"), { composto: "chuva", tempo: 23, volta: 1 }); // composto que não existe: não vale
+    assert.equal((jogador("Beto").paradas || []).length, 0);
+    internos.concluirParada(room, jogador("Beto"), { composto: "duro", tempo: 23, volta: 1 }); // 23 s: certo
+    relogio += 26000;
+    volta("Ana"); volta("Beto"); volta("Caio");
     relogio += 31000;
-    await volta(ana, [ana]); // a Ana termina primeiro, com um composto só
+    volta("Ana"); // a Ana termina primeiro, com um composto só
     relogio += 1000;
-    await volta(ana, [beto]); // o Beto termina um segundo depois, com dois compostos
+    volta("Beto"); // o Beto termina um segundo depois, com dois compostos
     relogio += 1000;
-    await volta(ana, [caio]);
+    volta("Caio");
     const st = estado(criou.code), por = (nome) => st.players.find((p) => p.name === nome);
     assert.equal(st.phase, "results");
     assert.equal(por("Ana").acrescimo, 10, "um composto só: +10 s");
@@ -196,4 +196,36 @@ test("sala: sem as regras de F1 o box é ignorado e a sala corre como antes", ()
     assert.equal(st.semente, undefined); assert.equal(st.players[0].noBox, false);
     await chamar(ana, "act", { type: "end" });
   })().finally(() => bd.fechar());
+});
+
+// ---------- o box do piloto humano: a física (sim.js) leva o carro pelo corredor ----------
+test("box (humano): o pedido do piloto leva o carro sozinho ao corredor, para na garagem, troca o pneu e volta à pista", () => {
+  const S = require("../public/corrida/sim.js"), D = require("../public/corrida/dinamica.js"), Equipes = require("../public/corrida/f1-equipes.js");
+  const spec = Equipes.specDaEquipe("mclaren");
+  const corrida = (laps, quali = false) => {
+    const tr = S.criarPista(T.PISTAS.interlagos, "interlagos"), c = S.novo(tr, { grid: 0, f1: true, pneu: Object.assign(F1.pneuNovo("macio"), { desgaste: 0.6, temp: 0.9 }), box: true });
+    const cor = tr.corredor, ini = (cor.i0 - 40 + tr.n) % tr.n, q = tr.pts[ini];
+    Object.assign(c, { x: q.x, y: q.y, z: q.h, a: Math.atan2(q.ty, q.tx), idx: ini, v: 150, marcha: 5 });
+    const amb = { spec, voltas: 3, laps, paradas: 0, semente: 99, id: "ana", grid: 3, f1: true, outros: [], quali }, ev = [], eventos = [];
+    for (let i = 0; i < 120 * 40; i++) {
+      const alvo = c.box.fase ? 9999 : 150; // (antes de entrar, anda a 150 u/s como quem se prepara para a parada)
+      ev.length = 0; S.passo(c, { gas: c.v < alvo ? 1 : 0, brake: 0, steer: 0, pedido: "duro" }, amb, tr, ev);
+      for (const e of ev) eventos.push({ ...e, tempoDeJogo: (i + 1) * D.PASSO, lat: S.quadro(tr, c.x, c.y, c.idx).lat });
+    }
+    return { c, eventos, tr };
+  };
+  const r = corrida(0);
+  const tipos = r.eventos.filter((e) => e.t.startsWith("box")).map((e) => e.t + (e.fase ? ":" + e.fase : ""));
+  assert.deepEqual(tipos, ["box:entra", "boxParou", "boxTrocou", "box:sai"], "entra, para, troca e sai, nessa ordem");
+  const sai = r.eventos.find((e) => e.t === "box" && e.fase === "sai"), entra = r.eventos.find((e) => e.t === "box" && e.fase === "entra");
+  assert.equal(sai.composto, "duro"); assert.equal(entra.volta, 1);
+  assert.ok(sai.tempo > 5 && sai.tempo < 12, `a parada inteira levou ${sai.tempo} s (o corredor no limitador mais 2,0 a 3,3 s parado)`);
+  assert.ok(Math.abs(sai.tempo - (r.eventos.find((e) => e.t === "box" && e.fase === "sai").tempoDeJogo - entra.tempoDeJogo)) < 0.1, "o tempo é o dos passos da física");
+  assert.equal(r.c.pneu.composto, "duro"); assert.ok(r.c.pneu.desgaste < 0.1, `pneu novo (${r.c.pneu.desgaste} depois de andar um pouco)`);
+  assert.ok(r.c.pneu.temp <= 0.75, "e frio");
+  assert.equal(r.c.box.fase, null);
+  assert.ok(Math.abs(S.quadro(r.tr, r.c.x, r.c.y, r.c.idx).lat) < r.tr.W, "voltou para a pista");
+  // na última volta o corredor passa pela chegada: sem box; na classificação também não
+  assert.ok(!corrida(2).eventos.some((e) => e.t === "box"), "última volta: sem box");
+  assert.ok(!corrida(0, true).eventos.some((e) => e.t === "box"), "classificação: sem box");
 });
