@@ -4,8 +4,9 @@
 // (passa-faixa de 300 a 3000 Hz, com chiado e um clique antes e depois) e pelo volume geral (`master` de sons.js).
 (function (root) {
 const F = (typeof module !== "undefined" && module.exports) ? require("./radio/falas.js") : root.RadioFalas;
-const INTERVALO = 6000; // no máximo uma fala a cada 6 s, salvo as urgentes (box, safety car)
-const ESPERA = 20000;   // a mesma situação não se repete antes disso
+const INTERVALO = 10000; // no máximo uma fala a cada 10 s, salvo as urgentes (box, safety car): o rádio não pode cansar
+const ESPERA = 30000;   // a mesma situação não se repete antes disso
+const ESPERA_SIT = { ganhou: 90000, perdeu: 90000, dano: 60000, pneu: 60000 }; // as que acontecem toda hora falam bem menos
 const espera = (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; };
 const temDOM = typeof document !== "undefined" && typeof window !== "undefined";
 
@@ -102,7 +103,7 @@ function dizer(situacao, op = {}) {
   try {
     if (!F.SITUACOES[situacao]) return null;
     const agora = Date.now(), urgente = F.URGENTES.includes(situacao);
-    if (!op.forcar && agora - (porSituacao[situacao] || -Infinity) < ESPERA) return null;
+    if (!op.forcar && agora - (porSituacao[situacao] || -Infinity) < (ESPERA_SIT[situacao] || ESPERA)) return null;
     if (!urgente && fila.length) return null; // não acumula fala velha
     const f = escolher(situacao, ultimoId); if (!f) return null;
     ultimoId = f.id; porSituacao[situacao] = agora;
