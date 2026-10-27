@@ -15,6 +15,7 @@ const T = require("./public/corrida/pistas.js");
 const Equipes = require("./public/corrida/f1-equipes.js");
 
 const PASSO_MS = D.PASSO * 1000;
+const QUEIMA_FOLGA_MS = 150; // folga do relógio: acelerar nos últimos 150 ms antes das luzes apagarem não conta como queimar a largada
 const FOLGA = 90;          // quantos passos (0,75 s) à frente do relógio um piloto pode estar (a latência da rede cabe aqui)
 const FILA_MAX = 1500;     // o máximo de entradas esperando (12 s)
 const ACK_MS = 40;         // de quanto em quanto tempo cada piloto recebe o estado verdadeiro
@@ -89,7 +90,8 @@ function andar(room, agora, h) {
       const ent = Sim.desempacotar(code, S.ent || (S.ent = {}));
       const t = S.ancora + c.tick * PASSO_MS;
       amb.amarela = amb.setorAmarelo === Math.floor(c.idx / (S.tr.n / T.SECTORS));
-      amb.segurar = room.luzes ? t < room.startAt && !ent.gas : t < room.startAt; // as luzes: o freio de mão segura até alguém acelerar
+      amb.segurar = t < room.startAt; // o carro fica parado no grid até as luzes apagarem: o acelerador antes disso não move nada
+      if (room.luzes && ent.gas && t < room.startAt - QUEIMA_FOLGA_MS && t >= room.startAt - (4 + room.luzes.espera) * 1000) p.gasNasLuzes = (p.gasNasLuzes || 0) + PASSO_MS; else if (!ent.gas) p.gasNasLuzes = 0; // (a direção de prova pune quem acelera com as luzes acesas: queimou a largada)
       amb.fantasma = p.finish != null; amb.finish = p.finish; amb.dnf = !!p.dnf;
       Sim.passo(c, ent, amb, S.tr, ev);
       temEntrada = true;
