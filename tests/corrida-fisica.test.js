@@ -124,9 +124,9 @@ test("pneu macio vira perto do arcade; frear e virar juntos continua possível",
   for (const v of [80, 160, 200]) {
     const arcade = mclaren.turn * Math.min(1, v / 90);
     const macio = guinada(v, "macio"), duro = guinada(v, "duro");
-    assert.ok(macio > arcade * 0.72 && macio <= arcade * 1.05,
+    assert.ok(macio > arcade * 0.55 && macio <= arcade * 1.05,
       `${v} u/s: macio ${macio} rad/s, arcade ${arcade}`);
-    if (v >= 160) assert.ok(macio > duro * 1.5, `${v} u/s: macio ${macio}, duro ${duro}`);
+    if (v >= 160) assert.ok(macio > duro * 1.1, `${v} u/s: macio ${macio}, duro ${duro}`);
   }
   const curva = (brake) => {
     const c = D.novoCarro(); c.v = 200; c.marcha = 6;

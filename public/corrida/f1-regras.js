@@ -5,47 +5,67 @@
 // compostos e a estratégia de parada dos robôs (`estrategia`).
 (function (root) {
 
-// Cada composto: a aderência no auge (sobre o grip do carro), quanto da corrida ele dura até o "penhasco" (a fração da
-// distância total em que o desgaste chega a PENHASCO) e quão rápido esquenta. As cores são as da Pirelli.
+// ---------- os pneus ----------
+// Três compostos secos. `pico` é a aderência lateral do pneu novo e quente sobre o grip do carro (o médio, 1,35, é a base
+// da dirigibilidade); `vida` é quantas VOLTAS ele dura, pilotado limpo, até o penhasco (não depende do tamanho da corrida:
+// o macio dura uma volta e meia em qualquer GP); `aquece` é o quanto esquenta rápido e `perdaAntes` o que perde de
+// aderência até o fim da vida. As cores são as da Pirelli. Os números saem da calibração de `tests/corrida-f1-estrategia.test.js`
+// (o simulador de stint com a física do carro: ver `ferramentas/pneus-fisica.js`).
 const PNEUS = {
-  macio: { nome: "Macio", cor: "#e8202a", pico: 1.9, vida: 0.35, aquece: 1.6, perdaFim: 0.72 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 0.6, aquece: 1.0, perdaFim: 0.48 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.0, vida: 0.9, aquece: 0.6, perdaFim: 0.26 },
+  macio: { nome: "Macio", cor: "#e8202a", pico: 1.515, vida: 1.5, aquece: 1.7, perdaAntes: 0.03 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.31, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
 };
 const COMPOSTO_PADRAO = "medio";
-// Até o penhasco o pneu perde pouco (até PERDA_ANTES); depois dele, despenca até PERDA_FIM com o pneu acabado.
-const PENHASCO = 0.8, PERDA_ANTES = 0.06, PERDA_FIM = 0.26;
-// Pneu frio (saindo do box ou na largada) segura FRIO do normal; fica bom a partir de TEMP_BOA.
-const TEMP_SAIDA = 0.6, TEMP_BOA = 0.75, FRIO = 0.92;
+// O desgaste vai de 0 (novo) a 1 (acabado); PENHASCO é o fim da vida. Passou dele o pneu despenca até PERDA_FIM do pico,
+// no resto do caminho até 1 (um quarto da vida do composto), e o carro fica muito ruim: sem aderência, sem tração, sem freio
+// e com um pouco menos de velocidade final.
+const PENHASCO = 0.8, PERDA_FIM = 0.4, FINAL_FIM = 0.08;
+// Pneu frio (saindo do box ou na largada) segura FRIO do normal e fica bom aos poucos: a temperatura vai de TEMP_SAIDA a
+// TEMP_BOA em alguns segundos (mais rápido no macio, mais devagar no duro).
+const TEMP_SAIDA = 0.6, TEMP_BOA = 0.75, FRIO = 0.72, AQUECE = 0.12;
+// O desgaste por escorregão: o piloto ideal (a conta do simulador de stint) gasta o pneu na vida em voltas do composto;
+// quem escorrega de lado, trava a roda ou patina gasta mais (até uns 2×).
+const ESTRESSE_BASE = 0.7, ESTRESSE_LADO = 0.6, ESTRESSE_TRAVA = 0.8, ESTRESSE_PATINA = 0.4, ESTRESSE_NORMAL = 0.76;
 const limite = (v, a, b) => Math.max(a, Math.min(b, v));
 
 function pneuNovo(composto = COMPOSTO_PADRAO) {
   return { composto: PNEUS[composto] ? composto : COMPOSTO_PADRAO, desgaste: 0, temp: TEMP_SAIDA };
 }
-// Um passo do pneu. O desgaste anda pela distância (fração da corrida inteira), então 3 ou 8 voltas gastam a mesma
-// fração do pneu: a estratégia é a mesma em qualquer tamanho de corrida. Escorregar gasta mais; andar limpo, um pouco
-// menos que o normal. A temperatura vai para um alvo pela velocidade e pelo escorregão, mais rápido no macio.
-// d: { dist (andado neste passo), total (a corrida inteira), slip, v, vmax, dt, fator (opcional: o quanto o carro gasta o pneu, `desgaste` de f1-equipes.js) }
+// Um passo do pneu. O desgaste anda pela distância em VOLTAS (`volta` é o comprimento de uma volta): o macio dura uma
+// volta e meia em qualquer corrida. Escorregar, travar a roda e patinar gastam mais. A temperatura vai para um alvo pela
+// velocidade e pelo escorregão, mais rápido no macio.
+// d: { dist (andado neste passo), volta (o comprimento de uma volta), slip, travada (0..1), patina (0..1), v, vmax, dt,
+//      fator (opcional: o quanto o carro gasta o pneu, `desgaste` de f1-equipes.js) }
 function gastarPneu(pneu, d) {
   const pn = PNEUS[pneu.composto] || PNEUS[COMPOSTO_PADRAO];
   const escorrega = limite((d.slip || 0) / 60, 0, 1);
-  if (d.total > 0 && d.dist > 0) pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.total) * (PENHASCO / pn.vida) * (0.85 + 0.6 * escorrega) * (d.fator || 1));
+  if (d.volta > 0 && d.dist > 0) {
+    const estresse = (ESTRESSE_BASE + ESTRESSE_LADO * escorrega + ESTRESSE_TRAVA * limite(d.travada || 0, 0, 1) + ESTRESSE_PATINA * limite(d.patina || 0, 0, 1)) / ESTRESSE_NORMAL;
+    pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.volta) * (PENHASCO / pn.vida) * estresse * (d.fator || 1));
+  }
   const vel = d.vmax > 0 ? limite(Math.abs(d.v || 0) / d.vmax, 0, 1) : 0;
   const alvo = Math.min(1, 0.65 + 0.35 * vel + 0.15 * escorrega);
-  pneu.temp += (alvo - pneu.temp) * Math.min(1, (d.dt || 0) * 0.25 * pn.aquece);
+  pneu.temp += (alvo - pneu.temp) * Math.min(1, (d.dt || 0) * AQUECE * pn.aquece);
   return pneu;
 }
-// Quanto o pneu segura agora: `grip` multiplica o grip do carro e `kin` o quanto sobra escorregando.
+// Quanto o pneu segura agora: `grip` multiplica o grip do carro (a curva), `freio` e `tracao` a frenagem e a arrancada
+// (o médio novo dá 1,08, e os outros acompanham a aderência dele), `final` a velocidade final e `kin` o quanto sobra escorregando.
+const BASE_FREIO = 1.08, EXPOENTE_FREIO = 0.85, EXPOENTE_TRACAO = 0.8;
 function aderencia(pneu) {
   const pn = PNEUS[pneu && pneu.composto] || PNEUS[COMPOSTO_PADRAO], d = pneu ? pneu.desgaste : 0, temp = pneu ? pneu.temp : TEMP_BOA;
-  const perdaFim = pn.perdaFim ?? PERDA_FIM;
-  const perda = d <= PENHASCO ? PERDA_ANTES * d / PENHASCO : PERDA_ANTES + (perdaFim - PERDA_ANTES) * (d - PENHASCO) / (1 - PENHASCO);
+  const x = limite((d - PENHASCO) / (1 - PENHASCO), 0, 1); // 0 até o penhasco, 1 com o pneu acabado
+  const perda = d <= PENHASCO ? pn.perdaAntes * d / PENHASCO : pn.perdaAntes + (PERDA_FIM - pn.perdaAntes) * x;
   const quente = FRIO + (1 - FRIO) * limite((temp - TEMP_SAIDA) / (TEMP_BOA - TEMP_SAIDA), 0, 1);
-  const base = limite(pn.pico * (1 - perda) * quente, 0.7, 2.0);
+  const base = limite(pn.pico * (1 - perda) * quente, 0.4, 2.0), r = base / PNEUS.medio.pico;
   return { grip: base, kin: limite(1 - perda * 0.5, 0.85, 1),
-    freio: limite(base, 0.72, 1.08) * quente, tracao: limite(base, 0.65, 1.08) * quente,
-    final: limite(1 - Math.max(0, d - PENHASCO) * 0.22, 0.95, 1) };
+    freio: limite(BASE_FREIO * Math.pow(r, EXPOENTE_FREIO), 0.4, 1.5), tracao: limite(BASE_FREIO * Math.pow(r, EXPOENTE_TRACAO), 0.4, 1.5),
+    final: 1 - FINAL_FIM * x };
 }
+// Em quantas voltas o pneu chega ao penhasco, pilotado como o piloto ideal e com um gasto `fator` do carro
+const vidaEmVoltas = (composto, fator = 1) => (PNEUS[composto] || PNEUS[COMPOSTO_PADRAO]).vida / (fator || 1);
+// Quanto falta para o penhasco, de 1 (novo) a 0 (chegou ao penhasco: dali o pneu despenca). É o que o anel do HUD mostra.
+const vidaRestante = (pneu) => limite(1 - (pneu ? pneu.desgaste : 0) / PENHASCO, 0, 1);
 const frio = (pneu) => !!pneu && pneu.temp < TEMP_BOA - 0.02;
 
 // DRS clássico: a elegibilidade é decidida na detecção e vale apenas na zona correspondente.
@@ -134,14 +154,38 @@ function registrarParada(p, { volta, tempo, composto }) {
 // o que a regra dos dois compostos tira de quem terminou com um só (corrida de uma volta não tem onde parar)
 const usouDoisCompostos = (p) => new Set(p.compostos || [p.pneu || COMPOSTO_PADRAO]).size >= 2;
 const acrescimoDeFinal = (p, voltas) => (voltas >= 2 && !usouDoisCompostos(p) ? UM_COMPOSTO : 0);
-// A estratégia de um robô: o composto da largada e as paradas { volta, composto } (`volta` = a volta, de 1 a voltas − 1,
-// no fim da qual ele entra no corredor: nunca na última). Cada trecho tem que caber na vida do composto, e dois
-// trechos seguidos nunca usam o mesmo, então a corrida sempre tem dois compostos. Os difíceis, com a corrida longa,
-// às vezes fazem duas paradas.
-function estrategia(voltas, nivel = "medio", semente = 1) {
+// A estratégia de um robô: o composto da largada e as paradas { volta, composto } (`volta` = a volta, de 1 a voltas − 1, em
+// que ele entra no corredor, no fim dela se a entrada fica antes da linha de chegada: nunca na última). Vem da conta do
+// simulador de stint (f1-pneus-ritmo.js, a tabela da `pista` medida com a física do carro): o tempo da corrida inteira de cada
+// plano, com a vida de cada composto em voltas, o penhasco e o que a parada custa de verdade. O robô sorteia pela semente, entre
+// os planos que terminam perto do melhor: os difíceis quase só o melhor, os fáceis uma escolha mais larga. A regra dos dois
+// compostos vale em qualquer plano. Sem a tabela (ou sem a pista), cai numa conta simples pela vida dos compostos.
+const NIVEIS_DE_PLANO = { facil: { janela: 6, tau: 3 }, medio: { janela: 3.5, tau: 1.8 }, dificil: { janela: 2, tau: 0.9 } };
+const CACHE_PLANOS = new Map();
+function ritmoDePneus() {
+  try { return typeof require === "function" ? require("./f1-pneus-ritmo.js") : root.F1PneusRitmo || null; } catch (e) { return root.F1PneusRitmo || null; }
+}
+// os melhores planos de uma corrida de `voltas` na pista (guardados: a conta de uma corrida longa leva uns décimos de segundo)
+function melhoresPlanos(voltas, pista, nivel = "medio", fator = 1) {
+  const R = ritmoDePneus(); if (!R) return null;
+  const tab = R.tabelaDe(pista) || R.tabelaDe("interlagos"); if (!tab) return null;
+  fator = Math.round((fator || 1) * 20) / 20; // (o gasto de pneu do carro, de 0,05 em 0,05: a conta é guardada)
+  const { janela } = NIVEIS_DE_PLANO[nivel] || NIVEIS_DE_PLANO.medio, chave = `${R.tabelaDe(pista) ? pista : "interlagos"}:${voltas}:${janela}:${fator}`;
+  let l = CACHE_PLANOS.get(chave);
+  if (!l) { l = R.planos(tab, voltas, { janela, max: 400, fator }).filter((p) => voltas < 2 || new Set([p.largada, ...p.paradas.map((q) => q.composto)]).size >= 2).slice(0, 80); /* o robô sempre cumpre a regra dos dois compostos */ if (CACHE_PLANOS.size > 200) CACHE_PLANOS.clear(); CACHE_PLANOS.set(chave, l); }
+  return l;
+}
+function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 1) {
   const r = sorteio(`estrategia:${semente}`), compostos = Object.keys(PNEUS);
+  const lista = pista !== null && pista !== undefined ? melhoresPlanos(voltas, pista, nivel, fator) : null;
+  if (lista && lista.length) { // o plano sai da conta: pesa cada um pela diferença para o melhor
+    const { tau } = NIVEIS_DE_PLANO[nivel] || NIVEIS_DE_PLANO.medio, pesos = lista.map((p) => Math.exp(-(p.tempo - lista[0].tempo) / tau));
+    let x = r() * pesos.reduce((s, w) => s + w, 0), i = 0; while (i < lista.length - 1 && x > pesos[i]) { x -= pesos[i]; i++; }
+    return { largada: lista[i].largada, paradas: lista[i].paradas.map((q) => ({ ...q })) };
+  }
+  // a conta simples: cada trecho cabe na vida (em voltas) do composto, e dois trechos seguidos nunca usam o mesmo
   const escolher = (trecho, anterior) => {
-    const cabem = compostos.filter((c) => c !== anterior && PNEUS[c].vida * 1.15 >= trecho);
+    const cabem = compostos.filter((c) => c !== anterior && PNEUS[c].vida * 1.1 >= trecho);
     const lista = cabem.length ? cabem : compostos.filter((c) => c !== anterior).sort((a, b) => PNEUS[b].vida - PNEUS[a].vida).slice(0, 1);
     return lista[Math.floor(r() * lista.length)];
   };
@@ -156,7 +200,7 @@ function estrategia(voltas, nivel = "medio", semente = 1) {
   const marcos = [0, ...voltasDasParadas, voltas], paradas = [];
   let anterior = null, largada = null;
   for (let k = 0; k + 1 < marcos.length; k++) {
-    const c = escolher((marcos[k + 1] - marcos[k]) / voltas, anterior);
+    const c = escolher(marcos[k + 1] - marcos[k], anterior);
     if (k === 0) largada = c; else paradas.push({ volta: marcos[k], composto: c });
     anterior = c;
   }
@@ -236,9 +280,9 @@ function vacuoF1(draft, curva) {
   return { final: VACUO_FINAL * d, acel: VACUO_ACEL * d, aderencia: 1 - (curva ? AR_SUJO * d : 0) };
 }
 
-const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
+const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
-  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia };
+  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia, melhoresPlanos };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -1,41 +1,56 @@
-# Carreira F1: a temporada com os amigos
+# Corrida F1: os pneus fazem sentido na estratégia
 
-A temporada solo (PR #323) agora também se joga em grupo: uma sala com código, cada amigo com a sua equipe (ou dois na mesma), o GP ao vivo para todos, a gestão e o mercado entre os GPs e o fim da noite. Pilotos reais de 2026, DRS clássico, 4 ou 8 GPs.
+O macio agora compensa a parada, dura só uma volta e meia e depois o carro despenca; o duro aguenta, mas é mais lento. A vida é em voltas (não mais em fração da corrida) e as estratégias dos robôs saem da conta de um simulador de stint com a própria física do carro. Só mexe em como os pneus entram na dirigibilidade: o jeito de virar de `dinamica.js` e `sim.js` continua o do `main`, com o médio como base (aderência 1,35, freio e tração 1,08).
 
-## A sala da temporada em grupo
+## Os pneus (`public/corrida/f1-regras.js`)
 
-- Canal novo `/corrida-temporada-grupo` (`corrida-temporada-grupo.js`), no caminho da Carreira de futebol em grupo: o criador vira o **anfitrião**, os amigos entram pelo código, cada pessoa tem o **seu token** (fica no navegador; no banco vai só o hash), quem sai vira ausente e volta com o token.
-- Cada amigo escolhe uma das 11 equipes. **Dois amigos podem dividir a mesma equipe**, um em cada carro: os dois titulares reais saem do grid e vão para o mercado; o carro, o caixa, os engenheiros e o desenvolvimento são um só. As equipes sem humano ficam com os robôs. Quem não escolhe equipe acompanha e assiste.
-- O anfitrião define 4 ou 8 GPs, as voltas (2, 3 ou 5) e o nível dos robôs, e começa a temporada. Até 8 pessoas por sala. Se o anfitrião fica 2 minutos fora, o cargo passa sozinho; ele também pode passar o cargo.
-- **A sala inteira fica no banco** (`migracoes/019-corrida-temporada-grupo.sql`, tabela `corrida_temporadas_grupo`): o servidor pode reiniciar no meio da noite sem perder a temporada. A sala se apaga 72 h depois do último uso. O GP aberto vive na memória: se o servidor cair no meio dele, a temporada volta ao GP que não terminou.
+- **Vida em voltas:** `PNEUS[c].vida` é quantas voltas o composto dura, pilotado limpo, até o penhasco: macio 1,5, médio 3,8, duro 7. O piloto ideal da física gasta exatamente isso em todas as pistas (medido). `gastarPneu` recebe o comprimento de `volta` (não mais o `total` da corrida) e gasta mais com o escorregão, a roda travada (`travada`) e a patinada (`patina`): quem pilota sujo gasta até uns 2×.
+- **Ritmo:** `pico` do macio 1,515, médio 1,35 e duro 1,31; freio e tração acompanham a aderência (`BASE_FREIO`, `EXPOENTE_*`). Dá uns 3 s por volta do macio sobre o médio nas pistas de volta normal (Interlagos 3,4 s, Mônaco 3,0 s, Silverstone 2,8 s; Monza, de reta, 1,3 s) e o duro perde uns 0,9 s para o médio.
+- **Penhasco:** passou do `PENHASCO` o pneu despenca até 40% do pico (aderência, tração e freio lá embaixo, 8% menos de velocidade final): o carro perde 17 a 20 s por volta com o pneu acabado. O desgaste vai de 0,8 a 1 em um quarto da vida do composto (o macio leva 0,4 volta).
+- **Pneu frio:** na largada e na saída do box segura 72% e esquenta em alguns segundos (macio 2 s, duro 6 s): custa de 0,2 a 0,9 s na primeira volta.
+- O anel do pneu no HUD (`hud.js`, só as duas contas de `resta`) agora esvazia até 0% no penhasco (`F1.vidaRestante`) em vez de parar em 20%; os textos de ajuda (`menus.js`) foram atualizados.
 
-## O GP ao vivo para todos
+## O simulador de stint e a estratégia dos robôs
 
-- `abrirGPGrupo` (em `corrida.js`) abre uma sala de F1 privada com **todos os humanos** da temporada e os robôs completando 20 carros. Só o anfitrião abre; as telas dos amigos vão para a pista sozinhas (quem estava fora entra por "Entrar no GP"). A classificação e a corrida são juntas, com a mesma física e as mesmas regras do GP solo.
-- A classificação começa quando todos chegam à pista (ou 30 s depois do primeiro). Quem não tem carro **assiste** com um acesso de espectador.
-- **Quem cai no meio da corrida tem o carro levado por um robô** (`corrida-temporada-robo.js`): o robô pega o carro que o servidor já andava e o pilota com o piloto automático dos outros robôs, com a estratégia de pneus do que falta (sempre dois compostos); quando a pessoa volta, retoma o carro de onde estiver. O resultado continua sendo dela.
-- O resultado entra na temporada de todos **de uma vez, uma vez por GP** (guardado pelo número do GP e do ano).
+- `ferramentas/pneus-fisica.js`: o piloto ideal (`Dinamica.perfilIdeal` refeito conforme o pneu muda + `Sim.pilotoAutomatico`) dá a volta com a física de verdade com cada composto em cada desgaste, mede o pneu frio, o tempo real da parada (entrada no corredor, limitador, parada e saída, contra o mesmo trecho sem parar) e corre a corrida inteira com as trocas.
+- `ferramentas/pneus-tabela.js` grava `public/corrida/f1-pneus-tabela.js` (28 pistas com corredor; as de kart ficam de fora). `node ferramentas/pneus-estrategias.js interlagos 5` mostra os melhores planos.
+- `public/corrida/f1-pneus-ritmo.js`: com a tabela, o tempo de qualquer plano (`simular`) e todos os planos até 3 paradas (4 em corridas longas), do melhor para o pior (`planos`).
+- `F1.estrategia(voltas, nivel, semente, pista, fator)`: escolhe entre os planos perto do melhor (difícil até 2 s, médio 3,5 s, fácil 6 s), pesados pela diferença e sorteados pela semente; sempre dois compostos. Sem tabela, cai na conta simples pela vida. Os robôs param na volta do plano e antes se o pneu passa do penhasco.
 
-## A gestão entre os GPs e o mercado disputado
+## Os números (piloto ideal, física do carro)
 
-- Cada equipe humana monta o carro e gasta o **seu** orçamento (peças, desenvolvimento, caixa e teto de gastos, como na solo).
-- **Equipe dividida: qualquer um dos dois confirma** os gastos, e cada ação vai para o **histórico da equipe** com o nome de quem fez e o valor. Para dois não se atropelarem, o servidor aplica um pedido por vez e a montagem leva a `versao` da equipe: quem mexeu em cima de uma versão velha é avisado em vez de desfazer o que o companheiro acabou de fazer. Com dois pilotos humanos a equipe não tem vaga para piloto contratado.
-- **Mercado disputado:** um piloto real só corre por uma equipe (quem pegou primeiro fica; o piloto que corre por outra equipe de amigo não sai; o que a equipe larga volta ao mercado) e cada engenheiro (mecânico ou estrategista de cada nível) só trabalha para uma equipe.
-- Após cada GP: patrocínio, prêmio pelos pontos da equipe e salários, por equipe.
+| Pista | Composto | Vida (voltas) | Volta nova | No penhasco | Acabado | Frio (1ª volta) |
+|---|---|---|---|---|---|---|
+| Interlagos | macio | 1,5 | 63,5 s (-3,4) | 64,3 s | 81,8 s (+18,3) | +0,4 s |
+| Interlagos | médio | 3,8 | 66,9 s | 67,8 s | 86,5 s (+19,6) | +0,5 s |
+| Interlagos | duro | 7,1 | 67,8 s (+0,9) | 68,4 s | 87,8 s (+20,0) | +0,7 s |
+| Mônaco | macio | 1,5 | 70,2 s (-3,0) | 71,0 s | 87,5 s (+17,3) | +0,4 s |
+| Mônaco | médio | 3,9 | 73,2 s | 74,1 s | 91,9 s (+18,7) | +0,8 s |
+| Mônaco | duro | 7,1 | 74,0 s (+0,9) | 74,7 s | 93,1 s (+19,0) | +0,9 s |
+| Monza | macio | 1,5 | 60,5 s (-1,3) | 60,8 s | 71,7 s (+11,2) | +0,2 s |
+| Monza | médio | 3,9 | 61,7 s | 62,1 s | 74,2 s (+12,4) | +0,3 s |
+| Monza | duro | 7,1 | 62,1 s (+0,4) | 62,4 s | 74,8 s (+12,7) | +0,5 s |
 
-## O fim da noite
+**A parada de verdade** (o que ela custa contra passar direto): Interlagos 6,3 s (3,6 s de corredor, entrada e saída + 2,6 s parado, em média), Mônaco 5,9 s, Monza 6,5 s. É mais que os "uns 4 s" da conta original, e por isso o macio precisa ganhar tanto por volta.
 
-- Tabelas de pilotos e construtores para todos (os amigos aparecem marcados), resumo do último GP com o dinheiro da sua equipe, o campeão no fim do calendário, o quadro dos amigos (pontos, vitórias e pódios), a lista de campeões da noite e a próxima temporada pelo anfitrião.
+**Estratégias** (tempo da corrida, diferença para a melhor; S = macio, M = médio, H = duro; os números são as voltas de cada trecho):
 
-## A sede
+| Pista | Voltas | S-M | S-H | M-H | S-M-S / S-S-M (2 paradas) | tudo macio (+10 s da regra) | S esticado (3 voltas) |
+|---|---|---|---|---|---|---|---|
+| Interlagos | 3 | 205,2 s (S1 M2) | +1,3 | +4,3 | +3,2 | +7,0 | |
+| Interlagos | 5 | 340,1 s (S2 M3) | +2,2 | +4,7 | +2,9 | +9,9 (sem a regra, -0,1) | +14,2 |
+| Interlagos | 10 | 684,0 s (S2 S2 S2 M4) | +3,5 (S2 H8) | +1,3 (M4 H6) | +0,5 (S2 M4 M4) | | |
+| Mônaco | 3 | 224,3 s (S1 M2) | +1,4 | +4,1 | +3,3 | +7,3 | |
+| Mônaco | 5 | 372,0 s (S2 M3) | +2,3 | +4,2 | +2,9 | +10,5 | +13,7 |
+| Mônaco | 10 | 747,3 s (S2 M4 M4) | +2,5 | +0,7 | 0,0 | | |
+| Monza | 3 | 191,4 s (S1 M2) | +0,8 | +1,8 (H1 M2) | | | |
+| Monza | 5 | 315,6 s (S1 M4) | +1,2 | +1,8 (H1 M4) | +5,2 | +15,4 | +10,6 |
+| Monza | 10 | 628,8 s (M4 H6, melhor) | +2,3 | 0,0 | +4,2 | | |
 
-- `/corrida/temporada/` ganha "Temporada com os amigos" (abrir sala / entrar pelo código) e o `?sala=CÓDIGO` (convite), no mesmo visual (`grupo.js`, `grupo-regras.js`, CSS em `sede.css`). Na pista, "← Voltar à sede" e o botão de sair levam de volta à sala (`salaTemporada` no estado).
+Conferido na física, com a corrida inteira de 5 voltas e as trocas (diferença para a melhor): Interlagos S2 M3 0,0; S2 H3 +2,0; M3 H2 +4,2; S1 S1 M3 +1,1; S3 M2 (esticado) +14,2. Mônaco: 0,0; +2,7; +3,3; +1,3; +13,7. A tabela erra menos de 2,6 s entre planos.
 
 ## Testes
 
-- Novo `tests/corrida-temporada-grupo.test.js`: as regras (mesma equipe, versão, histórico, mercado, resultado, campeão) e o servidor de verdade: dois ou mais clientes criam/entram e escolhem equipes (inclusive a mesma, e a terceira pessoa é recusada), o mercado recusa o piloto e o engenheiro já contratados, só o anfitrião abre o GP, o GP abre com os quatro humanos e 20 carros, o resultado entra uma vez e todos veem as mesmas tabelas, reconexão com o token (e token errado), o servidor reiniciando com a sala vinda do banco, e o robô que assume o carro de quem caiu e o devolve.
-- Rodados só os da Corrida: `node --test tests/corrida*.test.js`.
-
-## Ficou de fora
-
-- Entrar numa equipe no meio da temporada (quem chega depois do início só acompanha); leilão com lances e o dono aceitando a saída do piloto (aqui vale a ordem de chegada e quem corre por equipe de amigo não sai); rádio da equipe e HUD do companheiro; janela de mercado no meio do ano; passar o placar para a Noite da Galera; o teste na mão com amigos de verdade (só automatizado).
+- `tests/corrida-f1-pneus.test.js`: vida em voltas de cada composto, vida independente do tamanho da pista, escorregar/travar/patinar gastam mais, penhasco e pneu frio (ajustados).
+- `tests/corrida-f1-estrategia.test.js` (novo): vida, ganho do macio sobre o médio e do médio sobre o duro, penhasco custando muitos segundos, pneu frio e parada na física; tabela conferida contra a física; estratégias boas a poucos segundos em 3, 5 e 10 voltas, macio pagando a parada, esticar claramente pior; corrida inteira na física; estratégia dos robôs (perto do melhor, variação, regra dos dois compostos) e parada antecipada.
+- Se mexer nos pneus ou na física: `node ferramentas/pneus-tabela.js` (uns 2 minutos) e rode o teste novo.
