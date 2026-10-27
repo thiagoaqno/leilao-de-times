@@ -239,3 +239,23 @@ test("sala: a equipe e a montagem passam pelo servidor, que recusa o que não ca
   await act(ana, { type: "lobby" }); // desliga os relógios da corrida
   bd.fechar();
 });
+
+test("sala: as peças (modo carreira) viram a montagem no servidor, que confere o custo", async () => {
+  const P = require("../public/corrida/f1-pecas.js");
+  bd.fechar(); bd.abrir(":memory:");
+  const { socket, chamar, estado } = salaDeMentira(), ana = socket();
+  const criou = await chamar(ana, "create", { name: "Ana", config: { pista: "monza", voltas: 2, regras: "f1" } });
+  const act = (s, dados) => chamar(s, "act", dados), cod = criou.code;
+  assert.equal((await act(ana, { type: "equipe", id: "ferrari" })).ok, true);
+  const caro = Object.fromEntries(P.CATEGORIAS.map((c) => [c.id, c.pecas[c.pecas.length - 1].id]));
+  assert.match((await act(ana, { type: "montagem", pecas: caro })).error, /orçamento/);
+  assert.equal((await act(ana, { type: "montagem", pecas: { ...P.pecasPadrao(), unidade: "x" } })).ok, false);
+  const boa = await act(ana, { type: "montagem", pecas: P.pecasPadrao() });
+  assert.equal(boa.ok, true);
+  assert.deepEqual(estado(cod).montagens.ferrari, { motor: 3, aero: 3, chassi: 3, freios: 3, suspensao: 3, confiab: 3 });
+  assert.deepEqual(estado(cod).pecasEq.ferrari, P.pecasPadrao());
+  assert.equal((await act(ana, { type: "montagem", montagem: montagem(8, 0, 3, 3, 2, 3) })).ok, true, "o formato antigo continua valendo");
+  assert.equal(estado(cod).pecasEq.ferrari, undefined);
+  assert.equal((await act(ana, { type: "montagem", montagem: null })).ok, true);
+  assert.equal(estado(cod).montagens?.ferrari, undefined);
+});

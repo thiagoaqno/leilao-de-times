@@ -72,25 +72,24 @@
 @media (pointer:coarse){#hPainel{bottom:104px}#race.f1hud .hud.bl{bottom:112px}}
 @media (prefers-reduced-motion:reduce){.pf-boost i{transition:none}}
 /* os avisos no estilo da transmissão: faixas retas com a cor da bandeira, entrando pela lateral (avisos-f1.js e hud.js) */
-#avisosF1{position:absolute;left:50%;top:14px;transform:translateX(-50%);width:min(520px,calc(100% - 24px));display:none;flex-direction:column;gap:6px;pointer-events:none;z-index:4;font-family:var(--f1-fonte,"Titillium Web","Segoe UI",system-ui,sans-serif)}
+#avisosF1{position:absolute;left:236px;top:12px;width:min(300px,calc(100% - 252px));display:none;flex-direction:column;gap:4px;pointer-events:none;z-index:4;font-family:var(--f1-fonte,"Titillium Web","Segoe UI",system-ui,sans-serif)}
 #race.f1avisos #avisosF1{display:flex}
 #race.f1avisos #hMsg{display:none}
-.av-item{--fundo:#1b1f2a;--txt:#fff;--bloco:#3a3f4b;display:grid;grid-template-columns:44px minmax(0,1fr);min-height:46px;background:var(--fundo);color:var(--txt);text-transform:uppercase;text-shadow:none;box-shadow:0 4px 14px #0008,inset 0 -2px 0 #0003;animation:avEntra .26s cubic-bezier(.2,.8,.2,1) both}
+.av-item{--fundo:#1b1f2a;--txt:#fff;--bloco:#3a3f4b;display:grid;grid-template-columns:30px minmax(0,1fr);min-height:32px;background:var(--fundo);color:var(--txt);text-transform:uppercase;text-shadow:none;box-shadow:0 3px 10px #0008,inset 0 -2px 0 #0003;animation:avEntra .26s cubic-bezier(.2,.8,.2,1) both}
 .av-bloco{display:grid;place-items:center;background:var(--bloco)}
-.av-bloco svg{width:26px;height:26px}
-.av-corpo{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:5px 12px 6px;min-width:0}
-.av-cab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.14em;line-height:1;opacity:.82}
-.av-cab small{font-size:10px;font-weight:600;letter-spacing:.16em;opacity:.7}
-.av-cab .av-logo{width:28px;height:11px;margin-left:auto;flex:none}
-.av-txt{font-size:clamp(14px,2.2vw,18px);font-weight:700;letter-spacing:.03em;line-height:1.12;overflow-wrap:anywhere}
+.av-bloco svg{width:18px;height:18px}
+.av-corpo{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:3px 9px 4px;min-width:0}
+.av-cab{display:flex;align-items:center;gap:6px;font-size:9px;font-weight:700;letter-spacing:.12em;line-height:1;opacity:.82}
+.av-cab small{font-size:9px;font-weight:600;letter-spacing:.16em;opacity:.7}
+.av-cab .av-logo{width:20px;height:8px;margin-left:auto;flex:none}
+.av-txt{font-size:clamp(11px,1.3vw,13px);font-weight:700;letter-spacing:.03em;line-height:1.12;overflow-wrap:anywhere}
 .av-item.av-fixo{animation:none;box-shadow:none;margin-bottom:4px}
-@keyframes avEntra{from{transform:translateX(-64px);opacity:0}to{transform:none;opacity:1}}
+@keyframes avEntra{from{transform:translateX(-28px);opacity:0}to{transform:none;opacity:1}}
 /* as cinco luzes da largada, como o pórtico da F1 */
-#race.f1avisos .luzes{top:20%;gap:6px;padding:8px 10px 10px;border-radius:0;border:0;border-top:3px solid #e10600;background:#0a0c12e6}
-#race.f1avisos .luzes i{width:clamp(28px,5vw,48px);height:clamp(40px,7vw,68px);border-radius:6px;background:#12141b;box-shadow:inset 0 0 0 2px #2a2d38}
+#race.f1avisos .luzes{left:236px;transform:none;top:max(76px,12%);gap:4px;padding:5px 7px 6px;border-radius:0;border:0;border-top:3px solid #e10600;background:#0a0c12e6}
+#race.f1avisos .luzes i{width:clamp(16px,2.2vw,24px);height:clamp(24px,3.2vw,34px);border-radius:4px;background:#12141b;box-shadow:inset 0 0 0 2px #2a2d38}
 #race.f1avisos .luzes i::after{content:"";display:block;width:62%;aspect-ratio:1;margin:30% auto 0;border-radius:50%;background:#2a0707}
-#race.f1avisos .luzes i.on{box-shadow:inset 0 0 0 2px #2a2d38,0 0 16px #ff2a1a88}
-#race.f1avisos .luzes i.on::after{background:#ff2a1a;box-shadow:0 0 14px 3px #ff2a1acc}
-@media (max-width:1000px){#avisosF1{left:228px;transform:none;width:calc(100% - 240px)}}
-@media (max-width:700px){#avisosF1{left:182px;width:calc(100% - 190px);top:8px;gap:4px}.av-item{grid-template-columns:36px minmax(0,1fr);min-height:40px}.av-bloco svg{width:22px;height:22px}.av-cab small{display:none}}
+#race.f1avisos .luzes i.on{box-shadow:inset 0 0 0 2px #2a2d38,0 0 9px #ff2a1a88}
+#race.f1avisos .luzes i.on::after{background:#ff2a1a;box-shadow:0 0 8px 2px #ff2a1acc}
+@media (max-width:700px){#avisosF1{left:182px;width:calc(100% - 192px);top:8px;gap:3px}#race.f1avisos .luzes{left:182px;top:max(60px,10%)}.av-item{grid-template-columns:26px minmax(0,1fr);min-height:28px}.av-bloco svg{width:16px;height:16px}.av-cab small{display:none}.av-txt{font-size:11px}}
 @media (prefers-reduced-motion:reduce){.av-item{animation:none}}

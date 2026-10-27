@@ -13,6 +13,7 @@ const Direcao = require("./corrida-f1-direcao.js");
 const Quali = require("./corrida-f1-classificacao.js"); // a classificação (Q1, Q2, Q3) que define o grid das regras de F1
 const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servidor)
 const Humanos = require("./corrida-humanos.js"); // os humanos nas regras de F1: o servidor anda o carro com as entradas do piloto (autoridade)
+const Pecas = require("./public/corrida/f1-pecas.js"); // as peças do carro (modo carreira), que viram a montagem
 const Equipes = require("./public/corrida/f1-equipes.js"); // as equipes de 2026, o orçamento em pontos e a montagem do carro
 const Pilotos = require("./public/corrida/f1-pilotos-2026.js");
 const TRobo = require("./corrida-temporada-robo.js"); // o robô que leva o carro de quem cai no meio do GP da temporada em grupo
@@ -58,7 +59,7 @@ module.exports = function attachCorrida(io) {
   function publicState(room) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null, ...(room.temporada ? { temporada: true, ...(room.salaTemporada ? { salaTemporada: room.salaTemporada } : {}) } : {}),
-      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { montagens: room.montagens || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
+      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { montagens: room.montagens || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
       players: room.order.map((id) => {
         const p = room.players[id];
         return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, noBox: !!p.box, quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
@@ -74,7 +75,7 @@ module.exports = function attachCorrida(io) {
   // humano da equipe na ordem da sala. Dois amigos podem dividir a mesma equipe; cada equipe tem só 2 carros.
   const humanosDa = (room, equipe) => room.order.filter((id) => room.players[id] && !room.players[id].bot && room.players[id].equipe === equipe);
   const chefes = (room) => { const out = {}; for (const id of room.order) { const p = room.players[id]; if (p && !p.bot && p.equipe && !out[p.equipe]) out[p.equipe] = id; } return out; };
-  const limparMontagens = (room) => { if (!room.montagens) return; for (const eq of Object.keys(room.montagens)) if (!humanosDa(room, eq).length) delete room.montagens[eq]; if (!Object.keys(room.montagens).length) delete room.montagens; };
+  const limparMontagens = (room) => { if (!room.montagens) return; for (const eq of Object.keys(room.montagens)) if (!humanosDa(room, eq).length) delete room.montagens[eq]; if (room.pecasEq) for (const eq of Object.keys(room.pecasEq)) if (!room.montagens || !room.montagens[eq]) delete room.pecasEq[eq]; if (!Object.keys(room.montagens).length) delete room.montagens; };
   // o carro de cada um (`p.spec`) e a chance de quebrar: tudo sai da equipe; sem equipe (ou sem as regras de F1), vale o carro escolhido
   function atribuirCarros(room) {
     const f1 = room.config.regras === "f1";
@@ -447,10 +448,11 @@ module.exports = function attachCorrida(io) {
           if (room.config.regras !== "f1") return "A montagem vale só nas regras de Fórmula 1.";
           if (!me.equipe) return "Escolha uma equipe primeiro.";
           if (chefes(room)[me.equipe] !== me.id) return "Só o chefe da equipe monta o carro.";
-          if (data.montagem == null) { if (room.montagens) delete room.montagens[me.equipe]; limparMontagens(room); return; }
-          const v = Equipes.validar(me.equipe, data.montagem);
+          if (data.montagem == null && data.pecas == null) { if (room.montagens) delete room.montagens[me.equipe]; if (room.pecasEq) delete room.pecasEq[me.equipe]; limparMontagens(room); return; }
+          const v = Pecas.resolver(me.equipe, data); // `pecas` (a escolha de peças) ou `montagem` (os níveis, formato antigo)
           if (!v.ok) return v.erro;
-          room.montagens = { ...(room.montagens || {}), [me.equipe]: v.montagem }; return;
+          room.montagens = { ...(room.montagens || {}), [me.equipe]: v.montagem };
+          room.pecasEq = { ...(room.pecasEq || {}) }; if (v.pecas) room.pecasEq[me.equipe] = v.pecas; else delete room.pecasEq[me.equipe]; return;
         }
         if (type === "pawn") {
           if (!me || room.phase === "race") return "Só dá para trocar fora da corrida.";

@@ -135,14 +135,13 @@ function renderEquipe(m, f1) {
   if (m.equipe) {
     const eq = m.equipe, orc = F.EQUIPES[eq].orcamento, mont = (E.S.montagens && E.S.montagens[eq]) || F.montagemPadrao(eq), usado = F.custoDaMontagem(mont), sobra = orc - usado;
     const chefeId = E.S.chefes && E.S.chefes[eq], chefe = E.S.players.find((p) => p.id === chefeId), souChefe = chefeId === m.id, spec = specDaEquipe(eq);
-    const linhas = F.ORDEM.map((k) => { const pc = F.PECAS[k], n = mont[k];
-      return `<div class="peca"><span class="ic" aria-hidden="true">${pc.icone}</span><div class="pnome"><b>${pc.nome}</b><small>${h(pc.desc)}</small><small class="efeito"><i class="mais">+</i> ${h(pc.bom)}${pc.custa === "só os pontos" ? "" : ` · <i class="menos">−</i> ${h(pc.custa)}`}</small></div>
-        <div class="nivel"><button data-menos="${k}" aria-label="Tirar um ponto de ${pc.nome}" ${souChefe && n > 0 ? "" : "disabled"}>−</button><span class="pips" role="img" aria-label="nível ${n} de ${F.MAX_NIVEL}">${Array.from({ length: F.MAX_NIVEL }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span><button data-mais="${k}" aria-label="Pôr um ponto em ${pc.nome}" ${souChefe && n < F.MAX_NIVEL && sobra > 0 ? "" : "disabled"}>+</button><b class="num">${n}</b></div></div>`; }).join("");
+    const GA = window.F1Garagem, pecasEscolhidas = window.F1Pecas.pecasDe(eq, mont, E.S.pecasEq && E.S.pecasEq[eq]);
+    const linhas = GA.pecasHTML({ equipe: eq, bonus: 0, pecas: pecasEscolhidas, pode: souChefe, motivo: `Quem monta o carro é ${chefe ? chefe.name : "o chefe da equipe"}.`, aviso: E.S.pecasEq && E.S.pecasEq[eq] ? "" : "Este carro usa os pontos padrão da equipe: mostramos as peças mais parecidas. Ao trocar uma peça, ele passa a ser montado por elas." });
     carro = `<h3>Montar o carro · ${h(FP.EQUIPES[eq].nome)}</h3>
       <div class="garagem-equipe"><div class="foto"><canvas id="equipeCarro" width="240" height="135"></canvas><b>${h(spec.desc)}</b><small>${h(spec.inspo)}</small></div>
         <div class="orcamento"><div class="barra" role="img" aria-label="${usado} de ${orc} pontos usados"><i style="width:${(usado / orc) * 100}%"></i></div><b>${sobra ? `Sobram ${sobra} ponto${sobra > 1 ? "s" : ""}` : "Orçamento todo usado"}</b><small>${usado} de ${orc} pontos${souChefe ? "" : ` · quem monta é ${h(chefe ? chefe.name : "o chefe")}`}</small>
           ${souChefe ? `<button class="small ghost" data-padrao ${E.S.montagens && E.S.montagens[eq] ? "" : "disabled"}>Voltar ao carro da equipe</button>` : ""}</div></div>
-      <div class="pecas">${linhas}</div>
+      ${linhas}
       <div class="spec ficha-equipe">${F.ficha(spec).map((f) => `<span>${f.rotulo}</span>${leds(f.nota)}`).join("")}</div>
       <small class="hint">Velocidade final ${Math.round(spec.vmax)} · aceleração ${spec.acc.toFixed(0)} · freio ${Math.round(spec.brake)} · aderência ${Math.round(spec.grip)} · chance de quebrar ${Math.round(spec.quebra * 100)}% · DRS ×${spec.drs.toFixed(2)} · pneu gasta ×${spec.desgaste.toFixed(2)}.</small>`;
   }
@@ -150,8 +149,8 @@ function renderEquipe(m, f1) {
   host.querySelectorAll("[data-equipe]").forEach((b) => (b.onclick = () => act("equipe", { id: m.equipe === b.dataset.equipe ? null : b.dataset.equipe })));
   if (!m.equipe) return;
   const eq = m.equipe, mont = (E.S.montagens && E.S.montagens[eq]) || F.montagemPadrao(eq);
-  host.querySelectorAll("[data-menos]").forEach((b) => (b.onclick = () => act("montagem", { montagem: { ...mont, [b.dataset.menos]: mont[b.dataset.menos] - 1 } })));
-  host.querySelectorAll("[data-mais]").forEach((b) => (b.onclick = () => act("montagem", { montagem: { ...mont, [b.dataset.mais]: mont[b.dataset.mais] + 1 } })));
+  const GAc = window.F1Garagem, pecasAtuais = window.F1Pecas.pecasDe(eq, mont, E.S.pecasEq && E.S.pecasEq[eq]);
+  host.querySelectorAll("[data-pcat]").forEach((b) => (b.onclick = () => act("montagem", { pecas: GAc.cliquePeca(b, pecasAtuais) })));
   const pad = host.querySelector("[data-padrao]"); if (pad) pad.onclick = () => act("montagem", { montagem: null });
   const cv = $("equipeCarro"); if (cv) carPreview(cv, m.color, m.car, m.mods);
 }

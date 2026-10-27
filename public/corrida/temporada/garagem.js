@@ -1,0 +1,99 @@
+// Corrida da Galera — a garagem do modo carreira (visual): abas, painel da equipe com os atributos, calendário com bandeiras,
+// o carro 3D no centro e a tela de PEÇAS (cartões por categoria + barra de orçamento). Só desenha: as contas estão em
+// f1-pecas.js e f1-equipes.js (o servidor confere tudo de novo). Usado pela temporada solo (sede.js), pela em grupo
+// (grupo.js) e pela sala de F1 (menus.js). Estilo inspirado em jogos de gestão de F1, sem copiar marca nenhuma.
+(function (root) {
+const h = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const P = () => root.F1Pecas, E = () => root.F1Equipes, FP = () => root.F1Pilotos;
+
+// ---------- as abas ----------
+const ABAS = [["geral", "Visão geral"], ["carro", "Carro · Peças"], ["classif", "Classificação"], ["equipe", "Equipe"]];
+let aba = "geral";
+const abaAtual = () => aba;
+const definirAba = (a) => { if (ABAS.some((x) => x[0] === a)) aba = a; };
+const abasHTML = () => `<nav class="abas" role="tablist" aria-label="Seções da carreira">${ABAS.map(([id, nome]) => `<button role="tab" class="aba ${id === aba ? "on" : ""}" data-aba="${id}" aria-selected="${id === aba}">${nome}</button>`).join("")}</nav>`;
+
+// ---------- ícones (traço simples) e bandeiras ----------
+const IC = {
+  reta: "M3 12h15M13 6l6 6-6 6", acc: "M13 2 4 14h7l-1 8 9-12h-7z", curva: "M4 20c0-8 6-12 16-12M16 4l4 4-4 4",
+  freio: "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z", resist: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+  confiab: "M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
+};
+const icone = (k) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${IC[k] || IC.reta}"/></svg>`;
+const BAND = {
+  melbourne: '<rect width="24" height="16" fill="#12308f"/><circle cx="7" cy="11" r="2.2" fill="#fff"/><circle cx="17" cy="5" r="1.2" fill="#fff"/><circle cx="19" cy="10" r="1.2" fill="#fff"/><rect width="10" height="6" fill="#0a2275"/>',
+  suzuka: '<rect width="24" height="16" fill="#fff"/><circle cx="12" cy="8" r="4.6" fill="#d8142c"/>',
+  monaco: '<rect width="24" height="8" fill="#d8142c"/><rect y="8" width="24" height="8" fill="#fff"/>',
+  silverstone: '<rect width="24" height="16" fill="#1d3a8a"/><path d="M0 0l24 16M24 0 0 16" stroke="#fff" stroke-width="3"/><path d="M12 0v16M0 8h24" stroke="#fff" stroke-width="5"/><path d="M12 0v16M0 8h24" stroke="#d8142c" stroke-width="2.6"/>',
+  spa: '<rect width="8" height="16" fill="#111"/><rect x="8" width="8" height="16" fill="#f7d417"/><rect x="16" width="8" height="16" fill="#d8142c"/>',
+  monza: '<rect width="8" height="16" fill="#1f9d55"/><rect x="8" width="8" height="16" fill="#fff"/><rect x="16" width="8" height="16" fill="#d8142c"/>',
+  austin: '<rect width="24" height="16" fill="#fff"/><path d="M0 1h24M0 5h24M0 9h24M0 13h24" stroke="#d8142c" stroke-width="2"/><rect width="11" height="9" fill="#26357a"/>',
+  interlagos: '<rect width="24" height="16" fill="#139a43"/><path d="M12 2l9 6-9 6-9-6z" fill="#f7d417"/><circle cx="12" cy="8" r="3.3" fill="#26357a"/>',
+};
+const bandeira = (pista) => `<svg class="bandeira" viewBox="0 0 24 16" width="26" height="17" aria-hidden="true">${BAND[pista] || '<rect width="24" height="16" fill="#555"/><path d="M0 0h12v8H0zM12 8h12v8H12z" fill="#ddd"/>'}</svg>`;
+
+// ---------- o painel da equipe: logo, nota do carro e os atributos ----------
+const FICHA = { reta: "Reta", acc: "Aceleração", curva: "Curva", freio: "Freio", resist: "Resistência", confiab: "Confiabilidade" };
+function specDe(equipeId, montagem) { return E().specDaEquipe(equipeId, montagem); }
+function notaGeral(ficha) { return Math.round(ficha.reduce((s, f) => s + f.nota, 0) / ficha.length * 10); }
+function painelEquipe(equipeId, montagem, extra = "") {
+  const eq = FP().EQUIPES[equipeId], spec = specDe(equipeId, montagem), ficha = E().ficha(spec);
+  return `<aside class="pn-equipe" style="--eq:${h(eq.cor)}"><div class="pn-logo"><img src="/api/corrida/logo/${encodeURIComponent(equipeId)}" alt="" onerror="this.style.display='none'"><b>${h(eq.nome)}</b></div>
+    <div class="pn-nota"><strong class="num">${notaGeral(ficha)}</strong><small>Nível do carro</small></div>
+    <ul class="pn-attr">${ficha.map((f) => `<li title="${h(FICHA[f.id] || f.rotulo)}">${icone(f.id)}<span>${h(f.rotulo)}</span><i class="barra"><u style="width:${f.nota * 10}%"></u></i><b class="num">${f.nota}</b></li>`).join("")}</ul>${extra}</aside>`;
+}
+
+// ---------- o calendário (à direita) com bandeiras e o botão Continuar ----------
+function calendario(cal, gp, titulo = "Calendário", rotuloProx = "") {
+  const fim = gp >= cal.length;
+  return `<ol class="cal" aria-label="${h(titulo)}">${cal.map((e, i) => `<li class="${i < gp ? "feita" : i === gp ? "atual" : ""}"><span class="n num">${String(i + 1).padStart(2, "0")}</span>${bandeira(e.pista)}<b>${h(e.nome)}</b><em>${i < gp ? "✓" : i === gp && !fim ? h(rotuloProx || "Próximo") : ""}</em></li>`).join("")}</ol>`;
+}
+const colunaDireita = ({ titulo, cal, gp, rotuloProx, botao, nota }) => `<aside class="pn-gp"><header><h2>${h(titulo || "Calendário")}</h2></header>${calendario(cal, gp, "Calendário", rotuloProx)}${nota ? `<p class="gp-nota">${nota}</p>` : ""}<div class="gp-acao">${botao}</div></aside>`;
+
+// ---------- o carro 3D, que fica no mesmo elemento entre as redesenhadas ----------
+let palco = null, palcoEq = null, falhou3D = false;
+function encaixar(equipeId) {
+  const slot = document.querySelector(".palco-slot"); if (!slot) return;
+  if (!palco || palcoEq !== equipeId) {
+    if (palco && palco._parar) palco._parar();
+    palco = document.createElement("div"); palco.className = "palco"; palcoEq = equipeId;
+    palco.innerHTML = `<canvas aria-label="Seu carro de F1 em 3D" role="img"></canvas><span class="palco-msg">Carregando o carro…</span>`;
+    if (!falhou3D) import("/corrida/temporada/car3d.js").then((m) => m.montar(palco, equipeId)).then(() => palco.classList.add("pronto")).catch((e) => { falhou3D = true; palco.classList.add("sem3d"); palco.querySelector(".palco-msg").textContent = ""; console.warn("carro 3D indisponível", e); });
+  }
+  slot.replaceWith(palco);
+}
+const palcoSlot = (eq) => `<div class="palco-slot" data-eq="${h(eq)}"></div>`;
+
+// ---------- as peças: um cartão por peça, agrupadas por categoria, com a barra de orçamento ----------
+const EFEITO_ROT = { motor: "Motor", aero: "Carga", chassi: "Leveza", freios: "Freio", suspensao: "Suspensão", confiab: "Confiab." };
+function orcamentoBarra(usado, limite) {
+  const resta = limite - usado, pct = Math.min(100, Math.round(usado / limite * 100));
+  return `<div class="orc ${resta <= 0 ? "cheio" : resta <= 2 ? "apertado" : ""}"><div class="orc-txt"><span>Orçamento</span><b class="num">${usado} / ${limite} pts</b><em>${resta > 0 ? `Sobram ${resta}` : "Tudo usado"}</em></div><div class="orc-barra" role="img" aria-label="${usado} de ${limite} pontos usados"><u style="width:${pct}%"></u></div></div>`;
+}
+// opts: { equipe, bonus, pecas (a escolha), pode (quem pode mexer), motivo (por que não pode), aviso }
+function pecasHTML(o) {
+  const Pc = P(), eq = E().EQUIPES[o.equipe], limite = eq.orcamento + (o.bonus || 0), usado = Pc.custoDePecas(o.pecas), resta = limite - usado;
+  const cats = Pc.CATEGORIAS.map((c) => {
+    const atual = Pc.POR_ID[o.pecas[c.id]];
+    const cartoes = c.pecas.map((p) => {
+      const sel = atual && atual.id === p.id, extra = p.custo - (atual ? atual.custo : 0), cabe = extra <= resta;
+      const efs = Object.entries(p.nivel).map(([k, v]) => `<i class="ef">+${v} ${EFEITO_ROT[k]}</i>`).join("");
+      const bloqueada = !o.pode || (!sel && !cabe);
+      return `<button class="peca-card ${sel ? "sel" : ""}" data-pcat="${c.id}" data-pid="${p.id}" aria-pressed="${sel}" ${bloqueada && !sel ? "disabled" : sel && !o.pode ? "disabled" : ""}><span class="pc-topo"><b>${h(p.nome)}</b><span class="custo num">${p.custo} <small>pts</small></span></span><small>${h(p.efeito)}</small><span class="efs">${efs}</span>${!sel && !cabe && o.pode ? `<em class="sem">Falta orçamento</em>` : sel ? `<em class="uso">Instalada</em>` : ""}</button>`;
+    }).join("");
+    return `<section class="pc-cat"><header><span class="ic" aria-hidden="true">${c.icone}</span><h3>${h(c.nome)}</h3><small>${atual ? h(atual.nome) : ""}</small></header><div class="pc-lista">${cartoes}</div></section>`;
+  }).join("");
+  const spec = specDe(o.equipe, Pc.montagemDePecas(o.pecas)), ficha = E().ficha(spec);
+  return `<div class="pecas-tela">${orcamentoBarra(usado, limite)}${o.aviso ? `<p class="pc-aviso">${o.aviso}</p>` : ""}${!o.pode && o.motivo ? `<p class="pc-aviso trava">${h(o.motivo)}</p>` : ""}
+    <div class="pc-corpo"><div class="pc-cats">${cats}</div>
+    <aside class="pc-resumo"><h3>Resultado</h3><ul class="pn-attr">${ficha.map((f) => `<li>${icone(f.id)}<span>${h(f.rotulo)}</span><i class="barra"><u style="width:${f.nota * 10}%"></u></i><b class="num">${f.nota}</b></li>`).join("")}</ul>
+    <p class="pc-dados">Velocidade final ${Math.round(spec.vmax)} · aceleração ${spec.acc.toFixed(0)} · freio ${Math.round(spec.brake)} · aderência ${Math.round(spec.grip)}<br>Quebra ${(spec.quebra * 100).toFixed(2).replace(/\.?0+$/, "")}% · DRS ×${spec.drs.toFixed(2)} · pneu ×${spec.desgaste.toFixed(2)}</p></aside></div></div>`;
+}
+// quem clica numa peça: devolve a nova escolha (ou null se o clique não é de peça)
+function cliquePeca(botao, pecasAtuais) {
+  const b = botao && botao.closest && botao.closest("[data-pcat]"); if (!b) return null;
+  return { ...pecasAtuais, [b.dataset.pcat]: b.dataset.pid };
+}
+
+root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, notaGeral };
+})(window);

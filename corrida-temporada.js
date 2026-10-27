@@ -55,7 +55,7 @@ module.exports = function attachTemporadaCorrida(io, corrida) {
       try { const linha = bd.recuperarTemporadaCorrida(d.codigo); if (!linha) throw Error("Código de recuperação inválido."); entrar(socket, linha, linha.token, resposta); }
       catch (e) { erro(resposta, e); }
     });
-    socket.on("montagem", (d = {}, resposta) => mudar(socket, resposta, (s) => { s.montagem = Regras.conferirMontagem(s, d.montagem); }));
+    socket.on("montagem", (d = {}, resposta) => mudar(socket, resposta, (s) => { Regras.aplicarMontagem(s, d); }));
     socket.on("piloto", (d = {}, resposta) => mudar(socket, resposta, (s) => Regras.contratarPiloto(s, d.id)));
     socket.on("engenheiro", (d = {}, resposta) => mudar(socket, resposta, (s) => Regras.contratarEngenheiro(s, d.area, Number(d.nivel))));
     socket.on("desenvolver", (_, resposta) => mudar(socket, resposta, (s) => Regras.desenvolver(s)));

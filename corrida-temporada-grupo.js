@@ -189,7 +189,7 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
     socket.on("opcoes", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.definirOpcoes(sala, pid, d)));
     socket.on("passarCargo", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.passarCargo(sala, pid, d.id), { duranteGP: true }));
     socket.on("iniciar", (_, cb) => agir(socket, cb, (sala, pid) => G.iniciar(sala, pid)));
-    socket.on("montagem", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.montar(sala, pid, d.montagem, d.versao)));
+    socket.on("montagem", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.montar(sala, pid, d.pecas ? { pecas: d.pecas } : d.montagem, d.versao)));
     socket.on("desenvolver", (_, cb) => agir(socket, cb, (sala, pid) => G.desenvolver(sala, pid)));
     socket.on("piloto", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.contratarPiloto(sala, pid, d.id)));
     socket.on("engenheiro", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.contratarEngenheiro(sala, pid, d.area, Number(d.nivel))));

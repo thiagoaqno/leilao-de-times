@@ -1,7 +1,7 @@
 // Sede da temporada em grupo (`?sala=CÓDIGO`): a tela é refeita a partir do que o servidor manda (corrida-temporada-grupo.js),
 // nunca de números guardados no navegador. Só o token de cada pessoa fica aqui (localStorage), para voltar à sala.
 (function () {
-const Pilotos = window.F1Pilotos, Equipes = window.F1Equipes, Solo = window.F1Temporada, G = window.F1TemporadaGrupo;
+const Pilotos = window.F1Pilotos, Equipes = window.F1Equipes, Solo = window.F1Temporada, G = window.F1TemporadaGrupo, Pecas = window.F1Pecas;
 const app = document.getElementById("app"), aviso = document.getElementById("aviso");
 const PARAMS = new URLSearchParams(location.search), CODIGO_URL = (PARAMS.get("sala") || "").toUpperCase().trim();
 let socket = null, S = null, ocupado = false;
@@ -96,12 +96,8 @@ function tabela(linhas, tipo, destaque) {
   for (const x of linhas) if (destaque(x) && !lista.includes(x)) lista.push(x);
   return `<table class="placar"><thead><tr><th>Pos.</th><th>${tipo}</th><th>Pontos</th></tr></thead><tbody>${lista.map((r) => `<tr class="${destaque(r) ? "eu" : ""}"><td>${linhas.indexOf(r) + 1}</td><td><i class="faixa" style="--c:${h(equipe(r.equipe || r.id)?.cor || "#fff")}"></i><b>${h(r.nome)}</b>${r.humano ? ` <small class="muted">amigo</small>` : ""}</td><td><b>${r.pontos}</b></td></tr>`).join("")}</tbody></table>`;
 }
-function linhaPeca(t, k) {
-  const n = t.montagem[k], cheio = Equipes.custoDaMontagem(t.montagem) >= Equipes.EQUIPES[S.minhaEquipe].orcamento + t.bonus;
-  return `<div class="peca-linha"><b>${h(Equipes.PECAS[k].nome)}</b><div class="pips" aria-hidden="true">${Array.from({ length: 8 }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</div><div class="controle"><button data-peca="${k}" data-delta="-1" aria-label="Reduzir ${h(Equipes.PECAS[k].nome)}" ${n === 0 ? "disabled" : ""}>−</button><strong>${n}</strong><button data-peca="${k}" data-delta="1" aria-label="Aumentar ${h(Equipes.PECAS[k].nome)}" ${n === 8 || cheio ? "disabled" : ""}>+</button></div></div>`;
-}
 function painelDaEquipe(terminou) {
-  const eq = S.minhaEquipe, t = eq && S.equipes[eq]; if (!t) return `<section class="bloco"><header><h2>Você acompanha</h2></header><p class="boxnota">Você não tem carro nesta temporada. Acompanha as tabelas e assiste aos GPs ao vivo.</p></section>`;
+  const eq = S.minhaEquipe, t = eq && S.equipes[eq]; if (!t) { const aviso = `<section class="bloco"><header><h2>Você acompanha</h2></header><p class="boxnota">Você não tem carro nesta temporada. Acompanha as tabelas e assiste aos GPs ao vivo.</p></section>`; return { carro: aviso, equipe: aviso }; }
   const parceiros = S.pessoas.filter((p) => p.equipe === eq && p.id !== S.eu), travado = S.gpAberto || terminou, sozinho = parceiros.length === 0;
   const opcoesPiloto = S.mercado.slice().sort((a, b) => piloto(b.id).ritmo - piloto(a.id).ritmo).map((m) => {
     const p = piloto(m.id), humano = m.dono && S.equipes[m.dono], atual = t.companheiro === m.id;
@@ -113,14 +109,16 @@ function painelDaEquipe(terminou) {
     const dono = Object.keys(S.equipes).find((e) => e !== eq && S.equipes[e].engenheiros[area] === i);
     return `<option value="${i}" ${i <= t.engenheiros[area] || dono ? "disabled" : ""}>${h(item.nome)}${dono ? ` · já na ${h(equipe(dono).nome)}` : ` · ${dinheiro(item.custo - lista[t.engenheiros[area]].custo)}`}</option>`;
   }).join("")}</select><div class="row"><p>${area === "mecanico" ? "Paradas mais rápidas" : "Decisões mais rápidas no box"} na apuração.</p><button data-engenheiro="${area}" ${travado || t.engenheiros[area] === 2 ? "disabled" : ""}>Contratar</button></div></div>`).join("");
-  return `<div class="garagem"><section class="bloco"><header><h2>Garagem · ${h(equipe(eq).nome)}</h2><small>${Equipes.custoDaMontagem(t.montagem)}/${Equipes.EQUIPES[eq].orcamento + t.bonus} pontos</small></header>
-      <p class="boxnota">${sozinho ? "O acerto vale para os seus dois carros." : `Você divide a equipe com ${parceiros.map((p) => h(p.nome)).join(", ")}: o carro, o caixa e os contratos são dos dois. Qualquer um confirma; o histórico mostra quem fez.`}</p>${Equipes.ORDEM.map((k) => linhaPeca(t, k)).join("")}
-      <div class="row"><button id="gdesenvolver" ${t.bonus >= 4 || travado ? "disabled" : ""}>Desenvolver +1 ponto · ${dinheiro(12 + t.bonus * 6)}</button><small class="muted">${t.bonus}/4 melhorias</small></div></section>
+  const pecas = Pecas.pecasDe(eq, t.montagem, t.pecas, t.bonus);
+  const carro = `${window.F1Garagem.pecasHTML({ equipe: eq, bonus: t.bonus, pecas, pode: !travado, motivo: terminou ? "A temporada acabou." : "O GP está aberto: a montagem espera o fim da corrida.", aviso: t.pecas ? "" : "Este carro veio do formato antigo (pontos): mostramos as peças mais parecidas. Ao trocar uma peça, o carro passa a ser montado por elas." })}
+    <section class="bloco"><header><h2>Desenvolvimento</h2><small>${t.bonus}/4 melhorias</small></header><p class="boxnota">${sozinho ? "O acerto vale para os seus dois carros." : `Você divide a equipe com ${parceiros.map((p) => h(p.nome)).join(", ")}: o carro, o caixa e os contratos são dos dois. Qualquer um confirma; o histórico mostra quem fez.`} O prêmio de cada GP vai para o caixa; com ele o orçamento do carro cresce um ponto por vez.</p>
+      <div class="row"><button id="gdesenvolver" ${t.bonus >= 4 || travado ? "disabled" : ""}>Desenvolver +1 ponto · ${dinheiro(12 + t.bonus * 6)}</button></div></section>`;
+  return { carro, equipe: `<div class="garagem" style="grid-template-columns:1fr">
     <section class="bloco"><header><h2>Mercado</h2><small>Teto anual ${dinheiro(Solo.teto)}</small></header><div class="mercado-grid">
       ${sozinho ? `<div><label for="g-piloto">Companheiro · ${h(comp ? comp.nome : "ninguém")}</label><select id="g-piloto">${opcoesPiloto}</select><div class="row"><p>Pago à vista. Piloto de outra equipe de amigo não sai.</p><button id="gcontratar" ${travado ? "disabled" : ""}>Contratar</button></div></div>`
         : `<p class="boxnota">Com dois pilotos humanos a equipe não tem vaga para um contratado: os titulares reais foram para o mercado.</p>`}
       ${engenheiros}</div><p class="boxnota">Patrocínio ${dinheiro(t.patrocinio)} por GP, prêmios pelos pontos da equipe e salários debitados após cada corrida.</p></section></div>
-    <section class="bloco historico"><header><h2>Histórico da equipe</h2><small>quem fez o quê</small></header>${t.historico.length ? `<ul>${t.historico.slice(-8).reverse().map((x) => `<li><b>${h(x.quem)}</b> ${h(x.texto)}${x.valor ? ` <span class="muted">· −${dinheiro(x.valor)}</span>` : ""}</li>`).join("")}</ul>` : `<p class="boxnota">Nada ainda. As montagens e contratações aparecem aqui.</p>`}</section>`;
+    <section class="bloco historico"><header><h2>Histórico da equipe</h2><small>quem fez o quê</small></header>${t.historico.length ? `<ul>${t.historico.slice(-8).reverse().map((x) => `<li><b>${h(x.quem)}</b> ${h(x.texto)}${x.valor ? ` <span class="muted">· −${dinheiro(x.valor)}</span>` : ""}</li>`).join("")}</ul>` : `<p class="boxnota">Nada ainda. As montagens e contratações aparecem aqui.</p>`}</section>` };
 }
 function resumoDoGP(ultimo, destaqueEq) {
   const nomeDe = (r) => (r.piloto.startsWith("h:") ? (pessoa(r.piloto.slice(2)) || { nome: "Amigo" }).nome : piloto(r.piloto)?.nome || r.piloto);
@@ -138,21 +136,22 @@ function telaDaTemporada() {
   document.documentElement.style.setProperty("--eq", eq ? eq.cor : "#e10600");
   const prox = S.calendario[S.gp], ultimo = S.resultados.filter((r) => r.ano === S.ano).at(-1), caixa = meuTime && S.equipes[meuTime];
   const meus = (x) => x.pessoa === S.eu, deMinhaEquipe = (x) => x.id === meuTime;
-  const botao = terminou ? (eh ? `<button class="primary grande" id="gproxima">Começar próxima temporada →</button>` : `<p class="muted">O anfitrião abre a próxima temporada.</p>`)
-    : S.acesso ? `<button class="primary grande" id="gentrargp">${S.acesso.watch ? "Assistir ao GP →" : "Entrar no GP →"}</button>`
-      : eh ? `<button class="primary grande" id="giniciar">Iniciar GP →</button>` : `<p class="muted">Aguardando o anfitrião abrir o GP. Quando ele abrir, a sua tela vai para a pista sozinha.</p>`;
-  app.innerHTML = `<div class="cabecalho"><div class="identidade">${meuTime ? marca(meuTime) : ""}<div><small>Temporada ${S.ano} · sala ${h(S.codigo)}</small><h1>${meuTime ? h(eq.nome) : "Você acompanha"}</h1></div></div><div class="dinheiro"><small>${caixa ? "Caixa da equipe" : `${S.pessoas.length} pessoas`}</small><b>${caixa ? dinheiro(caixa.caixa) : ""}</b></div></div>
-    ${terminou ? fimDaNoite(t) : ""}
-    <section class="painelgp"><div class="info"><div class="taglinha">${terminou ? "Bandeirada final" : `Etapa ${S.gp + 1} de ${tam}`}</div><h2>${terminou ? "Temporada concluída" : `GP de ${h(prox.nome)}`}</h2><div class="rodada">${terminou ? "As tabelas finais estão abaixo." : `${h(prox.pista.toUpperCase())} · Classificação + ${S.opcoes.voltas} voltas · 20 carros · robôs ${h(S.opcoes.nivel)}`}</div></div>
-      <div class="acao"><p>${terminou ? "O campeonato está fechado." : S.acesso ? "O GP está aberto. Quem cair no meio tem o carro levado por um robô até voltar." : "A classificação e a corrida são ao vivo, com todos os amigos juntos."}</p>${botao}</div></section>
-    <div class="metricas"><div class="metrica"><strong>${S.gp}/${tam}</strong><small>GPs disputados</small></div><div class="metrica"><strong>${t.pilotos.filter(meus).map((p) => p.pontos).join("") || "—"}</strong><small>Seus pontos</small></div><div class="metrica"><strong>${meuTime ? t.equipes.find(deMinhaEquipe).pontos : "—"}</strong><small>Pontos da equipe</small></div><div class="metrica"><strong>${caixa ? `${caixa.gasto}/${Solo.teto} mi` : "—"}</strong><small>Gastos no ano</small></div></div>
-    <div class="duas"><section class="bloco"><header><h2>Pilotos</h2><small>Campeonato ${S.ano}</small></header>${tabela(t.pilotos, "Piloto", meus)}</section><section class="bloco"><header><h2>Construtores</h2><small>Campeonato ${S.ano}</small></header>${tabela(t.equipes, "Equipe", deMinhaEquipe)}</section></div>
-    <section class="calendario" style="--etapas:${tam}" aria-label="Calendário">${S.calendario.map((gp, i) => `<div class="etapa ${i < S.gp ? "feita" : i === S.gp ? "atual" : ""}"><small>${String(i + 1).padStart(2, "0")} / GP</small><b>${h(gp.nome)}</b><span>${i < S.gp ? "✓ Disputado" : i === S.gp ? "Próxima etapa" : "A disputar"}</span></div>`).join("")}</section>
-    ${ultimo ? resumoDoGP(ultimo, meuTime) : ""}
-    ${painelDaEquipe(terminou)}
-    <section class="bloco" style="margin-top:17px"><header><h2>Na sala</h2><small>${S.pessoas.filter((p) => p.online).length} online</small></header>${listaDePessoas()}</section>
-    ${S.campeoes.length ? `<section class="bloco" style="margin-top:17px"><header><h2>Campeões da noite</h2></header><ul class="pessoas">${S.campeoes.map((c) => `<li><b>Temporada ${c.ano}</b><span>${h(c.pilotoNome)} · ${h(c.equipeNome)}</span></li>`).join("")}</ul></section>` : ""}
+  const botao = terminou ? (eh ? `<button class="primary grande btn-continuar" id="gproxima">Começar próxima temporada →</button>` : `<p class="muted">O anfitrião abre a próxima temporada.</p>`)
+    : S.acesso ? `<button class="primary grande btn-continuar" id="gentrargp">${S.acesso.watch ? "Assistir ao GP →" : "Entrar no GP →"}</button>`
+      : eh ? `<button class="primary grande btn-continuar" id="giniciar">Continuar</button>` : `<p class="muted">Aguardando o anfitrião abrir o GP. Quando ele abrir, a sua tela vai para a pista sozinha.</p>`;
+  const GA = window.F1Garagem, aba = GA.abaAtual(), dados = painelDaEquipe(terminou), nomeLinha = meuTime ? h(eq.nome) : "Você acompanha";
+  const hero = `<div class="garagem-hero">${meuTime ? GA.painelEquipe(meuTime, caixa.montagem) : `<aside class="pn-equipe"><div class="pn-logo" style="--eq:#444"><b>Você acompanha</b></div><p class="boxnota" style="padding:12px">Sem carro nesta temporada: acompanhe as tabelas e os GPs.</p></aside>`}
+      <section class="cr-centro corte">${meuTime ? GA.palcoSlot(meuTime) : ""}<div class="cr-gp"><span class="etapa-rot">${terminou ? "Bandeirada final" : `Etapa ${S.gp + 1} de ${tam}`}</span><h2>${terminou ? "Temporada concluída" : `GP de ${h(prox.nome)}`}</h2><span class="sub">${terminou ? "As tabelas finais estão em Classificação." : `${h(prox.pista.toUpperCase())} · classificação + ${S.opcoes.voltas} voltas · 20 carros · robôs ${h(S.opcoes.nivel)}`}</span></div></section>
+      ${GA.colunaDireita({ titulo: "Calendário", cal: S.calendario, gp: S.gp, rotuloProx: S.acesso ? "Em curso" : "Próximo", botao, nota: terminou ? "O campeonato está fechado." : S.acesso ? "O GP está aberto. Quem cair no meio tem o carro levado por um robô até voltar." : "A classificação e a corrida são ao vivo, com todos os amigos juntos." })}</div>
+    <div class="cr-cartoes"><div class="cr-cartao"><strong>${S.gp}/${tam}</strong><small>GPs disputados</small></div><div class="cr-cartao"><strong>${t.pilotos.filter(meus).map((p) => p.pontos).join("") || "—"}</strong><small>Seus pontos</small></div><div class="cr-cartao"><strong>${meuTime ? t.equipes.find(deMinhaEquipe).pontos : "—"}</strong><small>Pontos da equipe</small></div><div class="cr-cartao"><strong>${caixa ? `${caixa.gasto}/${Solo.teto} mi` : "—"}</strong><small>Gastos no ano</small></div></div>
+    <section class="bloco" style="margin-top:14px"><header><h2>Na sala</h2><small>${S.pessoas.filter((p) => p.online).length} online</small></header>${listaDePessoas()}</section>
+    ${S.campeoes.length ? `<section class="bloco" style="margin-top:14px"><header><h2>Campeões da noite</h2></header><ul class="pessoas">${S.campeoes.map((c) => `<li><b>Temporada ${c.ano}</b><span>${h(c.pilotoNome)} · ${h(c.equipeNome)}</span></li>`).join("")}</ul></section>` : ""}`;
+  const classif = `${terminou ? fimDaNoite(t) : ""}<div class="duas"><section class="bloco"><header><h2>Pilotos</h2><small>Campeonato ${S.ano}</small></header>${tabela(t.pilotos, "Piloto", meus)}</section><section class="bloco"><header><h2>Construtores</h2><small>Campeonato ${S.ano}</small></header>${tabela(t.equipes, "Equipe", deMinhaEquipe)}</section></div>${ultimo ? resumoDoGP(ultimo, meuTime) : ""}`;
+  const painel = { geral: hero, carro: dados.carro, classif, equipe: dados.equipe }[aba] || hero;
+  app.innerHTML = `<div class="cr-topo"><div class="cr-id">${meuTime ? marca(meuTime) : ""}<div><small>Temporada ${S.ano} · sala ${h(S.codigo)}</small><h1>${nomeLinha}</h1></div></div><div class="cr-caixa"><small>${caixa ? "Caixa da equipe" : `${S.pessoas.length} pessoas`}</small><b>${caixa ? dinheiro(caixa.caixa) : "—"}</b></div></div>
+    ${GA.abasHTML()}<div class="painel-aba" role="tabpanel">${painel}</div>
     <div class="recuperacao"><span>Sala guardada no servidor · código ${h(S.codigo)}</span><button id="gconvite">Copiar convite</button><a href="/corrida/temporada/">Temporada solo</a>${eh ? `<button id="gencerrar" class="discreto">Encerrar a temporada</button>` : ""}<button id="gsairtemp" class="discreto">Sair da temporada</button></div>`;
+  GA.encaixar(meuTime);
 }
 function desenhar(erro) {
   if (!S) return telaDoConvite(erro);
@@ -182,7 +181,8 @@ const clicar = async (e) => {
   else if (b.id === "giniciar") await pedir("iniciarGP");
   else if (b.id === "gentrargp") irAoGP(S.acesso);
   else if (b.id === "gproxima") await pedir("proximaTemporada");
-  else if (b.dataset.peca && t) { const m = { ...t.montagem }; m[b.dataset.peca] += Number(b.dataset.delta); await pedir("montagem", { montagem: m, versao: t.versao }); }
+  else if (b.dataset.aba) { window.F1Garagem.definirAba(b.dataset.aba); desenhar(); }
+  else if (b.dataset.pcat && t) { const nova = window.F1Garagem.cliquePeca(b, Pecas.pecasDe(S.minhaEquipe, t.montagem, t.pecas, t.bonus)); await pedir("montagem", { pecas: nova, versao: t.versao }); }
   else if (b.id === "gdesenvolver") await pedir("desenvolver");
   else if (b.id === "gcontratar") await pedir("piloto", { id: document.getElementById("g-piloto").value });
   else if (b.dataset.engenheiro) await pedir("engenheiro", { area: b.dataset.engenheiro, nivel: document.getElementById("g-" + b.dataset.engenheiro).value });
