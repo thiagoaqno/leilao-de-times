@@ -118,7 +118,7 @@
 .modal li{margin:4px 0}
 </style>
 <link rel="stylesheet" href="/corrida/temporada/garagem.css">
-<link rel="stylesheet" href="/corrida/sala-f1.css">
+<link rel="stylesheet" href="/corrida/sala.css">
 </head>
 <body>
 <header class="bar" id="bar">
@@ -134,58 +134,117 @@
     <button class="ghost small" id="btnRules" title="Como jogar"><span class="lg">Como jogar</span><span class="sm">❔</span></button>
   </div>
   <section id="home" class="hidden">
-    <div class="hero">
-      <div class="hero-copy">
-        <p class="hero-kicker">Corrida da Galera · Temporada 2026</p>
-        <h2><em>Carreira</em><strong>F1</strong></h2>
-        <p class="lead">A porta de entrada para a temporada começa no grid. Escolha a pista, monte seu carro e dispute cada curva com os amigos. Na sala, ative as regras de F1 para correr com pneus e paradas nos boxes.</p>
-        <div class="hero-links"><a href="/corrida/temporada/">Jogar temporada solo →</a><a href="/corrida/drag/">Ir para o modo Drag →</a></div>
+    <div class="en">
+      <div class="en-esq">
+        <p class="en-kicker">Corrida da Galera · Temporada 2026</p>
+        <h2 class="en-titulo"><em>Carreira</em><strong>F1</strong></h2>
+        <p class="en-lead">Abra uma sala, monte o carro da sua equipe e dispute cada curva com os amigos. Na sala, ligue as regras de F1 para correr com pneus, paradas nos boxes e classificação.</p>
+        <div class="en-modos">
+          <a class="en-modo" href="/corrida/temporada/" style="--img:url('/corrida/fundo-monaco.jpg')"><small>Solo ou em grupo</small><b>Temporada</b><span>Uma carreira inteira, GP a GP</span></a>
+          <a class="en-modo" href="/corrida/drag/" style="--img:url('/corrida/ceus/tokyo.jpg')"><small>Rua à meia-noite</small><b>Drag</b><span>Racha de até 4 pessoas</span></a>
+        </div>
         <p class="foto-credito">Foto de Mônaco: <a href="https://commons.wikimedia.org/wiki/File:Monaco_Port_and_Track.jpg" target="_blank" rel="noopener noreferrer">Mike Norton / Wikimedia Commons</a> · CC BY 2.0 · escurecida e desfocada.</p>
       </div>
-      <div class="placa"><div class="chk"></div><div class="in">
-        <h3>Entre no grid</h3>
-        <label for="hName">Seu nome</label>
-        <input id="hName" maxlength="8" placeholder="Ex.: Kizzy" autocomplete="off">
-        <label for="hCode" style="margin-top:14px">Código da sala</label>
-        <input id="hCode" class="codein" maxlength="5" placeholder="ABCDE" autocomplete="off">
-        <div class="row" style="margin-top:14px"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
-        <div class="or">ou</div>
-        <button id="btnCreate" style="width:100%">Abrir sala nova</button>
-        <div class="err" id="hErr"></div>
-      </div></div>
+      <div class="en-sala">
+        <h3 class="sl-tit"><span>Sala com amigos</span><em>Grid</em></h3>
+        <div class="en-corpo">
+          <label for="hName">Seu nome</label>
+          <input id="hName" maxlength="8" placeholder="Ex.: Kizzy" autocomplete="off">
+          <div class="en-acoes">
+            <div class="en-acao">
+              <label for="hCode">Já tem sala? Digite o código</label>
+              <input id="hCode" class="codein" maxlength="5" placeholder="ABCDE" autocomplete="off">
+              <div class="row"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
+            </div>
+            <div class="en-ou"><span>ou</span></div>
+            <button id="btnCreate" class="en-nova"><span>Abrir sala nova</span><small>Você é o organizador</small><i class="setas" aria-hidden="true"></i></button>
+          </div>
+          <div class="err" id="hErr"></div>
+        </div>
+      </div>
+      <div class="equipes-faixa en-equipes"><span>Equipes de 2026</span><div class="logos" id="logosEquipes"></div></div>
     </div>
-    <div class="equipes-faixa"><span>Equipes de 2026</span><div class="logos" id="logosEquipes"></div></div>
   </section>
 
   <section id="lobby" class="hidden">
-    <div class="hubtopo">
-      <canvas id="hubCarro" width="240" height="135"></canvas>
-      <div class="hubcarro"><small id="hubClasse"></small><b id="hubCarNome"></b></div>
-      <div class="hubeu"><span class="hubpawn" id="hubPawn"></span><div><b id="hubNome"></b><small id="hubSala"></small></div></div>
+    <div class="sl">
+      <header class="sl-topo">
+        <div class="sl-sala"><small>Sala</small><b id="slCodigo"></b><span id="hubSala"></span></div>
+        <nav class="sl-abas" id="hubAbas" aria-label="Seções da sala">
+          <button data-aba="box" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg><span>Painel</span></button>
+          <button data-aba="pista"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4M5 4h12l-2.5 4.5L17 13H5"/></svg><span>Pistas</span></button>
+          <button data-aba="garagem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 16h20M4 16l1-4h5l4-3h3l1 3 4 1v3"/><circle cx="7" cy="17" r="2.2"/><circle cx="17" cy="17" r="2.2"/></svg><span>Garagem</span></button>
+          <button data-aba="equipe" class="hidden"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14c3 0 5 2 5 5"/></svg><span>Equipe</span></button>
+          <button data-aba="pintura"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span>Pintura</span></button>
+          <button data-aba="regras"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span>Regras</span></button>
+        </nav>
+        <button class="sl-largar" id="btnStart"><span class="sl-largar-t"><b id="tLargarTit">Largar</b><small id="tLargarTxt"></small></span><i class="setas" aria-hidden="true"></i></button>
+      </header>
+
+      <div id="hub" class="sl-dash">
+        <div class="sl-principal">
+          <div class="sl-card sl-pista" data-aba="pista" tabindex="0" role="button" aria-label="Escolher a pista">
+            <h3 class="sl-tit"><span>Pista do GP</span><em>Trocar</em></h3>
+            <div class="sl-pista-corpo">
+              <canvas id="tileMapa" width="480" height="480"></canvas>
+              <div class="sl-pista-info"><small id="tileMapaSub"></small><b id="tileMapaTxt"></b><div class="sl-chips" id="tileMapaDados"></div></div>
+            </div>
+          </div>
+          <div class="sl-card sl-carro">
+            <h3 class="sl-tit"><span>Meu carro</span><em id="hubClasse"></em></h3>
+            <canvas id="tileCarro" width="480" height="270"></canvas>
+            <div class="sl-carro-info">
+              <div><b id="hubCarNome"></b><span class="sl-piloto"><span class="hubpawn" id="hubPawn"></span><span id="hubNome"></span></span></div>
+              <div class="sl-carro-bt"><button class="small" data-aba="garagem">Garagem</button><button class="small" data-aba="pintura"><span id="tilePilotoTxt"></span>Pintura</button></div>
+            </div>
+          </div>
+          <div class="sl-card sl-cartao-regras" data-aba="regras" tabindex="0" role="button" aria-label="Abrir as regras">
+            <h3 class="sl-tit"><span>Regras</span><em>Editar</em></h3>
+            <div class="sl-chips" id="tileRegrasTxt"></div>
+          </div>
+          <div class="sl-card sl-equipe hidden" data-aba="equipe" tabindex="0" role="button" aria-label="Abrir a equipe">
+            <h3 class="sl-tit"><span>Equipe</span><em>Montar</em></h3>
+            <p id="tileEquipeTxt"></p>
+          </div>
+        </div>
+        <aside class="sl-lateral">
+          <div class="sl-card sl-jogadores">
+            <h3 class="sl-tit"><span>Na sala</span><em id="slContagem"></em></h3>
+            <div id="pilots"></div>
+          </div>
+          <div class="sl-card sl-status" id="slStatus"></div>
+        </aside>
+      </div>
+
+      <div class="sl-tela hidden" data-painel="pista">
+        <header class="sl-cab"><h2>Pistas</h2><p>Escolha o circuito do GP. Só o organizador troca.</p></header>
+        <div class="sl-duas"><div id="cfgPistas"></div><aside class="sl-detalhe" id="pistaDetalhe"></aside></div>
+      </div>
+      <div class="sl-tela hidden" data-painel="garagem">
+        <header class="sl-cab"><h2>Garagem</h2><p>Carro, cor e avatar. A cor aparece no placar e no mapa.</p></header>
+        <div class="sl-gar">
+          <div class="sl-gar-lista"><h3 class="sl-sub">Seu carro</h3><div class="cars" id="carPick"></div></div>
+          <div class="sl-gar-centro"><canvas id="garCarro" width="720" height="405"></canvas><div class="sl-gar-nome"><small id="garClasse"></small><b id="garNome"></b></div><div class="spec" id="garSpec"></div></div>
+          <div class="sl-gar-dir"><h3 class="sl-sub">Sua cor</h3><div class="colors" id="colorPick"></div><h3 class="sl-sub">Seu avatar</h3><div class="picker" id="pawnPick"></div></div>
+        </div>
+      </div>
+      <div class="sl-tela hidden" data-painel="equipe">
+        <header class="sl-cab"><h2>Equipe</h2><p>As 11 equipes de 2026, o orçamento de pontos e as peças do carro.</p></header>
+        <div id="equipePainel"></div>
+      </div>
+      <div class="sl-tela hidden" data-painel="pintura">
+        <header class="sl-cab"><h2>Pintura</h2><p>As cores das equipes de Fórmula 1, ou a sua cor com branco.</p></header>
+        <div class="sl-gar sl-gar-pint">
+          <div class="sl-gar-centro"><canvas id="pintCarro" width="720" height="405"></canvas><div class="sl-gar-nome"><small>Pintura atual</small><b id="pintNome"></b></div></div>
+          <div class="pinturas" id="modPick"></div>
+        </div>
+      </div>
+      <div class="sl-tela hidden" data-painel="regras">
+        <header class="sl-cab"><h2>Regras da corrida</h2><p>Voltas, horário, câmbio, regras de F1 e robôs. Só o organizador muda.</p></header>
+        <div id="cfg"></div>
+      </div>
+      <div class="hubdica"><span><kbd>Esc</kbd> voltar ao painel</span><span><kbd>Q</kbd><kbd>E</kbd> trocar de seção</span></div>
     </div>
-    <nav class="hubabas" id="hubAbas" aria-label="Seções do box">
-      <button class="seta" id="hubAnt" title="Aba anterior (Q)">◀</button>
-      <button data-aba="box" class="on">Box</button><button data-aba="pista">Pistas</button><button data-aba="garagem">Garagem</button><button data-aba="equipe" class="hidden">Equipe</button><button data-aba="pintura">Pintura</button><button data-aba="regras">Regras</button>
-      <button class="seta" id="hubProx" title="Próxima aba (E)">▶</button>
-    </nav>
-    <div id="hub" class="hubgrid">
-      <button class="tile t-garagem" data-aba="garagem"><h3>Garagem</h3><canvas id="tileCarro" width="240" height="135"></canvas><p id="tileCarroTxt">Carro, cor e avatar</p></button>
-      <button class="tile t-mapa" data-aba="pista"><canvas id="tileMapa" width="320" height="320"></canvas><h3>Mapa das<br>pistas</h3><span class="tag"><b id="tileMapaTxt"></b><small id="tileMapaSub"></small></span></button>
-      <button class="tile t-largar" id="btnStart"><h3 id="tLargarTit">Largar</h3><i class="setas" aria-hidden="true"></i><p id="tLargarTxt"></p></button>
-      <button class="tile t-equipe hidden" data-aba="equipe"><h3>Equipe</h3><p id="tileEquipeTxt"></p></button>
-      <button class="tile t-regras" data-aba="regras"><h3>Regras</h3><p id="tileRegrasTxt"></p></button>
-      <button class="tile t-piloto" data-aba="pintura"><h3>Pintura</h3><p id="tilePilotoTxt"></p></button>
-      <div class="tile t-pilotos"><h3>Na sala</h3><div id="pilots"></div></div>
-    </div>
-    <div class="hubpainel hidden" data-painel="pista"><h2>Pistas</h2><div id="cfgPistas"></div></div>
-    <div class="hubpainel hidden" data-painel="garagem"><h2>Garagem</h2>
-      <label>Seu carro</label><div class="cars" id="carPick"></div>
-      <label style="margin-top:14px">Sua cor (no placar, no mapa e na pintura "Sua cor")</label><div class="colors" id="colorPick"></div>
-      <label style="margin-top:14px">Seu avatar</label><div class="picker" id="pawnPick"></div></div>
-    <div class="hubpainel hidden" data-painel="equipe"><h2>Equipe</h2><div id="equipePainel"></div></div>
-    <div class="hubpainel hidden" data-painel="pintura"><h2>Pintura</h2><p class="hint" style="margin:0 0 10px">As cores das equipes de Fórmula 1, ou a sua cor com branco.</p><div class="pinturas" id="modPick"></div></div>
-    <div class="hubpainel hidden" data-painel="regras"><h2>Regras da corrida</h2><div id="cfg"></div></div>
-    <div class="hubdica"><span><kbd>Clique</kbd> abrir</span><span><kbd>Esc</kbd> voltar ao box</span><span><kbd>Q</kbd><kbd>E</kbd> trocar de aba</span></div>
   </section>
 </div>
 

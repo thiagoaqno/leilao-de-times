@@ -1,38 +1,23 @@
-# Corrida F1: robôs fazem as curvas na velocidade de quem joga (Interlagos 63,4 s → 51,4 s de ideal)
+# Corrida F1: sala reestruturada no estilo da carreira (entrada, painel e telas de cartões)
 
-Vale nas regras de F1. A física do carro não mudou: o robô não ganhou aderência, só passou a calcular e a seguir uma linha melhor.
-
-## Causa
-
-Medi a volta limpa de um jogador em Interlagos (Cadillac, médio novo, 49,70 s; dado em `tests/dados/volta-interlagos-cadillac.json`). A aceleração lateral dele (v² x curvatura do caminho) chega a ~230-270 u/s², praticamente o limite do pneu que `dinamica.js` calcula. Ou seja, o carro aguenta: quem estava errado era o robô.
-
-- **A linha do robô era a mais curta, não a mais rápida.** O elástico de `tracado` encosta por dentro e fecha o raio no ápice (R ~ 100 u onde quem joga passa a R ~ 300 u). O perfil de velocidade saía 30-40% abaixo do jogador nas curvas. O PR anterior (#335) via o mesmo efeito como "o piloto automático bate acima de 1,08".
-- **O volante mirava mal.** O ponto à frente ficava no lado em que o carro estava, não sobre a linha, e não havia contra-esterço: a traseira escorregava na saída e o carro oscilava de batente a batente.
+O PR #336 só pôs uma camada de CSS por cima da estrutura antiga. Agora o HTML e o JS da sala foram refeitos, então a tela é outra.
 
 ## O que mudou
+- **Entrada:** fundo escuro, título gigante, dois cartões com imagem (Temporada e Drag), cartão "Sala com amigos" (nome, código + Entrar/Só assistir, botão grande "Abrir sala nova") e faixa das equipes.
+- **Topo da sala:** código da sala, abas em caixa alta com ícones e o botão LARGAR grande à direita (sempre visível).
+- **Painel (dashboard):** cartão da pista com o mapa grande, cartão do meu carro (foto 3D, piloto, atalhos Garagem/Pintura), cartão de regras com as opções em pílulas, cartão da equipe (F1) e, na coluna da direita, a tabela de jogadores zebrada (posição, piloto, equipe, estado) e o cartão de status.
+- **Pistas:** grade de cartões com o mapa de cada pista e o detalhe da escolhida sempre à direita.
+- **Garagem:** lista de carros, carro grande no centro com a ficha em LEDs, cor e avatar à direita.
+- **Pintura:** carro grande e grade de pinturas. **Equipe:** as 11 equipes em cartões e a montagem ao lado. **Regras:** cartões por opção em três grupos (Corrida, Fórmula 1, Grid e robôs) com pílulas.
+- **Celular (375 px):** uma coluna, 16 px de margem, abas viram a barra inferior com ícones, sem rolagem horizontal.
+- `sala-f1.css` removido; `sala.css` novo. CSS morto do box antigo saiu de `entrada.css` e `tema-f1.css`. `carPreview` ganhou foto grande (720x405) para a garagem e a pintura.
+- Mesmos eventos de socket e ações; os ids usados pelos testes foram mantidos (`#hubAbas [data-aba]`, `#btnStart`, `#carPick`, `#modPick`, `[data-pista]`, `[data-regras]`).
 
-- `tracado(pista, true)` (F1, fora das pistas de fantasia): linha de **menor curvatura** (relaxa a quarta diferença do caminho dentro da pista) e curvatura do caminho suavizada em ±72 u (o carro não faz quinas menores que isso). O limite de curva continua vindo de `D.perfilIdeal` e do pneu, valendo em todas as pistas; as margens (1,08 e 1,0) não mudaram.
-- `Sim.pilotoAutomatico`: olha `LD_K` = 0,6 s à frente, aceita a lateral como função do ponto (o robô passa a linha dali), soma contra-esterço pela deriva da traseira (`K_TRASEIRA`) e amortece a diferença de guinada (`K_GUINADA`). Vale também para o fantasma.
-- Níveis: folga sobre o ideal 0 / 2 / 6% (difícil / médio / fácil). Na pista, sozinho, o difícil fica ~4,5% atrás do ideal, o médio ~6% e o fácil ~9%.
+## Conferido
+- Capturas antes/depois em 1440 px e 375 px; criar sala, todas as abas, escolher pista/carro/cor/avatar/pintura/regras/robôs, equipe (F1) e largada contra robôs, sem erro no console.
+- `tests/e2e/corrida-carreira-f1.spec.js` passa. `node --test tests/corrida*.test.js`: só falhou o teste de ritmo dos robôs por nível (sensível a tempo, sem relação com a interface).
 
-## Números (Cadillac, médio novo, robô sozinho, volta lançada)
-
-| Pista | Ideal antes | Ideal depois | Robô difícil antes | Robô difícil depois |
-|---|---|---|---|---|
-| Interlagos | 63,4 s | 51,4 s (jogador: 49,7 s) | 66,6 s | 53,6 s |
-| Melbourne | 64,7 s | 54,5 s | 67,1 s | 56,6 s |
-| Mônaco | 67,8 s | 57,3 s | 71,4 s | 60,0 s |
-
-Velocidade média nas curvas de Interlagos: robô difícil >= 90% da do jogador (antes 60-70%). Nenhuma batida e nenhuma saída de pista nas três pistas.
-
-## Testes
-
-- Novo `tests/corrida-robos-curvas.test.js`: (a) ideal Cadillac/Interlagos em 49,7 s +-4%; (b) robô difícil sozinho em Interlagos e Mônaco: volta lançada a menos de 6% do ideal, sem batida e sem passar do limite da pista; (c) velocidade de curva >= 90% da do jogador.
-- `corrida*.test.js` rodados uma vez no fim.
-
-## Fica de fora
-
-- O difícil ainda está ~8% atrás do jogador (53,6 contra 49,7 s): a diferença restante é de controle (a saída de curva ainda perde velocidade) e de a linha de menor curvatura não ser a de menor tempo. Subir as margens além de 1,08 volta a encostar no muro em Mônaco.
-- Pistas de fantasia e o jogo clássico seguem com a linha e as margens antigas.
+## Fora do escopo
+- O lobby não tem "pronto" por jogador no servidor; a coluna Estado mostra Org./Pronto (online)/Offline.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
