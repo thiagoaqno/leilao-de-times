@@ -1,0 +1,73 @@
+/* Sala da Corrida no tema da Carreira F1 (só CSS, sem mexer no HTML nem no JS): barra de abas no topo, painel tipo dashboard com o botão
+   "Largar" grande, cartões escuros com título, configurações em cartões com sub-abas em pílulas, jogadores em tabela zebrada. Vem depois de
+   tema-f1.css e garagem.css e usa as mesmas variáveis (--f1-vm, --f1-cz, --f1-lin, --display). */
+/* entrada: criar/entrar na sala */
+.placa h3{font-size:clamp(30px,3.2vw,44px)}.placa .chk{height:5px}
+.placa input{background:#0b0c10;border:1px solid var(--f1-lin);border-bottom:2px solid #ffffff55;color:#fff;font-weight:700}.placa input:focus{border-bottom-color:var(--f1-vm);box-shadow:none}
+.placa label{color:#c3ccd6;font:800 13px var(--display);letter-spacing:.12em}.placa .row{flex-wrap:nowrap}.placa .row button{flex:1}
+#btnCreate{min-height:50px;font-size:1.4em}.placa .or{color:#8e98a5}.placa .or::before,.placa .or::after{background:var(--f1-lin)}
+button.primary,#btnCreate{color:#fff}#btnJoin{min-height:46px}
+/* topo do box: carro e piloto, faixa de título */
+#lobby{display:flex;flex-direction:column;gap:12px}#lobby>*{margin:0!important}
+#lobby .hubabas{order:-1;position:sticky;top:0;z-index:8;padding:0 4px;background:linear-gradient(180deg,#14161cf8,#0b0c10f8)}
+#lobby .hubabas button{flex:1 1 auto;padding:13px 14px;font-size:16px}
+#lobby .hubabas button.on{background:linear-gradient(180deg,transparent,#e1060040)}
+#lobby .hubabas .seta{flex:none;min-width:34px;padding:13px 8px;font-style:normal;font-size:13px}
+.hubtopo{border-radius:0;padding:12px 18px;gap:18px;background:linear-gradient(100deg,#e1060030,transparent 40%),linear-gradient(180deg,#14161cf2,#0b0c10f2)}
+.hubtopo canvas{width:150px}.hubcarro small{color:#ff6a64;font:800 13px var(--display);letter-spacing:.12em}.hubcarro b{font-size:34px}
+.hubeu b{font:800 20px var(--display);text-transform:uppercase;letter-spacing:.04em}.hubeu small{color:#aeb8c3}.hubpawn{border-radius:0;background:#ffffff12}
+/* painel: botão Largar enorme à direita, cartões ao lado e embaixo */
+.hubgrid{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);grid-template-areas:"mapa mapa largar" "garagem regras pilotos" "garagem piloto pilotos" "equipe equipe pilotos";gap:12px}
+.tile{border-radius:0;padding:0;justify-content:flex-start;gap:0;min-height:128px;background:linear-gradient(180deg,#14161cf0,#0b0c10f0)}
+.tile::before{display:none}
+.tile h3{width:100%;padding:11px 16px 9px;font-size:22px;letter-spacing:.06em;border-bottom:1px solid var(--f1-lin);background:#ffffff0a}
+.tile>p,.tile>.tag,.tile>canvas:not(#tileMapa){margin:10px 16px 14px;width:auto}
+.tile p{font-size:13px;color:#c3ccd6}.t-garagem canvas{width:calc(100% - 32px)}
+.t-mapa{min-height:190px;--accent:var(--f1-vm)}.t-mapa h3{position:relative;z-index:1;background:transparent;border:0;font-size:clamp(28px,3.4vw,44px);padding-top:16px}
+.t-mapa canvas{opacity:.5}.t-mapa .tag{position:relative;margin:auto 16px 16px;font:800 18px var(--display);letter-spacing:.06em;text-transform:uppercase}
+.t-largar{border:0!important;background:repeating-linear-gradient(115deg,#ffffff16 0 10px,transparent 10px 24px),linear-gradient(140deg,#b30c10,#e10600)!important;justify-content:space-between;min-height:190px;box-shadow:0 14px 34px #e1060055,inset 0 -5px #0005}
+.t-largar h3{background:transparent;border:0;font-size:clamp(46px,5.6vw,84px);line-height:.9;padding:18px 18px 0;letter-spacing:.03em}
+.t-largar p{margin:0 18px 16px!important;color:#fff;font:800 15px var(--display);letter-spacing:.1em;text-transform:uppercase}
+.t-largar .setas{margin:0 18px 0 auto;position:absolute;right:0;bottom:0;border-radius:0;background:#0b0c10;border:0;width:56px;height:56px}
+.t-largar:disabled{filter:grayscale(.7)}
+.t-pilotos{cursor:default}.t-pilotos #pilots{margin:0;padding:0}
+/* jogadores e pilotos: tabela zebrada com cabeçalho de colunas */
+#pilots::before{content:"Piloto";display:block;padding:7px 16px;font:800 12px var(--display);letter-spacing:.14em;text-transform:uppercase;color:#8e98a5;border-bottom:1px solid var(--f1-lin)}
+.pilot{border-radius:0;background:transparent;padding:9px 14px 9px 13px;border-left:3px solid var(--c);gap:10px;min-height:48px}
+.pilot:nth-child(odd){background:#ffffff0c}.pilot:nth-child(even){background:#ffffff04}
+.pilot b{font:800 17px var(--display);letter-spacing:.04em;text-transform:uppercase}.pilot small{color:#aeb8c3}.pilot .av{font-size:20px}
+/* painéis de cada aba */
+.hubpainel{padding:0;animation:painelEntra .2s ease-out}
+.hubpainel>h2{padding:14px 20px 11px;font-size:30px;border-bottom:1px solid var(--f1-lin);background:linear-gradient(90deg,#e1060026,transparent 60%);margin:0}
+.hubpainel>:not(h2){margin-left:clamp(14px,2vw,22px);margin-right:clamp(14px,2vw,22px)}.hubpainel>h2+*{margin-top:16px}.hubpainel>:last-child{margin-bottom:clamp(14px,2vw,22px)}
+.hubpainel .hint{color:#aeb8c3}
+.hubpainel>label{color:#c3ccd6;font:800 15px var(--display);letter-spacing:.12em;margin-top:18px!important;padding-left:10px;border-left:3px solid var(--f1-vm)}
+/* regras: um cartão por configuração, com título; as opções são sub-abas em pílulas */
+#cfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:12px}
+#cfg .field{margin:0;padding:0 0 14px;background:#ffffff0a;border:1px solid var(--f1-lin);display:flex;flex-direction:column;gap:10px;min-width:0}
+#cfg .field>label{margin:0;padding:10px 14px 8px;background:#ffffff0d;border-bottom:1px solid var(--f1-lin);border-left:3px solid var(--f1-vm);font:800 15px var(--display);letter-spacing:.12em;color:#fff}
+#cfg .field>:not(label){margin-inline:14px}#cfg .field small{display:block;color:#98a3b0;font-size:12px;line-height:1.45}
+#cfg .hint{grid-column:1/-1}
+.seg{padding:0;border:0;background:transparent;gap:6px}
+.seg button{flex:0 1 auto;min-width:0;padding:8px 15px;border-radius:999px;background:#ffffff12;border:1px solid var(--f1-lin);color:#d3dae2;font:800 14px var(--display);letter-spacing:.07em;text-transform:uppercase}
+.seg button.on{background:var(--f1-vm);border-color:var(--f1-vm);color:#fff;box-shadow:0 4px 14px #e1060055}
+/* grades de escolha: pistas, carros, pinturas, equipes */
+.tracks,.cars,.pinturas,.times{gap:10px}
+.track,.car,.pint,.time{background:#ffffff0a;border:1px solid var(--f1-lin);padding:11px;transition:border-color .15s,background-color .15s}
+.track.on,.car.on,.pint.on,.time.on{background:linear-gradient(135deg,#e1060040,#14161c 70%);border-color:var(--f1-vm);box-shadow:inset 0 3px var(--f1-vm)}
+.track b,.car b{font:800 18px var(--display);text-transform:uppercase;letter-spacing:.04em}
+.colors button,.picker button{border-radius:0}.colors button{border-radius:50%}.picker button.on{background:var(--f1-vm)}
+.hubdica{color:#5b6573}.hubdica kbd{color:var(--tinta);border-color:#14161c40;border-radius:0}
+/* telas de resultado e classificação: tabelas zebradas */
+.results .placa{border-radius:0}.results table tr:nth-child(odd) td{background:#ffffff0a}.results table th{font:800 12px var(--display);letter-spacing:.12em;text-transform:uppercase}
+/* intermediário e celular */
+@media (max-width:920px){.hubgrid{grid-template-columns:1fr 1fr;grid-template-areas:"largar largar" "mapa mapa" "garagem regras" "piloto pilotos" "equipe equipe"}.t-largar{min-height:120px}.t-largar h3{font-size:56px}}
+@media (max-width:620px){
+#lobby{gap:10px}.hubtopo{flex-wrap:nowrap;padding:10px 14px;gap:10px}.hubtopo canvas{width:84px}.hubcarro b{font-size:22px}.hubeu{margin-left:auto;min-width:0}.hubeu b{font-size:16px}.hubeu small{display:none}
+#lobby .hubabas button{padding:12px 11px;font-size:14px}
+.hubgrid{grid-template-columns:1fr;grid-template-areas:"largar" "mapa" "garagem" "regras" "piloto" "equipe" "pilotos";gap:10px}
+.tile{min-height:0}.t-mapa{min-height:140px}.t-largar{min-height:110px}.t-largar h3{font-size:48px}
+.hubpainel>h2{font-size:26px;padding:12px 16px 9px}#cfg{grid-template-columns:1fr}
+.tracks,.cars,.pinturas{grid-template-columns:repeat(2,minmax(0,1fr))}.times{grid-template-columns:1fr 1fr}
+.placa .in{padding:18px}.hubpainel>:not(h2){margin-left:12px;margin-right:12px}}
+@media (max-width:390px){.tracks,.cars,.pinturas{grid-template-columns:1fr 1fr}.seg button{padding:8px 12px}}
