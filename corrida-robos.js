@@ -9,6 +9,7 @@ const F1 = require("./public/corrida/f1-regras.js"); // os pneus das regras de F
 const F1Equipes = require("./public/corrida/f1-equipes.js"); // a montagem do carro de cada equipe
 const D = require("./public/corrida/dinamica.js");
 const Sim = require("./public/corrida/sim.js");
+const Ideais = require("./public/corrida/linhas-ideais.js"); // a linha ideal de cada pista, calculada offline (ferramentas/linha-ideal.js)
 const Pilotos = require("./public/corrida/f1-pilotos-2026.js"); // as equipes e os pilotos reais de 2026 (os robôs das regras de F1)
 const { SKINS } = require("./public/pelada/campo.js");
 
@@ -22,6 +23,15 @@ const STEP = 6;
 // encostar nos ápices sem raspar no zebra. A velocidade que ele mira sai da curvatura DESSE caminho (`curvaturaDoCaminho`), não da do
 // elástico cru, que tinha quinas de raio quase zero.
 const FATOR_LINHA = 0.8;
+// A linha ideal (ferramentas/linha-ideal.js: a de menor curvatura que usa a largura toda) vale sem encolher. Devolve o deslocamento
+// lateral por ponto, ou null se a pista não tem linha (ou se a geometria mudou desde que ela foi calculada): aí vale o `tracado`.
+const IDEAIS = new Map();
+function linhaIdeal(pista) {
+  if (IDEAIS.has(pista)) return IDEAIS.get(pista);
+  let r = null; const d = Ideais.LINHAS[pista], t = T.PISTAS[pista];
+  if (d && t && d.n === T.pontos(t, STEP).length) r = Float64Array.from(d.lat, (v) => v / 10);
+  IDEAIS.set(pista, r); return r;
+}
 // o menor raio (u) que o robô considera numa curva: o carro não fecha mais que isso, e uma quina de raio quase zero no traçado (um
 // ponto fora do lugar) fazia o perfil de velocidade despencar para 1 u/s no meio de uma reta
 const RAIO_MIN = 22;
@@ -122,17 +132,19 @@ function aprender(pista, volta) {
 // a pista amostrada, a linha e a velocidade de referência em cada ponto, para um carro
 function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinco carros ou um `spec` (a montagem de uma equipe de F1, com `chave`)
   const chave = pista + ":" + (carro.chave ? "spec-" + carro.chave : carro) + ":" + tracadoId; if (CACHE.has(chave)) return CACHE.get(chave);
-  const t = T.PISTAS[pista], c = carro.chave ? carro : T.CARROS[carro], linha = tracado(pista), pts = linha.pts, n = pts.length, perfis = aprendido(pista), ap = perfis[tracadoId % perfis.length];
+  const t = T.PISTAS[pista], c = carro.chave ? carro : T.CARROS[carro], linha = tracado(pista), pts = linha.pts, n = pts.length, ideal = carro.chave ? linhaIdeal(pista) : null, perfis = ideal ? [] : aprendido(pista), ap = perfis[tracadoId % perfis.length]; // F1: linha ideal, nunca as voltas humanas
   let lim, lat;
-  const curva = Array.from(linha.k, (k) => (k > 1e-4 ? Math.min(c.turn / k * 1.1, Math.sqrt(c.grip / k) * 1.2, c.vmax) : c.vmax));
+  const kIdeal = ideal && curvaturaDoCaminho(pts, Float64Array.from({ length: n }, (_, i) => ideal[(i + 2) % n]));
+  const curva = Array.from(ideal ? kIdeal : linha.k, (k) => (k > 1e-4 ? Math.min(c.turn / k * 1.1, Math.sqrt(c.grip / k) * 1.2, c.vmax) : c.vmax));
   for (let volta = 0; volta < 2; volta++) for (let i = n - 1; i >= 0; i--) curva[i] = Math.min(curva[i], Math.sqrt(curva[(i + 1) % n] ** 2 + 2 * c.brake * 0.72 * STEP));
   if (ap) { lim = Array.from(ap.vel, (v, i) => Math.min(curva[i], Math.max(40, v * c.vmax))); lat = ap.lat; }
   else {
     lim = curva;
-    lat = linha.lat;
+    lat = ideal || linha.lat;
   }
-  const latF1 = Float64Array.from({ length: n }, (_, i) => lat[(i + 2) % n] * FATOR_LINHA); // o caminho do robô de F1 (passoF1 usa a mesma conta)
-  const out = { pts, n, lim, lat, t, c, linha, aprendeu: !!ap, corredor: F1.corredor(t, n, t.width), kf: curvaturaDoCaminho(pts, latF1) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
+  const fator = ideal ? 1 : FATOR_LINHA;
+  const latF1 = Float64Array.from({ length: n }, (_, i) => lat[(i + 2) % n] * fator); // o caminho do robô de F1 (passoF1 usa a mesma conta)
+  const out = { pts, n, lim, lat, t, c, linha, aprendeu: !!ap, ideal: !!ideal, fator, corredor: F1.corredor(t, n, t.width), kf: curvaturaDoCaminho(pts, latF1) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
 }
 // O tempo de uma volta lançada andando no limite do perfil vezes `escala`, com a arrancada do carro (a mesma conta do
 // passo, sem tráfego). Serve para achar a escala que fecha a volta no tempo que o robô mira.
@@ -254,14 +266,8 @@ function ritmoDosRobos(room) {
   room.ritmoRobos = ritmo ? ritmo.tempo * (RITMO[room.config.nivel] || RITMO.medio) : null;
   return room.ritmoRobos;
 }
-// Depois da primeira chegada, estima quanto falta ao robô ativo mais distante. Uma margem cobre tráfego e box.
-function prazoDeChegada(room, prazoNormal = 45000) {
-  if (room.config.regras !== "f1") return prazoNormal;
-  const n = perfil(room.config.pista, "equilibrado").n;
-  const falta = room.order.map((id) => room.players[id]).filter((p) => p && p.bot && p.finish == null && !p.dnf)
-    .map((p) => Math.max(0, room.config.voltas - p.laps - (p.started && p.pos ? ((p.pos.prog % n) + n) % n / n : 0)));
-  return Math.min(10 * 60000, Math.max(60000, Math.ceil(Math.max(0, ...falta) * (room.ritmoRobos || 60) * 1.45 * 1000)));
-}
+// Depois da primeira chegada, quem ainda corre tem 1 minuto para terminar (em todos os modos; passou disso, o resultado fecha).
+function prazoDeChegada(room, prazoNormal = 60000) { return prazoNormal; }
 // ---------- a classificação (regras de F1) ----------
 // A volta lançada de um robô: o tempo da volta no ritmo dele (a mesma conta da corrida, `tempoDaVolta`) com pneu macio novo e
 // quente (a mesma aderência do carro de quem joga), mais o ruído da constância do piloto, sorteado pela semente do GP,
@@ -500,6 +506,36 @@ function encalhou(room, ia, car, now, dt, atras = false) {
 }
 // F1: os robôs usam o mesmo carro e a mesma pista física dos humanos. O controlador escolhe só o alvo de
 // velocidade e o lugar da pista; Sim.passo aplica direção, pneu, freio, motor, muro e box a 120 Hz.
+// ---------- a parada decidida pelo pneu, não só pelo plano ----------
+// O plano (F1.estrategia) diz em que volta parar e com qual composto, mas o robô não pode seguir cego: uma parada antecipada
+// (safety car) ou uma largada em tráfego desmancham a conta, e sem outra parada no plano ele rodava o resto da corrida com o
+// pneu acabado (1,3x o tempo de volta). Então a cada passagem pela entrada do box o robô pergunta ao pneu: chega ao fim da
+// corrida? Se sim, não para (só pela regra dos dois compostos, na última chance). Se não, para na volta do plano, ou antes se
+// a próxima volta já passaria do penhasco, ou de graça sob safety car se o pneu já está pela metade.
+// Depois da parada o composto é o que aguenta o resto da corrida (o mais rápido que aguenta), não o que o plano previa.
+const MARGEM_PNEU = 1.12; // o desgaste real passa um pouco do teórico (tráfego, largada, escorregão)
+const taxaDoPneu = (composto, fator) => (F1.PENHASCO / F1.vidaEmVoltas(composto, 1)) * (fator || 1) * MARGEM_PNEU; // desgaste por volta
+function escolherComposto(restam, usados, fator) {
+  const ordem = ["macio", "medio", "duro"], aguenta = (c) => F1.vidaEmVoltas(c, fator * MARGEM_PNEU) >= restam;
+  let lista = ordem.filter(aguenta); if (!lista.length) lista = ["duro"]; // nem o duro chega: para de novo mais tarde
+  if (usados.size < 2) { const novos = lista.filter((c) => !usados.has(c)); if (novos.length) lista = novos; } // dois compostos: prefere um que ainda não usou
+  return lista[0];
+}
+function decidirParada(room, p, ia, car, spec) {
+  const voltas = room.config.voltas, feitas = p.laps || 0;
+  if (!p.started || feitas + 1 >= voltas || car.box?.fase) return null; // na última volta o corredor passa pela chegada: sem box
+  const planejada = ia.plano && ia.plano.paradas[(p.paradas || []).length];
+  const pneu = car.pneu, fator = spec.desgaste || 1, taxa = taxaDoPneu(pneu.composto, fator);
+  const restam = voltas - feitas - 1, usados = new Set(p.compostos || [p.pneu || F1.COMPOSTO_PADRAO]);
+  const chega = pneu.desgaste + taxa * (restam + 0.35) <= F1.PENHASCO; // o resto da corrida e o começo da volta de chegada
+  const passaNaProxima = pneu.desgaste + taxa > F1.PENHASCO; // a volta que vem já passaria do penhasco
+  let para = false;
+  if (!chega) para = passaNaProxima || (planejada && feitas + 1 >= planejada.volta) || (room.direcao?.safety && pneu.desgaste > 0.3);
+  if (usados.size < 2 && restam <= 1) para = true; // a última chance de cumprir a regra dos dois compostos
+  if (!para) return null;
+  const aguentaPlano = planejada && planejada.composto !== pneu.composto && F1.vidaEmVoltas(planejada.composto, fator * MARGEM_PNEU) >= restam;
+  return aguentaPlano ? planejada.composto : escolherComposto(restam, usados, fator);
+}
 function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const tr = Sim.criarPista(T.PISTAS[room.config.pista], room.config.pista), car = ia.sim;
   const spec = pf.c, n = tr.n;
@@ -508,13 +544,14 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const i = car.idx, est = ia.estilo;
   ia.s = i; ia.lat = Sim.quadro(tr, car.x, car.y, i).lat;
   const saidaGrid = Math.min(1, ((car.prog - (car.gridIdx - n)) / 100));
-  const linha = pf.lat[(i + 2) % n] * FATOR_LINHA + ia.jeito + Math.sin(car.prog / 105 + ia.tracadoId * 1.7) * 3
-    + est.dentro * pf.linha.sinal[i] * Math.min(1, pf.kf[i] * 400) * 7;
+  // na linha ideal o robô só se afasta dela um pouco (ruído lento próprio, que o limite da pista segura); no tracado antigo o desvio é maior
+  const v = pf.ideal ? 0.4 : 1, lento = pf.ideal ? Math.sin(car.prog / 230 + ia.tracadoId * 2.3) * 3 : 0;
+  const linha = pf.lat[(i + 2) % n] * pf.fator + (ia.jeito + Math.sin(car.prog / 105 + ia.tracadoId * 1.7) * 3 + est.dentro * pf.linha.sinal[i] * Math.min(1, pf.kf[i] * 400) * 7) * v + lento;
   const baseLat = ia.lat0 * (1 - saidaGrid) + linha * saidaGrid;
   const maxLat = tr.W / 2 - 18;
   const pneu = F1.aderencia(car.pneu), dano = F1.efeitoDoDano(p.dano), curva = pf.kf[i] > 1 / 600;
   const fis = perfilF1(pf, ia.nivel), topo = topoDe(pf);
-  const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * 0.25 / STEP));
+  const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * (0.18 + 0.03 * est.look) / STEP)); // cada robô começa a olhar a curva (a freada) um pouco antes ou depois
   let alvo = Infinity;
   for (let k = 0; k <= olhar; k++) alvo = Math.min(alvo, fis[(i + k) % n]);
   const vLivre = Math.min(spec.vmax * pneu.final * dano.final, alvo < topo * 0.97 ? alvo * Math.sqrt(pneu.grip * dano.grip) : alvo); // a velocidade do robô sem ninguém na frente
@@ -531,10 +568,9 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   alvo = Math.min(alvo, tf.freio);
   if (p.quebrou) alvo = Math.min(alvo, spec.vmax * F1Equipes.EMERGENCIA);
   if (p.incidenteAte > now) alvo = Math.min(alvo, spec.vmax * 0.24);
-  const proxima = ia.plano && ia.plano.paradas[(p.paradas || []).length];
   const relBox = tr.corredor ? (i - tr.corredor.i0 + n) % n : Infinity;
-  const pedirBox = proxima && p.started && p.laps + 1 < room.config.voltas &&
-    (p.laps + 1 >= proxima.volta || car.pneu.desgaste > F1.PENHASCO * 0.95 || room.direcao?.safety) && relBox <= 8;
+  const proxima = relBox <= 8 ? decidirParada(room, p, ia, car, spec) : null; // (só pesa a parada perto da entrada do corredor)
+  const pedirBox = !!proxima; // (o composto pedido)
   const amb = { spec, dano: p.dano || 0, drsZona: p.drsZona ?? -1, safety: !!room.direcao?.safety,
     amarela: room.direcao?.amarelo?.setor === Math.floor(i / (n / T.SECTORS)), ersAuto: false,
     voltas: room.config.voltas, laps: p.laps || 0, paradas: (p.paradas || []).length,
@@ -556,7 +592,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     if (exc > 0 && car.alF * ent.steer < 0) ent.steer *= Math.max(0, 1 - exc * K_FRENTE);
     if (ent.brake && car.travada > TRAVA_ABS) ent.brake = 0; // a roda da frente travou: solta o freio um instante (o ABS de quem sabe frear)
     ent.ers = !!ia.ult;
-    ent.pedido = pedirBox ? proxima.composto : null;
+    ent.pedido = proxima;
     Sim.passo(car, ent, amb, tr, ev);
     for (const e of ev) {
       if (e.t === "setor") setor(p, e.s);
