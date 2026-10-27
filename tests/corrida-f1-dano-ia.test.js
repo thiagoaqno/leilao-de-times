@@ -144,7 +144,7 @@ test("IA: sem volta humana, o grid completo fecha Mônaco e classifica perto de 
   assert.equal(room.order.length, 19);
   assert.ok(room.order.every((id) => room.players[id].finish != null), "todos cruzam a chegada");
   const tempos = room.order.map((id, i) => Robos.voltaLancada(room, room.players[id], 0, i, 19).tempo).sort((a, b) => a - b);
-  assert.ok(tempos[0] > 80 && tempos[0] < 90, `pole ${tempos[0]}`);
+  assert.ok(tempos[0] > 62 && tempos[0] < 74, `pole ${tempos[0]}`);
   assert.ok(tempos.at(-1) - tempos[0] < 5, `grid disperso: ${tempos[0]} a ${tempos.at(-1)}`);
 });
 
@@ -158,18 +158,18 @@ test("IA: grid completo termina em todas as pistas de GP sem volta gravada", () 
 });
 
 test("IA: recorde humano limita a pole; volta boa em Cadillac não vira P2 automaticamente", () => {
-  Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 80 }));
+  Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 64 }));
   const room = { config: { pista: "monaco", regras: "f1", nivel: "medio", robos: 19 }, players: { h: { id: "h", name: "Thiago", bot: false, equipe: "cadillac" } }, order: ["h"], semente: 4321 };
   Robos.preparar(room, ["#a"], () => "x");
   Robos.ritmoDosRobos(room);
   const bots = room.order.map((id) => room.players[id]).filter((p) => p.bot);
   const tempos = bots.map((p, i) => Robos.voltaLancada(room, p, 0, i, bots.length).tempo).sort((a, b) => a - b);
-  assert.ok(tempos[0] > 80 && tempos[0] < 86, `pole ${tempos[0]}`);
-  assert.ok(tempos.at(-1) < 90, `fundo do grid ${tempos.at(-1)}`);
+  assert.ok(tempos[0] > 64 && tempos[0] < 70, `pole ${tempos[0]}`);
+  assert.ok(tempos.at(-1) < 76, `fundo do grid ${tempos.at(-1)}`);
   Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 95 }));
   Robos.ritmoDosRobos(room);
   const poleSemRecordeRapido = Math.min(...bots.map((p, i) => Robos.voltaLancada(room, p, 0, i, bots.length).tempo));
-  assert.ok(poleSemRecordeRapido >= tempos[0] && poleSemRecordeRapido < 90,
+  assert.ok(poleSemRecordeRapido >= tempos[0] && poleSemRecordeRapido < 76,
     `uma única volta lenta não deve limitar o grid: ${poleSemRecordeRapido}`);
   Robos.usarFonte(() => []);
 });
@@ -227,10 +227,15 @@ test("IA: o robô para a tempo atrás de um carro lento e não fecha a porta de 
     }
     assert.equal(contatos.filter((c) => c.forca >= F1.BATIDA_MIN).length, 0);
     assert.ok(oportunidade && ersNaPassagem, "usa ERS quando há espaço para ultrapassar o carro lento");
+    // o carro parado sai de cena e o robô volta à velocidade (a direção só vira com o carro andando: parado, ele não realinha o bico)
+    const longe = pf.pts[(Math.floor(bot.ia.s) + Math.floor(pf.n / 2)) % pf.n];
+    room.players.h.pos = { x: longe.x, y: longe.y, z: longe.h, a: 0, v: 0, prog: pf.n / 2, at: relogio };
+    for (let t = 0; t < 4; t += 0.05) { relogio += 50; room.players.h.pos.at = relogio; Robos.passo(room, 0.05, () => {}, () => {}); }
     // e ao lado: um carro encostado do lado de dentro da curva não é fechado
     const p = pf.pts[Math.floor(bot.ia.s) % pf.n], lat0 = bot.ia.lat;
     room.players.h.pos = { x: bot.pos.x - p.ty * 30, y: bot.pos.y + p.tx * 30, z: bot.pos.z, a: bot.pos.a, v: bot.ia.v, prog: bot.pos.prog, at: relogio };
     bot.ia.desvio = 0;
-    for (let t = 0; t < 0.6; t += 0.05) { relogio += 50; room.players.h.pos.at = relogio; Robos.passo(room, 0.05, () => {}, () => {}); assert.ok(bot.ia.lat <= lat0 + 1, "foi para cima de quem estava ao lado"); }
+    // (até 3 u de folga: o bico tem inércia e leva uns décimos para realinhar)
+    for (let t = 0; t < 0.6; t += 0.05) { relogio += 50; room.players.h.pos.at = relogio; Robos.passo(room, 0.05, () => {}, () => {}); assert.ok(bot.ia.lat <= lat0 + 3, "foi para cima de quem estava ao lado"); }
   } finally { Date.now = agora; }
 });

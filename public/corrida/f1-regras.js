@@ -5,18 +5,21 @@
 // compostos e a estratégia de parada dos robôs (`estrategia`).
 (function (root) {
 
-// Cada composto: a aderência no auge (sobre o grip do carro), quanto da corrida ele dura até o "penhasco" (a fração da
-// distância total em que o desgaste chega a PENHASCO) e quão rápido esquenta. As cores são as da Pirelli.
+// Cada composto: a aderência lateral no auge (`pico`, sobre o `grip` do carro: é a dirigibilidade de antes, em que o carro vira
+// até o grip e o que passa escorrega), o quanto sobra de grip depois que satura (`sat`, multiplica o `kin` do carro), a agilidade
+// do volante (`agil`: o macio vira mais "na mão"), a tração e o freio (`tracao`, `freio`), quanto da corrida ele dura até o
+// "penhasco" (`vida`, a fração da distância total em que o desgaste chega a PENHASCO), quão rápido esquenta (`aquece`) e o
+// quanto de grip ainda sobra com o pneu acabado (`perdaFim`: a perda total). As cores são as da Pirelli.
 const PNEUS = {
-  macio: { nome: "Macio", cor: "#e8202a", pico: 1.9, vida: 0.35, aquece: 1.6, perdaFim: 0.72 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 0.6, aquece: 1.0, perdaFim: 0.48 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.0, vida: 0.9, aquece: 0.6, perdaFim: 0.26 },
+  macio: { nome: "Macio", cor: "#e8202a", pico: 1.22, sat: 1.06, agil: 1.05, tracao: 1.1, freio: 1.06, vida: 0.35, aquece: 1.6, perdaFim: 0.72 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.06, sat: 1.0, agil: 1.0, tracao: 1.04, freio: 1.03, vida: 0.6, aquece: 1.0, perdaFim: 0.48 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 0.92, sat: 0.93, agil: 0.95, tracao: 0.95, freio: 1.0, vida: 0.9, aquece: 0.6, perdaFim: 0.26 },
 };
 const COMPOSTO_PADRAO = "medio";
 // Até o penhasco o pneu perde pouco (até PERDA_ANTES); depois dele, despenca até PERDA_FIM com o pneu acabado.
 const PENHASCO = 0.8, PERDA_ANTES = 0.06, PERDA_FIM = 0.26;
-// Pneu frio (saindo do box ou na largada) segura FRIO do normal; fica bom a partir de TEMP_BOA.
-const TEMP_SAIDA = 0.6, TEMP_BOA = 0.75, FRIO = 0.92;
+// Pneu frio (saindo do box ou na largada) segura FRIO do normal e solta com facilidade; fica bom a partir de TEMP_BOA.
+const TEMP_SAIDA = 0.6, TEMP_BOA = 0.75, FRIO = 0.8;
 const limite = (v, a, b) => Math.max(a, Math.min(b, v));
 
 function pneuNovo(composto = COMPOSTO_PADRAO) {
@@ -31,19 +34,26 @@ function gastarPneu(pneu, d) {
   const escorrega = limite((d.slip || 0) / 60, 0, 1);
   if (d.total > 0 && d.dist > 0) pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.total) * (PENHASCO / pn.vida) * (0.85 + 0.6 * escorrega) * (d.fator || 1));
   const vel = d.vmax > 0 ? limite(Math.abs(d.v || 0) / d.vmax, 0, 1) : 0;
-  const alvo = Math.min(1, 0.65 + 0.35 * vel + 0.15 * escorrega);
-  pneu.temp += (alvo - pneu.temp) * Math.min(1, (d.dt || 0) * 0.25 * pn.aquece);
+  const alvo = Math.min(1, 0.6 + 0.4 * vel + 0.2 * escorrega);
+  pneu.temp += (alvo - pneu.temp) * Math.min(1, (d.dt || 0) * 0.09 * pn.aquece);
   return pneu;
 }
-// Quanto o pneu segura agora: `grip` multiplica o grip do carro e `kin` o quanto sobra escorregando.
+// Quanto o pneu segura agora. `grip` multiplica o grip do carro (a aderência lateral) e `kin` o quanto sobra escorregando; `agil`
+// multiplica a guinada do volante; `solta` (0..1) é a tendência de largar o carro: o pneu frio ou no penhasco perde a frente
+// fora do acelerador e a traseira no acelerador (0 é o pneu quente e inteiro, que se comporta como o grip puro); `freio`,
+// `tracao` e `final` valem para a física longitudinal.
 function aderencia(pneu) {
   const pn = PNEUS[pneu && pneu.composto] || PNEUS[COMPOSTO_PADRAO], d = pneu ? pneu.desgaste : 0, temp = pneu ? pneu.temp : TEMP_BOA;
   const perdaFim = pn.perdaFim ?? PERDA_FIM;
   const perda = d <= PENHASCO ? PERDA_ANTES * d / PENHASCO : PERDA_ANTES + (perdaFim - PERDA_ANTES) * (d - PENHASCO) / (1 - PENHASCO);
-  const quente = FRIO + (1 - FRIO) * limite((temp - TEMP_SAIDA) / (TEMP_BOA - TEMP_SAIDA), 0, 1);
-  const base = limite(pn.pico * (1 - perda) * quente, 0.7, 2.0);
-  return { grip: base, kin: limite(1 - perda * 0.5, 0.85, 1),
-    freio: limite(base, 0.72, 1.08) * quente, tracao: limite(base, 0.65, 1.08) * quente,
+  const aquecido = limite((temp - TEMP_SAIDA) / (TEMP_BOA - TEMP_SAIDA), 0, 1), quente = FRIO + (1 - FRIO) * aquecido;
+  const gelo = 1 - aquecido, penhasco = limite((d - PENHASCO) / (1 - PENHASCO), 0, 1);
+  const base = limite(pn.pico * (1 - perda) * quente, 0.4, 1.6);
+  const mec = (k) => limite(k * (1 - perda * 0.8) * quente, 0.65, 1.12);
+  return { grip: base, kin: limite(pn.sat * (1 - perda * 0.5) * (1 - 0.1 * gelo), 0.55, 1.1),
+    agil: limite(pn.agil * (1 - 0.08 * gelo - 0.14 * penhasco), 0.8, 1.1),
+    solta: limite(0.65 * gelo + 0.9 * penhasco + 0.1 * limite(d / PENHASCO, 0, 1), 0, 1),
+    freio: mec(pn.freio), tracao: mec(pn.tracao),
     final: limite(1 - Math.max(0, d - PENHASCO) * 0.22, 0.95, 1) };
 }
 const frio = (pneu) => !!pneu && pneu.temp < TEMP_BOA - 0.02;
@@ -236,7 +246,7 @@ function vacuoF1(draft, curva) {
   return { final: VACUO_FINAL * d, acel: VACUO_ACEL * d, aderencia: 1 - (curva ? AR_SUJO * d : 0) };
 }
 
-const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
+const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, TEMP_SAIDA, TEMP_BOA, FRIO, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
   LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, acrescimoDeFinal, estrategia };
 if (typeof module !== "undefined" && module.exports) module.exports = api;

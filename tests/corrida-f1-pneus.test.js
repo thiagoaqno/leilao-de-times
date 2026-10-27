@@ -45,17 +45,43 @@ test("pneus: escorregar gasta mais que andar limpo", () => {
   assert.ok(sujo.desgaste > limpo.desgaste * 1.4, `${limpo.desgaste} ${sujo.desgaste}`);
 });
 
-test("pneus: frio na largada, esquenta andando; a aderência fica sempre entre 0,7 e 2,0", () => {
+test("pneus: frio na largada, esquenta andando; a aderência fica sempre entre 0,4 e 1,6", () => {
   const pn = F1.pneuNovo("duro");
   assert.ok(F1.frio(pn));
   const frio = F1.aderencia(pn).grip;
-  for (let i = 0; i < 60 * 30; i++) F1.gastarPneu(pn, { dist: 0, total: 1, slip: 0, v: 250, vmax: 295, dt: 1 / 60 });
+  for (let i = 0; i < 60 * 40; i++) F1.gastarPneu(pn, { dist: 0, total: 1, slip: 0, v: 250, vmax: 295, dt: 1 / 60 });
   assert.ok(!F1.frio(pn) && F1.aderencia(pn).grip > frio);
   for (const composto of Object.keys(F1.PNEUS)) for (let d = 0; d <= 1; d += 0.05) for (let t = 0; t <= 1; t += 0.1) {
     const a = F1.aderencia({ composto, desgaste: d, temp: t });
-    assert.ok(a.grip >= 0.7 && a.grip <= 2.0 && a.kin >= 0.85 && a.kin <= 1, `${composto} ${d} ${t}`);
+    assert.ok(a.grip >= 0.4 && a.grip <= 1.6 && a.kin >= 0.55 && a.kin <= 1.1 && a.solta >= 0 && a.solta <= 1 && a.agil >= 0.8 && a.agil <= 1.1, `${composto} ${d} ${t}`);
   }
   assert.equal(F1.pneuNovo("nada").composto, F1.COMPOSTO_PADRAO); // composto que não existe vira o padrão
+});
+
+test("pneus: os números de cada composto (aderência lateral, frio e gasto) são os documentados e fazem diferença entre eles", () => {
+  const grip = (composto, desgaste, temp) => F1.aderencia({ composto, desgaste, temp }).grip;
+  // novo e quente (o multiplicador do `grip` do carro): macio 1,22, médio 1,06, duro 0,92
+  assert.deepEqual(["macio", "medio", "duro"].map((c) => +grip(c, 0, 1).toFixed(2)), [1.22, 1.06, 0.92]);
+  // frio (saindo do box ou na largada): 80% do grip, e o macio frio ainda segura mais que o duro quente
+  for (const c of ["macio", "medio", "duro"]) assert.ok(Math.abs(grip(c, 0, F1.TEMP_SAIDA) / grip(c, 0, 1) - 0.8) < 1e-9, c);
+  assert.ok(grip("macio", 0, F1.TEMP_SAIDA) > grip("duro", 0, 1) * 1.04);
+  // no penhasco (desgaste 0,8) o macio já perdeu mais que o duro, e com o pneu acabado cai abaixo dele
+  assert.ok(grip("macio", 0.8, 1) / grip("macio", 0, 1) > 0.9 && grip("duro", 0.8, 1) / grip("duro", 0, 1) > 0.9);
+  assert.deepEqual(["macio", "medio", "duro"].map((c) => +grip(c, 1, 1).toFixed(2)), [0.4, 0.55, 0.68]);
+  assert.ok(grip("macio", 1, 1) < grip("duro", 1, 1) * 0.65, "o macio acabado fica bem atrás do duro acabado");
+  // o frio e o penhasco soltam o carro (frente e traseira); quente e inteiro, nada
+  assert.equal(F1.aderencia({ composto: "medio", desgaste: 0, temp: 1 }).solta, 0);
+  assert.ok(F1.aderencia({ composto: "medio", desgaste: 0, temp: F1.TEMP_SAIDA }).solta >= 0.6);
+  assert.ok(F1.aderencia({ composto: "macio", desgaste: 1, temp: 1 }).solta >= 0.9);
+  // o macio vira mais (agilidade), segura mais depois de saturar (kin) e arranca/freia melhor
+  const q = (c) => F1.aderencia({ composto: c, desgaste: 0, temp: 1 });
+  assert.ok(q("macio").agil > q("medio").agil && q("medio").agil > q("duro").agil);
+  assert.ok(q("macio").kin > q("medio").kin && q("medio").kin > q("duro").kin);
+  assert.ok(q("macio").tracao > q("medio").tracao && q("medio").tracao > q("duro").tracao && q("macio").freio > q("duro").freio);
+  // o pneu aquece mais devagar que a corrida: na largada o duro leva uns 10 s para ficar bom e o macio uns 4
+  const aquecer = (composto) => { const pn = F1.pneuNovo(composto); let t = 0; while (F1.frio(pn) && t < 60) { F1.gastarPneu(pn, { dist: 0, total: 1, slip: 0, v: 220, vmax: 295, dt: 1 / 60 }); t += 1 / 60; } return t; };
+  const [m, e, d] = ["macio", "medio", "duro"].map(aquecer);
+  assert.ok(m < e && e < d && m > 2 && d > 6 && d < 25, `aquecer: macio ${m.toFixed(1)} s, médio ${e.toFixed(1)} s, duro ${d.toFixed(1)} s`);
 });
 
 // os robôs numa volta só, no tempo de mentira (como em corrida-robos.test.js)

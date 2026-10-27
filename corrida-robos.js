@@ -18,6 +18,10 @@ const NIVEIS = { facil: 0.80, medio: 0.87, dificil: 0.93 }; // modo clássico: f
 // melhores voltas de cada um). No médio, um pouco mais lento que essa média; no difícil, um pouco mais rápido.
 const RITMO = { facil: 1.12, medio: 1.03, dificil: 0.98 };
 const STEP = 6;
+// A fração do limite de aderência (a curva em que o carro começa a escorregar) que o robô de F1 usa nas curvas: com a
+// dirigibilidade de antes (o pneu segura até o grip e o escorregão leve quase não custa), 0,97 fecha a volta sem escorregar de
+// verdade e sem deixar tempo na mesa; abaixo disso o robô ficava lento e acima o pneu satura (kin) e ele perde tempo.
+const MARGEM_F1 = 0.97;
 const GRID_F1 = 20; // as regras de F1: o grid tem 20 carros (humanos e robôs)
 const ENCOLHIDO = 0.72, BALA = 1.45; // o raio deixa o carro com 72% da velocidade final; a bala anda a 145% (iguais em fisica.js)
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -111,7 +115,7 @@ function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinc
 // com a raiz do grip, a velocidade final com `final` e a arrancada com `tracao`.
 function tempoDaVolta(pf, escala, ader) {
   if (pf.c.chave) { // classificação e ritmo da F1 usam o mesmo limite de curva dos carros em movimento
-    if (!pf.fisico) pf.fisico = D.perfilIdeal(pf.pts.map((q, i) => ({ k: pf.linha.k[i], h: q.h })), pf.c, STEP, 0.92);
+    if (!pf.fisico) pf.fisico = D.perfilIdeal(pf.pts.map((q, i) => ({ k: pf.linha.k[i], h: q.h })), pf.c, STEP, MARGEM_F1);
     const ext = ader ? { grip: ader.grip, tracao: ader.tracao } : null;
     const topo = D.velocidadeFinal(pf.c) * (ader ? ader.final : 1), fator = Math.min(1, Math.max(0.3, escala));
     let v = 0, t = 0;
@@ -426,7 +430,7 @@ function passoNoBox(room, p, ia, pf, dt, emit) {
 function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const tr = Sim.criarPista(T.PISTAS[room.config.pista], room.config.pista), car = ia.sim;
   const spec = pf.c, n = tr.n;
-  if (!pf.fisico) pf.fisico = D.perfilIdeal(tr.pts.map((q, i) => ({ k: pf.linha.k[i], h: q.h })), spec, STEP, 0.92);
+  if (!pf.fisico) pf.fisico = D.perfilIdeal(tr.pts.map((q, i) => ({ k: pf.linha.k[i], h: q.h })), spec, STEP, MARGEM_F1);
   // Também aceita ajustes explícitos de velocidade feitos pela sala e pelos testes.
   if (Math.abs(ia.v - car.v) > 0.01) car.v = ia.v;
   const i = car.idx, est = ia.estilo;
@@ -447,7 +451,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const olhar = Math.max(6, Math.ceil(Math.max(car.v, 30) * 0.5 / STEP));
   let alvo = Infinity;
   for (let k = 0; k <= olhar; k++) alvo = Math.min(alvo, pf.fisico[(i + k) % n]);
-  alvo *= nivel * Math.sqrt(pneu.grip * dano.grip * vac.aderencia);
+  alvo *= nivel * Math.sqrt(pneu.grip * dano.grip * vac.aderencia) * (1 - 0.06 * pneu.solta); // o pneu frio ou acabado solta o carro: quem sabe disso vai um pouco mais devagar
   alvo = Math.min(alvo, spec.vmax * pneu.final * dano.final);
   // Enquanto há pista livre ao lado, o ERS ajuda a passar. Se a porta fecha, o limite de tráfego manda frear.
   if (ia.ult && !tf.bloqPos && !tf.bloqNeg) alvo = Math.min(spec.vmax, alvo * 1.04);
