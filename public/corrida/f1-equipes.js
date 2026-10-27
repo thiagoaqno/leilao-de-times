@@ -12,7 +12,7 @@ const EMERGENCIA = 0.35; // carro quebrado: anda no modo de emergência, com ess
 const ORDEM = ["motor", "aero", "chassi", "freios", "suspensao", "confiab"];
 // o que cada peça faz (os textos da tela de montagem); `bom` e `custa` são as contas resumidas
 const PECAS = {
-  motor: { nome: "Motor", icone: "🔥", bom: "velocidade final e aceleração", custa: "quebra mais", desc: "Mais potência: o carro chega mais longe na reta e arranca melhor, mas o motor puxado quebra com mais facilidade." },
+  motor: { nome: "Motor", icone: "🔥", bom: "velocidade final e aceleração", custa: "só os pontos", desc: "Mais potência: o carro chega mais longe na reta e arranca melhor." },
   aero: { nome: "Aerodinâmica", icone: "🌬️", bom: "aderência e volante nas curvas, e o DRS rende mais", custa: "velocidade final e aceleração", desc: "Mais carga: o carro cola no chão e vira mais, mas o arrasto cobra na reta. Com o DRS aberto, a asa de muita carga ganha mais." },
   chassi: { nome: "Chassi leve", icone: "⚖️", bom: "aceleração e frenagem", custa: "resistência (muro e grama)", desc: "Menos peso: arranca e freia melhor, mas amassa mais na batida e sofre mais fora do asfalto." },
   freios: { nome: "Freios", icone: "🛑", bom: "distância de frenagem", custa: "só os pontos", desc: "Discos maiores: freia mais tarde antes da curva e perde menos tempo." },
@@ -71,6 +71,15 @@ const sobra = (equipeId, m) => EQUIPES[equipeId].orcamento - soma(m);
 function estilo(m) { const d = m.motor - m.aero; return d >= 2 ? "reta" : d <= -2 ? "curva" : "equilibrado"; }
 const ESTILOS = { reta: { nome: "Carro de reta", inspo: "pouca asa, motor forte" }, curva: { nome: "Carro de curva", inspo: "muita carga aerodinâmica" }, equilibrado: { nome: "Carro equilibrado", inspo: "acerto sem exagero" } };
 
+// A chance de o carro quebrar na corrida (motor ou câmbio), por carro: 0,5% com a confiabilidade padrão (nível 3, a da maioria
+// das equipes), subindo até 1% sem a peça e caindo até 0,25% com ela no máximo. Só a confiabilidade mexe nela.
+const QUEBRA_PADRAO = 0.005, CONFIAB_PADRAO = 3;
+function quebraDaConfiab(confiab) {
+  const c = Math.max(0, Math.min(MAX_NIVEL, +confiab || 0));
+  const q = c <= CONFIAB_PADRAO ? QUEBRA_PADRAO + (CONFIAB_PADRAO - c) * ((0.01 - QUEBRA_PADRAO) / CONFIAB_PADRAO) : QUEBRA_PADRAO - (c - CONFIAB_PADRAO) * ((QUEBRA_PADRAO - 0.0025) / (MAX_NIVEL - CONFIAB_PADRAO));
+  return arredonda(q, 5);
+}
+
 // A montagem vira o `spec` da física (os campos de `CARROS`) mais três do F1:
 //   desgaste: quanto o pneu gasta (1 é o normal) · drs: quanto o DRS rende (1 é o normal) · quebra: chance de o carro quebrar na corrida
 // `m` já tem que ter passado por `validar` (ou ser uma padrão); níveis fora de 0..MAX_NIVEL são cortados mesmo assim.
@@ -90,7 +99,7 @@ function specDaMontagem(m, nome = "Carro de F1") {
     wall: arredonda(entre(0.8 - 0.04 * chassi, LIMITES.wall), 3),
     desgaste: arredonda(1.25 - 0.07 * suspensao, 3),
     drs: arredonda(0.6 + 0.12 * aero, 3),
-    quebra: arredonda(0.01 + 0.008 * motor + 0.01 * (MAX_NIVEL - confiab), 4),
+    quebra: quebraDaConfiab(confiab),
   };
 }
 const pilotos = () => root.F1Pilotos || (typeof module !== "undefined" && module.exports ? require("./f1-pilotos-2026.js") : null); // o nome da equipe
@@ -109,13 +118,13 @@ function ficha(s) {
     { id: "curva", rotulo: "Curva", nota: nota(s.grip + s.turn * 40, 380 + 80, 500 + 120) },
     { id: "freio", rotulo: "Freio", nota: nota(s.brake, 415, 520) },
     { id: "resist", rotulo: "Resistência", nota: nota(s.offMax * 0.4 + s.wall * 100 + (1.25 - s.desgaste) * 60, 40, 110) },
-    { id: "confiab", rotulo: "Confiabilidade", nota: nota(1 - s.quebra, 0.84, 0.99) },
+    { id: "confiab", rotulo: "Confiabilidade", nota: nota(1 - s.quebra, 0.99, 0.9975) },
   ];
 }
 // Os números que o servidor compara na hora de dizer "melhor em tudo": todos no sentido "maior é melhor"
 const eixos = (s) => [s.vmax, s.acc, s.grip, s.turn, s.brake, s.kin, -s.scrub, s.offMax, s.wall, -s.desgaste, s.drs, -s.quebra];
 
-const api = { MAX_NIVEL, EMERGENCIA, sortearFalha, ORDEM, PECAS, LIMITES, EQUIPES, ESTILOS, custoDaMontagem, validar, montagemPadrao, sobra, estilo, specDaMontagem, specDaEquipe, ficha, eixos };
+const api = { MAX_NIVEL, EMERGENCIA, QUEBRA_PADRAO, CONFIAB_PADRAO, quebraDaConfiab, sortearFalha, ORDEM, PECAS, LIMITES, EQUIPES, ESTILOS, custoDaMontagem, validar, montagemPadrao, sobra, estilo, specDaMontagem, specDaEquipe, ficha, eixos };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Equipes = api;
 })(typeof window !== "undefined" ? window : globalThis);

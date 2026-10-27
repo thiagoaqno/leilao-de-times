@@ -1,41 +1,28 @@
-# Carreira F1: a temporada com os amigos
+# Corrida F1: farol da largada, quebra de 0,5% e avisos com cara de F1
 
-A temporada solo (PR #323) agora também se joga em grupo: uma sala com código, cada amigo com a sua equipe (ou dois na mesma), o GP ao vivo para todos, a gestão e o mercado entre os GPs e o fim da noite. Pilotos reais de 2026, DRS clássico, 4 ou 8 GPs.
+Dois bugs da Corrida (regras de F1) e a interface dos avisos refeita no estilo da transmissão oficial.
 
-## A sala da temporada em grupo
+## Largada: o carro só sai quando as luzes apagam
 
-- Canal novo `/corrida-temporada-grupo` (`corrida-temporada-grupo.js`), no caminho da Carreira de futebol em grupo: o criador vira o **anfitrião**, os amigos entram pelo código, cada pessoa tem o **seu token** (fica no navegador; no banco vai só o hash), quem sai vira ausente e volta com o token.
-- Cada amigo escolhe uma das 11 equipes. **Dois amigos podem dividir a mesma equipe**, um em cada carro: os dois titulares reais saem do grid e vão para o mercado; o carro, o caixa, os engenheiros e o desenvolvimento são um só. As equipes sem humano ficam com os robôs. Quem não escolhe equipe acompanha e assiste.
-- O anfitrião define 4 ou 8 GPs, as voltas (2, 3 ou 5) e o nível dos robôs, e começa a temporada. Até 8 pessoas por sala. Se o anfitrião fica 2 minutos fora, o cargo passa sozinho; ele também pode passar o cargo.
-- **A sala inteira fica no banco** (`migracoes/019-corrida-temporada-grupo.sql`, tabela `corrida_temporadas_grupo`): o servidor pode reiniciar no meio da noite sem perder a temporada. A sala se apaga 72 h depois do último uso. O GP aberto vive na memória: se o servidor cair no meio dele, a temporada volta ao GP que não terminou.
+- **Causa:** com as cinco luzes, o "freio de mão" que segura o carro no grid (`amb.segurar`) soltava assim que o piloto acelerava (`room.luzes ? t < startAt && !ent.gas : ...` no servidor, em `corrida-humanos.js`, e a mesma conta na previsão e na reconciliação de `fisica.js`; `physics` ainda liberava tudo se `race.luzes` existisse). Então dava para sair antes do "go" e o único freio era a punição, que só olhava a velocidade.
+- **Agora:** o carro fica parado até `startAt` pelo relógio, sem olhar o acelerador, no servidor (a autoridade) e na previsão do navegador, então não há carro que anda e volta. Vale para humanos e robôs (os robôs já só saem depois de `startAt`) e para a classificação.
+- **Queimar a largada continua punido** (`corrida-f1-direcao.js`): como o carro não anda mais, a direção de prova pune o pé: acelerar por mais de 250 ms seguidos com as luzes acesas (`p.gasNasLuzes`, contado pelo servidor), com 150 ms de folga para o relógio, dá +5 s, uma vez só. Quem anda mais de 45 u/s antes do go (caso antigo) também é punido.
 
-## O GP ao vivo para todos
+## Quebra de carro: 0,5% por carro por corrida
 
-- `abrirGPGrupo` (em `corrida.js`) abre uma sala de F1 privada com **todos os humanos** da temporada e os robôs completando 20 carros. Só o anfitrião abre; as telas dos amigos vão para a pista sozinhas (quem estava fora entra por "Entrar no GP"). A classificação e a corrida são juntas, com a mesma física e as mesmas regras do GP solo.
-- A classificação começa quando todos chegam à pista (ou 30 s depois do primeiro). Quem não tem carro **assiste** com um acesso de espectador.
-- **Quem cai no meio da corrida tem o carro levado por um robô** (`corrida-temporada-robo.js`): o robô pega o carro que o servidor já andava e o pilota com o piloto automático dos outros robôs, com a estratégia de pneus do que falta (sempre dois compostos); quando a pessoa volta, retoma o carro de onde estiver. O resultado continua sendo dela.
-- O resultado entra na temporada de todos **de uma vez, uma vez por GP** (guardado pelo número do GP e do ano).
+- A chance mora em `f1-equipes.js`: `specDaMontagem` calculava `quebra = 1% + 0,8% por nível de motor + 1% por nível que falta de confiabilidade` (de 1% a 17%), e `sortearFalha` a sorteia pela semente do GP (`sortearFalhas` em `corrida.js`).
+- Agora `quebraDaConfiab`: 0,5% com a confiabilidade padrão (nível 3, a da maioria das equipes), subindo até 1% sem a peça e caindo até 0,25% com ela no máximo. O motor não mexe mais na chance. A nota de confiabilidade da ficha acompanha.
 
-## A gestão entre os GPs e o mercado disputado
+## Avisos no estilo da transmissão de F1 (só com `config.regras === "f1"`)
 
-- Cada equipe humana monta o carro e gasta o **seu** orçamento (peças, desenvolvimento, caixa e teto de gastos, como na solo).
-- **Equipe dividida: qualquer um dos dois confirma** os gastos, e cada ação vai para o **histórico da equipe** com o nome de quem fez e o valor. Para dois não se atropelarem, o servidor aplica um pedido por vez e a montagem leva a `versao` da equipe: quem mexeu em cima de uma versão velha é avisado em vez de desfazer o que o companheiro acabou de fazer. Com dois pilotos humanos a equipe não tem vaga para piloto contratado.
-- **Mercado disputado:** um piloto real só corre por uma equipe (quem pegou primeiro fica; o piloto que corre por outra equipe de amigo não sai; o que a equipe larga volta ao mercado) e cada engenheiro (mecânico ou estrategista de cada nível) só trabalha para uma equipe.
-- Após cada GP: patrocínio, prêmio pelos pontos da equipe e salários, por equipe.
-
-## O fim da noite
-
-- Tabelas de pilotos e construtores para todos (os amigos aparecem marcados), resumo do último GP com o dinheiro da sua equipe, o campeão no fim do calendário, o quadro dos amigos (pontos, vitórias e pódios), a lista de campeões da noite e a próxima temporada pelo anfitrião.
-
-## A sede
-
-- `/corrida/temporada/` ganha "Temporada com os amigos" (abrir sala / entrar pelo código) e o `?sala=CÓDIGO` (convite), no mesmo visual (`grupo.js`, `grupo-regras.js`, CSS em `sede.css`). Na pista, "← Voltar à sede" e o botão de sair levam de volta à sala (`salaTemporada` no estado).
+- Faixas retas com a cor da bandeira (amarela, azul, vermelha, verde, laranja do Safety Car, branca para limites/punição/bandeirada, vermelha para quebra/incidente, roxa para volta mais rápida, azul-claro para box, verde para DRS), ícone, o logo F1 pequeno e tipografia condensada em caixa alta (Titillium Web, a do HUD). As mensagens da direção levam o cabeçalho "DIREÇÃO DE PROVA · RACE CONTROL"; as outras, o próprio rótulo (BOX, ABANDONO, FALHA MECÂNICA, VOLTA MAIS RÁPIDA...).
+- Entram pela lateral em 0,26 s (sem animação com `prefers-reduced-motion`). Fila de até 3 faixas por vez, as outras esperam por prioridade (vermelha, SC, amarela, azul...) sem um tapar o outro. O estado que dura (bandeira, box, perda total, contagem) é uma faixa fixa que troca o texto no lugar. O DOM só muda quando a fila ou um texto muda.
+- Tudo o que o servidor já registrava no log (bandeiras, pista liberada, SC e relargada, limites, punições, quebra, perda total, batidas, largada) passa a aparecer na tela; ruído (robôs, paradas e limites dos outros, quem sai da sala) fica de fora. Novos: DRS liberado, volta mais rápida, "luzes apagadas: é largada!" e a bandeirada.
+- Os toasts da corrida (box, conexão, recorde...) viram faixas da fila; as cinco luzes ganharam o pórtico de F1; a tela de resultado ganhou a faixa de bandeirada (com os acréscimos de tempo). Arcade e telas fora da pista ficam como antes.
+- Lógica pura e testável em `public/corrida/avisos-f1.js` (`AvisosF1`: tipos, cores, `deLinha`, `novosDoLog`, `criarFila`); o desenho está em `hud.js` e `hud-f1.css`.
 
 ## Testes
 
-- Novo `tests/corrida-temporada-grupo.test.js`: as regras (mesma equipe, versão, histórico, mercado, resultado, campeão) e o servidor de verdade: dois ou mais clientes criam/entram e escolhem equipes (inclusive a mesma, e a terceira pessoa é recusada), o mercado recusa o piloto e o engenheiro já contratados, só o anfitrião abre o GP, o GP abre com os quatro humanos e 20 carros, o resultado entra uma vez e todos veem as mesmas tabelas, reconexão com o token (e token errado), o servidor reiniciando com a sala vinda do banco, e o robô que assume o carro de quem caiu e o devolve.
-- Rodados só os da Corrida: `node --test tests/corrida*.test.js`.
-
-## Ficou de fora
-
-- Entrar numa equipe no meio da temporada (quem chega depois do início só acompanha); leilão com lances e o dono aceitando a saída do piloto (aqui vale a ordem de chegada e quem corre por equipe de amigo não sai); rádio da equipe e HUD do companheiro; janela de mercado no meio do ano; passar o placar para a Noite da Galera; o teste na mão com amigos de verdade (só automatizado).
+- Novos: `tests/corrida-f1-largada.test.js` (sem movimento antes do go no servidor e na previsão, queima por pé, folga do relógio, taxa de quebra de 0,5% em 60 mil sorteios com a semente, de 1% a 0,25% pela confiabilidade) e `tests/corrida-avisos-f1.test.js` (tipos, cores, log, fila e prioridade).
+- Ajustados os testes de quebra em `tests/corrida-f1-equipes.test.js`.
+- Rodados só os da Corrida: `node --test tests/corrida*.test.js` (220 passam).
