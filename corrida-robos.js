@@ -18,6 +18,20 @@ const NIVEIS = { facil: 0.80, medio: 0.87, dificil: 0.93 }; // modo clássico: f
 // melhores voltas de cada um). No médio, um pouco mais lento que essa média; no difícil, um pouco mais rápido.
 const RITMO = { facil: 1.12, medio: 1.03, dificil: 0.98 };
 const STEP = 6;
+// O robô de F1 segue a linha de corrida (o elástico de `tracado`) por inteiro, menos uma folga: o suficiente para abrir as curvas e
+// encostar nos ápices sem raspar no zebra. A velocidade que ele mira sai da curvatura DESSE caminho (`curvaturaDoCaminho`), não da do
+// elástico cru, que tinha quinas de raio quase zero.
+const FATOR_LINHA = 0.8;
+// o menor raio (u) que o robô considera numa curva: o carro não fecha mais que isso, e uma quina de raio quase zero no traçado (um
+// ponto fora do lugar) fazia o perfil de velocidade despencar para 1 u/s no meio de uma reta
+const RAIO_MIN = 22;
+// a fração do limite de aderência (a velocidade de curva) que o piloto ideal usa; o nível do robô desce a partir daqui
+const MARGEM_F1 = 0.95;
+const MARGEM_FREIO = 0.8; // e a fração da frenagem máxima que ele usa
+const TRAVA_ABS = 0.25; // quanto a roda pode travar na frenagem antes do robô soltar o freio
+const ALFA_FRENTE = 0.10, K_FRENTE = 8; // o pico do pneu é 0,11 rad
+const V_PRESO = 8, T_PRESO = 2.5, T_SEM_ANDAR = 10; // u/s, s e pontos de pista (6 u cada): quando o robô se considera preso
+const ALFA_TRACAO = 0.11, PAT = 0.3; // o ângulo de deriva da traseira (rad; o pico do pneu é 0,11) a partir do qual o robô tira o pé do acelerador
 const GRID_F1 = 20; // as regras de F1: o grid tem 20 carros (humanos e robôs)
 const ENCOLHIDO = 0.72, BALA = 1.45; // o raio deixa o carro com 72% da velocidade final; a bala anda a 145% (iguais em fisica.js)
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -47,6 +61,19 @@ function tracado(pista) {
     sinal[i] = Math.sin(d2 - d1) >= 0 ? 1 : -1;
   }
   const out = { pts, n, lat, k, sinal, X, Y }; LINHAS.set(pista, out); return out;
+}
+// A curvatura do caminho que o robô de F1 faz (a pista mais `lat` de lado em cada ponto): o círculo por três pontos, a `m` pontos de cada
+// lado, depois a média de uma janelinha, e nunca mais que 1/RAIO_MIN. Sem as quinas que o ruído do traçado cru deixava.
+function curvaturaDoCaminho(pts, lat, m = 4) {
+  const n = pts.length, X = new Float64Array(n), Y = new Float64Array(n), cru = new Float64Array(n), k = new Float64Array(n);
+  for (let i = 0; i < n; i++) { X[i] = pts[i].x - pts[i].ty * lat[i]; Y[i] = pts[i].y + pts[i].tx * lat[i]; }
+  for (let i = 0; i < n; i++) {
+    const a = (i - m + n) % n, b = (i + m) % n, cruz = (X[i] - X[a]) * (Y[b] - Y[i]) - (Y[i] - Y[a]) * (X[b] - X[i]);
+    const da = Math.hypot(X[i] - X[a], Y[i] - Y[a]), db = Math.hypot(X[b] - X[i], Y[b] - Y[i]), dc = Math.hypot(X[b] - X[a], Y[b] - Y[a]);
+    cru[i] = da * db * dc > 1e-6 ? (2 * Math.abs(cruz)) / (da * db * dc) : 0;
+  }
+  for (let i = 0; i < n; i++) { let q = 0; for (let j = -2; j <= 2; j++) q += cru[(i + j + n) % n]; k[i] = Math.min(1 / RAIO_MIN, q / 5); }
+  return k;
 }
 // ---------- aprender com a volta de alguém ----------
 // A volta gravada (amostras [tempo ms, x, y, z, ângulo, progresso] a cada 0,1 s) vira, para cada ponto da pista, o
@@ -103,28 +130,19 @@ function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinc
     lim = curva;
     lat = linha.lat;
   }
-  const out = { pts, n, lim, lat, t, c, linha, aprendeu: !!ap, corredor: F1.corredor(t, n, t.width) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
+  const latF1 = Float64Array.from({ length: n }, (_, i) => lat[(i + 2) % n] * FATOR_LINHA); // o caminho do robô de F1 (passoF1 usa a mesma conta)
+  const out = { pts, n, lim, lat, t, c, linha, aprendeu: !!ap, corredor: F1.corredor(t, n, t.width), kf: curvaturaDoCaminho(pts, latF1) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
 }
 // O tempo de uma volta lançada andando no limite do perfil vezes `escala`, com a arrancada do carro (a mesma conta do
 // passo, sem tráfego). Serve para achar a escala que fecha a volta no tempo que o robô mira.
 // `ader` (opcional, regras de F1): a aderência do pneu (F1.aderencia), aplicada como no passo: nas curvas a velocidade vai
 // com a raiz do grip, a velocidade final com `final` e a arrancada com `tracao`.
 function tempoDaVolta(pf, escala, ader) {
-  if (pf.c.chave) { // classificação e ritmo da F1 usam o mesmo limite de curva dos carros em movimento
-    if (!pf.fisico) pf.fisico = D.perfilIdeal(pf.pts.map((q, i) => ({ k: pf.linha.k[i], h: q.h })), pf.c, STEP, 0.92);
-    const ext = ader ? { grip: ader.grip, tracao: ader.tracao } : null;
-    const topo = D.velocidadeFinal(pf.c) * (ader ? ader.final : 1), fator = Math.min(1, Math.max(0.3, escala));
-    let v = 0, t = 0;
-    for (let volta = 0; volta < 2; volta++) {
-      t = 0;
-      for (let i = 0; i < pf.n; i++) {
-        const teto = Math.min(topo, pf.fisico[i] * fator * (ader ? Math.sqrt(ader.grip) : 1));
-        const a = Math.max(0, D.aceleracaoMaxima(pf.c, v, 0, ext));
-        v = Math.min(teto, Math.sqrt(v * v + 2 * a * STEP));
-        t += STEP / Math.max(v, 1);
-      }
-    }
-    return t;
+  if (pf.c.chave) { // classificação e ritmo da F1: o mesmo perfil de velocidade dos carros em movimento (tabela por nível, interpolada)
+    const tab = tabelaF1(pf, ader), f = Math.min(1, Math.max(0.3, escala));
+    let j = 1; while (j < NIVEIS_F1.length - 1 && f > NIVEIS_F1[j]) j++;
+    const u = (f - NIVEIS_F1[j - 1]) / (NIVEIS_F1[j] - NIVEIS_F1[j - 1]);
+    return tab[j - 1] + (tab[j] - tab[j - 1]) * u;
   }
   const { lim, n, c } = pf, raiz = ader ? Math.sqrt(ader.grip) : 1;
   let v = 0, t = 0;
@@ -138,6 +156,42 @@ function tempoDaVolta(pf, escala, ader) {
   }
   return t;
 }
+// ---------- o perfil de velocidade do robô de F1 ----------
+// O nível `f` (0,4 a 1) do robô é a fração da margem do piloto ideal (MARGEM_F1) que ele usa nas curvas: 1 é o limite, abaixo disso
+// ele faz as curvas mais devagar e freia mais cedo. Nas retas ninguém tira o pé por nível: só a curva e a frenagem custam tempo.
+const NIVEIS_F1 = [0.3, 0.5, 0.65, 0.8, 0.9, 1];
+function topoDe(pf) { return pf.topo || (pf.topo = D.velocidadeFinal(pf.c)); }
+function perfilF1(pf, f) {
+  const q = Math.round(Math.min(1, Math.max(0.3, f)) * 100) / 100, mapa = pf.perfisF1 || (pf.perfisF1 = new Map());
+  let v = mapa.get(q);
+  if (!v) {
+    v = D.perfilIdeal(pf.pts.map((p, i) => ({ k: pf.kf[i], h: p.h })), pf.c, STEP, MARGEM_F1 * q, null, MARGEM_FREIO);
+    if (mapa.size >= 30) mapa.delete(mapa.keys().next().value);
+    mapa.set(q, v);
+  }
+  return v;
+}
+// O tempo de uma volta lançada andando no perfil do nível `f`, com a arrancada do carro (sem tráfego), com a aderência `ader` do pneu.
+function voltaDoPerfil(pf, f, ader) {
+  const fis = perfilF1(pf, f), ext = ader ? { grip: ader.grip, tracao: ader.tracao } : null, raiz = ader ? Math.sqrt(ader.grip) : 1;
+  const topo = topoDe(pf), teto0 = topo * (ader ? ader.final : 1);
+  let v = 0, t = 0;
+  for (let volta = 0; volta < 2; volta++) {
+    t = 0;
+    for (let i = 0; i < pf.n; i++) {
+      const teto = Math.min(teto0, fis[i] < topo * 0.97 ? fis[i] * raiz : fis[i]);
+      const a = Math.max(0, D.aceleracaoMaxima(pf.c, v, 0, ext));
+      v = Math.min(teto, Math.sqrt(v * v + 2 * a * STEP));
+      t += STEP / Math.max(v, 1);
+    }
+  }
+  return t;
+}
+function tabelaF1(pf, ader) {
+  const chave = ader ? ader.grip + "|" + ader.tracao + "|" + ader.final : "-", mapa = pf.tabelas || (pf.tabelas = new Map());
+  if (!mapa.has(chave)) mapa.set(chave, NIVEIS_F1.map((f) => voltaDoPerfil(pf, f, ader)));
+  return mapa.get(chave);
+}
 function escalaPara(pf, alvo, ader, teto = 1.6) {
   let lo = 0.4, hi = teto;
   if (tempoDaVolta(pf, hi, ader) > alvo) return hi;
@@ -149,26 +203,26 @@ function ritmoDaSala(room) {
   const nomes = room.order.map((id) => room.players[id]).filter((p) => p && !p.bot).map((p) => p.name);
   try { return (nomes.length && fonteRitmo(room.config.pista, nomes)) || fonteRitmo(room.config.pista, null) || null; } catch (e) { return null; }
 }
-// No GP, o recorde humano é a referência competitiva. Quando a pista é inédita, usamos a capacidade do melhor carro
-// no traçado procedural. A média de um único jogador não pode fazer todo o grid repetir a volta dele.
+// No GP, o robô mira o tempo de volta do piloto ideal DO CARRO DELE nesta pista (o perfil de velocidade no limite, `tempoDaVolta(pf, 1)`)
+// mais uma folga que depende do nível: o fácil fica uns 9% atrás, o médio uns 4,5% (perto de quem joga bem) e o difícil uns 2%. Cada
+// piloto soma um pouco mais de acordo com o ritmo dele (até ~1,2%), e o carro fraco continua mais lento que o forte porque o ideal
+// dele já é mais lento. Nunca abaixo do limite do carro. Se a galera já fez voltas quase perfeitas, o robô não passa de 2,5% delas.
+// A referência do ritmo é o piloto ideal com o pneu neutro. O robô de verdade anda com o pneu de cada momento.
+const aderRef = () => null; // (pneu neutro: o ritmo do nível não depende da tabela de pneus; quem mexe no ritmo é o pneu de cada momento)
+function idealDe(pista, spec) { return tempoDaVolta(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren")), 1, aderRef()); }
+const FOLGA_F1 = { facil: 0.137, medio: 0.074, dificil: 0.025 };
 function referenciaF1(room) {
   const pista = room.config.pista;
   const pf = perfil(pista, F1Equipes.specDaEquipe("mclaren"));
-  const semRecorde = tempoDaVolta(pf, 2.4);
+  const ideal = tempoDaVolta(pf, 1, aderRef());
   let recorde = null;
   try { const v = fonteRecorde(pista); if (v && Number.isFinite(v.tempo) && v.tempo >= T.PISTAS[pista].minLap) recorde = v.tempo; } catch (e) { /* banco indisponível: usa o traçado */ }
-  const piso = tempoDaVolta(pf, 8) * 1.001; // o difícil pode chegar perto do limite físico sem ultrapassá-lo
-  const nivel = { facil: 1.10, medio: 1.02, dificil: 0.96 }[room.config.nivel] || 1;
-  const base = recorde ? Math.min(recorde * 1.035, semRecorde * 1.02) : semRecorde;
-  return { tempo: Math.max(piso, base * nivel), recorde, origem: !!recorde && recorde * 1.035 <= semRecorde * 1.02,
-    proteger: !!recorde && recorde <= semRecorde * 1.01 };
+  return { tempo: ideal * (1 + (FOLGA_F1[room.config.nivel] ?? FOLGA_F1.medio)), ideal, recorde, origem: false, proteger: !!recorde && recorde <= ideal * 1.01 };
 }
 function alvoF1(room, p, pf) {
   const ref = room.referenciaF1 || referenciaF1(room);
-  const ideal = tempoDaVolta(perfil(room.config.pista, F1Equipes.specDaEquipe("mclaren")), 2.4);
-  const carro = tempoDaVolta(pf, 2.4);
-  const piloto = p.piloto ? Math.max(0, 96 - p.piloto.ritmo) * 0.0012 : 0.015;
-  return Math.max(ref.proteger ? ref.recorde * 1.025 : 0, ref.tempo * (1 + piloto) + Math.max(-0.5, carro - ideal) * 0.7);
+  const folga = FOLGA_F1[room.config.nivel] ?? FOLGA_F1.medio, piloto = p.piloto ? Math.min(0.012, Math.max(0, 96 - p.piloto.ritmo) * 0.0006) : 0.006;
+  return Math.max(ref.proteger ? ref.recorde * 1.025 : 0, tempoDaVolta(pf, 1, aderRef()) * (1 + folga + piloto));
 }
 function largada(pts, g, W, f1) { // o mesmo lugar do grid do navegador (gridSpot, em pista.js); com 20 carros as filas ficam mais juntas
   const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * (f1 ? 8 : 13) + n * 2) % n;
@@ -178,8 +232,7 @@ function largada(pts, g, W, f1) { // o mesmo lugar do grid do navegador (gridSpo
 // montagem do carro e ritmo do piloto; no modo clássico, continua seguindo a média das voltas da sala.
 function nivelDe(room, p, tracadoId, nBots, pf) {
   if (room.config.regras === "f1") {
-    const ader = F1.aderencia({ composto: "macio", desgaste: 0.03, temp: 0.8 });
-    return escalaPara(pf, alvoF1(room, p, pf), ader, 8);
+    return escalaPara(pf, alvoF1(room, p, pf), aderRef(), 8); // o nível é do piloto; o pneu de cada momento (macio, gasto, frio) mexe no ritmo de verdade, em passoF1
   }
   const pil = p.piloto, ritmo = room.ritmoRobos;
   const sorte = rnd;
@@ -313,8 +366,8 @@ function contatos(room, emit) {
 // fecha a porta), um na mesma faixa à frente (o robô para a tempo de não bater: a velocidade do da frente mais o que dá para
 // frear até chegar nele) e a vez de ultrapassar, que só começa na reta (ou diante de um carro parado) e só pelo lado livre.
 // Devolve o desvio do traçado, o limite de velocidade, se tem alguém à frente, os lados bloqueados e o vácuo (0 a 1).
-function transito(room, p, ia, pf, i, baseLat, maxLat) {
-  const ponto = pf.pts[i], c = pf.c, k = pf.linha.k, n = pf.n;
+function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0) {
+  const ponto = pf.pts[i], c = pf.c, k = pf.kf, n = pf.n;
   const out = { desvio: 0, freio: Infinity, encontrou: false, bloqPos: false, bloqNeg: false, draft: 0 };
   const reta = k[i] < 1 / 1100 && k[(i + 6) % n] < 1 / 1100 && k[(i + 12) % n] < 1 / 900;
   let alvo = null;
@@ -339,8 +392,10 @@ function transito(room, p, ia, pf, i, baseLat, maxLat) {
   }
   out.encontrou = !!alvo;
   const livre = (side) => (side > 0 ? !out.bloqPos : !out.bloqNeg), naPista = (lat) => Math.abs(lat) <= maxLat;
+  // "preso": o carro da frente é bem mais lento do que eu andaria sozinho; nem esperando na reta nem atrás dele numa curva leve: passa por onde cabe
+  const preso = !!alvo && vLivre > alvo.ov + 12, leve = k[i] < 1 / 450 && k[(i + 6) % n] < 1 / 450;
   if (room.direcao?.safety || room.direcao?.amarelo) ia.ult = null; // sob bandeira ninguém ultrapassa
-  else if (!ia.ult && alvo && (reta || alvo.ov < 40) && ((ia.v > alvo.ov + 6 && ia.v > 30) || (ia.v < 12 && alvo.ov < 12))) {
+  else if (!ia.ult && alvo && (reta || alvo.ov < 40 || (preso && leve)) && ((ia.v > alvo.ov + 6 && ia.v > 30) || (preso && ia.v > 30) || (ia.v < 12 && alvo.ov < 12))) {
     const pos = alvo.latOutro + 32, neg = alvo.latOutro - 32, cabePos = naPista(pos) && livre(1), cabeNeg = naPista(neg) && livre(-1);
     const lado = cabePos && (!cabeNeg || Math.abs(pos - baseLat) < Math.abs(neg - baseLat)) ? 1 : cabeNeg ? -1 : 0;
     if (lado) ia.ult = { id: alvo.o.id, lado, ate: Date.now() + 7000 };
@@ -358,7 +413,7 @@ function transito(room, p, ia, pf, i, baseLat, maxLat) {
 // (abre para fora da curva e perde tempo). Raramente entra tão rápido que bate no muro (a batida tem força, punição e dano
 // como a de quem joga). Os erros só custam tempo: nunca dão velocidade. Devolve o alvo, o freio e o desvio de linha.
 function erroDoRobo(room, p, ia, pf, i, alvo, olha, now, dt, emit) {
-  const est = ia.estilo, k = pf.linha.k, j = (i + olha + 2) % pf.n, out = { alvo, freioK: 1, desvio: 0 };
+  const est = ia.estilo, k = pf.kf, j = (i + olha + 2) % pf.n, out = { alvo, freioK: 1, desvio: 0 };
   if (!ia.erro && now > ia.erroLivre && ia.v > alvo + 12 && Math.max(k[j], k[(j + 4) % pf.n], k[(j + 8) % pf.n]) > 1 / 450 && est.erros() < 0.05 * est.erroK * dt) {
     ia.erro = { tipo: "travou", ate: now + 900, lado: -pf.linha.sinal[j] }; ia.erroLivre = now + 30000;
     if (ia.pneu) ia.pneu.desgaste = Math.min(1, ia.pneu.desgaste + 0.004); // o pneu travado ganha um ponto chato
@@ -421,33 +476,46 @@ function passoNoBox(room, p, ia, pf, dt, emit) {
   }
     ia.s = (cor.i0 + b.u) % pf.n; ia.lat = cor.latParada(b.u, b.garagem, b.lat0);
 }
+// O robô está preso? Parado (menos de V_PRESO) por T_PRESO segundos, ou sem andar nem T_SEM_ANDAR pontos de pista em 6 s (rodando no
+// lugar, de lado no muro, na brita). Não conta no box, sob bandeira, antes de a corrida ficar de pé nem com o carro quebrado.
+function encalhou(room, ia, car, now, dt) {
+  if (car.box?.fase || room.direcao?.safety || car.air) { ia.parado = 0; ia.refProg = car.prog; ia.refT = now; return false; }
+  ia.parado = Math.abs(car.v) < V_PRESO ? (ia.parado || 0) + dt : 0;
+  if (ia.refT == null || now - ia.refT > 6000) {
+    const andou = ia.refT == null ? Infinity : car.prog - ia.refProg;
+    ia.refProg = car.prog; ia.refT = now;
+    if (andou < T_SEM_ANDAR) { ia.parado = 0; return true; }
+  }
+  if (ia.parado > T_PRESO) { ia.parado = 0; return true; }
+  return false;
+}
 // F1: os robôs usam o mesmo carro e a mesma pista física dos humanos. O controlador escolhe só o alvo de
 // velocidade e o lugar da pista; Sim.passo aplica direção, pneu, freio, motor, muro e box a 120 Hz.
 function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const tr = Sim.criarPista(T.PISTAS[room.config.pista], room.config.pista), car = ia.sim;
   const spec = pf.c, n = tr.n;
-  if (!pf.fisico) pf.fisico = D.perfilIdeal(tr.pts.map((q, i) => ({ k: pf.linha.k[i], h: q.h })), spec, STEP, 0.92);
   // Também aceita ajustes explícitos de velocidade feitos pela sala e pelos testes.
   if (Math.abs(ia.v - car.v) > 0.01) car.v = ia.v;
   const i = car.idx, est = ia.estilo;
   ia.s = i; ia.lat = Sim.quadro(tr, car.x, car.y, i).lat;
   const saidaGrid = Math.min(1, ((car.prog - (car.gridIdx - n)) / 100));
-  const linha = pf.lat[(i + 2) % n] * 0.35 + ia.jeito + Math.sin(car.prog / 105 + ia.tracadoId * 1.7) * 3
-    + est.dentro * pf.linha.sinal[i] * Math.min(1, pf.linha.k[i] * 400) * 7;
+  const linha = pf.lat[(i + 2) % n] * FATOR_LINHA + ia.jeito + Math.sin(car.prog / 105 + ia.tracadoId * 1.7) * 3
+    + est.dentro * pf.linha.sinal[i] * Math.min(1, pf.kf[i] * 400) * 7;
   const baseLat = ia.lat0 * (1 - saidaGrid) + linha * saidaGrid;
   const maxLat = tr.W / 2 - 18;
-  const tf = transito(room, p, ia, pf, i, baseLat, maxLat);
+  const pneu = F1.aderencia(car.pneu), dano = F1.efeitoDoDano(p.dano), curva = pf.kf[i] > 1 / 600;
+  const fis = perfilF1(pf, ia.nivel), topo = topoDe(pf);
+  const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * 0.25 / STEP));
+  let alvo = Infinity;
+  for (let k = 0; k <= olhar; k++) alvo = Math.min(alvo, fis[(i + k) % n]);
+  const vLivre = Math.min(spec.vmax * pneu.final * dano.final, alvo < topo * 0.97 ? alvo * Math.sqrt(pneu.grip * dano.grip) : alvo); // a velocidade do robô sem ninguém na frente
+  const tf = transito(room, p, ia, pf, i, baseLat, maxLat, vLivre);
   ia.desvio += (tf.desvio - ia.desvio) * Math.min(1, dt * 1.8);
   let alvoLat = Math.max(-maxLat, Math.min(maxLat, baseLat + ia.desvio));
   if (tf.bloqPos) alvoLat = Math.min(alvoLat, ia.lat);
   if (tf.bloqNeg) alvoLat = Math.max(alvoLat, ia.lat);
-  const pneu = F1.aderencia(car.pneu), dano = F1.efeitoDoDano(p.dano), curva = pf.linha.k[i] > 1 / 600;
   const vac = F1.vacuoF1(tf.draft, curva);
-  const nivel = Math.min(1, Math.max(0.45, ia.nivel));
-  const olhar = Math.max(6, Math.ceil(Math.max(car.v, 30) * 0.5 / STEP));
-  let alvo = Infinity;
-  for (let k = 0; k <= olhar; k++) alvo = Math.min(alvo, pf.fisico[(i + k) % n]);
-  alvo *= nivel * Math.sqrt(pneu.grip * dano.grip * vac.aderencia);
+  if (alvo < topo * 0.97) alvo *= Math.sqrt(pneu.grip * dano.grip * vac.aderencia); // só as curvas dependem da aderência
   alvo = Math.min(alvo, spec.vmax * pneu.final * dano.final);
   // Enquanto há pista livre ao lado, o ERS ajuda a passar. Se a porta fecha, o limite de tráfego manda frear.
   if (ia.ult && !tf.bloqPos && !tf.bloqNeg) alvo = Math.min(spec.vmax, alvo * 1.04);
@@ -462,12 +530,24 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     amarela: room.direcao?.amarelo?.setor === Math.floor(i / (n / T.SECTORS)), ersAuto: false,
     voltas: room.config.voltas, laps: p.laps || 0, paradas: (p.paradas || []).length,
     semente: room.semente, id: p.id, grid: p.grid, f1: true, outros };
-  const ent = Sim.pilotoAutomatico(car, tr, spec, alvo, alvoLat, {});
-  ent.ers = !!ia.ult;
-  ent.pedido = pedirBox ? proxima.composto : null;
+  const ent = ia.ent || (ia.ent = {});
   const ev = [];
+  if (encalhou(room, ia, car, now, dt)) { // preso (parado, rodado, de lado no muro ou sem andar): o "↺ Pista" do robô, do lado livre
+    Sim.voltarParaPista(car, tr, ev);
+    const q = tr.pts[car.idx], lado = tf.bloqPos && !tf.bloqNeg ? -1 : tf.bloqNeg && !tf.bloqPos ? 1 : 0, lat = lado * Math.min(maxLat, 40);
+    car.x += q.nx * lat; car.y += q.ny * lat; car.sp = { x: car.x, y: car.y };
+    ia.desvio = 0; ia.ult = null; ia.erro = null; ia.recuperacoes = (ia.recuperacoes || 0) + 1;
+  }
   for (let s = 0, passos = Math.round(dt / Sim.PASSO); s < passos; s++) {
     ev.length = 0;
+    // o volante e os pedais são calculados a cada passo da física (120 Hz), como quem joga: o robô sente o carro escorregar
+    Sim.pilotoAutomatico(car, tr, spec, alvo, alvoLat, ent);
+    if (ent.gas && (car.patina > PAT || Math.abs(car.alR) > ALFA_TRACAO)) ent.gas = 0; // a traseira já está no limite: tira o pé em vez de rodar
+    const exc = Math.abs(car.alF) - ALFA_FRENTE; // a frente já passou do pico do pneu (anda de frente): mais volante só piora, alivia até ela voltar a pegar
+    if (exc > 0 && car.alF * ent.steer < 0) ent.steer *= Math.max(0, 1 - exc * K_FRENTE);
+    if (ent.brake && car.travada > TRAVA_ABS) ent.brake = 0; // a roda da frente travou: solta o freio um instante (o ABS de quem sabe frear)
+    ent.ers = !!ia.ult;
+    ent.pedido = pedirBox ? proxima.composto : null;
     Sim.passo(car, ent, amb, tr, ev);
     for (const e of ev) {
       if (e.t === "setor") setor(p, e.s);
@@ -591,4 +671,6 @@ function passo(room, dt, setor, emit) {
   }
   if (f1 && corrida) contatos(room, emit); // as batidas entre os carros (o servidor confere a força e aplica a punição e o dano)
 }
-module.exports = { forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao };
+function possivel(pista, spec) { return perfilF1(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0), 1); }
+possivel.topo = (pista, spec) => topoDe(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0));
+module.exports = { idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao };

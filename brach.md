@@ -1,28 +1,37 @@
-# Corrida F1: farol da largada, quebra de 0,5% e avisos com cara de F1
+# Robôs da F1: ritmo de verdade, curvas sem frear à toa e sem ficar preso
 
-Dois bugs da Corrida (regras de F1) e a interface dos avisos refeita no estilo da transmissão oficial.
+Os robôs andavam a ~50% acima do piloto ideal (o jogador médio dava volta neles) e freavam quase parando em curvas fáceis. Agora andam perto de quem joga bem, sem passar do limite do carro.
 
-## Largada: o carro só sai quando as luzes apagam
+## Causas achadas (medindo corridas de 10 robôs em 24 pistas)
 
-- **Causa:** com as cinco luzes, o "freio de mão" que segura o carro no grid (`amb.segurar`) soltava assim que o piloto acelerava (`room.luzes ? t < startAt && !ent.gas : ...` no servidor, em `corrida-humanos.js`, e a mesma conta na previsão e na reconciliação de `fisica.js`; `physics` ainda liberava tudo se `race.luzes` existisse). Então dava para sair antes do "go" e o único freio era a punição, que só olhava a velocidade.
-- **Agora:** o carro fica parado até `startAt` pelo relógio, sem olhar o acelerador, no servidor (a autoridade) e na previsão do navegador, então não há carro que anda e volta. Vale para humanos e robôs (os robôs já só saem depois de `startAt`) e para a classificação.
-- **Queimar a largada continua punido** (`corrida-f1-direcao.js`): como o carro não anda mais, a direção de prova pune o pé: acelerar por mais de 250 ms seguidos com as luzes acesas (`p.gasNasLuzes`, contado pelo servidor), com 150 ms de folga para o relógio, dá +5 s, uma vez só. Quem anda mais de 45 u/s antes do go (caso antigo) também é punido.
+1. **Nível usado como escala de velocidade em tudo.** `ia.nivel` (~0,65–0,71 depois de calibrado com um modelo que não batia com a corrida) multiplicava a velocidade alvo também nas retas: os robôs viam 70% da velocidade final. O modelo de volta (`tempoDaVolta`) só reduzia as curvas; a corrida reduzia tudo.
+2. **Curvatura com ruído.** O raio da linha de corrida chegava a ~0 (Barcelona, Spa, Suzuka, Baku) e ~35 u em Interlagos onde a pista tem 82: o perfil de velocidade despencava (a quina de raio quase zero do PR fechado `b8cc28e`, que aqui também aparecia como 1 u/s no perfil) e a linha usada pelo carro (35% da linha de corrida) nem era a do cálculo.
+3. **Olhar à frente de 0,5 s a velocidade já multiplicada pelo nível** e freio/acelerador tudo-ou-nada: roda da frente travava na curva, o robô rodava na saída (acelerador cheio com a traseira no limite) e ficava preso no muro (Baku, Barcelona: voltas de 150–300 s).
+4. **Ninguém tirava o carro do muro.** Preso, ficava parado até o fim.
+5. O robô esperava atrás de um carro lento mesmo com o lado livre (só ultrapassava na reta).
 
-## Quebra de carro: 0,5% por carro por corrida
+## O que mudou (`corrida-robos.js`)
 
-- A chance mora em `f1-equipes.js`: `specDaMontagem` calculava `quebra = 1% + 0,8% por nível de motor + 1% por nível que falta de confiabilidade` (de 1% a 17%), e `sortearFalha` a sorteia pela semente do GP (`sortearFalhas` em `corrida.js`).
-- Agora `quebraDaConfiab`: 0,5% com a confiabilidade padrão (nível 3, a da maioria das equipes), subindo até 1% sem a peça e caindo até 0,25% com ela no máximo. O motor não mexe mais na chance. A nota de confiabilidade da ficha acompanha.
+- Curvatura do caminho de verdade (`curvaturaDoCaminho`: círculo por três pontos, suavizado, raio mínimo de 22 u) e o carro segue 80% da linha de corrida (`FATOR_LINHA`); o perfil de velocidade (`perfilF1`) sai dessa curvatura.
+- O nível é a fração da margem do piloto ideal usada **só nas curvas e frenagens**; as retas vão sempre ao limite. `tempoDaVolta` (F1) agora é o mesmo perfil, em tabela por nível.
+- Volante e pedais a cada passo da física (120 Hz): tira o pé quando a traseira escorrega, alivia o volante quando a frente passa do pico do pneu, solta o freio se a roda trava (ABS).
+- Ritmo: alvo = volta do piloto ideal do carro dele (`idealDe`) + folga do nível (fácil +13,7%, médio +7,4%, difícil +2,5% no modelo; o pneu macio/duro e o vácuo mexem no resultado real) + até 1,2% pelo ritmo do piloto. Nunca abaixo do limite do carro.
+- Robô preso (parado 2,5 s ou sem andar 10 pontos em 6 s) volta à pista como o "↺ Pista" (do lado livre, se há carro ao lado).
+- Preso atrás de um carro bem mais lento: passa também em curva leve, não só na reta.
+- `dinamica.js`: só um atalho de desempenho em `parametros` (cache por objeto; mesmo resultado, ~5x mais rápido as contas dos robôs). A física dos humanos não mudou.
 
-## Avisos no estilo da transmissão de F1 (só com `config.regras === "f1"`)
+## Antes e depois (10 robôs, 5 voltas, média da melhor volta limpa contra o piloto ideal do próprio carro)
 
-- Faixas retas com a cor da bandeira (amarela, azul, vermelha, verde, laranja do Safety Car, branca para limites/punição/bandeirada, vermelha para quebra/incidente, roxa para volta mais rápida, azul-claro para box, verde para DRS), ícone, o logo F1 pequeno e tipografia condensada em caixa alta (Titillium Web, a do HUD). As mensagens da direção levam o cabeçalho "DIREÇÃO DE PROVA · RACE CONTROL"; as outras, o próprio rótulo (BOX, ABANDONO, FALHA MECÂNICA, VOLTA MAIS RÁPIDA...).
-- Entram pela lateral em 0,26 s (sem animação com `prefers-reduced-motion`). Fila de até 3 faixas por vez, as outras esperam por prioridade (vermelha, SC, amarela, azul...) sem um tapar o outro. O estado que dura (bandeira, box, perda total, contagem) é uma faixa fixa que troca o texto no lugar. O DOM só muda quando a fila ou um texto muda.
-- Tudo o que o servidor já registrava no log (bandeiras, pista liberada, SC e relargada, limites, punições, quebra, perda total, batidas, largada) passa a aparecer na tela; ruído (robôs, paradas e limites dos outros, quem sai da sala) fica de fora. Novos: DRS liberado, volta mais rápida, "luzes apagadas: é largada!" e a bandeirada.
-- Os toasts da corrida (box, conexão, recorde...) viram faixas da fila; as cinco luzes ganharam o pórtico de F1; a tela de resultado ganhou a faixa de bandeirada (com os acréscimos de tempo). Arcade e telas fora da pista ficam como antes.
-- Lógica pura e testável em `public/corrida/avisos-f1.js` (`AvisosF1`: tipos, cores, `deLinha`, `novosDoLog`, `criarFila`); o desenho está em `hud.js` e `hud-f1.css`.
+| Pista | Nível | Antes | Depois |
+|---|---|---|---|
+| Interlagos | fácil / médio / difícil | +60% / +52% / +37% | +8% / +3% / -5% |
+| Mônaco | fácil / médio / difícil | +63% / +52% / +39% | +8% / +3% / -5% |
+| Monza | fácil / médio / difícil | +52% / +41% / +29% | +12% / +8% / +2% |
+| Spa | fácil / médio / difícil | +64% / +58% / +42% | +10% / +6% / -2% |
+
+Robôs mais de 3 s abaixo de 15% da velocidade possível: Spa antes 10 de 10 (todos), depois 0; nas outras pistas 0 antes e depois. No nível difícil o pneu macio dá voltas até alguns % abaixo do "ideal" neutro (a tabela de pneus é de outro PR). Teste novo em 24 pistas, nível médio: média de +2,4% a +9,6% (maioria entre 3% e 6%), todos terminam, nenhum passa de 3 s abaixo de 15%, curvas largas a pelo menos 80% do possível.
 
 ## Testes
 
-- Novos: `tests/corrida-f1-largada.test.js` (sem movimento antes do go no servidor e na previsão, queima por pé, folga do relógio, taxa de quebra de 0,5% em 60 mil sorteios com a semente, de 1% a 0,25% pela confiabilidade) e `tests/corrida-avisos-f1.test.js` (tipos, cores, log, fila e prioridade).
-- Ajustados os testes de quebra em `tests/corrida-f1-equipes.test.js`.
-- Rodados só os da Corrida: `node --test tests/corrida*.test.js` (220 passam).
+- Novo `tests/corrida-robos-ritmo.test.js` (24 pistas de F1, ordem dos níveis, robô preso se recupera, perfil sem quinas).
+- Ajustados: janelas de pole em `corrida-f1-dano-ia.test.js` (macio quente é mais rápido que o pneu neutro) e dois limites de `corrida-f1-equipes.test.js`.
