@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/corrida/entrada.css">
   <link rel="stylesheet" href="/corrida/temporada/sede.css">
+  <link rel="stylesheet" href="/corrida/temporada/garagem.css">
 </head>
 <body>
   <header class="bar"><div class="bar-in"><a class="tovila" href="/">← Vila</a></div></header>
@@ -17,7 +18,11 @@
   <div class="toast hidden" id="aviso" role="status"></div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/corrida/f1-pilotos-2026.js"></script>
+  <script src="/corrida/pistas.js"></script>
   <script src="/corrida/f1-equipes.js"></script>
+  <script src="/corrida/f1-pecas.js"></script>
+  <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
+  <script src="/corrida/temporada/garagem.js"></script>
   <script src="/corrida/temporada/regras.js"></script>
   <script src="/corrida/temporada/grupo-regras.js"></script>
   <script src="/corrida/temporada/grupo.js"></script>

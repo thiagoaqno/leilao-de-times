@@ -10,6 +10,7 @@
 (function (root) {
 const Pilotos = root.F1Pilotos || require("../f1-pilotos-2026.js");
 const Equipes = root.F1Equipes || require("../f1-equipes.js");
+const Pecas = root.F1Pecas || require("../f1-pecas.js");
 const Solo = root.F1Temporada || require("./regras.js");
 
 const MAX_PESSOAS = 8, GRID = 20, CAIXA_INICIAL = 42, PATROCINIO = 6, HISTORICO_MAX = 30;
@@ -135,11 +136,11 @@ function montar(sala, pid, montagem, versao) {
   ativa(sala);
   const eq = equipeDa(sala, pid), t = sala.equipes[eq];
   if (versao != null && versao !== t.versao) throw Error("Sua equipe mudou enquanto você mexia. Confira a tela e tente de novo.");
-  const v = Equipes.validar(eq, montagem, t.bonus);
+  const v = Pecas.resolver(eq, montagem && montagem.pecas !== undefined ? montagem : { montagem }, t.bonus); // `montagem` pode ser { pecas } ou os níveis (formato antigo)
   if (!v.ok) throw Error(v.erro);
-  if (ORDEM_IGUAL(v.montagem, t.montagem)) return sala;
+  if (ORDEM_IGUAL(v.montagem, t.montagem)) { if (v.pecas && JSON.stringify(v.pecas) !== JSON.stringify(t.pecas)) { t.pecas = v.pecas; anotar(sala, pid, t, "trocou as peças do carro"); } return sala; }
   const mudou = Equipes.ORDEM.filter((k) => v.montagem[k] !== t.montagem[k]).map((k) => `${Equipes.PECAS[k].nome} ${t.montagem[k]}→${v.montagem[k]}`).join(", ");
-  t.montagem = v.montagem; anotar(sala, pid, t, `montou o carro (${mudou})`);
+  t.montagem = v.montagem; t.pecas = v.pecas; anotar(sala, pid, t, `montou o carro (${mudou})`);
   return sala;
 }
 const ORDEM_IGUAL = (a, b) => Equipes.ORDEM.every((k) => a[k] === b[k]);

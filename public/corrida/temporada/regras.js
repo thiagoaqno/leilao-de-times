@@ -2,6 +2,7 @@
 (function (root) {
 const Pilotos = root.F1Pilotos || require("../f1-pilotos-2026.js");
 const Equipes = root.F1Equipes || require("../f1-equipes.js");
+const Pecas = root.F1Pecas || require("../f1-pecas.js");
 const PONTOS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 // Seleção curta, em ordem do calendário real de 2026, só com pistas presentes no jogo.
 const CALENDARIO = [
@@ -22,6 +23,12 @@ function criar(nome, equipe, tamanho = 8, voltas = 3, semente = Date.now()) {
     montagem: Equipes.montagemPadrao(equipe), bonus: 0, caixa: 42, gasto: 0, patrocinio: 6,
     piloto2: titulares[0].id, engenheiros: { mecanico: 0, estrategista: 0 },
     resultados: [], calendario: (tamanho === 4 ? [CALENDARIO[0], CALENDARIO[2], CALENDARIO[5], CALENDARIO[7]] : CALENDARIO).map(([pista, nomeGP]) => ({ pista, nome: nomeGP })) };
+}
+// monta o carro: `d.pecas` (a escolha de peças, que vira os níveis) ou `d.montagem` (o formato antigo, só níveis)
+function aplicarMontagem(s, d) {
+  const v = Pecas.resolver(s.equipe, d, s.bonus);
+  if (!v.ok) throw Error(v.erro);
+  s.montagem = v.montagem; s.pecas = v.pecas; // `pecas` é null quando veio do formato antigo
 }
 function conferirMontagem(s, m) {
   const v = Equipes.validar(s.equipe, m, s.bonus);
@@ -104,7 +111,7 @@ function proximaTemporada(s) {
   if (s.gp !== s.tamanho) throw Error("Termine o calendário primeiro.");
   s.ano++; s.gp = 0; s.gasto = 0; s.semente = Number(s.semente) + 937; return s;
 }
-const api = { CALENDARIO, PONTOS, ENGENHEIROS, teto, criar, conferirMontagem, contratarPiloto, contratarEngenheiro, desenvolver, pilotosNoGrid, registrarResultado, tabelas, proximaTemporada };
+const api = { CALENDARIO, PONTOS, ENGENHEIROS, teto, criar, conferirMontagem, aplicarMontagem, contratarPiloto, contratarEngenheiro, desenvolver, pilotosNoGrid, registrarResultado, tabelas, proximaTemporada };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Temporada = api;
 })(typeof window !== "undefined" ? window : globalThis);
