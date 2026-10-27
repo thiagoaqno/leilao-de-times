@@ -24,7 +24,9 @@ export const { $, h, store } = Comum;
 export const relogio = Comum.relogio(), sNow = relogio.agora;
 export const me = () => (E.S && E.ME && E.ME.id ? E.S.players.find((p) => p.id === E.ME.id) : null);
 export const P = (id) => E.S && E.S.players.find((p) => p.id === id);
-export const toast = Comum.criarToast(3200);
+const toastBase = Comum.criarToast(3200);
+// regras de F1: na pista (corrida e classificação) o aviso vira uma faixa da fila de avisos (hud.js liga `E.avisarF1`); no resto, o toast de sempre
+export const toast = (msg, ms) => { if (E.avisarF1 && E.S && E.S.config && E.S.config.regras === "f1" && (E.S.phase === "race" || E.S.phase === "quali")) E.avisarF1(msg, ms || 3200); else toastBase(msg, ms); };
 export const act = Comum.criarAct(socket, toast);
 export const fmt = (s) => s == null ? "—" : `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 export const rng = (seed) => { let x = seed; return () => ((x = (x * 16807) % 2147483647) / 2147483647); };

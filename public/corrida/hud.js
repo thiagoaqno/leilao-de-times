@@ -26,6 +26,8 @@ export function hud() {
   else if (left > -1) { big = luz ? "" : "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); } }
   luzesDaLargada(left);
   const f1on = cfg.regras === "f1" && E.S.phase === "race"; // o HUD novo (torre e painel) só nas regras de F1; no arcade fica o antigo
+  const f1av = cfg.regras === "f1"; // os avisos no estilo da transmissão valem em toda a pista de F1 (classificação e corrida)
+  if (race.avF1 !== f1av) { race.avF1 = f1av; $("race").classList.toggle("f1avisos", f1av); }
   if (race.hudF1 !== f1on) { race.hudF1 = f1on; $("race").classList.toggle("f1hud", f1on); race.hudQuadro = null; }
   if (m && m.finish != null && E.S.phase === "race") big = "";
   $("hBig").textContent = big;
@@ -78,8 +80,9 @@ export function hud() {
   else if (E.S.endAt && m && m.finish == null) msg = `⏱️ ${Math.max(0, Math.ceil((E.S.endAt - now) / 1000))} s para cruzar`;
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
   if (B) { const bt = $("bBox"), txt = B.pedido || B.fase ? `🔧 ${nomeBox}` : "🔧 Box"; if (bt.textContent !== txt) { bt.textContent = txt; bt.classList.toggle("pedido", !!(B.pedido || B.fase)); } }
-  $("hMsg").textContent = f1on && !msg ? bandeiraF1(m) : msg;
-  avisoDeBatida(m);
+  if (f1av) { if (E.S.phase !== "quali") estadoF1(msg || (f1on ? bandeiraF1(m) : "")); } else $("hMsg").textContent = msg;
+  if (!f1av) avisoDeBatida(m); // (nas regras de F1 a batida vem do log da direção de prova)
+  if (f1av) avisosF1(m, left, now);
   if (E.S.phase === "quali") hudClassificacao(m, now);
   // vácuo e estilingue
   const dr = race.sling > 0 ? 1 : race.draft;
@@ -105,6 +108,62 @@ function montarTorre() {
   const box = $("tLinhas");
   for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "tl hidden"; d.innerHTML = '<span class="n"></span><i class="eq"></i><b class="sg"></b><em class="df"></em><u class="pn"></u><s class="vr" title="Volta mais rápida"></s><small class="ic"></small>'; box.appendChild(d); }
   $("hPainel").innerHTML = '<div class="pf-over" id="pOver">OVERTAKE</div><div class="pf-vel"><b id="pVel">0</b><span>KM/H</span><div class="pf-marcha" id="pMarcha">N</div></div><div class="pf-rpm" id="pRpm">' + "<i></i>".repeat(10) + '</div><div class="pf-boost"><span>BOOST</span><div><i id="pBoost"></i></div><b id="pBoostT">0%</b></div><div class="pf-extra"><div class="pf-pneu" id="pPneu"><b>M</b><span>100%</span></div><div class="pf-dano"><span id="pDanoT">DANO 0%</span><div><i id="pDano"></i></div></div></div>';
+}
+// ---------- os avisos no estilo da transmissão de F1 (avisos-f1.js tem as regras: tipos, cores, fila) ----------
+// Faixas retas com a cor da bandeira, o ícone, o cabeçalho ("DIREÇÃO DE PROVA · RACE CONTROL" ou o tipo do aviso) e o texto. A fila
+// mostra até 3 de uma vez e os outros esperam; o DOM só muda quando a fila muda (versao) ou o texto de uma faixa muda.
+const LOGO_AVISO = LOGO_F1.replace('class="f1logo"', 'class="f1logo av-logo"');
+const NOS_AVISOS = new Map();
+let FILA_AVISOS = null;
+const filaAvisos = () => FILA_AVISOS || (FILA_AVISOS = window.AvisosF1.criarFila());
+export function htmlAviso(tipo, texto) {
+  const A = window.AvisosF1, t = A.tipoDe(tipo);
+  const cab = t.direcao ? '<b>DIREÇÃO DE PROVA</b><small>RACE CONTROL</small>' : `<b>${t.rotulo}</b>`;
+  return `<span class="av-bloco">${A.iconeDe(tipo)}</span><span class="av-corpo"><span class="av-cab">${cab}${LOGO_AVISO}</span><span class="av-txt">${h(texto)}</span></span>`;
+}
+function estiloAviso(el, tipo) { const t = window.AvisosF1.tipoDe(tipo); el.style.setProperty("--fundo", t.fundo); el.style.setProperty("--txt", t.txt); el.style.setProperty("--bloco", t.bloco); }
+// um aviso de fora (toast, tela de fim): vira uma faixa da fila
+E.avisarF1 = (texto, ms) => { const A = window.AvisosF1, l = A.limpar(texto); if (l) filaAvisos().empurrar({ tipo: A.tipoDoTexto(texto), texto: l, ttl: Math.max(2600, (ms || 3200) + 1200) }, Date.now()); };
+// o aviso que dura enquanto a situação dura (bandeira, box, perda total...): uma faixa só, troca o texto no lugar
+function estadoF1(texto) {
+  const A = window.AvisosF1, f = filaAvisos(), l = A.limpar(texto);
+  if (!l) f.remover("estado"); else f.empurrar({ chave: "estado", tipo: A.tipoDoTexto(texto), texto: l, fixo: true }, Date.now());
+}
+function desenharAvisos() {
+  const box = $("avisosF1"); if (!box) return;
+  const f = filaAvisos(), lista = f.visiveis(Date.now());
+  if (box._versao === f.versao) return; box._versao = f.versao;
+  const vivos = new Set();
+  for (const a of lista) {
+    vivos.add(a.id);
+    let n = NOS_AVISOS.get(a.id);
+    if (!n) { n = document.createElement("div"); n.className = "av-item"; n._tipo = a.tipo; n._txt = a.texto; estiloAviso(n, a.tipo); n.innerHTML = htmlAviso(a.tipo, a.texto); NOS_AVISOS.set(a.id, n); box.appendChild(n); }
+    else if (n._tipo !== a.tipo || n._txt !== a.texto) { n._tipo = a.tipo; n._txt = a.texto; estiloAviso(n, a.tipo); n.innerHTML = htmlAviso(a.tipo, a.texto); }
+  }
+  for (const [id, n] of NOS_AVISOS) if (!vivos.has(id)) { n.remove(); NOS_AVISOS.delete(id); }
+}
+// o que vira aviso a cada quadro: as linhas novas do log da direção de prova, o DRS liberado, a volta mais rápida, a largada e a bandeirada
+function avisosF1(m, left, now) {
+  const A = window.AvisosF1, f = filaAvisos(), agora = Date.now();
+  if (!race.avIni) { race.avIni = true; f.limpar(); NOS_AVISOS.clear(); const box = $("avisosF1"); if (box) { box.innerHTML = ""; box._versao = -1; } race.logVisto = null; }
+  const S = E.S, nome = m && m.name;
+  const lg = A.novosDoLog(S.log, race.logVisto, sNow()); race.logVisto = lg.visto;
+  for (const l of lg.novos) { const a = A.deLinha(l.text, nome); if (a) f.empurrar(a, agora); }
+  if (S.phase === "race") {
+    // as luzes: aviso fixo até apagarem, e a largada
+    if (race.luzes && left > 0) f.empurrar({ chave: "luzes", tipo: "largada", texto: "Largada: pé fora do acelerador até as luzes apagarem", fixo: true }, agora);
+    else { f.remover("luzes", agora); if (race.luzes && left <= 0 && left > -2 && !race.avLargou) { race.avLargou = true; f.empurrar({ tipo: "largada", texto: "Luzes apagadas: é largada!", ttl: 3000 }, agora); } }
+    // o DRS liberado para mim
+    const z = m && m.drsZona >= 0 ? m.drsZona : -1;
+    if (z >= 0 && race.avDrs !== z) f.empurrar({ tipo: "drs", texto: "DRS liberado: ataque na zona de detecção", ttl: 3200 }, agora);
+    race.avDrs = z;
+    // a volta mais rápida da corrida: muda quando alguém baixa o tempo
+    let melhor = null; for (const p of S.players) if (p.best != null && (!melhor || p.best < melhor.best)) melhor = p;
+    if (melhor && (race.avVmr == null || melhor.best < race.avVmr - 1e-6)) { if (race.avVmr != null || S.players.length) f.empurrar({ tipo: "vmr", texto: `${melhor.sigla || melhor.name} · ${fmt(melhor.best)}`, ttl: 4200 }, agora); race.avVmr = melhor.best; }
+    // minha bandeirada
+    if (m && m.finish != null && !race.avFim) { race.avFim = true; f.empurrar({ tipo: "chegada", texto: "Bandeirada! Você cruzou a linha de chegada", ttl: 6000 }, agora); }
+  }
+  desenharAvisos();
 }
 // o que não é mensagem de corrida mas a direção de prova manda: a bandeira azul e os limites da pista
 function bandeiraF1(m) {
@@ -191,7 +250,7 @@ function hudClassificacao(m, now) {
   else if (dentro && now < q.startAt) msg = "⏱️ Classificação: faça a sua melhor volta lançada";
   else if (dentro && restante <= 0) msg = "🏁 Bandeirada: termine a volta";
   else if (dentro && !meu) msg = "⏱️ A volta conta na linha de chegada";
-  $("hMsg").textContent = msg;
+  if (E.S.config.regras === "f1") estadoF1(msg); else $("hMsg").textContent = msg;
   const bp = $("bPronto"); if (bp) { bp.classList.toggle("hidden", !dentro || q.pausa); bp.disabled = q.pronto.includes(m && m.id); }
 }
 // a tela entre as sessões: quem passou, quem caiu (em vermelho) e, no fim, o grid da largada
@@ -291,8 +350,9 @@ function resultadoGP(el, m, isHost) {
   const pneus = (r) => (r.paradas ? `${r.paradas}P ` : "0P ") + (r.compostos || []).map((c) => `<u class="pn" style="--c:${F.PNEUS[c] ? F.PNEUS[c].cor : "#999"}"></u>`).join("");
   const final = (r) => r.dnf ? "DNF" : r.nc ? "NC" : r.tempo == null ? `+${Math.max(1, S.config.voltas - r.voltas)} volta${S.config.voltas - r.voltas > 1 ? "s" : ""}` : r === vencedor ? fmt(r.tempo) : `+${(r.tempo - vencedor.tempo).toFixed(3)} s`;
   const podio = [1, 0, 2].filter((i) => R[i]).map((i) => { const r = R[i], p = P(r.id); return `<div class="pod pod${i + 1}"><span class="pn-eq" style="background:${p ? p.color : "#999"}"></span><b>${h(nome(r.id))}</b><small>${h(p && p.equipe ? p.sigla : "")} ${r.tempo != null ? (r === vencedor ? fmt(r.tempo) : "+" + (r.tempo - vencedor.tempo).toFixed(3)) : ""}</small><div class="bloco">${i + 1}</div></div>`; }).join("");
+  const punidos = S.players.filter((p) => (p.acrescimo || 0) > 0).length;
   el.classList.remove("hidden");
-  el.innerHTML = `<div class="placa gp"><div class="chk"></div><div class="in"><h2 style="font-size:26px;margin-bottom:6px">🏆 GP · ${h(PISTAS[S.config.pista].name)}</h2>
+  el.innerHTML = `<div class="placa gp"><div class="chk"></div><div class="in"><div class="av-item av-fixo" style="--fundo:#f2f2f5;--txt:#0a0c12;--bloco:#0a0c12">${htmlAviso("chegada", punidos ? `Resultado do GP, com acréscimos de tempo para ${punidos} piloto${punidos > 1 ? "s" : ""}` : "Resultado oficial do GP")}</div><h2 style="font-size:26px;margin:10px 0 6px">🏆 GP · ${h(PISTAS[S.config.pista].name)}</h2>
     <div class="podio">${podio}</div>
     <table class="gptab"><thead><tr><th></th><th>Piloto</th><th class="num">Tempo</th><th>Grid</th><th>Paradas</th><th class="num">Melhor</th><th class="num">Pts</th></tr></thead><tbody>${R.map((r) => { const p = P(r.id), g = r.grid + 1, d = g - r.pos;
       return `<tr class="${m && r.id === m.id ? "eu" : ""} ${r.nc || r.dnf ? "nc" : ""}"><td>${r.nc || r.dnf ? "—" : r.pos + "º"}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(nome(r.id))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}</td><td class="num">${final(r)}${r.penal ? ` <small class="muted">(+${r.penal} s)</small>` : ""}${r.dano ? ` <small class="muted">· dano ${Math.round(r.dano)}%</small>` : ""}</td><td class="muted">${g}º ${d ? `<small class="${d > 0 ? "sobe" : "desce"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</small>` : ""}</td><td class="muted">${pneus(r)}</td><td class="num muted">${r.melhor != null ? fmt(r.melhor) : ""}</td><td class="num"><b>${r.pontos || ""}</b></td></tr>`; }).join("")}</tbody></table>

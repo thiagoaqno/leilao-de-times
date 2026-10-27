@@ -7,9 +7,14 @@ const penalizar = (p, segundos, motivo, log) => {
   p.acrescimo = (p.acrescimo || 0) + segundos;
   log(`⏱️ ${p.name}: ${motivo}, +${segundos} s.`);
 };
-// A largada queimada: o carro já anda (mais de 45 u/s) antes de as luzes apagarem (com 150 ms de folga para o relógio).
+// A largada queimada: o carro fica preso no grid até as luzes apagarem, então vale o pé: acelerar (por mais de GAS_QUEIMA_MS seguidos,
+// medidos por corrida-humanos.js em `p.gasNasLuzes`) enquanto as luzes estão acesas. Quem anda antes (mais de 45 u/s, com 150 ms de
+// folga para o relógio) também queimou.
+const GAS_QUEIMA_MS = 250;
 function largada(room, p, pos, agora, log) {
-  if (p.queimou || !(agora < room.startAt - 150) || !(pos.v > 45)) return;
+  if (p.queimou) return;
+  const andou = agora < room.startAt - 150 && pos.v > 45, acelerou = !!room.luzes && (p.gasNasLuzes || 0) >= GAS_QUEIMA_MS;
+  if (!andou && !acelerou) return;
   p.queimou = true; penalizar(p, 5, 'queimou a largada', log);
 }
 // Uma batida (no muro ou em outro carro) de `forca` (F1.batida diz o nível): 1% de dano, sem punição de tempo (e cada 1% de
@@ -42,7 +47,7 @@ function iniciar(room) {
     scDura: 10000 + Math.floor(r() * 4000),
     pista: T.pontos(t, 6), ultimaAtualizacao: 0 };
   for (const id of room.order) Object.assign(room.players[id], { drsZona: -1, penal: 0, avisosLimite: 0,
-    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, batidas: 0, batidaAte: 0, batidaPares: {}, ultimaBatida: null, queimou: false, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
+    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, batidas: 0, batidaAte: 0, batidaPares: {}, ultimaBatida: null, queimou: false, gasNasLuzes: 0, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
 }
 function progresso(p, n) { return Number.isFinite(p.pos?.prog) ? p.pos.prog / n : -1; }
 function ordem(room) {
@@ -124,4 +129,4 @@ function publico(room) {
   return { amarelo: d.amarelo, safety: d.safety ? { ate: d.safety.ate, prog: d.safety.prog } : null,
     limite: d.safety ? 0.54 : d.amarelo ? 0.82 : 1 };
 }
-module.exports = { iniciar, passo, registrar, publico, ordem, bater };
+module.exports = { iniciar, passo, registrar, publico, ordem, bater, GAS_QUEIMA_MS };
