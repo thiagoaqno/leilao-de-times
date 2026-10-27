@@ -59,4 +59,4 @@ for (const ev of ["pointerdown", "pointerup", "pointercancel", "lostpointercaptu
   bErs.classList.toggle("on", keys.ers);
   if (keys.ers) bErs.setPointerCapture(e.pointerId);
 });
-$("bExit").onclick = () => { const destino = E.S?.temporada ? "/corrida/temporada/" : "/"; if (confirm(E.S?.temporada ? "Sair do GP e voltar à sede? Se não voltar à pista, será DNF." : "Sair da corrida e voltar para a vila?")) location.href = destino; };
+$("bExit").onclick = () => { const destino = E.S?.temporada ? "/corrida/temporada/" + (E.S.salaTemporada ? "?sala=" + E.S.salaTemporada : "") : "/"; if (confirm(E.S?.temporada ? "Sair do GP e voltar à sede? Se não voltar à pista, será DNF." : "Sair da corrida e voltar para a vila?")) location.href = destino; };

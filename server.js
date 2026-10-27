@@ -34,6 +34,7 @@ const Ritmo = require("./public/leilao/ritmo.js"); // quanto dura cada parte do 
 // o banco de dados (bd.js: SQLite, carreiras de treinador). Se não abrir, o resto do site segue funcionando.
 try { require("./bd.js").abrir(); } catch (e) { console.warn("Banco de dados não abriu:", e.message); }
 require("./corrida-temporada.js")(io, corrida); // temporada solo de Fórmula 1, canal /corrida-temporada
+require("./corrida-temporada-grupo.js")(io, corrida); // temporada de Fórmula 1 com os amigos, sala com código, canal /corrida-temporada-grupo
 require("./fotos-jogadores.js").attach(app);
 require("./carreira.js")(io); // Carreira de Treinador: a temporada contra o computador, salva no banco, canal /carreira
 const carreiraOnline = require("./carreira-online.js")(io); // Carreira em grupo: a sala com código, cada amigo num clube do mesmo mundo, canal /carreira-online

@@ -31,7 +31,8 @@ function telaInicial() {
     <section class="folha"><h2>Abrir temporada</h2><form id="nova"><label for="nome">Seu nome no grid</label><input id="nome" name="nome" maxlength="40" required autocomplete="name" placeholder="Seu nome">
       <label for="equipe">Equipe</label><select id="equipe" name="equipe">${opcoes}</select><div class="duo"><div><label for="tamanho">Calendário</label><select id="tamanho" name="tamanho"><option value="8">8 GPs</option><option value="4">4 GPs · mini temporada</option></select></div>
       <div><label for="voltas">Voltas por GP</label><select id="voltas" name="voltas"><option value="3">3 voltas</option><option value="2">2 voltas</option><option value="5">5 voltas</option></select></div></div><button class="primary" type="submit">Abrir meu box →</button></form>
-      <div class="or">Já tenho temporada</div><form id="recuperar"><label for="codigo">Código de recuperação</label><input id="codigo" name="codigo" maxlength="20" autocomplete="off" placeholder="12 caracteres"><button type="submit">Recuperar save</button></form></section></div>`;
+      <div class="or">Já tenho temporada</div><form id="recuperar"><label for="codigo">Código de recuperação</label><input id="codigo" name="codigo" maxlength="20" autocomplete="off" placeholder="12 caracteres"><button type="submit">Recuperar save</button></form>
+      <div class="or">Temporada com os amigos</div>${window.SedeGrupo.formulario()}</section></div>`;
 }
 function tabela(rows, tipo, meu) {
   const lista = rows.slice(0, 10);
@@ -86,5 +87,6 @@ app.addEventListener("click", async (e) => {
   if (b.id === "esconder") { codigo = null; renderizar(); }
 });
 socket.on("estado", (r) => { if (estado) { estado = r; renderizar(); } });
-socket.on("connect", async () => { if (token) { const r = await pedir("abrir", { token }); if (r?.ok) guardar(r); else { token = null; localStorage.removeItem(chave); telaInicial(); } } else telaInicial(); });
-if (socket.connected) socket.emit("abrir", { token }, (r) => { if (r?.ok) guardar(r); else telaInicial(); });
+socket.on("connect", async () => { if (window.SedeGrupo.ativo) return; if (token) { const r = await pedir("abrir", { token }); if (r?.ok) guardar(r); else { token = null; localStorage.removeItem(chave); telaInicial(); } } else telaInicial(); });
+if (socket.connected && !window.SedeGrupo.ativo) socket.emit("abrir", { token }, (r) => { if (r?.ok) guardar(r); else telaInicial(); });
+if (window.SedeGrupo.ativo) window.SedeGrupo.iniciar(); // ?sala=CÓDIGO: a temporada em grupo (grupo.js)
