@@ -107,7 +107,7 @@ export function fundirEstaticos(tr, { simular = null, celula = 1600, tamanhoMax 
     for (const { o } of lista) o.removeFromParent();
   }
   // ---- as instâncias espalhadas pela volta viram um InstancedMesh por região (para a tela e a sombra cortarem o que está longe) ----
-  const m4 = new THREE.Matrix4(), v3 = new THREE.Vector3(), cor = new THREE.Color(); let dividas = 0;
+  const m4 = new THREE.Matrix4(), v3 = new THREE.Vector3(), cor = new THREE.Color(); let dividas = 0, instanciadasExtras = 0;
   // (só as pesadas, de 15 mil triângulos para cima: cortar as leves só trocaria triângulos de graça por chamadas de desenho caras)
   const triangulos = (m) => ((m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3) * m.count;
   for (const m of grp.children.filter((o) => o.isInstancedMesh && o.count >= 24 && triangulos(o) >= 15000 && parado(o))) {
@@ -121,9 +121,10 @@ export function fundirEstaticos(tr, { simular = null, celula = 1600, tamanhoMax 
       nova.instanceMatrix.needsUpdate = true; if (nova.instanceColor) nova.instanceColor.needsUpdate = true; nova.computeBoundingSphere();
       grp.add(nova);
     }
-    m.removeFromParent(); dividas++;
+    m.removeFromParent(); dividas++; instanciadasExtras += baldes.size - 1;
   }
   stats.instanciadasDivididas = dividas;
+  stats.instanciadasExtras = instanciadasExtras; // malhas extras intencionais: cada região pode sair do campo de visão sozinha
   // grupos que ficaram vazios saem
   const vazios = []; grp.traverse((o) => { if (o !== grp && o.isGroup && !o.children.length && parado(o)) vazios.push(o); });
   for (let k = 0; k < vazios.length; k++) { const p = vazios[k].parent; vazios[k].removeFromParent(); if (p && p !== grp && p.isGroup && !p.children.length && parado(p)) vazios.push(p); }

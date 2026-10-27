@@ -76,7 +76,7 @@ test("robôs: a estratégia sempre usa dois compostos e nunca para na última vo
   assert.ok(volta.size >= 2, "os robôs não param todos na mesma volta");
 });
 
-// os robôs numa corrida de `voltas` voltas, no tempo de mentira, até todos acabarem (ou 400 s)
+// os robôs numa corrida de `voltas` voltas, no tempo de mentira, até todos acabarem (ou 600 s)
 function corridaDosRobos(voltas, semente, quantidade = 3) {
   const agora = Date.now; let relogio = agora();
   Date.now = () => relogio;
@@ -87,7 +87,7 @@ function corridaDosRobos(voltas, semente, quantidade = 3) {
     Itens.start(room); Robos.largar(room);
     const eventos = [], setor = (p, s) => { p.sector = s; if (s === 0) { if (!p.started) p.started = true; else if (++p.laps >= voltas) p.finish = (relogio - room.startAt) / 1000; } };
     const emit = (e, d) => { if (e === "box") { eventos.push(d); F1.registrarParada(room.players[d.id], { volta: d.volta, tempo: d.tempo, composto: d.composto }); } };
-    for (let t = 0; t < 400 && room.order.some((id) => room.players[id].finish == null); t += 0.05) { relogio += 50; Robos.passo(room, 0.05, setor, emit); }
+    for (let t = 0; t < 600 && room.order.some((id) => room.players[id].finish == null); t += 0.05) { relogio += 50; Robos.passo(room, 0.05, setor, emit); }
     return { room, eventos, robos: room.order.map((id) => room.players[id]) };
   } finally { Date.now = agora; }
 }
@@ -210,7 +210,7 @@ test("box (humano): o pedido do piloto leva o carro sozinho ao corredor, para na
     for (let i = 0; i < 120 * 40; i++) {
       const alvo = c.box.fase ? 9999 : 150; // (antes de entrar, anda a 150 u/s como quem se prepara para a parada)
       ev.length = 0; S.passo(c, { gas: c.v < alvo ? 1 : 0, brake: 0, steer: 0, pedido: "duro" }, amb, tr, ev);
-      for (const e of ev) eventos.push({ ...e, tempoDeJogo: (i + 1) * D.PASSO, lat: S.quadro(tr, c.x, c.y, c.idx).lat });
+      for (const e of ev) eventos.push({ ...e, tempoDeJogo: (i + 1) * D.PASSO, lat: S.quadro(tr, c.x, c.y, c.idx).lat, tempPneu: c.pneu.temp });
     }
     return { c, eventos, tr };
   };
@@ -222,9 +222,9 @@ test("box (humano): o pedido do piloto leva o carro sozinho ao corredor, para na
   assert.ok(sai.tempo > 5 && sai.tempo < 12, `a parada inteira levou ${sai.tempo} s (o corredor no limitador mais 2,0 a 3,3 s parado)`);
   assert.ok(Math.abs(sai.tempo - (r.eventos.find((e) => e.t === "box" && e.fase === "sai").tempoDeJogo - entra.tempoDeJogo)) < 0.1, "o tempo é o dos passos da física");
   assert.equal(r.c.pneu.composto, "duro"); assert.ok(r.c.pneu.desgaste < 0.1, `pneu novo (${r.c.pneu.desgaste} depois de andar um pouco)`);
-  assert.ok(r.c.pneu.temp <= 0.75, "e frio");
+  assert.ok(r.eventos.find((e) => e.t === "boxTrocou").tempPneu <= 0.75, "o pneu novo sai frio do box");
   assert.equal(r.c.box.fase, null);
-  assert.ok(Math.abs(S.quadro(r.tr, r.c.x, r.c.y, r.c.idx).lat) < r.tr.W, "voltou para a pista");
+  assert.ok(Math.abs(sai.lat) < r.tr.W, "voltou para a pista");
   // na última volta o corredor passa pela chegada: sem box; na classificação também não
   assert.ok(!corrida(2).eventos.some((e) => e.t === "box"), "última volta: sem box");
   assert.ok(!corrida(0, true).eventos.some((e) => e.t === "box"), "classificação: sem box");

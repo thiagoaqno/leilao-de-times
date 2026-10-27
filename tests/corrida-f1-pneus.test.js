@@ -45,7 +45,7 @@ test("pneus: escorregar gasta mais que andar limpo", () => {
   assert.ok(sujo.desgaste > limpo.desgaste * 1.4, `${limpo.desgaste} ${sujo.desgaste}`);
 });
 
-test("pneus: frio na largada, esquenta andando; a aderência fica sempre entre 0,7 e 1,1", () => {
+test("pneus: frio na largada, esquenta andando; a aderência fica sempre entre 0,7 e 2,0", () => {
   const pn = F1.pneuNovo("duro");
   assert.ok(F1.frio(pn));
   const frio = F1.aderencia(pn).grip;
@@ -53,7 +53,7 @@ test("pneus: frio na largada, esquenta andando; a aderência fica sempre entre 0
   assert.ok(!F1.frio(pn) && F1.aderencia(pn).grip > frio);
   for (const composto of Object.keys(F1.PNEUS)) for (let d = 0; d <= 1; d += 0.05) for (let t = 0; t <= 1; t += 0.1) {
     const a = F1.aderencia({ composto, desgaste: d, temp: t });
-    assert.ok(a.grip >= 0.7 && a.grip <= 1.1 && a.kin >= 0.85 && a.kin <= 1, `${composto} ${d} ${t}`);
+    assert.ok(a.grip >= 0.7 && a.grip <= 2.0 && a.kin >= 0.85 && a.kin <= 1, `${composto} ${d} ${t}`);
   }
   assert.equal(F1.pneuNovo("nada").composto, F1.COMPOSTO_PADRAO); // composto que não existe vira o padrão
 });

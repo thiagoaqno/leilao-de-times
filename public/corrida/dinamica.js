@@ -62,7 +62,7 @@ function parametros(spec) {
   const massa = 800 * (0.72 + 0.5 * spec.wall);                 // o tanque é mais pesado, a formiga mais leve
   const W = massa * G;
   const L = 3.6, a = 0.55 * L, b = 0.45 * L, h = 0.25;          // distância entre eixos, CG→frente, CG→trás e altura do CG (m)
-  const Iz = massa * (0.31 * L) ** 2;
+  const Iz = massa * (0.5 * L) ** 2;
   const gn = spec.grip / 470;
   const ClA = 3.5 * gn ** 2.5, CdA = 0.9 + 0.8 * ClA;        // carga e arrasto: mais carga, mais arrasto (e menos velocidade final)
   const crr = 0.012;
@@ -72,7 +72,7 @@ function parametros(spec) {
   const eta = 0.94;
   const Ppico = (res * vmaxM) / (eta * potencia(1 / CORTE));
   // aderência: o pneu segura `mu` vezes a carga na lateral, e a arrancada (`acc`) define a tração do eixo traseiro
-  const mu = 2.1 * (0.85 + 0.15 * gn);
+  const mu = 2.1 * 1.3 * (0.35 + 0.65 * gn); // mais força lateral; a montagem aerodinâmica, os pneus e o dano continuam importando
   const a0 = spec.acc * ESC;
   const muTr = (massa * a0) / (0.55 * W + massa * a0 * (h / L));
   const alfaP = 0.11;                                           // o ângulo de deriva do pico (rad), ~6,3°
@@ -198,7 +198,7 @@ function passo(c, ent, amb, p, dt = PASSO) {
       if (demF > capF) { lockF = Math.min(1, (demF / Math.max(capF, 1) - 1) / 0.2); fF = capF * (1 - 0.12 * lockF); }
       if (demR > capR) { lockR = Math.min(1, (demR / Math.max(capR, 1) - 1) / 0.2); fR = capR * (1 - 0.12 * lockR); }
       // roda travada perde a lateral: a da frente "não vira", a de trás escapa
-      FyF *= 1 - 0.7 * lockF; FyR *= 1 - 0.7 * lockR;
+      FyF *= 1 - 0.2 * lockF; FyR *= 1 - 0.2 * lockR;
       c.travada = Math.max(lockF, lockR);
       const fatorVel = Math.min(1, Math.abs(u) / 1.5); // parando, o freio some devagar (não vira ré sozinho)
       FxF = dirB * fF * fatorVel; FxBr = dirB * fR * fatorVel;
@@ -230,6 +230,10 @@ function passo(c, ent, amb, p, dt = PASSO) {
     c.slip = Math.max(Math.abs(Math.sin(alF)), Math.abs(Math.sin(alR))) * V / ESC;
   }
   // posição e rumo
+  const velocidade = Math.abs(c.v), vM = velocidade * ESC, qFinal = 0.5 * RHO * vM * vM;
+  const ayPneu = p.mu * kGrip * (G + qFinal * p.ClA * kCarga / p.massa) / ESC;
+  const guinadaMax = Math.min(p.turn * Math.min(1, velocidade / 90), 1.25 * ayPneu / Math.max(velocidade, 20));
+  c.r = limite(c.r, -guinadaMax, guinadaMax); // evita girar o bico mais rápido que os pneus conseguem puxar o carro
   const ca = Math.cos(c.a), sa = Math.sin(c.a);
   c.vx = c.v * ca - c.vl * sa; c.vy = c.v * sa + c.vl * ca;
   c.a += c.r * dt;
