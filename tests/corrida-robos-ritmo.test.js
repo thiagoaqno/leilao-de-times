@@ -102,7 +102,8 @@ test("o ideal do robô (Cadillac, médio novo) fica no limite do carro de verdad
   const cadillac = require("../public/corrida/f1-equipes.js").specDaEquipe("cadillac");
   // antes da calibração: Interlagos 68,2 s e Melbourne 68,6 s (margem 0,95 e 80% da frenagem); a física do carro com o piloto
   // automático dá volta a 64,5 s e 68,2 s sem tocar no muro com a margem 1,08 e a frenagem inteira
-  const ref = { interlagos: 63.4, melbourne: 64.7 };
+  // depois da linha de menor curvatura e do volante novo (PR robos-curvas): 63,4 -> 51,4 s em Interlagos (o jogador fez 49,7 s) e 64,7 -> 54,5 s em Melbourne
+  const ref = { interlagos: 51.4, melbourne: 54.5 };
   for (const [pista, alvo] of Object.entries(ref)) {
     const t = Robos.idealDe(pista, cadillac);
     assert.ok(Math.abs(t / alvo - 1) < 0.03, `${pista}: ideal ${t.toFixed(2)} s, esperado ${alvo} s ±3%`);
