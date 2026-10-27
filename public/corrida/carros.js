@@ -143,9 +143,10 @@ prevScene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6));
 { const fl = new THREE.Mesh(new THREE.CircleGeometry(40, 32), new THREE.MeshStandardMaterial({ color: 0x2a2d36, roughness: 0.9 })); fl.rotation.x = -Math.PI / 2; prevScene.add(fl); }
 const PREV = new Map();
 export function carPreview(cv, color, model, mods) {
-  const key = [color, model, JSON.stringify(mods || {}), kartChegou].join("|");
+  const grande = cv.width >= 480, key = [color, model, JSON.stringify(mods || {}), kartChegou, grande].join("|"); // a foto grande (garagem e pintura da sala) sai em 720x405
   let url = PREV.get(key);
   if (!url) {
+    prevR.setSize(grande ? 720 : 240, grande ? 405 : 135, false);
     const k = makeKart(color, model, false, "", mods, prevScene);
     k.g.rotation.y = Math.PI * 0.78; // de três quartos, mostrando a frente
     prevCam.position.set(-40, 15, -36); prevCam.lookAt(0, 4, 0);
