@@ -153,3 +153,43 @@ test("quatro bandeiradas avançam exatamente quatro GPs pelo canal da sede", { t
     assert.equal(atualizacoesAntigas, 0, "socket antigo não recebe o novo save ou acesso do GP");
   } finally { socket.disconnect(); outro?.disconnect(); await new Promise((resolve) => io.close(resolve)); bd.fechar(); }
 });
+
+test("excluir a carreira: token errado é recusado, o certo apaga e o código de recuperação para de valer; GP aberto recusa", { timeout: 30000 }, async () => {
+  const servidor = await subirServidor(), sede = await conectar(servidor.url, "/corrida-temporada");
+  let outra, nova;
+  try {
+    const criado = await chamar(sede, "criar", { nome: "Thiago", equipe: "cadillac", tamanho: 4, voltas: 2 });
+    assert.equal(criado.ok, true, criado.erro);
+    outra = await conectar(servidor.url, "/corrida-temporada");
+    const errado = await chamar(outra, "excluir", { token: "errado" });
+    assert.equal(errado.ok, false);
+    assert.equal((await chamar(sede, "abrir", { token: criado.token })).ok, true, "o save continua lá");
+    // GP aberto: recusa com mensagem clara e o save continua
+    const gp = await chamar(sede, "iniciarGP"); assert.equal(gp.ok, true, gp.erro);
+    const recusado = await chamar(sede, "excluir", { token: criado.token });
+    assert.equal(recusado.ok, false); assert.match(recusado.erro, /GP está aberto/);
+    assert.equal((await chamar(outra, "abrir", { token: criado.token })).ok, true);
+    // o GP some (a sala é fechada pelo servidor ao terminar); aqui usamos outra temporada sem GP aberto
+    nova = await conectar(servidor.url, "/corrida-temporada");
+    const segunda = await chamar(nova, "criar", { nome: "Maria", equipe: "ferrari", tamanho: 4, voltas: 2 });
+    const rec = segunda.recuperacao;
+    const apagou = await chamar(nova, "excluir", { token: segunda.token });
+    assert.equal(apagou.ok, true, apagou.erro);
+    assert.equal((await chamar(nova, "abrir", { token: segunda.token })).ok, false, "o token deixou de valer");
+    assert.equal((await chamar(nova, "recuperar", { codigo: rec })).ok, false, "o código de recuperação deixou de valer");
+    assert.equal((await chamar(nova, "montagem", { montagem: segunda.dados.montagem })).ok, false, "o socket não aponta mais para o save");
+  } finally { sede.disconnect(); outra?.disconnect(); nova?.disconnect(); await servidor.parar(); }
+});
+
+test("excluir no banco apaga a linha do save", () => {
+  bd.abrir(":memory:");
+  try {
+    const c = bd.criarTemporadaCorrida("Ana", R.criar("Ana", "cadillac", 4, 2, 5));
+    assert.ok(bd.temporadaCorridaPorToken(c.token));
+    assert.equal(bd.excluirTemporadaCorrida(c.id), true);
+    assert.equal(bd.temporadaCorridaPorId(c.id), null);
+    assert.equal(bd.temporadaCorridaPorToken(c.token), null);
+    assert.equal(bd.recuperarTemporadaCorrida(c.recuperacao), null);
+    assert.equal(bd.excluirTemporadaCorrida(c.id), false);
+  } finally { bd.fechar(); }
+});

@@ -244,3 +244,61 @@ test("servidor: quem cai no meio do GP tem o carro levado por um robô e o retom
     assert.equal(eu.pessoa, ana.id);
   } finally { if (sala) { Quali.cancelar(sala); srv.corrida.internos.endRace(sala); } await srv.parar(); }
 });
+
+test("regras: sair da temporada devolve o carro a um robô", () => {
+  const sala = G.criarSala("ABCDE", { id: "a", nome: "Ana", tokenHash: "x" });
+  for (const [id, nome] of [["b", "Beto"], ["c", "Caio"]]) G.entrar(sala, { id, nome, tokenHash: id });
+  G.escolherEquipe(sala, "a", "cadillac"); G.escolherEquipe(sala, "b", "cadillac"); G.escolherEquipe(sala, "c", "ferrari");
+  G.iniciar(sala, "a", 9);
+  assert.equal(sala.contratos.perez, null);
+  // dividiam a Cadillac: Beto fica com o carro 1 e o outro carro volta para um titular real
+  assert.equal(G.dispensar(sala, "a"), "saiu");
+  assert.equal(sala.pessoas.a, undefined); assert.equal(sala.host, "b");
+  assert.equal(sala.pessoas.b.carro, 0);
+  assert.equal(sala.equipes.cadillac.companheiro, "perez"); assert.equal(sala.contratos.perez, "cadillac");
+  assert.equal(G.gridDoGP(sala).humanos.length, 2);
+  // sozinho na Ferrari: ao sair, a equipe inteira volta aos robôs (os dois carros)
+  assert.equal(G.dispensar(sala, "c"), "saiu");
+  assert.equal(sala.equipes.ferrari, undefined);
+  assert.equal(sala.contratos.leclerc, "ferrari"); assert.equal(sala.contratos.hamilton, "ferrari");
+  const grid = G.gridDoGP(sala);
+  assert.equal(grid.humanos.length, 1); assert.equal(grid.humanos.length + grid.robos.length, 20);
+  assert.equal(grid.robos.filter((p) => p.equipe === "ferrari").length, 2);
+  // o último com carro sai: a sala acaba
+  assert.equal(G.dispensar(sala, "b"), "encerrada");
+});
+
+test("servidor: sair da temporada devolve o carro ao robô e o anfitrião encerra a sala (some do banco)", { timeout: 60000 }, async () => {
+  const srv = await subir();
+  try {
+    const [a, b, c] = await Promise.all([srv.ligar(), srv.ligar(), srv.ligar()]);
+    const ana = await chamar(a, "criar", { nome: "Ana" }), codigo = ana.codigo;
+    assert.equal((await chamar(b, "entrar", { codigo, nome: "Beto" })).ok, true);
+    assert.equal((await chamar(c, "entrar", { codigo, nome: "Caio" })).ok, true);
+    await chamar(a, "equipe", { id: "cadillac" }); await chamar(b, "equipe", { id: "cadillac" }); await chamar(c, "equipe", { id: "ferrari" });
+    await chamar(a, "opcoes", { tamanho: 4, voltas: 2 });
+    assert.equal((await chamar(a, "iniciar")).ok, true);
+    // Beto sai: o outro carro da Cadillac volta para um robô e a sala continua para os outros
+    const saiu = await chamar(b, "sairDaTemporada"); assert.equal(saiu.ok, true, saiu.error);
+    const vista = await chamar(a, "estado");
+    assert.equal(vista.estado.pessoas.some((p) => p.nome === "Beto"), false);
+    assert.equal(vista.estado.equipes.cadillac.companheiro, "perez");
+    assert.equal((await chamar(b, "estado")).ok, false, "quem saiu não está mais na sala");
+    // só o anfitrião encerra
+    const naoHost = await chamar(c, "encerrar"); assert.equal(naoHost.ok, false); assert.match(naoHost.error, /anfitrião/);
+    assert.equal(bd.salasTemporadaCorrida().some((s) => s.codigo === codigo), true);
+    // GP aberto: não encerra
+    assert.equal((await chamar(a, "iniciarGP")).ok, true);
+    const aberto = await chamar(a, "encerrar"); assert.equal(aberto.ok, false); assert.match(aberto.error, /GP está aberto/);
+    assert.equal((await chamar(c, "sairDaTemporada")).ok, false, "também não sai com o GP aberto");
+    const sala = srv.corrida.salaGP(srv.grupo.ativos.get(codigo).code);
+    Quali.cancelar(sala); sala.phase = "results"; // o GP acabou (a sala da Corrida já está na tela de resultado)
+    let aviso = null; c.on("encerrada", (d) => { aviso = d; });
+    const fim = await chamar(a, "encerrar"); assert.equal(fim.ok, true, fim.error);
+    await esperarAte(() => aviso);
+    assert.match(aviso.motivo, /encerrou/);
+    assert.equal(bd.salasTemporadaCorrida().some((s) => s.codigo === codigo), false, "a sala sumiu do banco");
+    assert.equal(srv.grupo.salas.has(codigo), false);
+    assert.equal((await chamar(await srv.ligar(), "entrar", { codigo, nome: "Dani" })).ok, false);
+  } finally { await srv.parar(); }
+});

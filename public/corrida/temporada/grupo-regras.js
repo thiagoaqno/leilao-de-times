@@ -44,6 +44,35 @@ function sair(sala, pid) {
   if (sala.host === pid && sala.ordem.length) sala.host = sala.ordem[0];
   return true;
 }
+// depois que a temporada começou: a pessoa deixa a sala de vez e o carro dela volta para um robô (como quem é dispensado).
+// Sozinha na equipe, a equipe inteira volta aos robôs; com um amigo, o amigo fica com o carro 1 e o outro carro vai para um piloto real livre.
+// Devolve "encerrada" se não sobrou ninguém com carro (a sala acaba).
+function dispensar(sala, pid) {
+  const p = sala.pessoas[pid];
+  if (!p) throw Error("Pessoa inválida.");
+  if (sala.fase === "sala") { sair(sala, pid); return sala.ordem.length ? "saiu" : "encerrada"; }
+  const eq = p.equipe;
+  delete sala.pessoas[pid]; sala.ordem = sala.ordem.filter((id) => id !== pid);
+  if (!sala.ordem.some((id) => sala.pessoas[id].equipe)) return "encerrada";
+  if (sala.host === pid) sala.host = sala.ordem.find((id) => sala.pessoas[id].equipe) || sala.ordem[0];
+  if (eq && sala.equipes[eq]) {
+    const restam = humanosDa(sala, eq), titulares = Pilotos.PILOTOS.filter((x) => x.equipe === eq);
+    if (!restam.length) {
+      delete sala.equipes[eq]; // a equipe volta aos robôs: os dois carros, com o que ela já contratou
+      let tem = Pilotos.PILOTOS.filter((x) => sala.contratos[x.id] === eq).length;
+      for (const t of titulares) if (tem < 2 && sala.contratos[t.id] == null) { sala.contratos[t.id] = eq; tem++; }
+    } else {
+      sala.pessoas[restam[0]].carro = 0;
+      const t = sala.equipes[eq];
+      if (!t.companheiro) {
+        const livre = titulares.find((x) => sala.contratos[x.id] == null);
+        if (livre) { sala.contratos[livre.id] = eq; t.companheiro = livre.id; }
+      }
+      anotar(sala, restam[0], t, `ficou sozinho(a) na equipe: ${p.nome} saiu e o outro carro voltou para um robô`);
+    }
+  }
+  return "saiu";
+}
 function passarCargo(sala, de, para) {
   if (sala.host !== de) throw Error("Só o anfitrião passa o cargo.");
   if (!sala.pessoas[para]) throw Error("Pessoa inválida.");
@@ -227,7 +256,7 @@ function vista(sala, pid, presente = () => false) {
     equipes: equipes || {}, tabelas: sala.fase === "temporada" ? tabelas(sala) : null, mercado: sala.fase === "temporada" ? mercado(sala) : [] };
 }
 
-const api = { MAX_PESSOAS, GRID, OPCOES_PADRAO, TAMANHOS, VOLTAS, NIVEIS, criarSala, entrar, sair, passarCargo, escolherEquipe, definirOpcoes, iniciar, montar, desenvolver, contratarPiloto, contratarEngenheiro, mercado,
+const api = { MAX_PESSOAS, GRID, OPCOES_PADRAO, TAMANHOS, VOLTAS, NIVEIS, criarSala, entrar, sair, dispensar, passarCargo, escolherEquipe, definirOpcoes, iniciar, montar, desenvolver, contratarPiloto, contratarEngenheiro, mercado,
   gridDoGP, idDoHumano, idsEsperados, registrarResultado, tabelas, proximaTemporada, vista, humanosDa, custoDoPiloto, nomeDaEquipe };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1TemporadaGrupo = api;
