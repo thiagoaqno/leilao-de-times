@@ -90,7 +90,7 @@ function parametrosLento(spec) {
   const C = Math.PI / (Math.PI - Math.asin(limite(kin * 1.04, 0.5, 0.97))); // a curva cai até ~kin·1,04 do pico quando o pneu escorrega todo
   const B = Math.tan(Math.PI / (2 * C)) / alfaP;
   const frenagem = 1.75 * (spec.brake / 470);                  // o freio a zero de velocidade, em g
-  p = { massa, W, L, a, b, h, Iz, ClA, CdA, crr, Ppico, eta, mu, muTr, C, B, alfaP, frenagem,
+  p = { massa, W, L, a, b, h, Iz, ClA, CdA, crr, Ppico, eta, mu, muTr, C, B, alfaP, frenagem, gripU: spec.grip, kinU: limite(spec.kin, 0.3, 1),
     // o balanço aerodinâmico (parte da carga que vai para a frente) e o do freio (parte da força que vai para a frente)
     balAero: 0.34, balFreio: 0.6, balPneu: 1.03,
     vmaxU: spec.vmax, offMax: spec.offMax, accU: spec.acc, scrub: spec.scrub, turn: spec.turn, desgaste: spec.desgaste ?? 1, drs: spec.drs ?? 1 };
@@ -137,7 +137,9 @@ function passo(c, ent, amb, p, dt = PASSO) {
   c.brkP += limite(brkT - c.brkP, -dt * 7, dt * 3.2);
   // volante: o alvo é o comando; sobe a ~5/s e volta a ~8/s (teclado: de batente a batente em 0,4 s)
   const alvo = limite(ent.steer || 0, -1, 1);
-  c.steer += limite(alvo - c.steer, -dt * (Math.abs(alvo) < Math.abs(c.steer) ? 8 : 5), dt * (Math.abs(alvo) < Math.abs(c.steer) ? 8 : 5));
+  const arc = !!(pn && pn.arcade); // macio dentro da vida útil: a dirigibilidade arcade antiga (o fim do passo)
+  if (arc) c.steer += (alvo - c.steer) * Math.min(1, dt * 10); // (a suavização de antes, ~0,1 s)
+  else c.steer += limite(alvo - c.steer, -dt * (Math.abs(alvo) < Math.abs(c.steer) ? 8 : 5), dt * (Math.abs(alvo) < Math.abs(c.steer) ? 8 : 5));
   const uU = c.v;
   // câmbio
   const vmaxU = p.vmaxU;
@@ -157,6 +159,7 @@ function passo(c, ent, amb, p, dt = PASSO) {
   const gas = acima ? 0 : c.gasP, freioAuto = acima ? Math.min(1, (uU - limiteV) / 25 + 0.25) : 0;
   const pedalFreio = Math.max(c.brkP, freioAuto);
   const rev = uU < 1 && ent.brake && !ent.gas && c.brkP > 0.5; // parado e só o freio: dá ré
+  const usoC = c.uso || 0; // (arcade) o quanto a curva pediu do pneu no passo anterior: divide o pneu com o freio e a tração
   const h = dt / 2; // duas passadas por passo: o eixo da frente e de trás ficam estáveis em baixa velocidade
   for (let s = 0; s < 2; s++) {
     const u = c.v * ESC, w = c.vl * ESC, r = c.r;
@@ -168,16 +171,19 @@ function passo(c, ent, amb, p, dt = PASSO) {
     const Nf = Math.max(0.06 * p.W, p.W * (p.b / p.L) - dN + NdF);
     const Nr = Math.max(0.06 * p.W, p.W * (p.a / p.L) + dN + NdR);
     // o volante: o limite acompanha o que o pneu segura na velocidade (um pouco além, para o teclado), e a assistência de contraesterço
-    const umin = Math.max(Math.abs(u), 5);
-    let delta = c.steer * volanteMaximo(p, Math.abs(u), kGrip, kCarga);
-    const alR0 = Math.atan2(w - p.b * r, umin);
-    if (Math.abs(u) > 12) delta -= limite(alR0 * 0.35, -0.08, 0.08) * (1 - 0.6 * Math.abs(c.steer)); // contraesterço automático: ajuda a segurar o escorregão
-    // ângulos de deriva
-    const alF = Math.atan2(w + p.a * r, umin) - delta, alR = Math.atan2(w - p.b * r, umin);
-    // forças laterais pedidas pelo pneu (antes do círculo de atrito)
     const muF = p.mu * kGrip, muR = p.mu * kGrip * p.balPneu;
-    const kv = limite(V / 2, 0, 1); // o pneu parado não faz força de lado
-    let FyF = -muF * Nf * pneuLateral(p, alF) * kv, FyR = -muR * Nr * pneuLateral(p, alR) * kv;
+    let delta = 0, alF = 0, alR = 0, FyF = 0, FyR = 0;
+    if (!arc) { // (no arcade a lateral é o fim do passo; aqui só o que é para a frente)
+      const umin = Math.max(Math.abs(u), 5);
+      delta = c.steer * volanteMaximo(p, Math.abs(u), kGrip, kCarga);
+      const alR0 = Math.atan2(w - p.b * r, umin);
+      if (Math.abs(u) > 12) delta -= limite(alR0 * 0.35, -0.08, 0.08) * (1 - 0.6 * Math.abs(c.steer)); // contraesterço automático: ajuda a segurar o escorregão
+      // ângulos de deriva
+      alF = Math.atan2(w + p.a * r, umin) - delta; alR = Math.atan2(w - p.b * r, umin);
+      // forças laterais pedidas pelo pneu (antes do círculo de atrito)
+      const kv = limite(V / 2, 0, 1); // o pneu parado não faz força de lado
+      FyF = -muF * Nf * pneuLateral(p, alF) * kv; FyR = -muR * Nr * pneuLateral(p, alR) * kv;
+    }
     // motor
     let FxMotor = 0;
     if (rev) FxMotor = -0.55 * p.W * Math.max(0, 1 - Math.abs(u) / (70 * ESC)); // a ré chega a uns 70 u/s
@@ -192,8 +198,8 @@ function passo(c, ent, amb, p, dt = PASSO) {
     let FxR = FxMotor;
     c.patina = 0;
     if (FxR > 0) {
-      const uso = Math.hypot(FxR / capXr, FyR / capYr);
-      if (uso > 0.97) { const k = 0.97 / uso; c.patina = Math.min(1, (uso - 0.97) / 0.5); FxR *= k; FyR *= 1 - 0.6 * (1 - k); }
+      const uso = Math.hypot(FxR / capXr, arc ? 0.6 * usoC : FyR / capYr);
+      if (uso > 0.97) { const k = 0.97 / uso; c.patina = Math.min(1, (uso - 0.97) / 0.5); FxR *= k; if (!arc) FyR *= 1 - 0.6 * (1 - k); }
     }
     // freio: a força pedida cresce com o pedal, com a carga aerodinâmica (o freio de F1 segura mais em alta) e o que o pneu pode dar
     let FxF = 0, FxBr = 0;
@@ -202,8 +208,8 @@ function passo(c, ent, amb, p, dt = PASSO) {
       const demanda = pedalFreio * kFreio * p.frenagem * p.W * (1 + 0.55 * (DF / p.W));
       const dirB = u > 0.3 ? -1 : u < -0.3 ? 1 : 0;
       const demF = demanda * p.balFreio, demR = demanda * (1 - p.balFreio);
-      const usoYF = Math.min(1, Math.abs(FyF) / (muF * Nf)), capF = 1.25 * muF * Nf * Math.sqrt(Math.max(0, 1 - usoYF * usoYF));
-      const usoYR = Math.min(1, Math.abs(FyR) / capYr), capR = 1.25 * muR * Nr * Math.sqrt(Math.max(0, 1 - usoYR * usoYR));
+      const usoYF = arc ? usoC : Math.min(1, Math.abs(FyF) / (muF * Nf)), capF = 1.25 * muF * Nf * Math.sqrt(Math.max(0, 1 - usoYF * usoYF));
+      const usoYR = arc ? usoC : Math.min(1, Math.abs(FyR) / capYr), capR = 1.25 * muR * Nr * Math.sqrt(Math.max(0, 1 - usoYR * usoYR));
       let lockF = 0, lockR = 0, fF = demF, fR = demR;
       if (demF > capF) { lockF = Math.min(1, (demF / Math.max(capF, 1) - 1) / 0.2); fF = capF * (1 - 0.12 * lockF); }
       if (demR > capR) { lockR = Math.min(1, (demR / Math.max(capR, 1) - 1) / 0.2); fR = capR * (1 - 0.12 * lockR); }
@@ -230,6 +236,12 @@ function passo(c, ent, amb, p, dt = PASSO) {
     sub.fy = FyF * cd + FxF * sd + FyR + fyRes;
     sub.mz = p.a * (FyF * cd + FxF * sd) - p.b * FyR;
     // integra
+    if (arc) { // arcade: só a velocidade para a frente muda aqui (o lado, no fim do passo)
+      const dua = sub.fx / p.massa; let na = u + dua * h;
+      if (Math.abs(na) < 0.04 && gas < 0.05 && pedalFreio > 0.05 && !rev) na = 0;
+      c.v = na / ESC; c.axL += (dua - c.axL) * Math.min(1, h / 0.08); c.alF = c.alR = 0;
+      continue;
+    }
     const du = sub.fx / p.massa + w * r, dw = sub.fy / p.massa - u * r, dr = sub.mz / p.Iz;
     let nu = u + du * h, nw = w + dw * h, nr = r + dr * h;
     // parado de vez: nada de deslizar sozinho com o pedal solto (a rampa pequena não move o carro freado)
@@ -239,6 +251,7 @@ function passo(c, ent, amb, p, dt = PASSO) {
     c.axL += ((du - w * r) - c.axL) * Math.min(1, h / 0.08); // filtro da aceleração para a transferência de peso (≈ 80 ms)
     c.slip = Math.max(Math.abs(Math.sin(alF)), Math.abs(Math.sin(alR))) * V / ESC;
   }
+  if (arc) { lateralArcade(c, p, kGrip, ex, pn, amb); return; }
   // posição e rumo
   const velocidade = Math.abs(c.v), vM = velocidade * ESC, qFinal = 0.5 * RHO * vM * vM;
   const ayPneu = p.mu * kGrip * (G + qFinal * p.ClA * kCarga / p.massa) / ESC;
@@ -250,6 +263,35 @@ function passo(c, ent, amb, p, dt = PASSO) {
   c.x += c.vx * dt; c.y += c.vy * dt;
 }
 
+// ---------- a dirigibilidade arcade antiga (o macio dentro da vida útil) ----------
+// O volante gira o bico (`turn` do carro, plena a partir de 90 u/s) e a velocidade continua indo para onde ia; é medida de novo no
+// eixo novo, e os pneus tiram até `grip` (u/s², sem depender da velocidade) da velocidade de lado. O que passa disso escorrega, come
+// velocidade (`scrub`) e, depois de 30 u/s de escorregão, o pneu satura (`kin`). Grudado e responsivo. O resto (motor, freio, câmbio,
+// tração) é o do passo normal; a curva divide o pneu com o freio e a tração pelo `uso`.
+const VOLANTE_PLENO = 90, KIN_SATURA = 30, PERDA_PATINANDO = 0.3;
+const guinadaDoVolante = (p, vU, steer = 1) => steer * p.turn * Math.min(1, Math.abs(vU) / VOLANTE_PLENO) * (vU < 0 ? -1 : 1);
+// o contrário: o volante (-1..1) que dá a guinada `w` a `vU` (o piloto automático e os robôs)
+const volanteParaGuinada = (p, vU, w) => { const k = p.turn * Math.min(1, Math.abs(vU) / VOLANTE_PLENO) * (vU < 0 ? -1 : 1); return Math.abs(k) < 1e-6 ? 0 : limite(w / k, -1, 1); };
+function lateralArcade(c, p, kGrip, ex, pn, amb) {
+  const dt = PASSO, w = guinadaDoVolante(p, c.v, c.steer);
+  // o pneu relativo ao médio novo (o `grip` do carro já é o do médio) e o resto (dano, asfalto, ar sujo) como no passo normal
+  const k = kGrip / (pn.rel ? pn.grip / pn.rel : 1);
+  const sat = c.slip > KIN_SATURA ? limite(p.kinU * (pn.kin || 1), 0.3, 1) : 1;
+  const gripU = p.gripU * k * sat * (1 - 0.2 * c.travada) * (1 - PERDA_PATINANDO * c.patina);
+  c.uso = gripU > 1 ? limite(Math.abs(c.v * w) / gripU, 0, 1) : 0;
+  c.r = w;
+  const ca0 = Math.cos(c.a), sa0 = Math.sin(c.a), vx = c.v * ca0 - c.vl * sa0, vy = c.v * sa0 + c.vl * ca0;
+  c.a += w * dt; // gira o bico: a velocidade no mundo não muda e passa a ser medida no eixo novo
+  const cn = Math.cos(c.a), sn = Math.sin(c.a);
+  c.v = vx * cn + vy * sn; c.vl = -vx * sn + vy * cn;
+  const g = gripU * dt; // os pneus puxam o carro para o novo rumo até o limite de aderência; o resto escorrega e freia
+  if (Math.abs(c.vl) <= g) c.vl = 0;
+  else { c.vl -= Math.sign(c.vl) * g; c.v -= Math.sign(c.v) * Math.min(Math.abs(c.v), p.scrub * 3 * Math.abs(c.vl) * dt); }
+  c.slip = Math.abs(c.vl);
+  const ca = Math.cos(c.a), sa = Math.sin(c.a);
+  c.vx = c.v * ca - c.vl * sa; c.vy = c.v * sa + c.vl * ca;
+  c.x += c.vx * dt; c.y += c.vy * dt;
+}
 // ---------- análise (para os robôs e para os testes) ----------
 // Tudo em u e u/s. `ext` (opcional): multiplicadores soltos { potencia, arrasto, carga, grip, freio, tracao }.
 const em = (ext, k) => (ext && ext[k]) || 1;
@@ -337,10 +379,10 @@ function perfilIdeal(pts, spec, passo = 6, margem = 0.97, ext, margemFreio = 0.8
 }
 // o estado inicial de um carro parado
 function novoCarro(x = 0, y = 0, a = 0) {
-  return { x, y, a, v: 0, vl: 0, r: 0, vx: 0, vy: 0, steer: 0, gasP: 0, brkP: 0, marcha: 1, trocaT: 0, rpm: 0.3, axL: 0, travada: 0, patina: 0, slip: 0 };
+  return { x, y, a, v: 0, vl: 0, r: 0, vx: 0, vy: 0, steer: 0, gasP: 0, brkP: 0, marcha: 1, trocaT: 0, rpm: 0.3, axL: 0, travada: 0, patina: 0, slip: 0, uso: 0 };
 }
 
-const api = { ESC, G, G_U, RHO, PASSO, NUM, RPM_MAX, FRACAO, CORTE, SOBE, DESCE, TROCA_T, EXTRA_PADRAO, parametros, potencia, vCorte, rotacao, rpmDe, marchaAuto, marchaIdeal, pneuLateral,
+const api = { ESC, G, G_U, RHO, PASSO, NUM, RPM_MAX, FRACAO, CORTE, SOBE, DESCE, TROCA_T, EXTRA_PADRAO, parametros, potencia, vCorte, rotacao, rpmDe, marchaAuto, marchaIdeal, pneuLateral, guinadaDoVolante, volanteParaGuinada,
   passo, novoCarro, volanteMaximo, aceleracaoLateral, velocidadeDeCurva, velocidadeFinal, aceleracaoMaxima, frenagemMaxima, distanciaDeFrenagem, tempoParaAcelerar, perfilIdeal };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Dinamica = api;

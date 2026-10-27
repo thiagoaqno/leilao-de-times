@@ -194,7 +194,7 @@ $("btnRules").onclick = () => {
   <li><b>DRS e ERS (F1):</b> o DRS abre sozinho na zona se você cruzou a detecção a menos de 1 s do carro da frente, depois das duas primeiras voltas e sem bandeira. A bateria ERS recarrega ao frear; no modo manual, segure E ou o botão ERS para acelerar. Bandeira amarela e safety car exigem reduzir e manter a posição.</li>
   <li><b>Freie antes da curva.</b> O pneu só segura até certo ponto: entrou rápido demais, o carro escorrega para fora (sai fumaça e o pneu canta) e perde velocidade. Fora do asfalto ele fica lento; em Mônaco e em Tóquio tem muro.</li>
   <li>A volta só conta passando pela pista inteira, na ordem. Atalho e contramão não valem.</li>
-  <li>Quando o primeiro cruza a chegada, os outros têm 45 segundos para terminar.</li></ul>
+  <li>Quando o primeiro cruza a chegada, os outros têm 1 minuto para terminar.</li></ul>
   <h3>Carros</h3><ul>${Object.values(CARROS).map((k) => `<li><b>${h(k.name)}:</b> ${h(k.desc)}</li>`).join("")}</ul>
   <h3>Pistas</h3><ul>
   <li><b>Mônaco:</b> estreita, com guard-rail colado, a subida da Beau Rivage até o Cassino, a descida até o grampo e o porto cheio de iates.</li>
