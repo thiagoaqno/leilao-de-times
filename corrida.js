@@ -15,6 +15,7 @@ const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servido
 const Humanos = require("./corrida-humanos.js"); // os humanos nas regras de F1: o servidor anda o carro com as entradas do piloto (autoridade)
 const Equipes = require("./public/corrida/f1-equipes.js"); // as equipes de 2026, o orçamento em pontos e a montagem do carro
 const Pilotos = require("./public/corrida/f1-pilotos-2026.js");
+const TRobo = require("./corrida-temporada-robo.js"); // o robô que leva o carro de quem cai no meio do GP da temporada em grupo
 const bd = require("./bd.js");
 Robos.usarFonte((pista) => bd.melhoresTracadosCorrida(pista), (pista, nomes) => bd.ritmoCorrida(pista, nomes), (pista) => bd.melhorVoltaCorrida(pista));
 const { SKINS } = require("./public/pelada/campo.js"); // o piloto do kart usa as skins da Pelada
@@ -56,11 +57,11 @@ module.exports = function attachCorrida(io) {
 
   function publicState(room) {
     return {
-      code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null, ...(room.temporada ? { temporada: true } : {}),
+      code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null, ...(room.temporada ? { temporada: true, ...(room.salaTemporada ? { salaTemporada: room.salaTemporada } : {}) } : {}),
       boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { montagens: room.montagens || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, bot: !!p.bot, name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, noBox: !!p.box, quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
+        return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, noBox: !!p.box, quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
           item: p.item || null, cargas: p.cargas || 0, rolling: p.rolling || 0, boostUntil: p.boostUntil || 0, starUntil: p.starUntil || 0, spinUntil: p.spinUntil || 0,
           shrinkUntil: p.shrinkUntil || 0, inkUntil: p.inkUntil || 0, balaUntil: p.balaUntil || 0 };
       }),
@@ -159,6 +160,7 @@ module.exports = function attachCorrida(io) {
     for (const id of ids) { const p = room.players[id]; Object.assign(p, { paradas: [], compostos: [p.pneu || F1.COMPOSTO_PADRAO], pneuAtual: p.pneu || F1.COMPOSTO_PADRAO, acrescimo: 0, box: null }); }
     Itens.start(room);
     Robos.largar(room);
+    if (room.grupo) for (const id of room.order) { const p = room.players[id]; if (!p.bot && !p.sockets.size) TRobo.assumir(room, p, (s) => log(room, s)); } // temporada em grupo: quem não chegou à largada tem o carro levado por um robô
     if (room.config.regras === "f1") {
       Direcao.iniciar(room);
       room.f1Timer = setInterval(() => {
@@ -222,7 +224,7 @@ module.exports = function attachCorrida(io) {
     }
     // regras de F1: o resultado do GP, com os pontos oficiais (quem fez menos de 90% das voltas é NC e não pontua)
     if (room.config.regras === "f1") {
-      room.resultado = F1.classificacaoFinal(room.order.map((id) => { const p = room.players[id]; const bonus = room.temporada && p.equipe === room.equipeTemporada ? (p.paradas || []).length * (room.bonusBox || 0) : 0; return { id, laps: p.laps, finish: p.finish, dnf: !!p.dnf, acrescimo: (p.acrescimo || 0) - bonus, prog: p.pos ? p.pos.prog : 0 }; }), room.config.voltas)
+      room.resultado = F1.classificacaoFinal(room.order.map((id) => { const p = room.players[id]; const bonus = bonusDoBox(room, p); return { id, laps: p.laps, finish: p.finish, dnf: !!p.dnf, acrescimo: (p.acrescimo || 0) - bonus, prog: p.pos ? p.pos.prog : 0 }; }), room.config.voltas)
         .map((r) => { const p = room.players[r.id]; return { ...r, voltas: p.laps, grid: p.grid, paradas: (p.paradas || []).length, compostos: p.compostos || [], penal: p.penal || 0, dano: p.dano || 0, batidas: p.batidas || 0, melhor: p.best }; });
       const v = room.resultado[0]; if (v) log(room, `🏆 ${nameOf(room, v.id)} venceu o GP e leva ${v.pontos} pontos.`);
     }
@@ -313,6 +315,46 @@ module.exports = function attachCorrida(io) {
     room.order.push(id); room.host = id; rooms.set(room.code, room); log(room, `🏁 GP de ${gp.nome}: box da temporada aberto.`);
     return { code: room.code, id, token, phase: room.phase };
   }
+  // GP da temporada em grupo (corrida-temporada-grupo.js): todos os humanos da sala no mesmo grid, os robôs completando os 20
+  // carros. `g.pessoas`: [{ pid, nome, equipe }]; `g.robos`: os pilotos reais de robô (com a equipe de quem os contratou);
+  // `g.bonusBox`: o bônus dos engenheiros por equipe. Devolve o acesso de cada pessoa (e o de quem só assiste).
+  function abrirGPGrupo(g, aoTerminarGP) {
+    const gp = T.PISTAS[g.pista];
+    if (!gp) throw Error("Pista inválida.");
+    const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: g.pista, voltas: g.voltas, robos: g.robos.length, classificacao: "completa", nivel: g.nivel }),
+      players: {}, order: [], finishOrder: [], log: [], t: Date.now(), privada: true, temporada: true, grupo: true, salaTemporada: g.salaTemporada || null, espectadores: new Set(),
+      sementeFixa: g.semente, pilotosTemporada: g.robos, montagens: g.montagens || {}, bonusBoxEquipes: g.bonusBox || {}, aoTerminarGP };
+    const pessoas = {};
+    for (const h of g.pessoas) {
+      const eq = Pilotos.EQUIPES[h.equipe], id = rid(6), token = rid();
+      room.players[id] = { id, pessoa: h.pid, name: h.nome, token, pawn: "🏎️", color: eq.cor, skin: "padrao", car: "equilibrado", equipe: h.equipe,
+        mods: { ...T.MODS_PADRAO, pintura: eq.pintura }, pneu: F1.COMPOSTO_PADRAO, grid: room.order.length, laps: 0, sector: T.SECTORS - 1,
+        started: false, finish: null, best: null, last: null, sockets: new Set() };
+      room.order.push(id); if (!room.host) room.host = id; pessoas[h.pid] = { id, token };
+    }
+    const espectador = { watch: true, token: rid() };
+    room.espectadores.add(espectador.token);
+    rooms.set(room.code, room); log(room, `🏁 GP de ${gp.name}: a temporada em grupo abriu o box.`);
+    return { code: room.code, pessoas, espectador };
+  }
+  // o bônus dos mecânicos e estrategistas da equipe, por parada (temporada solo: uma equipe; em grupo: uma por equipe humana)
+  function bonusDoBox(room, p) {
+    if (!room.temporada) return 0;
+    const k = room.bonusBoxEquipes ? room.bonusBoxEquipes[p.equipe] || 0 : p.equipe === room.equipeTemporada ? room.bonusBox || 0 : 0;
+    return (p.paradas || []).length * k;
+  }
+  // GP em grupo: a classificação começa quando todos os humanos chegaram à pista (ou 30 s depois da primeira pessoa)
+  const ESPERA_GRUPO_MS = Number(process.env.CORRIDA_ESPERA_GRUPO_MS) || 30000, ASSUME_MS = process.env.CORRIDA_ASSUME_MS != null ? Number(process.env.CORRIDA_ASSUME_MS) : 8000;
+  function entrouNoGP(room) {
+    if (!room.grupo) return iniciarClassificacao(room);
+    if (room.order.every((id) => room.players[id].bot || room.players[id].sockets.size)) { clearTimeout(room.esperaTimer); room.esperaTimer = null; return iniciarClassificacao(room); }
+    if (!room.esperaTimer) room.esperaTimer = setTimeout(() => { room.esperaTimer = null; if (room.phase === "lobby") { iniciarClassificacao(room); broadcast(room); } }, ESPERA_GRUPO_MS);
+  }
+  // GP em grupo: quem caiu na corrida tem o carro levado por um robô depois de alguns segundos (a recarga da página não conta)
+  function agendarAssumir(room, p) {
+    clearTimeout(p.assumeTimer);
+    p.assumeTimer = setTimeout(() => { if (p.sockets.size || room.phase !== "race") return; if (TRobo.assumir(room, p, (s) => log(room, s))) broadcast(room); }, ASSUME_MS);
+  }
   function salaGP(code) { const r = rooms.get(code); return r?.temporada ? r : null; }
   nsp.on("connection", (socket) => {
     const ctx = () => contexto(socket, rooms);
@@ -342,8 +384,8 @@ module.exports = function attachCorrida(io) {
       const room = buscarSala(rooms, data.code);
       if (!room) return fail(cb, "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu).");
       const back = quemVolta(room, data);
-      if (back) { clearTimeout(room.abandonoTimer); bind(room, back.id); ok(cb, { code: room.code, id: back.id, token: back.token }); if (room.temporada && room.phase === "lobby") iniciarClassificacao(room); return broadcast(room); }
-      if (room.privada) return fail(cb, "GP privado da temporada. Entre pela sede.");
+      if (back) { clearTimeout(room.abandonoTimer); clearTimeout(back.assumeTimer); bind(room, back.id); if (room.grupo && back.assumido) TRobo.devolver(room, back, (s) => log(room, s)); ok(cb, { code: room.code, id: back.id, token: back.token }); if (room.temporada && room.phase === "lobby") entrouNoGP(room); return broadcast(room); }
+      if (room.privada && !(room.grupo && data.watch && room.espectadores.has(data.token))) return fail(cb, "GP privado da temporada. Entre pela sede.");
       if (data.watch || room.phase === "race" || room.phase === "quali") {
         if (!data.watch) return fail(cb, "A corrida já começou. Você pode entrar para assistir.");
         bind(room, null); ok(cb, { code: room.code, id: null }); return broadcast(room);
@@ -537,7 +579,8 @@ module.exports = function attachCorrida(io) {
       const { room, me } = ctx();
       if (!room) return;
       if (me) me.sockets.delete(socket.id);
-      if (room.temporada && me && !me.sockets.size && (room.phase === "race" || room.phase === "quali")) {
+      if (room.grupo) { if (me && !me.sockets.size && room.phase === "race") agendarAssumir(room, me); } // (na classificação quem sai só fica sem tempo)
+      else if (room.temporada && me && !me.sockets.size && (room.phase === "race" || room.phase === "quali")) {
         clearTimeout(room.abandonoTimer);
         room.abandonoTimer = setTimeout(() => { if (me.sockets.size || room.phase === "results") return; me.dnf = true; log(room, `${me.name} abandonou o GP (DNF).`); if (room.phase === "quali") Quali.verificarFim(room, classificacao); broadcast(room); }, 20000);
       }
@@ -548,9 +591,9 @@ module.exports = function attachCorrida(io) {
   });
 
   // salas paradas há mais de 12 horas somem
-  limparSalasParadas(rooms, { aoApagar: (r) => { Quali.cancelar(r); clearTimeout(r.endTimer); clearTimeout(r.abandonoTimer); clearInterval(r.itemTimer); clearInterval(r.botTimer); clearInterval(r.f1Timer); clearInterval(r.humanosTimer); } });
+  limparSalasParadas(rooms, { aoApagar: (r) => { Quali.cancelar(r); clearTimeout(r.endTimer); clearTimeout(r.abandonoTimer); clearTimeout(r.esperaTimer); for (const id of r.order) clearTimeout(r.players[id]?.assumeTimer); clearInterval(r.itemTimer); clearInterval(r.botTimer); clearInterval(r.f1Timer); clearInterval(r.humanosTimer); } });
   // (as regras de cada evento da física, para os testes chamarem sem passar pela rede: checkpoint, parada nos boxes e batida)
-  return { abrirGP, salaGP, internos: { sala: (codigo) => rooms.get(codigo), onSector, concluirParada, aplicarBatida } };
+  return { abrirGP, abrirGPGrupo, salaGP, internos: { sala: (codigo) => rooms.get(codigo), endRace, startRace, entrouNoGP, onSector, concluirParada, aplicarBatida } };
 };
 module.exports.COLORS = COLORS;
 module.exports.PAWNS = PAWNS;

@@ -1,35 +1,41 @@
-# Corrida F1: pilotagem refeita, rede autoritativa, HUD de F1 e pistas mais leves
+# Carreira F1: a temporada com os amigos
 
-Tudo vale nas regras de F1 (`config.regras === "f1"`); a sala arcade continua com a física antiga, agora em passo fixo.
+A temporada solo (PR #323) agora também se joga em grupo: uma sala com código, cada amigo com a sua equipe (ou dois na mesma), o GP ao vivo para todos, a gestão e o mercado entre os GPs e o fim da noite. Pilotos reais de 2026, DRS clássico, 4 ou 8 GPs.
 
-## Física nova, do zero (`public/corrida/dinamica.js` e `sim.js`)
+## A sala da temporada em grupo
 
-- Carro com massa e inércia, arrasto e downforce crescendo com v², pneu com pico de força lateral em ~6° e queda depois, círculo de atrito (frear ou acelerar tira aderência para virar), transferência de peso e freio progressivo que trava a roda.
-- Subidas e descidas: a gravidade da rampa entra na força longitudinal.
-- Câmbio de 8 marchas, corte em 12 mil rpm, troca de 50 ms.
-- Calibragem: 0-200 km/h em 5,4 s; de 300 a 100 km/h em ~94 m; grampo a ~27% da velocidade final. Segurar W tira o carro da pista em Interlagos, Barcelona e Monza.
-- Pneus, DRS, ERS, vácuo/ar sujo, dano e o carro montado pela equipe continuam valendo dentro da física nova.
-- A força lateral base subiu cerca de 30%; o pneu macio novo chega perto da guinada arcade em curvas lentas e médias. Mesmo com o freio pressionado, o carro conserva direção. O pneu duro vira menos e o macio perde aderência mais depressa com o desgaste.
+- Canal novo `/corrida-temporada-grupo` (`corrida-temporada-grupo.js`), no caminho da Carreira de futebol em grupo: o criador vira o **anfitrião**, os amigos entram pelo código, cada pessoa tem o **seu token** (fica no navegador; no banco vai só o hash), quem sai vira ausente e volta com o token.
+- Cada amigo escolhe uma das 11 equipes. **Dois amigos podem dividir a mesma equipe**, um em cada carro: os dois titulares reais saem do grid e vão para o mercado; o carro, o caixa, os engenheiros e o desenvolvimento são um só. As equipes sem humano ficam com os robôs. Quem não escolhe equipe acompanha e assiste.
+- O anfitrião define 4 ou 8 GPs, as voltas (2, 3 ou 5) e o nível dos robôs, e começa a temporada. Até 8 pessoas por sala. Se o anfitrião fica 2 minutos fora, o cargo passa sozinho; ele também pode passar o cargo.
+- **A sala inteira fica no banco** (`migracoes/019-corrida-temporada-grupo.sql`, tabela `corrida_temporadas_grupo`): o servidor pode reiniciar no meio da noite sem perder a temporada. A sala se apaga 72 h depois do último uso. O GP aberto vive na memória: se o servidor cair no meio dele, a temporada volta ao GP que não terminou.
 
-## Bugs
+## O GP ao vivo para todos
 
-- **FPS:** passo fixo de 1/120 s no navegador e no servidor; quem tem mais quadros não anda mais rápido.
-- **Teleporte para trás:** o servidor manda no carro. O navegador envia as entradas, prevê com a mesma física e corrige aos poucos (só salta acima de 260 u); os outros carros são interpolados com atraso fixo.
-- **Batidas:** sem punição de tempo; 1% de dano por batida, que tira 1% do desempenho, com cooldown de 4 s por par (muro ou cada carro). 100% continua sendo perda total.
-- **Linha de chegada:** quem recebeu a bandeirada vira fantasma, sai para a beira e desacelera.
+- `abrirGPGrupo` (em `corrida.js`) abre uma sala de F1 privada com **todos os humanos** da temporada e os robôs completando 20 carros. Só o anfitrião abre; as telas dos amigos vão para a pista sozinhas (quem estava fora entra por "Entrar no GP"). A classificação e a corrida são juntas, com a mesma física e as mesmas regras do GP solo.
+- A classificação começa quando todos chegam à pista (ou 30 s depois do primeiro). Quem não tem carro **assiste** com um acesso de espectador.
+- **Quem cai no meio da corrida tem o carro levado por um robô** (`corrida-temporada-robo.js`): o robô pega o carro que o servidor já andava e o pilota com o piloto automático dos outros robôs, com a estratégia de pneus do que falta (sempre dois compostos); quando a pessoa volta, retoma o carro de onde estiver. O resultado continua sendo dela.
+- O resultado entra na temporada de todos **de uma vez, uma vez por GP** (guardado pelo número do GP e do ano).
 
-## HUD de F1 (`hud.js`, `hud-torre.js`, `hud-f1.css`)
+## A gestão entre os GPs e o mercado disputado
 
-Torre de posições à esquerda (logo F1, volta, posição, cor da equipe, sigla, diferença, pneu, volta mais rápida, BOX/punição/Out), velocidade, marcha, BOOST/ERS, OVERTAKE/DRS, pneu e dano embaixo à direita, minimapa pequeno e banner da direção de prova no alto.
+- Cada equipe humana monta o carro e gasta o **seu** orçamento (peças, desenvolvimento, caixa e teto de gastos, como na solo).
+- **Equipe dividida: qualquer um dos dois confirma** os gastos, e cada ação vai para o **histórico da equipe** com o nome de quem fez e o valor. Para dois não se atropelarem, o servidor aplica um pedido por vez e a montagem leva a `versao` da equipe: quem mexeu em cima de uma versão velha é avisado em vez de desfazer o que o companheiro acabou de fazer. Com dois pilotos humanos a equipe não tem vaga para piloto contratado.
+- **Mercado disputado:** um piloto real só corre por uma equipe (quem pegou primeiro fica; o piloto que corre por outra equipe de amigo não sai; o que a equipe larga volta ao mercado) e cada engenheiro (mecânico ou estrategista de cada nível) só trabalha para uma equipe.
+- Após cada GP: patrocínio, prêmio pelos pontos da equipe e salários, por equipe.
 
-## Pistas e desempenho
+## O fim da noite
 
-- Volta que não contava nas pistas novas: corrigida, com teste que percorre a linha central de todas as pistas (`tests/corrida-pistas-volta.test.js`).
-- Elementos que invadiam a pista nas pistas novas: checagem em `tests/corrida-pistas-invasao.test.js` e as peças do kit corrigidas.
-- Desempenho: `kit/fundir.js` junta as malhas paradas por material e região; Mônaco caiu de ~920 malhas e 371 chamadas de desenho por quadro para ~270 malhas e ~160 chamadas.
+- Tabelas de pilotos e construtores para todos (os amigos aparecem marcados), resumo do último GP com o dinheiro da sua equipe, o campeão no fim do calendário, o quadro dos amigos (pontos, vitórias e pódios), a lista de campeões da noite e a próxima temporada pelo anfitrião.
 
-## Testes e integração
+## A sede
 
-- O teste de desempenho desconta apenas as malhas extras criadas pela divisão de instâncias por região, mantendo o teto total em cada pista. Isso resolve Baku e Las Vegas sem desfazer a otimização.
-- **Robôs de F1:** agora usam `Sim.passo` a 120 Hz para direção, motor, freio, pneus, relevo e box. O ritmo da classificação usa o limite de curva e a aceleração de `Dinamica`; a IA escolhe linha, alvo de velocidade e momento da ultrapassagem. Na ultrapassagem usa ERS quando há espaço e freia se o lado fecha. O arcade continua com a física antiga.
-- A sala de F1 foi aberta no Chromium, com largada em Mônaco; `CLAUDE.md` descreve a física e a IA atuais.
+- `/corrida/temporada/` ganha "Temporada com os amigos" (abrir sala / entrar pelo código) e o `?sala=CÓDIGO` (convite), no mesmo visual (`grupo.js`, `grupo-regras.js`, CSS em `sede.css`). Na pista, "← Voltar à sede" e o botão de sair levam de volta à sala (`salaTemporada` no estado).
+
+## Testes
+
+- Novo `tests/corrida-temporada-grupo.test.js`: as regras (mesma equipe, versão, histórico, mercado, resultado, campeão) e o servidor de verdade: dois ou mais clientes criam/entram e escolhem equipes (inclusive a mesma, e a terceira pessoa é recusada), o mercado recusa o piloto e o engenheiro já contratados, só o anfitrião abre o GP, o GP abre com os quatro humanos e 20 carros, o resultado entra uma vez e todos veem as mesmas tabelas, reconexão com o token (e token errado), o servidor reiniciando com a sala vinda do banco, e o robô que assume o carro de quem caiu e o devolve.
+- Rodados só os da Corrida: `node --test tests/corrida*.test.js`.
+
+## Ficou de fora
+
+- Entrar numa equipe no meio da temporada (quem chega depois do início só acompanha); leilão com lances e o dono aceitando a saída do piloto (aqui vale a ordem de chegada e quem corre por equipe de amigo não sai); rádio da equipe e HUD do companheiro; janela de mercado no meio do ano; passar o placar para a Noite da Galera; o teste na mão com amigos de verdade (só automatizado).
