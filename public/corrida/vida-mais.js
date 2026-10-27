@@ -2,6 +2,7 @@
 // cata-ventos, roda-gigante, mastros com bandeira, helicóptero da TV seguindo a corrida, avião com rastro, barcos,
 // um trem dando a volta ao longe, neve, bolas de feno e holofotes. Tudo enfeite: não bate em nada.
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { canvasTex, M } from "./cena.js";
 
 const reduz = matchMedia("(prefers-reduced-motion: reduce)");
@@ -31,7 +32,7 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
     const i = Math.floor((n * (k + 0.5)) / 14), p = pts[i], s = k % 2 ? 1 : -1, [x, z] = lat(p, s * (borda + 10)); if (!livre(x, z, 20)) continue;
     const y = alturaEm(x, z, i), mastro = add(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1, 70, 6), M(0xc9ced6, { metalness: 0.5, roughness: 0.4 }))); mastro.position.set(x, y + 35, z);
     const geo = new THREE.PlaneGeometry(26, 15, 10, 4); geo.translate(13, 0, 0);
-    const pano = add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: corPano[k % corPano.length], side: THREE.DoubleSide, roughness: 0.8 }))); pano.position.set(x, y + 61, z); pano.rotation.y = r() * 6.3; pano.castShadow = true;
+    const pano = add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: corPano[k % corPano.length], side: THREE.DoubleSide, roughness: 0.8 }))); pano.position.set(x, y + 61, z); pano.rotation.y = r() * 6.3;
     panos.push({ pano, base: Float32Array.from(geo.attributes.position.array), fase: r() * 6 });
   }
   V.panos = panos;
@@ -54,19 +55,26 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
       const i = Math.floor(n * f + tent * 9) % n, p = pts[i], s = tent % 2 ? 1 : -1, [x, z] = lat(p, s * (borda + 150)); if (!livre(x, z, 110)) continue;
       const y = alturaEm(x, z, i), g = add(new THREE.Group()); g.position.set(x, y, z); g.rotation.y = Math.atan2(p.tx, p.ty) + Math.PI / 2;
       const aco = M(id === "tokyo" ? 0xff4fd8 : 0xf2f2f2, { metalness: 0.4, roughness: 0.4, emissive: id === "tokyo" ? 0x661a55 : 0 });
-      for (const sz of [-8, 8]) for (const sx of [-1, 1]) { const pe = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2, 104, 6), aco); pe.position.set(sx * 30, 50, sz); pe.rotation.z = sx * 0.3; g.add(pe); }
+      // a roda é três malhas: as pernas (juntas numa), o aro com os raios (junto numa, gira com o grupo) e as 16 cabines num
+      // InstancedMesh (cada uma continua de pé quando a roda gira: a matriz de cada uma sai de uma cadeia de apoio, fora da cena)
+      const pernas = [];
+      for (const sz of [-8, 8]) for (const sx of [-1, 1]) { const pe = new THREE.CylinderGeometry(1.6, 2, 104, 6); pe.rotateZ(sx * 0.3); pe.translate(sx * 30, 50, sz); pernas.push(pe); }
+      g.add(new THREE.Mesh(mergeGeometries(pernas, false), aco));
       const roda = new THREE.Group(); roda.position.y = 100; g.add(roda);
-      for (const sz of [-8, 8]) { const aro = new THREE.Mesh(new THREE.TorusGeometry(80, 1.6, 6, 48), aco); aro.position.z = sz; roda.add(aro); }
-      const cabines = [], cores = [0xe63946, 0xffd23f, 0x1e88e5, 0x43a047, 0xff7ad9, 0xfb8c00];
+      const aros = [], cores = [0xe63946, 0xffd23f, 0x1e88e5, 0x43a047, 0xff7ad9, 0xfb8c00];
+      for (const sz of [-8, 8]) { const aro = new THREE.TorusGeometry(80, 1.6, 6, 48); aro.translate(0, 0, sz); aros.push(aro); }
+      const raiz = new THREE.Object3D(), rodaH = new THREE.Object3D(), cabH = []; raiz.position.copy(g.position); raiz.rotation.copy(g.rotation); rodaH.position.y = 100; raiz.add(rodaH);
+      const cabs = add(new THREE.InstancedMesh(new THREE.BoxGeometry(10, 10, 12), id === "tokyo" ? new THREE.MeshBasicMaterial({ color: 0xffffff }) : M(0xffffff), 16)); cabs.castShadow = false;
       for (let c = 0; c < 16; c++) {
-        const a = (c / 16) * Math.PI * 2, raio = new THREE.Mesh(new THREE.BoxGeometry(1, 80, 1), aco); raio.geometry.translate(0, 40, 0); raio.rotation.z = a; roda.add(raio);
-        const cab = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 12), M(cores[c % cores.length], { emissive: id === "tokyo" ? cores[c % cores.length] : 0, emissiveIntensity: 0.4 })); cab.position.set(-Math.sin(a) * 80, Math.cos(a) * 80 - 6, 0); roda.add(cab); cabines.push(cab);
+        const a = (c / 16) * Math.PI * 2, raio = new THREE.BoxGeometry(1, 80, 1); raio.translate(0, 40, 0); raio.rotateZ(a); aros.push(raio);
+        const h = new THREE.Object3D(); h.position.set(-Math.sin(a) * 80, Math.cos(a) * 80 - 6, 0); rodaH.add(h); cabH.push(h); cabs.setColorAt(c, new THREE.Color(cores[c % cores.length]));
       }
-      V.rodas.push({ roda, cabines }); feito = true;
+      roda.add(new THREE.Mesh(mergeGeometries(aros, false), aco));
+      const W3 = { roda, rodaH, raiz, cabH, cabs, x: g.position.x, z: g.position.z }; V.rodas.push(W3); animarRoda(W3, 0, null); cabs.computeBoundingSphere(); feito = true;
     }
   }
-  // helicóptero da TV: acompanha a corrida de lado, um pouco à frente
-  {
+  // helicóptero da TV: acompanha a corrida de lado, um pouco à frente (os GPs com vidaGP já têm o seu: kit/vida.js)
+  if (!tr.heliGP) {
     const g = add(new THREE.Group()), corpo = new THREE.Mesh(new THREE.SphereGeometry(9, 14, 10), M(0xf2f2f2, { metalness: 0.3, roughness: 0.3 })); corpo.scale.set(1, 0.8, 1.5); g.add(corpo);
     const vidro = new THREE.Mesh(new THREE.SphereGeometry(6, 12, 8), M(0x27354a, { metalness: 0.6, roughness: 0.1 })); vidro.position.set(0, 2, 7); g.add(vidro);
     const cauda = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 26), M(0xe63946)); cauda.position.z = -20; g.add(cauda);
@@ -95,12 +103,18 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
   }
   // barcos no mar (Mônaco e Rio), indo e vindo devagar
   V.barcos = [];
-  if (id === "monaco" || id === "rio") for (let k = 0; k < 8; k++) {
-    const g = add(new THREE.Group()), casco = new THREE.Mesh(new THREE.BoxGeometry(46, 8, 14), M(0xf7f7f7)); casco.position.y = 4; g.add(casco);
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(18, 8, 10), M(0x1f6fae)); cab.position.set(-4, 11, 0); g.add(cab);
-    const esteira = new THREE.Mesh(new THREE.PlaneGeometry(90, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false })); esteira.rotation.x = -Math.PI / 2; esteira.position.set(-66, 0.6, 0); g.add(esteira);
-    const K = t.scale, x0 = id === "monaco" ? r() * t.world : (-200 + r() * 150) * K, z0 = id === "monaco" ? (1340 + r() * 300) * K : (300 + r() * 1100) * K;
-    V.barcos.push({ g, x: x0, z: z0, ang: id === "monaco" ? (r() < 0.5 ? 0 : Math.PI) : Math.PI / 2 + (r() < 0.5 ? 0 : Math.PI), vel: 14 + r() * 16, ida: 0, max: 900 + r() * 900 });
+  if (id === "monaco" || id === "rio") {
+    // os 8 barcos: casco e cabine numa geometria só (cores nos vértices) e a esteira de espuma, cada uma num InstancedMesh (2 chamadas de desenho em vez de 24)
+    const casco = new THREE.BoxGeometry(46, 8, 14), cab = new THREE.BoxGeometry(18, 8, 10);
+    casco.translate(0, 4, 0); cab.translate(-4, 11, 0);
+    for (const [geo, cor] of [[casco, new THREE.Color(0xf7f7f7)], [cab, new THREE.Color(0x1f6fae)]]) geo.setAttribute("color", new THREE.Float32BufferAttribute(Array.from({ length: geo.attributes.position.count }, () => [cor.r, cor.g, cor.b]).flat(), 3));
+    const esteiraGeo = new THREE.PlaneGeometry(90, 12); esteiraGeo.rotateX(-Math.PI / 2); esteiraGeo.translate(-66, 0.6, 0);
+    const cascos = add(new THREE.InstancedMesh(mergeGeometries([casco, cab], false), M(0xffffff, { vertexColors: true }), 8)), esteiras = add(new THREE.InstancedMesh(esteiraGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }), 8));
+    cascos.frustumCulled = esteiras.frustumCulled = false; cascos.castShadow = false;
+    for (let k = 0; k < 8; k++) {
+      const K = t.scale, x0 = id === "monaco" ? r() * t.world : (-200 + r() * 150) * K, z0 = id === "monaco" ? (1340 + r() * 300) * K : (300 + r() * 1100) * K;
+      V.barcos.push({ k, cascos, esteiras, x: x0, z: z0, ang: id === "monaco" ? (r() < 0.5 ? 0 : Math.PI) : Math.PI / 2 + (r() < 0.5 ? 0 : Math.PI), vel: 14 + r() * 16, ida: 0, max: 900 + r() * 900 });
+    }
   }
   // neve caindo na Terra do Sorvete, bolas de feno no Deserto, holofotes em Tóquio
   if (id === "sorvete") {
@@ -139,15 +153,26 @@ function enfeitarEspaco(tr, add, r, V) { // Arco-íris: asteroides girando em vo
 }
 
 const d = new THREE.Object3D(), v3 = new THREE.Vector3();
+// as cabines da roda-gigante ficam de pé enquanto a roda gira; longe da câmera (a mais de 3500) ficam como estavam
+function animarRoda(w, dt, foco) {
+  if (foco && w.pronta && (w.x - foco.x) ** 2 + (w.z - foco.y) ** 2 > 3500 ** 2) return;
+  w.pronta = true; w.rodaH.rotation.z = w.roda.rotation.z;
+  for (const h of w.cabH) h.rotation.z = -w.roda.rotation.z;
+  w.raiz.updateMatrixWorld(true);
+  w.cabH.forEach((h, c) => w.cabs.setMatrixAt(c, h.matrixWorld));
+  w.cabs.instanceMatrix.needsUpdate = true;
+}
 export function animarMais(tr, V, t, dt, foco) {
   const parado = reduz.matches, C = tr.t.world / 2;
   if ((V.vez = (V.vez || 0) + 1) % 2 === 0) for (const p of V.panos || []) { // a bandeira ondula (mais na ponta solta), a cada 2 quadros
+    if (foco && p.pronto && (p.pano.position.x - foco.x) ** 2 + (p.pano.position.z - foco.y) ** 2 > 2200 ** 2) continue; // longe da câmera fica como estava
+    p.pronto = true;
     const pos = p.pano.geometry.attributes.position, b = p.base;
     for (let k = 0; k < pos.count; k++) { const x = b[k * 3], y = b[k * 3 + 1]; pos.setZ(k, parado ? 0 : Math.sin(x * 0.28 - t * 6 + p.fase) * x * 0.12 + Math.sin(y * 0.4 + t * 3) * x * 0.03); }
     pos.needsUpdate = true;
   }
   if (!parado) for (const h of V.helices || []) h.helice.rotation.z -= dt * h.vel;
-  for (const w of V.rodas || []) { if (!parado) w.roda.rotation.z += dt * 0.06; for (const c of w.cabines) c.rotation.z = -w.roda.rotation.z; }
+  for (const w of V.rodas || []) { if (!parado) w.roda.rotation.z += dt * 0.06; animarRoda(w, dt, foco); }
   if (V.heli && foco) { // fica ao lado e à frente de quem a câmera segue, balançando
     const h = V.heli, fx = Math.cos(foco.a || 0), fz = Math.sin(foco.a || 0);
     const alvo = v3.set(foco.x + fx * 160 - fz * 130, (foco.z || 0) + 110 + Math.sin(t * 0.7) * 8, foco.y + fz * 160 + fx * 130);
@@ -165,7 +190,7 @@ export function animarMais(tr, V, t, dt, foco) {
     const L = Math.min(900, a.t * 70); a.rastro.scale.set(1, L, 1); a.rastro.position.z = -30 - L / 2;
   }
   if (V.trem && !parado) { const T = V.trem; T.a += dt * 0.022; T.vag.forEach((v, k) => { const a = T.a - k * (44 / T.raio); v.position.set(T.C + Math.cos(a) * T.raio, 8, T.C + Math.sin(a) * T.raio); v.rotation.y = -a; }); }
-  for (const b of V.barcos || []) { if (parado) break; b.ida += b.vel * dt; if (b.ida > b.max) { b.ida = 0; b.ang += Math.PI; } b.x += Math.cos(b.ang) * b.vel * dt; b.z += Math.sin(b.ang) * b.vel * dt; b.g.position.set(b.x, -6 + Math.sin(t * 1.5 + b.max) * 0.8, b.z); b.g.rotation.y = -b.ang; b.g.rotation.z = Math.sin(t * 1.2 + b.max) * 0.04; }
+  for (const b of V.barcos || []) { if (parado) break; b.ida += b.vel * dt; if (b.ida > b.max) { b.ida = 0; b.ang += Math.PI; } b.x += Math.cos(b.ang) * b.vel * dt; b.z += Math.sin(b.ang) * b.vel * dt; d.position.set(b.x, -6 + Math.sin(t * 1.5 + b.max) * 0.8, b.z); d.rotation.set(0, -b.ang, Math.sin(t * 1.2 + b.max) * 0.04); d.scale.setScalar(1); d.updateMatrix(); b.cascos.setMatrixAt(b.k, d.matrix); b.esteiras.setMatrixAt(b.k, d.matrix); b.cascos.instanceMatrix.needsUpdate = b.esteiras.instanceMatrix.needsUpdate = true; }
   if (V.neve && foco) { // a neve anda junto com a câmera e cai
     const pos = V.neve.geometry.attributes.position;
     if (!parado) for (let k = 0; k < pos.count; k++) { let y = pos.getY(k) - dt * 28; if (y < -150) y += 450; pos.setY(k, y); pos.setX(k, pos.getX(k) + Math.sin(t + k) * dt * 6); }

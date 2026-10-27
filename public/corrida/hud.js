@@ -25,6 +25,8 @@ export function hud() {
   if (left > 0) { const n = Math.ceil(left); big = !luz && n <= 3 ? String(n) : ""; if (!luz && n <= 3 && race.beeped !== n) { race.beeped = n; Sound.beep(false); } }
   else if (left > -1) { big = luz ? "" : "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); } }
   luzesDaLargada(left);
+  const f1on = cfg.regras === "f1" && E.S.phase === "race"; // o HUD novo (torre e painel) só nas regras de F1; no arcade fica o antigo
+  if (race.hudF1 !== f1on) { race.hudF1 = f1on; $("race").classList.toggle("f1hud", f1on); race.hudQuadro = null; }
   if (m && m.finish != null && E.S.phase === "race") big = "";
   $("hBig").textContent = big;
   $("hBig").style.color = left > 0 ? "#ff4d4d" : "#2ecc71";
@@ -54,8 +56,8 @@ export function hud() {
     $("hErsCarga").style.width = `${Math.round((race.ers?.carga || 0) * 100)}%`;
     $("hErsTexto").textContent = `${Math.round((race.ers?.carga || 0) * 100)}%${race.ersAtivo ? " ⚡" : ""}`;
   }
-  const quadro = st.slice(0, 8).map((r, i) => `<div class="${m && r.id === m.id ? "eu" : ""}"><span>${i + 1}</span><i style="background:${r.p.color}"></i>${h(r.p.name)}${r.p.bot ? " <em>CPU</em>" : ""}${pneuDe(r.p)}${r.done != null ? " 🏁" : ""}</div>`).join("");
-  if (E.S.phase !== "quali" && race.hudQuadro !== quadro) { race.hudQuadro = quadro; $("hBoard").innerHTML = quadro; }
+  const quadro = f1on ? "" : st.slice(0, 8).map((r, i) => `<div class="${m && r.id === m.id ? "eu" : ""}"><span>${i + 1}</span><i style="background:${r.p.color}"></i>${h(r.p.name)}${r.p.bot ? " <em>CPU</em>" : ""}${pneuDe(r.p)}${r.done != null ? " 🏁" : ""}</div>`).join("");
+  if (!f1on && E.S.phase !== "quali" && race.hudQuadro !== quadro) { race.hudQuadro = quadro; $("hBoard").innerHTML = quadro; }
   if (m && race.hudChip !== m.name) { race.hudChip = m.name; $("hChip").innerHTML = `<i style="background:${m.color}"></i>${h(m.name)}<span>${h(PISTAS[cfg.pista].name)}</span>`; }
   // avisos
   let msg = "";
@@ -76,7 +78,7 @@ export function hud() {
   else if (E.S.endAt && m && m.finish == null) msg = `⏱️ ${Math.max(0, Math.ceil((E.S.endAt - now) / 1000))} s para cruzar`;
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
   if (B) { const bt = $("bBox"), txt = B.pedido || B.fase ? `🔧 ${nomeBox}` : "🔧 Box"; if (bt.textContent !== txt) { bt.textContent = txt; bt.classList.toggle("pedido", !!(B.pedido || B.fase)); } }
-  $("hMsg").textContent = msg;
+  $("hMsg").textContent = f1on && !msg ? bandeiraF1(m) : msg;
   avisoDeBatida(m);
   if (E.S.phase === "quali") hudClassificacao(m, now);
   // vácuo e estilingue
@@ -85,7 +87,73 @@ export function hud() {
   const star = m && m.starUntil > now;
   hd.innerHTML = star ? "⭐ ESTRELA!" : race.sling > 0 ? "🚀 ESTILINGUE!" : race.arSujo > 0.03 ? `🌀 AR SUJO<i style="width:${Math.round(race.draft * 100)}%"></i>` : race.draft > 0.15 ? `💨 VÁCUO<i style="width:${Math.round(race.draft * 100)}%"></i>` : race.catchup > 0.025 ? "⚡ PELOTÃO À VISTA" : "";
   hd.style.opacity = star || race.sling > 0 || race.draft > 0.15 || race.catchup > 0.025 ? 1 : 0;
+  if (f1on) hudF1(m, st, now);
   if ((race.hudVez = (race.hudVez || 0) + 1) % 2 === 0) minimapa(st, m); // o minimapa a cada 2 quadros já basta
+}
+// ---------- o HUD de F1 (regras de F1): a torre de posições à esquerda, o painel embaixo à direita ----------
+// Tudo em DOM, criado uma vez e atualizado só no que mudou, no máximo 10 vezes por segundo. As contas (diferença para o líder,
+// ordem, recorte) ficam em hud-torre.js. A diferença é a distância até o líder dividida pela velocidade de quem vem atrás
+// (média suavizada de `gh.v`, o fantasma, ou de `race.car.v`, o meu carro); `prog` vem de `standings()`.
+const set = (el, prop, v) => {
+  const c = el._v || (el._v = {}); if (c[prop] === v) return; c[prop] = v;
+  if (prop === "t") el.textContent = v; else if (prop === "c") el.className = v; else if (prop === "w") el.style.width = v; else if (prop === "bg") el.style.background = v; else if (prop === "col") el.style.color = v; else if (prop === "d") el.style.display = v; else el.setAttribute(prop, v);
+};
+const LOGO_F1 = '<svg class="f1logo" viewBox="0 0 64 26" aria-label="F1"><path d="M0 26L9 0H64L55 26Z" fill="#e10600"/><text x="31" y="21" text-anchor="middle" font-family="Titillium Web,Arial,sans-serif" font-weight="900" font-style="italic" font-size="22" fill="#fff">F1</text></svg>';
+function montarTorre() {
+  const el = $("hTorre"); if (el.dataset.ok) return; el.dataset.ok = 1;
+  el.innerHTML = `<div class="tt-topo">${LOGO_F1}<b id="tVolta">VOLTA 1 / 1</b></div><div id="tLinhas"></div>`;
+  const box = $("tLinhas");
+  for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "tl hidden"; d.innerHTML = '<span class="n"></span><i class="eq"></i><b class="sg"></b><em class="df"></em><u class="pn"></u><s class="vr" title="Volta mais rápida"></s><small class="ic"></small>'; box.appendChild(d); }
+  $("hPainel").innerHTML = '<div class="pf-over" id="pOver">OVERTAKE</div><div class="pf-vel"><b id="pVel">0</b><span>KM/H</span><div class="pf-marcha" id="pMarcha">N</div></div><div class="pf-rpm" id="pRpm">' + "<i></i>".repeat(10) + '</div><div class="pf-boost"><span>BOOST</span><div><i id="pBoost"></i></div><b id="pBoostT">0%</b></div><div class="pf-extra"><div class="pf-pneu" id="pPneu"><b>M</b><span>100%</span></div><div class="pf-dano"><span id="pDanoT">DANO 0%</span><div><i id="pDano"></i></div></div></div>';
+}
+// o que não é mensagem de corrida mas a direção de prova manda: a bandeira azul e os limites da pista
+function bandeiraF1(m) {
+  if (m && m.azul) return "BANDEIRA AZUL: deixe passar";
+  if (m && m.avisosLimite) return `LIMITES DA PISTA ${m.avisosLimite}/4`;
+  return "";
+}
+function hudF1(m, st, now) {
+  const t0 = performance.now(); if (t0 - (race.hudF1T || 0) < 100) return; race.hudF1T = t0;
+  montarTorre();
+  const T = window.HudTorre, F = window.F1Regras, tr = race.tr, cfg = E.S.config;
+  if (!race.hudEsc) { let L = 0; for (let i = 0; i < tr.n; i++) { const a = tr.pts[i], b = tr.pts[(i + 1) % tr.n]; L += Math.hypot(b.x - a.x, b.y - a.y); } race.hudEsc = L / tr.n; } // unidades de pista por índice
+  const vs = race.hudV || (race.hudV = {}), eqs = window.F1Pilotos ? window.F1Pilotos.EQUIPES : {};
+  const cors = st.map((r) => {
+    const p = r.p, gh = race.ghosts.get(r.id), v = m && r.id === m.id ? Math.abs(race.car.v) : gh && gh.v ? Math.abs(gh.v) : 0;
+    vs[r.id] = vs[r.id] == null ? v : vs[r.id] + (v - vs[r.id]) * 0.3;
+    return { id: r.id, prog: r.prog, v: vs[r.id], dnf: !!p.dnf, noBox: !!p.noBox, penal: p.penal || 0, done: r.done, best: p.best, pneu: p.pneuAtual || p.pneu, sigla: p.sigla || String(p.name || "???").slice(0, 3).toUpperCase(), nome: p.name, cor: (eqs[p.equipe] || {}).cor || p.color, bot: p.bot };
+  });
+  const linhas = T.torre(cors, { n: tr.n, meuId: m && m.id, esc: race.hudEsc });
+  // a volta no topo é a do líder (como na TV)
+  const lid = st[0] && st[0].p, volta = lid ? Math.max(1, Math.min(cfg.voltas, (lid.started ? lid.laps : 0) + 1)) : 1;
+  set($("tVolta"), "t", lid && lid.finish != null ? "BANDEIRADA" : `VOLTA ${volta} / ${cfg.voltas}`);
+  const max = Math.max(6, Math.min(22, Math.floor((innerHeight - 150) / (innerWidth < 700 ? 22 : 28)))), eu = linhas.findIndex((l) => l.eu);
+  const ver = T.recortar(linhas.length, eu, max), box = $("tLinhas").children;
+  for (let k = 0; k < box.length; k++) {
+    const d = box[k], l = ver[k] != null ? linhas[ver[k]] : null;
+    set(d, "c", l ? "tl" + (l.eu ? " eu" : "") + (l.pos === 1 ? " p1" : "") + (l.dif.tipo === "out" ? " out" : "") : "tl hidden");
+    if (!l) continue;
+    const c = d.children; // n, eq, sg, df, pn, vr, ic
+    set(c[0], "t", l.pos); set(c[1], "bg", l.cor); set(c[2], "t", l.sigla); set(c[3], "t", l.dif.texto); set(c[3], "c", "df " + l.dif.tipo);
+    set(c[4], "t", l.letra); set(c[4], "col", (F.PNEUS[l.pneu] || F.PNEUS.medio).cor); set(c[5], "d", l.volta ? "" : "none");
+    set(c[6], "t", l.noBox ? "BOX" : l.acabou && l.dif.tipo !== "out" ? "FIM" : l.penal > 0 ? `+${l.penal}s` : "");
+  }
+  // o painel: velocidade, marcha, luzes de troca, BOOST (a carga do ERS) e o aviso de ultrapassagem (DRS)
+  const lider = st[0], v = Math.abs(m ? race.car.v : (lider && race.ghosts.get(lider.id)?.v) || 0), kmh = Math.round(v * T.KMH_POR_U);
+  const rpm = Math.min(1, race.rpm || 0), carga = Math.round((race.ers?.carga || 0) * 100);
+  set($("pVel"), "t", kmh); set($("pMarcha"), "t", !m ? "" : race.marcha || 1);
+  const luzes = $("pRpm").children, acesas = Math.round(rpm * 10); for (let k = 0; k < 10; k++) set(luzes[k], "c", k < acesas ? (k < 6 ? "g" : k < 8 ? "r" : "b") : "");
+  set($("pBoost"), "w", carga + "%"); set($("pBoostT"), "t", carga + "%"); set($("pBoost"), "c", race.ersAtivo ? "on" : "");
+  const aberto = !!race.drsAtivo, pronto = !!m && m.drsZona >= 0;
+  set($("pOver"), "t", aberto ? "DRS" : "OVERTAKE"); set($("pOver"), "c", "pf-over" + (aberto ? " aberto" : pronto ? " pronto" : ""));
+  const pn = race.pneu, dano = m ? Math.round(m.dano || 0) : 0;
+  set($("hPainel").querySelector(".pf-extra"), "d", pn ? "" : "none");
+  if (pn) {
+    const tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], resta = Math.max(0, 1 - pn.desgaste), el = $("pPneu");
+    set(el, "c", "pf-pneu" + (pn.desgaste > F.PENHASCO ? " fim" : "") + (F.frio(pn) ? " frio" : "")); set(el, "style", `--c:${tipo.cor};--r:${Math.round(resta * 100)}`);
+    set(el.children[0], "t", T.LETRA[pn.composto] || "M"); set(el.children[1], "t", Math.round(resta * 100) + "%");
+    set($("pDanoT"), "t", `DANO ${dano}%`); set($("pDano"), "w", Math.min(100, dano) + "%"); set($("pDano"), "c", dano >= 66 ? "alto" : dano >= 33 ? "medio" : "");
+  }
 }
 // ---------- as cinco luzes da largada (regras de F1) ----------
 // Uma acende por segundo e as cinco apagam juntas depois da espera sorteada pelo servidor (`luzes.espera`): a largada
@@ -164,6 +232,7 @@ function minimapa(st, m) {
 }
 // velocímetro em arco: risquinhos, a faixa vermelha no fim, o arco aceso até a velocidade, a marcha e o número grande
 function velocimetro(v) {
+  if (race.hudF1) return; // nas regras de F1 quem mostra a velocidade é o painel (hudF1)
   const cv = $("velo"), c = cv.getContext("2d"), W = cv.width, H = cv.height, kmh = Math.round(v * 0.75);
   const marcha = race.marcha || 1, manual = E.S.config.cambio === "manual", pn = race.pneu;
   const dano = pn && me() ? Math.round(me().dano || 0) : 0;

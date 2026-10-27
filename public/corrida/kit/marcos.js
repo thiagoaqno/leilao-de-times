@@ -16,7 +16,7 @@ export function passarelas(tr, add, { candidatos, marcas = ["rolex", "heineken",
     const i = Math.floor(f * n), p = pts[i], vao = L + 16, k = feitas.length;
     if (k >= max || tr.coberto?.(i)) continue;
     const pes = [-1, 1].map((s) => [p.x + p.nx * s * vao, p.y + p.ny * s * vao]);
-    if (!pes.every(([x, z]) => livre(tr, x, z, 14) && !ocupado(tr, x, z))) continue; // nem na água, nem na arquibancada, nem no grampo vizinho
+    if (!pes.every(([x, z]) => livre(tr, x, z, 24) && !ocupado(tr, x, z))) continue; // nem na água, nem na arquibancada, nem no grampo vizinho
     const g = new THREE.Group(); g.position.set(p.x, p.h, p.y); g.rotation.y = Math.atan2(p.nx, p.ny); add(g); // z do grupo = lado da pista
     const alto = 74, fx = new THREE.MeshBasicMaterial({ map: faixas[k % faixas.length] });
     const deck = new THREE.Mesh(new THREE.BoxGeometry(14, 16, vao * 2 + 16), [fx, fx, aco, aco, aco, aco]); deck.position.y = alto + 8; deck.castShadow = true; g.add(deck);

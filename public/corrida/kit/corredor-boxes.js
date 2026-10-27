@@ -75,11 +75,13 @@ export function boxesGP(tr, add, cfg = {}) {
     if (k >= 0) faixas[k].push([v0, geo.vs.length / 3]);
   };
   const fundo = 16, alt = 14, pele = "#e2b48c", cinza = "#8c8f96", comGaragem = cfg.garagens !== false;
+  // a garagem só é construída onde nenhum outro trecho da pista passa mais perto do que ela está do próprio (Mônaco, Zandvoort...)
+  const garagemLivre = (ref, tx, ty, nx, ny, largura) => [0, fundo + 3].every((b) => [-1, 0, 1].every((s) => tr.distAt(ref.x + nx * b + tx * s * largura / 2, ref.y + ny * b + ty * s * largura / 2) >= Math.abs(cor.garagemLat) + meia / 2 + b - 4));
   cor.garagens.forEach((u, k) => {
     const i = cor.i0 + Math.floor(u), p = pts[i % n], tx = p.tx, ty = p.ty, nx = p.nx * lado, ny = p.ny * lado;
     const largura = Math.max(18, cor.gap * 6 * 0.92), q = em(u, cor.garagemLat), c = cfg.cores?.[k % cfg.cores.length] || EQUIPES[k][1];
     const ref = { x: q.x + nx * (meia / 2), y: q.y + ny * (meia / 2), h: q.h }; // a borda externa da faixa das garagens
-    if (comGaragem) {
+    if (comGaragem && garagemLivre(ref, tx, ty, nx, ny, largura)) {
       caixa(ref, tx, ty, nx, ny, 0, fundo - 0.7, -9, largura, 1.4, 9 + alt, c, k); // o fundo, na cor da equipe
       for (const s of [-1, 1]) caixa(ref, tx, ty, nx, ny, s * (largura / 2 - 0.4), fundo / 2, -9, 0.8, fundo, 9 + alt, "#cfcdc6"); // as laterais
       caixa(ref, tx, ty, nx, ny, 0, fundo / 2 - 1.5, alt, largura + 1.4, fundo + 3, 1.2, "#dcdad4"); // o teto, saindo para o corredor

@@ -51,7 +51,7 @@ export function enfeitar(tr, add, r, alturaEm) {
     const p = pts[i];
     for (const s of [-1, 1]) {
       const [x, z] = lat(p, s * (borda + (comMuro ? 0 : 0))), y = comMuro ? alturaEm(x, z, i) + 12 : alturaEm(x, z, i);
-      if (tr.noCorredor?.(x, z)) continue;
+      if (tr.noCorredor?.(x, z) || tr.distAt(x, z) < borda - 2) continue; // nem no corredor dos boxes nem em cima de outro trecho da pista (nem do outro lado de uma curva fechada)
       if (comMuro) olho.push({ x, y: y + 0.8, z, ry: Math.atan2(p.tx, p.ty), sx: 2.4, sy: 1.6, sz: 2.4, c: (i / 6) % 2 ? "#ffd23f" : "#ffffff" });
       else { bal.push({ x, y: y + 5, z, s: 1 }); olho.push({ x, y: y + 8, z, ry: Math.atan2(p.tx, p.ty), sx: 1.9, sy: 2.2, sz: 1.9, c: "#ff7a1a" }); }
     }
@@ -62,8 +62,8 @@ export function enfeitar(tr, add, r, alturaEm) {
   const setas = [[], []], postes = [];
   for (let i = 0; i < n; i += 4) {
     const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 230) || t.espaco) continue;
-    const giro = p.tx * q.ty - p.ty * q.tx, fora = giro > 0 ? -1 : 1, [x, z] = lat(p, fora * (comMuro ? tr.wallLat - 3 : W / 2 + 14)), y = alturaEm(x, z, i);
-    if (tr.noCorredor?.(x, z)) continue;
+    const giro = p.tx * q.ty - p.ty * q.tx, fora = giro > 0 ? -1 : 1, dSeta = comMuro ? tr.wallLat + 10 : W / 2 + 22, [x, z] = lat(p, fora * dSeta), y = alturaEm(x, z, i); // a placa tem 14 de largura: o canto de dentro fica a mais de 12 do asfalto
+    if (tr.noCorredor?.(x, z) || tr.distAt(x, z) < dSeta - 2) continue;
     setas[fora > 0 ? 0 : 1].push({ x, y: y + (comMuro ? 18 : 12), z, ry: Math.atan2(-p.tx, -p.ty), s: 1 });
     if (!comMuro) postes.push({ x, y: y + 4, z, s: 1 });
   }
@@ -76,7 +76,7 @@ export function enfeitar(tr, add, r, alturaEm) {
     for (let i = 0; i < n && feitos < 14; i += 3) {
       const p = pts[i]; if (p.k || i - ult < n / 16) continue;
       const s = feitos % 2 ? 1 : -1, d = (comMuro ? tr.wallLat : W / 2 + 30) + 26, [x, z] = lat(p, s * d);
-      if (tr.distAt(x, z) < W / 2 + 18 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z, i))) continue;
+      if (tr.distAt(x, z) < d - 2 || tr.distAt(x, z) < W / 2 + 46 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z, i))) continue; // o outdoor tem 64 de largura
       const y = alturaEm(x, z, i), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = Math.atan2(-p.nx * s, -p.ny * s) + Math.PI * 0; add(g);
       const tex = tr.marcasGP ? marcaTex(tr.marcasGP[(feitos * 5 + 3) % tr.marcasGP.length], 512, 220) : anuncio(ANUNCIOS[(feitos + id.length) % ANUNCIOS.length], id === "tokyo"); // nos GPs: os patrocinadores de verdade (kit/ambiente.js)
       const quadro = new THREE.Mesh(new THREE.BoxGeometry(64, 28, 1.6), [M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), M(0x2a2d33), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: id === "tokyo" ? 0.9 : 0.12, roughness: 0.6 }), M(0x2a2d33)]);
@@ -111,7 +111,7 @@ export function enfeitar(tr, add, r, alturaEm) {
       for (const s of [-1, 1]) for (let fila = 0; fila < 3; fila++) {
         if (r() < 0.35) continue;
         if (cb && s === cb.lado && (((i - cb.i0) % n) + n) % n <= cb.len + 3) continue;
-        const d = borda + 10 + fila * 8 + r() * 2, [x, z] = lat(p, s * d); if (tr.distAt(x, z) < borda + 4 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z))) continue;
+        const d = borda + 10 + fila * 8 + r() * 2, [x, z] = lat(p, s * d); if (tr.distAt(x, z) < d - 2 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z))) continue;
         gente.push({ x, y: alturaEm(x, z, (i + n) % n) + fila * 3.5, z, ry: Math.atan2(-p.nx * s, -p.ny * s), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: pele[(r() * 5) | 0], camisa: camisa[(r() * camisa.length) | 0] });
       }
     }
@@ -119,14 +119,18 @@ export function enfeitar(tr, add, r, alturaEm) {
   }
   // céu: pássaros (de dia), o dirigível e balões
   const C = t.world / 2, topo = Math.max(...pts.map((p) => p.h));
-  if (!noite) for (let b = 0; b < 3; b++) {
-    const g = add(new THREE.Group()), asa = new THREE.BufferGeometry(); asa.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, -1.6, 0, 0, 1.6, 7, 0, 0], 3)); asa.computeVertexNormals();
-    const mat = new THREE.MeshBasicMaterial({ color: id === "sorvete" ? 0x3a3f4a : 0x22252b, side: THREE.DoubleSide, fog: false }), aves = [];
-    for (let k = 0; k < 7; k++) {
-      const ave = new THREE.Group(), lado = k % 2 ? 1 : -1, fila = Math.ceil(k / 2); ave.position.set(-fila * 9, (r() - 0.5) * 3, lado * fila * 8); g.add(ave);
-      const e = new THREE.Mesh(asa, mat), d = new THREE.Mesh(asa, mat); d.scale.x = -1; ave.add(e, d); aves.push({ e, d, f: r() * 6 });
+  if (!noite) { // três bandos de 7; as 42 asas são um InstancedMesh só (uma chamada de desenho em vez de 42)
+    const asa = new THREE.BufferGeometry(); asa.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, -1.6, 0, 0, 1.6, 7, 0, 0], 3)); asa.computeVertexNormals();
+    const mat = new THREE.MeshBasicMaterial({ color: id === "sorvete" ? 0x3a3f4a : 0x22252b, side: THREE.DoubleSide, fog: false });
+    for (let b = 0; b < 3; b++) {
+      const aves = [];
+      for (let k = 0; k < 7; k++) {
+        const lado = k % 2 ? 1 : -1, fila = Math.ceil(k / 2), y = (r() - 0.5) * 3;
+        aves.push({ x: -fila * 9, y, z: lado * fila * 8, f: r() * 6 });
+      }
+      V.passaros.push({ aves, raio: t.world * (0.18 + r() * 0.25), alto: topo + 170 + r() * 140, vel: 0.05 + r() * 0.04, fase: r() * 6.3 });
     }
-    V.passaros.push({ g, aves, raio: t.world * (0.18 + r() * 0.25), alto: topo + 170 + r() * 140, vel: 0.05 + r() * 0.04, fase: r() * 6.3 });
+    V.asas = add(new THREE.InstancedMesh(asa, mat, V.passaros.length * 14)); V.asas.frustumCulled = false; V.asas.castShadow = false; // o bando dá a volta no mundo todo: sem esfera de corte
   }
   if (!t.espaco) {
     const g = add(new THREE.Group()), faixa = canvasTex(512, 128, (x, w, hh) => { x.fillStyle = "#f4f4f4"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ffd23f"; x.fillRect(0, 34, w, 60); x.fillStyle = "#111"; x.font = "900 48px Bungee, Impact, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("GALERA", w / 4, 66); x.fillText("GALERA", (w * 3) / 4, 66); });
@@ -164,6 +168,7 @@ export function enfeitar(tr, add, r, alturaEm) {
 
 // ---------- a cada quadro ----------
 const d = new THREE.Object3D();
+const pPos = new THREE.Vector3(), pQ = new THREE.Quaternion(), pEixo = new THREE.Vector3(0, 1, 0), pUm = new THREE.Vector3(1, 1, 1), pBando = new THREE.Matrix4(), pAve = new THREE.Matrix4(), pBase = new THREE.Matrix4(), pTmp = new THREE.Matrix4(), pRot = new THREE.Matrix4(), pEsp = new THREE.Matrix4().makeScale(-1, 1, 1);
 export function animarVida(tr, dt, foco) {
   const V = tr && tr.vida; if (!V) return;
   const parado = reduz.matches; V.tempo += dt; const t = V.tempo;
@@ -188,9 +193,18 @@ export function animarVida(tr, dt, foco) {
     b.m.instanceMatrix.needsUpdate = true;
   }
   const C = tr.t.world / 2;
-  for (const f of V.passaros) {
-    const a = f.fase + t * f.vel; f.g.position.set(C + Math.cos(a) * f.raio, f.alto + Math.sin(t * 0.3 + f.fase) * 10, C + Math.sin(a) * f.raio); f.g.rotation.y = -a - Math.PI;
-    for (const ave of f.aves) { const bate = parado ? 0.2 : Math.sin(t * 9 + ave.f) * 0.6; ave.e.rotation.x = 0; ave.e.rotation.z = bate; ave.d.rotation.z = -bate; }
+  if (V.asas) {
+    let i = 0;
+    for (const f of V.passaros) {
+      const a = f.fase + t * f.vel;
+      pPos.set(C + Math.cos(a) * f.raio, f.alto + Math.sin(t * 0.3 + f.fase) * 10, C + Math.sin(a) * f.raio); pQ.setFromAxisAngle(pEixo, -a - Math.PI); pBando.compose(pPos, pQ, pUm);
+      for (const ave of f.aves) {
+        const bate = parado ? 0.2 : Math.sin(t * 9 + ave.f) * 0.6; pAve.makeTranslation(ave.x, ave.y, ave.z); pBase.multiplyMatrices(pBando, pAve);
+        V.asas.setMatrixAt(i++, pTmp.multiplyMatrices(pBase, pRot.makeRotationZ(bate))); // asa esquerda
+        V.asas.setMatrixAt(i++, pTmp.multiplyMatrices(pBase, pRot.makeRotationZ(-bate)).multiply(pEsp)); // asa direita (espelhada)
+      }
+    }
+    V.asas.instanceMatrix.needsUpdate = true;
   }
   if (V.dirigivel) { const z = V.dirigivel, a = z.fase + t * z.vel; z.g.position.set(C + Math.cos(a) * z.raio, z.alto, C + Math.sin(a) * z.raio); z.g.rotation.y = -a - Math.PI; }
   for (const b of V.baloes) {

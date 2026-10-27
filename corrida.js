@@ -1,6 +1,9 @@
 // Corrida da Galera — corrida de kart de 1 a 8 jogadores, com caixas opcionais.
-// Cada navegador roda a física do próprio carro e só manda a posição; os carros batem uns nos outros (cada navegador
-// resolve a sua metade da batida com a posição que recebeu, em `public/corrida/colisao.js`).
+// Nas regras de F1 o SERVIDOR é a autoridade: o navegador manda o que o piloto apertou em cada passo da física (`inp`) e o
+// servidor anda o carro (corrida-humanos.js, com public/corrida/sim.js), conta os setores, as batidas e as paradas e devolve o
+// estado verdadeiro (`ack`); o navegador prevê com a mesma física e se corrige aos poucos. Nas outras salas (arcade, com caixas)
+// cada navegador roda a física do próprio carro e só manda a posição, e os carros batem uns nos outros (cada navegador resolve
+// a sua metade da batida, em `public/corrida/colisao.js`).
 // O servidor cuida da largada sincronizada, repassa as posições e conta as voltas pelos setores da pista,
 // na ordem (contra atalho e contramão), com um tempo mínimo de volta. Canal "/corrida" do Socket.io.
 const T = require("./public/corrida/pistas.js");
@@ -9,6 +12,7 @@ const F1 = require("./public/corrida/f1-regras.js"); // as regras de F1 (os pneu
 const Direcao = require("./corrida-f1-direcao.js");
 const Quali = require("./corrida-f1-classificacao.js"); // a classificação (Q1, Q2, Q3) que define o grid das regras de F1
 const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servidor)
+const Humanos = require("./corrida-humanos.js"); // os humanos nas regras de F1: o servidor anda o carro com as entradas do piloto (autoridade)
 const Equipes = require("./public/corrida/f1-equipes.js"); // as equipes de 2026, o orçamento em pontos e a montagem do carro
 const Pilotos = require("./public/corrida/f1-pilotos-2026.js");
 const bd = require("./bd.js");
@@ -102,14 +106,43 @@ module.exports = function attachCorrida(io) {
   }
   function broadcast(room) { room.t = Date.now(); nsp.to(room.code).emit("state", publicState(room)); }
 
+  // ---------- os humanos nas regras de F1 ----------
+  // Um laço por sala (a cada 10 ms) anda cada carro humano com as entradas que o piloto já mandou e, a cada 50 ms, manda a
+  // posição de todos os carros (`snap`). Os ganchos levam o que a física viu (checkpoint, batida, box) para as regras da sala.
+  function ligarHumanos(room) {
+    clearInterval(room.humanosTimer);
+    if (room.config.regras !== "f1") return;
+    const h = {
+      aoSetor: (r, p, s, quando) => onSector(r, p, s, quando),
+      aoBater: (r, p, forca, tipo, chave, quando) => aplicarBatida(r, p, forca, tipo, quando, chave),
+      aoParada: (r, p, d) => concluirParada(r, p, d),
+      registrar: (r, p, pos, quando) => { // a direção de prova olha o carro (DRS, limites de pista, bandeiras); na classificação só guarda a posição
+        if (r.phase !== "race") { p.pos = pos; return false; }
+        const penal = p.penal || 0; Direcao.registrar(r, p, pos, quando, (s) => log(r, s));
+        return (p.penal || 0) !== penal; // a penalidade aparece na hora
+      },
+      mandarAck: (p, ack) => { for (const sid of p.sockets) { const s = nsp.sockets.get(sid); if (s) s.emit("ack", ack); } },
+      mudou: () => broadcast(room),
+    };
+    let tique = 0;
+    room.humanosTimer = setInterval(() => {
+      if (room.phase !== "race" && room.phase !== "quali") return;
+      Humanos.andar(room, Date.now(), h);
+      if (++tique % 5) return;
+      nsp.to(room.code).volatile.emit("snap", { t: Date.now(), c: Humanos.snap(room) });
+    }, 10);
+  }
+
   // ---------- corrida ----------
   // A classificação (regras de F1) já escolheu a semente e os robôs; ela chama `startRace(room, grid)` com os ids na ordem do grid.
   function startRace(room, grid) {
     const f1 = room.config.regras === "f1", daClassificacao = !!(grid && room.quali);
     clearTimeout(room.endTimer);
-    clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer);
+    clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer);
     Quali.cancelar(room);
     room.phase = "race";
+    for (const id of room.order) delete room.players[id].sim; // cada largada começa com o carro no grid
+    ligarHumanos(room);
     if (!daClassificacao) preparar(room);
     atribuirCarros(room);
     if (f1) sortearFalhas(room);
@@ -147,6 +180,7 @@ module.exports = function attachCorrida(io) {
         });
         if (++tique % 2) return;
         // todos os robôs num pacote só (dois pacotes "volatile" seguidos: o segundo se perde)
+        if (room.config.regras === "f1") return; // (nas regras de F1 os robôs vão no `snap` junto com os humanos)
         const lista = room.order.map((id) => room.players[id]).filter((p) => p && p.bot && p.pos).map((p) => ({ id: p.id, x: p.pos.x, y: p.pos.y, z: p.pos.z, a: p.pos.a, v: p.pos.v, prog: p.pos.prog, laps: p.laps, t: Date.now() }));
         nsp.to(room.code).volatile.emit("ghosts", lista);
       }, 50);
@@ -168,15 +202,17 @@ module.exports = function attachCorrida(io) {
   // a classificação (Q1, Q2 e Q3) antes da corrida das regras de F1; no fim ela chama startRace com o grid
   const classificacao = { log, broadcast, largar: (room, grid) => startRace(room, grid) };
   function iniciarClassificacao(room) {
-    clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer);
+    clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer);
     preparar(room);
     room.phase = "quali"; room.resultado = null; room.luzes = null; room.finishOrder = [];
+    for (const id of room.order) delete room.players[id].sim;
+    ligarHumanos(room);
     Quali.iniciar(room, classificacao);
   }
   function endRace(room) {
     if (room.phase !== "race") return;
     clearTimeout(room.endTimer);
-    clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer);
+    clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer);
     room.phase = "results";
     // regras de F1: os acréscimos (um composto só, passar do limitador) mexem na ordem de chegada
     if (room.config.regras === "f1" && room.finishOrder.some((id) => room.players[id].acrescimo)) {
@@ -222,16 +258,15 @@ module.exports = function attachCorrida(io) {
   // o corredor dos boxes da pista da sala (os pontos da pista são de 6 em 6 unidades, como no navegador)
   const corredorDe = (room) => { const t = T.PISTAS[room.config.pista]; return t.boxes ? F1.corredor(t, T.pontos(t, 6).length, t.width) : null; };
   // Setor novo: só vale o próximo na ordem. Voltar ao setor 0 depois do 3 fecha a volta (a primeira passagem é a largada).
-  function onSector(room, p, s) {
-    if (room.phase === "quali") { const mudou = Quali.aoSetor(room, p, s); if (mudou) Quali.verificarFim(room, classificacao); return mudou; } // classificação: volta lançada
-    const now = Date.now();
+  function onSector(room, p, s, now = Date.now()) { // (`now`: a hora do passo da física em que o carro cruzou o portão)
+    if (room.phase === "quali") { const mudou = Quali.aoSetor(room, p, s, now); if (mudou) Quali.verificarFim(room, classificacao); return mudou; } // classificação: volta lançada
     if (room.phase !== "race" || now < room.startAt || p.finish != null) return false;
     if (p.dnf || s !== (p.sector + 1) % T.SECTORS) return false;
     p.sector = s;
     if (s !== 0) return true;
     if (!p.started) { p.started = true; p.lapStart = room.startAt; return true; }
     const lap = (now - p.lapStart) / 1000;
-    if (lap < T.PISTAS[room.config.pista].minLap) { p.sector = T.SECTORS - 1; return false; } // rápido demais: atalho
+    if (lap < T.PISTAS[room.config.pista].minLap) return false; // rápido demais: atalho (a volta não conta, mas o setor segue o do navegador, senão a volta seguinte morria)
     p.laps++; p.last = lap; p.best = p.best == null ? lap : Math.min(p.best, lap); p.lapStart = now;
     if (!p.bot) registrarRecorde(room, p, lap);
     if (p.laps >= room.config.voltas) {
@@ -256,8 +291,8 @@ module.exports = function attachCorrida(io) {
 
   // uma batida (de um humano ou de um robô): a punição e o dano ficam com a direção de prova; com a perda total de quem
   // ainda corria, a corrida pode ter acabado para todos
-  function aplicarBatida(room, p, forca, tipo) {
-    const b = Direcao.bater(room, p, forca, tipo, Date.now(), (s) => log(room, s));
+  function aplicarBatida(room, p, forca, tipo, quando = Date.now(), chave = tipo) {
+    const b = Direcao.bater(room, p, forca, tipo, quando, (s) => log(room, s), chave);
     if (!b) return false;
     if (p.dnf && !room.order.some((id) => { const q = room.players[id]; return q.finish == null && !q.dnf && (q.sockets.size || q.bot); })) endRace(room);
     return true;
@@ -399,13 +434,14 @@ module.exports = function attachCorrida(io) {
         }
         if (type === "lobby") {
           if (!isHost) return "Só o organizador.";
-          clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); Quali.cancelar(room); Robos.remover(room); room.resultado = null; room.phase = "lobby"; room.startAt = null; room.endAt = null; return;
+          clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer); Quali.cancelar(room); Robos.remover(room); room.resultado = null; room.phase = "lobby"; room.startAt = null; room.endAt = null; return;
         }
         if (type === "end") {
           if (!isHost || room.phase !== "race") return "Só o organizador encerra a corrida.";
           endRace(room); return;
         }
         if (!me) return "Você está só assistindo.";
+        if (room.config.regras === "f1" && (type === "sector" || type === "box" || type === "batida")) return "ignorado"; // regras de F1: checkpoint, box e batida saem da física do servidor
         if (type === "qpronto") { // classificação: "já fiz a minha volta" (a sessão fecha quando todo mundo na pista disser)
           if (room.phase !== "quali" || room.quali.pausaAte) return "ignorado";
           Quali.pronto(room, me); Quali.verificarFim(room, classificacao); return;
@@ -471,10 +507,17 @@ module.exports = function attachCorrida(io) {
       if (nova === 2 && Robos.aprender(pista, bd.melhoresTracadosCorrida(pista))) { log(room, `🤖 Os robôs aprenderam a volta de ${me.name} em ${t.name}.`); broadcast(room); }
     });
 
-    // posição do meu carro (10 por segundo): vai para os outros
+    // regras de F1: as entradas do piloto, um número por passo da física (corrida-humanos.js)
+    socket.on("inp", (d) => {
+      const { room, me } = ctx();
+      if (!room || !me || me.bot) return;
+      Humanos.entrada(room, me, d);
+    });
+
+    // posição do meu carro (10 por segundo): vai para os outros (só nas salas sem as regras de F1; nelas o servidor anda o carro)
     socket.on("pos", (d = {}) => {
       const { room, me } = ctx();
-      if (!room || !me || me.dnf || (room.phase !== "race" && room.phase !== "quali")) return;
+      if (!room || !me || me.dnf || room.config.regras === "f1" || (room.phase !== "race" && room.phase !== "quali")) return;
       if (room.phase === "quali" && (room.quali.pausaAte || !room.quali.ativos.includes(me.id))) return; // só quem está na sessão
       const now = Date.now();
       if (now - (me.lastPos || 0) < 50) return;
@@ -505,8 +548,9 @@ module.exports = function attachCorrida(io) {
   });
 
   // salas paradas há mais de 12 horas somem
-  limparSalasParadas(rooms, { aoApagar: (r) => { Quali.cancelar(r); clearTimeout(r.endTimer); clearTimeout(r.abandonoTimer); clearInterval(r.itemTimer); clearInterval(r.botTimer); clearInterval(r.f1Timer); } });
-  return { abrirGP, salaGP };
+  limparSalasParadas(rooms, { aoApagar: (r) => { Quali.cancelar(r); clearTimeout(r.endTimer); clearTimeout(r.abandonoTimer); clearInterval(r.itemTimer); clearInterval(r.botTimer); clearInterval(r.f1Timer); clearInterval(r.humanosTimer); } });
+  // (as regras de cada evento da física, para os testes chamarem sem passar pela rede: checkpoint, parada nos boxes e batida)
+  return { abrirGP, salaGP, internos: { sala: (codigo) => rooms.get(codigo), onSector, concluirParada, aplicarBatida } };
 };
 module.exports.COLORS = COLORS;
 module.exports.PAWNS = PAWNS;

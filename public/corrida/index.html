@@ -9,8 +9,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏁</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700;800&family=Titillium+Web:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/corrida/entrada.css">
+<link rel="stylesheet" href="/corrida/hud-f1.css">
 <style>
 /* corrida */
 #race{position:fixed;inset:0;background:#000;z-index:30;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -191,6 +192,7 @@
     <div class="linha num"><span class="pos" id="hPos"></span><span id="hLap"></span><span id="hTime"></span></div><div class="num" id="hDelta"></div><div class="board" id="hBoard"></div></div>
   <div class="hud bl"><canvas id="mini" width="220" height="220"></canvas><div class="chip" id="hChip"></div></div>
   <div class="hud br"><canvas id="velo" width="260" height="200"></canvas></div>
+  <div class="hud" id="hTorre" aria-label="Posições"></div><div class="hud" id="hPainel"></div>
   <div class="hud f1-info hidden" id="hF1"><div id="hBandeira"></div><div id="hDrs"></div><div class="ers-bar"><span>ERS</span><i><b id="hErsCarga"></b></i><strong id="hErsTexto"></strong></div></div>
   <div class="hud bc" id="hBig"></div>
   <div class="luzes hidden" id="hLuzes" aria-label="Luzes da largada"><i></i><i></i><i></i><i></i><i></i></div>
@@ -215,6 +217,9 @@
 <script src="/corrida/logos/index.js"></script>
 <script src="/corrida/pistas.js"></script>
 <script src="/corrida/f1-regras.js"></script>
+<script src="/corrida/dinamica.js"></script>
+<script src="/corrida/sim.js"></script>
+<script src="/corrida/hud-torre.js"></script>
 <script src="/corrida/f1-pilotos-2026.js"></script>
 <script src="/corrida/f1-equipes.js"></script>
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>

@@ -1,25 +1,34 @@
-# PR4: temporada solo de Fórmula 1
+# Corrida F1: pilotagem refeita, rede autoritativa, HUD de F1 e pistas mais leves
 
-Branch `feat/corrida-f1-temporada-solo`, criada a partir de `origin/main` após a incorporação do PR intermediário #322.
+Tudo vale nas regras de F1 (`config.regras === "f1"`); a sala arcade continua com a física antiga, agora em passo fixo.
 
-## Adicionado nesta branch
+## Física nova, do zero (`public/corrida/dinamica.js` e `sim.js`)
 
-- Sede da temporada em `/corrida/temporada/`: criação, recuperação, próximo GP, calendário, tabelas de pilotos e construtores, garagem, mercado, caixa e limite anual de gastos. A entrada da Corrida agora aponta para ela; o resultado do GP e o botão de saída voltam à sede.
-- Save próprio no SQLite (`corrida_temporadas`, migração 018), com hash do token e do código de recuperação. O save mantém equipe, carro, companheiro, engenheiros, dinheiro, calendário e histórico de resultados. A recuperação troca o token; o código pode ser renovado.
-- Mini temporada de 4 GPs ou temporada de 8 GPs, com pistas que já existem no jogo e ordem baseada no [calendário oficial de 2026](https://www.formula1.com/en/latest/article/formula-1-reveals-calendar-for-2026-season.YctbMZWqBvrgyddrnauo8). O grid usa 20 carros: o jogador, seu companheiro contratado e 18 rivais de 2026. O companheiro permanece na equipe escolhida durante o campeonato.
-- Cada etapa abre classificação Q1/Q2/Q3 e corrida F1 já existentes, em sala privada que não aparece na Vila. Um acesso válido permite voltar ao GP. Abandono sem retorno após 20 segundos vira DNF; os bots continuam. Só a bandeirada registra o resultado e avança o calendário, uma vez por GP.
-- Pontuação oficial de pilotos e construtores, desempate por vitórias e melhores colocações, histórico do último GP e campeões ao fim do calendário. O ano seguinte preserva caixa, contratos, carro e desenvolvimento; zera pontos e gastos anuais.
-- Contratação de companheiro e engenheiros, desenvolvimento de até quatro pontos extras de montagem, prêmios, patrocínio, salários e teto anual de R$ 140 milhões. A equipe de box dá crédito de tempo por parada no resultado do GP. A validação financeira e da montagem acontece no servidor.
+- Carro com massa e inércia, arrasto e downforce crescendo com v², pneu com pico de força lateral em ~6° e queda depois, círculo de atrito (frear ou acelerar tira aderência para virar), transferência de peso e freio progressivo que trava a roda.
+- Subidas e descidas: a gravidade da rampa entra na força longitudinal.
+- Câmbio de 8 marchas, corte em 12 mil rpm, troca de 50 ms.
+- Calibragem: 0-200 km/h em 5,4 s; de 300 a 100 km/h em ~94 m; grampo a ~27% da velocidade final. Segurar W tira o carro da pista em Interlagos, Barcelona e Monza.
+- Pneus, DRS, ERS, vácuo/ar sujo, dano e o carro montado pela equipe continuam valendo dentro da física nova.
 
-## Conferência
+## Bugs
 
-- `node --test tests/corrida*.test.js`: testes da Corrida passaram.
-- Teste novo: quatro bandeiradas simuladas atravessam o canal da sede, produzem quatro saves e 74 pontos para o jogador; callback repetida não duplica GP. Também cobre grid e contrato, orçamento, token e recuperação, persistência após reabrir SQLite, sala privada e acesso à classificação.
-- Navegador real: criação e sede conferidas em 1440 px e 390 px, sem erros de JavaScript nem rolagem horizontal; botão Iniciar GP abriu a classificação em Melbourne. Capturas conferidas localmente.
-- `git diff --check`.
+- **FPS:** passo fixo de 1/120 s no navegador e no servidor; quem tem mais quadros não anda mais rápido.
+- **Teleporte para trás:** o servidor manda no carro. O navegador envia as entradas, prevê com a mesma física e corrige aos poucos (só salta acima de 260 u); os outros carros são interpolados com atraso fixo.
+- **Batidas:** sem punição de tempo; 1% de dano por batida, que tira 1% do desempenho, com cooldown de 4 s por par (muro ou cada carro). 100% continua sendo perda total.
+- **Linha de chegada:** quem recebeu a bandeirada vira fantasma, sai para a beira e desacelera.
 
-## Fontes consultadas
+## HUD de F1 (`hud.js`, `hud-torre.js`, `hud-f1.css`)
 
-- [Calendário oficial de 2026](https://www.formula1.com/en/latest/article/formula-1-reveals-calendar-for-2026-season.YctbMZWqBvrgyddrnauo8): ordem das oito etapas disponíveis no jogo.
-- [F1DB](https://github.com/f1db/f1db): referência para dados históricos; nenhum pacote ou base externa foi importado nesta branch.
-- [awesome-f1](https://github.com/subinium/awesome-f1#tools-and-apps): índice de ferramentas para aferição futura de pistas e telemetria.
+Torre de posições à esquerda (logo F1, volta, posição, cor da equipe, sigla, diferença, pneu, volta mais rápida, BOX/punição/Out), velocidade, marcha, BOOST/ERS, OVERTAKE/DRS, pneu e dano embaixo à direita, minimapa pequeno e banner da direção de prova no alto.
+
+## Pistas e desempenho
+
+- Volta que não contava nas pistas novas: corrigida, com teste que percorre a linha central de todas as pistas (`tests/corrida-pistas-volta.test.js`).
+- Elementos que invadiam a pista nas pistas novas: checagem em `tests/corrida-pistas-invasao.test.js` e as peças do kit corrigidas.
+- Desempenho: `kit/fundir.js` junta as malhas paradas por material e região; Mônaco caiu de ~920 malhas e 371 chamadas de desenho por quadro para ~270 malhas e ~160 chamadas.
+
+## Testes e o que falta
+
+- Só os da Corrida: `node --test tests/corrida*.test.js`, 194 de 197 passando. Falham 3 do teste de desempenho: a fusão aumenta as malhas em Baku (267 → 277) e Las Vegas (257 → 260), porque as instâncias espalhadas pela volta são divididas por região de propósito, e o teste não desconta essa divisão.
+- **Robôs não foram refeitos:** continuam com a física e as contas antigas (curvam mais rápido que os humanos). Ultrapassagem e pilotagem mais solta ficam para o próximo PR, em cima de `Dinamica`/`Sim`.
+- Não conferido no navegador depois de juntar tudo; `CLAUDE.md` não foi atualizado.
