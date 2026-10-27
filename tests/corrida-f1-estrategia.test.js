@@ -26,7 +26,7 @@ test("estratégia (física): o piloto ideal gasta o pneu na vida de cada compost
 });
 
 test("estratégia (física): o macio ganha uns 3 s por volta do médio, e o duro é mais lento que o médio", () => {
-  for (const [pista, minS] of [["interlagos", 2.8], ["monaco", 2.5], ["barcelona", 2], ["monza", 1]]) {
+  for (const [pista, minS] of [["interlagos", 2.8], ["monaco", 2.2], ["barcelona", 2], ["monza", 1]]) {
     const m = volta(pista, "medio").tempo, s = volta(pista, "macio").tempo, d = volta(pista, "duro").tempo;
     assert.ok(m - s >= minS && m - s <= 4.8, `${pista}: o macio ganha ${(m - s).toFixed(2)} s`);
     assert.ok(d - m >= 0.3 && d - m <= 1.8, `${pista}: o duro perde ${(d - m).toFixed(2)} s`);

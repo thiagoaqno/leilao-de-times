@@ -320,3 +320,25 @@ test("estado do carro: serializar e aplicar volta ao mesmo estado (o que o servi
   assert.ok(Math.abs(a.v - b.v) < 0.5 && a.tick === b.tick && a.marcha === b.marcha);
   assert.ok(Math.abs(a.pneu.desgaste - b.pneu.desgaste) < 1e-3 && b.pneu.composto === "macio");
 });
+
+// ---------- o pneu macio com a dirigibilidade arcade antiga ----------
+// a aceleração lateral (u/s²) numa curva de volante cheio a `v0` (mantendo a velocidade com o acelerador), depois de 3 s
+function lateralEmCurva(composto, desgaste, v0) {
+  const p = D.parametros(mclaren), c = D.novoCarro(0, 0, 0), pn = F1.aderencia({ composto, desgaste, temp: 0.75 });
+  c.v = v0; c.marcha = D.marchaIdeal(v0, mclaren.vmax);
+  const amb = { chao: true, pn }, passo = () => D.passo(c, { gas: c.v < v0 ? 1 : 0, brake: 0, steer: 1 }, amb, p);
+  for (let i = 0; i < 360; i++) passo();
+  const a0 = c.a; for (let i = 0; i < 60; i++) passo();
+  return Math.abs(c.a - a0) / (60 * D.PASSO) * c.v;
+}
+test("pneu macio novo usa a dirigibilidade arcade (grudada); acabado, a intermediária e pior que o médio novo", () => {
+  assert.equal(F1.aderencia({ composto: "macio", desgaste: 0, temp: 0.75 }).arcade, true);
+  assert.equal(F1.aderencia({ composto: "macio", desgaste: F1.PENHASCO, temp: 0.75 }).arcade, true);
+  assert.equal(F1.aderencia({ composto: "macio", desgaste: 0.9, temp: 0.75 }).arcade, false);
+  assert.equal(F1.aderencia({ composto: "medio", desgaste: 0, temp: 0.75 }).arcade, false);
+  for (const v of [100, 180]) {
+    const novo = lateralEmCurva("macio", 0, v), medio = lateralEmCurva("medio", 0, v), acabado = lateralEmCurva("macio", 0.9, v);
+    assert.ok(novo > medio * 1.15, `${v}: macio novo ${novo.toFixed(0)} vs médio ${medio.toFixed(0)}`);
+    assert.ok(acabado < medio, `${v}: macio acabado ${acabado.toFixed(0)} vs médio novo ${medio.toFixed(0)}`);
+  }
+});

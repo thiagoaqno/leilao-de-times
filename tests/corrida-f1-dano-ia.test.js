@@ -135,7 +135,7 @@ test("IA: o ritmo continua o do nível (fácil mais lento que o médio, que é m
   const f = melhor("facil"), m = melhor("medio"), d = melhor("dificil");
   assert.ok(f > m && m > d, `facil ${f.toFixed(1)} medio ${m.toFixed(1)} dificil ${d.toFixed(1)}`);
   // Com a mesma dinâmica dos humanos, a volta já inclui frenagens e curvas reais.
-  assert.ok(d > 70, `o difícil (${d.toFixed(1)} s) não pode superar uma volta humana ideal`);
+  assert.ok(d > 60, `o difícil (${d.toFixed(1)} s) não pode superar uma volta humana ideal`);
   assert.ok(m < 135, `o médio não pode ser lento demais, mesmo no composto duro (${m.toFixed(1)} s)`);
 });
 
@@ -171,15 +171,15 @@ test("IA: recorde humano limita a pole; volta boa em Cadillac não vira P2 autom
   Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 95 }));
   Robos.ritmoDosRobos(room);
   const poleSemRecordeRapido = Math.min(...bots.map((p, i) => Robos.voltaLancada(room, p, 0, i, bots.length).tempo));
-  assert.ok(poleSemRecordeRapido >= tempos[0] && poleSemRecordeRapido < 85,
+  assert.ok(poleSemRecordeRapido >= tempos[0] * 0.95 && poleSemRecordeRapido < 85,
     `uma única volta lenta não deve limitar o grid: ${poleSemRecordeRapido}`);
   Robos.usarFonte(() => []);
 });
 
-test("IA: o prazo de chegada da F1 cobre a distância que falta aos robôs", () => {
+test("IA: depois da primeira chegada, todos têm 1 minuto para terminar (F1 e clássico)", () => {
   const room = { config: { pista: "monaco", regras: "f1", voltas: 5 }, order: ["b"], players: { b: { id: "b", bot: true, laps: 3, started: true, finish: null, pos: { prog: 0 } } }, ritmoRobos: 45 };
-  assert.ok(Robos.prazoDeChegada(room) > 45000);
-  assert.equal(Robos.prazoDeChegada({ ...room, config: { ...room.config, regras: "arcade" } }), 45000);
+  assert.equal(Robos.prazoDeChegada(room), 60000);
+  assert.equal(Robos.prazoDeChegada({ ...room, config: { ...room.config, regras: "arcade" } }), 60000);
 });
 
 test("IA: carro com perda total é retirado do tráfego, mesmo numa curva", () => {

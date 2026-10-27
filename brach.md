@@ -1,33 +1,45 @@
-# Corrida F1: carreira com peças e orçamento, garagem nova e avisos menores
+# Corrida F1: pneu macio com a dirigibilidade arcade, robôs calibrados pelo carro de verdade e parada decidida pelo pneu
 
-Três mudanças na Corrida (F1): os avisos da transmissão ficaram compactos, o carro da carreira agora é montado escolhendo PEÇAS dentro de um orçamento, e as telas da carreira ganharam um visual novo (garagem com o carro 3D, abas, calendário com bandeiras).
+Vale nas regras de F1. A sala arcade não muda.
 
-## 1. Avisos estilo F1 menores (`public/corrida/hud-f1.css`)
-Só tamanho e posição, o estilo é o mesmo. O cartão ficou compacto (cerca de 300 px de largura, fonte de 11 a 13 px, 32 px de altura) e saiu do centro: fica no topo, à direita da torre de posições (a 236 px da borda), sem cobrir o HUD de posição/voltas. As cinco luzes da largada também diminuíram e seguem a mesma coluna. No celular (375 px) o cartão cabe ao lado da torre, sem estourar a tela.
+## 1. Pneu macio com a dirigibilidade arcade antiga
 
-## 2. Carreira com peças e orçamento
-Novo módulo `public/corrida/f1-pecas.js` (UMD, `window.F1Pecas`/`require`), com teste em `tests/corrida-f1-pecas.test.js`.
+- `F1.aderencia(pneu).arcade` é verdadeiro para o **macio dentro da vida útil** (desgaste até `PENHASCO`). Nesse caso `dinamica.js` usa `lateralArcade`: o volante gira o bico (`turn` do carro, plena a partir de 90 u/s), a velocidade continua no mundo e os pneus tiram até `grip` u/s² (sem depender da velocidade, vezes o pneu, o dano, o asfalto e o ar sujo) da velocidade de lado; o que passa disso escorrega, come velocidade (`scrub`) e, acima de 30 u/s de escorregão, o pneu satura (`kin`). Grudado e responsivo.
+- Aceleração, freio e câmbio de 8 marchas são os mesmos (o passo normal); a curva divide o pneu com o freio e a tração pelo `uso`.
+- Médio, duro e macio **acabado** (depois do penhasco) seguem a física intermediária, com o desgaste mandando como hoje.
+- Cliente e servidor usam o mesmo código; `sl` (escorregão) e `us` (uso do pneu) entram no estado da rede (`serializar`/`aplicar`) para a reconciliação concordar. O piloto automático (robôs e fantasma) pede o volante pela guinada quando o pneu é arcade.
+- Medido (Cadillac, volante cheio, aceleração lateral em u/s²): a 100 u/s macio novo 230 contra médio 155 e macio acabado 138; a 180 u/s, 414 contra 186 e 164.
+- Teste novo em `tests/corrida-fisica.test.js`: macio novo é arcade e vira bem mais que o médio; macio acabado vira menos que o médio novo.
 
-- 8 categorias, 3 a 4 peças cada, com nome, custo e efeito: **Unidade de potência** (V6 Cliente, Padrão, Turbo+, Especial), **ERS e bateria**, **Asa dianteira** (baixo arrasto, equilibrada, alta pressão), **Asa traseira** (baixo arrasto/DRS longo, equilibrada, alta pressão, carga máxima), **Chassi e assoalho** (robusto, equilibrado, fibra leve, ultraleve), **Suspensão**, **Freios** e **Câmbio**.
-- Cada peça dá níveis nos seis atributos que já existiam (motor, aerodinâmica, chassi, freios, suspensão, confiabilidade). O custo da peça é a soma dos níveis que ela dá, então as peças viram a mesma montagem de antes (`specDaMontagem` não mudou) e cabem no mesmo orçamento em pontos (15 a 20 por equipe, mais o bônus de desenvolvimento). A física não foi tocada.
-- As trocas: asa de alta pressão = mais curva e menos reta; peças de "baixo arrasto" trocam carga por motor; chassi leve = acelera/freia melhor e amassa mais; câmbio reforçado = quebra menos.
-- O carro "todo médio" (as peças padrão de cada categoria) custa 18 pontos e dá os níveis 3-3-3-3-3-3, os mesmos atributos de hoje (teste).
-- Servidores (`corrida-temporada.js`, `corrida-temporada-grupo.js`, `corrida.js`): os pedidos de `montagem` aceitam `pecas` (o servidor valida peça por categoria, o custo contra o orçamento e deriva os níveis) ou o `montagem` antigo (só níveis). Guardam a escolha em `s.pecas` (solo), `equipes[eq].pecas` (grupo) e `room.pecasEq` (sala de F1). A temporada solo e a em grupo (#326) seguem funcionando; o histórico da equipe em grupo registra "montou o carro".
-- Entre as corridas: o prêmio de cada GP já vai para o caixa e o botão "Desenvolver" compra +1 ponto de orçamento (até +4), que libera uma peça melhor. A troca de peças é livre entre GPs (em grupo, só com o GP fechado). Comprar/melhorar cada peça individualmente com dinheiro ficou de fora (o gancho é o bônus de orçamento).
+## 2. Robôs calibrados pelo carro
 
-### Saves antigos
-Nada precisa ser migrado no banco: a montagem de níveis continua sendo o que se guarda e o que a física usa. Save antigo (sem `pecas`) abre normalmente; na tela de peças aparece o conjunto de peças mais parecido (`migrarMontagem`: escolhe a combinação que mais se aproxima dos níveis sem passar do orçamento; as montagens padrão das 11 equipes ficam a no máximo 2 níveis do original, a maioria exatas) com um aviso. Ao trocar uma peça, o carro passa a ser montado por elas.
+O perfil de velocidade dos robôs de F1 já usa a física de `dinamica.js` (limite de curva, frenagem e aceleração reais); o que estava lento eram as margens. Medi o que o carro faz de verdade (piloto automático dirigindo pela `Sim.passo`, Cadillac, médio novo, sem tráfego) em todas as pistas:
 
-## 3. Visual da carreira
-Novos `public/corrida/temporada/garagem.js`, `garagem.css` e `car3d.js`; usados pela temporada solo (`sede.js`), em grupo (`grupo.js`) e pela montagem na sala de F1 (`menus.js`).
+- `MARGEM_F1` 0,95 → **1,08** e `MARGEM_FREIO` 0,8 → **1,0** (o ABS do robô segura a roda). Em todos os GPs a volta fecha sem tocar no muro nem sair da pista; 1,15 já bate em Mônaco.
+- As pistas de fantasia (serra, deserto, circuito alemão, arco-íris) têm lombada e salto e batem com 1,08: ficam na margem antiga (0,95 e 0,8).
+- A folga dos níveis sobre o ideal: fácil 13,7% → **10%**, médio 7,4% → **6%**, difícil 2,5% → **0%** (mais o ritmo do piloto, até ~1,2%). Na pista o robô não segura o ideal inteiro (tráfego, ABS, desvios): medido em 3 pistas, difícil +4,5%, médio +6%, fácil +8% sobre o ideal.
 
-- Abas no topo: Visão geral, Carro · Peças, Classificação e Equipe (mercado e box).
-- Visão geral: painel escuro à esquerda com a equipe, a nota do carro e os atributos com ícones e números; o carro 3D (o mesmo modelo da corrida, girando devagar) no centro; à direita o calendário com bandeiras e o botão vermelho grande "Continuar".
-- Peças: barra de orçamento fixa no topo, um cartão por peça agrupado por categoria (custo, efeito, instalada/sem orçamento) e o resultado nos atributos ao lado.
-- Tipografia condensada em caixa alta, vermelho F1 com preto e cinza e cantos levemente angulados, sem logos ou marcas dos jogos de referência.
-- Celular: 16 px de margem, sem rolagem horizontal, o carro e o botão "Continuar" sobem para o começo da tela, cartões em uma coluna.
+| Ideal do robô (Cadillac, médio novo, volta lançada) | antes | depois |
+|---|---|---|
+| Interlagos | 68,2 s | 63,4 s |
+| Melbourne | 68,6 s | 64,7 s |
+
+Volta real com o piloto automático no limite (sem tráfego): Interlagos 70,7 s (margem antiga) → 64,5 s; Melbourne 71,0 → 68,2 s.
+
+**As referências de 49,7 s (Interlagos, saindo parado) e ~52 s (Melbourne) não saem desta física dirigindo na pista:** mesmo com a lateral arcade e margem 1,4 o piloto automático faz 54,5 s em Interlagos, e com a física intermediária, margem 1,25 já bate no muro (volta de ~64 s no limite). Para chegar a 50 s o carro precisa de uma linha bem melhor ou de atalho pela grama/zebra (a volta só exige passar pelos setores na ordem). Não forcei os robôs acima do limite de aderência: o ideal deles agora é o que o carro sustenta sem bater. Um teste fixa as duas referências novas (±3%).
+
+## 0. Trazido do PR #333 (fechado), sem a linha ideal
+
+- Depois da primeira chegada, quem ainda corre tem **60 s** (`AFTER_FIRST_MS`, texto das regras em `menus.js`, `prazoDeChegada` fixo).
+- A parada do robô é decidida pelo pneu (`decidirParada`, `escolherComposto`, `taxaDoPneu`): para só se o pneu não chega ao fim, na volta do plano ou antes se a próxima já passaria do penhasco (ou de graça sob safety car com o pneu pela metade), e sempre cumpre a regra dos dois compostos; o composto novo é o mais rápido que aguenta o resto.
 
 ## Testes
-`tests/corrida-f1-pecas.test.js` (novo: custo cabe no orçamento, atributos derivados, carro médio igual ao de hoje, trocas, migração do save antigo, solo e grupo) e um caso novo em `tests/corrida-f1-equipes.test.js` (a sala de F1 aceita peças e o formato antigo). Rodei `tests/corrida*.test.js`.
+
+`node --test tests/corrida*.test.js`: 247 passam. Ajustados: `corrida-f1-dano-ia` (prazo de 60 s, difícil > 60 s, pole de Mônaco > 63 s), `corrida-f1-estrategia` (o macio arcade ganha 2,35 s em Mônaco, antes 2,95 s), `corrida-robos-ritmo` (limites de ritmo, baixo15 ≤ 5 s e o teste novo das referências).
+
+## Ficou de fora
+
+- A linha ideal (PR #333) e a recalibração da tabela de estratégia (`f1-pneus-ritmo.js`) com o macio arcade.
+- O ideal de 49,7 s / 52 s (precisa de linha melhor; ver acima).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

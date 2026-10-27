@@ -124,8 +124,9 @@ function pilotoAutomatico(c, tr, spec, vAlvo, latAlvo, saida = {}) {
   let j = c.idx, acc = 0; while (acc < Ld) { j = (j + 1) % n; acc += 6; }
   const q = tr.pts[j], tx = q.x + q.nx * latAlvo, ty = q.y + q.ny * latAlvo;
   let e = Math.atan2(ty - c.y, tx - c.x) - c.a; e = Math.atan2(Math.sin(e), Math.cos(e));
-  const delta = Math.atan2(2 * p.L * Math.sin(e), Ld * ESC), dm = D.volanteMaximo(p, Math.max(0, c.v) * ESC);
-  saida.steer = limite(delta / dm, -1, 1); saida.gas = c.v < vAlvo ? 1 : 0; saida.brake = c.v > vAlvo * 1.04 ? 1 : 0; if (saida.brake) saida.gas = 0;
+  if (c.amb && c.amb.pn && c.amb.pn.arcade) saida.steer = D.volanteParaGuinada(p, Math.max(0, c.v), (2 * Math.sin(e) / Ld) * Math.max(0, c.v)); // macio (arcade): o volante dá guinada, não ângulo de roda
+  else { const delta = Math.atan2(2 * p.L * Math.sin(e), Ld * ESC), dm = D.volanteMaximo(p, Math.max(0, c.v) * ESC); saida.steer = limite(delta / dm, -1, 1); }
+  saida.gas = c.v < vAlvo ? 1 : 0; saida.brake = c.v > vAlvo * 1.04 ? 1 : 0; if (saida.brake) saida.gas = 0;
   saida.ers = 0; saida.respawn = 0; saida.pedido = null; saida.marcha = 0;
   return saida;
 }
@@ -338,14 +339,14 @@ function baterNosOutros(c, car, outros, ev) {
 // ---------- copiar o estado (a rede) ----------
 const R = (v, k) => Math.round(v * k) / k;
 function serializar(c) {
-  const s = { x: R(c.x, 100), y: R(c.y, 100), z: R(c.z, 100), a: R(c.a, 10000), v: R(c.v, 100), vl: R(c.vl, 100), r: R(c.r, 1000), st: R(c.steer, 1000), gp: R(c.gasP, 100), bp: R(c.brkP, 100),
+  const s = { x: R(c.x, 100), y: R(c.y, 100), z: R(c.z, 100), a: R(c.a, 10000), v: R(c.v, 100), vl: R(c.vl, 100), r: R(c.r, 1000), st: R(c.steer, 1000), gp: R(c.gasP, 100), bp: R(c.brkP, 100), sl: R(c.slip, 100), us: R(c.uso || 0, 1000),
     m: c.marcha, tt: R(c.trocaT, 1000), ax: R(c.axL, 100), vz: R(c.vz, 10), air: c.air ? 1 : 0, gvz: R(c.gvz || 0, 10), ix: c.idx, pg: R(c.prog, 10), sc: c.sector, dr: R(c.draft, 1000), tk: c.tick, fa: c.fant ? 1 : 0,
     pn: [c.pneu.composto, R(c.pneu.desgaste, 100000), R(c.pneu.temp, 10000)], er: [R(c.ers.carga, 10000), R(c.ers.recarga, 10000), c.ers.volta] };
   if (c.box) { const B = c.box; s.bx = [B.fase, R(B.u, 1000), R(B.lat0, 100), R(B.t, 1000), R(B.parada, 100), R(B.garagem, 1000), B.composto, B.volta, B.n, B.tick0 ?? 0, B.pedido]; }
   return s;
 }
 function aplicar(c, s, tr) {
-  c.x = s.x; c.y = s.y; c.z = s.z; c.a = s.a; c.v = s.v; c.vl = s.vl; c.r = s.r; c.steer = s.st; c.gasP = s.gp; c.brkP = s.bp; c.marcha = s.m; c.trocaT = s.tt; c.axL = s.ax; c.vz = s.vz; c.air = !!s.air; c.gvz = s.gvz;
+  c.x = s.x; c.y = s.y; c.z = s.z; c.a = s.a; c.v = s.v; c.vl = s.vl; c.r = s.r; c.steer = s.st; c.gasP = s.gp; c.brkP = s.bp; c.slip = s.sl ?? 0; c.uso = s.us ?? 0; c.marcha = s.m; c.trocaT = s.tt; c.axL = s.ax; c.vz = s.vz; c.air = !!s.air; c.gvz = s.gvz;
   c.idx = s.ix; c.prog = s.pg; c.sector = s.sc; c.draft = s.dr; c.tick = s.tk; c.fant = !!s.fa; c.idxAnt = s.ix;
   const ca = Math.cos(c.a), sa = Math.sin(c.a); c.vx = c.v * ca - c.vl * sa; c.vy = c.v * sa + c.vl * ca;
   c.pneu.composto = s.pn[0]; c.pneu.desgaste = s.pn[1]; c.pneu.temp = s.pn[2];
