@@ -208,7 +208,10 @@ function ritmoDaSala(room) {
 // piloto soma um pouco mais de acordo com o ritmo dele (até ~1,2%), e o carro fraco continua mais lento que o forte porque o ideal
 // dele já é mais lento. Nunca abaixo do limite do carro. Se a galera já fez voltas quase perfeitas, o robô não passa de 2,5% delas.
 // A referência do ritmo é o piloto ideal com o pneu neutro. O robô de verdade anda com o pneu de cada momento.
-const aderRef = () => null; // (pneu neutro: o ritmo do nível não depende da tabela de pneus; quem mexe no ritmo é o pneu de cada momento)
+// o pneu de referência do ritmo é o médio novo e quente: o nível é medido contra o piloto ideal com ele, e o pneu de cada
+// momento (o macio mais rápido, o duro mais lento, o gasto e o frio) mexe no ritmo de verdade, em passoF1
+let ADER_REF = null;
+const aderRef = () => ADER_REF || (ADER_REF = F1.aderencia({ composto: "medio", desgaste: 0, temp: 1 }));
 function idealDe(pista, spec) { return tempoDaVolta(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren")), 1, aderRef()); }
 const FOLGA_F1 = { facil: 0.137, medio: 0.074, dificil: 0.025 };
 function referenciaF1(room) {
