@@ -23,7 +23,7 @@ export function hud() {
   const luz = !!race.luzes;
   let big = "";
   if (left > 0) { const n = Math.ceil(left); big = !luz && n <= 3 ? String(n) : ""; if (!luz && n <= 3 && race.beeped !== n) { race.beeped = n; Sound.beep(false); } }
-  else if (left > -1) { big = luz ? "" : "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); } }
+  else if (left > -1) { big = luz ? "" : "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); radioF1("largada"); } }
   luzesDaLargada(left);
   const f1on = cfg.regras === "f1" && E.S.phase === "race"; // o HUD novo (torre e painel) só nas regras de F1; no arcade fica o antigo
   const f1av = cfg.regras === "f1"; // os avisos no estilo da transmissão valem em toda a pista de F1 (classificação e corrida)
@@ -76,7 +76,7 @@ export function hud() {
   else if (race.perdeu >= 0 && m && m.finish == null) msg = "⟲ CHECKPOINT PERDIDO: volte nele ou aperte ↺";
   else if (race.cpT > now - 900 && race.sector > 0) msg = `✓ CHECKPOINT ${race.sector}/${SECTORS}`;
   else if (m && m.finish == null && m.started && m.laps === cfg.voltas - 1 && cfg.voltas > 1 && race.lastLapMsg > now - 2500) msg = "ÚLTIMA VOLTA!";
-  else if (race.pneu && race.pneu.desgaste > window.F1Regras.PENHASCO && m && m.finish == null && m.started) msg = "PNEU NO FIM: segura nas curvas";
+  else if (race.pneu && race.pneu.desgaste > window.F1Regras.PENHASCO && m && m.finish == null && m.started) { msg = "PNEU NO FIM: segura nas curvas"; radioF1("box"); }
   else if (E.S.endAt && m && m.finish == null) msg = `⏱️ ${Math.max(0, Math.ceil((E.S.endAt - now) / 1000))} s para cruzar`;
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
   if (B) { const bt = $("bBox"), txt = B.pedido || B.fase ? `🔧 ${nomeBox}` : "🔧 Box"; if (bt.textContent !== txt) { bt.textContent = txt; bt.classList.toggle("pedido", !!(B.pedido || B.fase)); } }
@@ -109,6 +109,8 @@ function montarTorre() {
   for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "tl hidden"; d.innerHTML = '<span class="n"></span><i class="eq"></i><b class="sg"></b><em class="df"></em><u class="pn"></u><s class="vr" title="Volta mais rápida"></s><small class="ic"></small>'; box.appendChild(d); }
   $("hPainel").innerHTML = '<div class="pf-over" id="pOver">OVERTAKE</div><div class="pf-vel"><b id="pVel">0</b><span>KM/H</span><div class="pf-marcha" id="pMarcha">N</div></div><div class="pf-rpm" id="pRpm">' + "<i></i>".repeat(10) + '</div><div class="pf-boost"><span>BOOST</span><div><i id="pBoost"></i></div><b id="pBoostT">0%</b></div><div class="pf-extra"><div class="pf-pneu" id="pPneu"><b>M</b><span>100%</span></div><div class="pf-dano"><span id="pDanoT">DANO 0%</span><div><i id="pDano"></i></div></div></div>';
 }
+// o engenheiro no rádio (radio.js): só nas regras de F1
+const radioF1 = (situacao, op) => { if (window.Radio && E.S && E.S.config && E.S.config.regras === "f1") window.Radio.dizer(situacao, op); };
 // ---------- os avisos no estilo da transmissão de F1 (avisos-f1.js tem as regras: tipos, cores, fila) ----------
 // Faixas retas com a cor da bandeira, o ícone, o cabeçalho ("DIREÇÃO DE PROVA · RACE CONTROL" ou o tipo do aviso) e o texto. A fila
 // mostra até 3 de uma vez e os outros esperam; o DOM só muda quando a fila muda (versao) ou o texto de uma faixa muda.
@@ -123,10 +125,11 @@ export function htmlAviso(tipo, texto) {
 }
 function estiloAviso(el, tipo) { const t = window.AvisosF1.tipoDe(tipo); el.style.setProperty("--fundo", t.fundo); el.style.setProperty("--txt", t.txt); el.style.setProperty("--bloco", t.bloco); }
 // um aviso de fora (toast, tela de fim): vira uma faixa da fila
-E.avisarF1 = (texto, ms) => { const A = window.AvisosF1, l = A.limpar(texto); if (l) filaAvisos().empurrar({ tipo: A.tipoDoTexto(texto), texto: l, ttl: Math.max(2600, (ms || 3200) + 1200) }, Date.now()); };
+E.avisarF1 = (texto, ms) => { const A = window.AvisosF1, l = A.limpar(texto); if (l && window.Radio && (A.tipoDoTexto(texto) !== "vmr" || (me() && texto.includes(me().name)))) window.Radio.avisoF1(A.tipoDoTexto(texto)); if (l) filaAvisos().empurrar({ tipo: A.tipoDoTexto(texto), texto: l, ttl: Math.max(2600, (ms || 3200) + 1200) }, Date.now()); };
 // o aviso que dura enquanto a situação dura (bandeira, box, perda total...): uma faixa só, troca o texto no lugar
 function estadoF1(texto) {
   const A = window.AvisosF1, f = filaAvisos(), l = A.limpar(texto);
+  if (l && window.Radio) { const t = A.tipoDoTexto(texto); window.Radio.avisoF1(t); if (/perda total/i.test(texto)) window.Radio.uma("dnf:" + (E.S && E.S.startAt), () => window.Radio.fim(0, 0, true)); }
   if (!l) f.remover("estado"); else f.empurrar({ chave: "estado", tipo: A.tipoDoTexto(texto), texto: l, fixo: true }, Date.now());
 }
 function desenharAvisos() {
@@ -173,6 +176,7 @@ function bandeiraF1(m) {
 }
 function hudF1(m, st, now) {
   const t0 = performance.now(); if (t0 - (race.hudF1T || 0) < 100) return; race.hudF1T = t0;
+  if (race.pneu && m && m.finish == null && m.started && race.pneu.desgaste > window.F1Regras.PENHASCO * 0.75 && race.pneu.desgaste <= window.F1Regras.PENHASCO) radioF1("pneu");
   montarTorre();
   const T = window.HudTorre, F = window.F1Regras, tr = race.tr, cfg = E.S.config;
   if (!race.hudEsc) { let L = 0; for (let i = 0; i < tr.n; i++) { const a = tr.pts[i], b = tr.pts[(i + 1) % tr.n]; L += Math.hypot(b.x - a.x, b.y - a.y); } race.hudEsc = L / tr.n; } // unidades de pista por índice
@@ -187,6 +191,7 @@ function hudF1(m, st, now) {
   const lid = st[0] && st[0].p, volta = lid ? Math.max(1, Math.min(cfg.voltas, (lid.started ? lid.laps : 0) + 1)) : 1;
   set($("tVolta"), "t", lid && lid.finish != null ? "BANDEIRADA" : `VOLTA ${volta} / ${cfg.voltas}`);
   const max = Math.max(6, Math.min(22, Math.floor((innerHeight - 150) / (innerWidth < 700 ? 22 : 28)))), eu = linhas.findIndex((l) => l.eu);
+  if (eu >= 0 && window.Radio && m && m.started && !m.dnf && m.finish == null) window.Radio.posicao(linhas[eu].pos, String(race.startAt));
   const ver = T.recortar(linhas.length, eu, max), box = $("tLinhas").children;
   for (let k = 0; k < box.length; k++) {
     const d = box[k], l = ver[k] != null ? linhas[ver[k]] : null;
@@ -258,6 +263,7 @@ export function renderQuali() {
   const el = $("quali"), S = E.S, q = S && S.phase === "quali" && S.quali;
   if (!q || !q.pausa || !q.fechadas.length) { el.classList.add("hidden"); return; }
   const f = q.fechadas[q.fechadas.length - 1], ultima = !!q.grid, m = me();
+  if (ultima && m && window.Radio) { const i = q.grid.indexOf(m.id); if (i >= 0) window.Radio.uma("quali:" + S.startAt, () => window.Radio.classificacao(i + 1, q.grid.length)); }
   const tempos = {}; for (const s of q.fechadas) for (const x of s.ordem) tempos[x.id] = x.tempo;
   const linhas = ultima ? q.grid.map((id) => ({ id, fora: false })) : f.ordem.map((x) => ({ id: x.id, fora: f.eliminados.includes(x.id) }));
   const pole = tempos[linhas[0].id], naUltima = new Set(f.ordem.map((x) => x.id)); // no grid final, só quem correu a última sessão tem diferença que se compara
@@ -342,10 +348,11 @@ function pneuHud(c, pn, x, y) {
 export function checkMyLap(old) {
   const m = me(), o = old && E.ME && old.players.find((p) => p.id === E.ME.id);
   if (!m || !o || !race) return;
-  if (m.laps > o.laps) { lapDone(m); if (m.finish != null) Sound.finish(); else { Sound.lap(); race.lastLapMsg = sNow(); } }
+  if (m.laps > o.laps) { lapDone(m); if (m.finish != null) Sound.finish(); else { Sound.lap(); race.lastLapMsg = sNow(); if (m.laps === E.S.config.voltas - 1 && E.S.config.voltas > 1) radioF1("ultima"); } }
 }
 // a tela do GP (regras de F1): o pódio, e a tabela com tempo ou diferença, grid, paradas, penalidades e os pontos oficiais
 function resultadoGP(el, m, isHost) {
+  { const R0 = E.S.resultado, meu = m && R0.find((r) => r.id === m.id); if (meu && window.Radio) window.Radio.uma("fim:" + E.S.startAt, () => window.Radio.fim(meu.pos, meu.pontos || 0, !!(meu.dnf || meu.nc))); }
   const S = E.S, R = S.resultado, F = window.F1Regras, vencedor = R[0], nome = (id) => pilotoNome(P(id));
   const pneus = (r) => (r.paradas ? `${r.paradas}P ` : "0P ") + (r.compostos || []).map((c) => `<u class="pn" style="--c:${F.PNEUS[c] ? F.PNEUS[c].cor : "#999"}"></u>`).join("");
   const final = (r) => r.dnf ? "DNF" : r.nc ? "NC" : r.tempo == null ? `+${Math.max(1, S.config.voltas - r.voltas)} volta${S.config.voltas - r.voltas > 1 ? "s" : ""}` : r === vencedor ? fmt(r.tempo) : `+${(r.tempo - vencedor.tempo).toFixed(3)} s`;

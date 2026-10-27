@@ -55,6 +55,7 @@ export function renderLobby() {
   document.querySelectorAll('#hubAbas [data-aba="garagem"], #hubAbas [data-aba="pintura"], .tile[data-aba="garagem"], .tile[data-aba="pintura"]').forEach((b) => (b.disabled = !m));
   // a equipe e a montagem do carro (regras de F1)
   document.querySelectorAll('[data-aba="equipe"]').forEach((b) => { b.classList.toggle("hidden", !f1); b.disabled = !m; });
+  if (f1 && m && window.Radio) window.Radio.uma("lobby:f1", () => window.Radio.dizer("boasvindas"));
   if (f1 && m) {
     const eq = m.equipe && window.F1Equipes.EQUIPES[m.equipe], sobra = eq ? window.F1Equipes.sobra(m.equipe, E.S.montagens && E.S.montagens[m.equipe] || window.F1Equipes.montagemPadrao(m.equipe)) : 0;
     $("tileEquipeTxt").textContent = eq ? `${window.F1Pilotos.EQUIPES[m.equipe].nome} · ${eq.orcamento} pontos${sobra ? ` (sobram ${sobra})` : ""}` : "Escolha a sua equipe e monte o carro";

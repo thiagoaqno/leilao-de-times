@@ -62,11 +62,12 @@ function renderizar() {
   const mercado = `<section class="bloco"><header><h2>Mercado & box</h2><small>Teto anual ${dinheiro(Regras.teto)}</small></header><div class="mercado-grid"><div><label for="piloto2">Companheiro · ${h(piloto(s.piloto2)?.nome)}</label><select id="piloto2">${pilotosMercado}</select><div class="row"><p>Contratos são pagos à vista.</p><button id="contratarPiloto" ${ativo || terminou ? "disabled" : ""}>Contratar</button></div></div>
       ${Object.entries(Regras.ENGENHEIROS).map(([area, lista]) => `<div><label for="${area}">${area === "mecanico" ? "Mecânicos" : "Estrategista"} · ${h(lista[s.engenheiros[area]].nome)}</label><select id="${area}">${lista.map((item, i) => `<option value="${i}" ${i <= s.engenheiros[area] ? "disabled" : ""}>${h(item.nome)} · ${dinheiro(item.custo - lista[s.engenheiros[area]].custo)}</option>`).join("")}</select><div class="row"><p>${area === "mecanico" ? "Paradas mais rápidas" : "Decisões mais rápidas no box"} na apuração.</p><button data-engenheiro="${area}" ${ativo || terminou || s.engenheiros[area] === 2 ? "disabled" : ""}>Contratar</button></div></div>`).join("")}</div><p class="boxnota">Patrocínio ${dinheiro(s.patrocinio)} por GP, prêmios por pontos e salários debitados após cada corrida.</p></section>`;
   const painel = { geral: hero, carro, classif, equipe: mercado }[aba] || hero;
-  app.innerHTML = `<div class="cr-topo"><div class="cr-id">${marca(s.equipe)}<div><small>Temporada ${s.ano} · ${h(s.nome)}</small><h1>${h(eq.nome)}</h1></div></div><div class="cr-caixa"><small>Caixa da equipe</small><b>${dinheiro(s.caixa)}</b></div></div>
+  app.innerHTML = `<div class="cr-topo"><div class="cr-id">${marca(s.equipe)}<div><small>Temporada ${s.ano} · ${h(s.nome)}</small><h1>${h(eq.nome)}</h1></div></div><div class="cr-caixa"><small>Caixa da equipe</small><b>${dinheiro(s.caixa)}</b></div><button class="ghost" data-radio-botao aria-label="Voz do engenheiro"></button></div>
     ${codigo ? `<div class="campeao" role="status"><b>Guarde seu código</b><p>Ele recupera a temporada em outro navegador. Ao recuperar, o token anterior deixa de valer.</p><div class="codebox">${h(codigo)}</div><button id="copiar">Copiar código</button><button id="esconder">Já guardei</button></div>` : ""}
     ${campeao}${G.abasHTML()}<div class="painel-aba" role="tabpanel">${painel}</div>
     <div class="recuperacao"><span>Save automático no servidor · ${h(s.nome)}</span><button id="novoCodigo">Gerar novo código de recuperação</button><span>O código antigo deixa de valer.</span><button id="excluirCarreira" class="discreto">Excluir carreira</button></div>`;
   G.encaixar(s.equipe);
+  if (window.Radio) { window.Radio.desenharBotoes(); window.Radio.uma("sede", () => { window.Radio.dizer("boasvindas"); if (!terminou) setTimeout(() => window.Radio.dizer("proximogp"), 7000); }); }
 }
 // ---------- excluir a carreira ----------
 const dlgExcluir = document.createElement("dialog");
@@ -120,7 +121,7 @@ app.addEventListener("click", async (e) => {
   const s = estado.dados;
   if (b.id === "gp") { if (s.gp >= s.tamanho) return pedir("proximaTemporada"); const r = await pedir("iniciarGP"); if (r?.ok) irAoGP(r.acesso); }
   if (b.dataset.aba) { window.F1Garagem.definirAba(b.dataset.aba); return renderizar(); }
-  const nova = window.F1Garagem.cliquePeca(b, pecasDoSave(s)); if (nova) await pedir("montagem", { pecas: nova });
+  const nova = window.F1Garagem.cliquePeca(b, pecasDoSave(s)); if (nova) { const r = await pedir("montagem", { pecas: nova }); if (r && r.ok && window.Radio) window.Radio.dizer("pecas"); }
   if (b.id === "desenvolver") await pedir("desenvolver");
   if (b.id === "contratarPiloto") await pedir("piloto", { id: document.getElementById("piloto2").value });
   if (b.dataset.engenheiro) await pedir("engenheiro", { area: b.dataset.engenheiro, nivel: document.getElementById(b.dataset.engenheiro).value });
