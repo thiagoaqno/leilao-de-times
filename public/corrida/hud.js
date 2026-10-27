@@ -2,6 +2,7 @@
 import { E, PISTAS, $, h, sNow, me, P, act, fmt, SECTORS, checkpoint, toast } from "./estado.js";
 import { Sound } from "./sons.js";
 import { race } from "./jogo.js";
+import { textoJogos } from "./box.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
 import { drawItemHud } from "./itens.js";
 
@@ -68,7 +69,7 @@ export function hud() {
   else if (B && B.fase) msg = B.fase === "entra" ? `🔧 BOX: limitador de velocidade` : B.fase === "parada" ? `🔧 ${window.F1Regras.textoDaParada(B.parada)} · trocando para o ${nomeBox} · ${Math.max(0, B.parada - B.t).toFixed(1)} s` : "🔧 BOX: saindo, pneu novo ainda frio";
   else if (E.S.direcao?.safety) msg = "🚨 SAFETY CAR: reduza e mantenha a posição";
   else if (E.S.direcao?.amarelo?.setor === Math.floor(race.idx / (tr.n / SECTORS))) msg = "🟡 BANDEIRA AMARELA: não ultrapasse";
-  else if (B && B.pedido) msg = `🔧 BOX: ${nomeBox} (1, 2, 3 trocam · B cancela)`;
+  else if (B && B.pedido) msg = `🔧 BOX: ${nomeBox} (1, 2, 3 trocam · B cancela) · jogos ${textoJogos(m)}`;
   else if (m && m.balaUntil > now) msg = "🚀 BALA! (piloto automático)";
   else if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
   else if (m && m.shrinkUntil > now) msg = "⚡ ENCOLHIDO PELO RAIO!";
