@@ -59,7 +59,7 @@ test("o orçamento não estoura: o servidor-regra recusa montagem inválida e ac
 
 test("cada peça muda o spec no sentido certo", () => {
   const base = montagem(4, 4, 4, 4, 4, 4), s0 = E.specDaMontagem(base), mais = (k) => E.specDaMontagem({ ...base, [k]: 5 });
-  const m = mais("motor"); assert.ok(m.vmax > s0.vmax && m.acc > s0.acc && m.quebra > s0.quebra, "motor: mais velocidade e aceleração, quebra mais");
+  const m = mais("motor"); assert.ok(m.vmax > s0.vmax && m.acc > s0.acc && m.quebra === s0.quebra, "motor: mais velocidade e aceleração (a quebra é só da confiabilidade)");
   const a = mais("aero"); assert.ok(a.grip > s0.grip && a.turn > s0.turn && a.drs > s0.drs, "aerodinâmica: mais aderência, volante e DRS");
   assert.ok(a.vmax < s0.vmax && a.acc <= s0.acc, "...e menos velocidade final e aceleração");
   const c = mais("chassi"); assert.ok(c.acc > s0.acc && c.brake > s0.brake, "chassi leve: mais aceleração e freio");
@@ -170,8 +170,8 @@ test("a falha mecânica: a chance é a do carro, sai da semente e cai em 15% a 8
     assert.ok(fracoes.every((f) => f >= 0.15 && f <= 0.85));
     return { real: n / 4000, spec: spec.quebra }; };
   for (const m of [montagem(8, 0, 3, 3, 2, 0), montagem(4, 4, 3, 3, 3, 3), montagem(0, 4, 4, 4, 4, 8)]) { const t = taxa(m); assert.ok(Math.abs(t.real - t.spec) < 0.025, `${JSON.stringify(m)}: sorteado ${t.real}, do carro ${t.spec}`); }
-  assert.ok(E.specDaMontagem(montagem(8, 0, 3, 3, 2, 0)).quebra > E.specDaMontagem(montagem(0, 4, 4, 4, 4, 8)).quebra * 5, "motor puxado sem confiabilidade quebra muito mais");
-  assert.ok(E.specDaMontagem(montagem(8, 0, 0, 0, 0, 0)).quebra < 0.2, "mesmo o pior caso não é uma corrida perdida");
+  assert.ok(E.specDaMontagem(montagem(8, 0, 3, 3, 2, 0)).quebra > E.specDaMontagem(montagem(0, 4, 4, 4, 4, 8)).quebra * 3, "sem confiabilidade quebra bem mais do que com ela no máximo");
+  assert.ok(E.specDaMontagem(montagem(8, 0, 0, 0, 0, 0)).quebra <= 0.01, "mesmo o pior caso não passa de 1%");
   const mesma = () => E.sortearFalha(F1.sorteio("quebra:7:robo-1"), E.specDaMontagem(montagem(8, 0, 3, 3, 2, 0)));
   assert.equal(mesma(), mesma(), "a mesma semente dá a mesma falha");
 });

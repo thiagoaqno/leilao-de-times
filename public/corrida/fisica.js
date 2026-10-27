@@ -23,8 +23,8 @@ const GRAV = 160;
 const ENCOLHIDO = 0.72, BALA = 1.45;
 export function physics(dt, spec = carOf(me())) {
   // nas regras de F1 o carro já anda antes das luzes apagarem (a largada queimada: o servidor dá +5 s); nas outras, só depois da contagem
-  const c = race.car, tr = race.tr, go = (sNow() >= race.startAt || !!race.luzes) && !!me();
-  if (!go || (race.luzes && sNow() < race.startAt && !keys.gas)) { c.v = c.vx = c.vy = 0; return; } // (nas luzes de F1, o freio de mão segura o carro na ladeira do grid até alguém acelerar)
+  const c = race.car, tr = race.tr, go = sNow() >= race.startAt && !!me();
+  if (!go) { c.v = c.vx = c.vy = 0; return; } // (o carro só anda depois das luzes apagarem; queimar a largada é punido pelo servidor)
   // regras de F1: a perda total retira o carro da disputa e o torna não sólido para os demais
   if (me().dnf) { c.v = c.vx = c.vy = 0; return; }
   const fr0 = trackFrame(tr, c.x, c.y, race.idx), road = Math.abs(fr0.lat) <= tr.W / 2 + 6, air = c.air;
@@ -230,7 +230,7 @@ function passoF1(R) {
   net.cod[k & MASCARA] = code;
   const ent = S.desempacotar(code, ENT_C); // a mesma entrada que o servidor vai ver (volante em 1/255)
   AMB.amarela = AMB.setorAmarelo === Math.floor(c.idx / (tr.n / SECTORS));
-  AMB.segurar = sNow() < R.startAt && (!R.luzes || !ent.gas);
+  AMB.segurar = sNow() < R.startAt;
   EV.length = 0;
   S.passo(c, ent, AMB, tr, EV);
   net.hx[(k + 1) & MASCARA] = c.x; net.hy[(k + 1) & MASCARA] = c.y;
@@ -315,7 +315,7 @@ export function reconciliar(d) {
   const r = S.reconciliar(c, d.st, R.tr, { mascara: MASCARA, hx: net.hx, hy: net.hy, passo: (carro, k) => { // reaplica o que o servidor ainda não viu (sem som e sem eventos: já aconteceram)
     const ent = S.desempacotar(net.cod[k & MASCARA], ENT_C);
     AMB.amarela = AMB.setorAmarelo === Math.floor(carro.idx / (R.tr.n / SECTORS));
-    AMB.segurar = sNow() < R.startAt && (!R.luzes || !ent.gas);
+    AMB.segurar = sNow() < R.startAt;
     S.passo(carro, ent, AMB, R.tr, null);
   } });
   net.erro = r.erro;
