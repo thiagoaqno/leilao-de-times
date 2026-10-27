@@ -22,6 +22,7 @@ function ligar() {
   socket = io("/corrida-temporada-grupo");
   socket.on("estado", (e) => { S = e; desenhar(); });
   socket.on("gp", (acesso) => irAoGP(acesso));
+  socket.on("encerrada", (d) => { const codigo = S && S.codigo; if (codigo) gravar(chaveSala(codigo), null); alert((d && d.motivo) || "A temporada foi encerrada."); location.href = "/corrida/temporada/"; });
   socket.on("connect", async () => {
     const codigo = S ? S.codigo : CODIGO_URL;
     if (!codigo || (!S && !ler(chaveSala(codigo)))) return; // sem token guardado: quem chega pelo convite escreve o nome
@@ -151,7 +152,7 @@ function telaDaTemporada() {
     ${painelDaEquipe(terminou)}
     <section class="bloco" style="margin-top:17px"><header><h2>Na sala</h2><small>${S.pessoas.filter((p) => p.online).length} online</small></header>${listaDePessoas()}</section>
     ${S.campeoes.length ? `<section class="bloco" style="margin-top:17px"><header><h2>Campeões da noite</h2></header><ul class="pessoas">${S.campeoes.map((c) => `<li><b>Temporada ${c.ano}</b><span>${h(c.pilotoNome)} · ${h(c.equipeNome)}</span></li>`).join("")}</ul></section>` : ""}
-    <div class="recuperacao"><span>Sala guardada no servidor · código ${h(S.codigo)}</span><button id="gconvite">Copiar convite</button><a href="/corrida/temporada/">Temporada solo</a></div>`;
+    <div class="recuperacao"><span>Sala guardada no servidor · código ${h(S.codigo)}</span><button id="gconvite">Copiar convite</button><a href="/corrida/temporada/">Temporada solo</a>${eh ? `<button id="gencerrar" class="discreto">Encerrar a temporada</button>` : ""}<button id="gsairtemp" class="discreto">Sair da temporada</button></div>`;
 }
 function desenhar(erro) {
   if (!S) return telaDoConvite(erro);
@@ -176,6 +177,8 @@ const clicar = async (e) => {
   else if (b.dataset.cargo) { if (confirm(`Passar o cargo de anfitrião para ${pessoa(b.dataset.cargo).nome}?`)) await pedir("passarCargo", { id: b.dataset.cargo }); }
   else if (b.id === "gcomecar") await pedir("iniciar");
   else if (b.id === "gsair") { if (confirm("Sair da sala? Você perde o lugar dela.")) { const r = await emitir("sair"); if (r.ok) { gravar(chaveSala(S.codigo), null); location.href = "/corrida/temporada/"; } } }
+  else if (b.id === "gsairtemp") { if (confirm("Sair da temporada? O seu carro volta para um robô e você perde o lugar na sala. Não dá para desfazer.")) { const r = await emitir("sairDaTemporada"); if (r.ok) { gravar(chaveSala(S.codigo), null); location.href = "/corrida/temporada/"; } else falar(r.error || "Não foi possível sair agora."); } }
+  else if (b.id === "gencerrar") { if (confirm("Encerrar a temporada para todos? A sala e as tabelas são apagadas e os amigos são avisados. Não dá para desfazer.")) { const codigo = S.codigo, r = await emitir("encerrar"); if (r.ok) { gravar(chaveSala(codigo), null); location.href = "/corrida/temporada/"; } else falar(r.error || "Não foi possível encerrar agora."); } }
   else if (b.id === "giniciar") await pedir("iniciarGP");
   else if (b.id === "gentrargp") irAoGP(S.acesso);
   else if (b.id === "gproxima") await pedir("proximaTemporada");

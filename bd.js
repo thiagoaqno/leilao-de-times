@@ -246,6 +246,10 @@ const salasTemporadaCorrida = () => bd().prepare("SELECT * FROM corrida_temporad
   let dados = null; try { dados = JSON.parse(l.dados); } catch {}
   return { codigo: l.codigo, dados, atualizadaEm: Number(l.atualizada_em) };
 }).filter((s) => s.dados);
+// apagar a temporada solo de vez (o token e o código de recuperação deixam de valer)
+function excluirTemporadaCorrida(id) {
+  return bd().prepare("DELETE FROM corrida_temporadas WHERE id = ?").run(id).changes > 0;
+}
 const apagarSalaTemporadaCorrida = (codigo) => bd().prepare("DELETE FROM corrida_temporadas_grupo WHERE codigo = ?").run(codigo).changes > 0;
 
 // ---------- a moderação das carreiras solo (admin-carreira.js) ----------
@@ -448,4 +452,4 @@ const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, 
   .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
 
 module.exports = { melhorVoltaCorrida, melhoresTracadosCorrida, ritmoCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
-Object.assign(module.exports, { criarTemporadaCorrida, temporadaCorridaPorToken, temporadaCorridaPorId, recuperarTemporadaCorrida, salvarTemporadaCorrida, novoCodigoTemporadaCorrida, salvarSalaTemporadaCorrida, salasTemporadaCorrida, apagarSalaTemporadaCorrida });
+Object.assign(module.exports, { excluirTemporadaCorrida, criarTemporadaCorrida, temporadaCorridaPorToken, temporadaCorridaPorId, recuperarTemporadaCorrida, salvarTemporadaCorrida, novoCodigoTemporadaCorrida, salvarSalaTemporadaCorrida, salasTemporadaCorrida, apagarSalaTemporadaCorrida });

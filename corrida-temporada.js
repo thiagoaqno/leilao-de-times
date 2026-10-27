@@ -60,6 +60,20 @@ module.exports = function attachTemporadaCorrida(io, corrida) {
     socket.on("engenheiro", (d = {}, resposta) => mudar(socket, resposta, (s) => Regras.contratarEngenheiro(s, d.area, Number(d.nivel))));
     socket.on("desenvolver", (_, resposta) => mudar(socket, resposta, (s) => Regras.desenvolver(s)));
     socket.on("proximaTemporada", (_, resposta) => mudar(socket, resposta, (s) => Regras.proximaTemporada(s)));
+    // excluir a carreira de vez: só com o token válido e sem GP aberto (o save, o token e o código de recuperação somem)
+    socket.on("excluir", (d = {}, resposta) => {
+      try {
+        const linha = bd.temporadaCorridaPorToken(d.token != null ? d.token : socket.data.tokenTemporada);
+        if (!linha) throw Error("Temporada não encontrada. Confira se este navegador ainda tem o acesso dela.");
+        const atual = ativos.get(linha.id);
+        if (atual && corrida.salaGP(atual.code) && corrida.salaGP(atual.code).phase !== "results") throw Error("O GP está aberto. Termine ou saia do GP antes de excluir a carreira.");
+        ativos.delete(linha.id);
+        bd.excluirTemporadaCorrida(linha.id);
+        const canal = `temporada:${linha.id}`;
+        for (const s of nsp.sockets.values()) if (s.rooms.has(canal)) { s.leave(canal); s.data.tokenTemporada = null; s.data.idTemporada = null; if (s !== socket) s.emit("excluida"); }
+        enviar({ ok: true }, resposta);
+      } catch (e) { erro(resposta, e); }
+    });
     socket.on("novoCodigo", (_, resposta) => {
       try { const linha = carregar(socket), recuperacao = bd.novoCodigoTemporadaCorrida(linha.id); enviar({ ok: true, recuperacao }, resposta); }
       catch (e) { erro(resposta, e); }
