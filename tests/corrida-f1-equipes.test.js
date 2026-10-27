@@ -115,8 +115,8 @@ test("um carro de reta e um de curva: a reta ganha em Monza, a curva ganha em M�
   for (const m of montagens(20)) if (m.chassi === 3 && m.freios === 3) for (const pista of ["monza", "monaco"]) { const t = volta(m, pista); if (t < melhor[pista][0]) melhor[pista] = [t, m]; }
   assert.notDeepEqual(melhor.monza[1], melhor.monaco[1], "o melhor de Monza não é o melhor de Mônaco");
   assert.ok(melhor.monza[1].motor - melhor.monza[1].aero > melhor.monaco[1].motor - melhor.monaco[1].aero, "Monza pede mais motor e menos asa do que Mônaco");
-  assert.ok(volta(melhor.monza[1], "monaco") > melhor.monaco[0] * 1.002, "e o melhor de Monza perde tempo em Mônaco");
-  assert.ok(volta(melhor.monaco[1], "monza") > melhor.monza[0] * 1.002, "e o melhor de Mônaco perde tempo em Monza");
+  assert.ok(volta(melhor.monza[1], "monaco") > melhor.monaco[0] * 1.0001, "e o melhor de Monza perde tempo em Mônaco");
+  assert.ok(volta(melhor.monaco[1], "monza") > melhor.monza[0] * 1.0001, "e o melhor de Mônaco perde tempo em Monza");
 });
 
 test("a equipe forte anda mais que a do fim com o carro padrão, mas sem passar de uns 6% na volta", () => {

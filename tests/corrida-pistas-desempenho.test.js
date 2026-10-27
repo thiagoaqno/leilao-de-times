@@ -24,7 +24,9 @@ test("as pistas do calendário e as antigas montam com um teto de malhas", { tim
       const { tr, THREE } = await montar(id);
       const c = contar(THREE, tr.grp);
       assert.ok(c.malhas <= 520, `${id}: ${c.malhas} malhas (teto 520)`);
-      assert.ok(tr.fundido && tr.fundido.malhasDepois <= tr.fundido.malhasAntes, `${id}: a fusão não pode aumentar as malhas (${tr.fundido.malhasAntes} -> ${tr.fundido.malhasDepois})`);
+      const f = tr.fundido;
+      assert.ok(f && f.malhasDepois - f.instanciadasExtras <= f.malhasAntes,
+        `${id}: a fusão não pode aumentar as malhas fora da divisão por região (${f?.malhasAntes} -> ${f?.malhasDepois}, ${f?.instanciadasExtras} extras)`);
     });
   }
 });

@@ -8,9 +8,9 @@
 // Cada composto: a aderência no auge (sobre o grip do carro), quanto da corrida ele dura até o "penhasco" (a fração da
 // distância total em que o desgaste chega a PENHASCO) e quão rápido esquenta. As cores são as da Pirelli.
 const PNEUS = {
-  macio: { nome: "Macio", cor: "#e8202a", pico: 1.06, vida: 0.35, aquece: 1.6 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.03, vida: 0.6, aquece: 1.0 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.0, vida: 0.9, aquece: 0.6 },
+  macio: { nome: "Macio", cor: "#e8202a", pico: 1.9, vida: 0.35, aquece: 1.6, perdaFim: 0.72 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 0.6, aquece: 1.0, perdaFim: 0.48 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.0, vida: 0.9, aquece: 0.6, perdaFim: 0.26 },
 };
 const COMPOSTO_PADRAO = "medio";
 // Até o penhasco o pneu perde pouco (até PERDA_ANTES); depois dele, despenca até PERDA_FIM com o pneu acabado.
@@ -31,18 +31,19 @@ function gastarPneu(pneu, d) {
   const escorrega = limite((d.slip || 0) / 60, 0, 1);
   if (d.total > 0 && d.dist > 0) pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.total) * (PENHASCO / pn.vida) * (0.85 + 0.6 * escorrega) * (d.fator || 1));
   const vel = d.vmax > 0 ? limite(Math.abs(d.v || 0) / d.vmax, 0, 1) : 0;
-  const alvo = Math.min(1, 0.5 + 0.45 * vel + 0.15 * escorrega);
+  const alvo = Math.min(1, 0.65 + 0.35 * vel + 0.15 * escorrega);
   pneu.temp += (alvo - pneu.temp) * Math.min(1, (d.dt || 0) * 0.25 * pn.aquece);
   return pneu;
 }
 // Quanto o pneu segura agora: `grip` multiplica o grip do carro e `kin` o quanto sobra escorregando.
 function aderencia(pneu) {
   const pn = PNEUS[pneu && pneu.composto] || PNEUS[COMPOSTO_PADRAO], d = pneu ? pneu.desgaste : 0, temp = pneu ? pneu.temp : TEMP_BOA;
-  const perda = d <= PENHASCO ? PERDA_ANTES * d / PENHASCO : PERDA_ANTES + (PERDA_FIM - PERDA_ANTES) * (d - PENHASCO) / (1 - PENHASCO);
+  const perdaFim = pn.perdaFim ?? PERDA_FIM;
+  const perda = d <= PENHASCO ? PERDA_ANTES * d / PENHASCO : PERDA_ANTES + (perdaFim - PERDA_ANTES) * (d - PENHASCO) / (1 - PENHASCO);
   const quente = FRIO + (1 - FRIO) * limite((temp - TEMP_SAIDA) / (TEMP_BOA - TEMP_SAIDA), 0, 1);
-  const base = limite(pn.pico * (1 - perda) * quente, 0.7, 1.1);
+  const base = limite(pn.pico * (1 - perda) * quente, 0.7, 2.0);
   return { grip: base, kin: limite(1 - perda * 0.5, 0.85, 1),
-    freio: limite(base, 0.72, 1.08), tracao: limite(base * quente, 0.65, 1.08),
+    freio: limite(base, 0.72, 1.08) * quente, tracao: limite(base, 0.65, 1.08) * quente,
     final: limite(1 - Math.max(0, d - PENHASCO) * 0.22, 0.95, 1) };
 }
 const frio = (pneu) => !!pneu && pneu.temp < TEMP_BOA - 0.02;

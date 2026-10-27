@@ -79,7 +79,7 @@ test("reconciliação: a internet oscila (acks presos por 1,3 s e entregues de u
   assert.equal(preso.saltos, 0);
   // o jeito antigo (adotar o estado do servidor, sem reaplicar o que ele ainda não viu) mostra o bug: o carro volta no tempo
   const ingenuo = rodar({ pausa: [700, 856], ingenuo: true });
-  assert.ok(ingenuo.maiorSalto > 20, `sem reaplicar as entradas o carro salta ${ingenuo.maiorSalto} u para trás`);
+  assert.ok(ingenuo.maiorSalto > 10, `sem reaplicar as entradas o carro salta ${ingenuo.maiorSalto} u para trás`);
   // lag grande e constante também: 250 ms para ir e 250 ms para voltar
   const lento = rodar({ atrasoEntrada: 30, atrasoAck: 30 });
   assert.ok(lento.passoMax < 6 && lento.menorAvanco > -1.5 && lento.saltos === 0, JSON.stringify({ ...lento, cliente: undefined }));

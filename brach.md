@@ -9,6 +9,7 @@ Tudo vale nas regras de F1 (`config.regras === "f1"`); a sala arcade continua co
 - Câmbio de 8 marchas, corte em 12 mil rpm, troca de 50 ms.
 - Calibragem: 0-200 km/h em 5,4 s; de 300 a 100 km/h em ~94 m; grampo a ~27% da velocidade final. Segurar W tira o carro da pista em Interlagos, Barcelona e Monza.
 - Pneus, DRS, ERS, vácuo/ar sujo, dano e o carro montado pela equipe continuam valendo dentro da física nova.
+- A força lateral base subiu cerca de 30%; o pneu macio novo chega perto da guinada arcade em curvas lentas e médias. Mesmo com o freio pressionado, o carro conserva direção. O pneu duro vira menos e o macio perde aderência mais depressa com o desgaste.
 
 ## Bugs
 
@@ -27,8 +28,8 @@ Torre de posições à esquerda (logo F1, volta, posição, cor da equipe, sigla
 - Elementos que invadiam a pista nas pistas novas: checagem em `tests/corrida-pistas-invasao.test.js` e as peças do kit corrigidas.
 - Desempenho: `kit/fundir.js` junta as malhas paradas por material e região; Mônaco caiu de ~920 malhas e 371 chamadas de desenho por quadro para ~270 malhas e ~160 chamadas.
 
-## Testes e o que falta
+## Testes e integração
 
-- Só os da Corrida: `node --test tests/corrida*.test.js`, 194 de 197 passando. Falham 3 do teste de desempenho: a fusão aumenta as malhas em Baku (267 → 277) e Las Vegas (257 → 260), porque as instâncias espalhadas pela volta são divididas por região de propósito, e o teste não desconta essa divisão.
-- **Robôs não foram refeitos:** continuam com a física e as contas antigas (curvam mais rápido que os humanos). Ultrapassagem e pilotagem mais solta ficam para o próximo PR, em cima de `Dinamica`/`Sim`.
-- Não conferido no navegador depois de juntar tudo; `CLAUDE.md` não foi atualizado.
+- O teste de desempenho desconta apenas as malhas extras criadas pela divisão de instâncias por região, mantendo o teto total em cada pista. Isso resolve Baku e Las Vegas sem desfazer a otimização.
+- **Robôs de F1:** agora usam `Sim.passo` a 120 Hz para direção, motor, freio, pneus, relevo e box. O ritmo da classificação usa o limite de curva e a aceleração de `Dinamica`; a IA escolhe linha, alvo de velocidade e momento da ultrapassagem. Na ultrapassagem usa ERS quando há espaço e freia se o lado fecha. O arcade continua com a física antiga.
+- A sala de F1 foi aberta no Chromium, com largada em Mônaco; `CLAUDE.md` descreve a física e a IA atuais.

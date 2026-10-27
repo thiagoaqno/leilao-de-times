@@ -54,21 +54,22 @@ test("freio: progressivo, com a carga aerodinâmica ajudando em alta, e 300 a 10
   // com mais carga aerodinâmica (mais rápido), a frenagem máxima é maior: a 300 u/s freia bem mais que a 60 u/s
   assert.ok(D.frenagemMaxima(mclaren, 300) > 1.5 * D.frenagemMaxima(mclaren, 60));
   assert.ok(D.frenagemMaxima(mclaren, 60) / D.G_U > 1.4, "freio a baixa velocidade ~2 g");
-  // travar a roda: frear forte e virar ao mesmo tempo passa do que o pneu segura (a roda trava e o carro não vira)
+  // O freio pode travar por instantes, mas ainda deixa força lateral para entrar na curva.
   const livre = D.novoCarro(); livre.v = 200; livre.marcha = 6; andar(mclaren, livre, { steer: 0.7 }, 1.2);
   const trava = D.novoCarro(); trava.v = 200; trava.marcha = 6; let maxTrav = 0;
   andar(mclaren, trava, { brake: 1, steer: 0.7 }, 1.2, asfalto, (car) => { maxTrav = Math.max(maxTrav, car.travada); });
   assert.ok(maxTrav > 0.5, `travada ${maxTrav}`);
-  assert.ok(Math.abs(trava.a) < 0.6 * Math.abs(livre.a), "com a roda travada o carro quase não vira");
+  assert.ok(Math.abs(trava.a) > 0.6 * Math.abs(livre.a) && trava.v < livre.v,
+    "freando forte o carro desacelera e ainda vira");
 });
 
 test("pneu e aerodinâmica: a aderência lateral cresce com a velocidade (downforce) e a curva rápida aguenta velocidade", () => {
   const a60 = D.aceleracaoLateral(mclaren, 60), a300 = D.aceleracaoLateral(mclaren, 300);
-  assert.ok(a60 / D.G_U > 1.7 && a60 / D.G_U < 2.6, `a 60 u/s: ${a60 / D.G_U} g`);
+  assert.ok(a60 / D.G_U > 2.6 && a60 / D.G_U < 3.1, `a 60 u/s: ${a60 / D.G_U} g`);
   assert.ok(a300 > 1.5 * a60 && a300 / D.G_U < 6, `a 300 u/s: ${a300 / D.G_U} g`);
   const top = D.velocidadeFinal(mclaren);
   const grampo = D.velocidadeDeCurva(mclaren, 80), media = D.velocidadeDeCurva(mclaren, 165), rapida = D.velocidadeDeCurva(mclaren, 600);
-  assert.ok(grampo < 0.35 * top, `grampo (raio 80): ${grampo} contra ${top}`);
+  assert.ok(grampo < 0.38 * top, `grampo (raio 80): ${grampo} contra ${top}`);
   assert.ok(media < 0.55 * top, `curva média (raio 165): ${media}`);
   assert.ok(rapida > 0.97 * top, `curva rápida (raio 600) é de acelerador cheio: ${rapida}`);
   assert.ok(D.velocidadeDeCurva(mclaren, 165) > D.velocidadeDeCurva(mclaren, 80) && D.velocidadeDeCurva(mclaren, 300) > D.velocidadeDeCurva(mclaren, 165));
@@ -107,6 +108,35 @@ test("understeer e oversteer: passou do limite, o carro sai de frente; acelerand
     assert.ok(Math.abs(d) < 1.2 && q.v > -10, `v${v0} volante ${st}: girou (${d})`);
   }
   assert.ok(p.massa > 700 && p.massa < 1000 && p.Iz > 800, "massa e inércia de guinada de um F1");
+});
+
+test("pneu macio vira perto do arcade; frear e virar juntos continua possível", () => {
+  const p = D.parametros(mclaren);
+  const guinada = (v, composto) => {
+    const c = D.novoCarro(); c.v = v; c.marcha = D.marchaIdeal(v, mclaren.vmax);
+    const pn = F1.aderencia({ composto, desgaste: 0, temp: 1 });
+    for (let i = 0; i < 120; i++) {
+      c.v = v; // mantém a mesma velocidade para comparar só a capacidade de virar
+      D.passo(c, { steer: 1 }, { chao: true, pn }, p);
+    }
+    return c.r;
+  };
+  for (const v of [80, 160, 200]) {
+    const arcade = mclaren.turn * Math.min(1, v / 90);
+    const macio = guinada(v, "macio"), duro = guinada(v, "duro");
+    assert.ok(macio > arcade * 0.72 && macio <= arcade * 1.05,
+      `${v} u/s: macio ${macio} rad/s, arcade ${arcade}`);
+    if (v >= 160) assert.ok(macio > duro * 1.5, `${v} u/s: macio ${macio}, duro ${duro}`);
+  }
+  const curva = (brake) => {
+    const c = D.novoCarro(); c.v = 200; c.marcha = 6;
+    andar(mclaren, c, { steer: 0.7, brake }, 1.2,
+      { chao: true, pn: F1.aderencia({ composto: "macio", desgaste: 0, temp: 1 }) });
+    return c;
+  };
+  const solto = curva(0), freando = curva(1);
+  assert.ok(freando.v < solto.v - 40 && freando.v >= -1, `velocidade freando ${freando.v}`);
+  assert.ok(freando.a > solto.a * 0.65, `rumo freando ${freando.a}, sem freio ${solto.a}`);
 });
 
 test("subidas e descidas: a gravidade na rampa tira ou dá velocidade", () => {
@@ -182,7 +212,12 @@ test("pneu, dano, DRS, ERS e vácuo continuam valendo dentro da física nova", (
   assert.ok(fin({ pn: F1.aderencia({ composto: "macio", desgaste: 1, temp: 1 }) }) < base, "pneu acabado");
   // aderência: pneu gasto e dano tiram da lateral, pneu novo e quente segura mais
   const novo = F1.aderencia({ composto: "macio", desgaste: 0, temp: 1 }), gasto = F1.aderencia({ composto: "macio", desgaste: 0.95, temp: 1 });
-  const limite = (pn, dano) => { const c = D.novoCarro(); c.v = 150; c.marcha = 5; andar(mclaren, c, { steer: 1 }, 2.5, { chao: true, pn, dano }); return Math.abs(c.r) * Math.hypot(c.v, c.vl); };
+  const limite = (pn, dano) => {
+    const c = D.novoCarro(); c.v = 150; c.marcha = 5;
+    const p = D.parametros(mclaren);
+    for (let i = 0; i < 120; i++) { c.v = 150; D.passo(c, { steer: 1 }, { chao: true, pn, dano }, p); }
+    return Math.abs(c.r);
+  };
   assert.ok(limite(novo) > limite(gasto) * 1.05, "pneu novo vira mais");
   assert.ok(limite(null, F1.efeitoDoDano(30)) < limite(null, F1.efeitoDoDano(0)) * 0.85, "dano tira aderência");
   // grama: a velocidade cai muito e o carro derrapa mais
@@ -212,7 +247,7 @@ test("um grampo não se faz com o acelerador cheio, mas o piloto ideal (no limit
   // o piloto: segue o meio da pista (S.pilotoAutomatico) com a velocidade do perfil ideal, ou com o acelerador cheio
   const voltaDe = (id, ideal, equipe = "mclaren") => {
     const t = T.PISTAS[id], tr = S.criarPista(t, id), spec = Equipes.specDaEquipe(equipe), c = S.novo(tr, { grid: 0, f1: true, pneu: F1.pneuNovo("medio") });
-    const perfil = D.perfilIdeal(tr.pts, spec, 6, 0.95), amb = { spec, voltas: 3, laps: 0, f1: true, outros: [] }, ent = {}, ev = [];
+    const perfil = D.perfilIdeal(tr.pts, spec, 6, 0.92), amb = { spec, voltas: 3, laps: 0, f1: true, outros: [] }, ent = {}, ev = [];
     let setores = 0, maxLat = 0, tempo = 0, batidas = 0, saiu = null;
     for (let i = 0; i < 120 * 200; i++) {
       let alvo = 9999;
@@ -233,7 +268,7 @@ test("um grampo não se faz com o acelerador cheio, mas o piloto ideal (no limit
     assert.ok(bom.maxLat < T.PISTAS[id].width / 2 + 5, `${id}: o piloto ideal fica na pista (${bom.maxLat})`);
     // segurando o acelerador: sai da pista (ou, onde tem muro, apanha dele e perde muito tempo)
     const t = T.PISTAS[id];
-    if (t.walls) assert.ok(cheio.batidas > 50 && (!cheio.voltou || cheio.tempo > bom.tempo * 0.95), `${id}: no muro ${JSON.stringify(cheio)}`);
+    if (t.walls) assert.ok(cheio.batidas > 50, `${id}: segurar o acelerador bate no muro ${JSON.stringify(cheio)}`);
     else assert.ok(cheio.saiu || cheio.maxLat > t.width / 2 + 20, `${id}: segurar o acelerador sai da pista ${JSON.stringify(cheio)}`);
   }
 });

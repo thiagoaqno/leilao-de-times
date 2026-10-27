@@ -143,6 +143,8 @@ Servidor na raiz (`<jogo>.js`); página em `public/<jogo>/index.html`.
 | Futevôlei | `futevolei.js` | `index.html`, `regras.js`, `atleta.js`, `cenarios.js`, `jogo.js`, `musica.js` (ver logo abaixo) |
 | Vila (o mapa) + Galeramon/Pokémon/Naruto por turnos | `vila.js` (+ `galeramon.js`) | `public/index.html` (inline) e `public/galeramon/` |
 
+**Corrida F1 — pilotagem atual (PR #324 e ajuste posterior):** `public/corrida/dinamica.js` calcula massa, inércia, pneus, downforce, frenagem e câmbio; `public/corrida/sim.js` une essa dinâmica à pista. Servidor (`corrida-humanos.js`) e navegador usam o mesmo passo fixo de 1/120 s, com autoridade do servidor e previsão local. A força lateral base foi ampliada em 30%; compostos, desgaste e dano continuam multiplicando essa base. `kit/fundir.js` junta malhas estáticas e divide algumas instâncias por região para permitir descarte fora da câmera; por isso a contagem final pode superar a inicial apenas pelo número de regiões adicionais. Testes: `node --test tests/corrida*.test.js`, incluindo `corrida-fisica`, `corrida-f1-rede`, `corrida-pistas-desempenho`, `corrida-pistas-volta` e `corrida-pistas-invasao`. Os robôs de F1 em `corrida-robos.js` agora dirigem por `Sim.passo` a 120 Hz, com limite de curva e ritmo calculados por `Dinamica`; escolhem o traçado e a oportunidade de ultrapassar, usam ERS quando há espaço e freiam se a passagem fecha. O arcade conserva a pilotagem antiga.
+
 **Futevôlei:**
 - 1x1 ou duplas (2x2), robôs completando, set de 10, 15 ou 18 pontos com 2 de vantagem, ponto corrido. Na Vila, a **Arena
   de Futevôlei** fica na areia de Santos (bairro `praia`, fora da cerca: o prédio volta a ser sólido depois do
