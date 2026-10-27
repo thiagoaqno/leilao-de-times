@@ -8,54 +8,54 @@ const Itens = require("../corrida-itens.js");
 const bd = require("../bd.js");
 const { subirServidor, conectar, pedir, esperarEstado } = require("./ajuda.js");
 
-// uma corrida de mentira: anda `total` em passos de 1/60 s a 200 por segundo, escorregando `slip`, e devolve o
-// desgaste e a aderência a cada fração da corrida
-function rodar(composto, { total = 13000 * 5, slip = 0, ate = 1 } = {}) {
+// uma corrida de mentira: anda `voltas` voltas de `volta` unidades a 200 por segundo, escorregando `slip`, e devolve a cada passo
+// quantas voltas andou, o desgaste e a aderência
+function rodar(composto, { volta = 13000, voltas = 8, slip = 0, travada = 0, patina = 0 } = {}) {
   const pn = F1.pneuNovo(composto), dt = 1 / 60, passo = 200 * dt, marcas = [];
-  for (let andou = 0; andou < total * ate; andou += passo) {
-    F1.gastarPneu(pn, { dist: passo, total, slip, v: 200, vmax: 295, dt });
-    marcas.push({ f: andou / total, desgaste: pn.desgaste, grip: F1.aderencia(pn).grip });
+  for (let andou = 0; andou < volta * voltas; andou += passo) {
+    F1.gastarPneu(pn, { dist: passo, volta, slip, travada, patina, v: 200, vmax: 295, dt });
+    marcas.push({ v: andou / volta, desgaste: pn.desgaste, grip: F1.aderencia(pn).grip });
   }
   return { pn, marcas };
 }
-const naFracao = (marcas, f) => marcas.find((m) => m.f >= f) || marcas[marcas.length - 1];
+const voltasAtePenhasco = (marcas) => marcas.find((m) => m.desgaste >= F1.PENHASCO)?.v ?? Infinity;
 
-test("pneus: o macio é o mais rápido no começo e chega ao penhasco antes do médio e do duro", () => {
-  const macio = rodar("macio", { ate: 1.3 }).marcas, medio = rodar("medio", { ate: 1.3 }).marcas, duro = rodar("duro", { ate: 1.3 }).marcas; // um pouco além da chegada: o duro só chega ao penhasco depois dela
-  const cedo = 0.1; // já quente, ainda novo
-  assert.ok(naFracao(macio, cedo).grip > naFracao(medio, cedo).grip && naFracao(medio, cedo).grip > naFracao(duro, cedo).grip);
-  const penhasco = (m) => m.find((x) => x.desgaste >= F1.PENHASCO)?.f ?? Infinity;
-  assert.ok(penhasco(macio) < penhasco(medio) && penhasco(medio) < penhasco(duro), `${penhasco(macio)} ${penhasco(medio)} ${penhasco(duro)}`);
-  // limpo, cada composto chega ao penhasco um pouco depois da vida dele (andar limpo gasta menos que o normal)
-  for (const [id, m] of [["macio", macio], ["medio", medio], ["duro", duro]]) {
-    const f = penhasco(m), vida = F1.PNEUS[id].vida;
-    assert.ok(f >= vida && f < vida * 1.25, `${id}: penhasco em ${f.toFixed(2)} da corrida (vida ${vida})`);
+test("pneus: a vida é em voltas (macio ~1,5, médio 3 a 4, duro 6 ou mais) e o macio é o mais rápido novo", () => {
+  const vida = Object.fromEntries(Object.keys(F1.PNEUS).map((c) => [c, voltasAtePenhasco(rodar(c, { slip: 15, voltas: 10 }).marcas)]));
+  assert.ok(vida.macio > 1.2 && vida.macio < 1.8, `macio ${vida.macio}`);
+  assert.ok(vida.medio > 3 && vida.medio < 4.5, `médio ${vida.medio}`);
+  assert.ok(vida.duro >= 6 && vida.duro < 9, `duro ${vida.duro}`);
+  const g = (c) => F1.aderencia({ composto: c, desgaste: 0, temp: 1 });
+  assert.ok(g("macio").grip > g("medio").grip && g("medio").grip > g("duro").grip);
+  assert.ok(g("macio").freio > g("medio").freio && g("medio").tracao > g("duro").tracao);
+  assert.equal(g("medio").freio, 1.08); // o médio é a base da dirigibilidade
+  assert.ok(F1.vidaRestante({ desgaste: 0 }) === 1 && F1.vidaRestante({ desgaste: F1.PENHASCO }) === 0);
+});
+
+test("pneus: a vida é em voltas, não na fração da corrida nem na distância", () => {
+  const um = (volta) => rodar("medio", { volta, voltas: 1 }).pn.desgaste;
+  assert.ok(Math.abs(um(13000) - um(17500)) < 0.01, `${um(13000)} ${um(17500)}`); // uma volta gasta o mesmo em qualquer pista
+});
+
+test("pneus: escorregar, travar a roda e patinar gastam mais que andar limpo", () => {
+  const d = (o) => rodar("medio", { voltas: 1, ...o }).pn.desgaste, limpo = d({});
+  assert.ok(d({ slip: 80 }) > limpo * 1.4 && d({ travada: 1 }) > limpo * 1.5 && d({ patina: 1 }) > limpo * 1.2);
+});
+
+test("pneus: depois do penhasco o carro fica muito ruim; frio na largada, esquenta em alguns segundos", () => {
+  for (const c of Object.keys(F1.PNEUS)) {
+    const novo = F1.aderencia({ composto: c, desgaste: 0, temp: 1 }), fim = F1.aderencia({ composto: c, desgaste: 1, temp: 1 }), cliff = F1.aderencia({ composto: c, desgaste: F1.PENHASCO, temp: 1 });
+    assert.ok(cliff.grip > novo.grip * 0.9, `${c}: até o penhasco perde pouco`);
+    assert.ok(fim.grip < novo.grip * 0.65 && fim.tracao < novo.tracao * 0.7 && fim.freio < novo.freio * 0.7 && fim.final < 0.95 && fim.final > 0.85, `${c}: depois dele despenca`);
   }
-  // depois do penhasco, o macio despenca e fica atrás do duro
-  assert.ok(naFracao(macio, 0.6).grip < naFracao(duro, 0.6).grip);
-});
-
-test("pneus: 3 ou 8 voltas gastam a mesma fração do pneu", () => {
-  const volta = 13000, curta = rodar("medio", { total: volta * 3, ate: 0.5 }).pn, longa = rodar("medio", { total: volta * 8, ate: 0.5 }).pn;
-  assert.ok(Math.abs(curta.desgaste - longa.desgaste) < 0.01, `${curta.desgaste} ${longa.desgaste}`);
-});
-
-test("pneus: escorregar gasta mais que andar limpo", () => {
-  const limpo = rodar("medio", { ate: 0.3 }).pn, sujo = rodar("medio", { ate: 0.3, slip: 80 }).pn;
-  assert.ok(sujo.desgaste > limpo.desgaste * 1.4, `${limpo.desgaste} ${sujo.desgaste}`);
-});
-
-test("pneus: frio na largada, esquenta andando; a aderência fica sempre entre 0,7 e 2,0", () => {
-  const pn = F1.pneuNovo("duro");
-  assert.ok(F1.frio(pn));
-  const frio = F1.aderencia(pn).grip;
-  for (let i = 0; i < 60 * 30; i++) F1.gastarPneu(pn, { dist: 0, total: 1, slip: 0, v: 250, vmax: 295, dt: 1 / 60 });
-  assert.ok(!F1.frio(pn) && F1.aderencia(pn).grip > frio);
+  const quanto = (c) => { const pn = F1.pneuNovo(c); for (let t = 0; t < 60 * 30; t++) { if (!F1.frio(pn)) return t / 60; F1.gastarPneu(pn, { dist: 0, volta: 1, v: 250, vmax: 295, dt: 1 / 60 }); } return Infinity; };
+  assert.ok(F1.frio(F1.pneuNovo("duro")));
+  assert.ok(quanto("macio") < quanto("medio") && quanto("medio") < quanto("duro") && quanto("macio") > 1.5 && quanto("duro") < 12, `${quanto("macio")} ${quanto("medio")} ${quanto("duro")}`);
   for (const composto of Object.keys(F1.PNEUS)) for (let d = 0; d <= 1; d += 0.05) for (let t = 0; t <= 1; t += 0.1) {
     const a = F1.aderencia({ composto, desgaste: d, temp: t });
-    assert.ok(a.grip >= 0.7 && a.grip <= 2.0 && a.kin >= 0.85 && a.kin <= 1, `${composto} ${d} ${t}`);
+    assert.ok(a.grip >= 0.4 && a.grip <= 2.0 && a.kin >= 0.85 && a.kin <= 1, `${composto} ${d} ${t}`);
   }
-  assert.equal(F1.pneuNovo("nada").composto, F1.COMPOSTO_PADRAO); // composto que não existe vira o padrão
+  assert.equal(F1.pneuNovo("nada").composto, F1.COMPOSTO_PADRAO);
 });
 
 // os robôs numa volta só, no tempo de mentira (como em corrida-robos.test.js)
@@ -81,7 +81,7 @@ test("robôs: nas regras de F1 usam o mesmo pneu, que gasta pela volta; sem elas
     assert.equal(r.ia.pneu.composto, r.ia.plano.largada);
     // a corrida de uma volta inteira gasta o pneu: perto do penhasco no médio, bem antes dele no duro
     const vida = F1.PNEUS[r.ia.pneu.composto].vida;
-    assert.ok(r.ia.pneu.desgaste > Math.min(0.7, F1.PENHASCO / vida * 0.8) && r.ia.pneu.desgaste < 1, `${r.ia.pneu.composto}: ${r.ia.pneu.desgaste}`);
+    assert.ok(r.ia.pneu.desgaste > F1.PENHASCO / vida * 0.6 && r.ia.pneu.desgaste <= 1, `${r.ia.pneu.composto}: ${r.ia.pneu.desgaste}`);
   }
 });
 

@@ -30,6 +30,7 @@ const MARGEM_F1 = 0.95;
 const MARGEM_FREIO = 0.8; // e a fração da frenagem máxima que ele usa
 const TRAVA_ABS = 0.25; // quanto a roda pode travar na frenagem antes do robô soltar o freio
 const ALFA_FRENTE = 0.10, K_FRENTE = 8; // o pico do pneu é 0,11 rad
+const V_ARRASTO = 16; // u/s: velocidade mínima para sair de trás do carro parado e contorná-lo
 const V_PRESO = 8, T_PRESO = 2.5, T_SEM_ANDAR = 10; // u/s, s e pontos de pista (6 u cada): quando o robô se considera preso
 const ALFA_TRACAO = 0.11, PAT = 0.3; // o ângulo de deriva da traseira (rad; o pico do pneu é 0,11) a partir do qual o robô tira o pé do acelerador
 const GRID_F1 = 20; // as regras de F1: o grid tem 20 carros (humanos e robôs)
@@ -208,7 +209,10 @@ function ritmoDaSala(room) {
 // piloto soma um pouco mais de acordo com o ritmo dele (até ~1,2%), e o carro fraco continua mais lento que o forte porque o ideal
 // dele já é mais lento. Nunca abaixo do limite do carro. Se a galera já fez voltas quase perfeitas, o robô não passa de 2,5% delas.
 // A referência do ritmo é o piloto ideal com o pneu neutro. O robô de verdade anda com o pneu de cada momento.
-const aderRef = () => null; // (pneu neutro: o ritmo do nível não depende da tabela de pneus; quem mexe no ritmo é o pneu de cada momento)
+// o pneu de referência do ritmo é o médio novo e quente: o nível é medido contra o piloto ideal com ele, e o pneu de cada
+// momento (o macio mais rápido, o duro mais lento, o gasto e o frio) mexe no ritmo de verdade, em passoF1
+let ADER_REF = null;
+const aderRef = () => ADER_REF || (ADER_REF = F1.aderencia({ composto: "medio", desgaste: 0, temp: 1 }));
 function idealDe(pista, spec) { return tempoDaVolta(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren")), 1, aderRef()); }
 const FOLGA_F1 = { facil: 0.137, medio: 0.074, dificil: 0.025 };
 function referenciaF1(room) {
@@ -312,7 +316,7 @@ function largar(room) {
     p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
     // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
     // regras de F1: a estratégia de parada do robô (o composto da largada e as paradas) e o mesmo pneu de quem joga
-    const f1 = room.config.regras === "f1", plano = f1 ? F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${id}`) : null;
+    const f1 = room.config.regras === "f1", plano = f1 ? F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${id}`, room.config.pista, p.spec ? p.spec.desgaste : 1) : null;
     if (plano) Object.assign(p, { pneu: plano.largada, pneuAtual: plano.largada, compostos: [plano.largada], paradas: [], acrescimo: 0, box: null });
     const rng = F1.sorteio(`estilo:${room.semente}:${id}`); // regras de F1: cada robô tem o seu jeito (sorteado pela semente do GP)
     p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: pil ? rnd(-1, 1) * (2 + (100 - pil.constancia) * 0.3) : rnd(-7, 7), tracadoId, reacao: pil ? Pilotos.reacaoNaLargada(pil.largada) + rnd(0, 120) : rnd(0, 450), usaEm: 0,
@@ -386,8 +390,12 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0) {
     if (frente > 0 && distancia * STEP > 8 && Math.abs(lado) < 32) { // na minha faixa, à frente
       const folga = frente - L_CARRO - 32 - Math.min(40, k[i] * 2500); // reserva espaço para o freio progressivo da física nova
       const desacel = D.frenagemMaxima(c, ia.v) * 0.55;
-      out.freio = Math.min(out.freio, folga <= 0 ? ov * 0.82 : Math.sqrt(ov * ov + 2 * desacel * folga));
-      if (frente < 120 && (!alvo || frente < alvo.frente)) alvo = { o, ov, frente, latOutro };
+      let lim = folga <= 0 ? ov * 0.82 : Math.sqrt(ov * ov + 2 * desacel * folga);
+      // Já decidiu ultrapassar este carro mas ainda está na faixa dele: um fio de velocidade (sem encostar) para o volante ter o que virar
+      if (ia.ult && ia.ult.id === oid && frente > L_CARRO + 2) lim = Math.max(lim, V_ARRASTO);
+      out.freio = Math.min(out.freio, lim);
+      out.atras = Math.min(out.atras ?? Infinity, frente);
+      if (frente < (ov < 12 ? 220 : 120) && (!alvo || frente < alvo.frente)) alvo = { o, ov, frente, latOutro };
     }
   }
   out.encontrou = !!alvo;
@@ -478,8 +486,9 @@ function passoNoBox(room, p, ia, pf, dt, emit) {
 }
 // O robô está preso? Parado (menos de V_PRESO) por T_PRESO segundos, ou sem andar nem T_SEM_ANDAR pontos de pista em 6 s (rodando no
 // lugar, de lado no muro, na brita). Não conta no box, sob bandeira, antes de a corrida ficar de pé nem com o carro quebrado.
-function encalhou(room, ia, car, now, dt) {
-  if (car.box?.fase || room.direcao?.safety || car.air) { ia.parado = 0; ia.refProg = car.prog; ia.refT = now; return false; }
+function encalhou(room, ia, car, now, dt, atras = false) {
+  // esperando atrás de um carro à frente na própria faixa (parado ou lento) não é estar preso: é trânsito
+  if (car.box?.fase || room.direcao?.safety || car.air || atras) { ia.parado = 0; ia.refProg = car.prog; ia.refT = now; return false; }
   ia.parado = Math.abs(car.v) < V_PRESO ? (ia.parado || 0) + dt : 0;
   if (ia.refT == null || now - ia.refT > 6000) {
     const andou = ia.refT == null ? Infinity : car.prog - ia.refProg;
@@ -532,7 +541,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     semente: room.semente, id: p.id, grid: p.grid, f1: true, outros };
   const ent = ia.ent || (ia.ent = {});
   const ev = [];
-  if (encalhou(room, ia, car, now, dt)) { // preso (parado, rodado, de lado no muro ou sem andar): o "↺ Pista" do robô, do lado livre
+  if (encalhou(room, ia, car, now, dt, tf.atras < 140)) { // preso (parado, rodado, de lado no muro ou sem andar): o "↺ Pista" do robô, do lado livre
     Sim.voltarParaPista(car, tr, ev);
     const q = tr.pts[car.idx], lado = tf.bloqPos && !tf.bloqNeg ? -1 : tf.bloqNeg && !tf.bloqPos ? 1 : 0, lat = lado * Math.min(maxLat, 40);
     car.x += q.nx * lat; car.y += q.ny * lat; car.sp = { x: car.x, y: car.y };
@@ -650,7 +659,7 @@ function passo(room, dt, setor, emit) {
       ia.s = (ia.s + (ia.v * dt) / STEP) % pf.n;
       entrarNoBox(room, p, ia, pf);
       // o pneu gasta pela distância; escorrega quando a curva pede mais que o grip do carro
-      if (ia.pneu) F1.gastarPneu(ia.pneu, { dist: ia.v * dt, total: room.config.voltas * pf.n * STEP, slip: Math.max(0, (ia.v * ia.v * pf.linha.k[i]) / c.grip - 0.9) * 120, v: ia.v, vmax: c.vmax, dt, fator: c.desgaste });
+      if (ia.pneu) F1.gastarPneu(ia.pneu, { dist: ia.v * dt, volta: pf.n * STEP, slip: Math.max(0, (ia.v * ia.v * pf.linha.k[i]) / c.grip - 0.9) * 120, v: ia.v, vmax: c.vmax, dt, fator: c.desgaste });
       // depois da largada (~600 de reta), sai da faixa do grid e vai aos poucos para o traçado; antes disso, não desvia de ninguém
       const saida = Math.min(1, ((ia.s - ia.s0 + pf.n) % pf.n) / 100), largando = saida < 1;
       ia.desvio += (desvio - ia.desvio) * Math.min(1, dt * 2.2);

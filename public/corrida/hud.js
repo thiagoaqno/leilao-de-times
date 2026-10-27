@@ -208,7 +208,7 @@ function hudF1(m, st, now) {
   const pn = race.pneu, dano = m ? Math.round(m.dano || 0) : 0;
   set($("hPainel").querySelector(".pf-extra"), "d", pn ? "" : "none");
   if (pn) {
-    const tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], resta = Math.max(0, 1 - pn.desgaste), el = $("pPneu");
+    const tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], resta = F.vidaRestante(pn), el = $("pPneu");
     set(el, "c", "pf-pneu" + (pn.desgaste > F.PENHASCO ? " fim" : "") + (F.frio(pn) ? " frio" : "")); set(el, "style", `--c:${tipo.cor};--r:${Math.round(resta * 100)}`);
     set(el.children[0], "t", T.LETRA[pn.composto] || "M"); set(el.children[1], "t", Math.round(resta * 100) + "%");
     set($("pDanoT"), "t", `DANO ${dano}%`); set($("pDano"), "w", Math.min(100, dano) + "%"); set($("pDano"), "c", dano >= 66 ? "alto" : dano >= 33 ? "medio" : "");
@@ -328,10 +328,10 @@ function avisoDeBatida(m) {
   if (sNow() - b.at > 4000) return; // uma batida velha, de antes de eu abrir a tela
   toast(`💥 Batida ${b.nivel === "media" ? "média" : b.nivel}: dano +${Math.round(b.dano)}%`, 2800);
 }
-// o pneu (regras de F1), à esquerda do velocímetro: o anel da cor do composto esvazia com o desgaste e fica vermelho
-// depois do penhasco; com o pneu frio, o miolo fica azul. Embaixo, o nome do composto; no meio, quanto ainda resta.
+// o pneu (regras de F1), à esquerda do velocímetro: o anel da cor do composto esvazia com o desgaste até 0% no penhasco (o fim
+// da vida: dali o pneu despenca) e fica vermelho; com o pneu frio, o miolo fica azul. Embaixo, o nome do composto; no meio, quanto ainda resta.
 function pneuHud(c, pn, x, y) {
-  const F = window.F1Regras, tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], resta = Math.max(0, 1 - pn.desgaste), r = 21;
+  const F = window.F1Regras, tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], resta = F.vidaRestante(pn), r = 21;
   c.beginPath(); c.arc(x, y, r, 0, 7); c.fillStyle = F.frio(pn) ? "#1d5fa8dd" : "#0b1016cc"; c.fill();
   c.lineWidth = 6; c.beginPath(); c.arc(x, y, r - 4, 0, 7); c.strokeStyle = "#ffffff22"; c.stroke();
   c.beginPath(); c.arc(x, y, r - 4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * resta); c.strokeStyle = pn.desgaste > F.PENHASCO ? "#ff3d6e" : tipo.cor; c.stroke();

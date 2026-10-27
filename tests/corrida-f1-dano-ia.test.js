@@ -164,7 +164,9 @@ test("IA: recorde humano limita a pole; volta boa em Cadillac não vira P2 autom
   Robos.ritmoDosRobos(room);
   const bots = room.order.map((id) => room.players[id]).filter((p) => p.bot);
   const tempos = bots.map((p, i) => Robos.voltaLancada(room, p, 0, i, bots.length).tempo).sort((a, b) => a - b);
-  assert.ok(tempos[0] > 66 && tempos[0] < 72, `pole ${tempos[0]}`);
+  // O macio novo desta tabela de pneus (aderência ~1,51, mais baixa que a antiga) dá ~70,2 s ao piloto ideal em Mônaco; a pole de um
+  // robô médio fica a ~3% disso (~72,4 s). O teto antigo (72) era de quando o macio era mais aderente.
+  assert.ok(tempos[0] > 66 && tempos[0] < 73.5, `pole ${tempos[0]}`);
   assert.ok(tempos.at(-1) < 85, `fundo do grid ${tempos.at(-1)}`);
   Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 95 }));
   Robos.ritmoDosRobos(room);

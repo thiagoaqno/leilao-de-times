@@ -10,7 +10,7 @@ const NIVEL_DO_ROBO = 0.93; // um pouco abaixo do ritmo dos robôs da sala: quem
 // a estratégia de pneus do que resta da corrida: as paradas já feitas ficam de lado e, se só um composto foi usado, a
 // próxima parada troca de composto (senão o resultado levaria o acréscimo de quem corre com um composto só)
 function planoRestante(room, p) {
-  const feitas = (p.paradas || []).length, laps = p.laps || 0, plano = F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${p.id}:assumido`);
+  const feitas = (p.paradas || []).length, laps = p.laps || 0, plano = F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${p.id}:assumido`, room.config.pista, p.spec ? p.spec.desgaste : 1);
   const usados = new Set(p.compostos || [p.pneuAtual || p.pneu]);
   const resto = plano.paradas.filter((x) => x.volta > laps && x.volta < room.config.voltas);
   if (usados.size < 2 && room.config.voltas >= 2 && !resto.some((x) => !usados.has(x.composto))) {

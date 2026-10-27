@@ -205,7 +205,7 @@ function passo(c, ent, amb, tr, ev) {
       if (vn > 0) { c.vx -= q.nx * s * vn * 1.2; c.vy -= q.ny * s * vn * 1.2; const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca; if (vn > 60 && ev) ev.push({ t: "bump", forca: vn }); }
     }
   }
-  if (amb.f1 !== false) F1.gastarPneu(c.pneu, { dist: Math.hypot(nx - xAnt, ny - yAnt), total: (amb.voltas || 1) * n * 6, slip: c.slip, v: c.v, vmax: spec.vmax, dt, fator: spec.desgaste });
+  if (amb.f1 !== false) F1.gastarPneu(c.pneu, { dist: Math.hypot(nx - xAnt, ny - yAnt), volta: n * 6, slip: c.slip, travada: c.travada, patina: c.patina, v: c.v, vmax: spec.vmax, dt, fator: spec.desgaste });
   c.x = nx; c.y = ny;
   // altura: no chão acompanha o relevo; se o chão some (lombada rápida), voa e cai com a gravidade
   const gh = alturaDoChao(tr, c.x, c.y, c.idx);
