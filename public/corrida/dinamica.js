@@ -56,7 +56,17 @@ function marchaIdeal(vU, vmaxU) { let m = 1; while (m < NUM && rotacao(vU, vmaxU
 // ---------- do spec aos números físicos ----------
 const EXTRA_PADRAO = Object.freeze({ potencia: 1, arrasto: 1, carga: 1, grip: 1, freio: 1, tracao: 1 });
 const CACHE = new Map();
+// Atalho para quem pede os parâmetros do mesmo `spec` milhares de vezes (os robôs e as contas de ritmo): o último de cada objeto,
+// conferido pelos números (se o spec mudar, a conta refaz). Só acelera, o resultado é o mesmo.
+const RAPIDO = new WeakMap();
 function parametros(spec) {
+  const r = RAPIDO.get(spec);
+  if (r && r.v === spec.vmax && r.a === spec.acc && r.b === spec.brake && r.g === spec.grip && r.k === spec.kin && r.t === spec.turn && r.s === spec.scrub && r.o === spec.offMax && r.w === spec.wall && r.d === (spec.drs ?? 1)) return r.p;
+  const p = parametrosLento(spec);
+  RAPIDO.set(spec, { p, v: spec.vmax, a: spec.acc, b: spec.brake, g: spec.grip, k: spec.kin, t: spec.turn, s: spec.scrub, o: spec.offMax, w: spec.wall, d: spec.drs ?? 1 });
+  return p;
+}
+function parametrosLento(spec) {
   const chave = [spec.vmax, spec.acc, spec.brake, spec.grip, spec.kin, spec.turn, spec.scrub, spec.offMax, spec.wall, spec.drs ?? 1].join("|");
   let p = CACHE.get(chave); if (p) return p;
   const massa = 800 * (0.72 + 0.5 * spec.wall);                 // o tanque é mais pesado, a formiga mais leve

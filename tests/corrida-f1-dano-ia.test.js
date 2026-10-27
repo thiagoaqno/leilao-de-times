@@ -144,7 +144,7 @@ test("IA: sem volta humana, o grid completo fecha Mônaco e classifica perto de 
   assert.equal(room.order.length, 19);
   assert.ok(room.order.every((id) => room.players[id].finish != null), "todos cruzam a chegada");
   const tempos = room.order.map((id, i) => Robos.voltaLancada(room, room.players[id], 0, i, 19).tempo).sort((a, b) => a - b);
-  assert.ok(tempos[0] > 80 && tempos[0] < 90, `pole ${tempos[0]}`);
+  assert.ok(tempos[0] > 62 && tempos[0] < 90, `pole ${tempos[0]}`); // (macio novo e quente: mais rápido que o pneu neutro do ritmo da corrida)
   assert.ok(tempos.at(-1) - tempos[0] < 5, `grid disperso: ${tempos[0]} a ${tempos.at(-1)}`);
 });
 
@@ -158,18 +158,18 @@ test("IA: grid completo termina em todas as pistas de GP sem volta gravada", () 
 });
 
 test("IA: recorde humano limita a pole; volta boa em Cadillac não vira P2 automaticamente", () => {
-  Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 80 }));
+  Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 66 }));
   const room = { config: { pista: "monaco", regras: "f1", nivel: "medio", robos: 19 }, players: { h: { id: "h", name: "Thiago", bot: false, equipe: "cadillac" } }, order: ["h"], semente: 4321 };
   Robos.preparar(room, ["#a"], () => "x");
   Robos.ritmoDosRobos(room);
   const bots = room.order.map((id) => room.players[id]).filter((p) => p.bot);
   const tempos = bots.map((p, i) => Robos.voltaLancada(room, p, 0, i, bots.length).tempo).sort((a, b) => a - b);
-  assert.ok(tempos[0] > 80 && tempos[0] < 86, `pole ${tempos[0]}`);
-  assert.ok(tempos.at(-1) < 90, `fundo do grid ${tempos.at(-1)}`);
+  assert.ok(tempos[0] > 66 && tempos[0] < 72, `pole ${tempos[0]}`);
+  assert.ok(tempos.at(-1) < 85, `fundo do grid ${tempos.at(-1)}`);
   Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 95 }));
   Robos.ritmoDosRobos(room);
   const poleSemRecordeRapido = Math.min(...bots.map((p, i) => Robos.voltaLancada(room, p, 0, i, bots.length).tempo));
-  assert.ok(poleSemRecordeRapido >= tempos[0] && poleSemRecordeRapido < 90,
+  assert.ok(poleSemRecordeRapido >= tempos[0] && poleSemRecordeRapido < 85,
     `uma única volta lenta não deve limitar o grid: ${poleSemRecordeRapido}`);
   Robos.usarFonte(() => []);
 });

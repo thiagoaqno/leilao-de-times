@@ -1,41 +1,37 @@
-# Carreira F1: a temporada com os amigos
+# Robôs da F1: ritmo de verdade, curvas sem frear à toa e sem ficar preso
 
-A temporada solo (PR #323) agora também se joga em grupo: uma sala com código, cada amigo com a sua equipe (ou dois na mesma), o GP ao vivo para todos, a gestão e o mercado entre os GPs e o fim da noite. Pilotos reais de 2026, DRS clássico, 4 ou 8 GPs.
+Os robôs andavam a ~50% acima do piloto ideal (o jogador médio dava volta neles) e freavam quase parando em curvas fáceis. Agora andam perto de quem joga bem, sem passar do limite do carro.
 
-## A sala da temporada em grupo
+## Causas achadas (medindo corridas de 10 robôs em 24 pistas)
 
-- Canal novo `/corrida-temporada-grupo` (`corrida-temporada-grupo.js`), no caminho da Carreira de futebol em grupo: o criador vira o **anfitrião**, os amigos entram pelo código, cada pessoa tem o **seu token** (fica no navegador; no banco vai só o hash), quem sai vira ausente e volta com o token.
-- Cada amigo escolhe uma das 11 equipes. **Dois amigos podem dividir a mesma equipe**, um em cada carro: os dois titulares reais saem do grid e vão para o mercado; o carro, o caixa, os engenheiros e o desenvolvimento são um só. As equipes sem humano ficam com os robôs. Quem não escolhe equipe acompanha e assiste.
-- O anfitrião define 4 ou 8 GPs, as voltas (2, 3 ou 5) e o nível dos robôs, e começa a temporada. Até 8 pessoas por sala. Se o anfitrião fica 2 minutos fora, o cargo passa sozinho; ele também pode passar o cargo.
-- **A sala inteira fica no banco** (`migracoes/019-corrida-temporada-grupo.sql`, tabela `corrida_temporadas_grupo`): o servidor pode reiniciar no meio da noite sem perder a temporada. A sala se apaga 72 h depois do último uso. O GP aberto vive na memória: se o servidor cair no meio dele, a temporada volta ao GP que não terminou.
+1. **Nível usado como escala de velocidade em tudo.** `ia.nivel` (~0,65–0,71 depois de calibrado com um modelo que não batia com a corrida) multiplicava a velocidade alvo também nas retas: os robôs viam 70% da velocidade final. O modelo de volta (`tempoDaVolta`) só reduzia as curvas; a corrida reduzia tudo.
+2. **Curvatura com ruído.** O raio da linha de corrida chegava a ~0 (Barcelona, Spa, Suzuka, Baku) e ~35 u em Interlagos onde a pista tem 82: o perfil de velocidade despencava (a quina de raio quase zero do PR fechado `b8cc28e`, que aqui também aparecia como 1 u/s no perfil) e a linha usada pelo carro (35% da linha de corrida) nem era a do cálculo.
+3. **Olhar à frente de 0,5 s a velocidade já multiplicada pelo nível** e freio/acelerador tudo-ou-nada: roda da frente travava na curva, o robô rodava na saída (acelerador cheio com a traseira no limite) e ficava preso no muro (Baku, Barcelona: voltas de 150–300 s).
+4. **Ninguém tirava o carro do muro.** Preso, ficava parado até o fim.
+5. O robô esperava atrás de um carro lento mesmo com o lado livre (só ultrapassava na reta).
 
-## O GP ao vivo para todos
+## O que mudou (`corrida-robos.js`)
 
-- `abrirGPGrupo` (em `corrida.js`) abre uma sala de F1 privada com **todos os humanos** da temporada e os robôs completando 20 carros. Só o anfitrião abre; as telas dos amigos vão para a pista sozinhas (quem estava fora entra por "Entrar no GP"). A classificação e a corrida são juntas, com a mesma física e as mesmas regras do GP solo.
-- A classificação começa quando todos chegam à pista (ou 30 s depois do primeiro). Quem não tem carro **assiste** com um acesso de espectador.
-- **Quem cai no meio da corrida tem o carro levado por um robô** (`corrida-temporada-robo.js`): o robô pega o carro que o servidor já andava e o pilota com o piloto automático dos outros robôs, com a estratégia de pneus do que falta (sempre dois compostos); quando a pessoa volta, retoma o carro de onde estiver. O resultado continua sendo dela.
-- O resultado entra na temporada de todos **de uma vez, uma vez por GP** (guardado pelo número do GP e do ano).
+- Curvatura do caminho de verdade (`curvaturaDoCaminho`: círculo por três pontos, suavizado, raio mínimo de 22 u) e o carro segue 80% da linha de corrida (`FATOR_LINHA`); o perfil de velocidade (`perfilF1`) sai dessa curvatura.
+- O nível é a fração da margem do piloto ideal usada **só nas curvas e frenagens**; as retas vão sempre ao limite. `tempoDaVolta` (F1) agora é o mesmo perfil, em tabela por nível.
+- Volante e pedais a cada passo da física (120 Hz): tira o pé quando a traseira escorrega, alivia o volante quando a frente passa do pico do pneu, solta o freio se a roda trava (ABS).
+- Ritmo: alvo = volta do piloto ideal do carro dele (`idealDe`) + folga do nível (fácil +13,7%, médio +7,4%, difícil +2,5% no modelo; o pneu macio/duro e o vácuo mexem no resultado real) + até 1,2% pelo ritmo do piloto. Nunca abaixo do limite do carro.
+- Robô preso (parado 2,5 s ou sem andar 10 pontos em 6 s) volta à pista como o "↺ Pista" (do lado livre, se há carro ao lado).
+- Preso atrás de um carro bem mais lento: passa também em curva leve, não só na reta.
+- `dinamica.js`: só um atalho de desempenho em `parametros` (cache por objeto; mesmo resultado, ~5x mais rápido as contas dos robôs). A física dos humanos não mudou.
 
-## A gestão entre os GPs e o mercado disputado
+## Antes e depois (10 robôs, 5 voltas, média da melhor volta limpa contra o piloto ideal do próprio carro)
 
-- Cada equipe humana monta o carro e gasta o **seu** orçamento (peças, desenvolvimento, caixa e teto de gastos, como na solo).
-- **Equipe dividida: qualquer um dos dois confirma** os gastos, e cada ação vai para o **histórico da equipe** com o nome de quem fez e o valor. Para dois não se atropelarem, o servidor aplica um pedido por vez e a montagem leva a `versao` da equipe: quem mexeu em cima de uma versão velha é avisado em vez de desfazer o que o companheiro acabou de fazer. Com dois pilotos humanos a equipe não tem vaga para piloto contratado.
-- **Mercado disputado:** um piloto real só corre por uma equipe (quem pegou primeiro fica; o piloto que corre por outra equipe de amigo não sai; o que a equipe larga volta ao mercado) e cada engenheiro (mecânico ou estrategista de cada nível) só trabalha para uma equipe.
-- Após cada GP: patrocínio, prêmio pelos pontos da equipe e salários, por equipe.
+| Pista | Nível | Antes | Depois |
+|---|---|---|---|
+| Interlagos | fácil / médio / difícil | +60% / +52% / +37% | +8% / +3% / -5% |
+| Mônaco | fácil / médio / difícil | +63% / +52% / +39% | +8% / +3% / -5% |
+| Monza | fácil / médio / difícil | +52% / +41% / +29% | +12% / +8% / +2% |
+| Spa | fácil / médio / difícil | +64% / +58% / +42% | +10% / +6% / -2% |
 
-## O fim da noite
-
-- Tabelas de pilotos e construtores para todos (os amigos aparecem marcados), resumo do último GP com o dinheiro da sua equipe, o campeão no fim do calendário, o quadro dos amigos (pontos, vitórias e pódios), a lista de campeões da noite e a próxima temporada pelo anfitrião.
-
-## A sede
-
-- `/corrida/temporada/` ganha "Temporada com os amigos" (abrir sala / entrar pelo código) e o `?sala=CÓDIGO` (convite), no mesmo visual (`grupo.js`, `grupo-regras.js`, CSS em `sede.css`). Na pista, "← Voltar à sede" e o botão de sair levam de volta à sala (`salaTemporada` no estado).
+Robôs mais de 3 s abaixo de 15% da velocidade possível: Spa antes 10 de 10 (todos), depois 0; nas outras pistas 0 antes e depois. No nível difícil o pneu macio dá voltas até alguns % abaixo do "ideal" neutro (a tabela de pneus é de outro PR). Teste novo em 24 pistas, nível médio: média de +2,4% a +9,6% (maioria entre 3% e 6%), todos terminam, nenhum passa de 3 s abaixo de 15%, curvas largas a pelo menos 80% do possível.
 
 ## Testes
 
-- Novo `tests/corrida-temporada-grupo.test.js`: as regras (mesma equipe, versão, histórico, mercado, resultado, campeão) e o servidor de verdade: dois ou mais clientes criam/entram e escolhem equipes (inclusive a mesma, e a terceira pessoa é recusada), o mercado recusa o piloto e o engenheiro já contratados, só o anfitrião abre o GP, o GP abre com os quatro humanos e 20 carros, o resultado entra uma vez e todos veem as mesmas tabelas, reconexão com o token (e token errado), o servidor reiniciando com a sala vinda do banco, e o robô que assume o carro de quem caiu e o devolve.
-- Rodados só os da Corrida: `node --test tests/corrida*.test.js`.
-
-## Ficou de fora
-
-- Entrar numa equipe no meio da temporada (quem chega depois do início só acompanha); leilão com lances e o dono aceitando a saída do piloto (aqui vale a ordem de chegada e quem corre por equipe de amigo não sai); rádio da equipe e HUD do companheiro; janela de mercado no meio do ano; passar o placar para a Noite da Galera; o teste na mão com amigos de verdade (só automatizado).
+- Novo `tests/corrida-robos-ritmo.test.js` (24 pistas de F1, ordem dos níveis, robô preso se recupera, perfil sem quinas).
+- Ajustados: janelas de pole em `corrida-f1-dano-ia.test.js` (macio quente é mais rápido que o pneu neutro) e dois limites de `corrida-f1-equipes.test.js`.
