@@ -14,7 +14,7 @@ async function gerar(chave, f) {
   const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(VOZ)}?output_format=mp3_44100_64`, {
     method: "POST",
     headers: { "xi-api-key": chave, "Content-Type": "application/json", Accept: "audio/mpeg" },
-    body: JSON.stringify({ text: f.texto, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.3 } }),
+    body: JSON.stringify({ text: f.texto, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.8, similarity_boost: 0.75, style: 0, use_speaker_boost: true } }),
   });
   if (!r.ok) {
     const erro = new Error(r.status === 401 ? "chave da ElevenLabs recusada (401): confira se copiou a chave certa" : r.status === 429 ? "limite da ElevenLabs atingido (429): espere um pouco ou veja o seu plano e rode de novo (as já feitas são puladas)" : `a ElevenLabs respondeu ${r.status}`);

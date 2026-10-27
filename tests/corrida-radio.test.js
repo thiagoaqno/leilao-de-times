@@ -6,12 +6,12 @@ const path = require("node:path");
 const Falas = require("../public/corrida/radio/falas.js");
 const Radio = require("../public/corrida/radio.js");
 
-const SITUACOES = ["boasvindas", "proximogp", "largada", "voltarapida", "ganhou", "perdeu", "pneu", "box", "safety", "amarela", "dano", "drs", "ultima", "vitoria", "podio", "pontos", "foradospontos", "abandono", "classboa", "classruim", "pecas"];
+const SITUACOES = ["largada", "voltarapida", "ganhou", "perdeu", "pneu", "box", "safety", "amarela", "dano", "ultima", "vitoria", "podio", "pontos", "foradospontos", "abandono"];
 
-test("toda situação tem de 2 a 3 falas", () => {
-  for (const s of SITUACOES) { const n = Falas.porSituacao(s).length; assert.ok(n >= 2 && n <= 3, `${s}: ${n} falas`); }
+test("toda situação (só as da corrida) tem de 4 a 5 falas", () => {
+  for (const s of SITUACOES) { const n = Falas.porSituacao(s).length; assert.ok(n >= 4 && n <= 5, `${s}: ${n} falas`); }
   assert.deepEqual(Object.keys(Falas.SITUACOES).sort(), [...SITUACOES].sort());
-  assert.ok(Falas.FALAS.length >= 30 && Falas.FALAS.length <= 45);
+  assert.ok(Falas.FALAS.length >= 60 && Falas.FALAS.length <= 80);
 });
 
 test("ids únicos, seguros para nome de arquivo e textos curtos", () => {

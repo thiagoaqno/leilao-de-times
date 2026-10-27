@@ -2,28 +2,23 @@
 // Cada fala vira public/corrida/radio/<id>.mp3 (ferramentas/radio-engenheiro.js, com a voz da ElevenLabs). Sem o mp3, o
 // rádio não toca nada. Sem nome de pista nas falas: o mesmo áudio serve para qualquer GP.
 (function (root) {
+// só o que um engenheiro diria NO MEIO da corrida (e no fim dela), em tom sério; 4 a 5 variações por situação
 const SITUACOES = {
-  boasvindas: ["Bem-vindo de volta à garagem. O carro está pronto, é só dizer quando.", "Boa tarde, chefe. A equipe está toda aqui, esperando você."],
-  proximogp: ["Próximo: GP da Austrália. Vamos nos preparar direito.", "Fim de semana de corrida chegando. Quero todo mundo atento."],
-  largada: ["Luzes apagando. Boa largada!", "Vamos lá, é a nossa hora. Sem erro na primeira curva."],
-  voltarapida: ["Essa foi a volta mais rápida da corrida. Continue assim!", "Roxo no cronômetro! Que volta, hein."],
-  ganhou: ["Passou! Ganhamos uma posição, segue o ritmo.", "Boa ultrapassagem! Agora segura a posição."],
-  perdeu: ["Perdemos uma posição. Calma, ainda dá para recuperar.", "Ele passou. Fica na cola dele e espera o erro."],
-  pneu: ["Os pneus estão acabando. Cuida deles nas curvas.", "A aderência caiu bastante. Pensa na parada."],
-  box: ["Box, box! Entra agora no box.", "Box, box, box! Vem para a parada."],
-  safety: ["Safety car na pista. Reduz e mantém a posição.", "Safety car! Calma, sem ultrapassar."],
-  amarela: ["Bandeira amarela no setor. Cuidado, não ultrapasse.", "Amarela à frente. Levanta o pé."],
-  dano: ["Sentimos um problema no carro. Cuidado com a pilotagem.", "Tem dano aí. Vê se o carro responde e segue com calma."],
-  drs: ["DRS liberado. Aproveita a reta.", "Pode abrir a asa, DRS disponível."],
-  ultima: ["Última volta! Dá tudo que você tem.", "Última volta, é agora. Sem erro."],
-  vitoria: ["Vitória! Que corrida, parabéns a toda a equipe!", "Venceu! Isso é para a fábrica inteira comemorar."],
-  podio: ["Pódio! Excelente resultado, parabéns.", "Subimos ao pódio. Trabalho muito bem feito."],
-  pontos: ["Pontos garantidos. Um bom resultado para a equipe.", "Terminamos nos pontos. Vamos somar no campeonato."],
-  foradospontos: ["Ficamos fora dos pontos. Vamos entender o que faltou.", "Não foi dessa vez. Na próxima a gente volta mais forte."],
-  abandono: ["Abandonamos a corrida. Vamos ver o que aconteceu com o carro.", "Fim de corrida para nós. Cabeça erguida, tem mais GP pela frente."],
-  classboa: ["Ótima classificação! Largamos bem à frente.", "Grid excelente. O carro está voando."],
-  classruim: ["A classificação não foi boa. Vamos recuperar na corrida.", "Largamos lá atrás, mas a corrida é longa."],
-  pecas: ["Peças novas instaladas. O carro está melhor.", "Atualização aprovada. Já dá para sentir a diferença."],
+  largada: ["Luzes se apagando. Largada limpa.", "Atenção na primeira curva. Sem riscos.", "Boa largada. Agora encontre o ritmo.", "Cuidado com o tráfego na primeira volta.", "Largada feita. Proteja a posição."],
+  voltarapida: ["Volta mais rápida da corrida. Bom ritmo.", "Melhor volta registrada. Mantenha assim.", "Esse é o ritmo que precisamos.", "Volta mais rápida. Continue consistente.", "Bom setor final. Volta mais rápida."],
+  ganhou: ["Posição ganha. Mantenha o ritmo.", "Boa manobra. Agora consolide.", "Ganhamos a posição. Foco no próximo.", "Limpo. Abra uma margem agora.", "Boa. Próximo carro a um segundo."],
+  perdeu: ["Perdemos a posição. Mantenha a calma.", "Ele passou. Fique próximo e aguarde.", "Sem problema. A corrida é longa.", "Perdemos uma posição. Proteja os pneus.", "Mantenha o ritmo. Vamos recuperar."],
+  pneu: ["Os pneus estão no limite. Cuidado nas curvas.", "A aderência caiu. Estamos avaliando a parada.", "Degradação alta no traseiro. Administre.", "Pneus no fim. Evite travar as rodas.", "Temperatura dos pneus subindo. Alivie um pouco."],
+  box: ["Box, box. Entre nesta volta.", "Box nesta volta. Box, box.", "Confirmado, box nesta volta.", "Prepare para entrar. Box, box.", "Entre nos boxes agora. Box, box."],
+  safety: ["Safety car na pista. Reduza e mantenha o delta.", "Safety car acionado. Sem ultrapassagens.", "Safety car. Mantenha os pneus aquecidos.", "Neutralização. Siga o delta positivo.", "Safety car na pista. Estamos avaliando a parada."],
+  amarela: ["Bandeira amarela no setor. Reduza.", "Amarela à frente. Sem ultrapassagens.", "Carro parado à frente. Cuidado.", "Amarela no próximo setor. Atenção.", "Incidente à frente. Reduza a velocidade."],
+  dano: ["Detectamos dano no carro. Vamos monitorar.", "Temos um problema. Poupe o equipamento.", "Dano na asa. Ajuste as frenagens.", "Perda de rendimento. Estamos analisando.", "Problema confirmado. Leve o carro com cuidado."],
+  ultima: ["Última volta. Traga o carro para casa.", "Última volta. Concentração até a bandeirada.", "Última volta. Sem riscos agora.", "Bandeira branca. Última volta.", "Última volta. Mantenha a posição."],
+  vitoria: ["Vencemos a corrida. Excelente trabalho.", "Vitória. Trabalho muito bem feito.", "P1. Corrida impecável. Obrigado.", "Vitória confirmada. Grande trabalho da equipe."],
+  podio: ["Pódio confirmado. Bom resultado.", "Terminamos no pódio. Bom trabalho.", "Pódio. Pontos importantes para a equipe.", "Bom trabalho. Pódio garantido."],
+  pontos: ["Terminamos nos pontos. Resultado importante.", "Pontos garantidos. Seguimos evoluindo.", "Bons pontos hoje. Obrigado pelo esforço.", "Nos pontos. Vamos construir a partir daqui."],
+  foradospontos: ["Fora dos pontos hoje. Vamos analisar os dados.", "Não foi o resultado esperado. Vamos trabalhar.", "Corrida difícil. Vamos entender o que faltou.", "Sem pontos hoje. Próxima corrida é outra história."],
+  abandono: ["Precisamos abandonar. Leve o carro para os boxes.", "Fim de corrida para nós. Pare com segurança.", "Vamos recolher o carro. Desculpe.", "Abandono. Pare o carro em local seguro."],
 };
 // situações que passam na frente do intervalo mínimo entre falas
 const URGENTES = ["box", "safety"];

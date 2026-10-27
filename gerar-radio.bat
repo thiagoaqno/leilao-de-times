@@ -6,8 +6,12 @@ echo A chave nao e salva em nenhum arquivo: vale so para esta janela.
 set /p ELEVENLABS_API_KEY=Cole a sua chave da ElevenLabs e aperte Enter: 
 set /p ELEVENLABS_VOICE_ID=ID da voz (Enter = voz padrao): 
 if "%ELEVENLABS_VOICE_ID%"=="" set ELEVENLABS_VOICE_ID=pNInz6obpgDQGcFmaJgB
+set REFAZER=
+set /p REFAZER=Refazer TODAS as falas (substitui as que existem)? s/N:
+set ARG=
+if /i "%REFAZER%"=="s" set ARG=--refazer
 echo.
-node ferramentas\radio-engenheiro.js
+node ferramentas\radio-engenheiro.js %ARG%
 set ELEVENLABS_API_KEY=
 echo.
 set n=0
