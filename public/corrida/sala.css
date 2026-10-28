@@ -4,8 +4,8 @@
    dashboard com a coluna de jogadores, abas em caixa alta no topo (no celular viram a barra de baixo, com ícones) e o Largar grande. */
 @keyframes painelEntra{from{opacity:0;transform:translateY(7px)}}
 body.sala-escura,html:has(body.sala-escura){background:#07080c;color:#f4f5f5}
-body.sala-escura::before{background:radial-gradient(ellipse 60% 40% at 78% 0,#e1060038,transparent 70%),linear-gradient(180deg,#07080cf2 0,#090b11ea 45%,#07080cfa 100%),url('/corrida/fundo-monaco.jpg') center 40%/cover no-repeat;filter:none}
-body.sala-escura::after{display:none}
+body.sala-escura::before{background:url('/corrida/fundo-carreira-sede.webp') center 40%/cover no-repeat;filter:blur(6px) brightness(.75) saturate(.72)}
+body.sala-escura::after{display:block;background:linear-gradient(90deg,#07080caa,#07080c88 55%,#07080cba),linear-gradient(0deg,#07080c,transparent 75%)}
 body.sala-escura .tovila,body.sala-escura .utilbar,body.sala-escura .roomtag .code,body.sala-escura .roomtag .lbl,body.sala-escura .foto-credito,body.sala-escura .foto-credito a{color:#dbe2ea}
 body.sala-escura .tovila::first-letter{color:var(--f1-vm)}
 body.sala-escura .bar-in{height:40px}body.sala-escura .utilbar{margin-bottom:12px}body.sala-escura .utilbar button{background:#ffffff14;border:1px solid var(--f1-lin);color:#fff;border-radius:0}body.sala-escura .utilbar button:hover{background:#ffffff26}
