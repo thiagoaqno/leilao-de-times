@@ -8,6 +8,14 @@
 .abas{display:flex;gap:2px;overflow-x:auto;margin:0 0 14px;border-bottom:2px solid var(--f1-lin);scrollbar-width:none}.abas::-webkit-scrollbar{display:none}
 .sede .aba{flex:none;background:transparent;border:0;border-radius:0;padding:11px 18px;font:800 18px/1 var(--display);font-style:italic;text-transform:uppercase;letter-spacing:.05em;color:#aeb8c3;position:relative;box-shadow:none}.sede .aba.on{color:#fff;background:linear-gradient(180deg,transparent,#e1060026)}.sede .aba.on::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:4px;background:var(--f1-vm)}
 /* a garagem: painel da equipe | carro | calendário */
+.gp-mapa{display:grid;grid-template-columns:minmax(220px,330px) minmax(0,1fr);min-height:260px;overflow:hidden;border:1px solid #ffffff3d;border-left:6px solid var(--f1-vm);background:#0c1118}
+.gp-mapa-info{display:flex;flex-direction:column;justify-content:center;padding:25px 30px;background:linear-gradient(110deg,#1e2632,#111821);min-width:0}
+.gp-mapa-rotulo{font:800 14px var(--display);text-transform:uppercase;letter-spacing:.14em;color:#ff7575}
+.gp-mapa h2{font:italic 900 clamp(40px,5vw,70px)/.9 var(--display);text-transform:uppercase;overflow-wrap:anywhere;margin:10px 0 8px}
+.gp-mapa p{font-size:14px;color:#d1dce7;line-height:1.4}
+.gp-mapa-legenda{display:flex;align-items:center;gap:9px;margin-top:20px;font:800 12px var(--display);text-transform:uppercase;letter-spacing:.09em;color:#e2eaf2}.gp-mapa-legenda i{width:14px;height:14px;display:inline-block;border-radius:50%;background:var(--f1-vm);box-shadow:0 0 0 3px #fff}
+.gp-mapa-desenho{min-height:260px;display:grid;place-items:center;background:radial-gradient(circle at 50% 50%,#26384a 0,#111a25 55%,#091018 100%);padding:14px 30px}
+.gp-mapa-desenho svg{display:block;width:100%;height:245px;overflow:visible}.gp-mapa-desenho path{fill:none;stroke-linecap:round;stroke-linejoin:round}.gp-mapa-borda{stroke:#000b;stroke-width:64}.gp-mapa-linha{stroke:#f4f8fc;stroke-width:35}.gp-mapa-marco{fill:var(--f1-vm);stroke:#fff;stroke-width:8}.gp-mapa-centro{fill:#fff}
 .garagem-hero{display:grid;grid-template-columns:minmax(210px,260px) minmax(0,1fr) minmax(250px,320px);gap:14px;align-items:stretch}
 .pn-equipe,.pn-gp{background:linear-gradient(180deg,#14161cf2,#0b0c10f2);border:1px solid var(--f1-lin);border-top:3px solid var(--eq,var(--f1-vm));--corte:12px;clip-path:polygon(0 0,calc(100% - var(--corte)) 0,100% var(--corte),100% 100%,var(--corte) 100%,0 calc(100% - var(--corte)));min-width:0}
 .pn-logo{display:flex;align-items:center;gap:10px;padding:12px;background:color-mix(in srgb,var(--eq,var(--f1-vm)) 42%,#0b0c10);color:#fff}.pn-logo img{width:38px;height:38px;object-fit:contain;background:#fff;padding:3px}.pn-logo b{font:800 22px/1 var(--display);font-style:italic;text-transform:uppercase;overflow-wrap:anywhere}
@@ -42,7 +50,7 @@
 .sede .bloco{border-radius:0;background:#101216ee;border-top:3px solid var(--f1-lin);--corte:12px;clip-path:polygon(0 0,calc(100% - var(--corte)) 0,100% var(--corte),100% 100%,0 100%)}.sede .bloco>header h2{font-size:26px}
 .painel-aba{display:grid;gap:14px}
 @media (max-width:1100px){.garagem-hero{grid-template-columns:minmax(200px,240px) minmax(0,1fr)}.pn-gp{grid-column:1/-1}.cal{max-height:none}.cr-cartoes{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:760px){.garagem-hero{grid-template-columns:1fr}.cr-centro{order:-1;min-height:300px}.pn-gp{order:0}.pn-equipe{order:1}.pc-corpo{grid-template-columns:1fr}.pc-resumo{position:static}.pn-nota strong{font-size:38px}.cr-topo{align-items:flex-start}.sede .aba{padding:10px 13px;font-size:16px}.pc-lista{grid-template-columns:1fr 1fr}.sede .btn-continuar{font-size:23px}}
+@media (max-width:760px){.gp-mapa{grid-template-columns:1fr}.gp-mapa-info{padding:19px 20px}.gp-mapa h2{font-size:42px}.gp-mapa-legenda{margin-top:10px}.gp-mapa-desenho{min-height:220px;padding:8px 22px}.gp-mapa-desenho svg{height:210px}.garagem-hero{grid-template-columns:1fr}.cr-centro{order:-1;min-height:300px}.pn-gp{order:0}.pn-equipe{order:1}.pc-corpo{grid-template-columns:1fr}.pc-resumo{position:static}.pn-nota strong{font-size:38px}.cr-topo{align-items:flex-start}.sede .aba{padding:10px 13px;font-size:16px}.pc-lista{grid-template-columns:1fr 1fr}.sede .btn-continuar{font-size:23px}}
 @media (max-width:620px){.sede{padding-left:16px;padding-right:16px}}
 @media (max-width:420px){.pc-lista{grid-template-columns:1fr}.cr-cartoes{grid-template-columns:1fr 1fr}.cr-caixa{padding:6px 10px}.cr-caixa b{font-size:20px}}
 @media (max-width:420px){.ponto-linha{align-items:flex-start;flex-direction:column;gap:10px}.ponto-controles{align-self:flex-end}}
