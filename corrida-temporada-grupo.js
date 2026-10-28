@@ -207,7 +207,7 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
         const montagens = {}, bonusMontagem = {}, bonusBox = {};
         for (const [eq, t] of Object.entries(sala.equipes)) { montagens[eq] = t.montagem; bonusMontagem[eq] = t.bonus; bonusBox[eq] = t.engenheiros.mecanico * 0.5 + t.engenheiros.estrategista * 0.25; }
         const acesso = corrida.abrirGPGrupo({ salaTemporada: sala.codigo, pista: sala.calendario[sala.gp].pista, voltas: sala.opcoes.voltas, nivel: sala.opcoes.nivel,
-          semente: `${sala.semente}:${ano}:${indice}`, pessoas: grid.humanos, robos: grid.robos, montagens, bonusMontagem, bonusBox,
+          semente: `${sala.semente}:${ano}:${indice}`, tv: { tabelas: G.tabelas(sala), gp: indice + 1, total: sala.opcoes.tamanho, ano }, pessoas: grid.humanos, robos: grid.robos, montagens, bonusMontagem, bonusBox,
           aoMontar: (p, montagem) => {
             if (sala.gp !== indice || sala.ano !== ano) throw Error("Esta etapa da carreira não está mais aberta.");
             G.montar(sala, p.pessoa, montagem);

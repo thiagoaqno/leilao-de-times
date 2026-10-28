@@ -4,6 +4,7 @@ const assert = require("node:assert");
 const bd = require("../bd.js");
 const { subirServidor, conectar, pedir, esperarEstado } = require("./ajuda.js");
 
+process.env.CORRIDA_TV_MS = "0"; // sem a transmissão de TV antes das luzes: a largada vem logo
 test.beforeEach(() => { bd.fechar(); bd.abrir(":memory:"); });
 test.after(() => bd.fechar());
 

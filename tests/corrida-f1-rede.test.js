@@ -10,6 +10,7 @@ const Equipes = require("../public/corrida/f1-equipes.js");
 const Humanos = require("../corrida-humanos.js");
 const { subirServidor, conectar, pedir } = require("./ajuda.js");
 
+process.env.CORRIDA_TV_MS = "0"; // sem a transmissão de TV antes das luzes: a largada vem logo
 const mclaren = Equipes.specDaEquipe("mclaren");
 const tr = S.criarPista(T.PISTAS.interlagos, "interlagos");
 
