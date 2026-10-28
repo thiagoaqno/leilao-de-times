@@ -2,14 +2,15 @@
 // para a pista) e, só de noite, o brilho dos painéis e a luz de verdade no asfalto. Mastros, cabeças, painéis e brilhos são 4
 // InstancedMesh para a pista inteira. Cada torre só nasce onde `livre` e `ocupado` deixam.
 import * as THREE from "three";
-import { canvasTex, M } from "../../cena.js";
+import { canvasTex, M, hemi } from "../../cena.js";
 import { livre, ocupado } from "../comum.js";
 import { luzDaNoite, soDeNoite } from "./base.js";
 
 // A luz no chão é SpotLight de verdade (ilumina o asfalto e os carros, que passam por dentro dela), não uma placa clara por cima.
 // Uma luz por torre seria caro demais: são LUZES fixas (mudar o número de luzes recompila todos os materiais), que a cada quadro
 // vão para as torres mais perto do carro. A que está para sair da lista já chega apagada (FAIXA), então a troca não pisca.
-const LUZES = 6, FORCA = 230, FAIXA = 160, ALCANCE = 560;
+// A noite padrão do jogo (hemi 0,95, em pista.js) é clara demais para a luz dos refletores aparecer: no Bahrein ela baixa para HEMI_NOITE.
+const LUZES = 6, FORCA = 1100, FAIXA = 160, ALCANCE = 560, HEMI_NOITE = 0.5;
 
 export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0, ate = 1 } = {}) {
   const { pts, n, W } = tr, lat = W / 2 + recuo, lista = [], ultimo = { 1: -1e9, "-1": -1e9 };
@@ -56,9 +57,13 @@ export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0,
     const l = new THREE.SpotLight(0xffe6bf, 0, ALCANCE, 0.72, 0.8, 1); l.name = `${tr.id}-luz-refletor`;
     add(l); add(l.target); luzes.push(l);
   }
+  // guardadas em `tr`: elas só andam de noite e com o carro na pista, e o kit/fundir.js congelaria quem não andou no teste dele
+  // (a matriz parada na origem: a luz não chegava na pista)
+  tr.luzesRefletores = luzes.flatMap((l) => [l, l.target]);
   const perto = lista.map((t) => ({ t, d: 0 }));
   luzDaNoite(tr).quadro.push((noite, foco) => {
     if (!noite || !foco) { for (const l of luzes) l.intensity = 0; return; }
+    hemi.intensity = HEMI_NOITE; // (ceu.js e useTrack voltam a pôr a de sempre quando a foto do céu chega ou a pista muda)
     for (const p of perto) p.d = Math.hypot(p.t.alvo[0] - foco.x, p.t.alvo[2] - foco.y);
     perto.sort((a, b) => a.d - b.d);
     const limite = perto[LUZES]?.d ?? Infinity; // a primeira torre que ficou de fora: quem está quase tão longe quanto ela vai apagando

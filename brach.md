@@ -1,15 +1,14 @@
-# Corrida: luz de verdade nos refletores do Bahrein
+# Corrida: as luzes dos refletores do Bahrein acendem de verdade
 
-No Bahrein à noite, a "luz" das torres de refletores eram placas aditivas de 300 de diâmetro flutuando 2,5 acima do asfalto (`kit/bahrein/luz.js`): clareavam a pista a ponto de não dar para ver o asfalto, e as rodas atravessavam as placas.
+O #358 trocou as placas claras por `SpotLight`, mas na pista não aparecia nada. Dois motivos:
 
-## O que mudou
-- As placas de luz no chão saíram. No lugar entram `SpotLight` de verdade: um punhado fixo (6) que, a cada quadro, vai para as torres mais perto do carro e aponta para o mesmo lugar do asfalto onde a placa ficava. A luz cai no asfalto e nos carros, sem objeto nenhum por cima.
-- O número de luzes não muda (de dia ficam apagadas, intensidade 0), então trocar dia e noite não recompila os materiais. A torre que está para sair da lista já chega apagada (`FAIXA`), então a troca não pisca.
-- `ligarNoite` (`kit/bahrein/base.js`) ganhou `quadro`: funções que rodam em todo quadro (com a noite e o foco), além da troca de dia e noite.
-- Os mastros, as cabeças, os painéis de lâmpadas e o halo em volta deles continuam iguais.
+1. **As luzes ficavam presas na origem do mapa.** O `kit/fundir.js` roda a animação uma vez para ver o que se mexe e congela a matriz do resto (`matrixAutoUpdate = false`). As luzes só andam de noite e com o carro na pista, então no teste dele ficaram paradas e foram congeladas em (0, 1, 0), longe da pista. Agora ficam guardadas em `tr.luzesRefletores`, e o `fundir.js` deixa quem está em `tr` em paz (a regra do `kit/README.md`).
+2. **A noite do jogo é clara demais para a luz aparecer.** A luz ambiente da noite (`hemi` 0,95, em `pista.js`) quase apagava o refletor. No Bahrein, à noite, ela baixa para 0,5 (`HEMI_NOITE`), e a força das luzes subiu de 230 para 1100. O asfalto continua visível e o trecho debaixo de cada torre fica claro, com o carro dentro da luz.
+
+Só `kit/bahrein/luz.js`. As outras pistas e o dia do Bahrein não mudam.
 
 ## Conferido
+- No navegador, Bahrein à noite com as regras de F1: as 6 luzes na posição das torres e apontadas para a pista (antes, na origem), e a luz aparecendo no asfalto.
 - `node --test tests/corrida-pistas-desempenho.test.js tests/corrida-pistas-invasao.test.js tests/corrida-pistas-volta.test.js`: 76 de 76.
-- Não conferi no navegador, a pedido. A força da luz (`FORCA`, 230) pode precisar de ajuste depois de ver na pista.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
