@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Kit 2 — demonstração</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>html,body{margin:0;height:100%;background:#9fd0f2;font:12px system-ui}#info{position:fixed;left:8px;top:8px;background:#000a;color:#fff;padding:6px 10px;border-radius:6px}#info a{color:#9cf;margin-right:8px;cursor:pointer}</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }</script>
+</head><body><div id="info"></div>
+<script type="module">
+// Os assets do kit 2 lado a lado, fora do jogo: /corrida/kit/demo.html#box | reta | tribuna | torre | portico | tenda | tudo
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { boxEquipe, retaDosBoxes, pilhaPneus, rackPneus, carrinhoFerramentas, carroF1, muretaPit } from "./box-equipe.js";
+import { velas, tendaPaddock, tribunaCoberta } from "./coberturas.js";
+import { torreControle, portico } from "./torres.js";
+
+const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.toneMapping = THREE.ACESFilmicToneMapping; document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x9fd0f2); scene.fog = new THREE.Fog(0xcfe6f2, 900, 3000);
+scene.add(new THREE.HemisphereLight(0xe8f2ff, 0x6a6a5a, 1.5));
+const sol = new THREE.DirectionalLight(0xfff3df, 2.4); sol.position.set(-200, 400, 300); sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048);
+Object.assign(sol.shadow.camera, { left: -450, right: 450, top: 450, bottom: -450, near: 10, far: 1500 }); scene.add(sol);
+const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 2, 6000), ctl = new OrbitControls(cam, renderer.domElement);
+// chão com a pit lane (asfalto + linhas) para dar escala
+const chao = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshStandardMaterial({ color: 0xcfd6d0 })); chao.rotation.x = -Math.PI / 2; chao.position.y = -1; chao.receiveShadow = true; scene.add(chao);
+const asfalto = new THREE.Mesh(new THREE.PlaneGeometry(1400, 90), new THREE.MeshStandardMaterial({ color: 0x4b4b50 })); asfalto.rotation.x = -Math.PI / 2; asfalto.position.set(0, -0.9, 150); asfalto.receiveShadow = true; scene.add(asfalto);
+const poe = (g, x, y, z, ry = 0) => { g.position.set(x, y, z); g.rotation.y = ry; scene.add(g); return g; };
+
+const vistas = {
+  box: () => { poe(boxEquipe({ mureta: true, carros: 2 }), -150, 0, 0); poe(boxEquipe({ cor: "#1d4fd8", corFaixa: "#f4f4f4", corTexto: "#1d4fd8", texto: "BLUE", portas: 3, abertura: [0.2, 0.9, 0.5], carros: 1, corCarro: "#1d4fd8" }), 150, 0, 0);
+    poe(pilhaPneus({ n: 5, faixa: "#ffd400" }), -20, 0, 120); poe(pilhaPneus({ n: 3, faixa: "#f4f4f4" }), 0, 0, 120); poe(rackPneus(), 20, 0, 120); poe(carrinhoFerramentas(), 45, 0, 120); poe(carroF1(), 80, 0, 120);
+    return [[0, 110, 330], [0, 20, 0]]; },
+  reta: () => { poe(retaDosBoxes(), 0, 0, 0); return [[170, 130, 320], [0, 20, -10]]; },
+  tribuna: () => { poe(tribunaCoberta(), 0, 0, 0); poe(tribunaCoberta({ cores: ["#d62a1f", "#f4f4f4"], secoes: 6, degraus: 6, comprimento: 120, publico: 0.7 }), 230, 0, 0); return [[60, 80, 260], [60, 20, -20]]; },
+  torre: () => { poe(torreControle(), -90, 0, 0); poe(torreControle({ corAneis: "#c8102e", corVidro: "#3d4650", cobertura: "cupula", aneis: 4, bandeira: null }), 90, 0, 0); return [[0, 120, 300], [0, 60, 0]]; },
+  portico: () => { poe(portico({ luzes: true }), 0, 0, 120); poe(portico({ vao: 160, alto: 50, cor: "#c8102e", texto: "RACE", corTexto: "#ffd400" }), 0, 0, -120); return [[0, 70, 420], [0, 40, 0]]; },
+  tenda: () => { poe(tendaPaddock({ texto: "PADDOCK" }), -80, 0, 0); poe(velas({ modulos: 5, filas: 1 }), 130, 0, 0); return [[0, 120, 280], [0, 10, 0]]; },
+};
+vistas.tudo = () => { poe(retaDosBoxes(), 0, 0, -150); poe(boxEquipe({ mureta: true }), -260, 0, 0); poe(tribunaCoberta({ comprimento: 160 }), 250, 0, -20, 0); poe(torreControle(), -80, 0, -330); poe(portico(), 0, 0, 300); poe(tendaPaddock({ texto: "PADDOCK" }), 230, 0, 120); return [[0, 330, 650], [0, 20, -50]]; };
+const alvo = (location.hash || "#tudo").slice(1), v = vistas[alvo] || vistas.tudo, [pos, olhar] = v();
+cam.position.set(...pos); ctl.target.set(...olhar); ctl.update();
+document.getElementById("info").innerHTML = Object.keys(vistas).map((k) => `<a href="#${k}" onclick="setTimeout(()=>location.reload())">${k}</a>`).join("") + `<span id="n"></span>`;
+addEventListener("resize", () => { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+renderer.setAnimationLoop(() => { renderer.render(scene, cam); document.getElementById("n").textContent = ` ${renderer.info.render.calls} chamadas · ${(renderer.info.render.triangles / 1000).toFixed(1)}k triângulos`; });
+window.__demo = { cam, ctl, scene, renderer, THREE };
+</script></body></html>
