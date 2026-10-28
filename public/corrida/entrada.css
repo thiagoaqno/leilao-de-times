@@ -2,9 +2,9 @@
 :root{--bg:#080b11;--panel:#121923;--panel2:#19222e;--line:#ffffff29;--text:#f4f5f5;--muted:#b7c0cb;--yellow:#e10600;--green:#39c988;--red:#ff6060;--display:"Barlow Condensed",Impact,sans-serif;--body:Manrope,system-ui,sans-serif}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
-html,body{margin:0;min-height:100%;color:var(--text);font:14px/1.5 var(--body);background:var(--bg)}
-body::before{content:"";position:fixed;inset:-12px;z-index:0;background:linear-gradient(90deg,#070b15d9 0%,#07101bb8 48%,#07101bea 100%),url('/corrida/fundo-monaco.jpg') center 56%/cover no-repeat;filter:blur(5px);pointer-events:none}
-body::after{content:"";position:fixed;inset:0;z-index:0;background:linear-gradient(0deg,#070b13 0%,transparent 62%);pointer-events:none}
+html,body{margin:0;min-height:100%;color:var(--text);font:14px/1.5 var(--body);background:var(--bg);color-scheme:dark}
+body::before{content:"";position:fixed;inset:-12px;z-index:0;background:url('/corrida/fundo-carreira-entrada.webp') center 56%/cover no-repeat;filter:blur(6px) brightness(.7) saturate(.75);pointer-events:none}
+body::after{content:"";position:fixed;inset:0;z-index:0;background:linear-gradient(90deg,#070b13b8 0%,#070b1378 50%,#070b139a 100%),linear-gradient(0deg,#070b13 0%,transparent 55%);pointer-events:none}
 h1,h2,h3{font-family:var(--display);font-weight:800;line-height:.96;margin:0;text-transform:uppercase;font-style:italic;letter-spacing:.015em}
 p{margin:0}
 .hidden{display:none!important}

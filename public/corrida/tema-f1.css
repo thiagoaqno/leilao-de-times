@@ -1,18 +1,18 @@
-/* Tema base da Carreira F1: garagem/estúdio claro, abas em caixa alta com a ativa destacada, cartões escuros translúcidos com
+/* Tema base da Carreira F1: paddock escuro com foto suave, abas em caixa alta com a ativa destacada, cartões escuros com
    borda e detalhe vermelho (a cor da equipe em --eq), letras condensadas. Usado por todas as telas da carreira (sede, temporada em
    grupo, sala/box, GP). Vem depois de entrada.css e antes de sede.css e garagem.css. Sem marca nem logo de jogo nenhum. */
-:root{--f1-vm:#e10600;--f1-pt:#0b0c10;--f1-cz:#1a1c22;--f1-cz2:#262932;--f1-lin:#ffffff22;--corte:10px;--eq:#e10600;--tinta:#14161c;--tinta2:#4a525e;--estudio:#e9ecf0;--estudio2:#c9ced6}
+:root{--f1-vm:#e10600;--f1-pt:#0b0c10;--f1-cz:#1a1c22;--f1-cz2:#262932;--f1-lin:#ffffff22;--corte:10px;--eq:#e10600;--tinta:#f4f5f5;--tinta2:#b9c4d0;--estudio:#080b11;--estudio2:#111a25}
 html,body{background:var(--estudio)}body{color:var(--tinta)}
-body::before{background:radial-gradient(ellipse 80% 55% at 50% 38%,#fff 0,#f3f5f8 45%,transparent 75%),linear-gradient(180deg,#eef0f4 0,#e1e5ea 62%,#bcc2cb 62.2%,#d3d7de 100%);filter:none}
-body::after{display:none}
+body::before{background:url('/corrida/fundo-carreira-entrada.webp') center 56%/cover no-repeat;filter:blur(6px) brightness(.7) saturate(.75)}
+body::after{display:block}
 /* cartões: escuros, translúcidos, com a borda e o filete da equipe */
 .glass,.placa,.folha,.sede .bloco,.painelgp,.metricas,.calendario,.fim-noite,.modal .box,.eq-carta,.times .time{color:#f4f5f5;background:linear-gradient(180deg,#14161cf0,#0b0c10f0);border:1px solid var(--f1-lin);border-top:3px solid var(--eq,var(--f1-vm));border-radius:0;box-shadow:0 14px 34px #0b0c1030;backdrop-filter:none;-webkit-backdrop-filter:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
-/* texto solto sobre o fundo claro */
+/* texto solto sobre o fundo escuro */
 .tovila,.utilbar,.roomtag .code,.roomtag .lbl,.hero h2,.hero h2 em,.hero p.lead,.hero-kicker,.hero-links a,.foto-credito,.equipes-faixa>span,.equipes-faixa,.sede>.abertura>section:first-child,.abertura h1,.abertura .explica,.taglinha,.cr-id h1,.cr-id small,.cabecalho,.cabecalho small,.identidade h1,.recuperacao,.sede>.muted,.hero h2 strong,.abertura h1 span{color:var(--tinta);text-shadow:none}
-.hero h2 strong,.abertura h1 span{color:var(--f1-vm)}.tovila::first-letter{color:var(--f1-vm)}.hero p.lead,.abertura .explica,.foto-credito,.cr-id small,.cabecalho small,.recuperacao,.taglinha{color:var(--tinta2)}
-.equipes-faixa{border-block-color:#14161c30}.hero-links a{border-bottom-color:var(--f1-vm)}.hero-kicker::before{background:var(--f1-vm)}
-.tovila:hover,.hero-links a:hover{color:var(--f1-vm)}
-.err{color:#b3261e}
+.hero h2 strong,.abertura h1 span{color:#ff635e}.tovila::first-letter{color:#ff7772}.hero p.lead,.abertura .explica,.foto-credito,.cr-id small,.cabecalho small,.recuperacao,.taglinha{color:var(--tinta2)}
+.equipes-faixa{border-block-color:#ffffff30}.hero-links a{border-bottom-color:var(--f1-vm)}.hero-kicker::before{background:var(--f1-vm)}
+.tovila:hover,.hero-links a:hover{color:#ff7772}
+.err{color:#ff8580}
 /* barra de abas: caixa alta, itálico condensado, a ativa com o filete vermelho embaixo */
 .abas{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}.abas::-webkit-scrollbar{display:none}
 .abas{border-bottom-color:#14161c30}
@@ -27,5 +27,5 @@ html,body{overflow-x:clip}
 @media (max-width:620px){.wrap,.sede{padding-left:16px;padding-right:16px}.bar-in{padding-inline:16px}}
 /* botão do fone (rádio do engenheiro) */
 [data-radio-botao]{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;padding:0;flex:none;border-radius:0}[data-radio-botao].mudo{opacity:.6}
-.bar button,.utilbar button.ghost{color:var(--tinta);background:#14161c12;border:1px solid #14161c40}
+.bar button,.utilbar button.ghost{color:#f4f5f5;background:#ffffff12;border:1px solid #ffffff38}
 .vol{accent-color:var(--f1-vm)}
