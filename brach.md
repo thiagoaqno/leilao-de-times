@@ -1,26 +1,25 @@
-# Corrida: Bahrein 2, o salto de riqueza no cenário de Sakhir
+# Corrida: cenário de Silverstone (aeródromo inglês, The Wing, campos e camping)
 
-Segundo passo do Bahrein (o primeiro foi o #350). O Thiago achou o resultado "singelo", então o cenário foi refeito com mais densidade e fidelidade, guiado pelas fotos de referência (torre de anéis, reta de largada à noite, aérea do paddock e o modelo low poly dos boxes com cobertura em velas). Só aparência: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira ficaram intocados. O kit 2 (#351) já está no main, então este PR não depende de mais nada.
+**Usa o kit 2 (#351), já mergeado no main; este branch inclui o merge do main.** Só aparência: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira não foram tocados.
 
-## O que entrou (peças exclusivas em `public/corrida/kit/bahrein/`)
-- `boxes.js`: prédio dos boxes de dois andares cor de areia rosada com portas de garagem (testeira na cor de cada equipe), laje branca com faixa vermelha, andar de vidro e, por cima do prédio inteiro, a cobertura em **velas brancas** enfileiradas (3 fileiras) com os mastros de treliça.
-- `torre.js`: a Torre de controle de **anéis azuis** (pódio de pedra, saguão, nove andares de vidro azul com laje mais larga no meio, tambor rosado e coroa de velas com a bandeira do Bahrein), posta no pé do prédio, do lado de dentro da curva 15, como nas fotos.
-- `praca.js`: praça de pedra clara em volta da torre, gramados, tendas brancas do paddock com mesas vermelhas, **heliporto**, dois **estacionamentos** com carros, e tamareiras de verdade (tronco cônico e copa de 9 folhas) em fileiras ao longo da reta, em volta da praça e entre as tendas.
-- `luz.js`: torres de refletores altíssimas (130 de mastro, cabeça com dois painéis) e, **só de noite**, o brilho dos painéis e a poça de luz no asfalto debaixo de cada uma.
-- `escape.js`: o asfalto de escape em **mosaico de triângulos azuis** (com uns verdes e brancos) e o muro de pneus por fora, com pilhas de cilindros de 8 lados (cerca de 100 triângulos por pilha, no lugar dos 430 dos toros do kit).
-- `deserto.js`: dunas arredondadas e **dunas em degraus** (3 ou 4 terraços de tons diferentes).
-- `reta.js`: mureta branca contínua com a faixa vermelha e a publicidade na reta de largada, **pórtico branco de treliça** atravessando a pista com a faixa "Gulf Air / Bahrain Grand Prix", e a cobertura em velas da arquibancada principal com a fileira de lâmpadas quentes embaixo (a estrutura dourada iluminada da foto 7).
-- `base.js`: moldura que acompanha a reta, pintor de caixas/cilindros/velas, regiões (uma malha por material e por região), piso que segue o relevo e a luz da noite (janelas, lâmpadas e poças acendem quando a pista está de noite, por um laço em `tr.animarPista`).
-- `bahrein.js` e `gps/bahrein.js` agora só orquestram; a refinaria com o flare ficou onde estava. README do kit e `CLAUDE.md` com uma frase.
+## O que entrou
+- `public/corrida/gps/silverstone.js`: configuração do GP. Arquibancadas de curva do kit em 12 trechos (Club, Abbey, Farm, a Arena por dentro de Village e The Loop, Aintree, Brooklands e Luffield, Woodcote, Copse, Maggotts e Becketts, Chapel, Stowe, Vale), `escape` de brita em Copse e Stowe e asfalto pintado, placas de frenagem, 3 passarelas de pedestres com faixa "SILVERSTONE", torcida de branco, azul e vermelho.
+- `public/corrida/silverstone.js` (novo): o cenário que só Silverstone tem.
+  - **The Wing**: garagens com portas abertas e fechadas, laje de vidro e frisão azul "SILVERSTONE", vidro inclinado do Paddock Club e o teto em asa que sobe para trás com os painéis dos patrocinadores; atrás, a torre da direção de prova com a Union Jack, o piso do paddock, tendas, motorhomes e carretas das equipes.
+  - **Tribunas cobertas** do kit 2 (`tribunaCoberta`) nas retas: a principal em frente ao Wing, a Wellington Straight, a reta de Copse, a de Maggotts e a Hangar Straight, com torcida e bandeiras Union Jack em cima de todas as arquibancadas (1 `InstancedMesh` de hastes e 1 de bandeiras).
+  - **Aeródromo da RAF**: três pistas de pouso paralelas às retas (recortadas onde cruzam pista, escape e arquibancada), dois hangares em arco com porta de correr e barracas Nissen ao lado da Hangar Straight, a torre de controle de tijolo com cabine de vidro.
+  - **Pórticos** de patrocínio (Silverstone, Pirelli, Rolex, Heineken) sobre as retas, perpendiculares à pista; faixa "British Grand Prix" no pórtico da largada; 2 telões de LED; **placas com o nome e o número de cada curva** (Abbey a Club, uma textura e uma malha).
+  - **Inglaterra em volta**: patchwork de campos (cores e fileiras), sebes, cinturão de árvores e bosques, aldeias de casinhas com a igreja de torre quadrada, turbinas de vento ao longe e 4 campings (barracas em cúpula, trailers, carros, mastros com a Union Jack e a tenda da fan zone).
+- `public/corrida/kit/silverstone/pecas.js` (novo): `hangarRAF`, `torreRAF`, `torreCorrida`, `igreja`, `turbina`, `telao`, `bandeiraUK` e `prismaGeo`. Montados com o `Montador` do kit 2 (cor por vértice, canvas pequeno só em letreiro e bandeira).
+- `kit/README.md` (uma linha) e a linha da Corrida no `CLAUDE.md`.
 
-## Desempenho
-Medido com `tests/ajuda-cena/medir.mjs`: na vista do jogo, 257 mil triângulos (eram 302 mil) e 146 chamadas de desenho (eram 139). O que pagou a riqueza nova foi trocar o muro de pneus (cerca de 100 mil triângulos) por pilhas baratas. Tudo repetido é InstancedMesh ou Montador por região (cor por vértice, sem luz dinâmica nova).
+## Referências
+Mapa e descrição do circuito (Wikipédia, "Silverstone Circuit"): a antiga base RAF Silverstone (1943-46) com as três pistas de pouso em triângulo, a Hamilton Straight para Abbey, a Hangar Straight de uns 770 m até Stowe, o complexo The Wing de 2011 ao longo da reta dos boxes, o Arena (Village, The Loop, Aintree). Os desenhos são procedurais; nenhuma imagem ou modelo foi baixado.
 
 ## Conferido
-- Conferência de invasão (cena montada no Node) do Bahrein: 0 peças dentro da pista (os pés do pórtico e as poças de luz foram ajustados).
-- No navegador (Chrome com WebGL por software), de dia e de noite: reta de largada, prédio dos boxes com as velas, pórtico atravessando a pista, torre, paddock, curva 1 com o mosaico, miolo e reta de trás. Console sem erros.
+- No navegador (porta 3363, regras de F1), percorrendo a volta: pórtico de largada perpendicular, The Wing, tribunas, hangares, placas das curvas, pórticos e passarelas, camping e visão de cima do circuito inteiro. Sem erro no console.
+- `tests/ajuda-cena/invasao.mjs` em Silverstone: 0 peças dentro da pista. `medir.mjs`: ~185 chamadas de desenho com sombra na vista do jogo (era ~139), ~410 mil triângulos na vista (era ~313 mil; Melbourne tem 356 mil) e 348 malhas.
+- `node --test tests/corrida*.test.js` (uma vez, no fim): 7 falhas, as 6 antigas conhecidas (pneus/estratégia, ritmo da IA, rádio) e a do "servidor de verdade" (acks e snaps), que não tem a ver com cenário e vale rodar de novo; nenhuma de pista, invasão ou desempenho.
 
 ## Ficou de fora
-Fotos e modelos não foram baixados: tudo é código procedural, guiado pelas fotos do Thiago. A arquibancada da curva 1 continua a do kit.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Árvores e campos são estáticos (sem vento) e a torcida das tribunas é só geometria baixa; os motorhomes do paddock só se veem de cima ou de longe, escondidos atrás do Wing.
