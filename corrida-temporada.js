@@ -97,6 +97,12 @@ module.exports = function attachTemporadaCorrida(io, corrida) {
           if (bd.salvarTemporadaCorrida(fresco.id, fresco.dados, indice)) {
             ativos.delete(fresco.id); avisar(fresco);
           }
+        }, (_, montagem) => {
+          const fresco = bd.temporadaCorridaPorId(linha.id);
+          if (!fresco || fresco.dados.gp !== indice || fresco.dados.ano !== ano) throw Error("Esta etapa da carreira não está mais aberta.");
+          Regras.aplicarMontagem(fresco.dados, { montagem });
+          if (!bd.salvarTemporadaCorrida(fresco.id, fresco.dados, indice)) throw Error("Não foi possível salvar o acerto do carro.");
+          avisar(fresco);
         });
         ativos.set(linha.id, acesso);
         avisar(linha); enviar({ ok: true, acesso }, resposta);

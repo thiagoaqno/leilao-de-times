@@ -204,10 +204,15 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
       if (!atual || corrida.salaGP(atual.code)?.phase === "results") {
         ativos.delete(sala.codigo);
         const grid = G.gridDoGP(sala), indice = sala.gp, ano = sala.ano;
-        const montagens = {}, bonusBox = {};
-        for (const [eq, t] of Object.entries(sala.equipes)) { montagens[eq] = t.montagem; bonusBox[eq] = t.engenheiros.mecanico * 0.5 + t.engenheiros.estrategista * 0.25; }
+        const montagens = {}, bonusMontagem = {}, bonusBox = {};
+        for (const [eq, t] of Object.entries(sala.equipes)) { montagens[eq] = t.montagem; bonusMontagem[eq] = t.bonus; bonusBox[eq] = t.engenheiros.mecanico * 0.5 + t.engenheiros.estrategista * 0.25; }
         const acesso = corrida.abrirGPGrupo({ salaTemporada: sala.codigo, pista: sala.calendario[sala.gp].pista, voltas: sala.opcoes.voltas, nivel: sala.opcoes.nivel,
-          semente: `${sala.semente}:${ano}:${indice}`, pessoas: grid.humanos, robos: grid.robos, montagens, bonusBox }, aoTerminarGP(sala, indice, ano));
+          semente: `${sala.semente}:${ano}:${indice}`, pessoas: grid.humanos, robos: grid.robos, montagens, bonusMontagem, bonusBox,
+          aoMontar: (p, montagem) => {
+            if (sala.gp !== indice || sala.ano !== ano) throw Error("Esta etapa da carreira não está mais aberta.");
+            G.montar(sala, p.pessoa, montagem);
+            guardar(sala); avisar(sala);
+          } }, aoTerminarGP(sala, indice, ano));
         ativos.set(sala.codigo, { code: acesso.code, pessoas: acesso.pessoas, espectador: acesso.espectador, indice, ano });
       }
       // cada tela vai para a pista sozinha (quem estava fora da sede entra pelo botão "Entrar no GP")

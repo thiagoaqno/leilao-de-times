@@ -59,7 +59,7 @@ module.exports = function attachCorrida(io) {
   function publicState(room) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null, ...(room.temporada ? { temporada: true, ...(room.salaTemporada ? { salaTemporada: room.salaTemporada } : {}) } : {}),
-      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { montagens: room.montagens || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
+      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { montagens: room.montagens || {}, bonusMontagem: room.bonusMontagem || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
       players: room.order.map((id) => {
         const p = room.players[id];
         return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, jogos: room.config.regras === "f1" ? F1.jogosRestantes(p) : null, noBox: !!p.box, quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
@@ -303,13 +303,13 @@ module.exports = function attachCorrida(io) {
   }
 
   // ---------- conexões ----------
-  function abrirGP(temporada, aoTerminarGP) {
+  function abrirGP(temporada, aoTerminarGP, aoMontar) {
     const gp = temporada.calendario[temporada.gp];
     if (!gp) throw Error("A temporada terminou.");
     const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: gp.pista, voltas: temporada.voltas, robos: 19, classificacao: "completa", nivel: "medio" }),
       players: {}, order: [], finishOrder: [], log: [], t: Date.now(), privada: true, temporada: true, equipeTemporada: temporada.equipe,
       sementeFixa: `${temporada.semente}:${temporada.ano}:${temporada.gp}`, pilotosTemporada: require("./public/corrida/temporada/regras.js").pilotosNoGrid(temporada),
-      montagens: { [temporada.equipe]: temporada.montagem }, bonusBox: (temporada.engenheiros.mecanico * 0.5 + temporada.engenheiros.estrategista * 0.25), aoTerminarGP };
+      montagens: { [temporada.equipe]: temporada.montagem }, bonusMontagem: { [temporada.equipe]: temporada.bonus }, bonusBox: (temporada.engenheiros.mecanico * 0.5 + temporada.engenheiros.estrategista * 0.25), aoTerminarGP, aoMontar };
     const eq = Pilotos.EQUIPES[temporada.equipe], id = rid(6), token = rid();
     room.players[id] = { id, name: temporada.nome, token, pawn: "🏎️", color: eq.cor, skin: "padrao", car: "equilibrado", equipe: temporada.equipe,
       mods: { ...T.MODS_PADRAO, pintura: eq.pintura }, pneu: F1.COMPOSTO_PADRAO, grid: 0, laps: 0, sector: T.SECTORS - 1,
@@ -325,7 +325,7 @@ module.exports = function attachCorrida(io) {
     if (!gp) throw Error("Pista inválida.");
     const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: g.pista, voltas: g.voltas, robos: g.robos.length, classificacao: "completa", nivel: g.nivel }),
       players: {}, order: [], finishOrder: [], log: [], t: Date.now(), privada: true, temporada: true, grupo: true, salaTemporada: g.salaTemporada || null, espectadores: new Set(),
-      sementeFixa: g.semente, pilotosTemporada: g.robos, montagens: g.montagens || {}, bonusBoxEquipes: g.bonusBox || {}, aoTerminarGP };
+      sementeFixa: g.semente, pilotosTemporada: g.robos, montagens: g.montagens || {}, bonusMontagem: g.bonusMontagem || {}, bonusBoxEquipes: g.bonusBox || {}, aoTerminarGP, aoMontar: g.aoMontar };
     const pessoas = {};
     for (const h of g.pessoas) {
       const eq = Pilotos.EQUIPES[h.equipe], id = rid(6), token = rid();
@@ -407,7 +407,7 @@ module.exports = function attachCorrida(io) {
       const { room, me } = ctx();
       if (!room) return fail(cb, "Você não está numa sala.");
       const type = data.type, isHost = me && room.host === me.id;
-      if (room.temporada && !["qpronto", "confirmarLargada", "box", "batida", "sector", "pneu"].includes(type)) return fail(cb, "Este GP é controlado pela sede da temporada.");
+      if (room.temporada && !["qpronto", "confirmarLargada", "montagemGrid", "box", "batida", "sector", "pneu"].includes(type)) return fail(cb, "Este GP é controlado pela sede da temporada.");
       const err = (() => {
         if (type === "color") {
           if (!me || room.phase === "race") return "Só dá para trocar fora da corrida.";
@@ -495,6 +495,17 @@ module.exports = function attachCorrida(io) {
         if (type === "confirmarLargada") {
           if (room.phase !== "quali" || !room.quali || !room.quali.grid) return "ignorado";
           Quali.confirmarLargada(room, me, classificacao); return;
+        }
+        if (type === "montagemGrid") {
+          if (!room.temporada || room.phase !== "quali" || !room.quali?.pausaAte || !(room.quali.grid || room.quali.nome === "Q2")) return "A montagem só pode mudar após o Q2 ou no grid final da carreira.";
+          if (room.quali.confirmados.has(me.id)) return "Você já confirmou a largada.";
+          if (!me.equipe || !room.montagens?.[me.equipe]) return "Equipe inválida.";
+          const v = Equipes.validar(me.equipe, data.montagem, room.bonusMontagem?.[me.equipe] || 0);
+          if (!v.ok) return v.erro;
+          try { if (room.aoMontar) room.aoMontar(me, v.montagem); } catch (e) { return e.message || "Não foi possível salvar a montagem."; }
+          room.montagens[me.equipe] = v.montagem;
+          atribuirCarros(room);
+          return;
         }
         if (type === "box") { // regras de F1: entrou no corredor dos boxes (fase "entra") ou saiu dele com o pneu novo (fase "sai")
           if (room.config.regras !== "f1" || room.phase !== "race" || me.finish != null || !corredorDe(room)) return "ignorado";

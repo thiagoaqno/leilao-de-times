@@ -1,5 +1,5 @@
 // Sede da temporada: a tela é refeita a partir do save recebido, nunca de números guardados no navegador.
-const Pilotos = window.F1Pilotos, Equipes = window.F1Equipes, Regras = window.F1Temporada, Pecas = window.F1Pecas;
+const Pilotos = window.F1Pilotos, Equipes = window.F1Equipes, Regras = window.F1Temporada;
 const socket = io("/corrida-temporada"), app = document.getElementById("app"), aviso = document.getElementById("aviso");
 const chave = "corrida:temporada:token";
 let token = localStorage.getItem(chave), estado = null, codigo = null, ocupado = false;
@@ -39,8 +39,6 @@ function tabela(rows, tipo, meu) {
   if (meu && !lista.some((x) => x.id === meu)) lista.push(rows.find((x) => x.id === meu));
   return `<table class="placar"><thead><tr><th>Pos.</th><th>${tipo}</th><th>Pontos</th></tr></thead><tbody>${lista.filter(Boolean).map((r) => `<tr class="${r.id === meu ? "eu" : ""}"><td>${rows.indexOf(r) + 1}</td><td><i class="faixa" style="--c:${h(equipe(r.equipe || r.id)?.cor || "#fff")}"></i><b>${h(r.nome)}</b></td><td><b>${r.pontos}</b></td></tr>`).join("")}</tbody></table>`;
 }
-// A escolha de peças do save: a guardada, ou a conversão dos níveis de um save antigo (sem `pecas`)
-const pecasDoSave = (s) => Pecas.pecasDe(s.equipe, s.montagem, s.pecas, s.bonus);
 function renderizar() {
   if (!estado?.dados) return telaInicial();
   const G = window.F1Garagem, s = estado.dados, eq = equipe(s.equipe), t = estado.tabelas || Regras.tabelas(s), terminou = s.gp >= s.tamanho;
@@ -52,10 +50,10 @@ function renderizar() {
   const botao = `<button class="primary grande btn-continuar" id="gp">${terminou ? "Próximo ano" : ativo ? "Voltar ao GP" : "Continuar"}</button>`;
   const hero = `<div class="garagem-hero">${G.painelEquipe(s.equipe, s.montagem)}
       <section class="cr-centro corte">${G.palcoSlot(s.equipe)}<div class="cr-gp"><span class="etapa-rot">${terminou ? "Bandeirada final" : `Etapa ${s.gp + 1} de ${s.tamanho}`}</span><h2>${terminou ? "Temporada concluída" : `GP de ${h(prox.nome)}`}</h2><span class="sub">${terminou ? "O próximo ano mantém o caixa e o desenvolvimento." : `${h(prox.pista.toUpperCase())} · classificação + ${s.voltas} voltas · grid de 20 carros`}</span></div></section>
-      ${G.colunaDireita({ titulo: "Calendário", cal: s.calendario, gp: s.gp, rotuloProx: ativo ? "Em curso" : "Próximo", botao, nota: terminou ? "O campeonato está fechado. Confira as tabelas." : ativo ? "O box está aberto: volte ao GP em andamento." : "Acerto pronto? A classificação começa quando você entra na pista." })}</div>
+      ${G.colunaDireita({ titulo: "Calendário", cal: s.calendario, gp: s.gp, rotuloProx: ativo ? "Em curso" : "Próximo", botao, nota: terminou ? "O campeonato está fechado. Confira as tabelas." : ativo ? "O box está aberto: volte ao GP em andamento." : !Equipes.custoDaMontagem(s.montagem) ? "Seu carro ainda está sem pontos. Distribua o orçamento na aba Carro · Pontos antes do GP." : "Acerto pronto? A classificação começa quando você entra na pista." })}</div>
     <div class="cr-cartoes"><div class="cr-cartao"><strong>${s.gp}/${s.tamanho}</strong><small>GPs disputados</small></div><div class="cr-cartao"><strong>${t.pilotos.find((x) => x.id === "voce")?.pontos || 0}</strong><small>Seus pontos</small></div><div class="cr-cartao"><strong>${t.equipes.find((x) => x.id === s.equipe)?.pontos || 0}</strong><small>Pontos da equipe</small></div><div class="cr-cartao"><strong>${dinheiro(s.gasto)}</strong><small>Gastos no ano (teto ${Regras.teto})</small></div></div>`;
-  const carro = `${G.pecasHTML({ equipe: s.equipe, bonus: s.bonus, pecas: pecasDoSave(s), pode: true, aviso: s.pecas ? "" : "Seu carro veio do formato antigo (pontos): mostramos as peças mais parecidas. Ao trocar uma peça, o carro passa a ser montado por elas." })}
-    <section class="bloco"><header><h2>Desenvolvimento</h2><small>${s.bonus}/4 melhorias</small></header><p class="boxnota">O prêmio de cada GP vai para o caixa. Com o dinheiro você amplia o orçamento do carro em um ponto (e cabe uma peça melhor); o acerto vale para os dois carros e segue para a próxima temporada.</p>
+  const carro = `${G.pontosHTML({ equipe: s.equipe, bonus: s.bonus, montagem: s.montagem, pode: !ativo && !terminou, motivo: ativo ? "O GP está aberto: a montagem espera o fim da corrida." : "A temporada acabou." })}
+    <section class="bloco"><header><h2>Desenvolvimento</h2><small>${s.bonus}/4 melhorias</small></header><p class="boxnota">O prêmio de cada GP vai para o caixa. Com o dinheiro você amplia o orçamento do carro em um ponto para distribuir como quiser; o acerto vale para os dois carros e segue para a próxima temporada.</p>
       <div class="row"><button id="desenvolver" ${s.bonus >= 4 || ativo || terminou ? "disabled" : ""}>Desenvolver +1 ponto · ${dinheiro(12 + s.bonus * 6)}</button></div></section>`;
   const classif = `<div class="duas"><section class="bloco"><header><h2>Pilotos</h2><small>Campeonato ${s.ano}</small></header>${tabela(t.pilotos, "Piloto", "voce")}</section><section class="bloco"><header><h2>Construtores</h2><small>Campeonato ${s.ano}</small></header>${tabela(t.equipes, "Equipe", s.equipe)}</section></div>
     ${ultimo ? `<section class="bloco ultimo"><header><h2>Último GP · ${h(s.calendario[ultimo.gp].nome)}</h2><small>${h(ultimo.pista)}</small></header><div class="duas"><table class="placar"><thead><tr><th>Pos.</th><th>Piloto</th><th>Pontos</th></tr></thead><tbody>${ultimo.linhas.slice().sort((a, b) => a.pos - b.pos).slice(0, 10).map((r) => `<tr class="${r.piloto === "voce" ? "eu" : ""}"><td>${r.dnf ? "DNF" : r.nc ? "NC" : r.pos}</td><td><i class="faixa" style="--c:${h(equipe(r.equipe)?.cor || "#fff")}"></i><b>${h(r.piloto === "voce" ? s.nome : piloto(r.piloto)?.nome || r.piloto)}</b></td><td>${r.pontos}</td></tr>`).join("")}</tbody></table><div class="fecho"><strong>Seu resultado: ${h(ultimo.linhas.find((r) => r.piloto === "voce")?.dnf ? "DNF" : `${ultimo.linhas.find((r) => r.piloto === "voce")?.pos}º`)}</strong><p>Patrocínio ${dinheiro(ultimo.financas?.patrocinio)} · prêmio ${dinheiro(ultimo.financas?.premio)} · salários ${dinheiro(ultimo.financas?.salarios)}.</p></div></div></section>` : ""}`;
@@ -121,7 +119,7 @@ app.addEventListener("click", async (e) => {
   const s = estado.dados;
   if (b.id === "gp") { if (s.gp >= s.tamanho) return pedir("proximaTemporada"); const r = await pedir("iniciarGP"); if (r?.ok) irAoGP(r.acesso); }
   if (b.dataset.aba) { window.F1Garagem.definirAba(b.dataset.aba); return renderizar(); }
-  const nova = window.F1Garagem.cliquePeca(b, pecasDoSave(s)); if (nova) { const r = await pedir("montagem", { pecas: nova }); if (r && r.ok && window.Radio) window.Radio.dizer("pecas"); }
+  const nova = window.F1Garagem.cliquePonto(b, s.montagem, s.equipe, s.bonus); if (nova) { const r = await pedir("montagem", { montagem: nova }); if (r && r.ok && window.Radio) window.Radio.dizer("pecas"); }
   if (b.id === "desenvolver") await pedir("desenvolver");
   if (b.id === "contratarPiloto") await pedir("piloto", { id: document.getElementById("piloto2").value });
   if (b.dataset.engenheiro) await pedir("engenheiro", { area: b.dataset.engenheiro, nivel: document.getElementById(b.dataset.engenheiro).value });
