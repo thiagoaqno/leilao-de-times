@@ -1,23 +1,15 @@
-# Corrida: Melbourne 2, o segundo passo (riqueza e fidelidade)
+# Corrida: luz de verdade nos refletores do Bahrein
 
-**Depende do #351 (kit 2), que já está no main: este PR já inclui o merge do main.** O primeiro passo (#349) refez o básico; aqui o objetivo é um salto claro de densidade, a partir das fotos de referência (curva lotada com alambrado e grama listrada, reta de largada com a arquibancada de aço e os pórticos azuis, e as aéreas com o lago, o skyline e os telhados azul e vermelho). Só cenário: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira intocados.
+No Bahrein à noite, a "luz" das torres de refletores eram placas aditivas de 300 de diâmetro flutuando 2,5 acima do asfalto (`kit/bahrein/luz.js`): clareavam a pista a ponto de não dar para ver o asfalto, e as rodas atravessavam as placas.
 
-## O que entrou
-- **Faixa magenta** da entrada dos boxes (pintura sobre o asfalto do corredor, com o AUSTRALIAN GRAND PRIX em branco; só aparece junto com o corredor, nas regras de F1).
-- **Alambrado alto** de aço com a ponta inclinada para a pista e a **mureta contínua de publicidade** (faixas Rolex, Heineken, Pirelli, Aramco, DHL, F1, AWS) nos dois lados, menos no corredor dos boxes (`kit/melbourne/cerca.js`, umas 6 chamadas para a volta toda).
-- **Grama listrada** (listras claras e escuras paralelas à pista, seguindo o relevo; `kit/melbourne/grama.js`) e grama mais clara e quente.
-- **Reta principal com o kit 2** (`kit/melbourne/complexo.js`): arquibancada longa de aço com cobertura escura em frente aos boxes (`tribunaCoberta` em fila), complexo dos boxes com garagens, faixa de vidro e arquibancadas de **cobertura azul e vermelha** alternadas, e **tendas brancas do paddock** (`tendaPaddock`).
-- **Pórticos azuis** "Australia ▼ MELBOURNE ▼ Australia" atravessando a pista, agora altos (`portico` do kit 2, três na reta).
-- **Skyline visível da pista** (`kit/melbourne/cidade.js`): ~150 arranha-céus com janelas, Eureka Tower de coroa dourada e faixa vermelha, Rialto, Australia 108. Antes sumia na neblina e atrás das árvores: agora sem neblina do jogo (bruma pintada nos vértices) e o parque deixou de ser uma parede (bosques soltos em moitas, `kit/melbourne/arvores.js`, e as árvores pálidas soltas de longe saíram).
-- **Lago** com calçada de saibro, veleiros e fileira de árvores na margem; torcida de camisa laranja e vermelha; arquibancadas das curvas em assentos escuros.
-- Mudanças aditivas no kit: `portico({ textura })`, `ambienteGP({ cerca: false })` e uma linha no `kit/README.md`. `LOOK.melbourne.ground` em `cena.js` mais claro.
+## O que mudou
+- As placas de luz no chão saíram. No lugar entram `SpotLight` de verdade: um punhado fixo (6) que, a cada quadro, vai para as torres mais perto do carro e aponta para o mesmo lugar do asfalto onde a placa ficava. A luz cai no asfalto e nos carros, sem objeto nenhum por cima.
+- O número de luzes não muda (de dia ficam apagadas, intensidade 0), então trocar dia e noite não recompila os materiais. A torre que está para sair da lista já chega apagada (`FAIXA`), então a troca não pisca.
+- `ligarNoite` (`kit/bahrein/base.js`) ganhou `quadro`: funções que rodam em todo quadro (com a noite e o foco), além da troca de dia e noite.
+- Os mastros, as cabeças, os painéis de lâmpadas e o halo em volta deles continuam iguais.
 
 ## Conferido
-- No navegador (porta 3364, Playwright com câmera livre): reta com os três pórticos e a faixa magenta, boxes e paddock, curvas 1 e 6, margem do lago e skyline vistos da pista, aérea. Console sem erros nas conferências finais.
-- Medido no Node: vista da câmera 173 chamadas e 383 mil triângulos (antes 167 e 356 mil); 375 malhas; conferência de invasão passou em todas as pistas.
-- Por pedido, **não rodei a bateria de testes** (`tests/corrida*`).
-
-## Ficou de fora
-Telões, ponte de pedestres sobre o lago e roda-gigante do fan zone. Fontes das fotos: as do Thiago; textos sobre as arquibancadas de Albert Park (f1experiences, thef1spectator).
+- `node --test tests/corrida-pistas-desempenho.test.js tests/corrida-pistas-invasao.test.js tests/corrida-pistas-volta.test.js`: 76 de 76.
+- Não conferi no navegador, a pedido. A força da luz (`FORCA`, 230) pode precisar de ajuste depois de ver na pista.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

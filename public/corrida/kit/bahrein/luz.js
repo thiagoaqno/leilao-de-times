@@ -1,10 +1,15 @@
 // Bahrein — a corrida noturna: as torres de refletores altíssimas (mastro cônico, uma cabeça com dois painéis de lâmpadas virada
-// para a pista) e, só de noite, o brilho dos painéis e as poças de luz no asfalto debaixo de cada uma. Mastros, cabeças, painéis,
-// brilhos e poças são 5 InstancedMesh para a pista inteira. Cada torre só nasce onde `livre` e `ocupado` deixam.
+// para a pista) e, só de noite, o brilho dos painéis e a luz de verdade no asfalto. Mastros, cabeças, painéis e brilhos são 4
+// InstancedMesh para a pista inteira. Cada torre só nasce onde `livre` e `ocupado` deixam.
 import * as THREE from "three";
 import { canvasTex, M } from "../../cena.js";
 import { livre, ocupado } from "../comum.js";
-import { soDeNoite } from "./base.js";
+import { luzDaNoite, soDeNoite } from "./base.js";
+
+// A luz no chão é SpotLight de verdade (ilumina o asfalto e os carros, que passam por dentro dela), não uma placa clara por cima.
+// Uma luz por torre seria caro demais: são LUZES fixas (mudar o número de luzes recompila todos os materiais), que a cada quadro
+// vão para as torres mais perto do carro. A que está para sair da lista já chega apagada (FAIXA), então a troca não pisca.
+const LUZES = 6, FORCA = 230, FAIXA = 160, ALCANCE = 560;
 
 export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0, ate = 1 } = {}) {
   const { pts, n, W } = tr, lat = W / 2 + recuo, lista = [], ultimo = { 1: -1e9, "-1": -1e9 };
@@ -21,31 +26,48 @@ export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0,
     for (let a = 0; a < 4; a++) for (let b = 0; b < 8; b++) { const g = c.createRadialGradient(12 + b * 24, 12 + a * 24, 1, 12 + b * 24, 12 + a * 24, 11); g.addColorStop(0, "#ffffff"); g.addColorStop(0.5, "#fff3cf"); g.addColorStop(1, "#c9b27a"); c.fillStyle = g; c.beginPath(); c.arc(12 + b * 24, 12 + a * 24, 10, 0, 7); c.fill(); }
   }, false);
   const brilho = canvasTex(64, 64, (c, w, h) => { const g = c.createRadialGradient(32, 32, 2, 32, 32, 32); g.addColorStop(0, "rgba(255,244,214,0.95)"); g.addColorStop(0.35, "rgba(255,232,170,0.4)"); g.addColorStop(1, "rgba(255,220,150,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, false);
-  const poca = canvasTex(64, 64, (c, w, h) => { const g = c.createRadialGradient(32, 32, 1, 32, 32, 32); g.addColorStop(0, "rgba(255,236,190,0.5)"); g.addColorStop(0.5, "rgba(255,226,160,0.2)"); g.addColorStop(1, "rgba(255,220,150,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, false);
   const aditivo = (map, o = {}) => new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, ...o });
   const mastroGeo = new THREE.CylinderGeometry(1.3, 2.7, alto, 8); mastroGeo.translate(0, alto / 2, 0);
-  const cabecaGeo = new THREE.BoxGeometry(56, 16, 2.4), painelGeo = new THREE.PlaneGeometry(25, 12.5), brilhoGeo = new THREE.PlaneGeometry(64, 34), pocaGeo = new THREE.PlaneGeometry(1, 1); pocaGeo.rotateX(-Math.PI / 2);
+  const cabecaGeo = new THREE.BoxGeometry(56, 16, 2.4), painelGeo = new THREE.PlaneGeometry(25, 12.5), brilhoGeo = new THREE.PlaneGeometry(64, 34);
   const k = lista.length;
   const mastros = new THREE.InstancedMesh(mastroGeo, M(0xc9cdd1, { roughness: 0.5, metalness: 0.4 }), k);
   const cabecas = new THREE.InstancedMesh(cabecaGeo, M(0x2a2d33, { roughness: 0.5, metalness: 0.4 }), k);
   const paineis = new THREE.InstancedMesh(painelGeo, new THREE.MeshBasicMaterial({ map: lampadas }), k * 2);
-  const brilhos = new THREE.InstancedMesh(brilhoGeo, aditivo(brilho), k * 2), pocas = new THREE.InstancedMesh(pocaGeo, aditivo(poca, { polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 }), k);
+  const brilhos = new THREE.InstancedMesh(brilhoGeo, aditivo(brilho), k * 2);
   const o = new THREE.Object3D(), cab = new THREE.Matrix4(), local = new THREE.Matrix4();
   o.rotation.order = "YXZ";
-  lista.forEach(({ x, y, z, s, nx, ny, ph }, j) => {
+  lista.forEach((t, j) => {
+    const { x, y, z, s, nx, ny, ph } = t;
     o.position.set(x, y, z); o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); o.updateMatrix(); mastros.setMatrixAt(j, o.matrix);
     o.position.set(x, y + alto + 6, z); o.rotation.set(0.3, Math.atan2(-nx * s, -ny * s), 0); o.updateMatrix(); cab.copy(o.matrix); cabecas.setMatrixAt(j, cab);
     [-1, 1].forEach((d, e) => {
       paineis.setMatrixAt(j * 2 + e, cab.clone().multiply(local.makeTranslation(d * 13.6, 0, 1.4)));
       brilhos.setMatrixAt(j * 2 + e, cab.clone().multiply(local.makeTranslation(d * 13.6, 0, 3.2)));
     });
-    // a poça de luz: no asfalto, a uns 45 do eixo da pista (para o lado de dentro), 300 de diâmetro
-    o.position.set(x - nx * s * (recuo + 70), ph + 2.5, z - ny * s * (recuo + 70)); o.rotation.set(0, 0, 0); o.scale.set(300, 1, 300); o.updateMatrix(); pocas.setMatrixAt(j, o.matrix);
+    // de onde a luz sai (a cabeça) e para onde ela aponta: o asfalto, a uns 45 do eixo da pista (para o lado de dentro)
+    t.cabeca = [x, y + alto + 6, z]; t.alvo = [x - nx * s * (recuo + 70), ph, z - ny * s * (recuo + 70)];
   });
   mastros.castShadow = cabecas.castShadow = true; mastros.name = `${tr.id}-holofotes`;
   for (const m of [mastros, cabecas, paineis]) add(m);
-  pocas.name = `${tr.id}-pocas-chao`; // tinta de luz no chão (a conferência de invasão deixa as fitas e o chão de fora)
-  for (const m of [brilhos, pocas]) { m.frustumCulled = false; m.renderOrder = 4; soDeNoite(tr, add(m)); }
+  brilhos.frustumCulled = false; brilhos.renderOrder = 4; soDeNoite(tr, add(brilhos));
+  // as luzes: ficam sempre na cena (de dia, apagadas), para o número de luzes não mudar quando o dia vira noite
+  const luzes = [];
+  for (let j = 0; j < LUZES; j++) {
+    const l = new THREE.SpotLight(0xffe6bf, 0, ALCANCE, 0.72, 0.8, 1); l.name = `${tr.id}-luz-refletor`;
+    add(l); add(l.target); luzes.push(l);
+  }
+  const perto = lista.map((t) => ({ t, d: 0 }));
+  luzDaNoite(tr).quadro.push((noite, foco) => {
+    if (!noite || !foco) { for (const l of luzes) l.intensity = 0; return; }
+    for (const p of perto) p.d = Math.hypot(p.t.alvo[0] - foco.x, p.t.alvo[2] - foco.y);
+    perto.sort((a, b) => a.d - b.d);
+    const limite = perto[LUZES]?.d ?? Infinity; // a primeira torre que ficou de fora: quem está quase tão longe quanto ela vai apagando
+    luzes.forEach((l, j) => {
+      const p = perto[j]; if (!p) { l.intensity = 0; return; }
+      l.position.set(...p.t.cabeca); l.target.position.set(...p.t.alvo);
+      l.intensity = FORCA * Math.min(1, (limite - p.d) / FAIXA);
+    });
+  });
   tr.holofotes = k;
   return k;
 }
