@@ -37,7 +37,7 @@ export const LOOK = {
   barcelona: { sky: [0x3f93dc, 0xf2ead6], fog: 0xe8e4d2, fogN: 1000, fogF: 4400, hemi: [0xeaf2ff, 0x7a7448, 1.35], sun: [0xfff0d6, 2.4], ground: ["#a9a35a", "#b6ae66", "#968f4e"], road: "#4c4d52", kerb: ["#d62828", "#f4f4f4"] },
   silverstone: { sky: [0x7d96ad, 0xdde3e6], fog: 0xcfd6d6, fogN: 900, fogF: 4000, hemi: [0xdde5ee, 0x5a7440, 1.25], sun: [0xfff1dc, 1.9], ground: ["#5e9a47", "#68a64f", "#528a3d"], road: "#4d4e53", kerb: ["#d62828", "#f4f4f4"] },
   // as pistas convertidas do calendário de F1 (ferramentas/circuitos-f1.js)
-  melbourne: { sky: [0x4a95dc, 0xf1eadb], fog: 0xdde6d6, fogN: 900, fogF: 4200, hemi: [0xe6efff, 0x4a6a3a, 1.3], sun: [0xfff1d8, 2.3], ground: ["#4f8b3d", "#5a9846", "#437a35"], road: "#4d4e53", kerb: ["#d62828", "#f4f4f4"] },
+  melbourne: { sky: [0x3a8fd8, 0xebf2f8], fog: 0xd6e5d8, fogN: 1000, fogF: 4400, hemi: [0xe6f2ff, 0x3d6634, 1.3], sun: [0xfff5e0, 2.35], ground: ["#388339", "#449445", "#307431"], road: "#46474c", kerb: ["#007a3d", "#f4c300"] },
   xangai: { sky: [0x8aa0b4, 0xdde2e2], fog: 0xd0d6d4, fogN: 900, fogF: 4200, hemi: [0xdde5ee, 0x5a6a50, 1.25], sun: [0xfff1dc, 1.9], ground: ["#6a8a52", "#76955c", "#5c7a48"], road: "#4d4e53", kerb: ["#d62828", "#f4f4f4"] },
   suzuka: { sky: [0x6f9fd0, 0xe2e8e6], fog: 0xd2dbd6, fogN: 900, fogF: 4200, hemi: [0xe2eaf2, 0x4a6a3a, 1.3], sun: [0xfff1dc, 2.1], ground: ["#4f8b3d", "#5a9846", "#437a35"], road: "#4d4e53", kerb: ["#d62828", "#f4f4f4"] },
   bahrein: { sky: [0x63b0e5, 0xfce0aa], fog: 0xe9cc9d, fogN: 900, fogF: 4200, hemi: [0xffefd2, 0x8b6540, 1.4], sun: [0xffdf9d, 2.4], ground: ["#d6bf8e", "#e0cb9c", "#c7ad7a"], road: "#4d4e53", kerb: ["#d62828", "#f4f4f4"] },

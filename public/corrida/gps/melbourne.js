@@ -1,9 +1,102 @@
-// Melbourne (Austrália): o GP simples do kit (kit/gp-simples.js: asfalto, zebras, grid, escape, arquibancada, prédio dos
-// boxes, painéis, bandeira, passarela e som), enquanto não ganha o cenário fino de cada canto. O traçado veio de
-// bacinger/f1-circuits (au-1953, licença MIT) por ferramentas/circuitos-f1.js; as frações (0 a 1) são da volta, a partir da linha de chegada.
-import { gpSimples } from "../kit/gp-simples.js";
+// Melbourne (Albert Park Circuit): configuração do GP no kit. O lago Albert Park, a ilha Gunn Island, o clube de
+// remo/vela e o skyline com a Eureka Tower e a cidade de Melbourne ficam em ../melbourne.js. As frações (0 a 1)
+// são da volta, a partir da chegada: reta principal e boxes 0,98-0,05 · curvas 1 e 2 (Jones/Brabham) 0,05-0,09 ·
+// curvas 3 e 4 0,13-0,17 · curva 6 0,26-0,31 · reta do lago (Lakeside Drive) 0,33-0,48 · curvas 9 e 10 0,49-0,54 ·
+// chicane 11 e 12 (Waite) 0,66-0,71 · curva 13 e 14 0,76-0,82 · chicanes finais 15 e 16 (Prost/Senna) 0,87-0,94.
+import { cenarioMelbourne, depoisMelbourne } from "../melbourne.js";
 
-export const GP_MELBOURNE = gpSimples("melbourne", {
-  bandeira: [0x012169, 0xe4002b], marcas: ["pirelli", "rolex", "aramco", "dhl", "heineken", "f1", "aws", "lenovo", "msc"], som: { campo: () => 0.7, cidade: 0.3 },
-  beira: { arvores: 0.25, longe: { arvores: 0.22, vidro: 0.06 } }, horizonte: false,
-});
+const BOXES = window.Pistas.PISTAS.melbourne.boxes;
+
+export const GP_MELBOURNE = {
+  asfalto: true,
+  chao: {
+    margem: { cor: "#686a6e" }, // o asfalto cinza da margem do parque
+    zebra: { cores: ["#007a3d", "#f4c300"], dentro: 380, fora: 240 }, // o verde e amarelo australiano tradicional
+    amarelas: [[0.06, 0.082], [0.135, 0.16], [0.495, 0.535], [0.665, 0.695], [0.875, 0.91]], // zebras altas anticorte
+    sc: [[BOXES.sai, "SC 2"], [BOXES.entra, "SC 1"]],
+    grid: true,
+    remendos: 28,
+  },
+  escape: {
+    brita: [
+      [0.055, 0.09, "fora"], // curva 1 e 2
+      [0.13, 0.17, "fora"],  // curva 3
+      [0.26, 0.31, "fora"],  // curva 6
+      [0.66, 0.72, "fora"],  // chicane 11 e 12
+      [0.76, 0.82, "fora"],  // curva 13
+      [0.87, 0.92, "fora"],  // chicanes finais
+    ],
+    corBrita: "#d8caa2",
+    listrado: [
+      [0.085, 0.11, "fora"],
+      [0.53, 0.56, "fora"],
+      [0.69, 0.73, "fora"],
+    ],
+    cores: ["#007a3d", "#f4f4f4"],
+    pneus: [
+      [0.055, 0.09, "fora"],
+      [0.13, 0.17, "fora"],
+      [0.26, 0.31, "fora"],
+      [0.66, 0.72, "fora"],
+      [0.76, 0.82, "fora"],
+      [0.87, 0.92, "fora"],
+    ],
+  },
+  arquibancadas: {
+    trechos: [
+      // Fangio Grandstand: reta principal em frente aos boxes (coberta, azul e branca)
+      { de: 0.975, ate: 1.045, lado: -1, degraus: 8, cor: "#0b5394", encosto: "#f4f4f4", cobertura: true },
+      // Jones / Brabham: freada da curva 1 e 2 (coberta, verde e amarela da Austrália)
+      { de: 0.048, ate: 0.082, lado: -1, degraus: 7, cor: "#007a3d", encosto: "#ffd23f", cobertura: true },
+      // Moss: saída da curva 2
+      { de: 0.085, ate: 0.11, lado: 1, degraus: 6, cor: "#c8102e", encosto: "#ffffff", cobertura: false },
+      // Clark: freada da curva 9 e 10
+      { de: 0.495, ate: 0.535, lado: -1, degraus: 6, cor: "#0b5394", encosto: "#f4f4f4", cobertura: false },
+      // Waite: chicane rápida 11 e 12 (coberta)
+      { de: 0.665, ate: 0.705, lado: 1, degraus: 7, cor: "#007a3d", encosto: "#ffd23f", cobertura: true },
+      // Hill: curvas 13 e 14
+      { de: 0.76, ate: 0.81, lado: -1, degraus: 6, cor: "#007a3d", encosto: "#ffffff", cobertura: false },
+      // Prost / Senna: entrada da reta dos boxes (coberta)
+      { de: 0.88, ate: 0.935, lado: -1, degraus: 7, cor: "#0b5394", encosto: "#ffffff", cobertura: true },
+    ],
+  },
+  cenario: (tr, ctx) => cenarioMelbourne(tr, ctx),
+  ambiente: {
+    marcas: ["rolex", "ausgp", "heineken", "pirelli", "aramco", "dhl", "f1", "aws", "lenovo"],
+    outdoors: ["rolex", "ausgp", "heineken", "pirelli", "f1", "aramco", "dhl"],
+    posto: "ausgp",
+    bandeira: [0x012169, 0xe4002b], // azul marinho e vermelho (Austrália)
+    placas: [150, 100, 50],
+  },
+  passarelas: {
+    candidatos: [0.025, 0.24, 0.58, 0.82, 0.96],
+    marcas: ["rolex", "heineken", "pirelli"],
+    max: 3,
+  },
+  parque: {
+    de: 0,
+    ate: 1,
+    recuo: 24,
+    fundo: 160,
+    alturas: [110, 210],
+    densidade: 1.0,
+    folhas: ["#2d6330", "#3a7536", "#48853b", "#366e2c", "#5a8c3d"],
+    coniferas: 0.04,
+  },
+  vida: {
+    helicoptero: true,
+    fiscais: true,
+    gaivotas: (tr) =>
+      Array.from({ length: 16 }, (_, k) => ({
+        x: 2300 + Math.cos(k * 0.4) * 350 + (k % 4) * 50,
+        z: 2300 + Math.sin(k * 0.4) * 700 + (k % 3) * 60,
+      })),
+    som: {
+      porto: (tr, x, y) => Math.max(0, Math.min(1, 1 - Math.hypot(x - 2300, y - 2300) / 900)),
+      cidade: 0.35,
+      campo: () => 0.65,
+    },
+  },
+  horizonte: false, // o skyline de Melbourne é modelado em 3D ao norte
+  depois: (tr, ctx) => depoisMelbourne(tr, ctx),
+};

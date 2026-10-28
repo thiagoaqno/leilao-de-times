@@ -2,7 +2,7 @@
 
 Peças reaproveitáveis para montar o cenário de qualquer GP. Cada pista de F1 tem uma configuração em `../gps/<pista>.js`,
 registrada em `../gps/index.js`; `../pista.js` lê a configuração e chama as peças. Nada daqui muda a física: é cenário e
-som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo; Silverstone (`../gps/silverstone.js`) é o de autódromo plano com `escape`. `boxes.js` não tem chave: é uma função (`prediosDosBoxes(tr, add, cfg)`, o prédio das garagens com os painéis em cima) que o `cenario` do GP chama (Monza).
+som. Mônaco (`../gps/monaco.js`) usa todas as peças e é o exemplo completo; Interlagos (`../gps/interlagos.js`) e Melbourne (`../gps/melbourne.js`) trazem o lago, arquibancadas, boxes e skyline de metrópole; Bahrein (`../gps/bahrein.js` e `../bahrein.js`) traz a Torre Al Sakhir, postes de iluminação noturna, oásis do deserto e os boxes com tendas; Silverstone (`../gps/silverstone.js`) é o de autódromo plano com `escape`. `boxes.js` não tem chave: é uma função (`prediosDosBoxes(tr, add, cfg)`, o prédio das garagens com os painéis em cima) que o `cenario` do GP chama (Monza, Melbourne, Bahrein).
 
 ## Como fazer um GP novo
 

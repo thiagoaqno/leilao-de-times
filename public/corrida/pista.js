@@ -30,7 +30,7 @@ export const THEMES = {
   barcelona: { preview: "#a9a35a", sky: ["#4a9be0", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4c4d52" },
   silverstone: { preview: "#5e9a47", sky: ["#8aa3b8", "#dde3e6"], fog: "#cfd6d6", oob: 0xff5e9a47, roadCol: "#4d4e53" },
   // as pistas convertidas do calendário de F1 (ferramentas/circuitos-f1.js)
-  melbourne: { preview: "#4f8b3d", sky: ["#4a95dc", "#f1eadb"], fog: "#dde6d6", oob: 0xff4f8b3d, roadCol: "#4d4e53" },
+  melbourne: { preview: "#2e7d32", sky: ["#3a8fd8", "#ebf2f8"], fog: "#d6e5d8", oob: 0xff388339, roadCol: "#46474c" },
   xangai: { preview: "#6a8a52", sky: ["#8aa0b4", "#dde2e2"], fog: "#d0d6d4", oob: 0xff6a8a52, roadCol: "#4d4e53" },
   suzuka: { preview: "#4f8b3d", sky: ["#6f9fd0", "#e2e8e6"], fog: "#d2dbd6", oob: 0xff4f8b3d, roadCol: "#4d4e53" },
   bahrein: { preview: "#d6bf8e", sky: ["#63b0e5", "#fce0aa"], fog: "#e9cc9d", oob: 0xffd6bf8e, roadCol: "#4d4e53" },
