@@ -1,22 +1,26 @@
-# Corrida: Kit 2, assets de cenário para as próximas pistas
+# Corrida: cenário completo de Jeddah (Jeddah Corniche Circuit)
 
-Assets novos em código (three.js procedural, low poly, cor chapada) feitos a partir das fotos de referência: os modelos baixados são cenas de ~1 milhão de triângulos sem peças nomeadas, então o kit ganha as peças próprias. Só cenário novo e solto: nenhuma pista foi alterada (`pistas.js`, física, robôs, regras, HUD, menus, sala e carreira intocados; Melbourne, Bahrein, Mônaco e Interlagos idem).
+Salto de qualidade na pista de Jeddah, no nível de Mônaco e Interlagos: de um GP simples do kit para um cenário próprio, com marcos reconhecíveis. **Depende do #351 (kit 2), que já está no `main`** (o branch já tem o `origin/main` mesclado). Só cenário: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira intactos.
 
-## O que entrou (`public/corrida/kit/`)
-- `montagem.js`: o `Montador` junta caixas e formas por material (cor por vértice: um box inteiro fica em ~4 chamadas de desenho) e canvas pequenos só para letreiros. Não depende de `cena.js`.
-- `box-equipe.js`: `boxEquipe` (prédio de 2 andares, vidros inclinados, faixa de letreiro, portas de enrolar abertas com rack de pneus, carrinho de ferramentas e carro), `retaDosBoxes` (prédio longo com toldo por equipe, muretinha com faixa amarela e arquibancada coberta em cima), `pilhaPneus`, `rackPneus`, `carrinhoFerramentas`, `carroF1`, `muretaPit` (com logo).
-- `coberturas.js`: `velas` (cobertura tensionada), `tendaPaddock` (velas, faixa, mesas) e `tribunaCoberta` (degraus coloridos em seções, torcida, painéis brancos sobre aço, `alcance` da cobertura).
-- `torres.js`: `torreControle` (anéis, corpo, coroa em velas, cúpula ou plana, bandeira) e `portico` (viga com letreiro nos dois lados e semáforos de largada).
-- `demo.html`: página solta para ver tudo (`/corrida/kit/demo.html#box | reta | tribuna | torre | portico | tenda | tudo`), com o contador de chamadas e triângulos.
-- `README.md`: tabela com os parâmetros de cada função.
+## O que entrou
+- **Mar Vermelho e corniche**: a costa é o contorno de tudo que fica a menos de 440 da pista (mar a oeste, norte e sul; terra a leste), com a água animada, raso turquesa, calçada de pedra com parapeito, palmeiras e postes de luz. Dentro da laçada do sul fica a **lagoa** (a água dos dois lados da reta de trás), atrás do prédio dos boxes.
+- **Fonte do Rei Fahd**: jato de 820 de altura no mar, com a plataforma, as bocas laterais, névoa e fios d'água que sobem (pulsa e balança).
+- **Mesquita Al-Rahma** (a mesquita flutuante): branca, sobre estacas no mar, cúpula central, cúpulas dos cantos, arcadas, dois minaretes e píer até a corniche.
+- **Prédio dos boxes (Pit & Team Building)**: quatro andares escalonados, como o projeto da Tilke, com vidro em fita, brise-soleil, lajes com LED verde, terraço do Paddock Club sob velas (kit 2), Race Control, letreiro do GP, bandeiras da Arábia Saudita e tendas de paddock (kit 2) atrás. Fica atrás das garagens do corredor dos boxes.
+- **Cidade a leste com a Jeddah Tower** (três pétalas, agulha e guindastes) e arranha-céus de vidro com janelas acesas (janelas do tamanho certo em qualquer prédio, shader de `InstancedMesh`).
+- **Barcos**: dhows com vela latina e lanchas que andam devagar; marina com píer, postes e iates.
+- **Pista**: zebras vermelhas e brancas, muros com painéis stc, Aramco, Saudia, Roshn, Pirelli, Rolex e o GP; arquibancadas verdes e roxas (stc) com a torcida de túnicas brancas (reta principal, T1 a T3, T13, T22, grampo final), tribunas cobertas do kit 2, telões de LED, torres de holofotes da corrida noturna, serra do Hejaz ao fundo, faixa do GP no pórtico da largada, som de mar e gaivotas.
+- **Assets novos exclusivos** em `public/corrida/kit/jeddah/` (`mar`, `barcos`, `palmeiras`, `predio-boxes`, `fonte`, `mesquita`, `cidade`, `marcas`); marcas novas registradas por esse módulo, sem mexer em `kit/marcas.js`. Kit compartilhado: só uma linha no `kit/README.md`.
 
-Ficou de fora de propósito: nada duplica `boxes.js`/`arquibancadas.js` (esses seguem a curva da pista; os novos são peças soltas, e a cobertura em velas serve às duas).
+## Referências
+Sem imagens baixadas: tudo desenhado em Three.js e canvas. Descrições e fotos do circuito, do prédio dos boxes (Autosport, Arab News: quatro andares escalonados, de Ulrich Merres, da Tilke), do guia do McLaren e da Fonte do Rei Fahd / Mesquita Al-Rahma / Jeddah Tower.
 
 ## Conferido
-- No navegador, comparando com as fotos: box vermelho (faixa amarela, vidros, portas, pneus, carro, mureta com logo), reta de 12 baias com toldos coloridos e arquibancada azul/roxa coberta, tribunas, torre de anéis com velas, pórtico e tenda de paddock. Console sem erros. Medido: reta dos boxes 6 chamadas e 13 mil triângulos; box de equipe ~26 chamadas na demo com texturas de letreiro separadas.
-- `node --test tests/corrida*.test.js`: as mesmas 6 falhas antigas (pneus, ritmo da IA e rádio), nenhuma nova.
+- No navegador (porta 3361), em volta da pista inteira: largada, pórtico perpendicular à pista na linha, prédio dos boxes, arquibancadas, T1, S, T13, retas, lagoa, fonte, mesquita e skyline. Console sem erros.
+- `tests/ajuda-cena`: invasão = 0 no asfalto; malhas e chamadas de desenho no nível de Melbourne e Bahrein (`medir.mjs`).
+- `node --test tests/corrida*.test.js`: 255 de 261 passam; as 6 falhas são as antigas conhecidas (pneus e estratégia, ritmo da IA e rádio), nenhuma nova.
 
-## Próximos passos
-Usar em `cenario` das próximas pistas depois de conferir `livre`/`ocupado` (o `userData` de cada asset traz as medidas).
+## Ficou de fora
+Banking visual do T13, ponte do T2/T3 sobre a pista e a Jeddah Yacht Club.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
