@@ -1,6 +1,6 @@
 # Corrida: cenário de Suzuka
 
-Suzuka sai do GP simples genérico e ganha um cenário próprio, rico e reconhecível. Só cenário: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira intocados. O kit 2 (#351) já está no main; este PR o usa.
+Suzuka sai do GP simples genérico e ganha um cenário próprio, rico e reconhecível. Só cenário: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira intocados. O kit 2 (#351) já foi mergeado no main e este PR o usa (main já mesclado na branch).
 
 ## O que entrou
 - **Viaduto do "8"** (`kit/suzuka/viaduto.js`): laje sobre vigas, mureta branca com grade de aço, postes de luz, pilares com viga de apoio, muros de arrimo com faixa vermelha e branca no trecho de baixo e faixas penduradas. O traçado e a altura continuam os de `pistas.js` (`cruza`).
@@ -18,3 +18,5 @@ Navegador (Chromium, porta 3362): volta inteira em 12 pontos, largada, arquibanc
 
 ## Fora / anotado
 Fotos e descrições vieram da memória de como o circuito é e de buscas rápidas; nenhuma imagem foi baixada. O relevo de `pistas.js` deixa a pista numa plataforma acima do chão plano em volta: os morros só começam a 470 do eixo para não brigar com ele.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
