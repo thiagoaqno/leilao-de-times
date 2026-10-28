@@ -1,26 +1,23 @@
-# Corrida: cenário completo de Jeddah (Jeddah Corniche Circuit)
+# Corrida: Melbourne 2, o segundo passo (riqueza e fidelidade)
 
-Salto de qualidade na pista de Jeddah, no nível de Mônaco e Interlagos: de um GP simples do kit para um cenário próprio, com marcos reconhecíveis. **Depende do #351 (kit 2), que já está no `main`** (o branch já tem o `origin/main` mesclado). Só cenário: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira intactos.
+**Depende do #351 (kit 2), que já está no main: este PR já inclui o merge do main.** O primeiro passo (#349) refez o básico; aqui o objetivo é um salto claro de densidade, a partir das fotos de referência (curva lotada com alambrado e grama listrada, reta de largada com a arquibancada de aço e os pórticos azuis, e as aéreas com o lago, o skyline e os telhados azul e vermelho). Só cenário: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira intocados.
 
 ## O que entrou
-- **Mar Vermelho e corniche**: a costa é o contorno de tudo que fica a menos de 440 da pista (mar a oeste, norte e sul; terra a leste), com a água animada, raso turquesa, calçada de pedra com parapeito, palmeiras e postes de luz. Dentro da laçada do sul fica a **lagoa** (a água dos dois lados da reta de trás), atrás do prédio dos boxes.
-- **Fonte do Rei Fahd**: jato de 820 de altura no mar, com a plataforma, as bocas laterais, névoa e fios d'água que sobem (pulsa e balança).
-- **Mesquita Al-Rahma** (a mesquita flutuante): branca, sobre estacas no mar, cúpula central, cúpulas dos cantos, arcadas, dois minaretes e píer até a corniche.
-- **Prédio dos boxes (Pit & Team Building)**: quatro andares escalonados, como o projeto da Tilke, com vidro em fita, brise-soleil, lajes com LED verde, terraço do Paddock Club sob velas (kit 2), Race Control, letreiro do GP, bandeiras da Arábia Saudita e tendas de paddock (kit 2) atrás. Fica atrás das garagens do corredor dos boxes.
-- **Cidade a leste com a Jeddah Tower** (três pétalas, agulha e guindastes) e arranha-céus de vidro com janelas acesas (janelas do tamanho certo em qualquer prédio, shader de `InstancedMesh`).
-- **Barcos**: dhows com vela latina e lanchas que andam devagar; marina com píer, postes e iates.
-- **Pista**: zebras vermelhas e brancas, muros com painéis stc, Aramco, Saudia, Roshn, Pirelli, Rolex e o GP; arquibancadas verdes e roxas (stc) com a torcida de túnicas brancas (reta principal, T1 a T3, T13, T22, grampo final), tribunas cobertas do kit 2, telões de LED, torres de holofotes da corrida noturna, serra do Hejaz ao fundo, faixa do GP no pórtico da largada, som de mar e gaivotas.
-- **Assets novos exclusivos** em `public/corrida/kit/jeddah/` (`mar`, `barcos`, `palmeiras`, `predio-boxes`, `fonte`, `mesquita`, `cidade`, `marcas`); marcas novas registradas por esse módulo, sem mexer em `kit/marcas.js`. Kit compartilhado: só uma linha no `kit/README.md`.
-
-## Referências
-Sem imagens baixadas: tudo desenhado em Three.js e canvas. Descrições e fotos do circuito, do prédio dos boxes (Autosport, Arab News: quatro andares escalonados, de Ulrich Merres, da Tilke), do guia do McLaren e da Fonte do Rei Fahd / Mesquita Al-Rahma / Jeddah Tower.
+- **Faixa magenta** da entrada dos boxes (pintura sobre o asfalto do corredor, com o AUSTRALIAN GRAND PRIX em branco; só aparece junto com o corredor, nas regras de F1).
+- **Alambrado alto** de aço com a ponta inclinada para a pista e a **mureta contínua de publicidade** (faixas Rolex, Heineken, Pirelli, Aramco, DHL, F1, AWS) nos dois lados, menos no corredor dos boxes (`kit/melbourne/cerca.js`, umas 6 chamadas para a volta toda).
+- **Grama listrada** (listras claras e escuras paralelas à pista, seguindo o relevo; `kit/melbourne/grama.js`) e grama mais clara e quente.
+- **Reta principal com o kit 2** (`kit/melbourne/complexo.js`): arquibancada longa de aço com cobertura escura em frente aos boxes (`tribunaCoberta` em fila), complexo dos boxes com garagens, faixa de vidro e arquibancadas de **cobertura azul e vermelha** alternadas, e **tendas brancas do paddock** (`tendaPaddock`).
+- **Pórticos azuis** "Australia ▼ MELBOURNE ▼ Australia" atravessando a pista, agora altos (`portico` do kit 2, três na reta).
+- **Skyline visível da pista** (`kit/melbourne/cidade.js`): ~150 arranha-céus com janelas, Eureka Tower de coroa dourada e faixa vermelha, Rialto, Australia 108. Antes sumia na neblina e atrás das árvores: agora sem neblina do jogo (bruma pintada nos vértices) e o parque deixou de ser uma parede (bosques soltos em moitas, `kit/melbourne/arvores.js`, e as árvores pálidas soltas de longe saíram).
+- **Lago** com calçada de saibro, veleiros e fileira de árvores na margem; torcida de camisa laranja e vermelha; arquibancadas das curvas em assentos escuros.
+- Mudanças aditivas no kit: `portico({ textura })`, `ambienteGP({ cerca: false })` e uma linha no `kit/README.md`. `LOOK.melbourne.ground` em `cena.js` mais claro.
 
 ## Conferido
-- No navegador (porta 3361), em volta da pista inteira: largada, pórtico perpendicular à pista na linha, prédio dos boxes, arquibancadas, T1, S, T13, retas, lagoa, fonte, mesquita e skyline. Console sem erros.
-- `tests/ajuda-cena`: invasão = 0 no asfalto; malhas e chamadas de desenho no nível de Melbourne e Bahrein (`medir.mjs`).
-- `node --test tests/corrida*.test.js`: 255 de 261 passam; as 6 falhas são as antigas conhecidas (pneus e estratégia, ritmo da IA e rádio), nenhuma nova.
+- No navegador (porta 3364, Playwright com câmera livre): reta com os três pórticos e a faixa magenta, boxes e paddock, curvas 1 e 6, margem do lago e skyline vistos da pista, aérea. Console sem erros nas conferências finais.
+- Medido no Node: vista da câmera 173 chamadas e 383 mil triângulos (antes 167 e 356 mil); 375 malhas; conferência de invasão passou em todas as pistas.
+- Por pedido, **não rodei a bateria de testes** (`tests/corrida*`).
 
 ## Ficou de fora
-Banking visual do T13, ponte do T2/T3 sobre a pista e a Jeddah Yacht Club.
+Telões, ponte de pedestres sobre o lago e roda-gigante do fan zone. Fontes das fotos: as do Thiago; textos sobre as arquibancadas de Albert Park (f1experiences, thef1spectator).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

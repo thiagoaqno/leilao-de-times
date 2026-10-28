@@ -5,6 +5,7 @@
 // chicane 11 e 12 (Waite) 0,66-0,71 · curva 13 e 14 0,76-0,82 · chicanes finais 15 e 16 (Prost/Senna) 0,87-0,94.
 import { cenarioMelbourne, depoisMelbourne } from "../melbourne.js";
 
+const TORCIDA = ["#ff8700", "#e8002d", "#ffffff", "#1b1b1b", "#ffd23f", "#2f6fd0"]; // a torcida laranja e vermelha da foto
 const BOXES = window.Pistas.PISTAS.melbourne.boxes;
 
 export const GP_MELBOURNE = {
@@ -44,20 +45,19 @@ export const GP_MELBOURNE = {
   },
   arquibancadas: {
     trechos: [
-      // Fangio Grandstand: reta principal em frente aos boxes (coberta, azul e branca)
-      { de: 0.975, ate: 1.045, lado: -1, degraus: 8, cor: "#0b5394", encosto: "#f4f4f4", cobertura: true },
+      // (a arquibancada longa da reta principal, a Fangio, é do kit 2: melbourne.js)
       // Jones / Brabham: freada da curva 1 e 2 (coberta, verde e amarela da Austrália)
-      { de: 0.048, ate: 0.082, lado: -1, degraus: 7, cor: "#007a3d", encosto: "#ffd23f", cobertura: true },
+      { de: 0.048, ate: 0.082, lado: -1, degraus: 7, cor: "#244a3a", encosto: "#e8eaee", cobertura: true, torcida: TORCIDA },
       // Moss: saída da curva 2
-      { de: 0.085, ate: 0.11, lado: 1, degraus: 6, cor: "#c8102e", encosto: "#ffffff", cobertura: false },
+      { de: 0.085, ate: 0.11, lado: 1, degraus: 6, cor: "#5a2a2f", encosto: "#e8eaee", cobertura: false, torcida: TORCIDA },
       // Clark: freada da curva 9 e 10
-      { de: 0.495, ate: 0.535, lado: -1, degraus: 6, cor: "#0b5394", encosto: "#f4f4f4", cobertura: false },
+      { de: 0.495, ate: 0.535, lado: -1, degraus: 6, cor: "#2d3a52", encosto: "#e8eaee", cobertura: false, torcida: TORCIDA },
       // Waite: chicane rápida 11 e 12 (coberta)
-      { de: 0.665, ate: 0.705, lado: 1, degraus: 7, cor: "#007a3d", encosto: "#ffd23f", cobertura: true },
+      { de: 0.665, ate: 0.705, lado: 1, degraus: 7, cor: "#244a3a", encosto: "#e8eaee", cobertura: true, torcida: TORCIDA },
       // Hill: curvas 13 e 14
-      { de: 0.76, ate: 0.81, lado: -1, degraus: 6, cor: "#007a3d", encosto: "#ffffff", cobertura: false },
+      { de: 0.76, ate: 0.81, lado: -1, degraus: 6, cor: "#244a3a", encosto: "#e8eaee", cobertura: false, torcida: TORCIDA },
       // Prost / Senna: entrada da reta dos boxes (coberta)
-      { de: 0.88, ate: 0.935, lado: -1, degraus: 7, cor: "#0b5394", encosto: "#ffffff", cobertura: true },
+      { de: 0.88, ate: 0.935, lado: -1, degraus: 7, cor: "#2d3a52", encosto: "#e8eaee", cobertura: true, torcida: TORCIDA },
     ],
   },
   cenario: (tr, ctx) => cenarioMelbourne(tr, ctx),
@@ -67,6 +67,7 @@ export const GP_MELBOURNE = {
     posto: "ausgp",
     bandeira: [0x012169, 0xe4002b], // azul marinho e vermelho (Austrália)
     placas: [150, 100, 50],
+    cerca: false, // o alambrado alto e a mureta de publicidade são de kit/melbourne/cerca.js
   },
   passarelas: {
     candidatos: [0.025, 0.24, 0.58, 0.82, 0.96],
@@ -76,10 +77,10 @@ export const GP_MELBOURNE = {
   parque: {
     de: 0,
     ate: 1,
-    recuo: 24,
+    recuo: 150, // longe da pista: as árvores não fecham a vista do lago, do skyline nem das arquibancadas
     fundo: 160,
-    alturas: [110, 210],
-    densidade: 1.0,
+    alturas: [90, 150],
+    densidade: 0.12,
     folhas: ["#2d6330", "#3a7536", "#48853b", "#366e2c", "#5a8c3d"],
     coniferas: 0.04,
   },

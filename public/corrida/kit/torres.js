@@ -59,9 +59,10 @@ export function torreControle({ raio = 22, aneis = 6, alturaAnel = 7, corAneis =
  * @param {number} [o.vao=260] distância entre as colunas · @param {number} [o.alto=62] altura livre até a viga · @param {number} [o.viga=14] altura da viga
  * @param {string} [o.cor="#1d9a4a"] a viga · @param {string} [o.corColuna="#1b1b1f"] · @param {string} [o.texto="GULF AIR"] · @param {string} [o.corTexto="#ffffff"]
  * @param {string|null} [o.corFaixa] fundo do letreiro (padrão = `cor`) · @param {boolean} [o.luzes=false] os cinco semáforos de largada · @param {number} [o.largura=8] das colunas
+ * @param {THREE.Texture|null} [o.textura] letreiro pronto (substitui `texto`: o desenho é seu, nos dois lados da viga)
  * @returns {THREE.Group} com userData.vao/alto
  */
-export function portico({ vao = 260, alto = 62, viga = 14, cor = "#1d9a4a", corColuna = "#1b1b1f", texto = "GULF AIR", corTexto = "#ffffff", corFaixa, luzes = false, largura = 8 } = {}) {
+export function portico({ vao = 260, alto = 62, viga = 14, cor = "#1d9a4a", corColuna = "#1b1b1f", texto = "GULF AIR", corTexto = "#ffffff", corFaixa, luzes = false, largura = 8, textura = null } = {}) {
   const m = new Montador(), S = solido(), prof = 10, topoViga = alto + viga;
   for (const s of [-1, 1]) {
     m.caixa(S, [s * (vao / 2 + largura / 2), topoViga / 2, 0], [largura, topoViga, prof], { cor: corColuna });
@@ -69,7 +70,7 @@ export function portico({ vao = 260, alto = 62, viga = 14, cor = "#1d9a4a", corC
   }
   m.caixa(S, [0, alto + viga / 2, 0], [vao + largura * 2 + 2, viga, prof], { cor });
   m.caixa(S, [0, alto - 0.6, 0], [vao + largura * 2 + 2, 1.2, prof + 1.6], { cor: corColuna }); // a quilha de baixo
-  const banda = comTextura(letreiro(texto, { fundo: corFaixa || cor, cor: corTexto, w: 1024, h: 96, vezes: Math.max(1, Math.round(vao / 130)), traco: false }));
+  const banda = comTextura(textura || letreiro(texto, { fundo: corFaixa || cor, cor: corTexto, w: 1024, h: 96, vezes: Math.max(1, Math.round(vao / 130)), traco: false }));
   for (const f of [1, -1]) m.plano(banda, [0, alto + viga / 2, f * (prof / 2 + 0.05)], [vao, viga - 1.6], { ry: f > 0 ? 0 : Math.PI });
   if (luzes) for (let k = 0; k < 5; k++) { const x = (k - 2) * 9; m.caixa(S, [x, alto - 5, prof / 2 + 0.8], [6, 8, 1.6], { cor: "#15161a" }); for (const dy of [-1.8, 1.8]) m.cilindro(S, [x, alto - 5 + dy, prof / 2 + 1.7], [1.1, 0.5], { cor: "#e11d1d", rx: Math.PI / 2, seg: 8 }); }
   const g = m.montar("portico"); g.userData = { vao, alto: topoViga };

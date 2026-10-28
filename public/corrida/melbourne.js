@@ -1,12 +1,18 @@
-// Melbourne (Albert Park Circuit): o que só o circuito e o parque têm. O lago Albert Park no miolo da pista (desenhado a
-// partir do traçado, com a ilha e o clube de remo na margem) e a cidade de Melbourne ao norte (a Eureka Tower com a coroa
-// de ouro, a Australia 108, a Rialto, a 101 Collins e os prédios de vidro). O prédio dos boxes vem do kit
-// (kit/boxes.js) e o pórtico de largada é o de pista.js. O resto (zebras, escape, arquibancadas, painéis, árvores) é do
-// kit, na configuração de gps/melbourne.js.
+// Melbourne (Albert Park Circuit): o que só o circuito e o parque têm. O lago Albert Park no miolo da volta (desenhado a partir do
+// traçado, com a ilha Gunn, o clube de remo, a calçada da margem e os veleiros), o skyline da cidade ao norte (kit/melbourne/cidade.js),
+// a reta principal (arquibancada longa de aço, complexo dos boxes com as coberturas azul e vermelha e o paddock, kit 2 em
+// kit/melbourne/complexo.js), os pórticos azuis "MELBOURNE / Australia", a faixa magenta da entrada dos boxes, o alambrado alto,
+// a grama listrada e os bosques. O resto (zebras, escape, painéis, bandeiras) é do kit, na configuração de gps/melbourne.js.
 import * as THREE from "three";
 import { canvasTex, M } from "./cena.js";
-import { livre, sorteio } from "./kit/comum.js";
-import { prediosDosBoxes } from "./kit/boxes.js";
+import { livre, sorteio, instancias } from "./kit/comum.js";
+import { portico } from "./kit/torres.js";
+import { tex } from "./kit/montagem.js";
+import { alambrado } from "./kit/melbourne/cerca.js";
+import { gramaListrada } from "./kit/melbourne/grama.js";
+import { cidade } from "./kit/melbourne/cidade.js";
+import { bosques } from "./kit/melbourne/arvores.js";
+import { instalarOcupado, arquibancadaLonga, complexoDosBoxes, paddock } from "./kit/melbourne/complexo.js";
 
 // dentro da volta? (pontos da linha central como polígono)
 function dentro(pts, x, z) {
@@ -40,20 +46,20 @@ function acharLago(tr) {
   const suave = raios.map((r, k) => (raios[(k + N - 1) % N] + 2 * r + raios[(k + 1) % N]) / 4);
   return { x: melhor.x, z: melhor.z, raios: suave, N };
 }
+// o ponto (x, z) está no lago (mais `margem`)? Usa o raio do contorno na direção dele
+const noLago = (l, x, z, margem = 0) => {
+  if (!l) return false;
+  const dx = x - l.x, dz = z - l.y, a = (Math.atan2(dz, dx) + Math.PI * 2) % (Math.PI * 2), k = (a / (Math.PI * 2)) * l.N, k0 = Math.floor(k) % l.N, f = k - Math.floor(k);
+  return Math.hypot(dx, dz) < l.raios[k0] * (1 - f) + l.raios[(k0 + 1) % l.N] * f + margem;
+};
 
-// vidro com janelas (canvas), para as torres da cidade
-const vidroJanelas = (cor, linhas, colunas = 8) => new THREE.MeshStandardMaterial({
-  roughness: 0.25, metalness: 0.5, map: canvasTex(128, 256, (c, w, h, rr) => {
-    c.fillStyle = cor; c.fillRect(0, 0, w, h);
-    for (let y = 0; y < linhas; y++) for (let x = 0; x < colunas; x++) {
-      c.fillStyle = rr() < 0.15 ? "#e8d9a0" : "#ffffff22"; c.fillRect(x * (w / colunas) + 2, y * (h / linhas) + 2, w / colunas - 4, h / linhas - 5);
-    }
-  }),
-});
-
-// o cenário antes: o lago, a ilha, o clube de remo e a cidade ao norte
-export function cenarioMelbourne(tr, { add, hAt, blds, aguaTex }) {
-  // 1. O Lago Albert Park, no miolo da volta
+// o cenário antes: o lago, a ilha, o clube de remo, a calçada, os veleiros e a cidade ao norte
+export function cenarioMelbourne(tr, { add, hAt, aguaTex }) {
+  tr.camisasGP = ["#ff8700", "#e8002d", "#ffffff", "#1b1b1b", "#ffd23f", "#2f6fd0", "#ff8700", "#f4f4f4"]; // a torcida laranja e vermelha das fotos
+  const original = tr.distAt; tr.distAtOriginal = original;
+  // as construções da reta (complexo.js) entram aqui: a torcida pulando e o bosque não ficam em cima delas; a torcida que pula
+  // também não fica entre a pista e a mureta da reta principal (nas fotos ela está atrás do alambrado)
+  instalarOcupado(tr, (x, z) => { if (original(x, z) > 95) return false; const f = tr.indiceAt(x, z) / tr.n; return f > 0.9 || f < 0.05; });
   const lago = acharLago(tr);
   if (lago) {
     const { x: cx, z: cz, raios, N } = lago;
@@ -72,8 +78,20 @@ export function cenarioMelbourne(tr, { add, hAt, blds, aguaTex }) {
     mat.map.repeat.set(6, 6); tr.agua.push(mat);
     const agua = add(new THREE.Mesh(new THREE.ShapeGeometry(forma, 24), mat));
     agua.rotation.x = -Math.PI / 2; agua.position.set(cx, nivel, cz);
-    tr.lagoMelbourne = { x: cx, y: cz, raio: rMin };
+    tr.lagoMelbourne = { x: cx, y: cz, raio: rMin, raios, N, nivel };
     tr.reservado.push([cx, cz, rMin + 40]);
+
+    // a calçada da margem: uma faixa de saibro claro em volta da água, com um barranco para baixo (o lago fica acima do chão)
+    {
+      const dentroR = 8, foraR = 20, vs = [], idx = [];
+      for (let k = 0; k <= N; k++) {
+        const a = ((k % N) / N) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a), r = raios[k % N];
+        vs.push(cx + c * (r - dentroR), nivel + 0.5, cz + s * (r - dentroR), cx + c * (r + foraR), nivel + 0.5, cz + s * (r + foraR), cx + c * (r + foraR + 6), nivel - 7, cz + s * (r + foraR + 6));
+        if (k < N) { const b = k * 3; idx.push(b, b + 3, b + 1, b + 1, b + 3, b + 4, b + 1, b + 4, b + 2, b + 2, b + 4, b + 5); }
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setIndex(idx); g.computeVertexNormals();
+      add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xc9b98f, roughness: 1, side: THREE.DoubleSide }))).receiveShadow = true;
+    }
 
     // a ilha: um montículo de grama com árvores de parque
     const ix = cx + ilhaX, iz = cz + ilhaZ;
@@ -87,7 +105,24 @@ export function cenarioMelbourne(tr, { add, hAt, blds, aguaTex }) {
       const t = add(new THREE.Mesh(new THREE.CylinderGeometry(larg * 0.12, larg * 0.16, alt * 0.5, 5), tronco)); t.position.set(x, nivel + 2 + alt * 0.25, z);
     }
 
-    // 2. O clube de remo e vela: no ponto da margem mais perto da pista dos boxes, o deque na água e o galpão em terra
+    // os veleiros no lago (parados, em regata): casco, mastro e a vela, três InstancedMesh
+    {
+      const barcos = [], r2 = sorteio(808);
+      for (let k = 0; k < 26; k++) {
+        const a = r2() * Math.PI * 2, kk = (a / (Math.PI * 2)) * N, d = (0.15 + r2() * 0.6) * raios[Math.floor(kk) % N];
+        const x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d; if (Math.hypot(x - ix, z - iz) < rI + 30) continue;
+        barcos.push({ x, y: nivel + 0.9, z, r: r2() * 6.28, s: 0.8 + r2() * 0.6 });
+      }
+      const casco = new THREE.BoxGeometry(16, 2.6, 5); casco.translate(0, 0.8, 0);
+      const mastro = new THREE.CylinderGeometry(0.25, 0.25, 22, 4); mastro.translate(0, 12, 0);
+      const vela = new THREE.BufferGeometry(); vela.setAttribute("position", new THREE.Float32BufferAttribute([-1, 2, 0, -1, 22, 0, 8, 3, 0], 3)); vela.computeVertexNormals();
+      const por = (geo, mat, f) => instancias(add, geo, mat, barcos.map((b) => f(b)), { sombra: false });
+      por(casco, M(0xf4f4f0, { roughness: 0.4 }), (b) => ({ ...b, sx: b.s, sy: b.s, sz: b.s }));
+      por(mastro, M(0xc8ccd0), (b) => ({ ...b, sx: b.s, sy: b.s, sz: b.s }));
+      por(vela, M(0xf8f4ec, { roughness: 0.3, side: THREE.DoubleSide }), (b) => ({ ...b, sx: b.s, sy: b.s, sz: b.s }));
+    }
+
+    // o clube de remo e vela: no ponto da margem mais perto da pista dos boxes, o deque na água e o galpão em terra
     let kb = 0; for (let k = 1; k < N; k++) if (raios[k] > raios[kb]) kb = k;
     const ang = (kb / N) * Math.PI * 2, ux = Math.cos(ang), uz = Math.sin(ang), rb = raios[kb];
     const px = cx + ux * (rb - 25), pz = cz + uz * (rb - 25);
@@ -99,72 +134,68 @@ export function cenarioMelbourne(tr, { add, hAt, blds, aguaTex }) {
       for (let dx = -40; dx <= 10; dx += 16) for (const dz of [-11, 11]) { const m = new THREE.Mesh(pilar, madeira); m.position.set(dx, -2, dz); g.add(m); }
       const galpao = new THREE.Mesh(new THREE.BoxGeometry(36, 20, 30), parede); galpao.position.set(30, 10, 0); galpao.castShadow = true; g.add(galpao);
       const telha = new THREE.Mesh(new THREE.CylinderGeometry(17, 17, 38, 3), telhado); telha.rotation.set(0, 0, Math.PI / 2); telha.scale.set(0.65, 1, 1); telha.position.set(30, 24, 0); g.add(telha);
-      // veleiros no deque
-      const casco = M(0xfafafa, { roughness: 0.4 }), vela = M(0xf2efe9, { roughness: 0.3, side: THREE.DoubleSide }), mastro = M(0xd4d4d4);
-      const velaGeo = new THREE.BufferGeometry(); velaGeo.setAttribute("position", new THREE.Float32BufferAttribute([-1, 1, 0, -1, 17, 0, 5, 3, 0], 3)); velaGeo.computeVertexNormals();
-      for (const bx of [-30, -12]) {
-        const b = new THREE.Group(); b.position.set(bx, 1.6, -19); b.rotation.y = 0.2; g.add(b);
-        const c = new THREE.Mesh(new THREE.BoxGeometry(16, 2.5, 5), casco); c.position.y = 0.8; b.add(c);
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 18, 4), mastro); m.position.set(-1, 9, 0); b.add(m);
-        b.add(new THREE.Mesh(velaGeo, vela));
-      }
       tr.reservado.push([px + ux * 30, pz + uz * 30, 70]);
     }
   }
-
-  // 3. A cidade de Melbourne ao norte do parque (norte = z menor). Tudo longe da pista e fora do miolo.
-  const r = sorteio(3000), coresVidro = ["#1f4263", "#28587d", "#1c3247", "#4d6f8f", "#2e6284"];
-  const torre = (x, z, folga, fazer) => { if (!livre(tr, x, z, folga)) return; const g = new THREE.Group(); g.position.set(x, hAt(x, z), z); add(g); fazer(g); tr.reservado.push([x, z, folga * 0.6]); };
-  const nx = tr.t.world / 2; // o centro do mundo em x; a cidade fica ao norte dele
-  // Eureka Tower: vidro azul escuro, a coroa de ouro e a faixa vermelha
-  torre(nx + 650, -520, 200, (g) => {
-    const corpo = new THREE.Mesh(new THREE.BoxGeometry(56, 260, 56), vidroJanelas("#183452", 40)); corpo.position.y = 130; corpo.castShadow = true; g.add(corpo);
-    const coroa = new THREE.Mesh(new THREE.BoxGeometry(58, 48, 58), M(0xfdc827, { roughness: 0.15, metalness: 0.85 })); coroa.position.y = 284; g.add(coroa);
-    const antena = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 2.5, 60, 6), M(0xd9d9d9, { metalness: 0.8 })); antena.position.y = 338; g.add(antena);
-    const faixa = new THREE.Mesh(new THREE.BoxGeometry(3.5, 270, 3.5), M(0xc8102e, { roughness: 0.5 })); faixa.position.set(-28, 135, -28); g.add(faixa);
-    const branca = new THREE.Mesh(new THREE.BoxGeometry(57, 4, 57), M(0xffffff, { roughness: 0.6 })); branca.position.y = 180; g.add(branca);
-  });
-  // Australia 108: torre redonda azul com o anel dourado da Star House
-  torre(nx + 250, -650, 200, (g) => {
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(24, 28, 320, 16), vidroJanelas("#1a4666", 44, 16)); t.position.y = 160; t.castShadow = true; g.add(t);
-    const anel = new THREE.Mesh(new THREE.CylinderGeometry(38, 38, 26, 8), M(0xfdc827, { roughness: 0.2, metalness: 0.85 })); anel.position.y = 190; g.add(anel);
-  });
-  // Rialto Towers (vidro escuro espelhado) e 101 Collins (pedra clara com a agulha)
-  torre(nx - 150, -560, 200, (g) => {
-    const t = new THREE.Mesh(new THREE.BoxGeometry(50, 240, 50), M(0x151c24, { roughness: 0.12, metalness: 0.85 })); t.position.y = 120; t.castShadow = true; g.add(t);
-  });
-  torre(nx + 1000, -450, 200, (g) => {
-    const t = new THREE.Mesh(new THREE.BoxGeometry(52, 210, 52), M(0xe2ded4, { roughness: 0.8 })); t.position.y = 105; g.add(t);
-    const a = new THREE.Mesh(new THREE.ConeGeometry(8, 65, 8), M(0xd0cecb, { metalness: 0.6 })); a.position.y = 242; g.add(a);
-  });
-  // os outros arranha-céus da City e de Southbank (prédios de pista.js, com janelas)
-  for (let k = 0; k < 70; k++) {
-    const x = nx - 1700 + r() * 3900, z = -1300 + r() * 1000;
-    if (!livre(tr, x, z, 300)) continue;
-    const andares = 12 + Math.floor(r() * 26);
-    blds.push({ x, y: z, h: hAt(x, z), s: 1, sx: 55 + r() * 55, sy: andares * 22, sz: 55 + r() * 55, dy: 0.5, r: r() * 3, c: coresVidro[(r() * coresVidro.length) | 0] });
-  }
+  // o skyline da cidade ao norte: depois do parque e do lago, sem a neblina do jogo (ver cidade.js)
+  const mundo = tr.t.world;
+  cidade(tr, add, { x0: -300, x1: mundo + 500, z0: -150, fundo: 1050, livre: (x, z) => true });
+  // as árvores soltas e pálidas que pista.js espalha longe da pista (o modelo de árvore dela) não combinam com o parque: depois que o
+  // corredor dos boxes ficou pronto (tr.boxesInfo) a distância até a pista vale 0 para elas (e para o lago, a cidade e as construções
+  // da reta antes disso); `depois` devolve a medida de verdade. Quem precisa dela de verdade (garagens, painéis) roda antes.
+  tr.distAt = (x, z) => (tr.boxesInfo || z < 300 || noLago(tr.lagoMelbourne, x, z, 40) || tr.ocupado(x, z) ? 0 : original(x, z));
 }
 
-// o cenário depois: o prédio dos boxes na reta principal (o pórtico de largada é o de pista.js)
-export function depoisMelbourne(tr, { add }) {
-  // os pórticos azul-escuros "MELBOURNE / Australia" que atravessam a reta dos boxes (perpendiculares ao traçado)
-  const { pts, n, W } = tr, azul = M(0x0e1f4a, { roughness: 0.6 }), L = W / 2 + 18;
-  const letreiro = canvasTex(1024, 64, (c, w, h) => {
-    c.fillStyle = "#0e1f4a"; c.fillRect(0, 0, w, h); c.fillStyle = "#ffffff"; c.font = "bold 34px sans-serif"; c.textBaseline = "middle";
-    c.textAlign = "left"; c.fillText("Australia  ▼", 30, h / 2); c.textAlign = "center"; c.fillText("MELBOURNE", w / 2, h / 2); c.textAlign = "right"; c.fillText("▼  Australia", w - 30, h / 2);
-  });
-  const placa = new THREE.MeshBasicMaterial({ map: letreiro });
-  for (const f of [0.962, 0.028]) {
-    const i = Math.floor(f * n) % n, p = pts[i];
-    for (const k of [1, -1]) { const m = add(new THREE.Mesh(new THREE.BoxGeometry(3, 22, 3), azul)); m.position.set(p.x + p.nx * k * L, p.h + 11, p.y + p.ny * k * L); m.castShadow = true; }
-    const viga = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 3, 8, 2.5), [azul, azul, azul, azul, placa, placa]));
-    viga.position.set(p.x, p.h + 23, p.y); viga.rotation.y = -Math.atan2(p.ny, p.nx);
+// a faixa magenta da entrada dos boxes (pintura sobre o asfalto do corredor: só aparece junto com ele, nas regras de F1)
+function faixaMagenta(tr) {
+  const F = window.F1Regras, cor = F && tr.boxesGP && F.corredor(tr.t, tr.n, tr.W); if (!cor) return;
+  const { pts, n, W } = tr, lado = cor.lado, centro = (u) => cor.lat(u, lado * (W / 2 - 10)) + cor.centroAsfalto - cor.D;
+  const em = (u, l) => { const i = cor.i0 + Math.floor(u), f = u - Math.floor(u), a = pts[i % n], b = pts[(i + 1) % n];
+    const x = a.x + (b.x - a.x) * f + (a.nx + (b.nx - a.nx) * f) * l, z = a.y + (b.y - a.y) * f + (a.ny + (b.ny - a.ny) * f) * l; return [x, tr.chao(x, z) + 0.72, z]; };
+  const map = canvasTex(128, 512, (x, w, h, rr) => {
+    x.fillStyle = "#a21f86"; x.fillRect(0, 0, w, h); const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, "#00000022"); gr.addColorStop(0.5, "#ffffff10"); gr.addColorStop(1, "#00000022"); x.fillStyle = gr; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 500; i++) { x.fillStyle = rr() < 0.5 ? "#00000014" : "#ffffff10"; x.fillRect(rr() * w, rr() * h, 2, 2); }
+    x.fillStyle = "#f4f2f6"; x.fillRect(4, 0, 5, h); x.fillRect(w - 9, 0, 5, h);
+    x.save(); x.translate(w / 2, h / 2); x.rotate(-Math.PI / 2); x.fillStyle = "#f4f2f6"; x.font = "italic 900 34px 'Arial Black', Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
+    x.fillText("AUSTRALIAN", -h / 4, -18, 220); x.fillText("GRAND PRIX", -h / 4, 20, 220); x.fillText("AUSTRALIAN", h / 4, -18, 220); x.fillText("GRAND PRIX", h / 4, 20, 220); x.restore();
+  }, false);
+  map.wrapT = THREE.RepeatWrapping;
+  const mat = new THREE.MeshStandardMaterial({ map, roughness: 0.85, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 });
+  const vs = [], uv = [], idx = [], u0 = 1.5, u1 = Math.max(u0 + 4, cor.garagens[cor.garagens.length - 1] + 6), passos = Math.ceil((u1 - u0) * 1);
+  for (let k = 0; k <= passos; k++) {
+    const u = u0 + ((u1 - u0) * k) / passos, c = centro(u), a = em(u, c - lado * 24), b = em(u, c - lado * 3), v = (u * 6) / 128;
+    vs.push(...a, ...b); uv.push(0, v, 1, v); if (k < passos) { const q = k * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); }
   }
-  // lado 1 é o do corredor dos boxes (as arquibancadas da reta ficam no outro)
-  prediosDosBoxes(tr, add, {
-    de: 0.982, ate: 1.058, lado: 1, recuo: 60, fundo: 44, alto: 34, torre: true,
-    paineis: ["ausgp", "rolex", "heineken", "pirelli", "f1", "dhl", "aramco"],
-    cores: { parede: "#f2f0ea", friso: "#007a3d", teto: 0xb5b8bc },
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.name = "melbourne-faixa-magenta"; tr.boxesGP.add(m);
+}
+
+// o cenário depois: os pórticos azuis, a reta principal, o alambrado, a grama listrada, o skyline e os bosques
+export function depoisMelbourne(tr, { add }) {
+  tr.distAt = tr.distAtOriginal; // volta a medir de verdade
+  const { pts, n, W } = tr, lago = tr.lagoMelbourne, F = window.F1Regras, cor = F && tr.t.boxes ? F.corredor(tr.t, n, W) : null;
+  // os pórticos azul-escuros "MELBOURNE / Australia" que atravessam a reta dos boxes (de lado a lado, no alto, como na foto da reta)
+  const letreiro = tex(1024, 96, (c, w, h) => {
+    c.fillStyle = "#0e1f4a"; c.fillRect(0, 0, w, h); c.fillStyle = "#a21f86"; c.fillRect(0, h - 8, w, 8); c.fillStyle = "#ffffff"; c.font = "bold 44px Arial, sans-serif"; c.textBaseline = "middle";
+    c.textAlign = "left"; c.fillText("Australia  ▼", 50, h / 2 - 3); c.textAlign = "center"; c.font = "900 54px 'Arial Black', Arial, sans-serif"; c.fillText("MELBOURNE", w / 2, h / 2 - 3);
+    c.textAlign = "right"; c.font = "bold 44px Arial, sans-serif"; c.fillText("▼  Australia", w - 50, h / 2 - 3);
   });
+  for (const f of [0.935, 0.962, 0.03]) {
+    const i = Math.floor(f * n) % n, p = pts[i], g = portico({ vao: 2 * (W / 2 + 17), alto: 80, viga: 15, cor: "#0e1f4a", corColuna: "#16264f", textura: letreiro, largura: 8 });
+    g.position.set(p.x, p.h - 1.5, p.y); g.rotation.y = -Math.atan2(p.ny, p.nx); add(g);
+  }
+  // a reta principal: a arquibancada longa em frente aos boxes, o complexo dos boxes e o paddock atrás dele (o lado dos boxes é o do corredor)
+  const lb = cor ? cor.lado : 1;
+  arquibancadaLonga(tr, add, { de: 0.935, ate: 1.045, lado: -lb, lat: 99, comprimento: 240, degraus: 12, publico: 0.34 });
+  complexoDosBoxes(tr, add, { centro: 0, lado: lb, lat: 150, pecas: 4, comprimento: 150 });
+  paddock(tr, add, { centro: 0, lado: lb, lat: 215, fileiras: 4, tendas: 9 });
+  // o alambrado alto e a mureta de publicidade (menos no corredor dos boxes), a grama listrada do parque
+  const pular = cor ? (i, s) => { const rel = (((i - cor.i0) % n) + n) % n; return s === cor.lado && (rel <= cor.len + 10 || rel >= n - 10); } : null;
+  alambrado(tr, add, { pular });
+  gramaListrada(tr, add, { forca: 1.7, faixas: 7, evitar: (x, z) => noLago(lago, x, z, 30) });
+  // as moitas de árvores do parque e a fileira na margem do lago
+  const fixas = [];
+  if (lago) { const r = sorteio(31); for (let a = 0; a < Math.PI * 2; a += 0.045) { const k = Math.floor((a / (Math.PI * 2)) * lago.N) % lago.N, d = lago.raios[k] + 34 + r() * 40; fixas.push([lago.x + Math.cos(a) * d, lago.y + Math.sin(a) * d]); } }
+  bosques(tr, add, { moitas: 150, proibido: (x, z) => z < 300 || noLago(lago, x, z, 20), fixas });
+  faixaMagenta(tr);
 }
