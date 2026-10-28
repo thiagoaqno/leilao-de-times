@@ -1,5 +1,5 @@
 // Bahrein (Bahrain International Circuit, Sakhir): o que o GP usa do kit (kit/README.md explica cada peça) e o que só ele tem, em
-// ../bahrein.js (o prédio dos boxes, a Torre Al Sakhir, os holofotes da corrida noturna, os jardins, as dunas e a refinaria).
+// ../bahrein.js e kit/bahrein/ (o prédio dos boxes e a tribuna com velas, a Torre de anéis azuis, o paddock, os refletores, o escape em mosaico, as dunas em degraus e a refinaria).
 // As frações (0 a 1) são da volta, a partir da linha de chegada (conferidas na curvatura do traçado de pistas.js):
 // Reta dos boxes 0,90-0,10 · Curva 1 (direita) 0,102-0,111 · Curva 2 (esquerda) 0,120-0,128 · Reta para a 4 0,13-0,245 ·
 // Curva 4 (direita) 0,248-0,263 · S das curvas 5 a 7 0,31-0,35 · Grampo da Curva 8 (direita) 0,382-0,395 ·
@@ -21,11 +21,11 @@ export const GP_BAHREIN = {
   },
   // o escape de Sakhir: asfalto pintado de azul e areia (como nas fotos) do lado de fora das curvas lentas, brita cor de areia nas curvas
   // rápidas do miolo e nas 11 a 13, e muro de pneus por fora (cada trecho só tem uma coisa, para não se sobreporem)
+  // o escape de Sakhir: o mosaico azul e o muro de pneus são do kit/bahrein/escape.js (chamado em ../bahrein.js); aqui fica só a
+  // brita cor de areia nas curvas rápidas do miolo e nas 11 a 13, com a mesma largura do mosaico
   escape: {
-    cores: ["#2b5fa8", "#e3d3a3"], corBrita: "#d8c49a", largura: 28,
-    listrado: [[0.093, 0.135, "fora"], [0.243, 0.268, "fora"], [0.378, 0.4, "fora"], [0.462, 0.484, "fora"], [0.72, 0.742, "fora"], [0.872, 0.902, "fora"]],
+    corBrita: "#d8c49a", largura: 36,
     brita: [[0.31, 0.352, "fora"], [0.6, 0.63, "fora"], [0.658, 0.696, "fora"]],
-    pneus: [[0.093, 0.135, "fora"], [0.243, 0.268, "fora"], [0.31, 0.352, "fora"], [0.378, 0.4, "fora"], [0.462, 0.484, "fora"], [0.6, 0.63, "fora"], [0.72, 0.742, "fora"], [0.872, 0.902, "fora"]],
   },
   // as arquibancadas: a principal, de frente para os boxes (do outro lado da pista), e uma por fora de cada curva lenta
   arquibancadas: {
@@ -48,7 +48,7 @@ export const GP_BAHREIN = {
   passarelas: { candidatos: [0.9, 0.215, 0.55, 0.83], marcas: ["gulfair", "bahrain", "aramco"], max: 2 },
   montanha: { angulo: Math.PI / 3, afastamento: 4600, altura: 340, largura: 5200, rocha: "#ba9d73", mato: "#cbb48b", longe: "#e5cfb1" }, // o Jebel Dukhan, ao sul
   horizonte: false, // sem os morros verdes de longe: deserto
-  beira: { palmeiras: 0.04, longe: { palmeiras: 0.015 } },
+  beira: { palmeiras: 0, longe: { palmeiras: 0 } }, // as tamareiras são as de kit/bahrein/praca.js
   depois: (tr, ctx) => depoisBahrein(tr, ctx), // a faixa Gulf Air no pórtico
   vida: {
     som: { campo: () => 0.8, cidade: 0.1 }, // vento do deserto, a cidade lá longe
