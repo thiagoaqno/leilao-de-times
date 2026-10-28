@@ -98,7 +98,7 @@ function definirOpcoes(sala, pid, d = {}) {
 }
 
 function equipeNova(equipe) {
-  return { montagem: Equipes.montagemPadrao(equipe), bonus: 0, caixa: CAIXA_INICIAL, gasto: 0, patrocinio: PATROCINIO, engenheiros: { mecanico: 0, estrategista: 0 }, companheiro: null, versao: 0, historico: [] };
+  return { montagem: Object.fromEntries(Equipes.ORDEM.map((k) => [k, 0])), bonus: 0, caixa: CAIXA_INICIAL, gasto: 0, patrocinio: PATROCINIO, engenheiros: { mecanico: 0, estrategista: 0 }, companheiro: null, versao: 0, historico: [] };
 }
 // O anfitrião fecha a sala. Cada equipe com humano ganha caixa, montagem e engenheiros; com UM humano, o outro carro é de
 // um piloto real contratado (o primeiro titular, no começo) e o segundo titular vai para o mercado; com DOIS, os dois

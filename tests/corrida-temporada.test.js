@@ -43,6 +43,8 @@ test("mini temporada de quatro GPs: grid, tabelas, finanças e continuidade", ()
 
 test("mercado, desenvolvimento e teto de gastos são validados no servidor", () => {
   const s = R.criar("Thiago", "cadillac", 4, 3, 1);
+  assert.equal(E.custoDaMontagem(s.montagem), 0, "carreira nova começa com todos os pontos livres");
+  s.montagem = E.montagemPadrao(s.equipe);
   assert.throws(() => R.conferirMontagem(s, { ...s.montagem, motor: s.montagem.motor + 1 }), /orçamento/);
   R.desenvolver(s);
   const nova = R.conferirMontagem(s, { ...s.montagem, motor: s.montagem.motor + 1 });
@@ -90,7 +92,7 @@ test("sede abre GP privado, fixa companheiro e exige acesso da temporada", { tim
     const criado = await chamar(sede, "criar", { nome: "Thiago", equipe: "cadillac", tamanho: 4, voltas: 2 });
     assert.equal(criado.ok, true, criado.erro);
     assert.equal(criado.dados.gp, 0);
-    const errado = await chamar(sede, "montagem", { montagem: { ...criado.dados.montagem, motor: 8 } });
+    const errado = await chamar(sede, "montagem", { montagem: Object.fromEntries(E.ORDEM.map((k) => [k, 8])) });
     assert.equal(errado.ok, false);
     const acesso = await chamar(sede, "iniciarGP");
     assert.equal(acesso.ok, true, acesso.erro);

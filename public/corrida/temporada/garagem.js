@@ -1,13 +1,13 @@
 // Corrida da Galera — a garagem do modo carreira (visual): abas, painel da equipe com os atributos, calendário com bandeiras,
-// o carro 3D no centro e a tela de PEÇAS (cartões por categoria + barra de orçamento). Só desenha: as contas estão em
-// f1-pecas.js e f1-equipes.js (o servidor confere tudo de novo). Usado pela temporada solo (sede.js), pela em grupo
+// o carro 3D no centro e a distribuição livre de pontos. A sala F1 também usa este arquivo para a antiga tela de peças.
+// As contas estão em f1-equipes.js e f1-pecas.js (o servidor confere tudo de novo). Usado pela temporada solo (sede.js), pela em grupo
 // (grupo.js) e pela sala de F1 (menus.js). Estilo inspirado em jogos de gestão de F1, sem copiar marca nenhuma.
 (function (root) {
 const h = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const P = () => root.F1Pecas, E = () => root.F1Equipes, FP = () => root.F1Pilotos;
 
 // ---------- as abas ----------
-const ABAS = [["geral", "Visão geral"], ["carro", "Carro · Peças"], ["classif", "Classificação"], ["equipe", "Equipe"]];
+const ABAS = [["geral", "Visão geral"], ["carro", "Carro · Pontos"], ["classif", "Classificação"], ["equipe", "Equipe"]];
 let aba = "geral";
 const abaAtual = () => aba;
 const definirAba = (a) => { if (ABAS.some((x) => x[0] === a)) aba = a; };
@@ -95,5 +95,27 @@ function cliquePeca(botao, pecasAtuais) {
   return { ...pecasAtuais, [b.dataset.pcat]: b.dataset.pid };
 }
 
-root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, notaGeral };
+// Na carreira, cada ponto vai diretamente para um dos seis atributos. A validação definitiva é feita no servidor.
+function pontosHTML(o) {
+  const Eq = E(), montagem = o.montagem, limite = Eq.EQUIPES[o.equipe].orcamento + (o.bonus || 0);
+  const usado = Eq.custoDaMontagem(montagem), ficha = Eq.ficha(specDe(o.equipe, montagem));
+  const linhas = Eq.ORDEM.map((k) => {
+    const p = Eq.PECAS[k], nivel = montagem[k];
+    return `<section class="ponto-linha"><div class="ponto-info"><h3>${p.icone} ${h(p.nome)}</h3><p>${h(p.desc)}</p></div><div class="ponto-controles"><button type="button" data-ponto="${k}" data-delta="-1" aria-label="Diminuir ${h(p.nome)}" ${!o.pode || nivel <= 0 ? "disabled" : ""}>−</button><strong class="num" aria-label="Nível ${nivel} de ${Eq.MAX_NIVEL}">${nivel}<small>/${Eq.MAX_NIVEL}</small></strong><button type="button" data-ponto="${k}" data-delta="1" aria-label="Aumentar ${h(p.nome)}" ${!o.pode || nivel >= Eq.MAX_NIVEL || usado >= limite ? "disabled" : ""}>+</button></div></section>`;
+  }).join("");
+  return `<div class="pecas-tela pontos-tela">${orcamentoBarra(usado, limite)}<p class="pc-aviso">Distribua os pontos como quiser. Cada nível custa 1 ponto; você pode mudar a distribuição entre os GPs.</p>${!o.pode && o.motivo ? `<p class="pc-aviso trava">${h(o.motivo)}</p>` : ""}
+    <div class="pc-corpo"><div class="pontos-lista">${linhas}<button type="button" class="zerar-pontos" data-ponto-zerar ${!o.pode || !usado ? "disabled" : ""}>Zerar distribuição</button></div>
+    <aside class="pc-resumo"><h3>Resultado</h3><ul class="pn-attr">${ficha.map((f) => `<li>${icone(f.id)}<span>${h(f.rotulo)}</span><i class="barra"><u style="width:${f.nota * 10}%"></u></i><b class="num">${f.nota}</b></li>`).join("")}</ul></aside></div></div>`;
+}
+function cliquePonto(botao, montagem, equipe, bonus = 0) {
+  const Eq = E();
+  if (botao?.hasAttribute("data-ponto-zerar")) return Object.fromEntries(Eq.ORDEM.map((k) => [k, 0]));
+  const k = botao?.dataset.ponto, delta = Number(botao?.dataset.delta);
+  if (!Eq.ORDEM.includes(k) || ![-1, 1].includes(delta)) return null;
+  const nivel = montagem[k] + delta, limite = Eq.EQUIPES[equipe].orcamento + bonus;
+  if (nivel < 0 || nivel > Eq.MAX_NIVEL || (delta > 0 && Eq.custoDaMontagem(montagem) >= limite)) return null;
+  return { ...montagem, [k]: nivel };
+}
+
+root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
 })(window);
