@@ -44,6 +44,7 @@ function iniciar(room) {
   const bots = room.order.filter((id) => room.players[id]?.bot);
   room.direcao = { amarelo: null, safety: null, avisoIncidente: false, avisoSafety: false,
     setorIncidente: Math.floor(r() * T.SECTORS), incidenteId: bots[Math.floor(r() * bots.length)] || null,
+    scEm: room.config.voltas >= 4 && r() < 0.4 ? 1.25 + r() * Math.max(1, room.config.voltas - 3) : null,
     scDura: 10000 + Math.floor(r() * 4000),
     pista: T.pontos(t, 6), ultimaAtualizacao: 0 };
   for (const id of room.order) Object.assign(room.players[id], { drsZona: -1, penal: 0, avisosLimite: 0,
@@ -65,7 +66,7 @@ function passo(room, agora, log) {
     log(`🟡 Bandeira amarela no setor ${d.setorIncidente + 1}: ${envolvido ? `${envolvido.name} saiu da trajetória.` : 'detritos na pista.'}`); mudou = true;
   }
   if (d.amarelo && agora >= d.amarelo.ate) { d.amarelo = null; log('🟢 Pista liberada.'); mudou = true; }
-  if (!d.avisoSafety && pr >= 2.25 && room.config.voltas >= 4) {
+  if (!d.avisoSafety && d.scEm != null && pr >= d.scEm) {
     d.avisoSafety = true; d.safety = { ate: agora + d.scDura, ordem: ordem(room).map((p) => p.id), prog: pr + 0.035 };
     d.amarelo = null; log('🚨 Safety car na pista. Mantenha a posição e reduza.'); mudou = true;
   }

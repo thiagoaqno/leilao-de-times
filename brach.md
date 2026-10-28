@@ -1,15 +1,13 @@
-## Carro da carreira e entrada do box em Monza
+## Safety car nas corridas F1
 
 ### Causa
-- A entrada dos boxes de Monza estava 1,3% da volta **depois** da linha de chegada. Um pedido feito mais adiante na volta 4 de uma corrida de 5 voltas só encontrava essa entrada na última volta, quando a parada já é bloqueada.
+- A direção de prova acionava o safety car obrigatoriamente ao líder chegar à volta 3 em qualquer corrida com pelo menos 4 voltas.
+- Com o pelotão comprimido durante a neutralização, a resolução de colisões no servidor deslocava lateralmente o carro dos jogadores humanos e podia jogá-los para fora da pista.
 
 ### O que mudou
-- Carreiras novas, solo e em grupo, começam com os pontos do carro livres. A aba **Carro · Pontos** permite distribuí-los entre os seis atributos e redistribuir depois, dentro do orçamento.
-- Na pausa após o Q2 e no grid final após a classificação, os pilotos da carreira podem ajustar esses pontos. O acerto é salvo na temporada e vale para os dois carros da equipe. Saves existentes mantêm a montagem atual.
-- A sala F1 fora da carreira continua com a montagem por peças.
-- A entrada foi movida para o fim da reta anterior à linha, com garagens junto da chegada e saída no começo da reta seguinte.
-- Um cenário de regressão verifica que a entrada fica antes da linha e a saída depois dela.
+- Cada corrida com pelo menos 4 voltas agora tem 40% de chance de safety car, com o momento sorteado entre as voltas intermediárias. O sorteio usa a semente da corrida, preservando a consistência da sala.
+- Durante o safety car, o servidor deixa de aplicar o empurrão de colisões aos carros humanos. Fora da neutralização, as colisões continuam como antes.
+- O cenário de regressão existente acompanha o novo momento sorteado; outro cobre uma corrida de 5 voltas sem safety car.
 
 ### Verificação
-- A geometria da reta de Monza foi conferida pelos pontos amostrados da pista; o trecho entre 98,3% e 1,7% é reto.
-- Os cenários de carreira que dependiam da montagem inicial fixa foram atualizados. Testes finais não foram executados, conforme solicitado.
+- Código e diff revisados. Testes finais não foram executados, conforme solicitado.

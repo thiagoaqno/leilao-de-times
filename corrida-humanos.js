@@ -101,8 +101,8 @@ function andar(room, agora, h) {
     // o relógio dos passos: a âncora só desce quando o piloto está em dia (as rajadas atrasadas não a empurram)
     S.ancora = Math.min(S.ancora + (agora - S.ultimoAgora) * 0.0005, agora - (c.tick - 1) * PASSO_MS); S.ultimoAgora = agora;
     const quando = Math.min(agora, S.ancora + c.tick * PASSO_MS);
-    // as batidas entre carros (uma conferência por rodada): cada um empurra só o seu carro; quem recebeu a bandeirada não bate
-    if (corrida && p.finish == null && !p.box && !p.dnf) {
+    // Sob safety car o pelotão se comprime; não empurre o carro humano para fora da pista.
+    if (corrida && !amb.safety && p.finish == null && !p.box && !p.dnf) {
       Sim.baterNosOutros(c, p.car, outros, ev);
       for (const e of ev) mudou = tratar(room, p, S, e, quando, h) || mudou; ev.length = 0;
     }

@@ -54,7 +54,8 @@ test('direção de prova concede DRS na detecção, sorteia amarela e safety car
   Direcao.passo(room, 20000, log); assert.ok(room.direcao.amarelo);
   assert.ok(logs.some((s) => s.includes('Bandeira amarela')));
   Direcao.passo(room, 30000, log); assert.equal(room.direcao.amarelo, null);
-  a.pos = pos(2.3); b.pos = pos(2.2);
+  assert.ok(room.direcao.scEm > 1.25);
+  a.pos = pos(room.direcao.scEm + 0.01); b.pos = pos(room.direcao.scEm - 0.01);
   Direcao.passo(room, 31000, log); assert.ok(room.direcao.safety);
   assert.equal(Direcao.publico(room).limite, 0.54);
   for (let i = 0; i < 4; i++) {
@@ -63,4 +64,15 @@ test('direção de prova concede DRS na detecção, sorteia amarela e safety car
   }
   assert.equal(b.avisosLimite, 4); assert.equal(b.penal, 5);
   Direcao.passo(room, 50000, log); assert.equal(room.direcao.safety, null);
+});
+
+test('safety car pode não aparecer em corrida curta', () => {
+  const p = { id: 'a', name: 'Ana', finish: null };
+  const room = { config: { pista: 'interlagos', voltas: 5 }, semente: 99, startAt: 0,
+    order: ['a'], players: { a: p } };
+  Direcao.iniciar(room);
+  assert.equal(room.direcao.scEm, null);
+  p.pos = { prog: room.direcao.pista.length * 4.8 };
+  Direcao.passo(room, 10000, () => {});
+  assert.equal(room.direcao.safety, null);
 });
