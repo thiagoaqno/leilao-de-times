@@ -104,3 +104,20 @@ matrizes calculadas na animação, e só do que está perto da câmera.
 - Antes de pôr algo na beira, confira `livre(tr, x, z, folga)` (o grampo vizinho; a folga conta a partir da MEIA LARGURA e tem que
   incluir o tamanho da peça: uma copa de 30 de raio pede 30 a mais) e `ocupado(tr, x, z)`. Fita num deslocamento fixo: `recortar()`.
 - Peça nova que serve para mais de uma pista entra aqui, com a sua chave na configuração e uma linha nesta tabela.
+
+## Kit 2: assets de cenário soltos (`montagem.js`, `box-equipe.js`, `coberturas.js`, `torres.js`)
+
+Funções que devolvem um `THREE.Group` (origem no chão, frente para +z, 1 unidade ≈ 10 cm; ponha com `g.position`/`g.rotation.y` e
+`add(g)`). Cor chapada por vértice, uma malha por material (um box inteiro fica em ~4 chamadas), canvas pequeno só para letreiros; não
+dependem de `cena.js`. Nenhuma pista usa ainda: antes de pôr na beira, confira `livre`/`ocupado` (`comum.js`) com o `userData` de cada um.
+Para ver lado a lado: `/corrida/kit/demo.html#box | reta | tribuna | torre | portico | tenda | tudo`.
+
+| Função | Parâmetros principais |
+| --- | --- |
+| `boxEquipe(o)` | `cor`, `corFaixa`, `corTexto`, `texto`, `portas`, `larguraPorta`, `altoPorta`, `abertura` (0 a 1, ou um por porta), `profundidade`, `carros`, `corCarro`, `interior`, `mureta` (`true` ou `{ logo, cor, distancia }`) |
+| `retaDosBoxes(o)` | `equipes` (uma cor por equipe: toldos), `baiasPorEquipe`, `larguraBaia`, `profundidade`, `altoAndar`, `cores` (assentos), `tribuna`, `cobertura`, `corFaixa`, `estrutura`, `publico` |
+| `tribunaCoberta(o)` | `comprimento`, `degraus`, `altura`, `fundo`, `cores`, `secoes`, `cobertura` (cor ou `null`), `alcance`, `folga`, `estrutura`, `publico`, `colunas`, `semente` |
+| `velas(o)` / `tendaPaddock(o)` | `modulos`, `filas`, `vao`, `profundidade`, `alturaBeiral`, `alturaPico`, `mastro`, `cor`, `postes` · tenda: `texto`, `corFaixa`, `mesas`, `corMesas` |
+| `torreControle(o)` | `raio`, `aneis`, `alturaAnel`, `corAneis`, `corVidro`, `corGrade`, `corpo`, `corCorpo`, `cobertura` (`"velas"`, `"cupula"`, `"plana"`), `corCobertura`, `bandeira` (duas cores ou `null`), `pico` |
+| `portico(o)` | `vao`, `alto`, `viga`, `cor`, `corColuna`, `texto`, `corTexto`, `corFaixa`, `luzes` (semáforos de largada) |
+| `pilhaPneus`, `rackPneus`, `carrinhoFerramentas`, `carroF1`, `muretaPit` | pequenos; as versões `...Em(montador, x, z, o)` põem num `Montador` já aberto (sem malha nova) |

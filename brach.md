@@ -1,26 +1,22 @@
-# Corrida: cenário refeito do Bahrein (Sakhir)
+# Corrida: Kit 2, assets de cenário para as próximas pistas
 
-Refaz o cenário do GP do Bahrein (o do PR #348 tinha um pórtico de lado e peças se sobrepondo). Só aparência: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira não foram tocados.
+Assets novos em código (three.js procedural, low poly, cor chapada) feitos a partir das fotos de referência: os modelos baixados são cenas de ~1 milhão de triângulos sem peças nomeadas, então o kit ganha as peças próprias. Só cenário novo e solto: nenhuma pista foi alterada (`pistas.js`, física, robôs, regras, HUD, menus, sala e carreira intocados; Melbourne, Bahrein, Mônaco e Interlagos idem).
 
-## O que estava errado
-- Um segundo pórtico, copiado de Melbourne, girado 90° (as colunas ficavam ao longo da pista). O pórtico de pista.js (cinco luzes) já atravessa a pista na linha de chegada: o extra saiu e a faixa Gulf Air agora fica pendurada nele.
-- A Torre Al Sakhir nascia dentro do prédio dos boxes, e as palmeiras também (o prédio era posto tarde demais, depois dos enfeites).
-- Os trechos de escape (asfalto listrado, brita e pneus) se sobrepunham, e as frações das curvas 14 e 15 estavam erradas (a 14 é o grampo em 0,72-0,74).
-- Linhas SC em lugar sem sentido (agora na entrada e na saída dos boxes) e morros verdes aleatórios no horizonte do deserto.
+## O que entrou (`public/corrida/kit/`)
+- `montagem.js`: o `Montador` junta caixas e formas por material (cor por vértice: um box inteiro fica em ~4 chamadas de desenho) e canvas pequenos só para letreiros. Não depende de `cena.js`.
+- `box-equipe.js`: `boxEquipe` (prédio de 2 andares, vidros inclinados, faixa de letreiro, portas de enrolar abertas com rack de pneus, carrinho de ferramentas e carro), `retaDosBoxes` (prédio longo com toldo por equipe, muretinha com faixa amarela e arquibancada coberta em cima), `pilhaPneus`, `rackPneus`, `carrinhoFerramentas`, `carroF1`, `muretaPit` (com logo).
+- `coberturas.js`: `velas` (cobertura tensionada), `tendaPaddock` (velas, faixa, mesas) e `tribunaCoberta` (degraus coloridos em seções, torcida, painéis brancos sobre aço, `alcance` da cobertura).
+- `torres.js`: `torreControle` (anéis, corpo, coroa em velas, cúpula ou plana, bandeira) e `portico` (viga com letreiro nos dois lados e semáforos de largada).
+- `demo.html`: página solta para ver tudo (`/corrida/kit/demo.html#box | reta | tribuna | torre | portico | tenda | tudo`), com o contador de chamadas e triângulos.
+- `README.md`: tabela com os parâmetros de cada função.
 
-## O que entrou
-- **Torre Al Sakhir** nova, como nas fotos: núcleo escuro com lajes largas e grades de varanda empilhadas, cobertura em velas bege com mastros e a bandeira do Bahrein, atrás do prédio dos boxes.
-- **Kit novo `kit/holofotes.js`**: postes altos com painel de lâmpadas virado para a pista, em `InstancedMesh`, só onde `livre`/`ocupado` deixam (documentado no `kit/README.md`).
-- Prédio dos boxes com torre de controle, painéis Gulf Air, Bahrain GP, Aramco, Rolex..., feito no `cenario` para reservar o lugar antes dos enfeites.
-- Escape com asfalto pintado de azul e areia, brita cor de areia e muro de pneus, cada trecho só com uma coisa; zebras vermelhas e brancas e zebra alta nas curvas 4, 8, 10 e 14.
-- Sete arquibancadas (principal em frente aos boxes e uma por fora de cada curva lenta), passarelas, dunas, jardins de tamareiras e, ao longe, a refinaria com o flare.
-
-## Fontes
-Fotos de referência enviadas pelo dono (torre, corrida noturna, reta de largada, foto aérea) e o traçado de pistas.js para as frações.
+Ficou de fora de propósito: nada duplica `boxes.js`/`arquibancadas.js` (esses seguem a curva da pista; os novos são peças soltas, e a cobertura em velas serve às duas).
 
 ## Conferido
-- `tests/corrida*.test.js` (resultado no comentário do PR), `corrida-pistas-invasao` sem invasão no Bahrein.
-- No navegador: volta completa (24 pontos) sem erro no console; pórtico perpendicular na linha, torre, boxes, arquibancadas e postes sem entrar no asfalto.
-- Relevo: nada alterado.
+- No navegador, comparando com as fotos: box vermelho (faixa amarela, vidros, portas, pneus, carro, mureta com logo), reta de 12 baias com toldos coloridos e arquibancada azul/roxa coberta, tribunas, torre de anéis com velas, pórtico e tenda de paddock. Console sem erros. Medido: reta dos boxes 6 chamadas e 13 mil triângulos; box de equipe ~26 chamadas na demo com texturas de letreiro separadas.
+- `node --test tests/corrida*.test.js`: as mesmas 6 falhas antigas (pneus, ritmo da IA e rádio), nenhuma nova.
+
+## Próximos passos
+Usar em `cenario` das próximas pistas depois de conferir `livre`/`ocupado` (o `userData` de cada asset traz as medidas).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
