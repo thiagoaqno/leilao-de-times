@@ -1,70 +1,26 @@
-# Corrida: cenários de Melbourne e Bahrein
+# Corrida: cenário refeito do Bahrein (Sakhir)
 
-Cenários 3D dedicados e imersivos para os GPs de **Melbourne (Albert Park Circuit)** e **Bahrein (Bahrain International Circuit - Sakhir)**, substituindo as configurações genéricas `gpSimples` por ambientações ricas, fiéis aos circuitos reais da Fórmula 1 e construídas em Three.js nativo sem imagens ou modelos externos.
+Refaz o cenário do GP do Bahrein (o do PR #348 tinha um pórtico de lado e peças se sobrepondo). Só aparência: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira não foram tocados.
 
----
+## O que estava errado
+- Um segundo pórtico, copiado de Melbourne, girado 90° (as colunas ficavam ao longo da pista). O pórtico de pista.js (cinco luzes) já atravessa a pista na linha de chegada: o extra saiu e a faixa Gulf Air agora fica pendurada nele.
+- A Torre Al Sakhir nascia dentro do prédio dos boxes, e as palmeiras também (o prédio era posto tarde demais, depois dos enfeites).
+- Os trechos de escape (asfalto listrado, brita e pneus) se sobrepunham, e as frações das curvas 14 e 15 estavam erradas (a 14 é o grampo em 0,72-0,74).
+- Linhas SC em lugar sem sentido (agora na entrada e na saída dos boxes) e morros verdes aleatórios no horizonte do deserto.
 
-## 1. GP de Melbourne (Albert Park Circuit)
+## O que entrou
+- **Torre Al Sakhir** nova, como nas fotos: núcleo escuro com lajes largas e grades de varanda empilhadas, cobertura em velas bege com mastros e a bandeira do Bahrein, atrás do prédio dos boxes.
+- **Kit novo `kit/holofotes.js`**: postes altos com painel de lâmpadas virado para a pista, em `InstancedMesh`, só onde `livre`/`ocupado` deixam (documentado no `kit/README.md`).
+- Prédio dos boxes com torre de controle, painéis Gulf Air, Bahrain GP, Aramco, Rolex..., feito no `cenario` para reservar o lugar antes dos enfeites.
+- Escape com asfalto pintado de azul e areia, brita cor de areia e muro de pneus, cada trecho só com uma coisa; zebras vermelhas e brancas e zebra alta nas curvas 4, 8, 10 e 14.
+- Sete arquibancadas (principal em frente aos boxes e uma por fora de cada curva lenta), passarelas, dunas, jardins de tamareiras e, ao longe, a refinaria com o flare.
 
-- **Lago Albert Park e Ilha Gunn (`public/corrida/melbourne.js`)**:
-  - Polígono suave de 20 vértices definindo o contorno do lago central, com água dinâmica em tempo real (`tr.agua`).
-  - Ilha Gunn arborizada no centro do lago.
-  - Albert Park Yacht Club & Rowing Sheds: deque de madeira, estacas, galpão náutico e veleiros com velas em Three.js.
-- **Skyline de Melbourne (Southbank / CBD ao norte)**:
-  - Eureka Tower (297 m, topo em ouro 24k, faixa vermelha vertical e vidro azul profundo).
-  - Australia 108 (316 m, torre curva com anel starburst dourado).
-  - 101 Collins Street (torre clássica em pedra com antena de 65 m).
-  - Rialto Towers (vidro escuro espelhado) e mais 65 edifícios em vidro e aço ao horizonte.
-- **Cenário de Pista e Kit (`public/corrida/gps/melbourne.js`)**:
-  - Zebras tradicionais verde e amarelo ouro (`#007a3d` e `#f4c300`), além de zebras banana amarelas anticorte nas chicanes.
-  - Áreas de escape em brita bege clara (`#d8caa2`), asfalto de desaceleração verde/branco e barreiras de pneus triplas.
-  - Arquibancadas oficiais nomeadas: Fangio (reta principal, coberta), Brabham e Jones (curvas 1 e 2), Moss, Clark, Waite, Hill, Prost e Senna.
-  - Complexo dos boxes com garagens, camarotes, torre de cronometragem, pórtico de largada Rolex e árvores do parque via `parque.js`.
+## Fontes
+Fotos de referência enviadas pelo dono (torre, corrida noturna, reta de largada, foto aérea) e o traçado de pistas.js para as frações.
 
----
+## Conferido
+- `tests/corrida*.test.js` (resultado no comentário do PR), `corrida-pistas-invasao` sem invasão no Bahrein.
+- No navegador: volta completa (24 pontos) sem erro no console; pórtico perpendicular na linha, torre, boxes, arquibancadas e postes sem entrar no asfalto.
+- Relevo: nada alterado.
 
-## 2. GP do Bahrein (Bahrain International Circuit - Sakhir)
-
-- **Torre Al Sakhir VIP (`public/corrida/bahrein.js`)**:
-  - Modelagem procedural fiel da icônica torre circular de 8 andares que domina o paddock e a reta principal de Sakhir.
-  - Pódio circular em pedra calcária do deserto (`#cfc1a5`).
-  - 8 andares cilíndricos com vidro fumê reflexivo e anéis arquitetônicos externos brancos (brise-soleil) com pilares e faixas luminosas de LED (vermelho do Bahrein e dourado).
-  - Lounge panorâmico no 8º andar com terraço cantilever saliente.
-  - Cobertura icônica em tenda beduína branca (tensile fabric canopy) encimada por torreão em aço, mastro de transmissão e sinalizador aéreo vermelho.
-- **Postes de Iluminação Noturna do Deserto (Floodlight Pylons)**:
-  - Sistema de postes altos treliçados de 32 m de altura com bancos de holofotes halógenos/LED retangulares inclinados sobre a pista, cobrindo o perímetro do circuito em `InstancedMesh` (baixo impacto no draw call).
-- **Oásis e Jardins de Palmeiras**:
-  - Pátios ajardinados no paddock e na reta de trás com tamareiras (*Phoenix dactylifera*) e palmeiras do deserto.
-- **Cenário de Pista e Cores (`public/corrida/gps/bahrein.js`)**:
-  - Zebras vermelho e branco do Bahrein (`#d62828` e `#f4f4f4`) e zebras amarelas anticorte nos ápices das curvas 1/2 (Schumacher), 4, 8 (grampo), 10 e 14/15.
-  - Áreas de escape características de Sakhir com asfalto pintado em listras vermelhas e brancas nas saídas rápidas, caixas de brita cor de areia do deserto (`#d8c49a`) e muros de pneus.
-  - Arquibancadas oficiais:
-    - *Main Grandstand*: tribuna principal coberta com assentos em vermelho e branco ao longo de toda a reta dos boxes.
-    - *Turn 1 Grandstand*: na freada forte da curva Michael Schumacher.
-    - *Batelco Grandstand*: na ferradura interna das curvas 8 a 10.
-    - *Victory Grandstand*: na aproximação da curva 14.
-  - Complexo dos boxes com friso vermelho do Bahrein, patrocinadores e pórtico de largada com marcas `gulfair` e `rolex`.
-  - Marcas reais adicionadas em `kit/marcas.js`: `gulfair` (patrocinador título oficial do GP do Bahrein) e `bahrain`.
-  - Som ambiente de deserto com vento suave, helicóptero e multidão nas arquibancadas.
-
----
-
-## Fontes das fotos e referências
-
-- Fotos e mapas oficiais da Formula 1 e da Bahrain International Circuit (bic.com.bh):
-  - A arquitetura da Torre Al Sakhir VIP e seus anéis exteriores com iluminação noturna.
-  - O layout das arquibancadas Main Grandstand, Batelco e Turn 1.
-  - As listras vermelhas e brancas nas áreas de escape de asfalto e as zebras da Curva 1 (Michael Schumacher) e Curva 10.
-  - A disposição das torres de refletores noturnos instaladas no circuito desde 2014.
-- Referências do GP de Melbourne (Australian Grand Prix Corporation).
-
----
-
-## Validações e Testes
-
-- **Invasões de pista**: 0 invasões em Melbourne e 0 invasões no Bahrein (`tests/ajuda-cena/invasao.mjs` limpo).
-- **Suíte de testes de pista**: 36/36 testes aprovados em `tests/corrida-pistas-invasao.test.js` e checkpoints 100% validados em `tests/corrida-pistas-volta.test.js`.
-- **Desempenho**:
-  - Melbourne: 322 malhas na cena, 165 chamadas de desenho.
-  - Bahrein: 268 malhas na cena, 130 chamadas de desenho da câmera (limite do jogo é 520).
-- **Zero alterações em física e traçado**: traçados, largadas, relevo (`hills`), limites e regras mantidos estritamente intactos.
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
