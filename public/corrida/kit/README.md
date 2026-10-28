@@ -122,4 +122,6 @@ Para ver lado a lado: `/corrida/kit/demo.html#box | reta | tribuna | torre | por
 | `portico(o)` | `vao`, `alto`, `viga`, `cor`, `corColuna`, `texto`, `corTexto`, `corFaixa`, `luzes` (semáforos de largada) |
 | `pilhaPneus`, `rackPneus`, `carrinhoFerramentas`, `carroF1`, `muretaPit` | pequenos; as versões `...Em(montador, x, z, o)` põem num `Montador` já aberto (sem malha nova) |
 
+Jeddah (`../gps/jeddah.js` e `../jeddah.js`) traz assets exclusivos em `kit/jeddah/` (mar e corniche, lagoa, dhows e marina, palmeiras, prédio dos boxes escalonado, Fonte do Rei Fahd, Mesquita Al-Rahma, cidade com a Jeddah Tower e as marcas stc/Saudia/Roshn), usados só por esse GP.
+
 Suzuka (`../gps/suzuka.js`, `../suzuka.js`) traz peças exclusivas em `kit/suzuka/`: `viaduto.js` (o cruzamento em 8), `roda-gigante.js` (que gira), `colinas.js` (morros, cedros, cerejeiras), `japao.js` (torii, lanternas, nobori, estacionamento, hotel, atrações).
