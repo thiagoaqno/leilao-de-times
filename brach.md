@@ -1,22 +1,23 @@
-# Corrida: Kit 2, assets de cenário para as próximas pistas
+# Corrida: Melbourne 2, o segundo passo (riqueza e fidelidade)
 
-Assets novos em código (three.js procedural, low poly, cor chapada) feitos a partir das fotos de referência: os modelos baixados são cenas de ~1 milhão de triângulos sem peças nomeadas, então o kit ganha as peças próprias. Só cenário novo e solto: nenhuma pista foi alterada (`pistas.js`, física, robôs, regras, HUD, menus, sala e carreira intocados; Melbourne, Bahrein, Mônaco e Interlagos idem).
+**Depende do #351 (kit 2), que já está no main: este PR já inclui o merge do main.** O primeiro passo (#349) refez o básico; aqui o objetivo é um salto claro de densidade, a partir das fotos de referência (curva lotada com alambrado e grama listrada, reta de largada com a arquibancada de aço e os pórticos azuis, e as aéreas com o lago, o skyline e os telhados azul e vermelho). Só cenário: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira intocados.
 
-## O que entrou (`public/corrida/kit/`)
-- `montagem.js`: o `Montador` junta caixas e formas por material (cor por vértice: um box inteiro fica em ~4 chamadas de desenho) e canvas pequenos só para letreiros. Não depende de `cena.js`.
-- `box-equipe.js`: `boxEquipe` (prédio de 2 andares, vidros inclinados, faixa de letreiro, portas de enrolar abertas com rack de pneus, carrinho de ferramentas e carro), `retaDosBoxes` (prédio longo com toldo por equipe, muretinha com faixa amarela e arquibancada coberta em cima), `pilhaPneus`, `rackPneus`, `carrinhoFerramentas`, `carroF1`, `muretaPit` (com logo).
-- `coberturas.js`: `velas` (cobertura tensionada), `tendaPaddock` (velas, faixa, mesas) e `tribunaCoberta` (degraus coloridos em seções, torcida, painéis brancos sobre aço, `alcance` da cobertura).
-- `torres.js`: `torreControle` (anéis, corpo, coroa em velas, cúpula ou plana, bandeira) e `portico` (viga com letreiro nos dois lados e semáforos de largada).
-- `demo.html`: página solta para ver tudo (`/corrida/kit/demo.html#box | reta | tribuna | torre | portico | tenda | tudo`), com o contador de chamadas e triângulos.
-- `README.md`: tabela com os parâmetros de cada função.
-
-Ficou de fora de propósito: nada duplica `boxes.js`/`arquibancadas.js` (esses seguem a curva da pista; os novos são peças soltas, e a cobertura em velas serve às duas).
+## O que entrou
+- **Faixa magenta** da entrada dos boxes (pintura sobre o asfalto do corredor, com o AUSTRALIAN GRAND PRIX em branco; só aparece junto com o corredor, nas regras de F1).
+- **Alambrado alto** de aço com a ponta inclinada para a pista e a **mureta contínua de publicidade** (faixas Rolex, Heineken, Pirelli, Aramco, DHL, F1, AWS) nos dois lados, menos no corredor dos boxes (`kit/melbourne/cerca.js`, umas 6 chamadas para a volta toda).
+- **Grama listrada** (listras claras e escuras paralelas à pista, seguindo o relevo; `kit/melbourne/grama.js`) e grama mais clara e quente.
+- **Reta principal com o kit 2** (`kit/melbourne/complexo.js`): arquibancada longa de aço com cobertura escura em frente aos boxes (`tribunaCoberta` em fila), complexo dos boxes com garagens, faixa de vidro e arquibancadas de **cobertura azul e vermelha** alternadas, e **tendas brancas do paddock** (`tendaPaddock`).
+- **Pórticos azuis** "Australia ▼ MELBOURNE ▼ Australia" atravessando a pista, agora altos (`portico` do kit 2, três na reta).
+- **Skyline visível da pista** (`kit/melbourne/cidade.js`): ~150 arranha-céus com janelas, Eureka Tower de coroa dourada e faixa vermelha, Rialto, Australia 108. Antes sumia na neblina e atrás das árvores: agora sem neblina do jogo (bruma pintada nos vértices) e o parque deixou de ser uma parede (bosques soltos em moitas, `kit/melbourne/arvores.js`, e as árvores pálidas soltas de longe saíram).
+- **Lago** com calçada de saibro, veleiros e fileira de árvores na margem; torcida de camisa laranja e vermelha; arquibancadas das curvas em assentos escuros.
+- Mudanças aditivas no kit: `portico({ textura })`, `ambienteGP({ cerca: false })` e uma linha no `kit/README.md`. `LOOK.melbourne.ground` em `cena.js` mais claro.
 
 ## Conferido
-- No navegador, comparando com as fotos: box vermelho (faixa amarela, vidros, portas, pneus, carro, mureta com logo), reta de 12 baias com toldos coloridos e arquibancada azul/roxa coberta, tribunas, torre de anéis com velas, pórtico e tenda de paddock. Console sem erros. Medido: reta dos boxes 6 chamadas e 13 mil triângulos; box de equipe ~26 chamadas na demo com texturas de letreiro separadas.
-- `node --test tests/corrida*.test.js`: as mesmas 6 falhas antigas (pneus, ritmo da IA e rádio), nenhuma nova.
+- No navegador (porta 3364, Playwright com câmera livre): reta com os três pórticos e a faixa magenta, boxes e paddock, curvas 1 e 6, margem do lago e skyline vistos da pista, aérea. Console sem erros nas conferências finais.
+- Medido no Node: vista da câmera 173 chamadas e 383 mil triângulos (antes 167 e 356 mil); 375 malhas; conferência de invasão passou em todas as pistas.
+- Por pedido, **não rodei a bateria de testes** (`tests/corrida*`).
 
-## Próximos passos
-Usar em `cenario` das próximas pistas depois de conferir `livre`/`ocupado` (o `userData` de cada asset traz as medidas).
+## Ficou de fora
+Telões, ponte de pedestres sobre o lago e roda-gigante do fan zone. Fontes das fotos: as do Thiago; textos sobre as arquibancadas de Albert Park (f1experiences, thef1spectator).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -121,3 +121,5 @@ Para ver lado a lado: `/corrida/kit/demo.html#box | reta | tribuna | torre | por
 | `torreControle(o)` | `raio`, `aneis`, `alturaAnel`, `corAneis`, `corVidro`, `corGrade`, `corpo`, `corCorpo`, `cobertura` (`"velas"`, `"cupula"`, `"plana"`), `corCobertura`, `bandeira` (duas cores ou `null`), `pico` |
 | `portico(o)` | `vao`, `alto`, `viga`, `cor`, `corColuna`, `texto`, `corTexto`, `corFaixa`, `luzes` (semáforos de largada) |
 | `pilhaPneus`, `rackPneus`, `carrinhoFerramentas`, `carroF1`, `muretaPit` | pequenos; as versões `...Em(montador, x, z, o)` põem num `Montador` já aberto (sem malha nova) |
+
+Melbourne (`../melbourne.js` e `melbourne/`, assets exclusivos: alambrado e mureta de publicidade, grama listrada, skyline sem neblina, bosques, arquibancada longa, complexo dos boxes e paddock sobre o kit 2): usa as opções novas `ambienteGP({ cerca: false })` e `portico({ textura })`.

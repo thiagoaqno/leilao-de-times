@@ -47,9 +47,9 @@ function fita(tr, runs, s, perfil, tile) {
 
 // a tela do alambrado: losangos de arame claro sobre um véu escuro (transparente: a tribuna aparece por trás, como nas fotos)
 const telaTex = () => canvasTex(64, 64, (x, w, h) => {
-  x.clearRect(0, 0, w, h); x.fillStyle = "rgba(18,22,28,0.26)"; x.fillRect(0, 0, w, h);
-  x.strokeStyle = "rgba(188,196,204,0.95)"; x.lineWidth = 2.4;
-  for (let k = -h; k <= w + h; k += 16) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k + h, h); x.stroke(); x.beginPath(); x.moveTo(k, h); x.lineTo(k + h, 0); x.stroke(); }
+  x.clearRect(0, 0, w, h); x.fillStyle = "rgba(18,22,28,0.06)"; x.fillRect(0, 0, w, h);
+  x.strokeStyle = "rgba(200,208,214,0.9)"; x.lineWidth = 1.3;
+  for (let k = -h; k <= w + h; k += 8) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k + h, h); x.stroke(); x.beginPath(); x.moveTo(k, h); x.lineTo(k + h, 0); x.stroke(); }
 });
 // a faixa de patrocinadores da mureta: 8 marcas de 4:1 lado a lado (uma volta de textura = 8 × 40 unidades)
 const faixaTex = (marcas) => canvasTex(2048, 64, (x, w, h) => {
@@ -75,9 +75,9 @@ export function alambrado(tr, add, { lat = 91.2, altura = 58, alto = 10, inclina
   const pe = lat + 2.4, tileTela = 32, tileFaixa = 320;
   for (const s of [-1, 1]) {
     const runs = trechos(tr, s, pe + 1, pular); stats.trechos += runs.length;
-    // a faixa de patrocínio (v de 0 a 1 de baixo para cima; o lado -1 espelha para o texto sair certo para quem passa)
+    // a faixa de patrocínio (v de 0 a 1 de baixo para cima; o lado +1 espelha para o texto sair certo para quem passa)
     const frente = fita(tr, runs, s, [[lat, 0, 0], [lat, alto, 1]], tileFaixa);
-    if (frente) { if (s < 0) { const u = frente.attributes.uv; for (let k = 0; k < u.count; k++) u.setX(k, -u.getX(k)); } add(new THREE.Mesh(frente, faixaM)).receiveShadow = true; }
+    if (frente) { if (s > 0) { const u = frente.attributes.uv; for (let k = 0; k < u.count; k++) u.setX(k, -u.getX(k)); } add(new THREE.Mesh(frente, faixaM)).receiveShadow = true; }
     const topo = fita(tr, runs, s, [[lat, alto, 0], [pe, alto + 0.6, 0], [pe, 0, 0]], 40); // o capuz e as costas da mureta
     if (topo) add(new THREE.Mesh(topo, concreto)).castShadow = true;
     // o alambrado: tela reta até o alto e a ponta inclinada para a pista
