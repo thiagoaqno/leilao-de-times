@@ -15,11 +15,13 @@ const ENGENHEIROS = {
 };
 const teto = 140;
 const inteiro = (n) => Number.isInteger(n) && n >= 0;
-function criar(nome, equipe, tamanho = 8, voltas = 3, semente = Date.now()) {
+const NIVEIS = ["facil", "medio", "dificil"];
+function criar(nome, equipe, tamanho = 8, voltas = 3, semente = Date.now(), nivel = "medio") {
   if (!Pilotos.EQUIPES[equipe] || !Equipes.EQUIPES[equipe]) throw Error("Equipe inválida.");
   if (![4, 8].includes(tamanho) || ![2, 3, 5].includes(voltas)) throw Error("Formato inválido.");
+  if (!NIVEIS.includes(nivel)) throw Error("Nível dos robôs inválido.");
   const titulares = Pilotos.PILOTOS.filter((p) => p.equipe === equipe);
-  return { v: 1, nome: String(nome || "").trim().slice(0, 40), equipe, ano: 1, gp: 0, tamanho, voltas, semente,
+  return { v: 1, nome: String(nome || "").trim().slice(0, 40), equipe, ano: 1, gp: 0, tamanho, voltas, nivel, semente,
     montagem: Object.fromEntries(Equipes.ORDEM.map((k) => [k, 0])), bonus: 0, caixa: 42, gasto: 0, patrocinio: 6,
     piloto2: titulares[0].id, engenheiros: { mecanico: 0, estrategista: 0 },
     resultados: [], calendario: (tamanho === 4 ? [CALENDARIO[0], CALENDARIO[2], CALENDARIO[5], CALENDARIO[7]] : CALENDARIO).map(([pista, nomeGP]) => ({ pista, nome: nomeGP })) };

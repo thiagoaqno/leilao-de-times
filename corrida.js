@@ -306,7 +306,7 @@ module.exports = function attachCorrida(io) {
   function abrirGP(temporada, aoTerminarGP, aoMontar) {
     const gp = temporada.calendario[temporada.gp];
     if (!gp) throw Error("A temporada terminou.");
-    const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: gp.pista, voltas: temporada.voltas, robos: 19, classificacao: "completa", nivel: "medio" }),
+    const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: gp.pista, voltas: temporada.voltas, robos: 19, classificacao: "completa", nivel: temporada.nivel || "medio" }),
       players: {}, order: [], finishOrder: [], log: [], t: Date.now(), privada: true, temporada: true, equipeTemporada: temporada.equipe,
       sementeFixa: `${temporada.semente}:${temporada.ano}:${temporada.gp}`, pilotosTemporada: require("./public/corrida/temporada/regras.js").pilotosNoGrid(temporada),
       montagens: { [temporada.equipe]: temporada.montagem }, bonusMontagem: { [temporada.equipe]: temporada.bonus }, bonusBox: (temporada.engenheiros.mecanico * 0.5 + temporada.engenheiros.estrategista * 0.25), aoTerminarGP, aoMontar };
