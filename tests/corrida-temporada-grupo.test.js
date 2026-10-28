@@ -10,6 +10,7 @@ const { io: cliente } = require("socket.io-client");
 process.env.CORRIDA_ASSUME_MS = "60"; // a sala de F1 lê isto ao ligar
 process.env.CORRIDA_ESPERA_GRUPO_MS = "60000";
 const bd = require("../bd.js");
+const E = require("../public/corrida/f1-equipes.js");
 const G = require("../public/corrida/temporada/grupo-regras.js");
 const Quali = require("../corrida-f1-classificacao.js");
 const attachCorrida = require("../corrida.js");
@@ -55,7 +56,8 @@ test("regras: dois na mesma equipe, mercado disputado, versão da montagem e his
   assert.equal(grid.robos.some((p) => p.equipe === "cadillac"), false);
   // a equipe dividida mexe no mesmo carro: quem fez fica no histórico e a versão avisa de pedido velho
   const v0 = sala.equipes.cadillac.versao, m = { ...sala.equipes.cadillac.montagem };
-  G.montar(sala, "a", { ...m, motor: m.motor - 1, freios: m.freios + 1 }, v0);
+  assert.equal(E.custoDaMontagem(m), 0, "a equipe nova distribui os pontos livremente");
+  G.montar(sala, "a", { ...m, motor: m.motor + 1, freios: m.freios + 1 }, v0);
   assert.throws(() => G.montar(sala, "b", { ...m, aero: m.aero + 1 }, v0), /mudou/);
   assert.equal(sala.equipes.cadillac.historico.at(-1).quem, "Ana");
   G.desenvolver(sala, "b");
@@ -130,7 +132,7 @@ test("servidor: sala, equipes (inclusive a mesma), mercado disputado, GP ao vivo
     // a equipe dividida: os dois veem a mesma equipe, com o histórico
     const montagem = { ...comecou.estado.equipes.cadillac.montagem };
     const vA = (await chamar(a, "estado")).estado.equipes.cadillac.versao;
-    const feito = await chamar(a, "montagem", { montagem: { ...montagem, motor: montagem.motor - 1, aero: montagem.aero + 1 }, versao: vA });
+    const feito = await chamar(a, "montagem", { montagem: { ...montagem, motor: montagem.motor + 1, aero: montagem.aero + 1 }, versao: vA });
     assert.equal(feito.ok, true, feito.error);
     assert.equal((await chamar(b, "montagem", { montagem, versao: vA })).ok, false, "pedido velho da equipe é recusado");
     await esperarAte(() => b.estado && b.estado.equipes.cadillac.historico.length === 1);
@@ -156,7 +158,7 @@ test("servidor: sala, equipes (inclusive a mesma), mercado disputado, GP ao vivo
     assert.deepEqual(todos.filter((p) => !p.bot && p.equipe === "cadillac").map((p) => p.name).sort(), ["Ana", "Beto"]);
     assert.equal(todos.filter((p) => p.bot && p.equipe === "cadillac").length, 0);
     assert.equal(todos.filter((p) => p.equipe === "ferrari").map((p) => (p.bot ? p.piloto.id : "humano")).sort().join(), "humano,verstappen");
-    assert.equal(sala.montagens.cadillac.motor, montagem.motor - 1, "a montagem da equipe dividida vale para os dois carros");
+    assert.equal(sala.montagens.cadillac.motor, montagem.motor + 1, "a montagem da equipe dividida vale para os dois carros");
     // a bandeirada: o resultado entra na temporada de todos de uma vez, uma vez só
     Quali.cancelar(sala);
     sala.phase = "race";

@@ -1,11 +1,11 @@
-## Corrida F1: robôs, pneus e largada
+## Pontos livres para montar o carro na carreira F1
 
 ### O que mudou
-- Os robôs sustentam mais velocidade nas curvas e aliviam menos o acelerador antes delas. A margem é conservadora nas pistas estreitas, com menos variação lateral entre muretas.
-- Após a classificação, o grid final permite escolher o pneu de largada. A corrida começa quando os pilotos conectados confirmam; com apenas robôs, a largada continua automática.
-- O duro recebe a aderência que o médio tinha antes. O médio recebe o ponto intermediário entre essa aderência e a do macio. Vida útil e aquecimento permanecem iguais.
-- O texto da seleção de pneus foi atualizado e os cenários de ritmo e classificação foram ajustados para o novo fluxo.
+- Carreiras novas, solo e em grupo, começam com todos os pontos do carro livres para distribuir.
+- A aba **Carro · Pontos** permite aumentar ou diminuir cada um dos seis atributos, respeitando o orçamento da equipe e o máximo de 8 níveis por atributo. Também permite zerar e redistribuir tudo.
+- Os valores continuam salvos no servidor e valem para os dois carros da equipe. Saves existentes mantêm a montagem que já tinham.
+- A montagem por peças da sala F1 fora da carreira continua como estava.
 
 ### Verificação
-- A calibração anterior dos robôs foi observada na simulação e em uma corrida visual antes do pedido para parar de testar.
+- Cenários existentes que dependiam da montagem inicial fixa foram atualizados para o novo começo livre.
 - Testes finais não foram executados, conforme solicitado.

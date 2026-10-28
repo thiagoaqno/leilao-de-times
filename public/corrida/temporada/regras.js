@@ -20,11 +20,11 @@ function criar(nome, equipe, tamanho = 8, voltas = 3, semente = Date.now()) {
   if (![4, 8].includes(tamanho) || ![2, 3, 5].includes(voltas)) throw Error("Formato inválido.");
   const titulares = Pilotos.PILOTOS.filter((p) => p.equipe === equipe);
   return { v: 1, nome: String(nome || "").trim().slice(0, 40), equipe, ano: 1, gp: 0, tamanho, voltas, semente,
-    montagem: Equipes.montagemPadrao(equipe), bonus: 0, caixa: 42, gasto: 0, patrocinio: 6,
+    montagem: Object.fromEntries(Equipes.ORDEM.map((k) => [k, 0])), bonus: 0, caixa: 42, gasto: 0, patrocinio: 6,
     piloto2: titulares[0].id, engenheiros: { mecanico: 0, estrategista: 0 },
     resultados: [], calendario: (tamanho === 4 ? [CALENDARIO[0], CALENDARIO[2], CALENDARIO[5], CALENDARIO[7]] : CALENDARIO).map(([pista, nomeGP]) => ({ pista, nome: nomeGP })) };
 }
-// monta o carro: `d.pecas` (a escolha de peças, que vira os níveis) ou `d.montagem` (o formato antigo, só níveis)
+// monta o carro: a carreira usa `d.montagem` (pontos livres); `d.pecas` segue aceito em saves antigos.
 function aplicarMontagem(s, d) {
   const v = Pecas.resolver(s.equipe, d, s.bonus);
   if (!v.ok) throw Error(v.erro);
