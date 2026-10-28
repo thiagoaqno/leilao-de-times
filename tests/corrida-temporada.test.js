@@ -195,3 +195,9 @@ test("excluir no banco apaga a linha do save", () => {
     assert.equal(bd.excluirTemporadaCorrida(c.id), false);
   } finally { bd.fechar(); }
 });
+
+test("a dificuldade dos robôs vai no save, com médio como padrão", () => {
+  assert.equal(R.criar("Ana", "mclaren", 8, 3, 1).nivel, "medio");
+  assert.equal(R.criar("Ana", "mclaren", 8, 3, 1, "dificil").nivel, "dificil");
+  assert.throws(() => R.criar("Ana", "mclaren", 8, 3, 1, "absurdo"), /Nível/);
+});

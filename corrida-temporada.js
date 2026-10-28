@@ -42,7 +42,7 @@ module.exports = function attachTemporadaCorrida(io, corrida) {
       try {
         const nome = limparNome(d.nome);
         if (!nome) throw Error("Escreva seu nome.");
-        const dados = Regras.criar(nome, d.equipe, Number(d.tamanho), Number(d.voltas));
+        const dados = Regras.criar(nome, d.equipe, Number(d.tamanho), Number(d.voltas), undefined, d.nivel || "medio");
         const nova = bd.criarTemporadaCorrida(nome, dados);
         entrar(socket, { id: nova.id, dados }, nova.token, resposta, nova.recuperacao);
       } catch (e) { erro(resposta, e); }
