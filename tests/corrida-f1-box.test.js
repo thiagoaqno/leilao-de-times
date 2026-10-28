@@ -8,6 +8,7 @@ const Robos = require("../corrida-robos.js");
 const Itens = require("../corrida-itens.js");
 const bd = require("../bd.js");
 
+process.env.CORRIDA_TV_MS = "0"; // sem a transmissão de TV antes das luzes: a largada vem logo
 const corredorDe = (id) => { const t = T.PISTAS[id]; return F1.corredor(t, T.pontos(t, 6).length, t.width); };
 
 test("box: a saída aponta no sentido da volta e avança o índice nas cinco pistas de F1", () => {

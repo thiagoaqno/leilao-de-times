@@ -2,7 +2,7 @@
 import { E, socket, $, store, relogio, sNow, toast, act } from "./estado.js";
 import { Sound } from "./sons.js";
 import { show, renderLobby } from "./menus.js";
-import { race, startRace, stopRace, nearest, prepararPista } from "./jogo.js";
+import { race, startRace, stopRace, nearest, prepararPista, adiantarLargada } from "./jogo.js";
 import { checkMyLap, renderResults, renderQuali } from "./hud.js";
 import { onBox, onUse, onHit, onBoom, setHazards } from "./itens.js";
 import { reconciliar, reenviarEntradas } from "./fisica.js";
@@ -53,7 +53,7 @@ socket.on("state", (st) => {
   const old = E.S; E.S = st;
   if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista, st.config.hora); $("quali").classList.add("hidden"); return; }
   show("race");
-  if (!race || race.startAt !== st.startAt) startRace(st);
+  if (!race || (race.startAt !== st.startAt && !adiantarLargada(st))) startRace(st);
   if (race) race.safety = st.direcao?.safety || null;
   if (old && old.phase === "race" && st.phase === "results") Sound.finish();
   checkMyLap(old);

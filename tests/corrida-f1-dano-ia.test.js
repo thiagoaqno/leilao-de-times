@@ -7,6 +7,7 @@ const Robos = require("../corrida-robos.js");
 const Direcao = require("../corrida-f1-direcao.js");
 const { subirServidor, conectar, pedir } = require("./ajuda.js");
 
+process.env.CORRIDA_TV_MS = "0"; // sem a transmissão de TV antes das luzes: a largada vem logo
 const semLog = () => {};
 const salaDeTeste = () => {
   const room = { phase: "race", startAt: 1000, config: { pista: "interlagos", regras: "f1", voltas: 3, robos: 0 }, players: { a: { id: "a", name: "Ana", pos: {} } }, order: ["a"], semente: 7 };

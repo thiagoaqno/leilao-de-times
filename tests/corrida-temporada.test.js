@@ -13,6 +13,7 @@ const { Server } = require("socket.io");
 const { io: cliente } = require("socket.io-client");
 const attachTemporada = require("../corrida-temporada.js");
 
+process.env.CORRIDA_TV_MS = "0"; // sem a transmissão de TV antes das luzes: a largada vem logo
 const chamar = (socket, evento, dados = {}) => new Promise((resolve) => socket.emit(evento, dados, resolve));
 
 function resultado(s, gp) {

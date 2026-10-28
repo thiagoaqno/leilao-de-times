@@ -19,6 +19,7 @@ import { passoEfeitos, limparEfeitos, amostrasDeEfeitos } from "./efeitos.js";
 import { animarVida } from "./vida.js";
 import { ceuPronto, luzPendente } from "./ceu.js";
 import { desenhar, ajustarTela, medirQuadro, comecarMedida } from "./desfoque.js";
+import { quadroTV, pularTV } from "./transmissao.js";
 const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
 // ---------- corrida ----------
@@ -126,7 +127,8 @@ export function startRace(st) {
   race = { startAt: st.startAt, tr, car: carro, net: f1 && mine ? criarRede() : null, acc: 0, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
     kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0,
     pneu: f1 ? carro.pneu : null, ers: f1 ? carro.ers : null, box: f1 ? carro.box : null, // regras de F1: pneu, ERS e pit stop
-    quali: st.phase === "quali", luzes: st.phase === "race" && st.config.regras === "f1" ? st.luzes : null, luzN: 0 }; // classificação (sem batida nem box) e as cinco luzes da largada
+    quali: st.phase === "quali", luzes: st.phase === "race" && st.config.regras === "f1" ? st.luzes : null, luzN: 0,
+    tvAte: st.phase === "race" && st.config.regras === "f1" && st.tvAte && st.tv ? st.tvAte : 0 }; // a transmissão de TV antes das luzes // classificação (sem batida nem box) e as cinco luzes da largada
   $("bBox").classList.toggle("hidden", !race.box || !mine);
   $("bErs").classList.toggle("hidden", !race.ers || !mine);
   startItems(tr, st.config.caixas);
@@ -326,35 +328,14 @@ function draw(dt) {
   // (de cima não tem desfoque: o chão inteiro borrado só atrapalha a ver a pista)
   desenhar(mode === "cima" ? 0 : Math.min(1, Math.max(0, (Math.abs(src.v || 0) / vref - 0.4) / 0.5)) + (turbo ? 0.4 : 0));
 }
-// Abertura de TV: nas corridas de F1, dentro da contagem (não atrasa a largada), a câmera voa pela reta final até o grid
-// com o nome do GP. Pula com o botão, Esc ou um toque; sem movimento reduzido. Só roda se sobrar tempo na contagem.
-function pularTV() { if (race && race.tv) race.tv.fim = true; }
-function abrirTV(tr, dt, reduceMotion) {
-  const S = E.S, tv = race.tv;
-  if (tv === undefined) {
-    race.tv = null;
-    const sobra = (race.startAt - sNow()) / 1000 - 2.5;
-    if (!S || S.phase !== "race" || S.config.regras !== "f1" || !race.luzes || !me() || reduceMotion || sobra < 3 || !tr.pts) return;
-    const el = document.createElement("div");
-    el.className = "tvAbertura";
-    el.innerHTML = `<div class="tvNome">${S.config.pista in PISTAS ? PISTAS[S.config.pista].name : ""}</div><div class="tvSub">${S.config.voltas} voltas · grid de largada</div><button type="button">Pular ⏭</button>`;
-    el.onclick = pularTV;
-    $("race").appendChild(el);
-    race.tv = { el, t: 0, dur: Math.min(6.5, sobra), fim: false, i0: race.idx };
-    return;
-  }
-  if (!tv) return;
-  tv.t += dt;
-  if (tv.fim || tv.t >= tv.dur) { tv.el.remove(); race.tv = null; return; }
-  const s = tv.t / tv.dur, e = s * s * (3 - 2 * s), n = tr.n, i = (((tv.i0 - Math.floor(n * 0.3 * (1 - e))) % n) + n) % n, p = tr.pts[i], q = tr.pts[(i + 28) % n];
-  const alto = (p.h || 0) + 22 + 120 * (1 - e), lado = 90 * (1 - e) * Math.cos(s * 3);
-  const w = Math.max(0, Math.min(1, (tv.t - (tv.dur - 1.2)) / 1.2)), w2 = w * w * (3 - 2 * w); // no fim, funde com a câmera normal
-  const pos = cam.position.clone(), rot = cam.quaternion.clone();
-  cam.position.set(p.x - p.ty * lado, alto, p.y + p.tx * lado);
-  cam.lookAt(q.x, (q.h || 0) + 8, q.y);
-  if (w2 > 0) { cam.position.lerp(pos, w2); cam.quaternion.slerp(rot, w2); }
-  cam.fov = 58 + 14 * w2; cam.updateProjectionMatrix();
-  tv.el.classList.toggle("sai", w > 0);
+// Transmissão de TV (transmissao.js): nas corridas de F1, antes das luzes e com tempo próprio (`race.tvAte`, vindo do servidor).
+// Esc pula (o botão e o toque também, no módulo). Nada de TV para quem só assiste.
+function abrirTV(tr, dt, reduceMotion) { if (race.tvAte) quadroTV(race, tr, cam, reduceMotion); }
+// A largada foi antecipada (todos os humanos pularam a TV): só troca a hora, sem remontar a pista nem o carro.
+export function adiantarLargada(st) {
+  if (!race || st.phase !== "race" || !race.tvAte || !st.tvAte || st.tvAte >= race.tvAte || race.tr.id !== st.config.pista || sNow() >= race.startAt) return false;
+  race.startAt = st.startAt; race.tvAte = st.tvAte; race.lapT0 = st.startAt;
+  return true;
 }
 addEventListener("keydown", (ev) => { if (ev.key === "Escape") pularTV(); });
 if (location.hash === "#debug") window.__corrida = { get race() { return race; }, get S() { return E.S; }, keys, physics, groundH, buildTrack, act, renderer, scene, cam };
