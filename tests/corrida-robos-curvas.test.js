@@ -13,7 +13,7 @@ const volta = require("./dados/volta-interlagos-cadillac.json");
 const TEMPO_USUARIO = volta.tempo; // s
 // um robô difícil sozinho (Cadillac, médio novo), 3 voltas no tempo de mentira; devolve o tempo das voltas contadas pelo progresso do carro
 function solo(pista, voltas = 3) {
-  const agora = Date.now; let relogio = agora(); Date.now = () => relogio;
+  const agora = Date.now, aleatorio = Math.random; let relogio = agora(); Date.now = () => relogio; Math.random = F1.sorteio(`solo:${pista}`);
   try {
     Robos.usarFonte(() => []);
     const room = { config: { pista, regras: "f1", caixas: false, robos: 1, nivel: "dificil", voltas: voltas + 1 }, players: {}, order: [], phase: "race", startAt: relogio, semente: 4321, finishOrder: [] };
@@ -37,7 +37,7 @@ function solo(pista, voltas = 3) {
     }
     r.voltas = cruz.slice(1).map((x, i) => x - cruz[i]).slice(0, voltas); r.vPorIdx = vPorIdx; r.avisos = p.avisosLimite | 0; r.dano = p.dano | 0; r.meia = T.PISTAS[pista].width / 2;
     return r;
-  } finally { Date.now = agora; Robos.usarFonte(() => null); }
+  } finally { Date.now = agora; Math.random = aleatorio; Robos.usarFonte(() => null); }
 }
 
 test("o ideal do robô Cadillac em Interlagos fica no tempo da volta limpa de quem joga (49,7 s, 4%)", () => {

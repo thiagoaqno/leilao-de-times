@@ -1,14 +1,11 @@
-## Tema escuro da Carreira F1 e fundos novos
-
-A entrada, a sala e a sede da temporada usam duas imagens locais de paddock, escurecidas e levemente desfocadas. O tema compartilhado voltou ao fundo escuro, com textos claros e controles nativos no mesmo esquema de cor.
+## Corrida F1: robôs, pneus e largada
 
 ### O que mudou
-- `public/corrida/fundo-carreira-entrada.webp` e `fundo-carreira-sede.webp`: novas imagens de fundo criadas para o jogo e otimizadas para WebP.
-- `entrada.css`, `tema-f1.css`, `sala.css` e `temporada/sede.css`: fotos, camadas de escurecimento e contraste consistente nas telas da carreira.
-- `temporada/garagem.css`: cor da equipe usada sobre base escura e nota do carro em painel escuro, mantendo legível a McLaren e as outras equipes.
-- `index.html`: cartão da temporada atualizado e crédito antigo removido, pois a foto de Mônaco já não é usada.
+- Os robôs sustentam mais velocidade nas curvas e aliviam menos o acelerador antes delas. A margem é conservadora nas pistas estreitas, com menos variação lateral entre muretas.
+- Após a classificação, o grid final permite escolher o pneu de largada. A corrida começa quando os pilotos conectados confirmam; com apenas robôs, a largada continua automática.
+- O duro recebe a aderência que o médio tinha antes. O médio recebe o ponto intermediário entre essa aderência e a do macio. Vida útil e aquecimento permanecem iguais.
+- O texto da seleção de pneus foi atualizado e os cenários de ritmo e classificação foram ajustados para o novo fluxo.
 
 ### Verificação
-- Capturas visuais da entrada, sala e sede da McLaren em desktop, e entrada no celular.
-- `npx playwright test tests/e2e/corrida-carreira-f1.spec.js`: passou.
-- `git diff --check`: passou.
+- A calibração anterior dos robôs foi observada na simulação e em uma corrida visual antes do pedido para parar de testar.
+- Testes finais não foram executados, conforme solicitado.

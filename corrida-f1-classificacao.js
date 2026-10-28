@@ -24,7 +24,8 @@ function tabela(room, agora = Date.now()) {
 function publico(room) {
   const q = room.quali; if (!q) return null;
   const nomeDe = (i) => `Q${i + 1}`;
-  return { nome: q.nome, i: q.i, total: q.sessoes.length, startAt: q.startAt, fimAt: q.fimAt, pausa: !!q.pausaAte, pausaAte: q.pausaAte, ativos: q.ativos,
+  return { nome: q.nome, i: q.i, total: q.sessoes.length, startAt: q.startAt, fimAt: q.fimAt, pausa: !!q.pausaAte, pausaAte: q.pausaAte, ativos: q.ativos, confirmados: [...q.confirmados],
+    aguardados: room.order.filter((id) => { const p = room.players[id]; return p && !p.bot && p.sockets.size; }),
     pronto: q.ativos.filter((id) => room.players[id] && room.players[id].qPronto), grid: q.grid,
     tabela: tabela(room).filter((x) => x.tempo != null).map((x) => ({ id: x.id, tempo: x.tempo })),
     fechadas: q.fechadas.map((f, i) => ({ nome: nomeDe(i), ordem: f.ordem.map((x) => ({ id: x.id, tempo: x.tempo })), eliminados: f.eliminados.map((x) => x.id) })) };
@@ -39,7 +40,7 @@ function cancelar(room) {
 function iniciar(room, deps) {
   cancelar(room);
   const n = room.order.length;
-  room.quali = { sessoes: F1.sessoesDeClassificacao(n), i: 0, nome: "Q1", ativos: [], robos: {}, startAt: 0, fimAt: 0, durMs: 0, fechadas: [], grid: null, pausaAte: null };
+  room.quali = { sessoes: F1.sessoesDeClassificacao(n), i: 0, nome: "Q1", ativos: [], robos: {}, startAt: 0, fimAt: 0, durMs: 0, fechadas: [], grid: null, pausaAte: null, confirmados: new Set() };
   room.direcao = null;
   Robos.ritmoDosRobos(room);
   deps.log(room, `⏱️ Classificação: ${room.quali.sessoes.map((k, i) => `Q${i + 1} (${k} carros)`).join(", ")}.`);
@@ -89,10 +90,28 @@ function fechar(room, deps) {
     deps.log(room, `🏁 ${q.nome} acabou. Pole: ${nome(f.ordem[0].id)} (${tempo(f.ordem[0])}).`);
   }
   deps.broadcast(room);
-  q.proxima = setTimeout(() => {
-    if (!room.quali) return;
-    if (ultima) { const grid = room.quali.grid; deps.largar(room, grid); } else { q.i++; abrirSessao(room, deps); }
-  }, INTERVALO_MS);
+  if (!ultima || !room.order.some((id) => { const p = room.players[id]; return p && !p.bot && p.sockets.size; })) {
+    q.proxima = setTimeout(() => {
+      if (room.quali !== q) return;
+      if (ultima) {
+        if (!room.order.some((id) => { const p = room.players[id]; return p && !p.bot && p.sockets.size; })) deps.largar(room, q.grid);
+      }
+      else { q.i++; abrirSessao(room, deps); }
+    }, INTERVALO_MS);
+  }
+}
+function confirmarLargada(room, p, deps) {
+  const q = room.quali;
+  if (!q || !q.grid || p.bot || q.confirmados.has(p.id)) return;
+  q.confirmados.add(p.id);
+  verificarLargada(room, deps);
+}
+function verificarLargada(room, deps) {
+  const q = room.quali;
+  if (!q || !q.grid) return;
+  const humanos = room.order.map((id) => room.players[id]).filter((p) => p && !p.bot && p.sockets.size);
+  if (!humanos.length || humanos.every((p) => q.confirmados.has(p.id))) deps.largar(room, q.grid);
+  else deps.broadcast(room);
 }
 // Um setor novo de quem está na pista (o mesmo caminho da corrida: só vale o próximo, na ordem). Passando pela linha de
 // chegada: a primeira vez abre a volta lançada; a seguinte fecha e vale o melhor tempo. Volta rápida demais é atalho.
@@ -112,4 +131,4 @@ function aoSetor(room, p, s, quando) { // (`quando`: a hora do passo da física 
 }
 const pronto = (room, p) => { if (room.quali && room.quali.ativos.includes(p.id)) p.qPronto = true; };
 
-module.exports = { iniciar, publico, tabela, aoSetor, verificarFim, pronto, cancelar, fechar, CONTAGEM_MS, INTERVALO_MS };
+module.exports = { iniciar, publico, tabela, aoSetor, verificarFim, verificarLargada, pronto, confirmarLargada, cancelar, fechar, CONTAGEM_MS, INTERVALO_MS };

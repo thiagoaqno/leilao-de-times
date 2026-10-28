@@ -25,14 +25,11 @@ const FATOR_LINHA = 0.8; // (só nas pistas de fantasia e no jogo clássico: a l
 // o menor raio (u) que o robô considera numa curva: o carro não fecha mais que isso, e uma quina de raio quase zero no traçado (um
 // ponto fora do lugar) fazia o perfil de velocidade despencar para 1 u/s no meio de uma reta
 const RAIO_MIN = 22;
-// A fração do limite de aderência (a velocidade de curva) que o piloto ideal usa; o nível do robô desce a partir daqui. Calibrada com
-// o carro de verdade (a física de dinamica.js dirigida pelo piloto automático, Cadillac e pneu médio): 1,08 do limite de curva e
-// frear no limite da frenagem (o ABS do robô segura a roda) é o mais rápido que ele dá volta sem encostar no muro nem sair da pista em
-// todos os GPs (1,15 já bate em Mônaco). As pistas fantasia (serra, deserto, circuito alemão, arco-íris) têm lombada e salto: ficam com
-// a margem antiga (0,95 e 80% da frenagem).
-const MARGEM_F1 = 1.08, MARGEM_FREIO = 1.0;
+// Limite de curva calibrado com o carro físico: 1,085 nas pistas largas e 1,08 entre muretas, com frenagem no limite.
+// Valores maiores fazem o robô sair da pista em Mônaco. As pistas fantasia conservam a margem antiga por causa das lombadas.
+const LARGURA_ESTREITA = 110, MARGEM_F1 = 1.085, MARGEM_FREIO = 1.0;
 const MARGEM_ANTIGA = { margem: 0.95, freio: 0.8 }, PISTAS_FANTASIA = new Set(["serra", "deserto", "nurburgring", "arcoiris"]);
-const margemDaPista = (pista) => (PISTAS_FANTASIA.has(pista) ? MARGEM_ANTIGA : { margem: MARGEM_F1, freio: MARGEM_FREIO });
+const margemDaPista = (pista) => (PISTAS_FANTASIA.has(pista) ? MARGEM_ANTIGA : { margem: T.PISTAS[pista].width <= LARGURA_ESTREITA ? 1.08 : MARGEM_F1, freio: MARGEM_FREIO });
 const TRAVA_ABS = 0.25; // quanto a roda pode travar na frenagem antes do robô soltar o freio
 const ALFA_FRENTE = 0.10, K_FRENTE = 8; // o pico do pneu é 0,11 rad
 const V_ARRASTO = 16; // u/s: velocidade mínima para sair de trás do carro parado e contorná-lo
@@ -231,8 +228,9 @@ function ritmoDaSala(room) {
 let ADER_REF = null;
 const aderRef = () => ADER_REF || (ADER_REF = F1.aderencia({ composto: "medio", desgaste: 0, temp: 1 }));
 function idealDe(pista, spec) { return tempoDaVolta(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren")), 1, aderRef()); }
-// a folga sobre o ideal do carro: difícil 0 (mais o ritmo do piloto, até ~1,2%), médio 2% e fácil 6%. O robô não segura o ideal inteiro (o volante, o tráfego, o ABS): medido sozinho com o médio novo, o difícil real fica uns 4,7% atrás do ideal, o médio uns 6% e o fácil uns 9%
-const FOLGA_F1 = { facil: 0.06, medio: 0.02, dificil: 0 };
+// Folga sobre o ideal do carro: difícil 0, médio 1,5% e fácil 5,5%, além da pequena diferença do piloto.
+// O tráfego e o controle dos pedais ainda custam tempo na corrida real.
+const FOLGA_F1 = { facil: 0.055, medio: 0.015, dificil: 0 };
 function referenciaF1(room) {
   const pista = room.config.pista;
   const pf = perfil(pista, F1Equipes.specDaEquipe("mclaren"));
@@ -335,6 +333,7 @@ function largar(room) {
       pneu: f1 ? F1.pneuNovo(p.pneu) : null, ers: f1 ? F1.ersNovo() : null, plano, box: null,
       estilo: f1 ? estiloDe(room, p, rng) : null, erro: null, erroLivre: 0, ult: null };
     if (f1) {
+      if (t.width <= LARGURA_ESTREITA) p.ia.jeito *= 0.5; // menos variação lateral entre as muretas
       p.ia.jeito += p.ia.estilo.lado;
       const tr = Sim.criarPista(t, room.config.pista);
       const car = Sim.novo(tr, { grid: p.grid, f1: true, pneu: p.ia.pneu, box: true });
@@ -349,7 +348,8 @@ function largar(room) {
 // (o quanto erra: o nível e a constância do piloto contam). Os erros saem de um sorteio da semente, como o resto do GP.
 function estiloDe(room, p, rng) {
   const pil = p.piloto, nivel = { facil: 1.5, medio: 1, dificil: 0.6 }[room.config.nivel] || 1;
-  return { dentro: rng() * 2 - 1, lado: (rng() * 2 - 1) * 9, look: 2 + Math.floor(rng() * 4), erroK: nivel * (pil ? 0.5 + (100 - pil.constancia) / 40 : 1), erros: F1.sorteio(`erros:${room.semente}:${p.id}`) };
+  const estreita = T.PISTAS[room.config.pista].width <= LARGURA_ESTREITA;
+  return { dentro: (rng() * 2 - 1) * (estreita ? 0.5 : 1), lado: (rng() * 2 - 1) * (estreita ? 2 : 9), look: 2 + Math.floor(rng() * 4), erroK: nivel * (pil ? 0.5 + (100 - pil.constancia) / 40 : 1), erros: F1.sorteio(`erros:${room.semente}:${p.id}`) };
 }
 const L_CARRO = 44, W_CARRO = 26; // o carro em unidades da pista (carros.js: 4,4 m x 2,6 m, escala 10)
 // os 3 círculos do carro (como em colisao.js, que é do navegador)
@@ -558,7 +558,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const maxLat = tr.W / 2 - 18;
   const pneu = F1.aderencia(car.pneu), dano = F1.efeitoDoDano(p.dano), curva = pf.kf[i] > 1 / 600;
   const fis = perfilF1(pf, ia.nivel), topo = topoDe(pf);
-  const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * 0.25 / STEP));
+  const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * (tr.W <= LARGURA_ESTREITA ? 0.27 : 0.20) / STEP)); // o perfil já antecipa a frenagem; circuitos estreitos pedem mais folga
   let alvo = Infinity;
   for (let k = 0; k <= olhar; k++) alvo = Math.min(alvo, fis[(i + k) % n]);
   const vLivre = Math.min(spec.vmax * pneu.final * dano.final, alvo < topo * 0.97 ? alvo * Math.sqrt(pneu.grip * dano.grip) : alvo); // a velocidade do robô sem ninguém na frente

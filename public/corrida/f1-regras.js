@@ -6,15 +6,15 @@
 (function (root) {
 
 // ---------- os pneus ----------
-// Três compostos secos. `pico` é a aderência lateral do pneu novo e quente sobre o grip do carro (o médio, 1,35, é a base
-// da dirigibilidade); `vida` é quantas VOLTAS ele dura, pilotado limpo, até o penhasco (não depende do tamanho da corrida:
+// Três compostos secos. `pico` é a aderência lateral do pneu novo e quente sobre o grip do carro (1,35 é a referência
+// original da dirigibilidade); `vida` é quantas VOLTAS ele dura, pilotado limpo, até o penhasco (não depende do tamanho da corrida:
 // o macio dura uma volta e meia em qualquer GP); `aquece` é o quanto esquenta rápido e `perdaAntes` o que perde de
 // aderência até o fim da vida. As cores são as da Pirelli. Os números saem da calibração de `tests/corrida-f1-estrategia.test.js`
 // (o simulador de stint com a física do carro: ver `ferramentas/pneus-fisica.js`).
 const PNEUS = {
   macio: { nome: "Macio", cor: "#e8202a", pico: 1.515, vida: 1.5, aquece: 1.7, perdaAntes: 0.03 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.31, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.4325, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.35, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
 };
 const COMPOSTO_PADRAO = "medio";
 // O desgaste vai de 0 (novo) a 1 (acabado); PENHASCO é o fim da vida. Passou dele o pneu despenca até PERDA_FIM do pico,
@@ -50,16 +50,16 @@ function gastarPneu(pneu, d) {
   return pneu;
 }
 // Quanto o pneu segura agora: `grip` multiplica o grip do carro (a curva), `freio` e `tracao` a frenagem e a arrancada
-// (o médio novo dá 1,08, e os outros acompanham a aderência dele), `final` a velocidade final e `kin` o quanto sobra escorregando.
-const BASE_FREIO = 1.08, EXPOENTE_FREIO = 0.85, EXPOENTE_TRACAO = 0.8;
+// (o antigo médio novo dá 1,08, e os outros acompanham a aderência dele), `final` a velocidade final e `kin` o quanto sobra escorregando.
+const PICO_REFERENCIA = 1.35, BASE_FREIO = 1.08, EXPOENTE_FREIO = 0.85, EXPOENTE_TRACAO = 0.8;
 function aderencia(pneu) {
   const pn = PNEUS[pneu && pneu.composto] || PNEUS[COMPOSTO_PADRAO], d = pneu ? pneu.desgaste : 0, temp = pneu ? pneu.temp : TEMP_BOA;
   const x = limite((d - PENHASCO) / (1 - PENHASCO), 0, 1); // 0 até o penhasco, 1 com o pneu acabado
   const perda = d <= PENHASCO ? pn.perdaAntes * d / PENHASCO : pn.perdaAntes + (PERDA_FIM - pn.perdaAntes) * x;
   const quente = FRIO + (1 - FRIO) * limite((temp - TEMP_SAIDA) / (TEMP_BOA - TEMP_SAIDA), 0, 1);
-  const base = limite(pn.pico * (1 - perda) * quente, 0.4, 2.0), r = base / PNEUS.medio.pico;
+  const base = limite(pn.pico * (1 - perda) * quente, 0.4, 2.0), r = base / PICO_REFERENCIA;
   // `arcade`: o macio dentro da vida útil usa a dirigibilidade arcade antiga (dinamica.js, `lateralArcade`); passou do penhasco, volta à física
-  // intermediária e fica prejudicado pelo desgaste. `rel` é a aderência relativa ao médio novo (o `grip` do carro é o do médio).
+  // intermediária e fica prejudicado pelo desgaste. `rel` é a aderência relativa à referência original (o `grip` do carro usa essa base).
   return { arcade: !!pneu && pneu.composto === "macio" && d <= PENHASCO, rel: r, grip: base, kin: limite(1 - perda * 0.5, 0.85, 1),
     freio: limite(BASE_FREIO * Math.pow(r, EXPOENTE_FREIO), 0.4, 1.5), tracao: limite(BASE_FREIO * Math.pow(r, EXPOENTE_TRACAO), 0.4, 1.5),
     final: 1 - FINAL_FIM * x };

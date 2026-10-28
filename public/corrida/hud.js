@@ -251,7 +251,7 @@ function hudClassificacao(m, now) {
   const quadro = linhas.join(""); if (race.hudQuadro !== quadro) { race.hudQuadro = quadro; $("hBoard").innerHTML = quadro; }
   const eliminado = m && !dentro ? q.fechadas.findIndex((f) => f.eliminados.includes(m.id)) : -1;
   let msg = "";
-  if (q.pausa) msg = q.grid ? "🏁 Grid definido: largada logo mais" : `🔴 ${q.nome} encerrado`;
+  if (q.pausa) msg = q.grid ? "🏁 Escolha o pneu e confirme a largada" : `🔴 ${q.nome} encerrado`;
   else if (eliminado >= 0) msg = `🔴 Eliminado no ${q.fechadas[eliminado].nome}: largará em ${lugarDoEliminado(q, eliminado, m.id)}º`;
   else if (dentro && now < q.startAt) msg = "⏱️ Classificação: faça a sua melhor volta lançada";
   else if (dentro && restante <= 0) msg = "🏁 Bandeirada: termine a volta";
@@ -269,9 +269,16 @@ export function renderQuali() {
   const linhas = ultima ? q.grid.map((id) => ({ id, fora: false })) : f.ordem.map((x) => ({ id: x.id, fora: f.eliminados.includes(x.id) }));
   const pole = tempos[linhas[0].id], naUltima = new Set(f.ordem.map((x) => x.id)); // no grid final, só quem correu a última sessão tem diferença que se compara
   el.classList.remove("hidden");
+  const confirmado = ultima && m && q.confirmados.includes(m.id);
+  const prontos = ultima ? q.aguardados.filter((id) => q.confirmados.includes(id)).length : 0;
   el.innerHTML = `<div class="placa gp"><div class="chk"></div><div class="in"><h2 style="font-size:26px;margin-bottom:6px">${ultima ? `🏁 Grid de largada · ${h(PISTAS[S.config.pista].name)}` : `⏱️ ${f.nome} encerrado`}</h2>
-    <p class="muted" style="margin:0 0 8px">${ultima ? "A corrida começa logo mais, com as cinco luzes." : `Os ${f.eliminados.length} mais lentos ficam por aqui e largam do fim do grid. Próxima sessão em instantes.`}</p>
+    <p class="muted" style="margin:0 0 8px">${ultima ? m ? confirmado ? `Largada confirmada. Aguardando os outros pilotos (${prontos}/${q.aguardados.length}).` : "Escolha o pneu para começar a corrida e confirme a largada." : `Aguardando os pilotos confirmarem a largada (${prontos}/${q.aguardados.length}).` : `Os ${f.eliminados.length} mais lentos ficam por aqui e largam do fim do grid. Próxima sessão em instantes.`}</p>
+    ${ultima && m ? `<div class="pneus-largada" role="group" aria-label="Pneu da largada">${Object.entries(window.F1Regras.PNEUS).map(([id, pneu]) => `<button type="button" data-pneu-largada="${id}" class="${(m.pneu || "medio") === id ? "on" : ""}" ${confirmado ? "disabled" : ""}><i class="bola-pneu" style="--c:${pneu.cor}"></i>${pneu.nome}</button>`).join("")}</div><button type="button" id="confirmarLargada" class="confirmar-largada" ${confirmado ? "disabled" : ""}>${confirmado ? "✓ Largada confirmada" : "Confirmar largada"}</button>` : ""}
     <table class="qtab">${linhas.map((r, i) => { const p = P(r.id), t = tempos[r.id]; return `<tr class="${r.fora ? "fora" : ""} ${m && r.id === m.id ? "eu" : ""}"><td>${i + 1}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(pilotoNome(p))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}</td><td class="num">${t == null ? "sem tempo" : tempo3(t)}</td><td class="num muted">${t != null && i > 0 && pole != null && (!ultima || naUltima.has(r.id)) ? "+" + (t - pole).toFixed(3) : ""}</td></tr>`; }).join("")}</table></div></div>`;
+  if (ultima && m && !confirmado) {
+    el.querySelectorAll("[data-pneu-largada]").forEach((botao) => { botao.onclick = () => act("pneu", { pneu: botao.dataset.pneuLargada }); });
+    el.querySelector("#confirmarLargada").onclick = () => act("confirmarLargada");
+  }
 }
 // minimapa redondo que gira com o carro (a frente é para cima): a pista em cinza e o caminho à frente em azul-claro
 function minimapa(st, m) {

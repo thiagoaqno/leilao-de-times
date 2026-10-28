@@ -178,8 +178,11 @@ test('a classificação com um humano: três sessões, eliminações e o grid de
   assert.ok(q.grid && q.grid.length === 20 && new Set(q.grid).size === 20);
   assert.deepEqual(q.grid.slice(15), q.fechadas[0].eliminados.map((x) => x.id));
   assert.deepEqual(q.grid.slice(10, 15), q.fechadas[1].eliminados.map((x) => x.id));
-  assert.equal(grids.length, 0, 'a corrida só larga depois do intervalo');
+  assert.equal(grids.length, 0, 'a corrida espera a confirmação no grid');
   avanca(t, Quali.INTERVALO_MS + 10);
+  assert.equal(grids.length, 0, 'o intervalo não larga a corrida automaticamente');
+  assert.deepEqual(Quali.publico(room).confirmados, []);
+  Quali.confirmarLargada(room, h, deps);
   assert.equal(grids.length, 1); assert.deepEqual(grids[0], q.grid);
   Quali.cancelar(room);
 });
