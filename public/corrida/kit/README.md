@@ -124,4 +124,6 @@ Para ver lado a lado: `/corrida/kit/demo.html#box | reta | tribuna | torre | por
 
 Melbourne (`../melbourne.js` e `melbourne/`, assets exclusivos: alambrado e mureta de publicidade, grama listrada, skyline sem neblina, bosques, arquibancada longa, complexo dos boxes e paddock sobre o kit 2): usa as opções novas `ambienteGP({ cerca: false })` e `portico({ textura })`.
 
+Jeddah (`../gps/jeddah.js` e `../jeddah.js`) traz assets exclusivos em `kit/jeddah/` (mar e corniche, lagoa, dhows e marina, palmeiras, prédio dos boxes escalonado, Fonte do Rei Fahd, Mesquita Al-Rahma, cidade com a Jeddah Tower e as marcas stc/Saudia/Roshn), usados só por esse GP.
+
 Suzuka (`../gps/suzuka.js`, `../suzuka.js`) traz peças exclusivas em `kit/suzuka/`: `viaduto.js` (o cruzamento em 8), `roda-gigante.js` (que gira), `colinas.js` (morros, cedros, cerejeiras), `japao.js` (torii, lanternas, nobori, estacionamento, hotel, atrações).
