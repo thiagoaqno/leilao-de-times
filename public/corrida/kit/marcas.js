@@ -34,6 +34,9 @@ export const MARCAS = {
   gpit: { fundo: "#ffffff", cor: "#c8102e", texto: "GRAN PREMIO D'ITALIA", fonte: "900 {s}px Arial, sans-serif", tricolore: true },
   monza: { fundo: "#c8102e", cor: "#ffffff", texto: "AUTODROMO NAZIONALE MONZA", fonte: "900 {s}px Arial, sans-serif" },
   acm: { fundo: "#ffffff", cor: "#c8102e", texto: "AUTOMOBILE CLUB DE MONACO", fonte: "700 {s}px Georgia, serif", moldura: "#c8102e" },
+  ausgp: { fundo: "#007a3d", cor: "#ffd100", texto: "AUSTRALIAN GRAND PRIX", fonte: "italic 900 {s}px 'Arial Black', Arial, sans-serif", moldura: "#ffd100" },
+  gulfair: { fundo: "#221226", cor: "#d4af37", texto: "GULF AIR", fonte: "700 {s}px Georgia, serif", moldura: "#d4af37" },
+  bahrain: { fundo: "#ce1126", cor: "#ffffff", texto: "BAHRAIN GP", fonte: "italic 900 {s}px 'Arial Black', Arial, sans-serif", moldura: "#ffffff" },
 };
 // a ordem em que as marcas se repetem pela pista
 export const PATROCINIO = ["rolex", "pirelli", "aramco", "heineken", "dhl", "tag", "lenovo", "aws", "f1", "qatar", "msc", "crypto", "lv"];
