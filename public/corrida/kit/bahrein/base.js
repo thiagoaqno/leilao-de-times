@@ -89,14 +89,17 @@ export const pisoMat = (cor, o = {}) => M(cor, { roughness: 0.95, polygonOffset:
 // Janelas, lâmpadas e poças de luz mudam com `tr.noite` (o jogo troca dia e noite sem refazer a pista): cada item guarda a cor
 // do dia e a da noite, e o laço da pista (tr.animarPista) confere uma vez por quadro, só trocando quando mudou.
 export function luzDaNoite(tr) {
-  return (tr.luzBahrein ||= { materiais: [], emissivos: [], objetos: [], ultimo: null });
+  return (tr.luzBahrein ||= { materiais: [], emissivos: [], objetos: [], quadro: [], ultimo: null });
 }
-// liga o laço da noite: tem que rodar DEPOIS de vidaGP (que define tr.animarPista), ou ele é trocado
+// liga o laço da noite: tem que rodar DEPOIS de vidaGP (que define tr.animarPista), ou ele é trocado.
+// `quadro` roda em todo quadro (as luzes dos refletores seguem o carro); o resto só quando o dia vira noite.
 export function ligarNoite(tr) {
   const L = luzDaNoite(tr), antes = tr.animarPista;
   tr.animarPista = (dt, foco, t) => {
     antes?.(dt, foco, t);
-    const noite = !!tr.noite; if (noite === L.ultimo) return; L.ultimo = noite;
+    const noite = !!tr.noite;
+    for (const f of L.quadro) f(noite, foco);
+    if (noite === L.ultimo) return; L.ultimo = noite;
     for (const { mat, dia, noite: n } of L.materiais) mat.color.set(noite ? n : dia);
     for (const { mat, valores } of L.emissivos) mat.emissiveIntensity = noite ? valores[1] : valores[0];
     for (const o of L.objetos) o.visible = noite;
@@ -111,5 +114,5 @@ export function materialDaNoite(tr, dia, noite, o = {}) {
 export function emissivoDaNoite(tr, mat, dia = 0, noite = 1) {
   const L = luzDaNoite(tr); L.emissivos.push({ mat, valores: [dia, noite] }); mat.emissiveIntensity = tr.noite ? noite : dia; return mat;
 }
-// algo que só aparece de noite (as poças de luz no chão, os halos dos refletores)
+// algo que só aparece de noite (os halos dos refletores)
 export function soDeNoite(tr, obj) { obj.visible = !!tr.noite; luzDaNoite(tr).objetos.push(obj); return obj; }
