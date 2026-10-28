@@ -86,13 +86,12 @@ export const GP_MELBOURNE = {
   vida: {
     helicoptero: true,
     fiscais: true,
-    gaivotas: (tr) =>
-      Array.from({ length: 16 }, (_, k) => ({
-        x: 2300 + Math.cos(k * 0.4) * 350 + (k % 4) * 50,
-        z: 2300 + Math.sin(k * 0.4) * 700 + (k % 3) * 60,
-      })),
+    gaivotas: (tr) => {
+      const l = tr.lagoMelbourne; if (!l) return [];
+      return Array.from({ length: 16 }, (_, k) => ({ x: l.x + Math.cos(k * 0.9) * l.raio * 0.5, z: l.y + Math.sin(k * 0.9) * l.raio * 0.5, raio: 140 }));
+    },
     som: {
-      porto: (tr, x, y) => Math.max(0, Math.min(1, 1 - Math.hypot(x - 2300, y - 2300) / 900)),
+      porto: (tr, x, y) => { const l = tr.lagoMelbourne; return l ? Math.max(0, Math.min(1, 1 - Math.hypot(x - l.x, y - l.y) / (l.raio + 300))) : 0; },
       cidade: 0.35,
       campo: () => 0.65,
     },
