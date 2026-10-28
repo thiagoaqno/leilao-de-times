@@ -41,7 +41,7 @@ export function viaduto(tr, { add }, { marcas = ["suzuka", "japangp"], extensao 
   for (let k = -34; k <= 34; k++) {
     const p = pts[(ib + k + n) % n], q = pts[(ib + k + 1 + n) % n], comp = Math.hypot(q.x - p.x, q.y - p.y) + 0.4, ry = -Math.atan2(q.y - p.y, q.x - p.x), cx = (p.x + q.x) / 2, cz = (p.y + q.y) / 2, ph = (p.h + q.h) / 2;
     for (const s of [-1, 1]) {
-      const l = s * (W / 2 + 12);
+      const l = s * (W / 2 + 15);
       m.caixa(S, [cx + p.nx * l, ph + alturaMuro / 2 - 3, cz + p.ny * l], [comp, alturaMuro, 3], { cor: CONCRETO, ry });
       m.caixa(S, [cx + p.nx * l, ph + alturaMuro - 1.2, cz + p.ny * l], [comp, 2.4, 3.6], { cor: k % 2 ? "#d8312b" : "#f4f2ec", ry });
     }

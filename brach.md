@@ -1,22 +1,20 @@
-# Corrida: Kit 2, assets de cenário para as próximas pistas
+# Corrida: cenário de Suzuka
 
-Assets novos em código (three.js procedural, low poly, cor chapada) feitos a partir das fotos de referência: os modelos baixados são cenas de ~1 milhão de triângulos sem peças nomeadas, então o kit ganha as peças próprias. Só cenário novo e solto: nenhuma pista foi alterada (`pistas.js`, física, robôs, regras, HUD, menus, sala e carreira intocados; Melbourne, Bahrein, Mônaco e Interlagos idem).
+Suzuka sai do GP simples genérico e ganha um cenário próprio, rico e reconhecível. Só cenário: `pistas.js` (traçado e `hills`), física, robôs, regras, HUD, menus, sala e carreira intocados. O kit 2 (#351) já está no main; este PR o usa.
 
-## O que entrou (`public/corrida/kit/`)
-- `montagem.js`: o `Montador` junta caixas e formas por material (cor por vértice: um box inteiro fica em ~4 chamadas de desenho) e canvas pequenos só para letreiros. Não depende de `cena.js`.
-- `box-equipe.js`: `boxEquipe` (prédio de 2 andares, vidros inclinados, faixa de letreiro, portas de enrolar abertas com rack de pneus, carrinho de ferramentas e carro), `retaDosBoxes` (prédio longo com toldo por equipe, muretinha com faixa amarela e arquibancada coberta em cima), `pilhaPneus`, `rackPneus`, `carrinhoFerramentas`, `carroF1`, `muretaPit` (com logo).
-- `coberturas.js`: `velas` (cobertura tensionada), `tendaPaddock` (velas, faixa, mesas) e `tribunaCoberta` (degraus coloridos em seções, torcida, painéis brancos sobre aço, `alcance` da cobertura).
-- `torres.js`: `torreControle` (anéis, corpo, coroa em velas, cúpula ou plana, bandeira) e `portico` (viga com letreiro nos dois lados e semáforos de largada).
-- `demo.html`: página solta para ver tudo (`/corrida/kit/demo.html#box | reta | tribuna | torre | portico | tenda | tudo`), com o contador de chamadas e triângulos.
-- `README.md`: tabela com os parâmetros de cada função.
+## O que entrou
+- **Viaduto do "8"** (`kit/suzuka/viaduto.js`): laje sobre vigas, mureta branca com grade de aço, postes de luz, pilares com viga de apoio, muros de arrimo com faixa vermelha e branca no trecho de baixo e faixas penduradas. O traçado e a altura continuam os de `pistas.js` (`cruza`).
+- **Prédio dos boxes** (kit/boxes.js, atrás das garagens do corredor) com a torre de controle do kit 2 no teto e aterro de concreto (a reta desce 45 de ponta a ponta). **Arquibancada principal** coberta do outro lado (3 módulos de `tribunaCoberta`, seções coloridas, torcida), inclinada junto com a reta.
+- **Alameda de entrada** atrás da arquibancada: pórtico "SUZUKA CIRCUIT" (kit 2), 4 torii vermelhos, fios de lanternas (chochin), estandartes nobori em japonês, tendas de hospitalidade (kit 2) e 5 estacionamentos cheios de carros (`kit/suzuka/japao.js`).
+- **Parque do circuito** na bolsa aberta entre a Dunlop e a Degner: **roda-gigante** que gira (cabines penduradas, lâmpadas coloridas; `kit/suzuka/roda-gigante.js`), hotel, torre de queda, carrossel e pavilhão em velas.
+- **Morros de floresta** (`kit/suzuka/colinas.js`): relevo de baixa resolução em uma malha só, com ~5 mil cedros, folhosas, bordos vermelhos e cerejeiras em flor; mais um bosque junto da pista (`kit/parque.js`) e ~100 cerejeiras na beira, no parque e na alameda.
+- Zebras vermelhas e brancas, zebra alta nas Degner/Hairpin/Spoon/130R/Casio, brita bege e muros de pneus, 12 arquibancadas de curva com torcida japonesa, marcas em japonês (Suzuka, Japanese GP, Honda, Dunlop, Casio, Yokohama...), passarelas, bandeira do Japão e faixa "鈴鹿サーキット" no pórtico da largada (o pórtico das luzes é o de `pista.js`, perpendicular à pista na linha).
 
-Ficou de fora de propósito: nada duplica `boxes.js`/`arquibancadas.js` (esses seguem a curva da pista; os novos são peças soltas, e a cobertura em velas serve às duas).
+## Desempenho
+Tudo em InstancedMesh ou uma malha por material (kit 2/`Montador`); árvores sem sombra e cortadas por região (`fundir.js`). `tests/ajuda-cena/medir.mjs suzuka`: ~207 chamadas de desenho na vista do jogo e ~460 mil triângulos (Melbourne: 167 e 356 mil). A roda só recalcula as cabines com a câmera a menos de 3800.
 
 ## Conferido
-- No navegador, comparando com as fotos: box vermelho (faixa amarela, vidros, portas, pneus, carro, mureta com logo), reta de 12 baias com toldos coloridos e arquibancada azul/roxa coberta, tribunas, torre de anéis com velas, pórtico e tenda de paddock. Console sem erros. Medido: reta dos boxes 6 chamadas e 13 mil triângulos; box de equipe ~26 chamadas na demo com texturas de letreiro separadas.
-- `node --test tests/corrida*.test.js`: as mesmas 6 falhas antigas (pneus, ritmo da IA e rádio), nenhuma nova.
+Navegador (Chromium, porta 3362): volta inteira em 12 pontos, largada, arquibancadas, boxes, alameda, parque, viaduto (de cima, de baixo e de lado) e morros; sem erro no console. `tests/ajuda-cena/invasao.mjs` em Suzuka: 0 peças na pista. `node --test tests/corrida*.test.js` rodou inteiro: só as falhas antigas conhecidas (pneus/estratégia, ritmo da IA, rádio); volta, invasão, desempenho e robôs (88 testes) passam.
 
-## Próximos passos
-Usar em `cenario` das próximas pistas depois de conferir `livre`/`ocupado` (o `userData` de cada asset traz as medidas).
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+## Fora / anotado
+Fotos e descrições vieram da memória de como o circuito é e de buscas rápidas; nenhuma imagem foi baixada. O relevo de `pistas.js` deixa a pista numa plataforma acima do chão plano em volta: os morros só começam a 470 do eixo para não brigar com ele.

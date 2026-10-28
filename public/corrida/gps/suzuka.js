@@ -25,7 +25,7 @@ export const GP_SUZUKA = {
   escape: {
     britaCurvas: 420, corBrita: "#d3c49b", largura: 30,
     brita: [[0.072, 0.12, "fora"], [0.355, 0.395, "fora"], [0.448, 0.48, "fora"], [0.606, 0.662, "fora"], [0.807, 0.836, "fora"], [0.905, 0.946, "fora"]],
-    pneus: [[0.072, 0.12, "fora"], [0.253, 0.278, "fora"], [0.355, 0.395, "fora"], [0.448, 0.48, "fora"], [0.606, 0.662, "fora"], [0.807, 0.836, "fora"], [0.878, 0.903, "fora"]],
+    pneus: [[0.075, 0.115, "fora"], [0.448, 0.48, "fora"], [0.612, 0.66, "fora"], [0.81, 0.834, "fora"]],
   },
   // as arquibancadas de curva (a principal, na reta dos boxes, é do ../suzuka.js, em módulos do kit 2)
   arquibancadas: {
@@ -56,8 +56,8 @@ export const GP_SUZUKA = {
   depois: (tr, ctx) => {
     depoisSuzuka(tr, ctx);
     // o bosque que fecha a pista dos dois lados: cedros e folhosas, depois da área de escape (kit/parque.js)
-    parque(tr, ctx.add, { de: 0, ate: 1, recuo: 22, fundo: 170, alturas: [160, 300], densidade: 0.9, coniferas: 0.55, semente: 3109,
-      folhas: ["#3f7a33", "#4d8a3a", "#2f6a2d", "#5c9a40", "#6aa043", "#c9577f"] });
+    parque(tr, ctx.add, { de: 0.085, ate: 0.94, recuo: 36, fundo: 150, alturas: [90, 175], densidade: 0.75, coniferas: 0.55, semente: 3109,
+      folhas: ["#3f7a33", "#4d8a3a", "#2f6a2d", "#5c9a40", "#6aa043"] });
   },
   vida: {
     helicoptero: true, fiscais: true,

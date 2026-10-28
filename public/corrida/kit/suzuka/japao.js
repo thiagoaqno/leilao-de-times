@@ -145,6 +145,7 @@ export function hotel({ largura = 300, andares = 6, alturaAndar = 22, profundida
   janelas.map.repeat.set(largura / 64, andares);
   m.caixa(S, [0, H / 2, -profundidade / 2], [largura, H, profundidade], { cor });
   m.plano(janelas, [0, H / 2, 0.15], [largura, H], { uv: [largura / 64, andares] });
+  m.plano(janelas, [0, H / 2, -profundidade - 0.15], [largura, H], { uv: [largura / 64, andares], ry: Math.PI }); // os fundos também têm janelas
   m.caixa(S, [0, H + 3, -profundidade / 2], [largura + 6, 6, profundidade + 6], { cor: "#d9d5cb" });
   m.caixa(S, [0, H - 5, 1.4], [largura + 2, 9, 3], { cor: faixa });
   m.caixa(S, [largura * 0.34, H + 20, -profundidade * 0.4], [largura * 0.22, 28, profundidade * 0.4], { cor: "#cfd2d6" }); // a casa de máquinas

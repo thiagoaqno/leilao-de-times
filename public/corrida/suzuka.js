@@ -35,7 +35,7 @@ const reservarFaixa = (tr, f0, f1, lat, raio) => { for (let i = Math.floor(f0 * 
 function arquibancadaPrincipal(tr, { add, hAt }, f, comprimento, semente) {
   const { pts, n, W } = tr, lado = -1, lat = lado * (W / 2 + 36), c = em(tr, f, lat), p = c.p;
   const g = tribunaCoberta({
-    comprimento, degraus: 12, altura: 5, fundo: 8, secoes: 6, publico: 0.7, semente, alcance: 0.82, folga: 16, vao: 55,
+    comprimento, degraus: 11, altura: 5, fundo: 8, secoes: 6, publico: 0.42, semente, alcance: 0.82, folga: 16, vao: 55,
     cores: ["#d62a2a", "#f4f4f2", "#2b4fa8", "#f2c400", "#13804a", "#e873a8"], cobertura: "#f6f6f4", estrutura: "#8a9096",
   });
   const dx = -lado * p.nx, dz = -lado * p.ny, ry = virado(dx, dz), sx = Math.cos(ry) * p.tx - Math.sin(ry) * p.ty > 0 ? 1 : -1; // o +x do módulo anda a favor ou contra a volta?

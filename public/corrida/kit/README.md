@@ -121,3 +121,5 @@ Para ver lado a lado: `/corrida/kit/demo.html#box | reta | tribuna | torre | por
 | `torreControle(o)` | `raio`, `aneis`, `alturaAnel`, `corAneis`, `corVidro`, `corGrade`, `corpo`, `corCorpo`, `cobertura` (`"velas"`, `"cupula"`, `"plana"`), `corCobertura`, `bandeira` (duas cores ou `null`), `pico` |
 | `portico(o)` | `vao`, `alto`, `viga`, `cor`, `corColuna`, `texto`, `corTexto`, `corFaixa`, `luzes` (semáforos de largada) |
 | `pilhaPneus`, `rackPneus`, `carrinhoFerramentas`, `carroF1`, `muretaPit` | pequenos; as versões `...Em(montador, x, z, o)` põem num `Montador` já aberto (sem malha nova) |
+
+Suzuka (`../gps/suzuka.js`, `../suzuka.js`) traz peças exclusivas em `kit/suzuka/`: `viaduto.js` (o cruzamento em 8), `roda-gigante.js` (que gira), `colinas.js` (morros, cedros, cerejeiras), `japao.js` (torii, lanternas, nobori, estacionamento, hotel, atrações).
