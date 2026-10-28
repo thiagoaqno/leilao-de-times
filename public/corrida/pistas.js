@@ -1032,7 +1032,7 @@ const BOXES = {
   serra: { entra: 0.9926, para: 0.012, sai: 0.0314, lado: 1 },
   luigi: { entra: 0.0006, para: 0.02, sai: 0.0394, lado: 1 },
   sorvete: { entra: 0.9906, para: 0.01, sai: 0.0294, lado: 1 },
-  monza: { entra: 0.013, para: 0.03, sai: 0.047, lado: 1 },
+  monza: { entra: 0.983, para: 0, sai: 0.017, lado: 1 }, // entrada antes da linha: o pedido na penúltima volta ainda permite a parada
   silverstone: { entra: 0.9827, para: 0, sai: 0.0173, lado: 1 },
   // as pistas convertidas (ferramentas/circuitos-f1.js): o corredor de 504 em volta da linha, do lado de dentro
   melbourne: { entra: 0.9819, para: 0, sai: 0.0181, lado: 1 },

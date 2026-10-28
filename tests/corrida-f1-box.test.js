@@ -30,6 +30,12 @@ test("box: uma parada em Interlagos custa entre 5 e 10 s (entrada + limitador + 
   assert.equal(F1.corredor(T.PISTAS.arcoiris, 2000, 88), null);
 });
 
+test("box: a entrada de Monza vem antes da chegada, para aceitar parada na penúltima volta", () => {
+  const n = T.pontos(T.PISTAS.monza, 6).length, c = corredorDe("monza");
+  assert.ok(c.i0 > n * 0.95, "a entrada fica antes da linha de chegada");
+  assert.ok((c.i0 + c.len) % n < n * 0.05, "a saída fica depois da linha");
+});
+
 test("box: toda pista do calendário tem corredor, com as 10 garagens entre a rampa de entrada e a de saída", () => {
   for (const id of ["interlagos", "barcelona", "monaco", "deserto", "tokyo", "rio", "nurburgring", "laguna", "losangeles", "serra", "luigi", "sorvete", "monza", "silverstone",
     "melbourne", "xangai", "suzuka", "bahrein", "jeddah", "miami", "montreal", "redbullring", "spa", "hungaroring", "zandvoort", "madri", "baku", "singapura", "austin", "mexico", "lasvegas", "catar", "abudhabi"]) {
