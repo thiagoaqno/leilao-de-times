@@ -111,8 +111,11 @@ export function enfeitar(tr, add, r, alturaEm) {
       for (const s of [-1, 1]) for (let fila = 0; fila < 3; fila++) {
         if (r() < 0.35) continue;
         if (cb && s === cb.lado && (((i - cb.i0) % n) + n) % n <= cb.len + 3) continue;
-        const d = borda + 10 + fila * 8 + r() * 2, [x, z] = lat(p, s * d); if (tr.distAt(x, z) < d - 2 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z))) continue;
-        gente.push({ x, y: alturaEm(x, z, (i + n) % n) + fila * 3.5, z, ry: Math.atan2(-p.nx * s, -p.ny * s), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: pele[(r() * 5) | 0], camisa: camisa[(r() * camisa.length) | 0] });
+        // na frente de uma arquibancada do kit, a torcida senta nos degraus dela (antes ficava no chão, por baixo da rampa)
+        const ii = (i + n) % n, arq = (tr.arqDegraus || []).find((q) => q.lado === s && fila < q.degraus && ((ii - q.i0) % n + n) % n <= q.i1 - q.i0);
+        const d = arq ? Math.abs(arq.l0) + 4.5 + fila * 9 : borda + 10 + fila * 8 + r() * 2, [x, z] = lat(p, s * d);
+        if (!arq && (tr.distAt(x, z) < d - 2 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z)))) continue;
+        gente.push({ x, y: arq ? p.h + 4 + (fila + 0.5) * 6 : alturaEm(x, z, ii) + fila * 3.5, z, ry: Math.atan2(-p.nx * s, -p.ny * s), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: pele[(r() * 5) | 0], camisa: camisa[(r() * camisa.length) | 0] });
       }
     }
     V.torcida = montarTorcida(add, gente);

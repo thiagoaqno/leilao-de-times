@@ -1,12 +1,10 @@
-## Mapa do circuito antes da Q1
+# Corrida: a torcida senta nos degraus da arquibancada
 
-### Contexto
-- Na visão geral da carreira, o próximo GP aparecia pelo nome e no calendário, mas o traçado não estava visível antes de abrir a classificação.
+Na reta dos boxes, a torcida 3D (`vida.js`) era posta no chão, a 10–26 u do muro. Nas pistas com arquibancadas do kit (`kit/arquibancadas.js`), esse espaço é justamente a rampa dos degraus, então os bonecos ficavam no chão, por baixo dela.
 
-### O que mudou
-- Um painel grande no topo da visão geral mostra o traçado real da pista do próximo GP, com largada e chegada marcadas, antes do botão que abre a Q1.
-- O painel aparece na temporada solo e em grupo, inclusive para quem acompanha a corrida. Ajusta-se à largura do celular.
-- Quando o GP já está em andamento, o texto do painel reflete isso. O painel some após o fim da temporada.
+- `kit/arquibancadas.js` guarda onde ficam os degraus de cada trecho (`tr.arqDegraus`: trecho, lado, distância e número de degraus).
+- `vida.js`: na frente de uma arquibancada do kit, cada fileira da torcida senta num degrau (as 3 primeiras fileiras, na altura e na distância do degrau). Fora delas, tudo fica como antes.
 
-### Verificação
-- Código e diff revisados. Testes finais não foram executados, conforme solicitado.
+Vale para todas as pistas que usam o kit de arquibancadas. Não conferido no navegador.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
