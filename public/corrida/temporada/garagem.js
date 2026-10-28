@@ -50,6 +50,18 @@ function calendario(cal, gp, titulo = "Calendário", rotuloProx = "") {
 }
 const colunaDireita = ({ titulo, cal, gp, rotuloProx, botao, nota }) => `<aside class="pn-gp"><header><h2>${h(titulo || "Calendário")}</h2></header>${calendario(cal, gp, "Calendário", rotuloProx)}${nota ? `<p class="gp-nota">${nota}</p>` : ""}<div class="gp-acao">${botao}</div></aside>`;
 
+// O traçado do próximo GP fica visível na sede antes de abrir a Q1 (solo e grupo).
+function mapaGP(id, etapa, ativo = false) {
+  const pista = root.Pistas?.PISTAS[id]; if (!pista) return "";
+  const pts = root.Pistas.pontos(pista, 18); if (!pts.length) return "";
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+  const x = Math.min(...xs), y = Math.min(...ys), largura = Math.max(...xs) - x, altura = Math.max(...ys) - y;
+  const margem = 90, caminho = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + " Z";
+  const largada = pts[0], nome = h(pista.name);
+  return `<section class="gp-mapa" aria-label="Mapa do circuito ${nome}"><div class="gp-mapa-info"><span class="gp-mapa-rotulo">Etapa ${etapa} · traçado da pista</span><h2>${nome}</h2><p>${ativo ? "Circuito do GP em andamento." : "Confira o circuito antes de abrir a Q1."}</p><span class="gp-mapa-legenda"><i></i>Largada e chegada</span></div>
+    <div class="gp-mapa-desenho"><svg viewBox="${x - margem} ${y - margem} ${largura + margem * 2} ${altura + margem * 2}" role="img" aria-label="Traçado de ${nome}, com largada e chegada marcadas"><path class="gp-mapa-borda" d="${caminho}"/><path class="gp-mapa-linha" d="${caminho}"/><circle class="gp-mapa-marco" cx="${largada.x.toFixed(1)}" cy="${largada.y.toFixed(1)}" r="28"/><circle class="gp-mapa-centro" cx="${largada.x.toFixed(1)}" cy="${largada.y.toFixed(1)}" r="12"/></svg></div></section>`;
+}
+
 // ---------- o carro 3D, que fica no mesmo elemento entre as redesenhadas ----------
 let palco = null, palcoEq = null, falhou3D = false;
 function encaixar(equipeId) {
@@ -117,5 +129,5 @@ function cliquePonto(botao, montagem, equipe, bonus = 0) {
   return { ...montagem, [k]: nivel };
 }
 
-root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
+root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, mapaGP, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
 })(window);
