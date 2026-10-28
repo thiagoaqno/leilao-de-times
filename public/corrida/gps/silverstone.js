@@ -49,7 +49,7 @@ export const GP_SILVERSTONE = {
     outdoors: ["britgp", "pirelli", "rolex", "skysports", "heineken", "aramco", "dhl", "silverstone"],
     posto: "britgp", placas: [150, 100, 50],
   },
-  passarelas: { candidatos: [0.45, 0.255, 0.74, 0.545, 0.99], marcas: ["silverstone", "britgp", "pirelli"], max: 3 }, // as pontes de pedestres sobre as retas
+  passarelas: { candidatos: [0.7, 0.2, 0.435, 0.54], marcas: ["silverstone", "britgp", "pirelli"], max: 3 }, // as pontes de pedestres sobre as retas
   vida: {
     gaivotas: [], // não tem mar
     som: { campo: () => 1, cidade: 0.04 }, // vento e passarinhos do aeródromo; a torcida vem das arquibancadas

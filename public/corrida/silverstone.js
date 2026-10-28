@@ -151,7 +151,7 @@ function tribunas(tr, { add }) {
         return tr.distAt(qx, qz) >= L - 5 && !ocupado(tr, qx, qz);
       });
       if (!ok) continue;
-      const t = tribunaCoberta({ comprimento: len - 6, degraus: 10, altura: 6, fundo: 8.5, cores, secoes: Math.max(3, Math.round(len / 60)), cobertura: "#f6f6f4", publico: 0.3, semente: semente++, alcance: 0.78, folga: 16, vao: 58 });
+      const t = tribunaCoberta({ comprimento: len - 6, degraus: 10, altura: 6, fundo: 8.5, cores, secoes: Math.max(3, Math.round(len / 60)), cobertura: "#f6f6f4", publico: 0.15, semente: semente++, alcance: 0.78, folga: 16, vao: 58 });
       t.position.set(x, p.h - 5, z); t.rotation.y = ry0(p, lado); add(t);
       for (let j = 0; j < 7; j++) { // as bandeiras nos degraus de cima
         const u = (r() - 0.5) * (len - 30), row = 5 + Math.floor(r() * 5), [fx, fz] = ponto(p, lado, L + 4 + row * 8.5, u);
@@ -380,7 +380,7 @@ function campos(tr, { add }) {
     if (!cantos.every(([x, z]) => plano(x, z) && tr.distAt(x, z) > W / 2 + 300 && !ocupado(tr, x, z) && pousoLonge(x, z))) continue;
     lista.push({ x: cx, y: 1.1, z: cz, sx, sy: 1, sz, r: ang, cor: CAMPOS[(r() * CAMPOS.length) | 0] });
     [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(([a, b]) => { // as sebes: duas ou três beiras do campo
-      if (r() < 0.38) return;
+      if (r() < 0.55) return;
       const [x, z] = loc((a * sx) / 2, (b * sz) / 2);
       sebes.push({ x, y: tr.chao(x, z) + 9, z, sx: (a ? sz : sx) * 0.98, sy: 15 + r() * 6, sz: 7, r: a ? ang - Math.PI / 2 : ang, cor: ["#2f5a2a", "#3a6a30", "#274c25", "#44703a"][(r() * 4) | 0] });
     });
@@ -414,7 +414,7 @@ function campos(tr, { add }) {
   colorir(instancias(add, chao, new THREE.MeshStandardMaterial({ map: faixas, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), lista, { sombra: false, nome: `${tr.id}-campos` }), lista);
   colorir(instancias(add, new THREE.BoxGeometry(1, 1, 1), M(0xffffff, { roughness: 1 }), sebes, { sombra: false, nome: `${tr.id}-sebes` }), sebes);
   instancias(add, new THREE.CylinderGeometry(0.7, 1, 1, 5), M(0x5b4130, { roughness: 1 }), troncos, { sombra: false, nome: `${tr.id}-troncos` });
-  colorir(instancias(add, new THREE.IcosahedronGeometry(1, 1), M(0xffffff, { roughness: 0.95, flatShading: true }), copas, { sombra: false, nome: `${tr.id}-copas` }), copas);
+  colorir(instancias(add, new THREE.IcosahedronGeometry(1, 0), M(0xffffff, { roughness: 0.95, flatShading: true }), copas, { sombra: false, nome: `${tr.id}-copas` }), copas);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
