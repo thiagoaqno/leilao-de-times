@@ -497,7 +497,7 @@ module.exports = function attachCorrida(io) {
           Quali.confirmarLargada(room, me, classificacao); return;
         }
         if (type === "montagemGrid") {
-          if (!room.temporada || room.phase !== "quali" || !room.quali?.grid) return "A montagem só pode mudar no grid da carreira.";
+          if (!room.temporada || room.phase !== "quali" || !room.quali?.pausaAte || !(room.quali.grid || room.quali.nome === "Q2")) return "A montagem só pode mudar após o Q2 ou no grid final da carreira.";
           if (room.quali.confirmados.has(me.id)) return "Você já confirmou a largada.";
           if (!me.equipe || !room.montagens?.[me.equipe]) return "Equipe inválida.";
           const v = Equipes.validar(me.equipe, data.montagem, room.bonusMontagem?.[me.equipe] || 0);

@@ -5,7 +5,7 @@
 
 ### O que mudou
 - Carreiras novas, solo e em grupo, começam com os pontos do carro livres. A aba **Carro · Pontos** permite distribuí-los entre os seis atributos e redistribuir depois, dentro do orçamento.
-- No grid final após a classificação, os pilotos da carreira podem ajustar esses pontos antes de confirmar a largada. O acerto é salvo na temporada e vale para os dois carros da equipe. Saves existentes mantêm a montagem atual.
+- Na pausa após o Q2 e no grid final após a classificação, os pilotos da carreira podem ajustar esses pontos. O acerto é salvo na temporada e vale para os dois carros da equipe. Saves existentes mantêm a montagem atual.
 - A sala F1 fora da carreira continua com a montagem por peças.
 - A entrada foi movida para o fim da reta anterior à linha, com garagens junto da chegada e saída no começo da reta seguinte.
 - Um cenário de regressão verifica que a entrada fica antes da linha e a saída depois dela.
