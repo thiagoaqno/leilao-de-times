@@ -12,7 +12,7 @@ const PISTAS = ["interlagos", "monaco", "monza", "barcelona", "silverstone", "me
 
 // uma corrida de robôs no tempo de mentira, medindo cada um
 function corrida({ pista, nivel = "medio", robos = 10, voltas = 4, semente = 4321 }) {
-  const agora = Date.now; let relogio = agora(); Date.now = () => relogio;
+  const agora = Date.now, aleatorio = Math.random; let relogio = agora(); Date.now = () => relogio; Math.random = F1.sorteio(`ritmo:${pista}:${semente}`);
   try {
     Robos.usarFonte(() => []);
     const room = { config: { pista, regras: "f1", caixas: false, robos, nivel, voltas }, players: {}, order: [], phase: "race", startAt: relogio, semente, finishOrder: [] };
@@ -42,7 +42,7 @@ function corrida({ pista, nivel = "medio", robos = 10, voltas = 4, semente = 432
       }
     }
     return { room, st };
-  } finally { Date.now = agora; Robos.usarFonte(() => null); }
+  } finally { Date.now = agora; Math.random = aleatorio; Robos.usarFonte(() => null); }
 }
 const razaoMedia = ({ room, st }, pista) => {
   const r = room.order.map((id) => { const s = st[id], v = s.voltas.filter((x, k) => k > 0 && s.limpa[k]); return v.length ? Math.min(...v) / Robos.idealDe(pista, room.players[id].spec) - 1 : null; }).filter((x) => x != null);
@@ -65,10 +65,12 @@ test("robôs de nível médio, em todas as pistas de F1: terminam, não ficam pa
   if (process.env.RESUMO) console.log(resumo.join(" | "));
 });
 
-test("os níveis ficam em ordem: fácil mais lento que o médio, que é mais lento que o difícil (média de três pistas)", { timeout: 200000 }, () => {
+test("fácil perde para médio no pelotão e difícil supera ambos com pista livre", { timeout: 200000 }, () => {
   const r = {}; for (const nivel of ["facil", "medio", "dificil"]) r[nivel] = ["interlagos", "monza", "spa"].reduce((a, pista) => a + razaoMedia(corrida({ pista, nivel }), pista), 0) / 3;
-  assert.ok(r.facil > r.medio + 0.015 && r.medio > r.dificil + 0.003, JSON.stringify(r));
+  assert.ok(r.facil > r.medio + 0.015 && r.medio > r.dificil - 0.01, JSON.stringify(r)); // no pelotão, o tráfego pode inverter uma diferença pequena
   assert.ok(r.facil < 0.13 && r.dificil > -0.04, JSON.stringify(r));
+  const solo = {}; for (const nivel of ["facil", "medio", "dificil"]) solo[nivel] = ["interlagos", "monza", "spa"].reduce((a, pista) => a + razaoMedia(corrida({ pista, nivel, robos: 1 }), pista), 0) / 3;
+  assert.ok(solo.facil > solo.dificil + 0.015 && solo.medio > solo.dificil + 0.003, JSON.stringify(solo));
 });
 
 test("robô preso (parado no muro, rodado) se recupera sozinho em poucos segundos", () => {

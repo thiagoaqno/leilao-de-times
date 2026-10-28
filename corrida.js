@@ -407,7 +407,7 @@ module.exports = function attachCorrida(io) {
       const { room, me } = ctx();
       if (!room) return fail(cb, "Você não está numa sala.");
       const type = data.type, isHost = me && room.host === me.id;
-      if (room.temporada && !["qpronto", "box", "batida", "sector", "pneu"].includes(type)) return fail(cb, "Este GP é controlado pela sede da temporada.");
+      if (room.temporada && !["qpronto", "confirmarLargada", "box", "batida", "sector", "pneu"].includes(type)) return fail(cb, "Este GP é controlado pela sede da temporada.");
       const err = (() => {
         if (type === "color") {
           if (!me || room.phase === "race") return "Só dá para trocar fora da corrida.";
@@ -430,6 +430,7 @@ module.exports = function attachCorrida(io) {
         }
         if (type === "pneu") { // o composto da largada (regras de F1)
           if (!me || room.phase === "race") return "Só dá para trocar o pneu fora da corrida.";
+          if (room.quali && room.quali.confirmados.has(me.id)) return "Você já confirmou a largada.";
           if (!F1.PNEUS[data.pneu]) return "Pneu inválido.";
           me.pneu = data.pneu; return;
         }
@@ -490,6 +491,10 @@ module.exports = function attachCorrida(io) {
         if (type === "qpronto") { // classificação: "já fiz a minha volta" (a sessão fecha quando todo mundo na pista disser)
           if (room.phase !== "quali" || room.quali.pausaAte) return "ignorado";
           Quali.pronto(room, me); Quali.verificarFim(room, classificacao); return;
+        }
+        if (type === "confirmarLargada") {
+          if (room.phase !== "quali" || !room.quali || !room.quali.grid) return "ignorado";
+          Quali.confirmarLargada(room, me, classificacao); return;
         }
         if (type === "box") { // regras de F1: entrou no corredor dos boxes (fase "entra") ou saiu dele com o pneu novo (fase "sai")
           if (room.config.regras !== "f1" || room.phase !== "race" || me.finish != null || !corredorDe(room)) return "ignorado";
@@ -587,7 +592,7 @@ module.exports = function attachCorrida(io) {
         clearTimeout(room.abandonoTimer);
         room.abandonoTimer = setTimeout(() => { if (me.sockets.size || room.phase === "results") return; me.dnf = true; log(room, `${me.name} abandonou o GP (DNF).`); if (room.phase === "quali") Quali.verificarFim(room, classificacao); broadcast(room); }, 20000);
       }
-      if (room.phase === "quali") Quali.verificarFim(room, classificacao); // quem saiu não segura a sessão
+      if (room.phase === "quali") { Quali.verificarFim(room, classificacao); Quali.verificarLargada(room, classificacao); } // quem saiu não segura a sessão nem a confirmação
       if (!room.temporada && room.phase === "race" && room.finishOrder.length && !room.order.some((id) => room.players[id].finish == null && room.players[id].sockets.size)) endRace(room);
       broadcast(room);
     });
