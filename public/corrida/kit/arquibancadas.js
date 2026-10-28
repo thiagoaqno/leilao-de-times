@@ -31,7 +31,7 @@ const cadeiras = (cor, encosto, fundo, camisas = CAMISAS) => new THREE.MeshStand
 export function arquibancadas(tr, add, { trechos }) {
   const { pts, n } = tr, estrutura = M(0xd8dbe0, { roughness: 0.7, side: THREE.DoubleSide }), cobertura = M(0xf4f4f4, { roughness: 0.5, side: THREE.DoubleSide });
   const L = tr.wallLat < 1e9 ? tr.wallLat : tr.W / 2 + 30, colunaGeo = new THREE.CylinderGeometry(0.9, 0.9, 1, 6), materiais = new Map();
-  tr.arquibancadas ||= []; tr.reservado ||= [];
+  tr.arquibancadas ||= []; tr.reservado ||= []; tr.arqDegraus ||= [];
   for (const { de, ate, lado = -1, degraus = 6, cor = "#1f5fbf", encosto = "#3f86e8", cobertura: coberta = true, torcida } of trechos) {
     let i0 = Math.floor(de * n), i1 = Math.floor(ate * n); if (i1 < i0) i1 += n;
     const chave = cor + encosto + (torcida || ""); if (!materiais.has(chave)) materiais.set(chave, cadeiras(cor, encosto, "#00000038", torcida));
@@ -52,5 +52,6 @@ export function arquibancadas(tr, add, { trechos }) {
     colunas.forEach(([x, y, z], k) => { o.position.set(x, y, z); o.scale.set(1, alto, 1); o.updateMatrix(); cs.setMatrixAt(k, o.matrix); }); cs.castShadow = true;
     for (let i = i0; i <= i1; i += 4) { const p = pts[i % n]; tr.reservado.push([p.x + p.nx * (l0 + lado * 30), p.y + p.ny * (l0 + lado * 30), 60]); }
     tr.arquibancadas.push([i0, i1]); // o som da torcida (kit/som.js)
+    (tr.arqDegraus ||= []).push({ i0, i1, l0, lado, degraus }); // onde ficam os degraus: a torcida de vida.js senta neles
   }
 }
