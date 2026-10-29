@@ -89,6 +89,15 @@ const GRADE = {
     }`,
 };
 
+// um pixel inválido (NaN ou infinito, de algum sombreador numa conta 0/0) é espalhado pelo bloom e pinta a tela de preto, piscando
+// conforme a câmera anda: este passe troca qualquer pixel inválido por preto e limita o brilho antes do bloom
+const LIMPA = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+    void main() { vec4 c = texture2D(tDiffuse, vUv); if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0); gl_FragColor = clamp(c, 0.0, 64.0); }`,
+};
+
 // ---------- a fila de passes de cada qualidade (montada na primeira vez que a qualidade é usada) ----------
 const tam = new THREE.Vector2();
 const feitos = {}; // { media: {composer, grade, radial, w, h, pr}, alta: {...} }
@@ -98,6 +107,7 @@ function montar(q) {
   const amostras = ok16() ? cfg.amostras : 0; // sem alvo de 16 bits com amostras o quadro sairia preto: aí fica sem suavização
   composer.renderTarget1.samples = composer.renderTarget2.samples = amostras;
   composer.addPass(new RenderPass(scene, cam));
+  composer.addPass(new ShaderPass(LIMPA));
   let radial = null;
   if (q === "alta") { radial = new ShaderPass(RADIAL); composer.addPass(radial); }
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), cfg.bloom.forca, cfg.bloom.raio, cfg.bloom.limiar);

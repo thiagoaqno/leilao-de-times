@@ -7,11 +7,11 @@ const PONTOS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 // Seleção curta, em ordem do calendário real de 2026, só com pistas presentes no jogo.
 const CALENDARIO = [
   ["melbourne", "Austrália"], ["suzuka", "Japão"], ["bahrein", "Bahrein"], ["jeddah", "Arábia Saudita"], ["montreal", "Canadá"], ["monaco", "Mônaco"], ["barcelona", "Barcelona"],
-  ["silverstone", "Grã-Bretanha"], ["spa", "Bélgica"], ["monza", "Itália"], ["austin", "Estados Unidos"], ["interlagos", "São Paulo"],
+  ["silverstone", "Grã-Bretanha"], ["spa", "Bélgica"], ["zandvoort", "Holanda"], ["monza", "Itália"], ["austin", "Estados Unidos"], ["interlagos", "São Paulo"],
 ];
 // As pistas "mais trabalhadas" (as que já têm cenário próprio): o sorteio do calendário sai só daqui. Quando uma pista
 // ganhar cenário, é só incluir a chave (a mesma de `pistas.js` e do CALENDARIO acima) nesta lista.
-const PISTAS_TRABALHADAS = ["interlagos", "monaco", "melbourne", "bahrein", "silverstone", "suzuka", "jeddah", "monza", "spa", "barcelona", "montreal"];
+const PISTAS_TRABALHADAS = ["interlagos", "monaco", "melbourne", "bahrein", "silverstone", "suzuka", "jeddah", "monza", "spa", "barcelona", "montreal", "zandvoort"];
 // mulberry32 sobre o hash do texto (a mesma família de f1-regras.js `sorteio`, sem depender dele aqui)
 function gerador(semente) {
   let a = 2166136261; for (const c of String(semente)) { a ^= c.charCodeAt(0); a = Math.imul(a, 16777619); } a = (a >>> 0) || 1;
