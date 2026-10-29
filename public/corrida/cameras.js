@@ -135,7 +135,8 @@ export function quadroCamera(R, o) {
 function pov(x, p) {
   const { R, C, dt, tr, c, rm, speedK, fovStep, nearest } = x;
   const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = p.fo, eh = p.eh;
-  const ahead = c.air ? c.z : groundH(tr, c.x + fx * 70, c.y + fy * 70, nearest(tr, c.x + fx * 70, c.y + fy * 70, R.idx));
+  let ahead = c.air ? c.z : groundH(tr, c.x + fx * 70, c.y + fy * 70, nearest(tr, c.x + fx * 70, c.y + fy * 70, R.idx));
+  if (!(Math.abs(ahead - c.z) < 30)) ahead = c.z; // (o ponto à frente caiu noutro trecho da pista, como em cima do túnel de Mônaco: não deixa a vista mirar o teto)
   C.lookY = C.lookY == null ? ahead : C.lookY + (ahead - C.lookY) * (1 - Math.exp(-dt * 6));
   C.pitch = (C.pitch || 0) + ((R.pitch || 0) - (C.pitch || 0)) * (1 - Math.exp(-dt * 8));
   cam.position.set(c.x + fx * fo, c.z + eh + p.lift + Math.sin(C.pitch) * fo * 0.5, c.y + fy * fo); C.pos = null;
