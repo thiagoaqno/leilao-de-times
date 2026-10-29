@@ -1,14 +1,16 @@
-# Corrida: as luzes dos refletores do Bahrein acendem de verdade
+## Som de F1 na Corrida
 
-O #358 trocou as placas claras por `SpotLight`, mas na pista não aparecia nada. Dois motivos:
+### Contexto
+O modo F1 usava o mesmo sintetizador grave de kart, apesar de já ter rotação e câmbio próprios.
 
-1. **As luzes ficavam presas na origem do mapa.** O `kit/fundir.js` roda a animação uma vez para ver o que se mexe e congela a matriz do resto (`matrixAutoUpdate = false`). As luzes só andam de noite e com o carro na pista, então no teste dele ficaram paradas e foram congeladas em (0, 1, 0), longe da pista. Agora ficam guardadas em `tr.luzesRefletores`, e o `fundir.js` deixa quem está em `tr` em paz (a regra do `kit/README.md`).
-2. **A noite do jogo é clara demais para a luz aparecer.** A luz ambiente da noite (`hemi` 0,95, em `pista.js`) quase apagava o refletor. No Bahrein, à noite, ela baixa para 0,5 (`HEMI_NOITE`), e a força das luzes subiu de 230 para 1100. O asfalto continua visível e o trecho debaixo de cada torre fica claro, com o carro dentro da luz.
+### O que mudou
+- Motor V6 turbo sintetizado no navegador, com frequência de ignição entre 200 e 625 Hz, assobio do turbo e filtro abafado ao soltar o acelerador.
+- Corte breve e estalo nas trocas para cima, estalo nas reduções e pulsação do limitador.
+- Até três carros próximos recebem volume pela distância e variação de frequência Doppler ao se aproximar ou se afastar.
+- Os outros modos mantêm o motor de kart. O motor F1 usa o volume, liga/desliga e eco existentes; o ambiente continua no barramento atual.
 
-Só `kit/bahrein/luz.js`. As outras pistas e o dia do Bahrein não mudam.
-
-## Conferido
-- No navegador, Bahrein à noite com as regras de F1: as 6 luzes na posição das torres e apontadas para a pista (antes, na origem), e a luz aparecendo no asfalto.
-- `node --test tests/corrida-pistas-desempenho.test.js tests/corrida-pistas-invasao.test.js tests/corrida-pistas-volta.test.js`: 76 de 76.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+### Verificação
+- `node --check` nos três arquivos JavaScript alterados.
+- `git diff --check`.
+- `node --test tests/corrida-fisica.test.js tests/corrida-robos-curvas.test.js`: 13 de 17 passaram na base `origin/main`; quatro falhas existentes na física (aderência e relevo), sem mudanças nesses arquivos neste PR.
+- O timbre ainda precisa de escuta em uma corrida real no navegador.

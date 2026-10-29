@@ -180,7 +180,9 @@ function loop(t) {
   updateGhosts(dt);
   recordLap();
   if (me() && ativo() && !race.net && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
-  Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0);
+  const f1 = E.S?.config.regras === "f1";
+  const rivais = f1 ? [...race.ghosts].filter(([id]) => !P(id)?.dnf).map(([, gh]) => gh) : [];
+  Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0, f1, rivais, race.car);
   Sound.skid(me() && ativo() && race.car.slip > 45 ? race.car.slip : 0);
   draw(dt);
   medirQuadro();
