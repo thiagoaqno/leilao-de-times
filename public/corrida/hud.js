@@ -113,12 +113,13 @@ const set = (el, prop, v) => {
   if (prop === "t") el.textContent = v; else if (prop === "c") el.className = v; else if (prop === "w") el.style.width = v; else if (prop === "bg") el.style.background = v; else if (prop === "col") el.style.color = v; else if (prop === "d") el.style.display = v; else el.setAttribute(prop, v);
 };
 const LOGO_F1 = '<svg class="f1logo" viewBox="0 0 64 26" aria-label="F1"><path d="M0 26L9 0H64L55 26Z" fill="#e10600"/><text x="31" y="21" text-anchor="middle" font-family="Titillium Web,Arial,sans-serif" font-weight="900" font-style="italic" font-size="22" fill="#fff">F1</text></svg>';
+const N_RPM = 12; // os segmentos da barra de rotação (verde, vermelho e azul no corte)
 function montarTorre() {
   const el = $("hTorre"); if (el.dataset.ok) return; el.dataset.ok = 1;
   el.innerHTML = `<div class="tt-topo">${LOGO_F1}<b id="tVolta">VOLTA 1 / 1</b></div><div id="tLinhas"></div>`;
   const box = $("tLinhas");
   for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "tl hidden"; d.innerHTML = '<span class="n"></span><i class="eq"></i><b class="sg"></b><em class="df"></em><u class="pn"></u><s class="vr" title="Volta mais rápida"></s><small class="ic"></small>'; box.appendChild(d); }
-  $("hPainel").innerHTML = '<div class="pf-over" id="pOver">OVERTAKE</div><div class="pf-vel"><b id="pVel">0</b><span>KM/H</span><div class="pf-marcha" id="pMarcha">N</div></div><div class="pf-rpm" id="pRpm">' + "<i></i>".repeat(10) + '</div><div class="pf-boost"><span>BOOST</span><div><i id="pBoost"></i></div><b id="pBoostT">0%</b></div><div class="pf-extra"><div class="pf-pneu" id="pPneu"><b>M</b><span>100%</span></div><div class="pf-dano"><span id="pDanoT">DANO 0%</span><div><i id="pDano"></i></div></div></div>';
+  $("hPainel").innerHTML = '<div class="pf-over" id="pOver">OVERTAKE</div><div class="pf-caixa"><div class="pf-vel"><div class="pf-marcha" id="pMarcha">N</div><b id="pVel">0</b><span>km/h</span></div><div class="pf-rpm" id="pRpm">' + "<i></i>".repeat(N_RPM) + '</div><div class="pf-boost"><span>BOOST</span><div><i id="pBoost"></i></div><b id="pBoostT">0%</b></div><div class="pf-extra"><div class="pf-pneu" id="pPneu" title="Pneu: letra do composto e desgaste"><b>M</b><span>0%</span></div><div class="pf-dano"><span id="pDanoT">DANO 0%</span><div><i id="pDano"></i></div></div></div></div>';
 }
 // o engenheiro no rádio (radio.js): só nas regras de F1
 const radioF1 = (situacao, op) => { if (window.Radio && E.S && E.S.config && E.S.config.regras === "f1") window.Radio.dizer(situacao, op); };
@@ -154,7 +155,7 @@ function desenharAvisos() {
     if (!n) { n = document.createElement("div"); n.className = "av-item"; n._tipo = a.tipo; n._txt = a.texto; estiloAviso(n, a.tipo); n.innerHTML = htmlAviso(a.tipo, a.texto); NOS_AVISOS.set(a.id, n); box.appendChild(n); }
     else if (n._tipo !== a.tipo || n._txt !== a.texto) { n._tipo = a.tipo; n._txt = a.texto; estiloAviso(n, a.tipo); n.innerHTML = htmlAviso(a.tipo, a.texto); }
   }
-  for (const [id, n] of NOS_AVISOS) if (!vivos.has(id)) { n.remove(); NOS_AVISOS.delete(id); }
+  for (const [id, n] of NOS_AVISOS) if (!vivos.has(id)) { NOS_AVISOS.delete(id); n.classList.add("sai"); setTimeout(() => n.remove(), 320); } // sai com a animação (CSS) e só então some do DOM
 }
 // o que vira aviso a cada quadro: as linhas novas do log da direção de prova, o DRS liberado, a volta mais rápida, a largada e a bandeirada
 function avisosF1(m, left, now) {
@@ -224,13 +225,14 @@ function hudF1(m, st, now) {
     const c = d.children; // n, eq, sg, df, pn, vr, ic
     set(c[0], "t", l.pos); set(c[1], "bg", l.cor); set(c[2], "t", l.sigla); set(c[3], "t", l.dif.texto); set(c[3], "c", "df " + l.dif.tipo);
     set(c[4], "t", l.letra); set(c[4], "col", (F.PNEUS[l.pneu] || F.PNEUS.medio).cor); set(c[5], "d", l.volta ? "" : "none");
-    set(c[6], "t", l.noBox ? "BOX" : l.acabou && l.dif.tipo !== "out" ? "FIM" : l.penal > 0 ? `+${l.penal}s` : "");
+    const ic = l.dif.tipo === "out" ? "DNF" : l.noBox ? "BOX" : l.acabou ? "FIM" : l.penal > 0 ? `+${l.penal}s` : ""; // fora, no box, bandeirado ou punido
+    set(c[6], "t", ic); set(c[6], "c", "ic" + (ic === "DNF" ? " dnf" : ic === "BOX" ? " box" : ic === "FIM" ? " fim" : ic ? " pen" : ""));
   }
   // o painel: velocidade, marcha, luzes de troca, BOOST (a carga do ERS) e o aviso de ultrapassagem (DRS)
   const lider = st[0], v = Math.abs(m ? race.car.v : (lider && race.ghosts.get(lider.id)?.v) || 0), kmh = Math.round(v * T.KMH_POR_U);
   const rpm = Math.min(1, race.rpm || 0), carga = Math.round((race.ers?.carga || 0) * 100);
   set($("pVel"), "t", kmh); set($("pMarcha"), "t", !m ? "" : race.marcha || 1);
-  const luzes = $("pRpm").children, acesas = Math.round(rpm * 10); for (let k = 0; k < 10; k++) set(luzes[k], "c", k < acesas ? (k < 6 ? "g" : k < 8 ? "r" : "b") : "");
+  const luzes = $("pRpm").children, acesas = Math.round(rpm * N_RPM); for (let k = 0; k < N_RPM; k++) set(luzes[k], "c", k < acesas ? (k < N_RPM * 0.55 ? "g" : k < N_RPM * 0.8 ? "r" : "b") : "");
   set($("pBoost"), "w", carga + "%"); set($("pBoostT"), "t", carga + "%"); set($("pBoost"), "c", race.ersAtivo ? "on" : "");
   const aberto = !!race.drsAtivo, pronto = !!m && m.drsZona >= 0;
   set($("pOver"), "t", aberto ? "DRS" : "OVERTAKE"); set($("pOver"), "c", "pf-over" + (aberto ? " aberto" : pronto ? " pronto" : ""));
@@ -239,7 +241,7 @@ function hudF1(m, st, now) {
   if (pn) {
     const tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], resta = F.vidaRestante(pn), el = $("pPneu");
     set(el, "c", "pf-pneu" + (pn.desgaste > F.PENHASCO ? " fim" : "") + (F.frio(pn) ? " frio" : "")); set(el, "style", `--c:${tipo.cor};--r:${Math.round(resta * 100)}`);
-    set(el.children[0], "t", T.LETRA[pn.composto] || "M"); set(el.children[1], "t", Math.round(resta * 100) + "%");
+    set(el.children[0], "t", T.LETRA[pn.composto] || "M"); set(el.children[1], "t", Math.max(0, 100 - Math.round(resta * 100)) + "%");
     set($("pDanoT"), "t", `DANO ${dano}%`); set($("pDano"), "w", Math.min(100, dano) + "%"); set($("pDano"), "c", dano >= 66 ? "alto" : dano >= 33 ? "medio" : "");
   }
 }
@@ -316,23 +318,24 @@ function minimapa(st, m) {
   const cv = $("mini"), c = cv.getContext("2d"), S = cv.width, tr = race.tr, eu = m ? race.car : (st[0] && race.ghosts.get(st[0].id)) || race.car;
   const esc = S / 2 / 900, idx = m ? race.idx : eu.idx || 0;
   c.clearRect(0, 0, S, S); c.save();
-  c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 3, 0, 7); c.fillStyle = "#0b1016cc"; c.fill(); c.clip();
+  const fd = c.createRadialGradient(S / 2, S / 2, S * 0.1, S / 2, S / 2, S / 2); fd.addColorStop(0, "#1a2230ee"); fd.addColorStop(1, "#080b11ee");
+  c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 3, 0, 7); c.fillStyle = fd; c.fill(); c.clip();
   c.translate(S / 2, S / 2 + S * 0.12); c.rotate(-eu.a - Math.PI / 2); c.scale(esc, esc); c.translate(-eu.x, -eu.y);
   c.lineCap = c.lineJoin = "round";
   c.beginPath(); for (let i = 0; i <= tr.n; i += 3) { const p = tr.pts[i % tr.n]; i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y); }
-  c.strokeStyle = "#5d6673"; c.lineWidth = 34 / esc / 6; c.stroke();
+  c.strokeStyle = "#8d97a6"; c.lineWidth = 34 / esc / 6; c.stroke();
   c.beginPath(); for (let k = 0; k <= 260; k += 2) { const p = tr.pts[(idx + k) % tr.n]; k ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y); }
   c.strokeStyle = "#5fe6ff"; c.lineWidth = 34 / esc / 6; c.stroke();
   for (const r of st) {
     if (m && r.id === m.id) continue; const gh = race.ghosts.get(r.id); if (!gh) continue;
-    c.beginPath(); c.arc(gh.x, gh.y, 7 / esc / 1.4, 0, 7); c.fillStyle = r.p.color; c.fill(); c.lineWidth = 2 / esc; c.strokeStyle = "#000"; c.stroke();
+    c.beginPath(); c.arc(gh.x, gh.y, 7 / esc / 1.4, 0, 7); c.fillStyle = r.p.color; c.fill(); c.lineWidth = 2.2 / esc; c.strokeStyle = "#fff"; c.stroke();
   }
   c.restore();
   // eu: a setinha no meio, e o "N" do norte girando na borda
   c.save(); c.translate(S / 2, S / 2 + S * 0.12); c.beginPath(); c.moveTo(0, -11); c.lineTo(8, 8); c.lineTo(0, 4); c.lineTo(-8, 8); c.closePath(); c.fillStyle = "#fff"; c.fill(); c.lineWidth = 2; c.strokeStyle = "#0b1016"; c.stroke(); c.restore();
   const na = -eu.a - Math.PI / 2 - Math.PI / 2, nr = S / 2 - 16;
   c.font = "800 15px Figtree, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = "#fff"; c.fillText("N", S / 2 + Math.cos(na) * nr, S / 2 + Math.sin(na) * nr);
-  c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 3, 0, 7); c.lineWidth = 3; c.strokeStyle = "#ffffff55"; c.stroke();
+  c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 3, 0, 7); c.lineWidth = 3; c.strokeStyle = "#ffffffcc"; c.stroke();
 }
 // velocímetro em arco: risquinhos, a faixa vermelha no fim, o arco aceso até a velocidade, a marcha e o número grande
 function velocimetro(v) {

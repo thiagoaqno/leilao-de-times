@@ -1,7 +1,7 @@
 // Corrida da Galera — as contas da torre de posições do HUD de F1 (hud.js desenha). Só lógica pura, testável em node.
 (function (root) {
 
-const LETRA = { macio: "S", medio: "M", duro: "H" }; // a letra do composto na torre (como na TV)
+const LETRA = { macio: "S", medio: "M", duro: "H", chuva: "W" }; // a letra do composto na torre (como na TV)
 const KMH_POR_U = 0.75; // o velocímetro mostra v * 0.75 km/h: com essa mesma escala sai a distância em metros
 const V_MIN = 22; // abaixo disso (unidades/s) o tempo explode: mostra a distância em metros
 const mDe = (u) => (u * KMH_POR_U) / 3.6;
