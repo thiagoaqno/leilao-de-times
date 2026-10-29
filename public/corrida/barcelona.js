@@ -46,44 +46,50 @@ function quadroDaReta(tr, add) {
 function reta(tr, { add }) {
   const { g, p, mundo, reservar } = quadroDaReta(tr, add), { n, W } = tr;
   const Z = W / 2 + 88, zT = -(W / 2 + 62); // a frente do prédio dos boxes (depois do corredor e das garagens do kit) e a da tribuna principal
+  // Onde cada coisa fica ao longo da reta (x = 0 é a linha de chegada, o pórtico). O corredor do jogo (pistas.js, `boxes`) começa 164 depois da linha, as
+  // 10 garagens vão de 277 a 555 e a saída é em 669: o prédio tem de cobrir isso tudo e ainda passar da linha para trás, senão os boxes ficam todos à
+  // frente da chegada. Como em Montmeló, a linha de chegada fica no meio da reta, em frente ao prédio e à tribuna (não no começo deles).
+  const xP = 200, compP = 1300; // o prédio dos boxes: de -450 a 850 (a passarela de 0,962 fica em -527, fora dele)
+  const xT = 250, comp = 1500; // a tribuna principal, do outro lado: de -500 a 1000
   // o prédio dos boxes: as garagens do kit (corredor dos boxes) ficam na frente; atrás delas, as varandas, o clube e a torre de controle
-  const predio = complexoDosBoxes({ comprimento: 1200, fundo: 62 });
-  predio.position.set(420, -0.3, Z); predio.rotation.y = Math.PI; g.add(predio);
-  tr.torreDeControleBCN = { x: 420, z: Z + 62 - 30 };
+  const predio = complexoDosBoxes({ comprimento: compP, fundo: 62 });
+  predio.position.set(xP, -0.3, Z); predio.rotation.y = Math.PI; g.add(predio);
+  tr.torreDeControleBCN = { x: xP, z: Z + 62 - 30 };
   // a tribuna principal, do outro lado: a asa de alumínio sobre os dois lances de degraus vermelhos e brancos
-  const comp = 1500, tribuna = tribunaPrincipal({ comprimento: comp, publico: 0.42 }), xT = 500;
+  const tribuna = tribunaPrincipal({ comprimento: comp, publico: 0.42 });
   tribuna.position.set(xT, -3, zT); g.add(tribuna);
   const upper = tribuna.userData.fileiras.filter((f) => f.y > 109);
   for (let j = 0; j < 70; j++) { // as bandeiras nos degraus de cima (a Espanha e a Catalunha)
     const f = upper[(j * 7) % upper.length], u = xT - comp / 2 + 20 + ((j * 97) % (comp - 40)), [fx, fz] = mundo(u, zT + f.z);
     flagsTorcida.push({ x: fx, y: p.h - 3 + f.y + 7, z: fz, ry: aoLongo(p) + (((j * 13) % 10) - 5) * 0.06, s: 0.9 + ((j * 3) % 5) * 0.1 });
   }
-  tr.arquibancadas ||= []; tr.arquibancadas.push([n - 42, n - 1], [0, Math.floor((xT + comp / 2) / 6)]); // o som da torcida
+  tr.arquibancadas ||= []; tr.arquibancadas.push([n - Math.ceil((comp / 2 - xT) / 6), n - 1], [0, Math.floor((xT + comp / 2) / 6)]); // o som da torcida
   for (let x = xT - comp / 2 - 60; x <= xT + comp / 2 + 60; x += 70) for (const z of [zT - 160, zT - 330]) reservar(x, z, 150); // a tribuna e o telhado, até o fundo
   // a torre do relógio, de frente para quem chega, depois do fim do prédio dos boxes
   const torre = torreDeCronometragem({ alto: 170 });
-  torre.position.set(930, -0.3, W / 2 + 36); torre.rotation.y = -Math.PI / 2; g.add(torre); reservar(930, W / 2 + 36, 44);
+  const xR = xP + compP / 2 + 80; // 80 depois da ponta do prédio
+  torre.position.set(xR, -0.3, W / 2 + 36); torre.rotation.y = -Math.PI / 2; g.add(torre); reservar(xR, W / 2 + 36, 44);
   // o paddock atrás do prédio dos boxes: motorhomes, tendas e carretas, reservados para as árvores ficarem de fora
-  paddock(tr, g, Z + 62 + 30);
-  for (let x = -200; x <= 1040; x += 60) reservar(x, Z + 30, 90);
-  for (const z of [Z + 140, Z + 250, Z + 360, Z + 470]) for (let x = -160; x <= 1000; x += 150) reservar(x, z, 100);
+  paddock(tr, g, Z + 62 + 30, xP);
+  for (let x = xP - 620; x <= xP + 620; x += 60) reservar(x, Z + 30, 90);
+  for (const z of [Z + 140, Z + 250, Z + 360, Z + 470]) for (let x = xP - 580; x <= xP + 580; x += 150) reservar(x, z, 100);
   tr.retaBCN = { g, Z, zT, tribuna, predio, torre };
   return g;
 }
 
-function paddock(tr, g, z0) {
+function paddock(tr, g, z0, xc) { // xc: o meio do prédio dos boxes, ao longo da reta
   const textos = ["HOSPITALITY", "PADDOCK CLUB", "MEDIA", "EQUIPES", "VIP"], cores = ["#d62a1f", "#ff7a1a", "#2fb8a3", "#1d4fd8", "#13804a"];
   for (let k = 0; k < 5; k++) { // os motorhomes, de costas para o prédio dos boxes (a frente olha para ele)
     const mh = motorhome({ cor: cores[k], texto: textos[k], comprimento: 130 });
-    mh.position.set(420 + (k - 2) * 210, 0.4, z0 + 40); mh.rotation.y = Math.PI; g.add(mh);
+    mh.position.set(xc + (k - 2) * 210, 0.4, z0 + 40); mh.rotation.y = Math.PI; g.add(mh);
   }
   [["CATALUNYA", "#c60b1e"], ["MONTMELÓ", "#17325c"], ["VALLÈS", "#1f6f3a"]].forEach(([texto, corFaixa], k) => {
     const t = tendaPaddock({ modulos: 3, filas: 2, texto, corFaixa, corMesas: "#c8102e" });
-    t.scale.setScalar(1.6); t.position.set(420 + (k - 1) * 300, 0.4, z0 + 220); t.rotation.y = Math.PI; g.add(t);
+    t.scale.setScalar(1.6); t.position.set(xc + (k - 1) * 300, 0.4, z0 + 220); t.rotation.y = Math.PI; g.add(t);
   });
   const m = new Montador();
-  carretasEm(m, 420 - 3.5 * 124, z0 + 340, CORES_EQUIPE, 124);
-  carretasEm(m, 420 - 3.5 * 124, z0 + 420, CORES_EQUIPE.slice().reverse(), 124);
+  carretasEm(m, xc - 3.5 * 124, z0 + 340, CORES_EQUIPE, 124);
+  carretasEm(m, xc - 3.5 * 124, z0 + 420, CORES_EQUIPE.slice().reverse(), 124);
   g.add(m.montar("barcelona-paddock-carretas"));
 }
 
