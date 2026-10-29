@@ -1,0 +1,19 @@
+/* Corrida da Galera — a varredura de TV entre as cenas (transicao-f1.js). Só `transform`, sem pesar; não pega toque. */
+.f1Trans{position:absolute;inset:0;z-index:26;overflow:hidden;pointer-events:none;display:none;contain:strict}
+.f1Trans.on{display:block}
+.f1Varre{position:absolute;top:-6%;bottom:-6%;left:0;width:160%;display:flex;transform:translateX(-100%) skewX(-14deg);will-change:transform;animation:f1Varre .5s both}
+.f1Varre i{display:block;height:100%}
+.f1Pt{flex:0 0 14%;background:#0b0c10}.f1Pt2{flex-basis:18%}
+.f1Br{flex:0 0 3%;background:#fff}
+.f1Vm{flex:1;position:relative;display:grid;place-items:center;align-content:center;background:repeating-linear-gradient(115deg,#ffffff1c 0 14px,transparent 14px 34px),linear-gradient(100deg,#e10600,#a30400)}
+.f1Vm b{font:900 clamp(56px,22vmin,220px)/.9 var(--display,"Barlow Condensed","Titillium Web",system-ui,sans-serif);font-style:italic;letter-spacing:.02em;color:#fff;transform:skewX(14deg);text-shadow:0 .04em 0 #0006;padding-right:.08em}
+.f1Vm small{font:800 clamp(12px,2.6vmin,24px)/1 var(--f1-fonte,"Titillium Web",system-ui,sans-serif);font-style:italic;letter-spacing:.22em;text-transform:uppercase;color:#fff;transform:skewX(14deg);margin-top:1.2vmin;padding-left:.22em}
+.f1Vm small:empty{display:none}
+/* entra rápido, segura a tela coberta (de 35% a 65%: o corte da câmera cai aí) e sai acelerando */
+@keyframes f1Varre{
+  0%{transform:translateX(-100%) skewX(-14deg);animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+  35%{transform:translateX(-33%) skewX(-14deg);animation-timing-function:linear}
+  65%{transform:translateX(-4%) skewX(-14deg);animation-timing-function:cubic-bezier(.6,0,.9,.5)}
+  100%{transform:translateX(62.5%) skewX(-14deg)}
+}
+@media (prefers-reduced-motion:reduce){.f1Trans,.f1Trans.on{display:none!important}}

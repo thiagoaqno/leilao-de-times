@@ -1,16 +1,12 @@
 /* Corrida da Galera — a transmissão de TV antes da largada de F1 (transmissao.js). Gráficos no estilo de transmissão: cartões
    escuros com filete vermelho, letra condensada em caixa alta, barra inferior com o rótulo do bloco. Enquanto ela está no ar
    (`#race.tvOn`) o resto do HUD fica escondido. */
-#race.tvOn>*:not(#screen):not(.tvTrans):not(.tvEspera){visibility:hidden!important}
+#race.tvOn>*:not(#screen):not(.tvTrans):not(.tvEspera):not(.f1Trans){visibility:hidden!important}
 .tvTrans{position:absolute;inset:0;z-index:20;pointer-events:auto;cursor:pointer;overflow:hidden;font-family:var(--f1-fonte,"Titillium Web","Segoe UI",system-ui,sans-serif);color:#fff;text-transform:uppercase;transition:opacity .9s;
   background:linear-gradient(180deg,#000a 0,transparent 16%,transparent 62%,#000b 100%)}
 .tvTrans.sai{opacity:.0}
 .tvTopo{position:absolute;left:clamp(12px,3vw,32px);top:14px;display:flex;gap:12px;align-items:center;font-weight:700;font-size:clamp(11px,1.5vw,15px);letter-spacing:.14em;text-shadow:0 1px 4px #000}
 .tvAoVivo{background:#e10600;padding:3px 9px;font-weight:800;letter-spacing:.1em}
-/* a faixa que varre a tela a cada corte de câmera */
-.tvTrans::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:40%;background:linear-gradient(100deg,transparent 0,#e10600 30%,#e10600 70%,transparent 100%);transform:skewX(-14deg);opacity:0;pointer-events:none}
-.tvTrans.corte::after{animation:tvFaixa .55s ease-in}
-@keyframes tvFaixa{0%{left:-45%;opacity:.95}100%{left:110%;opacity:.95}}
 /* barra inferior */
 .tvBarra{position:absolute;left:0;bottom:clamp(14px,5vh,44px);display:flex;align-items:stretch;max-width:92%;background:#0a0c12ee;border-left:8px solid #e10600;box-shadow:0 6px 24px #0009;animation:tvEntra .5s both}
 .tvRotulo{display:flex;align-items:center;min-width:clamp(120px,22vw,250px);padding:8px clamp(10px,2vw,22px);background:linear-gradient(100deg,#e10600,#a30400);font:800 clamp(15px,2.6vw,28px)/1 var(--f1-fonte,system-ui,sans-serif);font-style:italic;letter-spacing:.04em}
@@ -62,4 +58,4 @@
   .tvEspera{white-space:normal;text-align:center;width:calc(100% - 24px)}
 }
 @media (max-width:700px) and (max-height:520px){.tvMiniBox{display:none}.tvCarta{top:38px}}
-@media (prefers-reduced-motion:reduce){.tvCarta,.tvBarra{transition:none;animation:none}.tvTrans.corte::after{animation:none}}
+@media (prefers-reduced-motion:reduce){.tvCarta,.tvBarra{transition:none;animation:none}}
