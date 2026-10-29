@@ -23,9 +23,29 @@ function resultado(s, gp) {
     ...grid.map((p, i) => ({ piloto: p.id, equipe: p.equipe, pos: posicoes[i], pontos: R.PONTOS[posicoes[i] - 1] || 0 }))];
 }
 
+test("calendário sorteado: sem repetir, só pistas trabalhadas, na ordem do calendário real, reproduzível", () => {
+  const ordem = (cal) => cal.map((x) => R.CALENDARIO.findIndex(([pista]) => pista === x.pista));
+  for (const tamanho of [4, 8]) for (const semente of [1, 2, 3, 99]) {
+    const s = R.criar("Thiago", "cadillac", tamanho, 2, semente), pistas = s.calendario.map((x) => x.pista);
+    assert.equal(pistas.length, tamanho); assert.equal(new Set(pistas).size, tamanho);
+    assert.ok(pistas.every((p) => R.PISTAS_TRABALHADAS.includes(p)));
+    assert.deepEqual(ordem(s.calendario), ordem(s.calendario).slice().sort((a, b) => a - b), "ordem do calendário real");
+    assert.deepEqual(R.criar("Outro", "ferrari", tamanho, 3, semente).calendario, s.calendario, "mesma semente, mesmo calendário");
+  }
+  const conjuntos = new Set(Array.from({ length: 12 }, (_, i) => R.criar("T", "cadillac", 4, 2, i + 1).calendario.map((x) => x.pista).join()));
+  assert.ok(conjuntos.size > 1, "a semente muda o calendário");
+  const s = R.criar("Thiago", "cadillac", 4, 2, 7);
+  for (let ano = 0; ano < 6; ano++) {
+    const antes = s.calendario.map((x) => x.pista).join(); s.gp = s.tamanho; R.proximaTemporada(s);
+    assert.notEqual(s.calendario.map((x) => x.pista).join(), antes, "a temporada seguinte troca o conjunto"); assert.equal(s.calendario.length, 4);
+  }
+  assert.equal(R.sortearCalendario(10, 5).calendario.length, 10, "maior que a lista: completa com as demais, sem repetir");
+});
+
 test("mini temporada de quatro GPs: grid, tabelas, finanças e continuidade", () => {
   const s = R.criar("Thiago", "cadillac", 4, 2, 170);
-  assert.deepEqual(s.calendario.map((x) => x.pista), ["melbourne", "monaco", "monza", "interlagos"]);
+  assert.equal(s.calendario.length, 4);
+  assert.ok(s.calendario.every((x) => R.PISTAS_TRABALHADAS.includes(x.pista)));
   const ids = R.pilotosNoGrid(s).map((p) => p.id);
   assert.equal(ids.length, 19); assert.equal(new Set(ids).size, 19);
   assert.equal(R.pilotosNoGrid(s)[0].equipe, "cadillac");
@@ -104,7 +124,7 @@ test("sede abre GP privado, fixa companheiro e exige acesso da temporada", { tim
     assert.equal(entrou.ok, true, entrou.error);
     const estado = await esperarEstado(pista, (s) => s.phase === "quali" && s.players.length === 20);
     assert.equal(estado.temporada, true);
-    assert.equal(estado.config.pista, "melbourne");
+    assert.equal(estado.config.pista, criado.dados.calendario[0].pista, "corre a primeira pista do calendário sorteado");
     assert.equal(estado.players.filter((p) => p.bot && p.equipe === "cadillac").length, 1);
     intruso = await conectar(servidor.url, "/corrida");
     assert.equal((await chamar(intruso, "join", { code: acesso.acesso.code, watch: true })).ok, false);
