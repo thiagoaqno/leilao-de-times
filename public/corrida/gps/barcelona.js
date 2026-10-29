@@ -1,68 +1,56 @@
-// Barcelona (Circuit de Barcelona-Catalunya, Montmeló): o que o GP usa do kit (kit/README.md explica cada peça) e o que só
-// ele tem: o prédio dos boxes com a torre de controle. As frações (0 a 1) são da volta, a partir da linha de chegada,
-// no meio da reta dos boxes. Autódromo: sem muro colado, com brita do lado de fora das curvas e a serra de Montserrat ao
-// noroeste.
-import * as THREE from "three";
-import { canvasTex, M } from "../cena.js";
-import { faixa } from "../kit/arquibancadas.js";
-import { marcaTex } from "../kit/marcas.js";
+// Barcelona (Circuit de Barcelona-Catalunya, Montmeló, GP da Espanha): o que o GP usa do kit (kit/README.md explica cada peça) e o que só ele tem,
+// em ../barcelona.js e ../kit/barcelona/ (a grande tribuna principal coberta com a asa de alumínio, o prédio dos boxes com a torre de controle de prova,
+// a torre do relógio, as tribunas de curva nas encostas, as placas das curvas, o asfalto vermelho da curva 13, as bandeiras da Espanha e da
+// Catalunha, os pinhais mansos e de alepo, as serras de Sant Llorenç del Munt, Montserrat e Montseny e os povoados do Vallès). As frações (0 a 1) são da
+// volta, a partir da chegada, no meio da reta dos boxes:
+// reta dos boxes 0,935-0,155 (a tribuna principal de 0,92 a 0,11 do lado de fora, o prédio dos boxes do lado de dentro, o pórtico em 0) ·
+// Elf (1) 0,157-0,171 · Renault (2) 0,179-0,196 · curva 3 0,211-0,264 · Repsol (4) 0,344-0,399 · Seat (5) 0,435-0,454 · Würth (6) 0,50 ·
+// curvas 7-8 0,529-0,563 · Campsa (9) 0,599-0,628, o ponto mais alto · La Caixa (10) 0,735-0,747 · curva 11 0,762 · Banc de Sabadell (12) 0,781-0,821 ·
+// curva 13 0,838-0,877 · curva 14 0,903-0,932. Autódromo largo: sem muro colado, brita clara e asfalto verde de escape, o céu limpo e o sol forte do verão.
+import { cenarioBarcelona, depoisBarcelona, TORCIDA } from "../barcelona.js";
 
-// o prédio dos boxes, do lado direito da reta (o lado oposto das arquibancadas): garagens, sacada de vidro, o teto com
-// os painéis dos patrocinadores e, no meio, a torre de controle
-function predioDosBoxes(tr, { add }) {
-  const { pts, n, W } = tr, lado = 1, f0 = 0.984, f1 = 1.078, i0 = Math.floor(f0 * n), i1 = Math.floor(f1 * n), alto = 36, fundo = 46;
-  const l0 = lado * (W / 2 + 62), l1 = l0 + lado * fundo;
-  // a frente: portas das garagens (uma a cada 16 m), a faixa de vidro e a platibanda com o friso vermelho
-  const frente = new THREE.MeshStandardMaterial({ roughness: 0.7, side: THREE.DoubleSide, map: canvasTex(64, 128, (x, w, hh, rr) => {
-    x.fillStyle = "#e9e7e1"; x.fillRect(0, 0, w, hh);
-    x.fillStyle = "#2b2f36"; x.fillRect(0, 10, 34, 108); x.fillStyle = "#454b55"; for (let yy = 14; yy < 116; yy += 7) x.fillRect(0, yy, 34, 2);
-    x.fillStyle = ["#e10600", "#00a3e0", "#ffd100", "#ff7a00", "#00a86b"][(rr() * 5) | 0]; x.fillRect(0, 10, 34, 5);
-    x.fillStyle = "#6f94ad"; x.fillRect(38, 0, 16, hh); x.fillStyle = "#ffffff44"; for (let yy = 8; yy < hh; yy += 32) x.fillRect(38, yy, 16, 3);
-    x.fillStyle = "#c8102e"; x.fillRect(56, 0, 4, hh);
-  }) });
-  const parede = M(0xdedbd2, { roughness: 0.8, side: THREE.DoubleSide }), teto = M(0xb9bcc0, { roughness: 0.6, side: THREE.DoubleSide });
-  faixa(tr, add, i0, i1, l0, l0, 0, alto, frente, 160);
-  faixa(tr, add, i0, i1, l1, l1, 0, alto, parede, 60);
-  faixa(tr, add, i0, i1, l0 - lado * 6, l1, alto, alto, teto, 60); // o teto, com a marquise saindo para a pista
-  for (const i of [i0, i1]) { const p = pts[i % n], g = new THREE.Mesh(new THREE.PlaneGeometry(fundo, alto), parede); g.position.set(p.x + p.nx * (l0 + l1) / 2, p.h + alto / 2, p.y + p.ny * (l0 + l1) / 2); g.rotation.y = Math.atan2(-p.ny, p.nx); add(g); }
-  // os painéis em cima do teto, virados para a pista, e a torre de controle no meio
-  const meio = Math.floor((i0 + i1) / 2), pm = pts[meio % n], g = new THREE.Group();
-  g.position.set(pm.x, pm.h, pm.y); g.rotation.y = Math.atan2(pm.nx, pm.ny); add(g); // z do grupo = lado da pista
-  const zFrente = lado * (W / 2 + 62), vidro = M(0x1f3446, { roughness: 0.15, metalness: 0.5 }), branco = M(0xf1efe8, { roughness: 0.6 });
-  const torre = new THREE.Mesh(new THREE.BoxGeometry(44, 70, 34), branco); torre.position.set(0, 35, zFrente + lado * 30); torre.castShadow = true; g.add(torre);
-  const sala = new THREE.Mesh(new THREE.BoxGeometry(45, 12, 35), vidro); sala.position.set(0, 62, zFrente + lado * 30); g.add(sala);
-  const topo = new THREE.Mesh(new THREE.BoxGeometry(50, 3, 40), M(0x5a5f66)); topo.position.set(0, 71.5, zFrente + lado * 30); g.add(topo);
-  const mastro = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 40, 6), M(0xd9d9d9)); mastro.position.set(14, 92, zFrente + lado * 30); g.add(mastro);
-  [["circuit", -170], ["pirelli", -60], ["lacaixa", 60], ["f1", 170]].forEach(([marca, x]) => {
-    const painel = new THREE.Mesh(new THREE.PlaneGeometry(76, 19), new THREE.MeshBasicMaterial({ map: marcaTex(marca, 512, 128), side: THREE.DoubleSide }));
-    painel.position.set(x, alto + 11, zFrente - lado * 3); painel.rotation.y = lado > 0 ? Math.PI : 0; g.add(painel);
-    for (const s of [-1, 1]) { const pe = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4, 1.2), M(0x444a52)); pe.position.set(x + s * 30, alto + 2, zFrente - lado * 3); g.add(pe); }
-  });
-  for (let i = i0; i <= i1; i += 4) { const p = pts[i % n]; tr.reservado.push([p.x + p.nx * (l0 + lado * 30), p.y + p.ny * (l0 + lado * 30), 70]); }
-}
-
-// o cenário próprio: o prédio dos boxes (as arquibancadas vêm do kit, em `arquibancadas`)
-const cenario = (tr, ctx) => predioDosBoxes(tr, ctx);
+const VERMELHO = "#c8102e", BRANCO = "#f4f3f0", VERDE = ["#2f9a62", "#36a86a"];
+const arq = (de, ate, lado, degraus, o = {}) => ({ de, ate, lado, degraus, cor: VERMELHO, encosto: BRANCO, torcida: TORCIDA, ...o });
 
 export const GP_BARCELONA = {
   asfalto: true, // o asfalto de GP de asfalto-gp.js, com as linhas de borda e a borracha
   chao: {
-    margem: { cor: "#6d6e72" }, // a faixa de asfalto da área de escape, logo depois da zebra
-    zebra: { cores: ["#d62828", "#f4f4f4"], dentro: 340, fora: 220 },
+    margem: { cor: "#6d6e72" }, // a faixa de asfalto cinza, logo depois da zebra
+    zebra: { cores: ["#d62828", "#f4f4f4"], dentro: 340, fora: 220 }, // as zebras vermelhas e brancas
     sc: [[0.93, "SC 1"], [0.12, "SC 2"]],
     grid: true, remendos: 26,
   },
-  escape: { britaCurvas: 450, corBrita: "#e3d9bb", largura: 24 }, // a brita do lado de fora das curvas
+  // o escape: brita clara do lado de fora de todas as curvas; asfalto pintado de verde por dentro das mais abertas (como em Montmeló desde 2007); pilhas de
+  // pneus só nas duas curvas mais fortes (Elf e La Caixa)
+  escape: {
+    largura: 24, corBrita: "#e8e1cc", cores: VERDE,
+    brita: [[0.15, 0.177, "fora"], [0.178, 0.2, "fora"], [0.205, 0.268, "fora"], [0.34, 0.4, "fora"], [0.432, 0.46, "fora"], [0.527, 0.545, "fora"], [0.595, 0.632, "fora"],
+      [0.728, 0.762, "fora"], [0.778, 0.825, "fora"], [0.835, 0.88, "fora"], [0.9, 0.935, "fora"]],
+    listrado: [[0.152, 0.176, "dentro"], [0.208, 0.266, "dentro"], [0.342, 0.4, "dentro"], [0.597, 0.63, "dentro"], [0.78, 0.822, "dentro"], [0.902, 0.934, "dentro"]],
+    pneus: [[0.152, 0.176, "fora"], [0.728, 0.762, "fora"]],
+  },
+  // as arquibancadas de curva (fitas do kit); a tribuna principal, as tribunas das encostas (Elf, curva 3, Repsol, Campsa e La Caixa) e o resto são de ../barcelona.js
   arquibancadas: { trechos: [
-    { de: 0.004, ate: 0.108, lado: -1, degraus: 7, cor: "#c8102e", encosto: "#f1b82d" }, // a tribuna da reta dos boxes, vermelha e amarela
-    { de: 0.142, ate: 0.185, lado: -1, degraus: 6, cor: "#1f5fbf", encosto: "#5aa0f0" }, // por fora da curva 1
+    arq(0.176, 0.202, 1, 7, { encosto: "#ffc400" }), // por fora da Renault
+    arq(0.428, 0.462, 1, 8), // por fora da Seat
+    arq(0.526, 0.55, 1, 6, { encosto: "#ffc400" }), // por fora da curva 7
+    arq(0.776, 0.824, -1, 8), // Banc de Sabadell
+    arq(0.836, 0.878, -1, 8, { encosto: "#ffc400" }), // a curva 13
+    arq(0.9, 0.934, -1, 7), // a curva 14, antes da reta
   ] },
-  cenario,
-  ambiente: { bandeira: [0xc60b1e, 0xffc400], marcas: ["repsol", "pirelli", "lacaixa", "rolex", "sabadell", "heineken", "dhl", "aramco", "circuit"], posto: "f1" },
-  passarelas: { candidatos: [0.962, 0.5, 0.62, 0.32], marcas: ["repsol", "lacaixa", "pirelli"], max: 3 }, // a da reta dos boxes, pouco antes dos boxes
-  montanha: { angulo: (-3 * Math.PI) / 4, afastamento: 1500, altura: 760, rocha: "#9a8c78", mato: "#6e6e4a", longe: "#a8b1ba" }, // Montserrat, a noroeste
+  cenario: (tr, ctx) => cenarioBarcelona(tr, ctx), // a reta dos boxes, as tribunas das encostas, as placas das curvas e o asfalto vermelho
+  // sem marca registrada de patrocinador: só o nome do GP, do circuito e de lugares da Catalunha
+  ambiente: {
+    marcas: ["gpespanya", "catalunya", "mediterrani", "montmelo", "valles", "costabrava", "pirineus", "cava", "oliva", "circuit"],
+    outdoors: ["gpespanya", "catalunya", "mediterrani", "montmelo", "valles", "costabrava", "pirineus", "cava"],
+    bandeira: [0xc60b1e, 0xffc400], posto: "catalunya", placas: [150, 100, 50], // a Espanha: vermelha e amarela
+  },
+  passarelas: { candidatos: [0.962, 0.5, 0.62, 0.32], marcas: ["gpespanya", "catalunya", "circuit"], max: 3 }, // a da reta dos boxes, pouco antes dos boxes
+  horizonte: false, // os morros de longe são as serras de ../kit/barcelona/paisagem.js
   vida: {
     gaivotas: [], // não tem mar
     som: { campo: () => 1, cidade: 0.12 }, // vento e passarinhos de autódromo; a cidade fica longe
   },
+  beira: {}, // sem as árvores redondas de sempre: a vegetação mediterrânea é de ../kit/barcelona/vegetacao.js, em `depois`
+  depois: (tr, ctx) => depoisBarcelona(tr, ctx), // as serras, os povoados, a vegetação, as bandeiras da torcida e a faixa no pórtico da largada
 };
