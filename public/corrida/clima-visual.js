@@ -194,7 +194,8 @@ function passoSpray(dt, c, race, cam) {
       const car = emissor[k], meu = emissorMeu[k], v = Math.abs(car.v || 0), f = suave(70, 290, v) * agua, lod = k < K_PERTO ? 1 : emissorD[k] > 900 * 900 ? 0.25 : 0.45;
       const fx = Math.cos(car.a || 0), fy = Math.sin(car.a || 0), rastro = v > 20 ? lim(v * 0.5, 0, 150) : 0;
       for (let q = 0; q < asfU.length; q++) { // o asfalto: o rastro mais seco por trás do carro e a luz traseira e o farol refletidos (o meu carro não reflete: a câmera está nele)
-        const u = asfU[q]; u.uCarros.value[k].set(car.x, car.y, -fx * rastro, -fy * rastro);
+        const u = asfU[q]; if (k >= u.uCarros.value.length) continue; // (o asfalto guarda só N_CARROS_AGUA carros: o borrifo tem mais)
+        u.uCarros.value[k].set(car.x, car.y, -fx * rastro, -fy * rastro);
         u.uLuzes.value[k * 2].set(car.x - fx * 24, car.y - fy * 24, 9, meu ? 0 : 2.2); u.uLuzes.value[k * 2 + 1].set(car.x + fx * 26, car.y + fy * 26, 5, meu ? 0 : 0.55);
       }
       if (f < 0.02) continue;
@@ -203,7 +204,7 @@ function passoSpray(dt, c, race, cam) {
       if (meu) acMeu = ac; else car.__borrifo = ac;
     }
     for (let k = 0; k < nEmissores; k++) emissor[k] = null;
-    for (let k = nEmissores; k < K_CARROS; k++) for (let q = 0; q < asfU.length; q++) { asfU[q].uCarros.value[k].set(0, 0, 0, 0); asfU[q].uLuzes.value[k * 2].set(0, 0, 0, 0); asfU[q].uLuzes.value[k * 2 + 1].set(0, 0, 0, 0); }
+    for (let q = 0; q < asfU.length; q++) for (let k = nEmissores; k < asfU[q].uCarros.value.length; k++) { asfU[q].uCarros.value[k].set(0, 0, 0, 0); asfU[q].uLuzes.value[k * 2].set(0, 0, 0, 0); asfU[q].uLuzes.value[k * 2 + 1].set(0, 0, 0, 0); }
   }
   if (sVivos <= 0) { if (spray.visible) spray.visible = false; return; }
   spray.visible = true;
@@ -247,7 +248,20 @@ function coletarAsfalto(tr) {
     }
   });
   aguaSuave = aguaAlvo(); aguaAplicada = -1;
+  preaquecer();
 }
+// ao montar a pista, já compila os sombreadores da chuva e sobe as texturas dela para a placa: senão a primeira chuva da corrida
+// engasga o jogo enquanto o navegador compila tudo de uma vez
+function preaquecer() {
+  const objs = [domo, gotas, resp, spray], antes = objs.map((o) => o.visible);
+  try {
+    for (const o of objs) o.visible = true;
+    if (renderer.initTexture) { renderer.initTexture(nuvens); renderer.initTexture(puff); }
+    renderer.compile(scene, camPreaquecer || scene.children.find((o) => o.isCamera) || new THREE.PerspectiveCamera());
+  } catch (e) { console.warn("Corrida: não deu para pré-carregar a chuva", e); }
+  objs.forEach((o, i) => { o.visible = antes[i]; });
+}
+let camPreaquecer = null;
 
 // ---------- as gotas na tela ----------
 // Poucas gotas, cada uma uma lentinha de água: corpo translúcido (sprite pré-desenhado), borda escura embaixo, brilho do céu em cima
@@ -375,6 +389,7 @@ let ultRace = null, ativoAntes = false;
 // chamado por quadro (jogo.js, depois de posicionar a câmera): `mode` é a câmera ("perto", "cockpit", "longe", "cima"), `src` o carro
 // que a câmera segue e `c` o meu carro como é desenhado
 export function passoClima(dt, race, cam, mode, src, c) {
+  camPreaquecer = cam;
   if (race !== ultRace) { ultRace = race; I = clima.chuva; sVivos = 0; sVida.fill(0); sAlfa.fill(0); rVivos = 0; rVida.fill(0); gotaT = -1; grX = NaN; coletarAsfalto(race.tr); }
   else if (race.tr !== trAtual) coletarAsfalto(race.tr);
   const k = clima.chuva > I ? 1 - Math.exp(-dt / 5) : 1 - Math.exp(-dt / 10);
