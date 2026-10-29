@@ -1,7 +1,7 @@
 // Corrida da Galera — os carros de Fórmula 1 em 3D, a vitrine da garagem e a fumaça.
 import * as THREE from "three";
 import { scene } from "./cena.js";
-import { montarF1, animarF1, soltarF1, f1Pronto, coresDa, TAM } from "./f1.js";
+import { montarF1, animarF1, soltarF1, trocarComposto, f1Pronto, coresDa, TAM, PINTURAS } from "./f1.js";
 let kartChegou = false; f1Pronto.then(() => { kartChegou = true; }); // a foto da garagem é refeita quando o modelo 3D chega
 import { faiscas } from "./efeitos.js";
 import { modeloItem } from "./modelos.js";
@@ -18,12 +18,14 @@ export const CARS3 = {
 };
 export const KS = 10; // metros do modelo -> unidades da pista
 export const MODS3 = window.Pistas.MODS, MODS_PADRAO = window.Pistas.MODS_PADRAO;
-// leve: o modelo com menos triângulos e sem sombra projetada (os carros dos outros; a sombra redonda no chão fica)
-export function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene, leve = false) {
+// leve: o modelo com menos triângulos e sem sombra projetada (os carros dos outros; não há mais sombra redonda falsa no chão: era a mancha preta oval sob o carro)
+// op: { numero (o número do piloto, no carro de equipe), semPintura (a pintura de equipe fica de fora: a máscara de cores) }
+export function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene, leve = false, op = {}) {
   const tipo = CARS3[model] ? model : "equilibrado", spec = CARS3[tipo], md = { ...MODS_PADRAO, ...(mods || {}) };
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   const [cor1, cor2] = coresDa(md.pintura, color);
-  const kt = montarF1({ cor: ghost ? "#ffd23f" : cor1, cor2: ghost ? "#ffffff" : cor2, leve: leve || ghost });
+  const equipe = ghost || op.semPintura ? null : PINTURAS[md.pintura]?.equipe || null; // a pintura de equipe (f1-pintura.js); a "Sua cor" segue na máscara
+  const kt = montarF1({ cor: ghost ? "#ffd23f" : cor1, cor2: ghost ? "#ffffff" : cor2, leve: leve || ghost, equipe, numero: op.numero });
   const sc = spec.L / TAM; kt.g.scale.setScalar(sc * KS); body.add(kt.g);
   if (name) {
     const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
@@ -58,11 +60,9 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   const tontura = new THREE.Group(); tontura.position.y = 24; tontura.visible = false; body.add(tontura);
   const estrelaGeo = new THREE.OctahedronGeometry(1.6, 0), estrelaMat = new THREE.MeshBasicMaterial({ color: 0xffe14a });
   for (let i = 0; i < 4; i++) { const e = new THREE.Mesh(estrelaGeo, estrelaMat), a = (i / 4) * Math.PI * 2; e.position.set(Math.cos(a) * 7, 0, Math.sin(a) * 7); tontura.add(e); }
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: ghost ? 0.15 : 0.32, depthWrite: false }));
-  shadow.rotation.x = -Math.PI / 2; shadow.scale.set(spec.W / 2 * KS, (spec.L / 2 + 0.2) * KS, 1); g.add(shadow);
   target.add(g);
   // primeira pessoa: a câmera fica no capacete, atrás do volante; o fantasma fica meio transparente
-  const k = { g, body, kt, shadow, chamas, tontura, lanterna, leds, ledMat, freios, discoMat, calor: 0, tempoGP: 0, faiscaGP: 0, L: spec.L * KS, tAt: 0, mats: kt.mats, steerV: 0, target, sc, eye: { u: 0, h: 0 }, roof: kt.piloto, cabin: new THREE.Object3D(), roofBits: [], pitch: 0, roll: 0, giro: 0, faisca: 0 };
+  const k = { g, body, kt, chamas, tontura, lanterna, leds, ledMat, freios, discoMat, calor: 0, tempoGP: 0, faiscaGP: 0, L: spec.L * KS, tAt: 0, mats: kt.mats, steerV: 0, target, sc, eye: { u: 0, h: 0 }, roof: kt.piloto, cabin: new THREE.Object3D(), roofBits: [], pitch: 0, roll: 0, giro: 0, faisca: 0 };
   const pronto = () => {
     k.mats = kt.mats; k.eye.u = spec.L / 2 - kt.olho.z * sc; k.eye.h = kt.olho.y * sc;
     for (const f of chamas) f.position.z = kt.escapamento.z;
@@ -78,7 +78,7 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   return k;
 }
 // pitch: o bico sobe na subida e desce na descida (o relevo vem de quem chama); lean/roll: inclina para o lado.
-// fx: { turbo, estrela, rodando, derrapa, pequeno, bala } — a chama, o arco-íris da estrela, o giro de quem foi atingido,
+// fx: { turbo, estrela, rodando, derrapa, pequeno, bala, pneu (o composto atual) } — a chama, o arco-íris da estrela, o giro de quem foi atingido,
 // as faíscas, o carro encolhido pelo raio e a bala no lugar do carro.
 const _cor = new THREE.Color();
 const menosMovimento = matchMedia("(prefers-reduced-motion: reduce)");
@@ -96,7 +96,7 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
   k.body.rotation.set(k.pitch, k.giro, k.roll, "YXZ");
   k.steerV += (steer - k.steerV) * 0.3;
   animarF1(k.kt, (v * dt) / (k.sc * KS), k.steerV);
-  k.shadow.position.y = ground - z + 0.7;
+  trocarComposto(k.kt, fx.pneu); // a faixa colorida do pneu (macio vermelho, médio amarelo, duro branco, chuva azul): só muda quando o composto muda
   k.tempoGP += dt;
   k.lanterna.visible = k.freios.visible = !!fx.f1 && !fx.bala;
   // Um pulso a cada 0,8 s; com menos movimento a lanterna fica acesa continuamente.

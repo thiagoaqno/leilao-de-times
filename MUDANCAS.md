@@ -1,3 +1,34 @@
+# Carro de F1: pintura de equipe, faixas do pneu e sem sombra oval
+
+## O que mudou
+- **Pintura por equipe** (`public/corrida/f1-pintura.js`, novo): as 11 pinturas de equipe de `MODS.pintura` (Papaia, Rosso, Flecha de Prata, Touro Azul, Verde Inglês, Azul Francês, Preto e Ouro, Azul Marinho, Audi, Racing Bulls e Clássico 88) ganharam desenho próprio, no jeito dos carros de 2026: McLaren com tampa preta cortada em diagonal, Ferrari com tampa branca, Mercedes preta com a faixa verde-água, Red Bull com bico amarelo e airbox vermelho, Aston Martin com filetes verde-limão, Williams em dois azuis, Alpine com rosa, Audi prata com degradê vermelho, Haas com faixas diagonais, Cadillac branco se desfazendo em pixels pretos e Racing Bulls branco e azul. A "Sua cor" segue na máscara de antes.
+- **Como funciona:** o UV do modelo é uma máscara, então cada equipe tem UMA folha (canvas 1024x1152 com o carro em cinco vistas: dois lados, de cima, frente e traseira), feita uma vez e guardada em cache (não é uma por carro). O shader do corpo projeta a folha pela posição de cada ponto (atributos `pcar` e `ncar`, gerados uma vez por geometria em `f1.js`), misturando três projeções pela normal. Os painéis laterais do monocoque (`McLaren_mp4_5_1`, material `bottom_details_mat`) recebem a mesma pintura; o assoalho e a barriga ficam de carbono. Os modelos completo e leve usam o mesmo código.
+- **Logos e patrocínios:** o logo de cada equipe vem de `logos/` (recortado e colorido uma vez); os patrocínios são decalques inventados no estilo dos de verdade (nenhuma marca registrada copiada). O número do piloto (`numero` do estado; sem número, nada) é um decalque à parte com um atlas de dígitos compartilhado: tampa do motor, asa traseira e o bico visto de cima.
+- **Faixas do pneu:** anel colorido na lateral do pneu pelo composto em uso: macio vermelho, médio amarelo, duro branco, chuva azul. O seu carro lê `race.pneu.composto` (muda na hora no pit stop), os outros `pneuAtual` do estado; `poseKart` recebe `fx.pneu` e `trocarComposto` só mexe em dois uniforms quando o composto muda (nenhuma textura nova por quadro). Fora das regras de F1 não há faixa.
+- **Sombra oval removida:** o disco escuro (`shadow` em `carros.js`) debaixo de cada carro saiu; a sombra de verdade do sol ficou como estava.
+- Triângulos: os mesmos (só ganhou atributos nos vértices).
+
+## Referências usadas (Wikimedia Commons, só para estudo, não vão no repositório)
+- McLaren: "FIA F1 Austria 2026 Nr. 1 Norris" e "Nr. 81 Piastri" (CC BY-SA 4.0).
+- Ferrari: "F1 2026, Ferrari F1 Team, Ferrari SF-26, Charles Leclerc, Spa-Francorchamps" (CC BY 4.0) e "Lewis Hamilton Ferrari F1 Car" (CC BY-SA 4.0).
+- Mercedes: "2026 Chinese GP - Mercedes - W17" e Russell/Antonelli na classificação (CC BY 4.0).
+- Red Bull: "F1 2026, Red Bull Racing, Red Bull RB22" (Hadjar, Verstappen; CC BY 4.0) e "Max Verstappen Red Bull Racing RB22".
+- Racing Bulls: "2026 Chinese GP - Racing Bulls" (Lawson, Lindblad; CC BY 4.0).
+- Aston Martin: "F1 2026, Aston Martin F1 Team, Aston Martin AMR26" (Alonso, Stroll; CC BY 4.0).
+- Williams: "2026 Chinese GP - Williams" (Albon, Sainz) e "Williams FW48 of Alexander Albon".
+- Alpine: "F1 2026, Alpine F1 Team, Alpine A526, Pierre Gasly" e "FIA F1 Austria 2026 Alpine".
+- Haas: "F1 2026, TGR Haas F1 Team, Haas VF-26" (Bearman, Ocon).
+- Cadillac: "Cadillac F1 Car" e "FIA F1 Austria 2026 Nr. 11 Perez". Audi: "Audi Revolut F1" (CC0) e "F1 2026, Audi F1 Team, Audi R26".
+- Pneus: faixas Pirelli vistas nas mesmas fotos (macio vermelho, médio amarelo, duro branco, chuva azul).
+
+## Conferido
+- Uma página solta (fora do jogo) com o modelo completo e o leve nos dois lados, de frente, de trás e de cima: o shader compila, a pintura e as faixas aparecem. Não rodei os testes nem joguei (quem joga e testa é o Thiago).
+
+## Ficou de fora
+- O modelo é um F1 antigo (sem halo, sidepods pequenos): as pinturas seguem as cores e as formas das equipes, não o desenho exato dos carros novos. A "palavra Pirelli" no pneu ficou de fora (opcional).
+
+---
+
 # Corrida: previsão do tempo, chuva com rampas e clima da sala
 
 ## Previsão por GP
