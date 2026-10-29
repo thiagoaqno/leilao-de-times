@@ -14,6 +14,7 @@ const Quali = require("./corrida-f1-classificacao.js"); // a classificação (Q1
 const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servidor)
 const Setores = require("./corrida-setores.js"); // a conta dos setores sem travar a volta por um aviso perdido
 const Humanos = require("./corrida-humanos.js"); // os humanos nas regras de F1: o servidor anda o carro com as entradas do piloto (autoridade)
+const Contato = require("./corrida-contato.js"); // as batidas entre carros (e quem está fantasma por causa do box)
 const Pecas = require("./public/corrida/f1-pecas.js"); // as peças do carro (modo carreira), que viram a montagem
 const Equipes = require("./public/corrida/f1-equipes.js"); // as equipes de 2026, o orçamento em pontos e a montagem do carro
 const Pilotos = require("./public/corrida/f1-pilotos-2026.js");
@@ -67,7 +68,7 @@ module.exports = function attachCorrida(io) {
       boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { tvAte: room.tvAte || null, tv: room.tvAte && Date.now() < room.tvAte ? room.tv || null : null, clima: room.clima || null, previsao: F1.previsaoDoGP(sementeDoClima(room), room.config.clima), montagens: room.montagens || {}, bonusMontagem: room.bonusMontagem || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, jogos: room.config.regras === "f1" ? F1.jogosRestantes(p) : null, noBox: !!p.box, quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
+        return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, jogos: room.config.regras === "f1" ? F1.jogosRestantes(p) : null, noBox: !!p.box, fantBox: Contato.fantasmaDoBox(p), quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
           item: p.item || null, cargas: p.cargas || 0, rolling: p.rolling || 0, boostUntil: p.boostUntil || 0, starUntil: p.starUntil || 0, spinUntil: p.spinUntil || 0,
           shrinkUntil: p.shrinkUntil || 0, inkUntil: p.inkUntil || 0, balaUntil: p.balaUntil || 0 };
       }),
@@ -168,7 +169,7 @@ module.exports = function attachCorrida(io) {
     const ids = grid ? [...grid.filter((id) => room.players[id]), ...room.order.filter((id) => !grid.includes(id))] : f1 ? [...room.order] : [...room.order].sort(() => Math.random() - 0.5);
     ids.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, lapStart: null, lastPos: 0 }));
     // regras de F1: a semente do GP (os erros dos mecânicos saem dela) e o pit stop de cada um começa do zero
-    for (const id of ids) { const p = room.players[id]; Object.assign(p, { paradas: [], compostos: [p.pneu || F1.COMPOSTO_PADRAO], pneuAtual: p.pneu || F1.COMPOSTO_PADRAO, acrescimo: 0, box: null }); }
+    for (const id of ids) { const p = room.players[id]; Object.assign(p, { paradas: [], compostos: [p.pneu || F1.COMPOSTO_PADRAO], pneuAtual: p.pneu || F1.COMPOSTO_PADRAO, acrescimo: 0, box: null, boxFant: 0 }); }
     Itens.start(room);
     Robos.largar(room);
     if (room.grupo) for (const id of room.order) { const p = room.players[id]; if (!p.bot && !p.sockets.size) TRobo.assumir(room, p, (s) => log(room, s)); } // temporada em grupo: quem não chegou à largada tem o carro levado por um robô
@@ -584,7 +585,7 @@ module.exports = function attachCorrida(io) {
           if (data.fase === "sai") {
             if (!me.box) return "ignorado";
             if (!F1.PNEUS[data.composto]) return "Pneu inválido.";
-            const box = me.box; me.box = null;
+            const box = me.box; me.box = null; me.boxFant = Date.now() + Contato.BOX_FANTASMA_MS;
             concluirParada(room, me, { composto: data.composto, tempo: (Date.now() - box.entrou) / 1000, volta: box.volta }); return;
           }
           return "Fase inválida.";

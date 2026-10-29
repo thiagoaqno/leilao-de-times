@@ -481,9 +481,13 @@ function posicionar(p, pf, laps) {
 function entrarNoBox(room, p, ia, pf) {
   const cor = pf.corredor, prox = ia.plano && ia.plano.paradas[(p.paradas || []).length];
   if (!cor || !prox || !p.started || p.laps + 1 >= room.config.voltas) return;
-  const rel = (Math.floor(ia.s) - cor.i0 + pf.n) % pf.n; if (rel > 5) return;
   const gasto = ia.pneu && ia.pneu.desgaste > F1.PENHASCO * 0.95;
   if (p.laps + 1 < prox.volta && !gasto && !room.direcao?.safety) return;
+  const rel = (Math.floor(ia.s) - cor.i0 + pf.n) % pf.n;
+  if (rel > 5) { // ainda não chegou: nos últimos 2 s antes da entrada já é fantasma (ninguém bate em quem está entrando)
+    if ((pf.n - rel) * STEP < Math.max(ia.v, 60) * Contato.BOX_FANTASMA_MS / 1000) p.boxFant = Math.max(p.boxFant || 0, Date.now() + 250);
+    return;
+  }
   const n = (p.paradas || []).length + 1;
   ia.box = { fase: "entra", u: rel + (ia.s - Math.floor(ia.s)), lat0: ia.lat, garagem: F1.garagemDe(cor, p.grid), parada: F1.tempoDeParada(room.semente, p.id, n), composto: prox.composto, volta: p.laps + 1, tempo: 0, t: 0 };
   p.box = ia.box;
@@ -503,7 +507,7 @@ function passoNoBox(room, p, ia, pf, dt, emit) {
     if (b.t >= b.parada) { b.fase = "sai"; ia.pneu = F1.pneuNovo(b.composto); }
   } else {
     vai(vlim); b.u += (ia.v * dt) / STEP;
-    if (b.u >= cor.len) { b.u = cor.len; ia.box = null; p.box = null; emit("box", { id: p.id, composto: b.composto, tempo: b.tempo, volta: b.volta }); }
+    if (b.u >= cor.len) { b.u = cor.len; ia.box = null; p.box = null; p.boxFant = Date.now() + Contato.BOX_FANTASMA_MS; emit("box", { id: p.id, composto: b.composto, tempo: b.tempo, volta: b.volta }); }
   }
     ia.s = (cor.i0 + b.u) % pf.n; ia.lat = cor.latParada(b.u, b.garagem, b.lat0);
 }

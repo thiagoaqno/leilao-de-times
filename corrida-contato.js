@@ -52,7 +52,7 @@ function outrosNaHora(room, p, t) {
   const K = estado(room), out = [];
   for (const id of room.order) {
     const q = room.players[id]; if (!q || q === p) continue;
-    const H = K.hist.get(id), m = { id, x: 0, y: 0, z: 0, a: 0, vx: 0, vy: 0, r: 0, ...geometria(q), dnf: !!q.dnf, fant: q.finish != null || !!q.box };
+    const H = K.hist.get(id), m = { id, x: 0, y: 0, z: 0, a: 0, vx: 0, vy: 0, r: 0, ...geometria(q), dnf: !!q.dnf, fant: q.finish != null || fantasmaDoBox(q, t) };
     if (H && H.n) em(H, t, m);
     else if (q.pos) { m.x = q.pos.x; m.y = q.pos.y; m.z = q.pos.z || 0; m.a = q.pos.a; m.vx = Math.cos(q.pos.a) * (q.pos.v || 0); m.vy = Math.sin(q.pos.a) * (q.pos.v || 0); }
     else continue;
@@ -60,6 +60,9 @@ function outrosNaHora(room, p, t) {
   }
   return out;
 }
+// No box o carro é fantasma, e também por BOX_FANTASMA_MS na saída (`boxFant`: até quando) e, nos robôs, na chegada à entrada
+const BOX_FANTASMA_MS = 2000;
+const fantasmaDoBox = (q, agora = Date.now()) => !!q.box || agora < (q.boxFant || 0);
 const chave = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
 
 // Depois de cada passo do carro `c` do jogador `p`, na hora `tFim` (ms do servidor): aplica os impulsos que os outros deixaram para
@@ -78,7 +81,7 @@ function depoisDoPasso(room, p, c, tFim, ev, ativo) {
       if (ev && e.forca >= Sim.FORCA_EV) ev.push({ t: "carro", id: e.por, forca: e.forca, k: c.tick });
     }
   }
-  if (ativo && !c.air && !c.fant) {
+  if (ativo && !c.air && !c.fant && !fantasmaDoBox(p, tFim)) {
     const outros = outrosNaHora(room, p, tFim), eu = geometria(p), evl = [];
     Sim.contatoPasso(c, eu, outros, evl, null, Sim.PASSO, (o) => { // pode trocar momento? Não, se o outro carro registrou esta batida agora há pouco
       const par = K.pares.get(chave(p.id, o.id));
@@ -93,4 +96,4 @@ function depoisDoPasso(room, p, c, tFim, ev, ativo) {
   gravar(room, p.id, tFim, c);
 }
 
-module.exports = { estado, limpar, gravar, em, outrosNaHora, depoisDoPasso, geometria, PAR_MS, N };
+module.exports = { BOX_FANTASMA_MS, fantasmaDoBox, estado, limpar, gravar, em, outrosNaHora, depoisDoPasso, geometria, PAR_MS, N };

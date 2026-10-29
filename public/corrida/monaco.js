@@ -4,6 +4,7 @@
 // mesmas dos vértices em pistas.js) e são multiplicadas pela escala da pista.
 import * as THREE from "three";
 import { canvasTex, M } from "./cena.js";
+import { marcarCoberto } from "./agua-pista.js";
 
 // o mar e o porto: dentro deste contorno e longe da pista (a borda vira o cais)
 const MAR = [[323, 943], [447, 927], [447, 766], [524, 710], [741, 865], [834, 881], [1051, 974], [1268, 1020], [1516, 943], [1640, 865], [2300, 865], [2300, 2300], [-700, 2300], [-700, 1206], [152, 1191], [323, 1175]];
@@ -166,6 +167,7 @@ export function cenarioMonaco(tr, { add, r, hAt, size, aguaTex, palms, yachts, j
     bloco(tr, add, i0, i1, -L - 20, L + 10, alto, alto + 6, terraco, terraco);
     for (let i = i0 - 10; i <= i1 + 10; i += 5) { const p = pts[((i % n) + n) % n]; reservado.push([p.x, p.y, L + 100]); }
     tr.coberto = (i) => { let k = i; if (k < i0 - 15) k += n; return k >= i0 - 15 && k <= i1 + 15; };
+    marcarCoberto(tr); // o asfalto do túnel não molha (agua-pista.js)
   }
   // onde os enfeites de vida.js e vida-mais.js não entram: na água, no que já foi montado aqui, em cima do túnel e
   // grudados no guard-rail (a grade de distância é grossa e deixava placas no meio do grampo)

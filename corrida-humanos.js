@@ -61,7 +61,7 @@ function outrosDe(room, p) {
   for (const id of room.order) {
     const o = room.players[id]; if (!o || o === p) continue;
     const pos = o.sim ? o.sim.c : o.pos; if (!pos) continue;
-    out.push({ id, x: pos.x, y: pos.y, z: pos.z || 0, a: pos.a, v: pos.v || 0, car: o.car, dnf: !!o.dnf, fant: o.finish != null || !!o.box }); // (quem recebeu a bandeirada ou está no box é fantasma: não bate)
+    out.push({ id, x: pos.x, y: pos.y, z: pos.z || 0, a: pos.a, v: pos.v || 0, car: o.car, dnf: !!o.dnf, fant: o.finish != null || Contato.fantasmaDoBox(o) }); // (quem recebeu a bandeirada ou está no box, ou acabou de sair dele, é fantasma: não bate)
   }
   return out;
 }
@@ -133,7 +133,7 @@ function tratar(room, p, S, e, t, h) {
     }
     case "box":
       if (e.fase === "entra") { p.box = { entrou: t, volta: e.volta }; return true; }
-      p.box = null; h.aoParada(room, p, { composto: e.composto, tempo: e.tempo, volta: e.volta }); return true;
+      p.box = null; p.boxFant = t + Contato.BOX_FANTASMA_MS; h.aoParada(room, p, { composto: e.composto, tempo: e.tempo, volta: e.volta }); return true;
     default: return false;
   }
 }
