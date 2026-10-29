@@ -80,7 +80,13 @@ export function hud() {
   else if (race.pneu && race.pneu.desgaste > window.F1Regras.PENHASCO && m && m.finish == null && m.started) { msg = "PNEU NO FIM: segura nas curvas"; radioF1("box"); }
   else if (E.S.endAt && m && m.finish == null) msg = `⏱️ ${Math.max(0, Math.ceil((E.S.endAt - now) / 1000))} s para cruzar`;
   if (!msg && race.newRecord > now - 3000) msg = "🏆 NOVO RECORDE!";
-  if (B) { const bt = $("bBox"), txt = B.pedido || B.fase ? `🔧 ${nomeBox}` : "🔧 Box"; if (bt.textContent !== txt) { bt.textContent = txt; bt.classList.toggle("pedido", !!(B.pedido || B.fase)); } }
+  if (B) { // o botão do box no estilo da TV: o rótulo, a tecla B e, com a parada pedida (ou em andamento), a bolinha e o nome do pneu
+    const bt = $("bBox"), ativo = !!(B.pedido || B.fase), k = ativo ? (B.fase ? "d:" : "p:") + nomeBox : "", pn = ativo && window.F1Regras.PNEUS[B.fase ? B.composto : B.pedido];
+    if (bt.dataset.k !== k) {
+      bt.dataset.k = k; bt.classList.toggle("pedido", ativo); bt.classList.toggle("dentro", !!B.fase);
+      bt.innerHTML = pn ? `<span class="bx-rot">${B.fase ? "No box" : "Box"}</span><span class="bx-pneu"><u class="pn" style="--c:${pn.cor}"></u>${h(pn.nome)}</span>` : `<span class="bx-rot">Box</span><kbd>B</kbd>`;
+    }
+  }
   if (f1av) { if (E.S.phase !== "quali") estadoF1(msg || (f1on ? bandeiraF1(m) : "")); } else $("hMsg").textContent = msg;
   if (!f1av) avisoDeBatida(m); // (nas regras de F1 a batida vem do log da direção de prova)
   if (f1av) avisosF1(m, left, now);

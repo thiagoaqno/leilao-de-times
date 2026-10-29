@@ -93,3 +93,19 @@
 #race.f1avisos .luzes i.on::after{background:#ff2a1a;box-shadow:0 0 8px 2px #ff2a1acc}
 @media (max-width:700px){#avisosF1{left:182px;width:calc(100% - 192px);top:8px;gap:3px}#race.f1avisos .luzes{left:182px;top:max(60px,10%)}.av-item{grid-template-columns:26px minmax(0,1fr);min-height:28px}.av-bloco svg{width:16px;height:16px}.av-cab small{display:none}.av-txt{font-size:11px}}
 @media (prefers-reduced-motion:reduce){.av-item{animation:none}}
+/* os botões do alto e o do box no tema da transmissão (transmissao.css) e dos avisos: cartão escuro, filete na lateral, letra
+   condensada em caixa alta. O do box muda de cor com a parada: vermelho (livre), âmbar (pedida) e azul do aviso BOX (no corredor). */
+#race.f1hud .topbtns{flex-wrap:wrap;justify-content:flex-end;align-items:stretch;max-width:calc(100% - 16px);font-family:var(--f1-fonte)}
+#race.f1hud .topbtns button:not([data-radio-botao]){padding:7px 12px;font:700 13px/1 var(--f1-fonte);letter-spacing:.1em;text-transform:uppercase;color:#fff;background:#0a0c12e6;border:1px solid #ffffff2a;border-left:3px solid #e10600;border-radius:0;box-shadow:0 3px 10px #0008}
+#race.f1hud .topbtns button:not([data-radio-botao]):hover{background:#1b1f2a}
+#race.f1hud .topbtns #bBox{--bx:#e10600;display:inline-flex;align-items:center;gap:8px;padding:0;overflow:hidden;border-left:0;border-top:3px solid var(--bx);min-height:36px}
+#race.f1hud #bBox .bx-rot{align-self:stretch;display:flex;align-items:center;padding:0 11px;background:linear-gradient(100deg,var(--bx),#a30400);font:800 14px/1 var(--f1-fonte);font-style:italic;letter-spacing:.06em}
+#race.f1hud #bBox kbd{margin-right:11px;padding:2px 6px;font:700 11px/1 var(--f1-fonte);color:#c9d1db;background:#ffffff14;border:1px solid #ffffff38}
+#race.f1hud #bBox .bx-pneu{display:inline-flex;align-items:center;gap:6px;margin-right:12px;font:800 13px/1 var(--f1-fonte);letter-spacing:.08em}
+#race.f1hud #bBox .pn{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--c);border:2px solid #000a;text-decoration:none}
+#race.f1hud .topbtns #bBox.pedido{--bx:#ffd23f;background:linear-gradient(180deg,#2a2410f2,#0a0c12f2);color:#fff}
+#race.f1hud #bBox.pedido .bx-rot{background:linear-gradient(100deg,#ffd23f,#c9a227);color:#0a0c12}
+#race.f1hud .topbtns #bBox.dentro{--bx:#0b8fd9;background:linear-gradient(180deg,#0c2538f2,#0a0c12f2)}
+#race.f1hud #bBox.dentro .bx-rot{background:linear-gradient(100deg,#0b8fd9,#04446b);color:#fff}
+@media (pointer:coarse){#race.f1hud #bBox kbd{display:none}#race.f1hud .topbtns #bBox{min-height:40px}#race.f1hud #bBox .bx-rot{padding:0 13px}}
+@media (max-width:700px){#race.f1hud .topbtns{gap:4px;right:8px;top:8px}#race.f1hud .topbtns button:not([data-radio-botao]){padding:7px 9px;font-size:12px}#race.f1hud #bBox .bx-rot{padding:0 9px;font-size:13px}#race.f1hud #bBox .bx-pneu{margin-right:9px;font-size:12px}}
