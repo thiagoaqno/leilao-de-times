@@ -41,7 +41,7 @@ export const THEMES = {
   redbullring: { preview: "#467b45", sky: ["#6eb9f0", "#e4f6ff"], fog: "#cde6dd", oob: 0xff467b45, roadCol: "#4d4e53" },
   spa: { preview: "#2f6a32", sky: ["#7d94a8", "#d9e2e6"], fog: "#c8d2d4", oob: 0xff2f6a32, roadCol: "#4d4e53" },
   hungaroring: { preview: "#a9a35a", sky: ["#3f93dc", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4d4e53" },
-  zandvoort: { preview: "#9aa45e", sky: ["#5d9ad6", "#e6eef0"], fog: "#d8e2e2", oob: 0xff9aa45e, roadCol: "#4d4e53" },
+  zandvoort: { preview: "#b6ad74", sky: ["#8ea3b3", "#dde3e4"], fog: "#cdd6d6", oob: 0xffb6ad74, roadCol: "#4d4e53" },
   madri: { preview: "#a9a35a", sky: ["#3f93dc", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4d4e53" },
   baku: { preview: "#bdb6a6", sky: ["#4fa9f5", "#d9f0ff"], fog: "#cfe6f2", oob: 0xffbdb6a6, roadCol: "#4d4e53" },
   singapura: { preview: "#a99c84", sky: ["#3b2a6b", "#ff9a5a"], fog: "#e8a07a", oob: 0xffa99c84, roadCol: "#4d4e53" },

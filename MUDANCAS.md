@@ -1,52 +1,28 @@
-# Carro de F1: pintura de equipe, faixas do pneu e sem sombra oval
+# Corrida: cenário próprio de Zandvoort (GP da Holanda, nas dunas do mar do Norte)
 
 ## O que mudou
-- **Pintura por equipe** (`public/corrida/f1-pintura.js`, novo): as 11 pinturas de equipe de `MODS.pintura` (Papaia, Rosso, Flecha de Prata, Touro Azul, Verde Inglês, Azul Francês, Preto e Ouro, Azul Marinho, Audi, Racing Bulls e Clássico 88) ganharam desenho próprio, no jeito dos carros de 2026: McLaren com tampa preta cortada em diagonal, Ferrari com tampa branca, Mercedes preta com a faixa verde-água, Red Bull com bico amarelo e airbox vermelho, Aston Martin com filetes verde-limão, Williams em dois azuis, Alpine com rosa, Audi prata com degradê vermelho, Haas com faixas diagonais, Cadillac branco se desfazendo em pixels pretos e Racing Bulls branco e azul. A "Sua cor" segue na máscara de antes.
-- **Como funciona:** o UV do modelo é uma máscara, então cada equipe tem UMA folha (canvas 1024x1152 com o carro em cinco vistas: dois lados, de cima, frente e traseira), feita uma vez e guardada em cache (não é uma por carro). O shader do corpo projeta a folha pela posição de cada ponto (atributos `pcar` e `ncar`, gerados uma vez por geometria em `f1.js`), misturando três projeções pela normal. Os painéis laterais do monocoque (`McLaren_mp4_5_1`, material `bottom_details_mat`) recebem a mesma pintura; o assoalho e a barriga ficam de carbono. Os modelos completo e leve usam o mesmo código.
-- **Logos e patrocínios:** o logo de cada equipe vem de `logos/` (recortado e colorido uma vez); os patrocínios são decalques inventados no estilo dos de verdade (nenhuma marca registrada copiada). O número do piloto (`numero` do estado; sem número, nada) é um decalque à parte com um atlas de dígitos compartilhado: tampa do motor, asa traseira e o bico visto de cima.
-- **Faixas do pneu:** anel colorido na lateral do pneu pelo composto em uso: macio vermelho, médio amarelo, duro branco, chuva azul. O seu carro lê `race.pneu.composto` (muda na hora no pit stop), os outros `pneuAtual` do estado; `poseKart` recebe `fx.pneu` e `trocarComposto` só mexe em dois uniforms quando o composto muda (nenhuma textura nova por quadro). Fora das regras de F1 não há faixa.
-- **Sombra oval removida:** o disco escuro (`shadow` em `carros.js`) debaixo de cada carro saiu; a sombra de verdade do sol ficou como estava.
-- Triângulos: os mesmos (só ganhou atributos nos vértices).
+Zandvoort deixou de ser o "GP simples" do kit e ganhou cenário próprio em cima do kit 2, com assets exclusivos em `public/corrida/kit/zandvoort/` (só código, sem modelo 3D baixado) e o cenário em `public/corrida/zandvoort.js`. Traçado, `hills`, box, física, robôs, regras, HUD, câmeras e clima não mudaram: só o cenário, `LOOK.zandvoort`, `THEMES.zandvoort`, o céu e o registro em `gps/zandvoort.js`.
+
+- **Dunas, capim e mar do Norte** (`dunas.js`): relevo de dunas numa malha só (cor por vértice: areia nas cristas, capim nas encostas, moitas escuras), que nasce longe do asfalto e cresce com a distância; praia que desce para o mar a oeste (do lado dos boxes), mar com água que anda (`tr.agua`), espuma da arrebentação e areia molhada; capim-de-praia (~5,9 mil touceiras), moitas de espinheiro-marítimo com frutos alaranjados e pinheiros baixos entortados pelo vento, tudo em InstancedMesh e só onde `livre`/`ocupado` deixam. `tr.ocupado` diz "é mar".
+- **Reta dos boxes** (`predios.js`, `zandvoort.js`): prédio comprido de dois andares com portas das garagens, faixas nas cores da casa, vidro escuro em cima e mastros de bandeira no teto, e a torre de controle (fuste branco, cabine de vidro, antenas) NA linha de chegada, no meio do prédio e em frente aos boxes (o corredor é o de `boxes` em `pistas.js`, com a parada no 0). Atrás: Paddock Club, tendas brancas do fan zone e a roda-gigante. Do outro lado, a tribuna principal laranja em módulos que encolhem (menos degraus) onde a Hugenholtz chega perto da reta.
+- **Tarzanbocht**: arquibancada grande por fora (kit, 13 degraus, torcida laranja), tribuna da frenagem na reta, telão "TARZAN" e sinalizadores.
+- **Curvas inclinadas** (`curvas.js`): Arie Luyendyk (a última) e Hugenholtz (curva 3). A pista do jogo é plana, então a inclinação é contada por fora: rampa de concreto com listra laranja e branca que sobe até um paredão branco com a cerca alta de arame; na Arie Luyendyk, terraço com as arquibancadas em volta (7 módulos) e berma de areia atrás; a Hugenholtz é um grampo apertado, a ~200 da reta e da Hunserug, então tem rampa e paredão mais baixos e tribunas só onde cabem.
+- **Mar laranja** (`torcida.js`): torcida de camisa, chapéu e peruca laranja nas encostas das dunas e nas arquibancadas, bandeiras da Holanda, laranja, do "33" e "HOLLAND" (atlas numa malha só), e fumaça laranja dos sinalizadores (um InstancedMesh que sobe, cresce e some com o vento do mar; só se mexe perto da câmera).
+- **Placas e muros**: muro de proteção em painéis laranja, brancos, azuis e vermelhos; placas com o nome de cada curva (Tarzan, Hugenholtz, Hunserug, Scheivlak, Hans Ernst, Arie Luyendyk); painéis só com nomes de lugar e de comida da Holanda (`marcas.js`, sem marca registrada); faixa "CIRCUIT ZANDVOORT" no pórtico da largada.
+- **Vila e orla** (`vila.js`): 44 blocos de apartamentos e hotéis ao longo da praia (janelas por textura, um tipo por geometria), ruas de casinhas de tijolo atrás (~190), igreja de torre fina e quiosques de praia na areia.
+- **Céu nublado e ventoso do litoral**: `LOOK.zandvoort` (neblina mais perto, luz mais fraca, chão de areia e capim) e o céu `ceus/nurburgring.jpg` em `ceu.js`.
+- Escape de areia clara por fora das curvas lentas, zebras vermelhas e brancas, pneus no Hunserug, Scheivlak e Hans Ernst; só o som de `campo` e do mar (`porto`, mais forte do lado do mar) e gaivotas sobre a praia.
+
+## Desempenho (medido com `tests/ajuda-cena/medir.mjs`, sem WebGL)
+~151 chamadas de desenho por quadro na vista do jogo (167 com as sombras; pico 261), ~394 mil triângulos na vista, 284 malhas na cena (teto 520), 167 materiais. Instancing (torcida, capim, moitas, pinheiros, casas, blocos), uma malha por material (`Montador`, `lotes`), `fundir.js` junta o que está parado por região, e a fumaça só recalcula os focos perto da câmera.
 
 ## Referências usadas (Wikimedia Commons, só para estudo, não vão no repositório)
-- McLaren: "FIA F1 Austria 2026 Nr. 1 Norris" e "Nr. 81 Piastri" (CC BY-SA 4.0).
-- Ferrari: "F1 2026, Ferrari F1 Team, Ferrari SF-26, Charles Leclerc, Spa-Francorchamps" (CC BY 4.0) e "Lewis Hamilton Ferrari F1 Car" (CC BY-SA 4.0).
-- Mercedes: "2026 Chinese GP - Mercedes - W17" e Russell/Antonelli na classificação (CC BY 4.0).
-- Red Bull: "F1 2026, Red Bull Racing, Red Bull RB22" (Hadjar, Verstappen; CC BY 4.0) e "Max Verstappen Red Bull Racing RB22".
-- Racing Bulls: "2026 Chinese GP - Racing Bulls" (Lawson, Lindblad; CC BY 4.0).
-- Aston Martin: "F1 2026, Aston Martin F1 Team, Aston Martin AMR26" (Alonso, Stroll; CC BY 4.0).
-- Williams: "2026 Chinese GP - Williams" (Albon, Sainz) e "Williams FW48 of Alexander Albon".
-- Alpine: "F1 2026, Alpine F1 Team, Alpine A526, Pierre Gasly" e "FIA F1 Austria 2026 Alpine".
-- Haas: "F1 2026, TGR Haas F1 Team, Haas VF-26" (Bearman, Ocon).
-- Cadillac: "Cadillac F1 Car" e "FIA F1 Austria 2026 Nr. 11 Perez". Audi: "Audi Revolut F1" (CC0) e "F1 2026, Audi F1 Team, Audi R26".
-- Pneus: faixas Pirelli vistas nas mesmas fotos (macio vermelho, médio amarelo, duro branco, chuva azul).
+- Dunas, capim e a faixa de areia ao redor da pista: "Formula one Circuit Park in the dunes of Zandvoort in the Netherlands" (CC BY-SA) e "Luftbild der Circuit Park Zandvoort Rennstrecke Formel 1" (CC BY-SA).
+- Mar do Norte, praia e vila de Zandvoort com os prédios da orla ao fundo: "Circuit Zandvoort motorsport race track in the Netherlands".
+- Reta dos boxes (prédio comprido de dois andares, vidro, mastros no teto, torre de controle): "Circuit Park Zandvoort Paddock" e "Circuit Zandvoort - Tarzanbocht en Paddock Club".
+- Tarzanbocht e cerca alta de arame: "Circuit Zandvoort - Tarzanbocht". Fan zone, roda-gigante e bandeiras: "Zandvoort - 1 september 2025 (4)" e "(5)".
+- Mar laranja, arquibancadas lotadas e mastros de iluminação: foto de carro de F1 em movimento do GP da Holanda de 2024 (Stepro, CC BY-SA 4.0, só o fundo).
+- Inclinação (~19° na Hugenholtz e ~18° na Arie Luyendyk) e ordem das curvas: formula1.com, redbull.com e p1travel.com (guias do circuito).
 
 ## Conferido
-- Uma página solta (fora do jogo) com o modelo completo e o leve nos dois lados, de frente, de trás e de cima: o shader compila, a pintura e as faixas aparecem. Não rodei os testes nem joguei (quem joga e testa é o Thiago).
-
-## Ficou de fora
-- O modelo é um F1 antigo (sem halo, sidepods pequenos): as pinturas seguem as cores e as formas das equipes, não o desenho exato dos carros novos. A "palavra Pirelli" no pneu ficou de fora (opcional).
-
----
-
-# Corrida: previsão do tempo, chuva com rampas e clima da sala
-
-## Previsão por GP
-- `F1.previsaoDoGP(semente, opcao)` sorteia, pela semente do GP, a chance `p` de chuva (de 5 em 5%): 60% dos GPs ficam de 0 a 10%, 25% de 20 a 40%, 11% de 50 a 70% e 4% de 80 a 95% (média ~20%). A previsão diz também **quando** (pode largar molhado, começo, do meio para o fim, perto do fim) e a **força** (garoa, chuva forte ou garoa que vira forte).
-- A chuva de verdade sai dela: cai com a chance `p` (outro sorteio da mesma semente) e, se cai, começa dentro da janela prevista.
-- Onde aparece (cartão com ícone de sol, nuvem ou chuva e a porcentagem, no tema F1): carreira (mapa do GP antes da Q1 e etiqueta no calendário do próximo GP, solo e em grupo), sala (junto da escolha do pneu), grid de largada (onde se escolhe o pneu depois da classificação), transmissão de TV (cartão do clima) e no aviso do box.
-
-## Chuva em corrida curta, duração e transição
-- A chuva dura no mínimo 2 minutos (`CHUVA_MIN_S`) ou até o fim da sessão; pode começar e parar no meio de uma corrida de 5 voltas.
-- `chuvaEm` entra, sai e muda de força em rampas de 25 s (`RAMPA_S`, suavizadas): sem degrau de seco para chuva nem de garoa para chuva forte.
-- `aguaEm` integra a água de segundo em segundo (tabela guardada no roteiro, interpolada): continua conta pura do tempo, igual no servidor, no navegador e nos robôs.
-- O engenheiro avisa uma volta antes (`F1.proximaMudanca`): "chuva chegando em uma volta" e "a chuva está parando, a pista vai secar" (falas novas `chuvachegando` e `chuvaparando`; também aparecem como aviso na tela, e a voz só toca depois de gerar os mp3 com `gerar-radio.bat`).
-
-## Corrida casual
-- Opção **Clima** na sala (só nas regras de F1, fora da carreira): Aleatório (segue a previsão), Seco, Chuva (larga molhado e chove a corrida toda) e Variável (larga seco e a chuva vem no meio). O servidor valida em `cleanConfig` (`config.clima`) e aplica no sorteio.
-- Na sala, a previsão mostrada é a do GP que vem (`room.sementeProx`, a mesma semente que `preparar` usa ao largar).
-
-## Arquivos
-`public/corrida/f1-regras.js` (clima), `corrida.js` (opção e semente), `public/corrida/previsao.js` (novo, o cartão), `tema-f1.css`, `transmissao.js/.css`, `hud.js`, `box.js`, `menus.js`, `radio/falas.js`, `temporada/{garagem,sede,grupo}.js`, `tests/corrida-f1-clima.test.js` (novo).
-
-Não rodei testes nem abri o navegador (quem joga e testa é o Thiago).
+Só o cenário montando no Node (`medir.mjs` e a conferência de invasão da pista, zero invasões). Não rodei os testes nem abri o navegador (o Thiago joga e testa).
