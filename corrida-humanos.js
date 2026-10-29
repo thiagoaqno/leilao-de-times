@@ -104,6 +104,9 @@ function andar(room, agora, h) {
       amb.segurar = t < room.startAt; // o carro fica parado no grid até as luzes apagarem: o acelerador antes disso não move nada
       if (room.luzes && ent.gas && t < room.startAt - QUEIMA_FOLGA_MS && t >= room.startAt - (4 + room.luzes.espera) * 1000) p.gasNasLuzes = (p.gasNasLuzes || 0) + PASSO_MS; else if (!ent.gas) p.gasNasLuzes = 0; // (a direção de prova pune quem acelera com as luzes acesas: queimou a largada)
       amb.fantasma = p.finish != null; amb.finish = p.finish; amb.dnf = !!p.dnf;
+      // com o pedido de box feito e a menos de 2 s da entrada do corredor, o carro já é fantasma (ninguém bate em quem está entrando)
+      const cor = S.tr.corredor;
+      if (cor && ent.pedido && !p.box && !c.air && amb.finish == null && (amb.laps || 0) + 1 < (amb.voltas || 1) && !amb.quali && (S.tr.n - ((c.idx - cor.i0 + S.tr.n) % S.tr.n)) % S.tr.n * 6 < Math.max(c.v, 60) * Contato.BOX_FANTASMA_MS / 1000) p.boxFant = Math.max(p.boxFant || 0, t + 250);
       Sim.passo(c, ent, amb, S.tr, ev);
       // a batida deste passo (sob safety car o pelotão se comprime: sem batida; na classificação cada um faz a sua volta)
       Contato.depoisDoPasso(room, p, c, t + PASSO_MS, ev, corrida && !amb.safety && !amb.segurar && p.finish == null && !p.box && !p.dnf);

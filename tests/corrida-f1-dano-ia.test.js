@@ -132,11 +132,12 @@ test("IA: 10 robôs numa corrida de F1 terminam, com poucas batidas entre eles e
 });
 
 test("IA: o ritmo continua o do nível (fácil mais lento que o médio, que é mais lento que o difícil) e nunca passa do carro", () => {
-  const melhor = (nivel) => { const r = corridaDeRobos({ nivel, voltas: 2, robos: 1 }); return Math.min(...r.voltasDe[r.room.order[0]].slice(1)); };
+  let ideal = 0;
+  const melhor = (nivel) => { const r = corridaDeRobos({ nivel, voltas: 2, robos: 1 }); ideal = Robos.idealDe("interlagos", r.room.players[r.room.order[0]].spec); return Math.min(...r.voltasDe[r.room.order[0]].slice(1)); };
   const f = melhor("facil"), m = melhor("medio"), d = melhor("dificil");
   assert.ok(f > m && m > d, `facil ${f.toFixed(1)} medio ${m.toFixed(1)} dificil ${d.toFixed(1)}`);
   // Com a mesma dinâmica dos humanos, a volta já inclui frenagens e curvas reais.
-  assert.ok(d > 60, `o difícil (${d.toFixed(1)} s) não pode superar uma volta humana ideal`);
+  assert.ok(d > ideal * 0.99, `o difícil (${d.toFixed(1)} s) não pode superar a volta ideal do carro (${ideal.toFixed(1)} s)`);
   assert.ok(m < 135, `o médio não pode ser lento demais, mesmo no composto duro (${m.toFixed(1)} s)`);
 });
 
