@@ -80,7 +80,7 @@ const spray = new THREE.Points(sGeo, sMat); spray.frustumCulled = false; spray.v
 let sProx = 0, sVivos = 0;
 const emissor = new Array(K_CARROS).fill(null), emissorD = new Float32Array(K_CARROS), emissorMeu = new Array(K_CARROS).fill(false);
 const tamBuf = new THREE.Vector2();
-let nEmissores = 0, acMeu = 0;
+let nEmissores = 0, acMeu = 0, acFrente = 0;
 function candidato(car, meu, cp) {
   const dx = car.x - cp.x, dy = (car.z || 0) - cp.y, dz = car.y - cp.z, d = dx * dx + dy * dy + dz * dz;
   if (d > 2500 * 2500 || (nEmissores === K_CARROS && d >= emissorD[K_CARROS - 1])) return;
@@ -88,15 +88,15 @@ function candidato(car, meu, cp) {
   while (j > 0 && emissorD[j - 1] > d) { emissor[j] = emissor[j - 1]; emissorD[j] = emissorD[j - 1]; emissorMeu[j] = emissorMeu[j - 1]; j--; }
   emissor[j] = car; emissorD[j] = d; emissorMeu[j] = meu;
 }
-function nascer(car, a, v) {
+function nascer(car, a, v, frente = false) {
   const i = sProx; sProx = (sProx + 1) % N_SPRAY; if (sVida[i] <= 0) sVivos++;
-  const fx = Math.cos(a), fy = Math.sin(a), lado = Math.random() < 0.5 ? -1 : 1, atras = 20 + Math.random() * 8, la = lado * (7 + Math.random() * 4);
+  const fx = Math.cos(a), fy = Math.sin(a), lado = Math.random() < 0.5 ? -1 : 1, atras = frente ? -10 - Math.random() * 4 : 20 + Math.random() * 8, la = lado * (7 + Math.random() * 4);
   sPos[i * 3] = car.x - fx * atras - fy * la; sPos[i * 3 + 1] = (car.z || 0) + 3 + Math.random() * 3; sPos[i * 3 + 2] = car.y - fy * atras + fx * la;
   const vel = v * (0.22 + Math.random() * 0.14); // sai com uma parte da velocidade do carro e o ar freia: o carro corre e a nuvem fica
   sVx[i] = fx * vel + (Math.random() - 0.5) * 30 + -fy * lado * 14; sVz[i] = fy * vel + (Math.random() - 0.5) * 30 + fx * lado * 14; sVy[i] = 28 + Math.random() * 38;
   sVida0[i] = sVida[i] = 0.8 + Math.random() * 0.6; sTam0[i] = 8 + Math.random() * 7; sTam[i] = sTam0[i]; sAlfa[i] = 0;
 }
-function passoSpray(dt, c, race, cam) {
+function passoSpray(dt, c, race, cam, mode) {
   const agua = suave(0.2, 0.8, clima.agua), cp = cam.position;
   if (agua > 0.01) {
     // os K carros mais perto da câmera (insere em ordem num vetor fixo)
@@ -109,6 +109,12 @@ function passoSpray(dt, c, race, cam) {
       let ac = (meu ? acMeu : car.__borrifo || 0) + dt * 32 * f; // (o acumulador do meu carro fica aqui: `race.vis` pode ser outro objeto a cada quadro)
       while (ac >= 1) { ac -= 1; nascer(car, car.a, v); }
       if (meu) acMeu = ac; else car.__borrifo = ac;
+    }
+    // Na primeira pessoa, reforça o borrifo atrás dos pneus dianteiros do próprio carro.
+    if (mode === "cockpit" && race.kart && race.kart.g.visible) {
+      const v = Math.abs(c.v || 0), f = suave(80, 280, v) * agua;
+      acFrente += dt * 32 * f;
+      while (acFrente >= 1) { acFrente -= 1; nascer(c, c.a, v, true); }
     }
   }
   if (sVivos <= 0) { if (spray.visible) spray.visible = false; return; }
@@ -254,7 +260,7 @@ export function passoClima(dt, race, cam, mode, src, c) {
   // asfalto: só mexe quando a água mudou de verdade
   if (Math.abs(clima.agua - aguaAplicada) > 0.004) { aguaAplicada = clima.agua; aplicarAsfalto(suave(0, 0.8, clima.agua)); }
 
-  passoSpray(dt, c, race, cam);
+  passoSpray(dt, c, race, cam, mode);
   passoTela(dt, mode, sK);
   passoHud();
 
@@ -264,7 +270,7 @@ export function passoClima(dt, race, cam, mode, src, c) {
 }
 // ao sair da corrida: tudo volta ao seco (a luz já volta sozinha quando I vai a 0; aqui é no corte)
 export function limparClima() {
-  I = 0; ultRace = null; domo.visible = gotas.visible = spray.visible = false; sVivos = 0; sVida.fill(0);
+  I = 0; ultRace = null; domo.visible = gotas.visible = spray.visible = false; sVivos = 0; sVida.fill(0); acFrente = 0;
   if (ativoAntes) {
     ativoAntes = false;
     sun.intensity = escalar(eSol, sun.intensity, 1); hemi.intensity = escalar(eHemi, hemi.intensity, 1); scene.environmentIntensity = escalar(eAmb, scene.environmentIntensity, 1); renderer.toneMappingExposure = escalar(eExp, renderer.toneMappingExposure, 1);
