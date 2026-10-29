@@ -518,6 +518,14 @@ module.exports = function attachCorrida(io) {
           if (room.config.regras === "f1" && room.config.classificacao !== "pular") iniciarClassificacao(room); else startRace(room);
           return;
         }
+        if (type === "reiniciar") { // corrida avulsa: o organizador recomeça do zero (a classificação também, se a sala tiver); na carreira não
+          if (!isHost || room.temporada || room.grupo) return "Só o organizador, fora da carreira.";
+          if (!["race", "quali", "results"].includes(room.phase)) return "Não há corrida para reiniciar.";
+          clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer); Quali.cancelar(room); Robos.remover(room); room.resultado = null; room.phase = "lobby"; room.startAt = null; room.endAt = null; room.tvAte = null;
+          log(room, `${me ? me.name : "O organizador"} reiniciou a corrida.`);
+          if (room.config.regras === "f1" && room.config.classificacao !== "pular") iniciarClassificacao(room); else startRace(room);
+          return;
+        }
         if (type === "lobby") {
           if (!isHost) return "Só o organizador.";
           clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer); Quali.cancelar(room); Robos.remover(room); room.resultado = null; room.phase = "lobby"; room.startAt = null; room.endAt = null; room.tvAte = null; return;
