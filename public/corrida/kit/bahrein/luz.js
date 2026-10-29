@@ -33,7 +33,7 @@ export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0,
   const k = lista.length;
   const mastros = new THREE.InstancedMesh(mastroGeo, M(0xc9cdd1, { roughness: 0.5, metalness: 0.4 }), k);
   const cabecas = new THREE.InstancedMesh(cabecaGeo, M(0x2a2d33, { roughness: 0.5, metalness: 0.4 }), k);
-  const paineis = new THREE.InstancedMesh(painelGeo, new THREE.MeshBasicMaterial({ map: lampadas }), k * 2);
+  const paineis = new THREE.InstancedMesh(painelGeo, new THREE.MeshBasicMaterial({ map: lampadas, userData: { bloom: 2.2 } }) /* userData.bloom: as lâmpadas brilham no pós (pos.js) */, k * 2);
   const brilhos = new THREE.InstancedMesh(brilhoGeo, aditivo(brilho), k * 2);
   const o = new THREE.Object3D(), cab = new THREE.Matrix4(), local = new THREE.Matrix4();
   o.rotation.order = "YXZ";

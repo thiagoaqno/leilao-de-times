@@ -21,7 +21,7 @@ import { startItems, stopItems, stepItems } from "./itens.js";
 import { passoEfeitos, limparEfeitos, amostrasDeEfeitos } from "./efeitos.js";
 import { animarVida } from "./vida.js";
 import { ceuPronto, luzPendente } from "./ceu.js";
-import { desenhar, ajustarTela, medirQuadro, comecarMedida } from "./desfoque.js";
+import { desenhar, ajustarTela, medirQuadro, comecarMedida } from "./pos.js";
 import { quadroTV, pularTV } from "./transmissao.js";
 const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -69,7 +69,7 @@ async function subirMalhas(tr, alvo) {
   }
 }
 // Cada shader tem duas versões: a de desenhar na tela e a de desenhar numa imagem (cor linear, sem o ajuste de tons),
-// que é a que o desfoque de velocidade usa (desfoque.js). Só a da tela era compilada: na primeira vez que o carro
+// que é a que o pós-processamento (pos.js: Média e Alta) usa. Só a da tela era compilada: na primeira vez que o carro
 // passava de 40% da velocidade, as ~25 da outra compilavam de uma vez, no meio da reta. Aqui as duas compilam em
 // paralelo (o compileAsync escolhe a versão pelo alvo do momento em que é chamado).
 function compilarTudo(alvo) {

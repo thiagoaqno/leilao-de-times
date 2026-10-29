@@ -393,9 +393,9 @@ export function passoClima(dt, race, cam, mode, src, c) {
     capturar(eCorSol, sun.color); sun.color.copy(eCorSol.base).lerp(FRIO_SOL, 0.7 * I); eCorSol.ult.copy(sun.color);
     capturar(eCorHemi, hemi.color); hemi.color.copy(eCorHemi.base).lerp(FRIO_HEMI, 0.6 * I); eCorHemi.ult.copy(hemi.color);
     if (fog) {
-      fog.near = escalar(eNear, fog.near, 1 - 0.7 * I); fog.far = escalar(eFar, fog.far, 1 - 0.6 * I);
+      fog.near = escalar(eNear, fog.near, 1 - 0.74 * I); fog.far = escalar(eFar, fog.far, 1 - 0.68 * I); // (a neblina da chuva fecha o fundo: o pós de pos.js ainda põe um véu na cor dela)
       capturar(eCorFog, fog.color); const l = eCorFog.base.r * 0.2126 + eCorFog.base.g * 0.7152 + eCorFog.base.b * 0.0722;
-      cinza.setRGB(l * 0.78, l * 0.83, l * 0.89); fog.color.copy(eCorFog.base).lerp(cinza, 0.8 * I); eCorFog.ult.copy(fog.color);
+      cinza.setRGB(l * 0.78, l * 0.83, l * 0.89); fog.color.copy(eCorFog.base).lerp(cinza, 0.88 * I); eCorFog.ult.copy(fog.color);
       domo.material.color.copy(fog.color);
     }
     const op = Math.min(1, I * 1.15) * 0.94;

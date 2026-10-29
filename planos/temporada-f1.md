@@ -283,7 +283,7 @@ temporada.
   - Nesta fase só um carro na pista de cada vez para quem está classificando (os outros humanos não colidem: modo
     fantasma de `fantasma.js`).
 - **Grid de 22:** `cleanConfig` aceita até 21 robôs no modo F1 (hoje são 7). Os robôs entram no mesmo pacote `ghosts`
-  de hoje. Meça Mônaco com 22 carros; se cair demais, `desfoque.js` já baixa a qualidade sozinho, e o padrão vira 12.
+  de hoje. Meça Mônaco com 22 carros; se cair demais, `pos.js` já baixa a qualidade sozinho, e o padrão vira 12.
 - **Largada:** as cinco luzes vermelhas que acendem uma por segundo e apagam juntas (no lugar da contagem de hoje,
   só no modo F1). Queimar a largada (acelerar antes de apagar e sair) dá 5 s.
 - **Resultado:** a tela de fim mostra a ordem com voltas, tempo, diferença, paradas, penalidades e os **pontos
