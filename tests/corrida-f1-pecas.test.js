@@ -23,7 +23,7 @@ test("o carro médio (peças padrão) dá os níveis e os atributos de hoje e ca
   for (const [id, q] of Object.entries(E.EQUIPES)) assert.ok(P.validarPecas(id, pad, 0).ok === (18 <= q.orcamento), id);
   const a = E.specDaMontagem(m), b = E.specDaMontagem(media);
   assert.deepEqual(a, b);
-  assert.ok(a.vmax > 290 && a.vmax < 320 && a.quebra === E.QUEBRA_PADRAO);
+  assert.ok(a.vmax > 290 * E.VMAX_F1 && a.vmax < 320 * E.VMAX_F1 && a.quebra === E.QUEBRA_PADRAO);
 });
 
 test("os atributos vêm das peças: asa de alta pressão vira mais curva e menos reta", () => {

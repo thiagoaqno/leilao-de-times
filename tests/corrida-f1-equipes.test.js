@@ -82,7 +82,8 @@ test("todo número de toda montagem possível fica entre o pior e o melhor dos c
   }
   // e os limites são mesmo os dos cinco carros
   for (const k of Object.keys(E.LIMITES)) {
-    const v = Object.values(T.CARROS).map((c) => c[k]);
+    const f = k === "vmax" ? E.VMAX_F1 : 1; // a velocidade final dos carros de F1 é a dos cinco carros com o ganho igual para todos
+    const v = Object.values(T.CARROS).map((c) => c[k] * f);
     assert.ok(E.LIMITES[k][0] <= Math.min(...v) + 1e-9 && E.LIMITES[k][1] >= Math.max(...v) - 1e-9, `${k}: os limites cobrem os cinco carros`);
   }
   for (const id of Object.keys(E.EQUIPES)) assert.match(E.specDaEquipe(id).chave, /^\d-\d-\d-\d-\d-\d$/);
