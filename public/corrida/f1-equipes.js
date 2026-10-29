@@ -20,10 +20,13 @@ const PECAS = {
   confiab: { nome: "Confiabilidade", icone: "🧰", bom: "chance de quebra e câmbio", custa: "só os pontos", desc: "Câmbio e motor reforçados: a chance de quebrar na corrida cai. Quebrou, o carro anda no modo de emergência." },
 };
 
-// Todos os carros de F1 andam 8% mais rápido na reta que os cinco de antes (`CARROS` em pistas.js, que seguem iguais nos outros
-// modos): a velocidade final de toda montagem, e o pior e o melhor dela, é multiplicada por isto, igual para as 11 equipes (a
-// ordem e as diferenças relativas ficam; o câmbio, o DRS e o vácuo andam junto, pois só dependem do `vmax` do carro).
-const VMAX_F1 = 1.08;
+// Os carros de F1 chegam a ~300 km/h no velocímetro (o McLaren padrão; v × 0,75): a velocidade final de toda montagem, e o pior
+// e o melhor dela, é multiplicada por `VMAX_F1` em relação aos cinco carros de antes (`CARROS` em pistas.js, que seguem iguais nos
+// outros modos), igual para as 11 equipes (a ordem e as diferenças relativas ficam; o câmbio, o DRS e o vácuo andam junto, pois só
+// dependem do `vmax` do carro). `CDA_F1` escala o arrasto de todos (`cda` do spec, dinamica.js): com o vmax alto e o arrasto de
+// antes a potência sairia 2,4× maior e a aceleração em velocidade média viraria a de um foguete; assim o carro chega lá, mas
+// acelera quase como antes (0-100 em ~2 s, 0-200 em ~5 s).
+const VMAX_F1 = 4 / 3, CDA_F1 = 0.35;
 // O pior e o melhor de cada número entre os cinco carros de antes (`CARROS` em pistas.js): a montagem nunca sai daí (a velocidade
 // final, com o `VMAX_F1`).
 const LIMITES = {
@@ -104,6 +107,7 @@ function specDaMontagem(m, nome = "Carro de F1") {
     wall: arredonda(entre(0.8 - 0.04 * chassi, LIMITES.wall), 3),
     desgaste: arredonda(1.25 - 0.07 * suspensao, 3),
     drs: arredonda(0.6 + 0.12 * aero, 3),
+    cda: CDA_F1,
     quebra: quebraDaConfiab(confiab),
   };
 }
@@ -129,7 +133,7 @@ function ficha(s) {
 // Os números que o servidor compara na hora de dizer "melhor em tudo": todos no sentido "maior é melhor"
 const eixos = (s) => [s.vmax, s.acc, s.grip, s.turn, s.brake, s.kin, -s.scrub, s.offMax, s.wall, -s.desgaste, s.drs, -s.quebra];
 
-const api = { MAX_NIVEL, VMAX_F1, EMERGENCIA, QUEBRA_PADRAO, CONFIAB_PADRAO, quebraDaConfiab, sortearFalha, ORDEM, PECAS, LIMITES, EQUIPES, ESTILOS, custoDaMontagem, validar, montagemPadrao, sobra, estilo, specDaMontagem, specDaEquipe, ficha, eixos };
+const api = { MAX_NIVEL, VMAX_F1, CDA_F1, EMERGENCIA, QUEBRA_PADRAO, CONFIAB_PADRAO, quebraDaConfiab, sortearFalha, ORDEM, PECAS, LIMITES, EQUIPES, ESTILOS, custoDaMontagem, validar, montagemPadrao, sobra, estilo, specDaMontagem, specDaEquipe, ficha, eixos };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Equipes = api;
 })(typeof window !== "undefined" ? window : globalThis);
