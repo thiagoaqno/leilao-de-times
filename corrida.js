@@ -62,7 +62,7 @@ module.exports = function attachCorrida(io) {
   function publicState(room) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null, ...(room.temporada ? { temporada: true, ...(room.salaTemporada ? { salaTemporada: room.salaTemporada } : {}) } : {}),
-      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { tvAte: room.tvAte || null, tv: room.tvAte && Date.now() < room.tvAte ? room.tv || null : null, montagens: room.montagens || {}, bonusMontagem: room.bonusMontagem || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
+      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { tvAte: room.tvAte || null, tv: room.tvAte && Date.now() < room.tvAte ? room.tv || null : null, clima: room.clima || null, montagens: room.montagens || {}, bonusMontagem: room.bonusMontagem || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
       players: room.order.map((id) => {
         const p = room.players[id];
         return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, jogos: room.config.regras === "f1" ? F1.jogosRestantes(p) : null, noBox: !!p.box, quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
@@ -159,6 +159,7 @@ module.exports = function attachCorrida(io) {
     room.tvAte = tvMs ? Date.now() + tvMs : null; room.tvPulos = new Set(); room.tv = tvMs ? room.tvTemporada || {} : null;
     room.startAt = (room.tvAte || Date.now()) + (f1 ? Math.round(LUZES_MS + (4 + room.luzes.espera) * 1000) : COUNTDOWN_MS);
     room.endAt = null;
+    room.clima = room.sorteioClima ? { ...room.sorteioClima.corrida, t0: room.startAt } : null; // o relógio da chuva começa na largada
     room.finishOrder = [];
     // grid: o da classificação; nas regras de F1 sem classificação, a ordem dos pilotos da sala; senão, embaralhado a cada corrida
     const ids = grid ? [...grid.filter((id) => room.players[id]), ...room.order.filter((id) => !grid.includes(id))] : f1 ? [...room.order] : [...room.order].sort(() => Math.random() - 0.5);
@@ -207,6 +208,18 @@ module.exports = function attachCorrida(io) {
     room.semente = room.config.regras === "f1" ? (room.sementeFixa ?? Math.floor(Math.random() * 1e9)) : null;
     Robos.preparar(room, COLORS, rid);
     atribuirCarros(room); // quem tem equipe corre com o carro dela (os robôs já saem com o spec); a classificação já usa
+    sortearClima(room);
+  }
+  // O clima do GP (regras de F1): 20% de chance de chuva, sorteados pela semente do GP (o mesmo em qualquer recarga). Se chove, a
+  // classificação e a corrida têm cada uma o seu roteiro (f1-regras.js, `sortearClima`). `room.sorteioClima` guarda os dois;
+  // `room.clima` é o da sessão que está valendo (o que vai no estado público), com o zero do relógio (`t0`) na largada da
+  // sessão: a primeira classificação (Q1) ou as luzes apagando na corrida.
+  function sortearClima(room) {
+    room.clima = null; room.sorteioClima = null;
+    if (room.config.regras !== "f1") return;
+    const pista = room.config.pista, tab = require("./public/corrida/f1-pneus-ritmo.js").tabelaDe(pista), volta = (tab ? tab.volta : 75) * 1.12;
+    const sessoes = F1.sessoesDeClassificacao(room.order.length).length;
+    room.sorteioClima = F1.sortearClima(room.semente, { corrida: Math.round(volta * room.config.voltas + 15), quali: sessoes * (Robos.duracaoDaClassificacao(pista) + 13) });
   }
   // a classificação (Q1, Q2 e Q3) antes da corrida das regras de F1; no fim ela chama startRace com o grid
   const classificacao = { log, broadcast, largar: (room, grid) => startRace(room, grid) };
@@ -214,6 +227,7 @@ module.exports = function attachCorrida(io) {
     clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer);
     preparar(room);
     room.phase = "quali"; room.resultado = null; room.luzes = null; room.finishOrder = [];
+    room.clima = room.sorteioClima ? { ...room.sorteioClima.quali } : null; // (o `t0` vem na abertura do Q1: corrida-f1-classificacao.js)
     for (const id of room.order) delete room.players[id].sim;
     ligarHumanos(room);
     Quali.iniciar(room, classificacao);
@@ -284,7 +298,7 @@ module.exports = function attachCorrida(io) {
       room.finishOrder.push(p.id);
       log(room, `🏁 ${p.name} cruzou a chegada em ${room.finishOrder.length}º.`);
       if (room.config.regras === "f1") { // a regra dos dois compostos
-        const mais = F1.acrescimoDeFinal(p, room.config.voltas);
+        const mais = F1.acrescimoDeFinal(p, room.config.voltas, !!(room.clima && room.clima.chove)); // (com chuva a regra não vale)
         if (mais) { p.acrescimo = (p.acrescimo || 0) + mais; log(room, `⏱️ ${p.name} usou um composto só: +${mais} s no resultado.`); }
       }
       const racing = room.order.filter((id) => room.players[id].finish == null && !room.players[id].dnf && (room.players[id].sockets.size || (room.config.regras === "f1" && room.players[id].bot)));
@@ -554,6 +568,7 @@ module.exports = function attachCorrida(io) {
           room.tvPulos.add(me.id);
           if (room.order.some((id) => { const q = room.players[id]; return q && !q.bot && q.sockets.size && !room.tvPulos.has(id); })) return "ignorado"; // ainda falta gente: só esconde para quem pulou
           room.tvAte = agora; room.startAt = agora + Math.round(LUZES_MS + (4 + room.luzes.espera) * 1000);
+          if (room.clima) room.clima.t0 = room.startAt;
           return;
         }
         if (type === "sector") {

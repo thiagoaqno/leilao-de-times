@@ -69,7 +69,7 @@ export function hud() {
   else if (B && B.fase) msg = B.fase === "entra" ? `🔧 BOX: limitador de velocidade` : B.fase === "parada" ? `🔧 ${window.F1Regras.textoDaParada(B.parada)} · trocando para o ${nomeBox} · ${Math.max(0, B.parada - B.t).toFixed(1)} s` : "🔧 BOX: saindo, pneu novo ainda frio";
   else if (E.S.direcao?.safety) msg = "🚨 SAFETY CAR: reduza e mantenha a posição";
   else if (E.S.direcao?.amarelo?.setor === Math.floor(race.idx / (tr.n / SECTORS))) msg = "🟡 BANDEIRA AMARELA: não ultrapasse";
-  else if (B && B.pedido) msg = `🔧 BOX: ${nomeBox} (1, 2, 3 trocam · B cancela) · jogos ${textoJogos(m)}`;
+  else if (B && B.pedido) msg = `🔧 BOX: ${nomeBox} (1, 2, 3, 4 trocam · B cancela) · jogos ${textoJogos(m)}`;
   else if (m && m.balaUntil > now) msg = "🚀 BALA! (piloto automático)";
   else if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
   else if (m && m.shrinkUntil > now) msg = "⚡ ENCOLHIDO PELO RAIO!";

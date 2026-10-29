@@ -22,7 +22,7 @@ function rodar(composto, { volta = 13000, voltas = 8, slip = 0, travada = 0, pat
 const voltasAtePenhasco = (marcas) => marcas.find((m) => m.desgaste >= F1.PENHASCO)?.v ?? Infinity;
 
 test("pneus: a vida é em voltas (macio ~1,5, médio 3 a 4, duro 6 ou mais) e o macio é o mais rápido novo", () => {
-  const vida = Object.fromEntries(Object.keys(F1.PNEUS).map((c) => [c, voltasAtePenhasco(rodar(c, { slip: 15, voltas: 10 }).marcas)]));
+  const vida = Object.fromEntries(F1.SECOS.map((c) => [c, voltasAtePenhasco(rodar(c, { slip: 15, voltas: 10 }).marcas)]));
   assert.ok(vida.macio > 1.2 && vida.macio < 1.8, `macio ${vida.macio}`);
   assert.ok(vida.medio > 3 && vida.medio < 4.5, `médio ${vida.medio}`);
   assert.ok(vida.duro >= 6 && vida.duro < 9, `duro ${vida.duro}`);
@@ -44,7 +44,7 @@ test("pneus: escorregar, travar a roda e patinar gastam mais que andar limpo", (
 });
 
 test("pneus: depois do penhasco o carro fica muito ruim; frio na largada, esquenta em alguns segundos", () => {
-  for (const c of Object.keys(F1.PNEUS)) {
+  for (const c of F1.SECOS) {
     const novo = F1.aderencia({ composto: c, desgaste: 0, temp: 1 }), fim = F1.aderencia({ composto: c, desgaste: 1, temp: 1 }), cliff = F1.aderencia({ composto: c, desgaste: F1.PENHASCO, temp: 1 });
     assert.ok(cliff.grip > novo.grip * 0.9, `${c}: até o penhasco perde pouco`);
     assert.ok(fim.grip < novo.grip * 0.65 && fim.tracao < novo.tracao * 0.7 && fim.freio < novo.freio * 0.7 && fim.final < 0.95 && fim.final > 0.85, `${c}: depois dele despenca`);
@@ -52,7 +52,7 @@ test("pneus: depois do penhasco o carro fica muito ruim; frio na largada, esquen
   const quanto = (c) => { const pn = F1.pneuNovo(c); for (let t = 0; t < 60 * 30; t++) { if (!F1.frio(pn)) return t / 60; F1.gastarPneu(pn, { dist: 0, volta: 1, v: 250, vmax: 295, dt: 1 / 60 }); } return Infinity; };
   assert.ok(F1.frio(F1.pneuNovo("duro")));
   assert.ok(quanto("macio") < quanto("medio") && quanto("medio") < quanto("duro") && quanto("macio") > 1.5 && quanto("duro") < 12, `${quanto("macio")} ${quanto("medio")} ${quanto("duro")}`);
-  for (const composto of Object.keys(F1.PNEUS)) for (let d = 0; d <= 1; d += 0.05) for (let t = 0; t <= 1; t += 0.1) {
+  for (const composto of F1.SECOS) for (let d = 0; d <= 1; d += 0.05) for (let t = 0; t <= 1; t += 0.1) {
     const a = F1.aderencia({ composto, desgaste: d, temp: t });
     assert.ok(a.grip >= 0.4 && a.grip <= 2.0 && a.kin >= 0.85 && a.kin <= 1, `${composto} ${d} ${t}`);
   }

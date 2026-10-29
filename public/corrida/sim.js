@@ -80,23 +80,24 @@ function novo(tr, o = {}) {
 }
 const caixaDoBox = (tr) => ({ cor: tr.corredor, pedido: null, fase: null, u: 0, lat0: 0, t: 0, parada: 0, garagem: 0, composto: null, volta: 0, n: 0 });
 
-// o pneu da largada: na classificação, macio novo e já quente; na corrida, o escolhido na sala, frio
-function pneuDaLargada(fase, composto) {
+// o pneu da largada: na classificação, macio novo e já quente (ou o de chuva, se a pista abre molhada: `agua` é a água na pista
+// quando a sessão abre); na corrida, o escolhido na sala, frio
+function pneuDaLargada(fase, composto, agua = 0) {
   if (fase !== "quali") return F1.pneuNovo(composto);
-  const pn = F1.pneuNovo("macio"); pn.temp = 0.8; return pn;
+  const pn = F1.pneuNovo(F1.compostoDaClassificacao(agua)); pn.temp = 0.8; return pn;
 }
 
 // ---------- a entrada de um passo, em um número só ----------
 // bits 0 acelerador · 1 freio · 2 ERS · 3 voltar à pista · 4-5 pedido de box (0 nenhum, 1 macio, 2 médio, 3 duro) ·
-// 6-9 marcha do câmbio manual (0 = automático) · 10-18 volante (0..510 → -1..1)
-const COMPOSTOS = ["macio", "medio", "duro"];
+// 6-9 marcha do câmbio manual (0 = automático) · 10-18 volante (0..510 → -1..1) · 19 o bit alto do pedido de box (4 = chuva)
+const COMPOSTOS = ["macio", "medio", "duro", "chuva"];
 function empacotar(e) {
-  const st = Math.round(limite(e.steer || 0, -1, 1) * 255) + 255;
-  return (e.gas ? 1 : 0) | (e.brake ? 2 : 0) | (e.ers ? 4 : 0) | (e.respawn ? 8 : 0) | ((e.pedido ? COMPOSTOS.indexOf(e.pedido) + 1 : 0) << 4) | (limite(e.marcha || 0, 0, 15) << 6) | (st << 10);
+  const st = Math.round(limite(e.steer || 0, -1, 1) * 255) + 255, pd = e.pedido ? COMPOSTOS.indexOf(e.pedido) + 1 : 0;
+  return (e.gas ? 1 : 0) | (e.brake ? 2 : 0) | (e.ers ? 4 : 0) | (e.respawn ? 8 : 0) | ((pd & 3) << 4) | ((pd >> 2) << 19) | (limite(e.marcha || 0, 0, 15) << 6) | (st << 10);
 }
 function desempacotar(n, saida = {}) {
   saida.gas = n & 1; saida.brake = (n >> 1) & 1; saida.ers = (n >> 2) & 1; saida.respawn = (n >> 3) & 1;
-  const pd = (n >> 4) & 3; saida.pedido = pd ? COMPOSTOS[pd - 1] : null;
+  const pd = ((n >> 4) & 3) | (((n >> 19) & 1) << 2); saida.pedido = pd ? COMPOSTOS[pd - 1] : null;
   saida.marcha = (n >> 6) & 15; saida.steer = (((n >> 10) & 511) - 255) / 255;
   return saida;
 }
@@ -140,7 +141,7 @@ function pilotoAutomatico(c, tr, spec, vAlvo, latAlvo, saida = {}) {
 //   amarela (o setor atual está sob bandeira amarela), safety, ersAuto (false = o ERS é pelo comando), voltas (da corrida),
 //   laps (as voltas que já completei), paradas (quantas já fiz), semente, id, grid, finish (já recebi a bandeirada?),
 //   segurar (o carro fica parado: antes da largada), dnf (perda total), outros (os carros em volta, para o vácuo),
-//   quali (classificação: sem box), f1 (regras de F1: pneu, DRS, ERS)
+//   quali (classificação: sem box), f1 (regras de F1: pneu, DRS, ERS), agua (a água na pista, 0 a 1: F1.climaEm)
 // ev (opcional): lista onde o passo põe o que aconteceu: { t: "muro"|"bump"|"setor"|"box"|"pouso"|"respawn", ... }
 const SAIDA = {}, ENT_AUTO = {};
 function passo(c, ent, amb, tr, ev) {
@@ -163,7 +164,7 @@ function passo(c, ent, amb, tr, ev) {
   // o vácuo e o ar sujo
   const alvo = vacuoAlvo(c, amb.outros);
   c.draft += (alvo - c.draft) * Math.min(1, dt * 4);
-  const pn = F1.aderencia(c.pneu), dano = F1.efeitoDoDano(amb.dano);
+  const pn = F1.aderencia(c.pneu, amb.agua), dano = F1.efeitoDoDano(amb.dano);
   const curva = (tr.pts[c.idx].k || 0) > 1 / 600, vac = F1.vacuoF1(c.draft, curva);
   c.arSujo = 1 - vac.aderencia;
   // DRS e ERS
@@ -209,7 +210,7 @@ function passo(c, ent, amb, tr, ev) {
       if (vn > 0) { c.vx -= q.nx * s * vn * 1.2; c.vy -= q.ny * s * vn * 1.2; const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca; if (vn > 60 && ev) ev.push({ t: "bump", forca: vn }); }
     }
   }
-  if (amb.f1 !== false) F1.gastarPneu(c.pneu, { dist: Math.hypot(nx - xAnt, ny - yAnt), volta: n * 6, slip: c.slip, travada: c.travada, patina: c.patina, v: c.v, vmax: spec.vmax, dt, fator: spec.desgaste });
+  if (amb.f1 !== false) F1.gastarPneu(c.pneu, { dist: Math.hypot(nx - xAnt, ny - yAnt), volta: n * 6, slip: c.slip, travada: c.travada, patina: c.patina, v: c.v, vmax: spec.vmax, dt, fator: spec.desgaste, agua: amb.agua });
   c.x = nx; c.y = ny;
   // altura: no chão acompanha o relevo; se o chão some (lombada rápida), voa e cai com a gravidade
   const gh = alturaDoChao(tr, c.x, c.y, c.idx);
