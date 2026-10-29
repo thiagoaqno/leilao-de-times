@@ -37,6 +37,15 @@ test("box: a entrada de Monza vem antes da chegada, para aceitar parada na penú
   assert.ok((c.i0 + c.len) % n < n * 0.05, "a saída fica depois da linha");
 });
 
+test("box: Barcelona tem o corredor em volta da linha de chegada, com as 10 garagens centradas nela e o prédio no mesmo passo", () => {
+  const n = T.pontos(T.PISTAS.barcelona, 6).length, c = corredorDe("barcelona");
+  assert.ok(c.i0 > n * 0.95, "a entrada fica antes da linha de chegada");
+  assert.ok((c.i0 + c.len) % n < n * 0.05, "a saída fica depois da linha");
+  const x = c.garagens.map((u) => { const i = Math.round(c.i0 + u) % n; return (i > n / 2 ? i - n : i) * 6; }); // a posição de cada garagem ao longo da reta (0 = a linha)
+  assert.ok(x[0] < 0 && x[x.length - 1] > 0 && Math.abs(x[0] + x[x.length - 1]) <= 12, `garagens de ${x[0]} a ${x[x.length - 1]}: centradas na linha`);
+  assert.ok(Math.abs(c.gap * 6 - 31.2) < 0.01, "o passo das garagens é o das portas do prédio (barcelona.js usa o mesmo número)");
+});
+
 test("box: toda pista do calendário tem corredor, com as 10 garagens entre a rampa de entrada e a de saída", () => {
   for (const id of ["interlagos", "barcelona", "monaco", "deserto", "tokyo", "rio", "nurburgring", "laguna", "losangeles", "serra", "luigi", "sorvete", "monza", "silverstone",
     "melbourne", "xangai", "suzuka", "bahrein", "jeddah", "miami", "montreal", "redbullring", "spa", "hungaroring", "zandvoort", "madri", "baku", "singapura", "austin", "mexico", "lasvegas", "catar", "abudhabi"]) {
