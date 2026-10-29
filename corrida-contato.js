@@ -8,10 +8,11 @@
 // quando o seu relógio chega àquela hora (ou logo, se já passou): a mesma batida não conta duas vezes (`pares`) e o momento se conserva.
 const Sim = require("./public/corrida/sim.js");
 const T = require("./public/corrida/pistas.js");
+const Pose = require("./public/corrida/pose.js"); // a mesma regra de pose do navegador (extrapolar)
 
 const PASSO_MS = Sim.PASSO * 1000;
 const N = 256;              // amostras guardadas por carro (2,1 s)
-const EXTRAPOLA_S = 0.25;   // quanto o servidor segue um carro cujo histórico ainda não chegou à hora pedida
+const ACEL_JANELA = 6;      // a aceleração de um carro que ainda não chegou à hora pedida vem de 6 passos atrás (50 ms)
 const PAR_MS = 120;         // a mesma batida: dentro disto, só quem registrou primeiro troca o momento
 const PENDENTE_MS = 800;    // um impulso que o outro carro não aplicou em tanto tempo (ficou parado, saiu) se perde
 
@@ -26,12 +27,16 @@ function gravar(room, id, t, c) {
   H.t[i] = t; H.x[i] = c.x; H.y[i] = c.y; H.z[i] = c.z || 0; H.a[i] = c.a; H.vx[i] = c.vx; H.vy[i] = c.vy; H.r[i] = c.r || 0;
   H.i = (i + 1) % N; if (H.n < N) H.n++;
 }
-// o carro na hora `t`: interpola o histórico; depois da última amostra segue a velocidade por até EXTRAPOLA_S; antes da primeira, fica nela
+// o carro na hora `t`: interpola o histórico; depois da última amostra segue o movimento (pose.js, extrapolar: velocidade e aceleração, que se
+// apagam se o histórico demora); antes da primeira, fica nela
+const SB = {}, SA = {}, EX = {};
+const amostraDe = (H, i, a) => { a.t = H.t[i]; a.x = H.x[i]; a.y = H.y[i]; a.z = H.z[i]; a.a = H.a[i]; a.vx = H.vx[i]; a.vy = H.vy[i]; a.r = H.r[i]; return a; };
 function em(H, t, o) {
   const ult = (H.i - 1 + N) % N, tn = H.t[ult];
   if (t >= tn - 1e-6) {
-    const f = Math.min(EXTRAPOLA_S, (t - tn) / 1000);
-    o.x = H.x[ult] + H.vx[ult] * f; o.y = H.y[ult] + H.vy[ult] * f; o.z = H.z[ult]; o.a = H.a[ult] + Math.max(-1, Math.min(1, H.r[ult] * f)); o.vx = H.vx[ult]; o.vy = H.vy[ult]; o.r = H.r[ult];
+    const antes = H.n > ACEL_JANELA ? (ult - ACEL_JANELA + N) % N : -1;
+    Pose.extrapolar(amostraDe(H, ult, SB), antes >= 0 ? amostraDe(H, antes, SA) : null, t, EX);
+    o.x = EX.x; o.y = EX.y; o.z = EX.z; o.a = EX.a; o.vx = EX.vx; o.vy = EX.vy; o.r = EX.r;
     return o;
   }
   let b = ult, c = 0; // anda para trás até achar a amostra `a` no ou antes de `t` (b é a seguinte)

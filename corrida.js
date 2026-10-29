@@ -115,8 +115,20 @@ module.exports = function attachCorrida(io) {
   function broadcast(room) { room.t = Date.now(); nsp.to(room.code).emit("state", publicState(room)); }
 
   // ---------- os humanos nas regras de F1 ----------
-  // Um laço por sala (a cada 10 ms) anda cada carro humano com as entradas que o piloto já mandou e, a cada 50 ms, manda a
-  // posição de todos os carros (`snap`). Os ganchos levam o que a física viu (checkpoint, batida, box) para as regras da sala.
+  // Um laço por sala (a cada 10 ms) anda cada carro humano com as entradas que o piloto já mandou e, a cada 30 ms, manda a
+  // posição dos carros (`snap`, binário: pose.js, Snap): quem está perto de você 33 vezes por segundo, o resto menos (corrida-humanos.js,
+  // snapPara). Os ganchos levam o que a física viu (checkpoint, batida, box) para as regras da sala.
+  const SNAP_TIQUES = 3; // a cada 3 voltas do laço de 10 ms
+  function enviarSnaps(room, n) {
+    const agora = Date.now(), lista = Humanos.snap(room, agora), donos = [];
+    if (!lista.length) return;
+    for (const id of room.order) {
+      const p = room.players[id]; if (!p || p.bot || !p.sockets.size) continue;
+      const meus = Humanos.snapPara(lista, id, n), pacote = meus.length ? Humanos.pacote(agora, meus) : null;
+      for (const sid of p.sockets) { donos.push(sid); const s = nsp.sockets.get(sid); if (s && pacote) s.volatile.emit("snap", pacote); }
+    }
+    nsp.to(room.code).except(donos).volatile.emit("snap", Humanos.pacote(agora, lista)); // (quem só assiste recebe todos)
+  }
   function ligarHumanos(room) {
     clearInterval(room.humanosTimer);
     if (room.config.regras !== "f1") return;
@@ -132,12 +144,12 @@ module.exports = function attachCorrida(io) {
       mandarAck: (p, ack) => { for (const sid of p.sockets) { const s = nsp.sockets.get(sid); if (s) s.emit("ack", ack); } },
       mudou: () => broadcast(room),
     };
-    let tique = 0;
+    let tique = 0, nSnap = 0;
     room.humanosTimer = setInterval(() => {
       if (room.phase !== "race" && room.phase !== "quali") return;
       Humanos.andar(room, Date.now(), h);
-      if (++tique % 5) return;
-      const agora = Date.now(); nsp.to(room.code).volatile.emit("snap", { t: agora, c: Humanos.snap(room, agora) });
+      if (++tique % SNAP_TIQUES) return;
+      enviarSnaps(room, ++nSnap);
     }, 10);
   }
 
@@ -645,6 +657,9 @@ module.exports = function attachCorrida(io) {
       // o ritmo (as cinco melhores de cada um) vale na próxima largada; a linha muda só com a melhor volta do piloto
       if (nova === 2 && Robos.aprender(pista, bd.melhoresTracadosCorrida(pista))) { log(room, `🤖 Os robôs aprenderam a volta de ${me.name} em ${t.name}.`); broadcast(room); }
     });
+
+    // o relógio: o navegador pergunta a hora do servidor várias vezes e fica com a resposta de menor ida e volta (pose.js, criarRelogio)
+    socket.on("clock", (cb) => typeof cb === "function" && cb(Date.now()));
 
     // regras de F1: as entradas do piloto, um número por passo da física (corrida-humanos.js)
     socket.on("inp", (d) => {
