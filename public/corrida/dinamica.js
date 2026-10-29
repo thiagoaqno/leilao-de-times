@@ -21,6 +21,15 @@ const ESC = 0.75 / 3.6;      // metros por unidade da pista
 const G = 9.81, G_U = G / ESC; // gravidade (m/s² e u/s²)
 const RHO = 1.2;
 const PASSO = 1 / 120;       // o passo fixo da física, no navegador e no servidor: nada depende do tempo do quadro
+// O FREIO: a força que o pedal cheio pede é `FREIO_G` vezes o peso a zero de velocidade e cresce com a carga aerodinâmica (FREIO_AERO por
+// peso de carga): a 300 km/h o carro freia uns 5 g (com o arrasto), a 100 km/h uns 2,5 g. Quem pede mais do que o pneu segura (molhado, pneu
+// gasto, freio na curva) trava a roda. O pedal sobe em 1/FREIO_SOBE s.
+const FREIO_G = 1.925, FREIO_AERO = 0.55, FREIO_SOBE = 4.5;
+// O quanto o pneu aguenta de freio antes de travar (múltiplo da aderência lateral): folgado com o pneu bom (1,25) e justo com o pneu que
+// perdeu aderência (gasto, frio, molhado, depois de uma batida), onde o pedal cheio já trava a roda. Vai de ATRITO_MIN a ATRITO_MAX
+// conforme a aderência `kGrip` sobe de GRIP_TRAVA a GRIP_TRAVA + 0,25.
+const ATRITO_MIN = 0.6, ATRITO_MAX = 1.25, GRIP_TRAVA = 1.04;
+const atritoDeFreio = (kGrip) => { const x = limite((kGrip - GRIP_TRAVA) / 0.25, 0, 1); return ATRITO_MIN + (ATRITO_MAX - ATRITO_MIN) * x * x * (3 - 2 * x); };
 const limite = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 // ---------- o câmbio de 8 marchas ----------
@@ -91,7 +100,7 @@ function parametrosLento(spec) {
   const kin = limite(spec.kin, 0.5, 0.95);
   const C = Math.PI / (Math.PI - Math.asin(limite(kin * 1.04, 0.5, 0.97))); // a curva cai até ~kin·1,04 do pico quando o pneu escorrega todo
   const B = Math.tan(Math.PI / (2 * C)) / alfaP;
-  const frenagem = 1.925 * (spec.brake / 470);                 // o freio a zero de velocidade, em g (1,75 + 10%)
+  const frenagem = FREIO_G * (spec.brake / 470);               // o freio a zero de velocidade, em g (a carga aerodinâmica soma, ver FREIO_AERO)
   p = { massa, W, L, a, b, h, Iz, ClA, CdA, crr, Ppico, eta, mu, muTr, C, B, alfaP, frenagem, gripU: spec.grip, kinU: limite(spec.kin, 0.3, 1),
     // o balanço aerodinâmico (parte da carga que vai para a frente) e o do freio (parte da força que vai para a frente)
     balAero: 0.34, balFreio: 0.6, balPneu: 1.03,
@@ -137,10 +146,10 @@ function passo(c, ent, amb, p, dt = PASSO) {
   const drsK = amb.drs ? p.drs : 0;
   const kArr = (ex.arrasto || 1) * (amb.drs ? (1 + 0.05 * drsK) ** -3 : 1) * (amb.vacuo ? (1 + amb.vacuo.final) ** -3 : 1);
   const kCarga = (ex.carga || 1) * (amb.drs ? 0.85 : 1);
-  // pedais: o acelerador sobe em ~0,3 s e solta rápido; o freio sobe em ~0,3 s (por isso dá para frear "progressivo" soltando antes)
+  // pedais: o acelerador sobe em ~0,3 s e solta rápido; o freio sobe em ~0,22 s (por isso dá para frear "progressivo" soltando antes)
   const gasT = ent.gas ? 1 : 0, brkT = ent.brake ? 1 : 0;
   c.gasP += limite(gasT - c.gasP, -dt * 8, dt * 3.5);
-  c.brkP += limite(brkT - c.brkP, -dt * 7, dt * 3.2);
+  c.brkP += limite(brkT - c.brkP, -dt * 7, dt * FREIO_SOBE);
   // volante: o alvo é o comando; sobe a ~5/s e volta a ~8/s (teclado: de batente a batente em 0,4 s)
   const alvo = limite(ent.steer || 0, -1, 1);
   const arc = !!(pn && pn.arcade); // macio dentro da vida útil: a dirigibilidade arcade antiga (o fim do passo)
@@ -219,11 +228,12 @@ function passo(c, ent, amb, p, dt = PASSO) {
     let FxF = 0, FxBr = 0;
     c.travada = 0;
     if (pedalFreio > 0 && !rev) {
-      const demanda = pedalFreio * kFreio * p.frenagem * p.W * (1 + 0.55 * (DF / p.W));
+      const atritoFreio = atritoDeFreio(pn ? kGrip : kGrip * 1.35); // (sem pneu das regras de F1, vale o pneu bom de referência)
+      const demanda = pedalFreio * kFreio * p.frenagem * p.W * (1 + FREIO_AERO * (DF / p.W));
       const dirB = u > 0.3 ? -1 : u < -0.3 ? 1 : 0;
       const demF = demanda * p.balFreio, demR = demanda * (1 - p.balFreio);
-      const usoYF = arc ? usoC : Math.min(1, Math.abs(FyF) / (muF * Nf)), capF = 1.25 * muF * Nf * Math.sqrt(Math.max(0, 1 - usoYF * usoYF));
-      const usoYR = arc ? usoC : Math.min(1, Math.abs(FyR) / capYr), capR = 1.25 * muR * Nr * Math.sqrt(Math.max(0, 1 - usoYR * usoYR));
+      const usoYF = arc ? usoC : Math.min(1, Math.abs(FyF) / (muF * Nf)), capF = atritoFreio * muF * Nf * Math.sqrt(Math.max(0, 1 - usoYF * usoYF));
+      const usoYR = arc ? usoC : Math.min(1, Math.abs(FyR) / capYr), capR = atritoFreio * muR * Nr * Math.sqrt(Math.max(0, 1 - usoYR * usoYR));
       let lockF = 0, lockR = 0, fF = demF, fR = demR;
       if (demF > capF) { lockF = Math.min(1, (demF / Math.max(capF, 1) - 1) / 0.2); fF = capF * (1 - 0.12 * lockF); }
       if (demR > capR) { lockR = Math.min(1, (demR / Math.max(capR, 1) - 1) / 0.2); fR = capR * (1 - 0.12 * lockR); }
@@ -349,7 +359,15 @@ function aceleracaoMaxima(spec, vU, subida = 0, ext) {
 // a frenagem máxima (u/s², positiva) a `vU` em linha reta: o freio de F1 segura mais em alta, e o arrasto e a descida ajudam ou atrapalham
 function frenagemMaxima(spec, vU, subida = 0, ext) {
   const p = parametros(spec), v = vU * ESC, q = 0.5 * RHO * v * v, DF = q * p.ClA * em(ext, "carga");
-  const Fb = em(ext, "freio") * p.frenagem * p.W * (1 + 0.55 * DF / p.W);
+  // o freio pedido (com o pedal cheio) e o que os pneus da frente e de trás seguram antes de travar (a mesma conta do passo, em linha reta)
+  const dem = em(ext, "freio") * p.frenagem * p.W * (1 + FREIO_AERO * DF / p.W), kG = ext && ext.grip ? ext.grip : 1;
+  const mu = atritoDeFreio(ext && ext.grip ? kG : kG * 1.35) * p.mu * kG;
+  let Fb = dem;
+  for (let i = 0; i < 3; i++) { // o peso passa para a frente com a própria frenagem: itera a desaceleração
+    const a = (Fb + q * p.CdA * em(ext, "arrasto") + p.crr * (p.W + DF)) / p.massa, dN = (p.massa * a * p.h) / p.L;
+    const capF = mu * Math.max(0.06 * p.W, p.W * (p.b / p.L) + dN + DF * p.balAero), capR = mu * p.balPneu * Math.max(0.06 * p.W, p.W * (p.a / p.L) - dN + DF * (1 - p.balAero));
+    Fb = Math.min(dem * p.balFreio, capF) + Math.min(dem * (1 - p.balFreio), capR);
+  }
   const F = Fb + q * p.CdA * em(ext, "arrasto") + p.crr * (p.W + DF) + p.massa * G * (subida / Math.sqrt(1 + subida * subida));
   return F / p.massa / ESC;
 }
