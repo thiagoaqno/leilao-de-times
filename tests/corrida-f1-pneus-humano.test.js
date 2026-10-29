@@ -65,14 +65,14 @@ function melhorVolta(id, composto) {
   return melhor;
 }
 
-test("humano (esterço de teclado, sem ajuda dos robôs): macio < médio < duro, e cada degrau fica perto de 1% da volta", { timeout: 120000 }, () => {
+test("humano (esterço de teclado, sem ajuda dos robôs): macio < médio < duro, e cada degrau fica perto de 2% da volta", { timeout: 120000 }, () => {
   for (const pista of ["suzuka", "interlagos", "monza"]) {
     const s = melhorVolta(pista, "macio"), m = melhorVolta(pista, "medio"), d = melhorVolta(pista, "duro");
     const info = `${pista}: macio ${s.toFixed(2)} s, médio ${m.toFixed(2)} s, duro ${d.toFixed(2)} s`;
     assert.ok(isFinite(s) && isFinite(m) && isFinite(d), `${info}: não fechou volta limpa`);
     assert.ok(s < m && m < d, `${info}: fora de ordem`);
-    assert.ok((m - s) / s >= 0.003 && (m - s) / s <= 0.016, `${info}: o médio perde ${((m - s) / s * 100).toFixed(2)}% (esperado ~0,6 a 1,2%)`);
-    assert.ok((d - m) / m >= 0.003 && (d - m) / m <= 0.016, `${info}: o duro perde ${((d - m) / m * 100).toFixed(2)}% para o médio (esperado ~0,5 a 1%)`);
+    assert.ok((m - s) / s >= 0.01 && (m - s) / s <= 0.03, `${info}: o médio perde ${((m - s) / s * 100).toFixed(2)}% (esperado ~1,5 a 2,5%)`);
+    assert.ok((d - m) / m >= 0.01 && (d - m) / m <= 0.03, `${info}: o duro perde ${((d - m) / m * 100).toFixed(2)}% para o médio (esperado ~1,5 a 2,5%)`);
   }
 });
 
