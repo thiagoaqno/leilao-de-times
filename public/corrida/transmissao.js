@@ -7,6 +7,7 @@
 // O que NÃO existe no jogo (e por isso é estimado, sem mexer na física): o clima. Ele sai da hora do GP, de uma tabela de
 // temperaturas típicas por circuito e da semente do GP, igual para todos na sala.
 import { E, PISTAS, $, sNow, me, act } from "./estado.js";
+import { transicaoF1 } from "./transicao-f1.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const lim = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), suave = (x) => x * x * (3 - 2 * x);
@@ -267,7 +268,8 @@ function camera(tv, tr, b, u) {
   const f = n - 125 + 135 * u, P = ponto(tr, f), Q = ponto(tr, f + 38); // o grid: no meio das duas filas, da última fila até a pole
   return { x: P.x, y: P.h + 11 + 3 * Math.sin(u * 3), z: P.y, ax: Q.x, ay: Q.h + 5, az: Q.y, fov: 66 };
 }
-function corte(tv) { tv.el.classList.remove("corte"); void tv.el.offsetWidth; tv.el.classList.add("corte"); }
+// o corte entre os blocos: a varredura de TV (transicao-f1.js; com movimento reduzido a transmissão já foi pulada)
+function corte(tv, rotulo) { transicaoF1({ rotulo, rm: tv.reduz }); }
 
 function iniciar(race, tr, reduzMov) {
   const S = E.S, agora = sNow(), resta = (race.tvAte - agora) / 1000;
@@ -311,7 +313,7 @@ export function quadroTV(race, tr, cam, reduzMov) {
   if (tv.espera) return;
   const t = Math.min(tv.total, (agora - tv.ini) / 1000), f = tv.faixas.find((x) => t < x.ini + x.d) || tv.faixas[tv.faixas.length - 1], u = lim((t - f.ini) / f.d);
   if (f.k !== tv.bloco) { // novo bloco: o cartão certo entra e a faixa vermelha varre a tela
-    tv.bloco = f.k; corte(tv);
+    tv.bloco = f.k; corte(tv, TITULO[f.k]);
     tv.el.querySelectorAll(".tvCarta").forEach((c) => c.classList.toggle("on", c.dataset.b === f.k));
     tv.el.querySelector(".tvRotulo").textContent = TITULO[f.k];
     if (window.Narrador) { // o narrador apresenta a pista junto do voo; no grid ele abaixa; as luzes cortam (narrador.js)

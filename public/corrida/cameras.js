@@ -6,9 +6,11 @@
 //  - bico: baixa, em cima do nariz, um pouco atrás do eixo da frente: as rodas da frente ficam nas bordas.
 //  - perto / longe: atrás do carro, com a guinada atrasada, o FOV crescendo com a velocidade e a câmera descendo na
 //    frenagem e subindo na aceleração.
-//  - cima: a aérea de sempre.
+//  - cima: a aérea, um helicóptero de TV (camera-aerea.js): alto, atrás do carro numa mola amortecida, olhando um ponto
+//    à frente na pista, desviando de cenário alto.
 //  - tv: câmeras fixas na beira da pista; troca para a mais perto do carro seguido e o zoom acompanha. Quem só assiste
 //    e quem já recebeu a bandeirada começam nela (até apertar C).
+// Toda troca de câmera (e cada corte da TV) leva a varredura de TV de transicao-f1.js; o corte vem no meio dela (~0,2 s).
 // As medidas do carro (onde fica a entrada de ar, a altura do bico) vêm da malha do modelo, não de números soltos.
 import * as THREE from "three";
 import { cam, V3 } from "./cena.js";
@@ -16,11 +18,13 @@ import { groundH } from "./pista.js";
 import { KS } from "./carros.js";
 import { ocupado } from "./kit/comum.js";
 import { toast } from "./estado.js";
+import { aereaHeli } from "./camera-aerea.js";
+import { transicaoF1 } from "./transicao-f1.js";
 
 export const ORDEM = ["cockpit", "onboard", "bico", "perto", "longe", "cima", "tv"];
 export const NOMES = {
   cockpit: "Cockpit (primeira pessoa)", onboard: "Onboard (T-cam)", bico: "Bico do carro", perto: "Perseguição próxima",
-  longe: "Perseguição afastada", cima: "Aérea (de cima)", tv: "TV (câmeras da pista)",
+  longe: "Perseguição afastada", cima: "Aérea (helicóptero)", tv: "TV (câmeras da pista)",
 };
 const DE_DENTRO = new Set(["cockpit", "onboard", "bico"]); // precisam do meu carro (quem só assiste não tem)
 export const usavel = (id, assistindo) => !(assistindo && DE_DENTRO.has(id));
@@ -91,8 +95,17 @@ export function quadroCamera(R, o) {
   // quem só assiste, ou já passou a bandeirada, começa na TV; apertar C tira dela (e vale como escolha)
   const vendo = assistindo || acabou;
   if (R.camVendo !== vendo) { R.camVendo = vendo; R.camTv = vendo; if (vendo && !assistindo) toast("📺 Câmera de TV (C troca)", 2200); }
-  const mode = camEstado.modo = !vendo || !R.camTv ? (usavel(o.escolha, assistindo) ? o.escolha : "longe") : "tv";
+  const alvoModo = camEstado.modo = !vendo || !R.camTv ? (usavel(o.escolha, assistindo) ? o.escolha : "longe") : "tv";
   camEstado.assistindo = assistindo;
+  // a câmera que se vê muda no meio da varredura de TV (o corte fica escondido); sem varredura (movimento reduzido), na hora
+  if (C.modoVis == null || !usavel(C.modoVis, assistindo) || (DE_DENTRO.has(C.modoVis) && !kart)) { C.modoVis = alvoModo; C.modoQuando = null; }
+  if (C.modoVis !== alvoModo) {
+    const agora = performance.now();
+    if (C.modoQuando == null) { const d = transicaoF1({ rotulo: NOMES[alvoModo], rm }); if (d > 0) C.modoQuando = agora + d; else C.modoVis = alvoModo; }
+    if (C.modoQuando != null && agora >= C.modoQuando) { C.modoVis = alvoModo; C.modoQuando = null; }
+  } else C.modoQuando = null;
+  const mode = C.modoVis;
+  if (mode !== "cima") C.heli = null; // a aérea recomeça do carro quando volta
   const speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
   if (C.lastV == null) C.lastV = src.v || 0;
   const acelRaw = ((src.v || 0) - C.lastV) / Math.max(dt, 0.01);
@@ -103,7 +116,7 @@ export function quadroCamera(R, o) {
   const fovStep = 1 - Math.exp(-dt * 5), ctx = { ...o, C, R, speedK, fovStep, mode };
   if (kart) { const fora = !DE_DENTRO.has(mode); kart.roof.visible = kart.cabin.visible = fora; for (const b of kart.roofBits) b.visible = fora; } // de dentro, cabine, teto e faixa do teto tapariam a vista
   if (mode !== "perto" && mode !== "longe") guinada(C, src, dt, 5);
-  if (mode === "cima") aerea(ctx);
+  if (mode === "cima") aereaHeli(ctx);
   else if (mode === "cockpit") {
     const eyeU = kart.eye.u, eyeH = kart.eye.h, spec = o.spec;
     pov(ctx, { fo: (eyeU - spec.L / 2) * KS, eh: eyeH * KS, lift: 1.5, mira: 0.5, fov: 72, fovV: 22, rolar: 0.035, trem: 1, tremOff: 0.7, tremBatida: 1.6 });
@@ -161,22 +174,6 @@ function perseguicao(x) {
   cam.fov += ((near ? 62 : 56) + speedK * (rm ? 4 : near ? 20 : 17) + C.surge * 5 - cam.fov) * fovStep; cam.updateProjectionMatrix();
 }
 
-// de cima, como no Hades: a câmera fica no alto e na diagonal, sempre no mesmo ângulo (não gira com o kart), e só
-// segue o carro. A lente fechada (pouca perspectiva) dá a cara de jogo isométrico. Ela mira um pouco à frente para
-// onde o kart vai, para sobrar pista à vista, e se afasta um pouco quando ele corre
-function aerea(x) {
-  const { R, C, dt, src, rm, speedK, fovStep } = x;
-  const vx = Math.cos(src.a), vy = Math.sin(src.a), frente = 30 + speedK * 55, dist = 640 + speedK * (rm ? 40 : 140);
-  const alvo = V3(src.x + vx * frente, src.z || 0, src.y + vy * frente);
-  C.alvo = C.alvo ? C.alvo.lerp(alvo, 1 - Math.exp(-dt * 5)) : alvo.clone();
-  const el = 0.96, giro = Math.PI / 4; // 55° de inclinação, 45° na diagonal
-  const want = V3(C.alvo.x - Math.cos(giro) * Math.cos(el) * dist, C.alvo.y + Math.sin(el) * dist, C.alvo.z + Math.sin(giro) * Math.cos(el) * dist);
-  if (!C.pos) C.pos = want.clone(); else C.pos.lerp(want, 1 - Math.exp(-dt * 10));
-  cam.position.copy(C.pos);
-  if (R.shake > 0) { R.shake -= dt; if (!rm) { cam.position.x += (Math.random() - 0.5) * 3; cam.position.z += (Math.random() - 0.5) * 3; } }
-  cam.lookAt(C.pos.x + (C.alvo.x - want.x), C.pos.y + (C.alvo.y - want.y), C.pos.z + (C.alvo.z - want.z));
-  cam.fov += (24 - cam.fov) * fovStep; cam.updateProjectionMatrix();
-}
 // a guinada suavizada de C.a: as câmeras que não a usam a mantêm em dia, para a troca para a perseguição não girar de repente
 function guinada(C, src, dt, taxa) { let d = src.a - C.a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; C.a += d * (1 - Math.exp(-dt * taxa)); }
 
@@ -188,13 +185,20 @@ function tv(x) {
   const dist = (p) => Math.hypot(p.x - src.x, p.y - src.y);
   let melhor = 0, md = Infinity; postes.forEach((p, k) => { const d = dist(p); if (d < md) { md = d; melhor = k; } });
   const atual = postes[C.tvI];
-  if (!atual) { C.tvI = melhor; C.tvT = agora; }
-  else if (melhor !== C.tvI && agora - (C.tvT || 0) > 1400 && md < dist(atual) * 0.72) { C.tvI = melhor; C.tvT = agora; }
+  if (!atual) { C.tvI = melhor; C.tvT = agora; C.tvPend = null; C.tvZoom = true; }
+  else if (C.tvPend != null) { // o corte combinado com a varredura de TV: a câmera de antes segura até ela cobrir a tela
+    if (agora >= C.tvCorte) { C.tvI = C.tvPend; C.tvT = agora; C.tvPend = null; C.tvZoom = true; }
+  } else if (melhor !== C.tvI && agora - (C.tvT || 0) > 1400 && md < dist(atual) * 0.72) {
+    const d = transicaoF1({ rotulo: "Câmera " + (melhor + 1), rm });
+    if (d > 0) { C.tvPend = melhor; C.tvCorte = agora + d; } else { C.tvI = melhor; C.tvT = agora; C.tvZoom = true; }
+  }
   const p = postes[C.tvI], alvo = V3(src.x, (src.z || 0) + 7, src.y);
   C.tvAlvo = C.tvAlvo ? C.tvAlvo.lerp(alvo, 1 - Math.exp(-dt * 9)) : alvo.clone();
   cam.position.set(p.x, p.z, p.y); cam.lookAt(C.tvAlvo);
   const d = Math.max(60, Math.hypot(p.x - src.x, p.y - src.y, p.z - (src.z || 0)));
   const fovAlvo = lim(2 * Math.atan((70 + speedK * 40) / d) * 180 / Math.PI, 9, 62); // o carro (e um pouco de pista em volta) enche o quadro
-  cam.fov += (fovAlvo - cam.fov) * (1 - Math.exp(-dt * (rm ? 8 : 3.5))); cam.updateProjectionMatrix();
+  if (C.tvZoom) { C.tvZoom = false; cam.fov = fovAlvo; } // câmera nova: já entra com o zoom dela (o corte está escondido)
+  else cam.fov += (fovAlvo - cam.fov) * (1 - Math.exp(-dt * (rm ? 8 : 3.5)));
+  cam.updateProjectionMatrix();
   if (R.shake > 0) R.shake -= dt;
 }
