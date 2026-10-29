@@ -108,8 +108,8 @@ function iniciar(sala, pid, semente = Date.now()) {
   if (sala.fase !== "sala") throw Error("A temporada já começou.");
   const comEquipe = sala.ordem.filter((id) => sala.pessoas[id].equipe);
   if (!comEquipe.length) throw Error("Pelo menos uma pessoa precisa escolher uma equipe.");
-  const o = sala.opcoes, cal = Solo.CALENDARIO;
-  sala.calendario = (o.tamanho === 4 ? [cal[0], cal[2], cal[5], cal[7]] : cal).map(([pista, nome]) => ({ pista, nome }));
+  const o = sala.opcoes, sorteado = Solo.sortearCalendario(o.tamanho, semente); // o servidor sorteia: todos os clientes veem o mesmo
+  sala.calendario = sorteado.calendario; sala.calendarioSemente = sorteado.semente;
   sala.fase = "temporada"; sala.ano = 1; sala.gp = 0; sala.semente = semente; sala.resultados = []; sala.campeoes = []; sala.equipes = {}; sala.contratos = {};
   for (const id of comEquipe) { const p = sala.pessoas[id]; p.carro = humanosDa(sala, p.equipe).indexOf(id); if (!sala.equipes[p.equipe]) sala.equipes[p.equipe] = equipeNova(p.equipe); }
   for (const p of Pilotos.PILOTOS) {
@@ -245,6 +245,8 @@ function proximaTemporada(sala, pid) {
   if (sala.host !== pid) throw Error("Só o anfitrião abre a próxima temporada.");
   if (sala.fase !== "temporada" || sala.gp !== sala.opcoes.tamanho) throw Error("Termine o calendário primeiro.");
   sala.ano++; sala.gp = 0; sala.semente = Number(sala.semente) + 937;
+  const sorteado = Solo.sortearCalendario(sala.opcoes.tamanho, sala.semente, sala.calendario.map((g) => g.pista));
+  sala.calendario = sorteado.calendario; sala.calendarioSemente = sorteado.semente;
   for (const t of Object.values(sala.equipes)) { t.gasto = 0; t.versao++; }
   return sala;
 }
