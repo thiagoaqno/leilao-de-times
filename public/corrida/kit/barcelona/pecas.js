@@ -182,15 +182,15 @@ export function tribunaPrincipal({ comprimento: L = 1500, publico = 0.42, sement
  * O prédio dos boxes e da direção de prova, de frente para +z (a frente em z = 0, cresce para -z), centrado em x. O térreo tem os portões de enrolar
  * vermelhos; em cima, dois andares de varandas brancas e vidro escuro; o telhado sai em balanço; torres redondas de escada nas pontas e
  * a torre de controle de prova, toda de vidro, no meio.
- * @param {object} o · comprimento (1200) · fundo (62) · @returns {THREE.Group} com userData { largura, profundidade, alto, torre: { x, z, y } }
+ * @param {object} o · comprimento (1200) · fundo (62) · passoGaragem (60: a distância entre os portões; no jogo, a das garagens do corredor dos boxes) · @returns {THREE.Group} com userData { largura, profundidade, alto, torre: { x, z, y } }
  */
-export function complexoDosBoxes({ comprimento: L = 1200, fundo: D = 62 } = {}) {
+export function complexoDosBoxes({ comprimento: L = 1200, fundo: D = 62, passoGaragem = 60 } = {}) {
   const m = new Montador(), S = solido(), V = vidro(), BRANCO = "#ecebe6", CINZA = "#b9bbbe";
   const garagens = comTextura(texGaragens()), janelas = comTextura(texVidro()), fundos = comTextura(texJanelas());
   m.caixa(S, [0, -4, -D / 2 + 4], [L + 24, 8, D + 20], { cor: "#a8a59c" }); // a laje do chão
   // o térreo: as garagens
   m.caixa(S, [0, 12, -D / 2], [L, 24, D - 0.4], { cor: BRANCO });
-  m.plano(garagens, [0, 12, 0.15], [L, 24], { uv: [L / 60, 1] });
+  m.plano(garagens, [0, 12, 0.15], [L, 24], { uv: [L / passoGaragem, 1] }); // um portão por garagem do jogo: `passoGaragem` é a distância entre elas (corredor dos boxes)
   // primeiro andar: varanda de 20 de profundidade e a parede de vidro escuro recuada
   m.caixa(S, [0, 25.5, 9], [L + 4, 3, 22], { cor: BRANCO });
   m.caixa(V, [0, 27.4, 19.6], [L + 4, 4, 0.5], { cor: "#a9c0d1" }); // o guarda-corpo de vidro

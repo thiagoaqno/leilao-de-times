@@ -46,13 +46,15 @@ function quadroDaReta(tr, add) {
 function reta(tr, { add }) {
   const { g, p, mundo, reservar } = quadroDaReta(tr, add), { n, W } = tr;
   const Z = W / 2 + 88, zT = -(W / 2 + 62); // a frente do prédio dos boxes (depois do corredor e das garagens do kit) e a da tribuna principal
-  // Onde cada coisa fica ao longo da reta (x = 0 é a linha de chegada, o pórtico). O corredor do jogo (pistas.js, `boxes`) começa 164 depois da linha, as
-  // 10 garagens vão de 277 a 555 e a saída é em 669: o prédio tem de cobrir isso tudo e ainda passar da linha para trás, senão os boxes ficam todos à
-  // frente da chegada. Como em Montmeló, a linha de chegada fica no meio da reta, em frente ao prédio e à tribuna (não no começo deles).
-  const xP = 200, compP = 1300; // o prédio dos boxes: de -450 a 850 (a passarela de 0,962 fica em -527, fora dele)
-  const xT = 250, comp = 1500; // a tribuna principal, do outro lado: de -500 a 1000
+  // Onde cada coisa fica ao longo da reta (x = 0 é a linha de chegada, o pórtico). O corredor do jogo (pistas.js, `BOXES.barcelona`: entra 0,9818, para 0,
+  // sai 0,0182) é simétrico em volta da linha: a entrada em -252, as 10 garagens centradas nela (a distância entre elas, `passo`, vem do próprio corredor
+  // e as portas do prédio têm esse passo, uma por garagem, então coincidem com qualquer número de carros: cada carro usa a garagem `grid % 10`) e a
+  // saída em +252. Como em Montmeló, a linha de chegada fica no meio da reta, em frente ao meio do prédio (onde está a torre) e da tribuna.
+  const cor = window.F1Regras?.corredor(tr.t, n, W), passo = cor ? cor.gap * 6 : 31.2;
+  const xP = 0, compP = Math.round(passo * 30); // o prédio dos boxes, de -468 a 468 (30 portas; a passarela de 0,962 fica em -527, fora dele)
+  const xT = 0, comp = 1000; // a tribuna principal, do outro lado: de -500 a 500
   // o prédio dos boxes: as garagens do kit (corredor dos boxes) ficam na frente; atrás delas, as varandas, o clube e a torre de controle
-  const predio = complexoDosBoxes({ comprimento: compP, fundo: 62 });
+  const predio = complexoDosBoxes({ comprimento: compP, fundo: 62, passoGaragem: passo });
   predio.position.set(xP, -0.3, Z); predio.rotation.y = Math.PI; g.add(predio);
   tr.torreDeControleBCN = { x: xP, z: Z + 62 - 30 };
   // a tribuna principal, do outro lado: a asa de alumínio sobre os dois lances de degraus vermelhos e brancos

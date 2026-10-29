@@ -1021,7 +1021,7 @@ const PISTAS = {
 // meio das 10 garagens e `lado` é o lado da reta (1 ou -1; o de dentro da pista).
 const BOXES = {
   interlagos: { entra: 0.9806, para: 0, sai: 0.0194, lado: 1 },
-  barcelona: { entra: 0.0118, para: 0.03, sai: 0.0482, lado: 1 },
+  barcelona: { entra: 0.9818, para: 0, sai: 0.0182, lado: 1 }, // o corredor de 505 em volta da linha de chegada (as 10 garagens centradas nela), como Interlagos e Monza: a entrada vem antes da linha, então a parada na penúltima volta ainda vale
   monaco: { entra: 0.9805, para: 0, sai: 0.0195, lado: 1 }, // sem garagens (gps/monaco.js)
   deserto: { entra: 0.9856, para: 0.005, sai: 0.0244, lado: 1 },
   tokyo: { entra: 0.9807, para: 0, sai: 0.0193, lado: -1 },
