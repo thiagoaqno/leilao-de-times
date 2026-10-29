@@ -110,7 +110,7 @@ test("understeer e oversteer: passou do limite, o carro sai de frente; acelerand
   assert.ok(p.massa > 700 && p.massa < 1000 && p.Iz > 800, "massa e inércia de guinada de um F1");
 });
 
-test("pneu macio vira perto do arcade; frear e virar juntos continua possível", () => {
+test("os três compostos viram igual (a resposta do volante é a mesma); frear e virar juntos continua possível", () => {
   const p = D.parametros(mclaren);
   const guinada = (v, composto) => {
     const c = D.novoCarro(); c.v = v; c.marcha = D.marchaIdeal(v, mclaren.vmax);
@@ -123,10 +123,10 @@ test("pneu macio vira perto do arcade; frear e virar juntos continua possível",
   };
   for (const v of [80, 160, 200]) {
     const arcade = mclaren.turn * Math.min(1, v / 90);
-    const macio = guinada(v, "macio"), duro = guinada(v, "duro");
-    assert.ok(macio > arcade * 0.55 && macio <= arcade * 1.05,
-      `${v} u/s: macio ${macio} rad/s, arcade ${arcade}`);
-    if (v >= 160) assert.ok(macio > duro * 1.1, `${v} u/s: macio ${macio}, duro ${duro}`);
+    const macio = guinada(v, "macio"), medio = guinada(v, "medio"), duro = guinada(v, "duro");
+    assert.ok(macio > arcade * 0.55 && macio <= arcade * 1.05, `${v} u/s: macio ${macio} rad/s, arcade ${arcade}`);
+    // a resposta da direção (guinada) não depende do composto: quem muda é o limite de aderência
+    assert.ok(Math.abs(medio / macio - 1) < 0.02 && Math.abs(duro / macio - 1) < 0.02, `${v} u/s: macio ${macio}, médio ${medio}, duro ${duro}`);
   }
   const curva = (brake) => {
     const c = D.novoCarro(); c.v = 200; c.marcha = 6;
@@ -245,8 +245,11 @@ test("os robôs podem usar as contas: velocidade de curva, frenagem e aceleraç�
 
 test("um grampo não se faz com o acelerador cheio, mas o piloto ideal (no limite de aderência) faz a volta", () => {
   // o piloto: segue o meio da pista (S.pilotoAutomatico) com a velocidade do perfil ideal, ou com o acelerador cheio
+  // (o pneu novo, de qualquer composto, é o arcade, que aguenta uma volta inteira com o acelerador cheio; quem segura o acelerador no pneu acabado,
+  // da física intermediária, é que sai da pista)
   const voltaDe = (id, ideal, equipe = "mclaren") => {
     const t = T.PISTAS[id], tr = S.criarPista(t, id), spec = Equipes.specDaEquipe(equipe), c = S.novo(tr, { grid: 0, f1: true, pneu: F1.pneuNovo("medio") });
+    if (!ideal) c.pneu.desgaste = 0.9;
     const perfil = D.perfilIdeal(tr.pts, spec, 6, 0.92), amb = { spec, voltas: 3, laps: 0, f1: true, outros: [] }, ent = {}, ev = [];
     let setores = 0, maxLat = 0, tempo = 0, batidas = 0, saiu = null;
     for (let i = 0; i < 120 * 200; i++) {
@@ -331,14 +334,21 @@ function lateralEmCurva(composto, desgaste, v0) {
   const a0 = c.a; for (let i = 0; i < 60; i++) passo();
   return Math.abs(c.a - a0) / (60 * D.PASSO) * c.v;
 }
-test("pneu macio novo usa a dirigibilidade arcade (grudada); acabado, a intermediária e pior que o médio novo", () => {
-  assert.equal(F1.aderencia({ composto: "macio", desgaste: 0, temp: 0.75 }).arcade, true);
-  assert.equal(F1.aderencia({ composto: "macio", desgaste: F1.PENHASCO, temp: 0.75 }).arcade, true);
-  assert.equal(F1.aderencia({ composto: "macio", desgaste: 0.9, temp: 0.75 }).arcade, false);
-  assert.equal(F1.aderencia({ composto: "medio", desgaste: 0, temp: 0.75 }).arcade, false);
-  for (const v of [100, 180]) {
-    const novo = lateralEmCurva("macio", 0, v), medio = lateralEmCurva("medio", 0, v), acabado = lateralEmCurva("macio", 0.9, v);
-    assert.ok(novo > medio * 1.15, `${v}: macio novo ${novo.toFixed(0)} vs médio ${medio.toFixed(0)}`);
+test("os três compostos novos usam a dirigibilidade arcade (grudada); acabados, a intermediária e pior que o médio novo", () => {
+  for (const c of ["macio", "medio", "duro"]) {
+    assert.equal(F1.aderencia({ composto: c, desgaste: 0, temp: 0.75 }).arcade, true, c);
+    assert.equal(F1.aderencia({ composto: c, desgaste: F1.PENHASCO, temp: 0.75 }).arcade, true, c);
+    assert.equal(F1.aderencia({ composto: c, desgaste: 0.9, temp: 0.75 }).arcade, false, c);
+  }
+  for (const v of [100, 140]) { // o volante cheio pede menos que o pneu segura: os três respondem exatamente igual
+    const macio = lateralEmCurva("macio", 0, v), medio = lateralEmCurva("medio", 0, v), duro = lateralEmCurva("duro", 0, v);
+    assert.ok(Math.abs(medio / macio - 1) < 0.01 && Math.abs(duro / macio - 1) < 0.01, `${v}: macio ${macio.toFixed(0)}, médio ${medio.toFixed(0)}, duro ${duro.toFixed(0)}`);
+  }
+  for (const v of [100, 180, 280]) {
+    const medio = lateralEmCurva("medio", 0, v), acabado = lateralEmCurva("macio", 0.9, v);
     assert.ok(acabado < medio, `${v}: macio acabado ${acabado.toFixed(0)} vs médio novo ${medio.toFixed(0)}`);
   }
+  // em alta o pneu satura: o limite cai de macio para duro, só um pouco (sem degrau)
+  const macio = lateralEmCurva("macio", 0, 280), medio = lateralEmCurva("medio", 0, 280), duro = lateralEmCurva("duro", 0, 280);
+  assert.ok(macio > duro && medio > macio * 0.9 && duro > macio * 0.85, `280: macio ${macio.toFixed(0)}, médio ${medio.toFixed(0)}, duro ${duro.toFixed(0)}`);
 });
