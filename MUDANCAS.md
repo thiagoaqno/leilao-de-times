@@ -1,42 +1,30 @@
-# Monza refeita em cima do kit 2
+# Spa-Francorchamps: cenário próprio na Corrida
 
-O cenário do GP da Itália (`gps/monza.js`) foi refeito do zero: o `monza.js` antigo, de antes do kit 2, saiu, e entraram `monza.js` (a montagem) e `kit/monza/` (as peças exclusivas, todas em código, sem modelo 3D baixado). Não mexe em traçado, física, robôs, regras, HUD, menus, sala nem carreira.
+O GP da Bélgica (`gps/spa.js`) deixou de ser o "GP simples" do kit e ganhou cenário próprio, em cima do kit 2: `spa.js` (a montagem) e `kit/spa/` (peças exclusivas, só código, sem modelo 3D baixado). Sem marcas registradas de patrocinadores (os painéis são nomes de lugar e de comida da Bélgica). Não mexe em traçado (`pistas.js`), física, robôs, regras, HUD, menus, sala nem carreira; em `cena.js` só o `LOOK.spa` (céu nublado das Ardenas, luz mais baixa).
 
-**A reta dos boxes** (um quadro só, `reta` em `monza.js`: +x ao longo da pista, +z para o lado dos boxes)
-- Prédio dos boxes com o Paddock Club (`complexoDosBoxes`): portas das garagens, marquise com a faixa tricolore, vidro, terraço com 12 velas brancas e letreiros do parapeito.
-- **Pódio suspenso** (`podioMonza`): torre de concreto sobre o prédio e a caixa que avança 12,8 m sobre a reta (a ponta fica a 20 da linha central), a 9,8 m de altura, com faixa de vidro, letreiro GRAN PREMIO D'ITALIA, estais de aço, o palco de piso vermelho com os três degraus e o painel de patrocínio.
-- **Tribuna Centrale** em frente (4 módulos de `tribunaCoberta`, cobertos, de torcida vermelha: opção nova `camisas`), duas **torres de cronometragem** de 1955 atrás dela (placar luminoso nos dois lados), torres de luz e o paddock atrás dos boxes (motorhomes, tendas e carretas).
-- A faixa AUTODROMO NAZIONALE MONZA no pórtico da largada de `pista.js`, **de frente para os carros** (normal contra o sentido da volta; conferido na malha).
+## Onde fica cada marco (frações da volta)
+- **Reta dos boxes (0,965-1,015):** prédio das garagens com Paddock Club e torre de controle de vidro (lado de dentro da La Source); tribuna principal coberta (3 módulos, torcida laranja e belga) do outro lado, com o paddock (carretas, tendas) e o estacionamento atrás; pórtico da largada com a faixa do circuito, perpendicular à pista e de frente para os carros (conferido na malha).
+- **La Source (0,037):** arquibancada por fora do grampo, casas de enxaimel, escape vermelho e amarelo, muro de pneus.
+- **Descida e Eau Rouge (0,055-0,125), Raidillon (0,125-0,185):** riacho de água avermelhada sob a pista, tribuna gigante de três andares com cobertura escura por fora, arquibancada e encosta de torcida por dentro, casa branca do topo, acampamento laranja.
+- **Kemmel (0,19-0,31):** corredor de abetos. **Les Combes (0,32-0,36), Malmedy (0,365), Bruxelles (0,42), Pouhon (0,515-0,575, asfalto verde-água e encosta cheia), Fagnes (0,625), Stavelot (0,69, sítio), Blanchimont (0,82-0,88, acampamento laranja), Bus Stop (0,945-0,96).**
+- Em toda a volta: barreira de aço ondulada com cerca de arame verde, placas de frenagem 200/100/50, placas com o nome de cada curva, bandeiras da Bélgica nos mastros, torcida de pé e sentada nas encostas (laranja, belgas, capas de chuva) com bandeiras da Bélgica, da Holanda e laranja, abetal denso com bétulas e faias, morros verdes e mata de longe.
 
-**O resto da volta**
-- **Sopraelevata** (`kit/monza/sopraelevata.js`): concreto com lajes e mato, parapeito, torrinhas de sinalização, moitas em volta e a ponte sobre o Serraglio.
-- **Parabolica**: escape de asfalto cinza com a linha branca, muro de pneus e tribunas por fora (uma coberta); a brita saiu dela (é asfalto desde 2014). Brita e pneus nas Lesmo e na Biassono; escape listrado de vermelho e branco e zebras altas nas chicanes.
-- Placas com o nome de cada curva, arquibancadas de curva do kit (Rettifilo por dentro e por fora, Curva Grande, Roggia, Lesmo, Ascari, reta de trás) com as bandeiras da Itália e dos tifosi nos degraus.
-- **Parque** (`kit/monza/parque.js`): bosque de árvores altas de copa em dois lóbulos (verdes com um pouco de amarelo e cobre de setembro), moitas, folhas caídas, gramado em faixas e o velho carvalho do Ascari.
-- Luz de fim de tarde de setembro (`LOOK.monza` e `THEMES.monza`: sol dourado, neblina quente).
+## Referências por imagem (Wikimedia Commons)
+Fotos baixadas só para estudo (não vão no repositório):
+- Tribuna do Raidillon: https://commons.wikimedia.org/wiki/File:2022_6_Hours_of_Spa-Francorchamps_-_Eau_Rouge_Corner.jpg (volume de três andares, cobertura inclinada escura, pinheiros atrás, zebras vermelhas e amarelas) e https://commons.wikimedia.org/wiki/File:2022_6_Hours_of_Spa-Francorchamps_-_Eau_Rouge_Corner_stands.jpg (casa de enxaimel, cerca, descida).
+- Raidillon, casa branca e barreira: https://commons.wikimedia.org/wiki/File:Kurve_Eau_Rouge-Raidillon.jpg (armco galvanizada, cerca verde, casa de telhado escuro, pinheiros).
+- La Source (escape pintado): https://commons.wikimedia.org/wiki/File:La_Source_(4948348181).jpg (listras radiais vermelhas e amarelas).
+- Prédio dos boxes: https://commons.wikimedia.org/wiki/File:LaSource.jpg (pontas de tijolo, faixa de vidro, teto branco) e https://commons.wikimedia.org/wiki/File:2022_Le_Mans_Cup_-_Pit_lane_at_Spa.jpg (térreo de concreto com portões, vidro por cima).
+- Kemmel: https://commons.wikimedia.org/wiki/File:24H2CV_2017_Kemmel_straight.jpg (reta entre bosque de abetos e folhosas, cerca e armco).
+- Pouhon e torcida: https://commons.wikimedia.org/wiki/File:Pouhon_(4949034496).jpg (faixa verde-água, zebra vermelha e branca, cerca de arame, gente na encosta) e https://commons.wikimedia.org/wiki/File:Belgian_GP_-_Pouhon_Corner_(20718657840).jpg.
+- Bus Stop e placas 200/100: https://commons.wikimedia.org/wiki/File:Bus_stop_to_Kemel_(4956806379).jpg e a foto de Les Combes (https://commons.wikimedia.org/wiki/File:GP2_Les_Combes_(4957423996).jpg).
+- Panorama, floresta e sítio: https://commons.wikimedia.org/wiki/File:Spa-Francorchamps_overview.jpg e a imagem de satélite https://commons.wikimedia.org/wiki/File:Circuit_de_Spa-Francorchamps,_April_22,_2018_SkySat_(cropped).jpg (quadras de abetal escuro, folhosas claras, pastos, sítio na volta de Stavelot).
+- Torcida: https://commons.wikimedia.org/wiki/File:Lewis_Hamilton_fans_2011_Belgian_GP_(17889251050).jpg (capas de chuva, bandeiras) e https://commons.wikimedia.org/wiki/File:Spa_Francorchamps_Belgique_2011.jpg (tribuna de cobertura vermelha ao fundo).
 
-**Desempenho** (`node tests/ajuda-cena/medir.mjs monza`): na vista do jogo, cerca de 210 chamadas de desenho e 430 a 450 mil triângulos (Suzuka: 207 e 459 mil; o Monza antigo: 175 e 361 mil); menos de 400 malhas na cena (teto 520). Árvores, moitas, folhas, bandeiras, torres de luz e pneus são InstancedMesh; as peças soltas têm uma malha por material.
+## Conferido (scripts de Node, sem navegador)
+- A cena monta; **0 invasões** da pista (`tests/ajuda-cena/invasao.mjs`).
+- ~203 chamadas de desenho por quadro na vista do jogo (Monza e Suzuka: 207), ~500 mil triângulos na vista, 382 malhas na cena.
+- Não rodei testes nem abri o navegador (quem joga e testa é o Thiago).
 
-**Conferido**: a montagem da cena no Node roda sem erro, nenhuma peça fica dentro da pista (`invasoes` do `tests/ajuda-cena`, 0 achados) e a fusão de malhas não aumenta a contagem. **Não conferido**: o navegador (o Thiago joga e testa); as proporções e as cores foram feitas a partir de texto, não de fotos.
-
-**Docs**: linha de Monza no `CLAUDE.md`, parágrafo e opção `camisas` no `kit/README.md`.
-
-## Referências usadas (marco por marco)
-
-Aviso honesto: as ferramentas de pesquisa desta sessão só leem **texto** (páginas, legendas, descrições de arquivo); não consegui abrir as fotos em si. Cada marco abaixo foi feito a partir do que essas páginas dizem sobre ele (forma, posição, material, medidas). As cores, as proporções finas e o desenho dos prédios são interpretação minha, em cima de nome, texto e legenda, e merecem o olho do Thiago jogando. Nenhuma imagem foi baixada nem salva no repositório; as texturas são geradas em canvas.
-
-| Marco | Referência | O que foi copiado dela |
-| --- | --- | --- |
-| Traçado, ordem e nome das curvas, reta de 1,12 km, zebras altas nas duas primeiras chicanes | https://en.wikipedia.org/wiki/Monza_Circuit | A ordem Rettifilo, Curva Grande, Roggia, Lesmo, Ascari, Parabolica (Curva Alboreto); as zebras altas de Rettifilo e Roggia; o parque ao redor; o anel com ~30° de inclinação |
-| Pódio suspenso | https://www.monzanet.it/en/leclerc-and-the-iconic-elements-of-the-temple-of-speed-in-the-image-of-the-94th-italian-grand-prix/ e https://www.grandprix.com/news/paddock-renovation-work-for-monza.html | Pódio de 2002 que avança sobre a pista para o povo invadir; o antigo era um portal com duas torres art déco, por isso a torre de concreto branco sobre o prédio dos boxes |
-| Prédio dos boxes e Paddock Club | mesmas páginas do monzanet e do grandprix.com; https://commons.wikimedia.org/wiki/File:Monza_pitlane.jpg | Prédio moderno com hospitalidade, escritórios e centro de mídia atrás do pit lane; terraço coberto por estrutura tensionada (velas brancas) |
-| Torres de cronometragem | https://www.monzanet.it/en/leclerc-and-the-iconic-elements-of-the-temple-of-speed-in-the-image-of-the-94th-italian-grand-prix/ | Duas torres de 1955 na reta, com placar luminoso, hospitalidade desde 1997 |
-| Tribuna Centrale e pórtico da largada | https://commons.wikimedia.org/wiki/File:Monza_start_line.jpg e o guia de arquibancadas https://ticket-compare.com/circuits/autodromo-nazionale-monza/seating-plan/ | Tribuna em frente ao pit lane e ao pódio, com as fileiras de cima cobertas e as de baixo abertas; a linha de largada com o pórtico (a faixa fica perpendicular à pista, de frente para os carros: conferido pela normal da malha) |
-| Variante del Rettifilo | https://en.wikipedia.org/wiki/Monza_Circuit e o guia de arquibancadas | Frenagem forte no fim da reta; arquibancadas por dentro (6A a 6C) e por fora (8A e 8B); escape de asfalto listrado e zebras altas |
-| Curva Grande e Biassono | https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | Curva longa à direita, em meio às árvores; brita na saída da Biassono; árvores derrubadas só para alargar o escape |
-| Variante della Roggia | https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | Escape todo de asfalto, com zebras altas |
-| Lesmo 1 e 2 | https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | Brita na saída e muro de pneus, com as árvores quase na beira |
-| Variante Ascari | https://commons.wikimedia.org/wiki/Category:Variante_Ascari e https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | O grande carvalho (Curva del Platano) que sobrou na beira de dentro; as zebras altas |
-| Parabolica (Curva Alboreto) | https://commons.wikimedia.org/wiki/Category:Curva_parabolica_(Autodromo_Nazionale_Monza) e o guia de arquibancadas | Escape de asfalto desde 2014 (sem brita); várias tribunas temporárias por fora, só uma coberta |
-| Sopraelevata | https://commons.wikimedia.org/wiki/File:Monza_banking_2003.JPG e https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | Concreto armado com inclinação crescente (até uns 38°), as 14 torrinhas de sinalização (7 no anel), o trecho que cruza o Serraglio por cima; o traçado do anel já vinha do OpenStreetMap |
-| Parque | https://en.wikipedia.org/wiki/Monza_Circuit | Autódromo no meio do bosque do Parco di Monza |
+## Ficou de fora
+Sem modelo 3D nem textura baixada; sem animação própria; os painéis de patrocinador reais não entram; Speaker's Corner e Campus sem placa.
