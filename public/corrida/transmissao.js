@@ -56,12 +56,13 @@ export function medirPista(pts) {
 }
 // clima estimado: igual para todos da sala (a semente do GP), só para a transmissão
 export function climaDoGP(S) {
-  const id = S.config.pista, info = infoDe(id), noite = S.config.hora === "noite", ceu = info[3];
+  const id = S.config.pista, info = infoDe(id), noite = S.config.hora === "noite", pp = S.previsao ? S.previsao.p : 0;
+  const ceu = Math.max(info[3], pp >= 0.5 ? 2 : pp >= 0.25 ? 1 : 0); // (com chuva prevista o céu não fica limpo)
   const r = (k) => hash(`${S.semente}:${id}:${k}`);
   const ar = Math.round(info[2] + (r("ar") - 0.5) * 6 - (noite ? 5 : 0));
   const pista = Math.round(ar + (noite ? 2 + r("pista") * 3 : [16, 11, 6][ceu] + r("pista") * 4));
   const cond = noite ? ["Noite limpa", "Noite de nuvens ralas", "Noite nublada"][ceu] : ["Ensolarado", "Parcialmente nublado", "Nublado"][ceu];
-  return { cond, ar, pista, umidade: Math.round(35 + ceu * 14 + r("umid") * 18 + (noite ? 8 : 0)), vento: Math.round(5 + r("vento") * 17) };
+  return { cond, ar, pista, umidade: Math.min(95, Math.round(35 + ceu * 14 + r("umid") * 18 + (noite ? 8 : 0) + pp * 20)), vento: Math.round(5 + r("vento") * 17) };
 }
 // o ponto da pista na posição fracionária `f` (volta fechada)
 function ponto(tr, f) {
@@ -187,18 +188,19 @@ function cartaPista(S, tr, med) {
     <h3>${esc(info[1])}</h3><div class="tvMiniBox"><canvas class="tvMini" width="320" height="220"></canvas><i class="tvPonto"></i></div>
     <dl>${celula("Extensão", `${km.toFixed(2).replace(".", ",")} km`)}${celula("Voltas", voltas)}${celula("Distância", `${(km * voltas).toFixed(1).replace(".", ",")} km`)}${celula("Curvas", `~${med.curvas}`)}${celula("Zonas de DRS", drs || "—")}${celula("Recorde", "—", "tvRecorde")}</dl></div>`;
 }
-// o clima de verdade da corrida (o roteiro sorteado no servidor, S.clima): como a pista larga e se há chuva a caminho
+// o clima de verdade da corrida (o roteiro sorteado no servidor, S.clima): como a pista larga (a previsão é que fala da chuva que vem)
 function climaReal(S) {
   const F = window.F1Regras, ini = F && S.clima ? F.climaEm(S.clima, S.clima.t0) : null;
   if (!ini || !S.clima.chove) return { cond: null, pista: "Seca", umidade: 0 };
   if (ini.chuva) return { cond: ini.garoa ? "Garoa" : "Chovendo", pista: ini.encharcada ? "Encharcada" : "Molhada", umidade: 90 };
   if (ini.molhada) return { cond: "Pista molhada, secando", pista: "Molhada", umidade: 80 };
-  return { cond: "Chance de chuva", pista: "Seca", umidade: 75 };
+  return { cond: null, pista: "Seca", umidade: 0 }; // (seco na largada: a chuva que ainda vem não se adianta, só a previsão fala dela)
 }
 function cartaClima(S) {
   const c = climaDoGP(S), r = climaReal(S), m = me(), pn = m && window.F1Regras && window.F1Regras.PNEUS[m.pneu];
   const celula = (rot, val) => `<div><dt>${rot}</dt><dd>${val}</dd></div>`;
-  return `<div class="tvCarta tvClima" data-b="clima"><div class="tvKicker">Condições da corrida</div><h3>${r.cond || c.cond}</h3>
+  const prev = S.previsao && window.PrevisaoUI ? window.PrevisaoUI.html(S.previsao, { voltas: S.config.voltas, titulo: "Previsão da corrida" }) : "";
+  return `<div class="tvCarta tvClima" data-b="clima"><div class="tvKicker">Condições da corrida</div><h3>${r.cond || c.cond}</h3>${prev}
     <dl>${celula("Ar", `${c.ar}°C`)}${celula("Pista", `${c.pista}°C`)}${celula("Umidade", `${Math.max(c.umidade, r.umidade)}%`)}${celula("Vento", `${c.vento} km/h`)}${celula("Pista", r.pista)}${pn ? celula("Seu pneu", `<u class="pn" style="--c:${pn.cor}"></u> ${esc(pn.nome)}`) : ""}</dl></div>`;
 }
 function cartaCampeonato(S) {
