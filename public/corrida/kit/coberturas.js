@@ -75,11 +75,11 @@ const CAMISAS = ["#ffffff", "#e63946", "#ffd23f", "#1b1b1b", "#ff7ad9", "#43a047
  * @param {number} [o.comprimento=200] · @param {number} [o.degraus=8] · @param {number} [o.altura=5] subida de cada degrau · @param {number} [o.fundo=7.5] profundidade de cada degrau
  * @param {string[]} [o.cores=["#2f5fd0","#6a45c8"]] assentos, alternando a cada seção · @param {number} [o.secoes=4]
  * @param {string|null} [o.cobertura="#f6f6f4"] cor dos painéis (`null` deixa aberta) · @param {string} [o.estrutura="#8a9096"] o aço · @param {number} [o.vao=40] distância entre colunas
- * @param {number} [o.publico=0.3] de 0 (vazia) a 1 (lotada) · @param {boolean} [o.colunas=true] · @param {number} [o.semente=7] · @param {number} [o.alcance=0.7] fração de trás coberta (1 = tudo) · @param {number} [o.folga=14] altura livre da cobertura acima dos degraus
+ * @param {string[]} [o.camisas] as cores das camisas da torcida (padrão: variadas; Monza veste vermelho) · @param {number} [o.publico=0.3] de 0 (vazia) a 1 (lotada) · @param {boolean} [o.colunas=true] · @param {number} [o.semente=7] · @param {number} [o.alcance=0.7] fração de trás coberta (1 = tudo) · @param {number} [o.folga=14] altura livre da cobertura acima dos degraus
  * @returns {THREE.Group} com userData.largura/profundidade/alto
  */
 export function tribunaCoberta({ comprimento = 200, degraus = 8, altura = 5, fundo = 7.5, cores = ["#2f5fd0", "#6a45c8"], secoes = 4, cobertura = "#f6f6f4", estrutura = "#8a9096",
-  vao = 40, publico = 0.3, colunas = true, semente = 7, alcance = 0.7, folga = 14 } = {}) {
+  vao = 40, publico = 0.3, colunas = true, semente = 7, alcance = 0.7, folga = 14, camisas = CAMISAS } = {}) {
   const m = new Montador(), S = solido(), r = rnd(semente), L = comprimento, D = degraus * fundo, sL = L / secoes, x0 = -L / 2;
   for (let k = 0; k < degraus; k++) {
     const top = (k + 1) * altura, zc = -(k + 0.5) * fundo;
@@ -89,7 +89,7 @@ export function tribunaCoberta({ comprimento = 200, degraus = 8, altura = 5, fun
       m.caixa(S, [xc, top + 0.15, zc + fundo * 0.12], [sL - 0.4, 0.4, fundo * 0.7], { cor: tom(cor, 1.18) }); // o assento
       if (publico > 0) for (let q = 0; q < sL - 3; q += 2.6) if (r() < publico) {
         const px = xc - sL / 2 + 1.6 + q + r() * 0.6, pz = zc - fundo * 0.15;
-        m.caixa(S, [px, top + 1.9, pz], [1.9, 2.8, 1.5], { cor: CAMISAS[(r() * CAMISAS.length) | 0] }); m.caixa(S, [px, top + 3.9, pz], [1.3, 1.3, 1.3], { cor: PELES[(r() * 4) | 0] });
+        m.caixa(S, [px, top + 1.9, pz], [1.9, 2.8, 1.5], { cor: camisas[(r() * camisas.length) | 0] }); m.caixa(S, [px, top + 3.9, pz], [1.3, 1.3, 1.3], { cor: PELES[(r() * 4) | 0] });
       }
     }
     for (let s = 1; s < secoes; s++) m.caixa(S, [x0 + s * sL, top / 2 + 0.2, zc], [1, top + 0.4, fundo], { cor: "#e6e8ea" }); // os corredores entre as seções

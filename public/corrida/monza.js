@@ -1,93 +1,248 @@
-// Monza — o que só o autódromo tem: a velha pista oval inclinada (a Sopraelevata) aparecendo ao lado da Curva Grande, do
-// Serraglio e da Parabolica, e o pódio pendurado sobre a reta dos boxes. O resto vem do kit (gps/monza.js).
+// Monza (Autodromo Nazionale Monza, dentro do Parco di Monza): o que só o autódromo tem, em cima do kit 2. O resto (zebras vermelhas e
+// brancas, escape de asfalto pintado nas chicanes e de brita nas Lesmo, pneus, arquibancadas de curva, painéis, passarelas, serra e som)
+// é do kit, na configuração de gps/monza.js. Aqui, na ordem em que aparecem pela volta:
+// 1. a reta dos boxes (um quadro só, com o x ao longo da pista e o z para o lado dos boxes): o prédio dos boxes com o Paddock Club, o pódio
+//    suspenso que avança sobre a reta, a Tribuna Centrale de frente para ele (kit 2: tribunaCoberta, de torcida vermelha), as duas torres de
+//    cronometragem de 1955, as torres de luz e o paddock atrás (motorhomes, tendas e carretas);
+// 2. a Sopraelevata, o velho anel inclinado de concreto, visível no parque (kit/monza/sopraelevata.js);
+// 3. as placas com o nome de cada curva (Rettifilo, Curva Grande, Roggia, Lesmo 1 e 2, Serraglio, Ascari e Parabolica);
+// 4. o parque: o bosque alto e denso, as moitas, as folhas caídas, o gramado em faixas e o velho carvalho do Ascari (kit/monza/parque.js);
+// 5. as bandeiras da Itália e dos tifosi nas arquibancadas e a faixa "AUTODROMO NAZIONALE MONZA" no pórtico da largada.
+// O pórtico da largada é o de pista.js (as cinco luzes): atravessa a pista na linha de chegada e a faixa fica DE FRENTE para os carros
+// (a normal aponta contra o sentido da volta), como a de Suzuka e Silverstone. Tudo é cenário: nada fica dentro da pista (livre/ocupado).
 import * as THREE from "three";
 import { canvasTex, M } from "./cena.js";
-import { desenharMarca, marcaTex } from "./kit/marcas.js";
+import { marcaTex } from "./kit/marcas.js";
+import { instancias, lotes, tira, sorteio, sinalDaCurva, ocupado } from "./kit/comum.js";
+import { tribunaCoberta, tendaPaddock } from "./kit/coberturas.js";
+import { boxEquipe } from "./kit/box-equipe.js";
+import { Montador, solido } from "./kit/montagem.js";
+import { sopraelevata } from "./kit/monza/sopraelevata.js";
+import { complexoDosBoxes, podioMonza, torreCronometragem, torreDeLuz, bandeiraItalia, bandeiraTifosi } from "./kit/monza/pecas.js";
+import { bosque, folhasCaidas, gramado, carvalhoDoAscari } from "./kit/monza/parque.js";
 
-// a linha central do anel de alta velocidade (OpenStreetMap), nas coordenadas do traçado (quadrado de 1600): as duas
-// curvas inclinadas (a norte, que passa por cima do Serraglio, e a sul, ao lado da Parabolica) e a reta de leste
-const ANEL = [[500, 539], [514, 527], [528, 517], [547, 505], [562, 497], [587, 486], [605, 481], [621, 478], [637, 476], [654, 476], [673, 477], [690, 479], [713, 485], [733, 490], [748, 495], [765, 504], [784, 514], [796, 523], [809, 535], [825, 552], [843, 578], [858, 610], [869, 641], [875, 676], [878, 712], [878, 749], [875, 783], [872, 817], [868, 851], [863, 890], [858, 930], [854, 969], [849, 1009], [844, 1048], [839, 1087], [835, 1127], [830, 1166], [825, 1206], [820, 1245], [816, 1283], [811, 1321], [807, 1358], [802, 1396], [798, 1433], [794, 1462], [789, 1493], [780, 1530], [768, 1566], [752, 1600], [731, 1632], [705, 1660], [675, 1678], [643, 1693], [609, 1705], [574, 1707], [541, 1707], [526, 1706]];
+// a torcida da Ferrari: quase tudo vermelho, com o branco e o amarelo da Scuderia e o verde da bandeira
+export const TIFOSI = ["#d4001a", "#d4001a", "#c8102e", "#e63946", "#d4001a", "#ffffff", "#ffd23f", "#009246", "#111111", "#d4001a"];
+const VERMELHO = "#c8102e", BRANCO = "#f4f4f2", VERDE = "#0a8a3c";
+const ry0 = (p, lado) => Math.atan2(-lado * p.nx, -lado * p.ny); // rotation.y de quem está do lado `lado`, com a frente (+z) virada para a pista
+const aoLongo = (p) => Math.atan2(-p.ty, p.tx); // rotation.y que põe o +x do objeto ao longo da pista, a favor da volta
+const ponto = (p, lado, d, t = 0) => [p.x + p.nx * lado * d + p.tx * t, p.y + p.ny * lado * d + p.ty * t];
+const CORES_EQUIPE = ["#e8002d", "#ff8700", "#27f4d2", "#3671c6", "#229971", "#37bedd", "#ff87bc", "#6692ff"];
+const flagsTorcida = []; // { x, y, z, ry, s }: postas aqui por quem monta uma tribuna e desenhadas todas de uma vez em bandeirasTorcida
 
-const suave = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+// ---------------------------------------------------------------------------------------------------------------------
+// 1. A reta dos boxes
+// ---------------------------------------------------------------------------------------------------------------------
+// O quadro da reta: um grupo na linha de chegada, com o +x ao longo da pista (a favor da volta) e o +z para o lado dos boxes (o leste). A
+// reta é reta de verdade (o rumo é o mesmo de 0,92 a 0,10 da volta), então tudo o que está a menos de uns 800 da linha cabe nele.
+function quadroDaReta(tr, add) {
+  const p = tr.pts[0], g = new THREE.Group(); g.name = "monza-reta";
+  g.position.set(p.x, p.h, p.y); g.rotation.y = aoLongo(p); add(g);
+  const mundo = (x, z) => [p.x + p.tx * x + p.nx * z, p.y + p.ty * x + p.ny * z];
+  const reservar = (x, z, raio) => tr.reservado.push([...mundo(x, z), raio]);
+  return { g, p, mundo, reservar };
+}
 
-// uma fita de quadriláteros: cada passo é [x0, y0, z0, x1, y1, z1] (as duas pontas da seção)
-function fita(passos, vLen = 60) {
-  const vs = [], uv = [], idx = []; let d = 0;
-  passos.forEach((s, i) => {
-    if (i) d += Math.hypot(s[0] - passos[i - 1][0], s[2] - passos[i - 1][2]);
-    vs.push(...s); uv.push(0, d / vLen, 1, d / vLen);
-    if (i < passos.length - 1) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
-  });
-  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+function reta(tr, { add }) {
+  const { g, p, mundo, reservar } = quadroDaReta(tr, add), { n } = tr;
+  const Z = tr.W / 2 + 86, zT = -(tr.W / 2 + 36); // a frente do prédio dos boxes (depois do corredor e das garagens do kit) e a da Tribuna Centrale
+  // o prédio dos boxes com o Paddock Club, e o pódio suspenso que sai dele e avança sobre a reta (as duas peças viram de costas: a frente olha a pista)
+  const predio = complexoDosBoxes({ comprimento: 864, fundo: 62 });
+  predio.position.set(0, -0.3, Z); predio.rotation.y = Math.PI; g.add(predio);
+  const podio = podioMonza({ largura: 340, alcance: 128, alto0: 98, fundo: 62 });
+  podio.position.set(150, -0.3, Z); podio.rotation.y = Math.PI; g.add(podio);
+  tr.podioGP = { x: 150, z: Z, alcance: podio.userData.alcance, ponta: podio.userData.ponta, alto0: 98 };
+  // a Tribuna Centrale, do outro lado: quatro módulos cobertos (kit 2) de concreto, de torcida vermelha, em frente ao prédio dos boxes
+  for (let k = 0; k < 4; k++) {
+    const t = tribunaCoberta({
+      comprimento: 300, degraus: 11, altura: 6, fundo: 8.5, secoes: 6, publico: 0.42, semente: 17 + k * 5, alcance: 0.62, folga: 16, vao: 60,
+      cores: k % 2 ? [VERMELHO, BRANCO, VERMELHO, VERDE, BRANCO, VERMELHO] : [VERMELHO, VERMELHO, BRANCO, VERMELHO, VERDE, BRANCO],
+      cobertura: "#f6f6f4", estrutura: "#8a9096", camisas: TIFOSI,
+    });
+    t.position.set((k - 1.5) * 306, -2.4, zT); g.add(t);
+    for (let j = 0; j < 7; j++) { // as bandeiras nos degraus de cima
+      const u = (k - 1.5) * 306 + (j - 3) * 40 + ((j * 37 + k * 11) % 17) - 8, fila = 5 + ((j * 3 + k) % 5), [fx, fz] = mundo(u, zT - 3 - fila * 8.5);
+      flagsTorcida.push({ x: fx, y: p.h + (fila + 1) * 6 + 5, z: fz, ry: aoLongo(p) + (((j * 13 + k * 7) % 10) - 5) * 0.08, s: 0.9 + ((j + k) % 5) * 0.12 });
+    }
+  }
+  const m = new Montador(), S = solido();
+  m.caixa(S, [0, -3.4, zT - 46], [1240, 6, 106], { cor: "#a9a59c" }); // a laje de concreto sob a Tribuna
+  g.add(m.montar("monza-tribuna-laje"));
+  const i0 = Math.floor(0.9595 * n), i1 = Math.floor(1.0405 * n) % n;
+  tr.arquibancadas ||= []; tr.arquibancadas.push([i0, n - 1], [0, i1]); // o som da torcida
+  for (let x = -640; x <= 640; x += 48) reservar(x, zT - 50, 112);
+  // as duas torres de cronometragem de 1955 atrás da Tribuna, com o placar luminoso virado para a pista, e as torres de luz
+  for (const x of [-668, 668]) { const t = torreCronometragem({ alto: 340 }); t.position.set(x, 0, zT - 148); g.add(t); reservar(x, zT - 148, 74); }
+  for (const x of [-470, 470]) { const t = torreDeLuz({ alto: 190 }); t.position.set(x, 0, zT - 112); g.add(t); reservar(x, zT - 112, 20); }
+  for (const x of [-390, 390]) { const t = torreDeLuz({ alto: 190 }); t.position.set(x, 0, Z + 62 + 34); t.rotation.y = Math.PI; g.add(t); reservar(x, Z + 62 + 34, 20); }
+  // o paddock atrás do prédio dos boxes: os motorhomes das equipes, as tendas e as carretas, e tudo isso reservado (as árvores ficam de fora)
+  paddock(tr, g, Z + 62);
+  for (const z of [Z + 30, Z + 120, Z + 210, Z + 300, Z + 390]) for (let x = -480; x <= 480; x += 160) reservar(x, z, 96);
+  tr.retaMonza = { g, Z, zT };
   return g;
 }
 
-// a Sopraelevata: concreto velho com as lajes, mato nas juntas, a borda de fora levantada nas curvas e o muro de arrimo
-// embaixo; onde o anel cruza a pista (o Serraglio) ele sobe numa ponte
-export function sopraelevata(tr, add) {
-  const { pts, n, W } = tr, K = tr.t.scale, meia = 76, passo = 36;
-  const curva = new THREE.CatmullRomCurve3(ANEL.map(([x, y]) => new THREE.Vector3(x * K, 0, y * K)), false, "centripetal");
-  const P = curva.getSpacedPoints(Math.round(curva.getLength() / passo)), m = P.length;
-  const rumo = P.map((p, i) => { const a = P[Math.max(0, i - 1)], b = P[Math.min(m - 1, i + 1)]; return Math.atan2(b.z - a.z, b.x - a.x); });
-  const dist = P.map((p) => { let d = 1e9; for (let k = 0; k < n; k += 2) d = Math.min(d, Math.hypot(pts[k].x - p.x, pts[k].y - p.z)); return d; });
-  const cruz = dist.indexOf(Math.min(...dist)); // onde o anel passa por cima da pista (o Serraglio)
-  const giro = P.map((p, i) => { const a = Math.max(0, i - 3), b = Math.min(m - 1, i + 3); let dh = rumo[b] - rumo[a]; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); return Math.abs(dh) / ((b - a) * passo); });
-  const topo = [], lateralD = [], lateralE = [], parapeito = [];
-  P.forEach((p, i) => {
-    const tx = Math.cos(rumo[i]), tz = Math.sin(rumo[i]), nx = -tz, nz = tx; // nx, nz: a direita de quem anda; a borda de fora das curvas (à direita) sobe
-    const chao = tr.chao(p.x, p.z), vao = Math.abs(i - cruz) * passo, sobe = 78 * (1 - suave(150, 520, vao)), banco = 84 * suave(0.35, 1, giro[i] * 1100), ponte = vao < 230;
-    const yi = chao + sobe + 1.5, ye = yi + banco, ex = p.x + nx * meia, ez = p.z + nz * meia, ix = p.x - nx * meia, iz = p.z - nz * meia; // e: a borda de fora (direita), i: a de dentro
-    const fundoE = ponte ? ye - 14 : tr.chao(ex, ez) - 3, fundoI = ponte ? yi - 14 : tr.chao(ix, iz) - 3;
-    topo.push([ix, yi, iz, ex, ye, ez]);
-    lateralD.push([ex, fundoE, ez, ex, ye + 9, ez]); // o muro de fora, com o parapeito
-    lateralE.push([ix, fundoI, iz, ix, yi + 2, iz]);
-    if (ponte && dist[i] > W / 2 + 40 && dist[i] < 400) parapeito.push({ x: ex - nx * 8, z: ez - nz * 8, y0: tr.chao(ex, ez), y1: ye - 14 }, { x: ix + nx * 8, z: iz + nz * 8, y0: tr.chao(ix, iz), y1: yi - 14 });
-    tr.reservado.push([p.x, p.z, meia + 70]);
+function paddock(tr, g, z0) {
+  const textos = ["FERRARI", "MCLAREN", "MERCEDES", "RED BULL", "ASTON MARTIN"], cores = ["#d62a1f", "#ff7a1a", "#2fb8a3", "#1d4fd8", "#13804a"];
+  for (let k = 0; k < 5; k++) { // os motorhomes, de costas para o prédio dos boxes (a frente olha para ele)
+    const b = boxEquipe({ portas: 2, cor: cores[k], texto: textos[k], corTexto: "#ffffff", corFaixa: "#15161a", abertura: 0.8, carros: 1, interior: false });
+    b.position.set((k - 2) * 210, 0.4, z0 + 24); b.rotation.y = Math.PI; g.add(b);
+  }
+  const tendas = [["MONZA", "#c8102e"], ["PIRELLI", "#111111"], ["ROLEX", "#00603a"]];
+  tendas.forEach(([texto, corFaixa], k) => {
+    const t = tendaPaddock({ modulos: 3, filas: 2, texto, corFaixa, corMesas: "#c8102e" });
+    t.scale.setScalar(1.7); t.position.set((k - 1) * 300, 0.4, z0 + 210); t.rotation.y = Math.PI; g.add(t);
   });
-  const concreto = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide, map: canvasTex(128, 256, (x, w, hh, rr) => {
-    x.fillStyle = "#a3a29a"; x.fillRect(0, 0, w, hh);
-    for (let i = 0; i < 1800; i++) { x.fillStyle = rr() < 0.5 ? "#8d8c84" : "#b4b3aa"; x.fillRect(rr() * w, rr() * hh, 2 + rr() * 3, 2); }
-    x.fillStyle = "#6f6f69"; for (let yy = 0; yy < hh; yy += 64) x.fillRect(0, yy, w, 2); x.fillRect(w / 2 - 1, 0, 2, hh); // as lajes e a junta do meio
-    x.fillStyle = "#5c7a3a99"; for (let i = 0; i < 70; i++) x.fillRect(rr() * w, rr() * hh, 3 + rr() * 8, 2 + rr() * 5); // mato nas juntas
-    x.fillStyle = "#4a483f55"; for (let i = 0; i < 16; i++) x.fillRect(rr() * w, rr() * hh, 1, 10 + rr() * 30); // manchas de chuva
-  }) });
-  const muro = new THREE.MeshStandardMaterial({ color: 0x9d9c94, roughness: 0.95, side: THREE.DoubleSide });
-  const g = new THREE.Group(); add(g);
-  const pista = new THREE.Mesh(fita(topo, 60), concreto); pista.receiveShadow = true; g.add(pista);
-  for (const lateral of [lateralD, lateralE]) { const f = new THREE.Mesh(fita(lateral, 40), muro); f.castShadow = f.receiveShadow = true; g.add(f); }
-  // as colunas da ponte, fora do vão da pista
-  const colunas = parapeito.filter((c, i) => i % 4 < 2).map((c) => ({ x: c.x, y: (c.y0 + c.y1) / 2, z: c.z, sx: 9, sy: c.y1 - c.y0, sz: 9 }));
-  const geo = new THREE.BoxGeometry(1, 1, 1), cs = new THREE.InstancedMesh(geo, muro, Math.max(1, colunas.length)), o = new THREE.Object3D();
-  colunas.forEach((c, k) => { o.position.set(c.x, c.y, c.z); o.scale.set(c.sx, Math.max(1, c.sy), c.sz); o.updateMatrix(); cs.setMatrixAt(k, o.matrix); }); cs.count = colunas.length; cs.castShadow = true; g.add(cs);
-  tr.sopraelevataGP = { pontos: m, cruz, colunas: colunas.length };
+  const m = new Montador(), S = solido();
+  for (let k = 0; k < 8; k++) { // as carretas das equipes, enfileiradas lá no fundo
+    const x = (k - 3.5) * 124, z = z0 + 330, cor = CORES_EQUIPE[k % CORES_EQUIPE.length];
+    m.caixa(S, [x, 21, z], [78, 32, 28], { cor: "#eceeef" }); m.caixa(S, [x, 21, z - 14.3], [78, 10, 0.6], { cor });
+    m.caixa(S, [x + 46, 15, z], [16, 24, 24], { cor }); m.caixa(S, [x + 50.4, 20, z], [8, 9, 21], { cor: "#26323d" });
+    for (const dx of [-26, -10, 36, 48]) for (const s of [-1, 1]) m.cilindro(S, [x + dx, 6, z + s * 12], [6, 5], { cor: "#1b1b1f", rx: Math.PI / 2, seg: 8 });
+  }
+  g.add(m.montar("monza-paddock-carretas"));
 }
 
-// o pódio sobre a reta dos boxes: uma passarela de ponta a ponta da pista, com as faixas do GP da Itália, as bandeiras da
-// Itália nas duas torres e, pendurada embaixo, a sacada do pódio com os três degraus
-export function podio(tr, { add }, f = 0.02) {
-  const { pts, n, W } = tr, i = Math.floor(f * n), p = pts[i], g = new THREE.Group(), aco = M(0x3a4048, { roughness: 0.5, metalness: 0.4 }), branco = M(0xf1efe8, { roughness: 0.6 });
-  g.position.set(p.x, p.h, p.y); g.rotation.y = Math.atan2(p.nx, p.ny); add(g); // z do grupo = lado da pista (o dos boxes é +z)
-  const zE = -(W / 2 + 46), zD = W / 2 + 62 + 26, vao = zD - zE, centro = (zD + zE) / 2, alto = 88;
-  const faixas = canvasTex(2048, 128, (x) => { ["gpit", "ferrari", "pirelli", "gpit", "monza", "heineken", "ferrari", "gpit"].forEach((nome, k) => desenharMarca(x, nome, k * 256, 0, 256, 128)); }, false);
-  const fx = new THREE.MeshBasicMaterial({ map: faixas });
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(16, 14, vao), [fx, fx, aco, aco, aco, aco]); deck.position.set(0, alto + 7, centro); deck.castShadow = true; g.add(deck);
-  const vidro = M(0x9fb8c8, { roughness: 0.15, metalness: 0.3, transparent: true, opacity: 0.5 });
-  const guarda = new THREE.Mesh(new THREE.BoxGeometry(12, 9, vao - 4), vidro); guarda.position.set(0, alto + 18.5, centro); g.add(guarda);
-  // as duas torres (a da direita, sobre o prédio dos boxes, é maior e leva o nome do autódromo)
-  for (const [z, larg, nome] of [[zE, 18, null], [zD - 12, 48, "monza"]]) {
-    const t = new THREE.Mesh(new THREE.BoxGeometry(larg, alto + 14, larg), nome ? branco : aco); t.position.set(0, (alto + 14) / 2, z); t.castShadow = true; g.add(t);
-    if (nome) { const placa = new THREE.Mesh(new THREE.PlaneGeometry(larg * 0.9, 12), new THREE.MeshBasicMaterial({ map: marcaTex(nome, 512, 128), side: THREE.DoubleSide })); placa.position.set(0, alto - 14, z - larg / 2 - 0.3); placa.rotation.y = Math.PI; g.add(placa); }
-    const mastro = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 46, 6), M(0xd9d9d9)); mastro.position.set(larg / 2 - 3, alto + 14 + 23, z); g.add(mastro);
-    [0x009246, 0xf4f4f4, 0xce2b37].forEach((cor, k) => { const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 9, 5), M(cor, { side: THREE.DoubleSide })); b.position.set(larg / 2 - 3, alto + 14 + 38, z + 3 + k * 5); g.add(b); }); // a bandeira da Itália, com as faixas de pé
-    tr.reservado.push([p.x + p.nx * z, p.y + p.ny * z, larg + 30]);
+// ---------------------------------------------------------------------------------------------------------------------
+// 2b. A Parabolica (Curva Alboreto): a grande área de escape de asfalto e as tribunas por fora
+// ---------------------------------------------------------------------------------------------------------------------
+const PARABOLICA = [0.848, 0.925, 0.885]; // [começo, fim, ápice]: frações da volta
+function escapeDaParabolica(tr, { add }) {
+  const { pts, n, W } = tr, [f0, f1, fa] = PARABOLICA, a = Math.floor(f0 * n), b = Math.floor(f1 * n), fora = -sinalDaCurva(pts, n, Math.floor(fa * n)), de = W / 2 + 7, ate = de + 46;
+  // o asfalto cinza da área de escape (desde 2014 a Parabolica não tem mais brita), com a linha branca junto da zebra e as emendas das placas
+  const asfalto = new THREE.MeshStandardMaterial({ roughness: 0.92, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, map: canvasTex(64, 64, (x, w, h, rr) => {
+    x.fillStyle = "#74767b"; x.fillRect(0, 0, w, h); for (let i = 0; i < 700; i++) { x.fillStyle = rr() < 0.5 ? "#0000001a" : "#ffffff14"; x.fillRect(rr() * w, rr() * h, 2, 2); }
+    x.fillStyle = "#f4f4f2"; x.fillRect(0, 0, 2, h); x.fillStyle = "#62646a"; x.fillRect(0, h - 2, w, 2); x.fillStyle = "#c8102e55"; x.fillRect(w * 0.55, 0, 3, h); // a linha, a emenda e uma faixa vermelha apagada
+  }) });
+  const L = lotes(); tira(tr, L.de(asfalto), a, b, fora * de, fora * ate, 0.3, 0.2, (a * 6) / 64, (b * 6) / 64); L.montar(add, `${tr.id}-parabolica-escape`);
+  // o muro de pneus no fim do asfalto
+  const pneu = new THREE.TorusGeometry(3.4, 1.7, 6, 12); pneu.rotateX(Math.PI / 2); const pretos = [], brancos = [];
+  for (let i = a; i < b; i += 4) {
+    const p = pts[i % n], x = p.x + p.nx * fora * (ate - 4), z = p.y + p.ny * fora * (ate - 4);
+    if (!ocupado(tr, x, z, i % n) && tr.distAt(x, z) >= ate - 8) for (let k = 0; k < 3; k++) (((i / 2 + k) % 7 | 0) === 0 ? brancos : pretos).push({ x, y: p.h + 1.7 + k * 3.6, z });
   }
-  // a sacada do pódio, pendurada embaixo da passarela: piso, vidro atrás, e os três degraus com as taças
-  const sacada = new THREE.Group(); sacada.position.set(0, alto - 18, centro - 20); g.add(sacada);
-  const piso = new THREE.Mesh(new THREE.BoxGeometry(22, 2, 76), branco); sacada.add(piso);
-  const fundo = new THREE.Mesh(new THREE.BoxGeometry(1.4, 18, 76), vidro); fundo.position.set(-10, 10, 0); sacada.add(fundo);
-  for (const s of [-1, 1]) { const lado = new THREE.Mesh(new THREE.BoxGeometry(22, 18, 1.4), vidro); lado.position.set(0, 10, s * 37.5); sacada.add(lado); }
-  for (const [z, h, cor] of [[0, 12, 0xc8102e], [-16, 8, 0xe9e9e6], [16, 5, 0xe9e9e6]]) { const d = new THREE.Mesh(new THREE.BoxGeometry(10, h, 14), M(cor, { roughness: 0.6 })); d.position.set(2, 1 + h / 2, z); sacada.add(d); }
-  const cabos = [[-9, -36], [-9, 36], [9, -36], [9, 36]];
-  for (const [x, z] of cabos) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.8, 18, 0.8), aco); c.position.set(x, 9, z); sacada.add(c); }
-  tr.podioGP = { i, vao };
+  instancias(add, pneu, M(0x16171a, { roughness: 0.95 }), pretos, { nome: `${tr.id}-parabolica-pneus` });
+  instancias(add, pneu, M(0xe4e4de, { roughness: 0.9 }), brancos);
+}
+
+// as tribunas por fora da Parabolica, depois do asfalto: módulos curtos de tribuna (kit 2), um deles coberto (como a Tribuna 22)
+function tribunasDaParabolica(tr, { add }) {
+  const { pts, n, W } = tr, [f0, f1, fa] = PARABOLICA, L = W / 2 + 128, r = sorteio(4242), fora = -sinalDaCurva(pts, n, Math.floor(fa * n)), reservar = [];
+  const i0 = Math.floor((f0 + 0.008) * n), i1 = Math.floor((f1 - 0.006) * n), comp = (i1 - i0) * 6, nm = Math.max(1, Math.round(comp / 150)), len = comp / nm, fundo = 9 * 8.5 + 22;
+  tr.arquibancadas ||= [];
+  for (let k = 0; k < nm; k++) {
+    const ic = Math.round(i0 + ((k + 0.5) * len) / 6), p = pts[ic % n], [x, z] = ponto(p, fora, L);
+    // a pista (qualquer trecho) não pode chegar perto de nenhum canto da tribuna
+    const ok = [[-len / 2, 0], [len / 2, 0], [-len / 2, fundo], [len / 2, fundo], [0, fundo], [0, 0]].every(([u, d]) => { const [qx, qz] = ponto(p, fora, L + d, u); return tr.distAt(qx, qz) >= L - 5 && !ocupado(tr, qx, qz); });
+    if (!ok) continue;
+    const t = tribunaCoberta({
+      comprimento: len - 8, degraus: 9, altura: 6, fundo: 8.5, secoes: Math.max(3, Math.round(len / 50)), cores: k % 2 ? [VERMELHO, BRANCO, VERMELHO] : [VERMELHO, VERMELHO, BRANCO],
+      cobertura: k === 1 ? "#f6f6f4" : null, publico: 0.45, semente: 70 + k, alcance: 0.7, folga: 16, vao: 50, camisas: TIFOSI,
+    });
+    t.position.set(x, p.h - 5, z); t.rotation.y = ry0(p, fora); add(t);
+    for (let j = 0; j < 6; j++) { // as bandeiras nos degraus de cima
+      const u = (r() - 0.5) * (len - 30), row = 4 + Math.floor(r() * 4), [fx, fz] = ponto(p, fora, L + 4 + row * 8.5, u);
+      flagsTorcida.push({ x: fx, y: p.h - 5 + (row + 1) * 6 + 5, z: fz, ry: aoLongo(p) + (r() - 0.5) * 0.6, s: 0.9 + r() * 0.5 });
+    }
+    for (let i = ic - Math.floor(len / 12); i <= ic + Math.floor(len / 12); i += 3) { const q = pts[((i % n) + n) % n]; reservar.push([q.x + q.nx * fora * (L + 45), q.y + q.ny * fora * (L + 45), 80]); }
+    tr.arquibancadas.push([(ic - Math.floor(len / 12) + n) % n, (ic + Math.floor(len / 12)) % n]); // o som da torcida
+  }
+  tr.reservado.push(...reservar); // só depois de todas, para uma tribuna não barrar a vizinha
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// 3. As placas com o nome de cada curva
+// ---------------------------------------------------------------------------------------------------------------------
+const CURVAS = [["VARIANTE DEL RETTIFILO", 1, 0.125], ["CURVA GRANDE", 3, 0.2], ["VARIANTE DELLA ROGGIA", 4, 0.338], ["CURVA DI LESMO 1", 5, 0.405], ["CURVA DI LESMO 2", 6, 0.458],
+  ["CURVA DEL SERRAGLIO", 7, 0.53], ["VARIANTE ASCARI", 8, 0.655], ["PARABOLICA - C. ALBORETO", 11, 0.885]];
+function placasDasCurvas(tr, { add }) {
+  const { pts, n, W } = tr, vs = [], uv = [], idx = [], m = new Montador(), S = solido();
+  const atlas = canvasTex(1024, 512, (x) => {
+    CURVAS.forEach(([nome, num], k) => {
+      const c = k % 4, rr = Math.floor(k / 4), x0 = c * 256, y0 = rr * 128;
+      x.fillStyle = "#f4f4f2"; x.fillRect(x0, y0, 256, 128); x.strokeStyle = VERMELHO; x.lineWidth = 6; x.strokeRect(x0 + 4, y0 + 4, 248, 120);
+      x.fillStyle = VERMELHO; x.fillRect(x0 + 10, y0 + 10, 54, 108); x.fillStyle = "#ffffff"; x.font = "900 44px Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(String(num), x0 + 37, y0 + 66);
+      x.fillStyle = "#15161a"; x.font = "900 28px Arial, sans-serif"; x.fillText(nome, x0 + 160, y0 + 66, 176);
+    });
+  }, false);
+  CURVAS.forEach(([, , f], k) => {
+    const i = Math.floor(f * n), p = pts[i], fora = -sinalDaCurva(pts, n, i);
+    let escolhido = null;
+    for (const lado of k === 7 ? [-fora, fora] : [fora, -fora]) { // a da Parabolica vai por dentro: por fora é só asfalto de escape, pneus e as tribunas
+      for (const d of [W / 2 + 52, W / 2 + 74]) {
+        const [x, z] = ponto(p, lado, d);
+        if (tr.distAt(x, z) >= d - 8 && !ocupado(tr, x, z)) { escolhido = [lado, x, z]; break; }
+      }
+      if (escolhido) break;
+    }
+    if (!escolhido) return;
+    const [lado, x, z] = escolhido, y = tr.chao(x, z);
+    // a placa gira um pouco para quem vem de trás (a frente aponta para a pista e um pouco contra o sentido da corrida)
+    const nx = -lado * p.nx - 0.55 * p.tx, nz = -lado * p.ny - 0.55 * p.ty, len = Math.hypot(nx, nz), ex = nz / len, ez = -nx / len; // (ex, ez): o eixo largo da placa
+    const w = 104, h = 52, y0 = y + 26, c = k % 4, rr = Math.floor(k / 4), base = vs.length / 3;
+    for (const [a, b] of [[-1, 0], [1, 0], [-1, 1], [1, 1]]) { vs.push(x + ex * a * w / 2, y0 + b * h, z + ez * a * w / 2); uv.push(((a + 1) / 2 + c) / 4, 1 - (rr + 1 - b) / 4); }
+    idx.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+    for (const s of [-1, 1]) m.caixa(S, [x + ex * s * (w / 2 - 6), y + 13, z + ez * s * (w / 2 - 6)], [2.6, 28, 2.6], { cor: "#d9dbdd", ry: Math.atan2(ex, ez) });
+    tr.reservado.push([x, z, 26]);
+  });
+  if (!idx.length) return;
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const placa = add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: atlas, roughness: 0.6, side: THREE.DoubleSide }))); placa.castShadow = true; placa.name = `${tr.id}-placas-curvas`;
+  add(m.montar("monza-placas-curvas-postes"));
+  tr.placasMonza = idx.length / 6;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// 5. As bandeiras da torcida (a Itália e a dos tifosi) nos degraus das tribunas e das arquibancadas do kit
+// ---------------------------------------------------------------------------------------------------------------------
+function bandeirasTorcida(tr, { add }) {
+  const { pts, n } = tr, r = sorteio(6113), lista = flagsTorcida.slice();
+  for (const q of tr.arqDegraus || []) {
+    for (let i = q.i0; i <= q.i1; i += 6) {
+      if (r() < 0.4) continue;
+      const p = pts[i % n], fila = Math.floor(r() * q.degraus), [x, z] = ponto(p, q.lado, Math.abs(q.l0) + 4.5 + fila * 9);
+      lista.push({ x, y: p.h + 4 + (fila + 1) * 6 + 3, z, ry: aoLongo(p) + (r() - 0.5) * 0.7, s: 0.8 + r() * 0.5 });
+    }
+  }
+  if (!lista.length) return;
+  const hastes = lista.map((o) => ({ x: o.x, y: o.y + 5, z: o.z, sx: 1, sy: 10, sz: 1 }));
+  instancias(add, new THREE.CylinderGeometry(0.4, 0.4, 1, 4), M(0xd9d9d9), hastes, { sombra: false, nome: `${tr.id}-hastes` });
+  const italianas = lista.filter((o, k) => k % 5 < 3), tifosi = lista.filter((o, k) => k % 5 >= 3), d = new THREE.Object3D();
+  for (const [l, mapa, nome] of [[italianas, bandeiraItalia(), "italia"], [tifosi, bandeiraTifosi(), "tifosi"]]) {
+    if (!l.length) continue;
+    const flag = add(new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map: mapa, roughness: 0.8, side: THREE.DoubleSide }), l.length));
+    l.forEach((o, k) => { d.position.set(o.x + Math.cos(-o.ry) * 4.6 * o.s, o.y + 8.6, o.z + Math.sin(-o.ry) * 4.6 * o.s); d.rotation.set(0, o.ry, (r() - 0.5) * 0.3); d.scale.set(9.2 * o.s, 5.8 * o.s, 1); d.updateMatrix(); flag.setMatrixAt(k, d.matrix); });
+    flag.name = `${tr.id}-flags-${nome}`;
+  }
+  tr.bandeirasMonza = lista.length;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// O antes (cenario) e o depois (depois) do GP
+// ---------------------------------------------------------------------------------------------------------------------
+export function cenarioMonza(tr, ctx) {
+  tr.reservado ||= [];
+  tr.camisasGP = TIFOSI; // a torcida solta de vida.js também veste vermelho
+  reta(tr, ctx);
+  sopraelevata(tr, ctx.add);
+  escapeDaParabolica(tr, ctx);
+  tribunasDaParabolica(tr, ctx);
+  placasDasCurvas(tr, ctx);
+}
+
+export function depoisMonza(tr, ctx) {
+  const { add } = ctx;
+  // o parque: o gramado em faixas junto da pista, o bosque (copas em dois lóbulos, árvores altas e grossas, as mais fundas encostadas na frente
+  // e uma cortina de longe, numa malha só por tipo), as folhas caídas junto das fileiras e o velho carvalho do Ascari.
+  gramado(tr, add, {});
+  bosque(tr, add, { recuo: 22, fundo: 280, alturas: [170, 320], densidade: 2.0, semente: 2025, coniferas: 0.12 });
+  folhasCaidas(tr, add, {});
+  carvalhoDoAscari(tr, add, 0.646);
+  bandeirasTorcida(tr, ctx);
+  // a faixa do autódromo no pórtico da largada (o de pista.js): uma de cada lado da viga, a da frente com a normal contra o sentido da volta
+  const p = tr.pts[0], L = tr.W / 2 + 14, rot = -Math.atan2(p.ny, p.nx);
+  for (const s of [1, -1]) {
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(2 * L - 6, 8.4), new THREE.MeshBasicMaterial({ map: marcaTex("monza", 1024, 64), side: THREE.FrontSide }));
+    f.position.set(p.x, p.h + 62, p.y); f.rotation.y = rot + (s > 0 ? 0 : Math.PI); f.translateZ(1.7); add(f);
+  }
 }
