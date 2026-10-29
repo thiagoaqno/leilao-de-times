@@ -13,7 +13,7 @@ export function trocarMarcha(d) {
   const g = Math.max(1, Math.min(NUM, (race.marcha || 1) + d));
   if (g === race.marcha) return;
   if (d < 0 && rotacao(race.car.v, carOf(me()).vmax, g) > 1.04) { Sound.pop(); return; }
-  race.marcha = g; Sound.troca(d);
+  race.marcha = g; if (E.S.config.regras !== "f1") Sound.troca(d);
 }
 
 // teclado e botões na tela
