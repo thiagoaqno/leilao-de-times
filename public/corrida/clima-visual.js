@@ -1,7 +1,7 @@
 // Corrida da Galera — o visual do clima (regras de F1): tudo é dirigido por `clima` (clima.js) e muda devagar, sem salto.
 //   céu fechado (um domo de nuvens por cima da foto), sol fraco e sem sombra dura, luz mais fria e baixa, neblina cinza e
-//   mais perto · gotas caindo em volta da câmera (um LineSegments só) · gotas na tela (canvas 2D, só na primeira pessoa e
-//   um pouco na câmera de trás) · asfalto escuro e brilhante conforme `agua` · borrifo atrás dos carros mais perto da câmera
+//   mais perto · gotas caindo em volta da câmera (um LineSegments só) · gotas na tela (canvas 2D: poucas lentes d'água que escorrem
+//   para as bordas conforme a velocidade; só na primeira pessoa e um pouco na câmera de trás) · asfalto escuro e brilhante conforme `agua` · borrifo atrás dos carros mais perto da câmera
 //   (um Points só) · chiado de chuva e dos pneus no molhado (sons.js) · o ícone e o nível da pista no HUD (#hClima).
 // Gasta tudo na criação: nada é alocado por quadro, e sem chuva e com a pista seca o passo não faz nada.
 // A luz, a neblina e o fundo são escritos por outros módulos (pista.js e ceu.js, a cada pista): aqui guarda-se a BASE (o
@@ -146,41 +146,103 @@ function coletarAsfalto(tr) {
 }
 
 // ---------- as gotas na tela ----------
+// Poucas gotas, cada uma uma lentinha de água: corpo translúcido (sprite pré-desenhado), borda escura embaixo, brilho do céu em cima
+// e um clarão por dentro. Paradas, escorrem devagar pela gravidade (aos soquinhos); com velocidade fogem do centro da tela para as
+// bordas, se alongam na direção do movimento e deixam um rastro fino que some. Nada é alocado por quadro (as gotas, os rastros e o
+// sprite nascem uma vez) e o canvas segue o DPR (até 1,5) e o tamanho da janela; as contas são em pixels CSS.
 const cvTela = $("climaGotas"), ctxTela = cvTela && cvTela.getContext("2d");
-const G = Array.from({ length: 42 }, () => ({ vivo: false, x: 0, y: 0, x0: 0, y0: 0, r: 0, t: 0, vida: 0, cola: 0, a: 0 }));
-let telaW = 0, telaH = 0, telaNivel = 0, telaOn = false, telaAc = 0, telaOp = -1;
-function ajustarTela() { if (!cvTela) return; telaW = cvTela.width = Math.max(2, Math.round(innerWidth * 0.5)); telaH = cvTela.height = Math.max(2, Math.round(innerHeight * 0.5)); }
+const N_TELA = 44, N_RASTRO = 10, RASTRO_VIDA = 1.5;
+const G = Array.from({ length: N_TELA }, () => ({
+  vivo: false, x: 0, y: 0, vx: 0, vy: 0, r: 0, t: 0, vida: 0, a: 0, ang: Math.PI / 2, grude: 0, fase: 0, esc: 0, dir: 0, px: 0, py: 0,
+  rx: new Float32Array(N_RASTRO), ry: new Float32Array(N_RASTRO), rt: new Float32Array(N_RASTRO), rCab: 0, rN: 0,
+}));
+let telaW = 0, telaH = 0, telaEsc = 1, telaNivel = 0, telaOn = false, telaAc = 0, telaOp = -1, telaRel = 1;
+// o corpo da gota: miolo claro e translúcido, anel escuro fino na borda (a borda de baixo é reforçada por um arco, por gota)
+const sprGota = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d"), g = x.createRadialGradient(32, 32, 0, 32, 32, 31);
+  g.addColorStop(0, "rgba(225,236,247,0.13)"); g.addColorStop(0.55, "rgba(205,222,240,0.10)"); g.addColorStop(0.82, "rgba(120,145,170,0.16)"); g.addColorStop(0.94, "rgba(14,24,36,0.36)"); g.addColorStop(1, "rgba(14,24,36,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64); return c;
+})();
+function ajustarTela() {
+  if (!cvTela) return;
+  telaEsc = Math.min(window.devicePixelRatio || 1, 1.5); telaW = Math.max(2, innerWidth); telaH = Math.max(2, innerHeight);
+  cvTela.width = Math.max(2, Math.round(telaW * telaEsc)); cvTela.height = Math.max(2, Math.round(telaH * telaEsc)); telaRel = Math.min(1.6, Math.max(0.7, telaH / 900));
+}
 addEventListener("resize", ajustarTela); ajustarTela();
+function nascerGota(g, w) {
+  const dispersao = 1 - 0.5 * w; // em velocidade nascem mais perto do centro e logo escorrem para fora
+  g.vivo = true; g.t = 0; g.vida = 3.5 + Math.random() * 5; g.r = (2.4 + 10.5 * Math.pow(Math.random(), 2.5)) * telaRel;
+  g.x = telaW * (0.5 + (Math.random() - 0.5) * dispersao); g.y = telaH * (0.42 + (Math.random() - 0.5) * dispersao);
+  g.vx = g.vy = 0; g.ang = Math.PI / 2; g.dir = Math.random() * 6.2832; g.fase = Math.random() * 6.2832; g.a = 0; g.rN = 0; g.rCab = 0; g.px = g.x; g.py = g.y;
+  g.grude = 0.04 + 0.30 * Math.pow(Math.random(), 0.8) * (1.15 - Math.min(1, g.r / (10 * telaRel))); // gota pequena agarra mais no vidro
+  g.esc = 0.6 + 0.9 * Math.min(1, g.r / (9 * telaRel)); // gota grande escorre mais rápido
+}
 function passoTela(dt, mode, sK) {
   if (!cvTela) return;
-  const alvo = reduz.matches ? 0 : mode === "cockpit" ? 1 : mode === "perto" ? 0.4 : 0;
+  const alvo = reduz.matches ? 0 : mode === "cockpit" ? 1 : mode === "perto" ? 0.4 : 0, w = suave(0.04, 1, Math.min(1, sK)); // w: a velocidade do carro, 0 a 1
   telaNivel += (alvo * (I > 0.02 ? 1 : 0.0001) - telaNivel) * (1 - Math.exp(-dt * 2.5)); // sem chuva, o nível desce e as gotas que sobram escorrem
-  if (I > 0.02 && alvo > 0.02) { // nascem mais com chuva forte e com velocidade
-    telaAc += dt * 9 * I * (1 + sK) * alvo;
-    while (telaAc >= 1) {
-      telaAc -= 1; let g = null; for (const o of G) if (!o.vivo) { g = o; break; } if (!g) break;
-      g.vivo = true; g.t = 0; g.vida = 2.5 + Math.random() * 3.5; g.r = 2 + 7 * Math.pow(Math.random(), 2.2); g.x = g.x0 = Math.random() * telaW; g.y = g.y0 = Math.random() * telaH; g.cola = 0.4 + Math.random() * 2.2;
-    }
-  }
   let vivas = 0; for (const g of G) if (g.vivo) vivas++;
-  if (telaNivel < 0.01 && !vivas) { if (telaOn) { telaOn = false; cvTela.style.display = "none"; ctxTela.clearRect(0, 0, telaW, telaH); } return; }
+  if (I > 0.02 && alvo > 0.02) { // poucas: garoa umas 6, chuva forte umas 30; vão nascendo uma a uma enquanto faltam
+    const meta = Math.round(alvo * (2 + 30 * Math.pow(I, 1.6)));
+    if (vivas < meta) {
+      telaAc += dt * (0.9 + 2.2 * w) * (meta - vivas) * 0.5;
+      while (telaAc >= 1 && vivas < meta) { telaAc -= 1; let g = null; for (const o of G) if (!o.vivo) { g = o; break; } if (!g) break; nascerGota(g, w); vivas++; }
+    } else telaAc = 0;
+  }
+  if (telaNivel < 0.01 && !vivas) { if (telaOn) { telaOn = false; cvTela.style.display = "none"; ctxTela.setTransform(1, 0, 0, 1, 0, 0); ctxTela.clearRect(0, 0, cvTela.width, cvTela.height); } return; }
   if (!telaOn) { telaOn = true; cvTela.style.display = "block"; }
   const op = Math.round(telaNivel * 100) / 100; if (op !== telaOp) { telaOp = op; cvTela.style.opacity = op; }
-  ctxTela.clearRect(0, 0, telaW, telaH);
-  // o vento do carro empurra as gotas grandes para cima e para fora; devagar, elas escorrem para baixo
+  const S = telaEsc, cx = telaW * 0.5, cy = telaH * 0.42, meia = Math.hypot(telaW, telaH) * 0.5, kv = 1 - Math.exp(-dt * 5);
+  ctxTela.setTransform(1, 0, 0, 1, 0, 0); ctxTela.clearRect(0, 0, cvTela.width, cvTela.height); ctxTela.setTransform(S, 0, 0, S, 0, 0); ctxTela.lineCap = "round";
+  // mexe: gravidade devagar (aos soquinhos) + fuga radial pelo vento, que cresce com a velocidade e com a distância do centro
   for (const g of G) {
     if (!g.vivo) continue;
     g.t += dt; if (g.t >= g.vida) { g.vivo = false; continue; }
-    if (g.t > g.cola) { g.y += (g.r * 10 - sK * telaH * 0.34) * dt * (g.r > 4 ? 1 : 0.35); g.x += ((g.x - telaW / 2) / telaW) * sK * 90 * dt; }
-    g.a = Math.min(1, g.t / 0.15, (g.vida - g.t) / 0.8);
+    const dx = g.x - cx, dy = g.y - cy, d = Math.hypot(dx, dy), q = Math.min(1.2, d / meia);
+    const ux = d > 6 ? dx / d : Math.cos(g.dir), uy = d > 6 ? dy / d : Math.sin(g.dir); // no centro, cada uma escolhe um lado
+    const solta = suave(g.grude, g.grude + 0.25, w); // a gota só sai do lugar quando o vento vence a aderência
+    const vr = solta * g.esc * telaH * (0.16 + 1.05 * q * q) * (0.35 + 0.65 * w);
+    const grav = (1 - w) * Math.max(0, Math.sin(g.t * 1.4 + g.fase)) * Math.max(0, g.r / telaRel - 2.6) * 5.2 * telaRel; // parada, escorre aos soquinhos; as pequenas ficam
+    g.vx += (ux * vr - g.vx) * kv; g.vy += (uy * vr + grav - g.vy) * kv;
+    g.x += g.vx * dt; g.y += g.vy * dt;
+    const m = g.r * 3 + 30; if (g.x < -m || g.x > telaW + m || g.y < -m || g.y > telaH + m) { g.vivo = false; continue; }
+    // o rastro: um ponto a cada tanto andado (mais espaçado em velocidade); os mais velhos vão saindo
+    const sp = Math.hypot(g.vx, g.vy), passo = Math.max(3, g.r * 0.9, sp * 0.03);
+    if (Math.hypot(g.x - g.px, g.y - g.py) >= passo) {
+      const i = g.rCab; g.rx[i] = g.x; g.ry[i] = g.y; g.rt[i] = g.t; g.rCab = (i + 1) % N_RASTRO; if (g.rN < N_RASTRO) g.rN++; g.px = g.x; g.py = g.y;
+    }
+    while (g.rN > 0 && g.t - g.rt[(g.rCab - g.rN + N_RASTRO) % N_RASTRO] > RASTRO_VIDA) g.rN--;
+    if (sp > 6) g.ang = Math.atan2(g.vy, g.vx);
+    g.a = Math.min(1, g.t / 0.35, (g.vida - g.t) / 1.1);
   }
-  ctxTela.lineCap = "round";
-  for (const g of G) { if (!g.vivo || g.y === g.y0) continue; ctxTela.globalAlpha = g.a * 0.5; ctxTela.strokeStyle = "rgba(200,218,235,0.35)"; ctxTela.lineWidth = Math.max(1, g.r * 0.45); ctxTela.beginPath(); ctxTela.moveTo(g.x0 + (g.x - g.x0) * 0.2, g.y0); ctxTela.lineTo(g.x, g.y); ctxTela.stroke(); }
-  for (const g of G) { // o corpo da gota, com a borda escura embaixo e o reflexo em cima, como uma lente
+  // 1) os rastros: um fio fino de água, mais claro perto da gota e sumindo para trás
+  ctxTela.strokeStyle = "rgb(205,222,238)";
+  for (const g of G) {
+    if (!g.vivo || g.rN < 1) continue;
+    let ax = g.x, ay = g.y;
+    for (let k = 0; k < g.rN; k++) {
+      const i = (g.rCab - 1 - k + N_RASTRO * 2) % N_RASTRO, f = 1 - (g.t - g.rt[i]) / RASTRO_VIDA; if (f <= 0) break;
+      ctxTela.globalAlpha = g.a * 0.34 * f; ctxTela.lineWidth = Math.max(0.8, g.r * 0.5 * f);
+      ctxTela.beginPath(); ctxTela.moveTo(ax, ay); ctxTela.lineTo(g.rx[i], g.ry[i]); ctxTela.stroke(); ax = g.rx[i]; ay = g.ry[i];
+    }
+  }
+  // 2) o corpo (sprite esticado na direção do movimento) e, por cima, a borda de baixo, o clarão de dentro e o brilho do céu
+  for (const g of G) {
     if (!g.vivo) continue;
-    ctxTela.globalAlpha = g.a; ctxTela.fillStyle = "rgba(205,222,238,0.2)"; ctxTela.strokeStyle = "rgba(10,20,30,0.45)"; ctxTela.lineWidth = 1;
-    ctxTela.beginPath(); ctxTela.ellipse(g.x, g.y, g.r * 0.85, g.r * 1.05, 0, 0, 6.2832); ctxTela.fill(); ctxTela.stroke();
-    ctxTela.fillStyle = "rgba(255,255,255,0.75)"; ctxTela.beginPath(); ctxTela.arc(g.x - g.r * 0.28, g.y - g.r * 0.36, Math.max(0.8, g.r * 0.22), 0, 6.2832); ctxTela.fill();
+    const sp = Math.hypot(g.vx, g.vy), e = Math.min(1.7, sp / (telaH * 0.45)), nasce = 0.55 + 0.45 * suave(0, 0.8, g.t), cresce = nasce * (1 + 0.14 * g.t / g.vida) * (0.85 + 0.15 * suave(0, 1.2, g.vida - g.t));
+    const R = g.r * cresce, L = R * (1.04 + 1.5 * e), Wd = R * (0.92 - 0.26 * Math.min(1, e)), ca = Math.cos(g.ang), sa = Math.sin(g.ang);
+    ctxTela.globalAlpha = g.a;
+    ctxTela.setTransform(S * ca, S * sa, -S * sa, S * ca, S * g.x, S * g.y); ctxTela.drawImage(sprGota, -L, -Wd, L * 2, Wd * 2); ctxTela.setTransform(S, 0, 0, S, 0, 0);
+    const baixo = Math.PI / 2 - g.ang;
+    ctxTela.lineWidth = Math.max(0.8, R * 0.16); ctxTela.strokeStyle = "rgba(6,14,24,0.6)"; // a borda escura de baixo
+    ctxTela.beginPath(); ctxTela.ellipse(g.x, g.y, L * 0.96, Wd * 0.96, g.ang, baixo - 0.95, baixo + 0.95); ctxTela.stroke();
+    if (R > 3.2) { // o clarão de dentro, onde a água junta a luz do céu de cabeça para baixo
+      ctxTela.lineWidth = Math.max(0.8, R * 0.2); ctxTela.strokeStyle = "rgba(238,246,255,0.34)";
+      ctxTela.beginPath(); ctxTela.ellipse(g.x, g.y + R * 0.05, L * 0.74, Wd * 0.74, g.ang, baixo - 0.75, baixo + 0.75); ctxTela.stroke();
+    }
+    ctxTela.fillStyle = "rgba(255,255,255,0.85)"; // o brilho do céu, sempre em cima
+    ctxTela.beginPath(); ctxTela.ellipse(g.x - R * 0.28, g.y - R * 0.4, Math.max(0.8, R * 0.22), Math.max(0.6, R * 0.13), -0.6, 0, 6.2832); ctxTela.fill();
+    if (R > 4.5) { ctxTela.fillStyle = "rgba(255,255,255,0.4)"; ctxTela.beginPath(); ctxTela.arc(g.x + R * 0.3, g.y + R * 0.34, Math.max(0.7, R * 0.07), 0, 6.2832); ctxTela.fill(); }
   }
   ctxTela.globalAlpha = 1;
 }
