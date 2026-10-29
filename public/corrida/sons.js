@@ -152,7 +152,8 @@ export const Sound = (() => {
     sling() { [520, 780, 1040].forEach((f, i) => tone(f, 0.12, { at: i * 0.06, type: "sawtooth", vol: 0.07 })); },
     volume(v) { volume = Math.max(0, Math.min(1, v)); store.set("corrida:volume", volume); if (master) master.gain.setTargetAtTime(volume, ac.currentTime, 0.05); }, get nivel() { return volume; },
     radioSaida() { const c = ctx(); return c && master ? { ac: c, saida: master } : null; }, // o rádio do engenheiro usa o volume geral
-    crash, engine, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) engine(0, false); }, get on() { return on; }, unlock() { ctx(); },
+    narradorSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, ligado: on } : null; }, // o narrador da transmissão: volume geral e som ligado
+    crash, engine, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
   };
 })();
 function renderSoundBtn() { Comum.iconeSom(Sound.on); for (const id of ["volume", "volCorrida"]) { const el = $(id); if (el) el.value = Math.round(Sound.nivel * 100); } }
@@ -161,3 +162,4 @@ $("btnSound").onclick = () => { Sound.toggle(); renderSoundBtn(); };
 renderSoundBtn();
 document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
 if (window.Radio) window.Radio.usarSaida(() => Sound.radioSaida());
+if (window.Narrador) window.Narrador.usarSaida(() => Sound.narradorSaida());
