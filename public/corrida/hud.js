@@ -226,7 +226,7 @@ function hudF1(m, st, now) {
 function luzesDaLargada(left) {
   const l = race.luzes, el = $("hLuzes"); if (!el) return;
   const n = !l || left <= 0 || left > l.espera + 4 ? 0 : Math.min(5, Math.floor(l.espera + 5 - left));
-  el.classList.toggle("hidden", !l || left <= -1.2);
+  el.classList.toggle("hidden", !l || left <= -1.2 || (race.tvAte > 0 && sNow() < race.tvAte)); // (durante a transmissão de TV as luzes não aparecem)
   if (race.luzN === n) return;
   if (n > race.luzN) Sound.beep(false);
   race.luzN = n; el.querySelectorAll("i").forEach((i, k) => i.classList.toggle("on", k < n)); if (race.tr.luzes) race.tr.luzes.set(n);

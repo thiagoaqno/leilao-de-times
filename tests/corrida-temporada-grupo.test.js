@@ -7,6 +7,7 @@ const path = require("node:path");
 const http = require("node:http");
 const { Server } = require("socket.io");
 const { io: cliente } = require("socket.io-client");
+process.env.CORRIDA_TV_MS = "0"; // sem a transmissão de TV antes das luzes: a largada vem logo
 process.env.CORRIDA_ASSUME_MS = "60"; // a sala de F1 lê isto ao ligar
 process.env.CORRIDA_ESPERA_GRUPO_MS = "60000";
 const bd = require("../bd.js");

@@ -8,6 +8,7 @@ const T = require("../public/corrida/pistas.js");
 const Robos = require("../corrida-robos.js");
 const bd = require("../bd.js");
 
+process.env.CORRIDA_TV_MS = "0"; // sem a transmissão de TV antes das luzes: a largada vem logo
 const montagem = (motor, aero, chassi, freios, suspensao, confiab) => ({ motor, aero, chassi, freios, suspensao, confiab });
 // toda montagem de 6 peças (níveis de 0 a MAX_NIVEL) cuja soma é `soma`
 function* montagens(soma) {

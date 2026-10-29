@@ -13,8 +13,8 @@
 // (o simulador de stint com a física do carro: ver `ferramentas/pneus-fisica.js`).
 const PNEUS = {
   macio: { nome: "Macio", cor: "#e8202a", pico: 1.515, vida: 1.5, aquece: 1.7, perdaAntes: 0.03 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.463, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.418, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.392, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.299, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
 };
 const COMPOSTO_PADRAO = "medio";
 // O desgaste vai de 0 (novo) a 1 (acabado); PENHASCO é o fim da vida. Passou dele o pneu despenca até PERDA_FIM do pico,
@@ -58,9 +58,10 @@ function aderencia(pneu) {
   const perda = d <= PENHASCO ? pn.perdaAntes * d / PENHASCO : pn.perdaAntes + (PERDA_FIM - pn.perdaAntes) * x;
   const quente = FRIO + (1 - FRIO) * limite((temp - TEMP_SAIDA) / (TEMP_BOA - TEMP_SAIDA), 0, 1);
   const base = limite(pn.pico * (1 - perda) * quente, 0.4, 2.0), r = base / PICO_REFERENCIA;
-  // `arcade`: o macio dentro da vida útil usa a dirigibilidade arcade antiga (dinamica.js, `lateralArcade`); passou do penhasco, volta à física
-  // intermediária e fica prejudicado pelo desgaste. `rel` é a aderência relativa à referência original (o `grip` do carro usa essa base).
-  return { arcade: !!pneu && pneu.composto === "macio" && d <= PENHASCO, rel: r, grip: base, kin: limite(1 - perda * 0.5, 0.85, 1),
+  // `arcade`: qualquer composto dentro da vida útil usa a mesma dirigibilidade (dinamica.js, `lateralArcade`): a RESPOSTA da direção é igual nos
+  // três e o composto só muda o limite de aderência (`grip`), o desgaste e a temperatura; passou do penhasco, volta à física intermediária
+  // e fica prejudicado pelo desgaste. `rel` é a aderência relativa à referência original (o `grip` do carro usa essa base).
+  return { arcade: !!pneu && d <= PENHASCO, rel: r, grip: base, kin: limite(1 - perda * 0.5, 0.85, 1),
     freio: limite(BASE_FREIO * Math.pow(r, EXPOENTE_FREIO), 0.4, 1.5), tracao: limite(BASE_FREIO * Math.pow(r, EXPOENTE_TRACAO), 0.4, 1.5),
     final: 1 - FINAL_FIM * x };
 }

@@ -8,6 +8,7 @@ const Itens = require("../corrida-itens.js");
 const bd = require("../bd.js");
 const { subirServidor, conectar, pedir, esperarEstado } = require("./ajuda.js");
 
+process.env.CORRIDA_TV_MS = "0"; // sem a transmissão de TV antes das luzes: a largada vem logo
 // uma corrida de mentira: anda `voltas` voltas de `volta` unidades a 200 por segundo, escorregando `slip`, e devolve a cada passo
 // quantas voltas andou, o desgaste e a aderência
 function rodar(composto, { volta = 13000, voltas = 8, slip = 0, travada = 0, patina = 0 } = {}) {

@@ -25,6 +25,9 @@ const noite = require("./noite.js"); // o placar da Noite da Galera (quem ganhou
 const nomesDe = (room, ids) => ids.map((id) => room.players[id] && !room.players[id].bot && room.players[id].name).filter(Boolean); // robô não entra no placar da Noite
 
 const LUZES_MS = 3500; // regras de F1: o tempo até acender a primeira das cinco luzes (a largada vem 4 s mais a espera sorteada depois)
+// regras de F1: a transmissão de TV (a pista, o clima, o campeonato e o grid) tem tempo próprio ANTES das luzes: 25 s numa
+// temporada (com a tabela do campeonato), 20 s fora dela. `CORRIDA_TV_MS` troca os dois (0 desliga: os testes de rede usam).
+const TV_TEMPORADA_MS = 25000, TV_AVULSA_MS = 20000;
 const MAX_PLAYERS = 8, COUNTDOWN_MS = 4500, AFTER_FIRST_MS = 60000, MAX_RACE_MS = 45 * 60000; // 45 min: dá para as 21 voltas
 const COLORS = ["#e63946", "#1e88e5", "#43a047", "#fdd835", "#8e24aa", "#fb8c00", "#00acc1", "#f06292"];
 const PAWNS = ["😎", "🤠", "👽", "🤖", "🐸", "🦊", "🐼", "🐯", "🦄", "🐙", "👻", "🤡", "🦁", "🐵", "🐧", "🏎️"];
@@ -59,7 +62,7 @@ module.exports = function attachCorrida(io) {
   function publicState(room) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null, ...(room.temporada ? { temporada: true, ...(room.salaTemporada ? { salaTemporada: room.salaTemporada } : {}) } : {}),
-      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { montagens: room.montagens || {}, bonusMontagem: room.bonusMontagem || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
+      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { tvAte: room.tvAte || null, tv: room.tvAte && Date.now() < room.tvAte ? room.tv || null : null, montagens: room.montagens || {}, bonusMontagem: room.bonusMontagem || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
       players: room.order.map((id) => {
         const p = room.players[id];
         return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, jogos: room.config.regras === "f1" ? F1.jogosRestantes(p) : null, noBox: !!p.box, quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
@@ -151,7 +154,10 @@ module.exports = function attachCorrida(io) {
     room.resultado = null;
     // as cinco luzes (F1): acendem uma por segundo e apagam juntas depois de uma espera sorteada (0,4 a 2,8 s) pela semente do GP
     room.luzes = f1 ? { espera: Math.round((0.4 + F1.sorteio(`luzes:${room.semente}`)() * 2.4) * 100) / 100 } : null;
-    room.startAt = Date.now() + (f1 ? Math.round(LUZES_MS + (4 + room.luzes.espera) * 1000) : COUNTDOWN_MS);
+    // a transmissão de TV vem antes de tudo: `tvAte` é quando ela acaba e as luzes só começam depois (LUZES_MS + as cinco luzes)
+    const tvMs = !f1 ? 0 : process.env.CORRIDA_TV_MS ? Math.max(0, Number(process.env.CORRIDA_TV_MS) || 0) : room.temporada ? TV_TEMPORADA_MS : TV_AVULSA_MS;
+    room.tvAte = tvMs ? Date.now() + tvMs : null; room.tvPulos = new Set(); room.tv = tvMs ? room.tvTemporada || {} : null;
+    room.startAt = (room.tvAte || Date.now()) + (f1 ? Math.round(LUZES_MS + (4 + room.luzes.espera) * 1000) : COUNTDOWN_MS);
     room.endAt = null;
     room.finishOrder = [];
     // grid: o da classificação; nas regras de F1 sem classificação, a ordem dos pilotos da sala; senão, embaralhado a cada corrida
@@ -193,7 +199,7 @@ module.exports = function attachCorrida(io) {
       room.itemTimer = setInterval(() => { Itens.tick(room, (event, data) => nsp.to(room.code).emit(event, data));
         if (++frame % 2 === 0) nsp.to(room.code).volatile.emit("item:hazards", Itens.publicHazards(room)); }, 50);
     }
-    room.endTimer = setTimeout(() => endRace(room), COUNTDOWN_MS + MAX_RACE_MS);
+    room.endTimer = setTimeout(() => endRace(room), tvMs + COUNTDOWN_MS + MAX_RACE_MS);
     log(room, `🏁 Largada em ${T.PISTAS[room.config.pista].name}, ${room.config.voltas} volta${room.config.voltas > 1 ? "s" : ""}.`);
   }
   // a semente do GP (os sorteios saem dela) e os robôs da sala
@@ -302,6 +308,15 @@ module.exports = function attachCorrida(io) {
     return true;
   }
 
+  // O que a transmissão de TV mostra do campeonato (só em temporada): os 10 primeiros pilotos (mais os humanos que ficaram
+  // de fora) e as 11 equipes, com os pontos de antes deste GP. `tab` é o `tabelas` da temporada (solo ou em grupo); no 1º GP
+  // ninguém tem ponto e a tabela fica de fora (`vazia`). Só nome, equipe e pontos viajam: o resto da tabela fica no servidor.
+  function resumoTV(tab, info, humano, equipeHumana) {
+    if (!tab || !tab.pilotos.some((p) => p.pontos > 0)) return { ...info, vazia: true };
+    const pil = tab.pilotos.map((p, i) => ({ pos: i + 1, nome: p.nome, equipe: p.equipe, pontos: p.pontos, ...(humano(p) ? { humano: 1 } : {}) }));
+    return { ...info, pilotos: [...pil.slice(0, 10), ...pil.slice(10).filter((p) => p.humano)],
+      equipes: tab.equipes.map((e, i) => ({ pos: i + 1, id: e.id, nome: e.nome, pontos: e.pontos, ...(equipeHumana(e) ? { humana: 1 } : {}) })) };
+  }
   // ---------- conexões ----------
   function abrirGP(temporada, aoTerminarGP, aoMontar) {
     const gp = temporada.calendario[temporada.gp];
@@ -309,7 +324,8 @@ module.exports = function attachCorrida(io) {
     const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: gp.pista, voltas: temporada.voltas, robos: 19, classificacao: "completa", nivel: temporada.nivel || "medio" }),
       players: {}, order: [], finishOrder: [], log: [], t: Date.now(), privada: true, temporada: true, equipeTemporada: temporada.equipe,
       sementeFixa: `${temporada.semente}:${temporada.ano}:${temporada.gp}`, pilotosTemporada: require("./public/corrida/temporada/regras.js").pilotosNoGrid(temporada),
-      montagens: { [temporada.equipe]: temporada.montagem }, bonusMontagem: { [temporada.equipe]: temporada.bonus }, bonusBox: (temporada.engenheiros.mecanico * 0.5 + temporada.engenheiros.estrategista * 0.25), aoTerminarGP, aoMontar };
+      montagens: { [temporada.equipe]: temporada.montagem }, bonusMontagem: { [temporada.equipe]: temporada.bonus }, bonusBox: (temporada.engenheiros.mecanico * 0.5 + temporada.engenheiros.estrategista * 0.25), aoTerminarGP, aoMontar,
+      tvTemporada: resumoTV(require("./public/corrida/temporada/regras.js").tabelas(temporada), { gp: temporada.gp + 1, total: temporada.tamanho, ano: temporada.ano }, (p) => p.id === "voce", (e) => e.id === temporada.equipe) };
     const eq = Pilotos.EQUIPES[temporada.equipe], id = rid(6), token = rid();
     room.players[id] = { id, name: temporada.nome, token, pawn: "🏎️", color: eq.cor, skin: "padrao", car: "equilibrado", equipe: temporada.equipe,
       mods: { ...T.MODS_PADRAO, pintura: eq.pintura }, pneu: F1.COMPOSTO_PADRAO, grid: 0, laps: 0, sector: T.SECTORS - 1,
@@ -325,7 +341,8 @@ module.exports = function attachCorrida(io) {
     if (!gp) throw Error("Pista inválida.");
     const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: g.pista, voltas: g.voltas, robos: g.robos.length, classificacao: "completa", nivel: g.nivel }),
       players: {}, order: [], finishOrder: [], log: [], t: Date.now(), privada: true, temporada: true, grupo: true, salaTemporada: g.salaTemporada || null, espectadores: new Set(),
-      sementeFixa: g.semente, pilotosTemporada: g.robos, montagens: g.montagens || {}, bonusMontagem: g.bonusMontagem || {}, bonusBoxEquipes: g.bonusBox || {}, aoTerminarGP, aoMontar: g.aoMontar };
+      sementeFixa: g.semente, pilotosTemporada: g.robos, montagens: g.montagens || {}, bonusMontagem: g.bonusMontagem || {}, bonusBoxEquipes: g.bonusBox || {}, aoTerminarGP, aoMontar: g.aoMontar,
+      tvTemporada: g.tv ? resumoTV(g.tv.tabelas, { gp: g.tv.gp, total: g.tv.total, ano: g.tv.ano }, (p) => p.humano, (e) => e.humana) : null };
     const pessoas = {};
     for (const h of g.pessoas) {
       const eq = Pilotos.EQUIPES[h.equipe], id = rid(6), token = rid();
@@ -407,7 +424,7 @@ module.exports = function attachCorrida(io) {
       const { room, me } = ctx();
       if (!room) return fail(cb, "Você não está numa sala.");
       const type = data.type, isHost = me && room.host === me.id;
-      if (room.temporada && !["qpronto", "confirmarLargada", "montagemGrid", "box", "batida", "sector", "pneu"].includes(type)) return fail(cb, "Este GP é controlado pela sede da temporada.");
+      if (room.temporada && !["qpronto", "confirmarLargada", "montagemGrid", "box", "batida", "sector", "pneu", "tvpular"].includes(type)) return fail(cb, "Este GP é controlado pela sede da temporada.");
       const err = (() => {
         if (type === "color") {
           if (!me || room.phase === "race") return "Só dá para trocar fora da corrida.";
@@ -480,7 +497,7 @@ module.exports = function attachCorrida(io) {
         }
         if (type === "lobby") {
           if (!isHost) return "Só o organizador.";
-          clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer); Quali.cancelar(room); Robos.remover(room); room.resultado = null; room.phase = "lobby"; room.startAt = null; room.endAt = null; return;
+          clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer); Quali.cancelar(room); Robos.remover(room); room.resultado = null; room.phase = "lobby"; room.startAt = null; room.endAt = null; room.tvAte = null; return;
         }
         if (type === "end") {
           if (!isHost || room.phase !== "race") return "Só o organizador encerra a corrida.";
@@ -529,6 +546,14 @@ module.exports = function attachCorrida(io) {
           const teto = Math.min(F1.BATIDA_MAX, car.vmax * 1.15, (Math.abs(me.pos.v || 0) + 80) * 1.3);
           if (!perto || agora - me.pos.at > 1500) return "ignorado";
           if (!aplicarBatida(room, me, Math.min(forca, teto), tipo)) return "ignorado";
+          return;
+        }
+        if (type === "tvpular") { // regras de F1: pulou a transmissão de TV; quando todos os humanos presentes pulam, as luzes vêm já
+          const agora = Date.now();
+          if (room.config.regras !== "f1" || room.phase !== "race" || !room.tvAte || agora >= room.tvAte - 400 || room.tvPulos.has(me.id)) return "ignorado";
+          room.tvPulos.add(me.id);
+          if (room.order.some((id) => { const q = room.players[id]; return q && !q.bot && q.sockets.size && !room.tvPulos.has(id); })) return "ignorado"; // ainda falta gente: só esconde para quem pulou
+          room.tvAte = agora; room.startAt = agora + Math.round(LUZES_MS + (4 + room.luzes.espera) * 1000);
           return;
         }
         if (type === "sector") {
