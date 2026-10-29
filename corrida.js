@@ -53,6 +53,7 @@ module.exports = function attachCorrida(io) {
       classificacao: f1 && c.classificacao === "pular" ? "pular" : f1 ? "completa" : "pular", // F1: Q1, Q2 e Q3 antes da corrida, ou grid pela ordem dos pilotos
       cambio: c.cambio === "manual" ? "manual" : "auto",
       ers: f1 && c.ers === "manual" ? "manual" : "auto",
+      clima: f1 && F1.OPCOES_DE_CLIMA.includes(c.clima) ? c.clima : "aleatorio", // F1: aleatório (a previsão do GP), seco, chuva ou variável (começa seco e chove no meio)
       nivel: Robos.NIVEIS[c.nivel] ? c.nivel : "medio",
     };
   };
@@ -62,7 +63,7 @@ module.exports = function attachCorrida(io) {
   function publicState(room) {
     return {
       code: room.code, host: room.host, phase: room.phase, config: room.config, startAt: room.startAt || null, endAt: room.endAt || null, ...(room.temporada ? { temporada: true, ...(room.salaTemporada ? { salaTemporada: room.salaTemporada } : {}) } : {}),
-      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { tvAte: room.tvAte || null, tv: room.tvAte && Date.now() < room.tvAte ? room.tv || null : null, clima: room.clima || null, montagens: room.montagens || {}, bonusMontagem: room.bonusMontagem || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
+      boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { tvAte: room.tvAte || null, tv: room.tvAte && Date.now() < room.tvAte ? room.tv || null : null, clima: room.clima || null, previsao: F1.previsaoDoGP(sementeDoClima(room), room.config.clima), montagens: room.montagens || {}, bonusMontagem: room.bonusMontagem || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
       players: room.order.map((id) => {
         const p = room.players[id];
         return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, jogos: room.config.regras === "f1" ? F1.jogosRestantes(p) : null, noBox: !!p.box, quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
@@ -205,12 +206,20 @@ module.exports = function attachCorrida(io) {
   }
   // a semente do GP (os sorteios saem dela) e os robôs da sala
   function preparar(room) {
-    room.semente = room.config.regras === "f1" ? (room.sementeFixa ?? Math.floor(Math.random() * 1e9)) : null;
+    room.semente = room.config.regras === "f1" ? (room.sementeFixa ?? room.sementeProx ?? Math.floor(Math.random() * 1e9)) : null;
+    room.sementeProx = null;
     Robos.preparar(room, COLORS, rid);
     atribuirCarros(room); // quem tem equipe corre com o carro dela (os robôs já saem com o spec); a classificação já usa
     sortearClima(room);
   }
-  // O clima do GP (regras de F1): 20% de chance de chuva, sorteados pela semente do GP (o mesmo em qualquer recarga). Se chove, a
+  // A semente que vale para a previsão do tempo: na sala (antes de largar) é a do GP que vem aí (`sementeProx`, sorteada na primeira
+  // vez que alguém pergunta e usada por `preparar`: a previsão que se vê é a do GP que acontece); a carreira já tem a sua fixa.
+  function sementeDoClima(room) {
+    if (room.phase !== "lobby") return room.semente;
+    return room.sementeFixa ?? (room.sementeProx ??= Math.floor(Math.random() * 1e9));
+  }
+  // O clima do GP (regras de F1): a previsão e a chuva saem da semente do GP (o mesmo em qualquer recarga): chove com a chance da
+  // previsão, dentro da janela prevista, e a opção de clima da sala (aleatório, seco, chuva, variável) manda nela. Se chove, a
   // classificação e a corrida têm cada uma o seu roteiro (f1-regras.js, `sortearClima`). `room.sorteioClima` guarda os dois;
   // `room.clima` é o da sessão que está valendo (o que vai no estado público), com o zero do relógio (`t0`) na largada da
   // sessão: a primeira classificação (Q1) ou as luzes apagando na corrida.
@@ -219,7 +228,7 @@ module.exports = function attachCorrida(io) {
     if (room.config.regras !== "f1") return;
     const pista = room.config.pista, tab = require("./public/corrida/f1-pneus-ritmo.js").tabelaDe(pista), volta = (tab ? tab.volta : 75) * 1.12;
     const sessoes = F1.sessoesDeClassificacao(room.order.length).length;
-    room.sorteioClima = F1.sortearClima(room.semente, { corrida: Math.round(volta * room.config.voltas + 15), quali: sessoes * (Robos.duracaoDaClassificacao(pista) + 13) });
+    room.sorteioClima = F1.sortearClima(room.semente, { corrida: Math.round(volta * room.config.voltas + 15), quali: sessoes * (Robos.duracaoDaClassificacao(pista) + 13) }, room.config.clima);
   }
   // a classificação (Q1, Q2 e Q3) antes da corrida das regras de F1; no fim ela chama startRace com o grid
   const classificacao = { log, broadcast, largar: (room, grid) => startRace(room, grid) };
