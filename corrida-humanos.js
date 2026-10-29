@@ -48,6 +48,7 @@ function entrada(room, p, d, agora = Date.now()) {
     if (tk < S.c.tick || !Number.isInteger(code) || code < 0 || code > 0x7fffffff) continue; // já processado ou lixo
     if (S.fila.size >= FILA_MAX) break;
     S.fila.set(tk, code);
+    if (!(tk <= S.ultimoTk)) S.ultimoTk = tk; // o passo mais novo que chegou: é o "agora" do navegador
   }
   return true;
 }
@@ -88,6 +89,10 @@ function andar(room, agora, h) {
     amb.outros = outros;
     const antes = c.tick;
     let temEntrada = false;
+    // antes das luzes o carro está parado no grid, então o relógio dos passos pode saltar para a hora real sem mudar nada: se
+    // o navegador perdeu passos (um engasgo na montagem da pista, na transmissão de TV ou na aba escondida), a âncora velha
+    // deixava o servidor achando que as luzes ainda não tinham apagado e segurava o carro (só o volante mexia)
+    if (S.ultimoTk != null && S.ancora + c.tick * PASSO_MS < room.startAt) S.ancora = Math.max(S.ancora, agora - (S.ultimoTk + 1) * PASSO_MS);
     while (c.tick < limite && S.fila.has(c.tick)) {
       const code = S.fila.get(c.tick); S.fila.delete(c.tick);
       const ent = Sim.desempacotar(code, S.ent || (S.ent = {}));
