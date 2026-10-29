@@ -228,11 +228,14 @@ let ultimo = null;
 export function pularTV() {
   const race = ultimo; if (!race || !race.tv || race.tv.espera) return;
   const tv = race.tv; tv.el.remove(); race.tv = { espera: true, chip: criarChip(tv.el.parentNode) };
+  if (window.Narrador) window.Narrador.parar(); // pular a transmissão corta o narrador
   act("tvpular");
 }
 function criarChip(pai) { const c = document.createElement("div"); c.className = "tvEspera"; c.textContent = "Esperando os outros pilotos pularem a transmissão…"; pai.appendChild(c); return c; }
 function acabar(race) {
   const tv = race.tv; if (tv) { if (tv.el) tv.el.remove(); if (tv.chip) tv.chip.remove(); }
+  // fim natural: a fala do narrador continua por cima do grid parado, até as luzes; fim antecipado (todos pularam): corta
+  if (window.Narrador && !(tv && tv.total && sNow() - tv.ini >= tv.total * 1000 - 500)) window.Narrador.parar();
   race.tv = null; $("race").classList.remove("tvOn");
 }
 
@@ -301,6 +304,10 @@ export function quadroTV(race, tr, cam, reduzMov) {
     tv.bloco = f.k; corte(tv);
     tv.el.querySelectorAll(".tvCarta").forEach((c) => c.classList.toggle("on", c.dataset.b === f.k));
     tv.el.querySelector(".tvRotulo").textContent = TITULO[f.k];
+    if (window.Narrador) { // o narrador apresenta a pista junto do voo; no grid ele abaixa; as luzes cortam (narrador.js)
+      if (f.k === "pista") window.Narrador.falarDaPista(E.S.config.pista, E.S.semente, { cortarEm: race.startAt - ((race.luzes?.espera || 0) + 4) * 1000 - sNow() });
+      else if (f.k === "grid") window.Narrador.abaixar(0.3, 0.6);
+    }
   }
   const c = camera(tv, tr, f.k, u);
   if (tv.desenho && f.k === "pista") { const [px, py] = tv.desenho.ondeXY(tv.alvo[0], tv.alvo[1]), pt = tv.el.querySelector(".tvPonto"); pt.style.left = px + "%"; pt.style.top = py + "%"; }
