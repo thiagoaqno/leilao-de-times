@@ -163,6 +163,22 @@ export function respawn() {
   const p = race.tr.pts[race.idx]; Object.assign(race.car, { x: p.x, y: p.y, z: p.h, vz: 0, air: false, a: Math.atan2(p.ty, p.tx), v: 0, vx: 0, vy: 0, slip: 0 }); Sound.pop();
 }
 
+// os 3 carros mais perto, para o som (volume pela distância e Doppler): três objetos que se reaproveitam a cada quadro
+const OUTROS_SOM = [0, 1, 2].map(() => ({ dist: 0, vRel: 0, v: 0, lado: 0 })), M_POR_U = 0.75 / 3.6, ALCANCE_SOM = 380;
+function outrosParaSom() {
+  const c = race.car, sa = Math.sin(c.a), ca = Math.cos(c.a); let n = 0;
+  for (const [id, gh] of race.ghosts) {
+    if (P(id)?.dnf) continue;
+    const dx = gh.x - c.x, dy = gh.y - c.y, du = Math.hypot(dx, dy) || 1, d = du * M_POR_U;
+    if (d > ALCANCE_SOM || (n === 3 && d >= OUTROS_SOM[2].dist)) continue;
+    let i = n < 3 ? n++ : 2; const s = OUTROS_SOM[i], ux = dx / du, uy = dy / du, gv = gh.v || 0;
+    s.dist = d; s.v = Math.abs(gv) * M_POR_U; s.lado = -sa * ux + ca * uy; // (a direita do meu carro é (-sen a, cos a))
+    s.vRel = -((Math.cos(gh.a) * gv - (c.vx || 0)) * ux + (Math.sin(gh.a) * gv - (c.vy || 0)) * uy) * M_POR_U; // positivo = se aproximando
+    while (i > 0 && OUTROS_SOM[i - 1].dist > s.dist) { OUTROS_SOM[i] = OUTROS_SOM[i - 1]; OUTROS_SOM[i - 1] = s; i--; }
+  }
+  return n;
+}
+
 let lastT = 0, ultimoQuadro = 0;
 // Telas de 120/144 Hz pediam um quadro a cada 7 ms e a placa de vídeo desenhava tudo 144 vezes por segundo. Um quadro
 // precisa de pelo menos 11 ms: em 144 Hz desenha um sim e outro não (72 por segundo), em 60 Hz todos.
@@ -180,9 +196,9 @@ function loop(t) {
   updateGhosts(dt);
   recordLap();
   if (me() && ativo() && !race.net && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
-  const f1 = E.S?.config.regras === "f1";
-  const rivais = f1 ? [...race.ghosts].filter(([id]) => !P(id)?.dnf).map(([, gh]) => gh) : [];
-  Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0, f1, rivais, race.car);
+  const somF1 = E.S?.config.regras === "f1"; // regras de F1: o motor V6 turbo (motor-f1.js), com o limitador e os carros dos outros
+  Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0, somF1 ? { cam: camMode, lim: race.box?.fase === "entra" ? 0.45 : keys.gas && (race.rpm || 0) >= 0.985 ? 1 : 0 } : null);
+  Sound.outros(OUTROS_SOM, somF1 && me() ? outrosParaSom() : 0);
   Sound.skid(me() && ativo() && race.car.slip > 45 ? race.car.slip : 0);
   draw(dt);
   medirQuadro();
