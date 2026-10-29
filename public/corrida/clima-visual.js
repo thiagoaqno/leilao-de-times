@@ -1,8 +1,9 @@
 // Corrida da Galera — o visual do clima (regras de F1): tudo é dirigido por `clima` (clima.js) e muda devagar, sem salto.
 //   céu fechado (um domo de nuvens por cima da foto), sol fraco e sem sombra dura, luz mais fria e baixa, neblina cinza e
-//   mais perto · gotas caindo em volta da câmera (um LineSegments só) · gotas na tela (canvas 2D: poucas lentes d'água que escorrem
-//   para as bordas conforme a velocidade; só na primeira pessoa e um pouco na câmera de trás) · asfalto escuro e brilhante conforme `agua` · borrifo atrás dos carros mais perto da câmera
-//   (um Points só) · chiado de chuva e dos pneus no molhado (sons.js) · o ícone e o nível da pista no HUD (#hClima).
+//   mais perto · gotas caindo em volta da câmera (um LineSegments só: traços curtos e transparentes que param no chão e viram
+//   respingos de anel) · gotas na tela (canvas 2D: poucas lentes d'água que escorrem
+//   para as bordas conforme a velocidade; só na primeira pessoa e um pouco na câmera de trás) · asfalto escuro e espelhado conforme `agua`, com poças, o traçado ideal mais seco, rastro dos carros e a
+//   luz deles refletida (agua-pista.js) · borrifo atrás dos carros mais perto da câmera (um Points só, com LOD) · chiado de chuva e dos pneus no molhado (sons.js) · o ícone e o nível da pista no HUD (#hClima).
 // Gasta tudo na criação: nada é alocado por quadro, e sem chuva e com a pista seca o passo não faz nada.
 // A luz, a neblina e o fundo são escritos por outros módulos (pista.js e ceu.js, a cada pista): aqui guarda-se a BASE (o
 // último valor que não foi escrito por mim) e escreve-se base × fator, então ao parar de chover tudo volta ao que era.
@@ -49,28 +50,110 @@ const domo = (() => {
 })();
 
 // ---------- as gotas caindo ----------
+// Traços curtos, cinza-azulados e transparentes (alfa por vértice, a cauda some), inclinados pela velocidade do carro. Cada gota cai
+// até o chão do ponto onde está (a altura vem de uma grade de alturas em volta da câmera, refeita só quando a câmera muda de
+// célula) e, perto da câmera, vira um respingo: um anel e um pontinho que somem rápido no asfalto (pool fixo de quadrados deitados).
 const MAX_GOTAS = 2200, QUEDA = 520; // unidades por segundo
-const gotasPos = new Float32Array(MAX_GOTAS * 6), semente = new Float32Array(MAX_GOTAS * 3);
-{ let s = 12345; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647); for (let i = 0; i < semente.length; i++) semente[i] = r(); }
+const gotasPos = new Float32Array(MAX_GOTAS * 6), gotasCor = new Float32Array(MAX_GOTAS * 8), semente = new Float32Array(MAX_GOTAS * 3);
+{
+  let s = 12345; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < semente.length; i++) semente[i] = r();
+  for (let i = 0; i < MAX_GOTAS; i++) { // a ponta de baixo (a cabeça) tem alfa de 0,05 a 0,32 e a de cima, zero
+    const a = 0.05 + 0.27 * Math.pow(r(), 2), t = r(), o = i * 8;
+    gotasCor[o] = 0.6 + 0.1 * t; gotasCor[o + 1] = 0.7 + 0.1 * t; gotasCor[o + 2] = 0.82 + 0.06 * t; gotasCor[o + 3] = a;
+    gotasCor[o + 4] = gotasCor[o]; gotasCor[o + 5] = gotasCor[o + 1]; gotasCor[o + 6] = gotasCor[o + 2]; gotasCor[o + 7] = 0;
+  }
+}
 const gotasAttr = new THREE.BufferAttribute(gotasPos, 3).setUsage(THREE.DynamicDrawUsage);
-const gotasGeo = new THREE.BufferGeometry(); gotasGeo.setAttribute("position", gotasAttr); gotasGeo.setDrawRange(0, 0);
-const gotas = new THREE.LineSegments(gotasGeo, new THREE.LineBasicMaterial({ color: 0xd2dfec, transparent: true, opacity: 0.3, fog: false, depthWrite: false }));
+const gotasGeo = new THREE.BufferGeometry(); gotasGeo.setAttribute("position", gotasAttr); gotasGeo.setAttribute("color", new THREE.BufferAttribute(gotasCor, 4)); gotasGeo.setDrawRange(0, 0);
+const gotas = new THREE.LineSegments(gotasGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8, fog: true, depthWrite: false }));
 gotas.frustumCulled = false; gotas.visible = false; gotas.renderOrder = 5; gotas.name = "clima-gotas";
 const onda = (v, S) => v - S * Math.floor(v / S + 0.5); // v em [-S/2, S/2)
 
+// a altura do chão em volta da câmera: 9×9 pontos a cada 60 unidades, em volta da célula da câmera (`tr.chao` do pista.js)
+const GR_N = 9, GR_C = 60, grAlt = new Float32Array(GR_N * GR_N);
+let grX = NaN, grZ = NaN, grTr = null;
+function atualizarChao(tr, cx, cz, fixo) {
+  const gx = Math.round(cx / GR_C) * GR_C, gz = Math.round(cz / GR_C) * GR_C;
+  if (gx === grX && gz === grZ && tr === grTr) return;
+  grX = gx; grZ = gz; grTr = tr;
+  for (let j = 0; j < GR_N; j++) for (let i = 0; i < GR_N; i++) grAlt[j * GR_N + i] = tr.chao ? tr.chao(gx + (i - 4) * GR_C, gz + (j - 4) * GR_C) : fixo;
+}
+function alturaChao(x, z) {
+  const fx = lim((x - grX) / GR_C + 4, 0, 7.999), fz = lim((z - grZ) / GR_C + 4, 0, 7.999), i = fx | 0, j = fz | 0, a = fx - i, b = fz - j, o = j * GR_N + i;
+  return (grAlt[o] * (1 - a) + grAlt[o + 1] * a) * (1 - b) + (grAlt[o + GR_N] * (1 - a) + grAlt[o + GR_N + 1] * a) * b;
+}
+
+// os respingos: quadrados deitados no chão (um por respingo, quatro vértices), com o anel e o pontinho desenhados no sombreador
+const N_RESP = 128;
+const rPos = new Float32Array(N_RESP * 12), rFase = new Float32Array(N_RESP * 4), rUv = new Float32Array(N_RESP * 8), rIdx = new Uint16Array(N_RESP * 6);
+const rX = new Float32Array(N_RESP), rY = new Float32Array(N_RESP), rZ = new Float32Array(N_RESP), rVida = new Float32Array(N_RESP), rVida0 = new Float32Array(N_RESP), rRaio = new Float32Array(N_RESP);
+for (let k = 0; k < N_RESP; k++) {
+  rUv.set([0, 0, 1, 0, 1, 1, 0, 1], k * 8); rIdx.set([k * 4, k * 4 + 1, k * 4 + 2, k * 4, k * 4 + 2, k * 4 + 3], k * 6); rFase.fill(1, k * 4, k * 4 + 4);
+}
+const rAttrPos = new THREE.BufferAttribute(rPos, 3).setUsage(THREE.DynamicDrawUsage), rAttrFase = new THREE.BufferAttribute(rFase, 1).setUsage(THREE.DynamicDrawUsage);
+const rGeo = new THREE.BufferGeometry(); rGeo.setAttribute("position", rAttrPos); rGeo.setAttribute("fase", rAttrFase); rGeo.setAttribute("uv", new THREE.BufferAttribute(rUv, 2)); rGeo.setIndex(new THREE.BufferAttribute(rIdx, 1));
+const rMat = new THREE.ShaderMaterial({
+  uniforms: { cor: { value: new THREE.Color(0xdfe6ee) }, op: { value: 0.5 } },
+  vertexShader: `attribute float fase; varying vec2 vUv; varying float vT; void main() { vUv = uv; vT = fase; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `uniform vec3 cor; uniform float op; varying vec2 vUv; varying float vT;
+    void main() { float d = length(vUv * 2.0 - 1.0); float anel = smoothstep(0.2, 0.0, abs(d - 0.74)), ponto = smoothstep(0.4, 0.0, d) * (1.0 - smoothstep(0.0, 0.35, vT));
+      float a = (anel * 0.6 + ponto * 0.7) * (1.0 - vT) * op; if (a < 0.01) discard; gl_FragColor = vec4(cor, a);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+  transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
+});
+const resp = new THREE.Mesh(rGeo, rMat); resp.frustumCulled = false; resp.visible = false; resp.renderOrder = 4; resp.name = "clima-respingos";
+let rProx = 0, rVivos = 0, gotaT = -1;
+function respingo(x, z, tr, fixo, cima) {
+  const i = rProx; rProx = (rProx + 1) % N_RESP; if (rVida[i] <= 0) rVivos++;
+  rX[i] = x; rZ[i] = z; rY[i] = (tr.chao ? tr.chao(x, z) : fixo) + 0.85; rVida0[i] = rVida[i] = 0.2 + Math.random() * 0.18; rRaio[i] = (1.6 + Math.random() * 1.8) * (cima ? 2.5 : 1);
+}
+function passoRespingos(dt) {
+  if (rVivos <= 0) { if (resp.visible) resp.visible = false; return; }
+  resp.visible = true;
+  for (let k = 0; k < N_RESP; k++) {
+    if (rVida[k] <= 0) continue;
+    rVida[k] -= dt; const o = k * 12;
+    if (rVida[k] <= 0) { rVivos--; rPos.fill(0, o, o + 12); rFase.fill(1, k * 4, k * 4 + 4); continue; }
+    const t = 1 - rVida[k] / rVida0[k], r = rRaio[k] * (0.35 + 0.65 * Math.sqrt(t)), x = rX[k], y = rY[k], z = rZ[k];
+    rPos[o] = x - r; rPos[o + 1] = y; rPos[o + 2] = z - r; rPos[o + 3] = x + r; rPos[o + 4] = y; rPos[o + 5] = z - r;
+    rPos[o + 6] = x + r; rPos[o + 7] = y; rPos[o + 8] = z + r; rPos[o + 9] = x - r; rPos[o + 10] = y; rPos[o + 11] = z + r;
+    rFase.fill(t, k * 4, k * 4 + 4);
+  }
+  rAttrPos.needsUpdate = rAttrFase.needsUpdate = true;
+  rMat.uniforms.op.value = 0.3 + 0.5 * I;
+  if (scene.fog) rMat.uniforms.cor.value.copy(scene.fog.color).lerp(BRANCO, 0.4);
+}
+
 // ---------- o borrifo atrás dos carros ----------
-const N_SPRAY = 256, K_CARROS = 6;
-const sPos = new Float32Array(N_SPRAY * 3), sTam = new Float32Array(N_SPRAY), sAlfa = new Float32Array(N_SPRAY);
-const sVx = new Float32Array(N_SPRAY), sVy = new Float32Array(N_SPRAY), sVz = new Float32Array(N_SPRAY), sVida = new Float32Array(N_SPRAY), sVida0 = new Float32Array(N_SPRAY), sTam0 = new Float32Array(N_SPRAY);
+// A "fumaça" de chuva que o carro levanta: nuvens de pontos macios (um Points só, com textura de nuvem que gira) atrás das rodas
+// traseiras e do difusor, mais densas e altas com a velocidade e com a água na pista. LOD: os 3 carros mais perto da câmera soltam
+// o borrifo inteiro; os outros até 5, com menos, e os longe quase nada. Os carros perto também mandam a posição para o asfalto
+// (rastro mais seco e a luz refletida: agua-pista.js).
+const N_SPRAY = 640, K_CARROS = 8, K_PERTO = 3;
+const sPos = new Float32Array(N_SPRAY * 3), sTam = new Float32Array(N_SPRAY), sAlfa = new Float32Array(N_SPRAY), sRot = new Float32Array(N_SPRAY);
+const sVx = new Float32Array(N_SPRAY), sVy = new Float32Array(N_SPRAY), sVz = new Float32Array(N_SPRAY), sVida = new Float32Array(N_SPRAY), sVida0 = new Float32Array(N_SPRAY), sTam0 = new Float32Array(N_SPRAY), sA0 = new Float32Array(N_SPRAY), sGiro = new Float32Array(N_SPRAY);
 const sGeo = new THREE.BufferGeometry();
-const sAttrPos = new THREE.BufferAttribute(sPos, 3).setUsage(THREE.DynamicDrawUsage), sAttrTam = new THREE.BufferAttribute(sTam, 1).setUsage(THREE.DynamicDrawUsage), sAttrAlfa = new THREE.BufferAttribute(sAlfa, 1).setUsage(THREE.DynamicDrawUsage);
-sGeo.setAttribute("position", sAttrPos); sGeo.setAttribute("tam", sAttrTam); sGeo.setAttribute("alfa", sAttrAlfa);
+const sAttrPos = new THREE.BufferAttribute(sPos, 3).setUsage(THREE.DynamicDrawUsage), sAttrTam = new THREE.BufferAttribute(sTam, 1).setUsage(THREE.DynamicDrawUsage), sAttrAlfa = new THREE.BufferAttribute(sAlfa, 1).setUsage(THREE.DynamicDrawUsage), sAttrRot = new THREE.BufferAttribute(sRot, 1).setUsage(THREE.DynamicDrawUsage);
+sGeo.setAttribute("position", sAttrPos); sGeo.setAttribute("tam", sAttrTam); sGeo.setAttribute("alfa", sAttrAlfa); sGeo.setAttribute("rot", sAttrRot);
+// a nuvem: vários borrões somados e apagados em volta, só o canal alfa importa
+const puff = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d");
+  for (let i = 0; i < 16; i++) {
+    const a = Math.random() * 6.2832, d = Math.random() * 15, px = 32 + Math.cos(a) * d, py = 32 + Math.sin(a) * d, rad = 9 + Math.random() * 12, g = x.createRadialGradient(px, py, 0, px, py, rad);
+    g.addColorStop(0, "rgba(255,255,255,0.34)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  }
+  x.globalCompositeOperation = "destination-in"; const m = x.createRadialGradient(32, 32, 0, 32, 32, 31); m.addColorStop(0, "rgba(0,0,0,1)"); m.addColorStop(0.6, "rgba(0,0,0,0.8)"); m.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = m; x.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace; return t;
+})();
 const sMat = new THREE.ShaderMaterial({
-  uniforms: { cor: { value: new THREE.Color(0xdfe6ee) }, escala: { value: 600 } },
-  vertexShader: `attribute float tam; attribute float alfa; uniform float escala; varying float vA;
-    void main() { vA = alfa; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = clamp(tam * escala / max(1.0, -mv.z), 0.0, 240.0); gl_Position = projectionMatrix * mv; }`,
-  fragmentShader: `uniform vec3 cor; varying float vA;
-    void main() { float r = length(gl_PointCoord - 0.5) * 2.0; float a = smoothstep(1.0, 0.05, r) * vA; if (a < 0.004) discard; gl_FragColor = vec4(cor, a);
+  uniforms: { cor: { value: new THREE.Color(0xdfe6ee) }, escala: { value: 600 }, mapa: { value: puff } },
+  vertexShader: `attribute float tam; attribute float alfa; attribute float rot; uniform float escala; varying float vA; varying float vR;
+    void main() { vA = alfa; vR = rot; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = clamp(tam * escala / max(1.0, -mv.z), 0.0, 260.0); gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `uniform vec3 cor; uniform sampler2D mapa; varying float vA; varying float vR;
+    void main() { vec2 p = gl_PointCoord - 0.5; float c = cos(vR), s = sin(vR); float t = texture2D(mapa, vec2(c * p.x - s * p.y, s * p.x + c * p.y) + 0.5).a; float a = t * vA; if (a < 0.004) discard; gl_FragColor = vec4(cor * (0.84 + 0.16 * t), a);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
     }`,
@@ -88,13 +171,17 @@ function candidato(car, meu, cp) {
   while (j > 0 && emissorD[j - 1] > d) { emissor[j] = emissor[j - 1]; emissorD[j] = emissorD[j - 1]; emissorMeu[j] = emissorMeu[j - 1]; j--; }
   emissor[j] = car; emissorD[j] = d; emissorMeu[j] = meu;
 }
-function nascer(car, a, v) {
+// f: de 0 a 1, a velocidade com a água na pista (mais alto, mais longo e mais denso)
+function nascer(car, a, v, f) {
   const i = sProx; sProx = (sProx + 1) % N_SPRAY; if (sVida[i] <= 0) sVivos++;
-  const fx = Math.cos(a), fy = Math.sin(a), lado = Math.random() < 0.5 ? -1 : 1, atras = 20 + Math.random() * 8, la = lado * (7 + Math.random() * 4);
-  sPos[i * 3] = car.x - fx * atras - fy * la; sPos[i * 3 + 1] = (car.z || 0) + 3 + Math.random() * 3; sPos[i * 3 + 2] = car.y - fy * atras + fx * la;
-  const vel = v * (0.22 + Math.random() * 0.14); // sai com uma parte da velocidade do carro e o ar freia: o carro corre e a nuvem fica
-  sVx[i] = fx * vel + (Math.random() - 0.5) * 30 + -fy * lado * 14; sVz[i] = fy * vel + (Math.random() - 0.5) * 30 + fx * lado * 14; sVy[i] = 28 + Math.random() * 38;
-  sVida0[i] = sVida[i] = 0.8 + Math.random() * 0.6; sTam0[i] = 8 + Math.random() * 7; sTam[i] = sTam0[i]; sAlfa[i] = 0;
+  const fx = Math.cos(a), fy = Math.sin(a), centro = Math.random() < 0.28, lado = Math.random() < 0.5 ? -1 : 1; // 28% sobe do difusor, no meio; o resto atrás de cada roda de trás
+  const atras = centro ? 24 + Math.random() * 8 : 17 + Math.random() * 9, la = centro ? (Math.random() - 0.5) * 7 : lado * (7 + Math.random() * 4);
+  sPos[i * 3] = car.x - fx * atras - fy * la; sPos[i * 3 + 1] = (car.z || 0) + (centro ? 5 : 2.5) + Math.random() * 3; sPos[i * 3 + 2] = car.y - fy * atras + fx * la;
+  const vel = v * (0.2 + Math.random() * 0.14); // sai com uma parte da velocidade do carro e o ar freia: o carro corre e a nuvem fica
+  sVx[i] = fx * vel + (Math.random() - 0.5) * 26 + -fy * lado * (centro ? 4 : 16); sVz[i] = fy * vel + (Math.random() - 0.5) * 26 + fx * lado * (centro ? 4 : 16);
+  sVy[i] = (centro ? 34 : 20) + (18 + 34 * f) * Math.random();
+  sVida0[i] = sVida[i] = 1 + Math.random() * 0.8 + 0.5 * f; sTam0[i] = (9 + Math.random() * 8) * (0.75 + 0.55 * f) * (centro ? 1.25 : 1); sTam[i] = sTam0[i];
+  sA0[i] = (0.13 + Math.random() * 0.11) * (0.55 + 0.45 * f); sAlfa[i] = 0; sRot[i] = Math.random() * 6.2832; sGiro[i] = (Math.random() - 0.5) * 1.2;
 }
 function passoSpray(dt, c, race, cam) {
   const agua = suave(0.2, 0.8, clima.agua), cp = cam.position;
@@ -104,45 +191,62 @@ function passoSpray(dt, c, race, cam) {
     if (race.kart && race.kart.g.visible) candidato(c, true, cp);
     for (const gh of race.ghosts.values()) if (gh.kart && gh.kart.g.visible !== false) candidato(gh, false, cp);
     for (let k = 0; k < nEmissores; k++) {
-      const car = emissor[k], meu = emissorMeu[k], v = Math.abs(car.v || 0), f = suave(80, 280, v) * agua * (meu ? 0.55 : 1);
-      emissor[k] = null; if (f < 0.02) continue;
-      let ac = (meu ? acMeu : car.__borrifo || 0) + dt * 32 * f; // (o acumulador do meu carro fica aqui: `race.vis` pode ser outro objeto a cada quadro)
-      while (ac >= 1) { ac -= 1; nascer(car, car.a, v); }
+      const car = emissor[k], meu = emissorMeu[k], v = Math.abs(car.v || 0), f = suave(70, 290, v) * agua, lod = k < K_PERTO ? 1 : emissorD[k] > 900 * 900 ? 0.25 : 0.45;
+      const fx = Math.cos(car.a || 0), fy = Math.sin(car.a || 0), rastro = v > 20 ? lim(v * 0.5, 0, 150) : 0;
+      for (let q = 0; q < asfU.length; q++) { // o asfalto: o rastro mais seco por trás do carro e a luz traseira e o farol refletidos (o meu carro não reflete: a câmera está nele)
+        const u = asfU[q]; u.uCarros.value[k].set(car.x, car.y, -fx * rastro, -fy * rastro);
+        u.uLuzes.value[k * 2].set(car.x - fx * 24, car.y - fy * 24, 9, meu ? 0 : 2.2); u.uLuzes.value[k * 2 + 1].set(car.x + fx * 26, car.y + fy * 26, 5, meu ? 0 : 0.55);
+      }
+      if (f < 0.02) continue;
+      let ac = (meu ? acMeu : car.__borrifo || 0) + dt * 70 * f * lod * (meu ? 0.7 : 1); // (o acumulador do meu carro fica aqui: `race.vis` pode ser outro objeto a cada quadro)
+      for (let m = 0; ac >= 1; ac -= 1) { if (m++ < 8) nascer(car, car.a, v, f); }
       if (meu) acMeu = ac; else car.__borrifo = ac;
     }
+    for (let k = 0; k < nEmissores; k++) emissor[k] = null;
+    for (let k = nEmissores; k < K_CARROS; k++) for (let q = 0; q < asfU.length; q++) { asfU[q].uCarros.value[k].set(0, 0, 0, 0); asfU[q].uLuzes.value[k * 2].set(0, 0, 0, 0); asfU[q].uLuzes.value[k * 2 + 1].set(0, 0, 0, 0); }
   }
   if (sVivos <= 0) { if (spray.visible) spray.visible = false; return; }
   spray.visible = true;
-  const drag = Math.exp(-2.2 * dt);
+  const drag = Math.exp(-1.7 * dt);
   for (let i = 0; i < N_SPRAY; i++) {
     if (sVida[i] <= 0) continue;
     sVida[i] -= dt;
     if (sVida[i] <= 0) { sVivos--; sAlfa[i] = 0; sTam[i] = 0; continue; }
     const k = 1 - sVida[i] / sVida0[i];
-    sVx[i] *= drag; sVz[i] *= drag; sVy[i] = sVy[i] * drag - 6 * dt;
+    sVx[i] *= drag; sVz[i] *= drag; sVy[i] = sVy[i] * drag - 3 * dt;
     sPos[i * 3] += sVx[i] * dt; sPos[i * 3 + 1] += sVy[i] * dt; sPos[i * 3 + 2] += sVz[i] * dt;
-    sTam[i] = sTam0[i] * (1 + 2.8 * k); sAlfa[i] = 0.34 * Math.min(1, k * 9) * (1 - k);
+    sTam[i] = sTam0[i] * (1 + 3.2 * k); sAlfa[i] = sA0[i] * Math.min(1, k * 8) * (1 - k); sRot[i] += sGiro[i] * dt;
   }
-  sAttrPos.needsUpdate = sAttrTam.needsUpdate = sAttrAlfa.needsUpdate = true;
+  sAttrPos.needsUpdate = sAttrTam.needsUpdate = sAttrAlfa.needsUpdate = sAttrRot.needsUpdate = true;
   renderer.getDrawingBufferSize(tamBuf);
   sMat.uniforms.escala.value = tamBuf.y / (2 * Math.tan((cam.fov * Math.PI) / 360));
   if (scene.fog) sMat.uniforms.cor.value.copy(scene.fog.color).lerp(BRANCO, 0.25);
 }
 
 // ---------- o asfalto molhado ----------
-// os materiais marcados com `userData.asfalto` (pista.js e asfalto-gp.js) escurecem e ficam lisos conforme a água
-let asfaltos = [], aguaAplicada = -1, trAtual = null;
+// os materiais marcados com `userData.asfalto` (pista.js, asfalto-gp.js e a zebra do kit/chao.js) escurecem e ficam lisos conforme a
+// água. O asfalto da pista tem o sombreador de agua-pista.js (`userData.aguaPista`: poças, traçado seco, reflexos), que só precisa do
+// `uAgua`; a zebra (`asfalto: "zebra"`) só escurece e ganha brilho.
+let asfaltos = [], asfU = [], aguaAplicada = -1, aguaSuave = 0, trAtual = null;
+const aguaAlvo = () => suave(0, 0.8, clima.agua);
 function aplicarAsfalto(w) {
   for (const a of asfaltos) {
-    a.m.color.copy(a.cor).multiplyScalar(1 - 0.42 * w);
-    a.m.roughness = a.rug + (0.16 - a.rug) * w;
+    if (a.u) { a.u.uAgua.value = w; if (a.bump != null) a.m.bumpScale = a.bump * (1 - 0.5 * w); continue; }
+    a.m.color.copy(a.cor).multiplyScalar(1 - (a.zebra ? 0.28 : 0.42) * w);
+    a.m.roughness = a.rug + ((a.zebra ? 0.22 : 0.16) - a.rug) * w;
     if (a.bump != null) a.m.bumpScale = a.bump * (1 - 0.5 * w);
   }
 }
 function coletarAsfalto(tr) {
-  aguaAplicada = 0; aplicarAsfalto(0); asfaltos = []; trAtual = tr;
-  tr.grp.traverse((o) => { const m = o.material; if (m && !Array.isArray(m) && m.userData.asfalto && !asfaltos.some((a) => a.m === m)) asfaltos.push({ m, cor: m.color.clone(), rug: m.roughness, bump: m.bumpScale }); });
-  aguaAplicada = -1;
+  aguaAplicada = 0; aplicarAsfalto(0); asfaltos = []; asfU = []; trAtual = tr;
+  tr.grp.traverse((o) => {
+    const m = o.material;
+    if (m && !Array.isArray(m) && m.userData.asfalto && !asfaltos.some((a) => a.m === m)) {
+      const u = m.userData.aguaPista || null; asfaltos.push({ m, u, zebra: m.userData.asfalto === "zebra", cor: m.color.clone(), rug: m.roughness, bump: m.bumpScale });
+      if (u) asfU.push(u);
+    }
+  });
+  aguaSuave = aguaAlvo(); aguaAplicada = -1;
 }
 
 // ---------- as gotas na tela ----------
@@ -266,12 +370,12 @@ function passoHud() {
 }
 
 // ---------- o laço ----------
-scene.add(domo, gotas, spray);
+scene.add(domo, gotas, resp, spray);
 let ultRace = null, ativoAntes = false;
 // chamado por quadro (jogo.js, depois de posicionar a câmera): `mode` é a câmera ("perto", "cockpit", "longe", "cima"), `src` o carro
 // que a câmera segue e `c` o meu carro como é desenhado
 export function passoClima(dt, race, cam, mode, src, c) {
-  if (race !== ultRace) { ultRace = race; I = clima.chuva; sVivos = 0; sVida.fill(0); sAlfa.fill(0); coletarAsfalto(race.tr); }
+  if (race !== ultRace) { ultRace = race; I = clima.chuva; sVivos = 0; sVida.fill(0); sAlfa.fill(0); rVivos = 0; rVida.fill(0); gotaT = -1; grX = NaN; coletarAsfalto(race.tr); }
   else if (race.tr !== trAtual) coletarAsfalto(race.tr);
   const k = clima.chuva > I ? 1 - Math.exp(-dt / 5) : 1 - Math.exp(-dt / 10);
   I += (clima.chuva - I) * k; if (I < 0.002 && clima.chuva === 0) I = 0;
@@ -303,18 +407,28 @@ export function passoClima(dt, race, cam, mode, src, c) {
   // as gotas caindo
   const dens = I < 0.01 ? 0 : (0.15 + 0.85 * I * I) * (reduz.matches ? 0.4 : mode === "cima" ? 0.6 : 1), n = Math.round(MAX_GOTAS * dens);
   if (n > 0) {
-    const cima = mode === "cima", S = cima ? 1100 : 760, H = cima ? 700 : 420, cx = cima ? src.x : cam.position.x, cz = cima ? src.y : cam.position.z, y0 = cima ? (src.z || 0) - 20 : cam.position.y - 150;
-    const tt = performance.now() / 1000, a = src.a || 0, h = sK * 380, rx = -Math.cos(a) * h, rz = -Math.sin(a) * h, ry = -QUEDA, rl = 1 / Math.hypot(rx, ry, rz), comp = 22 + 60 * sK;
-    const dx = rx * rl * comp, dy = ry * rl * comp, dz = rz * rl * comp;
+    const cima = mode === "cima", S = cima ? 1100 : 760, H = cima ? 700 : 420, cx = cima ? src.x : cam.position.x, cz = cima ? src.y : cam.position.z, fixo = src.z || 0;
+    atualizarChao(race.tr, cx, cz, fixo);
+    const tt = performance.now() / 1000, a = src.a || 0, h = sK * 380, rx = -Math.cos(a) * h, rz = -Math.sin(a) * h, ry = -QUEDA, rl = 1 / Math.hypot(rx, ry, rz), comp = 8 + 24 * sK;
+    const dx = rx * rl * comp, dy = ry * rl * comp, dz = rz * rl * comp, comRespingo = gotaT >= 0 && I > 0.05 && !reduz.matches, RS2 = (cima ? 500 : 130) ** 2;
+    let nr = 0;
     for (let i = 0; i < n; i++) {
-      const sx = semente[i * 3], sy = semente[i * 3 + 1], sz = semente[i * 3 + 2], x = cx + onda(sx * S - cx, S), z = cz + onda(sz * S - cz, S), y = y0 + H * frac(sy - (tt * QUEDA) / H), q = 0.7 + 0.6 * frac(sx * 37), o = i * 6;
+      const sx = semente[i * 3], sy = semente[i * 3 + 1], sz = semente[i * 3 + 2], x = cx + onda(sx * S - cx, S), z = cz + onda(sz * S - cz, S), fase = frac(sy - (tt * QUEDA) / H);
+      const y = (cima ? fixo : alturaChao(x, z)) + 0.5 + H * fase, q = 0.6 + 0.8 * frac(sx * 37), o = i * 6; // cada gota cai até o chão do seu ponto
       gotasPos[o] = x; gotasPos[o + 1] = y; gotasPos[o + 2] = z; gotasPos[o + 3] = x - dx * q; gotasPos[o + 4] = y - dy * q; gotasPos[o + 5] = z - dz * q; // a ponta fica no sentido de onde a gota vem, relativo ao carro
+      if (comRespingo && nr < 14 && fase > frac(sy - (gotaT * QUEDA) / H)) { // a fase só sobe quando a gota bateu no chão e voltou ao alto: é o respingo
+        const ex = x - cx, ez = z - cz; if (ex * ex + ez * ez < RS2) { respingo(x, z, race.tr, fixo, cima); nr++; }
+      }
     }
-    gotasGeo.setDrawRange(0, n * 2); gotasAttr.needsUpdate = true; gotas.material.opacity = 0.18 + 0.18 * I; gotas.visible = true;
-  } else if (gotas.visible) gotas.visible = false;
+    gotaT = tt;
+    gotasGeo.setDrawRange(0, n * 2); gotasAttr.needsUpdate = true; gotas.material.opacity = 0.55 + 0.4 * I; gotas.visible = true;
+  } else { gotaT = -1; if (gotas.visible) gotas.visible = false; }
+  passoRespingos(dt);
 
-  // asfalto: só mexe quando a água mudou de verdade
-  if (Math.abs(clima.agua - aguaAplicada) > 0.004) { aguaAplicada = clima.agua; aplicarAsfalto(suave(0, 0.8, clima.agua)); }
+  // asfalto: sobe e desce devagar atrás da água do clima e só mexe quando mudou de verdade
+  const alvoW = aguaAlvo(); aguaSuave += (alvoW - aguaSuave) * (1 - Math.exp(-dt * 1.5)); if (Math.abs(alvoW - aguaSuave) < 0.002) aguaSuave = alvoW;
+  if (aguaSuave !== aguaAplicada) { aguaAplicada = aguaSuave; aplicarAsfalto(aguaSuave); }
+  if (aguaSuave > 0 && scene.fog) for (let q = 0; q < asfU.length; q++) asfU[q].uCeu.value.copy(scene.fog.color).multiplyScalar(0.9);
 
   passoSpray(dt, c, race, cam);
   passoTela(dt, mode, sK);
@@ -326,14 +440,14 @@ export function passoClima(dt, race, cam, mode, src, c) {
 }
 // ao sair da corrida: tudo volta ao seco (a luz já volta sozinha quando I vai a 0; aqui é no corte)
 export function limparClima() {
-  I = 0; ultRace = null; domo.visible = gotas.visible = spray.visible = false; sVivos = 0; sVida.fill(0);
+  I = 0; ultRace = null; domo.visible = gotas.visible = spray.visible = resp.visible = false; sVivos = 0; sVida.fill(0); rVivos = 0; rVida.fill(0); gotaT = -1; grX = NaN;
   if (ativoAntes) {
     ativoAntes = false;
     sun.intensity = escalar(eSol, sun.intensity, 1); hemi.intensity = escalar(eHemi, hemi.intensity, 1); scene.environmentIntensity = escalar(eAmb, scene.environmentIntensity, 1); renderer.toneMappingExposure = escalar(eExp, renderer.toneMappingExposure, 1);
     sun.shadow.intensity = 1; sun.color.copy(eCorSol.base); hemi.color.copy(eCorHemi.base);
     if (scene.fog && scene.fog === fogRef) { scene.fog.near = escalar(eNear, scene.fog.near, 1); scene.fog.far = escalar(eFar, scene.fog.far, 1); scene.fog.color.copy(eCorFog.base); }
   }
-  aplicarAsfalto(0); aguaAplicada = -1; for (const g of G) g.vivo = false; telaNivel = 0;
+  aplicarAsfalto(0); aguaAplicada = -1; aguaSuave = 0; for (const g of G) g.vivo = false; telaNivel = 0;
   if (telaOn) { telaOn = false; cvTela.style.display = "none"; }
   Sound.chuva(0, 0);
 }
