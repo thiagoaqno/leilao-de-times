@@ -12,6 +12,7 @@ const F1 = require("./public/corrida/f1-regras.js"); // as regras de F1 (os pneu
 const Direcao = require("./corrida-f1-direcao.js");
 const Quali = require("./corrida-f1-classificacao.js"); // a classificação (Q1, Q2, Q3) que define o grid das regras de F1
 const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servidor)
+const Setores = require("./corrida-setores.js"); // a conta dos setores sem travar a volta por um aviso perdido
 const Humanos = require("./corrida-humanos.js"); // os humanos nas regras de F1: o servidor anda o carro com as entradas do piloto (autoridade)
 const Pecas = require("./public/corrida/f1-pecas.js"); // as peças do carro (modo carreira), que viram a montagem
 const Equipes = require("./public/corrida/f1-equipes.js"); // as equipes de 2026, o orçamento em pontos e a montagem do carro
@@ -290,11 +291,29 @@ module.exports = function attachCorrida(io) {
   }
   // o corredor dos boxes da pista da sala (os pontos da pista são de 6 em 6 unidades, como no navegador)
   const corredorDe = (room) => { const t = T.PISTAS[room.config.pista]; return t.boxes ? F1.corredor(t, T.pontos(t, 6).length, t.width) : null; };
-  // Setor novo: só vale o próximo na ordem. Voltar ao setor 0 depois do 3 fecha a volta (a primeira passagem é a largada).
+  // onde o carro está na pista agora (o ponto da pista), para conferir um setor que pulou: a simulação do servidor (humanos e
+  // robôs das regras de F1) ou a posição que o navegador mandou
+  const pontoDoCarro = (room, p) => {
+    const t = T.PISTAS[room.config.pista], n = T.pontos(t, 6).length, c = p.sim ? p.sim.c : p.ia && p.ia.sim;
+    if (c && Number.isFinite(c.idx)) return { idx: c.idx, n };
+    if (p.pos && Number.isFinite(p.pos.prog)) return { idx: ((Math.floor(p.pos.prog) % n) + n) % n, n };
+    return { idx: NaN, n };
+  };
+  // Setor novo: vale o próximo na ordem (ou, se um aviso se perdeu, o que o carro mostra estar ali: corrida-setores.js).
+  // Voltar ao setor 0 depois do 11 fecha a volta (a primeira passagem é a largada).
   function onSector(room, p, s, now = Date.now()) { // (`now`: a hora do passo da física em que o carro cruzou o portão)
     if (room.phase === "quali") { const mudou = Quali.aoSetor(room, p, s, now); if (mudou) Quali.verificarFim(room, classificacao); return mudou; } // classificação: volta lançada
-    if (room.phase !== "race" || now < room.startAt || p.finish != null) return false;
-    if (p.dnf || s !== (p.sector + 1) % T.SECTORS) return false;
+    if (room.phase !== "race" || p.finish != null) return false;
+    if (now < room.startAt) { if (now < room.startAt - 2000) return false; now = room.startAt; } // (o relógio dos passos pode errar por alguns ms: um setor logo antes das luzes não pode ser jogado fora, senão o contador do servidor fica um setor atrás para sempre)
+    if (p.dnf) return false;
+    const ponto = pontoDoCarro(room, p), lista = Setores.setoresDoAviso(p.sector, s, ponto.idx, ponto.n, T.SECTORS, T.checkpoint);
+    if (!lista.length) return false;
+    let mudou = false;
+    for (const x of lista) mudou = fecharSetor(room, p, x, now) || mudou;
+    return mudou;
+  }
+  function fecharSetor(room, p, s, now) {
+    if (p.finish != null) return false;
     p.sector = s;
     if (s !== 0) return true;
     if (!p.started) { p.started = true; p.lapStart = room.startAt; return true; }
