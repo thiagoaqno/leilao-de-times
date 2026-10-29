@@ -28,8 +28,8 @@ export function chaoGP(tr, add, cfg, { gridSpot }) {
   for (const s of [-1, 1]) tira(tr, L.de(matMargem), 0, n, s * meia, s * (meia + 7), 0.5, 0.5, 0, (n * 6) / 40);
   // zebras só nas curvas: por dentro em volta do ápice e por fora na saída das mais fechadas
   const z = { cores: ["#d62828", "#f4f4f4"], dentro: 300, fora: 180, ...(cfg.zebra || {}) };
-  const zebra = new THREE.MeshStandardMaterial({ map: canvasTex(32, 64, (x, w, hh) => { x.fillStyle = z.cores[0]; x.fillRect(0, 0, w, hh / 2); x.fillStyle = z.cores[1]; x.fillRect(0, hh / 2, w, hh / 2); x.fillStyle = "#00000030"; x.fillRect(0, 0, 3, hh); }), roughness: 0.6, side: THREE.DoubleSide });
-  const amarela = new THREE.MeshStandardMaterial({ map: canvasTex(32, 64, (x, w, hh) => { x.fillStyle = "#f2c230"; x.fillRect(0, 0, w, hh); x.fillStyle = "#c99a1a"; x.fillRect(0, hh - 4, w, 4); x.fillStyle = "#00000030"; x.fillRect(0, 0, 3, hh); }), roughness: 0.6, side: THREE.DoubleSide });
+  const zebra = new THREE.MeshStandardMaterial({ map: canvasTex(32, 64, (x, w, hh) => { x.fillStyle = z.cores[0]; x.fillRect(0, 0, w, hh / 2); x.fillStyle = z.cores[1]; x.fillRect(0, hh / 2, w, hh / 2); x.fillStyle = "#00000030"; x.fillRect(0, 0, 3, hh); }), roughness: 0.6, side: THREE.DoubleSide, userData: { asfalto: "zebra" } }); // "zebra": o clima (clima-visual.js) a molha também
+  const amarela = new THREE.MeshStandardMaterial({ map: canvasTex(32, 64, (x, w, hh) => { x.fillStyle = "#f2c230"; x.fillRect(0, 0, w, hh); x.fillStyle = "#c99a1a"; x.fillRect(0, hh - 4, w, 4); x.fillStyle = "#00000030"; x.fillRect(0, 0, 3, hh); }), roughness: 0.6, side: THREE.DoubleSide, userData: { asfalto: "zebra" } }); // "zebra": o clima (clima-visual.js) a molha também
   const amarelas = cfg.amarelas || [], ehAmarela = (i) => amarelas.some(([a, b]) => i >= a * n && i <= b * n);
   const marca = { "-1": new Uint8Array(n), "1": new Uint8Array(n) };
   for (let i = 0; i < n; i++) {

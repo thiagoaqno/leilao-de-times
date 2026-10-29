@@ -4,6 +4,7 @@ import { PISTAS, sample, elevate, WORLD, rng } from "./estado.js";
 import { drawPreview } from "./menus.js";
 import { renderer, scene, hemi, sun, canvasTex, M, LOOK } from "./cena.js";
 import { asfaltoGP, borrachaGP } from "./asfalto-gp.js";
+import { aguaUvDaFita, prepararAguaPista } from "./agua-pista.js";
 import { PROPS, aoCarregar } from "./props.js";
 import { enfeitar, animarVida } from "./vida.js";
 import { aplicarCeu } from "./ceu.js";
@@ -205,6 +206,7 @@ function buildWorld(tr) {
       if (i < i1) { const a = (i - i0) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    if (mat.userData.asfalto === true && l0 === -W / 2 && l1 === W / 2 && i0 === 0 && i1 === n) { g.setAttribute("aguaUv", new THREE.Float32BufferAttribute(aguaUvDaFita(n, i0, i1), 2)); prepararAguaPista(tr, mat); } // a máscara de água da pista (agua-pista.js): traçado seco, poças, manchas
     const m = add(new THREE.Mesh(g, mat)); m.receiveShadow = true; m.name = `${id}-faixa`; return m;
   }
   const asphalt = gp?.asfalto ? null : canvasTex(128, 256, (x, w, hh, rr) => { x.fillStyle = look.road; x.fillRect(0, 0, w, hh); for (let i = 0; i < 3000; i++) { x.fillStyle = rr() < 0.5 ? "#00000018" : "#ffffff10"; x.fillRect(rr() * w, rr() * hh, 2, 2); } x.fillStyle = "#00000022"; x.fillRect(w * 0.3, 0, 10, hh); x.fillRect(w * 0.62, 0, 12, hh); x.fillStyle = "#e8e8e8"; x.fillRect(2, 0, 3, hh); x.fillRect(w - 5, 0, 3, hh); x.fillStyle = id === "tokyo" ? "#f2c94c" : "#f2f2f2"; if (id !== "interlagos") x.fillRect(w / 2 - 1.5, 0, 3, hh * 0.45); });
