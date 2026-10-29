@@ -270,7 +270,7 @@ function draw(dt) {
     pt.mat.color.setHex(perdido ? 0xff5050 : 0xffffff); pt.mat.opacity = pt.k === prox || perdido ? 1 : 0.55;
     pt.panos.forEach((q, j) => { q.rotation.y = pt.base[j] + Math.sin(now / 420 + j * 1.7 + pt.k) * 0.12; }); // balança no vento
   }
-  drawBest(dt);
+  if (E.S?.phase !== "race") drawBest(dt); else if (race.bestKart) race.bestKart.g.visible = false; // (na corrida, sem o fantasma do melhor tempo: só na classificação)
   stepPuffs(dt);
   passoEfeitos(dt);
   stepItems(race, dt);
