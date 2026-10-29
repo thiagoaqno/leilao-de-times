@@ -13,8 +13,8 @@
 // (o simulador de stint com a física do carro: ver `ferramentas/pneus-fisica.js`).
 const PNEUS = {
   macio: { nome: "Macio", cor: "#e8202a", pico: 1.515, vida: 1.5, aquece: 1.7, perdaAntes: 0.03 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.42, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.325, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.392, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.299, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
 };
 const COMPOSTO_PADRAO = "medio";
 // O desgaste vai de 0 (novo) a 1 (acabado); PENHASCO é o fim da vida. Passou dele o pneu despenca até PERDA_FIM do pico,
