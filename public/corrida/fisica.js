@@ -10,6 +10,7 @@ import { pad } from "./controles.js";
 import { baterNoOutro, MASSA } from "./colisao.js";
 import { CARS3, KS } from "./carros.js";
 import { myProg } from "./fantasma.js";
+import { updateGhosts } from "./rede.js";
 import { ajudaDePelotao } from "./equilibrio.js";
 import { marchaAuto, rotacao, torque, topo, NUM } from "./cambio.js";
 
@@ -202,7 +203,18 @@ function act2(type, data) { socket.emit("act", { type, ...data }, () => {}); }
 // ====================================================================================================================
 export const PASSO = 1 / 120, MAX_ACUM = 0.25, MASCARA = 1023; // guarda as últimas 1024 entradas (8,5 s) para reaplicar
 export function criarRede() {
-  return { cod: new Int32Array(MASCARA + 1), hx: new Float64Array(MASCARA + 1), hy: new Float64Array(MASCARA + 1), enviado: 0, ack: 0, ultimoEnvio: 0, ex: 0, ey: 0, ea: 0, erro: 0, acks: 0, saltos: 0 };
+  return { cod: new Int32Array(MASCARA + 1), hx: new Float64Array(MASCARA + 1), hy: new Float64Array(MASCARA + 1), enviado: 0, ack: 0, ultimoEnvio: 0, ex: 0, ey: 0, ea: 0, erro: 0, acks: 0, saltos: 0,
+    lead: null,   // quanto o meu relógio de passos está à frente do relógio do servidor (ms): a hora do meu carro é sNow() + lead
+    ct: [] };     // as batidas que previ e o servidor ainda não confirmou: { id, k, k0, reg, carry }
+}
+// A HORA DO MEU CARRO no relógio do servidor (ms). O meu carro é previsto à frente do servidor (as entradas levam um tempo para
+// chegar lá): a hora do meu passo `c.tick` é a hora em que o servidor o vê (`q` do `ack`) mais os passos que ainda estão no caminho.
+// Os outros carros são desenhados e batem nessa mesma hora (rede.js, updateGhosts), então os dois pilotos veem a mesma ordem.
+// `alpha` (0..1) diz onde o desenho está entre o passo anterior e o atual.
+export function tempoMeu(alpha = 1) {
+  const net = race && race.net, agora = sNow();
+  if (!net || net.lead == null) return agora;
+  return agora + net.lead - (1 - alpha) * PASSO * 1000;
 }
 const AMB = { outros: [] }, ENT = {}, ENT_C = {}, EV = [];
 // o ambiente do passo: tudo o que a física precisa saber do jogo (o servidor monta o mesmo)
@@ -213,9 +225,30 @@ function montarAmbiente(R) {
   AMB.voltas = S.config.voltas; AMB.laps = m.laps || 0; AMB.paradas = m.paradas || 0; AMB.semente = S.semente; AMB.id = m.id; AMB.grid = m.grid;
   AMB.finish = m.finish; AMB.dnf = !!m.dnf; AMB.quali = S.phase === "quali"; AMB.fantasma = m.finish != null; AMB.f1 = true;
   AMB.agua = atualizarClima().agua; // a água na pista agora (o servidor usa a mesma conta, pelo mesmo relógio)
+  // a batida só vale para quem corre (nada na classificação, sob safety car, no box, depois da bandeirada ou fora da corrida)
+  AMB.batida = S.phase === "race" && !AMB.safety && !AMB.segurar && m.finish == null && !m.dnf && !(R.car.box && R.car.box.fase);
+  { const [L, W] = window.Sim.dimensoes(m.car); EU.L = L; EU.W = W; EU.massa = window.Sim.massaDe(AMB.spec); }
   const outros = AMB.outros; outros.length = 0;
   for (const [id, gh] of R.ghosts) { const p = P(id); outros.push({ x: gh.x, y: gh.y, z: gh.z, a: gh.a, dnf: !!(p && p.dnf), fant: !!(p && p.finish != null) }); }
   return AMB;
+}
+// os outros carros como o meu passo `k` os vê: o desenho deles (que já está na hora do meu carro: rede.js) levado à hora do passo pela velocidade
+const MODELOS = [], EU = { L: 44, W: 26, massa: 800 };
+function outrosDoPasso(R, k) {
+  const dt = (k - (R.ghTick ?? k)) * PASSO; let n = 0;
+  for (const [id, gh] of R.ghosts) {
+    const p = P(id); if (!p || p.dnf || p.finish != null || !Number.isFinite(gh.vx) || p.box) continue;
+    const m = MODELOS[n] || (MODELOS[n] = {}); n++;
+    m.id = id; m.x = gh.x + gh.vx * dt; m.y = gh.y + gh.vy * dt; m.z = gh.z; m.a = gh.a + (gh.r || 0) * dt; m.vx = gh.vx; m.vy = gh.vy; m.r = gh.r || 0;
+    const [L, W] = window.Sim.dimensoes(p.car); m.L = L; m.W = W; m.massa = window.Sim.massaDe(carOf(p)); m.dnf = false; m.fant = false;
+  }
+  MODELOS.length = n;
+  return MODELOS;
+}
+// as batidas que previ e ainda não valeram no estado do servidor: reaplicadas quando o passo é refeito (emReplay) ou, se o servidor já
+// passou do passo em que bati, no primeiro passo vivo depois (carry)
+function agendadas(net, k, c, emReplay) {
+  for (const e of net.ct) if (e.k === k && (emReplay || e.carry)) { window.Sim.aplicarContato(c, e.reg); e.carry = false; }
 }
 // as teclas (e o controle) deste passo
 function lerEntrada(R) {
@@ -233,8 +266,16 @@ function passoF1(R) {
   const ent = S.desempacotar(code, ENT_C); // a mesma entrada que o servidor vai ver (volante em 1/255)
   AMB.amarela = AMB.setorAmarelo === Math.floor(c.idx / (tr.n / SECTORS));
   AMB.segurar = sNow() < R.startAt;
+  if (AMB.segurar) AMB.batida = false;
   EV.length = 0;
   S.passo(c, ent, AMB, tr, EV);
+  // a batida com os outros carros, prevista na hora (empurrão e perda de velocidade imediatos; o servidor decide e corrige depois)
+  if (AMB.batida) {
+    const reg = S.novoRegistro(), n0 = EV.length;
+    S.contatoPasso(c, EU, outrosDoPasso(R, k + 1), EV, reg);
+    for (let i = n0; i < EV.length; i++) if (EV[i].t === "carro" && reg.forca >= window.Sim.FORCA_EV) { net.ct.push({ id: EV[i].id, k, k0: k, reg: { ...reg }, carry: false }); break; }
+  }
+  if (net.ct.length) agendadas(net, k, c, false);
   net.hx[(k + 1) & MASCARA] = c.x; net.hy[(k + 1) & MASCARA] = c.y;
   for (const e of EV) aoEvento(R, e);
   // Balizadores flexíveis reagem ao toque e voltam sozinhos; não bloqueiam o carro.
@@ -270,6 +311,7 @@ export function quadroDeFisica(dt) {
   R.acc = g.acc;
   if (f1) {
     montarAmbiente(R);
+    updateGhosts(0); // os outros carros na hora do meu carro, antes dos passos (a batida prevista os lê)
     for (let i = 0; i < g.passos; i++) { guardarAnterior(R); passoF1(R); }
     sincronizar(R); enviarEntradas(performance.now());
   } else for (let i = 0; i < g.passos; i++) { guardarAnterior(R); physics(PASSO); }
@@ -313,12 +355,22 @@ export function reconciliar(d) {
   const c = R.car, tk = d.st.tk;
   if (net.acks && tk <= net.ack) return; // um `ack` velho (chegou fora de ordem)
   net.acks++; net.ack = tk;
+  // o quanto o meu relógio de passos está à frente do servidor: a hora do servidor para o passo `tk` (`q`) mais os passos no caminho
+  if (Number.isFinite(d.q)) { const lead = Math.max(-50, Math.min(450, d.q + (c.tick - tk) * PASSO * 1000 - sNow())); net.lead = net.lead == null ? lead : net.lead + (lead - net.lead) * 0.25; }
+  // as batidas que o servidor confirmou saem da lista (já estão no estado dele); as que ele ainda não viu continuam
+  const conf = [];
+  if (d.ev) for (const e of d.ev) if (e.t === "carro") {
+    const i = net.ct.findIndex((x) => x.id === e.id && x.k0 <= (e.k ?? tk) + 40);
+    if (i >= 0) { net.ct.splice(i, 1); conf.push(e); }
+  }
+  for (let i = net.ct.length - 1; i >= 0; i--) { const e = net.ct[i]; if (tk - e.k0 > 40) net.ct.splice(i, 1); else if (e.k < tk) { e.k = tk; e.carry = true; } } // (o servidor já passou do passo em que bati: reaplica no primeiro passo daqui)
   montarAmbiente(R);
   const r = S.reconciliar(c, d.st, R.tr, { mascara: MASCARA, hx: net.hx, hy: net.hy, passo: (carro, k) => { // reaplica o que o servidor ainda não viu (sem som e sem eventos: já aconteceram)
     const ent = S.desempacotar(net.cod[k & MASCARA], ENT_C);
     AMB.amarela = AMB.setorAmarelo === Math.floor(carro.idx / (R.tr.n / SECTORS));
     AMB.segurar = sNow() < R.startAt;
     S.passo(carro, ent, AMB, R.tr, null);
+    if (net.ct.length) agendadas(net, k, carro, true);
   } });
   net.erro = r.erro;
   if (!r.dentro) net.enviado = c.tick; // o servidor está fora do que lembramos (a página recarregou?): segue dele
@@ -331,5 +383,5 @@ export function reconciliar(d) {
     if (R.prev) { R.prev.x -= r.dx; R.prev.y -= r.dy; R.prev.a -= r.da; } // (o passo anterior acompanha: o desenho entre os passos não pula)
   }
   sincronizar(R);
-  if (d.ev) for (const e of d.ev) aoEvento(R, e);
+  if (d.ev) for (const e of d.ev) if (!conf.includes(e)) aoEvento(R, e); // (a batida que eu já previ já tocou e tremeu)
 }
