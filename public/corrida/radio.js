@@ -28,7 +28,7 @@ try { mudo = JSON.parse(localStorage.getItem("corrida:radio")) === false; } catc
 function usarSaida(fn) { saida = fn; }
 function contexto() {
   try {
-    const s = saida && saida(); if (s && s.ac) return { c: s.ac, destino: s.saida };
+    const s = saida && saida(); if (s && s.ac) return { c: s.ac, destino: s.saida, abafar: s.abafar };
     if (!ac) {
       const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
       ac = new C(); ganho = ac.createGain(); let v = 0.7;
@@ -80,12 +80,14 @@ function tocar(buf, fim) {
   const x = contexto(); if (!x || x.c.state === "suspended") return false;
   const c = x.c, t = c.currentTime + 0.02, ini = t + 0.09;
   const alto = c.createBiquadFilter(), baixo = c.createBiquadFilter(), g = c.createGain(), s = c.createBufferSource();
-  alto.type = "highpass"; alto.frequency.value = 300; baixo.type = "lowpass"; baixo.frequency.value = 3000; g.gain.value = 1.15; s.buffer = buf;
-  s.connect(alto).connect(baixo).connect(g).connect(x.destino);
+  alto.type = "highpass"; alto.frequency.value = 300; baixo.type = "lowpass"; baixo.frequency.value = 3000; g.gain.value = 2.6; s.buffer = buf;
+  const comp = c.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; // (a voz mais alta que o motor, sem estourar)
+  s.connect(alto).connect(baixo).connect(g).connect(comp).connect(x.destino);
+  if (x.abafar) x.abafar(true);
   ruido(c, 0.07, 0.08, x.destino, t);                         // o clique de abrir o rádio
   s.start(ini); ruido(c, buf.duration + 0.04, 0.012, x.destino, ini); // chiado leve por baixo da voz
   ruido(c, 0.1, 0.07, x.destino, ini + buf.duration);         // o clique de fechar
-  s.onended = fim; return true;
+  s.onended = () => { if (x.abafar) x.abafar(false); fim(); }; return true;
 }
 function proximo() {
   clearTimeout(timerFila); if (tocando || !fila.length) return;

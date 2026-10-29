@@ -32,6 +32,7 @@ const FRACAO = [0.305, 0.405, 0.514, 0.617, 0.717, 0.816, 0.91, 1];
 const CORTE = 1.07;          // a 8ª chega ao corte a 1,07 × a velocidade final: sobra para DRS, vácuo e ERS
 const SOBE = 0.985, DESCE = 0.62; // o automático sobe perto do corte e desce quando a rotação cai demais
 const TROCA_T = 0.05;        // quanto dura a troca: a força do motor some
+const DESCE_FREANDO = 0.9, DESCE_INTERVALO = 0.13; // freando, o automático reduz uma por vez (a cada 0,13 s) assim que a de baixo cabe abaixo de 90% do corte
 // a potência pela rotação (fração do corte): fraco embaixo (embreagem patinando), cheio de 9 a 11 mil rpm, nada no corte
 const CURVA = [[0, 0.38], [0.33, 0.42], [0.5, 0.62], [0.67, 0.84], [0.75, 0.93], [0.83, 1], [0.92, 0.995], [1, 0.95], [1.001, 0]];
 function potencia(x) {
@@ -145,8 +146,16 @@ function passo(c, ent, amb, p, dt = PASSO) {
   // câmbio
   const vmaxU = p.vmaxU;
   if (amb.manual) { const g = limite(amb.marchaManual || c.marcha || 1, 1, NUM); if (g !== c.marcha) { c.marcha = g; c.trocaT = TROCA_T; } }
-  else { const g = marchaAuto(Math.max(0, uU), vmaxU, c.marcha); if (g !== c.marcha) { c.marcha = g; c.trocaT = TROCA_T; } }
-  c.trocaT = Math.max(0, c.trocaT - dt);
+  else {
+    // freando de verdade (sem acelerador), reduz marcha a marcha durante a frenagem, com a rotação alta como numa F1, em vez de
+    // segurar a marcha alta até a rotação cair e despencar tudo de uma vez quando volta a acelerar
+    const freando = c.brkP > 0.3 && c.gasP < 0.1 && uU > 0;
+    let g = marchaAuto(Math.max(0, uU), vmaxU, c.marcha);
+    if (freando && g >= c.marcha && c.marcha > 1 && rotacao(uU, vmaxU, c.marcha - 1) < DESCE_FREANDO) g = c.marcha - 1;
+    if (freando && g < c.marcha) g = (c.desceT || 0) > 0 ? c.marcha : c.marcha - 1;
+    if (g !== c.marcha) { if (g < c.marcha) c.desceT = DESCE_INTERVALO; c.marcha = g; c.trocaT = TROCA_T; }
+  }
+  c.trocaT = Math.max(0, c.trocaT - dt); c.desceT = Math.max(0, (c.desceT || 0) - dt);
   const x = rotacao(uU, vmaxU, c.marcha);
   c.rpm = Math.max(0.3, x);
   if (amb.ar) { // no ar: sem pneu e sem motor; só o arrasto e a guinada que já tinha

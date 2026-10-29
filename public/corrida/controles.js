@@ -3,7 +3,7 @@ import { $, store, toast } from "./estado.js";
 import { race, keys, respawn } from "./jogo.js";
 import { useItem } from "./itens.js";
 import { alternarPedido, escolherComposto } from "./box.js";
-import { E, carOf, me } from "./estado.js";
+import { E, carOf, me, act } from "./estado.js";
 import { rotacao, NUM } from "./cambio.js";
 import { Sound } from "./sons.js";
 import { ORDEM, NOMES, usavel, camEstado } from "./cameras.js";
@@ -68,4 +68,5 @@ for (const ev of ["pointerdown", "pointerup", "pointercancel", "lostpointercaptu
   bErs.classList.toggle("on", keys.ers);
   if (keys.ers) bErs.setPointerCapture(e.pointerId);
 });
+$("bReiniciar").onclick = () => { if (confirm("Reiniciar a corrida do zero para todos?")) act("reiniciar"); };
 $("bExit").onclick = () => { const destino = E.S?.temporada ? "/corrida/temporada/" + (E.S.salaTemporada ? "?sala=" + E.S.salaTemporada : "") : "/"; if (confirm(E.S?.temporada ? "Sair do GP e voltar à sede? Se não voltar à pista, será DNF." : "Sair da corrida e voltar para a vila?")) location.href = destino; };

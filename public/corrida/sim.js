@@ -344,13 +344,13 @@ function baterNosOutros(c, car, outros, ev) {
 const R = (v, k) => Math.round(v * k) / k;
 function serializar(c) {
   const s = { x: R(c.x, 100), y: R(c.y, 100), z: R(c.z, 100), a: R(c.a, 10000), v: R(c.v, 100), vl: R(c.vl, 100), r: R(c.r, 1000), st: R(c.steer, 1000), gp: R(c.gasP, 100), bp: R(c.brkP, 100), sl: R(c.slip, 100), us: R(c.uso || 0, 1000),
-    m: c.marcha, tt: R(c.trocaT, 1000), ax: R(c.axL, 100), vz: R(c.vz, 10), air: c.air ? 1 : 0, gvz: R(c.gvz || 0, 10), ix: c.idx, pg: R(c.prog, 10), sc: c.sector, dr: R(c.draft, 1000), tk: c.tick, fa: c.fant ? 1 : 0,
+    m: c.marcha, tt: R(c.trocaT, 1000), ds: R(c.desceT || 0, 1000), ax: R(c.axL, 100), vz: R(c.vz, 10), air: c.air ? 1 : 0, gvz: R(c.gvz || 0, 10), ix: c.idx, pg: R(c.prog, 10), sc: c.sector, dr: R(c.draft, 1000), tk: c.tick, fa: c.fant ? 1 : 0,
     pn: [c.pneu.composto, R(c.pneu.desgaste, 100000), R(c.pneu.temp, 10000)], er: [R(c.ers.carga, 10000), R(c.ers.recarga, 10000), c.ers.volta] };
   if (c.box) { const B = c.box; s.bx = [B.fase, R(B.u, 1000), R(B.lat0, 100), R(B.t, 1000), R(B.parada, 100), R(B.garagem, 1000), B.composto, B.volta, B.n, B.tick0 ?? 0, B.pedido]; }
   return s;
 }
 function aplicar(c, s, tr) {
-  c.x = s.x; c.y = s.y; c.z = s.z; c.a = s.a; c.v = s.v; c.vl = s.vl; c.r = s.r; c.steer = s.st; c.gasP = s.gp; c.brkP = s.bp; c.slip = s.sl ?? 0; c.uso = s.us ?? 0; c.marcha = s.m; c.trocaT = s.tt; c.axL = s.ax; c.vz = s.vz; c.air = !!s.air; c.gvz = s.gvz;
+  c.x = s.x; c.y = s.y; c.z = s.z; c.a = s.a; c.v = s.v; c.vl = s.vl; c.r = s.r; c.steer = s.st; c.gasP = s.gp; c.brkP = s.bp; c.slip = s.sl ?? 0; c.uso = s.us ?? 0; c.marcha = s.m; c.trocaT = s.tt; c.desceT = s.ds ?? 0; c.axL = s.ax; c.vz = s.vz; c.air = !!s.air; c.gvz = s.gvz;
   c.idx = s.ix; c.prog = s.pg; c.sector = s.sc; c.draft = s.dr; c.tick = s.tk; c.fant = !!s.fa; c.idxAnt = s.ix;
   const ca = Math.cos(c.a), sa = Math.sin(c.a); c.vx = c.v * ca - c.vl * sa; c.vy = c.v * sa + c.vl * ca;
   c.pneu.composto = s.pn[0]; c.pneu.desgaste = s.pn[1]; c.pneu.temp = s.pn[2];

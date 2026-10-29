@@ -21,6 +21,7 @@ export const Sound = (() => {
   // o eco do túnel é um envio do motor para uma reverberação (ruído que se apaga em 1,4 s)
   let ambBus = null, ecoG = null;
   let motorF1 = null; // o motor de F1 (motor-v10.js), criado na primeira vez que as regras de F1 pedem
+  let motorBus = null; // os motores de F1 (o meu e os dos outros) passam por aqui: abaixam enquanto o engenheiro fala
   function barramento() { const c = ctx(); if (!c) return null; if (!ambBus) { ambBus = c.createGain(); ambBus.gain.value = 0; ambBus.connect(master); } return ambBus; }
   function reverb(c) {
     const len = Math.floor(c.sampleRate * 1.4), b = c.createBuffer(2, len, c.sampleRate);
@@ -49,7 +50,7 @@ export const Sound = (() => {
     eng.f.frequency.setTargetAtTime(500 + rpm * 1400 + v * 2, t, 0.06);
     eng.g.gain.setTargetAtTime(on && racing && !f1 ? (0.035 + rpm * 0.02) * (troca > 0 ? 0.3 : 1) : 0, t, 0.05);
     eng.wg.gain.setTargetAtTime(on && racing ? Math.min(0.05, v * 0.00011) : 0, t, 0.1);
-    if (f1) { if (!motorF1) motorF1 = criarMotorF1(c, master, reverbExistente); motorF1.atualizar(t, { gas, rpm: rpmF1, marcha: marchaF1 || 1, ativo: on && racing, cam: f1.cam, lim: f1.lim || 0 }); } else if (motorF1) motorF1.silenciar(t);
+    if (f1) { if (!motorF1) { motorBus = c.createGain(); motorBus.connect(master); motorF1 = criarMotorF1(c, motorBus, reverbExistente); } motorF1.atualizar(t, { gas, rpm: rpmF1, marcha: marchaF1 || 1, ativo: on && racing, cam: f1.cam, lim: f1.lim || 0 }); } else if (motorF1) motorF1.silenciar(t);
     if (ambBus) ambBus.gain.setTargetAtTime(on && racing ? 1 : 0, t, 0.4);
     if (!racing && ecoG) ecoG.gain.setTargetAtTime(0, t, 0.1);
   }
@@ -66,12 +67,14 @@ export const Sound = (() => {
     if (!chuvaN) {
       const len = c.sampleRate * 2, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       const src = c.createBufferSource(), fc = c.createBiquadFilter(), gc = c.createGain(), fp = c.createBiquadFilter(), gp = c.createGain();
-      src.buffer = b; src.loop = true; fc.type = "highpass"; fc.frequency.value = 1800; gc.gain.value = 0; fp.type = "bandpass"; fp.frequency.value = 2600; fp.Q.value = 0.7; gp.gain.value = 0;
+      src.buffer = b; src.loop = true; fc.type = "bandpass"; fc.frequency.value = 3200; fc.Q.value = 0.35; gc.gain.value = 0; fp.type = "bandpass"; fp.frequency.value = 2600; fp.Q.value = 0.7; gp.gain.value = 0;
       src.connect(fc).connect(gc).connect(master); src.connect(fp).connect(gp).connect(master); src.start(); chuvaN = { gc, gp };
     }
     const t = c.currentTime;
-    chuvaN.gc.gain.setTargetAtTime(on ? nivel * 0.05 : 0, t, 0.3); chuvaN.gp.gain.setTargetAtTime(on ? pneus * 0.04 * (0.4 + 0.6 * nivel) : 0, t, 0.2);
+    chuvaN.gc.gain.setTargetAtTime(on ? nivel * 0.028 : 0, t, 0.3); chuvaN.gp.gain.setTargetAtTime(on ? pneus * 0.04 * (0.4 + 0.6 * nivel) : 0, t, 0.2);
   }
+  // o engenheiro falando: os motores de F1 descem para ~35% e voltam devagar quando ele acaba
+  function abafar(sim) { if (motorBus && ac) motorBus.gain.setTargetAtTime(sim ? 0.35 : 1, ac.currentTime, sim ? 0.08 : 0.35); }
   function crash(forca) {
     const c = ctx(); if (!c || !on) return;
     const k = Math.min(1, forca / 260), t = c.currentTime, len = Math.floor(c.sampleRate * 0.25), b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
@@ -89,7 +92,7 @@ export const Sound = (() => {
     pop() { tone(700, 0.05, { vol: 0.06 }); },
     sling() { [520, 780, 1040].forEach((f, i) => tone(f, 0.12, { at: i * 0.06, type: "sawtooth", vol: 0.07 })); },
     volume(v) { volume = Math.max(0, Math.min(1, v)); store.set("corrida:volume", volume); if (master) master.gain.setTargetAtTime(volume, ac.currentTime, 0.05); }, get nivel() { return volume; },
-    radioSaida() { const c = ctx(); return c && master ? { ac: c, saida: master } : null; }, // o rádio do engenheiro usa o volume geral
+    radioSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, abafar } : null; }, // o rádio do engenheiro usa o volume geral
     narradorSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, ligado: on } : null; }, // o narrador da transmissão: volume geral e som ligado
     crash, chuva, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
   };
