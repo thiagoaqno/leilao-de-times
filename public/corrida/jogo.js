@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { E, PISTAS, SECTORS, COLORS, CARROS, carOf, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { atualizarClima } from "./clima.js";
-import { passoClima, limparClima } from "./clima-visual.js";
+import { passoClima, limparClima, exercitarChuva } from "./clima-visual.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
@@ -21,7 +21,7 @@ import { startItems, stopItems, stepItems } from "./itens.js";
 import { passoEfeitos, limparEfeitos, amostrasDeEfeitos } from "./efeitos.js";
 import { animarVida } from "./vida.js";
 import { ceuPronto, luzPendente } from "./ceu.js";
-import { desenhar, ajustarTela, medirQuadro, comecarMedida } from "./pos.js";
+import { desenhar, ajustarTela, medirQuadro, comecarMedida, compilarPos } from "./pos.js";
 import { quadroTV, pularTV } from "./transmissao.js";
 const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -85,7 +85,9 @@ function aquecerPista(tr, ceu) {
     const amostras = new THREE.Group(); amostras.add(amostrasDeEfeitos(), amostraDeFumaca()); scene.add(amostras);
     subirTexturas(scene);
     const alvo = new THREE.WebGLRenderTarget(2, 2);
-    return compilarTudo(alvo).then(() => subirMalhas(tr, alvo)).catch((e) => console.warn("Corrida: aquecimento incompleto", e)).finally(() => { alvo.dispose(); scene.remove(amostras); });
+    const aindaDa = () => race && race.tr === tr && sNow() < race.startAt - 300;
+    // 1) compila tudo (os dois alvos de desenho, a chuva e os passes do pós) 2) sobe as malhas 3) um quadro pequeno com a chuva inteira ligada
+    return Promise.all([compilarTudo(alvo), compilarPos()]).then(() => subirMalhas(tr, alvo)).then(() => { if (aindaDa()) exercitarChuva(tr); }).catch((e) => console.warn("Corrida: aquecimento incompleto", e)).finally(() => { alvo.dispose(); scene.remove(amostras); });
   }); };
   // espera também o carro de F1 e os enfeites do Kenney: quando chegam, os carros e a pista são remontados, e o que
   // nasce depois do aquecimento travaria na primeira vez que aparecesse

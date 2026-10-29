@@ -164,8 +164,9 @@ function atualizarCor(g, agora) {
   const dt = lim((agora - ultCor) / 1000, 0, 0.25); ultCor = agora;
   const k = (t) => 1 - Math.exp(-dt / t);
   R += (lim(clima.chuva) - R) * k(4); W += (lim(clima.agua) - W) * k(3); N += ((ehNoite() ? 1 : 0) - N) * k(1.2);
-  const molhado = Math.max(R, W * 0.7), u = g.uniforms;
-  u.chuva.value = R; u.molhado.value = molhado; u.noite.value = N;
+  const Rc = lim(R * 1.5); // qualquer chuva, até a garoa (0,45), já deixa a imagem cinza e fria; a forte (1) passa pouco disso
+  const molhado = Math.max(Rc, W * 0.7), u = g.uniforms;
+  u.chuva.value = Rc; u.molhado.value = molhado; u.noite.value = N;
   u.sat.value = 1.07 - 0.30 * molhado - 0.05 * N;
   u.contraste.value = 1.08 - 0.17 * molhado + 0.07 * N;
   u.vinheta.value = 0.24 + 0.12 * R + 0.10 * N;
@@ -211,6 +212,27 @@ export function desenhar(forca) {
     console.warn("Corrida: o pós-processamento falhou, voltando para a qualidade Baixa", e);
     rebaixar("baixa"); renderer.render(scene, cam);
   }
+}
+
+// Compila os sombreadores dos passes (desfoque radial, brilho, correção de cor) sem esperar o primeiro quadro: chamado pelo aquecimento da
+// pista (jogo.js), durante a contagem. A correção de cor é o que leva a chuva (só uniformes: não troca de sombreador com ela ligada).
+// Cada um com o alvo certo: o último passe desenha na tela e os outros numa imagem (a cor de saída entra na chave do programa).
+export function compilarPos() {
+  const q = efetivaPos(); if (q === "baixa") return Promise.resolve();
+  try {
+    const f = pronto(q), cam2 = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), plano = new THREE.PlaneGeometry(2, 2);
+    const porImagem = new THREE.Group(), naTela = new THREE.Group(), vistos = new Set();
+    const junta = (g, m) => { if (m && m.isMaterial && !vistos.has(m)) { vistos.add(m); g.add(new THREE.Mesh(plano, m)); } };
+    if (f.radial) junta(porImagem, f.radial.material);
+    for (const p of f.composer.passes) if (p.materialHighPassFilter) { // o UnrealBloomPass
+      junta(porImagem, p.materialHighPassFilter); (p.separableBlurMaterials || []).forEach((m) => junta(porImagem, m)); junta(porImagem, p.compositeMaterial); junta(porImagem, p.blendMaterial);
+    }
+    junta(naTela, f.grade.material);
+    const anterior = renderer.getRenderTarget(), feitos2 = [];
+    try { renderer.setRenderTarget(f.composer.renderTarget1); feitos2.push(renderer.compileAsync(porImagem, cam2)); } finally { renderer.setRenderTarget(anterior); }
+    feitos2.push(renderer.compileAsync(naTela, cam2));
+    return Promise.all(feitos2).then(() => {}, () => {}).finally(() => plano.dispose());
+  } catch (e) { console.warn("Corrida: não deu para pré-compilar o pós", e); return Promise.resolve(); }
 }
 
 // ---------- o desempenho ----------
