@@ -1,13 +1,15 @@
 // Corrida da Galera — o 3D básico: renderer, cena, câmera e luzes.
 import * as THREE from "three";
 import { $, rng } from "./estado.js";
+import { detectarPlaca, qualidade, pixelRatioDe } from "./qualidade.js";
 
 // ---------- corrida em 3D (Three.js): pista com relevo, câmera atrás do kart ----------
 // Mundo: o traçado continua em 2D (x, y de 0 a 1600, igual ao servidor), e cada ponto da pista tem uma altura h.
 // No 3D, o "y" do traçado vira o z, e a altura vira o y. 1 unidade ≈ 10 cm (um kart tem ~18 de largura).
 const cv = $("screen");
 export const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: "high-performance" }); // sem preserveDrawingBuffer: guardar a tela a cada quadro custa caro e ninguém lê
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+detectarPlaca(renderer.getContext()); // o padrão da qualidade depende da placa de vídeo (qualidade.js)
+renderer.setPixelRatio(pixelRatioDe(qualidade())); // a resolução também segue a qualidade (Baixa 1×, Média 1,25×, Alta 1,5×)
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 export const scene = new THREE.Scene();

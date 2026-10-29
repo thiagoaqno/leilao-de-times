@@ -207,7 +207,7 @@ export function drawPreview(cv, id) {
 $("btnRules").onclick = () => {
   $("modalBox").innerHTML = `<h2>Como jogar</h2>
   <h3>Controles</h3><ul>
-  <li><b>Teclado:</b> ↑ ou W acelera, ↓ ou S freia (e dá ré), ← → ou A D viram. Espaço ou E usa o item; freio + Espaço joga para trás. R volta para a pista. C troca a câmera (perto, primeira pessoa, longe e de cima).</li>
+  <li><b>Teclado:</b> ↑ ou W acelera, ↓ ou S freia (e dá ré), ← → ou A D viram. Espaço ou E usa o item; freio + Espaço joga para trás. R volta para a pista. C troca a câmera (perto, primeira pessoa, longe e de cima). G troca a qualidade dos gráficos (Baixa, Média e Alta; o botão Gráficos, no alto da tela, faz o mesmo).</li>
   <li><b>Controle (Xbox/PlayStation):</b> RT (ou A) acelera, LT (ou B) freia e dá ré, analógico esquerdo vira, RB usa o item, Y troca a câmera e Select (ou LB) volta para a pista.</li>
   <li><b>Celular:</b> ◀ ▶ à esquerda viram; ▲ acelera e ▼ freia à direita. Toque no botão 🎁 para usar o item.</li>
   <li><b>Câmbio manual</b> (se o organizador ligar nas Regras): Shift sobe a marcha e Ctrl direito reduz; no controle, X sobe e B reduz. As luzes em cima do velocímetro acendem perto do corte: troque quando ficarem azuis.</li>

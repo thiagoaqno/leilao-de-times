@@ -40,7 +40,7 @@ export function holofotes(tr, add, { passo = 64, recuo = 52, alto = 70, de = 0, 
   }, false);
   const mastros = new THREE.InstancedMesh(mastroGeo, aco, lista.length);
   const caixas = new THREE.InstancedMesh(caixaGeo, M(0x2a2d33, { roughness: 0.5, metalness: 0.4 }), lista.length);
-  const paineis = new THREE.InstancedMesh(painelGeo, new THREE.MeshBasicMaterial({ map: lampadas, fog: true }), lista.length);
+  const paineis = new THREE.InstancedMesh(painelGeo, new THREE.MeshBasicMaterial({ map: lampadas, fog: true, userData: { bloom: 2.2 } }) /* userData.bloom: as lâmpadas brilham no pós (pos.js) */, lista.length);
   const o = new THREE.Object3D(), frente = new THREE.Matrix4().makeTranslation(0, 0, 1);
   o.rotation.order = "YXZ";
   lista.forEach(({ x, y, z, s, nx, ny }, k) => {
