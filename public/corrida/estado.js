@@ -22,6 +22,12 @@ export const PAWNS = ["😎", "🤠", "👽", "🤖", "🐸", "🦊", "🐼", "�
 export const socket = io("/corrida");
 export const { $, h, store } = Comum;
 export const relogio = Comum.relogio(), sNow = relogio.agora;
+// O relógio do servidor para a REDE dos carros (pose.js): o offset vem das respostas de menor ida e volta (ver rede.js, sincronizarRelogio),
+// em milissegundos com fração, e não do `now` de cada estado (que vem atrasado pela viagem do pacote e varia de um para o outro). É nele
+// que o navegador diz ao servidor a hora de cada passo (`tt` do `inp`), que desenha os outros carros e que prevê a batida.
+export const agoraLocal = () => performance.timeOrigin + performance.now();
+export const relogioF1 = window.Pose.criarRelogio(agoraLocal);
+export const tempoReal = relogioF1.agora;
 export const me = () => (E.S && E.ME && E.ME.id ? E.S.players.find((p) => p.id === E.ME.id) : null);
 export const P = (id) => E.S && E.S.players.find((p) => p.id === id);
 const toastBase = Comum.criarToast(3200);

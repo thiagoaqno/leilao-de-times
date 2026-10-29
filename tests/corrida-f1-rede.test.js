@@ -8,6 +8,7 @@ const T = require("../public/corrida/pistas.js");
 const F1 = require("../public/corrida/f1-regras.js");
 const Equipes = require("../public/corrida/f1-equipes.js");
 const Humanos = require("../corrida-humanos.js");
+const Pose = require("../public/corrida/pose.js");
 const { subirServidor, conectar, pedir } = require("./ajuda.js");
 
 process.env.CORRIDA_TV_MS = "0"; // sem a transmissão de TV antes das luzes: a largada vem logo
@@ -217,7 +218,7 @@ test("servidor de verdade: os acks e os snaps chegam, a previsão bate com o ser
   try {
     const r = await pedir(s, "create", { name: "Ana", config: { regras: "f1", robos: 3, classificacao: "pular", voltas: 3, pista: "interlagos" } });
     const meus = []; let snaps = 0, snapsComigo = 0;
-    s.on("ack", (a) => meus.push(a)); s.on("snap", (d) => { snaps++; if (d.c.some((q) => q[0] === r.id)) snapsComigo++; });
+    s.on("ack", (a) => meus.push(a)); s.on("snap", (buf) => { const d = Pose.Snap.decodificar(buf); snaps++; if (d.c.some((q) => q[0] === r.id)) snapsComigo++; }); // (o pacote é binário: pose.js)
     await pedir(s, "act", { type: "start" });
     const espera = (cond, ms = 20000) => new Promise((ok, erro) => { const t0 = Date.now(), k = setInterval(() => { if (cond()) { clearInterval(k); ok(); } else if (Date.now() - t0 > ms) { clearInterval(k); erro(new Error("tempo esgotado")); } }, 20); });
     await espera(() => s.ultimo && s.ultimo.phase === "race" && s.ultimo.startAt);
@@ -239,7 +240,7 @@ test("servidor de verdade: os acks e os snaps chegam, a previsão bate com o ser
           const code = S.empacotar({ gas: 1, steer: 0 }); cod[c.tick & 1023] = code; amb.segurar = false;
           S.passo(c, S.desempacotar(code, entC), amb, tr, null); hx[c.tick & 1023] = c.x; hy[c.tick & 1023] = c.y;
         }
-        if (enviado < c.tick) { const k = []; for (let i = enviado; i < c.tick; i++) k.push(cod[i & 1023]); s.emit("inp", { s: st.startAt, t0: enviado, k }); enviado = c.tick; }
+        if (enviado < c.tick) { const k = []; for (let i = enviado; i < c.tick; i++) k.push(cod[i & 1023]); s.emit("inp", { s: st.startAt, t0: enviado, k, tt: Date.now() }); enviado = c.tick; } // (tt: a hora do servidor em que o último passo terminou: aqui o relógio é o mesmo)
         while (meus.length) {
           const a = meus.shift(); nAcks++; if (a.st.tk < ultimoTk) voltouTk = true; ultimoTk = a.st.tk;
           const rr = S.reconciliar(c, a.st, tr, { mascara: 1023, hx, hy, passo: (car, i) => { S.passo(car, S.desempacotar(cod[i & 1023], entC), amb, tr, null); } });
@@ -251,7 +252,8 @@ test("servidor de verdade: os acks e os snaps chegam, a previsão bate com o ser
     assert.ok(nAcks >= 40, `acks recebidos: ${nAcks}`);
     assert.ok(!voltouTk, "o número do passo nunca volta atrás");
     assert.ok(snaps >= 40, `snaps recebidos: ${snaps}`);
-    assert.equal(snapsComigo, snaps, "o servidor manda a posição de todos os carros, inclusive a do piloto");
+    assert.ok(snapsComigo >= 5 && snapsComigo < snaps / 2, `o servidor manda a posição dos outros em todo pacote e a minha (só para a torre) em um de cada quatro: ${snapsComigo} de ${snaps}`);
+    const hora = await new Promise((ok) => s.emit("clock", ok)); assert.ok(Math.abs(hora - Date.now()) < 1000, "o servidor responde a hora (relógio NTP do navegador)");
     assert.ok(c.v > 150, `acelerou: ${c.v}`);
     assert.ok(maiorErro < 3, `a previsão do navegador e o servidor andaram juntos (erro máximo ${maiorErro} u)`);
     assert.ok(c.prog > 40, `e o carro de verdade andou (a posição inventada de pos não valeu): progresso ${c.prog}`);

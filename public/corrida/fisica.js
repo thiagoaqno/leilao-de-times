@@ -1,7 +1,7 @@
 // Corrida da Galera — a física do carro. Nas regras de F1 vale a dinâmica nova (dinamica.js e sim.js, a 120 passos por segundo,
 // prevista aqui e mandada pelo servidor; o fim deste arquivo); nas outras salas, a física arcade de sempre (`physics`, abaixo),
 // agora também em passo fixo, para quem tem mais quadros por segundo não andar mais rápido.
-import { SECTORS, E, carOf, socket, sNow, me, P, checkpoint, toast } from "./estado.js";
+import { SECTORS, E, carOf, socket, sNow, tempoReal, me, P, checkpoint, toast } from "./estado.js";
 import { Sound } from "./sons.js";
 import { atualizarClima } from "./clima.js";
 import { trackFrame, groundH } from "./pista.js";
@@ -10,7 +10,6 @@ import { pad } from "./controles.js";
 import { baterNoOutro, MASSA } from "./colisao.js";
 import { CARS3, KS } from "./carros.js";
 import { myProg } from "./fantasma.js";
-import { updateGhosts } from "./rede.js";
 import { ajudaDePelotao } from "./equilibrio.js";
 import { marchaAuto, rotacao, torque, topo, NUM } from "./cambio.js";
 
@@ -204,18 +203,13 @@ function act2(type, data) { socket.emit("act", { type, ...data }, () => {}); }
 export const PASSO = 1 / 120, MAX_ACUM = 0.25, MASCARA = 1023; // guarda as últimas 1024 entradas (8,5 s) para reaplicar
 export function criarRede() {
   return { cod: new Int32Array(MASCARA + 1), hx: new Float64Array(MASCARA + 1), hy: new Float64Array(MASCARA + 1), enviado: 0, ack: 0, ultimoEnvio: 0, ex: 0, ey: 0, ea: 0, erro: 0, acks: 0, saltos: 0,
-    lead: null,   // quanto o meu relógio de passos está à frente do relógio do servidor (ms): a hora do meu carro é sNow() + lead
+    tf: new Float64Array(MASCARA + 1), // a hora do servidor (ms) em que cada passo terminou, pelo relógio NTP (rede.js): vai no `inp` e é a hora em que os outros carros são lidos
     ct: [] };     // as batidas que previ e o servidor ainda não confirmou: { id, k, k0, reg, carry }
 }
-// A HORA DO MEU CARRO no relógio do servidor (ms). O meu carro é previsto à frente do servidor (as entradas levam um tempo para
-// chegar lá): a hora do meu passo `c.tick` é a hora em que o servidor o vê (`q` do `ack`) mais os passos que ainda estão no caminho.
-// Os outros carros são desenhados e batem nessa mesma hora (rede.js, updateGhosts), então os dois pilotos veem a mesma ordem.
-// `alpha` (0..1) diz onde o desenho está entre o passo anterior e o atual.
-export function tempoMeu(alpha = 1) {
-  const net = race && race.net, agora = sNow();
-  if (!net || net.lead == null) return agora;
-  return agora + net.lead - (1 - alpha) * PASSO * 1000;
-}
+// A HORA DOS PASSOS. O meu carro anda no tempo real (a física gasta o relógio em passos de 1/120 s), então a hora do servidor em que o passo
+// terminou é o relógio NTP (estado.js, tempoReal) menos o que sobrou no acumulador. Os outros carros são lidos NESSA hora (pose.js, a mesma conta
+// do desenho em rede.js, updateGhosts) e o servidor também olha o meu carro e os outros nela (`tt` do `inp`): os dois lados veem o mesmo
+// instante, qualquer que seja o ping de cada piloto.
 const AMB = { outros: [] }, ENT = {}, ENT_C = {}, EV = [];
 // o ambiente do passo: tudo o que a física precisa saber do jogo (o servidor monta o mesmo)
 function montarAmbiente(R) {
@@ -232,15 +226,18 @@ function montarAmbiente(R) {
   for (const [id, gh] of R.ghosts) { const p = P(id); outros.push({ x: gh.x, y: gh.y, z: gh.z, a: gh.a, dnf: !!(p && p.dnf), fant: !!(p && p.finish != null) }); }
   return AMB;
 }
-// os outros carros como o meu passo `k` os vê: o desenho deles (que já está na hora do meu carro: rede.js) levado à hora do passo pela velocidade
-const MODELOS = [], EU = { L: 44, W: 26, massa: 800 };
-function outrosDoPasso(R, k) {
-  const dt = (k - (R.ghTick ?? k)) * PASSO; let n = 0;
+// os outros carros como o fim do meu passo os vê: a mesma pose do desenho (pose.js, Outro.pose), lida na hora do servidor em que o passo termina.
+// `folga`: a previsão de batida só vale com os carros enterrados mais que isto (u), tanto quanto o erro que a previsão do outro carro costuma ter
+// com o atraso desta rede (2 m por segundo de atraso, entre 10 e 40 cm): o navegador nunca bate onde o servidor, que vê a pose de verdade, não bateria.
+const MODELOS = [], EU = { L: 44, W: 26, massa: 800 }, POSE = {}, M_POR_U = 0.75 / 3.6;
+function outrosDoPasso(R, T) {
+  let n = 0;
   for (const [id, gh] of R.ghosts) {
-    const p = P(id); if (!p || p.dnf || p.finish != null || !Number.isFinite(gh.vx) || p.fantBox) continue; // (fantBox: no box ou nos 2 s antes e depois dele, fantasma)
-    const m = MODELOS[n] || (MODELOS[n] = {}); n++;
-    m.id = id; m.x = gh.x + gh.vx * dt; m.y = gh.y + gh.vy * dt; m.z = gh.z; m.a = gh.a + (gh.r || 0) * dt; m.vx = gh.vx; m.vy = gh.vy; m.r = gh.r || 0;
+    const p = P(id); if (!p || p.dnf || p.finish != null || !gh.mod || !gh.mod.buf.length || p.fantBox) continue; // (fantBox: no box ou nos 2 s antes e depois dele, fantasma)
+    const m = MODELOS[n] || (MODELOS[n] = {}); n++, gh.mod.pose(T, POSE);
+    m.id = id; m.x = POSE.x; m.y = POSE.y; m.z = POSE.z; m.a = POSE.a; m.vx = POSE.vx; m.vy = POSE.vy; m.r = POSE.r;
     const [L, W] = window.Sim.dimensoes(p.car); m.L = L; m.W = W; m.massa = window.Sim.massaDe(carOf(p)); m.dnf = false; m.fant = false;
+    m.folga = Math.max(0.1, Math.min(0.4, 2 * gh.mod.hz)) / M_POR_U;
   }
   MODELOS.length = n;
   return MODELOS;
@@ -272,11 +269,11 @@ function passoF1(R) {
   // a batida com os outros carros, prevista na hora (empurrão e perda de velocidade imediatos; o servidor decide e corrige depois)
   if (AMB.batida) {
     const reg = S.novoRegistro(), n0 = EV.length;
-    S.contatoPasso(c, EU, outrosDoPasso(R, k + 1), EV, reg);
+    S.contatoPasso(c, EU, outrosDoPasso(R, net.tPasso), EV, reg);
     for (let i = n0; i < EV.length; i++) if (EV[i].t === "carro" && reg.forca >= window.Sim.FORCA_EV) { net.ct.push({ id: EV[i].id, k, k0: k, reg: { ...reg }, carry: false }); break; }
   }
   if (net.ct.length) agendadas(net, k, c, false);
-  net.hx[(k + 1) & MASCARA] = c.x; net.hy[(k + 1) & MASCARA] = c.y;
+  net.hx[(k + 1) & MASCARA] = c.x; net.hy[(k + 1) & MASCARA] = c.y; net.tf[(k + 1) & MASCARA] = net.tPasso;
   for (const e of EV) aoEvento(R, e);
   // Balizadores flexíveis reagem ao toque e voltam sozinhos; não bloqueiam o carro.
   if (tr.cones && Math.abs(c.v) > 25) for (const cone of tr.cones) {
@@ -311,8 +308,8 @@ export function quadroDeFisica(dt) {
   R.acc = g.acc;
   if (f1) {
     montarAmbiente(R);
-    updateGhosts(0); // os outros carros na hora do meu carro, antes dos passos (a batida prevista os lê)
-    for (let i = 0; i < g.passos; i++) { guardarAnterior(R); passoF1(R); }
+    const net = R.net, fim = tempoReal() - g.acc * 1000; // a hora do servidor em que o último passo deste quadro termina
+    for (let i = 0; i < g.passos; i++) { net.tPasso = fim - (g.passos - 1 - i) * (PASSO * 1000); guardarAnterior(R); passoF1(R); }
     sincronizar(R); enviarEntradas(performance.now());
   } else for (let i = 0; i < g.passos; i++) { guardarAnterior(R); physics(PASSO); }
   atualizarVisual(dt, R.acc / PASSO);
@@ -340,7 +337,8 @@ export function enviarEntradas(agora) {
   while (net.enviado < c.tick) {
     const n = Math.min(120, c.tick - net.enviado), k = new Array(n);
     for (let i = 0; i < n; i++) k[i] = net.cod[(net.enviado + i) & MASCARA];
-    socket.emit("inp", { s: R.startAt, t0: net.enviado, k });
+    const tt = net.tf[(net.enviado + n) & MASCARA]; // (a hora do servidor em que o último passo do pacote terminou; sem ela o servidor usa a da chegada)
+    socket.emit("inp", tt > 0 ? { s: R.startAt, t0: net.enviado, k, tt } : { s: R.startAt, t0: net.enviado, k });
     net.enviado += n;
   }
   net.ultimoEnvio = agora;
@@ -355,8 +353,6 @@ export function reconciliar(d) {
   const c = R.car, tk = d.st.tk;
   if (net.acks && tk <= net.ack) return; // um `ack` velho (chegou fora de ordem)
   net.acks++; net.ack = tk;
-  // o quanto o meu relógio de passos está à frente do servidor: a hora do servidor para o passo `tk` (`q`) mais os passos no caminho
-  if (Number.isFinite(d.q)) { const lead = Math.max(-50, Math.min(450, d.q + (c.tick - tk) * PASSO * 1000 - sNow())); net.lead = net.lead == null ? lead : net.lead + (lead - net.lead) * 0.25; }
   // as batidas que o servidor confirmou saem da lista (já estão no estado dele); as que ele ainda não viu continuam
   const conf = [];
   if (d.ev) for (const e of d.ev) if (e.t === "carro") {

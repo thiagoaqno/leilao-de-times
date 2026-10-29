@@ -97,19 +97,20 @@ test("servidor: o carro rápido bate na traseira do lento, os dois sentem, e nen
   const a = mk("a", 0), b = mk("b", 2), t0 = Date.now() + 5000, h = ganchos();
   const room = { phase: "race", startAt: t0 - 1000, luzes: { espera: 1 }, config: { pista: "interlagos", regras: "f1", voltas: 3, cambio: "auto", ers: "auto" }, players: { a, b }, order: ["a", "b"], semente: 7, direcao: null };
   const ea = [], eb = [];
-  for (let k = 0; k < 1440; k++) { ea.push(S.empacotar({ gas: k < 480 ? 1 : 0 })); eb.push(S.empacotar({ gas: 1 })); }
+  for (let k = 0; k < 1440; k++) { ea.push(S.empacotar(k < 400 ? { gas: 1 } : { brake: 1 })); eb.push(S.empacotar({ gas: 1 })); }
   for (let i = 0; i < 1440; i += 240) { Humanos.entrada(room, a, { s: room.startAt, t0: i, k: ea.slice(i, i + 240) }, t0); Humanos.entrada(room, b, { s: room.startAt, t0: i, k: eb.slice(i, i + 240) }, t0); }
-  let vAntes = null, vDepois = null, n6000 = 0;
-  const vel = (c) => Math.hypot(c.vx, c.vy);
+  let vAntes = null, vDepois = null, ultimo = null;
+  const vel = (c) => Math.hypot(c.vx, c.vy), forte = () => h.batidas.filter((x) => x.f > 20 && x.chave.startsWith("carro:")).length; // (a primeira batida forte entre os dois carros)
   for (let ms = 0; ms <= 9000; ms += 10) {
+    const fortesAntes = forte();
     Humanos.andar(room, t0 + ms, h);
     if (!a.sim || !b.sim) continue;
     const A = a.sim.c, B = b.sim.c;
-    if (ms === 6000) { vAntes = { a: vel(A), b: vel(B) }; n6000 = h.batidas.length; }
-    if (vAntes && vDepois === null && h.batidas.length > n6000) vDepois = { a: vel(A) - 0, b: vel(B) }; // (no passo em que a batida entrou no registro)
+    if (vAntes === null && forte() > fortesAntes) { vAntes = ultimo; vDepois = { a: vel(A), b: vel(B) }; } // (a velocidade de cada um logo antes da primeira batida forte e logo depois dela)
+    ultimo = { a: vel(A), b: vel(B) };
   }
   assert.ok(h.batidas.some((x) => x.id === "a" && x.chave === "carro:b") && h.batidas.some((x) => x.id === "b" && x.chave === "carro:a"), "os dois levam a batida (dano e som)");
-  assert.ok(vAntes.b > vAntes.a + 100, `antes da batida o B vinha mais rápido (${vAntes.b} contra ${vAntes.a})`);
+  assert.ok(vAntes && vAntes.b > vAntes.a + 15, `antes da batida o B vinha mais rápido (${vAntes && vAntes.b} contra ${vAntes && vAntes.a})`);
   assert.ok(vDepois && vDepois.a > vAntes.a, `o atingido ganhou velocidade: ${vAntes.a} → ${vDepois.a}`);
   assert.ok(vDepois.b < vAntes.b, `o que bateu perdeu: ${vAntes.b} → ${vDepois.b}`);
 });

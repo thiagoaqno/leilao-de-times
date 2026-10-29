@@ -347,11 +347,12 @@ function contatoCom(c, eu, o, dt, reg, semImpulso) {
   let da = c.a - aa0; da = Math.atan2(Math.sin(da), Math.cos(da));
   const rel = dt > 0 ? Math.hypot(c.x - ax0 - ovx * dt, c.y - ay0 - ovy * dt) : 0, nsub = dt > 0 ? Math.min(16, Math.max(1, Math.ceil(rel / 5))) : 1;
   let f = 1, m = null, ax = c.x, ay = c.y, aa = c.a, bx = ox1, by = oy1;
+  const folga = o.folga || 0; // (o navegador, que só tem uma previsão do outro carro, exige que ele esteja mais enterrado que isto; o servidor, com a pose de verdade, não)
   for (let i = 1; i <= nsub; i++) {
     const g = i / nsub, qx = ax0 + (c.x - ax0) * g, qy = ay0 + (c.y - ay0) * g, qa = aa0 + da * g;
     const rx = ox1 - ovx * dt * (1 - g), ry = oy1 - ovy * dt * (1 - g), ra = oa1 - orr * dt * (1 - g);
     const hit = maisEnterrado(qx, qy, qa, eu.L, eu.W, rx, ry, ra, o.L, o.W);
-    if (hit) { m = hit; f = g; ax = qx; ay = qy; aa = qa; bx = rx; by = ry; break; }
+    if (hit && hit.pen > folga) { m = hit; f = g; ax = qx; ay = qy; aa = qa; bx = rx; by = ry; break; }
   }
   if (!m) return 0;
   // a velocidade dos dois no ponto do contato (a de cada centro mais a guinada vezes o braço)
