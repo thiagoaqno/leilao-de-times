@@ -25,9 +25,10 @@ const limite = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 // ---------- o câmbio de 8 marchas ----------
 // `FRACAO[i]`: a velocidade em que a marcha i+1 chega ao corte (12 mil rpm), em fração da da 8ª. Espaçadas como numa F1:
-// as de baixo mais abertas, as de cima mais juntas, para o motor ficar entre ~9,8 e ~11,8 mil rpm acelerando.
+// as de baixo mais abertas, as de cima mais juntas, para o motor ficar entre ~8,9 e ~11,8 mil rpm acelerando. Num carro de 300 km/h
+// de velocidade final (corte da 8ª a 321 km/h) cada marcha segura até: 98, 130, 165, 198, 230, 262, 292 e 321 km/h.
 const NUM = 8, RPM_MAX = 12000;
-const FRACAO = [0.265, 0.348, 0.434, 0.526, 0.632, 0.75, 0.87, 1];
+const FRACAO = [0.305, 0.405, 0.514, 0.617, 0.717, 0.816, 0.91, 1];
 const CORTE = 1.07;          // a 8ª chega ao corte a 1,07 × a velocidade final: sobra para DRS, vácuo e ERS
 const SOBE = 0.985, DESCE = 0.62; // o automático sobe perto do corte e desce quando a rotação cai demais
 const TROCA_T = 0.05;        // quanto dura a troca: a força do motor some
@@ -61,20 +62,20 @@ const CACHE = new Map();
 const RAPIDO = new WeakMap();
 function parametros(spec) {
   const r = RAPIDO.get(spec);
-  if (r && r.v === spec.vmax && r.a === spec.acc && r.b === spec.brake && r.g === spec.grip && r.k === spec.kin && r.t === spec.turn && r.s === spec.scrub && r.o === spec.offMax && r.w === spec.wall && r.d === (spec.drs ?? 1)) return r.p;
+  if (r && r.v === spec.vmax && r.a === spec.acc && r.b === spec.brake && r.g === spec.grip && r.k === spec.kin && r.t === spec.turn && r.s === spec.scrub && r.o === spec.offMax && r.w === spec.wall && r.d === (spec.drs ?? 1) && r.c === (spec.cda ?? 1)) return r.p;
   const p = parametrosLento(spec);
-  RAPIDO.set(spec, { p, v: spec.vmax, a: spec.acc, b: spec.brake, g: spec.grip, k: spec.kin, t: spec.turn, s: spec.scrub, o: spec.offMax, w: spec.wall, d: spec.drs ?? 1 });
+  RAPIDO.set(spec, { p, v: spec.vmax, a: spec.acc, b: spec.brake, g: spec.grip, k: spec.kin, t: spec.turn, s: spec.scrub, o: spec.offMax, w: spec.wall, d: spec.drs ?? 1, c: spec.cda ?? 1 });
   return p;
 }
 function parametrosLento(spec) {
-  const chave = [spec.vmax, spec.acc, spec.brake, spec.grip, spec.kin, spec.turn, spec.scrub, spec.offMax, spec.wall, spec.drs ?? 1].join("|");
+  const chave = [spec.vmax, spec.acc, spec.brake, spec.grip, spec.kin, spec.turn, spec.scrub, spec.offMax, spec.wall, spec.drs ?? 1, spec.cda ?? 1].join("|");
   let p = CACHE.get(chave); if (p) return p;
   const massa = 800 * (0.72 + 0.5 * spec.wall);                 // o tanque é mais pesado, a formiga mais leve
   const W = massa * G;
   const L = 3.6, a = 0.55 * L, b = 0.45 * L, h = 0.25;          // distância entre eixos, CG→frente, CG→trás e altura do CG (m)
   const Iz = massa * (0.5 * L) ** 2;
   const gn = spec.grip / 470;
-  const ClA = 3.5 * gn ** 2.5, CdA = 0.9 + 0.8 * ClA;        // carga e arrasto: mais carga, mais arrasto (e menos velocidade final)
+  const ClA = 3.5 * gn ** 2.5, CdA = (0.9 + 0.8 * ClA) * (spec.cda ?? 1); // carga e arrasto: mais carga, mais arrasto (e menos velocidade final); `cda` (opcional, 1) escala o arrasto: o carro de F1 usa menos, para chegar a 300 km/h sem virar um foguete
   const crr = 0.012;
   const vmaxM = spec.vmax * ESC;
   const qv = 0.5 * RHO * vmaxM * vmaxM;

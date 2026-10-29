@@ -20,9 +20,17 @@ const PECAS = {
   confiab: { nome: "Confiabilidade", icone: "🧰", bom: "chance de quebra e câmbio", custa: "só os pontos", desc: "Câmbio e motor reforçados: a chance de quebrar na corrida cai. Quebrou, o carro anda no modo de emergência." },
 };
 
-// O pior e o melhor de cada número entre os cinco carros de antes (`CARROS` em pistas.js): a montagem nunca sai daí.
+// Os carros de F1 chegam a ~300 km/h no velocímetro (o McLaren padrão; v × 0,75): a velocidade final de toda montagem, e o pior
+// e o melhor dela, é multiplicada por `VMAX_F1` em relação aos cinco carros de antes (`CARROS` em pistas.js, que seguem iguais nos
+// outros modos), igual para as 11 equipes (a ordem e as diferenças relativas ficam; o câmbio, o DRS e o vácuo andam junto, pois só
+// dependem do `vmax` do carro). `CDA_F1` escala o arrasto de todos (`cda` do spec, dinamica.js): com o vmax alto e o arrasto de
+// antes a potência sairia 2,4× maior e a aceleração em velocidade média viraria a de um foguete; assim o carro chega lá, mas
+// acelera quase como antes (0-100 em ~2 s, 0-200 em ~5 s).
+const VMAX_F1 = 4 / 3, CDA_F1 = 0.35;
+// O pior e o melhor de cada número entre os cinco carros de antes (`CARROS` em pistas.js): a montagem nunca sai daí (a velocidade
+// final, com o `VMAX_F1`).
 const LIMITES = {
-  vmax: [236, 360], acc: [58, 110], brake: [400, 520], grip: [380, 500], kin: [0.65, 0.88], turn: [2.0, 3.0],
+  vmax: [236 * VMAX_F1, 360 * VMAX_F1], acc: [58, 110], brake: [400, 520], grip: [380, 500], kin: [0.65, 0.88], turn: [2.0, 3.0],
   scrub: [0.35, 1.1], offMax: [85, 140], wall: [0.45, 0.8],
 };
 const entre = (v, [a, b]) => Math.max(a, Math.min(b, v));
@@ -88,7 +96,7 @@ function specDaMontagem(m, nome = "Carro de F1") {
   const { motor, aero, chassi, freios, suspensao, confiab } = n, e = estilo(n);
   return {
     name: nome, inspo: ESTILOS[e].inspo, desc: ESTILOS[e].nome, estilo: e, chave: ORDEM.map((k) => n[k]).join("-"),
-    vmax: arredonda(entre(286 + 6 * motor - 2.5 * aero, LIMITES.vmax), 1),
+    vmax: arredonda(entre((286 + 6 * motor - 2.5 * aero) * VMAX_F1, LIMITES.vmax), 1),
     acc: arredonda(entre(66 + 1.6 * motor + 3.5 * chassi - 0.4 * aero, LIMITES.acc), 1),
     grip: arredonda(entre(380 + 13 * aero + 3 * suspensao, LIMITES.grip), 1),
     turn: arredonda(entre(1.9 + 0.15 * aero + 0.05 * suspensao, LIMITES.turn), 3),
@@ -99,6 +107,7 @@ function specDaMontagem(m, nome = "Carro de F1") {
     wall: arredonda(entre(0.8 - 0.04 * chassi, LIMITES.wall), 3),
     desgaste: arredonda(1.25 - 0.07 * suspensao, 3),
     drs: arredonda(0.6 + 0.12 * aero, 3),
+    cda: CDA_F1,
     quebra: quebraDaConfiab(confiab),
   };
 }
@@ -113,7 +122,7 @@ function sortearFalha(r, spec) { return r() < spec.quebra ? Math.round((0.15 + 0
 const nota = (v, a, b) => Math.max(1, Math.min(10, Math.round(1 + ((v - a) / (b - a)) * 9)));
 function ficha(s) {
   return [
-    { id: "reta", rotulo: "Reta", nota: nota(s.vmax, 236, 360) },
+    { id: "reta", rotulo: "Reta", nota: nota(s.vmax, LIMITES.vmax[0], LIMITES.vmax[1]) },
     { id: "acc", rotulo: "Aceleração", nota: nota(s.acc, 58, 110) },
     { id: "curva", rotulo: "Curva", nota: nota(s.grip + s.turn * 40, 380 + 80, 500 + 120) },
     { id: "freio", rotulo: "Freio", nota: nota(s.brake, 415, 520) },
@@ -124,7 +133,7 @@ function ficha(s) {
 // Os números que o servidor compara na hora de dizer "melhor em tudo": todos no sentido "maior é melhor"
 const eixos = (s) => [s.vmax, s.acc, s.grip, s.turn, s.brake, s.kin, -s.scrub, s.offMax, s.wall, -s.desgaste, s.drs, -s.quebra];
 
-const api = { MAX_NIVEL, EMERGENCIA, QUEBRA_PADRAO, CONFIAB_PADRAO, quebraDaConfiab, sortearFalha, ORDEM, PECAS, LIMITES, EQUIPES, ESTILOS, custoDaMontagem, validar, montagemPadrao, sobra, estilo, specDaMontagem, specDaEquipe, ficha, eixos };
+const api = { MAX_NIVEL, VMAX_F1, CDA_F1, EMERGENCIA, QUEBRA_PADRAO, CONFIAB_PADRAO, quebraDaConfiab, sortearFalha, ORDEM, PECAS, LIMITES, EQUIPES, ESTILOS, custoDaMontagem, validar, montagemPadrao, sobra, estilo, specDaMontagem, specDaEquipe, ficha, eixos };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Equipes = api;
 })(typeof window !== "undefined" ? window : globalThis);
