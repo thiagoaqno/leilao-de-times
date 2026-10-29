@@ -681,9 +681,10 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   // a batida abala o robô como a quem joga: a física já tira a aderência (car.inst, por 0,2 a 2 s); aqui ele também perde o ritmo (tira
   // o pé e dirige com mais cuidado) por mais um tempo, mais nos níveis fáceis e menos nos difíceis
   const ins = car.inst > 0 ? car.inst : 0;
+  if (ins > (ia.susto || 0)) ia.vSusto = Math.max(car.v, 60); // a velocidade em que levou a pancada: o ritmo cai a partir dela e volta aos poucos
   ia.susto = Math.max(ins, (ia.susto || 0) - dt * 0.35);
   const medo = ia.susto * ({ facil: 1.2, medio: 1, dificil: 0.85 }[room.config.nivel] || 1);
-  if (medo > 0.01) alvo *= 1 - 0.4 * Math.min(1, medo);
+  if (medo > 0.01) alvo = Math.min(alvo * (1 - 0.4 * Math.min(1, medo)), ia.vSusto * (1 - 0.4 * Math.min(1, medo)));
   if (p.quebrou) alvo = Math.min(alvo, spec.vmax * F1Equipes.EMERGENCIA);
   if (p.incidenteAte > now) alvo = Math.min(alvo, spec.vmax * 0.24);
   const relBox = tr.corredor ? (i - tr.corredor.i0 + n) % n : Infinity;
