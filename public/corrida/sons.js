@@ -19,7 +19,7 @@ export const Sound = (() => {
   // o som ambiente das pistas (pista-som.js) passa por um barramento que abre e fecha junto com o motor (só na corrida);
   // o eco do túnel é um envio do motor para uma reverberação (ruído que se apaga em 1,4 s)
   let ambBus = null, ecoG = null;
-  let f1 = null, ultimaMarchaF1 = 0, corteAte = 0, ultimoEstalo = -1;
+  let f1 = null, ultimaMarchaF1 = 0, corteAte = 0, ultimoEstalo = -1, gasAnteriorF1 = false, soproAte = 0, proximoEstaloEscape = 0;
   function barramento() { const c = ctx(); if (!c) return null; if (!ambBus) { ambBus = c.createGain(); ambBus.gain.value = 0; ambBus.connect(master); } return ambBus; }
   function reverb(c) {
     const len = Math.floor(c.sampleRate * 1.4), b = c.createBuffer(2, len, c.sampleRate);
@@ -29,7 +29,7 @@ export const Sound = (() => {
   function criarMotorF1(c) {
     const saida = c.createGain(), filtro = c.createBiquadFilter(), oscs = [];
     saida.gain.value = 0; filtro.type = "lowpass"; filtro.frequency.value = 2400;
-    for (const [tipo, razao, nivel] of [["sawtooth", 1, 0.65], ["triangle", 0.5, 0.32], ["sawtooth", 2, 0.12]]) {
+    for (const [tipo, razao, nivel] of [["sawtooth", 1, 0.55], ["triangle", 0.5, 0.15], ["sawtooth", 2, 0.23], ["square", 3, 0.045]]) {
       const o = c.createOscillator(), g = c.createGain(); o.type = tipo; g.gain.value = nivel;
       o.connect(g).connect(filtro); o.start();
       oscs.push({ o, razao });
@@ -38,11 +38,15 @@ export const Sound = (() => {
     return { saida, filtro, oscs };
   }
   function criarF1(c) {
-    const motor = criarMotorF1(c), turbo = c.createOscillator(), turboG = c.createGain();
-    turbo.type = "sine"; turboG.gain.value = 0; turbo.connect(turboG).connect(master); turbo.start();
+    const motor = criarMotorF1(c), ruido = c.createBuffer(1, c.sampleRate, c.sampleRate), dados = ruido.getChannelData(0);
+    for (let i = 0; i < dados.length; i++) dados[i] = Math.random() * 2 - 1;
+    const escape = c.createBufferSource(), escapeFiltro = c.createBiquadFilter(), escapeG = c.createGain();
+    escape.buffer = ruido; escape.loop = true; escapeFiltro.type = "bandpass"; escapeFiltro.frequency.value = 1900; escapeFiltro.Q.value = 0.8;
+    escapeG.gain.value = 0; escape.connect(escapeFiltro).connect(escapeG).connect(master); escape.start();
     // O eco existente recebe o motor da F1 pelo mesmo envio usado pelo kart.
     motor.saida.connect(reverbExistente || reverb(c));
-    return { motor, turbo, turboG, rivais: Array.from({ length: 3 }, () => criarMotorF1(c)) };
+    escapeG.connect(reverbExistente);
+    return { motor, ruido, escapeFiltro, escapeG, rivais: Array.from({ length: 3 }, () => criarMotorF1(c)) };
   }
   let reverbExistente = null;
   function estaloF1(c, forte = false) {
@@ -56,22 +60,38 @@ export const Sound = (() => {
     g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
     o.connect(f).connect(g).connect(master); o.start(); o.stop(c.currentTime + dur);
   }
+  function estaloEscapeF1(c) {
+    const t = c.currentTime, dur = 0.025 + Math.random() * 0.045;
+    const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = f1.ruido; f.type = "bandpass"; f.frequency.value = 700 + Math.random() * 1600; f.Q.value = 0.7;
+    g.gain.setValueAtTime(0.035 + Math.random() * 0.035, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f).connect(g).connect(master); s.start(t, Math.random() * 0.8, dur); s.stop(t + dur);
+  }
   function atualizarF1(c, racing, gas, marchaF1, rpmF1, rivais, pos) {
     if (!f1) f1 = criarF1(c);
-    const t = c.currentTime, ativo = on && racing, giro = Math.max(0, Math.min(1.02, rpmF1));
+    const t = c.currentTime, ativo = on && racing, giro = Math.max(0, Math.min(1, rpmF1));
     if (ativo && ultimaMarchaF1 && marchaF1 !== ultimaMarchaF1) {
       if (marchaF1 > ultimaMarchaF1) { corteAte = t + 0.055; estaloF1(c, true); }
       else estaloF1(c);
     }
     ultimaMarchaF1 = ativo ? marchaF1 : 0;
-    const freq = (4000 + giro * 8500) / 20; // V6 quatro tempos: três ignições por volta
+    // V8 aspirado de 2011: quatro ignições por volta, com giro sonoro de 5.000 a 18.000 rpm.
+    // A física mantém seu câmbio de 12.000 rpm; só o timbre usa esta escala.
+    const freq = (5000 + giro * 13000) / 15;
     for (const { o, razao } of f1.motor.oscs) o.frequency.setTargetAtTime(freq * razao, t, 0.025);
-    f1.motor.filtro.frequency.setTargetAtTime(gas ? 1700 + giro * 3300 : 850 + giro * 900, t, 0.06);
+    f1.motor.filtro.frequency.setTargetAtTime(gas ? 2800 + giro * 5200 : 1400 + giro * 1500, t, 0.045);
     const limitador = gas && giro >= 0.998 && Math.floor(t * 18) % 2 === 0;
-    const nivel = ativo ? (gas ? 0.075 : 0.033) * (t < corteAte || limitador ? 0.12 : 1) : 0;
+    const nivel = ativo ? (gas ? 0.062 : 0.027) * (t < corteAte || limitador ? 0.12 : 1) : 0;
     f1.motor.saida.gain.setTargetAtTime(nivel, t, 0.012);
-    f1.turbo.frequency.setTargetAtTime(1700 + giro * 2600, t, 0.08);
-    f1.turboG.gain.setTargetAtTime(ativo && gas ? 0.004 + giro * giro * 0.011 : 0, t, 0.12);
+    // Difusor soprado: fluxo de escapamento persiste sem acelerador; a ignição atrasada dá estalos na desaceleração.
+    if (ativo && gasAnteriorF1 && !gas && giro > 0.55) { soproAte = t + 0.6; proximoEstaloEscape = t; }
+    gasAnteriorF1 = ativo && gas;
+    const soprando = ativo && !gas && giro > 0.45;
+    f1.escapeFiltro.frequency.setTargetAtTime(900 + giro * 2100, t, 0.06);
+    f1.escapeG.gain.setTargetAtTime(soprando ? (t < soproAte ? 0.026 : 0.011) * giro : ativo && gas ? 0.004 * giro : 0, t, 0.04);
+    if (soprando && t < soproAte && t >= proximoEstaloEscape) { estaloEscapeF1(c); proximoEstaloEscape = t + 0.035 + Math.random() * 0.065; }
+    if (!ativo) soproAte = 0;
     const proximos = ativo && pos ? rivais.filter((r) => Number.isFinite(r.x) && Number.isFinite(r.y) && !r.dnf)
       .map((r) => ({ x: r.x, y: r.y, a: r.a, v: r.v, dx: r.x - pos.x, dy: r.y - pos.y }))
       .map((r) => ({ ...r, dist: Math.hypot(r.dx, r.dy) }))
@@ -82,10 +102,10 @@ export const Sound = (() => {
       const radial = r && dist > 0.1 ? ((pos.vx || 0) - Math.cos(r.a) * (r.v || 0)) * r.dx / dist + ((pos.vy || 0) - Math.sin(r.a) * (r.v || 0)) * r.dy / dist : 0;
       const doppler = Math.max(0.85, Math.min(1.15, 343 / (343 - radial * 0.208)));
       const rpm = Math.max(0.3, Math.min(1, Math.abs(r?.v || 0) / 370));
-      const f = (4000 + rpm * 8500) / 20 * doppler;
+      const f = (5000 + rpm * 13000) / 15 * doppler;
       for (const { o, razao } of motor.oscs) o.frequency.setTargetAtTime(f * razao, t, 0.06);
-      motor.filtro.frequency.setTargetAtTime(1100 + rpm * 1700, t, 0.08);
-      motor.saida.gain.setTargetAtTime(r ? 0.018 * Math.pow(1 - dist / 110, 2) : 0, t, 0.08);
+      motor.filtro.frequency.setTargetAtTime(2100 + rpm * 3600, t, 0.08);
+      motor.saida.gain.setTargetAtTime(r ? 0.015 * Math.pow(1 - dist / 110, 2) : 0, t, 0.08);
     });
   }
   function engine(speed, racing, gas = true, marchaF1 = 0, rpmF1 = 0, modoF1 = false, rivais = [], pos = null) {
