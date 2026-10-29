@@ -26,7 +26,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 export const THEMES = {
   monaco: { preview: "#2a6fa3", sky: ["#5fb7ff", "#cfeeff"], fog: "#cfe6f2", oob: 0xffae6f1f, roadCol: "#5b5b61" },
   interlagos: { preview: "#2f7d33", sky: ["#4aa3e8", "#f3e6c8"], fog: "#dfe7d8", oob: 0xff3a9a3f, roadCol: "#4b4b50" },
-  monza: { preview: "#4f8b3d", sky: ["#4a95dc", "#f1eadb"], fog: "#dde6d6", oob: 0xff4f8b3d, roadCol: "#4d4e53" },
+  monza: { preview: "#4f8b3d", sky: ["#4a8fd6", "#f6e1bd"], fog: "#e6dccb", oob: 0xff4f8b3d, roadCol: "#4d4e53" },
   barcelona: { preview: "#a9a35a", sky: ["#4a9be0", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4c4d52" },
   silverstone: { preview: "#5e9a47", sky: ["#8aa3b8", "#dde3e6"], fog: "#cfd6d6", oob: 0xff5e9a47, roadCol: "#4d4e53" },
   // as pistas convertidas do calendário de F1 (ferramentas/circuitos-f1.js)

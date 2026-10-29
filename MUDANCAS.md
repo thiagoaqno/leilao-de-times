@@ -1,43 +1,42 @@
-# Corrida: regras de F1, parte 2, o pit stop
+# Monza refeita em cima do kit 2
 
-O PR 2 do plano `planos/temporada-f1.md`. Só vale com **Regras: Fórmula 1**; sem elas a sala corre como antes.
+O cenário do GP da Itália (`gps/monza.js`) foi refeito do zero: o `monza.js` antigo, de antes do kit 2, saiu, e entraram `monza.js` (a montagem) e `kit/monza/` (as peças exclusivas, todas em código, sem modelo 3D baixado). Não mexe em traçado, física, robôs, regras, HUD, menus, sala nem carreira.
 
-**O corredor dos boxes**
-- `boxes: { entra, para, sai, lado }` em `pistas.js` (frações da volta) nas 14 pistas com reta na largada: Monza e Silverstone (que entraram na main no meio do PR) e as 8 do calendário do plano (Deserto, Tóquio, Mônaco, Rio, Nürburgring, Laguna, Los Angeles, Interlagos), Serra Verde, Barcelona, Luigi e Sorvete. O Arco-íris não tem reta onde caiba. Conferido por conta: o corredor cabe em todas, longe de outro trecho da pista (Mônaco é a apertada, e fica sem garagens; ver abaixo).
-- A conta é uma só, em `f1-regras.js` (`corredor`): 34 de largura (cabem dois carros lado a lado), ~500 de comprimento, rampas de entrada e saída, 10 garagens. O carro, os robôs, o desenho e os testes usam a mesma.
-- Peça nova do kit: `kit/corredor-boxes.js` (o `kit/boxes.js` da main é o prédio dos boxes, outra peça) (chave `boxes` em `gps/`; toda pista com `boxes` ganha o corredor sozinha; linha nova no `kit/README.md`). Asfalto, linha branca de entrada, vermelha de saída, mureta, o quadrado pintado onde o carro para, as garagens e **4 mecânicos por garagem, na cor de quem usa a garagem** (`jogo.js` pinta cada uma com a cor do piloto do grid). Entrada e saída ficam livres de painel e cerca, e os balizadores do meio do corredor saem de cena. Só aparece com as regras de F1.
-- Em Mônaco as linhas SC 1 e SC 2 (`gps/monaco.js`) passaram a ser a entrada e a saída do corredor (0,98 e 0,02 da volta; antes 0,89 e 0,075).
+**A reta dos boxes** (um quadro só, `reta` em `monza.js`: +x ao longo da pista, +z para o lado dos boxes)
+- Prédio dos boxes com o Paddock Club (`complexoDosBoxes`): portas das garagens, marquise com a faixa tricolore, vidro, terraço com 12 velas brancas e letreiros do parapeito.
+- **Pódio suspenso** (`podioMonza`): torre de concreto sobre o prédio e a caixa que avança 12,8 m sobre a reta (a ponta fica a 20 da linha central), a 9,8 m de altura, com faixa de vidro, letreiro GRAN PREMIO D'ITALIA, estais de aço, o palco de piso vermelho com os três degraus e o painel de patrocínio.
+- **Tribuna Centrale** em frente (4 módulos de `tribunaCoberta`, cobertos, de torcida vermelha: opção nova `camisas`), duas **torres de cronometragem** de 1955 atrás dela (placar luminoso nos dois lados), torres de luz e o paddock atrás dos boxes (motorhomes, tendas e carretas).
+- A faixa AUTODROMO NAZIONALE MONZA no pórtico da largada de `pista.js`, **de frente para os carros** (normal contra o sentido da volta; conferido na malha).
 
-**Mônaco e a mureta**
-- Em Mônaco o corredor (sem garagens) tem a mureta de concreto no lugar do guard-rail, que some só nesse trecho e só enquanto o corredor aparece; cerca, painéis e torcida também saem de lá (a torcida, em todas as salas, no trecho do corredor de cada pista). Foto: `planos/imagens/corrida-box-monaco.jpg`.
-- A **mureta é sólida** (`muretaDoBox`, em `box.js`): quem não vai parar não passa para o corredor, só pelas rampas de entrada e saída. Conferido rodando a física contra ela: o carro para a 11 da beira.
+**O resto da volta**
+- **Sopraelevata** (`kit/monza/sopraelevata.js`): concreto com lajes e mato, parapeito, torrinhas de sinalização, moitas em volta e a ponte sobre o Serraglio.
+- **Parabolica**: escape de asfalto cinza com a linha branca, muro de pneus e tribunas por fora (uma coberta); a brita saiu dela (é asfalto desde 2014). Brita e pneus nas Lesmo e na Biassono; escape listrado de vermelho e branco e zebras altas nas chicanes.
+- Placas com o nome de cada curva, arquibancadas de curva do kit (Rettifilo por dentro e por fora, Curva Grande, Roggia, Lesmo, Ascari, reta de trás) com as bandeiras da Itália e dos tifosi nos degraus.
+- **Parque** (`kit/monza/parque.js`): bosque de árvores altas de copa em dois lóbulos (verdes com um pouco de amarelo e cobre de setembro), moitas, folhas caídas, gramado em faixas e o velho carvalho do Ascari.
+- Luz de fim de tarde de setembro (`LOOK.monza` e `THEMES.monza`: sol dourado, neblina quente).
 
-**A parada**
-- **B** (ou o botão "Box") pede a parada, de novo passa para o outro composto e, no fim, cancela; **1, 2 e 3** escolhem macio, médio e duro. Na próxima passagem pela entrada o carro entra e anda sozinho no limitador (40% da velocidade final, `box.js`), para na sua garagem, troca o pneu (2,4 s mais o erro dos mecânicos, de 0 a 1,5 s, sorteado com a semente do GP: `tempoDeParada`) e sai com o pneu novo, frio. **Uma parada inteira leva de 5 a 10 s** (6,7 a 8,2 s em Interlagos); o plano dizia 18 a 25 s, mas o dono pediu 5 a 10 s, e o teste confere isso.
-- Não dá para parar na última volta (o corredor passaria pela chegada).
-- HUD: o aviso do box (limitador, trocando com a contagem, saindo), o botão com o composto pedido e, na torre, o pneu de cada um, quantas paradas fez e quem está no box.
+**Desempenho** (`node tests/ajuda-cena/medir.mjs monza`): na vista do jogo, cerca de 210 chamadas de desenho e 430 a 450 mil triângulos (Suzuka: 207 e 459 mil; o Monza antigo: 175 e 361 mil); menos de 400 malhas na cena (teto 520). Árvores, moitas, folhas, bandeiras, torres de luz e pneus são InstancedMesh; as peças soltas têm uma malha por material.
 
-**No servidor**
-- `act` `box` (fases `entra` e `sai`): guarda a parada em `p.paradas` (volta, tempo, composto), o composto em uso (`pneuAtual`) e os usados (`compostos`), confere o limitador pelo tempo no corredor (rápido demais: **+5 s**) e avisa no log.
-- **Regra dos dois compostos:** quem termina sem ter usado dois compostos leva **+10 s**. Os acréscimos reordenam o resultado (`finish + acrescimo`), na torre e na tela final.
-- `semente` do GP no estado da sala.
-- **Robôs:** cada um sai com uma `estrategia` (`f1-regras.js`: composto da largada, uma ou duas paradas, sempre dois compostos, nunca na última volta), entra pelo mesmo caminho, perde o mesmo tempo e antecipa a parada se o pneu passar do penhasco.
-- A escolha do composto da largada no lobby já tinha entrado no PR 1.
+**Conferido**: a montagem da cena no Node roda sem erro, nenhuma peça fica dentro da pista (`invasoes` do `tests/ajuda-cena`, 0 achados) e a fusão de malhas não aumenta a contagem. **Não conferido**: o navegador (o Thiago joga e testa); as proporções e as cores foram feitas a partir de texto, não de fotos.
 
-**Voltas e pneus**
-- Novas opções de **10 e 21 voltas** (o limite da corrida subiu de 15 para 45 min). O desgaste continua medido em fração da corrida: numa corrida de 3 voltas o pneu médio chega ao penhasco na volta 1,8, e numa de 21, na volta 12,6; o macio dura ~7 voltas e o duro ~19. Por isso o pneu "acaba em 1,5 volta" só nas corridas curtas.
+**Docs**: linha de Monza no `CLAUDE.md`, parágrafo e opção `camisas` no `kit/README.md`.
 
-**Testes** (`tests/corrida-f1-box.test.js`, 8 testes)
-- Uma parada em Interlagos custa de 5 a 10 s; as 14 pistas têm corredor com as garagens entre as rampas.
-- O mesmo GP com a mesma semente dá os mesmos erros de mecânico.
-- A estratégia dos robôs sempre usa dois compostos e nunca para na última volta.
-- Os robôs fazem as paradas pelo corredor, no limitador; sem as regras de F1 não existe box.
-- A sala (sem rede, com tempo de mentira): +10 s para quem usou um composto só e perde a vitória, +5 s por passar do limitador, sem box na última volta; sem as regras de F1 o box é ignorado.
+## Referências usadas (marco por marco)
 
-**Conferido**
-- No navegador do app (`#debug`), em Interlagos com 21 voltas e 3 robôs: uma parada de verdade, da entrada à saída, com a troca para o duro: `planos/imagens/corrida-box-parada.jpg` (HUD e contagem), `corrida-box-garagens.jpg` (as garagens na cor de cada piloto, com os mecânicos) e `corrida-box-saida.jpg`. Sem erro no console.
-- Só os testes da Corrida (`node --test tests/corrida*.test.js`): 43 de 43 passam, os 8 novos e os de hoje. A suíte inteira não foi rodada de novo (a rodada completa anterior só falhou em um teste do Leilão, por carga, e em dois meus, já corrigidos).
+Aviso honesto: as ferramentas de pesquisa desta sessão só leem **texto** (páginas, legendas, descrições de arquivo); não consegui abrir as fotos em si. Cada marco abaixo foi feito a partir do que essas páginas dizem sobre ele (forma, posição, material, medidas). As cores, as proporções finas e o desenho dos prédios são interpretação minha, em cima de nome, texto e legenda, e merecem o olho do Thiago jogando. Nenhuma imagem foi baixada nem salva no repositório; as texturas são geradas em canvas.
 
-**O que falta**
-- Os mecânicos são figuras paradas, sem animação.
-- As penalidades de verdade (bandeiras, limites de pista) são do PR 4.
+| Marco | Referência | O que foi copiado dela |
+| --- | --- | --- |
+| Traçado, ordem e nome das curvas, reta de 1,12 km, zebras altas nas duas primeiras chicanes | https://en.wikipedia.org/wiki/Monza_Circuit | A ordem Rettifilo, Curva Grande, Roggia, Lesmo, Ascari, Parabolica (Curva Alboreto); as zebras altas de Rettifilo e Roggia; o parque ao redor; o anel com ~30° de inclinação |
+| Pódio suspenso | https://www.monzanet.it/en/leclerc-and-the-iconic-elements-of-the-temple-of-speed-in-the-image-of-the-94th-italian-grand-prix/ e https://www.grandprix.com/news/paddock-renovation-work-for-monza.html | Pódio de 2002 que avança sobre a pista para o povo invadir; o antigo era um portal com duas torres art déco, por isso a torre de concreto branco sobre o prédio dos boxes |
+| Prédio dos boxes e Paddock Club | mesmas páginas do monzanet e do grandprix.com; https://commons.wikimedia.org/wiki/File:Monza_pitlane.jpg | Prédio moderno com hospitalidade, escritórios e centro de mídia atrás do pit lane; terraço coberto por estrutura tensionada (velas brancas) |
+| Torres de cronometragem | https://www.monzanet.it/en/leclerc-and-the-iconic-elements-of-the-temple-of-speed-in-the-image-of-the-94th-italian-grand-prix/ | Duas torres de 1955 na reta, com placar luminoso, hospitalidade desde 1997 |
+| Tribuna Centrale e pórtico da largada | https://commons.wikimedia.org/wiki/File:Monza_start_line.jpg e o guia de arquibancadas https://ticket-compare.com/circuits/autodromo-nazionale-monza/seating-plan/ | Tribuna em frente ao pit lane e ao pódio, com as fileiras de cima cobertas e as de baixo abertas; a linha de largada com o pórtico (a faixa fica perpendicular à pista, de frente para os carros: conferido pela normal da malha) |
+| Variante del Rettifilo | https://en.wikipedia.org/wiki/Monza_Circuit e o guia de arquibancadas | Frenagem forte no fim da reta; arquibancadas por dentro (6A a 6C) e por fora (8A e 8B); escape de asfalto listrado e zebras altas |
+| Curva Grande e Biassono | https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | Curva longa à direita, em meio às árvores; brita na saída da Biassono; árvores derrubadas só para alargar o escape |
+| Variante della Roggia | https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | Escape todo de asfalto, com zebras altas |
+| Lesmo 1 e 2 | https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | Brita na saída e muro de pneus, com as árvores quase na beira |
+| Variante Ascari | https://commons.wikimedia.org/wiki/Category:Variante_Ascari e https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | O grande carvalho (Curva del Platano) que sobrou na beira de dentro; as zebras altas |
+| Parabolica (Curva Alboreto) | https://commons.wikimedia.org/wiki/Category:Curva_parabolica_(Autodromo_Nazionale_Monza) e o guia de arquibancadas | Escape de asfalto desde 2014 (sem brita); várias tribunas temporárias por fora, só uma coberta |
+| Sopraelevata | https://commons.wikimedia.org/wiki/File:Monza_banking_2003.JPG e https://it.wikipedia.org/wiki/Autodromo_nazionale_di_Monza | Concreto armado com inclinação crescente (até uns 38°), as 14 torrinhas de sinalização (7 no anel), o trecho que cruza o Serraglio por cima; o traçado do anel já vinha do OpenStreetMap |
+| Parque | https://en.wikipedia.org/wiki/Monza_Circuit | Autódromo no meio do bosque do Parco di Monza |
