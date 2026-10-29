@@ -71,7 +71,7 @@ test("humano (esterço de teclado, sem ajuda dos robôs): macio < médio < duro,
     const info = `${pista}: macio ${s.toFixed(2)} s, médio ${m.toFixed(2)} s, duro ${d.toFixed(2)} s`;
     assert.ok(isFinite(s) && isFinite(m) && isFinite(d), `${info}: não fechou volta limpa`);
     assert.ok(s < m && m < d, `${info}: fora de ordem`);
-    assert.ok((m - s) / s >= 0.01 && (m - s) / s <= 0.03, `${info}: o médio perde ${((m - s) / s * 100).toFixed(2)}% (esperado ~1,5 a 2,5%)`);
+    assert.ok((m - s) / s >= 0.01 && (m - s) / s <= 0.035, `${info}: o médio perde ${((m - s) / s * 100).toFixed(2)}% (esperado ~1,5 a 3,3%: o médio tem 1% menos de aderência em curva, e Interlagos, de curvas, sente mais)`);
     assert.ok((d - m) / m >= 0.01 && (d - m) / m <= 0.03, `${info}: o duro perde ${((d - m) / m * 100).toFixed(2)}% para o médio (esperado ~1,5 a 2,5%)`);
   }
 });
