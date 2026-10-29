@@ -1,6 +1,6 @@
-// Corrida da Galera — sons sintetizados (kart e F1, derrapagem, batidas e largada). O motor de F1 fica em motor-f1.js.
+// Corrida da Galera — sons sintetizados (kart e F1, derrapagem, batidas e largada). O motor de F1 (V10) fica em motor-v10.js.
 import { $, store } from "./estado.js";
-import { criarMotorF1 } from "./motor-f1.js";
+import { criarMotorF1 } from "./motor-v10.js";
 
 // ---------- sons ----------
 export const Sound = (() => {
@@ -20,7 +20,7 @@ export const Sound = (() => {
   // o som ambiente das pistas (pista-som.js) passa por um barramento que abre e fecha junto com o motor (só na corrida);
   // o eco do túnel é um envio do motor para uma reverberação (ruído que se apaga em 1,4 s)
   let ambBus = null, ecoG = null;
-  let motorF1 = null; // o motor de F1 (motor-f1.js), criado na primeira vez que as regras de F1 pedem
+  let motorF1 = null; // o motor de F1 (motor-v10.js), criado na primeira vez que as regras de F1 pedem
   function barramento() { const c = ctx(); if (!c) return null; if (!ambBus) { ambBus = c.createGain(); ambBus.gain.value = 0; ambBus.connect(master); } return ambBus; }
   function reverb(c) {
     const len = Math.floor(c.sampleRate * 1.4), b = c.createBuffer(2, len, c.sampleRate);

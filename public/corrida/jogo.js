@@ -199,7 +199,7 @@ function loop(t) {
   updateGhosts(dt);
   recordLap();
   if (me() && ativo() && !race.net && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
-  const somF1 = E.S?.config.regras === "f1"; // regras de F1: o motor V6 turbo (motor-f1.js), com o limitador e os carros dos outros
+  const somF1 = E.S?.config.regras === "f1"; // regras de F1: o motor V10 (motor-v10.js), com o limitador e os carros dos outros
   Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0, somF1 ? { cam: camMode, lim: race.box?.fase === "entra" ? 0.45 : keys.gas && (race.rpm || 0) >= 0.985 ? 1 : 0 } : null);
   Sound.outros(OUTROS_SOM, somF1 && me() ? outrosParaSom() : 0);
   Sound.skid(me() && ativo() && race.car.slip > 45 ? race.car.slip : 0);
