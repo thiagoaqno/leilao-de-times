@@ -51,17 +51,18 @@ function abrirSessao(room, deps) {
   const bots = room.order.filter((id) => room.players[id].bot);
   q.nome = `Q${q.i + 1}`; q.pausaAte = null;
   q.ativos = q.i === 0 ? room.order.slice() : q.fechadas[q.i - 1].passam.map((x) => x.id);
+  const quemJoga = humanosAtivos(room).length > 0;
+  q.durMs = quemJoga ? Robos.duracaoDaClassificacao(room.config.pista) * 1000 : SO_ROBOS_MS; // sem ninguém na pista, a sessão só mostra a tabela
+  q.startAt = Date.now() + CONTAGEM_MS; q.fimAt = q.startAt + q.durMs;
+  room.startAt = q.startAt; room.endAt = null;
+  if (q.i === 0 && room.clima) room.clima.t0 = q.startAt; // o relógio da chuva corre desde a abertura do Q1, intervalos incluídos
   let g = 0;
   for (const id of q.ativos) {
     const p = room.players[id];
     Object.assign(p, { sector: T.SECTORS - 1, qIni: null, qMelhor: null, qQuando: null, qFim: false, qPronto: false, pos: null });
     if (!p.bot) p.grid = g++; // cada um na sua fila do grid, só para sair de um lugar diferente (na classificação não tem batida)
-    else q.robos[id] = Robos.voltaLancada(room, p, q.i, bots.indexOf(id), bots.length);
+    else q.robos[id] = Robos.voltaLancada(room, p, q.i, bots.indexOf(id), bots.length, { startAt: q.startAt, durMs: q.durMs });
   }
-  const quemJoga = humanosAtivos(room).length > 0;
-  q.durMs = quemJoga ? Robos.duracaoDaClassificacao(room.config.pista) * 1000 : SO_ROBOS_MS; // sem ninguém na pista, a sessão só mostra a tabela
-  q.startAt = Date.now() + CONTAGEM_MS; q.fimAt = q.startAt + q.durMs;
-  room.startAt = q.startAt; room.endAt = null;
   clearInterval(q.tique); q.tique = setInterval(() => deps.broadcast(room), 1000);
   clearTimeout(q.fim); q.fim = setTimeout(() => verificarFim(room, deps), CONTAGEM_MS + q.durMs);
   clearTimeout(q.corte); q.corte = setTimeout(() => fechar(room, deps), CONTAGEM_MS + q.durMs + GRACA_MS); // ninguém segura a sessão

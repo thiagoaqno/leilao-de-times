@@ -4,6 +4,7 @@
 import * as THREE from "three";
 import { E, PISTAS, SECTORS, COLORS, CARROS, carOf, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
+import { atualizarClima } from "./clima.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
@@ -123,7 +124,7 @@ export function startRace(st) {
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W, st.config.regras === "f1");
   if (race) clearRace();
   // regras de F1: o carro é o da física nova (sim.js), com o pneu, o ERS e o box dentro dele; o servidor é a autoridade (fisica.js)
-  const f1 = st.config.regras === "f1", carro = f1 ? window.Sim.novo(tr, { grid: mine ? mine.grid : 0, f1: true, pneu: window.Sim.pneuDaLargada(st.phase, mine && mine.pneu), box: st.phase !== "quali" }) : { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 };
+  const f1 = st.config.regras === "f1", carro = f1 ? window.Sim.novo(tr, { grid: mine ? mine.grid : 0, f1: true, pneu: window.Sim.pneuDaLargada(st.phase, mine && mine.pneu, window.F1Regras.climaEm(st.clima, st.startAt).agua), box: st.phase !== "quali" }) : { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 };
   race = { startAt: st.startAt, tr, car: carro, net: f1 && mine ? criarRede() : null, acc: 0, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
     kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0,
     pneu: f1 ? carro.pneu : null, ers: f1 ? carro.ers : null, box: f1 ? carro.box : null, // regras de F1: pneu, ERS e pit stop
@@ -190,6 +191,7 @@ function loop(t) {
   ultimoQuadro = t;
   const real = Math.min(0.25, (t - (lastT || t)) / 1000), dt = Math.min(1 / 30, real); lastT = t;
   pollPad();
+  atualizarClima(); // a chuva e a água na pista deste quadro (clima.js: o visual e a física leem)
   // a física anda em passos fixos de 1/120 s (fisica.js): o tempo do quadro só diz quantos passos dar, então 30 ou 144 quadros
   // por segundo dão a mesma corrida
   if (ativo()) quadroDeFisica(real); else quadroParado(real);

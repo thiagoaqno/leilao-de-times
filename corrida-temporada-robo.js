@@ -14,7 +14,7 @@ function planoRestante(room, p) {
   const usados = new Set(p.compostos || [p.pneuAtual || p.pneu]);
   const resto = plano.paradas.filter((x) => x.volta > laps && x.volta < room.config.voltas);
   if (usados.size < 2 && room.config.voltas >= 2 && !resto.some((x) => !usados.has(x.composto))) {
-    const outro = Object.keys(F1.PNEUS).find((c) => !usados.has(c));
+    const outro = F1.SECOS.find((c) => !usados.has(c));
     resto.push({ volta: Math.min(room.config.voltas - 1, laps + 1), composto: outro });
   }
   return { largada: p.pneu, paradas: [...Array.from({ length: feitas }, () => ({ volta: 0, composto: p.pneuAtual })), ...resto] };

@@ -277,14 +277,21 @@ function prazoDeChegada(room, prazoNormal = 60000) { return prazoNormal; }
 // quente (a mesma aderência do carro de quem joga), mais o ruído da constância do piloto, sorteado pela semente do GP,
 // da sessão e do robô (recarregar nada muda). `em` é a hora (fração da sessão) em que o robô cruza a linha.
 function gauss(r) { return Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r()); }
-function voltaLancada(room, p, sessao, tracadoId, nBots) {
+// `janela` ({ startAt, durMs }, opcional): a sessão, para achar a água na pista na hora da volta do robô (clima.js do jogo: com
+// chuva a classificação usa o pneu de chuva se a pista abre com água, o mesmo de quem joga).
+function voltaLancada(room, p, sessao, tracadoId, nBots, janela = null) {
   const pf = perfil(room.config.pista, p.spec || p.car, tracadoId), nivel = nivelDe(room, p, tracadoId, nBots, pf);
-  const ader = F1.aderencia({ composto: "macio", desgaste: 0.03, temp: 0.8 });
   const r = F1.sorteio(`quali:${room.semente}:${sessao}:${p.id}`), sigma = p.piloto ? Pilotos.ruidoDaVolta(p.piloto.constancia) : 0.012;
-  const tempo = tempoDaVolta(pf, nivel, ader) * (1 + Math.max(-2.5, Math.min(2.5, gauss(r))) * sigma);
+  const ruido = Math.max(-2.5, Math.min(2.5, gauss(r))), em = 0.3 + 0.62 * r();
+  let ader = F1.aderencia({ composto: "macio", desgaste: 0.03, temp: 0.8 });
+  if (janela && room.clima) { // chuva: o pneu da sessão pela água na abertura, e a aderência pela água na hora da volta (em passos de 0,1: a tabela é guardada)
+    const abre = F1.climaEm(room.clima, janela.startAt).agua, agua = Math.round(F1.climaEm(room.clima, janela.startAt + em * janela.durMs).agua * 10) / 10;
+    ader = F1.aderencia({ composto: F1.compostoDaClassificacao(abre), desgaste: 0.03, temp: 0.8 }, agua);
+  }
+  const tempo = tempoDaVolta(pf, nivel, ader) * (1 + ruido * sigma);
   const final = room.config.regras === "f1" && (room.referenciaF1 || referenciaF1(room)).proteger
     ? Math.max(tempo, (room.referenciaF1 || referenciaF1(room)).recorde * 1.015) : tempo;
-  return { tempo: Math.round(final * 1000) / 1000, em: 0.3 + 0.62 * r() };
+  return { tempo: Math.round(final * 1000) / 1000, em };
 }
 // quanto dura uma sessão de classificação, em segundos: dá para uma volta de saída e duas lançadas de um carro médio
 function duracaoDaClassificacao(pista) {
@@ -327,11 +334,14 @@ function largar(room) {
     // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
     // regras de F1: a estratégia de parada do robô (o composto da largada e as paradas) e o mesmo pneu de quem joga
     const f1 = room.config.regras === "f1", plano = f1 ? F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${id}`, room.config.pista, p.spec ? p.spec.desgaste : 1) : null;
+    // chuva: o quanto cada robô "sente" a água a mais ou a menos (±0,1, fixo no GP): não trocam todos de pneu juntos
+    const vies = f1 ? Math.round((F1.sorteio(`vies:${room.semente}:${id}`)() - 0.5) * 20) / 100 : 0, aguaLargada = f1 && room.clima ? F1.climaEm(room.clima, room.startAt).agua : 0;
+    if (plano && aguaLargada > 0 && F1.compostoPorAgua(room.config.pista, Math.max(0, Math.min(1, aguaLargada + vies)), [...F1.SECOS, "chuva"], plano.largada) === "chuva") { plano.largada = "chuva"; plano.paradas = []; } // larga molhado: sai de chuva
     if (plano) Object.assign(p, { pneu: plano.largada, pneuAtual: plano.largada, compostos: [plano.largada], paradas: [], acrescimo: 0, box: null });
     const rng = F1.sorteio(`estilo:${room.semente}:${id}`); // regras de F1: cada robô tem o seu jeito (sorteado pela semente do GP)
     p.ia = { s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: pil ? rnd(-1, 1) * (2 + (100 - pil.constancia) * 0.3) : rnd(-7, 7), tracadoId, reacao: pil ? Pilotos.reacaoNaLargada(pil.largada) + rnd(0, 120) : rnd(0, 450), usaEm: 0,
       pneu: f1 ? F1.pneuNovo(p.pneu) : null, ers: f1 ? F1.ersNovo() : null, plano, box: null,
-      estilo: f1 ? estiloDe(room, p, rng) : null, erro: null, erroLivre: 0, ult: null };
+      estilo: f1 ? estiloDe(room, p, rng) : null, vies, erro: null, erroLivre: 0, ult: null };
     if (f1) {
       if (t.width <= LARGURA_ESTREITA) p.ia.jeito *= 0.5; // menos variação lateral entre as muretas
       p.ia.jeito += p.ia.estilo.lado;
@@ -528,17 +538,32 @@ function escolherComposto(restam, usados, fator, p) {
   if (usados.size < 2) { const novos = lista.filter((c) => !usados.has(c)); if (novos.length) lista = novos; } // dois compostos: prefere um que ainda não usou
   return lista[0];
 }
-function decidirParada(room, p, ia, car, spec) {
+// O clima manda no pneu (corrida com chuva): o robô "sente" a água com o seu viés (`ia.vies`) e compara a estimativa de volta de cada
+// composto (F1.compostoPorAgua, a conta simples do molhado). Seco → chuva quando o de chuva fica mais de 0,8 s mais rápido;
+// chuva → seco quando o seco (o que aguenta o resto da corrida) fica mais de 0,8 s mais rápido. Cada robô tem o seu limite
+// (o viés), então não entram no box todos juntos. Devolve o composto, ou null para seguir como está.
+function trocaPeloClima(room, p, ia, pneu, cl, restam, usados, fator) {
+  if (restam < 1) return null;
+  const agua = Math.max(0, Math.min(1, cl.agua + (ia.vies || 0)));
+  const livres = [...F1.SECOS, "chuva"].filter((c) => c === pneu.composto || F1.podeUsar(p, c));
+  const melhor = F1.compostoPorAgua(room.config.pista, agua, livres, pneu.composto);
+  if (pneu.composto !== "chuva") return melhor === "chuva" ? "chuva" : null;
+  if (melhor === "chuva") return pneu.desgaste > F1.PENHASCO && F1.podeUsar(p, "chuva") ? "chuva" : null; // continua molhado: só troca o pneu de chuva se acabou
+  return escolherComposto(restam, usados, fator, p); // secou: volta ao seco que aguenta o resto da corrida
+}
+function decidirParada(room, p, ia, car, spec, cl) {
   const voltas = room.config.voltas, feitas = p.laps || 0;
   if (!p.started || feitas + 1 >= voltas || car.box?.fase) return null; // na última volta o corredor passa pela chegada: sem box
-  const planejada = ia.plano && ia.plano.paradas[(p.paradas || []).length];
+  const chuvoso = !!(room.clima && room.clima.chove); // corrida com chuva: a regra dos dois compostos não vale e o plano de pneus seco fica de lado
+  const planejada = !chuvoso && ia.plano && ia.plano.paradas[(p.paradas || []).length];
   const pneu = car.pneu, fator = spec.desgaste || 1, taxa = taxaDoPneu(pneu.composto, fator);
   const restam = voltas - feitas - 1, usados = new Set(p.compostos || [p.pneu || F1.COMPOSTO_PADRAO]);
+  if (chuvoso && cl) { const pelaAgua = trocaPeloClima(room, p, ia, pneu, cl, restam, usados, fator); if (pelaAgua) return pelaAgua; if (pneu.composto === "chuva" && cl.agua + (ia.vies || 0) > 0.3) return null; }
   const chega = pneu.desgaste + taxa * (restam + 0.35) <= F1.PENHASCO; // o resto da corrida e o começo da volta de chegada
   const passaNaProxima = pneu.desgaste + taxa > F1.PENHASCO; // a volta que vem já passaria do penhasco
   let para = false;
   if (!chega) para = passaNaProxima || (planejada && feitas + 1 >= planejada.volta) || (room.direcao?.safety && pneu.desgaste > 0.3);
-  if (usados.size < 2 && restam <= 1) para = true; // a última chance de cumprir a regra dos dois compostos
+  if (!chuvoso && usados.size < 2 && restam <= 1) para = true; // a última chance de cumprir a regra dos dois compostos
   if (!para) return null;
   const aguentaPlano = planejada && planejada.composto !== pneu.composto && F1.podeUsar(p, planejada.composto) && F1.vidaEmVoltas(planejada.composto, fator * MARGEM_PNEU) >= restam;
   return aguentaPlano ? planejada.composto : escolherComposto(restam, usados, fator, p);
@@ -556,9 +581,12 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const linha = linhaEm(i, car.prog);
   const baseLat = ia.lat0 * (1 - saidaGrid) + linha * saidaGrid;
   const maxLat = tr.W / 2 - 18;
-  const pneu = F1.aderencia(car.pneu), dano = F1.efeitoDoDano(p.dano), curva = pf.kf[i] > 1 / 600;
+  const cl = F1.climaEm(room.clima, now); // a água na pista agora (clima: f1-regras.js)
+  const pneu = F1.aderencia(car.pneu, cl.agua), dano = F1.efeitoDoDano(p.dano), curva = pf.kf[i] > 1 / 600;
   const fis = perfilF1(pf, ia.nivel), topo = topoDe(pf);
-  const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * (tr.W <= LARGURA_ESTREITA ? 0.27 : 0.20) / STEP)); // o perfil já antecipa a frenagem; circuitos estreitos pedem mais folga
+  // molhado (ou pneu gasto): o freio segura menos, então o robô olha mais longe para começar a frear a tempo (no seco com o macio: 1)
+  const alongaFreio = Math.max(1, Math.min(2.2, aderRef().freio / Math.max(0.4, pneu.freio)));
+  const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * (tr.W <= LARGURA_ESTREITA ? 0.27 : 0.20) * alongaFreio / STEP)); // o perfil já antecipa a frenagem; circuitos estreitos pedem mais folga
   let alvo = Infinity;
   for (let k = 0; k <= olhar; k++) alvo = Math.min(alvo, fis[(i + k) % n]);
   const vLivre = Math.min(spec.vmax * pneu.final * dano.final, alvo < topo * 0.97 ? alvo * Math.sqrt(pneu.grip * dano.grip) : alvo); // a velocidade do robô sem ninguém na frente
@@ -572,7 +600,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const latAdiante = (j) => { let l = Math.max(-maxLat, Math.min(maxLat, linhaEm(j, car.prog + (j - i + n) % n) * saidaGrid + ia.lat0 * (1 - saidaGrid) + ia.desvio));
     if (tf.bloqPos) l = Math.min(l, ia.lat); if (tf.bloqNeg) l = Math.max(l, ia.lat); return l; };
   const vac = F1.vacuoF1(tf.draft, curva);
-  if (alvo < topo * 0.97) alvo *= Math.sqrt(pneu.grip * dano.grip * vac.aderencia); // só as curvas dependem da aderência
+  if (alvo < topo * 0.97) alvo *= Math.sqrt(pneu.grip * dano.grip * vac.aderencia) * (1 - 0.05 * cl.agua); // só as curvas dependem da aderência (no molhado, mais 5% de cautela)
   alvo = Math.min(alvo, spec.vmax * pneu.final * dano.final);
   // Enquanto há pista livre ao lado, o ERS ajuda a passar. Se a porta fecha, o limite de tráfego manda frear.
   if (ia.ult && !tf.bloqPos && !tf.bloqNeg) alvo = Math.min(spec.vmax, alvo * 1.04);
@@ -580,12 +608,12 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   if (p.quebrou) alvo = Math.min(alvo, spec.vmax * F1Equipes.EMERGENCIA);
   if (p.incidenteAte > now) alvo = Math.min(alvo, spec.vmax * 0.24);
   const relBox = tr.corredor ? (i - tr.corredor.i0 + n) % n : Infinity;
-  const proxima = relBox <= 8 ? decidirParada(room, p, ia, car, spec) : null; // (só pesa a parada perto da entrada do corredor)
+  const proxima = relBox <= 8 ? decidirParada(room, p, ia, car, spec, cl) : null; // (só pesa a parada perto da entrada do corredor)
   const pedirBox = !!proxima; // (o composto pedido)
   const amb = { spec, dano: p.dano || 0, drsZona: p.drsZona ?? -1, safety: !!room.direcao?.safety,
     amarela: room.direcao?.amarelo?.setor === Math.floor(i / (n / T.SECTORS)), ersAuto: false,
     voltas: room.config.voltas, laps: p.laps || 0, paradas: (p.paradas || []).length,
-    semente: room.semente, id: p.id, grid: p.grid, f1: true, outros };
+    semente: room.semente, id: p.id, grid: p.grid, f1: true, agua: cl.agua, outros };
   const ent = ia.ent || (ia.ent = {});
   const ev = [];
   if (encalhou(room, ia, car, now, dt, tf.atras < 140)) { // preso (parado, rodado, de lado no muro ou sem andar): o "↺ Pista" do robô, do lado livre

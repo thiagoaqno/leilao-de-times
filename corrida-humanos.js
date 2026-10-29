@@ -13,6 +13,7 @@ const Sim = require("./public/corrida/sim.js");
 const D = require("./public/corrida/dinamica.js");
 const T = require("./public/corrida/pistas.js");
 const Equipes = require("./public/corrida/f1-equipes.js");
+const F1 = require("./public/corrida/f1-regras.js"); // o clima: a água na pista de cada hora
 
 const PASSO_MS = D.PASSO * 1000;
 const QUEIMA_FOLGA_MS = 150; // folga do relógio: acelerar nos últimos 150 ms antes das luzes apagarem não conta como queimar a largada
@@ -31,7 +32,8 @@ const pistaDe = (room) => Sim.criarPista(T.PISTAS[room.config.pista], room.confi
 // A simulação de um piloto: o estado do carro, a fila de entradas e o relógio dos passos.
 function criarSim(room, p, serie, tick0, agora) {
   const tr = pistaDe(room), quali = room.phase === "quali";
-  const c = Sim.novo(tr, { grid: p.grid || 0, f1: true, pneu: Sim.pneuDaLargada(room.phase, p.pneu), box: !quali, tick: tick0 });
+  // (na classificação o pneu depende da água na pista quando a sessão abre: `serie` é a hora de abertura, `room.startAt`)
+  const c = Sim.novo(tr, { grid: p.grid || 0, f1: true, pneu: Sim.pneuDaLargada(room.phase, p.pneu, F1.climaEm(room.clima, serie).agua), box: !quali, tick: tick0 });
   return { serie, tr, c, fila: new Map(), inicio: agora, k0: tick0, ancora: agora - tick0 * PASSO_MS, ultimoAgora: agora, ultimoAck: 0, ultimoRegistro: 0, mudou: true, eventos: [], avisos: [], pos: null };
 }
 // uma mensagem `inp` do navegador: { s: a largada (room.startAt), t0: o passo da primeira entrada, k: [entradas empacotadas] }
@@ -60,8 +62,9 @@ function outrosDe(room, p) {
   return out;
 }
 // o ambiente do passo, o mesmo que fisica.js monta no navegador
-function ambiente(room, p, S) {
+function ambiente(room, p, S, agora = Date.now()) {
   const d = room.direcao, quali = room.phase === "quali", amb = S.amb || (S.amb = {});
+  amb.agua = F1.climaEm(room.clima, agora).agua; // a água na pista agora (o relógio do roteiro do clima: f1-regras.js)
   amb.spec = specDoPiloto(p); amb.manual = room.config.cambio === "manual"; amb.dano = p.dano || 0; amb.drsZona = p.drsZona ?? -1;
   amb.safety = !!(d && d.safety); amb.setorAmarelo = d && d.amarelo ? d.amarelo.setor : -1; amb.ersAuto = room.config.ers !== "manual";
   amb.voltas = room.config.voltas; amb.laps = p.laps || 0; amb.paradas = (p.paradas || []).length; amb.semente = room.semente; amb.id = p.id; amb.grid = p.grid;
@@ -81,7 +84,7 @@ function andar(room, agora, h) {
     if (S.serie !== room.startAt) { delete p.sim; continue; } // largada nova: a simulação velha não vale
     if (room.phase === "quali" && (room.quali.pausaAte || !room.quali.ativos.includes(p.id))) continue;
     const limite = S.k0 + Math.floor((agora - S.inicio) / PASSO_MS) + FOLGA;
-    const amb = ambiente(room, p, S), outros = outrosDe(room, p), ev = S.eventos; ev.length = 0;
+    const amb = ambiente(room, p, S, agora), outros = outrosDe(room, p), ev = S.eventos; ev.length = 0;
     amb.outros = outros;
     const antes = c.tick;
     let temEntrada = false;

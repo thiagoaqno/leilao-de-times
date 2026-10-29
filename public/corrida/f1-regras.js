@@ -1,21 +1,26 @@
 // Corrida da Galera — as regras de Fórmula 1 (planos/temporada-f1.md), as mesmas no servidor e no navegador.
 // Só contas, sem desenho: liga com `config.regras === "f1"` na sala. Os pneus: três compostos secos, o desgaste e a
-// temperatura. A física (fisica.js) multiplica a aderência do carro pela do pneu, e os robôs (corrida-robos.js) usam as
-// mesmas funções. E o pit stop: o corredor dos boxes (`corredor`), o tempo da parada (`tempoDeParada`), a regra dos dois
+// temperatura, e o clima: a chuva sorteada pela semente do GP, a água na pista e o pneu de chuva. A física (fisica.js)
+// multiplica a aderência do carro pela do pneu, e os robôs (corrida-robos.js) usam as mesmas funções. E o pit stop: o corredor dos boxes (`corredor`), o tempo da parada (`tempoDeParada`), a regra dos dois
 // compostos e a estratégia de parada dos robôs (`estrategia`).
 (function (root) {
 
 // ---------- os pneus ----------
-// Três compostos secos. `pico` é a aderência lateral do pneu novo e quente sobre o grip do carro (1,35 é a referência
+// Três compostos secos e o de chuva. `pico` é a aderência lateral do pneu novo e quente sobre o grip do carro (1,35 é a referência
 // original da dirigibilidade); `vida` é quantas VOLTAS ele dura, pilotado limpo, até o penhasco (não depende do tamanho da corrida:
 // o macio dura uma volta e meia em qualquer GP); `aquece` é o quanto esquenta rápido e `perdaAntes` o que perde de
 // aderência até o fim da vida. As cores são as da Pirelli. Os números saem da calibração de `tests/corrida-f1-estrategia.test.js`
 // (o simulador de stint com a física do carro: ver `ferramentas/pneus-fisica.js`).
+// `molhado` é quanto da aderência sobra com a pista encharcada (água 1; seco é 1 e no meio interpola): os secos ficam com a
+// metade e o de chuva com 90%. O de chuva no seco tem o `pico` do duro, mas `derrete` (o desgaste vai a ×2,8) e `esquenta` (a
+// temperatura passa de 1, até +0,4, e a aderência cai até 25%) quando a pista está seca: dura 2 a 3 voltas.
 const PNEUS = {
-  macio: { nome: "Macio", cor: "#e8202a", pico: 1.515, vida: 1.5, aquece: 1.7, perdaAntes: 0.03 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.278, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.126, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
+  macio: { nome: "Macio", cor: "#e8202a", pico: 1.515, vida: 1.5, aquece: 1.7, perdaAntes: 0.03, molhado: 0.5 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.278, vida: 3.8, aquece: 1.1, perdaAntes: 0.03, molhado: 0.5 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.126, vida: 7, aquece: 0.85, perdaAntes: 0.02, molhado: 0.5 },
+  chuva: { nome: "Chuva", cor: "#1e7fd6", pico: 1.126, vida: 7, aquece: 0.5, perdaAntes: 0.02, molhado: 0.9, derrete: 2.8, esquenta: 0.4 },
 };
+const SECOS = ["macio", "medio", "duro"]; // os compostos de pista seca (a estratégia e a tabela de ritmo só conhecem estes)
 const COMPOSTO_PADRAO = "medio";
 // O desgaste vai de 0 (novo) a 1 (acabado); PENHASCO é o fim da vida. Passou dele o pneu despenca até PERDA_FIM do pico,
 // no resto do caminho até 1 (um quarto da vida do composto), e o carro fica muito ruim: sem aderência, sem tração, sem freio
@@ -36,28 +41,35 @@ function pneuNovo(composto = COMPOSTO_PADRAO) {
 // volta e meia em qualquer corrida. Escorregar, travar a roda e patinar gastam mais. A temperatura vai para um alvo pela
 // velocidade e pelo escorregão, mais rápido no macio.
 // d: { dist (andado neste passo), volta (o comprimento de uma volta), slip, travada (0..1), patina (0..1), v, vmax, dt,
-//      fator (opcional: o quanto o carro gasta o pneu, `desgaste` de f1-equipes.js) }
+//      fator (opcional: o quanto o carro gasta o pneu, `desgaste` de f1-equipes.js), agua (opcional: a água na pista, 0 a 1) }
 function gastarPneu(pneu, d) {
   const pn = PNEUS[pneu.composto] || PNEUS[COMPOSTO_PADRAO];
-  const escorrega = limite((d.slip || 0) / 60, 0, 1);
+  const escorrega = limite((d.slip || 0) / 60, 0, 1), seca = secaDaPista(d.agua);
   if (d.volta > 0 && d.dist > 0) {
     const estresse = (ESTRESSE_BASE + ESTRESSE_LADO * escorrega + ESTRESSE_TRAVA * limite(d.travada || 0, 0, 1) + ESTRESSE_PATINA * limite(d.patina || 0, 0, 1)) / ESTRESSE_NORMAL;
-    pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.volta) * (PENHASCO / pn.vida) * estresse * (d.fator || 1));
+    pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.volta) * (PENHASCO / pn.vida) * estresse * (d.fator || 1) * (1 + ((pn.derrete || 1) - 1) * seca));
   }
   const vel = d.vmax > 0 ? limite(Math.abs(d.v || 0) / d.vmax, 0, 1) : 0;
-  const alvo = Math.min(1, 0.65 + 0.35 * vel + 0.15 * escorrega);
+  const alvo = Math.min(1 + (pn.esquenta || 0) * seca, 0.65 + 0.35 * vel + 0.15 * escorrega + (pn.esquenta || 0) * seca); // (o de chuva no seco passa de 1: superaquece)
   pneu.temp += (alvo - pneu.temp) * Math.min(1, (d.dt || 0) * AQUECE * pn.aquece);
   return pneu;
 }
 // Quanto o pneu segura agora: `grip` multiplica o grip do carro (a curva), `freio` e `tracao` a frenagem e a arrancada
 // (o antigo médio novo dá 1,08, e os outros acompanham a aderência dele), `final` a velocidade final e `kin` o quanto sobra escorregando.
 const PICO_REFERENCIA = 1.35, BASE_FREIO = 1.08, EXPOENTE_FREIO = 0.85, EXPOENTE_TRACAO = 0.8;
-function aderencia(pneu) {
+// Quanto a pista está "seca" para o pneu de chuva: 1 sem água, 0 de metade de água para cima.
+const secaDaPista = (agua) => 1 - limite((agua || 0) / 0.5, 0, 1);
+// O que a água tira da aderência do composto: 1 na pista seca, `molhado` na encharcada, interpolando.
+const fatorAgua = (composto, agua) => 1 + ((PNEUS[composto] || PNEUS[COMPOSTO_PADRAO]).molhado - 1) * limite(agua || 0, 0, 1);
+// A temperatura passa de 1 só no pneu de chuva em pista seca; com +0,4 acima de 1 perde PERDA_ESQUENTA (25%) da aderência.
+const PERDA_ESQUENTA = 0.25;
+function aderencia(pneu, agua = 0) {
   const pn = PNEUS[pneu && pneu.composto] || PNEUS[COMPOSTO_PADRAO], d = pneu ? pneu.desgaste : 0, temp = pneu ? pneu.temp : TEMP_BOA;
   const x = limite((d - PENHASCO) / (1 - PENHASCO), 0, 1); // 0 até o penhasco, 1 com o pneu acabado
   const perda = d <= PENHASCO ? pn.perdaAntes * d / PENHASCO : pn.perdaAntes + (PERDA_FIM - pn.perdaAntes) * x;
   const quente = FRIO + (1 - FRIO) * limite((temp - TEMP_SAIDA) / (TEMP_BOA - TEMP_SAIDA), 0, 1);
-  const base = limite(pn.pico * (1 - perda) * quente, 0.4, 2.0), r = base / PICO_REFERENCIA;
+  const esquentou = pn.esquenta ? limite((temp - 1) / pn.esquenta, 0, 1) : 0; // 0 a 1: o pneu de chuva superaquecido
+  const base = limite(pn.pico * (1 - perda) * quente * fatorAgua(pneu ? pneu.composto : COMPOSTO_PADRAO, agua) * (1 - PERDA_ESQUENTA * esquentou), 0.4, 2.0), r = base / PICO_REFERENCIA;
   // `arcade`: qualquer composto dentro da vida útil usa a mesma dirigibilidade (dinamica.js, `lateralArcade`): a RESPOSTA da direção é igual nos
   // três e o composto só muda o limite de aderência (`grip`), o desgaste e a temperatura; passou do penhasco, volta à física intermediária
   // e fica prejudicado pelo desgaste. `rel` é a aderência relativa à referência original (o `grip` do carro usa essa base).
@@ -171,15 +183,17 @@ const podeUsar = (p, composto) => !!PNEUS[composto] && jogosRestantes(p)[compost
 function compostoParaParada(p, pedido) {
   if (podeUsar(p, pedido)) return pedido;
   const atual = p.pneuAtual || p.pneu || COMPOSTO_PADRAO, r = jogosRestantes(p), usados = new Set(p.compostos || [p.pneu || COMPOSTO_PADRAO]);
-  let lista = Object.keys(PNEUS).filter((c) => r[c] > 0 && c !== atual);
+  const todos = pedido === "chuva" ? Object.keys(PNEUS) : SECOS; // (quem pediu pneu seco nunca recebe o de chuva no lugar)
+  let lista = todos.filter((c) => r[c] > 0 && c !== atual);
   if (usados.size < 2) { const novos = lista.filter((c) => !usados.has(c)); if (novos.length) lista = novos; }
-  if (!lista.length) lista = Object.keys(PNEUS).filter((c) => r[c] > 0);
-  if (!lista.length) { const u = jogosUsados(p); lista = Object.keys(PNEUS).sort((a, b) => u[a] - u[b]); }
+  if (!lista.length) lista = todos.filter((c) => r[c] > 0);
+  if (!lista.length) { const u = jogosUsados(p); lista = todos.slice().sort((a, b) => u[a] - u[b]); }
   return lista.sort((a, b) => r[b] - r[a])[0];
 }
 // o que a regra dos dois compostos tira de quem terminou com um só (corrida de uma volta não tem onde parar)
 const usouDoisCompostos = (p) => new Set(p.compostos || [p.pneu || COMPOSTO_PADRAO]).size >= 2;
-const acrescimoDeFinal = (p, voltas) => (voltas >= 2 && !usouDoisCompostos(p) ? UM_COMPOSTO : 0);
+// (numa corrida com chuva a regra não vale, como na F1: `chuvoso` é o roteiro da corrida ter chuva)
+const acrescimoDeFinal = (p, voltas, chuvoso = false) => (voltas >= 2 && !chuvoso && !usouDoisCompostos(p) ? UM_COMPOSTO : 0);
 // A estratégia de um robô: o composto da largada e as paradas { volta, composto } (`volta` = a volta, de 1 a voltas − 1, em
 // que ele entra no corredor, no fim dela se a entrada fica antes da linha de chegada: nunca na última). Vem da conta do
 // simulador de stint (f1-pneus-ritmo.js, a tabela da `pista` medida com a física do carro): o tempo da corrida inteira de cada
@@ -202,7 +216,7 @@ function melhoresPlanos(voltas, pista, nivel = "medio", fator = 1) {
   return l;
 }
 function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 1) {
-  const r = sorteio(`estrategia:${semente}`), compostos = Object.keys(PNEUS);
+  const r = sorteio(`estrategia:${semente}`), compostos = SECOS;
   const lista = pista !== null && pista !== undefined ? melhoresPlanos(voltas, pista, nivel, fator) : null;
   if (lista && lista.length) { // o plano sai da conta: pesa cada um pela diferença para o melhor
     const { tau } = NIVEIS_DE_PLANO[nivel] || NIVEIS_DE_PLANO.medio, pesos = lista.map((p) => Math.exp(-(p.tempo - lista[0].tempo) / tau));
@@ -231,6 +245,88 @@ function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 
     anterior = c;
   }
   return { largada, paradas };
+}
+
+// ---------- o clima ----------
+// Cada GP tem 20% de chance de chuva, sorteados no servidor pela semente do GP (`sortearClima`). Se chove, a classificação e a
+// corrida ganham cada uma o seu roteiro (a mesma chuva do fim de semana, mas cada sessão com o seu relógio): pode largar
+// molhado ou começar a chover no meio, ser garoa ou chuva forte, intensificar, aliviar e parar antes do fim. O roteiro é um
+// objeto simples que viaja no estado da sala (`clima`): { chove, t0 (ms: o zero do relógio do roteiro), dur, agua0 (a água na
+// pista no tempo 0), trechos: [[de, ate, forca] em segundos do relógio] }. Dele sai, para qualquer hora, a água na pista
+// (`climaEm`): sobe com a chuva (de 0 seco a 1 encharcado) e desce devagar quando ela para. É uma conta pura do tempo, sem
+// estado: o servidor, o navegador e os robôs chegam ao mesmo valor.
+const CHANCE_CHUVA = 0.2, GAROA = 0.45, CHUVA_FORTE = 1;
+const AGUA_SOBE_S = 75;   // segundos de chuva para a pista ir de seca a encharcada (a garoa para no teto dela, GAROA)
+const AGUA_SECA_S = 240;  // segundos para uma pista encharcada secar de vez, sem chuva (quatro minutos de corrida)
+const AGUA_MOLHADA = 0.15, AGUA_ENCHARCADA = 0.7; // a partir daqui a pista conta como molhada / encharcada (o texto da TV, o visual)
+const AGUA_QUALI_CHUVA = 0.3; // na classificação ninguém troca de pneu: a sessão abre com o de chuva se a água passa disso
+const seco = (dur) => ({ chove: false, t0: 0, dur: Math.round(dur), agua0: 0, trechos: [] });
+// O roteiro de uma sessão de `dur` segundos (a semente já vem sorteada em `r`). Sessões curtas (menos de 4 min) largam sempre
+// molhadas, para a chuva do GP aparecer.
+function roteiroDeChuva(r, dur) {
+  const largaMolhado = dur < 240 || r() < 0.4, forca = r() < 0.5 ? GAROA : CHUVA_FORTE;
+  const agua0 = largaMolhado ? Math.round((forca === CHUVA_FORTE ? 0.7 + 0.3 * r() : 0.25 + 0.2 * r()) * 100) / 100 : 0;
+  const ini = largaMolhado ? 0 : Math.round(dur * (0.12 + 0.5 * r()));
+  const para = r() < 0.55; // para antes do fim?
+  let fim = Math.round(dur * (0.4 + 0.45 * r()));
+  fim = para && fim - ini >= 45 ? fim : Math.round(dur * 4); // (sem parar: chove até depois da bandeirada)
+  let trechos = [[ini, fim, forca]];
+  if (r() < 0.35 && Math.min(fim, dur) - ini > 90) { // muda de intensidade no meio: garoa que vira chuva, ou chuva que alivia
+    const meio = Math.round(ini + (Math.min(fim, dur) - ini) * (0.35 + 0.3 * r()));
+    trechos = [[ini, meio, forca], [meio, fim, forca === GAROA ? CHUVA_FORTE : GAROA]];
+  }
+  return { chove: true, t0: 0, dur: Math.round(dur), agua0, trechos };
+}
+// O sorteio do GP: `duracoes` { corrida, quali } em segundos (a corrida inteira e o fim de semana de classificação).
+// Devolve { chuva (o GP tem chuva), quali, corrida } (os dois roteiros; `t0` o servidor põe quando a sessão abre).
+function sortearClima(semente, duracoes = {}) {
+  const dc = duracoes.corrida || 300, dq = duracoes.quali || 360;
+  if (!(sorteio(`clima:${semente}`)() < CHANCE_CHUVA)) return { chuva: false, quali: seco(dq), corrida: seco(dc) };
+  return { chuva: true, quali: roteiroDeChuva(sorteio(`clima:${semente}:quali`), dq), corrida: roteiroDeChuva(sorteio(`clima:${semente}:corrida`), dc) };
+}
+// A força da chuva do roteiro no segundo `t`: 0 sem chuva, GAROA (0,45) ou CHUVA_FORTE (1).
+function chuvaEm(c, t) {
+  let f = 0; for (const q of (c && c.trechos) || []) if (t >= q[0] && t < q[1] && q[2] > f) f = q[2];
+  return f;
+}
+// A água na pista: anda para o teto da chuva (a força dela) subindo 1/AGUA_SOBE_S por segundo, ou para baixo secando
+// 1/AGUA_SECA_S por segundo (sem chuva o teto é 0; com garoa depois de chuva forte, a água desce até o teto da garoa).
+function aguaEm(c, t) {
+  let a = (c && c.agua0) || 0;
+  if (!c || !(t > 0)) return a;
+  const marcas = [0, t];
+  for (const q of c.trechos || []) for (const m of [q[0], q[1]]) if (m > 0 && m < t) marcas.push(m);
+  marcas.sort((x, y) => x - y);
+  for (let i = 0; i + 1 < marcas.length; i++) {
+    const dt = marcas[i + 1] - marcas[i]; if (dt <= 0) continue;
+    const alvo = chuvaEm(c, (marcas[i] + marcas[i + 1]) / 2);
+    a = alvo > a ? Math.min(alvo, a + dt / AGUA_SOBE_S) : Math.max(alvo, a - dt / AGUA_SECA_S);
+  }
+  return a;
+}
+// O clima na hora `agora` (ms): { agua (0 seco a 1 encharcado), chuva (a força da chuva agora: 0, GAROA ou CHUVA_FORTE), garoa,
+// molhada, encharcada, chove (o roteiro tem chuva), t (segundos do relógio do roteiro) }. Sem roteiro, seco. É o que o visual lê.
+function climaEm(c, agora) {
+  const t = c && c.t0 ? (agora - c.t0) / 1000 : 0, agua = c ? aguaEm(c, t) : 0, chuva = c ? chuvaEm(c, t) : 0;
+  return { agua, chuva, garoa: chuva > 0 && chuva < CHUVA_FORTE, molhada: agua >= AGUA_MOLHADA, encharcada: agua >= AGUA_ENCHARCADA, chove: !!(c && c.chove), t };
+}
+// O pneu da classificação (ninguém troca de pneu nela): o de chuva se a pista abre com água suficiente, senão o macio.
+const compostoDaClassificacao = (agua) => ((agua || 0) >= AGUA_QUALI_CHUVA ? "chuva" : "macio");
+// O tempo estimado de uma volta com o pneu novo de `composto` com `agua` na pista: a conta simples dos robôs no molhado (sem
+// regenerar a tabela): o tempo seco da tabela da pista (o de chuva usa o do duro, que tem o mesmo pico) cresce com a falta de
+// aderência (o tempo vai com a raiz dela, ×0,7). O de chuva em pista seca perde mais um pouco, pelo superaquecimento.
+function tempoMolhado(pista, composto, agua) {
+  const R = ritmoDePneus(), tab = R && R.tabelaDe(pista), pn = PNEUS[composto] || PNEUS[COMPOSTO_PADRAO];
+  const t0 = tab ? tab.compostos[composto === "chuva" ? "duro" : composto].tempos[0] : 70 * Math.sqrt(1.35 / pn.pico);
+  const f = fatorAgua(composto, agua) * (1 - PERDA_ESQUENTA * 0.5 * secaDaPista(agua) * (pn.esquenta ? 1 : 0));
+  return t0 * (1 + 0.7 * (1 / Math.sqrt(f) - 1)); // (0,7: o que a física dos robôs mede no molhado, de macio a chuva)
+}
+// O composto mais rápido de `candidatos` com `agua` na pista (o `atual` só sai se o melhor for `margem` segundos mais rápido).
+function compostoPorAgua(pista, agua, candidatos, atual = null, margem = 0.8) {
+  let melhor = null, tm = Infinity;
+  for (const c of candidatos) { const t = tempoMolhado(pista, c, agua); if (t < tm) { tm = t; melhor = c; } }
+  if (atual && candidatos.includes(atual) && tempoMolhado(pista, atual, agua) - tm < margem) return atual;
+  return melhor;
 }
 
 // ---------- o fim de semana: classificação e pontos ----------
@@ -306,9 +402,10 @@ function vacuoF1(draft, curva) {
   return { final: VACUO_FINAL * d, acel: VACUO_ACEL * d, aderencia: 1 - (curva ? AR_SUJO * d : 0) };
 }
 
-const api = { PNEUS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
+const api = { PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
-  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos };
+  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos,
+  CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, sortearClima, chuvaEm, aguaEm, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -187,11 +187,19 @@ function cartaPista(S, tr, med) {
     <h3>${esc(info[1])}</h3><div class="tvMiniBox"><canvas class="tvMini" width="320" height="220"></canvas><i class="tvPonto"></i></div>
     <dl>${celula("Extensão", `${km.toFixed(2).replace(".", ",")} km`)}${celula("Voltas", voltas)}${celula("Distância", `${(km * voltas).toFixed(1).replace(".", ",")} km`)}${celula("Curvas", `~${med.curvas}`)}${celula("Zonas de DRS", drs || "—")}${celula("Recorde", "—", "tvRecorde")}</dl></div>`;
 }
+// o clima de verdade da corrida (o roteiro sorteado no servidor, S.clima): como a pista larga e se há chuva a caminho
+function climaReal(S) {
+  const F = window.F1Regras, ini = F && S.clima ? F.climaEm(S.clima, S.clima.t0) : null;
+  if (!ini || !S.clima.chove) return { cond: null, pista: "Seca", umidade: 0 };
+  if (ini.chuva) return { cond: ini.garoa ? "Garoa" : "Chovendo", pista: ini.encharcada ? "Encharcada" : "Molhada", umidade: 90 };
+  if (ini.molhada) return { cond: "Pista molhada, secando", pista: "Molhada", umidade: 80 };
+  return { cond: "Chance de chuva", pista: "Seca", umidade: 75 };
+}
 function cartaClima(S) {
-  const c = climaDoGP(S), m = me(), pn = m && window.F1Regras && window.F1Regras.PNEUS[m.pneu];
+  const c = climaDoGP(S), r = climaReal(S), m = me(), pn = m && window.F1Regras && window.F1Regras.PNEUS[m.pneu];
   const celula = (rot, val) => `<div><dt>${rot}</dt><dd>${val}</dd></div>`;
-  return `<div class="tvCarta tvClima" data-b="clima"><div class="tvKicker">Condições da corrida</div><h3>${c.cond}</h3>
-    <dl>${celula("Ar", `${c.ar}°C`)}${celula("Pista", `${c.pista}°C`)}${celula("Umidade", `${c.umidade}%`)}${celula("Vento", `${c.vento} km/h`)}${celula("Pista", "Seca")}${pn ? celula("Seu pneu", `<u class="pn" style="--c:${pn.cor}"></u> ${esc(pn.nome)}`) : ""}</dl></div>`;
+  return `<div class="tvCarta tvClima" data-b="clima"><div class="tvKicker">Condições da corrida</div><h3>${r.cond || c.cond}</h3>
+    <dl>${celula("Ar", `${c.ar}°C`)}${celula("Pista", `${c.pista}°C`)}${celula("Umidade", `${Math.max(c.umidade, r.umidade)}%`)}${celula("Vento", `${c.vento} km/h`)}${celula("Pista", r.pista)}${pn ? celula("Seu pneu", `<u class="pn" style="--c:${pn.cor}"></u> ${esc(pn.nome)}`) : ""}</dl></div>`;
 }
 function cartaCampeonato(S) {
   const d = S.tv, eu = (me() || {}).name, linha = (p, tipo) => {

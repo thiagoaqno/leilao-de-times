@@ -3,6 +3,7 @@
 // agora também em passo fixo, para quem tem mais quadros por segundo não andar mais rápido.
 import { SECTORS, E, carOf, socket, sNow, me, P, checkpoint, toast } from "./estado.js";
 import { Sound } from "./sons.js";
+import { atualizarClima } from "./clima.js";
 import { trackFrame, groundH } from "./pista.js";
 import { race, keys, nearest } from "./jogo.js";
 import { pad } from "./controles.js";
@@ -211,6 +212,7 @@ function montarAmbiente(R) {
   AMB.safety = !!(d && d.safety); AMB.setorAmarelo = d && d.amarelo ? d.amarelo.setor : -1; AMB.ersAuto = S.config.ers !== "manual";
   AMB.voltas = S.config.voltas; AMB.laps = m.laps || 0; AMB.paradas = m.paradas || 0; AMB.semente = S.semente; AMB.id = m.id; AMB.grid = m.grid;
   AMB.finish = m.finish; AMB.dnf = !!m.dnf; AMB.quali = S.phase === "quali"; AMB.fantasma = m.finish != null; AMB.f1 = true;
+  AMB.agua = atualizarClima().agua; // a água na pista agora (o servidor usa a mesma conta, pelo mesmo relógio)
   const outros = AMB.outros; outros.length = 0;
   for (const [id, gh] of R.ghosts) { const p = P(id); outros.push({ x: gh.x, y: gh.y, z: gh.z, a: gh.a, dnf: !!(p && p.dnf), fant: !!(p && p.finish != null) }); }
   return AMB;
