@@ -57,6 +57,21 @@ export const Sound = (() => {
   // os carros dos outros por perto (regras de F1): lista de { dist (m), vRel (m/s, positivo = se aproximando), v (m/s), lado (-1 a 1) }
   // já em ordem de distância, n valem; só os 3 mais perto soam (volume pela distância e Doppler)
   function outros(lista, n) { if (motorF1 && ac) motorF1.outros(ac.currentTime, lista, n, on && n > 0); }
+  // chuva: um chiado de ruído filtrado (o mesmo buffer, em loop) pela intensidade da chuva, e o chiado dos pneus no molhado;
+  // criado só na primeira vez que chove, e sempre abaixo do motor
+  let chuvaN = null;
+  function chuva(nivel, pneus) {
+    if (!chuvaN && nivel < 0.01 && pneus < 0.01) return;
+    const c = ctx(); if (!c) return;
+    if (!chuvaN) {
+      const len = c.sampleRate * 2, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = c.createBufferSource(), fc = c.createBiquadFilter(), gc = c.createGain(), fp = c.createBiquadFilter(), gp = c.createGain();
+      src.buffer = b; src.loop = true; fc.type = "highpass"; fc.frequency.value = 1800; gc.gain.value = 0; fp.type = "bandpass"; fp.frequency.value = 2600; fp.Q.value = 0.7; gp.gain.value = 0;
+      src.connect(fc).connect(gc).connect(master); src.connect(fp).connect(gp).connect(master); src.start(); chuvaN = { gc, gp };
+    }
+    const t = c.currentTime;
+    chuvaN.gc.gain.setTargetAtTime(on ? nivel * 0.05 : 0, t, 0.3); chuvaN.gp.gain.setTargetAtTime(on ? pneus * 0.04 * (0.4 + 0.6 * nivel) : 0, t, 0.2);
+  }
   function crash(forca) {
     const c = ctx(); if (!c || !on) return;
     const k = Math.min(1, forca / 260), t = c.currentTime, len = Math.floor(c.sampleRate * 0.25), b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
@@ -76,7 +91,7 @@ export const Sound = (() => {
     volume(v) { volume = Math.max(0, Math.min(1, v)); store.set("corrida:volume", volume); if (master) master.gain.setTargetAtTime(volume, ac.currentTime, 0.05); }, get nivel() { return volume; },
     radioSaida() { const c = ctx(); return c && master ? { ac: c, saida: master } : null; }, // o rádio do engenheiro usa o volume geral
     narradorSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, ligado: on } : null; }, // o narrador da transmissão: volume geral e som ligado
-    crash, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
+    crash, chuva, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
   };
 })();
 function renderSoundBtn() { Comum.iconeSom(Sound.on); for (const id of ["volume", "volCorrida"]) { const el = $(id); if (el) el.value = Math.round(Sound.nivel * 100); } }

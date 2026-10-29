@@ -15,7 +15,9 @@ export function asfaltoGP() {
     x.putImageData(imagem, 0, 0);
   });
   const relevo = textura.clone(); relevo.colorSpace = THREE.NoColorSpace;
-  return new THREE.MeshStandardMaterial({ map: textura, bumpMap: relevo, bumpScale: 0.055, roughness: 0.94, side: THREE.DoubleSide });
+  const m = new THREE.MeshStandardMaterial({ map: textura, bumpMap: relevo, bumpScale: 0.055, roughness: 0.94, side: THREE.DoubleSide });
+  m.userData.asfalto = true; // o clima (clima-visual.js) escurece e dá brilho a este material conforme a água na pista
+  return m;
 }
 
 export function borrachaGP(tr, add) {

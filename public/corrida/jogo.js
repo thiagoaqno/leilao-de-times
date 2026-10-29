@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { E, PISTAS, SECTORS, COLORS, CARROS, carOf, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
 import { atualizarClima } from "./clima.js";
+import { passoClima, limparClima } from "./clima-visual.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
@@ -139,7 +140,7 @@ export function startRace(st) {
   if (!raf) raf = requestAnimationFrame(loop);
 }
 function clearRace() { if (!race) return; stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); dropKart(race.safetyKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
-export function stopRace() { clearRace(); race = null; Sound.engine(0, false); }
+export function stopRace() { clearRace(); race = null; Sound.engine(0, false); limparClima(); }
 function resize() {
   const w = window.innerWidth, hh = window.innerHeight;
   renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); ajustarTela(w, hh);
@@ -341,6 +342,7 @@ function draw(dt) {
   sun.target.position.set(src.x, src.z || 0, src.y);
   abrirTV(tr, dt, reduceMotion);
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
+  passoClima(dt, race, cam, mode, src, c); // o visual do clima: céu, luz, neblina, chuva, asfalto molhado, borrifo, som e HUD (clima-visual.js)
   // desfoque de velocidade, pela fração da velocidade final do carro (vale igual para os cinco): começa em 40% (uns 90 km/h
   // no equilibrado), fica inteiro a 90% e o turbo e o estilingue borram ainda mais
   const turbo = src === c && (race.boostUntil > now || race.sling > 0 || (me() && me().boostUntil > now));
