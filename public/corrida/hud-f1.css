@@ -109,3 +109,16 @@
 #race.f1hud #bBox.dentro .bx-rot{background:linear-gradient(100deg,#0b8fd9,#04446b);color:#fff}
 @media (pointer:coarse){#race.f1hud #bBox kbd{display:none}#race.f1hud .topbtns #bBox{min-height:40px}#race.f1hud #bBox .bx-rot{padding:0 13px}}
 @media (max-width:700px){#race.f1hud .topbtns{gap:4px;right:8px;top:8px}#race.f1hud .topbtns button:not([data-radio-botao]){padding:7px 9px;font-size:12px}#race.f1hud #bBox .bx-rot{padding:0 9px;font-size:13px}#race.f1hud #bBox .bx-pneu{margin-right:9px;font-size:12px}}
+/* o clima: o ícone (sol, garoa ou chuva) e o nível da pista (seca, úmida ou molhada), ao lado do minimapa */
+#hClima{display:none;position:absolute;left:132px;bottom:12px;align-items:center;gap:8px;padding:5px 12px 5px 8px;pointer-events:none;z-index:2;color:#fff;background:#0a0c12cc;border-left:3px solid #ffd23f;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);text-shadow:none}
+#race.f1hud #hClima{display:flex}
+#hClima svg{width:26px;height:26px;flex:none;color:#ffd23f}
+#hClima div{display:flex;flex-direction:column;gap:2px;line-height:1}
+#hClima b{font-size:14px;font-weight:700;letter-spacing:.08em}
+#hClima span{font-size:11px;font-weight:700;letter-spacing:.1em;color:#ffffffb0}
+#hClima[data-tipo="garoa"] svg,#hClima[data-tipo="chuva"] svg{color:#5fc8ff}
+#hClima[data-nivel="1"]{border-left-color:#5fc8ff}
+#hClima[data-nivel="2"]{border-left-color:#0b8fd9}
+#hClima[data-nivel="2"] span{color:#8fd8ff}
+@media (max-width:700px){#hClima{left:100px;bottom:8px;padding:4px 9px 4px 6px}#hClima svg{width:22px;height:22px}#hClima b{font-size:12px}#hClima span{font-size:10px}}
+@media (pointer:coarse){#hClima{bottom:112px}}

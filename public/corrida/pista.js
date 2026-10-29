@@ -215,7 +215,7 @@ function buildWorld(tr) {
     const tinta = M(0xe2e0d7, { roughness: 0.95, side: THREE.DoubleSide });
     for (const lado of [-1, 1]) ribbon(lado * (W / 2 - 2.6), lado * (W / 2 - 1.2), 0.49, tinta, 80);
     borrachaGP(tr, add);
-  } else ribbon(-W / 2, W / 2, 0.4, arco ? new THREE.MeshStandardMaterial({ map: arco, emissive: 0xffffff, emissiveMap: arco, emissiveIntensity: 0.55, roughness: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }) : new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, side: THREE.DoubleSide }), 256);
+  } else ribbon(-W / 2, W / 2, 0.4, arco ? new THREE.MeshStandardMaterial({ map: arco, emissive: 0xffffff, emissiveMap: arco, emissiveIntensity: 0.55, roughness: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }) : Object.assign(new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, side: THREE.DoubleSide }), { userData: { asfalto: true } }), 256); // asfalto: o clima molha (clima-visual.js)
   // Balizadores leves nas saídas de curva: o carro pode tocá-los e eles se inclinam.
   tr.cones = [];
   if (!t.espaco && !gp) {
