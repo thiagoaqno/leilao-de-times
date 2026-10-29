@@ -2,7 +2,7 @@
 // atraso de 100 ms, sem a ajuda dos robôs: nada de contra-esterço pela deriva da traseira) dá a volta lançada com macio, médio e duro.
 // O comando é o mesmo nos três; o que muda é só o pneu. A RESPOSTA da direção tem de ser igual (o composto muda o limite de
 // aderência, o desgaste e a temperatura, não "o carro não obedece"), e a ordem de tempo tem de ser sempre macio < médio < duro, com os
-// degraus perto do real (médio ~1% mais lento que o macio, duro ~1% mais lento que o médio).
+// degraus de uns 3 a 6% da volta (o médio com 10% e o duro com 15% menos de pico que os antigos).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const D = require("../public/corrida/dinamica.js");
@@ -65,14 +65,14 @@ function melhorVolta(id, composto) {
   return melhor;
 }
 
-test("humano (esterço de teclado, sem ajuda dos robôs): macio < médio < duro, e cada degrau fica perto de 2% da volta", { timeout: 120000 }, () => {
+test("humano (esterço de teclado, sem ajuda dos robôs): macio < médio < duro, e cada degrau fica entre 1% e 9% da volta", { timeout: 120000 }, () => {
   for (const pista of ["suzuka", "interlagos", "monza"]) {
     const s = melhorVolta(pista, "macio"), m = melhorVolta(pista, "medio"), d = melhorVolta(pista, "duro");
     const info = `${pista}: macio ${s.toFixed(2)} s, médio ${m.toFixed(2)} s, duro ${d.toFixed(2)} s`;
     assert.ok(isFinite(s) && isFinite(m) && isFinite(d), `${info}: não fechou volta limpa`);
     assert.ok(s < m && m < d, `${info}: fora de ordem`);
-    assert.ok((m - s) / s >= 0.01 && (m - s) / s <= 0.035, `${info}: o médio perde ${((m - s) / s * 100).toFixed(2)}% (esperado ~1,5 a 3,3%: o médio tem 1% menos de aderência em curva, e Interlagos, de curvas, sente mais)`);
-    assert.ok((d - m) / m >= 0.01 && (d - m) / m <= 0.03, `${info}: o duro perde ${((d - m) / m * 100).toFixed(2)}% para o médio (esperado ~1,5 a 2,5%)`);
+    assert.ok((m - s) / s >= 0.01 && (m - s) / s <= 0.09, `${info}: o médio perde ${((m - s) / s * 100).toFixed(2)}% (esperado ~3 a 8%: o médio tem 10% menos de aderência de pico que o antigo, e Interlagos, de curvas, sente mais)`);
+    assert.ok((d - m) / m >= 0.01 && (d - m) / m <= 0.07, `${info}: o duro perde ${((d - m) / m * 100).toFixed(2)}% para o médio (esperado ~2,5 a 6%: o duro tem 15% menos que o antigo)`);
   }
 });
 

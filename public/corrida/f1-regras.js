@@ -9,14 +9,12 @@
 // Três compostos secos. `pico` é a aderência lateral do pneu novo e quente sobre o grip do carro (1,35 é a referência
 // original da dirigibilidade); `vida` é quantas VOLTAS ele dura, pilotado limpo, até o penhasco (não depende do tamanho da corrida:
 // o macio dura uma volta e meia em qualquer GP); `aquece` é o quanto esquenta rápido e `perdaAntes` o que perde de
-// aderência até o fim da vida. `lateral` (opcional, 1 se faltar) é um fator só da aderência EM CURVA, sem mexer no freio, na
-// tração nem na resposta da direção: o médio e o duro têm 1% menos, para frear antes da curva voltar a importar.
-// As cores são as da Pirelli. Os números saem da calibração de `tests/corrida-f1-estrategia.test.js` (o simulador de stint com a
-// física do carro: ver `ferramentas/pneus-fisica.js`).
+// aderência até o fim da vida. As cores são as da Pirelli. Os números saem da calibração de `tests/corrida-f1-estrategia.test.js`
+// (o simulador de stint com a física do carro: ver `ferramentas/pneus-fisica.js`).
 const PNEUS = {
   macio: { nome: "Macio", cor: "#e8202a", pico: 1.515, vida: 1.5, aquece: 1.7, perdaAntes: 0.03 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.392, lateral: 0.99, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.299, lateral: 0.99, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.278, vida: 3.8, aquece: 1.1, perdaAntes: 0.03 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.126, vida: 7, aquece: 0.85, perdaAntes: 0.02 },
 };
 const COMPOSTO_PADRAO = "medio";
 // O desgaste vai de 0 (novo) a 1 (acabado); PENHASCO é o fim da vida. Passou dele o pneu despenca até PERDA_FIM do pico,
@@ -59,12 +57,11 @@ function aderencia(pneu) {
   const x = limite((d - PENHASCO) / (1 - PENHASCO), 0, 1); // 0 até o penhasco, 1 com o pneu acabado
   const perda = d <= PENHASCO ? pn.perdaAntes * d / PENHASCO : pn.perdaAntes + (PERDA_FIM - pn.perdaAntes) * x;
   const quente = FRIO + (1 - FRIO) * limite((temp - TEMP_SAIDA) / (TEMP_BOA - TEMP_SAIDA), 0, 1);
-  const base = limite(pn.pico * (1 - perda) * quente, 0.4, 2.0), r = base / PICO_REFERENCIA, lat = pn.lateral || 1;
+  const base = limite(pn.pico * (1 - perda) * quente, 0.4, 2.0), r = base / PICO_REFERENCIA;
   // `arcade`: qualquer composto dentro da vida útil usa a mesma dirigibilidade (dinamica.js, `lateralArcade`): a RESPOSTA da direção é igual nos
   // três e o composto só muda o limite de aderência (`grip`), o desgaste e a temperatura; passou do penhasco, volta à física intermediária
   // e fica prejudicado pelo desgaste. `rel` é a aderência relativa à referência original (o `grip` do carro usa essa base).
-  // O `lateral` só entra em `grip` e `rel` (a curva); `freio` e `tracao` saem de `r`, sem ele.
-  return { arcade: !!pneu && d <= PENHASCO, rel: r * lat, grip: base * lat, kin: limite(1 - perda * 0.5, 0.85, 1),
+  return { arcade: !!pneu && d <= PENHASCO, rel: r, grip: base, kin: limite(1 - perda * 0.5, 0.85, 1),
     freio: limite(BASE_FREIO * Math.pow(r, EXPOENTE_FREIO), 0.4, 1.5), tracao: limite(BASE_FREIO * Math.pow(r, EXPOENTE_TRACAO), 0.4, 1.5),
     final: 1 - FINAL_FIM * x };
 }
