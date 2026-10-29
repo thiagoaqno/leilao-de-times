@@ -11,6 +11,7 @@ import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
 import { CARS3, KS, makeKart, poseKart, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
 import { camMode, pollPad } from "./controles.js";
+import { quadroCamera, somDaCamera, camEstado } from "./cameras.js";
 import { physics, quadroDeFisica, quadroParado, criarRede } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
 import { standings, hud } from "./hud.js";
@@ -200,7 +201,7 @@ function loop(t) {
   recordLap();
   if (me() && ativo() && !race.net && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
   const somF1 = E.S?.config.regras === "f1"; // regras de F1: o motor V10 (motor-v10.js), com o limitador e os carros dos outros
-  Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0, somF1 ? { cam: camMode, lim: race.box?.fase === "entra" ? 0.45 : keys.gas && (race.rpm || 0) >= 0.985 ? 1 : 0 } : null);
+  Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0, somF1 ? { cam: somDaCamera(camEstado.modo || camMode), lim: race.box?.fase === "entra" ? 0.45 : keys.gas && (race.rpm || 0) >= 0.985 ? 1 : 0 } : null);
   Sound.outros(OUTROS_SOM, somF1 && me() ? outrosParaSom() : 0);
   Sound.skid(me() && ativo() && race.car.slip > 45 ? race.car.slip : 0);
   draw(dt);
@@ -278,77 +279,22 @@ function draw(dt) {
   let src = c;
   if (!me()) { const lead = standings()[0]; const gh = lead && race.ghosts.get(lead.id); if (gh) src = gh; }
   animarVida(tr, dt, src);
-  const C = race.cam, k = 1 - Math.exp(-dt * 6), mode = src === c && race.kart ? camMode : "longe";
-  let da = src.a - C.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; C.a += da * (1 - Math.exp(-dt * (mode === "perto" ? 7 : 5)));
-  const reduceMotion = motionPreference.matches;
-  const speedK = Math.min(1.2, Math.abs(src.v || 0) / 300);
-  const surge = Math.max(0, Math.min(1, ((src.v || 0) - (C.lastV || 0)) / Math.max(dt, 0.01) / 90));
-  C.lastV = src.v || 0;
-  C.surge = (C.surge || 0) + ((reduceMotion ? 0 : surge) - (C.surge || 0)) * (1 - Math.exp(-dt * 5));
-  const fovStep = 1 - Math.exp(-dt * 5);
-  if (race.kart) { const out = mode !== "cockpit"; race.kart.roof.visible = race.kart.cabin.visible = out; for (const b of race.kart.roofBits) b.visible = out; } // de dentro, cabine, teto e faixa do teto tapariam a vista
-  if (mode === "cima") {
-    // de cima, como no Hades: a câmera fica no alto e na diagonal, sempre no mesmo ângulo (não gira com o kart), e só
-    // segue o carro. A lente fechada (pouca perspectiva) dá a cara de jogo isométrico. Ela mira um pouco à frente para
-    // onde o kart vai, para sobrar pista à vista, e se afasta um pouco quando ele corre
-    const vx = Math.cos(src.a), vy = Math.sin(src.a), frente = 30 + speedK * 55, dist = 640 + speedK * (reduceMotion ? 40 : 140);
-    const alvo = V3(src.x + vx * frente, src.z || 0, src.y + vy * frente);
-    C.alvo = C.alvo ? C.alvo.lerp(alvo, 1 - Math.exp(-dt * 5)) : alvo.clone();
-    const el = 0.96, giro = Math.PI / 4; // 55° de inclinação, 45° na diagonal
-    const want = V3(C.alvo.x - Math.cos(giro) * Math.cos(el) * dist, C.alvo.y + Math.sin(el) * dist, C.alvo.z + Math.sin(giro) * Math.cos(el) * dist);
-    if (!C.pos) C.pos = want.clone(); else C.pos.lerp(want, 1 - Math.exp(-dt * 10));
-    cam.position.copy(C.pos);
-    if (race.shake > 0) { race.shake -= dt; if (!reduceMotion) { cam.position.x += (Math.random() - 0.5) * 3; cam.position.z += (Math.random() - 0.5) * 3; } }
-    cam.lookAt(C.pos.x + (C.alvo.x - want.x), C.pos.y + (C.alvo.y - want.y), C.pos.z + (C.alvo.z - want.z));
-    cam.fov += (24 - cam.fov) * fovStep; cam.updateProjectionMatrix();
-  } else if (mode === "cockpit") {
-    // primeira pessoa: no lugar do piloto, olhando por cima do volante (o bico do kart aparece embaixo)
-    const spec = CARS3[me().car] || CARS3.equilibrado, eyeU = race.kart.eye.u, eyeH = race.kart.eye.h;
-    const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = (eyeU - spec.L / 2) * KS, eh = eyeH * KS;
-    const ahead = c.air ? c.z : groundH(tr, c.x + fx * 70, c.y + fy * 70, nearest(tr, c.x + fx * 70, c.y + fy * 70, race.idx));
-    C.lookY = C.lookY == null ? ahead : C.lookY + (ahead - C.lookY) * (1 - Math.exp(-dt * 6));
-    // os olhos acompanham o kart: na subida a vista levanta, na descida abaixa (o pitch do kart, suavizado)
-    C.pitch = (C.pitch || 0) + ((race.pitch || 0) - (C.pitch || 0)) * (1 - Math.exp(-dt * 8));
-    cam.position.set(c.x + fx * fo, c.z + eh + 1.5 + Math.sin(C.pitch) * fo * 0.5, c.y + fy * fo); C.pos = null; // na altura dos olhos, rente ao chão
-    cam.lookAt(c.x + fx * (fo + 70), Math.max(C.lookY, c.z + Math.tan(C.pitch) * 70 - 6) + eh * 0.5, c.y + fy * (fo + 70));
-    if (!reduceMotion) { // a vibração cresce com a velocidade e o volante inclina um pouco a cabeça
-      const trem = speedK * speedK * 0.35 + (race.offroad ? 0.7 : 0);
-      cam.position.y += (Math.random() - 0.5) * trem; cam.position.x += (Math.random() - 0.5) * trem * 0.5;
-      cam.rotateZ(-c.steer * 0.035 * Math.min(1, speedK * 1.5));
-    }
-    if (race.shake > 0) { race.shake -= dt; if (!reduceMotion) cam.position.y += (Math.random() - 0.5) * 1.6; }
-    cam.fov += ((72 + speedK * (reduceMotion ? 6 : 22) + C.surge * 4) - cam.fov) * fovStep; cam.updateProjectionMatrix();
-  } else {
-    // atrás do carro: perto (padrão) ou longe; alta e olhando um pouco para baixo, para ver o que vem na frente do kart
-    const near = mode === "perto", back = near ? 50 + speedK * (reduceMotion ? 5 : 22) + C.surge * 8 : 88 + speedK * (reduceMotion ? 8 : 27) + C.surge * 8, up = near ? 30 + speedK * 2 : 52 + speedK * 4;
-    const fx = Math.cos(C.a), fy = Math.sin(C.a);
-    const want = V3(src.x - fx * back, (src.z || 0) + up, src.y - fy * back);
-    want.y = Math.max(want.y, groundH(tr, want.x, want.z, nearest(tr, want.x, want.z, race.idx)) + 6);
-    if (!C.pos) C.pos = want.clone(); else C.pos.lerp(want, near ? 1 - Math.exp(-dt * 9) : k);
-    // No túnel de Mônaco, a câmera externa fica abaixo do teto opaco.
-    if (tr.coberto?.(race.idx)) C.pos.y = Math.min(C.pos.y, (src.z || 0) + 23);
-    cam.position.copy(C.pos);
-    if (race.shake > 0) { race.shake -= dt; if (!reduceMotion) { cam.position.x += (Math.random() - 0.5) * 3; cam.position.y += (Math.random() - 0.5) * 3; } }
-    if (race.offroad && !reduceMotion) cam.position.y += (Math.random() - 0.5) * 1.2;
-    if (!reduceMotion && speedK > 0.75) cam.position.y += (Math.random() - 0.5) * (speedK - 0.75) * 1.4; // tremidinha no fim de reta
-    // olha para o chão lá na frente: na subida a câmera levanta o olhar, na descida abaixa
-    const la = near ? 55 : 70, lx = src.x + fx * la, ly = src.y + fy * la, chao = groundH(tr, lx, ly, nearest(tr, lx, ly, race.idx));
-    C.lookH = C.lookH == null ? chao : C.lookH + (chao - C.lookH) * (1 - Math.exp(-dt * 5));
-    cam.lookAt(lx, Math.max((src.z || 0) + 4 + (C.lookH - (src.z || 0)) * 0.6, C.lookH + 2), ly);
-    cam.fov += ((near ? 70 : 68) + speedK * (reduceMotion ? 4 : 19) + C.surge * 4 - cam.fov) * fovStep; cam.updateProjectionMatrix();
-  }
+  // a câmera (cameras.js): cockpit, onboard, bico, perseguição próxima e afastada, aérea e TV; quem só assiste ou já
+  // passou a bandeirada começa na TV
+  const mode = quadroCamera(race, { dt, tr, c, src, nearest, rm: motionPreference.matches, escolha: camMode, assistindo: !(src === c && race.kart), acabou: !!me() && me().finish != null, spec: CARS3[me()?.car] || CARS3.equilibrado });
+  const modoClima = somDaCamera(mode); // o clima só conhece perto, cockpit, longe e cima
   // sol e sombras acompanham o carro (a direção do sol vem da foto do céu, quando tem)
   const sd = tr.sol; if (sd) sun.position.set(src.x + sd.x * 800, (src.z || 0) + sd.y * 800, src.y + sd.z * 800); else sun.position.set(src.x - 300, (src.z || 0) + 700, src.y + 260);
   sun.target.position.set(src.x, src.z || 0, src.y);
-  abrirTV(tr, dt, reduceMotion);
+  abrirTV(tr, dt, motionPreference.matches);
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
-  passoClima(dt, race, cam, mode, src, c); // o visual do clima: céu, luz, neblina, chuva, asfalto molhado, borrifo, som e HUD (clima-visual.js)
+  passoClima(dt, race, cam, modoClima, src, c); // o visual do clima: céu, luz, neblina, chuva, asfalto molhado, borrifo, som e HUD (clima-visual.js)
   // desfoque de velocidade, pela fração da velocidade final do carro (vale igual para os cinco): começa em 40% (uns 90 km/h
   // no equilibrado), fica inteiro a 90% e o turbo e o estilingue borram ainda mais
   const turbo = src === c && (race.boostUntil > now || race.sling > 0 || (me() && me().boostUntil > now));
   const vref = (src === c ? carOf(me()) : CARROS.equilibrado).vmax;
   // (de cima não tem desfoque: o chão inteiro borrado só atrapalha a ver a pista)
-  desenhar(mode === "cima" ? 0 : Math.min(1, Math.max(0, (Math.abs(src.v || 0) / vref - 0.4) / 0.5)) + (turbo ? 0.4 : 0));
+  desenhar(mode === "cima" || mode === "tv" ? 0 : Math.min(1, Math.max(0, (Math.abs(src.v || 0) / vref - 0.4) / 0.5)) + (turbo ? 0.4 : 0));
 }
 // Transmissão de TV (transmissao.js): nas corridas de F1, antes das luzes e com tempo próprio (`race.tvAte`, vindo do servidor).
 // Esc pula (o botão e o toque também, no módulo). Nada de TV para quem só assiste.
