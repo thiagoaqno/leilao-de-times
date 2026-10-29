@@ -23,7 +23,7 @@ export const CEUS = {
   redbullring: { brilho: 1, luz: 0.55, arquivo: "serra" },
   spa: { brilho: 1, luz: 0.55, arquivo: "nurburgring" },
   hungaroring: { brilho: 1, luz: 0.55, arquivo: "barcelona" },
-  zandvoort: { brilho: 1, luz: 0.55, arquivo: "monza" },
+  zandvoort: { brilho: 0.95, luz: 0.5, arquivo: "nurburgring" }, // o céu nublado do litoral do mar do Norte
   madri: { brilho: 1, luz: 0.55, arquivo: "barcelona" },
   baku: { brilho: 1, luz: 0.55, arquivo: "barcelona" },
   singapura: { brilho: 1, luz: 0.55, arquivo: "losangeles" },
