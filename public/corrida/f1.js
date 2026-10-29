@@ -5,6 +5,8 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import { temDesenho, folhaDaEquipe, corDoNumero, texturaDosDigitos, logosProntos, FAIXAS,
+  LIV_VERT_DECL, LIV_VERT_MAIN, LIV_FRAG_DECL, LIV_FRAG_MAIN, PNEU_VERT_DECL, PNEU_VERT_MAIN, PNEU_FRAG_DECL, PNEU_FRAG_MAIN } from "./f1-pintura.js";
 
 // combinações de cor das equipes de F1 (ficam em pistas.js: o servidor confere a escolha)
 export const PINTURAS = window.Pistas.MODS.pintura;
@@ -14,25 +16,54 @@ export const TAM = 4.35; // comprimento do modelo, em metros
 const gl = new GLTFLoader(); gl.setMeshoptDecoder(MeshoptDecoder);
 const carregar = (arq) => { const M = { cena: null, falhou: false, espera: [] }; M.pronto = gl.loadAsync(arq).then((g) => { M.cena = g.scene; for (const k of M.espera.splice(0)) montarCorpo(k); }).catch((e) => { M.falhou = true; console.warn("Corrida: o carro não carregou", arq, e); }); return M; };
 const MODELOS = { completo: carregar("/corrida/f1/f1.glb"), leve: carregar("/corrida/f1/f1-leve.glb") };
-export const f1Pronto = Promise.all([MODELOS.completo.pronto, MODELOS.leve.pronto]);
+export const f1Pronto = Promise.all([MODELOS.completo.pronto, MODELOS.leve.pronto, logosProntos]); // (os logos das equipes entram na pintura: esperam também)
 
-// a pintura: troca a cor que vem da máscara (mapa) pelas duas cores do carro
-function pintura(base, cor1, cor2) {
+// a pintura: troca a cor que vem da máscara (mapa) pelas duas cores do carro. Com `equipe` (uma das pinturas de equipe de
+// f1-pintura.js) o corpo ganha, no lugar das duas cores, a folha de pintura da equipe projetada pela posição de cada ponto
+// (o carbono da máscara continua preto) e o número do piloto; a folha é uma só por equipe e vem do cache.
+function pintura(base, cor1, cor2, equipe, numero, fundo = false) {
   const m = base.clone(); m.color.set(0xffffff);
+  const liv = equipe && folhaDaEquipe(equipe);
   m.userData.cores = { cor1: { value: new THREE.Color(cor1) }, cor2: { value: new THREE.Color(cor2) } };
+  if (liv) m.userData.liv = { liv: { value: liv }, dig: { value: texturaDosDigitos() }, numero: { value: new THREE.Vector2(-1, -1) }, corNum: { value: new THREE.Color(corDoNumero(equipe)) } };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.cores);
+    if (liv) {
+      Object.assign(sh.uniforms, m.userData.liv);
+      sh.vertexShader = LIV_VERT_DECL + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>" + LIV_VERT_MAIN);
+      sh.fragmentShader = (fundo ? "#define FUNDO\n" : "") + LIV_FRAG_DECL + sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>" + LIV_FRAG_MAIN);
+      return;
+    }
     sh.fragmentShader = "uniform vec3 cor1;\nuniform vec3 cor2;\n" + sh.fragmentShader.replace("#include <map_fragment>", `#include <map_fragment>
       { vec3 mk = diffuseColor.rgb; diffuseColor.rgb = cor1 * mk.r + cor2 * mk.g + vec3(0.012) * mk.b; }`);
   };
-  m.customProgramCacheKey = () => "f1-pintura";
+  if (fundo) { m.metalness = 0; m.metalnessMap = null; } // o painel pintado não é metal (sem reflexo, o metal ficaria cinza)
+  m.customProgramCacheKey = () => (liv ? (fundo ? "f1-livery-fundo" : "f1-livery") : "f1-pintura");
+  if (liv) setNumero(m, numero);
   return m;
+}
+// o pneu: o anel colorido do composto na lateral (a cor muda no uniform, sem textura nova)
+function pneuMat(base, composto) {
+  const m = base.clone();
+  m.userData.faixa = { faixa: { value: new THREE.Color(FAIXAS[composto] || "#ffffff") }, faixaOn: { value: FAIXAS[composto] ? 1 : 0 } };
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, m.userData.faixa);
+    sh.vertexShader = PNEU_VERT_DECL + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>" + PNEU_VERT_MAIN);
+    sh.fragmentShader = PNEU_FRAG_DECL + sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>" + PNEU_FRAG_MAIN);
+  };
+  m.customProgramCacheKey = () => "f1-pneu";
+  return m;
+}
+// o número do piloto (1 ou 2 dígitos) vira os dois dígitos do shader (dezena, unidade; -1 = nenhum)
+function setNumero(m, n) {
+  const u = m.userData.liv; if (!u) return; n = Math.floor(+n);
+  if (!(n >= 0 && n <= 99)) u.numero.value.set(-1, -1); else u.numero.value.set(n >= 10 ? Math.floor(n / 10) : -1, n % 10);
 }
 export function coresDa(pint, corPiloto) { const p = PINTURAS[pint] || PINTURAS.propria; return [p.c || corPiloto, p.c2]; }
 
-export function montarF1({ cor = "#e63946", cor2 = "#f4f4f4", leve = false } = {}) {
+export function montarF1({ cor = "#e63946", cor2 = "#f4f4f4", leve = false, equipe = null, numero = null, composto = null } = {}) {
   const g = new THREE.Group(), carro = new THREE.Group(); g.add(carro);
-  const k = { g, carro, rodas: [], volante: null, mats: [], pintura: null, piloto: new THREE.Object3D(), olho: { z: 0.3, y: 0.95 }, cores: [cor, cor2], escapamento: { z: 2.2, y: 0.42 } };
+  const k = { g, carro, rodas: [], volante: null, mats: [], pintura: null, piloto: new THREE.Object3D(), olho: { z: 0.3, y: 0.95 }, cores: [cor, cor2], equipe: equipe && temDesenho(equipe) ? equipe : null, numero, composto, pneu: null, escapamento: { z: 2.2, y: 0.42 } };
   // enquanto o modelo não chega, uma silhueta simples no lugar
   const prov = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, TAM), new THREE.MeshStandardMaterial({ color: cor, roughness: 0.5 })); prov.position.y = 0.35; prov.castShadow = true; carro.add(prov);
   k.prov = prov; k.mats.push(prov.material); k.pintura = prov.material;
@@ -54,11 +85,14 @@ function montarCorpo(k) {
   const mats = new Map(); // um material de cada por carro (o fantasma deixa transparente; a estrela acende a pintura)
   m.traverse((o) => {
     if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = false;
-    const base = o.material, nome = base.name;
-    if (!mats.has(nome)) mats.set(nome, nome === "body_mat" ? pintura(base, k.cores[0], k.cores[1]) : base.clone());
+    // o corpo ganha os atributos da posição no carro (para a pintura de equipe); as rodas, um material só delas (o pneu com a faixa)
+    const fundo = k.equipe && o.name.startsWith("McLaren_mp4_5_") && o.material.name === "bottom_details_mat"; // os painéis laterais do monocoque (e o assoalho, que a pintura deixa de carbono)
+    if ((o.material.name === "body_mat" || fundo) && k.equipe) prepararCorpo(o, k.carro);
+    const base = o.material, nome = o.name === "front_wheels" || o.name === "back_wheels" ? "pneu" : fundo ? "fundo" : base.name;
+    if (!mats.has(nome)) mats.set(nome, nome === "body_mat" ? pintura(base, k.cores[0], k.cores[1], k.equipe, k.numero) : nome === "fundo" ? pintura(base, k.cores[0], k.cores[1], k.equipe, k.numero, true) : nome === "pneu" ? pneuMat(base, k.composto) : base.clone());
     o.material = mats.get(nome);
   });
-  k.mats = [...mats.values()]; k.pintura = mats.get("body_mat") || k.mats[0];
+  k.mats = [...mats.values()]; k.pintura = mats.get("body_mat") || k.mats[0]; k.pneu = mats.get("pneu") || null;
   // rodas: o modelo traz as duas de cada eixo numa malha só; aqui ela vira duas (esquerda e direita), e cada roda ganha
   // um pivô no próprio centro: "gira" roda pela distância andada e, nas da frente, "esterca" vira com o volante
   k.carro.updateMatrixWorld(true);
@@ -85,6 +119,26 @@ function montarCorpo(k) {
   const cx = new THREE.Box3().setFromObject(k.carro); k.escapamento = { z: k.carro.worldToLocal(cx.max.clone()).z - 0.1, y: 0.42 };
   k.aoMontar?.(k);
 }
+// a posição de cada ponto da roda em relação ao eixo, em raios (1 = a borda do pneu): a faixa do composto é um anel nesse
+// espaço (o shader mede o comprimento do vetor em cada pixel, então o anel sai redondo mesmo com poucos vértices)
+function aroDaRoda(pos, idx) {
+  let y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (let q = 0; q < idx.length; q++) { const y = pos.getY(idx[q]), z = pos.getZ(idx[q]); if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+  const cy = (y0 + y1) / 2, cz = (z0 + z1) / 2, R = Math.max((y1 - y0) / 2, 1e-6), a = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) { a[i * 2] = (pos.getY(i) - cy) / R; a[i * 2 + 1] = (pos.getZ(i) - cz) / R; }
+  return new THREE.BufferAttribute(a, 2);
+}
+// os atributos do corpo para a pintura de equipe: `pcar` = (x, y, s) no quadro do carro (s = distância desde a ponta do bico,
+// 0 a ~4,4) e `ncar` = a normal nesse quadro; feitos uma vez por malha (as cópias do carro dividem a geometria)
+function prepararCorpo(o, carro) {
+  const g = o.geometry; if (g.attributes.pcar) return;
+  const rel = new THREE.Matrix4().copy(carro.matrixWorld).invert().multiply(o.matrixWorld), pos = g.attributes.position, nor = g.attributes.normal;
+  const n = pos.count, P = new Float32Array(n * 3), N = new Float32Array(n * 3), v = new THREE.Vector3(), w = new THREE.Vector3();
+  let zmin = 1e9;
+  for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(rel); P[i * 3] = v.x; P[i * 3 + 1] = v.y; P[i * 3 + 2] = v.z; if (v.z < zmin) zmin = v.z; w.fromBufferAttribute(nor, i).transformDirection(rel); N[i * 3] = w.x; N[i * 3 + 1] = w.y; N[i * 3 + 2] = w.z; }
+  for (let i = 0; i < n; i++) P[i * 3 + 2] -= zmin;
+  g.setAttribute("pcar", new THREE.BufferAttribute(P, 3)); g.setAttribute("ncar", new THREE.BufferAttribute(N, 3));
+}
 // separa a malha das duas rodas de um eixo em duas malhas (pelo lado de cada triângulo); a divisão fica guardada
 const DIVISOES = new Map();
 function dividirRodas(o) {
@@ -92,7 +146,7 @@ function dividirRodas(o) {
     const g = o.geometry, pos = g.attributes.position, idx = g.index ? g.index.array : Array.from({ length: pos.count }, (_, i) => i);
     const lados = [[], []], v = new THREE.Vector3(), ladoDe = (i) => v.fromBufferAttribute(pos, i).applyMatrix4(o.matrix).x;
     for (let t = 0; t < idx.length; t += 3) lados[(ladoDe(idx[t]) + ladoDe(idx[t + 1]) + ladoDe(idx[t + 2])) / 3 < 0 ? 0 : 1].push(idx[t], idx[t + 1], idx[t + 2]);
-    DIVISOES.set(o.geometry, lados.map((l) => { const n = g.clone(); n.setIndex(l); n.clearGroups(); return n; }));
+    DIVISOES.set(o.geometry, lados.map((l) => { const n = g.clone(); n.setIndex(l); n.clearGroups(); n.setAttribute("aro", aroDaRoda(pos, l)); return n; }));
   }
   return DIVISOES.get(o.geometry).map((geo) => { const m = new THREE.Mesh(geo, o.material); m.position.copy(o.position); m.quaternion.copy(o.quaternion); m.scale.copy(o.scale); m.castShadow = true; return m; });
 }
@@ -100,6 +154,12 @@ function dividirRodas(o) {
 export function animarF1(k, dist, virar) {
   for (const r of k.rodas) { r.gira.rotation.x -= dist / r.r; if (r.esterca) r.esterca.rotation.y = -virar * 0.42; }
   if (k.volante) k.volante.rotation.z = -virar * 0.9;
+}
+// o composto que o carro está usando (macio, medio, duro, chuva; null = sem faixa): só mexe em dois uniforms, e só quando muda
+export function trocarComposto(k, composto) {
+  composto = composto || null; if (k.composto === composto) return; k.composto = composto;
+  const u = k.pneu?.userData?.faixa; if (!u) return;
+  if (FAIXAS[composto]) { u.faixa.value.set(FAIXAS[composto]); u.faixaOn.value = 1; } else u.faixaOn.value = 0;
 }
 export function trocarCores(k, cor1, cor2) { k.cores = [cor1, cor2]; const u = k.pintura?.userData?.cores; if (u) { u.cor1.value.set(cor1); u.cor2.value.set(cor2); } }
 export function soltarF1(k) { k.solto = true; for (const m of k.mats) m.dispose(); } // a malha é a mesma para todos os carros: fica
