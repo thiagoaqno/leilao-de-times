@@ -17,6 +17,8 @@
 .gp-mapa-desenho{min-height:260px;display:grid;place-items:center;background:radial-gradient(circle at 50% 50%,#26384a 0,#111a25 55%,#091018 100%);padding:14px 30px}
 .gp-mapa-desenho svg{display:block;width:100%;height:245px;overflow:visible}.gp-mapa-desenho path{fill:none;stroke-linecap:round;stroke-linejoin:round}.gp-mapa-borda{stroke:#000b;stroke-width:64}.gp-mapa-linha{stroke:#f4f8fc;stroke-width:35}.gp-mapa-marco{fill:var(--f1-vm);stroke:#fff;stroke-width:8}.gp-mapa-centro{fill:#fff}
 .garagem-hero{display:grid;grid-template-columns:minmax(210px,260px) minmax(0,1fr) minmax(250px,320px);gap:14px;align-items:stretch}
+.gp-mapa-info .prev-bloco{margin:14px 0 4px;max-width:440px}
+.cal li b .prev.mini{margin-left:8px}
 .pn-equipe,.pn-gp{background:linear-gradient(180deg,#14161cf2,#0b0c10f2);border:1px solid var(--f1-lin);border-top:3px solid var(--eq,var(--f1-vm));--corte:12px;clip-path:polygon(0 0,calc(100% - var(--corte)) 0,100% var(--corte),100% 100%,var(--corte) 100%,0 calc(100% - var(--corte)));min-width:0}
 .pn-logo{display:flex;align-items:center;gap:10px;padding:12px;background:color-mix(in srgb,var(--eq,var(--f1-vm)) 42%,#0b0c10);color:#fff}.pn-logo img{width:38px;height:38px;object-fit:contain;background:#fff;padding:3px}.pn-logo b{font:800 22px/1 var(--display);font-style:italic;text-transform:uppercase;overflow-wrap:anywhere}
 .pn-nota{display:flex;align-items:baseline;gap:10px;padding:10px 14px;background:#202631;color:#fff;border-bottom:1px solid var(--f1-lin)}.pn-nota strong{font:900 44px/1 var(--display)}.pn-nota small{font:800 13px var(--display);text-transform:uppercase;letter-spacing:.08em;color:#bdc7d2}

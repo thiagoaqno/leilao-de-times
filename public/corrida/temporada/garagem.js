@@ -44,21 +44,25 @@ function painelEquipe(equipeId, montagem, extra = "") {
 }
 
 // ---------- o calendário (à direita) com bandeiras e o botão Continuar ----------
-function calendario(cal, gp, titulo = "Calendário", rotuloProx = "") {
+function calendario(cal, gp, titulo = "Calendário", rotuloProx = "", previsao = null) {
   const fim = gp >= cal.length;
-  return `<ol class="cal" aria-label="${h(titulo)}">${cal.map((e, i) => `<li class="${i < gp ? "feita" : i === gp ? "atual" : ""}"><span class="n num">${String(i + 1).padStart(2, "0")}</span>${bandeira(e.pista)}<b>${h(e.nome)}</b><em>${i < gp ? "✓" : i === gp && !fim ? h(rotuloProx || "Próximo") : ""}</em></li>`).join("")}</ol>`;
+  return `<ol class="cal" aria-label="${h(titulo)}">${cal.map((e, i) => `<li class="${i < gp ? "feita" : i === gp ? "atual" : ""}"><span class="n num">${String(i + 1).padStart(2, "0")}</span>${bandeira(e.pista)}<b>${h(e.nome)}${i === gp && !fim && previsao && root.PrevisaoUI ? root.PrevisaoUI.html(previsao, { compacto: true, titulo: "Previsão" }) : ""}</b><em>${i < gp ? "✓" : i === gp && !fim ? h(rotuloProx || "Próximo") : ""}</em></li>`).join("")}</ol>`;
 }
-const colunaDireita = ({ titulo, cal, gp, rotuloProx, botao, nota }) => `<aside class="pn-gp"><header><h2>${h(titulo || "Calendário")}</h2></header>${calendario(cal, gp, "Calendário", rotuloProx)}${nota ? `<p class="gp-nota">${nota}</p>` : ""}<div class="gp-acao">${botao}</div></aside>`;
+const colunaDireita = ({ titulo, cal, gp, rotuloProx, botao, nota, previsao }) => `<aside class="pn-gp"><header><h2>${h(titulo || "Calendário")}</h2></header>${calendario(cal, gp, "Calendário", rotuloProx, previsao)}${nota ? `<p class="gp-nota">${nota}</p>` : ""}<div class="gp-acao">${botao}</div></aside>`;
 
-// O traçado do próximo GP fica visível na sede antes de abrir a Q1 (solo e grupo).
-function mapaGP(id, etapa, ativo = false) {
+// A previsão do tempo do GP da carreira: sai da mesma semente que o servidor usa ao abrir o box (`${semente}:${ano}:${gp}`), então a
+// chuva que cai é a que foi prevista (F1Regras.previsaoDoGP). Sem as regras carregadas, null.
+function previsaoDoGP(semente, ano, gp) { const F = root.F1Regras; return F && F.previsaoDoGP ? F.previsaoDoGP(`${semente}:${ano}:${gp}`) : null; }
+
+// O traçado do próximo GP fica visível na sede antes de abrir a Q1 (solo e grupo), com a previsão do tempo para escolher o pneu.
+function mapaGP(id, etapa, ativo = false, previsao = null, voltas = 0) {
   const pista = root.Pistas?.PISTAS[id]; if (!pista) return "";
   const pts = root.Pistas.pontos(pista, 18); if (!pts.length) return "";
   const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
   const x = Math.min(...xs), y = Math.min(...ys), largura = Math.max(...xs) - x, altura = Math.max(...ys) - y;
   const margem = 90, caminho = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + " Z";
   const largada = pts[0], nome = h(pista.name);
-  return `<section class="gp-mapa" aria-label="Mapa do circuito ${nome}"><div class="gp-mapa-info"><span class="gp-mapa-rotulo">Etapa ${etapa} · traçado da pista</span><h2>${nome}</h2><p>${ativo ? "Circuito do GP em andamento." : "Confira o circuito antes de abrir a Q1."}</p><span class="gp-mapa-legenda"><i></i>Largada e chegada</span></div>
+  return `<section class="gp-mapa" aria-label="Mapa do circuito ${nome}"><div class="gp-mapa-info"><span class="gp-mapa-rotulo">Etapa ${etapa} · traçado da pista</span><h2>${nome}</h2><p>${ativo ? "Circuito do GP em andamento." : "Confira o circuito antes de abrir a Q1."}</p>${previsao && root.PrevisaoUI ? `<div class="prev-bloco">${root.PrevisaoUI.html(previsao, { voltas })}</div>` : ""}<span class="gp-mapa-legenda"><i></i>Largada e chegada</span></div>
     <div class="gp-mapa-desenho"><svg viewBox="${x - margem} ${y - margem} ${largura + margem * 2} ${altura + margem * 2}" role="img" aria-label="Traçado de ${nome}, com largada e chegada marcadas"><path class="gp-mapa-borda" d="${caminho}"/><path class="gp-mapa-linha" d="${caminho}"/><circle class="gp-mapa-marco" cx="${largada.x.toFixed(1)}" cy="${largada.y.toFixed(1)}" r="28"/><circle class="gp-mapa-centro" cx="${largada.x.toFixed(1)}" cy="${largada.y.toFixed(1)}" r="12"/></svg></div></section>`;
 }
 
@@ -129,5 +133,5 @@ function cliquePonto(botao, montagem, equipe, bonus = 0) {
   return { ...montagem, [k]: nivel };
 }
 
-root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, mapaGP, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
+root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, mapaGP, previsaoDoGP, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
 })(window);

@@ -5,6 +5,7 @@ import { race } from "./jogo.js";
 import { textoJogos } from "./box.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
 import { drawItemHud } from "./itens.js";
+import { clima } from "./clima.js";
 
 // ---------- placar da corrida ----------
 export function standings() {
@@ -181,8 +182,21 @@ function bandeiraF1(m) {
   if (m && m.avisosLimite) return `LIMITES DA PISTA ${m.avisosLimite}/4`;
   return "";
 }
+// O engenheiro avisa uma volta antes (no mínimo AVISO_S segundos) que a chuva vai chegar ou parar: a fala no rádio (radio.js, sem o
+// mp3 fica em silêncio) e um aviso na tela. Uma vez por mudança do roteiro (a hora dela entra na chave).
+const AVISO_CHUVA = { comeca: ["chuvachegando", "🌧️ Rádio: chuva chegando em uma volta"], para: ["chuvaparando", "🌤️ Rádio: a chuva está parando, a pista vai secar"] };
+function avisoDeChuva(m) {
+  const S = E.S, F = window.F1Regras;
+  if (!m || m.finish != null || S.phase !== "race" || !S.clima || !S.clima.chove || !F.proximaMudanca || !(clima.t >= 0)) return;
+  const mud = F.proximaMudanca(S.clima, clima.t), aviso = mud && AVISO_CHUVA[mud.tipo];
+  if (!aviso || mud.em > Math.max(F.AVISO_S, m.last || m.best || 0) || (mud.tipo === "para" && !(clima.chuva > 0))) return;
+  const vistos = race.chuvaAvisada || (race.chuvaAvisada = new Set()), chave = S.startAt + ":" + mud.quando;
+  if (vistos.has(chave)) return; vistos.add(chave);
+  radioF1(aviso[0], { forcar: true }); toast(aviso[1], 4200);
+}
 function hudF1(m, st, now) {
   const t0 = performance.now(); if (t0 - (race.hudF1T || 0) < 100) return; race.hudF1T = t0;
+  avisoDeChuva(m);
   if (race.pneu && m && m.finish == null && m.started && race.pneu.desgaste > window.F1Regras.PENHASCO * 0.75 && race.pneu.desgaste <= window.F1Regras.PENHASCO) radioF1("pneu");
   montarTorre();
   const T = window.HudTorre, F = window.F1Regras, tr = race.tr, cfg = E.S.config;
@@ -280,6 +294,7 @@ export function renderQuali() {
   const montagem = (ultima || q.nome === "Q2") && m && S.temporada && S.montagens && S.montagens[m.equipe];
   el.innerHTML = `<div class="placa gp"><div class="chk"></div><div class="in"><h2 style="font-size:26px;margin-bottom:6px">${ultima ? `🏁 Grid de largada · ${h(PISTAS[S.config.pista].name)}` : `⏱️ ${f.nome} encerrado`}</h2>
     <p class="muted" style="margin:0 0 8px">${ultima ? m ? confirmado ? `Largada confirmada. Aguardando os outros pilotos (${prontos}/${q.aguardados.length}).` : S.temporada ? "Ajuste os pontos do carro, escolha o pneu e confirme a largada." : "Escolha o pneu para começar a corrida e confirme a largada." : `Aguardando os pilotos confirmarem a largada (${prontos}/${q.aguardados.length}).` : `Os ${f.eliminados.length} mais lentos ficam por aqui e largam do fim do grid. Próxima sessão em instantes.${montagem ? " Você pode ajustar os pontos do carro abaixo." : ""}`}</p>
+    ${ultima && S.previsao && window.PrevisaoUI ? `<div class="prev-bloco" style="margin:0 0 10px">${window.PrevisaoUI.html(S.previsao, { voltas: S.config.voltas })}</div>` : ""}
     ${ultima && m ? `<div class="pneus-largada" role="group" aria-label="Pneu da largada">${Object.entries(window.F1Regras.PNEUS).map(([id, pneu]) => `<button type="button" data-pneu-largada="${id}" class="${(m.pneu || "medio") === id ? "on" : ""}" ${confirmado ? "disabled" : ""}><i class="bola-pneu" style="--c:${pneu.cor}"></i>${pneu.nome}</button>`).join("")}</div>` : ""}
     ${montagem ? `<details class="acerto-grid" ${!confirmado ? "open" : ""}><summary>Acerto do carro · ${window.F1Equipes.custoDaMontagem(montagem)} pontos usados</summary>${window.F1Garagem.pontosHTML({ equipe: m.equipe, montagem, bonus: S.bonusMontagem[m.equipe] || 0, pode: !confirmado, motivo: "Largada já confirmada." })}</details>` : ""}
     ${ultima && m ? `<button type="button" id="confirmarLargada" class="confirmar-largada" ${confirmado ? "disabled" : ""}>${confirmado ? "✓ Largada confirmada" : "Confirmar largada"}</button>` : ""}

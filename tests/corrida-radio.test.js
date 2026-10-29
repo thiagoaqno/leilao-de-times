@@ -6,7 +6,7 @@ const path = require("node:path");
 const Falas = require("../public/corrida/radio/falas.js");
 const Radio = require("../public/corrida/radio.js");
 
-const SITUACOES = ["largada", "voltarapida", "ganhou", "perdeu", "pneu", "box", "safety", "amarela", "dano", "ultima", "vitoria", "podio", "pontos", "foradospontos", "abandono"];
+const SITUACOES = ["largada", "voltarapida", "ganhou", "perdeu", "pneu", "box", "safety", "amarela", "dano", "ultima", "vitoria", "podio", "pontos", "foradospontos", "abandono", "chuvachegando", "chuvaparando"];
 
 test("toda situação (só as da corrida) tem de 4 a 5 falas", () => {
   for (const s of SITUACOES) { const n = Falas.porSituacao(s).length; assert.ok(n >= 4 && n <= 5, `${s}: ${n} falas`); }

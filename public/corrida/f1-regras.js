@@ -248,67 +248,157 @@ function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 
 }
 
 // ---------- o clima ----------
-// Cada GP tem 20% de chance de chuva, sorteados no servidor pela semente do GP (`sortearClima`). Se chove, a classificação e a
-// corrida ganham cada uma o seu roteiro (a mesma chuva do fim de semana, mas cada sessão com o seu relógio): pode largar
-// molhado ou começar a chover no meio, ser garoa ou chuva forte, intensificar, aliviar e parar antes do fim. O roteiro é um
-// objeto simples que viaja no estado da sala (`clima`): { chove, t0 (ms: o zero do relógio do roteiro), dur, agua0 (a água na
-// pista no tempo 0), trechos: [[de, ate, forca] em segundos do relógio] }. Dele sai, para qualquer hora, a água na pista
-// (`climaEm`): sobe com a chuva (de 0 seco a 1 encharcado) e desce devagar quando ela para. É uma conta pura do tempo, sem
-// estado: o servidor, o navegador e os robôs chegam ao mesmo valor.
-const CHANCE_CHUVA = 0.2, GAROA = 0.45, CHUVA_FORTE = 1;
+// Cada GP tem uma PREVISÃO (`previsaoDoGP`, sorteada pela semente do GP): a chance `p` de chuva (a maioria dos GPs fica de 0 a
+// 10%, alguns de 20 a 40%, poucos de 50 a 70% e raros de 80 a 95%: a média é de uns 20%), QUANDO ela vem (largada molhada, começo,
+// do meio para o fim, perto do fim) e a força (garoa, chuva forte ou garoa que vira chuva forte). A chuva de verdade sai da
+// previsão: cai com a chance `p` (outro sorteio da mesma semente) e, se cai, começa dentro da janela prevista (`sortearClima`).
+// Se chove, a classificação e a corrida ganham cada uma o seu roteiro (a mesma chuva do fim de semana, mas cada sessão com o seu
+// relógio): a chuva dura pelo menos CHUVA_MIN_S (ou vai até o fim da sessão), pode parar antes do fim e entra e sai em rampas de
+// RAMPA_S segundos, sem degrau. O roteiro é um objeto simples que viaja no estado da sala (`clima`): { chove, t0 (ms: o zero do
+// relógio do roteiro), dur, agua0 (a água na pista no tempo 0), trechos: [[de, ate, forca] em segundos do relógio] }. Dele sai,
+// para qualquer hora, a força da chuva (`chuvaEm`) e a água na pista (`aguaEm`, `climaEm`): sobe com a chuva (de 0 seco a 1
+// encharcado) e desce devagar quando ela para. É uma conta pura do tempo, sem estado: o servidor, o navegador e os robôs
+// chegam ao mesmo valor (a tabela guardada em `dadosDoClima` é só um atalho da mesma conta).
+const CHANCE_CHUVA = 0.2, GAROA = 0.45, CHUVA_FORTE = 1; // (CHANCE_CHUVA: a média das previsões)
 const AGUA_SOBE_S = 75;   // segundos de chuva para a pista ir de seca a encharcada (a garoa para no teto dela, GAROA)
 const AGUA_SECA_S = 240;  // segundos para uma pista encharcada secar de vez, sem chuva (quatro minutos de corrida)
+const RAMPA_S = 25;       // a chuva entra, sai e muda de força em rampas suaves desse tamanho
+const CHUVA_MIN_S = 120;  // a chuva dura pelo menos isso (ou até o fim da sessão)
+const AVISO_S = 40;       // o rádio avisa que a chuva vai chegar (ou parar) com no mínimo essa antecedência, ou uma volta
 const AGUA_MOLHADA = 0.15, AGUA_ENCHARCADA = 0.7; // a partir daqui a pista conta como molhada / encharcada (o texto da TV, o visual)
 const AGUA_QUALI_CHUVA = 0.3; // na classificação ninguém troca de pneu: a sessão abre com o de chuva se a água passa disso
 const seco = (dur) => ({ chove: false, t0: 0, dur: Math.round(dur), agua0: 0, trechos: [] });
-// O roteiro de uma sessão de `dur` segundos (a semente já vem sorteada em `r`). Sessões curtas (menos de 4 min) largam sempre
-// molhadas, para a chuva do GP aparecer.
-function roteiroDeChuva(r, dur) {
-  const largaMolhado = dur < 240 || r() < 0.4, forca = r() < 0.5 ? GAROA : CHUVA_FORTE;
-  const agua0 = largaMolhado ? Math.round((forca === CHUVA_FORTE ? 0.7 + 0.3 * r() : 0.25 + 0.2 * r()) * 100) / 100 : 0;
-  const ini = largaMolhado ? 0 : Math.round(dur * (0.12 + 0.5 * r()));
-  const para = r() < 0.55; // para antes do fim?
-  let fim = Math.round(dur * (0.4 + 0.45 * r()));
-  fim = para && fim - ini >= 45 ? fim : Math.round(dur * 4); // (sem parar: chove até depois da bandeirada)
-  let trechos = [[ini, fim, forca]];
-  if (r() < 0.35 && Math.min(fim, dur) - ini > 90) { // muda de intensidade no meio: garoa que vira chuva, ou chuva que alivia
-    const meio = Math.round(ini + (Math.min(fim, dur) - ini) * (0.35 + 0.3 * r()));
-    trechos = [[ini, meio, forca], [meio, fim, forca === GAROA ? CHUVA_FORTE : GAROA]];
+
+// ----- a previsão -----
+const OPCOES_DE_CLIMA = ["aleatorio", "seco", "chuva", "variavel"]; // a opção da sala casual: Aleatório (a previsão), Seco, Chuva, Variável
+const ROTULO_CLIMA = { aleatorio: "Aleatório", seco: "Seco", chuva: "Chuva", variavel: "Variável" };
+// [peso, de, ate]: a faixa de chance de chuva e o quanto dos GPs cai nela (média: 0,6·5 + 0,25·30 + 0,11·60 + 0,04·87,5 = 20,6%)
+const FAIXAS_DE_CHUVA = [[0.60, 0, 0.10], [0.25, 0.20, 0.40], [0.11, 0.50, 0.70], [0.04, 0.80, 0.95]];
+// quando a chuva pode começar: `de`..`ate` (fração da sessão em que ela começa de verdade) e `janela` (o que a previsão anuncia)
+const QUANDO = {
+  largada: { de: 0, ate: 0, janela: [0, 0.1] },
+  inicio: { de: 0.1, ate: 0.3, janela: [0.05, 0.4] },
+  meio: { de: 0.35, ate: 0.55, janela: [0.3, 0.7] },
+  fim: { de: 0.6, ate: 0.8, janela: [0.55, 1] },
+};
+const PESO_QUANDO = [["largada", 0.2], ["inicio", 0.25], ["meio", 0.35], ["fim", 0.2]];
+// A previsão do GP: { opcao, p (0 a 1, de 5 em 5%), pct, quando (largada, inicio, meio ou fim), forca (garoa, forte ou vira: garoa
+// que vira chuva forte), janela [de, ate] (fração da corrida em que a chuva pode começar) }. Só da semente e da opção.
+function previsaoDoGP(semente, opcao = "aleatorio") {
+  opcao = OPCOES_DE_CLIMA.includes(opcao) ? opcao : "aleatorio";
+  const r = sorteio(`previsao:${semente}`), xFaixa = r(), xP = r(), xQuando = r(), xForca = r(); // (sempre os quatro, na mesma ordem)
+  let p = 0;
+  if (opcao === "chuva" || opcao === "variavel") p = 1;
+  else if (opcao === "aleatorio") {
+    let soma = 0, faixa = FAIXAS_DE_CHUVA[FAIXAS_DE_CHUVA.length - 1];
+    for (const f of FAIXAS_DE_CHUVA) { soma += f[0]; if (xFaixa < soma) { faixa = f; break; } }
+    p = Math.round((faixa[1] + (faixa[2] - faixa[1]) * xP) * 20) / 20;
   }
+  let quando = "meio", acc = 0;
+  if (opcao === "chuva") quando = "largada";
+  else if (opcao !== "variavel") { quando = PESO_QUANDO[PESO_QUANDO.length - 1][0]; for (const [id, w] of PESO_QUANDO) { acc += w; if (xQuando < acc) { quando = id; break; } } }
+  const forte = 0.2 + 0.4 * p; // (quanto mais provável a chuva, mais ela tende a vir forte)
+  const forca = xForca < forte ? "forte" : xForca < forte + 0.15 ? "vira" : "garoa";
+  return { opcao, p, pct: Math.round(p * 100), quando, forca, janela: QUANDO[quando].janela.slice() };
+}
+const ROTULO_QUANDO = { largada: "Pode largar molhado", inicio: "Chuva no começo da corrida", meio: "Chuva do meio para o fim", fim: "Chuva perto do fim" };
+const ROTULO_FORCA = { garoa: "garoa", forte: "chuva forte", vira: "garoa que vira chuva forte" };
+// O texto da previsão para a tela: { p, pct, nivel (0 sol, 1 sol e nuvem, 2 nublado, 3 chuva: o ícone), seco, titulo, quando, forca,
+// dica, voltas ([primeira, ultima] em que a chuva pode começar, ou null) }. `voltas` é o tamanho da corrida.
+function descreverPrevisao(prev, voltas = 0) {
+  const p = prev ? prev.p : 0, pct = Math.round(p * 100), nivel = p < 0.1 ? 0 : p < 0.3 ? 1 : p < 0.55 ? 2 : 3, seco = p < 0.05;
+  const titulo = seco ? "Pista seca" : p >= 1 ? "Chuva garantida" : p >= 0.75 ? "Chuva muito provável" : p >= 0.5 ? "Chuva provável" : p >= 0.25 ? "Possibilidade de chuva" : "Chance baixa de chuva";
+  if (seco) return { p, pct, nivel: 0, seco, titulo, quando: "", forca: "", dica: "", voltas: null };
+  let quando = ROTULO_QUANDO[prev.quando] || "", lap = null;
+  if (prev.opcao === "chuva") quando = "Chove a corrida inteira";
+  else if (prev.opcao === "variavel") quando = "Seco na largada, chuva do meio para o fim";
+  if (voltas >= 3 && prev.quando !== "largada" && prev.janela) {
+    const a = Math.floor(prev.janela[0] * voltas) + 1, b = Math.max(a, Math.min(voltas, Math.ceil(prev.janela[1] * voltas)));
+    lap = [a, b]; quando += a === b ? ` (volta ${a})` : ` (voltas ${a} a ${b})`;
+  }
+  const dica = p < 0.25 ? "" : prev.quando === "largada" ? "Largar de pneu de chuva pode compensar." : p >= 0.5 ? "Deixe o pneu de chuva pronto para a parada." : "Se a chuva vier, a parada é de pneu de chuva.";
+  return { p, pct, nivel, seco, titulo, quando, forca: ROTULO_FORCA[prev.forca] || "", dica, voltas: lap };
+}
+
+// ----- o roteiro -----
+// O roteiro de uma sessão de `dur` segundos (a semente já vem sorteada em `r`), seguindo o plano da previsão { quando, forca,
+// sempre (a chuva não para) }. Começa dentro da janela de `quando`, dura pelo menos CHUVA_MIN_S (ou até o fim) e, se pára, é
+// no mínimo CHUVA_MIN_S depois e antes dos últimos 30 s (assim o fim da chuva também acontece numa corrida curta).
+function roteiroDeChuva(r, dur, plano = {}) {
+  const q = QUANDO[plano.quando] || QUANDO.meio, larga = plano.quando === "largada";
+  const vira = plano.forca === "vira", forca = plano.forca === "forte" ? CHUVA_FORTE : GAROA;
+  const xIni = r(), xPara = r(), xFim = r(), xMeio = r(), xAgua = r();
+  const ini = larga ? 0 : Math.max(20, Math.min(Math.round(dur - 40), Math.round(dur * (q.de + (q.ate - q.de) * xIni))));
+  const agua0 = larga ? Math.round((forca === CHUVA_FORTE ? 0.6 + 0.3 * xAgua : 0.2 + 0.2 * xAgua) * 100) / 100 : 0;
+  const folga = dur - 30 - ini - CHUVA_MIN_S; // quanto cabe de chuva além do mínimo antes dos últimos 30 s
+  const para = !plano.sempre && xPara < 0.5 && folga >= 15;
+  const fim = para ? Math.round(ini + CHUVA_MIN_S + folga * xFim) : Math.round(dur * 4); // (sem parar: chove até depois da bandeirada)
+  const total = Math.min(fim, dur) - ini;
+  let trechos = [[ini, fim, forca]];
+  if (vira && total >= 90) { const meio = Math.round(ini + total * (0.35 + 0.3 * xMeio)); trechos = [[ini, meio, GAROA], [meio, fim, CHUVA_FORTE]]; }
   return { chove: true, t0: 0, dur: Math.round(dur), agua0, trechos };
 }
-// O sorteio do GP: `duracoes` { corrida, quali } em segundos (a corrida inteira e o fim de semana de classificação).
-// Devolve { chuva (o GP tem chuva), quali, corrida } (os dois roteiros; `t0` o servidor põe quando a sessão abre).
-function sortearClima(semente, duracoes = {}) {
-  const dc = duracoes.corrida || 300, dq = duracoes.quali || 360;
-  if (!(sorteio(`clima:${semente}`)() < CHANCE_CHUVA)) return { chuva: false, quali: seco(dq), corrida: seco(dc) };
-  return { chuva: true, quali: roteiroDeChuva(sorteio(`clima:${semente}:quali`), dq), corrida: roteiroDeChuva(sorteio(`clima:${semente}:corrida`), dc) };
+// O sorteio do GP: `duracoes` { corrida, quali } em segundos (a corrida inteira e o fim de semana de classificação) e `opcao` (a
+// opção de clima da sala: aleatorio, seco, chuva ou variavel). Devolve { chuva (o GP tem chuva), previsao, quali, corrida } (os dois
+// roteiros; `t0` o servidor põe quando a sessão abre). Chove com a chance da previsão (p = 1 nas opções Chuva e Variável).
+function sortearClima(semente, duracoes = {}, opcao = "aleatorio") {
+  const dc = duracoes.corrida || 300, dq = duracoes.quali || 360, previsao = previsaoDoGP(semente, opcao);
+  if (!(previsao.p >= 1 || sorteio(`clima:${semente}:chuva`)() < previsao.p)) return { chuva: false, previsao, quali: seco(dq), corrida: seco(dc) };
+  const plano = { quando: previsao.quando, forca: previsao.forca, sempre: previsao.opcao === "chuva" };
+  return { chuva: true, previsao, quali: roteiroDeChuva(sorteio(`clima:${semente}:quali`), dq, plano), corrida: roteiroDeChuva(sorteio(`clima:${semente}:corrida`), dc, plano) };
 }
-// A força da chuva do roteiro no segundo `t`: 0 sem chuva, GAROA (0,45) ou CHUVA_FORTE (1).
+// O que se calcula uma vez por roteiro (guardado pelo objeto): os degraus da chuva e a tabela da água de segundo em segundo.
+const CACHE_CLIMA = new WeakMap();
+function dadosDoClima(c) {
+  let d = CACHE_CLIMA.get(c);
+  if (d && d.trechos === c.trechos && d.agua0 === c.agua0) return d;
+  const T = c.trechos || [], forca = (t) => { let f = 0; for (const q of T) if (t >= q[0] && t < q[1] && q[2] > f) f = q[2]; return f; };
+  const marcas = [...new Set(T.flatMap((q) => [q[0], q[1]]))].filter((b) => b > 0).sort((x, y) => x - y);
+  let antes = forca(0); const inicial = antes, saltos = []; // [quando, força antes, força depois]
+  for (const b of marcas) { const depois = forca(b); if (depois !== antes) saltos.push([b, antes, depois]); antes = depois; }
+  d = { trechos: c.trechos, agua0: c.agua0, inicial, saltos, agua: [limite(c.agua0 || 0, 0, 1)] };
+  CACHE_CLIMA.set(c, d); return d;
+}
+// A força da chuva do roteiro no segundo `t`: 0 sem chuva até GAROA (0,45) ou CHUVA_FORTE (1). Cada degrau do roteiro (a chuva que
+// começa, para ou muda de força) vira uma rampa suave de RAMPA_S segundos a partir do segundo marcado: a força nunca dá salto.
 function chuvaEm(c, t) {
-  let f = 0; for (const q of (c && c.trechos) || []) if (t >= q[0] && t < q[1] && q[2] > f) f = q[2];
-  return f;
+  if (!c || !c.trechos || !c.trechos.length) return 0;
+  const d = dadosDoClima(c); let f = d.inicial;
+  for (const [b, antes, depois] of d.saltos) {
+    if (!(t > b)) break;
+    const x = Math.min(1, (t - b) / RAMPA_S); f += (depois - antes) * (x * x * (3 - 2 * x));
+  }
+  return f < 1e-9 ? 0 : Math.min(CHUVA_FORTE, f);
 }
 // A água na pista: anda para o teto da chuva (a força dela) subindo 1/AGUA_SOBE_S por segundo, ou para baixo secando
-// 1/AGUA_SECA_S por segundo (sem chuva o teto é 0; com garoa depois de chuva forte, a água desce até o teto da garoa).
+// 1/AGUA_SECA_S por segundo (sem chuva o teto é 0; com garoa depois de chuva forte, a água desce até o teto da garoa). Integra de
+// segundo em segundo (a chuva do meio de cada passo) numa tabela guardada no roteiro; entre dois segundos, interpola.
 function aguaEm(c, t) {
-  let a = (c && c.agua0) || 0;
-  if (!c || !(t > 0)) return a;
-  const marcas = [0, t];
-  for (const q of c.trechos || []) for (const m of [q[0], q[1]]) if (m > 0 && m < t) marcas.push(m);
-  marcas.sort((x, y) => x - y);
-  for (let i = 0; i + 1 < marcas.length; i++) {
-    const dt = marcas[i + 1] - marcas[i]; if (dt <= 0) continue;
-    const alvo = chuvaEm(c, (marcas[i] + marcas[i + 1]) / 2);
-    a = alvo > a ? Math.min(alvo, a + dt / AGUA_SOBE_S) : Math.max(alvo, a - dt / AGUA_SECA_S);
+  if (!c) return 0;
+  const d = dadosDoClima(c), tab = d.agua;
+  if (!(t > 0)) return tab[0];
+  const k = Math.min(Math.floor(t), 36000);
+  while (tab.length <= k + 1) {
+    const i = tab.length - 1, a = tab[i], alvo = chuvaEm(c, i + 0.5);
+    tab.push(alvo > a ? Math.min(alvo, a + 1 / AGUA_SOBE_S) : Math.max(alvo, a - 1 / AGUA_SECA_S));
   }
-  return a;
+  return tab[k] + (tab[k + 1] - tab[k]) * Math.min(1, t - k);
 }
-// O clima na hora `agora` (ms): { agua (0 seco a 1 encharcado), chuva (a força da chuva agora: 0, GAROA ou CHUVA_FORTE), garoa,
+// O próximo degrau da chuva depois do segundo `t`: { tipo: "comeca" (seco → chuva), "para" (chuva → seco), "aumenta" ou "alivia",
+// quando (segundo do roteiro em que o degrau começa), em (quantos segundos faltam) }, ou null. É o que o rádio usa para avisar.
+function proximaMudanca(c, t) {
+  if (!c || !c.trechos || !c.trechos.length) return null;
+  for (const [b, antes, depois] of dadosDoClima(c).saltos) {
+    if (b <= t) continue;
+    return { tipo: antes === 0 ? "comeca" : depois === 0 ? "para" : depois > antes ? "aumenta" : "alivia", quando: b, em: b - t };
+  }
+  return null;
+}
+// O clima na hora `agora` (ms): { agua (0 seco a 1 encharcado), chuva (a força da chuva agora, de 0 a 1), garoa (chove, mas fraco),
 // molhada, encharcada, chove (o roteiro tem chuva), t (segundos do relógio do roteiro) }. Sem roteiro, seco. É o que o visual lê.
 function climaEm(c, agora) {
   const t = c && c.t0 ? (agora - c.t0) / 1000 : 0, agua = c ? aguaEm(c, t) : 0, chuva = c ? chuvaEm(c, t) : 0;
-  return { agua, chuva, garoa: chuva > 0 && chuva < CHUVA_FORTE, molhada: agua >= AGUA_MOLHADA, encharcada: agua >= AGUA_ENCHARCADA, chove: !!(c && c.chove), t };
+  return { agua, chuva, garoa: chuva > 0 && chuva < 0.7, molhada: agua >= AGUA_MOLHADA, encharcada: agua >= AGUA_ENCHARCADA, chove: !!(c && c.chove), t };
 }
 // O pneu da classificação (ninguém troca de pneu nela): o de chuva se a pista abre com água suficiente, senão o macio.
 const compostoDaClassificacao = (agua) => ((agua || 0) >= AGUA_QUALI_CHUVA ? "chuva" : "macio");
@@ -405,7 +495,7 @@ function vacuoF1(draft, curva) {
 const api = { PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
   LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos,
-  CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, sortearClima, chuvaEm, aguaEm, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
+  CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, RAMPA_S, CHUVA_MIN_S, AVISO_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, OPCOES_DE_CLIMA, ROTULO_CLIMA, previsaoDoGP, descreverPrevisao, sortearClima, chuvaEm, aguaEm, proximaMudanca, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -18,6 +18,8 @@ const SITUACOES = {
   podio: ["Pódio confirmado. Bom resultado.", "Terminamos no pódio. Bom trabalho.", "Pódio. Pontos importantes para a equipe.", "Bom trabalho. Pódio garantido."],
   pontos: ["Terminamos nos pontos. Resultado importante.", "Pontos garantidos. Seguimos evoluindo.", "Bons pontos hoje. Obrigado pelo esforço.", "Nos pontos. Vamos construir a partir daqui."],
   foradospontos: ["Fora dos pontos hoje. Vamos analisar os dados.", "Não foi o resultado esperado. Vamos trabalhar.", "Corrida difícil. Vamos entender o que faltou.", "Sem pontos hoje. Próxima corrida é outra história."],
+  chuvachegando: ["Chuva chegando em uma volta. Prepare o pneu de chuva.", "O radar mostra chuva em uma volta. Considere o box.", "Chuva a caminho. Falta uma volta para ela chegar.", "Vai chover em uma volta. Fique atento ao box."],
+  chuvaparando: ["A chuva está parando. A pista vai secar.", "A chuva diminui. A pista deve secar em breve.", "O radar está limpando. Pense nos pneus secos.", "Chuva parando. Avalie voltar para o pneu seco."],
   abandono: ["Precisamos abandonar. Leve o carro para os boxes.", "Fim de corrida para nós. Pare com segurança.", "Vamos recolher o carro. Desculpe.", "Abandono. Pare o carro em local seguro."],
 };
 // situações que passam na frente do intervalo mínimo entre falas

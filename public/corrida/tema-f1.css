@@ -29,3 +29,17 @@ html,body{overflow-x:clip}
 [data-radio-botao]{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;padding:0;flex:none;border-radius:0}[data-radio-botao].mudo{opacity:.6}
 .bar button,.utilbar button.ghost{color:#f4f5f5;background:#ffffff12;border:1px solid #ffffff38}
 .vol{accent-color:var(--f1-vm)}
+
+/* previsão do tempo (previsao.js): cartão escuro com o ícone, o texto e a chance de chuva em itálico condensado; a cor segue o céu */
+.prev{--pv:#ffd100;--prev-fundo:#14161c;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;margin:0;padding:10px 14px;color:#f4f5f5;background:linear-gradient(180deg,#14161cf0,#0b0c10f0);border:1px solid #ffffff22;border-left:4px solid var(--pv);text-align:left}
+.prev.n0{--pv:#ffd100}.prev.n1{--pv:#ffae2e}.prev.n2{--pv:#9fb6cc}.prev.n3{--pv:#3aa0ff}
+.prev-ico{display:grid;place-items:center;width:42px;height:42px;color:var(--pv)}.prev-ico svg{width:100%;height:100%}
+.prev-txt{display:grid;gap:2px;min-width:0}
+.prev-txt small.prev-rot{font:700 11px/1 var(--display,"Barlow Condensed",sans-serif);letter-spacing:.16em;text-transform:uppercase;color:#ff7772}
+.prev-txt b{font:800 18px/1.1 var(--display,"Barlow Condensed",sans-serif);font-style:italic;letter-spacing:.03em;text-transform:uppercase}
+.prev-txt span{font-size:13px;line-height:1.25;color:#e3e9f0}.prev-txt small{font-size:12px;line-height:1.25;color:#aab4c0}
+.prev-pct{font:900 38px/1 var(--display,"Barlow Condensed",sans-serif);font-style:italic;color:var(--pv);font-variant-numeric:tabular-nums}.prev-pct small{font-size:.5em;margin-left:1px}
+.prev.mini{display:inline-flex;gap:4px;align-items:center;padding:1px 6px 1px 4px;margin-left:6px;vertical-align:middle;border:0;border-left:3px solid var(--pv);background:#0b0c10cc}
+.prev.mini svg{width:18px;height:18px;color:var(--pv)}.prev.mini b{font:800 12px/1 var(--display,"Barlow Condensed",sans-serif);font-style:normal;letter-spacing:.04em;color:#f4f5f5}
+.prev-bloco{margin:10px 0 0}
+@media (max-width:620px){.prev{gap:9px;padding:9px 11px}.prev-ico{width:34px;height:34px}.prev-pct{font-size:30px}.prev-txt b{font-size:16px}}

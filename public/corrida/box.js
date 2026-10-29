@@ -37,4 +37,5 @@ export function escolherComposto(composto) {
   if (!B.pedido && !podePedir()) return;
   B.pedido = race.pedidoBox = composto; avisar();
 }
-function avisar() { const B = race.box, cor = F1().PNEUS[B.pedido]; toast(`🔧 Box na próxima passagem: ${cor.nome} (${textoJogos(me())})`, 1600); Sound.pop(); }
+// (a previsão do GP entra no aviso quando há chance de chuva: é quando a escolha do pneu mais pesa)
+function avisar() { const B = race.box, cor = F1().PNEUS[B.pedido], pv = E.S.previsao, chuva = pv && pv.p >= 0.1 ? ` · previsão: chuva ${Math.round(pv.p * 100)}%` : ""; toast(`🔧 Box na próxima passagem: ${cor.nome} (${textoJogos(me())})${chuva}`, 2000); Sound.pop(); }
