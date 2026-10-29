@@ -91,7 +91,7 @@ function parametrosLento(spec) {
   const kin = limite(spec.kin, 0.5, 0.95);
   const C = Math.PI / (Math.PI - Math.asin(limite(kin * 1.04, 0.5, 0.97))); // a curva cai até ~kin·1,04 do pico quando o pneu escorrega todo
   const B = Math.tan(Math.PI / (2 * C)) / alfaP;
-  const frenagem = 1.75 * (spec.brake / 470);                  // o freio a zero de velocidade, em g
+  const frenagem = 1.925 * (spec.brake / 470);                 // o freio a zero de velocidade, em g (1,75 + 10%)
   p = { massa, W, L, a, b, h, Iz, ClA, CdA, crr, Ppico, eta, mu, muTr, C, B, alfaP, frenagem, gripU: spec.grip, kinU: limite(spec.kin, 0.3, 1),
     // o balanço aerodinâmico (parte da carga que vai para a frente) e o do freio (parte da força que vai para a frente)
     balAero: 0.34, balFreio: 0.6, balPneu: 1.03,

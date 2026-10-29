@@ -3,6 +3,7 @@
 //   R · onde a água junta (pontos baixos do relevo, beiradas e manchas) — as poças nascem daqui quando a pista encharca
 //   G · onde ela é mais seca: os dois sulcos do traçado ideal (as rodas) e a faixa larga em volta dele
 //   B · manchas para variar a rugosidade (borracha, óleo, remendo): a película não é lisa igual em todo canto
+//   A · 1 a céu aberto, 0 embaixo de um teto (o túnel de Mônaco, `tr.coberto`): ali não molha
 // O traçado ideal sai da curvatura da pista: por dentro no ápice e um pouco por fora na entrada e na saída (não precisa da IA).
 // O sombreador (MeshStandardMaterial + onBeforeCompile) lê `uAgua` (0 seco a 1 encharcado, o clima-visual.js escreve por quadro)
 // e a máscara; escurece o asfalto, baixa a rugosidade (película fina e poças espelhadas), torce a normal em marolas esticadas
@@ -61,8 +62,19 @@ export function mascaraAgua(tr) {
     }
   }
   const tex = new THREE.DataTexture(data, LAT, rows, THREE.RGBAFormat);
+  tr.aguaMascara = tex; marcarCoberto(tr);
   tex.wrapS = THREE.ClampToEdgeWrapping; tex.wrapT = THREE.RepeatWrapping; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false; tex.needsUpdate = true;
-  return (tr.aguaMascara = tex);
+  return tex;
+}
+// o canal A da máscara: zera onde a pista é coberta (chamado de novo pelo cenário que monta o teto depois do asfalto, monaco.js)
+export function marcarCoberto(tr) {
+  const tex = tr.aguaMascara; if (!tex || !tr.coberto) return;
+  const { n } = tr, data = tex.image.data, LAT = tex.image.width, rows = tex.image.height;
+  for (let r = 0; r < rows; r++) {
+    const i = Math.min(n - 1, Math.floor(((r + 0.5) * n) / rows)), a = tr.coberto(i) ? 0 : 255;
+    for (let c = 0; c < LAT; c++) data[(r * LAT + c) * 4 + 3] = a;
+  }
+  tex.needsUpdate = true;
 }
 
 // as coordenadas da máscara de uma fita de asfalto de -W/2 a W/2 (dois vértices por ponto): lado a lado de 0 a 1 e a volta de 0 a 1
@@ -93,8 +105,8 @@ if (uAgua > 0.004) {
     if (l2 > 1.0) { vec2 d = mm - c.xy; float t = clamp(dot(d, c.zw) / l2, 0.0, 1.0), q = length(d - c.zw * t); seco = max(seco, 0.55 * (1.0 - t) * (1.0 - t) * (1.0 - smoothstep(4.0, 11.0, q))); }
   }
   float rd = aR(ql * vec2(0.09, 0.03));
-  aguaW = clamp(uAgua - seco * 0.62 * min(1.0, uAgua * 3.0), 0.0, 1.0); // o traçado seca primeiro: com pouca água fica seco, encharcado ainda fica úmido
-  aguaPoca = smoothstep(0.48, 0.68, mk.r + (rd - 0.5) * 0.5) * smoothstep(0.35, 0.92, uAgua) * (1.0 - 0.9 * seco);
+  aguaW = clamp(uAgua - seco * 0.62 * min(1.0, uAgua * 3.0), 0.0, 1.0) * mk.a; // o traçado seca primeiro: com pouca água fica seco, encharcado ainda fica úmido (e embaixo do teto, seco)
+  aguaPoca = smoothstep(0.48, 0.68, mk.r + (rd - 0.5) * 0.5) * smoothstep(0.35, 0.92, uAgua) * (1.0 - 0.9 * seco) * mk.a;
   aguaRug = clamp(mk.b * 0.65 + aR(ql * vec2(0.5, 0.12)) * 0.35, 0.0, 1.0);
   diffuseColor.rgb *= (1.0 - 0.46 * aguaW - 0.16 * aguaPoca) * mix(vec3(1.0), vec3(0.93, 0.97, 1.05), aguaW);
 }
@@ -134,7 +146,7 @@ if (uAgua > 0.004) {
       if (lg > 6.0) {
         vec2 dg = cg / lg; float s = dot(cf, dg), q = dot(cf, vec2(-dg.y, dg.x)), sm = lg * hc / (hc + L.z);
         float ab = (sm - s) / (sm * 0.55 + 14.0), sig = 2.2 + 0.01 * max(s, 0.0);
-        float along = ab >= 0.0 ? exp(-ab * 1.8) : exp(-ab * ab * 40.0);
+        float along = ab >= 0.0 ? exp(-ab * 3.6) : exp(-ab * ab * 40.0); // (o traço desce metade do que descia)
         vec3 cor = (mod(float(i), 2.0) < 0.5) ? vec3(1.0, 0.05, 0.03) : vec3(0.85, 0.92, 1.0);
         luz += cor * (L.w * along * exp(-q * q / (2.0 * sig * sig)) / (1.0 + lg * 0.003));
       }

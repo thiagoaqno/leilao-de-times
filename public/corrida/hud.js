@@ -241,7 +241,7 @@ function hudF1(m, st, now) {
   if (pn) {
     const tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], resta = F.vidaRestante(pn), el = $("pPneu");
     set(el, "c", "pf-pneu" + (pn.desgaste > F.PENHASCO ? " fim" : "") + (F.frio(pn) ? " frio" : "")); set(el, "style", `--c:${tipo.cor};--r:${Math.round(resta * 100)}`);
-    set(el.children[0], "t", T.LETRA[pn.composto] || "M"); set(el.children[1], "t", Math.max(0, 100 - Math.round(resta * 100)) + "%");
+    set(el.children[0], "t", T.LETRA[pn.composto] || "M"); set(el.children[1], "t", Math.max(0, Math.round(resta * 100)) + "%"); // o que ainda resta: 100% novo, 0% no penhasco
     set($("pDanoT"), "t", `DANO ${dano}%`); set($("pDano"), "w", Math.min(100, dano) + "%"); set($("pDano"), "c", dano >= 66 ? "alto" : dano >= 33 ? "medio" : "");
   }
 }

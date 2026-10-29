@@ -197,7 +197,7 @@ function passo(c, ent, amb, tr, ev) {
     const vn = c.vx * q.nx * s + c.vy * q.ny * s, hit = Math.abs(vn);
     // a batida tira a velocidade que ia contra o muro (com um quiquezinho) e, do resto, perde mais quanto mais de frente bateu
     if (vn > 0) { c.vx -= q.nx * s * vn * 1.2; c.vy -= q.ny * s * vn * 1.2; }
-    const pancada = 1 - (1 - spec.wall) * 0.5 * Math.min(1, hit / 260) * (vn > 0 ? 1 : 0), raspa = Math.exp(-(1 - spec.wall) * 0.7 * dt);
+    const pancada = 1 - (1 - spec.wall) * 0.5 * ALIVIO * Math.min(1, hit / 260) * (vn > 0 ? 1 : 0), raspa = Math.exp(-(1 - spec.wall) * 0.7 * dt);
     c.vx *= pancada * raspa; c.vy *= pancada * raspa;
     const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca;
     if (vn > 0 && ev) { if (hit > 60) ev.push({ t: "bump", forca: hit }); ev.push({ t: "muro", forca: hit }); }
@@ -316,7 +316,8 @@ function passoBox(c, ent, amb, tr, p, ev) {
 // cinemático { id, x, y, a, vx, vy, r, L, W, massa } (x, y e a no fim do passo; vx, vy e r dão onde ele estava no começo).
 // A conta é uma VARREDURA: confere vários instantes do passo (do começo ao fim), então nem dois carros a 400 u/s se atravessam.
 const PUXAO = 1.8;        // o quanto um passo empurra para fora (unidades): 3,5 por quadro de 60 Hz, na conta dos 120 passos
-const E_BATIDA = 0.15, MU_BATIDA = 0.25, R_MAX_BATIDA = 2.5; // restituição, atrito do contato e a guinada máxima que uma batida dá (rad/s)
+const E_BATIDA = 0.15, MU_BATIDA = 0.25, R_MAX_BATIDA = 2; // restituição, atrito do contato e a guinada máxima que uma batida dá (rad/s)
+const ALIVIO = 0.8;       // as batidas punem 20% menos: o atrito do raspão, a guinada, a instabilidade e a perda no muro saem a 80% (o impulso que separa fica inteiro, senão os carros seguem se enterrando)
 const FORCA_EV = 5;       // abaixo disto (u/s de aproximação) a batida troca momento mas não conta como evento (encostar, roçar)
 const INST_FORCA = 200;   // a força (u/s de aproximação) que dá a instabilidade cheia
 function circulos(x, y, a, L, W) { const fx = Math.cos(a), fy = Math.sin(a), r = W * 0.45, d = Math.max(0, L / 2 - r); return [-d, 0, d].map((u) => [x + fx * u, y + fy * u, r]); }
@@ -367,15 +368,15 @@ function contatoCom(c, eu, o, dt, reg, semImpulso) {
     const j = -(1 + E_BATIDA) * vn / (1 / mA + 1 / mB + cAn * cAn / IA + cBn * cBn / IB);
     // atrito no contato: o carro de raspão é puxado e gira um pouco, até MU_BATIDA do impulso normal
     const tx = -ny, ty = nx, vt = rvx * tx + rvy * ty, cAt = rAx * ty - rAy * tx, cBt = rBx * ty - rBy * tx;
-    const jt = Math.max(-MU_BATIDA * j, Math.min(MU_BATIDA * j, -vt / (1 / mA + 1 / mB + cAt * cAt / IA + cBt * cBt / IB)));
+    const jt = ALIVIO * Math.max(-MU_BATIDA * j, Math.min(MU_BATIDA * j, -vt / (1 / mA + 1 / mB + cAt * cAt / IA + cBt * cBt / IB)));
     const Fx = j * nx + jt * tx, Fy = j * ny + jt * ty;
     c.vx += Fx / mA; c.vy += Fy / mA;
-    o.de = { dvx: -Fx / mB, dvy: -Fy / mB, dr: Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, -(rBx * Fy - rBy * Fx) / IB)) };
-    const dr = Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, (rAx * Fy - rAy * Fx) / IA));
+    o.de = { dvx: -Fx / mB, dvy: -Fy / mB, dr: Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, -ALIVIO * (rBx * Fy - rBy * Fx) / IB)) };
+    const dr = Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, ALIVIO * (rAx * Fy - rAy * Fx) / IA));
     // o carro com o pneu arcade (o macio) tem a guinada do volante; a da batida vai à parte e se apaga sozinha
     if (c.amb && c.amb.pn && c.amb.pn.arcade) c.rIns = (c.rIns || 0) + dr; else c.r += dr;
     // a instabilidade: mais forte e mais longa quanto maior a força
-    const nivel = Math.min(1, forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
+    const nivel = ALIVIO * Math.min(1, forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
     if (ins >= (c.inst || 0)) { c.inst = ins; c.instK = ins / dur; }
   }
   // separa os carros (um pouco por passo, de graça nos que já se afastam): a posição vai ao instante do contato e anda o resto do passo
@@ -397,7 +398,7 @@ function aplicarContato(c, reg) {
 function impulsoExterno(c, d, forca) {
   c.vx += d.dvx; c.vy += d.dvy;
   if (c.amb && c.amb.pn && c.amb.pn.arcade) c.rIns = (c.rIns || 0) + d.dr; else c.r += d.dr;
-  const nivel = Math.min(1, forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
+  const nivel = ALIVIO * Math.min(1, forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
   if (ins >= (c.inst || 0)) { c.inst = ins; c.instK = ins / dur; }
   const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca;
 }

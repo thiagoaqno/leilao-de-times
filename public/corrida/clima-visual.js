@@ -132,7 +132,7 @@ function passoRespingos(dt) {
 // traseiras e do difusor, mais densas e altas com a velocidade e com a água na pista. LOD: os 3 carros mais perto da câmera soltam
 // o borrifo inteiro; os outros até 5, com menos, e os longe quase nada. Os carros perto também mandam a posição para o asfalto
 // (rastro mais seco e a luz refletida: agua-pista.js).
-const N_SPRAY = 640, K_CARROS = 8, K_PERTO = 3;
+const N_SPRAY = 1100, K_CARROS = 8, K_PERTO = 3;
 const sPos = new Float32Array(N_SPRAY * 3), sTam = new Float32Array(N_SPRAY), sAlfa = new Float32Array(N_SPRAY), sRot = new Float32Array(N_SPRAY);
 const sVx = new Float32Array(N_SPRAY), sVy = new Float32Array(N_SPRAY), sVz = new Float32Array(N_SPRAY), sVida = new Float32Array(N_SPRAY), sVida0 = new Float32Array(N_SPRAY), sTam0 = new Float32Array(N_SPRAY), sA0 = new Float32Array(N_SPRAY), sGiro = new Float32Array(N_SPRAY);
 const sGeo = new THREE.BufferGeometry();
@@ -171,17 +171,19 @@ function candidato(car, meu, cp) {
   while (j > 0 && emissorD[j - 1] > d) { emissor[j] = emissor[j - 1]; emissorD[j] = emissorD[j - 1]; emissorMeu[j] = emissorMeu[j - 1]; j--; }
   emissor[j] = car; emissorD[j] = d; emissorMeu[j] = meu;
 }
-// f: de 0 a 1, a velocidade com a água na pista (mais alto, mais longo e mais denso)
-function nascer(car, a, v, f) {
+// f: de 0 a 1, a velocidade com a água na pista (mais alto, mais longo e mais denso). `frente`: das rodas da frente, jogado para
+// fora e para cima (é o que se vê da câmera interna)
+function nascer(car, a, v, f, frente) {
   const i = sProx; sProx = (sProx + 1) % N_SPRAY; if (sVida[i] <= 0) sVivos++;
-  const fx = Math.cos(a), fy = Math.sin(a), centro = Math.random() < 0.28, lado = Math.random() < 0.5 ? -1 : 1; // 28% sobe do difusor, no meio; o resto atrás de cada roda de trás
-  const atras = centro ? 24 + Math.random() * 8 : 17 + Math.random() * 9, la = centro ? (Math.random() - 0.5) * 7 : lado * (7 + Math.random() * 4);
+  const fx = Math.cos(a), fy = Math.sin(a), centro = !frente && Math.random() < 0.28, lado = Math.random() < 0.5 ? -1 : 1; // 28% sobe do difusor, no meio; o resto atrás de cada roda de trás
+  const atras = frente ? -(10 + Math.random() * 5) : centro ? 24 + Math.random() * 8 : 17 + Math.random() * 9, la = frente ? lado * (11 + Math.random() * 3) : centro ? (Math.random() - 0.5) * 7 : lado * (7 + Math.random() * 4);
   sPos[i * 3] = car.x - fx * atras - fy * la; sPos[i * 3 + 1] = (car.z || 0) + (centro ? 5 : 2.5) + Math.random() * 3; sPos[i * 3 + 2] = car.y - fy * atras + fx * la;
   const vel = v * (0.2 + Math.random() * 0.14); // sai com uma parte da velocidade do carro e o ar freia: o carro corre e a nuvem fica
-  sVx[i] = fx * vel + (Math.random() - 0.5) * 26 + -fy * lado * (centro ? 4 : 16); sVz[i] = fy * vel + (Math.random() - 0.5) * 26 + fx * lado * (centro ? 4 : 16);
-  sVy[i] = (centro ? 34 : 20) + (18 + 34 * f) * Math.random();
-  sVida0[i] = sVida[i] = 1 + Math.random() * 0.8 + 0.5 * f; sTam0[i] = (9 + Math.random() * 8) * (0.75 + 0.55 * f) * (centro ? 1.25 : 1); sTam[i] = sTam0[i];
-  sA0[i] = (0.13 + Math.random() * 0.11) * (0.55 + 0.45 * f); sAlfa[i] = 0; sRot[i] = Math.random() * 6.2832; sGiro[i] = (Math.random() - 0.5) * 1.2;
+  const sai = frente ? 30 : centro ? 4 : 16; // (para o lado)
+  sVx[i] = fx * vel + (Math.random() - 0.5) * 26 + -fy * lado * sai; sVz[i] = fy * vel + (Math.random() - 0.5) * 26 + fx * lado * sai;
+  sVy[i] = (centro ? 34 : frente ? 26 : 20) + (18 + 34 * f) * Math.random();
+  sVida0[i] = sVida[i] = (frente ? 0.6 : 1.3) + Math.random() * 0.9 + 0.6 * f; sTam0[i] = (11 + Math.random() * 10) * (0.8 + 0.6 * f) * (centro ? 1.3 : frente ? 0.7 : 1); sTam[i] = sTam0[i];
+  sA0[i] = (0.17 + Math.random() * 0.13) * (0.55 + 0.45 * f); sAlfa[i] = 0; sRot[i] = Math.random() * 6.2832; sGiro[i] = (Math.random() - 0.5) * 1.2;
 }
 function passoSpray(dt, c, race, cam) {
   const agua = suave(0.2, 0.8, clima.agua), cp = cam.position;
@@ -193,14 +195,15 @@ function passoSpray(dt, c, race, cam) {
     for (let k = 0; k < nEmissores; k++) {
       const car = emissor[k], meu = emissorMeu[k], v = Math.abs(car.v || 0), f = suave(70, 290, v) * agua, lod = k < K_PERTO ? 1 : emissorD[k] > 900 * 900 ? 0.25 : 0.45;
       const fx = Math.cos(car.a || 0), fy = Math.sin(car.a || 0), rastro = v > 20 ? lim(v * 0.5, 0, 150) : 0;
+      const kt = car.kart, pisca = kt && !kt.lanterna?.visible ? 0 : kt && !reduz.matches && kt.tempoGP % 0.8 >= 0.2 ? 0.25 : 2.2; // o reflexo da lanterna pisca junto com ela (carros.js)
       for (let q = 0; q < asfU.length; q++) { // o asfalto: o rastro mais seco por trás do carro e a luz traseira e o farol refletidos (o meu carro não reflete: a câmera está nele)
         const u = asfU[q]; if (k >= u.uCarros.value.length) continue; // (o asfalto guarda só N_CARROS_AGUA carros: o borrifo tem mais)
         u.uCarros.value[k].set(car.x, car.y, -fx * rastro, -fy * rastro);
-        u.uLuzes.value[k * 2].set(car.x - fx * 24, car.y - fy * 24, 9, meu ? 0 : 2.2); u.uLuzes.value[k * 2 + 1].set(car.x + fx * 26, car.y + fy * 26, 5, meu ? 0 : 0.55);
+        u.uLuzes.value[k * 2].set(car.x - fx * 24, car.y - fy * 24, 9, meu ? 0 : pisca); u.uLuzes.value[k * 2 + 1].set(car.x + fx * 26, car.y + fy * 26, 5, meu ? 0 : 0.55);
       }
       if (f < 0.02) continue;
-      let ac = (meu ? acMeu : car.__borrifo || 0) + dt * 70 * f * lod * (meu ? 0.7 : 1); // (o acumulador do meu carro fica aqui: `race.vis` pode ser outro objeto a cada quadro)
-      for (let m = 0; ac >= 1; ac -= 1) { if (m++ < 8) nascer(car, car.a, v, f); }
+      let ac = (meu ? acMeu : car.__borrifo || 0) + dt * 110 * f * lod * (meu ? 0.75 : 1); // (o acumulador do meu carro fica aqui: `race.vis` pode ser outro objeto a cada quadro)
+      for (let m = 0; ac >= 1; ac -= 1) { if (m++ < 12) nascer(car, car.a, v, f, (meu || k < K_PERTO) && Math.random() < 0.22); }
       if (meu) acMeu = ac; else car.__borrifo = ac;
     }
     for (let k = 0; k < nEmissores; k++) emissor[k] = null;
@@ -419,8 +422,9 @@ export function passoClima(dt, race, cam, mode, src, c) {
     ativoAntes = I > 0;
   }
 
-  // as gotas caindo
-  const dens = I < 0.01 ? 0 : (0.15 + 0.85 * I * I) * (reduz.matches ? 0.4 : mode === "cima" ? 0.6 : 1), n = Math.round(MAX_GOTAS * dens);
+  // as gotas caindo (dentro do túnel de Mônaco, `tr.coberto`, não chove: nem gota nem pingo na tela)
+  const coberto = mode !== "cima" && !!race.tr.coberto?.(race.idx);
+  const dens = I < 0.01 || coberto ? 0 : (0.15 + 0.85 * I * I) * (reduz.matches ? 0.4 : mode === "cima" ? 0.6 : 1), n = Math.round(MAX_GOTAS * dens);
   if (n > 0) {
     const cima = mode === "cima", S = cima ? 1100 : 760, H = cima ? 700 : 420, cx = cima ? src.x : cam.position.x, cz = cima ? src.y : cam.position.z, fixo = src.z || 0;
     atualizarChao(race.tr, cx, cz, fixo);
@@ -446,7 +450,7 @@ export function passoClima(dt, race, cam, mode, src, c) {
   if (aguaSuave > 0 && scene.fog) for (let q = 0; q < asfU.length; q++) asfU[q].uCeu.value.copy(scene.fog.color).multiplyScalar(0.9);
 
   passoSpray(dt, c, race, cam);
-  passoTela(dt, mode, sK);
+  passoTela(dt, coberto ? "longe" : mode, sK);
   passoHud();
 
   // o som: chuva pela intensidade, pneus no molhado pela velocidade do meu carro (mais baixo no túnel)

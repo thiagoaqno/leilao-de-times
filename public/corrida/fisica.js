@@ -226,7 +226,7 @@ function montarAmbiente(R) {
   AMB.finish = m.finish; AMB.dnf = !!m.dnf; AMB.quali = S.phase === "quali"; AMB.fantasma = m.finish != null; AMB.f1 = true;
   AMB.agua = atualizarClima().agua; // a água na pista agora (o servidor usa a mesma conta, pelo mesmo relógio)
   // a batida só vale para quem corre (nada na classificação, sob safety car, no box, depois da bandeirada ou fora da corrida)
-  AMB.batida = S.phase === "race" && !AMB.safety && !AMB.segurar && m.finish == null && !m.dnf && !(R.car.box && R.car.box.fase);
+  AMB.batida = S.phase === "race" && !AMB.safety && !AMB.segurar && m.finish == null && !m.dnf && !(R.car.box && R.car.box.fase) && !m.fantBox;
   { const [L, W] = window.Sim.dimensoes(m.car); EU.L = L; EU.W = W; EU.massa = window.Sim.massaDe(AMB.spec); }
   const outros = AMB.outros; outros.length = 0;
   for (const [id, gh] of R.ghosts) { const p = P(id); outros.push({ x: gh.x, y: gh.y, z: gh.z, a: gh.a, dnf: !!(p && p.dnf), fant: !!(p && p.finish != null) }); }
@@ -237,7 +237,7 @@ const MODELOS = [], EU = { L: 44, W: 26, massa: 800 };
 function outrosDoPasso(R, k) {
   const dt = (k - (R.ghTick ?? k)) * PASSO; let n = 0;
   for (const [id, gh] of R.ghosts) {
-    const p = P(id); if (!p || p.dnf || p.finish != null || !Number.isFinite(gh.vx) || p.box) continue;
+    const p = P(id); if (!p || p.dnf || p.finish != null || !Number.isFinite(gh.vx) || p.fantBox) continue; // (fantBox: no box ou nos 2 s antes e depois dele, fantasma)
     const m = MODELOS[n] || (MODELOS[n] = {}); n++;
     m.id = id; m.x = gh.x + gh.vx * dt; m.y = gh.y + gh.vy * dt; m.z = gh.z; m.a = gh.a + (gh.r || 0) * dt; m.vx = gh.vx; m.vy = gh.vy; m.r = gh.r || 0;
     const [L, W] = window.Sim.dimensoes(p.car); m.L = L; m.W = W; m.massa = window.Sim.massaDe(carOf(p)); m.dnf = false; m.fant = false;
