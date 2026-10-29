@@ -8,12 +8,15 @@
 //  - o carro só anda com as entradas que o piloto mandou, na ordem: se a internet engasga, o carro espera as entradas e,
 //    quando elas chegam, anda tudo de uma vez (nada de adivinhar entrada, que depois teria que ser desfeita);
 //  - quem manda passos mais rápido que o relógio (mais de FOLGA passos adiantados) espera: a velocidade é a do servidor;
-//  - o tempo dos eventos (checkpoint, batida, box) é o do passo em que aconteceram, não o da chegada do pacote.
+//  - o tempo dos eventos (checkpoint, batida, box) é o do passo em que aconteceram, não o da chegada do pacote;
+//  - a batida entre carros acontece em CADA passo (nada de conferir só no fim do pacote), varrendo o caminho do passo, com os outros
+//    carros na hora daquele passo (corrida-contato.js), e troca momento de verdade (sim.js: contatoCom).
 const Sim = require("./public/corrida/sim.js");
 const D = require("./public/corrida/dinamica.js");
 const T = require("./public/corrida/pistas.js");
 const Equipes = require("./public/corrida/f1-equipes.js");
 const F1 = require("./public/corrida/f1-regras.js"); // o clima: a água na pista de cada hora
+const Contato = require("./corrida-contato.js"); // as batidas entre carros, a cada passo (histórico dos carros e impulsos)
 
 const PASSO_MS = D.PASSO * 1000;
 const QUEIMA_FOLGA_MS = 150; // folga do relógio: acelerar nos últimos 150 ms antes das luzes apagarem não conta como queimar a largada
@@ -102,6 +105,8 @@ function andar(room, agora, h) {
       if (room.luzes && ent.gas && t < room.startAt - QUEIMA_FOLGA_MS && t >= room.startAt - (4 + room.luzes.espera) * 1000) p.gasNasLuzes = (p.gasNasLuzes || 0) + PASSO_MS; else if (!ent.gas) p.gasNasLuzes = 0; // (a direção de prova pune quem acelera com as luzes acesas: queimou a largada)
       amb.fantasma = p.finish != null; amb.finish = p.finish; amb.dnf = !!p.dnf;
       Sim.passo(c, ent, amb, S.tr, ev);
+      // a batida deste passo (sob safety car o pelotão se comprime: sem batida; na classificação cada um faz a sua volta)
+      Contato.depoisDoPasso(room, p, c, t + PASSO_MS, ev, corrida && !amb.safety && !amb.segurar && p.finish == null && !p.box && !p.dnf);
       temEntrada = true;
       if (ev.length) { for (const e of ev) mudou = tratar(room, p, S, e, t, h) || mudou; ev.length = 0; }
     }
@@ -109,15 +114,10 @@ function andar(room, agora, h) {
     // o relógio dos passos: a âncora só desce quando o piloto está em dia (as rajadas atrasadas não a empurram)
     S.ancora = Math.min(S.ancora + (agora - S.ultimoAgora) * 0.0005, agora - (c.tick - 1) * PASSO_MS); S.ultimoAgora = agora;
     const quando = Math.min(agora, S.ancora + c.tick * PASSO_MS);
-    // Sob safety car o pelotão se comprime; não empurre o carro humano para fora da pista.
-    if (corrida && !amb.safety && p.finish == null && !p.box && !p.dnf) {
-      Sim.baterNosOutros(c, p.car, outros, ev);
-      for (const e of ev) mudou = tratar(room, p, S, e, quando, h) || mudou; ev.length = 0;
-    }
-    const pos = { x: c.x, y: c.y, z: c.z, a: c.a, v: c.v, prog: c.prog, at: agora };
+    const pos = { x: c.x, y: c.y, z: c.z, a: c.a, v: c.v, vx: c.vx, vy: c.vy, r: c.r, prog: c.prog, at: agora, q: quando }; // (q: a hora do servidor a que esta pose pertence)
     S.pos = pos; S.mudou = true;
     if (agora - S.ultimoRegistro >= REGISTRO_MS) { S.ultimoRegistro = agora; mudou = h.registrar(room, p, pos, quando) || mudou; }
-    if (agora - S.ultimoAck >= ACK_MS) { S.ultimoAck = agora; S.mudou = false; h.mandarAck(p, { s: S.serie, st: Sim.serializar(c), ev: S.avisos.length ? S.avisos.splice(0) : undefined }); }
+    if (agora - S.ultimoAck >= ACK_MS) { S.ultimoAck = agora; S.mudou = false; h.mandarAck(p, { s: S.serie, st: Sim.serializar(c), q: Math.round(quando), ev: S.avisos.length ? S.avisos.splice(0) : undefined }); }
   }
   if (mudou && h.mudou) h.mudou();
 }
@@ -128,7 +128,7 @@ function tratar(room, p, S, e, t, h) {
     case "muro": return !!h.aoBater(room, p, e.forca, "muro", "muro", t);
     case "carro": {
       const mudou = !!h.aoBater(room, p, e.forca, "carro", "carro:" + e.id, t);
-      if (e.forca > 40) (S.avisos || (S.avisos = [])).push({ t: "carro", forca: Math.round(e.forca) }); // o navegador toca a batida
+      (S.avisos || (S.avisos = [])).push({ t: "carro", forca: Math.round(e.forca), id: e.id, k: e.k }); // o navegador toca a batida e confere com a que previu (k: o passo)
       return mudou;
     }
     case "box":
@@ -137,9 +137,11 @@ function tratar(room, p, S, e, t, h) {
     default: return false;
   }
 }
-// a posição de todos os carros, para desenhar os outros (20 vezes por segundo): [id, x, y, z, a, v, prog]
+// a posição de todos os carros, para desenhar os outros (20 vezes por segundo):
+// [id, x, y, z, a, v, prog, idade, vx, vy, r]. `idade` (ms) é há quanto tempo, no relógio do servidor, o carro estava assim: o navegador
+// põe a amostra na hora certa e leva o carro dali até o presente pela velocidade (vx, vy) e pela guinada (r).
 const R = (v, k) => Math.round(v * k) / k;
-function snap(room) {
+function snap(room, agora = Date.now()) {
   const c = [];
   for (const id of room.order) {
     const p = room.players[id]; if (!p || p.dnf) continue;
@@ -149,7 +151,9 @@ function snap(room) {
       q = { x: v.x, y: v.y, z: tr.pts[v.idx].h, a: v.a, v: 0, prog: v.idx - tr.n };
     }
     if (!q) continue;
-    c.push([id, R(q.x, 100), R(q.y, 100), R(q.z || 0, 10), R(q.a, 1000), R(q.v || 0, 10), R(q.prog ?? p.pos?.prog ?? 0, 10)]);
+    const idade = Math.max(0, Math.min(600, Math.round(agora - (q.q ?? q.at ?? agora))));
+    const vx = q.vx ?? Math.cos(q.a) * (q.v || 0), vy = q.vy ?? Math.sin(q.a) * (q.v || 0);
+    c.push([id, R(q.x, 100), R(q.y, 100), R(q.z || 0, 10), R(q.a, 1000), R(q.v || 0, 10), R(q.prog ?? p.pos?.prog ?? 0, 10), idade, R(vx, 10), R(vy, 10), R(q.r || 0, 100)]);
   }
   return c;
 }

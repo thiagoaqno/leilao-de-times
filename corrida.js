@@ -136,7 +136,7 @@ module.exports = function attachCorrida(io) {
       if (room.phase !== "race" && room.phase !== "quali") return;
       Humanos.andar(room, Date.now(), h);
       if (++tique % 5) return;
-      nsp.to(room.code).volatile.emit("snap", { t: Date.now(), c: Humanos.snap(room) });
+      const agora = Date.now(); nsp.to(room.code).volatile.emit("snap", { t: agora, c: Humanos.snap(room, agora) });
     }, 10);
   }
 
@@ -149,6 +149,7 @@ module.exports = function attachCorrida(io) {
     Quali.cancelar(room);
     room.phase = "race";
     for (const id of room.order) delete room.players[id].sim; // cada largada começa com o carro no grid
+    require("./corrida-contato.js").limpar(room);
     ligarHumanos(room);
     if (!daClassificacao) preparar(room);
     atribuirCarros(room);
@@ -187,7 +188,7 @@ module.exports = function attachCorrida(io) {
       room.botTimer = setInterval(() => {
         Robos.passo(room, 0.05, (p, s) => { if (onSector(room, p, s)) broadcast(room); }, (e, d) => {
           if (e === "box") { concluirParada(room, room.players[d.id], d); return broadcast(room); } // um robô acabou a parada
-          if (e === "batida") { if (aplicarBatida(room, room.players[d.id], d.forca, d.tipo)) broadcast(room); return; } // um robô bateu (no muro ou em outro carro)
+          if (e === "batida") { if (aplicarBatida(room, room.players[d.id], d.forca, d.tipo, Date.now(), d.chave)) broadcast(room); return; } // um robô bateu (no muro ou em outro carro)
           emit(e, d); if (e === "item:box" || e === "item:use") broadcast(room);
         });
         if (++tique % 2) return;

@@ -123,9 +123,13 @@ function volanteMaximo(p, vm, kGrip = 1, kCarga = 1) {
 //   pn: F1.aderencia(pneu) ou null, dano: F1.efeitoDoDano(dano) ou null, drs (aberto), ers (ativo), vacuo ({final,acel,aderencia} ou null),
 //   curva (para o ar sujo), limiteV (teto de velocidade em u/s por bandeira), extra (multiplicadores soltos) }
 const sub = { fx: 0, fy: 0, mz: 0 };
+const INST_GRIP = 0.35, INST_TRASEIRA = 0.3; // com a instabilidade cheia: -35% de aderência lateral nos dois eixos e mais -30% atrás
 function passo(c, ent, amb, p, dt = PASSO) {
   const ex = amb.extra || EXTRA_PADRAO, pn = amb.pn, dn = amb.dano;
-  const kGrip = (pn ? pn.grip : 1) * (dn ? dn.grip : 1) * (ex.grip || 1) * (amb.chao === false ? 0.5 : 1) * (amb.vacuo ? amb.vacuo.aderencia : 1);
+  // a instabilidade da batida (`c.inst`, 0..1, cai sozinha em 0,2 a 2 s conforme a força): os pneus seguram menos de lado, mais o eixo de trás
+  const ins = c.inst > 0 ? c.inst : 0;
+  if (ins > 0) c.inst = Math.max(0, ins - (c.instK || 1) * dt);
+  const kGrip = (pn ? pn.grip : 1) * (dn ? dn.grip : 1) * (ex.grip || 1) * (amb.chao === false ? 0.5 : 1) * (amb.vacuo ? amb.vacuo.aderencia : 1) * (1 - INST_GRIP * ins);
   const kFreio = (pn ? pn.freio : 1) * (dn ? dn.freio : 1) * (ex.freio || 1);
   const kTracao = (pn ? pn.tracao : 1) * (dn ? dn.tracao : 1) * (ex.tracao || 1);
   const fin = (pn ? pn.final : 1) * (dn ? dn.final : 1);
@@ -181,7 +185,7 @@ function passo(c, ent, amb, p, dt = PASSO) {
     const Nf = Math.max(0.06 * p.W, p.W * (p.b / p.L) - dN + NdF);
     const Nr = Math.max(0.06 * p.W, p.W * (p.a / p.L) + dN + NdR);
     // o volante: o limite acompanha o que o pneu segura na velocidade (um pouco além, para o teclado), e a assistência de contraesterço
-    const muF = p.mu * kGrip, muR = p.mu * kGrip * p.balPneu;
+    const muF = p.mu * kGrip, muR = p.mu * kGrip * p.balPneu * (1 - INST_TRASEIRA * ins);
     let delta = 0, alF = 0, alR = 0, FyF = 0, FyR = 0;
     if (!arc) { // (no arcade a lateral é o fim do passo; aqui só o que é para a frente)
       const umin = Math.max(Math.abs(u), 5);
@@ -287,11 +291,13 @@ function lateralArcade(c, p, kGrip, ex, pn, amb) {
   // o pneu relativo ao médio novo (o `grip` do carro já é o do médio) e o resto (dano, asfalto, ar sujo) como no passo normal
   const k = kGrip / (pn.rel ? pn.grip / pn.rel : 1);
   const sat = c.slip > KIN_SATURA ? limite(p.kinU * (pn.kin || 1), 0.3, 1) : 1;
-  const gripU = p.gripU * k * sat * (1 - 0.2 * c.travada) * (1 - PERDA_PATINANDO * c.patina);
+  const gripU = p.gripU * k * sat * (1 - 0.2 * c.travada) * (1 - PERDA_PATINANDO * c.patina) * (1 - 0.5 * (c.inst > 0 ? c.inst : 0));
   c.uso = gripU > 1 ? limite(Math.abs(c.v * w) / gripU, 0, 1) : 0;
-  c.r = w;
+  // a guinada que a batida deu (`rIns`) segue além do volante e se apaga sozinha
+  const ri = c.rIns || 0; c.rIns = Math.abs(ri) < 0.01 ? 0 : ri * Math.exp(-dt * (1.2 + 3 * (1 - (c.inst > 0 ? c.inst : 0))));
+  c.r = w + ri;
   const ca0 = Math.cos(c.a), sa0 = Math.sin(c.a), vx = c.v * ca0 - c.vl * sa0, vy = c.v * sa0 + c.vl * ca0;
-  c.a += w * dt; // gira o bico: a velocidade no mundo não muda e passa a ser medida no eixo novo
+  c.a += c.r * dt; // gira o bico: a velocidade no mundo não muda e passa a ser medida no eixo novo
   const cn = Math.cos(c.a), sn = Math.sin(c.a);
   c.v = vx * cn + vy * sn; c.vl = -vx * sn + vy * cn;
   const g = gripU * dt; // os pneus puxam o carro para o novo rumo até o limite de aderência; o resto escorrega e freia
@@ -389,7 +395,7 @@ function perfilIdeal(pts, spec, passo = 6, margem = 0.97, ext, margemFreio = 0.8
 }
 // o estado inicial de um carro parado
 function novoCarro(x = 0, y = 0, a = 0) {
-  return { x, y, a, v: 0, vl: 0, r: 0, vx: 0, vy: 0, steer: 0, gasP: 0, brkP: 0, marcha: 1, trocaT: 0, rpm: 0.3, axL: 0, travada: 0, patina: 0, slip: 0, uso: 0 };
+  return { x, y, a, v: 0, vl: 0, r: 0, vx: 0, vy: 0, steer: 0, gasP: 0, brkP: 0, marcha: 1, trocaT: 0, rpm: 0.3, axL: 0, travada: 0, patina: 0, slip: 0, uso: 0, inst: 0, instK: 0, rIns: 0 };
 }
 
 const api = { ESC, G, G_U, RHO, PASSO, NUM, RPM_MAX, FRACAO, CORTE, SOBE, DESCE, TROCA_T, EXTRA_PADRAO, parametros, potencia, vCorte, rotacao, rpmDe, marchaAuto, marchaIdeal, pneuLateral, guinadaDoVolante, volanteParaGuinada,

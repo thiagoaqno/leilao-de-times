@@ -9,6 +9,7 @@ const F1 = require("./public/corrida/f1-regras.js"); // os pneus das regras de F
 const F1Equipes = require("./public/corrida/f1-equipes.js"); // a montagem do carro de cada equipe
 const D = require("./public/corrida/dinamica.js");
 const Sim = require("./public/corrida/sim.js");
+const Contato = require("./corrida-contato.js"); // a batida entre carros a cada passo, igual à dos humanos (histórico e impulsos)
 const Pilotos = require("./public/corrida/f1-pilotos-2026.js"); // as equipes e os pilotos reais de 2026 (os robôs das regras de F1)
 const { SKINS } = require("./public/pelada/campo.js");
 
@@ -615,7 +616,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     voltas: room.config.voltas, laps: p.laps || 0, paradas: (p.paradas || []).length,
     semente: room.semente, id: p.id, grid: p.grid, f1: true, agua: cl.agua, outros };
   const ent = ia.ent || (ia.ent = {});
-  const ev = [];
+  const ev = [], evC = [];
   if (encalhou(room, ia, car, now, dt, tf.atras < 140)) { // preso (parado, rodado, de lado no muro ou sem andar): o "↺ Pista" do robô, do lado livre
     Sim.voltarParaPista(car, tr, ev);
     const q = tr.pts[car.idx], lado = tf.bloqPos && !tf.bloqNeg ? -1 : tf.bloqNeg && !tf.bloqPos ? 1 : 0, lat = lado * Math.min(maxLat, 40);
@@ -633,6 +634,10 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     ent.ers = !!ia.ult;
     ent.pedido = proxima;
     Sim.passo(car, ent, amb, tr, ev);
+    // a batida deste passo: a mesma dos humanos (corrida-contato.js), com os outros carros na hora do passo; o robô também troca momento
+    evC.length = 0;
+    Contato.depoisDoPasso(room, p, car, now - dt * 1000 + (s + 1) * Sim.PASSO * 1000, evC, !amb.safety && p.finish == null && !p.dnf && !car.box?.fase);
+    for (const e of evC) if (e.forca >= F1.BATIDA_MIN) emit("batida", { id: p.id, forca: e.forca, tipo: "carro", chave: "carro:" + e.id });
     for (const e of ev) {
       if (e.t === "setor") setor(p, e.s);
       else if (e.t === "box" && e.fase === "sai") emit("box", { id: p.id, composto: e.composto, tempo: e.tempo, volta: e.volta });
@@ -643,7 +648,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   }
   ia.s = car.idx; ia.v = car.v; ia.lat = Sim.quadro(tr, car.x, car.y, car.idx).lat;
   ia.pneu = car.pneu; ia.ers = car.ers; ia.box = car.box?.fase ? car.box : null; p.box = ia.box;
-  p.pos = { x: car.x, y: car.y, z: car.z, a: car.a, v: car.v, prog: car.prog, at: now };
+  p.pos = { x: car.x, y: car.y, z: car.z, a: car.a, v: car.v, vx: car.vx, vy: car.vy, r: car.r, prog: car.prog, at: now };
 }
 // um passo (dt em segundos). setor(p, s) é o mesmo onSector dos humanos; emit manda eventos para a sala
 function passo(room, dt, setor, emit) {
@@ -753,7 +758,7 @@ function passo(room, dt, setor, emit) {
       else if (p.rolling <= now) { if (!ia.usaEm) ia.usaEm = now + rnd(1500, 6000); if (now > ia.usaEm) { ia.usaEm = 0; Itens.use(room, p, false, emit); } }
     }
   }
-  if (f1 && corrida) contatos(room, emit); // as batidas entre os carros (o servidor confere a força e aplica a punição e o dano)
+  // (as batidas entre os carros: cada carro, humano ou robô, bate a cada passo da física: corrida-contato.js)
 }
 function possivel(pista, spec) { return perfilF1(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0), 1); }
 possivel.topo = (pista, spec) => topoDe(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0));

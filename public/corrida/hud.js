@@ -11,7 +11,10 @@ import { clima } from "./clima.js";
 export function standings() {
   if (!E.S || !race) return [];
   const rows = E.S.players.map((p) => {
-    const gh = race.ghosts.get(p.id), prog = E.ME && p.id === E.ME.id ? myProg() : gh ? gh.prog : -1e9;
+    const gh = race.ghosts.get(p.id);
+    // regras de F1: a ordem é a do servidor (o progresso de todos, medido por ele no mesmo instante), igual em todas as telas;
+    // o meu progresso previsto andaria à frente e cada um se veria na frente do outro. Nas outras salas, o meu é o local.
+    const prog = E.ME && p.id === E.ME.id ? (race.net && race.progServidor != null ? race.progServidor : myProg()) : gh ? gh.prog : -1e9;
     return { id: p.id, p, prog, done: p.finish != null ? p.finish + (p.acrescimo || 0) : null }; // regras de F1: os acréscimos (um composto só, limitador) contam
   });
   return rows.sort((a, b) => (a.done != null || b.done != null ? (a.done ?? 1e9) - (b.done ?? 1e9) : b.prog - a.prog));

@@ -147,6 +147,7 @@ const SAIDA = {}, ENT_AUTO = {};
 function passo(c, ent, amb, tr, ev) {
   const dt = PASSO, spec = amb.spec, p = D.parametros(spec), n = tr.n;
   c.tick++;
+  c.x0 = c.x; c.y0 = c.y; c.a0 = c.a; // onde o carro estava no começo do passo (a varredura da batida)
   if (amb.dnf) { c.v = c.vl = c.r = c.vx = c.vy = 0; c.gasP = c.brkP = 0; return; }
   if (amb.segurar) {
     c.v = c.vl = c.r = c.vx = c.vy = 0; c.gasP = c.brkP = 0; c.slip = 0; c.travada = 0; c.patina = 0;
@@ -306,38 +307,125 @@ function passoBox(c, ent, amb, tr, p, ev) {
 }
 
 // ---------- batida entre carros ----------
-// Cada carro vira 3 círculos ao longo do corpo (L e W em unidades da pista). O contato separa as carrocerias suavemente, sem
-// alterar a velocidade de nenhum piloto: encostar não vira freio nem impulso de ultrapassagem. Mexe só no `eu`.
-// eu: { x, y, a, vx, vy, L, W }; outro: { x, y, a, v, L, W }. Devolve a força (a velocidade de aproximação; 0 = nada).
-const PUXAO = 1.8; // o quanto um passo empurra para fora (unidades): 3,5 por quadro de 60 Hz, na conta dos 120 passos
+// Cada carro vira 3 círculos ao longo do corpo (L e W em unidades da pista). O contato TROCA MOMENTO de verdade: o impulso sai da
+// massa de cada carro e da velocidade relativa no ponto do contato (com restituição baixa, E_BATIDA), então quem é atingido por
+// trás ganha velocidade para a frente e quem bate perde; a batida de lado empurra para o lado e, como o ponto do contato fica
+// longe do centro, gira o carro (guinada). Um atrito tangencial (MU_BATIDA) leva o carro de raspão a girar um pouco também. Depois
+// da batida o carro fica instável (`c.inst`, ver dinamica.js: menos aderência lateral por 0,2 a 2 s conforme a força).
+// É uma função só, no navegador (previsão), no servidor (autoridade) e nos robôs. Mexe só no carro `c`; o outro é um modelo
+// cinemático { id, x, y, a, vx, vy, r, L, W, massa } (x, y e a no fim do passo; vx, vy e r dão onde ele estava no começo).
+// A conta é uma VARREDURA: confere vários instantes do passo (do começo ao fim), então nem dois carros a 400 u/s se atravessam.
+const PUXAO = 1.8;        // o quanto um passo empurra para fora (unidades): 3,5 por quadro de 60 Hz, na conta dos 120 passos
+const E_BATIDA = 0.15, MU_BATIDA = 0.25, R_MAX_BATIDA = 2.5; // restituição, atrito do contato e a guinada máxima que uma batida dá (rad/s)
+const FORCA_EV = 5;       // abaixo disto (u/s de aproximação) a batida troca momento mas não conta como evento (encostar, roçar)
+const INST_FORCA = 200;   // a força (u/s de aproximação) que dá a instabilidade cheia
 function circulos(x, y, a, L, W) { const fx = Math.cos(a), fy = Math.sin(a), r = W * 0.45, d = Math.max(0, L / 2 - r); return [-d, 0, d].map((u) => [x + fx * u, y + fy * u, r]); }
-function baterNoOutro(eu, outro) {
-  const A = circulos(eu.x, eu.y, eu.a, eu.L, eu.W), B = circulos(outro.x, outro.y, outro.a, outro.L, outro.W);
-  let melhor = null;
-  for (const [ax, ay, ar] of A) for (const [bx, by, br] of B) {
-    const dx = ax - bx, dy = ay - by, d = Math.hypot(dx, dy), pen = ar + br - d;
-    if (pen > 0 && (!melhor || pen > melhor.pen)) melhor = { pen, nx: d > 1e-6 ? dx / d : Math.cos(eu.a + Math.PI / 2), ny: d > 1e-6 ? dy / d : Math.sin(eu.a + Math.PI / 2) };
-  }
-  if (!melhor) return 0;
-  const { pen, nx, ny } = melhor, correcao = Math.min(PUXAO, pen * 0.5);
-  eu.x += nx * correcao; eu.y += ny * correcao;
-  const ovx = Math.cos(outro.a) * (outro.v || 0), ovy = Math.sin(outro.a) * (outro.v || 0);
-  return Math.max(0, -((eu.vx - ovx) * nx + (eu.vy - ovy) * ny));
-}
 // o tamanho (u) de cada carro, o mesmo de CARS3 em carros.js (metros do modelo × KS = 10)
 const DIMENSOES = { equilibrado: [44, 26], foguete: [48, 25], formiga: [41, 26], drifteiro: [44, 25], tanque: [46, 29] };
 const dimensoes = (car) => DIMENSOES[car] || DIMENSOES.equilibrado;
-// Bate o carro `c` (de `quem`) nos outros. Quem já recebeu a bandeirada é fantasma: não bate e não leva batida.
-// outros: [{ id, x, y, z, a, v, car, fant, dnf }]. Devolve as batidas: [{ id, forca }]
-function baterNosOutros(c, car, outros, ev) {
-  if (c.air || c.fant) return;
-  const [L, W] = dimensoes(car), eu = { x: c.x, y: c.y, a: c.a, vx: c.vx, vy: c.vy, L, W };
-  for (const o of outros) {
-    if (o.dnf || o.fant || Math.abs((o.z || 0) - c.z) > 12) continue;
-    const [oL, oW] = dimensoes(o.car), forca = baterNoOutro(eu, { x: o.x, y: o.y, a: o.a, v: o.v || 0, L: oL, W: oW });
-    if (forca > 0 && ev) ev.push({ t: "carro", id: o.id, forca });
+const massaDe = (spec) => (spec ? D.parametros(spec).massa : 800);
+// o par de círculos mais enterrado entre A e B: { pen, nx, ny (de B para A), px, py (o ponto do contato) } ou null
+function maisEnterrado(ax, ay, aa, aL, aW, bx, by, ba, bL, bW) {
+  const A = circulos(ax, ay, aa, aL, aW), B = circulos(bx, by, ba, bL, bW);
+  let m = null;
+  for (const [cx, cy, cr] of A) for (const [ex, ey, er] of B) {
+    const dx = cx - ex, dy = cy - ey, d = Math.hypot(dx, dy), pen = cr + er - d;
+    if (pen > 0 && (!m || pen > m.pen)) {
+      const nx = d > 1e-6 ? dx / d : Math.cos(aa + Math.PI / 2), ny = d > 1e-6 ? dy / d : Math.sin(aa + Math.PI / 2);
+      m = { pen, nx, ny, px: ex + nx * (er - pen / 2), py: ey + ny * (er - pen / 2) };
+    }
   }
-  if (eu.x !== c.x || eu.y !== c.y) { c.x = eu.x; c.y = eu.y; }
+  return m;
+}
+const ESC2 = D.ESC * D.ESC, RAIO_GIRO2 = 1.5 * (0.5 * 3.6) ** 2 / ESC2; // (inércia de guinada / massa, em u²)
+// a batida do carro `c` (geometria eu: L, W, massa) com o modelo `o`, varrendo o passo de duração `dt` (0 = só a posição de agora).
+// Soma em `reg` o que mudou no carro (o navegador reaplica na reconciliação). Devolve a força (u/s de aproximação, 0 = nada).
+function contatoCom(c, eu, o, dt, reg, semImpulso) {
+  const ox1 = o.x, oy1 = o.y, oa1 = o.a, ovx = o.vx || 0, ovy = o.vy || 0, orr = o.r || 0;
+  const ax0 = c.x0 ?? c.x, ay0 = c.y0 ?? c.y, aa0 = c.a0 ?? c.a;
+  let da = c.a - aa0; da = Math.atan2(Math.sin(da), Math.cos(da));
+  const rel = dt > 0 ? Math.hypot(c.x - ax0 - ovx * dt, c.y - ay0 - ovy * dt) : 0, nsub = dt > 0 ? Math.min(16, Math.max(1, Math.ceil(rel / 5))) : 1;
+  let f = 1, m = null, ax = c.x, ay = c.y, aa = c.a, bx = ox1, by = oy1;
+  for (let i = 1; i <= nsub; i++) {
+    const g = i / nsub, qx = ax0 + (c.x - ax0) * g, qy = ay0 + (c.y - ay0) * g, qa = aa0 + da * g;
+    const rx = ox1 - ovx * dt * (1 - g), ry = oy1 - ovy * dt * (1 - g), ra = oa1 - orr * dt * (1 - g);
+    const hit = maisEnterrado(qx, qy, qa, eu.L, eu.W, rx, ry, ra, o.L, o.W);
+    if (hit) { m = hit; f = g; ax = qx; ay = qy; aa = qa; bx = rx; by = ry; break; }
+  }
+  if (!m) return 0;
+  // a velocidade dos dois no ponto do contato (a de cada centro mais a guinada vezes o braço)
+  const rAx = m.px - ax, rAy = m.py - ay, rBx = m.px - bx, rBy = m.py - by, nx = m.nx, ny = m.ny;
+  const vAx = c.vx - c.r * rAy, vAy = c.vy + c.r * rAx, vBx = ovx - orr * rBy, vBy = ovy + orr * rBx;
+  const rvx = vAx - vBx, rvy = vAy - vBy, vn = rvx * nx + rvy * ny;
+  const mA = eu.massa || 800, mB = o.massa || 800, IA = mA * RAIO_GIRO2, IB = mB * RAIO_GIRO2;
+  const vx0 = c.vx, vy0 = c.vy, r0 = c.r;
+  let forca = 0;
+  o.de = null; // (o que o outro carro leva da mesma batida: o oposto, para quem o move no servidor)
+  if (vn < 0 && !semImpulso) { // se aproximando: troca o momento
+    forca = -vn;
+    const cAn = rAx * ny - rAy * nx, cBn = rBx * ny - rBy * nx;
+    const j = -(1 + E_BATIDA) * vn / (1 / mA + 1 / mB + cAn * cAn / IA + cBn * cBn / IB);
+    // atrito no contato: o carro de raspão é puxado e gira um pouco, até MU_BATIDA do impulso normal
+    const tx = -ny, ty = nx, vt = rvx * tx + rvy * ty, cAt = rAx * ty - rAy * tx, cBt = rBx * ty - rBy * tx;
+    const jt = Math.max(-MU_BATIDA * j, Math.min(MU_BATIDA * j, -vt / (1 / mA + 1 / mB + cAt * cAt / IA + cBt * cBt / IB)));
+    const Fx = j * nx + jt * tx, Fy = j * ny + jt * ty;
+    c.vx += Fx / mA; c.vy += Fy / mA;
+    o.de = { dvx: -Fx / mB, dvy: -Fy / mB, dr: Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, -(rBx * Fy - rBy * Fx) / IB)) };
+    const dr = Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, (rAx * Fy - rAy * Fx) / IA));
+    // o carro com o pneu arcade (o macio) tem a guinada do volante; a da batida vai à parte e se apaga sozinha
+    if (c.amb && c.amb.pn && c.amb.pn.arcade) c.rIns = (c.rIns || 0) + dr; else c.r += dr;
+    // a instabilidade: mais forte e mais longa quanto maior a força
+    const nivel = Math.min(1, forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
+    if (ins >= (c.inst || 0)) { c.inst = ins; c.instK = ins / dur; }
+  }
+  // separa os carros (um pouco por passo, de graça nos que já se afastam): a posição vai ao instante do contato e anda o resto do passo
+  const puxa = Math.min(PUXAO, m.pen * 0.6), rest = dt > 0 ? (1 - f) * dt : 0;
+  c.x = ax + nx * puxa + c.vx * rest; c.y = ay + ny * puxa + c.vy * rest;
+  if (f < 1) c.a = aa + c.r * rest;
+  const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca;
+  if (reg) { reg.dvx += c.vx - vx0; reg.dvy += c.vy - vy0; reg.dr += (c.amb && c.amb.pn && c.amb.pn.arcade ? 0 : c.r - r0); reg.dx += nx * puxa; reg.dy += ny * puxa; reg.inst = Math.max(reg.inst, c.inst || 0); reg.instK = c.instK || 0; reg.forca = Math.max(reg.forca, forca); }
+  return forca;
+}
+const novoRegistro = () => ({ dvx: 0, dvy: 0, dr: 0, dx: 0, dy: 0, inst: 0, instK: 0, forca: 0 });
+// Reaplica o que uma batida fez (a reconciliação do navegador: o passo refeito não vê os outros carros, então repete o resultado)
+function aplicarContato(c, reg) {
+  c.vx += reg.dvx; c.vy += reg.dvy; c.x += reg.dx; c.y += reg.dy; c.r += reg.dr;
+  if ((reg.inst || 0) >= (c.inst || 0)) { c.inst = reg.inst; c.instK = reg.instK; }
+  const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca;
+}
+// O impulso que outro carro deu neste (calculado no servidor pelo carro que bateu primeiro): o mesmo efeito de contatoCom, sem geometria.
+function impulsoExterno(c, d, forca) {
+  c.vx += d.dvx; c.vy += d.dvy;
+  if (c.amb && c.amb.pn && c.amb.pn.arcade) c.rIns = (c.rIns || 0) + d.dr; else c.r += d.dr;
+  const nivel = Math.min(1, forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
+  if (ins >= (c.inst || 0)) { c.inst = ins; c.instK = ins / dur; }
+  const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca;
+}
+// Bate o carro `c` (o passo que acabou de andar) nos outros. Quem já recebeu a bandeirada é fantasma: não bate e não leva batida.
+// eu: { L, W, massa }; outros: [{ id, x, y, z, a, vx, vy, r, v, L, W, massa, fant, dnf }] (sem vx e vy, o outro vai para a frente a `v`).
+// `podeImpulso(o)` (opcional) diz se a batida com `o` pode trocar momento (o servidor evita contar a mesma batida duas vezes). `ev` recebe { t: "carro", id, forca, k: o passo, de: o que o outro leva }. `reg` (opcional) soma o que mudou no carro. Devolve a maior força.
+function contatoPasso(c, eu, outros, ev, reg, dt = PASSO, podeImpulso) {
+  if (c.air || c.fant || !outros) return 0;
+  let maior = 0;
+  for (let o of outros) {
+    if (o.dnf || o.fant || Math.abs((o.z || 0) - c.z) > 12) continue;
+    if (Math.abs(o.x - c.x) > 110 || Math.abs(o.y - c.y) > 110) continue; // longe demais para encostar neste passo
+    if (o.vx === undefined) o = { ...o, vx: Math.cos(o.a) * (o.v || 0), vy: Math.sin(o.a) * (o.v || 0), r: o.r || 0 };
+    const forca = contatoCom(c, eu, o, dt, reg, podeImpulso ? !podeImpulso(o) : false);
+    if (forca > 0) { maior = Math.max(maior, forca); if (ev) ev.push({ t: "carro", id: o.id, forca, k: c.tick, de: o.de }); }
+  }
+  return maior;
+}
+// (a forma de antes, só a posição de agora, sem varrer: o tamanho vem do nome do carro) As batidas vão em `ev`.
+function baterNosOutros(c, car, outros, ev) {
+  const [L, W] = dimensoes(car);
+  contatoPasso(c, { L, W, massa: 800 }, outros.map((o) => { const [oL, oW] = dimensoes(o.car); return { ...o, L: o.L || oL, W: o.W || oW }; }), ev, null, 0);
+}
+// A força do contato entre dois carros SEM mexer em nenhum (quem só precisa saber): a velocidade com que se aproximam no ponto de contato.
+function forcaEntre(A, B) { // A, B: { x, y, a, vx, vy, r, L, W }
+  const m = maisEnterrado(A.x, A.y, A.a, A.L, A.W, B.x, B.y, B.a, B.L, B.W); if (!m) return 0;
+  const rAx = m.px - A.x, rAy = m.py - A.y, rBx = m.px - B.x, rBy = m.py - B.y;
+  return Math.max(0, -(((A.vx - (A.r || 0) * rAy) - (B.vx - (B.r || 0) * rBy)) * m.nx + ((A.vy + (A.r || 0) * rAx) - (B.vy + (B.r || 0) * rBx)) * m.ny));
 }
 
 // ---------- copiar o estado (a rede) ----------
@@ -346,6 +434,7 @@ function serializar(c) {
   const s = { x: R(c.x, 100), y: R(c.y, 100), z: R(c.z, 100), a: R(c.a, 10000), v: R(c.v, 100), vl: R(c.vl, 100), r: R(c.r, 1000), st: R(c.steer, 1000), gp: R(c.gasP, 100), bp: R(c.brkP, 100), sl: R(c.slip, 100), us: R(c.uso || 0, 1000),
     m: c.marcha, tt: R(c.trocaT, 1000), ds: R(c.desceT || 0, 1000), ax: R(c.axL, 100), vz: R(c.vz, 10), air: c.air ? 1 : 0, gvz: R(c.gvz || 0, 10), ix: c.idx, pg: R(c.prog, 10), sc: c.sector, dr: R(c.draft, 1000), tk: c.tick, fa: c.fant ? 1 : 0,
     pn: [c.pneu.composto, R(c.pneu.desgaste, 100000), R(c.pneu.temp, 10000)], er: [R(c.ers.carga, 10000), R(c.ers.recarga, 10000), c.ers.volta] };
+  if (c.inst > 0 || c.rIns) s.ni = [R(c.inst || 0, 1000), R(c.instK || 0, 1000), R(c.rIns || 0, 1000)]; // (a instabilidade da batida)
   if (c.box) { const B = c.box; s.bx = [B.fase, R(B.u, 1000), R(B.lat0, 100), R(B.t, 1000), R(B.parada, 100), R(B.garagem, 1000), B.composto, B.volta, B.n, B.tick0 ?? 0, B.pedido]; }
   return s;
 }
@@ -355,6 +444,7 @@ function aplicar(c, s, tr) {
   const ca = Math.cos(c.a), sa = Math.sin(c.a); c.vx = c.v * ca - c.vl * sa; c.vy = c.v * sa + c.vl * ca;
   c.pneu.composto = s.pn[0]; c.pneu.desgaste = s.pn[1]; c.pneu.temp = s.pn[2];
   c.ers.carga = s.er[0]; c.ers.recarga = s.er[1]; c.ers.volta = s.er[2];
+  if (s.ni) { c.inst = s.ni[0]; c.instK = s.ni[1]; c.rIns = s.ni[2]; } else { c.inst = 0; c.instK = 0; c.rIns = 0; }
   if (s.bx && c.box) { const B = c.box; [B.fase, B.u, B.lat0, B.t, B.parada, B.garagem, B.composto, B.volta, B.n, B.tick0, B.pedido] = s.bx; }
   else if (c.box && !s.bx) { c.box.fase = null; }
   c.sp = { x: c.x, y: c.y };
@@ -376,6 +466,16 @@ function amostraEm(b, rt, alvo = {}) {
   }
   const u = (rt - A.t) / (B.t - A.t); let da = B.a - A.a; da = Math.atan2(Math.sin(da), Math.cos(da));
   alvo.t = rt; alvo.x = A.x + (B.x - A.x) * u; alvo.y = A.y + (B.y - A.y) * u; alvo.z = A.z + (B.z - A.z) * u; alvo.a = A.a + da * u; alvo.v = A.v + (B.v - A.v) * u;
+  return alvo;
+}
+
+// O modelo cinemático de um carro no instante `rt` (ms do servidor), a partir da amostra mais nova `B` { t, x, y, z, a, v, vx, vy, r }:
+// segue a velocidade e a guinada que ele tinha, por no máximo `max` s. Serve para desenhar os outros NO PRESENTE (a hora do meu carro),
+// para o navegador prever a batida e para o servidor olhar um carro que ainda não chegou àquela hora.
+const EXTRAPOLA_MAX = 0.35;
+function extrapolar(B, rt, alvo = {}, max = EXTRAPOLA_MAX) {
+  const f = Math.min(max, Math.max(0, (rt - B.t) / 1000)), vx = B.vx ?? Math.cos(B.a) * (B.v || 0), vy = B.vy ?? Math.sin(B.a) * (B.v || 0), r = B.r || 0;
+  alvo.t = rt; alvo.x = B.x + vx * f; alvo.y = B.y + vy * f; alvo.z = B.z || 0; alvo.a = B.a + Math.max(-1, Math.min(1, r * f)); alvo.vx = vx; alvo.vy = vy; alvo.r = r; alvo.v = B.v || 0;
   return alvo;
 }
 
@@ -409,7 +509,7 @@ function reconciliar(c, st, tr, ctx) {
   return { erro, dentro, dx: ox - c.x, dy: oy - c.y, da };
 }
 
-const api = { PASSO, ATRASO, EXTRAPOLA, amostraEm, ERRO_SALTO, TEMPO_DO_DESVIO, decairDesvio, gastarTempo, reconciliar, pneuDaLargada, criarPista, preparar, quadro, alturaDoChao, procurar, vagaDoGrid, novo, empacotar, desempacotar, vacuoAlvo, pilotoAutomatico, passo, voltarParaPista, baterNoOutro, baterNosOutros, DIMENSOES, dimensoes, serializar, aplicar, COMPOSTOS };
+const api = { PASSO, ATRASO, EXTRAPOLA, EXTRAPOLA_MAX, extrapolar, amostraEm, ERRO_SALTO, TEMPO_DO_DESVIO, decairDesvio, gastarTempo, reconciliar, pneuDaLargada, criarPista, preparar, quadro, alturaDoChao, procurar, vagaDoGrid, novo, empacotar, desempacotar, vacuoAlvo, pilotoAutomatico, passo, voltarParaPista, contatoPasso, impulsoExterno, FORCA_EV, novoRegistro, aplicarContato, forcaEntre, massaDe, baterNosOutros, DIMENSOES, dimensoes, serializar, aplicar, COMPOSTOS };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Sim = api;
 })(typeof window !== "undefined" ? window : globalThis);
