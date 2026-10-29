@@ -399,7 +399,7 @@ function buildWorld(tr) {
         if (k < 0.25) palms.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.5, r: r() * 6 });
         else if (k < 0.85) { const sx = 55 + r() * 50, sz = 55 + r() * 50, far = near + 30 + r() * 50, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 18) && terra(bx, by) && !orlaMonaco(tr, bx, by)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 90 + r() * 200, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f3e0c0", "#f4ece0"][(r() * 6) | 0] }); }
       }
-      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "barcelona" || id === "silverstone") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" || id === "barcelona" || id === "silverstone" ? 0.07 : 0.52) && ((id !== "barcelona" && id !== "silverstone") || livreRes(x, y))) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
+      else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "silverstone") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" || id === "barcelona" || id === "silverstone" ? 0.07 : 0.52) && ((id !== "barcelona" && id !== "silverstone") || livreRes(x, y))) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
       else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
       else if (gp?.parque) { /* o bosque fechado vem de kit/parque.js */ }
       else if (gp?.beira) beiraGP(gp.beira, x, y, p, side, near, k); // as pistas do kit/gp-simples.js
@@ -430,7 +430,7 @@ function buildWorld(tr) {
       if (y < 560 * K && r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.1 + r() * 1.1 });
       else if (!orlaMonaco(tr, x, y)) blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 70, sy: 90 + r() * (r() < 0.15 ? 420 : 220), sz: 60 + r() * 70, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f4ece0"][(r() * 5) | 0] });
     }
-    else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "barcelona" || id === "silverstone") { if ((id !== "laguna" && id !== "barcelona" && id !== "silverstone") || r() < (id === "silverstone" ? 0.1 : id === "barcelona" ? 0.12 : 0.3)) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
+    else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "silverstone") { if ((id !== "laguna" && id !== "barcelona" && id !== "silverstone") || r() < (id === "silverstone" ? 0.1 : id === "barcelona" ? 0.12 : 0.3)) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
     else if (id === "deserto") { if (r() < 0.07) palms.push({ x, y, h: hAt(x, y), s: 1.2, r: r() * 6 }); }
     else if (gp?.parque) { if (r() < 0.1) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // o parque continua longe da pista
     else if (gp?.beira) beiraGP(gp.beira.longe || {}, x, y, null, 0, 0, r());
