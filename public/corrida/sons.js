@@ -1,5 +1,6 @@
-// Corrida da Galera — sons sintetizados (kart e F1, derrapagem, batidas e largada).
+// Corrida da Galera — sons sintetizados (kart e F1, derrapagem, batidas e largada). O motor de F1 fica em motor-f1.js.
 import { $, store } from "./estado.js";
+import { criarMotorF1 } from "./motor-f1.js";
 
 // ---------- sons ----------
 export const Sound = (() => {
@@ -19,96 +20,15 @@ export const Sound = (() => {
   // o som ambiente das pistas (pista-som.js) passa por um barramento que abre e fecha junto com o motor (só na corrida);
   // o eco do túnel é um envio do motor para uma reverberação (ruído que se apaga em 1,4 s)
   let ambBus = null, ecoG = null;
-  let f1 = null, ultimaMarchaF1 = 0, corteAte = 0, ultimoEstalo = -1, gasAnteriorF1 = false, soproAte = 0, proximoEstaloEscape = 0;
+  let motorF1 = null; // o motor de F1 (motor-f1.js), criado na primeira vez que as regras de F1 pedem
   function barramento() { const c = ctx(); if (!c) return null; if (!ambBus) { ambBus = c.createGain(); ambBus.gain.value = 0; ambBus.connect(master); } return ambBus; }
   function reverb(c) {
     const len = Math.floor(c.sampleRate * 1.4), b = c.createBuffer(2, len, c.sampleRate);
     for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
     const conv = c.createConvolver(); conv.buffer = b; ecoG = c.createGain(); ecoG.gain.value = 0; conv.connect(ecoG).connect(master); reverbExistente = conv; return conv;
   }
-  function criarMotorF1(c) {
-    const saida = c.createGain(), filtro = c.createBiquadFilter(), oscs = [];
-    saida.gain.value = 0; filtro.type = "lowpass"; filtro.frequency.value = 2400;
-    for (const [tipo, razao, nivel] of [["sawtooth", 1, 0.55], ["triangle", 0.5, 0.15], ["sawtooth", 2, 0.23], ["square", 3, 0.045]]) {
-      const o = c.createOscillator(), g = c.createGain(); o.type = tipo; g.gain.value = nivel;
-      o.connect(g).connect(filtro); o.start();
-      oscs.push({ o, razao });
-    }
-    filtro.connect(saida).connect(master);
-    return { saida, filtro, oscs };
-  }
-  function criarF1(c) {
-    const motor = criarMotorF1(c), ruido = c.createBuffer(1, c.sampleRate, c.sampleRate), dados = ruido.getChannelData(0);
-    for (let i = 0; i < dados.length; i++) dados[i] = Math.random() * 2 - 1;
-    const escape = c.createBufferSource(), escapeFiltro = c.createBiquadFilter(), escapeG = c.createGain();
-    escape.buffer = ruido; escape.loop = true; escapeFiltro.type = "bandpass"; escapeFiltro.frequency.value = 1900; escapeFiltro.Q.value = 0.8;
-    escapeG.gain.value = 0; escape.connect(escapeFiltro).connect(escapeG).connect(master); escape.start();
-    // O eco existente recebe o motor da F1 pelo mesmo envio usado pelo kart.
-    motor.saida.connect(reverbExistente || reverb(c));
-    escapeG.connect(reverbExistente);
-    return { motor, ruido, escapeFiltro, escapeG, rivais: Array.from({ length: 3 }, () => criarMotorF1(c)) };
-  }
   let reverbExistente = null;
-  function estaloF1(c, forte = false) {
-    if (!on || c.currentTime - ultimoEstalo < 0.055) return;
-    ultimoEstalo = c.currentTime;
-    const dur = forte ? 0.12 : 0.06, o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
-    o.type = "sawtooth"; o.frequency.setValueAtTime(forte ? 250 : 430, c.currentTime);
-    o.frequency.exponentialRampToValueAtTime(90, c.currentTime + dur);
-    f.type = "lowpass"; f.frequency.value = forte ? 950 : 1500;
-    g.gain.setValueAtTime(forte ? 0.055 : 0.03, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
-    o.connect(f).connect(g).connect(master); o.start(); o.stop(c.currentTime + dur);
-  }
-  function estaloEscapeF1(c) {
-    const t = c.currentTime, dur = 0.025 + Math.random() * 0.045;
-    const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-    s.buffer = f1.ruido; f.type = "bandpass"; f.frequency.value = 700 + Math.random() * 1600; f.Q.value = 0.7;
-    g.gain.setValueAtTime(0.035 + Math.random() * 0.035, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f).connect(g).connect(master); s.start(t, Math.random() * 0.8, dur); s.stop(t + dur);
-  }
-  function atualizarF1(c, racing, gas, marchaF1, rpmF1, rivais, pos) {
-    if (!f1) f1 = criarF1(c);
-    const t = c.currentTime, ativo = on && racing, giro = Math.max(0, Math.min(1, rpmF1));
-    if (ativo && ultimaMarchaF1 && marchaF1 !== ultimaMarchaF1) {
-      if (marchaF1 > ultimaMarchaF1) { corteAte = t + 0.055; estaloF1(c, true); }
-      else estaloF1(c);
-    }
-    ultimaMarchaF1 = ativo ? marchaF1 : 0;
-    // V8 aspirado de 2011: quatro ignições por volta, com giro sonoro de 5.000 a 18.000 rpm.
-    // A física mantém seu câmbio de 12.000 rpm; só o timbre usa esta escala.
-    const freq = (5000 + giro * 13000) / 15;
-    for (const { o, razao } of f1.motor.oscs) o.frequency.setTargetAtTime(freq * razao, t, 0.025);
-    f1.motor.filtro.frequency.setTargetAtTime(gas ? 2800 + giro * 5200 : 1400 + giro * 1500, t, 0.045);
-    const limitador = gas && giro >= 0.998 && Math.floor(t * 18) % 2 === 0;
-    const nivel = ativo ? (gas ? 0.062 : 0.027) * (t < corteAte || limitador ? 0.12 : 1) : 0;
-    f1.motor.saida.gain.setTargetAtTime(nivel, t, 0.012);
-    // Difusor soprado: fluxo de escapamento persiste sem acelerador; a ignição atrasada dá estalos na desaceleração.
-    if (ativo && gasAnteriorF1 && !gas && giro > 0.55) { soproAte = t + 0.6; proximoEstaloEscape = t; }
-    gasAnteriorF1 = ativo && gas;
-    const soprando = ativo && !gas && giro > 0.45;
-    f1.escapeFiltro.frequency.setTargetAtTime(900 + giro * 2100, t, 0.06);
-    f1.escapeG.gain.setTargetAtTime(soprando ? (t < soproAte ? 0.026 : 0.011) * giro : ativo && gas ? 0.004 * giro : 0, t, 0.04);
-    if (soprando && t < soproAte && t >= proximoEstaloEscape) { estaloEscapeF1(c); proximoEstaloEscape = t + 0.035 + Math.random() * 0.065; }
-    if (!ativo) soproAte = 0;
-    const proximos = ativo && pos ? rivais.filter((r) => Number.isFinite(r.x) && Number.isFinite(r.y) && !r.dnf)
-      .map((r) => ({ x: r.x, y: r.y, a: r.a, v: r.v, dx: r.x - pos.x, dy: r.y - pos.y }))
-      .map((r) => ({ ...r, dist: Math.hypot(r.dx, r.dy) }))
-      .filter((r) => r.dist < 110).sort((a, b) => a.dist - b.dist).slice(0, 3) : [];
-    f1.rivais.forEach((motor, i) => {
-      const r = proximos[i], dist = r?.dist ?? 1e9;
-      // Velocidade radial positiva quando o rival se aproxima; 1 unidade da pista = 0,208 m.
-      const radial = r && dist > 0.1 ? ((pos.vx || 0) - Math.cos(r.a) * (r.v || 0)) * r.dx / dist + ((pos.vy || 0) - Math.sin(r.a) * (r.v || 0)) * r.dy / dist : 0;
-      const doppler = Math.max(0.85, Math.min(1.15, 343 / (343 - radial * 0.208)));
-      const rpm = Math.max(0.3, Math.min(1, Math.abs(r?.v || 0) / 370));
-      const f = (5000 + rpm * 13000) / 15 * doppler;
-      for (const { o, razao } of motor.oscs) o.frequency.setTargetAtTime(f * razao, t, 0.06);
-      motor.filtro.frequency.setTargetAtTime(2100 + rpm * 3600, t, 0.08);
-      motor.saida.gain.setTargetAtTime(r ? 0.015 * Math.pow(1 - dist / 110, 2) : 0, t, 0.08);
-    });
-  }
-  function engine(speed, racing, gas = true, marchaF1 = 0, rpmF1 = 0, modoF1 = false, rivais = [], pos = null) {
+  function engine(speed, racing, gas = true, marchaF1 = 0, rpmF1 = 0, f1 = null) {
     const c = ctx(); if (!c) return;
     if (!eng) {
       const o = c.createOscillator(), o2 = c.createOscillator(), o3 = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
@@ -127,13 +47,16 @@ export const Sound = (() => {
     const base = 38 + rpm * 70 + marcha * 3; // Hz (8 marchas: a rotação sobe até o corte e cai a cada troca)
     eng.o.frequency.setTargetAtTime(base, t, 0.04); eng.o2.frequency.setTargetAtTime(base / 2, t, 0.04); eng.o3.frequency.setTargetAtTime(base * 2, t, 0.04);
     eng.f.frequency.setTargetAtTime(500 + rpm * 1400 + v * 2, t, 0.06);
-    eng.g.gain.setTargetAtTime(on && racing && !modoF1 ? (0.035 + rpm * 0.02) * (troca > 0 ? 0.3 : 1) : 0, t, 0.05);
+    eng.g.gain.setTargetAtTime(on && racing && !f1 ? (0.035 + rpm * 0.02) * (troca > 0 ? 0.3 : 1) : 0, t, 0.05);
     eng.wg.gain.setTargetAtTime(on && racing ? Math.min(0.05, v * 0.00011) : 0, t, 0.1);
-    if (modoF1 || f1) atualizarF1(c, racing && modoF1, gas, marchaF1, rpmF1, rivais, pos);
+    if (f1) { if (!motorF1) motorF1 = criarMotorF1(c, master, reverbExistente); motorF1.atualizar(t, { gas, rpm: rpmF1, marcha: marchaF1 || 1, ativo: on && racing, cam: f1.cam, lim: f1.lim || 0 }); } else if (motorF1) motorF1.silenciar(t);
     if (ambBus) ambBus.gain.setTargetAtTime(on && racing ? 1 : 0, t, 0.4);
     if (!racing && ecoG) ecoG.gain.setTargetAtTime(0, t, 0.1);
   }
   // batida: um estalo grave e um sopro de ruído, mais forte quanto maior a força
+  // os carros dos outros por perto (regras de F1): lista de { dist (m), vRel (m/s, positivo = se aproximando), v (m/s), lado (-1 a 1) }
+  // já em ordem de distância, n valem; só os 3 mais perto soam (volume pela distância e Doppler)
+  function outros(lista, n) { if (motorF1 && ac) motorF1.outros(ac.currentTime, lista, n, on && n > 0); }
   function crash(forca) {
     const c = ctx(); if (!c || !on) return;
     const k = Math.min(1, forca / 260), t = c.currentTime, len = Math.floor(c.sampleRate * 0.25), b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
@@ -153,7 +76,7 @@ export const Sound = (() => {
     volume(v) { volume = Math.max(0, Math.min(1, v)); store.set("corrida:volume", volume); if (master) master.gain.setTargetAtTime(volume, ac.currentTime, 0.05); }, get nivel() { return volume; },
     radioSaida() { const c = ctx(); return c && master ? { ac: c, saida: master } : null; }, // o rádio do engenheiro usa o volume geral
     narradorSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, ligado: on } : null; }, // o narrador da transmissão: volume geral e som ligado
-    crash, engine, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
+    crash, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
   };
 })();
 function renderSoundBtn() { Comum.iconeSom(Sound.on); for (const id of ["volume", "volCorrida"]) { const el = $(id); if (el) el.value = Math.round(Sound.nivel * 100); } }
