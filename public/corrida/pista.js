@@ -62,11 +62,9 @@ export const THEMES = {
   tokyo: { preview: "#14152a", sky: ["#05061a", "#3a1d5c"], fog: "#2a1a44", oob: 0xff1f1514, roadCol: "#24252c" },
 };
 
-// posição de largada g: atrás da linha, em duas filas
-// (regras de F1: o grid tem 20 carros e as filas ficam mais juntas, a 8 pontos uma da outra em vez de 13)
+// As marcas do grid e a física usam a mesma posição de largada.
 export function gridSpot(pts, g, W, f1 = false) {
-  const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * (f1 ? 8 : 13) + n * 2) % n, p = pts[idx], nx = -p.ty, ny = p.tx, side = g % 2 ? 1 : -1, lat = side * W * 0.22;
-  return { x: p.x + nx * lat, y: p.y + ny * lat, tx: p.tx, ty: p.ty, nx, ny, a: Math.atan2(p.ty, p.tx), idx };
+  return window.Sim.vagaDoGrid(pts, g, W, f1);
 }
 
 // ---------- a pista: pontos com altura, chão, asfalto, zebras, muros e enfeites ----------
@@ -299,7 +297,7 @@ function buildWorld(tr) {
   const line = add(new THREE.Mesh(new THREE.PlaneGeometry(W, 12), new THREE.MeshStandardMaterial({ map: chk, roughness: 0.6 })));
   line.rotation.x = -Math.PI / 2; line.rotation.z = -Math.atan2(a0.ty, a0.tx) + Math.PI / 2; line.position.set(a0.x, a0.h + 0.55, a0.y);
   // os GPs com o chão do kit têm o grid pintado com os números
-  // (as barras das regras de F1 são as 20 vagas do grid mais juntas; as de hoje, as 8 de sempre: pista.js liga um conjunto de cada vez)
+  // (as barras das regras de F1 são as 20 vagas do grid; as de hoje, as 8 de sempre: pista.js liga um conjunto de cada vez)
   if (!gp?.chao?.grid) { tr.gridGalera = add(new THREE.Group()); tr.gridF1 = add(new THREE.Group()); tr.gridF1.visible = false;
     const barra = new THREE.PlaneGeometry(20, 2), branco = new THREE.MeshBasicMaterial({ color: 0xffffff });
     for (const [grupo, quantas, f1] of [[tr.gridGalera, 8, false], [tr.gridF1, 20, true]]) for (let g = 0; g < quantas; g++) { const p = gridSpot(pts, g, W, f1); const m = new THREE.Mesh(barra, branco); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); grupo.add(m); } }
