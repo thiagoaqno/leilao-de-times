@@ -170,10 +170,10 @@ function tempoDaVolta(pf, escala, ader) {
 // ---------- o perfil de velocidade do robô de F1 ----------
 // O nível `f` (0,4 a 1) do robô é a fração da margem do piloto ideal (MARGEM_F1) que ele usa nas curvas: 1 é o limite, abaixo disso
 // ele faz as curvas mais devagar e freia mais cedo. Nas retas ninguém tira o pé por nível: só a curva e a frenagem custam tempo.
-const NIVEIS_F1 = [0.3, 0.5, 0.65, 0.8, 0.9, 1];
+const NIVEIS_F1 = [0.3, 0.5, 0.65, 0.8, 0.9, 1, 1.06]; // (acima de 1: o difícil passa um pouco do ideal medido, como quem joga bem)
 function topoDe(pf) { return pf.topo || (pf.topo = D.velocidadeFinal(pf.c)); }
 function perfilF1(pf, f) {
-  const q = Math.round(Math.min(1, Math.max(0.3, f)) * 100) / 100, mapa = pf.perfisF1 || (pf.perfisF1 = new Map());
+  const q = Math.round(Math.min(1.06, Math.max(0.3, f)) * 100) / 100, mapa = pf.perfisF1 || (pf.perfisF1 = new Map());
   let v = mapa.get(q);
   if (!v) {
     v = D.perfilIdeal(pf.pts.map((p, i) => ({ k: pf.kf[i], h: p.h })), pf.c, STEP, margemDaPista(pf.pista).margem * q, null, margemDaPista(pf.pista).freio);
@@ -226,7 +226,7 @@ const aderRef = () => ADER_REF || (ADER_REF = F1.aderencia({ composto: "medio", 
 function idealDe(pista, spec) { return tempoDaVolta(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren")), 1, aderRef()); }
 // Folga sobre o ideal do carro: difícil 0, médio 1,5% e fácil 5,5%, além da pequena diferença do piloto.
 // O tráfego e o controle dos pedais ainda custam tempo na corrida real.
-const FOLGA_F1 = { facil: 0.055, medio: 0.015, dificil: 0 };
+const FOLGA_F1 = { facil: 0.04, medio: 0, dificil: -0.03 }; // (o difícil mira 3% abaixo do ideal: quem joga bem já bate o ideal)
 function referenciaF1(room) {
   const pista = room.config.pista;
   const pf = perfil(pista, F1Equipes.specDaEquipe("mclaren"));
