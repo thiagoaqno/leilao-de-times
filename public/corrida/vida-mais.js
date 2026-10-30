@@ -28,7 +28,7 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
   }
   // mastros com bandeira grande balançando, dos dois lados, pela volta toda
   const panos = [], corPano = ["#e63946", "#ffd23f", "#1e88e5", "#43a047", "#ff7ad9", "#ffffff"];
-  for (let k = 0; k < 14; k++) {
+  for (let k = 0; k < (tr.sem?.mastros ? 0 : 14); k++) {
     const i = Math.floor((n * (k + 0.5)) / 14), p = pts[i], s = k % 2 ? 1 : -1, [x, z] = lat(p, s * (borda + 10)); if (!livre(x, z, 20)) continue;
     const y = alturaEm(x, z, i), mastro = add(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1, 70, 6), M(0xc9ced6, { metalness: 0.5, roughness: 0.4 }))); mastro.position.set(x, y + 35, z);
     const geo = new THREE.PlaneGeometry(26, 15, 10, 4); geo.translate(13, 0, 0);
@@ -49,7 +49,7 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
   }
   // roda-gigante nas pistas de cidade (uma ou duas, girando devagar e com as cabines penduradas)
   V.rodas = [];
-  if (CIDADE[id]) for (const f of id === "luigi" ? [0.55] : [0.3, 0.72]) {
+  if (CIDADE[id] && !tr.sem?.rodas) for (const f of id === "luigi" ? [0.55] : [0.3, 0.72]) {
     let feito = false;
     for (let tent = 0; tent < 30 && !feito; tent++) {
       const i = Math.floor(n * f + tent * 9) % n, p = pts[i], s = tent % 2 ? 1 : -1, [x, z] = lat(p, s * (borda + 150)); if (!livre(x, z, 110)) continue;
@@ -112,8 +112,8 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
     const cascos = add(new THREE.InstancedMesh(mergeGeometries([casco, cab], false), M(0xffffff, { vertexColors: true }), 8)), esteiras = add(new THREE.InstancedMesh(esteiraGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }), 8));
     cascos.frustumCulled = esteiras.frustumCulled = false; cascos.castShadow = false;
     for (let k = 0; k < 8; k++) {
-      const K = t.scale, x0 = id === "monaco" ? r() * t.world : (-200 + r() * 150) * K, z0 = id === "monaco" ? (1340 + r() * 300) * K : (300 + r() * 1100) * K;
-      V.barcos.push({ k, cascos, esteiras, x: x0, z: z0, ang: id === "monaco" ? (r() < 0.5 ? 0 : Math.PI) : Math.PI / 2 + (r() < 0.5 ? 0 : Math.PI), vel: 14 + r() * 16, ida: 0, max: 900 + r() * 900 });
+      const K = t.scale, x0 = id === "monaco" ? t.world + 150 + r() * 900 : (-200 + r() * 150) * K, z0 = id === "monaco" ? r() * t.world : (300 + r() * 1100) * K; // Mônaco: o mar aberto a leste, fora do porto
+      V.barcos.push({ k, cascos, esteiras, x: x0, z: z0, ang: id === "monaco" ? (r() < 0.5 ? Math.PI / 2 : -Math.PI / 2) : Math.PI / 2 + (r() < 0.5 ? 0 : Math.PI), vel: 14 + r() * 16, ida: 0, max: 900 + r() * 900 });
     }
   }
   // neve caindo na Terra do Sorvete, bolas de feno no Deserto, holofotes em Tóquio

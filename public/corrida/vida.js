@@ -47,7 +47,7 @@ export function enfeitar(tr, add, r, alturaEm) {
   const lat = (p, l) => [p.x + p.nx * l, p.y + p.ny * l];
   // balizas: um a cada 36 unidades dos dois lados (em cima do muro, olhos de gato; sem muro, postes brancos com faixa)
   const bal = [], olho = [];
-  for (let i = 0; i < n; i += 6) {
+  for (let i = 0; i < (tr.sem?.olhos ? 0 : n); i += 6) { // (tr.sem: o que o GP não tem; Mônaco não põe olhos de gato no guard-rail)
     const p = pts[i];
     for (const s of [-1, 1]) {
       const [x, z] = lat(p, s * (borda + (comMuro ? 0 : 0))), y = comMuro ? alturaEm(x, z, i) + 12 : alturaEm(x, z, i);
@@ -61,7 +61,7 @@ export function enfeitar(tr, add, r, alturaEm) {
   // setas nas curvas fechadas, do lado de fora, viradas para quem chega
   const setas = [[], []], postes = [];
   for (let i = 0; i < n; i += 4) {
-    const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 230) || t.espaco) continue;
+    const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 230) || t.espaco || tr.sem?.setas) continue;
     const giro = p.tx * q.ty - p.ty * q.tx, fora = giro > 0 ? -1 : 1, dSeta = comMuro ? tr.wallLat + 10 : W / 2 + 22, [x, z] = lat(p, fora * dSeta), y = alturaEm(x, z, i); // a placa tem 14 de largura: o canto de dentro fica a mais de 12 do asfalto
     if (tr.noCorredor?.(x, z) || tr.distAt(x, z) < dSeta - 2) continue;
     setas[fora > 0 ? 0 : 1].push({ x, y: y + (comMuro ? 18 : 12), z, ry: Math.atan2(-p.tx, -p.ty), s: 1 });
@@ -86,7 +86,7 @@ export function enfeitar(tr, add, r, alturaEm) {
     }
   }
   // bandeirolas atravessando a pista (os GPs com passarelas do kit não têm)
-  if (!t.espaco && !tr.semBandeirolas) for (const f of [0.012, 0.2, 0.41, 0.6, 0.79]) {
+  if (!t.espaco && !tr.semBandeirolas && !tr.sem?.bandeirolas) for (const f of [0.012, 0.2, 0.41, 0.6, 0.79]) {
     if (tr.coberto && tr.coberto(Math.floor(n * f))) continue;
     const i = Math.floor(n * f), p = pts[i], L = borda + 6, alto = 46, cores = ["#e63946", "#ffd23f", "#1e88e5", "#43a047", "#ffffff", "#fb8c00"];
     const [x1, z1] = lat(p, L), [x2, z2] = lat(p, -L), y1 = alturaEm(x1, z1, i), y2 = alturaEm(x2, z2, i);
@@ -135,7 +135,7 @@ export function enfeitar(tr, add, r, alturaEm) {
     }
     V.asas = add(new THREE.InstancedMesh(asa, mat, V.passaros.length * 14)); V.asas.frustumCulled = false; V.asas.castShadow = false; // o bando dá a volta no mundo todo: sem esfera de corte
   }
-  if (!t.espaco) {
+  if (!t.espaco && !tr.sem?.dirigivel) {
     const g = add(new THREE.Group()), faixa = canvasTex(512, 128, (x, w, hh) => { x.fillStyle = "#f4f4f4"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ffd23f"; x.fillRect(0, 34, w, 60); x.fillStyle = "#111"; x.font = "900 48px Bungee, Impact, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("GALERA", w / 4, 66); x.fillText("GALERA", (w * 3) / 4, 66); });
     const casco = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 16), new THREE.MeshStandardMaterial({ map: faixa, roughness: 0.4, metalness: 0.1, emissive: noite ? 0xffffff : 0, emissiveMap: noite ? faixa : null, emissiveIntensity: 0.35 }));
     casco.scale.set(70, 24, 24); casco.rotation.y = Math.PI / 2; g.add(casco);

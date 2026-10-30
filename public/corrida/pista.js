@@ -8,7 +8,7 @@ import { aguaUvDaFita, prepararAguaPista } from "./agua-pista.js";
 import { PROPS, aoCarregar } from "./props.js";
 import { enfeitar, animarVida } from "./vida.js";
 import { aplicarCeu } from "./ceu.js";
-import { aguaMonaco, fundoMonaco, orlaMonaco, alturaRocha } from "./monaco.js";
+import { fundoMonaco, relevoMonaco, corDoChaoMonaco, NIVEL_DO_MAR } from "./monaco.js";
 // o kit de pista (kit/README.md) e a configuração de cada GP (gps/)
 import { GPS } from "./gps/index.js";
 import { arquibancadas } from "./kit/arquibancadas.js";
@@ -100,7 +100,8 @@ export function buildTrack(id) {
   // altura do chão em qualquer lugar: longe demais para o barranco da pista alcançar, é o nível zero
   const alcance = W / 2 + t.flat + t.fall + cell;
   tr.chao = (x, y) => (tr.distAprox(x, y) > alcance ? 0 : groundH(tr, x, y, tr.indiceAt(x, y)));
-  if (id === "monaco") { const plano = tr.chao; tr.chao = (x, y) => Math.max(plano(x, y), alturaRocha(tr, x, y)); } // o Rochedo
+  // GPs com relevo de verdade (Mônaco: o morro do EU-DEM/SRTM em volta da pista): `tr.relevoGP(x, y, f, idx)` manda em groundH e o chão vale em toda parte, não só perto da pista
+  if (id === "monaco") { tr.relevoGP = relevoMonaco(tr); tr.chao = (x, y) => groundH(tr, x, y, tr.indiceAt(x, y)); }
   // pista que passa por cima de si mesma (`cruza`, o oito de Suzuka): perto do cruzamento o chão é o do trecho de baixo, e o
   // de cima fica no ar, na ponte do GP
   if (t.cruza) {
@@ -130,25 +131,26 @@ export function trackFrame(tr, x, y, idx) { // ponto da pista mais perto (já sa
 }
 // corta uma PlaneGeometry de S × S quadrados em N × N pedaços (os vértices da borda se repetem nos dois vizinhos)
 function emPedacos(geo, S, N) {
-  const P = geo.attributes.position.array, NO = geo.attributes.normal.array, UV = geo.attributes.uv.array, out = [];
+  const CO = geo.attributes.color ? geo.attributes.color.array : null, P = geo.attributes.position.array, NO = geo.attributes.normal.array, UV = geo.attributes.uv.array, out = [];
   for (let tj = 0; tj < N; tj++) for (let ti = 0; ti < N; ti++) {
     const x0 = Math.floor((ti * S) / N), x1 = Math.floor(((ti + 1) * S) / N), y0 = Math.floor((tj * S) / N), y1 = Math.floor(((tj + 1) * S) / N), w = x1 - x0 + 1;
-    const pos = [], nor = [], uv = [], idx = [];
-    for (let iy = y0; iy <= y1; iy++) for (let ix = x0; ix <= x1; ix++) { const k = iy * (S + 1) + ix; pos.push(P[k * 3], P[k * 3 + 1], P[k * 3 + 2]); nor.push(NO[k * 3], NO[k * 3 + 1], NO[k * 3 + 2]); uv.push(UV[k * 2], UV[k * 2 + 1]); }
+    const pos = [], nor = [], uv = [], idx = [], col = [];
+    for (let iy = y0; iy <= y1; iy++) for (let ix = x0; ix <= x1; ix++) { const k = iy * (S + 1) + ix; pos.push(P[k * 3], P[k * 3 + 1], P[k * 3 + 2]); nor.push(NO[k * 3], NO[k * 3 + 1], NO[k * 3 + 2]); uv.push(UV[k * 2], UV[k * 2 + 1]); if (CO) col.push(CO[k * 3], CO[k * 3 + 1], CO[k * 3 + 2]); }
     for (let iy = 0; iy < y1 - y0; iy++) for (let ix = 0; ix < x1 - x0; ix++) { const a = iy * w + ix, b = a + w, c = b + 1, d = a + 1; idx.push(a, b, d, b, c, d); }
     // pedaço liso (longe da pista, sem relevo): 4 vértices bastam, a luz e a textura saem iguais (junta-se tudo numa malha só, adiante)
     const liso = pos.every((v, k) => k % 3 !== 1 || Math.abs(v - pos[1]) < 0.02) && nor.every((v, k) => k % 3 !== 1 || v > 0.9999);
     if (liso) {
       const h = y1 - y0 + 1, cantos = [0, w - 1, (h - 1) * w, (h - 1) * w + w - 1], q = new THREE.BufferGeometry();
       q.setAttribute("position", new THREE.Float32BufferAttribute(cantos.flatMap((c) => pos.slice(c * 3, c * 3 + 3)), 3)); q.setAttribute("normal", new THREE.Float32BufferAttribute(cantos.flatMap((c) => nor.slice(c * 3, c * 3 + 3)), 3));
-      q.setAttribute("uv", new THREE.Float32BufferAttribute(cantos.flatMap((c) => uv.slice(c * 2, c * 2 + 2)), 2)); q.setIndex([0, 2, 1, 2, 3, 1]); q.userData.liso = true; out.push(q); continue;
+      q.setAttribute("uv", new THREE.Float32BufferAttribute(cantos.flatMap((c) => uv.slice(c * 2, c * 2 + 2)), 2)); if (CO) q.setAttribute("color", new THREE.Float32BufferAttribute(cantos.flatMap((c) => col.slice(c * 3, c * 3 + 3)), 3)); q.setIndex([0, 2, 1, 2, 3, 1]); q.userData.liso = true; out.push(q); continue;
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+    if (CO) g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
     out.push(g);
   }
   return out;
 }
-export function groundH(tr, x, y, idx) { const f = trackFrame(tr, x, y, idx); return f.h * falloff(tr, f.lat); }
+export function groundH(tr, x, y, idx) { const f = trackFrame(tr, x, y, idx); return tr.relevoGP ? tr.relevoGP(x, y, f, idx) : f.h * falloff(tr, f.lat); }
 
 // Rio: o mar fica do lado de fora da reta da orla (Copacabana); as coordenadas foram desenhadas no quadrado de 1600
 const rioSea = (x, y) => { const K = PISTAS.rio.scale; return x < 230 * K + (y - 335 * K) * 0.04 && y < 1450 * K; };
@@ -157,6 +159,7 @@ const aguaTex = (cor) => canvasTex(256, 256, (x, w, hh, rr) => { x.fillStyle = c
 function buildWorld(tr) {
   const { pts, n, W, look, id, grp } = tr, t = tr.t, add = (o) => (grp.add(o), o), r = rng(id.length * 977), gp = GPS[id];
   tr.reservado = []; // onde os enfeites soltos não entram (o kit e o cenário de cada GP vão pondo aqui)
+  tr.sem = gp?.sem || {}; // o que este GP não tem e vida.js / vida-mais.js não devem pôr (Mônaco: olhos de gato, setas, mastros, roda-gigante...)
   // Reserva as duas faixas e o prédio antes do cenário, do ambiente e da vida da pista.
   if (t.boxes && gp?.boxes !== false && window.F1Regras) {
     const cor = window.F1Regras.corredor(t, n, W);
@@ -176,20 +179,25 @@ function buildWorld(tr) {
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i) + WORLD / 2, y = pos.getZ(i) + WORLD / 2;
-    const longe = tr.distAprox(x, y) > W / 2 + t.flat + t.fall + WORLD / 96, bi = longe ? 0 : tr.indiceAt(x, y);
+    const longe = !tr.relevoGP && tr.distAprox(x, y) > W / 2 + t.flat + t.fall + WORLD / 96, bi = longe ? 0 : tr.indiceAt(x, y);
     const perto = !longe && Math.abs(trackFrame(tr, x, y, bi).lat) < W / 2 + 26; // embaixo da pista o chão afunda mais (a malha é grossa e furava o asfalto nas rampas)
     let h = t.espaco ? -700 : (longe ? 0 : groundH(tr, x, y, bi)) - (perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
-    if (id === "monaco") { const s = fundoMonaco(tr, x, y); if (s > -16) h = s > 0 ? Math.max(-16, -6 - s * 0.6) : Math.min(h, -6 - s * 0.6); const ar = alturaRocha(tr, x, y); if (ar > 0) h = Math.max(h, ar); } // o porto e o mar, com o cais, e o Rochedo
+    if (id === "monaco") { const s = fundoMonaco(tr, x, y); if (s > -90) h = s > 0 ? Math.max(-34, NIVEL_DO_MAR - 7 - s * 0.35) : Math.min(h, NIVEL_DO_MAR + 1 + 3.2 * -s); } // a bacia do porto e o mar, o cais em paredão e a falésia do Rochedo (3 de altura por unidade)
     if (id === "rio" && rioSea(x, y)) h = Math.min(h, -14); // o mar de Copacabana
     if (tr.sobPonte) h = Math.min(h, tr.sobPonte(x, y) - 4); // embaixo da ponte (Suzuka)
     pos.setY(i, h);
   }
   geo.computeVertexNormals();
+  if (id === "monaco") { // a cor do terreno por vértice: rua e calçada de pedra, jardins, mata, paredão de pedra e o mato do morro (monaco.js)
+    const cor = corDoChaoMonaco(), cores = new Float32Array(pos.count * 3), nor = geo.attributes.normal;
+    for (let k = 0; k < pos.count; k++) { const c = cor(pos.getX(k) + WORLD / 2, pos.getZ(k) + WORLD / 2, pos.getY(k), nor.getY(k)); cores[k * 3] = c[0]; cores[k * 3 + 1] = c[1]; cores[k * 3 + 2] = c[2]; }
+    geo.setAttribute("color", new THREE.BufferAttribute(cores, 3));
+  }
   const gtex = canvasTex(256, 256, (x, w, hh, rr) => { x.fillStyle = look.ground[0]; x.fillRect(0, 0, w, hh); for (let i = 0; i < 5000; i++) { x.fillStyle = look.ground[1 + ((rr() * 2) | 0)]; x.fillRect(rr() * w, rr() * hh, 3, 3); } });
   gtex.repeat.set(size / 120, size / 120);
   // em pedaços (8 × 8): a malha inteira tem quase 300 mil triângulos e era desenhada toda a cada quadro; assim a placa
   // só desenha os pedaços que aparecem na tela. As normais já foram calculadas na malha inteira (sem emenda entre eles)
-  const chaoM = new THREE.MeshStandardMaterial({ map: gtex, roughness: 1 });
+  const chaoM = new THREE.MeshStandardMaterial({ map: gtex, roughness: 1, vertexColors: !!geo.attributes.color });
   const lisos = [];
   for (const pedaco of emPedacos(geo, S, 8)) {
     if (pedaco.userData.liso) { lisos.push(pedaco); continue; }
@@ -396,11 +404,7 @@ function buildWorld(tr) {
       const near = (tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 36) + 10 + r() * 60, x = p.x + p.nx * side * near, y = p.y + p.ny * side * near;
       if (!free(x, y, 20) || (tr.boxesInfo && !livreRes(x, y))) continue; // nem em cima das garagens do corredor dos boxes
       const k = r();
-      if (id === "monaco") { // palmeiras na calçada e os prédios altos colados na rua (sem área de escape)
-        if (!terra(x, y)) continue;
-        if (k < 0.25) palms.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.5, r: r() * 6 });
-        else if (k < 0.85) { const sx = 55 + r() * 50, sz = 55 + r() * 50, far = near + 30 + r() * 50, bx = p.x + p.nx * side * far, by = p.y + p.ny * side * far; if (free(bx, by, Math.hypot(sx, sz) / 2 + t.wall + 18) && terra(bx, by) && !orlaMonaco(tr, bx, by)) blds.push({ x: bx, y: by, h: hAt(bx, by), s: 1, sx, sy: 90 + r() * 200, sz, dy: 0.5, r: Math.atan2(p.ty, p.tx), c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f3e0c0", "#f4ece0"][(r() * 6) | 0] }); }
-      }
+      if (id === "monaco") { /* a cidade de verdade (prédios, palmeiras e plátanos) vem de kit/monaco, em monaco.js */ }
       else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "silverstone") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" || id === "barcelona" || id === "silverstone" ? 0.07 : 0.52) && ((id !== "barcelona" && id !== "silverstone") || livreRes(x, y))) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
       else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
       else if (gp?.parque) { /* o bosque fechado vem de kit/parque.js */ }
@@ -427,11 +431,7 @@ function buildWorld(tr) {
   for (let k = 0; k < (t.espaco ? 0 : Math.round(220 * K * K)); k++) {
     const x = -pad + 100 + r() * (WORLD + 2 * pad - 200), y = -pad + 100 + r() * (WORLD + 2 * pad - 200);
     if (!free(x, y, 160)) continue;
-    if (id === "monaco") { // a cidade subindo a encosta, com as árvores no morro lá atrás (o norte, longe do mar)
-      if (!terra(x, y)) continue;
-      if (y < 560 * K && r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.1 + r() * 1.1 });
-      else if (!orlaMonaco(tr, x, y)) blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 70, sy: 90 + r() * (r() < 0.15 ? 420 : 220), sz: 60 + r() * 70, dy: 0.5, r: r() * 3, c: ["#f1d9b5", "#efc9a7", "#f6e7c9", "#e8b78f", "#f4ece0"][(r() * 5) | 0] });
-    }
+    if (id === "monaco") { /* o morro e a cidade em degraus vêm do relevo real e das plantas de kit/monaco */ }
     else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "silverstone") { if ((id !== "laguna" && id !== "barcelona" && id !== "silverstone") || r() < (id === "silverstone" ? 0.1 : id === "barcelona" ? 0.12 : 0.3)) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
     else if (id === "deserto") { if (r() < 0.07) palms.push({ x, y, h: hAt(x, y), s: 1.2, r: r() * 6 }); }
     else if (gp?.parque) { if (r() < 0.1) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // o parque continua longe da pista
@@ -440,7 +440,6 @@ function buildWorld(tr) {
     else if (id === "rio") { if (rioSea(x, y)) continue; if (hAt(x, y) > 15 || r() < 0.5) jungle.push({ x, y, h: hAt(x, y), s: 1.3 + r() * 1.2 }); else blds.push({ x, y, h: hAt(x, y), s: 1, sx: 60 + r() * 50, sy: 70 + r() * 120, sz: 60 + r() * 50, dy: 0.5, r: r() * 3, c: ["#f4f1e6", "#e8e0cf", "#d9e6ef"][(r() * 3) | 0] }); }
     else towers.push({ x, y, h: hAt(x, y), s: 1, sx: 80 + r() * 60, sy: 150 + r() * 500, sz: 80 + r() * 60, dy: 0.5, r: r() * 3, c: ["#1d2033", "#242842", "#191b2b", "#2a2340"][(r() * 4) | 0] });
   }
-  if (id === "monaco") for (let k = 0; k < 20; k++) yachts.push({ x: r() * WORLD, y: (1320 + r() * 500) * K, h: -6, s: 1.3, r: r() * 6 }); // lá fora, no mar
   if (id === "interlagos" || id === "laguna" || id === "nurburgring") for (let k = 0; k < 7; k++) { const p = pts[Math.floor(n * (0.015 + k * 0.013))], L = W / 2 + 70; stands.push({ x: p.x - p.nx * L, y: p.y - p.ny * L, h: p.h, s: 1, r: -Math.atan2(p.ny, p.nx) }); }
   // modelos
   if (PROPS.arvore) for (const { geo, mat } of PROPS.arvore.pecas) { const g = geo.clone(); g.scale(60, 60, 60); inst(g, mat, trees); } // a árvore do Kenney: 1,5 do modelo vira uns 9 m

@@ -78,6 +78,7 @@ function linhaDo(geo) {
 function projetar(coords) {
   const R = 6371008.8, lat0 = coords.reduce((s, c) => s + c[1], 0) / coords.length, lon0 = coords.reduce((s, c) => s + c[0], 0) / coords.length;
   const kx = (Math.PI / 180) * R * Math.cos((lat0 * Math.PI) / 180), ky = (Math.PI / 180) * R;
+  projetar.origem = { lon0, lat0, kx, ky }; // para quem quiser pôr outras coisas reais no mesmo mundo (prédios, relevo)
   return coords.map(([lon, lat]) => [(lon - lon0) * kx, -(lat - lat0) * ky]);
 }
 
@@ -163,9 +164,9 @@ function cruzamentos(P) {
 
 // afasta os trechos encostados, aos poucos, alisando a linha junto para ela não entortar; e abre as curvas fechadas
 // demais (raio menor que `raioMin`)
-function afastar(P, folga, gap, cruza, raioMin = RAIO_MIN) {
+function afastar(P, folga, gap, cruza, raioMin = RAIO_MIN, passadas = 400) {
   let pares = encostados(P, folga, gap, cruza), volta = 0;
-  for (; volta < 400; volta++) {
+  for (; volta < passadas; volta++) {
     const rr = raios(P, 4), fechadas = rr.map((r) => r < raioMin);
     if (!pares.length && !fechadas.some(Boolean)) break;
     const mov = P.map(() => [0, 0]);
@@ -240,7 +241,7 @@ async function converter(o) {
   let P = spline(M.map(([x, y]) => [x * k, y * k]), PASSO);
   alisar(P, 6, 0.5);
   const folga = largura + 2 * muro + 8, gap = Math.ceil((folga * 2.2) / PASSO) + 4;
-  const raioMin = +(o["raio-min"] || RAIO_MIN), cruza = cruzamentos(P), af = afastar(P, folga, gap, cruza, raioMin);
+  const raioMin = +(o["raio-min"] || RAIO_MIN), cruza = cruzamentos(P), af = afastar(P, folga, gap, cruza, raioMin, +(o.passadas || 400));
   // no quadrado de 1600
   const xs = P.map((p) => p[0]), ys = P.map((p) => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const scale = Math.ceil((Math.max(x1 - x0, y1 - y0) / CABE) * 100) / 100, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
@@ -366,7 +367,7 @@ async function converter(o) {
     ...avisos,
   ];
   if (o.svg) fs.writeFileSync(o.svg, desenho(pts, largura, scale, ini));
-  return { bloco: linhas.join("\n"), relatorio, pts, scale };
+  return { bloco: linhas.join("\n"), relatorio, pts, scale, proj: { ...projetar.origem, k, scale, cx, cy, ini }, M, vert };
 }
 
 // o desenho do traçado em SVG (a pista com a largura, a largada em vermelho e as curvas mais escuras)
