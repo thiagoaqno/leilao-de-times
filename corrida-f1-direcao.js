@@ -22,12 +22,12 @@ function largada(room, p, pos, agora, log) {
 const ROTULO = { leve: 'leve', media: 'média', grave: 'grave' };
 // Stop-and-go: o piloto tem STOPGO_VOLTAS voltas para entrar no box, parar STOPGO_S s sem trocar pneu e voltar (o box faz a parada: sim.js,
 // `amb.stopGo`; quem cumpre é `cumprirStopGo`). Se a punição cai na última volta, ou não sobra volta com box aberto, vira +20 s no tempo final.
-// Sem cumprir em 3 voltas, bandeira preta. Dois stop-and-go pendentes somam o tempo parado na mesma visita.
+// Sem cumprir em 3 voltas, bandeira preta. Uma visita cumpre o stop-and-go pendente de 8 segundos.
 function stopGoRestante(p, voltas) { const sg = p.stopGo; return sg ? Math.max(0, Math.min(sg.ate, voltas) - (p.laps || 0)) : 0; }
 function aplicarStopGo(room, p, motivo, log) {
   if (!F1.stopGoCabe(p.laps, room.config.voltas)) { penalizar(p, F1.STOPGO_CONVERSAO_S, `${motivo}: sem voltas para o stop-and-go`, log); return 'convertido'; }
   const sg = p.stopGo || (p.stopGo = { n: 0, s: 0, ate: (p.laps || 0) + F1.STOPGO_VOLTAS });
-  sg.n++; sg.s = F1.STOPGO_S * sg.n;
+  sg.n++; sg.s = F1.STOPGO_S;
   const v = stopGoRestante(p, room.config.voltas);
   log(`🛑 ${p.name}: ${motivo}. Stop-and-go ${sg.s} s: cumpra em ${v} volta${v > 1 ? 's' : ''}.`);
   return 'stopgo';
@@ -82,7 +82,7 @@ function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   log(`💥 ${p.name}: batida ${nivel} ${tipo === 'muro' ? 'no muro' : 'com outro carro'}; dano ${Math.round(p.dano)}%${culpa ? '' : batido ? ' (atingido: sem punição)' : ' (sem punição de tempo)'}.`);
   if (culpa) {
     p.causadas = (p.causadas || 0) + 1;
-    const dec = F1.nivelDaPunicao(grav, p.causadas, (p.laps || 0) === 0), subiu = dec.subiu.length ? ` (${dec.subiu.join(' e ')}: punição maior)` : '';
+    const dec = F1.nivelDaPunicao(grav, p.causadas), subiu = dec.subiu.length ? ` (${dec.subiu.join(' e ')}: punição maior)` : '';
     const motivo = `causou uma batida ${nivel}${subiu}`;
     if (dec.nivel === 'leve') penalizar(p, F1.PUNICAO_LEVE_S, motivo, log);
     else if (dec.nivel === 'media') penalizar(p, F1.PUNICAO_MEDIA_S, motivo, log);
@@ -155,7 +155,10 @@ function registrar(room, p, pos, agora, log) {
   const setor = Math.floor((((pr % 1) + 1) % 1) * T.SECTORS);
   const amarela = d.amarelo?.setor === setor && agora < d.amarelo.ate;
   const lider = ordem(room)[0], diferenca = lider && lider.id !== p.id ? progresso(lider, n) - pr : 0;
-  const azul = diferenca > 0.94 && diferenca < 1 && ((1 - diferenca) * n * 6) / Math.max(1, lider.pos.v || 1) < 1.5;
+  const distancia = lider && Number.isFinite(lider.pos.x) && Number.isFinite(lider.pos.y) ? Math.hypot(lider.pos.x - pos.x, lider.pos.y - pos.y) : Infinity;
+  // A diferença de volta sozinha pode apontar para outro trecho próximo do traçado.
+  // A folga de saída evita avisos repetidos quando a distância oscila no limite.
+  const azul = diferenca > 0.94 && diferenca < 1 && distancia < (p.azul ? 150 : 90) && ((1 - diferenca) * n * 6) / Math.max(1, lider.pos.v || 1) < (p.azul ? 2.5 : 1.5);
   if (azul && !p.azul) {
     p.avisosAzul++;
     log(`🔵 ${p.name}: deixe o líder passar (${p.avisosAzul}/3).`);

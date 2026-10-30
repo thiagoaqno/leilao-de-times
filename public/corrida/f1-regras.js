@@ -488,8 +488,7 @@ function batida(forca) {
 // ANTES do impulso trocar as velocidades), em u/s (1 u/s = 0,75 km/h): leve a partir de 20 (15 km/h), média a partir de 55 (~41 km/h)
 // e grave a partir de 105 (~79 km/h a mais na traseira de quem estava na frente). A escala de quem CAUSOU a batida: leve +3 s, média
 // +6 s, grave stop-and-go de 8 s (entrar no box, ficar parado 8 s sem trocar pneu e voltar) em até 3 voltas; sem voltas para cumprir,
-// vale +20 s no tempo final; quem não cumpre leva a bandeira preta. A 2ª batida causada na corrida sobe um nível, a 3ª é bandeira preta,
-// e até o fim da 1ª volta (a largada e a 1ª curva) a punição também sobe um nível.
+// vale +20 s no tempo final; quem não cumpre leva a bandeira preta. A partir da 2ª batida causada a punição sobe um nível; a 6ª é bandeira preta.
 const COLISAO_LEVE = BATIDA_MIN, COLISAO_MEDIA = 55, COLISAO_GRAVE = 105;
 const PUNICAO_LEVE_S = 3, PUNICAO_MEDIA_S = 6, STOPGO_S = 8, STOPGO_VOLTAS = 3, STOPGO_CONVERSAO_S = 20;
 const ESCALA_PUNICAO = ["leve", "media", "grave"];
@@ -497,14 +496,12 @@ function gravidadeDaBatida(forca) {
   if (!(forca >= COLISAO_LEVE)) return null;
   return forca >= COLISAO_GRAVE ? "grave" : forca >= COLISAO_MEDIA ? "media" : "leve";
 }
-// O nível da punição de quem causou a batida: `n` é quantas batidas ele causou na corrida (contando esta); `primeiraVolta`, se ainda
-// não fechou a 1ª volta. Devolve { nivel: "leve" | "media" | "grave" | "preta", subiu: [motivos] }.
-function nivelDaPunicao(gravidade, n, primeiraVolta) {
+// O nível da punição de quem causou a batida: `n` conta as batidas causadas, incluindo esta. Devolve { nivel: "leve" | "media" | "grave" | "preta", subiu: [motivos] }.
+function nivelDaPunicao(gravidade, n) {
   if (!ESCALA_PUNICAO.includes(gravidade)) return null;
-  if (n >= 3) return { nivel: "preta", subiu: ["terceira batida causada"] };
+  if (n >= 6) return { nivel: "preta", subiu: ["sexta batida causada"] };
   let i = ESCALA_PUNICAO.indexOf(gravidade); const subiu = [];
-  if (n === 2) { i++; subiu.push("reincidência"); }
-  if (primeiraVolta) { i++; subiu.push("primeira volta"); }
+  if (n >= 2) { i++; subiu.push("reincidência"); }
   return { nivel: ESCALA_PUNICAO[Math.min(2, i)], subiu };
 }
 // O stop-and-go cabe? `voltas` é o número de voltas da corrida; `feitas` as que o piloto já fechou. O box só abre se não é a última
