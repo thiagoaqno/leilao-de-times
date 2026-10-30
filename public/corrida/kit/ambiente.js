@@ -9,7 +9,7 @@ import { canvasTex, M } from "../cena.js";
 import { marcaTex, PATROCINIO } from "./marcas.js";
 import { ocupado } from "./comum.js";
 
-export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "f1", bandeira = [0xc42d38, 0xf0eee6], placas = [100, 50], outdoors = PATROCINIO, cerca = true, paineis = true, mastros = true } = {}) {
+export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "f1", bandeira = [0xc42d38, 0xf0eee6], placas = [100, 50], outdoors = PATROCINIO, cerca = true, paineis = true, mastros = true, semCerca = [], tela = false } = {}) {
   const { pts, n, W } = tr, L = tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 30, lotes = new Map();
   const metal = M(0x697780), branco = M(0xf0eee6), vermelho = M(0xc42d38), laranja = M(0xf27421), escuro = M(0x18242b), bandCima = M(bandeira[0]), bandBaixo = M(bandeira[1]), bandMeio = bandeira[2] != null ? M(bandeira[2]) : null;
   const luz = new THREE.MeshBasicMaterial({ color: 0xffdf9c, toneMapped: false });
@@ -38,6 +38,7 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
     if (tr.distAt(x, z) < minimo || tr.distAt(x + p.tx * 16, z + p.ty * 16) < minimo || tr.distAt(x - p.tx * 16, z - p.ty * 16) < minimo) return null; // e as pontas das peças de 32
     return { p, x, z, h: p.h, ry: Math.atan2(-p.nx * lado, -p.ny * lado) };
   }
+  const redes = { 1: [], [-1]: [] }; // os postos da cerca de cada lado: entre dois vizinhos sobe a tela (malha transparente contínua), senão a cerca seria só postes e barras soltos no ar
   for (let i = 0; i < n; i += 9) for (const lado of [-1, 1]) {
     const o = lugar(i, lado); if (!o) continue;
     const { p, x, z, h, ry } = o;
@@ -47,10 +48,16 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
       stats.luzesTunel++; continue;
     }
     // Cerca sobre o guard-rail existente; postes altos e travessas seguem o relevo.
-    if (cerca) {
-    caixa(metal, x, h + 24, z, 0.8, 24, 0.8);
-    for (const altura of [15, 23, 34]) caixa(metal, x, h + altura, z, 32, 0.5, 0.5, ry);
-    for (const deslocamento of [-12, -6, 6, 12]) caixa(metal, x + p.tx * deslocamento, h + 24, z + p.ty * deslocamento, 0.22, 22, 0.22);
+    const f = (((i % n) + n) % n) / n, semCercaAqui = semCerca.some(([f0, f1]) => (f0 <= f1 ? f >= f0 && f <= f1 : f >= f0 || f <= f1)); // (`semCerca`: trechos de guard-rail sem a cerca alta, frações da volta)
+    if (cerca && !semCercaAqui) {
+    const peca = () => { // os postes e as travessas da cerca
+      caixa(metal, x, h + 24, z, 0.8, 24, 0.8);
+      if (tela) return; // com a tela, o poste basta (as travessas de 32 passariam do fim do trecho e ficariam soltas no ar)
+      for (const altura of [15, 23, 34]) caixa(metal, x, h + altura, z, 32, 0.5, 0.5, ry);
+      for (const deslocamento of [-12, -6, 6, 12]) caixa(metal, x + p.tx * deslocamento, h + 24, z + p.ty * deslocamento, 0.22, 22, 0.22);
+    };
+    redes[lado].push({ i, x, z, h, peca });
+    if (!tela) peca(); // com `tela`, o poste só entra se tiver vizinho (mais abaixo): poste e barra isolados ficariam soltos no ar
     }
     if (paineis && i % 27 === 0) {
       caixa(anuncios[(i / 27) % anuncios.length], x - p.nx * lado * 1.6, h + 7, z - p.ny * lado * 1.6, 30, 9, 0.6, ry);
@@ -61,6 +68,22 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
       if (bandMeio) for (const [m, s] of [[bandCima, -1], [bandMeio, 0], [bandBaixo, 1]]) caixa(m, x + s * 5 * Math.cos(ry), h + 44.5, z - s * 5 * Math.sin(ry), 5, 9, 0.5, ry); // três faixas verticais (Itália)
       else { caixa(bandCima, x, h + 47, z, 15, 4.5, 0.5, ry); caixa(bandBaixo, x, h + 42.5, z, 15, 4.5, 0.5, ry); }
       stats.bandeiras++;
+    }
+  }
+  if (tela) for (const lado of [-1, 1]) { const nos = redes[lado]; nos.forEach((o, k) => { if ((k > 0 && o.i - nos[k - 1].i === 9) || (k + 1 < nos.length && nos[k + 1].i - o.i === 9)) o.peca(); }); }
+  // a tela da cerca de detritos: uma malha de losangos (alfa) presa nos postos, de uma ponta a outra de cada trecho contínuo; entre dois postos que não são vizinhos ela não existe
+  if (cerca && tela) { // (`tela: true`: a malha da cerca; sem ela só ficam os postos e as barras)
+    const malha = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, h) => { x.strokeStyle = "rgba(210,220,226,0.9)"; x.lineWidth = 2.2; for (let k = -h; k < w + h; k += 16) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k + h, h); x.stroke(); x.beginPath(); x.moveTo(k + h, 0); x.lineTo(k, h); x.stroke(); } }), transparent: true, alphaTest: 0.2, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.3 });
+    for (const lado of [-1, 1]) {
+      const nos = redes[lado], vs = [], uv = [], idx = []; let d = 0;
+      for (let k = 1; k < nos.length; k++) {
+        const a = nos[k - 1], b = nos[k]; if (b.i - a.i !== 9) continue;
+        const q = vs.length / 3, c = Math.hypot(b.x - a.x, b.z - a.z);
+        vs.push(a.x, a.h + 12.5, a.z, a.x, a.h + 35, a.z, b.x, b.h + 12.5, b.z, b.x, b.h + 35, b.z); uv.push(d / 16, 0, d / 16, 1.4, (d + c) / 16, 0, (d + c) / 16, 1.4); idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); d += c;
+      }
+      if (!idx.length) continue;
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      const m = add(new THREE.Mesh(g, malha)); m.name = "gp-cerca-tela"; m.castShadow = false;
     }
   }
   // Postos compactos só onde há calçada livre, sem ocupar piscina, arquibancadas ou porto.

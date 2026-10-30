@@ -6,7 +6,8 @@ import * as THREE from "three";
 import { canvasTex, M } from "../../cena.js";
 import { marcaTex } from "../marcas.js";
 import { livre, ocupado, instancias, sinalDaCurva, sorteio } from "../comum.js";
-import { D, fundoMonaco, distanciaDoMar, NIVEL_DO_MAR } from "./mundo.js";
+import { D, fundoMonaco, distanciaDoMar, NIVEL_DO_MAR, afastarMuro } from "./mundo.js";
+import { faixa } from "../arquibancadas.js";
 
 export const PORTICO_ADIANTE = 260; // mesma posição para a viga e a faixa TAG Heuer
 
@@ -17,7 +18,7 @@ const ladoDe = (tr, p, quer) => { const L = tr.wallLat; if (quer === "agua") { r
 
 // ---- os blocos Tecpro: duas filas de blocos brancos com a faixa vermelha, de dois andares, do lado de fora da curva ----
 export function tecpro(tr, add, trechos) {
-  const L = tr.wallLat, { pts, n } = tr, brancos = [], vermelhos = [];
+  const L = tr.wallLat, { pts, n } = tr, brancos = [], azuis = [], vermelhos = [];
   for (const [f0, f1, quer] of trechos) {
     let i0 = Math.floor(f0 * n), i1 = Math.floor(f1 * n); if (i1 < i0) i1 += n;
     const lado = quer === "fora" ? -sinalDaCurva(pts, n, Math.floor((i0 + i1) / 2) % n) : quer;
@@ -27,13 +28,13 @@ export function tecpro(tr, add, trechos) {
         const d = L + 8 + fila * 11, [x, z] = lateral(p, lado, d);
         if (!livre(tr, x, z, 14) || ocupado(tr, x, z) || tr.distAt(x, z) < d - 4) continue;
         const y = tr.chao(x, z) - 1.5, ry = Math.atan2(p.tx, p.ty) + Math.PI / 2;
-        for (let andar = 0; andar < 2; andar++) { brancos.push({ x, y: y + 4.5 + andar * 9, z, sx: 8.6, sy: 8.4, sz: 22, r: ry - Math.PI / 2 }); vermelhos.push({ x, y: y + 4.5 + andar * 9, z, sx: 8.9, sy: 2.4, sz: 22.3, r: ry - Math.PI / 2 }); }
+        for (let andar = 0; andar < 2; andar++) { (fila === 0 ? azuis : brancos).push({ x, y: y + 4.5 + andar * 9, z, sx: 8.6, sy: 8.4, sz: 22, r: ry - Math.PI / 2 }); vermelhos.push({ x, y: y + 4.5 + andar * 9, z, sx: 8.9, sy: 2.4, sz: 22.3, r: ry - Math.PI / 2 }); }
       }
     }
   }
   const g = new THREE.BoxGeometry(1, 1, 1);
-  instancias(add, g, BRANCO, brancos, { nome: "monaco-tecpro" }); instancias(add, g, VERMELHO, vermelhos, { nome: "monaco-tecpro-faixa", sombra: false });
-  tr.tecproMonaco = brancos.length;
+  instancias(add, g, BRANCO, brancos, { nome: "monaco-tecpro" }); instancias(add, g, M(0x1f4fa8, { roughness: 0.75 }), azuis, { nome: "monaco-tecpro-azul" }); // (a fila da frente azul com a faixa vermelha, a de trás branca) instancias(add, g, VERMELHO, vermelhos, { nome: "monaco-tecpro-faixa", sombra: false });
+  tr.tecproMonaco = brancos.length + azuis.length;
 }
 
 // ---- os telões nos postes (um de cada lado da curva): tela escura com a marca do GP ----
@@ -83,12 +84,10 @@ export function cais(tr, add, [f0, f1]) {
   const i0 = Math.floor(f0 * n), i1 = Math.floor(f1 * n);
   for (let i = i0; i <= i1; i += 22) {
     const p = tr.pts[i % n], lado = rng() < 0.5 ? 1 : -1, d = L + 20 + rng() * 22, [x, z] = lateral(p, lado, d);
-    if (!sobra(tr, x, z, i % n, lado, d, 20)) continue;
+    if (!sobra(tr, x, z, i % n, lado, d, 34)) continue;
     const y = tr.chao(x, z) - 1.5, ry = Math.atan2(p.tx, p.ty);
     tendas.push({ x, y: y + 7, z, sx: 24, sy: 14, sz: 18, r: ry }); tetos.push({ x, y: y + 17, z, sx: 26, sy: 8, sz: 20, r: ry + Math.PI / 4 });
   }
-  instancias(add, new THREE.BoxGeometry(1, 1, 1), BRANCO, tendas, { nome: "monaco-tenda" });
-  instancias(add, new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), M(0xe8e8e2, { roughness: 0.8 }), tetos.map((o) => ({ ...o, r: o.r })), { nome: "monaco-tenda-teto" });
   // guindastes amarelos de obra (a montagem das arquibancadas): dois, no cais
   for (const f of [f0 + (f1 - f0) * 0.3, f0 + (f1 - f0) * 0.78]) {
     const p = tr.pts[Math.floor(f * n) % n];
@@ -149,4 +148,53 @@ export function cruzeiros(tr, add) {
     peca(30, 38, 34, -40, 142, 0, AMARELO);
   });
   tr.cruzeirosMonaco = pos.length;
+}
+
+// ---- o muro de arrimo de pedra entre trechos empilhados (o grampo e Mirabeau, onde a pista de cima passa ao lado da de baixo): como o terreno fica sempre abaixo das pistas, sobraria um buraco no desnível. Para cada
+// ponto da pista de baixo olha-se, de cada lado, se a faixa do muro (L + 3) cai embaixo/ao lado de OUTRO trecho mais alto (mais de 8 de diferença): aí sobe um muro de pedra, do nível da pista de baixo (atrás da
+// barreira física dela) até a base da barreira de cima. Não entra em nenhuma das duas pistas: fica entre o muro de uma e o da outra (foto do onboard na curva 6: paredão de pedra irregular). ----
+export function muroDeArrimo(tr, add) {
+  const { pts, n } = tr, L = tr.wallLat, C = 64, hash = new Map(), chave = (a, b) => a * 100003 + b;
+  pts.forEach((p, i) => { const k = chave(Math.floor(p.x / C), Math.floor(p.y / C)); (hash.get(k) || hash.set(k, []).get(k)).push(i); });
+  const pedra = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (x, w, hh, rr) => {
+    x.fillStyle = "#aaa294"; x.fillRect(0, 0, w, hh);
+    for (let i = 0; i < 260; i++) { // as pedras irregulares: cada uma um polígono torto, mais clara no alto e escura nas juntas
+      const cx = rr() * w, cy = rr() * hh, r = 10 + rr() * 16, c = 150 + ((rr() * 55) | 0); x.beginPath();
+      for (let k = 0; k < 7; k++) { const a = (k / 7) * 6.283 + rr() * 0.5, d = r * (0.7 + rr() * 0.5); const px = cx + Math.cos(a) * d, py = cy + Math.sin(a) * d * 0.75; k ? x.lineTo(px, py) : x.moveTo(px, py); }
+      x.closePath(); x.fillStyle = `rgb(${c},${c - 6},${c - 16})`; x.fill(); x.strokeStyle = "#4b463e"; x.lineWidth = 2; x.stroke();
+    }
+    for (let i = 0; i < 900; i++) { x.fillStyle = rr() < 0.5 ? "#00000012" : "#ffffff14"; x.fillRect(rr() * w, rr() * hh, 3, 3); }
+    x.fillStyle = "#5f7a4a55"; for (let i = 0; i < 40; i++) x.fillRect(rr() * w, rr() * hh, 6 + rr() * 16, 3); // o musgo
+  }), roughness: 0.97, side: THREE.DoubleSide, color: 0xffffff, emissive: 0x2a2620, emissiveIntensity: 0.4 });
+  let total = 0; const trechos = [];
+  for (const lado of [1, -1]) {
+    const topo = new Array(n).fill(null);
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], x = p.x + p.nx * lado * (L + 3), z = p.y + p.ny * lado * (L + 3), r = Math.ceil(110 / C) + 1, cx = Math.floor(x / C), cz = Math.floor(z / C); let melhor = null;
+      for (let a = cx - r; a <= cx + r; a++) for (let b = cz - r; b <= cz + r; b++) for (const j of hash.get(chave(a, b)) || []) {
+        if (Math.min(Math.abs(j - i), n - Math.abs(j - i)) < 60) continue;
+        const q = pts[j], d = Math.hypot(q.x - x, q.y - z); if (d > 100 || q.h - p.h < 8 || q.h - p.h > 140) continue;
+        if (!melhor || d < melhor.d) melhor = { d, h: q.h };
+      }
+      if (melhor) topo[i] = melhor.h;
+    }
+    // suaviza o topo ao longo da pista (média de ±3) e junta os pedaços contínuos
+    const lisa = topo.map((h, i) => { if (h == null) return null; let s = 0, k = 0; for (let d = -3; d <= 3; d++) { const v = topo[(i + d + n) % n]; if (v != null) { s += v; k++; } } return s / k; });
+    for (let i = 0; i < n; i++) {
+      if (lisa[i] == null || (lisa[(i - 1 + n) % n] != null && i > 0)) continue;
+      let j = i; while (j + 1 < n && (lisa[j + 1] != null || (lisa[j + 2] != null && j + 2 < n))) j++;
+      if (j - i >= 6) trechos.push({ lado, i0: i, i1: j, lisa });
+    }
+  }
+  for (const { lado, i0, i1, lisa } of trechos) {
+    const vs = [], uv = [], idx = [];
+    for (let i = i0; i <= i1; i++) {
+      const p = pts[i % n], x = p.x + p.nx * lado * (L + 3), z = p.y + p.ny * lado * (L + 3), alto = Math.min((lisa[i] ?? lisa[i - 1] ?? lisa[i + 1] ?? p.h + 20) - 0.6, p.h + 45), d = (i - i0) * 6;
+      vs.push(x, p.h - 3, z, x, alto, z); uv.push(0, d / 70, (alto - p.h + 3) / 40, d / 70);
+      if (i < i1) { const q = (i - i0) * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    const m = add(new THREE.Mesh(g, pedra)); m.castShadow = m.receiveShadow = true; m.name = "monaco-arrimo"; total += i1 - i0;
+  }
+  tr.arrimoMonaco = { trechos: trechos.map((t) => ({ lado: t.lado, de: +(t.i0 / n).toFixed(3), ate: +(t.i1 / n).toFixed(3) })), pontos: total };
 }

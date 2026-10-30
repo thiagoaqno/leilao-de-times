@@ -188,7 +188,7 @@ function passo(c, ent, amb, tr, ev) {
   // anda; no muro escorrega junto dele (o muro fica a uma distância fixa do meio da pista)
   let nx = c.x, ny = c.y;
   c.idx = procurar(tr, nx, ny, c.idx);
-  const fr = quadro(tr, nx, ny, c.idx), lim = tr.wallLat - 8;
+  const fr = quadro(tr, nx, ny, c.idx), lim = tr.wallLat - (tr.t.muroFolga ?? 8);
   const pneu = tr.pneus && tr.pneus[c.idx], limiteL = pneu && Math.sign(fr.lat) === pneu ? tr.W / 2 + 26 : lim;
   if (Math.abs(fr.lat) > limiteL || nx < 2 || ny < 2 || nx > tr.t.world - 2 || ny > tr.t.world - 2) {
     const q = tr.pts[c.idx], s = Math.sign(fr.lat) || 1, over = Math.abs(fr.lat) - limiteL;

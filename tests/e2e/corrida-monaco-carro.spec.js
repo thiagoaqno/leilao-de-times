@@ -21,7 +21,7 @@ test('carro em Mônaco acompanha o asfalto perto dos boxes', async ({ page }, in
     return { diferenca: window.Sim.alturaDoChao(tr, x, y, i) - groundH(tr, x, y, i),
       ...inclinacao(tr, x, y, Math.atan2(p.ty, p.tx), i, 44, 26, 0, false, 0) };
   });
-  expect(amostra.diferenca).toBeGreaterThan(20); // o terreno sob o asfalto não deve inclinar o carro
+  expect(Math.abs(amostra.diferenca)).toBeLessThan(1); // sobre o asfalto o chão (`groundH`) é a altura da própria pista (kit/monaco/mundo.js): o carro não tomba nem afunda
   expect(Math.abs(amostra.roll)).toBeLessThan(0.1);
   const predios = await page.evaluate(() => {
     const tr = window.__corrida.race.tr; let invadem = 0;

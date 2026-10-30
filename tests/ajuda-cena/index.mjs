@@ -15,6 +15,7 @@ function preparar() {
   const g = globalThis;
   g.window = g;
   g.Pistas = require(path.join(raiz, "public/corrida/pistas.js"));
+  try { g.Sim = require(path.join(raiz, "public/corrida/sim.js")); } catch (e) { /* sem a simulação */ }
   try { g.F1Regras = require(path.join(raiz, "public/corrida/f1-regras.js")); } catch (e) { /* sem as regras de F1 */ }
   const ctx2d = () => new Proxy(function () {}, {
     get: (_, k) => (k === "measureText" ? () => ({ width: 10 }) : k === "canvas" ? null : ctx2d()),

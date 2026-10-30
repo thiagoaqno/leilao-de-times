@@ -93,8 +93,9 @@ export function relevoMonaco(tr) {
     return m;
   };
   const menor = (a, b, k = 14) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k / 4; }; // mínimo suave (sem quina)
-  return (x, z, f, idx) => {
+  return (x, z, f, idx, malha = false) => { // malha: o chão da malha do terreno (sempre abaixo de qualquer pista); sem ela, sobre o asfalto vale a altura da própria pista
     const d = Math.abs(f.lat), dem = altitude(x, z), desvio = desvioPista[idx];
+    if (!malha && d < tr.W / 2 + 4) return f.h; // sobre o asfalto o chão é o da própria pista (o carro se inclina por ele); o teto dos outros trechos só vale fora dessa faixa, e a malha do terreno afunda por baixo
     const a = suave((d - plano) / rampa), b = suave((d - plano - rampa) / longe);
     let g = f.h * (1 - a) + (dem + desvio * (1 - b)) * a; // (o desvio já leva a pista ao nível dela: a e b são suaves, sem escada)
     // (o túnel tem o teto e as paredes de tunel.js; o morro de verdade em volta já fica acima dele)
@@ -104,3 +105,21 @@ export function relevoMonaco(tr) {
 
 // ---------- ferramentas das peças ----------
 export const poligonoDentro = (P, x, z) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c; } return c; };
+
+// O muro de Mônaco nos grampos e nas chicanes: a fita de dentro da curva cruza a pista (o raio da curva é menor que a distância do muro). Cada vértice é empurrado para fora até ficar a `raio`
+// (o centro do carro mais a meia largura dele) de QUALQUER ponto da linha central do mesmo nível, então nenhum painel fica onde o corpo do carro chega. `i0`: o ponto de cada par de vértices.
+export function afastarMuro(tr, geo, i0, raio) {
+  const pos = geo.attributes.position, { pts, n } = tr;
+  for (let k = 0; k < pos.count; k++) {
+    const i = i0 + (k >> 1);
+    for (let volta = 0; volta < 3; volta++) {
+      let x = pos.getX(k), z = pos.getZ(k), mexeu = false;
+      for (let j = i - 90; j <= i + 90; j++) {
+        const q = pts[((j % n) + n) % n], dx = x - q.x, dz = z - q.y, d = Math.hypot(dx, dz);
+        if (d < raio - 0.01 && Math.abs(q.h - (pos.getY(k) - 10)) < 40) { x = q.x + (dx / (d || 1)) * raio; z = q.y + (dz / (d || 1)) * raio; mexeu = true; }
+      }
+      if (!mexeu) break; pos.setX(k, x); pos.setZ(k, z);
+    }
+  }
+  pos.needsUpdate = true; geo.computeVertexNormals();
+}

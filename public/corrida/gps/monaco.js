@@ -8,6 +8,7 @@ import { cenarioMonaco, fundoMonaco, vidaMonaco } from "../monaco.js";
 import { D, distanciaDoMar } from "../kit/monaco/mundo.js";
 import { pertoDe } from "../kit/som.js";
 import { PORTICO_ADIANTE } from "../kit/monaco/detalhes.js";
+import { boxesMonaco } from "../kit/monaco/boxes.js";
 
 const BOXES = window.Pistas.PISTAS.monaco.boxes; // o corredor dos boxes (pistas.js): as linhas SC 1 e SC 2 são a entrada e a saída dele
 const F = D.frac;
@@ -29,14 +30,33 @@ export const GP_MONACO = {
     sc: [[BOXES.sai, "SC 2"], [BOXES.entra, "SC 1"]],
     grid: true, remendos: 46, bueiros: 40,
   },
-  // UM sistema de barreira em Mônaco, pela volta inteira (kit/beira.js `estilo: "monaco"`): guard-rail de lâminas de aço embaixo, a faixa de painéis de patrocínio em cima (uma marca por
-  // trecho longo, na ordem da TV) e a cerca alta de detritos (ambiente.js). Os painéis soltos, os outdoors e os mastros do kit ficam desligados aqui; o Tecpro só nas áreas de escape.
-  guardrail: { estilo: "monaco", alto: 20, trecho: 360, baixoEstilo: "tunel", baixoAlto: 12, baixoVLen: 176, baixos: [[F.trechos.tunel[0] - 0.003, F.trechos.tunel[1] + 0.003, 1], [F.trechos.tunel[0] - 0.003, F.trechos.tunel[1] + 0.003, -1]], // dentro do túnel a barreira é baixa, branca, com "MONACO CIRCUIT since 1929"
-    sequencia: ["rolex", "tag", "pirelli", "aramco", "dhl", "lv", "salesforce", "heineken", "monacogp", "f1tv"] },
-  depois: (tr, ctx) => vidaMonaco(tr, ctx), // a galera, os fiscais, as bandeiras, os barcos, os guindastes e as ambulâncias (depois do ambiente e do vidaGP, com os postos prontos)
+  // A barreira de Mônaco: UM muro físico pela volta inteira (`tr.wallLat`; o desenho e a colisão ficam no mesmo lugar), mas o TIPO e a altura mudam trecho a trecho, como na transmissão e nas fotos do F1 26:
+  //   barreira alta escura com a faixa de patrocínio (`estilo: "monaco"`, alto 20) nos trechos de TV; média (alto 14) com painel; guard-rail de lâminas nu e baixo (`painel: false`, alto 8); mureta de concreto
+  //   (`estilo: "concreto"`); a barreira branca do túnel (`estilo: "tunel"`). `agua`: o estilo do lado do mar naquele trecho: só lâminas baixas, para o porto e os iates aparecerem por cima e através da cerca de detritos
+  //   (que é vazada). `ambiente.semCerca` tira a cerca alta de alguns trechos. Mapa trecho -> estilo, nas frações da volta (de, ate; a reta dos boxes cruza a linha de chegada):
+  //   reta dos boxes e pórtico: Rolex e TAG Heuer, alta · Sainte Dévote: Pirelli, média (com Tecpro) · subida da Beau Rivage: lâminas nuas baixas com a cerca · Massenet e Cassino: Louis Vuitton, alta ·
+  //   Mirabeau, grampo e Portier: F1 TV e #MonacoGP, alta (trechos de TV) · túnel: barreira branca baixa "Monaco Circuit" · saída do túnel e chicane: Salesforce, média, lâminas baixas do lado do mar ·
+  //   cais: Louis Vuitton, mureta, lâminas baixas do lado do mar · Tabac e Piscine: Aramco, DHL e Heineken, média, lâminas baixas do lado do mar · Rascasse: mureta de concreto, sem cerca · Anthony Noghès: lâminas nuas baixas.
+  guardrail: {
+    estilo: "monaco", alto: 20, trecho: 360, sequencia: ["rolex", "tag", "pirelli", "aramco", "dhl", "lv", "salesforce", "heineken", "monacogp", "f1tv"],
+    trechos: [
+      { de: F.trechos.retaDosBoxes[0], ate: F.trechos.retaDosBoxes[1], sequencia: ["rolex", "tag"] },
+      { de: F.trechos.retaDosBoxes[1], ate: 0.105, sequencia: ["pirelli"], alto: 14 },
+      { de: 0.105, ate: 0.225, painel: false, alto: 8 },
+      { de: 0.225, ate: 0.31, sequencia: ["lv"] },
+      { de: 0.31, ate: F.trechos.tunel[0] - 0.003, sequencia: ["f1tv", "monacogp"] },
+      { de: F.trechos.tunel[0] - 0.003, ate: F.trechos.tunel[1] + 0.003, estilo: "tunel", alto: 12, vLen: 176 },
+      { de: F.trechos.tunel[1] + 0.003, ate: 0.66, sequencia: ["salesforce"], alto: 14, agua: { painel: false, alto: 6 } },
+      { de: 0.66, ate: F.trechos.cais[1], sequencia: ["lv"], alto: 12, agua: { painel: false, alto: 6 } },
+      { de: F.trechos.cais[1], ate: 0.85, sequencia: ["aramco", "dhl", "heineken"], alto: 14, agua: { painel: false, alto: 6 } },
+      { de: 0.85, ate: 0.9, estilo: "concreto", alto: 10, vLen: 176, agua: { estilo: "monaco", painel: false, alto: 6 } },
+      { de: 0.9, ate: F.trechos.retaDosBoxes[0], painel: false, alto: 8 },
+    ],
+  },
+  depois: (tr, ctx) => { boxesMonaco(tr, ctx.add); vidaMonaco(tr, ctx); }, // o pit lane de Mônaco (terraços, toldos, placas) e a vida: a galera, os fiscais, as bandeiras, os barcos, os guindastes (depois do ambiente e do vidaGP)
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, os prédios reais, os marcos, o Rochedo e as árvores
-  boxes: { garagens: true, mureta: true }, // o prédio das garagens fica do lado externo da nova faixa de parada
-  ambiente: { paineis: false, mastros: false }, // a cerca de detritos, os postos de fiscais e as placas de frenagem (a barreira e os painéis são do guardrail acima)
+  boxes: { garagens: false, mureta: true }, // só o corredor, a mureta e os quadrados pintados: as garagens, os terraços e os toldos são de Mônaco (kit/monaco/boxes.js) // o prédio das garagens fica do lado externo da nova faixa de parada
+  ambiente: { paineis: false, mastros: false, tela: true, semCerca: [[0.85, 0.9]] }, // a cerca de detritos, os postos de fiscais e as placas de frenagem (a barreira e os painéis são do guardrail acima)
   passarelas: { candidatos: [0.03, 0.12, 0.48, 0.58, 0.72, 0.93], marcas: ["rolex", "heineken", "tag"], max: 2 }, // a da Rolex na reta dos boxes
   portico: { adiante: PORTICO_ADIANTE }, // o pórtico das luzes de largada fica 260 depois da linha de chegada (a pole o vê lá na frente)
   postes: { passo: 34 },

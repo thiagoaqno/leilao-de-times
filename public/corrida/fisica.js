@@ -113,7 +113,7 @@ export function physics(dt, spec = carOf(me())) {
   // anda; no muro escorrega junto dele (o muro fica a uma distância fixa do meio da pista)
   let nx = c.x + c.vx * dt, ny = c.y + c.vy * dt;
   race.idx = nearest(tr, nx, ny, race.idx);
-  const fr = trackFrame(tr, nx, ny, race.idx), lim = tr.wallLat - 8;
+  const fr = trackFrame(tr, nx, ny, race.idx), lim = tr.wallLat - (tr.t.muroFolga ?? 8);
   // barreira de pneus: só do lado de fora das curvas fechadas (tr.pneus diz o lado de cada ponto)
   const pneu = tr.pneus && tr.pneus[race.idx], limite = pneu && Math.sign(fr.lat) === pneu ? tr.W / 2 + 26 : lim;
   if (Math.abs(fr.lat) > limite || nx < 2 || ny < 2 || nx > tr.t.world - 2 || ny > tr.t.world - 2) {

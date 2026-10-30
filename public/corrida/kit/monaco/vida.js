@@ -104,18 +104,6 @@ export function vidaMonaco(tr, ctx, { lista, predioEm, hAt }) {
   }
   montar(add, new THREE.BoxGeometry(1, 1, 1), M(0x4a4f57, { roughness: 0.8 }), plataformas, "monaco-posto");
 
-  // ---- as tendas brancas (hospitality e apoio): fora do muro, onde há calçada e vão ----
-  const tendas = [], tetos = [];
-  for (let i = 6; i < n && tendas.length < 22; i += 31) {
-    if (tr.coberto?.(i)) continue;
-    const p = pts[i], lado = r() < 0.5 ? 1 : -1, d = L + 22 + r() * 14, x = p.x + p.nx * lado * d, z = p.y + p.ny * lado * d, ry = Math.atan2(p.tx, p.ty);
-    if (!limpo(x, z, 18, i) || predioEm(x, z, 14)) continue;
-    const y = hAt(x, z); tendas.push({ x, y: y + 6, z, r: ry, sx: 22, sy: 12, sz: 15 }); tetos.push({ x, y: y + 15, z, r: ry + Math.PI / 4, sx: 23, sy: 7, sz: 16 });
-    (tr.reservado ||= []).push([x, z, 18]); stats.tendas++;
-  }
-  montar(add, new THREE.BoxGeometry(1, 1, 1), M(0xf2f2ee, { roughness: 0.8 }), tendas, "monaco-tenda");
-  montar(add, new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), M(0xe8e8e2, { roughness: 0.8 }), tetos, "monaco-tenda-teto");
-
   // ---- os guindastes das câmeras de TV: base, braço inclinado por cima da pista e a câmera na ponta ----
   const bases = [], bracos = [], cameras = [];
   for (const fr of [0.045, 0.085, c.casino + 0.012, c.mirabeauHaute - 0.02, c.portier + 0.01, t.tunel[1] + 0.014, c.tabac - 0.02, c.piscine2 + 0.008, c.rascasse - 0.03, 0.965]) {

@@ -5,16 +5,17 @@
 // pista.js usa `relevoMonaco` (o chão), `corDoChaoMonaco` (a cor do terreno) e `fundoMonaco` (o mar afunda o chão).
 import { sinalDaCurva } from "./kit/comum.js";
 import { arquibancadas } from "./kit/arquibancadas.js";
-import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, NIVEL_DO_MAR } from "./kit/monaco/mundo.js";
+import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, afastarMuro, NIVEL_DO_MAR } from "./kit/monaco/mundo.js";
 import { lerPredios, indiceDePredios, predios, adensarRua } from "./kit/monaco/predios.js";
 import { marcosMonaco } from "./kit/monaco/marcos.js";
 import { mar, porto, piscinas, atracados } from "./kit/monaco/agua.js";
-import { tecpro, telaos, largada, cais, rascasse, fonte, cruzeiros } from "./kit/monaco/detalhes.js";
+import { tecpro, telaos, largada, cais, fonte, cruzeiros, muroDeArrimo } from "./kit/monaco/detalhes.js";
 import { tunel } from "./kit/monaco/tunel.js";
+import { paddockMonaco } from "./kit/monaco/paddock.js";
 import { arvores, corDoChao } from "./kit/monaco/beira.js";
 import { vidaMonaco as vidaDeMonaco } from "./kit/monaco/vida.js";
 
-export { fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, NIVEL_DO_MAR };
+export { fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, afastarMuro, NIVEL_DO_MAR };
 export const corDoChaoMonaco = corDoChao;
 export const vidaMonaco = (tr, ctx) => vidaDeMonaco(tr, ctx, tr.contextoVidaMonaco); // (chamada por gps/monaco.js `depois`)
 
@@ -80,12 +81,14 @@ export function cenarioMonaco(tr, ctx) {
   piscinas(tr, add, ctx);
   arquibancadasMonaco(tr, add, predioEm);
   arvores(tr, add, { hAt, predioEm });
+  paddockMonaco(tr, add, hAt); // as hospitalidades das equipes, as tendas de apoio e o paddock flutuante (substituem as tendas genéricas)
+  muroDeArrimo(tr, add); // o muro de pedra entre trechos empilhados (grampo e Mirabeau): fecha o desnível que o terreno deixaria aberto
   tr.contextoVidaMonaco = { lista, predioEm, hAt };
   const f = D.frac, c = f.curvas, tc = f.trechos;
   atracados(tr, ctx, tc.cais);
   tecpro(tr, add, [[c.sainteDevote + 0.006, c.sainteDevote + 0.028, "fora"], [tc.nouvelleChicane[0] - 0.012, tc.nouvelleChicane[1] + 0.012, "fora"], [c.rascasse - 0.01, c.rascasse + 0.008, "fora"], [c.mirabeauHaute - 0.006, c.mirabeauHaute + 0.014, "fora"]]); // (só nas áreas de escape: Sainte Dévote, chicane do porto, Rascasse e Mirabeau)
   telaos(tr, add, [0.03, c.casino, c.mirabeauHaute + 0.012, tc.cais[0] + 0.03, c.rascasse - 0.02]);
-  largada(tr, add); cais(tr, add, tc.cais); rascasse(tr, add, hAt); fonte(tr, add, hAt); cruzeiros(tr, add);
+  largada(tr, add); cais(tr, add, tc.cais); fonte(tr, add, hAt); cruzeiros(tr, add);
   tr.marcosPos = D.marcos; // (para conferir no navegador: __corrida.race.tr.marcosPos)
   tr.pracaCassino = { x: D.marcos.praca[0], y: D.marcos.praca[1] }; // o som da fonte
 }
