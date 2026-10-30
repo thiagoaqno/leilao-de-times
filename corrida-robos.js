@@ -399,7 +399,7 @@ function contatos(room, emit) {
 //  - ATRÁS e chegando: nos níveis médio e difícil o robô pode fechar a porta UMA vez por atacante e por volta (vai para o lado de
 //    dentro antes da freada) e nunca depois que o atacante emparelha.
 // Devolve o desvio do traçado, o limite de velocidade, se tem alguém à frente, os lados bloqueados e os limites laterais.
-const TRANSITO_NIVEL = { facil: { margem: 52, antec: 0.75, defende: 0 }, medio: { margem: 44, antec: 1, defende: 0.5 }, dificil: { margem: 38, antec: 1.3, defende: 1 } };
+const TRANSITO_NIVEL = { facil: { margem: 52, antec: 0.75, defende: 0 }, medio: { margem: 44, antec: 1, defende: 0.5 }, dificil: { margem: 44, antec: 1, defende: 0.5 } }; // (o difícil disputa como o médio: só o ritmo é maior, sem jogar ninguém para fora)
 // a distância (u) até o ponto em que o perfil exige frear a partir da velocidade `v` (0: já freando; Infinity: nada nos próximos 540 u)
 function distanciaDaFreada(fis, n, i, v) { const lim = v * 0.9; for (let k = 0; k <= 90; k++) if (fis[(i + k) % n] < lim) return k * STEP; return Infinity; }
 // o lado de dentro da próxima curva de verdade (+1: lado de lat positivo; -1; 0 sem curva nos próximos ~600 u)
@@ -687,7 +687,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const ins = car.inst > 0 ? car.inst : 0;
   if (ins > (ia.susto || 0)) ia.vSusto = Math.max(car.v, 60); // a velocidade em que levou a pancada: o ritmo cai a partir dela e volta aos poucos
   ia.susto = Math.max(ins, (ia.susto || 0) - dt * 0.35);
-  const medo = ia.susto * ({ facil: 1.2, medio: 1, dificil: 0.85 }[room.config.nivel] || 1);
+  const medo = ia.susto * ({ facil: 1.2, medio: 1, dificil: 1 }[room.config.nivel] || 1);
   if (medo > 0.01) alvo = Math.min(alvo * (1 - 0.4 * Math.min(1, medo)), ia.vSusto * (1 - 0.4 * Math.min(1, medo)));
   if (p.quebrou) alvo = Math.min(alvo, spec.vmax * F1Equipes.EMERGENCIA);
   if (p.incidenteAte > now) alvo = Math.min(alvo, spec.vmax * 0.24);
