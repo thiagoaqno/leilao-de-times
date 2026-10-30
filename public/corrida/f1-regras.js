@@ -96,20 +96,24 @@ function drsHabilitado({ volta, intervalo, amarela, safety }) {
 }
 
 // O teto de recarga vale por volta: frear repõe mais que apenas aliviar o acelerador.
-const ERS_MAX_RECARGA = 0.45, ERS_GASTO = 0.28;
+// A bateria varia de verdade ao longo da volta: enche forte na frenagem (até ERS_MAX_RECARGA por volta), gasta devagar na reta no modo automático
+// (ERS_GASTO_SUAVE, só acima de 20%) e gasta forte (ERS_GASTO) só no overtake: colado no carro da frente ou com o botão no modo manual.
+// O gasto suave do automático tem um orçamento por volta (ERS_ORCAMENTO_AUTO): senão ele gastava tudo o que entrava e a bateria ficava parada no piso.
+const ERS_MAX_RECARGA = 0.85, ERS_GASTO = 0.4, ERS_GASTO_SUAVE = 0.3, ERS_PISO_AUTO = 0.2, ERS_PISO_OVERTAKE = 0.05, ERS_ORCAMENTO_AUTO = 0.75;
 const ersNovo = () => ({ carga: 0.65, recarga: 0, volta: 0 });
 function carregarErs(ers, dt, freando, semGas, volta) {
-  if (volta !== ers.volta) { ers.volta = volta; ers.recarga = 0; }
-  const ganho = Math.min(Math.max(0, ERS_MAX_RECARGA - ers.recarga), Math.max(0, dt) * (freando ? 0.18 : semGas ? 0.045 : 0));
+  if (volta !== ers.volta) { ers.volta = volta; ers.recarga = 0; ers.suave = 0; }
+  const ganho = Math.min(Math.max(0, ERS_MAX_RECARGA - ers.recarga), Math.max(0, dt) * (freando ? 0.3 : semGas ? 0.06 : 0));
   ers.carga = limite(ers.carga + ganho, 0, 1); ers.recarga += ganho;
   return ganho;
 }
-function gastarErs(ers, dt, ativo) {
-  const gasto = ativo ? Math.min(ers.carga, Math.max(0, dt) * ERS_GASTO) : 0;
+function gastarErs(ers, dt, ativo, forte = true) { // forte: o overtake (o padrão, como era); false: o gasto suave do modo automático na reta
+  let gasto = ativo ? Math.min(ers.carga, Math.max(0, dt) * (forte ? ERS_GASTO : ERS_GASTO_SUAVE)) : 0;
+  if (!forte && gasto > 0) { gasto = Math.min(gasto, Math.max(0, ERS_ORCAMENTO_AUTO - (ers.suave || 0))); ers.suave = (ers.suave || 0) + gasto; }
   ers.carga = limite(ers.carga - gasto, 0, 1);
   return gasto > 0;
 }
-const usarErsAuto = (carga, velocidade, vmax, reta, perto) => carga > (perto ? 0.12 : 0.38) && velocidade > vmax * 0.35 && (reta || perto);
+const usarErsAuto = (carga, velocidade, vmax, reta, perto) => carga > (perto ? ERS_PISO_OVERTAKE : ERS_PISO_AUTO) && velocidade > vmax * 0.35 && (reta || perto);
 
 // ---------- o pit stop ----------
 // No corredor dos boxes o carro anda sozinho no limitador (LIMITADOR da velocidade final), para na garagem, troca os
@@ -526,7 +530,7 @@ function vacuoF1(draft, curva) {
 }
 
 const api = { PONTO_VOLTA_RAPIDA, pontosDe, PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
-  zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
+  zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
   LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos,
   CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, RAMPA_S, CHUVA_MIN_S, AVISO_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, OPCOES_DE_CLIMA, ROTULO_CLIMA, previsaoDoGP, descreverPrevisao, sortearClima, chuvaEm, aguaEm, proximaMudanca, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;

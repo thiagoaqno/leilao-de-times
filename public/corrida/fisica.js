@@ -62,7 +62,7 @@ export function physics(dt, spec = carOf(me())) {
   if (ers) F1.carregarErs(ers, dt, keys.brake && vf > 40, !keys.gas, m?.laps || 0);
   const ersAuto = E.S?.config.ers !== "manual";
   const usarErs = !!(ers && keys.gas && !direcao?.safety && (ersAuto ? F1.usarErsAuto(ers.carga, vf, spec.vmax, (tr.pts[race.idx].k || 0) < 1e-4, race.draft > 0.25) : keys.ers));
-  const ersAtivo = ers ? F1.gastarErs(ers, dt, usarErs) : false;
+  const ersAtivo = ers ? F1.gastarErs(ers, dt, usarErs, !ersAuto || race.draft > 0.25) : false;
   race.drsAtivo = drs; race.ersAtivo = ersAtivo;
   const curva = (tr.pts[race.idx].k || 0) > 1 / 600, vac = pn ? F1.vacuoF1(race.draft, curva) : null; // nas regras de F1: vácuo na reta, ar sujo na curva
   race.arSujo = vac ? 1 - vac.aderencia : 0;
