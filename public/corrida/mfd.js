@@ -29,7 +29,7 @@ const HTML = {
     <div class="mp-comp"><b class="mp-bola" data-r="pLetra">M</b><span data-r="pNome">Médio</span></div>
     <div class="mp-barra"><span>Vida</span><div><i data-r="pVidaB"></i></div><b data-r="pVidaT">100%</b></div>
     <div class="mp-barra"><span>Temp.</span><div><i data-r="pTempB"></i></div><b data-r="pTempT">Frio</b></div>
-    <p class="mp-nota" data-r="pNota"></p><p class="mp-nota mp-fraca">O jogo mede o conjunto: as quatro rodas valem o mesmo.</p></div></div>`,
+    <p class="mp-nota" data-r="pNota"></p><p class="mp-nota mp-fraca">Leitura do conjunto de pneus</p></div></div>`,
   danos: `<div class="mp mp-dupla">${CARRO("dn")}<b class="mp-centro" data-r="dPct">0%</b><div class="mp-dados">
     <div class="mp-barra"><span>Dano</span><div><i data-r="dBarra"></i></div><b data-r="dT">0%</b></div>
     <div class="mp-barra"><span>Desempenho</span><div><i data-r="dDes"></i></div><b data-r="dDesT">100%</b></div>
@@ -108,6 +108,12 @@ function aplicarAberto() {
 }
 function abrir(v) { mfd.aberto = !!v; if (!v) sairDoFoco(); guardarAberto(); aplicarAberto(); paginaVista = null; }
 export function mexeu() { mfd.ultimo = performance.now(); }
+// B e o botão de box mostram a estratégia sem tirar as setas da pilotagem.
+export function abrirBoxMfd() {
+  if (!ativo() || !race.box) return;
+  if (!mfd.aberto) abrir(true);
+  mfd.pagina = "box"; paginaVista = null; mexeu();
+}
 function aplicarFoco() { if (raiz) raiz.classList.toggle("foco", mfd.foco); const r = $("race"); if (r) r.classList.toggle("mfd-foco", mfd.foco); }
 function sairDoFoco() { if (!mfd.foco) return; mfd.foco = false; aplicarFoco(); }
 function alternarFoco() {
@@ -175,7 +181,7 @@ function listaDePaginas(ctx) {
   const chave = lista.join();
   if (chave !== abas) {
     abas = chave;
-    refs.mfd.abas.innerHTML = lista.map((id, i) => `<button type="button" role="tab" data-pg="${id}" title="${M().nomeDaPagina(id)}">${i + 1}</button>`).join("");
+    refs.mfd.abas.innerHTML = lista.map((id, i) => `<button type="button" role="tab" data-pg="${id}" title="${M().nomeDaPagina(id)}" aria-label="${M().nomeDaPagina(id)}">${i + 1}</button>`).join("");
   }
 }
 export function atualizarMfd(ctx) {
@@ -191,7 +197,7 @@ export function atualizarMfd(ctx) {
     paginaVista = mfd.pagina;
     for (const [id, s] of Object.entries(refs.pg)) s.hidden = id !== mfd.pagina;
     set(refs.mfd.nome, "t", M().nomeDaPagina(mfd.pagina));
-    for (const b of refs.mfd.abas.children) b.classList.toggle("on", b.dataset.pg === mfd.pagina);
+    for (const b of refs.mfd.abas.children) { const on = b.dataset.pg === mfd.pagina; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); }
   }
   (ATU[mfd.pagina] || (() => {}))(ctx, refs.r[mfd.pagina]);
   atualizarLinhas();
