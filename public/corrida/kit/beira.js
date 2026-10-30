@@ -12,7 +12,8 @@ import { desenharMarca } from "./marcas.js";
 // (`sequencia`: uma marca por trecho de `trecho` unidades, na ordem da TV, repetida em 4 painéis seguidos). A fita tem `sequencia.length * trecho` de comprimento (vLen em pista.js).
 export function guardRail(lado, { paineis = ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"], cores = ["#d62828", "#f4f4f4"], estilo, sequencia, trecho = 360, painel: comPainel = true } = {}) {
   if (estilo === "monaco") return guardRailMonaco(lado, sequencia, trecho, comPainel);
-  if (estilo === "tunel") return guardRailTunel(lado); // a barreira baixa e branca do túnel de Mônaco // (estilo "painel": a barreira alta de Mônaco com os painéis de ponta a ponta)
+  if (estilo === "tunel") return guardRailTunel(lado);
+  if (estilo === "concreto") return guardRailConcreto(lado); // a mureta de concreto // a barreira baixa e branca do túnel de Mônaco // (estilo "painel": a barreira alta de Mônaco com os painéis de ponta a ponta)
   const C = 1024, H = 48, plano = document.createElement("canvas"); plano.width = C; plano.height = H;
   const x = plano.getContext("2d"), painel = C / 8;
   const listras = (x0) => { for (let k = 0; k < 8; k++) { x.fillStyle = cores[k % 2]; x.fillRect(x0 + (k * painel) / 8, 0, painel / 8 + 1, H); } };
@@ -125,5 +126,16 @@ function guardRailTunel(lado) {
   x.fillStyle = "#2b2e36"; x.font = "italic 300 30px Arial, sans-serif"; x.fillText("CIRCUIT", 176, 30); x.font = "700 10px Arial, sans-serif"; x.fillText("SINCE 1929", 178, 50);
   x.strokeStyle = "#2b2e36"; x.lineWidth = 2.2; x.beginPath(); [[520, 46], [545, 40], [560, 28], [585, 24], [604, 33], [618, 22], [640, 18], [662, 28], [676, 40], [700, 42], [724, 32], [748, 38], [772, 30]].forEach(([a, b], k) => (k ? x.lineTo(a, b) : x.moveTo(a, b))); x.stroke();
   x.fillStyle = "#c8222a"; x.beginPath(); x.arc(790, 32, 9, 0, 6.3); x.fill(); x.fillStyle = "#f3f1ea"; x.fillRect(785, 30, 10, 4);
+  return canvasTex(H, C, (c) => { if (lado > 0) c.setTransform(0, 1, -1, 0, H, 0); else c.setTransform(0, -1, -1, 0, H, C); c.drawImage(plano, 0, 0); });
+}
+
+// a mureta de concreto de Mônaco (nas ruas do porto e da Rascasse): blocos de concreto claro com as juntas e a faixa de cima pintada de vermelho e branco
+function guardRailConcreto(lado) {
+  const C = 1024, H = 64, plano = document.createElement("canvas"); plano.width = C; plano.height = H;
+  const x = plano.getContext("2d");
+  x.fillStyle = "#bdb9b0"; x.fillRect(0, 0, C, H); for (let k = 0; k < 600; k++) { x.fillStyle = k % 2 ? "#0000000e" : "#ffffff16"; x.fillRect((k * 197) % C, (k * 53) % H, 3, 3); }
+  for (let k = 0; k < C; k += 128) { x.fillStyle = "#7d7a73"; x.fillRect(k, 0, 3, H); }
+  x.fillStyle = "#9b978e"; x.fillRect(0, H * 0.55, C, 3);
+  for (let k = 0; k < C; k += 32) { x.fillStyle = (k / 32) % 2 ? "#f4f4f0" : "#d62828"; x.fillRect(k, 0, 32, 10); } // a faixa de cima, como a zebra
   return canvasTex(H, C, (c) => { if (lado > 0) c.setTransform(0, 1, -1, 0, H, 0); else c.setTransform(0, -1, -1, 0, H, C); c.drawImage(plano, 0, 0); });
 }

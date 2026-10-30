@@ -271,8 +271,10 @@ function buildWorld(tr) {
       // `guardrail.trechos`: [{ de, ate, ...estilo }] (frações da volta) trocam o visual da barreira trecho a trecho (patrocinador, altura, painel ou lâminas nuas, barreira branca do túnel); o que não está em
       // nenhum trecho usa o próprio `guardrail`. O muro físico é um só (tr.wallLat): muda só o desenho. Um material por estilo e por lado, para os nomes não saírem espelhados.
       const base = gp?.guardrail, defs = (base?.trechos || []).map((d) => ({ ...d, i0: Math.floor(d.de * n), i1: Math.floor(d.ate * n) + (d.ate < d.de ? n : 0) }));
-      const defDe = (i) => { const k = ((i % n) + n) % n; return defs.findIndex((d) => (k >= d.i0 && k <= d.i1) || (k + n >= d.i0 && k + n <= d.i1)); }; // -1: o estilo de base
-      const estiloDe = (d) => (d < 0 ? base : { ...base, ...defs[d] }), materiais = new Map();
+      // `agua`: o estilo do lado do mar naquele trecho (o porto aparece por cima da barreira baixa e através da cerca); o lado de terra segue o estilo do trecho
+      const aguaDe = id === "monaco" ? pts.map((p) => { const a = fundoMonaco(tr, p.x + p.nx * (L + 200), p.y + p.ny * (L + 200)), b = fundoMonaco(tr, p.x - p.nx * (L + 200), p.y - p.ny * (L + 200)); return Math.max(a, b) > -30 ? (a > b ? 1 : -1) : 0; }) : null;
+      const defDe = (i) => { const k = ((i % n) + n) % n, d = defs.findIndex((e) => (k >= e.i0 && k <= e.i1) || (k + n >= e.i0 && k + n <= e.i1)); return d >= 0 && defs[d].agua && aguaDe?.[k] === s ? d + 1000 : d; }; // -1: o estilo de base; 1000+: o do lado da água
+      const estiloDe = (d) => (d < 0 ? base : d >= 1000 ? { ...base, ...defs[d - 1000], ...defs[d - 1000].agua } : { ...base, ...defs[d] }), materiais = new Map();
       const matDe = (d) => { if (!base) return wm; if (!materiais.has(d)) materiais.set(d, new THREE.MeshStandardMaterial({ map: guardRail(s, estiloDe(d)), roughness: 0.55, side: THREE.DoubleSide })); return materiais.get(d); };
       const vLenDe = (d) => { const g = estiloDe(d); return g?.estilo === "monaco" ? g.sequencia.length * (g.trecho ?? 360) : g?.vLen ?? (base ? 480 : 32); };
       const trecho = (i0, i1) => {

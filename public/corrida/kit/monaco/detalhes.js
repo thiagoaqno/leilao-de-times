@@ -152,10 +152,12 @@ export function cruzeiros(tr, add) {
   tr.cruzeirosMonaco = pos.length;
 }
 
-// ---- os paredões de pedra: o muro de arrimo alto, colado atrás da barreira, como no onboard da curva 6 (o grampo e Mirabeau Bas): pedra irregular cinza-areia, mais alto que a barreira, com as palmeiras
-// e os prédios por cima. `lado`: "esq" ou "dir" de quem anda. Fica a L + 3 do meio da pista (atrás da barreira física, que está em L) e é empurrado para fora nos grampos, como a barreira. ----
-export function paredoes(tr, add, lista) {
-  const { pts, n } = tr, L = tr.wallLat, p0 = pts[0], esq = Math.sign(p0.nx * p0.ty - p0.ny * p0.tx) || 1;
+// ---- o muro de arrimo de pedra entre trechos empilhados (o grampo e Mirabeau, onde a pista de cima passa ao lado da de baixo): como o terreno fica sempre abaixo das pistas, sobraria um buraco no desnível. Para cada
+// ponto da pista de baixo olha-se, de cada lado, se a faixa do muro (L + 3) cai embaixo/ao lado de OUTRO trecho mais alto (mais de 8 de diferença): aí sobe um muro de pedra, do nível da pista de baixo (atrás da
+// barreira física dela) até a base da barreira de cima. Não entra em nenhuma das duas pistas: fica entre o muro de uma e o da outra (foto do onboard na curva 6: paredão de pedra irregular). ----
+export function muroDeArrimo(tr, add) {
+  const { pts, n } = tr, L = tr.wallLat, C = 64, hash = new Map(), chave = (a, b) => a * 100003 + b;
+  pts.forEach((p, i) => { const k = chave(Math.floor(p.x / C), Math.floor(p.y / C)); (hash.get(k) || hash.set(k, []).get(k)).push(i); });
   const pedra = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (x, w, hh, rr) => {
     x.fillStyle = "#aaa294"; x.fillRect(0, 0, w, hh);
     for (let i = 0; i < 260; i++) { // as pedras irregulares: cada uma um polígono torto, mais clara no alto e escura nas juntas
@@ -166,16 +168,37 @@ export function paredoes(tr, add, lista) {
     for (let i = 0; i < 900; i++) { x.fillStyle = rr() < 0.5 ? "#00000012" : "#ffffff14"; x.fillRect(rr() * w, rr() * hh, 3, 3); }
     x.fillStyle = "#5f7a4a55"; for (let i = 0; i < 40; i++) x.fillRect(rr() * w, rr() * hh, 6 + rr() * 16, 3); // o musgo
   }), roughness: 0.97, side: THREE.DoubleSide, color: 0xffffff, emissive: 0x2a2620, emissiveIntensity: 0.4 });
-  let feitos = 0;
-  for (const { de, ate, lado, alto = 50 } of lista) {
-    let i0 = Math.floor(de * n), i1 = Math.floor(ate * n); if (i1 < i0) i1 += n;
-    const sinal = (lado === "esq" ? 1 : -1) * esq, l = sinal * (L + 3);
-    const baixo = faixa(tr, add, i0, i1, l, l, -30, alto, pedra, 70, alto / 40);
-    afastarMuro(tr, baixo.geometry, i0, L + 3); baixo.name = "monaco-paredao";
-    const topo = faixa(tr, add, i0, i1, l, l + sinal * 8, alto, alto, pedra, 70, 0.3); topo.name = "monaco-paredao"; // a coroa do muro
-    feitos += i1 - i0;
+  let total = 0; const trechos = [];
+  for (const lado of [1, -1]) {
+    const topo = new Array(n).fill(null);
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], x = p.x + p.nx * lado * (L + 3), z = p.y + p.ny * lado * (L + 3), r = Math.ceil(110 / C) + 1, cx = Math.floor(x / C), cz = Math.floor(z / C); let melhor = null;
+      for (let a = cx - r; a <= cx + r; a++) for (let b = cz - r; b <= cz + r; b++) for (const j of hash.get(chave(a, b)) || []) {
+        if (Math.min(Math.abs(j - i), n - Math.abs(j - i)) < 60) continue;
+        const q = pts[j], d = Math.hypot(q.x - x, q.y - z); if (d > 100 || q.h - p.h < 8 || q.h - p.h > 140) continue;
+        if (!melhor || d < melhor.d) melhor = { d, h: q.h };
+      }
+      if (melhor) topo[i] = melhor.h;
+    }
+    // suaviza o topo ao longo da pista (média de ±3) e junta os pedaços contínuos
+    const lisa = topo.map((h, i) => { if (h == null) return null; let s = 0, k = 0; for (let d = -3; d <= 3; d++) { const v = topo[(i + d + n) % n]; if (v != null) { s += v; k++; } } return s / k; });
+    for (let i = 0; i < n; i++) {
+      if (lisa[i] == null || (lisa[(i - 1 + n) % n] != null && i > 0)) continue;
+      let j = i; while (j + 1 < n && (lisa[j + 1] != null || (lisa[j + 2] != null && j + 2 < n))) j++;
+      if (j - i >= 6) trechos.push({ lado, i0: i, i1: j, lisa });
+    }
   }
-  tr.paredoesMonaco = feitos;
+  for (const { lado, i0, i1, lisa } of trechos) {
+    const vs = [], uv = [], idx = [];
+    for (let i = i0; i <= i1; i++) {
+      const p = pts[i % n], x = p.x + p.nx * lado * (L + 3), z = p.y + p.ny * lado * (L + 3), alto = Math.min((lisa[i] ?? lisa[i - 1] ?? lisa[i + 1] ?? p.h + 20) - 0.6, p.h + 70), d = (i - i0) * 6;
+      vs.push(x, p.h - 3, z, x, alto, z); uv.push(0, d / 70, (alto - p.h + 3) / 40, d / 70);
+      if (i < i1) { const q = (i - i0) * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    const m = add(new THREE.Mesh(g, pedra)); m.castShadow = m.receiveShadow = true; m.name = "monaco-arrimo"; total += i1 - i0;
+  }
+  tr.arrimoMonaco = { trechos: trechos.map((t) => ({ lado: t.lado, de: +(t.i0 / n).toFixed(3), ate: +(t.i1 / n).toFixed(3) })), pontos: total };
 }
 
 // ---- o pit lane de Mônaco, por cima do corredor do kit (kit/corredor-boxes.js, que continua mandando na posição e na lógica): o terraço de hospitalidade sobre cada garagem (vidro, laje branca, guarda-corpo e
