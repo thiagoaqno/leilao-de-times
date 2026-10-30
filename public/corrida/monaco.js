@@ -3,10 +3,9 @@
 // de Paris, o Hermitage, a capela de Sainte Dévote, o Palácio e a catedral no Rochedo, as arquibancadas onde há lugar, e as palmeiras
 // e plátanos. Os dados vêm de kit/monaco/dados.js (ferramentas/monaco-dados.js os gera). O traçado é a linha central real do circuito.
 // pista.js usa `relevoMonaco` (o chão), `corDoChaoMonaco` (a cor do terreno) e `fundoMonaco` (o mar afunda o chão).
-import * as THREE from "three";
 import { sinalDaCurva } from "./kit/comum.js";
 import { arquibancadas } from "./kit/arquibancadas.js";
-import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, distanciaDoMar, NIVEL_DO_MAR } from "./kit/monaco/mundo.js";
+import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, NIVEL_DO_MAR } from "./kit/monaco/mundo.js";
 import { lerPredios, indiceDePredios, predios } from "./kit/monaco/predios.js";
 import { marcosMonaco } from "./kit/monaco/marcos.js";
 import { mar, porto, piscinas } from "./kit/monaco/agua.js";
@@ -27,20 +26,21 @@ function arquibancadasMonaco(tr, add, predioEm) {
   };
   const candidatos = [
     ["boxes", t.retaDosBoxes[0] + 0.02, t.retaDosBoxes[1] - 0.012, "fora-da-reta", 4], // a reta dos boxes, do lado de fora do corredor
-    ["cais", t.cais[0], t.cais[1], "agua", 4], // o cais do porto, de frente para os iates
+    ["cais", t.cais[0], t.cais[1], "agua", 3], // o cais do porto, de frente para os iates
     ["sainteDevote", c.sainteDevote - 0.01, c.sainteDevote + 0.015, "fora", 4],
-    ["tabac", c.tabac - 0.012, c.tabac + 0.012, "agua", 4],
-    ["piscine", c.piscine1 - 0.01, c.piscine2 + 0.012, "agua", 4],
+    ["tabac", c.tabac - 0.012, c.tabac + 0.012, "agua", 3],
+    ["piscine", c.piscine1 - 0.01, c.piscine2 + 0.012, "agua", 3],
     ["rascasse", c.rascasse - 0.012, c.anthonyNoghes + 0.008, "fora", 4],
   ];
   const out = [];
   for (const [nome, de, ate, quer, degraus] of candidatos) {
-    const i0 = Math.floor(de * n), i1 = Math.floor(ate * n); if (i1 <= i0) continue;
+    const i0 = Math.floor(de * n); let i1 = Math.floor(ate * n); if (i1 < i0) i1 += n; // (a reta dos boxes cruza a linha de chegada)
+    if (i1 - i0 < 22) continue;
     const meio = Math.floor((i0 + i1) / 2), l = quer === "fora-da-reta" ? (tr.t.boxes?.lado ? -tr.t.boxes.lado : -1) : lado(meio, quer);
     let a = -1;
     const livre = (i) => {
       const p = pts[((i % n) + n) % n];
-      for (const d of [L + 6, L + 6 + 9 * degraus * 0.5, L + 6 + 9 * degraus + 6]) {
+      for (const d of [L + 6, L + 6 + 4.5 * degraus, L + 6 + 9 * degraus + 1]) {
         const x = p.x + p.nx * l * d, z = p.y + p.ny * l * d;
         if (predioEm(x, z, 5) || fundoMonaco(tr, x, z) > -4 || tr.coberto?.(i) || tr.noCorredor?.(x, z) || tr.distAt(x, z) < d - 3) return false;
       }
@@ -49,7 +49,8 @@ function arquibancadasMonaco(tr, add, predioEm) {
     for (let i = i0; i <= i1 + 1; i++) {
       const ok = i <= i1 && livre(i);
       if (ok && a < 0) a = i;
-      if ((!ok || i === i1 + 1) && a >= 0) { if (i - 1 - a >= 22) out.push({ de: a / n, ate: (i - 1) / n, lado: l, degraus, cor: "#1f5fbf", encosto: "#e8eef8", cobertura: degraus > 3, nome }); a = -1; }
+      if ((!ok || i === i1 + 1) && a >= 0) { if (i - 1 - a >= 22) out.push({ de: a / n, ate: (i - 1) / n, lado: l, degraus, cor: "#1f5fbf", encosto: "#e8eef8", cobertura: degraus > 3, // (as de 3 degraus ficam abertas)
+         nome }); a = -1; }
     }
   }
   if (out.length) arquibancadas(tr, add, { trechos: out });
@@ -77,5 +78,4 @@ export function cenarioMonaco(tr, ctx) {
   arquibancadasMonaco(tr, add, predioEm);
   arvores(tr, add, { hAt, predioEm });
   tr.pracaCassino = { x: D.marcos.praca[0], y: D.marcos.praca[1] }; // o som da fonte
-  void distanciaDoMar; void THREE;
 }

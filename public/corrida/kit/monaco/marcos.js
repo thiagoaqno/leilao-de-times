@@ -29,6 +29,15 @@ const cilindro = (g, mat, r, h, x, y, z, seg = 14, r2 = r) => { const m = new TH
 const cone = (g, mat, r, h, x, y, z, seg = 4, giro = Math.PI / 4) => { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), mat); m.rotation.y = giro; m.position.set(x, y, z); m.castShadow = true; m.name = "monaco-marco"; g.add(m); return m; };
 const cupula = (g, mat, r, x, y, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 9, 0, Math.PI * 2, 0, Math.PI / 2), mat); m.position.set(x, y, z); m.castShadow = true; m.name = "monaco-marco"; g.add(m); return m; };
 
+// tira do grupo o que cairia dentro da pista larga do jogo (a rua real é mais estreita que a do jogo): nada sólido a menos de meia largura + 12
+function podar(tr, g) {
+  g.updateMatrixWorld(true); const caixa = new THREE.Box3(), minimo = tr.W / 2 + 12;
+  for (const m of [...g.children]) {
+    if (!m.isMesh) continue; caixa.setFromObject(m); let perto = false;
+    for (const x of [caixa.min.x, caixa.max.x]) for (const z of [caixa.min.z, caixa.max.z]) { if (tr.distAt(x, z) < minimo && caixa.min.y < tr.pts[tr.indiceAt(x, z)].h + 40) perto = true; }
+    if (perto) g.remove(m);
+  }
+}
 function noPredio(tr, add, b, alvo) {
   const q = quadro(b, alvo), g = new THREE.Group(); g.position.set(q.cx, b.topo, q.cz); g.rotation.y = q.phi; add(g);
   return { g, w: q.w, d: q.d, solo: b.baixo - b.topo, ...q };
@@ -115,8 +124,10 @@ function catedral(tr, add, [px, pz], chao, alvo) {
 }
 
 
+const grupos = [];
 const ESP = { casino: 1, hotelDeParis: 2, cafeDeParis: 3, opera: 4, fairmont: 5, metropole: 6, hermitage: 7, sainteDevote: 8, catedral: 9, palacio: 10, oceanografico: 11 };
-export function marcosMonaco(tr, add, lista, hAt) {
+export function marcosMonaco(tr, addBase, lista, hAt) {
+  grupos.length = 0; const add = (g) => { if (g.isGroup) grupos.push(g); return addBase(g); };
   const m = D.marcos, praca = m.praca || m.casino, feitos = [], { pts, n } = tr, noTraco = (f) => { const p = pts[Math.floor(f * n) % n]; return [p.x, p.y]; };
   const dono = (nome) => lista.find((q) => q.esp === ESP[nome]);
   let b;
@@ -130,5 +141,6 @@ export function marcosMonaco(tr, add, lista, hAt) {
   if ((b = dono("oceanografico"))) { oceanografico(tr, add, b, m.palacio || noTraco(0.5)); feitos.push("oceanografico"); }
   if (m.palacio) { palacio(tr, add, m.palacio, hAt); feitos.push("palacio"); }
   if (m.catedral) { catedral(tr, add, m.catedral, hAt, m.palacio || m.catedral); feitos.push("catedral"); }
+  for (const g of grupos) podar(tr, g);
   tr.marcosMonaco = feitos;
 }

@@ -66,7 +66,7 @@ export function piscinas(tr, add, { aguaTex }) {
   const deck = M(0xf2efe6, { roughness: 0.7 }), raia = M(0xff5a4a), branco = M(0xffffff), pedra = M(0xdedad0);
   for (const P of D.piscinas) {
     const cx = P.reduce((s, p) => s + p[0], 0) / P.length, cz = P.reduce((s, p) => s + p[1], 0) / P.length, y = tr.chao(cx, cz) - 1.5 + 1.2;
-    if (fundoMonaco(tr, cx, cz) > -4) continue;
+    if (fundoMonaco(tr, cx, cz) > -4 || tr.distAt(cx, cz) < tr.wallLat + 70 || tr.predioEmMonaco?.(cx, cz, 0)) continue; // as piscinas de terraço e as coladas na pista ficam de fora
     const forma = new THREE.Shape(P.map(([x, z]) => new THREE.Vector2(x - cx, -(z - cz)))), geo = new THREE.ShapeGeometry(forma); geo.rotateX(-Math.PI / 2); // deitada, de frente para cima, com o z do mundo
     const a = new THREE.Mesh(geo, agua); a.position.set(cx, y + 0.5, cz); add(a);
     const borda = new THREE.Mesh(geo, deck); borda.scale.set(1.12, 1, 1.12); borda.position.set(cx, y, cz); borda.receiveShadow = true; add(borda);
