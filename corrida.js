@@ -59,6 +59,10 @@ module.exports = function attachCorrida(io) {
       nivel: Robos.NIVEIS[c.nivel] ? c.nivel : "medio",
     };
   };
+  // Uma sala nova (o botão "Abrir sala nova", que não manda config) nasce com as regras de F1, 5 voltas e os robôs no nível médio; o pneu
+  // da largada de cada piloto já nasce médio (`F1.COMPOSTO_PADRAO`, em `addPlayer`). O organizador muda tudo depois, e quem manda uma
+  // config parcial (os testes, a carreira) continua recebendo os padrões de `cleanConfig`.
+  const CONFIG_SALA_NOVA = { regras: "f1", voltas: 5, nivel: "medio" };
   const nameOf = (room, id) => (room.players[id] ? room.players[id].name : "?");
   function log(room, text) { room.log.push({ t: Date.now(), text }); if (room.log.length > 80) room.log.splice(0, room.log.length - 80); }
 
@@ -448,7 +452,7 @@ module.exports = function attachCorrida(io) {
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config), players: {}, order: [], finishOrder: [], log: [], t: Date.now() };
+      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config || CONFIG_SALA_NOVA), players: {}, order: [], finishOrder: [], log: [], t: Date.now() };
       rooms.set(room.code, room);
       const p = addPlayer(room, name, data.skin);
       room.host = p.id;
