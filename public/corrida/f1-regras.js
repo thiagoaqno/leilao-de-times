@@ -60,7 +60,19 @@ const PICO_REFERENCIA = 1.35, BASE_FREIO = 1.08, EXPOENTE_FREIO = 0.85, EXPOENTE
 // Quanto a pista está "seca" para o pneu de chuva: 1 sem água, 0 de metade de água para cima.
 const secaDaPista = (agua) => 1 - limite((agua || 0) / 0.5, 0, 1);
 // O que a água tira da aderência do composto: 1 na pista seca, `molhado` na encharcada, interpolando.
-const fatorAgua = (composto, agua) => 1 + ((PNEUS[composto] || PNEUS[COMPOSTO_PADRAO]).molhado - 1) * limite(agua || 0, 0, 1);
+// Uma curva por composto, em [água, fator] (a água: 0 seco, ~0,45 garoa, 1 encharcada): o macio é o que mais sofre mesmo na garoa; o de chuva
+// na garoa fica só um pouco acima dos secos (e ainda "derrete" se a pista seca) e na pista encharcada fica claramente melhor.
+const CURVA_AGUA = {
+  macio: [[0, 1], [0.15, 0.78], [0.45, 0.55], [1, 0.3]],
+  medio: [[0, 1], [0.15, 0.84], [0.45, 0.66], [1, 0.38]],
+  duro: [[0, 1], [0.15, 0.86], [0.45, 0.7], [1, 0.42]],
+  chuva: [[0, 1], [0.15, 0.85], [0.45, 0.78], [1, 1.0]],
+};
+function fatorAgua(composto, agua) {
+  const c = CURVA_AGUA[composto] || CURVA_AGUA[COMPOSTO_PADRAO], a = limite(agua || 0, 0, 1);
+  for (let i = 1; i < c.length; i++) if (a <= c[i][0]) return c[i - 1][1] + (c[i][1] - c[i - 1][1]) * ((a - c[i - 1][0]) / (c[i][0] - c[i - 1][0]));
+  return c[c.length - 1][1];
+}
 // A temperatura passa de 1 só no pneu de chuva em pista seca; com +0,4 acima de 1 perde PERDA_ESQUENTA (25%) da aderência.
 const PERDA_ESQUENTA = 0.25;
 function aderencia(pneu, agua = 0) {
@@ -279,13 +291,14 @@ const ROTULO_CLIMA = { aleatorio: "Aleatório", seco: "Seco", chuva: "Chuva", va
 // [peso, de, ate]: a faixa de chance de chuva e o quanto dos GPs cai nela (média: 0,6·5 + 0,25·30 + 0,11·60 + 0,04·87,5 = 20,6%)
 const FAIXAS_DE_CHUVA = [[0.60, 0, 0.10], [0.25, 0.20, 0.40], [0.11, 0.50, 0.70], [0.04, 0.80, 0.95]];
 // quando a chuva pode começar: `de`..`ate` (fração da sessão em que ela começa de verdade) e `janela` (o que a previsão anuncia)
+// (a chuva vem cedo: o "variável" e a maioria das aleatórias chovem a partir de 1/4 a 1/3 da corrida, para dar tempo de trocar para o pneu de chuva)
 const QUANDO = {
   largada: { de: 0, ate: 0, janela: [0, 0.1] },
-  inicio: { de: 0.1, ate: 0.3, janela: [0.05, 0.4] },
-  meio: { de: 0.35, ate: 0.55, janela: [0.3, 0.7] },
-  fim: { de: 0.6, ate: 0.8, janela: [0.55, 1] },
+  inicio: { de: 0.1, ate: 0.25, janela: [0.05, 0.3] },
+  meio: { de: 0.25, ate: 0.34, janela: [0.2, 0.4] },
+  fim: { de: 0.45, ate: 0.6, janela: [0.4, 0.7] },
 };
-const PESO_QUANDO = [["largada", 0.2], ["inicio", 0.25], ["meio", 0.35], ["fim", 0.2]];
+const PESO_QUANDO = [["largada", 0.2], ["inicio", 0.3], ["meio", 0.35], ["fim", 0.15]];
 // A previsão do GP: { opcao, p (0 a 1, de 5 em 5%), pct, quando (largada, inicio, meio ou fim), forca (garoa, forte ou vira: garoa
 // que vira chuva forte), janela [de, ate] (fração da corrida em que a chuva pode começar) }. Só da semente e da opção.
 function previsaoDoGP(semente, opcao = "aleatorio") {
@@ -305,7 +318,7 @@ function previsaoDoGP(semente, opcao = "aleatorio") {
   const forca = xForca < forte ? "forte" : xForca < forte + 0.15 ? "vira" : "garoa";
   return { opcao, p, pct: Math.round(p * 100), quando, forca, janela: QUANDO[quando].janela.slice() };
 }
-const ROTULO_QUANDO = { largada: "Pode largar molhado", inicio: "Chuva no começo da corrida", meio: "Chuva do meio para o fim", fim: "Chuva perto do fim" };
+const ROTULO_QUANDO = { largada: "Pode largar molhado", inicio: "Chuva no começo da corrida", meio: "Chuva a partir de 1/4 da corrida", fim: "Chuva na segunda metade" };
 const ROTULO_FORCA = { garoa: "garoa", forte: "chuva forte", vira: "garoa que vira chuva forte" };
 // O texto da previsão para a tela: { p, pct, nivel (0 sol, 1 sol e nuvem, 2 nublado, 3 chuva: o ícone), seco, titulo, quando, forca,
 // dica, voltas ([primeira, ultima] em que a chuva pode começar, ou null) }. `voltas` é o tamanho da corrida.
@@ -315,7 +328,7 @@ function descreverPrevisao(prev, voltas = 0) {
   if (seco) return { p, pct, nivel: 0, seco, titulo, quando: "", forca: "", dica: "", voltas: null };
   let quando = ROTULO_QUANDO[prev.quando] || "", lap = null;
   if (prev.opcao === "chuva") quando = "Chove a corrida inteira";
-  else if (prev.opcao === "variavel") quando = "Seco na largada, chuva do meio para o fim";
+  else if (prev.opcao === "variavel") quando = "Seco na largada, chuva a partir de 1/4 da corrida";
   if (voltas >= 3 && prev.quando !== "largada" && prev.janela) {
     const a = Math.floor(prev.janela[0] * voltas) + 1, b = Math.max(a, Math.min(voltas, Math.ceil(prev.janela[1] * voltas)));
     lap = [a, b]; quando += a === b ? ` (volta ${a})` : ` (voltas ${a} a ${b})`;

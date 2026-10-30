@@ -739,7 +739,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     // a batida deste passo: a mesma dos humanos (corrida-contato.js), com os outros carros na hora do passo; o robô também troca momento
     evC.length = 0;
     Contato.depoisDoPasso(room, p, car, now - dt * 1000 + (s + 1) * Sim.PASSO * 1000, evC, !amb.safety && p.finish == null && !p.dnf && !car.box?.fase);
-    for (const e of evC) if (e.forca >= F1.BATIDA_MIN) emit("batida", { id: p.id, forca: e.forca, tipo: "carro", chave: "carro:" + e.id });
+    for (const e of evC) if (e.forca >= 5) emit("batida", { id: p.id, forca: e.forca, tipo: "carro", chave: "carro:" + e.id }); // (a direção de prova decide: abaixo da força mínima só vale se o outro derrapava)
     for (const e of ev) {
       if (e.t === "setor") setor(p, e.s);
       else if (e.t === "box" && e.fase === "sai") emit("box", { id: p.id, composto: e.composto, tempo: e.tempo, volta: e.volta, stopGo: !!e.stopGo, troca: !!e.troca, sg: e.sg });

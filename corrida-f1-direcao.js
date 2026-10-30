@@ -61,20 +61,38 @@ function voltaFechada(room, p, log) {
 // culpa, do impacto guardado em corrida-contato.js: quem se aproximou claramente mais que o outro causou (a traseira, quem fecha a
 // porta); sem culpado claro (lado a lado) ninguém é punido. O causador leva a punição e a maior parte do dano; o batido nunca é punido
 // e quase não leva dano.
+// Um carro DERRAPANDO antes do impacto (rodando, atravessado ou com guinada forte), pelo que o impacto guardou (as velocidades de antes do
+// impulso): bater nele é infração leve, qualquer que seja a velocidade, porque ele não tinha como evitar. `idDoOutro`: o carro atingido.
+const DERRAPA_ANGULO = 0.6, DERRAPA_GUINADA = 1.5, DERRAPA_V = 40; // rad entre o rumo e a velocidade; rad/s; u/s
+function derrapando(imp, idDoOutro) {
+  if (!imp || !imp.pre) return false;
+  const q = imp.pre, ele = imp.de === idDoOutro, vx = ele ? q.vx : q.ovx, vy = ele ? q.vy : q.ovy, a = ele ? q.a : q.oa, r = ele ? q.r : q.orr;
+  if (!Number.isFinite(vx) || !Number.isFinite(a)) return false;
+  const v = Math.hypot(vx, vy);
+  if (Math.abs(r || 0) > DERRAPA_GUINADA) return true;
+  if (v < DERRAPA_V) return false;
+  return Math.abs(Math.atan2(Math.sin(Math.atan2(vy, vx) - a), Math.cos(Math.atan2(vy, vx) - a))) > DERRAPA_ANGULO;
+}
 const DANO_CAUSADOR = { leve: 1, media: 2, grave: 3 }, DANO_BATIDO = { leve: 0, media: 0, grave: 0.5 };
 function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   if (!room.direcao || room.phase !== 'race' || !p || p.dnf || p.finish != null || p.box || agora < room.startAt) return null;
   const cd = p.batidaPares || (p.batidaPares = {});
   if (agora < (cd[chave] || 0)) return null;
-  const b = F1.batida(forca); if (!b) return null;
+  let b = F1.batida(forca), derrapou = false;
+  const outro0 = tipo !== 'muro' && String(chave).startsWith('carro:') ? String(chave).slice(6) : null;
+  if (outro0 && forca >= 5) { // bateu num carro que derrapava: infração leve mesmo em baixa velocidade, se o outro não foi o causador
+    const i0 = Contato.impactoDe(room, p.id, outro0);
+    if (derrapando(i0, outro0) && !(i0.culpado && i0.culpado !== p.id)) { derrapou = true; b = b || F1.batida(F1.BATIDA_MIN); }
+  }
+  if (!b) return null;
   cd[chave] = agora + F1.BATIDA_INTERVALO;
   for (const k of Object.keys(cd)) if (cd[k] < agora) delete cd[k]; // (só guarda os que ainda valem)
   p.batidaAte = cd[chave];
   p.batidas = (p.batidas || 0) + 1;
   const outroId = tipo !== 'muro' && String(chave).startsWith('carro:') ? String(chave).slice(6) : null;
   const imp = outroId ? Contato.impactoDe(room, p.id, outroId) : null;
-  const grav = outroId ? F1.gravidadeDaBatida(forca) : null;
-  const culpa = !!(grav && imp && imp.culpado === p.id), batido = !!(grav && imp && imp.culpado && imp.culpado !== p.id);
+  const grav = outroId ? F1.gravidadeDaBatida(forca) || (derrapou ? 'leve' : null) : null;
+  const culpa = !!(grav && imp && (imp.culpado === p.id || (derrapou && !imp.culpado))), batido = !!(grav && imp && imp.culpado && imp.culpado !== p.id);
   const dano = culpa ? DANO_CAUSADOR[grav] : batido ? DANO_BATIDO[grav] : b.dano;
   p.dano = Math.min(100, Math.round(((p.dano || 0) + dano) * 10) / 10);
   p.ultimaBatida = { at: agora, nivel: grav || b.nivel, dano, tipo, ...(culpa ? { culpa: true } : batido ? { batido: true } : {}) };

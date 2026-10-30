@@ -399,7 +399,7 @@ function contatoCom(c, eu, o, dt, reg, semImpulso) {
     forca = -vn;
     // as velocidades de ANTES do impulso: a gravidade e a culpa saem delas (o servidor guarda em corrida-contato.js)
     const culpa = culpaEntre(c.vx, c.vy, ovx, ovy, nx, ny), kA = culpa === 1 ? K_CULPADO : culpa === -1 ? K_VITIMA : 1, kB = culpa === -1 ? K_CULPADO : culpa === 1 ? K_VITIMA : 1;
-    o.culpa = culpa; o.pre = { vx: c.vx, vy: c.vy, ovx, ovy, nx, ny, a: aa, oa: oa1 };
+    o.culpa = culpa; o.pre = { vx: c.vx, vy: c.vy, ovx, ovy, nx, ny, a: aa, oa: oa1, r: c.r, orr };
     const cAn = rAx * ny - rAy * nx, cBn = rBx * ny - rBy * nx;
     const j = -(1 + E_BATIDA) * vn / (1 / mA + 1 / mB + cAn * cAn / IA + cBn * cBn / IB);
     // atrito no contato: o carro de raspão é puxado e gira um pouco, até MU_BATIDA do impulso normal
