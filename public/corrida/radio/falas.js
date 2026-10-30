@@ -20,6 +20,12 @@ const SITUACOES = {
   foradospontos: ["Fora dos pontos hoje. Vamos analisar os dados.", "Não foi o resultado esperado. Vamos trabalhar.", "Corrida difícil. Vamos entender o que faltou.", "Sem pontos hoje. Próxima corrida é outra história."],
   chuvachegando: ["Chuva chegando em uma volta. Prepare o pneu de chuva.", "O radar mostra chuva em uma volta. Considere o box.", "Chuva a caminho. Falta uma volta para ela chegar.", "Vai chover em uma volta. Fique atento ao box."],
   chuvaparando: ["A chuva está parando. A pista vai secar.", "A chuva diminui. A pista deve secar em breve.", "O radar está limpando. Pense nos pneus secos.", "Chuva parando. Avalie voltar para o pneu seco."],
+  // (estas o rádio já pedia em radio.js, mas não tinham fala: ficavam mudas)
+  boasvindas: ["Rádio funcionando. Estamos prontos quando você estiver.", "Bem-vindo de volta. O carro está pronto.", "Comunicação ok. Vamos fazer um bom fim de semana.", "Tudo certo por aqui. Escolha bem o pneu."],
+  classboa: ["Boa classificação. Largamos lá na frente.", "Ótima volta. Posição forte para a corrida.", "Excelente. Grid muito bom para amanhã.", "Classificação limpa. Agora é transformar em pontos."],
+  classruim: ["Classificação difícil. Vamos recuperar na corrida.", "Não foi a volta que queríamos. A corrida é longa.", "Largamos de trás. Paciência e estratégia.", "Tempo abaixo do esperado. Vamos atacar amanhã."],
+  drs: ["DRS disponível. Use na reta.", "Você está a menos de um segundo. DRS liberado.", "Zona de DRS à frente. Ataque.", "DRS ativo. É a sua chance."],
+  punicao: ["Recebemos uma punição de tempo. Mantenha o ritmo.", "A direção de prova nos puniu. Vamos compensar na pista.", "Punição confirmada. Evite novos contatos.", "Tempo adicionado pela batida. Cuidado nas disputas."],
   abandono: ["Precisamos abandonar. Leve o carro para os boxes.", "Fim de corrida para nós. Pare com segurança.", "Vamos recolher o carro. Desculpe.", "Abandono. Pare o carro em local seguro."],
 };
 // situações que passam na frente do intervalo mínimo entre falas

@@ -127,7 +127,7 @@ function posicao(pos, chave) { // a posição na torre: ganhou/perdeu depois de 
 const vistos = new Set();
 function uma(chave, fn) { if (vistos.has(chave)) return; vistos.add(chave); fn(); } // uma vez por chave (a corrida, o pneu...)
 function avisoF1(tipo) { // `tipo` vem de AvisosF1.tipoDoTexto
-  const s = { sc: "safety", amarela: "amarela", quebra: "dano", batida: "dano", drs: "drs", vmr: "voltarapida" }[tipo];
+  const s = { sc: "safety", amarela: "amarela", quebra: "dano", batida: "dano", drs: "drs", vmr: "voltarapida", punicao: "punicao" }[tipo];
   if (s) dizer(s);
 }
 function fim(pos, pontos, dnf) { dizer(dnf ? "abandono" : pos === 1 ? "vitoria" : pos <= 3 ? "podio" : pontos > 0 ? "pontos" : "foradospontos", { forcar: true }); }
