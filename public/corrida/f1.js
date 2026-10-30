@@ -42,10 +42,13 @@ function pintura(base, cor1, cor2, equipe, numero, fundo = false) {
   if (liv) setNumero(m, numero);
   return m;
 }
-// o pneu: o anel colorido do composto na lateral (a cor muda no uniform, sem textura nova)
+// Os slicks têm tons discretamente diferentes; só o pneu de chuva tem sulcos.
+const TOM_PNEU = { macio: -0.06, medio: 0, duro: 0.05, chuva: -0.02 };
+// o pneu: faixa e acabamento mudam por uniform, sem carregar textura nem recompilar
 function pneuMat(base, composto) {
   const m = base.clone();
-  m.userData.faixa = { faixa: { value: new THREE.Color(FAIXAS[composto] || "#ffffff") }, faixaOn: { value: FAIXAS[composto] ? 1 : 0 } };
+  m.roughness = 0.92; m.metalness = 0;
+  m.userData.faixa = { faixa: { value: new THREE.Color(FAIXAS[composto] || "#ffffff") }, faixaOn: { value: FAIXAS[composto] ? 1 : 0 }, pneuChuva: { value: composto === "chuva" ? 1 : 0 }, pneuTom: { value: TOM_PNEU[composto] || 0 } };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.faixa);
     sh.vertexShader = PNEU_VERT_DECL + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>" + PNEU_VERT_MAIN);
@@ -122,11 +125,11 @@ function montarCorpo(k) {
 // a posição de cada ponto da roda em relação ao eixo, em raios (1 = a borda do pneu): a faixa do composto é um anel nesse
 // espaço (o shader mede o comprimento do vetor em cada pixel, então o anel sai redondo mesmo com poucos vértices)
 function aroDaRoda(pos, idx) {
-  let y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
-  for (let q = 0; q < idx.length; q++) { const y = pos.getY(idx[q]), z = pos.getZ(idx[q]); if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z; }
-  const cy = (y0 + y1) / 2, cz = (z0 + z1) / 2, R = Math.max((y1 - y0) / 2, 1e-6), a = new Float32Array(pos.count * 2);
-  for (let i = 0; i < pos.count; i++) { a[i * 2] = (pos.getY(i) - cy) / R; a[i * 2 + 1] = (pos.getZ(i) - cz) / R; }
-  return new THREE.BufferAttribute(a, 2);
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (let q = 0; q < idx.length; q++) { const x = pos.getX(idx[q]), y = pos.getY(idx[q]), z = pos.getZ(idx[q]); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+  const cy = (y0 + y1) / 2, cz = (z0 + z1) / 2, R = Math.max((y1 - y0) / 2, 1e-6), cx = (x0 + x1) / 2, rx = Math.max((x1 - x0) / 2, 1e-6), a = new Float32Array(pos.count * 2), lat = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++) { a[i * 2] = (pos.getY(i) - cy) / R; a[i * 2 + 1] = (pos.getZ(i) - cz) / R; lat[i] = (pos.getX(i) - cx) / rx; }
+  return { aro: new THREE.BufferAttribute(a, 2), lat: new THREE.BufferAttribute(lat, 1) };
 }
 // os atributos do corpo para a pintura de equipe: `pcar` = (x, y, s) no quadro do carro (s = distância desde a ponta do bico,
 // 0 a ~4,4) e `ncar` = a normal nesse quadro; feitos uma vez por malha (as cópias do carro dividem a geometria)
@@ -146,7 +149,7 @@ function dividirRodas(o) {
     const g = o.geometry, pos = g.attributes.position, idx = g.index ? g.index.array : Array.from({ length: pos.count }, (_, i) => i);
     const lados = [[], []], v = new THREE.Vector3(), ladoDe = (i) => v.fromBufferAttribute(pos, i).applyMatrix4(o.matrix).x;
     for (let t = 0; t < idx.length; t += 3) lados[(ladoDe(idx[t]) + ladoDe(idx[t + 1]) + ladoDe(idx[t + 2])) / 3 < 0 ? 0 : 1].push(idx[t], idx[t + 1], idx[t + 2]);
-    DIVISOES.set(o.geometry, lados.map((l) => { const n = g.clone(); n.setIndex(l); n.clearGroups(); n.setAttribute("aro", aroDaRoda(pos, l)); return n; }));
+    DIVISOES.set(o.geometry, lados.map((l) => { const n = g.clone(); n.setIndex(l); n.clearGroups(); const a = aroDaRoda(pos, l); n.setAttribute("aro", a.aro); n.setAttribute("pneuLat", a.lat); return n; }));
   }
   return DIVISOES.get(o.geometry).map((geo) => { const m = new THREE.Mesh(geo, o.material); m.position.copy(o.position); m.quaternion.copy(o.quaternion); m.scale.copy(o.scale); m.castShadow = true; return m; });
 }
@@ -160,6 +163,7 @@ export function trocarComposto(k, composto) {
   composto = composto || null; if (k.composto === composto) return; k.composto = composto;
   const u = k.pneu?.userData?.faixa; if (!u) return;
   if (FAIXAS[composto]) { u.faixa.value.set(FAIXAS[composto]); u.faixaOn.value = 1; } else u.faixaOn.value = 0;
+  u.pneuChuva.value = composto === "chuva" ? 1 : 0; u.pneuTom.value = TOM_PNEU[composto] || 0;
 }
 export function trocarCores(k, cor1, cor2) { k.cores = [cor1, cor2]; const u = k.pintura?.userData?.cores; if (u) { u.cor1.value.set(cor1); u.cor2.value.set(cor2); } }
 export function soltarF1(k) { k.solto = true; for (const m of k.mats) m.dispose(); } // a malha é a mesma para todos os carros: fica

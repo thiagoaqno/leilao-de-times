@@ -1,7 +1,7 @@
 /* Corrida da Galera — o HUD de F1 no estilo do jogo da EA, parte 2: o quadro de tempos (alto à direita), o mostrador central (bateria, marcha,
    velocidade, rotação, modo do ERS), o MFD (embaixo à direita, com páginas), o botão MFD e o banner de punição. A torre e o minimapa estão
    em hud-f1.css. Tudo só com `#race.f1hud` (regras de F1, fase da corrida); o arcade segue com o HUD antigo. */
-#hTempo,#hCentro,#hMfd,.mfd-botao,#hBanner,#hPunicao{display:none}
+#hTempo,#hCentro,#hMfd,.mfd-botao,#hBanner,#hPunicao,#hCrono{display:none}
 #race.f1hud #hTempo,#race.f1hud #hCentro,#race.f1hud #hMfd{font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;text-shadow:none}
 
 /* ---- o quadro de tempos: setores S1/S2/S3, posição, volta atual e BEST ---- */
@@ -52,7 +52,7 @@
 @keyframes gcPisca{50%{opacity:.55}}
 
 /* ---- o MFD: o painel de páginas ---- */
-#race.f1hud #hMfd{display:flex;flex-direction:column;position:absolute;right:14px;bottom:12px;width:292px;height:212px;pointer-events:auto;z-index:3;background:linear-gradient(180deg,#0a0c12e8,#06070bf2);border:1px solid #ffffff22;box-shadow:0 6px 18px #0009}
+#race.f1hud #hMfd{display:flex;flex-direction:column;position:absolute;right:14px;bottom:12px;width:292px;height:240px;pointer-events:auto;z-index:3;background:linear-gradient(180deg,#0a0c12e8,#06070bf2);border:1px solid #ffffff22;box-shadow:0 6px 18px #0009}
 #race.f1hud #hMfd.fechado{display:none}
 #race.f1hud #hMfd.foco{border-color:#fff;box-shadow:0 0 0 2px #e10600,0 6px 18px #000a}
 .mfd-topo{display:flex;align-items:center;gap:8px;height:32px;flex:none;padding:0 4px 0 10px;background:#14161d;border-bottom:2px solid #e10600}
@@ -160,7 +160,7 @@
 }
 @media (pointer:coarse),(max-width:700px){
   #race.f1hud #hCentro{transform:translateX(-50%) scale(.84);transform-origin:50% 100%}
-  #race.f1hud #hMfd{right:auto;left:50%;transform:translateX(-50%);bottom:8px;width:min(272px,calc(100vw - 16px));height:200px}
+  #race.f1hud #hMfd{right:auto;left:50%;transform:translateX(-50%);bottom:8px;width:min(272px,calc(100vw - 16px));height:228px}
   #race.f1hud.mfd-on #hCentro{visibility:hidden}
   #race.f1hud .mfd-botao{bottom:174px;right:14px;height:40px}
   .mfd-dicas{display:none}
@@ -175,3 +175,56 @@
   #race.f1hud .mfd-botao{bottom:12px}
 }
 @media (prefers-reduced-motion:reduce){.gc-arco .valor,.gc-ers i,.mp-barra i{transition:none}.gc-drs.pronto,#race.f1hud #hPunicao.urgente,#race.f1hud #hBanner.on{animation:none}}
+
+/* MFD de corrida: leitura rápida, superfícies escuras e seleção clara. */
+#race.f1hud #hMfd{width:310px;height:232px;background:rgba(12,15,21,.94);border:1px solid #ffffff45;box-shadow:0 5px 18px #0009}
+.mfd-topo{height:34px;padding:0 7px 0 11px;background:#20242b;border-bottom:2px solid #e10600}
+.mfd-nome{font-size:14px;letter-spacing:.06em}
+.mfd-abas{gap:3px;align-items:center}
+.mfd-abas button{position:relative;width:15px;min-width:15px;height:24px;border:0;border-radius:0;background:transparent;font-size:0}
+.mfd-abas button::after{content:"";position:absolute;left:0;right:0;top:50%;height:5px;transform:translateY(-50%);background:#ffffff4a}
+.mfd-abas button.on{background:transparent}.mfd-abas button.on::after{background:#fff}
+.mfd-abas button:focus-visible,.mfd-x:focus-visible,.mr-b:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.mfd-x{min-width:22px;height:24px;font-size:16px}
+.mfd-corpo{padding:9px 11px 5px}
+.mfd-dicas{height:23px;background:#171b21;border-top:1px solid #ffffff20;letter-spacing:.01em}
+.mp-dupla{gap:14px}
+.mp-carro{width:86px;height:117px}
+.mp-centro{width:86px;font-size:17px}
+.mp-comp{gap:7px;padding-bottom:5px;border-bottom:1px solid #ffffff28;text-transform:uppercase;font-size:13px;letter-spacing:.04em}
+.mp-bola{width:25px;height:25px;font-size:13px}
+.mp-barra{grid-template-columns:43px minmax(0,1fr) auto;gap:6px}
+.mp-barra>div{height:5px;background:#ffffff24}
+.mp-nota{font-size:11px;line-height:1.15}
+.mp-nota.mp-fraca{font-size:10px}
+.mp-janela{align-items:flex-start;padding:6px 8px;background:#244d64;border-left:3px solid #62c7ed}
+.mp-janela small{font-size:10px;letter-spacing:.05em}
+.mp-janela b{font-size:19px;line-height:1.1}
+.mp-janela em{font-size:10px}
+.mp-box{gap:3px}
+.mp-box .mp-par{min-height:17px;font-size:12px}
+.mr{height:24px;background:#ffffff10;border-left:3px solid transparent}
+.mr.sel{background:#ffffff25;border-left-color:#74d6f7;box-shadow:none}
+#hMfd.foco .mr.sel{border-left-color:#e10600}
+.mr-v b{min-width:87px}
+@media(max-width:700px){#race.f1hud #hMfd{width:min(290px,calc(100vw - 16px));height:232px}.mfd-topo{height:31px}.mfd-abas button{width:22px;min-width:22px;height:30px}.mfd-corpo{padding:7px 9px 4px}}
+
+/* A janela de box ocupa duas linhas, deixando as escolhas sempre acessíveis. */
+.mp-janela{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:8px;padding:4px 8px}
+.mp-janela small{grid-column:1}
+.mp-janela b{grid-column:2;font-size:17px}
+.mp-janela em{grid-column:1 / -1}
+.mp-box .mp-nota{font-size:10px;white-space:nowrap}
+
+/* o relógio da corrida (quadro de tempos) e as teclas dentro das notas do MFD */
+.ht-corrida{padding-top:2px;font-size:12px}
+.mp-nota kbd{display:inline-grid;place-items:center;min-width:16px;height:15px;padding:0 3px;font:700 10px/1 var(--f1-fonte);color:#0a0c12;background:#e4e7ee;border-radius:3px;vertical-align:1px}
+/* o cronômetro grande do stop-and-go no centro da tela (regressivo até 0) e o tempo da troca de pneu */
+#race.f1hud #hCrono{display:none;left:50%;top:38%;transform:translate(-50%,-50%);min-width:240px;padding:12px 30px 14px;text-align:center;font-family:var(--f1-fonte);color:#fff;background:#0a0c12eb;border-top:5px solid #e10600;box-shadow:0 10px 30px #000a;z-index:6}
+#race.f1hud #hCrono.on{display:block}
+#race.f1hud #hCrono small{display:block;font-size:clamp(14px,2vw,20px);font-weight:700;letter-spacing:.22em}
+#race.f1hud #hCrono b{display:block;font-size:clamp(64px,12vw,128px);font-weight:700;font-style:italic;line-height:.95;font-variant-numeric:tabular-nums;color:#ffd23f}
+#race.f1hud #hCrono em{display:block;font-style:normal;font-size:clamp(14px,2vw,20px);font-weight:700;letter-spacing:.12em;color:#9fd3ff}
+#race.f1hud #hCrono em:empty{display:none}
+#race.f1hud #hCrono.pit{border-top-color:#0b8fd9}#race.f1hud #hCrono.pit b{color:#fff;font-size:clamp(48px,8vw,88px)}
+#race.f1hud #hCrono.fim b{color:#2ee08a}

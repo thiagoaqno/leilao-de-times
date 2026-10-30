@@ -51,7 +51,7 @@ export function atualizarCentro(ctx) {
 export function montarTempo() {
   const el = $("hTempo"); if (!el || el.dataset.ok) return; el.dataset.ok = 1;
   el.innerHTML = `<div class="ht-set"><span>S1</span><span>S2</span><span>S3</span><i class="off"></i><i class="off"></i><i class="off"></i></div>
-    <div class="ht-linha"><b id="htPos">1<small>/1</small></b><span id="htVolta">0:00.000</span></div><div class="ht-linha ht-best"><span>BEST</span><span id="htBest">—:--.---</span></div>`;
+    <div class="ht-linha"><b id="htPos">1<small>/1</small></b><span id="htVolta">0:00.000</span></div><div class="ht-linha ht-best"><span>BEST</span><span id="htBest">—:--.---</span></div><div class="ht-linha ht-best ht-corrida"><span>CORRIDA</span><span id="htCorrida">0:00.0</span></div>`;
 }
 // Segue os setores (12 checkpoints, 4 por setor) e o desgaste por volta do pneu. Guardado em `race.hudT` (zera sozinho a cada corrida).
 function seguir(m, pneu) {
@@ -66,7 +66,7 @@ function seguir(m, pneu) {
   if (s === 4 && antes === 3) { T.cor[1] = T.cor[2] = "off"; T.t[1] = T.t[2] = null; fim(0, 0); }
   else if (s === 8 && antes === 7) fim(1, T.t[0] || 0);
   else if (s === 0 && antes === 11) {
-    if ((race.voltaLocal || 0) < 1) { T.lapIni = t; return T; } // a linha de largada (começa a volta 1), não uma volta que acabou
+    if ((race.voltaLocal || 0) < 1) return T; // a linha de largada: a volta 1 é medida desde a largada (como o servidor), não reinicia aqui
     fim(2, (T.t[0] || 0) + (T.t[1] || 0)); T.lapIni = t;
     const vr = M().donoDaVoltaRapida(E.S.players); if (vr && vr.id === m.id && valido) T.cor = ["roxo", "roxo", "roxo"]; // a volta mais rápida da corrida é minha
     if (pneu) { const d = pneu.desgaste - T.desgIni; if (d > 0.002 && pneu.composto === T.comp) T.taxa = d; T.desgIni = pneu.desgaste; }
@@ -77,8 +77,10 @@ export function atualizarTempo(m, st, now) {
   const T = seguir(m, race.pneu); montarTempo();
   const pos = m ? st.findIndex((r) => r.id === m.id) + 1 : 0, ini = T.lapIni;
   const p = $("htPos"); const html = m ? `${pos}<small>/${st.length}</small>` : "—"; if (p._h !== html) { p._h = html; p.innerHTML = html; }
-  const dentro = m && m.started && m.finish == null, atual = dentro ? Math.max(0, (now - ini) / 1000) : m && m.finish != null ? m.last : 0;
-  set($("htVolta"), "t", M().tempoVolta(atual)); set($("htBest"), "t", M().tempoVolta(m && m.best));
+  // o relógio NUNCA depende de `started` para andar (era o que o deixava em 0:00.000 até a linha e o reiniciava lá): ver relogioDaVolta
+  const rel = M().relogioDaVolta({ now, startAt: race.startAt, lapIni: ini, started: !!(m && m.started), finish: m ? m.finish : null, last: m ? m.last : null });
+  set($("htVolta"), "t", M().tempoVolta(rel.volta)); set($("htBest"), "t", M().tempoVolta(m && m.best)); set($("htCorrida"), "t", M().tempoCorrida(rel.corrida));
+  race.hudRelogio = rel; // (a página Tempos do MFD lê daqui)
   const barras = $("hTempo").querySelectorAll(".ht-set i"), cur = m && m.started ? M().setorAtual(race.sector) : -1;
   for (let k = 0; k < 3; k++) set(barras[k], "c", T.cor[k] !== "off" ? T.cor[k] : k === cur ? "atual" : "off");
   return T;
@@ -163,4 +165,24 @@ export function minimapaF1(st, m) {
     const [x, y] = pt(eu.x, eu.y); c.save(); c.translate(x, y); c.rotate(eu.a + Math.PI / 2);
     c.beginPath(); c.moveTo(0, -9); c.lineTo(6.5, 7); c.lineTo(0, 3.5); c.lineTo(-6.5, 7); c.closePath(); c.fillStyle = cor.get(m.id) || m.color || "#e10600"; c.fill(); c.lineWidth = 2; c.strokeStyle = "#fff"; c.stroke(); c.restore();
   }
+}
+
+// ---------- o cronômetro do stop-and-go (e o tempo da troca de pneu) ----------
+// Só lê o estado do box (sim.js): `B.fase` "parada" com `B.stopGo` e o tempo que falta, `B.parada - B.t`, em segundos. Se o servidor mandar
+// `B.troca` ({ parada, t }) para a troca do pneu feita na mesma parada, o tempo dela aparece embaixo; sem ele, a parada comum
+// (sem stop-and-go) mostra a própria troca. Depois da parada o tempo da troca fica 3 s na tela.
+export function montarCrono() {
+  const el = $("hCrono"); if (!el || el.dataset.ok) return; el.dataset.ok = 1;
+  el.innerHTML = '<small id="cgTit">STOP-AND-GO</small><b id="cgTempo">0.0</b><em id="cgTroca"></em>';
+}
+export function desenharCrono(agora) {
+  const el = $("hCrono"); if (!el) return; montarCrono();
+  const B = race.box, f = B && B.fase, sg = !!(B && B.stopGo), restante = (o) => (o ? Math.max(0, o.parada - o.t) : 0);
+  let tit = "", tempo = "", troca = "", cls = "hud";
+  if (f === "parada" && sg) { tit = "STOP-AND-GO"; tempo = restante(B).toFixed(1); cls += " on sg"; if (B.troca) troca = "PNEU " + restante(B.troca).toFixed(1) + " s"; }
+  else if (f === "parada") { tit = "TROCA DE PNEU"; tempo = restante(B).toFixed(1); cls += " on pit"; }
+  if (f === "parada" && !sg) race.hudTrocaT = B.parada; else if (f === "parada" && sg && B.troca) race.hudTrocaT = B.troca.parada;
+  if (!tit && race.hudTrocaT != null) { if (f === "sai" || f === "entra" || !f) { if (!race.hudTrocaAte) race.hudTrocaAte = agora + 3000; if (agora < race.hudTrocaAte) { tit = "PNEUS TROCADOS"; tempo = race.hudTrocaT.toFixed(1); cls += " on pit fim"; } else { race.hudTrocaT = race.hudTrocaAte = null; } } }
+  else if (f === "parada") race.hudTrocaAte = null;
+  set($("cgTit"), "t", tit); set($("cgTempo"), "t", tempo); set($("cgTroca"), "t", troca); set(el, "c", cls);
 }

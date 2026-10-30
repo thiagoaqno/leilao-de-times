@@ -7,7 +7,7 @@ import { E, carOf, me, act } from "./estado.js";
 import { rotacao, NUM } from "./cambio.js";
 import { Sound } from "./sons.js";
 import { ORDEM, NOMES, usavel, camEstado } from "./cameras.js";
-import { mfdTecla, mfdPad, acoes } from "./mfd.js";
+import { mfdTecla, mfdPad, acoes, teclaBox, digitoPneu } from "./mfd.js";
 
 // câmbio manual: Shift sobe, Ctrl direito desce (redução que estouraria o giro não entra)
 export function trocarMarcha(d) {
@@ -20,7 +20,7 @@ export function trocarMarcha(d) {
 
 // teclado e botões na tela
 const KEYMAP = { ArrowUp: "gas", w: "gas", W: "gas", ArrowDown: "brake", s: "brake", S: "brake", ArrowLeft: "left", a: "left", A: "left", ArrowRight: "right", d: "right", D: "right" };
-document.addEventListener("keydown", (e) => { if (!race || e.target.tagName === "INPUT") return; if (mfdTecla(e)) return; /* M, N e Tab são do MFD; com o MFD em modo ajustar as setas também */ if (!e.repeat && (e.code === "ShiftLeft" || e.code === "ShiftRight")) { e.preventDefault(); trocarMarcha(1); } if (!e.repeat && e.code === "ControlRight") { e.preventDefault(); trocarMarcha(-1); } const k = KEYMAP[e.key]; if (k) { keys[k] = true; e.preventDefault(); } if (e.key === "r" || e.key === "R") respawn(); if ((e.key === "b" || e.key === "B") && !e.repeat) alternarPedido(); if (!e.repeat && (e.key === "1" || e.key === "2" || e.key === "3" || e.key === "4")) escolherComposto(["macio", "medio", "duro", "chuva"][+e.key - 1]); if ((e.key === "c" || e.key === "C") && !e.repeat) nextCam(); if (e.code === "KeyE" && E.S?.config.regras === "f1") { keys.ers = true; e.preventDefault(); } else if ((e.code === "Space" || e.code === "KeyE") && !e.repeat) { e.preventDefault(); useItem(keys.brake); } });
+document.addEventListener("keydown", (e) => { if (!race || e.target.tagName === "INPUT") return; if (mfdTecla(e)) return; /* M, N e Tab são do MFD; com o MFD em modo ajustar as setas também */ if (!e.repeat && (e.code === "ShiftLeft" || e.code === "ShiftRight")) { e.preventDefault(); trocarMarcha(1); } if (!e.repeat && e.code === "ControlRight") { e.preventDefault(); trocarMarcha(-1); } const k = KEYMAP[e.key]; if (k) { keys[k] = true; e.preventDefault(); } if (e.key === "r" || e.key === "R") respawn(); if ((e.key === "b" || e.key === "B") && !e.repeat) teclaBox(); if (!e.repeat && (e.key === "1" || e.key === "2" || e.key === "3" || e.key === "4")) { const c = ["macio", "medio", "duro", "chuva"][+e.key - 1]; if (!digitoPneu(c)) escolherComposto(c); } if ((e.key === "c" || e.key === "C") && !e.repeat) nextCam(); if (e.code === "KeyE" && E.S?.config.regras === "f1") { keys.ers = true; e.preventDefault(); } else if ((e.code === "Space" || e.code === "KeyE") && !e.repeat) { e.preventDefault(); useItem(keys.brake); } });
 // câmeras (cameras.js): cockpit, onboard (T-cam), bico, perseguição próxima, perseguição afastada, aérea e TV. C (ou o botão 🎥,
 // ou Y no controle) troca, mostra o nome da câmera e o jogo lembra a última escolhida (os ids antigos "perto", "longe", "cockpit" e "cima" seguem valendo).
 export let camMode = ORDEM.includes(store.get("corrida:cam")) ? store.get("corrida:cam") : "perto";
@@ -64,7 +64,7 @@ window.addEventListener("gamepadconnected", () => toast("🎮 Controle conectado
 $("bRespawn").onclick = () => respawn();
 $("bCam").onclick = () => nextCam();
 $("hItem").onclick = () => useItem(keys.brake);
-$("bBox").onclick = () => alternarPedido();
+$("bBox").onclick = () => teclaBox();
 const bErs = $("bErs");
 for (const ev of ["pointerdown", "pointerup", "pointercancel", "lostpointercapture"]) bErs.addEventListener(ev, (e) => {
   e.preventDefault(); keys.ers = ev === "pointerdown";
