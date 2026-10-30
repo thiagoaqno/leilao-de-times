@@ -101,7 +101,18 @@ export function buildTrack(id) {
   const alcance = W / 2 + t.flat + t.fall + cell;
   tr.chao = (x, y) => (tr.distAprox(x, y) > alcance ? 0 : groundH(tr, x, y, tr.indiceAt(x, y)));
   // GPs com relevo de verdade (Mônaco: o morro do EU-DEM/SRTM em volta da pista): `tr.relevoGP(x, y, f, idx)` manda em groundH e o chão vale em toda parte, não só perto da pista
-  if (id === "monaco") { tr.relevoGP = relevoMonaco(tr); tr.chao = (x, y) => groundH(tr, x, y, tr.indiceAt(x, y)); }
+  if (id === "monaco") {
+    // em Mônaco a pista passa por cima de si mesma (Beau Rivage / Mirabeau / grampo, o morro empilhado): o ponto mais perto de verdade, de qualquer trecho, e não o da célula da grade
+    const C = 48, hash = new Map(), ch = (a, b) => a * 100003 + b;
+    pts.forEach((p, i) => { const k = ch(Math.floor(p.x / C), Math.floor(p.y / C)); (hash.get(k) || hash.set(k, []).get(k)).push(i); });
+    const antigo = tr.indiceAt;
+    tr.indiceAt = (x, y) => {
+      const cx = Math.floor(x / C), cy = Math.floor(y / C); let best = -1, bd = Infinity;
+      for (let r = 1; r <= 4 && best < 0; r++) { for (let a = cx - r; a <= cx + r; a++) for (let b = cy - r; b <= cy + r; b++) for (const q of hash.get(ch(a, b)) || []) { const d = (pts[q].x - x) ** 2 + (pts[q].y - y) ** 2; if (d < bd) { bd = d; best = q; } } if (best >= 0 && bd > (r * C) ** 2) best = -1; }
+      return best >= 0 ? best : antigo(x, y);
+    };
+    tr.relevoGP = relevoMonaco(tr); tr.chao = (x, y) => groundH(tr, x, y, tr.indiceAt(x, y));
+  }
   // pista que passa por cima de si mesma (`cruza`, o oito de Suzuka): perto do cruzamento o chão é o do trecho de baixo, e o
   // de cima fica no ar, na ponte do GP
   if (t.cruza) {
@@ -175,13 +186,13 @@ function buildWorld(tr) {
   const WORLD = t.world, K = t.scale; // pistas ampliadas: o mundo cresce junto e as coordenadas fixas (mar, porto) vão × K
   tr.agua = [];
   // ---- chão em volta (malha com relevo) ----
-  const S = Math.min(380, Math.round(140 * K)), pad = 1400, size = WORLD + pad * 2, geo = new THREE.PlaneGeometry(size, size, S, S); geo.rotateX(-Math.PI / 2);
+  const S = gp?.terreno?.S ?? Math.min(380, Math.round(140 * K)), pad = 1400, size = WORLD + pad * 2, geo = new THREE.PlaneGeometry(size, size, S, S); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i) + WORLD / 2, y = pos.getZ(i) + WORLD / 2;
     const longe = !tr.relevoGP && tr.distAprox(x, y) > W / 2 + t.flat + t.fall + WORLD / 96, bi = longe ? 0 : tr.indiceAt(x, y);
-    const perto = !longe && Math.abs(trackFrame(tr, x, y, bi).lat) < W / 2 + 26; // embaixo da pista o chão afunda mais (a malha é grossa e furava o asfalto nas rampas)
-    let h = t.espaco ? -700 : (longe ? 0 : groundH(tr, x, y, bi)) - (perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
+    const lat = longe ? 1e9 : Math.abs(trackFrame(tr, x, y, bi).lat), perto = !longe && (id === "monaco" ? lat < tr.wallLat + 30 : lat < W / 2 + 26); // embaixo da pista o chão afunda mais (a malha é grossa e furava o asfalto nas rampas)
+    let h = t.espaco ? -700 : (longe ? 0 : groundH(tr, x, y, bi)) - (id === "monaco" ? 1.5 + 7.5 * (1 - Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)))) * (perto ? 1 : 0) : perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
     if (id === "monaco") { const s = fundoMonaco(tr, x, y); if (s > -90) h = s > 0 ? Math.max(-34, NIVEL_DO_MAR - 7 - s * 0.35) : Math.min(h, NIVEL_DO_MAR + 1 + 3.2 * -s); } // a bacia do porto e o mar, o cais em paredão e a falésia do Rochedo (3 de altura por unidade)
     if (id === "rio" && rioSea(x, y)) h = Math.min(h, -14); // o mar de Copacabana
     if (tr.sobPonte) h = Math.min(h, tr.sobPonte(x, y) - 4); // embaixo da ponte (Suzuka)
@@ -199,7 +210,7 @@ function buildWorld(tr) {
   // só desenha os pedaços que aparecem na tela. As normais já foram calculadas na malha inteira (sem emenda entre eles)
   const chaoM = new THREE.MeshStandardMaterial({ map: gtex, roughness: 1, vertexColors: !!geo.attributes.color });
   const lisos = [];
-  for (const pedaco of emPedacos(geo, S, 8)) {
+  for (const pedaco of emPedacos(geo, S, gp?.terreno?.pedacos ?? 8)) { // (`terreno` do GP: a grade e os pedaços; Mônaco usa menos, para caber no teto de malhas e triângulos)
     if (pedaco.userData.liso) { lisos.push(pedaco); continue; }
     const m = add(new THREE.Mesh(pedaco, chaoM)); m.position.set(WORLD / 2, 0, WORLD / 2); m.receiveShadow = true; m.name = `${id}-terreno`;
   }
@@ -259,8 +270,19 @@ function buildWorld(tr) {
     const wm = new THREE.MeshStandardMaterial({ map: wt, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x220a22 : 0 });
     // nos GPs, o guard-rail pintado em painéis (kit/beira.js; um material por lado, para os nomes não saírem espelhados)
     if (L < 1e9) for (const s of [1, -1]) {
-      const mat = gp?.guardrail ? new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }) : wm, vLen = gp?.guardrail ? 480 : 32;
-      const trecho = (i0, i1) => { const m = ribbon(s * L, s * L, 0.5, mat, vLen, 12, 1, i0, i1); m.castShadow = true; m.name = `${id}-muro`; return m; };
+      const mat = gp?.guardrail ? new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }) : wm, vLen = gp?.guardrail?.estilo === "monaco" ? gp.guardrail.sequencia.length * (gp.guardrail.trecho ?? 360) : gp?.guardrail ? 480 : 32;
+      // `guardrail.baixos`: [[f0, f1, lado]] trechos em que o guard-rail daquele lado é baixo, de aço de duas lâminas (a reta dos boxes de Mônaco), em vez do painel alto
+      const matBaixo = gp?.guardrail?.baixos ? new THREE.MeshStandardMaterial({ map: guardRail(s, { ...gp.guardrail, estilo: gp.guardrail.baixoEstilo ?? "duplo" }), roughness: 0.55, side: THREE.DoubleSide }) : null;
+      const baixosDe = (gp?.guardrail?.baixos || []).filter(([, , lado]) => lado === s).map(([f0, f1]) => [Math.floor(f0 * n), Math.floor(f1 * n) + (f1 < f0 ? n : 0)]);
+      const trecho = (i0, i1) => {
+        const fatias = []; let a = i0;
+        const emBaixo = (i) => baixosDe.some(([x0, x1]) => { const k = ((i % n) + n) % n; return (k >= x0 && k <= x1) || (k + n >= x0 && k + n <= x1); });
+        if (!baixosDe.length) fatias.push([i0, i1, false]);
+        else { for (let i = i0 + 1; i <= i1 + 1; i++) if (i === i1 + 1 || emBaixo(i) !== emBaixo(a)) { fatias.push([a, Math.min(i, i1), emBaixo(a)]); a = i; } }
+        let m = null;
+        for (const [x0, x1, baixo] of fatias) { if (x1 <= x0) continue; m = ribbon(s * L, s * L, 0.5, baixo ? matBaixo : mat, baixo ? gp.guardrail.baixoVLen ?? vLen : vLen, baixo ? gp.guardrail.baixoAlto ?? 11 : gp?.guardrail?.alto ?? 12, 1, x0, x1); m.castShadow = true; m.name = `${id}-muro`; }
+        return m;
+      };
       // o trecho do corredor dos boxes (regras de F1) é uma peça à parte, que some enquanto o corredor aparece (kit/corredor-boxes.js)
       const cb = tr.t.boxes && s === tr.t.boxes.lado && window.F1Regras ? window.F1Regras.corredor(tr.t, n, W) : null;
       if (!cb) trecho(0, n);
@@ -281,11 +303,12 @@ function buildWorld(tr) {
   if (!gp?.chao?.grid) { tr.gridGalera = add(new THREE.Group()); tr.gridF1 = add(new THREE.Group()); tr.gridF1.visible = false;
     const barra = new THREE.PlaneGeometry(20, 2), branco = new THREE.MeshBasicMaterial({ color: 0xffffff });
     for (const [grupo, quantas, f1] of [[tr.gridGalera, 8, false], [tr.gridF1, 20, true]]) for (let g = 0; g < quantas; g++) { const p = gridSpot(pts, g, W, f1); const m = new THREE.Mesh(barra, branco); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); grupo.add(m); } }
-  // pórtico da largada
+  // pórtico da largada (`portico.adiante` do GP: quantas unidades à frente da linha de chegada ele fica; Mônaco o põe uns 80 m depois, como na pista de verdade)
+  const ap = gp?.portico?.adiante ? pts[Math.round(gp.portico.adiante / 6) % n] : a0;
   { const s = 1, L = W / 2 + 14, mat = M(0x333844), sign = canvasTex(256, 32, (x, w, hh) => { x.fillStyle = "#111"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ffd23f"; x.font = "bold 24px sans-serif"; x.textAlign = "center"; x.fillText("CORRIDA DA GALERA", w / 2, 24); }, false);
-    for (const k of [1, -1]) { const m = add(new THREE.Mesh(new THREE.BoxGeometry(4, 60, 4), mat)); m.position.set(a0.x + a0.nx * k * L, a0.h + 30, a0.y + a0.ny * k * L); m.castShadow = true; }
+    for (const k of [1, -1]) { const m = add(new THREE.Mesh(new THREE.BoxGeometry(4, 60, 4), mat)); m.position.set(ap.x + ap.nx * k * L, ap.h + 30, ap.y + ap.ny * k * L); m.castShadow = true; }
     const top = add(new THREE.Mesh(new THREE.BoxGeometry(2 * L + 4, 10, 3), [mat, mat, mat, mat, new THREE.MeshBasicMaterial({ map: sign }), new THREE.MeshBasicMaterial({ map: sign })]));
-    top.position.set(a0.x, a0.h + 62, a0.y); top.rotation.y = -Math.atan2(a0.ny, a0.nx); void s;
+    top.position.set(ap.x, ap.h + 62, ap.y); top.rotation.y = -Math.atan2(ap.ny, ap.nx); void s;
     // nas pistas de GP, o pórtico das regras de F1: no lugar da faixa "CORRIDA DA GALERA", cinco caixas com duas luzes vermelhas
     // cada, que acendem uma por segundo e apagam juntas (tr.luzes.set(n), chamado por hud.js). jogo.js liga um pórtico ou o outro.
     if (gp) {

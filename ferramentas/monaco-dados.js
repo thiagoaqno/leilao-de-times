@@ -20,13 +20,13 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { converter } = require("./circuitos-f1.js");
+const { ajustarTracado, largadaDe } = require("./monaco-tracado.js");
 const T = require("../public/corrida/pistas.js");
 
 const URL_LINHA = "https://raw.githubusercontent.com/bacinger/f1-circuits/master/circuits/mc-1929.geojson";
 const T1 = [7.421475, 43.73694]; // o ápice da Sainte Dévote (curva 1)
 const LINHA_ANTES_DA_T1 = 230; // a linha de chegada fica 230 m antes dela, na Boulevard Albert 1er
-const VK = 2.4; // unidades de altura por metro de altitude (a pista e o morro em volta)
+const VK = 3.0; // unidades de altura por metro de altitude (a pista e o morro em volta)
 const AREA = { sul: 43.7300, oeste: 7.4150, norte: 43.7440, leste: 7.4350 }; // a caixa dos prédios e do mar
 const PASSO_RELEVO = 40; // metros entre as amostras do relevo do entorno
 const RAIO_RELEVO = 1000; // até 1 km do centro
@@ -37,7 +37,7 @@ const MARCOS = {
   4: ["opera", 43.738959, 7.428371], 5: ["fairmont", 43.739990, 7.429942], 6: ["metropole", 43.740935, 7.427918],
   7: ["hermitage", 43.738460, 7.425958], 8: ["sainteDevote", 43.736967, 7.420843], 9: ["catedral", 43.731345, 7.420088],
   10: ["palacio", 43.731880, 7.419770], 11: ["oceanografico", 43.730770, 7.425650], 12: ["grimaldi", 43.738990, 7.431780],
-  13: ["portPalace", 43.737152, 7.424119], 14: ["yachtClub", 43.737448, 7.427230], 15: ["praca", 43.739929, 7.427512],
+  13: ["portPalace", 43.737152, 7.424119], 14: ["yachtClub", 43.737448, 7.427230], 15: ["praca", 43.739929, 7.427512], 16: ["rascasse", 43.73256, 7.42319],
 };
 
 const arg = (nome, padrao) => { const i = process.argv.indexOf("--" + nome); return i >= 0 ? process.argv[i + 1] : padrao; };
@@ -107,11 +107,13 @@ async function tracado() {
   c = [ponto, ...c.slice(i), ...c.slice(0, i)];
   geo.features[0].geometry.coordinates = c;
   const arq = path.join(CACHE, "mc-girado.geojson"); fs.writeFileSync(arq, JSON.stringify(geo));
-  const par = { volta: arg("volta", "13900"), tol: arg("tol", "2"), "raio-min": arg("raio-min", "130"), passadas: arg("passadas", "6000") };
-  return cacheado(`tracado-${Object.values(par).join("-")}.json`, async () => { // são minutos de afastamento: guarda o resultado
-    const r = await converter({ _: [], arquivo: arq, id: "monaco", nome: "Mônaco", rua: true, "sem-relevo": true, ...par });
-    const largada = +/largada: ([\d.]+)/.exec(r.bloco)[1];
-    return { vert: r.vert, scale: r.proj.scale, largada, proj: r.proj, relatorio: r.relatorio };
+  const par = { volta: arg("volta", "15200"), raio: arg("raio", "70"), passadas: arg("passadas", "3000") };
+  return cacheado(`tracado2-${Object.values(par).join("-")}.json`, async () => {
+    const R = 6371008.8, lat1 = c.reduce((q, p) => q + p[1], 0) / c.length, lon1 = c.reduce((q, p) => q + p[0], 0) / c.length, kx1 = ((Math.PI / 180) * R * Math.cos((lat1 * Math.PI) / 180)), ky1 = (Math.PI / 180) * R;
+    const Mm = c.map(([lo, la]) => [(lo - lon1) * kx1, -(la - lat1) * ky1]);
+    const r = ajustarTracado({ M: Mm, volta: +par.volta, raioMin: +par.raio, passadas: +par.passadas });
+    const lg = largadaDe(r.vert, r.scale);
+    return { vert: r.vert, scale: r.scale, largada: lg.largada, proj: { lon0: lon1, lat0: lat1, kx: kx1, ky: ky1, k: r.k, scale: r.scale, cx: r.cx, cy: r.cy }, relatorio: [`linha central real: ${Math.round(r.linha.length * 3 / r.k)} m, volta de ${lg.volta} no jogo, scale ${r.scale}, ${r.vert.length} vértices`, `afastamento: ${r.voltas} passadas`, `reta: ${lg.atras} atrás da linha e ${lg.adiante} à frente`] };
   });
 }
 
@@ -123,10 +125,12 @@ async function relevoNaVolta(pista, mundoParaGeo) {
   const locais = idx.map((i) => mundoParaGeo(pts[i].x, pts[i].y).reverse());
   const eu = await cacheado("alt-volta-eudem.json", () => elevacoes("eudem25m", locais)), sr = await cacheado("alt-volta-srtm.json", () => elevacoes("srtm30m", locais));
   let alt = idx.map((_, k) => media(eu[k], sr[k])); alt = alt.map((a) => Math.max(2, a == null ? 2 : a)); // o cais fica uns 2 m acima do mar (o MDE devolve 0 na água)
-  const m = alt.length, lisa = alt.map((_, i) => { let s = 0, w = 0; for (let d = -3; d <= 3; d++) { const q = 4 - Math.abs(d); s += alt[(i + d + m * 4) % m] * q; w += q; } return s / w; });
+  const m = alt.length, janela = +arg("janela", "9"); // o MDE de 25 m é ruidoso (degraus de pixel): média triangular larga (±janela amostras de 12 pontos = ±130 m), duas vezes, e a pista segue a curva por spline (elevate com `suave`, em pistas.js), sem corcova
+  const tri = (v) => v.map((_, i) => { let s = 0, w = 0; for (let d = -janela; d <= janela; d++) { const q = janela + 1 - Math.abs(d); s += v[(i + d + m * 4) % m] * q; w += q; } return s / w; });
+  const bruto = alt.slice(), lisa = tri(tri(alt));
   const mn = Math.min(...lisa), mx = Math.max(...lisa);
-  const hills = lisa.map((a, k) => [Math.round((idx[k] / n) * 1000) / 1000, r0(a * VK)]); hills.push([1, hills[0][1]]);
-  return { hills, alt: lisa, mn, mx, pts, idx };
+  const hills = lisa.map((a, k) => [Math.round((idx[k] / n) * 10000) / 10000, Math.round(a * VK * 100) / 100]); hills.push([1, hills[0][1]]);
+  return { hills, bruto, alt: lisa, mn, mx, pts, idx };
 }
 async function relevoDoEntorno(geoParaMundo) {
   const lat0 = 43.7367, lon0 = 7.4258, kx = 111320 * Math.cos((lat0 * Math.PI) / 180), ky = 110574, n = (2 * RAIO_RELEVO) / PASSO_RELEVO + 1, locais = [];
@@ -307,7 +311,7 @@ async function frações(pista, geoParaMundo, amostra) {
     `    // Circuit de Monaco: ${r0(P0.k * 0 + 3324)} m. Linha central de bacinger/f1-circuits (mc-1929, licença MIT: ver o cabeçalho dos traçados convertidos), girada para a linha de chegada na Boulevard Albert 1er`,
     `    // (230 m antes da Sainte Dévote) e convertida por ferramentas/monaco-dados.js (a mesma conversão das outras pistas): norte em cima, na proporção de verdade`,
     `    // a rua estreita, com guard-rail colado na pista (muro: fica mesmo sem o muro das outras pistas) e sem área de escape`,
-    `    scale: ${S}, width: 104, minLap: 25, walls: true, muro: true, wall: 14, flat: 20, fall: 120, largada: ${pista.largada},`,
+    `    scale: ${S}, width: 104, minLap: 25, walls: true, muro: true, wall: 14, flat: 20, fall: 120, largada: ${pista.largada}, hillsSuave: true,`,
     `    // relevo: a altitude real da volta (EU-DEM e SRTM, média e suavizado; ${rel.mn.toFixed(0)} a ${rel.mx.toFixed(0)} m, ${VK} unidades por metro)`,
     `    hills: ${JSON.stringify(rel.hills).replace(/\],\[/g, "], [")},`,
     `    points: [`,
