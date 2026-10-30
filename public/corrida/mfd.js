@@ -40,8 +40,8 @@ const HTML = {
     <div class="mp-par"><span>Modo</span><b data-r="eModo">—</b></div><div class="mp-par"><span>DRS</span><b data-r="eDrs">—</b></div>
     <div class="mp-par"><span>Combustível</span><b>não medido no jogo</b></div></div>`,
   box: `<div class="mp mp-box"><div class="mp-janela"><small>JANELA DE BOX</small><b data-r="bJan">—</b><em data-r="bSub"></em></div>
-    <div class="mp-par"><span>Box agora</span><b data-r="bRet">—</b></div><div class="mp-par"><span>Troca custa</span><b data-r="bPerda">—</b></div>${linhasDe("box")}<p class="mp-nota" data-r="bJogos"></p></div>`,
-  tempos: `<div class="mp mp-tempos"><div class="mp-par"><span>Última volta</span><b data-r="tUlt">—:--.---</b></div><div class="mp-par"><span>Melhor volta</span><b data-r="tMelhor">—:--.---</b></div>
+    <div class="mp-par"><span>Box agora</span><b data-r="bRet">—</b></div><div class="mp-par"><span>Troca custa</span><b data-r="bPerda">—</b></div>${linhasDe("box")}<p class="mp-nota" data-r="bJogos"></p><p class="mp-nota mp-fraca" data-r="bDica"><kbd>1</kbd>–<kbd>4</kbd> pneu · <kbd>B</kbd> ou <kbd>Enter</kbd> confirma · <kbd>A</kbd> no controle</p></div>`,
+  tempos: `<div class="mp mp-tempos"><div class="mp-par"><span>Volta atual</span><b data-r="tAtual">0:00.000</b></div><div class="mp-par"><span>Corrida</span><b data-r="tCorrida">0:00.0</b></div><div class="mp-par"><span>Última volta</span><b data-r="tUlt">—:--.---</b></div><div class="mp-par"><span>Melhor volta</span><b data-r="tMelhor">—:--.---</b></div>
     <div class="mp-par"><span>Volta mais rápida</span><b class="roxo" data-r="tVR">—</b></div>
     <div class="mp-par frente"><span>Carro da frente</span><b data-r="tFrente">—</b></div><div class="mp-par tras"><span>Carro de trás</span><b data-r="tTras">—</b></div></div>`,
   classificacao: `<div class="mp mp-classif" data-r="cLista">${'<div class="cl-r hidden"><b></b><i></i><span></span><em></em><u></u></div>'.repeat(24)}</div>`,
@@ -52,15 +52,15 @@ const HTML = {
 const compostosPossiveis = () => ["macio", "medio", "duro", "chuva"].filter((c) => jogosDe(me())[c] > 0);
 const LINHAS = {
   box: [
-    { rot: "Próximo pneu", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return B.pedido ? F().PNEUS[B.pedido].nome : "Sem parada"; },
+    { rot: "Próximo pneu", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return F().PNEUS[B.pedido || proximo()].nome; },
       mudar(d) {
         const B = race && race.box; if (!B || B.fase) return;
         const op = compostosPossiveis(); if (!op.length) { toast("Sem jogos de pneu: " + textoJogos(me()), 1800); return; }
-        const base = B.pedido || (race.pneu && race.pneu.composto) || "medio", i = op.indexOf(base);
-        escolherComposto(op[(i < 0 ? (d > 0 ? 0 : op.length - 1) : (i + d + op.length) % op.length)]);
+        const base = B.pedido || proximo(), i = op.indexOf(base), novo = op[(i < 0 ? (d > 0 ? 0 : op.length - 1) : (i + d + op.length) % op.length)];
+        if (B.pedido) escolherComposto(novo); else mfd.prox = novo; // sem pedido, só escolhe; o B (ou Enter) confirma
       } },
     { rot: "Pedir box", valor() { const B = race && race.box; return !B ? "—" : B.fase ? "No box" : B.pedido ? "Sim" : "Não"; },
-      mudar() { const B = race && race.box; if (!B || B.fase) return; if (B.pedido) cancelarPedido(); else alternarPedido(); } },
+      mudar() { alternarBox(); } },
   ],
   ajustes: [
     { rot: "Torre", valor: () => (acoes.torreCompacta() ? "Compacta" : "Completa"), mudar() { if (acoes.torreAlternar) acoes.torreAlternar(); } },
@@ -69,6 +69,34 @@ const LINHAS = {
   ],
 };
 const linhasDaPagina = (id = mfd.pagina) => LINHAS[id] || [];
+// o pneu da próxima parada ainda sem pedido (a escolha do MFD; senão o que vem depois do atual, como o B fazia)
+function proximo() {
+  const op = compostosPossiveis(), atual = race.pneu ? race.pneu.composto : "medio", ordem = ["macio", "medio", "duro", "chuva"];
+  if (mfd.prox && op.includes(mfd.prox)) return mfd.prox;
+  for (let k = 1; k <= 3; k++) { const c = ordem[(ordem.indexOf(atual) + k) % 4]; if (op.includes(c)) return c; }
+  return op[0] || atual;
+}
+// pede a parada com o pneu escolhido, ou cancela se já estava pedida (a mesma conta do B e do Enter)
+function alternarBox() {
+  const B = race && race.box; if (!B || B.fase) return;
+  if (B.pedido) { cancelarPedido(); return; }
+  if (me() && me().stopGo) { alternarPedido(); return; } // com stop-and-go pendente o pedido é só ele (box.js)
+  escolherComposto(proximo());
+}
+const naPaginaBox = () => !!race && !!race.box && mfd.aberto && mfd.pagina === "box";
+// B (teclado e botão Box): abre o MFD na página do Box com o próximo pneu à vista; com ela aberta, B confirma o pedido (de novo, cancela)
+export function teclaBox() {
+  if (!ativo() || !race.box) { alternarPedido(); return; } // fora do HUD de F1 (arcade) segue o jeito antigo
+  if (race.box.fase) return;
+  if (!naPaginaBox()) { mfd.prox = null; abrirBoxMfd(); return; }
+  alternarBox(); mexeu(); atualizarLinhas();
+}
+// 1 a 4 com a página do Box à vista só ESCOLHEM o pneu (o B confirma); fora dela pedem a parada direto, como sempre. Devolve true se tratou.
+export function digitoPneu(composto) {
+  if (!naPaginaBox() || race.box.fase || race.box.pedido) return false;
+  if (!compostosPossiveis().includes(composto)) { toast(F().PNEUS[composto].nome + " esgotado", 1400); return true; }
+  mfd.prox = composto; mexeu(); atualizarLinhas(); return true;
+}
 
 // ---------- montagem ----------
 export function montarMfd() {
@@ -141,6 +169,7 @@ export function mfdTecla(e) {
   if (!ativo() || e.ctrlKey || e.metaKey || e.altKey) return false;
   mfd.entrada = "teclado";
   if (e.code === "Tab") { e.preventDefault(); if (!e.repeat) alternarFoco(); return true; }
+  if ((e.code === "Enter" || e.code === "NumpadEnter") && naPaginaBox() && !e.repeat) { e.preventDefault(); alternarBox(); mexeu(); atualizarLinhas(); return true; }
   if (e.code === "KeyM" || e.code === "KeyN") { if (!e.repeat) pagina(e.code === "KeyM" ? 1 : -1); return true; }
   if (e.key === "Escape" && mfd.foco) { sairDoFoco(); return false; } // (o Esc também pula a TV: deixa seguir)
   if (!mfd.foco) return false;
@@ -155,6 +184,7 @@ export function mfdTecla(e) {
 export function mfdPad(hit) {
   if (!ativo()) return false;
   if (hit(9) || hit(10) || hit(11)) mfd.entrada = "pad";
+  if (hit(0) && naPaginaBox() && !race.box.fase) { alternarBox(); mexeu(); atualizarLinhas(); } // A confirma o pedido com a página do Box à vista (A também acelera, sem problema)
   if (hit(9)) alternarFoco();
   if (hit(11)) pagina(1);
   if (hit(10)) pagina(-1);
@@ -239,9 +269,11 @@ const ATU = {
     else { set(r.bJan, "t", j.abre === j.fecha ? `VOLTA ${j.abre}` : `VOLTA ${j.abre} – ${j.fecha}`); set(r.bSub, "t", j.motivo || "janela estimada pelo desgaste"); }
     set(r.bRet, "t", ctx.retorno ? `Volta em ${ctx.retorno}º (est.)` : "—"); set(r.bPerda, "t", ctx.perda != null ? `~${ctx.perda.toFixed(0)} s` : "—");
     set(r.bJogos, "t", "Jogos: " + textoJogos(m));
+    set(r.bDica, "d", B.fase ? "none" : "");
   },
   tempos(ctx, r) {
     const m = ctx.m, M_ = M(); if (!m) return;
+    const rel = race.hudRelogio; if (rel) { set(r.tAtual, "t", M_.tempoVolta(rel.volta)); set(r.tCorrida, "t", M_.tempoCorrida(rel.corrida)); }
     set(r.tUlt, "t", M_.tempoVolta(m.last)); set(r.tMelhor, "t", M_.tempoVolta(m.best));
     const vr = ctx.vr; set(r.tVR, "t", vr ? `${vr.sigla || vr.name} · ${M_.tempoVolta(vr.best)}` : "—");
     const nome = (id) => { const p = ctx.st.find((x) => x.id === id); return p ? (p.p.sigla || String(p.p.name || "").slice(0, 3).toUpperCase()) : ""; };

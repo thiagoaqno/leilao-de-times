@@ -34,6 +34,21 @@ function tempoVolta(s) {
   const m = Math.floor(s / 60), r = s - m * 60;
   return `${m}:${r.toFixed(3).padStart(6, "0")}`;
 }
+// O relógio do HUD (tudo em segundos). A corrida conta desde a largada (`startAt`, hora do servidor), mesmo antes de cruzar a linha; a volta
+// atual conta desde o começo da volta (`lapIni`; na volta 1 é a própria largada, como o servidor mede). Com a bandeirada para no tempo final.
+// Antes de existir o jogador (assistindo) o relógio é o da corrida.
+function relogioDaVolta({ now, startAt, lapIni, started, finish, last }) {
+  const desde = (t0) => (t0 == null || !isFinite(t0) ? 0 : Math.max(0, (now - t0) / 1000));
+  if (finish != null) return { corrida: finish, volta: last != null ? last : desde(lapIni), parado: true };
+  const corrida = desde(startAt);
+  return { corrida, volta: started && lapIni != null ? desde(lapIni) : corrida, parado: false };
+}
+// "12:34.5" (o tempo de corrida, com décimos)
+function tempoCorrida(s) {
+  if (s == null || !(s >= 0) || !isFinite(s)) return "0:00.0";
+  const m = Math.floor(s / 60), r = s - m * 60;
+  return `${m}:${r.toFixed(1).padStart(4, "0")}`;
+}
 // intervalo curto com sinal: "+1.4" / "-11.9" / "—" (sem valor)
 function intervalo(s, sinal) {
   if (s == null || !(s >= 0) || !isFinite(s)) return "—";
@@ -140,7 +155,7 @@ function punicaoDoCarro(p, voltaAtual) {
 }
 const textoDaPunicao = (pu) => !pu ? "" : `${pu.tipo === "drive" ? "Drive-through" : "Stop-and-go"}: cumpra ${pu.voltas == null ? "no box" : pu.voltas <= 0 ? "agora, no box" : pu.voltas === 1 ? "em 1 volta" : `em ${pu.voltas} voltas`}`;
 
-const api = { PAGINAS, paginasDisponiveis, nomeDaPagina, vizinha, rpmReal, tempoVolta, intervalo, estadoDoPneu, voltasDePneu, janelaDeBox, perdaNoBox, posicaoNoRetorno, corDoSetor, setorAtual, donoDaVoltaRapida, intervalos, modoDoErs, punicaoDoCarro, textoDaPunicao, RPM_LENTA, RPM_MIN, RPM_CORTE };
+const api = { relogioDaVolta, tempoCorrida, PAGINAS, paginasDisponiveis, nomeDaPagina, vizinha, rpmReal, tempoVolta, intervalo, estadoDoPneu, voltasDePneu, janelaDeBox, perdaNoBox, posicaoNoRetorno, corDoSetor, setorAtual, donoDaVoltaRapida, intervalos, modoDoErs, punicaoDoCarro, textoDaPunicao, RPM_LENTA, RPM_MIN, RPM_CORTE };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.HudMfd = api;
 })(typeof self !== "undefined" ? self : this);
