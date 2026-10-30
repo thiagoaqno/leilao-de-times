@@ -181,6 +181,9 @@ module.exports = function attachCorrida(io) {
     const ids = grid ? [...grid.filter((id) => room.players[id]), ...room.order.filter((id) => !grid.includes(id))] : f1 ? [...room.order] : [...room.order].sort(() => Math.random() - 0.5);
     ids.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, lapStart: null, lastPos: 0 }));
     // regras de F1: a semente do GP (os erros dos mecânicos saem dela) e o pit stop de cada um começa do zero
+    // quem não escolheu o pneu (fora da carreira) e larga com a pista molhada vai de pneu de chuva, em vez do médio padrão
+    const largaMolhado = f1 && F1.climaEm(room.clima, room.startAt).agua >= F1.AGUA_MOLHADA;
+    if (largaMolhado && !room.temporada) for (const id of ids) { const p = room.players[id]; if (!p.bot && !p.pneuEscolhido) p.pneu = "chuva"; }
     for (const id of ids) { const p = room.players[id]; Object.assign(p, { paradas: [], compostos: [p.pneu || F1.COMPOSTO_PADRAO], pneuAtual: p.pneu || F1.COMPOSTO_PADRAO, acrescimo: 0, box: null, boxFant: 0 }); }
     Itens.start(room);
     Robos.largar(room);
@@ -505,7 +508,7 @@ module.exports = function attachCorrida(io) {
           if (!me || room.phase === "race") return "Só dá para trocar o pneu fora da corrida.";
           if (room.quali && room.quali.confirmados.has(me.id)) return "Você já confirmou a largada.";
           if (!F1.PNEUS[data.pneu]) return "Pneu inválido.";
-          me.pneu = data.pneu; return;
+          me.pneu = data.pneu; me.pneuEscolhido = true; return;
         }
         if (type === "equipe") { // regras de F1: a equipe de 2026 (dois amigos podem dividir a mesma; o primeiro dela é o chefe)
           if (!me || room.phase !== "lobby") return "Só dá para escolher a equipe na sala, antes da largada.";
