@@ -6,7 +6,7 @@
 import { sinalDaCurva } from "./kit/comum.js";
 import { arquibancadas } from "./kit/arquibancadas.js";
 import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, NIVEL_DO_MAR } from "./kit/monaco/mundo.js";
-import { lerPredios, indiceDePredios, predios } from "./kit/monaco/predios.js";
+import { lerPredios, indiceDePredios, predios, adensarRua } from "./kit/monaco/predios.js";
 import { marcosMonaco } from "./kit/monaco/marcos.js";
 import { mar, porto, piscinas, atracados } from "./kit/monaco/agua.js";
 import { tecpro, telaos, largada, cais, rascasse, fonte, cruzeiros } from "./kit/monaco/detalhes.js";
@@ -65,7 +65,7 @@ export function cenarioMonaco(tr, ctx) {
   const { add, hAt } = ctx, { pts, n } = tr, L = tr.wallLat, reservado = (tr.reservado ||= []);
   tr.arquibancadas = [];
   if (Math.abs(D.projecao.mundo - tr.t.world) > 1) console.warn("Mônaco: os dados (kit/monaco/dados.js) foram gerados para outro tamanho de mundo; rode ferramentas/monaco-dados.js de novo");
-  const lista = lerPredios(tr), predioEm = indiceDePredios(lista);
+  const lista = lerPredios(tr); adensarRua(tr, lista); const predioEm = indiceDePredios(lista);
   tr.predioEmMonaco = predioEm;
   // onde os enfeites de vida.js e do kit não entram: na água, dentro de um prédio, em cima do túnel, no que já foi montado e grudados no guard-rail
   tr.ocupado = (x, y, i) => {

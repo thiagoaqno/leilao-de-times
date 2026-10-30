@@ -7,6 +7,7 @@
 import { cenarioMonaco, fundoMonaco, vidaMonaco } from "../monaco.js";
 import { D, distanciaDoMar } from "../kit/monaco/mundo.js";
 import { pertoDe } from "../kit/som.js";
+import { PORTICO_ADIANTE } from "../kit/monaco/detalhes.js";
 
 const BOXES = window.Pistas.PISTAS.monaco.boxes; // o corredor dos boxes (pistas.js): as linhas SC 1 e SC 2 são a entrada e a saída dele
 const F = D.frac;
@@ -37,7 +38,7 @@ export const GP_MONACO = {
   boxes: { garagens: true, mureta: true }, // o prédio das garagens fica do lado externo da nova faixa de parada
   ambiente: { paineis: false, mastros: false }, // a cerca de detritos, os postos de fiscais e as placas de frenagem (a barreira e os painéis são do guardrail acima)
   passarelas: { candidatos: [0.03, 0.12, 0.48, 0.58, 0.72, 0.93], marcas: ["rolex", "heineken", "tag"], max: 2 }, // a da Rolex na reta dos boxes
-  portico: { adiante: 260 }, // o pórtico das luzes de largada fica 260 depois da linha de chegada (a pole o vê lá na frente)
+  portico: { adiante: PORTICO_ADIANTE }, // o pórtico das luzes de largada fica 260 depois da linha de chegada (a pole o vê lá na frente)
   postes: { passo: 34 },
   montanha: { angulo: -Math.PI / 2, altura: 860 }, // a Tête de Chien, ao norte
   terreno: { S: 250, pedacos: 4 }, // o morro é suave (o MDE é borrado): grade de 33 unidades e 4 × 4 pedaços bastam, e poupam malhas e triângulos

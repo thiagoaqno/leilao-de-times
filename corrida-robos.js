@@ -441,7 +441,7 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
       // (na largada o pelotão sai junto: a reserva de espaço cresce aos poucos, de quase nada no grid, onde os carros estão a 4 u um do outro, até
       // a de sempre; senão a fila de trás esperava cada carro da frente andar, uma fileira de cada vez)
       const folga = frente - L_CARRO - (32 + Math.min(40, k[i] * 2500) + aproxima * 0.3) * arranque - 1;
-      const desacel = D.frenagemMaxima(c, ia.v) * 0.5;
+      const desacel = D.frenagemMaxima(c, ia.v, 0, plano.aderenciaFreio) * 0.5;
       let lim = folga <= 0 ? ovPlano * 0.82 : Math.sqrt(Math.max(0, ovPlano * ovPlano + 2 * desacel * folga));
       // Já decidiu ultrapassar este carro mas ainda está na faixa dele: um fio de velocidade (sem encostar) para o volante ter o que virar
       if (ia.ult && ia.ult.id === oid && frente > L_CARRO + 2) lim = Math.max(lim, V_ARRASTO);
@@ -674,9 +674,12 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * (tr.W <= LARGURA_ESTREITA ? 0.27 : 0.20) * alongaFreio / STEP)); // o perfil já antecipa a frenagem; circuitos estreitos pedem mais folga
   let alvo = Infinity;
   for (let k = 0; k <= olhar; k++) alvo = Math.min(alvo, fis[(i + k) % n]);
-  const vLivre = Math.min(spec.vmax * pneu.final * dano.final, alvo < topo * 0.97 ? alvo * Math.sqrt(pneu.grip * dano.grip) : alvo); // a velocidade do robô sem ninguém na frente
+  // Mirabeau e o grampo de Mônaco exigem mais margem na chuva, inclusive na aproximação.
+  const f = i / n, margemMolhada = room.config.pista === "monaco" ? Math.max(0, Math.min(1, (f - 0.29) / 0.03, (0.44 - f) / 0.02)) : 0;
+  const cautela = 1 - 0.20 * cl.agua * margemMolhada;
+  const vLivre = Math.min(spec.vmax * pneu.final * dano.final, alvo < topo * 0.97 ? alvo * Math.sqrt(pneu.grip * dano.grip) * cautela : alvo); // a velocidade do robô sem ninguém na frente
   // o plano da frente para o trânsito: a que distância é a próxima freada e qual é o lado de dentro da próxima curva
-  const tf = transito(room, p, ia, pf, i, baseLat, maxLat, vLivre, { dFreio: distanciaDaFreada(fis, n, i, car.v), dentro: ladoDeDentro(pf, i) });
+  const tf = transito(room, p, ia, pf, i, baseLat, maxLat, vLivre, { dFreio: distanciaDaFreada(fis, n, i, car.v), dentro: ladoDeDentro(pf, i), aderenciaFreio: cl.agua > 0 ? { freio: pneu.freio * dano.freio, grip: pneu.grip * dano.grip } : undefined });
   ia.desvio += (tf.desvio - ia.desvio) * Math.min(1, dt * 1.8);
   // a folga lateral de quem está ao lado: o robô fica entre os limites (e se está mais perto que a folga, se afasta)
   const entre = (l) => { let lo = Math.max(-maxLat, tf.limMin), hi = Math.min(maxLat, tf.limMax); if (lo > hi) lo = hi = (lo + hi) / 2; l = Math.max(lo, Math.min(hi, l)); if (tf.bloqPos) l = Math.min(l, Math.max(ia.lat, lo)); if (tf.bloqNeg) l = Math.max(l, Math.min(ia.lat, hi)); return l; };
@@ -684,7 +687,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   // robô entrar na curva a tempo em vez de cortar por dentro
   const latAdiante = (j) => entre(Math.max(-maxLat, Math.min(maxLat, linhaEm(j, car.prog + (j - i + n) % n) * saidaGrid + ia.lat0 * (1 - saidaGrid) + ia.desvio)));
   const vac = F1.vacuoF1(tf.draft, curva);
-  if (alvo < topo * 0.97) alvo *= Math.sqrt(pneu.grip * dano.grip * vac.aderencia) * (1 - 0.05 * cl.agua); // só as curvas dependem da aderência (no molhado, mais 5% de cautela)
+  if (alvo < topo * 0.97) alvo *= Math.sqrt(pneu.grip * dano.grip * vac.aderencia) * (1 - 0.05 * cl.agua) * cautela; // só as curvas dependem da aderência (no molhado, mais 5% de cautela)
   alvo = Math.min(alvo, spec.vmax * pneu.final * dano.final);
   // Enquanto há pista livre ao lado, o ERS ajuda a passar. Se a porta fecha, o limite de tráfego manda frear.
   if (ia.ult && !tf.bloqPos && !tf.bloqNeg) alvo = Math.min(spec.vmax, alvo * 1.04);
