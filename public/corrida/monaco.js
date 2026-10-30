@@ -5,16 +5,16 @@
 // pista.js usa `relevoMonaco` (o chão), `corDoChaoMonaco` (a cor do terreno) e `fundoMonaco` (o mar afunda o chão).
 import { sinalDaCurva } from "./kit/comum.js";
 import { arquibancadas } from "./kit/arquibancadas.js";
-import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, NIVEL_DO_MAR } from "./kit/monaco/mundo.js";
+import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, afastarMuro, NIVEL_DO_MAR } from "./kit/monaco/mundo.js";
 import { lerPredios, indiceDePredios, predios, adensarRua } from "./kit/monaco/predios.js";
 import { marcosMonaco } from "./kit/monaco/marcos.js";
 import { mar, porto, piscinas, atracados } from "./kit/monaco/agua.js";
-import { tecpro, telaos, largada, cais, fonte, cruzeiros } from "./kit/monaco/detalhes.js";
+import { tecpro, telaos, largada, cais, fonte, cruzeiros, paredoes } from "./kit/monaco/detalhes.js";
 import { tunel } from "./kit/monaco/tunel.js";
 import { arvores, corDoChao } from "./kit/monaco/beira.js";
 import { vidaMonaco as vidaDeMonaco } from "./kit/monaco/vida.js";
 
-export { fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, NIVEL_DO_MAR };
+export { fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, afastarMuro, NIVEL_DO_MAR };
 export const corDoChaoMonaco = corDoChao;
 export const vidaMonaco = (tr, ctx) => vidaDeMonaco(tr, ctx, tr.contextoVidaMonaco); // (chamada por gps/monaco.js `depois`)
 
@@ -80,6 +80,7 @@ export function cenarioMonaco(tr, ctx) {
   piscinas(tr, add, ctx);
   arquibancadasMonaco(tr, add, predioEm);
   arvores(tr, add, { hAt, predioEm });
+  paredoes(tr, add, [{ de: D.frac.curvas.hairpin + 0.004, ate: D.frac.curvas.mirabeauBas + 0.014, lado: "dir", alto: 52 }]); // o paredão de pedra depois do grampo (foto do onboard na curva 6)
   tr.contextoVidaMonaco = { lista, predioEm, hAt };
   const f = D.frac, c = f.curvas, tc = f.trechos;
   atracados(tr, ctx, tc.cais);

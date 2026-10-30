@@ -8,7 +8,7 @@ import { aguaUvDaFita, prepararAguaPista } from "./agua-pista.js";
 import { PROPS, aoCarregar } from "./props.js";
 import { enfeitar, animarVida } from "./vida.js";
 import { aplicarCeu } from "./ceu.js";
-import { fundoMonaco, relevoMonaco, corDoChaoMonaco, NIVEL_DO_MAR } from "./monaco.js";
+import { fundoMonaco, relevoMonaco, corDoChaoMonaco, NIVEL_DO_MAR, afastarMuro } from "./monaco.js";
 // o kit de pista (kit/README.md) e a configuração de cada GP (gps/)
 import { GPS } from "./gps/index.js";
 import { arquibancadas } from "./kit/arquibancadas.js";
@@ -158,23 +158,6 @@ function emPedacos(geo, S, N) {
     out.push(g);
   }
   return out;
-}
-// O muro de Mônaco nos grampos e nas chicanes: a fita de dentro da curva cruza a pista (o raio da curva é menor que a distância do muro). Cada vértice é empurrado para fora até ficar a `raio`
-// (o centro do carro mais a meia largura dele) de QUALQUER ponto da linha central do mesmo nível, então nenhum painel fica onde o corpo do carro chega. `i0`: o ponto de cada par de vértices.
-function afastarMuro(tr, geo, i0, raio) {
-  const pos = geo.attributes.position, { pts, n } = tr;
-  for (let k = 0; k < pos.count; k++) {
-    const i = i0 + (k >> 1);
-    for (let volta = 0; volta < 3; volta++) {
-      let x = pos.getX(k), z = pos.getZ(k), mexeu = false;
-      for (let j = i - 90; j <= i + 90; j++) {
-        const q = pts[((j % n) + n) % n], dx = x - q.x, dz = z - q.y, d = Math.hypot(dx, dz);
-        if (d < raio - 0.01 && Math.abs(q.h - (pos.getY(k) - 10)) < 40) { x = q.x + (dx / (d || 1)) * raio; z = q.y + (dz / (d || 1)) * raio; mexeu = true; }
-      }
-      if (!mexeu) break; pos.setX(k, x); pos.setZ(k, z);
-    }
-  }
-  pos.needsUpdate = true; geo.computeVertexNormals();
 }
 export function groundH(tr, x, y, idx) { const f = trackFrame(tr, x, y, idx); return tr.relevoGP ? tr.relevoGP(x, y, f, idx) : f.h * falloff(tr, f.lat); }
 
