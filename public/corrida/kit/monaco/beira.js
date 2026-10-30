@@ -46,7 +46,7 @@ const pecas = {
 
 export function arvores(tr, add, { hAt, predioEm }) {
   const r = sorteio(777), L = tr.wallLat, listas = { palmeira: [], platano: [], pinheiro: [] }, w = tr.t.world;
-  const cabe = (x, z, raio) => x > -400 && z > -400 && x < w + 400 && z < w + 400 && livre(tr, x, z, 14 + raio) && !ocupado(tr, x, z) && !predioEm(x, z, raio * 0.5) && distanciaDoMar(x, z) < -6;
+  const cabe = (x, z, raio) => x > -400 && z > -400 && x < w + 400 && z < w + 400 && livre(tr, x, z, 14 + raio) && !ocupado(tr, x, z) && !predioEm(x, z, raio * 0.5) && distanciaDoMar(x, z) < -6 && !(tr.distAt(x, z) < L + 70 && tr.pts[tr.indiceAt(x, z)].h - hAt(x, z) > 5); // (nem embaixo da pista, no barranco: a copa subiria para o nível dela)
   const poe = (tipo, x, z, s) => { if (!cabe(x, z, 14 * s)) return false; listas[tipo].push({ x, y: hAt(x, z), z, s, r: r() * 6.3, t: 0.86 + r() * 0.26 }); return true; };
   for (const [x, z] of D.arvores) {
     const costa = distanciaDoMar(x, z) > -330, alto = hAt(x, z) / VK > 45;
@@ -67,9 +67,9 @@ export function arvores(tr, add, { hAt, predioEm }) {
   }
   // as árvores da calçada: palmeiras no cais e plátanos nas avenidas, ao longo da pista onde há calçada livre (não ficam em cima do prédio nem do muro)
   const { pts, n } = tr;
-  for (let i = 0; i < n; i += 14) for (const lado of [-1, 1]) {
+  for (let i = 0; i < n; i += 8) for (const lado of [-1, 1]) {
     const p = pts[i], d = L + 15 + r() * 6, x = p.x + p.nx * lado * d, z = p.y + p.ny * lado * d, costa = distanciaDoMar(x, z) > -420;
-    if (r() < 0.55) poe(costa ? "palmeira" : "platano", x, z, 0.9 + r() * 0.4);
+    if (r() < 0.7) poe(costa || r() < 0.4 ? "palmeira" : "platano", x, z, 0.9 + r() * 0.4); // (mais palmeiras: Mônaco é cheia delas, e são baratas em triângulos)
   }
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }), o = new THREE.Object3D(), cor = new THREE.Color();
   let total = 0;

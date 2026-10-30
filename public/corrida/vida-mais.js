@@ -25,6 +25,7 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
         extra.push({ x, y: alturaEm(x, z, i % n) + fila * 3, z, ry: Math.atan2(-p.nx * fora, -p.ny * fora), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: PELE[(r() * 5) | 0], camisa: (tr.camisasGP || CAMISA)[(r() * (tr.camisasGP || CAMISA).length) | 0] }); } }
     }
     V.torcidas = [montarTorcida(add, extra)];
+    if (tr.torcidasGP?.length) V.torcidas.push(montarTorcida(add, tr.torcidasGP, { leve: true })); // gente que um GP pôs onde quer (Mônaco: sacadas, terraços, arquibancadas, fiscais)
   }
   // mastros com bandeira grande balançando, dos dois lados, pela volta toda
   const panos = [], corPano = ["#e63946", "#ffd23f", "#1e88e5", "#43a047", "#ff7ad9", "#ffffff"];
@@ -135,10 +136,10 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
   }
 }
 // torcida: corpo, cabeça e braços em três malhas instanciadas (uma pessoa por instância)
-export function montarTorcida(add, gente) {
+export function montarTorcida(add, gente, { leve = false } = {}) { // leve: cabeça com menos faces (GPs que precisam de muita gente: Mônaco)
   if (!gente.length) return null;
   const corpo = add(new THREE.InstancedMesh(new THREE.BoxGeometry(4.6, 8, 2.8).translate(0, 4, 0), M(0xffffff), gente.length));
-  const cabeca = add(new THREE.InstancedMesh(new THREE.SphereGeometry(2, 8, 6).translate(0, 10.2, 0), M(0xffffff), gente.length));
+  const cabeca = add(new THREE.InstancedMesh((leve ? new THREE.SphereGeometry(2, 5, 3) : new THREE.SphereGeometry(2, 8, 6)).translate(0, 10.2, 0), M(0xffffff), gente.length));
   const bracos = add(new THREE.InstancedMesh(new THREE.BoxGeometry(7.6, 1.4, 1.4).translate(0, 8.5, 0), M(0xffffff), gente.length));
   gente.forEach((o, k) => { corpo.setColorAt(k, new THREE.Color(o.camisa)); cabeca.setColorAt(k, new THREE.Color(o.pele)); bracos.setColorAt(k, new THREE.Color(o.camisa)); });
   for (const m of [corpo, cabeca, bracos]) { m.castShadow = false; m.receiveShadow = true; }

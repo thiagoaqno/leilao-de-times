@@ -36,7 +36,9 @@ export function tecpro(tr, add, trechos) {
 
 // ---- os telões nos postes (um de cada lado da curva): tela escura com a marca do GP ----
 export function telaos(tr, add, fracoes) {
-  const L = tr.wallLat, tex = canvasTex(256, 128, (x, w, h) => { x.fillStyle = "#0b1226"; x.fillRect(0, 0, w, h); x.fillStyle = "#e10600"; x.fillRect(0, h - 12, w, 12); x.fillStyle = "#ffffff"; x.font = "900 54px Arial Black, Impact, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("MONACO", w / 2, 44); x.font = "900 34px Arial Black, Impact, sans-serif"; x.fillText("GRAND PRIX", w / 2, 92); }, false);
+  const L = tr.wallLat, // a textura tem o desenho duas vezes lado a lado e a tela mostra uma metade: o offset anda (kit/monaco/vida.js) e a faixa de notícias corre sem emenda
+    tex = canvasTex(512, 128, (x, w, h) => { x.fillStyle = "#0b1226"; x.fillRect(0, 0, w, h); x.fillStyle = "#e10600"; x.fillRect(0, h - 14, w, 14); x.textAlign = "center"; x.textBaseline = "middle"; for (const cx of [w / 4, (3 * w) / 4]) { x.fillStyle = "#ffffff"; x.font = "900 50px Arial Black, Impact, sans-serif"; x.fillText("MONACO", cx, 40); x.font = "900 32px Arial Black, Impact, sans-serif"; x.fillText("GRAND PRIX", cx, 84); x.fillStyle = "#ffffff"; x.font = "700 12px Arial, sans-serif"; x.fillText("LIVE  P1  P2  P3  •  FASTEST LAP  •  DRS ENABLED", cx, h - 7); } }, false);
+  tex.wrapS = THREE.RepeatWrapping; tex.repeat.x = 0.5; tr.telaoTex = tex;
   const tela = new THREE.MeshBasicMaterial({ map: tex }); let feitos = 0;
   for (const f of fracoes) for (const lado of [1, -1]) {
     const [p] = noTraco(tr, f), d = L + 26, [x, z] = lateral(p, lado, d);

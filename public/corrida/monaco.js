@@ -12,9 +12,11 @@ import { mar, porto, piscinas, atracados } from "./kit/monaco/agua.js";
 import { tecpro, telaos, largada, cais, rascasse, fonte, cruzeiros } from "./kit/monaco/detalhes.js";
 import { tunel } from "./kit/monaco/tunel.js";
 import { arvores, corDoChao } from "./kit/monaco/beira.js";
+import { vidaMonaco as vidaDeMonaco } from "./kit/monaco/vida.js";
 
 export { fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, NIVEL_DO_MAR };
 export const corDoChaoMonaco = corDoChao;
+export const vidaMonaco = (tr, ctx) => vidaDeMonaco(tr, ctx, tr.contextoVidaMonaco); // (chamada por gps/monaco.js `depois`)
 
 // as arquibancadas de Mônaco ficam só onde há calçada livre: cada candidato é cortado nos pedaços onde a faixa dos degraus não toca
 // prédio, água, túnel nem o corredor dos boxes
@@ -78,6 +80,7 @@ export function cenarioMonaco(tr, ctx) {
   piscinas(tr, add, ctx);
   arquibancadasMonaco(tr, add, predioEm);
   arvores(tr, add, { hAt, predioEm });
+  tr.contextoVidaMonaco = { lista, predioEm, hAt };
   const f = D.frac, c = f.curvas, tc = f.trechos;
   atracados(tr, ctx, tc.cais);
   tecpro(tr, add, [[c.sainteDevote + 0.006, c.sainteDevote + 0.028, "fora"], [tc.nouvelleChicane[0] - 0.012, tc.nouvelleChicane[1] + 0.012, "fora"], [c.rascasse - 0.01, c.rascasse + 0.008, "fora"]]);
