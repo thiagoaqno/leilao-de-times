@@ -5,12 +5,12 @@
 // desenho em vez de 1900. O terreno por baixo é o do relevo real, e cada prédio afunda até o ponto mais baixo da planta.
 import * as THREE from "three";
 import { canvasTex } from "../../cena.js";
-import { D, poligonoDentro } from "./mundo.js";
+import { D, fundoMonaco, poligonoDentro } from "./mundo.js";
 
 const M_ALTURA = D.projecao.k * 1.1; // unidades de altura por metro de parede (a escala da planta; o morro é mais achatado)
 const JANELA = 3.5 * D.projecao.k, ANDAR = 3.1 * D.projecao.k * 1.1; // o módulo da fachada: 3,5 m de largura e 3,1 m de altura, em unidades do mundo
 const CELULA = 1600; // as malhas por região (a mesma célula de kit/fundir.js)
-const PAREDES = [[1, 0.93, 0.78], [0.96, 0.8, 0.54], [0.95, 0.74, 0.66], [0.93, 0.64, 0.52], [0.97, 0.96, 0.92], [0.97, 0.89, 0.6], [0.88, 0.82, 0.72], [0.9, 0.68, 0.62]]; // creme, ocre, rosa, salmão, gelo, amarelo, areia, terracota
+const PAREDES = [[1, 0.93, 0.78], [0.98, 0.74, 0.39], [0.98, 0.66, 0.58], [0.96, 0.55, 0.42], [0.97, 0.96, 0.92], [0.97, 0.89, 0.6], [0.88, 0.82, 0.72], [0.9, 0.68, 0.62]]; // creme, ocre, rosa, salmão, gelo, amarelo, areia, terracota
 const TERRACOS = [[0.8, 0.77, 0.72], [0.74, 0.71, 0.68], [0.84, 0.8, 0.74], [0.5, 0.62, 0.44]];
 const TELHAS = [[0.72, 0.36, 0.25], [0.78, 0.42, 0.28], [0.66, 0.32, 0.24]];
 
@@ -60,11 +60,39 @@ export function lerPredios(tr) {
     let cx = 0, cz = 0, x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const [x, z] of P) { cx += x; cz += z; x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
     cx /= P.length; cz /= P.length;
     let baixo = Infinity, alto = -Infinity; for (const [x, z] of [...P, [cx, cz]]) { const g = tr.chao(x, z) - 1.5; baixo = Math.min(baixo, g); alto = Math.max(alto, g); }
-    const metros = e[0] / 2, h = metros <= 40 ? metros * M_ALTURA : 40 * M_ALTURA + (metros - 40) * M_ALTURA * 0.8;
+    const metros = e[0] / 2, alturaReal = metros <= 40 ? metros * M_ALTURA : 40 * M_ALTURA + (metros - 40) * M_ALTURA * 0.8;
+    // Nas ruas junto ao circuito, as fachadas comuns formam uma parede urbana mais alta; os marcos conservam as proporções próprias.
+    const perto = tr.distAt(cx, cz) < tr.wallLat + 220, h = perto && !(e[1] >> 3) ? Math.max(90, alturaReal * 1.25) : alturaReal;
     lista.push({ P, esp: e[1] >> 3, cor: e[1] & 7, metros, h, cx, cz, caixa: [x0, z0, x1, z1], baixo, alto, topo: alto + h, id: lista.length });
   }
   tr.prediosDescartados = descartados;
   return lista;
+}
+
+// Completa os vazios junto à calçada com fachadas, sem invadir a pista, os boxes, o mar ou os marcos.
+export function adensarRua(tr, lista) {
+  const existente = indiceDePredios(lista), novos = [], L = tr.wallLat, { pts, n } = tr;
+  const marcos = Object.values(D.marcos).filter((p) => Array.isArray(p) && p.length === 2);
+  const tunel = D.frac.trechos.tunel;
+  for (let i = 0; i < n; i += 24) for (const lado of [-1, 1]) {
+    const f = i / n, p = pts[i];
+    if (f >= tunel[0] - 0.015 && f <= tunel[1] + 0.015) continue;
+    const largura = 56, profundidade = 38, perto = L + 9;
+    const ponto = (a, b) => [p.x + p.tx * a + p.nx * lado * b, p.y + p.ty * a + p.ny * lado * b];
+    const P = [ponto(-largura / 2, perto), ponto(largura / 2, perto), ponto(largura / 2, perto + profundidade), ponto(-largura / 2, perto + profundidade)];
+    let livre = true;
+    for (let a = -largura / 2; a <= largura / 2 && livre; a += 7) for (let b = perto; b <= perto + profundidade && livre; b += 7) {
+      const [x, z] = ponto(a, b);
+      if (tr.distAt(x, z) < L + 6 || fundoMonaco(tr, x, z) > -10 || tr.noCorredor?.(x, z) || existente(x, z, 8) || novos.some((q) => Math.hypot(q.cx - x, q.cz - z) < 48) || marcos.some((q) => Math.hypot(q[0] - x, q[1] - z) < 100)) livre = false;
+    }
+    if (!livre) continue;
+    if (area2(P) < 0) P.reverse();
+    const [cx, cz] = ponto(0, perto + profundidade / 2), chao = P.map(([x, z]) => tr.chao(x, z) - 1.5);
+    const baixo = Math.min(...chao), alto = Math.max(...chao), h = 95 + hash(i * 2 + (lado + 1)) * 75;
+    const xs = P.map((q) => q[0]), zs = P.map((q) => q[1]);
+    novos.push({ P, esp: 0, cor: Math.floor(hash(i + (lado + 1) * 83) * PAREDES.length), metros: h / M_ALTURA, h, cx, cz, caixa: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)], baixo, alto, topo: alto + h, id: lista.length + novos.length });
+  }
+  lista.push(...novos); tr.prediosDeRuaMonaco = novos.length;
 }
 
 // a grade de busca: qual prédio está em (x, z)? (para as árvores, os postes e os enfeites não nascerem dentro de um)

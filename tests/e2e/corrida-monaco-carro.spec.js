@@ -23,6 +23,17 @@ test('carro em Mônaco acompanha o asfalto perto dos boxes', async ({ page }, in
   });
   expect(amostra.diferenca).toBeGreaterThan(20); // o terreno sob o asfalto não deve inclinar o carro
   expect(Math.abs(amostra.roll)).toBeLessThan(0.1);
+  const predios = await page.evaluate(() => {
+    const tr = window.__corrida.race.tr; let invadem = 0;
+    for (let i = 0; i < tr.n; i += 4) {
+      const p = tr.pts[i];
+      for (const lat of [-tr.W / 2 + 2, 0, tr.W / 2 - 2])
+        if (tr.predioEmMonaco(p.x + p.nx * lat, p.y + p.ny * lat)) invadem++;
+    }
+    return { novos: tr.prediosDeRuaMonaco, invadem };
+  });
+  expect(predios.novos).toBeGreaterThan(0);
+  expect(predios.invadem).toBe(0);
   expect(errors).toEqual([]);
   await page.screenshot({ path: info.outputPath('monaco-carro.png') });
 });
