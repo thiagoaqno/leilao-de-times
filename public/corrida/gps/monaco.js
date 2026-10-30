@@ -36,6 +36,7 @@ export const GP_MONACO = {
   passarelas: { candidatos: [0.03, 0.12, 0.48, 0.58, 0.72, 0.93], marcas: ["rolex", "heineken", "tag"], max: 2 }, // a da Rolex na reta dos boxes
   postes: { passo: 34 },
   montanha: { angulo: -Math.PI / 2, altura: 860 }, // a Tête de Chien, ao norte
+  horizonte: false, // sem os morros genéricos de longe: o morro de verdade é o relevo do chão e a Tête de Chien, a `montanha`
   sem: { olhos: true, setas: true, mastros: true, rodas: true, dirigivel: true, bandeirolas: true },
   vida: {
     gaivotas: gaivotasDoPorto,

@@ -175,7 +175,7 @@ async function entorno(geoParaMundo, pistaPts) {
     if (e.type === "node" && t.natural === "tree") { const [x, z] = f(e.lon, e.lat); arvores.push([r0(x), r0(z)]); continue; }
     if (e.type !== "way" || !e.geometry) continue;
     const P = anel(e.geometry, f);
-    if (t.man_made === "pier" || t.man_made === "breakwater") piers.push(dp(P, 1.5, false).map(([x, z]) => [r0(x), r0(z)]));
+    if (t.man_made === "pier" || t.man_made === "breakwater") { const fechado = dist(P[0], P.at(-1)) < 0.5, Q = fechado ? P.slice(0, -1) : P; piers.push(dp(Q, 1.2, fechado).map(([x, z]) => [r0(x), r0(z)])); } // píer = contorno fechado (a planta do deck)
     else if (t.leisure === "swimming_pool" && area(P) !== 0 && Math.abs(area(P)) > 3000) piscinas.push(dp(P, 1.5, true).map(([x, z]) => [r0(x), r0(z)]));
     else if (t.leisure === "park" || t.leisure === "garden" || t.landuse === "grass" || t.landuse === "flowerbed" || t.landuse === "meadow" || t.landuse === "orchard") verde.push([1, ...dp(P, 3, true).flatMap(([x, z]) => [r0(x), r0(z)])]);
     else if (t.natural === "wood" || t.natural === "scrub" || t.landuse === "forest") verde.push([2, ...dp(P, 3, true).flatMap(([x, z]) => [r0(x), r0(z)])]);

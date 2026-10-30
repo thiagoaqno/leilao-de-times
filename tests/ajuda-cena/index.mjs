@@ -26,7 +26,7 @@ function preparar() {
   g.addEventListener = g.addEventListener || (() => {});
   g.__rendererFalso = {
     capabilities: { getMaxAnisotropy: () => 8 }, shadowMap: {}, info: { render: { calls: 0, triangles: 0 }, memory: { geometries: 0, textures: 0 }, programs: [] },
-    setPixelRatio() {}, setSize() {}, compile() {}, render() {}, domElement: canvas(),
+    getContext: () => ({ getExtension: () => null, getParameter: () => "" }), setPixelRatio() {}, setSize() {}, compile() {}, render() {}, domElement: canvas(),
   };
   register(pathToFileURL(path.join(aqui, "hooks.mjs")).href);
   pronto = import(pathToFileURL(path.join(raiz, "public/corrida/pista.js")).href);

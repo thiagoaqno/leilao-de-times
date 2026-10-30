@@ -9,7 +9,7 @@ import { D, poligonoDentro } from "./mundo.js";
 
 const M_ALTURA = 5.0; // unidades de altura por metro de parede (os prédios usam a escala da planta; o morro é mais achatado)
 const JANELA = 14.6, ANDAR = 15.5; // o módulo da fachada: 3,5 m de largura e 3,1 m de altura, em unidades do mundo
-const CELULA = 640; // as malhas por região
+const CELULA = 1600; // as malhas por região (a mesma célula de kit/fundir.js)
 const PAREDES = [[1, 0.93, 0.78], [0.96, 0.8, 0.54], [0.95, 0.74, 0.66], [0.93, 0.64, 0.52], [0.97, 0.96, 0.92], [0.97, 0.89, 0.6], [0.88, 0.82, 0.72], [0.9, 0.68, 0.62]]; // creme, ocre, rosa, salmão, gelo, amarelo, areia, terracota
 const TERRACOS = [[0.8, 0.77, 0.72], [0.74, 0.71, 0.68], [0.84, 0.8, 0.74], [0.5, 0.62, 0.44]];
 const TELHAS = [[0.72, 0.36, 0.25], [0.78, 0.42, 0.28], [0.66, 0.32, 0.24]];

@@ -18,25 +18,25 @@ export function porto(tr, add, ctx) {
   const tiras = { vs: [], idx: [] }, piso = M(0xb9b09c, { roughness: 0.9 });
   let barcos = 0, comprimento = 0;
   const livreDeAgua = (x, z, folga) => fundoMonaco(tr, x, z) > folga && tr.distAt(x, z) > L + 30;
-  for (const linha of D.piers) {
-    if (linha.length < 2) continue;
-    for (let i = 0; i + 1 < linha.length; i++) {
-      const [ax, az] = linha[i], [bx, bz] = linha[i + 1], dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz); if (l < 8) continue;
-      const nx = -dz / l, nz = dx / l, passos = Math.max(1, Math.ceil(l / 40));
-      // o convés do píer: só onde fica dentro da água do jogo (a beira do porto recuou 40 do guard-rail)
-      const meio = [(ax + bx) / 2, (az + bz) / 2];
-      if (fundoMonaco(tr, meio[0], meio[1]) > -6) {
-        const w = 5, k = tiras.vs.length / 3;
-        tiras.vs.push(ax - nx * w, NIVEL_DO_MAR + 3.4, az - nz * w, ax + nx * w, NIVEL_DO_MAR + 3.4, az + nz * w, bx + nx * w, NIVEL_DO_MAR + 3.4, bz + nz * w, bx - nx * w, NIVEL_DO_MAR + 3.4, bz - nz * w);
-        tiras.idx.push(k, k + 2, k + 1, k, k + 3, k + 2); comprimento += l;
-      }
-      // os iates dos dois lados, de popa para o píer
-      for (let p = 0; p < passos; p++) for (const lado of [-1, 1]) {
-        if (r() < 0.2) continue;
-        const u = (p + 0.5) / passos, s = 0.7 + r() * 0.75, off = 6 + 30 * s, x = ax + dx * u + nx * lado * off, z = az + dz * u + nz * lado * off;
-        if (!livreDeAgua(x, z, 8) || !livreDeAgua(x + nx * lado * 24 * s, z + nz * lado * 24 * s, 2)) continue;
-        yachts.push({ x, y: z, h: NIVEL_DO_MAR - 0.2, s, r: Math.atan2(-nz * lado, nx * lado) }); barcos++;
-      }
+  for (const P of D.piers) {
+    if (P.length < 3) continue;
+    // o píer é o contorno fechado do deck: o eixo vem do lado maior (a linha de popas) e a largura, do lado menor
+    let melhor = 0, ux = 1, uz = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length], l = Math.hypot(q[0] - p[0], q[1] - p[1]); if (l > melhor) { melhor = l; ux = (q[0] - p[0]) / l; uz = (q[1] - p[1]) / l; } }
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9; for (const [x, z] of P) { const u = x * ux + z * uz, v = -x * uz + z * ux; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+    const cv = (v0 + v1) / 2, ax = u0 * ux - cv * uz, az = u0 * uz + cv * ux, bx = u1 * ux - cv * uz, bz = u1 * uz + cv * ux, dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz), nx = -dz / l, nz = dx / l, meio = [(ax + bx) / 2, (az + bz) / 2];
+    if (l < 30 || fundoMonaco(tr, meio[0], meio[1]) < -6) continue; // o que fica em terra (cais, molhes) é calçada, não píer
+    // o convés: a planta do OpenStreetMap, só onde está dentro da água do jogo
+    const tris = THREE.ShapeUtils.triangulateShape(P.map(([x, z]) => new THREE.Vector2(x, z)), []), k0 = tiras.vs.length / 3;
+    for (const [x, z] of P) tiras.vs.push(x, NIVEL_DO_MAR + 3.4, z);
+    for (const [i, j, k] of tris) { const A = P[i], B = P[j], C = P[k], c = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]); if (c > 0) tiras.idx.push(k0 + i, k0 + k, k0 + j); else tiras.idx.push(k0 + i, k0 + j, k0 + k); }
+    comprimento += l;
+    // os iates dos dois lados, de popa para o píer
+    const passos = Math.max(1, Math.ceil(l / 40));
+    for (let p = 0; p < passos; p++) for (const lado of [-1, 1]) {
+      if (r() < 0.2) continue;
+      const u = (p + 0.5) / passos, s = 0.7 + r() * 0.75, off = (v1 - v0) / 2 + 6 + 28 * s, x = ax + dx * u + nx * lado * off, z = az + dz * u + nz * lado * off;
+      if (!livreDeAgua(x, z, 8) || !livreDeAgua(x + nx * lado * 22 * s, z + nz * lado * 22 * s, 2)) continue;
+      yachts.push({ x, y: z, h: NIVEL_DO_MAR - 0.2, s, r: Math.atan2(-nz * lado, nx * lado) }); barcos++;
     }
   }
   if (tiras.idx.length) {
