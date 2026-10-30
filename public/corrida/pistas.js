@@ -13,7 +13,7 @@ const PISTAS = {
     // Circuit de Monaco: 3324 m. Linha central de bacinger/f1-circuits (mc-1929, licença MIT: ver o cabeçalho dos traçados convertidos), girada para a linha de chegada na Boulevard Albert 1er
     // (230 m antes da Sainte Dévote) e convertida por ferramentas/monaco-dados.js (a mesma conversão das outras pistas): norte em cima, na proporção de verdade
     // a rua estreita, com guard-rail colado na pista (muro: fica mesmo sem o muro das outras pistas) e sem área de escape
-    scale: 3.42, width: 104, minLap: 25, walls: true, muro: true, wall: 14, flat: 20, fall: 120, largada: 0.5854166666666667, hillsSuave: true, trechosAlturaSuave: [[0.27, 0.44]],
+    scale: 3.42, width: 104, minLap: 25, walls: true, muro: true, wall: 14, flat: 20, fall: 120, largada: 0.5854166666666667, hillsSuave: true, muroFolga: 14, alturasMonaco: [[0.27, null], [0.3534, 123], [0.3888, 102], [0.4088, 78], [0.4353, 36], [0.4972, 24], [0.6, null]], // (muroFolga: o carro tem 26 de largura e a barreira fica a 66: o centro para a 52, com o corpo encostando nela)
     // relevo: a altitude real da volta (EU-DEM e SRTM, média e suavizado; 2 a 49 m, 3 unidades por metro)
     hills: [[0,22.02], [0.0048,24.98], [0.0096,28.14], [0.0145,31.44], [0.0193,34.84], [0.0241,38.26], [0.0289,41.63], [0.0337,44.87], [0.0386,47.95], [0.0434,50.8], [0.0482,53.4], [0.053,55.75], [0.0578,57.85], [0.0627,59.72], [0.0675,61.41], [0.0723,62.95], [0.0771,64.43], [0.0819,65.9], [0.0867,67.42], [0.0916,69.04], [0.0964,70.81], [0.1012,72.75], [0.106,74.87], [0.1108,77.18], [0.1157,79.67], [0.1205,82.32], [0.1253,85.1], [0.1301,87.97], [0.1349,90.89], [0.1398,93.84], [0.1446,96.79], [0.1494,99.72], [0.1542,102.62], [0.159,105.48], [0.1639,108.3], [0.1687,111.1], [0.1735,113.89], [0.1783,116.68], [0.1831,119.48], [0.188,122.3], [0.1928,125.13], [0.1976,127.95], [0.2024,130.73], [0.2072,133.43], [0.212,136], [0.2169,138.38], [0.2217,140.51], [0.2265,142.34], [0.2313,143.8], [0.2361,144.87], [0.241,145.52], [0.2458,145.73], [0.2506,145.5], [0.2554,144.86], [0.2602,143.81], [0.2651,142.38], [0.2699,140.6], [0.2747,138.49], [0.2795,136.04], [0.2843,133.25], [0.2892,130.12], [0.294,126.63], [0.2988,122.78], [0.3036,118.55], [0.3084,113.97], [0.3133,109.03], [0.3181,103.79], [0.3229,98.31], [0.3277,92.69], [0.3325,87.05], [0.3373,81.51], [0.3422,76.2], [0.347,71.25], [0.3518,66.78], [0.3566,62.9], [0.3614,59.68], [0.3663,57.18], [0.3711,55.4], [0.3759,54.32], [0.3807,53.89], [0.3855,54.02], [0.3904,54.6], [0.3952,55.54], [0.4,56.72], [0.4048,58.02], [0.4096,59.34], [0.4145,60.6], [0.4193,61.73], [0.4241,62.67], [0.4289,63.39], [0.4337,63.89], [0.4386,64.16], [0.4434,64.21], [0.4482,64.06], [0.453,63.72], [0.4578,63.21], [0.4627,62.53], [0.4675,61.69], [0.4723,60.68], [0.4771,59.51], [0.4819,58.16], [0.4867,56.62], [0.4916,54.88], [0.4964,52.96], [0.5012,50.87], [0.506,48.63], [0.5108,46.28], [0.5157,43.86], [0.5205,41.42], [0.5253,38.99], [0.5301,36.64], [0.5349,34.39], [0.5398,32.29], [0.5446,30.34], [0.5494,28.55], [0.5542,26.9], [0.559,25.38], [0.5639,23.96], [0.5687,22.63], [0.5735,21.37], [0.5783,20.16], [0.5831,18.99], [0.588,17.84], [0.5928,16.72], [0.5976,15.64], [0.6024,14.6], [0.6072,13.63], [0.612,12.72], [0.6169,11.89], [0.6217,11.13], [0.6265,10.44], [0.6313,9.83], [0.6361,9.29], [0.641,8.82], [0.6458,8.43], [0.6506,8.11], [0.6554,7.86], [0.6602,7.69], [0.6651,7.62], [0.6699,7.64], [0.6747,7.79], [0.6795,8.06], [0.6843,8.47], [0.6892,9.02], [0.694,9.74], [0.6988,10.61], [0.7036,11.65], [0.7084,12.86], [0.7133,14.21], [0.7181,15.69], [0.7229,17.27], [0.7277,18.91], [0.7325,20.57], [0.7373,22.21], [0.7422,23.77], [0.747,25.22], [0.7518,26.49], [0.7566,27.55], [0.7614,28.38], [0.7663,28.94], [0.7711,29.24], [0.7759,29.28], [0.7807,29.07], [0.7855,28.63], [0.7904,27.99], [0.7952,27.17], [0.8,26.2], [0.8048,25.11], [0.8096,23.93], [0.8145,22.68], [0.8193,21.37], [0.8241,20.03], [0.8289,18.67], [0.8337,17.31], [0.8386,15.96], [0.8434,14.64], [0.8482,13.38], [0.853,12.2], [0.8578,11.11], [0.8627,10.13], [0.8675,9.25], [0.8723,8.5], [0.8771,7.86], [0.8819,7.34], [0.8867,6.94], [0.8916,6.63], [0.8964,6.4], [0.9012,6.25], [0.906,6.14], [0.9108,6.07], [0.9157,6.03], [0.9205,6.02], [0.9253,6.03], [0.9301,6.06], [0.9349,6.13], [0.9398,6.23], [0.9446,6.4], [0.9494,6.63], [0.9542,6.98], [0.959,7.45], [0.9639,8.09], [0.9687,8.92], [0.9735,9.97], [0.9783,11.27], [0.9831,12.83], [0.988,14.69], [0.9928,16.85], [0.9976,19.29], [1,22.02]],
     points: [
@@ -1174,15 +1174,19 @@ function pontos(t, step = 6) {
     ini = (bestIni + Math.floor(best * (t.largada || 0.6))) % n;
   }
   const out = pts.slice(ini).concat(pts.slice(0, ini));
-  // Distribui a descida de Mônaco do Cassino até Portier, com transições suaves nas duas pontas.
-  // A interpolação é feita depois de girar a pista: as frações são medidas desde a largada.
-  for (const [inicio, fim] of t.trechosAlturaSuave || []) {
-    const a = Math.round(inicio * n), b = Math.round(fim * n), comprimento = b - a;
-    if (a < 1 || b >= n - 1 || comprimento < 2) continue;
-    const ha = out[a].h, hb = out[b].h, ma = (out[a + 1].h - out[a - 1].h) / 2 * comprimento, mb = Math.min(0, (out[b + 1].h - out[b - 1].h) / 2 * comprimento);
-    for (let i = a + 1; i < b; i++) {
-      const u = (i - a) / comprimento, u2 = u * u, u3 = u2 * u;
-      out[i].h = (2 * u3 - 3 * u2 + 1) * ha + (u3 - 2 * u2 + u) * ma + (-2 * u3 + 3 * u2) * hb + (u3 - u2) * mb;
+  // `alturasMonaco`: [[fração desde a largada, altura em unidades | null (a do relevo)]]: a descida de Mônaco distribuída do Cassino a Portier (a curva 4 até a 8 do mapa oficial), por
+  // uma cúbica monótona (Fritsch-Carlson) que passa por cada âncora sem subir de novo nem criar degrau; as pontas seguem a inclinação do relevo de verdade.
+  if (t.alturasMonaco) {
+    const A = t.alturasMonaco.map(([f, h]) => { const i = Math.max(1, Math.min(n - 2, Math.round(f * n))); return [i, h ?? out[i].h]; }), m = A.length - 1, sec = [], ml = [];
+    for (let k = 0; k < m; k++) sec.push((A[k + 1][1] - A[k][1]) / (A[k + 1][0] - A[k][0]));
+    for (let k = 0; k <= m; k++) {
+      if (k === 0 || k === m) { const i = A[k][0], s0 = (out[i + 1].h - out[i - 1].h) / 2, sc = sec[k === 0 ? 0 : m - 1]; ml.push(s0 * sc > 0 ? Math.min(Math.abs(s0), 3 * Math.abs(sc)) * Math.sign(sc) : 0); }
+      else ml.push(sec[k - 1] * sec[k] > 0 ? (2 * sec[k - 1] * sec[k]) / (sec[k - 1] + sec[k]) : 0);
+    }
+    for (const [i, h] of A) out[i].h = h;
+    for (let k = 0; k < m; k++) {
+      const [i0, h0] = A[k], [i1, h1] = A[k + 1], c = i1 - i0;
+      for (let i = i0 + 1; i < i1; i++) { const u = (i - i0) / c, u2 = u * u, u3 = u2 * u; out[i].h = (2 * u3 - 3 * u2 + 1) * h0 + (u3 - 2 * u2 + u) * ml[k] * c + (-2 * u3 + 3 * u2) * h1 + (u3 - u2) * ml[k + 1] * c; }
     }
   }
   out.forEach((p, i) => { p.d = i * step; });
