@@ -265,7 +265,7 @@ function camera(tv, tr, b, u) {
     const P = ponto(tr, n - 55), Q = ponto(tr, n + 5), e = suave(u);
     return { x: P.x - P.tx * (190 - 50 * e) - P.ty * 34, y: P.h + 12 + 85 * e, z: P.y - P.ty * (190 - 50 * e) + P.tx * 34, ax: Q.x, ay: Q.h + 8, az: Q.y, fov: 60 };
   }
-  const f = n - 125 + 135 * u, P = ponto(tr, f), Q = ponto(tr, f + 38); // o grid: no meio das duas filas, da última fila até a pole
+  const f = n - 145 + 155 * u, P = ponto(tr, f), Q = ponto(tr, f + 38); // o grid: no meio das duas filas, da última fila até a pole
   return { x: P.x, y: P.h + 11 + 3 * Math.sin(u * 3), z: P.y, ax: Q.x, ay: Q.h + 5, az: Q.y, fov: 66 };
 }
 // o corte entre os blocos: a varredura de TV (transicao-f1.js; com movimento reduzido a transmissão já foi pulada)

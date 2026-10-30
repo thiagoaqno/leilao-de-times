@@ -76,7 +76,7 @@ export function chaoGP(tr, add, cfg, { gridSpot }) {
     tira(tr, L.de(escrito(nome)), i + 2, i + 6, meia - 30, meia - 6, 0.55, 0.55);
   }
   // o grid: o "colchete" de cada posição e o número pintado (as ímpares de um lado, as pares do outro)
-  // São dois conjuntos: as 8 vagas de sempre e as 20 das regras de F1 (mais juntas, como em gridSpot); jogo.js liga um por vez.
+  // São dois conjuntos: as 8 vagas de sempre e as 20 das regras de F1 (como em gridSpot); jogo.js liga um por vez.
   if (cfg.grid) {
     const LG = lotes(), LF = lotes(), numeros = Array.from({ length: 20 }, (_, g) => tinta(canvasTex(128, 192, (x, w, hh, rr) => {
       x.clearRect(0, 0, w, hh); x.fillStyle = "#f4f4f4"; x.fillRect(4, 4, w - 8, 12); x.fillRect(4, 4, 10, 60); x.fillRect(w - 14, 4, 10, 60);
