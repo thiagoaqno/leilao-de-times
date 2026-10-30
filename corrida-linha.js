@@ -29,6 +29,7 @@ function otimizar(pts, max) {
   grad(l, g0); // g(l) = A l + g0 (a função é quadrática)
   const A = (v, out) => { grad(v, tmp); for (let i = 0; i < n; i++) out[i] = tmp[i] - g0[i]; };
   for (let externa = 0; externa < 40; externa++) {
+    let mudou = false;
     // gradiente conjugado nos pontos livres: min 1/2 d·A d + g·d com d só nos livres
     grad(l, g);
     for (let i = 0; i < n; i++) { r[i] = prisao[i] ? 0 : -g[i]; p[i] = r[i]; }
@@ -43,13 +44,12 @@ function otimizar(pts, max) {
       let tmax = alfa, qual = -1;
       for (let i = 0; i < n; i++) if (!prisao[i] && p[i] !== 0) { const alvo = p[i] > 0 ? max : -max, t = (alvo - l[i]) / p[i]; if (t < tmax) { tmax = t; qual = i; } }
       for (let i = 0; i < n; i++) if (!prisao[i]) { l[i] += tmax * p[i]; r[i] -= tmax * Ap[i]; }
-      if (qual >= 0) { prisao[qual] = p[qual] > 0 ? 1 : -1; l[qual] = prisao[qual] * max; break; }
+      if (qual >= 0) { prisao[qual] = p[qual] > 0 ? 1 : -1; l[qual] = prisao[qual] * max; mudou = true; break; }
       for (let i = 0; i < n; i++) rr2 += r[i] * r[i];
       const beta = rr2 / rr; rr = rr2;
       for (let i = 0; i < n; i++) p[i] = prisao[i] ? 0 : r[i] + beta * p[i];
     }
     // prende os que passaram, solta os presos cujo gradiente puxa para dentro
-    let mudou = false;
     for (let i = 0; i < n; i++) if (!prisao[i] && Math.abs(l[i]) > max) { l[i] = Math.sign(l[i]) * max; prisao[i] = Math.sign(l[i]); mudou = true; }
     grad(l, g);
     for (let i = 0; i < n; i++) if (prisao[i] && g[i] * prisao[i] > 0) { prisao[i] = 0; mudou = true; } // o gradiente de J cresce para fora: volta para dentro
