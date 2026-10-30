@@ -88,8 +88,6 @@ export function cais(tr, add, [f0, f1]) {
     const y = tr.chao(x, z) - 1.5, ry = Math.atan2(p.tx, p.ty);
     tendas.push({ x, y: y + 7, z, sx: 24, sy: 14, sz: 18, r: ry }); tetos.push({ x, y: y + 17, z, sx: 26, sy: 8, sz: 20, r: ry + Math.PI / 4 });
   }
-  instancias(add, new THREE.BoxGeometry(1, 1, 1), BRANCO, tendas, { nome: "monaco-tenda" });
-  instancias(add, new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), M(0xe8e8e2, { roughness: 0.8 }), tetos.map((o) => ({ ...o, r: o.r })), { nome: "monaco-tenda-teto" });
   // guindastes amarelos de obra (a montagem das arquibancadas): dois, no cais
   for (const f of [f0 + (f1 - f0) * 0.3, f0 + (f1 - f0) * 0.78]) {
     const p = tr.pts[Math.floor(f * n) % n];
@@ -191,7 +189,7 @@ export function muroDeArrimo(tr, add) {
   for (const { lado, i0, i1, lisa } of trechos) {
     const vs = [], uv = [], idx = [];
     for (let i = i0; i <= i1; i++) {
-      const p = pts[i % n], x = p.x + p.nx * lado * (L + 3), z = p.y + p.ny * lado * (L + 3), alto = Math.min((lisa[i] ?? lisa[i - 1] ?? lisa[i + 1] ?? p.h + 20) - 0.6, p.h + 70), d = (i - i0) * 6;
+      const p = pts[i % n], x = p.x + p.nx * lado * (L + 3), z = p.y + p.ny * lado * (L + 3), alto = Math.min((lisa[i] ?? lisa[i - 1] ?? lisa[i + 1] ?? p.h + 20) - 0.6, p.h + 45), d = (i - i0) * 6;
       vs.push(x, p.h - 3, z, x, alto, z); uv.push(0, d / 70, (alto - p.h + 3) / 40, d / 70);
       if (i < i1) { const q = (i - i0) * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); }
     }
@@ -199,55 +197,4 @@ export function muroDeArrimo(tr, add) {
     const m = add(new THREE.Mesh(g, pedra)); m.castShadow = m.receiveShadow = true; m.name = "monaco-arrimo"; total += i1 - i0;
   }
   tr.arrimoMonaco = { trechos: trechos.map((t) => ({ lado: t.lado, de: +(t.i0 / n).toFixed(3), ate: +(t.i1 / n).toFixed(3) })), pontos: total };
-}
-
-// ---- o pit lane de Mônaco, por cima do corredor do kit (kit/corredor-boxes.js, que continua mandando na posição e na lógica): o terraço de hospitalidade sobre cada garagem (vidro, laje branca, guarda-corpo e
-// guarda-sóis), os toldos de engenheiro com monitores no pit wall, a linha amarela do limitador e as placas de entrada e saída. Tudo dentro do grupo do corredor (some e aparece com ele). ----
-export function boxesMonaco(tr, add) {
-  const F = window.F1Regras, cor = F?.corredor(tr.t, tr.n, tr.W), grp = tr.boxesGP; if (!cor || !grp) return;
-  const { pts, n, W } = tr, lado = cor.lado, meia = cor.larguraCorredor / 2, noGrupo = (o) => (grp.add(o), o);
-  const latDe = (u) => cor.lat(u, lado * (W / 2 - 10)) + cor.centroAsfalto - cor.D;
-  const em = (u, l) => { const i = cor.i0 + Math.floor(u), f = u - Math.floor(u), a = pts[i % n], b = pts[(i + 1) % n]; const x = a.x + (b.x - a.x) * f + (a.nx + (b.nx - a.nx) * f) * l, y = a.y + (b.y - a.y) * f + (a.ny + (b.ny - a.ny) * f) * l; return { x, y, h: tr.chao(x, y), p: a }; };
-  const caixa = new THREE.BoxGeometry(1, 1, 1), M2 = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
-  const L = { laje: [], vidro: [], grade: [], posteToldo: [], toldo: [], monitor: [], poste: [], guardaSol: [], mastro: [] };
-  const rot = (p) => Math.atan2(-p.ty, p.tx); // o x local da caixa vai para a tangente e o z local para a normal da pista
-  const fundo = 16, alt = 14;
-  cor.garagens.forEach((u, k) => {
-    const q = em(u, cor.garagemLat), p = q.p, nx = p.nx * lado, ny = p.ny * lado, r = rot(p), largura = Math.max(18, cor.gap * 6 * 0.92);
-    const ref = { x: q.x + nx * (meia / 2), y: q.y + ny * (meia / 2), h: q.h };
-    // só onde o kit construiu a garagem: nenhum outro trecho da pista mais perto do que ela está do próprio
-    if (![0, fundo + 3].every((b) => [-1, 0, 1].every((s) => tr.distAt(ref.x + nx * b + p.tx * s * largura / 2, ref.y + ny * b + p.ty * s * largura / 2) >= Math.abs(cor.garagemLat) + meia / 2 + b - 4))) return;
-    const ponto = (a, b, y) => ({ x: ref.x + p.tx * a + nx * b, y: ref.h + y, z: ref.y + p.ty * a + ny * b });
-    // o terraço de hospitalidade: laje, vidro e laje de cobertura, na frente do teto da garagem
-    L.laje.push({ ...ponto(0, fundo / 2 - 1, alt + 1.6), r, sx: largura + 1, sy: 0.8, sz: fundo + 2 });
-    L.vidro.push({ ...ponto(0, fundo / 2 - 1, alt + 5.5), r, sx: largura - 1, sy: 7, sz: fundo - 2 });
-    L.laje.push({ ...ponto(0, fundo / 2 - 1, alt + 9.4), r, sx: largura + 2, sy: 0.9, sz: fundo + 3 });
-    L.grade.push({ ...ponto(0, -1.8, alt + 3.2), r, sx: largura + 1, sy: 2.2, sz: 0.3 }); // o guarda-corpo na frente
-    for (const s of [-0.3, 0.3]) L.guardaSol.push({ ...ponto(s * largura, fundo + 1, alt + 11.5), r, sx: 7, sy: 2.2, sz: 7 });
-    // o toldo do engenheiro no pit wall, com o monitor: um por garagem, diante dela
-    const m = em(u, lado * (W / 2 + 16)), pr = m.p, rm = rot(pr); // (o toldo fica sobre a mureta e sai para o lado do corredor, sem passar do asfalto)
-    for (const s of [-1, 1]) L.posteToldo.push({ x: m.x + pr.tx * s * 7, y: m.h + 4.4, z: m.y + pr.ty * s * 7, r: rm, sx: 0.8, sy: 8.8, sz: 0.8 });
-    L.toldo.push({ x: m.x, y: m.h + 9, z: m.y, r: rm, sx: 17, sy: 0.7, sz: 5 });
-    L.monitor.push({ x: m.x - pr.nx * lado * 0.8, y: m.h + 5.6, z: m.y - pr.ny * lado * 0.8, r: rm, sx: 5.4, sy: 2.8, sz: 0.5 });
-    // o limitador: a linha amarela tracejada entre a faixa rápida e a das garagens
-    for (const d of [-2.5, 2.5]) { const c = em(u + d * 0.05, latDe(u)); L.poste.push({ x: c.x, y: c.h + 0.75, z: c.y, r: rot(c.p), sx: 3.2, sy: 0.12, sz: 0.5 }); }
-  });
-  const sombra = false;
-  instancias(noGrupo, caixa, M2(0xf1efe8, { roughness: 0.6 }), L.laje, { nome: "monaco-box-laje", sombra });
-  instancias(noGrupo, caixa, M2(0x7d9db3, { roughness: 0.15, metalness: 0.4 }), L.vidro, { nome: "monaco-box-vidro", sombra });
-  instancias(noGrupo, caixa, M2(0x3a3d44), L.grade, { nome: "monaco-box-grade", sombra });
-  instancias(noGrupo, caixa, M2(0xdcdcd6, { roughness: 0.5 }), L.guardaSol, { nome: "monaco-box-guardasol", sombra });
-  instancias(noGrupo, caixa, M2(0xb8bbc0), L.posteToldo, { nome: "monaco-box-poste", sombra });
-  instancias(noGrupo, caixa, M2(0x2a2d33, { roughness: 0.6 }), L.toldo, { nome: "monaco-box-toldo", sombra });
-  instancias(noGrupo, caixa, new THREE.MeshBasicMaterial({ color: 0x1e3f66 }), L.monitor, { nome: "monaco-box-monitor", sombra });
-  instancias(noGrupo, caixa, new THREE.MeshBasicMaterial({ color: 0xffd23f }), L.poste, { nome: "monaco-box-limitador", sombra });
-  // as placas de entrada e saída do pit lane, de frente para quem chega
-  const placa = (texto, u) => {
-    const c = em(u, latDe(u) + lado * (meia + 2)), p = c.p, tex = canvasTex(256, 96, (x, w, h) => { x.fillStyle = "#0e3a8a"; x.fillRect(0, 0, w, h); x.fillStyle = "#ffffff"; x.font = "900 44px Arial Black, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(texto, w / 2, h / 2 - 8, w - 16); x.font = "700 18px Arial, sans-serif"; x.fillText("PIT LANE  60 km/h", w / 2, h - 18); }, false);
-    const g = new THREE.Group(); g.position.set(c.x, c.h, c.y); g.rotation.y = Math.atan2(-p.tx, -p.ty); noGrupo(g);
-    const poste = new THREE.Mesh(caixa, M2(0x555a62)); poste.scale.set(0.8, 14, 0.8); poste.position.y = 7; g.add(poste);
-    const painel = new THREE.Mesh(new THREE.PlaneGeometry(14, 5.2), new THREE.MeshBasicMaterial({ map: tex })); painel.position.set(0, 15, 0.5); g.add(painel);
-  };
-  placa("PIT ENTRY", 3); placa("PIT EXIT", cor.len - 3);
-  tr.boxesMonaco = { terracos: L.vidro.length };
 }

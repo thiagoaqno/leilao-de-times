@@ -7,7 +7,8 @@
 import { cenarioMonaco, fundoMonaco, vidaMonaco } from "../monaco.js";
 import { D, distanciaDoMar } from "../kit/monaco/mundo.js";
 import { pertoDe } from "../kit/som.js";
-import { PORTICO_ADIANTE, boxesMonaco } from "../kit/monaco/detalhes.js";
+import { PORTICO_ADIANTE } from "../kit/monaco/detalhes.js";
+import { boxesMonaco } from "../kit/monaco/boxes.js";
 
 const BOXES = window.Pistas.PISTAS.monaco.boxes; // o corredor dos boxes (pistas.js): as linhas SC 1 e SC 2 são a entrada e a saída dele
 const F = D.frac;
@@ -54,8 +55,8 @@ export const GP_MONACO = {
   },
   depois: (tr, ctx) => { boxesMonaco(tr, ctx.add); vidaMonaco(tr, ctx); }, // o pit lane de Mônaco (terraços, toldos, placas) e a vida: a galera, os fiscais, as bandeiras, os barcos, os guindastes (depois do ambiente e do vidaGP)
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, os prédios reais, os marcos, o Rochedo e as árvores
-  boxes: { garagens: true, mureta: true }, // o prédio das garagens fica do lado externo da nova faixa de parada
-  ambiente: { paineis: false, mastros: false, semCerca: [[0.85, 0.9]] }, // a cerca de detritos, os postos de fiscais e as placas de frenagem (a barreira e os painéis são do guardrail acima)
+  boxes: { garagens: false, mureta: true }, // só o corredor, a mureta e os quadrados pintados: as garagens, os terraços e os toldos são de Mônaco (kit/monaco/boxes.js) // o prédio das garagens fica do lado externo da nova faixa de parada
+  ambiente: { paineis: false, mastros: false, tela: true, semCerca: [[0.85, 0.9]] }, // a cerca de detritos, os postos de fiscais e as placas de frenagem (a barreira e os painéis são do guardrail acima)
   passarelas: { candidatos: [0.03, 0.12, 0.48, 0.58, 0.72, 0.93], marcas: ["rolex", "heineken", "tag"], max: 2 }, // a da Rolex na reta dos boxes
   portico: { adiante: PORTICO_ADIANTE }, // o pórtico das luzes de largada fica 260 depois da linha de chegada (a pole o vê lá na frente)
   postes: { passo: 34 },

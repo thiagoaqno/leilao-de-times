@@ -11,6 +11,7 @@ import { marcosMonaco } from "./kit/monaco/marcos.js";
 import { mar, porto, piscinas, atracados } from "./kit/monaco/agua.js";
 import { tecpro, telaos, largada, cais, fonte, cruzeiros, muroDeArrimo } from "./kit/monaco/detalhes.js";
 import { tunel } from "./kit/monaco/tunel.js";
+import { paddockMonaco } from "./kit/monaco/paddock.js";
 import { arvores, corDoChao } from "./kit/monaco/beira.js";
 import { vidaMonaco as vidaDeMonaco } from "./kit/monaco/vida.js";
 
@@ -80,6 +81,7 @@ export function cenarioMonaco(tr, ctx) {
   piscinas(tr, add, ctx);
   arquibancadasMonaco(tr, add, predioEm);
   arvores(tr, add, { hAt, predioEm });
+  paddockMonaco(tr, add, hAt); // as hospitalidades das equipes, as tendas de apoio e o paddock flutuante (substituem as tendas genéricas)
   muroDeArrimo(tr, add); // o muro de pedra entre trechos empilhados (grampo e Mirabeau): fecha o desnível que o terreno deixaria aberto
   tr.contextoVidaMonaco = { lista, predioEm, hAt };
   const f = D.frac, c = f.curvas, tc = f.trechos;
