@@ -159,6 +159,23 @@ function emPedacos(geo, S, N) {
   }
   return out;
 }
+// O muro de Mônaco nos grampos e nas chicanes: a fita de dentro da curva cruza a pista (o raio da curva é menor que a distância do muro). Cada vértice é empurrado para fora até ficar a `raio`
+// (o centro do carro mais a meia largura dele) de QUALQUER ponto da linha central do mesmo nível, então nenhum painel fica onde o corpo do carro chega. `i0`: o ponto de cada par de vértices.
+function afastarMuro(tr, geo, i0, raio) {
+  const pos = geo.attributes.position, { pts, n } = tr;
+  for (let k = 0; k < pos.count; k++) {
+    const i = i0 + (k >> 1);
+    for (let volta = 0; volta < 3; volta++) {
+      let x = pos.getX(k), z = pos.getZ(k), mexeu = false;
+      for (let j = i - 90; j <= i + 90; j++) {
+        const q = pts[((j % n) + n) % n], dx = x - q.x, dz = z - q.y, d = Math.hypot(dx, dz);
+        if (d < raio - 0.01 && Math.abs(q.h - (pos.getY(k) - 10)) < 40) { x = q.x + (dx / (d || 1)) * raio; z = q.y + (dz / (d || 1)) * raio; mexeu = true; }
+      }
+      if (!mexeu) break; pos.setX(k, x); pos.setZ(k, z);
+    }
+  }
+  pos.needsUpdate = true; geo.computeVertexNormals();
+}
 export function groundH(tr, x, y, idx) { const f = trackFrame(tr, x, y, idx); return tr.relevoGP ? tr.relevoGP(x, y, f, idx) : f.h * falloff(tr, f.lat); }
 
 // Rio: o mar fica do lado de fora da reta da orla (Copacabana); as coordenadas foram desenhadas no quadrado de 1600
@@ -190,7 +207,7 @@ function buildWorld(tr) {
     const x = pos.getX(i) + WORLD / 2, y = pos.getZ(i) + WORLD / 2;
     const longe = !tr.relevoGP && tr.distAprox(x, y) > W / 2 + t.flat + t.fall + WORLD / 96, bi = longe ? 0 : tr.indiceAt(x, y);
     const lat = longe ? 1e9 : Math.abs(trackFrame(tr, x, y, bi).lat), perto = !longe && (id === "monaco" ? lat < tr.wallLat + 30 : lat < W / 2 + 26); // embaixo da pista o chão afunda mais (a malha é grossa e furava o asfalto nas rampas)
-    let h = t.espaco ? -700 : (longe ? 0 : groundH(tr, x, y, bi)) - (id === "monaco" ? 1.5 + 7.5 * (1 - Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)))) * (perto ? 1 : 0) : perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
+    let h = t.espaco ? -700 : (longe ? 0 : id === "monaco" ? tr.relevoGP(x, y, trackFrame(tr, x, y, bi), bi, true) : groundH(tr, x, y, bi)) - (id === "monaco" ? 1.5 + 7.5 * (1 - Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)))) * (perto ? 1 : 0) : perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
     if (id === "monaco") { const s = fundoMonaco(tr, x, y); if (s > -90) h = s > 0 ? Math.max(-34, NIVEL_DO_MAR - 7 - s * 0.35) : Math.min(h, NIVEL_DO_MAR + 1 + 3.2 * -s); } // a bacia do porto e o mar, o cais em paredão e a falésia do Rochedo (3 de altura por unidade)
     if (id === "rio" && rioSea(x, y)) h = Math.min(h, -14); // o mar de Copacabana
     if (tr.sobPonte) h = Math.min(h, tr.sobPonte(x, y) - 4); // embaixo da ponte (Suzuka)
@@ -278,7 +295,7 @@ function buildWorld(tr) {
         if (!baixosDe.length) fatias.push([i0, i1, false]);
         else { for (let i = i0 + 1; i <= i1 + 1; i++) if (i === i1 + 1 || emBaixo(i) !== emBaixo(a)) { fatias.push([a, Math.min(i, i1), emBaixo(a)]); a = i; } }
         let m = null;
-        for (const [x0, x1, baixo] of fatias) { if (x1 <= x0) continue; m = ribbon(s * L, s * L, 0.5, baixo ? matBaixo : mat, baixo ? gp.guardrail.baixoVLen ?? vLen : vLen, baixo ? gp.guardrail.baixoAlto ?? 11 : gp?.guardrail?.alto ?? 12, 1, x0, x1); m.castShadow = true; m.name = `${id}-muro`; }
+        for (const [x0, x1, baixo] of fatias) { if (x1 <= x0) continue; m = ribbon(s * L, s * L, 0.5, baixo ? matBaixo : mat, baixo ? gp.guardrail.baixoVLen ?? vLen : vLen, baixo ? gp.guardrail.baixoAlto ?? 11 : gp?.guardrail?.alto ?? 12, 1, x0, x1); m.castShadow = true; m.name = `${id}-muro`; if (gp?.guardrail?.estilo === "monaco") afastarMuro(tr, m.geometry, x0, L - (tr.t.muroFolga ?? 8) + 13); }
         return m;
       };
       // o trecho do corredor dos boxes (regras de F1) é uma peça à parte, que some enquanto o corredor aparece (kit/corredor-boxes.js)
