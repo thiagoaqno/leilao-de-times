@@ -111,9 +111,9 @@ function registrarResultado(s, linhas) {
   if (!Array.isArray(linhas) || linhas.length !== 20) throw Error("Resultado incompleto.");
   const ids = new Set(linhas.map((r) => r.piloto));
   const posicoes = new Set(linhas.map((r) => r.pos));
-  if (ids.size !== 20 || !ids.has("voce") || posicoes.size !== 20 || linhas.some((r) => !inteiro(r.pos) || r.pos < 1 || r.pos > 20 || r.pontos !== (r.dnf || r.nc ? 0 : PONTOS[r.pos - 1] || 0))) throw Error("Resultado inválido.");
+  if (ids.size !== 20 || !ids.has("voce") || posicoes.size !== 20 || linhas.some((r) => !inteiro(r.pos) || r.pos < 1 || r.pos > 20 || r.pontos !== (r.dnf || r.nc ? 0 : (PONTOS[r.pos - 1] || 0) + (r.voltaRapida ? 1 : 0))) || linhas.filter((r) => r.voltaRapida).length > 1) throw Error("Resultado inválido.");
   const gp = s.calendario[s.gp];
-  const resultado = { ano: s.ano, gp: s.gp, pista: gp.pista, linhas: linhas.map((r) => ({ piloto: r.piloto, equipe: r.equipe, pos: r.pos, pontos: r.pontos || 0, dnf: !!r.dnf, nc: !!r.nc })) };
+  const resultado = { ano: s.ano, gp: s.gp, pista: gp.pista, linhas: linhas.map((r) => ({ piloto: r.piloto, equipe: r.equipe, pos: r.pos, pontos: r.pontos || 0, dnf: !!r.dnf, nc: !!r.nc, voltaRapida: !!r.voltaRapida })) };
   s.resultados.push(resultado); s.gp++;
   const humano = resultado.linhas.find((r) => r.piloto === "voce");
   const premio = 4 + Math.round((humano.pontos || 0) * 0.4);

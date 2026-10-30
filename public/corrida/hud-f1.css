@@ -149,3 +149,20 @@
 #hClima[data-nivel="1"] span,#hClima[data-nivel="2"] span{color:#5fc8ff}
 @media (max-width:700px){#hClima{left:100px;bottom:8px;padding:4px 9px 4px 6px}#hClima svg{width:22px;height:22px}#hClima b{font-size:12px}#hClima span{font-size:10px}}
 @media (pointer:coarse){#hClima{bottom:112px}}
+
+/* o rádio do engenheiro: o cartão aparece por cima do velocímetro enquanto ele fala */
+#hRadioEng{position:absolute;right:14px;bottom:196px;width:254px;padding:8px 12px 10px;background:linear-gradient(135deg,#0a0c12f0 60%,color-mix(in srgb,var(--equipe,#e10600) 35%,#0a0c12));border-left:4px solid var(--equipe,#e10600);font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:3;opacity:0;transform:translateX(24px);transition:opacity .18s,transform .18s;display:none}
+#race.f1hud #hRadioEng{display:block}
+#hRadioEng.on{opacity:1;transform:none}
+#hRadioEng .rr-nome{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
+#hRadioEng .rr-nome b{font-size:22px;font-weight:700;color:var(--equipe,#fff);letter-spacing:.02em}
+#hRadioEng .rr-nome span{font-size:18px;font-weight:700;letter-spacing:.06em}
+#hRadioEng .rr-linha{display:flex;align-items:center;gap:10px;margin-top:6px}
+#hRadioEng .rr-linha em{font-style:italic;font-weight:700;font-size:40px;line-height:.9;color:var(--equipe,#fff)}
+#hRadioEng .rr-linha img{width:34px;height:34px;object-fit:contain;margin-left:auto}
+#hRadioEng .rr-onda{display:flex;align-items:center;gap:3px;height:28px;flex:1}
+#hRadioEng .rr-onda s{display:block;width:4px;height:40%;background:var(--equipe,#fff);border-radius:2px;animation:rrOnda .7s ease-in-out infinite}
+#hRadioEng .rr-onda s:nth-child(2){animation-delay:.1s}#hRadioEng .rr-onda s:nth-child(3){animation-delay:.2s}#hRadioEng .rr-onda s:nth-child(4){animation-delay:.3s}#hRadioEng .rr-onda s:nth-child(5){animation-delay:.4s}
+@keyframes rrOnda{0%,100%{height:25%}50%{height:95%}}
+@media (prefers-reduced-motion:reduce){#hRadioEng,#hRadioEng .rr-onda s{transition:none;animation:none}}
+@media (max-width:700px){#hRadioEng{width:180px;bottom:150px;right:8px}#hRadioEng .rr-linha em{font-size:28px}}
