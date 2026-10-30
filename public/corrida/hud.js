@@ -6,7 +6,7 @@ import { textoJogos } from "./box.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
 import { drawItemHud } from "./itens.js";
 import { clima } from "./clima.js";
-import { set, montarCentro, atualizarCentro, atualizarTempo, estrategia, minimapaF1, desenharBanner } from "./hud-painel.js";
+import { set, montarCentro, atualizarCentro, montarTempo, atualizarTempo, estrategia, minimapaF1, desenharBanner } from "./hud-painel.js";
 import { montarMfd, atualizarMfd, acoes } from "./mfd.js";
 
 // o cartão do rádio do engenheiro (como na TV: "SOBRENOME RADIO", o número e a equipe), por cima do velocímetro enquanto ele fala

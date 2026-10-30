@@ -1,6 +1,5 @@
-# Mais espaço na largada de F1
+# Correção do MFD na corrida
 
-- Aumenta em 25% a distância entre as filas do grid de F1, de 8 para 10 pontos da pista.
-- Física, posições e marcas na pista usam a mesma conta; a câmera de apresentação cobre o grid mais comprido.
+O HUD chamava `montarTempo` sem importar a função: a primeira atualização parava antes de montar o MFD, deixando-o vazio e sem responder ao teclado. A importação permite montar o painel e mostrar os pneus novamente.
 
-Teste: `node --test tests/corrida-grid.test.js`.
+Teste: `npx playwright test tests/e2e/corrida-mfd.spec.js`, com verificação da página de pneus e das teclas M e N em uma corrida F1.
