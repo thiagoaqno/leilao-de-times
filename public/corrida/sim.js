@@ -275,8 +275,10 @@ function passoBox(c, ent, amb, tr, p, ev) {
     const rel = (c.idx - cor.i0 + tr.n) % tr.n;
     if (rel > 8) return false;
     const q = tr.pts[c.idx], lado = (c.x - q.x) * q.nx + (c.y - q.y) * q.ny, n = (amb.paradas || 0) + 1;
-    Object.assign(B, { fase: "entra", u: rel + 0.5, lat0: lado, t: 0, composto: B.pedido, volta: (amb.laps || 0) + 1, n, parada: F1.tempoDeParada(amb.semente, amb.id, n), garagem: F1.garagemDe(cor, amb.grid || 0), tick0: c.tick });
-    if (ev) ev.push({ t: "box", fase: "entra", volta: B.volta, n });
+    // com um stop-and-go pendente (`amb.stopGo`: os segundos parado) a visita é só o stop-and-go: fica parado esse tempo e sai sem trocar o pneu
+    const stopGo = amb.stopGo > 0;
+    Object.assign(B, { fase: "entra", u: rel + 0.5, lat0: lado, t: 0, composto: stopGo ? (c.pneu ? c.pneu.composto : B.pedido) : B.pedido, stopGo, volta: (amb.laps || 0) + 1, n, parada: stopGo ? amb.stopGo : F1.tempoDeParada(amb.semente, amb.id, n), garagem: F1.garagemDe(cor, amb.grid || 0), tick0: c.tick });
+    if (ev) ev.push({ t: "box", fase: "entra", volta: B.volta, n, stopGo: stopGo || undefined });
   }
   const frena = 180, acel = 90; // o corredor tem o seu próprio jeito de frear e de arrancar
   const vai = (alvo, a) => { c.v = c.v > alvo ? Math.max(alvo, c.v - frena * dt) : Math.min(alvo, c.v + a * dt); };
@@ -287,7 +289,7 @@ function passoBox(c, ent, amb, tr, p, ev) {
     if (B.u >= B.garagem - 0.02) { B.u = B.garagem; c.v = 0; B.fase = "parada"; B.t = 0; if (ev) ev.push({ t: "boxParou" }); }
   } else if (B.fase === "parada") {
     c.v = 0; B.t += dt;
-    if (B.t >= B.parada) { c.pneu = Object.assign(c.pneu, F1.pneuNovo(B.composto)); B.fase = "sai"; if (ev) ev.push({ t: "boxTrocou" }); }
+    if (B.t >= B.parada) { if (!B.stopGo) c.pneu = Object.assign(c.pneu, F1.pneuNovo(B.composto)); B.fase = "sai"; if (ev && !B.stopGo) ev.push({ t: "boxTrocou" }); }
   } else {
     vai(vlim, acel); B.u = Math.min(cor.len, B.u + (c.v * dt) / 6);
   }
@@ -300,7 +302,7 @@ function passoBox(c, ent, amb, tr, p, ev) {
   c.idx = saida ? saida.indice : procurar(tr, c.x, c.y, c.idx); c.z = alturaDoChao(tr, c.x, c.y, c.idx);
   c.rpm = Math.max(0.3, D.rotacao(c.v, spec.vmax, c.marcha)); c.marcha = D.marchaAuto(c.v, spec.vmax, c.marcha);
   if (fim) {
-    if (ev) ev.push({ t: "box", fase: "sai", composto: B.composto, tempo: (c.tick - B.tick0) * dt, volta: B.volta });
+    if (ev) ev.push({ t: "box", fase: "sai", composto: B.composto, tempo: (c.tick - B.tick0) * dt, volta: B.volta, stopGo: B.stopGo || undefined });
     B.fase = null; B.pedido = null;
   }
   return !fim; // no último passo o carro já está na beira da pista e a física de sempre continua dali
@@ -320,6 +322,19 @@ const E_BATIDA = 0.15, MU_BATIDA = 0.25, R_MAX_BATIDA = 2; // restituição, atr
 const ALIVIO = 0.8;       // as batidas punem 20% menos: o atrito do raspão, a guinada, a instabilidade e a perda no muro saem a 80% (o impulso que separa fica inteiro, senão os carros seguem se enterrando)
 const FORCA_EV = 5;       // abaixo disto (u/s de aproximação) a batida troca momento mas não conta como evento (encostar, roçar)
 const INST_FORCA = 200;   // a força (u/s de aproximação) que dá a instabilidade cheia
+// Quem CAUSOU a batida, pela velocidade de cada carro ANTES do impulso (depois dele as velocidades já estão trocadas e a culpa some): o quanto
+// cada um se move em direção ao outro. Culpado claro só quando um se aproxima bem mais que o outro (a traseira que acerta quem estava
+// na frente, quem fecha a porta em cima de quem está ao lado); lado a lado, ou os dois se aproximando, não tem culpado. Só aí o impulso
+// é assimétrico: o culpado leva o impacto inteiro e a vítima só uma parte (não perde velocidade nem fica instável de forma exagerada).
+const CULPA_MIN = 8, CULPA_RAZAO = 1.6; // u/s: a aproximação mínima do culpado, e quantas vezes ela passa a do outro
+const K_CULPADO = 1.15, K_VITIMA = 0.4; // o quanto do impulso cada um leva quando há culpado claro
+// (vA, vB: as velocidades dos centros antes do impulso; n: o vetor unitário de B para A no contato). +1: A causou; -1: B causou; 0: ninguém
+function culpaEntre(vAx, vAy, vBx, vBy, nx, ny) {
+  const atkA = Math.max(0, -(vAx * nx + vAy * ny)), atkB = Math.max(0, vBx * nx + vBy * ny);
+  if (atkA > CULPA_RAZAO * atkB + CULPA_MIN) return 1;
+  if (atkB > CULPA_RAZAO * atkA + CULPA_MIN) return -1;
+  return 0;
+}
 function circulos(x, y, a, L, W) { const fx = Math.cos(a), fy = Math.sin(a), r = W * 0.45, d = Math.max(0, L / 2 - r); return [-d, 0, d].map((u) => [x + fx * u, y + fy * u, r]); }
 // o tamanho (u) de cada carro, o mesmo de CARS3 em carros.js (metros do modelo × KS = 10)
 const DIMENSOES = { equilibrado: [44, 26], foguete: [48, 25], formiga: [41, 26], drifteiro: [44, 25], tanque: [46, 29] };
@@ -362,22 +377,25 @@ function contatoCom(c, eu, o, dt, reg, semImpulso) {
   const mA = eu.massa || 800, mB = o.massa || 800, IA = mA * RAIO_GIRO2, IB = mB * RAIO_GIRO2;
   const vx0 = c.vx, vy0 = c.vy, r0 = c.r;
   let forca = 0;
-  o.de = null; // (o que o outro carro leva da mesma batida: o oposto, para quem o move no servidor)
+  o.de = null; o.pre = null; o.culpa = 0; // (o que o outro carro leva da mesma batida: o oposto, para quem o move no servidor)
   if (vn < 0 && !semImpulso) { // se aproximando: troca o momento
     forca = -vn;
+    // as velocidades de ANTES do impulso: a gravidade e a culpa saem delas (o servidor guarda em corrida-contato.js)
+    const culpa = culpaEntre(c.vx, c.vy, ovx, ovy, nx, ny), kA = culpa === 1 ? K_CULPADO : culpa === -1 ? K_VITIMA : 1, kB = culpa === -1 ? K_CULPADO : culpa === 1 ? K_VITIMA : 1;
+    o.culpa = culpa; o.pre = { vx: c.vx, vy: c.vy, ovx, ovy, nx, ny, a: aa, oa: oa1 };
     const cAn = rAx * ny - rAy * nx, cBn = rBx * ny - rBy * nx;
     const j = -(1 + E_BATIDA) * vn / (1 / mA + 1 / mB + cAn * cAn / IA + cBn * cBn / IB);
     // atrito no contato: o carro de raspão é puxado e gira um pouco, até MU_BATIDA do impulso normal
     const tx = -ny, ty = nx, vt = rvx * tx + rvy * ty, cAt = rAx * ty - rAy * tx, cBt = rBx * ty - rBy * tx;
     const jt = ALIVIO * Math.max(-MU_BATIDA * j, Math.min(MU_BATIDA * j, -vt / (1 / mA + 1 / mB + cAt * cAt / IA + cBt * cBt / IB)));
     const Fx = j * nx + jt * tx, Fy = j * ny + jt * ty;
-    c.vx += Fx / mA; c.vy += Fy / mA;
-    o.de = { dvx: -Fx / mB, dvy: -Fy / mB, dr: Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, -ALIVIO * (rBx * Fy - rBy * Fx) / IB)) };
-    const dr = Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, ALIVIO * (rAx * Fy - rAy * Fx) / IA));
+    c.vx += kA * Fx / mA; c.vy += kA * Fy / mA;
+    o.de = { dvx: -kB * Fx / mB, dvy: -kB * Fy / mB, dr: Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, -kB * ALIVIO * (rBx * Fy - rBy * Fx) / IB)), k: kB };
+    const dr = Math.max(-R_MAX_BATIDA, Math.min(R_MAX_BATIDA, kA * ALIVIO * (rAx * Fy - rAy * Fx) / IA));
     // o carro com o pneu arcade (o macio) tem a guinada do volante; a da batida vai à parte e se apaga sozinha
     if (c.amb && c.amb.pn && c.amb.pn.arcade) c.rIns = (c.rIns || 0) + dr; else c.r += dr;
     // a instabilidade: mais forte e mais longa quanto maior a força
-    const nivel = ALIVIO * Math.min(1, forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
+    const nivel = ALIVIO * Math.min(1, Math.min(1, kA) * forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
     if (ins >= (c.inst || 0)) { c.inst = ins; c.instK = ins / dur; }
   }
   // separa os carros (um pouco por passo, de graça nos que já se afastam): a posição vai ao instante do contato e anda o resto do passo
@@ -399,7 +417,7 @@ function aplicarContato(c, reg) {
 function impulsoExterno(c, d, forca) {
   c.vx += d.dvx; c.vy += d.dvy;
   if (c.amb && c.amb.pn && c.amb.pn.arcade) c.rIns = (c.rIns || 0) + d.dr; else c.r += d.dr;
-  const nivel = ALIVIO * Math.min(1, forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
+  const nivel = ALIVIO * Math.min(1, Math.min(1, d.k ?? 1) * forca / INST_FORCA), dur = 0.2 + 1.8 * nivel, ins = Math.max(0.15, nivel);
   if (ins >= (c.inst || 0)) { c.inst = ins; c.instK = ins / dur; }
   const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca;
 }
@@ -414,7 +432,7 @@ function contatoPasso(c, eu, outros, ev, reg, dt = PASSO, podeImpulso) {
     if (Math.abs(o.x - c.x) > 110 || Math.abs(o.y - c.y) > 110) continue; // longe demais para encostar neste passo
     if (o.vx === undefined) o = { ...o, vx: Math.cos(o.a) * (o.v || 0), vy: Math.sin(o.a) * (o.v || 0), r: o.r || 0 };
     const forca = contatoCom(c, eu, o, dt, reg, podeImpulso ? !podeImpulso(o) : false);
-    if (forca > 0) { maior = Math.max(maior, forca); if (ev) ev.push({ t: "carro", id: o.id, forca, k: c.tick, de: o.de }); }
+    if (forca > 0) { maior = Math.max(maior, forca); if (ev) ev.push({ t: "carro", id: o.id, forca, k: c.tick, de: o.de, pre: o.pre, culpa: o.culpa }); }
   }
   return maior;
 }
@@ -511,7 +529,7 @@ function reconciliar(c, st, tr, ctx) {
   return { erro, dentro, dx: ox - c.x, dy: oy - c.y, da };
 }
 
-const api = { PASSO, ATRASO, EXTRAPOLA, EXTRAPOLA_MAX, extrapolar, amostraEm, ERRO_SALTO, TEMPO_DO_DESVIO, decairDesvio, gastarTempo, reconciliar, pneuDaLargada, criarPista, preparar, quadro, alturaDoChao, procurar, vagaDoGrid, novo, empacotar, desempacotar, vacuoAlvo, pilotoAutomatico, passo, voltarParaPista, contatoPasso, impulsoExterno, FORCA_EV, novoRegistro, aplicarContato, forcaEntre, massaDe, baterNosOutros, DIMENSOES, dimensoes, serializar, aplicar, COMPOSTOS };
+const api = { PASSO, ATRASO, EXTRAPOLA, EXTRAPOLA_MAX, extrapolar, amostraEm, ERRO_SALTO, TEMPO_DO_DESVIO, decairDesvio, gastarTempo, reconciliar, pneuDaLargada, criarPista, preparar, quadro, alturaDoChao, procurar, vagaDoGrid, novo, empacotar, desempacotar, vacuoAlvo, pilotoAutomatico, passo, voltarParaPista, contatoPasso, impulsoExterno, culpaEntre, K_CULPADO, K_VITIMA, FORCA_EV, novoRegistro, aplicarContato, forcaEntre, massaDe, baterNosOutros, DIMENSOES, dimensoes, serializar, aplicar, COMPOSTOS };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Sim = api;
 })(typeof window !== "undefined" ? window : globalThis);

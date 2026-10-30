@@ -16,7 +16,7 @@ const ACEL_JANELA = 6;      // a aceleração de um carro que ainda não chegou 
 const PAR_MS = 120;         // a mesma batida: dentro disto, só quem registrou primeiro troca o momento
 const PENDENTE_MS = 800;    // um impulso que o outro carro não aplicou em tanto tempo (ficou parado, saiu) se perde
 
-function estado(room) { return room.contato || (room.contato = { hist: new Map(), pend: new Map(), pares: new Map() }); }
+function estado(room) { const K = room.contato || (room.contato = { hist: new Map(), pend: new Map(), pares: new Map() }); return K.impactos ? K : (K.impactos = new Map(), K); }
 function limpar(room) { room.contato = null; }
 
 function novoHistorico() { return { n: 0, i: 0, t: new Float64Array(N), x: new Float64Array(N), y: new Float64Array(N), z: new Float64Array(N), a: new Float64Array(N), vx: new Float64Array(N), vy: new Float64Array(N), r: new Float64Array(N) }; }
@@ -70,6 +70,18 @@ const BOX_FANTASMA_MS = 2000;
 const fantasmaDoBox = (q, agora = Date.now()) => !!q.box || agora < (q.boxFant || 0);
 const chave = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
 
+// O IMPACTO de cada par de carros, guardado no momento em que o primeiro dos dois detecta a batida e ANTES de o impulso trocar as
+// velocidades (sim.js: contatoCom): a velocidade de aproximação (`forca`, u/s: a velocidade relativa na direção do outro carro) e quem
+// causou (`culpado`: o id, ou null quando ninguém se aproximou claramente mais que o outro). A direção de prova lê daqui a gravidade e a
+// culpa quando cada carro avisa a sua batida (o do batido só avisa depois, com as velocidades já trocadas).
+const IMPACTO_VALE_MS = 8000;
+function impactoDe(room, a, b) { const i = estado(room).impactos.get(chave(a, b)); return i || null; }
+function guardarImpacto(K, idA, e, t) {
+  if (!e.pre) return;
+  for (const [k, i] of K.impactos) if (t - i.t > IMPACTO_VALE_MS) K.impactos.delete(k);
+  K.impactos.set(chave(idA, e.id), { t, forca: e.forca, culpado: e.culpa === 1 ? idA : e.culpa === -1 ? e.id : null, de: idA, pre: e.pre });
+}
+
 // Depois de cada passo do carro `c` do jogador `p`, na hora `tFim` (ms do servidor): aplica os impulsos que os outros deixaram para
 // ele, bate nos outros (se `ativo`) e guarda o estado no histórico. As batidas vão em `ev` como { t: "carro", id, forca, k }.
 function depoisDoPasso(room, p, c, tFim, ev, ativo) {
@@ -94,6 +106,7 @@ function depoisDoPasso(room, p, c, tFim, ev, ativo) {
     });
     for (const e of evl) {
       K.pares.set(chave(p.id, e.id), { t: tFim, dono: p.id });
+      guardarImpacto(K, p.id, e, tFim);
       if (e.de) { let f = K.pend.get(e.id); if (!f) K.pend.set(e.id, f = []); if (f.length > 8) f.shift(); f.push({ t: tFim, de: e.de, forca: e.forca, por: p.id }); }
       if (ev && e.forca >= Sim.FORCA_EV) ev.push(e);
     }
@@ -101,4 +114,4 @@ function depoisDoPasso(room, p, c, tFim, ev, ativo) {
   gravar(room, p.id, tFim, c);
 }
 
-module.exports = { BOX_FANTASMA_MS, fantasmaDoBox, estado, limpar, gravar, em, outrosNaHora, depoisDoPasso, geometria, PAR_MS, N };
+module.exports = { BOX_FANTASMA_MS, fantasmaDoBox, impactoDe, estado, limpar, gravar, em, outrosNaHora, depoisDoPasso, geometria, PAR_MS, N };

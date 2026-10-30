@@ -464,7 +464,7 @@ function classificacaoFinal(carros, voltas) {
   const resto = carros.filter((c) => c.finish == null || c.dnf).sort((a, b) => (b.laps - a.laps) || ((b.prog || 0) - (a.prog || 0)));
   const linhas = [...terminaram, ...resto].map((c, i) => {
     const nc = !c.dnf && c.finish == null && (c.laps || 0) < minimo; // quem abandonou por dano (dnf) não pontua
-    return { id: c.id, pos: i + 1, nc, dnf: !!c.dnf, tempo: c.finish != null && !c.dnf ? final(c) : null, pontos: !nc && !c.dnf && i < PONTOS.length ? PONTOS[i] : 0 };
+    return { id: c.id, pos: i + 1, nc, dnf: !!c.dnf, ...(c.dsq ? { dsq: true } : {}), tempo: c.finish != null && !c.dnf ? final(c) : null, pontos: !nc && !c.dnf && i < PONTOS.length ? PONTOS[i] : 0 };
   });
   // a volta mais rápida da corrida vale +1 ponto (para quem terminou classificado)
   let rapido = null, melhor = Infinity;
@@ -483,6 +483,34 @@ function batida(forca) {
   const nivel = forca >= BATIDA_FORTE ? "forte" : forca >= BATIDA_MEDIA ? "media" : "leve";
   return { nivel, segundos: 0, dano: DANO_POR_BATIDA };
 }
+// ---------- as punições de batida entre carros (a escala da direção de prova) ----------
+// A gravidade vem da VELOCIDADE DE APROXIMAÇÃO no impacto (`forca` de sim.js: a velocidade relativa na direção do outro carro, medida
+// ANTES do impulso trocar as velocidades), em u/s (1 u/s = 0,75 km/h): leve a partir de 20 (15 km/h), média a partir de 55 (~41 km/h)
+// e grave a partir de 107 (~80 km/h a mais na traseira de quem estava na frente). A escala de quem CAUSOU a batida: leve +3 s, média
+// +6 s, grave stop-and-go de 8 s (entrar no box, ficar parado 8 s sem trocar pneu e voltar) em até 3 voltas; sem voltas para cumprir,
+// vale +20 s no tempo final; quem não cumpre leva a bandeira preta. A 2ª batida causada na corrida sobe um nível, a 3ª é bandeira preta,
+// e até o fim da 1ª volta (a largada e a 1ª curva) a punição também sobe um nível.
+const COLISAO_LEVE = BATIDA_MIN, COLISAO_MEDIA = 55, COLISAO_GRAVE = 107;
+const PUNICAO_LEVE_S = 3, PUNICAO_MEDIA_S = 6, STOPGO_S = 8, STOPGO_VOLTAS = 3, STOPGO_CONVERSAO_S = 20;
+const ESCALA_PUNICAO = ["leve", "media", "grave"];
+function gravidadeDaBatida(forca) {
+  if (!(forca >= COLISAO_LEVE)) return null;
+  return forca >= COLISAO_GRAVE ? "grave" : forca >= COLISAO_MEDIA ? "media" : "leve";
+}
+// O nível da punição de quem causou a batida: `n` é quantas batidas ele causou na corrida (contando esta); `primeiraVolta`, se ainda
+// não fechou a 1ª volta. Devolve { nivel: "leve" | "media" | "grave" | "preta", subiu: [motivos] }.
+function nivelDaPunicao(gravidade, n, primeiraVolta) {
+  if (!ESCALA_PUNICAO.includes(gravidade)) return null;
+  if (n >= 3) return { nivel: "preta", subiu: ["terceira batida causada"] };
+  let i = ESCALA_PUNICAO.indexOf(gravidade); const subiu = [];
+  if (n === 2) { i++; subiu.push("reincidência"); }
+  if (primeiraVolta) { i++; subiu.push("primeira volta"); }
+  return { nivel: ESCALA_PUNICAO[Math.min(2, i)], subiu };
+}
+// O stop-and-go cabe? `voltas` é o número de voltas da corrida; `feitas` as que o piloto já fechou. O box só abre se não é a última
+// volta (a chegada cai dentro do corredor), então precisa de uma volta de box até o fim.
+const stopGoCabe = (feitas, voltas) => (feitas || 0) + 1 < (voltas || 1);
+
 // Cada ponto percentual de dano tira um ponto percentual de velocidade, aceleração, freio e aderência.
 function efeitoDoDano(dano) {
   const d = limite((dano || 0) / 100, 0, 1);
@@ -502,7 +530,7 @@ function vacuoF1(draft, curva) {
 
 const api = { PONTO_VOLTA_RAPIDA, pontosDe, PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO,
-  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos,
+  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos,
   CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, RAMPA_S, CHUVA_MIN_S, AVISO_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, OPCOES_DE_CLIMA, ROTULO_CLIMA, previsaoDoGP, descreverPrevisao, sortearClima, chuvaEm, aguaEm, proximaMudanca, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;

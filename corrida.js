@@ -72,7 +72,7 @@ module.exports = function attachCorrida(io) {
       boxReady: Itens.publicBoxes(room), ...(room.config.regras === "f1" ? { tvAte: room.tvAte || null, tv: room.tvAte && Date.now() < room.tvAte ? room.tv || null : null, clima: room.clima || null, previsao: F1.previsaoDoGP(sementeDoClima(room), room.config.clima), montagens: room.montagens || {}, bonusMontagem: room.bonusMontagem || {}, pecasEq: room.pecasEq || {}, chefes: chefes(room), semente: room.semente || null, direcao: Direcao.publico(room), luzes: room.luzes || null, quali: Quali.publico(room), resultado: room.resultado || null } : {}),
       players: room.order.map((id) => {
         const p = room.players[id];
-        return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, jogos: room.config.regras === "f1" ? F1.jogosRestantes(p) : null, noBox: !!p.box, fantBox: Contato.fantasmaDoBox(p), quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
+        return { id, bot: !!p.bot, ...(p.assumido ? { assumido: true } : {}), name: p.name, nomeCompleto: p.nomeCompleto || null, equipe: p.equipe || null, numero: p.numero || null, sigla: p.sigla || null, pawn: p.pawn, color: p.color, skin: p.skin, car: p.car, mods: p.mods, pneu: p.pneu || F1.COMPOSTO_PADRAO, pneuAtual: p.pneuAtual || p.pneu || F1.COMPOSTO_PADRAO, paradas: (p.paradas || []).length, jogos: room.config.regras === "f1" ? F1.jogosRestantes(p) : null, noBox: !!p.box, fantBox: Contato.fantasmaDoBox(p), quebrou: !!p.quebrou, acrescimo: p.acrescimo || 0, penal: p.penal || 0, dsq: !!p.dsq, causadas: p.causadas || 0, stopGo: p.stopGo ? { s: p.stopGo.s, v: Direcao.stopGoRestante(p, room.config.voltas) } : null, dano: p.dano || 0, dnf: !!p.dnf, ultimaBatida: p.ultimaBatida || null, avisosLimite: p.avisosLimite || 0, azul: !!p.azul, drsZona: p.drsZona ?? -1, ers: p.ia?.ers?.carga ?? p.ers?.carga ?? null, grid: p.grid, online: p.sockets.size > 0, laps: p.laps, sector: p.sector, started: p.started, finish: p.finish, best: p.best, last: p.last,
           item: p.item || null, cargas: p.cargas || 0, rolling: p.rolling || 0, boostUntil: p.boostUntil || 0, starUntil: p.starUntil || 0, spinUntil: p.spinUntil || 0,
           shrinkUntil: p.shrinkUntil || 0, inkUntil: p.inkUntil || 0, balaUntil: p.balaUntil || 0 };
       }),
@@ -276,7 +276,7 @@ module.exports = function attachCorrida(io) {
     }
     // regras de F1: o resultado do GP, com os pontos oficiais (quem fez menos de 90% das voltas é NC e não pontua)
     if (room.config.regras === "f1") {
-      room.resultado = F1.classificacaoFinal(room.order.map((id) => { const p = room.players[id]; const bonus = bonusDoBox(room, p); return { id, laps: p.laps, finish: p.finish, dnf: !!p.dnf, acrescimo: (p.acrescimo || 0) - bonus, prog: p.pos ? p.pos.prog : 0, best: p.best }; }), room.config.voltas)
+      room.resultado = F1.classificacaoFinal(room.order.map((id) => { const p = room.players[id]; const bonus = bonusDoBox(room, p); return { id, laps: p.laps, finish: p.finish, dnf: !!p.dnf, acrescimo: (p.acrescimo || 0) - bonus, prog: p.pos ? p.pos.prog : 0, best: p.best, dsq: !!p.dsq }; }), room.config.voltas)
         .map((r) => { const p = room.players[r.id]; return { ...r, voltas: p.laps, grid: p.grid, paradas: (p.paradas || []).length, compostos: p.compostos || [], penal: p.penal || 0, dano: p.dano || 0, batidas: p.batidas || 0, melhor: p.best }; });
       const v = room.resultado[0]; if (v) log(room, `🏆 ${nameOf(room, v.id)} venceu o GP e leva ${v.pontos} pontos.`);
     }
@@ -299,6 +299,7 @@ module.exports = function attachCorrida(io) {
   // A parada acabou (o navegador diz ao sair do corredor; o robô, aqui mesmo): guarda volta, tempo e composto novo,
   // confere o limitador pelo tempo que ficou no corredor (rápido demais: RAPIDO s de acréscimo) e avisa no log.
   function concluirParada(room, p, d) {
+    if (p && d.stopGo) { Direcao.cumprirStopGo(room, p, (s) => log(room, s)); return; } // a visita foi só o stop-and-go: sem troca de pneu, não conta como parada
     if (!p || !F1.PNEUS[d.composto]) return;
     d = { ...d, composto: F1.compostoParaParada(p, d.composto) }; // limite de 2 jogos de cada composto: o servidor troca o esgotado
     const n = (p.paradas || []).length + 1, tempo = Math.round(d.tempo * 10) / 10, motivo = [];
@@ -342,6 +343,11 @@ module.exports = function attachCorrida(io) {
     if (lap < T.PISTAS[room.config.pista].minLap) return false; // rápido demais: atalho (a volta não conta, mas o setor segue o do navegador, senão a volta seguinte morria)
     p.laps++; p.last = lap; p.best = p.best == null ? lap : Math.min(p.best, lap); p.lapStart = now;
     if (!p.bot) registrarRecorde(room, p, lap);
+    // stop-and-go pendente: sem voltas para cumprir vira +20 s; passou das 3 voltas sem cumprir, bandeira preta (desclassificado)
+    if (room.config.regras === "f1" && Direcao.voltaFechada(room, p, (s) => log(room, s))) {
+      if (!room.order.some((id) => { const q = room.players[id]; return q.finish == null && !q.dnf && (q.sockets.size || q.bot); })) endRace(room);
+      return true;
+    }
     if (p.laps >= room.config.voltas) {
       p.finish = (now - room.startAt) / 1000;
       room.finishOrder.push(p.id);

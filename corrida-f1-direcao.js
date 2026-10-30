@@ -1,6 +1,7 @@
 // Direção de prova da F1. O servidor mantém bandeiras, DRS e penalidades; o navegador só as mostra.
 const F1 = require('./public/corrida/f1-regras.js');
 const T = require('./public/corrida/pistas.js');
+const Contato = require('./corrida-contato.js'); // o impacto de cada par de carros (velocidades de ANTES do impulso)
 
 const penalizar = (p, segundos, motivo, log) => {
   p.penal = (p.penal || 0) + segundos;
@@ -17,22 +18,50 @@ function largada(room, p, pos, agora, log) {
   if (!andou && !acelerou) return;
   p.queimou = true; penalizar(p, 5, 'queimou a largada', log);
 }
-// Uma batida (no muro ou em outro carro) de `forca` (F1.batida diz o nível): 1% de dano, sem punição de tempo (e cada 1% de
-// dano tira 1% de desempenho: F1.efeitoDoDano). Com 100%, perda total (`dnf`: o piloto está fora). Quem decide é o servidor, que
+// ---------- as punições (escala em f1-regras.js: leve +3 s, média +6 s, grave stop-and-go de 8 s, reincidência, bandeira preta) ----------
+const ROTULO = { leve: 'leve', media: 'média', grave: 'grave' };
+// Stop-and-go: o piloto tem STOPGO_VOLTAS voltas para entrar no box, parar STOPGO_S s sem trocar pneu e voltar (o box faz a parada: sim.js,
+// `amb.stopGo`; quem cumpre é `cumprirStopGo`). Se a punição cai na última volta, ou não sobra volta com box aberto, vira +20 s no tempo final.
+// Sem cumprir em 3 voltas, bandeira preta. Dois stop-and-go pendentes somam o tempo parado na mesma visita.
+function stopGoRestante(p, voltas) { const sg = p.stopGo; return sg ? Math.max(0, Math.min(sg.ate, voltas) - (p.laps || 0)) : 0; }
+function aplicarStopGo(room, p, motivo, log) {
+  if (!F1.stopGoCabe(p.laps, room.config.voltas)) { penalizar(p, F1.STOPGO_CONVERSAO_S, `${motivo}: sem voltas para o stop-and-go`, log); return 'convertido'; }
+  const sg = p.stopGo || (p.stopGo = { n: 0, s: 0, ate: (p.laps || 0) + F1.STOPGO_VOLTAS });
+  sg.n++; sg.s = F1.STOPGO_S * sg.n;
+  const v = stopGoRestante(p, room.config.voltas);
+  log(`🛑 ${p.name}: ${motivo}. Stop-and-go ${sg.s} s: cumpra em ${v} volta${v > 1 ? 's' : ''}.`);
+  return 'stopgo';
+}
+function preta(room, p, motivo, log) {
+  if (p.dsq) return false;
+  p.dsq = true; p.dnf = true; p.stopGo = null;
+  log(`🏴 ${p.name}: bandeira preta! Desclassificado (${motivo}).`);
+  return true;
+}
+// O piloto entrou no box e cumpriu o stop-and-go
+function cumprirStopGo(room, p, log) {
+  const sg = p.stopGo; if (!sg) return false;
+  p.stopGo = null; log(`✅ ${p.name} cumpriu o stop-and-go de ${sg.s} s.`); return true;
+}
+// A volta fechou (p.laps já subiu): sobrou stop-and-go sem voltas para cumprir, vira +20 s; passou do prazo de 3 voltas, bandeira preta.
+// Devolve true se o piloto foi desclassificado (quem chama confere se a corrida acabou).
+function voltaFechada(room, p, log) {
+  const sg = p.stopGo; if (!sg || p.dsq) return false;
+  if (!F1.stopGoCabe(p.laps, room.config.voltas)) {
+    p.stopGo = null; penalizar(p, F1.STOPGO_CONVERSAO_S, 'stop-and-go não cumprido e sem voltas para cumprir', log); return false;
+  }
+  if ((p.laps || 0) >= sg.ate) return preta(room, p, `stop-and-go de ${sg.s} s não cumprido em ${F1.STOPGO_VOLTAS} voltas`, log);
+  return false;
+}
+// Uma batida (no muro ou em outro carro) de `forca` (F1.batida diz o nível do dano). No muro: 1% de dano, sem punição de tempo (e cada 1%
+// de dano tira 1% de desempenho: F1.efeitoDoDano). Com 100%, perda total (`dnf`: o piloto está fora). Quem decide é o servidor, que
 // vê o contato na física do carro. O mesmo contato não conta duas vezes: cada par (o muro, ou cada outro carro: `chave`) só volta
 // a valer depois de BATIDA_INTERVALO (4 s). Quem já recebeu a bandeirada (fantasma) não bate nem leva batida.
-// Quem causou a batida entre dois carros: o que vinha atrás e acertou o da frente (o outro está à frente dele, no rumo dele, e ele
-// está atrás do outro, no rumo do outro). Só a posição decide: quando a direção de prova fica sabendo, o impulso da batida já
-// trocou as velocidades. Toque lado a lado, sem ninguém claramente atrás, não tem culpado. O batido nunca é punido.
-function causou(room, p, outroId) {
-  const o = room.players[outroId]; if (!o) return false;
-  const a = p.sim ? p.sim.c : p.ia?.sim || p.pos, b = o.sim ? o.sim.c : o.ia?.sim || o.pos; if (!a || !b) return false;
-  const fx = Math.cos(a.a || 0), fy = Math.sin(a.a || 0), dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
-  const frente = (dx * fx + dy * fy) / d; // 1: o outro está bem na minha frente; 0: do lado
-  const atras = (dx * Math.cos(b.a || 0) + dy * Math.sin(b.a || 0)) / d; // 1: eu estou bem atrás do outro, no rumo dele
-  return frente > 0.55 && atras > 0.3;
-}
-const PUNICAO_BATIDA = { leve: 1, media: 2, forte: 3 }; // segundos para quem causou a batida, pela força dela
+// Entre carros, a gravidade vem da velocidade de aproximação no impacto (`forca`, medida antes do impulso trocar as velocidades) e a
+// culpa, do impacto guardado em corrida-contato.js: quem se aproximou claramente mais que o outro causou (a traseira, quem fecha a
+// porta); sem culpado claro (lado a lado) ninguém é punido. O causador leva a punição e a maior parte do dano; o batido nunca é punido
+// e quase não leva dano.
+const DANO_CAUSADOR = { leve: 1, media: 2, grave: 3 }, DANO_BATIDO = { leve: 0, media: 0, grave: 0.5 };
 function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   if (!room.direcao || room.phase !== 'race' || !p || p.dnf || p.finish != null || p.box || agora < room.startAt) return null;
   const cd = p.batidaPares || (p.batidaPares = {});
@@ -42,13 +71,25 @@ function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   for (const k of Object.keys(cd)) if (cd[k] < agora) delete cd[k]; // (só guarda os que ainda valem)
   p.batidaAte = cd[chave];
   p.batidas = (p.batidas || 0) + 1;
-  p.dano = Math.min(100, Math.round(((p.dano || 0) + b.dano) * 10) / 10);
-  p.ultimaBatida = { at: agora, nivel: b.nivel, dano: b.dano, tipo };
-  const nivel = { leve: 'leve', media: 'média', forte: 'forte' }[b.nivel];
-  const culpa = tipo !== 'muro' && String(chave).startsWith('carro:') && causou(room, p, String(chave).slice(6));
-  log(`💥 ${p.name}: batida ${nivel} ${tipo === 'muro' ? 'no muro' : 'com outro carro'}; dano ${Math.round(p.dano)}%${culpa ? '' : ' (sem punição de tempo)'}.`);
-  if (culpa) penalizar(p, PUNICAO_BATIDA[b.nivel] || 1, `causou uma batida ${nivel}`, log);
-  if (p.dano >= 100) { p.dnf = true; log(`💥 ${p.name}: perda total! O carro é retirado da pista e ${p.name} está fora da corrida.`); }
+  const outroId = tipo !== 'muro' && String(chave).startsWith('carro:') ? String(chave).slice(6) : null;
+  const imp = outroId ? Contato.impactoDe(room, p.id, outroId) : null;
+  const grav = outroId ? F1.gravidadeDaBatida(forca) : null;
+  const culpa = !!(grav && imp && imp.culpado === p.id), batido = !!(grav && imp && imp.culpado && imp.culpado !== p.id);
+  const dano = culpa ? DANO_CAUSADOR[grav] : batido ? DANO_BATIDO[grav] : b.dano;
+  p.dano = Math.min(100, Math.round(((p.dano || 0) + dano) * 10) / 10);
+  p.ultimaBatida = { at: agora, nivel: grav || b.nivel, dano, tipo, ...(culpa ? { culpa: true } : batido ? { batido: true } : {}) };
+  const nivel = grav ? ROTULO[grav] : { leve: 'leve', media: 'média', forte: 'forte' }[b.nivel];
+  log(`💥 ${p.name}: batida ${nivel} ${tipo === 'muro' ? 'no muro' : 'com outro carro'}; dano ${Math.round(p.dano)}%${culpa ? '' : batido ? ' (atingido: sem punição)' : ' (sem punição de tempo)'}.`);
+  if (culpa) {
+    p.causadas = (p.causadas || 0) + 1;
+    const dec = F1.nivelDaPunicao(grav, p.causadas, (p.laps || 0) === 0), subiu = dec.subiu.length ? ` (${dec.subiu.join(' e ')}: punição maior)` : '';
+    const motivo = `causou uma batida ${nivel}${subiu}`;
+    if (dec.nivel === 'leve') penalizar(p, F1.PUNICAO_LEVE_S, motivo, log);
+    else if (dec.nivel === 'media') penalizar(p, F1.PUNICAO_MEDIA_S, motivo, log);
+    else if (dec.nivel === 'grave') aplicarStopGo(room, p, motivo, log);
+    else preta(room, p, `${p.causadas} batidas causadas na corrida`, log);
+  }
+  if (p.dano >= 100 && !p.dnf) { p.dnf = true; log(`💥 ${p.name}: perda total! O carro é retirado da pista e ${p.name} está fora da corrida.`); }
   return b;
 }
 const atravessou = (antes, depois, marco) => Number.isFinite(antes) && depois >= antes && Math.floor(depois - marco) > Math.floor(antes - marco);
@@ -62,7 +103,7 @@ function iniciar(room) {
     scDura: 10000 + Math.floor(r() * 4000),
     pista: T.pontos(t, 6), ultimaAtualizacao: 0 };
   for (const id of room.order) Object.assign(room.players[id], { drsZona: -1, penal: 0, avisosLimite: 0,
-    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, batidas: 0, batidaAte: 0, batidaPares: {}, ultimaBatida: null, queimou: false, gasNasLuzes: 0, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
+    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, dsq: false, causadas: 0, stopGo: null, batidas: 0, batidaAte: 0, batidaPares: {}, ultimaBatida: null, queimou: false, gasNasLuzes: 0, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
 }
 function progresso(p, n) { return Number.isFinite(p.pos?.prog) ? p.pos.prog / n : -1; }
 function ordem(room) {
@@ -144,4 +185,4 @@ function publico(room) {
   return { amarelo: d.amarelo, safety: d.safety ? { ate: d.safety.ate, prog: d.safety.prog } : null,
     limite: d.safety ? 0.54 : d.amarelo ? 0.82 : 1 };
 }
-module.exports = { iniciar, passo, registrar, publico, ordem, bater, GAS_QUEIMA_MS };
+module.exports = { iniciar, passo, registrar, publico, ordem, bater, aplicarStopGo, cumprirStopGo, voltaFechada, stopGoRestante, GAS_QUEIMA_MS };
