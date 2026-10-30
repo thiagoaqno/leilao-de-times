@@ -83,7 +83,7 @@ export function cenarioMonaco(tr, ctx) {
   tr.contextoVidaMonaco = { lista, predioEm, hAt };
   const f = D.frac, c = f.curvas, tc = f.trechos;
   atracados(tr, ctx, tc.cais);
-  tecpro(tr, add, [[c.sainteDevote + 0.006, c.sainteDevote + 0.028, "fora"], [tc.nouvelleChicane[0] - 0.012, tc.nouvelleChicane[1] + 0.012, "fora"], [c.rascasse - 0.01, c.rascasse + 0.008, "fora"]]);
+  tecpro(tr, add, [[c.sainteDevote + 0.006, c.sainteDevote + 0.028, "fora"], [tc.nouvelleChicane[0] - 0.012, tc.nouvelleChicane[1] + 0.012, "fora"], [c.rascasse - 0.01, c.rascasse + 0.008, "fora"], [c.mirabeauHaute - 0.006, c.mirabeauHaute + 0.014, "fora"]]); // (só nas áreas de escape: Sainte Dévote, chicane do porto, Rascasse e Mirabeau)
   telaos(tr, add, [0.03, c.casino, c.mirabeauHaute + 0.012, tc.cais[0] + 0.03, c.rascasse - 0.02]);
   largada(tr, add); cais(tr, add, tc.cais); rascasse(tr, add, hAt); fonte(tr, add, hAt); cruzeiros(tr, add);
   tr.marcosPos = D.marcos; // (para conferir no navegador: __corrida.race.tr.marcosPos)
