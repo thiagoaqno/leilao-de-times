@@ -20,7 +20,8 @@ const NIVEIS = { facil: 0.80, medio: 0.87, dificil: 0.93 }; // modo clássico: f
 // melhores voltas de cada um). No médio, um pouco mais lento que essa média; no difícil, um pouco mais rápido.
 const RITMO = { facil: 1.12, medio: 1.03, dificil: 0.98 };
 const STEP = 6;
-const FOLGA_LINHA = 18; // a linha de F1 fica a esta distância (u) da beira da pista, de centro a centro: sobra meia largura do carro e um respiro
+const FOLGA_LINHA = 4; // (pouca folga: no ápice e na saída o robô põe meio carro em cima da zebra, como quem joga)
+const _FOLGA_LINHA_ANTIGA = 18; // a linha de F1 fica a esta distância (u) da beira da pista, de centro a centro: sobra meia largura do carro e um respiro
 // O robô de F1 segue a linha de corrida (o elástico de `tracado`) por inteiro, menos uma folga: o suficiente para abrir as curvas e
 // encostar nos ápices sem raspar no zebra. A velocidade que ele mira sai da curvatura DESSE caminho (`curvaturaDoCaminho`), não da do
 // elástico cru, que tinha quinas de raio quase zero.
@@ -170,10 +171,10 @@ function tempoDaVolta(pf, escala, ader) {
 // ---------- o perfil de velocidade do robô de F1 ----------
 // O nível `f` (0,4 a 1) do robô é a fração da margem do piloto ideal (MARGEM_F1) que ele usa nas curvas: 1 é o limite, abaixo disso
 // ele faz as curvas mais devagar e freia mais cedo. Nas retas ninguém tira o pé por nível: só a curva e a frenagem custam tempo.
-const NIVEIS_F1 = [0.3, 0.5, 0.65, 0.8, 0.9, 1, 1.06]; // (acima de 1: o difícil passa um pouco do ideal medido, como quem joga bem)
+const NIVEIS_F1 = [0.3, 0.5, 0.65, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]; // (acima de 1: o difícil passa um pouco do ideal medido, como quem joga bem)
 function topoDe(pf) { return pf.topo || (pf.topo = D.velocidadeFinal(pf.c)); }
 function perfilF1(pf, f) {
-  const q = Math.round(Math.min(1.06, Math.max(0.3, f)) * 100) / 100, mapa = pf.perfisF1 || (pf.perfisF1 = new Map());
+  const q = Math.round(Math.min(1.4, Math.max(0.3, f)) * 100) / 100, mapa = pf.perfisF1 || (pf.perfisF1 = new Map());
   let v = mapa.get(q);
   if (!v) {
     v = D.perfilIdeal(pf.pts.map((p, i) => ({ k: pf.kf[i], h: p.h })), pf.c, STEP, margemDaPista(pf.pista).margem * q, null, margemDaPista(pf.pista).freio);
@@ -226,7 +227,10 @@ const aderRef = () => ADER_REF || (ADER_REF = F1.aderencia({ composto: "medio", 
 function idealDe(pista, spec) { return tempoDaVolta(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren")), 1, aderRef()); }
 // Folga sobre o ideal do carro: difícil 0, médio 1,5% e fácil 5,5%, além da pequena diferença do piloto.
 // O tráfego e o controle dos pedais ainda custam tempo na corrida real.
-const FOLGA_F1 = { facil: 0.04, medio: 0, dificil: -0.03 }; // (o difícil mira 3% abaixo do ideal: quem joga bem já bate o ideal)
+const FOLGA_F1 = { facil: 0.04, medio: 0, dificil: 0 };
+// quem joga anda bem acima do "ideal" medido pelo perfil (o pneu segura mais do que a conta supõe): por nível, o robô usa esta
+// fração a mais do limite das curvas, por cima do nível que dá o ideal. No difícil ele vai no limite de verdade.
+const EMPURRAO_F1 = { facil: 1, medio: 1.12, dificil: 1.27 }; // (o difícil mira 3% abaixo do ideal: quem joga bem já bate o ideal)
 function referenciaF1(room) {
   const pista = room.config.pista;
   const pf = perfil(pista, F1Equipes.specDaEquipe("mclaren"));
@@ -248,7 +252,7 @@ function largada(pts, g, W, f1) { // o mesmo lugar do grid do navegador (gridSpo
 // montagem do carro e ritmo do piloto; no modo clássico, continua seguindo a média das voltas da sala.
 function nivelDe(room, p, tracadoId, nBots, pf) {
   if (room.config.regras === "f1") {
-    return escalaPara(pf, alvoF1(room, p, pf), aderRef(), 8); // o nível é do piloto; o pneu de cada momento (macio, gasto, frio) mexe no ritmo de verdade, em passoF1
+    return Math.min(1.4, escalaPara(pf, alvoF1(room, p, pf), aderRef(), 8) * (EMPURRAO_F1[room.config.nivel] || 1)); // o nível é do piloto; o pneu de cada momento (macio, gasto, frio) mexe no ritmo de verdade, em passoF1
   }
   const pil = p.piloto, ritmo = room.ritmoRobos;
   const sorte = rnd;
