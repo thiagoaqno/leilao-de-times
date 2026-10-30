@@ -101,7 +101,18 @@ export function buildTrack(id) {
   const alcance = W / 2 + t.flat + t.fall + cell;
   tr.chao = (x, y) => (tr.distAprox(x, y) > alcance ? 0 : groundH(tr, x, y, tr.indiceAt(x, y)));
   // GPs com relevo de verdade (Mônaco: o morro do EU-DEM/SRTM em volta da pista): `tr.relevoGP(x, y, f, idx)` manda em groundH e o chão vale em toda parte, não só perto da pista
-  if (id === "monaco") { tr.relevoGP = relevoMonaco(tr); tr.chao = (x, y) => groundH(tr, x, y, tr.indiceAt(x, y)); }
+  if (id === "monaco") {
+    // em Mônaco a pista passa por cima de si mesma (Beau Rivage / Mirabeau / grampo, o morro empilhado): o ponto mais perto de verdade, de qualquer trecho, e não o da célula da grade
+    const C = 48, hash = new Map(), ch = (a, b) => a * 100003 + b;
+    pts.forEach((p, i) => { const k = ch(Math.floor(p.x / C), Math.floor(p.y / C)); (hash.get(k) || hash.set(k, []).get(k)).push(i); });
+    const antigo = tr.indiceAt;
+    tr.indiceAt = (x, y) => {
+      const cx = Math.floor(x / C), cy = Math.floor(y / C); let best = -1, bd = Infinity;
+      for (let r = 1; r <= 4 && best < 0; r++) { for (let a = cx - r; a <= cx + r; a++) for (let b = cy - r; b <= cy + r; b++) for (const q of hash.get(ch(a, b)) || []) { const d = (pts[q].x - x) ** 2 + (pts[q].y - y) ** 2; if (d < bd) { bd = d; best = q; } } if (best >= 0 && bd > (r * C) ** 2) best = -1; }
+      return best >= 0 ? best : antigo(x, y);
+    };
+    tr.relevoGP = relevoMonaco(tr); tr.chao = (x, y) => groundH(tr, x, y, tr.indiceAt(x, y));
+  }
   // pista que passa por cima de si mesma (`cruza`, o oito de Suzuka): perto do cruzamento o chão é o do trecho de baixo, e o
   // de cima fica no ar, na ponte do GP
   if (t.cruza) {
@@ -180,8 +191,8 @@ function buildWorld(tr) {
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i) + WORLD / 2, y = pos.getZ(i) + WORLD / 2;
     const longe = !tr.relevoGP && tr.distAprox(x, y) > W / 2 + t.flat + t.fall + WORLD / 96, bi = longe ? 0 : tr.indiceAt(x, y);
-    const perto = !longe && Math.abs(trackFrame(tr, x, y, bi).lat) < W / 2 + 26; // embaixo da pista o chão afunda mais (a malha é grossa e furava o asfalto nas rampas)
-    let h = t.espaco ? -700 : (longe ? 0 : groundH(tr, x, y, bi)) - (perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
+    const lat = longe ? 1e9 : Math.abs(trackFrame(tr, x, y, bi).lat), perto = !longe && (id === "monaco" ? lat < tr.wallLat + 30 : lat < W / 2 + 26); // embaixo da pista o chão afunda mais (a malha é grossa e furava o asfalto nas rampas)
+    let h = t.espaco ? -700 : (longe ? 0 : groundH(tr, x, y, bi)) - (id === "monaco" ? 1.5 + 7.5 * (1 - Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)))) * (perto ? 1 : 0) : perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
     if (id === "monaco") { const s = fundoMonaco(tr, x, y); if (s > -90) h = s > 0 ? Math.max(-34, NIVEL_DO_MAR - 7 - s * 0.35) : Math.min(h, NIVEL_DO_MAR + 1 + 3.2 * -s); } // a bacia do porto e o mar, o cais em paredão e a falésia do Rochedo (3 de altura por unidade)
     if (id === "rio" && rioSea(x, y)) h = Math.min(h, -14); // o mar de Copacabana
     if (tr.sobPonte) h = Math.min(h, tr.sobPonte(x, y) - 4); // embaixo da ponte (Suzuka)

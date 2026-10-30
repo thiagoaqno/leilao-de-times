@@ -79,13 +79,26 @@ export function relevoMonaco(tr) {
   // o desvio da pista para o morro, suavizado ao longo da volta (±120 pontos): o chão em volta não ganha degrau onde o ponto mais perto da pista muda
   const desvioPista = new Float32Array(n);
   for (let i = 0; i < n; i++) { let s = 0, w = 0; for (let k = -120; k <= 120; k += 6) { const q = (i + k + n) % n, p = 1 - Math.abs(k) / 126; s += (pts[q].h - demPista[q]) * p; w += p; } desvioPista[i] = s / w; }
-  const plano = L + 6, rampa = 260, longe = 700;
+  // banda de segurança: até a pista, a calçada, a barreira e uma folga (L + 30) o chão fica sempre ABAIXO da pista; fora dela o morro só sobe com inclinação limitada (talude), nunca em degrau
+  // banda de segurança: pista, calçada, barreira e uma folga: o chão fica sempre ABAIXO da pista de QUALQUER trecho (o grampo e o morro empilhado de Mônaco têm pista a poucas dezenas de metros de outra, mais alta);
+  // fora dela o morro só sobe em talude (inclinação limitada), nunca em degrau. `teto(x, z)` é o mínimo, sobre os pontos da linha central, de (altura - folga + talude * distância além do muro + margem).
+  const plano = L + 30, rampa = 260, longe = 700, talude = 0.85, folga = 0.5, margem = 18, alcance = 260, C = 64, hash = new Map();
+  pts.forEach((p, i) => { const k = Math.floor(p.x / C) * 100003 + Math.floor(p.y / C); (hash.get(k) || hash.set(k, []).get(k)).push(i); });
+  const teto = (x, z) => {
+    const r = Math.ceil((L + alcance) / C), cx = Math.floor(x / C), cz = Math.floor(z / C); let m = Infinity;
+    for (let a = cx - r; a <= cx + r; a++) for (let b = cz - r; b <= cz + r; b++) for (const j of hash.get(a * 100003 + b) || []) {
+      const p = pts[j], dx = p.x - x, dz = p.y - z, d2 = dx * dx + dz * dz; if (d2 > (L + alcance) ** 2) continue;
+      const c = p.h - folga + talude * Math.max(0, Math.sqrt(d2) - L - margem); if (c < m) m = c;
+    }
+    return m;
+  };
+  const menor = (a, b, k = 14) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k / 4; }; // mínimo suave (sem quina)
   return (x, z, f, idx) => {
     const d = Math.abs(f.lat), dem = altitude(x, z), desvio = desvioPista[idx];
     const a = suave((d - plano) / rampa), b = suave((d - plano - rampa) / longe);
     let g = f.h * (1 - a) + (dem + desvio * (1 - b)) * a; // (o desvio já leva a pista ao nível dela: a e b são suaves, sem escada)
     // (o túnel tem o teto e as paredes de tunel.js; o morro de verdade em volta já fica acima dele)
-    return g;
+    return menor(g, teto(x, z));
   };
 }
 
