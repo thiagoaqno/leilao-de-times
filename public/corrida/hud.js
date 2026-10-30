@@ -6,7 +6,7 @@ import { textoJogos } from "./box.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
 import { drawItemHud } from "./itens.js";
 import { clima } from "./clima.js";
-import { set, montarCentro, atualizarCentro, montarTempo, atualizarTempo, estrategia, minimapaF1, desenharBanner } from "./hud-painel.js";
+import { set, montarCentro, atualizarCentro, montarTempo, atualizarTempo, estrategia, minimapaF1, desenharBanner, montarCrono, desenharCrono } from "./hud-painel.js";
 import { montarMfd, atualizarMfd, acoes } from "./mfd.js";
 
 // o cartão do rádio do engenheiro (como na TV: "SOBRENOME RADIO", o número e a equipe), por cima do velocímetro enquanto ele fala
@@ -139,7 +139,7 @@ function montarTorre() {
   const box = $("tLinhas");
   for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "tl hidden"; d.innerHTML = `<span class="n"></span><i class="eq"></i><b class="sg"></b><u class="pn"></u><small class="ic"></small><em class="df"></em><span class="vrx">${ICONE_RELOGIO}</span>`; box.appendChild(d); }
   $("tAlt").addEventListener("click", alternarTorre);
-  montarCentro(); montarTempo(); montarMfd();
+  montarCentro(); montarTempo(); montarCrono(); montarMfd();
 }
 // o engenheiro no rádio (radio.js): só nas regras de F1
 const radioF1 = (situacao, op) => { if (window.Radio && E.S && E.S.config && E.S.config.regras === "f1") window.Radio.dizer(situacao, op); };
@@ -266,7 +266,7 @@ function hudF1(m, st, now) {
   // o MFD e as punições
   const est = estrategia(m, cors, race.hudEsc);
   atualizarMfd({ m, st, cors, linhas, compacta, modoErs, tp: est.tp, janela: est.janela, perda: est.perda, retorno: est.retorno, int: m ? HM.intervalos(cors, m.id, race.hudEsc) : {}, vr: HM.donoDaVoltaRapida(E.S.players) });
-  desenharBanner(m, t0);
+  desenharBanner(m, t0); desenharCrono(t0);
 }
 // ---------- as cinco luzes da largada (regras de F1) ----------
 // Uma acende por segundo e as cinco apagam juntas depois da espera sorteada pelo servidor (`luzes.espera`): a largada

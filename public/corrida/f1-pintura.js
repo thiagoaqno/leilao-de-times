@@ -489,13 +489,24 @@ export const LIV_FRAG_MAIN = `
 
 // ---------------------------------------------------------------- o pneu: a faixa do composto (como as da Pirelli)
 export const FAIXAS = { macio: "#e8202a", medio: "#ffd100", duro: "#f4f4f4", chuva: "#1e7fd6" };
-export const PNEU_VERT_DECL = "attribute vec2 aro;\nvarying vec2 vAro;\n";
-export const PNEU_VERT_MAIN = "\nvAro = aro;";
-export const PNEU_FRAG_DECL = "uniform vec3 faixa;\nuniform float faixaOn;\nvarying vec2 vAro;\n";
-// o anel entre 73% e 79% do raio da roda (a lateral lisa do pneu vai de 60% a 90%)
+// Os secos são slicks; o de chuva recebe canais no piso. O padrão usa a posição local, então gira junto com a roda.
+export const PNEU_VERT_DECL = "attribute vec2 aro;\nattribute float pneuLat;\nvarying vec2 vAro;\nvarying float vPneuLat;\n";
+export const PNEU_VERT_MAIN = "\nvAro = aro; vPneuLat = pneuLat;";
+export const PNEU_FRAG_DECL = "uniform vec3 faixa;\nuniform float faixaOn;\nuniform float pneuChuva;\nuniform float pneuTom;\nvarying vec2 vAro;\nvarying float vPneuLat;\n";
 export const PNEU_FRAG_MAIN = `
 {
   float rr = length(vAro);
   float banda = smoothstep(0.725, 0.735, rr) * (1.0 - smoothstep(0.790, 0.800, rr)) * faixaOn;
+  // Microvariação fosca na borracha; sem inventar sulcos nos compostos secos.
+  if (rr > 0.83 && abs(vPneuLat) < 0.96) {
+    float ang = atan(vAro.y, vAro.x);
+    float grao = sin(ang * 73.0 + sin(vPneuLat * 47.0)) * sin(vPneuLat * 101.0 + ang * 17.0);
+    float piso = smoothstep(0.83, 0.93, rr) * (1.0 - smoothstep(0.78, 0.96, abs(vPneuLat)));
+    diffuseColor.rgb *= 1.0 + piso * (pneuTom + grao * 0.045);
+    // Canais inclinados e canal central do pneu de chuva.
+    float linhas = smoothstep(0.76, 0.91, cos(ang * 26.0 + abs(vPneuLat) * 13.0));
+    float centro = 1.0 - smoothstep(0.035, 0.08, abs(vPneuLat));
+    diffuseColor.rgb *= 1.0 - pneuChuva * piso * max(linhas * 0.34, centro * 0.4);
+  }
   diffuseColor.rgb = mix(diffuseColor.rgb, faixa, banda);
 }`;

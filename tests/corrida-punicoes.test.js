@@ -119,3 +119,46 @@ test("bandeira azul exige líder próximo e não repete ao oscilar no limite", (
   registrar(160, 9000); registrar(80, 10000);
   assert.equal(b.avisosAzul, 2);
 });
+
+test("bater num carro que derrapa é infração leve mesmo em baixa velocidade (e num que não derrapa, não)", () => {
+  const room = sala(), a = room.players.a;
+  Contato.estado(room).impactos.set("a|b", { t: 5000, forca: 6, culpado: null, de: "a", pre: { vx: 100, vy: 0, ovx: 95, ovy: 0, a: 0, oa: 0, r: 0, orr: 3 } });
+  Direcao.bater(room, a, 6, "carro", 5000, semLog, "carro:b");
+  assert.equal(a.penal, F1.PUNICAO_LEVE_S, "o outro girava a 3 rad/s");
+  const room2 = sala(), a2 = room2.players.a;
+  Contato.estado(room2).impactos.set("a|b", { t: 5000, forca: 6, culpado: null, de: "a", pre: { vx: 100, vy: 0, ovx: 95, ovy: 0, a: 0, oa: 0, r: 0, orr: 0 } });
+  Direcao.bater(room2, a2, 6, "carro", 5000, semLog, "carro:b");
+  assert.equal(a2.penal, 0);
+});
+
+test("stop-and-go com troca na mesma parada: B.troca = { parada, t } e a fase vai de stopgo a troca", () => {
+  const Sim = require("../public/corrida/sim.js"), T = require("../public/corrida/pistas.js"), Eq = require("../public/corrida/f1-equipes.js");
+  const tr = Sim.criarPista(T.PISTAS.interlagos, "interlagos"), cor = tr.corredor, q = tr.pts[(cor.i0 - 3 + tr.n) % tr.n], a0 = Math.atan2(q.ty, q.tx);
+  const c = Sim.novo(tr, { grid: 0, f1: true, pneu: F1.pneuNovo("medio"), box: true });
+  Object.assign(c, { x: q.x, y: q.y, idx: (cor.i0 - 3 + tr.n) % tr.n, a: a0, v: 60, vx: Math.cos(a0) * 60, vy: Math.sin(a0) * 60, z: q.h });
+  const amb = { spec: Eq.specDaEquipe("mclaren"), voltas: 5, laps: 1, paradas: 0, semente: 7, id: "a", grid: 0, f1: true, outros: [], stopGo: 8 }, fases = new Set(), ev = [];
+  for (let i = 0; i < 120 * 60 && !ev.some((e) => e.fase === "sai"); i++) {
+    const e = []; Sim.passo(c, { gas: 1, pedido: "duro" }, amb, tr, e); ev.push(...e);
+    const f = Sim.faseDoBox(c.box); if (f) fases.add(f.fase);
+    if (c.box.fase === "parada") { assert.ok(c.box.troca && c.box.troca.parada > 0 && c.box.parada === 8); }
+  }
+  assert.deepEqual([...fases], ["stopgo", "troca"]);
+  assert.equal(c.pneu.composto, "duro");
+  const sai = ev.find((e) => e.fase === "sai"); assert.ok(sai.stopGo && sai.troca && sai.sg === 8);
+});
+
+test("pneus na água: o macio sofre até na garoa, o de chuva é só um pouco melhor na garoa e claramente melhor na pista encharcada", () => {
+  const g = (composto, agua) => F1.aderencia({ composto, desgaste: 0.1, temp: 0.75 }, agua).grip;
+  for (const c of ["medio", "duro"]) assert.ok(g("macio", 0.45) / g("macio", 0) < g(c, 0.45) / g(c, 0), "o macio perde mais que os outros secos");
+  assert.ok(g("chuva", 0.45) > g("medio", 0.45) && g("chuva", 0.45) < 1.15 * Math.max(g("macio", 0.45), g("medio", 0.45), g("duro", 0.45)), "garoa: de chuva meio ruim");
+  assert.ok(g("chuva", 1) > 1.8 * Math.max(g("macio", 1), g("medio", 1), g("duro", 1)), "encharcada: de chuva muito melhor");
+});
+
+test("ERS: a bateria enche na frenagem, o automático gasta suave com orçamento por volta e o overtake gasta forte", () => {
+  const e = F1.ersNovo(); e.carga = 0.5;
+  F1.gastarErs(e, 1, true, false); assert.ok(Math.abs(e.carga - (0.5 - F1.ERS_GASTO_SUAVE)) < 1e-9);
+  const f = F1.ersNovo(); f.carga = 0.9; F1.gastarErs(f, 1, true, true); assert.ok(Math.abs(f.carga - (0.9 - F1.ERS_GASTO)) < 1e-9);
+  const g = F1.ersNovo(); g.carga = 1; let gasto = 0;
+  for (let i = 0; i < 100; i++) { const antes = g.carga; F1.gastarErs(g, 0.1, true, false); gasto += antes - g.carga; }
+  assert.ok(gasto <= 0.75 + 1e-9, "o gasto suave tem teto por volta");
+});
