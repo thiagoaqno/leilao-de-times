@@ -17,7 +17,7 @@ export function trechoDoTunel(tr) {
 
 export function tunel(tr, add) {
   const { pts, n } = tr, L = tr.wallLat, { i0, i1 } = trechoDoTunel(tr);
-  const parede = new THREE.MeshStandardMaterial({ map: canvasTex(64, 32, (x, w, hh, rr) => { x.fillStyle = "#cfc8b8"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 160; i++) { x.fillStyle = rr() < 0.5 ? "#0000000c" : "#ffffff10"; x.fillRect(rr() * w, rr() * hh, 2, 2); } x.fillStyle = "#b5ae9e"; x.fillRect(0, hh - 8, w, 8); x.fillStyle = "#f2c94c"; x.fillRect(0, 10, w, 2); }), roughness: 0.9, side: THREE.DoubleSide });
+  const parede = new THREE.MeshStandardMaterial({ map: canvasTex(64, 32, (x, w, hh, rr) => { x.fillStyle = "#cfc8b8"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 160; i++) { x.fillStyle = rr() < 0.5 ? "#0000000c" : "#ffffff10"; x.fillRect(rr() * w, rr() * hh, 2, 2); } x.fillStyle = "#b5ae9e"; x.fillRect(0, hh - 8, w, 8); x.fillStyle = "#f2c94c"; x.fillRect(0, 10, w, 2); }), roughness: 0.9, side: THREE.DoubleSide, emissive: 0x4a4840, emissiveIntensity: 0.6 });
   faixa(tr, add, i0, i1, L + 1, L + 1, 0, TUNEL_ALTO, parede, 32); faixa(tr, add, i0, i1, -L - 1, -L - 1, 0, TUNEL_ALTO, parede, 32);
   // as luzes amarelas no teto, por dentro
   const luz = new THREE.MeshStandardMaterial({ color: 0xffe8a8, emissive: 0xffd27a, emissiveIntensity: 1.6 }), lg = new THREE.BoxGeometry(5, 1, 2), luzes = [];
@@ -25,7 +25,7 @@ export function tunel(tr, add) {
   const lm = add(new THREE.InstancedMesh(lg, luz, luzes.length)), o = new THREE.Object3D(); lm.name = "monaco-tunel-luz";
   luzes.forEach((a, k) => { o.position.set(a.x, a.y, a.z); o.rotation.set(0, a.r, 0); o.scale.set(1, 1, 1); o.updateMatrix(); lm.setMatrixAt(k, o.matrix); });
   // o teto opaco (mesmo com o carro embaixo) e o terraço do hotel por cima
-  const teto = new THREE.MeshStandardMaterial({ color: 0x8f8a80, roughness: 0.9, side: THREE.DoubleSide });
+  const teto = new THREE.MeshStandardMaterial({ color: 0xb4afa4, emissive: 0x8c887e, emissiveIntensity: 0.75, roughness: 0.9, side: THREE.DoubleSide }); // o forro claro do túnel (de dentro, a luz do dia não chega: ele brilha um pouco)
   faixa(tr, add, i0, i1, -L - 4, L + 4, TUNEL_ALTO, TUNEL_ALTO, teto, 60);
   const terraco = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#d9d3c5"; x.fillRect(0, 0, w, hh); x.fillStyle = "#6aa14e"; for (let k = 0; k < 6; k++) x.fillRect(rr() * w * 0.8, rr() * hh * 0.8, 14, 20); }), roughness: 0.9, side: THREE.DoubleSide });
   faixa(tr, add, i0, i1, -L - 4, L + 4, TUNEL_ALTO + 0.6, TUNEL_ALTO + 0.6, terraco, 50);

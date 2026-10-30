@@ -6,7 +6,7 @@ import { D, VK, distanciaDoMar, poligonoDentro } from "./mundo.js";
 import { livre, ocupado, sorteio } from "../comum.js";
 
 const mistura = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-const RUA = [0.8, 0.76, 0.68], JARDIM = [0.34, 0.56, 0.28], MATA = [0.21, 0.4, 0.22], PEDRA = [0.6, 0.57, 0.52], PAREDAO = [0.5, 0.46, 0.42], AREIA = [0.82, 0.78, 0.64], FUNDO = [0.36, 0.5, 0.54], ENCOSTA = [0.44, 0.52, 0.34];
+const RUA = [0.66, 0.6, 0.5], JARDIM = [0.3, 0.5, 0.25], MATA = [0.18, 0.36, 0.2], PEDRA = [0.5, 0.46, 0.41], PAREDAO = [0.42, 0.38, 0.34], AREIA = [0.74, 0.69, 0.55], FUNDO = [0.36, 0.5, 0.54], ENCOSTA = [0.34, 0.45, 0.27];
 const ruido = (x, z, s) => { const v = Math.sin(x * 0.043 + s) * Math.cos(z * 0.051 - s * 1.7) + 0.5 * Math.sin(x * 0.11 + z * 0.07 + s * 3); return v * 0.5 + 0.5; };
 
 // a cor de cada ponto do terreno: (x, z, altura em unidades, normal.y) -> [r, g, b]
@@ -23,7 +23,7 @@ export function corDoChao() {
     else if (tipo === 2) c = mistura(MATA, [0.3, 0.46, 0.26], n1);
     else if (tipo === 3) c = PEDRA;
     else {
-      c = mistura(RUA, [0.72, 0.68, 0.6], n1 * 0.6);
+      c = mistura(RUA, [0.6, 0.55, 0.47], n1 * 0.6);
       if (metros > 55) c = mistura(c, ENCOSTA, Math.min(0.75, (metros - 55) / 90)); // o morro lá em cima fica com mato
     }
     if (ny < 0.92) c = mistura(c, ny < 0.72 ? PAREDAO : PEDRA, Math.min(1, (0.92 - ny) / 0.2)); // paredão e pedra onde a encosta é íngreme

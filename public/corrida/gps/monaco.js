@@ -35,6 +35,7 @@ export const GP_MONACO = {
   boxes: { garagens: true, mureta: true }, // o prédio das garagens fica do lado externo da nova faixa de parada
   ambiente: {}, // cerca de proteção, painéis, bandeiras vermelhas e brancas de Mônaco, postos e placas (os padrões do kit)
   passarelas: { candidatos: [0.03, 0.12, 0.48, 0.58, 0.72, 0.93], marcas: ["rolex", "heineken", "tag"], max: 2 }, // a da Rolex na reta dos boxes
+  portico: { adiante: 420 }, // o pórtico das luzes de largada fica 420 depois da linha de chegada (a pole o vê lá na frente)
   postes: { passo: 34 },
   montanha: { angulo: -Math.PI / 2, altura: 860 }, // a Tête de Chien, ao norte
   terreno: { S: 300, pedacos: 4 }, // o morro é suave (o MDE é borrado): grade de 31 unidades e 4 × 4 pedaços bastam, e poupam malhas e triângulos

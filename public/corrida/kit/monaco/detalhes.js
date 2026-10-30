@@ -61,7 +61,7 @@ export function largada(tr, add) {
     const t = new THREE.Mesh(new THREE.PlaneGeometry(40, 20), new THREE.MeshBasicMaterial({ map: rolex })); t.position.set(0, 66, 2.2); g.add(t);
   }
   // a faixa TAG Heuer nos dois lados da viga do pórtico (pista.js: o pórtico de F1 fica na linha de chegada)
-  const q = tr.pts[0], W = tr.W / 2 + 14, tag = marcaTex("tag", 512, 64);
+  const q = tr.pts[Math.round(420 / 6) % tr.n], W = tr.W / 2 + 14, tag = marcaTex("tag", 512, 64); // (o pórtico fica 420 depois da linha: gps/monaco.js `portico.adiante`)
   for (const s of [1, -1]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(2 * W - 6, 7.4), new THREE.MeshBasicMaterial({ map: tag, side: THREE.FrontSide })); f.position.set(q.x, q.h + 62, q.y); f.rotation.y = -Math.atan2(q.ny, q.nx) + (s > 0 ? 0 : Math.PI); f.translateZ(1.8); add(f); }
 }
 

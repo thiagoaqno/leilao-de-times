@@ -83,5 +83,6 @@ export function cenarioMonaco(tr, ctx) {
   tecpro(tr, add, [[c.sainteDevote + 0.006, c.sainteDevote + 0.028, "fora"], [tc.nouvelleChicane[0] - 0.012, tc.nouvelleChicane[1] + 0.012, "fora"], [c.rascasse - 0.01, c.rascasse + 0.008, "fora"]]);
   telaos(tr, add, [0.03, c.casino, c.mirabeauHaute + 0.012, tc.cais[0] + 0.03, c.rascasse - 0.02]);
   largada(tr, add); cais(tr, add, tc.cais); rascasse(tr, add, hAt); fonte(tr, add, hAt); cruzeiros(tr, add);
+  tr.marcosPos = D.marcos; // (para conferir no navegador: __corrida.race.tr.marcosPos)
   tr.pracaCassino = { x: D.marcos.praca[0], y: D.marcos.praca[1] }; // o som da fonte
 }

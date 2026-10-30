@@ -85,8 +85,8 @@ export function relevoMonaco(tr) {
     const a = suave((d - plano) / rampa), b = suave((d - plano - rampa) / longe);
     let g = f.h * (1 - a) + (dem + desvio * (1 - b)) * a; // (o desvio já leva a pista ao nível dela: a e b são suaves, sem escada)
     // o túnel é um morro por cima: fora das paredes o chão sobe até o terraço do hotel (34 acima da pista) e só depois desce para o morro de verdade
-    if (idx >= t0 && idx <= t1 && d >= L - 2) {
-      const w = suave((d - L + 2) / 14) * (1 - suave((d - L - 70) / 260)) * suave((idx - t0) / 10) * suave((t1 - idx) / 10);
+    if (idx >= t0 && idx <= t1 && d >= L + 1) {
+      const w = suave((d - L - 1) / 10) * (1 - suave((d - L - 70) / 260)) * suave((idx - t0) / 10) * suave((t1 - idx) / 10);
       g += (Math.max(g, f.h + 34.2) - g) * w;
     }
     return g;
