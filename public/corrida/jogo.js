@@ -86,8 +86,8 @@ function aquecerPista(tr, ceu) {
     subirTexturas(scene);
     const alvo = new THREE.WebGLRenderTarget(2, 2);
     const aindaDa = () => race && race.tr === tr && sNow() < race.startAt - 300;
-    // 1) compila tudo (os dois alvos de desenho, a chuva e os passes do pós) 2) sobe as malhas 3) um quadro pequeno com a chuva inteira ligada
-    return Promise.all([compilarTudo(alvo), compilarPos()]).then(() => subirMalhas(tr, alvo)).then(() => { if (aindaDa()) exercitarChuva(tr); }).catch((e) => console.warn("Corrida: aquecimento incompleto", e)).finally(() => { alvo.dispose(); scene.remove(amostras); });
+    // 1) compila tudo 2) exercita a chuva 3) sobe as malhas
+    return Promise.all([compilarTudo(alvo), compilarPos()]).then(() => { if (aindaDa()) exercitarChuva(tr); }).then(() => subirMalhas(tr, alvo)).catch((e) => console.warn("Corrida: aquecimento incompleto", e)).finally(() => { alvo.dispose(); scene.remove(amostras); });
   }); };
   // espera também o carro de F1 e os enfeites do Kenney: quando chegam, os carros e a pista são remontados, e o que
   // nasce depois do aquecimento travaria na primeira vez que aparecesse
@@ -140,6 +140,7 @@ export function startRace(st) {
   startItems(tr, st.config.caixas);
   $("results").classList.add("hidden");
   resize(); comecarMedida();
+  if (f1 && st.clima?.chove) Sound.prepararChuva(); // o ruído fica pronto antes de o jogo desenhar a corrida
   aquecerPista(tr, ceu);
   if (!raf) raf = requestAnimationFrame(loop);
 }

@@ -70,17 +70,17 @@ const gotas = new THREE.LineSegments(gotasGeo, new THREE.LineBasicMaterial({ ver
 gotas.frustumCulled = false; gotas.visible = false; gotas.renderOrder = 5; gotas.name = "clima-gotas";
 const onda = (v, S) => v - S * Math.floor(v / S + 0.5); // v em [-S/2, S/2)
 
-// a altura do chão em volta da câmera: 9×9 pontos a cada 60 unidades, em volta da célula da câmera (`tr.chao` do pista.js)
-const GR_N = 9, GR_C = 60, grAlt = new Float32Array(GR_N * GR_N);
+// a altura do chão em volta da câmera: 5×5 pontos a cada 120 unidades, cobrindo a mesma área com menos consultas ao relevo
+const GR_N = 5, GR_C = 120, grAlt = new Float32Array(GR_N * GR_N);
 let grX = NaN, grZ = NaN, grTr = null;
 function atualizarChao(tr, cx, cz, fixo) {
   const gx = Math.round(cx / GR_C) * GR_C, gz = Math.round(cz / GR_C) * GR_C;
   if (gx === grX && gz === grZ && tr === grTr) return;
   grX = gx; grZ = gz; grTr = tr;
-  for (let j = 0; j < GR_N; j++) for (let i = 0; i < GR_N; i++) grAlt[j * GR_N + i] = tr.chao ? tr.chao(gx + (i - 4) * GR_C, gz + (j - 4) * GR_C) : fixo;
+  for (let j = 0; j < GR_N; j++) for (let i = 0; i < GR_N; i++) grAlt[j * GR_N + i] = tr.chao ? tr.chao(gx + (i - 2) * GR_C, gz + (j - 2) * GR_C) : fixo;
 }
 function alturaChao(x, z) {
-  const fx = lim((x - grX) / GR_C + 4, 0, 7.999), fz = lim((z - grZ) / GR_C + 4, 0, 7.999), i = fx | 0, j = fz | 0, a = fx - i, b = fz - j, o = j * GR_N + i;
+  const fx = lim((x - grX) / GR_C + 2, 0, 3.999), fz = lim((z - grZ) / GR_C + 2, 0, 3.999), i = fx | 0, j = fz | 0, a = fx - i, b = fz - j, o = j * GR_N + i;
   return (grAlt[o] * (1 - a) + grAlt[o + 1] * a) * (1 - b) + (grAlt[o + GR_N] * (1 - a) + grAlt[o + GR_N + 1] * a) * b;
 }
 
@@ -108,7 +108,7 @@ const resp = new THREE.Mesh(rGeo, rMat); resp.frustumCulled = false; resp.visibl
 let rProx = 0, rVivos = 0, gotaT = -1;
 function respingo(x, z, tr, fixo, cima) {
   const i = rProx; rProx = (rProx + 1) % N_RESP; if (rVida[i] <= 0) rVivos++;
-  rX[i] = x; rZ[i] = z; rY[i] = (tr.chao ? tr.chao(x, z) : fixo) + 0.85; rVida0[i] = rVida[i] = 0.2 + Math.random() * 0.18; rRaio[i] = (1.6 + Math.random() * 1.8) * (cima ? 2.5 : 1);
+  rX[i] = x; rZ[i] = z; rY[i] = (cima ? fixo : alturaChao(x, z)) + 0.85; rVida0[i] = rVida[i] = 0.2 + Math.random() * 0.18; rRaio[i] = (1.6 + Math.random() * 1.8) * (cima ? 2.5 : 1);
 }
 function passoRespingos(dt) {
   if (rVivos <= 0) { if (resp.visible) resp.visible = false; return; }

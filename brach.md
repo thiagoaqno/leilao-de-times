@@ -1,11 +1,10 @@
-# Corrida: grid e Mônaco
+# Corrida: chuva e tempo de chegada
 
-- Aumenta em 40% o espaçamento longitudinal entre filas do grid de F1, de 18 para 25,2 pontos em média; os dois carros de cada fila continuam lado a lado.
-- Distribui a descida do Cassino a Portier pelo grampo, em vez de concentrá-la antes dele. Na chuva, os robôs consideram a aderência real ao frear atrás de outro carro e reduzem gradualmente o ritmo em Mirabeau e no grampo.
-- Aproxima fachadas adicionais da calçada, amplia copas, dá mais altura e cor aos prédios próximos da pista e alinha a faixa do pórtico de largada à viga.
+- A hora dos eventos do carro humano agora usa o relógio real validado do passo, limitado para pacotes muito antigos. Depois de uma travada, o relógio acumulado da simulação podia ficar atrasado e registrar o humano antes de bots que já haviam terminado, tanto na torre quanto no resultado.
+- Prepara o som da chuva ao iniciar uma corrida com chuva prevista, exercita os efeitos gráficos antes de carregar as demais malhas e reduz as consultas ao relevo usadas por gotas e respingos.
 
 ## Verificação
 
-- `node --test tests/corrida-monaco-chuva.test.js tests/corrida-robos-curvas.test.js tests/corrida-grid.test.js tests/corrida-pistas-volta.test.js tests/corrida-f1-clima.test.js tests/corrida-punicoes.test.js`: 28 testes passaram. A simulação usa 20 robôs com chuva e verifica a passagem pelo grampo.
-- `npx playwright test tests/e2e/corrida-monaco-carro.spec.js`: passou; verifica a orientação do carro e amostras do asfalto livres de prédios. A cena de largada foi inspecionada.
-- Ainda é necessária uma volta jogada para conferir a Rascasse, as bordas e o comportamento de um pelotão sob chuva.
+- `node --test tests/corrida-f1-rede.test.js tests/corrida-rede-suave.test.js tests/corrida-chegada-relogio.test.js`: 26 testes passaram; o teste da chegada após uma travada falha na versão anterior.
+- Testes de clima, punições e fim de semana: 30 passaram.
+- `npx playwright test tests/e2e/corrida-chuva-posicao.spec.js`: verifica a transição de chuva e a ordem de bots concluídos na torre e no resultado. O teste de navegador não mede se a travada desapareceu em todo hardware.
