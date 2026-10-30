@@ -11,7 +11,19 @@ export { suave };
 
 // ---------- a altitude do morro (EU-DEM e SRTM, bicúbica) ----------
 const R = D.relevo, GN = R.n, GP = R.passo * D.projecao.k; // GP: o passo da grade no mundo do jogo
-const celula = (i, j) => R.z[Math.max(0, Math.min(GN - 1, j)) * GN + Math.max(0, Math.min(GN - 1, i))] / 10; // metros
+// a grade de altitude, suavizada (duas passadas de um borrão gaussiano 5×5: o MDE de 25 m tem degraus de terraço e de prédio que o morro de verdade não tem)
+const GRADE = (() => {
+  let a = Float32Array.from(R.z, (v) => v / 10);
+  const kernel = [1, 4, 6, 4, 1], soma = 16;
+  for (let passada = 0; passada < 2; passada++) {
+    const b = new Float32Array(a.length), c = new Float32Array(a.length), at = (arr, i, j) => arr[Math.max(0, Math.min(GN - 1, j)) * GN + Math.max(0, Math.min(GN - 1, i))];
+    for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { let s = 0; for (let k = -2; k <= 2; k++) s += at(a, i + k, j) * kernel[k + 2]; b[j * GN + i] = s / soma; }
+    for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { let s = 0; for (let k = -2; k <= 2; k++) s += at(b, i, j + k) * kernel[k + 2]; c[j * GN + i] = s / soma; }
+    a = c;
+  }
+  return a;
+})();
+const celula = (i, j) => GRADE[Math.max(0, Math.min(GN - 1, j)) * GN + Math.max(0, Math.min(GN - 1, i))]; // metros
 const cubica = (p0, p1, p2, p3, t) => p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)));
 // a altitude, em unidades do jogo, num ponto do mundo
 export function altitude(x, z) {
@@ -64,11 +76,14 @@ export const orlaMonaco = (tr, x, z) => fundoMonaco(tr, x, z) > -300 && distanci
 export function relevoMonaco(tr) {
   const { pts, n } = tr, L = tr.wallLat, demPista = new Float32Array(n);
   for (let i = 0; i < n; i++) demPista[i] = altitude(pts[i].x, pts[i].y);
-  const plano = L + 22, rampa = 170, longe = 900, [fa, fb] = D.frac.trechos.tunel, t0 = Math.floor(fa * n) - 6, t1 = Math.floor(fb * n) + 6;
+  // o desvio da pista para o morro, suavizado ao longo da volta (±120 pontos): o chão em volta não ganha degrau onde o ponto mais perto da pista muda
+  const desvioPista = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let s = 0, w = 0; for (let k = -120; k <= 120; k += 6) { const q = (i + k + n) % n, p = 1 - Math.abs(k) / 126; s += (pts[q].h - demPista[q]) * p; w += p; } desvioPista[i] = s / w; }
+  const plano = L + 6, rampa = 260, longe = 700, [fa, fb] = D.frac.trechos.tunel, t0 = Math.floor(fa * n) - 6, t1 = Math.floor(fb * n) + 6;
   return (x, z, f, idx) => {
-    const d = Math.abs(f.lat), dem = altitude(x, z), desvio = f.h - demPista[idx];
+    const d = Math.abs(f.lat), dem = altitude(x, z), desvio = desvioPista[idx];
     const a = suave((d - plano) / rampa), b = suave((d - plano - rampa) / longe);
-    let g = f.h * (1 - a) + (dem + desvio * (1 - b)) * a;
+    let g = f.h * (1 - a) + (dem + desvio * (1 - b)) * a; // (o desvio já leva a pista ao nível dela: a e b são suaves, sem escada)
     // o túnel é um morro por cima: fora das paredes o chão sobe até o terraço do hotel (34 acima da pista) e só depois desce para o morro de verdade
     if (idx >= t0 && idx <= t1 && d >= L - 2) {
       const w = suave((d - L + 2) / 14) * (1 - suave((d - L - 70) / 260)) * suave((idx - t0) / 10) * suave((t1 - idx) / 10);

@@ -80,3 +80,16 @@ export function piscinas(tr, add, { aguaTex }) {
     (tr.reservado ||= []).push([cx, cz, melhor * 0.6]);
   }
 }
+
+// os iates atracados no cais, colados na pista: uma fila ao longo do cais do porto (de Tabac à Piscine), de popa para o cais, paralelos ao guard-rail
+export function atracados(tr, ctx, [f0, f1]) {
+  const r = sorteio(515), L = tr.wallLat, { pts, n } = tr; let feitos = 0;
+  for (let i = Math.floor(f0 * n); i < Math.floor(f1 * n); i += 8) {
+    const p = pts[i % n], a = fundoMonaco(tr, p.x + p.nx * (L + 70), p.y + p.ny * (L + 70)), b = fundoMonaco(tr, p.x - p.nx * (L + 70), p.y - p.ny * (L + 70)), lado = a > b ? 1 : -1;
+    if (Math.max(a, b) < 20) continue;
+    const s = 1 + r() * 0.9, d = L + 40 + 14 + 22 * s, x = p.x + p.nx * lado * d, z = p.y + p.ny * lado * d;
+    if (fundoMonaco(tr, x, z) < 10 || tr.distAt(x, z) < L + 40) continue;
+    ctx.yachts.push({ x, y: z, h: NIVEL_DO_MAR - 0.2, s, r: Math.atan2(-p.ty, p.tx) + (r() < 0.5 ? 0 : Math.PI) }); feitos++;
+  }
+  tr.atracadosMonaco = feitos;
+}

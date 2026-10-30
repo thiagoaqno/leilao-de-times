@@ -8,12 +8,17 @@ import { desenharMarca } from "./marcas.js";
 // lado: de que lado da pista ele fica (o texto lê na direção de quem olha da pista). paineis: 8 nomes de marcas.js, e
 // null é um painel de listras (cores: as duas cores das listras).
 // estilo: "duplo" desenha o guard-rail de rua de aço (Mônaco): duas lâminas onduladas empilhadas presas em postes, com o painel pintado na de cima
-export function guardRail(lado, { paineis = ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"], cores = ["#d62828", "#f4f4f4"], estilo } = {}) {
+export function guardRail(lado, { paineis = ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"], cores = ["#d62828", "#f4f4f4"], estilo } = {}) { // (estilo "painel": a barreira alta de Mônaco com os painéis de ponta a ponta)
   const C = 1024, H = 48, plano = document.createElement("canvas"); plano.width = C; plano.height = H;
   const x = plano.getContext("2d"), painel = C / 8;
   const listras = (x0) => { for (let k = 0; k < 8; k++) { x.fillStyle = cores[k % 2]; x.fillRect(x0 + (k * painel) / 8, 0, painel / 8 + 1, H); } };
   paineis.slice(0, 8).forEach((m, k) => { if (m) desenharMarca(x, m, painel * k, 0, painel, H); else listras(painel * k); });
-  if (estilo === "duplo") {
+  if (estilo === "painel") {
+    // a barreira alta de Mônaco: painéis de patrocinador de ponta a ponta, o rodapé escuro e, onde não há painel, o guard-rail cinza de duas lâminas
+    x.fillStyle = "rgba(8,14,32,0.5)"; x.fillRect(0, 0, C, H); // barreira escura: os painéis de marca ficam num azul quase preto, como na TV
+    paineis.slice(0, 8).forEach((m, k) => { if (m) return; const x0 = painel * k; x.fillStyle = "#b9c0c5"; x.fillRect(x0, 0, painel, H); x.fillStyle = "#e4e8ea"; x.fillRect(x0, 4, painel, 3); x.fillRect(x0, 27, painel, 3); x.fillStyle = "#7d868c"; x.fillRect(x0, 14, painel, 3); x.fillRect(x0, 38, painel, 3); x.fillStyle = "#3a3f44"; for (let q = 0; q < 4; q++) x.fillRect(x0 + q * painel / 4, 0, 3, H); });
+    x.fillStyle = "#141a28"; x.fillRect(0, Math.round(H * 0.82), C, H); x.fillStyle = "#e8eaec"; x.fillRect(0, Math.round(H * 0.82), C, 2); x.fillStyle = "#00000040"; for (let k = 0; k < C; k += painel) x.fillRect(k, 0, 2, H);
+  } else if (estilo === "duplo") {
     // a lâmina de baixo é o aço galvanizado liso com a onda; a de cima leva o painel pintado (o que já foi desenhado) e uma onda por cima
     x.fillStyle = "#aeb5ba"; x.fillRect(0, 25, C, 19); x.fillStyle = "#c9cfd3"; x.fillRect(0, 28, C, 3); x.fillStyle = "#7d868c"; x.fillRect(0, 34, C, 2); x.fillRect(0, 40, C, 2);
     x.fillStyle = "#0000003a"; x.fillRect(0, 21, C, 4); x.fillStyle = "#e1e5e8"; x.fillRect(0, 2, C, 2); x.fillStyle = "#00000030"; x.fillRect(0, 12, C, 2); x.fillRect(0, H - 3, C, 3);

@@ -65,6 +65,12 @@ export function arvores(tr, add, { hAt, predioEm }) {
       if (listas.palmeira.length + listas.platano.length + listas.pinheiro.length > 1700) break;
     }
   }
+  // as árvores da calçada: palmeiras no cais e plátanos nas avenidas, ao longo da pista onde há calçada livre (não ficam em cima do prédio nem do muro)
+  const { pts, n } = tr;
+  for (let i = 0; i < n; i += 14) for (const lado of [-1, 1]) {
+    const p = pts[i], d = L + 15 + r() * 6, x = p.x + p.nx * lado * d, z = p.y + p.ny * lado * d, costa = distanciaDoMar(x, z) > -420;
+    if (r() < 0.55) poe(costa ? "palmeira" : "platano", x, z, 0.9 + r() * 0.4);
+  }
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }), o = new THREE.Object3D(), cor = new THREE.Color();
   let total = 0;
   for (const [tipo, lista] of Object.entries(listas)) {

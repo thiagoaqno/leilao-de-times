@@ -260,7 +260,18 @@ function buildWorld(tr) {
     // nos GPs, o guard-rail pintado em painéis (kit/beira.js; um material por lado, para os nomes não saírem espelhados)
     if (L < 1e9) for (const s of [1, -1]) {
       const mat = gp?.guardrail ? new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }) : wm, vLen = gp?.guardrail ? 480 : 32;
-      const trecho = (i0, i1) => { const m = ribbon(s * L, s * L, 0.5, mat, vLen, 12, 1, i0, i1); m.castShadow = true; m.name = `${id}-muro`; return m; };
+      // `guardrail.baixos`: [[f0, f1, lado]] trechos em que o guard-rail daquele lado é baixo, de aço de duas lâminas (a reta dos boxes de Mônaco), em vez do painel alto
+      const matBaixo = gp?.guardrail?.baixos ? new THREE.MeshStandardMaterial({ map: guardRail(s, { ...gp.guardrail, estilo: "duplo" }), roughness: 0.55, side: THREE.DoubleSide }) : null;
+      const baixosDe = (gp?.guardrail?.baixos || []).filter(([, , lado]) => lado === s).map(([f0, f1]) => [Math.floor(f0 * n), Math.floor(f1 * n) + (f1 < f0 ? n : 0)]);
+      const trecho = (i0, i1) => {
+        const fatias = []; let a = i0;
+        const emBaixo = (i) => baixosDe.some(([x0, x1]) => { const k = ((i % n) + n) % n; return (k >= x0 && k <= x1) || (k + n >= x0 && k + n <= x1); });
+        if (!baixosDe.length) fatias.push([i0, i1, false]);
+        else { for (let i = i0 + 1; i <= i1 + 1; i++) if (i === i1 + 1 || emBaixo(i) !== emBaixo(a)) { fatias.push([a, Math.min(i, i1), emBaixo(a)]); a = i; } }
+        let m = null;
+        for (const [x0, x1, baixo] of fatias) { if (x1 <= x0) continue; m = ribbon(s * L, s * L, 0.5, baixo ? matBaixo : mat, vLen, baixo ? 11 : gp?.guardrail?.alto ?? 12, 1, x0, x1); m.castShadow = true; m.name = `${id}-muro`; }
+        return m;
+      };
       // o trecho do corredor dos boxes (regras de F1) é uma peça à parte, que some enquanto o corredor aparece (kit/corredor-boxes.js)
       const cb = tr.t.boxes && s === tr.t.boxes.lado && window.F1Regras ? window.F1Regras.corredor(tr.t, n, W) : null;
       if (!cb) trecho(0, n);

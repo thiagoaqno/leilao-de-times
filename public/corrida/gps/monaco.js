@@ -28,8 +28,9 @@ export const GP_MONACO = {
     sc: [[BOXES.sai, "SC 2"], [BOXES.entra, "SC 1"]],
     grid: true, remendos: 46, bueiros: 40,
   },
-  // o guard-rail duplo de aço de Mônaco, com os painéis de patrocinador na lâmina de cima (kit/beira.js `estilo: "duplo"`)
-  guardrail: { estilo: "duplo", paineis: ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"], cores: ["#d62828", "#f4f4f4"] },
+  // a barreira de Mônaco: 2 m de altura, painéis de patrocinador de ponta a ponta e guard-rail cinza de duas lâminas onde não há painel (kit/beira.js `estilo: "painel"`)
+  guardrail: { estilo: "painel", alto: 20, baixos: [[F.trechos.retaDosBoxes[0], F.trechos.retaDosBoxes[1], -1]], // a reta dos boxes, do lado de fora: guard-rail baixo de aço, com os prédios logo atrás
+    paineis: ["rolex", "pirelli", null, "tag", "heineken", null, "dhl", "lenovo"], cores: ["#d62828", "#f4f4f4"] },
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, os prédios reais, os marcos, o Rochedo e as árvores
   boxes: { garagens: true, mureta: true }, // o prédio das garagens fica do lado externo da nova faixa de parada
   ambiente: {}, // cerca de proteção, painéis, bandeiras vermelhas e brancas de Mônaco, postos e placas (os padrões do kit)
