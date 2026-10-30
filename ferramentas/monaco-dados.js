@@ -125,10 +125,12 @@ async function relevoNaVolta(pista, mundoParaGeo) {
   const locais = idx.map((i) => mundoParaGeo(pts[i].x, pts[i].y).reverse());
   const eu = await cacheado("alt-volta-eudem.json", () => elevacoes("eudem25m", locais)), sr = await cacheado("alt-volta-srtm.json", () => elevacoes("srtm30m", locais));
   let alt = idx.map((_, k) => media(eu[k], sr[k])); alt = alt.map((a) => Math.max(2, a == null ? 2 : a)); // o cais fica uns 2 m acima do mar (o MDE devolve 0 na água)
-  const m = alt.length, lisa = alt.map((_, i) => { let s = 0, w = 0; for (let d = -3; d <= 3; d++) { const q = 4 - Math.abs(d); s += alt[(i + d + m * 4) % m] * q; w += q; } return s / w; });
+  const m = alt.length, janela = +arg("janela", "9"); // o MDE de 25 m é ruidoso (degraus de pixel): média triangular larga (±janela amostras de 12 pontos = ±130 m), duas vezes, e a pista segue a curva por spline (elevate com `suave`, em pistas.js), sem corcova
+  const tri = (v) => v.map((_, i) => { let s = 0, w = 0; for (let d = -janela; d <= janela; d++) { const q = janela + 1 - Math.abs(d); s += v[(i + d + m * 4) % m] * q; w += q; } return s / w; });
+  const bruto = alt.slice(), lisa = tri(tri(alt));
   const mn = Math.min(...lisa), mx = Math.max(...lisa);
-  const hills = lisa.map((a, k) => [Math.round((idx[k] / n) * 1000) / 1000, r0(a * VK)]); hills.push([1, hills[0][1]]);
-  return { hills, alt: lisa, mn, mx, pts, idx };
+  const hills = lisa.map((a, k) => [Math.round((idx[k] / n) * 10000) / 10000, Math.round(a * VK * 100) / 100]); hills.push([1, hills[0][1]]);
+  return { hills, bruto, alt: lisa, mn, mx, pts, idx };
 }
 async function relevoDoEntorno(geoParaMundo) {
   const lat0 = 43.7367, lon0 = 7.4258, kx = 111320 * Math.cos((lat0 * Math.PI) / 180), ky = 110574, n = (2 * RAIO_RELEVO) / PASSO_RELEVO + 1, locais = [];
@@ -309,7 +311,7 @@ async function frações(pista, geoParaMundo, amostra) {
     `    // Circuit de Monaco: ${r0(P0.k * 0 + 3324)} m. Linha central de bacinger/f1-circuits (mc-1929, licença MIT: ver o cabeçalho dos traçados convertidos), girada para a linha de chegada na Boulevard Albert 1er`,
     `    // (230 m antes da Sainte Dévote) e convertida por ferramentas/monaco-dados.js (a mesma conversão das outras pistas): norte em cima, na proporção de verdade`,
     `    // a rua estreita, com guard-rail colado na pista (muro: fica mesmo sem o muro das outras pistas) e sem área de escape`,
-    `    scale: ${S}, width: 104, minLap: 25, walls: true, muro: true, wall: 14, flat: 20, fall: 120, largada: ${pista.largada},`,
+    `    scale: ${S}, width: 104, minLap: 25, walls: true, muro: true, wall: 14, flat: 20, fall: 120, largada: ${pista.largada}, hillsSuave: true,`,
     `    // relevo: a altitude real da volta (EU-DEM e SRTM, média e suavizado; ${rel.mn.toFixed(0)} a ${rel.mx.toFixed(0)} m, ${VK} unidades por metro)`,
     `    hills: ${JSON.stringify(rel.hills).replace(/\],\[/g, "], [")},`,
     `    points: [`,
