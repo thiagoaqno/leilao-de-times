@@ -1,6 +1,5 @@
-# Mais espaço no grid de F1
+# Corrida: carro sobre o asfalto de Mônaco
 
-- Aumenta em 80% a distância longitudinal entre as filas do grid de F1: de 10 para 18 pontos da pista. As duas posições de cada fila continuam lado a lado.
-- Ajusta a câmera de apresentação para cobrir o grid mais comprido; a física e as marcas continuam usando a mesma conta.
+Em trechos próximos ao box, o terreno do cenário é rebaixado para não atravessar a pista. Usá-lo para inclinar o carro fazia o modelo tombar e atravessar visualmente o asfalto. Nas regras de F1, sobre o asfalto de Mônaco, a inclinação passa a usar a mesma altura da física do carro.
 
-Teste: `node --test tests/corrida-grid.test.js tests/corrida-batida-rede.test.js`.
+Teste: `npx playwright test tests/e2e/corrida-monaco-carro.spec.js`. A amostra reproduz a diferença entre terreno e asfalto e verifica a inclinação corrigida. Ainda é necessária uma volta jogada para verificar outros pontos da pista.
