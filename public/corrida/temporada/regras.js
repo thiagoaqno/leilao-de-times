@@ -106,6 +106,37 @@ function pilotosNoGrid(s) {
   const grid = disponiveis.filter((p) => !cortados.has(p.id));
   return [{ ...companheiro, equipe: s.equipe }, ...grid].slice(0, 19);
 }
+// Metas dependem da força inicial da equipe, não do resultado que acabou de acontecer.
+function metas(s) {
+  const ordem = Object.keys(Equipes.EQUIPES).sort((a, b) => Equipes.EQUIPES[b].orcamento - Equipes.EQUIPES[a].orcamento || a.localeCompare(b));
+  const faixa = ordem.indexOf(s.equipe);
+  return { gp: faixa < 3 ? 6 : faixa < 7 ? 10 : 15, temporada: faixa < 3 ? 5 : faixa < 7 ? 10 : 15 };
+}
+function imersao(s) {
+  const meta = metas(s), resultados = s.resultados || [];
+  // Saves anteriores à caixa de mensagens recuperam uma confiança coerente a partir dos resultados já guardados.
+  let confianca = 50;
+  const duelos = new Map();
+  for (const r of resultados) {
+    const eu = r.linhas.find((x) => x.piloto === "voce"); if (!eu) continue;
+    const alvo = r.objetivoGP || meta.gp, cumpriu = !eu.dnf && !eu.nc && eu.pos <= alvo;
+    confianca = Math.max(0, Math.min(100, confianca + (cumpriu ? 6 : -4)));
+    if (r.gp === s.tamanho - 1) {
+      const pos = tabelas({ ...s, ano: r.ano }).pilotos.findIndex((p) => p.id === "voce") + 1;
+      confianca = Math.max(0, Math.min(100, confianca + (pos <= (r.objetivoTemporada || meta.temporada) ? 10 : -8)));
+    }
+    if (r.ano !== s.ano) continue;
+    for (const p of r.linhas) {
+      if (p.piloto === "voce" || p.dnf || p.nc || eu.dnf || eu.nc || !Pilotos.PILOTOS.some((x) => x.id === p.piloto)) continue;
+      const distancia = Math.abs(p.pos - eu.pos); if (distancia > 3) continue;
+      const d = duelos.get(p.piloto) || { id: p.piloto, encontros: 0, venceu: 0, perdeu: 0, distancia: 0 };
+      d.encontros++; d.distancia += distancia; if (eu.pos < p.pos) d.venceu++; else d.perdeu++; duelos.set(p.piloto, d);
+    }
+  }
+  const rival = [...duelos.values()].sort((a, b) => b.encontros - a.encontros || a.distancia - b.distancia || a.id.localeCompare(b.id))[0] || null;
+  const classificacao = tabelas(s).pilotos.findIndex((p) => p.id === "voce") + 1;
+  return { meta, confianca, rival, classificacao };
+}
 function registrarResultado(s, linhas) {
   if (s.gp >= s.tamanho) throw Error("A temporada terminou.");
   if (!Array.isArray(linhas) || linhas.length !== 20) throw Error("Resultado incompleto.");
@@ -113,7 +144,8 @@ function registrarResultado(s, linhas) {
   const posicoes = new Set(linhas.map((r) => r.pos));
   if (ids.size !== 20 || !ids.has("voce") || posicoes.size !== 20 || linhas.some((r) => !inteiro(r.pos) || r.pos < 1 || r.pos > 20 || r.pontos !== (r.dnf || r.nc ? 0 : (PONTOS[r.pos - 1] || 0) + (r.voltaRapida ? 1 : 0))) || linhas.filter((r) => r.voltaRapida).length > 1) throw Error("Resultado inválido.");
   const gp = s.calendario[s.gp];
-  const resultado = { ano: s.ano, gp: s.gp, pista: gp.pista, linhas: linhas.map((r) => ({ piloto: r.piloto, equipe: r.equipe, pos: r.pos, pontos: r.pontos || 0, dnf: !!r.dnf, nc: !!r.nc, voltaRapida: !!r.voltaRapida })) };
+  const objetivo = metas(s);
+  const resultado = { ano: s.ano, gp: s.gp, pista: gp.pista, objetivoGP: objetivo.gp, objetivoTemporada: objetivo.temporada, linhas: linhas.map((r) => ({ piloto: r.piloto, equipe: r.equipe, pos: r.pos, pontos: r.pontos || 0, dnf: !!r.dnf, nc: !!r.nc, voltaRapida: !!r.voltaRapida })) };
   s.resultados.push(resultado); s.gp++;
   const humano = resultado.linhas.find((r) => r.piloto === "voce");
   const premio = 4 + Math.round((humano.pontos || 0) * 0.4);
@@ -145,7 +177,7 @@ function proximaTemporada(s) {
   const sorteado = sortearCalendario(s.tamanho, s.semente, s.calendario.map((g) => g.pista));
   s.calendario = sorteado.calendario; s.calendarioSemente = sorteado.semente; return s;
 }
-const api = { CALENDARIO, PISTAS_TRABALHADAS, sortearCalendario, PONTOS, ENGENHEIROS, teto, criar, conferirMontagem, aplicarMontagem, contratarPiloto, contratarEngenheiro, desenvolver, pilotosNoGrid, registrarResultado, tabelas, proximaTemporada };
+const api = { CALENDARIO, PISTAS_TRABALHADAS, sortearCalendario, PONTOS, ENGENHEIROS, teto, criar, conferirMontagem, aplicarMontagem, contratarPiloto, contratarEngenheiro, desenvolver, pilotosNoGrid, registrarResultado, tabelas, metas, imersao, proximaTemporada };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Temporada = api;
 })(typeof window !== "undefined" ? window : globalThis);
