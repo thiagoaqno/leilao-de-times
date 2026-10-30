@@ -28,19 +28,19 @@ export const GP_MONACO = {
     sc: [[BOXES.sai, "SC 2"], [BOXES.entra, "SC 1"]],
     grid: true, remendos: 46, bueiros: 40,
   },
-  // a barreira de Mônaco: 2 m de altura, painéis de patrocinador de ponta a ponta e guard-rail cinza de duas lâminas onde não há painel (kit/beira.js `estilo: "painel"`)
-  guardrail: { estilo: "painel", alto: 20, baixos: [[F.trechos.retaDosBoxes[0], F.trechos.retaDosBoxes[1], -1]], // a reta dos boxes, do lado de fora: guard-rail baixo de aço, com os prédios logo atrás
-    paineis: ["rolex", "pirelli", null, "tag", "heineken", null, "dhl", "lenovo"], cores: ["#d62828", "#f4f4f4"] },
+  // UM sistema de barreira em Mônaco, pela volta inteira (kit/beira.js `estilo: "monaco"`): guard-rail de lâminas de aço embaixo, a faixa de painéis de patrocínio em cima (uma marca por
+  // trecho longo, na ordem da TV) e a cerca alta de detritos (ambiente.js). Os painéis soltos, os outdoors e os mastros do kit ficam desligados aqui; o Tecpro só nas áreas de escape.
+  guardrail: { estilo: "monaco", alto: 20, trecho: 360, sequencia: ["rolex", "tag", "pirelli", "aramco", "dhl", "lv", "salesforce", "heineken", "monacogp", "f1tv"] },
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, os prédios reais, os marcos, o Rochedo e as árvores
   boxes: { garagens: true, mureta: true }, // o prédio das garagens fica do lado externo da nova faixa de parada
-  ambiente: {}, // cerca de proteção, painéis, bandeiras vermelhas e brancas de Mônaco, postos e placas (os padrões do kit)
+  ambiente: { paineis: false, mastros: false }, // a cerca de detritos, os postos de fiscais e as placas de frenagem (a barreira e os painéis são do guardrail acima) // cerca de proteção, painéis, bandeiras vermelhas e brancas de Mônaco, postos e placas (os padrões do kit)
   passarelas: { candidatos: [0.03, 0.12, 0.48, 0.58, 0.72, 0.93], marcas: ["rolex", "heineken", "tag"], max: 2 }, // a da Rolex na reta dos boxes
   portico: { adiante: 420 }, // o pórtico das luzes de largada fica 420 depois da linha de chegada (a pole o vê lá na frente)
   postes: { passo: 34 },
   montanha: { angulo: -Math.PI / 2, altura: 860 }, // a Tête de Chien, ao norte
   terreno: { S: 300, pedacos: 4 }, // o morro é suave (o MDE é borrado): grade de 31 unidades e 4 × 4 pedaços bastam, e poupam malhas e triângulos
   horizonte: false, // sem os morros genéricos de longe: o morro de verdade é o relevo do chão e a Tête de Chien, a `montanha`
-  sem: { olhos: true, setas: true, mastros: true, rodas: true, dirigivel: true, bandeirolas: true },
+  sem: { outdoors: true, olhos: true, setas: true, mastros: true, rodas: true, dirigivel: true, bandeirolas: true },
   vida: {
     gaivotas: gaivotasDoPorto,
     som: {

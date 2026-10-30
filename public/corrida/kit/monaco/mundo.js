@@ -79,16 +79,12 @@ export function relevoMonaco(tr) {
   // o desvio da pista para o morro, suavizado ao longo da volta (±120 pontos): o chão em volta não ganha degrau onde o ponto mais perto da pista muda
   const desvioPista = new Float32Array(n);
   for (let i = 0; i < n; i++) { let s = 0, w = 0; for (let k = -120; k <= 120; k += 6) { const q = (i + k + n) % n, p = 1 - Math.abs(k) / 126; s += (pts[q].h - demPista[q]) * p; w += p; } desvioPista[i] = s / w; }
-  const plano = L + 6, rampa = 260, longe = 700, [fa, fb] = D.frac.trechos.tunel, t0 = Math.floor(fa * n) - 6, t1 = Math.floor(fb * n) + 6;
+  const plano = L + 6, rampa = 260, longe = 700;
   return (x, z, f, idx) => {
     const d = Math.abs(f.lat), dem = altitude(x, z), desvio = desvioPista[idx];
     const a = suave((d - plano) / rampa), b = suave((d - plano - rampa) / longe);
     let g = f.h * (1 - a) + (dem + desvio * (1 - b)) * a; // (o desvio já leva a pista ao nível dela: a e b são suaves, sem escada)
-    // o túnel é um morro por cima: fora das paredes o chão sobe até o terraço do hotel (34 acima da pista) e só depois desce para o morro de verdade
-    if (idx >= t0 && idx <= t1 && d >= L + 1) {
-      const w = suave((d - L - 1) / 10) * (1 - suave((d - L - 70) / 260)) * suave((idx - t0) / 10) * suave((t1 - idx) / 10);
-      g += (Math.max(g, f.h + 34.2) - g) * w;
-    }
+    // (o túnel tem o teto e as paredes de tunel.js; o morro de verdade em volta já fica acima dele)
     return g;
   };
 }

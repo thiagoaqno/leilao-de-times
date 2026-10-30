@@ -8,7 +8,10 @@ import { desenharMarca } from "./marcas.js";
 // lado: de que lado da pista ele fica (o texto lê na direção de quem olha da pista). paineis: 8 nomes de marcas.js, e
 // null é um painel de listras (cores: as duas cores das listras).
 // estilo: "duplo" desenha o guard-rail de rua de aço (Mônaco): duas lâminas onduladas empilhadas presas em postes, com o painel pintado na de cima
-export function guardRail(lado, { paineis = ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"], cores = ["#d62828", "#f4f4f4"], estilo } = {}) { // (estilo "painel": a barreira alta de Mônaco com os painéis de ponta a ponta)
+// estilo "monaco": o sistema de barreira de Mônaco, numa fita só pela volta inteira: guard-rail de lâminas metálicas embaixo e, em cima, a faixa de painéis de patrocínio
+// (`sequencia`: uma marca por trecho de `trecho` unidades, na ordem da TV, repetida em 4 painéis seguidos). A fita tem `sequencia.length * trecho` de comprimento (vLen em pista.js).
+export function guardRail(lado, { paineis = ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"], cores = ["#d62828", "#f4f4f4"], estilo, sequencia, trecho = 360 } = {}) {
+  if (estilo === "monaco") return guardRailMonaco(lado, sequencia, trecho); // (estilo "painel": a barreira alta de Mônaco com os painéis de ponta a ponta)
   const C = 1024, H = 48, plano = document.createElement("canvas"); plano.width = C; plano.height = H;
   const x = plano.getContext("2d"), painel = C / 8;
   const listras = (x0) => { for (let k = 0; k < 8; k++) { x.fillStyle = cores[k % 2]; x.fillRect(x0 + (k * painel) / 8, 0, painel / 8 + 1, H); } };
@@ -94,4 +97,20 @@ export function fachadas(add, blds, { cores, toldos, telhas } = FACHADAS_MEDITER
   inst(caixa, M(0xd8d2c4, { roughness: 0.9 }), casinhas);
   const quatroAguas = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4, 1); quatroAguas.rotateY(Math.PI / 4);
   inst(quatroAguas, new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#b5583c"; x.fillRect(0, 0, w, hh); for (let yy = 0; yy < hh; yy += 6) { x.fillStyle = "#00000022"; x.fillRect(0, yy, w, 2); } for (let i = 0; i < 200; i++) { x.fillStyle = rr() < 0.5 ? "#c8694a" : "#9e4a30"; x.fillRect(rr() * w, rr() * hh, 4, 3); } }), roughness: 0.85, flatShading: true }), telhados);
+}
+
+function guardRailMonaco(lado, sequencia, trecho) {
+  const PPU = 1.2, C = Math.round(sequencia.length * trecho * PPU), H = 128, S = trecho * PPU, plano = document.createElement("canvas"); plano.width = C; plano.height = H;
+  const x = plano.getContext("2d"), alturaPainel = 72; // 56% de cima: os painéis; o resto: as lâminas
+  sequencia.forEach((nome, k) => {
+    const x0 = k * S, n = 4, w = S / n;
+    for (let j = 0; j < n; j++) { desenharMarca(x, nome, x0 + j * w + 2, 2, w - 4, alturaPainel - 4); x.fillStyle = "rgba(6,12,28,0.38)"; x.fillRect(x0 + j * w + 2, 2, w - 4, alturaPainel - 4); } // painéis escuros, como na TV
+    x.fillStyle = "#10151f"; for (let j = 0; j <= n; j++) x.fillRect(x0 + j * w - 1, 0, 3, alturaPainel);
+  });
+  x.fillStyle = "#0b0f18"; x.fillRect(0, alturaPainel - 2, C, 4); // o aro de baixo dos painéis
+  // as lâminas de aço: três faixas onduladas com as bordas claras, presas em postes a cada 2 m
+  const lam = (y0, h) => { x.fillStyle = "#aab2b8"; x.fillRect(0, y0, C, h); x.fillStyle = "#d8dde0"; x.fillRect(0, y0, C, 3); x.fillStyle = "#6f777d"; x.fillRect(0, y0 + h * 0.5, C, 3); x.fillStyle = "#59616a"; x.fillRect(0, y0 + h - 3, C, 3); };
+  lam(alturaPainel + 2, 17); lam(alturaPainel + 21, 17); lam(alturaPainel + 40, 14);
+  x.fillStyle = "#2d3238"; for (let k = 0; k < C; k += 2.4 * 5 * PPU) x.fillRect(k, alturaPainel + 2, 4, H - alturaPainel);
+  return canvasTex(H, C, (c) => { if (lado > 0) c.setTransform(0, 1, -1, 0, H, 0); else c.setTransform(0, -1, -1, 0, H, C); c.drawImage(plano, 0, 0); });
 }

@@ -71,7 +71,7 @@ export function enfeitar(tr, add, r, alturaEm) {
   setas.forEach((l, k) => instancias(add, placa, new THREE.MeshStandardMaterial({ map: setaTex(k ? 1 : -1), roughness: 0.5, emissive: 0xffffff, emissiveIntensity: noite ? 0.5 : 0.08, emissiveMap: null, side: THREE.DoubleSide }), l, false));
   instancias(add, new THREE.CylinderGeometry(0.6, 0.6, 8, 5), M(0x555a60), postes, false);
   // outdoors nas retas, virados para a pista
-  if (!t.espaco) {
+  if (!t.espaco && !tr.sem?.outdoors) {
     let feitos = 0, ult = -1e9;
     for (let i = 0; i < n && feitos < 14; i += 3) {
       const p = pts[i]; if (p.k || i - ult < n / 16) continue;

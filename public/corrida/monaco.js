@@ -52,7 +52,7 @@ function arquibancadasMonaco(tr, add, predioEm) {
       if (ok && a < 0) a = i;
       if ((!ok || i === i1 + 1) && a >= 0) { if (i - 1 - a >= 22 && (!melhor || i - 1 - a > melhor.ate - melhor.de)) melhor = { de: a, ate: i - 1 }; a = -1; }
     }
-    if (melhor) out.push({ de: melhor.de / n, ate: melhor.ate / n, lado: l, degraus, cor: "#1f5fbf", encosto: "#e8eef8", cobertura: degraus > 3, nome }); // (as de 3 degraus ficam abertas)
+    if (melhor) out.push({ de: melhor.de / n, ate: melhor.ate / n, lado: l, degraus, cor: "#1f5fbf", encosto: "#3f86e8", cobertura: degraus > 3, nome }); // (as de 3 degraus ficam abertas)
   }
   if (out.length) arquibancadas(tr, add, { trechos: out });
   tr.arquibancadasMonaco = out.map((q) => q.nome);

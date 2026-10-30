@@ -259,7 +259,7 @@ function buildWorld(tr) {
     const wm = new THREE.MeshStandardMaterial({ map: wt, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x220a22 : 0 });
     // nos GPs, o guard-rail pintado em painéis (kit/beira.js; um material por lado, para os nomes não saírem espelhados)
     if (L < 1e9) for (const s of [1, -1]) {
-      const mat = gp?.guardrail ? new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }) : wm, vLen = gp?.guardrail ? 480 : 32;
+      const mat = gp?.guardrail ? new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }) : wm, vLen = gp?.guardrail?.estilo === "monaco" ? gp.guardrail.sequencia.length * (gp.guardrail.trecho ?? 360) : gp?.guardrail ? 480 : 32;
       // `guardrail.baixos`: [[f0, f1, lado]] trechos em que o guard-rail daquele lado é baixo, de aço de duas lâminas (a reta dos boxes de Mônaco), em vez do painel alto
       const matBaixo = gp?.guardrail?.baixos ? new THREE.MeshStandardMaterial({ map: guardRail(s, { ...gp.guardrail, estilo: "duplo" }), roughness: 0.55, side: THREE.DoubleSide }) : null;
       const baixosDe = (gp?.guardrail?.baixos || []).filter(([, , lado]) => lado === s).map(([f0, f1]) => [Math.floor(f0 * n), Math.floor(f1 * n) + (f1 < f0 ? n : 0)]);
