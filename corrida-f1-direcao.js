@@ -21,17 +21,18 @@ function largada(room, p, pos, agora, log) {
 // dano tira 1% de desempenho: F1.efeitoDoDano). Com 100%, perda total (`dnf`: o piloto está fora). Quem decide é o servidor, que
 // vê o contato na física do carro. O mesmo contato não conta duas vezes: cada par (o muro, ou cada outro carro: `chave`) só volta
 // a valer depois de BATIDA_INTERVALO (4 s). Quem já recebeu a bandeirada (fantasma) não bate nem leva batida.
-// Quem causou a batida entre dois carros: o que vinha atrás, mais rápido, e acertou o da frente (o outro está à frente dele, no rumo
-// dele, e ele se aproximava). Toque lado a lado, sem ninguém claramente atrás, não tem culpado. O batido nunca é punido.
+// Quem causou a batida entre dois carros: o que vinha atrás e acertou o da frente (o outro está à frente dele, no rumo dele, e ele
+// está atrás do outro, no rumo do outro). Só a posição decide: quando a direção de prova fica sabendo, o impulso da batida já
+// trocou as velocidades. Toque lado a lado, sem ninguém claramente atrás, não tem culpado. O batido nunca é punido.
 function causou(room, p, outroId) {
   const o = room.players[outroId]; if (!o) return false;
   const a = p.sim ? p.sim.c : p.ia?.sim || p.pos, b = o.sim ? o.sim.c : o.ia?.sim || o.pos; if (!a || !b) return false;
   const fx = Math.cos(a.a || 0), fy = Math.sin(a.a || 0), dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
-  const frente = (dx * fx + dy * fy) / d; // 1: o outro está bem na frente; 0: do lado
-  const vb = (b.v || 0) * Math.cos((b.a || 0) - (a.a || 0)); // a velocidade do outro no meu rumo
-  return frente > 0.55 && (a.v || 0) - vb > 12;
+  const frente = (dx * fx + dy * fy) / d; // 1: o outro está bem na minha frente; 0: do lado
+  const atras = (dx * Math.cos(b.a || 0) + dy * Math.sin(b.a || 0)) / d; // 1: eu estou bem atrás do outro, no rumo dele
+  return frente > 0.55 && atras > 0.3;
 }
-const PUNICAO_BATIDA = 1; // segundos para quem causou a batida
+const PUNICAO_BATIDA = { leve: 1, media: 2, forte: 3 }; // segundos para quem causou a batida, pela força dela
 function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   if (!room.direcao || room.phase !== 'race' || !p || p.dnf || p.finish != null || p.box || agora < room.startAt) return null;
   const cd = p.batidaPares || (p.batidaPares = {});
@@ -46,7 +47,7 @@ function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   const nivel = { leve: 'leve', media: 'média', forte: 'forte' }[b.nivel];
   const culpa = tipo !== 'muro' && String(chave).startsWith('carro:') && causou(room, p, String(chave).slice(6));
   log(`💥 ${p.name}: batida ${nivel} ${tipo === 'muro' ? 'no muro' : 'com outro carro'}; dano ${Math.round(p.dano)}%${culpa ? '' : ' (sem punição de tempo)'}.`);
-  if (culpa) penalizar(p, PUNICAO_BATIDA, 'causou uma batida', log);
+  if (culpa) penalizar(p, PUNICAO_BATIDA[b.nivel] || 1, `causou uma batida ${nivel}`, log);
   if (p.dano >= 100) { p.dnf = true; log(`💥 ${p.name}: perda total! O carro é retirado da pista e ${p.name} está fora da corrida.`); }
   return b;
 }
