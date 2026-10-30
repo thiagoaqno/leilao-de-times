@@ -91,7 +91,7 @@ module.exports = function attachTemporadaCorrida(io, corrida) {
           if (!fresco || fresco.dados.gp !== indice || fresco.dados.ano !== ano) return;
           const linhas = room.resultado.map((r) => {
             const p = room.players[r.id];
-            return { piloto: p.bot ? p.piloto.id : "voce", equipe: p.equipe, pos: r.pos, pontos: r.pontos, dnf: r.dnf, nc: r.nc };
+            return { piloto: p.bot ? p.piloto.id : "voce", equipe: p.equipe, pos: r.pos, pontos: r.pontos, dnf: r.dnf, nc: r.nc, voltaRapida: !!r.voltaRapida };
           });
           Regras.registrarResultado(fresco.dados, linhas);
           if (bd.salvarTemporadaCorrida(fresco.id, fresco.dados, indice)) {

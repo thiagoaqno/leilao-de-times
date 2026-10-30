@@ -101,7 +101,7 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
       try {
         const linhas = room.resultado.map((r) => {
           const p = room.players[r.id];
-          return { piloto: p.pessoa ? G.idDoHumano(p.pessoa) : p.piloto.id, equipe: p.equipe, pos: r.pos, pontos: r.pontos, dnf: r.dnf, nc: r.nc };
+          return { piloto: p.pessoa ? G.idDoHumano(p.pessoa) : p.piloto.id, equipe: p.equipe, pos: r.pos, pontos: r.pontos, dnf: r.dnf, nc: r.nc, voltaRapida: !!r.voltaRapida };
         });
         G.registrarResultado(atual, linhas);
         ativos.delete(atual.codigo); guardar(atual); avisar(atual);

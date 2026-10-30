@@ -76,6 +76,8 @@ function ruido(c, dur, vol, destino, t) {
   const s = c.createBufferSource(), g = c.createGain(), fl = c.createBiquadFilter();
   fl.type = "bandpass"; fl.frequency.value = 2200; g.gain.value = vol; s.buffer = b; s.connect(fl).connect(g).connect(destino); s.start(t);
 }
+// o HUD mostra o cartão "RÁDIO" do engenheiro enquanto ele fala (evento `radio:fala` com { on })
+function avisarFala(on, atraso) { if (!temDOM) return; const ir = () => window.dispatchEvent(new CustomEvent("radio:fala", { detail: { on } })); if (atraso > 0.01) setTimeout(ir, atraso * 1000); else ir(); }
 function tocar(buf, fim) {
   const x = contexto(); if (!x || x.c.state === "suspended") return false;
   const c = x.c, t = c.currentTime + 0.02, ini = t + 0.09;
@@ -84,10 +86,11 @@ function tocar(buf, fim) {
   const comp = c.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; // (a voz mais alta que o motor, sem estourar)
   s.connect(alto).connect(baixo).connect(g).connect(comp).connect(x.destino);
   if (x.abafar) x.abafar(true);
+  avisarFala(true, ini - c.currentTime);
   ruido(c, 0.07, 0.08, x.destino, t);                         // o clique de abrir o rádio
   s.start(ini); ruido(c, buf.duration + 0.04, 0.012, x.destino, ini); // chiado leve por baixo da voz
   ruido(c, 0.1, 0.07, x.destino, ini + buf.duration);         // o clique de fechar
-  s.onended = () => { if (x.abafar) x.abafar(false); fim(); }; return true;
+  s.onended = () => { if (x.abafar) x.abafar(false); avisarFala(false, 0); fim(); }; return true;
 }
 function proximo() {
   clearTimeout(timerFila); if (tocando || !fila.length) return;

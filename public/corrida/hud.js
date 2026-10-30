@@ -7,6 +7,18 @@ import { lapDone, deltaBest, myProg } from "./fantasma.js";
 import { drawItemHud } from "./itens.js";
 import { clima } from "./clima.js";
 
+// o cartão do rádio do engenheiro (como na TV: "SOBRENOME RADIO", o número e a equipe), por cima do velocímetro enquanto ele fala
+window.addEventListener("radio:fala", (ev) => {
+  const el = $("hRadioEng"); if (!el) return;
+  const on = !!(ev.detail && ev.detail.on), m = me();
+  if (on && m) {
+    const eq = (window.EQUIPES_F1 || {})[m.equipe], cor = eq ? eq.cor : m.color || "#e10600", sobrenome = String(m.nomeCompleto || m.name || "").trim().split(/s+/).pop();
+    el.style.setProperty("--equipe", cor);
+    el.innerHTML = `<div class="rr-nome"><b>${h(sobrenome.toUpperCase())}</b><span>RÁDIO</span></div><div class="rr-linha"><em>${h(String(m.numero || ""))}</em><i class="rr-onda"><s></s><s></s><s></s><s></s><s></s></i>${eq && eq.arquivo ? `<img src="/api/corrida/logo/${m.equipe}" alt="">` : ""}</div>`;
+  }
+  el.classList.toggle("on", on && !!m);
+});
+
 // ---------- placar da corrida ----------
 export function standings() {
   if (!E.S || !race) return [];
@@ -404,7 +416,7 @@ function resultadoGP(el, m, isHost) {
   el.innerHTML = `<div class="placa gp"><div class="chk"></div><div class="in"><div class="av-item av-fixo" style="--fundo:#f2f2f5;--txt:#0a0c12;--bloco:#0a0c12">${htmlAviso("chegada", punidos ? `Resultado do GP, com acréscimos de tempo para ${punidos} piloto${punidos > 1 ? "s" : ""}` : "Resultado oficial do GP")}</div><h2 style="font-size:26px;margin:10px 0 6px">🏆 GP · ${h(PISTAS[S.config.pista].name)}</h2>
     <div class="podio">${podio}</div>
     <table class="gptab"><thead><tr><th></th><th>Piloto</th><th class="num">Tempo</th><th>Grid</th><th>Paradas</th><th class="num">Melhor</th><th class="num">Pts</th></tr></thead><tbody>${R.map((r) => { const p = P(r.id), g = r.grid + 1, d = g - r.pos;
-      return `<tr class="${m && r.id === m.id ? "eu" : ""} ${r.nc || r.dnf ? "nc" : ""}"><td>${r.nc || r.dnf ? "—" : r.pos + "º"}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(nome(r.id))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}</td><td class="num">${final(r)}${r.penal ? ` <small class="muted">(+${r.penal} s)</small>` : ""}${r.dano ? ` <small class="muted">· dano ${Math.round(r.dano)}%</small>` : ""}</td><td class="muted">${g}º ${d ? `<small class="${d > 0 ? "sobe" : "desce"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</small>` : ""}</td><td class="muted">${pneus(r)}</td><td class="num muted">${r.melhor != null ? fmt(r.melhor) : ""}</td><td class="num"><b>${r.pontos || ""}</b></td></tr>`; }).join("")}</tbody></table>
+      return `<tr class="${m && r.id === m.id ? "eu" : ""} ${r.nc || r.dnf ? "nc" : ""}"><td>${r.nc || r.dnf ? "—" : r.pos + "º"}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(nome(r.id))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}${r.voltaRapida ? ` <i class="vr-roxo" title="Volta mais rápida: +1 ponto" style="color:#b14cff;font-style:normal">◆</i>` : ""}</td><td class="num">${final(r)}${r.penal ? ` <small class="muted">(+${r.penal} s)</small>` : ""}${r.dano ? ` <small class="muted">· dano ${Math.round(r.dano)}%</small>` : ""}</td><td class="muted">${g}º ${d ? `<small class="${d > 0 ? "sobe" : "desce"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</small>` : ""}</td><td class="muted">${pneus(r)}</td><td class="num muted">${r.melhor != null ? fmt(r.melhor) : ""}</td><td class="num"><b>${r.pontos || ""}</b></td></tr>`; }).join("")}</tbody></table>
     <div class="row" style="margin-top:14px;justify-content:center">${S.temporada ? `<button class="primary" id="rSede">← Voltar à sede</button>` : isHost ? `<button class="primary" id="rAgain">🏁 Novo GP</button><button id="rLobby">Trocar pista</button>` : `<span class="muted">Esperando o organizador…</span>`}${S.temporada ? "" : `<button class="ghost" onclick="location.href='/'">🏠 Vila</button>`}</div></div></div>`;
   if ($("rSede")) $("rSede").onclick = () => { location.href = "/corrida/temporada/" + (S.salaTemporada ? "?sala=" + S.salaTemporada : ""); };
   if ($("rAgain")) $("rAgain").onclick = () => act("start");

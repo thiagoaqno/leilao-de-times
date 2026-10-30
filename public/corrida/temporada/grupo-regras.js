@@ -208,9 +208,10 @@ function registrarResultado(sala, linhas) {
   if (!Array.isArray(linhas) || linhas.length !== n) throw Error("Resultado incompleto.");
   const ids = new Set(linhas.map((r) => r.piloto)), posicoes = new Set(linhas.map((r) => r.pos));
   if (ids.size !== n || !esperados.every((id) => ids.has(id)) || posicoes.size !== n
-    || linhas.some((r) => !inteiro(r.pos) || r.pos < 1 || r.pos > n || r.pontos !== (r.dnf || r.nc ? 0 : Solo.PONTOS[r.pos - 1] || 0))) throw Error("Resultado inválido.");
+    || linhas.some((r) => !inteiro(r.pos) || r.pos < 1 || r.pos > n || r.pontos !== (r.dnf || r.nc ? 0 : (Solo.PONTOS[r.pos - 1] || 0) + (r.voltaRapida ? 1 : 0)))
+    || linhas.filter((r) => r.voltaRapida).length > 1) throw Error("Resultado inválido."); // (a volta mais rápida vale +1, para um só)
   const gp = sala.calendario[sala.gp];
-  const resultado = { ano: sala.ano, gp: sala.gp, pista: gp.pista, linhas: linhas.map((r) => ({ piloto: r.piloto, equipe: r.equipe, pos: r.pos, pontos: r.pontos || 0, dnf: !!r.dnf, nc: !!r.nc })), financas: {} };
+  const resultado = { ano: sala.ano, gp: sala.gp, pista: gp.pista, linhas: linhas.map((r) => ({ piloto: r.piloto, equipe: r.equipe, pos: r.pos, pontos: r.pontos || 0, dnf: !!r.dnf, nc: !!r.nc, voltaRapida: !!r.voltaRapida })), financas: {} };
   sala.resultados.push(resultado); sala.gp++;
   for (const [eq, t] of Object.entries(sala.equipes)) {
     const pontos = resultado.linhas.filter((r) => r.equipe === eq).reduce((s, r) => s + r.pontos, 0), premio = 4 + Math.round(pontos * 0.4);
