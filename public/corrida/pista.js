@@ -175,7 +175,7 @@ function buildWorld(tr) {
   const WORLD = t.world, K = t.scale; // pistas ampliadas: o mundo cresce junto e as coordenadas fixas (mar, porto) vão × K
   tr.agua = [];
   // ---- chão em volta (malha com relevo) ----
-  const S = Math.min(380, Math.round(140 * K)), pad = 1400, size = WORLD + pad * 2, geo = new THREE.PlaneGeometry(size, size, S, S); geo.rotateX(-Math.PI / 2);
+  const S = gp?.terreno?.S ?? Math.min(380, Math.round(140 * K)), pad = 1400, size = WORLD + pad * 2, geo = new THREE.PlaneGeometry(size, size, S, S); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i) + WORLD / 2, y = pos.getZ(i) + WORLD / 2;
@@ -199,7 +199,7 @@ function buildWorld(tr) {
   // só desenha os pedaços que aparecem na tela. As normais já foram calculadas na malha inteira (sem emenda entre eles)
   const chaoM = new THREE.MeshStandardMaterial({ map: gtex, roughness: 1, vertexColors: !!geo.attributes.color });
   const lisos = [];
-  for (const pedaco of emPedacos(geo, S, 8)) {
+  for (const pedaco of emPedacos(geo, S, gp?.terreno?.pedacos ?? 8)) { // (`terreno` do GP: a grade e os pedaços; Mônaco usa menos, para caber no teto de malhas e triângulos)
     if (pedaco.userData.liso) { lisos.push(pedaco); continue; }
     const m = add(new THREE.Mesh(pedaco, chaoM)); m.position.set(WORLD / 2, 0, WORLD / 2); m.receiveShadow = true; m.name = `${id}-terreno`;
   }

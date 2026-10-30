@@ -65,29 +65,37 @@ export function largada(tr, add) {
   for (const s of [1, -1]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(2 * W - 6, 7.4), new THREE.MeshBasicMaterial({ map: tag, side: THREE.FrontSide })); f.position.set(q.x, q.h + 62, q.y); f.rotation.y = -Math.atan2(q.ny, q.nx) + (s > 0 ? 0 : Math.PI); f.translateZ(1.8); add(f); }
 }
 
+// um lugar com sobra: em terra, fora de prédio, longe da pista e fora da faixa das arquibancadas daquele lado
+function sobra(tr, x, z, i, lado, d, meia) {
+  if (fundoMonaco(tr, x, z) > -3 || tr.predioEmMonaco?.(x, z, meia * 0.6) || tr.distAt(x, z) < tr.W / 2 + meia || tr.coberto?.(i) || tr.noCorredor?.(x, z)) return false;
+  for (const q of tr.arqDegraus || []) if (q.lado === lado && ((i - q.i0 + tr.n) % tr.n) <= q.i1 - q.i0 + 6 && d < Math.abs(q.l0) + 9 * q.degraus + 10) return false;
+  return !(tr.reservado || []).some(([cx, cy, rr]) => (x - cx) ** 2 + (z - cy) ** 2 < (rr * 0.6) ** 2);
+}
+
 // ---- as tendas brancas do paddock e os guindastes amarelos: no cais, atrás das arquibancadas ----
 export function cais(tr, add, [f0, f1]) {
   const L = tr.wallLat, { n } = tr, tendas = [], tetos = [], rng = (() => { let s = 99; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })();
   let guindastes = 0;
   const i0 = Math.floor(f0 * n), i1 = Math.floor(f1 * n);
   for (let i = i0; i <= i1; i += 22) {
-    const p = tr.pts[i % n], lado = ladoDe(tr, p, "agua"), d = L + 30 + rng() * 10, [x, z] = lateral(p, lado, d);
-    if (!livre(tr, x, z, 30) || ocupado(tr, x, z) || fundoMonaco(tr, x, z) > -14) continue;
+    const p = tr.pts[i % n], lado = rng() < 0.5 ? 1 : -1, d = L + 20 + rng() * 22, [x, z] = lateral(p, lado, d);
+    if (!sobra(tr, x, z, i % n, lado, d, 20)) continue;
     const y = tr.chao(x, z) - 1.5, ry = Math.atan2(p.tx, p.ty);
-    tendas.push({ x, y: y + 8, z, sx: 30, sy: 16, sz: 22, r: ry }); tetos.push({ x, y: y + 20, z, sx: 32, sy: 9, sz: 24, r: ry + Math.PI / 4 });
+    tendas.push({ x, y: y + 7, z, sx: 24, sy: 14, sz: 18, r: ry }); tetos.push({ x, y: y + 17, z, sx: 26, sy: 8, sz: 20, r: ry + Math.PI / 4 });
   }
   instancias(add, new THREE.BoxGeometry(1, 1, 1), BRANCO, tendas, { nome: "monaco-tenda" });
   instancias(add, new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), M(0xe8e8e2, { roughness: 0.8 }), tetos.map((o) => ({ ...o, r: o.r })), { nome: "monaco-tenda-teto" });
   // guindastes amarelos de obra (a montagem das arquibancadas): dois, no cais
   for (const f of [f0 + (f1 - f0) * 0.3, f0 + (f1 - f0) * 0.78]) {
-    const p = tr.pts[Math.floor(f * n) % n], lado = ladoDe(tr, p, "agua");
-    for (const d of [L + 52, L + 44, L + 60]) {
-      const [x, z] = lateral(p, lado, d); if (!livre(tr, x, z, 26) || ocupado(tr, x, z) || fundoMonaco(tr, x, z) > -16) continue;
+    const p = tr.pts[Math.floor(f * n) % n];
+    for (const lado of [1, -1]) for (const d of [L + 34, L + 28, L + 40]) {
+      const [x, z] = lateral(p, lado, d); if (!sobra(tr, x, z, Math.floor(f * n) % n, lado, d, 16)) continue;
       const g = new THREE.Group(); g.position.set(x, tr.chao(x, z) - 1.5, z); g.rotation.y = Math.atan2(p.tx, p.ty) + 0.6; add(g);
       const peca = (w, h, dd, px, py, pz, mat = AMARELO) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dd), mat); m.position.set(px, py, pz); m.castShadow = true; m.name = "monaco-marco"; g.add(m); return m; };
       peca(7, 110, 7, 0, 55, 0); peca(5, 5, 130, 0, 112, 36); peca(5, 5, 40, 0, 112, -30); peca(8, 8, 14, 0, 106, -48, CINZA); peca(9, 11, 11, 0, 104, 4, CINZA);
       (tr.reservado ||= []).push([x, z, 40]); guindastes++; break;
     }
+    if (guindastes >= 2) break;
   }
   tr.caisMonaco = { tendas: tendas.length, guindastes };
 }

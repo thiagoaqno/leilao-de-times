@@ -107,7 +107,7 @@ async function tracado() {
   c = [ponto, ...c.slice(i), ...c.slice(0, i)];
   geo.features[0].geometry.coordinates = c;
   const arq = path.join(CACHE, "mc-girado.geojson"); fs.writeFileSync(arq, JSON.stringify(geo));
-  const par = { volta: arg("volta", "17000"), raio: arg("raio", "70"), passadas: arg("passadas", "3000") };
+  const par = { volta: arg("volta", "15200"), raio: arg("raio", "70"), passadas: arg("passadas", "3000") };
   return cacheado(`tracado2-${Object.values(par).join("-")}.json`, async () => {
     const R = 6371008.8, lat1 = c.reduce((q, p) => q + p[1], 0) / c.length, lon1 = c.reduce((q, p) => q + p[0], 0) / c.length, kx1 = ((Math.PI / 180) * R * Math.cos((lat1 * Math.PI) / 180)), ky1 = (Math.PI / 180) * R;
     const Mm = c.map(([lo, la]) => [(lo - lon1) * kx1, -(la - lat1) * ky1]);

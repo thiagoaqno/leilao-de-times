@@ -40,7 +40,7 @@ function geoCor(partes) { // junta [geometria, cor] numa geometria só, com a co
 }
 const pecas = {
   palmeira: () => { const t = new THREE.CylinderGeometry(1.5, 2.4, 46, 6); t.translate(0, 23, 0); const c = new THREE.ConeGeometry(21, 11, 8, 1, true); c.translate(0, 50, 0); const c2 = new THREE.ConeGeometry(12, 9, 7, 1, true); c2.translate(0, 55, 0); return geoCor([[t, [0.5, 0.38, 0.26]], [c, [0.22, 0.52, 0.24]], [c2, [0.3, 0.6, 0.28]]]); },
-  platano: () => { const t = new THREE.CylinderGeometry(1.8, 2.8, 24, 6); t.translate(0, 12, 0); const a = new THREE.IcosahedronGeometry(17, 0); a.scale(1.2, 0.9, 1.2); a.translate(0, 32, 0); const b = new THREE.IcosahedronGeometry(11, 0); b.translate(7, 40, 3); return geoCor([[t, [0.55, 0.5, 0.42]], [a, [0.32, 0.55, 0.26]], [b, [0.4, 0.62, 0.3]]]); },
+  platano: () => { const t = new THREE.CylinderGeometry(1.8, 2.8, 24, 6); t.translate(0, 12, 0); const a = new THREE.IcosahedronGeometry(17, 1); a.scale(1.2, 0.9, 1.2); a.translate(0, 32, 0); const b = new THREE.IcosahedronGeometry(11, 0); b.translate(7, 40, 3); return geoCor([[t, [0.55, 0.5, 0.42]], [a, [0.32, 0.55, 0.26]], [b, [0.4, 0.62, 0.3]]]); },
   pinheiro: () => { const t = new THREE.CylinderGeometry(1.4, 2.2, 30, 5); t.translate(0, 15, 0); const a = new THREE.IcosahedronGeometry(15, 0); a.scale(1.3, 0.8, 1.3); a.translate(0, 38, 0); return geoCor([[t, [0.45, 0.33, 0.24]], [a, [0.2, 0.42, 0.24]]]); },
 };
 
