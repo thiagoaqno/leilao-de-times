@@ -51,6 +51,13 @@ export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0,
   mastros.castShadow = cabecas.castShadow = true; mastros.name = `${tr.id}-holofotes`;
   for (const m of [mastros, cabecas, paineis]) add(m);
   brilhos.frustumCulled = false; brilhos.renderOrder = 4; soDeNoite(tr, add(brilhos));
+  // todos os refletores acesos: a SpotLight de verdade só cabe nas LUZES torres mais perto, então cada torre ganha também uma
+  // mancha de luz no asfalto (aditiva, barata, uma InstancedMesh só), e a pista inteira fica iluminada de longe
+  const poca = canvasTex(128, 128, (c, w, h) => { const g = c.createRadialGradient(64, 64, 4, 64, 64, 64); g.addColorStop(0, "rgba(255,236,196,0.55)"); g.addColorStop(0.5, "rgba(255,226,170,0.22)"); g.addColorStop(1, "rgba(255,220,150,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, false);
+  const pocaGeo = new THREE.PlaneGeometry(260, 200); pocaGeo.rotateX(-Math.PI / 2);
+  const pocas = new THREE.InstancedMesh(pocaGeo, aditivo(poca, { polygonOffset: true, polygonOffsetFactor: -2, fog: true }), k);
+  lista.forEach((t, j) => { o.position.set(t.alvo[0], t.alvo[1] + 0.6, t.alvo[2]); o.rotation.set(0, Math.atan2(-t.nx * t.s, -t.ny * t.s), 0); o.scale.set(1, 1, 1); o.updateMatrix(); pocas.setMatrixAt(j, o.matrix); });
+  pocas.frustumCulled = false; pocas.renderOrder = 2; pocas.name = `${tr.id}-luz-no-chao`; soDeNoite(tr, add(pocas));
   // as luzes: ficam sempre na cena (de dia, apagadas), para o número de luzes não mudar quando o dia vira noite
   const luzes = [];
   for (let j = 0; j < LUZES; j++) {
