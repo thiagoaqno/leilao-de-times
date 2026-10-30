@@ -59,10 +59,10 @@ export const Sound = (() => {
   // já em ordem de distância, n valem; só os 3 mais perto soam (volume pela distância e Doppler)
   function outros(lista, n) { if (motorF1 && ac) motorF1.outros(ac.currentTime, lista, n, on && n > 0); }
   // chuva: um chiado de ruído filtrado (o mesmo buffer, em loop) pela intensidade da chuva, e o chiado dos pneus no molhado;
-  // criado só na primeira vez que chove, e sempre abaixo do motor
+  // preparado ao iniciar uma corrida com chuva prevista, e sempre abaixo do motor
   let chuvaN = null;
-  function chuva(nivel, pneus) {
-    if (!chuvaN && nivel < 0.01 && pneus < 0.01) return;
+  function chuva(nivel, pneus, preparar = false) {
+    if (!preparar && !chuvaN && nivel < 0.01 && pneus < 0.01) return;
     const c = ctx(); if (!c) return;
     if (!chuvaN) {
       const len = c.sampleRate * 2, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -94,7 +94,7 @@ export const Sound = (() => {
     volume(v) { volume = Math.max(0, Math.min(1, v)); store.set("corrida:volume", volume); if (master) master.gain.setTargetAtTime(volume, ac.currentTime, 0.05); }, get nivel() { return volume; },
     radioSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, abafar } : null; }, // o rádio do engenheiro usa o volume geral
     narradorSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, ligado: on } : null; }, // o narrador da transmissão: volume geral e som ligado
-    crash, chuva, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
+    crash, chuva, prepararChuva() { chuva(0, 0, true); }, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
   };
 })();
 function renderSoundBtn() { Comum.iconeSom(Sound.on); for (const id of ["volume", "volCorrida"]) { const el = $(id); if (el) el.value = Math.round(Sound.nivel * 100); } }

@@ -127,7 +127,10 @@ function andar(room, agora, h) {
       S.tReal = tReal;
       Contato.depoisDoPasso(room, p, c, tReal, ev, corrida && !amb.safety && !amb.segurar && p.finish == null && !p.box && !p.dnf);
       temEntrada = true;
-      if (ev.length) { for (const e of ev) mudou = tratar(room, p, S, e, t, h) || mudou; ev.length = 0; }
+      // A contagem da corrida usa a hora real validada do passo, não o relógio acumulado da simulação:
+      // depois de uma travada, este pode ficar muito atrás dos bots e dar ao humano um tempo de chegada anterior ao deles.
+      const tEvento = Math.min(agora, Math.max(tReal, agora - TT_PASSADO_MS));
+      if (ev.length) { for (const e of ev) mudou = tratar(room, p, S, e, tEvento, h) || mudou; ev.length = 0; }
     }
     if (!temEntrada) continue;
     // o relógio dos passos: a âncora só desce quando o piloto está em dia (as rajadas atrasadas não a empurram)
