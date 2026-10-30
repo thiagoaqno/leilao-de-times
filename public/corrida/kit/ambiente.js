@@ -9,7 +9,7 @@ import { canvasTex, M } from "../cena.js";
 import { marcaTex, PATROCINIO } from "./marcas.js";
 import { ocupado } from "./comum.js";
 
-export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "f1", bandeira = [0xc42d38, 0xf0eee6], placas = [100, 50], outdoors = PATROCINIO, cerca = true } = {}) {
+export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "f1", bandeira = [0xc42d38, 0xf0eee6], placas = [100, 50], outdoors = PATROCINIO, cerca = true, paineis = true, mastros = true } = {}) {
   const { pts, n, W } = tr, L = tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 30, lotes = new Map();
   const metal = M(0x697780), branco = M(0xf0eee6), vermelho = M(0xc42d38), laranja = M(0xf27421), escuro = M(0x18242b), bandCima = M(bandeira[0]), bandBaixo = M(bandeira[1]), bandMeio = bandeira[2] != null ? M(bandeira[2]) : null;
   const luz = new THREE.MeshBasicMaterial({ color: 0xffdf9c, toneMapped: false });
@@ -52,11 +52,11 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
     for (const altura of [15, 23, 34]) caixa(metal, x, h + altura, z, 32, 0.5, 0.5, ry);
     for (const deslocamento of [-12, -6, 6, 12]) caixa(metal, x + p.tx * deslocamento, h + 24, z + p.ty * deslocamento, 0.22, 22, 0.22);
     }
-    if (i % 27 === 0) {
+    if (paineis && i % 27 === 0) {
       caixa(anuncios[(i / 27) % anuncios.length], x - p.nx * lado * 1.6, h + 7, z - p.ny * lado * 1.6, 30, 9, 0.6, ry);
       stats.paineis++; stats.setores[Math.floor(i / n * 4)]++;
     }
-    if (i % 81 === 0) {
+    if (mastros && i % 81 === 0) {
       caixa(metal, x, h + 31, z, 1, 38, 1);
       if (bandMeio) for (const [m, s] of [[bandCima, -1], [bandMeio, 0], [bandBaixo, 1]]) caixa(m, x + s * 5 * Math.cos(ry), h + 44.5, z - s * 5 * Math.sin(ry), 5, 9, 0.5, ry); // três faixas verticais (Itália)
       else { caixa(bandCima, x, h + 47, z, 15, 4.5, 0.5, ry); caixa(bandBaixo, x, h + 42.5, z, 15, 4.5, 0.5, ry); }

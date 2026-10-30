@@ -8,12 +8,15 @@ import { arquibancadas } from "./kit/arquibancadas.js";
 import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, NIVEL_DO_MAR } from "./kit/monaco/mundo.js";
 import { lerPredios, indiceDePredios, predios } from "./kit/monaco/predios.js";
 import { marcosMonaco } from "./kit/monaco/marcos.js";
-import { mar, porto, piscinas } from "./kit/monaco/agua.js";
+import { mar, porto, piscinas, atracados } from "./kit/monaco/agua.js";
+import { tecpro, telaos, largada, cais, rascasse, fonte, cruzeiros } from "./kit/monaco/detalhes.js";
 import { tunel } from "./kit/monaco/tunel.js";
 import { arvores, corDoChao } from "./kit/monaco/beira.js";
+import { vidaMonaco as vidaDeMonaco } from "./kit/monaco/vida.js";
 
 export { fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, NIVEL_DO_MAR };
 export const corDoChaoMonaco = corDoChao;
+export const vidaMonaco = (tr, ctx) => vidaDeMonaco(tr, ctx, tr.contextoVidaMonaco); // (chamada por gps/monaco.js `depois`)
 
 // as arquibancadas de Mônaco ficam só onde há calçada livre: cada candidato é cortado nos pedaços onde a faixa dos degraus não toca
 // prédio, água, túnel nem o corredor dos boxes
@@ -37,7 +40,7 @@ function arquibancadasMonaco(tr, add, predioEm) {
     const i0 = Math.floor(de * n); let i1 = Math.floor(ate * n); if (i1 < i0) i1 += n; // (a reta dos boxes cruza a linha de chegada)
     if (i1 - i0 < 22) continue;
     const meio = Math.floor((i0 + i1) / 2), l = quer === "fora-da-reta" ? (tr.t.boxes?.lado ? -tr.t.boxes.lado : -1) : lado(meio, quer);
-    let a = -1;
+    let a = -1, melhor = null; // só o pedaço livre mais comprido de cada candidato (menos malhas)
     const livre = (i) => {
       const p = pts[((i % n) + n) % n];
       for (const d of [L + 6, L + 6 + 4.5 * degraus, L + 6 + 9 * degraus + 1]) {
@@ -49,9 +52,9 @@ function arquibancadasMonaco(tr, add, predioEm) {
     for (let i = i0; i <= i1 + 1; i++) {
       const ok = i <= i1 && livre(i);
       if (ok && a < 0) a = i;
-      if ((!ok || i === i1 + 1) && a >= 0) { if (i - 1 - a >= 22) out.push({ de: a / n, ate: (i - 1) / n, lado: l, degraus, cor: "#1f5fbf", encosto: "#e8eef8", cobertura: degraus > 3, // (as de 3 degraus ficam abertas)
-         nome }); a = -1; }
+      if ((!ok || i === i1 + 1) && a >= 0) { if (i - 1 - a >= 22 && (!melhor || i - 1 - a > melhor.ate - melhor.de)) melhor = { de: a, ate: i - 1 }; a = -1; }
     }
+    if (melhor) out.push({ de: melhor.de / n, ate: melhor.ate / n, lado: l, degraus, cor: "#1f5fbf", encosto: "#3f86e8", cobertura: degraus > 3, nome }); // (as de 3 degraus ficam abertas)
   }
   if (out.length) arquibancadas(tr, add, { trechos: out });
   tr.arquibancadasMonaco = out.map((q) => q.nome);
@@ -77,5 +80,12 @@ export function cenarioMonaco(tr, ctx) {
   piscinas(tr, add, ctx);
   arquibancadasMonaco(tr, add, predioEm);
   arvores(tr, add, { hAt, predioEm });
+  tr.contextoVidaMonaco = { lista, predioEm, hAt };
+  const f = D.frac, c = f.curvas, tc = f.trechos;
+  atracados(tr, ctx, tc.cais);
+  tecpro(tr, add, [[c.sainteDevote + 0.006, c.sainteDevote + 0.028, "fora"], [tc.nouvelleChicane[0] - 0.012, tc.nouvelleChicane[1] + 0.012, "fora"], [c.rascasse - 0.01, c.rascasse + 0.008, "fora"], [c.mirabeauHaute - 0.006, c.mirabeauHaute + 0.014, "fora"]]); // (só nas áreas de escape: Sainte Dévote, chicane do porto, Rascasse e Mirabeau)
+  telaos(tr, add, [0.03, c.casino, c.mirabeauHaute + 0.012, tc.cais[0] + 0.03, c.rascasse - 0.02]);
+  largada(tr, add); cais(tr, add, tc.cais); rascasse(tr, add, hAt); fonte(tr, add, hAt); cruzeiros(tr, add);
+  tr.marcosPos = D.marcos; // (para conferir no navegador: __corrida.race.tr.marcosPos)
   tr.pracaCassino = { x: D.marcos.praca[0], y: D.marcos.praca[1] }; // o som da fonte
 }

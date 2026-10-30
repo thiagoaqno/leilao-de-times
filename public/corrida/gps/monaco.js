@@ -4,7 +4,7 @@
 // da linha de chegada) de cada curva e de cada trecho, que o gerador mede no traçado de verdade (dados.js `frac`).
 // O que Mônaco NÃO tem desliga em `sem`: olhos de gato no muro, placas de seta de autódromo, mastros de bandeira coloridos, roda-gigante,
 // dirigível e bandeirolas coloridas (não há pinos nem cones: é rua com guard-rail duplo e cerca de proteção).
-import { cenarioMonaco, fundoMonaco } from "../monaco.js";
+import { cenarioMonaco, fundoMonaco, vidaMonaco } from "../monaco.js";
 import { D, distanciaDoMar } from "../kit/monaco/mundo.js";
 import { pertoDe } from "../kit/som.js";
 
@@ -14,7 +14,7 @@ const F = D.frac;
 // as gaivotas voam sobre a bacia do porto: pontos de água a mais de 150 do cais, espalhados
 function gaivotasDoPorto(tr) {
   const out = [], w = tr.t.world;
-  for (let k = 0; out.length < 14 && k < 4000; k++) { const x = ((k * 7919) % 1000) / 1000 * w, z = ((k * 104729) % 1000) / 1000 * w; if (distanciaDoMar(x, z) > 160 && distanciaDoMar(x, z) < 700) out.push({ x, z }); }
+  for (let k = 0; out.length < 22 && k < 4000; k++) { const x = ((k * 7919) % 1000) / 1000 * w, z = ((k * 104729) % 1000) / 1000 * w; if (distanciaDoMar(x, z) > 160 && distanciaDoMar(x, z) < 700) out.push({ x, z }); }
   return out;
 }
 
@@ -28,16 +28,21 @@ export const GP_MONACO = {
     sc: [[BOXES.sai, "SC 2"], [BOXES.entra, "SC 1"]],
     grid: true, remendos: 46, bueiros: 40,
   },
-  // o guard-rail duplo de aço de Mônaco, com os painéis de patrocinador na lâmina de cima (kit/beira.js `estilo: "duplo"`)
-  guardrail: { estilo: "duplo", paineis: ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"], cores: ["#d62828", "#f4f4f4"] },
+  // UM sistema de barreira em Mônaco, pela volta inteira (kit/beira.js `estilo: "monaco"`): guard-rail de lâminas de aço embaixo, a faixa de painéis de patrocínio em cima (uma marca por
+  // trecho longo, na ordem da TV) e a cerca alta de detritos (ambiente.js). Os painéis soltos, os outdoors e os mastros do kit ficam desligados aqui; o Tecpro só nas áreas de escape.
+  guardrail: { estilo: "monaco", alto: 20, trecho: 360, baixoEstilo: "tunel", baixoAlto: 12, baixoVLen: 176, baixos: [[F.trechos.tunel[0] - 0.003, F.trechos.tunel[1] + 0.003, 1], [F.trechos.tunel[0] - 0.003, F.trechos.tunel[1] + 0.003, -1]], // dentro do túnel a barreira é baixa, branca, com "MONACO CIRCUIT since 1929"
+    sequencia: ["rolex", "tag", "pirelli", "aramco", "dhl", "lv", "salesforce", "heineken", "monacogp", "f1tv"] },
+  depois: (tr, ctx) => vidaMonaco(tr, ctx), // a galera, os fiscais, as bandeiras, os barcos, os guindastes e as ambulâncias (depois do ambiente e do vidaGP, com os postos prontos)
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, os prédios reais, os marcos, o Rochedo e as árvores
   boxes: { garagens: true, mureta: true }, // o prédio das garagens fica do lado externo da nova faixa de parada
-  ambiente: {}, // cerca de proteção, painéis, bandeiras vermelhas e brancas de Mônaco, postos e placas (os padrões do kit)
+  ambiente: { paineis: false, mastros: false }, // a cerca de detritos, os postos de fiscais e as placas de frenagem (a barreira e os painéis são do guardrail acima)
   passarelas: { candidatos: [0.03, 0.12, 0.48, 0.58, 0.72, 0.93], marcas: ["rolex", "heineken", "tag"], max: 2 }, // a da Rolex na reta dos boxes
+  portico: { adiante: 260 }, // o pórtico das luzes de largada fica 260 depois da linha de chegada (a pole o vê lá na frente)
   postes: { passo: 34 },
   montanha: { angulo: -Math.PI / 2, altura: 860 }, // a Tête de Chien, ao norte
+  terreno: { S: 250, pedacos: 4 }, // o morro é suave (o MDE é borrado): grade de 33 unidades e 4 × 4 pedaços bastam, e poupam malhas e triângulos
   horizonte: false, // sem os morros genéricos de longe: o morro de verdade é o relevo do chão e a Tête de Chien, a `montanha`
-  sem: { olhos: true, setas: true, mastros: true, rodas: true, dirigivel: true, bandeirolas: true },
+  sem: { outdoors: true, olhos: true, setas: true, mastros: true, rodas: true, dirigivel: true, bandeirolas: true },
   vida: {
     gaivotas: gaivotasDoPorto,
     som: {
