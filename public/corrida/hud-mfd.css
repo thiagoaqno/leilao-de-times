@@ -1,0 +1,177 @@
+/* Corrida da Galera — o HUD de F1 no estilo do jogo da EA, parte 2: o quadro de tempos (alto à direita), o mostrador central (bateria, marcha,
+   velocidade, rotação, modo do ERS), o MFD (embaixo à direita, com páginas), o botão MFD e o banner de punição. A torre e o minimapa estão
+   em hud-f1.css. Tudo só com `#race.f1hud` (regras de F1, fase da corrida); o arcade segue com o HUD antigo. */
+#hTempo,#hCentro,#hMfd,.mfd-botao,#hBanner,#hPunicao{display:none}
+#race.f1hud #hTempo,#race.f1hud #hCentro,#race.f1hud #hMfd{font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;text-shadow:none}
+
+/* ---- o quadro de tempos: setores S1/S2/S3, posição, volta atual e BEST ---- */
+#race.f1hud #hTempo{display:block;position:absolute;right:12px;top:62px;width:268px;padding:5px 10px 6px;background:#0a0c12e6;box-shadow:0 6px 18px #0009;z-index:2}
+.ht-set{display:grid;grid-template-columns:repeat(3,1fr);column-gap:3px;row-gap:2px;margin-bottom:5px}
+.ht-set span{font-size:9px;font-weight:700;letter-spacing:.14em;color:#ffffff90;line-height:1}
+.ht-set i{display:block;height:5px;background:#3a3e4a}
+.ht-set i.atual{background:#ffffffb8}.ht-set i.verde{background:#2ee08a}.ht-set i.amarelo{background:#ffd23f}.ht-set i.roxo{background:#b05cff}.ht-set i.neutro{background:#c9d1db}
+.ht-linha{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-variant-numeric:tabular-nums}
+.ht-linha:nth-of-type(1){padding-bottom:4px;border-bottom:2px solid #e10600}
+#htPos{font-size:24px;font-weight:700;line-height:1}
+#htPos small{font-size:15px;font-weight:600;color:#ffffffa8;margin-left:2px}
+#htVolta{font-size:22px;font-weight:600;letter-spacing:.01em}
+.ht-best{padding-top:3px;font-size:14px;font-weight:600;color:#ffffffc0}
+.ht-best span:first-child{letter-spacing:.1em;font-size:12px;font-weight:700}
+
+/* ---- o mostrador central ---- */
+#race.f1hud #hCentro{display:block;position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:300px;text-align:center;z-index:2}
+.gc-leds{display:flex;justify-content:center;gap:3px;height:7px;margin:0 auto 4px}
+.gc-leds i{display:block;width:14px;height:5px;border-radius:2px;background:#ffffff26}
+.gc-leds i.g{background:#2ee08a}.gc-leds i.r{background:#ff3d4a}.gc-leds i.b{background:#5fc8ff}
+.gc-aro{display:grid;grid-template-columns:96px minmax(0,1fr) 96px;align-items:center;padding:8px 6px;border-radius:56px 56px 18px 18px;background:linear-gradient(180deg,#0a0c12cc,#06070be6);border:1px solid #ffffff1c;box-shadow:0 6px 18px #0009}
+.gc-lado{position:relative;width:96px;height:96px}
+.gc-arco{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.gc-arco circle{fill:none;stroke-width:6;stroke-linecap:round}
+.gc-arco .trilho{stroke:#ffffff26}
+.gc-arco .valor{stroke:#2ee08a;transition:stroke-dasharray .1s linear}
+.gc-arco .valor.medio{stroke:#ffb02e}.gc-arco .valor.baixo{stroke:#ff3d4a}.gc-arco .valor.on{stroke:#37d0ee}
+.gc-arco.rpm .valor{stroke:#fff}
+.gc-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1}
+.gc-txt small{font-size:10px;font-weight:700;letter-spacing:.12em;color:#ffffffa8}
+.gc-bat b{font-size:25px;font-weight:700;color:#ffd23f}
+.gc-vel b{font-size:28px;font-weight:700;font-style:italic;font-variant-numeric:tabular-nums}
+.gc-vel em{font-style:normal;font-size:12px;font-weight:600;color:#ffffffc0;font-variant-numeric:tabular-nums}
+.gc-meio{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.gc-meio b{font-size:64px;font-weight:700;line-height:.9;min-width:1ch}
+.gc-meio span{font-size:11px;font-weight:700;letter-spacing:.14em;color:#ffffffb0;white-space:nowrap}
+.gc-meio span.harvest{color:#ffb02e}.gc-meio span.deploy{color:#37d0ee}
+.gc-ers{width:46%;height:4px;margin:5px auto 0;background:#ffffff1f}
+.gc-ers i{display:block;height:100%;width:0;background:#2ee08a;transition:width .15s linear}
+.gc-baixo{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:6px}
+.gc-botao{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;font-size:13px;font-weight:700;background:#0a0c12e6;border:2px solid #ffffffc0}
+#pOver{font-size:15px;font-weight:700;letter-spacing:.12em;color:#ffffff70;text-shadow:0 1px 4px #000}
+#pOver.pronto{color:#fff}#pOver.on{color:#37d0ee}
+.gc-drs{padding:1px 7px;font-size:11px;font-weight:700;letter-spacing:.12em;color:#ffffff55;border:1px solid #ffffff30;background:#0a0c12c0}
+.gc-drs.pronto{color:#0a0c12;background:#ffd23f;border-color:#ffd23f;animation:gcPisca 1s ease-in-out infinite}
+.gc-drs.aberto{color:#0a0c12;background:#2ee08a;border-color:#2ee08a}
+@keyframes gcPisca{50%{opacity:.55}}
+
+/* ---- o MFD: o painel de páginas ---- */
+#race.f1hud #hMfd{display:flex;flex-direction:column;position:absolute;right:14px;bottom:12px;width:292px;height:212px;pointer-events:auto;z-index:3;background:linear-gradient(180deg,#0a0c12e8,#06070bf2);border:1px solid #ffffff22;box-shadow:0 6px 18px #0009}
+#race.f1hud #hMfd.fechado{display:none}
+#race.f1hud #hMfd.foco{border-color:#fff;box-shadow:0 0 0 2px #e10600,0 6px 18px #000a}
+.mfd-topo{display:flex;align-items:center;gap:8px;height:32px;flex:none;padding:0 4px 0 10px;background:#14161d;border-bottom:2px solid #e10600}
+.mfd-nome{flex:1;font-size:15px;font-weight:700;letter-spacing:.14em;white-space:nowrap}
+.mfd-abas{display:flex;gap:4px}
+.mfd-abas button,.mfd-x{display:grid;place-items:center;min-width:22px;height:22px;padding:0;font:700 12px/1 var(--f1-fonte);color:#ffffffb0;background:#ffffff14;border:1px solid #ffffff22;border-radius:50%;cursor:pointer;box-shadow:none}
+.mfd-abas button.on{color:#0a0c12;background:#fff;border-color:#fff}
+.mfd-x{border-radius:0;border-color:transparent;background:transparent;font-size:16px}
+.mfd-x:hover,.mfd-abas button:hover{color:#fff;border-color:#ffffff66}
+.mfd-corpo{flex:1;min-height:0;padding:8px 10px 4px;overflow:hidden}
+.mfd-pg[hidden]{display:none}
+.mfd-dicas{display:flex;align-items:center;gap:10px;flex:none;height:24px;padding:0 10px;font-size:11px;font-weight:600;color:#ffffffa8;border-top:1px solid #ffffff14;white-space:nowrap;overflow:hidden}
+.mfd-dicas kbd{display:inline-grid;place-items:center;min-width:18px;height:16px;margin-right:3px;padding:0 4px;font:700 10px/1 var(--f1-fonte);color:#0a0c12;background:#e4e7ee;border-radius:3px;box-shadow:0 1px 0 #0008}
+.mfd-dicas kbd.b{border-radius:9px;background:#c9d1db}.mfd-dicas kbd.st{background:#ffd23f}
+.mfd-dicas .foco-dica{display:none;color:#fff}
+#hMfd.foco .mfd-dicas .ajuda{display:none}#hMfd.foco .mfd-dicas .foco-dica{display:inline}
+#hMfd[data-entrada="teclado"] .mfd-dicas .gp,#hMfd[data-entrada="pad"] .mfd-dicas .kb{display:none}
+.mp{height:100%;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600}
+.mp-dupla{flex-direction:row;align-items:center;gap:12px;position:relative}
+.mp-carro{width:84px;height:112px;flex:none}
+.mp-carro .mp-corpo{fill:#2b2f3a;stroke:#ffffff55;stroke-width:1.5}
+.mp-carro .mp-asa{fill:#454a58}
+.mp-carro .mp-roda{fill:#454a58;stroke:#000;stroke-width:1.5}
+.mp-carro .bom{fill:#2ee08a}.mp-carro .medio{fill:#ffb02e}.mp-carro .baixo{fill:#ff6a3d}.mp-carro .fim{fill:#ff3d4a}.mp-carro .neutra{fill:#454a58}
+.mp-carro.dn .mp-corpo.bom,.mp-carro.dn .mp-asa.bom{fill:#2ee08a}
+.mp-centro{position:absolute;left:0;top:50%;width:84px;transform:translateY(-50%);text-align:center;font-size:17px;font-weight:700;color:#fff;text-shadow:0 1px 4px #000,0 0 6px #000}
+.mp-dados{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.mp-comp{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700}
+.mp-bola{--c:#ffd100;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;font-size:15px;color:var(--c);background:#06070b;box-shadow:inset 0 0 0 2.5px var(--c)}
+.mp-barra{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#ffffffc0;white-space:nowrap}
+.mp-barra>div{height:7px;background:#ffffff24;overflow:hidden}
+.mp-barra i{display:block;height:100%;width:0;background:#2ee08a;transition:width .2s linear}
+.mp-barra i.medio{background:#ffb02e}.mp-barra i.baixo{background:#ff6a3d}.mp-barra i.fim{background:#ff3d4a}.mp-barra i.frio{background:#5fc8ff}.mp-barra i.on{background:#37d0ee}
+.mp-barra b{min-width:3.4ch;text-align:right;color:#fff;font-variant-numeric:tabular-nums}
+.mp-nota{margin:0;font-size:12px;line-height:1.2;color:#ffd23f}
+.mp-nota:empty{display:none}
+.mp-nota.mp-fraca{color:#ffffff80;font-size:10.5px;font-weight:600}
+.mp-grande{display:flex;align-items:baseline;justify-content:space-between}
+.mp-grande span{font-size:12px;letter-spacing:.12em;color:#ffffffa8}
+.mp-grande b{font-size:34px;line-height:1;color:#ffd23f;font-variant-numeric:tabular-nums}
+.mp-par{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-height:20px;padding:1px 0;border-bottom:1px solid #ffffff12;font-size:13px}
+.mp-par span{color:#ffffffa8;font-weight:600}
+.mp-par b{font-weight:700;color:#fff;text-align:right;font-variant-numeric:tabular-nums}
+.mp-par b.roxo{color:#d9a8ff}
+.mp-par.frente b{color:#ff9f9f}.mp-par.tras b{color:#9fd3ff}
+.mp-janela{display:flex;flex-direction:column;align-items:center;padding:3px 0 4px;background:linear-gradient(180deg,#0b8fd9,#0a6fa8)}
+.mp-janela small{font-size:10px;letter-spacing:.14em;font-weight:700;color:#fff}
+.mp-janela b{font-size:26px;line-height:1.05;font-weight:700;color:#fff}
+.mp-janela em{font-style:normal;font-size:10.5px;color:#d7efff}
+.mp-janela em:empty{display:none}
+.mp-box .mp-par,.mp-ajustes .mp-par{min-height:19px;font-size:12.5px}
+.mp-box{gap:4px}
+/* as linhas ajustáveis: ‹ valor ›; a linha escolhida em branco quando o painel está em modo ajustar (como na TV) */
+.mr-lista{display:flex;flex-direction:column;gap:2px}
+.mr{display:flex;align-items:center;justify-content:space-between;height:26px;padding:0 4px 0 8px;font-size:13px;background:#ffffff10;cursor:pointer}
+.mr.sel{background:#ffffff26;box-shadow:inset 3px 0 0 #37d0ee}
+#hMfd.foco .mr.sel{background:#fff;color:#0a0c12;box-shadow:none}
+.mr-v{display:flex;align-items:center;gap:2px}
+.mr-v b{min-width:96px;text-align:center;font-weight:700}
+.mr-b{display:grid;place-items:center;width:24px;height:24px;padding:0;font-size:19px;line-height:1;color:inherit;background:transparent;border:0;border-radius:0;cursor:pointer;box-shadow:none}
+.mr-b:hover{background:#ffffff22}
+/* a classificação completa: duas colunas */
+.mp-classif{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(12,1fr);grid-auto-flow:column;column-gap:10px;gap:0 10px}
+.cl-r{display:grid;grid-template-columns:18px 3px 34px 1fr 14px;align-items:center;gap:4px;font-size:11.5px;font-weight:700;min-width:0}
+.cl-r.hidden{display:none}
+.cl-r b{text-align:right;color:#ffffffb0}.cl-r i{height:12px}.cl-r em{font-style:normal;text-align:right;color:#e8ebf1;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:11px}
+.cl-r u{text-decoration:none;display:grid;place-items:center;width:14px;height:14px;border-radius:50%;font-size:9px;line-height:1;background:#06070b;box-shadow:inset 0 0 0 1.2px currentColor}
+.cl-r.eu{background:#fff;color:#0a0c12}.cl-r.eu b,.cl-r.eu em{color:#0a0c12}
+
+/* o botão que abre o MFD (fechado): no PC no canto do painel, no celular em cima dos botões de toque */
+#race.f1hud .mfd-botao{display:inline-flex;position:absolute;right:14px;bottom:12px;z-index:3;align-items:center;gap:7px;height:36px;padding:0 13px;font:700 13px/1 var(--f1-fonte);letter-spacing:.12em;color:#fff;background:#0a0c12e6;border:1px solid #ffffff33;border-radius:0;box-shadow:0 3px 10px #0008;cursor:pointer}
+#race.f1hud .mfd-botao svg{width:18px;height:18px}
+#race.f1hud.mfd-on .mfd-botao{display:none}
+
+/* ---- o banner de punição e a linha fixa do stop-and-go ---- */
+#race.f1hud #hBanner{display:none;left:50%;top:27%;transform:translateX(-50%);max-width:min(560px,90vw);text-align:center;font:700 clamp(15px,2.2vw,22px)/1.15 var(--f1-fonte);letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:none;background:#0a0c12f2;padding:10px 26px;border-left:5px solid #ffd23f;border-right:5px solid #ffd23f;z-index:5}
+#race.f1hud #hBanner.on{display:block;animation:hbEntra .25s cubic-bezier(.2,.8,.2,1) both}
+#race.f1hud #hBanner.stopgo,#race.f1hud #hBanner.drive,#race.f1hud #hBanner.penal{border-color:#e10600}
+#race.f1hud #hPunicao{display:none;left:50%;top:calc(27% - 40px);transform:translateX(-50%);max-width:90vw;padding:6px 16px;font:700 14px/1 var(--f1-fonte);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;color:#fff;background:#b3000ccc;border:1px solid #ffffff55;z-index:4}
+#race.f1hud #hPunicao.on{display:block}
+#race.f1hud #hPunicao.urgente{animation:gcPisca .8s ease-in-out infinite}
+@keyframes hbEntra{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%)}}
+
+/* ---- telas menores e toque ---- */
+/* o quadro de tempos desce da barra de botões (que pode quebrar em duas linhas) e os avisos da direção de prova cedem lugar a ele */
+@media (max-width:1000px){
+  #race.f1hud #hTempo{width:230px}
+  #avisosF1{width:min(330px,calc(100% - 256px - 246px))}
+  #race.f1hud #hMfd{width:262px}
+  #race.f1hud #hCentro{width:270px}
+  .gc-aro{grid-template-columns:84px minmax(0,1fr) 84px}.gc-lado{width:84px;height:84px}.gc-meio b{font-size:56px}
+}
+@media (max-width:700px){
+  #race.f1hud #hTempo{width:176px;right:6px;top:50px;padding:4px 8px 5px}
+  #htPos{font-size:19px}#htPos small{font-size:12px}#htVolta{font-size:16px}.ht-best{font-size:12px}.ht-best span:first-child{font-size:10px}
+  #avisosF1{width:calc(100% - 188px - 190px)}
+}
+@media (max-width:560px){
+  #race.f1hud #hTempo{width:150px}
+  #htVolta{font-size:14px}
+  #avisosF1{left:6px;width:calc(100% - 12px);top:182px}
+  #race.f1avisos .luzes{left:6px;top:176px}
+  #race.f1hud #hCentro{bottom:176px}
+  #race.f1hud #hBanner{top:auto;bottom:350px}#race.f1hud #hPunicao{top:auto;bottom:318px}
+}
+@media (pointer:coarse),(max-width:700px){
+  #race.f1hud #hCentro{transform:translateX(-50%) scale(.84);transform-origin:50% 100%}
+  #race.f1hud #hMfd{right:auto;left:50%;transform:translateX(-50%);bottom:8px;width:min(272px,calc(100vw - 16px));height:200px}
+  #race.f1hud.mfd-on #hCentro{visibility:hidden}
+  #race.f1hud .mfd-botao{bottom:174px;right:14px;height:40px}
+  .mfd-dicas{display:none}
+  .mfd-abas button,.mfd-x{min-width:26px;height:26px}
+  .mr-b{width:32px;height:30px}.mr{height:30px}
+  #race.f1hud #hBanner{top:auto;bottom:232px}#race.f1hud #hPunicao{top:auto;bottom:198px}
+}
+@media (pointer:coarse) and (max-width:560px),(max-width:560px){
+  #race.f1hud #hMfd{bottom:176px}
+}
+@media (max-width:700px) and (pointer:fine){
+  #race.f1hud .mfd-botao{bottom:12px}
+}
+@media (prefers-reduced-motion:reduce){.gc-arco .valor,.gc-ers i,.mp-barra i{transition:none}.gc-drs.pronto,#race.f1hud #hPunicao.urgente,#race.f1hud #hBanner.on{animation:none}}

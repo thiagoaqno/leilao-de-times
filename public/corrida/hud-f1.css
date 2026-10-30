@@ -1,89 +1,71 @@
-/* Corrida da Galera — o HUD de F1 (regras de F1): torre de posições à esquerda, painel embaixo à direita, banner no alto.
+/* Corrida da Galera — o HUD de F1 (regras de F1) no estilo do jogo da EA: a torre de posições (compacta ou completa) no alto à esquerda, o quadro
+   de tempos no alto à direita, o mostrador central e o MFD embaixo (ver hud-mfd.css), o minimapa do traçado embaixo à esquerda e o banner de avisos.
    Só aparece com `#race.f1hud` (hud.js liga quando config.regras === "f1" e a fase é a corrida); no arcade vale o HUD antigo. */
-#hTorre,#hPainel{display:none}
+#hTorre{display:none}
 #race.f1hud{--f1-fonte:"Titillium Web","Formula1","Segoe UI",system-ui,sans-serif}
 #race.f1hud .hud.tl,#race.f1hud .hud.br,#race.f1hud #hF1,#race.f1hud .hud.bl .chip{display:none!important}
 #race.f1hud #hTorre{display:block}
-#race.f1hud #hPainel{display:block}
-#race.f1hud #hDraft{left:auto;right:18px;bottom:196px;transform:none;font:700 13px var(--f1-fonte);letter-spacing:.06em;min-width:120px;text-align:right}
-/* torre: cabeçalho escuro com o logo e a volta, linhas compactas (posição, faixa da equipe, sigla, diferença, pneu); a minha linha em branco */
-#hTorre{position:absolute;left:10px;top:10px;width:224px;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:2;text-shadow:none;box-shadow:0 6px 18px #0009}
-.tt-topo{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px 0 0;background:#06070bf2;border-bottom:2px solid #e10600}
-.f1logo{width:50px;height:20px;flex:none}
-.tt-topo b{font-size:15px;font-weight:700;letter-spacing:.06em;white-space:nowrap}
-#tLinhas{background:#0a0c12c7}
-.tl{display:grid;grid-template-columns:24px 4px 36px auto 1fr 18px 12px;align-items:center;column-gap:6px;height:26px;padding:0 6px 0 0;border-bottom:1px solid #ffffff10;font-size:14px;font-weight:600;position:relative;contain:layout paint}
+#race.f1hud #hDraft{left:50%;right:auto;bottom:178px;transform:translateX(-50%);font:700 13px var(--f1-fonte);letter-spacing:.06em;min-width:120px;text-align:center}
+/* torre: cabeçalho escuro com o logo e RACE, a volta embaixo e linhas compactas (posição, faixa da equipe, sigla, pneu, diferença); a minha linha em branco */
+#hTorre{position:absolute;left:10px;top:10px;width:236px;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:2;text-shadow:none;box-shadow:0 6px 18px #0009}
+.tt-topo{display:flex;align-items:center;gap:8px;height:38px;padding:0 4px 0 8px;background:#06070bf2}
+.f1logo{width:54px;height:22px;flex:none}
+.tt-modo{flex:1;font-size:22px;font-weight:700;font-style:italic;letter-spacing:.04em;white-space:nowrap}
+.tt-alt{pointer-events:auto;cursor:pointer;display:grid;place-items:center;width:30px;height:30px;padding:0;color:#ffffffb0;background:transparent;border:1px solid #ffffff22;border-radius:0}
+.tt-alt:hover{color:#fff;border-color:#ffffff66}
+.tt-alt svg{width:16px;height:16px;transition:transform .15s}
+#hTorre.completa .tt-alt svg{transform:rotate(180deg)}
+.tt-volta{display:flex;align-items:baseline;justify-content:center;gap:6px;height:28px;padding-top:3px;background:#14161dec;border-bottom:2px solid #e10600;font-size:15px;letter-spacing:.1em;font-weight:600;white-space:nowrap}
+.tt-volta b{font-size:19px;font-weight:700;letter-spacing:.02em}
+#tLinhas{background:#0a0c12cf}
+/* as colunas têm lugar fixo (explícito): uma linha sem plaquinha não puxa as outras para o lado */
+.tl{display:grid;grid-template-columns:26px 4px minmax(0,1fr) auto 20px 58px 18px;align-items:center;column-gap:6px;height:26px;padding:0 6px 0 0;border-bottom:1px solid #ffffff10;font-size:14px;font-weight:600;position:relative;contain:layout paint}
+.tl>.n{grid-column:1}.tl>.eq{grid-column:2}.tl>.sg{grid-column:3}.tl>.ic{grid-column:4}.tl>.pn{grid-column:5}.tl>.df{grid-column:6}.tl>.vrx{grid-column:7}
 .tl.hidden{display:none}
 .tl .n{justify-self:stretch;height:100%;display:grid;place-items:center;background:#ffffff1a;font-size:13px;font-weight:700}
 .tl.p1 .n{background:#e10600}
 .tl .eq{height:16px;display:block}
-.tl .sg{font-weight:700;letter-spacing:.04em}
+.tl .sg{font-weight:700;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:clip}
 .tl .df{font-style:normal;text-align:right;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:#e8ebf1;white-space:nowrap}
 .tl .df.lider{color:#fff;font-weight:700}
 .tl .df.m{color:#ffd23f}
 .tl .df.voltas,.tl .df.out{color:#ff7a7a}
 /* o pneu: a letra do composto, na cor dele, num anel (M amarelo, S vermelho, H branco, W azul para a chuva) */
-.tl .pn{text-decoration:none;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:800;line-height:1;background:#06070b;box-shadow:inset 0 0 0 1.5px currentColor}
-/* a volta mais rápida: o losango roxo */
-.tl .vr{display:block;width:9px;height:9px;background:#b05cff;box-shadow:0 0 6px #b05cffaa;transform:rotate(45deg);justify-self:center}
-/* box, fora da corrida (DNF), bandeirada e punição: uma plaquinha entre a sigla e a diferença */
-.tl .ic{font-size:10px;font-weight:800;letter-spacing:.04em;line-height:1;color:#ffd23f}
-.tl .ic.box{padding:2px 4px;background:#0b8fd9;color:#fff}
-.tl .ic.dnf{padding:2px 4px;background:#e10600;color:#fff}
-.tl .ic.fim{color:#c9d1db}
-.tl .ic:empty{display:none}
-.tl .ic{order:1}.tl .df{order:2}.tl .pn{order:3}.tl .vr{order:4}
+.tl .pn{text-decoration:none;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:800;line-height:1;background:#06070b;box-shadow:inset 0 0 0 1.5px currentColor;justify-self:center}
+/* a volta mais rápida: o cronômetro roxo no fim da linha, e a linha toda roxa (como na TV) */
+.tl .vrx{display:grid;place-items:center;width:18px;height:18px;color:#d9a8ff}
+.tl .vr{width:16px;height:16px}
+.tl.vmr{background:linear-gradient(90deg,#9a2fe0f0,#7b22bfd9);color:#fff}
+.tl.vmr .n{background:#6a1aa8}
+.tl.vmr .vrx{color:#fff}
+/* box, fora da corrida (DNF), bandeirada e punição: uma plaquinha entre a sigla e o pneu (a coluna existe mesmo vazia) */
+.tl .ic{font-size:10px;font-weight:800;letter-spacing:.04em;line-height:1;color:#ffd23f;white-space:nowrap}
+.tl .ic:not(:empty){padding:2px 4px}
+.tl .ic.box{background:#0b8fd9;color:#fff}
+.tl .ic.dnf{background:#e10600;color:#fff}
+.tl .ic.fim{color:#c9d1db;padding:2px 0}
 .tl.eu{background:#fff;color:#0a0c12}
 .tl.eu .n{background:#0a0c12;color:#fff}.tl.eu.p1 .n{background:#e10600}
 .tl.eu .df,.tl.eu .df.lider{color:#0a0c12}.tl.eu .df.m{color:#9a6a00}.tl.eu .df.voltas,.tl.eu .df.out{color:#c4161c}
 .tl.eu .ic{color:#c4161c}.tl.eu .ic.box,.tl.eu .ic.dnf{color:#fff}.tl.eu .ic.fim{color:#4a5160}
+.tl.eu.vmr{background:linear-gradient(90deg,#9a2fe0,#7b22bf);color:#fff;box-shadow:inset 3px 0 0 #fff}
+.tl.eu.vmr .n{background:#fff;color:#6a1aa8}.tl.eu.vmr .df,.tl.eu.vmr .df.lider{color:#fff}.tl.eu.vmr .ic{color:#ffe36a}
 .tl.out{opacity:.55}
-/* painel de velocidade: caixa escura translúcida; a marcha num quadro, a velocidade grande em itálico, as luzes de troca, o BOOST, o pneu e o dano */
-#hPainel{position:absolute;right:14px;bottom:12px;width:254px;text-align:right;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:2}
-.pf-over{display:inline-block;padding:2px 12px;font-size:12px;font-weight:700;letter-spacing:.14em;border:1px solid #ffffff2a;border-bottom:0;color:#ffffff66;background:#0a0c12b3;margin-right:0}
-.pf-over.pronto{color:#0a0c12;background:#ffd23f;border-color:#ffd23f;animation:pfPisca 1s ease-in-out infinite}
-.pf-over.aberto{color:#0a0c12;background:#2ee08a;border-color:#2ee08a}
-.pf-caixa{padding:8px 12px 9px;background:linear-gradient(180deg,#0a0c12c4,#06070bd6);border:1px solid #ffffff1c;box-shadow:0 6px 18px #0009}
-.pf-vel{display:flex;align-items:flex-end;justify-content:flex-end;gap:7px;line-height:.9}
-.pf-vel b{font-size:68px;font-weight:700;font-style:italic;letter-spacing:-.02em;font-variant-numeric:tabular-nums;text-shadow:0 2px 8px #000a;min-width:2.2ch;text-align:right}
-.pf-vel span{font-size:15px;font-weight:600;letter-spacing:.04em;color:#ffffffb0;padding-bottom:6px}
-.pf-marcha{margin-right:auto;align-self:flex-start;width:32px;height:36px;display:grid;place-items:center;font-size:24px;font-weight:700;line-height:1;background:#ffffff10;border:2px solid #ffffffd0}
-.pf-rpm{display:flex;gap:3px;margin:7px 0 6px}
-.pf-rpm i{flex:1;height:5px;background:#ffffff24}
-.pf-rpm i.g{background:#2ee08a}.pf-rpm i.r{background:#ff3d4a}.pf-rpm i.b{background:#5fc8ff}
-.pf-boost{display:grid;grid-template-columns:auto 1fr 40px;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.08em}
-.pf-boost>div{height:7px;background:#ffffff24;overflow:hidden}
-.pf-boost i{display:block;height:100%;width:0;background:#c9a4ff;transition:width .15s linear}
-.pf-boost i.on{background:#37d0ee}
-.pf-boost b{font-size:14px;letter-spacing:0;text-align:right;font-variant-numeric:tabular-nums}
-.pf-extra{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
-.pf-pneu{--c:#ffd100;--r:100;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#ffffffc8}
-.pf-pneu b{flex:none;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;font-size:16px;font-weight:700;color:#fff;background:radial-gradient(circle,#0a0c12 58%,transparent 61%),conic-gradient(var(--c) calc(var(--r)*1%),#ffffff26 0)}
-.pf-pneu.fim b{background:radial-gradient(circle,#0a0c12 58%,transparent 61%),conic-gradient(#ff3d4a calc(var(--r)*1%),#ffffff26 0)}
-.pf-pneu.fim span{color:#ff7a7a}
-.pf-pneu.frio b{box-shadow:0 0 0 2px #1d5fa8}
-.pf-dano{flex:1;max-width:104px;font-size:11px;font-weight:700;letter-spacing:.06em;color:#ffffffa8;text-align:right}
-.pf-dano>div{height:4px;background:#ffffff24;margin-top:3px}
-.pf-dano i{display:block;height:100%;width:0;background:#2ee08a;transition:width .2s linear}.pf-dano i.medio{background:#ffb02e}.pf-dano i.alto{background:#ff3d4a}
-@keyframes pfPisca{50%{opacity:.6}}
-/* o minimapa redondo no canto inferior esquerdo */
+/* o minimapa do traçado inteiro (hud-painel.js desenha) no canto inferior esquerdo */
 #race.f1hud .hud.bl{left:10px;bottom:10px}
-#race.f1hud #mini{width:116px;height:116px;border-radius:50%;box-shadow:0 6px 16px #000a}
-/* o banner da direção de prova, limpo e centralizado no alto */
-#race.f1hud .hud.msg{top:14px;font:700 clamp(13px,2vw,18px)/1 var(--f1-fonte);letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:none;padding:9px 20px;background:#0a0c12e6;border-left:4px solid #ffd23f;border-right:4px solid #ffd23f;max-width:92vw;white-space:normal;text-align:center}
-#race.f1hud .hud.msg:empty{display:none}
+#race.f1hud #mini{width:150px;height:150px;border-radius:6px;background:#0a0c12a8;box-shadow:0 6px 16px #000a;filter:none}
 @media (max-width:700px){
   #hTorre{width:176px;left:6px;top:6px}
-  .tt-topo{height:28px;gap:6px}.tt-topo b{font-size:12px}.f1logo{width:40px;height:16px}
-  .tl{height:21px;font-size:11.5px;grid-template-columns:19px 3px 30px auto 1fr 16px 10px;column-gap:4px}.tl .df{font-size:11px}.tl .n{font-size:11px}.tl .eq{height:13px}.tl .pn{width:15px;height:15px;font-size:9.5px}.tl .ic{font-size:8.5px}
-  #hPainel{width:188px;right:8px}.pf-caixa{padding:6px 8px 7px}.pf-vel b{font-size:50px}.pf-vel span{font-size:12px;padding-bottom:4px}.pf-marcha{width:26px;height:28px;font-size:19px}.pf-rpm{margin:5px 0 4px}.pf-rpm i{height:4px}.pf-boost{font-size:11px;grid-template-columns:auto 1fr 34px}.pf-boost b{font-size:12px}.pf-extra{margin-top:5px}.pf-pneu b{width:28px;height:28px;font-size:13px}.pf-pneu span{font-size:11px}.pf-dano>div{display:none}.pf-dano{max-width:none;font-size:10px}.pf-over{font-size:10px;padding:1px 8px}
+  .tt-topo{height:30px;gap:5px;padding-left:5px}.f1logo{width:40px;height:16px}.tt-modo{font-size:16px}.tt-alt{width:24px;height:24px}.tt-alt svg{width:13px;height:13px}
+  .tt-volta{height:22px;font-size:11.5px;padding-top:2px;gap:4px}.tt-volta b{font-size:14px}
+  .tl{height:21px;font-size:11.5px;grid-template-columns:19px 3px minmax(0,1fr) auto 16px 44px 14px;column-gap:4px}.tl .df{font-size:11px}.tl .n{font-size:11px}.tl .eq{height:13px}.tl .pn{width:15px;height:15px;font-size:9.5px}.tl .ic{font-size:8.5px}.tl .vrx{width:14px;height:14px}.tl .vr{width:12px;height:12px}
   #race.f1hud #mini{width:84px;height:84px}
-  #race.f1hud #hDraft{bottom:150px;right:8px}
+  #race.f1hud #hDraft{bottom:150px}
 }
-@media (pointer:coarse){#hPainel{bottom:104px}#race.f1hud .hud.bl{bottom:112px}}
-@media (prefers-reduced-motion:reduce){.pf-boost i,.pf-dano i{transition:none}.pf-over.pronto{animation:none}}
+@media (pointer:coarse){#race.f1hud .hud.bl{bottom:112px}}
+@media (prefers-reduced-motion:reduce){.tt-alt svg{transition:none}}
 /* a direção de prova: cartões empilhados ao lado da torre (avisos-f1.js escolhe o tipo, a cor e a fila; hud.js desenha) */
-#avisosF1{position:absolute;left:246px;top:10px;width:min(330px,calc(100% - 262px));display:none;flex-direction:column;gap:3px;pointer-events:none;z-index:4;font-family:var(--f1-fonte,"Titillium Web","Segoe UI",system-ui,sans-serif)}
+#avisosF1{position:absolute;left:256px;top:10px;width:min(330px,calc(100% - 272px));display:none;flex-direction:column;gap:3px;pointer-events:none;z-index:4;font-family:var(--f1-fonte,"Titillium Web","Segoe UI",system-ui,sans-serif)}
 #race.f1avisos #avisosF1{display:flex}
 #race.f1avisos #hMsg{display:none}
 .av-item{--fundo:#1b1f2a;--txt:#fff;--bloco:#3a3f4b;display:grid;grid-template-columns:34px minmax(0,1fr);min-height:36px;background:var(--fundo);color:var(--txt);text-transform:uppercase;text-shadow:none;box-shadow:0 4px 12px #0009;animation:avEntra .28s cubic-bezier(.2,.8,.2,1) both;will-change:transform,opacity}
@@ -100,13 +82,13 @@
 @keyframes avEntra{from{transform:translateX(-30px);opacity:0}to{transform:none;opacity:1}}
 @keyframes avSai{from{transform:none;opacity:1}to{transform:translateX(-24px);opacity:0}}
 /* as cinco luzes da largada, como o pórtico da F1 */
-#race.f1avisos .luzes{left:246px;transform:none;top:max(76px,12%);gap:4px;padding:5px 7px 6px;border-radius:0;border:0;border-top:3px solid #e10600;background:#0a0c12e6}
+#race.f1avisos .luzes{left:256px;transform:none;top:max(140px,18%);gap:4px;padding:5px 7px 6px;border-radius:0;border:0;border-top:3px solid #e10600;background:#0a0c12e6}
 #race.f1avisos .luzes i{width:clamp(16px,2.2vw,24px);height:clamp(24px,3.2vw,34px);border-radius:4px;background:#12141b;box-shadow:inset 0 0 0 2px #2a2d38}
 #race.f1avisos .luzes i::after{content:"";display:block;width:62%;aspect-ratio:1;margin:30% auto 0;border-radius:50%;background:#2a0707}
 #race.f1avisos .luzes i.on{box-shadow:inset 0 0 0 2px #2a2d38,0 0 9px #ff2a1a88}
 #race.f1avisos .luzes i.on::after{background:#ff2a1a;box-shadow:0 0 8px 2px #ff2a1acc}
-@media (max-width:1000px){#avisosF1{top:56px}#race.f1avisos .luzes{top:max(130px,18%)}}
-@media (max-width:700px){#avisosF1{left:188px;width:calc(100% - 196px);top:50px;gap:3px}#race.f1avisos .luzes{left:188px;top:max(110px,15%)}.av-item{grid-template-columns:26px minmax(0,1fr);min-height:28px}.av-bloco svg{width:16px;height:16px}.av-cab small{display:none}.av-txt{font-size:11px}}
+@media (max-width:1000px){#avisosF1{top:56px}#race.f1avisos .luzes{top:max(190px,24%)}}
+@media (max-width:700px){#avisosF1{left:188px;width:calc(100% - 196px);top:50px;gap:3px}#race.f1avisos .luzes{left:188px;top:max(150px,22%)}.av-item{grid-template-columns:26px minmax(0,1fr);min-height:28px}.av-bloco svg{width:16px;height:16px}.av-cab small{display:none}.av-txt{font-size:11px}}
 @media (prefers-reduced-motion:reduce){.av-item,.av-item.sai{animation:none}}
 /* a barra de botões do alto: quadrados escuros com ícone (como na TV); o BOX é vermelho e mostra a tecla; o do box muda de cor com a parada:
    vermelho (livre), âmbar (pedida) e azul (no corredor). O rádio e o volume vêm na frente. */
@@ -137,7 +119,7 @@
 @media (max-width:1000px){#race.f1hud .topbtns #bErs .rot,#race.f1hud .topbtns #bRespawn .rot,#race.f1hud .topbtns #bReiniciar .rot{display:none}#race.f1hud .topbtns #bErs,#race.f1hud .topbtns #bRespawn,#race.f1hud .topbtns #bReiniciar{width:38px;padding:0}}
 @media (max-width:700px){#race.f1hud .topbtns{gap:4px;right:8px;top:8px}#race.f1hud .topbtns button{min-width:34px;min-height:34px;font-size:12px}#race.f1hud .topbtns [data-radio-botao],#race.f1hud .topbtns #bErs,#race.f1hud .topbtns #bRespawn,#race.f1hud .topbtns #bReiniciar,#race.f1hud .topbtns #bExit{width:34px}#race.f1hud .topbtns .vol,#race.f1hud .topbtns #bReiniciar{display:none}#race.f1hud #bBox .bx-rot{padding:0 10px;font-size:13px}#race.f1hud #bBox .bx-pneu{padding-right:9px;font-size:12px}}
 /* o clima ao lado do minimapa: o ícone (sol, garoa ou chuva), o tempo em cima e o nível da pista embaixo (clima-visual.js escreve) */
-#hClima{display:none;position:absolute;left:134px;bottom:12px;align-items:center;gap:9px;padding:6px 14px 6px 9px;pointer-events:none;z-index:2;color:#fff;background:linear-gradient(90deg,#0a0c12e6,#0a0c12b0);border-left:3px solid #ffd23f;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);text-shadow:none;box-shadow:0 4px 12px #0008}
+#hClima{display:none;position:absolute;left:172px;bottom:12px;align-items:center;gap:9px;padding:6px 14px 6px 9px;pointer-events:none;z-index:2;color:#fff;background:linear-gradient(90deg,#0a0c12e6,#0a0c12b0);border-left:3px solid #ffd23f;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);text-shadow:none;box-shadow:0 4px 12px #0008}
 #race.f1hud #hClima{display:flex}
 #hClima svg{width:28px;height:28px;flex:none;color:#ffd23f}
 #hClima div{display:flex;flex-direction:column;gap:3px;line-height:1}
@@ -147,11 +129,12 @@
 #hClima[data-nivel="1"]{border-left-color:#5fc8ff}
 #hClima[data-nivel="2"]{border-left-color:#0b8fd9}
 #hClima[data-nivel="1"] span,#hClima[data-nivel="2"] span{color:#5fc8ff}
+@media (max-width:1000px){#hClima{left:10px;bottom:170px}}
 @media (max-width:700px){#hClima{left:100px;bottom:8px;padding:4px 9px 4px 6px}#hClima svg{width:22px;height:22px}#hClima b{font-size:12px}#hClima span{font-size:10px}}
 @media (pointer:coarse){#hClima{bottom:112px}}
 
 /* o rádio do engenheiro: o cartão aparece por cima do velocímetro enquanto ele fala */
-#hRadioEng{position:absolute;right:14px;bottom:196px;width:254px;padding:8px 12px 10px;background:linear-gradient(135deg,#0a0c12f0 60%,color-mix(in srgb,var(--equipe,#e10600) 35%,#0a0c12));border-left:4px solid var(--equipe,#e10600);font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:3;opacity:0;transform:translateX(24px);transition:opacity .18s,transform .18s;display:none}
+#hRadioEng{position:absolute;right:14px;bottom:250px;width:254px;padding:8px 12px 10px;background:linear-gradient(135deg,#0a0c12f0 60%,color-mix(in srgb,var(--equipe,#e10600) 35%,#0a0c12));border-left:4px solid var(--equipe,#e10600);font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:3;opacity:0;transform:translateX(24px);transition:opacity .18s,transform .18s;display:none}
 #race.f1hud #hRadioEng{display:block}
 #hRadioEng.on{opacity:1;transform:none}
 #hRadioEng .rr-nome{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
@@ -165,4 +148,5 @@
 #hRadioEng .rr-onda s:nth-child(2){animation-delay:.1s}#hRadioEng .rr-onda s:nth-child(3){animation-delay:.2s}#hRadioEng .rr-onda s:nth-child(4){animation-delay:.3s}#hRadioEng .rr-onda s:nth-child(5){animation-delay:.4s}
 @keyframes rrOnda{0%,100%{height:25%}50%{height:95%}}
 @media (prefers-reduced-motion:reduce){#hRadioEng,#hRadioEng .rr-onda s{transition:none;animation:none}}
-@media (max-width:700px){#hRadioEng{width:180px;bottom:150px;right:8px}#hRadioEng .rr-linha em{font-size:28px}}
+@media (pointer:coarse){#hRadioEng{bottom:232px}}
+@media (max-width:700px){#hRadioEng{width:180px;bottom:224px;right:8px}#hRadioEng .rr-linha em{font-size:28px}}

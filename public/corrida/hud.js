@@ -1,11 +1,13 @@
 // Corrida da Galera — o placar da corrida e o resultado.
-import { E, PISTAS, $, h, sNow, me, P, act, fmt, SECTORS, checkpoint, toast } from "./estado.js";
+import { E, PISTAS, $, h, sNow, me, P, act, fmt, SECTORS, checkpoint, toast, store } from "./estado.js";
 import { Sound } from "./sons.js";
 import { race } from "./jogo.js";
 import { textoJogos } from "./box.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
 import { drawItemHud } from "./itens.js";
 import { clima } from "./clima.js";
+import { set, montarCentro, atualizarCentro, atualizarTempo, estrategia, minimapaF1, desenharBanner } from "./hud-painel.js";
+import { montarMfd, atualizarMfd, acoes } from "./mfd.js";
 
 // o cartão do rádio do engenheiro (como na TV: "SOBRENOME RADIO", o número e a equipe), por cima do velocímetro enquanto ele fala
 window.addEventListener("radio:fala", (ev) => {
@@ -123,18 +125,21 @@ export function hud() {
 // Tudo em DOM, criado uma vez e atualizado só no que mudou, no máximo 10 vezes por segundo. As contas (diferença para o líder,
 // ordem, recorte) ficam em hud-torre.js. A diferença é a distância até o líder dividida pela velocidade de quem vem atrás
 // (média suavizada de `gh.v`, o fantasma, ou de `race.car.v`, o meu carro); `prog` vem de `standings()`.
-const set = (el, prop, v) => {
-  const c = el._v || (el._v = {}); if (c[prop] === v) return; c[prop] = v;
-  if (prop === "t") el.textContent = v; else if (prop === "c") el.className = v; else if (prop === "w") el.style.width = v; else if (prop === "bg") el.style.background = v; else if (prop === "col") el.style.color = v; else if (prop === "d") el.style.display = v; else el.setAttribute(prop, v);
-};
 const LOGO_F1 = '<svg class="f1logo" viewBox="0 0 64 26" aria-label="F1"><path d="M0 26L9 0H64L55 26Z" fill="#e10600"/><text x="31" y="21" text-anchor="middle" font-family="Titillium Web,Arial,sans-serif" font-weight="900" font-style="italic" font-size="22" fill="#fff">F1</text></svg>';
-const N_RPM = 12; // os segmentos da barra de rotação (verde, vermelho e azul no corte)
+// a torre mostra só os 5 carros perto de você (compacta, como no jogo da EA) ou todos; a escolha fica guardada (corrida:torre) e muda
+// pelo botão do cabeçalho, pelo toque no cabeçalho ou pela linha "Torre" da página Ajustes do MFD
+const COMPACTA_N = 5;
+const torreCompacta = () => (race.torreCompacta == null ? (race.torreCompacta = store.get("corrida:torre") !== "completa") : race.torreCompacta);
+function alternarTorre() { race.torreCompacta = !torreCompacta(); try { store.set("corrida:torre", race.torreCompacta ? "compacta" : "completa"); } catch (e) {} race.hudF1T = 0; }
+acoes.torreCompacta = () => (race ? torreCompacta() : true); acoes.torreAlternar = () => { if (race) alternarTorre(); };
+const ICONE_RELOGIO = '<svg class="vr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 2.5h5"/></svg>';
 function montarTorre() {
   const el = $("hTorre"); if (el.dataset.ok) return; el.dataset.ok = 1;
-  el.innerHTML = `<div class="tt-topo">${LOGO_F1}<b id="tVolta">VOLTA 1 / 1</b></div><div id="tLinhas"></div>`;
+  el.innerHTML = `<div class="tt-topo">${LOGO_F1}<b class="tt-modo">RACE</b><button type="button" class="tt-alt" id="tAlt" aria-label="Alternar torre compacta e completa" title="Torre: compacta ou completa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div class="tt-volta"><span>VOLTA</span> <b id="tVolta">1</b><span id="tVoltaTot"> / 1</span></div><div id="tLinhas"></div>`;
   const box = $("tLinhas");
-  for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "tl hidden"; d.innerHTML = '<span class="n"></span><i class="eq"></i><b class="sg"></b><em class="df"></em><u class="pn"></u><s class="vr" title="Volta mais rápida"></s><small class="ic"></small>'; box.appendChild(d); }
-  $("hPainel").innerHTML = '<div class="pf-over" id="pOver">OVERTAKE</div><div class="pf-caixa"><div class="pf-vel"><div class="pf-marcha" id="pMarcha">N</div><b id="pVel">0</b><span>km/h</span></div><div class="pf-rpm" id="pRpm">' + "<i></i>".repeat(N_RPM) + '</div><div class="pf-boost"><span>BOOST</span><div><i id="pBoost"></i></div><b id="pBoostT">0%</b></div><div class="pf-extra"><div class="pf-pneu" id="pPneu" title="Pneu: letra do composto e desgaste"><b>M</b><span>0%</span></div><div class="pf-dano"><span id="pDanoT">DANO 0%</span><div><i id="pDano"></i></div></div></div></div>';
+  for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "tl hidden"; d.innerHTML = `<span class="n"></span><i class="eq"></i><b class="sg"></b><u class="pn"></u><small class="ic"></small><em class="df"></em><span class="vrx">${ICONE_RELOGIO}</span>`; box.appendChild(d); }
+  $("tAlt").addEventListener("click", alternarTorre);
+  montarCentro(); montarTempo(); montarMfd();
 }
 // o engenheiro no rádio (radio.js): só nas regras de F1
 const radioF1 = (situacao, op) => { if (window.Radio && E.S && E.S.config && E.S.config.regras === "f1") window.Radio.dizer(situacao, op); };
@@ -221,7 +226,7 @@ function hudF1(m, st, now) {
   avisoDeChuva(m);
   if (race.pneu && m && m.finish == null && m.started && race.pneu.desgaste > window.F1Regras.PENHASCO * 0.75 && race.pneu.desgaste <= window.F1Regras.PENHASCO) radioF1("pneu");
   montarTorre();
-  const T = window.HudTorre, F = window.F1Regras, tr = race.tr, cfg = E.S.config;
+  const T = window.HudTorre, F = window.F1Regras, HM = window.HudMfd, tr = race.tr, cfg = E.S.config;
   if (!race.hudEsc) { let L = 0; for (let i = 0; i < tr.n; i++) { const a = tr.pts[i], b = tr.pts[(i + 1) % tr.n]; L += Math.hypot(b.x - a.x, b.y - a.y); } race.hudEsc = L / tr.n; } // unidades de pista por índice
   const vs = race.hudV || (race.hudV = {}), eqs = window.F1Pilotos ? window.F1Pilotos.EQUIPES : {};
   const cors = st.map((r) => {
@@ -229,39 +234,39 @@ function hudF1(m, st, now) {
     vs[r.id] = vs[r.id] == null ? v : vs[r.id] + (v - vs[r.id]) * 0.3;
     return { id: r.id, prog: r.prog, v: vs[r.id], dnf: !!p.dnf, dsq: !!p.dsq, sg: !!p.stopGo, noBox: !!p.noBox, penal: p.penal || 0, done: r.done, best: p.best, pneu: p.pneuAtual || p.pneu, sigla: p.sigla || String(p.name || "???").slice(0, 3).toUpperCase(), nome: p.name, cor: (eqs[p.equipe] || {}).cor || p.color, bot: p.bot };
   });
+  race.hudCors = cors;
   const linhas = T.torre(cors, { n: tr.n, meuId: m && m.id, esc: race.hudEsc });
   // a volta no topo é a do líder (como na TV)
-  const lid = st[0] && st[0].p, volta = lid ? Math.max(1, Math.min(cfg.voltas, (lid.started ? lid.laps : 0) + 1)) : 1;
-  set($("tVolta"), "t", lid && lid.finish != null ? "BANDEIRADA" : `VOLTA ${volta} / ${cfg.voltas}`);
-  const max = Math.max(6, Math.min(22, Math.floor((innerHeight - 150) / (innerWidth < 700 ? 22 : 28)))), eu = linhas.findIndex((l) => l.eu);
+  const lid = st[0] && st[0].p, volta = lid ? Math.max(1, Math.min(cfg.voltas, (lid.started ? lid.laps : 0) + 1)) : 1, acabou = !!lid && lid.finish != null;
+  set($("tVolta"), "t", acabou ? "BANDEIRADA" : volta); set($("tVoltaTot"), "t", acabou ? "" : ` / ${cfg.voltas}`);
+  const compacta = torreCompacta(), peq = innerWidth < 700;
+  // compacta: o líder e os vizinhos (5 linhas); completa: todos que cabem, sem passar do minimapa e do clima embaixo
+  const max = compacta ? COMPACTA_N : Math.max(6, Math.min(22, Math.floor((innerHeight - (peq ? 200 : 250)) / (peq ? 22 : 28)))), eu = linhas.findIndex((l) => l.eu);
+  set($("hTorre"), "c", "hud" + (compacta ? " compacta" : " completa")); set($("tAlt"), "aria-pressed", String(!compacta));
   if (eu >= 0 && window.Radio && m && m.started && !m.dnf && m.finish == null) window.Radio.posicao(linhas[eu].pos, String(race.startAt));
   const ver = T.recortar(linhas.length, eu, max), box = $("tLinhas").children;
   for (let k = 0; k < box.length; k++) {
     const d = box[k], l = ver[k] != null ? linhas[ver[k]] : null;
-    set(d, "c", l ? "tl" + (l.eu ? " eu" : "") + (l.pos === 1 ? " p1" : "") + (l.dif.tipo === "out" ? " out" : "") : "tl hidden");
+    set(d, "c", l ? "tl" + (l.eu ? " eu" : "") + (l.pos === 1 ? " p1" : "") + (l.volta ? " vmr" : "") + (l.dif.tipo === "out" ? " out" : "") : "tl hidden");
     if (!l) continue;
-    const c = d.children; // n, eq, sg, df, pn, vr, ic
-    set(c[0], "t", l.pos); set(c[1], "bg", l.cor); set(c[2], "t", l.sigla); set(c[3], "t", l.dif.texto); set(c[3], "c", "df " + l.dif.tipo);
-    set(c[4], "t", l.letra); set(c[4], "col", (F.PNEUS[l.pneu] || F.PNEUS.medio).cor); set(c[5], "d", l.volta ? "" : "none");
+    const c = d.children; // n, eq, sg, pn, ic, df, vrx
+    set(c[0], "t", l.pos); set(c[1], "bg", l.cor); set(c[2], "t", l.sigla);
+    set(c[3], "t", l.letra); set(c[3], "col", (F.PNEUS[l.pneu] || F.PNEUS.medio).cor);
     const ic = l.dif.tipo === "out" ? (l.dsq ? "DSQ" : "DNF") : l.noBox ? "BOX" : l.acabou ? "FIM" : l.sg ? "SG" : l.penal > 0 ? `+${l.penal}s` : ""; // fora (ou desclassificado), no box, bandeirado, com stop-and-go a cumprir ou punido
-    set(c[6], "t", ic); set(c[6], "c", "ic" + (ic === "DNF" || ic === "DSQ" ? " dnf" : ic === "BOX" ? " box" : ic === "FIM" ? " fim" : ic ? " pen" : ""));
+    set(c[4], "t", ic); set(c[4], "c", "ic" + (ic === "DNF" || ic === "DSQ" ? " dnf" : ic === "BOX" ? " box" : ic === "FIM" ? " fim" : ic ? " pen" : ""));
+    set(c[5], "t", l.dif.texto); set(c[5], "c", "df " + l.dif.tipo); set(c[6], "d", l.volta ? "" : "none");
   }
-  // o painel: velocidade, marcha, luzes de troca, BOOST (a carga do ERS) e o aviso de ultrapassagem (DRS)
+  // o mostrador central: bateria, marcha, velocidade, rotação e o modo do ERS
   const lider = st[0], v = Math.abs(m ? race.car.v : (lider && race.ghosts.get(lider.id)?.v) || 0), kmh = Math.round(v * T.KMH_POR_U);
-  const rpm = Math.min(1, race.rpm || 0), carga = Math.round((race.ers?.carga || 0) * 100);
-  set($("pVel"), "t", kmh); set($("pMarcha"), "t", !m ? "" : race.marcha || 1);
-  const luzes = $("pRpm").children, acesas = Math.round(rpm * N_RPM); for (let k = 0; k < N_RPM; k++) set(luzes[k], "c", k < acesas ? (k < N_RPM * 0.55 ? "g" : k < N_RPM * 0.8 ? "r" : "b") : "");
-  set($("pBoost"), "w", carga + "%"); set($("pBoostT"), "t", carga + "%"); set($("pBoost"), "c", race.ersAtivo ? "on" : "");
-  const aberto = !!race.drsAtivo, pronto = !!m && m.drsZona >= 0;
-  set($("pOver"), "t", aberto ? "DRS" : "OVERTAKE"); set($("pOver"), "c", "pf-over" + (aberto ? " aberto" : pronto ? " pronto" : ""));
-  const pn = race.pneu, dano = m ? Math.round(m.dano || 0) : 0;
-  set($("hPainel").querySelector(".pf-extra"), "d", pn ? "" : "none");
-  if (pn) {
-    const tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], resta = F.vidaRestante(pn), el = $("pPneu");
-    set(el, "c", "pf-pneu" + (pn.desgaste > F.PENHASCO ? " fim" : "") + (F.frio(pn) ? " frio" : "")); set(el, "style", `--c:${tipo.cor};--r:${Math.round(resta * 100)}`);
-    set(el.children[0], "t", T.LETRA[pn.composto] || "M"); set(el.children[1], "t", Math.max(0, Math.round(resta * 100)) + "%"); // o que ainda resta: 100% novo, 0% no penhasco
-    set($("pDanoT"), "t", `DANO ${dano}%`); set($("pDano"), "w", Math.min(100, dano) + "%"); set($("pDano"), "c", dano >= 66 ? "alto" : dano >= 33 ? "medio" : "");
-  }
+  const carga = race.ers ? race.ers.carga : 0;
+  if (carga > (race.hudCargaAnt == null ? carga : race.hudCargaAnt) + 0.0004) race.hudHarv = t0; race.hudCargaAnt = carga; // recarregando (frear ou tirar o pé)
+  const modoErs = HM.modoDoErs({ ativo: !!race.ersAtivo, carga, subindo: t0 - (race.hudHarv || -1e9) < 400 });
+  atualizarCentro({ m, kmh, modoErs });
+  atualizarTempo(m, st, now); // o quadro do alto à direita (setores, posição, volta atual, melhor)
+  // o MFD e as punições
+  const est = estrategia(m, cors, race.hudEsc);
+  atualizarMfd({ m, st, cors, linhas, compacta, modoErs, tp: est.tp, janela: est.janela, perda: est.perda, retorno: est.retorno, int: m ? HM.intervalos(cors, m.id, race.hudEsc) : {}, vr: HM.donoDaVoltaRapida(E.S.players) });
+  desenharBanner(m, t0);
 }
 // ---------- as cinco luzes da largada (regras de F1) ----------
 // Uma acende por segundo e as cinco apagam juntas depois da espera sorteada pelo servidor (`luzes.espera`): a largada
@@ -333,6 +338,7 @@ export function renderQuali() {
 }
 // minimapa redondo que gira com o carro (a frente é para cima): a pista em cinza e o caminho à frente em azul-claro
 function minimapa(st, m) {
+  if (race.hudF1) return minimapaF1(st, m); // nas regras de F1 o minimapa é o do traçado inteiro (hud-painel.js)
   const cv = $("mini"), c = cv.getContext("2d"), S = cv.width, tr = race.tr, eu = m ? race.car : (st[0] && race.ghosts.get(st[0].id)) || race.car;
   const esc = S / 2 / 900, idx = m ? race.idx : eu.idx || 0;
   c.clearRect(0, 0, S, S); c.save();

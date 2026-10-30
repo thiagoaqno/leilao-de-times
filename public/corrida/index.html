@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,800;1,900&family=Manrope:wght@400;500;600;700;800&family=Titillium+Web:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/corrida/entrada.css">
 <link rel="stylesheet" href="/corrida/hud-f1.css">
+<link rel="stylesheet" href="/corrida/hud-mfd.css">
 <link rel="stylesheet" href="/corrida/tema-f1.css">
 <link rel="stylesheet" href="/corrida/transmissao.css">
 <link rel="stylesheet" href="/corrida/transicao-f1.css">
@@ -253,7 +254,7 @@
     <div class="linha num"><span class="pos" id="hPos"></span><span id="hLap"></span><span id="hTime"></span></div><div class="num" id="hDelta"></div><div class="board" id="hBoard"></div></div>
   <div class="hud bl"><canvas id="mini" width="220" height="220"></canvas><div class="chip" id="hChip"></div></div>
   <div class="hud br"><canvas id="velo" width="260" height="200"></canvas></div>
-  <div class="hud" id="hTorre" aria-label="Posições"></div><div class="hud" id="hPainel"></div><div class="hud" id="hRadioEng" aria-live="polite"></div>
+  <div class="hud" id="hTorre" aria-label="Posições"></div><div class="hud" id="hTempo" aria-label="Setores e tempos"></div><div class="hud" id="hCentro" aria-label="Bateria, marcha e velocidade"></div><div class="hud mfd" id="hMfd" aria-label="MFD: painel de informações do carro"></div><button type="button" id="bMfd" class="mfd-botao" aria-label="Abrir o MFD" aria-expanded="false" title="MFD (M: páginas, Tab: ajustar)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 9h6M7 13h10M9 21h6"/></svg><span>MFD</span></button><div class="hud hbanner" id="hBanner" role="status" aria-live="assertive"></div><div class="hud hpun" id="hPunicao"></div><div class="hud" id="hRadioEng" aria-live="polite"></div>
   <div class="hud f1-info hidden" id="hF1"><div id="hBandeira"></div><div id="hDrs"></div><div class="ers-bar"><span>ERS</span><i><b id="hErsCarga"></b></i><strong id="hErsTexto"></strong></div></div>
   <div class="hud bc" id="hBig"></div>
   <div class="luzes hidden" id="hLuzes" aria-label="Luzes da largada"><i></i><i></i><i></i><i></i><i></i></div>
@@ -285,6 +286,7 @@
 <script src="/corrida/pose.js"></script>
 <script src="/corrida/sim.js"></script>
 <script src="/corrida/hud-torre.js"></script>
+<script src="/corrida/hud-mfd.js"></script>
 <script src="/corrida/avisos-f1.js"></script>
 <script src="/corrida/f1-pilotos-2026.js"></script>
 <script src="/corrida/radio/falas.js"></script>
