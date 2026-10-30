@@ -123,7 +123,7 @@ test("as opções da sala: seco nunca chove; chuva larga molhado e não para; va
     assert.equal(vari.chuva, true);
     assert.equal(vari.corrida.agua0, 0);
     const ini = vari.corrida.trechos[0][0] / CORRIDA;
-    assert.ok(ini >= 0.3 && ini <= 0.6, `variável começa em ${ini}`);
+    assert.ok(ini >= 0.24 && ini <= 0.36, `variável começa em ${ini}`);
   }
   assert.deepEqual(F.OPCOES_DE_CLIMA, ["aleatorio", "seco", "chuva", "variavel"]);
   assert.equal(F.previsaoDoGP("x", "lixo").opcao, "aleatorio");
@@ -147,7 +147,7 @@ test("o texto da previsão: seco, chance baixa, provável e as voltas em que a c
   const meio = F.descreverPrevisao({ p: 0.35, quando: "meio", forca: "forte", janela: [0.3, 0.7], opcao: "aleatorio" }, 5);
   assert.equal(meio.pct, 35);
   assert.match(meio.titulo, /Possibilidade/);
-  assert.match(meio.quando, /do meio para o fim/);
+  assert.match(meio.quando, /1\/4 da corrida/);
   assert.deepEqual(meio.voltas, [2, 4]);
   assert.equal(meio.forca, "chuva forte");
   const larga = F.descreverPrevisao({ p: 0.9, quando: "largada", forca: "garoa", janela: [0, 0.1], opcao: "aleatorio" }, 5);

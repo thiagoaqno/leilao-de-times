@@ -707,7 +707,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   let proxima = relBox <= 8 || antesDaEntrada ? decidirParada(room, p, ia, car, spec, cl) : null;
   // stop-and-go pendente: o robô cumpre na primeira passagem pelo box (a visita é só ele, sem trocar o pneu: amb.stopGo)
   const stopGo = p.stopGo && F1.stopGoCabe(p.laps, room.config.voltas) ? p.stopGo.s : 0;
-  if (!proxima && stopGo && (relBox <= 8 || antesDaEntrada)) proxima = car.pneu ? car.pneu.composto : p.pneuAtual || "medio";
+  if (!proxima && stopGo && (relBox <= 8 || antesDaEntrada)) proxima = car.pneu ? car.pneu.composto : p.pneuAtual || "medio"; // (se já ia trocar o pneu nesta passagem, o stop-and-go vem junto e depois a troca)
   if (proxima && antesDaEntrada && !car.box?.fase) p.boxFant = Math.max(p.boxFant || 0, now + 250);
   const estavaNoBox = !!p.box;
   const pedirBox = !!proxima; // (o composto pedido)
@@ -739,10 +739,10 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     // a batida deste passo: a mesma dos humanos (corrida-contato.js), com os outros carros na hora do passo; o robô também troca momento
     evC.length = 0;
     Contato.depoisDoPasso(room, p, car, now - dt * 1000 + (s + 1) * Sim.PASSO * 1000, evC, !amb.safety && p.finish == null && !p.dnf && !car.box?.fase);
-    for (const e of evC) if (e.forca >= F1.BATIDA_MIN) emit("batida", { id: p.id, forca: e.forca, tipo: "carro", chave: "carro:" + e.id });
+    for (const e of evC) if (e.forca >= 5) emit("batida", { id: p.id, forca: e.forca, tipo: "carro", chave: "carro:" + e.id }); // (a direção de prova decide: abaixo da força mínima só vale se o outro derrapava)
     for (const e of ev) {
       if (e.t === "setor") setor(p, e.s);
-      else if (e.t === "box" && e.fase === "sai") emit("box", { id: p.id, composto: e.composto, tempo: e.tempo, volta: e.volta, stopGo: !!e.stopGo });
+      else if (e.t === "box" && e.fase === "sai") emit("box", { id: p.id, composto: e.composto, tempo: e.tempo, volta: e.volta, stopGo: !!e.stopGo, troca: !!e.troca, sg: e.sg });
       else if (e.t === "muro" && e.forca >= F1.BATIDA_MIN) emit("batida", { id: p.id, forca: e.forca, tipo: "muro" });
     }
     amb.laps = p.laps || 0;
@@ -829,7 +829,7 @@ function passo(room, dt, setor, emit) {
       const ers = ia.ers;
       if (ers) F1.carregarErs(ers, dt, ia.v > alvo + 12, ia.v >= alvo, p.laps);
       const usaErs = !!(ers && !room.direcao?.safety && F1.usarErsAuto(ers.carga, ia.v, c.vmax, pf.lim[i] > c.vmax * 0.93, encontrou));
-      if (ers) F1.gastarErs(ers, dt, usaErs);
+      if (ers) F1.gastarErs(ers, dt, usaErs, encontrou);
       // regras de F1: o vácuo na reta (o mesmo de quem joga, com o mesmo teto do ganho aerodinâmico)
       const aero = vac ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 * (c.drs ?? 1) : 0) + (usaErs ? 0.03 : 0)) : (drs ? 0.05 * (c.drs ?? 1) : 0) + (usaErs ? 0.03 : 0);
       const bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0) + (bala ? BALA - 1 : 0) + aero;
