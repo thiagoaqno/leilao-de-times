@@ -67,6 +67,16 @@ export function renderLobby() {
     $("tileEquipeTxt").innerHTML = eq ? `${marcaEquipe(m.equipe)}<span><b>${h(window.F1Pilotos.EQUIPES[m.equipe].nome)}</b> ${eq.orcamento} pontos${sobra ? ` · sobram ${sobra}` : ""}</span>` : "Escolha a sua equipe e monte o carro";
   }
   renderEquipe(m, f1);
+  // o carro e o pneu da largada, à mão no painel (corrida avulsa de F1): a equipe e o composto, com a previsão do tempo ao lado
+  const hp = $("hubPneu"); hp.classList.toggle("hidden", !(f1 && m && !E.S.temporada));
+  if (f1 && m && !E.S.temporada) {
+    const PN = window.F1Regras.PNEUS, atual = m.pneu || "medio", eqNome = m.equipe ? window.F1Pilotos.EQUIPES[m.equipe].nome : "Sem equipe";
+    hp.innerHTML = `<div class="field"><label>Equipe</label><div class="seg"><button data-aba-ir="equipe">${m.equipe ? marcaEquipe(m.equipe) : ""}${h(eqNome)} · trocar</button></div></div>`
+      + `<div class="field"><label>Pneu na largada</label><div class="seg">${Object.entries(PN).map(([v, p]) => `<button data-pneu="${v}" class="${atual === v ? "on" : ""}"><i class="bola-pneu" style="--c:${p.cor}"></i>${p.nome}</button>`).join("")}</div><small>Com chuva na largada, quem não escolher larga de pneu de chuva.</small></div>`
+      + (E.S.previsao && window.PrevisaoUI ? `<div class="field prev-bloco">${window.PrevisaoUI.html(E.S.previsao, { voltas: c.voltas })}</div>` : "");
+    hp.querySelectorAll("[data-pneu]").forEach((b) => (b.onclick = () => act("pneu", { pneu: b.dataset.pneu })));
+    hp.querySelectorAll("[data-aba-ir]").forEach((b) => (b.onclick = () => abrir(b.dataset.abaIr)));
+  }
   if (aba === "equipe" && !f1) abrir("box");
   // cartão da pista
   const pint = (m && MODS3.pintura[(m.mods || MODS_PADRAO).pintura]) || MODS3.pintura.propria;
