@@ -1,5 +1,5 @@
 // Corrida da Galera, regras de F1: a escala de punições das batidas entre carros (leve +3 s, média +6 s, grave stop-and-go de 8 s,
-// reincidência, primeira volta mais rigorosa, bandeira preta), a gravidade pela velocidade de aproximação ANTES do impulso e a proteção
+// reincidência e bandeira preta na sexta batida causada), a gravidade pela velocidade de aproximação ANTES do impulso e a proteção
 // de quem foi batido.
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -27,15 +27,12 @@ test("gravidade pela velocidade de aproximação: ~80 km/h a mais na traseira é
   assert.ok(kmh(F1.COLISAO_GRAVE) <= 80 && kmh(F1.COLISAO_GRAVE) > 75);
 });
 
-test("escala: reincidência sobe um nível, a primeira volta sobe outro, a terceira é bandeira preta", () => {
-  assert.equal(F1.nivelDaPunicao("leve", 1, false).nivel, "leve");
-  assert.equal(F1.nivelDaPunicao("leve", 2, false).nivel, "media");
-  assert.equal(F1.nivelDaPunicao("media", 2, false).nivel, "grave");
-  assert.equal(F1.nivelDaPunicao("leve", 1, true).nivel, "media");
-  assert.equal(F1.nivelDaPunicao("leve", 2, true).nivel, "grave");
-  assert.equal(F1.nivelDaPunicao("grave", 2, true).nivel, "grave", "o stop-and-go é o teto até a terceira");
-  assert.equal(F1.nivelDaPunicao("leve", 3, false).nivel, "preta");
-  assert.equal(F1.nivelDaPunicao(null, 1, false), null);
+test("escala: reincidência até a quinta e bandeira preta na sexta, inclusive na largada", () => {
+  assert.equal(F1.nivelDaPunicao("leve", 1, true).nivel, "leve");
+  for (let n = 2; n <= 5; n++) assert.equal(F1.nivelDaPunicao("leve", n, true).nivel, "media");
+  assert.equal(F1.nivelDaPunicao("grave", 5).nivel, "grave");
+  assert.equal(F1.nivelDaPunicao("leve", 6).nivel, "preta");
+  assert.equal(F1.nivelDaPunicao(null, 1), null);
 });
 
 test("direção de prova: o causador leva +3 s e o dano, o batido não leva punição nem dano", () => {
@@ -49,7 +46,7 @@ test("direção de prova: o causador leva +3 s e o dano, o batido não leva puni
   assert.ok(log.some((s) => /Beto.*atingido: sem punição/.test(s)));
 });
 
-test("direção de prova: média +6 s; a segunda batida causada sobe; a terceira é bandeira preta", () => {
+test("direção de prova: média +6 s; a segunda batida causada sobe; a sexta é bandeira preta", () => {
   const room = sala(), a = room.players.a, log = [];
   impacto(room, 70, "a");
   Direcao.bater(room, a, 70, "carro", 5000, (s) => log.push(s), "carro:b");
@@ -58,17 +55,20 @@ test("direção de prova: média +6 s; a segunda batida causada sobe; a terceira
   Direcao.bater(room, a, 70, "carro", 20000, (s) => log.push(s), "carro:b");
   assert.equal(a.stopGo.s, F1.STOPGO_S); assert.equal(a.stopGo.ate, 2 + F1.STOPGO_VOLTAS);
   assert.ok(log.some((s) => /Stop-and-go 8 s: cumpra em 3 voltas/.test(s)), log.join("|"));
-  a.batidaPares = {}; impacto(room, 30, "a"); // a terceira
-  Direcao.bater(room, a, 30, "carro", 40000, (s) => log.push(s), "carro:b");
+  for (let n = 3; n <= 6; n++) {
+    a.batidaPares = {}; impacto(room, 30, "a");
+    Direcao.bater(room, a, 30, "carro", n * 20000, (s) => log.push(s), "carro:b");
+    if (n < 6) assert.ok(!a.dnf);
+  }
   assert.ok(a.dsq && a.dnf, "bandeira preta: desclassificado");
   assert.ok(log.some((s) => /bandeira preta/.test(s)));
 });
 
-test("direção de prova: na primeira volta a punição sobe um nível", () => {
+test("direção de prova: na primeira volta a punição é igual às demais", () => {
   const room = sala(5, 0), a = room.players.a;
   impacto(room, 30, "a");
   Direcao.bater(room, a, 30, "carro", 5000, semLog, "carro:b");
-  assert.equal(a.penal, 6, "leve na primeira volta vale +6 s");
+  assert.equal(a.penal, 3, "leve na primeira volta vale +3 s");
 });
 
 test("direção de prova: sem culpado claro (lado a lado) ninguém é punido e o dano é o de sempre", () => {
@@ -96,4 +96,26 @@ test("stop-and-go: cumprido some; sem voltas vira +20 s; passou de 3 voltas é b
   Direcao.bater(room, a, 200, "carro", 5000, semLog, "carro:b"); assert.ok(a.stopGo);
   a.laps = 3; Direcao.voltaFechada(room, a, semLog);
   assert.equal(a.stopGo, null); assert.equal(a.penal, 20); assert.ok(!a.dsq);
+});
+
+test("stop-and-go pendente mantém 8 segundos quando há outra punição", () => {
+  const room = sala(8, 1), a = room.players.a;
+  Direcao.aplicarStopGo(room, a, "primeira", semLog);
+  Direcao.aplicarStopGo(room, a, "segunda", semLog);
+  assert.equal(a.stopGo.s, 8);
+  assert.equal(a.stopGo.ate, 4);
+});
+
+test("bandeira azul exige líder próximo e não repete ao oscilar no limite", () => {
+  const room = sala(), a = room.players.a, b = room.players.b, logs = [];
+  room.direcao.pista = Array.from({ length: 1000 }, () => ({ x: 0, y: 0, tx: 1, ty: 0 }));
+  a.pos = { x: 0, y: 0, prog: 1990, v: 200 };
+  b.avisosAzul = 0; b.pos = { x: 500, y: 0, prog: 1000, v: 100 };
+  const registrar = (x, agora) => Direcao.registrar(room, b, { ...b.pos, x }, agora, t => logs.push(t));
+  registrar(500, 5000); assert.equal(b.azul, false);
+  registrar(80, 6000); assert.equal(b.azul, true);
+  registrar(95, 7000); registrar(80, 8000);
+  assert.equal(b.avisosAzul, 1);
+  registrar(160, 9000); registrar(80, 10000);
+  assert.equal(b.avisosAzul, 2);
 });
