@@ -50,10 +50,14 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
     // Cerca sobre o guard-rail existente; postes altos e travessas seguem o relevo.
     const f = (((i % n) + n) % n) / n, semCercaAqui = semCerca.some(([f0, f1]) => (f0 <= f1 ? f >= f0 && f <= f1 : f >= f0 || f <= f1)); // (`semCerca`: trechos de guard-rail sem a cerca alta, frações da volta)
     if (cerca && !semCercaAqui) {
-    redes[lado].push({ i, x, z, h });
-    caixa(metal, x, h + 24, z, 0.8, 24, 0.8);
-    for (const altura of [15, 23, 34]) caixa(metal, x, h + altura, z, 32, 0.5, 0.5, ry);
-    for (const deslocamento of [-12, -6, 6, 12]) caixa(metal, x + p.tx * deslocamento, h + 24, z + p.ty * deslocamento, 0.22, 22, 0.22);
+    const peca = () => { // os postes e as travessas da cerca
+      caixa(metal, x, h + 24, z, 0.8, 24, 0.8);
+      if (tela) return; // com a tela, o poste basta (as travessas de 32 passariam do fim do trecho e ficariam soltas no ar)
+      for (const altura of [15, 23, 34]) caixa(metal, x, h + altura, z, 32, 0.5, 0.5, ry);
+      for (const deslocamento of [-12, -6, 6, 12]) caixa(metal, x + p.tx * deslocamento, h + 24, z + p.ty * deslocamento, 0.22, 22, 0.22);
+    };
+    redes[lado].push({ i, x, z, h, peca });
+    if (!tela) peca(); // com `tela`, o poste só entra se tiver vizinho (mais abaixo): poste e barra isolados ficariam soltos no ar
     }
     if (paineis && i % 27 === 0) {
       caixa(anuncios[(i / 27) % anuncios.length], x - p.nx * lado * 1.6, h + 7, z - p.ny * lado * 1.6, 30, 9, 0.6, ry);
@@ -66,6 +70,7 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
       stats.bandeiras++;
     }
   }
+  if (tela) for (const lado of [-1, 1]) { const nos = redes[lado]; nos.forEach((o, k) => { if ((k > 0 && o.i - nos[k - 1].i === 9) || (k + 1 < nos.length && nos[k + 1].i - o.i === 9)) o.peca(); }); }
   // a tela da cerca de detritos: uma malha de losangos (alfa) presa nos postos, de uma ponta a outra de cada trecho contínuo; entre dois postos que não são vizinhos ela não existe
   if (cerca && tela) { // (`tela: true`: a malha da cerca; sem ela só ficam os postos e as barras)
     const malha = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, h) => { x.strokeStyle = "rgba(210,220,226,0.9)"; x.lineWidth = 2.2; for (let k = -h; k < w + h; k += 16) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k + h, h); x.stroke(); x.beginPath(); x.moveTo(k + h, 0); x.lineTo(k, h); x.stroke(); } }), transparent: true, alphaTest: 0.2, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.3 });

@@ -77,5 +77,5 @@ export function paddockMonaco(tr, add, hAt) {
     instancias(add, caixa, M2(0xf6f6f2), cx, { nome: "monaco-paddock-tenda", sombra: false }); instancias(add, new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), M2(0xefeee8), tt, { nome: "monaco-paddock-teto", sombra: false });
     colorida(ff, M2(0xffffff), "monaco-paddock-faixa");
   }
-  tr.paddockMonaco = { hospitalidades: casas.length, apoio: tendas.length, flutuante: !!barca };
+  tr.paddockMonaco = { hospitalidades: casas.length, apoio: tendas.length, flutuante: !!barca, casas: casas.map((c) => [c.x, c.z]), barca: barca ? [barca.x, barca.z] : null };
 }
