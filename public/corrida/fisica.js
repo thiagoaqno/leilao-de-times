@@ -218,6 +218,7 @@ function montarAmbiente(R) {
   AMB.safety = !!(d && d.safety); AMB.setorAmarelo = d && d.amarelo ? d.amarelo.setor : -1; AMB.ersAuto = S.config.ers !== "manual";
   AMB.voltas = S.config.voltas; AMB.laps = m.laps || 0; AMB.paradas = m.paradas || 0; AMB.semente = S.semente; AMB.id = m.id; AMB.grid = m.grid;
   AMB.finish = m.finish; AMB.dnf = !!m.dnf; AMB.quali = S.phase === "quali"; AMB.fantasma = m.finish != null; AMB.f1 = true;
+  AMB.stopGo = m.stopGo ? m.stopGo.s : 0; // stop-and-go pendente: a próxima visita ao box é só ele (o servidor usa a mesma conta)
   AMB.agua = atualizarClima().agua; // a água na pista agora (o servidor usa a mesma conta, pelo mesmo relógio)
   // a batida só vale para quem corre (nada na classificação, sob safety car, no box, depois da bandeirada ou fora da corrida)
   AMB.batida = S.phase === "race" && !AMB.safety && !AMB.segurar && m.finish == null && !m.dnf && !(R.car.box && R.car.box.fase) && !m.fantBox;

@@ -10,16 +10,33 @@ const eu = { L: 44, W: 26, massa: 800 };
 const carro = (x, y, v) => { const c = D.novoCarro(x, y, 0); c.v = v; c.vx = v; c.z = 0; c.tick = 1; c.x0 = x - v / 120; c.y0 = y; c.a0 = 0; return c; };
 const modelo = (x, y, vx, vy = 0, a = 0) => ({ id: "b", x, y, a, vx, vy, r: 0, L: 44, W: 26, massa: 800, z: 0 });
 
-test("batida por trás: quem bate perde velocidade, quem é atingido ganha, e o momento se conserva", () => {
+test("batida por trás: quem bate perde velocidade, quem é atingido ganha menos (fica protegido), e a culpa vem da velocidade de antes", () => {
   const A = carro(0, 0, 300), o = modelo(43, 0, 200), ev = [];
   S.contatoPasso(A, eu, [o], ev, null, S.PASSO);
   assert.equal(ev.length, 1);
   assert.ok(Math.abs(ev[0].forca - 100) < 1, `força ${ev[0].forca}`);
+  assert.equal(ev[0].culpa, 1, "quem vinha atrás e acertou causou a batida");
+  assert.ok(ev[0].pre && ev[0].pre.vx === 300 && ev[0].pre.ovx === 200, "guarda as velocidades de ANTES do impulso");
   assert.ok(A.vx < 300 && A.vx > 200, `o que bateu perdeu velocidade: ${A.vx}`);
   assert.ok(ev[0].de.dvx > 0, "o atingido ganha velocidade para a frente");
-  assert.ok(Math.abs((300 - A.vx) - ev[0].de.dvx) < 1e-6, "mesma massa: o que um perde o outro ganha");
-  assert.ok(Math.abs(A.vx - 242.5) < 1, "restituição baixa: (300+200)/2 mais a volta de 15%");
+  assert.ok(ev[0].de.dvx < (300 - A.vx) * 0.5, `com culpado claro o atingido leva só uma parte do impulso (${ev[0].de.dvx} contra ${300 - A.vx})`);
+  assert.ok(A.vx < 242.5, "o causador absorve mais que na troca simétrica: (300+200)/2 mais a volta de 15%");
   assert.ok(A.inst > 0.3 && A.instK > 0, "e fica instável");
+});
+
+test("batida frente a frente (os dois se aproximam): sem culpado, o momento se conserva", () => {
+  const A = carro(0, 0, 300), o = modelo(43, 0, -300, 0, Math.PI), ev = [];
+  S.contatoPasso(A, eu, [o], ev, null, S.PASSO);
+  assert.equal(ev[0].culpa, 0);
+  assert.ok(Math.abs((300 - A.vx) - ev[0].de.dvx) < 1e-6, "mesma massa: o que um perde o outro ganha");
+});
+
+test("culpaEntre: a traseira que acerta é culpada; lado a lado e quem se afasta não", () => {
+  assert.equal(S.culpaEntre(300, 0, 200, 0, -1, 0), 1, "A vem atrás (o outro está à frente: n de B para A aponta para trás)");
+  assert.equal(S.culpaEntre(0, 0, 300, 0, -1, 0), 0, "quem está parado ou na frente e se afasta não causa");
+  assert.equal(S.culpaEntre(200, 0, 300, 0, 1, 0), -1, "o B é que vem atrás");
+  assert.equal(S.culpaEntre(300, 3, 300, 0, 0, -1), 0, "toque lado a lado com 3 u/s de lado: ninguém");
+  assert.equal(S.culpaEntre(300, 40, 300, 0, 0, -1), 1, "fechou a porta com 40 u/s de lado: causou");
 });
 
 test("batida de lado: empurra para o lado e gira o carro", () => {

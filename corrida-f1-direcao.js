@@ -41,7 +41,7 @@ function preta(room, p, motivo, log) {
 // O piloto entrou no box e cumpriu o stop-and-go
 function cumprirStopGo(room, p, log) {
   const sg = p.stopGo; if (!sg) return false;
-  p.stopGo = null; log(`✅ ${p.name} cumpriu o stop-and-go de ${sg.s} s.`); return true;
+  p.stopGo = null; p.sgFeitos = (p.sgFeitos || 0) + 1; log(`✅ ${p.name} cumpriu o stop-and-go de ${sg.s} s.`); return true;
 }
 // A volta fechou (p.laps já subiu): sobrou stop-and-go sem voltas para cumprir, vira +20 s; passou do prazo de 3 voltas, bandeira preta.
 // Devolve true se o piloto foi desclassificado (quem chama confere se a corrida acabou).
