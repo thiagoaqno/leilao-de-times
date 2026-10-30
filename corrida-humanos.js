@@ -155,7 +155,7 @@ function tratar(room, p, S, e, t, h) {
     }
     case "box":
       if (e.fase === "entra") { p.box = { entrou: t, volta: e.volta }; return true; }
-      p.box = null; p.boxFant = t + Contato.BOX_FANTASMA_MS; h.aoParada(room, p, { composto: e.composto, tempo: e.tempo, volta: e.volta, stopGo: !!e.stopGo }); return true;
+      p.box = null; p.boxFant = t + Contato.BOX_FANTASMA_MS; h.aoParada(room, p, { composto: e.composto, tempo: e.tempo, volta: e.volta, stopGo: !!e.stopGo, troca: !!e.troca, sg: e.sg }); return true;
     default: return false;
   }
 }
