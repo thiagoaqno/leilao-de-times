@@ -30,13 +30,14 @@ export const GP_MONACO = {
   },
   // UM sistema de barreira em Mônaco, pela volta inteira (kit/beira.js `estilo: "monaco"`): guard-rail de lâminas de aço embaixo, a faixa de painéis de patrocínio em cima (uma marca por
   // trecho longo, na ordem da TV) e a cerca alta de detritos (ambiente.js). Os painéis soltos, os outdoors e os mastros do kit ficam desligados aqui; o Tecpro só nas áreas de escape.
-  guardrail: { estilo: "monaco", alto: 20, trecho: 360, sequencia: ["rolex", "tag", "pirelli", "aramco", "dhl", "lv", "salesforce", "heineken", "monacogp", "f1tv"] },
+  guardrail: { estilo: "monaco", alto: 20, trecho: 360, baixoEstilo: "tunel", baixoAlto: 12, baixoVLen: 176, baixos: [[F.trechos.tunel[0] - 0.003, F.trechos.tunel[1] + 0.003, 1], [F.trechos.tunel[0] - 0.003, F.trechos.tunel[1] + 0.003, -1]], // dentro do túnel a barreira é baixa, branca, com "MONACO CIRCUIT since 1929"
+    sequencia: ["rolex", "tag", "pirelli", "aramco", "dhl", "lv", "salesforce", "heineken", "monacogp", "f1tv"] },
   depois: (tr, ctx) => vidaMonaco(tr, ctx), // a galera, os fiscais, as bandeiras, os barcos, os guindastes e as ambulâncias (depois do ambiente e do vidaGP, com os postos prontos)
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, os prédios reais, os marcos, o Rochedo e as árvores
   boxes: { garagens: true, mureta: true }, // o prédio das garagens fica do lado externo da nova faixa de parada
   ambiente: { paineis: false, mastros: false }, // a cerca de detritos, os postos de fiscais e as placas de frenagem (a barreira e os painéis são do guardrail acima)
   passarelas: { candidatos: [0.03, 0.12, 0.48, 0.58, 0.72, 0.93], marcas: ["rolex", "heineken", "tag"], max: 2 }, // a da Rolex na reta dos boxes
-  portico: { adiante: 420 }, // o pórtico das luzes de largada fica 420 depois da linha de chegada (a pole o vê lá na frente)
+  portico: { adiante: 260 }, // o pórtico das luzes de largada fica 260 depois da linha de chegada (a pole o vê lá na frente)
   postes: { passo: 34 },
   montanha: { angulo: -Math.PI / 2, altura: 860 }, // a Tête de Chien, ao norte
   terreno: { S: 250, pedacos: 4 }, // o morro é suave (o MDE é borrado): grade de 33 unidades e 4 × 4 pedaços bastam, e poupam malhas e triângulos

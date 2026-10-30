@@ -11,7 +11,8 @@ import { desenharMarca } from "./marcas.js";
 // estilo "monaco": o sistema de barreira de Mônaco, numa fita só pela volta inteira: guard-rail de lâminas metálicas embaixo e, em cima, a faixa de painéis de patrocínio
 // (`sequencia`: uma marca por trecho de `trecho` unidades, na ordem da TV, repetida em 4 painéis seguidos). A fita tem `sequencia.length * trecho` de comprimento (vLen em pista.js).
 export function guardRail(lado, { paineis = ["rolex", "pirelli", null, "aramco", "heineken", null, "dhl", "lenovo"], cores = ["#d62828", "#f4f4f4"], estilo, sequencia, trecho = 360 } = {}) {
-  if (estilo === "monaco") return guardRailMonaco(lado, sequencia, trecho); // (estilo "painel": a barreira alta de Mônaco com os painéis de ponta a ponta)
+  if (estilo === "monaco") return guardRailMonaco(lado, sequencia, trecho);
+  if (estilo === "tunel") return guardRailTunel(lado); // a barreira baixa e branca do túnel de Mônaco // (estilo "painel": a barreira alta de Mônaco com os painéis de ponta a ponta)
   const C = 1024, H = 48, plano = document.createElement("canvas"); plano.width = C; plano.height = H;
   const x = plano.getContext("2d"), painel = C / 8;
   const listras = (x0) => { for (let k = 0; k < 8; k++) { x.fillStyle = cores[k % 2]; x.fillRect(x0 + (k * painel) / 8, 0, painel / 8 + 1, H); } };
@@ -112,5 +113,17 @@ function guardRailMonaco(lado, sequencia, trecho) {
   const lam = (y0, h) => { x.fillStyle = "#aab2b8"; x.fillRect(0, y0, C, h); x.fillStyle = "#d8dde0"; x.fillRect(0, y0, C, 3); x.fillStyle = "#6f777d"; x.fillRect(0, y0 + h * 0.5, C, 3); x.fillStyle = "#59616a"; x.fillRect(0, y0 + h - 3, C, 3); };
   lam(alturaPainel + 2, 17); lam(alturaPainel + 21, 17); lam(alturaPainel + 40, 14);
   x.fillStyle = "#2d3238"; for (let k = 0; k < C; k += 2.4 * 5 * PPU) x.fillRect(k, alturaPainel + 2, 4, H - alturaPainel);
+  return canvasTex(H, C, (c) => { if (lado > 0) c.setTransform(0, 1, -1, 0, H, 0); else c.setTransform(0, -1, -1, 0, H, C); c.drawImage(plano, 0, 0); });
+}
+
+// a barreira baixa e branca do túnel de Mônaco (`guardrail.baixos` com `baixoEstilo: "tunel"`): "MONACO CIRCUIT since 1929" e o desenho do traçado, como nas fotos de dentro
+function guardRailTunel(lado) {
+  const C = 1024, H = 64, plano = document.createElement("canvas"); plano.width = C; plano.height = H;
+  const x = plano.getContext("2d");
+  x.fillStyle = "#f3f1ea"; x.fillRect(0, 0, C, H); x.fillStyle = "#c9c6bd"; x.fillRect(0, 0, C, 5); x.fillStyle = "#a9a69d"; x.fillRect(0, H - 6, C, 6);
+  x.textBaseline = "middle"; x.fillStyle = "#c8222a"; x.font = "italic 900 30px 'Arial Black', Arial, sans-serif"; x.fillText("MONACO", 40, 30);
+  x.fillStyle = "#2b2e36"; x.font = "italic 300 30px Arial, sans-serif"; x.fillText("CIRCUIT", 176, 30); x.font = "700 10px Arial, sans-serif"; x.fillText("SINCE 1929", 178, 50);
+  x.strokeStyle = "#2b2e36"; x.lineWidth = 2.2; x.beginPath(); [[520, 46], [545, 40], [560, 28], [585, 24], [604, 33], [618, 22], [640, 18], [662, 28], [676, 40], [700, 42], [724, 32], [748, 38], [772, 30]].forEach(([a, b], k) => (k ? x.lineTo(a, b) : x.moveTo(a, b))); x.stroke();
+  x.fillStyle = "#c8222a"; x.beginPath(); x.arc(790, 32, 9, 0, 6.3); x.fill(); x.fillStyle = "#f3f1ea"; x.fillRect(785, 30, 10, 4);
   return canvasTex(H, C, (c) => { if (lado > 0) c.setTransform(0, 1, -1, 0, H, 0); else c.setTransform(0, -1, -1, 0, H, C); c.drawImage(plano, 0, 0); });
 }
