@@ -67,7 +67,8 @@ function outrosNaHora(room, p, t) {
 }
 // No box o carro é fantasma, e também por BOX_FANTASMA_MS na saída (`boxFant`: até quando) e, nos robôs, na chegada à entrada
 const BOX_FANTASMA_MS = 2000;
-const fantasmaDoBox = (q, agora = Date.now()) => !!q.box || agora < (q.boxFant || 0);
+// (e fantasma também o carro parado na pista que foi recolocado: `fantAte`, corrida-parados.js)
+const fantasmaDoBox = (q, agora = Date.now()) => !!q.box || agora < (q.boxFant || 0) || agora < (q.fantAte || 0);
 const chave = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
 
 // O IMPACTO de cada par de carros, guardado no momento em que o primeiro dos dois detecta a batida e ANTES de o impulso trocar as

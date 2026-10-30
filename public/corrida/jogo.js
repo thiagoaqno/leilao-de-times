@@ -9,7 +9,7 @@ import { passoClima, limparClima, exercitarChuva } from "./clima-visual.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
-import { CARS3, KS, makeKart, poseKart, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
+import { CARS3, KS, makeKart, poseKart, fantasmaVisual, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
 import { camMode, pollPad } from "./controles.js";
 import { quadroCamera, somDaCamera, camEstado } from "./cameras.js";
 import { physics, quadroDeFisica, quadroParado, criarRede, PASSO } from "./fisica.js";
@@ -238,6 +238,7 @@ function draw(dt) {
     if (c.slip > 40 && !c.air) { const forte = Math.min(1, (c.slip - 40) / 120); for (const s of [-1, 1]) if (Math.random() < 0.55 + forte * 0.45) puff(c.x - Math.cos(c.a) * 15 + -Math.sin(c.a) * s * 9, c.z + 3, c.y - Math.sin(c.a) * 15 + Math.cos(c.a) * s * 9, "#eeeeee", 3.2 + forte * 3, 0.8 + forte * 0.6, 1.7, 0.3 + forte * 0.22); }
     if (race.offroad && Math.random() < 0.5) puff(c.x - Math.cos(c.a) * 18, c.z + 2, c.y - Math.sin(c.a) * 18, tr.id === "interlagos" ? "#b39c66" : "#9a9a9a", 2.5);
   }
+  fantasmaVisual(race.kart, !!me()?.fantasma);
   // os outros pilotos (carros de verdade: dá para bater)
   for (const [id, gh] of race.ghosts) {
     const pl = P(id); if (!pl) continue;
@@ -250,6 +251,7 @@ function draw(dt) {
     let da = gh.a - (gh.aAnt ?? gh.a); da = Math.atan2(Math.sin(da), Math.cos(da)); gh.aAnt = gh.a;
     gh.vira = (gh.vira || 0) + (Math.max(-1, Math.min(1, da / Math.max(dt, 1e-3) / 2.4)) - (gh.vira || 0)) * Math.min(1, dt * 8);
     poseKart(gh.kart, gh.x, gh.y, gh.z, gh.a, gh.v || 0, gh.vira, gz, dt, inc.roll, inc.pitch, fxDe(pl, now));
+    fantasmaVisual(gh.kart, !!pl.fantasma);
   }
   // Safety car: um carro próprio à frente da fila, calculado pela direção de prova no servidor.
   if (race.safety) {
