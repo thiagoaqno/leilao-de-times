@@ -23,24 +23,24 @@ export function tunel(tr, add) {
     x.fillStyle = "#d8ccb4"; x.fillRect(0, 0, w, hh);
     for (let i = 0; i < 500; i++) { x.fillStyle = rr() < 0.5 ? "#00000010" : "#ffffff16"; x.fillRect(rr() * w, rr() * hh, 3, 3); }
     for (let r = 0; r < 3; r++) { const x0 = (r * w) / 3; for (let k = 0; k < 2; k++) { const y0 = ((k + (r % 2) * 0.5) * hh) / 2; x.fillStyle = (r + k) % 2 ? "#e0d5be" : "#cfc3aa"; x.fillRect(x0 + 2, y0 + 2, w / 3 - 3, hh / 2 - 3); x.fillStyle = "#8f8671"; x.fillRect(x0, y0, w / 3, 2); x.fillRect(x0, y0, 2, hh / 2); } }
-  }), roughness: 0.95, side: THREE.DoubleSide, emissive: 0x6a6354, emissiveIntensity: 0.55 });
+  }), color: 0xe3c295, roughness: 0.95, side: THREE.DoubleSide, emissive: 0x7a4f26, emissiveIntensity: 0.55 }); // (paredes de concreto banhadas pela luz âmbar das luminárias)
   const galeria = new THREE.MeshStandardMaterial({ map: canvasTex(128, 128, (x, w, hh, rr) => {
     x.fillStyle = "#d8ccb4"; x.fillRect(0, 0, w, hh); // a coluna
     x.fillStyle = "#26231f"; x.fillRect(w * 0.14, hh * 0.3, w * 0.7, hh * 0.7); // o vão: escuro, com um pedaço claro lá no fundo (a luz do porto)
     x.fillStyle = "#8d8a7c"; x.fillRect(w * 0.2, hh * 0.45, w * 0.5, hh * 0.3); x.fillStyle = "#bcb7a4"; x.fillRect(w * 0.2, hh * 0.45, w * 0.5, 3);
     x.fillStyle = "#cfc3aa"; x.fillRect(w * 0.86, 0, w * 0.14, hh); x.fillStyle = "#8f8671"; x.fillRect(w * 0.86, 0, 2, hh); x.fillRect(w * 0.14, hh * 0.3, 2, hh * 0.7); // a viga de cima e a base
-  }), roughness: 0.95, side: THREE.DoubleSide, emissive: 0x5a5448, emissiveIntensity: 0.55 });
+  }), color: 0xe3c295, roughness: 0.95, side: THREE.DoubleSide, emissive: 0x6a4524, emissiveIntensity: 0.5 });
   const esq = (() => { const p = pts[Math.floor((i0 + i1) / 2) % n]; return Math.sign(p.nx * p.ty - p.ny * p.tx) || 1; })(); // o sinal de `lat` do lado esquerdo de quem anda (esquerda = (ty, -tx))
   faixa(tr, add, i0, i1, esq * (L + 1), esq * (L + 1), 0, TUNEL_ALTO, galeria, 32); faixa(tr, add, i0, i1, -esq * (L + 1), -esq * (L + 1), 0, TUNEL_ALTO, blocos, 32);
-  // as luminárias retangulares do teto, em fila dos dois lados (a luz bem branca, como no túnel de verdade)
-  const luz = new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xfff1cf, emissiveIntensity: 0.5 }), lg = new THREE.BoxGeometry(2.6, 1, 11), luzes = [];
-  for (let i = i0; i <= i1; i += 3) { const p = pts[i % n]; for (const d of [-L + 16, L - 16, -L + 40, L - 40]) luzes.push({ x: p.x + p.nx * d, y: p.h + TUNEL_ALTO - 1, z: p.y + p.ny * d, r: Math.atan2(p.tx, p.ty) }); }
+  // as luminárias: pequenas, retangulares e âmbar, em fileiras ao longo das duas paredes, perto do teto (sem brilho exagerado: a imagem não estoura nem fica com neblina branca)
+  const luz = new THREE.MeshStandardMaterial({ color: 0xffc27a, emissive: 0xff9d3a, emissiveIntensity: 0.9 }), lg = new THREE.BoxGeometry(5, 1.4, 2.4), luzes = [];
+  for (let i = i0; i <= i1; i += 2) { const p = pts[i % n]; for (const d of [-L + 5, L - 5]) luzes.push({ x: p.x + p.nx * d, y: p.h + TUNEL_ALTO - 7, z: p.y + p.ny * d, r: Math.atan2(p.tx, p.ty) }); }
   const lm = add(new THREE.InstancedMesh(lg, luz, luzes.length)), o = new THREE.Object3D(); lm.name = "monaco-tunel-luz";
   luzes.forEach((a, k) => { o.position.set(a.x, a.y, a.z); o.rotation.set(0, a.r, 0); o.scale.set(1, 1, 1); o.updateMatrix(); lm.setMatrixAt(k, o.matrix); });
-  // a saída: a luz do dia estoura na boca (um plano branco meio transparente, só visto de dentro)
-  { const p = pts[i1 % n], g = new THREE.Mesh(new THREE.PlaneGeometry(L * 2, TUNEL_ALTO), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false, toneMapped: false })); g.position.set(p.x + p.tx * 3, p.h + TUNEL_ALTO / 2, p.y + p.ty * 3); g.rotation.y = Math.atan2(-p.tx, -p.ty); g.name = "monaco-tunel-saida"; add(g); }
+  // a saída: clara, mas sem cegar (um véu quente e fino na boca, só visto de dentro)
+  { const p = pts[i1 % n], g = new THREE.Mesh(new THREE.PlaneGeometry(L * 2, TUNEL_ALTO), new THREE.MeshBasicMaterial({ color: 0xfff1da, transparent: true, opacity: 0.1, depthWrite: false })); g.position.set(p.x + p.tx * 3, p.h + TUNEL_ALTO / 2, p.y + p.ty * 3); g.rotation.y = Math.atan2(-p.tx, -p.ty); g.name = "monaco-tunel-saida"; add(g); }
   // o teto opaco (mesmo com o carro embaixo) e o terraço do hotel por cima
-  const teto = new THREE.MeshStandardMaterial({ color: 0xc4bfb2, emissive: 0x9c978a, emissiveIntensity: 0.25, roughness: 0.9, side: THREE.DoubleSide }); // o forro claro do túnel (de dentro, a luz do dia não chega: ele brilha um pouco)
+  const teto = new THREE.MeshStandardMaterial({ color: 0x7d746a, emissive: 0x2a211a, emissiveIntensity: 0.3, roughness: 0.9, side: THREE.DoubleSide }); // o forro claro do túnel (de dentro, a luz do dia não chega: ele brilha um pouco)
   faixa(tr, add, i0, i1, -L - 4, L + 4, TUNEL_ALTO, TUNEL_ALTO, teto, 60);
   const terraco = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#d9d3c5"; x.fillRect(0, 0, w, hh); x.fillStyle = "#6aa14e"; for (let k = 0; k < 6; k++) x.fillRect(rr() * w * 0.8, rr() * hh * 0.8, 14, 20); }), roughness: 0.9, side: THREE.DoubleSide });
   faixa(tr, add, i0, i1, -L - 4, L + 4, TUNEL_ALTO + 0.6, TUNEL_ALTO + 0.6, terraco, 50);

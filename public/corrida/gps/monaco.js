@@ -31,7 +31,7 @@ export const GP_MONACO = {
   },
   // UM sistema de barreira em Mônaco, pela volta inteira (kit/beira.js `estilo: "monaco"`): guard-rail de lâminas de aço embaixo, a faixa de painéis de patrocínio em cima (uma marca por
   // trecho longo, na ordem da TV) e a cerca alta de detritos (ambiente.js). Os painéis soltos, os outdoors e os mastros do kit ficam desligados aqui; o Tecpro só nas áreas de escape.
-  guardrail: { estilo: "monaco", alto: 20, trecho: 360, baixoEstilo: "tunel", baixoAlto: 12, baixoVLen: 176, baixos: [[F.trechos.tunel[0] - 0.003, F.trechos.tunel[1] + 0.003, 1], [F.trechos.tunel[0] - 0.003, F.trechos.tunel[1] + 0.003, -1]], // dentro do túnel a barreira é baixa, branca, com "MONACO CIRCUIT since 1929"
+  guardrail: { estilo: "monaco", alto: 20, trecho: 360, 
     sequencia: ["rolex", "tag", "pirelli", "aramco", "dhl", "lv", "salesforce", "heineken", "monacogp", "f1tv"] },
   depois: (tr, ctx) => vidaMonaco(tr, ctx), // a galera, os fiscais, as bandeiras, os barcos, os guindastes e as ambulâncias (depois do ambiente e do vidaGP, com os postos prontos)
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, os prédios reais, os marcos, o Rochedo e as árvores
