@@ -17,7 +17,7 @@ const ladoDe = (tr, p, quer) => { const L = tr.wallLat; if (quer === "agua") { r
 
 // ---- os blocos Tecpro: duas filas de blocos brancos com a faixa vermelha, de dois andares, do lado de fora da curva ----
 export function tecpro(tr, add, trechos) {
-  const L = tr.wallLat, { pts, n } = tr, brancos = [], vermelhos = [];
+  const L = tr.wallLat, { pts, n } = tr, brancos = [], azuis = [], vermelhos = [];
   for (const [f0, f1, quer] of trechos) {
     let i0 = Math.floor(f0 * n), i1 = Math.floor(f1 * n); if (i1 < i0) i1 += n;
     const lado = quer === "fora" ? -sinalDaCurva(pts, n, Math.floor((i0 + i1) / 2) % n) : quer;
@@ -27,13 +27,13 @@ export function tecpro(tr, add, trechos) {
         const d = L + 8 + fila * 11, [x, z] = lateral(p, lado, d);
         if (!livre(tr, x, z, 14) || ocupado(tr, x, z) || tr.distAt(x, z) < d - 4) continue;
         const y = tr.chao(x, z) - 1.5, ry = Math.atan2(p.tx, p.ty) + Math.PI / 2;
-        for (let andar = 0; andar < 2; andar++) { brancos.push({ x, y: y + 4.5 + andar * 9, z, sx: 8.6, sy: 8.4, sz: 22, r: ry - Math.PI / 2 }); vermelhos.push({ x, y: y + 4.5 + andar * 9, z, sx: 8.9, sy: 2.4, sz: 22.3, r: ry - Math.PI / 2 }); }
+        for (let andar = 0; andar < 2; andar++) { (fila === 0 ? azuis : brancos).push({ x, y: y + 4.5 + andar * 9, z, sx: 8.6, sy: 8.4, sz: 22, r: ry - Math.PI / 2 }); vermelhos.push({ x, y: y + 4.5 + andar * 9, z, sx: 8.9, sy: 2.4, sz: 22.3, r: ry - Math.PI / 2 }); }
       }
     }
   }
   const g = new THREE.BoxGeometry(1, 1, 1);
-  instancias(add, g, BRANCO, brancos, { nome: "monaco-tecpro" }); instancias(add, g, VERMELHO, vermelhos, { nome: "monaco-tecpro-faixa", sombra: false });
-  tr.tecproMonaco = brancos.length;
+  instancias(add, g, BRANCO, brancos, { nome: "monaco-tecpro" }); instancias(add, g, M(0x1f4fa8, { roughness: 0.75 }), azuis, { nome: "monaco-tecpro-azul" }); // (a fila da frente azul com a faixa vermelha, a de trás branca) instancias(add, g, VERMELHO, vermelhos, { nome: "monaco-tecpro-faixa", sombra: false });
+  tr.tecproMonaco = brancos.length + azuis.length;
 }
 
 // ---- os telões nos postes (um de cada lado da curva): tela escura com a marca do GP ----

@@ -285,17 +285,22 @@ function buildWorld(tr) {
     const wm = new THREE.MeshStandardMaterial({ map: wt, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x220a22 : 0 });
     // nos GPs, o guard-rail pintado em painéis (kit/beira.js; um material por lado, para os nomes não saírem espelhados)
     if (L < 1e9) for (const s of [1, -1]) {
-      const mat = gp?.guardrail ? new THREE.MeshStandardMaterial({ map: guardRail(s, gp.guardrail), roughness: 0.55, side: THREE.DoubleSide }) : wm, vLen = gp?.guardrail?.estilo === "monaco" ? gp.guardrail.sequencia.length * (gp.guardrail.trecho ?? 360) : gp?.guardrail ? 480 : 32;
-      // `guardrail.baixos`: [[f0, f1, lado]] trechos em que o guard-rail daquele lado é baixo, de aço de duas lâminas (a reta dos boxes de Mônaco), em vez do painel alto
-      const matBaixo = gp?.guardrail?.baixos ? new THREE.MeshStandardMaterial({ map: guardRail(s, { ...gp.guardrail, estilo: gp.guardrail.baixoEstilo ?? "duplo" }), roughness: 0.55, side: THREE.DoubleSide }) : null;
-      const baixosDe = (gp?.guardrail?.baixos || []).filter(([, , lado]) => lado === s).map(([f0, f1]) => [Math.floor(f0 * n), Math.floor(f1 * n) + (f1 < f0 ? n : 0)]);
+      // `guardrail.trechos`: [{ de, ate, ...estilo }] (frações da volta) trocam o visual da barreira trecho a trecho (patrocinador, altura, painel ou lâminas nuas, barreira branca do túnel); o que não está em
+      // nenhum trecho usa o próprio `guardrail`. O muro físico é um só (tr.wallLat): muda só o desenho. Um material por estilo e por lado, para os nomes não saírem espelhados.
+      const base = gp?.guardrail, defs = (base?.trechos || []).map((d) => ({ ...d, i0: Math.floor(d.de * n), i1: Math.floor(d.ate * n) + (d.ate < d.de ? n : 0) }));
+      const defDe = (i) => { const k = ((i % n) + n) % n; return defs.findIndex((d) => (k >= d.i0 && k <= d.i1) || (k + n >= d.i0 && k + n <= d.i1)); }; // -1: o estilo de base
+      const estiloDe = (d) => (d < 0 ? base : { ...base, ...defs[d] }), materiais = new Map();
+      const matDe = (d) => { if (!base) return wm; if (!materiais.has(d)) materiais.set(d, new THREE.MeshStandardMaterial({ map: guardRail(s, estiloDe(d)), roughness: 0.55, side: THREE.DoubleSide })); return materiais.get(d); };
+      const vLenDe = (d) => { const g = estiloDe(d); return g?.estilo === "monaco" ? g.sequencia.length * (g.trecho ?? 360) : g?.vLen ?? (base ? 480 : 32); };
       const trecho = (i0, i1) => {
         const fatias = []; let a = i0;
-        const emBaixo = (i) => baixosDe.some(([x0, x1]) => { const k = ((i % n) + n) % n; return (k >= x0 && k <= x1) || (k + n >= x0 && k + n <= x1); });
-        if (!baixosDe.length) fatias.push([i0, i1, false]);
-        else { for (let i = i0 + 1; i <= i1 + 1; i++) if (i === i1 + 1 || emBaixo(i) !== emBaixo(a)) { fatias.push([a, Math.min(i, i1), emBaixo(a)]); a = i; } }
+        for (let i = i0 + 1; i <= i1 + 1; i++) if (i === i1 + 1 || defDe(i) !== defDe(a)) { fatias.push([a, Math.min(i, i1), defDe(a)]); a = i; }
         let m = null;
-        for (const [x0, x1, baixo] of fatias) { if (x1 <= x0) continue; m = ribbon(s * L, s * L, 0.5, baixo ? matBaixo : mat, baixo ? gp.guardrail.baixoVLen ?? vLen : vLen, baixo ? gp.guardrail.baixoAlto ?? 11 : gp?.guardrail?.alto ?? 12, 1, x0, x1); m.castShadow = true; m.name = `${id}-muro`; if (gp?.guardrail?.estilo === "monaco") afastarMuro(tr, m.geometry, x0, L - (tr.t.muroFolga ?? 8) + 13); }
+        for (const [x0, x1, d] of fatias) {
+          if (x1 <= x0) continue; const g = estiloDe(d);
+          m = ribbon(s * L, s * L, 0.5, matDe(d), vLenDe(d), g?.alto ?? 12, 1, x0, x1); m.castShadow = true; m.name = `${id}-muro`;
+          if (base?.estilo === "monaco") afastarMuro(tr, m.geometry, x0, L - (tr.t.muroFolga ?? 8) + 13);
+        }
         return m;
       };
       // o trecho do corredor dos boxes (regras de F1) é uma peça à parte, que some enquanto o corredor aparece (kit/corredor-boxes.js)
