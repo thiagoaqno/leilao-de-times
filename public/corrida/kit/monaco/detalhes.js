@@ -83,7 +83,7 @@ export function cais(tr, add, [f0, f1]) {
   const i0 = Math.floor(f0 * n), i1 = Math.floor(f1 * n);
   for (let i = i0; i <= i1; i += 22) {
     const p = tr.pts[i % n], lado = rng() < 0.5 ? 1 : -1, d = L + 20 + rng() * 22, [x, z] = lateral(p, lado, d);
-    if (!sobra(tr, x, z, i % n, lado, d, 20)) continue;
+    if (!sobra(tr, x, z, i % n, lado, d, 34)) continue;
     const y = tr.chao(x, z) - 1.5, ry = Math.atan2(p.tx, p.ty);
     tendas.push({ x, y: y + 7, z, sx: 24, sy: 14, sz: 18, r: ry }); tetos.push({ x, y: y + 17, z, sx: 26, sy: 8, sz: 20, r: ry + Math.PI / 4 });
   }
