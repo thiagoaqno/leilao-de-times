@@ -44,7 +44,7 @@ test("direção de prova: batida não soma tempo, acumula 1% e anuncia no log", 
   assert.equal(p.dano, 1);
   Direcao.bater(room, p, 200, "carro", 5000 + F1.BATIDA_INTERVALO - 1, (s) => log.push(s), "carro:b"); // outro par (outro carro): conta na hora
   assert.equal(p.penal, 0); assert.equal(p.dano, 2); assert.equal(p.batidas, 2);
-  assert.ok(log.some((s) => /batida forte com outro carro/.test(s)));
+  assert.ok(log.some((s) => /batida grave com outro carro/.test(s)));
   Direcao.bater(room, p, 150, "muro", 5000 + F1.BATIDA_INTERVALO, semLog); // o muro já passou dos 4 s: conta de novo
   assert.equal(p.dano, 3);
   // um encostão, antes da largada, na pausa ou com o carro no box não vale

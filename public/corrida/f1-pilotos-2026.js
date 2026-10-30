@@ -42,8 +42,9 @@ const PILOTOS = LINHAS.map(([id, nome, sigla, numero, equipe, ritmo, constancia,
 const fatorDeRitmo = (ritmo) => 1 + (88 - ritmo) * 0.002;
 // quanto o tempo varia de volta a volta (desvio padrão, em fração do tempo): 95 de constância ≈ 0,35%, 74 ≈ 1,8%
 const ruidoDaVolta = (constancia) => (100 - constancia) * 0.0007;
-// o tempo de reação na largada, em ms: 93 de largada ≈ 100 ms, 76 ≈ 340 ms
-const reacaoNaLargada = (largada) => (100 - largada) * 14;
+// o tempo de reação na largada, em ms: de 150 (93 de largada, os melhores) a 400 (76 ou menos, os piores). A posição no grid NÃO entra:
+// o pelotão todo sai praticamente junto
+const reacaoNaLargada = (largada) => 150 + Math.max(0, Math.min(1, (93 - largada) / 17)) * 250;
 
 const gerador = (semente) => { // mulberry32 (a mesma de f1-regras.js `sorteio`), para não depender dele
   let a = 2166136261; for (const c of String(semente)) { a ^= c.charCodeAt(0); a = Math.imul(a, 16777619); } a = (a >>> 0) || 1;

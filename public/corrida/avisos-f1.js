@@ -6,6 +6,7 @@
 // fundo: a cor da faixa · txt: a cor do texto · bloco: o quadrado do ícone · prio: quanto menor, mais urgente
 // direcao: vem da direção de prova (cabeçalho "DIREÇÃO DE PROVA · RACE CONTROL"); senão o `rotulo` é o cabeçalho
 const TIPOS = {
+  preta:        { prio: 0, fundo: "#0a0a0c", txt: "#ffffff", bloco: "#e10600", icone: "bandeira", bandeira: "#1c1c22", direcao: true, rotulo: "BANDEIRA PRETA" },
   vermelha:     { prio: 0, fundo: "#e10600", txt: "#ffffff", bloco: "#7a0300", icone: "bandeira", bandeira: "#ff4d44", direcao: true, rotulo: "BANDEIRA VERMELHA" },
   sc:           { prio: 1, fundo: "#ff8a00", txt: "#14110a", bloco: "#14110a", icone: "sc", direcao: true, rotulo: "SAFETY CAR" },
   amarela:      { prio: 2, fundo: "#ffd800", txt: "#14110a", bloco: "#14110a", icone: "bandeira", bandeira: "#ffd800", direcao: true, rotulo: "BANDEIRA AMARELA" },
@@ -35,7 +36,9 @@ function limpar(texto) {
 // O tipo do aviso a partir do texto (o log da direção de prova, os avisos do HUD e os toasts). Primeiro o que é mais grave.
 function tipoDoTexto(texto) {
   const t = String(texto || "").toLowerCase();
+  if (/bandeira preta|desclassificad|\bdsq\b/.test(t)) return "preta";
   if (/bandeira vermelha|corrida interrompida/.test(t)) return "vermelha";
+  if (/cumpriu o stop-and-go/.test(t)) return "box";
   if (/safety car recolhido|relargada|pista liberada|bandeira verde/.test(t)) return "verde";
   if (/safety car|\bvsc\b|virtual/.test(t)) return "sc";
   if (/perda total|abandonou|\bdnf\b|está fora/.test(t)) return "dnf";
@@ -44,7 +47,7 @@ function tipoDoTexto(texto) {
   if (/bandeira azul|deixe o líder|deixe passar|ignorou três bandeiras|\bazul\b/.test(t)) return "azul";
   if (/investig/.test(t)) return "investigacao";
   if (/limites? da pista|limite de pista|saídas de pista/.test(t)) return "limite";
-  if (/\+\s?\d+(?:[.,]\d+)?\s?s\b|queimou|não devolveu|penaliza|punição|acréscimo/.test(t)) return "punicao";
+  if (/\+\s?\d+(?:[.,]\d+)?\s?s\b|stop-and-go|queimou|não devolveu|penaliza|punição|acréscimo/.test(t)) return "punicao";
   if (/batida|atingido|encolhido/.test(t)) return "batida";
   if (/volta mais r[aá]pida|recorde/.test(t)) return "vmr";
   if (/\bdrs\b/.test(t)) return "drs";

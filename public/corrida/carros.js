@@ -77,6 +77,14 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   kt.aoMontar = pronto; pronto();
   return k;
 }
+// O carro fantasma (parado na pista e recolocado, sem colisão por uns segundos): semitransparente enquanto dura
+export function fantasmaVisual(k, on) {
+  if (!k || !k.mats) return;
+  for (const m of k.mats) {
+    if (on) { if (!m._fo) { m._fo = [m.transparent, m.opacity, m.depthWrite]; m.transparent = true; m.opacity = 0.35; m.depthWrite = false; } }
+    else if (m._fo) { m.transparent = m._fo[0]; m.opacity = m._fo[1]; m.depthWrite = m._fo[2]; m._fo = null; }
+  }
+}
 // pitch: o bico sobe na subida e desce na descida (o relevo vem de quem chama); lean/roll: inclina para o lado.
 // fx: { turbo, estrela, rodando, derrapa, pequeno, bala, pneu (o composto atual) } — a chama, o arco-íris da estrela, o giro de quem foi atingido,
 // as faíscas, o carro encolhido pelo raio e a bala no lugar do carro.
