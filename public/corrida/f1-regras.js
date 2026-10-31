@@ -61,12 +61,12 @@ const PICO_REFERENCIA = 1.35, BASE_FREIO = 1.08, EXPOENTE_FREIO = 0.85, EXPOENTE
 const secaDaPista = (agua) => 1 - limite((agua || 0) / 0.5, 0, 1);
 // O que a água tira da aderência do composto: 1 na pista seca, `molhado` na encharcada, interpolando.
 // Uma curva por composto, em [água, fator] (a água: 0 seco, ~0,45 garoa, 1 encharcada): o macio é o que mais sofre mesmo na garoa; o de chuva
-// na garoa fica só um pouco acima dos secos (e ainda "derrete" se a pista seca) e na pista encharcada fica claramente melhor.
+// na garoa fica claramente acima dos secos (e ainda "derrete" se a pista seca) e na chuva forte fica melhor ainda.
 const CURVA_AGUA = {
   macio: [[0, 1], [0.15, 0.78], [0.45, 0.55], [1, 0.3]],
   medio: [[0, 1], [0.15, 0.84], [0.45, 0.66], [1, 0.38]],
   duro: [[0, 1], [0.15, 0.86], [0.45, 0.7], [1, 0.42]],
-  chuva: [[0, 1], [0.15, 0.85], [0.45, 0.78], [1, 1.0]],
+  chuva: [[0, 1], [0.15, 0.97], [0.45, 1.0], [1, 1.12]],
 };
 function fatorAgua(composto, agua) {
   const c = CURVA_AGUA[composto] || CURVA_AGUA[COMPOSTO_PADRAO], a = limite(agua || 0, 0, 1);
@@ -514,13 +514,13 @@ function gravidadeDaBatida(forca) {
   return forca >= COLISAO_GRAVE ? "grave" : forca >= COLISAO_MEDIA ? "media" : "leve";
 }
 // O nível da punição de quem causou a batida: `n` conta as batidas causadas, incluindo esta. Devolve { nivel: "leve" | "media" | "grave" | "preta", subiu: [motivos] }.
-function nivelDaPunicao(gravidade, n) {
+function nivelDaPunicao(gravidade) { // (sem reincidência: a 2ª batida em diante não sobe de nível; a desclassificação é por batidas PROPOSITAIS: `DSQ_PROPOSITAIS`)
   if (!ESCALA_PUNICAO.includes(gravidade)) return null;
-  if (n >= 6) return { nivel: "preta", subiu: ["sexta batida causada"] };
-  let i = ESCALA_PUNICAO.indexOf(gravidade); const subiu = [];
-  if (n >= 2) { i++; subiu.push("reincidência"); }
-  return { nivel: ESCALA_PUNICAO[Math.min(2, i)], subiu };
+  return { nivel: gravidade, subiu: [] };
 }
+const DSQ_PROPOSITAIS = 12, AVISO_PROPOSITAIS = 9; // batidas propositais para a bandeira preta, e a partir de quantas a direção avisa a contagem
+// "Proposital": o causador com culpa clara, diferença de velocidade alta (média ou grave) e o atingido nem derrapando nem freando forte na frente.
+const batidaProposital = ({ gravidade, culpado, atingidoDerrapava, atingidoFreava }) => !!culpado && (gravidade === "media" || gravidade === "grave") && !atingidoDerrapava && !atingidoFreava;
 // O stop-and-go cabe? `voltas` é o número de voltas da corrida; `feitas` as que o piloto já fechou. O box só abre se não é a última
 // volta (a chegada cai dentro do corredor), então precisa de uma volta de box até o fim.
 const stopGoCabe = (feitas, voltas) => (feitas || 0) + 1 < (voltas || 1);
@@ -544,7 +544,7 @@ function vacuoF1(draft, curva) {
 
 const api = { PONTO_VOLTA_RAPIDA, pontosDe, PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
-  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos,
+  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, batidaProposital, DSQ_PROPOSITAIS, AVISO_PROPOSITAIS, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos,
   CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, RAMPA_S, CHUVA_MIN_S, AVISO_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, OPCOES_DE_CLIMA, ROTULO_CLIMA, previsaoDoGP, descreverPrevisao, sortearClima, chuvaEm, aguaEm, proximaMudanca, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;

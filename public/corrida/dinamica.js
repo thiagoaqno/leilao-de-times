@@ -24,11 +24,12 @@ const PASSO = 1 / 120;       // o passo fixo da física, no navegador e no servi
 // O FREIO: a força que o pedal cheio pede é `FREIO_G` vezes o peso a zero de velocidade e cresce com a carga aerodinâmica (FREIO_AERO por
 // peso de carga): a 300 km/h o carro freia uns 5 g (com o arrasto), a 100 km/h uns 2,5 g. Quem pede mais do que o pneu segura (molhado, pneu
 // gasto, freio na curva) trava a roda. O pedal sobe em 1/FREIO_SOBE s.
-const FREIO_G = 1.925, FREIO_AERO = 0.55, FREIO_SOBE = 4.5;
+// (+20% sobre a versão anterior, 1,925 e 0,55: o freio pedido e o que o pneu segura antes de travar crescem juntos, então o pedal cheio com o pneu bom segue sem travar)
+const FREIO_G = 2.31, FREIO_AERO = 0.66, FREIO_SOBE = 4.5;
 // O quanto o pneu aguenta de freio antes de travar (múltiplo da aderência lateral): folgado com o pneu bom (1,25) e justo com o pneu que
 // perdeu aderência (gasto, frio, molhado, depois de uma batida), onde o pedal cheio já trava a roda. Vai de ATRITO_MIN a ATRITO_MAX
 // conforme a aderência `kGrip` sobe de GRIP_TRAVA a GRIP_TRAVA + 0,25.
-const ATRITO_MIN = 0.6, ATRITO_MAX = 1.25, GRIP_TRAVA = 1.04;
+const ATRITO_MIN = 0.72, ATRITO_MAX = 1.5, GRIP_TRAVA = 1.04;
 const atritoDeFreio = (kGrip) => { const x = limite((kGrip - GRIP_TRAVA) / 0.25, 0, 1); return ATRITO_MIN + (ATRITO_MAX - ATRITO_MIN) * x * x * (3 - 2 * x); };
 const limite = (v, a, b) => (v < a ? a : v > b ? b : v);
 

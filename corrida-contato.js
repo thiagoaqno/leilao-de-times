@@ -16,7 +16,7 @@ const ACEL_JANELA = 6;      // a aceleração de um carro que ainda não chegou 
 const PAR_MS = 120;         // a mesma batida: dentro disto, só quem registrou primeiro troca o momento
 const PENDENTE_MS = 800;    // um impulso que o outro carro não aplicou em tanto tempo (ficou parado, saiu) se perde
 
-function estado(room) { const K = room.contato || (room.contato = { hist: new Map(), pend: new Map(), pares: new Map() }); return K.impactos ? K : (K.impactos = new Map(), K); }
+function estado(room) { const K = room.contato || (room.contato = { hist: new Map(), pend: new Map(), pares: new Map() }); if (!K.impactos) { K.impactos = new Map(); K.fantPar = new Map(); } return K; }
 function limpar(room) { room.contato = null; }
 
 function novoHistorico() { return { n: 0, i: 0, t: new Float64Array(N), x: new Float64Array(N), y: new Float64Array(N), z: new Float64Array(N), a: new Float64Array(N), vx: new Float64Array(N), vy: new Float64Array(N), r: new Float64Array(N) }; }
@@ -71,16 +71,37 @@ const BOX_FANTASMA_MS = 2000;
 const fantasmaDoBox = (q, agora = Date.now()) => !!q.box || agora < (q.boxFant || 0) || agora < (q.fantAte || 0);
 const chave = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
 
+// Depois de uma colisão entre dois carros os DOIS viram fantasma por FANTASMA_BATIDA_MS (sem colisão com ninguém, semitransparentes na tela:
+// `p.fantAte`, o mesmo de corrida-parados.js), para não ficarem presos um no outro nem rebaterem. A culpa e a punição já saem do impacto
+// (guardado antes), então o fantasma não muda nada nelas. O mesmo par só vira fantasma de novo depois de FANTASMA_PAR_MS: a mesma batida
+// (ou os dois ainda encostados quando o fantasma acaba) não reativa em loop.
+const FANTASMA_BATIDA_MS = 2000, FANTASMA_PAR_MS = 6000;
+function fantasmaDaBatida(K, room, p, idOutro) {
+  const agora = Date.now(), par = chave(p.id, idOutro);
+  if (agora < (K.fantPar.get(par) || 0)) return false;
+  K.fantPar.set(par, agora + FANTASMA_PAR_MS);
+  for (const [k, t] of K.fantPar) if (t < agora - FANTASMA_PAR_MS) K.fantPar.delete(k);
+  for (const q of [p, room.players[idOutro]]) if (q) q.fantAte = Math.max(q.fantAte || 0, agora + FANTASMA_BATIDA_MS);
+  room.fantMudou = true; // (o estado público muda: corrida-parados.js manda o aviso)
+  return true;
+}
+
 // O IMPACTO de cada par de carros, guardado no momento em que o primeiro dos dois detecta a batida e ANTES de o impulso trocar as
 // velocidades (sim.js: contatoCom): a velocidade de aproximação (`forca`, u/s: a velocidade relativa na direção do outro carro) e quem
 // causou (`culpado`: o id, ou null quando ninguém se aproximou claramente mais que o outro). A direção de prova lê daqui a gravidade e a
 // culpa quando cada carro avisa a sua batida (o do batido só avisa depois, com as velocidades já trocadas).
 const IMPACTO_VALE_MS = 8000;
 function impactoDe(room, a, b) { const i = estado(room).impactos.get(chave(a, b)); return i || null; }
+// (a freada de cada um nos 300 ms antes do impacto, em u/s²: positiva é freando)
+function freada(K, id, t) {
+  const H = K.hist.get(id); if (!H || !H.n) return 0;
+  const a = {}, b = {}; em(H, t - 300, a); em(H, t, b);
+  return (Math.hypot(a.vx, a.vy) - Math.hypot(b.vx, b.vy)) / 0.3;
+}
 function guardarImpacto(K, idA, e, t) {
   if (!e.pre) return;
   for (const [k, i] of K.impactos) if (t - i.t > IMPACTO_VALE_MS) K.impactos.delete(k);
-  K.impactos.set(chave(idA, e.id), { t, forca: e.forca, culpado: e.culpa === 1 ? idA : e.culpa === -1 ? e.id : null, de: idA, pre: e.pre });
+  K.impactos.set(chave(idA, e.id), { t, forca: e.forca, culpado: e.culpa === 1 ? idA : e.culpa === -1 ? e.id : null, de: idA, pre: e.pre, freada: { [idA]: freada(K, idA, t), [e.id]: freada(K, e.id, t) } });
 }
 
 // Depois de cada passo do carro `c` do jogador `p`, na hora `tFim` (ms do servidor): aplica os impulsos que os outros deixaram para
@@ -108,6 +129,7 @@ function depoisDoPasso(room, p, c, tFim, ev, ativo) {
     for (const e of evl) {
       K.pares.set(chave(p.id, e.id), { t: tFim, dono: p.id });
       guardarImpacto(K, p.id, e, tFim);
+      if (e.forca >= Sim.FORCA_EV) fantasmaDaBatida(K, room, p, e.id);
       if (e.de) { let f = K.pend.get(e.id); if (!f) K.pend.set(e.id, f = []); if (f.length > 8) f.shift(); f.push({ t: tFim, de: e.de, forca: e.forca, por: p.id }); }
       if (ev && e.forca >= Sim.FORCA_EV) ev.push(e);
     }
@@ -115,4 +137,4 @@ function depoisDoPasso(room, p, c, tFim, ev, ativo) {
   gravar(room, p.id, tFim, c);
 }
 
-module.exports = { BOX_FANTASMA_MS, fantasmaDoBox, impactoDe, estado, limpar, gravar, em, outrosNaHora, depoisDoPasso, geometria, PAR_MS, N };
+module.exports = { BOX_FANTASMA_MS, FANTASMA_BATIDA_MS, FANTASMA_PAR_MS, fantasmaDoBox, impactoDe, estado, limpar, gravar, em, outrosNaHora, depoisDoPasso, geometria, PAR_MS, N };

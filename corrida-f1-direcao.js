@@ -73,6 +73,7 @@ function derrapando(imp, idDoOutro) {
   if (v < DERRAPA_V) return false;
   return Math.abs(Math.atan2(Math.sin(Math.atan2(vy, vx) - a), Math.cos(Math.atan2(vy, vx) - a))) > DERRAPA_ANGULO;
 }
+const FREADA_BRUSCA = 140; // u/s² (~3 g): o atingido freando mais que isto na frente do causador não conta como batida proposital
 const DANO_CAUSADOR = { leve: 1, media: 2, grave: 3 }, DANO_BATIDO = { leve: 0, media: 0, grave: 0.5 };
 function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   if (!room.direcao || room.phase !== 'race' || !p || p.dnf || p.finish != null || p.box || agora < room.startAt) return null;
@@ -91,7 +92,8 @@ function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   p.batidas = (p.batidas || 0) + 1;
   const outroId = tipo !== 'muro' && String(chave).startsWith('carro:') ? String(chave).slice(6) : null;
   const imp = outroId ? Contato.impactoDe(room, p.id, outroId) : null;
-  const grav = outroId ? F1.gravidadeDaBatida(forca) || (derrapou ? 'leve' : null) : null;
+  // a gravidade vem da VELOCIDADE RELATIVA no impacto (o causador menos o atingido, na direção do contato, medida antes do impulso): `imp.forca`
+  const grav = outroId ? F1.gravidadeDaBatida(imp ? imp.forca : forca) || (derrapou ? 'leve' : null) : null;
   const culpa = !!(grav && imp && (imp.culpado === p.id || (derrapou && !imp.culpado))), batido = !!(grav && imp && imp.culpado && imp.culpado !== p.id);
   const dano = culpa ? DANO_CAUSADOR[grav] : batido ? DANO_BATIDO[grav] : b.dano;
   p.dano = Math.min(100, Math.round(((p.dano || 0) + dano) * 10) / 10);
@@ -100,12 +102,16 @@ function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   log(`💥 ${p.name}: batida ${nivel} ${tipo === 'muro' ? 'no muro' : 'com outro carro'}; dano ${Math.round(p.dano)}%${culpa ? '' : batido ? ' (atingido: sem punição)' : ' (sem punição de tempo)'}.`);
   if (culpa) {
     p.causadas = (p.causadas || 0) + 1;
-    const dec = F1.nivelDaPunicao(grav, p.causadas), subiu = dec.subiu.length ? ` (${dec.subiu.join(' e ')}: punição maior)` : '';
-    const motivo = `causou uma batida ${nivel}${subiu}`;
+    const dec = F1.nivelDaPunicao(grav), motivo = `causou uma batida ${nivel}`;
     if (dec.nivel === 'leve') penalizar(p, F1.PUNICAO_LEVE_S, motivo, log);
     else if (dec.nivel === 'media') penalizar(p, F1.PUNICAO_MEDIA_S, motivo, log);
-    else if (dec.nivel === 'grave') aplicarStopGo(room, p, motivo, log);
-    else preta(room, p, `${p.causadas} batidas causadas na corrida`, log);
+    else aplicarStopGo(room, p, motivo, log);
+    // a desclassificação é por batidas PROPOSITAIS (culpa clara, diferença de velocidade média ou grave, atingido sem derrapar nem freiar forte)
+    if (F1.batidaProposital({ gravidade: grav, culpado: imp && imp.culpado === p.id, atingidoDerrapava: derrapando(imp, outroId), atingidoFreava: ((imp && imp.freada && imp.freada[outroId]) || 0) > FREADA_BRUSCA })) {
+      p.propositais = (p.propositais || 0) + 1;
+      if (p.propositais >= F1.DSQ_PROPOSITAIS) preta(room, p, `${p.propositais} batidas propositais na corrida`, log);
+      else if (p.propositais >= F1.AVISO_PROPOSITAIS) log(`⚠️ ${p.name}: ${p.propositais}/${F1.DSQ_PROPOSITAIS} batidas propositais. Com ${F1.DSQ_PROPOSITAIS}, bandeira preta.`);
+    }
   }
   if (p.dano >= 100 && !p.dnf) { p.dnf = true; log(`💥 ${p.name}: perda total! O carro é retirado da pista e ${p.name} está fora da corrida.`); }
   return b;
@@ -121,7 +127,7 @@ function iniciar(room) {
     scDura: 10000 + Math.floor(r() * 4000),
     pista: T.pontos(t, 6), ultimaAtualizacao: 0 };
   for (const id of room.order) Object.assign(room.players[id], { drsZona: -1, penal: 0, avisosLimite: 0,
-    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, dsq: false, causadas: 0, stopGo: null, batidas: 0, batidaAte: 0, batidaPares: {}, ultimaBatida: null, queimou: false, gasNasLuzes: 0, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
+    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, dsq: false, causadas: 0, propositais: 0, stopGo: null, batidas: 0, batidaAte: 0, batidaPares: {}, ultimaBatida: null, queimou: false, gasNasLuzes: 0, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
 }
 function progresso(p, n) { return Number.isFinite(p.pos?.prog) ? p.pos.prog / n : -1; }
 function ordem(room) {
