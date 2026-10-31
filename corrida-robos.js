@@ -519,7 +519,7 @@ function erroDoRobo(room, p, ia, pf, i, alvo, olha, now, dt, emit) {
   }
   if (e.tipo === "travou") out.freioK = 0.45;
   else {
-    out.desvio = e.lado * 24; out.alvo = alvo * 0.9;
+    out.desvio = e.lado * 24 * Math.min(1, (T.PISTAS[room.config.pista].width - 36) / 68); out.alvo = alvo * 0.9; // (a saída larga acompanha a largura da pista: numa pista de 84 o desvio de 24 já jogava o carro no muro)
     const excesso = ia.v - pf.lim[i] * 1.25;
     if (!e.bateu && excesso > 20 && Math.abs(ia.lat) > T.PISTAS[room.config.pista].width * 0.22 && est.erros() < 0.35) { // entrou tão rápido que não segurou: o muro
       e.bateu = true; emit("batida", { id: p.id, forca: Math.min(F1.BATIDA_MAX, excesso * 1.2), tipo: "muro" }); ia.v *= 0.5;
