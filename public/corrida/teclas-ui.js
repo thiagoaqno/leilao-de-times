@@ -2,14 +2,14 @@
 // (#bTeclas) e pelo da sala (#btnTeclas). "Mudar" espera a tecla (ou o botão do controle); se ela já é de outra ação, avisa e só troca
 // se a pessoa apertar de novo; "Restaurar padrão" volta tudo. As trocas ficam em `corrida:teclas` (teclas.js). Esc cancela a captura.
 import { $, toast } from "./estado.js";
-import { ACOES, porId, ui, teclasDe, botoesDe, definir, tirar, restaurar, conflitosDe, nomeDaTecla, nomeDoBotao, temTrocas } from "./teclas.js";
+import { ACOES, porId, ui, teclasDe, botoesDe, definir, tirar, restaurar, conflitosDe, nomeDaTecla, nomeDoBotao, temTrocas, volante, definirVolante } from "./teclas.js";
 
 let tela = null, aba = "k", cap = null; // cap: { id, tipo, pendente (valor em conflito esperando a confirmação), raf }
 
 function montar() {
   if (tela) return;
   tela = document.createElement("div"); tela.id = "teclasTela"; tela.className = "tk hidden"; tela.setAttribute("role", "dialog"); tela.setAttribute("aria-modal", "true"); tela.setAttribute("aria-labelledby", "tkTit");
-  tela.innerHTML = '<div class="tk-fundo" data-fechar></div><div class="tk-painel"><header><h2 id="tkTit">Controles</h2><div class="tk-abas" role="tablist"><button type="button" role="tab" data-aba="k">Teclado</button><button type="button" role="tab" data-aba="p">Controle</button></div><button type="button" class="tk-x" data-fechar aria-label="Fechar">✕</button></header><p class="tk-dica" id="tkDica"></p><div class="tk-lista" id="tkLista"></div><footer><button type="button" id="tkRestaurar" class="ghost">Restaurar padrão</button><button type="button" id="tkPronto" class="primary" data-fechar>Pronto</button></footer></div>';
+  tela.innerHTML = '<div class="tk-fundo" data-fechar></div><div class="tk-painel"><header><h2 id="tkTit">Controles</h2><div class="tk-abas" role="tablist"><button type="button" role="tab" data-aba="k">Teclado</button><button type="button" role="tab" data-aba="p">Controle</button></div><button type="button" class="tk-x" data-fechar aria-label="Fechar">✕</button></header><p class="tk-dica" id="tkDica"></p><div class="tk-lista" id="tkLista"></div><div class="tk-volante" id="tkVolante"></div><footer><button type="button" id="tkRestaurar" class="ghost">Restaurar padrão</button><button type="button" id="tkPronto" class="primary" data-fechar>Pronto</button></footer></div>';
   document.body.appendChild(tela);
   tela.addEventListener("click", (e) => {
     if (e.target.closest("[data-fechar]")) return fechar();
@@ -18,7 +18,13 @@ function montar() {
     const m = e.target.closest("[data-mudar]"); if (m) { iniciar(m.dataset.mudar); return; }
     const t = e.target.closest("[data-tirar]"); if (t) { cancelar(); tirar(t.dataset.id, aba, aba === "k" ? t.dataset.tirar : +t.dataset.tirar); desenhar(); }
   });
+  tela.addEventListener("input", (e) => { const r = e.target.closest("[data-vol]"); if (!r) return; definirVolante(r.dataset.vol, +r.value / 100); const o = tela.querySelector('[data-vol-txt="' + r.dataset.vol + '"]'); if (o) o.textContent = Math.round(volante[r.dataset.vol] * 100) + "%"; $("tkRestaurar").disabled = !temTrocas(); });
   window.addEventListener("keydown", aoTeclar, true);
+}
+// os ajustes de direção (só a entrada: a física e o servidor recebem o mesmo -1 a 1): sensibilidade do teclado, do controle e a zona morta do analógico
+const REGUA = { k: [30, 150, "Sensibilidade do teclado e do toque", "quanto o volante vira com a tecla apertada"], p: [50, 150, "Sensibilidade do controle", "o ganho do analógico esquerdo"], zona: [0, 40, "Zona morta do analógico", "o quanto ele precisa mexer antes de virar"] };
+function volanteHTML() {
+  return (aba === "k" ? ["k"] : ["p", "zona"]).map((c) => { const [mn, mx, nome, dica] = REGUA[c], v = Math.round(volante[c] * 100); return '<label class="tk-r"><span>' + nome + '<small>' + dica + '</small></span><input type="range" min="' + mn + '" max="' + mx + '" step="5" value="' + v + '" data-vol="' + c + '" aria-label="' + nome + '"><b data-vol-txt="' + c + '">' + v + '%</b></label>'; }).join("");
 }
 const chip = (tipo, v) => (tipo === "k" ? nomeDaTecla(v) : nomeDoBotao(v));
 function desenhar() {
@@ -32,7 +38,7 @@ function desenhar() {
     const chips = lista.length ? lista.map((v) => `<span class="tk-c">${chip(aba, v)}<button type="button" data-id="${a.id}" data-tirar="${v}" aria-label="Tirar ${chip(aba, v)}">×</button></span>`).join("") : '<span class="tk-vazio">sem tecla</span>';
     html += `<div class="tk-l${esperando ? " esp" : ""}" data-id="${a.id}"><span class="tk-n">${a.nome}</span><span class="tk-v">${esperando ? `<em>${cap.aviso || (aba === "k" ? "Aperte a tecla…" : "Aperte o botão…")}</em>` : chips}</span><button type="button" data-mudar="${a.id}">${esperando ? "Cancelar" : "Mudar"}</button></div>`;
   }
-  $("tkLista").innerHTML = html; $("tkRestaurar").disabled = !temTrocas();
+  $("tkVolante").innerHTML = volanteHTML(); $("tkLista").innerHTML = html; $("tkRestaurar").disabled = !temTrocas();
 }
 export function abrirTeclas() { montar(); ui.aberto = true; desenhar(); tela.classList.remove("hidden"); const f = tela.querySelector("#tkPronto"); if (f) f.focus(); }
 function fechar() { cancelar(); ui.aberto = false; if (tela) tela.classList.add("hidden"); }

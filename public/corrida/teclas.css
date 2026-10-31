@@ -29,3 +29,10 @@
 .tk footer .primary{color:#fff;background:#e10600;border:1px solid #e10600}
 @media (max-width:520px){.tk-l{grid-template-columns:1fr auto}.tk-v{grid-column:1/-1;justify-content:flex-start;order:3}}
 @media (pointer:coarse){#bTeclas{display:none}}
+
+/* os ajustes de direção (sensibilidade e zona morta) */
+.tk-volante{padding:6px 12px 8px;border-top:1px solid #ffffff14;background:#0f1117}
+.tk-r{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,200px) 48px;align-items:center;gap:12px;padding:5px 0;font-size:16px;font-weight:600}
+.tk-r span{display:flex;flex-direction:column;line-height:1.1}.tk-r small{font-size:12px;font-weight:500;color:#ffffff90}
+.tk-r input{width:100%;accent-color:#e10600}.tk-r b{text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:520px){.tk-r{grid-template-columns:1fr 48px}.tk-r input{grid-column:1/-1;order:3}}

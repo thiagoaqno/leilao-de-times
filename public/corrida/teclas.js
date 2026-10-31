@@ -61,8 +61,13 @@ export function conflitosDe(id, tipo, valor) {
 }
 export function definir(id, tipo, valores) { custom[id] = { ...(custom[id] || {}), [tipo]: valores }; salvar(); avisar(); }
 export function tirar(id, tipo, valor) { definir(id, tipo, lista(id, tipo).filter((x) => x !== valor)); }
-export function restaurar() { custom = {}; salvar(); avisar(); }
-export const temTrocas = () => Object.keys(custom).length > 0;
+// a sensibilidade do volante (volante.js): teclado/toque (k), controle (p) e a zona morta do analógico; guardada em `corrida:volante`
+const V = () => (typeof window !== "undefined" && window.Volante) || { PADRAO: { k: 1, p: 1, zona: 0.15 }, ajustar: (c, v) => +v };
+export const volante = { ...V().PADRAO };
+try { const v = store.get("corrida:volante"); if (v && typeof v === "object") for (const c of ["k", "p", "zona"]) if (v[c] != null) volante[c] = V().ajustar(c, v[c]); } catch (e) {}
+export function definirVolante(campo, valor) { volante[campo] = V().ajustar(campo, valor); try { store.set("corrida:volante", volante); } catch (e) {} }
+export function restaurar() { custom = {}; salvar(); Object.assign(volante, V().PADRAO); try { store.set("corrida:volante", volante); } catch (e) {} avisar(); }
+export const temTrocas = () => Object.keys(custom).length > 0 || ["k", "p", "zona"].some((c) => volante[c] !== V().PADRAO[c]);
 
 const NOMES_TECLA = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→", Space: "Espaço", Enter: "Enter", NumpadEnter: "Enter (num.)", Tab: "Tab", Escape: "Esc", ShiftLeft: "Shift esq.", ShiftRight: "Shift dir.", ControlLeft: "Ctrl esq.", ControlRight: "Ctrl dir.", AltLeft: "Alt esq.", AltRight: "Alt dir.", Backspace: "Backspace", Backquote: "`", Minus: "-", Equal: "=", Comma: ",", Period: ".", Slash: "/", Semicolon: ";", Quote: "'", BracketLeft: "[", BracketRight: "]", Backslash: "\\", CapsLock: "Caps" };
 export function nomeDaTecla(code) {

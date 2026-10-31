@@ -6,7 +6,7 @@ import { Sound } from "./sons.js";
 import { atualizarClima } from "./clima.js";
 import { trackFrame, groundH } from "./pista.js";
 import { race, keys, nearest } from "./jogo.js";
-import { pad } from "./controles.js";
+import { pad, direcao } from "./controles.js";
 import { baterNoOutro, MASSA } from "./colisao.js";
 import { CARS3, KS } from "./carros.js";
 import { myProg } from "./fantasma.js";
@@ -88,7 +88,7 @@ export function physics(dt, spec = carOf(me())) {
   vf = Math.max(-70, vf);
   if (!bala && (race.spinUntil > sNow() || (m && m.spinUntil > sNow()))) vf *= Math.exp(-dt * 2.2);
   // volante: gira o bico (só andando); a velocidade fica no mundo e é medida de novo no eixo novo do carro
-  const steer = bala || race.spinUntil > sNow() || (m && m.spinUntil > sNow()) ? 0 : pad.on && pad.steer ? pad.steer : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  const steer = bala || race.spinUntil > sNow() || (m && m.spinUntil > sNow()) ? 0 : direcao();
   c.steer += (steer - c.steer) * Math.min(1, dt * 10);
   const wx = fx * vf - fy * vl, wy = fy * vf + fx * vl;
   c.a += c.steer * spec.turn * Math.min(1, Math.abs(vf) / 90) * Math.sign(vf || 1) * dt * (air ? 0.35 : 1);
@@ -252,7 +252,7 @@ function agendadas(net, k, c, emReplay) {
 // as teclas (e o controle) deste passo
 function lerEntrada(R) {
   ENT.gas = keys.gas ? 1 : 0; ENT.brake = keys.brake ? 1 : 0; ENT.ers = keys.ers ? 1 : 0;
-  ENT.steer = pad.on && pad.steer ? pad.steer : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  ENT.steer = direcao();
   ENT.pedido = R.pedidoBox || null; ENT.marcha = AMB.manual ? Math.max(1, Math.min(NUM, R.marcha || 1)) : 0;
   ENT.respawn = R.respawnPend ? 1 : 0; R.respawnPend = false;
   return ENT;
