@@ -44,7 +44,10 @@ export const GP_MONACO = {
       { de: F.trechos.retaDosBoxes[1], ate: 0.105, sequencia: ["pirelli"], alto: 14 },
       { de: 0.105, ate: 0.225, painel: false, alto: 8 },
       { de: 0.225, ate: 0.31, sequencia: ["lv"] },
-      { de: 0.31, ate: F.trechos.tunel[0] - 0.003, sequencia: ["f1tv", "monacogp"] },
+      { de: 0.31, ate: F.curvas.hairpin - 0.012, sequencia: ["f1tv", "monacogp"] },
+      { de: F.curvas.hairpin - 0.012, ate: F.curvas.hairpin + 0.012, sequencia: ["f1tv", "monacogp"], vazio: true, dentro: true }, // o miolo do grampo: sem barreira por dentro (entra o canteiro, kit/monaco/grampo.js)
+      { de: F.curvas.hairpin + 0.012, ate: F.curvas.portier, sequencia: ["f1tv", "monacogp"] },
+      { de: F.curvas.portier, ate: F.trechos.tunel[0] - 0.003, sequencia: ["f1tv", "monacogp"], porLado: { "-1": { painel: false, alto: 8 } } }, // a esquerda da aproximação do túnel, só as lâminas (sem a faixa de patrocinadores)
       { de: F.trechos.tunel[0] - 0.003, ate: F.trechos.tunel[1] + 0.003, estilo: "tunel", alto: 12, vLen: 176 },
       { de: F.trechos.tunel[1] + 0.003, ate: 0.66, sequencia: ["salesforce"], alto: 14, agua: { painel: false, alto: 6 } },
       { de: 0.66, ate: F.trechos.cais[1], sequencia: ["lv"], alto: 12, agua: { painel: false, alto: 6 } },
