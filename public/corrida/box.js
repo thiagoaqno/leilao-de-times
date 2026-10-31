@@ -47,3 +47,10 @@ export function cancelarPedido() {
   const B = race && race.box; if (!B || B.fase || !B.pedido) return;
   B.pedido = race.pedidoBox = null; toast("Box cancelado", 1200);
 }
+// B, B (ou o botão): pede a parada SEM escolher o pneu: o carro entra no corredor, para na garagem e o menu do box (box-menu.js) abre para a escolha
+export function pedirNoBox() {
+  const B = race && race.box; if (!B || B.fase) return;
+  if (!B.pedido && !podePedir()) return;
+  B.pedido = race.pedidoBox = "decidir";
+  toast(me() && me().stopGo ? "🛑 Box na próxima passagem: cumpre o stop-and-go e você escolhe o pneu na garagem" : "🔧 Box na próxima passagem: você escolhe o pneu na garagem", 2200); Sound.pop();
+}

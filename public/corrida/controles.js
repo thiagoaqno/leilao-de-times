@@ -7,6 +7,7 @@ import { E, carOf, me, act } from "./estado.js";
 import { rotacao, NUM } from "./cambio.js";
 import { Sound } from "./sons.js";
 import { ORDEM, NOMES, usavel, camEstado } from "./cameras.js";
+import { menuBoxTecla, menuBoxPad } from "./box-menu.js";
 import { mfd, mfdTecla, mfdPad, mfdAtivo, acoes, teclaBox, digitoPneu, cancelarBoxTecla } from "./mfd.js";
 import { acoesDaTecla, botoesDe, ui, volante } from "./teclas.js";
 import "./teclas-ui.js";
@@ -27,6 +28,7 @@ const PILOTO = { gas: "gas", freio: "brake", esq: "left", dir: "right" };
 const PNEUS = { pneu1: "macio", pneu2: "medio", pneu3: "duro", pneu4: "chuva" };
 document.addEventListener("keydown", (e) => {
   if (!race || e.target.tagName === "INPUT" || ui.aberto) return;
+  if (menuBoxTecla(e)) return; // com o menu do box aberto (o carro parado na garagem) as teclas são só dele
   if (mfdTecla(e)) return; // as ações do MFD (páginas, linhas, valor, abrir, confirmar)
   const ids = acoesDaTecla(e.code).slice(); if (!mfdAtivo() && SETAS[e.code] && !ids.includes(SETAS[e.code])) ids.push(SETAS[e.code]);
   for (const id of ids) {
@@ -78,7 +80,8 @@ export function pollPad() {
   const b = (i) => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.3)), hit = (i) => b(i) && !pad.prev[i];
   const um = (id) => botoesDe(id).some(b), bate = (id) => botoesDe(id).some(hit); // botões de cada ação (teclas.js: padrão ou remapeados)
   if (ui.aberto) { pad.prev = gp.buttons.map((_, i) => b(i)); return; } // a tela de Controles está aberta: o controle só serve para remapear
-  mfdPad(bate); // o MFD: páginas, linhas, valor, abrir e confirmar
+  const noMenu = menuBoxPad(hit); // o menu do box (D-pad e A) manda enquanto está aberto
+  if (!noMenu) mfdPad(bate); // o MFD: páginas, linhas, valor, abrir e confirmar
   let x = gp.axes[0] || 0; if (um("esq")) x = -1; if (um("dir")) x = 1;
   x = window.Volante.analogico(x, volante.zona, volante.p); // a zona morta e o ganho do analógico (tela Controles)
   const gas = botoesDe("gas").some(i => b(i) && !(i === 0 && mfdAtivo() && mfd.aberto)), brake = um("freio");

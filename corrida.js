@@ -337,6 +337,7 @@ module.exports = function attachCorrida(io) {
     if (!p || ((!d.stopGo || d.troca) && !F1.PNEUS[d.composto])) return;
     // O serviço dos boxes recupera 90% do dano existente, também na visita de stop-and-go.
     p.dano = Math.max(0, (p.dano || 0) * 0.1);
+    if (d.manter && !d.stopGo) return; // "não trocar" (menu do box): parou sem trocar o pneu, não gasta jogo de composto
     if (p && d.stopGo) { // a visita incluiu o stop-and-go: cumprido; se o pneu foi trocado na mesma parada, o resto é uma parada normal (sem os segundos do stop-and-go)
       Direcao.cumprirStopGo(room, p, (s) => log(room, s));
       if (!d.troca) return;

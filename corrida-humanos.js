@@ -83,6 +83,7 @@ function ambiente(room, p, S, agora = Date.now()) {
   amb.safety = !!(d && d.safety); amb.setorAmarelo = d && d.amarelo ? d.amarelo.setor : -1; amb.ersAuto = room.config.ers !== "manual";
   amb.voltas = room.config.voltas; amb.laps = p.laps || 0; amb.paradas = (p.paradas || []).length; amb.semente = room.semente; amb.id = p.id; amb.grid = p.grid;
   amb.finish = p.finish; amb.dnf = !!p.dnf; amb.quali = quali; amb.fantasma = p.finish != null; amb.f1 = true;
+  amb.jogos = F1.jogosRestantes(p); // (os jogos de pneu: a recomendação do menu do box usa os mesmos nos dois lados)
   amb.stopGo = p.stopGo ? p.stopGo.s : 0; // stop-and-go pendente: a próxima visita ao box é só ele (segundos parado, sem trocar o pneu)
   return amb;
 }
@@ -155,7 +156,7 @@ function tratar(room, p, S, e, t, h) {
     }
     case "box":
       if (e.fase === "entra") { p.box = { entrou: t, volta: e.volta }; return true; }
-      p.box = null; p.boxFant = t + Contato.BOX_FANTASMA_MS; h.aoParada(room, p, { composto: e.composto, tempo: e.tempo, volta: e.volta, stopGo: !!e.stopGo, troca: !!e.troca, sg: e.sg }); return true;
+      p.box = null; p.boxFant = t + Contato.BOX_FANTASMA_MS; h.aoParada(room, p, { composto: e.composto, tempo: e.tempo, volta: e.volta, stopGo: !!e.stopGo, troca: !!e.troca, sg: e.sg, manter: !!e.manter }); return true;
     default: return false;
   }
 }

@@ -318,3 +318,28 @@
   #race.f1hud #hMfd .mfd-nome{font-size:17px}
   .anel-g{width:70px;height:70px}.pn2-voltas{font-size:21px}
 }
+
+/* ---- o menu do box: grande, no centro, enquanto o carro está parado na garagem ---- */
+#hBoxMenu{display:none}
+#race.f1hud #hBoxMenu.on{display:block;position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:min(760px,94vw);padding:12px 14px 10px;background:#0a0c12f5;border-top:5px solid #e10600;box-shadow:0 14px 44px #000c;z-index:7;pointer-events:auto;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;text-align:center}
+.bm-cab{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.bm-cab small{font-size:clamp(15px,2vw,20px);font-weight:700;letter-spacing:.2em}
+.bm-cont{display:grid;place-items:center;min-width:48px;height:48px;padding:0 8px;font-size:28px;font-weight:700;border:3px solid #ffd23f;border-radius:30px;font-variant-numeric:tabular-nums}
+.bm-linha{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.bm-btn{--c:#ffd100;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;min-height:150px;padding:30px 4px 8px;color:#fff;background:#171a22;border:3px solid #ffffff30;border-radius:0;cursor:pointer;font-family:inherit;box-shadow:none}
+.bm-btn kbd{position:absolute;left:6px;top:6px;display:grid;place-items:center;min-width:26px;height:26px;font:700 18px/1 inherit;color:#0a0c12;background:#e4e7ee;border-radius:4px}
+.bm-btn .bx-pn{display:block;width:44px;height:44px;border-radius:50%;background:#06070b;box-shadow:inset 0 0 0 6px var(--c)}
+.bm-btn b{font-size:clamp(14px,1.9vw,19px);font-weight:700;letter-spacing:.06em}
+.bm-btn span{font-size:14px;font-weight:600;color:#ffffffd0}.bm-btn em{font-style:normal;font-size:12px;color:#ffffffa8;line-height:1.15}
+.bm-btn .bm-rec{display:none;position:absolute;left:0;right:0;bottom:-3px;padding:2px 0;font-size:11px;font-weight:700;letter-spacing:.1em;color:#0a0c12;background:#2ee08a;text-decoration:none}
+.bm-btn.rec{border-color:#2ee08a}.bm-btn.rec .bm-rec{display:block}
+.bm-btn.sel{background:#2a3040;border-color:#fff;transform:translateY(-3px)}
+.bm-btn.feito{background:#ffd23f;color:#0a0c12;border-color:#ffd23f}.bm-btn.feito span,.bm-btn.feito em{color:#0a0c12}
+.bm-btn.esgotado{opacity:.4;cursor:default}
+.bm-btn.atual::before{content:"ATUAL";position:absolute;right:6px;top:8px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#ffffffa8}
+.bm-manter{--c:#8a93a3}.bm-manter b{margin-top:auto}
+.bm-info{margin:10px 0 2px;font-size:16px;font-weight:600;color:#ffffffd8}.bm-dica{margin:0 0 8px;font-size:13px;color:#ffffffb8}
+.bm-dica kbd{display:inline-grid;place-items:center;min-width:18px;height:17px;padding:0 4px;font:700 11px/1 inherit;color:#0a0c12;background:#e4e7ee;border-radius:3px;margin:0 2px}
+.bm-barra{display:block;height:5px;background:#ffffff24}.bm-barra s{display:block;height:100%;width:100%;background:#ffd23f;text-decoration:none;transition:width .1s linear}
+@media (max-width:700px){.bm-linha{grid-template-columns:repeat(3,1fr)}.bm-btn{min-height:104px;padding-top:26px}.bm-btn .bx-pn{width:32px;height:32px}.bm-btn em{display:none}.bm-btn kbd{min-width:22px;height:22px;font-size:15px}}
+@media (prefers-reduced-motion:reduce){.bm-btn.sel{transform:none}.bm-barra s{transition:none}}

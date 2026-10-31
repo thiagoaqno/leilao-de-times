@@ -8,6 +8,7 @@ import { drawItemHud } from "./itens.js";
 import { clima } from "./clima.js";
 import { set, montarCentro, atualizarCentro, montarTempo, atualizarTempo, estrategia, minimapaF1, desenharBanner, montarCrono, desenharCrono } from "./hud-painel.js";
 import { montarMfd, atualizarMfd, acoes } from "./mfd.js";
+import { atualizarMenuBox } from "./box-menu.js";
 
 // o cartão do rádio do engenheiro (como na TV: "SOBRENOME RADIO", o número e a equipe), por cima do velocímetro enquanto ele fala
 window.addEventListener("radio:fala", (ev) => {
@@ -84,9 +85,10 @@ export function hud() {
   if (m && race.hudChip !== m.name) { race.hudChip = m.name; $("hChip").innerHTML = `<i style="background:${m.color}"></i>${h(m.name)}<span>${h(PISTAS[cfg.pista].name)}</span>`; }
   // avisos
   let msg = "";
-  const B = race.box, nomeBox = B && (B.fase ? B.composto : B.pedido) ? window.F1Regras.PNEUS[B.fase ? B.composto : B.pedido].nome : "";
+  const B = race.box, idBox = B && (B.fase ? B.composto : B.pedido), nomeBox = idBox === "decidir" ? "pneu a escolher na garagem" : idBox && window.F1Regras.PNEUS[idBox] ? window.F1Regras.PNEUS[idBox].nome : "";
   if (m && m.dsq) msg = "🏴 BANDEIRA PRETA: você foi desclassificado";
   else if (m && m.dnf) msg = "💥 PERDA TOTAL: o carro está destruído, você está fora";
+  else if (B && B.fase === "escolha") msg = "🔧 BOX: escolha o pneu (1 a 4, 5 não troca · ← → e Enter)";
   else if (B && B.fase && B.stopGo) msg = B.fase === "entra" ? `🛑 STOP-AND-GO: limitador de velocidade` : B.fase === "parada" ? `🛑 STOP-AND-GO: parado ${Math.max(0, B.parada - B.t).toFixed(1)} s, sem trocar o pneu` : "🛑 STOP-AND-GO cumprido: saindo do box";
   else if (B && B.fase) msg = B.fase === "entra" ? `🔧 BOX: limitador de velocidade` : B.fase === "parada" ? `🔧 ${window.F1Regras.textoDaParada(B.parada)} · trocando para o ${nomeBox} · ${Math.max(0, B.parada - B.t).toFixed(1)} s` : "🔧 BOX: saindo, pneu novo ainda frio";
   else if (E.S.direcao?.safety) msg = "🚨 SAFETY CAR: reduza e mantenha a posição";
@@ -271,7 +273,7 @@ function hudF1(m, st, now) {
   // o MFD e as punições
   const est = estrategia(m, cors, race.hudEsc);
   atualizarMfd({ m, st, cors, linhas, compacta, modoErs, tp: est.tp, janela: est.janela, perda: est.perda, retorno: est.retorno, int: m ? HM.intervalos(cors, m.id, race.hudEsc, undefined, cron, agoraS) : {}, vr: HM.donoDaVoltaRapida(E.S.players) });
-  desenharBanner(m, t0); desenharCrono(t0);
+  desenharBanner(m, t0); desenharCrono(t0); atualizarMenuBox();
 }
 // ---------- as cinco luzes da largada (regras de F1) ----------
 // Uma acende por segundo e as cinco apagam juntas depois da espera sorteada pelo servidor (`luzes.espera`): a largada

@@ -192,6 +192,23 @@ function jogosUsados(p) {
   return n;
 }
 function jogosRestantes(p) { const u = jogosUsados(p), r = {}; for (const c of Object.keys(u)) r[c] = Math.max(0, JOGOS_POR_COMPOSTO - u[c]); return r; }
+// O MENU DO BOX: quem entra no corredor com o pedido "decidir" para na garagem e escolhe o pneu num menu (sim.js, fase "escolha"); o carro fica parado e o tempo
+// conta na parada. Passados ESCOLHA_BOX_S segundos sem escolher, vale o recomendado (`recomendarParada`, a mesma conta no navegador e no servidor).
+const ESCOLHA_BOX_S = 6;
+const SECOS_ORDEM = ["macio", "medio", "duro"]; // do mais rápido ao mais durável
+// O composto para esta parada: pista molhada (ou chovendo) com pneu seco pede chuva; pista seca com o de chuva pede seco; o resto é o seco mais
+// rápido, DIFERENTE do atual, que ainda aguenta as voltas que faltam (senão o que mais dura); sem jogo sobra o atual.
+// e: { atual, jogos, agua (0..1), voltasRestantes, fator }
+function recomendarParada({ atual, jogos, agua = 0, voltasRestantes = 99, fator = 1 }) {
+  const tem = (c) => !jogos || jogos[c] == null || jogos[c] > 0, vida = (c) => vidaEmVoltas(c, fator);
+  const seco = () => {
+    const cands = SECOS_ORDEM.filter((c) => tem(c) && c !== atual); if (!cands.length) return SECOS_ORDEM.includes(atual) ? atual : (SECOS_ORDEM.find(tem) || "medio");
+    return cands.find((c) => vida(c) >= voltasRestantes) || cands.slice().sort((a, b) => vida(b) - vida(a))[0];
+  };
+  if (atual !== "chuva" && agua > 0.3 && tem("chuva")) return "chuva";
+  if (atual === "chuva") return agua < 0.3 ? seco() : "chuva";
+  return seco();
+}
 const podeUsar = (p, composto) => !!PNEUS[composto] && jogosRestantes(p)[composto] > 0;
 // O composto que o servidor realmente põe num pedido de box: o pedido, se ainda há jogo; senão outro composto com jogo
 // (diferente do atual, e que ainda não usou se só tinha usado um: mantém a regra dos dois compostos; entre eles o de mais
@@ -546,7 +563,7 @@ function vacuoF1(draft, curva) {
 
 const api = { PONTO_VOLTA_RAPIDA, pontosDe, PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
-  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, batidaProposital, DSQ_PROPOSITAIS, AVISO_PROPOSITAIS, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, penalidadeUmComposto, acrescimoDeFinal, estrategia, melhoresPlanos,
+  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, batidaProposital, DSQ_PROPOSITAIS, AVISO_PROPOSITAIS, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, recomendarParada, ESCOLHA_BOX_S, penalidadeUmComposto, acrescimoDeFinal, estrategia, melhoresPlanos,
   CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, RAMPA_S, CHUVA_MIN_S, AVISO_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, OPCOES_DE_CLIMA, ROTULO_CLIMA, previsaoDoGP, descreverPrevisao, sortearClima, chuvaEm, aguaEm, proximaMudanca, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;

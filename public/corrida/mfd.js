@@ -7,7 +7,7 @@
 // reinicia os 3 s. Tudo remapeável na tela Controles (teclas.js / teclas-ui.js). Tab e Start só abrem e fecham o painel.
 import { E, $, me, carOf, store, toast } from "./estado.js";
 import { race } from "./jogo.js";
-import { alternarPedido, escolherComposto, cancelarPedido, jogosDe, textoJogos } from "./box.js";
+import { alternarPedido, escolherComposto, cancelarPedido, pedirNoBox, jogosDe, textoJogos } from "./box.js";
 import { set } from "./hud-painel.js";
 import { acoesDaTecla, teclasDe, nomeDaTecla, nomeDoBotao, botoesDe, ui } from "./teclas.js";
 import { clima } from "./clima.js";
@@ -89,7 +89,7 @@ const LINHAS = {
     { rot: "Situação da corrida", valor: () => "Pedir", mudar: () => pedirRadio("corrida") },
   ],
   box: [
-    { rot: "Próximo pneu", dica: "1–4", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return F().PNEUS[B.pedido || proximo()].nome; },
+    { rot: "Próximo pneu", dica: "1–4", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return B.pedido === "decidir" ? "Na garagem" : F().PNEUS[B.pedido || proximo()].nome; },
       mudar(d) {
         const B = race && race.box; if (!B || B.fase) return;
         const op = compostosPossiveis(); if (!op.length) { toast("Sem jogos de pneu: " + textoJogos(me()), 1800); return; }
@@ -106,6 +106,10 @@ const LINHAS = {
   ],
 };
 const linhasDaPagina = (id = mfd.pagina) => LINHAS[id] || [];
+// o nome de um pedido de box para a tela ("decidir" = o pneu se escolhe na garagem)
+const nomeDoPedido = (p) => (p === "decidir" ? "NA GARAGEM" : p && F1U().PNEUS[p] ? F1U().PNEUS[p].nome.toUpperCase() : "—");
+// pede a parada: com um pneu já escolhido (1 a 4, ou as setas do MFD) pede ele; sem escolha, o menu do box na garagem decide
+function pedirPadrao() { if (mfd.prox) escolherComposto(proximo()); else pedirNoBox(); }
 // o pneu da próxima parada ainda sem pedido (a escolha do MFD; senão o que vem depois do atual, como o B fazia)
 function proximo() {
   const BE = window.BoxEscolha, atual = race.pneu ? race.pneu.composto : "medio", m_ = me() || {};
@@ -115,14 +119,14 @@ function proximo() {
 function alternarBox() {
   const B = race && race.box; if (!B || B.fase) return;
   if (B.pedido) { cancelarPedido(); return; }
-  escolherComposto(proximo()); // (box.js: com stop-and-go pendente o pedido cumpre o stop-and-go e, se o pneu for outro, troca na mesma parada)
+  pedirPadrao(); // (box.js: com stop-and-go pendente o pedido cumpre o stop-and-go e, se o pneu for outro, troca na mesma parada)
 }
 // Enter, A, o botão confirmar e o segundo B: PEDEM com o que está selecionado, mas com o pedido já feito só o mostram (nunca cancelam nem trocam o pneu: era o
 // B apertado "de confirmação" que desfazia o 4). Cancelar é do Backspace, do mesmo número duas vezes não (é só confirmação) ou da linha "Pedir box".
 function confirmarBox() {
   const B = race && race.box; if (!B || B.fase) return;
-  if (B.pedido) { toast(`🔧 Box pedido: ${F1U().PNEUS[B.pedido].nome} (Backspace cancela)`, 1600); return; }
-  escolherComposto(proximo());
+  if (B.pedido) { toast(`🔧 Box pedido: ${nomeDoPedido(B.pedido)} (Backspace cancela)`, 1600); return; }
+  pedirPadrao();
 }
 const naPaginaBox = () => !!race && !!race.box && mfd.aberto && mfd.pagina === "box";
 // B (teclado e botão Box): abre o MFD na página do Box; com ela aberta e sem pedido, pede; com o pedido feito, só o mostra
@@ -316,7 +320,7 @@ export function atualizarMfd(ctx) {
   const t = performance.now();
   atualizarSugestao(ctx, t);
   if (mfd.aberto && t - mfd.ultimo > RECOLHE_MS) abrir(false, false);
-  { const bt = $("bMfd"), B = race.box, rot = bt && bt.querySelector("span"); if (rot) set(rot, "t", B && B.pedido && !B.fase ? "BOX " + F1U().PNEUS[B.pedido].nome.toUpperCase() : B && B.fase ? "NO BOX" : "MFD"); if (bt) set(bt, "c", "mfd-botao" + (B && (B.pedido || B.fase) ? " pedido" : "")); } // fechado, o pedido de box segue à vista no botão
+  { const bt = $("bMfd"), B = race.box, rot = bt && bt.querySelector("span"); if (rot) set(rot, "t", B && B.pedido && !B.fase ? "BOX " + nomeDoPedido(B.pedido) : B && B.fase ? "NO BOX" : "MFD"); if (bt) set(bt, "c", "mfd-botao" + (B && (B.pedido || B.fase) ? " pedido" : "")); } // fechado, o pedido de box segue à vista no botão
   raiz.dataset.entrada = mfd.entrada;
   const rr = $("race"); if (rr && rr.dataset.entrada !== mfd.entrada) rr.dataset.entrada = mfd.entrada;
   Object.assign(LEITURA, ctx);
@@ -345,7 +349,7 @@ const ATU = {
     const v = ctx.tp, n = v ? Math.max(0, Math.floor(v.voltas)) : null;
     set(r.pVoltas, "t", n == null || v.voltas >= 90 ? "—" : e.nivel === "fim" ? "NO LIMITE" : `Aguenta ~${n} volta${n === 1 ? "" : "s"}`); set(r.pVoltas, "c", "pn2-voltas " + e.nivel);
     set(r.pTempT, "t", "Temperatura: " + e.temp);
-    set(r.pProx, "t", B && !B.fase ? F.PNEUS[B.pedido || proximo()].nome.toUpperCase() : "—");
+    set(r.pProx, "t", B && !B.fase ? (B.pedido === "decidir" ? "NA GARAGEM" : F.PNEUS[B.pedido || proximo()].nome.toUpperCase()) : "—");
     set(r.pNota, "t", e.nivel === "fim" ? "Passou do limite: faça a parada." : v && v.medida ? "(no seu ritmo)" : "");
   },
   danos(ctx, r) {
@@ -374,7 +378,7 @@ const ATU = {
       set(bt, "c", "bx-btn" + (B.pedido === c ? " pedido" : sel === c ? " sel" : "") + (n <= 0 && !(m.stopGo && c === atual) ? " esgotado" : "") + (c === atual ? " atual" : ""));
       set(bt, "style", `--c:${F.PNEUS[c].cor}`); set(bt.querySelector("span"), "t", n <= 0 ? "esgotado" : n + (n === 1 ? " jogo" : " jogos"));
     }
-    set(r.bInfo, "t", [B.pedido ? `PEDIDO: ${F.PNEUS[B.pedido].nome.toUpperCase()}` : "Sem pedido", ctx.retorno ? `volta em ${ctx.retorno}º (est.)` : "", ctx.perda != null ? `troca ~${ctx.perda.toFixed(0)} s` : ""].filter(Boolean).join(" · "));
+    set(r.bInfo, "t", [B.pedido ? `PEDIDO: ${nomeDoPedido(B.pedido)}` : "Sem pedido", ctx.retorno ? `volta em ${ctx.retorno}º (est.)` : "", ctx.perda != null ? `troca ~${ctx.perda.toFixed(0)} s` : ""].filter(Boolean).join(" · "));
     set(r.bDica, "d", B.fase ? "none" : "");
   },
   tempos(ctx, r) {
