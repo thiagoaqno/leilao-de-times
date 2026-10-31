@@ -116,7 +116,7 @@ test("robôs: cada um faz as paradas da estratégia pelo corredor, no limitador,
     assert.ok(F1.usouDoisCompostos(r), `${r.name}: ${r.compostos}`);
     assert.equal(F1.acrescimoDeFinal(r, 3), 0);
     assert.equal(r.box, null);
-    const minimo = F1.tempoNoBox(c, T.CARROS[r.car].vmax, F1.PARADA_BASE);
+    const minimo = F1.tempoNoBox(c, (r.spec || T.CARROS[r.car]).vmax, F1.PARADA_BASE);
     for (const q of r.paradas) {
       assert.ok(q.tempo >= minimo * 0.9 && q.tempo < minimo + 30, `${r.name}: ${q.tempo.toFixed(1)} s no corredor (mínimo ${minimo.toFixed(1)})`);
       assert.ok(q.volta >= 1 && q.volta <= 2);
