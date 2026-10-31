@@ -31,7 +31,7 @@ export function show(id) {
     if (veioDaCorrida) { etapa = "grid"; veioDaCorrida = false; }
     animarEntrada(el(etapa));
   }
-  if (id !== "lobby") { fecharGaveta(); palco.parar(); if (id === "race") veioDaCorrida = true; }
+  if (id !== "lobby") { fecharGaveta(); fecharSobre(false); palco.parar(); if (id === "race") veioDaCorrida = true; }
 }
 
 // ---------- a sala de espera: quatro etapas, sem abas ----------
@@ -86,11 +86,13 @@ export function irPara(k) {
   if (tinhaFoco) { const l = [...nova.querySelectorAll("button:not(:disabled),summary")]; const i = inicial(l); if (i || l[0]) (i || l[0]).focus({ preventScroll: true }); }
 }
 function voltar() {
+  if (sobreAberto) return fecharSobre();
   if (gavetaAberta) return fecharGaveta();
   const a = etapasAtivas(), i = a.indexOf(etapa);
   if (i > 0) irPara(a[i - 1]);
 }
 function continuar() {
+  if (sobreAberto) return fecharSobre();
   if (gavetaAberta) return fecharGaveta();
   const a = etapasAtivas(), i = a.indexOf(etapa);
   if (i < a.length - 1) irPara(a[i + 1]); else largar();
@@ -160,7 +162,8 @@ function renderCarro(m, f1, c) {
 function renderGP(m, isHost, f1, c, t) {
   const dis = isHost ? "" : "disabled", recorde = loadBest(c.pista), temporada = !!E.S.temporada;
   const dados = chip(plural(c.voltas, "volta")) + chip(c.hora === "noite" ? "Noite" : "Dia") + (f1 && !temporada && c.clima && c.clima !== "aleatorio" ? chip({ seco: "Seco", chuva: "Chuva", variavel: "Variável" }[c.clima] || "") : "") + (recorde ? chip(`Recorde ${fmt(recorde.t)}`, "ouro") : "");
-  if (trocar($("gpMapa"), `<div class="sn-mapa-corpo"><canvas id="pistaGrande" width="640" height="640" role="img" aria-label="Mapa de ${h(t.name)}"></canvas><div class="sn-mapa-txt"><small>${h(t.sub)}</small><b>${h(t.name)}</b><div class="sn-chips">${dados}</div>${isHost ? "" : `<p class="sn-so-org">Só o organizador escolhe o GP.</p>`}</div></div>`)) drawPreview($("pistaGrande"), c.pista);
+  if (trocar($("gpMapa"), `<div class="sn-mapa-corpo"><canvas id="pistaGrande" width="640" height="640" role="img" aria-label="Mapa de ${h(t.name)}"></canvas><div class="sn-mapa-txt"><small>${h(t.sub)}</small><b>${h(t.name)}</b><div class="sn-chips">${dados}</div><button class="sn-sobre-btn" data-sobre><span>Sobre o GP</span><small>${sobreResumo(c.pista)}</small><i aria-hidden="true">›</i></button>${isHost ? "" : `<p class="sn-so-org">Só o organizador escolhe o GP.</p>`}</div></div>`)) drawPreview($("pistaGrande"), c.pista);
+  const fundoGp = window.GpInfo && window.GpInfo.fundoDe(c.pista); $("gpMapa").style.setProperty("--foto", fundoGp ? `url("${fundoGp}")` : "none"); // a foto do GP por trás do mapa
   const pistas = Object.entries(PISTAS).map(([id, p]) => `<button class="sn-pista ${c.pista === id ? "on" : ""}" data-pista="${id}" ${dis} aria-pressed="${c.pista === id}"><canvas data-prev="${id}" width="160" height="160" aria-hidden="true"></canvas><span><b>${h(p.name)}</b><small>${h(p.sub)}</small></span>${loadBest(id) ? `<em>Recorde ${fmt(loadBest(id).t)}</em>` : ""}</button>`).join("");
   if (trocar($("gpPistas"), `<h3 class="sn-tit"><span>Pistas</span><em>${Object.keys(PISTAS).length} circuitos</em></h3><div class="sn-pistas">${pistas}</div>`)) $("gpPistas").querySelectorAll("[data-prev]").forEach((cv) => drawPreview(cv, cv.dataset.prev));
   const seg = (itens, atual, attr, rot, dsb = dis) => `<div class="sn-seg" role="group" aria-label="${rot}">${itens.map(([v, l]) => { const on = String(atual) === String(v); return `<button class="sn-opt ${on ? "on" : ""}" data-${attr}="${v}" aria-pressed="${on}" ${dsb}>${l}</button>`; }).join("")}</div>`;
@@ -202,6 +205,123 @@ function renderGrid(m, isHost, f1, c, t, robos, total) {
   $("btnStart").disabled = !podeLargar;
 }
 
+// ----- "Sobre o GP": a tela com a foto do circuito, o nome do GP, o mapa com as curvas numeradas e a lista delas -----
+// Abre no botão do cartão do mapa (etapa GP); Esc ou B fecham; Q e E (LB e RB) trocam de GP para o organizador, e a tela anima (a foto
+// esmaece, os itens entram em cascata). Os dados vêm de gp-info.js (GpInfo) e a foto de gp-fotos/ (ou o céu de ceus/ nas pistas inventadas).
+let sobreAberto = false, sobreFocoAntes = null, sobreChave = "";
+const mapaCache = {};
+function mapaSobre(id) { // o traçado em 100 × 100 e a posição de uma fração da volta (a mesma fração das curvas de gp-info.js)
+  if (mapaCache[id]) return mapaCache[id];
+  const t = PISTAS[id], pts = window.Pistas.pontos(t, 12), n = pts.length;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of pts) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+  const s = 78 / Math.max(x1 - x0, y1 - y0), ox = (100 - (x1 - x0) * s) / 2, oy = (100 - (y1 - y0) * s) / 2;
+  const pt = (p) => [ox + (p.x - x0) * s, oy + (p.y - y0) * s];
+  const d = pts.filter((_, i) => i % 2 === 0).map((p, i) => (i ? "L" : "M") + pt(p).map((v) => v.toFixed(1)).join(" ")).join("") + "Z";
+  return (mapaCache[id] = { d, pt: (f) => pt(pts[Math.floor(f * n) % n]), largada: pt(pts[0]) });
+}
+function marcasSobre(id, curvas) { // os números nas posições certas; os que ficariam um por cima do outro se afastam um pouco
+  const m = mapaSobre(id), R = 7.6, ps = curvas.map((c) => { const [x, y] = m.pt(c.f); return { n: c.n, x, y, mx: x, my: y }; });
+  for (let it = 0; it < 80; it++) {
+    let mexeu = false;
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
+      const a = ps[i], b = ps[j]; let dx = b.mx - a.mx, dy = b.my - a.my, d = Math.hypot(dx, dy);
+      if (d >= R) continue;
+      if (d < 0.01) { dx = Math.cos(i * 2.4); dy = Math.sin(i * 2.4); d = 1; }
+      const q = (R - d) / 2 / d; a.mx -= dx * q; a.my -= dy * q; b.mx += dx * q; b.my += dy * q; mexeu = true;
+    }
+    for (const p of ps) { p.mx = Math.max(4, Math.min(96, p.mx)); p.my = Math.max(4, Math.min(96, p.my)); }
+    if (!mexeu) break;
+  }
+  return ps;
+}
+const fmtKm = (km) => km.toFixed(3).replace(".", ",");
+function sobreResumo(id) {
+  const G = window.GpInfo, g = G && G.get(id); if (!g || !g.real) return "o mapa e o clima do GP";
+  return `${plural(g.curvas.length, "curva")} numeradas · foto de ${h(g.cidade.split(",")[0])}`;
+}
+function sobreCorpo(id) {
+  const G = window.GpInfo, g = G.get(id), t = PISTAS[id], mapa = mapaSobre(id), ms = marcasSobre(id, g.curvas), nom = G.curvasNomeadas(id), rec = loadBest(id);
+  const chips = (g.km ? chip(`${fmtKm(g.km)} km`) : "") + (g.voltas ? chip(`${plural(g.voltas, "volta")} oficiais`) : "") + (g.curvas.length ? chip(plural(g.curvas.length, "curva")) : "") + (nom ? chip(`${nom} com nome`) : "") + (rec ? chip(`Seu recorde ${fmt(rec.t)}`, "ouro") : "");
+  const lugar = g.real ? `${G.bandeira(id)}<span>${h(g.cidade)} · ${h(g.pais)}</span>` : `<span>Pista da Corrida da Galera</span>`;
+  const elos = ms.filter((k) => Math.hypot(k.mx - k.x, k.my - k.y) > 1.2).map((k) => `<line class="elo" x1="${k.x.toFixed(1)}" y1="${k.y.toFixed(1)}" x2="${k.mx.toFixed(1)}" y2="${k.my.toFixed(1)}"/>`).join("");
+  const marcas = ms.map((k, i) => `<g class="sn-marca" data-n="${k.n}" style="--i:${i}" transform="translate(${k.mx.toFixed(1)} ${k.my.toFixed(1)})"><circle r="3.5"/><text y="1.4">${k.n}</text></g>`).join("");
+  const [lx, ly] = mapa.largada;
+  const svg = `<svg class="sn-sobre-svg" viewBox="0 0 100 100" role="img" aria-label="Mapa de ${h(t.name)}${g.curvas.length ? ` com as ${g.curvas.length} curvas numeradas` : ""}"><path class="base" d="${mapa.d}"/><path class="fio" d="${mapa.d}"/><rect class="largada" x="${(lx - 1.6).toFixed(1)}" y="${(ly - 1.6).toFixed(1)}" width="3.2" height="3.2"/>${elos}${marcas}</svg>`;
+  const lista = g.curvas.length
+    ? `<ol class="sn-sobre-lista" aria-label="Curvas de ${h(g.gp)}">${g.curvas.map((c, i) => `<li style="--i:${i}"><button class="sn-curva ${c.nome ? "" : "sem"}" data-curva="${c.n}" aria-label="Curva ${c.n}${c.nome ? `, ${h(c.nome)}` : ""}"><b>${c.n}</b><span>${c.nome ? h(c.nome) : `Curva ${c.n}`}</span></button></li>`).join("")}</ol>`
+    : `<p class="sn-sobre-vazio">${h(t.sub)}</p>`;
+  return `<div class="sn-sobre-conteudo"><header class="sn-sobre-cab"><div class="sn-sobre-lugar">${lugar}</div><h2 id="sobreTit">${h(g.gp)}</h2>${g.real ? `<p class="sn-sobre-circ">${h(g.circuito)}</p>` : ""}<div class="sn-chips">${chips}</div></header><div class="sn-sobre-meio"><figure class="sn-sobre-mapa">${svg}</figure>${lista}</div></div>`;
+}
+function fundoSobre(id, animar) { // a foto cobre tudo; ao trocar de GP a nova esmaece por cima da antiga
+  const caixa = $("sobreFoto"), G = window.GpInfo, g = G.get(id), src = G.fundoDe(id), suave = animar && !reduz();
+  const nova = document.createElement("i"); nova.className = "sn-sobre-img" + (suave ? " entra" : ""); nova.dataset.id = id;
+  const por = () => {
+    if (!sobreAberto) return;
+    caixa.append(nova);
+    [...caixa.children].forEach((c) => { if (c === nova) return; if (suave) setTimeout(() => c.remove(), 950); else c.remove(); });
+  };
+  if (!src) return por();
+  const im = new Image();
+  im.onload = () => { nova.style.backgroundImage = `url("${src}")`; por(); };
+  im.onerror = () => { if (g.ceu && src !== g.ceu) nova.style.backgroundImage = `url("${g.ceu}")`; por(); };
+  im.src = src;
+}
+function renderSobre() {
+  const S = E.S; if (!S || !sobreAberto) return;
+  const G = window.GpInfo, id = S.config.pista, m = me(), isHost = !!m && S.host === m.id, ids = Object.keys(PISTAS), i = ids.indexOf(id);
+  const ant = PISTAS[ids[(i - 1 + ids.length) % ids.length]], prox = PISTAS[ids[(i + 1) % ids.length]], pode = isHost && !S.temporada;
+  for (const [b, p] of [[$("sobreAnt"), ant], [$("sobreProx"), prox]]) { b.disabled = !pode; b.title = pode ? "" : S.temporada ? "O GP vem do calendário" : "Só o organizador escolhe o GP"; b.querySelector("small").textContent = p.name; }
+  const rec = loadBest(id), chave = `${id}|${rec ? rec.t : ""}`;
+  if (chave === sobreChave) return;
+  const antes = sobreChave.split("|")[0], trocou = !!antes && antes !== id, tinhaFoco = $("sobreCorpo").contains(document.activeElement);
+  sobreChave = chave;
+  $("sobreCorpo").innerHTML = sobreCorpo(id);
+  if (!antes || trocou) fundoSobre(id, trocou);
+  const g = G.get(id);
+  $("sobreCred").textContent = g.credito ? `Foto: ${g.credito.autor} · ${g.credito.licenca} · Wikimedia Commons` : g.ceu ? "Céu: Poly Haven · CC0" : "";
+  $("sobreCred").title = g.credito ? g.credito.arquivo : "";
+  if (tinhaFoco) { const c = $("sobreCorpo").querySelector(".sn-curva"); if (c) c.focus({ preventScroll: true }); }
+}
+function destacarCurva(n) { // a curva do mouse ou do foco acende no mapa e na lista
+  const raiz = $("snSobre"); raiz.querySelectorAll(".hi").forEach((x) => x.classList.remove("hi"));
+  const svg = raiz.querySelector(".sn-sobre-svg"); if (svg) svg.classList.toggle("tem-hi", n != null);
+  if (n == null) return;
+  raiz.querySelectorAll(`[data-n="${n}"],[data-curva="${n}"]`).forEach((x) => x.classList.add("hi"));
+}
+const curvaDoFoco = () => { const a = document.activeElement; return a && a.matches && a.matches(".sn-curva") ? a.dataset.curva : null; };
+function abrirSobre() {
+  if (!E.S || sobreAberto || !window.GpInfo) return;
+  if (gavetaAberta) fecharGaveta();
+  sobreAberto = true; sobreFocoAntes = document.activeElement; sobreChave = "";
+  const no = $("snSobre"); no.classList.remove("hidden"); $("sn").inert = true; document.body.classList.add("sn-gaveta-on");
+  $("sobreFoto").innerHTML = "";
+  no.classList.remove("entra"); void no.offsetWidth; no.classList.add("entra");
+  renderSobre(); renderLobby();
+  const l = [...no.querySelectorAll("button:not(:disabled)")], i = l.find((x) => x.matches(".sn-curva")) || l.find((x) => x.matches("[data-sobre-fechar]"));
+  if (i) i.focus({ preventScroll: true });
+}
+function fecharSobre(devolverFoco = true) {
+  if (!sobreAberto) return;
+  sobreAberto = false; $("snSobre").classList.add("hidden"); $("sn").inert = false; if (!gavetaAberta) document.body.classList.remove("sn-gaveta-on");
+  destacarCurva(null);
+  if (devolverFoco) { const b = sobreFocoAntes && sobreFocoAntes.isConnected && !sobreFocoAntes.disabled ? sobreFocoAntes : document.querySelector("[data-sobre]"); if (b) b.focus({ preventScroll: true }); }
+  sobreFocoAntes = null; renderLobby();
+}
+function mudarPistaSobre(d) {
+  const S = E.S, m = me(); if (!S || !m || S.host !== m.id || S.temporada) return;
+  const ids = Object.keys(PISTAS), i = ids.indexOf(S.config.pista);
+  cfg({ pista: ids[(i + d + ids.length * 2) % ids.length] });
+}
+(function ligarSobre() {
+  const no = $("snSobre");
+  no.addEventListener("pointerover", (e) => { const a = e.target.closest && e.target.closest("[data-curva],[data-n]"); if (a) destacarCurva(a.dataset.curva || a.dataset.n); });
+  no.addEventListener("pointerout", (e) => { if (e.target.closest && e.target.closest("[data-curva],[data-n]")) destacarCurva(curvaDoFoco()); });
+  no.addEventListener("focusin", (e) => { if (e.target.matches && e.target.matches(".sn-curva")) destacarCurva(e.target.dataset.curva); });
+  no.addEventListener("focusout", (e) => { if (e.target.matches && e.target.matches(".sn-curva")) setTimeout(() => destacarCurva(curvaDoFoco()), 0); });
+  no.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest(".sn-curva"); if (b) destacarCurva(b.dataset.curva); }); // no celular o toque acende a curva
+})();
+
 // ----- a gaveta das peças e da pintura (um atalho da etapa Carro e pneu) -----
 function abrirGaveta() {
   const m = me(); if (!m || gavetaAberta) return;
@@ -241,6 +361,9 @@ $("gavetaFechar").onclick = fecharGaveta;
 $("lobby").addEventListener("click", (e) => {
   const t = e.target; let b;
   if (t.closest("[data-fechar]")) return fecharGaveta();
+  if (t.closest("[data-sobre-fechar]")) return fecharSobre();
+  if ((b = t.closest("[data-sobre-pista]"))) return mudarPistaSobre(+b.dataset.sobrePista);
+  if (t.closest("[data-sobre]")) return abrirSobre();
   if ((b = t.closest("[data-etapa-ir]"))) return irPara(b.dataset.etapaIr);
   if (!E.S) return;
   if ((b = t.closest("[data-equipe]"))) return escolherEquipe(b.dataset.equipe);
@@ -272,6 +395,7 @@ $("lobby").addEventListener("click", (e) => {
 
 // ----- LB e RB (Q e E): a equipe na etapa Equipe, o composto na etapa Carro e pneu -----
 function lateral(d) {
+  if (sobreAberto) return mudarPistaSobre(d);
   const m = me(), S = E.S; if (!m || !S || gavetaAberta) return;
   const f1 = S.config.regras === "f1";
   if (etapa === "equipe" && f1) {
@@ -286,12 +410,13 @@ function lateral(d) {
 }
 const INICIAL = { equipe: ".sn-eq.on", carro: ".sn-pneu.on,.sn-car.on", gp: "#gpOpcoes .sn-opt.on", grid: "#btnStart" };
 const inicial = (lista) => {
+  if (sobreAberto) return lista.find((x) => x.matches(".sn-curva")) || lista.find((x) => x.matches("[data-sobre-fechar]")) || null;
   if (gavetaAberta) return lista.find((x) => x.matches(".sn-pint.on,.peca-card.sel")) || null;
   const s = INICIAL[etapa]; return s ? lista.find((x) => x.matches(s)) || null : null;
 };
 iniciarControle({
   ativo: () => !!E.S && !$("lobby").classList.contains("hidden") && $("modal").classList.contains("hidden"),
-  raiz: () => (gavetaAberta ? $("snGaveta").querySelector(".sn-gaveta-painel") : $("lobby")),
+  raiz: () => (sobreAberto ? $("snSobre") : gavetaAberta ? $("snGaveta").querySelector(".sn-gaveta-painel") : $("lobby")),
   voltar, continuar, lateral, inicial,
   atalho: () => { if (etapa === "carro" && me()) (gavetaAberta ? fecharGaveta : abrirGaveta)(); },
 });
@@ -315,7 +440,7 @@ export function renderLobby() {
   $("snContSub").textContent = !ultima ? `Próximo: ${NOMES[ativas[idx + 1]]}` : podeLargar ? `${t.name} · ${plural(c.voltas, "volta")}` : "Esperando o organizador";
   $("btnContinuar").classList.toggle("largar", ultima);
   // as dicas dos botões que mudam com a etapa
-  const lat = etapa === "equipe" && f1 ? "trocar de equipe" : etapa === "carro" ? (f1 ? "trocar o pneu" : "trocar de carro") : "";
+  const lat = sobreAberto ? "trocar de GP" : etapa === "equipe" && f1 ? "trocar de equipe" : etapa === "carro" ? (f1 ? "trocar o pneu" : "trocar de carro") : "";
   for (const id of ["dicaLat", "dicaLatKb"]) { $(id).classList.toggle("nada", !lat); $(id).querySelector("em").textContent = lat; }
   $("dicaY").classList.toggle("nada", !(etapa === "carro" && m));
   // a etapa de agora
@@ -325,6 +450,7 @@ export function renderLobby() {
   else if (etapa === "gp") renderGP(m, isHost, f1, c, t);
   else if (etapa === "grid") renderGrid(m, isHost, f1, c, t, robos, total);
   if (gavetaAberta) renderGaveta();
+  if (sobreAberto) renderSobre();
   // o palco 3D: o carro girando na vitrine da etapa (Equipe e Carro e pneu); nas outras etapas ele descansa
   const vitrine = etapa === "equipe" && m && f1 ? $("vitrineEquipe") : etapa === "carro" && m ? $("vitrineCarro") : null;
   if (!vitrine) { palco.parar(); return; }

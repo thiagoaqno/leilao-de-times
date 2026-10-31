@@ -244,6 +244,81 @@ body.sala-escura:has(#lobby:not(.hidden)) .wrap{padding-bottom:84px}
 .sn-dicas{display:none!important}body.sn-pad .sn-dicas{display:flex!important;font-size:11px;gap:4px 10px}
 }
 
+/* ---------- "Sobre o GP": foto de fundo, o nome do GP, o mapa com as curvas numeradas e a lista (menus.js, gp-info.js) ---------- */
+@keyframes snFoto{from{opacity:0;transform:scale(1.07)}}
+@keyframes snTexto{from{opacity:0;transform:translateY(18px)}}
+@keyframes snOp{from{opacity:0}}
+.sn-mapa{background:linear-gradient(90deg,#0b0c10f7 0%,#0b0c10cc 52%,#0b0c1088 100%),var(--foto,none) center/cover no-repeat,#0d0f15}
+.sn-mapa-txt .sn-sobre-btn{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;margin-top:2px;padding:10px 14px;border:2px solid var(--vm);border-radius:0;background:#e1060038;box-shadow:none;color:#fff;text-align:left;cursor:pointer;transition:background-color .2s,transform .2s}
+.sn-sobre-btn span{font:800 19px/1.1 var(--display);font-style:italic;text-transform:uppercase;letter-spacing:.07em}
+.sn-mapa-txt .sn-sobre-btn small{grid-column:1;font:500 12.5px/1.3 var(--body,system-ui,sans-serif);font-style:normal;letter-spacing:0;text-transform:none;color:#d7dde4}
+.sn-sobre-btn i{grid-column:2;grid-row:1/3;font:800 30px/1 var(--display);font-style:normal;transition:transform .2s}
+.sn-sobre-btn:hover{background:#e1060066}.sn-sobre-btn:hover i{transform:translateX(5px)}
+
+.sn-sobre{position:fixed;inset:0;z-index:85;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;background:#05060a;color:#fff;--vm:var(--f1-vm,#e10600);--linha:#ffffff2e}
+.sn-sobre.entra{animation:snFundo .3s both}
+.sn-sobre *{min-width:0}
+.sn-sobre-foto{position:fixed;inset:0;z-index:0;overflow:hidden}
+.sn-sobre-img{position:absolute;inset:0;background:#0b0c10 center/cover no-repeat}
+.sn-sobre-img.entra{animation:snFoto .95s cubic-bezier(.2,.7,.2,1) both}
+.sn-sobre-grad{position:fixed;inset:0;z-index:1;pointer-events:none;background:linear-gradient(0deg,#05060af5 0%,#05060ac2 34%,#05060a4d 70%,#05060a66 100%),linear-gradient(90deg,#05060aef 0%,#05060a99 36%,#05060a00 76%)}
+.sn-sobre-x{position:fixed;top:12px;right:12px;z-index:7;width:46px;height:46px;padding:0;border:1px solid #fff6;border-radius:0;background:#05060acc;box-shadow:none;color:#fff;font-size:20px;cursor:pointer}
+.sn-sobre-x:hover{background:var(--vm)}
+.sn-sobre-corpo{position:relative;z-index:2;flex:1;display:flex;align-items:flex-end;padding:clamp(60px,10vh,120px) clamp(16px,4vw,64px) 14px}
+.sn-sobre-conteudo{width:min(1180px,100%);display:flex;flex-direction:column;gap:clamp(14px,2.6vh,28px)}
+.sn-sobre-cab{display:flex;flex-direction:column;gap:6px}
+.sn-sobre-cab>*{animation:snTexto .55s cubic-bezier(.2,.8,.2,1) both}
+.sn-sobre-cab>:nth-child(2){animation-delay:.07s}.sn-sobre-cab>:nth-child(3){animation-delay:.14s}.sn-sobre-cab>:nth-child(4){animation-delay:.21s}
+.sn-sobre-lugar{display:flex;align-items:center;gap:12px;font:800 clamp(13px,1.3vw,17px) var(--display);letter-spacing:.2em;text-transform:uppercase;color:#ffb8b2;text-shadow:0 2px 10px #000}
+.gp-bandeira{display:block;flex:none;width:36px;height:24px;border-radius:3px;box-shadow:0 0 0 1px #fff6,0 4px 12px #000a}
+.sn-sobre h2{margin:0;font:800 clamp(38px,7.4vw,108px)/.9 var(--display);font-style:italic;text-transform:uppercase;overflow-wrap:anywhere;text-shadow:0 4px 30px #000d}
+.sn-sobre-circ{margin:2px 0 0;font-size:clamp(14px,1.5vw,19px);color:#e7ebf0;text-shadow:0 2px 10px #000}
+.sn-sobre .sn-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.sn-sobre-meio{display:grid;grid-template-columns:minmax(220px,390px) minmax(0,1fr);gap:clamp(16px,3vw,48px);align-items:end}
+.sn-sobre-mapa{margin:0;width:100%;aspect-ratio:1;max-height:46vh;animation:snTexto .6s .25s cubic-bezier(.2,.8,.2,1) both}
+.sn-sobre-svg{display:block;width:100%;height:100%;overflow:visible}
+.sn-sobre-svg .base{fill:none;stroke:#000b;stroke-width:13px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.sn-sobre-svg .fio{fill:none;stroke:#f1f3f6;stroke-width:5px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.sn-sobre-svg .largada{fill:#fff;stroke:#111;stroke-width:.5}
+.sn-sobre-svg .elo{stroke:#ffffffb0;stroke-width:.35}
+.sn-marca{animation:snOp .4s both;animation-delay:calc(var(--i) * 35ms + 350ms)}
+.sn-marca circle{fill:var(--vm);stroke:#fff;stroke-width:.7;transition:fill .18s,stroke-width .18s}
+.sn-marca text{fill:#fff;font:800 3.6px var(--display);text-anchor:middle;pointer-events:none;transition:fill .18s}
+.sn-sobre-svg.tem-hi .sn-marca:not(.hi){opacity:.38}
+.sn-marca{transition:opacity .18s}
+.sn-marca.hi circle{fill:#fff;stroke:#ff2a21;stroke-width:1.5}.sn-marca.hi text{fill:#e10600}
+.sn-sobre-lista{list-style:none;margin:0;padding:0 4px 4px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 10px;align-content:start;max-height:46vh;overflow-y:auto;scrollbar-width:thin}
+.sn-sobre-lista li{animation:snTexto .42s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * 32ms + 220ms)}
+.sn-sobre-vazio{margin:0;max-width:560px;font-size:16px;line-height:1.5;color:#e1e6ec;text-shadow:0 2px 10px #000}
+.sn-curva{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:5px 12px 5px 5px;border:1px solid var(--linha);border-radius:0;background:#07080cbf;box-shadow:none;color:#fff;text-align:left;font:700 15px var(--display);letter-spacing:.03em;cursor:pointer;transition:background-color .15s,border-color .15s}
+.sn-curva b{display:grid;place-items:center;flex:none;width:31px;height:31px;border-radius:50%;background:var(--vm);font:800 15px var(--display);font-style:normal;transition:background-color .15s,color .15s}
+.sn-curva span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sn-curva.sem span{color:#a2acb8;font-weight:600}
+.sn-curva:hover,.sn-curva.hi{background:#e1060059;border-color:#fff}
+.sn-curva.hi b{background:#fff;color:#e10600}
+.sn-sobre-pe{position:sticky;bottom:0;z-index:6;display:flex;align-items:stretch;justify-content:space-between;gap:12px;padding:12px clamp(16px,4vw,64px) 14px;background:linear-gradient(0deg,#05060af8 40%,#05060a00)}
+.sn-sobre-nav{display:flex;align-items:center;gap:12px;min-width:0;max-width:min(320px,42vw);padding:8px 14px;border:1px solid var(--linha);border-radius:0;background:#07080ccc;box-shadow:none;color:#fff;text-align:left;cursor:pointer;transition:background-color .15s,border-color .15s}
+.sn-sobre-nav.prox{text-align:right;margin-left:auto}
+.sn-sobre-nav i{font:800 28px/1 var(--display);font-style:normal;color:#ff6a64}
+.sn-sobre-nav span{display:flex;flex-direction:column;min-width:0}
+.sn-sobre-nav small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 12px var(--display);letter-spacing:.12em;text-transform:uppercase;color:#bcc5cf}
+.sn-sobre-nav b{font:800 16px var(--display);font-style:italic;text-transform:uppercase;letter-spacing:.06em}
+.sn-sobre-nav:hover:not(:disabled){background:#e1060059;border-color:#fff}
+.sn-sobre-nav:disabled{opacity:.42;cursor:not-allowed}
+.sn-sobre-cred{position:absolute;right:clamp(16px,4vw,64px);bottom:2px;max-width:60vw;font-size:10.5px;color:#aeb6c0;text-align:right;text-shadow:0 1px 4px #000}
+.sn-sobre :focus-visible,body.sn-nav .sn-sobre :focus{outline:3px solid #fff;outline-offset:2px;animation:snBrilho 1.6s ease-in-out infinite}
+@media (max-width:820px){
+.sn-sobre-corpo{align-items:flex-start;padding-top:64px;padding-bottom:6px}
+.sn-sobre-meio{grid-template-columns:1fr;align-items:start}
+.sn-sobre-mapa{max-height:none;max-width:430px;margin:0 auto}
+.sn-sobre-lista{max-height:none;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+.sn-curva{font-size:13.5px;padding-right:8px}
+.sn-sobre-nav{max-width:46vw;padding:7px 10px}.sn-sobre-nav small{display:none}.sn-sobre-nav b{font-size:14px}
+.sn-sobre-cred{position:static;order:2;flex-basis:100%;text-align:center;max-width:none}.sn-sobre-pe{flex-wrap:wrap;justify-content:space-between}
+}
+@media (prefers-reduced-motion:reduce){
+.sn-sobre,.sn-sobre *,.sn-sobre *::before,.sn-sobre *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
 /* ---------- quem pede menos movimento fica sem as animações ---------- */
 @media (prefers-reduced-motion:reduce){
 .sn *,.sn *::before,.sn *::after,.sn-gaveta *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
