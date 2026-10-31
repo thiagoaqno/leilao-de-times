@@ -131,6 +131,17 @@ export function physics(dt, spec = carOf(me())) {
     if (hit > 60) { Sound.bump(); race.shake = 0.25; race.bumps = (race.bumps || 0) + 1; }
     if (vn > 0) avisarBatida(hit, "muro");
   }
+  for (const o of tr.obstaculos || []) { // os obstáculos sólidos da pista (o canteiro do grampo de Mônaco): a mesma conta de sim.js, para o jogo clássico
+    const dx = nx - o.x, dy = ny - o.y, d = Math.hypot(dx, dy) || 1, R = o.r + 11;
+    if (d >= R) continue;
+    const ux = dx / d, uy = dy / d, contra = -(c.vx * ux + c.vy * uy), hit = Math.abs(contra);
+    nx = o.x + ux * R; ny = o.y + uy * R;
+    if (contra > 0) { c.vx += ux * contra * 1.2; c.vy += uy * contra * 1.2; }
+    const pancada = 1 - (1 - spec.wall) * 0.5 * Math.min(1, hit / 260) * (contra > 0 ? 1 : 0), raspa = Math.exp(-(1 - spec.wall) * 0.7 * dt);
+    c.vx *= pancada * raspa; c.vy *= pancada * raspa;
+    if (hit > 60) { Sound.bump(); race.shake = 0.25; race.bumps = (race.bumps || 0) + 1; }
+    if (contra > 0) avisarBatida(hit, "muro");
+  }
   if (race.pneu) window.F1Regras.gastarPneu(race.pneu, { dist: Math.hypot(nx - c.x, ny - c.y), volta: tr.n * 6, slip: c.slip, travada: c.travada, patina: c.patina, v: vf, vmax: spec.vmax, dt, fator: spec.desgaste });
   c.x = nx; c.y = ny;
   // Balizadores flexíveis reagem ao toque e voltam sozinhos; não bloqueiam o carro.
