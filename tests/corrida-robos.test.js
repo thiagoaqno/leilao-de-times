@@ -183,3 +183,13 @@ test("sem volta de ninguém na pista, os robôs seguem o traçado calculado pelo
   assert.ok(Math.abs(room.players[room.order[0]].ia.nivel - Robos.NIVEIS.dificil) < 0.03);
   Robos.usarFonte(() => null);
 });
+
+test("volta de pista antiga com pontos longe dos índices não vira traçado dos robôs", () => {
+  const pista = "monaco", pts = T.pontos(T.PISTAS[pista], 6);
+  const volta = (distancia) => ({ carro: "equilibrado", tempo: 60, piloto: "Teste", s: pts.filter((_, i) => i % 4 === 0).map((p, k) => [k * 160, p.x + p.tx * distancia, p.y + p.ty * distancia, p.h, 0, k * 4]) });
+  try {
+    Robos.usarFonte(() => []);
+    assert.equal(Robos.aprender(pista, volta(0)), true, "uma volta da pista atual continua válida");
+    assert.equal(Robos.aprender(pista, volta(100)), false, "pontos deslocados ao longo da pista não pertencem mais aos índices gravados");
+  } finally { Robos.usarFonte(() => []); }
+});
