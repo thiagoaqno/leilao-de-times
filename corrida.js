@@ -199,7 +199,7 @@ module.exports = function attachCorrida(io) {
     // (corrida rápida de F1, sem classificação: o grid é sorteado, humanos e robôs misturados, pela semente do GP; a carreira sempre tem classificação)
     const sorteado = () => { const l = [...room.order], r = F1.sorteio(`grid:${room.semente}`); for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; } return l; };
     const ids = grid ? [...grid.filter((id) => room.players[id]), ...room.order.filter((id) => !grid.includes(id))] : f1 ? (room.temporada ? [...room.order] : sorteado()) : [...room.order].sort(() => Math.random() - 0.5);
-    ids.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, best: null, last: null, lapStart: null, lastPos: 0 }));
+    ids.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null, estimado: false, best: null, last: null, lapStart: null, lastPos: 0 }));
     // regras de F1: a semente do GP (os erros dos mecânicos saem dela) e o pit stop de cada um começa do zero
     // quem não escolheu o pneu (fora da carreira) e larga com a pista molhada vai de pneu de chuva, em vez do médio padrão
     const largaMolhado = f1 && F1.climaEm(room.clima, room.startAt).agua >= F1.AGUA_MOLHADA;
@@ -279,6 +279,25 @@ module.exports = function attachCorrida(io) {
     ligarHumanos(room);
     Quali.iniciar(room, classificacao);
   }
+  // Quando todos os humanos terminaram, projeta o restante dos robôs pelo progresso e pelo ritmo observado.
+  // Um carro que abandonou ou foi desclassificado não recebe chegada estimada.
+  function estimarRobos(room, now) {
+    const n = Sim.criarPista(T.PISTAS[room.config.pista], room.config.pista).n;
+    for (const id of room.order) {
+      const p = room.players[id];
+      if (!p.bot || p.finish != null || p.dnf || p.dsq || !p.pos || !Number.isFinite(p.pos.prog)) continue;
+      const fracao = p.started ? ((p.pos.prog % n) + n) % n / n : 0;
+      const faltam = Math.max(0, room.config.voltas - (p.laps || 0) - fracao);
+      const referencia = p.last || p.best || Robos.idealDe(room.config.pista, p.spec || p.car);
+      if (!Number.isFinite(referencia) || referencia <= 0) continue;
+      p.finish = Math.max(0, (now - room.startAt) / 1000) + faltam * referencia;
+      p.estimado = true; p.laps = room.config.voltas;
+      if (p.stopGo) { p.stopGo = null; p.penal = (p.penal || 0) + F1.STOPGO_CONVERSAO_S; p.acrescimo = (p.acrescimo || 0) + F1.STOPGO_CONVERSAO_S; }
+      const mais = F1.acrescimoDeFinal(p, room.config.voltas, !!(room.clima && room.clima.chove));
+      if (mais) p.acrescimo = (p.acrescimo || 0) + mais;
+      room.finishOrder.push(id);
+    }
+  }
   function endRace(room) {
     if (room.phase !== "race") return;
     clearTimeout(room.endTimer);
@@ -293,7 +312,7 @@ module.exports = function attachCorrida(io) {
     // regras de F1: o resultado do GP, com os pontos oficiais (quem fez menos de 90% das voltas é NC e não pontua)
     if (room.config.regras === "f1") {
       room.resultado = F1.classificacaoFinal(room.order.map((id) => { const p = room.players[id]; const bonus = bonusDoBox(room, p); return { id, laps: p.laps, finish: p.finish, dnf: !!p.dnf, acrescimo: (p.acrescimo || 0) - bonus, prog: p.pos ? p.pos.prog : 0, best: p.best, dsq: !!p.dsq }; }), room.config.voltas)
-        .map((r) => { const p = room.players[r.id]; return { ...r, voltas: p.laps, grid: p.grid, paradas: (p.paradas || []).length, compostos: p.compostos || [], penal: p.penal || 0, sg: p.sgFeitos || 0, dano: p.dano || 0, batidas: p.batidas || 0, melhor: p.best }; });
+        .map((r) => { const p = room.players[r.id]; return { ...r, voltas: p.laps, grid: p.grid, paradas: (p.paradas || []).length, compostos: p.compostos || [], estimado: !!p.estimado, penal: p.penal || 0, sg: p.sgFeitos || 0, dano: p.dano || 0, batidas: p.batidas || 0, melhor: p.best }; });
       const v = room.resultado[0]; if (v) log(room, `🏆 ${nameOf(room, v.id)} venceu o GP e leva ${v.pontos} pontos.`);
     }
     if (room.finishOrder.length) noite.vitoria("corrida", room.code, nomesDe(room, room.finishOrder.slice(0, 1)), nomesDe(room, room.order.filter((id) => id !== room.finishOrder[0])));
@@ -375,6 +394,11 @@ module.exports = function attachCorrida(io) {
       if (room.config.regras === "f1") { // a regra dos dois compostos
         const mais = F1.acrescimoDeFinal(p, room.config.voltas, !!(room.clima && room.clima.chove)); // (com chuva a regra não vale)
         if (mais) { p.acrescimo = (p.acrescimo || 0) + mais; log(room, `⏱️ ${p.name} usou um composto só: +${mais} s no resultado.`); }
+      }
+      // A chegada do último humano encerra o GP: os robôs ainda na pista recebem tempos estimados.
+      const humanos = room.order.map((id) => room.players[id]).filter((q) => !q.bot);
+      if (room.config.regras === "f1" && !p.bot && humanos.length && humanos.every((q) => q.finish != null || q.dnf || q.dsq)) {
+        estimarRobos(room, now); endRace(room); return true;
       }
       const racing = room.order.filter((id) => room.players[id].finish == null && !room.players[id].dnf && (room.players[id].sockets.size || (room.config.regras === "f1" && room.players[id].bot)));
       if (!racing.length) endRace(room);
@@ -740,7 +764,7 @@ module.exports = function attachCorrida(io) {
   // salas paradas há mais de 12 horas somem
   limparSalasParadas(rooms, { aoApagar: (r) => { Quali.cancelar(r); clearTimeout(r.endTimer); clearTimeout(r.abandonoTimer); clearTimeout(r.esperaTimer); for (const id of r.order) clearTimeout(r.players[id]?.assumeTimer); clearInterval(r.itemTimer); clearInterval(r.botTimer); clearInterval(r.f1Timer); clearInterval(r.humanosTimer); } });
   // (as regras de cada evento da física, para os testes chamarem sem passar pela rede: checkpoint, parada nos boxes e batida)
-  return { abrirGP, abrirGPGrupo, salaGP, internos: { sala: (codigo) => rooms.get(codigo), endRace, startRace, entrouNoGP, onSector, concluirParada, aplicarBatida } };
+  return { abrirGP, abrirGPGrupo, salaGP, internos: { sala: (codigo) => rooms.get(codigo), endRace, estimarRobos, startRace, entrouNoGP, onSector, concluirParada, aplicarBatida } };
 };
 module.exports.COLORS = COLORS;
 module.exports.PAWNS = PAWNS;

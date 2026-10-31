@@ -1,9 +1,11 @@
-# Corrida: descartar voltas gravadas incompatíveis com a pista
+# Corrida: estimar chegada dos robôs depois dos humanos
 
-Depois de um retraçado, índices de uma volta gravada podem apontar para outro trecho. A validação anterior olhava somente a distância lateral e aceitava pontos muito distantes ao longo da pista. Agora o servidor descarta a volta quando mais de 20% das amostras com intervalo válido estão longe do índice registrado; os robôs usam outra volta válida ou o traçado calculado.
+Quando o último humano termina um GP de F1, a corrida fecha imediatamente e projeta a chegada dos robôs ainda na pista a partir do progresso e da última volta (ou de uma referência do carro). O resultado identifica os tempos estimados. Carros que abandonaram ou foram desclassificados permanecem nessa condição.
+
+Os acréscimos já recebidos entram na ordem final. Stop-and-go pendente é convertido em 20 s e a regra de compostos considera os pneus já usados: a projeção não simula futuras paradas, trocas de pneus ou incidentes.
 
 ## Verificação
 
-- `node --test --test-name-pattern="aprendem a volta gravada|cinco linhas humanas|volta de pista antiga" tests/corrida-robos.test.js`: 3 testes passaram.
-- Volta sintética do Mônaco anterior ao estreitamento: um robô, em três voltas, passou de 63,25 s para 55,95 s; 20 robôs passaram de melhores voltas de 61,4–67,55 s para 54,45–60,15 s. Todos terminaram nas duas versões. Houve 0 eventos de batida antes e 6 depois (3 contatos entre carros), na mesma semente. A simulação não reproduz as condições nem prova a causa da corrida relatada.
-- Sem volta gravada, 20 robôs completaram três voltas em Jeddah, sem batidas, com e sem a alteração experimental local; a validação deste PR só atua em voltas gravadas.
+- `node --test tests/corrida-chegada-estimada.test.js tests/corrida-chegada-relogio.test.js`: 3 passaram; cobre dois humanos, projeção, penalidade, stop-and-go, DSQ e DNF.
+- Testes de sala de box e resultado: 2 passaram.
+- O teste completo de navegador e o `npm test` completo não foram validados nesta branch; a base já apresentava 23 falhas no CI do PR #441.
