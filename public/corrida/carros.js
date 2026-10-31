@@ -1,7 +1,8 @@
 // Corrida da Galera — os carros de Fórmula 1 em 3D, a vitrine da garagem e a fumaça.
 import * as THREE from "three";
 import { scene } from "./cena.js";
-import { montarF1, animarF1, soltarF1, trocarComposto, f1Pronto, coresDa, TAM, PINTURAS } from "./f1.js";
+import { montarF1, animarF1, animarDrs, soltarF1, trocarComposto, f1Pronto, coresDa, TAM, PINTURAS } from "./f1.js";
+import { clima } from "./clima.js";
 let kartChegou = false; f1Pronto.then(() => { kartChegou = true; }); // a foto da garagem é refeita quando o modelo 3D chega
 import { faiscas } from "./efeitos.js";
 import { modeloItem } from "./modelos.js";
@@ -62,7 +63,7 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   for (let i = 0; i < 4; i++) { const e = new THREE.Mesh(estrelaGeo, estrelaMat), a = (i / 4) * Math.PI * 2; e.position.set(Math.cos(a) * 7, 0, Math.sin(a) * 7); tontura.add(e); }
   target.add(g);
   // primeira pessoa: a câmera fica no capacete, atrás do volante; o fantasma fica meio transparente
-  const k = { g, body, kt, chamas, tontura, lanterna, leds, ledMat, freios, discoMat, calor: 0, tempoGP: 0, faiscaGP: 0, L: spec.L * KS, tAt: 0, mats: kt.mats, steerV: 0, target, sc, eye: { u: 0, h: 0 }, roof: kt.piloto, cabin: new THREE.Object3D(), roofBits: [], pitch: 0, roll: 0, giro: 0, faisca: 0 };
+  const k = { g, body, kt, chamas, tontura, lanterna, leds, ledMat, freios, discoMat, calor: 0, tempoGP: 0, fase: Math.random() * 0.8, /* a fase do pisca de ESTE carro: nenhum pisca junto com outro */ faiscaGP: 0, L: spec.L * KS, tAt: 0, mats: kt.mats, steerV: 0, target, sc, eye: { u: 0, h: 0 }, roof: kt.piloto, cabin: new THREE.Object3D(), roofBits: [], pitch: 0, roll: 0, giro: 0, faisca: 0 };
   const pronto = () => {
     k.mats = kt.mats; k.eye.u = spec.L / 2 - kt.olho.z * sc; k.eye.h = kt.olho.y * sc;
     for (const f of chamas) f.position.z = kt.escapamento.z;
@@ -104,13 +105,16 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
   k.body.rotation.set(k.pitch, k.giro, k.roll, "YXZ");
   k.steerV += (steer - k.steerV) * 0.3;
   animarF1(k.kt, (v * dt) / (k.sc * KS), k.steerV);
+  animarDrs(k.kt, !!fx.drs, dt); // a asa traseira: o flap abre com o DRS DESTE carro
   trocarComposto(k.kt, fx.pneu); // a faixa colorida do pneu (macio vermelho, médio amarelo, duro branco, chuva azul): só muda quando o composto muda
   k.tempoGP += dt;
   k.lanterna.visible = k.freios.visible = !!fx.f1 && !fx.bala;
-  // Um pulso a cada 0,8 s; com menos movimento a lanterna fica acesa continuamente.
-  k.ledMat.color.setHex(menosMovimento.matches || k.tempoGP % 0.8 < 0.2 ? 0xff3525 : 0x610500);
   const desaceleracao = dt > 0 ? ((k.velAnterior ?? v) - v) / dt : 0; k.velAnterior = v;
   const freando = fx.f1 && v > 90 && desaceleracao > 90 && Math.abs(z - ground) < 5;
+  // A luz de chuva (cada carro com o seu material e a sua fase): pulso de 0,8 s só com chuva, e acesa fraca no seco; com menos movimento fica acesa.
+  // A de freio acende forte e firme enquanto ESTE carro freia (a desaceleração dele), não importa o que os outros fazem.
+  const chove = clima.chuva > 0.05, pulso = menosMovimento.matches || (k.tempoGP + k.fase) % 0.8 < 0.2;
+  k.ledMat.color.setHex(freando ? 0xff6a50 : chove ? (pulso ? 0xff3525 : 0x610500) : 0x8c1a10);
   k.calor += ((freando ? 0.8 : 0) - k.calor) * (1 - Math.exp(-dt * (freando ? 5 : 1.4)));
   k.discoMat.opacity = k.calor;
   k.faiscaGP -= dt;
