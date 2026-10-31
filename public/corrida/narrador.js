@@ -1,5 +1,5 @@
 // Corrida da Galera — o narrador de TV que apresenta a pista na transmissão (window.Narrador). Script comum, como o radio.js.
-// Toca narrador/<pista>-<n>.mp3 (gerado por gerar-narrador.bat); sem o arquivo, não toca nada (sem texto e sem erro). Uma fala só por
+// Toca narrador/<pista>-<n>.mp3 (gerado por GERAR-VOZES-CORRIDA.bat); sem o arquivo, não toca nada (sem texto e sem erro). Uma fala só por
 // vez: pedir outra, pular ou chegar a hora do corte (as luzes) corta a voz com um fade curto. Passa pelo volume geral (`master` de
 // sons.js) e respeita o som desligado do jogo. A voz do engenheiro (radio.js) é outra coisa e tem o seu próprio botão.
 (function (root) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Gera as vozes do narrador que apresenta a pista na transmissão (public/corrida/narrador/<pista>-<n>.mp3) com a ElevenLabs.
-// Uso: ELEVENLABS_API_KEY=... node ferramentas/narrador-pistas.js [pista ...] [--refazer] [--estimar]   (ou rode gerar-narrador.bat)
+// Uso: ELEVENLABS_API_KEY=... node ferramentas/narrador-pistas.js [pista ...] [--refazer] [--estimar] [--voz <id>]   (ou rode GERAR-VOZES-CORRIDA.bat)
 //   pista      só as falas dessas pistas (ex.: interlagos monza); sem nenhuma, todas
 //   --refazer  gera de novo as que já existem (por padrão elas são puladas)
 //   --estimar  só conta os arquivos e os caracteres que seriam gastos no plano; não precisa de chave e não chama a API
@@ -10,8 +10,10 @@ const path = require("path");
 const { FALAS, PISTAS } = require("../public/corrida/narrador/falas.js");
 
 const PASTA = path.join(__dirname, "..", "public", "corrida", "narrador");
-const VOZ = (process.env.ELEVENLABS_VOICE_ID || "").trim() || "nPczCjzI2devNBz1zQrb"; // Brian: grave, encorpada, boa de narração
-const args = process.argv.slice(2), refazer = args.includes("--refazer"), estimar = args.includes("--estimar");
+// a voz: --voz <id> (o GERAR-VOZES-CORRIDA.bat passa), senão ELEVENLABS_VOICE_ID, senão Brian (grave, encorpada, boa de narração)
+const bruto = process.argv.slice(2), iv = bruto.indexOf("--voz"), args = iv >= 0 ? bruto.filter((_, i) => i !== iv && i !== iv + 1) : bruto;
+const VOZ = (iv >= 0 ? String(bruto[iv + 1] || "").trim() : "") || (process.env.ELEVENLABS_VOICE_ID || "").trim() || "nPczCjzI2devNBz1zQrb";
+const refazer = args.includes("--refazer"), estimar = args.includes("--estimar");
 const pedidas = args.filter((a) => !a.startsWith("--")).map((a) => a.toLowerCase());
 
 const existe = (f) => fs.existsSync(path.join(PASTA, `${f.id}.mp3`));
@@ -42,7 +44,7 @@ async function main() {
   if (estimar) { console.log(`Arquivos de voz que já existem: ${total} de ${FALAS.length} · se gerasse tudo de novo: ${milhar(chars(FALAS))} caracteres`); return; }
 
   const chave = (process.env.ELEVENLABS_API_KEY || "").trim();
-  if (!chave) { console.error("Falta a chave: defina ELEVENLABS_API_KEY (ou use o gerar-narrador.bat)."); process.exit(1); }
+  if (!chave) { console.error("Falta a chave: defina ELEVENLABS_API_KEY (ou use o GERAR-VOZES-CORRIDA.bat)."); process.exit(1); }
   fs.mkdirSync(PASTA, { recursive: true });
   let feitas = 0, puladas = 0, falhas = 0;
   for (const [i, f] of alvo.entries()) {

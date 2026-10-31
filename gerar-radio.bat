@@ -1,20 +1,3 @@
 @echo off
-chcp 65001 >nul
-cd /d "%~dp0"
-echo === Voz do engenheiro de equipe (ElevenLabs) ===
-echo A chave nao e salva em nenhum arquivo: vale so para esta janela.
-set /p ELEVENLABS_API_KEY=Cole a sua chave da ElevenLabs e aperte Enter: 
-set /p ELEVENLABS_VOICE_ID=ID da voz (Enter = voz padrao): 
-if "%ELEVENLABS_VOICE_ID%"=="" set ELEVENLABS_VOICE_ID=pNInz6obpgDQGcFmaJgB
-set REFAZER=
-set /p REFAZER=Refazer TODAS as falas (substitui as que existem)? s/N:
-set ARG=
-if /i "%REFAZER%"=="s" set ARG=--refazer
-echo.
-node ferramentas\radio-engenheiro.js %ARG%
-set ELEVENLABS_API_KEY=
-echo.
-set n=0
-for %%f in (public\corrida\radio\*.mp3) do set /a n+=1
-echo Arquivos de voz na pasta: %n%
-pause
+rem Atalho antigo: o gerador de vozes da Corrida agora e um so (GERAR-VOZES-CORRIDA.bat). Abra a opcao 2 (radio do engenheiro).
+call "%~dp0GERAR-VOZES-CORRIDA.bat"
