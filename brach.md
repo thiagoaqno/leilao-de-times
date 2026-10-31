@@ -1,10 +1,11 @@
-# Corrida: chuva e tempo de chegada
+# Corrida: stop-and-go com pneu esgotado
 
-- A hora dos eventos do carro humano agora usa o relógio real validado do passo, limitado para pacotes muito antigos. Depois de uma travada, o relógio acumulado da simulação podia ficar atrasado e registrar o humano antes de bots que já haviam terminado, tanto na torre quanto no resultado.
-- Prepara o som da chuva ao iniciar uma corrida com chuva prevista, exercita os efeitos gráficos antes de carregar as demais malhas e reduz as consultas ao relevo usadas por gotas e respingos.
+O MFD recusava um stop-and-go quando não havia outro jogo do composto atual, embora cumprir a punição sem troca não consuma pneu. Agora o pedido é aceito; trocas continuam sujeitas ao estoque.
+
+O teste da simulação preparava o corredor tarde demais e falhava antes de testar o stop-and-go. Ele agora cobre a troca para chuva, e há uma verificação da escolha do servidor para chuva disponível ou esgotada.
 
 ## Verificação
 
-- `node --test tests/corrida-f1-rede.test.js tests/corrida-rede-suave.test.js tests/corrida-chegada-relogio.test.js`: 26 testes passaram; o teste da chegada após uma travada falha na versão anterior.
-- Testes de clima, punições e fim de semana: 30 passaram.
-- `npx playwright test tests/e2e/corrida-chuva-posicao.spec.js`: verifica a transição de chuva e a ordem de bots concluídos na torre e no resultado. O teste de navegador não mede se a travada desapareceu em todo hardware.
+- `node --test tests/corrida-punicoes.test.js`: 17 testes passaram.
+- No teste de navegador do MFD, a verificação do pedido com composto esgotado passou; o teste depois falhou porque o painel de pneus ficou oculto. O teste completo de navegador não passou.
+- A suíte npm completa já apresentava falhas anteriores no CI: ver o job npm-test do PR #441.
