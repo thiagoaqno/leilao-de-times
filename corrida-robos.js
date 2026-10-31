@@ -64,7 +64,8 @@ function tracado(pista, f1 = false) {
   // Linha de F1: a LINHA DE CORRIDA de verdade, por otimização (corrida-linha.js): curvatura mínima entre as beiras, com a folga do carro.
   // Abre por fora antes da curva, encosta por dentro no ápice e sai abrindo; as curvas em sequência saem resolvidas juntas.
   // (O relaxamento de antes, 12 mil passos de uma média local, não convergia: a linha ficava perto do eixo da pista.)
-  if (f1) lat.set(Linha.otimizar(pts, max + 16 - FOLGA_LINHA));
+  // Em Mônaco a linha otimizada precisa caber no mesmo limite que o volante usa, evitando cortar o S em cima do muro.
+  if (f1) lat.set(Linha.otimizar(pts, pista === "monaco" ? Math.min(max + 16 - FOLGA_LINHA, t.width / 2 - 18) : max + 16 - FOLGA_LINHA));
   pos();
   const k = new Float64Array(n), sinal = new Float64Array(n); // sinal: +1 se a curva vai para o lado de lat positivo, -1 para o outro
   for (let i = 0; i < n; i++) { // curvatura do traçado: quanto a direção vira por unidade andada
@@ -734,7 +735,13 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   for (let s = 0, passos = Math.round(dt / Sim.PASSO); s < passos; s++) {
     ev.length = 0;
     // o volante e os pedais são calculados a cada passo da física (120 Hz), como quem joga: o robô sente o carro escorregar
-    Sim.pilotoAutomatico(car, tr, spec, alvo, latAdiante, ent);
+    // Em pista seca e livre, olha mais adiante no S e alivia o acelerador antes de frear. Tráfego,
+    // bandeiras, dano e pneu gasto conservam a pilotagem normal; acima do limite volta a frear.
+    const chicaneMonaco = room.config.pista === "monaco" && ((f > 0.625 && f < 0.655) || (f > 0.805 && f < 0.835));
+    const chicaneLivre = chicaneMonaco && !tf.encontrou && !amb.safety && !amb.amarela && !p.azul && !cl.agua &&
+      (car.pneu?.desgaste || 0) < 0.5 && (p.dano || 0) < 10 && !car.inst;
+    Sim.pilotoAutomatico(car, tr, spec, alvo, latAdiante, ent, chicaneLivre ? 1.15 : 1);
+    if (chicaneLivre && car.v < alvo * 1.20) ent.brake = 0;
     if (ent.gas && (car.patina > PAT || Math.abs(car.alR) > ALFA_TRACAO)) ent.gas = 0; // a traseira já está no limite: tira o pé em vez de rodar
     const exc = Math.abs(car.alF) - ALFA_FRENTE; // a frente já passou do pico do pneu (anda de frente): mais volante só piora, alivia até ela voltar a pegar
     if (exc > 0 && car.alF * ent.steer < 0) ent.steer *= Math.max(0, 1 - exc * K_FRENTE);

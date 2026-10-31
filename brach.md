@@ -1,9 +1,11 @@
-# Corrida: descartar voltas gravadas incompatíveis com a pista
+# Mônaco: alinhamento e frenagem nas chicanes
 
-Depois de um retraçado, índices de uma volta gravada podem apontar para outro trecho. A validação anterior olhava somente a distância lateral e aceitava pontos muito distantes ao longo da pista. Agora o servidor descarta a volta quando mais de 20% das amostras com intervalo válido estão longe do índice registrado; os robôs usam outra volta válida ou o traçado calculado.
+A linha de F1 em Mônaco agora é otimizada dentro da mesma faixa lateral que o volante consegue mirar. Nas curvas 10–11 (Nouvelle Chicane) e 15–16 (Piscine), o robô olha mais adiante e pode aliviar o acelerador antes de usar o freio. Com tráfego, bandeira, chuva, pneu muito gasto, dano ou instabilidade, conserva a pilotagem normal. Isso não elimina colisões entre carros.
 
 ## Verificação
 
-- `node --test --test-name-pattern="aprendem a volta gravada|cinco linhas humanas|volta de pista antiga" tests/corrida-robos.test.js`: 3 testes passaram.
-- Volta sintética do Mônaco anterior ao estreitamento: um robô, em três voltas, passou de 63,25 s para 55,95 s; 20 robôs passaram de melhores voltas de 61,4–67,55 s para 54,45–60,15 s. Todos terminaram nas duas versões. Houve 0 eventos de batida antes e 6 depois (3 contatos entre carros), na mesma semente. A simulação não reproduz as condições nem prova a causa da corrida relatada.
-- Sem volta gravada, 20 robôs completaram três voltas em Jeddah, sem batidas, com e sem a alteração experimental local; a validação deste PR só atua em voltas gravadas.
+- `node --test tests/corrida-robos-curvas.test.js`: 5 passaram, incluindo a volta individual nas duas chicanes.
+- `node --test --test-name-pattern="Mônaco molhado" tests/corrida-monaco-chuva.test.js`: passou. O outro teste desse arquivo, de inclinação do grampo, já falhava na base do PR #441.
+- Mônaco seco, uma volta lançada de um robô difícil: velocidade média na Nouvelle 247,8 → 271,6 e na Piscine 266,8 → 292,3 unidades/s; freio em 52,8% → 50,0% e 43,8% → 34,5% das amostras, respectivamente. Variação média do volante por amostra: 0,0421 → 0,0369 e 0,0391 → 0,0350. As medições são uma simulação, não uma reprodução da corrida relatada.
+- Mônaco seco, 20 bots, três voltas, duas sementes: 6 → 4 e 8 → 2 eventos de batida; zero batidas de muro e todos terminaram nas duas versões. Um contato pode gerar evento para cada carro. Jeddah, 20 bots na segunda semente: resultado idêntico antes e depois, com 2 eventos e sem abandonos.
+- A alteração é específica de Mônaco. O `npm test` completo não foi validado; a base já apresentava 23 falhas no CI do PR #441.

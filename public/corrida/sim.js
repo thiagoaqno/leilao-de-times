@@ -129,8 +129,9 @@ function vacuoAlvo(c, outros) {
 // O volante do piloto automático (robôs e fantasma): olha LD_K s à frente; soma ao ângulo de roda o contra-esterço pela deriva da traseira
 // (K_TRASEIRA rad de roda por rad de deriva: segura a saída de curva) e a diferença entre a guinada pedida e a que o carro faz (K_GUINADA).
 const LD_K = 0.6, K_TRASEIRA = 2, K_GUINADA = 0.5;
-function pilotoAutomatico(c, tr, spec, vAlvo, latAlvo, saida = {}) {
-  const p = D.parametros(spec), n = tr.n, v = Math.max(c.v, 30), Ld = Math.max(22, v * LD_K);
+// fatorOlhar permite antecipar o ponto de mira em trechos específicos; os demais pilotos conservam a distância padrão.
+function pilotoAutomatico(c, tr, spec, vAlvo, latAlvo, saida = {}, fatorOlhar = 1) {
+  const p = D.parametros(spec), n = tr.n, v = Math.max(c.v, 30), Ld = Math.max(22, v * LD_K * fatorOlhar);
   let j = c.idx, acc = 0; while (acc < Ld) { j = (j + 1) % n; acc += 6; }
   const q = tr.pts[j], la = typeof latAlvo === "function" ? latAlvo(j) : latAlvo, tx = q.x + q.nx * la, ty = q.y + q.ny * la;
   let e = Math.atan2(ty - c.y, tx - c.x) - c.a; e = Math.atan2(Math.sin(e), Math.cos(e));

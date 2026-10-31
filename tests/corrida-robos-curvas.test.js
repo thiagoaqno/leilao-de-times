@@ -24,7 +24,7 @@ function solo(pista, voltas = 3) {
     p.ia.pneu = F1.pneuNovo("medio"); p.ia.sim.pneu = p.ia.pneu; p.pneu = p.pneuAtual = "medio"; p.ia.plano = null; // o pneu do dado medido
     Direcao.iniciar(room);
     const pf = Robos.perfil(pista, p.spec, 0), n = pf.n, cruz = [], vPorIdx = new Float64Array(n), r = { batidas: 0, avisos: 0, maxLat: 0, pf, ideal: Robos.idealDe(pista, p.spec) };
-    let ultima = -1;
+    let ultima = -1; r.chicanes = { nouvelle: [], piscine: [] };
     const setor = (q, s) => { if (s === (q.sector + 1) % T.SECTORS) { q.sector = s; if (s === 0 && ++q.laps > voltas) q.finish = 1; } };
     const emit = (e, d) => { if (e === "batida") { r.batidas++; Direcao.bater(room, p, d.forca, d.tipo, relogio, () => {}); } };
     for (let t = 0; t < 400 && p.finish == null; t += 0.05) {
@@ -33,6 +33,10 @@ function solo(pista, voltas = 3) {
       const c = p.ia.sim, lap = Math.floor(c.prog / n);
       if (lap !== ultima) { cruz.push(t); ultima = lap; }
       if (lap >= 2) vPorIdx[c.idx] = c.v;
+      if (pista === "monaco" && lap === 1) {
+        const f = c.idx / n, trecho = f >= 0.625 && f <= 0.655 ? r.chicanes.nouvelle : f >= 0.805 && f <= 0.835 ? r.chicanes.piscine : null;
+        if (trecho) trecho.push({ v: c.v, freio: p.ia.ent.brake, volante: p.ia.ent.steer });
+      }
       if (lap >= 1) r.maxLat = Math.max(r.maxLat, Math.abs(p.ia.lat));
     }
     r.voltas = cruz.slice(1).map((x, i) => x - cruz[i]).slice(0, voltas); r.vPorIdx = vPorIdx; r.avisos = p.avisosLimite | 0; r.dano = p.dano | 0; r.meia = T.PISTAS[pista].width / 2;
@@ -72,4 +76,16 @@ test("robô completa Suzuka com as muretas do viaduto", { timeout: 120000 }, () 
   assert.ok(r.voltas.length >= 2, `voltas concluídas: ${r.voltas.length}`);
   assert.equal(r.batidas, 0, `batidas: ${r.batidas}`);
   assert.equal(r.avisos, 0, `saídas: ${r.avisos}`);
+});
+
+test("Mônaco: robô sozinho mantém ritmo e alivia a frenagem nas chicanes 10–11 e 15–16", { timeout: 120000 }, () => {
+  const r = solo("monaco"), media = (a, chave) => a.reduce((s, x) => s + x[chave], 0) / a.length;
+  assert.equal(r.batidas, 0);
+  for (const [nome, a] of Object.entries(r.chicanes)) {
+    assert.ok(a.length >= 15, `${nome}: poucas amostras`);
+    assert.ok(media(a, "v") > (nome === "nouvelle" ? 260 : 280), `${nome}: velocidade média ${media(a, "v").toFixed(1)}`);
+    assert.ok(media(a, "freio") < (nome === "nouvelle" ? 0.51 : 0.38), `${nome}: freio em ${(100 * media(a, "freio")).toFixed(0)}% das amostras`);
+    const variacao = a.slice(1).reduce((s, x, i) => s + Math.abs(x.volante - a[i].volante), 0) / (a.length - 1);
+    assert.ok(variacao < 0.04, `${nome}: variação média do volante ${variacao.toFixed(3)} por amostra`);
+  }
 });
