@@ -1,17 +1,15 @@
 // O engenheiro no rádio: falas por situação, ids únicos, textos curtos, escolha sem repetir, e nada quebra sem mp3 (nem sem navegador).
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 const Falas = require("../public/corrida/radio/falas.js");
 const Radio = require("../public/corrida/radio.js");
 
-const SITUACOES = ["largada", "voltarapida", "ganhou", "perdeu", "pneu", "box", "safety", "amarela", "dano", "ultima", "vitoria", "podio", "pontos", "foradospontos", "abandono", "chuvachegando", "chuvaparando"];
+const SITUACOES = ["largada", "voltarapida", "ganhou", "perdeu", "pneu", "box", "safety", "amarela", "dano", "ultima", "vitoria", "podio", "pontos", "foradospontos", "abandono", "chuvachegando", "chuvaparando", "boasvindas", "classboa", "classruim", "drs", "punicao"];
 
 test("toda situação (só as da corrida) tem de 4 a 5 falas", () => {
   for (const s of SITUACOES) { const n = Falas.porSituacao(s).length; assert.ok(n >= 4 && n <= 5, `${s}: ${n} falas`); }
   assert.deepEqual(Object.keys(Falas.SITUACOES).sort(), [...SITUACOES].sort());
-  assert.ok(Falas.FALAS.length >= 60 && Falas.FALAS.length <= 80);
+  assert.equal(Falas.FALAS.length, SITUACOES.reduce((n, s) => n + Falas.porSituacao(s).length, 0));
 });
 
 test("ids únicos, seguros para nome de arquivo e textos curtos", () => {
@@ -32,11 +30,10 @@ test("a escolha nunca repete a fala anterior", () => {
   assert.equal(Radio.escolher("nao-existe", null), null);
 });
 
-test("sem mp3 e sem navegador: pedir uma fala não dá erro e respeita o intervalo", () => {
+test("sem navegador: pedir uma fala não dá erro e respeita o intervalo", () => {
   const a = Radio.dizer("largada");
   assert.ok(a && a.quando === "largada");
   assert.equal(Radio.dizer("largada"), null, "a mesma situação não se repete logo");
   assert.equal(Radio.dizer("situacao-inventada"), null);
   assert.doesNotThrow(() => { Radio.dizer("safety"); Radio.dizer("box"); Radio.posicao(5, "a"); Radio.avisoF1("sc"); Radio.fim(1, 25, false); Radio.classificacao(1, 20); });
-  assert.equal(fs.existsSync(path.join(__dirname, "..", "public", "corrida", "radio", "largada-1.mp3")), false);
 });

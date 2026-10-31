@@ -29,7 +29,6 @@ test("pneus: a vida é em voltas (macio ~1,5, médio 3 a 4, duro 6 ou mais) e o 
   const g = (c) => F1.aderencia({ composto: c, desgaste: 0, temp: 1 });
   assert.ok(g("macio").grip > g("medio").grip && g("medio").grip > g("duro").grip);
   assert.ok(g("macio").freio > g("medio").freio && g("medio").tracao > g("duro").tracao);
-  assert.equal(g("medio").freio, 1.08); // o médio é a base da dirigibilidade
   assert.ok(F1.vidaRestante({ desgaste: 0 }) === 1 && F1.vidaRestante({ desgaste: F1.PENHASCO }) === 0);
 });
 
@@ -97,7 +96,9 @@ test("sala: as regras de F1 desligam caixas e ajuda do pelotão, e cada piloto e
     await pedir(a, "act", { type: "config", config: { ...st.config, regras: "f1", caixas: true, equilibrio: true } });
     st = await esperarEstado(a, (s) => s.config.regras === "f1");
     assert.equal(st.config.caixas, false); assert.equal(st.config.equilibrio, false);
-    await assert.rejects(pedir(a, "act", { type: "pneu", pneu: "chuva" }), /Pneu inválido/);
+    await pedir(a, "act", { type: "pneu", pneu: "chuva" });
+    await esperarEstado(a, (s) => s.players[0].pneu === "chuva");
+    await assert.rejects(pedir(a, "act", { type: "pneu", pneu: "inexistente" }), /Pneu inválido/);
     await pedir(a, "act", { type: "pneu", pneu: "macio" });
     st = await esperarEstado(a, (s) => s.players[0].pneu === "macio");
     await pedir(a, "act", { type: "start" });

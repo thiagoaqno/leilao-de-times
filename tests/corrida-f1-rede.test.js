@@ -22,6 +22,8 @@ const entradaDoPasso = (k) => ({ gas: k % 700 < 560 ? 1 : 0, brake: k % 700 >= 6
 // `cadencia` passos e ele chega `atrasoAck` passos depois. `servidor` tem um carro um pouco diferente do que o navegador prevê (a
 // previsão nunca é perfeita). `pausa`: de que passo a que passo o `ack` fica preso (o pico de lag) e é entregue de uma vez no fim.
 function rodar({ passos = 1800, atrasoEntrada = 8, atrasoAck = 10, cadencia = 6, vmaxServidor = 1.012, pausa = null, ingenuo = false }) {
+  // Isola a reconciliação da colisão com barreiras e bordas do mapa: o piloto sintético não segue o circuito.
+  const tr = { ...S.criarPista(T.PISTAS.interlagos, "interlagos"), t: { ...T.PISTAS.interlagos, world: 1000000 }, wallLat: Infinity, murosEscape: null, pneus: new Int8Array(S.criarPista(T.PISTAS.interlagos, "interlagos").n) };
   const cliente = S.novo(tr, { grid: 0, f1: true, pneu: F1.pneuNovo("medio") }), srv = S.novo(tr, { grid: 0, f1: true, pneu: F1.pneuNovo("medio") });
   const specS = { ...mclaren, vmax: mclaren.vmax * vmaxServidor };
   const ambC = { spec: mclaren, voltas: 3, laps: 0, f1: true, outros: [] }, ambS = { spec: specS, voltas: 3, laps: 0, f1: true, outros: [] };

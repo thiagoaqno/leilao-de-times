@@ -1,11 +1,11 @@
-# Mônaco: alinhamento e frenagem nas chicanes
+# Corrida: atualizar testes e tabela de estratégia
 
-A linha de F1 em Mônaco agora é otimizada dentro da mesma faixa lateral que o volante consegue mirar. Nas curvas 10–11 (Nouvelle Chicane) e 15–16 (Piscine), o robô olha mais adiante e pode aliviar o acelerador antes de usar o freio. Com tráfego, bandeira, chuva, pneu muito gasto, dano ou instabilidade, conserva a pilotagem normal. Isso não elimina colisões entre carros.
+O CI da versão após o PR #445 registrou 22 falhas. Esta mudança corrige 14 delas sem alterar Dominó ou Carreira: atualiza as expectativas para o pneu de chuva, situações do rádio e campos atuais da sala; testa as bandeiras genéricas numa pista que as tem e verifica a suavidade da descida atual de Mônaco. Os testes de rede deixam de interpretar a colisão com a borda do mapa como salto de reconciliação; o cenário de disputa lateral faz o carro humano realmente avançar. O teste de parada antecipada inicializa o mesmo pneu na IA e no carro simulado.
+
+Recalcula a tabela de 32 pistas com `node ferramentas/pneus-tabela.js`, sem alterar a física ou o limite de jogos. A tabela de Interlagos volta a bater com a simulação; em corridas de cinco voltas, o melhor plano muda em Barcelona, Xangai, Suzuka e Singapura. Sorvete já não tinha tabela e o simulador continuou sem obter medição confiável para essa pista.
 
 ## Verificação
 
-- `node --test tests/corrida-robos-curvas.test.js`: 5 passaram, incluindo a volta individual nas duas chicanes.
-- `node --test --test-name-pattern="Mônaco molhado" tests/corrida-monaco-chuva.test.js`: passou. O outro teste desse arquivo, de inclinação do grampo, já falhava na base do PR #441.
-- Mônaco seco, uma volta lançada de um robô difícil: velocidade média na Nouvelle 247,8 → 271,6 e na Piscine 266,8 → 292,3 unidades/s; freio em 52,8% → 50,0% e 43,8% → 34,5% das amostras, respectivamente. Variação média do volante por amostra: 0,0421 → 0,0369 e 0,0391 → 0,0350. As medições são uma simulação, não uma reprodução da corrida relatada.
-- Mônaco seco, 20 bots, três voltas, duas sementes: 6 → 4 e 8 → 2 eventos de batida; zero batidas de muro e todos terminaram nas duas versões. Um contato pode gerar evento para cada carro. Jeddah, 20 bots na segunda semente: resultado idêntico antes e depois, com 2 eventos e sem abandonos.
-- A alteração é específica de Mônaco. O `npm test` completo não foi validado; a base já apresentava 23 falhas no CI do PR #441.
+- 15 testes direcionados passaram, incluindo as 14 falhas do CI tratadas aqui e o teste de parada antecipada. Também passaram 26 testes de pneus, rádio, rede e salas.
+- O `npm test` completo não foi repetido até o fim. O CI ainda deve falhar em oito testes de Corrida: diferenças de ritmo entre compostos e estratégias, oversteer, aderência dos pneus, montagem das equipes e ritmo dos robôs. Eles não foram afrouxados para passar; precisam de decisão e calibração do comportamento.
+- O teste de navegador do MFD também falhou ao verificar a navegação do painel, fora do `npm test`; não foi alterado neste PR.
