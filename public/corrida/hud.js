@@ -235,7 +235,10 @@ function hudF1(m, st, now) {
     return { id: r.id, prog: r.prog, v: vs[r.id], dnf: !!p.dnf, dsq: !!p.dsq, sg: !!p.stopGo, noBox: !!p.noBox, penal: p.penal || 0, done: r.done, best: p.best, pneu: p.pneuAtual || p.pneu, sigla: p.sigla || String(p.name || "???").slice(0, 3).toUpperCase(), nome: p.name, cor: (eqs[p.equipe] || {}).cor || p.color, bot: p.bot };
   });
   race.hudCors = cors;
-  const linhas = T.torre(cors, { n: tr.n, meuId: m && m.id, esc: race.hudEsc });
+  // a cronometragem: cada carro registra (progresso, hora) a cada tick; o intervalo é o tempo medido entre dois carros (hud-torre.js)
+  const cron = race.cron || (race.cron = T.criarCronometragem()), agoraS = t0 / 1000;
+  for (const c of cors) cron.registrar(c.id, c.prog, agoraS, tr.n);
+  const linhas = T.torre(cors, { n: tr.n, meuId: m && m.id, esc: race.hudEsc, atraso: (c, lid) => cron.atraso(lid.id, c.prog, agoraS) });
   // a volta no topo é a do líder (como na TV)
   const lid = st[0] && st[0].p, volta = lid ? Math.max(1, Math.min(cfg.voltas, (lid.started ? lid.laps : 0) + 1)) : 1, acabou = !!lid && lid.finish != null;
   set($("tVolta"), "t", acabou ? "BANDEIRADA" : volta); set($("tVoltaTot"), "t", acabou ? "" : ` / ${cfg.voltas}`);
@@ -265,7 +268,7 @@ function hudF1(m, st, now) {
   atualizarTempo(m, st, now); // o quadro do alto à direita (setores, posição, volta atual, melhor)
   // o MFD e as punições
   const est = estrategia(m, cors, race.hudEsc);
-  atualizarMfd({ m, st, cors, linhas, compacta, modoErs, tp: est.tp, janela: est.janela, perda: est.perda, retorno: est.retorno, int: m ? HM.intervalos(cors, m.id, race.hudEsc) : {}, vr: HM.donoDaVoltaRapida(E.S.players) });
+  atualizarMfd({ m, st, cors, linhas, compacta, modoErs, tp: est.tp, janela: est.janela, perda: est.perda, retorno: est.retorno, int: m ? HM.intervalos(cors, m.id, race.hudEsc, undefined, cron, agoraS) : {}, vr: HM.donoDaVoltaRapida(E.S.players) });
   desenharBanner(m, t0); desenharCrono(t0);
 }
 // ---------- as cinco luzes da largada (regras de F1) ----------
