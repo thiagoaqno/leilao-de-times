@@ -1,0 +1,31 @@
+/* Corrida da Galera — a tela Controles (teclas-ui.js): remapear teclado e controle */
+.tk{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:12px;font-family:"Barlow Condensed","Titillium Web",system-ui,sans-serif;color:#fff}
+.tk.hidden{display:none}
+.tk-fundo{position:absolute;inset:0;background:#000c}
+.tk-painel{position:relative;display:flex;flex-direction:column;width:min(620px,100%);max-height:min(640px,100%);background:#0b0d13;border:1px solid #ffffff2a;border-top:3px solid #e10600;box-shadow:0 16px 50px #000}
+.tk header{display:flex;align-items:center;gap:12px;padding:10px 12px;background:#14161d}
+.tk h2{margin:0;flex:1;font-size:24px;letter-spacing:.08em;text-transform:uppercase}
+.tk-abas{display:flex;gap:4px}
+.tk-abas button{padding:6px 14px;font:700 15px/1 inherit;letter-spacing:.06em;color:#ffffffb8;background:#ffffff12;border:1px solid #ffffff22;border-radius:0;cursor:pointer}
+.tk-abas button.on{color:#0a0c12;background:#fff;border-color:#fff}
+.tk-x{width:34px;height:34px;padding:0;color:#fff;background:transparent;border:1px solid #ffffff33;border-radius:0;cursor:pointer;font-size:16px}
+.tk-dica{margin:0;padding:8px 14px;font-size:14px;color:#ffffffb0;border-bottom:1px solid #ffffff14}
+.tk-lista{flex:1;min-height:0;overflow:auto;padding:4px 12px 10px}
+.tk-lista h3{margin:12px 0 4px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:#ffd23f}
+.tk-l{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;min-height:38px;padding:3px 6px 3px 10px;background:#ffffff0d;border-bottom:1px solid #0b0d13;font-size:16px;font-weight:600}
+.tk-l.esp{background:#fff;color:#0a0c12}
+.tk-l.esp em{font-style:normal;font-weight:700;color:#b3000c}
+.tk-v{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end}
+.tk-c{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 9px;font-size:15px;font-weight:700;background:#e4e7ee;color:#0a0c12;border-radius:3px}
+.tk-c button{width:18px;height:18px;padding:0;font-size:14px;line-height:1;color:#0a0c12;background:transparent;border:0;border-radius:50%;cursor:pointer;opacity:.6}
+.tk-c button:hover{opacity:1;background:#0a0c1220}
+.tk-vazio{font-size:14px;color:#ffffff70}
+.tk-l>button{min-width:78px;padding:6px 10px;font:700 14px/1 inherit;letter-spacing:.06em;color:#fff;background:#ffffff18;border:1px solid #ffffff2a;border-radius:0;cursor:pointer}
+.tk-l.esp>button{color:#0a0c12;background:#ffd23f;border-color:#ffd23f}
+.tk footer{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;background:#14161d}
+.tk footer button{padding:9px 16px;font:700 15px/1 inherit;letter-spacing:.06em;border-radius:0;cursor:pointer}
+.tk footer .ghost{color:#fff;background:transparent;border:1px solid #ffffff44}
+.tk footer .ghost:disabled{opacity:.4;cursor:default}
+.tk footer .primary{color:#fff;background:#e10600;border:1px solid #e10600}
+@media (max-width:520px){.tk-l{grid-template-columns:1fr auto}.tk-v{grid-column:1/-1;justify-content:flex-start;order:3}}
+@media (pointer:coarse){#bTeclas{display:none}}
