@@ -186,3 +186,18 @@ test("ERS: a bateria enche na frenagem, o automático gasta suave com orçamento
   for (let i = 0; i < 100; i++) { const antes = g.carga; F1.gastarErs(g, 0.1, true, false); gasto += antes - g.carga; }
   assert.ok(gasto <= 0.75 + 1e-9, "o gasto suave tem teto por volta");
 });
+
+test("depois de uma colisão os dois carros viram fantasma por 2 s, sem reativar em loop com o mesmo par", () => {
+  const D = require("../public/corrida/dinamica.js"), Parados = require("../corrida-parados.js");
+  const room = { phase: "race", startAt: Date.now() - 60000, config: { pista: "interlagos", regras: "f1", voltas: 5 }, order: ["a", "b"], players: { a: { id: "a", name: "A", car: "equilibrado" }, b: { id: "b", name: "B", car: "equilibrado" } } };
+  const mk = (x, v) => { const c = D.novoCarro(x, 0, 0); c.v = v; c.vx = v; c.z = 0; c.tick = 1; c.x0 = x - v / 120; c.y0 = 0; c.a0 = 0; return c; };
+  const t0 = Date.now(), B = mk(38, 200);
+  Contato.gravar(room, "b", t0 - 8, B); Contato.gravar(room, "b", t0, B);
+  const ev = []; Contato.depoisDoPasso(room, room.players.a, mk(0, 300), t0 + 8, ev, true);
+  assert.equal(ev.length, 1, "o impacto é detectado normalmente (culpa e punição saem dele)");
+  for (const id of ["a", "b"]) assert.ok(room.players[id].fantAte - Date.now() > 1500 && Contato.fantasmaDoBox(room.players[id]), `${id} fantasma`);
+  assert.equal(Parados.passo(room, Date.now()), true, "o estado público é avisado");
+  room.players.a.fantAte = room.players.b.fantAte = Date.now() - 1;
+  Contato.depoisDoPasso(room, room.players.a, mk(0, 300), t0 + 30, [], true);
+  assert.ok(!(room.players.a.fantAte > Date.now()), "o mesmo par não vira fantasma de novo logo em seguida");
+});

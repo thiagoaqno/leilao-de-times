@@ -27,9 +27,12 @@ function recolocar(p, c, tr) {
 }
 // Chamado a cada ~100 ms pelo laço da direção de prova. Devolve true se algum carro virou ou deixou de ser fantasma (o estado público muda).
 function passo(room, agora) {
-  if (room.phase !== "race" || room.config.regras !== "f1" || !room.startAt || agora < room.startAt + LARGADA_MS) return false;
+  const batida = !!room.fantMudou; room.fantMudou = false; // (uma batida acabou de pôr dois carros em fantasma: corrida-contato.js)
+  if (room.phase !== "race" || room.config.regras !== "f1" || !room.startAt) return batida;
+  // os fantasmas que acabaram (inclusive os de batida) deixam de ser fantasma mesmo na largada
+  if (agora < room.startAt + LARGADA_MS) { let m = batida; for (const id of room.order) { const p = room.players[id]; if (p && p.fantAte && agora >= p.fantAte) { p.fantAte = 0; m = true; } } return m; }
   const tr = Sim.criarPista(T.PISTAS[room.config.pista], room.config.pista), seguro = !!(room.direcao && room.direcao.safety);
-  let mudou = false;
+  let mudou = batida;
   for (const id of room.order) {
     const p = room.players[id]; if (!p) continue;
     if (p.fantAte && agora >= p.fantAte) { p.fantAte = 0; mudou = true; }
