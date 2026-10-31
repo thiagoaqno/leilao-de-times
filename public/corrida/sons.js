@@ -19,7 +19,7 @@ export const Sound = (() => {
   const MARCHAS = [0, 110, 190, 270, 350, 1e9];
   let marcha = 1, troca = 0;
   // o som ambiente das pistas (pista-som.js) passa por um barramento que abre e fecha junto com o motor (só na corrida);
-  // o eco do túnel é um envio do motor para uma reverberação (reflexões e cauda que se apagam em 1,6 s)
+  // o eco do túnel é um envio do motor para uma reverberação (reflexões curtas e discretas)
   let ambBus = null, ecoG = null;
   let motorF1 = null; // o motor de F1 (motor-v10.js), criado na primeira vez que as regras de F1 pedem
   let motorBus = null; // os motores de F1 (o meu e os dos outros) passam por aqui: abaixam enquanto o engenheiro fala

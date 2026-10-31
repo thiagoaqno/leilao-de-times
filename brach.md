@@ -2,7 +2,7 @@
 
 Cada visita concluída aos boxes reduz em 90% o dano acumulado, para jogadores e robôs. O reparo também ocorre numa visita dedicada a cumprir stop-and-go; essa visita continua sem registrar uma troca de pneus. Uma parada inválida não repara.
 
-A reverberação existente no túnel fica mais presente, com reflexões iniciais estéreo e cauda difusa, entrando e saindo suavemente conforme a câmera passa pelo trecho coberto. O arquivo de prévia foi renderizado com o sintetizador de motor e a mesma resposta de reverberação do jogo: primeiro ao ar livre, depois dentro do túnel e por fim na saída.
+O túnel recebe um eco leve, com duas reflexões curtas em estéreo, entrando e saindo suavemente conforme a câmera passa pelo trecho coberto. O arquivo de prévia foi renderizado com o sintetizador de motor e a mesma resposta de eco do jogo: primeiro ao ar livre, depois dentro do túnel e por fim na saída.
 
 ## Verificação
 
