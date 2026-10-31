@@ -31,7 +31,7 @@ function arquibancadasMonaco(tr, add, predioEm) {
     return -sinalDaCurva(pts, n, i % n);
   };
   const candidatos = [
-    ["boxes", t.retaDosBoxes[0] + 0.02, t.retaDosBoxes[1] - 0.012, "fora-da-reta", 4], // a reta dos boxes, do lado de fora do corredor
+    // (a arquibancada da reta dos boxes ficou de fora: com a pista mais estreita ela passaria a caber, mas estoura o teto de malhas do CI)
     ["cais", t.cais[0], Math.min(t.cais[1], c.tabac - 0.025), "agua", 3], // o cais do porto, de frente para os iates
     ["sainteDevote", c.sainteDevote - 0.01, c.sainteDevote + 0.015, "fora", 4],
     ["tabac", c.tabac - 0.012, c.tabac + 0.012, "terra", 3], // do lado de dentro, o da Piscina (K): o lado da água continua livre, com o guard-rail baixo
