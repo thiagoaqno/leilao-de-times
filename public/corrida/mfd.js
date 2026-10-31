@@ -3,15 +3,16 @@
 // hudF1: ~10x por segundo, e só da página que está à vista) e a entrada: teclado (M/N páginas, Tab ajustar), controle (R3/L3 páginas,
 // Start ajustar) e toque (o botão MFD abre e fecha; as abas e as setas ‹ › do painel são clicáveis).
 //
-// Modo AJUSTAR (`mfd.foco`): as setas do teclado e o direcional do controle deixam de pilotar e navegam no painel (↑↓ a linha, ←→ o valor,
-// ou a página nas páginas sem linhas). Sai com Tab, Start, Esc, ou sozinho depois de 8 s sem mexer, para nunca prender o carro.
+// As SETAS são do MFD (sem modo ajustar): ↑↓ escolhem a linha, ←→ mudam o valor (ou a página nas páginas sem linhas); mexer nelas abre o painel e
+// reinicia os 3 s. Tudo remapeável na tela Controles (teclas.js / teclas-ui.js). Tab e Start só abrem e fecham o painel.
 import { E, $, me, carOf, store, toast } from "./estado.js";
 import { race } from "./jogo.js";
 import { alternarPedido, escolherComposto, cancelarPedido, jogosDe, textoJogos } from "./box.js";
 import { set } from "./hud-painel.js";
+import { acoesDaTecla, teclasDe, nomeDaTecla, nomeDoBotao, botoesDe, ui } from "./teclas.js";
 
 const M = () => window.HudMfd, F = () => window.F1Regras;
-export const mfd = { aberto: true, foco: false, pagina: "pneus", lista: [], linha: {}, ultimo: 0, entrada: "teclado" };
+export const mfd = { aberto: true, pagina: "pneus", lista: [], linha: {}, ultimo: 0, entrada: "teclado" };
 // o que controles.js registra (a câmera e a torre são dele e do hud.js): { camera(d), torre(): alterna compacta/completa }
 export const acoes = { camera: null, camNome: () => "", torreCompacta: () => true, torreAlternar: null };
 const LEITURA = {}; // os últimos dados que o hud passou (as linhas do painel leem daqui)
@@ -117,7 +118,7 @@ export function montarMfd() {
   mfd.aberto = lerAberto(); mexeu(); // (a contagem dos 3 s começa agora)
   raiz.innerHTML = `<div class="mfd-topo"><b class="mfd-nome" data-r="nome">PNEUS</b><div class="mfd-abas" data-r="abas" role="tablist"></div><button class="mfd-x" data-r="fechar" aria-label="Fechar o MFD" title="Fechar o MFD">▾</button></div>
     <div class="mfd-corpo">${Object.entries(HTML).map(([id, h]) => `<section class="mfd-pg" data-pg="${id}" hidden>${h}</section>`).join("")}</div>
-    <div class="mfd-dicas" data-r="dicas"><span class="kb ajuda"><kbd>M</kbd><kbd>N</kbd> página</span><span class="kb ajuda"><kbd>Tab</kbd> ajustar</span><span class="gp ajuda"><kbd class="b">L3</kbd><kbd class="b">R3</kbd> página</span><span class="gp ajuda"><kbd class="b st">Start</kbd> ajustar</span><span class="foco-dica"><kbd>↑</kbd><kbd>↓</kbd> linha</span><span class="foco-dica"><kbd>←</kbd><kbd>→</kbd> valor</span><span class="foco-dica"><kbd>Tab</kbd> sair</span></div>`;
+    <div class="mfd-dicas" data-r="dicas"></div>`;
   const q = (sel, ctx = raiz) => ctx.querySelector(sel);
   refs.mfd = {}; for (const el of raiz.querySelectorAll("[data-r]")) refs.mfd[el.dataset.r] = el;
   refs.pg = {}; refs.r = {};
@@ -139,7 +140,7 @@ export function montarMfd() {
     if (lin) { mfd.linha[mfd.pagina] = +lin.dataset.i; const d = b.dataset.d; if (d) linhasDaPagina()[+lin.dataset.i].mudar(+d); atualizarLinhas(); }
   });
   const bt = $("bMfd"); if (bt) bt.addEventListener("click", () => { mexeu(); abrir(!mfd.aberto); });
-  aplicarAberto();
+  pintarDicas(); aplicarAberto();
 }
 function aplicarAberto() {
   const r = $("race"); if (!raiz || !r) return;
@@ -149,7 +150,7 @@ function aplicarAberto() {
   else { raiz.classList.add("descendo"); aplicarAberto.t = setTimeout(() => { raiz.classList.remove("descendo"); raiz.classList.add("fechado"); }, 230); } // desce (CSS) e só então some
   const bt = $("bMfd"); if (bt) bt.setAttribute("aria-expanded", String(mfd.aberto));
 }
-function abrir(v, guardar = true) { mfd.aberto = !!v; if (v) mexeu(); else sairDoFoco(); if (guardar) guardarAberto(); aplicarAberto(); paginaVista = null; }
+function abrir(v, guardar = true) { mfd.aberto = !!v; if (v) mexeu(); if (guardar) guardarAberto(); aplicarAberto(); paginaVista = null; }
 // 3 s sem interação: o painel desce sozinho (no PC e no celular), sai do modo ajustar e devolve as setas à pilotagem. Qualquer tecla ou botão do MFD
 // (M, N, B, 1-4, Tab, D-pad ajustando, toques no painel) chama mexeu() e reinicia a contagem. Não grava a escolha: o próximo GP começa com o painel à vista.
 const RECOLHE_MS = 3000;
@@ -160,14 +161,7 @@ export function abrirBoxMfd() {
   if (!mfd.aberto) abrir(true);
   mfd.pagina = "box"; mfd.linha.box = 0; paginaVista = null; mexeu();
 }
-function aplicarFoco() { if (raiz) raiz.classList.toggle("foco", mfd.foco); const r = $("race"); if (r) r.classList.toggle("mfd-foco", mfd.foco); }
-function sairDoFoco() { if (!mfd.foco) return; mfd.foco = false; aplicarFoco(); }
-function alternarFoco() {
-  mexeu();
-  if (mfd.foco) { sairDoFoco(); return; }
-  if (!mfd.aberto) abrir(true);
-  mfd.foco = true; aplicarFoco(); atualizarLinhas();
-}
+function alternarAberto() { mexeu(); abrir(!mfd.aberto); }
 function irPara(id) { if (mfd.lista.includes(id)) { mfd.pagina = id; paginaVista = null; mexeu(); } }
 function pagina(d) { if (!mfd.aberto) { abrir(true); return; } const p = M().vizinha(mfd.lista, mfd.pagina, d); if (p) { mfd.pagina = p; paginaVista = null; mexeu(); } }
 function linhaMover(d) {
@@ -180,39 +174,44 @@ function valorMudar(d) {
   L[i].mudar(d); mexeu(); atualizarLinhas();
 }
 
-// ---------- a entrada ----------
-const ativo = () => !!race && !!E.S && E.S.config.regras === "f1" && race.hudF1 && !!raiz;
-// teclado: devolve true se a tecla é do MFD (controles.js então não a trata como pilotagem)
-export function mfdTecla(e) {
-  if (!ativo() || e.ctrlKey || e.metaKey || e.altKey) return false;
-  mfd.entrada = "teclado";
-  if (e.code === "Tab") { e.preventDefault(); if (!e.repeat) alternarFoco(); return true; }
-  if ((e.code === "Enter" || e.code === "NumpadEnter") && naPaginaBox() && !e.repeat) { e.preventDefault(); alternarBox(); mexeu(); atualizarLinhas(); return true; }
-  if (e.code === "KeyM" || e.code === "KeyN") { if (!e.repeat) pagina(e.code === "KeyM" ? 1 : -1); return true; }
-  if (e.key === "Escape" && mfd.foco) { sairDoFoco(); return false; } // (o Esc também pula a TV: deixa seguir)
-  if (!mfd.foco) return false;
-  const k = e.key;
-  if (k === "ArrowUp" || k === "ArrowDown" || k === "ArrowLeft" || k === "ArrowRight") {
-    e.preventDefault(); if (!e.repeat) { if (k === "ArrowUp") linhaMover(-1); else if (k === "ArrowDown") linhaMover(1); else valorMudar(k === "ArrowLeft" ? -1 : 1); }
-    return true;
+// ---------- a entrada (tudo pelas ações de teclas.js) ----------
+export const mfdAtivo = () => !!race && !!E.S && E.S.config.regras === "f1" && race.hudF1 && !!raiz;
+const ativo = mfdAtivo;
+// Executa uma ação do MFD. Com o painel recolhido, linha e valor só ABREM (nada muda sem a pessoa ver o painel).
+function acao(id) {
+  if (id === "mfdAbrir") { alternarAberto(); return true; }
+  if (id === "mfdPagMais") { pagina(1); return true; }
+  if (id === "mfdPagMenos") { pagina(-1); return true; }
+  if (id === "mfdLinhaMenos" || id === "mfdLinhaMais" || id === "mfdValorMenos" || id === "mfdValorMais") {
+    if (!mfd.aberto) { abrir(true); return true; }
+    if (id === "mfdLinhaMenos") linhaMover(-1); else if (id === "mfdLinhaMais") linhaMover(1); else valorMudar(id === "mfdValorMenos" ? -1 : 1);
+    mexeu(); return true;
   }
+  if (id === "confirmar") { if (naPaginaBox() && !race.box.fase) { alternarBox(); mexeu(); atualizarLinhas(); return true; } return false; }
   return false;
 }
-// controle: `hit(i)` é o botão que acabou de ser apertado. Devolve true com o MFD em modo ajustar (o direcional não pilota).
-export function mfdPad(hit) {
-  if (!ativo()) return false;
-  if (hit(9) || hit(10) || hit(11)) mfd.entrada = "pad";
-  if (hit(0) && naPaginaBox() && !race.box.fase) { alternarBox(); mexeu(); atualizarLinhas(); } // A confirma o pedido com a página do Box à vista (A também acelera, sem problema)
-  if (hit(9)) alternarFoco();
-  if (hit(11)) pagina(1);
-  if (hit(10)) pagina(-1);
-  if (mfd.foco) {
-    if (hit(12)) { mfd.entrada = "pad"; linhaMover(-1); } if (hit(13)) { mfd.entrada = "pad"; linhaMover(1); }
-    if (hit(14)) { mfd.entrada = "pad"; valorMudar(-1); } if (hit(15)) { mfd.entrada = "pad"; valorMudar(1); }
-  }
-  return mfd.foco;
+// teclado: devolve true se a tecla é do MFD (controles.js então não a trata como pilotagem)
+export function mfdTecla(e) {
+  if (!ativo() || ui.aberto || e.ctrlKey || e.metaKey || e.altKey) return false;
+  const ids = acoesDaTecla(e.code).filter((id) => id.startsWith("mfd") || id === "confirmar"); if (!ids.length) return false;
+  let tratou = false; mfd.entrada = "teclado";
+  for (const id of ids) { if (e.repeat && id !== "mfdValorMenos" && id !== "mfdValorMais") { tratou = true; continue; } if (acao(id)) tratou = true; }
+  if (tratou) e.preventDefault();
+  return tratou;
 }
-export const mfdEmFoco = () => mfd.foco && ativo();
+// controle: `bate(id)` diz se algum botão da ação acabou de ser apertado (controles.js, pelos botões de teclas.js)
+export function mfdPad(bate) {
+  if (!ativo()) return;
+  for (const id of ["mfdAbrir", "mfdPagMais", "mfdPagMenos", "mfdLinhaMenos", "mfdLinhaMais", "mfdValorMenos", "mfdValorMais", "confirmar"]) if (bate(id)) { mfd.entrada = "pad"; acao(id); }
+}
+
+// as dicas no rodapé do painel saem das teclas de verdade (padrão ou remapeadas)
+function dicasHTML() {
+  const k = (id) => (teclasDe(id)[0] ? `<kbd>${nomeDaTecla(teclasDe(id)[0])}</kbd>` : ""), b = (id) => (botoesDe(id)[0] != null ? `<kbd class="b">${nomeDoBotao(botoesDe(id)[0])}</kbd>` : "");
+  return `<span class="kb">${k("mfdLinhaMenos")}${k("mfdLinhaMais")} linha</span><span class="kb">${k("mfdValorMenos")}${k("mfdValorMais")} valor</span><span class="kb">${k("mfdPagMenos")}${k("mfdPagMais")} página</span><span class="gp">${b("mfdPagMenos")}${b("mfdPagMais")} página</span><span class="gp">${b("mfdValorMenos")}${b("mfdValorMais")} valor</span>`;
+}
+function pintarDicas() { if (refs.mfd && refs.mfd.dicas) refs.mfd.dicas.innerHTML = dicasHTML(); }
+window.addEventListener("teclas:mudou", pintarDicas);
 
 // ---------- a atualização (hudF1 chama a ~10x por segundo) ----------
 function atualizarLinhas() {
@@ -235,7 +234,7 @@ function listaDePaginas(ctx) {
 export function atualizarMfd(ctx) {
   if (!raiz) return;
   const t = performance.now();
-  if (mfd.aberto && t - mfd.ultimo > RECOLHE_MS) abrir(false, false); // (sai do modo ajustar junto)
+  if (mfd.aberto && t - mfd.ultimo > RECOLHE_MS) abrir(false, false);
   { const bt = $("bMfd"), B = race.box, rot = bt && bt.querySelector("span"); if (rot) set(rot, "t", B && B.pedido && !B.fase ? "BOX " + F1U().PNEUS[B.pedido].nome.toUpperCase() : B && B.fase ? "NO BOX" : "MFD"); if (bt) set(bt, "c", "mfd-botao" + (B && (B.pedido || B.fase) ? " pedido" : "")); } // fechado, o pedido de box segue à vista no botão
   raiz.dataset.entrada = mfd.entrada;
   const rr = $("race"); if (rr && rr.dataset.entrada !== mfd.entrada) rr.dataset.entrada = mfd.entrada;

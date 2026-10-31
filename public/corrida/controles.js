@@ -7,7 +7,9 @@ import { E, carOf, me, act } from "./estado.js";
 import { rotacao, NUM } from "./cambio.js";
 import { Sound } from "./sons.js";
 import { ORDEM, NOMES, usavel, camEstado } from "./cameras.js";
-import { mfdTecla, mfdPad, acoes, teclaBox, digitoPneu } from "./mfd.js";
+import { mfdTecla, mfdPad, mfdAtivo, acoes, teclaBox, digitoPneu } from "./mfd.js";
+import { acoesDaTecla, botoesDe, ui } from "./teclas.js";
+import "./teclas-ui.js";
 
 // câmbio manual: Shift sobe, Ctrl direito desce (redução que estouraria o giro não entra)
 export function trocarMarcha(d) {
@@ -18,9 +20,28 @@ export function trocarMarcha(d) {
   race.marcha = g; if (E.S.config.regras !== "f1") Sound.troca(d);
 }
 
-// teclado e botões na tela
-const KEYMAP = { ArrowUp: "gas", w: "gas", W: "gas", ArrowDown: "brake", s: "brake", S: "brake", ArrowLeft: "left", a: "left", A: "left", ArrowRight: "right", d: "right", D: "right" };
-document.addEventListener("keydown", (e) => { if (!race || e.target.tagName === "INPUT") return; if (mfdTecla(e)) return; /* M, N e Tab são do MFD; com o MFD em modo ajustar as setas também */ if (!e.repeat && (e.code === "ShiftLeft" || e.code === "ShiftRight")) { e.preventDefault(); trocarMarcha(1); } if (!e.repeat && e.code === "ControlRight") { e.preventDefault(); trocarMarcha(-1); } const k = KEYMAP[e.key]; if (k) { keys[k] = true; e.preventDefault(); } if (e.key === "r" || e.key === "R") respawn(); if ((e.key === "b" || e.key === "B") && !e.repeat) teclaBox(); if (!e.repeat && (e.key === "1" || e.key === "2" || e.key === "3" || e.key === "4")) { const c = ["macio", "medio", "duro", "chuva"][+e.key - 1]; if (!digitoPneu(c)) escolherComposto(c); } if ((e.key === "c" || e.key === "C") && !e.repeat) nextCam(); if (e.code === "KeyE" && E.S?.config.regras === "f1") { keys.ers = true; e.preventDefault(); } else if ((e.code === "Space" || e.code === "KeyE") && !e.repeat) { e.preventDefault(); useItem(keys.brake); } });
+// teclado: o que cada tecla faz vem de teclas.js (padrão e o que o jogador remapeou na tela Controles). Os padrões: W A S D pilotam e as setas são
+// do MFD (mfd.js). Fora do HUD de F1 (arcade, classificação) não há MFD e as setas seguem esterçando, como sempre.
+const SETAS = { ArrowUp: "gas", ArrowDown: "freio", ArrowLeft: "esq", ArrowRight: "dir" };
+const PILOTO = { gas: "gas", freio: "brake", esq: "left", dir: "right" };
+const PNEUS = { pneu1: "macio", pneu2: "medio", pneu3: "duro", pneu4: "chuva" };
+document.addEventListener("keydown", (e) => {
+  if (!race || e.target.tagName === "INPUT" || ui.aberto) return;
+  if (mfdTecla(e)) return; // as ações do MFD (páginas, linhas, valor, abrir, confirmar)
+  const ids = acoesDaTecla(e.code).slice(); if (!mfdAtivo() && SETAS[e.code] && !ids.includes(SETAS[e.code])) ids.push(SETAS[e.code]);
+  for (const id of ids) {
+    if (PILOTO[id]) { keys[PILOTO[id]] = true; e.preventDefault(); }
+    else if (e.repeat) continue;
+    else if (id === "marchaMais") { e.preventDefault(); trocarMarcha(1); }
+    else if (id === "marchaMenos") { e.preventDefault(); trocarMarcha(-1); }
+    else if (id === "respawn") respawn();
+    else if (id === "box") teclaBox();
+    else if (PNEUS[id]) { if (!digitoPneu(PNEUS[id])) escolherComposto(PNEUS[id]); }
+    else if (id === "camera") nextCam();
+    else if (id === "ers") { if (E.S?.config.regras === "f1") { keys.ers = true; e.preventDefault(); } else { e.preventDefault(); useItem(keys.brake); } }
+    else if (id === "item") { e.preventDefault(); useItem(keys.brake); }
+  }
+});
 // câmeras (cameras.js): cockpit, onboard (T-cam), bico, perseguição próxima, perseguição afastada, aérea e TV. C (ou o botão 🎥,
 // ou Y no controle) troca, mostra o nome da câmera e o jogo lembra a última escolhida (os ids antigos "perto", "longe", "cockpit" e "cima" seguem valendo).
 export let camMode = ORDEM.includes(store.get("corrida:cam")) ? store.get("corrida:cam") : "perto";
@@ -34,7 +55,10 @@ function nextCam(d = 1) {
   toast("🎥 " + NOMES[camMode], 1600);
 }
 acoes.camera = (d) => nextCam(d); acoes.camNome = () => NOMES[camEstado.modo || camMode] || "";
-document.addEventListener("keyup", (e) => { const k = KEYMAP[e.key]; if (k) keys[k] = false; if (e.code === "KeyE") keys.ers = false; });
+document.addEventListener("keyup", (e) => {
+  for (const id of acoesDaTecla(e.code)) { if (PILOTO[id]) keys[PILOTO[id]] = false; if (id === "ers") keys.ers = false; }
+  if (SETAS[e.code]) keys[PILOTO[SETAS[e.code]]] = false; // (as setas do esterço antigo, se estavam apertadas)
+});
 document.querySelectorAll(".pad button[data-marcha]").forEach((b) => b.addEventListener("pointerdown", (e) => { e.preventDefault(); trocarMarcha(+b.dataset.marcha); }));
 document.querySelectorAll(".pad button[data-k]").forEach((b) => {
   const k = b.dataset.k, set = (v) => { keys[k] = v; b.classList.toggle("on", v); };
@@ -48,15 +72,19 @@ export function pollPad() {
   const gp = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find((g) => g && g.connected);
   if (!gp) { if (pad.on) { pad.on = false; keys.gas = keys.brake = false; } return; }
   const b = (i) => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.3)), hit = (i) => b(i) && !pad.prev[i];
-  const foco = mfdPad(hit); // Start abre/fecha o modo ajustar do MFD, L3/R3 trocam a página; em ajustar o direcional navega no painel e não pilota
-  let x = gp.axes[0] || 0; if (!foco && b(14)) x = -1; if (!foco && b(15)) x = 1;
+  const um = (id) => botoesDe(id).some(b), bate = (id) => botoesDe(id).some(hit); // botões de cada ação (teclas.js: padrão ou remapeados)
+  if (ui.aberto) { pad.prev = gp.buttons.map((_, i) => b(i)); return; } // a tela de Controles está aberta: o controle só serve para remapear
+  mfdPad(bate); // o MFD: páginas, linhas, valor, abrir e confirmar
+  let x = gp.axes[0] || 0; if (um("esq")) x = -1; if (um("dir")) x = 1;
   const dz = 0.15; x = Math.abs(x) < dz ? 0 : Math.sign(x) * ((Math.abs(x) - dz) / (1 - dz)) ** 1.4;
-  const gas = b(7) || b(0) || (!foco && b(12)), brake = b(6) || b(1) || b(2) || (!foco && b(13));
+  const gas = um("gas"), brake = um("freio");
   if (gas || brake || x || pad.on) { pad.on = true; pad.steer = x; keys.gas = gas; keys.brake = brake && !gas; }
-  if (hit(3)) nextCam();
-  if (hit(8) || hit(4)) respawn();
-  if (hit(5)) useItem(brake);
-  if (E.S && E.S.config.cambio === "manual") { if (hit(2)) trocarMarcha(1); if (hit(1) && !b(6)) trocarMarcha(-1); } // manual: X sobe, B desce
+  if (bate("camera")) nextCam();
+  if (bate("respawn")) respawn();
+  if (!mfdAtivo() && bate("item")) useItem(brake);
+  if (E.S && E.S.config.cambio === "manual") { if (bate("marchaMais")) trocarMarcha(1); if (bate("marchaMenos") && !b(6)) trocarMarcha(-1); } // manual: X sobe, B desce
+  if (um("ers") && E.S?.config.regras === "f1") keys.ers = true; else if (pad.ersPad) keys.ers = false;
+  pad.ersPad = um("ers");
   pad.prev = gp.buttons.map((_, i) => b(i));
 }
 window.addEventListener("gamepaddisconnected", () => { pad.on = false; pad.steer = 0; keys.gas = keys.brake = false; });
