@@ -408,7 +408,9 @@ function distanciaDaFreada(fis, n, i, v) { const lim = v * 0.9; for (let k = 0; 
 function ladoDeDentro(pf, i) { for (let k = 0; k <= 100; k++) { const j = (i + k) % pf.n; if (pf.kf[j] > 1 / 400) return pf.linha.sinal[j]; } return 0; }
 function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
   const ponto = pf.pts[i], c = pf.c, k = pf.kf, n = pf.n, now = Date.now();
-  const niv = TRANSITO_NIVEL[room.config.nivel] || TRANSITO_NIVEL.medio, MARG = niv.margem;
+  const niv = TRANSITO_NIVEL[room.config.nivel] || TRANSITO_NIVEL.medio;
+  // a folga lateral entre carros acompanha a largura da pista: nas de 104 ou mais vale a de sempre; numa mais estreita (Mônaco, 84) a faixa em que o robô anda (maxLat = W/2 - 18) cabe menos, e uma folga de 44 jogava o carro de lado contra o muro
+  const MARG = niv.margem * Math.min(1, (T.PISTAS[room.config.pista].width - 36) / 68);
   const dFreio = plano.dFreio ?? Infinity, dentro = plano.dentro || 0, meu = ia.sim;
   const tx = ponto.tx, ty = ponto.ty, vlatMeu = meu ? meu.vx * -ty + meu.vy * tx : 0;
   const out = { desvio: 0, freio: Infinity, encontrou: false, bloqPos: false, bloqNeg: false, draft: 0, limMin: -Infinity, limMax: Infinity, tras: null };
