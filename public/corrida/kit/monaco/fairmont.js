@@ -35,7 +35,7 @@ export function fairmontSobreOTunel(tr, add) {
   const base = new THREE.MeshStandardMaterial({ color: 0xcfc6b2, roughness: 0.95, side: THREE.DoubleSide }), vb = [], ib = [], FUNDO = -40;
   const qb = (A, B, Cc, Dd) => { const q = vb.length / 3; vb.push(...A, ...B, ...Cc, ...Dd); ib.push(q, q + 1, q + 2, q, q + 2, q + 3); };
   for (const lado of [1, -1]) for (let i = a0; i < a1; i++) { const l = lado * (L + 4); qb(P(i, l, FUNDO), P(i + 1, l, FUNDO), P(i + 1, l, TUNEL_ALTO), P(i, l, TUNEL_ALTO)); }
-  { const l = L + 4; qb(P(a1, -l, FUNDO), P(a1, l, FUNDO), P(a1, l, TUNEL_ALTO), P(a1, -l, TUNEL_ALTO)); }
+  // (sem parede de fechamento na ponta do fundo: ela atravessava o túnel; o embasamento fica só nas duas laterais, por fora das paredes do túnel)
   const gb = new THREE.BufferGeometry(); gb.setAttribute("position", new THREE.Float32BufferAttribute(vb, 3)); gb.setIndex(ib); gb.computeVertexNormals(); const mb = add(new THREE.Mesh(gb, base)); mb.name = "monaco-fairmont-base"; mb.castShadow = false;
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
   const m = add(new THREE.Mesh(g, fach)); m.name = "monaco-fairmont"; m.castShadow = true; m.receiveShadow = true;
